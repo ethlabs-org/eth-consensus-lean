@@ -47,8 +47,8 @@ theorem target_compatible_later_origin_before_at
   have hsub : ell.frame.tree ⊆ tr.HonestBlocksAt H := fun _ h =>
     ⟨x, r, tr.time r, ht, fun _ hq => hm hq.le, hx, htree h⟩
   have hOD := (SA.anc_viableAncestor ell.frame D).mono hsub
-  have hcomp := SA.fastLock_compatible_of_votes hr hx hri
-    ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hf (B := B) (by
+  have hcomp := SA.fastLock_compatible_of_votes hr _ SA.CommitteeP.full hx hri
+    ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) (SA.cs2_full hp.stock hf) (B := B) (by
       intro z hz q hq e hv hs
       obtain ⟨hqt, hv⟩ := SA.upTo_voteAt.mp hv
       exact hsupport z q e hq

@@ -9,6 +9,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealedC4
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportCover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Domain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -280,8 +281,9 @@ theorem UpTo.operational_proposal_below_next_parent_at
         split_ifs at hsel
         have h34 := (SA.deepest_mem hsel).1.2.1
         rw [hsl] at h34
-        refine SA.origin_compatible hU hΦU h34
-          (by simpa only [hp.stock] using hf) fun v hv hvH => ?_
+        refine SA.origin_compatible hU hΦU (SA.CommitteeDict.full sp.n) h34
+          (fun _ _ => SA.mem_full _ _) (by simpa only [SA.ncard_inter_full, hp.stock] using hf)
+          fun v hv hvH => ?_
         obtain ⟨hvs, q', _, e', hv', rfl⟩ := SA.optimisticPoint_pool_vote hS.run hy hpt hv hvH
         exact votes _ hvH q' e' hv' (by rw [hvs]; omega)
     rcases hcomp with h | h

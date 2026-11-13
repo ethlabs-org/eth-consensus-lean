@@ -63,14 +63,19 @@ theorem high_vote_extends_of_domain_at
       exact (SA.anc_viableAncestor ellx.frame D).mono hsub
     have hgj : g ≤ sp.ts j := by
       linarith [lt_cutZ sp g, le_gbar g, sp.toParams.hΔ]
-    exact SA.Growing.first_transfer_stored hac ho.1 hfl hBD' hy hc hs
+    exact SA.Growing.first_transfer_stored hac _ (fun _ => SA.CommitteeP.full)
+      (fun _ => SA.CommitteeT.full) (SA.size_binding_full hp.stock) ho.1 hfl hBD' hy hc hs
       (reset_syncACAt hp hgj)
       (first_carry_of_finalized_anc_at hp ho hib ⟨ellx, D, hcx, hfl, hBD⟩ hy hc hkb hs hF)
-      hf (Or.inl (by simpa only [← hs] using hvi)) (by simpa only [hs] using he)
+      ((SA.ncard_inter_full_lt_iff _ _ _).2 hf) (SA.Growing.cs2_full_of_faultBoundAt hp.stock hf)
+      (Or.inl (by simpa only [← hs] using hvi)) (by simpa only [hs] using he)
   · obtain ⟨m, hm⟩ : ∃ m, e.msg.slot = m + 1 := ⟨e.msg.slot - 1, by omega⟩
     have hjm : j < m := by omega
-    refine SA.Growing.next_transfer sp _ ro H _ tr.projAC proposer hac m y k B ell e
-      hy hc hm ?_ ?_ ?_ hf
+    refine SA.Growing.next_transfer sp _ ro H _ tr.projAC proposer hac (SA.CommitteeDict.full sp.n)
+      ⟨fun _ _ _ _ _ σ _ _ => SA.mem_full σ _, fun _ _ _ _ _ _ σ _ _ => SA.mem_full σ _⟩
+      (fun _ _ _ _ _ _ _ v _ => SA.mem_full v.slot _) (SA.size_binding_full hp.stock)
+      m y k B ell e hy hc hm ?_ ?_ ?_ ((SA.ncard_inter_full_lt_iff _ _ _).2 hf)
+      (SA.Growing.cs2_full_of_faultBoundAt hp.stock hf)
       (Or.inl (by simpa only [← hm] using hvi)) ?_
     · intro z q e' hz hv hs'
       obtain ⟨ell', hc'⟩ := hv
@@ -80,7 +85,8 @@ theorem high_vote_extends_of_domain_at
         have := SA.slot_mono sp (hp.run.time_nonneg k) (hp.run.time_mono (by omega : k ≤ q))
         omega
       exact hprior z q e' hqk (Compose.Growing.hVoteAt_iff.2 ⟨hz, ell', hc'⟩) (by omega)
-    · apply hp.half_committee_at
+    · rw [hp.stock]
+      apply hp.half_committee_at
         (hcut.trans ((SA.ts_le_iff sp).mpr (show (j : Int) ≤ m by omega)))
         (htb := hkb)
       have hn : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by

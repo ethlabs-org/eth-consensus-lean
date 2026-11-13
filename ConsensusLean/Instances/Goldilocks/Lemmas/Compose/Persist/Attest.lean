@@ -270,7 +270,8 @@ theorem attest_not_excluded
     rcases hr.frameLaw x hp.writer_honest i₀ ℓw hcw with
       ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.2
   have hCB : Compatible (tr.HonestBlocks H) C B :=
-    SA.source_compatible_stored sp _ ro proposer H _ tr.projAC hrun' s m x v i₀ j' B D CV ℓ C
+    SA.source_compatible_stored sp _ ro proposer H _ tr.projAC hp.stock hrun' s m x v i₀ j' B D
+      CV ℓ C
       hp.writer_honest hflD (hBD ▸ Anc.mono hΦwU (SA.anc_viableAncestor ℓw.frame D)) hsync
       hp.carry (faulty_lt_half hrun hp) hv hToFG
       hlo hhi

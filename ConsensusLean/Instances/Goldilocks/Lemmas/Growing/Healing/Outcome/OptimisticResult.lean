@@ -12,6 +12,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Update
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -130,7 +131,8 @@ theorem optimistic_next_result_of_floor_at
   have hf := hp.faults _ hj0 hjb
   have hn : 0 < sp.n := sp.toParams.hn
   obtain ⟨D, hconf, hBD, _⟩ := SA.update_extends_of_resolved_votes hS.run
-    (by rw [hp.stock]; omega) hext hy hu' (by rw [hp.stock]; omega) hres
+    (SA.CommitteeDict.full sp.n) (fun _ _ => SA.mem_full _ _)
+    (by rw [SA.ncard_inter_full, hp.stock]; omega) hext hy hu' (by rw [hp.stock]; omega) hres
   rw [hst] at hconf
   exact ⟨D, _, ⟨ell, hu, hconf, rfl⟩, hBD.mono hsub⟩
 

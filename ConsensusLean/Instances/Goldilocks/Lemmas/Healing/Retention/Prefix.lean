@@ -121,17 +121,20 @@ theorem ResetPremisesUpTo.origins_compatible_before {b : Time}
       have h₃ := (SA.ts_le_iff_le_slot sp (hrl.time_nonneg c) ((j + 1 : Nat) : Int)).mp hge
       clear * - hsl h₁ h₃; omega
     have hDO : Compatible (tr.HonestBlocks H) D O :=
-      SA.fastLock_compatible_of_votes hrun' ho.1 (Nat.lt_succ_self i) hfl hf
+      SA.fastLock_compatible_of_votes hrun' _ SA.CommitteeP.full ho.1 (Nat.lt_succ_self i) hfl
+        (SA.cs2_full hp.stock hf)
         fun z hz c hc e hve hsl => hvote ho' hrb z hz c (hcut z hz c hc e hve hsl)
           ((hp.run.time_mono (by clear * - hc; omega)).trans hib) e hve (by omega)
     by_contra hn
     exact SA.not_compatible_of_anc hU hBD (fun h => hn h.symm) hDO.symm
   · have hsync := hp.sync.syncAC hp.run (hi := sp.ts (l + 1 : Nat) + sp.Δ) hg
-    rcases SA.fastLock_same_slot hrun' ho.1 hfl ho'.1 hfl' hsync hf with h | h
+    rcases SA.fastLock_same_slot hrun' _ SA.CommitteeP.full (SA.size_binding_full hp.stock) ho.1
+      hfl ho'.1 hfl' hsync (SA.cs2_full hp.stock hf) with h | h
     · exact SA.anc_total hU (hBD.trans h) hOD'
     · exact SA.anc_total hU hBD (hOD'.trans h)
   · have hD'B : Compatible (tr.HonestBlocks H) D' B :=
-      SA.fastLock_compatible_of_votes hrun' ho'.1 (Nat.lt_succ_self r) hfl' hf
+      SA.fastLock_compatible_of_votes hrun' _ SA.CommitteeP.full ho'.1 (Nat.lt_succ_self r) hfl'
+        (SA.cs2_full hp.stock hf)
         fun z hz c hc e hve hsl => hvote ho hib z hz c (by clear * - hrk hc; omega)
           ((hp.run.time_mono (by clear * - hc; omega)).trans hrb) e hve (by
               clear * - hgt hsl; omega)

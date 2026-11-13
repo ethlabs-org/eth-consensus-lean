@@ -70,8 +70,8 @@ theorem optimistic_prefix_compatible_old
       have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H
         (fun v => v.val) tr proposer ΔF (sp.ts (u - 1 : Nat)) (sp.ts (u - 1 + 1 : Nat) + sp.Δ)
         hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 (le_ts_of_highOrigin hp ho))
-      rcases SA.fastLock_same_slot hrun hpH (Or.inr hop) ho.1 hfl hsync
-        (faulty_lt_half hp p) with hDC | hCD
+      rcases SA.fastLock_same_slot hrun _ SA.CommitteeP.full (SA.size_binding_full hp.stock) hpH
+        (Or.inr hop) ho.1 hfl hsync (SA.cs2_full hp.stock (faulty_lt_half hp p)) with hDC | hCD
       · exact SA.anc_total hrun.localRun.coherent hDC hOC
       · exact Or.inr (hOC.trans hCD)
   rcases hDO with hDO | hOD

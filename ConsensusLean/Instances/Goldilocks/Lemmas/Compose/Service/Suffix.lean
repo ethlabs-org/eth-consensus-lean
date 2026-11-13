@@ -103,8 +103,9 @@ private theorem voter_facts_of_old (hrun : GoldilocksRun proposer dg H tr) (hnc 
   have hQt : d.head ∈ ℓp.frame.tree := (acProposal_start_anc_head hΦp hd).2 |> fun h =>
     mem_of_anc_left h (acProposal_start_anc_head hΦp hd).1
   refine ⟨?_, fun B hB hQB =>
-    vote_floor_le_of hrun hnc hf hs0 hy hcy hes hB fun O hO => (hold O hO).trans hQB⟩
-  rcases vote_fcRoot_old_of hrun hnc hf hs0 hy hcy hes with hg | ⟨O, hO, hfO⟩
+    vote_floor_le_of hrun hnc hf hs0 hy hcy hes hB (fun O hO => (hold O hO).trans hQB)
+      hrun.stock⟩
+  rcases vote_fcRoot_old_of hrun hnc hf hs0 hy hcy hes hrun.stock with hg | ⟨O, hO, hfO⟩
   · exact honest_genesis_root_anc hrun hU (hΦyU hΦy.fcRoot_mem) hg (hΦpU hQt)
   · exact hfO.trans (hold O hO)
 end Run

@@ -43,11 +43,12 @@ private theorem toFG_some {FGP : Type} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t
 
 /-- **A1.9 for the stored block**: `SourceCompatible` for a fast lock on `D`, with every
 hypothesis and the conclusion about a block `B ⪯ D` (the block the lock stores,
-`Φ.viableAncestor D`). -/
+`Φ.viableAncestor D`). Stock committee only (`committeeSize = n`, §S). -/
 theorem source_compatible_stored :
     ∀ (FGP : Type) (ro : ReplayOrder sp FGP)
     (proposer : Nat → Fin sp.n) (H : Set (Fin sp.n))
     (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro),
+    sp.committeeSize = sp.n →
     ACRun proposer tr H U → ∀ (s m : Nat) (w x : Fin sp.n) (i₀ i : Nat) (B D : Blk sp.n FGP)
       (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (C : Blk sp.n FGP),
     w ∈ H → FastLockAt tr w i₀ s D CV → Anc U B D →
@@ -60,7 +61,7 @@ theorem source_compatible_stored :
     ((∃ j < i, ∃ ℓ' e, CastAt tr x j ℓ' e ∧ e.msg.slot = s + 1 ∧ Compatible U ℓ'.frame.F B) ∨
       (∃ k < i, tr.RestartAt x k ∧ sp.ts s < tr.time k)) →
     Compatible U C B := by
-  intro FGP ro proposer H U tr hrun s m w x i₀ i B D CV ℓ C hw hfl hBD hsync hcarry hf hx hto
+  intro FGP ro proposer H U tr hstk hrun s m w x i₀ i B D CV ℓ C hw hfl hBD hsync hcarry hf hx hto
     hlo hhi hvotes hcase
   have hr := hrun.localRun
   have hU := hr.coherent
@@ -103,20 +104,23 @@ theorem source_compatible_stored :
       push_cast at this
       omega
     · omega
+  -- the stock committee (§S): every validator, `committeeSize = n`
   rcases lt_trichotomy s l₀.slot with hlt | heq | hgt
   · -- a later slot: its honest votes extend `B`
-    refine down hLB' (fastLock_compatible_of_votes hrun hx hj hfl' hf fun z hz j' hj' e hv hes =>
-      hvotes z hz j' hj' e hv (hes ▸ hlt) (by omega))
+    refine down hLB' (fastLock_compatible_of_votes hrun _ CommitteeP.full hx hj hfl'
+      (cs2_full hstk hf) fun z hz j' hj' e hv hes =>
+        hvotes z hz j' hj' e hv (hes ▸ hlt) (by omega))
   · -- slot `s`: two fast locks of one slot
     subst heq
     refine down hLB' ?_
-    rcases fastLock_same_slot hrun hw hfl hx hfl' hsync hf with h | h
+    rcases fastLock_same_slot hrun _ CommitteeP.full (size_binding_full hstk) hw hfl hx hfl'
+      hsync (cs2_full hstk hf) with h | h
     exacts [Or.inr (hBD.trans h), anc_total hU h hBD]
   · -- slot `s − 1`, so `slot(t) = s + 1`
     have hσ : sp.slot (tr.time i) = s + 1 := by omega
     rcases hcase with ⟨j₁, hj₁, ℓ₁, e₁, hc₁, hs₁, hF₁⟩ | ⟨k, hk, hrk, htk⟩
-    · exact locks_after_unlock hrun hw hfl hBD hcarry hx hc₁ hs₁ hF₁ hj₁ l₀ hl₀ hgt B₀ (hΦU hB₀)
-        hB₀r
+    · exact locks_after_unlock hrun (by rw [hstk]; exact Fin.pos x) hw hfl hBD hcarry hx hc₁ hs₁
+        hF₁ hj₁ l₀ hl₀ hgt B₀ (hΦU hB₀) hB₀r
     · -- a restart after `t_s` leaves `x` unjoined in slot `s + 1`
       exfalso
       have he := hr.exec i ℓ hc.2 (hc.1 ▸ hx)
@@ -135,8 +139,8 @@ theorem source_compatible_stored :
 
 /-- **A1.9.** -/
 theorem source_compatible : SourceCompatible sp :=
-  fun FGP ro H U tr proposer hrun s m w x i₀ i B CV ℓ C hw hfl =>
-    source_compatible_stored sp FGP ro proposer H U tr hrun s m w x i₀ i B B CV ℓ C hw hfl
+  fun FGP ro H U tr proposer hstk hrun s m w x i₀ i B CV ℓ C hw hfl =>
+    source_compatible_stored sp FGP ro proposer H U tr hstk hrun s m w x i₀ i B B CV ℓ C hw hfl
       Relation.ReflTransGen.refl
 
 end Consensus.Goldilocks.SA

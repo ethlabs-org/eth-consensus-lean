@@ -15,6 +15,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Later
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Saved
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -377,8 +378,10 @@ theorem cover_gate_veto_above_at
     · have ht : tr.time k' = sp.ts l.slot + 6 * sp.Δ := hu'.2.2.1
       simp only [SAParams.ts] at hts ht hsb ⊢
       linarith
-    · have ht := (SA.optimisticLockAt_spec (acRun_upTo hrun hnc (hrun.time_nonneg k')) hyk'
-        ((sa_optimisticLockAt_upTo hm).mpr ⟨le_rfl, hopt⟩)).1
+    · -- TEMP(C2): C3/C4 replaces
+      have ht := (SA.optimisticLockAt_spec (acRun_upTo hrun hnc (hrun.time_nonneg k')) hyk'
+        ((sa_optimisticLockAt_upTo hm).mpr ⟨le_rfl, hopt⟩) (SA.CommitteeDict.full sp.n)
+        (fun _ _ _ => SA.mem_full _ _)).1
       change tr.time k' < _ at ht
       simp only [SAParams.ts] at hts ht hsb ⊢
       linarith
@@ -415,8 +418,10 @@ theorem cover_gate_veto_above_at
       rw [hso', hsc] at h1
       omega
     -- the optimistic voters, classified at `t_c`
-    obtain ⟨-, hcnt, ell, A, hp, -, hCV, hCVv⟩ := SA.optimisticLockAt_spec hacr hy
-      ((sa_optimisticLockAt_upTo hm).mpr ⟨hk'c, hopt⟩)
+    -- TEMP(C2): C3/C4 replaces
+    obtain ⟨-, hcnt, ell, A, hp, -, hCV, hCVv, -⟩ := SA.optimisticLockAt_spec hacr hy
+      ((sa_optimisticLockAt_upTo hm).mpr ⟨hk'c, hopt⟩) (SA.CommitteeDict.full sp.n)
+      (fun _ _ _ => SA.mem_full _ _)
     rw [hacr.stock] at hcnt
     obtain ⟨-, hpc⟩ := (Trace.upTo_callAt _).mp hp.1
     have hellU := (frameIn_at hrun hnc hyk' hpc).2

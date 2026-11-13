@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -352,8 +353,9 @@ private theorem vote_locks_compatible_of
     obtain ⟨Φ', A, D, -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
       SA.lock_origin_readPoint hrun' hy hc l₀ hl₀ (by rw [hs]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
-    refine down hL₀D (SA.origin_compatible hU hΦ'U h34
-      (by simpa [hrun.stock] using hf) fun v hv hvH => ?_)
+    refine down hL₀D (SA.origin_compatible hU hΦ'U (SA.CommitteeDict.full sp.n) h34
+      (fun _ _ => SA.mem_full _ _) (by simpa [SA.ncard_inter_full, hrun.stock] using hf)
+      fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
     have hsj : e'.msg.slot = sp.slot (tr.time j) := (SA.castAt_spec hr hvH hcj).2.1
@@ -412,7 +414,10 @@ private theorem first_transfer_win
   · exact SA.result_transfer sp _ ro H _ tr.projAC proposer hrun' s x y i₀ i C CV ℓ e hx hR hy hc hs
       (result_carry_win hrun hnc hwin hx hs₀ hR hy hc hs hib hold hF) (Or.inl hv) hlocks
       (result_writer_pool_win hrun hnc hwin hx hs₀ hR hi₀ hy hc hs)
-  · exact SA.optimistic_transfer_stored sp hrun' hx hO .refl (two_faults_lt_of_window hwin) hy
+  · have hf := two_faults_lt_of_window hwin
+    exact SA.optimistic_transfer_stored sp hrun' (SA.CommitteeDict.full sp.n) SA.CommitteeP.full
+      SA.CommitteeT.full (SA.size_binding_full hrun'.stock) hx hO .refl
+      (SA.cs2_full hrun'.stock hf) (SA.cs2_full hrun'.stock hf) hy
       hc hs (optimistic_carry_win hrun hnc hwin hx hs₀ hO hy hc hs hib hold hF) (Or.inl hv) hE
 
 /-- **First transfer up to `b`**: an honest slot-`(s+1)` vote at a time `≤ b` extends an
@@ -431,7 +436,7 @@ theorem first_transfer_step_upTo
   obtain ⟨x', hx', k', e', hv', -, hs', hext'⟩ := honest_supporter_upTo hrun hnc hpre hC
   exact first_transfer_win hrun hnc hpre.window (Nat.zero_le s) hy hc hs hib (hold_zero hrun) hC
     (vote_frame_upTo hrun hnc hpre hP hy hc hs hib (origin_mem hrun hnc hC.origin) hCc
-      ⟨x', hx', k', e', hv', hs', hext'⟩)
+      ⟨x', hx', k', e', hv', hs', hext'⟩ hrun.stock)
     (vote_locks_compatible_upTo hrun hnc hpre hy hc hs hib hCc hE) hE
 
 /-- First transfer with service restricted to recipient deadlines within `b`. -/
@@ -461,7 +466,7 @@ theorem first_transfer_step_before
     fun C' j hC' hj => originsBelowUpTo_iff.1 hP C s C' j (by omega) (by omega) hC hC'
   obtain ⟨x', hx', k', e', hv', -, hs', hext'⟩ := honest_supporter_before hrun hnc hb hsync hfb hC
   have hvf := vote_frame_before hrun hnc hb hsync hfb hP hy hc hs hib
-    (origin_mem hrun hnc hC.origin) hCc ⟨x', hx', k', e', hv', hs', hext'⟩
+    (origin_mem hrun hnc hC.origin) hCc ⟨x', hx', k', e', hv', hs', hext'⟩ hrun.stock
   have hlocks : ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
       Compatible (tr.HonestBlocks H) L C := by
     refine vote_locks_compatible_of (s₀ := 0) hrun hnc hf hy hc hs
@@ -481,7 +486,9 @@ theorem first_transfer_step_before
       (result_carry_before hrun hnc hsync hx hR hy hc hs hib hF) (Or.inl hv) hlocks
       (result_writer_pool_before hrun hnc hsync.ac
         hx hR hi₀ hy hc hs)
-  · exact SA.optimistic_transfer_stored sp hrun' hx hO .refl hf hy hc hs
+  · exact SA.optimistic_transfer_stored sp hrun' (SA.CommitteeDict.full sp.n) SA.CommitteeP.full
+      SA.CommitteeT.full (SA.size_binding_full hrun'.stock) hx hO .refl
+      (SA.cs2_full hrun'.stock hf) (SA.cs2_full hrun'.stock hf) hy hc hs
       (optimistic_carry_before hrun hnc hsync hx hO hy hc hs hib hF) (Or.inl hv) hE
 
 
@@ -539,7 +546,7 @@ theorem later_transfer_step_upTo
     (le_mul_of_one_le_left hΔ.le (by norm_num))).trans (hti.trans hib))
   exact later_transfer_win hrun hnc hpre.window (Nat.zero_le s) hy hc hs hib (hold_zero hrun)
     (vote_frame_upTo hrun hnc hpre hP hy hc hs hib hB hBc
-      ⟨x, hx, k, e', hv, hvs, hall x hx k e' hv hvs⟩)
+      ⟨x, hx, k, e', hv, hvs, hall x hx k e' hv hvs⟩ hrun.stock)
     (vote_locks_compatible_upTo hrun hnc hpre hy hc hs hib hBc hE) hall
 
 /-- Later-batch transfer with recipient-deadline-bounded service. -/
@@ -572,7 +579,7 @@ theorem later_transfer_step_before
   obtain ⟨x, hx, k, e', hv, hvs⟩ :=
     (Set.ncard_pos (Set.toFinite _)).1 ((Nat.zero_le _).trans_lt hcount)
   have hvf := vote_frame_before hrun hnc hb hsync hfb hP hy hc hs hib hB hBc
-    ⟨x, hx, k, e', hv, hvs, hall x hx k e' hv hvs⟩
+    ⟨x, hx, k, e', hv, hvs, hall x hx k e' hv hvs⟩ hrun.stock
   have hf : 2 * Hᶜ.ncard < sp.n := by
     have h := hfb 0 0 (by simp) (by simpa [SAParams.ts] using hb)
     change Hᶜ.ncard < tr.honestAwakeJoined H (sp.ts 0 + 0) at h

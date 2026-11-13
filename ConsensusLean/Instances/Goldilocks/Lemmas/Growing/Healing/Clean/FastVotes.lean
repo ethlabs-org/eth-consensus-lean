@@ -81,10 +81,12 @@ theorem fast_source_votes_of_domain_before_at (hp : ResetPremisesUpTo tr H propo
           fastLock_writer_at hac.localRun hx hfast v hv'
         exact ⟨hvs, ⟨x, k, hxk, hsend, hk1, hk2⟩, D, hDr, hFB.trans hBD,
           hacc.imp_right fun ⟨k, hk⟩ => ⟨x, k, hk⟩⟩
-    exact SA.Growing.first_transfer_stored hac hx hfast .refl hy hcast hfirst
-      (KernelProof.reset_syncACAt hp hgs) carry
-      (KernelProof.fault_bound_late_at hp (t := tr.time i)
-        (hts.trans (by linarith only [htime, hts1, hΔ])) hib)
+    have hfb := KernelProof.fault_bound_late_at hp (t := tr.time i)
+      (hts.trans (by linarith only [htime, hts1, hΔ])) hib
+    exact SA.Growing.first_transfer_stored hac _ (fun _ => SA.CommitteeP.full)
+      (fun _ => SA.CommitteeT.full) (SA.size_binding_full hp.stock) hx hfast .refl hy hcast hfirst
+      (KernelProof.reset_syncACAt hp hgs) carry ((SA.ncard_inter_full_lt_iff _ _ _).2 hfb)
+      (SA.Growing.cs2_full_of_faultBoundAt hp.stock hfb)
       (by rw [← hfirst]; exact Or.inl hv)
       (fun z q hq hz e' he hslot => hprior z q hz hq e' he (by omega))
   · obtain ⟨m, hm⟩ : ∃ m, e.msg.slot = m + 1 := ⟨e.msg.slot - 1, by omega⟩
@@ -103,11 +105,18 @@ theorem fast_source_votes_of_domain_before_at (hp : ResetPremisesUpTo tr H propo
         have := SA.slot_mono sp hd (hrun.time_mono (Nat.le_of_not_gt hn))
         omega
       exact hprior z q hz hqi e' ⟨ell', hc'⟩ (by omega)
-    exact SA.Growing.next_transfer sp _ ro H _ tr.projAC proposer hac m y i B ell e hy hcast hm
-      hall (hp.half_committee_at hmts (t := tr.time i) (by linarith only [htime, hts1, hΔ]) hib)
+    have hfb := KernelProof.fault_bound_late_at hp (t := tr.time i)
+      (hmts.trans (by linarith only [htime, hts1, hΔ])) hib
+    exact SA.Growing.next_transfer sp _ ro H _ tr.projAC proposer hac (SA.CommitteeDict.full sp.n)
+      ⟨fun _ _ _ _ _ σ _ _ => SA.mem_full σ _, fun _ _ _ _ _ _ σ _ _ => SA.mem_full σ _⟩
+      (fun _ _ _ _ _ _ _ v _ => SA.mem_full v.slot _) (SA.size_binding_full hp.stock)
+      m y i B ell e hy hcast hm hall
+      (by rw [hp.stock]
+          exact hp.half_committee_at hmts (t := tr.time i)
+            (by linarith only [htime, hts1, hΔ]) hib)
       (KernelProof.honest_votes_carry_reset_at hp hc hy hcast hm hmts hall hFB)
-      (KernelProof.fault_bound_late_at hp (t := tr.time i)
-        (hmts.trans (by linarith only [htime, hts1, hΔ])) hib)
+      ((SA.ncard_inter_full_lt_iff _ _ _).2 hfb)
+      (SA.Growing.cs2_full_of_faultBoundAt hp.stock hfb)
       (by rw [← hm]; exact Or.inl hv)
       (fun z q hq hz e' he hslot => hprior z q hz hq e' he (by omega))
 

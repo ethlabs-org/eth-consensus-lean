@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -88,8 +89,9 @@ private theorem slow_live_locks_anc {FGP : Type} {ro' : ReplayOrder sp FGP}
   · obtain ⟨Φ', A, D', -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
       SA.lock_origin_readPoint hrun hy hc l₀ hl₀ (by rw [hes]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
-    refine down hL₀D (SA.origin_compatible hU hΦ'U h34
-      (by simpa only [hS.stock] using hS.two_faulty_lt) fun v hv hvH => ?_)
+    refine down hL₀D (SA.origin_compatible hU hΦ'U (SA.CommitteeDict.full sp.n) h34
+      (fun _ _ => SA.mem_full _ _)
+      (by simpa only [SA.ncard_inter_full, hS.stock] using hS.two_faulty_lt) fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
     have hsj : e'.msg.slot = sp.slot (T.time j) := (SA.castAt_spec hr hvH hcj).2.1
@@ -225,11 +227,16 @@ theorem origin_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr
       have h₂ := SA.slot_mono sp h0 (hr.time_mono (not_lt.mp hkk))
       omega
     exact hprior z hz k' hk' e' hv' (by omega)
-  refine SA.next_transfer sp _ ro H _ tr.projAC proposer hrun' m' y k B ℓ e hy hv hm' hall
-    (half_committee_of_healthy hrun hs (cutZ_le_of_clean hw (hj.trans hjm)))
+  have hfb := faultBound_proj hrun hs hy ((cutZ_le_of_clean hw hj).trans (hjm.trans hmk))
+  refine SA.next_transfer sp _ ro H _ tr.projAC proposer hrun' (SA.CommitteeDict.full sp.n)
+    SA.CommitteeP.full SA.CommitteeT.full (SA.size_binding_full hs.stock) m' y k B ℓ e hy hv
+    hm' hall
+    (by
+      rw [hs.stock]
+      exact half_committee_of_healthy hrun hs (cutZ_le_of_clean hw (hj.trans hjm)))
     (honest_batch_carry hrun hs hc hw (hj.trans hjm) hall hy hv hm'
       (hviab y hy k ℓ e hv (by omega) hk) hBf)
-    (faultBound_proj hrun hs hy ((cutZ_le_of_clean hw hj).trans (hjm.trans hmk))) ?_ ?_
+    ((SA.faultBoundK_full_iff _ _).2 hfb) (SA.cs2_full_of_faultBound sp hs.stock hfb) ?_ ?_
   · rw [← hm']
     exact Or.inl ((hviab y hy k ℓ e hv (by omega) hk).resolve_right hBf)
   · rw [← hm']
@@ -261,10 +268,12 @@ theorem clean_fast_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
   have hcarry := clean_fast_carry hrun hs hc hw hx ho hj hy hv h1 hk hBf
   obtain ⟨ℓw, D, hcw, hflD, hBD⟩ := ho
   have hΦwU := (SA.frameIn_of_callAt hr hx hcw).2
-  refine SA.first_transfer_stored sp hrun' hx hflD
+  have hfb := faultBound_proj hrun hs hy ((cutZ_le_of_clean hw hj).trans hjk)
+  refine SA.first_transfer_stored sp hrun' (SA.CommitteeDict.full sp.n) SA.CommitteeP.full
+    SA.CommitteeT.full (SA.size_binding_full hs.stock) hx hflD
     (hBD ▸ Anc.mono hΦwU (SA.anc_viableAncestor ℓw.frame D)) hy hv h1
     (Compose.syncAC_mono hsync0 le_rfl hle) hcarry
-    (faultBound_proj hrun hs hy ((cutZ_le_of_clean hw hj).trans hjk)) ?_ ?_
+    ((SA.faultBoundK_full_iff _ _).2 hfb) (SA.cs2_full_of_faultBound sp hs.stock hfb) ?_ ?_
   · rw [← h1]
     exact Or.inl hviab
   · rw [← h1]

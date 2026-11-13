@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Base
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -14,7 +15,8 @@ the consuming vote, and retention preserves the participation count exactly.
 namespace Consensus.Goldilocks.SA.Growing
 
 theorem next_transfer (sp : SAParams) : NextTransfer sp := by
-  intro FGP ro H U tr proposer hrun m y i B ℓ e hy hc hs hall hhalf hcarry hf hviab hearlier
+  intro FGP ro H U tr proposer hrun K hP hT hsize m y i B ℓ e hy hc hs hall hhalf hcarry hf hf1
+    hviab hearlier
   have hr := hrun.localRun
   have hm := hr.time_mono
   have hry := hrun.upTo (hr.time_nonneg i)
@@ -48,7 +50,8 @@ theorem next_transfer (sp : SAParams) : NextTransfer sp := by
       obtain ⟨hji, hv⟩ := upTo_voteAt.mp hv
       exact ⟨hx, j, e', hr.antitone hji hx, hv, hvs⟩
   rw [hbatch] at hhalf
-  apply SA.next_transfer_of_carry sp hry hy hc' hs
+  apply SA.next_transfer_of_carry sp hry K (hP.upTo hm hr.antitone (tr.time i))
+    (hT.upTo hr.antitone (tr.time i)) hsize hy hc' hs
   · intro x hx j e' hv hvs
     obtain ⟨hji, hv⟩ := upTo_voteAt.mp hv
     exact hall x j e' (hr.antitone hji hx) hv hvs
@@ -61,15 +64,17 @@ theorem next_transfer (sp : SAParams) : NextTransfer sp := by
     · rintro v ⟨x, hx, j, e', hv, he, hvs⟩
       obtain ⟨hji, hv⟩ := upTo_voteAt.mp hv
       exact h.holds v ⟨x, j, e', hr.antitone hji hx, hv, he, hvs⟩
-  · have hcount : honestAwakeJoined (tr.upTo (tr.time i)) (H (tr.time i)) (tr.time i) =
-        {x | x ∈ H (tr.time i) ∧ tr.awake x (tr.time i) ∧ JoinedAt tr x (tr.time i)}.ncard := by
-      unfold honestAwakeJoined
-      congr 1
+  · have hset : {x | x ∈ H (tr.time i) ∧ (tr.upTo (tr.time i)).awake x (tr.time i) ∧
+        JoinedAt (tr.upTo (tr.time i)) x (tr.time i)} =
+        {x | x ∈ H (tr.time i) ∧ tr.awake x (tr.time i) ∧ JoinedAt tr x (tr.time i)} := by
       ext x
       simp only [Trace.upTo_awake, upTo_joinedAt le_rfl, le_refl, and_true]
-    change (H (tr.time i))ᶜ.ncard < honestAwakeJoined (tr.upTo (tr.time i)) _ (tr.time i)
-    rw [hcount]
+    change (K.committee m ∩ (H (tr.time i))ᶜ).ncard < (K.committee m ∩
+      {x | x ∈ H (tr.time i) ∧ (tr.upTo (tr.time i)).awake x (tr.time i) ∧
+        JoinedAt (tr.upTo (tr.time i)) x (tr.time i)}).ncard
+    rw [hset]
     exact hf
+  · exact hf1
   · exact hviab
   · intro x hx j hji e' hv hvs
     obtain ⟨hjt, hv⟩ := upTo_voteAt.mp hv

@@ -62,7 +62,8 @@ theorem fastLock_carry_service_at
   refine ⟨hvs, ⟨x, k, hk, hsend, hlo, hhi⟩, Hv, hroot, hFD.trans hanc, ?_⟩
   exact hacc.imp_right fun ⟨k', hk', hacc', ht⟩ => ⟨x, k', hk', hacc', ht⟩
 
-/-- The regular fast transfer step with service and fault margins at the receiving cut. -/
+/-- The regular fast transfer step with service and fault margins at the receiving cut, at the
+full committee (`hstock`, §S.2 scope-(ii) item). -/
 theorem first_transfer_service_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
@@ -77,7 +78,8 @@ theorem first_transfer_service_at
     (hc : SA.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B)
     (hviab : SA.ViableAtVote ell e (s + 1) B)
-    (hearlier : SA.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B) :
+    (hearlier : SA.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B)
+    (hstock : sp.committeeSize = sp.n) :
     SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
   have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hslot := (castAt_spec_at hrun hnc hy hc).2.1.symm.trans hs
@@ -85,10 +87,13 @@ theorem first_transfer_service_at
     change sp.slot (tr.time i) = s + 1 at hslot
     rw [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega]
     exact hm
-  exact SA.Growing.first_transfer_stored hac hx hfl hBD hy hc hs
+  have hfb := faultBound_of_service_at hrun hawake hf hnr (hrun.time_nonneg i) hprev hib
+  exact SA.Growing.first_transfer_stored hac _ (fun _ => SA.CommitteeP.full)
+    (fun _ => SA.CommitteeT.full) (SA.size_binding_full hstock) hx hfl hBD hy hc hs
     (service_syncACAt hrun hsvc ((SA.le_gbar g).trans hm))
     (fastLock_carry_service_at hrun hnc hsvc hcatch hm hx hy hfl hc hs (hFB.trans hBD))
-    (faultBound_of_service_at hrun hawake hf hnr (hrun.time_nonneg i) hprev hib) hviab hearlier
+    ((SA.ncard_inter_full_lt_iff _ _ _).2 hfb) (SA.Growing.cs2_full_of_faultBoundAt hstock hfb)
+    hviab hearlier
 
 /-- Finite service compares the receiver's merged votes with an independently honest writer. -/
 theorem writer_merged_service_at

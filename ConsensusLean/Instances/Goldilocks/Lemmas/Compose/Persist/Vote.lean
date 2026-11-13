@@ -216,16 +216,22 @@ theorem vote_extends (hrun : GoldilocksRun proposer dg H tr)
     have hΦwU : ℓw.frame.tree ⊆ tr.HonestBlocks H := by
       rcases hr.frameLaw x hp.writer_honest i₀ ℓw hcw with
         ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.2
-    refine SA.first_transfer_stored sp hrun' hp.writer_honest hflD
+    refine SA.first_transfer_stored sp hrun' _ SA.CommitteeP.full SA.CommitteeT.full
+      (SA.size_binding_full hp.stock) hp.writer_honest hflD
       (hBD ▸ Anc.mono hΦwU (SA.anc_viableAncestor ℓw.frame D)) hy hc h1
-      (syncAC_mono hsync0 le_rfl htm) (hp.carry y hy k e ⟨ℓ, hc.1, hc.2⟩ h1) hfault ?_ ?_
+      (syncAC_mono hsync0 le_rfl htm) (hp.carry y hy k e ⟨ℓ, hc.1, hc.2⟩ h1)
+      ((SA.faultBoundK_full_iff _ _).2 hfault) (SA.cs2_full_of_faultBound sp hp.stock hfault)
+      ?_ ?_
     · rw [← h1]; exact Or.inl hv
     · rw [← h1]; exact hearlier
   · obtain ⟨m', hm'⟩ : ∃ m', e.msg.slot = m' + 1 := ⟨e.msg.slot - 1, by omega⟩
     have hsm' : s < m' := by omega
-    refine SA.next_transfer sp _ ro H _ tr.projAC proposer hrun' m' y k B ℓ e hy hc hm' ?_
-      (hp.halfCommittee m' hsm' (by omega))
-      (hp.carryLater m' hsm' (by omega) y hy k e ⟨ℓ, hc.1, hc.2⟩ hm') hfault ?_ ?_
+    refine SA.next_transfer sp _ ro H _ tr.projAC proposer hrun' _ SA.CommitteeP.full
+      SA.CommitteeT.full (SA.size_binding_full hp.stock) m' y k B ℓ e hy hc hm' ?_
+      (by rw [hp.stock]; exact hp.halfCommittee m' hsm' (by omega))
+      (hp.carryLater m' hsm' (by omega) y hy k e ⟨ℓ, hc.1, hc.2⟩ hm')
+      ((SA.faultBoundK_full_iff _ _).2 hfault) (SA.cs2_full_of_faultBound sp hp.stock hfault)
+      ?_ ?_
     · intro z hz j e' hv hsl
       have hjk : j < k := by
         by_contra hjk

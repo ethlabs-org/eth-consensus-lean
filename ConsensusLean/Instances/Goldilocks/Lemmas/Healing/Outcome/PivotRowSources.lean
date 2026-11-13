@@ -25,6 +25,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -384,7 +385,8 @@ theorem ResetPremisesUpTo.protected_source_compatible_high_origin {b : Time}
     obtain ⟨_, E, hfl, hDE⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
     have hf : 2 * Hᶜ.ncard < sp.n := two_faults_lt hp.faults
     have hEB : Compatible (tr.HonestBlocks H) E B :=
-      SA.fastLock_compatible_of_votes hrun ho.1 (Nat.lt_succ_self q) hfl hf (by
+      SA.fastLock_compatible_of_votes hrun (SA.CommitteeDict.full sp.n) SA.CommitteeP.full ho.1
+        (Nat.lt_succ_self q) hfl (SA.cs2_full hp.stock hf) (by
         intro z hz j hj e ⟨ell, hcast⟩ hes
         have hjb := (hp.run.time_mono (Nat.lt_succ_iff.mp hj)).trans hqb
         rcases hsource with ⟨CV, hfast⟩ | hslow
@@ -581,8 +583,9 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
         split_ifs at hsel
         have h34 := (SA.deepest_mem hsel).1.2.1
         rw [hsl] at h34
-        refine SA.origin_compatible hU hΦU h34
-          (by simpa only [hp.stock] using hf) fun v hv hvH => ?_
+        refine SA.origin_compatible hU hΦU (SA.CommitteeDict.full sp.n) h34
+          (fun _ _ => SA.mem_full _ _) (by simpa only [SA.ncard_inter_full, hp.stock] using hf)
+          fun v hv hvH => ?_
         obtain ⟨hvs, q', _, e', hv', rfl⟩ := SA.optimisticPoint_pool_vote hS.run hpH hpt hv hvH
         exact votes _ hvH q' e' hv' (by rw [hvs]; clear * - hlσ hle; omega)
     rcases hcomp with h | h

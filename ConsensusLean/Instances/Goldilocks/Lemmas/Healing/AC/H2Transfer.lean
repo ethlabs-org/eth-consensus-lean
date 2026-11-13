@@ -114,9 +114,12 @@ theorem raw_fast_first_votes (hI : InclusionRun tr H U proposer g t₀) {x : Fin
     have hT : gbar g ≤ sp.ts ((sp.slot (tr.time k) : Int) - 1) := by
       rw [← hsl, hes, show ((j + 1 : Nat) : Int) - 1 = (j : Int) by push_cast; ring]
       linarith only [hj, hΔ, hg]
-    exact first_transfer sp FGP ro H U tr proposer hrun j x y i k B CV ℓ e hx hfl hy hca hes
+    have hfb := hI.faultBound ht0 hT
+    exact first_transfer sp FGP ro H U tr proposer hrun (CommitteeDict.full sp.n) CommitteeP.full
+      CommitteeT.full (size_binding_full hI.stock) j x y i k B CV ℓ e hx hfl hy hca hes
       (hI.syncAC (by
-          linarith only [hj, hΔ, hg]) _) (hcarry y hy k ℓ e hca hes hBF) (hI.faultBound ht0 hT)
+          linarith only [hj, hΔ, hg]) _) (hcarry y hy k ℓ e hca hes hBF)
+      ((faultBoundK_full_iff _ _).2 hfb) (cs2_full_of_faultBound sp hI.stock hfb)
       hviab (fun z hz k' hk' e' hv' hs' => ih k' hk' z hz e' hv' hs')
 
 /-- **First transfer of a slow target** (the writer's saved regular results `C_l ⪰ B` of
@@ -331,9 +334,12 @@ theorem h2_votes_continue (hI : InclusionRun tr H U proposer g t₀) {B : Blk sp
         rw [← hsl, hes, show ((m + (d + 1) : Nat) : Int) - 1 = ((m + d : Nat) : Int) by
           push_cast; ring]
         linarith only [hΔ, hmd]
-      exact next_transfer sp FGP ro H U tr proposer hrun (m + d) y k B ℓ e hy hca
-        (by omega) ih hhalf
-        (h2_carry_votes hI hmd ih hy hca (by omega) hFB) (hI.faultBound ht0 hT) (hes ▸ hviab)
+      have hfb := hI.faultBound ht0 hT
+      exact next_transfer sp FGP ro H U tr proposer hrun (CommitteeDict.full sp.n)
+        CommitteeP.full CommitteeT.full (size_binding_full hI.stock) (m + d) y k B ℓ e hy hca
+        (by omega) ih (by rw [hI.stock]; exact hhalf)
+        (h2_carry_votes hI hmd ih hy hca (by omega) hFB) ((faultBoundK_full_iff _ _).2 hfb)
+        (cs2_full_of_faultBound sp hI.stock hfb) (hes ▸ hviab)
         (fun z hz k' hk' e' hv' hs' => ihk k' hk' z hz e' hv' (by omega))
 
 /-- **Later labels (proposals)**: for a protected `(B, j)`, if every honest vote of a slot
@@ -605,7 +611,9 @@ theorem result_prefix_vote_extends_of_stored (hrun : ACRun proposer tr H U)
 
 /-- Later transfer needs extension only at earlier cuts, for the predecessor and
 current labels. Slot monotonicity places every predecessor vote before this cast. The `Sync`
-argument is no longer needed (A1.3 dropped it); it stays for the callers' interface. -/
+argument is no longer needed (A1.3 dropped it); it stays for the callers' interface. The transfer
+counts the batch at the full committee, which reads the stock committee (`hstock`, §S.2
+scope-(ii) item). -/
 theorem next_vote_extends_before (hrun : ACRun proposer tr H U)
     {m i : Nat} {y : Fin sp.n} {B : Blk sp.n FGP}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -617,9 +625,12 @@ theorem next_vote_extends_before (hrun : ACRun proposer tr H U)
       {v | ∃ z ∈ H, ∃ q e', VoteAt tr z q e' ∧ e'.msg = v ∧ v.slot = m})
     (hfault : FaultBound tr H (tr.time i))
     (_hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts m) (tr.time i) tr)
-    (hviab : ViableAtVote ℓ e (m + 1) B) : VoteExtends U e.msg B := by
-  refine next_transfer sp FGP ro H U tr proposer hrun m y i B ℓ e hy hc hs ?_
-    hhalf hcarry hfault hviab (fun z hz q hq e' hv he =>
+    (hviab : ViableAtVote ℓ e (m + 1) B) (hstock : sp.committeeSize = sp.n) :
+    VoteExtends U e.msg B := by
+  refine next_transfer sp FGP ro H U tr proposer hrun (CommitteeDict.full sp.n) CommitteeP.full
+    CommitteeT.full (size_binding_full hstock) m y i B ℓ e hy hc hs ?_
+    (by rw [hstock]; exact hhalf) hcarry ((faultBoundK_full_iff _ _).2 hfault)
+    (cs2_full_of_faultBound sp hstock hfault) hviab (fun z hz q hq e' hv he =>
       hprior z hz q hq e' hv (Or.inr he))
   intro z hz q e' hv he
   have hqi : q < i := by

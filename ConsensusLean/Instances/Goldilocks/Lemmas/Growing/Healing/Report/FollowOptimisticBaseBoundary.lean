@@ -40,7 +40,7 @@ theorem optimistic_next_votes_of_early_witness_at
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
       e.msg.slot = s + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
   exact KernelProof.optimistic_next_votes_of_early_witness_at hrun hnc hsvc hawake hf hcatch
-    hm hmb hframe hx hopt hXD hw hat hcw hQw hh hJ hXQ
+    hm hmb hframe hx hopt hXD hw hat hcw hQw hh hJ hXQ hrun.stock
 
 /-- The first next-slot proposal follows the same prefix, before unanimity induction starts. -/
 theorem optimistic_next_proposal_of_early_witness_at

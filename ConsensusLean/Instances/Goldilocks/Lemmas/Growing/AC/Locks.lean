@@ -36,7 +36,7 @@ the optimistic branch can include multiple votes from an equivocating validator.
 theorem fastLock_counted (hrun : ACRun proposer tr H U)
     {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
     {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr y c s B CV) :
-    sp.n ≤ 2 * {u | ∃ v ∈ CV, v.val = u}.ncard ∧
+    sp.committeeSize ≤ 2 * {u | ∃ v ∈ CV, v.val = u}.ncard ∧
       ∀ v ∈ CV, v.slot = s ∧ ∃ R ∈ U, R.root = v.head ∧ R.slot ≤ s ∧ Anc U B R := by
   exact SA.fastLock_counted (hrun.upTo (hrun.localRun.time_nonneg c)) hy
     ((upTo_fastLockAt hrun.localRun.time_mono).mpr ⟨le_rfl, hfl⟩)

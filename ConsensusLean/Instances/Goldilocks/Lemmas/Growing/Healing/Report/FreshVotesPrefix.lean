@@ -146,8 +146,9 @@ theorem honest_prefix_of_finality_before_at
     change 0 < sp.n at hn
     omega
   rw [← SA.viableTree_voteDomain_eq_of_viable ⟨B, hB⟩]
-  exact SA.honest_prefix_of_carry sp hS.run hf' hy hcast hes hheads'
-    (fun x hx => by obtain ⟨j, ev, hv, hs, _⟩ := hex x hx; exact ⟨j, ev, hv, hs⟩)
+  exact SA.honest_prefix_of_carry sp hS.run _ SA.CommitteeT.full (SA.size_binding_full hS.stock)
+    (SA.third_full hS.stock hf') hy hcast hes hheads'
+    (fun x hx _ => by obtain ⟨j, ev, hv, hs, _⟩ := hex x hx; exact ⟨j, ev, hv, hs⟩)
     hcarry (SA.viableTree_voterBlockTree_subset_voteDomain hB) haB
 
 /-- The actual warm proposal's start is reached by every shallower honest cast. -/

@@ -1,6 +1,7 @@
 module
 public import ConsensusLeanTest.Goldilocks.Persist.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 @[expose] public section
 
 /-! # The one-validator tick run writes a fast lock by the fast test of the update
@@ -399,8 +400,17 @@ theorem firstTransfer_update (hA : FirstTransfer sp1) {s : Nat} (hs : 1 ≤ s) :
       CastAt (tickRun N1 dg1).projAC v0 (8 * (4 * (s + 1)) + 3) ℓ e ∧
       VoteExtends ((tickRun N1 dg1).HonestBlocks Set.univ) e.msg (blk s) := by
   obtain ⟨ℓ, e, hr, hfl, hc, hsl, hsy, hca, hfb, hv, hea⟩ := firstTransfer_premises_update hs
-  exact ⟨ℓ, e, hc, hA _ ro1 Set.univ _ _ (fun _ => v0) hr s v0 v0 _ _ (blk s) {cv s} ℓ e
-    (Set.mem_univ _) hfl (Set.mem_univ _) hc hsl hsy hca hfb hv hea⟩
+  have hf1 : 2 * ((CommitteeDict.full sp1.n).committee (s + 1) ∩
+      (Set.univ : Set (Fin sp1.n))ᶜ).ncard < sp1.committeeSize := by
+    refine cs2_full rfl ?_
+    have hn := sp1.toParams.hn
+    change 1 ≤ sp1.n at hn
+    rw [Set.compl_univ, Set.ncard_empty]
+    omega
+  exact ⟨ℓ, e, hc, hA _ ro1 Set.univ _ _ (fun _ => v0) hr (CommitteeDict.full sp1.n)
+    CommitteeP.full CommitteeT.full (size_binding_full rfl) s v0 v0 _ _ (blk s) {cv s} ℓ e
+    (Set.mem_univ _) hfl (Set.mem_univ _) hc hsl hsy hca ((faultBoundK_full_iff _ _).mpr hfb) hf1
+    hv hea⟩
 
 end Consensus.Goldilocks.Witness.One
 

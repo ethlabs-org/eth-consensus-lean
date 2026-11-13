@@ -8,6 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outputs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSimulates
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 
 public section
 
@@ -129,6 +130,7 @@ theorem clean_optimistic_writer_candidate_interval
   have hqb := hprefix q hqn
   have hr := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   obtain ⟨_, _, ell, _, hpoint, hRq, _, _⟩ := SA.optimisticLockAt_spec hr hy hop
+    (SA.CommitteeDict.full sp.n) (fun _ _ _ => SA.mem_full _ _)
   have hframe := Compose.frame_of_projAC hp.run hy hpoint.1
   have hRq' : R ∈ (tr.state y q).fg.tree := (hframe ▸ hRq).1
   obtain ⟨v, r, l, S, hseed, hra, hrb, hdeliver⟩ := hp.reset_seed_held_at_call hc
@@ -251,7 +253,7 @@ private theorem optimistic_unlock_keeps
     omega
   apply SA.unlockTarget_unlockView_held_of_honest_slot y ell.call hA'
     (Compose.frameOK_state hp.run.toLocalRun hy j) _ hR (hpool j) (hpool (j + 1)) hpay
-    (fun v hv w hw hvH hval hsl =>
+    (fun v hv w hw hvH hval hsl _ =>
       Compose.heldVotes_honest_unique hp.run hp.noColl hy hcall hv hw hvH hval hsl) ?_
     (by simpa only [hp.stock] using hf)
   intro v hv hvH hvs Hd hHd hHdr

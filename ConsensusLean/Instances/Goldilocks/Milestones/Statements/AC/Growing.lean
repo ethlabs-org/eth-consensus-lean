@@ -77,62 +77,83 @@ def ProposerVotersAgree : Prop :=
         opponents sp ℓy.frame (mergedVoteView sp e.readPoint ℓy.frame (s + 1)) s B
 
 /-- **A1.2 under growing faults, first transfer (per vote).** The writer is honest at its
-write, the voter at its vote; the count `f < h` is charged at the vote. -/
+write, the voter at its vote; the count `f < h` among the slot-`s` committee and
+`2f < committeeSize` among the slot-`(s+1)` committee are charged at the vote. The slot committee
+`K` has `committeeSize` members per slot, and its members sign the votes held by the nodes honest
+at each time `t` at the cuts through `t` (`CommitteePAt`, `CommitteeTAt`). -/
 def FirstTransfer : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
-    ACRun proposer tr H U → ∀ (s : Nat) (x y : Fin sp.n) (i₀ i : Nat) (B : Blk sp.n FGP)
+    ACRun proposer tr H U →
+    ∀ (K : CommitteeDict sp.n), CommitteePAt K tr H → CommitteeTAt K tr H →
+      (∀ σ, (K.committee σ).ncard = sp.committeeSize) →
+    ∀ (s : Nat) (x y : Fin sp.n) (i₀ i : Nat) (B : Blk sp.n FGP)
       (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (e : Em sp FGP),
     x ∈ H (tr.time i₀) → FastLockAt tr x i₀ s B CV →
     y ∈ H (tr.time i) → CastAt tr y i ℓ e → e.msg.slot = s + 1 →
     SyncACAt (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr →
-    CarryAt tr U y i e s CV → FaultBoundAt tr H (tr.time i) (tr.time i) →
+    CarryAt tr U y i e s CV → FaultBoundK K s tr (H (tr.time i)) (tr.time i) →
+    2 * (K.committee (s + 1) ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize →
     ViableAtVote ℓ e (s + 1) B → EarlierVotesExtendAt tr H U i (s + 1) B →
     VoteExtends U e.msg B
 
 /-- **A1.3 under growing faults, next transfer (per vote).** The votes of slot `m` are those of
 nodes honest at their votes; the honest voters of slot `m` are the validators honest at the
-voter's cut that voted in slot `m` while honest, and `f < h` is charged there. -/
+voter's cut that voted in slot `m` while honest, and `f < h` among the slot-`m` committee and
+`2f < committeeSize` among the slot-`(m+1)` committee are charged there; the slot committee `K` is
+as in A1.2. -/
 def NextTransfer : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
-    ACRun proposer tr H U → ∀ (m : Nat) (y : Fin sp.n) (i : Nat) (B : Blk sp.n FGP)
+    ACRun proposer tr H U →
+    ∀ (K : CommitteeDict sp.n), CommitteePAt K tr H → CommitteeTAt K tr H →
+      (∀ σ, (K.committee σ).ncard = sp.committeeSize) →
+    ∀ (m : Nat) (y : Fin sp.n) (i : Nat) (B : Blk sp.n FGP)
       (ℓ : ACLabel (goldilocksSA sp FGP ro)) (e : Em sp FGP),
     y ∈ H (tr.time i) → CastAt tr y i ℓ e → e.msg.slot = m + 1 →
     (∀ x j e', x ∈ H (tr.time j) → VoteAt tr x j e' → e'.msg.slot = m →
       VoteExtends U e'.msg B) →
-    sp.n ≤ 2 * {x | x ∈ H (tr.time i) ∧
+    sp.committeeSize ≤ 2 * {x | x ∈ H (tr.time i) ∧
       ∃ j e', x ∈ H (tr.time j) ∧ VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard →
     CarryAt tr U y i e m
       {v | ∃ x j e', x ∈ H (tr.time j) ∧ VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m} →
-    FaultBoundAt tr H (tr.time i) (tr.time i) →
+    FaultBoundK K m tr (H (tr.time i)) (tr.time i) →
+    2 * (K.committee (m + 1) ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize →
     ViableAtVote ℓ e (m + 1) B → EarlierVotesExtendAt tr H U i (m + 1) B →
     VoteExtends U e.msg B
 
-/-- **A1.4 (a) under growing faults, optimistic is fast: the transfer (per vote).** `2f < n`
-is charged at the voter's cut. -/
+/-- **A1.4 (a) under growing faults, optimistic is fast: the transfer (per vote).**
+`2f < committeeSize` among the slot-`s` and the slot-`(s+1)` committees is charged at the voter's
+cut; the slot committee `K` is as in A1.2. -/
 def OptimisticTransfer : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
-    ACRun proposer tr H U → ∀ (s : Nat) (x y : Fin sp.n) (i₀ i : Nat) (B : Blk sp.n FGP)
+    ACRun proposer tr H U →
+    ∀ (K : CommitteeDict sp.n), CommitteePAt K tr H → CommitteeTAt K tr H →
+      (∀ σ, (K.committee σ).ncard = sp.committeeSize) →
+    ∀ (s : Nat) (x y : Fin sp.n) (i₀ i : Nat) (B : Blk sp.n FGP)
       (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (e : Em sp FGP),
     x ∈ H (tr.time i₀) → OptimisticLockAt tr x i₀ s B CV →
-    2 * (H (tr.time i))ᶜ.ncard < sp.n →
+    2 * (K.committee s ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize →
+    2 * (K.committee (s + 1) ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize →
     y ∈ H (tr.time i) → CastAt tr y i ℓ e → e.msg.slot = s + 1 →
     CarryAt tr U y i e s CV →
     ViableAtVote ℓ e (s + 1) B → EarlierVotesExtendAt tr H U i (s + 1) B →
     VoteExtends U e.msg B
 
-/-- **A1.4 (b) under growing faults, the next update.** `2f < committeeSize` and
-the honest voters of the
+/-- **A1.4 (b) under growing faults, the next update.** `2f < committeeSize` among the
+slot-`(s+1)` committee and the honest voters of the
 updater's pool are read at the update's cut; the votes of slot `s + 1` are those of nodes honest
-at their votes. -/
+at their votes; the slot committee `K` is as in A1.2. -/
 def OptimisticNextUpdate : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
-    ACRun proposer tr H U → ∀ (s : Nat) (z : Fin sp.n) (k : Nat) (B : Blk sp.n FGP)
+    ACRun proposer tr H U →
+    ∀ (K : CommitteeDict sp.n), CommitteePAt K tr H → CommitteeTAt K tr H →
+      (∀ σ, (K.committee σ).ncard = sp.committeeSize) →
+    ∀ (s : Nat) (z : Fin sp.n) (k : Nat) (B : Blk sp.n FGP)
       (ℓ : ACLabel (goldilocksSA sp FGP ro)),
-    2 * (H (tr.time k))ᶜ.ncard < sp.committeeSize →
+    2 * (K.committee (s + 1) ∩ (H (tr.time k))ᶜ).ncard < sp.committeeSize →
     (∀ x' j e, x' ∈ H (tr.time j) → VoteAt tr x' j e → e.msg.slot = s + 1 →
       VoteExtends U e.msg B) →
     z ∈ H (tr.time k) → UpdateAt tr z k (s + 1) ℓ →
@@ -176,6 +197,7 @@ are those of nodes honest at their votes. -/
 def SourceCompatible : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
+    sp.committeeSize = sp.n →
     ACRun proposer tr H U → ∀ (s m : Nat) (w x : Fin sp.n) (i₀ i : Nat) (B : Blk sp.n FGP)
       (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (C : Blk sp.n FGP),
     w ∈ H (tr.time i₀) → FastLockAt tr w i₀ s B CV →

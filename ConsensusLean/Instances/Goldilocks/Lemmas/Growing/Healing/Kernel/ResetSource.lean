@@ -31,13 +31,14 @@ private theorem hmax_le_snapshot {y : Fin sp.n} (hy : y ∈ H (cutZ sp.toParams 
   obtain rfl := hj'.unique hj
   exact ⟨z, rfl⟩
 
-/-- The reset lies after the snapshot from its fault bound alone. -/
+/-- The reset lies after the snapshot from its fault bound alone. The counted fast-lock votes
+are a committee half, read at the stock committee (`hstock`, §S.2 scope-(ii) item). -/
 theorem cutZ_lt_reset_of_fault_bound_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr)
     (hsnapshot : ∃ j, FirstCutAfter tr j (cutZ sp.toParams g))
     (hf : 2 * (H (cutZ sp.toParams g))ᶜ.ncard < sp.n)
-    (hR : IsReset tr H g a) : cutZ sp.toParams g < a := by
+    (hR : IsReset tr H g a) (hstock : sp.committeeSize = sp.n) : cutZ sp.toParams g < a := by
   classical
   obtain ⟨⟨y, k, att, hy, hs, hh, rfl⟩, -⟩ := hR
   by_contra hlate
@@ -64,6 +65,7 @@ theorem cutZ_lt_reset_of_fault_bound_at
     rw [hCL]
     exact ((SA.anc_viableAncestor ell.frame B₀).mono hΦU).trans (hB ▸ hLD)
   obtain ⟨hcount, hheads⟩ := SA.fastLock_counted hac hy hfl
+  rw [hstock] at hcount
   have hless : (H (cutZ sp.toParams g))ᶜ.ncard < {u | ∃ v ∈ CV, v.val = u}.ncard := by omega
   obtain ⟨v, ⟨vote, hvote, rfl⟩, hv⟩ := Set.exists_mem_notMem_of_ncard_lt_ncard hless
   have hvZ : vote.val ∈ H (cutZ sp.toParams g) := not_not.mp hv
@@ -139,7 +141,7 @@ theorem ResetPremisesUpTo.cutZ_lt_reset_at
   exact cutZ_lt_reset_of_fault_bound_at hp.run hp.noColl ⟨j, hj⟩ (by
     have := sp.toParams.hn
     change 0 < sp.n at this
-    omega) hp.reset
+    omega) hp.reset hp.stock
 
 end Consensus.Goldilocks.Healing.Growing
 

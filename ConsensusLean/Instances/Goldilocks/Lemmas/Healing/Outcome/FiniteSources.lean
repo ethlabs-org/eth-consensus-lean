@@ -337,8 +337,10 @@ theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
         intro v hv
         obtain ⟨hvs, hw, D, hD, hDr, hBD, ha⟩ := fastLock_writer hr hx hfast v hv
         exact ⟨hvs, hw, D, hD, hDr, hFB.trans hBD, ha⟩
-      apply SA.first_transfer_stored sp hS.run hx hfast .refl hy hcast hfirst
-        (hp.sync.syncAC hp.run ((SA.le_gbar g).trans hgs)) carry hfault
+      apply SA.first_transfer_stored sp hS.run _ SA.CommitteeP.full SA.CommitteeT.full
+        (SA.size_binding_full hp.stock) hx hfast .refl hy hcast hfirst
+        (hp.sync.syncAC hp.run ((SA.le_gbar g).trans hgs)) carry
+        ((SA.faultBoundK_full_iff _ _).2 hfault) (SA.cs2_full_of_faultBound sp hp.stock hfault)
       · rw [← hfirst]; exact Or.inl hv
       · exact fun z hz q hq e' he hslot => hprior z hz q hq e' he (by omega)
     · obtain ⟨m, hm⟩ : ∃ m, e.msg.slot = m + 1 := ⟨e.msg.slot - 1, by omega⟩
@@ -378,7 +380,7 @@ theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
           fun v hv => (hone v hv).heads v rfl, fun v hv => (hone v hv).holds v rfl⟩
         hfault
         (hp.sync.syncAC hp.run ((SA.le_gbar g).trans
-          (hgs.trans ((SA.ts_le_iff sp).mpr (by omega))))) ?_
+          (hgs.trans ((SA.ts_le_iff sp).mpr (by omega))))) ?_ hp.stock
       rw [← hm]
       exact Or.inl hv
 
@@ -558,7 +560,8 @@ theorem ResetPremisesUpTo.clean_source_compatible_high_origin
     obtain ⟨_, E, hfl, hDE⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
     have hf : 2 * Hᶜ.ncard < sp.n := two_mul_faulty_lt hp.faults (Fin.pos x)
     have hEC : Compatible (tr.HonestBlocks H) E C :=
-      SA.fastLock_compatible_of_votes hrun ho.1 (Nat.lt_succ_self q) hfl hf (by
+      SA.fastLock_compatible_of_votes hrun _ SA.CommitteeP.full ho.1 (Nat.lt_succ_self q) hfl
+        (SA.cs2_full hp.stock hf) (by
         intro z hz j hj e ⟨ell, hcast⟩ hes
         have hjb := (hp.run.time_mono (Nat.lt_succ_iff.mp hj)).trans hqb
         rcases hC with hC | hC

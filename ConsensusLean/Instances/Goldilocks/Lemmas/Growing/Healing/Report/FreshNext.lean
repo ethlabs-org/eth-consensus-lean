@@ -125,6 +125,8 @@ theorem FrameWindow.unanimous_next_votes_at
     exact (geometry y j ell e hy hc hs hjb).1
   · intro y j ell e hy hc hs hjb _
     exact (geometry y j ell e hy hc hs hjb).2
+  · -- the run record's stock: no §S home in this `FrameWindow`-only chain (§S.2, S8 [T₀])
+    exact hrun.stock
 
 end Consensus.Goldilocks.Healing.Growing
 

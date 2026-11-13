@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.LiftFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.HeldRow
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 
 public section
 
@@ -151,13 +152,17 @@ theorem no_optimistic_before_held_row_at (hrun : Growing.GoldilocksRun proposer 
       (hkm'.trans (hmi'.trans (by rw [← hs]; exact (cast_head_fcRoot_at hrun hnc hy hc).2)))
     with ⟨hT0, htc⟩ | hT
   · -- at `t_{s+1}`, on the prefix through the check
-    obtain ⟨hn1, u, hu, j', hj', e', hv', hs'⟩ := Compose.held_row_early_count
-      (hrun.upTo (hrun.time_nonneg c)) (hnc.upTo _) hf (hrun.antitone ((hm hck.le).trans hkm') hav)
+    -- TEMP(C2): C3/C4 replaces
+    have hstk := (hrun.upTo (hrun.time_nonneg c)).stock
+    obtain ⟨u, hu, hall, j', hj', e', hv', hs'⟩ := Compose.held_row_early_count
+      (hrun.upTo (hrun.time_nonneg c)) (hnc.upTo _) _ SA.CommitteeP.full
+      (SA.size_binding_full hstk) (SA.cs2_full hstk hf)
+      (hrun.antitone ((hm hck.le).trans hkm') hav)
       ((RunTrace.upTo_signAt tr).mpr ⟨htc.ge, hsign⟩) hT0 hz hck
       (by rw [RunTrace.upTo_projAC]; exact (sa_optimisticLockAt_upTo hm).mpr ⟨le_rfl, hO⟩)
     rw [RunTrace.upTo_projAC] at hv'
     obtain ⟨hjd, hv'⟩ := sa_voteAt_upTo.mp hv'
-    obtain rfl : u = y := Fin.ext (by have := u.isLt; have := y.isLt; omega)
+    obtain rfl : u = y := (hall y (SA.mem_full _ _)).symm
     have := (one_vote_per_slot_at hrun hnc (hVoteAt_iff.2 ⟨hrun.antitone hjd hu, hv'⟩)
       (hVoteAt_iff.2 ⟨hy, ℓ, hc.1, hc.2⟩) (hs'.trans hs.symm)).1
     omega

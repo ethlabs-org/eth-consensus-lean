@@ -50,6 +50,7 @@ theorem ResetPremisesUpTo.cutZ_le_ts_of_highOrigin_at
       ho.1, hPhiTree hC⟩
   have hBD := (SA.anc_viableAncestor ell.frame D).mono hPhiU
   obtain ⟨hcount, hheads⟩ := SA.Growing.fastLock_counted hac ho.1 hfl
+  rw [hp.stock] at hcount
   have hf := hp.faults t ht0 htb
   have hn := sp.toParams.hn
   have hless : (H t)ᶜ.ncard < {u | ∃ v ∈ CV, v.val = u}.ncard := by

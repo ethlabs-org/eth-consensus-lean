@@ -112,9 +112,11 @@ theorem vote_extends
     have hΦwU : ℓw.frame.tree ⊆ tr.HonestBlocksAt H := by
       rcases hr.frameLaw x i₀ ℓw hp.writer_honest hcw with
         ⟨_, Φ₀, _, _, h⟩ | ⟨j, ℓ', _, _, _, h⟩ <;> exact h.1.2
-    refine SA.Growing.first_transfer_stored hrun' hp.writer_honest hflD
+    refine SA.Growing.first_transfer_stored hrun' _ (fun _ => SA.CommitteeP.full)
+      (fun _ => SA.CommitteeT.full) (SA.size_binding_full hp.stock) hp.writer_honest hflD
       (hBD ▸ Anc.mono hΦwU (SA.anc_viableAncestor ℓw.frame D)) hy hc h1
-      ?_ (hp.carry y k e hy ⟨ℓ, hc.1, hc.2⟩ h1) hfault ?_ ?_
+      ?_ (hp.carry y k e hy ⟨ℓ, hc.1, hc.2⟩ h1) ((SA.ncard_inter_full_lt_iff _ _ _).2 hfault)
+      (SA.Growing.cs2_full_of_faultBoundAt hp.stock hfault) ?_ ?_
     · have hsync := sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
         tr proposer ΔF (sp.ts s) (sp.ts m + sp.Δ) hrun.toLocalRun hp.sync
       exact ⟨fun x i v hx hv ha hb => hsync.1 x i v hx hv ha (hb.trans htm),
@@ -123,7 +125,11 @@ theorem vote_extends
     · rw [← h1]; exact hearlier
   · obtain ⟨m', hm'⟩ : ∃ m', e.msg.slot = m' + 1 := ⟨e.msg.slot - 1, by omega⟩
     have hsm' : s < m' := by omega
-    apply SA.Growing.next_transfer sp _ ro H _ tr.projAC proposer hrun' m' y k B ℓ e hy hc hm'
+    apply SA.Growing.next_transfer sp _ ro H _ tr.projAC proposer hrun'
+      (SA.CommitteeDict.full sp.n)
+      ⟨fun _ _ _ _ _ σ _ _ => SA.mem_full σ _, fun _ _ _ _ _ _ σ _ _ => SA.mem_full σ _⟩
+      (fun _ _ _ _ _ _ _ v _ => SA.mem_full v.slot _) (SA.size_binding_full hp.stock)
+      m' y k B ℓ e hy hc hm'
     · intro z j e' hz hv hsl
       have hjk : j < k := by
         by_contra hjk
@@ -135,13 +141,15 @@ theorem vote_extends
         omega
       exact hprior z j hjk hz e' hv (by omega) (by omega)
     · have half := hp.halfCommittee m' hsm' (by omega)
+      rw [hp.stock]
       apply half.trans
       apply Nat.mul_le_mul_left
       apply Set.ncard_le_ncard (ht := Set.toFinite _)
       rintro z ⟨hz, hv⟩
       exact ⟨hrun.antitone (by rw [← hm']; exact hle) hz, hv⟩
     · exact hp.carryLater m' hsm' (by omega) y k e hy ⟨ℓ, hc.1, hc.2⟩ hm'
-    · exact hfault
+    · exact (SA.ncard_inter_full_lt_iff _ _ _).2 hfault
+    · exact SA.Growing.cs2_full_of_faultBoundAt hp.stock hfault
     · rw [← hm']; exact Or.inl hv
     · rw [← hm']; exact hearlier
 

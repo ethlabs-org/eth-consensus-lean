@@ -515,8 +515,11 @@ theorem clean_source_votes_before
         fun z hz q hq e' he hslot => hprior z hz q hq e' he (by clear * - hslot; omega)
       have viab : SA.ViableAtVote ell e (s + 1) B := by rw [← hfirst]; exact Or.inl hv
       rcases horig with ⟨CV, hfast⟩ | hslow
-      · exact SA.first_transfer_stored sp hS.run hx hfast .refl hy hcast hfirst
-          (sync s le_rfl) (carry CV (fastLock_writer hr hx hfast)) hfault viab earlier
+      · exact SA.first_transfer_stored sp hS.run _ SA.CommitteeP.full SA.CommitteeT.full
+          (SA.size_binding_full hp.stock) hx hfast .refl hy hcast hfirst
+          (sync s le_rfl) (carry CV (fastLock_writer hr hx hfast))
+          ((SA.faultBoundK_full_iff _ _).2 hfault) (SA.cs2_full_of_faultBound sp hp.stock hfault)
+          viab earlier
       · obtain ⟨ellX, C, hupd, hconf, hdeep⟩ := id hslow
         have hBC := ((SA.deepest_mem hdeep).1.1.2.2).mono
           (SA.frameIn_of_callAt hr hx hupd.1).2
@@ -568,7 +571,7 @@ theorem clean_source_votes_before
         (half_committee hp (hts.trans ((SA.ts_le_iff sp).mpr (by clear * - hsm; omega))))
         ⟨hr.awake_of_call y hy i ell hcast.1, (SA.castAt_spec hr hy hcast).2.2.1,
           fun v hv => (hone v hv).heads v rfl, fun v hv => (hone v hv).holds v rfl⟩
-        hfault (sync m hsm.le) ?_
+        hfault (sync m hsm.le) ?_ hp.stock
       rw [← hm]
       exact Or.inl hv
 
@@ -820,7 +823,7 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
           fun v hv => (hone v hv).heads v rfl, fun v hv => (hone v hv).holds v rfl⟩
         hfault
         (hp.sync.syncAC hp.run ((SA.le_gbar g).trans
-          (hgs.trans ((SA.ts_le_iff sp).mpr (by clear * - hsm; omega))))) ?_
+          (hgs.trans ((SA.ts_le_iff sp).mpr (by clear * - hsm; omega))))) ?_ hp.stock
       rw [← hm]
       exact Or.inl hv
 

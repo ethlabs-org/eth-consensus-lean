@@ -8,12 +8,13 @@ public section
 /-! # Goldilocks SA: the update after an optimistic confirmation (A1.4 (b))
 
 If every honest slot-`(s+1)` vote extends `B`, an honest node `z` at its update of slot `s + 1`
-that holds the votes of at least `n/2` honest voters, all resolved before `t_{s+1} + 2Δ`, counts
-each of them for every block of its tree at or above `B` (or at or above `Φ.F`, when `B` is
-below it): their heads are in `z`'s tree and extend `B`. With `f < n/2`, those blocks beat the
-participation bound `voters < 2 · score` and pass the fast test, so the result, the deepest such
-block (the candidates lie on one chain), extends `B`, and so does the fast test's block on its
-path. -/
+that holds the votes of at least half the committee size in honest voters, all resolved before
+`t_{s+1} + 2Δ`, counts each of them for every block of its tree at or above `B` (or at or above
+`Φ.F`, when `B` is below it): their heads are in `z`'s tree and extend `B`. Every vote of its
+slot-`(s+1)` pool is signed by a member of the committee `K (s + 1)`, so with
+`2 |K (s+1) ∩ Hᶜ| < committeeSize` those blocks beat the participation bound
+`voters < 2 · score` and pass the fast test, so the result, the deepest such block (the
+candidates lie on one chain), extends `B`, and so does the fast test's block on its path. -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -55,8 +56,9 @@ theorem update_extends_of_resolved_votes
     {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
     {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
     (hrun : ACRun proposer tr H U) {s : Nat} {z : Fin sp.n} {k : Nat}
-    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hf : 2 * Hᶜ.ncard < sp.committeeSize)
+    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (K : CommitteeDict sp.n)
+    (hP : ∀ v ∈ (tr.state z k).pool (s + 1), v.val ∈ K.committee (s + 1))
+    (hf : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize)
     (hext : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = s + 1 → VoteExtends U e.msg B)
     (hz : z ∈ H) (hup : UpdateAt tr z k (s + 1) ℓ)
     (hh : sp.committeeSize ≤ 2 * {v | v ∈ H ∧ ∃ x ∈ (tr.state z k).pool (s + 1), x.val = v}.ncard)
@@ -118,13 +120,14 @@ theorem update_extends_of_resolved_votes
     rintro _ ⟨hwH, v, hv, rfl⟩
     obtain ⟨hne, hres', Hd, hHd, hHdr, hBHd⟩ := key v hv hwH
     exact ⟨hne, v, ⟨hv, hres'⟩, rfl, by rw [hps v hv], Hd, hHd, hHdr, hBsv Hd hHd hBHd⟩
-  have hvot : (voters {v | v ∈ A.pool (s + 1)}).ncard ≤ Hv.ncard + Hᶜ.ncard := by
-    refine (Set.ncard_le_ncard (t := Hv ∪ Hᶜ) ?_ (Set.toFinite _)).trans
+  have hvot : (voters {v | v ∈ A.pool (s + 1)}).ncard ≤
+      Hv.ncard + (K.committee (s + 1) ∩ Hᶜ).ncard := by
+    refine (Set.ncard_le_ncard (t := Hv ∪ (K.committee (s + 1) ∩ Hᶜ)) ?_ (Set.toFinite _)).trans
       (Set.ncard_union_le _ _)
     rintro i ⟨v, hv, rfl⟩
     by_cases hi : v.val ∈ H
     · exact Or.inl ⟨hi, v, hv, rfl⟩
-    · exact Or.inr hi
+    · exact Or.inr ⟨hP v hv, hi⟩
   have hBsS : Bs ∈ {C | C ∈ Φ.tree ∧ Φ.Anc Φ.F C ∧
       (voters {v | v ∈ A.pool (s + 1)}).ncard < 2 * confirmationScore sp A Φ (s + 1) C} :=
     ⟨hBsΦ, hFBs, by omega⟩
@@ -146,8 +149,8 @@ variable (sp)
 
 /-- **A1.4 (b).** -/
 theorem optimistic_next_update : OptimisticNextUpdate sp := by
-  intro FGP ro H U tr proposer hrun s z k B ℓ hf hext hz hup hh hres
-  exact update_extends_of_resolved_votes hrun hf hext hz hup hh hres
+  intro FGP ro H U tr proposer hrun K hP hT hsize s z k B ℓ hf hext hz hup hh hres
+  exact update_extends_of_resolved_votes hrun K (hP.1 z hz k (s + 1)) hf hext hz hup hh hres
 
 end Consensus.Goldilocks.SA
 

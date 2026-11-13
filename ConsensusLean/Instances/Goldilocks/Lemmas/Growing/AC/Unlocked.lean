@@ -26,8 +26,9 @@ private theorem genesis_mem_U {K : Set (Fin sp.n)}
     · exact ih j hj hc'
 
 /-- The receiving node's lock history is retained at `b`; the writer is only required
-to have been honest at `i₀`, when its counted votes were fixed. -/
-theorem locks_after_unlock (hrun : ACRun proposer tr H U)
+to have been honest at `i₀`, when its counted votes were fixed. The committee is nonempty
+(`hpos`). -/
+theorem locks_after_unlock (hrun : ACRun proposer tr H U) (hpos : 0 < sp.committeeSize)
     {s : Nat} {w x : Fin sp.n} {i₀ j b : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hw : w ∈ H (tr.time i₀)) (hfl : FastLockAt tr w i₀ s D CV) (hBD : Anc U B D)
     (hcarry : Carry tr H U s CV) (hx : x ∈ H (tr.time b))
@@ -72,7 +73,6 @@ theorem locks_after_unlock (hrun : ACRun proposer tr H U)
     · intro l _ _ X hX _
       exact Or.inr (hBF.trans (Anc.mono hΦU (hΦ.rooted.2 X hX)))
     have hBt : B ∈ ℓ.frame.tree := by
-      have hpos : 0 < sp.n := Fin.pos x
       obtain ⟨u, v, hv, _⟩ := Set.nonempty_of_ncard_ne_zero
         (s := {u | ∃ v ∈ CV, v.val = u}) (by omega)
       obtain ⟨_, R, hR, hRr, _, hBR⟩ := hcv v hv
@@ -103,7 +103,7 @@ theorem locks_after_unlock (hrun : ACRun proposer tr H U)
     intro l hl hls X hX hXr
     rw [hL₀, hs, hσ] at hl
     refine (unlock_compatible hΦ hBt (S := {u | ∃ v ∈ CV, v.val = u}) ?_
-      (by simpa only [hrun.stock] using hn) L₀ (tr.time j) l hl
+      hn L₀ (tr.time j) l hl
       (by exact_mod_cast hls) X hX hXr).imp (Anc.mono hΦU) (Anc.mono hΦU)
     rintro u ⟨v, hv, rfl⟩
     obtain ⟨hvs, R, hR, hRr, hRs, hBR⟩ := hcv v hv

@@ -113,11 +113,12 @@ theorem SuffixService.le_time {a κ b : Time} {s j : Nat}
 every honest attestation an honest slot-`s` voter holds was signed before the vote, with a source
 below an origin before the signing (`attestation_source`); a regular one of label `l` is written at
 `t_l + 6Δ ≤ t_s + Δ`, so `l ≤ s − 2`; an optimistic one has label at most `s`, and not `s`
-(`no_optimistic_before_held_row`). -/
+(`no_optimistic_before_held_row`, at the full committee: `hstock`, §S.2 scope-(ii) item). -/
 private theorem vote_rows_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s) :
+    (hc : SA.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s)
+    (hstock : sp.committeeSize = sp.n) :
     HonestRowsSourced tr H
       (fun D => ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) D O) y j := by
   obtain ⟨s', rfl⟩ : ∃ s', s = s' + 1 := ⟨s - 1, by omega⟩
@@ -143,22 +144,24 @@ private theorem vote_rows_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
     rcases Nat.lt_or_ge l (s' + 1) with h | h
     · omega
     obtain rfl : l = s' + 1 := by omega
-    exact (no_optimistic_before_held_row_of hrun hnc hf hy hc hes hm hmj hav
-      hkm hsg hz hck hOp).elim
+    exact (no_optimistic_before_held_row_of hrun hnc _ SA.CommitteeP.full
+      (SA.size_binding_full hstock) (SA.cs2_full hstock hf) hy (SA.mem_full _ _) hc hes
+      hm hmj hav hkm hsg hz hck hOp).elim
 
 /-- **The head height floor at an honest vote is at most the height of a held block above every old
 origin** (`floor ≤ ht(D_s)` at the vote reads): the sources of the voter's honest attestations are
 below old origins (`vote_rows_old`), so below the block; so there is no contest, and the carrier of
 `h_max` crossed `h_max − 1` with such a source, whose entry, below the block, has height
-`h_max − 1`. -/
+`h_max − 1` (`hstock`, §S.2 scope-(ii) item, for `vote_rows_old`). -/
 theorem vote_floor_le_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ (tr.state y j).fg.tree)
-    (hold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O B) :
+    (hold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O B)
+    (hstock : sp.committeeSize = sp.n) :
     (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
-  have hsrc := vote_rows_old hrun hnc hf hs0 hy hc hes
+  have hsrc := vote_rows_old hrun hnc hf hs0 hy hc hes hstock
   have hU := (projFG_localRun hrun hnc).coherent
   have hGB : ∀ D, (∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) D O) →
       Anc (tr.HonestBlocks H) D B := fun D ⟨O, hO, hDO⟩ => hDO.trans (hold O hO)

@@ -73,9 +73,10 @@ theorem origins_compatible_before_at
       (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard
         (Set.compl_subset_compl.mpr (hp.run.antitone hrb)))) hf
   rcases lt_trichotomy l j with hlt | rfl | hgt
-  · have hDO := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg i)) ho.1
-      (Nat.lt_succ_self i) ((SA.upTo_fastLockAt hp.run.time_mono).mpr ⟨le_rfl, hfl⟩)
-      hfi (B := ell'.frame.viableAncestor D') ?_
+  · have hDO := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg i)) _
+      SA.CommitteeP.full ho.1 (Nat.lt_succ_self i)
+      ((SA.upTo_fastLockAt hp.run.time_mono).mpr ⟨le_rfl, hfl⟩)
+      (SA.cs2_full hp.stock hfi) (B := ell'.frame.viableAncestor D') ?_
     · by_contra hn
       exact SA.not_compatible_of_anc hU hBD (fun h => hn h.symm) hDO.symm
     · intro v hv c hci' e hve hs
@@ -100,13 +101,15 @@ theorem origins_compatible_before_at
       have := sp.toParams.hΔ
       linarith
     have hsync := reset_syncACAt hp (hi := sp.ts (l + 1 : Nat) + sp.Δ) hgj
-    rcases SA.Growing.fastLock_same_slot hac ho.1 hfl hO.1 hfl' hsync
-        (d := b) (fun _ => hib) hrb hf with h | h
+    rcases SA.Growing.fastLock_same_slot hac _ (fun _ => SA.CommitteeP.full)
+        (SA.size_binding_full hp.stock) ho.1 hfl hO.1 hfl' hsync
+        (d := b) (fun _ => hib) hrb (SA.cs2_full hp.stock hf) with h | h
     · exact SA.anc_total hU (hBD.trans h) hOD
     · exact SA.anc_total hU hBD (hOD.trans h)
-  · have hDB := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg r)) hO.1
-      (Nat.lt_succ_self r) ((SA.upTo_fastLockAt hp.run.time_mono).mpr ⟨le_rfl, hfl'⟩)
-      hfr (B := ell.frame.viableAncestor D) ?_
+  · have hDB := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg r)) _
+      SA.CommitteeP.full hO.1 (Nat.lt_succ_self r)
+      ((SA.upTo_fastLockAt hp.run.time_mono).mpr ⟨le_rfl, hfl'⟩)
+      (SA.cs2_full hp.stock hfr) (B := ell.frame.viableAncestor D) ?_
     · by_contra hn
       exact SA.not_compatible_of_anc hU hOD hn hDB.symm
     · intro v hv c hcr' e hve hs

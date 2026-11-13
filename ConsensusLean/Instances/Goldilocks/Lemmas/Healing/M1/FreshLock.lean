@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OptimisticBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorUpdate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -63,7 +64,8 @@ theorem honest_votes_of_joined_before (hS : HealthyBaseUpTo tr H U proposer g b)
       rw [htc]
       exact hjoin x hx r hrs ((hr.time_mono hrc.le).trans htc.le)
   by_cases hv : (tr.state x c).votedSlot = (sp.slot (tr.time c) : Int)
-  · obtain ⟨j, hjc, e, he, hes⟩ := vote_of_votedSlot hr hx c _ hv
+  · obtain ⟨j, hjc, e, he, hes⟩ := (cast_of_votedSlot hr hx c _ hv).resolve_right
+      (by rw [trace_mayVote_stock hr hx c]; decide)
     exact ⟨j, e, he, by rw [hes, htc, hslot], (hr.time_mono hjc.le).trans htc.le⟩
   · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
     obtain ⟨e, hem, hes⟩ := tryVote_votes x ell.frame hj hv hT (trace_mayVote_stock hr hx c _)
@@ -240,34 +242,37 @@ theorem unanimous_proposal_carry_before (hS : HealthyBaseUpTo tr H U proposer g 
     exact Or.inl ⟨hheld.1, lt_trans hheld.2
       (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (by linarith only [hDelta])))⟩
 
-/-- The unique early honest batch forces the raw result and fast selection.
-This is a pool calculation, independent of any lock-veto premise. -/
+/-- The unique early honest batch of the slot-`u` committee forces the raw result and fast
+selection, when every pool vote is a committee member's and fewer than a third of the committee
+is faulty. This is a pool calculation, independent of any lock-veto premise. -/
 theorem confirmation_of_unanimous_early_pool
-    -- Interim stock specialization; C2 removes this premise.
-    (hstock : sp.committeeSize = sp.n)
     {A : SAState sp.n} {Phi : Frm sp.n FGP} {u : Nat} {P : Blk sp.n FGP}
     (hPhi : FrameOK Phi) (hPt : P ∈ Phi.tree) (hPg : P.root ≠ sp.genesisRoot)
-    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
+    (K : CommitteeDict sp.n) (hsize : (K.committee u).ncard = sp.committeeSize)
+    (hP : ∀ v ∈ A.pool u, v.val ∈ K.committee u)
+    (hf : 3 * (K.committee u ∩ Hᶜ).ncard < sp.committeeSize)
     (hslots : ∀ v ∈ A.pool u, v.slot = u)
-    (hpool : ∀ x ∈ H, ∃ v ∈ A.pool u, v.val = x ∧ v.head = P.root ∧
+    (hpool : ∀ x ∈ H, x ∈ K.committee u → ∃ v ∈ A.pool u, v.val = x ∧ v.head = P.root ∧
       resolutionTime A Phi v < ETime.of (sp.ts u + 2 * sp.Δ) ∧
       ∀ v' ∈ A.pool u, v'.val = x → v' = v) :
     getConfirmation sp A Phi u = some P ∧ fastSelect sp A Phi u P = some P := by
-  have hHvot : H ⊆ voters {v | v ∈ A.pool u} := fun x hx => by
-    obtain ⟨v, hv, hvx, -⟩ := hpool x hx
+  have hHvot : K.committee u ∩ H ⊆ voters {v | v ∈ A.pool u} := fun x hx => by
+    obtain ⟨v, hv, hvx, -⟩ := hpool x hx.2 hx.1
     exact ⟨v, hv, hvx⟩
-  have hvle : (voters {v | v ∈ A.pool u}).ncard ≤ sp.n := by
-    have := Set.ncard_le_ncard (Set.subset_univ (voters {v | v ∈ A.pool u}))
-    rwa [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at this
-  have hHn : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+  have hvle : (voters {v | v ∈ A.pool u}).ncard ≤ sp.committeeSize := by
+    rw [← hsize]
+    refine Set.ncard_le_ncard ?_ (Set.toFinite _)
+    rintro x ⟨v, hv, rfl⟩
+    exact hP v hv
+  have hsplit : (K.committee u ∩ H).ncard + (K.committee u ∩ Hᶜ).ncard =
+      (K.committee u).ncard :=
+    Set.ncard_inter_add_ncard_sdiff_eq_ncard _ H (Set.toFinite _)
   have hHle := Set.ncard_le_ncard hHvot
-  have hn : 0 < sp.n := sp.toParams.hn
-  have hscore : H.ncard ≤ confirmationScore sp A Phi u P := by
+  have hscore : (K.committee u ∩ H).ncard ≤ confirmationScore sp A Phi u P := by
     unfold confirmationScore
     apply Set.ncard_le_ncard (ht := Set.toFinite _)
     intro x hx
-    obtain ⟨v, hv, hvx, hvh, hres, huniq⟩ := hpool x hx
+    obtain ⟨v, hv, hvx, hvh, hres, huniq⟩ := hpool x hx.2 hx.1
     refine ⟨?_, v, ⟨hv, hres⟩, hvx, ?_, P, hPt, hvh.symm, .refl⟩
     · rintro ⟨v', hv', w, hw, hne, hv'x, hwx⟩
       exact hne ((huniq v' hv' hv'x).trans (huniq w hw hwx).symm)
@@ -285,9 +290,10 @@ theorem confirmation_of_unanimous_early_pool
       unfold confirmationScore at hmaj
       dsimp only at hmaj
       refine absurd hmaj (not_lt.2 (le_trans (Nat.mul_le_mul_left 2
-        (Set.ncard_le_ncard (t := Hᶜ) ?_)) (by omega)))
-      rintro x ⟨-, v, ⟨hv, -⟩, rfl, -, R, hR, hRr, hBR⟩ hx
-      obtain ⟨w, -, -, hwh, -, huniq⟩ := hpool _ hx
+        (Set.ncard_le_ncard (t := K.committee u ∩ Hᶜ) ?_)) (by omega)))
+      rintro x ⟨-, v, ⟨hv, -⟩, rfl, -, R, hR, hRr, hBR⟩
+      refine ⟨hP v hv, fun hx => ?_⟩
+      obtain ⟨w, -, -, hwh, -, huniq⟩ := hpool _ hx (hP v hv)
       obtain rfl := huniq v hv rfl
       obtain rfl : R = P := hPhi.coherent.1 hR hPt (hRr.trans hwh)
       exact hBP hBR
@@ -297,7 +303,7 @@ theorem confirmation_of_unanimous_early_pool
       (fun B hB C hC => anc_total hPhi.coherent (hall B hB) (hall C hC)) hD P hPS
     rw [hD, Anc.antisymm hPhi.coherent hDP hPD]
   exact ⟨hconf, fastSelect_eq_result hPhi hPt hPg (by
-      unfold FastTest; rw [hstock]; (clear * - hf hHn hscore; omega))⟩
+      unfold FastTest; (clear * - hf hsplit hsize hscore; omega))⟩
 
 /-- A half-committee supporting a block at an actual next-slot unlock makes all
 older lock labels compatible at every later cut. Provenance excludes intervening
@@ -532,8 +538,10 @@ theorem FrameWindow.unanimous_update_selection
     (by change sp.ts u + 2 * sp.Δ ≤ tr.time k; rw [hkt]; linarith only [hDelta])
     hkb hdeadline hrestart hvi.1
   obtain ⟨hconf, hfast⟩ := SA.confirmation_of_unanimous_early_pool
-    hrun.stock
-    (SA.frameIn_of_callAt hr hy hu.1).1 hvi.1 hPg hf (SA.state_pool_slot sp hr hy k u) hpool
+    (SA.frameIn_of_callAt hr hy hu.1).1 hvi.1 hPg (SA.CommitteeDict.full sp.n)
+    (SA.size_binding_full hrun.stock u) (fun _ _ => SA.mem_full _ _)
+    (SA.third_full hrun.stock (by have hn := sp.toParams.hn; change 1 ≤ sp.n at hn; omega))
+    (SA.state_pool_slot sp hr hy k u) (fun x hx _ => hpool x hx)
   exact ⟨hvi, hconf, hfast, hva⟩
 
 /-- Unanimity transfers one slot forward using only the finite proposal window.
@@ -629,13 +637,15 @@ theorem FrameWindow.unanimous_next_votes
       (by change SA.freeze sp e.msg.slot ≤ tr.time i
           rw [hfreeze]; rw [hts] at hlo; linarith only [hts, hlo, hhi])
     rw [hs] at hdom
-    apply SA.next_transfer_of_carry sp hS.run hy hc hs
+    have hfb := faultBound_of_service hawake hf hnr (hr.time_nonneg i)
+      (by change gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)
+          rw [hslot, show ((u + 1 : Nat) : Int) - 1 = u by clear * -; omega]
+          exact hgu) (hfinite.trans hTb)
+    apply SA.next_transfer_of_carry sp hS.run (SA.CommitteeDict.full sp.n) SA.CommitteeP.full
+      SA.CommitteeT.full (SA.size_binding_full hS.stock) hy hc hs
       (fun x hx q ev hv hes => ⟨P, hPhi.2 hvi.1, (hun x hx q ev hv hes).symm, .refl⟩)
-      hhalf hcarry
-      (faultBound_of_service hawake hf hnr (hr.time_nonneg i)
-        (by change gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)
-            rw [hslot, show ((u + 1 : Nat) : Int) - 1 = u by clear * -; omega]
-            exact hgu) (hfinite.trans hTb))
+      (by rw [hS.stock]; exact hhalf) hcarry ((SA.faultBoundK_full_iff _ _).2 hfb)
+      (SA.cs2_full_of_faultBound sp hS.stock hfb)
       (Or.inl ⟨hdom, hvi.2.1, P, hdom, hPv, .refl⟩)
       (fun x hx q hqi ev hv hes => ih q hqi x hx ev hv hes)
 

@@ -81,8 +81,9 @@ theorem clean_source_compatible_high_origin_at
       have := hp.faults _ (hp.run.time_nonneg q) hqb
       have := Fin.pos x
       omega
-    have hEC := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg q)) ho.1
-      (Nat.lt_succ_self q) ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hf (B := C) (by
+    have hEC := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg q)) _
+      SA.CommitteeP.full ho.1 (Nat.lt_succ_self q) ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩)
+      (SA.cs2_full hp.stock hf) (B := C) (by
         intro z hz j hj e hv hes
         obtain ⟨hjq, hv⟩ := SA.upTo_voteAt.mp hv
         have hzj := hp.run.antitone hjq hz

@@ -19,10 +19,13 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-- `no_optimistic_before_held_row` with `f < n/2`. -/
+/-- `no_optimistic_before_held_row` with `2|K(s+1) ∩ Hᶜ| < committeeSize`, for a member `y` of the
+slot-`(s+1)` committee. -/
 theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat}
+    (hnc : NoCollRun dg tr) (K : SA.CommitteeDict sp.n) (hP : SA.CommitteeP K tr.projAC H)
+    (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
+    (hfK : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
+    (hyK : y ∈ K.committee (s + 1)) {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     {X : SA.Blk sp.n (List (FG.Att sp.n))} {m : Nat} (hm : tr.AcceptAt y m X) (hmi : m < i)
@@ -35,10 +38,11 @@ theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
   rcases held_row_sign_time hrun hav hsg (hr.time_nonneg c) hslc (hmono hck.le)
       ((hmono hkm.le).trans ((hmono hmi.le).trans
         (by rw [← hs]; exact (cast_head_fcRoot hr hy hc).2))) with ⟨hT0, -⟩ | hT
-  · -- at `t_{s+1}`: `n = 1`, and the voter has a second slot-`(s+1)` vote by the check
-    obtain ⟨hn1, u, hu, j', hj', e', hv', hs'⟩ :=
-      held_row_early_count hrun hnc hf hav hsg hT0 hz hck hO
-    obtain rfl : u = y := Fin.ext (by have := u.isLt; have := y.isLt; omega)
+  · -- at `t_{s+1}`: a one-member committee, and the voter has a second slot-`(s+1)` vote by
+    -- the check
+    obtain ⟨u, hu, hall, j', hj', e', hv', hs'⟩ :=
+      held_row_early_count hrun hnc K hP hsize hfK hav hsg hT0 hz hck hO
+    obtain rfl : u = y := (hall y hyK).symm
     have := (SA.one_vote_per_slot sp _ ro H _ tr.projAC hr u hu j' i e' e hv' ⟨ℓ, hc.1, hc.2⟩
       (hs'.trans hs.symm)).1
     omega
@@ -51,7 +55,10 @@ a source below an origin of label at most `s`. A regular origin of label `l` is 
 `t_l + 6Δ`, after the vote unless `l < s`; an optimistic one of label `l ≥ s + 2` after
 `t_{s+2}`; label `s + 1` is `no_optimistic_before_held_row`. -/
 theorem vote_row_source (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    (K : SA.CommitteeDict sp.n) (hP : SA.CommitteeP K tr.projAC H)
+    (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
+    (hfK : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
+    (hyK : y ∈ K.committee (s + 1)) {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y i).fg.tree)
@@ -81,7 +88,8 @@ theorem vote_row_source (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun
     linarith only [htR', hti, hci, hΔ, mul_le_mul_of_nonneg_left hl' hΔ.le]
   · rcases Nat.lt_or_ge l (s + 2) with hl2 | hl2
     · obtain rfl : l = s + 1 := by omega
-      exact no_optimistic_before_held_row_of hrun hnc hf hy hc hs hm hmi hav hkm hsg hz hck hO
+      exact no_optimistic_before_held_row_of hrun hnc K hP hsize hfK hy hyK hc hs hm hmi hav hkm
+        hsg hz hck hO
     · -- an optimistic origin of label `l ≥ s + 2` is selected from `t_l ≥ t_s + 8Δ` on
       obtain ⟨ℓO, A, -, hslot, -⟩ := hO
       have h := (SA.ts_le_iff_le_slot sp (hr.time_nonneg c) (l : Int)).2

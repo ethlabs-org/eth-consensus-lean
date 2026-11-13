@@ -12,9 +12,9 @@ compatible with the transferred block `B`.
   whose heads extend `B`, or equivocate, moves every lock of a slot below `s` to a block
   compatible with `B`: an ancestor that conflicts with `B` has all of them as opponents
   (`unlock_compatible`).
-* A block with three quarters of the committee size in optimistic voters in a pool whose honest
-  votes extend `B` is compatible with `B` when `2f < committeeSize`: one voter is honest
-  (`origin_compatible`).
+* A block with three quarters of the committee size in optimistic voters, all members of the
+  slot's committee `K σ`, in a pool whose honest votes extend `B` is compatible with `B` when
+  `2 |K σ ∩ Hᶜ| < committeeSize`: one voter is honest (`origin_compatible`).
 * At an honest slot-`(m+1)` vote, the locks of slot `m` or `m + 1` are optimistic locks written
   before the vote (`lock_origin_readPoint`); those of slot `m + 1` are compatible with `B` when
   the earlier honest slot-`(m+1)` votes extend `B`; those of slot `m` are a hypothesis, which each
@@ -92,30 +92,35 @@ variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
   {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-- **An optimistic origin is compatible.** A block `D` of a frame inside `U` with three quarters
-of the committee as optimistic voters in a pool whose honest votes extend `B` is compatible with
-`B`, when `2f < committeeSize`. -/
+of the committee as optimistic voters, all members of the slot's committee `K σ`, in a pool whose
+honest votes extend `B` is compatible with `B`, when `2 |K σ ∩ Hᶜ| < committeeSize`. -/
 theorem origin_compatible (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree ⊆ U)
-    {A : SAState sp.n} {σ : Nat} {D B : Blk sp.n FGP}
+    {A : SAState sp.n} {σ : Nat} {D B : Blk sp.n FGP} (K : CommitteeDict sp.n)
     (h34 : 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ σ D).ncard)
-    (hf : 2 * Hᶜ.ncard < sp.committeeSize)
+    (hOK : optimisticVoters sp A Φ σ D ⊆ K.committee σ)
+    (hf : 2 * (K.committee σ ∩ Hᶜ).ncard < sp.committeeSize)
     (hext : ∀ v ∈ A.pool σ, v.val ∈ H → VoteExtends U v B) : Compatible U D B := by
-  obtain ⟨x, ⟨v, hv, rfl, R, hR, hRr, hDR⟩, hxH⟩ :=
-    Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
+  obtain ⟨x, hx, hxH⟩ :=
+    Set.exists_mem_notMem_of_ncard_lt_ncard (s := K.committee σ ∩ Hᶜ)
       (t := optimisticVoters sp A Φ σ D) (by omega)
-  obtain ⟨Hd, hHd, hHdr, hBHd⟩ := hext v hv (not_not.1 hxH)
+  have hxH' : x ∈ H := not_not.1 fun h => hxH ⟨hOK hx, h⟩
+  obtain ⟨v, hv, rfl, R, hR, hRr, hDR⟩ := hx
+  obtain ⟨Hd, hHd, hHdr, hBHd⟩ := hext v hv hxH'
   obtain rfl : R = Hd := hU.1 (hΦU hR) hHd (hRr.trans hHdr.symm)
   exact anc_total hU (Anc.mono hΦU hDR) hBHd
 
 /-- `locks_compatible` with the unlock given. -/
 theorem locks_compatibleU
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {y : Fin sp.n} (hy : y ∈ H)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) (K : CommitteeDict sp.n)
+    (hP : CommitteeP K tr H) {y : Fin sp.n} (hy : y ∈ H)
     {i m : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = m + 1) {B : Blk sp.n FGP} (hB : B ∈ ℓ.frame.tree) {S : Set (Fin sp.n)}
     (hS : ∀ w ∈ S, w ∈ equivocators (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes ∨
       ∃ x ∈ (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).support,
         x.val = w ∧ x.slot = m ∧ AncR ℓ.frame B x.head)
-    (hn : sp.committeeSize ≤ 2 * S.ncard) (hf : 2 * Hᶜ.ncard < sp.committeeSize)
+    (hn : sp.committeeSize ≤ 2 * S.ncard)
+    (hf : 2 * (K.committee (m + 1) ∩ Hᶜ).ncard < sp.committeeSize)
     (hearlier : EarlierVotesExtend tr H U i (m + 1) B)
     (hm : ∀ (Φ : Frm sp.n FGP) (A : SAState sp.n) (D : Blk sp.n FGP), FrameOK Φ → Φ.tree ⊆ U →
       D ∈ Φ.tree → 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ m D).ncard →
@@ -159,7 +164,14 @@ theorem locks_compatibleU
   rcases (show l₀.slot = m ∨ m < l₀.slot by omega) with h | h
   · exact hm Φ' A D hΦ' hΦ'U hD (h ▸ h34) (h ▸ hpool) (h ▸ hsub)
   -- of slot `m + 1`: the honest voters' votes are earlier slot-`(m+1)` votes
-  refine origin_compatible hU hΦ'U h34 hf fun v hv hvH => ?_
+  have hl₀s : l₀.slot = m + 1 := by
+    have := readPoint_lock_slot_leU hr hy hc l₀ hl₀
+    have := (castAt_specU hr hy hc).2.1
+    omega
+  obtain ⟨k₀, -, hk₀⟩ := hsub
+  refine origin_compatible hU hΦ'U K h34
+    (fun _ ⟨v, hv, hvx, _⟩ => hvx ▸ hP.1 y hy (k₀ + 1) _ v (hk₀ hv))
+    (by rw [hl₀s]; exact hf) fun v hv hvH => ?_
   obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
   obtain ⟨ℓ', hcj⟩ := id hvote
   have hsj := (castAt_specU hr hvH hcj).2.1
@@ -167,20 +179,23 @@ theorem locks_compatibleU
   have := slot_mono sp (hr.time_nonneg j) (hr.time_mono hj.le)
   exact hearlier _ hvH j hj e' hvote (by omega)
 
-/-- **The locks at a transfer vote.** At an honest `y`'s slot-`(m+1)` vote: if at least half of
-the committee have slot-`m` support votes in `y`'s merged view whose heads extend `B`, or
-equivocate there, `2f < committeeSize`, every honest slot-`(m+1)` vote at an earlier cut
+/-- **The locks at a transfer vote.** At an honest `y`'s slot-`(m+1)` vote, for a committee `K`
+whose members sign every vote in the honest pools: if at least half of the committee have
+slot-`m` support votes in `y`'s merged view whose heads extend `B`, or equivocate there,
+`2 |K (m+1) ∩ Hᶜ| < committeeSize`, every honest slot-`(m+1)` vote at an earlier cut
 extends `B`, and every optimistic origin of slot `m` (a block with three quarters of the
 committee size in optimistic voters whose honest
 votes were cast before the vote) is compatible with `B`, then every live lock block at the vote's
 read point is compatible with `B`. -/
-theorem locks_compatible (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i m : Nat}
+theorem locks_compatible (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n)
+    (hP : CommitteeP K tr H) {y : Fin sp.n} (hy : y ∈ H) {i m : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = m + 1) {B : Blk sp.n FGP} (hB : B ∈ ℓ.frame.tree) {S : Set (Fin sp.n)}
     (hS : ∀ w ∈ S, w ∈ equivocators (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes ∨
       ∃ x ∈ (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).support,
         x.val = w ∧ x.slot = m ∧ AncR ℓ.frame B x.head)
-    (hn : sp.committeeSize ≤ 2 * S.ncard) (hf : 2 * Hᶜ.ncard < sp.committeeSize)
+    (hn : sp.committeeSize ≤ 2 * S.ncard)
+    (hf : 2 * (K.committee (m + 1) ∩ Hᶜ).ncard < sp.committeeSize)
     (hearlier : EarlierVotesExtend tr H U i (m + 1) B)
     (hm : ∀ (Φ : Frm sp.n FGP) (A : SAState sp.n) (D : Blk sp.n FGP), FrameOK Φ → Φ.tree ⊆ U →
       D ∈ Φ.tree → 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ m D).ncard →
@@ -189,7 +204,8 @@ theorem locks_compatible (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y �
       (∃ k ≤ i, A.pool m ⊆ (tr.state y (k + 1)).pool m) →
       Compatible U D B) :
     ∀ L ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i), Compatible U L B :=
-  locks_compatibleU (hrun := hrun.toU) (y := y) (hy := hy) (i := i) (m := m) (ℓ := ℓ) (e := e)
+  locks_compatibleU (hrun := hrun.toU) (K := K) (hP := hP) (y := y) (hy := hy) (i := i) (m := m)
+      (ℓ := ℓ) (e := e)
       (hc := hc) (hs := hs) (B := B) (hB := hB) (S := S) (hS := hS) (hn := hn) (hf := hf)
           (hearlier := hearlier) (hm := hm)
 

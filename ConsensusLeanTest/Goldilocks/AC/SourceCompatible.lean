@@ -57,7 +57,7 @@ theorem sourceCompatible_premises_satisfiable :
       (proposer : Nat → Fin sp1.n) (s m : Nat) (w x : Fin sp1.n) (i₀ i : Nat)
       (B : Blk sp1.n Unit) (CV : Set (Vote sp1.n)) (ℓ : ACLabel (goldilocksSA sp1 Unit ro1))
       (C : Blk sp1.n Unit),
-    ACRun proposer tr H U ∧
+    sp1.committeeSize = sp1.n ∧ ACRun proposer tr H U ∧
     w ∈ H ∧ FastLockAt tr w i₀ s B CV ∧
     SyncAC (goldilocksSA sp1 Unit ro1) H U (sp1.ts s) (sp1.ts (s + 1 : Nat) + sp1.Δ) tr ∧
     Carry tr H U s CV ∧ 2 * Hᶜ.ncard < sp1.n ∧
@@ -67,7 +67,7 @@ theorem sourceCompatible_premises_satisfiable :
       VoteExtends U e.msg B) ∧
     ((∃ j < i, ∃ ℓ' e, CastAt tr x j ℓ' e ∧ e.msg.slot = s + 1 ∧ Compatible U ℓ'.frame.F B) ∨
       (∃ k < i, tr.RestartAt x k ∧ sp1.ts s < tr.time k)) :=
-  ⟨Set.univ, U₁, trW, fun _ => v0, 1, 3, v0, v0, 0, 2, B1, CV1, ℓ2, B1, acRun_W, trivial,
+  ⟨Set.univ, U₁, trW, fun _ => v0, 1, 3, v0, v0, 0, 2, B1, CV1, ℓ2, B1, rfl, acRun_W, trivial,
     Or.inr optimisticLock_W, sync_W (by decide), carryAll_W, faults_W, trivial, toFG_W,
     by decide, by decide, earlierSlots_W, Or.inl castBefore_W⟩
 
@@ -76,8 +76,8 @@ theorem sourceCompatible_premises_satisfiable :
 /-- (a) A1.9 on the run: the block `B1` that `ac_to_fg` returns at cut 2 is compatible with the
 locked block `B1`. -/
 theorem sourceCompatible_on_witness : Compatible U₁ B1 B1 :=
-  (acStepsAt sp1).sourceCompatible Unit ro1 Set.univ U₁ trW (fun _ => v0) acRun_W 1 3 v0 v0 0 2
-    B1 CV1 ℓ2 B1 trivial (Or.inr optimisticLock_W) (sync_W (by decide)) carryAll_W faults_W
+  (acStepsAt sp1).sourceCompatible Unit ro1 Set.univ U₁ trW (fun _ => v0) rfl acRun_W 1 3 v0 v0
+    0 2 B1 CV1 ℓ2 B1 trivial (Or.inr optimisticLock_W) (sync_W (by decide)) carryAll_W faults_W
     trivial toFG_W (by decide) (by decide) earlierSlots_W (Or.inl castBefore_W)
 
 end Consensus.Goldilocks.SA.Test

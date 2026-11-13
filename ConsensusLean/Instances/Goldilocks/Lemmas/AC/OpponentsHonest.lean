@@ -30,13 +30,14 @@ theorem opponents_subset_compl {V : View sp.n} {s : Int} {B : Blk sp.n FGP}
 
 /-! ## Per-slot non-equivocation
 
-`hne` of `unlockTarget_unlockView_held_of_honest_slot` asks that a validator of `Hn` have at most
-one vote in `heldVotes A A' Φ`, of any slot. An honest validator votes once per slot, and
-`heldVotes` holds the votes of every pool and every block of the tree, so for an honest `Hn`
-this premise fails as soon as one of its validators has held votes of two slots. The view that
-`unlock` reads holds only slot-`(slot(t) − 1)` votes (`unlockView_votes_slot`: the pools hold
-votes of their own slot, and a block's votes are of the slot before it), so non-equivocation
-per slot is enough (`unlockTarget_unlockView_held_of_honest_slot`). -/
+`opponents_subset_compl` asks that a validator of `Hn` have at most one vote in the view, of any
+slot. An honest validator votes once per slot, and `heldVotes A A' Φ` holds the votes of every
+pool and every block of the tree, so for an honest `Hn` that premise fails on the held votes as
+soon as one of its validators has held votes of two slots. The view that `unlock` reads holds
+only slot-`(slot(t) − 1)` votes (`unlockView_votes_slot`: the pools hold votes of their own slot,
+and a block's votes are of the slot before it), so `hne` of
+`unlockTarget_unlockView_held_of_honest_slot` asks only that a validator of `Hn` have at most one
+held vote of slot `slot(t) − 1`. -/
 
 /-- The votes of a pool view of slot `σ` are of slot `σ` when every pool holds votes of its own
 slot. -/
@@ -85,10 +86,9 @@ theorem unlockView_votes_slot {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A : S
 
 /-- **`unlock` keeps `B` when `Hn` does not oppose it, per-slot form.** For a call `c` from `A`
 to `A'` whose pools hold votes of their own slot, with a frame whose blocks have valid payloads:
-if no validator of `Hn` has two held votes of one slot, every held slot-`s` vote of `Hn` has
-only heads compatible with `B`, and `2 · |Hnᶜ| < committeeSize`, then `unlockTarget` of
-the call's view is
-`B`. -/
+if no validator of `Hn` has two held votes of slot `slot(t) − 1`, every held slot-`s` vote of `Hn`
+has only heads compatible with `B`, and `2 · |Hnᶜ| < committeeSize`, then `unlockTarget` of the
+call's view is `B`. -/
 theorem unlockTarget_unlockView_held_of_honest_slot {ro : ReplayOrder sp FGP} (self : Fin sp.n)
     {A A' : SAState sp.n} (c : (goldilocksSA sp FGP ro).Call)
     (hA' : ((goldilocksSA sp FGP ro).step self A Φ t c).1 = A') (hΦ : FrameOK Φ) (s : Int)
@@ -96,7 +96,7 @@ theorem unlockTarget_unlockView_held_of_honest_slot {ro : ReplayOrder sp FGP} (s
     (hpre : ∀ τ, ∀ v ∈ A.pool τ, v.slot = τ) (hpost : ∀ τ, ∀ v ∈ A'.pool τ, v.slot = τ)
     (hpay : ∀ C ∈ Φ.tree, validPayload C)
     (hne : ∀ x ∈ heldVotes A A' Φ, ∀ y ∈ heldVotes A A' Φ, x.val ∈ Hn → y.val = x.val →
-      x.slot = y.slot → x = y)
+      x.slot = y.slot → (x.slot : Int) = (sp.slot t : Int) - 1 → x = y)
     (hcompat : ∀ x ∈ heldVotes A A' Φ, x.val ∈ Hn → (x.slot : Int) = s →
       ∀ H ∈ Φ.tree, H.root = x.head → Compatible Φ.tree H B)
     (hf : 2 * Hnᶜ.ncard < sp.committeeSize) :
@@ -112,7 +112,8 @@ theorem unlockTarget_unlockView_held_of_honest_slot {ro : ReplayOrder sp FGP} (s
     c).1 Φ ∧ (v.slot : Int) = (sp.slot t : Int) - 1}
   have hW := opponents_subset_compl (Φ := Φ) (s := s) (B := B)
     (V := ⟨W, heldVotes A ((goldilocksSA sp FGP ro).step self A Φ t c).1 Φ⟩)
-    (fun x hx y hy hxH hyx => hne x hx.1 y hy.1 hxH hyx (by have := hx.2.trans hy.2.symm; omega))
+    (fun x hx y hy hxH hyx =>
+      hne x hx.1 y hy.1 hxH hyx (by have := hx.2.trans hy.2.symm; omega) hx.2)
     hcompat
   exact unlockTarget_eq_self_of_subset hΦ _ s hB
     ((opponents_mono_view (W := ⟨W, _⟩) (fun v hv => ⟨hsub.1 hv, hsl v hv⟩) hsub.2 s B).trans

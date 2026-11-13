@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotOldSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSourceVotes
@@ -337,7 +338,7 @@ theorem unanimous_next_votes_extend {b : Time}
       apply SA.next_vote_extends_before hS.run hy hcast hs ?_ hhalf
         (unanimous_carry_votes hp hc hP hun hgu hy hcast hs hjb hFP) hfault
         (hp.sync.syncAC hp.run (by have := SA.le_gbar g; linarith [sp.toParams.hΔ]))
-        (Or.inl hvi)
+        (Or.inl hvi) hp.stock
       intro z hz q hq e' hv hsl
       have hqb := (hp.run.time_mono hq.le).trans hjb
       rcases hsl with hsl | hsl
@@ -863,7 +864,8 @@ theorem optimistic_next_result_of_floor {b : Time}
   have hf := hp.faults
   have hn : 0 < sp.n := sp.toParams.hn
   obtain ⟨D, hconf, hBD, _⟩ := SA.update_extends_of_resolved_votes hS.run
-    (by rw [hp.stock]; omega) hext hy hu (by rw [hp.stock]; omega) hres
+    (SA.CommitteeDict.full sp.n) (fun _ _ => SA.mem_full _ _)
+    (by rw [SA.ncard_inter_full, hp.stock]; omega) hext hy hu (by rw [hp.stock]; omega) hres
   exact ⟨D, _, ⟨ell, hu, hconf, rfl⟩, hBD⟩
 
 /-- A deepest block of `T` lying in `S ⊆ T` is the deepest block of `S`. -/

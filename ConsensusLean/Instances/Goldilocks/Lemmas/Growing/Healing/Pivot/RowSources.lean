@@ -92,8 +92,9 @@ theorem protected_source_compatible_high_origin_of_sources_at
       have hf := hp.faults (tr.time q) (hp.run.time_nonneg q) hqb
       have hn : 0 < sp.n := sp.toParams.hn
       omega
-    have hEB := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg q)) ho.1
-      (Nat.lt_succ_self q) ((SA.upTo_fastLockAt hp.run.time_mono).mpr ⟨le_rfl, hfl⟩) hf
+    have hEB := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg q)) _
+      SA.CommitteeP.full ho.1 (Nat.lt_succ_self q)
+      ((SA.upTo_fastLockAt hp.run.time_mono).mpr ⟨le_rfl, hfl⟩) (SA.cs2_full hp.stock hf)
       (by
         intro z hz j _ e hv hes
         obtain ⟨hjt, hv⟩ := SA.upTo_voteAt.mp hv

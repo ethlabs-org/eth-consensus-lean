@@ -122,8 +122,10 @@ theorem voter_row_labels (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b) {
   have hd := hS.run.time_nonneg j
   have hm := hS.run.time_mono
   obtain ⟨s', rfl⟩ : ∃ s', l = s' + 1 := ⟨l - 1, by omega⟩
-  exact Compose.no_optimistic_before_held_row_of (hS.run.upTo hd) (hS.noColl.upTo _)
-    (hS.bounds.two _ hd hjb) hy
+  exact Compose.no_optimistic_before_held_row_of (hS.run.upTo hd) (hS.noColl.upTo _) _
+    SA.CommitteeP.full (SA.size_binding_full hS.stock)
+    (SA.cs2_full hS.stock (hS.bounds.two _ hd hjb))
+    hy (SA.mem_full _ _)
     (by rw [RunTrace.upTo_projAC]; exact sa_castAt_upTo.mpr ⟨le_rfl, hcy⟩) hes
     ((RunTrace.upTo_acceptAt tr).mpr ⟨hm hmj.le, hX⟩) hmj hav hkm
     ((RunTrace.upTo_signAt tr).mpr ⟨hm (by omega : k ≤ j), hsg⟩) hav hck

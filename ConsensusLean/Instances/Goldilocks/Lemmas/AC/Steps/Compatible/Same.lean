@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CompatibleSides
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
@@ -10,14 +11,14 @@ public section
 
 Two honest fast locks of slot `s` (by the fast test of an update at `t_s + 6Δ`, or by an
 optimistic confirmation before `t_s + 2Δ`) are on compatible blocks, under
-`Sync[t_s, t_{s+1} + Δ]` and `f < n/2`:
+`Sync[t_s, t_{s+1} + Δ]` and `2|K(s) ∩ Hᶜ| < committeeSize` for a slot committee `K`:
 * two optimistic origins have three quarters of the committee each, so an honest validator in
   common, whose one slot-`s` vote (A0.8) extends both blocks;
 * otherwise the votes of one origin (its early supporters, or its optimistic voters), admitted
   before `t_s + 2Δ`, reach the updating node before its update (`sync_forward`): each of their
   validators is a voter there, and none supports a conflicting block without equivocating; the
   counts (three quarters and a half, or the update result's strict majority) then exceed the
-  committee. -/
+  committee, whose members cast every vote of the honest pools (P). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -40,7 +41,8 @@ private theorem update_sideU
     ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
       tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
       (∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) ∧
-      sp.n ≤ 2 * S.ncard ∧ (voters {v | v ∈ (tr.state Y c).pool s}).ncard < 2 * S.ncard ∧
+      sp.committeeSize ≤ 2 * S.ncard ∧
+        (voters {v | v ∈ (tr.state Y c).pool s}).ncard < 2 * S.ncard ∧
       S ⊆ Fwd tr U Y s D ∧
       ∀ u ∈ S, u ∉ equivocators {v | v ∈ (tr.state Y c).pool s} ∧
         ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U D R := by
@@ -69,7 +71,7 @@ private theorem update_sideU
     rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at this
   · have hfast := (deepest_mem hD).1.2.2
     unfold FastTest confirmationScore at hfast
-    simpa only [hrun.stock] using hfast
+    exact hfast
   · have hmaj := (deepest_mem hC).1.2.2
     unfold confirmationScore at hmaj
     exact lt_of_lt_of_le hmaj (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard
@@ -101,7 +103,8 @@ private theorem update_side
     ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
       tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
       (∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) ∧
-      sp.n ≤ 2 * S.ncard ∧ (voters {v | v ∈ (tr.state Y c).pool s}).ncard < 2 * S.ncard ∧
+      sp.committeeSize ≤ 2 * S.ncard ∧
+        (voters {v | v ∈ (tr.state Y c).pool s}).ncard < 2 * S.ncard ∧
       S ⊆ Fwd tr U Y s D ∧
       ∀ u ∈ S, u ∉ equivocators {v | v ∈ (tr.state Y c).pool s} ∧
         ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U D R :=
@@ -110,48 +113,46 @@ private theorem update_side
 
 /-- `fastLock_same_slot` with the unlock given. -/
 theorem fastLock_same_slotU
-    {uL : Nat → Set Lock} (hrun : ACRunU wm uL proposer tr H U) {s : Nat} {w x : Fin sp.n}
-    {i₀ j : Nat}
+    {uL : Nat → Set Lock} (hrun : ACRunU wm uL proposer tr H U) (K : CommitteeDict sp.n)
+    (hP : CommitteeP K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
+    {w x : Fin sp.n} {i₀ j : Nat}
     {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hw : w ∈ H) (hfl : FastLockAt tr w i₀ s B CV)
     (hx : x ∈ H) (hfl' : FastLockAt tr x j s B' CV')
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
-    (hf : 2 * Hᶜ.ncard < sp.n) : Compatible U B B' := by
-  have hstock := hrun.stock
+    (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) : Compatible U B B' := by
   have hr := hrun.localRun
   have hU := hr.coherent
-  have hpos : 0 < sp.n := Fin.pos w
-  have hle : ∀ T : Set (Fin sp.n), T.ncard ≤ sp.n := fun T =>
-    (Set.ncard_le_ncard (Set.subset_univ T)).trans (by rw [Set.ncard_univ, Nat.card_fin])
+  have hf2 : 2 * (K.committee s ∩ Hᶜ).ncard < (K.committee s).ncard := by rw [hsize s]; exact hf
+  have hW : ∀ z ∈ H, ∀ c, voters {v | v ∈ (tr.state z c).pool s} ⊆ K.committee s := by
+    rintro z hz c u ⟨v, hv, rfl⟩
+    exact hP.1 z hz c s v hv
+  have hO : ∀ z ∈ H, ∀ c ℓ A, OptimisticPoint tr z c ℓ A →
+      ∀ D, optimisticVoters sp A ℓ.frame s D ⊆ K.committee s := by
+    rintro z hz c ℓ A hpt D u ⟨v, hv, rfl, -⟩
+    exact hP.2 z hz c ℓ A hpt s v hv
   by_contra hnc
   rcases hfl with hw' | hw' <;> rcases hfl' with hx' | hx'
   · -- two updates: `x`'s supporters reach `w`, against `w`'s result majority
     obtain ⟨ℓ, S, hc, ht, hrs, -, hmaj, -, hS⟩ := update_sideU hrun hw hw'
     obtain ⟨-, S', -, -, -, hn', -, hS'F, -⟩ := update_sideU hrun hx hx'
     have := against_updateU hr hsync hx hw hc ht hrs hS hS'F fun h => hnc h.symm
-    have := hle (voters {v | v ∈ (tr.state w i₀).pool s})
-    omega
+    exact not_update_update (K.committee s) (hsize s) (hW w hw i₀) hn' hmaj this
   · -- `x`'s optimistic voters reach `w`'s update
     obtain ⟨ℓ, S, hc, ht, hrs, hn, -, -, hS⟩ := update_sideU hrun hw hw'
     obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := optimistic_sideU hrun hx hx'
     have := against_updateU hr hsync hx hw hc ht hrs hS hT fun h => hnc h.symm
-    have := hle (voters {v | v ∈ (tr.state w i₀).pool s})
-    omega
+    exact not_update_optimistic (K.committee s) (hsize s) (hW w hw i₀) hf2 hn h34 this
   · -- `w`'s optimistic voters reach `x`'s update
     obtain ⟨ℓ, S, hc, ht, hrs, hn, -, -, hS⟩ := update_sideU hrun hx hx'
     obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := optimistic_sideU hrun hw hw'
     have := against_updateU hr hsync hw hx hc ht hrs hS hT hnc
-    have := hle (voters {v | v ∈ (tr.state x j).pool s})
-    omega
+    exact not_update_optimistic (K.committee s) (hsize s) (hW x hx j) hf2 hn h34 this
   · -- two optimistic confirmations: an honest validator in common, with one slot-`s` vote
     obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := optimistic_sideU hrun hw hw'
     obtain ⟨ℓ', A', hpt', hΦU', h34', -⟩ := optimistic_sideU hrun hx hx'
-    have hI := Set.ncard_inter_add_ncard_union (optimisticVoters sp A ℓ.frame s B)
-      (optimisticVoters sp A' ℓ'.frame s B')
-    have := hle (optimisticVoters sp A ℓ.frame s B ∪ optimisticVoters sp A' ℓ'.frame s B')
     obtain ⟨u, ⟨⟨v, hv, rfl, R, hR, hRr, hBR⟩, ⟨v', hv', hv'u, R', hR', hR'r, hBR'⟩⟩, huH⟩ :=
-      Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
-        (t := optimisticVoters sp A ℓ.frame s B ∩ optimisticVoters sp A' ℓ'.frame s B')
-        (by omega)
+      quorums_meet (K.committee s) (hsize s) (hO w hw i₀ ℓ A hpt B) (hO x hx j ℓ' A' hpt' B')
+        h34 h34' hf2
     have huH := not_not.1 huH
     obtain ⟨hvs, j₁, -, e₁, he₁, rfl⟩ := optimisticPoint_pool_voteU hrun hw hpt hv huH
     obtain ⟨hv's, j₂, -, e₂, he₂, rfl⟩ :=
@@ -164,14 +165,16 @@ theorem fastLock_same_slotU
 
 /-- **Fast locks of one slot are compatible.** -/
 theorem fastLock_same_slot
-    (hrun : ACRun proposer tr H U) {s : Nat} {w x : Fin sp.n} {i₀ j : Nat}
+    (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
+    (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat} {w x : Fin sp.n}
+    {i₀ j : Nat}
     {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hw : w ∈ H) (hfl : FastLockAt tr w i₀ s B CV)
     (hx : x ∈ H) (hfl' : FastLockAt tr x j s B' CV')
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
-    (hf : 2 * Hᶜ.ncard < sp.n) : Compatible U B B' :=
-  fastLock_same_slotU (hrun := hrun.toU) (s := s) (w := w) (x := x) (i₀ := i₀) (j := j) (B := B)
-      (B' := B') (CV := CV) (CV' := CV') (hw := hw) (hfl := hfl) (hx := hx) (hfl' := hfl')
-          (hsync := hsync) (hf := hf)
+    (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) : Compatible U B B' :=
+  fastLock_same_slotU (hrun := hrun.toU) K hP hsize (s := s) (w := w) (x := x) (i₀ := i₀)
+      (j := j) (B := B) (B' := B') (CV := CV) (CV' := CV') (hw := hw) (hfl := hfl) (hx := hx)
+          (hfl' := hfl') (hsync := hsync) (hf := hf)
 
 end Consensus.Goldilocks.SA
 

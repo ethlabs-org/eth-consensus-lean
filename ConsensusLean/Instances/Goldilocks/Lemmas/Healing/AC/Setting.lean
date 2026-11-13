@@ -200,14 +200,6 @@ private theorem vs_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) 
   · rfl
   · split_ifs <;> rfl
 
-private theorem vs_update (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
-    (updateConfirmationM sp wm A Φ t s).votedSlot = A.votedSlot := by
-  rw [updateConfirmationM_field SAState.votedSlot (fun _ _ => rfl)]
-  unfold updateConfirmation updateLatestConfirmed; dsimp only
-  split
-  · rfl
-  · split_ifs <;> rfl
-
 private theorem vs_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (blockReceipt sp A t B).votedSlot = A.votedSlot := by
   unfold blockReceipt
@@ -242,112 +234,6 @@ private theorem vs_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
         ∃ e ∈ (tryVote sp x A Φ t).2, e.msg.slot = sp.slot t) := by
   rw [tryVote_eq_tryVoteWith, ← tryVoteWithM_parent]
   exact vs_tryVoteWith x A Φ t hp
-
-/-- A call other than a restart keeps `voted_slot`, or emits a vote of slot `slot(t)` and
-leaves `voted_slot = slot(t)`; a restart sets `voted_slot = −1`. -/
-private theorem vs_step
-    {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP} {t : Time}
-    (hΦ : FrameOK Φ) (ht : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call)
-    (hp : A.mayVote (sp.slot t) = true) :
-    let r := stepWithM sp ro wm self L A Φ t c
-    r.1.votedSlot = A.votedSlot ∨ r.1.votedSlot = -1 ∨
-      (r.1.votedSlot = sp.slot t ∧ ∃ e ∈ r.2, e.msg.slot = sp.slot t) := by
-  cases c with
-  | tick =>
-    change (acOnTickWithM sp wm self L A Φ t).1.votedSlot = _ ∨ (acOnTickWithM sp wm self L A Φ
-        t).1.votedSlot = _ ∨
-      ((acOnTickWithM sp wm self L A Φ t).1.votedSlot = _ ∧ ∃ e ∈ (acOnTickWithM sp wm self L A Φ
-          t).2, _)
-    unfold acOnTickWithM; dsimp only
-    split_ifs
-    all_goals first
-      | exact Or.inl rfl
-      | exact Or.inl (vs_update _ _ _ _)
-      | (rcases vs_tryVoteWith self A Φ t hp with h | h
-         · exact Or.inl ((vs_update _ _ _ _).trans h.1)
-         · exact Or.inr (Or.inr ⟨(vs_update _ _ _ _).trans h.1, h.2⟩))
-      | (rcases vs_tryVoteWith self A Φ t hp with h | h
-         · exact Or.inl h.1
-         · exact Or.inr (Or.inr h))
-  | proposal =>
-    left
-    change (acProposalWith sp L A Φ t).1.votedSlot = _
-    unfold acProposalWith; split_ifs <;> rfl
-  | toFG =>
-    left
-    change (acToFG sp A Φ t).1.votedSlot = _
-    unfold acToFG
-    split_ifs
-    all_goals first | rfl | (split <;> (try split_ifs) <;> rfl)
-  | message m =>
-    change (tryVoteWithM sp wm self L _ Φ t).1.votedSlot = _ ∨
-        (tryVoteWithM sp wm self L _ Φ t).1.votedSlot = _ ∨
-      ((tryVoteWithM sp wm self L _ Φ t).1.votedSlot = _ ∧
-        ∃ e ∈ (tryVoteWithM sp wm self L _ Φ t).2, _)
-    rcases vs_tryVoteWith self (optimisticConfirmationM sp wm (admitVote sp A t m) Φ t) Φ t
-        (by simpa only [optimisticM_mayVote, admitVote_mayVote] using hp) with
-        h | h
-    · exact Or.inl (h.1.trans (by rw [optimisticConfirmationM_keep _ vs_optimistic, vs_admitVote]))
-    · exact Or.inr (Or.inr h)
-  | block B =>
-    change (tryVoteWithM sp wm self L _ Φ t).1.votedSlot = _ ∨
-        (tryVoteWithM sp wm self L _ Φ t).1.votedSlot = _ ∨
-      ((tryVoteWithM sp wm self L _ Φ t).1.votedSlot = _ ∧
-        ∃ e ∈ (tryVoteWithM sp wm self L _ Φ t).2, _)
-    rcases vs_tryVoteWith self (optimisticConfirmationM sp wm (blockReceipt sp A t B) Φ t) Φ t
-        (by simpa only [optimisticM_mayVote, blockReceipt_mayVote] using hp) with
-        h | h
-    · exact Or.inl (h.1.trans (by rw [optimisticConfirmationM_keep _ vs_optimistic,
-        vs_blockReceipt]))
-    · exact Or.inr (Or.inr h)
-  | restart =>
-    right; left
-    exact ((restart_state sp) FGP ro self A Φ t hΦ ht).2.2.2.2.2.1
-
-/-- `vote_of_votedSlot` with the unlock given. -/
-theorem vote_of_votedSlotU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) (i : Nat) :
-    ∀ σ : Nat, (tr.state y i).votedSlot = σ → ∃ j < i, ∃ e, VoteAt tr y j e ∧ e.msg.slot = σ := by
-  induction i with
-  | zero =>
-    intro σ h
-    change (tr.init y).votedSlot = σ at h
-    rw [hr.init y hy] at h
-    change (-1 : Int) = σ at h
-    omega
-  | succ i ih =>
-    intro σ h
-    by_cases hn : tr.node i = y ∧ tr.label i ≠ none
-    · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hn.2
-      have hc : tr.CallAt y i ℓ := ⟨hn.1, hℓ⟩
-      have hst : tr.state y (i + 1) = tr.post i := by
-        simp only [Trace.state]; exact ite_eq_left hn
-      have he := hr.exec i ℓ hℓ (hn.1 ▸ hy)
-      rw [hn.1] at he
-      rw [hst] at h
-      have hv := vs_step (wm := wm) (L := u i) (ro := ro) y (tr.state y i)
-          (frameIn_of_callAtU hr hy hc).1
-        (hr.time_nonneg i) ℓ.call (traceWithM_mayVote hr hy i _)
-      rw [he] at hv
-      dsimp only at hv
-      rcases hv with hv | hv | ⟨hv, e, hem, hes⟩
-      · obtain ⟨j, hj, h'⟩ := ih σ (hv ▸ h)
-        exact ⟨j, hj.trans (Nat.lt_succ_self i), h'⟩
-      · omega
-      · exact ⟨i, Nat.lt_succ_self i, e, ⟨ℓ, hc, hem⟩, by omega⟩
-    · have hst : tr.state y (i + 1) = tr.state y i := by
-        simp only [Trace.state]; exact ite_eq_right hn
-      rw [hst] at h
-      obtain ⟨j, hj, h'⟩ := ih σ h
-      exact ⟨j, hj.trans (Nat.lt_succ_self i), h'⟩
-
-/-- **The voted slot of a state**: when the state of an honest node before cut `i` has
-`voted_slot = σ ≥ 0`, the node cast a vote of slot `σ` at an earlier cut. -/
-theorem vote_of_votedSlot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) (i : Nat) :
-    ∀ σ : Nat, (tr.state y i).votedSlot = σ → ∃ j < i, ∃ e, VoteAt tr y j e ∧ e.msg.slot = σ :=
-  vote_of_votedSlotU (hr := hr.toU) (y := y) (hy := hy) (i := i)
 
 /-- `tryVote_votes` with the unlock given. -/
 theorem tryVote_votesWith

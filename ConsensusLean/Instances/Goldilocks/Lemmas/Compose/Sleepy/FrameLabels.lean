@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -169,7 +170,8 @@ private theorem vote_frame_of {s₀ : Nat} {b : Time} (hrun : GoldilocksRun prop
 /-- **S3 at votes up to `b` (the frozen witness)**: at an honest slot-`(s+1)` vote at a time
 `≤ b`, a block `B` of the honest blocks that is compatible with every origin within `b` of label
 at most `s` and that some honest slot-`s` vote extends is in the viable tree of the voter block
-tree, or at or below `fc_root` (inside the honest blocks). -/
+tree, or at or below `fc_root` (inside the honest blocks). The row sources are read at the full
+committee (`hstock`, §S.2 scope-(ii) item). -/
 theorem vote_frame_upTo
     {b : Time} (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)
@@ -179,7 +181,7 @@ theorem vote_frame_upTo
     (hB : B ∈ tr.HonestBlocks H)
     (hBc : ∀ C j, OriginWithin tr H C j b → j ≤ s → Compatible (tr.HonestBlocks H) B C)
     (hw : ∃ x ∈ H, ∃ k e', SA.VoteAt tr.projAC x k e' ∧ e'.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
+      SA.VoteExtends (tr.HonestBlocks H) e'.msg B) (hstock : sp.committeeSize = sp.n) :
     B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
   have hU := (projFG_localRun hrun hnc).coherent
@@ -189,7 +191,9 @@ theorem vote_frame_upTo
       Anc (tr.HonestBlocks H) D C) y i := by
     rw [honestRowsSourced_iff]
     intro X hX a ha hav
-    obtain ⟨D, -, hDs, C, j, hC, hj, hDC⟩ := vote_row_source hrun hnc hf hy hc hs hX ha hav
+    obtain ⟨D, -, hDs, C, j, hC, hj, hDC⟩ := vote_row_source hrun hnc _ SA.CommitteeP.full
+      (SA.size_binding_full hstock) (SA.cs2_full hstock hf) hy (SA.mem_full _ _) hc hs
+      hX ha hav
     exact ⟨D, ⟨C, ⟨j, hC.within hib', hj⟩, hDC⟩, hDs⟩
   obtain ⟨hGG, hGB⟩ := below_tips_compatible hU
     (Q := fun C => ∃ j, OriginWithin tr H C j b ∧ j ≤ s)
@@ -204,7 +208,8 @@ theorem vote_frame_upTo
     honest_supporter_upTo hrun hnc hpre hC
   exact ⟨x', hx', k', e'', hve', hs''.trans_le hj, Hd, hHd, hHdr, hDC.trans hCHd⟩
 
-/-- The frozen witness at a vote needs only recipient service within its finite horizon. -/
+/-- The frozen witness at a vote needs only recipient service within its finite horizon
+(`hstock`, §S.2 scope-(ii) item, as for `vote_frame_upTo`). -/
 theorem vote_frame_before
     {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
@@ -217,7 +222,7 @@ theorem vote_frame_before
     (hB : B ∈ tr.HonestBlocks H)
     (hBc : ∀ C j, OriginWithin tr H C j b → j ≤ s → Compatible (tr.HonestBlocks H) B C)
     (hw : ∃ x ∈ H, ∃ k e', SA.VoteAt tr.projAC x k e' ∧ e'.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
+      SA.VoteExtends (tr.HonestBlocks H) e'.msg B) (hstock : sp.committeeSize = sp.n) :
     B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
   have hU := (projFG_localRun hrun hnc).coherent
@@ -234,7 +239,9 @@ theorem vote_frame_before
       Anc (tr.HonestBlocks H) D C) y i := by
     rw [honestRowsSourced_iff]
     intro X hX a ha hav
-    obtain ⟨D, -, hDs, C, j, hC, hj, hDC⟩ := vote_row_source hrun hnc hf hy hc hs hX ha hav
+    obtain ⟨D, -, hDs, C, j, hC, hj, hDC⟩ := vote_row_source hrun hnc _ SA.CommitteeP.full
+      (SA.size_binding_full hstock) (SA.cs2_full hstock hf) hy (SA.mem_full _ _) hc hs
+      hX ha hav
     exact ⟨D, ⟨C, ⟨j, hC.within hib', hj⟩, hDC⟩, hDs⟩
   obtain ⟨hGG, hGB⟩ := below_tips_compatible hU
     (Q := fun C => ∃ j, OriginWithin tr H C j b ∧ j ≤ s)

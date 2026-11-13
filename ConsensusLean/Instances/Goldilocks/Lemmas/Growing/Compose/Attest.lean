@@ -269,7 +269,7 @@ theorem attest_not_excluded
       Set.compl_subset_compl.mpr (hrun.antitone hhi)
     have := Set.ncard_le_ncard hsub
     linarith [hp.twoFaults]
-  have hCB := SA.Growing.source_compatible_stored sp _ ro proposer H _ tr.projAC hrun'
+  have hCB := SA.Growing.source_compatible_stored sp _ ro proposer H _ tr.projAC hp.stock hrun'
     s m x v i₀ j' B D CV ℓ C hp.writer_honest hflD
     (hBD ▸ Anc.mono hΦwU (SA.anc_viableAncestor ℓw.frame D))
     ⟨fun x i e hx he ha hb => hsync.1 x i e hx he ha (by linarith),

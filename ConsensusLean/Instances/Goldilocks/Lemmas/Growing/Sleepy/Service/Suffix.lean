@@ -160,15 +160,16 @@ private theorem genesis_voter_facts (hrun : Growing.GoldilocksRun proposer dg H 
     have := Compose.head_slot_lt (hrun.upTo h0) (hnc.upTo _) hpj hP' hPs hc' hd' hPQ
     omega
   refine ⟨hs0, ?_, fun B hB hQB => ?_⟩
-  · rcases Compose.vote_fcRoot_old_of (hrun.upTo h0) (hnc.upTo _) hf hs0 hy hcy' hes with
-      hg | ⟨O, hO, hfO⟩
+  · rcases Compose.vote_fcRoot_old_of (hrun.upTo h0) (hnc.upTo _) hf hs0 hy hcy' hes hrun.stock
+      with hg | ⟨O, hO, hfO⟩
     · exact honestAt_genesis_root_anc hrun hU (hΦyU hΦy.fcRoot_mem) hg (hΦpU hQt)
     · exact Anc.mono hsub (hfO.trans (hold' O hO))
   · have hBP : B ∈ (tr.upTo (tr.time j)).HonestBlocks (H (tr.time j)) :=
       ⟨y, hy, j, by rw [hst]; exact hB⟩
     have h := Compose.vote_floor_le_of (hrun.upTo h0) (hnc.upTo _) hf hs0 hy hcy' hes
-      (by rw [hst]; exact hB) fun O hO =>
-        (hold' O hO).trans (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 hBP hQB)
+      (by rw [hst]; exact hB) (fun O hO =>
+        (hold' O hO).trans (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 hBP hQB))
+      hrun.stock
     rwa [hst] at h
 
 /-- The genesis start of the catch-up: `0 + 0 ≤ t_{s−1}` for `s > 0`. -/

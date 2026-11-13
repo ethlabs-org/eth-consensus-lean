@@ -36,11 +36,12 @@ private theorem toFG_some {sp : SAParams} {FGP : Type} {A : SAState sp.n}
     cases h
     exact ⟨(deepest_mem hC').1, hj, rfl⟩
 
-/-- Source compatibility for an ancestor of the block stored by a historical fast lock. -/
+/-- Source compatibility for an ancestor of the block stored by a historical fast lock. Stock
+committee only (`committeeSize = n`, §S). -/
 theorem source_compatible_stored (sp : SAParams)
     (FGP : Type) (ro : ReplayOrder sp FGP)
     (proposer : Nat → Fin sp.n) (H : Time → Set (Fin sp.n))
-    (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro)
+    (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) (hstk : sp.committeeSize = sp.n)
     (hrun : ACRun proposer tr H U) (s m : Nat) (w x : Fin sp.n) (i₀ i : Nat)
     (B D : Blk sp.n FGP) (CV : Set (Vote sp.n))
     (ℓ : ACLabel (goldilocksSA sp FGP ro)) (C : Blk sp.n FGP)
@@ -97,8 +98,10 @@ theorem source_compatible_stored (sp : SAParams)
       push_cast at this
       omega
     · omega
+  -- the stock committee (§S): every validator, `committeeSize = n`
   rcases lt_trichotomy s l₀.slot with hlt | heq | hgt
-  · refine down hLB' (fastLock_compatible_of_votes hrun hxj hj hfl' hf ?_)
+  · refine down hLB' (fastLock_compatible_of_votes hrun _ (fun _ => CommitteeP.full) hxj hj hfl'
+      (cs2_full hstk hf) ?_)
     intro z k hki hz e hv hes
     exact hvotes z k hki hz e hv (hes ▸ hlt) (by omega)
   · subst heq
@@ -114,11 +117,13 @@ theorem source_compatible_stored (sp : SAParams)
       push_cast at hlo
       linarith
     refine down hLB' ?_
-    rcases fastLock_same_slot hrun hw hfl hxj hfl' hsync hwtime (hr.time_mono hj.le) hf with h | h
+    rcases fastLock_same_slot hrun _ (fun _ => CommitteeP.full) (size_binding_full hstk) hw hfl
+      hxj hfl' hsync hwtime (hr.time_mono hj.le) (cs2_full hstk hf) with h | h
     exacts [Or.inr (hBD.trans h), anc_total hU h hBD]
   · have hσ : sp.slot (tr.time i) = s + 1 := by omega
     rcases hcase with ⟨j₁, hj₁, ℓ₁, e₁, hc₁, hs₁, hF₁⟩ | ⟨k, hk, hrk, htk⟩
-    · exact locks_after_unlock hrun hw hfl hBD hcarry hx hc₁ hs₁ hF₁ hj₁ l₀
+    · exact locks_after_unlock hrun (by rw [hstk]; exact Fin.pos x) hw hfl hBD hcarry hx hc₁ hs₁
+        hF₁ hj₁ l₀
         (hstate ▸ hl₀) hgt B₀ (hΦU hB₀) hB₀r
     · exfalso
       have he := hri.localRun.exec i ℓ hc'.2 (hc'.1 ▸ hx)
@@ -138,8 +143,8 @@ theorem source_compatible_stored (sp : SAParams)
       linarith
 
 theorem source_compatible (sp : SAParams) : SourceCompatible sp := by
-  intro FGP ro H U tr proposer hrun s m w x i₀ i B CV ℓ C hw hfl
-  exact source_compatible_stored sp FGP ro proposer H U tr hrun s m w x i₀ i B B CV ℓ C
+  intro FGP ro H U tr proposer hstk hrun s m w x i₀ i B CV ℓ C hw hfl
+  exact source_compatible_stored sp FGP ro proposer H U tr hstk hrun s m w x i₀ i B B CV ℓ C
     hw hfl .refl
 
 end Consensus.Goldilocks.SA.Growing

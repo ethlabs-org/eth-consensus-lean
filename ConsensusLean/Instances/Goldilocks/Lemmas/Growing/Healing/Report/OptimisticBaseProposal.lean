@@ -11,6 +11,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -68,8 +69,10 @@ theorem optimisticLock_pair_compatible_at
     (SA.upTo_optimisticLockAt hmono).mpr ⟨le_rfl, hd⟩
   have he' : SA.OptimisticLockAt (tr.projAC.upTo (tr.time j)) y j s E CW :=
     (SA.upTo_optimisticLockAt hmono).mpr ⟨le_rfl, he⟩
-  obtain ⟨-, hnD, ellD, A, hpD, -, hvD, hhD⟩ := SA.optimisticLockAt_spec hrx hx hd'
-  obtain ⟨-, hnE, ellE, A', hpE, -, hvE, hhE⟩ := SA.optimisticLockAt_spec hry hy he'
+  obtain ⟨-, hnD, ellD, A, hpD, -, hvD, hhD, -⟩ := SA.optimisticLockAt_spec hrx hx hd'
+    (SA.CommitteeDict.full sp.n) (fun _ _ _ => SA.mem_full _ _)
+  obtain ⟨-, hnE, ellE, A', hpE, -, hvE, hhE, -⟩ := SA.optimisticLockAt_spec hry hy he'
+    (SA.CommitteeDict.full sp.n) (fun _ _ _ => SA.mem_full _ _)
   rw [hrx.stock] at hnD hnE
   have hint := Set.ncard_inter_add_ncard_union (SA.voters CV) (SA.voters CW)
   have hu := Set.ncard_le_ncard (Set.subset_univ (SA.voters CV ∪ SA.voters CW))
@@ -288,7 +291,8 @@ theorem optimistic_next_proposal_of_early_witness_at
     have hmax : max (tr.time a') (tr.time c) ≤ tr.time i := by
       refine max_le ha't ?_
       obtain ⟨hct, -⟩ := SA.optimisticLockAt_spec (acRun_prefix' hrun hnc (hrun.time_nonneg c)) hx
-        ((SA.upTo_optimisticLockAt hmono).mpr ⟨le_rfl, hopt⟩)
+        ((SA.upTo_optimisticLockAt hmono).mpr ⟨le_rfl, hopt⟩) (SA.CommitteeDict.full sp.n)
+        (fun _ _ _ => SA.mem_full _ _)
       change tr.time c < _ at hct
       linarith only [hct, hlo, hti, hts, hΔ]
     have hf' : 2 * (H (max (tr.time a') (tr.time c)))ᶜ.ncard < sp.n := by

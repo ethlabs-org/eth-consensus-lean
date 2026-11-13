@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.F
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 
 public section
 
@@ -98,7 +99,8 @@ theorem optimistic_later_heads_of_witness_at
   have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hac.upTo (hrun.time_nonneg c)
   have ho := (SA.upTo_optimisticLockAt hrun.time_mono).mpr ⟨le_rfl, hopt⟩
-  have ht := (SA.optimisticLockAt_spec hr hx ho).1
+  have ht := (SA.optimisticLockAt_spec hr hx ho (SA.CommitteeDict.full sp.n)
+    (fun _ _ _ => SA.mem_full _ _)).1
   exact optimistic_later_heads_of_early_witness_at hrun hnc hsvc hawake hf hcatch hnr
     hm hmb hframe hx hopt hXD hx ht hcw hQw hh hJ hXQ
 

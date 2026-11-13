@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.SourceLabels
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -210,7 +211,10 @@ theorem vote_frame_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoC
   have hsrc : Compose.HonestRowsSourced (tr.upTo (tr.time i)) (H (tr.time i)) G y i := by
     rw [Compose.honestRowsSourced_iff]
     intro X hX a ha hav
-    obtain ⟨D, -, hDs, C, j, hC, hj, hDC⟩ := vote_row_source hrun' hnc' hf hy hc' hs hX ha hav
+    -- TEMP(C2): C3/C4 replaces
+    obtain ⟨D, -, hDs, C, j, hC, hj, hDC⟩ := vote_row_source hrun' hnc' _ SA.CommitteeP.full
+      (SA.size_binding_full hrun'.stock) (SA.cs2_full hrun'.stock hf) hy (SA.mem_full _ _) hc' hs
+      hX ha hav
     exact ⟨D, ⟨C, ⟨j, hC.within fun k hk => hm hk.le, hj⟩, hDC⟩, hDs⟩
   -- `Σ.J` and `Σ.F` are compatible with `B` among the blocks held while honest
   have hR := fg_reachable hrun'.toLocalRun hy i

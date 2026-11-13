@@ -136,6 +136,7 @@ theorem fastLock_counted_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun p
   have hsub := upTo_subset hrun hd
   obtain ⟨hcount, hCV⟩ := SA.fastLock_counted (acRun_upTo hrun hnc hd) hy
     ((sa_fastLockAt_upTo hrun.time_mono).mpr ⟨le_rfl, hfl⟩)
+  rw [hrun.stock] at hcount -- TEMP(C2): C3/C4 replaces
   refine ⟨hcount, fun v hv => ?_⟩
   obtain ⟨hvs, R, hR, hRr, hRs, hBR⟩ := hCV v hv
   exact ⟨hvs, R, hsub hR, hRr, hRs, hBR.mono hsub⟩

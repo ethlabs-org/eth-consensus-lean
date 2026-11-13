@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 
 public section
 
@@ -86,9 +87,11 @@ theorem vote_locks_compatible_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     obtain ⟨Φ', A, D, -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
       SA.lock_origin_readPoint hrun' hy hcT l₀ hl₀ (by rw [hs]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 (hsub hL₀) (hΦU hB₀) (hL₀r.trans hB₀r.symm)
+    -- TEMP(C2): C3/C4 replaces
     refine down (Anc.mono hsub hL₀D)
-      (SA.origin_compatible hU (hΦ'U.trans hsub) h34
-        (by simpa only [hrun'.stock] using hf) fun v hv hvH => ?_)
+      (SA.origin_compatible hU (hΦ'U.trans hsub) (SA.CommitteeDict.full sp.n) h34
+        (fun _ _ => SA.mem_full _ _)
+        (by simpa only [SA.ncard_inter_full, hrun'.stock] using hf) fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨hjd, hvote⟩ := sa_voteAt_upTo.mp hvote
     have hvj : e'.msg.val ∈ H (tr.time j) := hrun.antitone hjd hvH

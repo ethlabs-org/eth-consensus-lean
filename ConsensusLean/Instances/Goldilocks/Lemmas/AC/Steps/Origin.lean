@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -405,14 +406,18 @@ theorem current_lock_write_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H
     linarith
 
 /-- The optimistic write's actual counted pool, threshold, timing and honest-vote
-provenance. This retains the consumer content of `OptimisticLockAt`. -/
+provenance, and the committee membership of its counted voters when the post-state of the
+writer's call (`OptimisticPoint`'s pool is kept there) holds only committee signatures. This
+retains the consumer content of `OptimisticLockAt`. -/
 theorem optimisticLockAt_spec (hrun : ACRun proposer tr H U)
     {y : Fin sp.n} (hy : y ∈ H) {i s : Nat} {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    (ho : OptimisticLockAt tr y i s D CV) :
+    (ho : OptimisticLockAt tr y i s D CV) (K : CommitteeDict sp.n)
+    (hPc : ∀ σ, ∀ v ∈ (tr.state y (i + 1)).pool σ, v.val ∈ K.committee σ) :
     tr.time i < sp.ts s + 2 * sp.Δ ∧ 3 * sp.committeeSize ≤ 4 * (voters CV).ncard ∧
       ∃ ell A, OptimisticPoint tr y i ell A ∧ D ∈ ell.frame.tree ∧
         (∀ v ∈ CV, v ∈ A.pool s ∧ v.slot = s ∧ AncR ell.frame D v.head) ∧
-        (∀ v ∈ CV, v.val ∈ H → ∃ a ≤ i, ∃ e, VoteAt tr v.val a e ∧ e.msg = v) := by
+        (∀ v ∈ CV, v.val ∈ H → ∃ a ≤ i, ∃ e, VoteAt tr v.val a e ∧ e.msg = v) ∧
+        voters CV ⊆ K.committee s := by
   obtain ⟨ell, A, hp, hs, hsel, rfl⟩ := ho
   unfold optimisticSelect at hsel
   dsimp only at hsel
@@ -424,13 +429,15 @@ theorem optimisticLockAt_spec (hrun : ACRun proposer tr H U)
     constructor
     · rintro ⟨v, ⟨hv, ha⟩, he⟩; exact ⟨v, hv, he, ha⟩
     · rintro ⟨v, hv, he, ha⟩; exact ⟨v, ⟨hv, ha⟩, he⟩
-  refine ⟨?_, ?_, ell, A, hp, hD, ?_, ?_⟩
+  refine ⟨?_, ?_, ell, A, hp, hD, ?_, ?_, ?_⟩
   · exact lt_of_not_ge (fun ht => hn (Or.inr (Or.inr (hs ▸ ht))))
   · rw [hv]; exact hs ▸ hcount
   · intro v hv
     exact ⟨hv.1, (optimisticPoint_pool_slot hrun.localRun hy hp hv.1), hv.2⟩
   · intro v hv hh
     exact (optimisticPoint_pool_vote hrun hy hp hv.1 hh).2
+  · rintro x ⟨v, hv, rfl⟩
+    exact hPc s v (optimisticPoint_pool_post hrun.localRun hy hp s hv.1)
 
 /-- The conclusion of `lock_origin_readPoint` for the lock `l`, before cut `i`. -/
 private def Good (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
@@ -559,28 +566,84 @@ theorem lock_origin_readPoint (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy 
   lock_origin_readPointU (hrun := hrun.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e)
       (hc := hc)
 
+private theorem slot_le_movesBack {Φ : Frm sp.n FGP} {L L' : Set Lock} (hm : MovesBack sp Φ L L')
+    {σ : Nat} (h : ∀ l ∈ L, l.slot ≤ σ) : ∀ l ∈ L', l.slot ≤ σ := by
+  intro l' hl'
+  obtain ⟨l, hl, hsl, -⟩ := hm l' hl'
+  exact hsl ▸ h l hl
+
+/-- **Read-point lock slots.** Every lock at the read point of an honest vote at cut `i` is of a
+slot no later than the cut's: a stored lock was written at an earlier cut, by an optimistic check
+of that cut's slot or by an update at `t_s + 6Δ`; the receipt's optimistic check writes the
+cut's slot; unlocking keeps slots. -/
+theorem readPoint_lock_slot_leU
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
+    ∀ l ∈ e.readPoint.locks, l.slot ≤ sp.slot (tr.time i) := by
+  obtain ⟨hΦ, -⟩ := frameIn_of_callAtU hr hy hc.1
+  obtain ⟨P, he, hPi, hV, hP⟩ := emits_tryVoteU hr hy hc
+  obtain ⟨-, -, hlocks, -⟩ := tryVote_em (L := u i) he
+  have hlaw := hr.lawfulAt hy hc.1 hΦ
+  rw [← hPi, hV] at hlaw
+  have hS : ∀ l ∈ (tr.state y i).locks, l.slot ≤ sp.slot (tr.time i) := by
+    intro l hl
+    obtain ⟨j, hj, B, horig, -⟩ := lock_provenanceU hr hy i l hl
+    have hmono := slot_mono sp (hr.time_nonneg j) (hr.time_mono hj.le)
+    rcases horig with ⟨CV, ℓ', A, -, hslot, -⟩ | ⟨ℓ', -, -, htj, -⟩
+    · omega
+    · have hΔ := sp.toParams.hΔ
+      have hts : sp.ts (l.slot : Nat) ≤ tr.time j := by
+        rw [htj]; simp only [SAParams.ts]; linarith
+      have := ((ts_le_iff_le_slot sp (hr.time_nonneg j)) _).1 hts
+      push_cast at this
+      omega
+  have hPl : ∀ l ∈ P.locks, l.slot ≤ sp.slot (tr.time i) := by
+    rcases hP with rfl | ⟨A, -, rfl, hAl⟩
+    · exact hS
+    · refine optimisticConfirmationM_of
+        (P := fun X : SAState sp.n => ∀ l ∈ X.locks, l.slot ≤ sp.slot (tr.time i)) ?_
+        (hAl ▸ hS)
+      unfold optimisticConfirmation
+      rcases optimisticSelect sp A ℓ.frame (tr.time i) with _ | D
+      · exact hAl ▸ hS
+      · rw [updateLatestConfirmed_keeps_locks]
+        refine slot_le_movesBack
+          (((locks_move_back sp) FGP ℓ.frame A.locks (tr.time i) hΦ).2.1 _ _) ?_
+        rintro l (hl | ⟨p, -, rfl⟩)
+        · exact (hAl ▸ hS) l hl
+        · exact le_rfl
+  rw [hlocks]
+  split_ifs
+  · exact slot_le_movesBack (hlaw.movesBack hΦ) hPl
+  · exact hPl
+
 /-- A current-label read lock is below the common head of the strictly earlier
 honest casts. The strict cut comes from the read point, not from an arbitrary
 optimistic write (which may include its own post-cast admission). This is the
 local causal step; it does not assume future unanimity or close the induction. -/
 theorem current_read_lock_below_of_earlier_heads (hrun : ACRun proposer tr H U)
-    (hf : 4 * Hᶜ.ncard < 3 * sp.committeeSize)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ell : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ell e) {l : Lock} (hl : l ∈ e.readPoint.locks)
-    (hs : l.slot = e.msg.slot) {P : Blk sp.n FGP} (hP : P ∈ U)
+    (hs : l.slot = e.msg.slot) (K : CommitteeDict sp.n) (hPK : CommitteeP K tr H)
+    (hf : 4 * (K.committee e.msg.slot ∩ Hᶜ).ncard < 3 * sp.committeeSize)
+    {P : Blk sp.n FGP} (hP : P ∈ U)
     (hIH : ∀ x ∈ H, ∀ k < i, ∀ e', VoteAt tr x k e' →
       e'.msg.slot = e.msg.slot → e'.msg.head = P.root)
     {B : Blk sp.n FGP} (hB : B ∈ U) (hBr : B.root = l.block) : Anc U B P := by
-  obtain ⟨Φ, A, D, -, hΦU, -, hcnt, hpool, -, L, hL, hLr, hLD⟩ :=
+  obtain ⟨Φ, A, D, -, hΦU, -, hcnt, hpool, ⟨k₀, -, hsub⟩, L, hL, hLr, hLD⟩ :=
     lock_origin_readPoint hrun hy hc l hl (by omega)
   obtain rfl : L = B := hrun.localRun.coherent.1 hL hB (hLr.trans hBr.symm)
   obtain ⟨z, ⟨v, hv, rfl, R, hR, hRr, hDR⟩, hz⟩ :
       ∃ z ∈ optimisticVoters sp A Φ l.slot D, z ∈ H := by
     by_contra hn
     push Not at hn
-    have hsub : optimisticVoters sp A Φ l.slot D ⊆ Hᶜ := fun z hz => hn z hz
-    have hle := Set.ncard_le_ncard hsub (Set.toFinite _)
+    have hsub' : optimisticVoters sp A Φ l.slot D ⊆ K.committee e.msg.slot ∩ Hᶜ := by
+      intro z hz
+      refine ⟨?_, hn z hz⟩
+      obtain ⟨v, hv, rfl, -⟩ := hz
+      exact hs ▸ hPK.1 y hy (k₀ + 1) l.slot v (hsub hv)
+    have hle := Set.ncard_le_ncard hsub' (Set.toFinite _)
     omega
   obtain ⟨hvs, k, hki, e', he', hmsg⟩ := hpool v hv hz
   have hhead := hIH v.val hz k hki e' he' (by rw [hmsg, hvs, hs])

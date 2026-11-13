@@ -121,12 +121,19 @@ theorem late_result_prefix_votes_before_at
         have := SA.slot_mono sp hd (hrun.time_mono (Nat.le_of_not_gt hn))
         omega
       exact hprior z q e' hqi (Compose.Growing.hVoteAt_iff.2 ⟨hz, ell', hc'⟩) (by omega)
-    exact SA.Growing.next_transfer sp _ ro H _ tr.projAC proposer hrun' m y i B ell e hy hcast hm
-      hall
-      (hp.half_committee_at hmts (t := tr.time i) (by linarith only [htime, hts1, hΔ]) hib)
+    have hfb := fault_bound_late_at hp (t := tr.time i)
+      (hmts.trans (by linarith only [htime, hts1, hΔ])) hib
+    exact SA.Growing.next_transfer sp _ ro H _ tr.projAC proposer hrun'
+      (SA.CommitteeDict.full sp.n)
+      ⟨fun _ _ _ _ _ s _ _ => SA.mem_full s _, fun _ _ _ _ _ _ s _ _ => SA.mem_full s _⟩
+      (fun _ _ _ _ _ _ _ v _ => SA.mem_full v.slot _) (SA.size_binding_full hp.stock)
+      m y i B ell e hy hcast hm hall
+      (by
+        rw [hp.stock]
+        exact hp.half_committee_at hmts (t := tr.time i) (by linarith only [htime, hts1, hΔ]) hib)
       (honest_votes_carry_reset_at hp hc hy hcast hm hmts hall hFB)
-      (fault_bound_late_at hp (t := tr.time i)
-        (hmts.trans (by linarith only [htime, hts1, hΔ])) hib)
+      ((SA.ncard_inter_full_lt_iff _ _ _).2 hfb)
+      (SA.Growing.cs2_full_of_faultBoundAt hp.stock hfb)
       (by rw [← hm]; exact Or.inl hv)
       (fun z q hq hz e' he hslot => hprior z q e' hq
         (Compose.Growing.hVoteAt_iff.2 ⟨hz, he⟩) (by omega))

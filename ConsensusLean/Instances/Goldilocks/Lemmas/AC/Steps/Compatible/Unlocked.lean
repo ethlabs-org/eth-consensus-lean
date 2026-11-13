@@ -38,7 +38,7 @@ inside `U`. -/
 theorem fastLock_counted (hrun : ACRun proposer tr H U)
     {w : Fin sp.n} (hw : w ∈ H) {i₀ s : Nat}
     {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr w i₀ s B CV) :
-    sp.n ≤ 2 * {u | ∃ v ∈ CV, v.val = u}.ncard ∧
+    sp.committeeSize ≤ 2 * {u | ∃ v ∈ CV, v.val = u}.ncard ∧
       ∀ v ∈ CV, v.slot = s ∧ ∃ R ∈ U, R.root = v.head ∧ R.slot ≤ s ∧ Anc U B R := by
   have hr := hrun.localRun
   rcases hfl with ⟨ℓ, C, ⟨hc, -, -, -⟩, -, hD, rfl⟩ | ⟨ℓ, A, hpt, hsl, hsel, rfl⟩
@@ -46,7 +46,6 @@ theorem fastLock_counted (hrun : ACRun proposer tr H U)
     refine ⟨?_, ?_⟩
     · have hfast := (deepest_mem hD).1.2.2
       unfold FastTest confirmationScore at hfast
-      rw [hrun.stock] at hfast
       refine hfast.trans (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_))
       rintro u ⟨hu, x, ⟨hx, hres⟩, hval, -, hanc⟩
       exact ⟨x, ⟨hx, hval ▸ hu, hres, hanc⟩, hval⟩
@@ -67,7 +66,6 @@ theorem fastLock_counted (hrun : ACRun proposer tr H U)
     dsimp only at hsel
     split_ifs at hsel
     have h34 := (deepest_mem hsel).1.2.1
-    rw [hrun.stock] at h34
     refine ⟨?_, ?_⟩
     · have hsub : optimisticVoters sp A ℓ.frame (sp.slot (tr.time i₀)) B ⊆
           {u | ∃ v ∈ {v | v ∈ A.pool s ∧ AncR ℓ.frame B v.head}, v.val = u} := by
@@ -81,9 +79,10 @@ theorem fastLock_counted (hrun : ACRun proposer tr H U)
       omega
 
 /-- **The locks after the unlocking of slot `s + 1`**, for a fast lock on `D` and any `B ⪯ D`
-(the block the lock stores). -/
+(the block the lock stores). The committee is nonempty (`hpos`). -/
 theorem locks_after_unlock
-    (hrun : ACRun proposer tr H U) {s : Nat} {w x : Fin sp.n} {i₀ j b : Nat}
+    (hrun : ACRun proposer tr H U) (hpos : 0 < sp.committeeSize) {s : Nat} {w x : Fin sp.n}
+    {i₀ j b : Nat}
     {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hw : w ∈ H) (hfl : FastLockAt tr w i₀ s D CV)
     (hBD : Anc U B D) (hcarry : Carry tr H U s CV) (hx : x ∈ H)
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr x j ℓ e)
@@ -114,7 +113,6 @@ theorem locks_after_unlock
       exact Or.inr (hBF.trans (Anc.mono hΦU (hΦ.rooted.2 X hX)))
     -- `B` is in the tree: a counted head extends it, and `x` accepted it before `t_s + 3Δ`
     have hBt : B ∈ ℓ.frame.tree := by
-      have hpos : 0 < sp.n := Fin.pos x
       obtain ⟨u, v, hv, -⟩ := Set.nonempty_of_ncard_ne_zero
         (s := {u | ∃ v ∈ CV, v.val = u}) (by omega)
       obtain ⟨-, R, hR, hRr, -, hBR⟩ := hcv v hv
@@ -144,7 +142,7 @@ theorem locks_after_unlock
     intro l hl hls X hX hXr
     rw [hL₀, hs, hσ] at hl
     refine (unlock_compatible hΦ hBt (S := {u | ∃ v ∈ CV, v.val = u}) ?_
-      (by simpa only [hrun.stock] using hn) L₀ (tr.time j) l hl
+      hn L₀ (tr.time j) l hl
       (by exact_mod_cast hls) X hX hXr).imp (Anc.mono hΦU) (Anc.mono hΦU)
     rintro u ⟨v, hv, rfl⟩
     obtain ⟨hvs, R, hR, hRr, hRs, hBR⟩ := hcv v hv

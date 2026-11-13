@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.NextVotesCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 
 public section
 
@@ -66,10 +67,13 @@ theorem optimistic_next_votes_of_early_witness (hrun : GoldilocksRun proposer dg
     refine ⟨hvs, hw, Hv, hHv, hHvr, ?_, ha⟩
     rw [Compose.frame_of_projAC hrun hy hcast.1]
     exact hFX.trans (hXD.trans hDHv)
-  exact SA.optimistic_transfer_stored sp hS.run hx hopt hXD (by
+  have hhalf : 2 * Hᶜ.ncard < sp.n := by
     have hn := sp.toParams.hn
     change 0 < sp.n at hn
-    omega) hy hcast hs hcarry hviab ih
+    omega
+  exact SA.optimistic_transfer_stored sp hS.run (SA.CommitteeDict.full sp.n) SA.CommitteeP.full
+    SA.CommitteeT.full (SA.size_binding_full hS.stock) hx hopt hXD
+    (SA.cs2_full hS.stock hhalf) (SA.cs2_full hS.stock hhalf) hy hcast hs hcarry hviab ih
 
 /-- The same-slot proposal base at label s = s_p−1.
 An actual optimistic write and an early-held common-floor witness suffice; recipient
@@ -258,7 +262,8 @@ theorem optimistic_later_heads_of_witness (hrun : GoldilocksRun proposer dg H tr
           some (d, pay) → Anc (tr.HonestBlocks H) X d.head) := by
   have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
   exact optimistic_later_heads_of_early_witness hrun hnc hsvc hawake hf hcatch hnr hm hmb
-    hframe hx hopt hXD hx (SA.optimisticLockAt_spec hS.run hx hopt).1 hcw hQw hh hJ hXQ
+    hframe hx hopt hXD hx (SA.optimisticLockAt_spec hS.run hx hopt (SA.CommitteeDict.full sp.n)
+      (fun _ _ _ => SA.mem_full _ _)).1 hcw hQw hh hJ hXQ
 
 /- The full proposal domain needs no frozen stamp. In kind J use J itself;
 otherwise the cache's hmax block supplies the root's viable descendant. -/
@@ -530,13 +535,15 @@ theorem regular_fast_next_votes_of_early_witness (hrun : GoldilocksRun proposer 
     obtain ⟨hvs, hw, Hv, hHv, hHvr, hDHv, ha⟩ := fastLock_writer hr hx hfl v hv
     refine ⟨hvs, hw, Hv, hHv, hHvr, ?_, ha⟩
     rw [Compose.frame_of_projAC hrun hy hcast.1]; exact hFX.trans (hXD.trans hDHv)
-  exact SA.first_transfer_stored_window_before sp hS.run
-    (SA.serviceWindowBefore_of_sync hS.sync) hm hx hfl (hu.2.2.1.trans_le hmb)
-    hXD hy hcast hs hcarry
-    (faultBound_of_service hawake hf hnr (hr.time_nonneg i) (by
+  have hfb := faultBound_of_service hawake hf hnr (hr.time_nonneg i) (by
       change gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)
       rw [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega]; exact hm)
-      (hhigh.trans hmb)) hviab ih
+      (hhigh.trans hmb)
+  exact SA.first_transfer_stored_window_before sp hS.run (SA.CommitteeDict.full sp.n)
+    SA.CommitteeP.full SA.CommitteeT.full (SA.size_binding_full hS.stock)
+    (SA.serviceWindowBefore_of_sync hS.sync) hm hx hfl (hu.2.2.1.trans_le hmb)
+    hXD hy hcast hs hcarry ((SA.faultBoundK_full_iff _ _).2 hfb)
+    (SA.cs2_full_of_faultBound sp hS.stock hfb) hviab ih
 
 /-- A finite-window result has an actual earlier honest supporter. Participation
 is derived from the two actual voting deadlines, not assumed of the update. -/
@@ -668,7 +675,9 @@ theorem optimistic_prefix_before (hrun : GoldilocksRun proposer dg H tr)
     have hn : 0 < sp.n := sp.toParams.hn
     omega
   rw [← SA.viableTree_voteDomain_eq_of_viable ⟨B, hB⟩]
-  exact SA.optimistic_prefix_of_carry sp hS.run hx hopt hBD hhalf hy hc hes hcarry
+  exact SA.optimistic_prefix_of_carry sp hS.run (SA.CommitteeDict.full sp.n) SA.CommitteeP.full
+    SA.CommitteeT.full (SA.size_binding_full hS.stock) hx hopt hBD (SA.cs2_full hS.stock hhalf)
+    hy hc hes hcarry
     (SA.viableTree_voterBlockTree_subset_voteDomain hB) haB
 
 end Consensus.Goldilocks.Healing

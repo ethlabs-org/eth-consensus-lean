@@ -101,7 +101,8 @@ theorem fastLock_fastLock_compatibleU
     {i i' : Nat} {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
     (hfl : FastLockAt tr x i s B CV) (hx' : x' ∈ H) (hfl' : FastLockAt tr x' i' s B' CV')
     (hs : gbar g ≤ sp.ts s) : Compatible U B B' :=
-  fastLock_same_slotU hS.run hx hfl hx' hfl' (hS.syncAC hs _) hS.two_faulty_lt
+  fastLock_same_slotU hS.run _ CommitteeP.full (size_binding_full hS.stock) hx hfl hx' hfl'
+    (hS.syncAC hs _) (cs2_full hS.stock hS.two_faulty_lt)
 
 /-- **Two fast origins of one slot** (fast test or optimistic, in any combination; this includes
 the optimistic/optimistic case): A1.9's same-slot lemma under `Sync[t_s, t_{s+1} + Δ]` and

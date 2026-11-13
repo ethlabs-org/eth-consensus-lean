@@ -28,7 +28,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-/-- An optimistic write propagates an arbitrary viable prefix to next-slot votes. -/
+/-- An optimistic write propagates an arbitrary viable prefix to next-slot votes. The transfer
+is at the full committee (`hstock`, §S.2 scope-(ii) item). -/
 theorem optimistic_next_votes_of_early_witness_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
@@ -48,7 +49,7 @@ theorem optimistic_next_votes_of_early_witness_at
     {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocksAt H) J X)
-    (hXQ : Anc (tr.HonestBlocksAt H) X Q) :
+    (hXQ : Anc (tr.HonestBlocksAt H) X Q) (hstock : sp.committeeSize = sp.n) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
       e.msg.slot = s + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
   apply next_votes_of_early_witness_at hrun hnc hsvc hawake hf hcatch hm le_rfl hmb hframe hw
@@ -75,8 +76,10 @@ theorem optimistic_next_votes_of_early_witness_at
     have hn : 0 < sp.n := sp.toParams.hn
     omega
   exact SA.Growing.optimistic_transfer_stored
-    (Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc)
-    hx hopt hXD hhalf hy hcast hs hcarry hviab
+    (Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc) _
+    (fun _ => SA.CommitteeP.full) (fun _ => SA.CommitteeT.full) (SA.size_binding_full hstock)
+    hx hopt hXD (SA.cs2_full hstock hhalf) (SA.cs2_full hstock hhalf) hy hcast hs hcarry
+    hviab
     (fun z k hki hz ev hv hes => ih z k ev hki hz hv hes)
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof

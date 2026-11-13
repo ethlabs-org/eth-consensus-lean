@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 
 public section
 
@@ -42,14 +43,18 @@ theorem proposerVotersAgree_of_growing (h : Growing.ProposerVotersAgree sp) :
       ht hc hs hpay (syncACAt_const.mpr hsync)
 
 theorem firstTransfer_of_growing (h : Growing.FirstTransfer sp) : FirstTransfer sp :=
-  fun FGP ro H U tr proposer hrun s x y i₀ i B CV ℓ e hx hl hy hc hs hsync hcarry hf hv he =>
-    h FGP ro (fun _ => H) U tr proposer (acRun_const.mpr hrun) s x y i₀ i B CV ℓ e hx hl hy hc hs
-      (syncACAt_const.mpr hsync) hcarry hf hv ((earlierVotesExtendAt_const _ _ _).mpr he)
+  fun FGP ro H U tr proposer hrun K hP hT hsize s x y i₀ i B CV ℓ e hx hl hy hc hs hsync hcarry hf
+      hf1 hv he =>
+    h FGP ro (fun _ => H) U tr proposer (acRun_const.mpr hrun) K hP.at hT.at hsize s x y i₀ i B
+      CV ℓ e hx hl hy hc hs
+      (syncACAt_const.mpr hsync) hcarry hf hf1 hv ((earlierVotesExtendAt_const _ _ _).mpr he)
 
 theorem nextTransfer_of_growing (h : Growing.NextTransfer sp) : NextTransfer sp := by
-  intro FGP ro H U tr proposer hrun m y i B ℓ e hy hc hs hall hhalf hcarry hf hv he
-  refine h FGP ro (fun _ => H) U tr proposer (acRun_const.mpr hrun) m y i B ℓ e hy hc hs
-    (fun x j e' hx hv' hs' => hall x hx j e' hv' hs') ?_ ?_ hf hv
+  intro FGP ro H U tr proposer hrun K hP hT hsize m y i B ℓ e hy hc hs hall hhalf hcarry hf hf1 hv
+    he
+  refine h FGP ro (fun _ => H) U tr proposer (acRun_const.mpr hrun) K hP.at hT.at hsize m y i B
+    ℓ e hy hc hs
+    (fun x j e' hx hv' hs' => hall x hx j e' hv' hs') ?_ ?_ hf hf1 hv
     ((earlierVotesExtendAt_const _ _ _).mpr he)
   · convert hhalf using 4
     ext x
@@ -59,14 +64,16 @@ theorem nextTransfer_of_growing (h : Growing.NextTransfer sp) : NextTransfer sp 
 
 theorem optimisticTransfer_of_growing (h : Growing.OptimisticTransfer sp) :
     OptimisticTransfer sp :=
-  fun FGP ro H U tr proposer hrun s x y i₀ i B CV ℓ e hx hl hf hy hc hs hcarry hv he =>
-    h FGP ro (fun _ => H) U tr proposer (acRun_const.mpr hrun) s x y i₀ i B CV ℓ e hx hl hf hy hc hs
+  fun FGP ro H U tr proposer hrun K hP hT hsize s x y i₀ i B CV ℓ e hx hl hf hf1 hy hc hs hcarry
+      hv he =>
+    h FGP ro (fun _ => H) U tr proposer (acRun_const.mpr hrun) K hP.at hT.at hsize s x y i₀ i B
+      CV ℓ e hx hl hf hf1 hy hc hs
       hcarry hv ((earlierVotesExtendAt_const _ _ _).mpr he)
 
 theorem optimisticNextUpdate_of_growing (h : Growing.OptimisticNextUpdate sp) :
     OptimisticNextUpdate sp :=
-  fun FGP ro H U tr proposer hrun s z k B ℓ hf hall hz hu hhalf hres =>
-    h FGP ro (fun _ => H) U tr proposer (acRun_const.mpr hrun) s z k B ℓ hf
+  fun FGP ro H U tr proposer hrun K hP hT hsize s z k B ℓ hf hall hz hu hhalf hres =>
+    h FGP ro (fun _ => H) U tr proposer (acRun_const.mpr hrun) K hP.at hT.at hsize s z k B ℓ hf
       (fun x' j e hx hv hs => hall x' hx j e hv hs) hz hu hhalf hres
 
 theorem sourceAge_of_growing (h : Growing.SourceAge sp) : SourceAge sp :=
@@ -79,9 +86,9 @@ theorem resultTransfer_of_growing (h : Growing.ResultTransfer sp) : ResultTransf
       hcarry hv hl hw
 
 theorem sourceCompatible_of_growing (h : Growing.SourceCompatible sp) : SourceCompatible sp :=
-  fun FGP ro H U tr proposer hrun s m w x i₀ i B CV ℓ C hw hl hsync hcarry hf hx ht h1 h2 hall
-      hcase =>
-    h FGP ro (fun _ => H) U tr proposer (acRun_const.mpr hrun) s m w x i₀ i B CV ℓ C hw hl
+  fun FGP ro H U tr proposer hstock hrun s m w x i₀ i B CV ℓ C hw hl hsync hcarry hf hx ht h1 h2
+      hall hcase =>
+    h FGP ro (fun _ => H) U tr proposer hstock (acRun_const.mpr hrun) s m w x i₀ i B CV ℓ C hw hl
       (syncACAt_const.mpr hsync) ((carry_const _ _).mpr hcarry) hf hx ht h1 h2
       (fun z j hj hz e hv hs1 hs2 => hall z hz j hj e hv hs1 hs2) hcase
 

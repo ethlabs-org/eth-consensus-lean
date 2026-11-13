@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Next
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -19,11 +21,14 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 theorem optimistic_transfer_stored
-    (hrun : ACRun proposer tr H U) {s : Nat}
+    (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n)
+    (hP : ∀ t, CommitteeP K (tr.upTo t) (H t)) (hT : ∀ t, CommitteeT K (tr.upTo t) (H t))
+    (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hx : x ∈ H (tr.time i₀)) (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D)
-    (hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n)
+    (hf : 2 * (K.committee s ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
+    (hf1 : 2 * (K.committee (s + 1) ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
     (hy : y ∈ H (tr.time i)) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
     (hcarry : CarryAt tr U y i e s CV) (hviab : ViableAtVote ℓ e (s + 1) B)
     (hearlier : EarlierVotesExtendAt tr H U i (s + 1) B) : VoteExtends U e.msg B := by
@@ -47,13 +52,18 @@ theorem optimistic_transfer_stored
     · exact h.1.1
     · exact mem_of_anc h hΦ.fcRoot_mem
   set SX := optimisticVoters sp A ℓx.frame s D
-  have h34 : 3 * sp.n ≤ 4 * SX.ncard := by
+  have h34 : 3 * sp.committeeSize ≤ 4 * SX.ncard := by
     have h := hsel
     unfold optimisticSelect at h
     dsimp only at h
     split_ifs at h
     have := (deepest_mem h).1.2.1
-    rwa [hslx, hrun.stock] at this
+    rwa [hslx] at this
+  have hSX : SX ⊆ K.committee s := by
+    rintro u ⟨v, hv, rfl, -⟩
+    exact (hP (tr.time i₀)).2 x hx i₀ ℓx A hpt' s v hv
+  have hf2 : 2 * (K.committee s ∩ (H (tr.time i))ᶜ).ncard < (K.committee s).ncard := by
+    rw [hsize s]; exact hf
   have hxi : tr.time i₀ ≤ tr.time i := by
     have hslt : tr.time i₀ < sp.ts s + 2 * sp.Δ := by
       have h := hsel
@@ -85,26 +95,28 @@ theorem optimistic_transfer_stored
       (optimisticPoint_pool_slot hrx.localRun hx hpt' hv) ⟨R, hΦxU hR, hRr,
         (frame_slot_le sp hrx.localRun hx hpt'.1 R hR).trans hslx.le,
         hBD.trans (Anc.mono hΦxU hDR)⟩
-  have hE : (equivocators V.votes).ncard ≤ (H (tr.time i))ᶜ.ncard :=
-    Set.ncard_le_ncard fun w hw hwH => honest_not_equivocator hry hy hc' hwH hw
-  have hcompl : SX.ncard + SXᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have hout : (voters V.votes \ SX).ncard ≤ SXᶜ.ncard :=
-    Set.ncard_le_ncard fun w hw => hw.2
+  have hW : voters V.votes ⊆ K.committee s := by
+    rintro u ⟨v, hv, rfl⟩
+    have hK := (hT (tr.time i)) y hy i ℓ e hc' s v hv
+    rwa [merged_vote_slot hry.localRun hy hc' v hv] at hK
+  have hE : equivocators V.votes ⊆ K.committee s ∩ (H (tr.time i))ᶜ := by
+    intro w hw
+    refine ⟨?_, fun hwH => honest_not_equivocator hry hy hc' hwH hw⟩
+    obtain ⟨a, ha, -, -, -, rfl, -⟩ := hw
+    exact hW ⟨a, ha, rfl⟩
   have hm : ∀ (Φ' : Frm sp.n FGP) (A' : SAState sp.n) (D' : Blk sp.n FGP), FrameOK Φ' →
-      Φ'.tree ⊆ U → D' ∈ Φ'.tree → 3 * sp.n ≤ 4 * (optimisticVoters sp A' Φ' s D').ncard →
+      Φ'.tree ⊆ U → D' ∈ Φ'.tree →
+      3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A' Φ' s D').ncard →
       (∀ v ∈ A'.pool s, v.val ∈ H (tr.time i) → v.slot = s ∧
         ∃ j < i, ∃ e', VoteAt (tr.upTo (tr.time i)) v.val j e' ∧ e'.msg = v) →
       (∃ k ≤ i, A'.pool s ⊆ ((tr.upTo (tr.time i)).state y (k + 1)).pool s) →
       Compatible U D' B := by
-    intro Φ' A' D' _ hΦ'U _ h34' hpool _
-    have hint : (H (tr.time i))ᶜ.ncard < (SX ∩ optimisticVoters sp A' Φ' s D').ncard := by
-      have := Set.ncard_inter_add_ncard_union SX (optimisticVoters sp A' Φ' s D')
-      have := Set.ncard_le_ncard (Set.subset_univ (SX ∪ optimisticVoters sp A' Φ' s D'))
-      rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at this
-      omega
+    rintro Φ' A' D' _ hΦ'U _ h34' hpool ⟨k, -, hsub⟩
+    have hO' : optimisticVoters sp A' Φ' s D' ⊆ K.committee s := by
+      rintro u ⟨v, hv, rfl, -⟩
+      exact (hP (tr.time i)).1 y hy (k + 1) s v (hsub hv)
     obtain ⟨w, ⟨⟨v₁, hv₁, rfl, R₁, hR₁, hR₁r, hBR₁⟩, v₂, hv₂, hv₂w, R₂, hR₂, hR₂r, hDR₂⟩, hwH⟩ :=
-      Set.exists_mem_notMem_of_ncard_lt_ncard hint
+      quorums_meet (K.committee s) (hsize s) hSX hO' h34 h34' hf2
     have hwH : v₁.val ∈ H (tr.time i) := not_not.mp hwH
     obtain ⟨_, j₁, hj₁, e₁, hvote₁, rfl⟩ := optimisticPoint_pool_vote hrx hx hpt' hv₁
       (hr.antitone hxi hwH)
@@ -120,16 +132,15 @@ theorem optimistic_transfer_stored
     intro x hx j hji e' hv hvs
     obtain ⟨hjt, hv⟩ := upTo_voteAt.mp hv
     exact hearlier x j hji (hr.antitone hjt hx) e' hv hvs
-  have h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard := by omega
+  have h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard :=
+    cover_count (K.committee s) (hsize s) hSX hW hE h34 hf2
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i) V (s : Int)
     (fun B hB => voteDomain_subset_tree hB) hdomA hviab.voteDomain
-    (locks_compatible hry hy hc' hs hBt (S := SX) (fun w hw => by
+    (locks_compatible hry K (hP (tr.time i)) hy hc' hs hBt (S := SX) (fun w hw => by
         rcases hcover hw with ⟨_, x, hx, hxv, hxs, hxa⟩ | h
         · exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩
         · exact Or.inl h)
-      (by rw [hrun.stock]; omega) (by simpa only [hrun.stock] using hf) hearlier'
-      (fun Φ' A' D' hΦ' hΦ'U hD' h34 => hm Φ' A' D' hΦ' hΦ'U hD'
-        (by simpa only [hrun.stock] using h34)))
+      (by omega) hf1 hearlier' hm)
     fun X' Cx hCx hp hCxC =>
       isBest_of_cover hΦ (merged_support_subset hry.localRun hy hc' (s + 1))
         (fun B hB => voteDomain_subset_tree hB.1) hcover h3 hCx hp hCxC
@@ -141,8 +152,10 @@ theorem optimistic_transfer_stored
 
 theorem optimistic_transfer (sp : SAParams) :
     OptimisticTransfer sp := by
-  intro FGP ro H U tr proposer hrun s x y i₀ i B CV ℓ e hx hopt hf hy hc hs hcarry hv he
-  exact optimistic_transfer_stored hrun hx hopt .refl hf hy hc hs hcarry hv he
+  intro FGP ro H U tr proposer hrun K hP hT hsize s x y i₀ i B CV ℓ e hx hopt hf hf1 hy hc hs
+    hcarry hv he
+  exact optimistic_transfer_stored hrun K (hP.upTo hrun.localRun.time_mono hrun.localRun.antitone)
+    (hT.upTo hrun.localRun.antitone) hsize hx hopt .refl hf hf1 hy hc hs hcarry hv he
 
 end Consensus.Goldilocks.SA.Growing
 

@@ -29,19 +29,17 @@ variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP} {tr : SATrace sp
 
 /-- `SA.fastLock_counted` with the unlock given: the counted votes of an honest fast lock of slot
 `s` on `B` have at least half of the committee as validators, and each is a slot-`s` vote whose
-head, of slot at most `s`, extends `B` inside `U`.
-The population specialization premise is interim and is removed by C2. -/
-theorem fastLock_countedU (hstock : sp.committeeSize = sp.n)
+head, of slot at most `s`, extends `B` inside `U`. -/
+theorem fastLock_countedU
     (hr : ACLocalRunU wm u H U tr) {w : Fin sp.n} (hw : w ∈ H)
     {i₀ s : Nat} {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr w i₀ s B CV) :
-    sp.n ≤ 2 * {x | ∃ v ∈ CV, v.val = x}.ncard ∧
+    sp.committeeSize ≤ 2 * {x | ∃ v ∈ CV, v.val = x}.ncard ∧
       ∀ v ∈ CV, v.slot = s ∧ ∃ R ∈ U, R.root = v.head ∧ R.slot ≤ s ∧ Anc U B R := by
   rcases hfl with ⟨ℓ, C, ⟨hc, -, -, -⟩, -, hD, rfl⟩ | ⟨ℓ, A, hpt, hsl, hsel, rfl⟩
   · obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAtU hr hw hc
     refine ⟨?_, ?_⟩
     · have hfast := (deepest_mem hD).1.2.2
       unfold FastTest confirmationScore at hfast
-      rw [hstock] at hfast
       refine hfast.trans (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_))
       rintro x ⟨hx, y, ⟨hy, hres⟩, hval, -, hanc⟩
       exact ⟨y, ⟨hy, hval ▸ hx, hres, hanc⟩, hval⟩

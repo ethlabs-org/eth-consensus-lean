@@ -68,7 +68,10 @@ theorem first_transfer_step_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   · exact SA.Growing.result_transfer hrun' hx hR hy hc hs
       (result_carry_at hrun hnc hsync hsa hx hR hy hc hs hib hF) (Or.inl hv) hlocks
       (result_writer_pool_at hrun hnc hsync ha hx hR hi₀ hy hc hs)
-  · exact SA.Growing.optimistic_transfer_stored hrun' hx hO .refl hf hy hc hs
+  · -- TEMP(C2): C3/C4 replaces
+    exact SA.Growing.optimistic_transfer_stored hrun' _ (fun _ => SA.CommitteeP.full)
+      (fun _ => SA.CommitteeT.full) (SA.size_binding_full hrun'.stock) hx hO .refl
+      (SA.cs2_full hrun'.stock hf) (SA.cs2_full hrun'.stock hf) hy hc hs
       (optimistic_carry_at hrun hnc hsync hsa hx hO hy hc hs hib hF) (Or.inl hv) hE
 
 end Consensus.Goldilocks.Compose.Growing

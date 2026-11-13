@@ -808,7 +808,8 @@ theorem honest_votes_in_slot_before {b : Time} (hS : HealthyBaseUpTo tr H U prop
       rw [htc, hslot]
       exact hrestart x hx r ((hr.time_mono hrc.le).trans htc.le) hrs
   by_cases hv : (tr.state x c).votedSlot = (sp.slot (tr.time c) : Int)
-  · obtain ⟨j, hjc, e, he, hes⟩ := vote_of_votedSlot hr hx c _ hv
+  · obtain ⟨j, hjc, e, he, hes⟩ := (cast_of_votedSlot hr hx c _ hv).resolve_right
+      (by rw [trace_mayVote_stock hr hx c]; decide)
     exact ⟨j, e, he, by rw [hes, htc, hslot], (hr.time_mono hjc.le).trans htc.le⟩
   · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
     obtain ⟨e, hem, hes⟩ := tryVote_votes x ell.frame hj hv hT (trace_mayVote_stock hr hx c _)
@@ -856,7 +857,8 @@ theorem honest_votes_in_slotU
     ⟨4 * m + 1, by simp only [SAParams.ts]; ring⟩ (hS.awake hx (by linarith))
   have hj := hS.joined_state hx c (by rw [htc, hslot, ts_sub_one]; linarith)
   by_cases hv : (tr.state x c).votedSlot = (sp.slot (tr.time c) : Int)
-  · obtain ⟨j, -, e, he, hes⟩ := vote_of_votedSlotU hr hx c _ hv
+  · obtain ⟨j, -, e, he, hes⟩ := (cast_of_votedSlotU hr hx c _ hv).resolve_right
+      (by rw [traceWithM_mayVote hr hx c]; decide)
     exact ⟨j, e, he, by rw [hes, htc, hslot]⟩
   · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
     obtain ⟨e, hem, hes⟩ := tryVote_votesWith x ℓ.frame hj hv hT (traceWithM_mayVote hr hx c _)
@@ -984,9 +986,12 @@ theorem votes_continueU
         rw [← hsl, hes, show ((m + (d + 1) : Nat) : Int) - 1 = ((m + d : Nat) : Int) by
           push_cast; ring]
         linarith only [hΔ, hmd]
-      exact next_transferU sp FGP ro H U tr proposer hrun (m + d) x j B ℓ e hx hca (by omega)
-        ih hhalf
-        (hcarry x hx j e ⟨ℓ, hc, he⟩ (by omega)) (hS.faultBound (hr.time_nonneg j) hT)
+      have hfb := hS.faultBound (hr.time_nonneg j) hT
+      exact next_transferU sp FGP ro H U tr proposer hrun (CommitteeDict.full sp.n)
+        CommitteeP.full CommitteeT.full (size_binding_full hS.stock) (m + d) x j B ℓ e hx hca
+        (by omega) ih (by rw [hS.stock]; exact hhalf)
+        (hcarry x hx j e ⟨ℓ, hc, he⟩ (by omega)) ((faultBoundK_full_iff _ _).2 hfb)
+        (cs2_full_of_faultBound sp hS.stock hfb)
         (trivial_viableU hS hx hca (by omega) hmd ⟨z, hz, jz, ez, hvz, hsz, ih z hz jz ez hvz hsz⟩)
         (fun z' hz' j' hj' e' hv' hs' => ihj j' hj' z' hz' e' hv' (by omega))
 
@@ -1021,9 +1026,12 @@ theorem fast_origin_transfer_votesU
       have hT : gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) := by
         rw [← hsl, hes, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by push_cast; ring]
         linarith only [hs, hΔ]
-      exact first_transferU sp FGP ro H U tr proposer hrun s x y i₀ i B CV ℓ e hx hfl hy hca hes
-        (hS.syncAC (by linarith only [hs, hΔ]) _) (hcarry y hy i e ⟨ℓ, hc, he⟩ hes)
-        (hS.faultBound (hr.time_nonneg i) hT) (trivial_viableU hS hy hca hes hs hvB)
+      have hfb := hS.faultBound (hr.time_nonneg i) hT
+      exact first_transferU sp FGP ro H U tr proposer hrun (CommitteeDict.full sp.n)
+        CommitteeP.full CommitteeT.full (size_binding_full hS.stock) s x y i₀ i B CV ℓ e hx hfl
+        hy hca hes (hS.syncAC (by linarith only [hs, hΔ]) _) (hcarry y hy i e ⟨ℓ, hc, he⟩ hes)
+        ((faultBoundK_full_iff _ _).2 hfb) (cs2_full_of_faultBound sp hS.stock hfb)
+        (trivial_viableU hS hy hca hes hs hvB)
         (fun z hz j hj e' hv' hs' => ih j hj z hz e' hv' hs')
   have hs1 : gbar g + 4 * sp.Δ ≤ sp.ts (s + 1 : Nat) :=
     hs.trans ((ts_le_iff sp).2 (by push_cast; omega))

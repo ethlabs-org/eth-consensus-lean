@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowCast
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HonestProposal
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -195,9 +196,14 @@ theorem FrameWindow.unanimous_update_selection_at
     apply SA.state_pool_slot sp hr hy k u v
     rwa [hs]
   obtain ⟨hconf, hfast⟩ := SA.confirmation_of_unanimous_early_pool
-    hrun.stock
-    (SA.frameIn_of_callAt hr hy hc').1 hvi.1 hPg
-    (hf (tr.time k) (hrun.time_nonneg k) hkb) hslots hpool
+    (SA.frameIn_of_callAt hr hy hc').1 hvi.1 hPg (SA.CommitteeDict.full sp.n)
+    (SA.size_binding_full hrun.stock u) (fun _ _ => SA.mem_full _ _)
+    (SA.third_full hrun.stock (by
+      have hk := hf (tr.time k) (hrun.time_nonneg k) hkb
+      have hn := sp.toParams.hn
+      change 1 ≤ sp.n at hn
+      omega))
+    hslots (fun x hx _ => hpool x hx)
   exact ⟨hvi, hconf, hfast, hva⟩
 
 end Consensus.Goldilocks.Healing.Growing

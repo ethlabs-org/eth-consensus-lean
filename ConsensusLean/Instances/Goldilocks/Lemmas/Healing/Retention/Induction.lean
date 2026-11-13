@@ -160,7 +160,8 @@ theorem high_vote_extends_of_syncAC
     (hviab : B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot)
     (hprior : ∀ z ∈ H, ∀ j' < k, ∀ e', SA.VoteAt tr.projAC z j' e' → j < e'.msg.slot →
-      SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
+      SA.VoteExtends (tr.HonestBlocks H) e'.msg B)
+    (hstock : sp.committeeSize = sp.n) :
     SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
   have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
@@ -181,15 +182,20 @@ theorem high_vote_extends_of_syncAC
   · obtain ⟨ℓw, D, hcw, hflD, hBD⟩ := hfl
     have hΦwU : ℓw.frame.tree ⊆ tr.HonestBlocks H := by
       rcases hr.frameLaw x hx i ℓw hcw with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.2
-    refine SA.first_transfer_stored sp hrun' hx hflD
+    refine SA.first_transfer_stored sp hrun' _ SA.CommitteeP.full SA.CommitteeT.full
+      (SA.size_binding_full hstock) hx hflD
       (hBD ▸ Anc.mono hΦwU (SA.anc_viableAncestor ℓw.frame D)) hy hc h1
-      hsync0 (hcarry h1 hBf) hfault' ?_ ?_
+      hsync0 (hcarry h1 hBf) ((SA.faultBoundK_full_iff _ _).2 hfault')
+      (SA.cs2_full_of_faultBound sp hstock hfault') ?_ ?_
     · rw [← h1]; exact Or.inl hv
     · rw [← h1]; exact hearlier
   · obtain ⟨m', hm'⟩ : ∃ m', e.msg.slot = m' + 1 := ⟨e.msg.slot - 1, by omega⟩
     have hsm' : j < m' := by omega
-    refine SA.next_transfer sp _ ro H _ tr.projAC proposer hrun' m' y k B ℓ e hy hc hm' ?_
-      (hhalf m' hm' hsm') (hcarryLater m' hm' hsm' hBf) hfault' ?_ ?_
+    refine SA.next_transfer sp _ ro H _ tr.projAC proposer hrun' _ SA.CommitteeP.full
+      SA.CommitteeT.full (SA.size_binding_full hstock) m' y k B ℓ e hy hc hm' ?_
+      (by rw [hstock]; exact hhalf m' hm' hsm') (hcarryLater m' hm' hsm' hBf)
+      ((SA.faultBoundK_full_iff _ _).2 hfault') (SA.cs2_full_of_faultBound sp hstock hfault')
+      ?_ ?_
     · intro z hz j' e' hv' hsl
       have hjk : j' < k := by
         by_contra hjk
@@ -220,14 +226,15 @@ theorem high_vote_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose
     (hviab : B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot)
     (hprior : ∀ z ∈ H, ∀ j' < k, ∀ e', SA.VoteAt tr.projAC z j' e' → j < e'.msg.slot →
-      SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
+      SA.VoteExtends (tr.HonestBlocks H) e'.msg B)
+    (hstock : sp.committeeSize = sp.n) :
     SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hsync0 := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr
     proposer ΔF (sp.ts j) (sp.ts e.msg.slot + sp.Δ) hrun.toLocalRun hsync
   exact high_vote_extends_of_syncAC hrun hnc hx hfl hy hc hs
     (Compose.syncAC_mono hsync0 le_rfl (Compose.cast_head_fcRoot hr hy hc).2)
-    hcarry hcarryLater hhalf hfault hviab hprior
+    hcarry hcarryLater hhalf hfault hviab hprior hstock
 
 /-- **The vote step** (of the first-violating-event induction; also for the votes through the
 ticks at `a_z`): (R3) at the honest votes of cut `k`, from the invariant at every
@@ -254,7 +261,7 @@ theorem retention_vote_step (hp : ResetPremises tr H proposer dg g ΔF a) (k : N
     (fun m' _ hjm => half_committee hp (hlate m' hjm.le))
     (fault_bound_late hp ((hlate _ hj.le).trans hts)) hvi
     (fun z hz k' hk' e' ⟨ℓ', hc', he'⟩ h₁ =>
-      ((voteInv_iff.1 (ih k' hk').1) x i j B ho z hz ℓ' e' ⟨hc', he'⟩ h₁).1), hvi⟩
+      ((voteInv_iff.1 (ih k' hk').1) x i j B ho z hz ℓ' e' ⟨hc', he'⟩ h₁).1) hp.stock, hvi⟩
 
 /-! ### The join and the assembly -/
 
@@ -444,6 +451,7 @@ theorem historical_activation_cutZ_before
         (fun z hz q hq e' he hs => hprior k hk hv x i j B ho z hz q hq e' he (by omega)))
       (fun m _ hjm => half_committee hp (hlate m hjm.le))
       (fault_bound_late hp ((hlate _ hj.le).trans hts)) hvi' (hprior k hk hv x i j B ho)
+      hp.stock
 
 /-- Node-level GST supplies cutZ-windowed service. A recipient deadline bounded by `Q`
 bounds the source time too; no nonempty-window assumption is required. -/
@@ -625,7 +633,7 @@ theorem ResetPremisesUpTo.high_origin_votes_before {b : Time}
       ?_ (fault_bound_late_before hp
         ((hp.cutZ_le_ts_of_highOrigin ho).trans
           (((SA.ts_le_iff sp).mpr (show (j : Int) ≤ e.msg.slot by omega)).trans hts)) hkb)
-      hvi.symm ?_
+      hvi.symm ?_ hp.stock
     · intro m hm hjm
       apply hp.half_committee
         ((hp.cutZ_le_ts_of_highOrigin ho).trans ((SA.ts_le_iff sp).mpr (by omega)))
@@ -833,7 +841,8 @@ theorem ResetPremisesUpTo.target_compatible_later_origin_before {b : Time}
     omega
   obtain ⟨CV, hst⟩ := ho.2.2.1
   obtain ⟨_, D, hfl, hOD⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
-  have hcomp := SA.fastLock_compatible_of_votes hrun ho.1 hri hfl hf
+  have hcomp := SA.fastLock_compatible_of_votes hrun _ SA.CommitteeP.full ho.1 hri hfl
+    (SA.cs2_full hp.stock hf)
     (fun z hz q hq e hv hs => hsupport z hz q hq e hv (by omega))
   rcases hcomp with hDB | hBD
   · exact Or.inr (hOD.trans hDB)

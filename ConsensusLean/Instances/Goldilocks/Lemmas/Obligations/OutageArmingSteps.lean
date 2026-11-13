@@ -12,6 +12,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Saved
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -474,7 +475,9 @@ theorem own_optimistic_compatible_result (hrun : GoldilocksRun proposer dg H tr)
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
   have hU := hr.coherent
+  -- TEMP(C2): C3/C4 replaces
   obtain ⟨-, hcnt, ell, A, hp, -, hCV, -⟩ := SA.optimisticLockAt_spec hrun' hy hO
+    (SA.CommitteeDict.full sp.n) (fun _ _ _ => SA.mem_full _ _)
   rw [hrun'.stock] at hcnt
   obtain ⟨ℓ, hu, hD, -⟩ := hR
   have hΦU := (SA.frameIn_of_callAt hr hy hp.1).2
@@ -591,7 +594,8 @@ theorem cover_gate_veto_above (hrun : GoldilocksRun proposer dg H tr)
     · have ht : tr.time k' = sp.ts l.slot + 6 * sp.Δ := hu'.2.2.1
       simp only [SAParams.ts] at hts ht hsb ⊢
       linarith
-    · have ht := (SA.optimisticLockAt_spec hrun' hy hopt).1
+    · have ht := (SA.optimisticLockAt_spec hrun' hy hopt (SA.CommitteeDict.full sp.n)
+        (fun _ _ _ => SA.mem_full _ _)).1
       change tr.time k' < _ at ht
       simp only [SAParams.ts] at hts ht hsb ⊢
       linarith
@@ -627,7 +631,8 @@ theorem cover_gate_veto_above (hrun : GoldilocksRun proposer dg H tr)
       have hso' : sp.slot (tr.time k') = l.slot := hso
       rw [hso', hsc] at h1
       omega
-    obtain ⟨-, hcnt, ell, A, hp, -, hCV, hCVv⟩ := SA.optimisticLockAt_spec hrun' hy hopt
+    obtain ⟨-, hcnt, ell, A, hp, -, hCV, hCVv, -⟩ := SA.optimisticLockAt_spec hrun' hy hopt
+      (SA.CommitteeDict.full sp.n) (fun _ _ _ => SA.mem_full _ _)
     rw [hrun'.stock] at hcnt
     have hellU := (SA.frameIn_of_callAt hr hy hp.1).2
     -- an honest optimistic voter in `Hold`

@@ -417,11 +417,13 @@ theorem fcRoot_of_rows_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
 (`F ≤ fc_root ≤ D_s` at the vote reads): every honest attestation the voter holds was signed before
 the vote, with a source below an origin before the signing (`attestation_source`); a regular one of
 label `l` is written at `t_l + 6Δ ≤ t_s + Δ`, so `l ≤ s − 2`; an optimistic one has label at most
-`s`, and not `s` (`no_optimistic_before_held_row`). -/
+`s`, and not `s` (`no_optimistic_before_held_row`, at the full committee: `hstock`, §S.2
+scope-(ii) item). -/
 theorem vote_fcRoot_old_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} (hs : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s) :
+    (hc : SA.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s)
+    (hstock : sp.committeeSize = sp.n) :
     ℓ.frame.fcRoot.root = sp.genesisRoot ∨
       ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) ℓ.frame.fcRoot O := by
   obtain ⟨s', rfl⟩ : ∃ s', s = s' + 1 := ⟨s - 1, by omega⟩
@@ -450,8 +452,9 @@ theorem vote_fcRoot_old_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoColl
     rcases Nat.lt_or_ge l (s' + 1) with h | h
     · omega
     obtain rfl : l = s' + 1 := by omega
-    exact (no_optimistic_before_held_row_of hrun hnc hf hy hc hes hm hmj hav
-      hkm hsg hz hck hOp).elim
+    exact (no_optimistic_before_held_row_of hrun hnc _ SA.CommitteeP.full
+      (SA.size_binding_full hstock) (SA.cs2_full hstock hf) hy (SA.mem_full _ _) hc hes
+      hm hmj hav hkm hsg hz hck hOp).elim
 
 end Consensus.Goldilocks.Compose
 

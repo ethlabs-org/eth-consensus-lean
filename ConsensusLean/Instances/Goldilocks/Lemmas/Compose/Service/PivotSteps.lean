@@ -522,7 +522,7 @@ theorem vote_anchor_cases_of_old (hrun : GoldilocksRun proposer dg H tr) (hnc : 
   · -- `fc_root` is below an old origin, or genesis
     left
     rw [Set.mem_singleton_iff.1 haf]
-    rcases vote_fcRoot_old_of hrun hnc hf hs0 hy hcy hes with hg | ⟨O, hO, hfO⟩
+    rcases vote_fcRoot_old_of hrun hnc hf hs0 hy hcy hes hrun'.stock with hg | ⟨O, hO, hfO⟩
     · exact honest_genesis_root_anc hrun hU (hΦU hΦ.fcRoot_mem) hg hDU
     · exact hfO.trans (hDold O hO)
   -- a live lock block: the viable ancestor of the block of a read-point lock

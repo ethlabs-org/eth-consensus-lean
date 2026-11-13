@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 
 public section
 
@@ -39,8 +40,10 @@ theorem origin_mem_upTo (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : N
   rcases h with h | h
   · obtain ⟨ℓ, hc, hC⟩ := resultAt_mem_frame h
     exact mem_upTo_of_frame hrun hx hkd hc hC
-  · obtain ⟨-, -, ell, A, hpt, hC, -⟩ := SA.optimisticLockAt_spec (acRun_upTo hrun hnc hd) hx
-      ((sa_optimisticLockAt_upTo hrun.time_mono).mpr ⟨hkd, h⟩)
+  · -- TEMP(C2): C3/C4 replaces
+    obtain ⟨-, -, ell, A, hpt, hC, -⟩ := SA.optimisticLockAt_spec (acRun_upTo hrun hnc hd) hx
+      ((sa_optimisticLockAt_upTo hrun.time_mono).mpr ⟨hkd, h⟩) (SA.CommitteeDict.full sp.n)
+      (fun _ _ _ => SA.mem_full _ _)
     exact mem_upTo_of_frame hrun hx hkd ((Trace.upTo_callAt _).mp hpt.1).2 hC
 
 /-- An origin of the prefix within `d'` is an origin of the run within `d'`. -/

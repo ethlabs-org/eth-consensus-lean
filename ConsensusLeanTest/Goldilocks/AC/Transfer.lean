@@ -33,6 +33,11 @@ theorem faultBound_W (t : Time) : FaultBound trW Set.univ t := by
   rw [h, ncard_univ_v]
   simp
 
+/-- `f < h_t` among the full committee at every time. -/
+theorem faultBoundK_W (s : Nat) (t : Time) :
+    FaultBoundK (CommitteeDict.full sp1.n) s trW Set.univ t :=
+  (faultBoundK_full_iff s t).mpr (faultBound_W t)
+
 theorem vote1_mem_CV1 : vote1 ∈ CV1 := by
   refine ⟨?_, B1, B1_mem, rfl, Relation.ReflTransGen.refl⟩
   rw [A0_eq]
@@ -78,53 +83,62 @@ theorem carryHonest_W : CarryAt trW U₁ v0 1 e1 1
 /-! ## The witnesses -/
 
 /-- (a) **A1.2, `FirstTransfer`: the premises are satisfiable.** Every hypothesis of the
-statement holds of the run at `s = 1`: `v0`'s fast lock of slot `1` on `B1` at cut 0 (optimistic
-origin) and its slot-`2` vote at cut 1, time `9`. -/
+statement holds of the run at `s = 1`, with the full committee: `v0`'s fast lock of slot `1` on
+`B1` at cut 0 (optimistic origin) and its slot-`2` vote at cut 1, time `9`. -/
 theorem firstTransfer_premises_satisfiable :
     ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : SATrace sp1 Unit ro1)
-      (proposer : Nat → Fin sp1.n) (s : Nat) (x y : Fin sp1.n) (i₀ i : Nat)
-      (B : Blk sp1.n Unit) (CV : Set (Vote sp1.n)) (ℓ : ACLabel (goldilocksSA sp1 Unit ro1))
-      (e : Em sp1 Unit),
+      (proposer : Nat → Fin sp1.n) (K : CommitteeDict sp1.n) (s : Nat) (x y : Fin sp1.n)
+      (i₀ i : Nat) (B : Blk sp1.n Unit) (CV : Set (Vote sp1.n))
+      (ℓ : ACLabel (goldilocksSA sp1 Unit ro1)) (e : Em sp1 Unit),
     ACRun proposer tr H U ∧
+    CommitteeP K tr H ∧ CommitteeT K tr H ∧ (∀ σ, (K.committee σ).ncard = sp1.committeeSize) ∧
     x ∈ H ∧ FastLockAt tr x i₀ s B CV ∧
     y ∈ H ∧ CastAt tr y i ℓ e ∧ e.msg.slot = s + 1 ∧
     SyncAC (goldilocksSA sp1 Unit ro1) H U (sp1.ts s) (tr.time i) tr ∧
-    CarryAt tr U y i e s CV ∧ FaultBound tr H (tr.time i) ∧
+    CarryAt tr U y i e s CV ∧ FaultBoundK K s tr H (tr.time i) ∧
+    2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp1.committeeSize ∧
     ViableAtVote ℓ e (s + 1) B ∧ EarlierVotesExtend tr H U i (s + 1) B :=
-  ⟨Set.univ, U₁, trW, fun _ => v0, 1, v0, v0, 0, 1, B1, CV1, ℓ1, e1, acRun_W, trivial,
+  ⟨Set.univ, U₁, trW, fun _ => v0, CommitteeDict.full sp1.n, 1, v0, v0, 0, 1, B1, CV1, ℓ1, e1,
+    acRun_W, CommitteeP.full, CommitteeT.full, size_binding_full rfl, trivial,
     Or.inr optimisticLock_W, trivial, castAt_W, rfl, sync_W (by decide), carry_W,
-    faultBound_W _, viable_W, earlier_W⟩
+    faultBoundK_W _ _, faultsK_W, viable_W, earlier_W⟩
 
 /-- (a) **A1.3, `NextTransfer`: the premises are satisfiable.** Every hypothesis of the statement
-holds of the run at `m = 1`: the honest slot-`1` votes (`{vote1}`, on `B1`, the whole committee)
-and `v0`'s slot-`2` vote at cut 1, time `9`. -/
+holds of the run at `m = 1`, with the full committee: the honest slot-`1` votes (`{vote1}`, on
+`B1`, the whole committee) and `v0`'s slot-`2` vote at cut 1, time `9`. -/
 theorem nextTransfer_premises_satisfiable :
     ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : SATrace sp1 Unit ro1)
-      (proposer : Nat → Fin sp1.n) (m : Nat) (y : Fin sp1.n) (i : Nat) (B : Blk sp1.n Unit)
-      (ℓ : ACLabel (goldilocksSA sp1 Unit ro1)) (e : Em sp1 Unit),
+      (proposer : Nat → Fin sp1.n) (K : CommitteeDict sp1.n) (m : Nat) (y : Fin sp1.n) (i : Nat)
+      (B : Blk sp1.n Unit) (ℓ : ACLabel (goldilocksSA sp1 Unit ro1)) (e : Em sp1 Unit),
     ACRun proposer tr H U ∧
+    CommitteeP K tr H ∧ CommitteeT K tr H ∧ (∀ σ, (K.committee σ).ncard = sp1.committeeSize) ∧
     y ∈ H ∧ CastAt tr y i ℓ e ∧ e.msg.slot = m + 1 ∧
     (∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = m → VoteExtends U e'.msg B) ∧
-    sp1.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard ∧
+    sp1.committeeSize ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard ∧
     CarryAt tr U y i e m {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m} ∧
-    FaultBound tr H (tr.time i) ∧
+    FaultBoundK K m tr H (tr.time i) ∧
+    2 * (K.committee (m + 1) ∩ Hᶜ).ncard < sp1.committeeSize ∧
     ViableAtVote ℓ e (m + 1) B ∧ EarlierVotesExtend tr H U i (m + 1) B :=
-  ⟨Set.univ, U₁, trW, fun _ => v0, 1, v0, 1, B1, ℓ1, e1, acRun_W, trivial, castAt_W, rfl,
-    slot1_extend_W, participation1_W, carryHonest_W, faultBound_W _, viable_W, earlier_W⟩
+  ⟨Set.univ, U₁, trW, fun _ => v0, CommitteeDict.full sp1.n, 1, v0, 1, B1, ℓ1, e1, acRun_W,
+    CommitteeP.full, CommitteeT.full, size_binding_full rfl, trivial, castAt_W, rfl,
+    slot1_extend_W, participation1_W, carryHonest_W, faultBoundK_W _ _, faultsK_W, viable_W,
+    earlier_W⟩
 
 /-! ## The milestones on the witness -/
 
 /-- (a) A1.2 on the run: the slot-`2` vote extends `B1`. -/
 theorem firstTransfer_on_witness : VoteExtends U₁ e1.msg B1 :=
-  (acStepsAt sp1).firstTransfer Unit ro1 Set.univ U₁ trW (fun _ => v0) acRun_W 1 v0 v0 0 1 B1
-    CV1 ℓ1 e1 trivial (Or.inr optimisticLock_W) trivial castAt_W rfl (sync_W (by decide))
-    carry_W (faultBound_W _) viable_W earlier_W
+  (acStepsAt sp1).firstTransfer Unit ro1 Set.univ U₁ trW (fun _ => v0) acRun_W
+    (CommitteeDict.full sp1.n) CommitteeP.full CommitteeT.full (size_binding_full rfl) 1 v0 v0 0 1
+    B1 CV1 ℓ1 e1 trivial (Or.inr optimisticLock_W) trivial castAt_W rfl (sync_W (by decide))
+    carry_W (faultBoundK_W _ _) faultsK_W viable_W earlier_W
 
 /-- (a) A1.3 on the run: the slot-`2` vote extends `B1`. -/
 theorem nextTransfer_on_witness : VoteExtends U₁ e1.msg B1 :=
-  (acStepsAt sp1).nextTransfer Unit ro1 Set.univ U₁ trW (fun _ => v0) acRun_W 1 v0 1 B1 ℓ1 e1
-    trivial castAt_W rfl slot1_extend_W participation1_W carryHonest_W (faultBound_W _) viable_W
-    earlier_W
+  (acStepsAt sp1).nextTransfer Unit ro1 Set.univ U₁ trW (fun _ => v0) acRun_W
+    (CommitteeDict.full sp1.n) CommitteeP.full CommitteeT.full (size_binding_full rfl) 1 v0 1 B1
+    ℓ1 e1 trivial castAt_W rfl slot1_extend_W participation1_W carryHonest_W (faultBoundK_W _ _)
+    faultsK_W viable_W earlier_W
 
 end Consensus.Goldilocks.SA.Test
 

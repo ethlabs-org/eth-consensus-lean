@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 
@@ -231,17 +232,21 @@ theorem held_row_late_absurd (hrun : GoldilocksRun proposer dg H tr)
   omega
 
 /-- **An optimistic check before an honest signing at `t_{s+1}`.** An honest optimistic check of
-slot `s + 1` at a cut before an honest signing at `t_{s+1}` leaves `n = 1`, with an honest
-slot-`(s+1)` vote at a cut no later than the check: the check is at `t_{s+1}` too, its honest seats
-are the slot's proposer, and three quarters of `n` are at most `f + 1` with `2f < n`. -/
+slot `s + 1` at a cut before an honest signing at `t_{s+1}` leaves a one-member slot-`(s+1)`
+committee, whose member is honest with a slot-`(s+1)` vote at a cut no later than the check: the
+check is at `t_{s+1}` too, its honest seats are the slot's proposer, its voters are members (P),
+and three quarters of the committee size are at most `f + 1` with
+`2|K(s+1) ∩ Hᶜ| < committeeSize`. -/
 theorem held_row_early_count
-    (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat}
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) (K : SA.CommitteeDict sp.n)
+    (hP : SA.CommitteeP K tr.projAC H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
+    {s : Nat} (hfK : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize)
     {a : FG.Att sp.n} (hav : a.val ∈ H) {k : Nat} (hsg : tr.SignAt a.val k a)
     (hT0 : tr.time k = sp.ts s + 4 * sp.Δ)
     {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (hck : c < k) {C : SA.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (Vote sp.n)} (hO : SA.OptimisticLockAt tr.projAC z c (s + 1) C CV) :
-    sp.n = 1 ∧ ∃ u ∈ H, ∃ j' ≤ c, ∃ e', SA.VoteAt tr.projAC u j' e' ∧ e'.msg.slot = s + 1 := by
+    ∃ u ∈ H, (∀ y ∈ K.committee (s + 1), y = u) ∧
+      ∃ j' ≤ c, ∃ e', SA.VoteAt tr.projAC u j' e' ∧ e'.msg.slot = s + 1 := by
   have hr' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hr'.localRun
   have hl := hrun.toLocalRun
@@ -305,24 +310,32 @@ theorem held_row_early_count
       simp only [Node.exec, Node.restart, Node.acCall, List.mem_singleton, Cut.ac.injEq] at hmem
       exact absurd (by rw [hmem]) hnr
     | _ => simp [Node.Event.phase] at hph
-  -- counting: `3n ≤ 4(f + 1)` and `2f < n` leave `n = 1`
+  -- counting: the voters are members (P), so `3·committeeSize ≤ 4(f + 1)` with
+  -- `2f < committeeSize` leaves a one-member committee
+  have hOK : SA.optimisticVoters sp AO ℓO.frame (s + 1) C ⊆ K.committee (s + 1) := by
+    rintro u ⟨v, hv, rfl, -⟩
+    exact hP.2 z hz c ℓO AO hpt (s + 1) v hv
   have hsub : SA.optimisticVoters sp AO ℓO.frame (s + 1) C ⊆
-      Hᶜ ∪ {proposer (sp.toParams.slotOf (tr.time k))} := fun u hu => by
+      (K.committee (s + 1) ∩ Hᶜ) ∪ {proposer (sp.toParams.slotOf (tr.time k))} := fun u hu => by
     by_cases huH : u ∈ H
     · exact Or.inr (hprop u hu huH).1
-    · exact Or.inl huH
+    · exact Or.inl ⟨hOK hu, huH⟩
   have hcard := (Set.ncard_le_ncard hsub (Set.toFinite _)).trans
     ((Set.ncard_union_le _ _).trans (by rw [Set.ncard_singleton]))
-  have hstock := hrun.stock
-  have hn1 : sp.n = 1 := by omega
+  have hn1 : sp.committeeSize = 1 := by omega
   obtain ⟨u, hu⟩ := Set.nonempty_of_ncard_ne_zero
     (show (SA.optimisticVoters sp AO ℓO.frame (s + 1) C).ncard ≠ 0 by omega)
   have huH : u ∈ H := by
     by_contra h
-    have := (Set.ncard_pos (Set.toFinite Hᶜ)).2 ⟨u, h⟩
+    have := (Set.ncard_pos (Set.toFinite (K.committee (s + 1) ∩ Hᶜ))).2 ⟨u, hOK hu, h⟩
     omega
+  obtain ⟨a₀, ha₀⟩ := Set.ncard_eq_one.1 ((hsize (s + 1)).trans hn1)
+  have huK := hOK hu
+  rw [ha₀, Set.mem_singleton_iff] at huK
   obtain ⟨-, j', hj', e', hv', hs'⟩ := hprop u hu huH
-  exact ⟨hn1, u, huH, j', hj', e', hv', hs'⟩
+  refine ⟨u, huH, fun y hy => ?_, j', hj', e', hv', hs'⟩
+  rw [ha₀, Set.mem_singleton_iff] at hy
+  exact hy.trans huK.symm
 
 end Consensus.Goldilocks.Compose
 

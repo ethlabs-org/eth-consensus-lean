@@ -52,8 +52,8 @@ theorem regular_fast_next_votes_of_early_witness_at
     linarith only [sp.toParams.hΔ, hts]) hmb hframe hw hat hcw hQw hh hJ
       (hXD.trans (hDC.trans hCQ))
   intro y i ell e hy hc hs hhigh hFX hviab ih
-  apply first_transfer_service_at hrun hnc hsvc hawake hf hcatch hnr hm hx hy hfl hXD hc hs
-    (hhigh.trans hmb) (by rwa [frame_of_projAC_at hrun hy hc.1]) hviab
+  refine first_transfer_service_at hrun hnc hsvc hawake hf hcatch hnr hm hx hy hfl hXD hc hs
+    (hhigh.trans hmb) (by rwa [frame_of_projAC_at hrun hy hc.1]) hviab ?_ hrun.stock
   intro z k hki hz ev hv hes
   exact ih z k ev hki hz hv hes
 

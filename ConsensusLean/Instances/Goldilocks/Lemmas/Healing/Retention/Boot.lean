@@ -181,7 +181,8 @@ theorem historical_origins_compatible_before
   obtain ⟨-, D', hfl', hOD'⟩ := storedFastLock_mem hp.run hp.noColl hO.1 hst'
   rcases lt_trichotomy l j with hlt | rfl | hgt
   · have hDO : Compatible (tr.HonestBlocks H) D O :=
-      SA.fastLock_compatible_of_votes hrun hB.1 (Nat.lt_succ_self i) hfl hf
+      SA.fastLock_compatible_of_votes hrun _ SA.CommitteeP.full hB.1 (Nat.lt_succ_self i) hfl
+        (SA.cs2_full hp.stock hf)
         fun z hz q hq e he hs => hv x' r l O hO hr z hz q (by clear * - hi hq; omega) e he (by
             clear * - hlt hs; omega)
     by_contra hn
@@ -189,11 +190,13 @@ theorem historical_origins_compatible_before
   · have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H
       (fun v => v.val) tr proposer ΔF (sp.ts l) (sp.ts (l + 1 : Nat) + sp.Δ) hp.run.toLocalRun
       (syncRun_of_gst hp.healthy.1 (g_le_ts hp hB le_rfl))
-    rcases SA.fastLock_same_slot hrun hB.1 hfl hO.1 hfl' hsync hf with h | h
+    rcases SA.fastLock_same_slot hrun _ SA.CommitteeP.full (SA.size_binding_full hp.stock) hB.1
+      hfl hO.1 hfl' hsync (SA.cs2_full hp.stock hf) with h | h
     · exact SA.anc_total hU (hBD.trans h) hOD'
     · exact SA.anc_total hU hBD (hOD'.trans h)
   · have hDB : Compatible (tr.HonestBlocks H) D' B :=
-      SA.fastLock_compatible_of_votes hrun hO.1 (Nat.lt_succ_self r) hfl' hf
+      SA.fastLock_compatible_of_votes hrun _ SA.CommitteeP.full hO.1 (Nat.lt_succ_self r) hfl'
+        (SA.cs2_full hp.stock hf)
         fun z hz q hq e he hs => hv x i j B hB hi z hz q (by clear * - hr hq; omega) e he (by
             clear * - hgt hs; omega)
     by_contra hn
@@ -231,18 +234,21 @@ theorem activated_origin_compatible_before
       have hcast := (SA.castAt_spec hrun.localRun hz ⟨hc, he⟩).2.1
       clear * - hs hslot hcast; omega
     have hDO : Compatible (tr.HonestBlocks H) D O :=
-      SA.fastLock_compatible_of_votes hrun hB.1 (Nat.lt_succ_self i) hfl hf
+      SA.fastLock_compatible_of_votes hrun _ SA.CommitteeP.full hB.1 (Nat.lt_succ_self i) hfl
+        (SA.cs2_full hp.stock hf)
         fun z hz q _ e he hs => hv x' r l O hO z hz q (hcut z hz q e he hs) e he (by omega)
     by_contra hn
     exact SA.not_compatible_of_anc hU hBD (fun h => hn h.symm) hDO.symm
   · have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H
       (fun v => v.val) tr proposer ΔF (sp.ts l) (sp.ts (l + 1 : Nat) + sp.Δ) hp.run.toLocalRun
       (syncRun_of_gst hp.healthy.1 (g_le_ts hp hB le_rfl))
-    rcases SA.fastLock_same_slot hrun hB.1 hfl hO.1 hfl' hsync hf with h | h
+    rcases SA.fastLock_same_slot hrun _ SA.CommitteeP.full (SA.size_binding_full hp.stock) hB.1
+      hfl hO.1 hfl' hsync (SA.cs2_full hp.stock hf) with h | h
     · exact SA.anc_total hU (hBD.trans h) hOD'
     · exact SA.anc_total hU hBD (hOD'.trans h)
   · have hDB : Compatible (tr.HonestBlocks H) D' B :=
-      SA.fastLock_compatible_of_votes hrun hO.1 (Nat.lt_succ_self r) hfl' hf
+      SA.fastLock_compatible_of_votes hrun _ SA.CommitteeP.full hO.1 (Nat.lt_succ_self r) hfl'
+        (SA.cs2_full hp.stock hf)
         fun z hz q hq e he hs => hv x i j B hB z hz q (by clear * - hr hq; omega) e he (by
             clear * - hgt hs; omega)
     by_contra hn

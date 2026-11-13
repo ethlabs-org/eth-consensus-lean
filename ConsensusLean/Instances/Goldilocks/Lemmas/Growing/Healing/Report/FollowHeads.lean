@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.F
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 
 public section
 
@@ -78,7 +79,8 @@ theorem FrameWindow.toFG_later_proposal_head_at
       (Or.inl ⟨CV, hreg⟩) r (by omega) hrN).2 (by omega) z c ellp hz hcp hcall hti d pay hd)
   · have halo : sp.ts s₀ ≤ tr.time a := (hts (by omega)).trans hjtime
     have ho := (SA.upTo_optimisticLockAt hrun.time_mono).mpr ⟨le_rfl, hopt⟩
-    have hat := (SA.optimisticLockAt_spec hr hya ho).1
+    have hat := (SA.optimisticLockAt_spec hr hya ho (SA.CommitteeDict.full sp.n)
+      (fun _ _ _ => SA.mem_full _ _)).1
     apply hframe.optimistic_write_later_proposal_head_at hrun hnc hsvc hawake hf hcatch hnr
       (by linarith only [hm, sp.toParams.hΔ]) hmb (by omega) hya ha halo hat hopt hRA hAD
       ?_ (by omega) hrN hz hcp hcall hti hd

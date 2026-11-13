@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.CountedSupporters
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 
 public section
 
@@ -104,15 +105,32 @@ theorem result_transfer_anc (hrun : ACRun proposer tr H U)
   · exact he ▸ hDt
   · exact (Anc.mem hcore he).2
 
+/-- **CS2 at the full committee from the growing fault bound**: `f < h ≤ n − f` gives
+`2f < n`, which is CS2 at `K = full` with `committeeSize = n` (the stock callers' `hf1`). -/
+theorem cs2_full_of_faultBoundAt (hc : sp.committeeSize = sp.n) {t d : Time}
+    (hfault : FaultBoundAt tr H t d) {s : Nat} :
+    2 * ((CommitteeDict.full sp.n).committee s ∩ (H d)ᶜ).ncard < sp.committeeSize :=
+  cs2_full hc (by
+    have hn : (H d).ncard + (H d)ᶜ.ncard = sp.n := by
+      rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+    have : {y | y ∈ H d ∧ tr.awake y t ∧ JoinedAt tr y t}.ncard ≤ (H d).ncard :=
+      Set.ncard_le_ncard fun x hx => hx.1
+    unfold FaultBoundAt at hfault
+    omega)
+
 /-- Transfer also holds for an ancestor of the block stored by the fast lock. -/
 theorem first_transfer_stored
-    (hrun : ACRun proposer tr H U) {s : Nat}
+    (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n)
+    (hP : ∀ t, CommitteeP K (tr.upTo t) (H t)) (hT : ∀ t, CommitteeT K (tr.upTo t) (H t))
+    (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hx : x ∈ H (tr.time i₀)) (hfl : FastLockAt tr x i₀ s D CV) (hBD : Anc U B D)
     (hy : y ∈ H (tr.time i)) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
     (hsync : SyncACAt (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr)
-    (hcarry : CarryAt tr U y i e s CV) (hfault : FaultBoundAt tr H (tr.time i) (tr.time i))
+    (hcarry : CarryAt tr U y i e s CV)
+    (hfault : FaultBoundK K s tr (H (tr.time i)) (tr.time i))
+    (hf1 : 2 * (K.committee (s + 1) ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
     (hviab : ViableAtVote ℓ e (s + 1) B)
     (hearlier : EarlierVotesExtendAt tr H U i (s + 1) B) : VoteExtends U e.msg B := by
   have hr := hrun.localRun
@@ -120,17 +138,15 @@ theorem first_transfer_stored
   have hry := hrun.upTo (hr.time_nonneg i)
   have hrx := hrun.upTo (hr.time_nonneg i₀)
   have hc' := upTo_castAt.mpr ⟨le_rfl, hc⟩
-  have hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n := by
-    have hn : (H (tr.time i)).ncard + (H (tr.time i))ᶜ.ncard = sp.n := by
-      rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-    have : honestAwakeJoined tr (H (tr.time i)) (tr.time i) ≤ (H (tr.time i)).ncard :=
-      Set.ncard_le_ncard fun x hx => hx.1
-    unfold FaultBoundAt at hfault
-    unfold honestAwakeJoined at this
-    omega
+  -- CS at the slot-`s` committee gives CS2 there
+  have hf2 := cs2_of_cs (K.committee s) (H := H (tr.time i))
+    (J := {y | y ∈ H (tr.time i) ∧ tr.awake y (tr.time i) ∧ JoinedAt tr y (tr.time i)})
+    (fun _ h => h.1) hfault
+  have hf : 2 * (K.committee s ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize := hsize s ▸ hf2
   rcases hfl with ⟨ℓX, C, hupd, hconf, hfs, rfl⟩ | hopt
   swap
-  · exact optimistic_transfer_stored hrun hx hopt hBD hf hy hc hs hcarry hviab hearlier
+  · exact optimistic_transfer_stored hrun K hP hT hsize hx hopt hBD hf hf1 hy hc hs hcarry hviab
+      hearlier
   have hupd' := (upTo_updateAt hr.time_mono).mpr ⟨le_rfl, hupd⟩
   obtain ⟨_, _, _, hhead⟩ := castAt_spec hry.localRun hy hc'
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_call hry.localRun hy hc'.1
@@ -148,32 +164,35 @@ theorem first_transfer_stored
   set SX := {w | ∃ v ∈ fastCounted sp P ℓX.frame s D, v.val = w}
   have hd := writer_merged hrun hx hupd hy hc hs hsync
   have hsupp := carried_counted_supporters hrun hx hy hupd.1 hc hs hBD hcarry hviab hd
-  have hhalf : sp.n ≤ 2 * SX.ncard := by
+  have hhalf : sp.committeeSize ≤ 2 * SX.ncard := by
     unfold FastTest confirmationScore at hfast
-    rw [hrun.stock] at hfast
     refine hfast.trans (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_))
     rintro w ⟨hw, v, ⟨hv, hres⟩, hval, _, hanc⟩
     exact ⟨v, ⟨hv, hval ▸ hw, hres, hanc⟩, hval⟩
+  have hSX : SX ⊆ K.committee s := by
+    rintro w ⟨v, ⟨hv, -⟩, rfl⟩
+    have hst : (tr.upTo (tr.time i₀)).state x i₀ = tr.state x i₀ :=
+      Trace.upTo_state tr x fun _ hk => hr.time_mono hk.le
+    exact (hP (tr.time i₀)).1 x hx i₀ s v (by rw [hst]; exact hv)
   have hmaj : (voters {v | v ∈ P.pool s}).ncard < 2 * SX.ncard := by
     refine lt_of_lt_of_le (result_majority (C := C) ⟨ℓX, hupd, hconf, rfl⟩)
       (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_))
     rintro w ⟨v, ⟨hv, hneq, hres, R, hR, hRr, hCR⟩, hval⟩
     exact ⟨v, ⟨hv, hneq, hres, R, hR, hRr, hBC.trans hCR⟩, hval⟩
   have hm : ∀ (Φ' : Frm sp.n FGP) (A' : SAState sp.n) (D' : Blk sp.n FGP), FrameOK Φ' →
-      Φ'.tree ⊆ U → D' ∈ Φ'.tree → 3 * sp.n ≤ 4 * (optimisticVoters sp A' Φ' s D').ncard →
+      Φ'.tree ⊆ U → D' ∈ Φ'.tree →
+      3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A' Φ' s D').ncard →
       (∀ v ∈ A'.pool s, v.val ∈ H (tr.time i) → v.slot = s ∧
         ∃ j < i, ∃ e', VoteAt (tr.upTo (tr.time i)) v.val j e' ∧ e'.msg = v) →
       (∃ k ≤ i, A'.pool s ⊆ ((tr.upTo (tr.time i)).state y (k + 1)).pool s) →
       Compatible U D' B := by
     rintro Φ' A' D' _ hΦ'U _ h34' _ ⟨k, hk, hsub⟩
-    have hint : (∅ : Set (Fin sp.n)).ncard < (SX ∩ optimisticVoters sp A' Φ' s D').ncard := by
-      have := Set.ncard_inter_add_ncard_union SX (optimisticVoters sp A' Φ' s D')
-      have := Set.ncard_le_ncard (Set.subset_univ (SX ∪ optimisticVoters sp A' Φ' s D'))
-      rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at this
-      rw [Set.ncard_empty]
-      omega
-    obtain ⟨w, ⟨⟨v₁, ⟨hv₁, hneq, _, R₁, hR₁, hR₁r, hBR₁⟩, rfl⟩,
-      v₂, hv₂, hv₂w, R₂, hR₂, hR₂r, hDR₂⟩, _⟩ := Set.exists_mem_notMem_of_ncard_lt_ncard hint
+    have hO' : optimisticVoters sp A' Φ' s D' ⊆ K.committee s := by
+      rintro u ⟨v, hv, rfl, -⟩
+      exact (hP (tr.time i)).1 y hy (k + 1) s v (hsub hv)
+    obtain ⟨w, ⟨v₁, ⟨hv₁, hneq, _, R₁, hR₁, hR₁r, hBR₁⟩, rfl⟩,
+      v₂, hv₂, hv₂w, R₂, hR₂, hR₂r, hDR₂⟩ :=
+      inter_nonempty_of_half_quorum (K.committee s) (hsize s) hSX hO' hf2 hhalf h34'
     have hstate : (tr.upTo (tr.time i)).state y (k + 1) = tr.state y (k + 1) :=
       Trace.upTo_state tr y fun j hj => hr.time_mono ((Nat.le_of_lt_succ hj).trans hk)
     have hv₂p := hsub hv₂
@@ -192,12 +211,10 @@ theorem first_transfer_stored
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
     (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
     (fun B hB => voteDomain_subset_tree hB) hdomA hviab.voteDomain
-    (locks_compatible hry hy hc' hs hBt (S := SX) (fun w hw => by
+    (locks_compatible hry K (hP (tr.time i)) hy hc' hs hBt (S := SX) (fun w hw => by
         obtain ⟨_, x, hx, hxv, hxs, hxa⟩ := hsupp hw
         exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩)
-      (by simpa only [hrun.stock] using hhalf) (by simpa only [hrun.stock] using hf) hearlier'
-      (fun Φ' A' D' hΦ' hΦ'U hD' h34 => hm Φ' A' D' hΦ' hΦ'U hD'
-        (by simpa only [hrun.stock] using h34)))
+      hhalf hf1 hearlier' hm)
     fun X' Cx hCx hp hCxC =>
       isBest_of_majority hΦ (merged_support_subset hry.localRun hy hc' (s + 1))
         (fun B hB => voteDomain_subset_tree hB.1) hsupp
@@ -210,8 +227,10 @@ theorem first_transfer_stored
   · exact (Anc.mem hcore he).2
 
 theorem first_transfer (sp : SAParams) : FirstTransfer sp := by
-  intro FGP ro H U tr proposer hrun s x y i₀ i B CV ℓ e hx hfl hy hc hs hsync hcarry hf hv he
-  exact first_transfer_stored hrun hx hfl .refl hy hc hs hsync hcarry hf hv he
+  intro FGP ro H U tr proposer hrun K hP hT hsize s x y i₀ i B CV ℓ e hx hfl hy hc hs hsync
+    hcarry hf hf1 hv he
+  exact first_transfer_stored hrun K (hP.upTo hrun.localRun.time_mono hrun.localRun.antitone)
+    (hT.upTo hrun.localRun.antitone) hsize hx hfl .refl hy hc hs hsync hcarry hf hf1 hv he
 
 end Consensus.Goldilocks.SA.Growing
 

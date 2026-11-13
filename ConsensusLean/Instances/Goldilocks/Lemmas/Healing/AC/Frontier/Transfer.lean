@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -77,7 +78,8 @@ theorem vote_locks_compatibleAC
   · obtain ⟨Φ', A, D, -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
       lock_origin_readPointU hrun hy hc l₀ hl₀ (by rw [hs]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
-    refine down hL₀D (origin_compatible hU hΦ'U h34 (by simpa only [hrun.stock] using hf)
+    refine down hL₀D (origin_compatible hU hΦ'U (CommitteeDict.full sp.n) h34
+      (fun _ _ => mem_full _ _) (by simpa only [ncard_inter_full, hrun.stock] using hf)
       fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
@@ -276,7 +278,9 @@ theorem first_transfer_stepAC
     exact result_transfer_ancU sp hrun hx hR .refl hy hc hs
       (result_carryAC hr hsy hx hR hy hc hs hib hF) hvf hlocks
       (writer_mergedAC hr hsv hx hupd hi₀ hy hc hs)
-  · exact optimistic_transfer_storedU sp hrun hx hO .refl hf hy hc hs
+  · exact optimistic_transfer_storedU sp hrun (CommitteeDict.full sp.n) CommitteeP.full
+      CommitteeT.full (size_binding_full hrun.stock) hx hO .refl (cs2_full hrun.stock hf)
+      (cs2_full hrun.stock hf) hy hc hs
       (optimistic_carryAC hr hsy hx hO hy hc hs hib hF) hvf hE
 
 /-- **Later batch up to `b`**: an honest slot-`(s+1)` vote at a time `≤ b` extends a block `B`

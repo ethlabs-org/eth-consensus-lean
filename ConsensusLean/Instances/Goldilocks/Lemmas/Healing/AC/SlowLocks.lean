@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Saved
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -198,8 +199,9 @@ theorem slow_live_locksU
     obtain ⟨Φ', A, D', -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
       lock_origin_readPointU hrun hy hc l₀ hl₀ (by rw [hes]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
-    refine down hL₀D (origin_compatible hU hΦ'U h34
-      (by simpa only [hS.stock] using hS.two_faulty_lt) fun v hv hvH => ?_)
+    refine down hL₀D (origin_compatible hU hΦ'U (CommitteeDict.full sp.n) h34
+      (fun _ _ => mem_full _ _)
+      (by simpa only [ncard_inter_full, hS.stock] using hS.two_faulty_lt) fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
     have hsj : e'.msg.slot = sp.slot (tr.time j) := (castAt_specU hr hvH hcj).2.1
@@ -256,8 +258,9 @@ theorem live_locks_of_stored_before
   · obtain ⟨Φ', A, D', -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
       lock_origin_readPoint hrun hy hc l₀ hl₀ (by rw [hes]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
-    refine down hL₀D (origin_compatible hU hΦ'U h34
-      (by simpa only [hrun.stock] using hf) fun v hv hvH => ?_)
+    refine down hL₀D (origin_compatible hU hΦ'U (CommitteeDict.full sp.n) h34
+      (fun _ _ => mem_full _ _) (by simpa only [ncard_inter_full, hrun.stock] using hf)
+      fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
     have hsj := (castAt_spec hr hvH hcj).2.1

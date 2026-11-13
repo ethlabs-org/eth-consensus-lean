@@ -477,8 +477,9 @@ theorem rows_supported {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} (hy :
   · rcases Nat.lt_or_ge l₀.slot (q + 2) with hl2 | hl2
     · obtain hq : l₀.slot = q + 1 := by omega
       rw [hq] at hO
-      exact no_optimistic_before_held_row_of D.hrun D.hnc D.two_faults_lt hy hc hs hm hmi hav
-        hkm hsg hav (by omega) hO
+      exact no_optimistic_before_held_row_of D.hrun D.hnc _ SA.CommitteeP.full
+        (SA.size_binding_full D.stock) (SA.cs2_full D.stock D.two_faults_lt) hy (SA.mem_full _ _)
+        hc hs hm hmi hav hkm hsg hav (by omega) hO
     · obtain ⟨ℓO, A, -, hslot, -⟩ := id hO
       have h := (SA.ts_le_iff_le_slot sp (hr.time_nonneg j') (l₀.slot : Int)).2
         (le_of_eq (by rw [hslot]))

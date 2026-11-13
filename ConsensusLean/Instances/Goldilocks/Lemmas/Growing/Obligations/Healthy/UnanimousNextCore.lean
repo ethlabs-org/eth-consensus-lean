@@ -19,6 +19,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lif
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
 
 public section
 
@@ -323,7 +325,8 @@ private theorem cast_time (hrun : Consensus.Goldilocks.Growing.GoldilocksRun pro
 strong induction on the vote's cut. The batch is counted at the voter's cut: every validator
 honest at `t_{u+1}` voted in slot `u` by `t_u + Δ` (`hvotes`), and the fault bound at the cut
 (`hfault`) leaves more than half of the validators honest then. The fork-choice root and the
-head-height floor of each cast (`hroot`, `hfloor`) are inputs. -/
+head-height floor of each cast (`hroot`, `hfloor`) are inputs. The transfer counts the batch at
+the full committee, which reads the stock committee (`hstock`, §S.2 scope-(ii) item). -/
 theorem unanimous_next_votes_extend_core_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
@@ -340,7 +343,8 @@ theorem unanimous_next_votes_extend_core_at
       e.msg.slot = u + 1 → tr.time j ≤ b → Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P)
     (hfloor : ∀ y j ell e, y ∈ H (tr.time j) → SA.CastAt tr.projAC y j ell e →
       e.msg.slot = u + 1 → tr.time j ≤ b → P ∈ (tr.state y j).fg.tree →
-      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ P.root).h) :
+      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ P.root).h)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
   have hΔ := sp.toParams.hΔ
@@ -377,8 +381,13 @@ theorem unanimous_next_votes_extend_core_at
           rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
         unfold SA.FaultBoundAt at hf
         omega
-      refine SA.Growing.next_transfer sp _ ro H _ tr.projAC proposer hacr u y j P ell e hy hcast
-        hs ?_ hhalf hcarry hf (Or.inl hvi) ?_
+      refine SA.Growing.next_transfer sp _ ro H _ tr.projAC proposer hacr
+        (SA.CommitteeDict.full sp.n)
+        ⟨fun _ _ _ _ _ s _ _ => SA.mem_full s _, fun _ _ _ _ _ _ s _ _ => SA.mem_full s _⟩
+        (fun _ _ _ _ _ _ _ v _ => SA.mem_full v.slot _) (SA.size_binding_full hstock)
+        u y j P ell e hy hcast hs ?_ (by rw [hstock]; exact hhalf) hcarry
+        ((SA.ncard_inter_full_lt_iff _ _ _).2 hf) (SA.Growing.cs2_full_of_faultBoundAt hstock hf)
+        (Or.inl hvi) ?_
       · intro x q e' hx hv hvs
         have hq := (cast_time hrun hnc hx hv.choose_spec).2
         rw [hvs] at hq
@@ -431,7 +440,8 @@ private theorem optimistic_supporter_at
     hsub (hU hR), hRr, (hBR.mono hU).mono hsub⟩
 
 /-- **A slot-`(u+1)` optimistic selection of a node honest at it is compatible with the unanimous
-proposal `P`**: its supporting vote, of a node honest at its cast, extends both. -/
+proposal `P`**: its supporting vote, of a node honest at its cast, extends both (`hstock`, §S.2
+scope-(ii) item, as for `unanimous_next_votes_extend_core_at`). -/
 theorem unanimous_next_optimistic_compatible_core_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
@@ -451,7 +461,8 @@ theorem unanimous_next_optimistic_compatible_core_at
       (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ P.root).h)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {D : SA.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (Vote sp.n)} (hopt : SA.OptimisticLockAt tr.projAC y j (u + 1) D CV)
-    (hjb : tr.time j ≤ b) : Compatible (tr.HonestBlocksAt H) D P := by
+    (hjb : tr.time j ≤ b) (hstock : sp.committeeSize = sp.n) :
+    Compatible (tr.HonestBlocksAt H) D P := by
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have htime : sp.ts (u + 1 : Nat) ≤ tr.time j := by
     obtain ⟨_, _, _, hsl, _, _⟩ := hopt
@@ -461,7 +472,7 @@ theorem unanimous_next_optimistic_compatible_core_at
   obtain ⟨z, q, e, hqj, hz, hv, hs, Hd, hHd, he, hDH⟩ :=
     optimistic_supporter_at hrun hnc hy hopt (hfault j htime hjb)
   obtain ⟨Hd', hHd', he', hPH⟩ := unanimous_next_votes_extend_core_at hrun hnc hsvc hc hP hslot
-    hu hun hg hvotes hfault hroot hfloor z q e hz hv ((hrun.time_mono hqj).trans hjb) hs
+    hu hun hg hvotes hfault hroot hfloor hstock z q e hz hv ((hrun.time_mono hqj).trans hjb) hs
   obtain rfl : Hd' = Hd := hU.1 hHd' hHd (he'.trans he.symm)
   exact SA.anc_total hU hDH hPH
 

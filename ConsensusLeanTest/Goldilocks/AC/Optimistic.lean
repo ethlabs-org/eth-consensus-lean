@@ -2,6 +2,7 @@ module
 public import ConsensusLeanTest.Goldilocks.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
@@ -803,6 +804,12 @@ theorem castAt_W : CastAt trW v0 1 ℓ1 e1 := ⟨trW_callAt rfl, e1_mem⟩
 
 theorem faults_W : 2 * (Set.univ : Set (Fin sp1.n))ᶜ.ncard < sp1.n := by simp
 
+/-- The run's committee is the full one: `committeeSize = n`, and no member is faulty. -/
+theorem faultsK_W {s : Nat} :
+    2 * ((CommitteeDict.full sp1.n).committee s ∩ (Set.univ : Set (Fin sp1.n))ᶜ).ncard <
+      sp1.committeeSize :=
+  cs2_full rfl faults_W
+
 /-- `Carry_{v0}(1, S, B1)` at the slot-`2` vote. -/
 theorem carry_W : CarryAt trW U₁ v0 1 e1 1 CV1 where
   awake := trivial
@@ -905,36 +912,43 @@ theorem toFG_W : ToFGAt trW v0 2 ℓ2 B1 :=
 /-! ## The witnesses -/
 
 /-- **A1.4 (a), `OptimisticTransfer`: the premises are satisfiable.** Every hypothesis of the
-statement holds of the run at `s = 1`: `v0`'s optimistic lock of slot `1` on `B1` at cut 0 and its
-slot-`2` vote at cut 1. -/
+statement holds of the run at `s = 1`, with the full committee: `v0`'s optimistic lock of slot `1`
+on `B1` at cut 0 and its slot-`2` vote at cut 1. -/
 theorem optimisticTransfer_premises_satisfiable :
     ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : SATrace sp1 Unit ro1)
-      (proposer : Nat → Fin sp1.n) (s : Nat) (x y : Fin sp1.n) (i₀ i : Nat)
-      (B : Blk sp1.n Unit) (CV : Set (Vote sp1.n)) (ℓ : ACLabel (goldilocksSA sp1 Unit ro1))
-      (e : Em sp1 Unit),
+      (proposer : Nat → Fin sp1.n) (K : CommitteeDict sp1.n) (s : Nat) (x y : Fin sp1.n)
+      (i₀ i : Nat) (B : Blk sp1.n Unit) (CV : Set (Vote sp1.n))
+      (ℓ : ACLabel (goldilocksSA sp1 Unit ro1)) (e : Em sp1 Unit),
     ACRun proposer tr H U ∧
-    x ∈ H ∧ OptimisticLockAt tr x i₀ s B CV ∧ 2 * Hᶜ.ncard < sp1.n ∧
+    CommitteeP K tr H ∧ CommitteeT K tr H ∧ (∀ σ, (K.committee σ).ncard = sp1.committeeSize) ∧
+    x ∈ H ∧ OptimisticLockAt tr x i₀ s B CV ∧
+    2 * (K.committee s ∩ Hᶜ).ncard < sp1.committeeSize ∧
+    2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp1.committeeSize ∧
     y ∈ H ∧ CastAt tr y i ℓ e ∧ e.msg.slot = s + 1 ∧
     CarryAt tr U y i e s CV ∧
     ViableAtVote ℓ e (s + 1) B ∧ EarlierVotesExtend tr H U i (s + 1) B :=
-  ⟨Set.univ, U₁, trW, fun _ => v0, 1, v0, v0, 0, 1, B1, CV1, ℓ1, e1, acRun_W, trivial,
-    optimisticLock_W, faults_W, trivial, castAt_W, rfl, carry_W, viable_W, earlier_W⟩
+  ⟨Set.univ, U₁, trW, fun _ => v0, CommitteeDict.full sp1.n, 1, v0, v0, 0, 1, B1, CV1, ℓ1, e1,
+    acRun_W, CommitteeP.full, CommitteeT.full, size_binding_full rfl, trivial,
+    optimisticLock_W, faultsK_W, faultsK_W, trivial, castAt_W, rfl, carry_W, viable_W, earlier_W⟩
 
 /-- **A1.4 (b), `OptimisticNextUpdate`: the premises are satisfiable.** Every hypothesis of the
 statement holds of the run at `s = 1`, `B = B1` (not genesis, so the fast-select clause of the
-conclusion is in force): the update of slot `2` at cut 3, holding `vote2` (stamp `9`, resolved
-before `t_2 + 2Δ = 10`). -/
+conclusion is in force), with the full committee: the update of slot `2` at cut 3, holding
+`vote2` (stamp `9`, resolved before `t_2 + 2Δ = 10`). -/
 theorem optimisticNextUpdate_premises_satisfiable :
     ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : SATrace sp1 Unit ro1)
-      (proposer : Nat → Fin sp1.n) (s : Nat) (z : Fin sp1.n) (k : Nat)
+      (proposer : Nat → Fin sp1.n) (K : CommitteeDict sp1.n) (s : Nat) (z : Fin sp1.n) (k : Nat)
       (B : Blk sp1.n Unit) (ℓ : ACLabel (goldilocksSA sp1 Unit ro1)),
-    ACRun proposer tr H U ∧ 2 * Hᶜ.ncard < sp1.n ∧
+    ACRun proposer tr H U ∧
+    CommitteeP K tr H ∧ CommitteeT K tr H ∧ (∀ σ, (K.committee σ).ncard = sp1.committeeSize) ∧
+    2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp1.committeeSize ∧
     (∀ x' ∈ H, ∀ j e, VoteAt tr x' j e → e.msg.slot = s + 1 → VoteExtends U e.msg B) ∧
     z ∈ H ∧ UpdateAt tr z k (s + 1) ℓ ∧
-    sp1.n ≤ 2 * {v | v ∈ H ∧ ∃ x' ∈ (tr.state z k).pool (s + 1), x'.val = v}.ncard ∧
+    sp1.committeeSize ≤ 2 * {v | v ∈ H ∧ ∃ x' ∈ (tr.state z k).pool (s + 1), x'.val = v}.ncard ∧
     (∀ x' ∈ (tr.state z k).pool (s + 1), x'.val ∈ H →
       resolutionTime (tr.state z k) ℓ.frame x' < ETime.of (sp1.ts (s + 1 : Nat) + 2 * sp1.Δ)) :=
-  ⟨Set.univ, U₁, trW, fun _ => v0, 1, v0, 3, B1, ℓ3, acRun_W, faults_W, slot2_extend_W, trivial,
+  ⟨Set.univ, U₁, trW, fun _ => v0, CommitteeDict.full sp1.n, 1, v0, 3, B1, ℓ3, acRun_W,
+    CommitteeP.full, CommitteeT.full, size_binding_full rfl, faultsK_W, slot2_extend_W, trivial,
     update_W, participation_W, resolved_W⟩
 
 /-- **A1.5, `SourceAge`: the premises are satisfiable.** Every hypothesis of the statement holds of
@@ -952,8 +966,10 @@ theorem sourceAge_premises_satisfiable :
 
 /-- A1.4 (a) on the run: the slot-`2` vote extends `B1`. -/
 theorem optimisticTransfer_on_witness : VoteExtends U₁ e1.msg B1 :=
-  (acStepsAt sp1).optimisticTransfer Unit ro1 Set.univ U₁ trW (fun _ => v0) acRun_W 1 v0 v0 0 1
-    B1 CV1 ℓ1 e1 trivial optimisticLock_W faults_W trivial castAt_W rfl carry_W viable_W earlier_W
+  (acStepsAt sp1).optimisticTransfer Unit ro1 Set.univ U₁ trW (fun _ => v0) acRun_W
+    (CommitteeDict.full sp1.n) CommitteeP.full CommitteeT.full (size_binding_full rfl) 1 v0 v0 0 1
+    B1 CV1 ℓ1 e1 trivial optimisticLock_W faultsK_W faultsK_W trivial castAt_W rfl carry_W viable_W
+    earlier_W
 
 /-- A1.4 (b) on the run: the update of slot `2` has a result extending `B1`, and, `B1` not being
 genesis, its fast test selects a block extending `B1`. -/
@@ -961,8 +977,9 @@ theorem optimisticNextUpdate_on_witness :
     ∃ C, getConfirmation sp1 (trW.state v0 3) ℓ3.frame (1 + 1) = some C ∧ Anc U₁ B1 C ∧
       ∃ D, fastSelect sp1 (trW.state v0 3) ℓ3.frame (1 + 1) C = some D ∧ Anc U₁ B1 D := by
   obtain ⟨C, hC, hBC, hD⟩ := (acStepsAt sp1).optimisticNextUpdate Unit ro1 Set.univ U₁ trW
-    (fun _ => v0) acRun_W 1 v0 3 B1 ℓ3 faults_W slot2_extend_W trivial update_W participation_W
-    resolved_W
+    (fun _ => v0) acRun_W (CommitteeDict.full sp1.n) CommitteeP.full CommitteeT.full
+    (size_binding_full rfl) 1 v0 3 B1 ℓ3 faultsK_W slot2_extend_W trivial update_W
+    participation_W resolved_W
   exact ⟨C, hC, hBC, hD (by decide)⟩
 
 /-- A1.5 on the run: `B1`, returned by `ac_to_fg` at cut 2, is at or below the block of a fast

@@ -267,7 +267,9 @@ theorem unanimous_next_votes_of_witness_at
         have heq : ((m + 1 : Nat) : Int) - 1 = m := by omega
         rw [heq]; exact hgm) le_rfl
     rwa [RunTrace.upTo_projAC] at h
-  have hext := SA.next_transfer_of_carry sp hrun' hy hcast' hs hG' hhalf' hcarry hfault hviab
+  have hext := SA.next_transfer_of_carry sp hrun' _ SA.CommitteeP.full SA.CommitteeT.full
+    (SA.size_binding_full hS.stock) hy hcast' hs hG' (by rw [hS.stock]; exact hhalf') hcarry
+    ((SA.faultBoundK_full_iff _ _).2 hfault) (SA.cs2_full_of_faultBound sp hS.stock hfault) hviab
     (fun x hx k hki ev hv' hsx => by
       obtain ⟨hkd, hv''⟩ := SA.upTo_voteAt.mp hv'
       exact narrow_vote hrun hnc ht0 hx hv'

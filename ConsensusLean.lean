@@ -41,6 +41,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CarryPrefix
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Later
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Same
@@ -218,6 +219,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ProgressBudgetEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Base
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Compatible
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.CountedSupporters
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.FutureVotes
@@ -1003,6 +1005,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Model
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Committee
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeRun
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Confirmation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Family
@@ -1151,6 +1154,7 @@ public import ConsensusLean.Lemmas.Model.Truncate
 public import ConsensusLean.Lemmas.Model.TruncateExt
 public import ConsensusLean.Lemmas.Model.View
 public import ConsensusLean.Lemmas.Problem.AdequateObs
+public import ConsensusLean.Lemmas.Problem.CommitteeCount
 public import ConsensusLean.Lemmas.Problem.Constant
 public import ConsensusLean.Lemmas.Problem.Derived
 public import ConsensusLean.Lemmas.Problem.DerivedFacts

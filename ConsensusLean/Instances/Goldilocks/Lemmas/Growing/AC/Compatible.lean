@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Locks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Later
@@ -17,21 +18,22 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
 
 /-- The fault bound is read at the later call, not at the historical lock writer. -/
 theorem fastLock_compatible_of_votes
-    (hrun : ACRun proposer tr H U)
+    (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n)
+    (hP : ∀ t, CommitteeP K (tr.upTo t) (H t))
     {x : Fin sp.n} {j i s : Nat} (hx : x ∈ H (tr.time j)) (hji : j < i)
     {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr x j s D CV)
-    (hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n)
+    (hf : 2 * (K.committee s ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
     (hvotes : ∀ z k, k < i → z ∈ H (tr.time k) → ∀ e,
       VoteAt tr z k e → e.msg.slot = s → VoteExtends U e.msg B) :
     Compatible U D B := by
   have hr := hrun.localRun
   have hjt := hr.time_mono hji.le
-  have hf' : 2 * (H (tr.time j))ᶜ.ncard < sp.n := by
-    have hsub : (H (tr.time j))ᶜ ⊆ (H (tr.time i))ᶜ :=
-      Set.compl_subset_compl.mpr (hr.antitone hjt)
+  have hf' : 2 * (K.committee s ∩ (H (tr.time j))ᶜ).ncard < sp.committeeSize := by
+    have hsub : K.committee s ∩ (H (tr.time j))ᶜ ⊆ K.committee s ∩ (H (tr.time i))ᶜ :=
+      Set.inter_subset_inter_right _ (Set.compl_subset_compl.mpr (hr.antitone hjt))
     exact lt_of_le_of_lt (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard hsub)) hf
-  refine SA.fastLock_compatible_of_votes (hrun.upTo (hr.time_nonneg j)) hx hji
-    ((upTo_fastLockAt hr.time_mono).mpr ⟨le_rfl, hfl⟩) hf' ?_
+  refine SA.fastLock_compatible_of_votes (hrun.upTo (hr.time_nonneg j)) K (hP (tr.time j)) hx
+    hji ((upTo_fastLockAt hr.time_mono).mpr ⟨le_rfl, hfl⟩) hf' ?_
   intro z hz k hki e hv hs
   obtain ⟨hkt, hv⟩ := upTo_voteAt.mp hv
   exact hvotes z k hki (hr.antitone hkt hz) e hv hs
@@ -43,7 +45,8 @@ private theorem update_side
     ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
       tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
       (∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) ∧
-      sp.n ≤ 2 * S.ncard ∧ (voters {v | v ∈ (tr.state Y c).pool s}).ncard < 2 * S.ncard ∧
+      sp.committeeSize ≤ 2 * S.ncard ∧
+        (voters {v | v ∈ (tr.state Y c).pool s}).ncard < 2 * S.ncard ∧
       S ⊆ Relayed tr H U Y s D ∧
       ∀ u ∈ S, u ∉ equivocators {v | v ∈ (tr.state Y c).pool s} ∧
         ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U D R := by
@@ -56,8 +59,8 @@ private theorem update_side
       resolutionTime (tr.state Y c) ℓ.frame v < ETime.of (sp.ts s + 2 * sp.Δ)}⟩
   set T := supporters ℓ.frame V s D
   have hCD := (deepest_mem hD).1.1.2.2
-  have hfast : sp.n ≤ 2 * T.ncard := by
-    simpa only [FastTest, confirmationScore, hrun.stock] using (deepest_mem hD).1.2.2
+  have hfast : sp.committeeSize ≤ 2 * T.ncard := by
+    simpa only [FastTest, confirmationScore] using (deepest_mem hD).1.2.2
   have hmaj' : (voters {v | v ∈ (tr.state Y c).pool s}).ncard < 2 * T.ncard := by
     have hmajC := (deepest_mem hC).1.2.2
     unfold confirmationScore at hmajC
@@ -131,7 +134,9 @@ private theorem against_update
 /-- Two historical locks are compatible even if their writers do not survive each other.
 The shared honest validator in the optimistic case is chosen at the later write cut. -/
 theorem fastLock_same_slot
-    (hrun : ACRun proposer tr H U) {s : Nat}
+    (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n)
+    (hP : ∀ t, CommitteeP K (tr.upTo t) (H t))
+    (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {w x : Fin sp.n} {i₀ j : Nat} {B D : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)}
     (hw : w ∈ H (tr.time i₀)) (hfl : FastLockAt tr w i₀ s B CV)
     (hx : x ∈ H (tr.time j)) (hfl' : FastLockAt tr x j s D CV')
@@ -139,39 +144,42 @@ theorem fastLock_same_slot
       (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
     {d : Time} (hi₀ : OptimisticLockAt tr w i₀ s B CV → tr.time i₀ ≤ d)
     (hj : tr.time j ≤ d)
-    (hf : 2 * (H d)ᶜ.ncard < sp.n) : Compatible U B D := by
-  have hstock := hrun.stock
+    (hf : 2 * (K.committee s ∩ (H d)ᶜ).ncard < sp.committeeSize) : Compatible U B D := by
   have hr := hrun.localRun
   have hU := hr.coherent
-  have hle : ∀ T : Set (Fin sp.n), T.ncard ≤ sp.n := fun T =>
-    (Set.ncard_le_ncard (Set.subset_univ T)).trans (by rw [Set.ncard_univ, Nat.card_fin])
+  have hf2 : 2 * (K.committee s ∩ (H d)ᶜ).ncard < (K.committee s).ncard := by
+    rw [hsize s]; exact hf
+  have hW : ∀ z c, z ∈ H (tr.time c) →
+      voters {v | v ∈ (tr.state z c).pool s} ⊆ K.committee s := by
+    rintro z c hz u ⟨v, hv, rfl⟩
+    have hst : (tr.upTo (tr.time c)).state z c = tr.state z c :=
+      Trace.upTo_state tr z fun _ hk => hr.time_mono hk.le
+    exact (hP (tr.time c)).1 z hz c s v (by rw [hst]; exact hv)
+  have hO : ∀ z c ℓ A, z ∈ H (tr.time c) → OptimisticPoint tr z c ℓ A →
+      ∀ D', optimisticVoters sp A ℓ.frame s D' ⊆ K.committee s := by
+    rintro z c ℓ A hz hpt D' u ⟨v, hv, rfl, -⟩
+    exact (hP (tr.time c)).2 z hz c ℓ A ((upTo_optimisticPoint hr.time_mono).mpr ⟨le_rfl, hpt⟩)
+      s v hv
   by_contra hnc
   rcases hfl with hw' | hw' <;> rcases hfl' with hx' | hx'
   · obtain ⟨ℓ, S, hc, ht, hrs, _, hmaj, _, hS⟩ := update_side hrun hw hw'
     obtain ⟨_, S', _, _, _, hn', _, hS'F, _⟩ := update_side hrun hx hx'
     have := against_update hr hsync hw hc ht hrs hS hS'F fun h => hnc h.symm
-    have := hle (voters {v | v ∈ (tr.state w i₀).pool s})
-    omega
+    exact not_update_update (K.committee s) (hsize s) (hW w i₀ hw) hn' hmaj this
   · obtain ⟨ℓ, S, hc, ht, hrs, hn, _, _, hS⟩ := update_side hrun hw hw'
     obtain ⟨_, _, _, _, h34, hT⟩ := optimistic_seats hrun hx hx'
     have := against_update hr hsync hw hc ht hrs hS hT fun h => hnc h.symm
-    have := hle (voters {v | v ∈ (tr.state w i₀).pool s})
-    omega
+    exact not_update_optimistic (K.committee s) (hsize s) (hW w i₀ hw) hf2 hn h34 this
   · obtain ⟨ℓ, S, hc, ht, hrs, hn, _, _, hS⟩ := update_side hrun hx hx'
     obtain ⟨_, _, _, _, h34, hT⟩ := optimistic_seats hrun hw hw'
     have := against_update hr hsync hx hc ht hrs hS hT hnc
-    have := hle (voters {v | v ∈ (tr.state x j).pool s})
-    omega
+    exact not_update_optimistic (K.committee s) (hsize s) (hW x j hx) hf2 hn h34 this
   · have hi₀ := hi₀ hw'
     obtain ⟨ℓ, A, hpt, hΦU, h34, _⟩ := optimistic_seats hrun hw hw'
     obtain ⟨ℓ', A', hpt', hΦU', h34', _⟩ := optimistic_seats hrun hx hx'
-    have hI := Set.ncard_inter_add_ncard_union (optimisticVoters sp A ℓ.frame s B)
-      (optimisticVoters sp A' ℓ'.frame s D)
-    have := hle (optimisticVoters sp A ℓ.frame s B ∪ optimisticVoters sp A' ℓ'.frame s D)
     obtain ⟨u, ⟨⟨v, hv, rfl, R, hR, hRr, hBR⟩, v', hv', hv'u, R', hR', hR'r, hDR'⟩, huH⟩ :=
-      Set.exists_mem_notMem_of_ncard_lt_ncard (s := (H d)ᶜ)
-        (t := optimisticVoters sp A ℓ.frame s B ∩ optimisticVoters sp A' ℓ'.frame s D)
-        (by omega)
+      quorums_meet (K.committee s) (hsize s) (hO w i₀ ℓ A hw hpt B) (hO x j ℓ' A' hx hpt' D)
+        h34 h34' hf2
     have huH := not_not.1 huH
     have hrw := hrun.upTo (hr.time_nonneg i₀)
     have hrx := hrun.upTo (hr.time_nonneg j)

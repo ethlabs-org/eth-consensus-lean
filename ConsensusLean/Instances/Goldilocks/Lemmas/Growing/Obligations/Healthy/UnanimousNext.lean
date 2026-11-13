@@ -194,7 +194,7 @@ theorem unanimous_next_votes_extend_at (hp : ResetPremisesUpTo tr H proposer dg 
     (by linarith [sp.toParams.hΔ]) (next_voters hp hc hgu hR hub) (next_fault_bound hp hgu hR)
     (fun _ _ _ _ hy hcast hs hjb => hp.reset_vote_root_below_bound_at hR hP hbound hy hcast hs hjb)
     (fun _ _ _ _ hy hcast hs hjb hstore =>
-      hp.reset_vote_floor_above_old_at hy hR hcast hs hjb hstore hbound)
+      hp.reset_vote_floor_above_old_at hy hR hcast hs hjb hstore hbound) hp.stock
 
 /-- The reset premises make a slot-`(u+1)` optimistic selection compatible with `P`. -/
 theorem unanimous_next_optimistic_compatible_at
@@ -213,7 +213,7 @@ theorem unanimous_next_optimistic_compatible_at
     (by linarith [sp.toParams.hΔ]) (next_voters hp hc hgu hR hub) (next_fault_bound hp hgu hR)
     (fun _ _ _ _ hy hcast hs hjb => hp.reset_vote_root_below_bound_at hR hP hbound hy hcast hs hjb)
     (fun _ _ _ _ hy hcast hs hjb hstore =>
-      hp.reset_vote_floor_above_old_at hy hR hcast hs hjb hstore hbound) hy hopt hjb
+      hp.reset_vote_floor_above_old_at hy hR hcast hs hjb hstore hbound) hy hopt hjb hp.stock
 
 end Consensus.Goldilocks.Healing.Growing
 

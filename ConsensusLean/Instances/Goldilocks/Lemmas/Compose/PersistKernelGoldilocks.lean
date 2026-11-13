@@ -64,7 +64,8 @@ theorem kernel_sourceStep (hrun : GoldilocksRun proposer dg H tr)
   have hΦwU : ℓw.frame.tree ⊆ tr.HonestBlocks H := by
     rcases hr.frameLaw x hp.writer_honest i₀ ℓw hcw with
       ⟨-, Φ₀, -, -, h⟩ | ⟨i, ℓ', -, -, -, h⟩ <;> exact h.1.2
-  exact SA.source_compatible_stored sp _ ro proposer H _ tr.projAC hrun' s m x v i₀ j B D CV ℓ C
+  exact SA.source_compatible_stored sp _ ro proposer H _ tr.projAC hp.stock hrun' s m x v i₀ j B
+    D CV ℓ C
     hp.writer_honest hflD (hBD ▸ Anc.mono hΦwU (SA.anc_viableAncestor ℓw.frame D)) hsync
     hp.carry (faulty_lt_half hrun hp) hv hToFG hlo hhi
     (fun z hz i hi e ⟨ℓz, hcz, hez⟩ h₁ h₂ =>
