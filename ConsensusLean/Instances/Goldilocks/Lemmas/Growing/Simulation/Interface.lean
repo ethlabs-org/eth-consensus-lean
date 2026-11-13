@@ -18,8 +18,8 @@ open AsChainShape Blocks Shape
 open Consensus.Model (pubOf)
 open SA (Vote)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The canonical engine expansion obeys the node laws with time-indexed honesty. -/
 structure SimulatesAt (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _))
@@ -68,7 +68,7 @@ structure SimulatesAt (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _))
       ((tr.MsgCallAt y k m ∨ ∃ ℓ B, tr.CallAt y k (.ac ℓ) ∧ ℓ.call = .block B ∧
           m ∈ SA.blockVotes B) ∧
         m ∉ (tr.state y k).ac.pool m.slot ∧ m ∈ (tr.post k).ac.pool m.slot)) →
-    let envelope : (Model.protoOf (compiled (goldilocks S)) E).Object :=
+    let envelope : (Model.protoOf (compiled (goldilocksWith S)) E).Object :=
       .mk (.signed y .poll) (.data (.voteForward (tr.time k) (encodeVote m))) [voteObj m]
     ∃ i, ι i ≤ k ∧ k < ι (i + 1) ∧ rho.SendsAt (rho.key y) i (tr.time k) ∧
       envelope ∈ rho.releasesAt i ∧ ∀ j < i, envelope ∉ rho.releasesAt j
@@ -79,26 +79,26 @@ structure SimulatesAt (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _))
 variable (V) in
 /-- Every valid growing-fault engine run has a simulating node trace. -/
 def EngineSimulatesNodeAt : Prop :=
-  ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
+  ∀ (E : Env V) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V),
     rho.ExecutionValid → ∃ tr ι, SimulatesAt S rho hn tr ι
 
 variable (V) in
 /-- Collision freedom transports to the canonical growing trace. -/
 def NoCollTransportAt : Prop :=
-  ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
+  ∀ (E : Env V) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V),
     rho.ExecutionValid → ¬ rho.HashCollision →
       Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)
 
 variable (V) in
 /-- The quantified engine-simulation contract. -/
 theorem engineSimulatesNodeAt_iff : EngineSimulatesNodeAt V S ↔
-    ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
+    ∀ (E : Env V) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V),
       rho.ExecutionValid → ∃ tr ι, SimulatesAt S rho hn tr ι := by rfl
 
 variable (V) in
 /-- The quantified collision-transport contract. -/
 theorem noCollTransportAt_iff : NoCollTransportAt V S ↔
-    ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
+    ∀ (E : Env V) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V),
       rho.ExecutionValid → ¬ rho.HashCollision →
         Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn) := by rfl
 

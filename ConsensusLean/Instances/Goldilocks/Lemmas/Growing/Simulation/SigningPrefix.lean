@@ -16,12 +16,12 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Every labelled cut before an event's end has time at most that event's time. -/
 theorem simTraceAt_time_le_event (hv : rho.ExecutionValid) {i k : Nat}
-    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[i]? = some ev) (hk : k < cutMap S rho hn (i + 1))
     (hl : (simTraceAt S rho hn).label k ≠ none) :
     (simTraceAt S rho hn).time k ≤ ev.time := by
@@ -32,7 +32,7 @@ theorem simTraceAt_time_le_event (hv : rho.ExecutionValid) {i k : Nat}
     have hm := cutMap_mono S rho hn (show i + 1 ≤ j by omega)
     omega
   have hi := (List.getElem?_eq_some_iff.mp he).1
-  have hlaws := (Model.sysOf_laws schema (compiled (goldilocks S)) V).trace ⟨E, rho⟩ hv
+  have hlaws := (Model.sysOf_laws schema (compiled (goldilocksWith S)) V).trace ⟨E, rho⟩ hv
   have hm := hlaws.cutTime_mono (j + 1) (i + 1) (by omega)
     (show i + 1 ≤ rho.events.length by omega)
   change rho.cutTime (j + 1) ≤ rho.cutTime (i + 1) at hm
@@ -40,6 +40,7 @@ theorem simTraceAt_time_le_event (hv : rho.ExecutionValid) {i k : Nat}
 
 /-- The signings through a tick of its honest node cannot conflict. -/
 theorem simTraceAt_signings_nonFraming_before (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {i : Nat} {v : V} {t : Time} (he : rho.events[i]? = some (.tick v t))
     {k k' : Nat} {a b : FG.Att (Fintype.card V)}
     (hk : k < cutMap S rho hn (i + 1)) (hk' : k' < cutMap S rho hn (i + 1))

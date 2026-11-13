@@ -16,8 +16,8 @@ open AsChainShape
 open Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- A vote emitted at cut `k` by `y` is released by `y`'s engine node at the cut's time.
 Premise `htick`: a public tick releases the votes its cuts emit (`tick_releases` for constant
@@ -74,10 +74,7 @@ theorem emit_released_of (hv : rho.ExecutionValid)
         change (process _ _ _).outbox.length ≤ 1 at hlen
         rw [hq] at hlen
         simp at hlen
-    have hobj : voteObj em.msg = pollObj S rho v (Body.vote (encodeVote em.msg)) := by
-      unfold voteObj pollObj
-      rw [hval, self_eq_ownKey]
-      rfl
+    have hobj := voteObj_eq_pollObj S rho (hval.trans (self_eq_ownKey S rho hn v i))
     rw [hobj]
     refine ⟨i, Or.inr ⟨o, he⟩, ?_⟩
     simp only [Model.Run.releasesAt, he]
@@ -96,7 +93,15 @@ theorem emit_released_of (hv : rho.ExecutionValid)
       rw [hf]
       simp only [Bool.false_eq_true, ite_false, hone]
       rfl
-    · exact protects_of_not_att S _ _ _ (fun k w h => by cases h)
+    · rw [pollRole_vote]
+      have hbody : Body.vote (encodeVote em.msg) ∈
+          (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox := by
+        rw [hone]
+        exact List.mem_singleton_self _
+      exact of_decide_eq_true
+        (((VoteMember_iff _).1 (process_voteMember _ o _ (stateAt_voteMember S rho hn hv v i))).2
+          em.msg hbody).2
+    · exact protects_pollObj_vote S rho v _ _ _
   | restart v t =>
     rw [eventCuts_restart S rho hn i v t he] at hmem
     obtain ⟨kk, hk, rfl⟩ := List.getElem_of_mem hmem
@@ -104,17 +109,10 @@ theorem emit_released_of (hv : rho.ExecutionValid)
     have hk' := lt_of_lt_of_eq hk (length_groupRecs _ _ _ _ _ _ _)
     have hcut := List.getElem_mem hk'
     rw [← hlabk, hrl] at hcut
-    have hval := emits_val_of_mem_exec _ _ _ _ _ _ hcut em hem
     have hb : Body.vote (encodeVote em.msg) ∈ (stateAt S rho hn v (i + 1)).outbox := by
       rw [stateAt_succ_restart S rho hn he]
       exact List.mem_append_right _
         (List.mem_flatMap.mpr ⟨_, hcut, by simpa using ⟨em, hem, rfl⟩⟩)
-    have hobj : @voteObj stock (pubOf E).n em.msg = Model.Obj.mk (.signed (rho.ownKey v) .poll)
-        (.data (Body.vote (encodeVote em.msg))) [] := by
-      unfold voteObj
-      rw [show em.msg.val = rho.ownKey v from hval]
-      rfl
-    rw [hobj]
     exact (releasedFrom_iff S rho _ _ _).mp (releasedFrom_of_pending S rho hn hv he hb)
 
 end Consensus.Goldilocks.Simulation

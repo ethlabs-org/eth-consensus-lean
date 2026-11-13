@@ -22,12 +22,14 @@ open Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload)
 
+variable {binding : VoteBinding}
+
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 section Engine
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Valid selection includes every validator in the poll role. -/
 theorem poll_selected (hv : rho.ExecutionValid) (v : V) :
@@ -38,18 +40,19 @@ theorem poll_selected (hv : rho.ExecutionValid) (v : V) :
   exact Finset.mem_univ _
 
 /-- The shape's state at `hn` inside an engine node. -/
-abbrev shapeOf (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) :
-    State (S.params (pubOf E) hn) (S.ro _) :=
+abbrev shapeOf (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) :
+    State (S.params (pubOf E) hn) (S.ro _) S.vote :=
   nd.st.1 hn
 
 omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `recordOwn` is preserved by `releaseAll`: the
 engine records each released object with `recordOwn` and drops the rest. -/
-theorem releaseAll_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
+theorem releaseAll_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs)) (k : Fin (Fintype.card V)) :
-    ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-      (cs : List (Model.protoOf (compiled (goldilocks S)) E).Object), Q (shapeOf S hn nd) →
-      Q (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd
+    ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+      (cs : List (Model.protoOf (compiled (goldilocksWith S)) E).Object), Q (shapeOf S hn nd) →
+      Q (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled
+          (goldilocksWith S)) E) rho.hash k nd
           cs).1)
   | _, [], h => h
   | nd, c :: cs, h => by
@@ -60,41 +63,42 @@ theorem releaseAll_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
 
 omit [DecidableEq V] in
 /-- The engine's `propose` duty is the shape's `propose`. -/
-theorem shapeOf_act_propose (st : (Model.protoOf (compiled (goldilocks S)) E).State) (s : Slot)
+theorem shapeOf_act_propose (st : (Model.protoOf (compiled (goldilocksWith S)) E).State) (s : Slot)
     (h : 0 < s) :
-    ((Model.protoOf (compiled (goldilocks S)) E).act st (.propose s h)).1.1 hn =
+    ((Model.protoOf (compiled (goldilocksWith S)) E).act st (.propose s h)).1.1 hn =
       (propose (st.1 hn) s).1 := by
-  change ((goldilocks S (pubOf E)).propose st.1 s).1 hn = _
-  simp only [goldilocks, goldilocksWith, dite_eq_left hn]
+  change ((goldilocksWith S (pubOf E)).propose st.1 s).1 hn = _
+  simp only [goldilocksWith, dite_eq_left hn]
   rfl
 
 omit [DecidableEq V] in
 /-- The engine's `pollPropose` duty is the shape's `nodeTick`. -/
-theorem shapeOf_act_pollPropose (st : (Model.protoOf (compiled (goldilocks S)) E).State) (t : Nat) :
-    ((Model.protoOf (compiled (goldilocks S)) E).act st (.pollPropose t)).1.1 hn =
+theorem shapeOf_act_pollPropose (st : (Model.protoOf (compiled (goldilocksWith S)) E).State)
+    (t : Nat) :
+    ((Model.protoOf (compiled (goldilocksWith S)) E).act st (.pollPropose t)).1.1 hn =
       nodeTick (st.1 hn) := by
-  change ((goldilocks S (pubOf E)).pollPropose st.1 t).1 hn = _
-  simp only [goldilocks, goldilocksWith, dite_eq_left hn]
+  change ((goldilocksWith S (pubOf E)).pollPropose st.1 t).1 hn = _
+  simp only [goldilocksWith, dite_eq_left hn]
   rfl
 
 omit [DecidableEq V] in
 /-- The engine's `poll` duty is the shape's `poll`. -/
-theorem shapeOf_act_poll (st : (Model.protoOf (compiled (goldilocks S)) E).State) (t : Nat) :
-    ((Model.protoOf (compiled (goldilocks S)) E).act st (.poll t)).1.1 hn =
+theorem shapeOf_act_poll (st : (Model.protoOf (compiled (goldilocksWith S)) E).State) (t : Nat) :
+    ((Model.protoOf (compiled (goldilocksWith S)) E).act st (.poll t)).1.1 hn =
       (poll (st.1 hn) t).1 := by
-  change ((goldilocks S (pubOf E)).pollBatch st.1 t).1 hn = _
-  simp only [goldilocks, goldilocksWith, dite_eq_left hn]
+  change ((goldilocksWith S (pubOf E)).pollBatch st.1 t).1 hn = _
+  simp only [goldilocksWith, dite_eq_left hn]
   rfl
 
 omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `recordOwn`, `propose`, `nodeTick` and `poll` is
 preserved by every duty step of the engine. -/
-theorem dutyStep_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
+theorem dutyStep_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
     (hprop : ∀ st s, Q st → Q (propose st s).1) (htick : ∀ st, Q st → Q (nodeTick st))
     (hpoll : ∀ st t, Q st → Q (poll st t).1) (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) (h : Q (shapeOf S hn nd)) :
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+    (d : (Model.protoOf (compiled (goldilocksWith S)) E).Duty) (h : Q (shapeOf S hn nd)) :
     Q (shapeOf S hn (rho.dutyStep v nd d).1) := by
   unfold Model.Run.dutyStep
   split
@@ -105,7 +109,7 @@ theorem dutyStep_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
     have := hprop _ s h
     rw [← shapeOf_act_propose S hn nd.st s hs] at this
     exact this
-  | act s k => exact k.elim
+  | act s k => exact h
   | pollPropose t =>
     have := htick _ h
     rw [← shapeOf_act_pollPropose S hn nd.st t] at this
@@ -118,16 +122,16 @@ theorem dutyStep_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
 omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `recordOwn`, `propose`, `nodeTick` and `poll` is
 preserved by running a list of duties. -/
-theorem runDuties_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
+theorem runDuties_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
     (hprop : ∀ st s, Q st → Q (propose st s).1) (htick : ∀ st, Q st → Q (nodeTick st))
     (hpoll : ∀ st t, Q st → Q (poll st t).1) (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty) (h : Q (shapeOf S hn nd)) :
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+    (ds : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty) (h : Q (shapeOf S hn nd)) :
     Q (shapeOf S hn (rho.runDuties v nd ds).1) := by
   unfold Model.Run.runDuties
-  suffices ∀ acc : Model.Node (Model.protoOf (compiled (goldilocks S)) E) ×
-      List (Model.protoOf (compiled (goldilocks S)) E).Object, Q (shapeOf S hn acc.1) →
+  suffices ∀ acc : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E) ×
+      List (Model.protoOf (compiled (goldilocksWith S)) E).Object, Q (shapeOf S hn acc.1) →
       Q (shapeOf S hn (ds.foldl (fun r d => let s := rho.dutyStep v r.1 d; (s.1, r.2 ++ s.2))
         acc).1) from this (nd, []) h
   induction ds with
@@ -139,20 +143,20 @@ theorem runDuties_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
 
 omit [DecidableEq V] in
 /-- The engine's `clock` sets the shape's clock to the tick time. -/
-theorem shapeOf_clock (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time)
+theorem shapeOf_clock (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (t : Time)
     (xs : List Tx) :
-    ((Model.protoOf (compiled (goldilocks S)) E).clock nd.st t xs).1 hn =
+    ((Model.protoOf (compiled (goldilocksWith S)) E).clock nd.st t xs).1 hn =
       { nd.st.1 hn with now := t } := rfl
 
 omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `recordOwn`, `propose`, `nodeTick` and `poll` holds
 after an engine tick if it holds for the clocked state before it: an asleep node's tick leaves the
 state clocked, an awake node's runs the duties and the gossip. -/
-theorem tick_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
+theorem tick_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
     (hprop : ∀ st s, Q st → Q (propose st s).1) (htick : ∀ st, Q st → Q (nodeTick st))
     (hpoll : ∀ st t, Q st → Q (poll st t).1) (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (t : Time)
     (h : Q { nd.st.1 hn with now := t }) :
     Q (shapeOf S hn (rho.tick nd v t).1) := by
   unfold Model.Run.tick
@@ -164,8 +168,9 @@ theorem tick_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
 
 omit [DecidableEq V] in
 /-- Running two lists of duties in sequence is running their concatenation. -/
-theorem runDuties_fst_append (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (ds ds' : List (Model.protoOf (compiled (goldilocks S)) E).Duty) :
+theorem runDuties_fst_append (v : V) (nd : Model.Node (Model.protoOf (compiled
+    (goldilocksWith S)) E))
+    (ds ds' : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty) :
     (rho.runDuties v nd (ds ++ ds')).1 = (rho.runDuties v (rho.runDuties v nd ds).1 ds').1 := by
   unfold Model.Run.runDuties
   rw [List.foldl_append]
@@ -179,18 +184,20 @@ theorem runDuties_fst_append (v : V) (nd : Model.Node (Model.protoOf (compiled (
 /-! ## Duty steps and the node state -/
 
 /-- Recording an own signed data body changes nothing: the shape keeps no record of it. -/
-theorem recordOwn_data (st : State sp ro) (k : Fin sp.n) (r : ShapeRole Empty) (b : Body)
-    (cs : List (Wire sp.n)) hs : recordOwn st (.mk (.signed k r) (.data b) cs) hs = st := by
+theorem recordOwn_data (st : State sp ro binding) (k : Fin sp.n) (r : ShapeRole binding.Kind)
+    (b : Body)
+    (cs : List (Wire sp.n binding)) hs : recordOwn st (.mk (.signed k r) (.data b) cs) hs = st := by
   cases r <;> rfl
 
 omit [DecidableEq V] in
 /-- `releaseAll` of candidates that `recordOwn` ignores leaves the shape's state unchanged. -/
 theorem releaseAll_shape_eq (k : Fin (Fintype.card V)) :
-    ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-      (cs : List (Model.protoOf (compiled (goldilocks S)) E).Object),
-      (∀ c ∈ cs, ∀ (st : State (S.params (pubOf E) hn) (S.ro _)) hs, recordOwn st c hs = st) →
+    ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+      (cs : List (Model.protoOf (compiled (goldilocksWith S)) E).Object),
+      (∀ c ∈ cs, ∀ (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) hs, recordOwn st c hs = st)
+          →
       shapeOf S hn
-          (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd cs).1 =
+          (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E) rho.hash k nd cs).1 =
         shapeOf S hn nd
   | _, [], _ => rfl
   | nd, c :: cs, h => by
@@ -203,9 +210,9 @@ theorem releaseAll_shape_eq (k : Fin (Fintype.card V)) :
 omit [DecidableEq V] in
 /-- A poll step's signed candidate is a data body, which `recordOwn` ignores. -/
 theorem signedCandidate_poll_recordOwn (v : V) (t : Nat)
-    (o : List (Body × List (Model.protoOf (compiled (goldilocks S)) E).Object)) :
+    (o : List (Body × List (Model.protoOf (compiled (goldilocksWith S)) E).Object)) :
     ∀ c ∈ rho.signedCandidate v (.poll t) (o.map fun bc => (.data bc.1, bc.2)),
-      ∀ (st : State (S.params (pubOf E) hn) (S.ro _)) hs, recordOwn st c hs = st := by
+      ∀ (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) hs, recordOwn st c hs = st := by
   intro c hc st hs
   obtain ⟨m, cs, hm, _, _, rfl⟩ := rho.mem_signedCandidate.mp hc
   obtain ⟨⟨b, bs⟩, _, he⟩ := List.mem_map.mp hm
@@ -214,57 +221,60 @@ theorem signedCandidate_poll_recordOwn (v : V) (t : Nat)
 
 omit [DecidableEq V] in
 /-- The engine's poll duty step is the shape's `poll`: its released body is not recorded. -/
-theorem dutyStep_poll (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+theorem dutyStep_poll (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
     (t : Nat) (hsel : rho.ownKey v ∈ rho.sel .poll) :
     shapeOf S hn (rho.dutyStep v nd (.poll t)).1 = (poll (shapeOf S hn nd) t).1 := by
   unfold Model.Run.dutyStep
-  simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.poll t) = .poll from rfl,
+  simp only [show (Model.protoOf (compiled (goldilocksWith S)) E).role (.poll t) = .poll from rfl,
     hsel, ↓reduceIte]
   refine (releaseAll_shape_eq S rho hn _ _ _ ?_).trans (shapeOf_act_poll S hn nd.st t)
   exact signedCandidate_poll_recordOwn S rho hn v t _
 
 omit [DecidableEq V] in
 /-- The engine's `pollPropose` duty step is the shape's `nodeTick`: it releases nothing. -/
-theorem dutyStep_pollPropose (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+theorem dutyStep_pollPropose (v : V) (nd : Model.Node (Model.protoOf (compiled
+    (goldilocksWith S)) E))
     (t : Nat) (hsel : rho.ownKey v ∈ rho.sel .poll) :
     shapeOf S hn (rho.dutyStep v nd (.pollPropose t)).1 = nodeTick (shapeOf S hn nd) := by
   unfold Model.Run.dutyStep
   simp only
-      [show (Model.protoOf (compiled (goldilocks S)) E).role (.pollPropose t) = .poll from rfl,
+      [show (Model.protoOf (compiled (goldilocksWith S)) E).role (.pollPropose t) = .poll from rfl,
     hsel, ↓reduceIte]
-  have h2 : ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).2 = [] := by
-    change (Option.map _ ((goldilocks S (pubOf E)).pollPropose nd.st.1 t).2).toList = []
-    simp only [goldilocks, goldilocksWith, dite_eq_left hn]; rfl
+  have h2 : ((Model.protoOf (compiled (goldilocksWith S)) E).act nd.st (.pollPropose t)).2 = []
+      := by
+    change (Option.map _ ((goldilocksWith S (pubOf E)).pollPropose nd.st.1 t).2).toList = []
+    simp only [goldilocksWith, dite_eq_left hn]; rfl
   change shapeOf S hn (Model.releaseAll _ _ _
-    ⟨((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).1, nd.seen⟩
+    ⟨((Model.protoOf (compiled (goldilocksWith S)) E).act nd.st (.pollPropose t)).1, nd.seen⟩
     (rho.signedCandidate v (.pollPropose t)
-      ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).2)).1 = _
+      ((Model.protoOf (compiled (goldilocksWith S)) E).act nd.st (.pollPropose t)).2)).1 = _
   rw [h2]
   simpa [Model.Run.signedCandidate, hsel, Model.releaseAll] using
     shapeOf_act_pollPropose S hn nd.st t
 
 omit [DecidableEq V] in
 /-- Running a duty then a list of duties. -/
-theorem runDuties_fst_cons (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty)
-    (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty) :
+theorem runDuties_fst_cons (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+    (d : (Model.protoOf (compiled (goldilocksWith S)) E).Duty)
+    (ds : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty) :
     (rho.runDuties v nd (d :: ds)).1 = (rho.runDuties v (rho.dutyStep v nd d).1 ds).1 :=
   runDuties_fst_append S rho v nd [d] ds
 
 omit [DecidableEq V] in
 /-- Running no duties is the identity. -/
-theorem runDuties_fst_nil (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) :
+theorem runDuties_fst_nil (v : V) (nd : Model.Node (Model.protoOf (compiled
+    (goldilocksWith S)) E)) :
     (rho.runDuties v nd []).1 = nd := rfl
 
 /-- Recording an unsigned own object keeps the node state. -/
-theorem recordOwn_none_node (st : State sp ro) (m : Model.Msg (Header Info) Body)
-    (cs : List (Wire sp.n)) hs : (recordOwn st (.mk .none m cs) hs).node = st.node := by
+theorem recordOwn_none_node (st : State sp ro binding) (m : Model.Msg (Header Info) Body)
+    (cs : List (Wire sp.n binding)) hs : (recordOwn st (.mk .none m cs) hs).node = st.node := by
   cases m with
   | data b => cases b <;> rfl
   | item h => rfl
 
 /-- A poll step with no FG update due keeps the node state. -/
-theorem poll_node_of_fgDue (st : State sp ro) (t : Time) (h : st.fgDue = false) :
+theorem poll_node_of_fgDue (st : State sp ro binding) (t : Time) (h : st.fgDue = false) :
     (poll st t).1.node = st.node := by
   unfold poll
   simp only [h, Bool.false_eq_true, ite_false]
@@ -273,28 +283,29 @@ theorem poll_node_of_fgDue (st : State sp ro) (t : Time) (h : st.fgDue = false) 
 omit [DecidableEq V] in
 /-- The duties at a delivery at `t ≥ 0`: one poll step (`deliverOrder := [.poll]`). -/
 theorem deliverDuties_eq (t : Time) (ht : 0 ≤ t) :
-    (Model.protoOf (compiled (goldilocks S)) E).deliverDuties t = [.poll t.toNat] := by
-  change (skeleton (pubOf E)).deliverDuties t = _
+    (Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t = [.poll t.toNat] := by
+  change (skeleton (pubOf E) S.vote).deliverDuties t = _
   simp [Skeleton.deliverDuties, Skeleton.stepAt, skeleton, ht]
   rfl
 
 omit [DecidableEq V] in
 /-- A delivery at a negative time has no duties. -/
 theorem deliverDuties_eq_nil (t : Time) (ht : t < 0) :
-    (Model.protoOf (compiled (goldilocks S)) E).deliverDuties t = [] := by
-  change (skeleton (pubOf E)).deliverDuties t = _
+    (Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t = [] := by
+  change (skeleton (pubOf E) S.vote).deliverDuties t = _
   simp [Skeleton.deliverDuties, Skeleton.stepAt, skeleton, not_le.2 ht]
   rfl
 
 omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `recordOwn` of the candidates is preserved by
 `releaseAll` of them. -/
-theorem releaseAll_pres_mem (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
+theorem releaseAll_pres_mem (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (k : Fin (Fintype.card V)) :
-    ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-      (cs : List (Model.protoOf (compiled (goldilocks S)) E).Object),
+    ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+      (cs : List (Model.protoOf (compiled (goldilocksWith S)) E).Object),
       (∀ c ∈ cs, ∀ st hs, Q st → Q (recordOwn st c hs)) → Q (shapeOf S hn nd) →
-      Q (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd
+      Q (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled
+          (goldilocksWith S)) E) rho.hash k nd
           cs).1)
   | _, [], _, h => h
   | nd, c :: cs, hrec, h => by
@@ -308,11 +319,11 @@ omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `poll` and by `recordOwn` of unsigned objects
 holds after an engine delivery if it holds for the processed state: the delivery runs one poll
 step (at `t ≥ 0`) and the gossip, whose candidates are unsigned. -/
-theorem deliver_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
+theorem deliver_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hpoll : ∀ st t, Q st → Q (poll st t).1)
     (hrec : ∀ st m cs hs, Q st → Q (recordOwn st (.mk .none m cs) hs)) (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (o : (Model.protoOf (compiled (goldilocks S)) E).Object) (t : Time)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+    (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object) (t : Time)
     (h : Q (process (nd.st.1 hn) o (Model.digests rho.hash o))) :
     Q (shapeOf S hn (rho.deliver nd v o t).1) := by
   unfold Model.Run.deliver
@@ -328,7 +339,8 @@ theorem deliver_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
         exact hpoll _ _ h
       · erw [runDuties_fst_cons, runDuties_fst_nil]
         simp only [Model.Run.dutyStep,
-          show (Model.protoOf (compiled (goldilocks S)) E).role (.poll t.toNat) = .poll from rfl,
+          show (Model.protoOf (compiled (goldilocksWith S)) E).role (.poll t.toNat)
+              = .poll from rfl,
           hsel, ↓reduceIte]
         exact h
     · rw [deliverDuties_eq_nil S t ht, runDuties_fst_nil]
@@ -338,14 +350,14 @@ theorem deliver_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
 
 /-- The shape's state before the first event is its initial state at the own key. -/
 theorem stateAt_zero (v : V) :
-    stateAt S rho hn v 0 = (goldilocksShape _ _).init (rho.ownKey v)
+    stateAt S rho hn v 0 = (goldilocksShape _ _ S.vote).init (rho.ownKey v)
       (fun r => decide (rho.ownKey v ∈ rho.sel r)) := by
   rw [stateAt_eq]
   rfl
 
 /-- The shape's state after event `i` is the engine's `step` on the state before it. -/
 theorem stateAt_succ (v : V) {i : Nat}
-    {e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {e : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[i]? = some e) :
     stateAt S rho hn v (i + 1) = (rho.step (rho.stateBefore i) e v).st.1 hn := by
   simp only [stateAt_eq, rho.stateBefore_succ he]
@@ -360,7 +372,7 @@ theorem stateAt_succ_none (v : V) {i : Nat} (he : rho.events[i]? = none) :
 
 /-- An event of another node leaves the shape's state unchanged. -/
 theorem state_of_other (v : V) (i : Nat)
-    (e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object)
+    (e : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object)
     (he : rho.events[i]? = some e) (hne : e.node ≠ v) :
     stateAt S rho hn v (i + 1) = stateAt S rho hn v i := by
   rw [stateAt_succ S rho hn v he]
@@ -377,7 +389,7 @@ theorem stateAt_tick (v : V) {i : Nat} {t : Time} (he : rho.events[i]? = some (.
 `process` of the delivered object with the engine's digests, then the delivery's poll step and
 gossip (`deliver_pres`). -/
 theorem stateAt_deliver (v : V) {i : Nat} {t : Time}
-    {o : (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[i]? = some (.deliver v o t)) :
     stateAt S rho hn v (i + 1) = shapeOf S hn (rho.deliver (rho.stateBefore i v) v o t).1 := by
   rw [stateAt_succ S rho hn v he]
@@ -435,7 +447,7 @@ theorem lastClock_succ_restart (v : V) {i : Nat} {t : Time}
 
 /-- `lastClock` is unchanged by a delivery. -/
 theorem lastClock_succ_deliver (v : V) {i : Nat} {t : Time}
-    {o : (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[i]? = some (.deliver v o t)) :
     lastClock S rho v (i + 1) = lastClock S rho v i := by
   simp [lastClock_succ, he]
@@ -447,7 +459,7 @@ theorem lastClock_succ_none (v : V) {i : Nat} (he : rho.events[i]? = none) :
 
 /-- `lastClock` of `v` is unchanged by an event of another node. -/
 theorem lastClock_succ_other (v : V) {i : Nat}
-    {e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {e : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[i]? = some e) (hne : e.node ≠ v) :
     lastClock S rho v (i + 1) = lastClock S rho v i := by
   cases e <;> simp only [Model.Event.node] at hne <;> simp [lastClock_succ, he, hne]
@@ -489,26 +501,27 @@ theorem now_eq_lastClock (_hv : rho.ExecutionValid) (v : V) :
 
 /-- The duties of a tick at `t ≥ 0` but the last: two poll steps, the node's tick, the slot
 proposal if due, one poll step. -/
-abbrev dutiesInit (t : Time) : List (Model.protoOf (compiled (goldilocks S)) E).Duty :=
+abbrev dutiesInit (t : Time) : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty :=
   [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] ++
-    (skeleton (pubOf E)).proposeAt t ++ [.poll t.toNat]
+    (skeleton (pubOf E) S.vote).proposeAt t ++ [.poll t.toNat]
 
 omit [DecidableEq V] in
 /-- The duties of a tick at `t ≥ 0`: `dutiesInit` and one more poll step. -/
 theorem duties_eq (t : Time) (ht : 0 ≤ t) :
-    (Model.protoOf (compiled (goldilocks S)) E).duties t = dutiesInit S t ++ [.poll t.toNat] := by
-  change (skeleton (pubOf E)).duties t = _
+    (Model.protoOf (compiled (goldilocksWith S)) E).duties t = dutiesInit S t ++ [.poll t.toNat]
+        := by
+  change (skeleton (pubOf E) S.vote).duties t = _
   simp only [Skeleton.duties, Skeleton.stepAt, skeleton, ht, ite_true, List.flatMap_cons,
     List.flatMap_nil, List.append_nil, List.cons_append, List.nil_append, dutiesInit]
   exact congrArg (fun l => ShapeDuty.poll t.toNat :: .poll t.toNat :: .pollPropose t.toNat :: l)
-    (List.append_assoc ((skeleton (pubOf E)).proposeAt t)
+    (List.append_assoc ((skeleton (pubOf E) S.vote).proposeAt t)
       [ShapeDuty.poll t.toNat] [ShapeDuty.poll t.toNat]).symm
 
 omit [DecidableEq V] in
 /-- A tick at a negative time has no duties. -/
 theorem duties_eq_nil (t : Time) (ht : t < 0) :
-    (Model.protoOf (compiled (goldilocks S)) E).duties t = [] := by
-  change (skeleton (pubOf E)).duties t = _
+    (Model.protoOf (compiled (goldilocksWith S)) E).duties t = [] := by
+  change (skeleton (pubOf E) S.vote).duties t = _
   simp [Skeleton.duties, Skeleton.stepAt, Skeleton.proposeAt, skeleton, TimeGrid.slotAt?,
     not_le.2 ht]
   rfl
@@ -535,7 +548,7 @@ theorem fgDue_eq_false (v : V) : ∀ i, (stateAt S rho hn v i).fgDue = false
               change ((rho.dutyStep v' _ (.poll t.toNat)).1.st.1 hn).fgDue = false
               by_cases hsel : rho.ownKey v' ∈ rho.sel .poll
               case neg =>
-                have hpres : ∀ ds (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)),
+                have hpres : ∀ ds (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)),
                     (nd.st.1 hn).fgDue = false →
                     ((rho.runDuties v' nd ds).1.st.1 hn).fgDue = false := by
                   intro ds
@@ -546,42 +559,47 @@ theorem fgDue_eq_false (v : V) : ∀ i, (stateAt S rho hn v i).fgDue = false
                     rw [runDuties_fst_cons]
                     apply ih
                     cases d with
-                    | act s k => exact k.elim
+                    | act s k =>
+                      unfold Model.Run.dutyStep
+                      split
+                      case isFalse => exact hh
+                      exact releaseAll_pres S rho hn (fun st => st.fgDue = false)
+                        (fun st o hs hh => (recordOwn_fgDue st o hs).trans hh) _ _ _ hh
                     | propose s hs =>
                       unfold Model.Run.dutyStep
                       split
                       case isFalse => exact hh
                       apply releaseAll_pres S rho hn (fun st => st.fgDue = false)
                         (fun st o hs hh => (recordOwn_fgDue st o hs).trans hh)
-                      change (((Model.protoOf (compiled (goldilocks S)) E).act nd.st
+                      change (((Model.protoOf (compiled (goldilocksWith S)) E).act nd.st
                         (.propose s hs)).1.1 hn).fgDue = false
                       rw [shapeOf_act_propose]
                       exact (propose_fgDue _ s).trans hh
                     | poll t =>
                       simp only [Model.Run.dutyStep,
-                        show (Model.protoOf (compiled (goldilocks S)) E).role (.poll t) =
+                        show (Model.protoOf (compiled (goldilocksWith S)) E).role (.poll t) =
                           .poll from rfl,
                         hsel, ↓reduceIte]
                       exact hh
                     | pollPropose t =>
                       simp only [Model.Run.dutyStep,
-                        show (Model.protoOf (compiled (goldilocks S)) E).role (.pollPropose t) =
+                        show (Model.protoOf (compiled (goldilocksWith S)) E).role (.pollPropose t) =
                           .poll from rfl,
                         hsel, ↓reduceIte]
                       exact hh
                 simp only [Model.Run.dutyStep,
-                  show (Model.protoOf (compiled (goldilocks S)) E).role (.poll t.toNat) =
+                  show (Model.protoOf (compiled (goldilocksWith S)) E).role (.poll t.toNat) =
                     .poll from rfl,
                   hsel, ↓reduceIte]
                 apply hpres
                 change ((rho.stateBefore i v').st.1 hn).fgDue = false
                 simpa only [stateAt_eq] using fgDue_eq_false v' i
               unfold Model.Run.dutyStep
-              simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.poll t.toNat) =
+              simp only [show (Model.protoOf (compiled (goldilocksWith S)) E).role (.poll t.toNat) =
                 .poll from rfl, hsel, ↓reduceIte]
               apply releaseAll_pres S rho hn (fun st => st.fgDue = false)
                 (fun st o hs h => (recordOwn_fgDue st o hs).trans h)
-              change (((Model.protoOf (compiled (goldilocks S)) E).act _
+              change (((Model.protoOf (compiled (goldilocksWith S)) E).act _
                 (.poll t.toNat)).1.1 hn).fgDue = false
               rw [shapeOf_act_poll]
               exact poll_fgDue _ _
@@ -608,7 +626,7 @@ theorem fgDue_eq_false (v : V) : ∀ i, (stateAt S rho hn v i).fgDue = false
 /-- In a valid run the events are sorted by their key, so an earlier event's key is at most a later
 one's. -/
 theorem keyLe_of_lt (hv : rho.ExecutionValid) {j k : Nat}
-    {e f : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {e f : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (hj : rho.events[j]? = some e) (hk : rho.events[k]? = some f) (hjk : j < k) :
     e.keyLe f := by
   obtain ⟨hj', rfl⟩ := List.getElem?_eq_some_iff.1 hj
@@ -644,7 +662,7 @@ theorem lastClock_of_between (v : V) (t : Time) (j : Nat)
 /-- **The clock at a delivery.** A delivery to `v` at `t` in a valid run comes after a tick of `v`
 at `t` (the node is awake and the key order puts ticks first), so the shape's clock at it is `t`. -/
 theorem lastClock_of_deliver (hv : rho.ExecutionValid) (v : V) {i : Nat}
-    {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
+    {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) : lastClock S rho v i = t := by
   have hmem := List.mem_of_getElem? he
   have hhon := hv.honest_only _ hmem

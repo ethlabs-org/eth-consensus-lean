@@ -17,8 +17,8 @@ open AsChainShape
 open Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- An attestation that a node processes at cut `k`, while its signer is honest at the cut's
 time, was signed by the signer at an earlier cut. Premise `hrel`: a release of the attestation

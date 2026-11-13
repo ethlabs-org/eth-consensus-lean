@@ -14,8 +14,8 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Every block and vote emitted by a public tick is released at that engine event. -/
 theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
@@ -46,26 +46,20 @@ theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
       · exact Or.inl rfl
       · exact Or.inr rfl
     | _ :: _ :: _ :: _, h, _ => simp at h
-  have hrelQ : ∀ q ∈ Q,
-      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) N4.seen
+  have hrelQ : ∀ q ∈ Q, rho.ownKey v ∈ rho.sel (pollRole S.vote (pubOf E).n q) →
+      Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) N4.seen
         (pollObj S rho v q) = true →
-      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) N5.seen
+      Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) N5.seen
         (pollObj S rho v q) = true →
       pollObj S rho v q ∈ rho.releasesAt i := by
-    intro q hq h4 h5
-    have hd (seen) : (Model.protoOf (compiled (goldilocks S)) E).dependencies.ready
-        (Model.closure seen) (pollObj S rho v q) = true := by
-      change (dependencies _).ready _ (.mk (.signed _ .poll) (.data q) []) = true
-      cases q <;> rfl
+    intro q hq hk h4 h5
     rw [heq]
     rcases hpos q hq with h | h
     · refine List.mem_append_left _ (List.mem_append_left _ (List.mem_append_right _ ?_))
       apply List.mem_append_left
-      rw [h, ← release_head S rho v N4 (some q)]
-      simp [Model.releaseAll, Model.releasable, Model.Obj.carried, h4, hd]
+      rw [h]; simp [relHead_eq, hk, h4]
     · refine List.mem_append_left _ (List.mem_append_right _ ?_)
-      rw [h, ← release_head S rho v N5 (some q)]
-      simp [Model.releaseAll, Model.releasable, Model.Obj.carried, h5, hd]
+      rw [h]; simp [relHead_eq, hk, h5]
   refine ⟨fun B acc hB _ => ?_, fun ℓ hℓ m hm => ?_⟩
   · rw [heq]
     refine List.mem_append_left _ (List.mem_append_left _ (List.mem_append_left _
@@ -77,10 +71,10 @@ theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
       rw [hQ]
       exact List.mem_append_left _ (List.mem_flatMap.mpr ⟨_, hℓ ▸ hlab,
         List.mem_map.mpr ⟨m, hm, rfl⟩⟩)
-    have hobj : @voteObj stock (pubOf E).n m.msg = pollObj S rho v (.vote (encodeVote m.msg)) := by
-      unfold voteObj; rw [show m.msg.val = rho.ownKey v from hval]; rfl
+    have hobj := voteObj_eq_pollObj S rho (show m.msg.val = rho.ownKey v from hval)
+    have hk := exec_emit_selected S rho hn hv (hℓ ▸ hlab) m hm
     exact (congrArg (· ∈ rho.releasesAt i) hobj).mpr (hrelQ _ hq
-      (protects_of_not_att S _ _ _ (fun k w h => by cases h))
-      (protects_of_not_att S _ _ _ (fun k w h => by cases h)))
+      (by rw [pollRole_vote]; exact hk)
+      (protects_pollObj_vote S rho v _ _ _) (protects_pollObj_vote S rho v _ _ _))
 
 end Consensus.Goldilocks.Simulation

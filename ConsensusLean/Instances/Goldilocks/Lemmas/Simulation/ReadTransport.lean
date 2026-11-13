@@ -55,8 +55,8 @@ theorem chainTo_compatible {sp : SA.SAParams} {acp₀ : SA.Payload sp.n}
     rw [chainTo_agree hr' hr hU hs' hs hC hm]
     exact chainTo_prefix hr ha
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- **The header chains of a reader's held blocks are valid outputs.** For a reachable store of the
 reader at cut `k` of a trace `T` whose held non-genesis blocks have their digests as roots and a

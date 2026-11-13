@@ -6,7 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingSta
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
-import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outbox
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outbox
 
 public section
 
@@ -24,6 +24,8 @@ open AsChainShape
 
 open Shape Blocks
 open Consensus.Model
+
+variable {binding : VoteBinding}
 
 /-- One successful candidate of a release batch. `batch` orders actual batches within an event;
 `index` names the candidate, including candidates rejected earlier in the batch. -/
@@ -47,16 +49,17 @@ def Publication.Before {pub : Public} {O : Type} {P : Protocol pub O}
 duty/release batches, not chosen to make publication claims vacuous. `publisherExecution`
 below supplies that linkage without assuming any acceptance provenance. -/
 structure PublisherExecution {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) where
-  actual : Publication (protoOf (compiled (goldilocks S)) E) → Prop
+    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) where
+  actual : Publication (protoOf (compiled (goldilocksWith S)) E) → Prop
   eventTime : Nat → Time
   actual_event : ∀ r, actual r → rho.SendsAt (rho.key r.origin) r.event (eventTime r.event)
   actual_success : ∀ r, actual r →
-    let nd := (Model.releaseAll (protoOf (compiled (goldilocks S)) E) rho.hash r.origin
+    let nd := (Model.releaseAll (protoOf (compiled (goldilocksWith S)) E) rho.hash r.origin
       r.before (r.candidates.take r.index)).1
     Model.releasable nd.seen r.object = true ∧
-      Model.protects (protoOf (compiled (goldilocks S)) E) r.origin nd.seen r.object = true ∧
-      (protoOf (compiled (goldilocks S)) E).dependencies.ready (Model.closure nd.seen) r.object =
+      Model.protects (protoOf (compiled (goldilocksWith S)) E) r.origin nd.seen r.object = true ∧
+      (protoOf (compiled (goldilocksWith S)) E).dependencies.ready (Model.closure nd.seen) r.object
+          =
           true
   actual_release : ∀ r, actual r → r.object ∈ rho.releasesAt r.event
 
@@ -142,15 +145,15 @@ theorem eventBatches_eq {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
 /-- A real candidate prefix: ties both its state and candidates to the engine event. -/
 def ExecutedPublication {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
-    (r : Publication (protoOf (compiled (goldilocks S)) E)) : Prop :=
+    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
+    (r : Publication (protoOf (compiled (goldilocksWith S)) E)) : Prop :=
   (eventBatches rho r.event)[r.batch]? = some ⟨r.before, r.candidates⟩ ∧
   ∃ t, rho.SendsAt (rho.key r.origin) r.event t
 
 /-- Characterize the actual batch and sending event without exposing the definition. -/
 theorem executedPublication_iff {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
-    (r : Publication (protoOf (compiled (goldilocks S)) E)) :
+    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
+    (r : Publication (protoOf (compiled (goldilocksWith S)) E)) :
     ExecutedPublication S rho r ↔
       (eventBatches rho r.event)[r.batch]? = some ⟨r.before, r.candidates⟩ ∧
         ∃ t, rho.SendsAt (rho.key r.origin) r.event t := by rfl
@@ -215,14 +218,14 @@ theorem releaseAll_of_prefix_guards {pub : Public} {O : Type} (P : Protocol pub 
       ht.2.trans (by simp only [List.append_assoc, List.singleton_append])⟩
 
 /-- Ordered readiness discharges every guard for a batch of canonical block envelopes. -/
-theorem forward_batch_guards {V : Type} [Fintype V] {E : Env V} (S : Setup)
+theorem forward_batch_guards {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
     (hn : 1 ≤ Fintype.card V) (x : Fin (Fintype.card V))
-    (seen cs : List (Wire (Fintype.card V))) (hr : PendingReady seen cs)
+    (seen cs : List (Wire (Fintype.card V) S.vote)) (hr : PendingReady seen cs)
     (hshape : ∀ o ∈ cs, ∃ t p B, o = forwardObj (S.params (pubOf E) hn) x t p B) :
     ∀ i o, cs[i]? = some o →
-      Model.releasable (P := protoOf (compiled (goldilocks S)) E) (seen ++ cs.take i) o = true ∧
-      Model.protects (protoOf (compiled (goldilocks S)) E) x (seen ++ cs.take i) o = true ∧
-      (protoOf (compiled (goldilocks S)) E).dependencies.ready
+      Model.releasable (P := protoOf (compiled (goldilocksWith S)) E) (seen ++ cs.take i) o = true ∧
+      Model.protects (protoOf (compiled (goldilocksWith S)) E) x (seen ++ cs.take i) o = true ∧
+      (protoOf (compiled (goldilocksWith S)) E).dependencies.ready
         (Model.closure (seen ++ cs.take i)) o = true := by
   intro i o hi
   obtain ⟨t, p, B, he⟩ := hshape o (List.mem_of_getElem? hi)
@@ -232,33 +235,33 @@ theorem forward_batch_guards {V : Type} [Fintype V] {E : Env V} (S : Setup)
 
 /-- A ready canonical forwarding suffix is released completely from its actual
 post-prefix node. This allows an ordinary poll emission to precede the block queue. -/
-theorem releaseAll_forward_batch {V : Type} [Fintype V] {E : Env V} (S : Setup)
+theorem releaseAll_forward_batch {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
     (hn : 1 ≤ Fintype.card V) (hash : Header Info → Nat) (x : Fin (Fintype.card V))
-    (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
-    (cs : List (protoOf (compiled (goldilocks S)) E).Object)
+    (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E))
+    (cs : List (protoOf (compiled (goldilocksWith S)) E).Object)
     (hr : PendingReady nd.seen cs)
     (hshape : ∀ o ∈ cs, ∃ t p B, o = forwardObj (S.params (pubOf E) hn) x t p B) :
-    (Model.releaseAll (protoOf (compiled (goldilocks S)) E) hash x nd cs).2 = cs ∧
-      (Model.releaseAll (protoOf (compiled (goldilocks S)) E) hash x nd cs).1.seen =
+    (Model.releaseAll (protoOf (compiled (goldilocksWith S)) E) hash x nd cs).2 = cs ∧
+      (Model.releaseAll (protoOf (compiled (goldilocksWith S)) E) hash x nd cs).1.seen =
         nd.seen ++ cs := by
   apply releaseAll_of_prefix_guards
   exact forward_batch_guards S hn x nd.seen cs hr hshape
 
 /-- Ordinary poll candidates may succeed or fail: either way they preserve holdings,
 so a ready block-envelope suffix drains completely after their actual release prefix. -/
-theorem releaseAll_forward_suffix {V : Type} [Fintype V] {E : Env V} (S : Setup)
+theorem releaseAll_forward_suffix {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
     (hn : 1 ≤ Fintype.card V) (hash : Header Info → Nat) (x : Fin (Fintype.card V))
-    (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
-    (pre cs : List (protoOf (compiled (goldilocks S)) E).Object)
+    (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E))
+    (pre cs : List (protoOf (compiled (goldilocksWith S)) E).Object)
     (hr : PendingReady nd.seen cs)
     (hshape : ∀ o ∈ cs, ∃ t p B, o = forwardObj (S.params (pubOf E) hn) x t p B) :
-    (Model.releaseAll (protoOf (compiled (goldilocks S)) E) hash x nd (pre ++ cs)).2 =
-      (Model.releaseAll (protoOf (compiled (goldilocks S)) E) hash x nd pre).2 ++ cs := by
-  rw [Model.releaseAll_append (P := protoOf (compiled (goldilocks S)) E) hash x nd pre cs]
-  have hseen := Model.releaseAll_seen (P := protoOf (compiled (goldilocks S)) E)
+    (Model.releaseAll (protoOf (compiled (goldilocksWith S)) E) hash x nd (pre ++ cs)).2 =
+      (Model.releaseAll (protoOf (compiled (goldilocksWith S)) E) hash x nd pre).2 ++ cs := by
+  rw [Model.releaseAll_append (P := protoOf (compiled (goldilocksWith S)) E) hash x nd pre cs]
+  have hseen := Model.releaseAll_seen (P := protoOf (compiled (goldilocksWith S)) E)
     hash x nd pre
   have hr' : PendingReady
-      (Model.releaseAll (protoOf (compiled (goldilocks S)) E) hash x nd pre).1.seen cs := by
+      (Model.releaseAll (protoOf (compiled (goldilocksWith S)) E) hash x nd pre).1.seen cs := by
     rw [hseen]
     apply pendingReady_mono (h := hr)
     intro o ho
@@ -268,31 +271,28 @@ theorem releaseAll_forward_suffix {V : Type} [Fintype V] {E : Env V} (S : Setup)
 
 /-- Actual selected poll candidates retain the old signed block queue after the ordinary
 emission. The self-key premise is the runtime identity, not a new service assumption. -/
-theorem signedCandidate_poll_eq {V : Type} [Fintype V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (t : Nat)
+theorem signedCandidate_poll_eq {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
+    (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (t : Nat)
     (hsel : rho.ownKey v ∈ rho.sel .poll)
     (hself : (shapeOf S hn nd).self = rho.ownKey v) :
-    rho.signedCandidate v (.poll t) ((protoOf (compiled (goldilocks S)) E).act nd.st (.poll t)).2 =
-      ((poll (shapeOf S hn nd) t).2.toList.map fun q =>
-        Obj.mk (.signed (rho.ownKey v) .poll) (.data q.1) q.2) ++
-        pendingWrappers (shapeOf S hn nd) ++
-      ((shapeOf S hn nd).voteForwards.map fun q =>
-        Obj.mk (.signed (rho.ownKey v) .poll) (.data (.voteForward q.1 (encodeVote q.2)))
-          [voteObj q.2]) := by
-  rw [act_poll_snd S hn]
-  rw [Model.Run.signedCandidate_of_default rho v (.poll t) _ (fun _ => rfl)]
-  simp only [
-    show (protoOf (compiled (goldilocks S)) E).role (.poll t) = .poll from rfl,
-    hsel, ↓reduceIte, Option.toList_map, pendingWrappers_eq, hself]
-  erw [List.map_append, List.map_append, List.map_map, List.map_map, List.map_map]
+    rho.signedCandidate v (.poll t) ((protoOf (compiled (goldilocksWith S)) E).act nd.st
+        (.poll t)).2 =
+      @HAppend.hAppend _ (List (protoOf (compiled (goldilocksWith S)) E).Object) _ _
+        (@HAppend.hAppend _ (List (protoOf (compiled (goldilocksWith S)) E).Object) _ _
+          (pollOrdinary S rho v (poll (shapeOf S hn nd) t).2)
+          (pendingWrappers (shapeOf S hn nd)))
+        ((shapeOf S hn nd).voteForwards.map fun q =>
+          Obj.mk (.signed (rho.ownKey v) .poll) (.data (.voteForward q.1 (encodeVote q.2)))
+            [voteObj q.2]) := by
+  rw [signedCandidate_poll S rho hn v nd t hsel, pendingWrappers_eq, hself]
   rfl
 
 /-- A selected actual poll releases every ready canonical pending block wrapper. The ordinary
 emission may fail; later vote envelopes cannot undo releases from the block prefix. -/
-theorem dutyStep_poll_pending {V : Type} [Fintype V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (t : Nat)
+theorem dutyStep_poll_pending {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
+    (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (t : Nat)
     (hsel : rho.ownKey v ∈ rho.sel .poll)
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (hr : PendingReady nd.seen (pendingWrappers (shapeOf S hn nd)))
@@ -301,18 +301,18 @@ theorem dutyStep_poll_pending {V : Type} [Fintype V] {E : Env V} (S : Setup)
     ∀ o ∈ pendingWrappers (shapeOf S hn nd), o ∈ (rho.dutyStep v nd (.poll t)).2 := by
   intro o ho
   unfold Model.Run.dutyStep
-  simp only [show (protoOf (compiled (goldilocks S)) E).role (.poll t) = .poll from rfl,
+  simp only [show (protoOf (compiled (goldilocksWith S)) E).role (.poll t) = .poll from rfl,
     hsel, ↓reduceIte]
   rw [signedCandidate_poll_eq S rho hn v nd t hsel hself]
-  erw [Model.releaseAll_append (P := protoOf (compiled (goldilocks S)) E)]
+  erw [Model.releaseAll_append (P := protoOf (compiled (goldilocksWith S)) E)]
   apply List.mem_append_left
   erw [releaseAll_forward_suffix S hn rho.hash (rho.ownKey v)
-    ⟨((protoOf (compiled (goldilocks S)) E).act nd.st (.poll t)).1, nd.seen⟩ _ _ hr hshape]
+    ⟨((protoOf (compiled (goldilocksWith S)) E).act nd.st (.poll t)).1, nd.seen⟩ _ _ hr hshape]
   exact List.mem_append_right _ ho
 
 /-- Poll's block map is durable while the pending queue is cleared. -/
 theorem poll_wrappers {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (t : Time) :
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (t : Time) :
     (poll st t).1.wrappers = st.wrappers ∧ (poll st t).1.forwards = [] := by
   unfold poll
   have hf : (fgUpdate st).wrappers = st.wrappers := by
@@ -329,9 +329,9 @@ theorem poll_wrappers {sp : SA.SAParams}
   · rfl
 
 /-- After the real poll, every durable wrapper is held, not merely pending. -/
-theorem dutyStep_poll_wrappers_held {V : Type} [Fintype V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (t : Nat)
+theorem dutyStep_poll_wrappers_held {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
+    (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (t : Nat)
     (hsel : rho.ownKey v ∈ rho.sel .poll) (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (ha : WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ nd.seen.flatMap Obj.parts) (shapeOf S hn nd))
@@ -343,11 +343,11 @@ theorem dutyStep_poll_wrappers_held {V : Type} [Fintype V] {E : Env V} (S : Setu
   intro root o hw
   rw [dutyStep_poll S rho hn v nd t hsel, (poll_wrappers _ _).1] at hw
   have hh := wrappersAccounted_drained (sp := S.params (pubOf E) hn)
-    (nd.seen : List (Wire (Fintype.card V))) (rho.dutyStep v nd (.poll t)).2
+    (nd.seen : List (Wire (Fintype.card V) S.vote)) (rho.dutyStep v nd (.poll t)).2
     (shapeOf S hn nd) ha (dutyStep_poll_pending S rho hn v nd t hsel hself hr hc) root o hw
   have he : (rho.dutyStep v nd (.poll t)).1.seen = nd.seen ++ (rho.dutyStep v nd (.poll t)).2 := by
     unfold Model.Run.dutyStep
-    simp only [show (protoOf (compiled (goldilocks S)) E).role (.poll t) = .poll from rfl,
+    simp only [show (protoOf (compiled (goldilocksWith S)) E).role (.poll t) = .poll from rfl,
       hsel, ↓reduceIte]
     exact Model.releaseAll_seen _ _ _ _
   rw [he]
@@ -408,7 +408,7 @@ theorem eventBatches_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
       exact List.mem_append_right _ ho
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-  (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+  (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
   (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _)) (cutMap : Nat → Nat)
   (pubExec : PublisherExecution S rho)
 
@@ -417,11 +417,12 @@ their actual prefix, with the event's own time. No provenance or acceptance clai
 to select publications. The batch lemmas above establish the actual release field. -/
 noncomputable def publisherExecution : PublisherExecution S rho where
   actual r := ExecutedPublication S rho r ∧
-    let nd := (Model.releaseAll (protoOf (compiled (goldilocks S)) E) rho.hash r.origin
+    let nd := (Model.releaseAll (protoOf (compiled (goldilocksWith S)) E) rho.hash r.origin
       r.before (r.candidates.take r.index)).1
     Model.releasable nd.seen r.object = true ∧
-      Model.protects (protoOf (compiled (goldilocks S)) E) r.origin nd.seen r.object = true ∧
-      (protoOf (compiled (goldilocks S)) E).dependencies.ready (Model.closure nd.seen) r.object =
+      Model.protects (protoOf (compiled (goldilocksWith S)) E) r.origin nd.seen r.object = true ∧
+      (protoOf (compiled (goldilocksWith S)) E).dependencies.ready (Model.closure nd.seen) r.object
+          =
           true
   eventTime i := (rho.events[i]?).map Model.Event.time |>.getD 0
   actual_event r hr := by
@@ -443,13 +444,13 @@ noncomputable def publisherExecution : PublisherExecution S rho where
 
 /-- The concrete relation includes every executed candidate passing its actual prefix
 guards, not merely a chosen subset of successful publications. -/
-theorem publisherExecution_actual_iff (r : Publication (protoOf (compiled (goldilocks S)) E)) :
+theorem publisherExecution_actual_iff (r : Publication (protoOf (compiled (goldilocksWith S)) E)) :
     (publisherExecution S rho).actual r ↔ ExecutedPublication S rho r ∧
-      let nd := (Model.releaseAll (protoOf (compiled (goldilocks S)) E) rho.hash r.origin
+      let nd := (Model.releaseAll (protoOf (compiled (goldilocksWith S)) E) rho.hash r.origin
         r.before (r.candidates.take r.index)).1
       Model.releasable nd.seen r.object = true ∧
-        Model.protects (protoOf (compiled (goldilocks S)) E) r.origin nd.seen r.object = true ∧
-        (protoOf (compiled (goldilocks S)) E).dependencies.ready
+        Model.protects (protoOf (compiled (goldilocksWith S)) E) r.origin nd.seen r.object = true ∧
+        (protoOf (compiled (goldilocksWith S)) E).dependencies.ready
           (Model.closure nd.seen) r.object = true := by
   rfl
 
@@ -540,7 +541,7 @@ theorem forwardHeldProcessed_iff : ForwardHeldProcessed S rho hn tr cutMap ↔
 closure at the actual candidate prefix; signing and dependency guards do not suppress it. -/
 def AcceptedObjectsSeen : Prop :=
   ∀ r, pubExec.actual r → rho.key r.origin ∉ rho.faultyAt 0 →
-    let nd := (Model.releaseAll (protoOf (compiled (goldilocks S)) E) rho.hash r.origin
+    let nd := (Model.releaseAll (protoOf (compiled (goldilocksWith S)) E) rho.hash r.origin
       r.before (r.candidates.take r.index)).1
     ∀ o ∈ r.object.carried, o ∈ Model.closure nd.seen
 
@@ -567,11 +568,11 @@ structure ForwardingContracts : Prop where
   /-- Completeness prevents selecting only convenient successful publications. Every actual
   executed candidate passing all three guards belongs to the publication relation. -/
   complete : ∀ r, ExecutedPublication S rho r →
-    let nd := (Model.releaseAll (protoOf (compiled (goldilocks S)) E) rho.hash r.origin
+    let nd := (Model.releaseAll (protoOf (compiled (goldilocksWith S)) E) rho.hash r.origin
       r.before (r.candidates.take r.index)).1
     Model.releasable nd.seen r.object = true →
-    Model.protects (protoOf (compiled (goldilocks S)) E) r.origin nd.seen r.object = true →
-    (protoOf (compiled (goldilocks S)) E).dependencies.ready (Model.closure nd.seen) r.object =
+    Model.protects (protoOf (compiled (goldilocksWith S)) E) r.origin nd.seen r.object = true →
+    (protoOf (compiled (goldilocksWith S)) E).dependencies.ready (Model.closure nd.seen) r.object =
         true →
     pubExec.actual r
   origin : ForwardOrigin S rho hn tr cutMap pubExec

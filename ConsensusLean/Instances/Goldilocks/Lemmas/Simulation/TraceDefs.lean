@@ -84,6 +84,12 @@ open Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload)
 
+/-- The SA parameters of a bound setup at `pub`: the setup's parameters at its own vote binding
+(the parameters of `goldilocksWith S`). -/
+abbrev _root_.Consensus.Goldilocks.AsChainShape.BoundSetup.params (S : BoundSetup)
+    (pub : Model.Public) (hn : 1 ≤ pub.n) : SAParams :=
+  S.toSetup.params pub hn (binding := S.vote)
+
 /-- The node's digest from the engine's hash with genesis root `g`: genesis (no parent) has
 root `g`; any other block's root is the tagged hash of its header (`parentRef` for the parent). -/
 def dgOf {n : Nat} (hash : Header Info → Nat) (g : Nat) : Digest (List (FG.Att n)) (Payload n) :=
@@ -101,8 +107,8 @@ theorem dgOf_eq {n : Nat} (hash : Header Info → Nat) (g : Nat) (par : Option N
       | some r => taggedRoot g (hash ⟨parentRef g (some r), slot, x, encodeInfo atts p⟩) := by
   rfl
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The honest keys of the engine run. -/
 def honestKeys : Set (Fin (Fintype.card V)) := {k | rho.key k ∉ rho.faultyAt 0}
@@ -119,7 +125,7 @@ noncomputable def runProposer (s : Nat) : Fin (Fintype.card V) :=
 
 /-- The node state held by the shape before an engine cut. -/
 noncomputable def stateAt (v : V) (i : Nat) :
-    State (S.params (pubOf E) hn (binding := stock)) (S.ro _) (binding := stock) :=
+    State (S.params (pubOf E) hn) (S.ro _) S.vote :=
   (rho.stateBefore i v).st.1 hn
 
 omit [DecidableEq V] in
@@ -141,7 +147,7 @@ theorem runProposer_eq (s : Nat) : runProposer S rho hn s =
 theorem stateAt_eq (v : V) (i : Nat) :
     stateAt S rho hn v i = (rho.stateBefore i v).st.1 hn := by rfl
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {binding : VoteBinding}
 
 /-- A trace cut: its node, time, event id, position in the event, label and post-state. -/
 structure CutRec (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) where
@@ -177,11 +183,11 @@ nothing. -/
 noncomputable def deliverRecs (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) :
-    List (Wire sp.n (binding := stock)) → NodeState (goldilocksNode sp ro) →
+    List (Wire sp.n binding) → NodeState (goldilocksNode sp ro) →
       Nat → List (CutRec sp ro)
   | [], _, _ => []
   | o :: os, st, sub =>
-      match canonEvent sp ro (binding := stock) hs o with
+      match canonEvent sp ro (binding := binding) hs o with
       | some e =>
           groupRecs proposer dg self st t (Nat.pair i sub) e ++
             deliverRecs proposer dg hs self t i os (exec proposer dg self st t e).1 (sub + 1)
@@ -192,13 +198,13 @@ theorem deliverRecs_nil (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
     (st : NodeState (goldilocksNode sp ro)) (sub : Nat) :
-    deliverRecs proposer dg hs self t i [] st sub = [] := by rfl
+    deliverRecs (binding := binding) proposer dg hs self t i [] st sub = [] := by rfl
 
 /-- Receipt of an object, followed by the rest of the delivery. -/
 theorem deliverRecs_cons (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) (o : Wire sp.n)
-    (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat) :
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) (o : Wire sp.n binding)
+    (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat) :
     deliverRecs proposer dg hs self t i (o :: os) st sub =
       match canonEvent sp ro hs o with
       | some e => groupRecs proposer dg self st t (Nat.pair i sub) e ++
@@ -208,8 +214,8 @@ theorem deliverRecs_cons (proposer : Nat → Fin sp.n)
 /-- A canonical object contributes its group, then the rest from the handler's state. -/
 theorem deliverRecs_cons_some (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) (o : Wire sp.n)
-    (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) (o : Wire sp.n binding)
+    (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
     (e : Event (goldilocksNode sp ro)) (he : canonEvent sp ro hs o = some e) :
     deliverRecs proposer dg hs self t i (o :: os) st sub =
       groupRecs proposer dg self st t (Nat.pair i sub) e ++
@@ -219,8 +225,8 @@ theorem deliverRecs_cons_some (proposer : Nat → Fin sp.n)
 /-- A dropped object contributes no group. -/
 theorem deliverRecs_cons_none (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) (o : Wire sp.n)
-    (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) (o : Wire sp.n binding)
+    (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
     (he : canonEvent sp ro hs o = none) :
     deliverRecs proposer dg hs self t i (o :: os) st sub =
       deliverRecs proposer dg hs self t i os st (sub + 1) := by
@@ -298,9 +304,11 @@ def awakeAt (_hn : 1 ≤ Fintype.card V) (y : Fin (Fintype.card V)) (t : Time) :
 
 /-- The canonical trace of the engine run: its cuts are `allCuts`; after the last one it stutters
 with unlabelled cuts at `horizon + 1`, each under its own event id (recorded post-state: the
-initial node state). -/
+initial node state). Each node starts from the initial node state with its own-role vote
+permission installed by the binding (`goldilocksShape.init`). -/
 noncomputable def simTrace : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _) where
-  init _ := Node.init _
+  init y := Node.initWith _ (S.vote.installVote (fun r => decide (y ∈ rho.sel r))
+    (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).initial)
   node k := ((allCuts S rho hn)[k]?).elim ⟨0, hn⟩ CutRec.node
   time := cutTime S rho hn
   event k := ((allCuts S rho hn)[k]?).elim (Nat.pair rho.events.length k) CutRec.event
@@ -326,7 +334,8 @@ theorem eventCuts_tick_other (i : Nat) (v : V) (t : Time)
   simp only [eventCuts_eq, he, hp, ↓reduceIte]
 
 /-- The cuts of an engine delivery. -/
-theorem eventCuts_deliver (i : Nat) (v : V) (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
+theorem eventCuts_deliver (i : Nat) (v : V)
+    (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object)
     (t : Time) (he : rho.events[i]? = some (.deliver v o t)) :
     eventCuts S rho hn i =
       deliverRecs (runProposer S rho hn) (digestOf S rho)
@@ -359,9 +368,11 @@ omit [DecidableEq V] in
 theorem awakeAt_iff (y : Fin (Fintype.card V)) (t : Time) :
     awakeAt S rho hn y t ↔ E.awake (rho.key y) t = true ∧ 0 ≤ t ∧ t ≤ rho.horizon := by rfl
 
-/-- Every trace node starts in the initial state. -/
+/-- Every trace node starts in the initial state with its own-role vote permission installed. -/
 theorem simTrace_init_eq (y : Fin (Fintype.card V)) :
-    (simTrace S rho hn).init y = Node.init (goldilocksNode (S.params (pubOf E) hn) (S.ro _)) := by
+    (simTrace S rho hn).init y = Node.initWith (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      (S.vote.installVote (fun r => decide (y ∈ rho.sel r))
+        (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).initial) := by
   rfl
 
 /-- The node of a trace cut. -/
@@ -399,4 +410,15 @@ theorem simTrace_observationHorizon :
     (simTrace S rho hn).observationHorizon = some rho.horizon := by rfl
 
 end Simulation
+
+/-! ## Stock-caller build scaffold (interim, removed at D2) -/
+
+open AsChainShape in
+/-- **Interim build scaffold, removed at D2** by a codemod writing `⟨S, stock⟩` explicitly; the
+landing gate checks that no `Coe Setup BoundSetup` instance remains. A population-wide
+`S : Setup` passed where the binding-generic simulation layer takes `S : BoundSetup` elaborates
+to `⟨S, stock⟩`, so `goldilocks S` is `goldilocksWith ⟨S, stock⟩` by `rfl`. The binding-generic
+layer is stated over `S : BoundSetup` and declares no `Setup` binder (gate G7). -/
+instance stockBoundSetupCoe : Coe Setup BoundSetup := ⟨fun S => ⟨S, stock⟩⟩
+
 end Consensus.Goldilocks

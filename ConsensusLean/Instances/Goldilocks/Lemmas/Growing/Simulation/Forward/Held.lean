@@ -21,6 +21,8 @@ open AsChainShape
 
 open Blocks Shape Node
 
+variable {binding : VoteBinding}
+
 variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
@@ -195,7 +197,7 @@ theorem forward_receipt_held_at
     (hd : 0 ≤ d) (hbj : ∀ k < j, tr.time k ≤ d) (hy : y ∈ H d)
     {hs : List (Header Info × Nat)} {u : Time} {B : Blk sp}
     (hFB : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B) :
-    ∀ (A : Blk sp) (o : Wire sp.n) (t : Time) (p : Option (Wire sp.n)) (r e : Nat),
+    ∀ (A : Blk sp) (o : Wire sp.n binding) (t : Time) (p : Option (Wire sp.n binding)) (r e : Nat),
       decodeForward sp hs o = some (x, t, p, A) →
       DeliverSeq proposer tr dg hs y u o.parts r e → e ≤ j → t ≤ u →
       Anc (tr.HonestBlocksAt H) A B →
@@ -211,7 +213,7 @@ theorem forward_receipt_held_at
     have hre := (deliverSeq_cover hseq).1
     have child (m : Nat) (P : Blk sp) (hPe : P ∈ (tr.state y m).fg.tree)
         (hp : A.parent = some P.root)
-        (hchild : DeliverSeq proposer tr dg hs y u (blockObj sp A).parts m e) :
+        (hchild : DeliverSeq proposer tr dg hs y u (blockObj sp A (binding := binding)).parts m e) :
         A ∈ (tr.state y e).fg.tree := by
       have hme := (deliverSeq_cover hchild).1
       rcases receipt_held_or_transfer_at hrun hnc hd hbj hy (hme.trans hej) hxk ha hAB hFB hp

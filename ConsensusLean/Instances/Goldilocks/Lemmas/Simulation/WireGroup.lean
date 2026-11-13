@@ -23,15 +23,15 @@ open Consensus.Model (pubOf)
 
 section Delivered
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 omit [DecidableEq V] in
 /-- A canonical event of an object an engine delivery delivers passes the wire checks: a block
 decodes with the engine's digests of the delivery, which map its header to the engine's hash of
 it, the root `digestOf` names. -/
-theorem wireOK_of_delivered (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
-    {o' : Wire (S.params (pubOf E) hn).n} (ho : o' ∈ delivered (S.params (pubOf E) hn) o)
+theorem wireOK_of_delivered (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object)
+    {o' : Wire (S.params (pubOf E) hn).n S.vote} (ho : o' ∈ delivered (S.params (pubOf E) hn) o)
     {e : Event (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
     (he : canonEvent (S.params (pubOf E) hn) (S.ro _) (Model.digests rho.hash o) o' = some e) :
     WireOK (digestOf S rho) e := by

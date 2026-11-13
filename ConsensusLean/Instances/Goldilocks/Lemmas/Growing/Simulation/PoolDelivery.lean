@@ -52,10 +52,11 @@ private theorem pool_evidence_at_update {sp : SAParams} {FGP : Type}
 open AsChainShape Shape
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 private theorem pool_evidence_at_update_at (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {w : Fin (Fintype.card V)} {c m : Nat} {ℓ}
     (hw : w ∈ honestKeysAt S rho ((simTraceAt S rho hn).time c))
@@ -98,6 +99,7 @@ private theorem pool_evidence_at_update_at (hv : rho.ExecutionValid)
 /-- A slot vote reaches a joined updater as the vote itself or as evidence that its
 validator equivocated. Honesty at the cast does not prohibit later forged votes. -/
 theorem outage_pool_delivery_at (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {g : Time}
     (hnet : rho.log.PSync rho.point g) :
     ∀ w c m ℓ, w ∈ honestKeysAt S rho ((simTraceAt S rho hn).time c) →

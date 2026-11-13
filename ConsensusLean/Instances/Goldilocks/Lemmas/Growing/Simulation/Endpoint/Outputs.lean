@@ -33,8 +33,8 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Every trace cut before the mapped cut `cutMap i` is at a time no later than the engine cut's
 time `rho.cutTime i`. -/
@@ -56,7 +56,7 @@ theorem cutMap_time_le (hv : rho.ExecutionValid) {i : Nat} (hi : i ≤ rho.event
 /-- Engine cut times lie in `[0, horizon]`. -/
 theorem cutTime_bounds (hv : rho.ExecutionValid) {i : Nat} (hi : i ≤ rho.events.length) :
     0 ≤ rho.cutTime i ∧ rho.cutTime i ≤ rho.horizon := by
-  have hlaws := (Model.sysOf_laws schema (compiled (goldilocks S)) V).trace ⟨E, rho⟩ hv
+  have hlaws := (Model.sysOf_laws schema (compiled (goldilocksWith S)) V).trace ⟨E, rho⟩ hv
   have h0 := hlaws.cutTime_mono 0 i (Nat.zero_le i) hi
   have hh := hlaws.cutTime_le_horizon i hi
   change rho.cutTime 0 ≤ rho.cutTime i at h0
@@ -66,7 +66,9 @@ theorem cutTime_bounds (hv : rho.ExecutionValid) {i : Nat} (hi : i ≤ rho.event
 /-- **The reader's prefix run.** For a node honest at `rho.cutTime i`, the prefix of the canonical
 trace through `rho.cutTime i` is a static run for the keys honest then, the node's key is one of
 them, and the prefix agrees with the trace on the node's state at `cutMap i`. -/
-theorem prefix_reader_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
+theorem prefix_reader_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i)) :
     GoldilocksRun (runProposer S rho hn) (digestOf S rho) (honestKeysAt S rho (rho.cutTime i))
         ((simTraceAt S rho hn).upTo (rho.cutTime i)) ∧
@@ -89,7 +91,9 @@ theorem accepted_in_view_at (hv : rho.ExecutionValid) {v : V} {k i : Nat}
     (fun he hp r hr => (tick_block_vote_releases_at S rho hn hv he hp r hr).1) hacc hki
 
 /-- A held non-genesis block of a node honest at its engine cut is in its engine view there. -/
-theorem held_in_view_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
+theorem held_in_view_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i))
     {B : Blk (S.params (pubOf E) hn)}
     (hB : B ∈ ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.tree)
@@ -102,7 +106,9 @@ theorem held_in_view_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
   · exact accepted_in_view_at S rho hn hv ((RunTrace.upTo_acceptAt _).mp hacc).2 hk
 
 /-- Attestations carried by a held block of a node honest at its engine cut are in its view. -/
-theorem held_att_in_view_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
+theorem held_att_in_view_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i))
     {B : Blk (S.params (pubOf E) hn)}
     (hB : B ∈ ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.tree)
@@ -121,7 +127,10 @@ theorem held_att_in_view_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
 /-- **R.8 output validity under growing faults.** Every read of a node honest at its engine cut
 is linked, has increasing positions and proposal-role provenance. The growing form of
 `engine_outputValid`: the static argument on the reader's prefix run. -/
-theorem engine_outputValid_at (hv : rho.ExecutionValid) (g : Out) : OutputValid rho g := by
+theorem engine_outputValid_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E)
+    (hv : rho.ExecutionValid)
+    (g : Out) : OutputValid rho g := by
   intro v i hi hh
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
   obtain ⟨hrun, hy, hs⟩ := prefix_reader_at S rho hn hv hi hh
@@ -145,7 +154,10 @@ theorem engine_outputValid_at (hv : rho.ExecutionValid) (g : Out) : OutputValid 
 
 /-- **R.8 nesting under growing faults.** At every engine cut of a node honest there, its
 finalized read is a prefix of its confirmed read. -/
-theorem engine_nested_at (hv : rho.ExecutionValid) :
+theorem engine_nested_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E)
+    (hv : rho.ExecutionValid)
+    :
     (chainTrace rho).Nested .finalized .confirmed := by
   intro v i hi hh
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
@@ -164,7 +176,10 @@ theorem engine_nested_at (hv : rho.ExecutionValid) :
 /-- **R.8 final monotonicity under growing faults.** The finalized reads of a node at two ordered
 engine cuts at which it is honest only extend. Both cuts are read on the prefix through the later
 one. -/
-theorem engine_finalMonotone_at (hv : rho.ExecutionValid) :
+theorem engine_finalMonotone_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E)
+    (hv : rho.ExecutionValid)
+    :
     (chainTrace rho).Monotone .finalized 0 := by
   intro v i j hi hij hj _ hh
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
@@ -174,7 +189,7 @@ theorem engine_finalMonotone_at (hv : rho.ExecutionValid) :
   obtain ⟨hrun, hy, hs⟩ := prefix_reader_at S rho hn hv hj' hh
   have hsi : ((simTraceAt S rho hn).upTo (rho.cutTime j)).state (rho.ownKey v)
       (cutMap S rho hn i) = (simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i) := by
-    have hlaws := (Model.sysOf_laws schema (compiled (goldilocks S)) V).trace ⟨E, rho⟩ hv
+    have hlaws := (Model.sysOf_laws schema (compiled (goldilocksWith S)) V).trace ⟨E, rho⟩ hv
     have hct : rho.cutTime i ≤ rho.cutTime j := hlaws.cutTime_mono i j hij hj'
     exact Trace.upTo_state _ _ fun k hk => (cutMap_time_le S rho hn hv hi' k hk).trans hct
   have hri := Compose.fg_reachable hrun.toLocalRun hy (cutMap S rho hn i)

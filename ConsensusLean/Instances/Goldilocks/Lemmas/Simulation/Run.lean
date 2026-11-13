@@ -17,8 +17,8 @@ open Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload blockVotes)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-! ## `LocalRun`: groups, the cut law and the wire checks
 
@@ -67,7 +67,7 @@ private theorem recBlock_of_deliverRecs
     (proposer : Nat → Fin (S.params (pubOf E) hn).n)
     (dg : Digest (List (FG.Att (S.params (pubOf E) hn).n)) (Payload (S.params (pubOf E) hn).n))
     {y : Fin (S.params (pubOf E) hn).n} {t : Time} {i : Nat}
-    (hs : List (Header Info × Nat)) (os : List (Wire (S.params (pubOf E) hn).n)) :
+    (hs : List (Header Info × Nat)) (os : List (Wire (S.params (pubOf E) hn).n S.vote)) :
     ∀ (j0 sub : Nat) (st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _))),
     (∀ k < (deliverRecs proposer dg hs y t i os st sub).length,
       (allCuts S rho hn)[j0 + k]? = (deliverRecs proposer dg hs y t i os st sub)[k]?) →
@@ -106,7 +106,7 @@ private theorem recBlock_of_deliverRecs
 omit [DecidableEq V] in
 /-- The engine event of a labelled cut of an honest key is an event of an honest node. -/
 private theorem honest_of_cut {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
-    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (h : rho.ownKey ev.node = y) : ev.node ∉ rho.faultyAt 0 := by
   rw [key_of_ownKey S rho h]
   exact (mem_honestKeys_iff S rho y).mp hy
@@ -245,8 +245,12 @@ theorem simTrace_wire (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) 
 
 /-! ## The trace is a Goldilocks run -/
 
-/-- **The simulating trace is a Goldilocks run** at the engine's digest, for the honest keys. -/
-theorem simTrace_goldilocksRun (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
+/-- **The simulating trace is a Goldilocks run** at the engine's digest, for the honest keys.
+Stock-only (§S): stated over `S : Setup`, its 9124 form; the run record's interim `stock` field
+holds by `rfl`. -/
+theorem simTrace_goldilocksRun {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     GoldilocksRun (runProposer S rho hn) (digestOf S rho)
       (honestKeys S rho) (simTrace S rho hn) where
   stock := rfl

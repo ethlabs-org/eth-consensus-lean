@@ -21,6 +21,8 @@ open Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload SAState)
 
+variable {binding : VoteBinding}
+
 section Pools
 
 variable {sp : SAParams} {FGP : Type}
@@ -41,7 +43,7 @@ section ShapeInventory
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Polling, including the due FG update, leaves vote pools unchanged. -/
-theorem poll_pool_eq (st : State sp ro) t :
+theorem poll_pool_eq (st : State sp ro binding) t :
     (poll st t).1.node.ac.pool = st.node.ac.pool :=
   Simulation.poll_pool_eq st t
 
@@ -49,8 +51,8 @@ end ShapeInventory
 
 section EngineInventory
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- **The poll-attestation protection under growing faults** (`engine_poll_att_protected_at`). -/
 theorem pollAttProtected (hv : rho.ExecutionValid) : PollAttProtected S rho hn :=
@@ -61,8 +63,8 @@ omit [DecidableEq V] in
 /-- Every duty prefix preserves the fact that queued vote envelopes name stored
 votes. In particular this applies to the polls of a tick, not only deliveries. -/
 theorem runDuties_voteForward_in_pool (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+    (ds : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty)
     (h : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
       tv.2 ∈ (shapeOf S hn nd).node.ac.pool tv.2.slot) :
     ∀ tv ∈ (shapeOf S hn (rho.runDuties v nd ds).1).voteForwards,
@@ -72,8 +74,8 @@ theorem runDuties_voteForward_in_pool (v : V)
 omit [DecidableEq V] in
 /-- A single duty preserves queue backing, including its own released blocks. -/
 theorem dutyStep_voteForward_in_pool (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+    (d : (Model.protoOf (compiled (goldilocksWith S)) E).Duty)
     (h : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
       tv.2 ∈ (shapeOf S hn nd).node.ac.pool tv.2.slot) :
     ∀ tv ∈ (shapeOf S hn (rho.dutyStep v nd d).1).voteForwards,
@@ -83,8 +85,8 @@ theorem dutyStep_voteForward_in_pool (v : V)
 omit [DecidableEq V] in
 /-- A single duty retains stored votes through its own-object release callbacks. -/
 theorem dutyStep_pool_subset (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) (σ : Nat) :
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+    (d : (Model.protoOf (compiled (goldilocksWith S)) E).Duty) (σ : Nat) :
     (shapeOf S hn nd).node.ac.pool σ ⊆
       (shapeOf S hn (rho.dutyStep v nd d).1).node.ac.pool σ :=
   Simulation.dutyStep_pool_subset S rho hn v nd d σ
@@ -92,30 +94,31 @@ theorem dutyStep_pool_subset (v : V)
 omit [DecidableEq V] in
 /-- Duty execution never removes a stored vote; only restart replay can do so. -/
 theorem runDuties_pool_subset (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty) (σ : Nat) :
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+    (ds : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty) (σ : Nat) :
     (shapeOf S hn nd).node.ac.pool σ ⊆
       (shapeOf S hn (rho.runDuties v nd ds).1).node.ac.pool σ :=
   Simulation.runDuties_pool_subset S rho hn v nd ds σ
 
-/-- Pending canonical votes at actual duty boundaries belong to the local signer. -/
-theorem duty_cut_vote_signer (hv : rho.ExecutionValid) {v : V} (hv' : v ∉ rho.faultyAt 0)
+/-- Pending canonical votes at actual duty boundaries are own votes of a slot whose vote role
+selects the local signer. -/
+theorem duty_cut_vote_member (hv : rho.ExecutionValid) {v : V} (hv' : v ∉ rho.faultyAt 0)
     {i p : Nat} {nd} (hc : EngineDutyCut S rho v i p nd) (m : Vote (Fintype.card V))
     (hm : Body.vote (encodeVote m) ∈ (shapeOf S hn nd).outbox) :
-    m.val = rho.ownKey v :=
-  Simulation.duty_cut_vote_signer S rho hn hv hv' hc m hm
+    m.val = rho.ownKey v ∧ rho.ownKey v ∈ rho.sel (S.vote.voteRole m.slot) :=
+  Simulation.duty_cut_vote_member S rho hn hv hv' hc m hm
 
 /-- At a tick duty prefix, every pooled vote is already held or pending in the
 ordinary outbox. This retains the actual prefix state needed by release guards. -/
 theorem tick_prefix_pool_available (hv : rho.ExecutionValid) {v : V}
     (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
-    (hp : p ≤ ((Model.protoOf (compiled (goldilocks S)) E).duties t).length)
+    (hp : p ≤ ((Model.protoOf (compiled (goldilocksWith S)) E).duties t).length)
     (σ : Nat) (m : Vote (Fintype.card V)) :
     let nd := (rho.runDuties v
-      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
+      ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
         (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
-      (((Model.protoOf (compiled (goldilocks S)) E).duties t).take p)).1
+      (((Model.protoOf (compiled (goldilocksWith S)) E).duties t).take p)).1
     m ∈ (shapeOf S hn nd).node.ac.pool σ →
       voteObj m ∈ Model.closure nd.seen ∨
         Body.vote (encodeVote m) ∈ (shapeOf S hn nd).outbox :=
@@ -125,7 +128,7 @@ theorem tick_prefix_pool_available (hv : rho.ExecutionValid) {v : V}
 /-- Delivery processing keeps every queued admission's vote in the final pool. The actual
 event-boundary queue is empty, and none of the delivery handlers restarts the AC. -/
 theorem delivery_voteForward_in_pool (hv : rho.ExecutionValid) (v : V) (i : Nat)
-    (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
+    (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object)
     (tv : Time × Vote (Fintype.card V))
     (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
     tv.2 ∈ (process (stateAt S rho hn v i) o
@@ -136,7 +139,7 @@ theorem delivery_voteForward_in_pool (hv : rho.ExecutionValid) (v : V) (i : Nat)
 the delivered object's closure) or queued as a canonical own vote in the ordinary outbox. -/
 theorem delivery_pool_available (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0)
-    (i : Nat) (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
+    (i : Nat) (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object)
     (σ : Nat) (m : Vote (Fintype.card V))
     (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
     voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
@@ -148,7 +151,7 @@ theorem delivery_pool_available (hv : rho.ExecutionValid)
 /-- At an actual delivery, the only not-yet-held stored vote is the ordinary outbox head:
 the reachable one-vote invariant rules out a later queued vote. -/
 theorem delivery_pool_held_or_head (hv : rho.ExecutionValid) {v : V}
-    {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
+    {i : Nat} {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) (σ : Nat) (m : Vote (Fintype.card V))
     (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
     voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
@@ -157,19 +160,20 @@ theorem delivery_pool_held_or_head (hv : rho.ExecutionValid) {v : V}
   Simulation.delivery_pool_held_or_head_of_protected S rho hn (pollAttProtected S rho hn hv) hv he
     σ m hm
 
-/-- Any ordinary vote left by delivery processing is signed by the receiving node. -/
-theorem delivery_outbox_vote_signer (hv : rho.ExecutionValid) {v : V}
+/-- Any ordinary vote left by delivery processing is an own vote of a slot whose vote role
+selects the receiving node. -/
+theorem delivery_outbox_vote_member (hv : rho.ExecutionValid) {v : V}
     (_hv' : v ∉ rho.faultyAt 0) (i : Nat)
-    (o : (Model.protoOf (compiled (goldilocks S)) E).Object) (m : Vote (Fintype.card V))
+    (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object) (m : Vote (Fintype.card V))
     (hm : Body.vote (encodeVote m) ∈
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox) :
-    m.val = rho.ownKey v :=
-  Simulation.delivery_outbox_vote_signer S rho hn hv _hv' i o m hm
+    m.val = rho.ownKey v ∧ rho.ownKey v ∈ rho.sel (S.vote.voteRole m.slot) :=
+  Simulation.delivery_outbox_vote_member S rho hn hv _hv' i o m hm
 
 /-- Every envelope queued by an actual delivery has its canonical dependency held or at
 the ordinary outbox head. No queue-to-pool or readiness premise is left to the caller. -/
 theorem delivery_voteForward_held_or_head (hv : rho.ExecutionValid) {v : V}
-    {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
+    {i : Nat} {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) (tv : Time × Vote (Fintype.card V))
     (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
     voteObj tv.2 ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
@@ -182,9 +186,9 @@ theorem delivery_voteForward_held_or_head (hv : rho.ExecutionValid) {v : V}
 The proof uses engine-event inventory and the empty queue at the slot-start proposal. -/
 theorem scheduled_proposal_releasable (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {t : Time} {s : Slot}
-    {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
+    {nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)}
     (hscheduled : EngineProposalAt S rho v i p t s nd)
-    {par : ParentRef} {info : Info} {cs : List (Wire (Fintype.card V))}
+    {par : ParentRef} {info : Info} {cs : List (Wire (Fintype.card V) S.vote)}
     (hprop : (propose (shapeOf S hn nd) s).2 = some (par, info, cs)) :
     ∀ o ∈ cs, o ∈ Model.closure nd.seen :=
   Simulation.scheduled_proposal_releasable_of_protected S rho hn (pollAttProtected S rho hn hv) hv

@@ -52,7 +52,7 @@ theorem twinBlk_obj : blockObj (S.params (pubOf env) one_le_card) (twinBlk S) = 
 theorem canon_twin :
     canonEvent (S.params (pubOf env) one_le_card) (S.ro _)
       (Model.digests (rhoc S).hash (twin S)) (twin S) = some (.block (twinBlk S)) := by
-  have h := decodeBlock_blockObj [(hdr, 0)] (twinBlk S)
+  have h := decodeBlock_blockObj (binding := stock) [(hdr, 0)] (twinBlk S)
     (by simp [twinBlk, blockOf, hdr, parentRoot])
     (taggedRoot_ne _ _)
     (by rw [twinBlk_header]; simp [rootOf, twinBlk, blockOf, rawRoot_taggedRoot])

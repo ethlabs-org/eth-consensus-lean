@@ -40,7 +40,7 @@ open AsChainShape Simulation
 open Shape Blocks
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-  (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+  (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
 
 omit [DecidableEq V] in
 /-- A key honest at `t` is the key of an engine node uncompromised at every in-horizon `a ≤ t`. -/
@@ -60,6 +60,7 @@ theorem mem_honestKeysAt_of_not_faulty {y : Fin (Fintype.card V)} {t : Time}
 /-- A recipient is awake from its effective send/wake start through its call. The recipient is
 honest at the call. -/
 theorem deadline_awake_interval_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {y : Fin (Fintype.card V)} {j : Nat}
     (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time j))
     (hj : (simTraceAt S rho hn).IsCall y j) {τ : Time} (hτ : 0 ≤ τ) :
@@ -78,6 +79,7 @@ theorem deadline_awake_interval_at (hn : 1 ≤ Fintype.card V) (hv : rho.Executi
 
 /-- Later observation cuts can only increase a recipient's deadline. -/
 theorem deadline_mono_cut_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (y : Fin (Fintype.card V)) (τ Δ : Time) :
     Monotone (fun j => (simTraceAt S rho hn).deadline y j τ Δ) :=
   (simTraceAt S rho hn).deadline_mono_cut_of_time_mono
@@ -87,7 +89,7 @@ theorem deadline_mono_cut_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionVali
 before the protocol endpoint, at a recipient honest at the holding time. -/
 theorem publication_held_psync_at (hn : 1 ≤ Fintype.card V) {g : Time}
     (hnet : rho.log.PSync rho.point g)
-    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
+    (r : Publication (Model.protoOf (compiled (goldilocksWith S)) E))
     (hr : (publisherExecution S rho).actual r)
     (hx : rho.key r.origin ∉ rho.faultyAt ((publisherExecution S rho).eventTime r.event))
     (hrow : ¬ rho.log.fgAtt r.object)
@@ -109,7 +111,7 @@ theorem publication_held_psync_at (hn : 1 ≤ Fintype.card V) {g : Time}
 at its event, the recipient at the holding time. -/
 theorem publication_held_syncUntil_at (hn : 1 ≤ Fintype.card V) {b : Time}
     (hnet : rho.log.SyncUntil rho.point b)
-    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
+    (r : Publication (Model.protoOf (compiled (goldilocksWith S)) E))
     (hr : (publisherExecution S rho).actual r)
     (hx : rho.key r.origin ∉ rho.faultyAt ((publisherExecution S rho).eventTime r.event))
     (hrow : ¬ rho.log.fgAtt r.object)
@@ -145,7 +147,9 @@ theorem isCall_time_le_horizon (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionVa
   exact simTrace_labelled_time_le S rho hn hv (by rw [hc.2]; simp)
 
 /-- Signatures of a node honest at the signing cut are well-formed attestations. -/
-theorem signed_att_wellFormed_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+theorem signed_att_wellFormed_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} {i : Nat}
     (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i))
     {a : FG.Att (Fintype.card V)} (hs : (simTraceAt S rho hn).SignAt y i a) :
@@ -176,7 +180,9 @@ theorem released_att_processAt_at (hn : 1 ≤ Fintype.card V) (hv : rho.Executio
 
 /-- Holdings suffice for processing before an observation deadline, even for an old receipt. No
 honesty premise: the processing is the holder's own release or its receipt. -/
-theorem held_att_processed_before_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+theorem held_att_processed_before_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)}
     {a : FG.Att (Fintype.card V)} (hwf : a.WellFormed) {j : Nat} {d D : Time}
     (hh : rho.log.Held rho.point (rho.key y) (attObj a) d)
@@ -238,7 +244,9 @@ theorem PSyncFGAttTransportAt.mono {Δ₁ Δ₂ : Time} (h : PSyncFGAttTransport
 of the engine log serves the signed attestations of a node honest at its signing cut, at the
 protocol FG delay `Δ_F,p = protoFGDelay (pubOf E)`, at every recipient call within the horizon by
 a recipient honest at the call. -/
-theorem signed_row_service_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) :
+theorem signed_row_service_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) :
     PSyncFGAttTransportAt S rho (simTraceAt S rho hn) (honestKeysAt S rho)
       (protoFGDelay (Model.pubOf E)) := by
   intro g hnet x i a hx hsign y j hy hj hb hd

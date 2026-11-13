@@ -48,6 +48,8 @@ open Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload)
 
+variable {binding : VoteBinding}
+
 /-! ## Canonical objects -/
 
 section
@@ -82,7 +84,7 @@ private theorem encodeInfo_of_decodeInfo {n : Nat} {i : Info} {atts : List (FG.A
     map_of_mapM (fun _ _ => encodeVote_of_decodeVote) hc]
 
 /-- A received object that decodes to a block is that block's canonical object. -/
-theorem eq_blockObj_of_decodeBlock {hs : List (Header Info × Nat)} {o : Wire sp.n}
+theorem eq_blockObj_of_decodeBlock {hs : List (Header Info × Nat)} {o : Wire sp.n binding}
     {B : Blk sp} (h : decodeBlock sp hs o = some B) : o = blockObj sp B := by
   unfold decodeBlock at h
   split at h
@@ -105,36 +107,38 @@ theorem eq_blockObj_of_decodeBlock {hs : List (Header Info × Nat)} {o : Wire sp
   · cases h
 
 /-- A received object that decodes to a vote is that vote's canonical object. -/
-theorem eq_voteObj_of_decodeVoteObj {o : Wire sp.n} {v : Vote sp.n}
+theorem eq_voteObj_of_decodeVoteObj {o : Wire sp.n binding} {v : Vote sp.n}
     (h : decodeVoteObj sp o = some v) : o = voteObj v := by
   unfold decodeVoteObj at h
-  dsimp only [stock] at h
-  split at h
-  · rename_i k w
-    cases hw : decodeVote sp.n w with
-    | none => simp [hw] at h
-    | some v' =>
-      simp only [hw, Option.filter_some, decide_eq_true_eq] at h
-      split_ifs at h with hk
-      cases h
-      simp only [voteObj, encodeVote_of_decodeVote hw, hk, VoteBinding.voteRole, stock]
-  · rename_i excluded
-    rcases o with ⟨auth, msg, children⟩
-    cases auth with
-    | none => cases h
-    | signed k role =>
-      cases role <;> try { cases h }
-      cases msg with
-      | item _ => cases h
-      | data body =>
-        cases body <;> try { cases h }
-        rename_i w
-        cases children with
-        | nil => exact False.elim (excluded k w rfl)
-        | cons _ _ => cases h
+  cases hp : binding.participationKind with
+  | none =>
+    simp only [hp] at h
+    split at h
+    · rename_i k w
+      cases hw : decodeVote sp.n w with
+      | none => simp [hw] at h
+      | some v' =>
+        simp only [hw, Option.filter_some, decide_eq_true_eq] at h
+        split_ifs at h with hk
+        cases h
+        simp only [voteObj, encodeVote_of_decodeVote hw, hk, VoteBinding.voteRole, hp]
+    · cases h
+  | some kd =>
+    simp only [hp] at h
+    split at h
+    · rename_i k r w
+      cases hw : decodeVote sp.n w with
+      | none => simp [hw] at h
+      | some v' =>
+        simp only [hw, Option.filter_some, decide_eq_true_eq] at h
+        split_ifs at h with hk
+        cases h
+        obtain ⟨rfl, rfl⟩ := hk
+        simp only [voteObj, encodeVote_of_decodeVote hw]
+    · cases h
 
 /-- A received object that decodes to an attestation is that attestation's canonical object. -/
-theorem eq_attObj_of_decodeAttObj {o : Wire sp.n} {a : FG.Att sp.n}
+theorem eq_attObj_of_decodeAttObj {o : Wire sp.n binding} {a : FG.Att sp.n}
     (h : decodeAttObj sp o = some a) : o = attObj a := by
   unfold decodeAttObj at h
   split at h
@@ -149,7 +153,7 @@ theorem eq_attObj_of_decodeAttObj {o : Wire sp.n} {a : FG.Att sp.n}
   · cases h
 
 /-- The object a canonical event stands for is its canonical object. -/
-theorem canonEvent_eq_some {hs : List (Header Info × Nat)} {o : Wire sp.n}
+theorem canonEvent_eq_some {hs : List (Header Info × Nat)} {o : Wire sp.n binding}
     {e : Event (goldilocksNode sp ro)} (h : canonEvent sp ro hs o = some e) :
     (∃ B, e = .block B ∧ o = blockObj sp B) ∨ (∃ v, e = .message v ∧ o = voteObj v) ∨
       ∃ a, e = .attestation a ∧ o = attObj a := by
@@ -175,7 +179,7 @@ theorem canonEvent_eq_some {hs : List (Header Info × Nat)} {o : Wire sp.n}
 /-- A delivery sequence covers its range of cuts by groups of canonical objects it delivers. -/
 theorem deliverSeq_cover {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp ro}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {hs : List (Header Info × Nat)}
-    {y : Fin sp.n} {t : Time} {os : List (Wire sp.n)} {j j' : Nat}
+    {y : Fin sp.n} {t : Time} {os : List (Wire sp.n binding)} {j j' : Nat}
     (h : DeliverSeq proposer tr dg hs y t os j j') :
     j ≤ j' ∧ ∀ k, j ≤ k → k < j' → ∃ j0 e o, o ∈ os ∧ canonEvent sp ro hs o = some e ∧
       tr.GroupAt proposer dg y j0 t e ∧ j0 ≤ k ∧
@@ -198,12 +202,12 @@ theorem deliverSeq_cover {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp 
     exact ⟨j0, e', o', List.mem_cons_of_mem _ ho, he', hg', h3, h4⟩
 
 /-- A delivered object belongs to the received object's recursive closure. -/
-theorem mem_delivered {o x : Wire sp.n} (h : x ∈ delivered sp o) :
+theorem mem_delivered {o x : Wire sp.n binding} (h : x ∈ delivered sp o) :
     x ∈ o.parts := h
 
 /-- A decoded block passes the checks `decodeBlock` makes: the digests map its header to its root,
 it has a parent, its attestations are well-formed and its AC payload is valid. -/
-theorem decodeBlock_wire {hs : List (Header Info × Nat)} {o : Wire sp.n} {B : Blk sp}
+theorem decodeBlock_wire {hs : List (Header Info × Nat)} {o : Wire sp.n binding} {B : Blk sp}
     (h : decodeBlock sp hs o = some B) :
     (rootOf hs (headerOf sp B)).map (taggedRoot sp.genesisRoot) = some B.root ∧ B.parent ≠ none ∧
       (∀ a ∈ B.fgPayload, a.WellFormed) ∧ SA.validPayload B := by
@@ -223,7 +227,8 @@ theorem decodeBlock_wire {hs : List (Header Info × Nat)} {o : Wire sp.n} {B : B
   · simp at h
 
 /-- A received object standing for a block event decodes to that block. -/
-theorem decodeBlock_of_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.n} {B : Blk sp}
+theorem decodeBlock_of_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.n binding}
+    {B : Blk sp}
     (h : canonEvent sp ro hs o = some (.block B)) : decodeBlock sp hs o = some B := by
   cases hb : decodeBlock sp hs o with
   | some B' => simp only [canonEvent, hb, Option.some.injEq, Event.block.injEq] at h; rw [h]
@@ -232,7 +237,7 @@ theorem decodeBlock_of_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.
       simp [canonEvent, hb, hv, ha] at h
 
 /-- A received object standing for an attestation event decodes to a well-formed attestation. -/
-theorem wellFormed_of_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.n}
+theorem wellFormed_of_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.n binding}
     {a : FG.Att sp.n} (h : canonEvent sp ro hs o = some (.attestation a)) : a.WellFormed := by
   have hd : decodeAttObj sp o = some a := by
     cases hb : decodeBlock sp hs o with
@@ -326,7 +331,8 @@ private theorem mem_groupRecs_label {proposer : Nat → Fin sp.n}
   simp only [List.length_mapIdx, List.length_zip] at hk
   refine ⟨k, by omega, ?_, ?_⟩ <;> simp
 
-private theorem relayIf_eq (st : State sp ro) (c : Prop) [Decidable c] (o : Wire sp.n) :
+private theorem relayIf_eq (st : State sp ro binding) (c : Prop) [Decidable c]
+    (o : Wire sp.n binding) :
     relayIf st c o = { st with relayBuf := st.relayBuf ++ if c then [o] else [] } := by
   unfold relayIf
   split_ifs <;> simp
@@ -342,7 +348,7 @@ private theorem blocks_of_onBlock {st st' : Store sp.toParams (Payload sp.n)}
 clock kept, the relay queue extended by at most the object. -/
 theorem processOne_eq (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (hs : List (Header Info × Nat)) (σ : State sp ro) (o : Wire sp.n) :
+    (hs : List (Header Info × Nat)) (σ : State sp ro binding) (o : Wire sp.n binding) :
     ∃ L, (processOne hs σ o).relayBuf = σ.relayBuf ++ L ∧ (∀ x ∈ L, x = o) ∧
       (processOne hs σ o).now = σ.now ∧ (processOne hs σ o).self = σ.self ∧
       (processOne hs σ o).node =
@@ -363,8 +369,8 @@ theorem processOne_eq (proposer : Nat → Fin sp.n)
       split_ifs at hx <;> simp_all
 
 
-private theorem processOne_block {hs : List (Header Info × Nat)} {σ : State sp ro}
-    {o : Wire sp.n} {B : Blk sp} (he : canonEvent sp ro hs o = some (.block B))
+private theorem processOne_block {hs : List (Header Info × Nat)} {σ : State sp ro binding}
+    {o : Wire sp.n binding} {B : Blk sp} (he : canonEvent sp ro hs o = some (.block B))
     (h : (Node.onBlock σ.self σ.node σ.now B).1.fg.blocks B.root = some B) :
     o ∈ (processOne hs σ o).relayBuf := by
   unfold processOne
@@ -373,8 +379,8 @@ private theorem processOne_block {hs : List (Header Info × Nat)} {σ : State sp
   rw [relayIf_eq]
   simp [h]
 
-private theorem processOne_attestation {hs : List (Header Info × Nat)} {σ : State sp ro}
-    {o : Wire sp.n} {a : FG.Att sp.n} (he : canonEvent sp ro hs o = some (.attestation a)) :
+private theorem processOne_attestation {hs : List (Header Info × Nat)} {σ : State sp ro binding}
+    {o : Wire sp.n binding} {a : FG.Att sp.n} (he : canonEvent sp ro hs o = some (.attestation a)) :
     o ∈ (processOne hs σ o).relayBuf := by
   unfold processOne
   rw [he]
@@ -387,8 +393,8 @@ event is queued by `processOne` when the group has an accepted block cut, an AC 
 after which the pool holds the vote, or an attestation cut. -/
 private theorem group_relay (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    {hs : List (Header Info × Nat)} {σ : State sp ro} {t : Time} (ht : σ.now = t) {id : Nat}
-    {o : Wire sp.n} {e : Event (goldilocksNode sp ro)} (he : canonEvent sp ro hs o = some e)
+    {hs : List (Header Info × Nat)} {σ : State sp ro binding} {t : Time} (ht : σ.now = t) {id : Nat}
+    {o : Wire sp.n binding} {e : Event (goldilocksNode sp ro)} (he : canonEvent sp ro hs o = some e)
     {r : CutRec sp ro} (hr : r ∈ groupRecs proposer dg σ.self σ.node t id e) :
     (∀ B, r.label = .fg (.block B true) → blockObj sp B = o ∧ o ∈ (processOne hs σ o).relayBuf) ∧
     (∀ ℓ m, r.label = .ac ℓ → ℓ.call = .message m → m ∈ r.post.ac.pool m.slot →
@@ -447,7 +453,7 @@ object. -/
 theorem process_relay (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (t : Time) (i : Nat) :
-    ∀ (os : List (Wire sp.n)) (σ : State sp ro) (sub : Nat), σ.now = t →
+    ∀ (os : List (Wire sp.n binding)) (σ : State sp ro binding) (sub : Nat), σ.now = t →
       (∃ L, (os.foldl (processOne hs) σ).relayBuf = σ.relayBuf ++ L ∧ ∀ x ∈ L, x ∈ os) ∧
       (os.foldl (processOne hs) σ).now = t ∧ (os.foldl (processOne hs) σ).self = σ.self ∧
       ∀ r ∈ deliverRecs proposer dg hs σ.self t i os σ.node sub,
@@ -498,20 +504,20 @@ end
 
 section
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- An engine delivery: the node after it is the engine's `deliver` (`process`, the delivery's
 poll step, the gossip; `deliver_pres`). -/
 theorem stateBefore_succ_deliver {i : Nat} {v : V}
-    {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
+    {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) :
     rho.stateBefore (i + 1) v = (rho.deliver (rho.stateBefore i v) v o t).1 := by
   simp only [rho.stateBefore_succ he, Model.Run.step, Function.update_self]
 
 /-- An engine delivery: the Goldilocks state after it is the shape of the engine's `deliver`. -/
 theorem stateAt_succ_deliver {i : Nat} {v : V}
-    {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
+    {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) :
     stateAt S rho hn v (i + 1) = (rho.deliver (rho.stateBefore i v) v o t).1.st.1 hn :=
   stateAt_deliver S rho hn v he
@@ -525,7 +531,7 @@ theorem stateAt_succ_restart {i : Nat} {v : V} {t : Time}
 
 /-- An event of another node leaves the node's engine state unchanged. -/
 theorem stateBefore_succ_of_ne {i : Nat}
-    {e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {e : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[i]? = some e) {v : V} (hne : e.node ≠ v) :
     rho.stateBefore (i + 1) v = rho.stateBefore i v := by
   rw [rho.stateBefore_succ he]
@@ -548,24 +554,24 @@ section
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A delivered object is the delivery's object or carried by it. -/
-theorem contains_of_mem_delivered {o x : Wire sp.n} (h : x ∈ delivered sp o) :
+theorem contains_of_mem_delivered {o x : Wire sp.n binding} (h : x ∈ delivered sp o) :
     Model.Obj.Contains o x := h
 
 /-- The slot proposal keeps the relay queue and the own index. -/
-theorem propose_keeps (st : State sp ro) (s : Slot) :
+theorem propose_keeps (st : State sp ro binding) (s : Slot) :
     (propose st s).1.relayBuf = st.relayBuf ∧ (propose st s).1.self = st.self := by
   unfold propose
   dsimp only
   split <;> exact ⟨rfl, rfl⟩
 
 /-- The node's tick keeps the relay queue and the own index. -/
-theorem nodeTick_keeps (st : State sp ro) :
+theorem nodeTick_keeps (st : State sp ro binding) :
     (nodeTick st).relayBuf = st.relayBuf ∧ (nodeTick st).self = st.self := by
   unfold nodeTick
   split_ifs <;> exact ⟨rfl, rfl⟩
 
 /-- The FG update keeps the relay queue and the own index. -/
-theorem fgUpdate_keeps (st : State sp ro) :
+theorem fgUpdate_keeps (st : State sp ro binding) :
     (fgUpdate st).relayBuf = st.relayBuf ∧ (fgUpdate st).self = st.self := by
   unfold fgUpdate
   dsimp only
@@ -574,7 +580,7 @@ theorem fgUpdate_keeps (st : State sp ro) :
   · split <;> exact ⟨rfl, rfl⟩
 
 /-- A poll step keeps the relay queue and the own index. -/
-theorem poll_keeps (st : State sp ro) (t : Time) :
+theorem poll_keeps (st : State sp ro binding) (t : Time) :
     (poll st t).1.relayBuf = st.relayBuf ∧ (poll st t).1.self = st.self := by
   have h₁ : (if st.fgDue then fgUpdate st else st).relayBuf = st.relayBuf ∧
       (if st.fgDue then fgUpdate st else st).self = st.self := by
@@ -589,7 +595,8 @@ theorem poll_keeps (st : State sp ro) (t : Time) :
 
 /-- `recordOwn` keeps the own index; it keeps the relay queue unless the object is a relay
 wrapper, which empties it. -/
-theorem recordOwn_keeps (st : State sp ro) (o : Wire sp.n) (hs : List (Header Info × Nat)) :
+theorem recordOwn_keeps (st : State sp ro binding) (o : Wire sp.n binding) (hs : List
+    (Header Info × Nat)) :
     ((recordOwn st o hs).relayBuf = st.relayBuf ∨ (recordOwn st o hs).relayBuf = []) ∧
       (recordOwn st o hs).self = st.self := by
   unfold recordOwn
@@ -601,8 +608,10 @@ theorem recordOwn_keeps (st : State sp ro) (o : Wire sp.n) (hs : List (Header In
   · exact ⟨Or.inl rfl, rfl⟩
 
 /-- `recordOwn` of a signed object keeps the relay queue. -/
-theorem recordOwn_relayBuf_signed (st : State sp ro) {k : Fin sp.n} {r : ShapeRole Empty}
-    {m : Model.Msg (Header Info) Body} {cs : List (Wire sp.n)} (hs : List (Header Info × Nat)) :
+theorem recordOwn_relayBuf_signed (st : State sp ro binding) {k : Fin sp.n}
+    {r : ShapeRole binding.Kind}
+    {m : Model.Msg (Header Info) Body} {cs : List (Wire sp.n binding)} (hs : List
+        (Header Info × Nat)) :
     (recordOwn st (.mk (.signed k r) m cs) hs).relayBuf = st.relayBuf := by
   unfold recordOwn
   split
@@ -616,38 +625,38 @@ end
 
 section
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 omit [DecidableEq V] in
 /-- A property of Goldilocks states kept by the slot proposal, the node's tick and a poll step
 is kept by every duty of the compiled family. -/
-theorem act_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
+theorem act_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hprop : ∀ st s, Q st → Q (propose st s).1) (hnt : ∀ st, Q st → Q (nodeTick st))
     (hpoll : ∀ st t, Q st → Q (poll st t).1)
-    (st : (Model.protoOf (compiled (goldilocks S)) E).State)
-    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) (h : Q (st.1 hn)) :
-    Q (((Model.protoOf (compiled (goldilocks S)) E).act st d).1.1 hn) := by
+    (st : (Model.protoOf (compiled (goldilocksWith S)) E).State)
+    (d : (Model.protoOf (compiled (goldilocksWith S)) E).Duty) (h : Q (st.1 hn)) :
+    Q (((Model.protoOf (compiled (goldilocksWith S)) E).act st d).1.1 hn) := by
   cases d with
   | propose s h' =>
-    simp only [Model.protoOf, compiled, compile, withMempool, goldilocks, goldilocksWith,
+    simp only [Model.protoOf, compiled, compile, withMempool, goldilocksWith,
       hn, ↓reduceDIte]
     exact hprop _ (s : Nat) h
-  | act s k => exact k.elim
+  | act s k => exact h
   | pollPropose t =>
-    simp only [Model.protoOf, compiled, compile, withMempool, goldilocks, goldilocksWith,
+    simp only [Model.protoOf, compiled, compile, withMempool, goldilocksWith,
       hn, ↓reduceDIte]
     exact hnt _ h
   | poll t =>
-    simp only [Model.protoOf, compiled, compile, withMempool, goldilocks, goldilocksWith,
+    simp only [Model.protoOf, compiled, compile, withMempool, goldilocksWith,
       hn, ↓reduceDIte]
     exact hpoll _ (t : Time) h
 
 omit [DecidableEq V] in
 /-- The compiled `recordOwn` is the shape's. -/
-theorem recordOwn_eq (st : (Model.protoOf (compiled (goldilocks S)) E).State)
-    (o : (Model.protoOf (compiled (goldilocks S)) E).Object) (hs) :
-    ((Model.protoOf (compiled (goldilocks S)) E).recordOwn st o hs).1 hn =
+theorem recordOwn_eq (st : (Model.protoOf (compiled (goldilocksWith S)) E).State)
+    (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object) (hs) :
+    ((Model.protoOf (compiled (goldilocksWith S)) E).recordOwn st o hs).1 hn =
       recordOwn (st.1 hn) o hs :=
   rfl
 
@@ -668,8 +677,8 @@ end
 
 section
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- An engine tick of the node: the Goldilocks state after the tick. -/
 theorem stateAt_succ_tick {i : Nat} {v : V} {t : Time}
@@ -680,11 +689,11 @@ theorem stateAt_succ_tick {i : Nat} {v : V} {t : Time}
 omit [DecidableEq V] in
 /-- A property of Goldilocks states kept by the clock, every duty step and every `recordOwn`
 is kept by a tick. -/
-theorem tick_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
+theorem tick_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hclock : ∀ st t, Q st → Q { st with now := t })
     (hprop : ∀ st s, Q st → Q (propose st s).1) (hnt : ∀ st, Q st → Q (nodeTick st))
     (hpoll : ∀ st t, Q st → Q (poll st t).1) (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (v : V) (t : Time)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (v : V) (t : Time)
     (h : Q (nd.st.1 hn)) : Q ((rho.tick nd v t).1.st.1 hn) :=
   rho.tick_invariant (fun s => Q (s.1 hn)) nd v t
     (fun s d _ hs => act_preserves S hn Q hprop hnt hpoll s d hs)
@@ -694,7 +703,7 @@ theorem tick_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
 /-- The relay queue after a delivery's `process` is in the closure of what the node has seen with
 the delivered object, if the queue before it was. -/
 theorem process_relay_seen {i : Nat} {v : V}
-    (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
+    (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object)
     (ih : ∀ x ∈ (stateAt S rho hn v i).relayBuf, x ∈ Model.closure (rho.stateBefore i v).seen) :
     ∀ x ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).relayBuf,
       x ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) := by
@@ -776,12 +785,12 @@ end
 
 section
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E)
 
 /-- An event occurs at one index of a valid run. -/
 theorem index_eq_of_events (hv : rho.ExecutionValid) {i i' : Nat}
-    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[i]? = some ev) (he' : rho.events[i']? = some ev) : i = i' := by
   obtain ⟨hi, h1⟩ := List.getElem?_eq_some_iff.mp he
   obtain ⟨hi', h2⟩ := List.getElem?_eq_some_iff.mp he'
@@ -790,7 +799,7 @@ theorem index_eq_of_events (hv : rho.ExecutionValid) {i i' : Nat}
 /-- At a delivery the node's last tick or restart is at the delivery's time: an awake honest
 node ticks at every time of the horizon, before the deliveries of that time. -/
 theorem lastClock_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
-    {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
+    {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) : lastClock S rho v i = t := by
   have hm := List.mem_of_getElem? he
   have hb := hv.in_horizon _ hm
@@ -843,14 +852,14 @@ end
 
 section
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 omit [DecidableEq V] in
 /-- The duties of a tick release only signed objects. -/
 theorem runDuties_signed (v : V) :
-    ∀ (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
-      (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)),
+    ∀ (ds : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty)
+      (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)),
       ∀ o ∈ (rho.runDuties v nd ds).2, ∃ k r m cs, o = Model.Obj.mk (.signed k r) m cs
   | [], nd => fun _ ho => by rw [rho.runDuties_nil] at ho; exact absurd ho List.not_mem_nil
   | d :: ds, nd => by
@@ -868,8 +877,8 @@ theorem runDuties_signed (v : V) :
 omit [DecidableEq V] in
 /-- The duties of a tick append what they release to `seen`. -/
 theorem runDuties_seen (v : V) :
-    ∀ (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
-      (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)),
+    ∀ (ds : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty)
+      (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)),
       (rho.runDuties v nd ds).1.seen = nd.seen ++ (rho.runDuties v nd ds).2
   | [], nd => by simp [rho.runDuties_nil]
   | d :: ds, nd => by
@@ -881,16 +890,18 @@ theorem runDuties_seen (v : V) :
 /-- **A delivery relays what it queued.** The gossip of a delivery to node `v` releases the
 unsigned relay wrapper of its relay queue, which carries everything the delivery's `process`
 queued (`process_relay`), at the delivery's own time. -/
-theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled (goldilocks S)) E).Object}
-    {t : Time} (he : rho.events[j]? = some (.deliver v o t)) {x : Wire (S.params (pubOf E) hn).n}
+theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled
+    (goldilocksWith S)) E).Object}
+    {t : Time} (he : rho.events[j]? = some (.deliver v o t)) {x : Wire (S.params
+        (pubOf E) hn).n S.vote}
     (hx : x ∈ (process (stateAt S rho hn v j) o (Model.digests rho.hash o)).relayBuf) :
     ∃ cs, x ∈ cs ∧ Model.Obj.mk .none (.data .relay) cs ∈ rho.releasesAt j := by
   simp only [Model.Run.releasesAt, he]
   rw [rho.deliver_eq]
   set nd := rho.stateBefore j v
-  set R := rho.runDuties v ⟨(Model.protoOf (compiled (goldilocks S)) E).process nd.st o
+  set R := rho.runDuties v ⟨(Model.protoOf (compiled (goldilocksWith S)) E).process nd.st o
     (Model.digests rho.hash o), nd.seen ++ [o]⟩
-    ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)
+    ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t)
   -- the queue after the delivery's duties keeps `x` and holds only seen objects
   have hkeep : x ∈ (R.1.st.1 hn).relayBuf :=
     rho.runDuties_invariant (fun s => x ∈ (s.1 hn).relayBuf) v _ _
@@ -926,16 +937,16 @@ theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled (goldiloc
     rw [runDuties_seen S rho v, Model.closure_append]
     exact List.mem_append_left _ (hQ y hy)
   generalize hcs : (R.1.st.1 hn).relayBuf = cs at hkeep hseen
-  have hgo : Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) R.1.st t =
+  have hgo : Model.gossipCandidates (Model.protoOf (compiled (goldilocksWith S)) E) R.1.st t =
       [Model.Obj.mk .none (.data .relay) cs] := by
     obtain ⟨c, cs₀, rfl⟩ := List.exists_cons_of_ne_nil (List.ne_nil_of_mem hkeep)
     have hcs' : ∀ h', (R.1.st.1 h').relayBuf = c :: cs₀ := fun _ => hcs
-    simp only [Model.gossipCandidates, Model.protoOf, compiled, compile, goldilocks,
+    simp only [Model.gossipCandidates, Model.protoOf, compiled, compile,
       goldilocksWith, hn, ↓reduceDIte, goldilocksShape, hcs']
     rfl
   refine ⟨cs, hkeep, List.mem_append_right _ ?_⟩
   have hc : (Model.releasable R.1.seen (Model.Obj.mk .none (.data .relay) cs) &&
-      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) R.1.seen
+      Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) R.1.seen
         (Model.Obj.mk .none (.data .relay) cs)) = true := by
     simp only [Model.releasable, Model.protects, Bool.and_eq_true, List.all_eq_true,
       decide_eq_true_eq]
@@ -951,7 +962,7 @@ theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled (goldiloc
 /-- A cut of an engine event that is an FG cut at position `0`, or an `ac_on_message` cut, is a
 cut of a delivery. -/
 theorem eq_deliver_of_cut {i : Nat}
-    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
     (hr : r ∈ eventCuts S rho hn i)
     (h : (r.pos = 0 ∧ ∃ ℓ, r.label = .fg ℓ) ∨
@@ -1120,7 +1131,7 @@ theorem pos_of_block_cut (proposer : Nat → Fin sp.n)
 theorem mem_deliverRecs_exec (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) :
-    ∀ (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
+    ∀ (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
       {r : CutRec sp ro}, r ∈ deliverRecs proposer dg hs self t i os st sub →
       ∃ o e st', o ∈ os ∧ canonEvent sp ro hs o = some e ∧
         ∃ k, ∃ hk : k < (exec proposer dg self st' t e).2.length,
@@ -1143,7 +1154,7 @@ theorem mem_deliverRecs_exec (proposer : Nat → Fin sp.n)
         exact ⟨o', e', st', List.mem_cons_of_mem _ ho, h⟩
 
 /-- A canonical event is not a tick. -/
-theorem canonEvent_ne_tick {hs : List (Header Info × Nat)} {o : Wire sp.n}
+theorem canonEvent_ne_tick {hs : List (Header Info × Nat)} {o : Wire sp.n binding}
     {e : Event (goldilocksNode sp ro)} (he : canonEvent sp ro hs o = some e) :
     ∀ x, e ≠ .tick x := by
   rintro x rfl
@@ -1152,7 +1163,7 @@ theorem canonEvent_ne_tick {hs : List (Header Info × Nat)} {o : Wire sp.n}
 /-- The outbox after one received object: its handler's emissions queued. -/
 theorem processOne_outbox_eq (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (hs : List (Header Info × Nat)) (σ : State sp ro) (o : Wire sp.n) :
+    (hs : List (Header Info × Nat)) (σ : State sp ro binding) (o : Wire sp.n binding) :
     (processOne hs σ o).outbox = σ.outbox ++
       (canonEvent sp ro hs o).elim [] fun e =>
         emitted (exec proposer dg σ.self σ.node σ.now e).2 := by
@@ -1170,7 +1181,7 @@ theorem processOne_outbox_eq (proposer : Nat → Fin sp.n)
 theorem process_outbox_source (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (t : Time) (i : Nat) :
-    ∀ (os : List (Wire sp.n)) (σ : State sp ro) (sub : Nat), σ.now = t →
+    ∀ (os : List (Wire sp.n binding)) (σ : State sp ro binding) (sub : Nat), σ.now = t →
       ∀ b ∈ (os.foldl (processOne hs) σ).outbox,
         b ∈ σ.outbox ∨ ∃ r ∈ deliverRecs proposer dg hs σ.self t i os σ.node sub,
           ∃ ℓ, r.label = .ac ℓ ∧ ∃ em ∈ ℓ.emits, b = .vote (encodeVote em.msg)
@@ -1215,7 +1226,7 @@ theorem process_outbox_source (proposer : Nat → Fin sp.n)
 theorem process_outbox (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (t : Time) (i : Nat) :
-    ∀ (os : List (Wire sp.n)) (σ : State sp ro) (sub : Nat), σ.now = t →
+    ∀ (os : List (Wire sp.n binding)) (σ : State sp ro binding) (sub : Nat), σ.now = t →
       (∃ L, (os.foldl (processOne hs) σ).outbox = σ.outbox ++ L) ∧
       ∀ r ∈ deliverRecs proposer dg hs σ.self t i os σ.node sub, ∀ ℓ, r.label = .ac ℓ →
         ∀ m ∈ ℓ.emits, Body.vote (encodeVote m.msg) ∈ (os.foldl (processOne hs) σ).outbox ∧
@@ -1255,8 +1266,8 @@ end
 
 section
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 end
 

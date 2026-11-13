@@ -24,22 +24,24 @@ open Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload SAState)
 
+variable {binding : VoteBinding}
+
 section ShapeInventory
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Every pending admission envelope still has its vote in the stored pool. -/
-private def QueuedInPool (st : State sp ro) : Prop :=
+private def QueuedInPool (st : State sp ro binding) : Prop :=
   ∀ tv ∈ st.voteForwards, tv.2 ∈ st.node.ac.pool tv.2.slot
 
-private theorem apply_queuedInPool (st : State sp ro) r (h : QueuedInPool st)
+private theorem apply_queuedInPool (st : State sp ro binding) r (h : QueuedInPool st)
     (hg : ∀ σ, st.node.ac.pool σ ⊆ r.1.ac.pool σ) : QueuedInPool (apply st r) := by
   intro tv htv
   by_cases hold : tv ∈ st.voteForwards
   · exact hg _ (h tv hold)
   · exact (apply_voteForward_fresh st r tv.1 tv.2 htv hold).2.2
 
-private theorem block_queuedInPool (st : State sp ro) (B : Blk sp) (h : QueuedInPool st) :
+private theorem block_queuedInPool (st : State sp ro binding) (B : Blk sp) (h : QueuedInPool st) :
     QueuedInPool (apply st (Node.onBlock st.self st.node st.now B)) := by
   apply apply_queuedInPool st _ h
   unfold Node.onBlock
@@ -49,7 +51,7 @@ private theorem block_queuedInPool (st : State sp ro) (B : Blk sp) (h : QueuedIn
     · exact fun _ => List.Subset.refl _
     · exact SA.step_pool_subset st.self st.node.ac _ st.now (.block B) (by simp)
 
-private theorem processOne_queuedInPool hs (st : State sp ro) o (h : QueuedInPool st) :
+private theorem processOne_queuedInPool hs (st : State sp ro binding) o (h : QueuedInPool st) :
     QueuedInPool (processOne hs st o) := by
   unfold processOne
   split
@@ -62,7 +64,7 @@ private theorem processOne_queuedInPool hs (st : State sp ro) o (h : QueuedInPoo
     split <;> apply apply_queuedInPool st _ h <;> exact fun _ => List.Subset.refl _
   · exact h
 
-private theorem process_queuedInPool (st : State sp ro) o hs (h : QueuedInPool st) :
+private theorem process_queuedInPool (st : State sp ro binding) o hs (h : QueuedInPool st) :
     QueuedInPool (process st o hs) := by
   unfold process
   generalize delivered sp o = os
@@ -70,7 +72,7 @@ private theorem process_queuedInPool (st : State sp ro) o hs (h : QueuedInPool s
   | nil => exact h
   | cons o os ih => exact ih _ (processOne_queuedInPool hs st o h)
 
-private theorem record_queuedInPool (st : State sp ro) o hs (h : QueuedInPool st) :
+private theorem record_queuedInPool (st : State sp ro binding) o hs (h : QueuedInPool st) :
     QueuedInPool (recordOwn st o hs) := by
   unfold recordOwn
   split
@@ -80,7 +82,7 @@ private theorem record_queuedInPool (st : State sp ro) o hs (h : QueuedInPool st
     · exact h
   · exact h
 
-private theorem propose_queuedInPool (st : State sp ro) s (h : QueuedInPool st) :
+private theorem propose_queuedInPool (st : State sp ro binding) s (h : QueuedInPool st) :
     QueuedInPool (propose st s).1 := by
   have hp : (Node.acProposal st.node st.now).1.ac.pool = st.node.ac.pool := by
     change (SA.acProposal sp st.node.ac (frame st.node) st.now).1.pool = _
@@ -90,7 +92,7 @@ private theorem propose_queuedInPool (st : State sp ro) s (h : QueuedInPool st) 
   dsimp only
   split <;> intro tv htv <;> rw [hp] <;> exact h tv htv
 
-private theorem nodeTick_queuedInPool (st : State sp ro) (h : QueuedInPool st) :
+private theorem nodeTick_queuedInPool (st : State sp ro binding) (h : QueuedInPool st) :
     QueuedInPool (nodeTick st) := by
   unfold nodeTick
   split
@@ -98,12 +100,12 @@ private theorem nodeTick_queuedInPool (st : State sp ro) (h : QueuedInPool st) :
     exact SA.step_pool_subset st.self st.node.ac _ st.now .tick (by simp)
   · exact h
 
-private theorem poll_queuedInPool (st : State sp ro) t : QueuedInPool (poll st t).1 := by
+private theorem poll_queuedInPool (st : State sp ro binding) t : QueuedInPool (poll st t).1 := by
   intro tv htv
   rw [poll_voteForwards] at htv
   cases htv
 
-private theorem block_pool_subset (st : State sp ro) (B : Blk sp) (σ : Nat) :
+private theorem block_pool_subset (st : State sp ro binding) (B : Blk sp) (σ : Nat) :
     st.node.ac.pool σ ⊆ (apply st (Node.onBlock st.self st.node st.now B)).node.ac.pool σ := by
   unfold apply Node.onBlock
   dsimp only
@@ -113,7 +115,7 @@ private theorem block_pool_subset (st : State sp ro) (B : Blk sp) (σ : Nat) :
     · exact List.Subset.refl _
     · exact SA.step_pool_subset st.self st.node.ac _ st.now (.block B) (by simp) σ
 
-private theorem record_pool_subset (st : State sp ro) o hs (σ : Nat) :
+private theorem record_pool_subset (st : State sp ro binding) o hs (σ : Nat) :
     st.node.ac.pool σ ⊆ (recordOwn st o hs).node.ac.pool σ := by
   unfold recordOwn
   split
@@ -123,7 +125,7 @@ private theorem record_pool_subset (st : State sp ro) o hs (σ : Nat) :
     · exact List.Subset.refl _
   · exact List.Subset.refl _
 
-private theorem propose_pool_eq (st : State sp ro) s :
+private theorem propose_pool_eq (st : State sp ro binding) s :
     (propose st s).1.node.ac.pool = st.node.ac.pool := by
   have hp : (Node.acProposal st.node st.now).1.ac.pool = st.node.ac.pool := by
     change (SA.acProposal sp st.node.ac (frame st.node) st.now).1.pool = _
@@ -133,7 +135,7 @@ private theorem propose_pool_eq (st : State sp ro) s :
   dsimp only
   split <;> exact hp
 
-private theorem nodeTick_pool_subset (st : State sp ro) (σ : Nat) :
+private theorem nodeTick_pool_subset (st : State sp ro binding) (σ : Nat) :
     st.node.ac.pool σ ⊆ (nodeTick st).node.ac.pool σ := by
   unfold nodeTick
   split
@@ -141,7 +143,7 @@ private theorem nodeTick_pool_subset (st : State sp ro) (σ : Nat) :
   · exact List.Subset.refl _
 
 /-- Polling, including the due FG update, leaves vote pools unchanged. -/
-theorem poll_pool_eq (st : State sp ro) t :
+theorem poll_pool_eq (st : State sp ro binding) t :
     (poll st t).1.node.ac.pool = st.node.ac.pool := by
   have hp : (Node.acToFG st.node st.now).1.ac.pool = st.node.ac.pool := by
     change (SA.acToFG sp st.node.ac (frame st.node) st.now).1.pool = _
@@ -163,15 +165,15 @@ end ShapeInventory
 
 section EngineInventory
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 omit [DecidableEq V] in
 /-- Every duty prefix preserves the fact that queued vote envelopes name stored
 votes. In particular this applies to the polls of a tick, not only deliveries. -/
 theorem runDuties_voteForward_in_pool (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+    (ds : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty)
     (h : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
       tv.2 ∈ (shapeOf S hn nd).node.ac.pool tv.2.slot) :
     ∀ tv ∈ (shapeOf S hn (rho.runDuties v nd ds).1).voteForwards,
@@ -182,8 +184,8 @@ theorem runDuties_voteForward_in_pool (v : V)
 omit [DecidableEq V] in
 /-- A single duty preserves queue backing, including its own released blocks. -/
 theorem dutyStep_voteForward_in_pool (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+    (d : (Model.protoOf (compiled (goldilocksWith S)) E).Duty)
     (h : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
       tv.2 ∈ (shapeOf S hn nd).node.ac.pool tv.2.slot) :
     ∀ tv ∈ (shapeOf S hn (rho.dutyStep v nd d).1).voteForwards,
@@ -194,8 +196,8 @@ theorem dutyStep_voteForward_in_pool (v : V)
 omit [DecidableEq V] in
 /-- A single duty retains stored votes through its own-object release callbacks. -/
 theorem dutyStep_pool_subset (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) (σ : Nat) :
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+    (d : (Model.protoOf (compiled (goldilocksWith S)) E).Duty) (σ : Nat) :
     (shapeOf S hn nd).node.ac.pool σ ⊆
       (shapeOf S hn (rho.dutyStep v nd d).1).node.ac.pool σ := by
   intro m hm
@@ -208,8 +210,8 @@ theorem dutyStep_pool_subset (v : V)
 omit [DecidableEq V] in
 /-- Duty execution never removes a stored vote; only restart replay can do so. -/
 theorem runDuties_pool_subset (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty) (σ : Nat) :
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+    (ds : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty) (σ : Nat) :
     (shapeOf S hn nd).node.ac.pool σ ⊆
       (shapeOf S hn (rho.runDuties v nd ds).1).node.ac.pool σ := by
   intro m hm
@@ -225,27 +227,27 @@ is `engine_poll_att_protected`; under growing faults, `engine_poll_att_protected
 def PollAttProtected : Prop :=
   ∀ (v : V), v ∉ rho.faultyAt 0 → ∀ {i p : Nat} {nd} {k : Nat}, EngineDutyCut S rho v i p nd →
     ((∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
-        ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
+        ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)[p]? = some (.poll k)) ∨
       ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
-        ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some (.poll k)) →
+        ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t)[p]? = some (.poll k)) →
     rho.ownKey v ∈ rho.sel .poll → ∀ {w cs}, (poll (nd.st.1 hn) k).2 = some (.att w, cs) →
-    Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
+    Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) nd.seen
       (.mk (.signed (rho.ownKey v) .poll) (.data (.att w)) []) = true
 
 theorem pollAttProtected_iff : PollAttProtected S rho hn ↔
     ∀ (v : V), v ∉ rho.faultyAt 0 → ∀ {i p : Nat} {nd} {k : Nat}, EngineDutyCut S rho v i p nd →
       ((∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
-          ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
+          ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)[p]? = some (.poll k)) ∨
         ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
-          ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some (.poll k)) →
+          ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t)[p]? = some (.poll k)) →
       rho.ownKey v ∈ rho.sel .poll → ∀ {w cs}, (poll (nd.st.1 hn) k).2 = some (.att w, cs) →
-      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
+      Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) nd.seen
         (.mk (.signed (rho.ownKey v) .poll) (.data (.att w)) []) = true := Iff.rfl
 
 /-- Delivery processing keeps every queued admission's vote in the final pool. The actual
 event-boundary queue is empty, and none of the delivery handlers restarts the AC. -/
 theorem delivery_voteForward_in_pool (hv : rho.ExecutionValid) (v : V) (i : Nat)
-    (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
+    (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object)
     (tv : Time × Vote (Fintype.card V))
     (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
     tv.2 ∈ (process (stateAt S rho hn v i) o

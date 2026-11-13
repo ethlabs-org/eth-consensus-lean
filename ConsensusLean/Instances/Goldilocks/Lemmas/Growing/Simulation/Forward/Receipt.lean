@@ -21,16 +21,16 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Shape Blocks
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Authentication at the delivery and event order bound the stamp of a forwarding envelope by
 its receipt time, when its signer is honest at the delivery, even when the envelope is nested
 inside the delivered object. -/
 theorem received_forward_stamp_le_at (hv : rho.ExecutionValid)
     {i : Nat} {v : V}
-    {receipt o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t u : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {receipt o : Wire (Fintype.card V) S.vote} {x : Fin (Fintype.card V)} {t u : Time}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u))
     (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt u)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
@@ -59,7 +59,7 @@ theorem received_forward_stamp_le_at (hv : rho.ExecutionValid)
 the delivery's group, no earlier than the stamp. -/
 theorem received_voteForward_processAt_at (hv : rho.ExecutionValid)
     {source i : Nat} {x : Fin (Fintype.card V)} {v : V} {τ u : Time}
-    {receipt : Wire (Fintype.card V)} {m : SA.Vote (Fintype.card V)}
+    {receipt : Wire (Fintype.card V) S.vote} {m : SA.Vote (Fintype.card V)}
     (hx : rho.key x ∉ rho.faultyAt τ) (hs : rho.SendsAt (rho.key x) source τ)
     (hfirst : ∀ j < source,
       Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉

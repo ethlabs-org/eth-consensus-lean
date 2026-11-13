@@ -27,14 +27,14 @@ open AsChainShape Simulation
 open Shape Blocks
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-  (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+  (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
 
 /-- A received forwarding wrapper of a signer honest at its stamp carries a stamp no later than
 the receipt: were the receipt earlier, the signer would be honest at it. -/
 theorem received_forward_stamp_le_of_stamp_at (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {i : Nat} {v : V}
-    {receipt o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t u : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {receipt o : Wire (Fintype.card V) S.vote} {x : Fin (Fintype.card V)} {t u : Time}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u))
     (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt t)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
@@ -47,8 +47,9 @@ theorem received_forward_stamp_le_of_stamp_at (hn : 1 ≤ Fintype.card V)
 /-- GST holdings of an actual publication by an origin honest at its event, at a recipient
 honest at its call, before the effective `max(source, GST)` deadline. -/
 theorem publication_held_before_gst_deadline_at (hn : 1 ≤ Fintype.card V)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hv : rho.ExecutionValid) {g : Time} (hnet : rho.log.PSync rho.point g)
-    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
+    (r : Publication (Model.protoOf (compiled (goldilocksWith S)) E))
     (hr : (publisherExecution S rho).actual r)
     (hx : rho.key r.origin ∉ rho.faultyAt ((publisherExecution S rho).eventTime r.event))
     (hrow : ¬ rho.log.fgAtt r.object)
@@ -82,13 +83,14 @@ theorem publication_held_before_gst_deadline_at (hn : 1 ≤ Fintype.card V)
 /-- Acceptance service for an actual publication by an origin honest at its event, including a
 pre-GST one, at the effective `max(source, GST)` deadline at the acceptance cut. -/
 theorem publication_acceptedBy_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {g : Time} (hnet : rho.log.PSync rho.point g)
-    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
+    (r : Publication (Model.protoOf (compiled (goldilocksWith S)) E))
     (hr : (publisherExecution S rho).actual r)
     {τ : Time} (hτ : 0 ≤ τ) (ht : (publisherExecution S rho).eventTime r.event = τ)
     (hx : rho.key r.origin ∉ rho.faultyAt τ)
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (hdecode : decodeForward (S.params (Model.pubOf E) hn)
       (Model.digests rho.hash r.object) r.object = some (r.origin, τ, p, B))
     {y : Fin (Fintype.card V)} {j : Nat}
@@ -129,6 +131,7 @@ theorem publication_acceptedBy_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rh
 /-- The acceptance-relay service for an acceptance by a node honest at its cut, including a
 pre-GST one, at a recipient honest at its call within the horizon. -/
 theorem acceptance_relay_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {g : Time} (hnet : rho.log.PSync rho.point g)
     {x : Fin (Fintype.card V)} {i : Nat}
@@ -154,7 +157,9 @@ theorem acceptance_relay_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rho.Exec
 
 /-- Holdings of a decoded wrapper of a signer honest at its stamp give a block call after the
 stamp. Local publication uses the actual acceptance; receipt uses recursive block processing. -/
-theorem held_forward_blockCall_before_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+theorem held_forward_blockCall_before_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y x : Fin (Fintype.card V)} {j : Nat} {o : Wire (Fintype.card V)} {t d D : Time}
     {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
     (hx : rho.key x ∉ rho.faultyAt t)
@@ -195,7 +200,9 @@ theorem held_forward_blockCall_before_at (hn : 1 ≤ Fintype.card V) (hv : rho.E
 
 /-- A decoded publication by an origin honest at its event receives block service at the
 processing cut's GST deadline, including publications before GST. -/
-theorem publication_blockDeliveredBy_psync_at (hn : 1 ≤ Fintype.card V)
+theorem publication_blockDeliveredBy_psync_at {V : Type} [Fintype V] [DecidableEq V]
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {g : Time} (hnet : rho.log.PSync rho.point g)
     (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
     (hr : (publisherExecution S rho).actual r)
@@ -234,7 +241,9 @@ theorem publication_blockDeliveredBy_psync_at (hn : 1 ≤ Fintype.card V)
       exact ⟨l, hl.trans hkj, hlo', hc', ht'⟩
 
 /-- An own-block call of a node honest at it is an acceptance under collision freedom. -/
-theorem ownBlockAt_accept_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+theorem ownBlockAt_accept_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {y : Fin (Fintype.card V)} {i : Nat}
     (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i))
@@ -275,7 +284,9 @@ theorem ownBlockAt_accept_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionVali
 /-- Finite GST block service for blocks accepted or proposed by a node honest at its cut, at a
 recipient honest at its call within the horizon, with the source-time lower bound and the
 effective `max(source, GST)` processing deadline. -/
-theorem block_service_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+theorem block_service_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {g : Time} (hnet : rho.log.PSync rho.point g)
     {x : Fin (Fintype.card V)} {i : Nat}
@@ -304,6 +315,7 @@ theorem block_service_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionVa
 honest at its call under PSync. The release time is the lower bound; GST changes only the service
 deadline. -/
 theorem vote_message_service_psync_other_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {g : Time} (hnet : rho.log.PSync rho.point g)
     {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : SA.Vote (Fintype.card V)}
     (hx : rho.key x ∉ rho.faultyAt τ) (hne : y ≠ x)
@@ -363,6 +375,7 @@ theorem vote_message_service_psync_other_at (hn : 1 ≤ Fintype.card V) (hv : rh
 deadline by every recipient honest at its call within the horizon. The sender processes at the
 source time; other nodes use the first-release envelope. -/
 theorem message_service_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {g : Time} (hnet : rho.log.PSync rho.point g)
     {x : Fin (Fintype.card V)} {i : Nat}
     (hx : x ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i))
@@ -418,7 +431,9 @@ theorem message_service_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.Execution
 /-- The finite valid engine run supplies every reset-service field under growing faults, with
 attestation service at a parametric `Δ_F` as a premise (`hrow`). Senders are honest at their
 event, recipients at their call; actual recipient calls lie within the engine horizon. -/
-theorem resetService_of_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+theorem resetService_of_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {g ΔF : Time} (hnet : rho.log.PSync rho.point g)
     (hrow : PSyncFGAttTransportAt S rho (simTraceAt S rho hn) (honestKeysAt S rho) ΔF)
@@ -441,7 +456,9 @@ theorem resetService_of_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.Execution
 at every node honest at that snapshot, when every node honest at a time of
 `[max g 0, max g 0 + Δ − 1]` (within the horizon) is awake then: the snapshot node's publication
 window. The snapshot supplies the finite service horizon. -/
-theorem catchRun_of_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+theorem catchRun_of_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {g : Time} (hnet : rho.log.PSync rho.point g)
     (hawake : ∀ v u, max g 0 ≤ u → u ≤ rho.horizon → u ≤ max g 0 + E.ΔAC - 1 →

@@ -22,6 +22,8 @@ open Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload SAState)
 
+variable {binding : VoteBinding}
+
 /-! ## The bodies and the block of a tick's cuts -/
 
 section TickCuts
@@ -35,7 +37,7 @@ def attBodies (cs : List (Cut (goldilocksNode sp ro))) : List Body :=
     | _ => []
 
 /-- The canonical objects of the blocks of a list of cuts' `fg_on_block` cuts. -/
-def blockObjs (cs : List (Cut (goldilocksNode sp ro))) : List (Wire sp.n) :=
+def blockObjs (cs : List (Cut (goldilocksNode sp ro))) : List (Wire sp.n binding) :=
   cs.flatMap fun
     | .fg (.block B _) => [blockObj sp B]
     | _ => []
@@ -55,18 +57,18 @@ theorem attBodies_cons (c : Cut (goldilocksNode sp ro)) (cs : List (Cut (goldilo
 
 /-- The flat-map interface of block objects, without generated match equations. -/
 theorem blockObjs_eq (cs : List (Cut (goldilocksNode sp ro))) :
-    blockObjs cs = cs.flatMap (fun
+    blockObjs (binding := binding) cs = cs.flatMap (fun
       | .fg (.block B _) => [blockObj sp B]
       | _ => []) := by rfl
 
-theorem blockObjs_nil : blockObjs (sp := sp) (ro := ro) [] = [] := by rfl
+theorem blockObjs_nil : blockObjs (binding := binding) (sp := sp) (ro := ro) [] = [] := by rfl
 
 theorem blockObjs_cons (c : Cut (goldilocksNode sp ro)) (cs : List (Cut (goldilocksNode sp ro))) :
-    blockObjs (c :: cs) = (match c with
+    blockObjs (binding := binding) (c :: cs) = (match c with
       | .fg (.block B _) => [blockObj sp B]
       | _ => []) ++ blockObjs cs := by rfl
 
-theorem mem_blockObjs {cs : List (Cut (goldilocksNode sp ro))} {o : Wire sp.n} :
+theorem mem_blockObjs {cs : List (Cut (goldilocksNode sp ro))} {o : Wire sp.n binding} :
     o ∈ blockObjs cs ↔ ∃ B acc, Cut.fg (.block B acc) ∈ cs ∧ o = blockObj sp B := by
   simp only [blockObjs_eq, List.mem_flatMap]
   constructor
@@ -113,13 +115,14 @@ theorem vote_not_mem_attBodies (cs : List (Cut (goldilocksNode sp ro))) (w : Wir
   | fg l => cases l <;> simp; split <;> simp
 
 theorem blockObjs_append (cs cs' : List (Cut (goldilocksNode sp ro))) :
-    blockObjs (cs ++ cs') = blockObjs cs ++ blockObjs cs' := by
+    blockObjs (binding := binding) (cs ++ cs') = blockObjs cs ++ blockObjs cs' := by
   simp only [blockObjs_eq, List.flatMap_append]
 
 theorem attBodies_ac (ℓ : ACLabel (goldilocksNode sp ro)) : attBodies [Cut.ac ℓ] = [] := by
   simp only [attBodies_cons, attBodies_nil, List.append_nil]
 
-theorem blockObjs_ac (ℓ : ACLabel (goldilocksNode sp ro)) : blockObjs [Cut.ac ℓ] = [] := by
+theorem blockObjs_ac (ℓ : ACLabel (goldilocksNode sp ro)) :
+    blockObjs (binding := binding) [Cut.ac ℓ] = [] := by
   simp only [blockObjs_cons, blockObjs_nil, List.append_nil]
 
 /-- The cuts of the node's tick: the AC's tick, the proposal step, the FG update. -/
@@ -139,11 +142,12 @@ theorem onTick_cuts (proposer : Nat → Fin sp.n)
 step emits no vote and processes no block. -/
 theorem fgUpdate_outbox_eq (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (x : Nat)
-    (st : State sp ro) :
+    (st : State sp ro binding) :
     (fgUpdate st).outbox =
         st.outbox ++ attBodies (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 ∧
       emitted (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 = [] ∧
-      blockObjs (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 = [] ∧
+      blockObjs (binding := binding)
+        (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 = [] ∧
       ∀ C a, Cut.fg (.attest C (some a)) ∈ (Node.tickStep proposer dg st.self st.node st.now x
         .fgUpdate).2 → a.val = st.self := by
   unfold fgUpdate Node.tickStep
@@ -195,14 +199,15 @@ end TickCuts
 
 section ProposeDuty
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 omit [DecidableEq V] in
 /-- **The proposal duty is the node's proposal step, release by release.** At the start of slot
 `s` with the proposal carrying only seen objects, the engine's `propose` duty releases the canonical
 objects of the blocks of the node's proposal step and queues that step's emissions. -/
-theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled
+    (goldilocksWith S)) E))
     (s : Slot) (hs : 0 < s)
     (hsel : rho.sel (.proposer s) = {runProposer S rho hn s})
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
@@ -222,7 +227,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
   have hact2 := act_propose_snd S hn nd s hs
   have hact1 := shapeOf_act_propose S hn nd.st s hs
   unfold Model.Run.dutyStep
-  generalize (Model.protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs) =
+  generalize (Model.protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs) =
       a at hact1 hact2
   have hP : Proposes (P := (S.params (pubOf E) hn).toParams) (runProposer S rho hn) (rho.ownKey v)
         (shapeOf S hn nd).now ↔
@@ -233,7 +238,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
       rw [hsel]
       exact Finset.mem_singleton.2 (hp.trans hself).symm
     have hrel := hrel hmem
-    simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
+    simp only [show (Model.protoOf (compiled (goldilocksWith S)) E).role (.propose s hs) =
       .proposer s from rfl, hmem, ↓reduceIte]
     simp only [propose] at hact1 hact2 hrel
     simp only [Node.tickStep, hP.2 hp, ite_true]
@@ -252,10 +257,13 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
         List.append_nil]
     · simp only [hr] at hact1 hact2 hrel
       rw [hact2]
-      have hrole : (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
+      have hrole : (Model.protoOf (compiled (goldilocksWith S)) E).role (.propose s hs) =
           .proposer s := rfl
-      erw [Model.Run.signedCandidate_of_default rho v (.propose s hs) _ (fun _ => rfl)]
-      simp only [Option.map, Option.toList_some, hrole]
+      simp only [Option.map, Option.toList_some]
+      erw [signedCandidate_of_default_mem S rho v (.propose s hs) _ (fun mc hmc => by
+        rw [List.mem_singleton.mp hmc]
+        exact propose_candidateRole_item S s hs _)]
+      simp only [hrole]
       erw [List.map_cons, List.map_nil]
       have hmem : rho.ownKey v ∈ rho.sel (.proposer s) := by
         rw [hsel]
@@ -267,7 +275,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
               (shapeOf S hn nd).now).1.fg.proposalAttestations d.head) p⟩)
           (payloadObjs ((acProposal (shapeOf S hn nd).node
               (shapeOf S hn nd).now).1.fg.proposalAttestations d.head) p)) &&
-          Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
+          Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) nd.seen
             (Model.Obj.mk (.signed (rho.ownKey v) (.proposer s))
               (.item ⟨parentRef (S.params (pubOf E) hn).genesisRoot (some d.head.root), s,
                 encodeTxs nd.st.2, encodeInfo ((acProposal (shapeOf S hn nd).node
@@ -285,7 +293,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
           (mkBlock (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (digestOf S rho)
             (rho.ownKey v) (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).1.fg
             (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p).slot := lt_irrefl _
-      have hobj : blockObj (S.params (pubOf E) hn) (binding := stock)
+      have hobj : blockObj (S.params (pubOf E) hn) (binding := S.vote)
           (mkBlock (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (digestOf S rho)
             (rho.ownKey v) (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).1.fg
             (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p) =
@@ -296,7 +304,8 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
             (payloadObjs ((acProposal (shapeOf S hn nd).node
                 (shapeOf S hn nd).now).1.fg.proposalAttestations d.head) p) := by
         simp only [blockObj, mkBlock, headerOf, hslot]
-      have hb : blockObjs ((acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).2.1 ::
+      have hb : blockObjs (binding := S.vote)
+          ((acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).2.1 ::
           (Node.proposeBlock (digestOf S rho) (rho.ownKey v)
             (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).1 (shapeOf S hn nd).now
             (encodeTxs nd.st.2) d.head p).2) =
@@ -329,7 +338,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
       rw [hsel, Finset.mem_singleton]
       intro heq
       exact hp (heq.symm.trans hself.symm)
-    simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
+    simp only [show (Model.protoOf (compiled (goldilocksWith S)) E).role (.propose s hs) =
       .proposer s from rfl, hmem, ↓reduceIte]
     simp only [blockObjs_nil, emitted, List.flatMap_nil, List.append_nil, and_true]
     rfl

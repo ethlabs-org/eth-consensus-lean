@@ -11,21 +11,23 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {binding : VoteBinding}
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- A released attestation is a signing cut of the releasing tick. -/
 theorem att_released_inv_at (hv : rho.ExecutionValid)
     {j : Nat} {v : V} {t : Time} (he : rho.events[j]? = some (.tick v t))
     {b : FG.Att (Fintype.card V)}
-    (hb : (attObj b : (Model.protoOf (compiled (goldilocks S)) E).Object) ∈ rho.releasesAt j) :
+    (hb : (attObj b : (Model.protoOf (compiled (goldilocksWith S)) E).Object) ∈ rho.releasesAt j) :
     (S.params (pubOf E) hn).toParams.IsPublic t ∧ ∃ C,
       Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
         (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 := by
   have hv' : v ∉ rho.faultyAt 0 := event_honest_zero S rho hv he
   obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v j
   obtain ⟨hvote, -⟩ := (atMostOneVote_iff _).1 hamo
-  have hnotpend : ∀ seen, (attObj b : (Model.protoOf (compiled (goldilocks S)) E).Object) ∉
+  have hnotpend : ∀ seen, (attObj b : (Model.protoOf (compiled (goldilocksWith S)) E).Object) ∉
       relHead S rho v seen (stateAt S rho hn v j).outbox.head? := by
     intro seen h
     obtain ⟨q, hq, hqo⟩ := mem_relHead S rho h
@@ -37,7 +39,8 @@ theorem att_released_inv_at (hv : rho.ExecutionValid)
       tick_public_analysis S rho hn hv hv' he hp (preNode_releasable_at S rho hn hv he)
     rw [heq] at hb
     have hQmem : ∀ seen ob, ob ∈ [Q.head?, Q.tail.head?] →
-        (attObj b : (Model.protoOf (compiled (goldilocks S)) E).Object) ∈ relHead S rho v seen ob →
+        (attObj b : (Model.protoOf (compiled
+            (goldilocksWith S)) E).Object) ∈ relHead S rho v seen ob →
         ∃ C, Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn)
           (digestOf S rho) (rho.ownKey v)
           (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 := by
@@ -99,7 +102,7 @@ theorem simTraceAt_att_unforgeable (hv : rho.ExecutionValid) :
     rwa [mem_honestKeysAt_iff, min_eq_left (simTraceAt_labelled_time_le S rho hn hv hl)] at hh
   rcases hc with hc | ⟨B, hc, ha⟩
   swap
-  · have hmem : attObj (binding := stock) a ∈ payloadObjs B.fgPayload B.acPayload :=
+  · have hmem : attObj (binding := S.vote) a ∈ payloadObjs B.fgPayload B.acPayload :=
       List.mem_append_left _ (List.mem_map.mpr ⟨a, ha, rfl⟩)
     obtain ⟨i, t, hik, hs, hr⟩ := block_payload_source_at S rho hn hv hc hmem hh'
       (show rho.signerOf (attObj a) = some (rho.key a.val) from rfl)

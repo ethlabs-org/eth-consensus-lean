@@ -21,6 +21,8 @@ open Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload)
 
+variable {binding : VoteBinding}
+
 /-! ## The phase of a handler's first cut -/
 
 section
@@ -177,7 +179,7 @@ private theorem cutPhase_of_mem_groupRecs {st : NodeState (goldilocksNode sp ro)
 /-- A cut of a delivery's cuts is at the delivery's node and time, under the id of a sub-event
 from `sub` on. -/
 theorem mem_deliverRecs (hs : List (Header Info × Nat)) (t : Time) (i : Nat)
-    {os : List (Wire sp.n)} {st : NodeState (goldilocksNode sp ro)} {sub : Nat}
+    {os : List (Wire sp.n binding)} {st : NodeState (goldilocksNode sp ro)} {sub : Nat}
     {r : CutRec sp ro} (hr : r ∈ deliverRecs proposer dg hs self t i os st sub) :
     r.node = self ∧ r.time = t ∧ ∃ s, sub ≤ s ∧ r.event = Nat.pair i s := by
   induction os generalizing st sub with
@@ -196,13 +198,13 @@ theorem mem_deliverRecs (hs : List (Header Info × Nat)) (t : Time) (i : Nat)
       · obtain ⟨h1, h2, s, hs', h3⟩ := ih hr
         exact ⟨h1, h2, s, by omega, h3⟩
 
-private theorem phase_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.n}
+private theorem phase_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.n binding}
     {e : Event (goldilocksNode sp ro)} (he : canonEvent sp ro hs o = some e) : e.phase = 2 := by
   simp only [canonEvent] at he
   split at he <;> first | (cases he; rfl) | simp at he
 
 private theorem cutPhase_of_mem_deliverRecs (hs : List (Header Info × Nat)) (t : Time) (i : Nat)
-    {os : List (Wire sp.n)} {st : NodeState (goldilocksNode sp ro)} {sub : Nat}
+    {os : List (Wire sp.n binding)} {st : NodeState (goldilocksNode sp ro)} {sub : Nat}
     {r : CutRec sp ro} (hr : r ∈ deliverRecs proposer dg hs self t i os st sub) (h0 : r.pos = 0) :
     cutPhase r.label = 2 := by
   induction os generalizing st sub with
@@ -219,7 +221,7 @@ private theorem cutPhase_of_mem_deliverRecs (hs : List (Header Info × Nat)) (t 
       · exact ih hr
 
 private theorem restart_of_mem_deliverRecs (hs : List (Header Info × Nat)) (t : Time) (i : Nat)
-    {os : List (Wire sp.n)} {st : NodeState (goldilocksNode sp ro)} {sub : Nat}
+    {os : List (Wire sp.n binding)} {st : NodeState (goldilocksNode sp ro)} {sub : Nat}
     {r : CutRec sp ro} (hr : r ∈ deliverRecs proposer dg hs self t i os st sub)
     {ℓ : ACLabel (goldilocksNode sp ro)} (hl : r.label = .ac ℓ) (hℓ : ℓ.call = .restart) :
     False := by
@@ -245,8 +247,8 @@ end
 
 /-! ## The cuts of the run -/
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 private theorem flatMap_range_succ (m : Nat) :
     (List.range (m + 1)).flatMap (eventCuts S rho hn) =
@@ -323,7 +325,7 @@ theorem exists_event_of_getElem? {k : Nat} {r : CutRec (S.params (pubOf E) hn) (
 /-- A cut of engine event `i` is at the event's node (its own key) and time, under an event id
 `Nat.pair i s`. -/
 theorem mem_eventCuts {i : Nat}
-    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
     (hr : r ∈ eventCuts S rho hn i) :
     r.node = rho.ownKey ev.node ∧ r.time = ev.time ∧ ∃ s, r.event = Nat.pair i s := by
@@ -348,7 +350,7 @@ theorem mem_eventCuts {i : Nat}
 event's phase: if its label is the first cut of the handler of `e` (at any state), `e` has the
 phase of the engine event. -/
 theorem phase_of_pos_zero {i : Nat}
-    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
     (hr : r ∈ eventCuts S rho hn i) (h0 : r.pos = 0)
     {dg : Digest (List (FG.Att (Fintype.card V))) (Payload (Fintype.card V))}
@@ -376,7 +378,7 @@ theorem phase_of_pos_zero {i : Nat}
 
 /-- An `ac_restart` cut is a cut of an engine restart. -/
 theorem restart_of_mem_eventCuts {i : Nat}
-    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
     (hr : r ∈ eventCuts S rho hn i) {ℓ : ACLabel (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
     (hl : r.label = .ac ℓ) (hℓ : ℓ.call = .restart) : ∃ v t, ev = .restart v t := by

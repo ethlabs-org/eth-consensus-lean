@@ -21,15 +21,37 @@ open Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload blockVotes)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {binding : VoteBinding}
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-! ## `LocalRun` -/
 
-/-- Each honest node starts from the initial node state. -/
+/-- Each honest node starts from the initial node state with its own-role vote permission. -/
 theorem simTrace_init :
-    ∀ y ∈ honestKeys S rho, (simTrace S rho hn).init y = Node.init _ :=
+    ∀ y ∈ honestKeys S rho, (simTrace S rho hn).init y =
+      Node.initWith (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+        (S.vote.installVote (fun r => decide (y ∈ rho.sel r))
+          (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).initial) :=
   fun y _ => simTrace_init_eq S rho hn y
+
+/-- TEMP(C2): a binding without a participation kind has the whole population as committee. -/
+theorem committeeSize_of_participationKind_none {B : VoteBinding}
+    (h : B.participationKind = none) : ∀ pub, B.committeeSize pub = pub.n := by
+  intro pub
+  simp only [VoteBinding.committeeSize, h]
+
+/-- TEMP(C2): a binding without a participation kind installs no own-role permission. -/
+theorem installVote_of_participationKind_none {B : VoteBinding}
+    (h : B.participationKind = none) {n : Nat} (p : ShapeRole B.Kind → Bool)
+    (a : SA.SAState n) : B.installVote p a = a := by
+  simp only [VoteBinding.installVote, h]
+
+/-- TEMP(C2): the interim stock premise of the run records, discharged for the population
+binding. Proof-side lemmas carry it as `[Fact (S.vote.participationKind = none)]`; a committee
+binding fails instance synthesis. Removed with the records' `stock` field at C2. -/
+instance stock_participationKind_none : Fact (stock.participationKind = none) := ⟨rfl⟩
 
 /-! ### The engine's schedule and the trace's cuts -/
 
@@ -46,7 +68,7 @@ theorem key_of_ownKey {v : V} {y : Fin (Fintype.card V)} (h : rho.ownKey v = y) 
   rw [← h]; exact (rho.key.apply_symm_apply v).symm
 
 private theorem event_awake (hv : rho.ExecutionValid) {i : Nat}
-    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[i]? = some ev) : E.awake ev.node ev.time = true := by
   have hm := List.mem_of_getElem? he
   cases ev with
@@ -421,7 +443,7 @@ omit [DecidableEq V] in
 theorem blockObj_fields {B C : Blk (S.params (pubOf E) hn)}
     (hB : B.parent ≠ none) (hC : C.parent ≠ none)
     (hrB : B.RootOk (digestOf S rho)) (hrC : C.RootOk (digestOf S rho))
-    (he : blockObj (S.params (pubOf E) hn) (binding := stock) B =
+    (he : blockObj (S.params (pubOf E) hn) (binding := S.vote) B =
       blockObj (S.params (pubOf E) hn) C) : B = C := by
   have hh := congrArg Model.Obj.msg he
   have ha := congrArg Model.Obj.auth he
@@ -464,7 +486,7 @@ private theorem delivery_block_authorized {sp : SAParams} {ro : ReplayOrder sp (
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
     (Q : Blk sp → Prop) :
-    ∀ (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat),
+    ∀ (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat),
       (∀ o ∈ os, ∀ B, o = blockObj sp B → Q B) →
       ∀ r ∈ deliverRecs proposer dg hs self t i os st sub, r.pos = 0 →
       ∀ B acc, r.label = .fg (.block B acc) → Q B := by

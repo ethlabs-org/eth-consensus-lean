@@ -79,8 +79,10 @@ open Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {binding : VoteBinding}
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The trace's horizon is `awakeAt`'s clamp. -/
 theorem simTrace_inHorizon_iff (t : Time) :
@@ -121,7 +123,7 @@ theorem deliverRecs_message_call (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
     (m : Vote sp.n) :
-    ∀ (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat),
+    ∀ (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat),
     (∃ o ∈ os, canonEvent sp ro hs o = some (.message m)) →
     ∃ r ∈ deliverRecs proposer dg hs self t i os st sub,
       ∃ ℓ, r.label = .ac ℓ ∧ ℓ.call = .message m := by

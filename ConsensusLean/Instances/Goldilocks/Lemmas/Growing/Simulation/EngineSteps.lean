@@ -16,19 +16,19 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Shape
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Every actual event's node was honest at time zero, even if compromised later. -/
 theorem event_honest_zero (hv : rho.ExecutionValid) {i : Nat}
-    {e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {e : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[i]? = some e) : e.node ∉ rho.faultyAt 0 := by
   have hm := List.mem_of_getElem? he
   exact fun hf => hv.honest_only e hm (rho.faultyAt_mono (hv.in_horizon e hm).1 hf)
 
 /-- A delivery executes the canonical object handlers at the delivery time. -/
 theorem node_of_deliver_at (hv : rho.ExecutionValid) (v : V) (i : Nat)
-    (o : (Model.protoOf (compiled (goldilocks S)) E).Object) (t : Time)
+    (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object) (t : Time)
     (he : rho.events[i]? = some (.deliver v o t)) :
     (stateAt S rho hn v (i + 1)).node =
       deliverState (runProposer S rho hn) (digestOf S rho)

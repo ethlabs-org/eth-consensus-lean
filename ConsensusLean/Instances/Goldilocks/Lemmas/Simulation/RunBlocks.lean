@@ -19,8 +19,10 @@ open Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload blockVotes)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {binding : VoteBinding}
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-! ## `GoldilocksRun` -/
 
@@ -38,7 +40,7 @@ theorem simTrace_genesis_root_ok :
 private theorem block_payload_source (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {k : Nat} {y}
     {B : Blk (S.params (pubOf E) hn)} (hc : (simTrace S rho hn).BlockCallAt y k B)
-    {o : Wire (Fintype.card V)} (ho : o ∈ payloadObjs B.fgPayload B.acPayload)
+    {o : Wire (Fintype.card V) S.vote} (ho : o ∈ payloadObjs B.fgPayload B.acPayload)
     {u : V} (hu : u ∉ rho.faultyAt 0) (hsign : rho.signerOf o = some u) :
     ∃ i t, cutMap S rho hn (i + 1) ≤ k ∧ rho.SendsAt u i t ∧ o ∈ rho.releasesAt i :=
   block_payload_source_of S rho hn hv (fun {i v t} he => preNode_releasable S rho hn hf hv
@@ -56,7 +58,7 @@ theorem simTrace_carried_vote_unforgeable (hf : rho.point.ConstantFaults)
         ∃ j < i, (simTrace S rho hn).EmitAt v.val j v := by
   intro y _ k B hc m hm hh
   rw [mem_honestKeys_iff] at hh
-  have hmem : voteObj (binding := stock) m ∈ payloadObjs B.fgPayload B.acPayload :=
+  have hmem : voteObj (binding := S.vote) m ∈ payloadObjs B.fgPayload B.acPayload :=
     List.mem_append_right _ (List.mem_map.mpr ⟨m, List.mem_append_left _ hm, rfl⟩)
   obtain ⟨i, t, hik, hs, hr⟩ := block_payload_source S rho hn hf hv hc hmem hh
     (show rho.signerOf (voteObj m) = some (rho.key m.val) from rfl)
@@ -84,7 +86,7 @@ theorem simTrace_att_unforgeable (hf : rho.point.ConstantFaults) (hv : rho.Execu
   rw [mem_honestKeys_iff] at hh
   rcases hc with hc | ⟨B, hc, ha⟩
   swap
-  · have hmem : attObj (binding := stock) a ∈ payloadObjs B.fgPayload B.acPayload :=
+  · have hmem : attObj (binding := S.vote) a ∈ payloadObjs B.fgPayload B.acPayload :=
       List.mem_append_left _ (List.mem_map.mpr ⟨a, ha, rfl⟩)
     obtain ⟨i, t, hik, hs, hr⟩ := block_payload_source S rho hn hf hv hc hmem hh
       (show rho.signerOf (attObj a) = some (rho.key a.val) from rfl)
@@ -202,7 +204,7 @@ theorem state_of_deliverRecs
     (proposer : Nat → Fin (S.params (pubOf E) hn).n)
     (dg : Digest (List (FG.Att (S.params (pubOf E) hn).n)) (Payload (S.params (pubOf E) hn).n))
     {y : Fin (S.params (pubOf E) hn).n} {t : Time} {i : Nat}
-    (hs : List (Header Info × Nat)) (os : List (Wire (S.params (pubOf E) hn).n)) :
+    (hs : List (Header Info × Nat)) (os : List (Wire (S.params (pubOf E) hn).n S.vote)) :
     ∀ (j0 sub : Nat) (st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _))),
     (∀ k < (deliverRecs proposer dg hs y t i os st sub).length,
       (allCuts S rho hn)[j0 + k]? = (deliverRecs proposer dg hs y t i os st sub)[k]?) →
@@ -304,7 +306,7 @@ theorem deliverSeq_of_recs
     (proposer : Nat → Fin (S.params (pubOf E) hn).n)
     (dg : Digest (List (FG.Att (S.params (pubOf E) hn).n)) (Payload (S.params (pubOf E) hn).n))
     {y : Fin (S.params (pubOf E) hn).n} {t : Time} {i : Nat}
-    (hs : List (Header Info × Nat)) (os : List (Wire (S.params (pubOf E) hn).n)) :
+    (hs : List (Header Info × Nat)) (os : List (Wire (S.params (pubOf E) hn).n S.vote)) :
     ∀ (j0 sub : Nat) (st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _))),
     (∀ k < (deliverRecs proposer dg hs y t i os st sub).length,
       (allCuts S rho hn)[j0 + k]? = (deliverRecs proposer dg hs y t i os st sub)[k]?) →

@@ -15,8 +15,8 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Shape
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Every observation cut, including the unlabelled tail, has nonnegative time. -/
 theorem simTraceAt_time_nonneg (hv : rho.ExecutionValid) :

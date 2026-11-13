@@ -85,7 +85,7 @@ theorem payload_message_after_block {sp : SA.SAParams}
     (st : NodeState (goldilocksNode sp ro)) (B : Blk sp) (v : SA.Vote sp.n)
     (ha : B.fgPayload = []) (hp : B.acPayload = ([v], []))
     (hc : canonEvent sp ro hs (blockObj sp (binding := stock) B) = some (.block B)) :
-    deliverRecs proposer dg hs self t i (delivered sp (blockObj sp B)) st 0 =
+    deliverRecs (binding := stock) proposer dg hs self t i (delivered sp (blockObj sp B)) st 0 =
       groupRecs proposer dg self st t (Nat.pair i 0) (.block B) ++
       groupRecs proposer dg self (Node.onBlock self st t B).1 t (Nat.pair i 1) (.message v) := by
   have hd : delivered sp (blockObj sp (binding := stock) B) =
@@ -104,7 +104,7 @@ theorem nested_payload_message {sp : SA.SAParams}
     (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
     (hs : List (Blocks.Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
     (st : NodeState (goldilocksNode sp ro)) (v : SA.Vote sp.n) :
-    deliverRecs proposer dg hs self t i
+    deliverRecs (binding := stock) proposer dg hs self t i
       (delivered sp (.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v]])) st 0 =
       groupRecs proposer dg self st t (Nat.pair i 2) (.message v) := by
   simp only [delivered, voteObj, Model.Obj.parts, Model.Obj.parts.partsList,
@@ -132,7 +132,7 @@ theorem foreign_parent_rejected (sp : SA.SAParams) (hs : List (Blocks.Header Inf
 theorem negative_forward_rejected (sp : SA.SAParams) (hs : List (Blocks.Header Info × Nat))
     (x : Fin sp.n) (t : Time) (ht : t < 0) (B : Blk sp)
     (hb : decodeBlock sp hs (blockObj sp (binding := stock) B) = some B) :
-    decodeForward sp hs (forwardObj sp x t none B) = none := by
+    decodeForward sp (binding := stock) hs (forwardObj sp x t none B) = none := by
   simp [forwardObj, decodeForward, hb, not_le.mpr ht]
 
 /-- Carrying a parent in the current envelope is insufficient: the exact parent

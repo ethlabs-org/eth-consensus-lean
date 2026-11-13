@@ -14,12 +14,13 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Shape Blocks
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Partial synchrony supplies strict processing and acceptance relay to a receiver
 honest at its call. Senders need be honest only at their source cuts. -/
 theorem receiverServiceAfterAt_of_psync (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {g : Time}
     (hnet : rho.log.PSync rho.point g) (y : Fin (Fintype.card V)) :
     Compose.Growing.ReceiverServiceAfterAt (honestKeysAt S rho)

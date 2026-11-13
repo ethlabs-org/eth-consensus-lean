@@ -82,8 +82,8 @@ theorem finalAccountable_readPoint
 
 end Node
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The finalized engine read at a bounded cut is the chain of the trace state's finalized tip
 at the mapped cut. -/
@@ -98,7 +98,9 @@ theorem read_finalized_at (hv : rho.ExecutionValid) (v : V) {i : Nat}
 
 /-- The tree of a node honest at its engine cut is reachable at the mapped cut and inside the
 blocks held while honest. -/
-theorem held_tree_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
+theorem held_tree_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i)) :
     ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.Reachable
         (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload ∧
@@ -111,7 +113,9 @@ theorem held_tree_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
 /-- **Compatible held tips give prefix-related finalized reads.** For two nodes each honest at its
 engine cut, compatibility of their finalized tips inside the blocks held while honest makes one
 finalized engine read a prefix of the other. -/
-theorem compatible_reads_at (hv : rho.ExecutionValid)
+theorem compatible_reads_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {u v : V} {i j : Nat} (hi : i ≤ rho.events.length) (hj : j ≤ rho.events.length)
     (hu : u ∉ rho.faultyAt (rho.cutTime i)) (hv' : v ∉ rho.faultyAt (rho.cutTime j))
@@ -129,7 +133,9 @@ theorem compatible_reads_at (hv : rho.ExecutionValid)
 
 /-- Two finalized reads of nodes each honest at its own engine cut are prefix-related, or their
 two views convict `2q − n` validators. -/
-theorem final_accountable_at (hv : rho.ExecutionValid)
+theorem final_accountable_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {u v : V} {i j : Nat} (hi : i ≤ rho.events.length) (hj : j ≤ rho.events.length)
     (hu : u ∉ rho.faultyAt (rho.cutTime i)) (hv' : v ∉ rho.faultyAt (rho.cutTime j)) :
@@ -164,7 +170,9 @@ theorem final_accountable_at (hv : rho.ExecutionValid)
 /-- **R.7 final accountability under growing faults**, the fourth `ShapeClaimsAt` field for every
 `α ≤ 1/3`: two finalized reads of nodes each honest at its own engine cut are compatible, or the
 union of their views convicts `nα` validators; the only escape is an observed hash collision. -/
-theorem engine_finalAccountable_at (hv : rho.ExecutionValid) {α : ℚ} (hα : α ≤ 1 / 3) :
+theorem engine_finalAccountable_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hv : rho.ExecutionValid)
+    {α : ℚ} (hα : α ≤ 1 / 3) :
     (chainTrace rho).AccountablySafe rho.ViewIdx rho.Slashable α .finalized 0 ∨
       rho.HashCollision := by
   by_cases hc : rho.HashCollision

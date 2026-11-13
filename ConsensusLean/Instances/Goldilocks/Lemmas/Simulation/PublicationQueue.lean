@@ -11,6 +11,8 @@ open AsChainShape
 
 open Blocks Shape Node
 
+variable {binding : VoteBinding}
+
 variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A canonical, nonfuture block in a recursive receipt produces an actual block-call
@@ -19,7 +21,7 @@ theorem deliverRecs_block_call (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
     (B : Blk sp) (hslot : B.slot ≤ sp.toParams.slotOf t) :
-    ∀ (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat),
+    ∀ (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat),
     (∃ o ∈ os, canonEvent sp ro hs o = some (.block B)) →
     ∃ r ∈ deliverRecs proposer dg hs self t i os st sub,
       ∃ accepted, r.label = .fg (.block B accepted) := by
@@ -52,10 +54,10 @@ theorem deliverRecs_block_call (proposer : Nat → Fin sp.n)
           (sub + 1) ⟨x, hx, he⟩
         exact ⟨r, List.mem_append_right _ hr, accepted, ha⟩
 
-private def QueueStamped (t : Time) (st : State sp ro) : Prop :=
+private def QueueStamped (t : Time) (st : State sp ro binding) : Prop :=
   st.now = t ∧ ∀ q ∈ st.forwards, q.1 = t
 
-private theorem nodeTick_forwards (st : State sp ro) :
+private theorem nodeTick_forwards (st : State sp ro binding) :
     (nodeTick st).forwards = st.forwards := by
   unfold nodeTick
   split
@@ -63,7 +65,7 @@ private theorem nodeTick_forwards (st : State sp ro) :
       List.flatMap_nil, List.append_nil]
   · rfl
 
-private theorem stamped_apply (t : Time) (st : State sp ro) r
+private theorem stamped_apply (t : Time) (st : State sp ro binding) r
     (h : QueueStamped t st) : QueueStamped t (apply st r) := by
   refine ⟨h.1, ?_⟩
   intro q hq
@@ -71,7 +73,7 @@ private theorem stamped_apply (t : Time) (st : State sp ro) r
   · exact h.2 q hq
   · exact h.1
 
-private theorem stamped_recordOwn (t : Time) (st : State sp ro) o hs
+private theorem stamped_recordOwn (t : Time) (st : State sp ro binding) o hs
     (h : QueueStamped t st) : QueueStamped t (recordOwn st o hs) := by
   unfold recordOwn
   split
@@ -81,27 +83,27 @@ private theorem stamped_recordOwn (t : Time) (st : State sp ro) o hs
     · exact h
   · exact h
 
-private theorem stamped_propose (t : Time) (st : State sp ro) s
+private theorem stamped_propose (t : Time) (st : State sp ro binding) s
     (h : QueueStamped t st) : QueueStamped t (propose st s).1 := by
   unfold propose
   dsimp only
   split <;> exact h
 
-private theorem stamped_nodeTick (t : Time) (st : State sp ro)
+private theorem stamped_nodeTick (t : Time) (st : State sp ro binding)
     (h : QueueStamped t st) : QueueStamped t (nodeTick st) := by
   unfold nodeTick
   split
   · exact stamped_apply t st _ h
   · exact h
 
-private theorem stamped_poll (t : Time) (st : State sp ro) u
+private theorem stamped_poll (t : Time) (st : State sp ro binding) u
     (h : QueueStamped t st) : QueueStamped t (poll st u).1 := by
   refine ⟨(poll_now st u).trans h.1, ?_⟩
   intro q hq
   rw [poll_forwards] at hq
   exact False.elim (List.not_mem_nil hq)
 
-private theorem stamped_process (t : Time) (st : State sp ro) o hs
+private theorem stamped_process (t : Time) (st : State sp ro binding) o hs
     (h : QueueStamped t st) : QueueStamped t (process st o hs) := by
   refine ⟨(process_now st o hs).trans h.1, ?_⟩
   intro q hq
@@ -115,10 +117,10 @@ private theorem stamped_process (t : Time) (st : State sp ro) o hs
 section Trace
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 theorem atProposal_forwards_nil (hv : rho.ExecutionValid) (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time) :
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (t : Time) :
     (shapeOf S hn (atProposal S rho v nd t)).forwards = [] := by
   rw [atProposal_shape S rho hn v nd t (poll_selected S rho hv v), nodeTick_forwards,
     poll_forwards]
@@ -127,14 +129,14 @@ omit [DecidableEq V] in
 /-- A proposal duty creates forwarding entries only for successful cuts of the
 corresponding proposal step. Rejected release guards create no new entries. -/
 theorem proposal_duty_forward_origin (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (s : Slot) (hs : 0 < s)
     (hsel : rho.sel (.proposer s) = {runProposer S rho hn s})
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (hslot : (S.params (Model.pubOf E) hn).toParams.slotOf (shapeOf S hn nd).now = s)
     (hst : (shapeOf S hn nd).now = (S.params (Model.pubOf E) hn).toParams.slotTime s)
-    (q : Time × List (Wire (Fintype.card V)))
+    (q : Time × List (Wire (Fintype.card V) S.vote))
     (hq : q ∈ (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1).forwards) :
-    q ∈ (shapeOf S hn nd).forwards ∨ ∃ B, ∃ p : Option (Wire (Fintype.card V)),
+    q ∈ (shapeOf S hn nd).forwards ∨ ∃ B, ∃ p : Option (Wire (Fintype.card V) S.vote),
       .fg (.block B true) ∈ (Node.tickStep (runProposer S rho hn) (digestOf S rho)
         (rho.ownKey v) (shapeOf S hn nd).node (shapeOf S hn nd).now
         (encodeTxs nd.st.2) .proposal).2 ∧
@@ -149,7 +151,7 @@ theorem proposal_duty_forward_origin (v : V)
         (runProposer S rho hn) (rho.ownKey v) (shapeOf S hn nd).now := by
       rw [hst, proposes_iff S hn _ _ s hs]
       exact (Finset.mem_singleton.mp (hsel ▸ hselected)).symm
-    generalize (Model.protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs) = a
+    generalize (Model.protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs) = a
       at hact1 hact2 hq
     dsimp only at hq
     simp only [propose] at hact1 hact2
@@ -165,11 +167,13 @@ theorem proposal_duty_forward_origin (v : V)
         exact Or.inl hq
     · simp only [hr] at hact1 hact2
       erw [hact2] at hq
-      have hrole : (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
+      have hrole : (Model.protoOf (compiled (goldilocksWith S)) E).role (.propose s hs) =
           .proposer s := rfl
-      erw [Model.Run.signedCandidate_of_default rho v (.propose s hs) _ (fun _ => rfl)] at hq
-      simp only [Option.map, Option.toList_some, hrole,
-        hselected, ↓reduceIte] at hq
+      simp only [Option.map, Option.toList_some] at hq
+      erw [signedCandidate_of_default_mem S rho v (.propose s hs) _ (fun mc hmc => by
+        rw [List.mem_singleton.mp hmc]
+        exact propose_candidateRole_item S s hs _)] at hq
+      simp only [hrole, hselected, ↓reduceIte] at hq
       dsimp only [List.map] at hq
       unfold Model.releaseAll at hq
       split at hq
@@ -195,13 +199,13 @@ omit [DecidableEq V] in
 /-- A decoded envelope's child is decoded identically inside any enclosing receipt.
 Both roots are obtained from the engine hash of the child's header. -/
 theorem decoded_forward_child_in_receipt
-    {o receipt : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {o receipt : Wire (Fintype.card V) S.vote} {x : Fin (Fintype.card V)} {t : Time}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (hc : Model.Obj.Contains receipt o)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B)) :
     blockObj (S.params (Model.pubOf E) hn) B ∈ receipt.parts ∧
-      decodeBlock (S.params (Model.pubOf E) hn) (binding := stock) (Model.digests rho.hash receipt)
+      decodeBlock (S.params (Model.pubOf E) hn) (binding := S.vote) (Model.digests rho.hash receipt)
         (blockObj (S.params (Model.pubOf E) hn) B) = some B := by
   have hchild : Model.Obj.Contains o (blockObj (S.params (Model.pubOf E) hn) B) := by
     rw [forwardObj_of_decodeForward _ _ _ _ _ _ hd]
@@ -219,11 +223,11 @@ omit [DecidableEq V] in
 /-- A decodable forwarding candidate of a poll comes from its pre-duty forwarding
 queue, not the ordinary outbox emission (which carries no child). -/
 theorem poll_candidate_forward_queue (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (u : Nat)
-    {o : Wire (Fintype.card V)} {t : Time} {p : Option (Wire (Fintype.card V))}
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (u : Nat)
+    {o : Wire (Fintype.card V) S.vote} {t : Time} {p : Option (Wire (Fintype.card V) S.vote)}
     {B : Blk (S.params (Model.pubOf E) hn)}
     (ho : o ∈ rho.signedCandidate v (.poll u)
-      ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.poll u)).2)
+      ((Model.protoOf (compiled (goldilocksWith S)) E).act nd.st (.poll u)).2)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (rho.ownKey v, t, p, B)) :
     (t, p.toList ++ [blockObj (S.params (Model.pubOf E) hn) B]) ∈
@@ -252,18 +256,18 @@ theorem poll_candidate_forward_queue (v : V)
       cases p <;> simp at hc
   · obtain ⟨⟨stamp, children⟩, hq, he⟩ := List.mem_map.mp hm
     cases he
-    have heq := forwardObj_of_decodeForward (Model.digests rho.hash
-      (.mk (.signed (rho.ownKey v) .poll) (.data (.forward stamp)) children))
-      _ _ _ _ _ hd
-    simp [forwardObj] at heq
-    obtain ⟨rfl, rfl⟩ := heq
+    have heq := forwardObj_of_decodeForward _ _ _ _ _ _ hd
+    injection heq with _ hmsg hcs
+    injection hmsg with hb
+    injection hb with ht
+    subst hcs ht
     exact hq
 
 omit [DecidableEq V] in
 /-- A released poll envelope retains its pre-duty queue witness. -/
 theorem poll_release_forward_queue (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (u : Nat)
-    {o : Wire (Fintype.card V)} {t : Time} {p : Option (Wire (Fintype.card V))}
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (u : Nat)
+    {o : Wire (Fintype.card V) S.vote} {t : Time} {p : Option (Wire (Fintype.card V) S.vote)}
     {B : Blk (S.params (Model.pubOf E) hn)}
     (ho : o ∈ (rho.dutyStep v nd (.poll u)).2)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
@@ -280,8 +284,8 @@ theorem poll_release_forward_queue (v : V)
 by that signer. This is authentication provenance, not yet an acceptance witness. -/
 theorem decoded_forward_seen_released (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {i : Nat} {v : V} (hi : i ≤ rho.events.length)
-    {o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {o : Wire (Fintype.card V) S.vote} {x : Fin (Fintype.card V)} {t : Time}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (ho : o ∈ Model.closure (rho.stateBefore i v).seen)
     (hx : rho.key x ∉ rho.faultyAt 0)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
@@ -295,28 +299,33 @@ theorem decoded_forward_seen_released (hf : rho.point.ConstantFaults) (hv : rho.
 
 omit [DecidableEq V] in
 private theorem duty_forward_stamp (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) (u : Time)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+    (d : (Model.protoOf (compiled (goldilocksWith S)) E).Duty) (u : Time)
     (hs : QueueStamped u (shapeOf S hn nd))
-    {o : Wire (Fintype.card V)} {t : Time} {p : Option (Wire (Fintype.card V))}
+    {o : Wire (Fintype.card V) S.vote} {t : Time} {p : Option (Wire (Fintype.card V) S.vote)}
     {B : Blk (S.params (Model.pubOf E) hn)}
-    (ho : o ∈ rho.signedCandidate v d ((Model.protoOf (compiled (goldilocks S)) E).act nd.st d).2)
+    (ho : o ∈ rho.signedCandidate v d ((Model.protoOf (compiled
+        (goldilocksWith S)) E).act nd.st d).2)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (rho.ownKey v, t, p, B)) : t = u := by
   cases d with
   | poll n => exact hs.2 _ (poll_candidate_forward_queue S rho hn v nd n ho hd)
-  | act s k => exact k.elim
+  | act s k =>
+    obtain ⟨_, _, hm, _⟩ := rho.mem_signedCandidate.mp ho
+    exact absurd hm List.not_mem_nil
   | propose s hpos =>
     obtain ⟨m, cs, _, _, _, rfl⟩ := rho.mem_signedCandidate.mp ho
     have he := forwardObj_of_decodeForward _ _ _ _ _ _ hd
-    have ha := congrArg Model.Obj.auth he
-    change Model.Auth.signed (rho.ownKey v) (ShapeRole.proposer (Kind := Empty) s) =
-      .signed (rho.ownKey v) ShapeRole.poll at ha
-    cases ha
+    injection he with hauth hmsg _
+    subst hmsg
+    have hh : (ShapeRole.proposer s : ShapeRole S.vote.Kind) = .poll := by
+      injection hauth with _ h
+      exact (propose_candidateRole_of_not_vote S s hpos fun _ h => by cases h).symm.trans h
+    cases hh
   | pollPropose n =>
-    have hempty : ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose n)).2 =
+    have hempty : ((Model.protoOf (compiled (goldilocksWith S)) E).act nd.st (.pollPropose n)).2 =
         [] := by
-      simp only [Model.protoOf, compiled, compile, goldilocks, goldilocksWith,
+      simp only [Model.protoOf, compiled, compile, goldilocksWith,
         dite_eq_left hn, goldilocksShape]
       rfl
     obtain ⟨m, cs, hm, _, _⟩ := rho.mem_signedCandidate.mp ho
@@ -325,10 +334,10 @@ private theorem duty_forward_stamp (v : V)
 
 omit [DecidableEq V] in
 theorem gossip_not_forward
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (u : Time)
-    {o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
-    (ho : o ∈ Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) nd.st u)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (u : Time)
+    {o : Wire (Fintype.card V) S.vote} {x : Fin (Fintype.card V)} {t : Time}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
+    (ho : o ∈ Model.gossipCandidates (Model.protoOf (compiled (goldilocksWith S)) E) nd.st u)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B)) : False := by
   obtain ⟨mc, _, rfl⟩ := Model.mem_gossipCandidates.mp ho
@@ -337,8 +346,8 @@ theorem gossip_not_forward
   cases hsign
 
 private theorem dutyBatches_forward_stamp (v : V) (u : Time) :
-    ∀ (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
-      (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)),
+    ∀ (ds : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty)
+      (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)),
     QueueStamped u (shapeOf S hn nd) →
     ∀ b ∈ dutyBatches rho v nd ds, ∀ o ∈ b.candidates,
     ∀ t p B, decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
@@ -358,7 +367,7 @@ private theorem dutyBatches_forward_stamp (v : V) (u : Time) :
         v nd d hs) b hb o ho t p B hd
 
 private theorem runDuties_candidate_batch (v : V) :
-    ∀ ds (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) o,
+    ∀ ds (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) o,
     o ∈ (rho.runDuties v nd ds).2 →
     ∃ b ∈ dutyBatches rho v nd ds, o ∈ b.candidates := by
   intro ds
@@ -383,7 +392,7 @@ private theorem runDuties_candidate_batch (v : V) :
 /-- Every engine release belongs to a concrete event batch. This inverse needs no
 acceptance or provenance premise. -/
 theorem released_candidate_batch {i : Nat} {v : V} {u : Time}
-    (he : rho.SendsAt v i u) {o : Wire (Fintype.card V)} (ho : o ∈ rho.releasesAt i) :
+    (he : rho.SendsAt v i u) {o : Wire (Fintype.card V) S.vote} (ho : o ∈ rho.releasesAt i) :
     ∃ b ∈ eventBatches rho i, o ∈ b.candidates := by
   rcases he with he | ⟨receipt, he⟩
   · rw [eventBatches_eq, he]
@@ -395,7 +404,7 @@ theorem released_candidate_batch {i : Nat} {v : V} {u : Time}
       · obtain ⟨b, hb, ho⟩ := runDuties_candidate_batch S rho v _ _ o ho
         exact ⟨b, List.mem_append_left _ hb, ho⟩
       · exact ⟨_, List.mem_append_right _ List.mem_cons_self,
-          Model.releaseAll_subset (P := Model.protoOf (compiled (goldilocks S)) E) _ _ _ _ o ho⟩
+          Model.releaseAll_subset (P := Model.protoOf (compiled (goldilocksWith S)) E) _ _ _ _ o ho⟩
     · exact False.elim (List.not_mem_nil ho)
   · rw [eventBatches_eq, he]
     simp only [Model.Run.releasesAt, he, Model.Run.deliver] at ho
@@ -403,14 +412,14 @@ theorem released_candidate_batch {i : Nat} {v : V} {u : Time}
     · obtain ⟨b, hb, ho⟩ := runDuties_candidate_batch S rho v _ _ o ho
       exact ⟨b, List.mem_append_left _ hb, ho⟩
     · exact ⟨_, List.mem_append_right _ List.mem_cons_self,
-        Model.releaseAll_subset (P := Model.protoOf (compiled (goldilocks S)) E) _ _ _ _ o ho⟩
+        Model.releaseAll_subset (P := Model.protoOf (compiled (goldilocksWith S)) E) _ _ _ _ o ho⟩
 
 /-- A forwarding candidate in an actual event batch has that event's timestamp. -/
 theorem eventBatches_forward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V}
     {u : Time} (he : rho.SendsAt v i u)
-    (b : ReleaseBatch (Model.protoOf (compiled (goldilocks S)) E))
-    (hb : b ∈ eventBatches rho i) {o : Wire (Fintype.card V)} (ho : o ∈ b.candidates)
-    {t : Time} {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (b : ReleaseBatch (Model.protoOf (compiled (goldilocksWith S)) E))
+    (hb : b ∈ eventBatches rho i) {o : Wire (Fintype.card V) S.vote} (ho : o ∈ b.candidates)
+    {t : Time} {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (rho.ownKey v, t, p, B)) : t = u := by
   rcases he with he | ⟨receipt, he⟩
@@ -447,8 +456,8 @@ theorem eventBatches_forward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V}
 
 /-- An actually released forwarding envelope has the sending event's timestamp. -/
 theorem released_forward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V} {u : Time}
-    (he : rho.SendsAt v i u) {o : Wire (Fintype.card V)} (ho : o ∈ rho.releasesAt i)
-    {t : Time} {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (he : rho.SendsAt v i u) {o : Wire (Fintype.card V) S.vote} (ho : o ∈ rho.releasesAt i)
+    {t : Time} {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (rho.ownKey v, t, p, B)) : t = u := by
   obtain ⟨b, hb, ho⟩ := released_candidate_batch S rho he ho
@@ -456,9 +465,9 @@ theorem released_forward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V} {u : 
 
 /-- Every actual forwarding publication bears its own event's time. -/
 theorem publication_forward_stamp (hv : rho.ExecutionValid)
-    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
+    (r : Publication (Model.protoOf (compiled (goldilocksWith S)) E))
     (hr : (publisherExecution S rho).actual r) {t : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash r.object) r.object =
       some (r.origin, t, p, B)) : t = (publisherExecution S rho).eventTime r.event := by
   apply released_forward_stamp S rho hn hv ((publisherExecution S rho).actual_event r hr)
@@ -496,15 +505,15 @@ theorem acceptAt_of_eventCuts {i : Nat} (hi : i < rho.events.length)
 /-- The processing phase of an actual delivery queues only wrappers for acceptances in
 that delivery, at its actual time. The event-boundary queue is empty, not a premise. -/
 theorem delivery_forward_acceptance_decoded (hv : rho.ExecutionValid) {i : Nat} {v : V}
-    {o : Wire (Fintype.card V)} {t : Time}
+    {o : Wire (Fintype.card V) S.vote} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t))
-    (q : Time × List (Wire (Fintype.card V)))
+    (q : Time × List (Wire (Fintype.card V) S.vote))
     (hq : q ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).forwards) :
-    ∃ B, ∃ p : Option (Wire (Fintype.card V)), ∃ k < cutMap S rho hn (i + 1),
+    ∃ B, ∃ p : Option (Wire (Fintype.card V) S.vote), ∃ k < cutMap S rho hn (i + 1),
       (simTrace S rho hn).AcceptAt (rho.ownKey v) k B ∧
       (simTrace S rho hn).time k = t ∧
       q = (t, p.toList ++ [blockObj (S.params (Model.pubOf E) hn) B]) ∧
-      decodeBlock (S.params (Model.pubOf E) hn) (binding := stock) (Model.digests rho.hash o)
+      decodeBlock (S.params (Model.pubOf E) hn) (binding := S.vote) (Model.digests rho.hash o)
         (blockObj (S.params (Model.pubOf E) hn) B) = some B ∧
       Model.Obj.Contains o (blockObj (S.params (Model.pubOf E) hn) B) := by
   have ht : (stateAt S rho hn v i).now = t :=
@@ -525,11 +534,11 @@ theorem delivery_forward_acceptance_decoded (hv : rho.ExecutionValid) {i : Nat} 
 
 /-- The queue-only projection of exact delivery acceptance provenance. -/
 theorem delivery_forward_acceptance (hv : rho.ExecutionValid) {i : Nat} {v : V}
-    {o : Wire (Fintype.card V)} {t : Time}
+    {o : Wire (Fintype.card V) S.vote} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t))
-    (q : Time × List (Wire (Fintype.card V)))
+    (q : Time × List (Wire (Fintype.card V) S.vote))
     (hq : q ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).forwards) :
-    ∃ B, ∃ p : Option (Wire (Fintype.card V)), ∃ k < cutMap S rho hn (i + 1),
+    ∃ B, ∃ p : Option (Wire (Fintype.card V) S.vote), ∃ k < cutMap S rho hn (i + 1),
       (simTrace S rho hn).AcceptAt (rho.ownKey v) k B ∧
       (simTrace S rho hn).time k = t ∧
       q = (t, p.toList ++ [blockObj (S.params (Model.pubOf E) hn) B]) := by
@@ -540,8 +549,8 @@ theorem delivery_forward_acceptance (hv : rho.ExecutionValid) {i : Nat} {v : V}
 /-- Digest-backed decoding identifies the exact accepted block behind a delivery queue
 entry. Wire equality supplies its header, not its root. -/
 theorem delivery_decoded_forward_acceptance (hv : rho.ExecutionValid)
-    {i : Nat} {v : V} {receipt o : Wire (Fintype.card V)} {u t : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {i : Nat} {v : V} {receipt o : Wire (Fintype.card V) S.vote} {u t : Time}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u))
     (hq : (t, p.toList ++ [blockObj (S.params (Model.pubOf E) hn) B]) ∈
       (process (stateAt S rho hn v i) receipt (Model.digests rho.hash receipt)).forwards)
@@ -553,7 +562,7 @@ theorem delivery_decoded_forward_acceptance (hv : rho.ExecutionValid)
   obtain ⟨C, p', k, hk, ha, ht, heq, hc, hcontains⟩ :=
     delivery_forward_acceptance_decoded S rho hn hv he _ hq
   have htime : t = u := congrArg Prod.fst heq
-  have hwire : blockObj (S.params (Model.pubOf E) hn) (binding := stock) B = blockObj _ C := by
+  have hwire : blockObj (S.params (Model.pubOf E) hn) (binding := S.vote) B = blockObj _ C := by
     have hlast := congrArg List.getLast? (congrArg Prod.snd heq)
     cases p <;> cases p' <;> simpa using hlast
   have hBC : B = C := by
@@ -561,7 +570,7 @@ theorem delivery_decoded_forward_acceptance (hv : rho.ExecutionValid)
       rw [← hwire, forwardObj_of_decodeForward _ _ _ _ _ _ hd]
       apply Model.Obj.Contains.step
         (List.mem_append_right _ (List.mem_singleton_self _)) (Model.Obj.Contains.refl _)
-    have hroot (r : Wire (Fintype.card V))
+    have hroot (r : Wire (Fintype.card V) S.vote)
         (h : Model.Obj.Contains r (blockObj (S.params (Model.pubOf E) hn) C)) :
         rootOf (Model.digests rho.hash r) (headerOf (S.params (Model.pubOf E) hn) C) =
           some (rho.hash (headerOf (S.params (Model.pubOf E) hn) C)) := by
@@ -575,8 +584,8 @@ theorem delivery_decoded_forward_acceptance (hv : rho.ExecutionValid)
 /-- A decoded forwarding object released by a delivery originates in an actual
 acceptance in that delivery, with the same root and timestamp. -/
 theorem delivery_released_forward_acceptance (hv : rho.ExecutionValid)
-    {i : Nat} {v : V} {receipt o : Wire (Fintype.card V)} {u t : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {i : Nat} {v : V} {receipt o : Wire (Fintype.card V) S.vote} {u t : Time}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u))
     (ho : o ∈ rho.releasesAt i)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
@@ -617,8 +626,8 @@ theorem blockCallAt_of_allCuts {k : Nat}
 /-- Once its authenticated stamp is no later than receipt, a forwarding envelope's
 child has a real processing call in that receipt, whether accepted or refused. -/
 theorem received_forward_blockCall {i : Nat} {v : V}
-    {receipt o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t u : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {receipt o : Wire (Fintype.card V) S.vote} {x : Fin (Fintype.card V)} {t u : Time}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u))
     (hc : Model.Obj.Contains receipt o)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
@@ -656,8 +665,8 @@ theorem received_forward_blockCall {i : Nat} {v : V}
 its receipt time, even when the envelope is nested inside the delivered object. -/
 theorem received_forward_stamp_le (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {i : Nat} {v : V}
-    {receipt o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t u : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {receipt o : Wire (Fintype.card V) S.vote} {x : Fin (Fintype.card V)} {t u : Time}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u))
     (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt 0)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
@@ -685,15 +694,15 @@ theorem received_forward_stamp_le (hf : rho.point.ConstantFaults) (hv : rho.Exec
 
 omit [DecidableEq V] in
 private theorem batch_closure_source (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (cs)
-    {o : Wire (Fintype.card V)}
-    (ho : o ∈ Model.closure (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (cs)
+    {o : Wire (Fintype.card V) S.vote}
+    (ho : o ∈ Model.closure (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E)
       rho.hash (rho.ownKey v) nd cs).1.seen) :
     o ∈ Model.closure nd.seen ∨
-      o ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
+      o ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E)
         rho.hash (rho.ownKey v) nd cs).2 := by
   let Q := fun c => c = o → o ∈ Model.closure nd.seen ∨
-    o ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
+    o ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E)
       rho.hash (rho.ownKey v) nd cs).2
   have h := Model.releaseAll_preserves rho.hash (rho.ownKey v) Q nd cs
     (fun c hc b hb he => Or.inl (he ▸ (Model.mem_closure_iff _ _).mpr ⟨c, hc, hb⟩))
@@ -703,8 +712,8 @@ private theorem batch_closure_source (v : V)
 
 omit [DecidableEq V] in
 private theorem duties_closure_source (v : V) :
-    ∀ ds (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-      (o : Wire (Fintype.card V)),
+    ∀ ds (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+      (o : Wire (Fintype.card V) S.vote),
     o ∈ Model.closure (rho.runDuties v nd ds).1.seen →
       o ∈ Model.closure nd.seen ∨ o ∈ (rho.runDuties v nd ds).2 := by
   intro ds
@@ -727,7 +736,7 @@ private theorem duties_closure_source (v : V) :
 
 /-- A held object originates in an exact local release or an enclosing receipt. Nested
 release payloads do not create a third case: the release guard required them earlier. -/
-theorem held_release_or_receipt {v : V} {i : Nat} {o : Wire (Fintype.card V)}
+theorem held_release_or_receipt {v : V} {i : Nat} {o : Wire (Fintype.card V) S.vote}
     (ho : o ∈ Model.closure (rho.stateBefore i v).seen) :
     ∃ j < i, ∃ t, (rho.SendsAt v j t ∧ o ∈ rho.releasesAt j) ∨
       ∃ receipt, rho.events[j]? = some (.deliver v receipt t) ∧
@@ -802,8 +811,8 @@ theorem held_release_or_receipt {v : V} {i : Nat} {o : Wire (Fintype.card V)}
 real receipt call before the requested cut. The latter may be a refused block call. -/
 theorem held_forward_release_or_call (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} {i : Nat}
-    {o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {o : Wire (Fintype.card V) S.vote} {x : Fin (Fintype.card V)} {t : Time}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (ho : o ∈ Model.closure (rho.stateBefore i v).seen) (hx : rho.key x ∉ rho.faultyAt 0)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B)) :
@@ -819,7 +828,7 @@ theorem held_forward_release_or_call (hf : rho.point.ConstantFaults) (hv : rho.E
       htime ▸ htu, hcall⟩
 
 private theorem dutyBatches_signer (v : V) :
-    ∀ ds (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) b,
+    ∀ ds (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) b,
     b ∈ dutyBatches rho v nd ds → ∀ o ∈ b.candidates,
       o.signer? = some (rho.ownKey v) := by
   intro ds
@@ -838,8 +847,8 @@ private theorem dutyBatches_signer (v : V) :
 /-- A signed forwarding object released locally is signed by that node. Carried
 forwarding objects are deliberately not claimed to have the local signer. -/
 theorem released_forward_signer {i : Nat} {v : V} {u : Time}
-    (he : rho.SendsAt v i u) {o : Wire (Fintype.card V)} (ho : o ∈ rho.releasesAt i)
-    {x : Fin (Fintype.card V)} {t : Time} {p : Option (Wire (Fintype.card V))}
+    (he : rho.SendsAt v i u) {o : Wire (Fintype.card V) S.vote} (ho : o ∈ rho.releasesAt i)
+    {x : Fin (Fintype.card V)} {t : Time} {p : Option (Wire (Fintype.card V) S.vote)}
     {B : Blk (S.params (Model.pubOf E) hn)}
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B)) : x = rho.ownKey v := by
@@ -873,8 +882,8 @@ theorem released_forward_signer {i : Nat} {v : V} {u : Time}
 receipt call; only the self-signed case needs the own-publication acceptance join. -/
 theorem held_other_forward_call (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} {i : Nat}
-    {o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {o : Wire (Fintype.card V) S.vote} {x : Fin (Fintype.card V)} {t : Time}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (ho : o ∈ Model.closure (rho.stateBefore i v).seen) (hx : rho.key x ∉ rho.faultyAt 0)
     (hne : x ≠ rho.ownKey v)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
@@ -889,8 +898,8 @@ theorem held_other_forward_call (hf : rho.point.ConstantFaults) (hv : rho.Execut
 tick publication. All receipts and local delivery publications already have trace witnesses. -/
 theorem held_forward_tick_or_processed (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} {i : Nat}
-    {o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {o : Wire (Fintype.card V) S.vote} {x : Fin (Fintype.card V)} {t : Time}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (ho : o ∈ Model.closure (rho.stateBefore i v).seen) (hx : rho.key x ∉ rho.faultyAt 0)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B)) :

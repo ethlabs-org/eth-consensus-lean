@@ -374,6 +374,8 @@ theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤
     rw [Healing.drainTime_eq, Healing.cleanLabel_eq]
     congr 2
     omega
+  have hkk : ((⟨S, stock⟩ : BoundSetup).params (Model.pubOf Q.run.fst) Q.hn).k =
+      (S.params (Model.pubOf Q.run.fst) Q.hn).k := rfl
   refine ⟨Healing.cleanLabel Q.params D.resetTime + Q.params.k + 2, Q.params.slot Q.bound - 2,
     Compose.Growing.HandoverSeed.of_reset hreset (healthy_schedule_catch_at S A V Q D) rfl ?_
       (by omega) ⟨_, by linarith, hcov⟩,

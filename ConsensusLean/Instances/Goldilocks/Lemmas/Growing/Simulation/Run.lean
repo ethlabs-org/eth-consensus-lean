@@ -18,8 +18,8 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Shape
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 private theorem honest_zero (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {t : Time}
     (ht : 0 ≤ t) (hy : y ∈ honestKeysAt S rho t) : y ∈ honestKeys S rho := by
@@ -27,16 +27,19 @@ private theorem honest_zero (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)}
   rw [mem_honestKeysAt_iff] at hy
   exact fun hf => hy (rho.faultyAt_mono (le_min ht hv.horizon_nonneg) hf)
 
-/-- The canonical event expansion obeys all Goldilocks run laws under growing compromise. -/
-theorem simTraceAt_goldilocksRun (hv : rho.ExecutionValid) :
+/-- The canonical event expansion obeys all Goldilocks run laws under growing compromise.
+The instance premise `hstock` is interim, `TEMP(C2)`: it feeds the record's interim `stock`
+field and its default `ini`; stock callers get it from `stock_participationKind_none`. -/
+theorem simTraceAt_goldilocksRun (hv : rho.ExecutionValid)
+    [hstock : Fact (S.vote.participationKind = none)] : -- TEMP(C2)
     Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho)
       (honestKeysAt S rho) (simTraceAt S rho hn) where
-  stock := rfl
+  stock := committeeSize_of_participationKind_none hstock.out _
   antitone := honestKeysAt_antitone S rho
   init := by
     intro y hy
-    rw [simTraceAt_eq]
-    exact simTrace_init S rho hn y (honest_zero S rho hv le_rfl hy)
+    rw [simTraceAt_eq, simTrace_init S rho hn y (honest_zero S rho hv le_rfl hy),
+      installVote_of_participationKind_none hstock.out]
   grouped := fun y i c hc _ => simTraceAt_grouped S rho hn hv y i c hc
   cutLaw := fun y i c hc _ => simTraceAt_cutLaw S rho hn hv y i c hc
   wire := fun y j t e _ hg => simTraceAt_wire S rho hn hv y j t e hg

@@ -26,8 +26,8 @@ open Shape Blocks
 
 section Events
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- **An attestation signed in a public tick is processed at the tick.** The tick event `i` of
 `v` at a public time `t` whose group has the signing cut `fg_attest(C)` of `a` has a cut of

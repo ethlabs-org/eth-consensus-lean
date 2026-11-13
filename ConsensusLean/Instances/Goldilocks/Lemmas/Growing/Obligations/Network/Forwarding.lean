@@ -32,9 +32,9 @@ open Shape Blocks
 open Consensus.Model
 
 /-- The engine cut before an event is at a time no later than the event. -/
-theorem cutTime_le_of_event {V : Type} [Fintype V] [DecidableEq V] {E : Env V} {S : Setup}
-    (rho : Model.Run (compiled (goldilocks S)) E) (hv : rho.ExecutionValid) {i : Nat}
-    {e : Model.Event V (protoOf (compiled (goldilocks S)) E).Object}
+theorem cutTime_le_of_event {V : Type} [Fintype V] [DecidableEq V] {E : Env V} {S : BoundSetup}
+    (rho : Model.Run (compiled (goldilocksWith S)) E) (hv : rho.ExecutionValid) {i : Nat}
+    {e : Model.Event V (protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[i]? = some e) : rho.cutTime i ≤ e.time := by
   cases i with
   | zero => exact (hv.in_horizon _ (List.mem_of_getElem? he)).1
@@ -51,13 +51,13 @@ theorem cutTime_le_of_event {V : Type} [Fintype V] [DecidableEq V] {E : Env V} {
 canonical child wire. Receipt validity and own-proposal validity are the run laws on the prefix
 through the cut. -/
 theorem accepted_child_decodes_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid)
+    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (y : Fin (Fintype.card V)) (i : Nat)
     (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i))
     (B : Blk (S.params (pubOf E) hn))
     (hc : (simTraceAt S rho hn).CallAt y i (.fg (.block B true))) :
-    decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
+    decodeBlock (S.params (pubOf E) hn) (binding := S.vote) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B := by
   have hrun := simTraceAt_goldilocksRun S rho hn hv
   have run := hrun.upTo (hrun.time_nonneg i)
@@ -78,8 +78,8 @@ theorem accepted_child_decodes_at {V : Type} [Fintype V] [DecidableEq V] {E : En
 
 /-- A scheduled honest proposal's actual pre-record state supplies canonical child validity. -/
 theorem scheduled_proposal_child_decodes_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid)
+    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (v : V) (i : Nat) (t : Time)
     (he : rho.events[i]? = some (.tick v t))
     (hp : Node.Proposes (P := (S.params (pubOf E) hn).toParams)
@@ -89,7 +89,7 @@ theorem scheduled_proposal_child_decodes_at {V : Type} [Fintype V] [DecidableEq 
     ∀ d p, r.2.2 = some (d, p) →
       let B := Node.mkBlock (digestOf S rho) (rho.ownKey v) r.1.fg
         (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p
-      decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
+      decodeBlock (S.params (pubOf E) hn) (binding := S.vote) (digests rho.hash (blockObj _ B))
         (blockObj _ B) = some B := by
   have hrun := simTraceAt_goldilocksRun S rho hn hv
   have hsim := simTraceAt_simulates S rho hn hv
@@ -157,14 +157,15 @@ theorem stateAt_decoded_held_at {V : Type} [Fintype V] [DecidableEq V] {E : Env 
 /-- Receipt acceptances publish a wrapper that decodes, not merely a candidate with the
 right syntactic shape. The queue and decoder witnesses use the same processed state. -/
 theorem delivery_acceptance_decoded_publication_at {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    {E : Env V} (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {v : V}
-    {i : Nat} {o : (protoOf (compiled (goldilocks S)) E).Object} {t : Time}
+    {i : Nat} {o : (protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t))
     (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
     (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true))
-    (hchild : decodeBlock (S.params (pubOf E) hn) (binding := stock)
+    (hchild : decodeBlock (S.params (pubOf E) hn) (binding := S.vote)
       (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B) :
     ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
@@ -201,13 +202,14 @@ theorem tick_proposal_acceptance_decoded_publication_at {V : Type} [Fintype V] [
 
 /-- Every accepting cut of an honest tick has a successfully decoded publication. -/
 theorem tick_acceptance_decoded_publication_at {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    {E : Env V} (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (v : V)
     (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t))
     (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
     (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true))
-    (hchild : decodeBlock (S.params (pubOf E) hn) (binding := stock)
+    (hchild : decodeBlock (S.params (pubOf E) hn) (binding := S.vote)
       (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B) :
     ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
@@ -222,8 +224,8 @@ theorem tick_acceptance_decoded_publication_at {V : Type} [Fintype V] [Decidable
 /-- Every acceptance by a node honest at its cut has an actual, exactly decoded same-event
 publication. All decoding premises follow from execution validity and reachable state invariants. -/
 theorem forwardAtAcceptance_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) :
+    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) [Fact (S.vote.participationKind = none)] : -- TEMP(C2)
     ForwardAtAcceptanceAt S rho hn (simTraceAt S rho hn) (cutMap S rho hn)
       (publisherExecution S rho) := by
   rw [forwardAtAcceptanceAt_iff]

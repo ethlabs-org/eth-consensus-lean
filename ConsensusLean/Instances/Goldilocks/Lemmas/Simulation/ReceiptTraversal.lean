@@ -16,6 +16,8 @@ open AsChainShape
 
 open Blocks Shape Node
 
+variable {binding : VoteBinding}
+
 variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- On one coherent ancestor chain, an unheld child above the receiver's finalized
@@ -46,13 +48,13 @@ acceptance there; a future-slot empty handler is excluded explicitly. -/
 theorem deliverSeq_block_accepts {proposer : Nat → Fin sp.n}
     {tr : GoldilocksTrace sp ro} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
     {hs : List (Header Info × Nat)} {y : Fin sp.n} {u : Time} {B : Blk sp}
-    {os : List (Wire sp.n)} {r e : Nat}
-    (hd : decodeBlock sp (binding := stock) hs (blockObj sp B) = some B)
+    {os : List (Wire sp.n binding)} {r e : Nat}
+    (hd : decodeBlock sp (binding := binding) hs (blockObj sp B) = some B)
     (hseq : DeliverSeq proposer tr dg hs y u (blockObj sp B :: os) r e)
     (ht : ¬ sp.toParams.slotOf u < B.slot)
     (hon : ∃ dst', (tr.state y r).fg.onBlock B = some dst') :
     tr.AcceptAt y r B ∧ r < e := by
-  have hc : canonEvent sp ro (binding := stock) hs (blockObj sp B) = some (.block B) := by
+  have hc : canonEvent sp ro (binding := binding) hs (blockObj sp B) = some (.block B) := by
     simp only [canonEvent, hd]
   obtain ⟨dst', hon⟩ := hon
   cases hseq with
@@ -77,11 +79,13 @@ theorem deliverSeq_block_accepts {proposer : Nat → Fin sp.n}
 theorem deliverSeq_forward_genesis {proposer : Nat → Fin sp.n}
     {tr : GoldilocksTrace sp ro} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
     {hs : List (Header Info × Nat)} {y x : Fin sp.n} {u t : Time} {B : Blk sp} {j j' : Nat}
-    (h : DeliverSeq proposer tr dg hs y u (forwardObj sp x t none B).parts j j') :
-    DeliverSeq proposer tr dg hs y u (blockObj sp B).parts j j' := by
+    (h : DeliverSeq proposer tr dg hs y u (forwardObj sp (binding
+        := binding) x t none B).parts j j') :
+    DeliverSeq proposer tr dg hs y u (blockObj sp (binding := binding) B).parts j j' := by
   rw [Model.Obj.parts_eq] at h
-  have hz : canonEvent sp ro (binding := stock) hs (forwardObj sp x t none B) = none := by
-    simp [canonEvent, forwardObj, decodeBlock, decodeVoteObj, decodeAttObj, stock]
+  have hz : canonEvent sp ro (binding := binding) hs (forwardObj sp x t none B) = none := by
+    cases hp : binding.participationKind <;>
+      simp [canonEvent, forwardObj, decodeBlock, decodeVoteObj, decodeAttObj, hp]
   cases h with
   | event e he _ _ => rw [hz] at he; cases he
   | noCut e he _ _ => rw [hz] at he; cases he

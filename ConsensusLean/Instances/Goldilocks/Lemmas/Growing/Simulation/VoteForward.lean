@@ -16,11 +16,11 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 private theorem time_before_event_end (hv : rho.ExecutionValid) {b : Nat}
-    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[b]? = some ev) {k : Nat} (hk : k < cutMap S rho hn (b + 1)) :
     (simTrace S rho hn).time k ≤ ev.time := by
   have hlen : k < (allCuts S rho hn).length := by
@@ -42,6 +42,7 @@ private theorem time_before_event_end (hv : rho.ExecutionValid) {b : Nat}
     exact le_rfl
 
 private theorem pool_mono_same_time_at (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {y : Fin (Fintype.card V)} {a b : Nat} {t : Time}
     (hy : y ∈ honestKeysAt S rho t) (ha : rho.SendsAt (rho.key y) a t)
     (hb : rho.SendsAt (rho.key y) b t) {k l : Nat}
@@ -73,6 +74,7 @@ private theorem pool_mono_same_time_at (hv : rho.ExecutionValid)
   simpa only [Compose.projAC_state hpref.toLocalRun hy, hsk, hsl] using hm
 
 private theorem sending_event_insertion_at (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {y : Fin (Fintype.card V)} {i k : Nat} {t : Time} {m : SA.Vote (Fintype.card V)}
     (hy : y ∈ honestKeysAt S rho t) (hs : rho.SendsAt (rho.key y) i t)
     (hlo : cutMap S rho hn i ≤ k) (hhi : k < cutMap S rho hn (i + 1))
@@ -99,6 +101,7 @@ private theorem sending_event_insertion_at (hv : rho.ExecutionValid)
     rwa [(simTrace S rho hn).state_succ_of_call hc]
 
 private theorem admission_forward_first_at (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {y : Fin (Fintype.card V)} {i k : Nat} {t : Time} {m : SA.Vote (Fintype.card V)}
     (hy : y ∈ honestKeysAt S rho t) (hs : rho.SendsAt (rho.key y) i t)
     (hlo : cutMap S rho hn i ≤ k) (hhi : k < cutMap S rho hn (i + 1))
@@ -123,7 +126,8 @@ private theorem admission_forward_first_at (hv : rho.ExecutionValid)
 
 /-- The canonical growing trace forwards each emitted or freshly admitted vote at its
 source event, and that exact timestamped envelope has no earlier release. -/
-theorem simTraceAt_vote_forwarded (hv : rho.ExecutionValid) :
+theorem simTraceAt_vote_forwarded (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] : -- TEMP(C2)
     ∀ y k (m : SA.Vote (Fintype.card V)),
     y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time k) →
     ((simTraceAt S rho hn).EmitAt y k m ∨
@@ -131,7 +135,7 @@ theorem simTraceAt_vote_forwarded (hv : rho.ExecutionValid) :
         (simTraceAt S rho hn).CallAt y k (.ac ℓ) ∧ ℓ.call = .block B ∧ m ∈ SA.blockVotes B)) ∧
         m ∉ ((simTraceAt S rho hn).state y k).ac.pool m.slot ∧
         m ∈ ((simTraceAt S rho hn).post k).ac.pool m.slot)) →
-    let envelope : (Model.protoOf (compiled (goldilocks S)) E).Object :=
+    let envelope : (Model.protoOf (compiled (goldilocksWith S)) E).Object :=
       .mk (.signed y .poll) (.data (.voteForward ((simTraceAt S rho hn).time k) (encodeVote m)))
         [voteObj m]
     ∃ i, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧

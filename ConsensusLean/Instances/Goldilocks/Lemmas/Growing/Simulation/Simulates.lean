@@ -11,11 +11,12 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Shape
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The canonical trace simulates every valid growing-fault engine execution. -/
-theorem simTraceAt_simulates (hv : rho.ExecutionValid) :
+theorem simTraceAt_simulates (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] : -- TEMP(C2)
     SimulatesAt S rho hn (simTraceAt S rho hn) (cutMap S rho hn) where
   run := simTraceAt_goldilocksRun S rho hn hv
   ι_zero := cutMap_zero S rho hn

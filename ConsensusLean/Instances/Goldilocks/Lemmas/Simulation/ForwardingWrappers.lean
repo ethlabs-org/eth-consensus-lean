@@ -24,12 +24,14 @@ open AsChainShape
 open Shape Blocks
 open Consensus.Model
 
+variable {binding : VoteBinding}
+
 /-- A newly queued candidate comes from this acceptance, at the current clock, using
 either genesis or the exact parent wrapper already in the durable map. Missing parents
 do not manufacture candidates. This local fact does not assume the parent exists. -/
 theorem queueAccepted_forward_origin {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (B : Blk sp)
-    (q : Time × List (Wire sp.n)) (hq : q ∈ (queueAccepted st B).forwards) :
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (B : Blk sp)
+    (q : Time × List (Wire sp.n binding)) (hq : q ∈ (queueAccepted st B).forwards) :
     q ∈ st.forwards ∨ ∃ root p, B.parent = some root ∧
       (if root = sp.genesisRoot then some none else (st.wrappers root).map some) = some p ∧
       q = (st.now, p.toList ++ [blockObj sp B]) := by
@@ -48,7 +50,7 @@ theorem queueAccepted_forward_origin {sp : SA.SAParams}
 
 /-- The publisher clock is unchanged while constructing a wrapper. -/
 theorem queueAccepted_now {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (B : Blk sp) :
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (B : Blk sp) :
     (queueAccepted st B).now = st.now := by
   unfold queueAccepted
   split
@@ -60,8 +62,8 @@ theorem queueAccepted_now {sp : SA.SAParams}
 remembered before subsequent acceptance cuts are processed. This is the local
 parent-first step, not the reachable-state theorem ensuring the parent is available. -/
 theorem queueAccepted_of_parent {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (B : Blk sp)
-    (root : Nat) (p : Option (Wire sp.n)) (hr : B.parent = some root)
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (B : Blk sp)
+    (root : Nat) (p : Option (Wire sp.n binding)) (hr : B.parent = some root)
     (hp : (if root = sp.genesisRoot then some none else
       (st.wrappers root).map some) = some p) :
     (queueAccepted st B).wrappers =
@@ -71,33 +73,33 @@ theorem queueAccepted_of_parent {sp : SA.SAParams}
 
 /-- The immutable signed forwarding queue, before a poll clears its returned state. -/
 def pendingWrappers {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
-    (st : State sp ro) : List (Wire sp.n) :=
+    (st : State sp ro binding) : List (Wire sp.n binding) :=
   st.forwards.map fun q => .mk (.signed st.self .poll) (.data (.forward q.1)) q.2
 
 /-- The signed queue preserves the order of the runtime's pending payloads. -/
 theorem pendingWrappers_eq {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
-    (st : State sp ro) : pendingWrappers st =
+    (st : State sp ro binding) : pendingWrappers st =
       st.forwards.map (fun q => .mk (.signed st.self .poll) (.data (.forward q.1)) q.2) := by
   rfl
 
 /-- Every durable entry has either an earlier publication witness (`prior`) or an exact
 pending envelope. Parent-before-child ordering and child holdings are separate obligations. -/
 def WrappersAccounted {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
-    (prior : Wire sp.n → Prop) (st : State sp ro) : Prop :=
+    (prior : Wire sp.n binding → Prop) (st : State sp ro binding) : Prop :=
   ∀ root o, st.wrappers root = some o → prior o ∨ o ∈ pendingWrappers st
 
 /-- Characterize the map/queue invariant without exporting its definition body. -/
 theorem wrappersAccounted_iff {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n → Prop)
-    (st : State sp ro) : WrappersAccounted prior st ↔
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n binding → Prop)
+    (st : State sp ro binding) : WrappersAccounted prior st ↔
       ∀ root o, st.wrappers root = some o → prior o ∨ o ∈ pendingWrappers st := by
   rfl
 
 /-- Enqueue preserves exact durable-entry provenance, retaining the new envelope as
 pending rather than prematurely counting it as published. -/
 theorem wrappersAccounted_queueAccepted {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n → Prop)
-    (st : State sp ro) (B : Blk sp) (h : WrappersAccounted prior st) :
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n binding → Prop)
+    (st : State sp ro binding) (B : Blk sp) (h : WrappersAccounted prior st) :
     WrappersAccounted prior (queueAccepted st B) := by
   rw [wrappersAccounted_iff] at h ⊢
   unfold queueAccepted
@@ -130,8 +132,8 @@ theorem wrappersAccounted_queueAccepted {sp : SA.SAParams}
 /-- The exact selected non-genesis parent is already published or in the old queue;
 it is never justified by the newly appended child's envelope. -/
 theorem wrappersAccounted_parent {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n → Prop)
-    (st : State sp ro) (h : WrappersAccounted prior st) (root : Nat) (p : Wire sp.n)
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n binding → Prop)
+    (st : State sp ro binding) (h : WrappersAccounted prior st) (root : Nat) (p : Wire sp.n binding)
     (hp : (if root = sp.genesisRoot then some none else
       (st.wrappers root).map some) = some (some p)) :
     prior p ∨ p ∈ pendingWrappers st := by
@@ -147,8 +149,8 @@ theorem wrappersAccounted_parent {sp : SA.SAParams}
 envelope: the parent is held or belongs to the old queue, while child holdings are supplied
 by the actual block receipt or own-block release. No publication is inferred from storage. -/
 theorem wrappersAccounted_carried {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n))
-    (st : State sp ro) (B : Blk sp) (root : Nat) (p : Option (Wire sp.n))
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n binding))
+    (st : State sp ro binding) (B : Blk sp) (root : Nat) (p : Option (Wire sp.n binding))
     (h : WrappersAccounted (fun o => o ∈ seen.flatMap Obj.parts) st)
     (hp : (if root = sp.genesisRoot then some none else
       (st.wrappers root).map some) = some p)
@@ -170,19 +172,19 @@ theorem wrappersAccounted_carried {sp : SA.SAParams}
     exact Or.inl (he ▸ hB)
 
 /-- Each pending envelope carries only objects held before its own queue position. -/
-def PendingReady {n : Nat} (seen cs : List (Wire n)) : Prop :=
+def PendingReady {n : Nat} (seen cs : List (Wire n binding)) : Prop :=
   ∀ i o, cs[i]? = some o → ∀ c ∈ o.carried,
     c ∈ (seen ++ cs.take i).flatMap Obj.parts
 
 /-- Characterize ordered readiness without exporting its body. -/
-theorem pendingReady_iff {n : Nat} (seen cs : List (Wire n)) : PendingReady seen cs ↔
+theorem pendingReady_iff {n : Nat} (seen cs : List (Wire n binding)) : PendingReady seen cs ↔
     ∀ i o, cs[i]? = some o → ∀ c ∈ o.carried,
       c ∈ (seen ++ cs.take i).flatMap Obj.parts := by
   rfl
 
 /-- Appending a child keeps all old prefix obligations unchanged; its own carried
 objects may use the complete old queue, but not the child itself. -/
-theorem pendingReady_append {n : Nat} (seen cs : List (Wire n)) (o : Wire n)
+theorem pendingReady_append {n : Nat} (seen cs : List (Wire n binding)) (o : Wire n binding)
     (h : PendingReady seen cs)
     (ho : ∀ c ∈ o.carried, c ∈ (seen ++ cs).flatMap Obj.parts) :
     PendingReady seen (cs ++ [o]) := by
@@ -205,8 +207,8 @@ theorem pendingReady_append {n : Nat} (seen cs : List (Wire n)) (o : Wire n)
 /-- Acceptance appends a ready envelope when the canonical child is actually held.
 The selected parent is justified by the old durable-map/queue invariant. -/
 theorem pendingReady_queueAccepted {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n))
-    (st : State sp ro) (B : Blk sp)
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n binding))
+    (st : State sp ro binding) (B : Blk sp)
     (ha : WrappersAccounted (fun o => o ∈ seen.flatMap Obj.parts) st)
     (hr : PendingReady seen (pendingWrappers st))
     (hb : blockObj sp B ∈ seen.flatMap Obj.parts) :
@@ -229,8 +231,8 @@ theorem pendingReady_queueAccepted {sp : SA.SAParams}
 /-- Actual block handling preserves readiness, including refusal. Child holdings must
 come from the engine receipt or own release, rather than the store's acceptance result. -/
 theorem pendingReady_onBlock {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n))
-    (st : State sp ro) (B : Blk sp)
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n binding))
+    (st : State sp ro binding) (B : Blk sp)
     (ha : WrappersAccounted (fun o => o ∈ seen.flatMap Obj.parts) st)
     (hr : PendingReady seen (pendingWrappers st))
     (hb : blockObj sp B ∈ seen.flatMap Obj.parts) :
@@ -256,8 +258,8 @@ theorem pendingReady_onBlock {sp : SA.SAParams}
 /-- After a complete drain, every durable entry is held: old entries were held already
 and every previously pending envelope is now in the actual release output. -/
 theorem wrappersAccounted_drained {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen released : List (Wire sp.n))
-    (st : State sp ro)
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen released : List (Wire sp.n binding))
+    (st : State sp ro binding)
     (ha : WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) st)
     (hrel : ∀ o ∈ pendingWrappers st, o ∈ released) :
     ∀ root o, st.wrappers root = some o →
@@ -269,7 +271,7 @@ theorem wrappersAccounted_drained {sp : SA.SAParams}
   · exact Or.inr (List.mem_flatMap.mpr ⟨o, hrel o hh, Obj.Contains.refl o⟩)
 
 /-- Enlarging actual holdings preserves ordered queue readiness. -/
-theorem pendingReady_mono {n : Nat} {seen seen' cs : List (Wire n)}
+theorem pendingReady_mono {n : Nat} {seen seen' cs : List (Wire n binding)}
     (hseen : ∀ o ∈ seen.flatMap Obj.parts, o ∈ seen'.flatMap Obj.parts)
     (h : PendingReady seen cs) : PendingReady seen' cs := by
   rw [pendingReady_iff] at h ⊢
@@ -280,14 +282,14 @@ theorem pendingReady_mono {n : Nat} {seen seen' cs : List (Wire n)}
 
 /-- Handler cut folds preserve exact map/queue accounting. -/
 theorem wrappersAccounted_apply {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n → Prop)
-    (st : State sp ro)
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n binding → Prop)
+    (st : State sp ro binding)
     (r : NodeState (goldilocksNode sp ro) × List (Cut (goldilocksNode sp ro)))
     (h : WrappersAccounted prior st) : WrappersAccounted prior (apply st r) := by
-  let step := fun (s : State sp ro) (c : Cut (goldilocksNode sp ro)) => match c with
+  let step := fun (s : State sp ro binding) (c : Cut (goldilocksNode sp ro)) => match c with
     | .fg (.block B true) => queueAccepted s B
     | _ => s
-  have hstep (s : State sp ro) (c : Cut (goldilocksNode sp ro))
+  have hstep (s : State sp ro binding) (c : Cut (goldilocksNode sp ro))
       (hs : WrappersAccounted prior s) :
       WrappersAccounted prior (step s c) ∧ (step s c).self = s.self := by
     cases c with
@@ -331,8 +333,8 @@ theorem wrappersAccounted_apply {sp : SA.SAParams}
 
 /-- A receipt's canonical child is held independently of whether its handler accepts it. -/
 theorem pendingReady_processOne {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n))
-    (st : State sp ro) (hs : List (Header Info × Nat)) (o : Wire sp.n)
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n binding))
+    (st : State sp ro binding) (hs : List (Header Info × Nat)) (o : Wire sp.n binding)
     (ha : WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) st)
     (hr : PendingReady seen (pendingWrappers st)) (ho : o ∈ seen.flatMap Obj.parts) :
     PendingReady seen (pendingWrappers (processOne hs st o)) := by
@@ -358,8 +360,8 @@ theorem pendingReady_processOne {sp : SA.SAParams}
 
 /-- Receipt handlers retain exact map accounting; relay-buffer updates do not affect it. -/
 theorem wrappersAccounted_processOne {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n → Prop)
-    (st : State sp ro) (hs : List (Header Info × Nat)) (o : Wire sp.n)
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n binding → Prop)
+    (st : State sp ro binding) (hs : List (Header Info × Nat)) (o : Wire sp.n binding)
     (ha : WrappersAccounted prior st) : WrappersAccounted prior (processOne hs st o) := by
   unfold processOne
   split
@@ -381,14 +383,14 @@ theorem wrappersAccounted_processOne {sp : SA.SAParams}
 /-- Recursive receipt processing preserves accounting and ordered readiness together.
 All children are held by the enclosing engine receipt before any handler is executed. -/
 theorem pendingReady_process {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n))
-    (st : State sp ro) (hs : List (Header Info × Nat)) (o : Wire sp.n)
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n binding))
+    (st : State sp ro binding) (hs : List (Header Info × Nat)) (o : Wire sp.n binding)
     (ha : WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) st)
     (hr : PendingReady seen (pendingWrappers st))
     (ho : ∀ c ∈ o.parts, c ∈ seen.flatMap Obj.parts) :
     WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) (process st o hs) ∧
       PendingReady seen (pendingWrappers (process st o hs)) := by
-  have hf (xs : List (Wire sp.n)) : ∀ st : State sp ro,
+  have hf (xs : List (Wire sp.n binding)) : ∀ st : State sp ro binding,
       WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) st →
       PendingReady seen (pendingWrappers st) →
       (∀ c ∈ xs, c ∈ seen.flatMap Obj.parts) →
@@ -408,8 +410,8 @@ theorem pendingReady_process {sp : SA.SAParams}
 The caller must identify the generated canonical block; arbitrary signed headers do not
 justify this premise merely by having been released. -/
 theorem pendingReady_recordOwn {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n))
-    (st : State sp ro) (o : Wire sp.n) (hs : List (Header Info × Nat))
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n binding))
+    (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat))
     (ha : WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) st)
     (hr : PendingReady seen (pendingWrappers st))
     (hb : ∀ k s hd cs, o = .mk (.signed k (.proposer s)) (.item hd) cs →
@@ -429,8 +431,8 @@ theorem pendingReady_recordOwn {sp : SA.SAParams}
 /-- A generated proposal's decoded block has exactly the signed object just released.
 This is an encoding identity, independent of payload validity and the release digest. -/
 theorem proposal_blockObj {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (s : Slot)
-    (par : ParentRef) (info : Info) (cs : List (Wire sp.n))
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (s : Slot)
+    (par : ParentRef) (info : Info) (cs : List (Wire sp.n binding))
     (hp : (propose st s).2 = some (par, info, cs))
     (k : Fin sp.n) (x d : Nat) (atts : List (FG.Att sp.n)) (p : SA.Payload sp.n)
     (hd : decodeInfo sp.n info = some (atts, p)) :
@@ -447,12 +449,12 @@ theorem proposal_blockObj {sp : SA.SAParams}
 
 /-- The engine's proposal candidate supplies the canonical-child premise used by own
 recording. It is identified from the actual duty, not inferred from an arbitrary header. -/
-theorem signedCandidate_propose_canonical {V : Type} [Fintype V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
-    (o : (protoOf (compiled (goldilocks S)) E).Object)
+theorem signedCandidate_propose_canonical {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
+    (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (s : Slot) (hs : 0 < s)
+    (o : (protoOf (compiled (goldilocksWith S)) E).Object)
     (ho : o ∈ rho.signedCandidate v (.propose s hs)
-      ((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).2) :
+      ((protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).2) :
     ∀ k s' hd cs, o = .mk (.signed k (.proposer s')) (.item hd) cs →
       ∀ atts p d, decodeInfo (Fintype.card V) hd.info = some (atts, p) →
         blockObj (S.params (pubOf E) hn)
@@ -462,14 +464,18 @@ theorem signedCandidate_propose_canonical {V : Type} [Fintype V] {E : Env V} (S 
   obtain ⟨q, hq, he⟩ := Option.mem_map.mp (Option.mem_toList.mp hm)
   cases he
   intro k s' hd cs' he atts p d hdec
-  cases he
+  injection he with hauth hmsg hcs
+  injection hauth with hk _
+  injection hmsg with hhd
+  subst hk hhd hcs
+  erw [propose_candidateRole_item S (E := E) s hs]
   exact proposal_blockObj (shapeOf S hn nd) s q.1 q.2.1 q.2.2 hq
     (rho.ownKey v) (encodeTxs nd.st.2) d atts p hdec
 
 /-- Own recording preserves durable map provenance, including a new accepted block. -/
 theorem wrappersAccounted_recordOwn {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n → Prop)
-    (st : State sp ro) (o : Wire sp.n) (hs : List (Header Info × Nat))
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n binding → Prop)
+    (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat))
     (ha : WrappersAccounted prior st) : WrappersAccounted prior (recordOwn st o hs) := by
   unfold recordOwn
   split
@@ -483,7 +489,7 @@ theorem wrappersAccounted_recordOwn {sp : SA.SAParams}
 seen prefix; map accounting and ordered readiness survive its `recordOwn` call together. -/
 theorem pendingReady_own_release {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
-    (seen : List (Wire sp.n)) (st : State sp ro) (o : Wire sp.n)
+    (seen : List (Wire sp.n binding)) (st : State sp ro binding) (o : Wire sp.n binding)
     (hs : List (Header Info × Nat))
     (ha : WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) st)
     (hr : PendingReady seen (pendingWrappers st))
@@ -509,10 +515,10 @@ theorem pendingReady_own_release {sp : SA.SAParams}
 
 /-- Release induction uses actual successful prefixes. Rejected candidates leave both
 invariants unchanged; each successful canonical candidate extends seen before recording. -/
-theorem releaseAll_pendingReady {V : Type} [Fintype V] {E : Env V} (S : Setup)
+theorem releaseAll_pendingReady {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
     (hn : 1 ≤ Fintype.card V) (hash : Header Info → Nat) (origin : Fin (Fintype.card V))
-    (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
-    (cs : List (protoOf (compiled (goldilocks S)) E).Object)
+    (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E))
+    (cs : List (protoOf (compiled (goldilocksWith S)) E).Object)
     (ha : WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ nd.seen.flatMap Obj.parts) (shapeOf S hn nd))
     (hr : PendingReady nd.seen (pendingWrappers (shapeOf S hn nd)))
@@ -521,7 +527,7 @@ theorem releaseAll_pendingReady {V : Type} [Fintype V] {E : Env V} (S : Setup)
       ∀ atts p d, decodeInfo (Fintype.card V) hd.info = some (atts, p) →
         blockObj (S.params (pubOf E) hn)
           (blockOf (S.params (pubOf E) hn) d hd k atts p) = o) :
-    let result := (Model.releaseAll (protoOf (compiled (goldilocks S)) E) hash origin nd cs).1
+    let result := (Model.releaseAll (protoOf (compiled (goldilocksWith S)) E) hash origin nd cs).1
     WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ result.seen.flatMap Obj.parts) (shapeOf S hn result) ∧
       PendingReady result.seen (pendingWrappers (shapeOf S hn result)) := by
@@ -531,17 +537,17 @@ theorem releaseAll_pendingReady {V : Type} [Fintype V] {E : Env V} (S : Setup)
     simp only [Model.releaseAll]
     split
     · have hh := pendingReady_own_release (sp := S.params (pubOf E) hn)
-        (nd.seen : List (Wire (Fintype.card V))) (shapeOf S hn nd) o
-        (Model.digests (P := protoOf (compiled (goldilocks S)) E) hash o)
+        (nd.seen : List (Wire (Fintype.card V) S.vote)) (shapeOf S hn nd) o
+        (Model.digests (P := protoOf (compiled (goldilocksWith S)) E) hash o)
         ha hr (hc o List.mem_cons_self)
       exact ih _ hh.1 hh.2 (fun c h => hc c (List.mem_cons_of_mem o h))
     · exact ih nd ha hr (fun c h => hc c (List.mem_cons_of_mem o h))
 
 /-- Actual proposal duties preserve both invariants from their input state,
 without an extra canonical-child assumption on their caller. -/
-theorem dutyStep_propose_pendingReady {V : Type} [Fintype V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
+theorem dutyStep_propose_pendingReady {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
+    (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (s : Slot) (hs : 0 < s)
     (ha : WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ nd.seen.flatMap Obj.parts) (shapeOf S hn nd))
     (hr : PendingReady nd.seen (pendingWrappers (shapeOf S hn nd))) :
@@ -554,13 +560,13 @@ theorem dutyStep_propose_pendingReady {V : Type} [Fintype V] {E : Env V} (S : Se
   swap
   · exact ⟨ha, hr⟩
   apply releaseAll_pendingReady S hn rho.hash (rho.ownKey v)
-  · change WrappersAccounted _ (((protoOf (compiled (goldilocks S)) E).act nd.st
+  · change WrappersAccounted _ (((protoOf (compiled (goldilocksWith S)) E).act nd.st
       (.propose s hs)).1.1 hn)
     rw [shapeOf_act_propose S hn]
     unfold propose
     dsimp only
     split <;> exact ha
-  · change PendingReady _ (pendingWrappers (((protoOf (compiled (goldilocks S)) E).act nd.st
+  · change PendingReady _ (pendingWrappers (((protoOf (compiled (goldilocksWith S)) E).act nd.st
       (.propose s hs)).1.1 hn))
     rw [shapeOf_act_propose S hn]
     unfold propose
@@ -572,15 +578,15 @@ theorem dutyStep_propose_pendingReady {V : Type} [Fintype V] {E : Env V} (S : Se
 in that very result, with the handler's clock. Fold induction preserves the original
 clock and retains list membership, including multiple accepts within one event. -/
 theorem apply_forward_origin {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro)
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
     (r : NodeState (goldilocksNode sp ro) × List (Cut (goldilocksNode sp ro)))
-    (q : Time × List (Wire sp.n)) (hq : q ∈ (apply st r).forwards) :
-    q ∈ st.forwards ∨ ∃ B, ∃ p : Option (Wire sp.n), .fg (.block B true) ∈ r.2 ∧
+    (q : Time × List (Wire sp.n binding)) (hq : q ∈ (apply st r).forwards) :
+    q ∈ st.forwards ∨ ∃ B, ∃ p : Option (Wire sp.n binding), .fg (.block B true) ∈ r.2 ∧
       q = (st.now, p.toList ++ [blockObj sp B]) := by
-  have hfold : ∀ (cs : List (Cut (goldilocksNode sp ro))) (s : State sp ro),
+  have hfold : ∀ (cs : List (Cut (goldilocksNode sp ro))) (s : State sp ro binding),
       q ∈ (cs.foldl (fun s c => match c with
         | .fg (.block B true) => queueAccepted s B | _ => s) s).forwards →
-      q ∈ s.forwards ∨ ∃ B, ∃ p : Option (Wire sp.n), .fg (.block B true) ∈ cs ∧
+      q ∈ s.forwards ∨ ∃ B, ∃ p : Option (Wire sp.n binding), .fg (.block B true) ∈ cs ∧
         q = (s.now, p.toList ++ [blockObj sp B]) := by
     intro cs
     induction cs with
@@ -622,13 +628,13 @@ theorem apply_forward_origin {sp : SA.SAParams}
 root has an own wrapper. This local invariant is to be proved along execution, never
 added to the generic `ShapeObligations` or network premises. -/
 def WrappersCover {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) : Prop :=
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) : Prop :=
   ∀ root, root ≠ sp.genesisRoot → (st.node.fg.blocks root).isSome →
     (st.wrappers root).isSome
 
 /-- Coverage depends only on held roots and the durable wrapper map. -/
 theorem wrappersCover_iff {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) :
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) :
     WrappersCover st ↔ ∀ root, root ≠ sp.genesisRoot →
       (st.node.fg.blocks root).isSome → (st.wrappers root).isSome := by rfl
 
@@ -636,10 +642,10 @@ theorem wrappersCover_iff {sp : SA.SAParams}
 held roots. The store's acceptance guard supplies a held parent; genesis needs no wrapper.
 The node handler emits the acceptance before its AC cut, which cannot enqueue a block. -/
 theorem onBlock_queues_acceptance {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (B : Blk sp)
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (B : Blk sp)
     (hcover : WrappersCover st)
     (hacc : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2) :
-    ∃ p : Option (Wire sp.n),
+    ∃ p : Option (Wire sp.n binding),
       (apply st (Node.onBlock st.self st.node st.now B)).forwards =
         st.forwards ++ [(st.now, p.toList ++ [blockObj sp B])] := by
   unfold Node.onBlock at hacc ⊢
@@ -652,7 +658,7 @@ theorem onBlock_queues_acceptance {sp : SA.SAParams}
     · rename_i fg' hfg
       rw [hfg]
       obtain ⟨root, _, hr, _, hheld, _, _, _⟩ := Store.onBlock_eq_some hfg
-      have hp : ∃ p : Option (Wire sp.n),
+      have hp : ∃ p : Option (Wire sp.n binding),
           (if root = sp.genesisRoot then some none else (st.wrappers root).map some) =
             some p := by
         by_cases hg : root = sp.genesisRoot
@@ -668,7 +674,7 @@ theorem onBlock_queues_acceptance {sp : SA.SAParams}
 This lets a provenance invariant follow the selected parent, rather than merely knowing
 that some wrapper was appended. -/
 theorem onBlock_queues_acceptance_parent {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (B : Blk sp)
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (B : Blk sp)
     (hcover : WrappersCover st)
     (hacc : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2) :
     ∃ root p, B.parent = some root ∧
@@ -687,7 +693,7 @@ theorem onBlock_queues_acceptance_parent {sp : SA.SAParams}
     · rename_i fg' hfg
       rw [hfg]
       obtain ⟨root, _, hr, _, hheld, _, _, _⟩ := Store.onBlock_eq_some hfg
-      have hp : ∃ p : Option (Wire sp.n),
+      have hp : ∃ p : Option (Wire sp.n binding),
           (if root = sp.genesisRoot then some none else (st.wrappers root).map some) =
             some p := by
         by_cases hg : root = sp.genesisRoot
@@ -700,7 +706,7 @@ theorem onBlock_queues_acceptance_parent {sp : SA.SAParams}
 /-- A successful block call grows the held-block map and wrapper map at the same root.
 All other roots keep their existing wrappers; refusal leaves both maps unchanged. -/
 theorem wrappersCover_onBlock {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (B : Blk sp)
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (B : Blk sp)
     (hcover : WrappersCover st) :
     WrappersCover (apply st (Node.onBlock st.self st.node st.now B)) := by
   unfold Node.onBlock
@@ -710,7 +716,7 @@ theorem wrappersCover_onBlock {sp : SA.SAParams}
     · exact hcover
     · rename_i fg' hfg
       obtain ⟨root, σ, hr, _, hheld, _, _, hstore⟩ := Store.onBlock_eq_some hfg
-      have hp : ∃ p : Option (Wire sp.n),
+      have hp : ∃ p : Option (Wire sp.n binding),
           (if root = sp.genesisRoot then some none else (st.wrappers root).map some) =
             some p := by
         by_cases hg : root = sp.genesisRoot
@@ -736,7 +742,7 @@ theorem wrappersCover_onBlock {sp : SA.SAParams}
         exact hcover r hrg hheld'
 
 private theorem wrappersCover_recordOwn {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) o hs
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) o hs
     (h : WrappersCover st) : WrappersCover (recordOwn st o hs) := by
   unfold recordOwn
   split
@@ -748,7 +754,7 @@ private theorem wrappersCover_recordOwn {sp : SA.SAParams}
 
 /-- Each receipt call preserves coverage of held non-genesis roots by own wrappers. -/
 theorem wrappersCover_processOne {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) o hs
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) o hs
     (h : WrappersCover st) : WrappersCover (processOne hs st o) := by
   unfold processOne
   split
@@ -764,7 +770,7 @@ theorem wrappersCover_processOne {sp : SA.SAParams}
   · exact h
 
 private theorem wrappersCover_fgUpdate {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro)
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
     (h : WrappersCover st) : WrappersCover (fgUpdate st) := by
   unfold fgUpdate
   dsimp only
@@ -777,30 +783,30 @@ private theorem wrappersCover_fgUpdate {sp : SA.SAParams}
       simpa only [WrappersCover, ne_eq, Node.onAttestation, Node.acToFG, he] using h
 
 private theorem wrappersCover_poll {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) t
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) t
     (h : WrappersCover st) : WrappersCover (poll st t).1 := by
   unfold poll
   split <;> dsimp only <;> split
   all_goals first | exact h | exact wrappersCover_fgUpdate st h
 
 private theorem wrappersCover_propose {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) s
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) s
     (h : WrappersCover st) : WrappersCover (propose st s).1 := by
   unfold propose
   dsimp only
   split <;> exact h
 
 private theorem wrappersCover_nodeTick {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro)
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
     (h : WrappersCover st) : WrappersCover (nodeTick st) := by
   unfold nodeTick
   split <;> exact h
 
 /-- Every actual duty prefix preserves coverage, including an own block's recording. -/
 theorem runDuties_wrappersCover {V : Type} [Fintype V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
-    (ds : List (protoOf (compiled (goldilocks S)) E).Duty)
+    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E))
+    (ds : List (protoOf (compiled (goldilocksWith S)) E).Duty)
     (h : WrappersCover (shapeOf S hn nd)) :
     WrappersCover (shapeOf S hn (rho.runDuties v nd ds).1) := by
   exact runDuties_pres S rho hn WrappersCover wrappersCover_recordOwn wrappersCover_propose
@@ -811,7 +817,7 @@ boundary. Initially only genesis is held. Block acceptance updates both maps tog
 all other handlers preserve them, including restart. No execution-validity assumption is
 needed for this structural invariant. -/
 theorem stateAt_wrappersCover {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) : ∀ i, WrappersCover (stateAt S rho hn v i)
   | 0 => by
     rw [stateAt_zero]
@@ -840,8 +846,8 @@ theorem stateAt_wrappersCover {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
           rw [stateAt_eq] at ih
           apply deliver_pres S rho hn WrappersCover wrappersCover_poll
             (fun st m cs hs h => wrappersCover_recordOwn st _ hs h)
-          have hf : ∀ (xs : List (Wire (Fintype.card V)))
-              (st : State (S.params (pubOf E) hn) (S.ro _)),
+          have hf : ∀ (xs : List (Wire (Fintype.card V) S.vote))
+              (st : State (S.params (pubOf E) hn) (S.ro _) S.vote),
               WrappersCover st →
                 WrappersCover (xs.foldl (processOne (digests rho.hash o)) st) := by
             intro xs

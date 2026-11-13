@@ -15,18 +15,18 @@ namespace Consensus.Goldilocks.Simulation
 
 open AsChainShape Shape
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E)
 
 /-- A signed object in a view has an earlier genuine release when its signer is honest
 at the observation cut. `ViewIdx` includes recursive containment and survives restart. -/
 theorem signed_view_released_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
-    (hi : i ≤ rho.events.length) {o : (Model.protoOf (compiled (goldilocks S)) E).Object}
+    (hi : i ≤ rho.events.length) {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (ho : o ∈ rho.ViewIdx v i) {y : Fin (Fintype.card V)}
     (hy : y ∈ honestKeysAt S rho (rho.cutTime i))
     (hs : rho.signerOf o = some (rho.key y)) :
     ∃ j < i, ∃ t, rho.SendsAt (rho.key y) j t ∧ o ∈ rho.releasesAt j := by
-  have hlaws := (Model.sysOf_laws schema (compiled (goldilocks S)) V).trace ⟨E, rho⟩ hv
+  have hlaws := (Model.sysOf_laws schema (compiled (goldilocksWith S)) V).trace ⟨E, rho⟩ hv
   have ht := hlaws.cutTime_le_horizon i hi
   change rho.cutTime i ≤ rho.horizon at ht
   have hy' : rho.key y ∉ rho.faultyAt (rho.cutTime i) := by
@@ -36,7 +36,7 @@ theorem signed_view_released_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
 
 /-- The same provenance holds for every nested object carried by an object in the view. -/
 theorem contained_view_released_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
-    (hi : i ≤ rho.events.length) {o o' : (Model.protoOf (compiled (goldilocks S)) E).Object}
+    (hi : i ≤ rho.events.length) {o o' : (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (ho : o ∈ rho.ViewIdx v i) (hc : Model.Obj.Contains o o')
     {y : Fin (Fintype.card V)} (hy : y ∈ honestKeysAt S rho (rho.cutTime i))
     (hs : rho.signerOf o' = some (rho.key y)) :

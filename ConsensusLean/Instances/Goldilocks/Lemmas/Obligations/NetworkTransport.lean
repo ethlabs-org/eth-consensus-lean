@@ -125,20 +125,25 @@ theorem PSyncFGAttTransport.mono {Δ₁ Δ₂ : Time} (h : PSyncFGAttTransport S
   exact ⟨k, hkj, hp, ht.trans_le (tr.deadline_mono_delta y k _ h12)⟩
 
 /-- The engine log's message class is the Goldilocks attestation class (`isFGAtt`). -/
-theorem log_fgAtt_iff (o : Wire (Fintype.card V)) : rho.log.fgAtt o ↔ isFGAtt o := Iff.rfl
+theorem log_fgAtt_iff {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+    (rho : Model.Run (compiled (goldilocksWith S)) E) (o : Wire (Fintype.card V) S.vote) :
+    rho.log.fgAtt o ↔ isFGAtt o := Iff.rfl
 
 /-- A standalone attestation is an attestation. -/
-theorem isFGAtt_attObj {n : Nat} (a : FG.Att n) : isFGAtt (attObj (binding := stock) a) := by
+theorem isFGAtt_attObj {binding : VoteBinding} {n : Nat} (a : FG.Att n) :
+    isFGAtt (attObj (binding := binding) a) := by
   simp [isFGAtt, IsAttObj, attObj]
 
 /-- A forwarding wrapper is not an attestation. -/
-theorem not_isFGAtt_forwardObj {sp : SA.SAParams} (origin : Fin sp.n) (t : Time)
-    (parent : Option (Wire sp.n)) (B : Blk sp) : ¬ isFGAtt (forwardObj sp origin t parent B) := by
+theorem not_isFGAtt_forwardObj {binding : VoteBinding} {sp : SA.SAParams} (origin : Fin sp.n)
+    (t : Time) (parent : Option (Wire sp.n binding)) (B : Blk sp) :
+    ¬ isFGAtt (forwardObj sp origin t parent B) := by
   simp [forwardObj, isFGAtt, IsAttObj]
 
 /-- An object that decodes as a forwarding wrapper is not an attestation. -/
-theorem not_isFGAtt_of_decodeForward {sp : SA.SAParams} {hs : List (Header Info × Nat)}
-    {o : Wire sp.n} {q : Fin sp.n × Time × Option (Wire sp.n) × Blk sp}
+theorem not_isFGAtt_of_decodeForward {binding : VoteBinding} {sp : SA.SAParams}
+    {hs : List (Header Info × Nat)} {o : Wire sp.n binding}
+    {q : Fin sp.n × Time × Option (Wire sp.n binding) × Blk sp}
     (h : decodeForward sp hs o = some q) : ¬ isFGAtt o := by
   obtain ⟨origin, t, parent, B⟩ := q
   rw [forwardObj_of_decodeForward hs o origin t parent B h]

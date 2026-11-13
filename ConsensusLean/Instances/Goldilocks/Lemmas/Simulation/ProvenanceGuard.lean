@@ -27,8 +27,8 @@ open AsChainShape
 open Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- A selected proposal duty actually scheduled at a tick, with its actual input node.
 The index and duty-list lookup supply the slot/time relation through the schedule; no bare
@@ -36,28 +36,28 @@ time equality replaces the execution witness. `rho.dutyStep` must gate both `act
 state effects by this selection, as in the engine repair. The clock uses the actual
 engine time; slot equalities follow from absolute slot lengths/phase offsets, not network Δ. -/
 def EngineProposalAt (v : V) (i p : Nat) (t : Time) (s : Slot)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) : Prop :=
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) : Prop :=
   rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
     ∃ hs : 0 < s,
-      ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.propose s hs) ∧
+      ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)[p]? = some (.propose s hs) ∧
       rho.ownKey v ∈ rho.sel (.proposer s) ∧
       nd = (rho.runDuties v
-        ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
+        ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
           (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
-        (((Model.protoOf (compiled (goldilocks S)) E).duties t).take p)).1
+        (((Model.protoOf (compiled (goldilocksWith S)) E).duties t).take p)).1
 
 /-- Characterization of a selected proposal's actual engine input. -/
 theorem engineProposalAt_iff (v : V) (i p : Nat) (t : Time) (s : Slot)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) :
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) :
     EngineProposalAt S rho v i p t s nd ↔
       rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
         ∃ hs : 0 < s,
-          ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.propose s hs) ∧
+          ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)[p]? = some (.propose s hs) ∧
           rho.ownKey v ∈ rho.sel (.proposer s) ∧
           nd = (rho.runDuties v
-            ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
+            ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
               (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
-            (((Model.protoOf (compiled (goldilocks S)) E).duties t).take p)).1 := by rfl
+            (((Model.protoOf (compiled (goldilocksWith S)) E).duties t).take p)).1 := by rfl
 
 /-- Restart retains the signing record, including at a wake boundary after a sleeping
 interval. This follows directly from the engine's durable/restore operations and the node's
@@ -86,10 +86,10 @@ signing by `engine_seen_att_signed`. Include both conflict orientations. Earlier
 the same event are included in this actual duty-prefix `seen`. -/
 theorem engine_att_protected (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0)
-    {i p : Nat} {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
+    {i p : Nat} {nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)}
     (hc : EngineDutyCut S rho v i p nd) {j q : Nat} {a : FG.Att (Fintype.card V)}
     (ha : EngineSignsAt S rho hn v j q a) :
-    Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
+    Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) nd.seen
       (attObj a) = true :=
   att_protected_of_signings S rho hn (engine_signings_nonFraming S rho hn hv hv')
     (fun hval ho => by
@@ -101,12 +101,12 @@ theorem engine_poll_att_protected (hf : rho.point.ConstantFaults) (hv : rho.Exec
     (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {nd} {k : Nat}
     (hc : EngineDutyCut S rho v i p nd)
     (hd : (∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
-        ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
+        ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)[p]? = some (.poll k)) ∨
       ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
-        ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some (.poll k))
+        ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t)[p]? = some (.poll k))
     (hsel : rho.ownKey v ∈ rho.sel .poll) {w cs}
     (hm : (poll (nd.st.1 hn) k).2 = some (.att w, cs)) :
-    Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
+    Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) nd.seen
       (.mk (.signed (rho.ownKey v) .poll) (.data (.att w)) []) = true :=
   poll_att_protected_of S rho hn hc (engine_att_protected S rho hn hf hv hv' hc) hd hsel hm
 

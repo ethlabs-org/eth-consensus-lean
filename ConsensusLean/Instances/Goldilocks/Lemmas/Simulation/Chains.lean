@@ -20,16 +20,16 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {st : Store sp.toParams (Payload sp.n)}
   {acp₀ : Payload sp.n}
 
-variable (V : Type) [Fintype V] [DecidableEq V] (S : Setup) in
+variable (V : Type) [Fintype V] [DecidableEq V] (S : BoundSetup) in
 /-- The engine reads the node outputs stored by the family, also at the last cut. -/
 theorem readIsOut : ReadIsOut V S := by
   rw [readIsOut_iff]
   intro E rho hn g v i
-  simp only [chainTrace, goldilocks, goldilocksWith, goldilocksShape, dite_eq_left hn, stateAt_eq]
+  simp only [chainTrace, goldilocksWith, goldilocksShape, dite_eq_left hn, stateAt_eq]
 
 /-- Read the embedded node's output in a particular engine run. -/
-theorem read_eq_out {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+theorem read_eq_out {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+    (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
     (g : Out) (v : V) (i : Nat) :
     (chainTrace rho).read g v i =
       outOf (stateAt S rho hn v i).node (stateAt S rho hn v i).now g :=

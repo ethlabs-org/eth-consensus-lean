@@ -16,8 +16,8 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Shape
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E)
 
 /-- Keys uncompromised at `t`, with observations beyond the horizon clamped to it. -/
 def honestKeysAt (t : Time) : Set (Fin (Fintype.card V)) :=

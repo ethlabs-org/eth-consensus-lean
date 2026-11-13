@@ -16,15 +16,15 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Shape Blocks
 open Consensus.Model
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- At a scheduled tick, an accepting proposal cut queues its exact wrapper. Coverage comes from
 the engine prefix, carried-object readiness from the tick's own inventory. -/
 theorem tick_proposal_acceptance_queued_at (hv : rho.ExecutionValid)
     (v : V) (i : Nat) (t : Time)
     (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
-    (hone : (skeleton (pubOf E)).proposeAt t = [.propose s hs])
+    (hone : (skeleton (pubOf E) S.vote).proposeAt t = [.propose s hs])
     (ht : t = (S.params (pubOf E) hn).toParams.slotTime s)
     (B : Blk (S.params (pubOf E) hn))
     (ha : .fg (.block B true) ∈ (Node.tickStep (runProposer S rho hn) (digestOf S rho)

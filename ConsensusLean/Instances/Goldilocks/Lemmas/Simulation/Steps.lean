@@ -24,16 +24,16 @@ open SA (Vote)
 
 section Engine
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The release guarantee applies to the selected proposal at its scheduled slot start. -/
 theorem proposal_releasable_of_protected (hprot : PollAttProtected S rho hn)
     (hv : rho.ExecutionValid)
     (v : V) (hv' : v ∉ rho.faultyAt 0) (i : Nat)
     (t : Time) (he : rho.events[i]? = some (.tick v t)) (s : Slot) (par : ParentRef)
-    (info : Info) (cs : List (Wire (Fintype.card V)))
-    (hs : 0 < s) (hone : (skeleton (pubOf E)).proposeAt t = [.propose s hs])
+    (info : Info) (cs : List (Wire (Fintype.card V) S.vote))
+    (hs : 0 < s) (hone : (skeleton (pubOf E) S.vote).proposeAt t = [.propose s hs])
     (hselected : rho.ownKey v ∈ rho.sel (.proposer s))
     (hprop : (propose (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)) s).2 =
       some (par, info, cs)) :
@@ -87,7 +87,7 @@ theorem node_of_tick_public_of_protected (hprot : PollAttProtected S rho hn)
     tickStep_acTick (sp := S.params (pubOf E) hn)
     (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) _ t
     (encodeTxs (Model.mempool rho.inbox v t))]
-  rcases Skeleton.proposeAt_cases (skeleton (pubOf E)) t with
+  rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.vote) t with
     ⟨hnil, hno⟩ | ⟨s, hs, hone, hts⟩
   · rw [hnil]
     erw [runDuties_fst_nil]
@@ -141,12 +141,12 @@ ordinary outbox. This retains the actual prefix state needed by release guards. 
 theorem tick_prefix_pool_available (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
-    (hp : p ≤ ((Model.protoOf (compiled (goldilocks S)) E).duties t).length)
+    (hp : p ≤ ((Model.protoOf (compiled (goldilocksWith S)) E).duties t).length)
     (σ : Nat) (m : Vote (Fintype.card V)) :
     let nd := (rho.runDuties v
-      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
+      ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
         (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
-      (((Model.protoOf (compiled (goldilocks S)) E).duties t).take p)).1
+      (((Model.protoOf (compiled (goldilocksWith S)) E).duties t).take p)).1
     m ∈ (shapeOf S hn nd).node.ac.pool σ →
       voteObj m ∈ Model.closure nd.seen ∨
         Body.vote (encodeVote m) ∈ (shapeOf S hn nd).outbox :=
@@ -157,7 +157,7 @@ theorem tick_prefix_pool_available (hf : rho.point.ConstantFaults) (hv : rho.Exe
 the delivered object's closure) or queued as a canonical own vote in the ordinary outbox. -/
 theorem delivery_pool_available (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0)
-    (i : Nat) (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
+    (i : Nat) (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object)
     (σ : Nat) (m : Vote (Fintype.card V))
     (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
     voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
@@ -169,7 +169,7 @@ theorem delivery_pool_available (hf : rho.point.ConstantFaults) (hv : rho.Execut
 /-- At an actual delivery, the only not-yet-held stored vote is the ordinary outbox head:
 the reachable one-vote invariant rules out a later queued vote. -/
 theorem delivery_pool_held_or_head (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {v : V} {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
+    {v : V} {i : Nat} {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) (σ : Nat) (m : Vote (Fintype.card V))
     (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
     voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
@@ -182,7 +182,7 @@ theorem delivery_pool_held_or_head (hf : rho.point.ConstantFaults) (hv : rho.Exe
 the ordinary outbox head. No queue-to-pool or readiness premise is left to the caller. -/
 theorem delivery_voteForward_held_or_head (hf : rho.point.ConstantFaults)
     (hv : rho.ExecutionValid) {v : V}
-    {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
+    {i : Nat} {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) (tv : Time × Vote (Fintype.card V))
     (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
     voteObj tv.2 ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
@@ -195,9 +195,9 @@ theorem delivery_voteForward_held_or_head (hf : rho.point.ConstantFaults)
 The proof uses engine-event inventory and the empty queue at the slot-start proposal. -/
 theorem scheduled_proposal_releasable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {t : Time} {s : Slot}
-    {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
+    {nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)}
     (hscheduled : EngineProposalAt S rho v i p t s nd)
-    {par : ParentRef} {info : Info} {cs : List (Wire (Fintype.card V))}
+    {par : ParentRef} {info : Info} {cs : List (Wire (Fintype.card V) S.vote)}
     (hprop : (propose (shapeOf S hn nd) s).2 = some (par, info, cs)) :
     ∀ o ∈ cs, o ∈ Model.closure nd.seen :=
   scheduled_proposal_releasable_of_protected S rho hn
@@ -207,8 +207,8 @@ theorem scheduled_proposal_releasable (hf : rho.point.ConstantFaults) (hv : rho.
 theorem proposal_releasable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (v : V) (hv' : v ∉ rho.faultyAt 0) (i : Nat)
     (t : Time) (he : rho.events[i]? = some (.tick v t)) (s : Slot) (par : ParentRef)
-    (info : Info) (cs : List (Wire (Fintype.card V)))
-    (hs : 0 < s) (hone : (skeleton (pubOf E)).proposeAt t = [.propose s hs])
+    (info : Info) (cs : List (Wire (Fintype.card V) S.vote))
+    (hs : 0 < s) (hone : (skeleton (pubOf E) S.vote).proposeAt t = [.propose s hs])
     (hselected : rho.ownKey v ∈ rho.sel (.proposer s))
     (hprop : (propose (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)) s).2 =
       some (par, info, cs)) :

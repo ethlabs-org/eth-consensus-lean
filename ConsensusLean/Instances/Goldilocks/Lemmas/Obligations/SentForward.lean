@@ -22,12 +22,12 @@ open AsChainShape Simulation
 open Shape Blocks
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-  (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+  (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
 
 /-- **The cuts of an earlier event come first**: an engine event `i` strictly before the time of
 trace cut `j` has all its trace cuts before `j`. -/
 theorem cutMap_succ_le_of_time_lt (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    {i j : Nat} {ev : Model.Event V (Wire (Fintype.card V))} (he : rho.events[i]? = some ev)
+    {i j : Nat} {ev : Model.Event V (Wire (Fintype.card V) S.vote)} (he : rho.events[i]? = some ev)
     (hlt : ev.time < (simTrace S rho hn).time j) : cutMap S rho hn (i + 1) ≤ j := by
   by_contra h
   have hj' : j < cutMap S rho hn (i + 1) := by omega
@@ -57,8 +57,8 @@ theorem cutMap_succ_le_of_time_lt (hn : 1 ≤ Fintype.card V) (hv : rho.Executio
 that `y`'s node releases at its sending event `i` at `u` has `t = u`, and `y` accepts `B` at time
 `t` at a cut of the event. -/
 theorem sent_forward_accepted (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    {y x : Fin (Fintype.card V)} {i : Nat} {u t : Time} {o : Wire (Fintype.card V)}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {y x : Fin (Fintype.card V)} {i : Nat} {u t : Time} {o : Wire (Fintype.card V) S.vote}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (hi : rho.SendsAt (rho.key y) i u) (ho : o ∈ rho.releasesAt i)
     (hdecode : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B)) :

@@ -28,8 +28,8 @@ namespace Consensus.Goldilocks.Simulation
 
 open AsChainShape Shape Blocks
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Events in list order have nondecreasing times. -/
 private theorem sendsAt_time_le (hv : rho.ExecutionValid) {j j' : Nat} {w w' : V} {s s' : Time}
@@ -44,10 +44,10 @@ private theorem sendsAt_time_le (hv : rho.ExecutionValid) {j j' : Nat} {w w' : V
 object that `x` released at its event `j₀` at `t`, while honest at `t`, was itself accepted by
 `x` before the end of `j₀`, at its stamp `tq ≤ t`. -/
 theorem released_forward_source_acceptance_at (hv : rho.ExecutionValid)
-    {j₀ : Nat} {x : Fin (Fintype.card V)} {t : Time} {o q : Wire (Fintype.card V)}
+    {j₀ : Nat} {x : Fin (Fintype.card V)} {t : Time} {o q : Wire (Fintype.card V) S.vote}
     (hs : rho.SendsAt (rho.key x) j₀ t) (ho : o ∈ rho.releasesAt j₀)
     (hx : rho.key x ∉ rho.faultyAt t) (hq : Model.Obj.Contains o q)
-    {tq : Time} {pq : Option (Wire (Fintype.card V))} {C : Blk (S.params (Model.pubOf E) hn)}
+    {tq : Time} {pq : Option (Wire (Fintype.card V) S.vote)} {C : Blk (S.params (Model.pubOf E) hn)}
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash q) q =
       some (x, tq, pq, C)) :
     ∃ k < cutMap S rho hn (j₀ + 1), (simTraceAt S rho hn).AcceptAt x k C ∧
@@ -86,10 +86,11 @@ honest at its stamp `t`, gives an acceptance before that deadline when the recip
 tip at a later reading cut is below the forwarded block. The signer may be compromised before the
 delivery. -/
 theorem received_forward_accepted_before_of_released_at (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
-    {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V)}
+    {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V) S.vote}
     {x : Fin (Fintype.card V)} {u t deadline : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u)) {t₀ : Time}
     (hj₀ : ∀ k < j, (simTraceAt S rho hn).time k ≤ t₀) (hy : v ∉ rho.faultyAt t₀)
     (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt t)
@@ -191,11 +192,14 @@ theorem received_forward_accepted_before_of_released_at (hv : rho.ExecutionValid
 
 /-- The same acceptance when the signer is honest at the delivery: unforgeability then makes the
 envelope its genuine release at its stamp. -/
-theorem received_forward_accepted_before_at (hv : rho.ExecutionValid)
+theorem received_forward_accepted_before_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
-    {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V)}
+    {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V) stock}
     {x : Fin (Fintype.card V)} {u t deadline : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {p : Option (Wire (Fintype.card V) stock)} {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u)) {t₀ : Time}
     (hj₀ : ∀ k < j, (simTraceAt S rho hn).time k ≤ t₀) (hy : v ∉ rho.faultyAt t₀)
     (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt u)

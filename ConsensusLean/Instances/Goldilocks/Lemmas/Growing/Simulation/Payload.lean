@@ -16,13 +16,15 @@ open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (Vote blockVotes)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {binding : VoteBinding}
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- A payload object signed by a key honest at processing has an earlier genuine release. -/
 theorem block_payload_source_at (hv : rho.ExecutionValid) {k : Nat} {y}
     {B : Blk (S.params (pubOf E) hn)} (hc : (simTraceAt S rho hn).BlockCallAt y k B)
-    {o : Wire (Fintype.card V)} (ho : o ∈ payloadObjs B.fgPayload B.acPayload)
+    {o : Wire (Fintype.card V) S.vote} (ho : o ∈ payloadObjs B.fgPayload B.acPayload)
     {u : V} (hu : u ∉ rho.faultyAt ((simTraceAt S rho hn).time k))
     (hsign : rho.signerOf o = some u) :
     ∃ i t, cutMap S rho hn (i + 1) ≤ k ∧ rho.SendsAt u i t ∧ o ∈ rho.releasesAt i := by
@@ -36,7 +38,7 @@ theorem simTraceAt_carried_vote_unforgeable (hv : rho.ExecutionValid) :
       ∀ v ∈ blockVotes B, v.val ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i) →
         ∃ j < i, (simTraceAt S rho hn).EmitAt v.val j v := by
   intro y k B _ hc m hm hh
-  have hmem : voteObj (binding := stock) m ∈ payloadObjs B.fgPayload B.acPayload :=
+  have hmem : voteObj (binding := S.vote) m ∈ payloadObjs B.fgPayload B.acPayload :=
     List.mem_append_right _ (List.mem_map.mpr ⟨m, List.mem_append_left _ hm, rfl⟩)
   have ht : (simTraceAt S rho hn).time k ≤ rho.horizon := by
     obtain ⟨acc, _, hl⟩ := hc

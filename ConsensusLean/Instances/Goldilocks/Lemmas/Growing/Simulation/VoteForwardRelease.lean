@@ -17,17 +17,17 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 private theorem tick_prefix_forward_poll (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
-    (hp : p ≤ ((Model.protoOf (compiled (goldilocks S)) E).duties t).length) :
+    (hp : p ≤ ((Model.protoOf (compiled (goldilocksWith S)) E).duties t).length) :
     let nd := (rho.runDuties v
-      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
+      ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
         (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
-      (((Model.protoOf (compiled (goldilocks S)) E).duties t).take p)).1
+      (((Model.protoOf (compiled (goldilocksWith S)) E).duties t).take p)).1
     (shapeOf S hn nd).outbox.length ≤ 1 →
     ∀ q ∈ (shapeOf S hn nd).voteForwards,
       Model.Obj.mk (.signed (rho.ownKey v) .poll)
@@ -45,10 +45,11 @@ private theorem tick_prefix_forward_poll (hv : rho.ExecutionValid)
 
 private theorem tick_forward_released (hv : rho.ExecutionValid)
     {v : V} {i : Nat} {t : Time} (he : rho.events[i]? = some (.tick v t)) :
-    let pre : List (Model.protoOf (compiled (goldilocks S)) E).Duty :=
-      [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] ++ (skeleton (pubOf E)).proposeAt t
+    let pre : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty :=
+      [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] ++ (skeleton
+          (pubOf E) S.vote).proposeAt t
     let nd := (rho.runDuties v
-      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
+      ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
         (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ pre).1
     ∀ q ∈ (shapeOf S hn nd).voteForwards,
       Model.Obj.mk (.signed (rho.ownKey v) .poll)
@@ -56,13 +57,14 @@ private theorem tick_forward_released (hv : rho.ExecutionValid)
   intro pre nd q hq
   have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
   have hw := hv.tick_awake v t (List.mem_of_getElem? he)
-  have hd : (Model.protoOf (compiled (goldilocks S)) E).duties t =
+  have hd : (Model.protoOf (compiled (goldilocksWith S)) E).duties t =
       pre ++ [.poll t.toNat, .poll t.toNat] := by
     rw [duties_eq S t ht]
     exact List.append_assoc _ _ _
-  have htake : ((Model.protoOf (compiled (goldilocks S)) E).duties t).take pre.length = pre := by
+  have htake : ((Model.protoOf (compiled (goldilocksWith S)) E).duties t).take pre.length = pre
+      := by
     rw [hd, List.take_left]
-  have hlen : pre.length ≤ ((Model.protoOf (compiled (goldilocks S)) E).duties t).length := by
+  have hlen : pre.length ≤ ((Model.protoOf (compiled (goldilocksWith S)) E).duties t).length := by
     rw [hd, List.length_append]; omega
   have h := tick_prefix_forward_poll S rho hn hv (event_honest_zero S rho hv he) he hw hlen
   rw [htake] at h
@@ -78,7 +80,7 @@ private theorem tick_forward_released (hv : rho.ExecutionValid)
   simp only [Model.Run.releasesAt, he]
   rw [rho.tick_of_awake _ _ _ hw]
   apply List.mem_append_left
-  have hd' : (Model.protoOf (compiled (goldilocks S)) E).duties t =
+  have hd' : (Model.protoOf (compiled (goldilocksWith S)) E).duties t =
       pre ++ .poll t.toNat :: [.poll t.toNat] := hd
   rw [hd']
   exact duty_release_in_runDuties S rho v _ pre _ _ _ hrel
@@ -96,7 +98,7 @@ theorem tick_pool_insertion_released_at (hv : rho.ExecutionValid)
 
 /-- A delivery's aggregate pool insertion is forwarded in that same event. -/
 theorem delivery_pool_insertion_released_at (hv : rho.ExecutionValid) {v : V}
-    {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
+    {i : Nat} {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) (m : SA.Vote (Fintype.card V))
     (hold : m ∉ (stateAt S rho hn v i).node.ac.pool m.slot)
     (hnew : m ∈ (stateAt S rho hn v (i + 1)).node.ac.pool m.slot) :

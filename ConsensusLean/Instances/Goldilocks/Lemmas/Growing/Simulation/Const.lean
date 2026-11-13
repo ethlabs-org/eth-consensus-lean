@@ -16,8 +16,8 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Shape
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Constant-fault simulation agrees with static simulation when every engine event's node
 is honest at its event time (`ExecutionValid.honest_only`). This premise is needed because
@@ -61,7 +61,7 @@ theorem simulatesAt_iff (hc : rho.point.ConstantFaults)
         att_relayed := fun y hy k a =>
           h.att_relayed y k a (by simpa only [hkeys] using hy) }
   · intro h
-    have hevent {i : Nat} {e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    have hevent {i : Nat} {e : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
         (he : rho.events[i]? = some e) : e.node ∉ rho.faultyAt 0 := by
       simpa only [rho.faultyAt_eq_zero hc] using
         honest_only e (List.mem_of_getElem? he)

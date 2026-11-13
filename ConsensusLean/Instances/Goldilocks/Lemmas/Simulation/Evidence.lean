@@ -18,12 +18,16 @@ open AsChainShape
 open Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {binding : VoteBinding}
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Under constant faults every block a public tick of an honest node calls at a positive
 position is released at that event. -/
-private theorem tick_block_releases (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+private theorem tick_block_releases {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0) {j : Nat} {t : Time}
     (he : rho.events[j]? = some (.tick v t))
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
@@ -35,7 +39,9 @@ private theorem tick_block_releases (hf : rho.point.ConstantFaults) (hv : rho.Ex
 
 /-- Every called block, accepted or refused, has its canonical object in the final view
 of the honest engine node responsible for the call. -/
-theorem occurring_in_view (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+theorem occurring_in_view {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {B : Blk (S.params (pubOf E) hn)}
     (hB : (simTrace S rho hn).Occurs B) :
     B.parent ≠ none ∧ ∃ v, v ∉ rho.faultyAt 0 ∧ blockObj (S.params (pubOf E) hn) B ∈
@@ -49,7 +55,9 @@ theorem occurring_in_view (hf : rho.point.ConstantFaults) (hv : rho.ExecutionVal
   exact ⟨hp, ev.node, hhon he, rho.viewIdx_mono (by omega) _ hb⟩
 
 /-- An accepted block is in its reader's engine view at every subsequent mapped cut. -/
-theorem accepted_in_view (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+theorem accepted_in_view {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0)
     {k i : Nat} {B : Blk (S.params (pubOf E) hn)}
     (hacc : (simTrace S rho hn).AcceptAt (rho.ownKey v) k B)
@@ -66,7 +74,9 @@ Paper argument (implementation bridge, not a quotation): apply `tree_cases` at n
 engine event `j` with `cutMap j ≤ k`; monotonicity forces `j < i`, so even simultaneous events
 cannot move evidence past the read. No collision or awake-at-read assumption is needed.
 Status: proved relative to the existing simulation/acceptance lemmas. -/
-theorem held_in_view (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+theorem held_in_view {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0)
     {i : Nat} {B : Blk (S.params (pubOf E) hn)}
     (hB : B ∈ ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.tree)
@@ -89,7 +99,9 @@ with the view's witnessing containment (`mem_viewIdx_iff`); views are transitive
 under carried objects. This uses every held block, not the false restriction that R.7's
 witness chains end at the finalized tips. The proof uses the acceptance alternative directly;
 the genesis alternative has no attestations. Status: proved. -/
-theorem held_att_in_view (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+theorem held_att_in_view {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0)
     {i : Nat} {B : Blk (S.params (pubOf E) hn)}
     (hB : B ∈ ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.tree)
@@ -104,7 +116,6 @@ theorem held_att_in_view (hf : rho.point.ConstantFaults) (hv : rho.ExecutionVali
     change attObj a ∈ payloadObjs B.fgPayload B.acPayload
     exact List.mem_append_left _ (List.mem_map.mpr ⟨a, ha, rfl⟩)
 
-variable (V) in
 /-- CLAIMS Refinement G1.5 (b): `mem_chainTo` places each read header in the held tree;
 encoding round-trip identifies its attestations, then `held_att_in_view` binds the evidence.
 
@@ -115,7 +126,8 @@ the read header `headerOf B` for a held block B. `decodeInfo_encodeInfo` and inj
 If V is empty there is no reader, so no simulation with `n ≥ 1` is required. The bound
 `i ≤ events.length` is exactly the domain of simulation's state agreement.
 Status: proved relative to simulation. -/
-theorem evidenceInView : EvidenceInView V S := by
+theorem evidenceInView (V : Type) [Fintype V] [DecidableEq V] (S : Setup)
+    : EvidenceInView V S := by
   rw [evidenceInView_iff]
   intro E rho hf hv v hv' i hi h hh atts p hd a ha
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩

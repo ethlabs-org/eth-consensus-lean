@@ -579,8 +579,10 @@ theorem sleepy_inBy (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid
 
 /-- The mapped post-event cut is a nonstrict read point at the event time.
 Other nodes may still have events at the same time. -/
-theorem readPoint_after_event (hv : rho.ExecutionValid) {i : Nat}
-    {e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+theorem readPoint_after_event {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {i : Nat}
+    {e : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[i]? = some e) :
     Regimes.ReadPoint (simTrace S rho hn) (cutMap S rho hn (i + 1)) e.time := by
   have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1

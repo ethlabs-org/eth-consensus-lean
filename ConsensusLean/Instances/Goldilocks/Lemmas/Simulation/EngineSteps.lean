@@ -39,12 +39,14 @@ open Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload)
 
+variable {binding : VoteBinding}
+
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 section Engine
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-! ## The node state across a delivery -/
 
@@ -53,7 +55,7 @@ each canonical object in order, nothing for a dropped object (the state `deliver
 noncomputable def deliverState (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) :
-    List (Wire sp.n) → NodeState (goldilocksNode sp ro) → NodeState (goldilocksNode sp ro)
+    List (Wire sp.n binding) → NodeState (goldilocksNode sp ro) → NodeState (goldilocksNode sp ro)
   | [], st => st
   | o :: os, st =>
       match canonEvent sp ro hs o with
@@ -64,14 +66,15 @@ noncomputable def deliverState (proposer : Nat → Fin sp.n)
 theorem deliverState_nil (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time)
-    (st : NodeState (goldilocksNode sp ro)) : deliverState proposer dg hs self t [] st = st := by
+    (st : NodeState (goldilocksNode sp ro)) :
+    deliverState (binding := binding) proposer dg hs self t [] st = st := by
   simp only [deliverState]
 
 /-- `deliverState` of a canonical object runs its handler first. -/
 theorem deliverState_cons_some (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (o : Wire sp.n)
-    (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro))
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (o : Wire sp.n binding)
+    (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro))
     (e : Event (goldilocksNode sp ro)) (he : canonEvent sp ro hs o = some e) :
     deliverState proposer dg hs self t (o :: os) st =
       deliverState proposer dg hs self t os (exec proposer dg self st t e).1 := by
@@ -80,14 +83,14 @@ theorem deliverState_cons_some (proposer : Nat → Fin sp.n)
 /-- `deliverState` skips a dropped object. -/
 theorem deliverState_cons_none (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (o : Wire sp.n)
-    (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro))
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (o : Wire sp.n binding)
+    (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro))
     (he : canonEvent sp ro hs o = none) :
     deliverState proposer dg hs self t (o :: os) st = deliverState proposer dg hs self t os st := by
   simp only [deliverState, he]
 
 /-- The canonical event of a wire object, if any, is a block, a message or an attestation. -/
-theorem canonEvent_cases hs (o : Wire sp.n) :
+theorem canonEvent_cases hs (o : Wire sp.n binding) :
     canonEvent sp ro hs o = none ∨ (∃ B, canonEvent sp ro hs o = some (.block B)) ∨
       (∃ v, canonEvent sp ro hs o = some (.message v)) ∨
       (∃ a, canonEvent sp ro hs o = some (.attestation a)) := by
@@ -97,7 +100,7 @@ theorem canonEvent_cases hs (o : Wire sp.n) :
 /-- Processing one delivered object runs the handler of its canonical event, nothing if it has none.
 -/
 theorem processOne_node (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) hs (st : State sp ro)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) hs (st : State sp ro binding)
     o :
     (processOne hs st o).node =
       match canonEvent sp ro hs o with
@@ -109,7 +112,7 @@ theorem processOne_node (proposer : Nat → Fin sp.n)
 /-- Processing a list of delivered objects runs `deliverState` on the node state. -/
 theorem foldl_processOne_node (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) hs
-    (os : List (Wire sp.n)) (st : State sp ro) :
+    (os : List (Wire sp.n binding)) (st : State sp ro binding) :
     (os.foldl (processOne hs) st).node = deliverState proposer dg hs st.self st.now os st.node := by
   induction os generalizing st with
   | nil => rfl
@@ -122,7 +125,7 @@ theorem foldl_processOne_node (proposer : Nat → Fin sp.n)
 the delivered canonical objects in order on the node state before it, with the digests the engine
 passes. -/
 theorem node_of_deliver (hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.faultyAt 0) (i : Nat)
-    (o : (Model.protoOf (compiled (goldilocks S)) E).Object) (t : Time)
+    (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object) (t : Time)
     (he : rho.events[i]? = some (.deliver v o t)) :
     (stateAt S rho hn v (i + 1)).node =
       deliverState (runProposer S rho hn) (digestOf S rho)
@@ -171,15 +174,16 @@ theorem find?_map_pair {α β : Type} [DecidableEq α] (f : α → β) (h : α) 
 
 omit [DecidableEq V] in
 /-- The engine's digests of an object map each header among its parts to the engine's hash of it. -/
-theorem rootOf_digests_of_mem (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
+theorem rootOf_digests_of_mem (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object)
     (h : Header Info) (hm : h ∈ o.parts.filterMap Model.Obj.item?) :
     rootOf (Model.digests rho.hash o) h = some (rho.hash h) :=
   find?_map_pair rho.hash h _ hm
 
 omit [DecidableEq V] in
 /-- The engine's digests of an item object map its header to the engine's hash of it. -/
-theorem rootOf_digests_item (a : Model.Auth (Fintype.card V) (ShapeRole Empty)) (h : Header Info)
-    (cs : List (Wire (Fintype.card V))) :
+theorem rootOf_digests_item (a : Model.Auth (Fintype.card V) (ShapeRole S.vote.Kind))
+    (h : Header Info)
+    (cs : List (Wire (Fintype.card V) S.vote)) :
     rootOf (Model.digests rho.hash (.mk a (.item h) cs)) h = some (rho.hash h) :=
   rootOf_digests_of_mem S rho _ h
     (List.mem_filterMap.2 ⟨.mk a (.item h) cs, by simp [Model.Obj.parts], rfl⟩)
@@ -253,7 +257,7 @@ omit [DecidableEq V] in
 /-- The setup's slot start is the skeleton grid's slot start. -/
 theorem slotTime_eq (s : Nat) :
     (S.params (pubOf E) hn).toParams.slotTime s =
-      (skeleton (pubOf E)).grid.slotTime s := by
+      (skeleton (pubOf E) S.vote).grid.slotTime s := by
   simp only [skeleton, TimeGrid.slotTime, pubOf]
   ring
 
@@ -282,7 +286,7 @@ theorem not_proposes (proposer : Nat → Fin (Fintype.card V))
 omit [DecidableEq V] in
 /-- The skeleton lets the run select one proposer per slot. -/
 theorem skeleton_proposerSel (s : Nat) :
-    (goldilocks S (pubOf E)).skel.proposerSel s = .sized 1 := rfl
+    (goldilocksWith S (pubOf E)).skel.proposerSel s = .sized 1 := rfl
 
 omit [DecidableEq V] in
 /-- In an admitted run, the proposer role selects exactly `runProposer`. -/
@@ -305,13 +309,13 @@ theorem selValid_proposer (hsel : rho.SelValid) (s : Nat) :
 omit [DecidableEq V] in
 /-- The candidate of the engine's `propose` duty is the shape's proposal wrapped as a block item
 with the node's mempool. -/
-theorem act_propose_snd (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (s : Slot)
+theorem act_propose_snd (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (s : Slot)
     (hs : 0 < s) :
-    ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).2 =
+    ((Model.protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).2 =
       ((propose (shapeOf S hn nd) s).2.map
         (fun r => (.item ⟨r.1, s, encodeTxs nd.st.2, r.2.1⟩, r.2.2))).toList := by
-  change (Option.map _ ((goldilocks S (pubOf E)).propose nd.st.1 s).2).toList = _
-  simp only [goldilocks, goldilocksWith, dite_eq_left hn]; rfl
+  change (Option.map _ ((goldilocksWith S (pubOf E)).propose nd.st.1 s).2).toList = _
+  simp only [goldilocksWith, dite_eq_left hn]; rfl
 
 omit [DecidableEq V] in
 /-- The block the engine decodes from the proposal item is the node's `mkBlock` with the engine's
@@ -337,7 +341,8 @@ omit [DecidableEq V] in
 /-- **The proposal duty is the node's proposal step.** At the start of slot `s` of which the node is
 the selected proposer, when the proposal carries only released objects, the engine's `propose` duty
 step records the block the node's `tickStep .proposal` makes; otherwise both do nothing. -/
-theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled
+    (goldilocksWith S)) E))
     (s : Slot) (hs : 0 < s)
     (hsel : rho.sel (.proposer s) = {runProposer S rho hn s})
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
@@ -353,7 +358,7 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled 
   have hact2 := act_propose_snd S hn nd s hs
   have hact1 := shapeOf_act_propose S hn nd.st s hs
   unfold Model.Run.dutyStep
-  generalize (Model.protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs) =
+  generalize (Model.protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs) =
       a at hact1 hact2
   have hP : Proposes (P := (S.params (pubOf E) hn).toParams) (runProposer S rho hn) (rho.ownKey v)
         (shapeOf S hn nd).now ↔
@@ -364,7 +369,7 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled 
       rw [hsel]
       exact Finset.mem_singleton.2 (hp.trans hself).symm
     have hrel := hrel hmem
-    simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
+    simp only [show (Model.protoOf (compiled (goldilocksWith S)) E).role (.propose s hs) =
       .proposer s from rfl, hmem, ↓reduceIte]
     simp only [propose] at hact1 hact2 hrel
     simp only [tickStep, hP.2 hp, ite_true]
@@ -378,12 +383,14 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled 
       rw [hact1]
     · simp only [hr] at hact1 hact2 hrel
       rw [hact2]
-      have hrole : (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
+      have hrole : (Model.protoOf (compiled (goldilocksWith S)) E).role (.propose s hs) =
           .proposer s := rfl
-      have hcrole : ∀ m, (Model.protoOf (compiled (goldilocks S)) E).candidateRole
-          (.propose s hs) m = .proposer s := fun _ => rfl
-      simp only [Option.map, Option.toList_some, Model.Run.signedCandidate, hrole, hcrole]
-      erw [List.filterMap_cons, List.filterMap_nil]
+      have hcrole : ∀ h, (Model.protoOf (compiled (goldilocksWith S)) E).candidateRole
+          (.propose s hs) (.item h) = .proposer s := fun h => by
+        change (S.vote.candidateRole _ (.propose s hs) (.item h)).getD (.proposer s) = .proposer s
+        exact congrArg (Option.getD · _) (candidateRole_item _ _ _ h)
+      simp only [Option.map, Option.toList_some, Model.Run.signedCandidate, hrole]
+      erw [List.filterMap_cons, List.filterMap_nil, hcrole]
       have hmem : rho.ownKey v ∈ rho.sel (.proposer s) := by
         rw [hsel]
         exact Finset.mem_singleton.2 (hp.trans hself).symm
@@ -411,28 +418,28 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled 
       rw [hsel, Finset.mem_singleton]
       intro heq
       exact hp (heq.symm.trans hself.symm)
-    simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
+    simp only [show (Model.protoOf (compiled (goldilocksWith S)) E).role (.propose s hs) =
       .proposer s from rfl, hmem, ↓reduceIte]
 
 
 /-! ## The node state across a tick -/
 
 /-- A poll step with the FG update due runs it on the node state. -/
-theorem poll_node_of_fgDue_true (st : State sp ro) (t : Time) (h : st.fgDue = true) :
+theorem poll_node_of_fgDue_true (st : State sp ro binding) (t : Time) (h : st.fgDue = true) :
     (poll st t).1.node = (fgUpdate st).node := by
   unfold poll
   simp only [h, ite_true]
   split <;> rfl
 
 /-- The node's tick at a public time runs the AC's tick on the node state. -/
-theorem nodeTick_node_public (st : State sp ro) (h : sp.toParams.IsPublic st.now) :
+theorem nodeTick_node_public (st : State sp ro binding) (h : sp.toParams.IsPublic st.now) :
     (nodeTick st).node = (Node.acCall st.self st.node st.now .tick).1 := by
   unfold nodeTick
   rw [ite_eq_left h]
   rfl
 
 /-- The node's tick at a non-public time keeps the node state. -/
-theorem nodeTick_node_other (st : State sp ro) (h : ¬ sp.toParams.IsPublic st.now) :
+theorem nodeTick_node_other (st : State sp ro binding) (h : ¬ sp.toParams.IsPublic st.now) :
     (nodeTick st).node = st.node := by
   unfold nodeTick
   rw [ite_eq_right h]
@@ -441,7 +448,7 @@ theorem nodeTick_node_other (st : State sp ro) (h : ¬ sp.toParams.IsPublic st.n
 reads them. -/
 theorem fgUpdate_node (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (x : Nat)
-    (st : State sp ro) :
+    (st : State sp ro binding) :
     (fgUpdate st).node = (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).1 := by
   unfold fgUpdate Node.tickStep
   simp only
@@ -453,7 +460,7 @@ theorem fgUpdate_node (proposer : Nat → Fin sp.n)
 
 omit [DecidableEq V] in
 /-- `fgUpdate_node` with the engine's digests. -/
-theorem fgUpdate_node_digestOf (st : State (S.params (pubOf E) hn) (S.ro _)) (x : Nat) :
+theorem fgUpdate_node_digestOf (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) (x : Nat) :
     (fgUpdate st).node =
       (Node.tickStep (runProposer S rho hn) (digestOf S rho)
         st.self st.node st.now x .fgUpdate).1 :=
@@ -461,17 +468,17 @@ theorem fgUpdate_node_digestOf (st : State (S.params (pubOf E) hn) (S.ro _)) (x 
 
 omit [DecidableEq V] in
 /-- A duty keeps the mempool. -/
-theorem act_mempool (st : (Model.protoOf (compiled (goldilocks S)) E).State)
-    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) :
-    ((Model.protoOf (compiled (goldilocks S)) E).act st d).1.2 = st.2 := by
+theorem act_mempool (st : (Model.protoOf (compiled (goldilocksWith S)) E).State)
+    (d : (Model.protoOf (compiled (goldilocksWith S)) E).Duty) :
+    ((Model.protoOf (compiled (goldilocksWith S)) E).act st d).1.2 = st.2 := by
   cases d <;> rfl
 
 omit [DecidableEq V] in
 /-- `releaseAll` keeps the mempool. -/
 theorem releaseAll_mempool (k : Fin (Fintype.card V)) :
-    ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-      (cs : List (Model.protoOf (compiled (goldilocks S)) E).Object),
-      (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd cs).1.st.2 =
+    ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+      (cs : List (Model.protoOf (compiled (goldilocksWith S)) E).Object),
+      (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E) rho.hash k nd cs).1.st.2 =
           nd.st.2
   | _, [] => rfl
   | nd, c :: cs => by
@@ -483,8 +490,8 @@ theorem releaseAll_mempool (k : Fin (Fintype.card V)) :
 omit [DecidableEq V] in
 /-- Running duties keeps the mempool. -/
 theorem runDuties_mempool (v : V) :
-    ∀ (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
-      (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)),
+    ∀ (ds : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty)
+      (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)),
       (rho.runDuties v nd ds).1.st.2 = nd.st.2
   | [], _ => rfl
   | d :: ds, nd => by
@@ -498,11 +505,11 @@ theorem runDuties_mempool (v : V) :
 omit [DecidableEq V] in
 /-- `releaseAll` of candidates whose `recordOwn` keeps the node state keeps the node state. -/
 theorem releaseAll_node_eq (k : Fin (Fintype.card V)) :
-    ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-      (cs : List (Model.protoOf (compiled (goldilocks S)) E).Object),
-      (∀ c ∈ cs, ∀ (st : State (S.params (pubOf E) hn) (S.ro _)) hs,
+    ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+      (cs : List (Model.protoOf (compiled (goldilocksWith S)) E).Object),
+      (∀ c ∈ cs, ∀ (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) hs,
         (recordOwn st c hs).node = st.node) →
-      (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd
+      (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E) rho.hash k nd
         cs).1).node = (shapeOf S hn nd).node
   | _, [], _ => rfl
   | nd, c :: cs, h => by
@@ -515,9 +522,9 @@ theorem releaseAll_node_eq (k : Fin (Fintype.card V)) :
 omit [DecidableEq V] in
 /-- The gossip keeps the node state: its candidates are unsigned. -/
 theorem gossip_node_eq (k : Fin (Fintype.card V))
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time) :
-    (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd
-      (Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) nd.st t)).1).node =
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (t : Time) :
+    (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E) rho.hash k nd
+      (Model.gossipCandidates (Model.protoOf (compiled (goldilocksWith S)) E) nd.st t)).1).node =
       (shapeOf S hn nd).node := by
   apply releaseAll_node_eq
   intro c hc st hs
@@ -526,43 +533,44 @@ theorem gossip_node_eq (k : Fin (Fintype.card V))
 
 omit [DecidableEq V] in
 /-- The tick of an awake node: the duties from the clocked node, then the gossip. -/
-theorem tick_of_awake (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+theorem tick_of_awake (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
     (t : Time) (hw : E.awake v t = true) :
     (rho.tick nd v t).1 =
-      (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash (rho.ownKey v)
-        (rho.runDuties v ⟨(Model.protoOf (compiled (goldilocks S)) E).clock nd.st t
+      (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E) rho.hash (rho.ownKey v)
+        (rho.runDuties v ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock nd.st t
           (Model.mempool rho.inbox v t), nd.seen⟩
-          ((Model.protoOf (compiled (goldilocks S)) E).duties t)).1
-        (Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E)
-          (rho.runDuties v ⟨(Model.protoOf (compiled (goldilocks S)) E).clock nd.st t
+          ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)).1
+        (Model.gossipCandidates (Model.protoOf (compiled (goldilocksWith S)) E)
+          (rho.runDuties v ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock nd.st t
             (Model.mempool rho.inbox v t), nd.seen⟩
-            ((Model.protoOf (compiled (goldilocks S)) E).duties t)).1.st t)).1 := by
+            ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)).1.st t)).1 := by
   unfold Model.Run.tick
   simp only [hw, ite_true]
 
 /-- The node of validator `v` at its proposal duty of a tick at `t` from `nd`: after the clock,
 the two leading poll steps and the node's tick. -/
-noncomputable def atProposal (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (t : Time) : Model.Node (Model.protoOf (compiled (goldilocks S)) E) :=
-  (rho.runDuties v ⟨(Model.protoOf (compiled (goldilocks S)) E).clock nd.st t
+noncomputable def atProposal (v : V) (nd : Model.Node (Model.protoOf (compiled
+    (goldilocksWith S)) E))
+    (t : Time) : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E) :=
+  (rho.runDuties v ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock nd.st t
     (Model.mempool rho.inbox v t), nd.seen⟩
     ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] :
-      List (Model.protoOf (compiled (goldilocks S)) E).Duty)).1
+      List (Model.protoOf (compiled (goldilocksWith S)) E).Duty)).1
 
 omit [DecidableEq V] in
 /-- `atProposal` unfolded: the engine's `runDuties` of the two leading polls and the proposal
 poll on the clocked node (for modules that cannot see its body). -/
-theorem atProposal_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+theorem atProposal_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
     (t : Time) :
     atProposal S rho v nd t =
-      (rho.runDuties v ⟨(Model.protoOf (compiled (goldilocks S)) E).clock nd.st t
+      (rho.runDuties v ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock nd.st t
         (Model.mempool rho.inbox v t), nd.seen⟩
         ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] :
-          List (Model.protoOf (compiled (goldilocks S)) E).Duty)).1 := by rfl
+          List (Model.protoOf (compiled (goldilocksWith S)) E).Duty)).1 := by rfl
 
 omit [DecidableEq V] in
 /-- The shape at the proposal duty: `nodeTick` of two poll steps of the clocked state. -/
-theorem atProposal_shape (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+theorem atProposal_shape (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
     (t : Time) (hsel : rho.ownKey v ∈ rho.sel .poll) :
     shapeOf S hn (atProposal S rho v nd t) =
       nodeTick (poll (poll { nd.st.1 hn with now := t } t.toNat).1 t.toNat).1 := by
@@ -574,21 +582,21 @@ theorem atProposal_shape (v : V) (nd : Model.Node (Model.protoOf (compiled (gold
 
 omit [DecidableEq V] in
 /-- The key at the proposal duty is the key before the tick. -/
-theorem atProposal_self (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+theorem atProposal_self (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
     (t : Time) (hsel : rho.ownKey v ∈ rho.sel .poll) :
     (shapeOf S hn (atProposal S rho v nd t)).self = (nd.st.1 hn).self := by
   rw [atProposal_shape _ _ _ _ _ _ hsel, nodeTick_self, poll_self, poll_self]
 
 omit [DecidableEq V] in
 /-- The clock at the proposal duty is the tick time. -/
-theorem atProposal_now (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+theorem atProposal_now (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
     (t : Time) (hsel : rho.ownKey v ∈ rho.sel .poll) :
     (shapeOf S hn (atProposal S rho v nd t)).now = t := by
   rw [atProposal_shape _ _ _ _ _ _ hsel, nodeTick_now, poll_now, poll_now]
 
 omit [DecidableEq V] in
 /-- At a public time the FG update is due at the proposal duty: the node's tick set it. -/
-theorem atProposal_fgDue (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+theorem atProposal_fgDue (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
     (t : Time) (hp : (S.params (pubOf E) hn).toParams.IsPublic t)
     (hsel : rho.ownKey v ∈ rho.sel .poll) :
     (shapeOf S hn (atProposal S rho v nd t)).fgDue = true := by
@@ -598,7 +606,7 @@ theorem atProposal_fgDue (v : V) (nd : Model.Node (Model.protoOf (compiled (gold
 
 omit [DecidableEq V] in
 /-- The mempool at the proposal duty is the tick's mempool. -/
-theorem atProposal_mempool (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+theorem atProposal_mempool (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
     (t : Time) : (atProposal S rho v nd t).st.2 = Model.mempool rho.inbox v t := by
   unfold atProposal
   rw [runDuties_mempool]
@@ -607,7 +615,7 @@ theorem atProposal_mempool (v : V) (nd : Model.Node (Model.protoOf (compiled (go
 omit [DecidableEq V] in
 /-- With no FG update due before the tick, the node state at the proposal duty is `nodeTick` of the
 clocked state. -/
-theorem atProposal_node (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+theorem atProposal_node (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
     (t : Time) (hf : (nd.st.1 hn).fgDue = false)
     (hsel : rho.ownKey v ∈ rho.sel .poll) :
     (shapeOf S hn (atProposal S rho v nd t)).node =
@@ -630,25 +638,25 @@ theorem atProposal_node (v : V) (nd : Model.Node (Model.protoOf (compiled (goldi
 omit [DecidableEq V] in
 /-- The node after the whole tick, in terms of the node at the proposal duty: the proposal if
 due, a poll step, a poll step, the gossip. -/
-theorem tick_node_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+theorem tick_node_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
     (t : Time) (ht : 0 ≤ t) (hw : E.awake v t = true)
     (hsel : rho.ownKey v ∈ rho.sel .poll) :
     (shapeOf S hn (rho.tick nd v t).1).node =
       (poll (poll (shapeOf S hn (rho.runDuties v (atProposal S rho v nd t)
-          ((skeleton (pubOf E)).proposeAt t)).1) t.toNat).1
+          ((skeleton (pubOf E) S.vote).proposeAt t)).1) t.toNat).1
         t.toNat).1.node := by
   -- The goal's duty lists are typed at `ShapeDuty`, the step lemmas at the engine's `Duty`: stated
   -- as local equations on the goal's own terms, the steps rewrite with plain `rw` (an `erw` would
   -- try every projection of the goal at default transparency).
-  have hpoll : ∀ (nd' : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (x : Nat),
+  have hpoll : ∀ (nd' : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (x : Nat),
       shapeOf S hn (rho.runDuties v nd' [.poll x]).1 = (poll (shapeOf S hn nd') x).1 :=
     fun nd' x => dutyStep_poll S rho hn v nd' x hsel
-  have hinit : ∀ nd' : Model.Node (Model.protoOf (compiled (goldilocks S)) E),
+  have hinit : ∀ nd' : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E),
       (rho.runDuties v nd' (dutiesInit S t)).1 =
         (rho.runDuties v (rho.runDuties v (rho.runDuties v nd'
           ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] :
-            List (Model.protoOf (compiled (goldilocks S)) E).Duty)).1
-          ((skeleton (pubOf E)).proposeAt t)).1 [.poll t.toNat]).1 := fun nd' =>
+            List (Model.protoOf (compiled (goldilocksWith S)) E).Duty)).1
+          ((skeleton (pubOf E) S.vote).proposeAt t)).1 [.poll t.toNat]).1 := fun nd' =>
     (runDuties_fst_append S rho v nd' _ _).trans
       (congrArg (fun x => (rho.runDuties v x [.poll t.toNat]).1)
         (runDuties_fst_append S rho v nd' _ _))
@@ -667,7 +675,7 @@ theorem node_of_tick_other (hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.f
   have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
   have hsel := poll_selected S rho hv v
   rw [stateAt_tick S rho hn v he, tick_node_eq S rho hn v _ t ht hw hsel]
-  rcases Skeleton.proposeAt_cases (skeleton (pubOf E)) t with
+  rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.vote) t with
     ⟨hnil, _⟩ | ⟨s, hs, _, hts⟩
   · rw [hnil]
     erw [runDuties_fst_nil]
@@ -713,10 +721,10 @@ theorem tickStep_proposal_not (proposer : Nat → Fin sp.n)
 omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `recordOwn` and `propose` is preserved by the
 engine's `propose` duty step. -/
-theorem dutyStep_propose_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
+theorem dutyStep_propose_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
     (hprop : ∀ st s, Q st → Q (propose st s).1) (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (s : Slot) (hs : 0 < s)
     (h : Q (shapeOf S hn nd)) : Q (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1) := by
   unfold Model.Run.dutyStep
   split

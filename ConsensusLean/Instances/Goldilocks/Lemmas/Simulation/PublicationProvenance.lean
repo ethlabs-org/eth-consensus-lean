@@ -14,44 +14,45 @@ open Blocks Shape Node
 section Trace
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 private theorem tick_forward_queue (hv : rho.ExecutionValid) {i : Nat} {v : V}
-    {u t : Time} {o : Wire (Fintype.card V)} {p : Option (Wire (Fintype.card V))}
+    {u t : Time} {o : Wire (Fintype.card V) S.vote} {p : Option (Wire (Fintype.card V) S.vote)}
     {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.tick v u)) (ho : o ∈ rho.releasesAt i)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (rho.ownKey v, t, p, B)) :
-    ∃ s hs, (skeleton (Model.pubOf E)).proposeAt u = [.propose s hs] ∧
+    ∃ s hs, (skeleton (Model.pubOf E) S.vote).proposeAt u = [.propose s hs] ∧
       (t, p.toList ++ [blockObj (S.params (Model.pubOf E) hn) B]) ∈
         (shapeOf S hn (rho.dutyStep v
           (atProposal S rho v (rho.stateBefore i v) u) (.propose s hs)).1).forwards := by
   have hu := (hv.in_horizon _ (List.mem_of_getElem? he)).1
   have hw := hv.tick_awake v u (List.mem_of_getElem? he)
   have hsel := poll_selected S rho hv v
-  have noPoll (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+  have noPoll (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
       (hempty : (shapeOf S hn nd).forwards = [])
       (h : o ∈ (rho.dutyStep v nd (.poll u.toNat)).2) : False := by
     have hq := poll_release_forward_queue S rho hn v nd u.toNat h hd
     rw [hempty] at hq
     exact List.not_mem_nil hq
-  have noGossip (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-      (h : o ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
+  have noGossip (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+      (h : o ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E)
         rho.hash (rho.ownKey v) nd
-        (Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) nd.st u)).2) : False :=
+        (Model.gossipCandidates (Model.protoOf (compiled (goldilocksWith S)) E) nd.st u)).2) : False
+            :=
     gossip_not_forward S rho hn nd u (Model.releaseAll_subset _ _ _ _ o h) hd
   have hclock : (shapeOf S hn
-      (⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st u
+      (⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st u
         (Model.mempool rho.inbox v u), (rho.stateBefore i v).seen⟩ :
-        Model.Node (Model.protoOf (compiled (goldilocks S)) E))).forwards = [] := by
+        Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))).forwards = [] := by
     have h := forwards_empty S rho hn hv v i
     rw [stateAt_eq] at h
     exact h
-  have hpoll (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) :
+  have hpoll (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) :
       (shapeOf S hn (rho.dutyStep v nd (.poll u.toNat)).1).forwards = [] := by
     rw [dutyStep_poll S rho hn v nd u.toNat hsel, poll_forwards]
   simp only [Model.Run.releasesAt, he] at ho
-  rcases Skeleton.proposeAt_cases (skeleton (Model.pubOf E)) u with
+  rcases Skeleton.proposeAt_cases (skeleton (Model.pubOf E) S.vote) u with
     ⟨hnil, _⟩ | ⟨s, hs, hone, _⟩
   · obtain ⟨N1, N3, N5, N6, rfl, rfl, rfl, rfl, hrel⟩ :=
       tick_unroll_nil S rho v (rho.stateBefore i v) u hu hw hnil
@@ -87,9 +88,13 @@ private theorem tick_forward_queue (hv : rho.ExecutionValid) {i : Nat} {v : V}
             split at h
             · obtain ⟨m, cs, _, _, _, ho⟩ := rho.mem_signedCandidate.mp
                 (Model.releaseAll_subset _ _ _ _ o h)
-              have ha := congrArg Model.Obj.auth
-                (ho.symm.trans (forwardObj_of_decodeForward _ _ _ _ _ _ hd))
-              cases ha
+              have he := ho.symm.trans (forwardObj_of_decodeForward _ _ _ _ _ _ hd)
+              injection he with hauth hmsg _
+              subst hmsg
+              have hh : (ShapeRole.proposer s : ShapeRole S.vote.Kind) = .poll := by
+                injection hauth with _ h
+                exact (propose_candidateRole_of_not_vote S s hs fun _ h => by cases h).symm.trans h
+              cases hh
             · exact False.elim (List.not_mem_nil h)
         · refine ⟨s, hs, hone, ?_⟩
           rw [atProposal_eq]
@@ -98,12 +103,12 @@ private theorem tick_forward_queue (hv : rho.ExecutionValid) {i : Nat} {v : V}
     · exact False.elim (noGossip _ h)
 
 private theorem tick_forward_acceptance_wire (hv : rho.ExecutionValid) {i : Nat} {v : V}
-    {u t : Time} {o : Wire (Fintype.card V)} {p : Option (Wire (Fintype.card V))}
+    {u t : Time} {o : Wire (Fintype.card V) S.vote} {p : Option (Wire (Fintype.card V) S.vote)}
     {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.tick v u)) (ho : o ∈ rho.releasesAt i)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (rho.ownKey v, t, p, B)) :
-    ∃ C, ∃ parent : Option (Wire (Fintype.card V)),
+    ∃ C, ∃ parent : Option (Wire (Fintype.card V) S.vote),
       .fg (.block C true) ∈ (exec (runProposer S rho hn) (digestOf S rho)
         (rho.ownKey v) (stateAt S rho hn v i).node u
         (.tick (encodeTxs (Model.mempool rho.inbox v u)))).2 ∧
@@ -112,7 +117,7 @@ private theorem tick_forward_acceptance_wire (hv : rho.ExecutionValid) {i : Nat}
       (S.params (Model.pubOf E) hn).toParams.IsPublic u := by
   obtain ⟨s, hs, hone, hq⟩ := tick_forward_queue S rho hn hv he ho hd
   have htime : u = (S.params (Model.pubOf E) hn).toParams.slotTime s := by
-    rcases Skeleton.proposeAt_cases (skeleton (Model.pubOf E)) u with
+    rcases Skeleton.proposeAt_cases (skeleton (Model.pubOf E) S.vote) u with
       ⟨hno, _⟩ | ⟨s', hs', hyes, ht⟩
     · rw [hno] at hone
       cases hone
@@ -178,10 +183,10 @@ private theorem tick_accepted_root {sp : SA.SAParams}
       split at hm <;> simp [onAttestation] at hm
 
 omit [DecidableEq V] in
-private theorem decoded_block_root {o : Wire (Fintype.card V)}
+private theorem decoded_block_root {o : Wire (Fintype.card V) S.vote}
     {B : Blk (S.params (Model.pubOf E) hn)}
     (hc : Model.Obj.Contains o (blockObj (S.params (Model.pubOf E) hn) B))
-    (hd : decodeBlock (S.params (Model.pubOf E) hn) (binding := stock) (Model.digests rho.hash o)
+    (hd : decodeBlock (S.params (Model.pubOf E) hn) (binding := S.vote) (Model.digests rho.hash o)
       (blockObj (S.params (Model.pubOf E) hn) B) = some B) :
     B.RootOk (digestOf S rho) ∧ B.parent ≠ none := by
   obtain ⟨hroot, hpar, _, _⟩ := decodeBlock_wire hd
@@ -197,7 +202,7 @@ private theorem decoded_block_root {o : Wire (Fintype.card V)}
 /-- A forwarding release during a tick identifies an actual successful proposal cut,
 including the digest-backed root rather than just the serialized block fields. -/
 theorem tick_released_forward_acceptance (hv : rho.ExecutionValid) {i : Nat} {v : V}
-    {u t : Time} {o : Wire (Fintype.card V)} {p : Option (Wire (Fintype.card V))}
+    {u t : Time} {o : Wire (Fintype.card V) S.vote} {p : Option (Wire (Fintype.card V) S.vote)}
     {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.tick v u)) (ho : o ∈ rho.releasesAt i)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
@@ -207,7 +212,7 @@ theorem tick_released_forward_acceptance (hv : rho.ExecutionValid) {i : Nat} {v 
       (simTrace S rho hn).time k = t := by
   obtain ⟨C, parent, hc, hq, hpub⟩ := tick_forward_acceptance_wire S rho hn hv he ho hd
   have ht : t = u := congrArg Prod.fst hq
-  have hw : blockObj (S.params (Model.pubOf E) hn) (binding := stock) B = blockObj _ C := by
+  have hw : blockObj (S.params (Model.pubOf E) hn) (binding := S.vote) B = blockObj _ C := by
     have hlast := congrArg List.getLast? (congrArg Prod.snd hq)
     cases p <;> cases parent <;> simpa using hlast
   have hcontains : Model.Obj.Contains o (blockObj (S.params (Model.pubOf E) hn) B) := by
@@ -260,8 +265,8 @@ theorem simTrace_forwardOrigin (hv : rho.ExecutionValid) :
 before that receipt's event boundary, with the exact decoded block and stamp. -/
 theorem received_forward_source_acceptance (hf : rho.point.ConstantFaults)
     (hv : rho.ExecutionValid) {i : Nat} {v : V}
-    {receipt o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t u : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {receipt o : Wire (Fintype.card V) S.vote} {x : Fin (Fintype.card V)} {t u : Time}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u))
     (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt 0)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
@@ -289,8 +294,8 @@ theorem received_forward_source_acceptance (hf : rho.point.ConstantFaults)
 omit [DecidableEq V] in
 /-- A nested forwarding parse uses the same digest-backed roots whether decoded
 under its enclosing receipt's digests or its own recursively collected digests. -/
-theorem decodeForward_receipt_iff {receipt o : Wire (Fintype.card V)}
-    {x : Fin (Fintype.card V)} {t : Time} {p : Option (Wire (Fintype.card V))}
+theorem decodeForward_receipt_iff {receipt o : Wire (Fintype.card V) S.vote}
+    {x : Fin (Fintype.card V)} {t : Time} {p : Option (Wire (Fintype.card V) S.vote)}
     {B : Blk (S.params (Model.pubOf E) hn)} (hc : Model.Obj.Contains receipt o) :
     decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash receipt) o =
       some (x, t, p, B) ↔
@@ -313,8 +318,8 @@ theorem received_forward_accepted (hf : rho.point.ConstantFaults) (hv : rho.Exec
     (hrun : GoldilocksRun (runProposer S rho hn) (digestOf S rho)
       (honestKeys S rho) (simTrace S rho hn))
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
-    {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V)}
-    {x : Fin (Fintype.card V)} {u t : Time} {p : Option (Wire (Fintype.card V))}
+    {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V) S.vote}
+    {x : Fin (Fintype.card V)} {u t : Time} {p : Option (Wire (Fintype.card V) S.vote)}
     {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u)) (hy : v ∉ rho.faultyAt 0)
     (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt 0)
@@ -358,9 +363,9 @@ theorem received_forward_accepted_before (hf : rho.point.ConstantFaults) (hv : r
     (hrun : GoldilocksRun (runProposer S rho hn) (digestOf S rho)
       (honestKeys S rho) (simTrace S rho hn))
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
-    {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V)}
+    {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V) S.vote}
     {x : Fin (Fintype.card V)} {u t deadline : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u)) (hy : v ∉ rho.faultyAt 0)
     (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt 0)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
@@ -418,7 +423,7 @@ theorem simTrace_forwardHeldProcessed (hf : rho.point.ConstantFaults) (hv : rho.
 The event-boundary queue is empty even following restart; processing every nested
 object preserves the clock. No first-release premise is used. -/
 theorem delivery_voteForward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V}
-    {receipt : Wire (Fintype.card V)} {u t : Time} {m : SA.Vote (Fintype.card V)}
+    {receipt : Wire (Fintype.card V) S.vote} {u t : Time} {m : SA.Vote (Fintype.card V)}
     (he : rho.events[i]? = some (.deliver v receipt u))
     (hq : (t, m) ∈ (process (stateAt S rho hn v i) receipt
       (Model.digests rho.hash receipt)).voteForwards) : t = u := by

@@ -847,8 +847,12 @@ noncomputable def goldilocksWith (S : BoundSetup) :
     conflicts := conflicts (binding := binding)
     isFGAtt := isFGAtt (binding := binding) }
 
-/-- The population-wide instance is the stock vote binding. -/
-noncomputable def goldilocks (S : Setup) : ChainShapeFamily schema Info :=
+/-- The population-wide instance is the stock vote binding.
+
+The `@[reducible]` is an interim build scaffold, removed at D2 together with the stock
+`Coe Setup BoundSetup` instance: it lets stock callers unify `goldilocks S` with the
+binding-generic layer's `goldilocksWith ⟨S, stock⟩`. -/
+@[reducible] noncomputable def goldilocks (S : Setup) : ChainShapeFamily schema Info :=
   goldilocksWith ⟨S, stock⟩
 
 /-- The family installs the actual own-role predicate in the committee node's initial AC state. -/

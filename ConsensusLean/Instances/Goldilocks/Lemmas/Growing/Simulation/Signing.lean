@@ -20,13 +20,13 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 omit [DecidableEq V] in
 /-- A duty release comes from one actual prefix, not a replayed node handler. -/
 private theorem release_duty_at (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (ds)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (ds)
     {o} (ho : o ∈ (rho.runDuties v nd ds).2) :
     ∃ p d, ds[p]? = some d ∧
       o ∈ (rho.dutyStep v (rho.runDuties v nd (ds.take p)).1 d).2 := by
@@ -47,9 +47,9 @@ private theorem release_duty_at (v : V)
 private theorem released_poll_at {v : V} {i p : Nat} {nd}
     (hc : EngineDutyCut S rho v i p nd) {d} {a : FG.Att (Fintype.card V)}
     (hd : (∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
-        ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some d) ∨
+        ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)[p]? = some d) ∨
       ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
-        ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some d)
+        ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t)[p]? = some d)
     (hr : attObj a ∈ (rho.dutyStep v nd d).2) :
     a.val = rho.ownKey v ∧ ∃ j q, EngineSignsAt S rho hn v j q a := by
   obtain ⟨t, rfl, hsel, hp⟩ := dutyStep_att_poll S rho hn nd d hr
@@ -90,7 +90,7 @@ theorem released_att_signed_at {v : V} {i : Nat} {t : Time}
 current event, not merely at the preceding engine cut. The latter would allow a forgery
 delivered after a compromise between the two cuts. No order bound is needed for guard safety. -/
 theorem engine_seen_att_signed_at (hv : rho.ExecutionValid) {v u : V}
-    {i p : Nat} {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
+    {i p : Nat} {nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)}
     (hc : EngineDutyCut S rho v i p nd) (hu : u ∉ rho.faultyAt (rho.cutTime (i + 1)))
     {a : FG.Att (Fintype.card V)} (ha : a.val = rho.ownKey u)
     (hm : attObj a ∈ Model.closure nd.seen) :
@@ -101,7 +101,7 @@ theorem engine_seen_att_signed_at (hv : rho.ExecutionValid) {v u : V}
   have hbefore (hi : i < rho.events.length)
       (hm : attObj a ∈ Model.closure (rho.stateBefore i v).seen) :
       ∃ j q, EngineSignsAt S rho hn u j q a := by
-    have hlaws := (Model.sysOf_laws schema (compiled (goldilocks S)) V).trace ⟨E, rho⟩ hv
+    have hlaws := (Model.sysOf_laws schema (compiled (goldilocksWith S)) V).trace ⟨E, rho⟩ hv
     have ht := hlaws.cutTime_mono i (i + 1) (by omega)
       (by change i + 1 ≤ rho.events.length; omega)
     obtain ⟨j, _, t, hs, hr⟩ := rho.signed_seen_released hv (Nat.le_of_lt hi) hm
@@ -163,7 +163,7 @@ theorem engine_att_protected_at (hv : rho.ExecutionValid)
     {v : V} {i p : Nat} {nd}
     (hc : EngineDutyCut S rho v i p nd) {j q : Nat} {a : FG.Att (Fintype.card V)}
     (ha : EngineSignsAt S rho hn v j q a) :
-    Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
+    Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) nd.seen
       (attObj a) = true := by
   have hv0 : v ∉ rho.faultyAt 0 := by
     cases hc with
@@ -176,12 +176,12 @@ theorem engine_att_protected_at (hv : rho.ExecutionValid)
 theorem engine_poll_att_protected_at (hv : rho.ExecutionValid) {v : V}
     {i p : Nat} {nd} {k : Nat} (hc : EngineDutyCut S rho v i p nd)
     (hd : (∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
-        ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
+        ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)[p]? = some (.poll k)) ∨
       ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
-        ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some (.poll k))
+        ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t)[p]? = some (.poll k))
     (hsel : rho.ownKey v ∈ rho.sel .poll) {w cs}
     (hm : (poll (nd.st.1 hn) k).2 = some (.att w, cs)) :
-    Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
+    Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) nd.seen
       (.mk (.signed (rho.ownKey v) .poll) (.data (.att w)) []) = true :=
   poll_att_protected_of S rho hn hc (engine_att_protected_at S rho hn hv hc) hd hsel hm
 

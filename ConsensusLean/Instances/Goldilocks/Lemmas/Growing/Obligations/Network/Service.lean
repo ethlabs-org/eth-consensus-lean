@@ -29,13 +29,14 @@ open AsChainShape Simulation
 open Shape Blocks
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-  (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+  (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
 
 /-- An actual publication by an origin honest at its event is held strictly before a qualifying
 node deadline of a recipient honest at its call. -/
 theorem publication_held_before_deadline_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
-    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
+    (r : Publication (Model.protoOf (compiled (goldilocksWith S)) E))
     (hr : (publisherExecution S rho).actual r)
     (hx : rho.key r.origin ∉ rho.faultyAt ((publisherExecution S rho).eventTime r.event))
     (hrow : ¬ rho.log.fgAtt r.object)
@@ -64,11 +65,12 @@ theorem publication_held_before_deadline_at (hn : 1 ≤ Fintype.card V) (hv : rh
 honest at the release, yield an acceptance before the observation deadline, at a reading cut `j`
 of a recipient honest at a time `t₀` that bounds every cut before `j`. -/
 theorem held_forward_accepted_before_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {y x : Fin (Fintype.card V)} {j : Nat} {t₀ : Time}
     (hj₀ : ∀ k < j, (simTraceAt S rho hn).time k ≤ t₀) (hy : rho.key y ∉ rho.faultyAt t₀)
-    {o : Wire (Fintype.card V)} {t d D : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {o : Wire (Fintype.card V) S.vote} {t d D : Time}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (hx : rho.key x ∉ rho.faultyAt t) (hrel : rho.releases (rho.key x) o t)
     (hheld : rho.log.Held rho.point (rho.key y) o d)
     (hdecode : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
@@ -79,7 +81,7 @@ theorem held_forward_accepted_before_at (hn : 1 ≤ Fintype.card V) (hv : rho.Ex
     ∃ k ≤ j, (simTraceAt S rho hn).AcceptAt y k B ∧ (simTraceAt S rho hn).time k < D := by
   obtain ⟨u, hud, hsource, _⟩ := hheld
   have huD : u < D := hud.trans_lt hd
-  have event_before {i : Nat} {ev : Model.Event V (Wire (Fintype.card V))}
+  have event_before {i : Nat} {ev : Model.Event V (Wire (Fintype.card V) S.vote)}
       (he : rho.events[i]? = some ev) (hu : ev.time = u) : cutMap S rho hn (i + 1) ≤ j :=
     cutMap_succ_le_of_time_lt S rho hn hv he
       (hu.trans_lt (huD.trans_le (by rwa [simTraceAt_eq] at hj)))
@@ -100,13 +102,14 @@ theorem held_forward_accepted_before_at (hn : 1 ≤ Fintype.card V) (hv : rho.Ex
 /-- Acceptance service is measured at the processing cut, even when later restarts enlarge the
 observation deadline. The origin is honest at its publication, the recipient at its call. -/
 theorem publication_acceptedBy_syncUntil_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
-    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
+    (r : Publication (Model.protoOf (compiled (goldilocksWith S)) E))
     (hr : (publisherExecution S rho).actual r)
     {τ : Time} (hτ : 0 ≤ τ) (ht : (publisherExecution S rho).eventTime r.event = τ)
     (hx : rho.key r.origin ∉ rho.faultyAt τ)
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (hdecode : decodeForward (S.params (Model.pubOf E) hn)
       (Model.digests rho.hash r.object) r.object = some (r.origin, τ, p, B))
     {y : Fin (Fintype.card V)} {j : Nat}
@@ -146,6 +149,7 @@ theorem publication_acceptedBy_syncUntil_at (hn : 1 ≤ Fintype.card V) (hv : rh
 /-- The finite acceptance-relay field: an acceptance by a node honest at its cut is relayed to
 every recipient honest at its call, inside the blocks held while honest. -/
 theorem acceptance_relay_syncUntil_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
     {x : Fin (Fintype.card V)} {i : Nat}
@@ -174,6 +178,7 @@ theorem acceptance_relay_syncUntil_at (hn : 1 ≤ Fintype.card V) (hv : rho.Exec
 /-- A different recipient honest at its call processes a first-release vote envelope of a sender
 honest at its release before its processing-cut deadline. -/
 theorem vote_message_service_other_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
     {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : SA.Vote (Fintype.card V)}
     (hx : rho.key x ∉ rho.faultyAt τ) (hne : y ≠ x)
@@ -235,14 +240,15 @@ open AsChainShape Obligations.Growing
 open Shape Blocks
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- **The finite sleepy service under growing faults** from raw synchrony through its deadline
 bound `b ≤ horizon`: senders honest at their sends, recipients honest at their reading calls
 (the growing-fault `sleepyServiceBefore_of_syncUntil`). Self-service uses fresh processing at the
 source time. -/
 theorem sleepyServiceBefore_of_syncUntil_at (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b) :
     Compose.Growing.SleepyServiceBefore (simTraceAt S rho hn) (honestKeysAt S rho)

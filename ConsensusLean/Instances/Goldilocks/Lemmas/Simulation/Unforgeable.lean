@@ -22,8 +22,8 @@ open Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 private theorem tick_block_fields {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
@@ -100,7 +100,7 @@ theorem released_block_cut_of (hv : rho.ExecutionValid)
     {i : Nat} {v : V} {t : Time} (hs : rho.SendsAt v i t)
     (hv' : rho.events[i]? = some (.tick v t) → v ∉ rho.faultyAt 0)
     (hpre : rho.events[i]? = some (.tick v t) →
-      ∀ s (hs : 0 < s), (skeleton (pubOf E)).proposeAt t = [.propose s hs] →
+      ∀ s (hs : 0 < s), (skeleton (pubOf E) S.vote).proposeAt t = [.propose s hs] →
         rho.ownKey v ∈ rho.sel (.proposer s) → ∀ par info cs,
         (propose (shapeOf S hn (preNode S rho v (rho.stateBefore i v) t)) s).2 =
           some (par, info, cs) →
@@ -108,7 +108,7 @@ theorem released_block_cut_of (hv : rho.ExecutionValid)
     {B : Blk (S.params (pubOf E) hn)}
     (huniq : ∀ C : Blk (S.params (pubOf E) hn), C.parent ≠ none →
       C.RootOk (digestOf S rho) →
-      blockObj (S.params (pubOf E) hn) (binding := stock) B =
+      blockObj (S.params (pubOf E) hn) (binding := S.vote) B =
         blockObj (S.params (pubOf E) hn) C → B = C)
     (hb : blockObj (S.params (pubOf E) hn) B ∈ rho.releasesAt i) :
     ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).OwnBlockAt B.proposer k B := by
@@ -281,7 +281,7 @@ theorem released_vote_cut_of (hv : rho.ExecutionValid)
     {i : Nat} {v : V} {t : Time} (hs : rho.SendsAt v i t)
     (hv' : rho.events[i]? = some (.tick v t) → v ∉ rho.faultyAt 0)
     (hpre : rho.events[i]? = some (.tick v t) →
-      ∀ s (hs : 0 < s), (skeleton (pubOf E)).proposeAt t = [.propose s hs] →
+      ∀ s (hs : 0 < s), (skeleton (pubOf E) S.vote).proposeAt t = [.propose s hs] →
         rho.ownKey v ∈ rho.sel (.proposer s) → ∀ par info cs,
         (propose (shapeOf S hn (preNode S rho v (rho.stateBefore i v) t)) s).2 =
           some (par, info, cs) →

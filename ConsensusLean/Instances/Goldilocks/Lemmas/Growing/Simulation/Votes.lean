@@ -13,8 +13,8 @@ open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (Vote)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- A genuine release of a canonical vote comes from a local emission before the end cut. -/
 theorem released_vote_cut_at (hv : rho.ExecutionValid)

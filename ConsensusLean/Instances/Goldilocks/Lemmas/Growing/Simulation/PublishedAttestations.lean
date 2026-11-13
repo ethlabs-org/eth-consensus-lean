@@ -11,15 +11,15 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 omit [DecidableEq V] in
 private theorem release_closure_source (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (cs) :
-    ∀ o ∈ Model.closure (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (cs) :
+    ∀ o ∈ Model.closure (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E)
       rho.hash (rho.ownKey v) nd cs).1.seen, o ∈ Model.closure nd.seen ∨
-        o ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
+        o ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E)
           rho.hash (rho.ownKey v) nd cs).2 := by
   induction cs generalizing nd with
   | nil => intro o ho; exact Or.inl ho
@@ -49,6 +49,7 @@ private theorem release_closure_source (v : V)
 
 /-- A tick's signed attestation passes the guard using only signings through that tick. -/
 theorem tick_att_releases_at (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (he : rho.events[i]? = some (.tick v t))
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
     ∀ r ∈ eventCuts S rho hn i, ∀ C a,
@@ -84,7 +85,7 @@ theorem tick_att_releases_at (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
     rw [Model.closure_append] at ho
     rcases List.mem_append.mp ho with ho | ho
     · have hi := (List.getElem?_eq_some_iff.mp he).1
-      have hlaws := (Model.sysOf_laws schema (compiled (goldilocks S)) V).trace ⟨E, rho⟩ hv
+      have hlaws := (Model.sysOf_laws schema (compiled (goldilocksWith S)) V).trace ⟨E, rho⟩ hv
       have ht := hlaws.cutTime_mono i (i + 1) (by omega)
         (show i + 1 ≤ rho.events.length by omega)
       change rho.cutTime i ≤ rho.cutTime (i + 1) at ht
@@ -145,10 +146,10 @@ theorem tick_att_releases_at (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
       obtain ⟨C', b', hc, hw⟩ := att_mem_bodies S hn hqQ
       obtain rfl := encodeAtt_inj hw
       exact hsign C' b hc
-  have hprot (seen : List (Model.protoOf (compiled (goldilocks S)) E).Object)
+  have hprot (seen : List (Model.protoOf (compiled (goldilocksWith S)) E).Object)
       (hs : ∀ b : FG.Att (Fintype.card V), b.val = rho.ownKey v →
       attObj b ∈ Model.closure seen → Signed b) :
-      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) seen
+      Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) seen
         (attObj a) = true := by
     obtain ⟨ka, hka, hsa⟩ := hsign C a (ha ▸ hlab)
     refine Model.protects_iff.mpr ?_
@@ -156,18 +157,18 @@ theorem tick_att_releases_at (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
     refine ⟨Bool.eq_false_iff.mpr fun h => ?_, fun o ho hos =>
       ⟨Bool.eq_false_iff.mpr fun h => ?_, Bool.eq_false_iff.mpr fun h => ?_⟩⟩
     · obtain ⟨a1, b1, h1, h2, hsl⟩ :=
-        (conflictsIff_iff.mp conflicts_iff (Fintype.card V) (attObj a) (attObj a)).mp h
+        (conflictsIff_iff.mp conflicts_iff S.vote (Fintype.card V) (attObj a) (attObj a)).mp h
       rw [← attObj_inj h1, ← attObj_inj h2] at hsl
       exact simTraceAt_signings_nonFraming_before S rho hn hv he hka hka hsa hsa hsl
     · obtain ⟨a1, b1, h1, rfl, hsl⟩ :=
-        (conflictsIff_iff.mp conflicts_iff (Fintype.card V) (attObj a) o).mp h
+        (conflictsIff_iff.mp conflicts_iff S.vote (Fintype.card V) (attObj a) o).mp h
       rw [← attObj_inj h1] at hsl
       have hb : b1.val = rho.ownKey v := by
         simpa [Model.Obj.signer?, attObj, Model.Obj.auth] using hos
       obtain ⟨kb, hkb, hsb⟩ := hs b1 hb ho
       exact simTraceAt_signings_nonFraming_before S rho hn hv he hka hkb hsa hsb hsl
     · obtain ⟨a1, b1, rfl, h2, hsl⟩ :=
-        (conflictsIff_iff.mp conflicts_iff (Fintype.card V) o (attObj a)).mp h
+        (conflictsIff_iff.mp conflicts_iff S.vote (Fintype.card V) o (attObj a)).mp h
       rw [← attObj_inj h2] at hsl
       have hb : a1.val = rho.ownKey v := by
         simpa [Model.Obj.signer?, attObj, Model.Obj.auth] using hos
@@ -179,9 +180,8 @@ theorem tick_att_releases_at (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
     apply List.mem_append_right
     rw [attBodies_eq]
     exact List.mem_flatMap.mpr ⟨_, ha ▸ hlab, List.mem_singleton_self _⟩
-  have hobj : (attObj a : (Model.protoOf (compiled (goldilocks S)) E).Object) =
-      pollObj S rho v (.att (encodeAtt a)) := by
-    unfold attObj; rw [show a.val = rho.ownKey v from hval]; rfl
+  have hobj : (attObj a : (Model.protoOf (compiled (goldilocksWith S)) E).Object) =
+      pollObj S rho v (.att (encodeAtt a)) := attObj_eq_pollObj_of_val S rho hval
   have h4 := hprot N4.seen hsig4
   have h5 := hprot N5.seen hsig5
   rw [hobj] at h4 h5
@@ -195,21 +195,22 @@ theorem tick_att_releases_at (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
       · exact Or.inr rfl
     | _ :: _ :: _ :: _, h, _ => simp at h
   rw [hobj, heq]
-  have hd (seen) : (Model.protoOf (compiled (goldilocks S)) E).dependencies.ready
-      (Model.closure seen) (pollObj S rho v (.att (encodeAtt a))) = true := rfl
+  have hk := pollRole_selected_of_not_vote S rho (poll_selected S rho hv v)
+    (b := .att (encodeAtt a)) (fun w h => by cases h)
   rcases hpos _ hq with h | h
   · refine List.mem_append_left _ (List.mem_append_left _ (List.mem_append_right _ ?_))
     apply List.mem_append_left
-    rw [h, ← release_head S rho v N4 (some (.att (encodeAtt a)))]
-    simp [Model.releaseAll, Model.releasable, Model.Obj.carried, h4, hd]
+    rw [h]
+    simp only [relHead_eq, Option.elim_some, hk, h4, and_self, ↓reduceIte]
     exact List.mem_singleton_self _
   · refine List.mem_append_left _ (List.mem_append_right _ ?_)
-    rw [h, ← release_head S rho v N5 (some (.att (encodeAtt a)))]
-    simp [Model.releaseAll, Model.releasable, Model.Obj.carried, h5, hd]
+    rw [h]
+    simp only [relHead_eq, Option.elim_some, hk, h5, and_self, ↓reduceIte]
     exact List.mem_singleton_self _
 
 /-- A trace signing is released at its actual engine tick, under growing faults. -/
-theorem simTraceAt_att_released (hv : rho.ExecutionValid) :
+theorem simTraceAt_att_released (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] : -- TEMP(C2)
     ∀ y k a, y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time k) →
       (simTraceAt S rho hn).SignAt y k a →
       ReleasedFrom S rho (rho.key y) (attObj a) ((simTraceAt S rho hn).time k) := by
