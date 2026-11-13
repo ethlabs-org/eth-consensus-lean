@@ -204,6 +204,7 @@ detail in `TRUST.md`.
     slot's confirmation update at `t_s + 6Δ`, whose pool admits equivocating second votes;
   - cohort look-ahead `0`: every count of the outage cohort ends by the update of label `j₀ + k`, at least `2Δ`
     before the no-sleep window's end;
+  - committee look-ahead `5`: the sleepy look-ahead's window inside each slot committee (§"Contract numbers");
   - proposer hold `1`: a proposer compromised before the slot's votes are cast can split them with a smaller-root
     second proposal (fork choice breaks score ties by the smaller root), and all votes are cast by the tick at
     `t_s + Δ`.
@@ -277,6 +278,18 @@ detail in `TRUST.md`.
     restored-label bound: at `k = 2`, `Δ = 2`, start `11` (`j₀ = 0`) the bound is `18`; `4k − 5` gives stop `≤ 17`
     and `4k − 4` gives `19 > 18`. The earlier `4k − 6` came from the node-level phase-sensitive outage condition
     (V), which went with the node-level regime rows.
+  - committee band lead `2` and length `4k` (`bandLead`, `bandLen`): the band `[b₀ − 2ΔAC, b₀ + (4k − 2)ΔAC]`
+    holds a time of every slot `j₀ … j₀ + k` of the outage lock argument. The cover label `j₀` is the slot of
+    `b₀ − 2ΔAC` (`coverLabel`), so the band starts in slot `j₀`, and `t_{j₀} + 2ΔAC ≤ b₀` puts the band's end at or
+    after `t_{j₀} + 4kΔAC = t_{j₀+k}`. The fast lock of label `j₀` counts the slot-`j₀` committee, so that slot
+    needs a band time. Lead `2` is the least that gives one: `b₀` lies in slot `j₀ + 1` whenever
+    `t_{j₀+1} ≤ b₀ < t_{j₀+1} + 2ΔAC`, and `b₀ − ΔAC` does whenever `b₀ ≥ t_{j₀} + 5ΔAC`, so with lead `0` or `1`
+    no band time lies in slot `j₀` for those outages. Length `4k` is the least that reaches slot `j₀ + k` at the
+    earliest outage `b₀ = t_{j₀} + 2ΔAC`.
+  - committee look-ahead `5` (`committeeAhead`): a slot committee's support at `t_s + ΔAC` is charged with the
+    faults up to the slot's confirmation update at `t_s + 6ΔAC`, as for the sleepy look-ahead. It stays at most
+    `ahead`, so at the population binding, which selects every validator, both committee clauses follow from the
+    population ones (`goldilocksContract_outage_stock_iff`).
   - look-back `η = 0` (`Params.standard`): see §"Regimes".
 - **Catch-up is a guarantee coefficient, but its effect is mixed.** A smaller catch-up makes more validators ready
   (shorter `cDur`), which weakens the sleepy and outage participation premises, but it also starts the healthy

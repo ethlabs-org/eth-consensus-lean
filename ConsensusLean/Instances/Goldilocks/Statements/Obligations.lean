@@ -133,7 +133,11 @@ The growing-fault windows (`docs/decisions.md` §"Adversary growth"):
 * outage cohort look-ahead `0`: every count of the cohort ends by the update of
   label `j₀ + k`, before the no-sleep window's end;
 * proposer hold `1`: a proposer honest through `t_s + Δ`, when the slot's votes are
-  cast, cannot split them with a second proposal of its slot.
+  cast, cannot split them with a second proposal of its slot;
+* committee band lead `2` and length `4k`: the band `[b₀ − 2ΔAC, b₀ + (4k − 2)ΔAC]` starts in
+  the slot of `b₀ − 2ΔAC`, the outage's cover label `j₀`, and reaches label `j₀ + k`;
+* committee look-ahead `5`: the sleepy look-ahead inside each slot committee, at most `ahead`, so
+  at the population binding the committee clauses follow from the population ones.
 These numbers are not claimed minimal. -/
 abbrev goldilocksContract {S : Setup} (A : ContractAssumptions S)
     (C : ContractCoefficients) : Contract ProgressReq where
@@ -145,7 +149,10 @@ abbrev goldilocksContract {S : Setup} (A : ContractAssumptions S)
     recovery := 9
     fgDelay := A.fgDelay
     ahead := 5
-    cohortAhead := 0 }
+    cohortAhead := 0
+    bandLead := 2
+    bandLen := 4 * S.k
+    committeeAhead := 5 }
   progress := fun cap X =>
     .recur
       { pattern := if cap = .final then finalWindow A else Pattern.single

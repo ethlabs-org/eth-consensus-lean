@@ -116,7 +116,46 @@ theorem goldilocksContract_params_eq {S : Setup} (A : ContractAssumptions S)
       { Params.standard C.catchUp (4 * S.k + 6)
         (4 * S.k - 5) C.heal C.latency with
         noSleep := 4 * S.k + 6, recovery := 9,
-        fgDelay := A.fgDelay, ahead := 5, cohortAhead := 0 } := by rfl
+        fgDelay := A.fgDelay, ahead := 5, cohortAhead := 0,
+        bandLead := 2, bandLen := 4 * S.k, committeeAhead := 5 } := by rfl
+
+/-- **The contract's outage at the population binding** is the population outage: the stock
+binding selects every validator, so the committee cohort clause is the cohort clause at each band
+time (`CohortOn.committee_univ`), and the committee look-ahead `5` is at most `ahead = 5`
+(`EtaSleepyOn.committee_univ`). -/
+theorem goldilocksContract_outage_stock_iff {S : Setup} (A : ContractAssumptions S)
+    (C : ContractCoefficients) {V : Type} [Fintype V] [DecidableEq V] {T b₀ b₁ : Time}
+    {r : (Sys (goldilocks S) V).Run} :
+    (Sys (goldilocks S) V).Outage (shapeProgress (goldilocks S) V).toExternal
+        (goldilocksContract A C) T b₀ b₁ r ↔
+      OutageTimes (goldilocksContract A C).params ((Sys (goldilocks S) V).pt r).env.ΔAC
+          T b₀ b₁ ∧
+        ((Sys (goldilocks S) V).log r).OutageNet ((Sys (goldilocks S) V).pt r) b₀ b₁ ∧
+        ((Sys (goldilocks S) V).pt r).EtaSleepyOn (goldilocksContract A C).params.θ
+          (((goldilocksContract A C).params.η : Time) * ((Sys (goldilocks S) V).pt r).env.ΔAC)
+          ((Sys (goldilocks S) V).cDur (goldilocksContract A C) r)
+          ((Sys (goldilocks S) V).aheadDur (goldilocksContract A C) r) 0
+          ((Sys (goldilocks S) V).pt r).horizon ∧
+        (((Sys (goldilocks S) V).pt r).retain
+            ((Sys (goldilocks S) V).cohortAt (goldilocksContract A C) b₁ r)).NoSleepOn
+          ((Sys (goldilocks S) V).outageStart (goldilocksContract A C) b₀ r)
+          ((Sys (goldilocks S) V).outageEnd (goldilocksContract A C) b₁ r) ∧
+        (((Sys (goldilocks S) V).pt r).retain
+            ((Sys (goldilocks S) V).cohortAt (goldilocksContract A C) b₁ r)).CohortOn
+          ((Sys (goldilocks S) V).outageStart (goldilocksContract A C) b₀ r)
+          ((Sys (goldilocks S) V).outageEnd (goldilocksContract A C) b₁ r) := by
+  have hsel : (shapeProgress (goldilocks S) V).toExternal.selected
+      ((Sys (goldilocks S) V).pt r).env ((shapeProgress (goldilocks S) V).toExternal.ext r) =
+      fun _ => Finset.univ := rfl
+  constructor
+  · exact fun ⟨ht, hn, hs, hns, hco, _, _⟩ => ⟨ht, hn, hs, hns, hco⟩
+  · rintro ⟨ht, hn, hs, hns, hco⟩
+    refine ⟨ht, hn, hs, hns, hco, ?_, ?_⟩
+    · rw [hsel]
+      exact hco.committee_univ
+    · rw [hsel]
+      exact hs.committee_univ le_rfl (by change (1 / 2 : ℚ) ≤ 1; norm_num)
+        (by change (0 : ℚ) ≤ 1 / 2; norm_num)
 
 theorem contract_coefficients_catchUp (S : Setup) (A : ContractAssumptions S) :
     (contract_coefficients S A).catchUp = contract_catchUp S A := by rfl
