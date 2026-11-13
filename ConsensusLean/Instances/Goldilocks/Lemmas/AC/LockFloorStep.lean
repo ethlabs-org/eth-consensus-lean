@@ -47,10 +47,10 @@ theorem anc_unlockTarget_of_floor (hΦ : FrameOK Φ) (V : View sp.n) (s : Int)
     {B : Blk sp.n FGP} (hB0 : B₀ ∈ Φ.tree) (hB : B ∈ Φ.tree) (h : Φ.Anc B₀ B)
     (hu : unlockTarget sp Φ V s B₀ = B₀) : Φ.Anc B₀ (unlockTarget sp Φ V s B) := by
   classical
-  have key : B₀ = Φ.F ∨ 2 * (opponents sp Φ V s B₀).ncard < sp.n := by
+  have key : B₀ = Φ.F ∨ 2 * (opponents sp Φ V s B₀).ncard < sp.committeeSize := by
     unfold unlockTarget at hu
     cases hd : deepest Φ
-        {B' | B' ∈ Φ.tree ∧ Φ.Anc B' B₀ ∧ 2 * (opponents sp Φ V s B').ncard < sp.n} with
+        {B' | B' ∈ Φ.tree ∧ Φ.Anc B' B₀ ∧ 2 * (opponents sp Φ V s B').ncard < sp.committeeSize} with
     | none =>
       rw [hd] at hu
       exact Or.inl hu.symm
@@ -62,7 +62,7 @@ theorem anc_unlockTarget_of_floor (hΦ : FrameOK Φ) (V : View sp.n) (s : Int)
   rcases key with rfl | hopp
   · exact hΦ.rooted.2 _ (unlockTarget_anc sp hΦ V s hB).1
   · obtain ⟨D, hD⟩ := exists_deepest hΦ
-      (S := {X | X ∈ Φ.tree ∧ Φ.Anc X B ∧ 2 * (opponents sp Φ V s X).ncard < sp.n})
+      (S := {X | X ∈ Φ.tree ∧ Φ.Anc X B ∧ 2 * (opponents sp Φ V s X).ncard < sp.committeeSize})
       (fun X h => h.1) ⟨B₀, hB0, h, hopp⟩
     unfold unlockTarget
     rw [hD]
@@ -152,15 +152,15 @@ theorem floor_tryVote (self : Fin sp.n) {A : SAState sp.n} (hΦ : FrameOK Φ)
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B := by
   unfold tryVote
   dsimp only
-  split_ifs with h₁ h₂ h₃
-  · exact h
-  · exact h
-  · refine floor_optimisticConfirmation hΦ hB0 hva0 hk ?_
-    rw [admitVote_locks_eq]
-    exact floor_unlock hΦ hB0 hva0 hk hu h
-  · refine floor_optimisticConfirmation hΦ hB0 hva0 hk ?_
-    rw [admitVote_locks_eq]
-    exact h
+  split_ifs <;> first
+    | exact h
+    | exact floor_unlock hΦ hB0 hva0 hk hu h
+    | (apply floor_optimisticConfirmation hΦ hB0 hva0 hk
+       rw [admitVote_locks_eq]
+       exact floor_unlock hΦ hB0 hva0 hk hu h)
+    | (apply floor_optimisticConfirmation hΦ hB0 hva0 hk
+       rw [admitVote_locks_eq]
+       exact h)
 
 /-- `ac_on_message` keeps the floor (the view of the state after the admission). -/
 theorem floor_acOnMessage (self : Fin sp.n) {A : SAState sp.n} (v : Vote sp.n)

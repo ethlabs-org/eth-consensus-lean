@@ -110,7 +110,8 @@ theorem honest_prefix_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
 /-- Actual optimistic CV dominance forces each child toward the stored block
 in a receiving vote's frozen domain. This local comparison needs delivery,
 but neither earlier-head induction nor prior-slot unanimity. -/
-theorem optimistic_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
+theorem optimistic_isBest_of_carry
+    {FGP : Type} {ro : ReplayOrder sp FGP}
     {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
     {proposer : Nat → Fin sp.n} (hrun : ACRun proposer tr H U) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
@@ -136,7 +137,7 @@ theorem optimistic_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
     dsimp only at hsel
     split_ifs at hsel
     have h := (deepest_mem hsel).1.2.1
-    rwa [hslx] at h
+    rwa [hslx, hrun.stock] at h
   let V := mergedVoteView sp e.readPoint ℓ.frame (s + 1)
   have hcover : SX ⊆ supporters ℓ.frame V s B ∪ equivocators V.votes := by
     rintro w ⟨v, hv, rfl, R, hR, hRr, hDR⟩
@@ -158,7 +159,8 @@ theorem optimistic_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
 /-- CV dominance carries a shallower walk up to an optimistic anchor.
 Unlike `optimistic_transfer_stored`, this prefix uses explicit anchor order,
 not causal induction to establish compatibility with every lock. -/
-theorem optimistic_prefix_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
+theorem optimistic_prefix_of_carry
+    {FGP : Type} {ro : ReplayOrder sp FGP}
     {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
     {proposer : Nat → Fin sp.n} (hrun : ACRun proposer tr H U) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}

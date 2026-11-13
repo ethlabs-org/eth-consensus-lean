@@ -109,10 +109,11 @@ theorem emit_released_of (hv : rho.ExecutionValid)
       rw [stateAt_succ_restart S rho hn he]
       exact List.mem_append_right _
         (List.mem_flatMap.mpr ⟨_, hcut, by simpa using ⟨em, hem, rfl⟩⟩)
-    have hobj : @voteObj (pubOf E).n em.msg = Model.Obj.mk (.signed (rho.ownKey v) .poll)
+    have hobj : @voteObj stock (pubOf E).n em.msg = Model.Obj.mk (.signed (rho.ownKey v) .poll)
         (.data (Body.vote (encodeVote em.msg))) [] := by
       unfold voteObj
       rw [show em.msg.val = rho.ownKey v from hval]
+      rfl
     rw [hobj]
     exact (releasedFrom_iff S rho _ _ _).mp (releasedFrom_of_pending S rho hn hv he hb)
 

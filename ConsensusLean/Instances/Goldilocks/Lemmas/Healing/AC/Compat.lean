@@ -106,7 +106,8 @@ theorem fastLock_fastLock_compatibleU
 /-- **Two fast origins of one slot** (fast test or optimistic, in any combination; this includes
 the optimistic/optimistic case): A1.9's same-slot lemma under `Sync[t_s, t_{s+1} + Δ]` and
 `f < n/2`. -/
-theorem fastLock_fastLock_compatible (hS : HealthyBase tr H U proposer g)
+theorem fastLock_fastLock_compatible
+    (hS : HealthyBase tr H U proposer g)
     {s : Nat} {x x' : Fin sp.n}
     {i i' : Nat} {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
     (hfl : FastLockAt tr x i s B CV) (hx' : x' ∈ H) (hfl' : FastLockAt tr x' i' s B' CV')
@@ -157,6 +158,7 @@ theorem result_optimistic_compatibleU
   by_contra hnc
   obtain ⟨ℓ, S, hc, ht, hmaj, -, hSs⟩ := result_sideU hS.run hx hR
   obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := optimistic_sideU hS.run hx' hO
+  rw [hS.run.stock] at h34
   have h1 := against_updateU hr hsync hx' hx hc ht
     (fun k _ hk => (hS.restart_le hx hk).trans (by linarith)) hSs hT fun h => hnc (Or.symm h)
   have hle := Set.ncard_le_ncard (Set.subset_univ (voters {v | v ∈ (tr.state x i).pool s}))
@@ -165,7 +167,8 @@ theorem result_optimistic_compatibleU
 
 /-- **Regular/optimistic**: a result of slot `s ≥ r` at an honest node is compatible
 with an honest optimistic confirmation of slot `s`. -/
-theorem result_optimistic_compatible (hS : HealthyBase tr H U proposer g)
+theorem result_optimistic_compatible
+    (hS : HealthyBase tr H U proposer g)
     {s : Nat} {x x' : Fin sp.n}
     {i i' : Nat} {C B : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
     (hR : ResultAt tr x i s C CV) (hx' : x' ∈ H) (hO : OptimisticLockAt tr x' i' s B CV')
@@ -250,7 +253,8 @@ theorem result_result_compatible_window_before (hrun : ACRun proposer tr H U)
   omega
 
 /-- A result and optimistic lock of one slot agree with windowed message service. -/
-theorem result_optimistic_compatible_window_before (hrun : ACRun proposer tr H U)
+theorem result_optimistic_compatible_window_before
+    (hrun : ACRun proposer tr H U)
     {a b : Time} {s : Nat} (hsync : SyncACWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
     {x x' : Fin sp.n} (hx : x ∈ H) (hx' : x' ∈ H)
     {i i' : Nat} {C O : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)}
@@ -260,6 +264,7 @@ theorem result_optimistic_compatible_window_before (hrun : ACRun proposer tr H U
   by_contra hnc
   obtain ⟨ℓ, S, hc, ht, hmaj, -, hSs⟩ := result_side hrun hx hR
   obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := optimistic_side hrun hx' hO
+  rw [hrun.stock] at h34
   have h1 := against_update_window_before hrun.localRun hsync ha hx' hx hc ht hi hreset
     hSs hT fun h => hnc (Or.symm h)
   have hle := Set.ncard_le_ncard (Set.subset_univ (voters {v | v ∈ (tr.state x i).pool s}))

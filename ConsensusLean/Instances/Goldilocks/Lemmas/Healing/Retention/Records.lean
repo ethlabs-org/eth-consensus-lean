@@ -159,7 +159,7 @@ theorem client_record_origin_of_run (hrun : GoldilocksRun proposer dg H tr)
   | 0 => by
     rw [Trace.state, hrun.init y hy]
     refine ⟨fun hx => ?_, fun hx => ?_⟩ <;>
-      simp [Node.init, FG.Record.empty] at hx
+      simp [Node.initWith, FG.Record.empty] at hx
   | i + 1 => by
     obtain ⟨ih₁, ih₂⟩ := client_record_origin_of_run hrun hy h r i
     have old : (tr.state y (i + 1)).record = (tr.state y i).record →
@@ -270,7 +270,7 @@ theorem sent_origin (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy :
       ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b
   | 0, hb => by
     rw [Trace.state, hrun.init y hy] at hb
-    simp [Node.init, FG.Record.empty] at hb
+    simp [Node.initWith, FG.Record.empty] at hb
   | i + 1, hb => by
     rcases record_step_of_run hrun hy i with he | ⟨att, hs, he⟩ <;> rw [he] at hb
     · obtain ⟨k, hk, h⟩ := sent_origin hrun hy i hb

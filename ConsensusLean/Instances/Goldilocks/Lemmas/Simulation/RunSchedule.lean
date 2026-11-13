@@ -421,7 +421,8 @@ omit [DecidableEq V] in
 theorem blockObj_fields {B C : Blk (S.params (pubOf E) hn)}
     (hB : B.parent ≠ none) (hC : C.parent ≠ none)
     (hrB : B.RootOk (digestOf S rho)) (hrC : C.RootOk (digestOf S rho))
-    (he : blockObj (S.params (pubOf E) hn) B = blockObj (S.params (pubOf E) hn) C) : B = C := by
+    (he : blockObj (S.params (pubOf E) hn) (binding := stock) B =
+      blockObj (S.params (pubOf E) hn) C) : B = C := by
   have hh := congrArg Model.Obj.msg he
   have ha := congrArg Model.Obj.auth he
   simp only [blockObj, Model.Obj.msg, Model.Msg.item.injEq] at hh

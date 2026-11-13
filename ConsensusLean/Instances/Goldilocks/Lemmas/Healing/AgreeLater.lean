@@ -292,8 +292,9 @@ theorem proposer_stored_lock_lt
   unfold SA.optimisticSelect at hsel
   dsimp only at hsel
   split_ifs at hsel
-  have h34 : 3 * sp.n ≤ 4 * (SA.optimisticVoters sp A ℓo.frame (sp.slot (tr.time r)) D).ncard :=
-    (SA.deepest_mem hsel).1.2.1
+  have h34 := (SA.deepest_mem hsel).1.2.1
+  rw [hrun.stock] at h34
+  change 3 * sp.n ≤ 4 * (SA.optimisticVoters sp A ℓo.frame (sp.slot (tr.time r)) D).ncard at h34
   change sp.slot (tr.time r) = _ at hsl
   obtain ⟨z, ⟨v, hv, rfl, -⟩, hzH⟩ :
       ∃ z ∈ SA.optimisticVoters sp A ℓo.frame (sp.slot (tr.time r)) D, z ∈ H := by
@@ -444,6 +445,7 @@ theorem readPoint_lockBlocks_below
     -- supporter voted before, for `P`
     obtain ⟨Φ, A, D, -, hΦ'U, -, hcnt, hpool, -, L, hL, hLr, hLD⟩ :=
       SA.lock_origin_readPoint hac hy hcy l₀ hl₀ (by rw [hes]; omega)
+    rw [hac.stock] at hcnt
     obtain rfl : L = B₀ := hU.1 hL (hΦU hB₀) (hLr.trans hB₀r.symm)
     obtain ⟨z, ⟨x, hx, rfl, R, hR, hRr, hDR⟩, hzH⟩ : ∃ z ∈ SA.optimisticVoters sp A Φ l₀.slot D,
         z ∈ H := by

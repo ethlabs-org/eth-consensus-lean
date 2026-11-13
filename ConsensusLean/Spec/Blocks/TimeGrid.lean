@@ -28,6 +28,10 @@ variable (G : TimeGrid)
 /-- The start time of slot `s`: `s · slotLen`. -/
 def slotTime (s : Slot) : Time := (s : Time) * G.slotLen
 
+/-- The slot containing observation time `t`, clamped to slot zero before time
+zero. Unlike `slotAt?`, this reads between boundaries and has no phase offset. -/
+def slotOf (t : Time) : Slot := (t / G.slotLen).toNat
+
 /-- The slot whose time plus `off` is `t`, if any. -/
 def slotAt? (off t : Time) : Option Slot :=
   if 0 ≤ t - off ∧ (t - off) % G.slotLen = 0 then some ((t - off) / G.slotLen).toNat

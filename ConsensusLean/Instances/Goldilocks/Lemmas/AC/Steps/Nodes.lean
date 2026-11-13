@@ -23,6 +23,8 @@ variable {wm : SA.WriteMode}
 
 variable (sp : SAParams)
 
+section Stock
+
 /-- `next_transfer_of_carry` with the unlock given. -/
 theorem next_transfer_of_carryU
     {uL : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
@@ -107,8 +109,9 @@ theorem next_transfer_of_carryU
     (locks_compatibleU hrun hy hc hs hBt (S := SX) (fun w hw => by
         obtain ⟨-, x, hx, hxv, hxs, hxa⟩ := hsupp hw
         exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩)
-      hhalf hf2 hearlier fun Φ' A D _ hΦ'U _ h34 hpool _ =>
-        origin_compatible hU hΦ'U h34 hf2 fun v hv hvH => by
+      (by simpa only [hrun.stock] using hhalf) (by simpa only [hrun.stock] using hf2)
+      hearlier fun Φ' A D _ hΦ'U _ h34 hpool _ =>
+        origin_compatible hU hΦ'U h34 (by simpa only [hrun.stock] using hf2) fun v hv hvH => by
           obtain ⟨hvs, j, -, e', hvote, rfl⟩ := hpool v hv hvH
           exact hall _ hvH j e' hvote hvs)
     fun X' Cx hCx hp hCxC =>
@@ -196,7 +199,7 @@ theorem optimistic_transfer_storedU
     dsimp only at h
     split_ifs at h
     have := (deepest_mem h).1.2.1
-    rwa [hslx] at this
+    rwa [hslx, hrun.stock] at this
   -- each of them supports `B` at `y` or equivocates there
   set V := mergedVoteView sp e.readPoint ℓ.frame (s + 1)
   have hcover : SX ⊆ supporters ℓ.frame V s B ∪ equivocators V.votes := by
@@ -238,7 +241,9 @@ theorem optimistic_transfer_storedU
         rcases hcover hw with ⟨-, x, hx, hxv, hxs, hxa⟩ | h
         · exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩
         · exact Or.inl h)
-      (by omega) hf hearlier hm)
+      (by rw [hrun.stock]; omega) (by simpa only [hrun.stock] using hf) hearlier
+      (fun Φ' A' D' hΦ' hΦ'U hD' h34 => hm Φ' A' D' hΦ' hΦ'U hD'
+        (by simpa only [hrun.stock] using h34)))
     fun X' Cx hCx hp hCxC =>
       isBest_of_cover hΦ (merged_support_subsetU hr hy hc (s + 1)) (fun B hB =>
           voteDomain_subset_tree hB.1)
@@ -327,6 +332,8 @@ theorem first_transfer_stored_of_poolU
   have hsupp := counted_supportersU hrun hx hy hupd.1 hc hs hBD hcarry hviab hd
   -- half of the committee are counted for `B`, and a strict majority of `x`'s participants
   have hhalf : sp.n ≤ 2 * SX.ncard := by
+    unfold FastTest confirmationScore at hfast
+    rw [hrun.stock] at hfast
     refine hfast.trans (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_))
     rintro w ⟨hw, v, ⟨hv, hres⟩, hval, -, hanc⟩
     exact ⟨v, ⟨hv, hval ▸ hw, hres, hanc⟩, hval⟩
@@ -364,7 +371,9 @@ theorem first_transfer_stored_of_poolU
     (locks_compatibleU hrun hy hc hs hBt (S := SX) (fun w hw => by
         obtain ⟨-, x, hx, hxv, hxs, hxa⟩ := hsupp hw
         exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩)
-      hhalf hf hearlier hm)
+      (by simpa only [hrun.stock] using hhalf) (by simpa only [hrun.stock] using hf) hearlier
+      (fun Φ' A' D' hΦ' hΦ'U hD' h34 => hm Φ' A' D' hΦ' hΦ'U hD'
+        (by simpa only [hrun.stock] using h34)))
     fun X' Cx hCx hp hCxC =>
       isBest_of_majority hΦ (merged_support_subsetU hr hy hc (s + 1)) (fun B hB =>
           voteDomain_subset_tree hB.1)
@@ -475,6 +484,8 @@ theorem first_transferU (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.
 theorem first_transfer : FirstTransfer sp :=
   fun _ _ _ _ _ _ hrun _ _ _ _ _ _ _ _ _ hx hfl hy hc hs hsync hcarry hfault hviab hearlier =>
     first_transfer_stored sp hrun hx hfl .refl hy hc hs hsync hcarry hfault hviab hearlier
+
+end Stock
 
 /-- A block that `ac_to_fg` returns is a candidate. -/
 private theorem mem_toFGCandidates {FGP : Type} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}

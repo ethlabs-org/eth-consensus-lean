@@ -282,7 +282,7 @@ noncomputable def S1 : SAState sp.n := ((GA).step v0 (GA).initial Φ₁ 6 (.bloc
 noncomputable def S2 : SAState sp.n := ((GA).step v0 S1 Φ₁ 8 (.message w2)).1
 
 theorem reachable_init : (GA).ReachableAt v0 U (GA).initial Φ₀ 0 :=
-  ACInterface.ReachableAt.init (A := GA) (self := v0) (U := U) Φ₀ ⟨rfl, rfl, rfl, rfl, rfl⟩
+  ACInterface.ReachableAtFrom.init (A := GA) (self := v0) (U := U) Φ₀ ⟨rfl, rfl, rfl, rfl, rfl⟩
     ⟨frameOK_Φ₀, fun B hB => by rw [Set.mem_singleton_iff.mp hB]; exact g_mem⟩
 
 /-- `ac_on_block(B1)` at `6` obeys the call law: `Φ₀ ⊑_{B1} Φ₁`, a valid payload, slot `1`. -/
@@ -296,13 +296,13 @@ theorem callOK_w2 : (GA).CallOK U Φ₁ 8 (.message w2) Φ₁ := ⟨⟨frameOK_�
 
 theorem reachable_S1 : (GA).ReachableAt v0 U S1 Φ₁ 6 := by
   unfold S1
-  exact ACInterface.ReachableAt.step (A := GA) (self := v0) (U := U) (s := (GA).initial)
+  exact ACInterface.ReachableAtFrom.step (A := GA) (self := v0) (U := U) (s := (GA).initial)
     (Φ := Φ₀) (Φ' := Φ₁) (t := 0) (t' := 6) (.block B1) reachable_init (by decide) callOK_B1
 
 /-- **The run is reachable**, inside the coherent `U`, with frame `Φ₁` at time `8`. -/
 theorem reachable_S2 : (GA).ReachableAt v0 U S2 Φ₁ 8 := by
   unfold S2
-  exact ACInterface.ReachableAt.step (A := GA) (self := v0) (U := U) (s := S1)
+  exact ACInterface.ReachableAtFrom.step (A := GA) (self := v0) (U := U) (s := S1)
     (Φ := Φ₁) (Φ' := Φ₁) (t := 6) (t' := 8) (.message w2) reachable_S1 (by decide) callOK_w2
 
 /-- The first call only stamps `B1`. -/

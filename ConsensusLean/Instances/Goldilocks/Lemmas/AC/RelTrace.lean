@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Locks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WriteMode
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.RelTrace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 
 public section
 
@@ -21,6 +22,70 @@ the parent's mode and unlock (`ACLocalRun.toU`, `ACInterface.ReachableAt.toU`, `
 namespace Consensus.Goldilocks.SA
 
 variable {sp : SAParams} {FGP : Type}
+
+theorem optimisticM_mayVote (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (optimisticConfirmationM sp m A Φ t).mayVote = A.mayVote :=
+  optimisticConfirmationM_keep _ optimisticConfirmation_mayVote m A Φ t
+
+theorem updateM_mayVote (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) (s : Nat) : (updateConfirmationM sp m A Φ t s).mayVote = A.mayVote := by
+  rw [updateConfirmationM_field SAState.mayVote (fun _ _ => rfl)]
+  exact updateConfirmation_mayVote A Φ t s
+
+theorem tryVoteWithM_mayVote (m : WriteMode) (self : Fin sp.n) (L : Set Lock)
+    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (tryVoteWithM sp m self L A Φ t).1.mayVote = A.mayVote := by
+  unfold tryVoteWithM
+  dsimp only
+  split_ifs <;> simp only [optimisticM_mayVote, admitVote_mayVote]
+
+theorem stepWithM_mayVote (ro : ReplayOrder sp FGP) (m : WriteMode) (self : Fin sp.n)
+    (L : Set Lock) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    (c : (goldilocksSA sp FGP ro).Call) :
+    (stepWithM sp ro m self L A Φ t c).1.mayVote = A.mayVote := by
+  cases c with
+  | tick =>
+    change (acOnTickWithM sp m self L A Φ t).1.mayVote = _
+    unfold acOnTickWithM
+    dsimp only
+    split_ifs <;> simp only [tryVoteWithM_mayVote, updateM_mayVote]
+  | proposal =>
+    change (acProposalWith sp L A Φ t).1.mayVote = _
+    unfold acProposalWith
+    split_ifs <;> rfl
+  | toFG => exact acToFG_mayVote A Φ t
+  | message v =>
+    simp only [stepWithM, acOnMessageWithM, tryVoteWithM_mayVote, optimisticM_mayVote,
+      admitVote_mayVote]
+  | block B =>
+    simp only [stepWithM, acOnBlockWithM, tryVoteWithM_mayVote, optimisticM_mayVote,
+      blockReceipt_mayVote]
+  | restart => exact acRestart_mayVote ro self A Φ t
+
+theorem traceWithM_mayVote {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat → Set Lock}
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    (hr : ACLocalRunU m u H U tr) {y : Fin sp.n} (hy : y ∈ H) (i s : Nat) :
+    (tr.state y i).mayVote s = true := by
+  induction i with
+  | zero => change (tr.init y).mayVote s = true; rw [hr.init y hy]; rfl
+  | succ i ih =>
+    by_cases hc : ∃ ℓ, tr.CallAt y i ℓ
+    · obtain ⟨ℓ, hc⟩ := hc
+      have he := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
+      rw [hc.1] at he
+      have hp := stepWithM_mayVote ro m y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call
+      rw [he] at hp
+      have hs : tr.state y (i + 1) = tr.post i := by simp [Trace.state, hc.1, hc.2]
+      rw [hs, hp]
+      exact ih
+    · have hs : tr.state y (i + 1) = tr.state y i := by
+        rw [Trace.state]
+        split_ifs with h
+        · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.mp h.2
+          exact False.elim (hc ⟨ℓ, h.1, hℓ⟩)
+        · rfl
+      rw [hs]
+      exact ih
 
 /-! ### The handlers with the locks after the unlock given -/
 
@@ -203,7 +268,7 @@ theorem ACRun.toU {ro : ReplayOrder sp FGP} {selectedProposer : Nat → Fin sp.n
     {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
     (h : ACRun selectedProposer tr H U) :
     ACRunU (WriteMode.parent sp) (parentOracle sp tr) selectedProposer tr H U :=
-  ⟨h.localRun.toU, h.honest⟩
+  ⟨h.stock, h.localRun.toU, h.honest⟩
 
 end Consensus.Goldilocks.SA
 

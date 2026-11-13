@@ -85,6 +85,7 @@ private theorem adds_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FG
   split_ifs
   · exact Adds.of_eq rfl
   · exact Adds.of_eq rfl
+  all_goals try exact Adds.of_eq rfl
   all_goals
     intro σ v hv
     rw [SA.optimistic_pool_eq] at hv
@@ -279,7 +280,7 @@ theorem pool_vote_emitted (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
   | h i ih =>
     rcases tr.projAC.noCall_or_lastCall y i with hn | ⟨k, hk, ℓ, hc, hn⟩
     · rw [tr.projAC.state_of_noCall hn] at hv
-      simp [RunTrace.projAC, hrun.init y hy, Node.init, SA.SAState.initial] at hv
+      simp [RunTrace.projAC, hrun.init y hy, Node.initWith, SA.SAState.initial] at hv
     · rw [tr.projAC.state_of_lastCall hc hk hn] at hv
       have hf := (hrun.cutLaw y hy k _ (projAC_callAt.mp hc)).1
       have hΦ : FrameOK ℓ.frame :=
@@ -322,7 +323,7 @@ theorem state_pool_cap (hrun : GoldilocksRun proposer dg H tr)
   | h i ih =>
     rcases tr.projAC.noCall_or_lastCall y i with hn | ⟨k, hk, ℓ, hc, hn⟩
     · rw [tr.projAC.state_of_noCall hn]
-      simp [RunTrace.projAC, hrun.init y hy, Node.init, SA.SAState.initial]
+      simp [RunTrace.projAC, hrun.init y hy, Node.initWith, SA.SAState.initial]
     · rw [tr.projAC.state_of_lastCall hc hk hn]
       have hex := (hrun.cutLaw y hy k _ (projAC_callAt.mp hc)).2.1
       rw [← projAC_state hrun.toLocalRun hy] at hex
@@ -480,7 +481,7 @@ private theorem one_block (hrun : GoldilocksRun proposer dg H tr)
 theorem goldilocks_ac_projection : GoldilocksACProjection := by
   intro sp ro dg H tr proposer hrun hnc
   have hloc := ac_projection _ _ dg H _ tr proposer (requirements sp ro) hrun.toLocalRun hnc
-  refine ⟨hloc, fun y hy => pool_vote_emitted hrun hy,
+  refine ⟨hrun.stock, hloc, fun y hy => pool_vote_emitted hrun hy,
     fun y hy i ℓ v hc hm hval => message_vote hrun hy hc hm hval,
     fun y hy i ℓ hc B hB v hv hval => carried_vote hrun hy hc hB hv hval, fun B hB hr => ?_,
     fun B B' hB hB' hp hpr hs => one_block hrun hB hB' hp hpr hs⟩

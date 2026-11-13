@@ -36,13 +36,14 @@ theorem att_protected_of_signings {v : V}
     {j q : Nat} {a : FG.Att (Fintype.card V)} (ha : EngineSignsAt S rho hn v j q a) :
     Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
       (attObj a) = true := by
-  have hinj {a b : FG.Att (Fintype.card V)} (h : attObj a = attObj b) : a = b := by
+  have hinj {a b : FG.Att (Fintype.card V)}
+      (h : attObj (binding := stock) a = attObj b) : a = b := by
     injection h with _ h₂
     injection h₂ with h₃
     injection h₃ with h₄
     have hd := congrArg (decodeAtt (Fintype.card V)) h₄
     simpa only [decodeAtt_encodeAtt, Option.some.injEq] using hd
-  have hself : conflicts (attObj a) (attObj a) = false := by
+  have hself : conflicts (binding := stock) (attObj a) (attObj a) = false := by
     apply Bool.eq_false_iff.mpr
     intro h
     obtain ⟨b, c, hb, hc', hbc⟩ := (conflictsIff_iff.mp conflicts_iff _ _ _).mp h

@@ -167,7 +167,8 @@ theorem proposal_duty_forward_origin (v : V)
       erw [hact2] at hq
       have hrole : (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
           .proposer s := rfl
-      simp only [Option.map, Option.toList_some, Model.Run.signedCandidate, hrole,
+      erw [Model.Run.signedCandidate_of_default rho v (.propose s hs) _ (fun _ => rfl)] at hq
+      simp only [Option.map, Option.toList_some, hrole,
         hselected, ↓reduceIte] at hq
       dsimp only [List.map] at hq
       unfold Model.releaseAll at hq
@@ -200,7 +201,7 @@ theorem decoded_forward_child_in_receipt
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B)) :
     blockObj (S.params (Model.pubOf E) hn) B ∈ receipt.parts ∧
-      decodeBlock (S.params (Model.pubOf E) hn) (Model.digests rho.hash receipt)
+      decodeBlock (S.params (Model.pubOf E) hn) (binding := stock) (Model.digests rho.hash receipt)
         (blockObj (S.params (Model.pubOf E) hn) B) = some B := by
   have hchild : Model.Obj.Contains o (blockObj (S.params (Model.pubOf E) hn) B) := by
     rw [forwardObj_of_decodeForward _ _ _ _ _ _ hd]
@@ -227,7 +228,7 @@ theorem poll_candidate_forward_queue (v : V)
       some (rho.ownKey v, t, p, B)) :
     (t, p.toList ++ [blockObj (S.params (Model.pubOf E) hn) B]) ∈
       (shapeOf S hn nd).forwards := by
-  obtain ⟨m, cs, hm, _, rfl⟩ := rho.mem_signedCandidate.mp ho
+  obtain ⟨m, cs, hm, _, _, rfl⟩ := rho.mem_signedCandidate.mp ho
   rw [act_poll_snd S hn, (poll_outbox _ _).2] at hm
   rcases List.mem_append.mp hm with hm | hm
   swap
@@ -306,7 +307,7 @@ private theorem duty_forward_stamp (v : V)
   | poll n => exact hs.2 _ (poll_candidate_forward_queue S rho hn v nd n ho hd)
   | act s k => exact k.elim
   | propose s hpos =>
-    obtain ⟨m, cs, _, _, rfl⟩ := rho.mem_signedCandidate.mp ho
+    obtain ⟨m, cs, _, _, _, rfl⟩ := rho.mem_signedCandidate.mp ho
     have he := forwardObj_of_decodeForward _ _ _ _ _ _ hd
     have ha := congrArg Model.Obj.auth he
     change Model.Auth.signed (rho.ownKey v) (ShapeRole.proposer (Kind := Empty) s) =
@@ -315,7 +316,8 @@ private theorem duty_forward_stamp (v : V)
   | pollPropose n =>
     have hempty : ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose n)).2 =
         [] := by
-      simp only [Model.protoOf, compiled, compile, goldilocks, dite_eq_left hn, goldilocksShape]
+      simp only [Model.protoOf, compiled, compile, goldilocks, goldilocksWith,
+        dite_eq_left hn, goldilocksShape]
       rfl
     obtain ⟨m, cs, hm, _, _⟩ := rho.mem_signedCandidate.mp ho
     rw [hempty] at hm
@@ -502,7 +504,7 @@ theorem delivery_forward_acceptance_decoded (hv : rho.ExecutionValid) {i : Nat} 
       (simTrace S rho hn).AcceptAt (rho.ownKey v) k B ∧
       (simTrace S rho hn).time k = t ∧
       q = (t, p.toList ++ [blockObj (S.params (Model.pubOf E) hn) B]) ∧
-      decodeBlock (S.params (Model.pubOf E) hn) (Model.digests rho.hash o)
+      decodeBlock (S.params (Model.pubOf E) hn) (binding := stock) (Model.digests rho.hash o)
         (blockObj (S.params (Model.pubOf E) hn) B) = some B ∧
       Model.Obj.Contains o (blockObj (S.params (Model.pubOf E) hn) B) := by
   have ht : (stateAt S rho hn v i).now = t :=
@@ -551,7 +553,7 @@ theorem delivery_decoded_forward_acceptance (hv : rho.ExecutionValid)
   obtain ⟨C, p', k, hk, ha, ht, heq, hc, hcontains⟩ :=
     delivery_forward_acceptance_decoded S rho hn hv he _ hq
   have htime : t = u := congrArg Prod.fst heq
-  have hwire : blockObj (S.params (Model.pubOf E) hn) B = blockObj _ C := by
+  have hwire : blockObj (S.params (Model.pubOf E) hn) (binding := stock) B = blockObj _ C := by
     have hlast := congrArg List.getLast? (congrArg Prod.snd heq)
     cases p <;> cases p' <;> simpa using hlast
   have hBC : B = C := by
@@ -828,7 +830,7 @@ private theorem dutyBatches_signer (v : V) :
     rw [dutyBatches_cons] at hb
     rcases List.mem_cons.mp hb with rfl | hb
     · split at ho
-      · obtain ⟨m, cs, _, _, rfl⟩ := rho.mem_signedCandidate.mp ho
+      · obtain ⟨m, cs, _, _, _, rfl⟩ := rho.mem_signedCandidate.mp ho
         rfl
       · exact False.elim (List.not_mem_nil ho)
     · exact ih _ b hb o ho

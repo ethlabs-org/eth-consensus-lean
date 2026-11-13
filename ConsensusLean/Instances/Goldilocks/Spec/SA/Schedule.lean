@@ -33,6 +33,8 @@ structure SAParams where
   c : Nat
   /-- The increment is at least two slots. -/
   two_le_c : 2 ≤ c
+  /-- Public size of the voting committee; stock uses the whole population. -/
+  committeeSize : Nat := toParams.n
 
 namespace SAParams
 

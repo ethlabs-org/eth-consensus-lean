@@ -170,15 +170,29 @@ variable (rho : Run F E)
 
 omit [DecidableEq V] in
 /-- What `signedCandidate` gives: `act`'s message, signed with the own key in
-the duty's role, if that role selects the key. -/
+the candidate's role, when both the duty and candidate roles select the key. -/
 theorem mem_signedCandidate {v : V} {d : (protoOf F E).Duty}
     {a : List (Msg (protoOf F E).Item (protoOf F E).Body × List (protoOf F E).Object)}
     {o : (protoOf F E).Object} :
     o ∈ rho.signedCandidate v d a ↔
       ∃ m cs, (m, cs) ∈ a ∧ rho.ownKey v ∈ rho.sel ((protoOf F E).role d) ∧
-        o = .mk (.signed (rho.ownKey v) ((protoOf F E).role d)) m cs := by
+        rho.ownKey v ∈ rho.sel ((protoOf F E).candidateRole d m) ∧
+        o = .mk (.signed (rho.ownKey v) ((protoOf F E).candidateRole d m)) m cs := by
   by_cases hk : rho.ownKey v ∈ rho.sel ((protoOf F E).role d)
   · simp [signedCandidate, hk, eq_comm]
+  · simp [signedCandidate, hk]
+
+omit [DecidableEq V] in
+/-- The default classifier preserves the duty-role signing construction. -/
+theorem signedCandidate_of_default (v : V) (d : (protoOf F E).Duty)
+    (a : List (Msg (protoOf F E).Item (protoOf F E).Body × List (protoOf F E).Object))
+    (h : ∀ m, (protoOf F E).candidateRole d m = (protoOf F E).role d) :
+    rho.signedCandidate v d a =
+      if rho.ownKey v ∈ rho.sel ((protoOf F E).role d) then
+        a.map (fun (m, cs) => .mk (.signed (rho.ownKey v) ((protoOf F E).role d)) m cs)
+      else [] := by
+  by_cases hk : rho.ownKey v ∈ rho.sel ((protoOf F E).role d)
+  · simp [signedCandidate, hk, h]
   · simp [signedCandidate, hk]
 
 omit [DecidableEq V] in
@@ -423,7 +437,7 @@ theorem tick_auth (nd : Node (protoOf F E)) (v : V) (t : Time) {o : (protoOf F E
   obtain ⟨cs, hcs, h2, -⟩ := rho.tick_flat nd v t
   rw [h2] at ho
   rcases hcs o (releaseAll_subset _ _ _ _ o ho) with ⟨d, -, st, -, hc⟩ | hc
-  · obtain ⟨m, cs, -, hk, rfl⟩ := (rho.mem_signedCandidate).mp hc
+  · obtain ⟨m, cs, -, -, hk, rfl⟩ := (rho.mem_signedCandidate).mp hc
     exact Or.inr ⟨_, rfl, hk⟩
   · obtain ⟨mc, -, rfl⟩ := mem_gossipCandidates.mp hc
     exact Or.inl rfl
@@ -585,7 +599,7 @@ theorem deliver_auth (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object
   obtain ⟨cs, hcs, h2, -⟩ := rho.deliver_flat nd v o t
   rw [h2] at ho
   rcases hcs o' (releaseAll_subset _ _ _ _ o' ho) with ⟨d, -, st, -, hc⟩ | hc
-  · obtain ⟨m, cs, -, hk, rfl⟩ := (rho.mem_signedCandidate).mp hc
+  · obtain ⟨m, cs, -, -, hk, rfl⟩ := (rho.mem_signedCandidate).mp hc
     exact Or.inr ⟨_, rfl, hk⟩
   · obtain ⟨mc, -, rfl⟩ := mem_gossipCandidates.mp hc
     exact Or.inl rfl

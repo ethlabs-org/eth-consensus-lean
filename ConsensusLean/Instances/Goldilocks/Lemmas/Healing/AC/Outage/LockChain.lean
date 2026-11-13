@@ -195,13 +195,16 @@ private theorem lockInv_tryVoteAC {A : SAState sp.n} (h : LockInv U A Φ) {L₁ 
   split_ifs
   · exact h
   · exact h
-  all_goals
-    refine lockInv_optimisticAC hU hΦ hΦU (lockInv_of_eqAC ?_ (admitVote_keeps_locks _ _ _).1
+  · refine lockInv_optimisticAC hU hΦ hΦU (lockInv_of_eqAC ?_ (admitVote_keeps_locks _ _ _).1
       (admitVote_keeps_locks _ _ _).2) _
-    first
-    | exact lockInv_of_eqAC (lockInv_movesBackAC (A' := { A with locks := L₁ }) hU hΦU h hm rfl)
-        rfl rfl
-    | exact lockInv_of_eqAC h rfl rfl
+    exact lockInv_of_eqAC (lockInv_movesBackAC (A' := { A with locks := L₁ }) hU hΦU h hm rfl)
+      rfl rfl
+  · refine lockInv_optimisticAC hU hΦ hΦU (lockInv_of_eqAC ?_ (admitVote_keeps_locks _ _ _).1
+      (admitVote_keeps_locks _ _ _).2) _
+    exact lockInv_of_eqAC h rfl rfl
+  · exact lockInv_of_eqAC (lockInv_movesBackAC (A' := { A with locks := L₁ }) hU hΦU h hm rfl)
+      rfl rfl
+  · exact lockInv_of_eqAC h rfl rfl
 
 /-- A call at mode `wm` with the locks `L₁`, which move back from the call's unlock input. -/
 private theorem lockInv_stepAC {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : LockInv U A Φ)

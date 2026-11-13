@@ -57,15 +57,16 @@ theorem dutyStep_poll_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (gold
   simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.poll k) = .poll from rfl,
     hsel, ↓reduceIte]
   rw [act_poll_snd S hn, (poll_outbox _ _).2]
+  erw [Model.Run.signedCandidate_of_default rho v (.poll k) _ (fun _ => rfl)]
   erw [hempty, hvote, List.map_nil, List.append_nil, List.append_nil]
   cases hh : (pollPre (shapeOf S hn nd)).outbox.head? with
   | none =>
-    simp only [Option.map_none, Option.toList_none, Model.Run.signedCandidate]
+    simp only [Option.map_none, Option.toList_none]
     erw [List.map_nil]
     simp [Model.releaseAll, relHead]
   | some b =>
     have hrole : (Model.protoOf (compiled (goldilocks S)) E).role (.poll k) = .poll := rfl
-    simp only [Option.map_some, Option.toList_some, Model.Run.signedCandidate, hrole]
+    simp only [Option.map_some, Option.toList_some, hrole]
     rw [ite_eq_left hsel]
     erw [List.map_cons, List.map_nil]
     unfold relHead
@@ -117,7 +118,7 @@ theorem dutyStep_poll_batch (v : V) (nd : Model.Node (Model.protoOf (compiled (g
   simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.poll k) = .poll from rfl,
     hsel, ↓reduceIte]
   rw [act_poll_snd S hn]
-  unfold Model.Run.signedCandidate
+  erw [Model.Run.signedCandidate_of_default rho v (.poll k) _ (fun _ => rfl)]
   simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.poll k) = .poll from rfl,
     hsel, ↓reduceIte]
   erw [List.append_assoc, List.map_append, List.map_append, List.map_map,
@@ -1130,7 +1131,7 @@ theorem tick_releases (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
       rw [hQ]
       exact List.mem_append_left _ (List.mem_flatMap.mpr ⟨_, hℓ ▸ hlab,
         List.mem_map.mpr ⟨m, hm, rfl⟩⟩)
-    have hobj : @voteObj (pubOf E).n m.msg = pollObj S rho v (.vote (encodeVote m.msg)) := by
+    have hobj : @voteObj stock (pubOf E).n m.msg = pollObj S rho v (.vote (encodeVote m.msg)) := by
       unfold voteObj; rw [show m.msg.val = rho.ownKey v from hval]; rfl
     exact (congrArg (· ∈ rho.releasesAt i) hobj).mpr (hrelQ _ hq
       (protects_of_not_att S _ _ _ (fun k w h => by cases h))

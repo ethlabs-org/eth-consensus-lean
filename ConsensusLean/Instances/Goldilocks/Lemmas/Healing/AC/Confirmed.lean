@@ -91,6 +91,7 @@ private theorem pool_sub_tryVote
   split_ifs
   · exact hv
   · exact hv
+  all_goals try exact hv
   all_goals
     rw [optimisticConfirmationM_keep _ SA.optimistic_pool]
     unfold admitVote
@@ -129,6 +130,7 @@ private theorem RecP.ofTryVote
   split_ifs at hsel ⊢
   · exact hR
   · exact hR
+  all_goals try exact RecP.of_eq rfl hR
   all_goals
     exact RecP.ofOptimistic (RecP.of_eq (lc_admitVote _ _ _) hR) fun B hB =>
       hsel _ B (optimisticConfirmationM_keep _ SA.optimistic_pool _ _ _ _).symm hB
@@ -173,6 +175,7 @@ theorem optimisticSelect_compatibleU
   split_ifs at hsel
   have hBt := (deepest_mem hsel).1.1
   have h34 := (deepest_mem hsel).1.2.1
+  rw [hS.run.stock] at h34
   have hf := hS.two_faulty_lt
   have hlt : Hᶜ.ncard <
       (optimisticVoters sp A ℓ.frame (sp.slot (tr.time c)) B).ncard := by omega

@@ -470,6 +470,7 @@ theorem emit_val {j : Nat} {v : Vote sp2.n} (h : (tickRun N2 dg2).EmitAt v0 j v)
 /-- **The run is a Goldilocks run.** -/
 theorem asleepRun_goldilocksRun :
     GoldilocksRun (sp := sp2) (ro := ro2) (fun _ => w0) dg2 Set.univ tr2 where
+  stock := rfl
   toLocalRun := asleepRun_localRun _
   genesis_root_ok := dg2_genesis
   carried_vote_unforgeable y _ i B hB v hv _ := by

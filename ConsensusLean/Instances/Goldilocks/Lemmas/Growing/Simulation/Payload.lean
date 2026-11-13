@@ -36,7 +36,7 @@ theorem simTraceAt_carried_vote_unforgeable (hv : rho.ExecutionValid) :
       ∀ v ∈ blockVotes B, v.val ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i) →
         ∃ j < i, (simTraceAt S rho hn).EmitAt v.val j v := by
   intro y k B _ hc m hm hh
-  have hmem : voteObj m ∈ payloadObjs B.fgPayload B.acPayload :=
+  have hmem : voteObj (binding := stock) m ∈ payloadObjs B.fgPayload B.acPayload :=
     List.mem_append_right _ (List.mem_map.mpr ⟨m, List.mem_append_left _ hm, rfl⟩)
   have ht : (simTraceAt S rho hn).time k ≤ rho.horizon := by
     obtain ⟨acc, _, hl⟩ := hc

@@ -99,7 +99,7 @@ theorem simTraceAt_att_unforgeable (hv : rho.ExecutionValid) :
     rwa [mem_honestKeysAt_iff, min_eq_left (simTraceAt_labelled_time_le S rho hn hv hl)] at hh
   rcases hc with hc | ⟨B, hc, ha⟩
   swap
-  · have hmem : attObj a ∈ payloadObjs B.fgPayload B.acPayload :=
+  · have hmem : attObj (binding := stock) a ∈ payloadObjs B.fgPayload B.acPayload :=
       List.mem_append_left _ (List.mem_map.mpr ⟨a, ha, rfl⟩)
     obtain ⟨i, t, hik, hs, hr⟩ := block_payload_source_at S rho hn hv hc hmem hh'
       (show rho.signerOf (attObj a) = some (rho.key a.val) from rfl)

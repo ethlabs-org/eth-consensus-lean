@@ -220,12 +220,14 @@ theorem rt_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
 /-- `try_vote` on a receipt by `t_s + Δ` of a joined node that has not voted in slot `s > 0` and
 holds a ready proposal of slot `s` casts a vote of slot `s`. -/
 theorem tryVote_ready (x : Fin sp.n) {A : SAState sp.n} (Φ : Frm sp.n FGP) {t : Time}
+    (hp : A.mayVote (sp.slot t) = true)
     (hj : joined sp A t) (hv : A.votedSlot ≠ sp.slot t) (ht : t ≤ sp.ts (sp.slot t) + sp.Δ)
     (hs : 0 < sp.slot t) (hr : voteReady sp Φ (sp.slot t)) :
     ∃ e ∈ (tryVote sp x A Φ t).2, e.msg.slot = sp.slot t := by
-  rcases vs_tryVote x A Φ t with h | h
+  rcases vs_tryVote x A Φ t hp with h | h
   · exfalso
     unfold tryVote at h; dsimp only at h
+    simp only [hp, ite_true] at h
     split_ifs at h with h1 h2
     · rcases h1 with h1 | h1 | h1
       · exact h1 hj
@@ -311,6 +313,8 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
   obtain ⟨e, he, hes⟩ := tryVote_ready y ℓ.frame (t := (tr S).time (k + 1))
     (A := SA.optimisticConfirmation _ (SA.blockReceipt _ ((tr S).state y (k + 1)).ac
       ((tr S).time (k + 1)) X) ℓ.frame ((tr S).time (k + 1)))
+    (by rw [SA.optimisticConfirmation_mayVote, SA.blockReceipt_mayVote, ← hAC]
+        exact SA.trace_mayVote_stock hac hy _ _)
     (by unfold SA.joined; rw [rt_optimistic, rt_blockReceipt, hrt]; exact bot_le)
     (by rw [SA.vs_optimistic, SA.vs_blockReceipt, hs1]; exact_mod_cast hv)
     (by rw [hs1, ht]; change _ ≤ (4 * 3 * 1 + 3 : Int); dsimp only [Time] at hk ⊢; omega)

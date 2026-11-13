@@ -30,6 +30,7 @@ theorem tryVote_readPoint_locks_eqWith
   split_ifs at he with h1 h2 h3
   · simp at he
   · simp at he
+  all_goals try simp only [List.not_mem_nil] at he
   all_goals
     rw [List.mem_singleton] at he
     subst he
@@ -48,6 +49,7 @@ theorem tryVote_readPoint_locks_eq {x : Fin sp.n} {A : SAState sp.n}
   split_ifs at he with h1 h2 h3
   · simp at he
   · simp at he
+  all_goals try simp only [List.not_mem_nil] at he
   all_goals
     rw [List.mem_singleton] at he
     subst he

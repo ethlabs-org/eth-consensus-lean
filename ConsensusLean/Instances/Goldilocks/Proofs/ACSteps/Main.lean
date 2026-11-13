@@ -8,7 +8,7 @@ public section
 
 /-! # Goldilocks milestone ACSteps
 
-`ACSteps` (for every SA parameter set) from `Lemmas/AC/Steps/`. -/
+`ACSteps` (for population-sized committees) from `Lemmas/AC/Steps/`. -/
 
 namespace Consensus.Goldilocks.SA
 

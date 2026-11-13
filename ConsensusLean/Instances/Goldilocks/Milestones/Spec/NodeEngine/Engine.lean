@@ -176,7 +176,7 @@ noncomputable def nodeShape {Out : Type} (isFinalized : Out → Bool) : ChainSha
   Body := Body
   Durable := State W
   decBody := W.decBody
-  init k := ⟨k, Node.init R.operations.toAC, 0, [], [], false, fun _ => none, [], []⟩
+  init k _ := ⟨k, Node.init R.operations.toAC, 0, [], [], false, fun _ => none, [], []⟩
   clock st t := { st with now := t }
   propose := propose W
   act := fun _ _ k => k.elim
@@ -188,7 +188,7 @@ noncomputable def nodeShape {Out : Type} (isFinalized : Out → Bool) : ChainSha
   dependencies := W.dependencies
   recordOwn := recordOwn W
   durable := id
-  restore := restore W
+  restore k _ := restore W k
   out g st := outOf W st (isFinalized g)
   conflicts := W.conflicts
   isFGAtt := W.isFGAtt

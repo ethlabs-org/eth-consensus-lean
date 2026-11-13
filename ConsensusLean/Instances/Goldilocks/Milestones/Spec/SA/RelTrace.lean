@@ -44,9 +44,10 @@ noncomputable abbrev tryVoteWith (self : Fin sp.n) (L₁ : Set Lock) (A : SAStat
     let H := getHead sp A₁ Φ t (Φ.viableTree dom) V ((s : Int) - 1)
     let A₂ := { A₁ with votedSlot := s }
     let vote : Vote sp.n := { val := self, slot := s, head := H.root }
-    let A₃ := optimisticConfirmation sp (admitVote sp A₂ t vote) Φ t
-    (A₃, [{ msg := vote, readPoint := A₂,
-            head := some { head := H, start := getAnchor sp A₁ Φ t, dom := dom } }])
+    let A₃ := if A.mayVote s then optimisticConfirmation sp (admitVote sp A₂ t vote) Φ t else A₂
+    (A₃, if A.mayVote s then
+      [{ msg := vote, readPoint := A₂,
+         head := some { head := H, start := getAnchor sp A₁ Φ t, dom := dom } }] else [])
 
 variable (sp) in
 open Classical in
@@ -139,9 +140,10 @@ noncomputable abbrev tryVoteWithM (m : WriteMode) (self : Fin sp.n) (L₁ : Set 
     let H := getHead sp A₁ Φ t (Φ.viableTree dom) V ((s : Int) - 1)
     let A₂ := { A₁ with votedSlot := s }
     let vote : Vote sp.n := { val := self, slot := s, head := H.root }
-    let A₃ := optimisticConfirmationM sp m (admitVote sp A₂ t vote) Φ t
-    (A₃, [{ msg := vote, readPoint := A₂,
-            head := some { head := H, start := getAnchor sp A₁ Φ t, dom := dom } }])
+    let A₃ := if A.mayVote s then optimisticConfirmationM sp m (admitVote sp A₂ t vote) Φ t else A₂
+    (A₃, if A.mayVote s then
+      [{ msg := vote, readPoint := A₂,
+         head := some { head := H, start := getAnchor sp A₁ Φ t, dom := dom } }] else [])
 
 variable (sp) in
 open Classical in
@@ -253,9 +255,10 @@ noncomputable abbrev tryVoteWithMS (m : WriteMode) (st : WalkStartFn sp FGP) (se
     let H := getHeadFrom sp a Φ t (Φ.viableTree dom) V ((s : Int) - 1)
     let A₂ := { A₁ with votedSlot := s }
     let vote : Vote sp.n := { val := self, slot := s, head := H.root }
-    let A₃ := optimisticConfirmationM sp m (admitVote sp A₂ t vote) Φ t
-    (A₃, [{ msg := vote, readPoint := A₂,
-            head := some { head := H, start := a, dom := dom } }])
+    let A₃ := if A.mayVote s then optimisticConfirmationM sp m (admitVote sp A₂ t vote) Φ t else A₂
+    (A₃, if A.mayVote s then
+      [{ msg := vote, readPoint := A₂,
+         head := some { head := H, start := a, dom := dom } }] else [])
 
 variable (sp) in
 open Classical in
@@ -396,6 +399,8 @@ inductive ReachableAtU {ro : ReplayOrder sp FGP} (m : WriteMode) (self : Fin sp.
 structure ACRunU (m : WriteMode) (u : Nat → Set Lock) {ro : ReplayOrder sp FGP}
     (selectedProposer : Nat → Fin sp.n) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
     (U : Set (Blk sp.n FGP)) : Prop where
+  /-- Interim population specialization; removed in place by C2. -/
+  stock : sp.committeeSize = sp.n
   /-- The AC trace contract with the unlock given. -/
   localRun : ACLocalRunU m u H U tr
   /-- The honest-object facts. -/
@@ -406,6 +411,8 @@ honest-object facts. -/
 structure ACRunUS (m : WriteMode) (u : Nat → Set Lock) (st : Nat → WalkStartFn sp FGP)
     {ro : ReplayOrder sp FGP} (selectedProposer : Nat → Fin sp.n) (tr : SATrace sp FGP ro)
     (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) : Prop where
+  /-- Interim population specialization; removed in place by C2. -/
+  stock : sp.committeeSize = sp.n
   /-- The AC trace contract from the starts `st`. -/
   localRun : ACLocalRunUS m u st H U tr
   /-- The honest-object facts. -/

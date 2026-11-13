@@ -365,7 +365,8 @@ theorem tryVote_cast (A : SAState sp1.n) (t : Time) (hs0 : 0 < sp1.slot t)
     (ht : t ≤ sp1.ts (sp1.slot t) + sp1.Δ)
     (hr : ¬ (t < sp1.ts (sp1.slot t) + sp1.Δ ∧
       (sp1.slot t = 0 ∨ ¬ voteReady sp1 Φ₁ (sp1.slot t))))
-    (hdom : B1 ∈ voteDomain sp1 (unlocked A t) Φ₁ (sp1.slot t)) :
+    (hdom : B1 ∈ voteDomain sp1 (unlocked A t) Φ₁ (sp1.slot t))
+    (hp : A.mayVote (sp1.slot t) = true) :
     ∃ d, tryVote sp1 v0 A Φ₁ t =
       (optimisticConfirmation sp1 (admitVote sp1 { unlocked A t with votedSlot := sp1.slot t } t
         ⟨v0, sp1.slot t, 1⟩) Φ₁ t,
@@ -380,6 +381,7 @@ theorem tryVote_cast (A : SAState sp1.n) (t : Time) (hs0 : 0 < sp1.slot t)
   have hh := getHead_eq (fun _ hB => voteDomain_sub _ _ hB.1) (B1_viable hdom)
   unfold unlocked at hh
   rw [ite_eq_left hs0, hh]
+  simp only [hp, ↓reduceIte]
   exact ⟨_, rfl⟩
 
 /-- The state after the receipt of `B1`. -/
@@ -423,7 +425,7 @@ theorem r0_eq : ∃ d, r0 = (S1, [⟨vote1, R0, some d⟩]) := by
     rw [slot_4]
     exact B1_mem_voteDomain ⟨B1_mem, Or.inr ⟨B1, B1_mem, rfl, Relation.ReflTransGen.refl⟩⟩
   obtain ⟨d, hd⟩ := tryVote_cast Rb 4 (by rw [slot_4]; decide) rfl (by rw [slot_4]; decide)
-    (by rw [slot_4]; decide) hr hdom
+    (by rw [slot_4]; decide) hr hdom rfl
   refine ⟨d, ?_⟩
   rw [hd, unlocked_Rb, slot_4]
   change (optimisticConfirmation sp1 (admitVote sp1 R0 4 vote1) Φ₁ 4,
@@ -508,7 +510,7 @@ theorem r1_eq : ∃ d, r1 = (S2, [⟨vote2, R1, some d⟩]) := by
     change ETime.of 4 < ETime.of (sp1.ts ((2 : Nat) - 1 : Int) + 3 * sp1.Δ)
     decide
   obtain ⟨d, hd⟩ := tryVote_cast S1 9 (by rw [slot_9]; decide) rfl (by rw [slot_9]; decide)
-    (by rw [slot_9]; decide) hr hdom
+    (by rw [slot_9]; decide) hr hdom rfl
   refine ⟨d, ?_⟩
   rw [hd, unlocked_S1, slot_9]
   change (optimisticConfirmation sp1 (admitVote sp1 R1 9 vote2) Φ₁ 9,
@@ -765,7 +767,10 @@ theorem honest_W : HonestObjects (fun _ => v0) trW Set.univ where
     rcases hB with rfl | rfl <;> rcases hB' with rfl | rfl <;> first | rfl | simp [g, B1] at hs
 
 /-- (a) The run is an AC run (the hypothesis `ACRun` of every ACSteps statement). -/
-theorem acRun_W : ACRun (fun _ => v0) trW Set.univ U₁ := ⟨localRun_W, honest_W⟩
+theorem acRun_W : ACRun (fun _ => v0) trW Set.univ U₁ where
+  stock := rfl
+  localRun := localRun_W
+  honest := honest_W
 
 /-! ## The premises -/
 

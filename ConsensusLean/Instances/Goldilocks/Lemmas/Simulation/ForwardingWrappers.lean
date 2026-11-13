@@ -457,7 +457,7 @@ theorem signedCandidate_propose_canonical {V : Type} [Fintype V] {E : Env V} (S 
       ∀ atts p d, decodeInfo (Fintype.card V) hd.info = some (atts, p) →
         blockObj (S.params (pubOf E) hn)
           (blockOf (S.params (pubOf E) hn) d hd k atts p) = o := by
-  obtain ⟨m, cs, hm, _, rfl⟩ := rho.mem_signedCandidate.mp ho
+  obtain ⟨m, cs, hm, _, _, rfl⟩ := rho.mem_signedCandidate.mp ho
   rw [act_propose_snd S hn] at hm
   obtain ⟨q, hq, he⟩ := Option.mem_map.mp (Option.mem_toList.mp hm)
   cases he

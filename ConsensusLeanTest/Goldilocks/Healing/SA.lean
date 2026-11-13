@@ -119,7 +119,8 @@ theorem protected_source (h : RunFacts tr U block) {B : Blk sp1.n Unit} {j : Nat
     rw [ts1, Δ1] at hts
     refine ⟨by dsimp only [Time] at *; omega, ?_⟩
     obtain ⟨-, -, D, hDU, -, hBD, hsrc⟩ :=
-      Healing.raw_writer_relay_source hr trivial (Or.inr hfl) Relation.ReflTransGen.refl
+      Healing.raw_writer_relay_source (by decide) hr trivial
+        (Or.inr hfl) Relation.ReflTransGen.refl
     exact h.of_relay hDU hBD hsrc
   · obtain rfl := eq_zero x
     rw [ts1, Δ1] at hts
@@ -128,7 +129,8 @@ theorem protected_source (h : RunFacts tr U block) {B : Blk sp1.n Unit} {j : Nat
     have hBp := (deepest_mem hdeep).1.1
     obtain ⟨-, hΦU⟩ := frameIn_of_callAt hr trivial hu.1
     obtain ⟨-, -, D, hDU, -, hBD, hsrc⟩ :=
-      Healing.raw_writer_relay_source hr trivial (Or.inl ⟨ℓ, hu, hC, rfl⟩) (hBp.2.2.mono hΦU)
+      Healing.raw_writer_relay_source (by decide) hr trivial
+        (Or.inl ⟨ℓ, hu, hC, rfl⟩) (hBp.2.2.mono hΦU)
     exact h.of_relay hDU hBD hsrc
   · rw [Θ1, Δ1, ts1] at hts
     obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, j', -, hacc, htj⟩ := hP

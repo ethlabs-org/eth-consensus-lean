@@ -162,6 +162,7 @@ theorem optimistic_first_proposal_anc (hrun : ACRun proposer T H U) (hf : 2 * H�
     rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin,
       Set.ncard_union_eq Set.disjoint_sdiff_left] at this
     exact this
+  have hstock := hrun.stock
   have h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard := by omega
   refine proposal_walk hr hx hc hslot hprop hV.2
     (unlocked_compatible hU hΦ hΦU hV.1 (Or.inl ⟨SX, fun w hw => ?_, by omega⟩)
@@ -219,7 +220,8 @@ private theorem proposer_high_locks
     split_ifs at hsel
     have h34 := (SA.deepest_mem hsel).1.2.1
     rw [hsl] at h34
-    refine SA.origin_compatible hU hΦoU h34 hS.two_faulty_lt fun v hv hvH => ?_
+    refine SA.origin_compatible hU hΦoU h34
+      (by simpa only [hrun'.stock] using hS.two_faulty_lt) fun v hv hvH => ?_
     obtain ⟨hvs, j', hj', e'', hve, rfl⟩ := SA.optimisticPoint_pool_vote hrun' hpH hpt hv hvH
     exact hprior _ hvH j' (by omega) e'' hve (by rw [hvs]; omega)
   rcases hO' with h | h
@@ -383,7 +385,8 @@ theorem proposal_head_of_batch (hrun : GoldilocksRun proposer dg H tr) (hs : HSS
         split_ifs at hsel
         have h34 := (SA.deepest_mem hsel).1.2.1
         rw [hsl] at h34
-        refine SA.origin_compatible hU hΦoU h34 hS.two_faulty_lt fun v hv hvH => ?_
+        refine SA.origin_compatible hU hΦoU h34
+          (by simpa only [hrun'.stock] using hS.two_faulty_lt) fun v hv hvH => ?_
         obtain ⟨hvs, j', hj', e'', hve, rfl⟩ := SA.optimisticPoint_pool_vote hrun' hpH hpt hv hvH
         exact hprior _ hvH j' (by omega) e'' hve (by rw [hvs]; omega)
     rcases hO' with h | h

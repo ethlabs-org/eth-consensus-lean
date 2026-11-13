@@ -135,6 +135,10 @@ private theorem StoredFrom.of_tryVote (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU
   · refine StoredFrom.mono (StoredFrom.of_optimistic_admit hU hΦ hΦU _ ?_ t _) ?_
     · rfl
     · exact fun s f B h => ⟨_, List.mem_singleton_self _, h⟩
+  · exact StoredFrom.of_movesBack hΦU
+      (((locks_move_back sp) FGP Φ A.locks t hΦ).2.2 ((sp.slot t : Int) - 1)
+        (mergedVoteView sp A Φ (sp.slot t)))
+  · exact StoredFrom.of_eq rfl
 
 private theorem StoredFrom.of_updateConfirmation (hU : Coherent U) (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) (A : SAState sp.n) (t : Time) (s : Nat) :

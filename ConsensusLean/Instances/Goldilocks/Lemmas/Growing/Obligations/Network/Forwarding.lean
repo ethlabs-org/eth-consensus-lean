@@ -57,7 +57,7 @@ theorem accepted_child_decodes_at {V : Type} [Fintype V] [DecidableEq V] {E : En
     (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i))
     (B : Blk (S.params (pubOf E) hn))
     (hc : (simTraceAt S rho hn).CallAt y i (.fg (.block B true))) :
-    decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+    decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B := by
   have hrun := simTraceAt_goldilocksRun S rho hn hv
   have run := hrun.upTo (hrun.time_nonneg i)
@@ -89,7 +89,7 @@ theorem scheduled_proposal_child_decodes_at {V : Type} [Fintype V] [DecidableEq 
     ∀ d p, r.2.2 = some (d, p) →
       let B := Node.mkBlock (digestOf S rho) (rho.ownKey v) r.1.fg
         (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p
-      decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+      decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
         (blockObj _ B) = some B := by
   have hrun := simTraceAt_goldilocksRun S rho hn hv
   have hsim := simTraceAt_simulates S rho hn hv
@@ -164,7 +164,8 @@ theorem delivery_acceptance_decoded_publication_at {V : Type} [Fintype V] [Decid
     (he : rho.events[i]? = some (.deliver v o t))
     (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
     (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true))
-    (hchild : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+    (hchild : decodeBlock (S.params (pubOf E) hn) (binding := stock)
+      (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B) :
     ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
       q.origin = rho.ownKey v ∧
@@ -186,7 +187,8 @@ theorem tick_proposal_acceptance_decoded_publication_at {V : Type} [Fintype V] [
     (ha : .fg (.block B true) ∈ (Node.tickStep (runProposer S rho hn) (digestOf S rho)
       (rho.ownKey v) (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node
       t (encodeTxs (mempool rho.inbox v t)) .proposal).2)
-    (hchild : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+    (hchild : decodeBlock (S.params (pubOf E) hn) (binding := stock)
+      (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B) :
     ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
       q.origin = rho.ownKey v ∧
@@ -205,7 +207,8 @@ theorem tick_acceptance_decoded_publication_at {V : Type} [Fintype V] [Decidable
     (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t))
     (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
     (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true))
-    (hchild : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+    (hchild : decodeBlock (S.params (pubOf E) hn) (binding := stock)
+      (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B) :
     ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
       q.origin = rho.ownKey v ∧

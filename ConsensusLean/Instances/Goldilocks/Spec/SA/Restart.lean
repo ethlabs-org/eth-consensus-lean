@@ -45,7 +45,8 @@ emissions are returned (there are none: the node is not joined at `t`, claims A0
 noncomputable def acRestart (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : SAState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) : SAState sp.n × List (Em sp FGP) :=
   let A' : SAState sp.n := { SAState.initial sp.genesisRoot with
-    locks := A.locks, latestConfirmed := A.latestConfirmed, restartTime := (t : WithBot Time) }
+    locks := A.locks, latestConfirmed := A.latestConfirmed, restartTime := (t : WithBot Time)
+    mayVote := A.mayVote }
   (ro.order t Φ).foldl
     (fun acc B => let r := acOnBlock sp self acc.1 Φ t B; (r.1, acc.2 ++ r.2)) (A', [])
 

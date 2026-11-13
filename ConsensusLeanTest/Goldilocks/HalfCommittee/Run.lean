@@ -205,7 +205,7 @@ theorem dataRowLaws : ∀ ctl, DataRun.RowLaws (dataD ctl) := by
 
 /-- The run is a Goldilocks run, in both variants. -/
 theorem run_goldilocksRun (ctl : Bool) : GoldilocksRun proposer dg H (tr ctl) :=
-  DataRun.run_goldilocksRun (runD ctl) (entryLaws ctl) (dataRowLaws ctl) (fun _ _ => awakeB_le)
+  DataRun.run_goldilocksRun (runD ctl) (entryLaws ctl) (dataRowLaws ctl) rfl (fun _ _ => awakeB_le)
     mem_honest fun h => h rfl
 
 private theorem syncD_true : ∀ ctl, DataRun.syncD (dataD ctl) 24 33 = true ∧

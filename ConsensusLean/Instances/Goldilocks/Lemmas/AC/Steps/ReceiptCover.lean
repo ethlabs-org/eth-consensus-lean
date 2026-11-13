@@ -40,6 +40,7 @@ private theorem tryVote_pool {wm : WriteMode} {L : Set Lock} (x : Fin sp.n) (A :
   split_ifs
   · exact List.Subset.refl _
   · exact List.Subset.refl _
+  all_goals try exact List.Subset.refl _
   all_goals
     intro w hw
     rw [optimisticConfirmationM_keep _ optimistic_pool_eq]

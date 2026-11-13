@@ -27,6 +27,7 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
 /-- An ancestor of a raw writer's block, for a writer honest at its write, is available in the
 frozen block tree of a later voter honest at its cast. -/
 theorem raw_writer_voterBlockTree_window_before_at
+    (hcommittee : 0 < sp.committeeSize)
     (hr : Consensus.Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     {a b κ : Time} (hsync : ServiceWindowBefore H U a b tr)
     (hcatch : ∀ x i B, x ∈ H (tr.time i) → tr.AcceptAt x i B → tr.time i < a →
@@ -60,7 +61,7 @@ theorem raw_writer_voterBlockTree_window_before_at
     have := ((joined_awake sp) FGP ro _ U _ hri y hy i ℓ hc'.1 hj').2 k hk hrk
     rwa [← hys] at this
   obtain ⟨v, -, D, hDU, -, hBD, hsource⟩ :=
-    Healing.Growing.raw_writer_relay_source_at hr hx hwriter hBC
+    Healing.Growing.raw_writer_relay_source_at hcommittee hr hx hwriter hBC
   have hFD := hF.trans hBD
   -- the voter holds `D` in its frame, stamped before its slot's freeze
   have hDt : D ∈ ℓ.frame.tree ∧

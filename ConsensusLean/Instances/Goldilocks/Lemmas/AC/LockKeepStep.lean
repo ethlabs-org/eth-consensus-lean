@@ -109,6 +109,8 @@ theorem mem_tryVote_of_keep_view (self : Fin sp.n) {A : SAState sp.n} (hl : l �
   · refine mem_optimisticConfirmation_of_keep ?_ hk hB hBr hva
     rw [admitVote_locks_eq]
     exact hl
+  · exact mem_unlock_of_keep hl hk hB hBr hva hu
+  · exact hl
 
 /-- `ac_on_message` keeps such a lock (the view of the state after the admission). -/
 theorem mem_acOnMessage_of_keep_view (self : Fin sp.n) {A : SAState sp.n} (v : Vote sp.n)

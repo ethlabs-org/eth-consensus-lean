@@ -70,6 +70,7 @@ theorem optimisticLock_pair_compatible_at
     (SA.upTo_optimisticLockAt hmono).mpr ⟨le_rfl, he⟩
   obtain ⟨-, hnD, ellD, A, hpD, -, hvD, hhD⟩ := SA.optimisticLockAt_spec hrx hx hd'
   obtain ⟨-, hnE, ellE, A', hpE, -, hvE, hhE⟩ := SA.optimisticLockAt_spec hry hy he'
+  rw [hrx.stock] at hnD hnE
   have hint := Set.ncard_inter_add_ncard_union (SA.voters CV) (SA.voters CW)
   have hu := Set.ncard_le_ncard (Set.subset_univ (SA.voters CV ∪ SA.voters CW))
   rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hu

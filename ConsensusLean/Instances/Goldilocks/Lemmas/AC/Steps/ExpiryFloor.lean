@@ -152,15 +152,11 @@ theorem LocksWF.tryVoteWith
   refine ⟨?_, fun e he => by rw [tryVote_readPoint_locks_eqWith he]; exact hu⟩
   unfold SA.tryVoteWithM
   dsimp only
-  split_ifs with h₁ h₂ h₃
-  · exact h
-  · exact h
-  · refine LocksWF.optimisticConfirmationM ?_ Φ t
-    rw [admitVote_locks_eq]
-    exact h.unlockRel hL
-  · refine LocksWF.optimisticConfirmationM ?_ Φ t
-    rw [admitVote_locks_eq]
-    exact h
+  split_ifs <;> first
+    | exact h
+    | exact h.unlockRel hL
+    | (apply LocksWF.optimisticConfirmationM; rw [admitVote_locks_eq]; exact h.unlockRel hL)
+    | (apply LocksWF.optimisticConfirmationM; rw [admitVote_locks_eq]; exact h)
 
 /-- `try_vote` keeps `LocksWF`, in its post-state and in its emissions' read points. -/
 theorem LocksWF.tryVote {A : SAState sp.n} (h : LocksWF sp A.locks) (x : Fin sp.n)
@@ -176,15 +172,11 @@ theorem LocksWF.tryVote {A : SAState sp.n} (h : LocksWF sp A.locks) (x : Fin sp.
   refine ⟨?_, fun e he => by rw [tryVote_readPoint_locks_eq he]; exact hu⟩
   unfold SA.tryVote
   dsimp only
-  split_ifs with h₁ h₂ h₃
-  · exact h
-  · exact h
-  · refine LocksWF.optimisticConfirmation ?_ Φ t
-    rw [admitVote_locks_eq]
-    exact h.unlock Φ t _ _
-  · refine LocksWF.optimisticConfirmation ?_ Φ t
-    rw [admitVote_locks_eq]
-    exact h
+  split_ifs <;> first
+    | exact h
+    | exact h.unlock Φ t _ _
+    | (apply LocksWF.optimisticConfirmation; rw [admitVote_locks_eq]; exact h.unlock Φ t _ _)
+    | (apply LocksWF.optimisticConfirmation; rw [admitVote_locks_eq]; exact h)
 
 /-- `LocksWF.step` with the unlock given. -/
 theorem LocksWF.stepWith

@@ -66,7 +66,7 @@ theorem honest_votes_of_joined_before (hS : HealthyBaseUpTo tr H U proposer g b)
   · obtain ⟨j, hjc, e, he, hes⟩ := vote_of_votedSlot hr hx c _ hv
     exact ⟨j, e, he, by rw [hes, htc, hslot], (hr.time_mono hjc.le).trans htc.le⟩
   · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
-    obtain ⟨e, hem, hes⟩ := tryVote_votes x ell.frame hj hv hT
+    obtain ⟨e, hem, hes⟩ := tryVote_votes x ell.frame hj hv hT (trace_mayVote_stock hr hx c _)
     have he := hr.exec c ell hc.2 (hc.1 ▸ hx)
     rw [hc.1, hcall] at he
     have h2 : (acOnTick sp x (tr.state x c) ell.frame (tr.time c)).2 = ell.emits :=
@@ -243,6 +243,8 @@ theorem unanimous_proposal_carry_before (hS : HealthyBaseUpTo tr H U proposer g 
 /-- The unique early honest batch forces the raw result and fast selection.
 This is a pool calculation, independent of any lock-veto premise. -/
 theorem confirmation_of_unanimous_early_pool
+    -- Interim stock specialization; C2 removes this premise.
+    (hstock : sp.committeeSize = sp.n)
     {A : SAState sp.n} {Phi : Frm sp.n FGP} {u : Nat} {P : Blk sp.n FGP}
     (hPhi : FrameOK Phi) (hPt : P ∈ Phi.tree) (hPg : P.root ≠ sp.genesisRoot)
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
@@ -295,7 +297,7 @@ theorem confirmation_of_unanimous_early_pool
       (fun B hB C hC => anc_total hPhi.coherent (hall B hB) (hall C hC)) hD P hPS
     rw [hD, Anc.antisymm hPhi.coherent hDP hPD]
   exact ⟨hconf, fastSelect_eq_result hPhi hPt hPg (by
-      unfold FastTest; (clear * - hf hHn hscore; omega))⟩
+      unfold FastTest; rw [hstock]; (clear * - hf hHn hscore; omega))⟩
 
 /-- A half-committee supporting a block at an actual next-slot unlock makes all
 older lock labels compatible at every later cut. Provenance excludes intervening
@@ -309,7 +311,7 @@ theorem older_locks_compatible_after_unlock
     (hS : ∀ x ∈ S, x ∈ equivocators (mergedVoteView sp e.readPoint ell.frame (u + 1)).votes ∨
       ∃ v ∈ (mergedVoteView sp e.readPoint ell.frame (u + 1)).support,
         v.val = x ∧ (v.slot : Int) = u ∧ AncR ell.frame P v.head)
-    (hhalf : sp.n ≤ 2 * S.ncard) :
+    (hhalf : sp.committeeSize ≤ 2 * S.ncard) :
     ∀ l ∈ (tr.state y k).locks, l.slot < u →
       ∀ L ∈ U, L.root = l.block → Compatible U L P := by
   obtain ⟨hPhi, hPhiU⟩ := frameIn_of_callAt hr hy hc.1
@@ -530,6 +532,7 @@ theorem FrameWindow.unanimous_update_selection
     (by change sp.ts u + 2 * sp.Δ ≤ tr.time k; rw [hkt]; linarith only [hDelta])
     hkb hdeadline hrestart hvi.1
   obtain ⟨hconf, hfast⟩ := SA.confirmation_of_unanimous_early_pool
+    hrun.stock
     (SA.frameIn_of_callAt hr hy hu.1).1 hvi.1 hPg hf (SA.state_pool_slot sp hr hy k u) hpool
   exact ⟨hvi, hconf, hfast, hva⟩
 
@@ -718,7 +721,8 @@ theorem FrameWindow.older_locks_compatible_at_update
       rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
     have := sp.toParams.hn
     clear * - hf hn; omega
-  apply SA.older_locks_compatible_after_unlock hr hy hc hs hjk hvi.1 (S := H) _ hhalf
+  apply SA.older_locks_compatible_after_unlock hr hy hc hs hjk hvi.1 (S := H) _
+    (by simpa only [hrun.stock] using hhalf)
   intro x hx
   obtain ⟨q, ev, hv, hes, _⟩ := SA.honest_votes_of_joined_before hS hgu (by
       linarith only [hTb, hts, hjlo, hjt]) hjoin x hx

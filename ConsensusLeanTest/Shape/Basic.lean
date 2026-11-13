@@ -55,7 +55,7 @@ def trivialShape (pub : Public) : ChainShape pub Unit Unit where
   Body := Unit
   Durable := Unit
   decBody := inferInstance
-  init := fun _ => ()
+  init := fun _ _ => ()
   clock := fun s _ => s
   propose := fun s _ => (s, none)
   act := fun s _ _ => (s, none)
@@ -65,7 +65,7 @@ def trivialShape (pub : Public) : ChainShape pub Unit Unit where
   process := fun s _ _ => s
   recordOwn := fun s _ _ => s
   durable := fun s => s
-  restore := fun _ d _ => d
+  restore := fun _ _ d _ => d
   out := fun _ _ => []
   conflicts := fun _ _ => false
 
@@ -144,7 +144,7 @@ def pollShape (pub : Public) : ChainShape pub Unit Unit where
   Body := Unit
   Durable := Key pub × Nat
   decBody := inferInstance
-  init := fun k => (k, 0)
+  init := fun k _ => (k, 0)
   clock := fun s _ => s
   propose := fun s _ => (s, none)
   act := fun s _ _ => (s, none)
@@ -155,7 +155,7 @@ def pollShape (pub : Public) : ChainShape pub Unit Unit where
   process := fun s _ _ => s
   recordOwn := fun s _ _ => s
   durable := fun s => s
-  restore := fun _ d _ => d
+  restore := fun _ _ d _ => d
   out := fun _ _ => []
   conflicts := fun _ _ => false
 

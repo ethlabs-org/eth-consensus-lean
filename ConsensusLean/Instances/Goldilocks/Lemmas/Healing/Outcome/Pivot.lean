@@ -102,6 +102,7 @@ theorem ResetPremisesUpTo.reset_vote_anchor {b : Time}
   by_cases hls : l.slot = u
   · obtain ⟨Phi', A', D', _, hPhi'U, _, h34, hpool, _, L, hLU, hLr, hLD'⟩ :=
       SA.lock_origin_readPoint hrun hy hcy l hl (by rw [hes, hls]; (clear * -; omega))
+    rw [hrun.stock] at h34
     obtain rfl : L = B := hU.1 hLU (hPhiU hB) (hLr.trans hBr.symm)
     have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos y; omega
     obtain ⟨x, ⟨v, hv, rfl, R, hRt, hRr, hDR⟩, hxH⟩ :=

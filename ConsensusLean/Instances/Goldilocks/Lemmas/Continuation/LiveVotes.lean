@@ -234,6 +234,7 @@ theorem seeded_vote_anchor (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b)
   · -- a lock of slot `s`: below an optimistic selection with an honest earlier supporter
     obtain ⟨Φ', A', D', -, hΦ'U, -, h34, hpool, -, L, hLU, hLr, hLD'⟩ :=
       SA.lock_origin_readPoint hrun' hy hcy' l hl (by rw [hes, hls]; omega)
+    rw [hrun'.stock] at h34
     obtain rfl : L = B := hr'.coherent.1 hLU hBP (hLr.trans hBr.symm)
     have hf := hS.bounds.two _ hd hjb
     obtain ⟨x, ⟨v, hv, rfl, R, hR, hRr, hDR⟩, hxH⟩ :=

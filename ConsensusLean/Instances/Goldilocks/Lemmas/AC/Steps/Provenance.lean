@@ -116,6 +116,14 @@ private theorem FromP.of_tryVote
           optimisticSelect sp (admitVote sp e.readPoint t e.msg) Φ t = some D) := by
   unfold tryVoteWithM
   dsimp only
+  by_cases hp : A.mayVote (sp.slot t) = true
+  swap
+  · simp only [hp]
+    split_ifs <;> first
+      | contradiction
+      | exact FromP.of_eq rfl
+      | exact FromP.of_movesBack hΦU (hL.movesBack hΦ)
+  simp only [hp, ↓reduceIte]
   by_cases h1 : ¬ joined sp A t ∨ A.votedSlot = sp.slot t ∨ sp.ts (sp.slot t) + sp.Δ < t
   · rw [ite_eq_left h1]
     exact FromP.of_eq rfl
@@ -321,7 +329,8 @@ private theorem call_candidate_fromPU
   | message m =>
     rw [hcall] at hemits hlaw
     refine FromP.trans hU ((FromP.of_optimistic_admit hU hΦ hΦU A rfl _ m).mono
-      fun s f B h => ?_) ((FromP.of_tryVote (L := u i) hU hΦ hΦU x _ _ hlaw).mono fun s f B h => ?_)
+      fun s f B h => ?_) ((FromP.of_tryVote (L := u i) hU hΦ hΦU x _ _ hlaw).mono
+          fun s f B h => ?_)
     · obtain ⟨D, hD, rfl, hf, hs, hsel⟩ := h
       refine ⟨D, hD, rfl, ?_, ?_, ?_⟩
       · exact (opt _ _ _ hf ⟨_, ℓ, _, ⟨hc, Or.inl ⟨m, hcall, hA ▸ rfl⟩⟩,
@@ -342,7 +351,8 @@ private theorem call_candidate_fromPU
       (tr.time i)
     rw [blockReceipt_locks] at h₁
     refine FromP.trans hU (h₁.mono fun s f B' h => ?_)
-      ((FromP.of_tryVote (L := u i) hU hΦ hΦU x _ _ hlaw).mono fun s f B' h => ?_)
+      ((FromP.of_tryVote (L := u i) hU hΦ hΦU x _ _ hlaw).mono
+          fun s f B' h => ?_)
     · obtain ⟨D, hD, rfl, hf, hs, hsel⟩ := h
       refine ⟨D, hD, rfl, ?_, ?_, ?_⟩
       · exact (opt _ _ _ hf ⟨_, ℓ, _, ⟨hc, Or.inr (Or.inl

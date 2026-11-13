@@ -50,9 +50,10 @@ private theorem VotedStep.pre {A B A' : SAState sp.n} {es : List (Em sp FGP)}
   ⟨h.1.trans hr, h.2.imp_left (·.trans hv)⟩
 
 private theorem tryVote_votedStep (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) : VotedStep A (tryVote sp self A Φ t).1 (tryVote sp self A Φ t).2 := by
+    (t : Time) (hp : A.mayVote (sp.slot t) = true) :
+    VotedStep A (tryVote sp self A Φ t).1 (tryVote sp self A Φ t).2 := by
   unfold tryVote
-  dsimp only
+  simp only [hp, ↓reduceIte]
   split_ifs
   · exact ⟨rfl, Or.inl rfl⟩
   · exact ⟨rfl, Or.inl rfl⟩
@@ -62,14 +63,15 @@ private theorem tryVote_votedStep (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm
     rw [(optimistic_keeps _ _ _).1, (admitVote_keeps _ _ _).1]
 
 private theorem acOnTick_votedStep (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) : VotedStep A (acOnTick sp self A Φ t).1 (acOnTick sp self A Φ t).2 := by
+    (t : Time) (hp : A.mayVote (sp.slot t) = true) :
+    VotedStep A (acOnTick sp self A Φ t).1 (acOnTick sp self A Φ t).2 := by
   unfold acOnTick
   dsimp only
   have hr : VotedStep A
       (if t = sp.ts (sp.slot t) + sp.Δ then tryVote sp self A Φ t else (A, [])).1
       (if t = sp.ts (sp.slot t) + sp.Δ then tryVote sp self A Φ t else (A, [])).2 := by
     split_ifs
-    · exact tryVote_votedStep _ _ _ _
+    · exact tryVote_votedStep _ _ _ _ hp
     · exact ⟨rfl, Or.inl rfl⟩
   generalize (if t = sp.ts (sp.slot t) + sp.Δ then tryVote sp self A Φ t else (A, [])) = r at hr ⊢
   split_ifs <;> first
@@ -80,20 +82,23 @@ private theorem acOnTick_votedStep (self : Fin sp.n) (A : SAState sp.n) (Φ : Fr
 
 /-- One call: a restart, which resets `voted_slot` to `−1`, or a `VotedStep`. -/
 private theorem step_votedStep (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP}
-    (t : Time) (hΦ : FrameOK Φ) (ht : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call) :
+    (t : Time) (hΦ : FrameOK Φ) (ht : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call)
+    (hp : A.mayVote (sp.slot t) = true) :
     ((goldilocksSA sp FGP ro).step self A Φ t c).1.votedSlot = -1 ∨
       VotedStep A ((goldilocksSA sp FGP ro).step self A Φ t c).1
         ((goldilocksSA sp FGP ro).step self A Φ t c).2 := by
   cases c with
-  | tick => exact Or.inr (acOnTick_votedStep _ _ _ _)
+  | tick => exact Or.inr (acOnTick_votedStep _ _ _ _ hp)
   | proposal => exact Or.inr ⟨(acProposal_keeps _ _ _).2, Or.inl (acProposal_keeps _ _ _).1⟩
   | toFG => exact Or.inr ⟨(acToFG_keeps _ _ _).2, Or.inl (acToFG_keeps _ _ _).1⟩
   | message m =>
-    exact Or.inr ((tryVote_votedStep _ _ _ _).pre
+    exact Or.inr ((tryVote_votedStep _ _ _ _ (by
+      simpa only [optimisticConfirmation_mayVote, admitVote_mayVote] using hp)).pre
       ((optimistic_keeps _ _ _).1.trans (admitVote_keeps _ _ _).1)
       ((optimistic_keeps _ _ _).2.trans (admitVote_keeps _ _ _).2))
   | block B =>
-    exact Or.inr ((tryVote_votedStep _ _ _ _).pre
+    exact Or.inr ((tryVote_votedStep _ _ _ _ (by
+      simpa only [optimisticConfirmation_mayVote, blockReceipt_mayVote] using hp)).pre
       ((optimistic_keeps _ _ _).1.trans (blockReceipt_keeps _ _ _).1)
       ((optimistic_keeps _ _ _).2.trans (blockReceipt_keeps _ _ _).2))
   | restart => exact Or.inl ((restart_state sp) FGP ro self A Φ t hΦ ht).2.2.2.2.2.1
@@ -121,7 +126,8 @@ private theorem votedSlot_cast (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
       have he := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
       rw [hc.1] at he
       rcases step_votedStep (ro := ro) y (tr.state y i) (tr.time i) (frameIn_of_callAt hr hy hc).1
-        (hr.time_nonneg i) ℓ.call with h | ⟨-, h | ⟨e, hem, hes⟩⟩ <;>
+        (hr.time_nonneg i) ℓ.call (trace_mayVote_stock hr hy i _)
+          with h | ⟨-, h | ⟨e, hem, hes⟩⟩ <;>
         rw [he] at * <;> dsimp only at *
       · exact Or.inl h
       · rw [h]; exact ih'
@@ -132,12 +138,13 @@ private theorem votedSlot_cast (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
 /-- At the tick at `t_s + Δ` of a joined node, `try_vote` runs: the node votes in slot `s`, or
 `voted_slot = s` already. -/
 private theorem acOnTick_votes (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) {t : Time}
-    (hj : joined sp A t) (ht : t = sp.ts (sp.slot t) + sp.Δ) :
+    (hj : joined sp A t) (ht : t = sp.ts (sp.slot t) + sp.Δ)
+    (hp : A.mayVote (sp.slot t) = true) :
     A.votedSlot = sp.slot t ∨ ∃ e ∈ (acOnTick sp self A Φ t).2, e.msg.slot = sp.slot t := by
   unfold acOnTick
   simp only [hj, not_true_eq_false, ↓reduceIte, ← ht]
   unfold tryVote
-  dsimp only
+  simp only [hp, ↓reduceIte]
   split_ifs with h₁ h₂
   · rcases h₁ with h | h | h
     · exact absurd hj h
@@ -172,7 +179,7 @@ private theorem update_restarts (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
     have : tr.post c = (acOnTick sp Y (tr.state Y c) ℓ.frame (tr.time c)).1 :=
       (congrArg Prod.fst he).symm
     unfold joined at hj ⊢
-    rw [this, (acOnTick_votedStep Y _ _ _).1]
+    rw [this, (acOnTick_votedStep Y _ _ _ (trace_mayVote_stock hr hY c _)).1]
     exact hj
   have hsl : sp.slot (tr.time c) = s + 1 :=
     CompatibleSides.slot_of_lt (s := s + 1)
@@ -228,7 +235,8 @@ private theorem result_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : 
 /-- **An optimistic selection's seats.** At an honest optimistic confirmation of slot `s` on `D`,
 three quarters of the committee are optimistic voters of `D`, each with a vote extending `D` that
 the node admitted (or cast) in `[t_s, t_s + 2Δ)`. -/
-private theorem optimistic_seats (hrun : ACRun proposer tr H U)
+private theorem optimistic_seats
+    (hrun : ACRun proposer tr H U)
     {X : Fin sp.n} (hX : X ∈ H) {k s : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : OptimisticLockAt tr X k s D CV) :
     ∃ ℓ A, OptimisticPoint tr X k ℓ A ∧ ℓ.frame.tree ⊆ U ∧
@@ -242,6 +250,7 @@ private theorem optimistic_seats (hrun : ACRun proposer tr H U)
   split_ifs at hsel with hcond
   have h34 := (deepest_mem hsel).1.2.1
   rw [hsl] at h34 hcond
+  rw [hrun.stock] at h34
   refine ⟨ℓ, A, hpt, hΦU, h34, ?_⟩
   rintro u ⟨v, hv, rfl, R, hR, hRr, hDR⟩
   have hvs := optimisticPoint_pool_slot hr hX hpt hv
@@ -499,7 +508,8 @@ theorem vote_of_awake_joined (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
   have hjo : SA.joined sp (tr.projAC.state y j) (tr.projAC.time j) := by
     rw [projAC_state hrun.toLocalRun hy j, htj]
     exact ((joined_projection sp ro dg H tr proposer hrun y hy _).2.1 j ⟨_, hn0, hl⟩ hnr ht0).1 hj
-  rcases SA.acOnTick_votes y _ ℓ.frame hjo (by rw [htj, hslot]) with hv | ⟨e, he', hes⟩
+  rcases SA.acOnTick_votes y _ ℓ.frame hjo (by rw [htj, hslot])
+      (SA.trace_mayVote_stock hr hy j _) with hv | ⟨e, he', hes⟩
   · rcases SA.votedSlot_cast hr hy j with h | ⟨k, hk, e, hve, hes⟩
     · omega
     · refine ⟨k, e, hve, ?_, (hr.time_mono hk.le).trans htj.le⟩
@@ -663,7 +673,8 @@ theorem honest_participants_window_before
 
 /-- **A result and an optimistic selection of one slot are compatible** (RO): the `≥ 3n/4`
 optimistic seats reach the writer, where none supports the result. -/
-private theorem result_optimistic_compatible (hrun : GoldilocksRun proposer dg H tr)
+private theorem result_optimistic_compatible
+    (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {s : Nat}
     (hsync : SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) (sp.ts s)
       (sp.ts (s + 1 : Nat) + sp.Δ) tr.projAC) {X x : Fin sp.n} (hX : X ∈ H) (hx : x ∈ H)
@@ -698,7 +709,8 @@ theorem honest_vote_exists_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : N
   honest_vote_exists_win hrun hnc hpre.window (Nat.zero_le s) hs
 
 /-- `honest_supporter_upTo` on the window from slot `s₀ ≤ s` to `b`. -/
-private theorem honest_supporter_win (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+private theorem honest_supporter_win
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hwin : SleepyWindow tr H ΔF s₀ b) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hs₀ : s₀ ≤ s) (hC : OriginWithin tr H C s b) :
     ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ tr.time j ≤ b ∧ e.msg.slot = s ∧
@@ -754,7 +766,8 @@ private theorem honest_supporter_win (hrun : GoldilocksRun proposer dg H tr) (hn
 
 /-- An origin within the finite horizon has an honest supporter using only deadline-bounded
 service and the fault bounds at slot points inside the horizon. -/
-theorem honest_supporter_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem honest_supporter_before
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
@@ -816,7 +829,8 @@ theorem honest_supporter_before (hrun : GoldilocksRun proposer dg H tr) (hnc : N
 
 /-- **Up to `b`, an origin within `b` has an honest supporter**: an honest slot-`s` vote at a
 time `≤ b` whose head extends it. -/
-theorem honest_supporter_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem honest_supporter_upTo
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hC : OriginWithin tr H C s b) :
     ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ tr.time j ≤ b ∧ e.msg.slot = s ∧
@@ -824,7 +838,8 @@ theorem honest_supporter_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
   honest_supporter_win hrun hnc hpre.window (Nat.zero_le s) hC
 
 /-- `same_label_compatible_upTo` on the window from slot `s₀ ≤ s` to `b`. -/
-private theorem same_label_compatible_win (hrun : GoldilocksRun proposer dg H tr)
+private theorem same_label_compatible_win
+    (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hwin : SleepyWindow tr H ΔF s₀ b)
     {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hs₀ : s₀ ≤ s)
     (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b) :
@@ -883,7 +898,8 @@ private theorem same_label_compatible_win (hrun : GoldilocksRun proposer dg H tr
 
 /-- A result and an optimistic selection of one label compare once the label's relayed
 votes have deadlines within `b`, whatever the time of the result's update. -/
-theorem result_optimistic_compatible_label_before (hrun : GoldilocksRun proposer dg H tr)
+theorem result_optimistic_compatible_label_before
+    (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
     {s : Nat} (hs : sp.ts s + 3 * sp.Δ ≤ b) {X x : Fin sp.n} (hX : X ∈ H) (hx : x ∈ H)
     {i i' : Nat} {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {CV CV' : Set (Vote sp.n)}
@@ -902,7 +918,8 @@ theorem result_optimistic_compatible_label_before (hrun : GoldilocksRun proposer
   omega
 
 /-- Origins of one label compare using recipient deadlines only up to `b`. -/
-theorem same_label_compatible_before (hrun : GoldilocksRun proposer dg H tr)
+theorem same_label_compatible_before
+    (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
     (hf : 2 * Hᶜ.ncard < sp.n)
     {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
@@ -961,7 +978,8 @@ theorem same_label_compatible_before (hrun : GoldilocksRun proposer dg H tr)
     exact hnc' (SA.anc_total hU (Anc.mono hΦU hBR) (Anc.mono hΦU' hBR'))
 
 /-- **Up to `b`, origins within `b` of one label are compatible** (RR, RO, OO). -/
-theorem same_label_compatible_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem same_label_compatible_upTo
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b) :
     Compatible (tr.HonestBlocks H) C C' :=
@@ -978,7 +996,8 @@ private theorem compatible_of_voteExtends (hU : Coherent (tr.HonestBlocks H)) {v
 
 /-- **Extending the origin frontier up to `b`**: `P_s` and `V_s` up to `b` give `P_{s+1}` up to
 `b`. -/
-theorem origins_below_succ_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem origins_below_succ_upTo
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {s : Nat} (hP : OriginsBelowUpTo tr H s b)
     (hV : VotesBelowUpTo tr H s b) : OriginsBelowUpTo tr H (s + 1) b := by
   have hU := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
@@ -999,7 +1018,8 @@ theorem origins_below_succ_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : N
   · exact same_label_compatible_upTo hrun hnc hpre hC hC'
 
 /-- The finite-deadline origin step preserves the horizon on every vote witness. -/
-theorem origins_below_succ_before (hrun : GoldilocksRun proposer dg H tr)
+theorem origins_below_succ_before
+    (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
@@ -1030,7 +1050,8 @@ theorem origins_below_succ_before (hrun : GoldilocksRun proposer dg H tr)
   · exact same_label_compatible_before hrun hnc hsync hf hC hC'
 
 /-- **Extending the origin frontier**: `P_s` and `V_s` give `P_{s+1}`. -/
-theorem origins_below_succ (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem origins_below_succ
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {s : Nat} (hP : OriginsBelow tr H s) (hV : VotesBelow tr H s) :
     OriginsBelow tr H (s + 1) := by
   refine originsBelow_iff.2 fun C j C' j' hj hj' hC hC' => ?_

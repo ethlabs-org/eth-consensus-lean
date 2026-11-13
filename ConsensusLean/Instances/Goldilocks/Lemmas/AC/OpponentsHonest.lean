@@ -9,7 +9,7 @@ The static half of the drain link. Let `Hn` be a
 set of validators (the honest ones). If no validator of `Hn` equivocates in the votes of a view,
 and every slot-`s` support vote of a validator of `Hn` has heads in the tree that are compatible
 with `B`, then the opponents of `B` lie outside `Hn` (`opponents_subset_compl`). With
-`2 · |Hnᶜ| < n`, `unlock` keeps `B` against the view of a call
+`2 · |Hnᶜ| < committeeSize`, `unlock` keeps `B` against the view of a call
 (`unlockTarget_unlockView_held_of_honest_slot`). -/
 
 namespace Consensus.Goldilocks.SA
@@ -86,7 +86,8 @@ theorem unlockView_votes_slot {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A : S
 /-- **`unlock` keeps `B` when `Hn` does not oppose it, per-slot form.** For a call `c` from `A`
 to `A'` whose pools hold votes of their own slot, with a frame whose blocks have valid payloads:
 if no validator of `Hn` has two held votes of one slot, every held slot-`s` vote of `Hn` has
-only heads compatible with `B`, and `2 · |Hnᶜ| < n`, then `unlockTarget` of the call's view is
+only heads compatible with `B`, and `2 · |Hnᶜ| < committeeSize`, then `unlockTarget` of
+the call's view is
 `B`. -/
 theorem unlockTarget_unlockView_held_of_honest_slot {ro : ReplayOrder sp FGP} (self : Fin sp.n)
     {A A' : SAState sp.n} (c : (goldilocksSA sp FGP ro).Call)
@@ -98,7 +99,7 @@ theorem unlockTarget_unlockView_held_of_honest_slot {ro : ReplayOrder sp FGP} (s
       x.slot = y.slot → x = y)
     (hcompat : ∀ x ∈ heldVotes A A' Φ, x.val ∈ Hn → (x.slot : Int) = s →
       ∀ H ∈ Φ.tree, H.root = x.head → Compatible Φ.tree H B)
-    (hf : 2 * Hnᶜ.ncard < sp.n) :
+    (hf : 2 * Hnᶜ.ncard < sp.committeeSize) :
     unlockTarget sp Φ (unlockView A Φ t c) s B = B := by
   subst hA'
   have hsub := unlockView_subset_post (S := heldVotes A

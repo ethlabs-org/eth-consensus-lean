@@ -170,7 +170,8 @@ private theorem vote_frame_of {s₀ : Nat} {b : Time} (hrun : GoldilocksRun prop
 `≤ b`, a block `B` of the honest blocks that is compatible with every origin within `b` of label
 at most `s` and that some honest slot-`s` vote extends is in the viable tree of the voter block
 tree, or at or below `fc_root` (inside the honest blocks). -/
-theorem vote_frame_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem vote_frame_upTo
+    {b : Time} (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
@@ -204,7 +205,8 @@ theorem vote_frame_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr) (hnc 
   exact ⟨x', hx', k', e'', hve', hs''.trans_le hj, Hd, hHd, hHdr, hDC.trans hCHd⟩
 
 /-- The frozen witness at a vote needs only recipient service within its finite horizon. -/
-theorem vote_frame_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
+theorem vote_frame_before
+    {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))

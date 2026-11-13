@@ -198,6 +198,7 @@ theorem vote_or_restart (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propo
   rw [hpt.1, hlt] at hexec
   have hne := Compose.acOnTick_votes (ro' := ro) y A ℓt.frame hjoined
     (by rw [hslot]; exact hvs) (by rw [hslot])
+    (SA.trace_mayVote_stock hri hy j₀ _)
   change (SA.goldilocksSA sp _ ro).step y A ℓt.frame (tr.time j₀) .tick = _ at hexec
   rw [ht₀] at hexec
   rw [hexec] at hne
@@ -207,7 +208,8 @@ theorem vote_or_restart (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propo
     by rw [hsl]; change sp.slot (tr.time j₀) = _; rw [ht₀, hslot]⟩
 
 /-- Honest attestations in the persistence window name no excluded entry. -/
-theorem attest_not_excluded (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem attest_not_excluded
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hp : PersistPremises tr H dg ΔF x i₀ s m B CV) {v : Fin sp.n} {j : Nat}
     (hv : v ∈ H (tr.time j)) {a : FG.Att sp.n} (hs : tr.SignAt v j a)
     (hT₀ : sp.ts (s + 1 : Nat) + sp.Δ < tr.time j)

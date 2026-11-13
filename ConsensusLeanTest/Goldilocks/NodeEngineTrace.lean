@@ -19,7 +19,8 @@ theorem canonical_cut_zero : cutMapNode A fin rho hn D 0 = 0 := rfl
 /-- The inherited growing contract remains directly consumable, independent of collisions. -/
 theorem local_contract (h : NodeRunAt A fin rho hn D (simTraceNodeAt A fin rho hn D)) :
     Growing.LocalRun (proposer A fin rho hn) (digest A fin rho hn D)
-      (honestAt A fin rho) (runWire (E := E) A hn).signer (simTraceNodeAt A fin rho hn D) :=
+      (honestAt A fin rho) (runWire (E := E) A hn).signer (simTraceNodeAt A fin rho hn D)
+      (fun _ => (nodeAC (E := E) A hn).initial) :=
   h.toLocalRun
 
 end Consensus.Goldilocks.NodeEngine

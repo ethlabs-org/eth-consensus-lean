@@ -102,7 +102,8 @@ theorem locks_after_unlock (hrun : ACRun proposer tr H U)
       · simpa [freeze] using hu.2
     intro l hl hls X hX hXr
     rw [hL₀, hs, hσ] at hl
-    refine (unlock_compatible hΦ hBt (S := {u | ∃ v ∈ CV, v.val = u}) ?_ hn L₀ (tr.time j) l hl
+    refine (unlock_compatible hΦ hBt (S := {u | ∃ v ∈ CV, v.val = u}) ?_
+      (by simpa only [hrun.stock] using hn) L₀ (tr.time j) l hl
       (by exact_mod_cast hls) X hX hXr).imp (Anc.mono hΦU) (Anc.mono hΦU)
     rintro u ⟨v, hv, rfl⟩
     obtain ⟨hvs, R, hR, hRr, hRs, hBR⟩ := hcv v hv

@@ -24,6 +24,8 @@ structure GoldilocksRun (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) : Prop
     extends Growing.LocalRun proposer dg H (fun v : Vote sp.n => v.val) tr where
+  /-- Interim population specialization; removed in place by C2. -/
+  stock : sp.committeeSize = sp.n
   /-- The genesis block's root is the digest of its content. -/
   genesis_root_ok : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg
   /-- A vote whose validator is honest at the processing time, carried by a block that a node

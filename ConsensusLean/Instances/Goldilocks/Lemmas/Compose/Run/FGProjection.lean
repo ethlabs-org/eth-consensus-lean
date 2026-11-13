@@ -71,7 +71,7 @@ theorem own_accept (hq : A.Requirements) (hg₀ : (P.genesisBlock A.genesisPaylo
 and every FG call's step. -/
 theorem fg_exec (h : Node.LocalRun proposer dg H sg tr) :
     Store.FGExec A.genesisPayload H tr.projFG := by
-  refine ⟨fun y hy => by simp [RunTrace.projFG, h.init y hy, Node.init], fun i ℓ hl hH => ?_⟩
+  refine ⟨fun y hy => by simp [RunTrace.projFG, h.init y hy, Node.initWith], fun i ℓ hl hH => ?_⟩
   have hH : tr.node i ∈ H := hH
   have hc : tr.CallAt (tr.node i) i (.fg ℓ) := projFG_callAt.1 ⟨rfl, hl⟩
   have hlaw := h.cutLaw _ hH i _ hc

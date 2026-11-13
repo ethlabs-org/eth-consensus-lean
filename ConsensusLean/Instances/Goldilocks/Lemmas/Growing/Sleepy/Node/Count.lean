@@ -53,7 +53,8 @@ whose head extends it, for a label `s ≥ σ₀` whose service is available (`a 
 counted votes meet the validators honest at `d = t_s + 6Δ` that were awake and joined at `t_s + Δ`
 (all participants of the writer's update, the slot count at `d`); an optimistic selection's `3n/4`
 voters meet `H d` at the check's time `d` (`2 f_d < n`). -/
-theorem honest_supporter_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem honest_supporter_at
+    (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
     (hB : SleepyBoundsFrom tr H σ₀ b) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hs : σ₀ ≤ s) (ha : a ≤ sp.ts s) (hC : OriginWithin tr H C s b) :
@@ -107,7 +108,7 @@ theorem honest_supporter_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc
     dsimp only at hsel'
     split_ifs at hsel'
     have h34 := (SA.deepest_mem hsel').1.2.1
-    rw [hsl] at h34
+    rw [hsl, hrun.stock] at h34
     have hf := hB.two (tr.time i₀) (hrun.time_nonneg i₀) hi₀
     obtain ⟨u, ⟨v, hv, rfl, R, hR, hRr, hCR⟩, huH⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard (s := (H (tr.time i₀))ᶜ)

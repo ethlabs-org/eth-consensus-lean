@@ -709,6 +709,7 @@ for `H` is the law for `truncH H b` (with the honesty premises projected by `.1`
 private theorem goldilocksRun_truncH
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (b : Time) :
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg (truncH H b) tr where
+  stock := hrun.stock
   antitone := truncH_antitone hrun.antitone b
   init y hy := hrun.init y hy.1
   grouped y i c hc hy := hrun.grouped y i c hc hy.1

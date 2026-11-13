@@ -92,7 +92,7 @@ theorem unlocked_compatibleRel (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : Fram
     {σ : Int} {V : View sp.n}
     (hlow : (∃ S : Set (Fin sp.n), (∀ w ∈ S, w ∈ equivocators V.votes ∨
         ∃ x ∈ V.support, x.val = w ∧ (x.slot : Int) = σ ∧ AncR Φ B x.head) ∧
-        sp.n ≤ 2 * S.ncard) ∨
+        sp.committeeSize ≤ 2 * S.ncard) ∨
       ∀ l ∈ L, sp.slot t ≤ l.slot + sp.k → (l.slot : Int) < σ → ∀ X ∈ U, X.root = l.block →
         Compatible U X B)
     (hhigh : ∀ l ∈ L, sp.slot t ≤ l.slot + sp.k → σ ≤ (l.slot : Int) → ∀ X ∈ U,
@@ -135,7 +135,7 @@ theorem unlocked_compatible (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK
     {V : View sp.n}
     (hlow : (∃ S : Set (Fin sp.n), (∀ w ∈ S, w ∈ equivocators V.votes ∨
         ∃ x ∈ V.support, x.val = w ∧ (x.slot : Int) = σ ∧ AncR Φ B x.head) ∧
-        sp.n ≤ 2 * S.ncard) ∨
+        sp.committeeSize ≤ 2 * S.ncard) ∨
       ∀ l ∈ L, sp.slot t ≤ l.slot + sp.k → (l.slot : Int) < σ → ∀ X ∈ U, X.root = l.block →
         Compatible U X B)
     (hhigh : ∀ l ∈ L, sp.slot t ≤ l.slot + sp.k → σ ≤ (l.slot : Int) → ∀ X ∈ U,
@@ -377,7 +377,8 @@ theorem optimisticLock_compatibleU
   split_ifs at hsel
   have h34 := (deepest_mem hsel).1.2.1
   rw [hsl] at h34
-  refine origin_compatible hr.coherent hΦU h34 hf fun v hv hvH => ?_
+  refine origin_compatible hr.coherent hΦU h34
+    (by simpa only [hrun.stock] using hf) fun v hv hvH => ?_
   obtain ⟨hvs, j, -, e, hve, rfl⟩ := optimisticPoint_pool_voteU hrun hz hpt hv hvH
   exact hB _ hvH j e hve hvs
 
@@ -435,7 +436,7 @@ private theorem proposal_locksU
     (hlow : (∃ S : Set (Fin sp.n), (∀ w ∈ S,
         w ∈ equivocators (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)).votes ∨
           w ∈ supporters ℓ.frame (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)) σ B) ∧
-        sp.n ≤ 2 * S.ncard) ∨ LowLocksCompatible U (tr.state x i) (tr.time i) σ B)
+        sp.committeeSize ≤ 2 * S.ncard) ∨ LowLocksCompatible U (tr.state x i) (tr.time i) σ B)
     (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B) :
     ∀ C ∈ liveLockBlocks sp L ℓ.frame (tr.time i),
       Compatible U C B := by
@@ -459,7 +460,7 @@ private theorem proposal_locks (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     (hlow : (∃ S : Set (Fin sp.n), (∀ w ∈ S,
         w ∈ equivocators (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)).votes ∨
           w ∈ supporters ℓ.frame (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)) σ B) ∧
-        sp.n ≤ 2 * S.ncard) ∨ LowLocksCompatible U (tr.state x i) (tr.time i) σ B)
+        sp.committeeSize ≤ 2 * S.ncard) ∨ LowLocksCompatible U (tr.state x i) (tr.time i) σ B)
     (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B) :
     ∀ C ∈ liveLockBlocks sp (unlock sp (tr.state x i).locks ℓ.frame (tr.time i) σ
       (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤))) ℓ.frame (tr.time i),
@@ -522,7 +523,8 @@ theorem batch_proposalU
     have := Set.ncard_union_le SX Hᶜ
     omega
   exact proposal_walkU hr hx hc hslot hprop hV.2
-    (proposal_locksU hr hx hc hV.1 hL (Or.inl ⟨SX, fun w hw => Or.inr (hsupp hw), hhalf⟩) hhigh)
+    (proposal_locksU hr hx hc hV.1 hL (Or.inl ⟨SX, fun w hw => Or.inr (hsupp hw),
+      by simpa only [hrun.stock] using hhalf⟩) hhigh)
     fun X Cx hCx hp hCxB => isBest_of_majority hΦ (ofLists_support_subset _ _ _ _)
       (fun _ h => h.1) hsupp hvoters h3 hCx hp hCxB
 
@@ -866,7 +868,7 @@ theorem update_first_proposalU
     rintro v ⟨hv, hneq, hres, R, hR, hRr, hCR⟩
     exact ⟨hv, hneq, hres, R, hR, hRr, hDC.trans hCR⟩
   set SX := {w | ∃ v ∈ fastCounted sp (tr.state X i₀) ℓX.frame σ D, v.val = w}
-  have hhalf : sp.n ≤ 2 * SX.ncard := by
+  have hhalf : sp.committeeSize ≤ 2 * SX.ncard := by
     refine hfast.trans (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_))
     rintro w ⟨hw, v, ⟨hv, hres⟩, hval, -, hanc⟩
     exact ⟨v, ⟨hv, hval ▸ hw, hres, hanc⟩, hval⟩
@@ -931,7 +933,8 @@ theorem optimistic_first_proposal_storedU
   dsimp only at hsel'
   split_ifs at hsel' with hcond
   obtain ⟨-, h34, -⟩ := (deepest_mem hsel').1
-  rw [hslX] at h34
+  rw [hslX, hrun.stock] at h34
+  have hstock := hrun.stock
   set V := View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤) with hV'
   set SX := optimisticVoters sp A ℓX.frame σ D
   -- every optimistic voter supports `D` at the proposal, or equivocates there
@@ -996,6 +999,7 @@ theorem optimisticLock_pair_compatible (hrun : ACRun proposer tr H U)
   have hr := hrun.localRun
   obtain ⟨-, hnD, ellD, A, hpD, -, hvD, hhD⟩ := optimisticLockAt_spec hrun hx hd
   obtain ⟨-, hnE, ellE, A', hpE, -, hvE, hhE⟩ := optimisticLockAt_spec hrun hy he
+  rw [hrun.stock] at hnD hnE
   have hi := Set.ncard_inter_add_ncard_union (voters CV) (voters CW)
   have hu := Set.ncard_le_ncard (Set.subset_univ (voters CV ∪ voters CW))
   rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hu

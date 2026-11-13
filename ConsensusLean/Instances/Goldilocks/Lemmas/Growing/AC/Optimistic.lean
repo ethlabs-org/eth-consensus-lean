@@ -18,7 +18,8 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
   {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
-theorem optimistic_transfer_stored (hrun : ACRun proposer tr H U) {s : Nat}
+theorem optimistic_transfer_stored
+    (hrun : ACRun proposer tr H U) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hx : x ∈ H (tr.time i₀)) (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D)
@@ -52,7 +53,7 @@ theorem optimistic_transfer_stored (hrun : ACRun proposer tr H U) {s : Nat}
     dsimp only at h
     split_ifs at h
     have := (deepest_mem h).1.2.1
-    rwa [hslx] at this
+    rwa [hslx, hrun.stock] at this
   have hxi : tr.time i₀ ≤ tr.time i := by
     have hslt : tr.time i₀ < sp.ts s + 2 * sp.Δ := by
       have h := hsel
@@ -126,7 +127,9 @@ theorem optimistic_transfer_stored (hrun : ACRun proposer tr H U) {s : Nat}
         rcases hcover hw with ⟨_, x, hx, hxv, hxs, hxa⟩ | h
         · exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩
         · exact Or.inl h)
-      (by omega) hf hearlier' hm)
+      (by rw [hrun.stock]; omega) (by simpa only [hrun.stock] using hf) hearlier'
+      (fun Φ' A' D' hΦ' hΦ'U hD' h34 => hm Φ' A' D' hΦ' hΦ'U hD'
+        (by simpa only [hrun.stock] using h34)))
     fun X' Cx hCx hp hCxC =>
       isBest_of_cover hΦ (merged_support_subset hry.localRun hy hc' (s + 1))
         (fun B hB => voteDomain_subset_tree hB.1) hcover h3 hCx hp hCxC
@@ -136,7 +139,8 @@ theorem optimistic_transfer_stored (hrun : ACRun proposer tr H U) {s : Nat}
   · exact he ▸ hBt
   · exact (Anc.mem hcore he).2
 
-theorem optimistic_transfer (sp : SAParams) : OptimisticTransfer sp := by
+theorem optimistic_transfer (sp : SAParams) :
+    OptimisticTransfer sp := by
   intro FGP ro H U tr proposer hrun s x y i₀ i B CV ℓ e hx hopt hf hy hc hs hcarry hv he
   exact optimistic_transfer_stored hrun hx hopt .refl hf hy hc hs hcarry hv he
 

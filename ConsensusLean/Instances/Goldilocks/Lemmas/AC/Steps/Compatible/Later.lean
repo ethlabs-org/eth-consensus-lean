@@ -18,13 +18,15 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-- **A fast lock supported by votes that extend `B` is compatible with `B`.** -/
-theorem fastLock_compatible_of_votes (hrun : ACRun proposer tr H U) {x : Fin sp.n} (hx : x ∈ H)
+theorem fastLock_compatible_of_votes
+    (hrun : ACRun proposer tr H U) {x : Fin sp.n} (hx : x ∈ H)
     {j i s' : Nat} (hji : j < i) {B B' : Blk sp.n FGP} {CV' : Set (Vote sp.n)}
     (hfl : FastLockAt tr x j s' B' CV') (hf : 2 * Hᶜ.ncard < sp.n)
     (hvotes : ∀ z ∈ H, ∀ j' < i, ∀ e, VoteAt tr z j' e → e.msg.slot = s' → VoteExtends U e.msg B) :
     Compatible U B' B := by
   have hr := hrun.localRun
   have hU := hr.coherent
+  have hf : 2 * Hᶜ.ncard < sp.committeeSize := by simpa only [hrun.stock] using hf
   rcases hfl with ⟨ℓ, C, ⟨hc, -⟩, -, hD, -⟩ | ⟨ℓ, A, hpt, hsl, hsel, -⟩
   · -- the fast test: an honest supporter's vote extends both blocks
     obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by

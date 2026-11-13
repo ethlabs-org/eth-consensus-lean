@@ -74,11 +74,13 @@ private theorem tryVote_em
   · simp at he
   · simp at he
   all_goals
-    rw [List.mem_singleton] at he
-    subst he
-    refine ⟨rfl, not_lt.1 (not_or.1 (not_or.1 h1).2).2, ?_, rfl⟩
-    split_ifs
-    rfl
+    first
+    | exact (List.not_mem_nil he).elim
+    | rw [List.mem_singleton] at he
+      subst he
+      refine ⟨rfl, not_lt.1 (not_or.1 (not_or.1 h1).2).2, ?_, rfl⟩
+      split_ifs
+      rfl
 
 /-! ## Over an SA trace -/
 
@@ -407,7 +409,7 @@ provenance. This retains the consumer content of `OptimisticLockAt`. -/
 theorem optimisticLockAt_spec (hrun : ACRun proposer tr H U)
     {y : Fin sp.n} (hy : y ∈ H) {i s : Nat} {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (ho : OptimisticLockAt tr y i s D CV) :
-    tr.time i < sp.ts s + 2 * sp.Δ ∧ 3 * sp.n ≤ 4 * (voters CV).ncard ∧
+    tr.time i < sp.ts s + 2 * sp.Δ ∧ 3 * sp.committeeSize ≤ 4 * (voters CV).ncard ∧
       ∃ ell A, OptimisticPoint tr y i ell A ∧ D ∈ ell.frame.tree ∧
         (∀ v ∈ CV, v ∈ A.pool s ∧ v.slot = s ∧ AncR ell.frame D v.head) ∧
         (∀ v ∈ CV, v.val ∈ H → ∃ a ≤ i, ∃ e, VoteAt tr v.val a e ∧ e.msg = v) := by
@@ -434,7 +436,7 @@ theorem optimisticLockAt_spec (hrun : ACRun proposer tr H U)
 private def Good (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (y : Fin sp.n) (i : Nat) (l : Lock) : Prop :=
   ∃ (Φ : Frm sp.n FGP) (A : SAState sp.n) (D : Blk sp.n FGP), FrameOK Φ ∧ Φ.tree ⊆ U ∧
-    D ∈ Φ.tree ∧ 3 * sp.n ≤ 4 * (optimisticVoters sp A Φ l.slot D).ncard ∧
+    D ∈ Φ.tree ∧ 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ l.slot D).ncard ∧
     (∀ v ∈ A.pool l.slot, v.val ∈ H → v.slot = l.slot ∧
       ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v) ∧
     (∃ k ≤ i, A.pool l.slot ⊆ (tr.state y (k + 1)).pool l.slot) ∧
@@ -499,7 +501,7 @@ theorem lock_origin_readPointU
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     ∀ l ∈ e.readPoint.locks, (e.msg.slot : Int) - 1 ≤ l.slot →
       ∃ (Φ : Frm sp.n FGP) (A : SAState sp.n) (D : Blk sp.n FGP), FrameOK Φ ∧ Φ.tree ⊆ U ∧
-        D ∈ Φ.tree ∧ 3 * sp.n ≤ 4 * (optimisticVoters sp A Φ l.slot D).ncard ∧
+        D ∈ Φ.tree ∧ 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ l.slot D).ncard ∧
         (∀ v ∈ A.pool l.slot, v.val ∈ H → v.slot = l.slot ∧
           ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v) ∧
         (∃ k ≤ i, A.pool l.slot ⊆ (tr.state y (k + 1)).pool l.slot) ∧
@@ -549,7 +551,7 @@ theorem lock_origin_readPoint (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy 
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     ∀ l ∈ e.readPoint.locks, (e.msg.slot : Int) - 1 ≤ l.slot →
       ∃ (Φ : Frm sp.n FGP) (A : SAState sp.n) (D : Blk sp.n FGP), FrameOK Φ ∧ Φ.tree ⊆ U ∧
-        D ∈ Φ.tree ∧ 3 * sp.n ≤ 4 * (optimisticVoters sp A Φ l.slot D).ncard ∧
+        D ∈ Φ.tree ∧ 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ l.slot D).ncard ∧
         (∀ v ∈ A.pool l.slot, v.val ∈ H → v.slot = l.slot ∧
           ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v) ∧
         (∃ k ≤ i, A.pool l.slot ⊆ (tr.state y (k + 1)).pool l.slot) ∧
@@ -562,7 +564,7 @@ honest casts. The strict cut comes from the read point, not from an arbitrary
 optimistic write (which may include its own post-cast admission). This is the
 local causal step; it does not assume future unanimity or close the induction. -/
 theorem current_read_lock_below_of_earlier_heads (hrun : ACRun proposer tr H U)
-    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
+    (hf : 4 * Hᶜ.ncard < 3 * sp.committeeSize)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ell : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ell e) {l : Lock} (hl : l ∈ e.readPoint.locks)
@@ -579,8 +581,6 @@ theorem current_read_lock_below_of_earlier_heads (hrun : ACRun proposer tr H U)
     push Not at hn
     have hsub : optimisticVoters sp A Φ l.slot D ⊆ Hᶜ := fun z hz => hn z hz
     have hle := Set.ncard_le_ncard hsub (Set.toFinite _)
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
     omega
   obtain ⟨hvs, k, hki, e', he', hmsg⟩ := hpool v hv hz
   have hhead := hIH v.val hz k hki e' he' (by rw [hmsg, hvs, hs])

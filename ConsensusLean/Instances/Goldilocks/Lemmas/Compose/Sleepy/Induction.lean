@@ -38,7 +38,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- **Every finite frontier**: `P_s` and `V_s` for every `s`. -/
-theorem frontier (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem frontier
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) : ∀ s, OriginsBelow tr H s ∧ VotesBelow tr H s := by
   intro s
   induction s with
@@ -52,7 +53,8 @@ theorem frontier (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
 
 /-- **The Sleepy record invariant** (S1–S3) holds of every Goldilocks run under `Sleepy` and
 `NoColl`. -/
-theorem sleepy_invariant (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem sleepy_invariant
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) : SleepyInvariant tr H := by
   have hF := frontier hrun hnc hsl
   have hcomp : ∀ C s C' s', Origin tr H C s → Origin tr H C' s' →
@@ -69,7 +71,8 @@ theorem sleepy_invariant (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
 
 /-- **Every finite frontier up to `b`**: `P_s` and `V_s` up to `b` for every `s`, under the
 prefix premises up to `b`. -/
-theorem frontier_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem frontier_upTo
+    {b : Time} (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) : ∀ s, OriginsBelowUpTo tr H s b ∧ VotesBelowUpTo tr H s b := by
   intro s
   induction s with
@@ -82,7 +85,8 @@ theorem frontier_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr) (hnc : 
     exact ⟨hP, votes_below_succ_upTo hrun hnc hpre hP ih.2⟩
 
 /-- Both frontiers at a finite horizon, with recipient-bounded rather than whole-run service. -/
-theorem frontier_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
+theorem frontier_before
+    {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d)) :
@@ -100,7 +104,8 @@ theorem frontier_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
 /-- **The Sleepy record invariant up to `b`** (S1–S3 for the origins within `b`, the honest votes
 at times `≤ b` and the cuts within `b`) holds of every Goldilocks run under `NoColl` and the
 send-window prefix premises `SleepyPrefix` up to `b`, whatever happens after `b`. -/
-theorem sleepy_invariant_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr)
+theorem sleepy_invariant_upTo
+    {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) : SleepyInvariantUpTo tr H b := by
   have hF := frontier_upTo hrun hnc hpre
@@ -121,7 +126,8 @@ theorem sleepy_invariant_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     exact ⟨L, hL, hLr, onOriginChainWithin_iff.2 (Or.inr ⟨C, l.slot, hC.within hi, hLC⟩)⟩
 
 /-- The complete finite record invariant under recipient-bounded service. -/
-theorem sleepy_invariant_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
+theorem sleepy_invariant_before
+    {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d)) : SleepyInvariantUpTo tr H b := by

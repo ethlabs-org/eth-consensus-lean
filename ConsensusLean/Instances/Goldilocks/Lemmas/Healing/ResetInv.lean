@@ -277,6 +277,7 @@ theorem optimistic_target_vote_domain (hp : ResetPremises tr H proposer dg g ΔF
     split_ifs at hsel
     refine ⟨frame_tree_subset hp hx hpt.1 (SA.deepest_mem hsel).1.1, ?_⟩
     have h34 := (SA.deepest_mem hsel).1.2.1
+    rw [hS.run.stock] at h34
     obtain ⟨z, ⟨v, hv, rfl, R, hR, hRr, hBR⟩, hz⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
         (t := SA.optimisticVoters sp A ellX.frame (sp.slot (tr.projAC.time r)) B) (by omega)
@@ -288,7 +289,8 @@ theorem optimistic_target_vote_domain (hp : ResetPremises tr H proposer dg g ΔF
   refine held_target_vote_domain_before hp hx hy hBx hcast ?_ ?_ ?_
   · intro hF
     have hg := le_gbar g
-    exact raw_writer_voterBlockTree_window_before hr (reset_raw_sync_window_before hp (tr.time i))
+    exact raw_writer_voterBlockTree_window_before (by rw [hp.run.stock]; exact sp.toParams.hn)
+      hr (reset_raw_sync_window_before hp (tr.time i))
       (catch_window_of_reset_catch hp hc (tr.time i)) hx hy (Or.inr hfast) .refl hcast
       (by omega) le_rfl
       (add_le_add (hgs.trans ((SA.ts_le_iff sp).mpr (show (s : Int) ≤ e.msg.slot - 1 by omega)))
@@ -393,6 +395,7 @@ private theorem protected_writer (hp : ResetPremises tr H proposer dg g ΔF a)
     split_ifs at hsel
     refine ⟨frame_tree_subset hp hx hpt.1 (SA.deepest_mem hsel).1.1, ?_⟩
     have h34 := (SA.deepest_mem hsel).1.2.1
+    rw [hS.run.stock] at h34
     obtain ⟨z, ⟨v, hv, rfl, R, hR, hRr, hBR⟩, hz⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
         (t := SA.optimisticVoters sp A ellX.frame (sp.slot (tr.projAC.time i)) B) (by omega)

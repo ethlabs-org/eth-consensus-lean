@@ -74,6 +74,10 @@ private theorem tryVote_voteStep (self : Fin sp.n) (A : SAState sp.n) (Φ : SA.F
   · exact VoteStep.refl A t
   · exact VoteStep.refl A t
   all_goals
+    first
+    | exact ⟨rfl, Or.inr rfl, by simp, fun _ h => absurd h List.not_mem_nil⟩
+    | skip
+  all_goals
     simp only [not_or, not_not, not_lt] at h₁
     obtain ⟨hj, hv, -⟩ := h₁
     have k₁ := fun A₁ v => ((optimistic_keeps (SA.admitVote sp A₁ t v) Φ t).1.trans
@@ -393,7 +397,7 @@ theorem act_poll_snd (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E
         (shapeOf S hn nd).voteForwards.map
           (fun p => (.data (.voteForward p.1 (encodeVote p.2)), [voteObj p.2])) := by
   change (((goldilocks S (pubOf E)).pollBatch nd.st.1 t).2.map _) = _
-  simp only [goldilocks, dite_eq_left hn]
+  simp only [goldilocks, goldilocksWith, dite_eq_left hn]
   change List.map _ ((poll (nd.st.1 hn) t).2.toList ++
     (nd.st.1 hn).forwards.map _ ++ (nd.st.1 hn).voteForwards.map _) = _
   erw [List.map_append, List.map_append, List.map_map, List.map_map, Option.toList_map]
@@ -433,12 +437,11 @@ theorem dutyStep_carried (v : V) (nd : Model.Node (Model.protoOf (compiled (gold
       ((Model.protoOf (compiled (goldilocks S)) E).act nd.st d).2
     = l at hc
   have hlen : l.length ≤ 1 := by
-    rw [← hl]; unfold Model.Run.signedCandidate
-    split
-    · rw [List.length_map]
-      exact act_candidates_length S nd.st d hd
-    · rw [List.length_map]
-      exact act_candidates_length S nd.st d hd
+    rw [← hl]
+    by_cases hsel : rho.ownKey v ∈ rho.sel ((Model.protoOf (compiled (goldilocks S)) E).role d)
+    · simp only [Model.Run.signedCandidate, hsel, ↓reduceIte]
+      exact (List.length_filterMap_le _ _).trans (act_candidates_length S nd.st d hd)
+    · simp only [Model.Run.signedCandidate, hsel, ↓reduceIte, List.length_nil, Nat.zero_le]
   match l, hlen with
   | [], _ => simp [Model.releaseAll] at hc
   | [c'], _ =>
@@ -463,7 +466,7 @@ theorem dutyStep_poll_sub (v : V) (nd : Model.Node (Model.protoOf (compiled (gol
   intro o ho
   unfold Model.Run.dutyStep at ho
   split at ho <;> (try simp at ho)
-  obtain ⟨m, cs, hact, -, rfl⟩ :=
+  obtain ⟨m, cs, hact, -, -, rfl⟩ :=
     (rho.mem_signedCandidate).mp (Model.releaseAll_subset _ _ _ _ o ho)
   rw [act_poll_snd S hn, (poll_outbox _ _).2] at hact
   erw [List.append_assoc] at hact
@@ -502,9 +505,12 @@ theorem dutyStep_poll_rel (v : V) (nd : Model.Node (Model.protoOf (compiled (gol
   rw [act_poll_snd S hn, (poll_outbox _ _).2, hb]
   erw [List.append_assoc]
   have hrole : (Model.protoOf (compiled (goldilocks S)) E).role (.poll t) = .poll := rfl
-  simp only [Option.map_some, Option.toList_some, Model.Run.signedCandidate, hrole]
+  have hcrole : ∀ m, (Model.protoOf (compiled (goldilocks S)) E).candidateRole
+      (.poll t) m = .poll := fun _ => rfl
+  simp only [Option.map_some, Option.toList_some, Model.Run.signedCandidate, hrole, hcrole]
   rw [ite_eq_left hsel]
-  erw [List.singleton_append, List.map_cons]
+  erw [List.singleton_append, List.filterMap_cons]
+  simp only [hsel, ↓reduceIte]
   have hc : (Model.releasable nd.seen (pollObj S rho v b) &&
       Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
         (pollObj S rho v b)) = true :=
@@ -529,7 +535,7 @@ theorem dutyStep_pollPropose_snd (v : V)
   unfold Model.Run.dutyStep
   have h2 : ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).2 = [] := by
     change (Option.map _ ((goldilocks S (pubOf E)).pollPropose nd.st.1 t).2).toList = []
-    simp only [goldilocks, dite_eq_left hn]; rfl
+    simp only [goldilocks, goldilocksWith, dite_eq_left hn]; rfl
   dsimp only
   rw [h2]
   simp [Model.Run.signedCandidate, Model.releaseAll]
@@ -592,13 +598,18 @@ theorem dutyStep_propose_shape (v : V)
   | nil => exact Or.inl hact1
   | cons c cs =>
     have hcs : cs = [] := by
-      unfold Model.Run.signedCandidate at hc
-      split at hc
-      · have he := congrArg List.length hc
-        rw [List.length_map, List.length_cons] at he
-        have : cs.length = 0 := by omega
-        exact List.length_eq_zero_iff.mp this
-      · cases hc
+      have hrole : (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
+          .proposer s := rfl
+      simp only [Model.Run.signedCandidate, hrole, hsel, ↓reduceIte] at hc
+      have hle := List.length_filterMap_le (f := fun x =>
+          if rho.ownKey v ∈ rho.sel
+              ((Model.protoOf (compiled (goldilocks S)) E).candidateRole (.propose s hs) x.1)
+          then some (Model.Obj.mk (.signed (rho.ownKey v)
+            ((Model.protoOf (compiled (goldilocks S)) E).candidateRole
+              (.propose s hs) x.1)) x.1 x.2)
+          else none) (l := a.2)
+      rw [hc, List.length_cons] at hle
+      exact List.length_eq_zero_iff.mp (by omega)
     subst hcs
     unfold Model.releaseAll
     split

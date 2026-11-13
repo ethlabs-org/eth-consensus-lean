@@ -162,7 +162,7 @@ theorem ready_update_selection_of_pool_core_at
     · exact Or.inr (SA.anc_tree_of_anc_U hU hPhi hPhiU hL.1 h hPt)
     · exact Or.inl (SA.anc_tree_of_anc_U hU hPhi hPhiU hPt h hL.1)
   have hfast : SA.fastSelect sp A ell.frame u P = some P :=
-    SA.fastSelect_eq_result hPhi hPt hPg (by unfold SA.FastTest; omega)
+    SA.fastSelect_eq_result hPhi hPt hPg (by unfold SA.FastTest; rw [hrun.stock]; omega)
   exact ⟨hconf, hnv, hfast, update_selection_of_confirmation_at hrun hnc hy hu hconf hnv⟩
 
 /-- The finite-reset wrapper supplies only execution, no collisions and the cut fault bound. -/

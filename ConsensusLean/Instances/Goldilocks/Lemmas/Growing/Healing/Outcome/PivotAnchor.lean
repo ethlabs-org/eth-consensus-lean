@@ -60,6 +60,7 @@ theorem reset_vote_anchor_at
   by_cases hls : l.slot = u
   · obtain ⟨Phi', A', D', _, hPhi'U, _, h34, hpool, _, L, hLU, hLr, hLD'⟩ :=
       SA.lock_origin_readPoint hr hy hc' l hl (by rw [hes, hls]; omega)
+    rw [hr.stock] at h34
     obtain rfl : L = B := hU.1 hLU (hPhiU hB) (hLr.trans hBr.symm)
     have hf : 2 * (H (tr.time j))ᶜ.ncard < sp.n := by
       have := hp.faults (tr.time j) (hp.run.time_nonneg j) hjb

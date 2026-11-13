@@ -82,7 +82,7 @@ theorem coherent_g : Coherent ({g} : Set (Blk sp1.n Unit)) := frameOK_Φ₀.cohe
 /-- (a) The initial SA state is reachable, with the genesis frame, inside `{genesis}`. -/
 theorem initial_reachable :
     (GA1).ReachableAt v0 ({g} : Set (Blk sp1.n Unit)) (SAState.initial 0) Φ₀ 0 :=
-  ACInterface.ReachableAt.init (A := GA1) (self := v0) (U := {g}) Φ₀
+  ACInterface.ReachableAtFrom.init (A := GA1) (self := v0) (U := {g}) Φ₀
     ⟨rfl, rfl, rfl, rfl, rfl⟩ ⟨frameOK_Φ₀, le_rfl⟩
 
 /-- (a) From the initial state, `ac_proposal` at `t_1` returns a proposal. -/
@@ -176,6 +176,7 @@ theorem oneTick_state (y : Fin sp1.n) (i : Nat) : oneTick.state y i = SAState.in
 /-- (a) The one-tick trace satisfies the AC trace contract and the honest-object facts (the
 hypothesis `ACRun` of every ACSteps statement). -/
 theorem acRun_one_tick : ACRun (fun _ => 0) oneTick Set.univ ({g} : Set (Blk sp1.n Unit)) where
+  stock := rfl
   localRun := localRun_one_tick
   honest :=
     { pool_vote := fun y _ i σ v hv _ => by

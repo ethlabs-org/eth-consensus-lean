@@ -69,7 +69,7 @@ private theorem update_sideU
     rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at this
   · have hfast := (deepest_mem hD).1.2.2
     unfold FastTest confirmationScore at hfast
-    exact hfast
+    simpa only [hrun.stock] using hfast
   · have hmaj := (deepest_mem hC).1.2.2
     unfold confirmationScore at hmaj
     exact lt_of_lt_of_le hmaj (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard
@@ -95,7 +95,8 @@ private theorem update_sideU
 node's restarts were at or before `t_s`; its supporters `S` of `D` are at least half of the
 committee and more than half of its voters; each has a vote in its pool, extending `D`, and
 does not equivocate there, and that vote was admitted in `[t_s, t_s + 2Δ)`. -/
-private theorem update_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H) {c s : Nat}
+private theorem update_side
+    (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H) {c s : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastUpdateAt tr Y c s D CV) :
     ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
       tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
@@ -115,6 +116,7 @@ theorem fastLock_same_slotU
     (hx : x ∈ H) (hfl' : FastLockAt tr x j s B' CV')
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
     (hf : 2 * Hᶜ.ncard < sp.n) : Compatible U B B' := by
+  have hstock := hrun.stock
   have hr := hrun.localRun
   have hU := hr.coherent
   have hpos : 0 < sp.n := Fin.pos w
@@ -161,7 +163,8 @@ theorem fastLock_same_slotU
     exact hnc (anc_total hU (Anc.mono hΦU hBR) (Anc.mono hΦU' hBR'))
 
 /-- **Fast locks of one slot are compatible.** -/
-theorem fastLock_same_slot (hrun : ACRun proposer tr H U) {s : Nat} {w x : Fin sp.n} {i₀ j : Nat}
+theorem fastLock_same_slot
+    (hrun : ACRun proposer tr H U) {s : Nat} {w x : Fin sp.n} {i₀ j : Nat}
     {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hw : w ∈ H) (hfl : FastLockAt tr w i₀ s B CV)
     (hx : x ∈ H) (hfl' : FastLockAt tr x j s B' CV')
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)

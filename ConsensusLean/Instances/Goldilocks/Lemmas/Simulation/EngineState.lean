@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
+public import ConsensusLean.Lemmas.Model.Candidates
 
 public section
 
@@ -64,7 +65,7 @@ theorem shapeOf_act_propose (st : (Model.protoOf (compiled (goldilocks S)) E).St
     ((Model.protoOf (compiled (goldilocks S)) E).act st (.propose s h)).1.1 hn =
       (propose (st.1 hn) s).1 := by
   change ((goldilocks S (pubOf E)).propose st.1 s).1 hn = _
-  simp only [goldilocks, dite_eq_left hn]
+  simp only [goldilocks, goldilocksWith, dite_eq_left hn]
   rfl
 
 omit [DecidableEq V] in
@@ -73,7 +74,7 @@ theorem shapeOf_act_pollPropose (st : (Model.protoOf (compiled (goldilocks S)) E
     ((Model.protoOf (compiled (goldilocks S)) E).act st (.pollPropose t)).1.1 hn =
       nodeTick (st.1 hn) := by
   change ((goldilocks S (pubOf E)).pollPropose st.1 t).1 hn = _
-  simp only [goldilocks, dite_eq_left hn]
+  simp only [goldilocks, goldilocksWith, dite_eq_left hn]
   rfl
 
 omit [DecidableEq V] in
@@ -82,7 +83,7 @@ theorem shapeOf_act_poll (st : (Model.protoOf (compiled (goldilocks S)) E).State
     ((Model.protoOf (compiled (goldilocks S)) E).act st (.poll t)).1.1 hn =
       (poll (st.1 hn) t).1 := by
   change ((goldilocks S (pubOf E)).pollBatch st.1 t).1 hn = _
-  simp only [goldilocks, dite_eq_left hn]
+  simp only [goldilocks, goldilocksWith, dite_eq_left hn]
   rfl
 
 omit [DecidableEq V] in
@@ -206,14 +207,10 @@ theorem signedCandidate_poll_recordOwn (v : V) (t : Nat)
     ∀ c ∈ rho.signedCandidate v (.poll t) (o.map fun bc => (.data bc.1, bc.2)),
       ∀ (st : State (S.params (pubOf E) hn) (S.ro _)) hs, recordOwn st c hs = st := by
   intro c hc st hs
-  unfold Model.Run.signedCandidate at hc
-  split at hc
-  next hk =>
-    obtain ⟨⟨m, cs⟩, hm, rfl⟩ := List.mem_map.mp hc
-    obtain ⟨⟨b, bs⟩, _, he⟩ := List.mem_map.mp hm
-    cases he
-    exact recordOwn_data st _ _ _ _ hs
-  next hk => simp at hc
+  obtain ⟨m, cs, hm, _, _, rfl⟩ := rho.mem_signedCandidate.mp hc
+  obtain ⟨⟨b, bs⟩, _, he⟩ := List.mem_map.mp hm
+  cases he
+  exact recordOwn_data st _ _ _ _ hs
 
 omit [DecidableEq V] in
 /-- The engine's poll duty step is the shape's `poll`: its released body is not recorded. -/
@@ -237,7 +234,7 @@ theorem dutyStep_pollPropose (v : V) (nd : Model.Node (Model.protoOf (compiled (
     hsel, ↓reduceIte]
   have h2 : ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).2 = [] := by
     change (Option.map _ ((goldilocks S (pubOf E)).pollPropose nd.st.1 t).2).toList = []
-    simp only [goldilocks, dite_eq_left hn]; rfl
+    simp only [goldilocks, goldilocksWith, dite_eq_left hn]; rfl
   change shapeOf S hn (Model.releaseAll _ _ _
     ⟨((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).1, nd.seen⟩
     (rho.signedCandidate v (.pollPropose t)
@@ -341,7 +338,8 @@ theorem deliver_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
 
 /-- The shape's state before the first event is its initial state at the own key. -/
 theorem stateAt_zero (v : V) :
-    stateAt S rho hn v 0 = (goldilocksShape _ _).init (rho.ownKey v) := by
+    stateAt S rho hn v 0 = (goldilocksShape _ _).init (rho.ownKey v)
+      (fun r => decide (rho.ownKey v ∈ rho.sel r)) := by
   rw [stateAt_eq]
   rfl
 

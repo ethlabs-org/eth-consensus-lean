@@ -46,6 +46,7 @@ theorem fastLock_counted (hrun : ACRun proposer tr H U)
     refine ⟨?_, ?_⟩
     · have hfast := (deepest_mem hD).1.2.2
       unfold FastTest confirmationScore at hfast
+      rw [hrun.stock] at hfast
       refine hfast.trans (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_))
       rintro u ⟨hu, x, ⟨hx, hres⟩, hval, -, hanc⟩
       exact ⟨x, ⟨hx, hval ▸ hu, hres, hanc⟩, hval⟩
@@ -66,6 +67,7 @@ theorem fastLock_counted (hrun : ACRun proposer tr H U)
     dsimp only at hsel
     split_ifs at hsel
     have h34 := (deepest_mem hsel).1.2.1
+    rw [hrun.stock] at h34
     refine ⟨?_, ?_⟩
     · have hsub : optimisticVoters sp A ℓ.frame (sp.slot (tr.time i₀)) B ⊆
           {u | ∃ v ∈ {v | v ∈ A.pool s ∧ AncR ℓ.frame B v.head}, v.val = u} := by
@@ -80,7 +82,8 @@ theorem fastLock_counted (hrun : ACRun proposer tr H U)
 
 /-- **The locks after the unlocking of slot `s + 1`**, for a fast lock on `D` and any `B ⪯ D`
 (the block the lock stores). -/
-theorem locks_after_unlock (hrun : ACRun proposer tr H U) {s : Nat} {w x : Fin sp.n} {i₀ j b : Nat}
+theorem locks_after_unlock
+    (hrun : ACRun proposer tr H U) {s : Nat} {w x : Fin sp.n} {i₀ j b : Nat}
     {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hw : w ∈ H) (hfl : FastLockAt tr w i₀ s D CV)
     (hBD : Anc U B D) (hcarry : Carry tr H U s CV) (hx : x ∈ H)
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr x j ℓ e)
@@ -140,7 +143,8 @@ theorem locks_after_unlock (hrun : ACRun proposer tr H U) {s : Nat} {w x : Fin s
       · simpa [freeze] using hu.2
     intro l hl hls X hX hXr
     rw [hL₀, hs, hσ] at hl
-    refine (unlock_compatible hΦ hBt (S := {u | ∃ v ∈ CV, v.val = u}) ?_ hn L₀ (tr.time j) l hl
+    refine (unlock_compatible hΦ hBt (S := {u | ∃ v ∈ CV, v.val = u}) ?_
+      (by simpa only [hrun.stock] using hn) L₀ (tr.time j) l hl
       (by exact_mod_cast hls) X hX hXr).imp (Anc.mono hΦU) (Anc.mono hΦU)
     rintro u ⟨v, hv, rfl⟩
     obtain ⟨hvs, R, hR, hRr, hRs, hBR⟩ := hcv v hv

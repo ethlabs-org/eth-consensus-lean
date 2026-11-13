@@ -269,7 +269,7 @@ private theorem history_duty {v : V} {signed : FG.Att (Fintype.card V) → Prop}
     | act s k => exact k.elim
     | propose s hs =>
       change HasHistory _ (((goldilocks S (pubOf E)).propose nd.st.1 s).1 hn) signed
-      simp only [goldilocks, dite_eq_left hn]
+      simp only [goldilocks, goldilocksWith, dite_eq_left hn]
       change HasHistory _ (propose (nd.st.1 hn) s).1 signed
       obtain ⟨hk, hr, ins, hi, he, hout⟩ := h
       refine ⟨(propose_self _ _).trans hk, ?_, ins, hi, ?_, hout⟩
@@ -277,13 +277,13 @@ private theorem history_duty {v : V} {signed : FG.Att (Fintype.card V) → Prop}
       · unfold propose; dsimp only; split <;> exact he
     | pollPropose t =>
       change HasHistory _ (((goldilocks S (pubOf E)).pollPropose nd.st.1 t).1 hn) signed
-      simp only [goldilocks, dite_eq_left hn]
+      simp only [goldilocks, goldilocksWith, dite_eq_left hn]
       change HasHistory _ (nodeTick (nd.st.1 hn)) signed
       unfold nodeTick
       split <;> exact h
     | poll t =>
       change HasHistory _ (((goldilocks S (pubOf E)).pollBatch nd.st.1 t).1 hn) signed
-      simp only [goldilocks, dite_eq_left hn]
+      simp only [goldilocks, goldilocksWith, dite_eq_left hn]
       change HasHistory _ (poll (nd.st.1 hn) t).1 signed
       exact history_poll h _
   · exact h
@@ -335,6 +335,7 @@ private theorem history_restore {v : V} {signed : FG.Att (Fintype.card V) → Pr
     (h : HasHistory (rho.ownKey v) (nd.st.1 hn) signed) :
     HasHistory (rho.ownKey v)
       (((Model.protoOf (compiled (goldilocks S)) E).restore (rho.ownKey v)
+        (fun r => decide (rho.ownKey v ∈ rho.sel r))
         ((Model.protoOf (compiled (goldilocks S)) E).durable nd.st) t).1 hn) signed := by
   obtain ⟨_, hr, ins, hi, he, hout⟩ := h
   exact ⟨rfl, hr, ins, hi, he, hout⟩
@@ -399,7 +400,7 @@ private theorem history_duty_sign {v : V} {signed : FG.Att (Fintype.card V) → 
         hsel, ↓reduceIte]
       apply history_release
       change HasHistory _ (((goldilocks S (pubOf E)).pollBatch nd.st.1 k).1 hn) _
-      simp only [goldilocks, dite_eq_left hn]
+      simp only [goldilocks, goldilocksWith, dite_eq_left hn]
       exact hsign
     apply history_mono hall
     intro b hb
@@ -886,19 +887,19 @@ private theorem queued_duty {v : V} {signed : FG.Att (Fintype.card V) → Prop}
     | act s k => exact k.elim
     | propose s hs =>
       change Queued (((goldilocks S (pubOf E)).propose nd.st.1 s).1 hn) _
-      simp only [goldilocks, dite_eq_left hn]
+      simp only [goldilocks, goldilocksWith, dite_eq_left hn]
       intro w hw
       obtain ⟨a, he, hv, ha⟩ := h w ((propose_att _ s _).mp hw)
       exact ⟨a, he, hv.trans (propose_self _ s).symm, Or.inl ha⟩
     | pollPropose t =>
       change Queued (((goldilocks S (pubOf E)).pollPropose nd.st.1 t).1 hn) _
-      simp only [goldilocks, dite_eq_left hn]
+      simp only [goldilocks, goldilocksWith, dite_eq_left hn]
       intro w hw
       obtain ⟨a, he, hv, ha⟩ := h w ((nodeTick_att _ _).mp hw)
       exact ⟨a, he, hv.trans (nodeTick_self _).symm, Or.inl ha⟩
     | poll t =>
       change Queued (((goldilocks S (pubOf E)).pollBatch nd.st.1 t).1 hn) _
-      simp only [goldilocks, dite_eq_left hn]
+      simp only [goldilocks, goldilocksWith, dite_eq_left hn]
       apply queued_mono (poll_queued (nd.st.1 hn) t h).1
       intro a ha
       rcases ha with ha | ⟨hd, C, Λ', hC, ha⟩

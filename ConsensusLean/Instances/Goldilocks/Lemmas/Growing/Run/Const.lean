@@ -102,12 +102,14 @@ theorem GoldilocksRun.const_iff :
   · intro h
     exact
       { toLocalRun := LocalRun.const_iff.mp h.toLocalRun
+        stock := h.stock
         genesis_root_ok := h.genesis_root_ok
         carried_vote_unforgeable := fun y hy i B hB v hv hvH =>
           h.carried_vote_unforgeable y i B hy hB v hv hvH }
   · intro h
     exact
       { toLocalRun := LocalRun.const_iff.mpr h.toLocalRun
+        stock := h.stock
         genesis_root_ok := h.genesis_root_ok
         carried_vote_unforgeable := fun y i B hy hB v hv hvH =>
           h.carried_vote_unforgeable y hy i B hB v hv hvH }
@@ -281,9 +283,9 @@ theorem honestObjects_const :
 /-- With a constant honest set, `Growing.ACRun` is `ACRun`. -/
 theorem acRun_const :
     Growing.ACRun selectedProposer tr (fun _ => H) U ↔ ACRun selectedProposer tr H U :=
-  ⟨fun h => ⟨Goldilocks.Growing.ACLocalRun.const_iff.mp h.localRun,
+  ⟨fun h => ⟨h.stock, Goldilocks.Growing.ACLocalRun.const_iff.mp h.localRun,
       honestObjects_const.mp h.honest⟩,
-    fun h => ⟨Goldilocks.Growing.ACLocalRun.const_iff.mpr h.localRun,
+    fun h => ⟨h.stock, Goldilocks.Growing.ACLocalRun.const_iff.mpr h.localRun,
       honestObjects_const.mpr h.honest⟩⟩
 
 end SA

@@ -196,15 +196,20 @@ def signerOf (o : (protoOf F E).Object) : Option V := o.signer?.map rho.key
 
 /-- The initial world: every node starts in `init` of its own key, having
 seen nothing. -/
-def initWorld (v : V) : Node (protoOf F E) := ⟨(protoOf F E).init (rho.ownKey v), []⟩
+def initWorld (v : V) : Node (protoOf F E) :=
+  ⟨(protoOf F E).init (rho.ownKey v) (fun r => decide (rho.ownKey v ∈ rho.sel r)), []⟩
 
 /-- The ordered candidates of duty `d`, signed with the selected node's own key
-in the duty's role. An unselected node produces no candidates. -/
+in each candidate's signing role. The node must belong to both the duty's selection
+and the candidate role's selection; otherwise that candidate is not signed. -/
 def signedCandidate (v : V) (d : (protoOf F E).Duty) :
     List (Msg (protoOf F E).Item (protoOf F E).Body × List (protoOf F E).Object) →
       List (protoOf F E).Object := fun candidates =>
   if rho.ownKey v ∈ rho.sel ((protoOf F E).role d) then
-    candidates.map fun (m, cs) => .mk (.signed (rho.ownKey v) ((protoOf F E).role d)) m cs
+    candidates.filterMap fun (m, cs) =>
+      let r := (protoOf F E).candidateRole d m
+      if rho.ownKey v ∈ rho.sel r then some (.mk (.signed (rho.ownKey v) r) m cs)
+      else none
   else []
 
 /-- One selected duty of node `v`: `act`'s state is applied, then its candidates
@@ -253,7 +258,8 @@ def step (w : V → Node (protoOf F E)) : Event V (protoOf F E).Object → V →
   | .deliver v o t => Function.update w v (rho.deliver (w v) v o t).1
   | .restart v t =>
       Function.update w v
-        ⟨(protoOf F E).restore (rho.ownKey v) ((protoOf F E).durable (w v).st) t, (w v).seen⟩
+        ⟨(protoOf F E).restore (rho.ownKey v) (fun r => decide (rho.ownKey v ∈ rho.sel r))
+          ((protoOf F E).durable (w v).st) t, (w v).seen⟩
 
 /-- The world before event `i` (event cut `i`). -/
 def stateBefore (i : Nat) : V → Node (protoOf F E) :=

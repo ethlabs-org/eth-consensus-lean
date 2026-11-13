@@ -22,7 +22,8 @@ theorem goldilocks_ac_projection : GoldilocksACProjection := by
     obtain ⟨j, hj, e, he, hev⟩ := hv
     rw [RunTrace.upTo_projAC] at he
     exact ⟨j, hj, e, (SA.upTo_voteAt.mp he).2, hev⟩
-  refine ⟨ac_projection _ _ dg H _ tr proposer (Compose.requirements sp ro) h.toLocalRun hnc,
+  refine ⟨h.stock,
+    ac_projection _ _ dg H _ tr proposer (Compose.requirements sp ro) h.toLocalRun hnc,
     { pool_vote := fun y i σ hy v hv hval => ?_
       message_vote := fun y i ℓ v hy hc hm hv =>
         emission ((retained i).honest.message_vote y hy i ℓ v (call hc) hm hv)

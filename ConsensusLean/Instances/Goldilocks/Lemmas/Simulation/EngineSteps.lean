@@ -311,7 +311,7 @@ theorem act_propose_snd (nd : Model.Node (Model.protoOf (compiled (goldilocks S)
       ((propose (shapeOf S hn nd) s).2.map
         (fun r => (.item ⟨r.1, s, encodeTxs nd.st.2, r.2.1⟩, r.2.2))).toList := by
   change (Option.map _ ((goldilocks S (pubOf E)).propose nd.st.1 s).2).toList = _
-  simp only [goldilocks, dite_eq_left hn]; rfl
+  simp only [goldilocks, goldilocksWith, dite_eq_left hn]; rfl
 
 omit [DecidableEq V] in
 /-- The block the engine decodes from the proposal item is the node's `mkBlock` with the engine's
@@ -372,7 +372,7 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled 
     · simp only [hr] at hact1 hact2
       rw [hact2]
       simp only [Option.map_none, Option.toList_none, Model.Run.signedCandidate]
-      erw [List.map_nil]
+      erw [List.filterMap_nil]
       simp only [ite_self, Model.releaseAll]
       change (a.1.1 hn).node = _
       rw [hact1]
@@ -380,12 +380,14 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled 
       rw [hact2]
       have hrole : (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
           .proposer s := rfl
-      simp only [Option.map, Option.toList_some, Model.Run.signedCandidate, hrole]
-      erw [List.map_cons, List.map_nil]
+      have hcrole : ∀ m, (Model.protoOf (compiled (goldilocks S)) E).candidateRole
+          (.propose s hs) m = .proposer s := fun _ => rfl
+      simp only [Option.map, Option.toList_some, Model.Run.signedCandidate, hrole, hcrole]
+      erw [List.filterMap_cons, List.filterMap_nil]
       have hmem : rho.ownKey v ∈ rho.sel (.proposer s) := by
         rw [hsel]
         exact Finset.mem_singleton.2 (hp.trans hself).symm
-      rw [ite_eq_left hmem]
+      simp only [hmem, ↓reduceIte]
       unfold Model.releaseAll
       rw [ite_eq_left (Bool.and_eq_true_iff.2 ⟨Bool.and_eq_true_iff.2 ⟨?_, ?_⟩, ?_⟩)]
       · change (recordOwn (a.1.1 hn) _ _).node = _

@@ -37,8 +37,9 @@ private theorem tryVote_emitsHeads (x : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA
   split_ifs with h1
   · simp [EmitsHeads]
   · simp [EmitsHeads]
+  all_goals try simp only [EmitsHeads, List.not_mem_nil, false_imp_iff, implies_true]
   all_goals
-    simp only [EmitsHeads, List.mem_singleton, forall_eq]
+    simp only [List.mem_singleton, forall_eq]
     exact ⟨⟨_, rfl, rfl⟩, not_lt.1 (not_or.1 (not_or.1 h1).2).2⟩
 
 private theorem step_emitsHeads (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : SA.SAState sp.n)

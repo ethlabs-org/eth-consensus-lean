@@ -50,14 +50,14 @@ def proto (pub : Public) : Protocol pub Unit where
   selSpec := fun r => if r then .sized 1 else .fixed Finset.univ
   role := fun _ => false
   duties := fun t => [t]
-  init := fun _ => ()
+  init := fun _ _ => ()
   clock := fun _ _ _ => ()
   act := fun _ _ => ((), [(.data (), [])])
   gossip := fun _ _ => []
   process := fun _ _ _ => ()
   recordOwn := fun _ _ _ => ()
   durable := fun _ => ()
-  restore := fun _ _ _ => ()
+  restore := fun _ _ _ _ => ()
   out := fun _ _ => []
   conflicts := fun _ _ => false
 
@@ -127,6 +127,20 @@ def env : Env (Fin 2) := ⟨3, by decide, 3, by decide, fun _ _ => true⟩
 /-- An admissible selection: every key in role `false`, key `0` in role `true`. -/
 def sel : Bool → Finset (Fin (Fintype.card (Fin 2))) :=
   fun r => if r then {0} else Finset.univ
+
+/-- A public participation query switches roles at a fixed time, not when nodes wake. -/
+def participationFamily : ProtocolFamily schema := fun pub =>
+  { proto pub with participationRole := fun t => some (decide (t < 4)) }
+
+/-- The queried singleton and whole-population selections survive an awake-profile change. -/
+theorem participation_observation_independent :
+    let X := sysExternal schema participationFamily (Fin 2)
+    let x : X.Ext env := (pkiFin 2, sel)
+    let sleeping := { env with awake := fun _ _ => false }
+    let y := X.transport env sleeping rfl rfl x
+    X.selected env x 3 = {0} ∧ X.selected sleeping y 3 = {0} ∧
+      X.selected sleeping y 4 = Finset.univ := by
+  decide
 
 theorem sel_valid (rho : Run family env) (h : rho.sel = sel) : rho.SelValid := by
   intro r
@@ -266,14 +280,14 @@ def seqProto (pub : Public) : Protocol pub Unit where
   selSpec := fun _ => .fixed Finset.univ
   role := id
   duties := fun _ => [false, true]
-  init := fun _ => 0
+  init := fun _ _ => 0
   clock := fun s _ _ => s
   act := fun s d => (if d then s else s + 1, [(.data s, [])])
   gossip := fun _ _ => []
   process := fun s _ _ => s
   recordOwn := fun s _ _ => s + 10
   durable := fun _ => ()
-  restore := fun _ _ _ => 0
+  restore := fun _ _ _ _ => 0
   out := fun _ _ => []
   conflicts := fun _ _ => false
 

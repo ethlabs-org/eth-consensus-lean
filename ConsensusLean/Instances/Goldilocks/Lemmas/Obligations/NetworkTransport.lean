@@ -128,7 +128,7 @@ theorem PSyncFGAttTransport.mono {Δ₁ Δ₂ : Time} (h : PSyncFGAttTransport S
 theorem log_fgAtt_iff (o : Wire (Fintype.card V)) : rho.log.fgAtt o ↔ isFGAtt o := Iff.rfl
 
 /-- A standalone attestation is an attestation. -/
-theorem isFGAtt_attObj {n : Nat} (a : FG.Att n) : isFGAtt (attObj a) := by
+theorem isFGAtt_attObj {n : Nat} (a : FG.Att n) : isFGAtt (attObj (binding := stock) a) := by
   simp [isFGAtt, IsAttObj, attObj]
 
 /-- A forwarding wrapper is not an attestation. -/

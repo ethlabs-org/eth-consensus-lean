@@ -258,9 +258,9 @@ theorem record_facts (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy 
   | 0 => by
     rw [Trace.state, hrun.init y hy]
     refine ⟨fun b hb => ?_, fun b hb => ?_, fun h r hx => ?_⟩
-    · simp [Node.init, FG.Record.empty] at hb
-    · simp [Node.init, FG.Record.empty] at hb
-    · simp [Node.init, FG.Record.empty] at hx
+    · simp [Node.initWith, FG.Record.empty] at hb
+    · simp [Node.initWith, FG.Record.empty] at hb
+    · simp [Node.initWith, FG.Record.empty] at hx
   | i + 1 => by
     obtain ⟨ih₁, ih₂, ih₃⟩ := record_facts hrun hy i
     rcases record_step hrun hy i with he | ⟨C, a, hc, hca⟩

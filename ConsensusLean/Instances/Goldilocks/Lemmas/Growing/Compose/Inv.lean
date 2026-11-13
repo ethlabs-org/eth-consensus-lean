@@ -99,7 +99,8 @@ theorem state_caches (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer
       ((Nat.find_spec hex).trans (hrun.time_mono hj')) (hle j' hj'k)).1
 
 /-- The vote half of the persistence induction uses only earlier cache and vote rows. -/
-theorem vote_step (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem vote_step
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hp : PersistPremises tr H dg ΔF x i₀ s m B CV)
     (k : Nat) (ih : ∀ j < k, VoteInv tr H s m B j ∧ CutInv tr H s m B j) :
     VoteInv tr H s m B k := by

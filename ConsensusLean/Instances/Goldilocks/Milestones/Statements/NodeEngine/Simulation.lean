@@ -17,7 +17,8 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 /-- The existing growing record supplies all 21 fields, with no new fixed-honesty version. -/
 structure NodeRunAt (tr : RunTrace (nodeAC (E := E) A hn)) : Prop
     extends Growing.LocalRun (proposer A fin rho hn) (digest A fin rho hn D)
-      (honestAt A fin rho) (runWire (E := E) A hn).signer tr where
+      (honestAt A fin rho) (runWire (E := E) A hn).signer tr
+      (fun _ => (nodeAC (E := E) A hn).initial) where
   genesis_root : ((params (pubOf E) hn (A.runtime (pubOf E) hn).genesisRoot
     (A.runtime (pubOf E) hn).δt).genesisBlock
       (nodeAC (E := E) A hn).genesisPayload).RootOk (digest A fin rho hn D)
@@ -130,6 +131,7 @@ def ReachClock (st : NodeState (nodeAC (E := E) A hn)) (t : Time) : Prop :=
 def LocalRunExport : Prop := rho.ExecutionValid →
   Growing.LocalRun (proposer A fin rho hn) (digest A fin rho hn D) (honestAt A fin rho)
     (runWire (E := E) A hn).signer (simTraceNodeAt A fin rho hn D)
+    (fun _ => (nodeAC (E := E) A hn).initial)
 
 /-- Reachable FG reads need no codec injectivity or collision/regime premise. -/
 def FGReachExport : Prop := rho.ExecutionValid → ∀ v i, i ≤ rho.events.length →

@@ -607,7 +607,8 @@ theorem origin_compatible_proposalU
 /-- **A lock origin of a slot `≥ p` compares with `P`** (`l ≥ p`): an honest fast lock
 through an honest counted vote; an honest slow lock through an honest supporter of its update's
 result (not its fast test). -/
-theorem origin_compatible_proposal (hS : StandaloneRun tr H U proposer g)
+theorem origin_compatible_proposal
+    (hS : StandaloneRun tr H U proposer g)
     {p : Nat} {P : Blk sp.n FGP}
     (hp : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
@@ -711,7 +712,8 @@ theorem lock_compatible_coreU
 time `t ≥ t_{p−1}` (`hset`) and, for a call at `t ≥ t_p + 6Δ`, also after it, for the locks live
 at `t`: of a label `< p` by `hset` and the exact slot-`p` votes (a lock written by the call has a
 label `≥ p`); of a label `≥ p` by its origin. -/
-theorem lock_compatible_core (hS : StandaloneRun tr H U proposer g) {p : Nat}
+theorem lock_compatible_core
+    (hS : StandaloneRun tr H U proposer g) {p : Nat}
     {P : Blk sp.n FGP}
     (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
@@ -727,7 +729,8 @@ theorem lock_compatible_core (hS : StandaloneRun tr H U proposer g) {p : Nat}
               (hLr := hLr)
 
 /-- `lock_compatible_core` from `t_p ≥ ḡ + 2Θ + 8Δ`. -/
-theorem lock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
+theorem lock_compatible
+    (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
@@ -779,7 +782,8 @@ theorem liveLock_compatible_coreU
 
 /-- **Every live lock block compares with `P`** at the state before (for a call at `t ≥ t_{p−1}`)
 or after (for a call at `t ≥ t_p + 6Δ`) an honest call, read at that call's frame and time. -/
-theorem liveLock_compatible_core (hS : StandaloneRun tr H U proposer g) {p : Nat}
+theorem liveLock_compatible_core
+    (hS : StandaloneRun tr H U proposer g) {p : Nat}
     {P : Blk sp.n FGP}
     (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
@@ -795,7 +799,8 @@ theorem liveLock_compatible_core (hS : StandaloneRun tr H U proposer g) {p : Nat
           (hc := hc) (htj := htj) (c := c) (hcj := hcj)
 
 /-- `liveLock_compatible_core` from `t_p ≥ ḡ + 2Θ + 8Δ`. -/
-theorem liveLock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
+theorem liveLock_compatible
+    (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
@@ -923,14 +928,15 @@ theorem first_update_postU
     rcases hlocks L hL with h | h
     · exact Or.inr (anc_tree_of_anc_U hU hΦ hΦU hL.1 h hPt)
     · exact Or.inl (anc_tree_of_anc_U hU hΦ hΦU hPt h hL.1)
-  exact ⟨hconf, hnv, by unfold FastTest; omega, hpost⟩
+  exact ⟨hconf, hnv, by unfold FastTest; rw [hS.run.stock]; omega, hpost⟩
 
 /-- **The first update**: at an honest node's tick at `t_p + 6Δ`, with every honest
 slot-`p` vote exactly `P` and every live lock comparing with `P`, the tick is the slot-`p` update,
 whose result is `P` (its honest batch is a strict majority, and every other passing block has only
 faulty supporters unless it is an ancestor of `P`), not vetoed, and `P` passes the fast test
 (the honest batch is half of the committee or more). -/
-theorem first_update_post (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
+theorem first_update_post
+    (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -990,7 +996,8 @@ theorem first_update_recordU
 every honest slot-`p` vote exactly `P` and every live lock comparing with `P`, the slot-`p`
 result is `P` and is not vetoed (`first_update_post`), so the record after the tick extends
 `P`. -/
-theorem first_update_record (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
+theorem first_update_record
+    (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}

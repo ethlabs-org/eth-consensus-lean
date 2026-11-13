@@ -12,8 +12,9 @@ compatible with the transferred block `B`.
   whose heads extend `B`, or equivocate, moves every lock of a slot below `s` to a block
   compatible with `B`: an ancestor that conflicts with `B` has all of them as opponents
   (`unlock_compatible`).
-* A block with `3n/4` optimistic voters in a pool whose honest votes extend `B` is compatible
-  with `B` when `f < n/2`: one of the voters is honest (`origin_compatible`).
+* A block with three quarters of the committee size in optimistic voters in a pool whose honest
+  votes extend `B` is compatible with `B` when `2f < committeeSize`: one voter is honest
+  (`origin_compatible`).
 * At an honest slot-`(m+1)` vote, the locks of slot `m` or `m + 1` are optimistic locks written
   before the vote (`lock_origin_readPoint`); those of slot `m + 1` are compatible with `B` when
   the earlier honest slot-`(m+1)` votes extend `B`; those of slot `m` are a hypothesis, which each
@@ -30,7 +31,7 @@ theorem unlock_compatible {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp.n}
     {B : Blk sp.n FGP} (hB : B ∈ Φ.tree) {S : Set (Fin sp.n)}
     (hS : ∀ w ∈ S, w ∈ equivocators V.votes ∨
       ∃ x ∈ V.support, x.val = w ∧ (x.slot : Int) = s ∧ AncR Φ B x.head)
-    (hn : sp.n ≤ 2 * S.ncard) (L : Set Lock) (t : Time) :
+    (hn : sp.committeeSize ≤ 2 * S.ncard) (L : Set Lock) (t : Time) :
     ∀ l ∈ unlock sp L Φ t s V, (l.slot : Int) < s → ∀ X ∈ Φ.tree, X.root = l.block →
       Compatible Φ.tree X B := by
   rintro l' ⟨l, -, B₀, -, -, rfl⟩ hlt X hX hXr
@@ -39,7 +40,7 @@ theorem unlock_compatible {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp.n}
     -- the unlock target is in the tree, so it is `X`
     unfold unlockTarget at hXr
     rcases hd : deepest Φ {B' | B' ∈ Φ.tree ∧ Φ.Anc B' B₀ ∧ 2 * (opponents sp Φ V s B').ncard <
-        sp.n} with _ | T
+        sp.committeeSize} with _ | T
     · rw [hd] at hXr
       have : X = Φ.F := hΦ.coherent.1 hX hΦ.rooted.1 hXr
       subst this
@@ -69,7 +70,8 @@ theorem unlockRel_compatible {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp
     {B : Blk sp.n FGP} (hB : B ∈ Φ.tree) {S : Set (Fin sp.n)}
     (hS : ∀ w ∈ S, w ∈ equivocators V.votes ∨
       ∃ x ∈ V.support, x.val = w ∧ (x.slot : Int) = s ∧ AncR Φ B x.head)
-    (hn : sp.n ≤ 2 * S.ncard) {L L' : Set Lock} {t : Time} (hL : UnlockRel sp L Φ t s V L') :
+    (hn : sp.committeeSize ≤ 2 * S.ncard) {L L' : Set Lock} {t : Time}
+    (hL : UnlockRel sp L Φ t s V L') :
     ∀ l ∈ L', (l.slot : Int) < s → ∀ X ∈ Φ.tree, X.root = l.block →
       Compatible Φ.tree X B := by
   intro l hl hlt X hX hXr
@@ -91,10 +93,11 @@ variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
 
 /-- **An optimistic origin is compatible.** A block `D` of a frame inside `U` with three quarters
 of the committee as optimistic voters in a pool whose honest votes extend `B` is compatible with
-`B`, when `f < n/2`. -/
+`B`, when `2f < committeeSize`. -/
 theorem origin_compatible (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree ⊆ U)
     {A : SAState sp.n} {σ : Nat} {D B : Blk sp.n FGP}
-    (h34 : 3 * sp.n ≤ 4 * (optimisticVoters sp A Φ σ D).ncard) (hf : 2 * Hᶜ.ncard < sp.n)
+    (h34 : 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ σ D).ncard)
+    (hf : 2 * Hᶜ.ncard < sp.committeeSize)
     (hext : ∀ v ∈ A.pool σ, v.val ∈ H → VoteExtends U v B) : Compatible U D B := by
   obtain ⟨x, ⟨v, hv, rfl, R, hR, hRr, hDR⟩, hxH⟩ :=
     Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
@@ -112,10 +115,10 @@ theorem locks_compatibleU
     (hS : ∀ w ∈ S, w ∈ equivocators (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes ∨
       ∃ x ∈ (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).support,
         x.val = w ∧ x.slot = m ∧ AncR ℓ.frame B x.head)
-    (hn : sp.n ≤ 2 * S.ncard) (hf : 2 * Hᶜ.ncard < sp.n)
+    (hn : sp.committeeSize ≤ 2 * S.ncard) (hf : 2 * Hᶜ.ncard < sp.committeeSize)
     (hearlier : EarlierVotesExtend tr H U i (m + 1) B)
     (hm : ∀ (Φ : Frm sp.n FGP) (A : SAState sp.n) (D : Blk sp.n FGP), FrameOK Φ → Φ.tree ⊆ U →
-      D ∈ Φ.tree → 3 * sp.n ≤ 4 * (optimisticVoters sp A Φ m D).ncard →
+      D ∈ Φ.tree → 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ m D).ncard →
       (∀ v ∈ A.pool m, v.val ∈ H → v.slot = m ∧
         ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v) →
       (∃ k ≤ i, A.pool m ⊆ (tr.state y (k + 1)).pool m) →
@@ -166,8 +169,9 @@ theorem locks_compatibleU
 
 /-- **The locks at a transfer vote.** At an honest `y`'s slot-`(m+1)` vote: if at least half of
 the committee have slot-`m` support votes in `y`'s merged view whose heads extend `B`, or
-equivocate there, `f < n/2`, every honest slot-`(m+1)` vote at an earlier cut extends `B`, and
-every optimistic origin of slot `m` (a block with `3n/4` optimistic voters in a pool whose honest
+equivocate there, `2f < committeeSize`, every honest slot-`(m+1)` vote at an earlier cut
+extends `B`, and every optimistic origin of slot `m` (a block with three quarters of the
+committee size in optimistic voters whose honest
 votes were cast before the vote) is compatible with `B`, then every live lock block at the vote's
 read point is compatible with `B`. -/
 theorem locks_compatible (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i m : Nat}
@@ -176,10 +180,10 @@ theorem locks_compatible (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y �
     (hS : ∀ w ∈ S, w ∈ equivocators (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes ∨
       ∃ x ∈ (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).support,
         x.val = w ∧ x.slot = m ∧ AncR ℓ.frame B x.head)
-    (hn : sp.n ≤ 2 * S.ncard) (hf : 2 * Hᶜ.ncard < sp.n)
+    (hn : sp.committeeSize ≤ 2 * S.ncard) (hf : 2 * Hᶜ.ncard < sp.committeeSize)
     (hearlier : EarlierVotesExtend tr H U i (m + 1) B)
     (hm : ∀ (Φ : Frm sp.n FGP) (A : SAState sp.n) (D : Blk sp.n FGP), FrameOK Φ → Φ.tree ⊆ U →
-      D ∈ Φ.tree → 3 * sp.n ≤ 4 * (optimisticVoters sp A Φ m D).ncard →
+      D ∈ Φ.tree → 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ m D).ncard →
       (∀ v ∈ A.pool m, v.val ∈ H → v.slot = m ∧
         ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v) →
       (∃ k ≤ i, A.pool m ⊆ (tr.state y (k + 1)).pool m) →

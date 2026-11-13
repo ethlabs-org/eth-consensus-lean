@@ -44,6 +44,8 @@ structure GoldilocksRun (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) : Prop
     extends Node.LocalRun proposer dg H (fun v : Vote sp.n => v.val) tr where
+  /-- Interim population specialization; removed in place by C2. -/
+  stock : sp.committeeSize = sp.n
   /-- The genesis block's root is the digest of its content: the premise `FGProjection` and
   C0.3 take over any AC (the Lean genesis root is a parameter). -/
   genesis_root_ok : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg

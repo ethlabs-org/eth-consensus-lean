@@ -50,13 +50,18 @@ def CallOK (U : Set A.Blk) (Φ : A.Frm) (t : Time) (c : A.Call) (Φ' : A.Frm) : 
 
 /-- `s` is reachable at validator `self` inside `U`, with `Φ` the frame of the last call (the
 initial frame before any call) and `t` the time of the last call (`0` before any call). -/
-inductive ReachableAt (self : Fin P.n) (U : Set A.Blk) : A.State → A.Frm → Time → Prop
+inductive ReachableAtFrom (s₀ : A.State) (self : Fin P.n) (U : Set A.Blk) :
+    A.State → A.Frm → Time → Prop
   /-- The initial state, with the initial frame, at time `0`. -/
-  | init (Φ : A.Frm) : A.InitialFrame Φ → A.FrameIn U Φ → ReachableAt self U A.initial Φ 0
+  | init (Φ : A.Frm) : A.InitialFrame Φ → A.FrameIn U Φ → ReachableAtFrom s₀ self U s₀ Φ 0
   /-- One more call, at a time not before the last one, obeying the call law. -/
   | step {s : A.State} {Φ Φ' : A.Frm} {t t' : Time} (c : A.Call) :
-      ReachableAt self U s Φ t → t ≤ t' → A.CallOK U Φ t' c Φ' →
-      ReachableAt self U (A.step self s Φ' t' c).1 Φ' t'
+      ReachableAtFrom s₀ self U s Φ t → t ≤ t' → A.CallOK U Φ t' c Φ' →
+      ReachableAtFrom s₀ self U (A.step self s Φ' t' c).1 Φ' t'
+
+/-- Stock reachability starts at the interface's common initial state. A separate start-indexed
+predicate keeps the existing argument positions before the state, frame and time indices. -/
+abbrev ReachableAt := A.ReachableAtFrom A.initial
 
 /-- One lawful call `c` of validator `self` inside `U`, from the state `p.1` whose last call had
 frame `p.2.1` at time `p.2.2`, to the state `q.1` it leaves, with the call's frame `q.2.1` and

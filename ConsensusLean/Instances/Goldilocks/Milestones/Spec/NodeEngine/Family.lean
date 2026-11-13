@@ -28,7 +28,7 @@ structure Family (Info Body : Type) [DecidableEq Info] [Countable Info] where
 def Family.skeleton {Info Body : Type} [DecidableEq Info] [Countable Info]
     (A : Family Info Body) (pub : Public) : Skeleton pub.n :=
   ⟨A.grid pub, A.proposerSel pub, A.pollSel pub, Empty, inferInstance, [],
-    (fun k => k.elim), (fun k => k.elim), A.order, A.deliverOrder⟩
+    (fun k => k.elim), (fun k => k.elim), none, A.order, A.deliverOrder⟩
 
 /-- Family construction uses only an empty-kind skeleton built directly from the wire policy. -/
 noncomputable def shapeFamily {Info Body Out : Type} [DecidableEq Info] [Countable Info]
@@ -40,7 +40,7 @@ noncomputable def shapeFamily {Info Body Out : Type} [DecidableEq Info] [Countab
       Body := Body
       Durable := (hn : 1 ≤ pub.n) → State (A.wire pub hn)
       decBody := A.decBody
-      init := fun k hn => (G hn).init k
+      init := fun k p hn => (G hn).init k p
       clock := fun st t hn => (G hn).clock (st hn) t
       propose := fun st s => if hn : 1 ≤ pub.n then
         (fun _ => ((G hn).propose (st hn) s).1, ((G hn).propose (st hn) s).2) else (st, none)
@@ -57,7 +57,7 @@ noncomputable def shapeFamily {Info Body Out : Type} [DecidableEq Info] [Countab
       recordOwn := fun st o hs hn => (G hn).recordOwn (st hn) o hs
       dependencies := A.dependencies pub.n
       durable := id
-      restore := fun k st t hn => (G hn).restore k (st hn) t
+      restore := fun k p st t hn => (G hn).restore k p (st hn) t
       out := fun g st => if hn : 1 ≤ pub.n then (G hn).out g (st hn) else []
       conflicts := A.conflicts pub.n
       isFGAtt := A.isFGAtt pub.n }

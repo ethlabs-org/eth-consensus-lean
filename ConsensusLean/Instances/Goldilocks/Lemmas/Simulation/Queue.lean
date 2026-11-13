@@ -62,12 +62,15 @@ private theorem pool_tryVote {P : Vote sp.n → Prop} (self : Fin sp.n)
   split_ifs at he ⊢
   · exact h
   · exact h
+  all_goals first | exact h | skip
   all_goals
     intro s v hv
     rw [SA.optimistic_pool_eq] at hv
-    apply pool_admit (A := _) (P := P) (t := t) (v := _) ?_ ?_ s v hv
-    · exact h
-    · exact he _ (List.mem_singleton_self _)
+    first
+    | exact h s v hv
+    | apply pool_admit (A := _) (P := P) (t := t) (v := _) ?_ ?_ s v hv
+      · exact h
+      · exact he _ (List.mem_singleton_self _)
 
 private theorem pool_receipt {P : Vote sp.n → Prop} (A : SAState sp.n) (t : Time)
     (B : SA.Blk sp.n FGP) (h : PoolIn P A) (hB : ∀ v ∈ SA.blockVotes B, P v) :
@@ -345,7 +348,7 @@ private theorem parts_append {n : Nat} (a b : List (Wire n)) :
   rw [List.flatMap_append]
   exact List.subset_append_left _ _
 
-private theorem carried_parts {n : Nat} (auth : Model.Auth n (ShapeRole Empty))
+private theorem carried_parts {n : Nat} (auth : Model.Auth n (ShapeRole stock.Kind))
     (m : Model.Msg (Header Info) Body) (cs : List (Wire n)) {x : Wire n}
     (hx : x ∈ cs) : x ∈ (Model.Obj.mk auth m cs).parts := by
   rw [Model.Obj.parts_eq]
@@ -875,7 +878,7 @@ private theorem proposal_carried (v : V)
       ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).2,
       PayloadCarried o := by
   intro o ho
-  obtain ⟨m, cs, hm, _, rfl⟩ := rho.mem_signedCandidate.mp ho
+  obtain ⟨m, cs, hm, _, _, rfl⟩ := rho.mem_signedCandidate.mp ho
   rw [act_propose_snd S hn] at hm
   obtain ⟨⟨par, info, os⟩, hp, he⟩ := Option.mem_toList.mp hm |> Option.mem_map.mp
   cases he

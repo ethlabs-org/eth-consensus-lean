@@ -723,6 +723,7 @@ theorem conflictRun_localRun :
 
 /-- **The run** is a Goldilocks run. -/
 theorem conflictRun_goldilocksRun : GoldilocksRun (fun _ => v0) dg6 H conflictRun where
+  stock := rfl
   toLocalRun := conflictRun_localRun
   genesis_root_ok := (dg6_none _ _ _ _).symm
   carried_vote_unforgeable y _ i B h v hv := by

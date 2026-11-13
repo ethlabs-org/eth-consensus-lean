@@ -79,7 +79,7 @@ theorem honest_votes_in_slot_of_sync_startU {u : Nat → Set Lock}
   · obtain ⟨j, -, e, he, hes⟩ := vote_of_votedSlotU hr hx c _ hv
     exact ⟨j, e, he, by rw [hes, htc, hslot]⟩
   · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
-    obtain ⟨e, hem, hes⟩ := tryVote_votesWith x ℓ.frame hj hv hT
+    obtain ⟨e, hem, hes⟩ := tryVote_votesWith x ℓ.frame hj hv hT (traceWithM_mayVote hr hx c _)
     have he := hr.exec c ℓ hc.2 (hc.1 ▸ hx)
     rw [hc.1, hcall] at he
     have h2 : (acOnTickWithM sp m x (u c) (tr.state x c) ℓ.frame (tr.time c)).2 = ℓ.emits :=

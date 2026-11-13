@@ -75,11 +75,11 @@ end ACTrace
 
 /-- The AC trace contract (claims C0.5 (a), (b)) for the honest validators `H` inside `U`. -/
 structure ACLocalRun (A : ACInterface P FGP) (H : Set (Fin P.n)) (U : Set A.Blk)
-    (tr : ACTrace A) : Prop where
+    (tr : ACTrace A) (ini : Fin P.n → A.State := fun _ => A.initial) : Prop where
   /-- `U` is coherent: roots injective, slots increasing along parent edges. -/
   coherent : Coherent U
   /-- Each honest node starts from the initial AC state. -/
-  init : ∀ y ∈ H, tr.init y = A.initial
+  init : ∀ y ∈ H, tr.init y = ini y
   /-- Each call of an honest node executes the AC on the pre-state, the label's frame and the
   cut's time: the post-state and the emissions are the call's. -/
   exec : ∀ i ℓ, tr.label i = some ℓ → tr.node i ∈ H →

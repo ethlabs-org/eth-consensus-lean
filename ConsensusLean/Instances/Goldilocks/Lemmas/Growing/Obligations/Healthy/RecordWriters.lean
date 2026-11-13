@@ -327,7 +327,8 @@ private theorem optimistic_unlock_keeps_at
   apply SA.unlockTarget_unlockView_held_of_honest_slot y ell.call hA' hΦ _ hR (hpool j)
     (hpool (j + 1)) hpay
     (fun v hv w hw hvH hval hsl =>
-      Compose.heldVotes_honest_unique hrT hncT hy hcall hv hw hvH hval hsl) ?_ hf
+      Compose.heldVotes_honest_unique hrT hncT hy hcall hv hw hvH hval hsl) ?_
+    (by simpa only [hrT.stock] using hf)
   intro v hv hvH hvs Hd hHd hHdr
   obtain ⟨k, e, ⟨ell', hcast⟩, hmsg⟩ :
       ∃ k e, SA.VoteAt (tr.upTo t).projAC v.val k e ∧ e.msg = v := by

@@ -374,7 +374,8 @@ theorem not_extends (R : Run X) (hX : X.OK) (hF : ∀ r ∈ rowsD R.D, X.Frag r.
 
 /-! ## The source -/
 
-theorem fastSelect_eq (hX : X.OK) {M : List Nat} (hM : X.Closed M) (a : X.ACD) (t : Int)
+theorem fastSelect_eq (hstock : X.sp.committeeSize = X.sp.n)
+    (hX : X.OK) {M : List Nat} (hM : X.Closed M) (a : X.ACD) (t : Int)
     (s : Nat) {c : Nat} (hcM : c ∈ M) :
     deepest (X.frameOf M) {B | B ∈ confirmationPath X.sp (X.frameOf M) (X.blk c) ∧
       ¬ conflictsWithLock X.sp {l | l ∈ a.locks} (X.frameOf M) t B ∧
@@ -386,11 +387,11 @@ theorem fastSelect_eq (hX : X.OK) {M : List Nat} (hM : X.Closed M) (a : X.ACD) (
     decide_eq_true_eq]
   constructor
   · rintro ⟨⟨r, hr, rfl⟩, hf⟩
-    rw [FastTest, confirmationScore_eq hX hM a s (hM.valid r (hch r hr.1.1))] at hf
+    rw [FastTest, hstock, confirmationScore_eq hX hM a s (hM.valid r (hch r hr.1.1))] at hf
     exact ⟨r, ⟨hr, hf⟩, rfl⟩
   · rintro ⟨r, ⟨hr, hf⟩, rfl⟩
     refine ⟨⟨r, hr, rfl⟩, ?_⟩
-    rwa [FastTest, confirmationScore_eq hX hM a s (hM.valid r (hch r hr.1.1))]
+    rwa [FastTest, hstock, confirmationScore_eq hX hM a s (hM.valid r (hch r hr.1.1))]
 
 theorem fastCounted_eq (hX : X.OK) {M : List Nat} (hM : X.Closed M) (a : X.ACD) (s : Nat)
     {b : Nat} (hb : X.Valid b) :
@@ -435,7 +436,7 @@ theorem source_mk (R : Run X) (hrun : GoldilocksRun R.proposer R.dg H R.tr) (hX 
   · change deepest _ {X_1 | _ ∧ ¬ conflictsWithLock X.sp (R.tr.projAC.state x i).locks
       _ (R.tr.time i) X_1 ∧ _} = _
     rw [hs₀, hT₀]
-    exact (fastSelect_eq hX hM r₀.pre.ac t s hcM).trans (by rw [hf]; rfl)
+    exact (fastSelect_eq hrun.stock hX hM r₀.pre.ac t s hcM).trans (by rw [hf]; rfl)
   · rw [hs₀, fastCounted_eq hX hM _ _ (hM.valid b hbM), hcv]
   · exact (viableAncestor_frameOf hX hM (blk_mem_T hbM)).symm
   · have hst := (trace_row R h₀).2.2.2.2

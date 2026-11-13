@@ -120,7 +120,8 @@ whose window is `≥ r`, at any cut of an honest node in a slot after `s`, every
 at most `s` that is live there is compatible with `D`: its slot is in the window, so its origin is
 compatible with the writer's saved result of that slot (same-slot compatibility), which extends
 `D`. -/
-theorem slow_stored_locks (hS : HealthyBase tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
+theorem slow_stored_locks
+    (hS : HealthyBase tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} (hi : s + 1 ≤ sp.slot (tr.time i)) :
@@ -131,7 +132,8 @@ theorem slow_stored_locks (hS : HealthyBase tr H U proposer g) {x : Fin sp.n} (h
 
 /-- Saved-result comparison on a finite service prefix. The selected slow lock
 and each receiver origin keep their actual observation cutoffs. -/
-theorem slow_stored_locks_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g b)
+theorem slow_stored_locks_before
+    {b : Time} (hS : HealthyBaseUpTo tr H U proposer g b)
     (hnr : ∀ y ∈ H, ∀ r, tr.RestartAt y r → tr.time r ≤ gbar g)
     {x : Fin sp.n} (hx : x ∈ H) {i₀ s : Nat} {D : Blk sp.n FGP}
     (hsl : SlowLockAt tr x i₀ s D) (hi₀ : tr.time i₀ ≤ b)
@@ -196,7 +198,8 @@ theorem slow_live_locksU
     obtain ⟨Φ', A, D', -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
       lock_origin_readPointU hrun hy hc l₀ hl₀ (by rw [hes]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
-    refine down hL₀D (origin_compatible hU hΦ'U h34 hS.two_faulty_lt fun v hv hvH => ?_)
+    refine down hL₀D (origin_compatible hU hΦ'U h34
+      (by simpa only [hS.run.stock] using hS.two_faulty_lt) fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
     have hsj : e'.msg.slot = sp.slot (tr.time j) := (castAt_specU hr hvH hcj).2.1
@@ -205,7 +208,8 @@ theorem slow_live_locksU
     exact hE _ hvH j hj e' hvote (by omega)
 
 /-- **The live locks at a vote after a slow origin.** -/
-theorem slow_live_locks (hS : HealthyBase tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
+theorem slow_live_locks
+    (hS : HealthyBase tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
@@ -217,7 +221,8 @@ theorem slow_live_locks (hS : HealthyBase tr H U proposer g) {x : Fin sp.n} (hx 
 /-- Read-point lock comparison needs only stored-lock comparisons at this cut,
 the fault bound, and earlier votes. In particular it does not require whole-run
 health or use a future writer update as an earlier state transition. -/
-theorem live_locks_of_stored_before (hrun : ACRun proposer tr H U)
+theorem live_locks_of_stored_before
+    (hrun : ACRun proposer tr H U)
     (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} {D : Blk sp.n FGP}
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -251,7 +256,8 @@ theorem live_locks_of_stored_before (hrun : ACRun proposer tr H U)
   · obtain ⟨Φ', A, D', -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
       lock_origin_readPoint hrun hy hc l₀ hl₀ (by rw [hes]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
-    refine down hL₀D (origin_compatible hU hΦ'U h34 hf fun v hv hvH => ?_)
+    refine down hL₀D (origin_compatible hU hΦ'U h34
+      (by simpa only [hrun.stock] using hf) fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
     have hsj := (castAt_spec hr hvH hcj).2.1

@@ -55,6 +55,7 @@ private theorem tryVote_emits
   split_ifs with h1
   · simp [EmitsVotes]
   · simp [EmitsVotes]
+  all_goals try solve | simp [EmitsVotes]
   all_goals
     simp only [EmitsVotes, List.mem_singleton, forall_eq, and_true]
     exact ⟨rfl, rfl, not_not.1 (not_or.1 h1).1, rfl⟩

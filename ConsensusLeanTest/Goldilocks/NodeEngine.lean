@@ -11,7 +11,13 @@ theorem body_carrier (S : Setup) (pub : Public) :
     (shape S pub).Body = (AsChainShape.goldilocks S pub).Body := rfl
 
 theorem skeleton_carrier (S : Setup) (pub : Public) :
-    (shape S pub).skel = (AsChainShape.goldilocks S pub).skel := rfl
+    (shape S pub).skel = (AsChainShape.goldilocks S pub).skel := by
+  unfold shape shapeFamily Family.skeleton family AsChainShape.goldilocks
+    AsChainShape.goldilocksWith AsChainShape.skeleton
+  dsimp only
+  congr 1
+  funext k
+  exact nomatch k
 
 theorem message_carrier (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) :
     (runtime S pub hn).operations.toAC.Msg = SA.Vote pub.n := rfl

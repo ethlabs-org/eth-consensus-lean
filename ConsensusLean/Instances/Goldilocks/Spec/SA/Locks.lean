@@ -64,10 +64,11 @@ def opponents (Φ : Frm sp.n FGP) (V : View sp.n) (s : Int) (B' : Blk sp.n FGP) 
     ∃ H ∈ Φ.tree, H.root = x.head ∧ ¬ Compatible Φ.tree H B'}
 
 /-- Where `unlock` moves a lock on `B` against the slot-`s` votes of `V`: the deepest `B'` of
-the tree with `B' ⪯ B` and `2 · |opponents(B')| < |committee| = n`, or `Φ.F`. -/
+the tree with `B' ⪯ B` and `2 · |opponents(B')| < |committee|`, or `Φ.F`. -/
 noncomputable def unlockTarget (Φ : Frm sp.n FGP) (V : View sp.n) (s : Int) (B : Blk sp.n FGP) :
     Blk sp.n FGP :=
-  (deepest Φ {B' | B' ∈ Φ.tree ∧ Φ.Anc B' B ∧ 2 * (opponents sp Φ V s B').ncard < sp.n}).getD Φ.F
+  (deepest Φ {B' | B' ∈ Φ.tree ∧ Φ.Anc B' B ∧
+    2 * (opponents sp Φ V s B').ncard < sp.committeeSize}).getD Φ.F
 
 /-- `unlock(locks, Φ, t, s, votes, support_votes)`: every live lock (moved back) of a slot below
 `s` is moved to its `unlockTarget`; the locks of slot `s` or later keep their place; slots, fast

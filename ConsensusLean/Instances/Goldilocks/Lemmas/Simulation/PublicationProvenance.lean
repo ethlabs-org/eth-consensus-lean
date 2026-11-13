@@ -85,7 +85,7 @@ private theorem tick_forward_queue (hv : rho.ExecutionValid) {i : Nat} {v : V}
               exact False.elim (List.not_mem_nil h)
           · unfold Model.Run.dutyStep at h
             split at h
-            · obtain ⟨m, cs, _, _, ho⟩ := rho.mem_signedCandidate.mp
+            · obtain ⟨m, cs, _, _, _, ho⟩ := rho.mem_signedCandidate.mp
                 (Model.releaseAll_subset _ _ _ _ o h)
               have ha := congrArg Model.Obj.auth
                 (ho.symm.trans (forwardObj_of_decodeForward _ _ _ _ _ _ hd))
@@ -181,7 +181,7 @@ omit [DecidableEq V] in
 private theorem decoded_block_root {o : Wire (Fintype.card V)}
     {B : Blk (S.params (Model.pubOf E) hn)}
     (hc : Model.Obj.Contains o (blockObj (S.params (Model.pubOf E) hn) B))
-    (hd : decodeBlock (S.params (Model.pubOf E) hn) (Model.digests rho.hash o)
+    (hd : decodeBlock (S.params (Model.pubOf E) hn) (binding := stock) (Model.digests rho.hash o)
       (blockObj (S.params (Model.pubOf E) hn) B) = some B) :
     B.RootOk (digestOf S rho) ∧ B.parent ≠ none := by
   obtain ⟨hroot, hpar, _, _⟩ := decodeBlock_wire hd
@@ -207,7 +207,7 @@ theorem tick_released_forward_acceptance (hv : rho.ExecutionValid) {i : Nat} {v 
       (simTrace S rho hn).time k = t := by
   obtain ⟨C, parent, hc, hq, hpub⟩ := tick_forward_acceptance_wire S rho hn hv he ho hd
   have ht : t = u := congrArg Prod.fst hq
-  have hw : blockObj (S.params (Model.pubOf E) hn) B = blockObj _ C := by
+  have hw : blockObj (S.params (Model.pubOf E) hn) (binding := stock) B = blockObj _ C := by
     have hlast := congrArg List.getLast? (congrArg Prod.snd hq)
     cases p <;> cases parent <;> simpa using hlast
   have hcontains : Model.Obj.Contains o (blockObj (S.params (Model.pubOf E) hn) B) := by

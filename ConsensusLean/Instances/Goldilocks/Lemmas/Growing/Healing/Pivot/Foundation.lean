@@ -19,7 +19,7 @@ variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
   {T : SA.SATrace sp FGP ro}
 
 /-- A raw writer supplies a counted head, with honesty charged at its actual acceptance. -/
-theorem raw_writer_relay_source_at
+theorem raw_writer_relay_source_at (hcommittee : 0 < sp.committeeSize)
     (hr : Consensus.Goldilocks.Growing.ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
     {x : Fin sp.n} {i s : Nat} (hx : x ∈ H (T.time i))
     {B C : SA.Blk sp.n FGP} {CV : Set (Vote sp.n)}
@@ -34,7 +34,7 @@ theorem raw_writer_relay_source_at
     hwriter.elim (fun h => Or.inl ((SA.upTo_resultAt hm).mpr ⟨le_rfl, h⟩))
       (fun h => Or.inr ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, h⟩))
   obtain ⟨v, hv, D, hD, hDr, hBD, hgen | ⟨q, hq, hqt⟩⟩ :=
-    Healing.raw_writer_relay_source (hr.upTo (hr.time_nonneg i)) hx hw hBC
+    Healing.raw_writer_relay_source hcommittee (hr.upTo (hr.time_nonneg i)) hx hw hBC
   · exact ⟨v, hv, D, hD, hDr, hBD, Or.inl hgen⟩
   · obtain ⟨hqi, hq⟩ := (ACTrace.upTo_acceptAt).mp hq
     exact ⟨v, hv, D, hD, hDr, hBD, Or.inr ⟨q, hr.antitone hqi hx, hq, hqt⟩⟩

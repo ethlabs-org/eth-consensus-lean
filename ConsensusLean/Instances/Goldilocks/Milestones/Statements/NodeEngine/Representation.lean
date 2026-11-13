@@ -183,7 +183,7 @@ def ProjectionExports : Prop := ProjectionRequirements (nodeAC (E := E) A hn) �
   Compose.NoCollRun (digest A fin rho hn D) (simTraceNodeAt A fin rho hn D) →
     Growing.ACLocalRun (nodeAC (E := E) A hn) (honestAt A fin rho)
       ((simTraceNodeAt A fin rho hn D).HonestBlocksAt (honestAt A fin rho))
-      (simTraceNodeAt A fin rho hn D).projAC ∧
+      (simTraceNodeAt A fin rho hn D).projAC (fun _ => (nodeAC (E := E) A hn).initial) ∧
     Growing.FGLocalRun (nodeAC (E := E) A hn).genesisPayload (honestAt A fin rho)
       ((simTraceNodeAt A fin rho hn D).HonestBlocksAt (honestAt A fin rho))
       (simTraceNodeAt A fin rho hn D).projFG

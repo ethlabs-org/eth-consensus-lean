@@ -89,7 +89,8 @@ slot-`(s+1)` vote, every live lock of a label `j < s` has `j ≥ s − k + 1 ≥
 result is compatible with the writer's saved result of label `j` (same-slot compatibility),
 which extends `D`; labels `s`, `s + 1` as for a fast origin; then A1.8 for the ancestor `D` of
 the result, and `votes_continue`. -/
-theorem slow_origin_transfer_votes (hS : StandaloneRun tr H U proposer g)
+theorem slow_origin_transfer_votes
+    (hS : StandaloneRun tr H U proposer g)
     {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) : VotesExtendAfter tr H U s D :=
@@ -111,7 +112,8 @@ every good lock from an older evidence slot has transferred): the head of every 
 of a slot after the label of a good origin extends its block: its votes do
 (`fast_origin_transfer_votes`, `slow_origin_transfer_votes`), then `proposals_extend_of_origin`
 (ProposalTransfer). -/
-theorem origin_transfer_proposals (hS : StandaloneRun tr H U proposer g)
+theorem origin_transfer_proposals
+    (hS : StandaloneRun tr H U proposer g)
     {B : Blk sp.n FGP} {j : Nat}
     (hB : GoodOrigin tr H g B j) : ProposalsExtendAfter tr H U j B :=
   proposalsExtendAfterU_parent_iff.1 (origin_transfer_proposalsU hS.toU hB)

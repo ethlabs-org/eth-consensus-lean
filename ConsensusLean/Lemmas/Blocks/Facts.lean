@@ -21,6 +21,16 @@ namespace TimeGrid
 
 variable (G : TimeGrid)
 
+/-- Every nonnegative observation lies in its slot's half-open interval. -/
+theorem slotOf_bounds {t : Time} (ht : 0 ≤ t) :
+    G.slotTime (G.slotOf t) ≤ t ∧ t < G.slotTime (G.slotOf t + 1) := by
+  have hq := Int.ediv_nonneg ht G.slotLen_pos.le
+  unfold slotOf slotTime
+  push_cast
+  rw [Int.toNat_of_nonneg hq]
+  exact ⟨Int.ediv_mul_le t G.slotLen_pos.ne',
+    Int.lt_ediv_add_one_mul_self t G.slotLen_pos⟩
+
 theorem slotAt?_eq_some {off t : Time} {s : Slot} :
     G.slotAt? off t = some s ↔ G.slotTime s + off = t := by
   have hl := G.slotLen_pos

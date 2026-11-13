@@ -31,6 +31,7 @@ private theorem honest_zero (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)}
 theorem simTraceAt_goldilocksRun (hv : rho.ExecutionValid) :
     Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho)
       (honestKeysAt S rho) (simTraceAt S rho hn) where
+  stock := rfl
   antitone := honestKeysAt_antitone S rho
   init := by
     intro y hy

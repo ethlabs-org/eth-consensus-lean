@@ -211,9 +211,10 @@ def Event.phase {A : NodeAC P} : Event A → Nat
 validators `H`, the digest `dg` and the AC message signer map `sg`. -/
 structure LocalRun {A : NodeAC P} (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload)
-    (H : Set (Fin P.n)) (sg : A.Msg → Fin P.n) (tr : RunTrace A) : Prop where
+    (H : Set (Fin P.n)) (sg : A.Msg → Fin P.n) (tr : RunTrace A)
+    (ini : Fin P.n → A.State := fun _ => A.initial) : Prop where
   /-- Each honest node starts from the initial node state. -/
-  init : ∀ y ∈ H, tr.init y = Node.init A
+  init : ∀ y ∈ H, tr.init y = Node.initWith A (ini y)
   /-- Every labelled cut of an honest node lies in the group of a top-level event. -/
   grouped : ∀ y ∈ H, ∀ i c, tr.CallAt y i c →
     ∃ j e, tr.InGroup proposer dg y j i (tr.time i) e

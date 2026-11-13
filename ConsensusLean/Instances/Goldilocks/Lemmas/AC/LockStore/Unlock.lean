@@ -27,7 +27,7 @@ private theorem candidate_of_anc {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {X B : B
 /-- The set of blocks that `unlock` reads below `X`. -/
 private abbrev Few (Φ : Frm sp.n FGP) (V : View sp.n) (s : Int) (X : Blk sp.n FGP) :
     Set (Blk sp.n FGP) :=
-  {B' | B' ∈ Φ.tree ∧ Φ.Anc B' X ∧ 2 * (opponents sp Φ V s B').ncard < sp.n}
+  {B' | B' ∈ Φ.tree ∧ Φ.Anc B' X ∧ 2 * (opponents sp Φ V s B').ncard < sp.committeeSize}
 
 /-- The unlock target of an unlock target is itself. -/
 private theorem unlockTarget_idem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (V : View sp.n) (s : Int)

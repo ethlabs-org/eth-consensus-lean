@@ -39,7 +39,8 @@ private theorem sign_at_public (hrun : GoldilocksRun proposer dg H tr) {y : Fin 
 a vote. (As `Persist/Attest`'s `acOnTick_votes`.) -/
 private theorem tick_votes (self : Fin sp.n) (A : SA.SAState sp.n)
     (Φ : SA.Frm sp.n (List (FG.Att sp.n))) {t : Time} (hj : SA.joined sp A t)
-    (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ) :
+    (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ)
+    (hp : A.mayVote (sp.slot t) = true) :
     ((SA.goldilocksSA sp (List (FG.Att sp.n)) ro).step self A Φ t .tick).2 ≠ [] := by
   change (SA.acOnTick sp self A Φ t).2 ≠ []
   unfold SA.acOnTick
@@ -48,6 +49,7 @@ private theorem tick_votes (self : Fin sp.n) (A : SA.SAState sp.n)
   simp only [hj, not_true_eq_false, hc, ↓reduceIte]
   unfold SA.tryVote
   dsimp only
+  simp only [hp, ↓reduceIte]
   split_ifs with h₁ h₂
   · rcases h₁ with h | h | h
     · exact absurd hj h
@@ -214,6 +216,7 @@ theorem held_row_late_absurd (hrun : GoldilocksRun proposer dg H tr)
   have hne := tick_votes (ro := ro) y (tr.projAC.state y jt) ℓt.frame hjoined
     (by rw [hslm]; exact hvs)
     (by rw [hslm, htm]; simp only [SAParams.ts]; push_cast; ring)
+    (SA.trace_mayVote_stock hr hy jt _)
   rw [show tr.projAC.time jt = tr.time m from ht₀] at hexec
   rw [hexec] at hne
   obtain ⟨e₀, he₀⟩ := List.exists_mem_of_ne_nil _ hne
@@ -227,7 +230,8 @@ theorem held_row_late_absurd (hrun : GoldilocksRun proposer dg H tr)
 slot `s + 1` at a cut before an honest signing at `t_{s+1}` leaves `n = 1`, with an honest
 slot-`(s+1)` vote at a cut no later than the check: the check is at `t_{s+1}` too, its honest seats
 are the slot's proposer, and three quarters of `n` are at most `f + 1` with `2f < n`. -/
-theorem held_row_early_count (hrun : GoldilocksRun proposer dg H tr)
+theorem held_row_early_count
+    (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat}
     {a : FG.Att sp.n} (hav : a.val ∈ H) {k : Nat} (hsg : tr.SignAt a.val k a)
     (hT0 : tr.time k = sp.ts s + 4 * sp.Δ)
@@ -305,6 +309,7 @@ theorem held_row_early_count (hrun : GoldilocksRun proposer dg H tr)
     · exact Or.inl huH
   have hcard := (Set.ncard_le_ncard hsub (Set.toFinite _)).trans
     ((Set.ncard_union_le _ _).trans (by rw [Set.ncard_singleton]))
+  have hstock := hrun.stock
   have hn1 : sp.n = 1 := by omega
   obtain ⟨u, hu⟩ := Set.nonempty_of_ncard_ne_zero
     (show (SA.optimisticVoters sp AO ℓO.frame (s + 1) C).ncard ≠ 0 by omega)

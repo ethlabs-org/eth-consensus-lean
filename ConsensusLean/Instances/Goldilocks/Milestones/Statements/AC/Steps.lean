@@ -109,11 +109,13 @@ def OptimisticTransfer : Prop :=
     ViableAtVote ℓ e (s + 1) B → EarlierVotesExtend tr H U i (s + 1) B →
     VoteExtends U e.msg B
 
-/-- **A1.4 (b), optimistic is fast: the next update.** With `f < n/2`, if every honest vote of
+/-- **A1.4 (b), optimistic is fast: the next update.** With `2f < committeeSize`,
+if every honest vote of
 slot `s + 1` extends `B` ((a)'s conclusion for an optimistic confirmation of `B` in slot `s`; the
 statement needs neither that confirmation nor `Sync`), then an honest `z` whose update of slot
 `s + 1` runs at cut `k` (joined at `t_{s+1} + 6Δ`), holding the slot-`(s+1)` votes of at least
-`n/2` honest voters and with every honest slot-`(s+1)` vote it holds resolved before
+half the committee size in honest voters and with every honest slot-`(s+1)` vote it holds
+resolved before
 `t_{s+1} + 2Δ`, has a slot-`(s+1)` result that extends `B`, and, if `B` is not genesis, its fast
 test selects a block `D` that extends `B` (the write can still be vetoed or moved back). -/
 def OptimisticNextUpdate : Prop :=
@@ -121,10 +123,10 @@ def OptimisticNextUpdate : Prop :=
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
     ACRun proposer tr H U → ∀ (s : Nat) (z : Fin sp.n) (k : Nat) (B : Blk sp.n FGP)
       (ℓ : ACLabel (goldilocksSA sp FGP ro)),
-    2 * Hᶜ.ncard < sp.n →
+    2 * Hᶜ.ncard < sp.committeeSize →
     (∀ x' ∈ H, ∀ j e, VoteAt tr x' j e → e.msg.slot = s + 1 → VoteExtends U e.msg B) →
     z ∈ H → UpdateAt tr z k (s + 1) ℓ →
-    sp.n ≤ 2 * {v | v ∈ H ∧ ∃ x' ∈ (tr.state z k).pool (s + 1), x'.val = v}.ncard →
+    sp.committeeSize ≤ 2 * {v | v ∈ H ∧ ∃ x' ∈ (tr.state z k).pool (s + 1), x'.val = v}.ncard →
     (∀ x' ∈ (tr.state z k).pool (s + 1), x'.val ∈ H →
       resolutionTime (tr.state z k) ℓ.frame x' < ETime.of (sp.ts (s + 1 : Nat) + 2 * sp.Δ)) →
     ∃ C, getConfirmation sp (tr.state z k) ℓ.frame (s + 1) = some C ∧ Anc U B C ∧
@@ -205,7 +207,7 @@ structure ACStepsAt : Prop where
   resultTransfer : ResultTransfer sp
   sourceCompatible : SourceCompatible sp
 
-/-- **Milestone ACSteps**: the ACSteps statements for all SA parameters. -/
+/-- **Milestone ACSteps**: the ACSteps statements for population-sized committees. -/
 def ACSteps : Prop := ∀ sp : SAParams, ACStepsAt sp
 
 end Consensus.Goldilocks.SA

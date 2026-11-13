@@ -822,6 +822,8 @@ private theorem tryVote_voteStep {L : Set Lock} (self : Fin sp.n) (A : SAState s
   · exact VoteStep.refl A t
   · exact VoteStep.refl A t
   all_goals
+    try exact ⟨rfl, Or.inr rfl, by simp, fun _ h => absurd h List.not_mem_nil⟩
+  all_goals
     simp only [not_or, not_not, not_lt] at h₁
     obtain ⟨hj, hv, -⟩ := h₁
     have k₁ := fun A₁ v => ((optimisticM_keeps wm (admitVote sp A₁ t v) Φ t).1.trans
@@ -1073,10 +1075,10 @@ private def VotedStep (A A' : SAState sp.n) (es : List (Em sp FGP)) (t : Time) :
 
 private theorem tryVote_votedStep {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm
     sp.n FGP)
-    (t : Time) :
+    (t : Time) (hp : A.mayVote (sp.slot t) = true) :
     VotedStep A (tryVoteWithM sp wm self L A Φ t).1 (tryVoteWithM sp wm self L A Φ t).2 t := by
   unfold tryVoteWithM
-  dsimp only
+  simp only [hp, ↓reduceIte]
   split_ifs
   · exact Or.inl rfl
   · exact Or.inl rfl
@@ -1092,7 +1094,8 @@ private theorem step_votedStep {L : Set Lock} {ro : ReplayOrder sp FGP} (self : 
     SAState sp.n}
     {Φ : Frm sp.n FGP} {t : Time} (hΦ : FrameOK Φ) (ht : 0 ≤ t)
     (c : (goldilocksSA sp FGP ro).Call) {es : List (Em sp FGP)}
-    (hs : stepWithM sp ro wm self L A Φ t c = (A', es)) :
+    (hs : stepWithM sp ro wm self L A Φ t c = (A', es))
+    (hp : A.mayVote (sp.slot t) = true) :
     A'.votedSlot = -1 ∨ VotedStep A A' es t := by
   have h₁ := congrArg Prod.fst hs
   have h₂ := congrArg Prod.snd hs
@@ -1109,7 +1112,7 @@ private theorem step_votedStep {L : Set Lock} {ro : ReplayOrder sp FGP} (self : 
         (if t = sp.ts (sp.slot t) + sp.Δ then tryVoteWithM sp wm self L A Φ t
           else (A, [])).2 t := by
       split_ifs
-      · exact tryVote_votedStep _ _ _ _
+      · exact tryVote_votedStep _ _ _ _ hp
       · exact Or.inl rfl
     generalize (if t = sp.ts (sp.slot t) + sp.Δ then tryVoteWithM sp wm self L A Φ t
       else (A, [])) = r at hr ⊢
@@ -1122,10 +1125,12 @@ private theorem step_votedStep {L : Set Lock} {ro : ReplayOrder sp FGP} (self : 
   | proposal => exact Or.inr (Or.inl (acProposalWith_keeps L _ _ _).1)
   | toFG => exact Or.inr (Or.inl (acToFG_keeps _ _ _).1)
   | message m =>
-    exact Or.inr ((tryVote_votedStep _ _ _ _).pre
+    exact Or.inr ((tryVote_votedStep _ _ _ _ (by
+      simpa only [optimisticM_mayVote, admitVote_mayVote] using hp)).pre
       ((optimisticM_keeps _ _ _ _).1.trans (admitVote_keeps _ _ _).1))
   | block B =>
-    exact Or.inr ((tryVote_votedStep _ _ _ _).pre
+    exact Or.inr ((tryVote_votedStep _ _ _ _ (by
+      simpa only [optimisticM_mayVote, blockReceipt_mayVote] using hp)).pre
       ((optimisticM_keeps _ _ _ _).1.trans (blockReceipt_keeps _ _ _).1))
   | restart =>
     left
@@ -1154,7 +1159,8 @@ theorem cast_of_votedSlotU
       have hΦ : FrameOK ℓ.frame := by
         rcases h.frameLaw y hy i ℓ hc with ⟨-, _, -, -, hok⟩ | ⟨_, _, -, -, -, hok⟩ <;>
           exact hok.1.1
-      rcases step_votedStep y hΦ (h.time_nonneg i) ℓ.call hexec with h₁ | h₁ | ⟨e, he, h₁, h₂⟩
+      rcases step_votedStep y hΦ (h.time_nonneg i) ℓ.call hexec
+        (traceWithM_mayVote h hy i _) with h₁ | h₁ | ⟨e, he, h₁, h₂⟩
       · omega
       · obtain ⟨j, hj, e, hve, hs⟩ := ih (h₁ ▸ hv)
         exact ⟨j, by omega, e, hve, hs⟩

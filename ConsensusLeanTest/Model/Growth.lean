@@ -106,6 +106,7 @@ def bitProto (pub : Public) : Protocol pub Unit :=
   { proto pub with
     Body := Bool
     decBody := inferInstance
+    candidateRole := fun d _ => (proto pub).role d
     act := fun _ _ => ((), [(.data false, [])])
     gossip := fun _ _ => []
     process := fun _ _ _ => ()

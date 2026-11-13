@@ -87,6 +87,8 @@ private theorem FromP.of_tryVote
   · exact FromP.of_eq rfl
   · exact FromP.trans hU (FromP.of_movesBack hΦU (hL.movesBack hΦ)) (hopt _ _ _ rfl)
   · exact hopt _ _ _ rfl
+  · exact FromP.of_movesBack hΦU (hL.movesBack hΦ)
+  · exact FromP.of_eq rfl
 
 /-- The slow lock of width `w` that the update of slot `s` at `(A, Φ, t)` writes on `B` (vetoed
 or not). -/

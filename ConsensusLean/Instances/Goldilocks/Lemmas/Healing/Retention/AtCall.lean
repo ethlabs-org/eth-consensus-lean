@@ -36,7 +36,7 @@ theorem high_origin_held_at_call (hp : ResetPremises tr H proposer dg g ΔF a)
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   obtain ⟨ellw, D, CV, hcw, hflw, -, -, -, hBD, -⟩ := hpu.highOrigin_mem ho
-  obtain ⟨v, hv⟩ := fastLock_counted_nonempty hflw
+  obtain ⟨v, hv⟩ := fastLock_counted_nonempty (by rw [hp.run.stock]; exact sp.toParams.hn) hflw
   obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr ho.1 hflw v hv
   have hBHv : Anc (tr.HonestBlocks H) B Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr ho.1 hcw).2 hBD).trans hDHv

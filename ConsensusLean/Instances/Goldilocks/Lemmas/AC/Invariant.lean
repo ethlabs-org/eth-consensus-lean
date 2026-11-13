@@ -105,8 +105,10 @@ private theorem tryVote_fields (self : Fin sp.n) (L : Set Lock) (A : SAState sp.
   split_ifs
   · exact ⟨id, rfl⟩
   · exact ⟨id, rfl⟩
+  all_goals try exact ⟨id, rfl⟩
   all_goals
-    rw [(optimistic_fields _ _ _).1, (optimistic_fields _ _ _).2, admitVote_blockStamp]
+    rw [(optimistic_fields _ _ _).1, (optimistic_fields _ _ _).2]
+    rw [admitVote_blockStamp]
     exact ⟨fun h => admitVote_poolOK (by exact h) _ _, rfl⟩
 
 private theorem blockReceipt_fields (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
@@ -277,7 +279,7 @@ private theorem acRestart_blockStamp (ro : ReplayOrder sp FGP) (self : Fin sp.n)
   have hl := ro.parentOrder t Φ (parentOrder_exists sp hΦ)
   have h₀ : RestartInv sp A Φ t { SAState.initial sp.genesisRoot with
       locks := A.locks, latestConfirmed := A.latestConfirmed,
-      restartTime := (t : WithBot Time) } :=
+      restartTime := (t : WithBot Time), mayVote := A.mayVote } :=
     ⟨rfl, rfl, rfl, rfl, rfl, rfl, fun σ x hx => by simp [SAState.initial] at hx,
       fun x => Or.inl rfl, fun q => Or.inl rfl⟩
   exact replay_blockStamp self A ht _ (fun B hB => (hl.2.1 B).mp hB) (_, []) h₀ X.root

@@ -57,6 +57,10 @@ AC state, the empty record (composition.tex §"State"). -/
 def init (A : NodeAC P) : NodeState A :=
   ⟨Store.init A.genesisPayload, A.initial, FG.Record.empty⟩
 
+/-- A supplied AC start changes only the AC component. -/
+def initWith (A : NodeAC P) (a : A.State) : NodeState A :=
+  ⟨Store.init A.genesisPayload, a, FG.Record.empty⟩
+
 /-- The frame the node gives the AC: `fg_to_ac(Σ)` of the current FG state. -/
 noncomputable def frame (st : NodeState A) : A.Frm := st.fg.toFrame
 

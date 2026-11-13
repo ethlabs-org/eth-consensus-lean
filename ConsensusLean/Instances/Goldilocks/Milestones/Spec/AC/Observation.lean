@@ -9,9 +9,9 @@ variable {P : Params} {FGP : Type}
 
 /-- Structural AC run laws, independently of the component's execution equation. -/
 structure ACObsRun (A : ACInterface P FGP) (H : Set (Fin P.n)) (U : Set A.Blk)
-    (tr : ACTrace A) : Prop where
+    (tr : ACTrace A) (ini : Fin P.n → A.State := fun _ => A.initial) : Prop where
   coherent : Coherent U
-  init : ∀ y ∈ H, tr.init y = A.initial
+  init : ∀ y ∈ H, tr.init y = ini y
   frameLaw : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
     (tr.NoCallBetween y 0 i ∧ ∃ Φ₀, A.InitialFrame Φ₀ ∧ A.FrameIn U Φ₀ ∧
       A.CallOK U Φ₀ (tr.time i) ℓ.call ℓ.frame) ∨

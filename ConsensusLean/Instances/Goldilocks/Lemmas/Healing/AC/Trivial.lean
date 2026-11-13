@@ -811,7 +811,7 @@ theorem honest_votes_in_slot_before {b : Time} (hS : HealthyBaseUpTo tr H U prop
   · obtain ⟨j, hjc, e, he, hes⟩ := vote_of_votedSlot hr hx c _ hv
     exact ⟨j, e, he, by rw [hes, htc, hslot], (hr.time_mono hjc.le).trans htc.le⟩
   · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
-    obtain ⟨e, hem, hes⟩ := tryVote_votes x ell.frame hj hv hT
+    obtain ⟨e, hem, hes⟩ := tryVote_votes x ell.frame hj hv hT (trace_mayVote_stock hr hx c _)
     have he := hr.exec c ell hc.2 (hc.1 ▸ hx)
     rw [hc.1, hcall] at he
     have h2 : (acOnTick sp x (tr.state x c) ell.frame (tr.time c)).2 = ell.emits :=
@@ -859,7 +859,7 @@ theorem honest_votes_in_slotU
   · obtain ⟨j, -, e, he, hes⟩ := vote_of_votedSlotU hr hx c _ hv
     exact ⟨j, e, he, by rw [hes, htc, hslot]⟩
   · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
-    obtain ⟨e, hem, hes⟩ := tryVote_votesWith x ℓ.frame hj hv hT
+    obtain ⟨e, hem, hes⟩ := tryVote_votesWith x ℓ.frame hj hv hT (traceWithM_mayVote hr hx c _)
     have he := hr.exec c ℓ hc.2 (hc.1 ▸ hx)
     rw [hc.1, hcall] at he
     have h2 : (acOnTickWithM sp wm x (u c) (tr.state x c) ℓ.frame (tr.time c)).2 = ℓ.emits :=
@@ -914,6 +914,7 @@ theorem fastLock_honest_voteU
     have hfast := (deepest_mem hD).1.2.2
     unfold FastTest confirmationScore at hfast
     dsimp only at hfast
+    rw [hrun.stock] at hfast
     have hlt := Nat.lt_of_mul_lt_mul_left (lt_of_lt_of_le hf hfast)
     obtain ⟨u, ⟨-, v, ⟨hvp, -⟩, rfl, -, R, hR, hRr, hBR⟩, hu⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard hlt
@@ -926,6 +927,7 @@ theorem fastLock_honest_voteU
     split_ifs at hsel
     have h34 := (deepest_mem hsel).1.2.1
     have hlt : Hᶜ.ncard < (optimisticVoters sp A ℓ.frame (sp.slot (tr.time i₀)) B).ncard := by
+      have hstock := hrun.stock
       omega
     obtain ⟨u, ⟨v, hv, rfl, R, hR, hRr, hBR⟩, hu⟩ := Set.exists_mem_notMem_of_ncard_lt_ncard hlt
     obtain ⟨hvs, j, -, e, hve, rfl⟩ := optimisticPoint_pool_voteU hrun hx hpt hv (not_not.1 hu)
@@ -934,7 +936,8 @@ theorem fastLock_honest_voteU
 /-- A fast lock of an honest node is extended by an honest vote of its slot: the fast test
 counts at least `n/2` non-equivocating supporters, an optimistic confirmation `3n/4` voters,
 and `f < n/2`. -/
-theorem fastLock_honest_vote (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
+theorem fastLock_honest_vote
+    (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
     {x : Fin sp.n}
     (hx : x ∈ H) {i₀ s : Nat} {B : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hfl : FastLockAt tr x i₀ s B CV) :
@@ -989,7 +992,8 @@ theorem votes_continueU
 
 /-- **Continuation** (induction on slots proves permanent vote support; A1.3): if every
 honest vote of a slot `m ≥ r` extends `B`, so does every honest vote of every later slot. -/
-theorem votes_continue (hS : StandaloneRun tr H U proposer g) {m : Nat}
+theorem votes_continue
+    (hS : StandaloneRun tr H U proposer g) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) {B : Blk sp.n FGP}
     (hB : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = m → VoteExtends U e.msg B) :
     VotesExtendAfter tr H U m B :=
@@ -1033,7 +1037,8 @@ theorem fast_origin_transfer_votesU
 /-- **A fast origin transfers to the votes** (A1.2/A1.4 at slot `s + 1`, the first bad
 vote by induction on cuts, then `votes_continue`): every honest vote of a slot after the label
 `s ≥ r` of an honest fast lock extends its block. -/
-theorem fast_origin_transfer_votes (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n}
+theorem fast_origin_transfer_votes
+    (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n}
     (hx : x ∈ H)
     {i₀ s : Nat} {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr x i₀ s B CV)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) : VotesExtendAfter tr H U s B :=

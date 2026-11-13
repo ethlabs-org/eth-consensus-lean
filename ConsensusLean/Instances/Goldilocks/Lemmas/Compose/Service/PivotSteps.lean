@@ -380,6 +380,7 @@ theorem proposal_best_toward_old_before (hrun : GoldilocksRun proposer dg H tr)
         rw [← Set.ncard_union_eq Set.disjoint_sdiff_left]
         exact (Set.ncard_le_ncard (Set.subset_univ _)).trans (by simp)
       have := Set.ncard_le_ncard hequiv (Set.toFinite _)
+      have hstock := hrun.stock
       omega
 
 set_option linter.unusedVariables false in
@@ -532,6 +533,7 @@ theorem vote_anchor_cases_of_old (hrun : GoldilocksRun proposer dg H tr) (hnc : 
   · -- a lock of slot `s`: below an optimistic selection with an honest earlier supporter
     obtain ⟨Φ', A', D', -, hΦ'U, -, h34, hpool, -, L, hLU, hLr, hLD'⟩ :=
       SA.lock_origin_readPoint hrun' hy hcy l hl (by rw [hes, hls]; omega)
+    rw [hrun'.stock] at h34
     obtain rfl : L = B := hU.1 hLU (hΦU hB) (hLr.trans hBr.symm)
     obtain ⟨x, ⟨v, hv, rfl, R, hR, hRr, hDR⟩, hxH⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)

@@ -197,12 +197,14 @@ private theorem LockInv.tryVote {A : SAState sp.n} (h : LockInv U A Φ) (x : Fin
   split_ifs
   · exact h
   · exact h
-  all_goals
-    refine LockInv.optimistic hU hΦ hΦU (LockInv.of_eq ?_ (admitVote_keeps_locks _ _ _).1
-      (admitVote_keeps_locks _ _ _).2) _
-    first
-    | exact LockInv.of_eq (h.unlock hU hΦ hΦU _ _ _) rfl rfl
-    | exact LockInv.of_eq h rfl rfl
+  · refine LockInv.optimistic hU hΦ hΦU ?_ _
+    refine LockInv.of_eq ?_ (admitVote_keeps_locks _ _ _).1 (admitVote_keeps_locks _ _ _).2
+    exact LockInv.of_eq (h.unlock hU hΦ hΦU _ _ _) rfl rfl
+  · refine LockInv.optimistic hU hΦ hΦU ?_ _
+    refine LockInv.of_eq ?_ (admitVote_keeps_locks _ _ _).1 (admitVote_keeps_locks _ _ _).2
+    exact LockInv.of_eq h rfl rfl
+  · exact LockInv.of_eq (h.unlock hU hΦ hΦU _ _ _) rfl rfl
+  · exact LockInv.of_eq h rfl rfl
 
 private theorem LockInv.step {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : LockInv U A Φ)
     (x : Fin sp.n) (t : Time) (ht : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call) :
@@ -303,6 +305,7 @@ private theorem LockInv.tryVote_emits {A : SAState sp.n} (h : LockInv U A Φ) (x
       rw [optimistic_blockStamp, admitVote_blockStamp], rfl⟩
   · simp only [EmitOK, List.mem_singleton, forall_eq, Option.some.injEq, forall_eq']
     exact ⟨_, _, _, h, by rw [optimistic_blockStamp, admitVote_blockStamp], rfl⟩
+  all_goals simp [EmitOK]
 
 /-- **The emitted duty heads of a call** from a state with the lock invariant at the call's
 frame. -/
@@ -358,6 +361,7 @@ private theorem LockInv.tryVote_readPoint {A : SAState sp.n} (h : LockInv U A Φ
     rw [List.mem_singleton] at he
     subst he
     exact h.of_eq rfl rfl
+  all_goals simp
 
 /-- **The read point of an emission keeps the lock invariant.** Every vote that a call emits from
 a state with the lock invariant at the call's frame reads a state with the invariant: the

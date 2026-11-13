@@ -43,13 +43,9 @@ theorem tryVote_restartTimeWith
     (t : Time) : (tryVoteWithM sp wm x L A Φ t).1.restartTime = A.restartTime := by
   unfold tryVoteWithM
   dsimp only
-  split
-  · rfl
-  · split
-    · rfl
-    · rw [optimisticConfirmationM_keep _ optimistic_restartTime, admitVote_restartTime]
-      dsimp only
-      split <;> rfl
+  split_ifs <;>
+    simp only [optimisticConfirmationM_keep _ optimistic_restartTime,
+      admitVote_restartTime]
 
 theorem tryVote_restartTime (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : (tryVote sp x A Φ t).1.restartTime = A.restartTime :=

@@ -130,7 +130,7 @@ theorem optimistic_next_result_of_floor_at
   have hf := hp.faults _ hj0 hjb
   have hn : 0 < sp.n := sp.toParams.hn
   obtain ⟨D, hconf, hBD, _⟩ := SA.update_extends_of_resolved_votes hS.run
-    (by omega) hext hy hu' (by omega) hres
+    (by rw [hS.run.stock]; omega) hext hy hu' (by rw [hS.run.stock]; omega) hres
   rw [hst] at hconf
   exact ⟨D, _, ⟨ell, hu, hconf, rfl⟩, hBD.mono hsub⟩
 

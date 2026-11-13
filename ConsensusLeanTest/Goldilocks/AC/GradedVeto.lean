@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 public import Mathlib.Data.Set.Card
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 @[expose] public section
@@ -609,6 +610,10 @@ theorem tick_37 : (acOnTick sp v0 S3 Φ 37).1 = S4 := by
   unfold getHead
   rw [getAnchor_lockV S3_locks (by rw [slot_37]; decide),
     ghost_Bv (fun B hB => by rcases hB.1 with ⟨h, -⟩ | ⟨h, -⟩; exacts [h.1, h])]
+  have hp : S3.mayVote 9 = true := by
+    simp only [S3, optimisticConfirmation_mayVote, S3', S2, S1, admitVote_mayVote]
+    rfl
+  simp only [hp, ↓reduceIte]
   rfl
 
 theorem fixed_S4 : Fixed S4 := by

@@ -103,10 +103,11 @@ private theorem grow_tryVote
   split_ifs
   · exact Grow.of_eq rfl rfl
   · exact Grow.of_eq rfl rfl
+  all_goals try exact Grow.of_eq rfl rfl
   all_goals
-    refine Grow.trans ?_ ((grow_admitVote _ _ _).trans (grow_optimistic _ _ _))
-    first
-    | exact Grow.of_eq rfl rfl
+    refine Grow.trans ?_ (grow_optimistic _ _ _)
+    refine Grow.trans ?_ (grow_admitVote _ _ _)
+    exact Grow.of_eq rfl rfl
 
 /-- A call other than a restart grows the pools (`Grow`). -/
 private theorem grow_step

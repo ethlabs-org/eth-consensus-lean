@@ -304,6 +304,7 @@ theorem compatible_chain {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) 
 
 /-- The SA state apart from locks, the record of the confirmed block and the saved results. -/
 structure Same (A A' : SAState sp.n) : Prop where
+  mayVote : A'.mayVote = A.mayVote
   pool : A'.pool = A.pool
   voteStamp : A'.voteStamp = A.voteStamp
   blockStamp : A'.blockStamp = A.blockStamp
@@ -311,10 +312,11 @@ structure Same (A A' : SAState sp.n) : Prop where
   fgReported : A'.fgReported = A.fgReported
   restartTime : A'.restartTime = A.restartTime
 
-theorem Same.refl (A : SAState sp.n) : Same A A := ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
+theorem Same.refl (A : SAState sp.n) : Same A A := ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 theorem Same.trans {A A' A'' : SAState sp.n} (h : Same A A') (h' : Same A' A'') : Same A A'' :=
-  ⟨h'.pool.trans h.pool, h'.voteStamp.trans h.voteStamp, h'.blockStamp.trans h.blockStamp,
+  ⟨h'.mayVote.trans h.mayVote,
+    h'.pool.trans h.pool, h'.voteStamp.trans h.voteStamp, h'.blockStamp.trans h.blockStamp,
     h'.votedSlot.trans h.votedSlot, h'.fgReported.trans h.fgReported,
     h'.restartTime.trans h.restartTime⟩
 
@@ -344,7 +346,7 @@ theorem optimisticConfirmation_cases (A : SAState sp.n) (Φ : N.Frm) (t : Time) 
       { A with locks := (addLocks sp A.locks Φ t (sp.slot t)
         {(B.root, true, sp.slot t + 2)}) } Φ B
     rw [hc]
-    exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inr ⟨B, hB, rfl⟩⟩
+    exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inr ⟨B, hB, rfl⟩⟩
 
 theorem optimisticConfirmation_of_none {A : SAState sp.n} {Φ : N.Frm} {t : Time}
     (h : optimisticSelect sp A Φ t = none) : optimisticConfirmation sp A Φ t = A := by
@@ -377,7 +379,7 @@ theorem updateConfirmation_cases (A : SAState sp.n) (Φ : N.Frm) (t : Time) (s :
   unfold updateConfirmation
   dsimp only
   split
-  · exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inl rfl⟩
+  · exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inl rfl⟩
   · rename_i C hC
     obtain ⟨c, hc⟩ := updateLatestConfirmed_eq
       { A with saved := Function.update A.saved s ((getConfirmation sp A Φ s).map Block.root) }
@@ -385,7 +387,7 @@ theorem updateConfirmation_cases (A : SAState sp.n) (Φ : N.Frm) (t : Time) (s :
     split_ifs
     all_goals
       try rw [hc]
-      refine ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inr ⟨_, ?_, rfl⟩⟩
+      refine ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inr ⟨_, ?_, rfl⟩⟩
       rintro p (⟨B, hB, rfl⟩ | ⟨B, hB, rfl⟩)
       · exact ⟨B, (deepest_mem hB).1.1.1.1, rfl⟩
       · exact ⟨B, (deepest_mem hB).1.1.1.1, rfl⟩

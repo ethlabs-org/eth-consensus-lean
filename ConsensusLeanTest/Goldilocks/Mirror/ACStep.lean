@@ -57,7 +57,7 @@ def ACD.updLC (a : X.ACD) (M : List Nat) (c : Nat) : X.ACD :=
 def ACD.optSel (a : X.ACD) (M : List Nat) (t : Int) : Option Nat :=
   if a.joinedB t = false ∨ slotT t = 0 ∨ 4 * (slotT t : Int) + 2 ≤ t then none
   else X.deep (M.filter (fun b => decide
-    (3 * X.sp.n ≤ 4 * (a.optVoters M (slotT t) b).dedup.length ∧
+    (3 * X.sp.committeeSize ≤ 4 * (a.optVoters M (slotT t) b).dedup.length ∧
       X.conflictsD a.locks M t b = false)))
 
 /-- `optimistic_confirmation`. -/
@@ -84,7 +84,7 @@ def ACD.updConf (a : X.ACD) (M : List Nat) (t : Int) (s : Nat) : X.ACD :=
   | some c =>
     let a₂ := if X.conflictsD a₁.locks M t c = true then a₁ else a₁.updLC M c
     let path := (X.chain c).filter (fun b => decide (b ≠ X.g ∧ X.conflictsD a₁.locks M t b = false))
-    let D := X.deep (path.filter (fun b => decide (X.sp.n ≤ 2 * a.confScore M s b)))
+    let D := X.deep (path.filter (fun b => decide (X.sp.committeeSize ≤ 2 * a.confScore M s b)))
     let Y := X.deep (path.filter (fun b => a₁.slowD M s b))
     let N := (D.map (fun b => (b, true, X.fastExpD a₂.locks M t s))).toList ++
       (Y.map (fun b => (b, false, s + X.sp.k))).toList
@@ -275,7 +275,8 @@ theorem updateConfirmation_eq (hX : X.OK) (hM : X.Closed M) (a : X.ACD) (t : Int
     simp only [getConfirmation_eq hX hM, hc, Option.map_some, blk_root hcv, update_saved]
     have hA₁ : (SAState.mk a.interp.pool a.interp.voteStamp a.interp.blockStamp
         ({ a with saved := ((s : Int), some c) :: a.saved } : X.ACD).interp.saved a.interp.locks
-        a.interp.latestConfirmed a.interp.fgReported a.interp.votedSlot a.interp.restartTime) =
+        a.interp.latestConfirmed a.interp.fgReported a.interp.votedSlot a.interp.restartTime
+        a.interp.mayVote) =
         ({ a with saved := ((s : Int), some c) :: a.saved } : X.ACD).interp := rfl
     rw [hA₁]
     set a₁ : X.ACD := { a with saved := ((s : Int), some c) :: a.saved } with ha₁
@@ -301,7 +302,7 @@ theorem updateConfirmation_eq (hX : X.OK) (hM : X.Closed M) (a : X.ACD) (t : Int
         FastTest X.sp a.interp (X.frameOf M) s B} =
         (X.deep (((X.chain c).filter
           (fun b => decide (b ≠ X.g ∧ X.conflictsD a₁.locks M t b = false))).filter
-          (fun b => decide (X.sp.n ≤ 2 * a.confScore M s b)))).map X.blk := by
+          (fun b => decide (X.sp.committeeSize ≤ 2 * a.confScore M s b)))).map X.blk := by
       refine deepest_eq hX hM (fun r hr => hsub r (List.mem_filter.1 hr).1) fun B => ?_
       simp only [Set.mem_ofPred_eq, path_mem hX hM hcM, List.mem_filter, decide_eq_true_eq]
       constructor
@@ -332,11 +333,11 @@ theorem updateConfirmation_eq (hX : X.OK) (hM : X.Closed M) (a : X.ACD) (t : Int
     have hf : ∀ (q : Nat → Bool), ∀ r ∈ ((X.chain c).filter
         (fun b => decide (b ≠ X.g ∧ X.conflictsD a.locks M t b = false))).filter q, r ∈ X.chain c :=
       fun q r hr => (List.mem_filter.1 (List.mem_filter.1 hr).1).1
-    have hDv := hval _ (hf (fun b => decide (X.sp.n ≤ 2 * a.confScore M s b)))
+    have hDv := hval _ (hf (fun b => decide (X.sp.committeeSize ≤ 2 * a.confScore M s b)))
     have hYv := hval _ (hf (fun b => a₁.slowD M s b))
     generalize X.deep (((X.chain c).filter
       (fun b => decide (b ≠ X.g ∧ X.conflictsD a.locks M t b = false))).filter
-        (fun b => decide (X.sp.n ≤ 2 * a.confScore M s b))) = Dr at hDv ⊢
+        (fun b => decide (X.sp.committeeSize ≤ 2 * a.confScore M s b))) = Dr at hDv ⊢
     generalize X.deep (((X.chain c).filter
       (fun b => decide (b ≠ X.g ∧ X.conflictsD a.locks M t b = false))).filter
         (fun b => a₁.slowD M s b)) = Yr at hYv ⊢
@@ -395,7 +396,7 @@ theorem tryVote_eq (hX : X.OK) (hM : X.Closed M) (hnd : M.Nodup) (a : X.ACD) (se
     (t : Int) : tryVote X.sp self a.interp (X.frameOf M) t = resI (a.tryVote self M t) := by
   unfold tryVote ACD.tryVote
   simp only [joined_interp, slot_eq, ts_eq, X.hΔ, Bool.not_eq_true, voteReady_eq hM,
-    interp_votedSlot]
+    interp_votedSlot, interp_mayVote, ↓reduceIte]
   by_cases h1 : a.joinedB t = false ∨ a.voted = (slotT t : Int) ∨ 4 * (slotT t : Int) + 1 < t
   · simp only [h1, ↓reduceIte, resI]; rfl
   by_cases h2 : t < 4 * (slotT t : Int) + 1 ∧ (slotT t = 0 ∨ X.readyD M (slotT t) = false)
@@ -408,7 +409,7 @@ theorem tryVote_eq (hX : X.OK) (hM : X.Closed M) (hnd : M.Nodup) (a : X.ACD) (se
   have hA₁ : ∀ {_ : Decidable (0 < slotT t)}, (if 0 < slotT t then
       SAState.mk a.interp.pool a.interp.voteStamp a.interp.blockStamp a.interp.saved
         (unlock X.sp a.interp.locks (X.frameOf M) t ((slotT t : Int) - 1) (View.ofLists p))
-        a.interp.latestConfirmed a.interp.fgReported a.voted a.interp.restartTime
+        a.interp.latestConfirmed a.interp.fgReported a.voted a.interp.restartTime (fun _ => true)
       else a.interp) = a₁.interp := by
     intro _
     rw [ha₁]
@@ -420,7 +421,8 @@ theorem tryVote_eq (hX : X.OK) (hM : X.Closed M) (hnd : M.Nodup) (a : X.ACD) (se
     blk_root (headD_valid hM a₁ t (dom_sub a₁ _) p _)]
   have hA₂ : (SAState.mk a₁.interp.pool a₁.interp.voteStamp a₁.interp.blockStamp a₁.interp.saved
       a₁.interp.locks a₁.interp.latestConfirmed a₁.interp.fgReported (slotT t : Int)
-      a₁.interp.restartTime) = ({ a₁ with voted := (slotT t : Int) } : X.ACD).interp := rfl
+      a₁.interp.restartTime a₁.interp.mayVote) =
+      ({ a₁ with voted := (slotT t : Int) } : X.ACD).interp := rfl
   rw [hA₂, admitVote_interp, optimisticConfirmation_eq hX hM]
   rfl
 

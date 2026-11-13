@@ -62,6 +62,30 @@ structure External {V : Type} (S : System V) where
   ext : (r : S.Run) → Ext (S.trace r).point.env
   /-- Admissible external data (in the model: the protocol's selection spec). -/
   Admits : (E : Env V) → Ext E → Prop
+  /-- Changing participation while keeping the public delays preserves the entire
+  external input space, not only inputs admitted in one environment. Fault profiles
+  and submissions are absent from both sides. -/
+  transport : ∀ (E E' : Env V), E.ΔAC = E'.ΔAC → E.ΔFG = E'.ΔFG → Ext E ≃ Ext E'
+  /-- Reindexing an input in the same environment preserves its identity. -/
+  transport_refl : ∀ (E : Env V) (x : Ext E), transport E E rfl rfl x = x
+  /-- Reindexing through an intermediate participation profile changes no input. -/
+  transport_trans : ∀ (E E' E'' : Env V)
+    (hAC : E.ΔAC = E'.ΔAC) (hFG : E.ΔFG = E'.ΔFG)
+    (hAC' : E'.ΔAC = E''.ΔAC) (hFG' : E'.ΔFG = E''.ΔFG) (x : Ext E),
+    transport E' E'' hAC' hFG' (transport E E' hAC hFG x) =
+      transport E E'' (hAC.trans hAC') (hFG.trans hFG') x
+  /-- Admissibility is invariant along transport. Independence of a selection
+  reader additionally requires that its selected sets commute with transport. -/
+  admits_transport : ∀ (E E' : Env V) (hAC : E.ΔAC = E'.ΔAC)
+    (hFG : E.ΔFG = E'.ΔFG) (x : Ext E),
+    Admits E' (transport E E' hAC hFG x) ↔ Admits E x
+  /-- The population selected at an observation time. A later fault charge reads
+  this same set; it does not select again at the charge time. -/
+  selected : (E : Env V) → Ext E → Time → Finset V
+  /-- Selected identities do not change with participation at equal delays. -/
+  selected_transport : ∀ (E E' : Env V) (hAC : E.ΔAC = E'.ΔAC)
+    (hFG : E.ΔFG = E'.ΔFG) (x : Ext E) (t : Time),
+    selected E' (transport E E' hAC hFG x) t = selected E x t
 
 /-- Progress requirements (leader-based progress), read **only** from the
 participation of the environment point — awake profile, fault profile, horizon —
@@ -168,19 +192,23 @@ structure System.Adequate (S : System V) (X : Progress S Prog) : Prop where
   /-- Coverage: every point with a nonnegative horizon, admissible external
   data and GST `g` has a valid excuse-free run with that point, whose log is
   eager from `g` (`g ≤ 0`: synchronous; `g > horizon`: silent), carrying every
-  progress requirement that holds at the point and data (the progress is
-  transported, not the data; `Model.sysOf_adequate` keeps both). -/
+  progress requirement and the same selected population at every observation
+  time. The covering witness cannot replace an inconvenient selection. -/
   covers : ∀ p : EnvPoint V, 0 ≤ p.horizon → ∀ e : X.Ext p.env, X.Admits p.env e → ∀ g : Time,
     ∃ r, S.Valid r ∧ ¬ S.Excuse r ∧ S.pt r = p ∧ (S.log r).EagerFrom (S.pt r) g ∧
-      ∀ π c s t, X.holds π c s t p e → X.holds π c s t (S.pt r) (X.ext r)
+      (∀ π c s t, X.holds π c s t p e → X.holds π c s t (S.pt r) (X.ext r)) ∧
+      ∀ t, X.selected (S.pt r).env (X.ext r) t = X.selected p.env e t
   /-- Prefix closure: the prefix of a valid run up to any `b ∈ [0, horizon]` is
   a valid run with the same reads, views and log up to `b`, no new excuse, and
-  the same progress on windows ending by `b`. -/
+  the same progress on windows ending by `b`, preserving all historical
+  selected populations. -/
   prefixClosed : ∀ r, S.Valid r → ∀ b : Time, 0 ≤ b → b ≤ (S.pt r).horizon → ∃ r', S.Valid r' ∧
     (S.trace r').PrefixOf (S.trace r) b ∧
     (∀ v i, i ≤ (S.trace r').cuts → S.view r' v i = S.view r v i) ∧
     (S.log r').AgreesUpTo (S.log r) b ∧ (S.Excuse r' → S.Excuse r) ∧
-    ∀ π c s t, t ≤ b → X.holds π c s t (S.pt r) (X.ext r) → X.holds π c s t (S.pt r') (X.ext r')
+    (∀ π c s t, t ≤ b → X.holds π c s t (S.pt r) (X.ext r) →
+      X.holds π c s t (S.pt r') (X.ext r')) ∧
+    ∀ t, X.selected (S.pt r').env (X.ext r') t = X.selected (S.pt r).env (X.ext r) t
 
 /-- Non-vacuity of `TxLive` (used by realizability witnesses): a transaction
 submitted at `t ≥ 0` to a `u` honest and awake at `t`, and a *different* `w`
@@ -334,6 +362,12 @@ def Progress.restrict {S : System V} (X : Progress S Prog) (Q : S.Run → Prop) 
   Ext := X.Ext
   ext := X.ext
   Admits := X.Admits
+  transport := X.transport
+  transport_refl := X.transport_refl
+  transport_trans := X.transport_trans
+  admits_transport := X.admits_transport
+  selected := X.selected
+  selected_transport := X.selected_transport
   holds := X.holds
   mono := X.mono
   shrink := X.shrink
@@ -360,6 +394,12 @@ def Progress.atRun {S : System V} (X : Progress S Prog) (r : S.Run) :
   Ext := X.Ext
   ext := X.ext
   Admits := X.Admits
+  transport := X.transport
+  transport_refl := X.transport_refl
+  transport_trans := X.transport_trans
+  admits_transport := X.admits_transport
+  selected := X.selected
+  selected_transport := X.selected_transport
   holds := X.holds
   mono := X.mono
   shrink := X.shrink

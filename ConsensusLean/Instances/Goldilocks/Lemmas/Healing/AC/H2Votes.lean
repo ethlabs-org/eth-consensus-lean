@@ -75,6 +75,7 @@ theorem h2_duty_anchor (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P :
         lock_origin_readPoint hrun hx hce l hl (by rw [hes, hlp]; (clear * -; omega))
       obtain rfl : L = B₀ := hU.1 hL (hΦU hB₀) (hLr.trans hB₀r.symm)
       have hf := hI.two_faulty_lt
+      rw [hrun.stock] at h34
       have hlt : Hᶜ.ncard < (optimisticVoters sp A Φ' l.slot D').ncard := by clear * - h34 hf; omega
       obtain ⟨u, ⟨v, hv, rfl, R, hR, hRr, hDR⟩, hu⟩ :=
         Set.exists_mem_notMem_of_ncard_lt_ncard hlt

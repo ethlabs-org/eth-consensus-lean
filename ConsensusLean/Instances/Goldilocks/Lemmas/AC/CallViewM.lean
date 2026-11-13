@@ -28,11 +28,12 @@ theorem grows_tryVoteWithM (wm : WriteMode) (self : Fin sp.n) (L : Set Lock) (A 
   split_ifs
   · exact Grows.refl _
   · exact Grows.refl _
+  all_goals try exact Grows.of_pool_eq rfl
   all_goals
     refine Grows.trans ?_ (Grows.of_pool_eq
       (optimisticConfirmationM_keep SAState.pool optimistic_pool_eq wm _ _ _))
-    refine Grows.trans (Grows.of_pool_eq ?_) (grows_admitVote _ _ _)
-    rfl
+    refine Grows.trans ?_ (grows_admitVote _ _ _)
+    exact Grows.of_pool_eq rfl
 
 /-- The view of a call at mode `wm` lies in a set `S` holding the pools before and after the call
 and the votes of the frame's blocks, and holds only votes of slot `slot(t) − 1`. -/

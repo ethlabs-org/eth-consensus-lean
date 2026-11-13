@@ -386,10 +386,9 @@ theorem fastLock_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
 
 /-- **A fast lock counts a vote**: the fast test passes with half of the committee (`n ≥ 1`), the
 optimistic test with three quarters, and each counted validator has a counted vote. -/
-theorem fastLock_counted_nonempty {x : Fin sp.n} {i₀ s : Nat} {D : SA.Blk sp.n FGP}
+theorem fastLock_counted_nonempty (hcommittee : 0 < sp.committeeSize)
+    {x : Fin sp.n} {i₀ s : Nat} {D : SA.Blk sp.n FGP}
     {CV : Set (Vote sp.n)} (hfl : SA.FastLockAt T x i₀ s D CV) : CV.Nonempty := by
-  have hn := sp.toParams.hn
-  have hn' : sp.n = sp.toParams.n := rfl
   rcases hfl with ⟨ℓX, C, -, -, hsel, rfl⟩ | ⟨ℓx, A, -, hsl, hsel, rfl⟩
   · obtain ⟨⟨-, -, hfast⟩, -⟩ := SA.deepest_mem hsel
     unfold SA.FastTest SA.confirmationScore at hfast
@@ -411,6 +410,7 @@ theorem fastLock_counted_nonempty {x : Fin sp.n} {i₀ s : Nat} {D : SA.Blk sp.n
 
 /-- A raw writer supplies a counted head above the target, accepted before the slot freeze. -/
 theorem raw_writer_relay_source
+    (hcommittee : 0 < sp.committeeSize)
     (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
     {x : Fin sp.n} (hx : x ∈ H) {i s : Nat}
     {B C : SA.Blk sp.n FGP} {CV : Set (Vote sp.n)}
@@ -425,7 +425,7 @@ theorem raw_writer_relay_source
       obtain ⟨w, v, hv, _⟩ := Set.nonempty_of_ncard_ne_zero
         (s := {w | ∃ v ∈ CV, v.val = w}) (by omega)
       exact ⟨v, hv⟩
-    · exact fastLock_counted_nonempty hF
+    · exact fastLock_counted_nonempty hcommittee hF
   obtain ⟨v, hv⟩ := hne
   have hw := hwriter.elim (fun hR => result_writer hr hx hR v hv)
     (fun hF => fastLock_writer hr hx hF v hv)
@@ -487,6 +487,7 @@ theorem voterBlockTree_of_relay_source
 
 /-- A raw writer's ancestor is available in a later voter's frozen block tree. -/
 theorem raw_writer_voterBlockTree_window_before
+    (hcommittee : 0 < sp.committeeSize)
     (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b κ : Time}
     (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
     {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {j i s : Nat}
@@ -496,7 +497,7 @@ theorem raw_writer_voterBlockTree_window_before
     (hc : SA.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
     (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
     (hF : Anc U ℓ.frame.F B) : B ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
-  obtain ⟨v, _, D, hDU, _, hBD, hsource⟩ := raw_writer_relay_source hr hx hwriter hBC
+  obtain ⟨v, _, D, hDU, _, hBD, hsource⟩ := raw_writer_relay_source hcommittee hr hx hwriter hBC
   exact voterBlockTree_of_relay_source hr hsync hcatch hx hy hDU hBD hsource
     hc hs hi hcatchTime hF
 

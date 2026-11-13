@@ -63,7 +63,8 @@ theorem vote_viable (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer 
   · exact Or.inr h
 
 /-- Transfer at a vote counts only votes emitted while honest. -/
-theorem vote_extends (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem vote_extends
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     {ΔF : Time} {x : Fin sp.n} {i₀ s m : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
     (hp : PersistPremises tr H dg ΔF x i₀ s m B CV) {y : Fin sp.n} {k : Nat}

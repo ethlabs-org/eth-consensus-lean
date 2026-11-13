@@ -37,7 +37,7 @@ structure OwnProposalsDecode {V : Type} [Fintype V] [DecidableEq V] {E : Env V} 
     ∀ d p, r.2.2 = some (d, p) →
       let B := Node.mkBlock (digestOf S rho) (rho.ownKey v) r.1.fg
         (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p
-      decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+      decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
         (blockObj _ B) = some B
 
 /-- A node step from the engine state before a scheduled tick decodes the tick's own proposal:
@@ -61,7 +61,7 @@ theorem scheduled_proposal_child_decodes_of_step {V : Type} [Fintype V] [Decidab
     ∀ d p, r.2.2 = some (d, p) →
       let B := Node.mkBlock (digestOf S rho) (rho.ownKey v) r.1.fg
         (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p
-      decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+      decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
         (blockObj _ B) = some B := by
   dsimp only
   intro d p hdp
@@ -147,7 +147,7 @@ theorem decoded_held_scheduled_proposal_of_own {V : Type} [Fintype V] [Decidable
         WrappersHeld (digests rho.hash) (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1)
       simp only [Model.Run.dutyStep,
         show (protoOf (compiled (goldilocks S)) E).role (.propose s hs) = .proposer s from rfl,
-        hsel, ↓reduceIte, hempty, Model.Run.signedCandidate, List.map_nil,
+        hsel, ↓reduceIte, hempty, Model.Run.signedCandidate, List.filterMap_nil,
         Model.releaseAll]
       change WrappersDecoded (digests rho.hash)
           (((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).1.1 hn) ∧
@@ -290,7 +290,8 @@ theorem delivery_acceptance_decoded_publication_of_held {V : Type} [Fintype V] [
     (he : rho.events[i]? = some (.deliver v o t))
     (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
     (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true))
-    (hchild : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+    (hchild : decodeBlock (S.params (pubOf E) hn) (binding := stock)
+      (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B)
     -- Own proposals of `v` decode.
     (hown : OwnProposalsDecode S rho hn v) :
@@ -335,7 +336,8 @@ theorem tick_proposal_acceptance_decoded_publication_of_queued {V : Type} [Finty
     (hone : (skeleton (pubOf E)).proposeAt t = [.propose s hs])
     (ht : t = (S.params (pubOf E) hn).toParams.slotTime s)
     (B : Blk (S.params (pubOf E) hn))
-    (hchild : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+    (hchild : decodeBlock (S.params (pubOf E) hn) (binding := stock)
+      (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B)
     -- Own proposals of `v` decode.
     (hown : OwnProposalsDecode S rho hn v)
@@ -392,7 +394,8 @@ theorem tick_acceptance_decoded_publication_of_queued {V : Type} [Fintype V] [De
     (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t))
     (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
     (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true))
-    (hchild : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+    (hchild : decodeBlock (S.params (pubOf E) hn) (binding := stock)
+      (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B)
     -- Own proposals of `v` decode.
     (hown : OwnProposalsDecode S rho hn v)

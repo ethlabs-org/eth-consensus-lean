@@ -75,7 +75,8 @@ def anchorD (L : List Lock) (M : List Nat) (t : Int) : Nat :=
 
 /-- The unlock target of the root `b` against the slot-`s` votes of `p`. -/
 def unlockTargetD (M : List Nat) (p : List X.V × List X.V) (s : Int) (b : Nat) : Nat :=
-  (X.deep ((X.chain b).filter (fun b' => decide (2 * (opp M p s b').dedup.length < X.sp.n)))).getD
+  (X.deep ((X.chain b).filter
+    (fun b' => decide (2 * (opp M p s b').dedup.length < X.sp.committeeSize)))).getD
     X.g
 
 /-- `unlock`. -/

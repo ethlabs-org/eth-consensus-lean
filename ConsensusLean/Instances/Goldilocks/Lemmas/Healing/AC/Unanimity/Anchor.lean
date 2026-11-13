@@ -151,6 +151,7 @@ theorem vote_anchor_cases_coreU
     right
     obtain ⟨Φ, A, D, -, hΦ'U, -, h34, hpool, -, L, hL, hLr, hLD⟩ :=
       lock_origin_readPointU hrun hx hc l hl (by rw [hes, hlp]; omega)
+    rw [hrun.stock] at h34
     obtain rfl : L = a := hU.1 hL (hΦU haT) (hLr.trans hlr.symm)
     have hf := hS.two_faulty_lt
     have hlt : Hᶜ.ncard < (optimisticVoters sp A Φ l.slot D).ncard := by omega
@@ -275,7 +276,8 @@ theorem proposal_anchor_cases_coreU
 
 /-- **The anchor of the proposal**: a block of `U` that every honest vote of slot `p` extends,
 or extended by some honest slot-`p` vote. -/
-theorem proposal_anchor_cases_core (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) :
+theorem proposal_anchor_cases_core
+    (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) :
     d.start ∈ U ∧
       ((∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = p → VoteExtends U e.msg d.start) ∨
         ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = p ∧ VoteExtends U e.msg d.start) :=
@@ -284,7 +286,8 @@ theorem proposal_anchor_cases_core (hs : UnanimitySettingCore tr H U schedule g 
 /-! ## In the setting of unanimity -/
 
 /-- `vote_anchor_cases_core` in `UnanimitySetting`, whose lateness gives the weak one. -/
-theorem vote_anchor_cases (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
+theorem vote_anchor_cases
+    (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = p) :
     getAnchor sp e.readPoint ℓ.frame (tr.time j) ∈ U ∧
@@ -296,7 +299,8 @@ theorem vote_anchor_cases (hs : UnanimitySetting tr H U schedule g p P k ℓp d 
   vote_anchor_cases_core hs.toCore hx hc hes
 
 /-- `proposal_anchor_cases_core` in `UnanimitySetting`, whose lateness gives the weak one. -/
-theorem proposal_anchor_cases (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) :
+theorem proposal_anchor_cases
+    (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) :
     d.start ∈ U ∧
       ((∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = p → VoteExtends U e.msg d.start) ∨
         ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = p ∧ VoteExtends U e.msg d.start) :=

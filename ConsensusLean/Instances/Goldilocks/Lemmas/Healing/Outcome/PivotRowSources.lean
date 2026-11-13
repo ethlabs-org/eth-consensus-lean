@@ -298,7 +298,7 @@ theorem ResetPremisesUpTo.raw_writer_held_at_slot_start {b : Time}
     simp only [SA.SAParams.ts] at ht ⊢
     linarith only [ht]
   obtain ⟨v, _, D, hD, hDr, hBD, hg | ⟨q, hq, hqt⟩⟩ :=
-    raw_writer_relay_source hr hx hwriter hBC
+    raw_writer_relay_source (by rw [hS.run.stock]; exact sp.toParams.hn) hr hx hwriter hBC
   all_goals obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   · obtain ⟨G, hG, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hpH _ _ hci
     have hDG : D = G := hr.coherent.1 hD hG (hg.trans hGr.symm)
@@ -581,7 +581,8 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
         split_ifs at hsel
         have h34 := (SA.deepest_mem hsel).1.2.1
         rw [hsl] at h34
-        refine SA.origin_compatible hU hΦU h34 hf fun v hv hvH => ?_
+        refine SA.origin_compatible hU hΦU h34
+          (by simpa only [hS.run.stock] using hf) fun v hv hvH => ?_
         obtain ⟨hvs, q', _, e', hv', rfl⟩ := SA.optimisticPoint_pool_vote hS.run hpH hpt hv hvH
         exact votes _ hvH q' e' hv' (by rw [hvs]; clear * - hlσ hle; omega)
     rcases hcomp with h | h

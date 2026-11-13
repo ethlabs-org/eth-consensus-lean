@@ -189,6 +189,7 @@ variable (a : X.ACD)
 @[simp] theorem interp_fgReported : a.interp.fgReported = a.rep := rfl
 @[simp] theorem interp_votedSlot : a.interp.votedSlot = a.voted := rfl
 @[simp] theorem interp_restartTime : a.interp.restartTime = rstE a.rst := rfl
+@[simp] theorem interp_mayVote : a.interp.mayVote = fun _ => true := rfl
 @[simp] theorem interp_poolAt (s : Int) : a.interp.poolAt s = a.poolAt s := rfl
 
 end State
@@ -197,11 +198,11 @@ theorem sastate_ext {A B : SAState X.sp.n} (h1 : A.pool = B.pool)
     (h2 : A.voteStamp = B.voteStamp) (h3 : A.blockStamp = B.blockStamp) (h4 : A.saved = B.saved)
     (h5 : A.locks = B.locks) (h6 : A.latestConfirmed = B.latestConfirmed)
     (h7 : A.fgReported = B.fgReported) (h8 : A.votedSlot = B.votedSlot)
-    (h9 : A.restartTime = B.restartTime) : A = B := by
+    (h9 : A.restartTime = B.restartTime) (h10 : A.mayVote = B.mayVote) : A = B := by
   cases A; cases B; simp only at *; subst_vars; rfl
 
 theorem ACD.interp_init : (ACD.init X).interp = SAState.initial X.g := by
-  refine sastate_ext ?_ ?_ ?_ ?_ ?_ rfl rfl rfl rfl
+  refine sastate_ext ?_ ?_ ?_ ?_ ?_ rfl rfl rfl rfl rfl
   · funext s; simp [ACD.interp, ACD.init, ACD.pool, SAState.initial]
   · funext v; simp [ACD.interp, ACD.init, ACD.stampV, SAState.initial]
   · funext r; simp [ACD.interp, ACD.init, ACD.stampB, SAState.initial]
@@ -231,7 +232,7 @@ theorem admitVote_interp (a : X.ACD) (t : Int) (v : X.V) :
   have hn : ∀ p ∈ a.adm, p.1 ≠ v := by
     rintro ⟨w, s⟩ hp rfl
     exact h1 (Or.inr (Or.inr (mem_pool_iff.2 ⟨s, hp⟩)))
-  refine sastate_ext ?_ ?_ rfl rfl rfl rfl rfl rfl rfl
+  refine sastate_ext ?_ ?_ rfl rfl rfl rfl rfl rfl rfl rfl
   · funext s
     by_cases hs : s = v.slot
     · subst hs; simp [ACD.interp, ACD.pool]
@@ -249,7 +250,7 @@ theorem blockReceipt_interp (a : X.ACD) (t : Int) {r : Nat} (hr : X.Valid r) :
     blockReceipt X.sp a.interp t (X.blk r) = (a.stamp r t).interp := by
   unfold blockReceipt
   simp only [blockVotes, blk_acPayload, List.foldl_nil, blk_root hr]
-  refine sastate_ext rfl rfl ?_ rfl rfl rfl rfl rfl rfl
+  refine sastate_ext rfl rfl ?_ rfl rfl rfl rfl rfl rfl rfl
   funext q
   by_cases hq : q = r
   · subst hq; simp [ACD.interp, ACD.stamp, ACD.stampB]

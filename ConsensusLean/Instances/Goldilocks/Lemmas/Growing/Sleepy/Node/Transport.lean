@@ -76,9 +76,11 @@ private theorem tryVote_pool (x : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm s
   · exact List.Subset.refl _
   · exact List.Subset.refl _
   all_goals
-    intro w hw
-    rw [SA.optimistic_pool]
-    exact SA.mem_admitVote_pool hw
+    first
+    | exact List.Subset.refl _
+    | intro w hw
+      rw [SA.optimistic_pool]
+      exact SA.mem_admitVote_pool hw
 
 private theorem foldl_admit_pool {t : Time} {σ : Nat} :
     ∀ (l : List (Vote sp.n)) (A : SA.SAState sp.n),

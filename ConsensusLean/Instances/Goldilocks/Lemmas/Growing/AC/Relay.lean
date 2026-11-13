@@ -38,7 +38,7 @@ theorem optimistic_seats (hrun : ACRun proposer tr H U)
     {X : Fin sp.n} {k s : Nat} (hX : X ∈ H (tr.time k))
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : OptimisticLockAt tr X k s D CV) :
     ∃ ℓ A, OptimisticPoint tr X k ℓ A ∧ ℓ.frame.tree ⊆ U ∧
-      3 * sp.n ≤ 4 * (optimisticVoters sp A ℓ.frame s D).ncard ∧
+      3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A ℓ.frame s D).ncard ∧
       optimisticVoters sp A ℓ.frame s D ⊆ Relayed tr H U X s D := by
   have hm := hrun.localRun.time_mono
   obtain ⟨ℓ, A, hp, hU, hn, hf⟩ := SA.optimistic_side

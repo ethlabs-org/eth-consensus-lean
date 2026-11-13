@@ -52,7 +52,8 @@ theorem older_locks_compatible_after_unlock_at
   have hLR : L = R := (Compose.Growing.honest_blocks_coherent hrun hnc).1
     hL (hsub hR) (hLr.trans hRr.symm)
   subst L
-  exact (SA.older_locks_compatible_after_unlock hr hy hc' hs hjk hPt hS hhalf
+  exact (SA.older_locks_compatible_after_unlock hr hy hc' hs hjk hPt hS
+    (by simpa only [hrun.stock] using hhalf)
     l hl' hls R hR hRr).imp (Anc.mono hsub) (Anc.mono hsub)
 
 end Consensus.Goldilocks.Healing.Growing

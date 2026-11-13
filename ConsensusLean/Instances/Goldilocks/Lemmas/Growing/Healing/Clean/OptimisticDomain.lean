@@ -109,7 +109,8 @@ theorem optimistic_vote_domain_before_at (hp : ResetPremisesUpTo tr H proposer d
     (hp.target_compatible_older_origin_at hseed hdb hzq hv hqb hvs hms hVB) ?_ ?_ ?_
   · intro hF
     have hle := (SA.ts_le_iff sp).mpr (show (s : Int) ≤ e.msg.slot - 1 by omega)
-    exact SA.Growing.raw_writer_voterBlockTree_window_before_at hac.localRun
+    exact SA.Growing.raw_writer_voterBlockTree_window_before_at
+      (by rw [hac.stock]; exact sp.toParams.hn) hac.localRun
       (hp.sync.ac_service_at hp.run (lo := SA.gbar g) (hi := b) (SA.le_gbar g))
       (catch_ac hp hc) hx hy (Or.inr (Or.inr hop)) .refl hcast (by omega) hib
       (by linarith only [hle, hgs, hΔ]) hF

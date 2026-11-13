@@ -25,7 +25,7 @@ variable (V : Type) [Fintype V] [DecidableEq V] (S : Setup) in
 theorem readIsOut : ReadIsOut V S := by
   rw [readIsOut_iff]
   intro E rho hn g v i
-  simp only [chainTrace, goldilocks, goldilocksShape, dite_eq_left hn, stateAt_eq]
+  simp only [chainTrace, goldilocks, goldilocksWith, goldilocksShape, dite_eq_left hn, stateAt_eq]
 
 /-- Read the embedded node's output in a particular engine run. -/
 theorem read_eq_out {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)

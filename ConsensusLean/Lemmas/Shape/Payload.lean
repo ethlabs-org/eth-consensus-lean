@@ -158,7 +158,7 @@ theorem honestProposal_payload {rho : Model.Run (compiled F) E} (hv : rho.Execut
   obtain ⟨-, r, cs, -, hr⟩ := hp
   rcases rho.releases_provenance hr with ⟨i, -, hd | hc⟩ | ⟨i, q, hi, hd | hc⟩
   · obtain ⟨d, -, st', hst', hc⟩ := (rho.dutyCandidate_iff).mp hd
-    obtain ⟨m, cs', hact, -, he⟩ := (rho.mem_signedCandidate).mp hc
+    obtain ⟨m, cs', hact, -, -, he⟩ := (rho.mem_signedCandidate).mp hc
     injection he with _ hm
     subst hm
     rw [act_item_payload (F (pubOf E)) st' d hact, tickReach_mempool hst']
@@ -167,7 +167,7 @@ theorem honestProposal_payload {rho : Model.Run (compiled F) E} (hv : rho.Execut
     injection he with ha
     cases ha
   · obtain ⟨d, -, st', hst', hc⟩ := (rho.deliverCandidate_iff).mp hd
-    obtain ⟨m, cs', hact, -, he⟩ := (rho.mem_signedCandidate).mp hc
+    obtain ⟨m, cs', hact, -, -, he⟩ := (rho.mem_signedCandidate).mp hc
     injection he with _ hm
     subst hm
     rw [act_item_payload (F (pubOf E)) st' d hact, tickReach_mempool hst']

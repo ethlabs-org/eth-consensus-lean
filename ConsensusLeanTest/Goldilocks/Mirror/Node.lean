@@ -237,7 +237,8 @@ theorem acRestart_eq (hX : X.OK) (hM : X.Closed M) (hnd : M.Nodup)
   set b₀ : X.ACD := { (ACD.init X) with locks := a.locks, lc := a.lc, rst := some t }
   have hA' : ({ (SAState.initial X.sp.genesisRoot) with
       locks := a.interp.locks, latestConfirmed := a.interp.latestConfirmed
-      restartTime := (t : WithBot Time) } : SAState X.sp.n) = b₀.interp := by
+      restartTime := (t : WithBot Time), mayVote := a.interp.mayVote } : SAState X.sp.n) =
+        b₀.interp := by
     rw [← ACD.interp_init]; rfl
   have hb₀ : b₀.joinedB t = false := joinedB_restart (M := []) a t ht
   unfold acRestart
@@ -245,7 +246,7 @@ theorem acRestart_eq (hX : X.OK) (hM : X.Closed M) (hnd : M.Nodup)
   rw [hA', replay_fold hX hM hnd self t l (fun B hB => ((hlmem B).1 hB).1) b₀ hb₀]
   congr 1
   rw [foldl_stamp_other]
-  refine sastate_ext rfl rfl ?_ rfl rfl rfl rfl rfl rfl
+  refine sastate_ext rfl rfl ?_ rfl rfl rfl rfl rfl rfl rfl
   funext r
   simp only [interp_blockStamp]
   rw [stampB_const (t := t), stampB_const (t := t)]

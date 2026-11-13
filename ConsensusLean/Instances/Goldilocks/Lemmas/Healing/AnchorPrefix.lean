@@ -55,9 +55,10 @@ theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun proposer dg H tr)
   unfold SA.optimisticSelect at hsel
   dsimp only at hsel
   split_ifs at hsel
-  have h34 : 3 * sp.n ≤
-      4 * (SA.optimisticVoters sp A ello.frame (sp.slot (tr.time r)) D).ncard :=
-    (SA.deepest_mem hsel).1.2.1
+  have h34 := (SA.deepest_mem hsel).1.2.1
+  rw [hrun.stock] at h34
+  change 3 * sp.n ≤
+    4 * (SA.optimisticVoters sp A ello.frame (sp.slot (tr.time r)) D).ncard at h34
   change sp.slot (tr.time r) = _ at hsl
   obtain ⟨x, ⟨v, hv, rfl, -⟩, hxH⟩ :
       ∃ x ∈ SA.optimisticVoters sp A ello.frame (sp.slot (tr.time r)) D, x ∈ H := by

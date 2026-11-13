@@ -232,10 +232,12 @@ theorem tryVote_pool_sub (self : Fin sp.n) {A : SA.SAState sp.n} {Φ : SA.Frm sp
   · exact Or.inl h
   · exact Or.inl h
   all_goals
-    rw [SA.optimistic_pool_eq] at h
-    rcases admitVote_pool_sub h with h | h
-    · exact Or.inl h
-    · exact Or.inr (by rw [h])
+    first
+    | exact Or.inl h
+    | rw [SA.optimistic_pool_eq] at h
+      rcases admitVote_pool_sub h with h | h
+      · exact Or.inl h
+      · exact Or.inr (by rw [h])
 
 /-- **A vote new in a pool after a call** is the received vote, a vote of the received block, or
 the node's own. -/
@@ -309,7 +311,8 @@ theorem val_faulty {x : SA.Vote (Fintype.card (Fin 5))} (h : x.val ∉ H S) :
 
 theorem voteObj_mem_blockObj {B : Blk (S.params (pubOf env) one_le_card)}
     {x : SA.Vote (Fintype.card (Fin 5))} (hx : x ∈ SA.blockVotes B) :
-    Model.Obj.Contains (blockObj (S.params (pubOf env) one_le_card) B) (voteObj x) :=
+    Model.Obj.Contains (blockObj (S.params (pubOf env) one_le_card) (binding := stock) B)
+      (voteObj x) :=
   Model.Obj.Contains.step
     (List.mem_append_right _ (List.mem_map.mpr ⟨x, List.mem_append_left _ hx, rfl⟩))
     (Model.Obj.Contains.refl _)

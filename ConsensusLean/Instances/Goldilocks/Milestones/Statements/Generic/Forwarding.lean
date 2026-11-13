@@ -43,7 +43,9 @@ def phaseStep (rho : Run F E) (v : V) (nd : Model.Node (protoOf F E)) :
     else (nd, [])
   | .release c => releaseAll (protoOf F E) rho.hash (rho.ownKey v) nd [c]
   | .restore t =>
-    (⟨(protoOf F E).restore (rho.ownKey v) ((protoOf F E).durable nd.st) t, nd.seen⟩, [])
+    (⟨(protoOf F E).restore (rho.ownKey v)
+      (fun r => decide (rho.ownKey v ∈ rho.sel r))
+      ((protoOf F E).durable nd.st) t, nd.seen⟩, [])
 
 /-- Candidates are captured from the pre-act state, not recomputed after the act. -/
 def dutyPhases (rho : Run F E) (v : V) (nd : Model.Node (protoOf F E))

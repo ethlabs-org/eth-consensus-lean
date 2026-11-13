@@ -151,7 +151,8 @@ private theorem ncard_le_n (T : Set (Fin sp.n)) : T.ncard ≤ sp.n :=
 whose head extends it. A result's counted validators include an honest one, since the more than
 `f` honest validators awake and joined at `t_s + Δ ≤ b` are voters of the update; an optimistic
 selection has `3n/4 > f` seats. -/
-theorem honest_supporterAC (hrun : ACRunU wm u proposer tr H U) (htick : TickDuty tr H)
+theorem honest_supporterAC
+    (hrun : ACRunU wm u proposer tr H U) (htick : TickDuty tr H)
     (hsv : ServiceWindowBefore H U 0 b tr) (hf : 2 * Hᶜ.ncard < sp.n)
     (hJ : ∀ s : Nat, sp.ts s + sp.Δ ≤ b → FaultBound tr H (sp.ts s + sp.Δ))
     {C : Blk sp.n FGP} {s : Nat} (hC : OriginWithinAC tr H C s b) :
@@ -191,6 +192,7 @@ theorem honest_supporterAC (hrun : ACRunU wm u proposer tr H U) (htick : TickDut
     exact ⟨_, hwH, j, e, hve, (hr.time_mono hj.le).trans hi₀,
       state_pool_slotU sp hr hX i₀ s _ hvp, R, hΦU hR, hRr, Anc.mono hΦU hCR⟩
   · obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := optimistic_sideU hrun hX hO
+    rw [hrun.stock] at h34
     obtain ⟨w, ⟨v, hv, rfl, R, hR, hRr, hCR⟩, huH⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
         (t := optimisticVoters sp A ℓ.frame s C) (by omega)
@@ -202,7 +204,8 @@ theorem honest_supporterAC (hrun : ACRunU wm u proposer tr H U) (htick : TickDut
 /-- A result within `b` and an optimistic selection of one label are compatible (RO): the
 `≥ 3n/4` optimistic seats reach the result's writer before `t_s + 3Δ ≤ b`, where none supports a
 conflicting result without equivocating. -/
-theorem result_optimistic_compatibleAC (hrun : ACRunU wm u proposer tr H U)
+theorem result_optimistic_compatibleAC
+    (hrun : ACRunU wm u proposer tr H U)
     (hsv : ServiceWindowBefore H U 0 b tr) {s : Nat} {X x : Fin sp.n} (hX : X ∈ H) (hx : x ∈ H)
     {i i' : Nat} {C C' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hi : tr.time i ≤ b)
     (hR : ResultAt tr X i s C CV) (hO : OptimisticLockAt tr x i' s C' CV') :
@@ -210,6 +213,7 @@ theorem result_optimistic_compatibleAC (hrun : ACRunU wm u proposer tr H U)
   by_contra hnc'
   obtain ⟨ℓ, S, hc, ht, hrs, hmaj, -, hS⟩ := result_sideAC hrun hX hR
   obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := optimistic_sideU hrun hx hO
+  rw [hrun.stock] at h34
   have hb : sp.ts s + 3 * sp.Δ ≤ b := by
     have := sp.toParams.hΔ; rw [ht] at hi; linarith
   have := against_update_service hrun.localRun hsv hb hx hX hc ht hrs hS hT
@@ -218,7 +222,8 @@ theorem result_optimistic_compatibleAC (hrun : ACRunU wm u proposer tr H U)
   omega
 
 /-- **Origins within `b` of one label are compatible** (RR, RO, OO). -/
-theorem same_label_compatibleAC (hrun : ACRunU wm u proposer tr H U)
+theorem same_label_compatibleAC
+    (hrun : ACRunU wm u proposer tr H U)
     (hsv : ServiceWindowBefore H U 0 b tr) (hf : 2 * Hᶜ.ncard < sp.n)
     {C C' : Blk sp.n FGP} {s : Nat} (hC : OriginWithinAC tr H C s b)
     (hC' : OriginWithinAC tr H C' s b) : Compatible U C C' := by
@@ -240,6 +245,7 @@ theorem same_label_compatibleAC (hrun : ACRunU wm u proposer tr H U)
   · by_contra hnc'
     obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := optimistic_sideU hrun hX hO
     obtain ⟨ℓ', A', hpt', hΦU', h34', -⟩ := optimistic_sideU hrun hX' hO'
+    rw [hrun.stock] at h34 h34'
     have hI := Set.ncard_inter_add_ncard_union (optimisticVoters sp A ℓ.frame s C)
       (optimisticVoters sp A' ℓ'.frame s C')
     have := ncard_le_n (sp := sp)
@@ -267,7 +273,8 @@ private theorem compatible_of_voteExtendsAC (hU : Coherent U) {v : Vote sp.n} {C
   exact Anc.total hU hC hC'
 
 /-- **Extending the origin frontier up to `b`**: `P_s` and `V_s` give `P_{s+1}`. -/
-theorem origins_below_succAC (hrun : ACRunU wm u proposer tr H U) (htick : TickDuty tr H)
+theorem origins_below_succAC
+    (hrun : ACRunU wm u proposer tr H U) (htick : TickDuty tr H)
     (hsv : ServiceWindowBefore H U 0 b tr) (hf : 2 * Hᶜ.ncard < sp.n)
     (hJ : ∀ s : Nat, sp.ts s + sp.Δ ≤ b → FaultBound tr H (sp.ts s + sp.Δ)) {s : Nat}
     (hP : OriginsBelowAC tr H U s b) (hV : VotesBelowAC tr H U s b) :

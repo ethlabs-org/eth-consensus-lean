@@ -12,7 +12,7 @@ open SA (SAState)
 
 noncomputable def runtime (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) :
     Runtime pub hn (SAState pub.n) (SA.Vote pub.n) (SA.Payload pub.n) :=
-  let A := goldilocksNode (S.params pub hn) (S.ro _)
+  let A := goldilocksNode (S.params pub hn (binding := AsChainShape.stock)) (S.ro _)
   ⟨S.genesisRoot, S.δt, ⟨A.validPayload, A.validMsg, A.holdsMsg, A.genesisPayload,
     A.initial, A.onMessage, A.onBlock, A.onTick, A.proposal, A.toFG, A.confirmed,
     A.head, A.restart⟩⟩
@@ -31,18 +31,19 @@ noncomputable def wire (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) :
   encodeInfo := AsChainShape.encodeInfo
   decodeInfo := AsChainShape.decodeInfo pub.n
   payloadMsgs p := p.1 ++ p.2
-  payloadObjs := AsChainShape.payloadObjs
+  payloadObjs := AsChainShape.payloadObjs (binding := AsChainShape.stock)
   headerOf := AsChainShape.headerOf (S.params pub hn)
   blockOf := AsChainShape.blockOf (S.params pub hn)
   parentRef := AsChainShape.parentRef S.genesisRoot
   rootOf := AsChainShape.rootOf
-  canonEvent := AsChainShape.canonEvent (S.params pub hn) (S.ro _)
+  canonEvent := AsChainShape.canonEvent (binding := AsChainShape.stock)
+    (S.params pub hn) (S.ro _)
   relayBody := .relay
   forwardBody := .forward
   msgForwardBody t m := .voteForward t (AsChainShape.encodeVote m)
-  dependencies := AsChainShape.dependencies pub.n
-  conflicts := AsChainShape.conflicts
-  isFGAtt := AsChainShape.isFGAtt
+  dependencies := AsChainShape.dependencies pub.n (binding := AsChainShape.stock)
+  conflicts := AsChainShape.conflicts (binding := AsChainShape.stock)
+  isFGAtt := AsChainShape.isFGAtt (binding := AsChainShape.stock)
   grid := (AsChainShape.skeleton pub).grid
   proposerSel := (AsChainShape.skeleton pub).proposerSel
   pollSel := (AsChainShape.skeleton pub).pollSel
@@ -62,16 +63,17 @@ noncomputable def family (S : Setup) : Family Info Body where
   pollSel pub := (AsChainShape.skeleton pub).pollSel
   order := [.poll, .poll, .pollPropose, .propose, .poll, .poll]
   deliverOrder := [.poll]
-  dependencies := AsChainShape.dependencies
-  conflicts := fun _ => AsChainShape.conflicts
-  isFGAtt := fun _ => AsChainShape.isFGAtt
+  dependencies := fun n => AsChainShape.dependencies n (binding := AsChainShape.stock)
+  conflicts := fun _ => AsChainShape.conflicts (binding := AsChainShape.stock)
+  isFGAtt := fun _ => AsChainShape.isFGAtt (binding := AsChainShape.stock)
 
 noncomputable def shape (S : Setup) : ChainShapeFamily AsChainShape.schema Info :=
   shapeFamily (family S) fun | .finalized => true | .confirmed => false
 
 /-- Fieldwise view, never equality of nominal state types. -/
 noncomputable def view (S : Setup) (pub : Public) (hn : 1 ≤ pub.n)
-    (st : AsChainShape.State (S.params pub hn) (S.ro _)) : State (wire S pub hn) :=
+    (st : AsChainShape.State (S.params pub hn (binding := AsChainShape.stock)) (S.ro _)
+      (binding := AsChainShape.stock)) : State (wire S pub hn) :=
   ⟨st.self, ⟨st.node.fg, st.node.ac, st.node.record⟩, st.now, st.outbox, st.relayBuf,
     st.fgDue, st.wrappers, st.forwards, st.voteForwards⟩
 

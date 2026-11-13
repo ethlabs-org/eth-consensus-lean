@@ -84,11 +84,12 @@ theorem payload_message_after_block {sp : SA.SAParams}
     (hs : List (Blocks.Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
     (st : NodeState (goldilocksNode sp ro)) (B : Blk sp) (v : SA.Vote sp.n)
     (ha : B.fgPayload = []) (hp : B.acPayload = ([v], []))
-    (hc : canonEvent sp ro hs (blockObj sp B) = some (.block B)) :
+    (hc : canonEvent sp ro hs (blockObj sp (binding := stock) B) = some (.block B)) :
     deliverRecs proposer dg hs self t i (delivered sp (blockObj sp B)) st 0 =
       groupRecs proposer dg self st t (Nat.pair i 0) (.block B) ++
       groupRecs proposer dg self (Node.onBlock self st t B).1 t (Nat.pair i 1) (.message v) := by
-  have hd : delivered sp (blockObj sp B) = [blockObj sp B, voteObj v] := by
+  have hd : delivered sp (blockObj sp (binding := stock) B) =
+      [blockObj sp B, voteObj v] := by
     simp [delivered, blockObj, payloadObjs, ha, hp, voteObj, Model.Obj.parts,
       Model.Obj.parts.partsList]
   rw [hd]
@@ -106,9 +107,11 @@ theorem nested_payload_message {sp : SA.SAParams}
     deliverRecs proposer dg hs self t i
       (delivered sp (.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v]])) st 0 =
       groupRecs proposer dg self st t (Nat.pair i 2) (.message v) := by
-  simp [delivered, Model.Obj.parts, Model.Obj.parts.partsList, deliverRecs_cons, deliverRecs_nil,
-    canonEvent, decodeBlock, decodeVoteObj, decodeAttObj, voteObj,
-    decodeVote_encodeVote, Option.filter]
+  simp only [delivered, voteObj, Model.Obj.parts, Model.Obj.parts.partsList,
+    List.append_nil]
+  simp only [deliverRecs_cons, deliverRecs_nil]
+  simp [canonEvent, decodeBlock, decodeVoteObj, decodeAttObj,
+    stock, VoteBinding.voteRole, decodeVote_encodeVote, Option.filter]
 
 /-- Unsigned timestamps cannot certify forwarding freshness. -/
 theorem unsigned_forward_rejected (sp : SA.SAParams) (hs : List (Blocks.Header Info × Nat))
@@ -120,7 +123,7 @@ theorem unsigned_forward_rejected (sp : SA.SAParams) (hs : List (Blocks.Header I
 theorem foreign_parent_rejected (sp : SA.SAParams) (hs : List (Blocks.Header Info × Nat))
     (x y : Fin sp.n) (hne : y ≠ x) (t pt : Time) (B A : Blk sp)
     (p : Wire sp.n) (pp : Option (Wire sp.n))
-    (hb : decodeBlock sp hs (blockObj sp B) = some B)
+    (hb : decodeBlock sp hs (blockObj sp (binding := stock) B) = some B)
     (hp : decodeForward sp hs p = some (y, pt, pp, A)) :
     decodeForward sp hs (forwardObj sp x t (some p) B) = none := by
   simp [forwardObj, decodeForward, hb, hp, hne]
@@ -128,7 +131,7 @@ theorem foreign_parent_rejected (sp : SA.SAParams) (hs : List (Blocks.Header Inf
 /-- A negative claimed acceptance time is rejected even for a canonical genesis child. -/
 theorem negative_forward_rejected (sp : SA.SAParams) (hs : List (Blocks.Header Info × Nat))
     (x : Fin sp.n) (t : Time) (ht : t < 0) (B : Blk sp)
-    (hb : decodeBlock sp hs (blockObj sp B) = some B) :
+    (hb : decodeBlock sp hs (blockObj sp (binding := stock) B) = some B) :
     decodeForward sp hs (forwardObj sp x t none B) = none := by
   simp [forwardObj, decodeForward, hb, not_le.mpr ht]
 
@@ -289,7 +292,8 @@ theorem forwarding_root_alias (sp : SA.SAParams) (x : Fin sp.n) (t : Time)
 relay wrapper of attestations only are rows (bound `ΔF`); a mixed relay wrapper (an attestation
 with a vote) and the empty relay wrapper are not (bound `Δ`). -/
 theorem isFGAtt_classification {n : Nat} (a : FG.Att n) (v : SA.Vote n) :
-    isFGAtt (attObj a) ∧ isFGAtt (.mk .none (.data .relay) [attObj a] : Wire n) ∧
+    isFGAtt (attObj (binding := stock) a) ∧
+      isFGAtt (.mk .none (.data .relay) [attObj a] : Wire n) ∧
       ¬ isFGAtt (.mk .none (.data .relay) [attObj a, voteObj v] : Wire n) ∧
       ¬ isFGAtt (.mk .none (.data .relay) [] : Wire n) := by
   simp [isFGAtt, IsAttObj, attObj, voteObj]

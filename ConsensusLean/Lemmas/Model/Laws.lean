@@ -14,6 +14,25 @@ namespace Consensus.Model
 variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O}
     {E : Env V}
 
+/-- Validity admits the very external input exported by the execution, not a
+separately chosen selection. -/
+theorem sysExternal_admits (r : (sysOf O F V).Run) (h : (sysOf O F V).Valid r) :
+    (sysExternal O F V).Admits r.1 ((sysExternal O F V).ext r) :=
+  h.selValid
+
+/-- Changing the awake profile at equal delays preserves the execution's key
+assignment and its entire role selection. Roles are transported by the equality
+of public protocol parameters, not selected again. -/
+theorem sysExternal_transport {E E' : Env V} (hAC : E.ΔAC = E'.ΔAC)
+    (hFG : E.ΔFG = E'.ΔFG) (x : (sysExternal O F V).Ext E) :
+    let y := (sysExternal O F V).transport E E' hAC hFG x
+    y.1 = x.1 ∧ HEq y.2 x.2 := by
+  rcases E with ⟨a, ha, b, hb, awake⟩
+  rcases E' with ⟨a', ha', b', hb', awake'⟩
+  cases hAC
+  cases hFG
+  exact ⟨rfl, HEq.rfl⟩
+
 private theorem event_time_nonneg (rho : Run F E) (h : rho.ExecutionValid) (i : Nat) :
     0 ≤ rho.cutTime i := by
   cases i with

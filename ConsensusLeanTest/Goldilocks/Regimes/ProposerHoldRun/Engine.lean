@@ -95,7 +95,7 @@ theorem root_proposer {i : Nat} {o : Obj S} (ho : o ∈ (rho S).releasesAt i)
       rw [h2] at ho
       rcases hcs o (Model.releaseAll_subset _ _ _ _ o ho) with hc | hc
       · obtain ⟨d, hd, st, -, hc⟩ := (rho S).dutyCandidate_iff.mp hc
-        obtain ⟨m, cs', -, hk, rfl⟩ := (rho S).mem_signedCandidate.mp hc
+        obtain ⟨m, cs', -, hk, -, rfl⟩ := (rho S).mem_signedCandidate.mp hc
         injection ha with _ hr
         obtain ⟨ht, hs⟩ := duty_proposer hd hr
         exact ⟨v, t, rfl, ht, hs, hr ▸ hk⟩
@@ -107,8 +107,11 @@ theorem root_proposer {i : Nat} {o : Obj S} (ho : o ∈ (rho S).releasesAt i)
       rw [h2] at ho
       rcases hcs o (Model.releaseAll_subset _ _ _ _ o ho) with hc | hc
       · obtain ⟨d, hd, st, -, hc⟩ := (rho S).deliverCandidate_iff.mp hc
-        obtain ⟨m, cs', -, -, rfl⟩ := (rho S).mem_signedCandidate.mp hc
+        obtain ⟨m, cs', -, -, -, rfl⟩ := (rho S).mem_signedCandidate.mp hc
         injection ha with _ hr
+        have hrole : (Model.protoOf (compiled (goldilocks S)) env).candidateRole d m =
+            (Model.protoOf (compiled (goldilocks S)) env).role d := rfl
+        erw [hrole] at hr
         rw [deliverDuty_poll hd] at hr
         cases hr
       · obtain ⟨mc, -, rfl⟩ := Model.mem_gossipCandidates.mp hc

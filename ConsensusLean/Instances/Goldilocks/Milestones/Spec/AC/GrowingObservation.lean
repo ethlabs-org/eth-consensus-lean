@@ -10,10 +10,11 @@ variable {P : Params} {FGP : Type}
 
 /-- Structural AC run laws under time-indexed honesty, without an execution equation. -/
 structure ACObsRun (A : ACInterface P FGP) (H : Time → Set (Fin P.n))
-    (U : Set A.Blk) (tr : ACTrace A) : Prop where
+    (U : Set A.Blk) (tr : ACTrace A)
+    (ini : Fin P.n → A.State := fun _ => A.initial) : Prop where
   antitone : Antitone H
   coherent : Coherent U
-  init : ∀ y ∈ H 0, tr.init y = A.initial
+  init : ∀ y ∈ H 0, tr.init y = ini y
   frameLaw : ∀ y i ℓ, y ∈ H (tr.time i) → tr.CallAt y i ℓ →
     (tr.NoCallBetween y 0 i ∧ ∃ Φ₀, A.InitialFrame Φ₀ ∧ A.FrameIn U Φ₀ ∧
       A.CallOK U Φ₀ (tr.time i) ℓ.call ℓ.frame) ∨

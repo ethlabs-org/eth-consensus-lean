@@ -154,7 +154,7 @@ theorem restart_state : RestartState sp := by
   have hl := ro.parentOrder t Φ (parentOrder_exists sp hΦ)
   have h₀ : RestartInv sp A Φ t { SAState.initial sp.genesisRoot with
       locks := A.locks, latestConfirmed := A.latestConfirmed,
-      restartTime := (t : WithBot Time) } :=
+      restartTime := (t : WithBot Time), mayVote := A.mayVote } :=
     ⟨rfl, rfl, rfl, rfl, rfl, rfl, fun σ x hx => by simp [SAState.initial] at hx,
       fun x => Or.inl rfl, fun q => Or.inl rfl⟩
   have key : ∀ l : List (Blk sp.n FGP), (∀ B ∈ l, B ∈ Φ.tree ∧ B.root ≠ sp.genesisRoot) →

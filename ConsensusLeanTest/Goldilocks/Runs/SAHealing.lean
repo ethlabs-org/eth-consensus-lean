@@ -637,6 +637,7 @@ theorem no_message {i : Nat} {ℓ : ACLabel GA1} (hc : run.CallAt v0 i ℓ) (v :
 
 /-- The execution also satisfies honest vote and block provenance. -/
 theorem acRun : ACRun (fun _ => v0) run Set.univ blocks where
+  stock := rfl
   localRun := localRun
   honest := {
     pool_vote := by

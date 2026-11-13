@@ -413,6 +413,7 @@ private theorem optimistic_supporter_at
   dsimp only at hsel
   split_ifs at hsel
   have h34 := (SA.deepest_mem hsel).1.2.1
+  rw [hacr.stock] at h34
   have h₂ : {x | x ∈ H (tr.time j) ∧ tr.projAC.awake x (tr.time j) ∧
       SA.JoinedAt tr.projAC x (tr.time j)}.ncard ≤ (H (tr.time j)).ncard :=
     Set.ncard_le_ncard fun x hx => hx.1

@@ -113,7 +113,7 @@ private theorem callOK_from (hq : A.Requirements) (h : Node.LocalRun proposer dg
     obtain ⟨cfg, hreach, hst, hstep⟩ := group_step h hy hg
     obtain ⟨hcoh, t₀, ht₀, hR⟩ := ac_states_reachable proposer dg y hq cfg hreach
     have hfg := fg_states_reachable proposer dg y cfg hreach
-    have hR' := ACInterface.ReachableAt.step .tick hR (ht₀.trans hstep.1)
+    have hR' := ACInterface.ReachableAtFrom.step .tick hR (ht₀.trans hstep.1)
       ⟨⟨(Store.frame_realization P _ _ _ hfg).1, fun _ hX => hX.1⟩, rfl⟩
     rw [← hst] at hdp
     have hts : tr.time i' = P.slotTime (P.slotOf (tr.time i')) := hp.2.1
@@ -131,7 +131,7 @@ theorem ac_projection : ACProjection := by
   classical
   refine
     { coherent := honest_blocks_coherent h hnc
-      init := fun y hy => by simp [RunTrace.projAC, h.init y hy, Node.init]
+      init := fun y hy => by simp [RunTrace.projAC, h.init y hy, Node.initWith]
       exec := fun i ℓ hl hH => ?_
       frameLaw := fun y hy i ℓ hc => ?_
       time_nonneg := h.time_nonneg

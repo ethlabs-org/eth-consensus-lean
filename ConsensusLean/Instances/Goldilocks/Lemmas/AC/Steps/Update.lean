@@ -56,10 +56,10 @@ theorem update_extends_of_resolved_votes
     {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
     (hrun : ACRun proposer tr H U) {s : Nat} {z : Fin sp.n} {k : Nat}
     {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hf : 2 * Hᶜ.ncard < sp.n)
+    (hf : 2 * Hᶜ.ncard < sp.committeeSize)
     (hext : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = s + 1 → VoteExtends U e.msg B)
     (hz : z ∈ H) (hup : UpdateAt tr z k (s + 1) ℓ)
-    (hh : sp.n ≤ 2 * {v | v ∈ H ∧ ∃ x ∈ (tr.state z k).pool (s + 1), x.val = v}.ncard)
+    (hh : sp.committeeSize ≤ 2 * {v | v ∈ H ∧ ∃ x ∈ (tr.state z k).pool (s + 1), x.val = v}.ncard)
     (hres : ∀ x ∈ (tr.state z k).pool (s + 1), x.val ∈ H →
       resolutionTime (tr.state z k) ℓ.frame x < ETime.of (sp.ts (s + 1 : Nat) + 2 * sp.Δ)) :
     ∃ C, getConfirmation sp (tr.state z k) ℓ.frame (s + 1) = some C ∧ Anc U B C ∧

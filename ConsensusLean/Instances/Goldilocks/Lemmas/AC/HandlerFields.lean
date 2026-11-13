@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.Actions
+public import ConsensusLean.Instances.Goldilocks.Spec.SA.Restart
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
 
 public section
 
@@ -97,6 +99,153 @@ theorem acToFG_keeps (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     · exact ⟨rfl, rfl⟩
     · split_ifs <;> exact ⟨rfl, rfl⟩
   · exact ⟨rfl, rfl⟩
+
+/-- Receipt admission never changes the execution-installed permission. -/
+theorem admitVote_mayVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+    (admitVote sp A t v).mayVote = A.mayVote := by
+  unfold admitVote
+  split_ifs <;> rfl
+
+theorem updateLatestConfirmed_mayVote (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (C : Blk sp.n FGP) : (updateLatestConfirmed sp A Φ C).mayVote = A.mayVote := by
+  unfold updateLatestConfirmed
+  split_ifs <;> rfl
+
+theorem optimisticConfirmation_mayVote (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (optimisticConfirmation sp A Φ t).mayVote = A.mayVote := by
+  unfold optimisticConfirmation
+  split
+  · rfl
+  · exact updateLatestConfirmed_mayVote _ _ _
+
+theorem updateConfirmation_mayVote (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    (s : Nat) : (updateConfirmation sp A Φ t s).mayVote = A.mayVote := by
+  unfold updateConfirmation
+  dsimp only
+  split
+  · rfl
+  · split_ifs <;> first | rfl | exact updateLatestConfirmed_mayVote _ _ _
+
+/-- Permission gates own creation, but is itself immutable under voting. -/
+theorem tryVote_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (tryVote sp self A Φ t).1.mayVote = A.mayVote := by
+  unfold tryVote
+  dsimp only
+  split_ifs <;> simp only [optimisticConfirmation_mayVote, admitVote_mayVote] <;> rfl
+
+private theorem foldl_admitVote_mayVote (t : Time) (vs : List (Vote sp.n)) (A : SAState sp.n) :
+    (vs.foldl (fun st v => admitVote sp st t v) A).mayVote = A.mayVote := by
+  induction vs generalizing A with
+  | nil => rfl
+  | cons v vs ih => exact (ih _).trans (admitVote_mayVote _ _ _)
+
+theorem blockReceipt_mayVote (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
+    (blockReceipt sp A t B).mayVote = A.mayVote :=
+  foldl_admitVote_mayVote t (blockVotes B) _
+
+theorem acOnMessage_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) (v : Vote sp.n) : (acOnMessage sp self A Φ t v).1.mayVote = A.mayVote := by
+  simp only [acOnMessage, tryVote_mayVote, optimisticConfirmation_mayVote, admitVote_mayVote]
+
+theorem acOnBlock_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) (B : Blk sp.n FGP) : (acOnBlock sp self A Φ t B).1.mayVote = A.mayVote := by
+  simp only [acOnBlock, tryVote_mayVote, optimisticConfirmation_mayVote, blockReceipt_mayVote]
+
+theorem acOnTick_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (acOnTick sp self A Φ t).1.mayVote = A.mayVote := by
+  unfold acOnTick
+  dsimp only
+  split_ifs <;> simp only [tryVote_mayVote, updateConfirmation_mayVote]
+
+theorem acProposal_mayVote (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (acProposal sp A Φ t).1.mayVote = A.mayVote := by
+  unfold acProposal
+  split_ifs <;> rfl
+
+theorem acToFG_mayVote (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (acToFG sp A Φ t).1.mayVote = A.mayVote := by
+  unfold acToFG
+  split_ifs
+  · split
+    · rfl
+    · split_ifs <;> rfl
+  · rfl
+
+/-- Restart replays receipts without changing the installed permission. -/
+theorem acRestart_mayVote (ro : ReplayOrder sp FGP) (self : Fin sp.n)
+    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (acRestart sp ro self A Φ t).1.mayVote = A.mayVote := by
+  have keeps (bs : List (Blk sp.n FGP)) (acc : SAState sp.n × List (Em sp FGP)) :
+      (bs.foldl (fun acc B =>
+        let r := acOnBlock sp self acc.1 Φ t B
+        (r.1, acc.2 ++ r.2)) acc).1.mayVote = acc.1.mayVote := by
+    induction bs generalizing acc with
+    | nil => rfl
+    | cons B bs ih =>
+      exact (ih _).trans (acOnBlock_mayVote self acc.1 Φ t B)
+  exact keeps (ro.order t Φ) _
+
+/-- Every AC call preserves the permission installed before execution. -/
+theorem step_mayVote (ro : ReplayOrder sp FGP) (self : Fin sp.n)
+    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    (c : (goldilocksSA sp FGP ro).Call) :
+    ((goldilocksSA sp FGP ro).step self A Φ t c).1.mayVote = A.mayVote := by
+  cases c with
+  | tick => exact acOnTick_mayVote self A Φ t
+  | proposal => exact acProposal_mayVote A Φ t
+  | toFG => exact acToFG_mayVote A Φ t
+  | message v => exact acOnMessage_mayVote self A Φ t v
+  | block B => exact acOnBlock_mayVote self A Φ t B
+  | restart => exact acRestart_mayVote ro self A Φ t
+
+/-- A trace preserves each honest node's supplied initial permission at every cut. -/
+theorem trace_mayVote {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {ini : Fin sp.n → SAState sp.n}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H)
+    (i : Nat) : (tr.state y i).mayVote = (ini y).mayVote := by
+  induction i with
+  | zero => change (tr.init y).mayVote = _; rw [hr.init y hy]
+  | succ i ih =>
+    by_cases hc : ∃ ℓ, tr.CallAt y i ℓ
+    · obtain ⟨ℓ, hc⟩ := hc
+      have he := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
+      rw [hc.1] at he
+      have hp := step_mayVote ro y (tr.state y i) ℓ.frame (tr.time i) ℓ.call
+      rw [he] at hp
+      have hs : tr.state y (i + 1) = tr.post i := by
+        simp [Trace.state, hc.1, hc.2]
+      rw [hs]
+      exact hp.trans ih
+    · have hs : tr.state y (i + 1) = tr.state y i := by
+        rw [Trace.state]
+        split_ifs with h
+        · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.mp h.2
+          exact False.elim (hc ⟨ℓ, h.1, hℓ⟩)
+        · rfl
+      rw [hs]
+      exact ih
+
+/-- Stock traces retain the always-permitted initial binding. -/
+theorem trace_mayVote_stock {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H)
+    (i s : Nat) : (tr.state y i).mayVote s = true := by
+  rw [trace_mayVote hr hy i]
+  rfl
+
+/-- A ready nonmember performs the unlock and voted-slot update without own admission,
+emission, or an optimistic check. -/
+theorem tryVote_of_not_selected (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) (hj : joined sp A t) (hv : A.votedSlot ≠ sp.slot t)
+    (ht : t ≤ sp.ts (sp.slot t) + sp.Δ)
+    (hr : ¬ (t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ voteReady sp Φ (sp.slot t))))
+    (hp : A.mayVote (sp.slot t) = false) :
+    tryVote sp self A Φ t =
+      let s := sp.slot t
+      let V := mergedVoteView sp A Φ s
+      let A₁ := if 0 < s then { A with locks := unlock sp A.locks Φ t ((s : Int) - 1) V } else A
+      ({ A₁ with votedSlot := s }, []) := by
+  simp [tryVote, hj, hv, not_lt.mpr ht, hr, hp]
 
 end Consensus.Goldilocks.SA
 

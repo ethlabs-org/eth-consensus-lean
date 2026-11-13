@@ -553,6 +553,7 @@ theorem proposal_best_toward_from (hrun : Growing.GoldilocksRun proposer dg H tr
         rw [← Set.ncard_union_eq Set.disjoint_sdiff_left]
         exact (Set.ncard_le_ncard (Set.subset_univ _)).trans (by simp)
       have := Set.ncard_le_ncard hequiv (Set.toFinite _)
+      rw [hrun.stock] at h34
       omega
 
 

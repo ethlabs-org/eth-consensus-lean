@@ -55,7 +55,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : Goldil
   {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
 
 /-- The persistence cut invariant follows from the invariant at all earlier cuts. -/
-theorem cut_inv_step (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem cut_inv_step
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hp : PersistPremises tr H dg ΔF x i₀ s m B CV) (k : Nat)
     (ih : ∀ j < k, VoteInv tr H s m B j ∧ CutInv tr H s m B j) :
     CutInv tr H s m B k := by

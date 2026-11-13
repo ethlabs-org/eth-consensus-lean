@@ -119,6 +119,14 @@ private theorem good_tryVote (hΦ : FrameOK Φ) (hD : Down Φ G) (x : Fin sp.n)
   revert hnew
   unfold SA.tryVote
   dsimp only
+  by_cases hp : A.mayVote (sp.slot t) = true
+  swap
+  · simp only [hp]
+    split_ifs <;> intro hnew <;> first
+      | contradiction
+      | exact h
+      | exact ⟨h.1, good_movesBack hD ((SA.locks_move_back sp FGP Φ A.locks t hΦ).2.2 _ _) h.2⟩
+  simp only [hp, ↓reduceIte]
   split_ifs <;> intro hnew
   · exact h
   · exact h
@@ -306,11 +314,13 @@ private theorem good_acCall (hrun : GoldilocksRun proposer dg H tr)
   | message m =>
     rw [hcall] at hem
     exact good_tryVote hΦ hD y (good_optimistic hΦ hD (good_admitVote h _ _)
-      (opt _ ⟨hpc, Or.inl ⟨m, hcall, by rw [hps]; rfl⟩⟩)) fun e he => emit e (hem ▸ he)
+      (opt _ ⟨hpc, Or.inl ⟨m, hcall, by rw [hps]; rfl⟩⟩))
+      fun e he => emit e (hem ▸ he)
   | block B =>
     rw [hcall] at hem
     exact good_tryVote hΦ hD y (good_optimistic hΦ hD (good_blockReceipt h _ _)
-      (opt _ ⟨hpc, Or.inr (Or.inl ⟨B, hcall, by rw [hps]; rfl⟩)⟩)) fun e he => emit e (hem ▸ he)
+      (opt _ ⟨hpc, Or.inr (Or.inl ⟨B, hcall, by rw [hps]; rfl⟩)⟩))
+      fun e he => emit e (hem ▸ he)
   | restart =>
     obtain ⟨-, hl, hr, -⟩ := SA.restart_state sp _ ro y A ℓ.frame (tr.time i) hΦ
       (hrun.time_nonneg i)

@@ -323,7 +323,7 @@ theorem slot_start_optimistic
     dsimp only at h
     split_ifs at h
     have := (SA.deepest_mem h).1.2.1
-    rwa [hsl] at this
+    rwa [hsl, hrun.stock] at this
   have hsub : SA.optimisticVoters sp A ellv.frame m D ⊆ {v} := by
     rintro i ⟨w, hw, rfl, -⟩
     exact hP w hw
@@ -427,6 +427,7 @@ theorem vote_before_late_delivery
     rw [hpt.1, hcall] at hexec
     have hne := Compose.acOnTick_votes (ro' := ro) y _ ellt.frame hjt
       (by rw [hslot]; exact hvs) (by rw [hslot])
+      (SA.trace_mayVote_stock hr hy jt _)
     rw [show tr.projAC.time jt = u from htt] at hexec
     rw [hexec] at hne
     obtain ⟨e', he'⟩ := List.exists_mem_of_ne_nil _ hne

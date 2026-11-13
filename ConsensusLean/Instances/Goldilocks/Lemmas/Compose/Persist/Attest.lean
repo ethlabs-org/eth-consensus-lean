@@ -92,7 +92,8 @@ theorem faulty_lt_half (hrun : GoldilocksRun proposer dg H tr)
 casts a vote. -/
 theorem acOnTick_votes {FGP : Type} {ro' : ReplayOrder sp FGP} (self : Fin sp.n)
     (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) {t : Time} (hj : SA.joined sp A t)
-    (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ) :
+    (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ)
+    (hp : A.mayVote (sp.slot t) = true) :
     ((goldilocksSA sp FGP ro').step self A Φ t .tick).2 ≠ [] := by
   change (SA.acOnTick sp self A Φ t).2 ≠ []
   unfold SA.acOnTick
@@ -101,6 +102,7 @@ theorem acOnTick_votes {FGP : Type} {ro' : ReplayOrder sp FGP} (self : Fin sp.n)
   simp only [hj, not_true_eq_false, hc, ↓reduceIte]
   unfold SA.tryVote
   dsimp only
+  simp only [hp, ↓reduceIte]
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   split_ifs with h₁ h₂
   · rcases h₁ with h | h | h
@@ -210,6 +212,7 @@ theorem vote_or_restart (hrun : GoldilocksRun proposer dg H tr)
   rw [hpt.1, hlt] at hexec
   have hne := acOnTick_votes (ro' := ro) y A ℓt.frame hjoined (by rw [hslot]; exact hvs)
     (by rw [hslot])
+    (SA.trace_mayVote_stock hr hy j₀ _)
   rw [show tr.projAC.time j₀ = u from ht₀] at hexec
   rw [hexec] at hne
   obtain ⟨e, he⟩ := List.exists_mem_of_ne_nil _ hne
@@ -218,7 +221,8 @@ theorem vote_or_restart (hrun : GoldilocksRun proposer dg H tr)
 
 /-- **C1.1's attestation step.** An honest attestation signed at a time in
 `(t_{s+1} + Δ, t_m + Δ]`, with the invariant at every earlier cut, names no excluded entry. -/
-theorem attest_not_excluded (hrun : GoldilocksRun proposer dg H tr)
+theorem attest_not_excluded
+    (hrun : GoldilocksRun proposer dg H tr)
     (hp : PersistPremises tr H dg ΔF x i₀ s m B CV) {v : Fin sp.n} (hv : v ∈ H) {j : Nat}
     {a : FG.Att sp.n} (hs : tr.SignAt v j a) (hT₀ : sp.ts (s + 1 : Nat) + sp.Δ < tr.time j)
     (hTm : tr.time j ≤ sp.ts m + sp.Δ)

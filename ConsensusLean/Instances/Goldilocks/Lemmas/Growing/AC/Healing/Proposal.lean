@@ -46,6 +46,8 @@ theorem optimistic_first_proposal_anc_at
   dsimp only at hsel'
   split_ifs at hsel'
   obtain ⟨-, h34, -⟩ := (deepest_mem hsel').1
+  rw [hrun.stock] at h34
+  have hstock := hrun.stock
   rw [hslX] at h34
   set V := View.ofLists (voteViewList ((T.upTo (T.time i)).state x i) ell.frame σ ⊤)
   set SX := optimisticVoters sp A ellX.frame σ D

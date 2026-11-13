@@ -474,6 +474,7 @@ theorem own_optimistic_compatible_result (hrun : GoldilocksRun proposer dg H tr)
   have hr := hrun'.localRun
   have hU := hr.coherent
   obtain ⟨-, hcnt, ell, A, hp, -, hCV, -⟩ := SA.optimisticLockAt_spec hrun' hy hO
+  rw [hrun'.stock] at hcnt
   obtain ⟨ℓ, hu, hD, -⟩ := hR
   have hΦU := (SA.frameIn_of_callAt hr hy hp.1).2
   have hΦU' := (SA.frameIn_of_callAt hr hy hu.1).2
@@ -626,6 +627,7 @@ theorem cover_gate_veto_above (hrun : GoldilocksRun proposer dg H tr)
       rw [hso', hsc] at h1
       omega
     obtain ⟨-, hcnt, ell, A, hp, -, hCV, hCVv⟩ := SA.optimisticLockAt_spec hrun' hy hopt
+    rw [hrun'.stock] at hcnt
     have hellU := (SA.frameIn_of_callAt hr hy hp.1).2
     -- an honest optimistic voter in `Hold`
     obtain ⟨v, hvCV, hvH, hvHold⟩ : ∃ v ∈ CV, v.val ∈ H ∧ v.val ∈ Hold := by

@@ -94,7 +94,8 @@ private theorem exists_cut_time {e : Node.Event (goldilocksNode sp ro)} (a : Tim
 
 /-- **The cut step**: G1.10 at the scope of C1.1 at the honest call of cut `k`, from the
 invariant at every earlier cut. -/
-theorem cut_inv_step (hrun : GoldilocksRun proposer dg H tr)
+theorem cut_inv_step
+    (hrun : GoldilocksRun proposer dg H tr)
     (hp : PersistPremises tr H dg ΔF x i₀ s m B CV) (k : Nat)
     (ih : ∀ j < k, VoteInv tr H s m B j ∧ CutInv tr H s m B j) : CutInv tr H s m B k := by
   rw [cutInv_iff]

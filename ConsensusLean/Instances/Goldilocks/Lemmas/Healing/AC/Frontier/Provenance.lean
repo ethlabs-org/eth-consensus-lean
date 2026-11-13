@@ -70,9 +70,13 @@ theorem writes_tryVoteWithM {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ
   · rw [ite_eq_left h₂]
     exact Compose.Writes.of_eq rfl
   rw [ite_eq_right h₂]
-  refine (writes_optimisticM _ Φ t ?_).mono fun B hB => ⟨_, List.mem_singleton_self _, hB⟩
-  rw [admitVote_latestConfirmed]
-  split_ifs <;> rfl
+  by_cases hp : A.mayVote (sp.slot t) = true
+  · simp only [hp, ite_true]
+    refine (writes_optimisticM _ Φ t ?_).mono fun B hB => ⟨_, List.mem_singleton_self _, hB⟩
+    rw [admitVote_latestConfirmed]
+    split_ifs <;> rfl
+  · simp only [hp, Bool.false_eq_true, ite_false]
+    split_ifs <;> exact Compose.Writes.of_eq rfl
 
 theorem writes_onTickWithM {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) :

@@ -340,6 +340,7 @@ theorem proposal_no_optimistic_of (hrun : GoldilocksRun proposer dg H tr)
       exact hnr (by rw [hmem])
     | _ => simp [Node.Event.phase] at hph
   have := Set.ncard_le_ncard hnoH (Set.toFinite _)
+  have hstock := hrun.stock
   omega
 
 set_option linter.unusedVariables false in

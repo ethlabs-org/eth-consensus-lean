@@ -140,9 +140,12 @@ private theorem runDuties_rehash (rho : Run F E) (hash' : (protoOf F E).Item →
       by_cases hs : rho.ownKey v ∈ rho.sel ((protoOf F E).role d)
       · simp only [dutyStep, ownKey] at hs ⊢
         simp only [hs, ↓reduceIte]
+        change releaseAll (protoOf F E) hash' (rho.ownKey v)
+          ⟨((protoOf F E).act nd.st d).1, nd.seen⟩
+          (rho.signedCandidate v d ((protoOf F E).act nd.st d).2) = _
         exact releaseAll_eq_of_digests rho.hash hash' _ _ _ fun o ho =>
           ha o (List.mem_append_left _ (by
-            simpa [dutyStep, ownKey, hs, signedCandidate] using ho))
+            simpa only [dutyStep, ownKey, hs, ↓reduceIte] using ho))
       · simp only [dutyStep, ownKey] at hs ⊢
         simp only [hs, ↓reduceIte]
     rw [hstep, ih _ (fun o ho => ha o (List.mem_append_right _ ho))]

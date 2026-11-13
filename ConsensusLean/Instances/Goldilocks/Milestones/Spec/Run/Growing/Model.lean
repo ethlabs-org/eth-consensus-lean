@@ -49,11 +49,12 @@ namespace Growing
 the time of the cut (or the time) it constrains. -/
 structure LocalRun {A : NodeAC P} (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload)
-    (H : Time → Set (Fin P.n)) (sg : A.Msg → Fin P.n) (tr : RunTrace A) : Prop where
+    (H : Time → Set (Fin P.n)) (sg : A.Msg → Fin P.n) (tr : RunTrace A)
+    (ini : Fin P.n → A.State := fun _ => A.initial) : Prop where
   /-- Compromise is permanent: a validator honest at a time was honest at every earlier time. -/
   antitone : Antitone H
   /-- Each node honest at time `0` starts from the initial node state. -/
-  init : ∀ y ∈ H 0, tr.init y = Node.init A
+  init : ∀ y ∈ H 0, tr.init y = Node.initWith A (ini y)
   /-- Every labelled cut of a node honest at its time lies in the group of a top-level event. -/
   grouped : ∀ y i c, tr.CallAt y i c → y ∈ H (tr.time i) →
     ∃ j e, tr.InGroup proposer dg y j i (tr.time i) e

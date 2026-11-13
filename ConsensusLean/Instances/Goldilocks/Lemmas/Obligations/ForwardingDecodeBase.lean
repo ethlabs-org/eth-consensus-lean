@@ -164,7 +164,7 @@ theorem decoded_acceptance_enqueue {V : Type} [Fintype V] {E : Env V}
     (hreach : st.node.fg.Reachable (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
     (B : Blk (S.params (pubOf E) hn))
     (ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2)
-    (hb : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+    (hb : decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B)
     (ht : 0 ≤ st.now) :
     WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash)
@@ -205,7 +205,7 @@ theorem received_child_decodes {V : Type} [Fintype V] {E : Env V}
     (receipt o : Wire (Fintype.card V)) (B : Blk (S.params (pubOf E) hn))
     (hc : Obj.Contains receipt o)
     (hd : decodeBlock (S.params (pubOf E) hn) (digests rho.hash receipt) o = some B) :
-    decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+    decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B := by
   obtain rfl := eq_blockObj_of_decodeBlock hd
   apply decodeBlock_transport hd
@@ -229,7 +229,7 @@ theorem own_proposal_decodes {V : Type} [Fintype V] {E : Env V}
       (Node.tickStep proposer (digestOf S rho) self cfg.st t x .acTick).1 t
     ∀ d p, r.2.2 = some (d, p) →
       let B := Node.mkBlock (digestOf S rho) self r.1.fg t x d.head p
-      decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+      decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
         (blockObj _ B) = some B := by
   dsimp only
   intro d p hdp
@@ -248,7 +248,7 @@ theorem accepted_child_decodes {V : Type} [Fintype V] [DecidableEq V] {E : Env V
     (y : Fin (Fintype.card V)) (hy : y ∈ honestKeys S rho)
     (i : Nat) (B : Blk (S.params (pubOf E) hn))
     (hc : (simTrace S rho hn).CallAt y i (.fg (.block B true))) :
-    decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+    decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B := by
   have run := simTrace_goldilocksRun S rho hn hf hv
   rcases Compose.blockCall_cases run.toLocalRun hy hc with hg |
@@ -275,7 +275,7 @@ theorem decoded_held_accept {V : Type} [Fintype V] {E : Env V}
     (hr : st.node.fg.Reachable (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
     (B : Blk (S.params (pubOf E) hn))
     (ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2)
-    (hb : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+    (hb : decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B) (ht : 0 ≤ st.now) :
     let st' := apply st (Node.onBlock st.self st.node st.now B)
     WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' ∧
@@ -310,7 +310,7 @@ theorem decoded_held_onBlock {V : Type} [Fintype V] {E : Env V}
     (hr : st.node.fg.Reachable (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
     (B : Blk (S.params (pubOf E) hn))
     (hb : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2 →
-      decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+      decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
         (blockObj _ B) = some B) (ht : 0 ≤ st.now) :
     let st' := apply st (Node.onBlock st.self st.node st.now B)
     WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' ∧
@@ -509,7 +509,7 @@ theorem decoded_held_recordOwn_block {V : Type} [Fintype V] {E : Env V}
     (hr : st.node.fg.Reachable (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
     (B : Blk (S.params (pubOf E) hn)) (hpar : B.parent ≠ none)
     (hroot : B.RootOk (digestOf S rho))
-    (hb : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+    (hb : decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B) (ht : 0 ≤ st.now) :
     let st' := recordOwn st (blockObj (S.params (pubOf E) hn) B)
       (digests rho.hash (blockObj _ B))
@@ -531,7 +531,7 @@ theorem decoded_held_proposal_candidate {V : Type} [Fintype V] {E : Env V}
       (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
     (B : Blk (S.params (pubOf E) hn)) (hpar : B.parent ≠ none)
     (hroot : B.RootOk (digestOf S rho))
-    (hb : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+    (hb : decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B) (ht : 0 ≤ (shapeOf S hn nd).now)
     (hsel : rho.ownKey v ∈ rho.sel (.proposer s))
     (hcs : rho.signedCandidate v (.propose s hs)
@@ -576,7 +576,8 @@ theorem proposal_candidate_block {V : Type} [Fintype V] {E : Env V}
   dsimp only
   intro d p hp
   rw [act_propose_snd S hn nd s hs]
-  simp only [propose, hp, Option.map_some, Option.toList_some, Model.Run.signedCandidate,
+  erw [Model.Run.signedCandidate_of_default rho v (.propose s hs) _ (fun _ => rfl)]
+  simp only [propose, hp, Option.map_some, Option.toList_some,
     show (protoOf (compiled (goldilocks S)) E).role (.propose s hs) = .proposer s from rfl,
     hsel, ↓reduceIte]
   simp only [blockObj, Node.mkBlock, headerOf, hslot]
@@ -629,7 +630,7 @@ theorem pending_forward_decodes {V : Type} [Fintype V] {E : Env V}
     (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
     (t : Time) (p : Option (Wire (Fintype.card V))) (B : Blk (S.params (pubOf E) hn))
     (hp : forwardObj _ st.self t p B ∈ pendingWrappers st)
-    (hb : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+    (hb : decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B) :
     decodeForward (S.params (pubOf E) hn)
       (digests rho.hash (forwardObj _ st.self t p B)) (forwardObj _ st.self t p B) =

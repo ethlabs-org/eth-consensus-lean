@@ -281,7 +281,8 @@ theorem signedCandidate_poll_eq {V : Type} [Fintype V] {E : Env V} (S : Setup)
         Obj.mk (.signed (rho.ownKey v) .poll) (.data (.voteForward q.1 (encodeVote q.2)))
           [voteObj q.2]) := by
   rw [act_poll_snd S hn]
-  simp only [Model.Run.signedCandidate,
+  rw [Model.Run.signedCandidate_of_default rho v (.poll t) _ (fun _ => rfl)]
+  simp only [
     show (protoOf (compiled (goldilocks S)) E).role (.poll t) = .poll from rfl,
     hsel, ↓reduceIte, Option.toList_map, pendingWrappers_eq, hself]
   erw [List.map_append, List.map_append, List.map_map, List.map_map, List.map_map]

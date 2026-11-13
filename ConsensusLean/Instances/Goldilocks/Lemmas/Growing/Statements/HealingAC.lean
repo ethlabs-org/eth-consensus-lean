@@ -112,13 +112,13 @@ theorem acInclusion_of_growing (h : Growing.ACInclusion (sp := sp)) :
       htk⟩
 
 theorem acHealingStandaloneAll_of_growing (h : Growing.ACHealingStandaloneAll) :
-    ACHealingStandaloneAll := fun sp => acHealingStandalone_of_growing (h sp)
+    ACHealingStandaloneAll := fun sp _ => acHealingStandalone_of_growing (h sp)
 
 theorem acHealingStandaloneCorollaryAll_of_growing (h : Growing.ACHealingStandaloneCorollaryAll) :
-    ACHealingStandaloneCorollaryAll := fun sp => acHealingStandaloneCorollary_of_growing (h sp)
+    ACHealingStandaloneCorollaryAll := fun sp _ => acHealingStandaloneCorollary_of_growing (h sp)
 
 theorem acInclusionAll_of_growing (h : Growing.ACInclusionAll) : ACInclusionAll :=
-  fun sp => acInclusion_of_growing (h sp)
+  fun sp _ => acInclusion_of_growing (h sp)
 
 end Consensus.Goldilocks.SA
 

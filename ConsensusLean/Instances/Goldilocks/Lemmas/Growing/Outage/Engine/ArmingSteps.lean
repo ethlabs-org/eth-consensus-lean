@@ -415,6 +415,7 @@ theorem cover_gate_veto_above_at
     -- the optimistic voters, classified at `t_c`
     obtain ⟨-, hcnt, ell, A, hp, -, hCV, hCVv⟩ := SA.optimisticLockAt_spec hacr hy
       ((sa_optimisticLockAt_upTo hm).mpr ⟨hk'c, hopt⟩)
+    rw [hacr.stock] at hcnt
     obtain ⟨-, hpc⟩ := (Trace.upTo_callAt _).mp hp.1
     have hellU := (frameIn_at hrun hnc hyk' hpc).2
     obtain ⟨v, hvCV, hvH, hvHold⟩ : ∃ v ∈ CV, v.val ∈ H (tr.time c) ∧ v.val ∈ Hold := by

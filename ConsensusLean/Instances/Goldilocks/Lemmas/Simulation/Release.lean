@@ -241,7 +241,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
     · simp only [hr] at hact1 hact2
       rw [hact2]
       simp only [Option.map_none, Option.toList_none, Model.Run.signedCandidate]
-      erw [List.map_nil]
+      erw [List.filterMap_nil]
       simp only [ite_self, Model.releaseAll]
       refine ⟨by
         simp only [blockObjs_cons, blockObjs_nil, acProposal, List.append_nil]
@@ -254,7 +254,8 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
       rw [hact2]
       have hrole : (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
           .proposer s := rfl
-      simp only [Option.map, Option.toList_some, Model.Run.signedCandidate, hrole]
+      erw [Model.Run.signedCandidate_of_default rho v (.propose s hs) _ (fun _ => rfl)]
+      simp only [Option.map, Option.toList_some, hrole]
       erw [List.map_cons, List.map_nil]
       have hmem : rho.ownKey v ∈ rho.sel (.proposer s) := by
         rw [hsel]
@@ -284,7 +285,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
           (mkBlock (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (digestOf S rho)
             (rho.ownKey v) (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).1.fg
             (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p).slot := lt_irrefl _
-      have hobj : blockObj (S.params (pubOf E) hn)
+      have hobj : blockObj (S.params (pubOf E) hn) (binding := stock)
           (mkBlock (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (digestOf S rho)
             (rho.ownKey v) (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).1.fg
             (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p) =

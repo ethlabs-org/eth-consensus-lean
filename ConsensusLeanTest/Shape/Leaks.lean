@@ -124,13 +124,13 @@ def family (proposal vote bad : Bool) : ChainShapeFamily schema Unit := fun pub 
   skel := testSkel pub
   State := Unit, Body := Unit, Durable := Unit
   decBody := inferInstance
-  init := fun _ => (), clock := fun s _ => s
+  init := fun _ _ => (), clock := fun s _ => s
   propose := fun s _ => (s, if proposal then some (.root, (), []) else none)
   act := fun s _ _ => (s, if vote then some ((), []) else none)
   pollPropose := fun s _ => (s, none), poll := fun s _ => (s, none)
   gossip := fun _ _ => []
   process := fun s _ _ => s, recordOwn := fun s _ _ => s
-  durable := fun s => s, restore := fun _ d _ => d
+  durable := fun s => s, restore := fun _ _ d _ => d
   out := fun _ _ => if bad then [fab] else []
   conflicts := fun _ _ => vote }
 
@@ -274,7 +274,7 @@ def familyC (conf : Bool) : ChainShapeFamily schema Unit := fun pub => {
   skel := testSkel pub
   State := Chain Unit, Body := Unit, Durable := Chain Unit
   decBody := inferInstance
-  init := fun _ => [], clock := fun s _ => s
+  init := fun _ _ => [], clock := fun s _ => s
   propose := fun s _ => (s, some (.root, (), []))
   act := fun s _ _ => (s, some ((), []))
   pollPropose := fun s _ => (s, none), poll := fun s _ => (s, none)
@@ -283,7 +283,7 @@ def familyC (conf : Bool) : ChainShapeFamily schema Unit := fun pub => {
   recordOwn := fun s o _ => match o with
     | .mk (.signed _ _) (.item h) _ => s ++ [h]
     | _ => s
-  durable := fun s => s, restore := fun _ d _ => d
+  durable := fun s => s, restore := fun _ _ d _ => d
   out := fun _ s => s
   conflicts := fun _ _ => conf }
 
@@ -561,7 +561,7 @@ theorem recorder_live (rho : Model.Run (compiled (familyC false)) env)
   have hcand : Obj.mk (.signed (rho.ownKey v) (ShapeRole.proposer s)) (.item h) [] ∈
       rho.signedCandidate v (.propose s hspos)
         ((protoOf (compiled (familyC false)) env).act nd₁.st (.propose s hspos)).2 :=
-    (rho.mem_signedCandidate).mpr ⟨_, _, List.mem_singleton_self _, hsel, rfl⟩
+    (rho.mem_signedCandidate).mpr ⟨_, _, List.mem_singleton_self _, hsel, hsel, rfl⟩
   have hrel := releaseAll_record rho.hash (rho.ownKey v) _
     ⟨((protoOf (compiled (familyC false)) env).act nd₁.st (.propose s hspos)).1, nd₁.seen⟩ hcand
   have hrel' : Obj.mk (.signed (rho.ownKey v) (ShapeRole.proposer s)) (.item h) [] ∈

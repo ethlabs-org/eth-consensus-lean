@@ -44,7 +44,8 @@ private theorem toFG_some {FGP : Type} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t
 /-- **A1.9 for the stored block**: `SourceCompatible` for a fast lock on `D`, with every
 hypothesis and the conclusion about a block `B ⪯ D` (the block the lock stores,
 `Φ.viableAncestor D`). -/
-theorem source_compatible_stored : ∀ (FGP : Type) (ro : ReplayOrder sp FGP)
+theorem source_compatible_stored :
+    ∀ (FGP : Type) (ro : ReplayOrder sp FGP)
     (proposer : Nat → Fin sp.n) (H : Set (Fin sp.n))
     (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro),
     ACRun proposer tr H U → ∀ (s m : Nat) (w x : Fin sp.n) (i₀ i : Nat) (B D : Blk sp.n FGP)

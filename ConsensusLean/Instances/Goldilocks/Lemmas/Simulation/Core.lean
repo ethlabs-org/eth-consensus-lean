@@ -404,7 +404,7 @@ theorem delivery_block_payload_processAt {i : Nat} {v : V}
       cases hb
   subst e
   obtain rfl := eq_blockObj_of_decodeBlock (decodeBlock_of_canonEvent hce)
-  have hp : voteObj m ∈ payloadObjs B.fgPayload B.acPayload :=
+  have hp : voteObj (binding := stock) m ∈ payloadObjs B.fgPayload B.acPayload :=
     List.mem_append_right _ (List.mem_map.mpr ⟨m, List.mem_append_left _ hm, rfl⟩)
   exact received_vote_processAt S rho hn he
     ((contains_of_mem_delivered ho).trans (Model.Obj.Contains.step hp (.refl _)))

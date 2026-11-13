@@ -207,11 +207,11 @@ theorem dutyStep_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
   | pollPropose t =>
     have hempty : ((protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).2 = [] := by
       change (Option.map _ ((goldilocks S (pubOf E)).pollPropose nd.st.1 t).2).toList = []
-      simp only [goldilocks, dite_eq_left hn]
+      simp only [goldilocks, goldilocksWith, dite_eq_left hn]
       rfl
     unfold Model.Run.dutyStep
     split
-    · simp only [hempty, Model.Run.signedCandidate, List.map_nil, ite_self, Model.releaseAll]
+    · simp only [hempty, Model.Run.signedCandidate, List.filterMap_nil, ite_self, Model.releaseAll]
       change WrappersAccounted _ (((protoOf (compiled (goldilocks S)) E).act nd.st
         (.pollPropose t)).1.1 hn) ∧ PendingReady _ (pendingWrappers
           (((protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).1.1 hn))
@@ -906,10 +906,8 @@ theorem dutyStep_propose_candidate_eq {V : Type} [Fintype V] {E : Env V}
     have hm := Model.releaseAll_subset _ _ _ _ o ho
     have hlen : (rho.signedCandidate v (.propose s hs)
         ((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).2).length ≤ 1 := by
-      simp only [Model.Run.signedCandidate]
-      split
-      · simpa only [List.length_map] using hl
-      · simpa only [List.length_map] using hl
+      simp only [Model.Run.signedCandidate, hsel, ↓reduceIte]
+      exact (List.length_filterMap_le _ _).trans hl
     generalize rho.signedCandidate v (.propose s hs)
       ((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).2 = cs at hm hlen ⊢
     cases cs with
@@ -1120,7 +1118,7 @@ theorem canonical_block_decodes {V : Type} [Fintype V] {E : Env V}
     (B : Blk (S.params (pubOf E) hn)) (hpar : B.parent ≠ none)
     (hroot : B.RootOk (digestOf S rho))
     (hwf : ∀ a ∈ B.fgPayload, a.WellFormed) (hval : SA.validPayload B) :
-    decodeBlock (S.params (pubOf E) hn)
+    decodeBlock (S.params (pubOf E) hn) (binding := stock)
       (digests rho.hash (blockObj (S.params (pubOf E) hn) B))
       (blockObj (S.params (pubOf E) hn) B) = some B := by
   obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.mp hpar
@@ -1224,7 +1222,7 @@ theorem WrappersDecoded.engine_enqueue {V : Type} [Fintype V] {E : Env V}
     (hr : B.parent = some root)
     (hp : (if root = (S.params (pubOf E) hn).genesisRoot then some none else
       (st.wrappers root).map some) = some p)
-    (hb : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+    (hb : decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B)
     (ht : 0 ≤ st.now) (hs : (S.params (pubOf E) hn).toParams.slotTime B.slot ≤ st.now)
     (hslot : ∀ parent pt pp A, st.wrappers root = some parent →

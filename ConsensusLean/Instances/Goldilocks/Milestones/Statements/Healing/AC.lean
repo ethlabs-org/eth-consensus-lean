@@ -286,26 +286,28 @@ def ACInclusion : Prop :=
           Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j)))
 
 /-! The closed forms of H.1, its corollary, H.1 at `ḡ + (8k + 4)Δ` and its corollary, and H.2,
-for all SA parameters (the comparator's statements of this module, as `ACSteps` and `ACBase`);
+for population-sized committees (the comparator's statements of this module);
 each corollary follows from its H.1. -/
 
-/-- **H.1** (`ACHealingStandalone`) for all SA parameters. -/
-def ACHealingStandaloneAll : Prop := ∀ sp : SAParams, ACHealingStandalone (sp := sp)
+/-- **H.1** (`ACHealingStandalone`) for population-sized committees. -/
+def ACHealingStandaloneAll : Prop :=
+  ∀ sp : SAParams, sp.committeeSize = sp.n → ACHealingStandalone (sp := sp)
 
-/-- **H.1, corollary** (`ACHealingStandaloneCorollary`) for all SA parameters. -/
+/-- **H.1, corollary** (`ACHealingStandaloneCorollary`) for population-sized committees. -/
 def ACHealingStandaloneCorollaryAll : Prop :=
-  ∀ sp : SAParams, ACHealingStandaloneCorollary (sp := sp)
+  ∀ sp : SAParams, sp.committeeSize = sp.n → ACHealingStandaloneCorollary (sp := sp)
 
-/-- **H.1 at `ḡ + (8k + 4)Δ`** (`ACHealingStandaloneTight`) for all SA parameters. -/
-def ACHealingStandaloneTightAll : Prop := ∀ sp : SAParams, ACHealingStandaloneTight (sp := sp)
+/-- **H.1 at `ḡ + (8k + 4)Δ`** (`ACHealingStandaloneTight`) for population-sized committees. -/
+def ACHealingStandaloneTightAll : Prop :=
+  ∀ sp : SAParams, sp.committeeSize = sp.n → ACHealingStandaloneTight (sp := sp)
 
-/-- **H.1 at `ḡ + (8k + 4)Δ`, corollary** (`ACHealingStandaloneTightCorollary`) for all SA
-parameters. -/
+/-- **H.1 at `ḡ + (8k + 4)Δ`, corollary** (`ACHealingStandaloneTightCorollary`) for
+population-sized committees. -/
 def ACHealingStandaloneTightCorollaryAll : Prop :=
-  ∀ sp : SAParams, ACHealingStandaloneTightCorollary (sp := sp)
+  ∀ sp : SAParams, sp.committeeSize = sp.n → ACHealingStandaloneTightCorollary (sp := sp)
 
-/-- **H.2** (`ACInclusion`) for all SA parameters. -/
-def ACInclusionAll : Prop := ∀ sp : SAParams, ACInclusion (sp := sp)
+/-- **H.2** (`ACInclusion`) for population-sized committees. -/
+def ACInclusionAll : Prop := ∀ sp : SAParams, sp.committeeSize = sp.n → ACInclusion (sp := sp)
 
 end Consensus.Goldilocks.SA
 

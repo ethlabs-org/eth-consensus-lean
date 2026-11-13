@@ -54,7 +54,7 @@ theorem dutyStep_att_poll {v : V} (nd : Model.Node (Model.protoOf (compiled (gol
   split at ha
   · rename_i hsel
     have hc := Model.releaseAll_subset _ _ _ _ _ ha
-    obtain ⟨m, cs, hm, _, he⟩ := rho.mem_signedCandidate.mp hc
+    obtain ⟨m, cs, hm, _, _, he⟩ := rho.mem_signedCandidate.mp hc
     have he' := he
     change (Model.Obj.mk (.signed a.val (ShapeRole.poll : ShapeRole Empty))
       (.data (Body.att (encodeAtt a))) [] : Wire (Fintype.card V)) = _ at he'
@@ -68,13 +68,13 @@ theorem dutyStep_att_poll {v : V} (nd : Model.Node (Model.protoOf (compiled (gol
       cases hh
     | pollPropose t =>
       change _ ∈ (Option.map _ ((goldilocks S (pubOf E)).pollPropose nd.st.1 t).2).toList at hm
-      simp only [goldilocks, dite_eq_left hn] at hm
+      simp only [goldilocks, goldilocksWith, dite_eq_left hn] at hm
       cases hm
     | poll t =>
       have hp : (poll (nd.st.1 hn) t).2 = some (.att (encodeAtt a), []) := by
         change _ ∈ (((goldilocks S (pubOf E)).pollBatch nd.st.1 t).2.map
           (fun (b, cs) => (Model.Msg.data b, cs))) at hm
-        simp only [goldilocks, dite_eq_left hn] at hm
+        simp only [goldilocks, goldilocksWith, dite_eq_left hn] at hm
         change _ ∈ ((pollBatch (nd.st.1 hn) t).2.map
           (fun (b, cs) => (Model.Msg.data b, cs))) at hm
         obtain ⟨⟨b, cs⟩, hb, heq⟩ := List.mem_map.mp hm
@@ -122,7 +122,7 @@ theorem attObj_mem_closure_runDuties (v : V)
     split at ha
     · rename_i hsel
       simp only [hsel, ↓reduceIte]
-      let Q := fun o => o = attObj a →
+      let Q := fun o => o = attObj (binding := stock) a →
         attObj a ∈ Model.closure (rho.runDuties v nd ds).1.seen ∨
           attObj a ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
             rho.hash (rho.ownKey v)

@@ -82,7 +82,7 @@ theorem optimistic_sideU
     {X : Fin sp.n} (hX : X ∈ H) {k s : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : OptimisticLockAt tr X k s D CV) :
     ∃ ℓ A, OptimisticPoint tr X k ℓ A ∧ ℓ.frame.tree ⊆ U ∧
-      3 * sp.n ≤ 4 * (optimisticVoters sp A ℓ.frame s D).ncard ∧
+      3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A ℓ.frame s D).ncard ∧
       optimisticVoters sp A ℓ.frame s D ⊆ Fwd tr U X s D := by
   have hr := hrun.localRun
   obtain ⟨ℓ, A, hpt, hsl, hsel, -⟩ := hfl
@@ -109,7 +109,7 @@ theorem optimistic_side (hrun : ACRun proposer tr H U)
     {X : Fin sp.n} (hX : X ∈ H) {k s : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : OptimisticLockAt tr X k s D CV) :
     ∃ ℓ A, OptimisticPoint tr X k ℓ A ∧ ℓ.frame.tree ⊆ U ∧
-      3 * sp.n ≤ 4 * (optimisticVoters sp A ℓ.frame s D).ncard ∧
+      3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A ℓ.frame s D).ncard ∧
       optimisticVoters sp A ℓ.frame s D ⊆ Fwd tr U X s D :=
   optimistic_sideU (hrun := hrun.toU) (X := X) (hX := hX) (k := k) (s := s) (D := D) (CV := CV)
       (hfl := hfl)

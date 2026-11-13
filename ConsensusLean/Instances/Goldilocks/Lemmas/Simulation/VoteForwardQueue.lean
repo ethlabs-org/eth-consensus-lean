@@ -186,7 +186,7 @@ private theorem poll_candidate_vote_stamp (v : V)
       (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ rho.signedCandidate v (.poll u)
         ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.poll u)).2) :
     ∃ q ∈ (shapeOf S hn nd).voteForwards, q.1 = t ∧ q.2 = m := by
-  obtain ⟨body, cs, hm, _, he⟩ := rho.mem_signedCandidate.mp ho
+  obtain ⟨body, cs, hm, _, _, he⟩ := rho.mem_signedCandidate.mp ho
   have hmsg := congrArg Model.Obj.msg he
   have hcar := congrArg Model.Obj.carried he
   rw [act_poll_snd S hn, (poll_outbox _ _).2] at hm
@@ -226,13 +226,14 @@ private theorem duty_vote_stamp (v : V)
     exact ht.symm.trans (hs.2 q hq)
   | act s k => exact k.elim
   | propose s hpos =>
-    obtain ⟨body, cs, _, _, he⟩ := rho.mem_signedCandidate.mp ho
+    obtain ⟨body, cs, _, _, _, he⟩ := rho.mem_signedCandidate.mp ho
     have ha := congrArg Model.Obj.auth he
     cases ha
   | pollPropose n =>
     have hempty : ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose n)).2 =
         [] := by
-      simp only [Model.protoOf, compiled, compile, goldilocks, dite_eq_left hn, goldilocksShape]
+      simp only [Model.protoOf, compiled, compile, goldilocks, goldilocksWith,
+        dite_eq_left hn, goldilocksShape]
       rfl
     obtain ⟨body, cs, hm, _, _⟩ := rho.mem_signedCandidate.mp ho
     rw [hempty] at hm
@@ -255,13 +256,14 @@ private theorem duty_vote_pool (v : V)
     exact hqm ▸ hp q hq
   | act s k => exact k.elim
   | propose s hpos =>
-    obtain ⟨body, cs, _, _, he⟩ := rho.mem_signedCandidate.mp ho
+    obtain ⟨body, cs, _, _, _, he⟩ := rho.mem_signedCandidate.mp ho
     have ha := congrArg Model.Obj.auth he
     cases ha
   | pollPropose n =>
     have hempty : ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose n)).2 =
         [] := by
-      simp only [Model.protoOf, compiled, compile, goldilocks, dite_eq_left hn, goldilocksShape]
+      simp only [Model.protoOf, compiled, compile, goldilocks, goldilocksWith,
+        dite_eq_left hn, goldilocksShape]
       rfl
     obtain ⟨body, cs, hm, _, _⟩ := rho.mem_signedCandidate.mp ho
     rw [hempty] at hm
@@ -500,8 +502,9 @@ theorem dutyStep_poll_voteForward_of_own_vote (v : V)
     rw [(poll_outbox _ _).2, hout]
     simp only [Option.map_some, Option.toList_some, List.map_singleton, List.singleton_append]
     have heq : Model.Obj.mk (.signed (rho.ownKey v) .poll)
-        (.data (.vote (encodeVote m))) [] = voteObj m := by
+        (.data (.vote (encodeVote m))) [] = voteObj (binding := stock) m := by
       simp only [voteObj, hm]
+      rfl
     rw [heq]
     erw [Model.releaseAll.eq_def]
     dsimp only

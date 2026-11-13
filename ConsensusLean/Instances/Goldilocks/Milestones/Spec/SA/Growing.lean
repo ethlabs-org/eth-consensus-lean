@@ -76,6 +76,8 @@ structure HonestObjects (selectedProposer : Nat → Fin sp.n)
 /-- An AC trace of the SA with its contract and the honest-object facts under growing faults. -/
 structure ACRun (selectedProposer : Nat → Fin sp.n)
     (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) : Prop where
+  /-- Interim population specialization; removed in place by C2. -/
+  stock : sp.committeeSize = sp.n
   /-- The AC trace contract. -/
   localRun : Consensus.Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr
   /-- The honest-object facts. -/

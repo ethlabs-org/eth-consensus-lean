@@ -64,7 +64,7 @@ theorem deliverSeq_append_split {proposer : Nat → Fin sp.n} {tr : GoldilocksTr
 private theorem canonEvent_forward_none (hs : List (Header Info × Nat))
     (x : Fin sp.n) (t : Time) (p : Option (Wire sp.n)) (B : Blk sp) :
     canonEvent sp ro hs (forwardObj sp x t p B) = none := by
-  simp [canonEvent, forwardObj, decodeBlock, decodeVoteObj, decodeAttObj]
+  simp [canonEvent, forwardObj, decodeBlock, decodeVoteObj, decodeAttObj, stock]
 
 /-- A forwarding chain processes the exact parent's entire subtree before the
 child's canonical block and payload; the split retains the actual cut boundary. -/
@@ -475,7 +475,7 @@ theorem foldl_processOne_forward_origin (proposer : Nat → Fin sp.n)
       r ∈ deliverRecs proposer dg hs st.self st.now i os st.node sub ∧
       r.label = .fg (.block B true) ∧ r.node = st.self ∧ r.time = st.now ∧
       q = (st.now, p.toList ++ [blockObj sp B]) ∧
-      decodeBlock sp hs (blockObj sp B) = some B ∧ blockObj sp B ∈ os := by
+      decodeBlock sp (binding := stock) hs (blockObj sp B) = some B ∧ blockObj sp B ∈ os := by
   intro os
   induction os with
   | nil => intro st sub h; exact Or.inl h
@@ -491,7 +491,7 @@ theorem foldl_processOne_forward_origin (proposer : Nat → Fin sp.n)
         obtain ⟨hn, ht, _, _, hl⟩ :=
           getElem_groupRecs proposer dg st.self st.node st.now (Nat.pair i sub) e j hj'
         have hd := accepted_canonEvent_block proposer dg hs st o he hm
-        have hd' : decodeBlock sp hs (blockObj sp B) = some B := by
+        have hd' : decodeBlock sp (binding := stock) hs (blockObj sp B) = some B := by
           rwa [eq_blockObj_of_decodeBlock hd] at hd
         refine Or.inr ⟨B, p, _, ?_, hl.trans hlabel, hn, ht, hq, hd', ?_⟩
         · rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ he]

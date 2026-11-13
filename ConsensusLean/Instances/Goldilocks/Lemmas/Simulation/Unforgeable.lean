@@ -108,7 +108,8 @@ theorem released_block_cut_of (hv : rho.ExecutionValid)
     {B : Blk (S.params (pubOf E) hn)}
     (huniq : ∀ C : Blk (S.params (pubOf E) hn), C.parent ≠ none →
       C.RootOk (digestOf S rho) →
-      blockObj (S.params (pubOf E) hn) B = blockObj (S.params (pubOf E) hn) C → B = C)
+      blockObj (S.params (pubOf E) hn) (binding := stock) B =
+        blockObj (S.params (pubOf E) hn) C → B = C)
     (hb : blockObj (S.params (pubOf E) hn) B ∈ rho.releasesAt i) :
     ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).OwnBlockAt B.proposer k B := by
   have hhead : ∀ seen ob,

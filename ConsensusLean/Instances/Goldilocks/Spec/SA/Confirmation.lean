@@ -55,7 +55,7 @@ def confirmationPath (Φ : Frm sp.n FGP) (C : Blk sp.n FGP) : Set (Blk sp.n FGP)
 
 /-- The fast test of the update of slot `s`: half of the committee or more supports `B`. -/
 def FastTest (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) (B : Blk sp.n FGP) : Prop :=
-  sp.n ≤ 2 * confirmationScore sp A Φ s B
+  sp.committeeSize ≤ 2 * confirmationScore sp A Φ s B
 
 open Classical in
 /-- `update_confirmation(𝒜, Φ, t, s)`, at `t_s + 6Δ`. -/
@@ -93,7 +93,7 @@ noncomputable def optimisticSelect (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : T
     Option (Blk sp.n FGP) :=
   let s := sp.slot t
   if ¬ joined sp A t ∨ s = 0 ∨ sp.ts s + 2 * sp.Δ ≤ t then none
-  else deepest Φ {B | B ∈ Φ.tree ∧ 3 * sp.n ≤ 4 * (optimisticVoters sp A Φ s B).ncard ∧
+  else deepest Φ {B | B ∈ Φ.tree ∧ 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ s B).ncard ∧
     ¬ conflictsWithLock sp A.locks Φ t B}
 
 /-- `optimistic_confirmation(𝒜, Φ, t)`, after each receipt: a fast lock of slot `slot(t)` on the

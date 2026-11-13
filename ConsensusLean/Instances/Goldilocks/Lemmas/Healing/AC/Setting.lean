@@ -217,30 +217,34 @@ private theorem vs_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP)
 /-- `try_vote` keeps `voted_slot` and emits nothing, or emits a vote of slot `slot(t)` and
 leaves `voted_slot = slot(t)`. -/
 private theorem vs_tryVoteWith
-    {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    (hp : A.mayVote (sp.slot t) = true) :
     ((tryVoteWithM sp wm x L A Φ t).1.votedSlot = A.votedSlot ∧
         (tryVoteWithM sp wm x L A Φ t).2 = []) ∨
       ((tryVoteWithM sp wm x L A Φ t).1.votedSlot = sp.slot t ∧
         ∃ e ∈ (tryVoteWithM sp wm x L A Φ t).2, e.msg.slot = sp.slot t) := by
-  unfold tryVoteWithM; dsimp only
+  unfold tryVoteWithM
+  simp only [hp, ↓reduceIte]
   split_ifs
   · exact Or.inl ⟨rfl, rfl⟩
   · exact Or.inl ⟨rfl, rfl⟩
   all_goals exact Or.inr ⟨by rw [optimisticConfirmationM_keep _ vs_optimistic, vs_admitVote], _,
       List.mem_singleton_self _, rfl⟩
 
-private theorem vs_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+private theorem vs_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    (hp : A.mayVote (sp.slot t) = true) :
     ((tryVote sp x A Φ t).1.votedSlot = A.votedSlot ∧ (tryVote sp x A Φ t).2 = []) ∨
       ((tryVote sp x A Φ t).1.votedSlot = sp.slot t ∧
         ∃ e ∈ (tryVote sp x A Φ t).2, e.msg.slot = sp.slot t) := by
   rw [tryVote_eq_tryVoteWith, ← tryVoteWithM_parent]
-  exact vs_tryVoteWith x A Φ t
+  exact vs_tryVoteWith x A Φ t hp
 
 /-- A call other than a restart keeps `voted_slot`, or emits a vote of slot `slot(t)` and
 leaves `voted_slot = slot(t)`; a restart sets `voted_slot = −1`. -/
 private theorem vs_step
     {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP} {t : Time}
-    (hΦ : FrameOK Φ) (ht : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call) :
+    (hΦ : FrameOK Φ) (ht : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call)
+    (hp : A.mayVote (sp.slot t) = true) :
     let r := stepWithM sp ro wm self L A Φ t c
     r.1.votedSlot = A.votedSlot ∨ r.1.votedSlot = -1 ∨
       (r.1.votedSlot = sp.slot t ∧ ∃ e ∈ r.2, e.msg.slot = sp.slot t) := by
@@ -255,10 +259,10 @@ private theorem vs_step
     all_goals first
       | exact Or.inl rfl
       | exact Or.inl (vs_update _ _ _ _)
-      | (rcases vs_tryVoteWith self A Φ t with h | h
+      | (rcases vs_tryVoteWith self A Φ t hp with h | h
          · exact Or.inl ((vs_update _ _ _ _).trans h.1)
          · exact Or.inr (Or.inr ⟨(vs_update _ _ _ _).trans h.1, h.2⟩))
-      | (rcases vs_tryVoteWith self A Φ t with h | h
+      | (rcases vs_tryVoteWith self A Φ t hp with h | h
          · exact Or.inl h.1
          · exact Or.inr (Or.inr h))
   | proposal =>
@@ -276,7 +280,8 @@ private theorem vs_step
         (tryVoteWithM sp wm self L _ Φ t).1.votedSlot = _ ∨
       ((tryVoteWithM sp wm self L _ Φ t).1.votedSlot = _ ∧
         ∃ e ∈ (tryVoteWithM sp wm self L _ Φ t).2, _)
-    rcases vs_tryVoteWith self (optimisticConfirmationM sp wm (admitVote sp A t m) Φ t) Φ t with
+    rcases vs_tryVoteWith self (optimisticConfirmationM sp wm (admitVote sp A t m) Φ t) Φ t
+        (by simpa only [optimisticM_mayVote, admitVote_mayVote] using hp) with
         h | h
     · exact Or.inl (h.1.trans (by rw [optimisticConfirmationM_keep _ vs_optimistic, vs_admitVote]))
     · exact Or.inr (Or.inr h)
@@ -285,7 +290,8 @@ private theorem vs_step
         (tryVoteWithM sp wm self L _ Φ t).1.votedSlot = _ ∨
       ((tryVoteWithM sp wm self L _ Φ t).1.votedSlot = _ ∧
         ∃ e ∈ (tryVoteWithM sp wm self L _ Φ t).2, _)
-    rcases vs_tryVoteWith self (optimisticConfirmationM sp wm (blockReceipt sp A t B) Φ t) Φ t with
+    rcases vs_tryVoteWith self (optimisticConfirmationM sp wm (blockReceipt sp A t B) Φ t) Φ t
+        (by simpa only [optimisticM_mayVote, blockReceipt_mayVote] using hp) with
         h | h
     · exact Or.inl (h.1.trans (by rw [optimisticConfirmationM_keep _ vs_optimistic,
         vs_blockReceipt]))
@@ -318,7 +324,7 @@ theorem vote_of_votedSlotU
       rw [hst] at h
       have hv := vs_step (wm := wm) (L := u i) (ro := ro) y (tr.state y i)
           (frameIn_of_callAtU hr hy hc).1
-        (hr.time_nonneg i) ℓ.call
+        (hr.time_nonneg i) ℓ.call (traceWithM_mayVote hr hy i _)
       rw [he] at hv
       dsimp only at hv
       rcases hv with hv | hv | ⟨hv, e, hem, hes⟩
@@ -342,27 +348,21 @@ theorem vote_of_votedSlot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y :
 /-- `tryVote_votes` with the unlock given. -/
 theorem tryVote_votesWith
     {L : Set Lock} (x : Fin sp.n) {A : SAState sp.n} (Φ : Frm sp.n FGP) {t : Time}
-    (hj : joined sp A t) (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ) :
+    (hj : joined sp A t) (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ)
+    (hp : A.mayVote (sp.slot t) = true) :
     ∃ e ∈ (tryVoteWithM sp wm x L A Φ t).2, e.msg.slot = sp.slot t := by
-  rcases vs_tryVoteWith x A Φ t with h | h
-  · exfalso
-    unfold tryVoteWithM at h; dsimp only at h
-    split_ifs at h with h1 h2
-    · rcases h1 with h1 | h1 | h1
-      · exact h1 hj
-      · exact hv h1
-      · linarith
-    · linarith [h2.1]
-    all_goals simp at h
-  · exact h.2
+  have hlate : ¬ sp.ts (sp.slot t) + sp.Δ < t := not_lt.mpr ht.le
+  have hearly : ¬ t < sp.ts (sp.slot t) + sp.Δ := not_lt.mpr ht.ge
+  simp [tryVoteWithM, hj, hv, hlate, hearly, hp]
 
 /-- `try_vote` at `t_s + Δ` of a joined node that has not voted in slot `s = slot(t)` casts a
 vote of slot `s`. -/
 theorem tryVote_votes (x : Fin sp.n) {A : SAState sp.n} (Φ : Frm sp.n FGP) {t : Time}
-    (hj : joined sp A t) (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ) :
+    (hj : joined sp A t) (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ)
+    (hp : A.mayVote (sp.slot t) = true) :
     ∃ e ∈ (tryVote sp x A Φ t).2, e.msg.slot = sp.slot t :=
   tryVote_votesWith (wm := WriteMode.parent sp) (x := x) (A := A) (Φ := Φ) (t := t) (hj := hj)
-      (hv := hv) (ht := ht)
+      (hv := hv) (ht := ht) (hp := hp)
 
 end VotedSlot
 

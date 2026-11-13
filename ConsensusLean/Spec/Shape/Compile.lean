@@ -102,9 +102,12 @@ def compile (S : ChainShape pub Out Info) : Model.Protocol pub Out where
   cntItem := inferInstance
   selSpec := S.skel.selSpec
   role := S.skel.role
+  candidateRole d m := (S.candidateRole d m).getD (S.skel.role d)
+  participationRole t := S.skel.participationKind.map fun k =>
+    ShapeRole.duty (S.skel.grid.slotOf t) k
   duties := S.skel.duties
   deliverDuties := S.skel.deliverDuties
-  init k := (S.init k, [])
+  init k p := (S.init k p, [])
   clock st t xs := (S.clock st.1 t, xs)
   act st d := match d with
     | .propose s _ => withMempool st.2 (fun (par, info, cs) =>
@@ -120,7 +123,7 @@ def compile (S : ChainShape pub Out Info) : Model.Protocol pub Out where
   dependencies := S.dependencies
   recordOwn st o hs := (S.recordOwn st.1 o hs, st.2)
   durable st := S.durable st.1
-  restore k d t := (S.restore k d t, [])
+  restore k p d t := (S.restore k p d t, [])
   out g st := ledgerOf (S.out g st.1)
   conflicts := S.conflicts
   isFGAtt := S.isFGAtt

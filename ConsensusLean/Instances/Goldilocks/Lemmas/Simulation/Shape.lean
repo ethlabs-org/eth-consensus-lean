@@ -19,6 +19,10 @@ open AsChainShape
 open Blocks Shape
 open SA (SAParams ReplayOrder Vote Payload)
 
+/-- The stock construction uses the whole population as its committee. -/
+theorem params_committeeSize (S : Setup) (pub : Model.Public) (hn : 1 ≤ pub.n) :
+    (S.params pub hn).committeeSize = (S.params pub hn).n := by rfl
+
 /-! ## Encoding round-trips -/
 
 /-- An encoded attestation decodes to itself. -/
@@ -79,7 +83,7 @@ theorem decodeBlock_blockObj (hs : List (Header Info × Nat)) (B : Blk sp)
     (hpar : B.parent ≠ none) (hne : B.root ≠ sp.genesisRoot)
     (hroot : rootOf hs (headerOf sp B) = some (rawRoot sp.genesisRoot B.root))
     (hwf : ∀ a ∈ B.fgPayload, a.WellFormed) (hval : SA.validPayload B) :
-    decodeBlock sp hs (blockObj sp B) = some B := by
+    decodeBlock sp (binding := stock) hs (blockObj sp (binding := stock) B) = some B := by
   obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.1 hpar
   have hB : blockOf sp (rawRoot sp.genesisRoot B.root) (headerOf sp B)
       B.proposer B.fgPayload B.acPayload = B := by
@@ -90,31 +94,35 @@ theorem decodeBlock_blockObj (hs : List (Header Info × Nat)) (B : Blk sp)
   classical
   simp only [decodeBlock, blockObj, hinfo, hroot]
   rw [hB]
-  simp only [headerOf, hval, and_true, true_and, ite_eq_left_iff, not_forall, reduceCtorEq,
-    imp_false, not_exists, Decidable.not_not]
-  exact hwf
+  rw [ite_eq_left ⟨by trivial, by trivial, hwf, hval⟩]
 
 /-- The canonical object of a vote decodes to the vote. -/
-theorem decodeVoteObj_voteObj (v : Vote sp.n) : decodeVoteObj sp (voteObj v) = some v := by
-  simp [decodeVoteObj, voteObj, decodeVote_encodeVote]
+theorem decodeVoteObj_voteObj (v : Vote sp.n) :
+    decodeVoteObj sp (binding := stock) (voteObj (binding := stock) v) = some v := by
+  simp [decodeVoteObj, voteObj, stock, VoteBinding.voteRole, decodeVote_encodeVote]
 
 /-- The canonical object of a well-formed attestation decodes to the attestation. -/
 theorem decodeAttObj_attObj (a : FG.Att sp.n) (hwf : a.WellFormed) :
-    decodeAttObj sp (attObj a) = some a := by
+    decodeAttObj sp (binding := stock) (attObj (binding := stock) a) = some a := by
   simp [decodeAttObj, attObj, decodeAtt_encodeAtt, hwf]
 
 /-- The canonical object of a vote stands for the node's `message` event. -/
 theorem canonEvent_voteObj (hs : List (Header Info × Nat)) (v : Vote sp.n) :
-    canonEvent sp ro hs (voteObj v) = some (.message v) := by
-  have h1 : decodeBlock sp hs (voteObj v) = none := by simp [decodeBlock, voteObj]
+    canonEvent sp ro (binding := stock) hs (voteObj (binding := stock) v) = some (.message v) := by
+  have h1 : decodeBlock sp (binding := stock) hs (voteObj (binding := stock) v) = none := by
+    simp [decodeBlock, voteObj]
   simp only [canonEvent, h1, decodeVoteObj_voteObj]
 
 /-- The canonical object of a well-formed attestation stands for the node's `attestation`
 event. -/
 theorem canonEvent_attObj (hs : List (Header Info × Nat)) (a : FG.Att sp.n)
-    (hwf : a.WellFormed) : canonEvent sp ro hs (attObj a) = some (.attestation a) := by
-  have h1 : decodeBlock sp hs (attObj a) = none := by simp [decodeBlock, attObj]
-  have h2 : decodeVoteObj sp (attObj a) = none := by simp [decodeVoteObj, attObj]
+    (hwf : a.WellFormed) :
+    canonEvent sp ro (binding := stock) hs (attObj (binding := stock) a) =
+      some (.attestation a) := by
+  have h1 : decodeBlock sp (binding := stock) hs (attObj (binding := stock) a) = none := by
+    simp [decodeBlock, attObj]
+  have h2 : decodeVoteObj sp (binding := stock) (attObj (binding := stock) a) = none := by
+    simp [decodeVoteObj, attObj, stock]
   simp only [canonEvent, h1, h2, decodeAttObj_attObj a hwf]
 
 /-! ## The slashing rule and the own-object guard -/
@@ -195,7 +203,8 @@ theorem dependencies_voteForward {n : Nat} (held : List (Wire n))
     (x : Fin n) (t : Time) (v : Vote n) :
     (dependencies n).ready held
       (.mk (.signed x .poll) (.data (.voteForward t (encodeVote v))) [voteObj v]) = true := by
-  simp only [dependencies, forwardParent?, voteObj, Model.Obj.parts, Model.Obj.parts.partsList,
+  simp only [dependencies, forwardParent?, voteObj, VoteBinding.voteRole, stock,
+      Model.Obj.parts, Model.Obj.parts.partsList,
       List.append_nil, List.all_cons, List.all_nil, Bool.and_self]
 
 /-- The only release-holdings obligation is the canonical carried vote at the actual prefix. -/
@@ -235,16 +244,14 @@ theorem forwardParent_contains {n : Nat} (o parent : Wire n)
 /-- Relaying already-held objects cannot introduce an unmet wrapper dependency. -/
 theorem dependencies_relay {n : Nat} (seen cs : List (Wire n))
     (h : ∀ c ∈ cs, c ∈ seen.flatMap Model.Obj.parts) :
-    (dependencies n).ready (seen.flatMap Model.Obj.parts)
+    (dependencies n (binding := stock)).ready (seen.flatMap Model.Obj.parts)
       (.mk .none (.data .relay) cs) = true := by
-  simp only [dependencies, Model.Obj.parts, List.all_cons, forwardParent?, Bool.true_and,
+  have hrelay : forwardParent? (binding := stock) (.mk .none (.data .relay) cs) = none := rfl
+  simp only [dependencies, Model.Obj.parts, List.all_cons, hrelay, Bool.true_and,
     Model.Obj.partsList_eq, List.all_eq_true]
   intro part hp
   obtain ⟨c, hc, hp⟩ := List.mem_flatMap.mp hp
-  change (match forwardParent? part with
-    | none => true
-    | some parent => decide (parent ∈ seen.flatMap Model.Obj.parts)) = true
-  cases he : forwardParent? part with
+  cases he : forwardParent? (binding := stock) part with
   | none => rfl
   | some parent =>
     apply decide_eq_true
@@ -332,7 +339,8 @@ termination_by o => sizeOf o
 
 /-- A genesis-parent forwarding wrapper decodes under the explicit wire checks. -/
 theorem decodeForward_genesis (hs : List (Header Info × Nat)) (origin : Fin sp.n)
-    (t : Time) (B : Blk sp) (hb : decodeBlock sp hs (blockObj sp B) = some B)
+    (t : Time) (B : Blk sp)
+    (hb : decodeBlock sp (binding := stock) hs (blockObj sp (binding := stock) B) = some B)
     (hp : B.parent = some sp.genesisRoot) (ht : 0 ≤ t)
     (hslt : sp.toParams.slotTime B.slot ≤ t) :
     decodeForward sp hs (forwardObj sp origin t none B) = some (origin, t, none, B) := by
@@ -342,7 +350,7 @@ theorem decodeForward_genesis (hs : List (Header Info × Nat)) (origin : Fin sp.
 /-- A non-genesis forwarding wrapper retains the exact same-origin parent wrapper. -/
 theorem decodeForward_parent (hs : List (Header Info × Nat)) (origin : Fin sp.n)
     (t pt : Time) (B A : Blk sp) (parent : Wire sp.n) (pp : Option (Wire sp.n))
-    (hb : decodeBlock sp hs (blockObj sp B) = some B)
+    (hb : decodeBlock sp (binding := stock) hs (blockObj sp (binding := stock) B) = some B)
     (hparent : decodeForward sp hs parent = some (origin, pt, pp, A))
     (hp : B.parent = some A.root) (hg : A.root ≠ sp.genesisRoot)
     (hslot : A.slot < B.slot) (hpt : pt ≤ t) (ht : 0 ≤ t)
@@ -381,7 +389,8 @@ digests and bounds the child's slot by the acceptance stamp. -/
 theorem decodeForward_child {hs : List (Header Info × Nat)} {o : Wire sp.n}
     {x : Fin sp.n} {t : Time} {p : Option (Wire sp.n)} {B : Blk sp}
     (h : decodeForward sp hs o = some (x, t, p, B)) :
-    decodeBlock sp hs (blockObj sp B) = some B ∧ sp.toParams.slotTime B.slot ≤ t := by
+    decodeBlock sp (binding := stock) hs (blockObj sp (binding := stock) B) = some B ∧
+      sp.toParams.slotTime B.slot ≤ t := by
   unfold decodeForward at h
   split at h
   · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
@@ -454,7 +463,7 @@ theorem decodeForward_time_nonneg {hs : List (Header Info × Nat)} {o : Wire sp.
 when the canonical child has already been decoded in that table. -/
 theorem decoded_forward_fields {sp : SA.SAParams} (hs : List (Header Info × Nat))
     (x : Fin sp.n) (t : Time) (p : Option (Wire sp.n)) (B : Blk sp)
-    (hb : decodeBlock sp hs (blockObj sp B) = some B)
+    (hb : decodeBlock sp (binding := stock) hs (blockObj sp (binding := stock) B) = some B)
     {u : Time} {q : Option (Wire sp.n)} {C : Blk sp}
     (hd : decodeForward sp hs (forwardObj sp x t p B) = some (x, u, q, C)) :
     (u, q, C) = (t, p, B) := by

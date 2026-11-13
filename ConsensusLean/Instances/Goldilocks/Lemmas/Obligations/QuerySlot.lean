@@ -69,8 +69,9 @@ theorem nonfinal_query_slot (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Finty
     change query + _ ≤ _ at hb
     linarith
   obtain ⟨s, hlo, hhi, hr⟩ := hrec query (by simpa using hquery)
-    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, skeleton] using hwin)
-    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, skeleton,
+    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks,
+      goldilocksWith, skeleton] using hwin)
+    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, goldilocksWith, skeleton,
       Model.Run.point] using hwin)
   have htime : (goldilocks S (Model.pubOf run.1)).skel.grid.slotTime s =
       (S.params (Model.pubOf run.1) hn).ts s := by

@@ -95,6 +95,7 @@ private theorem optimistic_side
   have hd := hrun.time_nonneg k
   obtain ⟨ell, A, -, -, h34, hfwd⟩ := SA.optimistic_side (acRun_upTo hrun hnc hd) hX
     ((sa_optimisticLockAt_upTo hrun.time_mono).2 ⟨le_rfl, hop⟩)
+  rw [hrun.stock] at h34
   exact ⟨_, h34, fun u hu => released_of_fwd hrun hd hX (hfwd hu)⟩
 
 private theorem released_held

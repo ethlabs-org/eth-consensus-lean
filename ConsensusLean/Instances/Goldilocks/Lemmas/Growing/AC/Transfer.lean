@@ -105,7 +105,8 @@ theorem result_transfer_anc (hrun : ACRun proposer tr H U)
   · exact (Anc.mem hcore he).2
 
 /-- Transfer also holds for an ancestor of the block stored by the fast lock. -/
-theorem first_transfer_stored (hrun : ACRun proposer tr H U) {s : Nat}
+theorem first_transfer_stored
+    (hrun : ACRun proposer tr H U) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hx : x ∈ H (tr.time i₀)) (hfl : FastLockAt tr x i₀ s D CV) (hBD : Anc U B D)
@@ -148,6 +149,8 @@ theorem first_transfer_stored (hrun : ACRun proposer tr H U) {s : Nat}
   have hd := writer_merged hrun hx hupd hy hc hs hsync
   have hsupp := carried_counted_supporters hrun hx hy hupd.1 hc hs hBD hcarry hviab hd
   have hhalf : sp.n ≤ 2 * SX.ncard := by
+    unfold FastTest confirmationScore at hfast
+    rw [hrun.stock] at hfast
     refine hfast.trans (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_))
     rintro w ⟨hw, v, ⟨hv, hres⟩, hval, _, hanc⟩
     exact ⟨v, ⟨hv, hval ▸ hw, hres, hanc⟩, hval⟩
@@ -192,7 +195,9 @@ theorem first_transfer_stored (hrun : ACRun proposer tr H U) {s : Nat}
     (locks_compatible hry hy hc' hs hBt (S := SX) (fun w hw => by
         obtain ⟨_, x, hx, hxv, hxs, hxa⟩ := hsupp hw
         exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩)
-      hhalf hf hearlier' hm)
+      (by simpa only [hrun.stock] using hhalf) (by simpa only [hrun.stock] using hf) hearlier'
+      (fun Φ' A' D' hΦ' hΦ'U hD' h34 => hm Φ' A' D' hΦ' hΦ'U hD'
+        (by simpa only [hrun.stock] using h34)))
     fun X' Cx hCx hp hCxC =>
       isBest_of_majority hΦ (merged_support_subset hry.localRun hy hc' (s + 1))
         (fun B hB => voteDomain_subset_tree hB.1) hsupp

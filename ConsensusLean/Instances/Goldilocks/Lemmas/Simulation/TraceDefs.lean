@@ -118,7 +118,8 @@ noncomputable def runProposer (s : Nat) : Fin (Fintype.card V) :=
   else ⟨0, hn⟩
 
 /-- The node state held by the shape before an engine cut. -/
-noncomputable def stateAt (v : V) (i : Nat) : State (S.params (pubOf E) hn) (S.ro _) :=
+noncomputable def stateAt (v : V) (i : Nat) :
+    State (S.params (pubOf E) hn (binding := stock)) (S.ro _) (binding := stock) :=
   (rho.stateBefore i v).st.1 hn
 
 omit [DecidableEq V] in
@@ -176,10 +177,11 @@ nothing. -/
 noncomputable def deliverRecs (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) :
-    List (Wire sp.n) → NodeState (goldilocksNode sp ro) → Nat → List (CutRec sp ro)
+    List (Wire sp.n (binding := stock)) → NodeState (goldilocksNode sp ro) →
+      Nat → List (CutRec sp ro)
   | [], _, _ => []
   | o :: os, st, sub =>
-      match canonEvent sp ro hs o with
+      match canonEvent sp ro (binding := stock) hs o with
       | some e =>
           groupRecs proposer dg self st t (Nat.pair i sub) e ++
             deliverRecs proposer dg hs self t i os (exec proposer dg self st t e).1 (sub + 1)

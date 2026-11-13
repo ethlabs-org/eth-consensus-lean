@@ -31,11 +31,8 @@ theorem sysOf_adequateObs {Prog : Type} (Y : Progress (sysOf O F V) Prog)
     (voteRole : ∀ E : Env V, Nat → (protoOf F E).Role) :
     (sysOf O F V).AdequateObs Y (hY.symm ▸ dictObs voteRole) := by
   have ha := sysOf_adequate Y hY
-  obtain ⟨⟨Ext, ext, Admits⟩, holds, mono, shrink, submit_irrel⟩ := Y
-  simp only [sysExternal, External.mk.injEq] at hY
-  obtain ⟨rfl, hext, hadm⟩ := hY
-  cases eq_of_heq hext
-  cases eq_of_heq hadm
+  obtain ⟨X, holds, mono, shrink, submit_irrel⟩ := Y
+  cases hY
   refine ⟨ha, ?_, ?_⟩
   · rintro ⟨E, rho⟩ hv b hb0 hbh
     obtain ⟨hP, hview, hlog, hexc⟩ := rho.truncate_prefix (O := O) hv b

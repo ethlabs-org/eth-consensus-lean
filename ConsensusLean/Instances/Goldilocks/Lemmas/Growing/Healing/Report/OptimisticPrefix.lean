@@ -19,7 +19,8 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 /-- Counted optimistic votes dominate each child towards the historical anchor. -/
-theorem optimistic_isBest_of_carry_at (hrun : ACRun proposer tr H U) {s : Nat}
+theorem optimistic_isBest_of_carry_at
+    (hrun : ACRun proposer tr H U) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hx : x ∈ H (tr.time i₀)) (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D)
@@ -48,7 +49,7 @@ theorem optimistic_isBest_of_carry_at (hrun : ACRun proposer tr H U) {s : Nat}
     dsimp only at hsel
     split_ifs at hsel
     have h := (deepest_mem hsel).1.2.1
-    rwa [hslx] at h
+    rwa [hslx, hrun.stock] at h
   have hfreeze : sp.ts s + 3 * sp.Δ ≤ tr.time i := by
     have hsv := (castAt_spec hry.localRun hy hc').2.1
     change e.msg.slot = sp.slot (tr.time i) at hsv
@@ -78,7 +79,8 @@ theorem optimistic_isBest_of_carry_at (hrun : ACRun proposer tr H U) {s : Nat}
     (fun _ h => voteDomain_subset_tree h.1) hcover h3 hC hp hCB
 
 /-- Explicit anchor order suffices for prefix reachability, without a prior-vote induction. -/
-theorem optimistic_prefix_of_carry_at (hrun : ACRun proposer tr H U) {s : Nat}
+theorem optimistic_prefix_of_carry_at
+    (hrun : ACRun proposer tr H U) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hx : x ∈ H (tr.time i₀)) (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D)

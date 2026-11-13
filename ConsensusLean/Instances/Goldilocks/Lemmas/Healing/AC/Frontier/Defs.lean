@@ -211,6 +211,7 @@ theorem vote_of_awake_joinedAC (hr : ACLocalRunU wm u H U tr) (htick : TickDuty 
     exact ⟨j, e, hve, hes, hti ▸ hr.time_mono hj.le⟩
   · have htv : tr.time i = sp.ts (sp.slot (tr.time i)) + sp.Δ := by rw [hti, hslot]
     obtain ⟨e, he, hes⟩ := tryVote_votesWith (wm := wm) (L := u i) y ℓ.frame hjs hv htv
+      (traceWithM_mayVote hr hy i _)
     have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
     rw [hc.1, hcall] at hx
     have hem : (acOnTickWithM sp wm y (u i) (tr.state y i) ℓ.frame (tr.time i)).2 = ℓ.emits :=

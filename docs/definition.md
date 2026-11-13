@@ -194,10 +194,12 @@ that a claim or regime evaluates.
     datum and every GST `g` have a valid, excuse-free run with that point.
     Its log is eager from `g`: synchronous for `g ≤ 0`, asynchronous before
     `g`, silent for `g` past the horizon. The run carries every progress
-    requirement that held for the point and the data;
+    requirement that held for the point and the data, and preserves that
+    datum's selected population at every observation time;
   - `prefixClosed`: the prefix of a valid run up to any `b ∈ [0, horizon]` is a valid run
     with the same reads, views and log up to `b`, no new excuse, and the same
-    progress on windows that end by `b`.
+    progress on windows that end by `b`. It preserves the original run's
+    selected population at every time, not just times up to `b`.
 - **`Realizable`** (at least five validators): every regime is met by a clean
   witness. A witness is valid, has no excuse, and has a faulty and an honest
   validator. The witnesses exist at every `ΔAC` and every FG delay `ΔFG` (healthy: every
@@ -455,6 +457,29 @@ transaction submissions either: progress is about participation, never about
 which transactions arrive. (Otherwise "every submission is `42`" would be a
 legal requirement, and a constant ledger `[42]` that censors everything else
 would pass: `censoring_progress_rejected`.)
+
+`External` also requires a coherent equivalence of the entire input spaces
+when the environment's delays agree: transport is the identity on the same
+environment, composes across environments, and preserves admissibility in both
+directions. These laws alone do not make a selection reader independent of the
+awake profile: `External.selected_transport` additionally requires that the
+selected population at every observation time commute with transport. In the
+model, `sysExternal` transports the same PKI and complete role selection and
+observes the protocol's public `participationRole` (`none`: the whole population).
+The protocol, its role query and selection specification depend only on public
+delays and population size. A shape queries its `participationKind` in the slot
+of the observation, retaining that historical selection at later fault charges.
+`TimeGrid.slotOf` is floor division by the positive slot length, clamped to zero
+for negative times. It reads the whole observation slot; `slotAt?` instead
+recognizes exact boundaries after subtracting a duty's phase. Thus a duty whose
+phase crosses a slot boundary need not execute in its own labelled slot.
+The declared participation population may be a fixed non-universal committee.
+Any correctness premise that reads it is relative to that declared population;
+population-wide clauses remain separate. The instance supplier must prove that
+the declared role (or shape kind) is the actual role of the votes counted by its
+protocol. The public query alone does not prove this binding, and signature
+mechanics do not belong in the problem definition.
+No equality of execution validity or progress across awake profiles is required.
 
 The slot is checked, within limits:
 

@@ -77,7 +77,7 @@ theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
       rw [hQ]
       exact List.mem_append_left _ (List.mem_flatMap.mpr ⟨_, hℓ ▸ hlab,
         List.mem_map.mpr ⟨m, hm, rfl⟩⟩)
-    have hobj : @voteObj (pubOf E).n m.msg = pollObj S rho v (.vote (encodeVote m.msg)) := by
+    have hobj : @voteObj stock (pubOf E).n m.msg = pollObj S rho v (.vote (encodeVote m.msg)) := by
       unfold voteObj; rw [show m.msg.val = rho.ownKey v from hval]; rfl
     exact (congrArg (· ∈ rho.releasesAt i) hobj).mpr (hrelQ _ hq
       (protects_of_not_att S _ _ _ (fun k w h => by cases h))

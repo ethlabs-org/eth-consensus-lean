@@ -190,7 +190,7 @@ theorem sleepyLive_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S.
       max t 0 + (S.pt r).env.ΔAC + S.lat K cap i r ≤ t' →
       t' ≤ b → ∀ v, (S.pt r).Ready (S.cDur K r) v t' →
         x ∈ (S.trace r).readAt g v t') ∨ S.Excuse r := by
-  obtain ⟨r', hv', hP, _, hL, hE, hX⟩ := h.adequate.prefixClosed r hv b hb0 hbh
+  obtain ⟨r', hv', hP, _, hL, hE, hX, -⟩ := h.adequate.prefixClosed r hv b hb0 hbh
   have hc := cDur_prefix (K := K) hP
   have ha : S.aheadDur K r' = S.aheadDur K r := by
     unfold System.aheadDur; rw [hP.env]
@@ -231,7 +231,7 @@ theorem healedSafe_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S.
     (hp : S.prog X K cap i (S.ready K gst r) (S.heal K cap i gst r) r)
     (hhb : S.heal K cap i gst r ≤ b) :
     (S.trace r).ReadySafeUpTo (S.cDur K r) g (S.heal K cap i gst r) b ∨ S.Excuse r := by
-  obtain ⟨r', hv', hP, -, hL, hE, hX⟩ := h.adequate.prefixClosed r hv b hb0 hbh
+  obtain ⟨r', hv', hP, -, hL, hE, hX, -⟩ := h.adequate.prefixClosed r hv b hb0 hbh
   have hc := cDur_prefix (K := K) hP
   have hheal : S.heal K cap i gst r' = S.heal K cap i gst r := by
     unfold System.heal; rw [hP.env]
@@ -266,7 +266,7 @@ theorem healthyLive_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S
       max t (S.heal K cap i gst r) + (S.pt r).env.ΔAC + S.lat K cap i r ≤ t' →
       t' ≤ b → ∀ v, (S.pt r).Ready (S.cDur K r) v t' →
         x ∈ (S.trace r).readAt g v t') ∨ S.Excuse r := by
-  obtain ⟨r', hv', hP, _, hL, hE, hX⟩ := h.adequate.prefixClosed r hv b hb0 hbh
+  obtain ⟨r', hv', hP, _, hL, hE, hX, -⟩ := h.adequate.prefixClosed r hv b hb0 hbh
   have hc := cDur_prefix (K := K) hP
   have hheal : S.heal K cap i gst r' = S.heal K cap i gst r := by
     unfold System.heal; rw [hP.env]

@@ -249,6 +249,7 @@ theorem simTrace_wire (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) 
 theorem simTrace_goldilocksRun (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     GoldilocksRun (runProposer S rho hn) (digestOf S rho)
       (honestKeys S rho) (simTrace S rho hn) where
+  stock := rfl
   init := simTrace_init S rho hn
   grouped := simTrace_grouped S rho hn hf hv
   cutLaw := simTrace_cutLaw S rho hn hf hv

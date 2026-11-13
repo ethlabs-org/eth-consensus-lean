@@ -307,7 +307,8 @@ theorem honest_batch_carry_before (hrun : GoldilocksRun proposer dg H tr)
 compatible with every origin of a label in `[s₀, s]` whose event precedes the vote, with the live
 lock blocks of the read-point locks of slots `< s₀` (`hlow`), and that the earlier honest
 slot-`(s+1)` votes extend. -/
-private theorem vote_locks_compatible_of (hrun : GoldilocksRun proposer dg H tr)
+private theorem vote_locks_compatible_of
+    (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -351,7 +352,8 @@ private theorem vote_locks_compatible_of (hrun : GoldilocksRun proposer dg H tr)
     obtain ⟨Φ', A, D, -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
       SA.lock_origin_readPoint hrun' hy hc l₀ hl₀ (by rw [hs]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
-    refine down hL₀D (SA.origin_compatible hU hΦ'U h34 hf fun v hv hvH => ?_)
+    refine down hL₀D (SA.origin_compatible hU hΦ'U h34
+      (by simpa [hrun.stock] using hf) fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
     have hsj : e'.msg.slot = sp.slot (tr.time j) := (SA.castAt_spec hr hvH hcj).2.1
@@ -362,7 +364,8 @@ private theorem vote_locks_compatible_of (hrun : GoldilocksRun proposer dg H tr)
 /-- **The live locks at a slot-`(s+1)` vote at a time `≤ b` are compatible with `B`**, a block
 compatible with every origin within `b` of label at most `s` that the earlier honest
 slot-`(s+1)` votes extend. -/
-theorem vote_locks_compatible_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem vote_locks_compatible_upTo
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
@@ -383,7 +386,8 @@ theorem vote_locks_compatible_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc 
 an origin `C` within `b` of label `s ≥ s₀` that is in its viable voter tree or at or below
 `fc_root` (`vote_frame`), with every live lock block compatible with `C`, when the heads accepted
 before `t_{s₀}` are caught up (`hold`) and the earlier honest slot-`(s+1)` votes extend `C`. -/
-private theorem first_transfer_win (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+private theorem first_transfer_win
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hwin : SleepyWindow tr H ΔF s₀ b) {s : Nat} (hs₀ : s₀ ≤ s) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
@@ -413,7 +417,8 @@ private theorem first_transfer_win (hrun : GoldilocksRun proposer dg H tr) (hnc 
 
 /-- **First transfer up to `b`**: an honest slot-`(s+1)` vote at a time `≤ b` extends an
 origin `C` within `b` of label `s` that the earlier honest slot-`(s+1)` votes extend. -/
-theorem first_transfer_step_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem first_transfer_step_upTo
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
@@ -430,7 +435,8 @@ theorem first_transfer_step_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : 
     (vote_locks_compatible_upTo hrun hnc hpre hy hc hs hib hCc hE) hE
 
 /-- First transfer with service restricted to recipient deadlines within `b`. -/
-theorem first_transfer_step_before (hrun : GoldilocksRun proposer dg H tr)
+theorem first_transfer_step_before
+    (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
@@ -515,7 +521,8 @@ private theorem later_transfer_win (hrun : GoldilocksRun proposer dg H tr) (hnc 
 /-- **Later batch up to `b`**: an honest slot-`(s+1)` vote at a time `≤ b` extends a block
 `B` that every honest slot-`s` vote extends, compatible with every origin within `b` of label at
 most `s`, and extended by the earlier honest slot-`(s+1)` votes. -/
-theorem later_transfer_step_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem later_transfer_step_upTo
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
@@ -536,7 +543,8 @@ theorem later_transfer_step_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : 
     (vote_locks_compatible_upTo hrun hnc hpre hy hc hs hib hBc hE) hall
 
 /-- Later-batch transfer with recipient-deadline-bounded service. -/
-theorem later_transfer_step_before (hrun : GoldilocksRun proposer dg H tr)
+theorem later_transfer_step_before
+    (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
@@ -592,7 +600,8 @@ theorem later_transfer_step_before (hrun : GoldilocksRun proposer dg H tr)
 
 /-- **Extending the vote frontier up to `b`**: `P_{s+1}` and `V_s` up to `b` give `V_{s+1}` up
 to `b`. -/
-theorem votes_below_succ_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem votes_below_succ_upTo
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)
     (hV : VotesBelowUpTo tr H s b) : VotesBelowUpTo tr H (s + 1) b := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -622,7 +631,8 @@ theorem votes_below_succ_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
   · exact key i y hy e hv hib (by omega) C j hC (by omega)
 
 /-- The first-bad-vote induction uses only recipient deadlines within the horizon. -/
-theorem votes_below_succ_before (hrun : GoldilocksRun proposer dg H tr)
+theorem votes_below_succ_before
+    (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
@@ -655,7 +665,8 @@ theorem votes_below_succ_before (hrun : GoldilocksRun proposer dg H tr)
   · exact key i y hy e hv hib (by omega) C j hC (by omega)
 
 /-- **Extending the vote frontier**: `P_{s+1}` and `V_s` give `V_{s+1}`. -/
-theorem votes_below_succ (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem votes_below_succ
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {s : Nat} (hP : OriginsBelow tr H (s + 1))
     (hV : VotesBelow tr H s) : VotesBelow tr H (s + 1) := by
   refine votesBelow_iff.2 fun C j hC y hy i e hv hj hm => ?_

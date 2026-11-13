@@ -45,7 +45,7 @@ theorem ResetPremisesUpTo.cutZ_le_ts_of_highOrigin {b : Time}
     cutZ sp.toParams g ≤ sp.ts j := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨ℓ, D, CV, hc, hfl, -, -, -, hBD, -⟩ := hp.highOrigin_mem ho
-  obtain ⟨v, hv⟩ := fastLock_counted_nonempty hfl
+  obtain ⟨v, hv⟩ := fastLock_counted_nonempty (by rw [hp.run.stock]; exact sp.toParams.hn) hfl
   obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHv⟩, -, hDHv, hacc⟩ := fastLock_writer hr ho.1 hfl v hv
   have hBHv : Anc (tr.HonestBlocks H) B Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr ho.1 hc).2 hBD).trans hDHv
@@ -407,7 +407,7 @@ theorem ResetPremisesUpTo.high_origin_held_at_vote {b : Time}
     (hF : Anc (tr.HonestBlocks H) ell.frame.F B) : B ∈ (tr.state y k).fg.tree := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨ellw, D, CV, hcw, hflw, -, -, -, hBD, -⟩ := hp.highOrigin_mem ho
-  obtain ⟨v, hv⟩ := fastLock_counted_nonempty hflw
+  obtain ⟨v, hv⟩ := fastLock_counted_nonempty (by rw [hp.run.stock]; exact sp.toParams.hn) hflw
   obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr ho.1 hflw v hv
   have hBHv : Anc (tr.HonestBlocks H) B Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr ho.1 hcw).2 hBD).trans hDHv
@@ -751,7 +751,7 @@ theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat
       clear * - hfloor hEh hle; omega
   -- a counted head of the origin, relayed to the voter before its freeze
   obtain ⟨ℓw, D, CV, hcw, hflw, -, -, -, hOD, -⟩ := highOrigin_mem hp hoO
-  obtain ⟨u, hu⟩ := fastLock_counted_nonempty hflw
+  obtain ⟨u, hu⟩ := fastLock_counted_nonempty (by rw [hp.run.stock]; exact sp.toParams.hn) hflw
   obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr hoO.1 hflw u hu
   have hOHv : Anc (tr.HonestBlocks H) O Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr hoO.1 hcw).2 hOD).trans hDHv
@@ -790,7 +790,7 @@ theorem ResetPremisesUpTo.raw_target_frozen_witness {b : Time}
       Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨ellw, D, CV, hcw, hflw, -, -, -, hOD, -⟩ := hp.highOrigin_mem ho
-  obtain ⟨u, hu⟩ := fastLock_counted_nonempty hflw
+  obtain ⟨u, hu⟩ := fastLock_counted_nonempty (by rw [hp.run.stock]; exact sp.toParams.hn) hflw
   obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr ho.1 hflw u hu
   have hOHv : Anc (tr.HonestBlocks H) O Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr ho.1 hcw).2 hOD).trans hDHv
@@ -847,7 +847,7 @@ theorem vote_height_lead (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
   -- the floor is at most the height of `B`: a counted head of the origin, relayed in time
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨ℓw, D, CV, hcw, hflw, -, -, -, hBD, hBx⟩ := highOrigin_mem hp ho
-  obtain ⟨v, hv⟩ := fastLock_counted_nonempty hflw
+  obtain ⟨v, hv⟩ := fastLock_counted_nonempty (by rw [hp.run.stock]; exact sp.toParams.hn) hflw
   obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr ho.1 hflw v hv
   have hBHv : Anc (tr.HonestBlocks H) B Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr ho.1 hcw).2 hBD).trans hDHv
@@ -911,7 +911,8 @@ theorem high_origin_low_J_root_before
   · have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
     obtain ⟨CV, hst⟩ := ho.2.2.1
     obtain ⟨_, C, hfl, hBC⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
-    obtain ⟨v, _, D, hDU, _, hBD, hacc⟩ := raw_writer_relay_source hr ho.1 (Or.inr hfl) hBC
+    obtain ⟨v, _, D, hDU, _, hBD, hacc⟩ := raw_writer_relay_source
+      (by rw [hp.run.stock]; exact sp.toParams.hn) hr ho.1 (Or.inr hfl) hBC
     rcases hacc with hg | ⟨q, hq, hqt⟩
     · obtain ⟨z, hz, m, hDm⟩ := hDU
       exact False.elim ((cutZ_lt_of_anc hp ho hz hDm hBD).2 hg)

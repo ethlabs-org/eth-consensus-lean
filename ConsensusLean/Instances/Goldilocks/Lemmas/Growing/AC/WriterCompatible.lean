@@ -101,7 +101,8 @@ theorem result_result_compatible_window_before_at (hrun : ACRun proposer tr H U)
 
 /-- A result and an optimistic lock of one slot, by writers honest at their writes, agree with
 windowed message service. -/
-theorem result_optimistic_compatible_window_before_at (hrun : ACRun proposer tr H U)
+theorem result_optimistic_compatible_window_before_at
+    (hrun : ACRun proposer tr H U)
     {a b : Time} {s : Nat} (hsync : ServiceWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
     {x x' : Fin sp.n} {i i' : Nat} (hx : x ∈ H (tr.time i)) (hx' : x' ∈ H (tr.time i'))
     {C O : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)}
@@ -111,6 +112,7 @@ theorem result_optimistic_compatible_window_before_at (hrun : ACRun proposer tr 
   by_contra hnc
   obtain ⟨ℓ, S, hc, ht, -, hmaj, -, hSs⟩ := result_side hrun hx hR
   obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := optimistic_seats hrun hx' hO
+  rw [hrun.stock] at h34
   have h1 := relayed_against_window hrun.localRun hsync ha hx hc ht hi hreset hSs hT
     fun h => hnc (Or.symm h)
   have hle := Set.ncard_le_ncard (Set.subset_univ (voters {v | v ∈ (tr.state x i).pool s}))

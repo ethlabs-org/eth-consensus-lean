@@ -123,7 +123,8 @@ def OptimisticTransfer : Prop :=
     ViableAtVote ℓ e (s + 1) B → EarlierVotesExtendAt tr H U i (s + 1) B →
     VoteExtends U e.msg B
 
-/-- **A1.4 (b) under growing faults, the next update.** `2f < n` and the honest voters of the
+/-- **A1.4 (b) under growing faults, the next update.** `2f < committeeSize` and
+the honest voters of the
 updater's pool are read at the update's cut; the votes of slot `s + 1` are those of nodes honest
 at their votes. -/
 def OptimisticNextUpdate : Prop :=
@@ -131,11 +132,12 @@ def OptimisticNextUpdate : Prop :=
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
     ACRun proposer tr H U → ∀ (s : Nat) (z : Fin sp.n) (k : Nat) (B : Blk sp.n FGP)
       (ℓ : ACLabel (goldilocksSA sp FGP ro)),
-    2 * (H (tr.time k))ᶜ.ncard < sp.n →
+    2 * (H (tr.time k))ᶜ.ncard < sp.committeeSize →
     (∀ x' j e, x' ∈ H (tr.time j) → VoteAt tr x' j e → e.msg.slot = s + 1 →
       VoteExtends U e.msg B) →
     z ∈ H (tr.time k) → UpdateAt tr z k (s + 1) ℓ →
-    sp.n ≤ 2 * {v | v ∈ H (tr.time k) ∧ ∃ x' ∈ (tr.state z k).pool (s + 1), x'.val = v}.ncard →
+    sp.committeeSize ≤ 2 *
+      {v | v ∈ H (tr.time k) ∧ ∃ x' ∈ (tr.state z k).pool (s + 1), x'.val = v}.ncard →
     (∀ x' ∈ (tr.state z k).pool (s + 1), x'.val ∈ H (tr.time k) →
       resolutionTime (tr.state z k) ℓ.frame x' < ETime.of (sp.ts (s + 1 : Nat) + 2 * sp.Δ)) →
     ∃ C, getConfirmation sp (tr.state z k) ℓ.frame (s + 1) = some C ∧ Anc U B C ∧
@@ -198,7 +200,7 @@ structure ACStepsAt : Prop where
   resultTransfer : ResultTransfer sp
   sourceCompatible : SourceCompatible sp
 
-/-- **Milestone ACSteps under growing faults**, for all SA parameters. -/
+/-- **Milestone ACSteps under growing faults**, for population-sized committees. -/
 def ACSteps : Prop := ∀ sp : SAParams, ACStepsAt sp
 
 end Consensus.Goldilocks.SA.Growing

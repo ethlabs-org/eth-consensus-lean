@@ -125,9 +125,13 @@ theorem writes_tryVote (x : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FG
   · rw [ite_eq_left h₂]
     exact .refl
   rw [ite_eq_right h₂]
-  refine (writes_optimistic _ Φ t ?_).mono fun B hB => ⟨_, List.mem_singleton_self _, hB⟩
-  rw [admitVote_latestConfirmed]
-  split_ifs <;> rfl
+  by_cases hm : A.mayVote (sp.slot t) = true
+  · simp only [hm, ite_true]
+    refine (writes_optimistic _ Φ t ?_).mono fun B hB => ⟨_, List.mem_singleton_self _, hB⟩
+    rw [admitVote_latestConfirmed]
+    split_ifs <;> rfl
+  · simp only [hm, Bool.false_eq_true, ite_false]
+    split_ifs <;> exact Writes.of_eq rfl
 
 theorem writes_updateConfirmation (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time)
     (s : Nat) :
@@ -417,15 +421,26 @@ theorem reclock_tryVote {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r�
   rw [ite_eq_right h₂]
   by_cases h₃ : 0 < sp.slot t
   · rw [ite_eq_left h₃]
-    refine (reclock_opt_admit hΦ h ?_ ?_ _).imp id fun hr => hr.mono
-      (fun _ h => h) fun B h => h.imp_right fun h => ⟨_, List.mem_singleton_self _, h⟩
-    · exact keepAll_unlock hΦ rfl
-    · rfl
+    by_cases hm : A.mayVote (sp.slot t) = true
+    · simp only [hm, ite_true]
+      refine (reclock_opt_admit hΦ h ?_ ?_ _).imp id fun hr => hr.mono
+        (fun _ h => h) fun B h => h.imp_right fun h => ⟨_, List.mem_singleton_self _, h⟩
+      · exact keepAll_unlock hΦ rfl
+      · rfl
+    · simp only [hm, Bool.false_eq_true, ite_false]
+      refine ⟨keepAll_unlock hΦ rfl, RecLock.mono ?_ (fun _ h => h) fun _ h => Or.inl h⟩
+      exact h.keep hΦ (keepAll_unlock hΦ rfl) rfl
   · rw [ite_eq_right h₃]
-    refine (reclock_opt_admit hΦ h ?_ ?_ _).imp id fun hr => hr.mono
-      (fun _ h => h) fun B h => h.imp_right fun h => ⟨_, List.mem_singleton_self _, h⟩
-    · exact KeepAll.of_eq rfl
-    · rfl
+    by_cases hm : A.mayVote (sp.slot t) = true
+    · simp only [hm, ite_true]
+      refine (reclock_opt_admit hΦ h ?_ ?_ _).imp id fun hr => hr.mono
+        (fun _ h => h) fun B h => h.imp_right fun h => ⟨_, List.mem_singleton_self _, h⟩
+      · exact KeepAll.of_eq rfl
+      · rfl
+    · simp only [hm, Bool.false_eq_true, ite_false]
+      exact ⟨KeepAll.of_eq rfl,
+        (h.keep hΦ (KeepAll.of_eq rfl) rfl).mono
+          (fun _ h => h) fun _ h => Or.inl h⟩
 
 theorem reclock_update {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r₀ : Nat}
     {Res Opt : SA.Blk sp.n FGP → Prop} {A : SA.SAState sp.n} (h : RecLock Φ t r₀ Res Opt A)

@@ -87,7 +87,8 @@ theorem vote_locks_compatible_at (hrun : Growing.GoldilocksRun proposer dg H tr)
       SA.lock_origin_readPoint hrun' hy hcT l₀ hl₀ (by rw [hs]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 (hsub hL₀) (hΦU hB₀) (hL₀r.trans hB₀r.symm)
     refine down (Anc.mono hsub hL₀D)
-      (SA.origin_compatible hU (hΦ'U.trans hsub) h34 hf fun v hv hvH => ?_)
+      (SA.origin_compatible hU (hΦ'U.trans hsub) h34
+        (by simpa only [hrun'.stock] using hf) fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨hjd, hvote⟩ := sa_voteAt_upTo.mp hvote
     have hvj : e'.msg.val ∈ H (tr.time j) := hrun.antitone hjd hvH

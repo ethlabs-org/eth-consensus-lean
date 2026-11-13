@@ -195,6 +195,7 @@ theorem FrameWindow.unanimous_update_selection_at
     apply SA.state_pool_slot sp hr hy k u v
     rwa [hs]
   obtain ⟨hconf, hfast⟩ := SA.confirmation_of_unanimous_early_pool
+    hrun.stock
     (SA.frameIn_of_callAt hr hy hc').1 hvi.1 hPg
     (hf (tr.time k) (hrun.time_nonneg k) hkb) hslots hpool
   exact ⟨hvi, hconf, hfast, hva⟩

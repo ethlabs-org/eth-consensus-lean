@@ -53,11 +53,8 @@ theorem sysOf_eagerFrom (rho : Run F E) {g : Time}
 external data. -/
 theorem sysOf_adequate {Prog : Type} (Y : Progress (sysOf O F V) Prog)
     (hY : Y.toExternal = sysExternal O F V) : (sysOf O F V).Adequate Y := by
-  obtain ⟨⟨Ext, ext, Admits⟩, holds, mono, shrink, _⟩ := Y
-  simp only [sysExternal, External.mk.injEq] at hY
-  obtain ⟨rfl, hext, hadm⟩ := hY
-  cases eq_of_heq hext
-  cases eq_of_heq hadm
+  obtain ⟨X, holds, mono, shrink, _⟩ := Y
+  cases hY
   refine ⟨fun E => ?_, ?_, ?_⟩
   · exact ⟨((Fintype.equivFin V).symm, fun ρ => Classical.choose
       ((protoOf F E).selSpec ρ).admits_exists), fun ρ => Classical.choose_spec
@@ -69,13 +66,14 @@ theorem sysOf_adequate {Prog : Type} (Y : Progress (sysOf O F V) Prog)
         key sel hsel p.submit hash g
     refine ⟨⟨p.env, Run.mk p.faultyAt p.faultyAt_mono p.horizon
       events key sel p.submit relay hash⟩,
-      hvalid, ?_, rfl, sysOf_eagerFrom _ heager, fun _ _ _ _ h => h⟩
+      hvalid, ?_, rfl, sysOf_eagerFrom _ heager, (fun _ _ _ _ h => h), fun _ => rfl⟩
     rintro ⟨x, y, hxy, -, -, hh⟩
     exact hxy (hinj hh)
   · rintro ⟨E, rho⟩ hv b hb0 hbh
     obtain ⟨hP, hview, hlog, hexc⟩ := rho.truncate_prefix (O := O) hv b
     exact ⟨⟨E, rho.truncate b⟩, rho.truncate_valid hv hb0 hbh, hP, hview, hlog, hexc,
-      fun _ _ _ _ _ h => by rw [Run.truncate_eq]; exact shrink hbh h⟩
+      (fun _ _ _ _ _ h => by rw [Run.truncate_eq]; exact shrink hbh h),
+      fun _ => by rw [Run.truncate_eq]; rfl⟩
 
 end Consensus.Model
 

@@ -237,8 +237,9 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
   have hwin : D.query + (Q.index : Time) * (4 * Q.params.Δ) ≤ Q.heal := by
     linarith [D.reserve]
   obtain ⟨u, hlo, hhi, hr⟩ := hrec D.query hq
-    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, skeleton] using hwin)
-    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, skeleton,
+    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, goldilocksWith,
+      skeleton] using hwin)
+    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, goldilocksWith, skeleton,
       Model.Run.point] using hwin.trans hb)
   have htime : (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime u = Q.params.ts u := by
     change (u : Time) * (4 * Q.run.1.ΔAC) = 4 * Q.run.1.ΔAC * u

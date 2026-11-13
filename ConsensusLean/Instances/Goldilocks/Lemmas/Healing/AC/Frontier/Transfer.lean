@@ -43,7 +43,8 @@ variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP} {tr : SATrace sp
 /-- **The live locks at a slot-`(s+1)` vote at a time `≤ b` are compatible with `B`**, a block
 compatible with every origin within `b` of label at most `s`, that the earlier honest
 slot-`(s+1)` votes extend (`f < n/2`). -/
-theorem vote_locks_compatibleAC (hrun : ACRunU wm u proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
+theorem vote_locks_compatibleAC
+    (hrun : ACRunU wm u proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
     {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
     {B : Blk sp.n FGP}
@@ -76,7 +77,8 @@ theorem vote_locks_compatibleAC (hrun : ACRunU wm u proposer tr H U) (hf : 2 * H
   · obtain ⟨Φ', A, D, -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
       lock_origin_readPointU hrun hy hc l₀ hl₀ (by rw [hs]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
-    refine down hL₀D (origin_compatible hU hΦ'U h34 hf fun v hv hvH => ?_)
+    refine down hL₀D (origin_compatible hU hΦ'U h34 (by simpa only [hrun.stock] using hf)
+      fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
     have hsj : e'.msg.slot = sp.slot (tr.time j) := (castAt_specU hr hvH hcj).2.1
@@ -251,7 +253,8 @@ theorem viable_anc_FAC (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n} (hy : y ∈
 
 /-- **First transfer up to `b`**: an honest slot-`(s+1)` vote at a time `≤ b` extends an origin
 within `b` of label `s` that the earlier honest slot-`(s+1)` votes extend. -/
-theorem first_transfer_stepAC (hrun : ACRunU wm u proposer tr H U) (htriv : TrivialFrames tr H)
+theorem first_transfer_stepAC
+    (hrun : ACRunU wm u proposer tr H U) (htriv : TrivialFrames tr H)
     (htick : TickDuty tr H)
     (hsy : SyncUntilAC (goldilocksSA sp FGP ro) H U b tr) (hf : 2 * Hᶜ.ncard < sp.n)
     (hJ : ∀ s : Nat, sp.ts s + sp.Δ ≤ b → FaultBound tr H (sp.ts s + sp.Δ))
@@ -279,7 +282,8 @@ theorem first_transfer_stepAC (hrun : ACRunU wm u proposer tr H U) (htriv : Triv
 /-- **Later batch up to `b`**: an honest slot-`(s+1)` vote at a time `≤ b` extends a block `B`
 that every honest slot-`s` vote extends, compatible with every origin within `b` of label at
 most `s`, and extended by the earlier honest slot-`(s+1)` votes. -/
-theorem later_transfer_stepAC (hrun : ACRunU wm u proposer tr H U) (htriv : TrivialFrames tr H)
+theorem later_transfer_stepAC
+    (hrun : ACRunU wm u proposer tr H U) (htriv : TrivialFrames tr H)
     (htick : TickDuty tr H)
     (hsy : SyncUntilAC (goldilocksSA sp FGP ro) H U b tr) (hf : 2 * Hᶜ.ncard < sp.n)
     (hJ : ∀ s : Nat, sp.ts s + sp.Δ ≤ b → FaultBound tr H (sp.ts s + sp.Δ))
@@ -309,7 +313,8 @@ theorem later_transfer_stepAC (hrun : ACRunU wm u proposer tr H U) (htriv : Triv
 
 /-- **Extending the vote frontier up to `b`**: `P_{s+1}` and `V_s` give `V_{s+1}`, by strong
 induction on the cut over the honest slot-`(s+1)` votes (the first bad vote). -/
-theorem votes_below_succAC (hrun : ACRunU wm u proposer tr H U) (htriv : TrivialFrames tr H)
+theorem votes_below_succAC
+    (hrun : ACRunU wm u proposer tr H U) (htriv : TrivialFrames tr H)
     (htick : TickDuty tr H)
     (hsy : SyncUntilAC (goldilocksSA sp FGP ro) H U b tr) (hf : 2 * Hᶜ.ncard < sp.n)
     (hJ : ∀ s : Nat, sp.ts s + sp.Δ ≤ b → FaultBound tr H (sp.ts s + sp.Δ))

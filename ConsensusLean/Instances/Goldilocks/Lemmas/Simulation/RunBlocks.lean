@@ -56,7 +56,7 @@ theorem simTrace_carried_vote_unforgeable (hf : rho.point.ConstantFaults)
         ∃ j < i, (simTrace S rho hn).EmitAt v.val j v := by
   intro y _ k B hc m hm hh
   rw [mem_honestKeys_iff] at hh
-  have hmem : voteObj m ∈ payloadObjs B.fgPayload B.acPayload :=
+  have hmem : voteObj (binding := stock) m ∈ payloadObjs B.fgPayload B.acPayload :=
     List.mem_append_right _ (List.mem_map.mpr ⟨m, List.mem_append_left _ hm, rfl⟩)
   obtain ⟨i, t, hik, hs, hr⟩ := block_payload_source S rho hn hf hv hc hmem hh
     (show rho.signerOf (voteObj m) = some (rho.key m.val) from rfl)
@@ -84,7 +84,7 @@ theorem simTrace_att_unforgeable (hf : rho.point.ConstantFaults) (hv : rho.Execu
   rw [mem_honestKeys_iff] at hh
   rcases hc with hc | ⟨B, hc, ha⟩
   swap
-  · have hmem : attObj a ∈ payloadObjs B.fgPayload B.acPayload :=
+  · have hmem : attObj (binding := stock) a ∈ payloadObjs B.fgPayload B.acPayload :=
       List.mem_append_left _ (List.mem_map.mpr ⟨a, ha, rfl⟩)
     obtain ⟨i, t, hik, hs, hr⟩ := block_payload_source S rho hn hf hv hc hmem hh
       (show rho.signerOf (attObj a) = some (rho.key a.val) from rfl)

@@ -79,8 +79,10 @@ theorem admits_tryVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) 
   split_ifs
   · exact Admits.refl _ _
   · exact Admits.refl _ _
+  all_goals try exact Admits.of_pool_eq rfl
   all_goals
     refine Admits.trans ?_ (Admits.of_pool_eq (optimistic_pool_eq _ _ _))
+  all_goals
     refine Admits.trans (Admits.of_pool_eq ?_) (admits_admitVote _ _ _)
     rfl
 
@@ -129,7 +131,8 @@ theorem restart_admits (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : SAState 
   unfold acRestart
   generalize ro.order t Φ = l
   set A₀ : SAState sp.n := { SAState.initial sp.genesisRoot with
-    locks := A.locks, latestConfirmed := A.latestConfirmed, restartTime := (t : WithBot Time) }
+    locks := A.locks, latestConfirmed := A.latestConfirmed, restartTime := (t : WithBot Time),
+    mayVote := A.mayVote }
   suffices h : ∀ (l : List (Blk sp.n FGP)) (acc : SAState sp.n × List (Em sp FGP)),
       Admits A₀ acc.1 t → Admits A₀ (l.foldl (fun acc B => let r := acOnBlock sp self acc.1 Φ t B;
         (r.1, acc.2 ++ r.2)) acc).1 t by
@@ -188,8 +191,10 @@ theorem grows_tryVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (
   split_ifs
   · exact fun _ _ h => h
   · exact fun _ _ h => h
+  all_goals try exact Grows.of_pool_eq rfl
   all_goals
     refine Grows.trans ?_ (Grows.of_pool_eq (optimistic_pool_eq _ _ _))
+  all_goals
     refine Grows.trans (Grows.of_pool_eq ?_) (grows_admitVote _ _ _)
     rfl
 
@@ -347,10 +352,17 @@ private theorem tryVote_vok_keep (self : Fin sp.n) {A : SAState sp.n} (h : VOK A
     ⟨(optimistic_vok_keep (admitVote_vok_keep (h.of_eq hp hv) t v).1 Φ t).1,
       (Keep.of_eq hp hv).trans ((admitVote_vok_keep (h.of_eq hp hv) t v).2.trans
         (optimistic_vok_keep (admitVote_vok_keep (h.of_eq hp hv) t v).1 Φ t).2)⟩
+  have keyNoVote : ∀ (A₂ : SAState sp.n), A₂.pool = A.pool → A₂.voteStamp = A.voteStamp →
+      VOK A₂ ∧ Keep A A₂ := by
+    intro A₂ hp hv
+    exact ⟨h.of_eq hp hv, Keep.of_eq hp hv⟩
   split_ifs
   · exact ⟨h, Keep.refl _⟩
   · exact ⟨h, Keep.refl _⟩
-  all_goals exact key _ rfl rfl
+  all_goals
+    first
+    | exact key _ rfl rfl
+    | exact keyNoVote _ rfl rfl
 
 private theorem fold_admit_vok_keep (t : Time) (l : List (Vote sp.n)) {A : SAState sp.n}
     (h : VOK A) :
@@ -473,7 +485,10 @@ theorem VoteClosed.tryVote {P : SAState sp.n → Prop} (hP : VoteClosed P) (self
   split_ifs
   · exact h
   · exact h
-  all_goals exact key _ rfl rfl
+  all_goals
+    first
+    | exact key _ rfl rfl
+    | exact hP.congr A _ rfl rfl h
 
 theorem VoteClosed.acOnBlock {P : SAState sp.n → Prop} (hP : VoteClosed P) (self : Fin sp.n)
     {A : SAState sp.n} (Φ : Frm sp.n FGP) (t : Time) (B : Blk sp.n FGP) (h : P A) :

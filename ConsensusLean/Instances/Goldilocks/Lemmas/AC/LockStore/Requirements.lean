@@ -238,7 +238,7 @@ theorem interface_requirements : InterfaceRequirements sp := by
       exact headOK_of hU hΦ hΦU (h.unlock hU hΦ hΦU _ _ _) (fun _ h => h) (hall Φ) _ _
     · obtain ⟨A₁, V, σ, h1, h2, rfl⟩ := (h.callOK hU ⟨hΦ, hΦU⟩ hok).step_emits hU hok.1.1
         hok.1.2 x t (ht₀.trans ht) c e he d hd
-      have hsp := stamp_parent sp FGP ro x U hU _ _ _ (ACInterface.ReachableAt.step c hr ht hok)
+      have hsp := stamp_parent sp FGP ro x U hU _ _ _ (ACInterface.ReachableAtFrom.step c hr ht hok)
       beta_reduce at hsp
       rw [← h2] at hsp
       exact headOK_of hU hok.1.1 hok.1.2 h1 (fun B hB => voteDomain_subset_tree hB)

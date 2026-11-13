@@ -14,13 +14,14 @@ per output identifier of its schema), and its slashing rule. There is no slot,
 proposer or block here: a proposer is a role whose selection has one key and
 whose duty acts at the proposal time, and blocks are items of the protocol.
 
-Honest code knows only the public parameters `n`, `ΔAC` and `ΔFG`, and its own key
-(`init` and `restore` receive it). It never sees the selection, the PKI, the
+Honest code knows the public parameters `n`, `ΔAC` and `ΔFG`, its own key and
+its own role membership (`init` and `restore` receive both). It never sees
+other nodes' membership, the PKI, the
 fault profile, the GST, the awake profile, the submission or relay functions, or
 the hash function: the engine gives it its own and relayed transactions (at its
-ticks) and the digests of the items it receives or signs. It learns its own
-selection only by acting: dispatch is engine-side (a duty's message is signed
-only if the node's key is selected for the duty's role). Hiding the selection
+ticks) and the digests of the items it receives or signs. Dispatch is engine-side:
+a candidate is signed only if the key is selected for both the duty and candidate roles.
+Hiding the selection
 from honest code buys nothing against the all-knowing adversary, and
 the model does not attempt it. -/
 
@@ -91,6 +92,13 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   admissible set of keys. -/
   selSpec : Role → SelSpec pub.n
   role : Duty → Role
+  /-- The role authorizing a candidate, including a queued historical message.
+  Both the duty role and this role must select the signing key. -/
+  candidateRole : Duty → Msg Item Body → Role := fun d _ => role d
+  /-- The signing population whose participation is observed at time `t`.
+  `none` observes the whole population; `some r` observes the actual selection
+  of role `r`. This public query cannot inspect state, faults or awake profiles. -/
+  participationRole : Time → Option Role := fun _ => none
   /-- The duties due at a time, in the order the engine runs them (one after
   the other, each from the state the previous one left). -/
   duties : Time → List Duty
@@ -98,16 +106,16 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   after `process` and before gossip, so that what a receipt makes the node
   emit leaves at the delivery's own time. Default: none. -/
   deliverDuties : Time → List Duty := fun _ => []
-  /-- The initial state of the node with the given key. -/
-  init : Key pub → State
+  /-- The initial state, given the own key and its actual role membership. -/
+  init : Key pub → (Role → Bool) → State
   /-- The clock update at a tick, with the node's cumulative own and relayed transactions
   so far. -/
   clock : State → Time → List Tx → State
   /-- Duty `d`: the new state and ordered candidates signed in its selected role.
   An unselected duty does not execute. For a selected duty the engine applies
-  the state even if candidates are refused. `act` gets no selection or
-  release-result argument and no failure feedback, so the state it returns
-  cannot depend on selection or refusal; a later duty (also within the tick)
+  the state even if candidates are refused. Own membership is known at init/restore;
+  there is no release feedback, no fault or awake oracle, and no other nodes'
+  membership. A later duty (also within the tick)
   learns of a successful release only through `recordOwn`. A purely local
   step returns `[]`. Candidates are released in list order through `releaseAll`;
   each successful release updates holdings before the next candidate's guards. -/
@@ -127,7 +135,7 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   durable : State → Durable
   /-- The state after a restart of the node with the given key, from what it
   kept, at the restart time. -/
-  restore : Key pub → Durable → Time → State
+  restore : Key pub → (Role → Bool) → Durable → Time → State
   /-- The output ledgers, one per output identifier. -/
   out : Out → State → Ledger
   /-- The slashing rule: two objects that, signed by one validator, convict

@@ -22,7 +22,7 @@ theorem proposer_voters_agree (sp : SAParams) : ProposerVotersAgree sp := by
     hsync heq B hB hBs
   exact proposer_voters_agree_of_honest_max hr hp hy hpp hprop hti hc hs hP hsync heq B hB hBs
 
-/-- The AC step statements at arbitrary SA parameters, with growing faults. -/
+/-- The AC step statements for population-sized committees, with growing faults. -/
 theorem acStepsAt (sp : SAParams) : ACStepsAt sp where
   proposerVotersAgree := proposer_voters_agree sp
   firstTransfer := first_transfer sp

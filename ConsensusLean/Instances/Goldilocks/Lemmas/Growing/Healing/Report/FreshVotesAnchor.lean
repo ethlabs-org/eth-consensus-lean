@@ -58,7 +58,12 @@ theorem FrameWindow.read_locks_below_of_earlier_heads_at
   change sp.slot (tr.time i) = p at hslot
   rw [hslot] at ht
   exact SA.current_read_lock_below_of_earlier_heads hri
-    (hf _ (hrun.time_nonneg i) (ht.trans hpb)) hy hcast hl (hs.trans hes.symm)
+    (by
+      have hbound := hf _ (hrun.time_nonneg i) (ht.trans hpb)
+      have hn := sp.toParams.hn
+      change 1 ≤ sp.n at hn
+      rw [hrun.stock]
+      omega) hy hcast hl (hs.trans hes.symm)
     (hPhi.2 hdom.1.1)
     (fun x hx j hji ev hv hs' => by
       obtain ⟨ellx, hcx, hex⟩ := hv

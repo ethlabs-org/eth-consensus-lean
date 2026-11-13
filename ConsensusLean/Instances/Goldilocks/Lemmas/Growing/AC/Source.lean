@@ -37,7 +37,8 @@ private theorem toFG_some {sp : SAParams} {FGP : Type} {A : SAState sp.n}
     exact ⟨(deepest_mem hC').1, hj, rfl⟩
 
 /-- Source compatibility for an ancestor of the block stored by a historical fast lock. -/
-theorem source_compatible_stored (sp : SAParams) (FGP : Type) (ro : ReplayOrder sp FGP)
+theorem source_compatible_stored (sp : SAParams)
+    (FGP : Type) (ro : ReplayOrder sp FGP)
     (proposer : Nat → Fin sp.n) (H : Time → Set (Fin sp.n))
     (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro)
     (hrun : ACRun proposer tr H U) (s m : Nat) (w x : Fin sp.n) (i₀ i : Nat)

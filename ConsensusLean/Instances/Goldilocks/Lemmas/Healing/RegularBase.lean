@@ -501,7 +501,8 @@ theorem FrameWindow.read_locks_below_of_earlier_heads {s₀ p floor : Nat}
   · exact h
   have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hPhi := SA.frameIn_of_callAt hac.localRun hy hc.1
-  exact SA.current_read_lock_below_of_earlier_heads hac hf hy hc hl (hs.trans hes.symm)
+  exact SA.current_read_lock_below_of_earlier_heads hac
+    (by rw [hac.stock]; have := sp.toParams.hn; omega) hy hc hl (hs.trans hes.symm)
     (hPhi.2 hdom.1.1) (fun x hx j hj e' he' hs' => hIH x hx j hj e' he' (hs'.trans hes))
     (hPhi.2 hB) hBr
 

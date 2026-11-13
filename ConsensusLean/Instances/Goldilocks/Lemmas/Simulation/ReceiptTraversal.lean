@@ -47,12 +47,12 @@ theorem deliverSeq_block_accepts {proposer : Nat → Fin sp.n}
     {tr : GoldilocksTrace sp ro} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
     {hs : List (Header Info × Nat)} {y : Fin sp.n} {u : Time} {B : Blk sp}
     {os : List (Wire sp.n)} {r e : Nat}
-    (hd : decodeBlock sp hs (blockObj sp B) = some B)
+    (hd : decodeBlock sp (binding := stock) hs (blockObj sp B) = some B)
     (hseq : DeliverSeq proposer tr dg hs y u (blockObj sp B :: os) r e)
     (ht : ¬ sp.toParams.slotOf u < B.slot)
     (hon : ∃ dst', (tr.state y r).fg.onBlock B = some dst') :
     tr.AcceptAt y r B ∧ r < e := by
-  have hc : canonEvent sp ro hs (blockObj sp B) = some (.block B) := by
+  have hc : canonEvent sp ro (binding := stock) hs (blockObj sp B) = some (.block B) := by
     simp only [canonEvent, hd]
   obtain ⟨dst', hon⟩ := hon
   cases hseq with
@@ -80,8 +80,8 @@ theorem deliverSeq_forward_genesis {proposer : Nat → Fin sp.n}
     (h : DeliverSeq proposer tr dg hs y u (forwardObj sp x t none B).parts j j') :
     DeliverSeq proposer tr dg hs y u (blockObj sp B).parts j j' := by
   rw [Model.Obj.parts_eq] at h
-  have hz : canonEvent sp ro hs (forwardObj sp x t none B) = none := by
-    simp [canonEvent, forwardObj, decodeBlock, decodeVoteObj, decodeAttObj]
+  have hz : canonEvent sp ro (binding := stock) hs (forwardObj sp x t none B) = none := by
+    simp [canonEvent, forwardObj, decodeBlock, decodeVoteObj, decodeAttObj, stock]
   cases h with
   | event e he _ _ => rw [hz] at he; cases he
   | noCut e he _ _ => rw [hz] at he; cases he

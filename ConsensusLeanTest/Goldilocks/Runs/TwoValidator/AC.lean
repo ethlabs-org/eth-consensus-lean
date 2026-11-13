@@ -132,6 +132,7 @@ theorem optimisticConfirmation_of_some {A : SAState sp.n} {Φ : N.Frm} {t : Time
 
 /-- The vote of slot `0`, at time `1`. -/
 theorem tryVote_zero {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} (h : ChainFrame Φ 0 0 0)
+    (hperm : A.mayVote 0 = true)
     (hj : A.restartTime = ⊥) (hvs : A.votedSlot = -1) (hL : LocksLe A.locks 0) :
     ∃ d, tryVote sp y A Φ 1 = (admitVote sp { A with votedSlot := 0 } 1 (vote y 0),
       [⟨vote y 0, { A with votedSlot := 0 }, some d⟩]) := by
@@ -142,6 +143,7 @@ theorem tryVote_zero {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} (h : ChainFr
       rw [ts_nat, hvs]; push Not; exact ⟨joined_of_bot hj _, by decide, by decide⟩),
     ite_eq_right (by rw [ts_nat]; change ¬ ((1 : Int) < 4 * 0 + 1 ∧ _); omega),
     ite_eq_right (lt_irrefl 0)]
+  simp only [hperm, ↓reduceIte]
   have hanc : getAnchor sp A Φ 1 = blk 0 := h.getAnchor_eq hL le_rfl (Or.inr rfl)
   have hhead : getHead sp A Φ 1 (Φ.viableTree (voteDomain sp A Φ 0))
       (mergedVoteView sp A Φ 0) ((0 : Nat) - 1) = blk 0 := by
@@ -173,6 +175,7 @@ theorem jx_succ_le (k : Nat) : jx (k + 1) ≤ k := by
 
 /-- **The vote of slot `k + 1`**, on the block of that slot, at `t_{k+1}`. -/
 theorem tryVote_blk {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} {f k : Nat}
+    (hperm : A.mayVote (k + 1) = true)
     (h : ChainFrame Φ f (jx (k + 1)) (k + 1)) (hj : A.restartTime = ⊥)
     (hvs : A.votedSlot = (k : Int)) (hpool : A.pool (k + 1) = []) (hL : LocksLe A.locks k)
     (htip : 1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ A.locks) :
@@ -190,6 +193,7 @@ theorem tryVote_blk {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} {f k : Nat}
       exact ⟨joined_of_bot hj _, by push_cast; omega, by rw [delta1]; push_cast; linarith⟩),
     ite_eq_right (fun hc => hc.2.elim (by omega) (fun hn => hn (voteReady_blk h hf))),
     ite_eq_left (by omega : 0 < k + 1)]
+  simp only [hperm, ↓reduceIte]
   set V := mergedVoteView sp A Φ (k + 1)
   set L₁ := unlock sp A.locks Φ ((4 * (k + 1) : Nat) : Int) (((k + 1 : Nat) : Int) - 1) V
   have hL₁ : LocksLe L₁ k := unlock_le h hL _ _ _
@@ -441,7 +445,7 @@ theorem updateConfirmation_tick {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f
       { A with saved := Function.update A.saved σ (some (blk σ).root) } := by
     unfold updateLatestConfirmed; rw [ite_eq_left (by dsimp only; rw [hlat]; exact hanc)]
   simp only [Option.map_some, hul, ite_self]
-  refine ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, trivial, trivial, _, ?_, rfl⟩
+  refine ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, trivial, trivial, _, ?_, rfl⟩
   rintro p (⟨B, hB, rfl⟩ | ⟨B, hB, rfl⟩)
   · exact ⟨B, (deepest_mem hB).1.1.1.1, rfl⟩
   · exact ⟨B, (deepest_mem hB).1.1.1.1, rfl⟩

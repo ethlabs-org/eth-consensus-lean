@@ -59,6 +59,10 @@ structure Skeleton (n : Nat) : Type 1 where
   phase : Kind → Nat
   /-- Who may sign for a kind (at every slot). -/
   kindSel : Kind → SelSpec n
+  /-- The committee kind whose participation governs available-chain service.
+  `none` keeps population participation. Its historical slot is the slot of the
+  observation, never the later fault-charge time. -/
+  participationKind : Option Kind := none
   /-- The steps of a tick, in the order the engine runs them; at a tick, the
   steps due at it run (`Skeleton.duties`). By default the proposal, then the
   kinds in `kinds` order, then the poll proposal and the poll message.
@@ -134,8 +138,11 @@ structure ChainShape (pub : Public) (Out : Type) (Info : Type) [DecidableEq Info
   /-- What a restart keeps. -/
   Durable : Type
   decBody : DecidableEq Body
-  /-- The initial state of the node with the given key. -/
-  init : Key pub → State
+  /-- Override the duty's signing role for a queued historical message. -/
+  candidateRole : ShapeDuty skel.Kind → Msg (Header Info) Body →
+    Option (ShapeRole skel.Kind) := fun _ _ => none
+  /-- The initial state, given the own key and actual own-role membership. -/
+  init : Key pub → (ShapeRole skel.Kind → Bool) → State
   /-- The clock update at every tick. -/
   clock : State → Time → State
   /-- Slot proposal: the new state, and parent, info, carried objects.
@@ -174,7 +181,7 @@ structure ChainShape (pub : Public) (Out : Type) (Info : Type) [DecidableEq Info
   recordOwn : State → ShapeObj pub.n skel.Kind Info Body → List (Header Info × Nat) → State
   durable : State → Durable
   /-- The state after a restart, from the own key, what was kept, and the time. -/
-  restore : Key pub → Durable → Time → State
+  restore : Key pub → (ShapeRole skel.Kind → Bool) → Durable → Time → State
   /-- The output chains, one per output identifier. -/
   out : Out → State → Chain Info
   /-- The slashing rule: two objects that, signed by one validator, convict it.

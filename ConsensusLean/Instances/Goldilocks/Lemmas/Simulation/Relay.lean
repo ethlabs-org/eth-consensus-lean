@@ -108,6 +108,7 @@ theorem eq_blockObj_of_decodeBlock {hs : List (Header Info × Nat)} {o : Wire sp
 theorem eq_voteObj_of_decodeVoteObj {o : Wire sp.n} {v : Vote sp.n}
     (h : decodeVoteObj sp o = some v) : o = voteObj v := by
   unfold decodeVoteObj at h
+  dsimp only [stock] at h
   split at h
   · rename_i k w
     cases hw : decodeVote sp.n w with
@@ -116,8 +117,21 @@ theorem eq_voteObj_of_decodeVoteObj {o : Wire sp.n} {v : Vote sp.n}
       simp only [hw, Option.filter_some, decide_eq_true_eq] at h
       split_ifs at h with hk
       cases h
-      simp only [voteObj, encodeVote_of_decodeVote hw, hk]
-  · cases h
+      simp only [voteObj, encodeVote_of_decodeVote hw, hk, VoteBinding.voteRole, stock]
+  · rename_i excluded
+    rcases o with ⟨auth, msg, children⟩
+    cases auth with
+    | none => cases h
+    | signed k role =>
+      cases role <;> try { cases h }
+      cases msg with
+      | item _ => cases h
+      | data body =>
+        cases body <;> try { cases h }
+        rename_i w
+        cases children with
+        | nil => exact False.elim (excluded k w rfl)
+        | cons _ _ => cases h
 
 /-- A received object that decodes to an attestation is that attestation's canonical object. -/
 theorem eq_attObj_of_decodeAttObj {o : Wire sp.n} {a : FG.Att sp.n}
@@ -616,14 +630,17 @@ theorem act_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
     Q (((Model.protoOf (compiled (goldilocks S)) E).act st d).1.1 hn) := by
   cases d with
   | propose s h' =>
-    simp only [Model.protoOf, compiled, compile, withMempool, goldilocks, hn, ↓reduceDIte]
+    simp only [Model.protoOf, compiled, compile, withMempool, goldilocks, goldilocksWith,
+      hn, ↓reduceDIte]
     exact hprop _ (s : Nat) h
   | act s k => exact k.elim
   | pollPropose t =>
-    simp only [Model.protoOf, compiled, compile, withMempool, goldilocks, hn, ↓reduceDIte]
+    simp only [Model.protoOf, compiled, compile, withMempool, goldilocks, goldilocksWith,
+      hn, ↓reduceDIte]
     exact hnt _ h
   | poll t =>
-    simp only [Model.protoOf, compiled, compile, withMempool, goldilocks, hn, ↓reduceDIte]
+    simp only [Model.protoOf, compiled, compile, withMempool, goldilocks, goldilocksWith,
+      hn, ↓reduceDIte]
     exact hpoll _ (t : Time) h
 
 omit [DecidableEq V] in
@@ -843,7 +860,7 @@ theorem runDuties_signed (v : V) :
     · rw [rho.dutyStep_eq] at ho
       split at ho
       case isFalse => simp at ho
-      obtain ⟨m, cs, -, -, rfl⟩ :=
+      obtain ⟨m, cs, -, -, -, rfl⟩ :=
         (rho.mem_signedCandidate).mp (Model.releaseAll_subset _ _ _ _ o ho)
       exact ⟨_, _, m, cs, rfl⟩
     · exact runDuties_signed v ds _ o ho
@@ -913,8 +930,8 @@ theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled (goldiloc
       [Model.Obj.mk .none (.data .relay) cs] := by
     obtain ⟨c, cs₀, rfl⟩ := List.exists_cons_of_ne_nil (List.ne_nil_of_mem hkeep)
     have hcs' : ∀ h', (R.1.st.1 h').relayBuf = c :: cs₀ := fun _ => hcs
-    simp only [Model.gossipCandidates, Model.protoOf, compiled, compile, goldilocks, hn,
-      ↓reduceDIte, goldilocksShape, hcs']
+    simp only [Model.gossipCandidates, Model.protoOf, compiled, compile, goldilocks,
+      goldilocksWith, hn, ↓reduceDIte, goldilocksShape, hcs']
     rfl
   refine ⟨cs, hkeep, List.mem_append_right _ ?_⟩
   have hc : (Model.releasable R.1.seen (Model.Obj.mk .none (.data .relay) cs) &&

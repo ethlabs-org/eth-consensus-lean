@@ -171,7 +171,8 @@ theorem clean_source_proposal_parent_before_at (hp : ResetPremisesUpTo tr H prop
         split_ifs at hsel
         have h34 := (SA.deepest_mem hsel).1.2.1
         rw [hsl] at h34
-        refine SA.origin_compatible hU hΦU h34 hf fun v hv hvH => ?_
+        refine SA.origin_compatible hU hΦU h34
+          (by simpa only [hS.run.stock] using hf) fun v hv hvH => ?_
         obtain ⟨hvs, q', _, e', hv', rfl⟩ := SA.optimisticPoint_pool_vote hS.run hpH hpt hv hvH
         exact votes _ hvH q' e' hv' (by rw [hvs]; clear * - hlσ hle; omega)
     rcases hcomp with h | h

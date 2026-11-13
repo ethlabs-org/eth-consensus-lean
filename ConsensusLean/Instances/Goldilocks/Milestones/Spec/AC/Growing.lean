@@ -20,13 +20,13 @@ namespace Growing
 /-- **The AC trace contract under growing faults** (claims C0.5 (a), (b)): the laws of
 `ACLocalRun`, each for the nodes honest at the time of the cut (or the time) it constrains. -/
 structure ACLocalRun (A : ACInterface P FGP) (H : Time → Set (Fin P.n)) (U : Set A.Blk)
-    (tr : ACTrace A) : Prop where
+    (tr : ACTrace A) (ini : Fin P.n → A.State := fun _ => A.initial) : Prop where
   /-- Compromise is permanent. -/
   antitone : Antitone H
   /-- `U` is coherent: roots injective, slots increasing along parent edges. -/
   coherent : Coherent U
   /-- Each node honest at time `0` starts from the initial AC state. -/
-  init : ∀ y ∈ H 0, tr.init y = A.initial
+  init : ∀ y ∈ H 0, tr.init y = ini y
   /-- Each call of a node honest at its time executes the AC on the pre-state, the label's frame
   and the cut's time. -/
   exec : ∀ i ℓ, tr.label i = some ℓ → tr.node i ∈ H (tr.time i) →

@@ -173,6 +173,7 @@ private theorem tryVote_pool (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FG
   split_ifs
   · exact List.Subset.refl _
   · exact List.Subset.refl _
+  all_goals try exact List.Subset.refl _
   all_goals
     intro w hw
     rw [optimistic_pool]

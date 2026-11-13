@@ -16,7 +16,8 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 /-- The fault bound is read at the later call, not at the historical lock writer. -/
-theorem fastLock_compatible_of_votes (hrun : ACRun proposer tr H U)
+theorem fastLock_compatible_of_votes
+    (hrun : ACRun proposer tr H U)
     {x : Fin sp.n} {j i s : Nat} (hx : x ∈ H (tr.time j)) (hji : j < i)
     {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr x j s D CV)
     (hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n)
@@ -35,7 +36,8 @@ theorem fastLock_compatible_of_votes (hrun : ACRun proposer tr H U)
   obtain ⟨hkt, hv⟩ := upTo_voteAt.mp hv
   exact hvotes z k hki (hr.antitone hkt hz) e hv hs
 
-private theorem update_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} {c s : Nat}
+private theorem update_side
+    (hrun : ACRun proposer tr H U) {Y : Fin sp.n} {c s : Nat}
     (hY : Y ∈ H (tr.time c)) {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hfl : FastUpdateAt tr Y c s D CV) :
     ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
@@ -54,7 +56,8 @@ private theorem update_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} {c s :
       resolutionTime (tr.state Y c) ℓ.frame v < ETime.of (sp.ts s + 2 * sp.Δ)}⟩
   set T := supporters ℓ.frame V s D
   have hCD := (deepest_mem hD).1.1.2.2
-  have hfast : sp.n ≤ 2 * T.ncard := (deepest_mem hD).1.2.2
+  have hfast : sp.n ≤ 2 * T.ncard := by
+    simpa only [FastTest, confirmationScore, hrun.stock] using (deepest_mem hD).1.2.2
   have hmaj' : (voters {v | v ∈ (tr.state Y c).pool s}).ncard < 2 * T.ncard := by
     have hmajC := (deepest_mem hC).1.2.2
     unfold confirmationScore at hmajC
@@ -127,7 +130,8 @@ private theorem against_update
 
 /-- Two historical locks are compatible even if their writers do not survive each other.
 The shared honest validator in the optimistic case is chosen at the later write cut. -/
-theorem fastLock_same_slot (hrun : ACRun proposer tr H U) {s : Nat}
+theorem fastLock_same_slot
+    (hrun : ACRun proposer tr H U) {s : Nat}
     {w x : Fin sp.n} {i₀ j : Nat} {B D : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)}
     (hw : w ∈ H (tr.time i₀)) (hfl : FastLockAt tr w i₀ s B CV)
     (hx : x ∈ H (tr.time j)) (hfl' : FastLockAt tr x j s D CV')
@@ -136,6 +140,7 @@ theorem fastLock_same_slot (hrun : ACRun proposer tr H U) {s : Nat}
     {d : Time} (hi₀ : OptimisticLockAt tr w i₀ s B CV → tr.time i₀ ≤ d)
     (hj : tr.time j ≤ d)
     (hf : 2 * (H d)ᶜ.ncard < sp.n) : Compatible U B D := by
+  have hstock := hrun.stock
   have hr := hrun.localRun
   have hU := hr.coherent
   have hle : ∀ T : Set (Fin sp.n), T.ncard ≤ sp.n := fun T =>

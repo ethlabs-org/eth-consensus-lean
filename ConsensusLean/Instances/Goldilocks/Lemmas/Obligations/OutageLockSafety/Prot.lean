@@ -85,7 +85,7 @@ theorem unlockKeeps_of_voteCompat (hrun : GoldilocksRun proposer dg H tr) (hnc :
   refine SA.unlockTarget_unlockView_held_of_honest_slot (Hn := H \ W) y ℓ.call hA' hΦ _ hB
     (hpool j) (hpool (j + 1)) hpay
     (fun x hx x' hx' hxH hval hs => heldVotes_honest_unique hrun hnc hy hcall hx hx' hxH.1 hval hs)
-    (fun x hx hxH hs Hd hHd hHdr => ?_) (by rw [hHn]; exact hf)
+    (fun x hx hxH hs Hd hHd hHdr => ?_) (by rw [hHn, hrun.stock]; exact hf)
   obtain ⟨k, e, hve, rfl⟩ := held_vote_cast hrun hnc hy hcall hx hxH.1
   obtain ⟨ℓ', hc', he'⟩ := hve
   have hkj : k < j := cast_lt_of_slot hrun hnc hxH.1 ⟨hc', he'⟩ hs

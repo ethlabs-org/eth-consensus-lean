@@ -554,6 +554,7 @@ theorem FrameWindow.vote_head_classification_of_service {s₀ floor : Nat} {hi :
   · exact ⟨Hd, hHd, hHDr, Or.inr (Or.inl hj)⟩
   have hAC := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   obtain ⟨htop, hcount, -⟩ := SA.optimisticLockAt_spec hAC hy ho
+  rw [hAC.stock] at hcount
   have hD : D ∈ ell.frame.tree := by
     obtain ⟨ellw, Aw, hp, hslot, hsel, -⟩ := ho
     unfold SA.optimisticSelect at hsel
