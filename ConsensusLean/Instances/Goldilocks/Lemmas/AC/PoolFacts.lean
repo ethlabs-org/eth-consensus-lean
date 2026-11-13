@@ -15,6 +15,15 @@ namespace Consensus.Goldilocks.SA
 
 variable (sp : SAParams)
 
+/-- A vote is in the pool of an integer slot `s` iff `s ≥ 0` and it is in the pool of slot
+`s.toNat`; the pool of a negative slot is empty. -/
+theorem SAState.mem_poolAt {n : Nat} {A : SAState n} {s : Int} {v : Vote n} :
+    v ∈ A.poolAt s ↔ 0 ≤ s ∧ v ∈ A.pool s.toNat := by
+  unfold SAState.poolAt
+  split_ifs with hs
+  · exact ⟨fun h => (List.not_mem_nil h).elim, fun h => absurd h.1 (not_le.mpr hs)⟩
+  · exact ⟨fun h => ⟨not_lt.mp hs, h⟩, And.right⟩
+
 /-! ### Admission at a time
 
 `Admits A A' t`: every vote of the pools of `A'` is in the same pool of `A`, or is of slot
@@ -588,7 +597,7 @@ theorem carried_votes : CarriedVotes sp := by
 it only in `mayVote`). The payload of a proposal at `t_σ` is the slot-`(σ−1)` vote view of the
 pool, whose votes are of slot `σ − 1` (the pool form, kept by every call) and whose support is
 among its votes. -/
-theorem proposal_payload_validFrom {FGP : Type} {ro : ReplayOrder sp FGP}
+theorem proposal_payload_valid_from {FGP : Type} {ro : ReplayOrder sp FGP}
     {s₀ : (goldilocksSA sp FGP ro).State} (h₀ : ∀ σ, (s₀ : SAState sp.n).pool σ = [])
     (self : Fin sp.n) (U : Set (Blk sp.n FGP)) (A : (goldilocksSA sp FGP ro).State)
     (Φ : (goldilocksSA sp FGP ro).Frm) (t₀ : Time)
@@ -621,9 +630,9 @@ theorem proposal_payload_validFrom {FGP : Type} {ro : ReplayOrder sp FGP}
   · simp only [blockSupport, blockVotes, hBp, voteViewList, List.mem_filter] at hv ⊢
     exact hv.1
 
-/-- **A0.9.** `proposal_payload_validFrom` at the initial state. -/
+/-- **A0.9.** `proposal_payload_valid_from` at the initial state. -/
 theorem proposal_payload_valid : ProposalPayloadValid sp :=
-  fun _ _ self U _ A Φ t₀ hr => proposal_payload_validFrom sp (fun _ => rfl) self U A Φ t₀ hr
+  fun _ _ self U _ A Φ t₀ hr => proposal_payload_valid_from sp (fun _ => rfl) self U A Φ t₀ hr
 
 /-- At a reachable state, every pool vote is of a slot at most the slot of the last call's time
 (admission at `t` takes votes of slot `slot(t) − 1` or `slot(t)`, and calls are at nondecreasing

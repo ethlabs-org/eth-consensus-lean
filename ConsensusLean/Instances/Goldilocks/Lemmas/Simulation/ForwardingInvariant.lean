@@ -182,8 +182,8 @@ theorem dutyStep_forwardQueueCanonical {V : Type} [Fintype V] {E : Env V} (S : B
       · exact h)
     (fun st t _ => canonical_poll st t) v nd d hc
 
-/-- All actual duties preserve the holdings/pending invariant. Empty committee duties
-are impossible; the poll-proposal step cannot enqueue block wrappers. -/
+/-- All actual duties preserve the holdings/pending invariant. Committee duties are no-ops; the
+poll-proposal step cannot enqueue block wrappers. -/
 theorem dutyStep_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
     (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E))

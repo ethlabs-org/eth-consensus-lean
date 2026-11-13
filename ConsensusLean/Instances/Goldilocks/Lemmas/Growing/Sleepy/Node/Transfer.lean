@@ -183,7 +183,7 @@ theorem vote_extends_of_batch_at {ini} (hrun : Growing.GoldilocksRun proposer dg
         refine Or.inl (votersAt_iff.2 ⟨hw, j, e', hvote _ j e' hw hv', ?_⟩)
         rw [he']; exact SA.merged_vote_slot hr.localRun hr.vstart hy hc'
           v hv
-      · have hK := hKB.hT hrun hnc y i ℓ e hy hc s v hv
+      · have hK := hKB.committeeTAt hrun hnc y i ℓ e hy hc s v hv
         rw [SA.merged_vote_slot hr.localRun hr.vstart hy hc' v hv] at hK
         exact Or.inr ⟨hK, hw⟩)
     (by

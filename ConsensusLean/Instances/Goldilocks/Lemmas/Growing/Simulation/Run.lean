@@ -39,11 +39,8 @@ omit [DecidableEq V] in
 /-- `simIni` changes only the own-role vote permission (`VoteBinding.installVote`): it is a start
 up to the vote permission. -/
 theorem simIni_voteStart (y : Fin (Fintype.card V)) :
-    SA.VoteStart (S.params (pubOf E) hn).genesisRoot (simIni S rho hn y) := by
-  unfold simIni VoteBinding.installVote
-  split
-  · exact SA.voteStart_initial _
-  · exact SA.voteStart_iff.2 ⟨_, rfl⟩
+    SA.VoteStart (S.params (pubOf E) hn).genesisRoot (simIni S rho hn y) :=
+  ⟨_, installVote_eq_mayVote S.vote _ _⟩
 
 /-- The canonical event expansion obeys all Goldilocks run laws under growing compromise, from
 the engine's own starts `simIni`. The instance premise `hstock` is interim, `TEMP(C2)`: it feeds

@@ -1154,7 +1154,6 @@ public import ConsensusLean.Lemmas.Model.Truncate
 public import ConsensusLean.Lemmas.Model.TruncateExt
 public import ConsensusLean.Lemmas.Model.View
 public import ConsensusLean.Lemmas.Problem.AdequateObs
-public import ConsensusLean.Lemmas.Problem.CommitteeCount
 public import ConsensusLean.Lemmas.Problem.Constant
 public import ConsensusLean.Lemmas.Problem.Derived
 public import ConsensusLean.Lemmas.Problem.DerivedFacts

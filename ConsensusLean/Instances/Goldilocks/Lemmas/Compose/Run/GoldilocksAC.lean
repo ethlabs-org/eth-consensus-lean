@@ -180,7 +180,7 @@ theorem requirements_from (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.
     ({ goldilocksNode sp ro with initial := s₀ } : NodeAC sp.toParams).Requirements :=
   have h := SA.interface_requirements_from sp (List (FG.Att sp.n)) ro h₀
   ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, fun self U _ s Φ t₀ hr =>
-    SA.proposal_payload_validFrom sp h₀.pool self U s Φ t₀ (ACInterface.reachableAtFrom_iff.2 hr)⟩
+    SA.proposal_payload_valid_from sp h₀.pool self U s Φ t₀ (ACInterface.reachableAtFrom_iff.2 hr)⟩
 
 /-- The Goldilocks node's AC meets the interface requirements 1–5 (A0.6, A0.9):
 `requirements_from` at the initial state. -/
@@ -492,12 +492,12 @@ private theorem one_block (hrun : GoldilocksRun proposer dg H tr ini)
 
 /-- **The honest-object facts of the Goldilocks run's AC projection**, from starts up to the
 vote permission: the AC run from the run's starts (`ac_projection`, its requirement 5 from
-those starts by `SA.proposal_payload_validFrom`, their pools being empty). -/
+those starts by `SA.proposal_payload_valid_from`, their pools being empty). -/
 theorem goldilocks_ac_projection_from (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) :
     SA.ACRun proposer tr.projAC H (tr.HonestBlocks H) ini := by
   have hloc := ac_projection _ _ dg H _ tr proposer (requirements sp ro)
-    (fun y _ U _ s Φ t₀ h => SA.proposal_payload_validFrom _ (hrun.vstart y).pool y U s Φ t₀ h)
+    (fun y _ U _ s Φ t₀ h => SA.proposal_payload_valid_from _ (hrun.vstart y).pool y U s Φ t₀ h)
     hrun.toLocalRun hnc
   refine ⟨hrun.stock, hloc, ⟨fun y hy => pool_vote_emitted hrun hy,
     fun y hy i ℓ v hc hm hval => message_vote hrun hy hc hm hval,

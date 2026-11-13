@@ -111,7 +111,7 @@ theorem simTraceAt_msgCall_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho
   exact ((K.bindsSel_iff rho _).1 hK m.slot m.val).2 (hv.credentials i v o t he _ ho m.val _ rfl)
 
 /-- **The installed permission is the committee**: a node may vote in slot `s` iff it is in
-`K.committee s` (B2.0, at every cut and for every node). -/
+`K.committee s`, at every cut and for every node. -/
 theorem simTraceAt_mayVote_iff (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.vote.voteRole)
     (x : Fin (Fintype.card V)) (i s : Nat) :
     ((simTraceAt S rho hn).state x i).ac.mayVote s = true ↔ x ∈ K.committee s := by

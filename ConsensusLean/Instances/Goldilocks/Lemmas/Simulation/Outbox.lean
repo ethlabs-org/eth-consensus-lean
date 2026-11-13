@@ -430,12 +430,15 @@ theorem pollOrdinary_eq (v : V) (q : Option (Body × List (Model.protoOf (compil
   rfl
 
 omit [DecidableEq V] in
+/-- Popping a body whose poll role selects the node yields its poll object as the single
+candidate. -/
 theorem pollOrdinary_some_pos {v : V} {b : Body}
     (hk : rho.ownKey v ∈ rho.sel (pollRole S.vote (pubOf E).n b)) :
     pollOrdinary S rho v (some (b, [])) = [pollObj S rho v b] := by
   simp [pollOrdinary, hk]
 
 omit [DecidableEq V] in
+/-- Popping a body whose poll role does not select the node yields no candidate. -/
 theorem pollOrdinary_some_neg {v : V} {b : Body}
     (hk : rho.ownKey v ∉ rho.sel (pollRole S.vote (pubOf E).n b)) :
     pollOrdinary S rho v (some (b, [])) = [] := by
@@ -693,8 +696,8 @@ theorem dutyStep_poll_sub (v : V) (nd : Model.Node (Model.protoOf (compiled (gol
   · simp at ho
 
 omit [DecidableEq V] in
-/-- A poll step of a node selected in the poll role releases the head of `pollPre`'s outbox
-when the own-object guard passes. -/
+/-- A poll step releases the head `b` of `pollPre`'s outbox when the poll duty selects the node,
+the effective role of `b` also selects it, and the own-object guard passes. -/
 theorem dutyStep_poll_rel (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
     (t : Nat) (hsel : rho.ownKey v ∈ rho.sel .poll) {b : Body}
     (hb : (pollPre (shapeOf S hn nd)).outbox.head? = some b)
@@ -1282,9 +1285,8 @@ there is no pending body after an honest event. -/
 theorem releasedFrom_of_pending (hv : rho.ExecutionValid) {i : Nat}
     {ev : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (_he : rho.events[i]? = some ev) {b : Body}
-    (hb : b ∈ (stateAt S rho hn ev.node (i + 1)).outbox)
-    {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} :
-    ReleasedFrom S rho ev.node o ev.time := by
+    (hb : b ∈ (stateAt S rho hn ev.node (i + 1)).outbox) :
+    ReleasedFrom S rho ev.node (pollObj S rho ev.node b) ev.time := by
   rw [outbox_empty S rho hn hv ev.node] at hb
   exact absurd hb List.not_mem_nil
 

@@ -41,10 +41,7 @@ theorem origin_mem_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini
   · obtain ⟨ℓ, hc, hC⟩ := resultAt_mem_frame h
     exact mem_upTo_of_frame hrun hx hkd hc hC
   · obtain ⟨ℓ, A, hpt, -, hsel, -⟩ := h
-    unfold SA.optimisticSelect at hsel
-    dsimp only at hsel
-    split_ifs at hsel
-    exact mem_upTo_of_frame hrun hx hkd hpt.1 (SA.deepest_mem hsel).1.1
+    exact mem_upTo_of_frame hrun hx hkd hpt.1 (SA.optimisticSelect_mem_tree hsel)
 
 /-- An origin of the prefix within `d'` is an origin of the run within `d'`. -/
 theorem originWithin_of_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)

@@ -21,10 +21,6 @@ open SA (SAParams ReplayOrder Vote Payload)
 
 variable {binding : VoteBinding}
 
-/-- The stock construction uses the whole population as its committee. -/
-theorem params_committeeSize (S : Setup) (pub : Model.Public) (hn : 1 ≤ pub.n) :
-    (S.params pub hn).committeeSize = (S.params pub hn).n := by rfl
-
 /-! ## Encoding round-trips -/
 
 /-- An encoded attestation decodes to itself. -/
@@ -42,6 +38,12 @@ theorem candidateRole_of_not_vote (B : VoteBinding) (n : Nat) (d : ShapeDuty B.K
 theorem candidateRole_item (B : VoteBinding) (n : Nat) (d : ShapeDuty B.Kind) (h : Header Info) :
     B.candidateRole n d (.item h) = none := by
   cases hp : B.participationKind <;> simp [VoteBinding.candidateRole, hp]
+
+/-- Installing the own-role vote permission changes no field of the state other than `mayVote`. -/
+theorem installVote_eq_mayVote (B : VoteBinding) {n : Nat} (p : ShapeRole B.Kind → Bool)
+    (a : SA.SAState n) : B.installVote p a = { a with mayVote := (B.installVote p a).mayVote } := by
+  unfold VoteBinding.installVote
+  split <;> rfl
 
 /-- The role in which a poll duty signs the body `b`: its effective candidate role (the
 binding's override, else the poll role). -/

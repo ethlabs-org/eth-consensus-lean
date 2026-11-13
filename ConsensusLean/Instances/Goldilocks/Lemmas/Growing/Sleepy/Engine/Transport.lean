@@ -210,10 +210,8 @@ private theorem sleepy_faultBoundAt (hv : rho.ExecutionValid)
       (min (t + 5 * (S.params (pubOf E) hn).Δ) b) := by
   have hΔ := (S.params (pubOf E) hn).toParams.hΔ
   have hsl : rho.point.EtaSleepyOn (1 / 2) 0 (Regimes.catchUp (S.params (pubOf E) hn))
-      (5 * (S.params (pubOf E) hn).Δ) a b := fun u hau hub => by
-    unfold EnvPoint.EtaReadyAbove
-    simp only [le_refl, ↓reduceIte]
-    exact hhalf u hau hub
+      (5 * (S.params (pubOf E) hn).Δ) a b := fun u hau hub =>
+    EnvPoint.etaReadyAbove_zero_iff.2 (hhalf u hau hub)
   have h := committee_faultBoundAt S rho hn hv (simTraceAt_goldilocksRun S rho hn hv)
     (Sel := fun _ => Finset.univ) le_rfl (by dsimp [Regimes.catchUp]; linarith) le_rfl hb
     (hsl.committee_univ le_rfl (by norm_num) (by norm_num)) ht hat htb

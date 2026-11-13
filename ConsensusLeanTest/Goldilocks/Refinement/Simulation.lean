@@ -73,6 +73,16 @@ theorem relayed_at_horizon (v : V) (o : (Model.protoOf (compiled (goldilocks S))
     ∃ cs, o ∈ cs ∧ rho.releases v (.mk .none (.data .relay) cs) rho.horizon :=
   (relayedFrom_iff S rho v o rho.horizon).mp h
 
+/-- At the stock binding `releasedFrom_of_pending` concludes its population-wide form, by `rfl`:
+the pending body was released as the object signed in the poll role. -/
+theorem releasedFrom_of_pending_stock (hv : rho.ExecutionValid) {i : Nat}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) E).Object}
+    (he : rho.events[i]? = some ev) {b : Body}
+    (hb : b ∈ (stateAt ⟨S, stock⟩ rho hn ev.node (i + 1)).outbox) :
+    ReleasedFrom ⟨S, stock⟩ rho ev.node
+      (Model.Obj.mk (.signed (rho.ownKey ev.node) .poll) (.data b) []) ev.time :=
+  releasedFrom_of_pending ⟨S, stock⟩ rho hn hv he hb
+
 omit [DecidableEq V] in
 /-- A canonical block carrying one vote runs the block handler first and then the actual
 message handler on its resulting state. This holds whether the block handler accepts, refuses,

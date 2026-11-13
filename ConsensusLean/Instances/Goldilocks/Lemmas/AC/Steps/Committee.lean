@@ -1,5 +1,4 @@
 module
-public import ConsensusLean.Lemmas.Problem.CommitteeCount
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeRun
 
 public section
@@ -12,14 +11,15 @@ The committee is `K : CommitteeDict sp.n`, bound by (i) `K.BindsSel rho voteRole
 and (ii) `∀ s, (K.committee s).ncard = sp.committeeSize`. Thresholds are in
 `N = sp.committeeSize`; fault premises are over `ncard` of `K.committee s`.
 
-* Count steps over `C = K.committee s` with `hN : C.ncard = N` (binding (ii)), each by
-  `CommitteeCount` after lifting `C` to a `Finset`: `size_pos_of_cs2`, `nonempty_of_half`,
-  `cs2_of_cs`, `not_update_update`, `not_update_optimistic`, `quorums_meet`, `cover_count`,
-  `next_transfer_counts`, `inter_nonempty_of_half_quorum`, `third_cover_count`.
+* Count steps over `C = K.committee s` with `hN : C.ncard = N` (binding (ii)), each by a count
+  over a `Finset` committee after lifting `C` to a `Finset`: `cs2_of_cs`, `not_update_update`,
+  `not_update_optimistic`, `quorums_meet`, `cover_count`, `next_transfer_counts`,
+  `inter_nonempty_of_half_quorum`, `third_cover_count`.
 * Reductions at `K = CommitteeDict.full n` with `committeeSize = n`: `committee_full`,
-  `full_eq_coe_univ`, `mem_full`, `ncard_full`, `size_binding_full`, `ncard_inter_full`,
+  `mem_full`, `ncard_full`, `size_binding_full`, `ncard_inter_full`,
   `mul_ncard_inter_full_lt_iff`, `ncard_inter_full_lt_iff`; P, T and CS at the full committee
-  (`CommitteeP.full`, `CommitteeT.full`, `faultBoundK_full_iff`); the half, third and
+  (`CommitteeP.full`, `CommitteeT.full`, `CommitteePAt.full`, `CommitteeTAt.full`,
+  `faultBoundK_full_iff`); the half, third and
   three-quarter fault bounds at the full committee from the population ones (`cs2_full`,
   `third_full`, `four_thirds_full`). -/
 
@@ -29,18 +29,65 @@ section Counts
 
 variable {V : Type*}
 
-/-! ## `c = 0` -/
+/-! ## Counts over a `Finset` committee -/
 
-/-- **`c = 0`.** The strict committee fault premise (CS2) and binding (ii) give
-`0 < committeeSize`. -/
-theorem size_pos_of_cs2 (C : Set V) {F : Set V} {N : Nat} (hN : C.ncard = N)
-    (h2 : 2 * (C ∩ F).ncard < C.ncard) : 0 < N := by
+/-- Two disjoint sets meet the committee in at most its size together. -/
+private theorem ncard_inter_add_ncard_inter_le (K : Finset V) {A B : Set V}
+    (hd : Disjoint A B) : ((K : Set V) ∩ A).ncard + ((K : Set V) ∩ B).ncard ≤ K.card := by
+  have hd' : Disjoint ((K : Set V) ∩ A) ((K : Set V) ∩ B) :=
+    Set.disjoint_of_subset Set.inter_subset_right Set.inter_subset_right hd
+  have h1 : ((K : Set V) ∩ A ∪ (K : Set V) ∩ B).ncard =
+      ((K : Set V) ∩ A).ncard + ((K : Set V) ∩ B).ncard :=
+    Set.ncard_union_eq hd' (K.finite_toSet.inter_of_left A) (K.finite_toSet.inter_of_left B)
+  have h2 : ((K : Set V) ∩ A ∪ (K : Set V) ∩ B).ncard ≤ (K : Set V).ncard :=
+    Set.ncard_le_ncard (Set.union_subset Set.inter_subset_left Set.inter_subset_left)
+      K.finite_toSet
+  have h3 := Set.ncard_coe_finset K
   omega
 
-/-- **`locks_after_unlock`.** Half of a positive committee size is nonempty. -/
-theorem nonempty_of_half {S : Set V} {N : Nat} (hpos : 0 < N) (hn : N ≤ 2 * S.ncard) :
-    S.Nonempty :=
-  Set.nonempty_of_ncard_ne_zero (by omega)
+/-- Fewer faulty committee members than members of a set `J` of honest validators are fewer than
+half of the committee. -/
+private theorem two_mul_ncard_inter_compl_lt (K : Finset V) {H J : Set V} (hJ : J ⊆ H)
+    (h : ((K : Set V) ∩ Hᶜ).ncard < ((K : Set V) ∩ J).ncard) :
+    2 * ((K : Set V) ∩ Hᶜ).ncard < K.card := by
+  have := ncard_inter_add_ncard_inter_le K (Set.disjoint_of_subset_left hJ disjoint_compl_right)
+  omega
+
+/-- A set of committee members has at most the committee's size. -/
+private theorem ncard_le_card_of_subset_coe {K : Finset V} {T : Set V}
+    (hT : T ⊆ (K : Set V)) : T.ncard ≤ K.card := by
+  have h := Set.ncard_le_ncard hT K.finite_toSet
+  have hK := Set.ncard_coe_finset K
+  omega
+
+/-- Two three-quarter quorums of committee members share a member outside `F` when fewer than half
+of the committee is in `F`. -/
+private theorem exists_mem_inter_not_mem_of_quorums (K : Finset V) {F O₁ O₂ : Set V}
+    (h₁ : O₁ ⊆ (K : Set V)) (h₂ : O₂ ⊆ (K : Set V)) (h3₁ : 3 * K.card ≤ 4 * O₁.ncard)
+    (h3₂ : 3 * K.card ≤ 4 * O₂.ncard) (h2 : 2 * ((K : Set V) ∩ F).ncard < K.card) :
+    ∃ u, u ∈ O₁ ∩ O₂ ∧ u ∉ F := by
+  have hI := Set.ncard_inter_add_ncard_union O₁ O₂ (K.finite_toSet.subset h₁)
+    (K.finite_toSet.subset h₂)
+  have hU := ncard_le_card_of_subset_coe (Set.union_subset h₁ h₂)
+  obtain ⟨u, hu, hnot⟩ := Set.exists_mem_notMem_of_ncard_lt_ncard
+    (show ((K : Set V) ∩ F).ncard < (O₁ ∩ O₂).ncard by omega) (K.finite_toSet.inter_of_left F)
+  exact ⟨u, hu, fun hF => hnot ⟨h₁ hu.1, hF⟩⟩
+
+/-- With the voters `W` and a three-quarter quorum `SX` inside the committee and `E` a set of
+committee members in `F`, fewer than half of the committee, `E` and the voters outside `SX` are
+fewer than `SX`. -/
+private theorem ncard_add_ncard_sdiff_lt (K : Finset V) {F E W SX : Set V}
+    (hSX : SX ⊆ (K : Set V)) (hW : W ⊆ (K : Set V)) (hE : E ⊆ (K : Set V) ∩ F)
+    (h34 : 3 * K.card ≤ 4 * SX.ncard) (h2 : 2 * ((K : Set V) ∩ F).ncard < K.card) :
+    E.ncard + (W \ SX).ncard < SX.ncard := by
+  have hEf := Set.ncard_le_ncard hE (K.finite_toSet.inter_of_left F)
+  have hWK : W \ SX ⊆ (K : Set V) := fun _ hx => hW hx.1
+  have hdisj : Disjoint (W \ SX) SX := Set.disjoint_left.2 fun _ hx hx' => hx.2 hx'
+  have hu := Set.ncard_union_eq hdisj (K.finite_toSet.subset hWK) (K.finite_toSet.subset hSX)
+  have hle := ncard_le_card_of_subset_coe (Set.union_subset hWK hSX)
+  omega
+
+/-! ## The committee half bound -/
 
 /-- The committee sleepy count CS gives the committee half bound CS2. -/
 theorem cs2_of_cs [Finite V] (C : Set V) {H J : Set V} (hJ : J ⊆ H)
@@ -137,12 +184,7 @@ section Full
 /-- Every slot of the full dictionary is the whole validator set. -/
 theorem committee_full (n s : Nat) : (CommitteeDict.full n).committee s = Set.univ := rfl
 
-/-- The full dictionary's slot is the `univ` committee of `CommitteeCount`. -/
-theorem full_eq_coe_univ (n s : Nat) :
-    (CommitteeDict.full n).committee s = ((Finset.univ : Finset (Fin n)) : Set (Fin n)) := by
-  rw [committee_full, Finset.coe_univ]
-
-/-- **P, T and G at `K = full`** hold for every signer. -/
+/-- P and T membership at `K = full` holds for every signer. -/
 theorem mem_full {n : Nat} (s : Nat) (u : Fin n) : u ∈ (CommitteeDict.full n).committee s :=
   Set.mem_univ u
 
@@ -159,8 +201,7 @@ theorem size_binding_full {n N : Nat} (hN : N = n) (s : Nat) :
 /-- A count restricted to the full committee is the population count. -/
 theorem ncard_inter_full {n : Nat} (s : Nat) (F : Set (Fin n)) :
     ((CommitteeDict.full n).committee s ∩ F).ncard = F.ncard := by
-  rw [full_eq_coe_univ]
-  exact ncard_coe_univ_inter F
+  rw [committee_full, Set.univ_inter]
 
 /-- **CS2 (`k = 2`) and the third bound (`k = 3`) at `K = full`** are the stock `k f < n`. -/
 theorem mul_ncard_inter_full_lt_iff {n : Nat} (k s : Nat) (F : Set (Fin n)) :
@@ -185,6 +226,16 @@ theorem CommitteeP.full {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} :
 /-- **T at `K = full`.** -/
 theorem CommitteeT.full {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} :
     CommitteeT (CommitteeDict.full sp.n) tr H :=
+  fun _ _ _ _ _ _ _ v _ => mem_full v.slot _
+
+/-- P under growing faults holds at `K = full`. -/
+theorem CommitteePAt.full {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)} :
+    CommitteePAt (CommitteeDict.full sp.n) tr H :=
+  ⟨fun _ _ _ _ _ s _ _ => mem_full s _, fun _ _ _ _ _ _ s _ _ => mem_full s _⟩
+
+/-- T under growing faults holds at `K = full`. -/
+theorem CommitteeTAt.full {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)} :
+    CommitteeTAt (CommitteeDict.full sp.n) tr H :=
   fun _ _ _ _ _ _ _ v _ => mem_full v.slot _
 
 /-- **CS at `K = full`** is `FaultBound`. -/

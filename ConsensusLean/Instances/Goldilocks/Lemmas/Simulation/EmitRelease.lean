@@ -113,6 +113,8 @@ theorem emit_released_of (hv : rho.ExecutionValid)
       rw [stateAt_succ_restart S rho hn he]
       exact List.mem_append_right _
         (List.mem_flatMap.mpr ⟨_, hcut, by simpa using ⟨em, hem, rfl⟩⟩)
+    have hval : em.msg.val = rho.ownKey v := emits_val_of_mem_exec _ _ _ _ _ _ hcut em hem
+    rw [voteObj_eq_pollObj S rho hval]
     exact (releasedFrom_iff S rho _ _ _).mp (releasedFrom_of_pending S rho hn hv he hb)
 
 end Consensus.Goldilocks.Simulation

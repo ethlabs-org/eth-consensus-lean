@@ -108,11 +108,13 @@ theorem admitVote_mayVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
   unfold admitVote
   split_ifs <;> rfl
 
-theorem updateLatestConfirmed_mayVote (A : SAState sp.n) (Φ : Frm sp.n FGP)
+/-- `updateLatestConfirmed` keeps the permission `mayVote`. -/
+private theorem updateLatestConfirmed_mayVote (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (C : Blk sp.n FGP) : (updateLatestConfirmed sp A Φ C).mayVote = A.mayVote := by
   unfold updateLatestConfirmed
   split_ifs <;> rfl
 
+/-- `optimistic_confirmation` keeps the permission `mayVote`. -/
 theorem optimisticConfirmation_mayVote (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).mayVote = A.mayVote := by
   unfold optimisticConfirmation
@@ -120,6 +122,7 @@ theorem optimisticConfirmation_mayVote (A : SAState sp.n) (Φ : Frm sp.n FGP) (t
   · rfl
   · exact updateLatestConfirmed_mayVote _ _ _
 
+/-- `update_confirmation` keeps the permission `mayVote`. -/
 theorem updateConfirmation_mayVote (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (s : Nat) : (updateConfirmation sp A Φ t s).mayVote = A.mayVote := by
   unfold updateConfirmation
@@ -141,29 +144,36 @@ private theorem foldl_admitVote_mayVote (t : Time) (vs : List (Vote sp.n)) (A : 
   | nil => rfl
   | cons v vs ih => exact (ih _).trans (admitVote_mayVote _ _ _)
 
+/-- Block receipt, which admits the block's votes, keeps the permission `mayVote`. -/
 theorem blockReceipt_mayVote (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (blockReceipt sp A t B).mayVote = A.mayVote :=
   foldl_admitVote_mayVote t (blockVotes B) _
 
-theorem acOnMessage_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+/-- The vote handler `ac_on_message` keeps the permission `mayVote`. -/
+private theorem acOnMessage_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) (v : Vote sp.n) : (acOnMessage sp self A Φ t v).1.mayVote = A.mayVote := by
   simp only [acOnMessage, tryVote_mayVote, optimisticConfirmation_mayVote, admitVote_mayVote]
 
-theorem acOnBlock_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+/-- The block handler `ac_on_block` keeps the permission `mayVote`. -/
+private theorem acOnBlock_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) (B : Blk sp.n FGP) : (acOnBlock sp self A Φ t B).1.mayVote = A.mayVote := by
   simp only [acOnBlock, tryVote_mayVote, optimisticConfirmation_mayVote, blockReceipt_mayVote]
 
-theorem acOnTick_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+/-- The tick handler `ac_on_tick` keeps the permission `mayVote`. -/
+private theorem acOnTick_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) :
     (acOnTick sp self A Φ t).1.mayVote = A.mayVote := by
   unfold acOnTick
   dsimp only
   split_ifs <;> simp only [tryVote_mayVote, updateConfirmation_mayVote]
 
-theorem acProposal_mayVote (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+/-- The proposal handler `ac_proposal` keeps the permission `mayVote`. -/
+private theorem acProposal_mayVote (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (acProposal sp A Φ t).1.mayVote = A.mayVote := by
   unfold acProposal
   split_ifs <;> rfl
 
+/-- The finality-gadget handler `ac_to_fg` keeps the permission `mayVote`. -/
 theorem acToFG_mayVote (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (acToFG sp A Φ t).1.mayVote = A.mayVote := by
   unfold acToFG
@@ -235,20 +245,6 @@ theorem trace_mayVote_stock {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   rw [trace_mayVote hr hy i]
   rfl
 
-/-- A ready nonmember performs the unlock and voted-slot update without own admission,
-emission, or an optimistic check. -/
-theorem tryVote_of_not_selected (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) (hj : joined sp A t) (hv : A.votedSlot ≠ sp.slot t)
-    (ht : t ≤ sp.ts (sp.slot t) + sp.Δ)
-    (hr : ¬ (t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ voteReady sp Φ (sp.slot t))))
-    (hp : A.mayVote (sp.slot t) = false) :
-    tryVote sp self A Φ t =
-      let s := sp.slot t
-      let V := mergedVoteView sp A Φ s
-      let A₁ := if 0 < s then { A with locks := unlock sp A.locks Φ t ((s : Int) - 1) V } else A
-      ({ A₁ with votedSlot := s }, []) := by
-  simp [tryVote, hj, hv, not_lt.mpr ht, hr, hp]
-
 /-! ## The emission gate -/
 
 /-- **The emission gate.** `try_vote` emits only a vote of a slot its state may vote in. -/
@@ -258,7 +254,8 @@ theorem tryVote_emits_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.
   dsimp only
   split_ifs <;> simp_all
 
-theorem acOnBlock_emits_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+/-- Every vote emitted by `ac_on_block` is of a slot that the input state may vote in. -/
+private theorem acOnBlock_emits_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) (B : Blk sp.n FGP) :
     ∀ e ∈ (acOnBlock sp self A Φ t B).2, A.mayVote e.msg.slot = true := fun e he => by
   have h := tryVote_emits_mayVote self _ Φ t e he
@@ -280,8 +277,8 @@ private theorem foldl_acOnBlock_emits_mayVote (self : Fin sp.n) (Φ : Frm sp.n F
         · rw [← h₁]
           exact acOnBlock_emits_mayVote self acc.1 Φ t B e he
 
-/-- **B2.b.** Every emission of an SA call passes the call's input gate: a vote of slot `s`
-only when `mayVote s`. -/
+/-- **Every SA call is gated.** Every emission of an SA call passes the call's input gate: a
+vote of slot `s` only when `mayVote s`. -/
 theorem emits_mayVote (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : SAState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call) :
     ∀ e ∈ ((goldilocksSA sp FGP ro).step self A Φ t c).2, A.mayVote e.msg.slot = true := by

@@ -76,7 +76,7 @@ private theorem pool_evidence_at_update_at (hv : rho.ExecutionValid)
   have hprefix := hr.upTo (hr.time_nonneg c)
   have hac := Compose.ac_projection _ _ _ _ _ _ _ (Compose.requirements _ _)
     (fun y _ U _ s Φ t₀ h =>
-      SA.proposal_payload_validFrom _ (simIni_voteStart S rho hn y).pool y U s Φ t₀ h)
+      SA.proposal_payload_valid_from _ (simIni_voteStart S rho hn y).pool y U s Φ t₀ h)
     hprefix.toLocalRun (hnc.upTo (tr.time c))
   have hs (j : Nat) (hj : j ≤ c) :
       ((tr.upTo (tr.time c)).projAC.state w j) = (tr.state w j).ac := by
@@ -123,7 +123,7 @@ theorem outage_pool_delivery_at (hv : rho.ExecutionValid)
   have hprefix := hrun.upTo (hrun.time_nonneg c)
   have hr := Compose.ac_projection _ _ _ _ _ _ _ (Compose.requirements _ _)
     (fun y _ U _ s Φ t₀ h =>
-      SA.proposal_payload_validFrom _ (simIni_voteStart S rho hn y).pool y U s Φ t₀ h)
+      SA.proposal_payload_valid_from _ (simIni_voteStart S rho hn y).pool y U s Φ t₀ h)
     hprefix.toLocalRun (hnc.upTo (tr.time c))
   have hstate : (tr.upTo (tr.time c)).projAC.state w c = tr.projAC.state w c := by
     rw [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC w
@@ -142,7 +142,7 @@ theorem outage_pool_delivery_at (hv : rho.ExecutionValid)
   have hprefixX := hrun.upTo (hrun.time_nonneg i)
   have hrx := Compose.ac_projection _ _ _ _ _ _ _ (Compose.requirements _ _)
     (fun y _ U _ s Φ t₀ h =>
-      SA.proposal_payload_validFrom _ (simIni_voteStart S rho hn y).pool y U s Φ t₀ h)
+      SA.proposal_payload_valid_from _ (simIni_voteStart S rho hn y).pool y U s Φ t₀ h)
     hprefixX.toLocalRun (hnc.upTo (tr.time i))
   have hv' : SA.VoteAt (tr.upTo (tr.time i)).projAC x i e := by
     obtain ⟨l, hc, he⟩ := hvote

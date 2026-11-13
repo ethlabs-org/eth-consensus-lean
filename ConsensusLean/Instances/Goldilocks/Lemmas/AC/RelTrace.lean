@@ -24,22 +24,28 @@ namespace Consensus.Goldilocks.SA
 variable {sp : SAParams} {FGP : Type}
   {ini : Fin sp.n → SAState sp.n}
 
+/-- `optimistic_confirmation` at any write mode keeps the permission `mayVote`. -/
 theorem optimisticM_mayVote (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmationM sp m A Φ t).mayVote = A.mayVote :=
   optimisticConfirmationM_keep _ optimisticConfirmation_mayVote m A Φ t
 
-theorem updateM_mayVote (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+/-- `update_confirmation` at any write mode keeps the permission `mayVote`. -/
+private theorem updateM_mayVote (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) (s : Nat) : (updateConfirmationM sp m A Φ t s).mayVote = A.mayVote := by
   rw [updateConfirmationM_field SAState.mayVote (fun _ _ => rfl)]
   exact updateConfirmation_mayVote A Φ t s
 
-theorem tryVoteWithM_mayVote (m : WriteMode) (self : Fin sp.n) (L : Set Lock)
+/-- `try_vote` with the locks after a given unlock, at any write mode, keeps the permission
+`mayVote`. -/
+private theorem tryVoteWithM_mayVote (m : WriteMode) (self : Fin sp.n) (L : Set Lock)
     (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (tryVoteWithM sp m self L A Φ t).1.mayVote = A.mayVote := by
   unfold tryVoteWithM
   dsimp only
   split_ifs <;> simp only [optimisticM_mayVote, admitVote_mayVote]
 
+/-- Every call with the locks after a given unlock, at any write mode, keeps the permission
+`mayVote`. -/
 theorem stepWithM_mayVote (ro : ReplayOrder sp FGP) (m : WriteMode) (self : Fin sp.n)
     (L : Set Lock) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (c : (goldilocksSA sp FGP ro).Call) :
@@ -63,6 +69,8 @@ theorem stepWithM_mayVote (ro : ReplayOrder sp FGP) (m : WriteMode) (self : Fin 
       blockReceipt_mayVote]
   | restart => exact acRestart_mayVote ro self A Φ t
 
+/-- On a trace with the unlock given per call, which starts every honest node at the initial
+state, every honest node may vote in every slot at every cut. -/
 theorem traceWithM_mayVote {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat → Set Lock}
     {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
     (hr : ACLocalRunU m u H U tr) {y : Fin sp.n} (hy : y ∈ H) (i s : Nat) :

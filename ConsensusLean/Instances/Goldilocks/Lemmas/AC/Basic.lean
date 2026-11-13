@@ -10,7 +10,9 @@ public section
 
 Blocks by root (`lookup`, `InTree`, `AncR`), ancestry in a frame, and the extended time line.
 The viable ancestor of claims G0.4 (frame) (`viableAncestor_spec`, `viableAncestor_self`, for
-every AC payload type) is proved here: `Lemmas.Common` cannot import `Spec.Frame`. -/
+every AC payload type) is proved here: `Lemmas.Common` cannot import `Spec.Frame`. A successful
+optimistic selection is guarded by its slot and time and picks a block of the tree
+(`optimisticSelect_guard`, `optimisticSelect_mem_tree`). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -80,6 +82,8 @@ def _root_.Consensus.Goldilocks.ACInterface.Call.toStart {P : Params} {A : ACInt
   | .block B => .block B
   | .restart => .restart
 
+/-- Converting a call of `A` to the same call of `{A with initial := s₀}` and back returns the
+original call. -/
 theorem _root_.Consensus.Goldilocks.ACInterface.Call.ofStart_toStart {P : Params}
     {A : ACInterface P FGP} {s₀ : A.State} (c : A.Call) : (c.toStart (s₀ := s₀)).ofStart = c := by
   cases c <;> rfl
@@ -211,6 +215,33 @@ theorem depth_lt_of_anc {Φ : Frm n FGP} (hΦ : FrameOK Φ) {A B : Blk n FGP}
   refine Set.ncard_lt_ncard ⟨fun X hX => hX.trans h, fun hsub => hne ?_⟩
     (hΦ.finite.subset fun X hX => mem_of_anc hX hB)
   exact Anc.antisymm hΦ.coherent h (hsub (Relation.ReflTransGen.refl : Φ.Anc B B))
+
+section Optimistic
+
+variable {sp : SAParams}
+
+open Classical in
+/-- A successful optimistic selection at `t` is made by a joined node, in a slot `slot(t) > 0`,
+before `t_{slot(t)} + 2Δ`. -/
+theorem optimisticSelect_guard {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+    {B : Blk sp.n FGP} (h : optimisticSelect sp A Φ t = some B) :
+    joined sp A t ∧ sp.slot t ≠ 0 ∧ t < sp.ts (sp.slot t) + 2 * sp.Δ := by
+  unfold optimisticSelect at h
+  dsimp only at h
+  split_ifs at h with hc
+  simp only [not_or, not_not, not_le] at hc
+  exact hc
+
+open Classical in
+/-- The block of a successful optimistic selection is in the frame's tree. -/
+theorem optimisticSelect_mem_tree {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+    {B : Blk sp.n FGP} (h : optimisticSelect sp A Φ t = some B) : B ∈ Φ.tree := by
+  unfold optimisticSelect at h
+  dsimp only at h
+  split_ifs at h
+  exact (deepest_mem h).1.1
+
+end Optimistic
 
 end Consensus.Goldilocks.SA
 

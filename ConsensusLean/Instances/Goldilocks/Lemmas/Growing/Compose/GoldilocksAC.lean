@@ -31,7 +31,7 @@ theorem goldilocks_ac_projection_from {sp : SA.SAParams}
     exact ⟨j, hj, e, (SA.upTo_voteAt.mp he).2, hev⟩
   refine ⟨h.stock,
     ac_projection _ _ dg H _ tr proposer (Compose.requirements sp ro)
-      (fun y _ U _ s Φ t₀ h' => SA.proposal_payload_validFrom _ (h.vstart y).pool y U s Φ t₀ h')
+      (fun y _ U _ s Φ t₀ h' => SA.proposal_payload_valid_from _ (h.vstart y).pool y U s Φ t₀ h')
       h.toLocalRun hnc,
     { pool_vote := fun y i σ hy v hv hval => ?_
       message_vote := fun y i ℓ v hy hc hm hv =>

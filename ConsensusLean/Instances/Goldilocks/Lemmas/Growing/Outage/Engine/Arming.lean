@@ -338,9 +338,9 @@ theorem outage_arming_at (Q : OutageQueryAt S A V)
   have hKB := Q.facts hrun
   have hBKh := Q.boundsK hrun le_rfl
   have hinv := Compose.Growing.sleepy_invariant_at hrun hnc hKB hb0 hsvc
-    (Q.bounds (min_le_right _ _)) (Q.boundsK hrun (min_le_right _ _))
+    (Q.bounds (min_le_right _ _)) (hBKh.mono (min_le_right _ _))
   have hinvT := Compose.Growing.sleepy_invariant_at hrun hnc hKB hT0 (service.mono hTs)
-    (Q.bounds hTh) (Q.boundsK hrun hTh)
+    (Q.bounds hTh) (hBKh.mono hTh)
   -- the tip at the end-of-`T` cut
   have hi : (chainTrace Q.run.2).endCut Q.T ≤ Q.run.2.events.length := Nat.findGreatest_le _
   obtain ⟨hcut, -, hnow⟩ := ready_read_cut_at S Q.run.2 Q.hn Q.valid (c := Q.duration)

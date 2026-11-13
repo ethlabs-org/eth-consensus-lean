@@ -81,7 +81,7 @@ theorem first_transfer_step_at {ini} (hrun : Growing.GoldilocksRun proposer dg H
       (result_writer_pool_at hrun hnc hsync ha hx hR hi₀ hy hc hs)
   · exact SA.Growing.optimistic_transfer_stored hrun' K
       (SA.CommitteePAt.upTo hrun.time_mono hrun.antitone hKB.hP)
-      (SA.CommitteeTAt.upTo hrun.antitone (hKB.hT hrun hnc)) hKB.hsize hx hO
+      (SA.CommitteeTAt.upTo hrun.antitone (hKB.committeeTAt hrun hnc)) hKB.hsize hx hO
       .refl hf hf1 hy hc hs
       (optimistic_carry_at hrun hnc hsync hsa hx hO hy hc hs hib hF) (Or.inl hv) hE
 

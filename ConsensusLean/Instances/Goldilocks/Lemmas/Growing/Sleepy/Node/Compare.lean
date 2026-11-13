@@ -19,8 +19,11 @@ label `s` within `b` are compatible (`same_label_compatible_at`), each side read
   update (`t_s + 6Δ`) counts more than half of its pool's voters, without equivocation, for its
   result; every vote the other writer released while honest (in `[t_s, t_s + 2Δ)`) reaches it,
   so the other side's validators are voters there and none counts for an incompatible result;
-* **optimistic / optimistic**: the two `≥ 3n/4` voter sets meet in a validator honest at the later
-  check `d` (`2 f_d < n`), whose one slot-`s` vote is in both pools.
+* **optimistic / optimistic**: the optimistic voters of each check number at least three quarters
+  of the committee size (`3 · committeeSize ≤ 4 · |optimisticVoters|`) and are members of the
+  slot-`s` committee `K s` (P), so the two sets share at least half of `K s`; fewer than half of
+  `K s` are compromised by the later check `d` (`2 · |K s ∩ (H d)ᶜ| < |K s|`), so they share a
+  validator honest at `d`, whose one slot-`s` vote is in both pools.
 
 `origins_below_succ_at`: `P_s` and `V_s` up to `b` give `P_{s+1}` up to `b` over the healed
 family, through the honest supporter of a member's origin (`honest_supporter_at`), for a label `s`

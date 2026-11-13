@@ -182,7 +182,7 @@ private theorem restore_voteMember (k : Fin sp.n) (d : State sp ro binding) (t :
       rw [← h.1]
       exact SA.emits_mayVote ro k d.node.ac (frame d.node) t .restart e he)
 
-/-- **B2.c.** Every emission of an AC cut of a handler passes the gate of the handler's
+/-- Every emission of an AC cut of a handler passes the gate of the handler's
 start state: the AC cuts before it keep `mayVote` (`SA.step_mayVote`), FG cuts keep `𝒜`. -/
 theorem emits_mayVote_of_mem_exec (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
@@ -291,7 +291,7 @@ theorem stateAt_voteMember (hv : rho.ExecutionValid) (v : V) :
             (stateAt_voteMember hv v' i)
       · rw [state_of_other S rho hn v i e he hne]; exact stateAt_voteMember hv v i
 
-/-- The engine-side B2.0: the node's vote permission at every cut is its installed membership. -/
+/-- The node's vote permission at every cut of the engine is its installed membership. -/
 theorem stateAt_mayVote (hv : rho.ExecutionValid) (v : V) (i : Nat) :
     (stateAt S rho hn v i).node.ac.mayVote =
       fun s => decide (rho.ownKey v ∈ rho.sel (S.vote.voteRole s)) :=

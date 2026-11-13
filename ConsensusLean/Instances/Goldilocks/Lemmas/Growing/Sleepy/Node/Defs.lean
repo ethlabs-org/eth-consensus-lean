@@ -136,7 +136,7 @@ structure SleepyBoundsFrom (σ₀ : Nat) (b : Time) : Prop where
 `committeeSize` members, P (`CommitteePAt`), the frames of nodes honest at the cut carry votes of
 members, and the gate: a node honest at `t ≥ 0` may vote in slot `s`, before every cut whose
 earlier cuts are at times `≤ t`, iff it is in the slot-`s` committee. T (`CommitteeTAt`) follows
-from P and the frames on a run (`CommitteeFacts.hT`). -/
+from P and the frames on a run (`CommitteeFacts.committeeTAt`). -/
 structure CommitteeFacts (K : SA.CommitteeDict sp.n) : Prop where
   hsize : ∀ s, (K.committee s).ncard = sp.committeeSize
   hP : SA.CommitteePAt K tr.projAC H

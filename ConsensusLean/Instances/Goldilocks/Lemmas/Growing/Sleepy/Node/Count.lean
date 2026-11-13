@@ -43,12 +43,9 @@ theorem optimistic_time_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr 
     (h : SA.OptimisticLockAt tr.projAC x i s C CV) :
     sp.ts s ≤ tr.time i ∧ tr.time i < sp.ts s + 2 * sp.Δ := by
   obtain ⟨ℓ, A, -, hsl, hsel, -⟩ := h
-  unfold SA.optimisticSelect at hsel
-  dsimp only at hsel
-  split_ifs at hsel with hc
-  simp only [not_or, not_le] at hc
   subst hsl
-  exact ⟨(SA.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 le_rfl, hc.2.2⟩
+  exact ⟨(SA.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 le_rfl,
+    (SA.optimisticSelect_guard hsel).2.2⟩
 
 /-- A cast of a node honest then is in `[t_σ, t_σ + Δ]` of its slot `σ`. -/
 theorem cast_time_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)

@@ -18,14 +18,16 @@ public section
 `vote_frame_at`: at a slot-`(s+1)` vote of a node honest at its cut `i ≤ b`, a block `B` held
 while honest, compatible with every origin within `b` of label at most `s` and extended by a
 slot-`s` vote of a node honest at it, is in the viable tree of the voter block tree or at or below
-`fc_root`. The honest rows of the voter's tree are classified at `i` (`2 f < n` at `tr.time i`);
-each witnessing head is relayed from its voter, honest at its acceptance, to the voter, honest at
-`i`, before the freeze (`honest_head_frozen_at`).
+`fc_root`. The honest rows of the voter's tree are classified at `i` within the slot-`(s+1)`
+committee `K (s+1)`: fewer than half of its members are compromised at `tr.time i`, the voter is
+a member (the gate), and honest pools hold only votes of members (P). Each witnessing head is
+relayed from its voter, honest at its acceptance, to the voter, honest at `i`, before the freeze
+(`honest_head_frozen_at`).
 
-The store geometry runs on the prefix through `tr.time i` for the validators honest then
-(`vote_frame_of_witnesses`, with the frozen witnesses as premises), once `B` is known to be in the
-voter's frame: `Σ.J` and `Σ.F` are compared with `B` among the blocks held while honest, and `B`
-lies between `Σ.F` and a frozen witness. -/
+The store geometry runs on the prefix through `tr.time i` for the validators honest then, under
+the population half bound `2 f < n` at `tr.time i` (`vote_frame_of_witnesses`, with the frozen
+witnesses as premises), once `B` is known to be in the voter's frame: `Σ.J` and `Σ.F` are compared
+with `B` among the blocks held while honest, and `B` lies between `Σ.F` and a frozen witness. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 

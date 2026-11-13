@@ -9,7 +9,7 @@ public section
 /-! # The committee facts of an outage query
 
 The gate `Q.hGate`, and, on a run record of the query's trace, P (`Q.committeeP`: the pools and
-the optimistic-check states) and the frames (`Q.hT`) hold for its dictionary `Q.K`
+the optimistic-check states) and the frames (`Q.frame_member`) hold for its dictionary `Q.K`
 (`GS/CommitteeVotes`, with `Q.bindsSel`). With the committee size `Q.hsize` they are the committee
 facts `Q.facts` of the outage chain. -/
 
@@ -58,7 +58,7 @@ theorem committeeP : SA.CommitteePAt Q.K Q.trace.projAC Q.keys := by
     exact hpool y i s hy v hsub
 
 /-- **The frames of honest nodes carry votes of members.** -/
-theorem hT :
+theorem frame_member :
     ∀ w c, w ∈ Q.keys (Q.trace.time c) → ∀ C ∈ (Node.frame (Q.trace.state w c)).tree,
       ∀ v ∈ SA.blockVotes C, v.val ∈ Q.K.committee v.slot :=
   simTraceAt_tree_member S hrun Q.valid Q.bindsSel
@@ -68,7 +68,7 @@ read time `t ≥ 0` (a node honest at `t` is honest at `0`). -/
 theorem facts : Compose.Growing.CommitteeFacts Q.trace Q.keys Q.K where
   hsize := Q.hsize
   hP := Q.committeeP hrun
-  hFrame := Q.hT hrun
+  hFrame := Q.frame_member hrun
   hGate := fun _ ht x hx i _ s => Q.hGate x (hrun.antitone ht hx) i s
 
 end OutageQueryAt

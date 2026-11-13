@@ -16,8 +16,6 @@ open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (Vote blockVotes)
 
-variable {binding : VoteBinding}
-
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
   (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 

@@ -293,8 +293,10 @@ theorem healthyLive_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S
 /-- Outage resilience of the past: a run in the outage regime up to `b`
 (synchronous for deadlines up to `b₀`, partially synchronous with GST `b₁` up
 to `b`, η-sleepy on `[0, b]`, with the no-sleep window and cohort count of
-`System.Outage` cut at `b`) keeps what nodes ready at `T` read as stable, for ready
-readers at reading times in `[b₁ + recovery·Δ, b]`, whatever happens after
+`System.Outage` cut at `b`; the selected committees satisfy the retained cohort inequality,
+cut at `b`, at the times of the fixed band `[bandStart, bandEnd]` up to `b`, and are η-sleepy on
+`[0, b]` with the committee look-ahead `committeeAheadDur`) keeps what nodes ready at `T` read
+as stable, for ready readers at reading times in `[b₁ + recovery·Δ, b]`, whatever happens after
 `b`. -/
 theorem outage_prefix (h : CorrectProtocol S X K) {g : S.schema.Id}
     (hg : S.schema.output .stable = some g) (r : S.Run) (hv : S.Valid r)

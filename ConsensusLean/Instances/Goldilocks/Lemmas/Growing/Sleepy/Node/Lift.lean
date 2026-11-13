@@ -554,8 +554,7 @@ hold for every signer, and the gate is the default start's permission (`mayVote_
 theorem CommitteeFacts.of_full (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hstock : sp.committeeSize = sp.n) :
     CommitteeFacts tr H (SA.CommitteeDict.full sp.n) :=
-  ⟨SA.size_binding_full hstock,
-    ⟨fun _ _ _ _ _ s _ _ => SA.mem_full s _, fun _ _ _ _ _ _ s _ _ => SA.mem_full s _⟩,
+  ⟨SA.size_binding_full hstock, SA.CommitteePAt.full,
     fun _ _ _ _ _ v _ => SA.mem_full v.slot _,
     fun _ ht _ hx i hi s =>
       ⟨fun _ => SA.mem_full s _, fun _ => mayVote_stock_at hrun hnc ht hx i hi⟩⟩
@@ -563,7 +562,7 @@ theorem CommitteeFacts.of_full (hrun : Growing.GoldilocksRun proposer dg H tr)
 /-- **T from P and the frames**: the merged view of a cast of a node honest at it holds pool
 votes of its read point, which are in its pool after the cast (`SA.readPoint_pool`, P), and the
 votes of blocks of the call's frame, which is the node's frame (`frame_of_projAC_at`, `hFrame`). -/
-theorem CommitteeFacts.hT {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K) {ini}
+theorem CommitteeFacts.committeeTAt {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K) {ini}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr) :
     SA.CommitteeTAt K tr.projAC H := by
   intro y i ℓ e hy hc m v hv
@@ -573,14 +572,11 @@ theorem CommitteeFacts.hT {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H
       hrun.time_mono (Nat.lt_succ_iff.mp hk)
     simp only [SA.voteView, SA.voteViewList, SA.View.ofLists, Set.mem_ofPred_eq, List.mem_filter,
       decide_eq_true_eq] at hvb
-    have h := hvb.1
-    unfold SA.SAState.poolAt at h
-    split_ifs at h
-    · exact False.elim (List.not_mem_nil h)
-    · have hp := (SA.readPoint_pool hacr.localRun hy (sa_castAt_upTo.mpr ⟨le_rfl, hc⟩) h).1
-      rw [SA.state_pool_slot_from _ hacr.localRun hacr.vstart hy (i + 1) _ v hp]
-      rw [Trace.upTo_state tr.projAC y hb] at hp
-      exact hKB.hP.1 (tr.time i) y hy (i + 1) hb _ v hp
+    have hp := (SA.readPoint_pool hacr.localRun hy (sa_castAt_upTo.mpr ⟨le_rfl, hc⟩)
+      (SA.SAState.mem_poolAt.mp hvb.1).2).1
+    rw [SA.state_pool_slot_from _ hacr.localRun hacr.vstart hy (i + 1) _ v hp]
+    rw [Trace.upTo_state tr.projAC y hb] at hp
+    exact hKB.hP.1 (tr.time i) y hy (i + 1) hb _ v hp
   · rw [frame_of_projAC_at hrun hy hc.1] at hC
     exact hKB.hFrame y i hy C hC v hvC
 

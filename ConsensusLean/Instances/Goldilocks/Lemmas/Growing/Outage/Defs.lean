@@ -198,19 +198,7 @@ theorem two_faults_lt_K (D : OutageLockPremises tr H proposer dg ini) {s : Nat} 
   have hB := D.hBK d hr
   by_cases hd : d ≤ sp.ts s + 2 * sp.Δ
   · exact hB.twoK s d (Nat.zero_le _) h₁ le_rfl hd
-  have hΔ := sp.toParams.hΔ
-  have h := hB.slotK s d (Nat.zero_le _) (by linarith) le_rfl h₂
-  unfold SA.FaultBoundK at h
-  have hdisj : Disjoint (D.K.committee s ∩ (H d)ᶜ) (D.K.committee s ∩
-      {y | y ∈ H d ∧ tr.projAC.awake y (sp.ts s + sp.Δ) ∧
-        SA.JoinedAt tr.projAC y (sp.ts s + sp.Δ)}) :=
-    Set.disjoint_left.2 fun _ hx hx' => hx.2 hx'.2.1
-  have h1 := Set.ncard_union_eq hdisj (Set.toFinite _) (Set.toFinite _)
-  have h2 : (D.K.committee s ∩ (H d)ᶜ ∪ D.K.committee s ∩
-      {y | y ∈ H d ∧ tr.projAC.awake y (sp.ts s + sp.Δ) ∧
-        SA.JoinedAt tr.projAC y (sp.ts s + sp.Δ)}).ncard ≤ (D.K.committee s).ncard :=
-    Set.ncard_le_ncard (Set.union_subset Set.inter_subset_left Set.inter_subset_left)
-  omega
+  exact hB.two_of_slotK (Nat.zero_le _) (by linarith [sp.toParams.hΔ]) le_rfl h₂
 
 /-- **The cohort classification**: a vote cast in `[a, z]` by a node honest at its cast is by a
 member of `A₀`, by a late waker, or by a validator compromised by `z`. -/

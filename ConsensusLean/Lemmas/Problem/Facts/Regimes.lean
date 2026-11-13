@@ -55,6 +55,12 @@ theorem CohortOn.two_mul_lt {a b : Time} (h : p.CohortOn a b)
   unfold CohortOn at h
   omega
 
+/-- At zero look-back, η-readiness is plain readiness. -/
+theorem etaReadyAbove_zero_iff {θ : ℚ} {c t : Time} :
+    p.EtaReadyAbove θ 0 c t ↔ p.ReadyAbove θ c t := by
+  unfold EtaReadyAbove
+  simp only [le_refl, ↓reduceIte]
+
 /-- η-sleepy (`θ ≥ 0`) implies plain sleepy. -/
 theorem EtaReadyAbove.readyAbove {θ : ℚ} {η c t : Time} (h : p.EtaReadyAbove θ η c t)
     (h0 : 0 ≤ θ) : p.ReadyAbove θ c t := by
@@ -147,12 +153,6 @@ theorem EtaSleepyOn.prefix {θ : ℚ} {η c W a b : Time} (h : p.EtaSleepyOn θ 
   intro t hat htb
   exact (h t hat htb).retain_mono (min_le_min_left _ hb) hθ h0
 
-/-- Full committees recover the population η-sleepy predicate. -/
-theorem committeeSleepyOn_univ_iff [Nonempty V] {θ : ℚ} {η c W a b : Time} :
-    p.CommitteeSleepyOn (fun _ => Finset.univ) θ η c W a b ↔
-      p.EtaSleepyOn θ η c W a b := by
-  simp [CommitteeSleepyOn, EtaSleepyOn, EtaReadyAbove, ReadyAbove, faultCount]
-
 /-- A population premise implies full-committee participation at an earlier look-ahead. -/
 theorem EtaSleepyOn.committee_univ {θ : ℚ} {η c W W' a b : Time}
     (h : p.EtaSleepyOn θ η c W a b) (hW : W' ≤ W) (hθ : θ ≤ 1) (h0 : 0 ≤ θ) :
@@ -161,13 +161,6 @@ theorem EtaSleepyOn.committee_univ {θ : ℚ} {η c W W' a b : Time}
   have ht := (h t hat htb).retain_mono
     (min_le_min_right _ (show t + W' ≤ t + W by linarith)) hθ h0
   simpa [lookAhead, EtaReadyAbove, ReadyAbove, faultCount] using ht
-
-/-- At each band time, a full committee asks for exactly the stock cohort inequality. -/
-theorem committeeCohortOn_univ_iff [Nonempty V] {a z lo hi : Time} :
-    p.CommitteeCohortOn (fun _ => Finset.univ) a z lo hi ↔
-      ∀ t, max 0 lo ≤ t → t ≤ hi → t ≤ p.horizon → p.CohortOn a z := by
-  simp only [CommitteeCohortOn, CohortOn, Finset.inter_univ, Finset.univ_nonempty,
-    true_implies]
 
 /-- A population cohort satisfies every full-committee band, including an empty band. -/
 theorem CohortOn.committee_univ {a z lo hi : Time} (h : p.CohortOn a z) :
@@ -182,29 +175,37 @@ namespace System.Outage
 variable {V : Type} [Fintype V] [DecidableEq V] {S : System V} {Prog : Type}
   {X : External S} {K : Contract Prog} {T b₀ b₁ : Time} {r : S.Run}
 
+/-- An outage run satisfies the timing conjunct `OutageTimes`. -/
 theorem times (h : S.Outage X K T b₀ b₁ r) :
     OutageTimes K.params (S.pt r).env.ΔAC T b₀ b₁ := h.1
 
+/-- An outage run satisfies the network conjunct `OutageNet`. -/
 theorem net (h : S.Outage X K T b₀ b₁ r) :
     (S.log r).OutageNet (S.pt r) b₀ b₁ := h.2.1
 
+/-- An outage run satisfies the population η-sleepy conjunct `EtaSleepyOn` on the horizon. -/
 theorem etaSleepy (h : S.Outage X K T b₀ b₁ r) :
     (S.pt r).EtaSleepyOn K.params.θ ((K.params.η : Time) * (S.pt r).env.ΔAC)
       (S.cDur K r) (S.aheadDur K r) 0 (S.pt r).horizon := h.2.2.1
 
+/-- An outage run satisfies the no-sleep conjunct `NoSleepOn` of the retained cohort. -/
 theorem noSleep (h : S.Outage X K T b₀ b₁ r) :
     ((S.pt r).retain (S.cohortAt K b₁ r)).NoSleepOn
       (S.outageStart K b₀ r) (S.outageEnd K b₁ r) := h.2.2.2.1
 
+/-- An outage run satisfies the cohort conjunct `CohortOn` of the retained cohort. -/
 theorem cohort (h : S.Outage X K T b₀ b₁ r) :
     ((S.pt r).retain (S.cohortAt K b₁ r)).CohortOn
       (S.outageStart K b₀ r) (S.outageEnd K b₁ r) := h.2.2.2.2.1
 
+/-- An outage run satisfies the committee cohort conjunct `CommitteeCohortOn` on the band. -/
 theorem committeeCohort (h : S.Outage X K T b₀ b₁ r) :
     ((S.pt r).retain (S.cohortAt K b₁ r)).CommitteeCohortOn
       (X.selected (S.pt r).env (X.ext r)) (S.outageStart K b₀ r) (S.outageEnd K b₁ r)
       (S.bandStart K b₀ r) (S.bandEnd K b₀ r) := h.2.2.2.2.2.1
 
+/-- An outage run satisfies the committee η-sleepy conjunct `CommitteeSleepyOn` on the
+horizon. -/
 theorem committeeSleepy (h : S.Outage X K T b₀ b₁ r) :
     (S.pt r).CommitteeSleepyOn (X.selected (S.pt r).env (X.ext r)) K.params.θ
       ((K.params.η : Time) * (S.pt r).env.ΔAC) (S.cDur K r) (S.committeeAheadDur K r)

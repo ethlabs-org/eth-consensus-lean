@@ -88,7 +88,9 @@ theorem unlockView_votes_slot {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A : S
 to `A'` whose pools hold votes of their own slot, with a frame whose blocks have valid payloads:
 if no validator of `Hn` has two held votes of slot `slot(t) − 1`, every held slot-`s` vote of `Hn`
 has only heads compatible with `B`, and `2 · |Hnᶜ| < committeeSize`, then `unlockTarget` of the
-call's view is `B`. -/
+call's view is `B`. The premise `hne` is asked only of votes of slot `slot(t) − 1`, because the
+committee opposing set includes the non-members of that slot's committee, who hold no vote of
+that slot. -/
 theorem unlockTarget_unlockView_held_of_honest_slot {ro : ReplayOrder sp FGP} (self : Fin sp.n)
     {A A' : SAState sp.n} (c : (goldilocksSA sp FGP ro).Call)
     (hA' : ((goldilocksSA sp FGP ro).step self A Φ t c).1 = A') (hΦ : FrameOK Φ) (s : Int)

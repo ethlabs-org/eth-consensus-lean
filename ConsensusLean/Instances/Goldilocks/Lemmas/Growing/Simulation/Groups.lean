@@ -208,7 +208,7 @@ theorem simTraceAt_cutLaw (hv : rho.ExecutionValid) :
   rw [state_in_group S rho hn hcut h0 m hm'.le, e1]
   exact key
 
-/-- **B2.0.** Every trace state's vote permission is its node's installed membership: the init
+/-- Every trace state's vote permission is its node's installed membership: the init
 installs it, and every cut keeps it (the canonical cut law holds with no honesty premise). -/
 theorem simTraceAt_mayVote (hv : rho.ExecutionValid) (y : Fin (Fintype.card V)) (i : Nat) :
     ((simTraceAt S rho hn).state y i).ac.mayVote =

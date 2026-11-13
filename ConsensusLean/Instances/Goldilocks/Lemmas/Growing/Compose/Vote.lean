@@ -127,8 +127,7 @@ theorem vote_extends
     have hsm' : s < m' := by omega
     apply SA.Growing.next_transfer sp _ ro H _ tr.projAC proposer hrun'
       (SA.CommitteeDict.full sp.n)
-      ⟨fun _ _ _ _ _ σ _ _ => SA.mem_full σ _, fun _ _ _ _ _ _ σ _ _ => SA.mem_full σ _⟩
-      (fun _ _ _ _ _ _ _ v _ => SA.mem_full v.slot _) (SA.size_binding_full hp.stock)
+      SA.CommitteePAt.full SA.CommitteeTAt.full (SA.size_binding_full hp.stock)
       m' y k B ℓ e hy hc hm'
     · intro z j e' hz hv hsl
       have hjk : j < k := by
