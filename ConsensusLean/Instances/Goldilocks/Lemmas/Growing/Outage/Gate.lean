@@ -99,16 +99,17 @@ theorem vote_held_before_early_at
 
 /-- **L-gate** under growing faults: an update of a label from GST by a node honest at it, whose
 frame is below `B`, returns a result, and every result of it extends `B`, when the extending
-casters of the label outnumber its opponents, both charged at the update's cut. -/
+casters of the label outnumber its opponents in the label's committee, both charged at the
+update's cut (the pools of honest nodes hold votes of members, `hP`). -/
 theorem gate_result_extends_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hP : SA.CommitteePAt K tr.projAC H)
     {g : Time} {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
     (hS : ReceiverServiceAfterAt H (tr.HonestBlocksAt H) g y tr.projAC)
     {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
     (hu : SA.UpdateAt tr.projAC y c s ℓ)
     (hg : g ≤ sp.ts s + sp.Δ) {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hmaj : ExtendingMajorityAt tr H B s (tr.time c))
+    (hmaj : ExtendingMajorityAt tr H K B s (tr.time c))
     (hFB : Anc (tr.HonestBlocksAt H) ℓ.frame.F B) :
     (∃ C CV, SA.ResultAt tr.projAC y c s C CV) ∧
       ∀ C CV, SA.ResultAt tr.projAC y c s C CV → Anc (tr.HonestBlocksAt H) B C := by
@@ -160,21 +161,22 @@ theorem gate_result_extends_at
       by exact_mod_cast hes, Hd, hHdt, hHdr, SA.anc_tree_of_anc_U hU hΦ hΦU hBt hBHd hHdt⟩
     rintro ⟨v, hv1, v', hv2, hne, hvx, hv'x⟩
     exact hne ((hone x hx k e hv hes v hv1 hvx).trans (hone x hx k e hv hes v' hv2 hv'x).symm)
-  have hvot : SA.voters {v | v ∈ A.pool s} ⊆
-      ExtendingCastersAt tr H B s (tr.time c) ∪ OpponentsAt tr H B s (tr.time c) := by
+  have hvot : SA.voters {v | v ∈ A.pool s} ⊆ ExtendingCastersAt tr H B s (tr.time c) ∪
+      (K.committee s ∩ OpponentsAt tr H B s (tr.time c)) := by
     rintro w ⟨v, hv, rfl⟩
+    have hvK : v.val ∈ K.committee s := hP.1 (tr.time c) y hy c (fun _ hk => hm hk.le) s v hv
     by_cases hw : v.val ∈ H (tr.time c)
     · obtain ⟨j, -, e, he, rfl⟩ := pool_vote_at hrun hnc hy hv hw
       have hs := state_pool_slot_at hrun hnc hy s _ hv
       by_cases hext : SA.VoteExtends (tr.HonestBlocksAt H) e.msg B
       · exact Or.inl (extendingCastersAt_iff.2 ⟨hw, j, e, he, hs, hext⟩)
-      · exact Or.inr (opponentsAt_iff.2 (Or.inr ⟨hw, j, e, he, hs, hext⟩))
-    · exact Or.inr (opponentsAt_iff.2 (Or.inl hw))
+      · exact Or.inr ⟨hvK, opponentsAt_iff.2 (Or.inr ⟨hw, j, e, he, hs, hext⟩)⟩
+    · exact Or.inr ⟨hvK, opponentsAt_iff.2 (Or.inl hw)⟩
   have hmaj' : (SA.voters {v | v ∈ A.pool s}).ncard <
       2 * SA.confirmationScore sp A ℓ.frame s B := by
     have h1 := Set.ncard_le_ncard hvot (Set.toFinite _)
     have h2 := Set.ncard_union_le (ExtendingCastersAt tr H B s (tr.time c))
-      (OpponentsAt tr H B s (tr.time c))
+      (K.committee s ∩ OpponentsAt tr H B s (tr.time c))
     have h3 := Set.ncard_le_ncard hsupp (Set.toFinite _)
     have h4 := extendingMajorityAt_iff.1 hmaj
     change _ < 2 * (SA.supporters ℓ.frame V s B).ncard
@@ -218,15 +220,16 @@ private theorem pool_vote_read
 
 /-- **L3** under growing faults: at a read by a node honest at the read time `d` (every cut
 before `i` at a time `≤ d`), when the extending casters of the latest view's label `s` outnumber
-its opponents, both charged at `d`, and every extending vote of a validator honest at `d` is
-delivered, the latest view's voters are fewer than twice the supporters of `B`. -/
+its opponents in the label's committee, both charged at `d`, and every extending vote of a
+validator honest at `d` is delivered, the latest view's voters are fewer than twice the
+supporters of `B`. -/
 theorem read_majority_of_extending_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hP : SA.CommitteePAt K tr.projAC H)
     {w : Fin sp.n} {i : Nat} {d : Time} (hd : 0 ≤ d) (hw : w ∈ H d)
     (hi : ∀ k < i, tr.time k ≤ d) {t : Time} {B : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hs : (SA.latestView sp (tr.state w i).ac (Node.frame (tr.state w i)) t).2 = s)
-    (hmaj : ExtendingMajorityAt tr H B s d) (hBt : B ∈ (Node.frame (tr.state w i)).tree)
+    (hmaj : ExtendingMajorityAt tr H K B s d) (hBt : B ∈ (Node.frame (tr.state w i)).tree)
     (hdeliv : ∀ x k e, HVoteAt tr H x k e → x ∈ H d → e.msg.slot = s →
       SA.VoteExtends (tr.HonestBlocksAt H) e.msg B →
       e.msg ∈ (tr.state w i).ac.pool s ∧
@@ -291,16 +294,19 @@ theorem read_majority_of_extending_at
       (by rw [hea', heb', (pool_vote_read hrun hnc hd hw hi (hpool a ha) (by rw [hav]; exact hx)).1,
         (pool_vote_read hrun hnc hd hw hi (hpool b hb) (by rw [hbv]; exact hx)).1])
     exact hab (hea'.symm.trans heb')
-  have hvot : SA.voters LV.1.votes ⊆ ExtendingCastersAt tr H B s d ∪ OpponentsAt tr H B s d := by
+  have hvot : SA.voters LV.1.votes ⊆
+      ExtendingCastersAt tr H B s d ∪ (K.committee s ∩ OpponentsAt tr H B s d) := by
     rintro u ⟨v, hv, rfl⟩
+    have hvK : v.val ∈ K.committee s := hP.1 d w hw i hi s v (hpool _ hv)
     by_cases hu : v.val ∈ H d
     · obtain ⟨hes, j, -, e, he, rfl⟩ := pool_vote_read hrun hnc hd hw hi (hpool _ hv) hu
       by_cases hext : SA.VoteExtends (tr.HonestBlocksAt H) e.msg B
       · exact Or.inl (extendingCastersAt_iff.2 ⟨hu, j, e, he, hes, hext⟩)
-      · exact Or.inr (opponentsAt_iff.2 (Or.inr ⟨hu, j, e, he, hes, hext⟩))
-    · exact Or.inr (opponentsAt_iff.2 (Or.inl hu))
+      · exact Or.inr ⟨hvK, opponentsAt_iff.2 (Or.inr ⟨hu, j, e, he, hes, hext⟩)⟩
+    · exact Or.inr ⟨hvK, opponentsAt_iff.2 (Or.inl hu)⟩
   have h1 := Set.ncard_le_ncard hvot (Set.toFinite _)
-  have h2 := Set.ncard_union_le (ExtendingCastersAt tr H B s d) (OpponentsAt tr H B s d)
+  have h2 := Set.ncard_union_le (ExtendingCastersAt tr H B s d)
+    (K.committee s ∩ OpponentsAt tr H B s d)
   have h3 := Set.ncard_le_ncard hsupp (Set.toFinite _)
   have h4 := extendingMajorityAt_iff.1 hmaj
   omega

@@ -30,8 +30,9 @@ constrains (`HVoteAt`, `y ∈ H (tr.time k)` for the state at cut `k`).
   ready at `t` reads the state of the first cut after `t`, at which it may already be
   compromised; `OutageLockInv.locks_at_cut` and the like give the cut form). The protections
   `protPrev`, `protCover` constrain the state of a member of `A₀` at cuts at which it is honest.
-* `ExtendingMajorityAt tr H B q d`: the extending majority of label `q`, with the opponents
-  charged at `d` (`(H d)ᶜ` and the slot-`q` casters honest at `d` whose vote does not extend `B`).
+* `ExtendingMajorityAt tr H K B q d`: the extending majority of label `q`, with the opponents
+  charged at `d` in the slot-`q` committee of `K` (`(H d)ᶜ` and the slot-`q` casters honest at `d`
+  whose vote does not extend `B`).
 
 The receiver service after GST, `ReceiverServiceAfterAt`, is in `Outage/Service`. -/
 
@@ -355,10 +356,11 @@ def OpponentsAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
     ¬ SA.VoteExtends (tr.HonestBlocksAt H) e.msg B}
 
 /-- **The extending majority of label `q` charged at `d`**: the extending casters still honest
-at `d` outnumber the opponents at `d`. -/
+at `d` outnumber the opponents at `d` in the slot-`q` committee of `K`. -/
 def ExtendingMajorityAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-    (B : SA.Blk sp.n (List (FG.Att sp.n))) (q : Nat) (d : Time) : Prop :=
-  (OpponentsAt tr H B q d).ncard < (ExtendingCastersAt tr H B q d).ncard
+    (K : SA.CommitteeDict sp.n) (B : SA.Blk sp.n (List (FG.Att sp.n))) (q : Nat) (d : Time) :
+    Prop :=
+  (K.committee q ∩ OpponentsAt tr H B q d).ncard < (ExtendingCastersAt tr H B q d).ncard
 
 theorem extendingCastersAt_iff {B : SA.Blk sp.n (List (FG.Att sp.n))} {q : Nat} {d : Time}
     {x : Fin sp.n} :
@@ -372,9 +374,10 @@ theorem opponentsAt_iff {B : SA.Blk sp.n (List (FG.Att sp.n))} {q : Nat} {d : Ti
       e.msg.slot = q ∧ ¬ SA.VoteExtends (tr.HonestBlocksAt H) e.msg B) :=
   Iff.rfl
 
-theorem extendingMajorityAt_iff {B : SA.Blk sp.n (List (FG.Att sp.n))} {q : Nat} {d : Time} :
-    ExtendingMajorityAt tr H B q d ↔
-      (OpponentsAt tr H B q d).ncard < (ExtendingCastersAt tr H B q d).ncard :=
+theorem extendingMajorityAt_iff {K : SA.CommitteeDict sp.n} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {q : Nat} {d : Time} :
+    ExtendingMajorityAt tr H K B q d ↔
+      (K.committee q ∩ OpponentsAt tr H B q d).ncard < (ExtendingCastersAt tr H B q d).ncard :=
   Iff.rfl
 
 end Consensus.Goldilocks.Compose.Growing

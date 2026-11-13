@@ -330,22 +330,23 @@ theorem readPoint_liveLockBlocks_compatible_at {i : Nat} (hinv : OutageLockInv D
       linarith only [hlt, hts, hK, hΔ]
 
 include D in
-/-- **A fast lock has an extending supporter**, counted at its writing cut `c` (`2 f_{t_c} < n`):
-a counted vote by a validator honest at `t_c`, cast at a cut at which it was honest, whose head
-extends the lock block. -/
+/-- **A fast lock has an extending supporter**, counted at its writing cut `c` in the slot-`s`
+committee (`2 f^K_{t_c} < committeeSize`): a counted vote by a validator honest at `t_c`, cast at
+a cut at which it was honest, whose head extends the lock block. -/
 private theorem fastLock_extending_vote_at {c s : Nat} {y : Fin sp.n} (hy : y ∈ H (tr.time c))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : SA.FastLockAt tr.projAC y c s B CV) :
     ∃ x j e, HVoteAt tr H x j e ∧ e.msg.slot = s ∧
       SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
-  obtain ⟨hcount, hCV⟩ := fastLock_counted_at D.hrun D.hnc hy hfl
-  have hf := D.two_faults_lt_at hy (fastLockAt_isCall hfl)
+  obtain ⟨hcount, hCVK, hCV⟩ := fastLock_counted_at D.hrun D.hnc D.facts.hP hy hfl
+  have hf := D.two_faults_lt_K (fastLockAt_ts_le D.hrun hfl) (fastLockAt_time_le D.hrun hfl)
+    ⟨y, c, hy, fastLockAt_isCall hfl, le_rfl⟩
   obtain ⟨v, hv, hvH⟩ : ∃ v ∈ CV, v.val ∈ H (tr.time c) := by
     by_contra hno
     push Not at hno
-    have hsub : {u | ∃ v ∈ CV, v.val = u} ⊆ (H (tr.time c))ᶜ := by
+    have hsub : {u | ∃ v ∈ CV, v.val = u} ⊆ D.K.committee s ∩ (H (tr.time c))ᶜ := by
       rintro u ⟨v, hv, rfl⟩
-      exact hno v hv
+      exact ⟨hCVK ⟨v, hv, rfl⟩, hno v hv⟩
     have := Set.ncard_le_ncard hsub
     omega
   obtain ⟨j, -, e, hve, rfl⟩ := fastLock_honest_vote_at D.hrun D.hnc hy hfl hv hvH
@@ -417,7 +418,8 @@ theorem rows_supported_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
   obtain ⟨j', hj'j, B', CV, hfl, hyj', L, hLU, hLr, hLB'⟩ :=
     fastLock_provenance_at hrun D.hnc (hrun.time_nonneg j) (fun _ hk => hm hk.le) hav' hl₀ hlf
   obtain rfl : L = B := hU.1 hLU (hΦU hB) (hLr.trans hBr.symm)
-  have hcallj' := fastLockAt_isCall hfl
+  have hfK := D.two_faults_lt_K (fastLockAt_ts_le D.hrun hfl) (fastLockAt_time_le D.hrun hfl)
+    ⟨_, j', hyj', fastLockAt_isCall hfl, le_rfl⟩
   obtain ⟨w, jw, ew, hvw, hws, Hd, hHd, hHdr, hB'Hd⟩ := fastLock_extending_vote_at D hyj' hfl
   refine ⟨w, jw, ew, hvw, ?_, Hd, hHd, hHdr, (Anc.mono hΦU hVB).trans (hLB'.trans hB'Hd)⟩
   -- the lock's slot is at most `q`
@@ -433,19 +435,7 @@ theorem rows_supported_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
     linarith only [ht, this, hts, hj'i, hti, hΔ]
   · rcases Nat.lt_or_ge l₀.slot (q + 2) with hl2 | hl2
     · obtain hq : l₀.slot = q + 1 := by omega
-      rw [hq] at hO
-      have hfK : 2 * (D.K.committee (q + 1) ∩ (H (tr.time j'))ᶜ).ncard < sp.committeeSize := by
-        obtain ⟨-, -, -, hslot, -⟩ := id hO
-        have hsl : sp.slot (tr.time j') = q + 1 := hslot
-        have h₁ := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg j') ((q + 1 : Nat) : Int)).2
-          (by rw [hsl])
-        have h₂ : ¬ sp.ts ((q + 2 : Nat) : Int) ≤ tr.time j' := fun h => by
-          have := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg j') _).1 h
-          rw [hsl] at this
-          omega
-        have hts : sp.ts ((q + 2 : Nat) : Int) = sp.ts ((q + 1 : Nat) : Int) + 4 * sp.Δ := by
-          simp only [SAParams.ts]; push_cast; ring
-        exact D.two_faults_lt_K h₁ (by linarith) ⟨_, j', hyj', hcallj', le_rfl⟩
+      rw [hq] at hO hfK
       exact no_optimistic_before_held_row_at hrun D.hnc D.facts hy hc hs hmacc hmi
         (hrun.antitone (hm hmi.le) hav) hkm hsg hyj' (by omega) hO hfK
     · obtain ⟨ℓO, A, -, hslot, -⟩ := id hO

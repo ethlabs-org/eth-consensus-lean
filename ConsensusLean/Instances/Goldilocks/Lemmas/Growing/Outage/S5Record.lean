@@ -69,7 +69,7 @@ theorem record_above_of_update_r_by (D : OutageLockPremises tr H proposer dg ini
   have hcz : tr.time c ≤ D.z := by
     have := ts_le_ts (sp := sp) D.hrk.2
     exact D.hzc _ (by linarith) hcallc
-  obtain ⟨⟨C, CV, hR⟩, hall⟩ := gate_result_extends_at D.hrun D.hnc hw (hS w) hu D.hr.1
+  obtain ⟨⟨C, CV, hR⟩, hall⟩ := gate_result_extends_at D.hrun D.hnc D.facts.hP hw (hS w) hu D.hr.1
     (restored_majority_at_r_at D hinv (honestCall_mono hcallc (by linarith)) _ hcz) hFP
   exact record_above_from_at hinv hu hR le_rfl (hall C CV hR) c' t hcc' hd hcut hwt
 

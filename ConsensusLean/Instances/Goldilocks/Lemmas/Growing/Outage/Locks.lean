@@ -21,12 +21,13 @@ compromised by `c`. After the write the lock is the writer's own state.
 
 * `fastLock_provenance_at`, `fastLock_counted_at`: the provenance of a stored fast lock (the
   writing cut `c`, at which the writer is honest) and the count at `c`, lifted to the prefix
-  through the cut's time;
+  through the cut's time; the counted signers lie in the slot's committee `K s` (P);
 * `fastLock_honest_vote_at`: a counted vote of a validator honest at the writer's cut was cast by
   it, at a cut no later than `c` at which it was honest;
 * `fastLock_compatible_at`: the block of a fast lock of label `s` written at `c` is compatible with
-  `P`. Labels `< j₀` are within `b₀`; labels in `[j₀, j₀ + k]` count against `(H z)ᶜ ∪ W` at
-  `t_c ≤ z`; later labels count against `(H (t_c))ᶜ` (`late`, and `2 f_{t_c} < n`);
+  `P`. Labels `< j₀` are within `b₀`; labels in `[j₀, j₀ + k]` count against
+  `K s ∩ ((H z)ᶜ ∪ W)` at `t_c ≤ z`; later labels count against `K s ∩ (H (t_c))ᶜ` (`late`, and
+  `2·|K s ∩ (H t_c)ᶜ| < committeeSize`);
 * `OutageVoteInv.stored_fastLock_compatible_at`: every stored fast lock of a node honest at the
   reading cut names a held block compatible with `P`;
 * `slow_lock_compatible_at`: a stored slow lock of a node honest at the reading cut is compatible
@@ -85,6 +86,17 @@ theorem fastLockAt_time_le (hrun : Consensus.Goldilocks.Growing.GoldilocksRun pr
       omega
     linarith
 
+/-- A fast lock of label `s` is written at or after `t_s`. -/
+theorem fastLockAt_ts_le (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    {y : Fin sp.n} {c s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hfl : SA.FastLockAt tr.projAC y c s B CV) : sp.ts s ≤ tr.time c := by
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  rcases hfl with ⟨ℓ, C, hu, -⟩ | ⟨ℓ, A, -, hslot, -⟩
+  · have ht : tr.time c = sp.ts s + 6 * sp.Δ := hu.2.2.1
+    linarith
+  · exact (SA.ts_le_iff_le_slot sp (hrun.time_nonneg c) (s : Int)).2
+      (by rw [show sp.slot (tr.time c) = s from hslot])
+
 /-- The AC state of a node at cut `n`, read at a time `t` after every cut before `n` at which the
 node is honest, is the AC state of the prefix through `t`. -/
 private theorem projAC_state_by
@@ -127,21 +139,27 @@ private theorem lock_held_by
   exact ⟨L, hL, hLr⟩
 
 /-- **The fast-lock count at the writer's cut**: the counted validators are at least half of the
-committee, and every counted vote is of the slot with a head held while honest above the
-block. -/
+committee and lie in the slot's committee (P), and every counted vote is of the slot with a head
+held while honest above the block. -/
 theorem fastLock_counted_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hP : SA.CommitteePAt K tr.projAC H)
+    {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : SA.FastLockAt tr.projAC y c s B CV) :
-    sp.n ≤ 2 * {u | ∃ v ∈ CV, v.val = u}.ncard ∧
+    sp.committeeSize ≤ 2 * {u | ∃ v ∈ CV, v.val = u}.ncard ∧
+      {u | ∃ v ∈ CV, v.val = u} ⊆ K.committee s ∧
       ∀ v ∈ CV, v.slot = s ∧ ∃ R ∈ tr.HonestBlocksAt H, R.root = v.head ∧ R.slot ≤ s ∧
         Anc (tr.HonestBlocksAt H) B R := by
   have hd := hrun.time_nonneg c
   have hsub := upTo_subset hrun hd
+  have hK : {u | ∃ v ∈ CV, v.val = u} ⊆ K.committee s := by
+    rintro u ⟨v, hv, rfl⟩
+    rcases hfl with ⟨ℓ, C, -, -, -, rfl⟩ | ⟨ℓ, A, hpt, -, -, rfl⟩
+    · exact hP.1 (tr.time c) y hy c (fun _ hk => hrun.time_mono hk.le) s v hv.1
+    · exact hP.2 y c ℓ A hy hpt s v hv.1
   obtain ⟨hcount, hCV⟩ := SA.fastLock_counted (acRun_upTo hrun hnc hd) hy
     ((sa_fastLockAt_upTo hrun.time_mono).mpr ⟨le_rfl, hfl⟩)
-  rw [hrun.stock] at hcount -- TEMP(C2): C3/C4 replaces
-  refine ⟨hcount, fun v hv => ?_⟩
+  refine ⟨hcount, hK, fun v hv => ?_⟩
   obtain ⟨hvs, R, hR, hRr, hRs, hBR⟩ := hCV v hv
   exact ⟨hvs, R, hsub hR, hRr, hRs, hBR.mono hsub⟩
 
@@ -180,7 +198,7 @@ theorem fastLock_compatible_at {n : Nat} (hvi : OutageVoteInv D n) {y : Fin sp.n
     Compatible (tr.HonestBlocksAt H) B D.P := by
   have hU := D.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨hcount, hCV⟩ := fastLock_counted_at D.hrun D.hnc hyc hfl
+  obtain ⟨hcount, hCVK, hCV⟩ := fastLock_counted_at D.hrun D.hnc D.facts.hP hyc hfl
   have hcall := fastLockAt_isCall hfl
   by_cases hs : s < D.j₀
   · -- an update or a selection of a label `< j₀` is within `b₀`
@@ -219,23 +237,28 @@ theorem fastLock_compatible_at {n : Nat} (hvi : OutageVoteInv D n) {y : Fin sp.n
     obtain ⟨j, hj, e, hve, rfl⟩ := hcut v hv hvH
     exact hB (compatible_of_voteCompat hU hRU hRr hBR (hcomp j hj e hve rfl hvs))
   by_cases hsK : s ≤ D.j₀ + sp.k
-  · -- the cohort count at `t_c ≤ z`: the counted validators lie in `(H z)ᶜ ∪ W`
+  · -- the cohort count at `t_c ≤ z`: the counted validators lie in `K s ∩ ((H z)ᶜ ∪ W)`
     have hcz := hcz hsK
-    have hsub : {u | ∃ v ∈ CV, v.val = u} ⊆ (H D.z)ᶜ ∪ D.W := by
-      rintro u ⟨v, hv, rfl⟩
+    have hsub : {u | ∃ v ∈ CV, v.val = u} ⊆ D.K.committee s ∩ ((H D.z)ᶜ ∪ D.W) := by
+      intro u hu
+      refine ⟨hCVK hu, ?_⟩
+      obtain ⟨v, hv, rfl⟩ := hu
       by_contra hu
       simp only [Set.mem_union, Set.mem_compl_iff, not_or, not_not] at hu
       exact hgood v hv (D.hrun.antitone hcz hu.1) fun j hj e hve he hes =>
         hvi.voteCompat_of_not_lateWaker_at hj hve (by omega) fun _ => hu
     have := Set.ncard_le_ncard hsub
-    have := D.two_mul_lt
+    have := D.two_mul_lt_K (not_lt.1 hs) hsK ⟨y, c, hyc, hcall, fastLockAt_ts_le D.hrun hfl⟩
     omega
-  · -- `late` at the cuts before `n`: the counted validators lie in `(H (t_c))ᶜ`
-    have hsub : {u | ∃ v ∈ CV, v.val = u} ⊆ (H (tr.time c))ᶜ := by
-      rintro u ⟨v, hv, rfl⟩ hu
-      exact hgood v hv hu fun j hj e hve he hes => hvi.late v.val j hj e hve (by omega)
+  · -- `late` at the cuts before `n`: the counted validators lie in `K s ∩ (H (t_c))ᶜ`
+    have hsub : {u | ∃ v ∈ CV, v.val = u} ⊆ D.K.committee s ∩ (H (tr.time c))ᶜ := by
+      intro u hu
+      refine ⟨hCVK hu, ?_⟩
+      obtain ⟨v, hv, rfl⟩ := hu
+      exact fun hu => hgood v hv hu fun j hj e hve he hes => hvi.late v.val j hj e hve (by omega)
     have := Set.ncard_le_ncard hsub
-    have := D.two_faults_lt_at hyc hcall
+    have := D.two_faults_lt_K (fastLockAt_ts_le D.hrun hfl) (fastLockAt_time_le D.hrun hfl)
+      ⟨y, c, hyc, hcall, le_rfl⟩
     omega
 
 /-- **Every stored fast lock of a node at cut `n`, read at a time `t` at which it is honest after

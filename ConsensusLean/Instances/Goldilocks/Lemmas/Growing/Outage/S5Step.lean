@@ -32,8 +32,9 @@ then, from `OutageLockInv D i` (`k ≤ i`) and receiver service from `b₁`:
 * `outage_s5_inner_at` (INV): root cover, Hi (`vote_extends_of_hi_at`), or Lo with the batch walk.
   For `q > r` the batch is every slot-`q` vote (each extends `P` by induction on the cut), counted
   at the voter's cut (`vote_extends_of_batch_at`, `faults_lt_voters`). For `q = r` the batch is the
-  cohort `A₀`: the voters honest at the vote's time `t_k ≤ t_r + 5Δ ≤ z` are classified at their
-  cast (`cohort_classify`), the others are compromised by `z`, and `hcohort` counts the rest;
+  members of the cohort `A₀` in the slot-`r` committee `K_r`: the voters honest at the vote's time
+  `t_k ≤ t_r + 5Δ ≤ z` are members, classified at their cast (`cohort_classify`), the others are
+  compromised by `z`, and `hcohortK` counts the rest in `K_r`;
 * `outage_s5_step_at` (lock safety's `hS5`) and `restored_votes_extend_at`. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
@@ -157,11 +158,12 @@ private theorem below_entry {H₀ : Set (Fin sp.n)} {tr₀ : GoldilocksTrace sp 
 /-- **The counted batch under growing faults**, at a slot-`(s+1)` vote of a node honest at its
 cut `i`: a batch `SX` of validators honest at `t_i`, each with a slot-`s` vote, all such votes
 extending `B` and carried, outnumbering half of a cover `W` of the merged voters (`W` holds every
-slot-`s` caster honest at `t_i` and every validator compromised by `t_i`), with every live lock
-compatible with `B`, makes the vote extend `B`. The static counted batch on the prefix through
-`t_i`. -/
+slot-`s` caster honest at `t_i` and every member of the slot-`s` committee compromised by `t_i`;
+the merged views of honest casts hold votes of members, `hTK`), with every live lock compatible
+with `B`, makes the vote extend `B`. The static counted batch on the prefix through `t_i`. -/
 private theorem vote_extends_of_counted_batch_run
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
+    {K : SA.CommitteeDict sp.n} (hTK : SA.CommitteeTAt K tr.projAC H)
     {s : Nat} {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
@@ -171,7 +173,7 @@ private theorem vote_extends_of_counted_batch_run
     (hall : ∀ x ∈ SX, ∀ j e', HVoteAt tr H x j e' → e'.msg.slot = s →
       SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
     (hW : ∀ x j e', HVoteAt tr H x j e' → x ∈ H (tr.time i) → e'.msg.slot = s → x ∈ W)
-    (hWc : (H (tr.time i))ᶜ ⊆ W) (hcount : W.ncard < 2 * SX.ncard)
+    (hWc : K.committee s ∩ (H (tr.time i))ᶜ ⊆ W) (hcount : W.ncard < 2 * SX.ncard)
     (hcarry : SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s
       {v | ∃ x ∈ SX, ∃ j e', HVoteAt tr H x j e' ∧ e'.msg = v ∧ v.slot = s})
     (hlocks : ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
@@ -217,7 +219,9 @@ private theorem vote_extends_of_counted_batch_run
           (by
             rw [he']
             exact SA.merged_vote_slot hr.localRun hr.vstart hy hc' v hv)
-      · exact hWc hw)
+      · have hvK := hTK y i ℓ e hy hc s v hv
+        rw [SA.merged_vote_slot hr.localRun hr.vstart hy hc' v hv] at hvK
+        exact hWc ⟨hvK, hw⟩)
     hcount
     ⟨⟨hcarry.awake, le_rfl⟩, hcarry.joined, fun v ⟨x, hx, j, e', hv, hev, hvs⟩ => by
       have hv' := hvote x j e' (hSXH hx) hv
@@ -443,33 +447,43 @@ theorem outage_s5_inner_at
           hall x j e' (vote_cut_lt hrun D.hnc hve hvs htk1).2 hve hvs
         simpa only [Set.mem_univ, true_and] using h)
       hL
-  · -- `q = r`: the cohort `A₀` casts and extends `P`; the other casters honest at `t_k` are
-    -- late wakers or compromised by `z ≥ t_k`
+  · -- `q = r`: the members of `A₀` in `K_r` cast and extend `P`; the other casters honest at
+    -- `t_k` are members, late wakers or compromised by `z ≥ t_k`
     have hσ := D.hσ
     have hrk := D.hrk
     have hrK := ts_le_ts (sp := sp) hrk.2
     have hkz : tr.time k ≤ D.z := D.hzc _
       (by have := htk'; linarith only [this, hs, hts, hrK, hΔ]) ⟨y, k, hy, hcallk, le_rfl⟩
-    have hA₀k : D.A₀ ⊆ H (tr.time k) := fun x hx => hrun.antitone hkz (D.hA₀ hx)
-    have hall : ∀ x ∈ D.A₀, ∀ j e', HVoteAt tr H x j e' → e'.msg.slot = D.r →
-        SA.VoteExtends (tr.HonestBlocksAt H) e'.msg D.P := fun x hx j e' hve hvs =>
-      hinvk.votes x j (vote_cut_lt hrun D.hnc hve hvs htk1).2 e' hve (by omega) (by omega)
-        (Or.inr hx)
+    have hA₀k : D.K.committee D.r ∩ D.A₀ ⊆ H (tr.time k) := fun x hx =>
+      hrun.antitone hkz (D.hA₀ hx.2)
+    have hall : ∀ x ∈ D.K.committee D.r ∩ D.A₀, ∀ j e', HVoteAt tr H x j e' →
+        e'.msg.slot = D.r → SA.VoteExtends (tr.HonestBlocksAt H) e'.msg D.P :=
+      fun x hx j e' hve hvs =>
+        hinvk.votes x j (vote_cut_lt hrun D.hnc hve hvs htk1).2 e' hve (by omega) (by omega)
+          (Or.inr hx.2)
     have hcallr : ∃ x i, x ∈ H (tr.time i) ∧ tr.IsCall x i ∧
         sp.ts D.r + sp.Δ ≤ tr.time i :=
       ⟨y, k, hy, hcallk, by linarith only [htk1, hts, hΔ]⟩
-    have hSXv : ∀ x ∈ D.A₀, ∃ j e', HVoteAt tr H x j e' ∧ e'.msg.slot = D.r := by
+    have hco := D.hcohortK D.r (by omega) hrk.2 (honestCall_mono hcallr (by linarith only [hΔ]))
+    have hSXv : ∀ x ∈ D.K.committee D.r ∩ D.A₀, ∃ j e', HVoteAt tr H x j e' ∧
+        e'.msg.slot = D.r := by
       intro x hx
-      obtain ⟨haw, hjn⟩ := OutageVoteInv.cohort_ready_at D hx hrk.1 hrk.2 hcallr
+      obtain ⟨haw, hjn⟩ := OutageVoteInv.cohort_ready_at D hx.2 hrk.1 hrk.2 hcallr
       have hxr : x ∈ H (sp.ts D.r + sp.Δ) := hrun.antitone
-        (D.hzc _ (by linarith only [hrK, hΔ]) hcallr) (D.hA₀ hx)
+        (D.hzc _ (by linarith only [hrK, hΔ]) hcallr) (D.hA₀ hx.2)
       obtain ⟨j, e', hve, hvs, -⟩ := vote_of_awake_joined_at hrun D.hnc hxr
-        -- TEMP(C2): C3c replaces
-        (mayVote_at hrun D.hnc (ts_add_delta_nonneg _) hxr (D.hmv _ _)) haw hjn
+        (mayVote_of_committee D.facts.hGate (ts_add_delta_nonneg _) hxr hx.1) haw hjn
       exact ⟨j, e', hve, hvs⟩
     have hW : ∀ x j e', HVoteAt tr H x j e' → x ∈ H (tr.time k) → e'.msg.slot = D.r →
-        x ∈ D.A₀ ∪ ((H D.z)ᶜ ∪ D.W) := by
+        x ∈ D.K.committee D.r ∩ (D.A₀ ∪ ((H D.z)ᶜ ∪ D.W)) := by
       intro x j e' hve _ hvs
+      -- a caster honest at its cast is a member: the gate permits its vote
+      obtain ⟨hxj, ℓ', hc'⟩ := hVoteAt_iff.1 hve
+      have hxK : x ∈ D.K.committee e'.msg.slot :=
+        (D.facts.hGate (tr.time j) (hrun.time_nonneg j) x hxj j
+          (fun _ hk => hrun.time_mono hk.le) _).1 (mayVote_of_castAt_at hrun D.hnc hxj hc')
+      rw [hvs] at hxK
+      refine ⟨hxK, ?_⟩
       obtain ⟨hts', -⟩ := hve.ts_le_cast hrun D.hnc
       rw [hvs] at hts'
       have hjr := ts_le_ts (sp := sp) (show D.j₀ + 1 ≤ D.r by omega)
@@ -481,22 +495,24 @@ theorem outage_s5_inner_at
       · exact Or.inl h
       · exact Or.inr (Or.inr h)
       · exact Or.inr (Or.inl h)
-    have hWc : (H (tr.time k))ᶜ ⊆ D.A₀ ∪ ((H D.z)ᶜ ∪ D.W) := fun x hx =>
-      Or.inr (Or.inl fun hxz => hx (hrun.antitone hkz hxz))
-    have hcount : (D.A₀ ∪ ((H D.z)ᶜ ∪ D.W)).ncard < 2 * D.A₀.ncard := by
-      have := Set.ncard_union_le D.A₀ ((H D.z)ᶜ ∪ D.W)
-      have := D.hcohort
+    have hWc : D.K.committee D.r ∩ (H (tr.time k))ᶜ ⊆
+        D.K.committee D.r ∩ (D.A₀ ∪ ((H D.z)ᶜ ∪ D.W)) := fun x hx =>
+      ⟨hx.1, Or.inr (Or.inl fun hxz => hx.2 (hrun.antitone hkz hxz))⟩
+    have hcount : (D.K.committee D.r ∩ (D.A₀ ∪ ((H D.z)ᶜ ∪ D.W))).ncard <
+        2 * (D.K.committee D.r ∩ D.A₀).ncard := by
+      rw [Set.inter_union_distrib_left]
+      have := Set.ncard_union_le (D.K.committee D.r ∩ D.A₀)
+        (D.K.committee D.r ∩ ((H D.z)ᶜ ∪ D.W))
       omega
-    obtain ⟨x, hx⟩ : D.A₀.Nonempty := by
+    obtain ⟨x, hx⟩ : (D.K.committee D.r ∩ D.A₀).Nonempty := by
       rw [Set.nonempty_iff_ne_empty]
       rintro h
-      have := D.hcohort
-      rw [h, Set.ncard_empty] at this
+      rw [h, Set.ncard_empty] at hco
       omega
     obtain ⟨j, e', hve, hvs⟩ := hSXv x hx
-    exact vote_extends_of_counted_batch_run hrun D.hnc hy hcast hs
+    exact vote_extends_of_counted_batch_run hrun D.hnc D.facts.hT hy hcast hs
       (hviab ⟨x, j, e', hve, hvs, hall x hx j e' hve hvs⟩) hA₀k hSXv hall hW hWc hcount
-      (hcarry D.A₀ hall) hL
+      (hcarry (D.K.committee D.r ∩ D.A₀) hall) hL
 
 /-- **Lock safety's `hS5`**: compatibility past the lock lifetime, from the inner induction at
 the cast cut. -/

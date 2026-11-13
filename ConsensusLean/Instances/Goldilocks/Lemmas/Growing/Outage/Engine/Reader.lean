@@ -39,7 +39,8 @@ The growing-fault forms of `Obligations/OutageReaderGate`, `Obligations/OutageBr
 * `outage_reader_prefix_at`: ancestry of two read tips is the prefix of the engine reads;
 * `extending_majority_after_r_at`: the extending majority for the origin at every label past the
   first restored one, charged at every `d ∈ [t_q + Δ, t_q + 6Δ]` within the horizon (every vote
-  of such a label by a node honest at its cast extends the origin, and the slot count at `d`);
+  of such a label by a node honest at its cast extends the origin, and the committee slot count at
+  `d`);
 * `outage_reader_bridge_at`: the reader's read extends the armed read tip of the ready source.
   The record comes from the early gate (`record_above_of_update_r_by`) or the latest gate
   (`gate_result_extends_at`, `record_above_from_at`), the head from the extending majority of the
@@ -246,8 +247,9 @@ private theorem compatible_tree {sp : SA.SAParams} {U : Set (SA.Blk sp.n (List (
     (fun h => SA.anc_tree_of_anc_U hU hΦ hΦU hY h hX)
 
 /-- **The extending majority past the first restored label**: at a label `q > r`, every vote of a
-node honest at its cast extends the origin (`restored_votes_extend_at`), so the slot count at
-`d ∈ [t_q + Δ, t_q + 6Δ]` within the horizon gives the extending majority charged at `d`. -/
+node honest at its cast extends the origin (`restored_votes_extend_at`), so the committee slot
+count at `d ∈ [t_q + Δ, t_q + 6Δ]` within the horizon gives the extending majority charged at `d`
+(the gate `Q.hGate` permits every member to vote). -/
 theorem extending_majority_after_r_at (Q : OutageQueryAt S A V)
     [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start)
@@ -255,9 +257,8 @@ theorem extending_majority_after_r_at (Q : OutageQueryAt S A V)
     (hinv : ∀ i, Compose.Growing.OutageLockInv (outageLockPremises_of_arming_at Q service hsh ar) i)
     {q : Nat} (hrq : Q.restoredLabel < q) {d : Time} (hd₁ : Q.params.ts q + Q.params.Δ ≤ d)
     (hd₂ : d ≤ Q.params.ts q + 6 * Q.params.Δ) (hdh : d ≤ Q.run.2.horizon) :
-    Compose.Growing.ExtendingMajorityAt Q.trace Q.keys ar.origin q d := by
+    Compose.Growing.ExtendingMajorityAt Q.trace Q.keys Q.K ar.origin q d := by
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hmv := simIni_mayVote S Q.run.2 Q.hn -- TEMP(C2): C3b replaces
   have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
   have hSD : ∀ y, Compose.Growing.ReceiverServiceAfterAt Q.keys (Q.trace.HonestBlocksAt Q.keys)
       (outageLockPremises_of_arming_at Q service hsh ar).b₁ y Q.trace.projAC := fun y => by
@@ -265,9 +266,10 @@ theorem extending_majority_after_r_at (Q : OutageQueryAt S A V)
     exact outage_receiver_service_at Q y
   have hall := Compose.Growing.restored_votes_extend_at _ hSD hinv
   rw [outageLockPremises_of_arming_at_P, outageLockPremises_of_arming_at_r] at hall
-  exact Compose.Growing.extendingMajority_of_all_at hrun hmv hnc
+  exact Compose.Growing.extendingMajority_of_all_at hrun hnc
+    (fun t ht x hx i _ s => Q.hGate x (hrun.antitone ht hx) i s)
     (fun x k e hv hs => hall x k e hv (by rw [hs]; exact hrq)) hd₁
-    ((Q.bounds hdh).slot q d (Nat.zero_le _) hd₁ le_rfl hd₂)
+    ((Q.boundsK hrun hdh).slotK q d (Nat.zero_le _) hd₁ le_rfl hd₂)
 
 /-- **The reader bridge under growing faults.** A reader ready at `t` from the recovery point
 reads above the armed read tip of the ready source. -/
@@ -374,7 +376,8 @@ theorem outage_reader_bridge_at (Q : OutageQueryAt S A V)
       rw [Compose.Growing.frame_of_projAC_at hrun hŵG G.update.1]
       exact ((hFc G.cut hcj.le).trans hFt).trans hTO
     obtain ⟨⟨C, CV, hR⟩, hall⟩ :=
-      Compose.Growing.gate_result_extends_at hrun hnc hŵG hS G.update G.restored hmaj hFB
+      Compose.Growing.gate_result_extends_at hrun hnc (Q.committeeP hrun) hŵG hS G.update
+        G.restored hmaj hFB
     have h := Compose.Growing.record_above_from_at hinv G.update hR (by rw [hr]; exact hrs.le)
       (by rw [hP]; exact hall C CV hR) j t hcj ht0 hjt hŵ
     rw [hP] at h
@@ -453,8 +456,8 @@ theorem outage_reader_bridge_at (Q : OutageQueryAt S A V)
         · exact he ▸ hHd't.1
         · exact (Anc.mem hfa he).1
       exact Compose.Growing.frame_mem_of_tree_at hrun hnc ht0 hŵ hjt htt hFt
-    have hL3 := Compose.Growing.read_majority_of_extending_at hrun hnc ht0 hŵ hjt G.view hmaj'
-      hBt hdeliv
+    have hL3 := Compose.Growing.read_majority_of_extending_at hrun hnc (Q.committeeP hrun) ht0 hŵ
+      hjt G.view hmaj' hBt hdeliv
     have hanchor : Compatible (Node.frame st).tree
         (SA.getAnchor Q.params st.ac (Node.frame st) t) ar.tip :=
       Compose.anchor_compatible_of_live_candidates hΦ fun X hX => by

@@ -12,8 +12,8 @@ public section
 
 * `ExtendingMajorityAt.anti` (in the block), `ExtendingMajorityAt.anti_time` (a majority charged
   at `d` is one at every `d' ≤ d`), and `extendingMajority_of_all_at` (L4: when every vote of
-  label `q` by a node honest at its cast extends `B`, the slot count `f_d < h_{t_q + Δ}` charged
-  at `d ≥ t_q + Δ` gives the majority at `d`);
+  label `q` by a node honest at its cast extends `B`, the committee slot count `f_d < h_{t_q + Δ}`
+  of the slot-`q` committee charged at `d ≥ t_q + Δ` gives the majority at `d`);
 * `ReceiverServiceAfterAt.upTo`: the receiver service, for a receiver honest at `d`, is the static
   receiver service of the prefix through `d`;
 * the delivery halves at a receiver call `c` from `t_q + 2Δ` with no restart after `t_q`, under the
@@ -40,9 +40,10 @@ private theorem voteExtends_anti {U : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
   exact ⟨Hd, hHd, hHdr, hBB'.trans hBHd⟩
 
 /-- **Downward monotonicity in the block**: from the protected origin to any block below it. -/
-theorem ExtendingMajorityAt.anti {B B' : SA.Blk sp.n (List (FG.Att sp.n))} {q : Nat} {d : Time}
-    (hBB' : Anc (tr.HonestBlocksAt H) B' B) (h : ExtendingMajorityAt tr H B q d) :
-    ExtendingMajorityAt tr H B' q d := by
+theorem ExtendingMajorityAt.anti {K : SA.CommitteeDict sp.n}
+    {B B' : SA.Blk sp.n (List (FG.Att sp.n))} {q : Nat} {d : Time}
+    (hBB' : Anc (tr.HonestBlocksAt H) B' B) (h : ExtendingMajorityAt tr H K B q d) :
+    ExtendingMajorityAt tr H K B' q d := by
   rw [extendingMajorityAt_iff] at h ⊢
   have hO : OpponentsAt tr H B' q d ⊆ OpponentsAt tr H B q d := by
     intro x hx
@@ -53,15 +54,15 @@ theorem ExtendingMajorityAt.anti {B B' : SA.Blk sp.n (List (FG.Att sp.n))} {q : 
     intro x hx
     obtain ⟨hx, k, e, hv, hs, hext⟩ := extendingCastersAt_iff.1 hx
     exact extendingCastersAt_iff.2 ⟨hx, k, e, hv, hs, voteExtends_anti hBB' hext⟩
-  exact (Set.ncard_le_ncard hO (Set.toFinite _)).trans_lt
+  exact (Set.ncard_le_ncard (Set.inter_subset_inter_right _ hO) (Set.toFinite _)).trans_lt
     (h.trans_le (Set.ncard_le_ncard hE (Set.toFinite _)))
 
 /-- **Downward monotonicity in the charging time**: a majority charged at `d` is a majority
 charged at every `d' ≤ d` (a caster honest at `d` is honest at `d'`; an opponent honest at `d'`
 is an opponent at `d` or compromised by `d`). -/
-theorem ExtendingMajorityAt.anti_time (hanti : Antitone H) {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    {q : Nat} {d d' : Time} (hd : d' ≤ d) (h : ExtendingMajorityAt tr H B q d) :
-    ExtendingMajorityAt tr H B q d' := by
+theorem ExtendingMajorityAt.anti_time (hanti : Antitone H) {K : SA.CommitteeDict sp.n}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} {q : Nat} {d d' : Time} (hd : d' ≤ d)
+    (h : ExtendingMajorityAt tr H K B q d) : ExtendingMajorityAt tr H K B q d' := by
   rw [extendingMajorityAt_iff] at h ⊢
   have hO : OpponentsAt tr H B q d' ⊆ OpponentsAt tr H B q d := by
     intro x hx
@@ -74,38 +75,39 @@ theorem ExtendingMajorityAt.anti_time (hanti : Antitone H) {B : SA.Blk sp.n (Lis
     intro x hx
     obtain ⟨hx, h⟩ := extendingCastersAt_iff.1 hx
     exact extendingCastersAt_iff.2 ⟨hanti hd hx, h⟩
-  exact (Set.ncard_le_ncard hO (Set.toFinite _)).trans_lt
+  exact (Set.ncard_le_ncard (Set.inter_subset_inter_right _ hO) (Set.toFinite _)).trans_lt
     (h.trans_le (Set.ncard_le_ncard hE (Set.toFinite _)))
 
 /-- **L4, charged at `d`**: when every vote of label `q` by a node honest at its cast extends `B`,
-the opponents at `d` are the validators compromised by `d`, and the extending casters at `d` hold
-every validator honest at `d` that is awake and joined at `t_q + Δ`; the slot count charged at
-`d ≥ t_q + Δ` gives the majority. -/
+the opponents at `d` in the slot-`q` committee are its members compromised by `d`, and the
+extending casters at `d` hold every member honest at `d` that is awake and joined at `t_q + Δ`
+(permitted to vote by the gate); the committee slot count charged at `d ≥ t_q + Δ` gives the
+majority. -/
 theorem extendingMajority_of_all_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C3c replaces
-    (hnc : NoCollRun dg tr)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n}
+    (hGate : ∀ t, 0 ≤ t → ∀ x, x ∈ H t → ∀ i, (∀ k < i, tr.time k ≤ t) → ∀ s,
+      ((tr.state x i).ac.mayVote s = true ↔ x ∈ K.committee s))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {q : Nat} {d : Time}
     (hall : ∀ x k e, HVoteAt tr H x k e → e.msg.slot = q →
       SA.VoteExtends (tr.HonestBlocksAt H) e.msg B)
-    (hd : sp.ts q + sp.Δ ≤ d) (hfb : tr.FaultBoundAt H (sp.ts q + sp.Δ) d) :
-    ExtendingMajorityAt tr H B q d := by
+    (hd : sp.ts q + sp.Δ ≤ d) (hfb : SA.FaultBoundK K q tr.projAC (H d) (sp.ts q + sp.Δ)) :
+    ExtendingMajorityAt tr H K B q d := by
   rw [extendingMajorityAt_iff]
-  have hO : OpponentsAt tr H B q d ⊆ (H d)ᶜ := by
-    intro x hx
+  have hO : K.committee q ∩ OpponentsAt tr H B q d ⊆ K.committee q ∩ (H d)ᶜ := by
+    rintro x ⟨hxK, hx⟩
     rcases opponentsAt_iff.1 hx with hx | ⟨-, k, e, hv, hs, hne⟩
-    · exact hx
+    · exact ⟨hxK, hx⟩
     · exact absurd (hall x k e hv hs) hne
-  have hE : {y | y ∈ H d ∧ tr.awake y (sp.ts q + sp.Δ) ∧ tr.JoinedAt y (sp.ts q + sp.Δ)} ⊆
-      ExtendingCastersAt tr H B q d := by
-    rintro x ⟨hx, hw, hj⟩
+  have hE : K.committee q ∩ {y | y ∈ H d ∧ tr.projAC.awake y (sp.ts q + sp.Δ) ∧
+      SA.JoinedAt tr.projAC y (sp.ts q + sp.Δ)} ⊆ ExtendingCastersAt tr H B q d := by
+    rintro x ⟨hxK, hx, hw', hj'⟩
+    obtain ⟨hw, hj⟩ := (mem_awakeJoined_projAC hrun).1 ⟨hw', hj'⟩
     obtain ⟨k, e, hv, hs, -⟩ := vote_of_awake_joined_at hrun hnc (hrun.antitone hd hx)
-      (mayVote_at hrun hnc (ts_add_delta_nonneg _) (hrun.antitone hd hx) (hmv _ _)) hw hj
+      (mayVote_of_committee hGate (ts_add_delta_nonneg _) (hrun.antitone hd hx) hxK) hw hj
     exact extendingCastersAt_iff.2 ⟨hx, k, e, hv, hs, hall x k e hv hs⟩
-  have hfb' : (H d)ᶜ.ncard <
-      {y | y ∈ H d ∧ tr.awake y (sp.ts q + sp.Δ) ∧ tr.JoinedAt y (sp.ts q + sp.Δ)}.ncard := hfb
   exact (Set.ncard_le_ncard hO (Set.toFinite _)).trans_lt
-    (lt_of_lt_of_le hfb' (Set.ncard_le_ncard hE (Set.toFinite _)))
+    (lt_of_lt_of_le hfb (Set.ncard_le_ncard hE (Set.toFinite _)))
 
 /-! ### The receiver service in the prefix -/
 

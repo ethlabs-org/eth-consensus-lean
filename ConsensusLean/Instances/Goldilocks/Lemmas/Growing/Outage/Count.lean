@@ -20,10 +20,11 @@ public section
 * `counted_honest_vote_at` (Lemma G at a result): a counted vote of a validator honest at the
   writer's update was cast by it while honest;
 * `OutageVoteInv.result_compatible_at` (R): the result of an update of an unpolluted label by a
-  node honest at it is compatible with `P`. Every branch counts at the writer's update cut `k`:
-  R-pre (within `b₀`), R-j₀ (the slot count at `t_{j₀} + 6Δ`, pre-`b₀` service), R-mid (the cohort
-  `A₀` against `(H z)ᶜ ∪ W`, at `t_k ≤ z` by `hzc`), R-late (`late` and the slot count at
-  `t_m + 6Δ`). -/
+  node honest at it is compatible with `P`. Every branch counts at the writer's update cut `k`,
+  inside the slot committee `K m` (P puts the counted signers there): R-pre (within `b₀`), R-j₀
+  (the committee slot count at `t_{j₀} + 6Δ`, pre-`b₀` service), R-mid (the cohort `K m ∩ A₀`
+  against `K m ∩ ((H z)ᶜ ∪ W)`, at `t_k ≤ z` by `hzc`), R-late (`late` and the committee slot
+  count at `t_m + 6Δ`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -233,16 +234,15 @@ theorem cohort_ready_at (D : OutageLockPremises tr H proposer dg ini) {x : Fin s
   linarith
 
 /-- The pool of an update of a restored label by a node honest at it holds the slot votes of the
-validators honest at `t_m + Δ` that are awake and joined then. -/
+members of the slot committee honest at `t_m + Δ` that are awake and joined then. -/
 private theorem voter_of_ready (D : OutageLockPremises tr H proposer dg ini) {y : Fin sp.n}
     {k m : Nat} {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
     (hy : y ∈ H (tr.time k)) (hu : SA.UpdateAt tr.projAC y k m ℓ) (hm : D.r ≤ m) {x : Fin sp.n}
-    (hx : x ∈ H (sp.ts m + sp.Δ)) (haw : tr.awake x (sp.ts m + sp.Δ))
-    (hjn : tr.JoinedAt x (sp.ts m + sp.Δ)) :
+    (hx : x ∈ H (sp.ts m + sp.Δ)) (hxK : x ∈ D.K.committee m)
+    (haw : tr.awake x (sp.ts m + sp.Δ)) (hjn : tr.JoinedAt x (sp.ts m + sp.Δ)) :
     x ∈ SA.voters {v | v ∈ (tr.projAC.state y k).pool m} := by
   obtain ⟨k', e, hve, hes, -⟩ := vote_of_awake_joined_at D.hrun D.hnc hx
-    -- TEMP(C2): C3a replaces
-    (mayVote_at D.hrun D.hnc (ts_add_delta_nonneg _) hx (D.hmv _ _)) haw hjn
+    (mayVote_of_committee D.facts.hGate (ts_add_delta_nonneg _) hx hxK) haw hjn
   obtain ⟨hx', ℓ', hc', he'⟩ := hVoteAt_iff.1 hve
   have hval := (castAt_spec_at D.hrun D.hnc hx' ⟨hc', he'⟩).1
   rcases D.PG y k m ℓ hy hu hm x k' e hve hes with hpool | ⟨v, hv, -, -, -, hvx, -⟩
@@ -277,10 +277,17 @@ theorem result_compatible_at {i : Nat} (hinv : OutageVoteInv D i) {y : Fin sp.n}
     obtain ⟨j, hj, e, hve, rfl, hvs, R, hRU, hRr, hCR⟩ :=
       counted_honest_vote_at D.hrun D.hnc hy hR hv hvH
     exact compatible_of_voteCompat hU hRU hRr hCR (hcompat j hj e hve rfl hvs)
-  -- the slot count at the writer's update
-  have hslot : (H (tr.time k))ᶜ.ncard < {x | x ∈ H (tr.time k) ∧ tr.awake x (sp.ts m + sp.Δ) ∧
-      tr.JoinedAt x (sp.ts m + sp.Δ)}.ncard :=
-    (D.hB _ hcall).slot m (tr.time k) (Nat.zero_le _) (by rw [ht]; linarith) le_rfl ht.le
+  -- the counted signers are slot-`m` committee members (P at the writer's update)
+  have hmemCV : ∀ v ∈ CV, v.val ∈ D.K.committee m := by
+    obtain ⟨ℓ', -, -, hCV⟩ := id hR
+    intro v hv
+    rw [hCV] at hv
+    exact D.facts.hP.1 (tr.time k) y hy k (fun _ hk' => D.hrun.time_mono hk'.le) m v hv.1
+  -- the committee slot count at the writer's update
+  have hslot : (D.K.committee m ∩ (H (tr.time k))ᶜ).ncard <
+      (D.K.committee m ∩ {x | x ∈ H (tr.time k) ∧ tr.projAC.awake x (sp.ts m + sp.Δ) ∧
+        SA.JoinedAt tr.projAC x (sp.ts m + sp.Δ)}).ncard :=
+    (D.hBK _ hcall).slotK m (tr.time k) (Nat.zero_le _) (by rw [ht]; linarith) le_rfl ht.le
   rcases lt_or_ge m D.j₀ with hlt | hge
   · -- R-pre: the update is within `b₀`
     have hmj : sp.ts m + 6 * sp.Δ ≤ D.b₀ := by
@@ -295,53 +302,61 @@ theorem result_compatible_at {i : Nat} (hinv : OutageVoteInv D i) {y : Fin sp.n}
     have hmeq : m = D.j₀ := le_antisymm hm hge
     have hd := D.hrun.time_nonneg k
     have hsvc := (SleepyServiceBefore.upTo D.hrun D.hpreSvc hd).ac
-    have hT : {x | x ∈ H (tr.time k) ∧ tr.awake x (sp.ts m + sp.Δ) ∧
-        tr.JoinedAt x (sp.ts m + sp.Δ)} ⊆
+    have hT : D.K.committee m ∩ {x | x ∈ H (tr.time k) ∧ tr.projAC.awake x (sp.ts m + sp.Δ) ∧
+        SA.JoinedAt tr.projAC x (sp.ts m + sp.Δ)} ⊆
         SA.voters {v | v ∈ (tr.projAC.state y k).pool m} := fun x hx => by
+      obtain ⟨hxK, hx, hwj⟩ := hx
+      obtain ⟨hw, hj⟩ := (mem_awakeJoined_projAC D.hrun).1 hwj
       have h := awake_participant_early (D.hrun.upTo hd) (D.hnc.upTo _) hsvc
         (le_min (hmeq ▸ hj₀.1) (by rw [ht]; linarith)) hy
         (by rw [RunTrace.upTo_projAC]; exact (sa_updateAt_upTo D.hrun.time_mono).mpr ⟨le_rfl, hu⟩)
-        hx.1 -- TEMP(C2): C3a replaces
-        (mayVote_of_start (D.hrun.upTo hd) (D.hnc.upTo _) hx.1 (D.hmv _ _))
-        ⟨hx.2.1, by rw [ht]; linarith⟩
-        (joinedAt_upTo hx.2.2)
+        hx (mayVote_upTo D.hrun (mayVote_of_committee D.facts.hGate hd hx hxK))
+        ⟨hw, by rw [ht]; linarith⟩
+        (joinedAt_upTo hj)
       rwa [RunTrace.upTo_projAC, projAC_upTo_state D.hrun le_rfl] at h
     obtain ⟨v, hv, hvT⟩ := Compose.exists_counted_of_participants hR hT hslot
-    have hvH : v.val ∈ H (tr.time k) := hvT.elim (fun h => h.1) not_not.1
+    have hvH : v.val ∈ H (tr.time k) :=
+      hvT.elim (fun h => h.2.1) fun h => not_not.1 fun hn => h ⟨hmemCV v hv, hn⟩
     refine finish v hv hvH fun j hj e hve he hs => ?_
     obtain ⟨-, hte⟩ := hve.ts_le_cast D.hrun D.hnc
     rw [hs, hmeq] at hte
     exact (hinv.votes v.val j (by omega) e hve (by omega) (by omega)
       (Or.inl (by linarith))).voteCompat
   rcases le_or_gt m (D.j₀ + sp.k) with hmK | hmK
-  · -- R-mid: `A₀` votes in slot `m` and extends `P`; the counted set is in `(H z)ᶜ ∪ W`, at
-    -- the update's time `t_m + 6Δ ≤ z`
+  · -- R-mid: `A₀` votes in slot `m` and extends `P`; the counted set is in
+    -- `K m ∩ ((H z)ᶜ ∪ W)`, at the update's time `t_m + 6Δ ≤ z`
     have hkz : tr.time k ≤ D.z :=
       D.hzc _ (by rw [ht]; linarith [ts_le_ts (sp := sp) hmK]) hcall
-    have hT : D.A₀ ⊆ SA.voters {v | v ∈ (tr.projAC.state y k).pool m} := by
-      intro x hx
+    have hT : D.K.committee m ∩ D.A₀ ⊆ SA.voters {v | v ∈ (tr.projAC.state y k).pool m} := by
+      rintro x ⟨hxK, hx⟩
       have hcm := honestCall_mono hcall (show sp.ts m + sp.Δ ≤ tr.time k by rw [ht]; linarith)
       obtain ⟨haw, hjn⟩ := cohort_ready_at D hx (by omega) hmK hcm
       exact voter_of_ready D hy hu hm
-        (D.hrun.antitone (D.hzc _ (by linarith [ts_le_ts (sp := sp) hmK]) hcm) (D.hA₀ hx)) haw hjn
-    obtain ⟨v, hv, hvT⟩ := Compose.exists_counted_of_participants hR hT D.hcohort
+        (D.hrun.antitone (D.hzc _ (by linarith [ts_le_ts (sp := sp) hmK]) hcm) (D.hA₀ hx)) hxK
+        haw hjn
+    obtain ⟨v, hv, hvT⟩ := Compose.exists_counted_of_participants hR hT
+      (D.hcohortK m (by omega) hmK
+        (honestCall_mono hcall (show sp.ts m ≤ tr.time k by rw [ht]; linarith)))
     have hvz : v.val ∈ H D.z := by
       rcases hvT with h | h
-      · exact D.hA₀ h
-      · by_contra hn; exact h (Or.inl hn)
+      · exact D.hA₀ h.2
+      · by_contra hn; exact h ⟨hmemCV v hv, Or.inl hn⟩
     refine finish v hv (D.hrun.antitone hkz hvz) fun j hj e hve he hs => ?_
     rcases hvT with hA | hQ
-    · exact (hinv.votes v.val j (by omega) e hve (by omega) (by omega) (Or.inr hA)).voteCompat
+    · exact (hinv.votes v.val j (by omega) e hve (by omega) (by omega) (Or.inr hA.2)).voteCompat
     · exact hinv.voteCompat_of_not_lateWaker_at (by omega) hve (by omega)
-        fun _ => ⟨hvz, fun h => hQ (Or.inr h)⟩
-  · -- R-late: every slot-`m` vote is compatible with `P` (`late`); the validators honest at the
-    -- update and awake and joined at `t_m + Δ` reach it
-    have hT : {x | x ∈ H (tr.time k) ∧ tr.awake x (sp.ts m + sp.Δ) ∧
-        tr.JoinedAt x (sp.ts m + sp.Δ)} ⊆
-        SA.voters {v | v ∈ (tr.projAC.state y k).pool m} := fun x hx =>
-      voter_of_ready D hy hu hm (D.hrun.antitone (by rw [ht]; linarith) hx.1) hx.2.1 hx.2.2
+        fun _ => ⟨hvz, fun h => hQ ⟨hmemCV v hv, Or.inr h⟩⟩
+  · -- R-late: every slot-`m` vote is compatible with `P` (`late`); the committee members honest
+    -- at the update and awake and joined at `t_m + Δ` reach it
+    have hT : D.K.committee m ∩ {x | x ∈ H (tr.time k) ∧ tr.projAC.awake x (sp.ts m + sp.Δ) ∧
+        SA.JoinedAt tr.projAC x (sp.ts m + sp.Δ)} ⊆
+        SA.voters {v | v ∈ (tr.projAC.state y k).pool m} := fun x hx => by
+      obtain ⟨hxK, hx, hwj⟩ := hx
+      obtain ⟨hw, hj⟩ := (mem_awakeJoined_projAC D.hrun).1 hwj
+      exact voter_of_ready D hy hu hm (D.hrun.antitone (by rw [ht]; linarith) hx) hxK hw hj
     obtain ⟨v, hv, hvT⟩ := Compose.exists_counted_of_participants hR hT hslot
-    have hvH : v.val ∈ H (tr.time k) := hvT.elim (fun h => h.1) not_not.1
+    have hvH : v.val ∈ H (tr.time k) :=
+      hvT.elim (fun h => h.2.1) fun h => not_not.1 fun hn => h ⟨hmemCV v hv, hn⟩
     exact finish v hv hvH fun j hj e hve he hs => hinv.late v.val j (by omega) e hve (by omega)
 
 end OutageVoteInv

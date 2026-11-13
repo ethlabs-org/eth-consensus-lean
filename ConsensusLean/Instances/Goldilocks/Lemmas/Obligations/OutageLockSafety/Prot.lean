@@ -13,7 +13,8 @@ public section
 
 * `unlockKeeps_of_voteCompat`: `unlock` at an honest AC call keeps a frame block `B`
   when every honest vote of the view's slot by a validator outside `W` has a head compatible with
-  `B`, and `2·|Hᶜ ∪ W| < n`. It covers every call, so both unlock views.
+  `B`, and `2·|K σ ∩ (Hᶜ ∪ W)| < committeeSize` at the previous slot `σ`, with P and the frame
+  votes in the committees `K`. It covers every call, so both unlock views.
 * `OutageVoteInv.prot_step`: the protection `Prot x k j m` (`j ≥ j₀ − 1`) carries to
   `k + 1` through the lock's life (`slot(t_k) ≤ m ≤ expiry`), with (VA) (`OutageLockInv.viable`) at
   `k` and the caches at `k + 1`.
@@ -54,13 +55,18 @@ private theorem held_vote_cast {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     exact ⟨k, e, he, hm⟩
 
 /-- **`unlock` keeps `B` against the honest non-late-waker votes**: at an AC cut `j`
-of an honest `y`, with `B` in the frame's tree and `2·|Hᶜ ∪ W| < n`, if every honest vote of
-slot `slot(t_j) − 1` cast before `j` by a validator outside `W` has a head compatible with `B`,
-the unlock target of `B` at the call's view is `B`. -/
+of an honest `y`, with `B` in the frame's tree, P and the frame's block votes in the committees
+`K`, and `2·|K σ ∩ (Hᶜ ∪ W)| < committeeSize` at `σ = slot(t_j) − 1`, if every honest vote of
+slot `σ` cast before `j` by a validator outside `W` has a head compatible with `B`, the unlock
+target of `B` at the call's view is `B`. The opposing set is `(H ∖ W) ∪ {i ∉ K σ}`: a
+non-member holds no slot-`σ` vote. -/
 theorem unlockKeeps_of_voteCompat {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {W : Set (Fin sp.n)} (hf : 2 * (Hᶜ ∪ W).ncard < sp.n)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hB : B ∈ (tr.state y j).fg.toFrame.tree)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hP : SA.CommitteeP K tr.projAC H)
+    {W : Set (Fin sp.n)} {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    (hf : 2 * (K.committee (sp.slot (tr.time j) - 1) ∩ (Hᶜ ∪ W)).ncard < sp.committeeSize)
+    (hFr : ∀ C ∈ (Node.frame (tr.state y j)).tree, ∀ v ∈ SA.blockVotes C,
+      v.val ∈ K.committee v.slot)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y j).fg.toFrame.tree)
     (hcompat : ∀ x ∈ H, x ∉ W → ∀ k < j, ∀ e, SA.VoteAt tr.projAC x k e →
       (e.msg.slot : Int) = (sp.slot (tr.time j) : Int) - 1 →
       VoteCompat (tr.HonestBlocks H) e.msg B) :
@@ -81,14 +87,36 @@ theorem unlockKeeps_of_voteCompat {ini} (hrun : GoldilocksRun proposer dg H tr i
     exact SA.frame_validPayload sp hr hy (projAC_callAt.2 hcall)
   have hΦ := frameOK_state hrun.toLocalRun hy j
   have hΦU : (Node.frame (tr.state y j)).tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, j, hX.1⟩
-  have hHn : (H \ W)ᶜ = Hᶜ ∪ W := by
-    ext x; simp only [Set.mem_compl_iff, Set.mem_sdiff, Set.mem_union, not_and, not_not]; tauto
-  refine SA.unlockTarget_unlockView_held_of_honest_slot (Hn := H \ W) y ℓ.call hA' hΦ _ hB
+  have hmem : ∀ x ∈ SA.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac
+      (Node.frame (tr.state y j)), x.val ∈ K.committee x.slot := fun x hx => by
+    rcases SA.mem_heldVotes.1 hx with ⟨τ, hv⟩ | ⟨τ, hv⟩ | ⟨C, hC, hv⟩
+    · rw [hpool j τ x hv]
+      rw [← projAC_state hrun.toLocalRun hy] at hv
+      exact hP.1 y hy j τ x hv
+    · rw [hpool (j + 1) τ x hv]
+      rw [← projAC_state hrun.toLocalRun hy] at hv
+      exact hP.1 y hy (j + 1) τ x hv
+    · exact hFr C hC x (hv.elim id fun h => (hpay C hC).2 x h)
+  have hHnH : ∀ x ∈ SA.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac
+      (Node.frame (tr.state y j)),
+      x.val ∈ H \ W ∪ {i | i ∉ K.committee (sp.slot (tr.time j) - 1)} →
+      (x.slot : Int) = (sp.slot (tr.time j) : Int) - 1 → x.val ∈ H \ W :=
+    fun x hx hxH hs => hxH.resolve_right fun hn =>
+      hn (by rw [← show x.slot = sp.slot (tr.time j) - 1 by omega]; exact hmem x hx)
+  have hHn : (H \ W ∪ {i | i ∉ K.committee (sp.slot (tr.time j) - 1)})ᶜ =
+      K.committee (sp.slot (tr.time j) - 1) ∩ (Hᶜ ∪ W) := by
+    ext x
+    simp only [Set.mem_compl_iff, Set.mem_union, Set.mem_sdiff, Set.mem_ofPred_eq,
+      Set.mem_inter_iff, not_or, not_and, not_not]
+    tauto
+  refine SA.unlockTarget_unlockView_held_of_honest_slot
+    (Hn := H \ W ∪ {i | i ∉ K.committee (sp.slot (tr.time j) - 1)}) y ℓ.call hA' hΦ _ hB
     (hpool j) (hpool (j + 1)) hpay
-    (fun x hx x' hx' hxH hval hs _ =>
-      heldVotes_honest_unique hrun hnc hy hcall hx hx' hxH.1 hval hs)
+    (fun x hx x' hx' hxH hval hs hσ =>
+      heldVotes_honest_unique hrun hnc hy hcall hx hx' (hHnH x hx hxH hσ).1 hval hs)
     (fun x hx hxH hs Hd hHd hHdr => ?_)
-    (by rw [hHn, hrun.stock]; exact hf) -- TEMP(C2): C3/C4 replaces
+    (by rw [hHn]; exact hf)
+  have hxH := hHnH x hx hxH hs
   obtain ⟨k, e, hve, rfl⟩ := held_vote_cast hrun hnc hy hcall hx hxH.1
   obtain ⟨ℓ', hc', he'⟩ := hve
   have hkj : k < j := cast_lt_of_slot hrun hnc hxH.1 ⟨hc', he'⟩ hs
@@ -102,11 +130,13 @@ theorem unlockKeeps_of_voteCompat {ini} (hrun : GoldilocksRun proposer dg H tr i
 namespace OutageVoteInv
 
 /-- `unlock` at an honest AC cut `k` keeps `P` (in the frame) when the view's slot is at least
-`j₀`: the classification OL-W at the cuts before `k`. -/
+`j₀`: the classification OL-W at the cuts before `k`, at the full committee. -/
 theorem unlockKeeps {k : Nat} (hvi : OutageVoteInv D k) {y : Fin sp.n} (hy : y ∈ H)
     (hP : D.P ∈ (tr.state y k).fg.toFrame.tree)
     (hs : (D.j₀ : Int) + 1 ≤ sp.slot (tr.time k)) : UnlockKeeps tr y k D.P :=
-  unlockKeeps_of_voteCompat D.hrun D.hnc D.two_mul_lt hy hP
+  unlockKeeps_of_voteCompat D.hrun D.hnc SA.CommitteeP.full hy
+    (SA.cs2_full D.stock D.two_mul_lt) -- §S S14
+    (fun _ _ v _ => SA.mem_full v.slot _) hP
     fun x hx hxW k' hk' e hv hes => hvi.voteCompat_of_not_lateWaker hx hxW hk' hv (by omega)
 
 /-- **One step of the protection**: `Prot x k j m` with `j₀ − 1 ≤ j`, within the lock's
