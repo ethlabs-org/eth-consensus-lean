@@ -32,11 +32,12 @@ variable {P : Params}
 namespace Growing
 
 variable {A : NodeAC P} {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
-  {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+  {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
 /-- The run model with a constant honest set is `Node.LocalRun`. -/
 theorem LocalRun.const_iff :
-    Growing.LocalRun proposer dg (fun _ => H) sg tr ↔ Node.LocalRun proposer dg H sg tr := by
+    Growing.LocalRun proposer dg (fun _ => H) sg tr ini ↔
+      Node.LocalRun proposer dg H sg tr ini := by
   constructor
   · intro h
     exact
@@ -186,11 +187,12 @@ end RunTrace
 namespace Growing
 
 variable {FGP : Type} {A : ACInterface P FGP} {H : Set (Fin P.n)} {U : Set A.Blk}
-  {tr : ACTrace A}
+  {tr : ACTrace A} {ini : Fin P.n → A.State}
 
 /-- The AC trace contract with a constant honest set is `ACLocalRun`. -/
 theorem ACLocalRun.const_iff :
-    Growing.ACLocalRun A (fun _ => H) U tr ↔ Consensus.Goldilocks.ACLocalRun A H U tr := by
+    Growing.ACLocalRun A (fun _ => H) U tr ini ↔
+      Consensus.Goldilocks.ACLocalRun A H U tr ini := by
   constructor
   · intro h
     exact

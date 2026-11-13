@@ -47,7 +47,8 @@ theorem head_extends_record : HeadExtendsRecord := by
     fun i' hii' hserv R' hR' => ?_⟩
   have hcoh :=
     (ac_projection _ _ dg H _ tr proposer
-      (requirements sp ro) hrun.toLocalRun hnc).coherent
+      (requirements sp ro) (fun y _ => payloadFrom_initial (requirements sp ro) y)
+      hrun.toLocalRun hnc).coherent
   -- the record's block moves forward along the window
   have key : ∀ m, i ≤ m → m ≤ i' → ∃ E ∈ tr.HonestBlocks H,
       E.root = (tr.state y m).ac.latestConfirmed ∧ Anc (tr.HonestBlocks H) R E := by

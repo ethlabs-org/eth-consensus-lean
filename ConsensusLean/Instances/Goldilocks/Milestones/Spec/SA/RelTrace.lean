@@ -324,11 +324,12 @@ parent's (`ACLocalRunU`) and the one from the starts `st` (`ACLocalRunUS`). -/
 structure ACLocalRunStep {ro : ReplayOrder sp FGP} (m : WriteMode) (u : Nat → Set Lock)
     (step : Nat → Fin sp.n → Set Lock → SAState sp.n → Frm sp.n FGP → Time →
       (goldilocksSA sp FGP ro).Call → SAState sp.n × List (Em sp FGP))
-    (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) : Prop where
+    (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro)
+    (ini : Fin sp.n → SAState sp.n := fun _ => (goldilocksSA sp FGP ro).initial) : Prop where
   /-- `U` is coherent: roots injective, slots increasing along parent edges. -/
   coherent : Coherent U
-  /-- Each honest node starts from the initial AC state. -/
-  init : ∀ y ∈ H, tr.init y = (goldilocksSA sp FGP ro).initial
+  /-- Each honest node starts from its initial AC state `ini`. -/
+  init : ∀ y ∈ H, tr.init y = ini y
   /-- Each call `i` of an honest node executes `step i` at the locks `u i`. -/
   exec : ∀ i ℓ, tr.label i = some ℓ → tr.node i ∈ H →
     step i (tr.node i) (u i) (tr.state (tr.node i) i) ℓ.frame (tr.time i) ℓ.call =

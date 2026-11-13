@@ -11,9 +11,9 @@ frame law holds at call boundaries. Between two AC calls of a node the frame `fg
 put (a processed attestation does not move it, the other FG cuts keep `Σ`), except at an
 accepted block, whose FG cut is followed at once by the AC call of that block: so an AC call is
 given the previous call's frame, or, for `ac_on_block(B)`, a frame step on `B` from it. The input
-checks are the wire's, and for the own block requirement 5 at the proposal's state (reachable,
-C0.5 (a)). Sleep and wake are the run's: a restart of the run is an AC restart, and an earlier
-FG call after a sleep would follow a restart. -/
+checks are the wire's, and for the own block requirement 5 at the proposal's state (reachable
+from the node's AC start, C0.5 (a)). Sleep and wake are the run's: a restart of the run is an AC
+restart, and an earlier FG call after a sleep would follow a restart. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -21,10 +21,11 @@ open Node
 
 variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
   {proposer : Nat → Fin P.n} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+  {ini : Fin P.n → A.State}
 
 /-- The frame of every honest state is a frame inside the honest blocks. -/
-private theorem frameIn_state (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
-    (k : Nat) : A.FrameIn (tr.HonestBlocks H) (frame (tr.state y k)) :=
+private theorem frameIn_state (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
+    (hy : y ∈ H) (k : Nat) : A.FrameIn (tr.HonestBlocks H) (frame (tr.state y k)) :=
   ⟨(Store.frame_realization P _ _ _ (fg_reachable h hy k)).1, fun _ hX => ⟨y, hy, k, hX.1⟩⟩
 
 private theorem callAt_unique {y : Fin P.n} {i : Nat} {c c' : Cut A} (hc : tr.CallAt y i c)
@@ -33,7 +34,7 @@ private theorem callAt_unique {y : Fin P.n} {i : Nat} {c c' : Cut A} (hc : tr.Ca
 
 /-- Without AC calls of `y` in `[a, b)`, its frame at `b` is the frame at `a`, or the cut before
 `b` accepts a block, at the frame of `a`. -/
-private theorem frame_flat (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n}
+private theorem frame_flat (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {a b : Nat}
     (hab : a ≤ b) (hno : ∀ k, a ≤ k → k < b → ∀ ℓ : ACLabel A, ¬ tr.CallAt y k (.ac ℓ)) :
     frame (tr.state y b) = frame (tr.state y a) ∨ ∃ b', b = b' + 1 ∧ a ≤ b' ∧
@@ -75,8 +76,12 @@ private theorem frame_flat (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n}
 
 /-- The call law for an AC call of `y` at `i` after the frame of `a`, without AC calls of `y`
 in `[a, i)` and without an accepting cut of `y` just before `a`. -/
-private theorem callOK_from (hq : A.Requirements) (h : Node.LocalRun proposer dg H sg tr)
-    {y : Fin P.n}
+private theorem callOK_from (hq : A.Requirements)
+    (hpay : ∀ y ∈ H, ∀ U : Set A.Blk, Coherent U → ∀ s Φ t₀,
+      A.ReachableAtFrom (ini y) y U s Φ t₀ → ∀ σ : Nat, t₀ ≤ P.slotTime σ → ∀ d p,
+        (A.proposal s Φ (P.slotTime σ)).2 = some (d, p) →
+          ∀ B : A.Blk, B.slot = σ → B.acPayload = p → A.validPayload B)
+    (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {a i : Nat} {ℓ : ACLabel A} (hc : tr.CallAt y i (.ac ℓ)) (hai : a ≤ i)
     (hno : ∀ k, a ≤ k → k < i → ∀ ℓ' : ACLabel A, ¬ tr.CallAt y k (.ac ℓ'))
     (ha : ∀ k B, k + 1 = a → ¬ tr.CallAt y k (.fg (.block B true))) :
@@ -111,13 +116,15 @@ private theorem callOK_from (hq : A.Requirements) (h : Node.LocalRun proposer dg
     rcases blockCall_cases h hy hacc with hg | ⟨j, x, -, hg, hp, d, p, hdp, rfl, -⟩
     · exact (h.wire y hy i' _ _ hg).2.2
     obtain ⟨cfg, hreach, hst, hstep⟩ := group_step h hy hg
-    obtain ⟨hcoh, t₀, ht₀, hR⟩ := ac_states_reachable proposer dg y hq cfg hreach
-    have hfg := fg_states_reachable proposer dg y cfg hreach
+    obtain ⟨hcoh, t₀, ht₀, hR⟩ := ac_states_reachable proposer dg y hq (hpay y hy) cfg hreach
+    have hfg : cfg.st.fg.Reachable A.genesisPayload := by
+      rw [hst]
+      exact fg_reachable h hy j
     have hR' := ACInterface.ReachableAtFrom.step .tick hR (ht₀.trans hstep.1)
       ⟨⟨(Store.frame_realization P _ _ _ hfg).1, fun _ hX => hX.1⟩, rfl⟩
     rw [← hst] at hdp
     have hts : tr.time i' = P.slotTime (P.slotOf (tr.time i')) := hp.2.1
-    refine hq.payload y _ hcoh _ _ _ hR' (P.slotOf (tr.time i')) hts.le d p ?_ _ rfl rfl
+    refine hpay y hy _ hcoh _ _ _ hR' (P.slotOf (tr.time i')) hts.le d p ?_ _ rfl rfl
     rw [← hts]
     exact hdp
   | message m =>
@@ -125,9 +132,9 @@ private theorem callOK_from (hq : A.Requirements) (h : Node.LocalRun proposer dg
     exact ⟨same (fun _ hb => by cases hb), h.wire y hy j _ _ hg⟩
   | _ => exact same fun _ hb => by cases hb
 
-/-- **C0.5, the AC projection.** -/
+/-- **C0.5, the AC projection**, from the run's AC starts `ini`. -/
 theorem ac_projection : ACProjection := by
-  intro P A dg H sg tr proposer hq h hnc
+  intro P A dg H sg tr proposer ini hq hpay h hnc
   classical
   refine
     { coherent := honest_blocks_coherent h hnc
@@ -167,15 +174,15 @@ theorem ac_projection : ACProjection := by
       refine Or.inr ⟨j, ℓ', hji, projAC_callAt.2 hj, fun k hk hki ℓ'' hk' =>
         hno k hk hki ℓ'' (projAC_callAt.1 hk'), ?_⟩
       rw [← hfr]
-      exact callOK_from hq h hy hc hji hno fun k B hk hk' => by
+      exact callOK_from hq hpay h hy hc hji hno fun k B hk hk' => by
         cases callAt_unique hj (show k = j by omega ▸ hk')
     · push Not at hex
       have hno : ∀ k, 0 ≤ k → k < i → ∀ ℓ'' : ACLabel A, ¬ tr.CallAt y k (.ac ℓ'') :=
         fun k _ hki ℓ'' => hex k hki ℓ''
-      have h₀ : tr.state y 0 = Node.init A := h.init y hy
+      have h₀ : tr.state y 0 = Node.initWith A (ini y) := h.init y hy
       refine Or.inl ⟨fun k _ hki ℓ'' hk' => hex k hki ℓ'' (projAC_callAt.1 hk'), _,
         h₀ ▸ init_initialFrame, frameIn_state h hy 0,
-        callOK_from hq h hy hc (Nat.zero_le i) hno fun k B hk => by omega⟩
+        callOK_from hq hpay h hy hc (Nat.zero_le i) hno fun k B hk => by omega⟩
   · -- the earlier calls of `y` were all before `u`, else a restart after the sleep precedes
     have hc := projAC_callAt.1 hc
     have hall : ∀ j < i, tr.IsCall y j → tr.time j < u := by

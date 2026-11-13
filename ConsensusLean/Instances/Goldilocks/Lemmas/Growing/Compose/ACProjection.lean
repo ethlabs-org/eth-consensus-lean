@@ -7,11 +7,14 @@ public section
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-/-- The AC projection uses the historical tree universe, not a terminal honest cohort. -/
+/-- The AC projection uses the historical tree universe, not a terminal honest cohort; the
+requirement-5 premise at the starts of the nodes honest at `0` covers every retained cohort. -/
 theorem ac_projection : ACProjection := by
-  intro P A dg H sg tr proposer hq h hnc
+  intro P A dg H sg tr proposer ini hq hpay h hnc
   have retained (i : Nat) := Compose.ac_projection P A dg (H (tr.time i)) sg
-    (tr.upTo (tr.time i)) proposer hq (h.upTo (h.time_nonneg i)) (hnc.upTo _)
+    (tr.upTo (tr.time i)) proposer hq
+    (fun y hy => hpay y (h.antitone (h.time_nonneg i) hy)) (h.upTo (h.time_nonneg i))
+    (hnc.upTo _)
   have call {y i ℓ} (hc : tr.projAC.CallAt y i ℓ) :
       (tr.upTo (tr.time i)).projAC.CallAt y i ℓ := by
     rw [RunTrace.upTo_projAC]
@@ -60,7 +63,8 @@ theorem ac_projection : ACProjection := by
     rw [RunTrace.upTo_projAC] at hc'
     exact hb j hj ℓ' ((Trace.upTo_callAt _).mp hc').2
   · have hr := Compose.ac_projection P A dg (H v) sg (tr.upTo v) proposer hq
-      (h.upTo (hu.trans huv.le)) (hnc.upTo v)
+      (fun y hy => hpay y (h.antitone (hu.trans huv.le) hy)) (h.upTo (hu.trans huv.le))
+      (hnc.upTo v)
     obtain ⟨k, ⟨ℓ, hc, hrestart⟩, huk, hkv⟩ :=
       hr.restart_at_wake y hy u v hu huv (fun hw => hs hw.1) ⟨hw, le_rfl⟩
     rw [RunTrace.upTo_projAC] at hc

@@ -73,7 +73,8 @@ theorem record_step_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun 
       ∃ E' ∈ tr.HonestBlocks H, E'.root = (tr.state y (i + 1)).ac.latestConfirmed ∧
         Anc (tr.HonestBlocks H) E E' := by
   intro E hE hEr
-  have hac := ac_projection _ _ dg H _ tr proposer (requirements sp ro) hrun.toLocalRun hnc
+  have hac := ac_projection _ _ dg H _ tr proposer (requirements sp ro)
+    (fun y _ => payloadFrom_initial (requirements sp ro) y) hrun.toLocalRun hnc
   have hU := hac.coherent
   have hst : ∀ k, tr.projAC.state y k = (tr.state y k).ac := projAC_state hrun.toLocalRun hy
   by_cases hcall : ∃ ℓ, tr.projAC.CallAt y i ℓ
@@ -746,7 +747,8 @@ theorem head_support_at (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun
               (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
               (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
               R).ncard)) := by
-  have hac := ac_projection _ _ dg H _ tr proposer (requirements sp ro) hrun.toLocalRun hnc
+  have hac := ac_projection _ _ dg H _ tr proposer (requirements sp ro)
+    (fun y _ => payloadFrom_initial (requirements sp ro) y) hrun.toLocalRun hnc
   have hU := hac.coherent
   have hΦ : FrameOK (Node.frame (tr.state y i)) :=
     (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1

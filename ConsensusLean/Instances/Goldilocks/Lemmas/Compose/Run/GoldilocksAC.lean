@@ -480,7 +480,8 @@ private theorem one_block (hrun : GoldilocksRun proposer dg H tr)
 /-- **The honest-object facts of the Goldilocks run's AC projection.** -/
 theorem goldilocks_ac_projection : GoldilocksACProjection := by
   intro sp ro dg H tr proposer hrun hnc
-  have hloc := ac_projection _ _ dg H _ tr proposer (requirements sp ro) hrun.toLocalRun hnc
+  have hloc := ac_projection _ _ dg H _ tr proposer (requirements sp ro)
+    (fun y _ => payloadFrom_initial (requirements sp ro) y) hrun.toLocalRun hnc
   refine ⟨hrun.stock, hloc, fun y hy => pool_vote_emitted hrun hy,
     fun y hy i ℓ v hc hm hval => message_vote hrun hy hc hm hval,
     fun y hy i ℓ hc B hB v hv hval => carried_vote hrun hy hc hB hv hval, fun B hB hr => ?_,

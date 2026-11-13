@@ -27,7 +27,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- The honest blocks of a run are coherent. -/
 theorem honest_coherent (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) :
     Coherent (tr.HonestBlocks H) :=
-  (ac_projection _ _ dg H _ tr proposer (requirements sp ro) hrun.toLocalRun hnc).coherent
+  (ac_projection _ _ dg H _ tr proposer (requirements sp ro)
+    (fun y _ => payloadFrom_initial (requirements sp ro) y) hrun.toLocalRun hnc).coherent
 
 /-- Genesis is an honest block below every honest block. -/
 theorem honest_genesis_anc (hrun : GoldilocksRun proposer dg H tr)

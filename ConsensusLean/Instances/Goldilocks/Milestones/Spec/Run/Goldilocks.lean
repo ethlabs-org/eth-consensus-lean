@@ -42,8 +42,10 @@ vote's validator as the signer of a message, carried-vote unforgeability, and th
 block's root the digest of its content. -/
 structure GoldilocksRun (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) : Prop
-    extends Node.LocalRun proposer dg H (fun v : Vote sp.n => v.val) tr where
+    (tr : GoldilocksTrace sp ro)
+    (ini : Fin sp.n → (goldilocksNode sp ro).State := fun _ => (goldilocksNode sp ro).initial) :
+    Prop
+    extends Node.LocalRun proposer dg H (fun v : Vote sp.n => v.val) tr ini where
   /-- Interim population specialization; removed in place by C2. -/
   stock : sp.committeeSize = sp.n
   /-- The genesis block's root is the digest of its content: the premise `FGProjection` and

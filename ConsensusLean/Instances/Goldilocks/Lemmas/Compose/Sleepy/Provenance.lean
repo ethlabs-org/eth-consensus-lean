@@ -232,8 +232,9 @@ private theorem good_mono {T T' : Set (SA.Blk sp.n (List (FG.Att sp.n)))} {i i' 
 private theorem ac_run (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) :
     ACLocalRun (goldilocksNode sp ro) H (tr.HonestBlocks H) tr.projAC :=
   have h := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  ac_projection _ _ dg H _ tr proposer
+  have hq : (goldilocksNode sp ro).Requirements :=
     ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
+  ac_projection _ _ dg H _ tr proposer hq (fun y _ => payloadFrom_initial hq y)
     hrun.toLocalRun hnc
 
 private theorem down_lockOK {T : Set (SA.Blk sp.n (List (FG.Att sp.n)))}

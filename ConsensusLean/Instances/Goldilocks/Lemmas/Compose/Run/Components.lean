@@ -15,7 +15,7 @@ open Node
 
 variable {P : Params} {A : NodeAC P}
 variable {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
-  {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
 /-- A call of the AC projection is an AC cut of the run. -/
 theorem projAC_callAt {y : Fin P.n} {i : Nat} {ℓ : ACLabel A} :
@@ -37,7 +37,8 @@ theorem projFG_callAt {y : Fin P.n} {i : Nat} {ℓ : FGLabel P A.Payload} :
 
 
 /-- **The AC projection's state is the AC part of the run's state** (honest node). -/
-theorem projAC_state (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
+theorem projAC_state (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+    (i : Nat) :
     tr.projAC.state y i = (tr.state y i).ac := by
   induction i with
   | zero => simp [Trace.state, RunTrace.projAC, h.init y hy]
@@ -95,7 +96,8 @@ theorem projFG_state (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy :
       simp [Trace.state, RunTrace.projFG, hn]
 
 /-- **Every honest FG state of a run is reachable.** -/
-theorem fg_reachable (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
+theorem fg_reachable (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+    (i : Nat) :
     (tr.state y i).fg.Reachable A.genesisPayload := by
   induction i with
   | zero => rw [Trace.state, h.init y hy]; exact .refl

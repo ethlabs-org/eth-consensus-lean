@@ -34,8 +34,8 @@ theorem readyImpliesJoined_of_growing (h : Compose.Growing.ReadyImpliesJoined) :
       hy ht hc ha
 
 theorem acProjection_of_growing (h : Compose.Growing.ACProjection) : ACProjection := by
-  intro P A dg H sg tr proposer hreq hrun hnc
-  have r := h P A dg (fun _ => H) sg tr proposer hreq
+  intro P A dg H sg tr proposer ini hreq hpay hrun hnc
+  have r := h P A dg (fun _ => H) sg tr proposer hreq hpay
     (Goldilocks.Growing.LocalRun.const_iff.mpr hrun) hnc
   rw [RunTrace.honestBlocksAt_const] at r
   exact Goldilocks.Growing.ACLocalRun.const_iff.mp r

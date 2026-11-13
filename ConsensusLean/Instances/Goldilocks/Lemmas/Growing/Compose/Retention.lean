@@ -10,9 +10,9 @@ namespace Consensus.Goldilocks.Growing
 /-- The generic node run laws hold statically for nodes retained at a nonnegative horizon. -/
 theorem LocalRun.upTo {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
     {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
-    {sg : A.Msg → Fin P.n} {tr : RunTrace A}
-    (h : LocalRun proposer dg H sg tr) {d : Time} (hd : 0 ≤ d) :
-    Node.LocalRun proposer dg (H d) sg (tr.upTo d) := by
+    {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
+    (h : LocalRun proposer dg H sg tr ini) {d : Time} (hd : 0 ≤ d) :
+    Node.LocalRun proposer dg (H d) sg (tr.upTo d) ini := by
   have hm := h.time_mono
   have anti : ∀ {t}, t ≤ d → H d ⊆ H t := fun ht => h.antitone ht
   refine

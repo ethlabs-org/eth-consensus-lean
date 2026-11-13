@@ -226,6 +226,7 @@ theorem payloadAC_not_reqPayload : ¬ payloadAC.ReqPayload := fun h5 =>
   not_acLocalRun (ac_projection P₁ payloadAC dgP Set.univ (fun m => (m : Empty).elim)
     (tickRun payloadAC dgP) (fun _ => v0)
     ⟨payloadAC_reqHeads, payloadAC_reqSource, payloadAC_reqOutputs, payloadAC_reqParent, h5⟩
+    (fun y _ => h5 y)
     (tickRun_localRun (A := payloadAC) (dg := dgP) rfl rfl _) (dgP_noColl _))
 
 end Consensus.Goldilocks.Compose.Test.ProjectionRejection

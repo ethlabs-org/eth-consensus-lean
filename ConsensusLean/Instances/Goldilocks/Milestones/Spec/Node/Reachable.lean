@@ -51,8 +51,11 @@ structure Config (A : NodeAC P) where
   /-- The phase at `time`. -/
   phase : Phase
 
-/-- The initial configuration: the initial state at time `0`, before the tick of time `0`. -/
-def Config.init (A : NodeAC P) : Config A := ⟨Node.init A, 0, .pre⟩
+/-- The initial configuration: the node state with the AC start `a` (`Node.initWith`; the initial
+node state `Node.init A` at the default `a := A.initial`) at time `0`, before the tick of time
+`0`. -/
+def Config.init (A : NodeAC P) (a : A.State := A.initial) : Config A :=
+  ⟨Node.initWith A a, 0, .pre⟩
 
 /-- When an event may run at time `t'`, found in phase `ph` at `t'`: a tick at a public time
 in phase `pre`; a restart in phase `pre`; a delivery after the tick when `t'` is public (in
@@ -82,11 +85,12 @@ def Reaches (proposer : Nat → Fin P.n)
     Config A → Config A → Prop :=
   Relation.ReflTransGen (fun cfg cfg' => ∃ e t', Step proposer dg self cfg e t' cfg')
 
-/-- A reachable configuration of validator `self`: reached from the initial one. -/
+/-- A reachable configuration of validator `self`: reached from the initial one with the AC start
+`a` (by default the AC's initial state). -/
 def Reachable (proposer : Nat → Fin P.n)
-    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n) (cfg : Config A) :
-    Prop :=
-  Reaches proposer dg self (Config.init A) cfg
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n) (cfg : Config A)
+    (a : A.State := A.initial) : Prop :=
+  Reaches proposer dg self (Config.init A a) cfg
 
 /-- The law of one cut at validator `self` and time `t`, from `st` to `st'`: an AC cut
 executes the AC on `𝒜` with the frame `fg_to_ac(Σ)` and changes only `𝒜`; an FG cut executes

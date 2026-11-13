@@ -146,17 +146,22 @@ def ExecIsCutChain : Prop :=
   ∀ (st : NodeState A) (t : Time) (e : Event A),
     CutChain self t st (exec proposer dg self st t e).2 (exec proposer dg self st t e).1
 
-/-- **C0.5 (a), (b), the AC's states are reachable.** At a reachable configuration of an
-honest node, the accepted tree is coherent and the AC state is reachable inside it
-(`ACInterface.ReachableAt`): from the initial AC state by calls at nondecreasing times, under
-the call law (`CallOK`: well-formed frames in `Σ.T`, equal frames between calls except
-`Φ ⊑_B Φ'` at `ac_on_block(Φ', B)`, wire-checked inputs), with the frame of the last call the
-current `fg_to_ac(Σ)` and its time at most the clock. Requirement 5 supplies the own block's
-payload check. -/
-def ACStatesReachable : Prop :=
-  A.Requirements → ∀ cfg : Config A, Reachable proposer dg self cfg →
+/-- **C0.5 (a), (b), the AC's states are reachable.** At a configuration of an honest node
+reachable with the AC start `s₀` (by default the AC's initial state), the accepted tree is
+coherent and the AC state is reachable inside it (`ACInterface.ReachableAtFrom s₀`): from `s₀` by
+calls at nondecreasing times, under the call law (`CallOK`: well-formed frames in `Σ.T`, equal
+frames between calls except `Φ ⊑_B Φ'` at `ac_on_block(Φ', B)`, wire-checked inputs), with the
+frame of the last call the current `fg_to_ac(Σ)` and its time at most the clock. Requirement 5 at
+the states reachable from `s₀` supplies the own block's payload check; at `s₀ = A.initial` it is
+requirement 5 at `self`. -/
+def ACStatesReachable (s₀ : A.State := A.initial) : Prop :=
+  A.Requirements →
+  (∀ U : Set A.Blk, Coherent U → ∀ s Φ t₀, A.ReachableAtFrom s₀ self U s Φ t₀ →
+    ∀ σ : Nat, t₀ ≤ P.slotTime σ → ∀ d p, (A.proposal s Φ (P.slotTime σ)).2 = some (d, p) →
+      ∀ B : A.Blk, B.slot = σ → B.acPayload = p → A.validPayload B) →
+  ∀ cfg : Config A, Reachable proposer dg self cfg s₀ →
     Coherent cfg.st.fg.tree ∧
-      ∃ t₀, t₀ ≤ cfg.time ∧ A.ReachableAt self cfg.st.fg.tree cfg.st.ac (frame cfg.st) t₀
+      ∃ t₀, t₀ ≤ cfg.time ∧ A.ReachableAtFrom s₀ self cfg.st.fg.tree cfg.st.ac (frame cfg.st) t₀
 
 /-- **C0.5 (c), the FG's states are reachable.** At a reachable configuration of an honest
 node, the FG state is reachable by the FG handlers (`Store.Reachable`) from the initial state

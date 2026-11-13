@@ -22,8 +22,10 @@ time-indexed honest set `H`, the genesis root premise, and carried-vote unforgea
 honest at the processing time. -/
 structure GoldilocksRun (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) : Prop
-    extends Growing.LocalRun proposer dg H (fun v : Vote sp.n => v.val) tr where
+    (tr : GoldilocksTrace sp ro)
+    (ini : Fin sp.n → (goldilocksNode sp ro).State := fun _ => (goldilocksNode sp ro).initial) :
+    Prop
+    extends Growing.LocalRun proposer dg H (fun v : Vote sp.n => v.val) tr ini where
   /-- Interim population specialization; removed in place by C2. -/
   stock : sp.committeeSize = sp.n
   /-- The genesis block's root is the digest of its content. -/

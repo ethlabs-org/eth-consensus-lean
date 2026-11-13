@@ -10,7 +10,9 @@ public section
 The SA handlers below write only some fields of the state. `admitVote` and `blockReceipt` keep
 `voted_slot`, `restart_time`, the locks and `latest_confirmed`; `updateLatestConfirmed` keeps
 `voted_slot`, `restart_time` and the locks; `optimisticConfirmation`, `updateConfirmation`,
-`acProposal` and `acToFG` keep `voted_slot` and `restart_time`. -/
+`acProposal` and `acToFG` keep `voted_slot` and `restart_time`. Every handler keeps `mayVote`
+(`step_mayVote`), and every emission is of a slot whose `mayVote` holds in the call's input
+state (`tryVote_emits_mayVote`, `emits_mayVote`: the emission gate). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -131,7 +133,7 @@ theorem tryVote_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (tryVote sp self A Φ t).1.mayVote = A.mayVote := by
   unfold tryVote
   dsimp only
-  split_ifs <;> simp only [optimisticConfirmation_mayVote, admitVote_mayVote] <;> rfl
+  split_ifs <;> simp only [optimisticConfirmation_mayVote, admitVote_mayVote]
 
 private theorem foldl_admitVote_mayVote (t : Time) (vs : List (Vote sp.n)) (A : SAState sp.n) :
     (vs.foldl (fun st v => admitVote sp st t v) A).mayVote = A.mayVote := by
@@ -246,6 +248,65 @@ theorem tryVote_of_not_selected (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm s
       let A₁ := if 0 < s then { A with locks := unlock sp A.locks Φ t ((s : Int) - 1) V } else A
       ({ A₁ with votedSlot := s }, []) := by
   simp [tryVote, hj, hv, not_lt.mpr ht, hr, hp]
+
+/-! ## The emission gate -/
+
+/-- **The emission gate.** `try_vote` emits only a vote of a slot its state may vote in. -/
+theorem tryVote_emits_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) : ∀ e ∈ (tryVote sp self A Φ t).2, A.mayVote e.msg.slot = true := by
+  unfold tryVote
+  dsimp only
+  split_ifs <;> simp_all
+
+theorem acOnBlock_emits_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) (B : Blk sp.n FGP) :
+    ∀ e ∈ (acOnBlock sp self A Φ t B).2, A.mayVote e.msg.slot = true := fun e he => by
+  have h := tryVote_emits_mayVote self _ Φ t e he
+  rwa [optimisticConfirmation_mayVote, blockReceipt_mayVote] at h
+
+/-- The restart replay keeps the permission and emits only gated votes. -/
+private theorem foldl_acOnBlock_emits_mayVote (self : Fin sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    (p : Nat → Bool) :
+    ∀ (l : List (Blk sp.n FGP)) (acc : SAState sp.n × List (Em sp FGP)),
+      acc.1.mayVote = p → (∀ e ∈ acc.2, p e.msg.slot = true) →
+        ∀ e ∈ (l.foldl (fun acc B => let r := acOnBlock sp self acc.1 Φ t B;
+          (r.1, acc.2 ++ r.2)) acc).2, p e.msg.slot = true
+  | [], _, _, h => h
+  | B :: l, acc, h₁, h₂ => foldl_acOnBlock_emits_mayVote self Φ t p l _
+      ((acOnBlock_mayVote self acc.1 Φ t B).trans h₁)
+      fun e he => by
+        rcases List.mem_append.mp he with he | he
+        · exact h₂ e he
+        · rw [← h₁]
+          exact acOnBlock_emits_mayVote self acc.1 Φ t B e he
+
+/-- **B2.b.** Every emission of an SA call passes the call's input gate: a vote of slot `s`
+only when `mayVote s`. -/
+theorem emits_mayVote (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : SAState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call) :
+    ∀ e ∈ ((goldilocksSA sp FGP ro).step self A Φ t c).2, A.mayVote e.msg.slot = true := by
+  intro e he
+  cases c with
+  | tick =>
+    change e ∈ (acOnTick sp self A Φ t).2 at he
+    unfold acOnTick at he
+    dsimp only at he
+    split_ifs at he
+    all_goals first
+      | exact absurd he List.not_mem_nil
+      | exact tryVote_emits_mayVote self A Φ t e he
+  | proposal => exact absurd he List.not_mem_nil
+  | toFG => exact absurd he List.not_mem_nil
+  | message v =>
+    change e ∈ (acOnMessage sp self A Φ t v).2 at he
+    have h := tryVote_emits_mayVote self _ Φ t e he
+    rwa [optimisticConfirmation_mayVote, admitVote_mayVote] at h
+  | block B => exact acOnBlock_emits_mayVote self A Φ t B e he
+  | restart =>
+    change e ∈ (acRestart sp ro self A Φ t).2 at he
+    unfold acRestart at he
+    exact foldl_acOnBlock_emits_mayVote self Φ t A.mayVote _ _ rfl
+      (fun _ h => absurd h List.not_mem_nil) e he
 
 end Consensus.Goldilocks.SA
 

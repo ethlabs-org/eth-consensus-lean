@@ -565,13 +565,13 @@ private theorem tick_before_attest (dg : Digest (List (FG.Att P.n)) A.Payload) (
   · omega
 
 variable {proposer} {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
-  {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
 /-! ### In the run -/
 
 /-- A cut of an honest node is the cut of its group's handler at its offset. -/
-theorem call_in_group (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {c : Cut A} (hc : tr.CallAt y i c) :
+theorem call_in_group (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+    {i : Nat} {c : Cut A} (hc : tr.CallAt y i c) :
     ∃ j e k, tr.GroupAt proposer dg y j (tr.time i) e ∧ i = j + k ∧
       (exec proposer dg y (tr.state y j) (tr.time i) e).2[k]? = some c := by
   obtain ⟨j, e, hg, hji, hij⟩ := h.grouped y hy i c hc
@@ -590,8 +590,8 @@ private theorem group_cut {y : Fin P.n} {j : Nat} {t : Time} {e : Event A}
   exact ⟨⟨hn, hl.trans (congrArg some hc)⟩, ht⟩
 
 /-- **An accepted block's FG cut is followed by the AC cut of that block.** -/
-theorem accept_next (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {B : A.Blk} (hc : tr.CallAt y i (.fg (.block B true))) :
+theorem accept_next (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+    {i : Nat} {B : A.Blk} (hc : tr.CallAt y i (.fg (.block B true))) :
     ∃ ℓ : ACLabel A, tr.CallAt y (i + 1) (.ac ℓ) ∧ ℓ.call = .block B ∧
       tr.time (i + 1) = tr.time i := by
   obtain ⟨j, e, k, hg, rfl, hk⟩ := call_in_group h hy hc
@@ -600,8 +600,9 @@ theorem accept_next (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : 
   exact ⟨ℓ, hc', hb, ht⟩
 
 /-- **An AC block call follows the FG cut that accepts the block.** -/
-theorem acBlock_prev (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel A} {B : A.Blk} (hc : tr.CallAt y i (.ac ℓ)) (hb : ℓ.call = .block B) :
+theorem acBlock_prev (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+    {i : Nat} {ℓ : ACLabel A} {B : A.Blk} (hc : tr.CallAt y i (.ac ℓ))
+    (hb : ℓ.call = .block B) :
     ∃ i', i = i' + 1 ∧ tr.CallAt y i' (.fg (.block B true)) ∧ tr.time i' = tr.time i := by
   obtain ⟨j, e, k, hg, rfl, hk⟩ := call_in_group h hy hc
   obtain ⟨k', rfl, hk'⟩ := (paired_exec proposer dg y _ _ e).2 k ℓ B hk hb
@@ -631,8 +632,8 @@ theorem attest_source (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy 
 
 /-- **A block call is a delivery, or the own proposal in a tick** at its third cut, after two
 AC cuts, so at the FG state before the tick. -/
-theorem blockCall_cases (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {B : A.Blk} {acc : Bool} (hc : tr.CallAt y i (.fg (.block B acc))) :
+theorem blockCall_cases (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+    {i : Nat} {B : A.Blk} {acc : Bool} (hc : tr.CallAt y i (.fg (.block B acc))) :
     tr.GroupAt proposer dg y i (tr.time i) (.block B) ∨
     ∃ j x, i = j + 2 ∧ tr.GroupAt proposer dg y j (tr.time i) (.tick x) ∧
       Proposes proposer y (tr.time i) ∧ ∃ d p,
@@ -654,8 +655,9 @@ theorem blockCall_cases (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (h
     tr.state_succ_of_call c₀, (h.cutLaw y hy _ _ c₀).2.2.1]
 
 /-- **An AC message call is in the delivery of that message.** -/
-theorem msgCall_group (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel A} {m : A.Msg} (hc : tr.CallAt y i (.ac ℓ)) (hm : ℓ.call = .message m) :
+theorem msgCall_group (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+    {i : Nat} {ℓ : ACLabel A} {m : A.Msg} (hc : tr.CallAt y i (.ac ℓ))
+    (hm : ℓ.call = .message m) :
     ∃ j, tr.GroupAt proposer dg y j (tr.time i) (.message m) := by
   obtain ⟨j, e, k, hg, -, hk⟩ := call_in_group h hy hc
   obtain rfl := exec_message proposer dg y _ _ e (List.mem_of_getElem? hk) hm

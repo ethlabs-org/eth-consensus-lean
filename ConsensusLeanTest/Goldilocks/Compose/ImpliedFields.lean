@@ -36,7 +36,7 @@ theorem threeTips_of_fields {P : Params} {A : NodeAC P} (proposer : Nat → Fin 
       (frame cfg.st).Anc (A.confirmed cfg.st.ac (frame cfg.st) t)
         (A.head cfg.st.ac (frame cfg.st) t) := by
   intro hq cfg h t ht
-  obtain ⟨hc, t₀, ht₀, hRa⟩ := hR hq cfg h
+  obtain ⟨hc, t₀, ht₀, hRa⟩ := hR hq (hq.payload self) cfg h
   exact hT hq.outputs self _ hc _ _ t₀ hRa t (ht₀.trans ht)
 
 end Consensus.Goldilocks.Compose.Test

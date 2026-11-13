@@ -14,9 +14,10 @@ namespace Consensus.Goldilocks.Compose.Growing
 
 variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
-  {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
-private theorem held_block_cases (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr)
+private theorem held_block_cases
+    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
     {X : A.Blk} (hX : X ∈ tr.HonestBlocksAt H) :
     X = P.genesisBlock A.genesisPayload ∨
       tr.Occurs X ∧ X.RootOk dg ∧ X.proposer = proposer X.slot ∧ X.root ≠ P.genesisRoot := by
@@ -29,7 +30,7 @@ private theorem held_block_cases (h : Consensus.Goldilocks.Growing.LocalRun prop
   · obtain ⟨hr, hpr, _, hng⟩ := Compose.accept_facts hp hy hk
     exact Or.inr ⟨RunTrace.upTo_occurs ⟨y, k, true, hk⟩, hr, hpr, hng⟩
 
-private theorem held_root_inj (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr)
+private theorem held_root_inj (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
     (hnc : NoCollRun dg tr) {X Y : A.Blk}
     (hX : X ∈ tr.HonestBlocksAt H) (hY : Y ∈ tr.HonestBlocksAt H)
     (hr : X.root = Y.root) : X = Y := by
@@ -48,7 +49,7 @@ private theorem held_root_inj (h : Consensus.Goldilocks.Growing.LocalRun propose
 
 /-- Blocks held while honest form a coherent tree universe under collision resistance. -/
 theorem honest_blocks_coherent_local
-    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr)
+    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
     (hnc : NoCollRun dg tr) : Coherent (tr.HonestBlocksAt H) := by
   refine ⟨fun _ hx _ hy hr => held_root_inj h hnc hx hy hr,
     fun Y hY X hX hp => ?_⟩

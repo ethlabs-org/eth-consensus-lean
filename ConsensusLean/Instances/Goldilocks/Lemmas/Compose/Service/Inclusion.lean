@@ -169,7 +169,8 @@ theorem inclusion_sleepy : Inclusion := by
   have hinv := sleepy_invariant hrun hnc hsl
   have hcoh :=
     (ac_projection _ _ dg H _ tr proposer
-      (requirements sp ro) hrun.toLocalRun hnc).coherent
+      (requirements sp ro) (fun y _ => payloadFrom_initial (requirements sp ro) y)
+      hrun.toLocalRun hnc).coherent
   obtain ⟨k₀, hk₀, ℓ₀, hupd, -⟩ := id hu
   obtain ⟨E, hE, hEr, hPE⟩ := record_extends hrun hnc hinv hy
     (update_adopts hrun hnc hsl hp hP hPs hpj hy hupd) i hk₀
