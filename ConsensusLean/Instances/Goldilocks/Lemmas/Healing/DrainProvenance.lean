@@ -151,7 +151,7 @@ variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SATrace sp FGP ro}
 /-- A call of an honest node keeps its locks below earlier ones, or writes fast locks, or writes
 a slow lock of width `wm.width` of the slot of its update. -/
 private theorem call_fromPU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FromP U (tr.state x i).locks (tr.post i).locks
       (fun s f O => f = false →
@@ -207,7 +207,8 @@ honest node holds before cut `i` sits below (inside `U`) the stored block
 `ℓ.frame.viableAncestor D` of a slow lock of width `wm.width` of its slot (selection `D`) that the
 node wrote at an earlier cut `j` (call label `ℓ`). -/
 theorem slow_lock_provenance_storedM
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
+    {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} (hx : x ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state x i).locks, l.fast = false →
       ∃ j < i, ∃ ℓ D, tr.CallAt x j ℓ ∧ SlowLockAtW wm.width tr x j l.slot D ∧
@@ -216,7 +217,8 @@ theorem slow_lock_provenance_storedM
   | zero =>
     intro l hl
     change l ∈ (tr.init x).locks at hl
-    rw [hr.init x hx] at hl
+    obtain ⟨m, hm⟩ := SA.voteStart_iff.1 (hini x)
+    rw [hr.init x hx, hm] at hl
     exact absurd hl (Set.notMem_empty l)
   | succ i ih =>
     intro l hl hf
@@ -241,7 +243,7 @@ theorem slow_lock_provenance_storedU
       ∃ j < i, ∃ ℓ D, tr.CallAt x j ℓ ∧ SlowLockAt tr x j l.slot D ∧
         ∃ L ∈ U, L.root = l.block ∧ Anc U L (ℓ.frame.viableAncestor D) := by
   intro l hl hf
-  have h := slow_lock_provenance_storedM hr hx i l hl hf
+  have h := slow_lock_provenance_storedM hr (fun _ => SA.voteStart_initial _) hx i l hl hf
   rw [hw] at h
   simpa only [slowLockAtW_k] using h
 

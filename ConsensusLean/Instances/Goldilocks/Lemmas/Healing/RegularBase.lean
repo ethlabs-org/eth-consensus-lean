@@ -81,7 +81,8 @@ theorem regular_slow_next_votes_of_early_witness (hrun : GoldilocksRun proposer 
     apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hS.sync)
       hm hS.catchUp (by linarith only [sp.toParams.hΔ, hm]) hx hy hcast hs (hhigh.trans hmb)
     intro v hv
-    obtain ⟨hvs, hw, Hv, hHv, hHvr, hCHv, ha⟩ := Compose.result_writer hr hx hres v hv
+    obtain ⟨hvs, hw, Hv, hHv, hHvr, hCHv, ha⟩ := Compose.result_writer hr
+      (fun _ => SA.voteStart_initial _) hx hres v hv
     refine ⟨hvs, hw, Hv, hHv, hHvr, ?_, ha⟩
     rw [Compose.frame_of_projAC hrun hy hcast.1]; exact hFD.trans (hDC.trans hCHv)
   exact SA.result_prefix_vote_extends_of_stored hS.run htwo hx hy hres hDC hcast hs

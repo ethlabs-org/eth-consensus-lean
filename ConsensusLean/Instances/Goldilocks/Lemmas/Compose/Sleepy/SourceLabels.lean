@@ -21,7 +21,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- `no_optimistic_before_held_row` with `2|K(s+1) ∩ Hᶜ| < committeeSize`, for a member `y` of the
 slot-`(s+1)` committee. -/
-theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
+theorem no_optimistic_before_held_row_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (K : SA.CommitteeDict sp.n) (hP : SA.CommitteeP K tr.projAC H)
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     (hfK : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
@@ -32,18 +32,18 @@ theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
     {a : FG.Att sp.n} (hav : a.val ∈ H) {k : Nat} (hkm : k < m) (hsg : tr.SignAt a.val k a)
     {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (hck : c < k) {C : SA.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (Vote sp.n)} (hO : SA.OptimisticLockAt tr.projAC z c (s + 1) C CV) : False := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hmono := hrun.time_mono
   obtain ⟨-, -, -, hslc, -⟩ := id hO
   rcases held_row_sign_time hrun hav hsg (hr.time_nonneg c) hslc (hmono hck.le)
       ((hmono hkm.le).trans ((hmono hmi.le).trans
-        (by rw [← hs]; exact (cast_head_fcRoot hr hy hc).2))) with ⟨hT0, -⟩ | hT
+        (by rw [← hs]; exact (cast_head_fcRoot_from hr hrun.vstart hy hc).2))) with ⟨hT0, -⟩ | hT
   · -- at `t_{s+1}`: a one-member committee, and the voter has a second slot-`(s+1)` vote by
     -- the check
     obtain ⟨u, hu, hall, j', hj', e', hv', hs'⟩ :=
       held_row_early_count hrun hnc K hP hsize hfK hav hsg hT0 hz hck hO
     obtain rfl : u = y := (hall y hyK).symm
-    have := (SA.one_vote_per_slot sp _ ro H _ tr.projAC hr u hu j' i e' e hv' ⟨ℓ, hc.1, hc.2⟩
+    have := (SA.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU u hu j' i e' e hv' ⟨ℓ, hc.1, hc.2⟩
       (hs'.trans hs.symm)).1
     omega
   · -- at `t_{s+1} + Δ`: the voter's own tick there votes before the block arrives
@@ -54,7 +54,8 @@ at an honest slot-`(s+1)` vote, every honest attestation on a block the voter ho
 a source below an origin of label at most `s`. A regular origin of label `l` is written at
 `t_l + 6Δ`, after the vote unless `l < s`; an optimistic one of label `l ≥ s + 2` after
 `t_{s+2}`; label `s + 1` is `no_optimistic_before_held_row`. -/
-theorem vote_row_source (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem vote_row_source {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     (K : SA.CommitteeDict sp.n) (hP : SA.CommitteeP K tr.projAC H)
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     (hfK : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
@@ -65,7 +66,7 @@ theorem vote_row_source (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun
     {a : FG.Att sp.n} (ha : a ∈ X.fgPayload) (hav : a.val ∈ H) :
     ∃ D ∈ tr.HonestBlocks H, IsHonestSource tr H D a.T ∧
       ∃ C j, OriginBefore tr H C j i ∧ j ≤ s ∧ Anc (tr.HonestBlocks H) D C := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨m, hmi, hm, k, hkm, hsg⟩ := honest_row_signed_before hrun hnc hy hX ha hav
   obtain ⟨D, hDU, hDs, C, l, hC, hDC⟩ := attestation_source hrun hnc hav hsg
@@ -73,7 +74,8 @@ theorem vote_row_source (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun
   refine ⟨D, hDU, hDs, C, l, originBefore_iff.2 ⟨z, hz, c, by omega, CV, hRO⟩, ?_, hDC⟩
   -- the vote is cast by `t_{s+1} + Δ`, after the origin's event
   have hti : tr.time i ≤ sp.ts s + 5 * sp.Δ := by
-    have h : tr.time i ≤ sp.ts (e.msg.slot : Int) + sp.Δ := (cast_head_fcRoot hr hy hc).2
+    have h : tr.time i ≤ sp.ts (e.msg.slot : Int) + sp.Δ :=
+      (cast_head_fcRoot_from hr hrun.vstart hy hc).2
     rw [hs] at h
     simp only [SAParams.ts] at h ⊢
     push_cast at h

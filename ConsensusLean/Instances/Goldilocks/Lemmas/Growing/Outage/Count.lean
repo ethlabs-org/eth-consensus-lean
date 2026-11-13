@@ -32,6 +32,7 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 section Compat
 
@@ -61,7 +62,7 @@ theorem compatible_of_anc_right (hU : Coherent U) {B B' C : SA.Blk sp.n (List (F
 
 end Compat
 
-variable {D : OutageLockPremises tr H proposer dg}
+variable {D : OutageLockPremises tr H proposer dg ini}
 
 /-- A cut of an honest call witnesses an honest call reaching every earlier time. -/
 theorem honestCall_mono {t t' : Time}
@@ -77,7 +78,7 @@ theorem HVoteAt.isCall {x : Fin sp.n} {k : Nat} {e : SA.Em sp (List (FG.Att sp.n
   exact ⟨_, projAC_callAt.1 hc⟩
 
 /-- The cast of a vote by a node honest then is in `[t_s, t_s + Δ]` of its slot `s`. -/
-theorem HVoteAt.ts_le_cast (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem HVoteAt.ts_le_cast (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {x : Fin sp.n} {k : Nat} {e : SA.Em sp (List (FG.Att sp.n))}
     (hv : HVoteAt tr H x k e) :
     sp.ts e.msg.slot ≤ tr.time k ∧ tr.time k ≤ sp.ts e.msg.slot + sp.Δ := by
@@ -87,7 +88,7 @@ theorem HVoteAt.ts_le_cast (hrun : Consensus.Goldilocks.Growing.GoldilocksRun pr
     (cast_head_fcRoot_at hrun hnc hx ⟨hc, he⟩).2⟩
 
 /-- The head of a vote by a node honest at its cast is held while honest. -/
-theorem HVoteAt.head_mem (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem HVoteAt.head_mem (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {x : Fin sp.n} {k : Nat} {e : SA.Em sp (List (FG.Att sp.n))}
     (hv : HVoteAt tr H x k e) : ∃ Hd ∈ tr.HonestBlocksAt H, Hd.root = e.msg.head := by
   obtain ⟨hx, ℓ, hc, he⟩ := hVoteAt_iff.1 hv
@@ -97,7 +98,8 @@ theorem HVoteAt.head_mem (hrun : Consensus.Goldilocks.Growing.GoldilocksRun prop
 /-- A counted vote of a validator honest at the writer's update was cast by it at an earlier
 cut at which it was honest, of the update's slot, and its head extends the result inside the
 blocks held while honest (Lemma G at the update's pool). -/
-theorem counted_honest_vote_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem counted_honest_vote_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {X : Fin sp.n} {i₀ s : Nat} (hX : X ∈ H (tr.time i₀))
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hR : SA.ResultAt tr.projAC X i₀ s C CV) {v : Vote sp.n} (hv : v ∈ CV)
@@ -113,7 +115,7 @@ theorem counted_honest_vote_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRu
     Anc.mono hΦU hCR⟩
 
 /-- The result of an update by a node honest at it is held while honest. -/
-theorem result_mem_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem result_mem_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {X : Fin sp.n} {i₀ s : Nat} (hX : X ∈ H (tr.time i₀))
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hR : SA.ResultAt tr.projAC X i₀ s C CV) : C ∈ tr.HonestBlocksAt H := by
@@ -122,23 +124,24 @@ theorem result_mem_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propose
 
 namespace OutageLockPremises
 
-theorem coherent (D : OutageLockPremises tr H proposer dg) : Coherent (tr.HonestBlocksAt H) :=
+theorem coherent (D : OutageLockPremises tr H proposer dg ini) : Coherent (tr.HonestBlocksAt H) :=
   honestBlocksAt_coherent D.hrun D.hnc
 
 /-- `2 f_d < n` at the time of a cut of an honest call. -/
-theorem two_faults_lt_at (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n} {i : Nat}
+theorem two_faults_lt_at (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n} {i : Nat}
     (hx : x ∈ H (tr.time i)) (hc : tr.IsCall x i) : 2 * (H (tr.time i))ᶜ.ncard < sp.n :=
   (D.hB _ ⟨x, i, hx, hc, le_rfl⟩).two _ (D.hrun.time_nonneg i) le_rfl
 
 /-- A genesis `P` is below every block held while honest. -/
-theorem anc_of_genesis (D : OutageLockPremises tr H proposer dg) (hg : D.P.root = sp.genesisRoot)
+theorem anc_of_genesis (D : OutageLockPremises tr H proposer dg ini)
+    (hg : D.P.root = sp.genesisRoot)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} (hC : C ∈ tr.HonestBlocksAt H) :
     Anc (tr.HonestBlocksAt H) D.P C := by
   rw [honestAt_eq_genesis D.hrun D.coherent D.hP.1 hg]
   exact (honestAt_genesis_anc D.hrun hC).2
 
 /-- A genesis `P` is extended by every vote of a node honest at its cast. -/
-theorem vote_extends_of_genesis (D : OutageLockPremises tr H proposer dg)
+theorem vote_extends_of_genesis (D : OutageLockPremises tr H proposer dg ini)
     (hg : D.P.root = sp.genesisRoot) {x : Fin sp.n} {k : Nat}
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x k e) :
     SA.VoteExtends (tr.HonestBlocksAt H) e.msg D.P := by
@@ -147,7 +150,7 @@ theorem vote_extends_of_genesis (D : OutageLockPremises tr H proposer dg)
 
 /-- A block held while honest is compatible with `P` when `P` is genesis, and otherwise when it
 is compatible with every origin `P` of label `σ` within `b₀`. -/
-theorem compatible_of (D : OutageLockPremises tr H proposer dg)
+theorem compatible_of (D : OutageLockPremises tr H proposer dg ini)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} (hC : C ∈ tr.HonestBlocksAt H)
     (h : OriginWithin tr H D.P D.σ D.b₀ → Compatible (tr.HonestBlocksAt H) C D.P) :
     Compatible (tr.HonestBlocksAt H) C D.P := by
@@ -156,14 +159,14 @@ theorem compatible_of (D : OutageLockPremises tr H proposer dg)
   · exact h hP
 
 /-- **An origin within `b₀` is compatible with `P`.** -/
-theorem compatible_of_within (D : OutageLockPremises tr H proposer dg)
+theorem compatible_of_within (D : OutageLockPremises tr H proposer dg ini)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hC : OriginWithin tr H C s D.b₀) (hCU : C ∈ tr.HonestBlocksAt H) :
     Compatible (tr.HonestBlocksAt H) C D.P :=
   D.compatible_of hCU fun hP => D.hpre.origins_compatible C s D.P D.σ hC hP
 
 /-- **A vote at a time `≤ b₀` of a slot after `σ`, by a node honest at its cast, extends `P`.** -/
-theorem vote_extends_pre (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n}
+theorem vote_extends_pre (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n}
     {k : Nat} {e : SA.Em sp (List (FG.Att sp.n))}
     (hv : HVoteAt tr H x k e) (hk : tr.time k ≤ D.b₀) (hs : D.σ < e.msg.slot) :
     SA.VoteExtends (tr.HonestBlocksAt H) e.msg D.P := by
@@ -207,7 +210,7 @@ theorem voteCompat_of_not_lateWaker_at {i : Nat} (hinv : OutageVoteInv D i) {x :
 
 /-- A member of `A₀` is awake and joined at `t_m + Δ` for a label `m ∈ [j₀ + 1, j₀ + k]` that an
 honest call reaches. -/
-theorem cohort_ready_at (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n}
+theorem cohort_ready_at (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n}
     (hx : x ∈ D.A₀) {m : Nat} (hm : D.j₀ + 1 ≤ m) (hmK : m ≤ D.j₀ + sp.k)
     (hcall : ∃ y i, y ∈ H (tr.time i) ∧ tr.IsCall y i ∧ sp.ts m + sp.Δ ≤ tr.time i) :
     tr.awake x (sp.ts m + sp.Δ) ∧ tr.JoinedAt x (sp.ts m + sp.Δ) := by
@@ -231,14 +234,15 @@ theorem cohort_ready_at (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n}
 
 /-- The pool of an update of a restored label by a node honest at it holds the slot votes of the
 validators honest at `t_m + Δ` that are awake and joined then. -/
-private theorem voter_of_ready (D : OutageLockPremises tr H proposer dg) {y : Fin sp.n}
+private theorem voter_of_ready (D : OutageLockPremises tr H proposer dg ini) {y : Fin sp.n}
     {k m : Nat} {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
     (hy : y ∈ H (tr.time k)) (hu : SA.UpdateAt tr.projAC y k m ℓ) (hm : D.r ≤ m) {x : Fin sp.n}
     (hx : x ∈ H (sp.ts m + sp.Δ)) (haw : tr.awake x (sp.ts m + sp.Δ))
     (hjn : tr.JoinedAt x (sp.ts m + sp.Δ)) :
     x ∈ SA.voters {v | v ∈ (tr.projAC.state y k).pool m} := by
   obtain ⟨k', e, hve, hes, -⟩ := vote_of_awake_joined_at D.hrun D.hnc hx
-    (mayVote_stock_at D.hrun D.hnc (ts_add_delta_nonneg _) hx) haw hjn
+    -- TEMP(C2): C3a replaces
+    (mayVote_at D.hrun D.hnc (ts_add_delta_nonneg _) hx (D.hmv _ _)) haw hjn
   obtain ⟨hx', ℓ', hc', he'⟩ := hVoteAt_iff.1 hve
   have hval := (castAt_spec_at D.hrun D.hnc hx' ⟨hc', he'⟩).1
   rcases D.PG y k m ℓ hy hu hm x k' e hve hes with hpool | ⟨v, hv, -, -, -, hvx, -⟩
@@ -297,7 +301,9 @@ theorem result_compatible_at {i : Nat} (hinv : OutageVoteInv D i) {y : Fin sp.n}
       have h := awake_participant_early (D.hrun.upTo hd) (D.hnc.upTo _) hsvc
         (le_min (hmeq ▸ hj₀.1) (by rw [ht]; linarith)) hy
         (by rw [RunTrace.upTo_projAC]; exact (sa_updateAt_upTo D.hrun.time_mono).mpr ⟨le_rfl, hu⟩)
-        hx.1 (mayVote_stock (D.hrun.upTo hd) (D.hnc.upTo _) hx.1 _) ⟨hx.2.1, by rw [ht]; linarith⟩
+        hx.1 -- TEMP(C2): C3a replaces
+        (mayVote_of_start (D.hrun.upTo hd) (D.hnc.upTo _) hx.1 (D.hmv _ _))
+        ⟨hx.2.1, by rw [ht]; linarith⟩
         (joinedAt_upTo hx.2.2)
       rwa [RunTrace.upTo_projAC, projAC_upTo_state D.hrun le_rfl] at h
     obtain ⟨v, hv, hvT⟩ := Compose.exists_counted_of_participants hR hT hslot

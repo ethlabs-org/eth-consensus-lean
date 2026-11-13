@@ -96,7 +96,7 @@ theorem accepted_held_before_early (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) 
 
 /-- D2 (L1, message half). An honest slot-`q` vote is in the receiver's pool, with a stamp
 before `t_q + 2Δ`, at every receiver call from `t_q + 2Δ` with no restart after `t_q`. -/
-theorem vote_pooled_before_early (hrun : SA.ACRun proposer T H U)
+theorem vote_pooled_before_early {ini} (hrun : SA.ACRun proposer T H U ini)
     {g : Time} {y : Fin sp.n} (hy : y ∈ H) (hS : ReceiverServiceAfter H U g y T)
     {q c : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hc : T.CallAt y c ℓ)
     (hct : sp.ts q + 2 * sp.Δ ≤ T.time c) (hg : g ≤ sp.ts q + sp.Δ)
@@ -144,14 +144,14 @@ theorem vote_pooled_before_early (hrun : SA.ACRun proposer T H U)
         hrun.honest.pool_vote y hy _ q b hb (by rw [hbv, hxv]; exact hx)
       rw [hav, hxv] at hea
       rw [hbv, hxv] at heb
-      obtain ⟨-, rfl⟩ := SA.one_vote_per_slot sp FGP ro H U T hr x hx ja jb ea eb hea heb
-        (by rw [hea', heb', SA.state_pool_slot sp hr hy _ q a ha,
-          SA.state_pool_slot sp hr hy _ q b hb])
+      obtain ⟨-, rfl⟩ := SA.one_vote_per_slotU sp FGP ro H U T hr.toU x hx ja jb ea eb hea heb
+        (by rw [hea', heb', SA.state_pool_slot_from sp hr hrun.vstart hy _ q a ha,
+          SA.state_pool_slot_from sp hr hrun.vstart hy _ q b hb])
       exact absurd (hea'.symm.trans heb') hab
   have hpool : e.msg ∈ (T.state y c).pool q :=
     SA.pool_mono hr hy (show k' + 1 ≤ c by omega) (fun r h₁ h₂ => hnr r h₁ (by omega)) q hpk'
   refine ⟨hpool, ?_⟩
-  rcases SA.pool_origin hr hy c e.msg (by rw [hes]; exact hpool) with
+  rcases SA.pool_origin_from hr hrun.vstart hy c e.msg (by rw [hes]; exact hpool) with
     ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
   · rw [hst₁, SA.etime_of_lt_of]
     by_cases hk₁k' : k₁ ≤ k'
@@ -162,7 +162,7 @@ theorem vote_pooled_before_early (hrun : SA.ACRun proposer T H U)
         have hyx : y = x := by
           rw [← (SA.vote_signer_slot hr hy hv₁).1, he₁m, hxv]
         rw [hyx] at hv₁
-        obtain ⟨rfl, -⟩ := SA.one_vote_per_slot sp FGP ro H U T hr x hx k₁ j e₁ e hv₁ hv
+        obtain ⟨rfl, -⟩ := SA.one_vote_per_slotU sp FGP ro H U T hr.toU x hx k₁ j e₁ e hv₁ hv
           (by rw [he₁m])
         linarith only [htj, hΔ]
       · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)

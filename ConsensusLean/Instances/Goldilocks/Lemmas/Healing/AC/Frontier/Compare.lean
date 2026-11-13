@@ -74,7 +74,7 @@ theorem result_sideAC (hrun : ACRunU wm u proposer tr H U) {Y : Fin sp.n} (hY : 
   · rintro w ⟨v, ⟨hvp, -, hres, R, hR, hRr, hDR⟩, rfl⟩
     have hvs := state_pool_slotU sp hr hY c s v hvp
     refine fwd_iff.2 ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩,
-      admitted_of_heldU hr hY hvs hvp le_rfl
+      admitted_of_heldU hr (fun _ => voteStart_initial _) hY hvs hvp le_rfl
       fun k _ hst => ?_⟩
     have hst' : (tr.state Y c).voteStamp v < ETime.of (sp.ts s + 2 * sp.Δ) := by
       unfold resolutionTime at hres

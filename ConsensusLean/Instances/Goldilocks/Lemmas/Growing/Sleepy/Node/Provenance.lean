@@ -43,15 +43,13 @@ private theorem honest_of_quorum_two (hf : 2 * Hᶜ.ncard < sp.n) {Q : Finset (F
   omega
 
 /-- `caches_on_chain_upTo` with the count `2 f < n` in place of a slot count. -/
-theorem caches_on_chain_of_two (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem caches_on_chain_of_two {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {b : Time}
     (hi : ∀ k < i, tr.time k ≤ b) :
     OnOriginChainWithin tr H (tr.state y i).fg.F b ∧
       OnOriginChainWithin tr H (tr.state y i).fg.J b := by
-  have hreq := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  have hfg := fg_projection _ _ dg H _ tr proposer
-    ⟨hreq.1, hreq.2.1, hreq.2.2.1, hreq.2.2.2, SA.proposal_payload_valid sp _ ro⟩
-    hrun.genesis_root_ok hrun.toLocalRun hnc
+  have hfg := projFG_localRun hrun hnc
   have hst : tr.projFG.store y i = (tr.state y i).fg := by
     simp only [FGTrace.store, projFG_state hrun.toLocalRun hy i]
   have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX⟩
@@ -94,7 +92,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A block on the chain of the origins (within `b'`) of the prefix through `d` is on the chain of
 the origins within `b'` of the run. -/
-theorem onOriginChainWithin_of_upTo (hrun : Growing.GoldilocksRun proposer dg H tr) {d b' : Time}
+theorem onOriginChainWithin_of_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {d b' : Time}
     (hd : 0 ≤ d) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : Compose.OnOriginChainWithin (tr.upTo d) (H d) B b') : OnOriginChainWithin tr H B b' := by
   rcases Compose.onOriginChainWithin_iff.1 h with hg | ⟨C, s, hC, hBC⟩
@@ -104,7 +103,8 @@ theorem onOriginChainWithin_of_upTo (hrun : Growing.GoldilocksRun proposer dg H 
 
 /-- **The record names genesis or an origin**: the state of `y` before cut `i`, read at a time
 `t ∈ [0, b]` at or after every earlier cut, with `y` honest at `t`. -/
-theorem record_origin_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem record_origin_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} {t b : Time} (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t)
     (htb : t ≤ b) (hy : y ∈ H t) :
     ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y i).ac.latestConfirmed ∧
@@ -117,7 +117,8 @@ theorem record_origin_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
 
 /-- **Every FG source is on the chain of the origins within `b`**, for a node honest at its cut,
 whose earlier cuts are at times `≤ b`. -/
-theorem source_on_chain_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem source_on_chain_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} {b : Time} (hy : y ∈ H (tr.time i)) (hi : ∀ k < i, tr.time k ≤ b)
     {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : SA.ToFGAt tr.projAC y i ℓ C) : OnOriginChainWithin tr H C b := by
@@ -144,7 +145,8 @@ theorem row_on_chain_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : N
 /-- **`Σ.F` and `Σ.J` are on the chain of the origins within `b`**: the state of `y` before cut
 `i`, read at `t ∈ [0, b]` at or after every earlier cut, with `y` honest at `t` and `2 f_t < n`
 (a target quorum has a member honest at `t`, Lemma Q at the reading time). -/
-theorem caches_on_chain_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem caches_on_chain_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} {t b : Time} (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t)
     (htb : t ≤ b) (hy : y ∈ H t) (hf : 2 * (H t)ᶜ.ncard < sp.n) :
     OnOriginChainWithin tr H (tr.state y i).fg.F b ∧

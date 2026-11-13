@@ -59,8 +59,7 @@ theorem accepted_child_decodes_at {V : Type} [Fintype V] [DecidableEq V] {E : En
     (hc : (simTraceAt S rho hn).CallAt y i (.fg (.block B true))) :
     decodeBlock (S.params (pubOf E) hn) (binding := S.vote) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B := by
-  -- TEMP(C2): `own_proposal_decodes` reads `Node.Reachable` from the default start.
-  have hrun := simTraceAt_goldilocksRun_initial S rho hn hv
+  have hrun := simTraceAt_goldilocksRun S rho hn hv
   have run := hrun.upTo (hrun.time_nonneg i)
   have hc' := (Trace.upTo_callAt_of_le _ le_rfl).mpr hc
   rcases Compose.blockCall_cases run.toLocalRun hy hc' with hg |
@@ -70,11 +69,8 @@ theorem accepted_child_decodes_at {V : Type} [Fintype V] [DecidableEq V] {E : En
     obtain ⟨root, _, hr, _, _, _, _, _⟩ := Store.onBlock_eq_some ha
     exact canonical_block_decodes S rho hn B (by rw [hr]; simp) hw.1 hw.2.1 hw.2.2
   · obtain ⟨cfg, hr, hst, hs⟩ := Compose.group_step run.toLocalRun hy hg
-    have req := SA.interface_requirements (S.params (pubOf E) hn)
-      (List (FG.Att (Fintype.card V))) (S.ro _)
     have hd := own_proposal_decodes S rho hn (runProposer S rho hn) y cfg _ _ x
-      ⟨req.1, req.2.1, req.2.2.1, req.2.2.2, SA.proposal_payload_valid _ _ _⟩
-      run.genesis_root_ok hr hs hp d p (by rw [hst]; exact hdp)
+      run.genesis_root_ok hr (simIni_voteStart S rho hn y) hs hp d p (by rw [hst]; exact hdp)
     simpa only [hst, Node.acProposal, Node.tickStep, Node.acCall, hB] using hd
 
 /-- A scheduled honest proposal's actual pre-record state supplies canonical child validity. -/
@@ -92,8 +88,7 @@ theorem scheduled_proposal_child_decodes_at {V : Type} [Fintype V] [DecidableEq 
         (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p
       decodeBlock (S.params (pubOf E) hn) (binding := S.vote) (digests rho.hash (blockObj _ B))
         (blockObj _ B) = some B := by
-  -- TEMP(C2): `scheduled_proposal_child_decodes_of_step` reads the default start.
-  have hrun := simTraceAt_goldilocksRun_initial S rho hn hv
+  have hrun := simTraceAt_goldilocksRun S rho hn hv
   have hsim := simTraceAt_simulates S rho hn hv
   have ht0 : 0 ≤ t := (hv.in_horizon _ (List.mem_of_getElem? he)).1
   have hth : t ≤ rho.horizon := (hv.in_horizon _ (List.mem_of_getElem? he)).2
@@ -112,7 +107,7 @@ theorem scheduled_proposal_child_decodes_at {V : Type} [Fintype V] [DecidableEq 
   have hstate := hsim.state v i (Nat.le_of_lt (List.getElem?_eq_some_iff.mp he).1)
     (fun h => hvt (rho.faultyAt_mono (cutTime_le_of_event rho hv he) h))
   exact scheduled_proposal_child_decodes_of_step S rho hn hv v i t hp hr
-    (hst.trans hstate.symm) hs run.genesis_root_ok
+    (simIni_voteStart S rho hn _) (hst.trans hstate.symm) hs run.genesis_root_ok
 
 /-- At a scheduled honest tick, the proposal duty preserves the joint invariant without
 assuming child decoding: reachable proposal execution supplies it. -/

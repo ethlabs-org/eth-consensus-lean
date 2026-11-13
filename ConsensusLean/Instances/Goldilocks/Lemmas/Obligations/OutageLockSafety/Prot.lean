@@ -29,13 +29,14 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {D : OutageLockPremises tr H proposer dg}
 
 /-- A held honest vote across an AC cut was cast by its validator. -/
-private theorem held_vote_cast (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+private theorem held_vote_cast {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     (hc : tr.CallAt y j (.ac ℓ)) {v : Vote sp.n}
     (hv : v ∈ SA.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac (Node.frame (tr.state y j)))
     (hvH : v.val ∈ H) :
     ∃ k e, SA.VoteAt tr.projAC v.val k e ∧ e.msg = v := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hrun' := goldilocks_ac_projection_from hrun hnc
   have hr := hrun'.localRun
   have hcA : tr.projAC.CallAt y j ℓ := projAC_callAt.2 hc
   have hfr : ℓ.frame = Node.frame (tr.state y j) := (hrun.cutLaw y hy j _ hc).1
@@ -56,8 +57,8 @@ private theorem held_vote_cast (hrun : GoldilocksRun proposer dg H tr) (hnc : No
 of an honest `y`, with `B` in the frame's tree and `2·|Hᶜ ∪ W| < n`, if every honest vote of
 slot `slot(t_j) − 1` cast before `j` by a validator outside `W` has a head compatible with `B`,
 the unlock target of `B` at the call's view is `B`. -/
-theorem unlockKeeps_of_voteCompat (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {W : Set (Fin sp.n)} (hf : 2 * (Hᶜ ∪ W).ncard < sp.n)
+theorem unlockKeeps_of_voteCompat {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) {W : Set (Fin sp.n)} (hf : 2 * (Hᶜ ∪ W).ncard < sp.n)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ (tr.state y j).fg.toFrame.tree)
     (hcompat : ∀ x ∈ H, x ∉ W → ∀ k < j, ∀ e, SA.VoteAt tr.projAC x k e →
@@ -65,7 +66,7 @@ theorem unlockKeeps_of_voteCompat (hrun : GoldilocksRun proposer dg H tr) (hnc :
       VoteCompat (tr.HonestBlocks H) e.msg B) :
     UnlockKeeps tr y j B := by
   intro ℓ hcall
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hU := hr.coherent
   obtain ⟨hfr, hst, -, -⟩ := hrun.cutLaw y hy j _ hcall
   rw [hfr] at hst
@@ -74,7 +75,7 @@ theorem unlockKeeps_of_voteCompat (hrun : GoldilocksRun proposer dg H tr) (hnc :
     rw [tr.state_succ_of_call hcall, hst]
   have hpool : ∀ m τ, ∀ v ∈ (tr.state y m).ac.pool τ, v.slot = τ := fun m τ v hv => by
     rw [← projAC_state hrun.toLocalRun hy] at hv
-    exact SA.state_pool_slot sp hr hy m τ v hv
+    exact SA.state_pool_slot_from sp hr hrun.vstart hy m τ v hv
   have hpay : ∀ C ∈ (Node.frame (tr.state y j)).tree, SA.validPayload C := by
     rw [← hfr]
     exact SA.frame_validPayload sp hr hy (projAC_callAt.2 hcall)
@@ -175,7 +176,7 @@ theorem vote_extends_of_prot {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.n} 
         exact this)
     ⟨l, hl', hlj, hle, B, hB, hBr, hPB⟩
   obtain ⟨Hd, hHd, hHdr, hPHd⟩ := SA.castAt_head_anc hr hx hcast (Or.inl hC)
-    (SA.castAt_compatible_of_live hr hx hcast (Or.inl hC)) hPC
+    (SA.castAt_compatible_of_live hr (fun _ => SA.voteStart_initial _) hx hcast (Or.inl hC)) hPC
   exact ⟨Hd, hΦU hHd, hHdr, hPHd.mono hΦU⟩
 
 end OutageVoteInv

@@ -340,6 +340,7 @@ theorem trace_goldilocksRun {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att s
   toLocalRun := Schedule.trace_localRun h hblock hatt hmsg
   genesis_root_ok := hroot
   carried_vote_unforgeable := hcarried
+  vstart := fun _ => SA.voteStart_initial _
 
 /-! ## Time-indexed schedules -/
 

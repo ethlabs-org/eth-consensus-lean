@@ -64,7 +64,7 @@ theorem next_transfer_of_carryU
       exact h.1
   have hσ : ((m + 1 : Nat) : Int) - 1 = (m : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_ancU hr hy hc
+  have hdomA := voteDomain_ancU hr (fun _ => voteStart_initial _) hy hc
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -115,14 +115,16 @@ theorem next_transfer_of_carryU
     rintro w ⟨v, hv, rfl⟩
     by_cases hw : v.val ∈ H
     · obtain ⟨j, -, e', hv', he'⟩ := honest_merged_voteU hrun hy hc hv hw
-      exact Or.inl ⟨hw, j, e', hv', by rw [he']; exact merged_vote_slotU hr hy hc v hv⟩
+      exact Or.inl ⟨hw, j, e', hv', by
+        rw [he']; exact merged_vote_slotU hr (fun _ => voteStart_initial _) hy hc v hv⟩
     · have hK := hT y hy i ℓ e hc m v hv
-      rw [merged_vote_slotU hr hy hc v hv] at hK
+      rw [merged_vote_slotU hr (fun _ => voteStart_initial _) hy hc v hv] at hK
       exact Or.inr ⟨hK, hw⟩
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
     (mergedVoteView sp e.readPoint ℓ.frame (m + 1)) (m : Int) (fun B hB => voteDomain_subset_tree
         hB) hdomA hviab.voteDomain
-    (locks_compatibleU hrun K hP hy hc hs hBt (S := SX) (fun w hw => by
+    (locks_compatibleU hrun K hP hy hc hs hBt (S := SX)
+      (fun w hw => by
         obtain ⟨-, x, hx, hxv, hxs, hxa⟩ := hsupp hw
         exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩)
       hhalf hf1 hearlier fun Φ' A D _ hΦ'U _ h34 hpool hsub =>
@@ -220,7 +222,7 @@ theorem optimistic_transfer_storedU
       exact h.1.2
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_ancU hr hy hc
+  have hdomA := voteDomain_ancU hr (fun _ => voteStart_initial _) hy hc
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -243,16 +245,18 @@ theorem optimistic_transfer_storedU
   set V := mergedVoteView sp e.readPoint ℓ.frame (s + 1)
   have hcover : SX ⊆ supporters ℓ.frame V s B ∪ equivocators V.votes := by
     rintro w ⟨v, hv, rfl, R, hR, hRr, hDR⟩
-    exact carried_coverU hrun hy hc hs hBt hcarry ⟨hv, R, hR, hRr, hDR⟩
-      (optimisticPoint_pool_slotU hr hx hpt hv) ⟨R, hΦxU hR, hRr,
+    exact carried_coverU hrun hy hc hs hBt hcarry
+      ⟨hv, R, hR, hRr, hDR⟩
+      (optimisticPoint_pool_slotU hr (fun _ => voteStart_initial _) hx hpt hv) ⟨R, hΦxU hR, hRr,
         (frame_slot_leU sp hr hx hpt.1 R hR).trans hslx.le, hBD.trans (Anc.mono hΦxU hDR)⟩
   have hW : voters V.votes ⊆ K.committee s := by
     rintro u ⟨v, hv, rfl⟩
     have hK := hT y hy i ℓ e hc s v hv
-    rwa [merged_vote_slotU hr hy hc v hv] at hK
+    rwa [merged_vote_slotU hr (fun _ => voteStart_initial _) hy hc v hv] at hK
   have hE : equivocators V.votes ⊆ K.committee s ∩ Hᶜ := by
     intro w hw
-    refine ⟨?_, fun hwH => honest_not_equivocatorU hrun hy hc hwH hw⟩
+    refine ⟨?_, fun hwH => honest_not_equivocatorU hrun hy hc hwH
+      hw⟩
     obtain ⟨a, ha, -, -, -, rfl, -⟩ := hw
     exact hW ⟨a, ha, rfl⟩
   -- an optimistic origin of slot `s` at `y` shares an honest voter with `SX`
@@ -272,14 +276,16 @@ theorem optimistic_transfer_storedU
     obtain ⟨-, j₁, -, e₁, hvote₁, rfl⟩ := optimisticPoint_pool_voteU hrun hx hpt hv₁ hwH
     obtain ⟨hs₂, j₂, -, e₂, hvote₂, rfl⟩ := hpool v₂ hv₂ (hv₂w ▸ hwH)
     obtain ⟨-, rfl⟩ := (one_vote_per_slotU sp) FGP ro H U tr hr _ hwH j₁ j₂ e₁ e₂ hvote₁
-      (hv₂w ▸ hvote₂) (by rw [optimisticPoint_pool_slotU hr hx hpt hv₁, hs₂])
+      (hv₂w ▸ hvote₂)
+      (by rw [optimisticPoint_pool_slotU hr (fun _ => voteStart_initial _) hx hpt hv₁, hs₂])
     obtain rfl : R₂ = R₁ := hU.1 (hΦ'U hR₂) (hΦxU hR₁) (hR₂r.trans hR₁r.symm)
     exact anc_total hU (Anc.mono hΦ'U hDR₂) (hBD.trans (Anc.mono hΦxU hBR₁))
   have h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard :=
     cover_count (K.committee s) (hsize s) hSX hW hE h34 hf2
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i) V (s : Int)
     (fun B hB => voteDomain_subset_tree hB) hdomA hviab.voteDomain
-    (locks_compatibleU hrun K hP hy hc hs hBt (S := SX) (fun w hw => by
+    (locks_compatibleU hrun K hP hy hc hs hBt (S := SX)
+      (fun w hw => by
         rcases hcover hw with ⟨-, x, hx, hxv, hxs, hxa⟩ | h
         · exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩
         · exact Or.inl h)
@@ -366,7 +372,7 @@ theorem first_transfer_stored_of_poolU
       exact h.1.2
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_ancU hr hy hc
+  have hdomA := voteDomain_ancU hr (fun _ => voteStart_initial _) hy hc
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -415,14 +421,15 @@ theorem first_transfer_stored_of_poolU
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
     (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB => voteDomain_subset_tree
         hB) hdomA hviab.voteDomain
-    (locks_compatibleU hrun K hP hy hc hs hBt (S := SX) (fun w hw => by
+    (locks_compatibleU hrun K hP hy hc hs hBt (S := SX)
+      (fun w hw => by
         obtain ⟨-, x, hx, hxv, hxs, hxa⟩ := hsupp hw
         exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩)
       hhalf hf1 hearlier hm)
     fun X' Cx hCx hp hCxC =>
       isBest_of_majority hΦ (merged_support_subsetU hr hy hc (s + 1)) (fun B hB =>
           voteDomain_subset_tree hB.1)
-        hsupp (merged_voters_subsetU hr hy hc hd) hmaj hCx hp hCxC
+        hsupp (merged_voters_subsetU hr (fun _ => voteStart_initial _) hy hc hd) hmaj hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : B = getHead sp e.readPoint ℓ.frame (tr.time i)
       (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
@@ -628,7 +635,7 @@ theorem result_transfer : ResultTransfer sp := by
         (by
           obtain ⟨ℓX, hupd, -, rfl⟩ := hres
           exact counted_supporters hrun hX hy hupd.1 hc hs .refl hcarry hviab hd)
-        (merged_voters_subset hrun.localRun hy hc hd)
+        (merged_voters_subset hrun.localRun (fun _ => voteStart_initial _) hy hc hd)
         (result_majority hres) hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : C = getHead sp e.readPoint ℓ.frame (tr.time i)

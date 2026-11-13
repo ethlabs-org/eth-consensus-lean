@@ -178,6 +178,7 @@ hypothesis `ACRun` of every ACSteps statement). -/
 theorem acRun_one_tick : ACRun (fun _ => 0) oneTick Set.univ ({g} : Set (Blk sp1.n Unit)) where
   stock := rfl
   localRun := localRun_one_tick
+  vstart := fun _ => voteStart_initial _
   honest :=
     { pool_vote := fun y _ i σ v hv _ => by
         rw [oneTick_state] at hv; simp [SAState.initial] at hv

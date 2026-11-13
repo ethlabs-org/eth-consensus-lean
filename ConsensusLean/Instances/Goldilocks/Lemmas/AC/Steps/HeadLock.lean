@@ -17,7 +17,7 @@ the walk reads the emission's read point (`castAt_head_anc`). -/
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {ini : Fin sp.n → SAState sp.n}
 
 /-- **The walk extends a compatible anchor candidate.** If `C` is a live lock block or `fc_root`
 and every live lock block is compatible with `C`, every head extends every ancestor of `C`. -/
@@ -56,7 +56,7 @@ theorem anc_getHead_of_compat {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {A : SAStat
 /-- **An honest vote extends a lock it reads.** At an honest vote, if `C` is a live lock block
 of the read point or `fc_root`, compatible with every live lock block of the read point, the
 vote's head is a block of the frame that extends every ancestor `B` of `C`. -/
-theorem castAt_head_anc (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+theorem castAt_head_anc (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {C : Blk sp.n FGP}
     (hC : C ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i) ∪ {ℓ.frame.fcRoot})

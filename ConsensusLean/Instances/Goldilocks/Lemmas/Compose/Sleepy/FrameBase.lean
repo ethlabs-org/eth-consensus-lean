@@ -53,12 +53,13 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-! ### The FG projection of a run -/
 
 /-- The FG projection of a Goldilocks run is an FG local run inside the honest blocks. -/
-theorem projFG_localRun (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) :
+theorem projFG_localRun {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG :=
-  fg_projection _ _ dg H _ tr proposer (requirements sp ro)
-    hrun.genesis_root_ok hrun.toLocalRun hnc
+  fg_projection_from (fun y _ => requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok
+    hrun.toLocalRun hnc
 
-theorem store_eq (hrun : GoldilocksRun proposer dg H tr)
+theorem store_eq {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     tr.projFG.store y i = (tr.state y i).fg :=
   FrameGeometry.store_eq hrun.toLocalRun hy i
@@ -69,7 +70,7 @@ theorem fg_tree_subset_honest {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
   FrameGeometry.fg_tree_subset_honest hy i
 
 /-- Ancestry inside the honest blocks below a held block is ancestry in the holder's store. -/
-theorem honest_held_anc (hrun : GoldilocksRun proposer dg H tr)
+theorem honest_held_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {A W : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : Anc (tr.HonestBlocks H) A W) (hW : W ∈ (tr.state y i).fg.tree) :
@@ -78,7 +79,7 @@ theorem honest_held_anc (hrun : GoldilocksRun proposer dg H tr)
 
 /-- State heights do not decrease along ancestry in an honest store, and equal heights have equal
 `Th`. -/
-theorem honest_held_height (hrun : GoldilocksRun proposer dg H tr)
+theorem honest_held_height {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {A W : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : (tr.state y i).fg.Anc A W) :
@@ -88,7 +89,8 @@ theorem honest_held_height (hrun : GoldilocksRun proposer dg H tr)
   FrameGeometry.honest_held_height hrun.toLocalRun (projFG_localRun hrun hnc) hy h
 
 /-- Two entries of one state height below one held block are equal. -/
-theorem held_entry_unique (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem held_entry_unique {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {E E' W : SA.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y i).fg.tree)
     (hE : (tr.state y i).fg.Anc E W) (hE' : (tr.state y i).fg.Anc E' W)
@@ -98,7 +100,7 @@ theorem held_entry_unique (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
   FrameGeometry.held_entry_unique hrun.toLocalRun (projFG_localRun hrun hnc) hy hW hE hE' hh hT hT'
 
 /-- The chain invariants of a held block's state. -/
-theorem honest_held_chain (hrun : GoldilocksRun proposer dg H tr)
+theorem honest_held_chain {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y i).fg.tree) :
     1 ≤ ((tr.state y i).fg.σ B.root).h ∧
@@ -108,7 +110,8 @@ theorem honest_held_chain (hrun : GoldilocksRun proposer dg H tr)
 
 /-- An honest attestation on the chain of a held block was signed by its signer before the node
 accepted the block, before the cut. -/
-theorem honest_row_signed_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem honest_row_signed_before {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state y i).fg.tree) {a : FG.Att sp.n} (ha : a ∈ X.fgPayload) (hav : a.val ∈ H) :
     ∃ m < i, tr.AcceptAt y m X ∧ ∃ k < m, tr.SignAt a.val k a := by
@@ -180,7 +183,8 @@ theorem HonestRowsSourced.above {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
   fun X hX a ha hav _ _ => h X hX a ha hav
 
 /-- The entry an honest source names is its ancestor, an entry block of the source's height. -/
-theorem honest_source_entry (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem honest_source_entry {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {D : SA.Blk sp.n (List (FG.Att sp.n))} {T : Nat} (hD : IsHonestSource tr H D T)
     {E : SA.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ tr.HonestBlocks H) (hET : E.root = T) :
     ∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧ E ∈ (tr.state x k).fg.tree ∧
@@ -193,7 +197,8 @@ theorem honest_source_entry (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCol
 /-- **An honest attestation names the entry of its source**, a block of the signer's tree below
 an origin whose event precedes the signing (the source is a live fast lock block,
 `lock_origin`). -/
-theorem attestation_source (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem attestation_source {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {x : Fin sp.n} (hx : x ∈ H) {k : Nat} {a : FG.Att sp.n} (h : tr.SignAt x k a) :
     ∃ D ∈ tr.HonestBlocks H, IsHonestSource tr H D a.T ∧
       ∃ C l, OriginBefore tr H C l k ∧ Anc (tr.HonestBlocks H) D C := by

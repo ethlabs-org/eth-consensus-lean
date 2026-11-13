@@ -400,7 +400,8 @@ theorem proposal_high_lockU
     (hx : x ∈ H) {i σ : Nat} (ht : tr.time i = sp.ts (σ + 1 : Nat)) {l : Lock}
     (hl : l ∈ (tr.state x i).locks) (hlσ : σ ≤ l.slot) {X : Blk sp.n FGP} (hX : X ∈ U)
     (hXr : X.root = l.block) : ∃ O, Anc U X O ∧ ∃ k CV, OptimisticLockAt tr x k l.slot O CV := by
-  obtain ⟨L, hL, hLr, O, hLO, k, hk, CV, hO⟩ := lock_below_originU hr hx i l hl
+  obtain ⟨L, hL, hLr, O, hLO, k, hk, CV, hO⟩ := lock_below_originU hr
+    (fun _ => SA.voteStart_initial _) hx i l hl
   obtain rfl : X = L := hr.coherent.1 hX hL (hXr.trans hLr.symm)
   refine ⟨O, hLO, k, CV, hO.resolve_left ?_⟩
   rintro ⟨ℓ', ⟨-, -, htk, -⟩, -⟩
@@ -942,7 +943,7 @@ theorem optimistic_first_proposal_storedU
   -- every optimistic voter supports `D` at the proposal, or equivocates there
   have hcover : SX ⊆ supporters ℓ.frame V σ B ∪ equivocators V.votes := by
     rintro w ⟨v, hv, rfl, R', hR', hR'r, hDR'⟩
-    have hvs := optimisticPoint_pool_slotU hr hX hpt hv
+    have hvs := optimisticPoint_pool_slotU hr (fun _ => voteStart_initial _) hX hpt hv
     by_cases heq : v.val ∈ equivocators V.votes
     · exact Or.inr heq
     left

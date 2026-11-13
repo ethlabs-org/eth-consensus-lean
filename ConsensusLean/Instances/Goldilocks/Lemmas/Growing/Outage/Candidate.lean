@@ -37,7 +37,8 @@ theorem honestRowsSourcedBy_iff {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} 
 
 /-- The rows sourced at the reading cut are sourced by blocks held while honest at its time. -/
 theorem HonestRowsSourcedAt.by_
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n} {i : Nat}
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
+    {i : Nat}
     {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourcedAt tr H G y i) :
     HonestRowsSourcedBy tr H G y i (tr.time i) := fun X hX a ha hav => by
   obtain ⟨D, hD, x, k, hx, hki, hDt, hDT⟩ := honestRowsSourcedAt_iff.1 hsrc X hX a ha hav
@@ -64,7 +65,8 @@ theorem HonestRowsSourcedBy.upTo_held {y : Fin sp.n} {i : Nat} {t : Time}
 honest at a time `t ≥ 0` after every cut before `i`, with `2 f_t < n`: a block `B` of the frame's
 tree compatible with every `G`-source is at or below `fc_root` or in the full viable tree. -/
 theorem held_candidate_of_rows_by
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (ht : ∀ k < i, tr.time k ≤ t)
     (hy : y ∈ H t) (hf : 2 * (H t)ᶜ.ncard < sp.n)
     {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourcedBy tr H G y i t)

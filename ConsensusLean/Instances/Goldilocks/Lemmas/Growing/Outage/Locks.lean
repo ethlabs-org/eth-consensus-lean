@@ -42,6 +42,7 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- A fast lock of the prefix's AC trace is a fast lock of the run at a time `≤ d`. -/
 private theorem sa_fastLockAt_upTo (hm : Monotone tr.time) {d : Time} {y : Fin sp.n} {c s : Nat}
@@ -69,7 +70,7 @@ theorem fastLockAt_isCall {y : Fin sp.n} {c s : Nat} {B : SA.Blk sp.n (List (FG.
   · exact ⟨_, projAC_callAt.1 hpt.1⟩
 
 /-- A fast lock of label `s` is written at or before `t_s + 6Δ`. -/
-theorem fastLockAt_time_le (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem fastLockAt_time_le (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {c s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : SA.FastLockAt tr.projAC y c s B CV) : tr.time c ≤ sp.ts s + 6 * sp.Δ := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -87,7 +88,8 @@ theorem fastLockAt_time_le (hrun : Consensus.Goldilocks.Growing.GoldilocksRun pr
 /-- The AC state of a node at cut `n`, read at a time `t` after every cut before `n` at which the
 node is honest, is the AC state of the prefix through `t`. -/
 private theorem projAC_state_by
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n} {n : Nat}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
+    {n : Nat}
     {t : Time} (ht0 : 0 ≤ t) (ht : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t) :
     (tr.projAC.upTo t).state y n = (tr.state y n).ac := by
   have h := projAC_state (hrun.upTo ht0).toLocalRun hy n
@@ -97,7 +99,8 @@ private theorem projAC_state_by
 lies below the block of a fast lock of its slot written at an earlier cut `c`, at which the node
 was honest. The lock is read at a time `t` at which the node is honest, after every cut before
 `n`. -/
-theorem fastLock_provenance_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem fastLock_provenance_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {n : Nat} {t : Time} (ht0 : 0 ≤ t)
     (ht : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t) {l : SA.Lock}
     (hl : l ∈ (tr.state y n).ac.locks) (hf : l.fast = true) :
@@ -106,14 +109,15 @@ theorem fastLock_provenance_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRu
   have hl' : l ∈ ((tr.projAC.upTo t).state y n).locks := by
     rw [projAC_state_by hrun ht0 ht hy]; exact hl
   obtain ⟨c, hc, B, CV, hfl, L, hL, hLr, hLB⟩ :=
-    SA.fast_lock_provenance (acRun_upTo hrun hnc ht0).localRun hy n l hl' hf
+    SA.fast_lock_provenance_from (acRun_upTo hrun hnc ht0).localRun hrun.vstart hy n l hl' hf
   obtain ⟨hcd, hfl⟩ := (sa_fastLockAt_upTo hrun.time_mono).mp hfl
   exact ⟨c, hc, B, CV, hfl, hrun.antitone hcd hy, L, upTo_subset hrun ht0 hL, hLr,
     hLB.mono (upTo_subset hrun ht0)⟩
 
 /-- A stored lock of a node at cut `n`, read at a time `t` at which it is honest after every cut
 before `n`, names a block of its tree. -/
-private theorem lock_held_by (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+private theorem lock_held_by
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {n : Nat} {t : Time} (ht0 : 0 ≤ t)
     (ht : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t) {l : SA.Lock}
     (hl : l ∈ (tr.state y n).ac.locks) : ∃ L ∈ (tr.state y n).fg.tree, L.root = l.block := by
@@ -125,7 +129,7 @@ private theorem lock_held_by (hrun : Consensus.Goldilocks.Growing.GoldilocksRun 
 /-- **The fast-lock count at the writer's cut**: the counted validators are at least half of the
 committee, and every counted vote is of the slot with a head held while honest above the
 block. -/
-theorem fastLock_counted_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem fastLock_counted_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : SA.FastLockAt tr.projAC y c s B CV) :
@@ -143,7 +147,8 @@ theorem fastLock_counted_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun p
 
 /-- **Lemma G at a fast lock**: a counted vote of a validator honest at the writer's cut `c` was
 cast by it at a cut no later than `c`, at which it was honest. -/
-theorem fastLock_honest_vote_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem fastLock_honest_vote_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : SA.FastLockAt tr.projAC y c s B CV) {v : Vote sp.n} (hv : v ∈ CV)
@@ -161,7 +166,7 @@ theorem fastLock_honest_vote_at (hrun : Consensus.Goldilocks.Growing.GoldilocksR
     obtain ⟨hjd, hve⟩ := sa_voteAt_upTo.mp hve
     exact ⟨j, hj, e, hVoteAt_iff.2 ⟨hrun.antitone hjd hvH, hve⟩, he⟩
 
-variable {D : OutageLockPremises tr H proposer dg}
+variable {D : OutageLockPremises tr H proposer dg ini}
 
 /-- **A fast lock block is compatible with `P`, counted at the writer's cut**: a fast update or
 an optimistic selection of label `s` by a node honest at its cut `c`, whose counted votes of
@@ -259,7 +264,7 @@ of a node read at a time `t` at which it is honest after every cut before `i`, a
 names a held block compatible with `B` when every result of the node at an earlier cut of one
 label `m` of the window is compatible with `B`. -/
 theorem slow_lock_compatible_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {x : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t)
     (ht : ∀ k < i, tr.time k ≤ t) (hx : x ∈ H t)
     {l : SA.Lock} (hl : l ∈ (tr.state x i).ac.locks) (hlf : l.fast = false)
@@ -273,7 +278,7 @@ theorem slow_lock_compatible_at
   have hl' : l ∈ ((tr.projAC.upTo t).state x i).locks := by
     rw [projAC_state_by hrun ht0 ht hx]; exact hl
   obtain ⟨c, hci, ℓ, C, CV, hu, hC, Lb, hLb, hLbC, ⟨L, hL, hLr, hLLb⟩, hsave⟩ :=
-    SA.slow_lock_saved hr hx i l hl' hlf
+    SA.slow_lock_saved hr hrun.vstart hx i l hl' hlf
   obtain ⟨-, hC⟩ := (sa_resultAt_upTo hrun.time_mono).mp hC
   obtain ⟨m, hm, hms, hm0, hgood⟩ := hgood
   obtain ⟨-, hΦU⟩ := SA.frameIn_of_callAt hr hx hu.1
@@ -281,8 +286,8 @@ theorem slow_lock_compatible_at
   rcases hms.lt_or_eq with hms | hms
   · obtain ⟨S, hS, hsaved, hLbS⟩ := hsave m hm hms
     have hmn : (m.toNat : Int) = m := Int.toNat_of_nonneg hm0
-    obtain ⟨k, hkc, C', CV', hC', hroot⟩ := SA.saved_result hr hx c m.toNat (by
-      simpa only [hmn] using hsaved)
+    obtain ⟨k, hkc, C', CV', hC', hroot⟩ := SA.saved_result hr hrun.vstart
+      hx c m.toNat (by simpa only [hmn] using hsaved)
     obtain ⟨ℓ', hu', hconf, -⟩ := id hC'
     have hC'mem := (SA.frameIn_of_callAt hr hx hu'.1).2 (SA.deepest_mem hconf).1.1
     have heq : C' = S := hr.coherent.1 hC'mem (hΦU hS) hroot

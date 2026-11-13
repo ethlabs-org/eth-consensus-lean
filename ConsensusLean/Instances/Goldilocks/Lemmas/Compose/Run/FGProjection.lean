@@ -25,8 +25,9 @@ variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
 /-- **An honest node accepts its own block in the tick that makes it**, after the tick's two
 AC cuts, at the FG state before the tick, and its attestations are the proposal attestations of
 that state. -/
-theorem own_accept (hq : A.Requirements) (hg₀ : (P.genesisBlock A.genesisPayload).RootOk dg)
-    (h : Node.LocalRun proposer dg H sg tr) (hnc : NoCollRun dg tr)
+theorem own_accept (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P).Requirements)
+    (hg₀ : (P.genesisBlock A.genesisPayload).RootOk dg)
+    (h : Node.LocalRun proposer dg H sg tr ini) (hnc : NoCollRun dg tr)
     {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {B : A.Blk} (hc : tr.CallAt y i (.fg (.block B true))) (hp : B.proposer = y) :
     ∃ j, i = j + 2 ∧ tr.TickAt proposer dg y j (tr.time i) ∧
@@ -41,7 +42,7 @@ theorem own_accept (hq : A.Requirements) (hg₀ : (P.genesisBlock A.genesisPaylo
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   -- C0.3: the own block is accepted at its tick
   obtain ⟨cfg, hreach, hst, hstep⟩ := group_step h hy hg
-  have hC03 := honest_block_accepted proposer dg y hq hg₀ cfg _ (tr.time (j + 2)) x
+  have hC03 := honest_block_accepted_from proposer dg y (hq y hy) hg₀ cfg _ (tr.time (j + 2)) x
     hreach hstep hpr d p
     (by rw [hst]; exact hdp)
   simp only [hst] at hC03
@@ -94,9 +95,11 @@ theorem fg_exec (h : Node.LocalRun proposer dg H sg tr ini) :
     | some a =>
       exact ⟨hlaw.2.1, by simp [hlaw.1]⟩
 
-/-- **C0.5 (c), the FG projection.** -/
-theorem fg_projection : FGProjection := by
-  intro P A dg H sg tr proposer hq hg₀ h hnc
+/-- **C0.5 (c), the FG projection**, from any starts `ini` at which the AC meets the
+requirements (`{A with initial := ini y}`; at the initial starts, the requirements themselves). -/
+theorem fg_projection_from (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P).Requirements)
+    (hg₀ : (P.genesisBlock A.genesisPayload).RootOk dg) (h : Node.LocalRun proposer dg H sg tr ini)
+    (hnc : NoCollRun dg tr) : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG := by
   refine
     { coherent := honest_blocks_coherent h hnc
       init := (fg_exec h).init
@@ -145,6 +148,10 @@ theorem fg_projection : FGProjection := by
       | attest C s => cases ha
     obtain ⟨j, hj, src, hs⟩ := h.att_unforgeable y hy i a hpr hv
     exact ⟨j, hj, src, projFG_callAt.2 hs⟩
+
+/-- **C0.5 (c), the FG projection**: `fg_projection_from` at the initial starts. -/
+theorem fg_projection : FGProjection :=
+  fun _ _ _ _ _ _ _ hq hg₀ h hnc => fg_projection_from (fun _ _ => hq) hg₀ h hnc
 
 end Consensus.Goldilocks.Compose
 

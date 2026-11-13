@@ -28,8 +28,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- An honest signing is at a public time (a cut of a tick). (As `Persist/Attest`'s
 `sign_public`.) -/
-private theorem sign_at_public (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
-    {j : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
+private theorem sign_at_public {ini} (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
+    (hy : y ∈ H) {j : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
     (hc : tr.CallAt y j (.fg (.attest C (some a)))) : sp.toParams.IsPublic (tr.time j) := by
   obtain ⟨j₀, e, k, hg, -, hk⟩ := call_in_group hrun.toLocalRun hy hc
   obtain ⟨xt, rfl⟩ := @signed_only_in_ticks sp.toParams (goldilocksNode sp ro) proposer dg y
@@ -101,7 +101,7 @@ private theorem le_ts_add_five {t : Time} {s : Nat}
 /-- **The time of an honest signing in slot `s + 1` by `t_{s+1} + Δ`.** An honest signing at
 cut `k`, from a time `t` of slot `s + 1` on and by `t_{s+1} + Δ`, is at `t_{s+1}` (then `t` is
 `t_{s+1}` too) or at `t_{s+1} + Δ`: it is a cut of a tick, at a public time. -/
-theorem held_row_sign_time (hrun : GoldilocksRun proposer dg H tr) {a : FG.Att sp.n}
+theorem held_row_sign_time {ini} (hrun : GoldilocksRun proposer dg H tr ini) {a : FG.Att sp.n}
     (hav : a.val ∈ H) {k : Nat} (hsg : tr.SignAt a.val k a) {s : Nat} {t : Time} (ht : 0 ≤ t)
     (hsl : sp.slot t = s + 1) (htk : t ≤ tr.time k)
     (hk : tr.time k ≤ sp.ts ((s + 1 : Nat) : Int) + sp.Δ) :
@@ -130,19 +130,19 @@ theorem held_row_sign_time (hrun : GoldilocksRun proposer dg H tr) {a : FG.Att s
 /-- **No held row signed at `t_{s+1} + Δ`.** An honest slot-`(s+1)` voter accepted, before its
 vote, no block with a row signed at `t_{s+1} + Δ` before the acceptance: the voter's own tick at
 `t_{s+1} + Δ` precedes the acceptance and casts a slot-`(s+1)` vote, a second one. -/
-theorem held_row_late_absurd (hrun : GoldilocksRun proposer dg H tr)
+theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     {X : SA.Blk sp.n (List (FG.Att sp.n))} {m : Nat} (hm : tr.AcceptAt y m X) (hmi : m < i)
     {k : Nat} (hkm : k < m) (hT : tr.time k = sp.ts s + 5 * sp.Δ) : False := by
-  have hr' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hr' := goldilocks_ac_projection_from hrun hnc
   have hr := hr'.localRun
   have hl := hrun.toLocalRun
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   obtain ⟨hrs, hti⟩ := honest_vote_restarts hrun hnc hy hc hs
   have hti' : tr.time i ≤ sp.ts s + 5 * sp.Δ :=
-    le_ts_add_five (by rw [← hs]; exact (cast_head_fcRoot hr hy hc).2)
+    le_ts_add_five (by rw [← hs]; exact (cast_head_fcRoot_from hr hrun.vstart hy hc).2)
   have hsi : sp.slot (tr.time i) = s + 1 := ((SA.castAt_spec hr hy hc).2.1.symm.trans hs)
   have hvi : SA.VoteAt tr.projAC y i e := ⟨ℓ, hc.1, hc.2⟩
   have hkm' := hrun.time_mono hkm.le
@@ -187,8 +187,9 @@ theorem held_row_late_absurd (hrun : GoldilocksRun proposer dg H tr)
     rw [(SA.trace_mayVote hr hy jt).trans (SA.trace_mayVote hr hy i).symm, ← hs]
     exact SA.mayVote_of_castAt hr hy hc
   by_cases hvs : (tr.projAC.state y jt).votedSlot = ((s + 1 : Nat) : Int)
-  · rcases SA.cast_of_votedSlot hr hy jt (s + 1) hvs with ⟨j, hj, e', hv', hes'⟩ | hmf
-    · have := (SA.one_vote_per_slot sp _ ro H _ tr.projAC hr y hy j i e' e hv' hvi
+  · rcases SA.cast_of_votedSlot hr hrun.vstart hy jt (s + 1) hvs with
+      ⟨j, hj, e', hv', hes'⟩ | hmf
+    · have := (SA.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy j i e' e hv' hvi
         (hes'.trans hs.symm)).1
       omega
     · exact absurd hmay (by rw [hmf]; decide)
@@ -214,7 +215,7 @@ theorem held_row_late_absurd (hrun : GoldilocksRun proposer dg H tr)
     cases hkr
   have hjoined : SA.joined sp (tr.projAC.state y jt) (tr.time m) := by
     rw [projAC_state hl hy]
-    exact ((joined_projection sp ro dg H tr proposer hrun y hy (tr.time m)).2.1 jt ⟨_, hct⟩ hnr
+    exact ((joined_projection_from hrun hy (tr.time m)).2.1 jt ⟨_, hct⟩ hnr
       ht₀).mp hjr
   have hexec := hr.exec jt ℓt hpt0.2 (hpt0.1 ▸ hy)
   rw [hpt0.1, hlt] at hexec
@@ -227,7 +228,7 @@ theorem held_row_late_absurd (hrun : GoldilocksRun proposer dg H tr)
   obtain ⟨e₀, he₀⟩ := List.exists_mem_of_ne_nil _ hne
   have hsl₀ : e₀.msg.slot = sp.slot (tr.time m) := (SA.castAt_spec hr hy ⟨hpt0, he₀⟩).2.1.trans
     (by rw [show tr.projAC.time jt = tr.time m from ht₀])
-  have := (SA.one_vote_per_slot sp _ ro H _ tr.projAC hr y hy jt i e₀ e ⟨ℓt, hpt0, he₀⟩ hvi
+  have := (SA.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy jt i e₀ e ⟨ℓt, hpt0, he₀⟩ hvi
     (hsl₀.trans (hslm.trans hs.symm))).1
   omega
 
@@ -238,7 +239,9 @@ check is at `t_{s+1}` too, its honest seats are the slot's proposer, its voters 
 and three quarters of the committee size are at most `f + 1` with
 `2|K(s+1) ∩ Hᶜ| < committeeSize`. -/
 theorem held_row_early_count
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) (K : SA.CommitteeDict sp.n)
+    {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
+    (K : SA.CommitteeDict sp.n)
     (hP : SA.CommitteeP K tr.projAC H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
     {s : Nat} (hfK : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize)
     {a : FG.Att sp.n} (hav : a.val ∈ H) {k : Nat} (hsg : tr.SignAt a.val k a)
@@ -247,7 +250,7 @@ theorem held_row_early_count
     {CV : Set (Vote sp.n)} (hO : SA.OptimisticLockAt tr.projAC z c (s + 1) C CV) :
     ∃ u ∈ H, (∀ y ∈ K.committee (s + 1), y = u) ∧
       ∃ j' ≤ c, ∃ e', SA.VoteAt tr.projAC u j' e' ∧ e'.msg.slot = s + 1 := by
-  have hr' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hr' := goldilocks_ac_projection_from hrun hnc
   have hr := hr'.localRun
   have hl := hrun.toLocalRun
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ

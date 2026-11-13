@@ -17,11 +17,12 @@ are the parent's (`stepWithM_parent` and the others, by `rfl`), so are the call 
 from the parent's start (`stepWithMS_parentWalkStartFn`, `acLocalRunUS_parentWalkStartFn`, by
 `rfl`), the parent's `unlock` satisfies the relation (`unlockRel_unlock`) and related locks only
 move back (`UnlockRel.movesBack`), and the parent's runs and reachable states are such runs at
-the parent's mode and unlock (`ACLocalRun.toU`, `ACInterface.ReachableAt.toU`, `ACRun.toU`). -/
+the parent's mode and unlock (`ACLocalRun.toU`, `ACInterface.ReachableAtFrom.toU`, `ACRun.toU`). -/
 
 namespace Consensus.Goldilocks.SA
 
 variable {sp : SAParams} {FGP : Type}
+  {ini : Fin sp.n → SAState sp.n}
 
 theorem optimisticM_mayVote (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmationM sp m A Φ t).mayVote = A.mayVote :=
@@ -206,7 +207,7 @@ theorem UnlockRel.movesBack {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {L L' : Set L
 /-- The unlock relation at an honest call with a well-formed frame. -/
 theorem ACLocalRunU.lawfulAt {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat → Set Lock}
     {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRunU m u H U tr) {y : Fin sp.n}
+    (h : ACLocalRunU m u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ)
     (hΦ : FrameOK ℓ.frame) :
     UnlockRel sp (callInputM sp m (tr.state y i) ℓ.frame (tr.time i) ℓ.call).locks ℓ.frame
@@ -250,12 +251,12 @@ theorem _root_.Consensus.Goldilocks.ACLocalRun.toU {ro : ReplayOrder sp FGP} {H 
 
 /-! ### Reachable states -/
 
-/-- **The parent's reachable states are reachable with the unlock given.** -/
-theorem _root_.Consensus.Goldilocks.ACInterface.ReachableAt.toU {ro : ReplayOrder sp FGP}
-    {self : Fin sp.n} {U : Set (Blk sp.n FGP)}
+/-- **The parent's reachable states are reachable with the unlock given**, from the same start. -/
+theorem _root_.Consensus.Goldilocks.ACInterface.ReachableAtFrom.toU {ro : ReplayOrder sp FGP}
+    {self : Fin sp.n} {U : Set (Blk sp.n FGP)} {s₀ : SAState sp.n}
     {A : (goldilocksSA sp FGP ro).State} {Φ : (goldilocksSA sp FGP ro).Frm} {t : Time}
-    (h : (goldilocksSA sp FGP ro).ReachableAt self U A Φ t) :
-    ReachableAtU (ro := ro) (WriteMode.parent sp) self U A Φ t := by
+    (h : (goldilocksSA sp FGP ro).ReachableAtFrom s₀ self U A Φ t) :
+    ReachableAtUFrom (ro := ro) (WriteMode.parent sp) s₀ self U A Φ t := by
   induction h with
   | init Φ hi hf => exact .init Φ hi hf
   | @step A Φ Φ' t t' c _ ht hc ih =>
@@ -266,9 +267,9 @@ theorem _root_.Consensus.Goldilocks.ACInterface.ReachableAt.toU {ro : ReplayOrde
 /-- The parent's runs are runs with the unlock given. -/
 theorem ACRun.toU {ro : ReplayOrder sp FGP} {selectedProposer : Nat → Fin sp.n}
     {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
-    (h : ACRun selectedProposer tr H U) :
-    ACRunU (WriteMode.parent sp) (parentOracle sp tr) selectedProposer tr H U :=
-  ⟨h.stock, h.localRun.toU, h.honest⟩
+    (h : ACRun selectedProposer tr H U ini) :
+    ACRunU (WriteMode.parent sp) (parentOracle sp tr) selectedProposer tr H U ini :=
+  ⟨h.stock, h.localRun.toU, h.honest, h.vstart⟩
 
 end Consensus.Goldilocks.SA
 

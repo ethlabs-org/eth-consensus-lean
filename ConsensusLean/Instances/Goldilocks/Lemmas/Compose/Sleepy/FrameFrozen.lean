@@ -64,19 +64,19 @@ private theorem optimistic_stamp (A : SA.SAState sp.n) (Φ : SA.Frm sp.n (List (
 
 /-- At an honest slot-`(s+1)` vote, the voter's restarts up to the vote were at or before `t_s`,
 and the vote is cast from `t_{s+1} = t_s + 4Δ` on. -/
-theorem honest_vote_restarts (hrun : GoldilocksRun proposer dg H tr)
+theorem honest_vote_restarts {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {s : Nat}
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
     (hs : e.msg.slot = s + 1) :
     (∀ c ≤ i, tr.projAC.RestartAt y c → tr.time c ≤ sp.ts s) ∧ sp.ts s + 4 * sp.Δ ≤ tr.time i := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   obtain ⟨-, hslot, hjoin, -⟩ := SA.castAt_spec hr hy hc
   have hti : sp.slot (tr.projAC.time i) = s + 1 := hslot ▸ hs
   have hjp : SA.joined sp (tr.projAC.post i) (tr.projAC.time i) := by
     unfold SA.joined; rw [SA.restartTime_of_castAt hr hy hc]; exact hjoin
   refine ⟨fun c hc' hrc => ?_, ?_⟩
-  · have h := ((SA.joined_awake sp) _ ro H _ tr.projAC hr y hy i ℓ hc.1 hjp).2 c hc' hrc
+  · have h := (SA.joined_awakeU sp _ ro H _ tr.projAC hr.toU y hy i ℓ hc.1 hjp).2 c hc' hrc
     rw [hti, show (((s + 1 : Nat) : Int) - 1) = (s : Int) by push_cast; ring] at h
     exact h
   · have h := (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) ((s : Int) + 1)).2
@@ -164,13 +164,13 @@ private theorem acOnTick_emits {self : Fin sp.n} {A : SA.SAState sp.n}
 
 /-- **The calls that cast an honest vote**: a tick at `t_σ + Δ`, a block or a message; never a
 restart, `ac_proposal` or `ac_to_fg`. -/
-theorem honest_vote_call (hrun : GoldilocksRun proposer dg H tr)
+theorem honest_vote_call {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e) :
     (ℓ.call = .tick → tr.time i = sp.ts (sp.slot (tr.time i)) + sp.Δ) ∧ ℓ.call ≠ .proposal ∧
       ℓ.call ≠ .toFG ∧ ℓ.call ≠ .restart := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   obtain ⟨hΦ, -⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocks H := by
     rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
   have hx := hr.exec i ℓ hc.1.2 (hc.1.1 ▸ hy)
@@ -189,14 +189,15 @@ theorem honest_vote_call (hrun : GoldilocksRun proposer dg H tr)
 slot-`(s+1)` vote whose `Σ.F` it extends: it is in the voter's frame, and its stamp at the read
 point is below `t_s + 3Δ` (the voter's restarts were before, and this call does not receive
 it). -/
-theorem accepted_voter_tree (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem accepted_voter_tree {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
     (hs : e.msg.slot = s + 1) {X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hXU : X ∈ tr.HonestBlocks H) (hacc : SA.AcceptedBefore tr.projAC y X (sp.ts s + 3 * sp.Δ))
     (hFX : Anc (tr.HonestBlocks H) ℓ.frame.F X) :
     X ∈ SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1) := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hU := hr.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨hΦ, -⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocks H := by
@@ -219,7 +220,7 @@ theorem accepted_voter_tree (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCol
         exact lt_irrefl _ (hT.trans (this.trans_lt hkt))
       exact SA.mem_tree_of_acceptAt sp hr hy hk hki hc.1 hFX
   -- its stamp before the call is below the freeze
-  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hXt hacc
+  have hbs := SA.blockStamp_lt_of_acceptedBefore_from sp hr hrun.vstart hy hc.1 hXt hacc
     (fun k hk hrk => lt_of_le_of_lt (hrs k hk hrk)
       (lt_add_of_pos_right _ (mul_pos (by norm_num) hΔ))) (Or.inl hT.le)
   -- the call does not receive `X`, so the read point keeps that stamp

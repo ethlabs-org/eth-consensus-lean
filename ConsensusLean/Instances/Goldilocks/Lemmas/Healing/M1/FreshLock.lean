@@ -64,8 +64,9 @@ theorem honest_votes_of_joined_before (hS : HealthyBaseUpTo tr H U proposer g b)
       rw [htc]
       exact hjoin x hx r hrs ((hr.time_mono hrc.le).trans htc.le)
   by_cases hv : (tr.state x c).votedSlot = (sp.slot (tr.time c) : Int)
-  · obtain ⟨j, hjc, e, he, hes⟩ := (cast_of_votedSlot hr hx c _ hv).resolve_right
-      (by rw [trace_mayVote_stock hr hx c]; decide)
+  · obtain ⟨j, hjc, e, he, hes⟩ :=
+      (cast_of_votedSlot hr (fun _ => voteStart_initial _) hx c _ hv).resolve_right
+        (by rw [trace_mayVote_stock hr hx c]; decide)
     exact ⟨j, e, he, by rw [hes, htc, hslot], (hr.time_mono hjc.le).trans htc.le⟩
   · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
     obtain ⟨e, hem, hes⟩ := tryVote_votes x ell.frame hj hv hT (trace_mayVote_stock hr hx c _)

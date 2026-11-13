@@ -28,12 +28,13 @@ abbrev UnlockKeeps (tr : GoldilocksTrace sp ro) (y : Fin sp.n) (j : Nat)
     ((sp.slot (tr.time j) : Int) - 1) B = B
 
 /-- An honest cast of a vote of slot `slot(t_j) − 1` is at a cut before `j`. -/
-theorem cast_lt_of_slot (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem cast_lt_of_slot {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {x : Fin sp.n} (hx : x ∈ H) {k j : Nat}
     {ℓ' : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)} {e}
     (hc : SA.CastAt tr.projAC x k ℓ' e)
     (hs : (e.msg.slot : Int) = (sp.slot (tr.time j) : Int) - 1) : k < j := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hsk : e.msg.slot = sp.slot (tr.time k) := (SA.castAt_spec hr hx hc).2.1
   by_contra hkj
   have := SA.slot_mono sp (hrun.time_nonneg j) (hrun.time_mono (Nat.le_of_not_lt hkj))

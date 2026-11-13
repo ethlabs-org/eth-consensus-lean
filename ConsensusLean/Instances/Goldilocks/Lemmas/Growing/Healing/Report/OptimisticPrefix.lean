@@ -63,7 +63,8 @@ theorem optimistic_isBest_of_carry_at
   let V := mergedVoteView sp e.readPoint ℓ.frame (s + 1)
   have hcover : SX ⊆ supporters ℓ.frame V s B ∪ equivocators V.votes := by
     rintro w ⟨v, hv, rfl, R, hR, hRr, hDR⟩
-    exact carried_cover hry hy hc' hs hBt hcarry' ⟨hv, R, hR, hRr, hDR⟩
+    exact carried_cover hry hy hc' hs hBt hcarry'
+      ⟨hv, R, hR, hRr, hDR⟩
       (optimisticPoint_pool_slot hrx.localRun hx hpt' hv)
       ⟨R, hΦxU hR, hRr, (frame_slot_le sp hrx.localRun hx hpt'.1 R hR).trans hslx.le,
         hBD.trans (Anc.mono hΦxU hDR)⟩

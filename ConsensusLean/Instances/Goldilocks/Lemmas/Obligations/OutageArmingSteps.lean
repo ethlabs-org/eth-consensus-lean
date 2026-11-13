@@ -379,7 +379,7 @@ theorem update_result_or_root (hrun : GoldilocksRun proposer dg H tr)
 /-! ### The saved attestations -/
 
 /-- The frame of an update is the node's frame at the update's cut. -/
-theorem update_frame (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+theorem update_frame {ini} (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H)
     {c s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y c s ℓ) :
     ℓ.frame = Node.frame (tr.state y c) := by
   obtain ⟨⟨hn, hl⟩, -⟩ := hu
@@ -393,7 +393,8 @@ theorem update_frame (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy 
 /-- **The saved attestations** at an update of slot `s ≥ k`: from attestation updates before
 it, no restart after the oldest attestation start, and a result above `C` at every attestation
 update, every attestation of the slow test names a block of the frame above `C`. -/
-theorem saved_rows_above (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem saved_rows_above {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} (hy : y ∈ H) {c s : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y c s ℓ) (hks : sp.k ≤ s)
     (hFC : Anc (tr.HonestBlocks H) (tr.state y c).fg.F C)
@@ -406,7 +407,7 @@ theorem saved_rows_above (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
         ℓ'.frame q = some R ∧ Anc (tr.HonestBlocks H) C R) :
     ∀ j : Int, (s : Int) - sp.k < j → j < s → ∃ S ∈ ℓ.frame.tree,
       (tr.state y c).ac.saved j = some S.root ∧ ℓ.frame.Anc C S := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hrun' := goldilocks_ac_projection_from hrun hnc
   have hr := hrun'.localRun
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
@@ -445,7 +446,7 @@ theorem saved_rows_above (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
         rw [h, projAC_state hrun.toLocalRun hy, hR]
         rfl
   obtain ⟨r, hrs⟩ := Option.isSome_iff_exists.1 (hsome c hk₀ le_rfl)
-  obtain ⟨k', hk', C', CV, ⟨ℓ', hu', hC', -⟩, hC'r⟩ := SA.saved_result hr hy c q hrs
+  obtain ⟨k', hk', C', CV, ⟨ℓ', hu', hC', -⟩, hC'r⟩ := SA.saved_result hr hrun.vstart hy c q hrs
   obtain ⟨R, hR, hCR⟩ := hrow q hj₁ hq₂ k' hk' ℓ' hu'
   rw [projAC_state hrun.toLocalRun hy, hR] at hC'
   obtain rfl : R = C' := Option.some.inj hC'
@@ -466,13 +467,13 @@ theorem saved_rows_above (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
 quarters of optimistic voters are in the updater's slot-`s` pool at the result (no restart in
 between), and none of them supports a conflicting block, so a conflicting result would have at most
 a quarter of the committee as supporters, not a majority. -/
-theorem own_optimistic_compatible_result (hrun : GoldilocksRun proposer dg H tr)
+theorem own_optimistic_compatible_result {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {k c s : Nat}
     {B' D : SA.Blk sp.n (List (FG.Att sp.n))} {CV CV' : Set (SA.Vote sp.n)}
     (hO : SA.OptimisticLockAt tr.projAC y k s B' CV) (hR : SA.ResultAt tr.projAC y c s D CV')
     (hkc : k < c) (hnr : ∀ r, k < r → r ≤ c → ¬ tr.RestartAt y r) :
     Compatible (tr.HonestBlocks H) B' D := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hrun' := goldilocks_ac_projection_from hrun hnc
   have hr := hrun'.localRun
   have hU := hr.coherent
   -- TEMP(C2): C3/C4 replaces

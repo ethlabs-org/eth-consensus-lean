@@ -18,8 +18,8 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 /-- The prefix is an SA run for the validators still honest at its horizon, in the same `U`. -/
-theorem ACRun.upTo (h : ACRun proposer tr H U) {d : Time} (hd : 0 ≤ d) :
-    SA.ACRun proposer (tr.upTo d) (H d) U := by
+theorem ACRun.upTo {ini} (h : ACRun proposer tr H U ini) {d : Time} (hd : 0 ≤ d) :
+    SA.ACRun proposer (tr.upTo d) (H d) U ini := by
   have hr := h.localRun.upTo hd
   have hm := h.localRun.time_mono
   have anti : ∀ {t}, t ≤ d → H d ⊆ H t := fun ht => h.localRun.antitone ht
@@ -30,8 +30,8 @@ theorem ACRun.upTo (h : ACRun proposer tr H U) {d : Time} (hd : 0 ≤ d) :
     | zero =>
       intro σ v hv _
       change v ∈ ((tr.upTo d).init y).pool σ at hv
-      rw [hr.init y hy] at hv
-      simp [SAState.initial] at hv
+      rw [hr.init y hy, (h.vstart y).pool σ] at hv
+      simp at hv
     | succ i ih =>
       intro σ v hv hvH
       by_cases hn : (tr.upTo d).node i = y ∧ (tr.upTo d).label i ≠ none
@@ -48,7 +48,7 @@ theorem ACRun.upTo (h : ACRun proposer tr H U) {d : Time} (hd : 0 ≤ d) :
         have hslot : v.slot = σ := by
           have hv' := hv
           rw [← state_succ_of_call hc] at hv'
-          exact state_pool_slot sp hr hy (i + 1) σ v hv'
+          exact state_pool_slot_from sp hr h.vstart hy (i + 1) σ v hv'
         by_cases hrs : ℓ.call = .restart
         · have hR := restart_state sp FGP ro y ((tr.upTo d).state y i) ℓ.frame
             ((tr.upTo d).time i) hΦ (hr.time_nonneg i)
@@ -86,7 +86,7 @@ theorem ACRun.upTo (h : ACRun proposer tr H U) {d : Time} (hd : 0 ≤ d) :
         rw [hs] at hv
         obtain ⟨j, hj, e, hvote, hev⟩ := ih σ v hv hvH
         exact ⟨j, hj.trans (Nat.lt_succ_self i), e, hvote, hev⟩
-  refine ⟨h.stock, hr, ⟨pool, ?_, ?_, ?_, ?_⟩⟩
+  refine ⟨h.stock, hr, ⟨pool, ?_, ?_, ?_, ?_⟩, h.vstart⟩
   · intro y hy i ℓ v hc hl hvH
     obtain ⟨hid, hc⟩ := (Trace.upTo_callAt tr).mp hc
     obtain ⟨j, hj, e, hvote, hev⟩ := h.honest.message_vote y i ℓ v (anti hid hy) hc hl

@@ -661,7 +661,8 @@ theorem clean_slow_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
     tr proposer ΔF (gbar g) (sp.ts j + 2 * sp.Δ) hrun.toLocalRun
     (syncRun_of_gst hs.healthy.1 (le_gbar g))
   refine SA.carryAt_of_writer_catch hr hsync hgj le_rfl hx hy hv he fun v hvv => ?_
-  obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := Compose.result_writer hr hx hC v hvv
+  obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := Compose.result_writer hr
+    (fun _ => SA.voteStart_initial _) hx hC v hvv
   have hFHv := hFB.trans (hBC.trans hCHv)
   refine ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, ?_⟩
   rcases h₃ with hgen | ⟨kw, hkw, hkwt⟩

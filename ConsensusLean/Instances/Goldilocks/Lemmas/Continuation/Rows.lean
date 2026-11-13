@@ -939,7 +939,8 @@ private theorem member_supported (hrun : Growing.GoldilocksRun proposer dg H tr)
       have := (fastLockAt_time hrun hfl).2
       have := ts_le_ts (sp := sp) (show l ≤ σ by omega)
       linarith
-    have hcount := faults_lt_voters hrun hnc hB (s := σ + 1) (d := sp.ts (σ + 1 : Nat) + sp.Δ)
+    have hcount := faults_lt_voters hrun (fun _ _ => rfl) hnc hB (s := σ + 1) (d := sp.ts (σ + 1 :
+        Nat) + sp.Δ)
       (by omega) le_rfl (by linarith) (by linarith)
     obtain ⟨x', hx'⟩ : (VotersAt tr H (σ + 1) (sp.ts (σ + 1 : Nat) + sp.Δ)).Nonempty := by
       rw [Set.nonempty_iff_ne_empty]
@@ -954,7 +955,8 @@ private theorem member_supported (hrun : Growing.GoldilocksRun proposer dg H tr)
     exact ⟨x', k, e', hv, by omega, healedVotesBelow_iff.1 hseed.frontier.2 C l
       (.of_high hqT ho) x' k e' hv hkT (by omega) (by omega)⟩
   · obtain ⟨O, hO, hCO⟩ := hC.below_origin hrun hnc
-    obtain ⟨x, k, e', hv, -, hes, hext⟩ := honest_supporter_at hrun hnc hsync hB hlr
+    obtain ⟨x, k, e', hv, -, hes, hext⟩ := honest_supporter_at hrun (fun _ _ => rfl) hnc hsync hB
+        hlr
       (by have := ts_le_ts (sp := sp) hlr; linarith) hO
     exact ⟨x, k, e', hv, by omega, voteExtends_of_anc hext hCO⟩
 

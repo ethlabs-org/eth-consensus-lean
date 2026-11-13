@@ -108,7 +108,7 @@ theorem OutageVoteInv.locks_compatible {n : Nat} (hvi : OutageVoteInv D n)
     obtain rfl : L' = L := hU.1 hL'U hLU (hL'r.trans hLr.symm)
     refine compatible_of_anc hU hL'B (by_contra fun hB => ?_)
     obtain ⟨hcount, hCV⟩ := SA.fastLock_counted hrun' hy hfl
-    rw [D.stock] at hcount -- TEMP(C2): C3/C4 replaces
+    rw [D.stock] at hcount -- §S S14
     have hsub : {u | ∃ v ∈ CV, v.val = u} ⊆ Hᶜ ∪ D.W := by
       rintro u ⟨v, hv, rfl⟩
       by_contra hu

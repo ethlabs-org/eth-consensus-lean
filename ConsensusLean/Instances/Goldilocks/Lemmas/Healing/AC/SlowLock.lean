@@ -29,13 +29,15 @@ variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SATrace sp FGP ro}
 node holds before cut `i` sits below (inside `U`) the block of a slow lock of width `wm.width` of
 its slot that the node wrote at an earlier cut. -/
 theorem slow_lock_provenanceM
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state y i).locks, l.fast = false →
       ∃ j < i, ∃ B, SlowLockAtW wm.width tr y j l.slot B ∧
         ∃ L ∈ U, L.root = l.block ∧ Anc U L B := by
   intro l hl hf
-  obtain ⟨j, hj, ℓ, D, hc, hsl, L, hL, hLr, hLA⟩ := slow_lock_provenance_storedM hr hy i l hl hf
+  obtain ⟨j, hj, ℓ, D, hc, hsl, L, hL, hLr, hLA⟩ :=
+    slow_lock_provenance_storedM hr hini hy i l hl hf
   obtain ⟨ℓ', C, hu, hC, hD⟩ := slowLockAtW_iff.1 hsl
   obtain rfl : ℓ = ℓ' := Option.some.inj (hc.2.symm.trans hu.1.2)
   have hΦ := frameIn_of_callAtU hr hy hc
@@ -44,23 +46,32 @@ theorem slow_lock_provenanceM
 
 /-- `slow_lock_provenance` with the unlock given, at a mode of width `k`. -/
 theorem slow_lock_provenanceU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) (hw : wm.width = sp.k) {x : Fin sp.n}
-    (hx : x ∈ H) (i : Nat) :
+    {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) (hw : wm.width = sp.k)
+    {x : Fin sp.n} (hx : x ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state x i).locks, l.fast = false →
       ∃ j < i, ∃ B, SlowLockAt tr x j l.slot B ∧ ∃ L ∈ U, L.root = l.block ∧ Anc U L B := by
   intro l hl hf
-  have h := slow_lock_provenanceM hr hx i l hl hf
+  have h := slow_lock_provenanceM hr hini hx i l hl hf
   rw [hw] at h
   simpa only [slowLockAtW_k] using h
 
 /-- **Slow lock provenance** (every stored lock has such an origin, the slow case):
 every lock that is not fast and that an honest node holds before cut `i` sits below (inside `U`)
-the block of a slow lock of its slot that the node wrote at an earlier cut. -/
+the block of a slow lock of its slot that the node wrote at an earlier cut. From starts up to the
+vote permission. -/
+theorem slow_lock_provenance_from {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n} (hx : x ∈ H) (i : Nat) :
+    ∀ l ∈ (tr.state x i).locks, l.fast = false →
+      ∃ j < i, ∃ B, SlowLockAt tr x j l.slot B ∧ ∃ L ∈ U, L.root = l.block ∧ Anc U L B :=
+  slow_lock_provenanceU (hr := hr.toU) hini rfl (x := x) (hx := hx) (i := i)
+
+/-- `slow_lock_provenance_from` at the initial starts. -/
 theorem slow_lock_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
     (hx : x ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state x i).locks, l.fast = false →
       ∃ j < i, ∃ B, SlowLockAt tr x j l.slot B ∧ ∃ L ∈ U, L.root = l.block ∧ Anc U L B :=
-  slow_lock_provenanceU (hr := hr.toU) rfl (x := x) (hx := hx) (i := i)
+  slow_lock_provenance_from hr (fun _ => voteStart_initial _) hx i
 
 end Consensus.Goldilocks.SA
 

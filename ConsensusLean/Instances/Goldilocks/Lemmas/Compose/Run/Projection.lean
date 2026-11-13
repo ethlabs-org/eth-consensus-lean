@@ -239,7 +239,7 @@ private theorem lastBefore_succ (tr : GoldilocksTrace sp ro) (y : Fin sp.n) (i :
   cases i <;> rfl
 
 private theorem lastBefore_le {dg} {H} {tr : GoldilocksTrace sp ro}
-    (h : GoldilocksRun proposer dg H tr)
+    {ini} (h : GoldilocksRun proposer dg H tr ini)
     (y : Fin sp.n) (x : Time) :
     ∀ i, lastBefore tr y i ≤ x ↔ ∀ k < i, tr.RestartAt y k → tr.time k ≤ x := by
   intro i
@@ -256,11 +256,15 @@ private theorem lastBefore_le {dg} {H} {tr : GoldilocksTrace sp ro}
       exacts [hall k hk hk', absurd hk' hr]
 
 private theorem restartTime_eq {dg} {H} {tr : GoldilocksTrace sp ro}
-    (h : GoldilocksRun proposer dg H tr)
+    {ini} (h : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) : ∀ i, (tr.state y i).ac.restartTime = lastBefore tr y i := by
   intro i
   induction i with
-  | zero => rw [Trace.state, h.init y hy]; rfl
+  | zero =>
+    obtain ⟨m, hm⟩ := SA.voteStart_iff.1 (h.vstart y)
+    rw [Trace.state, h.init y hy]
+    simp only [Node.initWith, hm]
+    rfl
   | succ i ih =>
     rw [lastBefore_succ, ← ih]
     by_cases hc : ∃ c, tr.CallAt y i c
@@ -306,9 +310,15 @@ private theorem restartTime_eq {dg} {H} {tr : GoldilocksTrace sp ro}
 projection, and the run's joined test (with `0 < slot(t)`) is the SA's on restart times `≥ 0`;
 the AC state's `restart_time` at a call is the time of the latest restart before it (a restart
 sets it, every other call keeps it), and the restarts at or before the time of a call other than
-a restart are the ones before it (restarts come first at a time). -/
-theorem joined_projection : JoinedProjection := by
-  intro sp ro dg H tr proposer h y hy t
+a restart are the ones before it (restarts come first at a time). From starts up to the vote
+permission. -/
+theorem joined_projection_from {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini} (h : GoldilocksRun proposer dg H tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) (t : Time) :
+    (tr.JoinedAt y t ↔ SA.JoinedAt tr.projAC y t) ∧
+      (∀ i, tr.IsCall y i → ¬ tr.RestartAt y i → tr.time i = t →
+        (tr.JoinedAt y t ↔ SA.joined sp (tr.state y i).ac t)) ∧
+      tr.honestAwakeJoined H t = SA.honestAwakeJoined tr.projAC H t := by
   have hpt : ∀ z, (tr.JoinedAt z t ↔ SA.JoinedAt tr.projAC z t) := fun z => by
     unfold RunTrace.JoinedAt SA.JoinedAt
     refine forall_congr' fun k => ?_
@@ -337,6 +347,10 @@ theorem joined_projection : JoinedProjection := by
     congr 1
     ext z
     exact Iff.rfl.and (Iff.rfl.and (hpt z))
+
+/-- **Joining and participation project**: `joined_projection_from` at the initial starts. -/
+theorem joined_projection : JoinedProjection :=
+  fun _ _ _ _ _ _ h _ hy t => joined_projection_from h hy t
 
 end
 

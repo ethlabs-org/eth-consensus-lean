@@ -423,7 +423,8 @@ theorem vote_before_late_delivery
     rw [(SA.trace_mayVote hr hy jt).trans (SA.trace_mayVote hr hy k).symm]
     exact SA.mayVote_of_castAt hr hy hc
   by_cases hvs : (tr.projAC.state y jt).votedSlot = (e.msg.slot : Int)
-  · rcases SA.cast_of_votedSlot hr hy jt e.msg.slot hvs with ⟨j', hj', e', hve', hes⟩ | hmf
+  · rcases SA.cast_of_votedSlot hr (fun _ => SA.voteStart_initial _) hy jt e.msg.slot hvs with
+      ⟨j', hj', e', hve', hes⟩ | hmf
     · have := ((SA.one_vote_per_slot sp) _ ro H _ tr.projAC hr y hy j' k e' e hve' hve hes).1
       omega
     · exact absurd hmay (by rw [hmf]; decide)

@@ -35,7 +35,8 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {D : OutageLockPremises tr H proposer dg}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {D : OutageLockPremises tr H proposer dg ini}
 
 /-- **(i) at a reader**: for a node read at `t` (honest then, every cut before `m` at a time
 `≤ t`), the live lock blocks of its stored locks in its frame are compatible with every block
@@ -58,7 +59,7 @@ theorem liveLockBlocks_compatible_by (hinv : ∀ i, OutageLockInv D i) {y : Fin 
 
 /-- **The lock invariant at a reader**, in the node's frame: the static `lockInv_state` on the
 prefix through the read time `t`. -/
-theorem lockInv_state_by (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem lockInv_state_by (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {m : Nat} {t : Time} (ht0 : 0 ≤ t)
     (hm : ∀ k < m, tr.time k ≤ t) (hy : y ∈ H t) :
     SA.LockInv (tr.HonestBlocksAt H) (tr.state y m).ac (Node.frame (tr.state y m)) := by
@@ -77,7 +78,7 @@ theorem lockInv_state_by (hrun : Consensus.Goldilocks.Growing.GoldilocksRun prop
   exact (hlE l hl X hLU hXr).mono hsub
 
 /-- **The live lock blocks of a reader lie on one chain** in its frame. -/
-theorem liveBlocks_chain_by (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem liveBlocks_chain_by (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {m : Nat} {t : Time} (ht0 : 0 ≤ t)
     (hm : ∀ k < m, tr.time k ≤ t) (hy : y ∈ H t) (τ : Time) :
     ∀ X ∈ SA.liveLockBlocks sp (tr.state y m).ac.locks (Node.frame (tr.state y m)) τ,

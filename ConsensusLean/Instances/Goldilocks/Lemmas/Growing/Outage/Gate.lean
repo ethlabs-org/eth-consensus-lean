@@ -64,7 +64,8 @@ private theorem mem_tree_between {n : Nat} {FGP : Type} {U : Set (SA.Blk n FGP)}
 call, whose head extends the receiver's `Σ.F`, is held, its head framed, and resolved strictly
 before `t_q + 2Δ` at every receiver call from `t_q + 2Δ` with no restart after `t_q`. -/
 theorem vote_held_before_early_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {g : Time} {y : Fin sp.n} {q c : Nat} (hy : y ∈ H (tr.time c))
     (hS : ReceiverServiceAfterAt H (tr.HonestBlocksAt H) g y tr.projAC)
     {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)} (hc : tr.projAC.CallAt y c ℓ)
@@ -100,7 +101,8 @@ theorem vote_held_before_early_at
 frame is below `B`, returns a result, and every result of it extends `B`, when the extending
 casters of the label outnumber its opponents, both charged at the update's cut. -/
 theorem gate_result_extends_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {g : Time} {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
     (hS : ReceiverServiceAfterAt H (tr.HonestBlocksAt H) g y tr.projAC)
     {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
@@ -200,7 +202,8 @@ theorem gate_result_extends_at
 /-- **Lemma G at a read**: a vote of the pool of a node honest at a read time `d` (every cut
 before `i` at a time `≤ d`) whose validator is honest at `d` was cast by it while honest. -/
 private theorem pool_vote_read
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {w : Fin sp.n} {i : Nat} {d : Time} (hd : 0 ≤ d) (hw : w ∈ H d)
     (hi : ∀ k < i, tr.time k ≤ d) {σ : Nat} {v : Vote sp.n}
     (hv : v ∈ (tr.projAC.state w i).pool σ) (hvH : v.val ∈ H d) :
@@ -210,7 +213,7 @@ private theorem pool_vote_read
   have hv' : v ∈ ((tr.projAC.upTo d).state w i).pool σ := by rw [hst]; exact hv
   obtain ⟨j, hj, e, hve, hev⟩ := hr.honest.pool_vote w hw i σ v hv' hvH
   obtain ⟨hjd, hve⟩ := sa_voteAt_upTo.mp hve
-  exact ⟨SA.state_pool_slot sp hr.localRun hw i σ v hv', j, hj, e,
+  exact ⟨SA.state_pool_slot_from sp hr.localRun hr.vstart hw i σ v hv', j, hj, e,
     hVoteAt_iff.2 ⟨hrun.antitone hjd hvH, hve⟩, hev⟩
 
 /-- **L3** under growing faults: at a read by a node honest at the read time `d` (every cut
@@ -218,7 +221,8 @@ before `i` at a time `≤ d`), when the extending casters of the latest view's l
 its opponents, both charged at `d`, and every extending vote of a validator honest at `d` is
 delivered, the latest view's voters are fewer than twice the supporters of `B`. -/
 theorem read_majority_of_extending_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {w : Fin sp.n} {i : Nat} {d : Time} (hd : 0 ≤ d) (hw : w ∈ H d)
     (hi : ∀ k < i, tr.time k ≤ d) {t : Time} {B : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hs : (SA.latestView sp (tr.state w i).ac (Node.frame (tr.state w i)) t).2 = s)

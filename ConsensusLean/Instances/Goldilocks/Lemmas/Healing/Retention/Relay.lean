@@ -79,7 +79,7 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-- At an honest vote, the pool of a slot other than the vote's, and the stamps of its votes,
 are those of the state after the vote's call (main's Sleepy `readPoint_slot`). -/
-theorem readPoint_pool_of_ne (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+theorem readPoint_pool_of_ne {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
     {e : SA.Em sp FGP} (hc : SA.CastAt T y i ℓ e) {σ : Nat} (hσ : e.msg.slot ≠ σ) :
     (T.state y (i + 1)).pool σ = e.readPoint.pool σ ∧
@@ -427,7 +427,7 @@ theorem raw_writer_relay_source
       exact ⟨v, hv⟩
     · exact fastLock_counted_nonempty hcommittee hF
   obtain ⟨v, hv⟩ := hne
-  have hw := hwriter.elim (fun hR => result_writer hr hx hR v hv)
+  have hw := hwriter.elim (fun hR => result_writer hr (fun _ => SA.voteStart_initial _) hx hR v hv)
     (fun hF => fastLock_writer hr hx hF v hv)
   obtain ⟨D, hD, hDr, hCD, hacc⟩ := hw.2.2
   exact ⟨v, hv, D, hD, hDr, hBC.trans hCD, hacc⟩

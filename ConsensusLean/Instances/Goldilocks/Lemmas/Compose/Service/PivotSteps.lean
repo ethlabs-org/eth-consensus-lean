@@ -347,7 +347,7 @@ theorem proposal_best_toward_old_before (hrun : GoldilocksRun proposer dg H tr)
         Hᶜ
       omega
   · -- an optimistic origin of label `s − 1`: its counted votes
-    have hW := optimistic_writer_votes hr hx hOp
+    have hW := optimistic_writer_votes hr (fun _ => SA.voteStart_initial _) hx hOp
     obtain ⟨ℓx, Ax, hpt, hslx, hsel, rfl⟩ := hOp
     have hsel' := hsel
     unfold SA.optimisticSelect at hsel'

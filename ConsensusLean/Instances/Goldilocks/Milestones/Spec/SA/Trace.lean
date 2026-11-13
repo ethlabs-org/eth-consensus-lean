@@ -19,9 +19,22 @@ The premises of the AC step statements that read the SA's votes and its joining 
   and joined at its vote; before `t_s + 3Δ` it accepted the heads of the counted votes and their
   ancestors (inside `U`); and at its vote it holds, received before `t_s + 3Δ`, each counted vote
   or two other slot-`s` votes of that validator. `Carry(s, S, B)`: every honest vote of slot
-  `s + 1` satisfies it. -/
+  `s + 1` satisfies it.
+
+The AC starts of the run records (`ACRun`, `ACRunU`, their growing forms, `GoldilocksRun`) are
+starts up to the vote permission (`VoteStart`): the initial state with some own-role vote
+permission installed; the initial state is one (`voteStart_initial`). -/
 
 namespace Consensus.Goldilocks.SA
+
+/-- **A start up to the vote permission**: the initial state `SAState.initial g` with some own-role
+vote permission `m` installed (`VoteBinding.installVote` touches only `mayVote`). -/
+def VoteStart {n : Nat} (g : Nat) (s : SAState n) : Prop :=
+  ∃ m, s = { SAState.initial g with mayVote := m }
+
+/-- The initial state is a start up to the vote permission. -/
+theorem voteStart_initial {n : Nat} (g : Nat) : VoteStart g (SAState.initial g : SAState n) :=
+  ⟨(SAState.initial g : SAState n).mayVote, rfl⟩
 
 variable {FGP : Type} (sp : SAParams)
 

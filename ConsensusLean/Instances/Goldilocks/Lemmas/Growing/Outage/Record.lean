@@ -29,7 +29,8 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {D : OutageLockPremises tr H proposer dg}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {D : OutageLockPremises tr H proposer dg ini}
 
 /-- **The record interval after a restored update, in the prefix through `t`**: from a cut `i`
 at or after the update time of label `r`, up to a cut `j` read at `t` (the node honest at `t`,
@@ -44,7 +45,7 @@ private theorem record_interval_upTo (hinv : ∀ i, OutageLockInv D i) {y : Fin 
   have hrT := D.hrun.upTo ht0
   have hncT := D.hnc.upTo t
   have hprojT : (tr.upTo t).projAC = tr.projAC.upTo t := RunTrace.upTo_projAC
-  have hac := goldilocks_ac_projection sp ro dg (H t) (tr.upTo t) proposer hrT hncT
+  have hac := Compose.goldilocks_ac_projection_from hrT hncT
   have hst := projAC_state hrT.toLocalRun hy
   have down : ∀ X ∈ (tr.upTo t).HonestBlocks (H t), Compatible (tr.HonestBlocksAt H) X D.P →
       Compatible ((tr.upTo t).HonestBlocks (H t)) D.P X := fun X hX h =>

@@ -36,7 +36,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 the node ticks at the first public time from `a`, so the restart (its first call after a sleep)
 cannot be later. -/
 theorem restart_le_of_awake_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {x : Fin sp.n} {a z : Time}
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {x : Fin sp.n}
+    {a z : Time}
     (hx : x ∈ H z) (ha0 : 0 ≤ a) (haw : ∀ u, a ≤ u → u ≤ z → tr.awake x u) {k : Nat}
     (hk : tr.RestartAt x k) (hkz : tr.time k ≤ z) : tr.time k ≤ a + sp.Δ := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -77,8 +78,9 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
     {v : V} (hsh : Q.start ≤ Q.run.2.horizon)
     (ar : OutageArmingAt Q v) :
     Compose.Growing.OutageLockPremises Q.trace Q.keys (runProposer S Q.run.2 Q.hn)
-      (digestOf S Q.run.2) :=
+      (digestOf S Q.run.2) (simIni S Q.run.2 Q.hn) :=
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hmv := simIni_mayVote S Q.run.2 Q.hn -- TEMP(C2): C3b replaces
   have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
   have hnum := query_numbers_at Q
   have hr := restoredLabel_spec Q
@@ -103,6 +105,7 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
     A₀ := Q.holdersAt
     W := Q.lateKeysAt
     hrun := hrun
+    hmv := hmv
     hnc := hnc
     hj₀ := ⟨hnum.1, hnum.2.1⟩
     hr := hr
@@ -131,7 +134,7 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
       · rcases ar.armed with ⟨htg, ho⟩ | ⟨hCw, -⟩
         · exact absurd (ho ▸ htg) hg
         · exact Or.inr (hCw.mono hTs)
-    hpre := Compose.Growing.sleepy_invariant_at hrun hnc (hT0.trans hTs) service (hBb _ hsh)
+    hpre := Compose.Growing.sleepy_invariant_at hrun hmv hnc (hT0.trans hTs) service (hBb _ hsh)
     hpreSvc := service
     hB := fun b ⟨_, _, _, hc, hle⟩ => hBb b (hle.trans (Q.call_le_horizon hc))
     hA₀ := Q.holdersAt_subset

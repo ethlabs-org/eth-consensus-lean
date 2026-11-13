@@ -43,11 +43,12 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- **A block accepted before the freeze is in the voter block tree** (`accepted_voter_tree` on
 the prefix through the vote's time). -/
 private theorem accepted_voter_tree_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {s : Nat} {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
@@ -93,7 +94,7 @@ private theorem accepted_voter_tree_at
 with both caches and below a frozen viable block (or `fc_root`) is in the vote's viable tree or
 below `fc_root`. -/
 private theorem vote_viable_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time k))
     (hc : SA.CastAt tr.projAC y k ℓ e) {B : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -124,7 +125,8 @@ private theorem vote_viable_at
       have hBt := SA.frame_mem_of_between sp hU hΦ hΦU hDt hBD hFB
       have hΦBD := SA.anc_tree_of_anc_U hU hΦ hΦU hBt hBD hDt
       have hΦfB := SA.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
-      refine Or.inl ⟨SA.voterBlockTree_anc hr hy hcT D hD B hΦBD, hΦfB, D, hD, ?_, hΦBD⟩
+      refine Or.inl ⟨SA.voterBlockTree_anc_from hr hrun.vstart hy hcT D hD B
+          hΦBD, hΦfB, D, hD, ?_, hΦBD⟩
       have hfD := hΦfB.trans hΦBD
       rw [hfr] at hDt hfD ⊢
       exact ⟨hDt.1, hDt.2, Anc.mono (fun X hX => hX.1) hfD, hvD⟩
@@ -134,7 +136,7 @@ private theorem vote_viable_at
 /-- A block held below a source's entry height is below the entry, in a static run. (As
 `Compose/Sleepy/Frame.lean`'s private `below_entry`.) -/
 private theorem below_entry {H₀ : Set (Fin sp.n)} {tr₀ : GoldilocksTrace sp ro}
-    (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H₀ tr₀) (hnc : NoCollRun dg tr₀)
+    (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H₀ tr₀ ini) (hnc : NoCollRun dg tr₀)
     {y : Fin sp.n} (hy : y ∈ H₀) {i : Nat} {B Ds E : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ (tr₀.state y i).fg.tree) (hE : E ∈ (tr₀.state y i).fg.tree)
     (hD : IsHonestSource tr₀ H₀ Ds E.root) (hDB : Compatible (tr₀.HonestBlocks H₀) Ds B)
@@ -159,7 +161,7 @@ slot-`s` caster honest at `t_i` and every validator compromised by `t_i`), with 
 compatible with `B`, makes the vote extend `B`. The static counted batch on the prefix through
 `t_i`. -/
 private theorem vote_extends_of_counted_batch_run
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {s : Nat} {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
@@ -212,7 +214,9 @@ private theorem vote_extends_of_counted_batch_run
       by_cases hw : v.val ∈ H (tr.time i)
       · obtain ⟨j, -, e', hv', he'⟩ := SA.honest_merged_vote hr hy hc' hv hw
         exact hW _ j e' (hvote _ j e' hw hv') hw
-          (by rw [he']; exact SA.merged_vote_slot hr.localRun hy hc' v hv)
+          (by
+            rw [he']
+            exact SA.merged_vote_slot hr.localRun hr.vstart hy hc' v hv)
       · exact hWc hw)
     hcount
     ⟨⟨hcarry.awake, le_rfl⟩, hcarry.joined, fun v ⟨x, hx, j, e', hv, hev, hvs⟩ => by
@@ -230,7 +234,7 @@ private theorem vote_extends_of_counted_batch_run
   obtain ⟨Hd, hHd, hHdr, hBHd⟩ := h
   exact ⟨Hd, hsub hHd, hHdr, hBHd.mono hsub⟩
 
-variable (D : OutageLockPremises tr H proposer dg)
+variable (D : OutageLockPremises tr H proposer dg ini)
 
 /-- **G4**: at a Lo vote of slot `q + 1 ≥ r + 1` above `Σ.F`, by a node honest at its cut `i`,
 with receiver service from `b₁`, a protected block `P` that a slot-`q` vote (of a node honest at
@@ -422,7 +426,7 @@ theorem outage_s5_inner_at
         SA.VoteExtends (tr.HonestBlocksAt H) e'.msg D.P := fun x j e' hjk hve hvs =>
       ih j hjk (by omega) x e' hve (by omega)
     have hB := D.hB (tr.time k) ⟨y, k, hy, hcallk, le_rfl⟩
-    have hcount := faults_lt_voters hrun D.hnc hB (s := q) (d := tr.time k) (Nat.zero_le _)
+    have hcount := faults_lt_voters hrun D.hmv D.hnc hB (s := q) (d := tr.time k) (Nat.zero_le _)
       (by linarith only [htk1, hts, hΔ]) le_rfl (by linarith only [htk', hs, hts, hΔ])
     obtain ⟨x, hx⟩ : (VotersAt tr H q (tr.time k)).Nonempty := by
       rw [Set.nonempty_iff_ne_empty]
@@ -431,7 +435,7 @@ theorem outage_s5_inner_at
       omega
     obtain ⟨-, j, e', hve, hvs⟩ := votersAt_iff.1 hx
     have hjk := (vote_cut_lt hrun D.hnc hve hvs htk1).2
-    exact vote_extends_of_batch_at hrun D.hnc hB (Nat.zero_le _) hy hcast hs le_rfl
+    exact vote_extends_of_batch_at hrun D.hmv D.hnc hB (Nat.zero_le _) hy hcast hs le_rfl
       (hviab ⟨x, j, e', hve, hvs, hall x j e' hjk hve hvs⟩) hall
       (by
         have h := hcarry Set.univ fun x _ j e' hve hvs =>
@@ -459,7 +463,8 @@ theorem outage_s5_inner_at
       have hxr : x ∈ H (sp.ts D.r + sp.Δ) := hrun.antitone
         (D.hzc _ (by linarith only [hrK, hΔ]) hcallr) (D.hA₀ hx)
       obtain ⟨j, e', hve, hvs, -⟩ := vote_of_awake_joined_at hrun D.hnc hxr
-        (mayVote_stock_at hrun D.hnc (ts_add_delta_nonneg _) hxr) haw hjn
+        -- TEMP(C2): C3c replaces
+        (mayVote_at hrun D.hnc (ts_add_delta_nonneg _) hxr (D.hmv _ _)) haw hjn
       exact ⟨j, e', hve, hvs⟩
     have hW : ∀ x j e', HVoteAt tr H x j e' → x ∈ H (tr.time k) → e'.msg.slot = D.r →
         x ∈ D.A₀ ∪ ((H D.z)ᶜ ∪ D.W) := by

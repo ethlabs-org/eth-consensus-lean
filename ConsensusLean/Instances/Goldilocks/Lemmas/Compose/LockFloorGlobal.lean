@@ -34,7 +34,7 @@ abbrev FloorAt (tr : GoldilocksTrace sp ro) (y : Fin sp.n) (i : Nat)
     ∃ B ∈ (tr.state y i).fg.toFrame.tree, B.root = l.block ∧ (tr.state y i).fg.toFrame.Anc B₀ B
 
 /-- **A block above `B₀` stays above `B₀` in a later frame** that still holds `B₀`. -/
-theorem floor_frame_transport (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+theorem floor_frame_transport {ini} (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i i' : Nat} (hii' : i ≤ i') {B₀ B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB0 : B₀ ∈ (tr.state y i').fg.toFrame.tree) (hB : B ∈ (tr.state y i).fg.toFrame.tree)
     (h : (tr.state y i).fg.toFrame.Anc B₀ B) :
@@ -55,7 +55,7 @@ theorem frame_mem_of_tree (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
 /-- **The floor over one cut.** At an honest `y`, cut `i`: the floor, no expiry, `B₀` in the
 trees at `i` and `i + 1` and its own viable ancestor at `i`, and `unlock` at the AC call's view
 keeping `B₀` (or `slot(t_i) − 1 ≤ j`) give the floor at `i + 1`. -/
-theorem floor_run_view (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+theorem floor_run_view {ini} (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H)
     (i : Nat) {B₀ : SA.Blk sp.n (List (FG.Att sp.n))} {j m : Nat} (hfl : FloorAt tr y i B₀ j m)
     (hk : sp.slot (tr.time i) ≤ m) (hB0 : B₀ ∈ (tr.state y i).fg.toFrame.tree)
     (hB0' : B₀ ∈ (tr.state y (i + 1)).fg.toFrame.tree)

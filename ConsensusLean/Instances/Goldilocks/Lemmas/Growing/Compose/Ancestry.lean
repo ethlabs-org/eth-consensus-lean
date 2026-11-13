@@ -18,7 +18,8 @@ variable {P : Params} {A : NodeAC P} {tr : RunTrace A} {d : Time}
 /-- Ancestry below a retained block needs no common honest observation horizon. -/
 theorem anc_upTo_of_right {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
     {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n}
-    (_hrun : Growing.LocalRun proposer dg H sg tr) (_hnc : Compose.NoCollRun dg tr) (_hd : 0 ≤ d)
+    {ini} (_hrun : Growing.LocalRun proposer dg H sg tr ini) (_hnc : Compose.NoCollRun dg tr)
+    (_hd : 0 ≤ d)
     {B C : A.Blk} (_hC : C ∈ (tr.upTo d).HonestBlocks (H d))
     (_h : Anc (tr.HonestBlocksAt H) B C) : Anc ((tr.upTo d).HonestBlocks (H d)) B C := by
   have hrun := _hrun

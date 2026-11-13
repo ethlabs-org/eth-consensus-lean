@@ -473,6 +473,7 @@ theorem asleepRun_goldilocksRun :
   stock := rfl
   toLocalRun := asleepRun_localRun _
   genesis_root_ok := dg2_genesis
+  vstart := fun _ => SA.voteStart_initial _
   carried_vote_unforgeable y _ i B hB v hv _ := by
     obtain ⟨acc, hc⟩ := hB
     obtain ⟨d, p, hr, hB⟩ := onTick_block_made N2 dg2 _ _ _ _ (tickRun_label_mem hc.2)

@@ -119,7 +119,8 @@ theorem goldilocksScopedDominance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U 
   simp only [proj_goldilocks]
   intro x hx i ℓ e B C hc _ hC hBC
   have hΦ := (frameIn_of_callAt hr hx hc.1).1
-  obtain ⟨ha, hanc⟩ := anc_getAnchor hΦ (castAt_liveLockBlocks_chain hr hx hc (o.time i))
+  obtain ⟨ha, hanc⟩ := anc_getAnchor hΦ
+    (castAt_liveLockBlocks_chain hr (fun _ => voteStart_initial _) hx hc (o.time i))
   obtain ⟨_, _, _, hh⟩ := castAt_spec hr hx hc
   refine ⟨_, getHead_mem hΦ (fun _ h => voteDomain_subset_tree h.1) _ _ _ _, hh.symm, ?_⟩
   exact hBC.trans ((hanc C (Or.inl hC)).trans

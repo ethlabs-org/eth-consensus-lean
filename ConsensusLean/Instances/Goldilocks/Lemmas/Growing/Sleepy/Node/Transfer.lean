@@ -99,7 +99,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
 /-- A slot-`s` vote of a node honest at it precedes every cut at a time `≥ t_{s+1}`. -/
-theorem vote_cut_lt (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem vote_cut_lt {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {x : Fin sp.n} {j : Nat} {e' : SA.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x j e')
     {s : Nat} (hes : e'.msg.slot = s) {i : Nat} (hi : sp.ts ((s + 1 : Nat) : Int) ≤ tr.time i) :
     tr.time j < sp.ts ((s + 1 : Nat) : Int) ∧ j < i := by
@@ -118,7 +119,8 @@ honest at it extends `B` and is carried, and every live lock is compatible with 
 extends `B`. The batch is the slot-`s` voters still honest at `d = tr.time i`, which outnumber
 `(H d)ᶜ` (`faults_lt_voters`, `d ≤ t_s + 5Δ`); the static counted batch applies on the prefix
 through `d`. -/
-theorem vote_extends_of_batch_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem vote_extends_of_batch_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C4 replaces
     (hnc : NoCollRun dg tr) {b : Time} {σ₀ : Nat} (hB : SleepyBoundsFrom tr H σ₀ b) {s : Nat}
     (hs₀ : σ₀ ≤ s) {y : Fin sp.n}
     {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -177,10 +179,11 @@ theorem vote_extends_of_batch_at (hrun : Growing.GoldilocksRun proposer dg H tr)
       by_cases hw : v.val ∈ H (tr.time i)
       · obtain ⟨j, -, e', hv', he'⟩ := SA.honest_merged_vote hr hy hc' hv hw
         refine Or.inl (votersAt_iff.2 ⟨hw, j, e', hvote _ j e' hw hv', ?_⟩)
-        rw [he']; exact SA.merged_vote_slot hr.localRun hy hc' v hv
+        rw [he']; exact SA.merged_vote_slot hr.localRun hr.vstart hy hc'
+          v hv
       · exact Or.inr hw)
     (by
-      have hcount := faults_lt_voters hrun hnc hB (s := s) (d := tr.time i) hs₀
+      have hcount := faults_lt_voters hrun hmv hnc hB (s := s) (d := tr.time i) hs₀
         (by linarith) hib (by linarith)
       have := Set.ncard_union_le (VotersAt tr H s (tr.time i)) (H (tr.time i))ᶜ
       omega)

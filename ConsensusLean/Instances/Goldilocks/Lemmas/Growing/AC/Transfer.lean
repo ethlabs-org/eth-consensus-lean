@@ -22,7 +22,7 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 /-- Result transfer needs no cross-time honesty or fault count: each node obeys its own cut. -/
-theorem result_transfer (hrun : ACRun proposer tr H U)
+theorem result_transfer {ini} (hrun : ACRun proposer tr H U ini)
     {s : Nat} {X y : Fin sp.n} {i₀ i : Nat} {C : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hX : X ∈ H (tr.time i₀)) (hres : ResultAt tr X i₀ s C CV)
@@ -40,7 +40,7 @@ theorem result_transfer (hrun : ACRun proposer tr H U)
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_call hr hy hc'.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_anc hr hy hc'
+  have hdomA := voteDomain_anc_from hr hry.vstart hy hc'
   rw [hs] at hdomA
   have hCt : C ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -55,7 +55,8 @@ theorem result_transfer (hrun : ACRun proposer tr H U)
         (by
           obtain ⟨ℓX, hupd, _, rfl⟩ := hres
           exact carried_counted_supporters hrun hX hy hupd.1 hc hs .refl hcarry hviab hd)
-        (merged_voters_subset hr hy hc' hd) (result_majority hres) hCx hp hCxC
+        (merged_voters_subset hr hry.vstart hy hc' hd)
+        (result_majority hres) hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : C = getHead sp e.readPoint ℓ.frame (tr.time i)
       (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
@@ -97,7 +98,8 @@ theorem result_transfer_anc (hrun : ACRun proposer tr H U)
         (by
           obtain ⟨ℓX, hupd, _, rfl⟩ := hres
           exact carried_counted_supporters hrun hX hy hupd.1 hc hs hDC hcarry hviab hd)
-        (merged_voters_subset hr hy hc' hd) (result_majority hres) hCx hp hCxD
+        (merged_voters_subset hr (fun _ => voteStart_initial _) hy hc' hd)
+        (result_majority hres) hCx hp hCxD
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : D = getHead sp e.readPoint ℓ.frame (tr.time i)
       (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
@@ -211,14 +213,16 @@ theorem first_transfer_stored
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
     (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
     (fun B hB => voteDomain_subset_tree hB) hdomA hviab.voteDomain
-    (locks_compatible hry K (hP (tr.time i)) hy hc' hs hBt (S := SX) (fun w hw => by
+    (locks_compatible hry K (hP (tr.time i)) hy hc' hs hBt
+      (S := SX) (fun w hw => by
         obtain ⟨_, x, hx, hxv, hxs, hxa⟩ := hsupp hw
         exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩)
       hhalf hf1 hearlier' hm)
     fun X' Cx hCx hp hCxC =>
       isBest_of_majority hΦ (merged_support_subset hry.localRun hy hc' (s + 1))
         (fun B hB => voteDomain_subset_tree hB.1) hsupp
-        (merged_voters_subset hry.localRun hy hc' hd) hmaj hCx hp hCxC
+        (merged_voters_subset hry.localRun (fun _ => voteStart_initial _) hy hc' hd) hmaj hCx hp
+        hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : B = getHead sp e.readPoint ℓ.frame (tr.time i)
       (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))

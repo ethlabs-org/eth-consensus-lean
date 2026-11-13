@@ -35,32 +35,32 @@ theorem tree_held_at (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k 
     (tr.state y i).fg.tree ⊆ tr.HonestBlocksAt H :=
   fun _ hB => ⟨y, i, d, hd, hi, hy, hB⟩
 
-theorem reachable_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem reachable_at {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d) :
     (tr.state y i).fg.Reachable (goldilocksNode sp ro).genesisPayload := by
   have h := fg_reachable (hrun.upTo hd).toLocalRun hy i
   rwa [Trace.upTo_state tr y hi] at h
 
-theorem frameOK_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem frameOK_at {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d) :
     FrameOK (Node.frame (tr.state y i)) := by
   have h := frameOK_state (hrun.upTo hd).toLocalRun hy i
   rwa [Trace.upTo_state tr y hi] at h
 
-theorem tree_mono_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem tree_mono_at {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d) {k : Nat} (hki : k ≤ i) :
     (tr.state y k).fg.tree ⊆ (tr.state y i).fg.tree := by
   have h := tree_mono (hrun.upTo hd).toLocalRun hy hki
   rwa [Trace.upTo_state tr y hi, Trace.upTo_state tr y fun k' hk' => hi k' (by omega)] at h
 
-theorem F_mono_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem F_mono_at {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d) {k : Nat} (hki : k ≤ i) :
     Anc (tr.HonestBlocksAt H) (tr.state y k).fg.F (tr.state y i).fg.F := by
   have h := Healing.run_F_mono (hrun.upTo hd).toLocalRun hy hki
   rw [Trace.upTo_state tr y hi, Trace.upTo_state tr y fun k' hk' => hi k' (by omega)] at h
   exact h.mono (upTo_subset hrun hd)
 
-theorem held_anc_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem held_anc_at {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d)
     {A W : SA.Blk sp.n (List (FG.Att sp.n))} (h : Anc (tr.HonestBlocksAt H) A W)
     (hW : W ∈ (tr.state y i).fg.tree) : (tr.state y i).fg.Anc A W := by
@@ -70,7 +70,8 @@ theorem held_anc_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer 
     (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hWU h) (by rw [hst]; exact hW)
   rwa [hst] at h'
 
-theorem frame_mem_of_tree_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem frame_mem_of_tree_at {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y i).fg.tree)
     (hF : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F B) :
@@ -78,7 +79,7 @@ theorem frame_mem_of_tree_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun 
   ⟨hB, held_anc_at hrun hnc hd hy hi hF hB⟩
 
 theorem floor_frame_transport_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hd : 0 ≤ d)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hd : 0 ≤ d)
     (hy : y ∈ H d) {i' : Nat} (hi' : ∀ k < i', tr.time k ≤ d) (hii' : i ≤ i')
     {B₀ B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB0 : B₀ ∈ (tr.state y i').fg.toFrame.tree) (hB : B ∈ (tr.state y i).fg.toFrame.tree)

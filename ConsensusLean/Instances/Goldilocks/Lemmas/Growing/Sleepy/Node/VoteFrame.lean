@@ -40,7 +40,7 @@ private theorem add_mul_delta_le {x a b : Time} (h : a ≤ b) : x + a * sp.Δ �
 /-- At a slot-`(s+1)` vote of a node honest at its cut `i`, the voter's restarts up to the vote were
 at or before `t_s`, and the vote is cast from `t_s + 4Δ` on (`honest_vote_restarts` on the prefix
 through `tr.time i`). -/
-theorem honest_vote_restarts_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem honest_vote_restarts_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {s : Nat} {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) :
@@ -56,7 +56,7 @@ theorem honest_vote_restarts_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 freeze** by a slot-`(s+1)` voter honest at its cut whose `Σ.F` it extends: its voter accepted it
 (or it is genesis) while honest, by `t_s + Δ`, and the service relays the acceptance to the voter
 by `t_s + 2Δ`. -/
-private theorem honest_head_accepted_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem honest_head_accepted_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) {s : Nat}
     {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
@@ -122,7 +122,7 @@ private theorem honest_head_accepted_at (hrun : Growing.GoldilocksRun proposer d
 of a slot-`(s+1)` vote of a node honest at its cut `i ≤ b`, when it extends the voter's `Σ.F`
 (`honest_head_frozen` with each node honest at its own events: the head's voter at its acceptance,
 the voter at `i`). -/
-theorem honest_head_frozen_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem honest_head_frozen_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) {s : Nat}
     {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
@@ -165,7 +165,9 @@ theorem honest_head_frozen_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   exact ⟨Hd, h, hZHd⟩
 
 /-- **S3 at votes under growing faults (the frozen witness)**. -/
-theorem vote_frame_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem vote_frame_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C4 replaces
+    (hnc : NoCollRun dg tr)
     {b : Time} (_hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b)
     {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b) {y : Fin sp.n} {i : Nat}
@@ -267,7 +269,7 @@ theorem vote_frame_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoC
   have h := vote_frame_of_witnesses hrun' hnc' hf hy hc' hs (by rw [hst]; exact hsrc.above _) hGG
     (fun D ⟨C, ⟨j, hC, hj⟩, hDC⟩ hFD => by
       obtain ⟨x', k', e'', hv', -, hs'', Hd, hHd, hHdr, hCHd⟩ :=
-        honest_supporter_at hrun hnc (hsync.toFrom hrun) hB (Nat.zero_le _)
+        honest_supporter_at hrun hmv hnc (hsync.toFrom hrun) hB (Nat.zero_le _)
           (ts_natCast_nonneg _) ((originWithin_of_upTo hrun hC).mono hib)
       obtain ⟨W', hW', hDW'⟩ := honest_head_frozen_at hrun hnc hsync hy hc hs hib hv'
         (by omega) ⟨Hd, hHd, hHdr, (hDC.mono hsub).trans hCHd⟩ (hFD.mono hsub)

@@ -44,7 +44,7 @@ vote), so it is in the updater's pool with a stamp below `t_s + 2Δ`; its head `
 updater's `Φ.F` and of a slot at most `s`, was accepted by the voter before its vote (at or after
 `a₀`, or it is genesis) and relayed to the updater before `t_s + 2Δ`, so it is in the updater's
 frame and the vote is resolved before `t_s + 2Δ`. -/
-theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
+theorem honest_vote_at_update_of_sync {ini} (hrun : SA.ACRun proposer T H U ini)
     {a₀ : Time} {k₀ s : Nat}
     {x : Fin sp.n} {P : SA.Blk sp.n FGP}
     (hsync : (SyncAC (SA.goldilocksSA sp FGP ro) H U a₀ (T.time k₀) T ∧
@@ -75,7 +75,7 @@ theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
   obtain ⟨Hd₂, hHd₂, hHd₂r, hHd₂s⟩ := SA.honest_head hrun hx hv
   obtain ⟨ℓv, hcv, hev⟩ := hv
   obtain ⟨hxv, hxs, -, -⟩ := SA.castAt_spec hr hx ⟨hcv, hev⟩
-  obtain ⟨⟨Hd, hHd, hHdr, -⟩, htj⟩ := cast_head_fcRoot hr hx ⟨hcv, hev⟩
+  obtain ⟨⟨Hd, hHd, hHdr, -⟩, htj⟩ := cast_head_fcRoot_from hr hrun.vstart hx ⟨hcv, hev⟩
   rw [hes] at htj
   have hsj : sp.ts s ≤ T.time j := (SA.ts_le_iff_le_slot sp (hr.time_nonneg j) s).2 (by omega)
   -- the vote is processed by the updater before `t_s + 2Δ`
@@ -118,20 +118,20 @@ theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
           hrun.honest.pool_vote y hy _ s b hb (by rw [hbv, hxv]; exact hx)
         rw [hav, hxv] at hea
         rw [hbv, hxv] at heb
-        obtain ⟨-, rfl⟩ := SA.one_vote_per_slot sp FGP ro H U T hr x hx ja jb ea eb hea heb
-          (by rw [hea', heb', SA.state_pool_slot sp hr hy _ s a ha,
-            SA.state_pool_slot sp hr hy _ s b hb])
+        obtain ⟨-, rfl⟩ := SA.one_vote_per_slotU sp FGP ro H U T hr.toU x hx ja jb ea eb hea heb
+          (by rw [hea', heb', SA.state_pool_slot_from sp hr hrun.vstart hy _ s a ha,
+            SA.state_pool_slot_from sp hr hrun.vstart hy _ s b hb])
         exact absurd (hea'.symm.trans heb') hab
     have hpool : e.msg ∈ (T.state y k₀).pool s :=
       SA.pool_mono hr hy (show k' + 1 ≤ k₀ by omega) (fun r h₁ h₂ => hnr r h₁ (by omega)) s hpk'
     refine ⟨hpool, ?_⟩
-    rcases SA.pool_origin hr hy k₀ e.msg (by rw [hes]; exact hpool) with
+    rcases SA.pool_origin_from hr hrun.vstart hy k₀ e.msg (by rw [hes]; exact hpool) with
       ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
     · rw [hst₁, SA.etime_of_lt_of]
       by_cases hk₁k' : k₁ ≤ k'
       · exact lt_of_le_of_lt (hr.time_mono hk₁k') hk'lt
       · obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, he₁m⟩ | ⟨-, hn₁, -⟩⟩ := hsend₁
-        · have h := (cast_head_fcRoot hr hy ⟨hc₁, he₁⟩).2
+        · have h := (cast_head_fcRoot_from hr hrun.vstart hy ⟨hc₁, he₁⟩).2
           rw [he₁m, hes] at h
           linarith only [h, hΔ]
         · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
@@ -152,7 +152,7 @@ theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
         hrun.honest.pool_vote y hy _ b.slot b hb.1 (by rw [hbv, hxv]; exact hx)
       rw [hav, hxv] at hea
       rw [hbv, hxv] at heb
-      obtain ⟨-, rfl⟩ := SA.one_vote_per_slot sp FGP ro H U T hr x hx ja jb ea eb hea heb
+      obtain ⟨-, rfl⟩ := SA.one_vote_per_slotU sp FGP ro H U T hr.toU x hx ja jb ea eb hea heb
         (by rw [hea', heb', has, hbs])
       exact (hab (hea'.symm.trans heb')).elim
   obtain ⟨hpool, hvst⟩ := held
@@ -185,7 +185,7 @@ theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
       obtain ⟨ky, hky, hay, hkyt⟩ := hrelay
       exact ⟨Or.inr ⟨ky, hay, hkyt⟩, SA.mem_tree_of_acceptAt sp hr hy hay hky hcy hFP⟩
   obtain ⟨hacc, hPt⟩ := hacc
-  have hbst := SA.blockStamp_lt_of_acceptedBefore sp hr hy hcy hPt hacc
+  have hbst := SA.blockStamp_lt_of_acceptedBefore_from sp hr hrun.vstart hy hcy hPt hacc
     (fun k hk hrk => (hrsy k hk hrk).trans_lt
       (lt_add_of_pos_right _ (mul_pos two_pos hΔ)))
     (Or.inl (by rw [htk₀]; linarith only [hΔ]))
@@ -202,7 +202,8 @@ theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
 /-- **Honest votes reach a joined updater under windowed service**: with service for sends and
 acceptances from `a ≤ t_s` with deadlines through `b ≥ t_s + 2Δ`, and the catch-up of older
 acceptances before `a + κ ≤ t_s + 2Δ` at calls from `a + κ` through the update's time `b'`. -/
-theorem honest_vote_at_update_window (hrun : SA.ACRun proposer T H U) {a κ b b' : Time}
+theorem honest_vote_at_update_window {ini} (hrun : SA.ACRun proposer T H U ini)
+    {a κ b b' : Time}
     {k₀ s : Nat} (hsync : SA.ServiceWindowBefore H U a b T)
     (hcatch : CatchACWindowBefore T H U a κ b') (ha : a ≤ sp.ts s)
     (hκ : a + κ ≤ sp.ts s + 2 * sp.Δ) (hsb : sp.ts s + 2 * sp.Δ ≤ b) (hb' : T.time k₀ ≤ b')

@@ -533,7 +533,8 @@ theorem clean_source_votes_before
           (SA.writer_merged_window_before hS.run (SA.serviceWindowBefore_of_sync hsync)
             hx hgs hupd hrQ hy hcast hfirst)
         intro v hv
-        obtain ⟨hvs, hw, H, hH, hHr, hCH, ha⟩ := Compose.result_writer hr hx hres v hv
+        obtain ⟨hvs, hw, H, hH, hHr, hCH, ha⟩ := Compose.result_writer hr
+          (fun _ => SA.voteStart_initial _) hx hres v hv
         exact ⟨hvs, hw, H, hH, hHr, hBC.trans hCH, ha⟩
     · obtain ⟨m, hm⟩ : ∃ m, e.msg.slot = m + 1 := ⟨e.msg.slot - 1, by omega⟩
       have hsm : s < m := by omega
@@ -761,7 +762,8 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
         apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hS.sync)
           hgs hS.catchUp (by linarith only [hΔ, hgs]) hx hy hcast hfirst hib
         intro v hv
-        obtain ⟨hvs, hw, D, hD, hDr, hCD, ha⟩ := Compose.result_writer hr hx hres v hv
+        obtain ⟨hvs, hw, D, hD, hDr, hCD, ha⟩ := Compose.result_writer hr
+          (fun _ => SA.voteStart_initial _) hx hres v hv
         exact ⟨hvs, hw, D, hD, hDr, hFB.trans (hBC.trans hCD), ha⟩
       refine SA.result_prefix_vote_extends_of_stored hS.run hf hx hy hres hBC hcast
         hfirst carry ?_ (hstored y hy i ell e hcast hib hfirst)

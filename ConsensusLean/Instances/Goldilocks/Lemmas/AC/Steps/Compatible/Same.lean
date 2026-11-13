@@ -79,8 +79,9 @@ private theorem update_sideU
   · rintro u ⟨-, v, ⟨hvp, hres⟩, rfl, -, R, hR, hRr, hDR⟩
     have hvs := state_pool_slotU sp hr hY c s v hvp
     rw [fwd_iff]
-    refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, admitted_of_heldU hr hY hvs hvp le_rfl
-      fun k _ hst => ?_⟩
+    refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩,
+      admitted_of_heldU hr (fun _ => voteStart_initial _) hY hvs hvp le_rfl
+        fun k _ hst => ?_⟩
     have hst' : (tr.state Y c).voteStamp v < ETime.of (sp.ts s + 2 * sp.Δ) := by
       unfold resolutionTime at hres
       split at hres

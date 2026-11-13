@@ -25,6 +25,7 @@ namespace Consensus.Goldilocks.SA
 variable {wm : SA.WriteMode}
 
 variable {FGP : Type} {sp : SAParams}
+  {ini : Fin sp.n → SAState sp.n}
 
 /-- **Unlocking against support for `B`.** -/
 theorem unlock_compatible {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp.n} {s : Int}
@@ -111,7 +112,8 @@ theorem origin_compatible (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree 
 
 /-- `locks_compatible` with the unlock given. -/
 theorem locks_compatibleU
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) (K : CommitteeDict sp.n)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
+    (K : CommitteeDict sp.n)
     (hP : CommitteeP K tr H) {y : Fin sp.n} (hy : y ∈ H)
     {i m : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
@@ -165,7 +167,7 @@ theorem locks_compatibleU
   · exact hm Φ' A D hΦ' hΦ'U hD (h ▸ h34) (h ▸ hpool) (h ▸ hsub)
   -- of slot `m + 1`: the honest voters' votes are earlier slot-`(m+1)` votes
   have hl₀s : l₀.slot = m + 1 := by
-    have := readPoint_lock_slot_leU hr hy hc l₀ hl₀
+    have := readPoint_lock_slot_leU hr hrun.vstart hy hc l₀ hl₀
     have := (castAt_specU hr hy hc).2.1
     omega
   obtain ⟨k₀, -, hk₀⟩ := hsub
@@ -186,8 +188,9 @@ slot-`m` support votes in `y`'s merged view whose heads extend `B`, or equivocat
 extends `B`, and every optimistic origin of slot `m` (a block with three quarters of the
 committee size in optimistic voters whose honest
 votes were cast before the vote) is compatible with `B`, then every live lock block at the vote's
-read point is compatible with `B`. -/
-theorem locks_compatible (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n)
+read point is compatible with `B`. From starts up to the vote permission. -/
+theorem locks_compatible (hrun : ACRun proposer tr H U ini)
+    (K : CommitteeDict sp.n)
     (hP : CommitteeP K tr H) {y : Fin sp.n} (hy : y ∈ H) {i m : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = m + 1) {B : Blk sp.n FGP} (hB : B ∈ ℓ.frame.tree) {S : Set (Fin sp.n)}
@@ -204,10 +207,7 @@ theorem locks_compatible (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n)
       (∃ k ≤ i, A.pool m ⊆ (tr.state y (k + 1)).pool m) →
       Compatible U D B) :
     ∀ L ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i), Compatible U L B :=
-  locks_compatibleU (hrun := hrun.toU) (K := K) (hP := hP) (y := y) (hy := hy) (i := i) (m := m)
-      (ℓ := ℓ) (e := e)
-      (hc := hc) (hs := hs) (B := B) (hB := hB) (S := S) (hS := hS) (hn := hn) (hf := hf)
-          (hearlier := hearlier) (hm := hm)
+  locks_compatibleU hrun.toU K hP hy hc hs hB hS hn hf hearlier hm
 
 end Consensus.Goldilocks.SA
 

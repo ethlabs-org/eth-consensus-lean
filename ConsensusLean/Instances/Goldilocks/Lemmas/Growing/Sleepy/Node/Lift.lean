@@ -195,13 +195,13 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-! ### The blocks held while honest -/
 
 /-- A block of the tree of a node honest at cut `i`, before `i`, is held while honest. -/
-theorem mem_honestBlocksAt (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+theorem mem_honestBlocksAt {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     {i : Nat} (hy : y ∈ H (tr.time i)) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ (tr.state y i).fg.tree) : B ∈ tr.HonestBlocksAt H :=
   ⟨y, i, tr.time i, hrun.time_nonneg i, fun _ hk => hrun.time_mono hk.le, hy, hB⟩
 
 /-- The prefix's honest blocks are held while honest. -/
-theorem upTo_subset (hrun : Growing.GoldilocksRun proposer dg H tr) (hd : 0 ≤ d) :
+theorem upTo_subset {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hd : 0 ≤ d) :
     (tr.upTo d).HonestBlocks (H d) ⊆ tr.HonestBlocksAt H :=
   RunTrace.honestBlocks_upTo_subset hrun.time_mono hd
 
@@ -212,12 +212,12 @@ theorem exists_upTo_of_mem {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr
   exact ⟨t, ht, y, hy, i, by rw [Trace.upTo_state tr y hi]; exact hBt⟩
 
 /-- **The blocks held while honest are coherent** under `NoColl` (`honest_blocks_coherent`). -/
-theorem honestBlocksAt_coherent (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem honestBlocksAt_coherent {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) : Coherent (tr.HonestBlocksAt H) :=
   honest_blocks_coherent hrun hnc
 
 /-- Genesis is held while honest, below every block held while honest. -/
-theorem honestAt_genesis_anc (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem honestAt_genesis_anc {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocksAt H) :
     sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload ∈ tr.HonestBlocksAt H ∧
       Anc (tr.HonestBlocksAt H)
@@ -227,7 +227,7 @@ theorem honestAt_genesis_anc (hrun : Growing.GoldilocksRun proposer dg H tr)
   exact ⟨upTo_subset hrun ht hg, hanc.mono (upTo_subset hrun ht)⟩
 
 /-- A block held while honest with the genesis root is genesis. -/
-theorem honestAt_eq_genesis (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem honestAt_eq_genesis {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hU : Coherent (tr.HonestBlocksAt H)) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ tr.HonestBlocksAt H) (hr : B.root = sp.genesisRoot) :
     B = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
@@ -244,7 +244,8 @@ private theorem anc_genesis {S : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-- Compatibility of two blocks of the prefix's honest blocks comes down into the prefix
 (`RunTrace.anc_upTo_of_right`). -/
-theorem compatible_upTo (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem compatible_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     (hd : 0 ≤ d) {B C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ (tr.upTo d).HonestBlocks (H d)) (hC : C ∈ (tr.upTo d).HonestBlocks (H d))
     (h : Compatible (tr.HonestBlocksAt H) B C) : Compatible ((tr.upTo d).HonestBlocks (H d)) B C :=
@@ -253,14 +254,15 @@ theorem compatible_upTo (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : N
 
 /-- A vote extension of a vote cast in the prefix by a node honest at `d` comes down into the
 prefix: the vote's head is held by its voter. -/
-theorem voteExtends_upTo (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem voteExtends_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     (hd : 0 ≤ d) {x : Fin sp.n} (hx : x ∈ H d) {k : Nat} {e : SA.Em sp (List (FG.Att sp.n))}
     (hv : SA.VoteAt (tr.upTo d).projAC x k e) {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : SA.VoteExtends (tr.HonestBlocksAt H) e.msg C) :
     SA.VoteExtends ((tr.upTo d).HonestBlocks (H d)) e.msg C := by
   obtain ⟨Hd, hHd, hHdr, hCHd⟩ := h
   obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := SA.honest_head
-    (goldilocks_ac_projection sp ro dg (H d) (tr.upTo d) proposer (hrun.upTo hd) (hnc.upTo d))
+    (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d))
     hx hv
   obtain rfl : Hd = Hd₂ := (honestBlocksAt_coherent hrun hnc).1 hHd (upTo_subset hrun hd hHd₂)
     (hHdr.trans hHd₂r.symm)
@@ -269,7 +271,7 @@ theorem voteExtends_upTo (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
 /-! ### The origin chain (σ-copies of `Compose/Sleepy/Chain`) -/
 
 /-- Blocks below tips that are pairwise compatible (`Q`) or genesis are compatible. -/
-private theorem chain_compatible (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem chain_compatible {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {Q : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
     (hcomp : ∀ C s C' s', Q C s → Q C' s' → Compatible (tr.HonestBlocksAt H) C C')
     {B B' : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocksAt H)
@@ -289,7 +291,7 @@ private theorem chain_compatible (hrun : Growing.GoldilocksRun proposer dg H tr)
   · exact Anc.total hU hBC (hBC'.trans hCC)
 
 /-- **Blocks on the chain of the origins within `b` are compatible** when those origins are. -/
-theorem OnOriginChainWithin.compatible (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem OnOriginChainWithin.compatible {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time}
     (hcomp : ∀ C s C' s', OriginWithin tr H C s b → OriginWithin tr H C' s' b →
       Compatible (tr.HonestBlocksAt H) C C')
@@ -300,7 +302,7 @@ theorem OnOriginChainWithin.compatible (hrun : Growing.GoldilocksRun proposer dg
     (onOriginChainWithin_iff.1 h) (onOriginChainWithin_iff.1 h')
 
 /-- **An ancestor of a block on the chain of the origins within `b` is on it.** -/
-theorem OnOriginChainWithin.of_anc (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem OnOriginChainWithin.of_anc {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} {A B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hA : A ∈ tr.HonestBlocksAt H) (hAB : Anc (tr.HonestBlocksAt H) A B)
     (h : OnOriginChainWithin tr H B b) : OnOriginChainWithin tr H A b := by
@@ -329,7 +331,8 @@ theorem faultBound_upTo {τ : Time} (hτ : τ ≤ d) (h : tr.FaultBoundAt H τ d
 
 /-- **Transport of the finite service** to the prefix through `d ≥ 0`, for the validators
 honest at `d`, with the deadline bound `min b d`. -/
-theorem SleepyServiceBefore.upTo (hrun : Growing.GoldilocksRun proposer dg H tr) {ΔF b : Time}
+theorem SleepyServiceBefore.upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {ΔF b : Time}
     (h : SleepyServiceBefore tr H ΔF b) (hd : 0 ≤ d) :
     Compose.SleepyServiceBefore (tr.upTo d) (H d) ΔF (min b d) := by
   have hm := hrun.time_mono
@@ -365,7 +368,7 @@ theorem SleepyServiceBefore.upTo (hrun : Growing.GoldilocksRun proposer dg H tr)
 
 /-- **Transport of the AC service from `a`** to the prefix through `d ≥ 0`: the static AC service
 window from `a` of the validators honest at `d`, with the deadline bound `min b d`. -/
-theorem SleepyServiceFrom.acWindow_upTo (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem SleepyServiceFrom.acWindow_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {ΔF a κ b : Time} (h : SleepyServiceFrom tr H ΔF a κ b) (hd : 0 ≤ d) :
     SA.ServiceWindowBefore (H d) ((tr.upTo d).HonestBlocks (H d)) a (min b d)
       (tr.upTo d).projAC := by
@@ -393,19 +396,19 @@ theorem SleepyServiceFrom.acWindow_upTo (hrun : Growing.GoldilocksRun proposer d
 /-! ### Node-local AC facts at a cut (lifted at the time of the cut) -/
 
 /-- The AC state of the prefix before a cut at a time `≤ d` is the run's. -/
-theorem projAC_upTo_state (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+theorem projAC_upTo_state {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     {i : Nat} (hi : tr.time i ≤ d) : (tr.projAC.upTo d).state y i = tr.projAC.state y i :=
   ac_state_upTo (trA := tr.projAC) hrun.time_mono hi
 
 /-- **The AC run of the prefix** through `d ≥ 0`, for the validators honest at `d`. -/
-theorem acRun_upTo (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem acRun_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     (hd : 0 ≤ d) :
-    SA.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) := by
-  have h := goldilocks_ac_projection sp ro dg (H d) (tr.upTo d) proposer (hrun.upTo hd) (hnc.upTo d)
+    SA.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) ini := by
+  have h := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d)
   rwa [RunTrace.upTo_projAC] at h
 
 /-- A frame of a call of a node honest then is well formed, inside the blocks held while honest. -/
-theorem frameIn_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem frameIn_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y i ℓ) : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocksAt H :=
   have h := SA.frameIn_of_callAt (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
@@ -413,14 +416,16 @@ theorem frameIn_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoColl
   ⟨h.1, h.2.trans (upTo_subset hrun (hrun.time_nonneg i))⟩
 
 /-- The frame of a call of a node honest then is in the prefix's honest blocks at its time. -/
-theorem frame_upTo_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem frame_upTo_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y i ℓ) :
     ℓ.frame.tree ⊆ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) :=
   (SA.frameIn_of_callAt (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
     ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)).2
 
-theorem castAt_spec_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem castAt_spec_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e) :
     e.msg.val = y ∧ e.msg.slot = sp.slot (tr.time i) ∧ SA.joined sp e.readPoint (tr.time i) ∧
@@ -430,22 +435,23 @@ theorem castAt_spec_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : No
   SA.castAt_spec (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
     (sa_castAt_upTo.mpr ⟨le_rfl, hc⟩)
 
-theorem cast_head_fcRoot_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem cast_head_fcRoot_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e) :
     (∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.fcRoot Hd) ∧
       tr.time i ≤ sp.ts e.msg.slot + sp.Δ :=
-  cast_head_fcRoot (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
-    (sa_castAt_upTo.mpr ⟨le_rfl, hc⟩)
+  have ha := acRun_upTo hrun hnc (hrun.time_nonneg i)
+  cast_head_fcRoot_from ha.localRun ha.vstart hy (sa_castAt_upTo.mpr ⟨le_rfl, hc⟩)
 
-theorem frame_of_projAC_at (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+theorem frame_of_projAC_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y i ℓ) : ℓ.frame = Node.frame (tr.state y i) := by
   have h := frame_of_projAC (hrun.upTo (hrun.time_nonneg i)) hy
     (by rw [RunTrace.upTo_projAC]; exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
   rwa [RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
 
-theorem projAC_state_at (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+theorem projAC_state_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     {i : Nat} (hy : y ∈ H (tr.time i)) : tr.projAC.state y i = (tr.state y i).ac := by
   have h := projAC_state (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy i
   rwa [RunTrace.upTo_projAC, projAC_upTo_state hrun le_rfl,
@@ -466,15 +472,18 @@ theorem frame_slot_le_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
   SA.frame_slot_le sp (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
     ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
 
-theorem state_pool_slot_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem state_pool_slot_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) (σ : Nat) :
     ∀ v ∈ (tr.projAC.state y i).pool σ, v.slot = σ := by
-  have h := SA.state_pool_slot sp (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy i σ
+  have h := SA.state_pool_slot_from sp (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun
+      hrun.vstart hy i σ
   rwa [projAC_upTo_state hrun le_rfl] at h
 
 /-- **Lemma G at a pool**: a vote of the pool of a node honest at cut `i` whose validator is honest
 at `i` was cast by it, at a cut at which it was honest. -/
-theorem pool_vote_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem pool_vote_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {σ : Nat} {v : Vote sp.n}
     (hv : v ∈ (tr.projAC.state y i).pool σ) (hvH : v.val ∈ H (tr.time i)) :
     ∃ j < i, ∃ e, HVoteAt tr H v.val j e ∧ e.msg = v := by
@@ -485,7 +494,7 @@ theorem pool_vote_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCo
   exact ⟨j, hj, e, hVoteAt_iff.2 ⟨hrun.antitone hjd hvH, hve⟩, hev⟩
 
 /-- **One vote per slot** of a node honest at both casts. -/
-theorem one_vote_per_slot_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem one_vote_per_slot_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {x : Fin sp.n} {j j' : Nat} {e e' : SA.Em sp (List (FG.Att sp.n))}
     (hv : HVoteAt tr H x j e) (hv' : HVoteAt tr H x j' e') (hs : e.msg.slot = e'.msg.slot) :
     j = j' ∧ e = e' := by
@@ -495,13 +504,13 @@ theorem one_vote_per_slot_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   have hd := hrun.time_nonneg j'
   have hjd := hrun.time_mono hjj
   have hr := (acRun_upTo hrun hnc hd).localRun
-  exact SA.one_vote_per_slot sp _ ro _ _ _ hr x (hVoteAt_iff.1 hv').1 j j' e e'
+  exact SA.one_vote_per_slotU sp _ ro _ _ _ hr.toU x (hVoteAt_iff.1 hv').1 j j' e e'
     (sa_voteAt_upTo.mpr ⟨hjd, (hVoteAt_iff.1 hv).2⟩)
     (sa_voteAt_upTo.mpr ⟨le_rfl, (hVoteAt_iff.1 hv').2⟩) hs
 
 /-- Every ancestor (held while honest) of a block of the frame of a call is genesis or was
 accepted by the caller by then. -/
-theorem frame_anc_accepted_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem frame_anc_accepted_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree)
@@ -524,20 +533,29 @@ theorem ts_add_delta_nonneg (s : Nat) : (0 : Time) ≤ sp.ts s + sp.Δ :=
 
 /-- A permission held before every cut whose earlier cuts are at times `≤ d` holds at every state
 of the prefix through `d` (`upTo_state_exists`). -/
-theorem mayVote_upTo (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n} {s : Nat}
+theorem mayVote_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
+    {s : Nat}
     (hmv : ∀ i, (∀ k < i, tr.time k ≤ d) → (tr.state y i).ac.mayVote s = true) :
     ∀ i, ((tr.upTo d).state y i).ac.mayVote s = true := fun i => by
   obtain ⟨i₀, -, hb, h⟩ := Trace.upTo_state_exists tr hrun.time_mono y i
   rw [h]
   exact hmv i₀ hb
 
-/-- The permission of a node honest at `d ≥ 0` on a stock run, up to `d`: the static
-`mayVote_stock` on the prefix through `d`. -/
-theorem mayVote_stock_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hd : 0 ≤ d) {y : Fin sp.n} (hy : y ∈ H d) {s : Nat} :
+/-- The permission of a node honest at `d ≥ 0` up to `d`, from its start's permission: the static
+`mayVote_of_start` on the prefix through `d`. -/
+theorem mayVote_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) (hd : 0 ≤ d) {y : Fin sp.n} (hy : y ∈ H d) {s : Nat}
+    (hmv : (ini y : SA.SAState sp.n).mayVote s = true) :
     ∀ i, (∀ k < i, tr.time k ≤ d) → (tr.state y i).ac.mayVote s = true := fun i hb => by
   rw [← Trace.upTo_state tr y hb]
-  exact mayVote_stock (hrun.upTo hd) (hnc.upTo _) hy s i
+  exact mayVote_of_start (hrun.upTo hd) (hnc.upTo _) hy hmv i
+
+/-- The permission of a node honest at `d ≥ 0` on a stock run, up to `d`: `mayVote_at` at the
+initial starts. -/
+theorem mayVote_stock_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hd : 0 ≤ d) {y : Fin sp.n} (hy : y ∈ H d) {s : Nat} :
+    ∀ i, (∀ k < i, tr.time k ≤ d) → (tr.state y i).ac.mayVote s = true :=
+  mayVote_at hrun hnc hd hy rfl
 
 /-- The permission of a committee member honest at `d ≥ 0`, from the gate `hGate`. -/
 theorem mayVote_of_committee (hrun : Growing.GoldilocksRun proposer dg H tr)
@@ -549,7 +567,7 @@ theorem mayVote_of_committee (hrun : Growing.GoldilocksRun proposer dg H tr)
 
 /-- A node honest at `t_s + Δ`, awake and joined then, and permitted to vote in slot `s` before
 then, casts a slot-`s` vote by then, at a cut at which it is honest. -/
-theorem vote_of_awake_joined_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem vote_of_awake_joined_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {s : Nat} (hy : y ∈ H (sp.ts s + sp.Δ))
     (hmv : ∀ i, (∀ k < i, tr.time k ≤ sp.ts s + sp.Δ) → (tr.state y i).ac.mayVote s = true)
     (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
@@ -564,7 +582,7 @@ theorem vote_of_awake_joined_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 /-- The counted votes of an optimistic selection by a node honest at its check: each is of the
 slot, sent or admitted by the checker in `[t_s, t_s + 2Δ)`, with a head held while honest above the
 selection, genesis or accepted by the checker before `t_s + 2Δ`. -/
-theorem optimistic_writer_votes_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem optimistic_writer_votes_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {x : Fin sp.n} {i₀ s : Nat} (hx : x ∈ H (tr.time i₀))
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hO : SA.OptimisticLockAt tr.projAC x i₀ s C CV) :
@@ -578,7 +596,7 @@ theorem optimistic_writer_votes_at (hrun : Growing.GoldilocksRun proposer dg H t
   have hsub := upTo_subset hrun hd
   intro v hv
   obtain ⟨hvs, ⟨k, hk, hk1, hk2⟩, Hv, hHv, hHvr, hCHv, hacc⟩ :=
-    optimistic_writer_votes (acRun_upTo hrun hnc hd).localRun hx
+    optimistic_writer_votes (acRun_upTo hrun hnc hd).localRun (acRun_upTo hrun hnc hd).vstart hx
       ((sa_optimisticLockAt_upTo hrun.time_mono).mpr ⟨le_rfl, hO⟩) v hv
   obtain ⟨hkd, hk⟩ := (ac_sendOrAdmit_upTo hrun.time_mono).mp hk
   refine ⟨hvs, ⟨k, hrun.antitone hkd hx, hk, hk1, hk2⟩, Hv, hsub hHv, hHvr, hCHv.mono hsub,
@@ -588,7 +606,8 @@ theorem optimistic_writer_votes_at (hrun : Growing.GoldilocksRun proposer dg H t
 
 /-- A block of the frame of a call at a time `≤ d`, of a node honest at `d`, is in the prefix's
 honest blocks through `d`. -/
-theorem mem_upTo_of_frame (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n} {k : Nat}
+theorem mem_upTo_of_frame {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
+    {k : Nat}
     (hy : y ∈ H d) (hkd : tr.time k ≤ d) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y k ℓ) {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) :
     B ∈ (tr.upTo d).HonestBlocks (H d) := by
@@ -597,7 +616,7 @@ theorem mem_upTo_of_frame (hrun : Growing.GoldilocksRun proposer dg H tr) {y : F
 
 /-- A block a node honest at cut `i` accepted at a cut `≤ i` and that extends the frame's `Σ.F`
 (inside the blocks held while honest) is in the frame. -/
-theorem mem_tree_of_acceptAt_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem mem_tree_of_acceptAt_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {k i : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time i)) (hk : tr.projAC.AcceptAt y k B)
     (hki : k ≤ i) (hc : tr.projAC.CallAt y i ℓ) (hFB : Anc (tr.HonestBlocksAt H) ℓ.frame.F B) :
@@ -629,7 +648,7 @@ theorem pool_stamp_lt_top_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 
 /-- A block of the frame that a node honest at cut `i` accepted before `T ≤ tr.time i`, with its
 restarts up to `i` before `T`, has a stamp before `T`. -/
-theorem blockStamp_lt_of_acceptedBefore_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem blockStamp_lt_of_acceptedBefore_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) {T : Time}
@@ -637,8 +656,8 @@ theorem blockStamp_lt_of_acceptedBefore_at (hrun : Growing.GoldilocksRun propose
     (hrs : ∀ k ≤ i, tr.projAC.RestartAt y k → tr.time k < T) (hT : T ≤ tr.time i) :
     (tr.projAC.state y i).blockStamp B.root < SA.ETime.of T := by
   have hm := hrun.time_mono
-  have h := SA.blockStamp_lt_of_acceptedBefore sp
-    (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
+  have h := SA.blockStamp_lt_of_acceptedBefore_from sp
+    (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hrun.vstart hy
     ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc) hB
     (hacc.imp_right fun ⟨k, hk, hkT⟩ => ⟨k, (ac_acceptAt_upTo _).mpr ⟨(hkT.le.trans hT), hk⟩, hkT⟩)
     (fun k hk hrk => hrs k hk ((ac_restartAt_upTo _).mp hrk).2) (Or.inl hT)
@@ -672,7 +691,7 @@ theorem sync_before_forward_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 /-! ### Origins and stored locks -/
 
 /-- An origin of the prefix before cut `i` is an origin of the run before cut `i`. -/
-theorem originBefore_of_upTo (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem originBefore_of_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {s i : Nat}
     (h : Compose.OriginBefore (tr.upTo d) (H d) C s i) : OriginBefore tr H C s i := by
   obtain ⟨x, hx, k, hk, CV, hO⟩ := Compose.originBefore_iff.1 h
@@ -684,7 +703,8 @@ theorem originBefore_of_upTo (hrun : Growing.GoldilocksRun proposer dg H tr)
     exact originBefore_iff.2 ⟨x, k, CV, hk, hrun.antitone hkd hx, Or.inr hO⟩
 
 /-- A slow lock write of the prefix through `d` is one of the run, at a cut at a time `≤ d`. -/
-private theorem slowLockAt_of_upTo (hrun : Growing.GoldilocksRun proposer dg H tr) {x : Fin sp.n}
+private theorem slowLockAt_of_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {x : Fin sp.n}
     {i s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : SA.SlowLockAt (tr.projAC.upTo d) x i s B) :
     tr.time i ≤ d ∧ SA.SlowLockAt tr.projAC x i s B := by
@@ -697,7 +717,7 @@ private theorem slowLockAt_of_upTo (hrun : Growing.GoldilocksRun proposer dg H t
 /-- **A lock write sits below an origin of its label**, written by the same node at the same cut:
 a fast update and a slow lock keep a prefix of their update's confirmation, the result; an
 optimistic selection is an origin. -/
-theorem lock_below_origin_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem lock_below_origin_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {x : Fin sp.n} {i s : Nat} (hx : x ∈ H (tr.time i))
     {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : (∃ CV, SA.FastLockAt tr.projAC x i s C CV) ∨ SA.SlowLockAt tr.projAC x i s C) :
@@ -711,7 +731,7 @@ theorem lock_below_origin_at (hrun : Growing.GoldilocksRun proposer dg H tr)
       ((SA.deepest_mem hdeep).1.1.2.2).mono (frameIn_at hrun hnc hx hu.1).2⟩
 
 /-- A lock write within `b` sits below an origin of its label within `b`. -/
-theorem LockWithin.below_origin (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem LockWithin.below_origin {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time}
     (h : LockWithin tr H C s b) : ∃ O, OriginWithin tr H O s b ∧ Anc (tr.HonestBlocksAt H) C O := by
   obtain ⟨x, i, hx, hib, h⟩ := lockWithin_iff.1 h
@@ -722,7 +742,8 @@ theorem LockWithin.below_origin (hrun : Growing.GoldilocksRun proposer dg H tr)
 before cut `i` whose earlier cuts are at times `≤ t`, holds each stored lock on a block of its tree
 that is below a lock write of the lock's slot within `t` (`SA.fast_lock_provenance` and
 `SA.slow_lock_provenance` on the prefix through `t`: the holder wrote it at an earlier cut). -/
-theorem lock_write_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem lock_write_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t)
     (hy : y ∈ H t) :
     ∀ l ∈ (tr.state y i).ac.locks, ∃ L ∈ (tr.state y i).fg.tree, L.root = l.block ∧
@@ -742,9 +763,9 @@ theorem lock_write_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoC
       ∃ L' ∈ (tr.upTo t).HonestBlocks (H t), L'.root = l.block ∧
         Anc ((tr.upTo t).HonestBlocks (H t)) L' B := by
     cases hf : l.fast
-    · obtain ⟨j, hj, B, h, hB⟩ := SA.slow_lock_provenance hr hy i l hl' hf
+    · obtain ⟨j, hj, B, h, hB⟩ := SA.slow_lock_provenance_from hr hrun.vstart hy i l hl' hf
       exact ⟨j, hj, B, Or.inr h, hB⟩
-    · obtain ⟨j, hj, B, CV, h, hB⟩ := SA.fast_lock_provenance hr hy i l hl' hf
+    · obtain ⟨j, hj, B, CV, h, hB⟩ := SA.fast_lock_provenance_from hr hrun.vstart hy i l hl' hf
       exact ⟨j, hj, B, Or.inl ⟨CV, h⟩, hB⟩
   obtain ⟨j, -, B, h, L', hL', hL'r, hL'B⟩ := hw
   obtain rfl : L' = L := hU.1 hL' hLU (hL'r.trans hLr.symm)

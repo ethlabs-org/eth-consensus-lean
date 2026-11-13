@@ -710,6 +710,7 @@ private theorem goldilocksRun_truncH
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (b : Time) :
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg (truncH H b) tr where
   stock := hrun.stock
+  vstart := hrun.vstart
   antitone := truncH_antitone hrun.antitone b
   init y hy := hrun.init y hy.1
   grouped y i c hc hy := hrun.grouped y i c hc hy.1

@@ -379,35 +379,45 @@ abbrev ACLocalRunUS {ro : ReplayOrder sp FGP} (m : WriteMode) (u : Nat → Set L
     (tr : SATrace sp FGP ro) : Prop :=
   ACLocalRunStep m u (fun i => stepWithMS sp ro m (st i)) H U tr
 
-/-- The states reached at validator `self` inside `U` by calls under the call law, each executing
-`stepWith` at locks related to its unlock input (`ACInterface.ReachableAt`, with the unlock
-given). -/
-inductive ReachableAtU {ro : ReplayOrder sp FGP} (m : WriteMode) (self : Fin sp.n)
-    (U : Set (Blk sp.n FGP)) :
+/-- The states reached at validator `self` inside `U` from the start `s₀` by calls under the call
+law, each executing `stepWith` at locks related to its unlock input
+(`ACInterface.ReachableAtFrom`, with the unlock given). -/
+inductive ReachableAtUFrom {ro : ReplayOrder sp FGP} (m : WriteMode) (s₀ : SAState sp.n)
+    (self : Fin sp.n) (U : Set (Blk sp.n FGP)) :
     SAState sp.n → Frm sp.n FGP → Time → Prop
-  /-- The initial state, with the initial frame, at time `0`. -/
+  /-- The start, with the initial frame, at time `0`. -/
   | init (Φ : Frm sp.n FGP) : (goldilocksSA sp FGP ro).InitialFrame Φ →
       (goldilocksSA sp FGP ro).FrameIn U Φ →
-      ReachableAtU m self U (SAState.initial sp.genesisRoot) Φ 0
+      ReachableAtUFrom m s₀ self U s₀ Φ 0
   /-- One more call at locks `L₁` related to its unlock input. -/
   | step {A : SAState sp.n} {Φ Φ' : Frm sp.n FGP} {t t' : Time}
-      (c : (goldilocksSA sp FGP ro).Call) (L₁ : Set Lock) : ReachableAtU m self U A Φ t → t ≤ t' →
+      (c : (goldilocksSA sp FGP ro).Call) (L₁ : Set Lock) :
+      ReachableAtUFrom m s₀ self U A Φ t → t ≤ t' →
       (goldilocksSA sp FGP ro).CallOK U Φ t' c Φ' →
       UnlockRel sp (callInputM sp m A Φ' t' c).locks Φ' t' ((sp.slot t' : Int) - 1)
         (callViewM sp m A Φ' t' c) L₁ →
-      ReachableAtU m self U (stepWithM sp ro m self L₁ A Φ' t' c).1 Φ' t'
+      ReachableAtUFrom m s₀ self U (stepWithM sp ro m self L₁ A Φ' t' c).1 Φ' t'
 
-/-- An AC trace of the SA with the unlock given, its contract and the honest-object facts
-(`ACRun` with the unlock given). -/
+/-- The states reached at validator `self` inside `U` by calls under the call law, each executing
+`stepWith` at locks related to its unlock input (`ACInterface.ReachableAt`, with the unlock
+given): `ReachableAtUFrom` from the initial state. -/
+abbrev ReachableAtU {ro : ReplayOrder sp FGP} (m : WriteMode) :=
+  ReachableAtUFrom (ro := ro) m (SAState.initial sp.genesisRoot)
+
+/-- An AC trace of the SA with the unlock given, its contract from the AC starts `ini` and the
+honest-object facts (`ACRun` with the unlock given). -/
 structure ACRunU (m : WriteMode) (u : Nat → Set Lock) {ro : ReplayOrder sp FGP}
     (selectedProposer : Nat → Fin sp.n) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
-    (U : Set (Blk sp.n FGP)) : Prop where
+    (U : Set (Blk sp.n FGP))
+    (ini : Fin sp.n → SAState sp.n := fun _ => (goldilocksSA sp FGP ro).initial) : Prop where
   /-- Interim population specialization; removed in place by C2. -/
   stock : sp.committeeSize = sp.n
   /-- The AC trace contract with the unlock given. -/
-  localRun : ACLocalRunU m u H U tr
+  localRun : ACLocalRunU m u H U tr ini
   /-- The honest-object facts. -/
   honest : HonestObjects selectedProposer tr H
+  /-- The AC starts are starts up to the vote permission. -/
+  vstart : ∀ y, VoteStart sp.genesisRoot (ini y)
 
 /-- `ACRunU` from the starts `st`: an AC trace with the contract `ACLocalRunUS` and the
 honest-object facts. -/

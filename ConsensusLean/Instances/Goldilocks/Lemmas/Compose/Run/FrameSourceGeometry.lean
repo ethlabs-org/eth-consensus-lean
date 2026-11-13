@@ -50,7 +50,7 @@ theorem HonestRowsSourced.above {G : A.Blk → Prop} {y : Fin P.n} {i : Nat}
   exact rowsAbove_iff.2 fun X hX a ha hav _ _ => h X hX a ha hav
 
 /-- A source's named entry lies on its held chain. -/
-theorem honest_source_entry (hr : Node.LocalRun proposer dg H sg tr)
+theorem honest_source_entry {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     {D : A.Blk} {T : Nat} (hD : IsHonestSource tr H D T)
     {E : A.Blk} (hE : E ∈ tr.HonestBlocks H) (hET : E.root = T) :
@@ -192,7 +192,7 @@ private theorem honest_mem (hf : 2 * Hᶜ.ncard < P.n) {Q : Finset (Fin P.n)}
   omega
 
 /-- A crossing quorum supplies an honest row at the crossing's entry. -/
-theorem frame_crossing_source_of (hr : Node.LocalRun proposer dg H sg tr)
+theorem frame_crossing_source_of {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     (hbound : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {G : A.Blk → Prop} {h₀ : Nat} (hsrc : RowsAbove tr H G y i h₀)
@@ -211,7 +211,7 @@ theorem frame_crossing_source_of (hr : Node.LocalRun proposer dg H sg tr)
   exact ⟨E, hE, hEW, hEh, hET, D, hD, haT ▸ hDs⟩
 
 /-- The justification entry has an honest source whenever its height is positive. -/
-theorem justified_honest_source_of (hr : Node.LocalRun proposer dg H sg tr)
+theorem justified_honest_source_of {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     (hbound : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {G : A.Blk → Prop} (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
@@ -234,7 +234,7 @@ theorem justified_honest_source_of (hr : Node.LocalRun proposer dg H sg tr)
   rw [← hEJ]
   exact ⟨hEh.trans hZj, hET, D, hD, hEE' ▸ hDs⟩
 
-theorem justified_honest_source_before (hr : Node.LocalRun proposer dg H sg tr)
+theorem justified_honest_source_before {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     (hbound : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {G : A.Blk → Prop} (hsrc : HonestRowsSourced tr H G y i) (hj : 1 ≤ (tr.state y i).fg.hj) :
@@ -243,7 +243,7 @@ theorem justified_honest_source_before (hr : Node.LocalRun proposer dg H sg tr)
       ∃ D, G D ∧ IsHonestSource tr H D (tr.state y i).fg.J.root :=
   justified_honest_source_of hr hf hbound hy (hsrc.above _) hj
 
-theorem frame_crossing_source_before (hr : Node.LocalRun proposer dg H sg tr)
+theorem frame_crossing_source_before {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     (hbound : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {G : A.Blk → Prop} (hsrc : HonestRowsSourced tr H G y i)
@@ -255,7 +255,7 @@ theorem frame_crossing_source_before (hr : Node.LocalRun proposer dg H sg tr)
   frame_crossing_source_of hr hf hbound hy (hsrc.above 0) hW (Nat.zero_le _) hj1 hj2
 
 /-- Compatibility with all sources implies compatibility with the justification. -/
-theorem J_compatible_before (hr : Node.LocalRun proposer dg H sg tr)
+theorem J_compatible_before {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     (hbound : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {G : A.Blk → Prop} (hsrc : HonestRowsSourced tr H G y i) {B : A.Blk}

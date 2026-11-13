@@ -16,6 +16,90 @@ namespace Consensus.Goldilocks.SA
 
 variable {n : Nat} {FGP : Type} {ACP : Type}
 
+/-- The characterisation of a start up to the vote permission (`VoteStart`,
+`Milestones/Spec/SA/Trace`). The AC invariants of the initial state that do not read `mayVote`
+hold at every such start. -/
+theorem voteStart_iff {g : Nat} {s : SAState n} :
+    VoteStart g s ↔ ∃ m, s = { SAState.initial g with mayVote := m } :=
+  Iff.rfl
+
+/-- The pools of a start up to the vote permission are empty. -/
+theorem VoteStart.pool {g : Nat} {s : SAState n} (h : VoteStart g s) (σ : Nat) :
+    s.pool σ = [] := by
+  obtain ⟨m, rfl⟩ := h
+  rfl
+
+/-- An AC run from the start `s₀` is a run of the AC whose initial state is `s₀`: the states
+reachable from `s₀` are the reachable states of `{A with initial := s₀}`. -/
+theorem _root_.Consensus.Goldilocks.ACInterface.reachableAtFrom_iff {P : Params}
+    {A : ACInterface P FGP} {s₀ : A.State} {self : Fin P.n} {U : Set A.Blk} {s : A.State}
+    {Φ : A.Frm} {t : Time} :
+    A.ReachableAtFrom s₀ self U s Φ t ↔
+      ({ A with initial := s₀ } : ACInterface P FGP).ReachableAt self U s Φ t := by
+  constructor
+  · intro h
+    induction h with
+    | init Φ hi hin => exact .init (A := { A with initial := s₀ }) Φ hi hin
+    | step c _ ht hok ih =>
+      cases c with
+      | tick => exact .step (A := { A with initial := s₀ }) .tick ih ht hok
+      | proposal => exact .step (A := { A with initial := s₀ }) .proposal ih ht hok
+      | toFG => exact .step (A := { A with initial := s₀ }) .toFG ih ht hok
+      | message m => exact .step (A := { A with initial := s₀ }) (.message m) ih ht hok
+      | block B => exact .step (A := { A with initial := s₀ }) (.block B) ih ht hok
+      | restart => exact .step (A := { A with initial := s₀ }) .restart ih ht hok
+  · intro h
+    refine ACInterface.ReachableAtFrom.rec (A := { A with initial := s₀ })
+      (motive := fun s Φ t _ => A.ReachableAtFrom s₀ self U s Φ t)
+      (fun Φ hi hin => .init (A := A) Φ hi hin) (fun c _ ht hok ih => ?_) h
+    cases c with
+    | tick => exact .step (A := A) .tick ih ht hok
+    | proposal => exact .step (A := A) .proposal ih ht hok
+    | toFG => exact .step (A := A) .toFG ih ht hok
+    | message m => exact .step (A := A) (.message m) ih ht hok
+    | block B => exact .step (A := A) (.block B) ih ht hok
+    | restart => exact .step (A := A) .restart ih ht hok
+
+/-- A call of `{A with initial := s₀}` as the same call of `A`. -/
+def _root_.Consensus.Goldilocks.ACInterface.Call.ofStart {P : Params} {A : ACInterface P FGP}
+    {s₀ : A.State} : ({ A with initial := s₀ } : ACInterface P FGP).Call → A.Call
+  | .tick => .tick
+  | .proposal => .proposal
+  | .toFG => .toFG
+  | .message m => .message m
+  | .block B => .block B
+  | .restart => .restart
+
+/-- A call of `A` as the same call of `{A with initial := s₀}`. -/
+def _root_.Consensus.Goldilocks.ACInterface.Call.toStart {P : Params} {A : ACInterface P FGP}
+    {s₀ : A.State} : A.Call → ({ A with initial := s₀ } : ACInterface P FGP).Call
+  | .tick => .tick
+  | .proposal => .proposal
+  | .toFG => .toFG
+  | .message m => .message m
+  | .block B => .block B
+  | .restart => .restart
+
+theorem _root_.Consensus.Goldilocks.ACInterface.Call.ofStart_toStart {P : Params}
+    {A : ACInterface P FGP} {s₀ : A.State} (c : A.Call) : (c.toStart (s₀ := s₀)).ofStart = c := by
+  cases c <;> rfl
+
+/-- The call law of `{A with initial := s₀}` is the call law of `A`. -/
+theorem _root_.Consensus.Goldilocks.ACInterface.callOK_ofStart {P : Params}
+    {A : ACInterface P FGP} {s₀ : A.State} {U : Set A.Blk} {Φ Φ' : A.Frm} {t : Time}
+    {c : ({ A with initial := s₀ } : ACInterface P FGP).Call} :
+    ({ A with initial := s₀ } : ACInterface P FGP).CallOK U Φ t c Φ' ↔
+      A.CallOK U Φ t c.ofStart Φ' := by
+  cases c <;> rfl
+
+/-- A call of `{A with initial := s₀}` steps as the same call of `A`. -/
+theorem _root_.Consensus.Goldilocks.ACInterface.step_ofStart {P : Params}
+    {A : ACInterface P FGP} {s₀ : A.State} {self : Fin P.n} {s : A.State} {Φ : A.Frm} {t : Time}
+    {c : ({ A with initial := s₀ } : ACInterface P FGP).Call} :
+    ({ A with initial := s₀ } : ACInterface P FGP).step self s Φ t c =
+      A.step self s Φ t c.ofStart := by
+  cases c <;> rfl
+
 /-- F.2 (b) for blocks of the SA (`Anc.total`). -/
 theorem anc_total {S : Set (Blk n FGP)} {A A' C : Blk n FGP} (hS : Coherent S)
     (h : Anc S A C) (h' : Anc S A' C) : Anc S A A' ∨ Anc S A' A :=

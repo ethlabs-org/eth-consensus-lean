@@ -25,6 +25,7 @@ variable {wm : SA.WriteMode}
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → SAState sp.n}
 
 theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ : Nat}
     (h : x ∈ A.pool σ) : x ∈ (admitVote sp A t v).pool σ := by
@@ -37,9 +38,10 @@ theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ :
     · subst he; exact List.mem_append_left _ h
     · exact h
 
-/-- `merged_vote_slot` with the unlock given. -/
+/-- `merged_vote_slot` with the unlock given, from starts up to the vote permission. -/
 theorem merged_vote_slotU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {s : Nat} :
     ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s := by
@@ -51,7 +53,7 @@ theorem merged_vote_slotU
     have hpost : v ∈ (tr.post i).pool s := by
       rw [post_of_castAtU hr hy hc, optimisticConfirmationM_keep _ optimistic_pool]
       exact mem_admitVote_pool (by simpa using hv)
-    refine state_pool_slotU sp hr hy (i + 1) s v ?_
+    refine state_pool_slotU_from sp hr hini hy (i + 1) s v ?_
     rw [Trace.state]
     split_ifs with h
     · exact hpost
@@ -59,17 +61,18 @@ theorem merged_vote_slotU
   · have := (frame_validPayloadU sp hr hy hc.1 B hB).1 v hv
     exact Nat.succ_injective (this.trans hBs)
 
-/-- Every vote of an honest voter's merged view of slot `s + 1` has slot `s`. -/
-theorem merged_vote_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+/-- Every vote of an honest voter's merged view of slot `s + 1` has slot `s`, from starts up to
+the vote permission. -/
+theorem merged_vote_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {s : Nat} :
     ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s :=
-  merged_vote_slotU (hr := hr.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc)
-      (s := s)
+  merged_vote_slotU hr.toU hini hy hc
 
 /-- `merged_support_subset` with the unlock given. -/
 theorem merged_support_subsetU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (σ : Nat) :
     (mergedVoteView sp e.readPoint ℓ.frame σ).support ⊆
@@ -79,7 +82,8 @@ theorem merged_support_subsetU
   · exact Or.inr ⟨B, hB, hBs, (frame_validPayloadU sp hr hy hc.1 B hB).2 v hv⟩
 
 /-- The support of an honest voter's merged view is among its votes. -/
-theorem merged_support_subset (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+theorem merged_support_subset (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (σ : Nat) :
     (mergedVoteView sp e.readPoint ℓ.frame σ).support ⊆
@@ -98,29 +102,30 @@ theorem result_majority {X : Fin sp.n} {i₀ s : Nat} {C : Blk sp.n FGP} {CV : S
   rintro w ⟨hw, x, ⟨hx, hres⟩, hval, -, hanc⟩
   exact ⟨x, ⟨hx, hval ▸ hw, hres, hanc⟩, hval⟩
 
-/-- `merged_voters_subset` with the unlock given. -/
+/-- `merged_voters_subset` with the unlock given, from starts up to the vote permission. -/
 theorem merged_voters_subsetU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {s : Nat} {P : List (Vote sp.n)}
     (hd : ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ P ∨ v.val ∈ equivocators {w | w ∈ P}) :
     voters (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes ⊆ voters {v | v ∈ P} := by
   rintro w ⟨v, hv, rfl⟩
-  rcases hd v hv (merged_vote_slotU hr hy hc v hv) with h | ⟨x, hx, -, -, -, hxv, -⟩
+  rcases hd v hv (merged_vote_slotU hr hini hy hc v hv) with h | ⟨x, hx, -, -, -, hxv, -⟩
   · exact ⟨v, h, rfl⟩
   · exact ⟨x, hx, hxv⟩
 
 /-- Under the writer-pool condition (d), the voters of `y`'s merged view are participants at
-`X`. -/
-theorem merged_voters_subset (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+`X`, from starts up to the vote permission. -/
+theorem merged_voters_subset (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {s : Nat} {P : List (Vote sp.n)}
     (hd : ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ P ∨ v.val ∈ equivocators {w | w ∈ P}) :
     voters (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes ⊆ voters {v | v ∈ P} :=
-  merged_voters_subsetU (hr := hr.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc)
-      (s := s) (P := P) (hd := hd)
+  merged_voters_subsetU hr.toU hini hy hc hd
 
 /-- In a well-formed frame, `lookup` finds every block of the tree by its root. -/
 theorem lookup_of_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {B : Blk sp.n FGP}
@@ -175,7 +180,7 @@ private theorem onTick_readPoint
 
 /-- `readPoint_blockStamp` with the unlock given. -/
 theorem readPoint_blockStampU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {r : Nat}
     (hrB : ∀ B, ℓ.call = .block B → r ≠ B.root) :
@@ -257,9 +262,10 @@ theorem voterBlockTree_of_acceptedBefore (hr : ACLocalRun (goldilocksSA sp FGP r
     B ∈ voterBlockTree sp e.readPoint ell.frame e.msg.slot :=
   ⟨hB, Or.inl (readPoint_blockStamp_lt_of_acceptedBefore hr hy hc hB hacc hrs ht)⟩
 
-/-- `carried_supporter` with the unlock given. -/
+/-- `carried_supporter` with the unlock given, from starts up to the vote permission. -/
 theorem carried_supporterU
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
     (hs : e.msg.slot = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree) {v : Vote sp.n}
     (hvs : v.slot = s) (hheld : HeldBefore e.readPoint v (sp.ts s + 3 * sp.Δ))
@@ -343,7 +349,8 @@ theorem carried_supporterU
         Anc.mono (Set.insert_subset_iff.2 ⟨hHvU, hΦ'U⟩) (hst.F_anc_F'.trans hst.F'_anc_B)
       exact hst.new (mem_tree_of_acceptAtU sp hr hy ⟨ℓk, hck, hkB⟩ hkj hc' hanc)
   -- the vote is resolved before the freeze
-  have hbs := blockStamp_lt_of_acceptedBeforeU sp hr hy hc.1 hHvt hacc hrs (Or.inl hT.le)
+  have hbs := blockStamp_lt_of_acceptedBeforeU_from sp hr hrun.vstart hy hc.1 hHvt hacc hrs
+    (Or.inl hT.le)
   rw [hHvr, ← readPoint_blockStampU hr hy hc hne] at hbs
   have hfz : freeze sp (s + 1) = sp.ts s + 3 * sp.Δ := by simp [freeze]
   have hres : resolutionTime e.readPoint ℓ.frame v < ETime.of (freeze sp (s + 1)) := by
@@ -364,8 +371,10 @@ holds, received before the vote freeze `t_s + 3Δ`, whose head (of slot at most 
 block `C` of the voter's tree and was accepted by the voter before the freeze, and whose
 validator does not equivocate in the voter's merged view, makes that validator a supporter of
 `C` there (the head is still in the voter's tree, and the vote is resolved before the freeze:
-the voter is joined, so its restarts were before `t_s`). -/
-theorem carried_supporter (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+the voter is joined, so its restarts were before `t_s`). From starts up to the vote
+permission. -/
+theorem carried_supporter (hrun : ACRun proposer tr H U ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
     (hs : e.msg.slot = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree) {v : Vote sp.n}
     (hvs : v.slot = s) (hheld : HeldBefore e.readPoint v (sp.ts s + 3 * sp.Δ))
@@ -373,13 +382,12 @@ theorem carried_supporter (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y 
       AcceptedBefore tr y Hv (sp.ts s + 3 * sp.Δ))
     (hneq : v.val ∉ equivocators (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes) :
     v.val ∈ supporters ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s C :=
-  carried_supporterU (hrun := hrun.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc)
-      (s := s) (hs := hs) (C := C) (hC := hC) (v := v) (hvs := hvs) (hheld := hheld)
-          (hhead := hhead) (hneq := hneq)
+  carried_supporterU hrun.toU hy hc hs hC hvs hheld hhead hneq
 
-/-- `carried_cover` with the unlock given. -/
+/-- `carried_cover` with the unlock given, from starts up to the vote permission. -/
 theorem carried_coverU
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
     (hs : e.msg.slot = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree) {CV : Set (Vote sp.n)}
     (hcarry : CarryAt tr U y i e s CV) {v : Vote sp.n} (hv : v ∈ CV) (hvs : v.slot = s)
@@ -408,17 +416,16 @@ theorem carried_coverU
 /-- **A carried vote covers its validator.** The validator of a slot-`s` vote that `Carry_y`
 covers, whose head (of slot at most `s`) extends a block `C` of the voter's tree, is a supporter of
 `C` in the voter's merged view or an equivocator there (two other held votes of it, or a second
-vote beside the held one). -/
-theorem carried_cover (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+vote beside the held one). From starts up to the vote permission. -/
+theorem carried_cover (hrun : ACRun proposer tr H U ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
     (hs : e.msg.slot = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree) {CV : Set (Vote sp.n)}
     (hcarry : CarryAt tr U y i e s CV) {v : Vote sp.n} (hv : v ∈ CV) (hvs : v.slot = s)
     (hhead : ∃ Hv ∈ U, Hv.root = v.head ∧ Hv.slot ≤ s ∧ Anc U C Hv) :
     v.val ∈ supporters ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s C ∪
       equivocators (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes :=
-  carried_coverU (hrun := hrun.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc)
-      (s := s) (hs := hs) (C := C) (hC := hC) (CV := CV) (hcarry := hcarry) (v := v) (hv := hv)
-          (hvs := hvs) (hhead := hhead)
+  carried_coverU hrun.toU hy hc hs hC hcarry hv hvs hhead
 
 /-- `counted_supporters` with the unlock given. -/
 theorem counted_supportersU
@@ -451,8 +458,10 @@ theorem counted_supportersU
       v₁.val = w → v₂.val = w → v₁ = v₂ := by
     intro w hw v₁ v₂ h₁ h₂ hv₁ hv₂
     by_contra hne
-    rcases hd v₁ h₁ (merged_vote_slotU hr hy hc v₁ h₁) with h₁' | h₁'
-    · rcases hd v₂ h₂ (merged_vote_slotU hr hy hc v₂ h₂) with h₂' | h₂'
+    rcases hd v₁ h₁ (merged_vote_slotU hr (fun _ => voteStart_initial _) hy hc v₁ h₁) with
+      h₁' | h₁'
+    · rcases hd v₂ h₂ (merged_vote_slotU hr (fun _ => voteStart_initial _) hy hc v₂ h₂) with
+        h₂' | h₂'
       · exact hw ⟨v₁, h₁', v₂, h₂', hne, hv₁, hv₂⟩
       · exact hw (hv₂ ▸ h₂')
     · exact hw (hv₁ ▸ h₁')

@@ -73,15 +73,19 @@ structure HonestObjects (selectedProposer : Nat → Fin sp.n)
     B.proposer ∈ H (max (tr.time i) (tr.time i')) → B.proposer = B'.proposer →
     B.slot = B'.slot → B = B'
 
-/-- An AC trace of the SA with its contract and the honest-object facts under growing faults. -/
+/-- An AC trace of the SA with its contract, from the AC starts `ini`, and the honest-object
+facts under growing faults. -/
 structure ACRun (selectedProposer : Nat → Fin sp.n)
-    (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) : Prop where
+    (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
+    (ini : Fin sp.n → SAState sp.n := fun _ => (goldilocksSA sp FGP ro).initial) : Prop where
   /-- Interim population specialization; removed in place by C2. -/
   stock : sp.committeeSize = sp.n
   /-- The AC trace contract. -/
-  localRun : Consensus.Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr
+  localRun : Consensus.Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr ini
   /-- The honest-object facts. -/
   honest : HonestObjects selectedProposer tr H
+  /-- The AC starts are starts up to the vote permission. -/
+  vstart : ∀ y, VoteStart sp.genesisRoot (ini y)
 
 end Growing
 

@@ -36,10 +36,12 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {d : Time}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- A vote compatibility of a vote cast in the prefix by a node honest at `d`, with a block of the
 prefix's honest blocks, comes down into the prefix. -/
-private theorem voteCompat_upTo (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+private theorem voteCompat_upTo
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hd : 0 ≤ d) {x : Fin sp.n} (hx : x ∈ H d) {k : Nat}
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.VoteAt (tr.upTo d).projAC x k e)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.upTo d).HonestBlocks (H d))
@@ -47,7 +49,7 @@ private theorem voteCompat_upTo (hrun : Consensus.Goldilocks.Growing.GoldilocksR
     VoteCompat ((tr.upTo d).HonestBlocks (H d)) e.msg B := by
   obtain ⟨Hd, hHd, hHdr, hcomp⟩ := voteCompat_iff.1 h
   obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := SA.honest_head
-    (goldilocks_ac_projection sp ro dg (H d) (tr.upTo d) proposer (hrun.upTo hd) (hnc.upTo d))
+    (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d))
     hx hv
   obtain rfl : Hd = Hd₂ := (honestBlocksAt_coherent hrun hnc).1 hHd (upTo_subset hrun hd hHd₂)
     (hHdr.trans hHd₂r.symm)
@@ -58,7 +60,7 @@ node honest then, with `B` in the frame's tree, `G ⊆ H (t_j)` and `2·|Gᶜ| <
 slot `slot(t_j) − 1` cast before `j` by a member of `G` has a head compatible with `B`, the unlock
 target of `B` at the call's view is `B`. -/
 theorem unlockKeeps_of_voteCompat_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {G : Set (Fin sp.n)} {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     (hG : G ⊆ H (tr.time j)) (hf : 2 * Gᶜ.ncard < sp.n) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ (tr.state y j).fg.toFrame.tree)
@@ -82,7 +84,7 @@ theorem unlockKeeps_of_voteCompat_at
   have := h ℓ ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
   rwa [hst] at this
 
-variable {D : OutageLockPremises tr H proposer dg}
+variable {D : OutageLockPremises tr H proposer dg ini}
 
 namespace OutageVoteInv
 
@@ -101,7 +103,7 @@ theorem unlockKeeps_at {k : Nat} (hvi : OutageVoteInv D k) {y : Fin sp.n}
       fun _ => ⟨hx.1, hx.2⟩
 
 /-- A cut of a node at a slot at most `j₀ + k`, with an honest call there, is at a time `≤ z`. -/
-private theorem time_le_z (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n} {k : Nat}
+private theorem time_le_z (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n} {k : Nat}
     (hx : x ∈ H (tr.time k)) (hc : tr.IsCall x k) (hs : sp.slot (tr.time k) ≤ D.j₀ + sp.k) :
     tr.time k ≤ D.z := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -214,7 +216,7 @@ theorem vote_extends_of_prot_at {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.
         exact this)
     ⟨l, hl', hlj, hle, B, hB, hBr, hPB⟩
   obtain ⟨Hd, hHd, hHdr, hPHd⟩ := SA.castAt_head_anc hr hx hcast (Or.inl hC)
-    (SA.castAt_compatible_of_live hr hx hcast (Or.inl hC)) hPC
+    (SA.castAt_compatible_of_live hr hrun.vstart hx hcast (Or.inl hC)) hPC
   exact ⟨Hd, hΦU hHd, hHdr, hPHd.mono hΦU⟩
 
 end OutageVoteInv

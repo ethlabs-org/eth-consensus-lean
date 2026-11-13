@@ -27,6 +27,7 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Strictly above `P` in the node's justification cache. -/
 def HiAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
@@ -38,7 +39,7 @@ theorem hiAt_iff {P : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {i : Nat}
       Anc (tr.HonestBlocksAt H) P (tr.state y i).fg.J ∧ (tr.state y i).fg.J.root ≠ P.root :=
   Iff.rfl
 
-variable (D : OutageLockPremises tr H proposer dg)
+variable (D : OutageLockPremises tr H proposer dg ini)
 
 /-- **G3′** at a read time: under Hi at cut `k ≤ i`, every block of the node's tree at state
 height at least `h_j + 1` is strictly above `P`. -/

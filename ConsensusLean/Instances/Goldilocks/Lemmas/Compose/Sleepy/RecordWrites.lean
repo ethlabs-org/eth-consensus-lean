@@ -199,7 +199,8 @@ variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (SA.Blk sp.n FG
 
 /-- **The record writes of a call**: every candidate is the result of the call's update or the
 selection of one of its optimistic checks. -/
-theorem call_writes_guarded (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+theorem call_writes_guarded {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr ini)
+    {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     Writes ℓ.frame (fun C => ∃ s CV,
       (SA.ResultAt tr x i s C CV ∧
@@ -256,7 +257,7 @@ theorem call_writes_guarded (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr)
       (hr.time_nonneg i)).2.2.1
 
 /-- Forgetting the regular update's non-veto guard gives the original write interface. -/
-theorem call_writes (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+theorem call_writes {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     Writes ℓ.frame (fun C => ∃ s CV, SA.ResultAt tr x i s C CV ∨ SA.OptimisticLockAt tr x i s C CV)
       (tr.state x i).latestConfirmed (tr.post i).latestConfirmed := by

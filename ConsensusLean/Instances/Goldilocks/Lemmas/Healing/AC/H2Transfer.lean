@@ -166,7 +166,8 @@ theorem raw_slow_first_votes (hI : InclusionRun tr H U proposer g t₀) {x : Fin
       refine carryAt_of_writer_catch hr (hI.syncAC le_rfl (sp.ts j + 2 * sp.Δ)) (by
           linarith only [hΔ, hg, hjt])
         le_rfl hx hy hca hes fun v hv => ?_
-      obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := Compose.result_writer hr hx hres v hv
+      obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := Compose.result_writer hr
+        (fun _ => SA.voteStart_initial _) hx hres v hv
       have hFHv : Anc U ℓ.frame.F Hv := hFB.trans (hDC.trans hCHv)
       refine ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, ?_⟩
       rcases h₃ with hgen | ⟨kw, hkw, hkwt⟩
@@ -487,7 +488,8 @@ theorem raw_first_proposals (hI : InclusionRun tr H U proposer g t₀) {B : Blk 
         · exact anc_total hU hYO h
     exact result_first_proposal hrun hX hres hBC hx hc hslot hprop hV
       (fun v hv => by
-        obtain ⟨h₁, h₂, h₃⟩ := Compose.result_writer hr hX hres v hv
+        obtain ⟨h₁, h₂, h₃⟩ := Compose.result_writer hr
+          (fun _ => SA.voteStart_initial _) hX hres v hv
         exact hP hX hBC v h₁ h₂ h₃)
       (hW hX hupd) (lowLocksCompatible_iff.2 fun l hl hlive _ => hall l hl hlive)
       (highLocksCompatible_iff.2 fun l hl hlive _ => hall l hl hlive)

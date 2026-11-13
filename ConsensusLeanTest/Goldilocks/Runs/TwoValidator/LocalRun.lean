@@ -469,6 +469,7 @@ theorem run_goldilocksRun : GoldilocksRun prop dg Set.univ run where
   stock := rfl
   toLocalRun := run_localRun
   genesis_root_ok := dg_genesis
+  vstart := fun _ => SA.voteStart_initial _
   carried_vote_unforgeable y _ i B := by
     rintro ⟨acc, hc⟩ v hv -
     obtain ⟨t, j, k, p, -, -, rfl, hp, hsk, -⟩ := sk_of_label hc.2

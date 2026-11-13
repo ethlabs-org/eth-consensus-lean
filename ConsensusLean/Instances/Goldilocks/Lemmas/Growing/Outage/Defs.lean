@@ -73,9 +73,11 @@ theorem coverBaseAt_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n
         (⟨L.root, j, f, j + sp.k⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks :=
   Iff.rfl
 
-/-- **The premise package of the outage lock module under growing faults**, at trace level. -/
+/-- **The premise package of the outage lock module under growing faults**, at trace level, from
+the starts `ini`. -/
 structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) where
+    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (ini : Fin sp.n → (goldilocksNode sp ro).State) where
   /-- The outage start and stop. -/
   b₀ : Time
   b₁ : Time
@@ -91,7 +93,9 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin
   /-- The cohort awake at `a`, and the late wakers, both honest at `z`. -/
   A₀ : Set (Fin sp.n)
   W : Set (Fin sp.n)
-  hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+  hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini
+  /-- Every start permits every vote: interim, C3a/C3c replace it by `mayVote_of_committee`. -/
+  hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true -- TEMP(C2): C3a/C3c replace
   hnc : NoCollRun dg tr
   hj₀ : sp.ts j₀ + 2 * sp.Δ ≤ b₀ ∧ b₀ < sp.ts (j₀ + 1 : Nat) + 2 * sp.Δ
   hr : b₁ ≤ sp.ts r + sp.Δ ∧ ∀ s : Nat, b₁ ≤ sp.ts s + sp.Δ → r ≤ s
@@ -145,12 +149,13 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin
       e.msg.val ∈ SA.equivocators {v | v ∈ (tr.state w c).ac.pool m}
 
 variable {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 
 namespace OutageLockPremises
 
 /-- **N6 at the window end**: `2·|(H z)ᶜ ∪ W| < n`. -/
-theorem two_mul_lt (D : OutageLockPremises tr H proposer dg) :
+theorem two_mul_lt (D : OutageLockPremises tr H proposer dg ini) :
     2 * ((H D.z)ᶜ ∪ D.W).ncard < sp.n := by
   have hdisj : Disjoint D.A₀ ((H D.z)ᶜ ∪ D.W) := by
     rw [Set.disjoint_union_right]
@@ -165,7 +170,7 @@ theorem two_mul_lt (D : OutageLockPremises tr H proposer dg) :
 
 /-- **The cohort classification**: a vote cast in `[a, z]` by a node honest at its cast is by a
 member of `A₀`, by a late waker, or by a validator compromised by `z`. -/
-theorem cohort_classify (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n} {k : Nat}
+theorem cohort_classify (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n} {k : Nat}
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x k e) (hka : D.a ≤ tr.time k)
     (hkz : tr.time k ≤ D.z) : x ∈ D.A₀ ∨ x ∈ D.W ∨ x ∉ H D.z := by
   by_cases hxz : x ∈ H D.z
@@ -180,16 +185,16 @@ end OutageLockPremises
 
 /-- The protection of `x` at cut `i` with label `j` through slot `m`: a lock of label `j` and
 expiry at least `m` on a frame block above `P`, or root cover (`P ⪯ Σ.F`). -/
-def Prot (D : OutageLockPremises tr H proposer dg) (x : Fin sp.n) (i j m : Nat) : Prop :=
+def Prot (D : OutageLockPremises tr H proposer dg ini) (x : Fin sp.n) (i j m : Nat) : Prop :=
   FloorAt tr x i D.P j m ∨ Anc (tr.HonestBlocksAt H) D.P (tr.state x i).fg.F
 
-theorem prot_iff {D : OutageLockPremises tr H proposer dg} {x : Fin sp.n} {i j m : Nat} :
+theorem prot_iff {D : OutageLockPremises tr H proposer dg ini} {x : Fin sp.n} {i j m : Nat} :
     Prot D x i j m ↔ FloorAt tr x i D.P j m ∨ Anc (tr.HonestBlocksAt H) D.P (tr.state x i).fg.F :=
   Iff.rfl
 
 /-- The vote half of the invariant at the cuts before `i`: (H) and S5V, over votes cast by nodes
 honest at their cast. -/
-structure OutageVoteInv (D : OutageLockPremises tr H proposer dg) (i : Nat) : Prop where
+structure OutageVoteInv (D : OutageLockPremises tr H proposer dg ini) (i : Nat) : Prop where
   /-- (H) votes of slots in `(σ, j₀ + k]` cast at or before `b₀` or by `A₀` extend `P`. -/
   votes : ∀ x k, k < i → ∀ e, HVoteAt tr H x k e → D.σ < e.msg.slot →
     e.msg.slot ≤ D.j₀ + sp.k → (tr.time k ≤ D.b₀ ∨ x ∈ D.A₀) →
@@ -200,7 +205,7 @@ structure OutageVoteInv (D : OutageLockPremises tr H proposer dg) (i : Nat) : Pr
 
 /-- **The outage lock invariant** at the cuts before `i`, every field at the cut of its event or
 state. -/
-structure OutageLockInv (D : OutageLockPremises tr H proposer dg) (i : Nat) : Prop
+structure OutageLockInv (D : OutageLockPremises tr H proposer dg ini) (i : Nat) : Prop
     extends OutageVoteInv D i where
   /-- (R) results at unpolluted labels, by nodes honest at their update, are compatible with
   `P`. -/
@@ -239,7 +244,7 @@ structure OutageLockInv (D : OutageLockPremises tr H proposer dg) (i : Nat) : Pr
 
 namespace OutageLockInv
 
-variable {D : OutageLockPremises tr H proposer dg} {i : Nat}
+variable {D : OutageLockPremises tr H proposer dg ini} {i : Nat}
 
 /-- The lock field read at the cut's own time. -/
 theorem locks_at_cut (hinv : OutageLockInv D i) {y : Fin sp.n} {k : Nat} (hk : k ≤ i)
@@ -263,11 +268,11 @@ end OutageLockInv
 
 /-- The restored-vote step that the lock module consumes: from the invariant at `i`, the votes
 of cut `i` past the lock lifetime, by nodes honest then, have heads compatible with `P`. -/
-def OutageS5StepAt (D : OutageLockPremises tr H proposer dg) : Prop :=
+def OutageS5StepAt (D : OutageLockPremises tr H proposer dg ini) : Prop :=
   ∀ i, OutageLockInv D i → ∀ y e, HVoteAt tr H y i e →
     D.j₀ + sp.k < e.msg.slot → VoteCompat (tr.HonestBlocksAt H) e.msg D.P
 
-theorem outageS5StepAt_iff {D : OutageLockPremises tr H proposer dg} :
+theorem outageS5StepAt_iff {D : OutageLockPremises tr H proposer dg ini} :
     OutageS5StepAt D ↔ ∀ i, OutageLockInv D i → ∀ y e, HVoteAt tr H y i e →
       D.j₀ + sp.k < e.msg.slot → VoteCompat (tr.HonestBlocksAt H) e.msg D.P :=
   Iff.rfl

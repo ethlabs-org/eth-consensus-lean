@@ -77,7 +77,7 @@ theorem HonestRowsSourcedAt.upTo (hrun : Growing.GoldilocksRun proposer dg H tr)
 /-- **An honest row was signed while honest** (`honest_row_signed_before` at `d = tr.time i`): an
 attestation of a block in the tree of a node honest at cut `i`, whose signer is honest at `i`, was
 signed at an earlier cut, at which its signer was honest, before the block's acceptance. -/
-theorem honest_row_signed_before_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem honest_row_signed_before_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y i).fg.tree)
     {a : FG.Att sp.n} (ha : a ∈ X.fgPayload) (hav : a.val ∈ H (tr.time i)) :
@@ -132,7 +132,7 @@ an attestation, by a signer honest at `m`, signed at `k < m` after an optimistic
 `t_{s+1} + Δ`. At `t_{s+1} + Δ` the voter's own tick votes before the block arrives (on the prefix
 through `tr.time i`); at `t_{s+1}` the check's honest seats are the slot's proposer, so `n = 1`
 (on the prefix through `tr.time c`), and the voter has a second slot-`(s+1)` vote. -/
-theorem no_optimistic_before_held_row_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem no_optimistic_before_held_row_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} {s : Nat} (hy : y ∈ H (tr.time i))
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) {m : Nat}

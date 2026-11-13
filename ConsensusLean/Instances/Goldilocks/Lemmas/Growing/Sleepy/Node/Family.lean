@@ -37,7 +37,8 @@ theorem voteExtends_of_anc {U : Set (SA.Blk sp.n (List (FG.Att sp.n)))} {v : Vot
   ⟨Hd, hHd, hHdr, hCO.trans hOHd⟩
 
 /-- An origin within `b` is held while honest. -/
-theorem OriginWithin.mem (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem OriginWithin.mem {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time} (h : OriginWithin tr H C s b) :
     C ∈ tr.HonestBlocksAt H := by
   obtain ⟨x, k, CV, hx, -, hO⟩ := originWithin_iff.1 h
@@ -45,7 +46,7 @@ theorem OriginWithin.mem (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
     (origin_mem_upTo hrun hnc (hrun.time_nonneg k) hx le_rfl hO)
 
 /-- **Every member of the healed family is below an origin of its label within `b`**. -/
-theorem HealedOrigin.below_origin (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem HealedOrigin.below_origin {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {g : Time} {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     {s : Nat} {b : Time} (hC : HealedOrigin tr H g rL rO C s b) :
     ∃ O, OriginWithin tr H O s b ∧ Anc (tr.HonestBlocksAt H) C O := by
@@ -58,7 +59,8 @@ theorem HealedOrigin.below_origin (hrun : Growing.GoldilocksRun proposer dg H tr
       (Anc.mono (frameIn_at hrun hnc ho.1 hcall).2 (SA.anc_viableAncestor _ D)).trans hDO⟩
 
 /-- A member of the healed family is held while honest. -/
-theorem HealedOrigin.mem (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem HealedOrigin.mem {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {g : Time} {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time}
     (hC : HealedOrigin tr H g rL rO C s b) : C ∈ tr.HonestBlocksAt H := by
   obtain ⟨O, hO, hCO⟩ := hC.below_origin hrun hnc

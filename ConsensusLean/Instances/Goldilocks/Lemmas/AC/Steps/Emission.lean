@@ -119,7 +119,7 @@ private theorem cast_emitsU
 
 /-- `castAt_spec` with the unlock given. -/
 theorem castAt_specU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     e.msg.val = y ∧ e.msg.slot = sp.slot (tr.time i) ∧ joined sp e.readPoint (tr.time i) ∧
@@ -129,7 +129,7 @@ theorem castAt_specU
   (cast_emitsU hr hy hc).1
 
 /-- **An honest vote.** -/
-theorem castAt_spec (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+theorem castAt_spec (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     e.msg.val = y ∧ e.msg.slot = sp.slot (tr.time i) ∧ joined sp e.readPoint (tr.time i) ∧
@@ -139,15 +139,16 @@ theorem castAt_spec (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin s
   apply castAt_specU (wm := WriteMode.parent sp) <;>
     first | assumption | exact ACLocalRun.toU ‹_›
 
-/-- `voterBlockTree_anc` with the unlock given. -/
+/-- `voterBlockTree_anc` with the unlock given, from starts up to the vote permission. -/
 theorem voterBlockTree_ancU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     ∀ B ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
       X ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
   intro B hB X hX
-  have hsp := stamp_parentU sp FGP ro y U hr.coherent _ _ _
+  have hsp := stamp_parentU sp FGP ro y U hr.coherent (hini y) _ _ _
     (localRun_reachableU sp hr hy i ℓ hc.1)
   have hle : (tr.post i).blockStamp X.root ≤ (tr.post i).blockStamp B.root := by
     clear hB
@@ -161,14 +162,23 @@ theorem voterBlockTree_ancU
 
 /-- The voter block tree of an honest vote is closed under ancestors in the frame (block stamps
 grow along parent edges, A0.1, at the state the call leaves, whose stamps are the read
-point's). -/
+point's), from starts up to the vote permission. -/
+theorem voterBlockTree_anc_from (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) :
+    ∀ B ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
+      X ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot :=
+  voterBlockTree_ancU (wm := WriteMode.parent sp) hr.toU hini hy hc
+
+/-- The voter block tree of an honest vote is closed under ancestors in the frame:
+`voterBlockTree_anc_from` at the initial starts. -/
 theorem voterBlockTree_anc (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     ∀ B ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
-      X ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
-  apply voterBlockTree_ancU (wm := WriteMode.parent sp) <;>
-    first | assumption | exact ACLocalRun.toU ‹_›
+      X ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot :=
+  voterBlockTree_anc_from hr (fun _ => voteStart_initial _) hy hc
 
 /-- `castAt_head_of_viable` with the unlock given. -/
 theorem castAt_head_of_viableU
@@ -201,23 +211,34 @@ theorem ViableAtVote.voteDomain {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em
       ℓ.frame.Anc B ℓ.frame.fcRoot :=
   h.imp_left fun h => viableTree_voterBlockTree_subset_voteDomain h
 
-/-- `voteDomain_anc` with the unlock given. -/
+/-- `voteDomain_anc` with the unlock given, from starts up to the vote permission. -/
 theorem voteDomain_ancU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     ∀ B ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
       X ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot :=
-  voteDomain_anc_closed (voterBlockTree_ancU hr hy hc)
+  voteDomain_anc_closed (voterBlockTree_ancU hr hini hy hc)
 
-/-- The vote domain of an honest vote is closed under ancestors in the frame. -/
+/-- The vote domain of an honest vote is closed under ancestors in the frame, from starts up to
+the vote permission. -/
+theorem voteDomain_anc_from (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) :
+    ∀ B ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
+      X ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot :=
+  voteDomain_ancU (wm := WriteMode.parent sp) hr.toU hini hy hc
+
+/-- The vote domain of an honest vote is closed under ancestors in the frame:
+`voteDomain_anc_from` at the initial starts. -/
 theorem voteDomain_anc (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     ∀ B ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
-      X ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot := by
-  apply voteDomain_ancU (wm := WriteMode.parent sp) <;>
-    first | assumption | exact ACLocalRun.toU ‹_›
+      X ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot :=
+  voteDomain_anc_from hr (fun _ => voteStart_initial _) hy hc
 
 /-- `post_of_castAt` with the unlock given, the optimistic check at the writes of `wm`. -/
 theorem post_of_castAtU
@@ -230,7 +251,7 @@ theorem post_of_castAtU
 
 /-- The call that casts an honest vote leaves the state of the vote's own receipt: the read
 point with the own vote admitted and the optimistic check run. -/
-theorem post_of_castAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+theorem post_of_castAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     tr.post i = optimisticConfirmation sp (admitVote sp e.readPoint (tr.time i) e.msg) ℓ.frame

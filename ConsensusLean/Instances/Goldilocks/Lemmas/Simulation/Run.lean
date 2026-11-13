@@ -254,6 +254,7 @@ theorem simTrace_goldilocksRun {V : Type} [Fintype V] [DecidableEq V] {E : Env V
     GoldilocksRun (runProposer S rho hn) (digestOf S rho)
       (honestKeys S rho) (simTrace S rho hn) where
   stock := rfl
+  vstart := fun _ => SA.voteStart_initial _
   init := simTrace_init S rho hn
   grouped := simTrace_grouped S rho hn hf hv
   cutLaw := simTrace_cutLaw S rho hn hf hv

@@ -276,7 +276,8 @@ theorem SleepyServiceBefore.mono {ΔF b b' : Time} (h : SleepyServiceBefore tr H
 /-- **The service from genesis is the service from `0`**, with a vacuous catch-up: every cut is
 at a time `≥ 0`. -/
 theorem SleepyServiceBefore.toFrom {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {proposer : Nat → Fin sp.n} (hrun : Growing.GoldilocksRun proposer dg H tr) {ΔF b : Time}
+    {proposer : Nat → Fin sp.n} {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {ΔF b : Time}
     (h : SleepyServiceBefore tr H ΔF b) : SleepyServiceFrom tr H ΔF 0 0 b :=
   ⟨h.deltaF, le_rfl, fun x i v hx hv _ => h.message x i v hx hv (hrun.time_nonneg i),
     fun x i B hx hB _ => h.acRelay x i B hx hB (hrun.time_nonneg i),
@@ -289,7 +290,7 @@ theorem SleepyServiceBefore.toFrom {dg : Digest (List (FG.Att sp.n)) (Payload sp
 /-- A cut `i` of a node honest then, with every earlier cut within `b ≥ 0`, is read at
 `t = tr.time (i − 1)` (or `0` at `i = 0`). -/
 theorem exists_read_time {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {proposer : Nat → Fin sp.n} (hrun : Growing.GoldilocksRun proposer dg H tr) {b : Time}
+    {proposer : Nat → Fin sp.n} {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) {b : Time}
     (hb : 0 ≤ b) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) (hi : ∀ k < i, tr.time k ≤ b) :
     ∃ t, 0 ≤ t ∧ (∀ k < i, tr.time k ≤ t) ∧ t ≤ b ∧ y ∈ H t := by
   rcases i with _ | k
@@ -301,7 +302,8 @@ theorem exists_read_time {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 section AtCut
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {proposer : Nat → Fin sp.n}
-  {b : Time} (hinv : SleepyInvariantUpTo tr H b) (hrun : Growing.GoldilocksRun proposer dg H tr)
+  {b : Time} (hinv : SleepyInvariantUpTo tr H b) {ini}
+  (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   (hb : 0 ≤ b) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) (hi : ∀ k < i, tr.time k ≤ b)
 include hinv hrun hb hy hi
 

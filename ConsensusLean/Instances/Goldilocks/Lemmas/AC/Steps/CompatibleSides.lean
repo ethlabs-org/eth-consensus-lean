@@ -18,6 +18,7 @@ variable {wm : SA.WriteMode}
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → SAState sp.n}
 
 /-- `u` has a slot-`s` vote whose head extends `D` inside `U`, which `X` sent or admitted at a
 time in `[t_s, t_s + 2Δ)`. -/
@@ -44,13 +45,14 @@ theorem CompatibleSides.slot_of_lt {s : Nat} {t : Time}
 
 /-- `admitted_of_held` with the unlock given. -/
 theorem admitted_of_heldU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {X : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {X : Fin sp.n}
     (hX : X ∈ H) {c s : Nat} {v : Vote sp.n} (hvs : v.slot = s) (hv : v ∈ (tr.state X c).pool s)
     {T : Time} (hT : T ≤ sp.ts s + 2 * sp.Δ)
     (hlt : ∀ k < c, (tr.state X c).voteStamp v = ETime.of (tr.time k) → tr.time k < T) :
     ∃ k, tr.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧ tr.time k < T := by
   have hΔ := sp.toParams.hΔ
-  rcases pool_originU hr hX c v (hvs ▸ hv) with ⟨k, hk, hsend, hst, hsl⟩ |
+  rcases pool_originU_from hr hini hX c v (hvs ▸ hv) with ⟨k, hk, hsend, hst, hsl⟩ |
     ⟨k, hk, ℓ, hck, -, hst, B, hB, hvB⟩
   · refine ⟨k, hsend, ?_, hlt k hk hst⟩
     exact ((ts_le_iff_le_slot sp (hr.time_nonneg k)) _).2 (by rw [← hvs]; exact_mod_cast hsl)
@@ -67,18 +69,26 @@ theorem admitted_of_heldU
 
 /-- A vote that an honest node holds before cut `c`, of slot `s`, admitted before a time of slot
 `s`, was admitted by the node at a time in `[t_s, T)` (a restart puts in the pools only votes of
-frame blocks, whose slots are at most the restart's). -/
+frame blocks, whose slots are at most the restart's). From starts up to the vote permission. -/
+theorem admitted_of_held_from (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {X : Fin sp.n}
+    (hX : X ∈ H) {c s : Nat} {v : Vote sp.n} (hvs : v.slot = s) (hv : v ∈ (tr.state X c).pool s)
+    {T : Time} (hT : T ≤ sp.ts s + 2 * sp.Δ)
+    (hlt : ∀ k < c, (tr.state X c).voteStamp v = ETime.of (tr.time k) → tr.time k < T) :
+    ∃ k, tr.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧ tr.time k < T :=
+  admitted_of_heldU hr.toU hini hX hvs hv hT hlt
+
+/-- `admitted_of_held_from` at the initial starts. -/
 theorem admitted_of_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {X : Fin sp.n}
     (hX : X ∈ H) {c s : Nat} {v : Vote sp.n} (hvs : v.slot = s) (hv : v ∈ (tr.state X c).pool s)
     {T : Time} (hT : T ≤ sp.ts s + 2 * sp.Δ)
     (hlt : ∀ k < c, (tr.state X c).voteStamp v = ETime.of (tr.time k) → tr.time k < T) :
     ∃ k, tr.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧ tr.time k < T :=
-  admitted_of_heldU (hr := hr.toU) (X := X) (hX := hX) (c := c) (s := s) (v := v) (hvs := hvs)
-      (hv := hv) (T := T) (hT := hT) (hlt := hlt)
+  admitted_of_held_from hr (fun _ => voteStart_initial _) hX hvs hv hT hlt
 
-/-- `optimistic_side` with the unlock given. -/
+/-- `optimistic_side` with the unlock given. From starts up to the vote permission. -/
 theorem optimistic_sideU
-    {uL : Nat → Set Lock} (hrun : ACRunU wm uL proposer tr H U)
+    {uL : Nat → Set Lock} (hrun : ACRunU wm uL proposer tr H U ini)
     {X : Fin sp.n} (hX : X ∈ H) {k s : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : OptimisticLockAt tr X k s D CV) :
     ∃ ℓ A, OptimisticPoint tr X k ℓ A ∧ ℓ.frame.tree ⊆ U ∧
@@ -94,25 +104,24 @@ theorem optimistic_sideU
   rw [hsl] at h34 hcond
   refine ⟨ℓ, A, hpt, hΦU, h34, ?_⟩
   rintro u ⟨v, hv, rfl, R, hR, hRr, hDR⟩
-  have hvs := optimisticPoint_pool_slotU hr hX hpt hv
+  have hvs := optimisticPoint_pool_slotU hr hrun.vstart hX hpt hv
   have htk : tr.time k < sp.ts s + 2 * sp.Δ := by
     exact not_le.1 (not_or.1 (not_or.1 hcond).2).2
   rw [fwd_iff]
   refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, ?_⟩
-  exact admitted_of_heldU hr hX hvs (optimisticPoint_pool_postU hr hX hpt s hv) le_rfl
+  exact admitted_of_heldU hr hrun.vstart hX hvs (optimisticPoint_pool_postU hr hX hpt s hv) le_rfl
     fun k' hk' _ => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hk')) htk
 
 /-- **The optimistic side.** At an honest optimistic confirmation of slot `s` on `D`, three
 quarters of the committee are optimistic voters of `D`, each with a vote extending `D` that the
-node admitted (or cast) in `[t_s, t_s + 2Δ)`. -/
-theorem optimistic_side (hrun : ACRun proposer tr H U)
+node admitted (or cast) in `[t_s, t_s + 2Δ)`. From starts up to the vote permission. -/
+theorem optimistic_side (hrun : ACRun proposer tr H U ini)
     {X : Fin sp.n} (hX : X ∈ H) {k s : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : OptimisticLockAt tr X k s D CV) :
     ∃ ℓ A, OptimisticPoint tr X k ℓ A ∧ ℓ.frame.tree ⊆ U ∧
       3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A ℓ.frame s D).ncard ∧
       optimisticVoters sp A ℓ.frame s D ⊆ Fwd tr U X s D :=
-  optimistic_sideU (hrun := hrun.toU) (X := X) (hX := hX) (k := k) (s := s) (D := D) (CV := CV)
-      (hfl := hfl)
+  optimistic_sideU hrun.toU hX hfl
 
 /-- `fwd_held` with the unlock given. -/
 theorem fwd_heldU

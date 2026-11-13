@@ -36,7 +36,7 @@ theorem result_transfer_ancU
       exact h.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_ancU hrun.localRun hy hc
+  have hdomA := voteDomain_ancU hrun.localRun (fun _ => voteStart_initial _) hy hc
   rw [hs] at hdomA
   have hDt : D ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -50,8 +50,9 @@ theorem result_transfer_ancU
         hB) hdomA hviab.voteDomain
     (fun L hL => hlocks L hL) fun X' Cx hCx hp hCxD =>
       isBest_of_majority hΦ (merged_support_subsetU hrun.localRun hy hc (s + 1))
-        (fun B hB => (voteDomain_subset_tree hB.1)) hsupp (merged_voters_subsetU hrun.localRun hy hc
-            hd) hmaj hCx hp hCxD
+        (fun B hB => (voteDomain_subset_tree hB.1)) hsupp
+          (merged_voters_subsetU hrun.localRun (fun _ => voteStart_initial _) hy hc hd)
+          hmaj hCx hp hCxD
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : D = getHead sp e.readPoint ℓ.frame (tr.time i)
       (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))

@@ -32,7 +32,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 honest at its cut `i ≤ b` whose `Σ.F` is below `B`, with the service from `a` (`a + κ ≤ t_s`),
 every slot-`s` vote of a node honest at it, all extending `B`, is carried; each voter is its own
 writer, honest at its vote and at its acceptance of the head. -/
-theorem honest_batch_carry_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem honest_batch_carry_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {s : Nat}
     (hsa : a + κ ≤ sp.ts s)
     {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
@@ -77,7 +77,8 @@ theorem honest_batch_carry_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 there, `s ≥ σ₀`) gives the frame witness (`hframe`); below `fc_root` the vote extends `B`,
 otherwise the batch of every slot-`s` vote, carried and counted at the voter's cut, with the live
 locks compatible with `B` (`vote_locks_compatible_at`). -/
-theorem later_transfer_step_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem later_transfer_step_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C4 replaces
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
     (hB : SleepyBoundsFrom tr H σ₀ b) {g : Time} {rL rO s : Nat} (hs₀ : σ₀ ≤ s)
     (hsa : a + κ ≤ sp.ts s) {y : Fin sp.n}
@@ -106,7 +107,7 @@ theorem later_transfer_step_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   have hts1 : sp.ts ((s + 1 : Nat) : Int) = sp.ts s + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   -- a slot-`s` voter still honest at `t_s + Δ`
-  have hcount := faults_lt_voters hrun hnc hB (s := s) (d := sp.ts s + sp.Δ) hs₀ le_rfl
+  have hcount := faults_lt_voters hrun hmv hnc hB (s := s) (d := sp.ts s + sp.Δ) hs₀ le_rfl
     (by linarith) (by linarith)
   obtain ⟨x, hx⟩ : (VotersAt tr H s (sp.ts s + sp.Δ)).Nonempty := by
     rw [Set.nonempty_iff_ne_empty]
@@ -120,7 +121,7 @@ theorem later_transfer_step_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   swap
   · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := cast_head_fcRoot_at hrun hnc hy hc
     exact ⟨Hd, hΦU hHd, hHdr, hBf.trans (Anc.mono hΦU hfHd)⟩
-  exact vote_extends_of_batch_at hrun hnc hB hs₀ hy hc hs hib (Or.inl hvB)
+  exact vote_extends_of_batch_at hrun hmv hnc hB hs₀ hy hc hs hib (Or.inl hvB)
     (fun x j e' _ hv hvs => hall x j e' hv hvs)
     (honest_batch_carry_at hrun hnc hsync hsa hy hc hs hib hall
       (Anc.mono hΦU (hΦ.rooted.2 B hvB.1.1)))

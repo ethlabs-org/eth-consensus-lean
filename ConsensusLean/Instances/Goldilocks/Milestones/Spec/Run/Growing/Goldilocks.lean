@@ -34,6 +34,8 @@ structure GoldilocksRun (proposer : Nat → Fin sp.n)
   honest then processes, was emitted by that validator's node at an earlier cut. -/
   carried_vote_unforgeable : ∀ y i B, y ∈ H (tr.time i) → tr.BlockCallAt y i B →
     ∀ v ∈ blockVotes B, v.val ∈ H (tr.time i) → ∃ j < i, tr.EmitAt v.val j v
+  /-- The AC starts are starts up to the vote permission. -/
+  vstart : ∀ y, SA.VoteStart sp.genesisRoot (ini y)
 
 end Consensus.Goldilocks.Growing
 

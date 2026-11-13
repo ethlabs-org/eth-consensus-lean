@@ -73,7 +73,7 @@ private theorem state_succ_not {y : Fin sp.n} {k : Nat} (hn : ∀ ℓ, ¬ T.Call
 /-- **A stamp is not earlier than the acceptance**: after an honest node accepts a block other
 than genesis at cut `k`, its stamp is at least the time of `k` (a later receipt or a restart
 writes a later time, or a restart resets it to `+∞`). -/
-theorem blockStamp_ge_of_accept (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+theorem blockStamp_ge_of_accept {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {B : SA.Blk sp.n FGP} (hk : T.AcceptAt y k B)
     (hB : B.root ≠ sp.genesisRoot) :
     ∀ c, k + 1 ≤ c → SA.ETime.of (T.time k) ≤ (T.state y c).blockStamp B.root := by
@@ -128,7 +128,8 @@ theorem blockStamp_ge_of_accept (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U
       exact ih
 
 /-- **Between restarts, a finite block stamp stays finite** (a receipt writes a finite time). -/
-theorem blockStamp_finite (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {y : Fin sp.n}
+theorem blockStamp_finite {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
+    {y : Fin sp.n}
     (hy : y ∈ H) {a b : Nat} (hab : a ≤ b) (hnr : ∀ k, a ≤ k → k < b → ¬ T.RestartAt y k)
     {q : Nat} (h : (T.state y a).blockStamp q < ⊤) : (T.state y b).blockStamp q < ⊤ := by
   induction b, hab using Nat.le_induction with

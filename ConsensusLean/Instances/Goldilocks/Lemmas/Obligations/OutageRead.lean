@@ -19,7 +19,8 @@ variable {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp 
 /-- An update above the prefix establishes record cover whether it is accepted or vetoed
 by a compatible live lock. One explicit interval then preserves the post-update cover. -/
 theorem late_reader_record_cover
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {B : SA.Blk sp.n (List (FG.Att sp.n))} {c i : Nat}
     (hci : c < i) {s : Nat}
     {ell : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
@@ -31,7 +32,7 @@ theorem late_reader_record_cover
     (hint : EffectiveRecordInterval tr H y (c + 1) i B) :
     Anc (tr.HonestBlocks H) B ((SA.lookup (Node.frame (tr.state y i))
       (tr.state y i).ac.latestConfirmed).getD (tr.state y i).fg.F) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hu.1
   have hst := Compose.projAC_state hrun.toLocalRun hy
   have hframe := Compose.frame_of_projAC hrun hy hu.1
@@ -50,7 +51,7 @@ theorem late_reader_record_cover
       have hBL := cover_of_veto hr.coherent hBC (hlocksB L (by simpa only [hst] using hL))
         hconflict
       obtain ⟨Φp, tp, hreach, -, hok⟩ := Compose.pre_reachable hr hy hu.1
-      obtain ⟨hin, -, hinv⟩ := SA.lockInv_of_reachable hr.coherent hreach
+      obtain ⟨hin, -, hinv⟩ := SA.lockInv_of_reachable_from hr.coherent (hrun.vstart _) hreach
       have hinv' := hinv.callOK hr.coherent hin hok
       obtain ⟨E, hE, hEr, hLE⟩ := hinv'.liveBlock_anc hr.coherent hΦ hΦU hL
       have hlookup : SA.lookup ell.frame (tr.projAC.state y c).latestConfirmed = some E := by

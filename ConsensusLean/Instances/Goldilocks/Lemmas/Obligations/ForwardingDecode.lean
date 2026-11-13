@@ -49,7 +49,7 @@ theorem scheduled_proposal_child_decodes {V : Type} [Fintype V] [DecidableEq V] 
   have hstate := simTrace_state S rho hn hf hv v hh i
     (Nat.le_of_lt (List.getElem?_eq_some_iff.mp he).1)
   exact scheduled_proposal_child_decodes_of_step S rho hn hv v i t hp hr
-    (hst.trans hstate.symm) hs run.genesis_root_ok
+    (SA.voteStart_initial _) (hst.trans hstate.symm) hs run.genesis_root_ok
 
 /-- At a scheduled honest tick, the proposal duty preserves the joint invariant without
 assuming child decoding: reachable proposal execution supplies it. -/

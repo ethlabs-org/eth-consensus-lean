@@ -124,7 +124,8 @@ variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
 `y`'s AC cut `i` calling the block `B`, inside `y`'s tick group at cut `c` and time `t`, has every
 `m ∈ blockVotes B` in `y`'s pool before the cut: the block is not a delivered one (the tick group
 starts with the tick), so it is `y`'s own proposal (`own_proposal_payload_pooled_run`). -/
-theorem acBlock_vote_pooled_in_tick (hr : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+theorem acBlock_vote_pooled_in_tick {ini} (hr : GoldilocksRun proposer dg H tr ini)
+    {y : Fin sp.n}
     (hy : y ∈ H) {c i : Nat} {t : Time} {x : Nat} (hg : tr.GroupAt proposer dg y c t (.tick x))
     (hlo : c ≤ i) (hhi : i < c + (Node.exec proposer dg y (tr.state y c) t (.tick x)).2.length)
     (ht : tr.time i = t) {ℓ : ACLabel (goldilocksNode sp ro)} {B : Blk sp}

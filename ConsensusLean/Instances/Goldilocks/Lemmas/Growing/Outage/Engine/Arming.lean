@@ -202,6 +202,7 @@ theorem outage_arming_at (Q : OutageQueryAt S A V)
   classical
   obtain ⟨hT0, -, hb01, -⟩ := Q.outage.times
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hmv := simIni_mayVote S Q.run.2 Q.hn -- TEMP(C2): C3b replaces
   have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
   have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
   have hΔ := Q.params.toParams.hΔ
@@ -216,8 +217,10 @@ theorem outage_arming_at (Q : OutageQueryAt S A V)
   have hTb : Q.T ≤ min Q.start Q.run.2.horizon := le_min hTs hTh
   have hsvc := service.mono (min_le_left Q.start Q.run.2.horizon)
   have hBh := Q.bounds le_rfl
-  have hinv := Compose.Growing.sleepy_invariant_at hrun hnc hb0 hsvc (Q.bounds (min_le_right _ _))
-  have hinvT := Compose.Growing.sleepy_invariant_at hrun hnc hT0 (service.mono hTs) (Q.bounds hTh)
+  have hinv := Compose.Growing.sleepy_invariant_at hrun hmv hnc hb0 hsvc (Q.bounds (min_le_right _
+      _))
+  have hinvT := Compose.Growing.sleepy_invariant_at hrun hmv hnc hT0 (service.mono hTs) (Q.bounds
+      hTh)
   -- the tip at the end-of-`T` cut
   have hi : (chainTrace Q.run.2).endCut Q.T ≤ Q.run.2.events.length := Nat.findGreatest_le _
   obtain ⟨hcut, -, hnow⟩ := ready_read_cut_at S Q.run.2 Q.hn Q.valid (c := Q.duration)
@@ -305,7 +308,7 @@ theorem outage_arming_at (Q : OutageQueryAt S A V)
       rw [hjI, show (Compose.coverLabel Q.params Q.start : Int) - 1 - Q.params.k + 1 =
         (Compose.coverLabel Q.params Q.start : Int) - Q.params.k by ring]
       exact haj
-    exact Compose.Growing.armed_lock_formed_at hrun hnc hinv hsvc hBh hCb hCU hCg
+    exact Compose.Growing.armed_lock_formed_at hrun hmv hnc hinv hsvc hBh hCb hCU hCg
       (Q.holdersAt_subset hw) Q.end_le_horizon (fun u hu₁ hu₂ => Q.holder_awake hw hu₁ hu₂)
       (s := Compose.coverLabel Q.params Q.start - 1) h1 h2 h3 (hsz' ▸ hsz)
       (hsz' ▸ le_min hg₁ hhz)
@@ -316,7 +319,7 @@ theorem outage_arming_at (Q : OutageQueryAt S A V)
     have hF : (Q.keys (Q.params.ts (Compose.coverLabel Q.params Q.start) + 6 * Q.params.Δ))ᶜ ⊆
         (Q.keys ((Sys (goldilocks S) V).outageEnd (K S A) Q.stop Q.run))ᶜ ∪ Q.lateKeysAt :=
       fun x hx => Or.inl fun hxz => hx (honestKeysAt_antitone S Q.run.2 hsz hxz)
-    exact Compose.Growing.armed_lock_cover_at hrun hnc hinv hsvc hBh hCb hCg
+    exact Compose.Growing.armed_lock_cover_at hrun hmv hnc hinv hsvc hBh hCb hCg
       (Q.holdersAt_subset hw) Q.end_le_horizon (fun u hu₁ hu₂ => Q.holder_awake hw hu₁ hu₂)
       (s := Compose.coverLabel Q.params Q.start) h1 h2 (haj.trans hts1) hsz
       (le_min hg₁ (by linarith)) Q.holdersAt _ hF Q.two_mul_opp_lt

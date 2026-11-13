@@ -191,7 +191,8 @@ theorem unanimous_carry_votes_core_at
     have h := (SA.castAt_spec hr hy hc').2.1
     change e.msg.slot = sp.slot (tr.time i) at h
     exact (SA.ts_le_iff_le_slot sp hd _).2 (by omega)
-  have hcarry := Compose.carryAt_of_served hr (Compose.frame_anc_accepted hr hy) hy hc' hs
+  have hcarry := Compose.carryAt_of_served hr
+    (fun _ => SA.voteStart_initial _) (Compose.frame_anc_accepted hr hy) hy hc' hs
     (CV := Compose.Growing.honestVotes tr H u) fun v hv => by
     obtain ⟨z, q, e', hz, ⟨ell', hcz⟩, rfl, hsl⟩ := hv
     have hdq := hrun.time_nonneg q

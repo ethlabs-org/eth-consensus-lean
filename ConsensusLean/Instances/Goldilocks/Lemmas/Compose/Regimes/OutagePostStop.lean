@@ -53,7 +53,7 @@ theorem slow_lock_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
   have hl' : l ∈ (tr.projAC.state x i).locks := by
     rw [projAC_state hrun.toLocalRun hx i]; exact hl
   obtain ⟨c, hci, ℓ, C, CV, hu, hC, Lb, hLb, hLbC, ⟨L, hL, hLr, hLLb⟩, hsave⟩ :=
-    SA.slow_lock_saved hr hx i l hl' hlf
+    SA.slow_lock_saved hr (fun _ => SA.voteStart_initial _) hx i l hl' hlf
   obtain ⟨m, hm, hms, hm0, hgood⟩ := hgood
   obtain ⟨-, hΦU⟩ := SA.frameIn_of_callAt hr hx hu.1
   have down : ∀ {X Y}, Anc (tr.HonestBlocks H) X Y → Compatible (tr.HonestBlocks H) Y B →
@@ -65,8 +65,8 @@ theorem slow_lock_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
   rcases hms.lt_or_eq with hms | hms
   · obtain ⟨S, hS, hsaved, hLbS⟩ := hsave m hm hms
     have hmn : (m.toNat : Int) = m := Int.toNat_of_nonneg hm0
-    obtain ⟨k, hkc, C', CV', hC', hroot⟩ := SA.saved_result hr hx c m.toNat (by
-      simpa only [hmn] using hsaved)
+    obtain ⟨k, hkc, C', CV', hC', hroot⟩ := SA.saved_result hr (fun _ => SA.voteStart_initial _)
+      hx c m.toNat (by simpa only [hmn] using hsaved)
     obtain ⟨ℓ', hu', hconf, -⟩ := id hC'
     have hC'mem := (SA.frameIn_of_callAt hr hx hu'.1).2 (SA.deepest_mem hconf).1.1
     have heq : C' = S := hr.coherent.1 hC'mem (hΦU hS) hroot

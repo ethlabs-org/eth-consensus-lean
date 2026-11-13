@@ -76,8 +76,9 @@ theorem honest_votes_in_slot_of_sync_startU {u : Nat → Set Lock}
     (hS.awake hx (by rw [gbar_eq_zero hg]; linarith))
   have hj := joined_of_sync_start hS hg hx c (tr.time c)
   by_cases hv : (tr.state x c).votedSlot = (sp.slot (tr.time c) : Int)
-  · obtain ⟨j, -, e, he, hes⟩ := (cast_of_votedSlotU hr hx c _ hv).resolve_right
-      (by rw [traceWithM_mayVote hr hx c]; decide)
+  · obtain ⟨j, -, e, he, hes⟩ :=
+      (cast_of_votedSlotU hr (fun _ => voteStart_initial _) hx c _ hv).resolve_right
+        (by rw [traceWithM_mayVote hr hx c]; decide)
     exact ⟨j, e, he, by rw [hes, htc, hslot]⟩
   · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
     obtain ⟨e, hem, hes⟩ := tryVote_votesWith x ℓ.frame hj hv hT (traceWithM_mayVote hr hx c _)
@@ -243,7 +244,7 @@ theorem slot_zero_saved_genesisU {u : Nat → Set Lock} (hS : StandaloneRunU m u
     (hr : (tr.state y i).saved 0 = some r) : r = sp.genesisRoot := by
   have hΔ := sp.toParams.hΔ
   obtain ⟨k, -, C, CV, ⟨ℓ, ⟨hc, -, ht, -⟩, hC, -⟩, rfl⟩ :=
-    saved_resultU hS.run.localRun hy i 0 (by exact_mod_cast hr)
+    saved_resultU hS.run.localRun (fun _ => voteStart_initial _) hy i 0 (by exact_mod_cast hr)
   exact slot_zero_result_genesisU hS hg hy hc
     (by rw [ht]; simp only [SAParams.ts]; push_cast; linarith) hC
 

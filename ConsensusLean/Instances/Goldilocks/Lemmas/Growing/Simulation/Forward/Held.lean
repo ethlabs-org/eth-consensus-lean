@@ -26,15 +26,16 @@ variable {binding : VoteBinding}
 variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Every cut up to an acceptance cut is at a time no later than it. -/
-private theorem time_le_acc (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+private theorem time_le_acc (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (k : Nat) : ∀ m < k + 1, tr.time m ≤ tr.time k :=
   fun _ hm => hrun.time_mono (by omega)
 
 /-- Acceptance by a node honest then records its block in its tree at the following cut. -/
 private theorem accepted_mem_succ_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n} {k : Nat} {B : Blk sp} (hx : x ∈ H (tr.time k)) (ha : tr.AcceptAt x k B) :
     B ∈ (tr.state x (k + 1)).fg.tree := by
   rw [tr.state_succ_of_call ha,
@@ -44,7 +45,7 @@ private theorem accepted_mem_succ_at
 
 /-- A block accepted by a node honest then is held while honest. -/
 private theorem accepted_held_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n} {k : Nat} {B : Blk sp} (hx : x ∈ H (tr.time k)) (ha : tr.AcceptAt x k B) :
     B ∈ tr.HonestBlocksAt H :=
   held_upTo (hrun.time_nonneg k) (time_le_acc hrun k) hx (accepted_mem_succ_at hrun hx ha)
@@ -52,7 +53,7 @@ private theorem accepted_held_at
 /-- A root occupied at a receiver honest through its cut is the exact already-accepted source
 block. -/
 private theorem received_root_absent_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x y : Fin sp.n} {k r : Nat} {d : Time} {B : Blk sp}
     (hd : 0 ≤ d) (hb : ∀ m < r, tr.time m ≤ d) (hy : y ∈ H d) (hx : x ∈ H (tr.time k))
     (ha : tr.AcceptAt x k B) (hnot : B ∉ (tr.state y r).fg.tree) :
@@ -70,7 +71,7 @@ private theorem received_root_absent_at
 
 /-- The exact parent of a block accepted by a node honest then was held at its acceptance cut. -/
 private theorem accepted_parent_held_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {k : Nat} {B P : Blk sp}
     (hx : x ∈ H (tr.time k)) (ha : tr.AcceptAt x k B) (hp : B.parent = some P.root)
     (hP : P ∈ tr.HonestBlocksAt H) : P ∈ (tr.state x k).fg.tree := by
@@ -117,7 +118,7 @@ private theorem σ_eq_of_held_two {P : Params} {ACP : Type} {acp₀ : ACP} {H₁
 /-- The parent state needed by receiver transfer is the same at an honest receiver and at the
 source's acceptance cut, though they are honest at different times. -/
 private theorem receipt_parent_state_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x y : Fin sp.n} {r s : Nat} {d e : Time} {P : Blk sp}
     (hd : 0 ≤ d) (hb : ∀ m < r, tr.time m ≤ d) (hy : y ∈ H d)
     (he : 0 ≤ e) (hb' : ∀ m < s, tr.time m ≤ e) (hx : x ∈ H e)
@@ -129,7 +130,7 @@ private theorem receipt_parent_state_at
 
 /-- The tree of a receiver honest through `j` grows between its cuts up to `j`. -/
 private theorem tree_mono_upTo
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {j m e : Nat} {d : Time} (hd : 0 ≤ d) (hbj : ∀ k < j, tr.time k ≤ d)
     (hy : y ∈ H d) (hme : m ≤ e) (hej : e ≤ j) :
     (tr.state y m).fg.tree ⊆ (tr.state y e).fg.tree := by
@@ -140,7 +141,7 @@ private theorem tree_mono_upTo
 /-- At an earlier receipt cut of a receiver honest through `j`, a block whose parent is held and
 which lies below the finalized tip at `j` is held or passes the receiver's ancestry guard. -/
 private theorem receipt_held_or_ancestry_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {r j : Nat} {d : Time}
     (hd : 0 ≤ d) (hbj : ∀ k < j, tr.time k ≤ d) (hy : y ∈ H d) (hrj : r ≤ j)
     {A P B : Blk sp} (hAB : Anc (tr.HonestBlocksAt H) A B)
@@ -164,7 +165,7 @@ private theorem receipt_held_or_ancestry_at
 honest at its acceptance, with its parent held, is held or passes the receiver's acceptance
 guard. -/
 private theorem receipt_held_or_transfer_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x y : Fin sp.n} {k r j : Nat} {d : Time}
     (hd : 0 ≤ d) (hbj : ∀ m < j, tr.time m ≤ d) (hy : y ∈ H d) (hrj : r ≤ j)
     {A P B : Blk sp} (hx : x ∈ H (tr.time k)) (ha : tr.AcceptAt x k A)
@@ -192,7 +193,7 @@ private theorem receipt_held_or_transfer_at
 its reading cut `j` admits a received forwarding chain whose wrappers were each accepted by their
 signer at a cut where it was honest, when its finalized tip at `j` is below the chain's child. -/
 theorem forward_receipt_held_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x y : Fin sp.n} {j : Nat} {d : Time}
     (hd : 0 ≤ d) (hbj : ∀ k < j, tr.time k ≤ d) (hy : y ∈ H d)
     {hs : List (Header Info × Nat)} {u : Time} {B : Blk sp}

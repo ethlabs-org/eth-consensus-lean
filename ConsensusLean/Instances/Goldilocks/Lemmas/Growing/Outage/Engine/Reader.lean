@@ -82,7 +82,7 @@ private theorem joined_of_ready (Q : OutageQueryAt S A V) {y : Fin Q.params.n} {
     (hawake : ∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → Q.trace.awake y u) :
     Q.trace.JoinedAt y t := by
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  obtain ⟨-, hj⟩ := Compose.ready_implies_joined _ _ _ _ _ _ (hrun.upTo ht) y hy t c ht hc
+  obtain ⟨-, hj⟩ := Compose.ready_implies_joined_of (hrun.upTo ht) hy ht hc
     fun u h1 h2 => ⟨hawake u h1 h2, h2⟩
   exact fun k hk hkt => hj k ((RunTrace.upTo_restartAt Q.trace).2 ⟨hkt, hk⟩) hkt
 
@@ -93,7 +93,7 @@ private theorem restarts_of_joined (Q : OutageQueryAt S A V) {y : Fin Q.params.n
     ∀ k, Q.trace.projAC.RestartAt y k → Q.trace.time k ≤ t →
       Q.trace.time k ≤ Q.params.ts ((Q.params.slot t : Int) - 1) := by
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have h := ((Compose.joined_projection _ _ _ _ _ _ (hrun.upTo ht) y hy t).1).mp
+  have h := ((Compose.joined_projection_from (hrun.upTo ht) hy t).1).mp
     (Compose.Growing.joinedAt_upTo hJ)
   intro k hk hkt
   rw [RunTrace.upTo_projAC] at h
@@ -144,7 +144,7 @@ theorem outage_reader_gate_at (Q : OutageQueryAt S A V) {t : Time}
   have hj₁ : SA.joined sp (tr.state y c₁).ac u := by
     have hst : (tr.upTo u).state y c₁ = tr.state y c₁ :=
       RunTrace.upTo_state_of_le hrun.time_mono ht₁.le
-    have h := ((Compose.joined_projection _ _ _ _ _ _ (hrun.upTo hu0) y hyu u).2.1 c₁
+    have h := ((Compose.joined_projection_from (hrun.upTo hu0) hyu u).2.1 c₁
       ((RunTrace.upTo_isCall _).mpr ⟨ht₁.le, _, hc₁⟩)
       (fun hr => by
         obtain ⟨-, ℓ, hc', hr⟩ := (RunTrace.upTo_restartAt tr).1 hr
@@ -247,6 +247,7 @@ theorem extending_majority_after_r_at (Q : OutageQueryAt S A V)
     (hd₂ : d ≤ Q.params.ts q + 6 * Q.params.Δ) (hdh : d ≤ Q.run.2.horizon) :
     Compose.Growing.ExtendingMajorityAt Q.trace Q.keys ar.origin q d := by
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hmv := simIni_mayVote S Q.run.2 Q.hn -- TEMP(C2): C3b replaces
   have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
   have hSD : ∀ y, Compose.Growing.ReceiverServiceAfterAt Q.keys (Q.trace.HonestBlocksAt Q.keys)
       (outageLockPremises_of_arming_at Q service hsh ar).b₁ y Q.trace.projAC := fun y => by
@@ -254,7 +255,7 @@ theorem extending_majority_after_r_at (Q : OutageQueryAt S A V)
     exact outage_receiver_service_at Q y
   have hall := Compose.Growing.restored_votes_extend_at _ hSD hinv
   rw [outageLockPremises_of_arming_at_P, outageLockPremises_of_arming_at_r] at hall
-  exact Compose.Growing.extendingMajority_of_all_at hrun hnc
+  exact Compose.Growing.extendingMajority_of_all_at hrun hmv hnc
     (fun x k e hv hs => hall x k e hv (by rw [hs]; exact hrq)) hd₁
     ((Q.bounds hdh).slot q d (Nat.zero_le _) hd₁ le_rfl hd₂)
 

@@ -63,7 +63,8 @@ theorem optimistic_next_votes_of_early_witness (hrun : GoldilocksRun proposer dg
     apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hS.sync)
       hm hS.catchUp (by linarith only [hm, sp.toParams.hΔ]) hx hy hcast hs (hhi.trans hmb)
     intro v hv
-    obtain ⟨hvs, hw, Hv, hHv, hHvr, hDHv, ha⟩ := Compose.optimistic_writer_votes hr hx hopt v hv
+    obtain ⟨hvs, hw, Hv, hHv, hHvr, hDHv, ha⟩ := Compose.optimistic_writer_votes hr
+      (fun _ => SA.voteStart_initial _) hx hopt v hv
     refine ⟨hvs, hw, Hv, hHv, hHvr, ?_, ha⟩
     rw [Compose.frame_of_projAC hrun hy hcast.1]
     exact hFX.trans (hXD.trans hDHv)
@@ -157,7 +158,7 @@ theorem optimistic_next_proposal_of_early_witness (hrun : GoldilocksRun proposer
     ⟨hXt, Or.inl ⟨hXt, hroot, Q, hQt, hvQ, hXQf⟩⟩
   · intro v hv
     obtain ⟨hvs, ⟨k, hsend, hklo, hkhi⟩, Hv, hHv, hHvr, hDHv, ha⟩ :=
-      Compose.optimistic_writer_votes hr hx hopt v hv
+      Compose.optimistic_writer_votes hr (fun _ => SA.voteStart_initial _) hx hopt v hv
     have hvheld := SA.sync_window_before_forward hr (SA.serviceWindowBefore_of_sync hS.sync)
       hx hsend (hm.trans hklo) (by rw [hti, hts] at hib; linarith only [hib, hklo, hkhi]) hy hc
       (fun k' hk' hrk => (hrs k' hk' hrk).trans hklo)
@@ -669,7 +670,8 @@ theorem optimistic_prefix_before (hrun : GoldilocksRun proposer dg H tr)
     apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hS.sync)
       hm hS.catchUp (by linarith only [hm, sp.toParams.hΔ]) hx hy hc hes hib
     intro v hv
-    obtain ⟨hvs, hw, Hv, hHv, hHvr, hDHv, ha⟩ := Compose.optimistic_writer_votes hr hx hopt v hv
+    obtain ⟨hvs, hw, Hv, hHv, hHvr, hDHv, ha⟩ := Compose.optimistic_writer_votes hr
+      (fun _ => SA.voteStart_initial _) hx hopt v hv
     exact ⟨hvs, hw, Hv, hHv, hHvr, hFD.trans hDHv, ha⟩
   have hhalf : 2 * Hᶜ.ncard < sp.n := by
     have hn : 0 < sp.n := sp.toParams.hn

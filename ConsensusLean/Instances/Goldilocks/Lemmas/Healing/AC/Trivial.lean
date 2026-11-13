@@ -722,7 +722,7 @@ theorem trivial_carry_fastLockU
         (ts_le_iff_le_slot sp (hr.time_nonneg i₀) _).2 (by rw [hsl])⟩
     refine carry_of_sentU hS hs fun v hv => ?_
     obtain ⟨hv, R, hR, hRr, -⟩ := hv
-    have hvs := optimisticPoint_pool_slotU hr hx hpt hv
+    have hvs := optimisticPoint_pool_slotU hr (fun _ => voteStart_initial _) hx hpt hv
     have hhead : ∃ Hv ∈ U, Hv.root = v.head ∧ (Hv.root = sp.genesisRoot ∨
         ∃ k₁, ∃ ℓ₁ : ACLabel (goldilocksSA sp FGP ro), tr.CallAt x k₁ ℓ₁ ∧
           tr.time k₁ < sp.ts s + 2 * sp.Δ ∧ Hv ∈ ℓ₁.frame.tree) :=
@@ -808,8 +808,9 @@ theorem honest_votes_in_slot_before {b : Time} (hS : HealthyBaseUpTo tr H U prop
       rw [htc, hslot]
       exact hrestart x hx r ((hr.time_mono hrc.le).trans htc.le) hrs
   by_cases hv : (tr.state x c).votedSlot = (sp.slot (tr.time c) : Int)
-  · obtain ⟨j, hjc, e, he, hes⟩ := (cast_of_votedSlot hr hx c _ hv).resolve_right
-      (by rw [trace_mayVote_stock hr hx c]; decide)
+  · obtain ⟨j, hjc, e, he, hes⟩ :=
+      (cast_of_votedSlot hr (fun _ => voteStart_initial _) hx c _ hv).resolve_right
+        (by rw [trace_mayVote_stock hr hx c]; decide)
     exact ⟨j, e, he, by rw [hes, htc, hslot], (hr.time_mono hjc.le).trans htc.le⟩
   · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
     obtain ⟨e, hem, hes⟩ := tryVote_votes x ell.frame hj hv hT (trace_mayVote_stock hr hx c _)
@@ -857,8 +858,9 @@ theorem honest_votes_in_slotU
     ⟨4 * m + 1, by simp only [SAParams.ts]; ring⟩ (hS.awake hx (by linarith))
   have hj := hS.joined_state hx c (by rw [htc, hslot, ts_sub_one]; linarith)
   by_cases hv : (tr.state x c).votedSlot = (sp.slot (tr.time c) : Int)
-  · obtain ⟨j, -, e, he, hes⟩ := (cast_of_votedSlotU hr hx c _ hv).resolve_right
-      (by rw [traceWithM_mayVote hr hx c]; decide)
+  · obtain ⟨j, -, e, he, hes⟩ :=
+      (cast_of_votedSlotU hr (fun _ => voteStart_initial _) hx c _ hv).resolve_right
+        (by rw [traceWithM_mayVote hr hx c]; decide)
     exact ⟨j, e, he, by rw [hes, htc, hslot]⟩
   · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
     obtain ⟨e, hem, hes⟩ := tryVote_votesWith x ℓ.frame hj hv hT (traceWithM_mayVote hr hx c _)

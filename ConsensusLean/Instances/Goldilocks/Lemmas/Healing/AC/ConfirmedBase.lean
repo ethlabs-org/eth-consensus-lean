@@ -645,11 +645,13 @@ theorem lock_compatible_core_fromU
       L'.root = l'.block → Compatible U L' P := by
     intro c' l' hl' hpl L' hL' hL'r
     cases hf : l'.fast
-    · obtain ⟨j', -, B, hsl, L₁, hL₁, hL₁r, hL₁B⟩ := slow_lock_provenanceU hr hw hy c' l' hl' hf
+    · obtain ⟨j', -, B, hsl, L₁, hL₁, hL₁r, hL₁B⟩ := slow_lock_provenanceU hr
+        (fun _ => SA.voteStart_initial _) hw hy c' l' hl' hf
       obtain rfl : L₁ = L' := hU.1 hL₁ hL' (hL₁r.trans hL'r.symm)
       exact compatible_down hU hL₁B
         (origin_compatible_proposalU hS hp4 hvotes hy hpl (Or.inr hsl))
-    · obtain ⟨j', -, B, CV, hfl, L₁, hL₁, hL₁r, hL₁B⟩ := fast_lock_provenanceU hr hy c' l' hl' hf
+    · obtain ⟨j', -, B, CV, hfl, L₁, hL₁, hL₁r, hL₁B⟩ := fast_lock_provenanceU hr
+        (fun _ => voteStart_initial _) hy c' l' hl' hf
       obtain rfl : L₁ = L' := hU.1 hL₁ hL' (hL₁r.trans hL'r.symm)
       exact compatible_down hU hL₁B
         (origin_compatible_proposalU hS hp4 hvotes hy hpl (Or.inl ⟨CV, hfl⟩))

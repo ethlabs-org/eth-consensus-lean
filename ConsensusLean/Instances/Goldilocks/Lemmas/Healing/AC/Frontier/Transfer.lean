@@ -70,13 +70,15 @@ theorem vote_locks_compatibleAC
       readPoint_locks_below_storedU hr hy hc (show 0 < sp.slot (tr.time i) by omega) l₀ hl₀
         (show l₀.slot ≠ sp.slot (tr.time i) by omega)
     obtain rfl : B₀' = B₀ := hΦ.coherent.1 hB₀' hB₀ (hB₀'r.trans hB₀r.symm)
-    obtain ⟨L₁, hL₁, hL₁r, O, hL₁O, k, hk, CV, hO⟩ := lock_below_originU hr hy i l₁ hl₁
+    obtain ⟨L₁, hL₁, hL₁r, O, hL₁O, k, hk, CV, hO⟩ := lock_below_originU hr
+      (fun _ => SA.voteStart_initial _) hy i l₁ hl₁
     obtain rfl : L₁ = B₁ := hU.1 hL₁ (hΦU hB₁) (hL₁r.trans hB₁r.symm)
     have hOw : OriginWithinAC tr H O l₁.slot b :=
       originWithinAC_iff.2 ⟨y, hy, k, CV, (hr.time_mono hk.le).trans hib, hO⟩
     exact down ((Anc.mono hΦU hA).trans hL₁O) (hBc O l₁.slot hOw (by omega)).symm
   · obtain ⟨Φ', A, D, -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
-      lock_origin_readPointU hrun hy hc l₀ hl₀ (by rw [hs]; push_cast; omega)
+      lock_origin_readPointU hrun hy hc l₀ hl₀
+        (by rw [hs]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
     refine down hL₀D (origin_compatible hU hΦ'U (CommitteeDict.full sp.n) h34
       (fun _ _ => mem_full _ _) (by simpa only [ncard_inter_full, hrun.stock] using hf)
@@ -114,7 +116,7 @@ theorem vote_extends_of_counted_batchAC (hrun : ACRunU wm u proposer tr H U)
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAtU hr hy hc.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_ancU hr hy hc
+  have hdomA := voteDomain_ancU hr (fun _ => voteStart_initial _) hy hc
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -187,7 +189,7 @@ theorem vote_extends_of_batchAC (hrun : ACRunU wm u proposer tr H U)
     by_cases hw : v.val ∈ H
     · obtain ⟨j, -, e', hv', he'⟩ := honest_merged_voteU hrun hy hc hv hw
       exact Or.inl ⟨hw, j, e', hv', by
-        rw [he']; exact merged_vote_slotU hrun.localRun hy hc v hv⟩
+        rw [he']; exact merged_vote_slotU hrun.localRun (fun _ => voteStart_initial _) hy hc v hv⟩
     · exact Or.inr hw
   have hcount' : (SX ∪ Hᶜ).ncard < 2 * SX.ncard := by
     have := Set.ncard_union_le SX Hᶜ

@@ -25,13 +25,12 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
 /-- The honest blocks of a run are coherent. -/
-theorem honest_coherent (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) :
+theorem honest_coherent {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr) :
     Coherent (tr.HonestBlocks H) :=
-  (ac_projection _ _ dg H _ tr proposer (requirements sp ro)
-    (fun y _ => payloadFrom_initial (requirements sp ro) y) hrun.toLocalRun hnc).coherent
+  honest_blocks_coherent hrun.toLocalRun hnc
 
 /-- Genesis is an honest block below every honest block. -/
-theorem honest_genesis_anc (hrun : GoldilocksRun proposer dg H tr)
+theorem honest_genesis_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ tr.HonestBlocks H) :
     sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload ∈ tr.HonestBlocks H ∧
@@ -43,7 +42,7 @@ theorem honest_genesis_anc (hrun : GoldilocksRun proposer dg H tr)
   exact ⟨⟨y, hy, i, hg⟩, (hanc B hBt).mono fun X hX => ⟨y, hy, i, hX⟩⟩
 
 /-- An honest block with the genesis root is genesis. -/
-theorem honest_eq_genesis (hrun : GoldilocksRun proposer dg H tr)
+theorem honest_eq_genesis {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hU : Coherent (tr.HonestBlocks H))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocks H)
     (hr : B.root = sp.genesisRoot) :
@@ -81,8 +80,8 @@ private theorem chain_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : 
   · exact Anc.total hU hBC (hBC'.trans hCC)
 
 /-- An ancestor of a block that is genesis or below a tip `Q` is genesis or below it. -/
-private theorem chain_of_anc (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {Q : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
+private theorem chain_of_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) {Q : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
     {A B : SA.Blk sp.n (List (FG.Att sp.n))} (hA : A ∈ tr.HonestBlocks H)
     (hAB : Anc (tr.HonestBlocks H) A B)
     (h : B.root = sp.genesisRoot ∨ ∃ C s, Q C s ∧ Anc (tr.HonestBlocks H) B C) :
@@ -124,7 +123,8 @@ theorem OnOriginChain.of_anc (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
   onOriginChain_iff.2 (chain_of_anc hrun hnc hA hAB (onOriginChain_iff.1 h))
 
 /-- **An ancestor of a block on the chain of the origins within `b` is on it.** -/
-theorem OnOriginChainWithin.of_anc (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem OnOriginChainWithin.of_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {b : Time} {A B : SA.Blk sp.n (List (FG.Att sp.n))} (hA : A ∈ tr.HonestBlocks H)
     (hAB : Anc (tr.HonestBlocks H) A B) (h : OnOriginChainWithin tr H B b) :
     OnOriginChainWithin tr H A b :=

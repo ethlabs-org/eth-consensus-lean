@@ -33,7 +33,8 @@ slot count and service available) has a supporter (`honest_supporter_at`), so it
 viable voter tree or below `fc_root` (`hframe`); below `fc_root` the vote extends `C`, otherwise a
 result transfers (the writer honest at its update, the voter at its vote) and an optimistic
 selection transfers with `2 f_{t_i} < n` counted at the voter's cut. -/
-theorem first_transfer_step_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem first_transfer_step_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C4 replaces
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
     (hB : SleepyBoundsFrom tr H σ₀ b) {g : Time} {rL rO s : Nat} (hs₀ : σ₀ ≤ s)
     (hsa : a + κ ≤ sp.ts s) {y : Fin sp.n}
@@ -52,10 +53,10 @@ theorem first_transfer_step_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hE : SA.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) C) :
     SA.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
   have hd := hrun.time_nonneg i
-  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hrun' := goldilocks_ac_projection_from hrun hnc
   have hf := hB.two (tr.time i) hd hib
   have ha : a ≤ sp.ts s := (le_add_of_nonneg_right hsync.kappa).trans hsa
-  obtain ⟨x', k', e', hv', -, hs', hext'⟩ := honest_supporter_at hrun hnc hsync hB hs₀ ha hC
+  obtain ⟨x', k', e', hv', -, hs', hext'⟩ := honest_supporter_at hrun hmv hnc hsync hB hs₀ ha hC
   have hvf := hframe ⟨x', k', e', hv', hs', hext'⟩
   have hlocks := vote_locks_compatible_at hrun hnc hB hy hc hs hib hlive hCc hE
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hy hc.1

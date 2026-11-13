@@ -50,7 +50,7 @@ theorem slow_window_resultsU
   swap
   · exact ⟨i₀, C, _, ⟨ℓX, hupd, hconf, rfl⟩, Anc.mono hΦU hDC⟩
   obtain ⟨S, hS, hSr, hDS⟩ := hslow j hj (by exact_mod_cast hjs)
-  obtain ⟨k, -, R, CV, hR, hRr⟩ := saved_resultU hr hx i₀ j hSr
+  obtain ⟨k, -, R, CV, hR, hRr⟩ := saved_resultU hr (fun _ => voteStart_initial _) hx i₀ j hSr
   have hRU : R ∈ U := by
     obtain ⟨ℓ', hu', hR', -⟩ := hR
     exact (frameIn_of_callAtU hr hx hu'.1).2 (deepest_mem hR').1.1
@@ -67,19 +67,21 @@ theorem slow_window_results (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x
 
 /-- `lock_below_origin` with the unlock given. -/
 theorem lock_below_originU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state y i).locks, ∃ L ∈ U, L.root = l.block ∧ ∃ O, Anc U L O ∧
       ∃ k < i, ∃ CV, ResultAt tr y k l.slot O CV ∨ OptimisticLockAt tr y k l.slot O CV := by
   intro l hl
   cases hf : l.fast
-  · obtain ⟨j, hj, B, hsl, L, hL, hLr, hLB⟩ := slow_lock_provenanceM hr hy i l hl hf
+  · obtain ⟨j, hj, B, hsl, L, hL, hLr, hLB⟩ := slow_lock_provenanceM hr hini hy i l hl hf
     obtain ⟨ℓX, C, hupd, hconf, hdeep⟩ := slowLockAtW_iff.1 hsl
     have hΦU := (frameIn_of_callAtU hr hy hupd.1).2
     obtain ⟨⟨-, -, hBC⟩, -⟩ := (deepest_mem hdeep).1
     exact ⟨L, hL, hLr, C, hLB.trans (Anc.mono hΦU hBC), j, hj, _,
       Or.inl ⟨ℓX, hupd, hconf, rfl⟩⟩
-  · obtain ⟨j, hj, B, CV, hfl, L, hL, hLr, hLB⟩ := fast_lock_provenanceU hr hy i l hl hf
+  · obtain ⟨j, hj, B, CV, hfl, L, hL, hLr, hLB⟩ := fast_lock_provenanceU hr
+      hini hy i l hl hf
     rcases hfl with ⟨ℓX, C, hupd, hconf, hfs, -⟩ | hopt
     · have hΦU := (frameIn_of_callAtU hr hy hupd.1).2
       obtain ⟨⟨-, -, hBC⟩, -⟩ := (deepest_mem hfs).1
@@ -89,11 +91,19 @@ theorem lock_below_originU
 
 /-- Every stored lock of an honest node sits below an origin of its slot, written at an earlier
 cut: a result or an optimistic confirmation of the node. -/
+theorem lock_below_origin_from {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
+    (hy : y ∈ H) (i : Nat) :
+    ∀ l ∈ (tr.state y i).locks, ∃ L ∈ U, L.root = l.block ∧ ∃ O, Anc U L O ∧
+      ∃ k < i, ∃ CV, ResultAt tr y k l.slot O CV ∨ OptimisticLockAt tr y k l.slot O CV :=
+  lock_below_originU (hr := hr.toU) (hini := hini) (y := y) (hy := hy) (i := i)
+
+/-- `lock_below_origin_from` at the initial starts. -/
 theorem lock_below_origin (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state y i).locks, ∃ L ∈ U, L.root = l.block ∧ ∃ O, Anc U L O ∧
       ∃ k < i, ∃ CV, ResultAt tr y k l.slot O CV ∨ OptimisticLockAt tr y k l.slot O CV :=
-  lock_below_originU (hr := hr.toU) (y := y) (hy := hy) (i := i)
+  lock_below_origin_from hr (fun _ => SA.voteStart_initial _) hy i
 
 /-- `slow_stored_locks` with the unlock given. -/
 theorem slow_stored_locksU
@@ -106,7 +116,8 @@ theorem slow_stored_locksU
   have hr := hS.run.localRun
   have hU := hr.coherent
   intro l hl hlive hle Y hY hYr
-  obtain ⟨L, hL, hLr, O, hLO, k, -, CV, hO⟩ := lock_below_originU hr hy i l hl
+  obtain ⟨L, hL, hLr, O, hLO, k, -, CV, hO⟩ := lock_below_originU hr
+    (fun _ => SA.voteStart_initial _) hy i l hl
   obtain rfl : Y = L := hU.1 hY hL (hYr.trans hLr.symm)
   obtain ⟨kx, R, CVx, hR, hDR⟩ := slow_window_resultsU hr hx hsl (U := U) l.slot (by omega) hle
   have hjr : gbar g + 4 * sp.Δ ≤ sp.ts l.slot := hs.trans ((ts_le_iff sp).2 (by omega))
@@ -197,7 +208,8 @@ theorem slow_live_locksU
       (by omega) (by omega) B₁ (hΦU hB₁) hB₁r)
   · -- a lock of slot `s + 1` or later is optimistic, over earlier honest slot-`(s+1)` votes
     obtain ⟨Φ', A, D', -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
-      lock_origin_readPointU hrun hy hc l₀ hl₀ (by rw [hes]; push_cast; omega)
+      lock_origin_readPointU hrun hy hc l₀ hl₀
+        (by rw [hes]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
     refine down hL₀D (origin_compatible hU hΦ'U (CommitteeDict.full sp.n) h34
       (fun _ _ => mem_full _ _)

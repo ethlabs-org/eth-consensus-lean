@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Model
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
 
 @[expose] public section
 
@@ -55,6 +56,8 @@ structure GoldilocksRun (proposer : Nat → Fin sp.n)
   by that validator's node at an earlier cut. -/
   carried_vote_unforgeable : ∀ y ∈ H, ∀ i B, tr.BlockCallAt y i B →
     ∀ v ∈ blockVotes B, v.val ∈ H → ∃ j < i, tr.EmitAt v.val j v
+  /-- The AC starts are starts up to the vote permission. -/
+  vstart : ∀ y, SA.VoteStart sp.genesisRoot (ini y)
 
 end Consensus.Goldilocks
 

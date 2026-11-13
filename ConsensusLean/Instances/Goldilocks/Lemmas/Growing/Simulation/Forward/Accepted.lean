@@ -162,8 +162,7 @@ theorem received_forward_accepted_before_of_released_at (hv : rho.ExecutionValid
     refine ⟨k, ha, ?_⟩
     rw [mem_honestKeysAt_iff, hk]
     exact fun h => hx (rho.faultyAt_mono ((min_le_left _ _).trans htq) h)
-  -- TEMP(C2): `forward_receipt_held_at` is not start-generic (needs `fg_projection`).
-  have hheld := forward_receipt_held_at (simIni_eq_initial S rho hn ▸ hrun) hnc hD hbe hyD hFB' B
+  have hheld := forward_receipt_held_at hrun hnc hD hbe hyD hFB' B
     o t p r e hd' hsub hej htu .refl hsource
   rw [← Trace.upTo_state _ _ fun k hk => hbe k (by omega)] at hheld
   obtain ⟨k, hk, ha⟩ : ∃ k < cutMap S rho hn (i + 1),

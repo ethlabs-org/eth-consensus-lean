@@ -24,7 +24,7 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-- At an honest vote, the pool of a slot other than the vote's, and the stamps of its votes,
 are those of the state after the vote's call. -/
-private theorem readPoint_slot (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+private theorem readPoint_slot {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
     {e : SA.Em sp FGP} (hc : SA.CastAt T y i ℓ e) {σ : Nat} (hσ : e.msg.slot ≠ σ) :
     (T.state y (i + 1)).pool σ = e.readPoint.pool σ ∧
@@ -52,9 +52,9 @@ of slot `s`, has a release time `τ ∈ [t_s, t_s + 2Δ)` at which it is served 
 deadline for `τ` is at or before the vote), and has a head that is relayed to `y` from a time
 before `t_s + 2Δ` (likewise) or that `y` accepted before the freeze `t_s + 3Δ` (genesis
 included), then `Carry_y(s, ·, ·)` holds for the counted votes. -/
-theorem carryAt_of_served (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
-    {y : Fin sp.n}
-    -- supplier: `frame_anc_accepted`
+theorem carryAt_of_served {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
+    {y : Fin sp.n} -- supplier: `frame_anc_accepted`
     (hframe : ∀ k (ℓ : ACLabel (SA.goldilocksSA sp FGP ro)), T.CallAt y k ℓ →
       ∀ B ∈ ℓ.frame.tree, ∀ X, Anc U X B →
         X.root = sp.genesisRoot ∨ ∃ k' ≤ k, T.AcceptAt y k' X)
@@ -82,7 +82,7 @@ theorem carryAt_of_served (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
     have hj' : SA.joined sp (T.post i) (T.time i) := by
       unfold SA.joined; rw [SA.restartTime_of_castAt hr hy hc]; exact hyj
     intro k hk hrk
-    have := ((SA.joined_awake sp) FGP ro H U T hr y hy i ℓ hc.1 hj').2 k hk hrk
+    have := (SA.joined_awakeU sp FGP ro H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
     rwa [hsi, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by push_cast; ring] at this
   have hdl : ∀ k ≤ i, ∀ τ, τ < sp.ts s + 2 * sp.Δ → T.deadline y k τ < sp.ts s + 3 * sp.Δ := by
     intro k hk τ hτ
@@ -157,19 +157,19 @@ theorem carryAt_of_served (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
     have hheld : ∀ u ∈ (T.state y (k' + 1)).pool s,
         SA.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
       intro u hu
-      have hus : u.slot = s := SA.state_pool_slot sp hr hy (k' + 1) s u hu
+      have hus : u.slot = s := SA.state_pool_slot_from sp hr hini hy (k' + 1) s u hu
       obtain ⟨hpool, hstamp⟩ := readPoint_slot hr hy hc (σ := s) (by omega)
       have hu' := SA.pool_mono hr hy (show k' + 1 ≤ i + 1 by omega) hnr s hu
       refine ⟨by rw [hus, ← hpool]; exact hu', ?_⟩
       rw [← hstamp u hus]
-      rcases SA.pool_origin hr hy (i + 1) u (by rw [hus]; exact hu') with
+      rcases SA.pool_origin_from hr hini hy (i + 1) u (by rw [hus]; exact hu') with
         ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
       · rw [hst₁, SA.etime_of_lt_of]
         by_cases hk₁k' : k₁ ≤ k'
         · exact lt_of_le_of_lt (hr.time_mono hk₁k') hk'lt
         · obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, rfl⟩ | ⟨-, hn₁, -⟩⟩ := hsend₁
           · -- `y`'s own slot-`s` vote, cast at most `Δ` after `t_s`
-            have h := (cast_head_fcRoot hr hy ⟨hc₁, he₁⟩).2
+            have h := (cast_head_fcRoot_from hr hini hy ⟨hc₁, he₁⟩).2
             rw [hus] at h
             linarith only [h, hΔ]
           · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
@@ -185,8 +185,8 @@ theorem carryAt_of_served (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
         exact absurd h hv'
       · have ha' : a ∈ (T.state y (k' + 1)).pool s := by rw [← hvs]; exact ha
         have hc' : c ∈ (T.state y (k' + 1)).pool s := by rw [← hvs]; exact hc''
-        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv, SA.state_pool_slot sp hr hy _ s a ha',
-          SA.state_pool_slot sp hr hy _ s c hc', hheld a ha', hheld c hc'⟩
+        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv, SA.state_pool_slot_from sp hr hini hy _ s a ha',
+          SA.state_pool_slot_from sp hr hini hy _ s c hc', hheld a ha', hheld c hc'⟩
         · rintro rfl; exact hv' ha'
         · rintro rfl; exact hv' hc'
 

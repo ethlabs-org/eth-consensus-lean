@@ -28,7 +28,8 @@ label `j ≤ s` does not exist. For `j < s` the later step applies to the member
 every slot-`s` vote (cast before the vote's cut); for `j = s` the first step applies to the origin
 above the member (a member, as `rO ≤ s`); both with the earlier slot-`(s+1)` votes from the
 induction on the cut. -/
-theorem votes_below_succ_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem votes_below_succ_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C4 replaces
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
     (hB : SleepyBoundsFrom tr H σ₀ b) {g : Time} {rL rO s : Nat} (hs₀ : σ₀ ≤ s) (hrO : rO ≤ s)
     (hsa : a + κ ≤ sp.ts s)
@@ -67,7 +68,7 @@ theorem votes_below_succ_at (hrun : Growing.GoldilocksRun proposer dg H tr)
           rw [hs] at h
           change s + 1 = sp.slot (tr.time i) at h
           exact (SA.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by exact_mod_cast h.le)
-        exact later_transfer_step_at hrun hnc hsync hB hs₀ hsa hy hc hs hib hlv
+        exact later_transfer_step_at hrun hmv hnc hsync hB hs₀ hsa hy hc hs hib hlv
           (fun C' j' hC' hj' => hcomp C j hC hj.le C' j' hC' hj') (hfr C j hC hj.le)
           (fun x k e' hv' hs' => healedVotesBelow_iff.1 hV C j hC x k e' hv'
             ((vote_cut_lt hrun hnc hv' hs' hti).1.le.trans (hti.trans hib)) (by omega) hs'.le)
@@ -75,7 +76,7 @@ theorem votes_below_succ_at (hrun : Growing.GoldilocksRun proposer dg H tr)
       · subst hjs
         obtain ⟨O, hO, hCO⟩ := hC.below_origin hrun hnc
         have hOm : HealedOrigin tr H g rL rO O j b := HealedOrigin.of_origin hrO hO
-        exact voteExtends_of_anc (first_transfer_step_at hrun hnc hsync hB hs₀ hsa hy hc hs hib
+        exact voteExtends_of_anc (first_transfer_step_at hrun hmv hnc hsync hB hs₀ hsa hy hc hs hib
           hlv hO (fun C' j' hC' hj' => hcomp O j hOm le_rfl C' j' hC' hj')
           (hfr O j hOm le_rfl) (hE O j hOm le_rfl)) hCO
   refine healedVotesBelow_iff.2 fun C j hC y i e hv hib hj hm => ?_

@@ -40,7 +40,8 @@ private theorem tick_cuts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} (y :
 /-- **An honest validator awake and joined at `t_s + 6Δ` runs the update of slot `s`** there: its
 tick at that public time starts with `ac_on_tick`, joined. -/
 theorem update_of_awake_joined {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} (hrun : GoldilocksRun proposer dg H tr)
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini}
+    (hrun : GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n} (hx : x ∈ H) {s : Nat} (hw : tr.awake x (sp.ts s + 6 * sp.Δ))
     (hj : tr.JoinedAt x (sp.ts s + 6 * sp.Δ)) :
     ∃ k ℓ, SA.UpdateAt tr.projAC x k s ℓ := by
@@ -73,7 +74,7 @@ theorem update_of_awake_joined {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   have htj : tr.projAC.time j = sp.ts s + 6 * sp.Δ := ht0
   refine ⟨j, ℓ, ⟨hn0, by simp [RunTrace.projAC, hl, RunTrace.acLabel]⟩, hcall, htj, ?_⟩
   rw [projAC_state hrun.toLocalRun hx j, htj]
-  exact ((joined_projection sp ro dg H tr proposer hrun x hx _).2.1 j ⟨_, hn0, hl⟩ hnr ht0).1 hj
+  exact ((joined_projection_from hrun hx _).2.1 j ⟨_, hn0, hl⟩ hnr ht0).1 hj
 
 /-- **A later update adopts an origin within `b`** (`s' > s`).
 Every honest slot-`s'` vote occurs before the bounded update and extends the origin (S2), and

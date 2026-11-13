@@ -87,7 +87,7 @@ theorem update_adopts_extended_from (hrun : Growing.GoldilocksRun proposer dg H 
   have ht : tr.time k₀ = sp.ts s' + 6 * sp.Δ := hu.2.2.1
   set d := tr.time k₀
   have hcount : (H d)ᶜ.ncard < (VotersAt tr H s' d).ncard :=
-    faults_lt_voters hrun hnc hB hσ₀ (by rw [ht]; linarith) hb (by rw [ht])
+    faults_lt_voters hrun (fun _ _ => rfl) hnc hB hσ₀ (by rw [ht]; linarith) hb (by rw [ht])
   have hcut : ∀ k < k₀ + 1, tr.time k ≤ d := fun k hk => hrun.time_mono (by omega)
   -- the update's cut
   obtain ⟨c, hc, hcl⟩ := Option.bind_eq_some_iff.1 hu.1.2

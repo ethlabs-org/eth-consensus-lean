@@ -69,9 +69,10 @@ variable {H : Set (Fin sp.n)} {U : Set (SA.Blk sp.n FGP)} {tr : SA.SATrace sp FG
 
 /-- The state before an honest call is reachable, with a frame and time from which the call is
 lawful. -/
-theorem pre_reachable (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+theorem pre_reachable {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hcall : tr.CallAt y i ℓ) :
-    ∃ Φp tp, (goldilocksSA sp FGP ro).ReachableAt y U (tr.state y i) Φp tp ∧ tp ≤ tr.time i ∧
+    ∃ Φp tp, (goldilocksSA sp FGP ro).ReachableAtFrom (ini y) y U (tr.state y i) Φp tp ∧
+      tp ≤ tr.time i ∧
       (goldilocksSA sp FGP ro).CallOK U Φp (tr.time i) ℓ.call ℓ.frame := by
   rcases hr.frameLaw y hy i ℓ hcall with ⟨hn, Φ₀, hi, hf, hok⟩ | ⟨j, ℓ', hj, hc', hnb, hok⟩
   · refine ⟨Φ₀, 0, ?_, hr.time_nonneg i, hok⟩
@@ -79,11 +80,12 @@ theorem pre_reachable (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin
     exact .init Φ₀ hi hf
   · refine ⟨ℓ'.frame, tr.time j, ?_, hr.time_mono hj.le, hok⟩
     rw [tr.state_of_lastCall hc' hj hnb]
-    exact localRun_reachable _ _ _ _ _ tr hr y hy j ℓ' hc'
+    exact localRun_reachable_from hr y hy j ℓ' hc'
 
 /-- **An honest vote's head extends `fc_root`** (requirement 1, A0.6), and the vote is cast no
 later than `Δ` after the start of its slot. -/
-theorem cast_head_fcRoot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+theorem cast_head_fcRoot_from {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
     (hc : SA.CastAt tr y i ℓ e) :
     (∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.fcRoot Hd) ∧
@@ -97,13 +99,24 @@ theorem cast_head_fcRoot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : 
     rw [hx]; exact he
   obtain ⟨⟨d, hd, hdr⟩, hle⟩ :=
     step_emitsHeads ro y (tr.state y i) hok.1.1 (hr.time_nonneg i) ℓ.call e he'
-  have hok' := (((SA.interface_requirements sp FGP ro).1 y U hU _ _ _ hreach).2
-    (tr.time i) ℓ.call ℓ.frame htp hok e he' d hd).1
+  have hok' := (((SA.interface_requirements_from sp FGP ro (hini y)).1 y U hU _ _ _
+    (ACInterface.reachableAtFrom_iff.1 hreach)).2
+    (tr.time i) ℓ.call.toStart ℓ.frame htp
+    (ACInterface.callOK_ofStart.2 (by rw [ACInterface.Call.ofStart_toStart]; exact hok)) e
+    (by rw [ACInterface.step_ofStart, ACInterface.Call.ofStart_toStart]; exact he') d hd).1
   have hs := (SA.castAt_spec hr hy ⟨hcall, he⟩).2.1
   refine ⟨⟨d.head, ?_, hdr, hok'⟩, hs ▸ hle⟩
   by_cases hne : ℓ.frame.fcRoot = d.head
   · exact hne ▸ hok.1.1.fcRoot_mem
   · exact (Anc.mem hok' hne).2
+
+/-- `cast_head_fcRoot_from` at the initial starts. -/
+theorem cast_head_fcRoot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
+    (hc : SA.CastAt tr y i ℓ e) :
+    (∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.fcRoot Hd) ∧
+      tr.time i ≤ sp.ts e.msg.slot + sp.Δ :=
+  cast_head_fcRoot_from hr (fun _ => SA.voteStart_initial _) hy hc
 
 end SA
 
@@ -114,7 +127,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : Goldil
 
 /-- The frame of an honest AC cut of a run is `fg_to_ac(Σ)` of the node's state. -/
 theorem frame_of_projAC {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    {ini} (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ℓ) :
     ℓ.frame = Node.frame (tr.state y k) :=
   (hrun.cutLaw y hy k _ (projAC_callAt.mp hc)).1
@@ -130,7 +143,9 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 
 /-- **C1.1 (i) at a vote**: when the voter's caches are compatible with `B` and (K2) holds at the
 vote, `B` is in the viable voter block tree or at or below `fc_root` (in the honest blocks). -/
-theorem vote_viable (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) {y : Fin sp.n}
+theorem vote_viable {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
+    {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ℓ e) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hcache : Compatible (tr.HonestBlocks H) (tr.state y k).fg.F B ∧
@@ -140,7 +155,7 @@ theorem vote_viable (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg 
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
     B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hU := hr.coherent
   obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocks H := by
     rcases hr.frameLaw y hy k ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
@@ -159,7 +174,8 @@ theorem vote_viable (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg 
       have hBt := SA.frame_mem_of_between sp hU hΦ hΦU hDt hBD hFB
       have hΦBD := SA.anc_tree_of_anc_U hU hΦ hΦU hBt hBD hDt
       have hΦfB := SA.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
-      refine Or.inl ⟨SA.voterBlockTree_anc hr hy hc D hD B hΦBD, hΦfB, D, hD, ?_, hΦBD⟩
+      refine Or.inl ⟨SA.voterBlockTree_anc_from hr hrun.vstart hy hc D hD B hΦBD,
+        hΦfB, D, hD, ?_, hΦBD⟩
       have hfD := hΦfB.trans hΦBD
       rw [hfr] at hDt hfD ⊢
       exact ⟨hDt.1, hDt.2, Anc.mono (fun X hX => hX.1) hfD, hvD⟩

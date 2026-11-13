@@ -16,7 +16,7 @@ variable {P : Params} {A : NodeAC P} {tr : RunTrace A}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {proposer : Nat → Fin P.n}
 
-private theorem entry_compatible (hr : Node.LocalRun proposer dg H sg tr)
+private theorem entry_compatible {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     {y : Fin P.n} (hy : y ∈ H) {i : Nat} {D E B : A.Blk}
     (hDs : IsHonestSource tr H D E.root) (hE : E ∈ (tr.state y i).fg.tree)
@@ -28,7 +28,7 @@ private theorem entry_compatible (hr : Node.LocalRun proposer dg H sg tr)
   · exact Anc.total hf.coherent hEDU h
 
 /-- A held block compatible with every source stays a viable-ancestor candidate. -/
-theorem held_candidate_of_rows (hr : Node.LocalRun proposer dg H sg tr)
+theorem held_candidate_of_rows {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     (hfg : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     (hf : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) (i : Nat)
     {G : A.Blk → Prop} (hsrc : HonestRowsSourced tr H G y i) {B : A.Blk}

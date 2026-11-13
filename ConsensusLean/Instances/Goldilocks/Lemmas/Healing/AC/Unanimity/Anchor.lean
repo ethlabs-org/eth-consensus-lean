@@ -65,7 +65,7 @@ theorem stored_lock_slot_leU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) {l : Lock} (hl : l ∈ (tr.state y i).locks) :
     l.slot ≤ sp.slot (tr.time i) := by
-  obtain ⟨j, hj, B, horig, -⟩ := lock_provenanceU hr hy i l hl
+  obtain ⟨j, hj, B, horig, -⟩ := lock_provenanceU hr (fun _ => voteStart_initial _) hy i l hl
   have hmono := slot_mono sp (hr.time_nonneg j) (hr.time_mono hj.le)
   rcases horig with ⟨CV, ℓ, A, -, hsl, -⟩ | ⟨ℓ, -, -, htj, -⟩
   · omega
@@ -150,7 +150,8 @@ theorem vote_anchor_cases_coreU
   · -- a lock of slot `p`: three quarters of the committee voted for a block above it
     right
     obtain ⟨Φ, A, D, -, hΦ'U, -, h34, hpool, -, L, hL, hLr, hLD⟩ :=
-      lock_origin_readPointU hrun hx hc l hl (by rw [hes, hlp]; omega)
+      lock_origin_readPointU hrun hx hc l hl
+        (by rw [hes, hlp]; omega)
     rw [hS.stock] at h34
     obtain rfl : L = a := hU.1 hL (hΦU haT) (hLr.trans hlr.symm)
     have hf := hS.two_faulty_lt
@@ -261,7 +262,8 @@ theorem proposal_anchor_cases_coreU
     exact ⟨Hd, hHd, hHdr, haB.trans hBHd⟩
   · -- a stored lock of slot `p`: written by an optimistic confirmation before `t_p`
     right
-    obtain ⟨j, hj, B', horig, L, hL, hLr, hLB'⟩ := lock_provenanceU hr hq k l₂ hl₂
+    obtain ⟨j, hj, B', horig, L, hL, hLr, hLB'⟩ :=
+      lock_provenanceU hr (fun _ => voteStart_initial _) hq k l₂ hl₂
     obtain rfl : L = B := hU.1 hL (hΦU hB₂) (hLr.trans hB₂r.symm)
     rcases horig with ⟨CV, hopt⟩ | ⟨ℓ', hupd⟩
     · obtain ⟨z, hz, j', e', hv, hes, Hd, hHd, hHdr, hB'Hd⟩ :=

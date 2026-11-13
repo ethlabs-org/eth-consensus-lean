@@ -22,7 +22,7 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 /-- **Carrying a fast count carries its supporters** to each ancestor `B` of the counted block. -/
-theorem carried_counted_supporters (hrun : ACRun proposer tr H U)
+theorem carried_counted_supporters {ini} (hrun : ACRun proposer tr H U ini)
     {X y : Fin sp.n} {i₀ i s : Nat} (hX : X ∈ H (tr.time i₀)) (hy : y ∈ H (tr.time i))
     {B C : Blk sp.n FGP} {ℓX ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hcX : tr.CallAt X i₀ ℓX) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
@@ -50,8 +50,10 @@ theorem carried_counted_supporters (hrun : ACRun proposer tr H U)
       v₁.val = w → v₂.val = w → v₁ = v₂ := by
     intro w hw v₁ v₂ h₁ h₂ hv₁ hv₂
     by_contra hne
-    rcases hd v₁ h₁ (merged_vote_slot hry.localRun hy hc' v₁ h₁) with h₁' | h₁'
-    · rcases hd v₂ h₂ (merged_vote_slot hry.localRun hy hc' v₂ h₂) with h₂' | h₂'
+    rcases hd v₁ h₁ (merged_vote_slot hry.localRun hry.vstart hy hc' v₁ h₁)
+      with h₁' | h₁'
+    · rcases hd v₂ h₂ (merged_vote_slot hry.localRun hry.vstart hy hc' v₂ h₂)
+      with h₂' | h₂'
       · exact hw ⟨v₁, h₁', v₂, h₂', hne, hv₁, hv₂⟩
       · exact hw (hv₂ ▸ h₂')
     · exact hw (hv₁ ▸ h₁')
@@ -59,7 +61,7 @@ theorem carried_counted_supporters (hrun : ACRun proposer tr H U)
   have hst := Trace.upTo_state tr X (d := tr.time i₀) (i := i₀)
     (fun _ hk => hrun.localRun.time_mono hk.le)
   have hvp' : v ∈ ((tr.upTo (tr.time i₀)).state X i₀).pool s := hst.symm ▸ hvp
-  have hvs := state_pool_slot sp hrX hX i₀ s v hvp'
+  have hvs := state_pool_slot_from sp hrX hrun.vstart hX i₀ s v hvp'
   obtain ⟨Hd, hHd, hHdr, hHds⟩ : ∃ Hd ∈ ℓX.frame.tree, Hd.root = v.head ∧ Hd.slot ≤ v.slot := by
     unfold resolutionTime at hvres
     split at hvres

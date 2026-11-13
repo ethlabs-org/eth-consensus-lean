@@ -86,7 +86,7 @@ theorem sleepy_safe_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propos
     (hsync : Compose.Growing.SleepyServiceBefore tr H ΔF b)
     (hB : Compose.Growing.SleepyBoundsFrom tr H 0 b) :
     ReadySafeOn tr H (catchUp sp) 0 b := by
-  have hinv := sleepy_invariant_at hrun hnc hb hsync hB
+  have hinv := sleepy_invariant_at hrun (fun _ _ => rfl) hnc hb hsync hB
   refine ⟨fun y z i j t t' hi hj _ _ ht0 htb ht0' htb' hy hz => ?_,
     fun y i j t t' hi hj _ _ hij htt ht0 htb hy hy' => ?_⟩
   · exact hinv.read_compatible_at hrun hnc ht0 hi.1 htb hy.1 ht0' hj.1 htb' hz.1 t t'

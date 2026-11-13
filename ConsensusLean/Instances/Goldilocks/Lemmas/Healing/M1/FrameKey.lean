@@ -97,7 +97,7 @@ theorem store_eq_fg (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy :
   simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]
 
 /-- `h_j < h_max` in every honest store. -/
-theorem hj_lt_hmax (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+theorem hj_lt_hmax {ini} (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H)
     (i : Nat) : (tr.state y i).fg.hj < (tr.state y i).fg.hmax :=
   Store.hj_lt_hmax_of_reachable (Compose.fg_reachable hrun.toLocalRun hy i)
 

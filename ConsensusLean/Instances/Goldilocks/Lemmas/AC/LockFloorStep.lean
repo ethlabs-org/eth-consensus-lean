@@ -38,7 +38,7 @@ theorem anc_viableAncestor_of_candidate {n : Nat} {FGP : Type} {Φ : Frm n FGP}
   (viableAncestor_spec hΦ hB).2.2 B₀ h hc.symm
 
 variable {FGP : Type} {sp : SAParams} {Φ : Frm sp.n FGP} {t : Time} {j m : Nat}
-  {B₀ : Blk sp.n FGP}
+  {B₀ : Blk sp.n FGP} {ini : Fin sp.n → SAState sp.n}
 
 /-- **`unlock_target` is monotone above a kept block.** In a well-formed frame, if
 `unlockTarget(Φ, V, s, B₀) = B₀` and `B₀ ⪯ B ∈ Φ.tree`, then `B₀ ⪯ unlockTarget(Φ, V, s, B)`
@@ -291,7 +291,7 @@ private theorem floor_tryVote_readPoint {x : Fin sp.n} {P : SAState sp.n} {e : E
   · exact h
 
 /-- **The floor is in the read point of a cast.** -/
-theorem floor_readPoint_locks (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+theorem floor_readPoint_locks (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) (hB0 : B₀ ∈ ℓ.frame.tree)
     (hva0 : ℓ.frame.viableAncestor B₀ = B₀) (hk : sp.slot (tr.time i) ≤ m)
@@ -350,7 +350,7 @@ theorem floor_readPoint_locks (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
 
 /-- **The read point of a cast holds a live lock block `⪰ B₀`.** -/
 theorem exists_readPoint_liveLockBlocks_floor
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
     (hB0 : B₀ ∈ ℓ.frame.tree) (hva0 : ℓ.frame.viableAncestor B₀ = B₀)
     (hk : sp.slot (tr.time i) ≤ m)

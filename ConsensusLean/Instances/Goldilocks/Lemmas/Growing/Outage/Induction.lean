@@ -33,14 +33,16 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {D : OutageLockPremises tr H proposer dg}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {D : OutageLockPremises tr H proposer dg ini}
 
 private theorem ts_add (a b : Nat) :
     sp.ts ((a + b : Nat) : Int) = sp.ts (a : Int) + 4 * sp.Δ * b := by
   simp only [SAParams.ts]; push_cast; ring
 
 /-- The time of the label-`(j₀ − 1)` update is `t_{j₀} + 2Δ ≤ b₀`. -/
-private theorem prev_update_time (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n} {c : Nat}
+private theorem prev_update_time (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n}
+    {c : Nat}
     {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
     (hu : SA.UpdateAt tr.projAC x c (D.j₀ - 1) ℓ) : tr.time c = sp.ts D.j₀ + 2 * sp.Δ := by
   have ht : tr.time c = sp.ts ((D.j₀ - 1 : Nat) : Int) + 6 * sp.Δ := hu.2.2.1
@@ -50,18 +52,19 @@ private theorem prev_update_time (D : OutageLockPremises tr H proposer dg) {x : 
   linarith
 
 /-- The cuts before `c + 1` are at times `≤ t_c`. -/
-private theorem before_succ (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+private theorem before_succ (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (c : Nat) : ∀ k < c + 1, tr.time k ≤ tr.time c :=
   fun _ hk => hrun.time_mono (Nat.lt_succ_iff.1 hk)
 
 /-- The cuts before `c` are at times `≤ t_c`. -/
-private theorem before (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+private theorem before (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (c : Nat) : ∀ k < c, tr.time k ≤ tr.time c :=
   fun _ hk => hrun.time_mono hk.le
 
 /-- The protected block is in the frame of `x ∈ A₀` at its label-`j₀` update, at which `x` is
 honest, when `Σ.F ⪯ P` there: the label-`(j₀ − 1)` base put it in the tree earlier. -/
-private theorem prev_mem (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n} (hx : x ∈ D.A₀)
+private theorem prev_mem (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n}
+    (hx : x ∈ D.A₀)
     {c : Nat} (hxc : x ∈ H (tr.time c)) {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
     (hu : SA.UpdateAt tr.projAC x c D.j₀ ℓ)
     (hFP : Anc (tr.HonestBlocksAt H) (tr.state x c).fg.F D.P) :
@@ -179,7 +182,8 @@ end OutageLockInv
 /-- A lock of label `j` and expiry at least `m` on a frame block above `P`, held after an update
 at cut `c` of a node honest then, gives the protection at `c + 1` when `Σ.F` there is compatible
 with `P`. -/
-private theorem prot_of_lock (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n} {c q : Nat}
+private theorem prot_of_lock (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n}
+    {c q : Nat}
     (hxc : x ∈ H (tr.time c)) {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
     (hu : SA.UpdateAt tr.projAC x c q ℓ)
     (hF : Compatible (tr.HonestBlocksAt H) (tr.state x (c + 1)).fg.F D.P)
@@ -203,7 +207,7 @@ private theorem prot_of_lock (D : OutageLockPremises tr H proposer dg) {x : Fin 
 
 /-- The label-`j` base gives the protection at the cut after the update, when `Σ.F` there is
 compatible with `P`. -/
-private theorem prot_of_prevBase (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n}
+private theorem prot_of_prevBase (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n}
     {c j : Nat} (hxc : x ∈ H (tr.time c))
     {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
     (hu : SA.UpdateAt tr.projAC x c j ℓ)
@@ -217,7 +221,7 @@ private theorem prot_of_prevBase (D : OutageLockPremises tr H proposer dg) {x : 
 /-- **The base of the cover protection**: the cover base at the label-`j₀` update at cut `c` of
 `x ∈ A₀`, honest then, with the caches at `c` and `c + 1`, gives the label-`j₀` protection at
 `c + 1`. -/
-private theorem prot_of_coverBase (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n}
+private theorem prot_of_coverBase (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n}
     (hx : x ∈ D.A₀) {c : Nat} (hxc : x ∈ H (tr.time c))
     {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
     (hu : SA.UpdateAt tr.projAC x c D.j₀ ℓ)
@@ -243,7 +247,7 @@ private theorem prot_of_coverBase (D : OutageLockPremises tr H proposer dg) {x :
 
 /-- At cut `0` the store of a node honest then is genesis: the caches are compatible with `P`
 and `P`, when in the frame, is a candidate. -/
-private theorem caches_zero (D : OutageLockPremises tr H proposer dg) {y : Fin sp.n} {t : Time}
+private theorem caches_zero (D : OutageLockPremises tr H proposer dg ini) {y : Fin sp.n} {t : Time}
     (hd : 0 ≤ t) (hy : y ∈ H t) :
     (Compatible (tr.HonestBlocksAt H) (tr.state y 0).fg.F D.P ∧
       Compatible (tr.HonestBlocksAt H) (tr.state y 0).fg.J D.P) ∧
@@ -274,7 +278,7 @@ private theorem caches_zero (D : OutageLockPremises tr H proposer dg) {y : Fin s
 
 /-- **The outage lock invariant at every cut**: from the premise package and the step
 `OutageS5StepAt` at each cut. -/
-theorem outage_lock_inv_at (D : OutageLockPremises tr H proposer dg) (hS5 : OutageS5StepAt D) :
+theorem outage_lock_inv_at (D : OutageLockPremises tr H proposer dg ini) (hS5 : OutageS5StepAt D) :
     ∀ i, OutageLockInv D i := by
   have hrun := D.hrun
   have hK := sp.two_le_k

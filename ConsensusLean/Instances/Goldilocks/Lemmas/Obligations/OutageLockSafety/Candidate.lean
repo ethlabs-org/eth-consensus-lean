@@ -24,8 +24,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 `f < n/2` and the honest attestations of `y`'s tree sourced by `G`, a block `B` of the frame's tree
 compatible with every `G`-source is at or below `fc_root` or in the full viable tree. No pairwise
 premise on the sources. -/
-theorem held_candidate_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
+theorem held_candidate_of_rows {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
     {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourced tr H G y i)
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)

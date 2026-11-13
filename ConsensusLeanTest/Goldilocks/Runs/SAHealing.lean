@@ -639,6 +639,7 @@ theorem no_message {i : Nat} {ℓ : ACLabel GA1} (hc : run.CallAt v0 i ℓ) (v :
 theorem acRun : ACRun (fun _ => v0) run Set.univ blocks where
   stock := rfl
   localRun := localRun
+  vstart := fun _ => voteStart_initial _
   honest := {
     pool_vote := by
       intro y _ i σ v hv _

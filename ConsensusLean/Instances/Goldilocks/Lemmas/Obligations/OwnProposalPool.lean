@@ -17,7 +17,7 @@ variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- Votes in an actual own-proposal payload were already pooled before its AC block cut. -/
-theorem own_proposal_payload_pooled_run (hr : GoldilocksRun proposer dg H tr)
+theorem own_proposal_payload_pooled_run {ini} (hr : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {t : Time} {x : Nat}
     (hg : tr.GroupAt proposer dg y j t (.tick x))
     {d : DutyHead sp.n (List (FG.Att sp.n)) (SA.Payload sp.n)} {p : SA.Payload sp.n}
@@ -52,7 +52,7 @@ theorem own_proposal_payload_pooled_run (hr : GoldilocksRun proposer dg H tr)
     · simp at hm
     · exact ⟨_, hm.1⟩
   obtain ⟨σ, hm⟩ := hp
-  have hslot := (Compose.state_pool_cap hr (fun _ _ => rfl) hy (j + 1) σ).1 m
+  have hslot := (Compose.state_pool_cap hr hy (j + 1) σ).1 m
     (by simpa only [Compose.projAC_state hr.toLocalRun hy] using hm)
   obtain ⟨ℓp, hcp, hpc⟩ := hprop
   obtain ⟨B, hcb⟩ := hfg

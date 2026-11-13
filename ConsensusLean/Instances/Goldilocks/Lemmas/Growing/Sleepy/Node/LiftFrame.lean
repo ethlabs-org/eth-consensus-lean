@@ -32,7 +32,8 @@ theorem resultAt_mem_frame {FGP : Type} {ro' : ReplayOrder sp FGP} {trS : SA.SAT
 
 /-- The block of an origin event at a time `≤ d` by a node honest at `d` is in the prefix's honest
 blocks through `d`. -/
-theorem origin_mem_upTo (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem origin_mem_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     (hd : 0 ≤ d) {x : Fin sp.n} (hx : x ∈ H d) {k s : Nat} (hkd : tr.time k ≤ d)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (h : SA.ResultAt tr.projAC x k s C CV ∨ SA.OptimisticLockAt tr.projAC x k s C CV) :
@@ -47,7 +48,7 @@ theorem origin_mem_upTo (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : N
     exact mem_upTo_of_frame hrun hx hkd ((Trace.upTo_callAt _).mp hpt.1).2 hC
 
 /-- An origin of the prefix within `d'` is an origin of the run within `d'`. -/
-theorem originWithin_of_upTo (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem originWithin_of_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {d' : Time}
     (h : Compose.OriginWithin (tr.upTo d) (H d) C s d') : OriginWithin tr H C s d' := by
   obtain ⟨x, hx, k, CV, hk, hO⟩ := Compose.originWithin_iff.1 h
@@ -59,7 +60,7 @@ theorem originWithin_of_upTo (hrun : Growing.GoldilocksRun proposer dg H tr)
     exact OriginWithin.of_optimistic (hrun.antitone hkd hx) hk hO
 
 /-- The block of an origin of the prefix is in the prefix's honest blocks. -/
-theorem originWithin_upTo_mem (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem originWithin_upTo_mem {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hd : 0 ≤ d) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (h : Compose.OriginWithin (tr.upTo d) (H d) C s d) : C ∈ (tr.upTo d).HonestBlocks (H d) := by
   obtain ⟨x, hx, k, CV, hk, hO⟩ := Compose.originWithin_iff.1 h

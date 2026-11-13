@@ -69,10 +69,11 @@ theorem liveLockBlocks_compatible (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.
 /-- **The lock invariant at every honest cut**, in the cut's own frame: the stored record names a
 block of the node's tree above every stored lock block (`lockInv_of_reachable` at the last AC
 call, or none at the initial state), and the record is in the frame once `Σ.F` is below it. -/
-theorem lockInv_state (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem lockInv_state {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) (m : Nat) :
     SA.LockInv (tr.HonestBlocks H) (tr.state y m).ac (Node.frame (tr.state y m)) := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hU := hr.coherent
   have hst := projAC_state hrun.toLocalRun hy m
   obtain ⟨E, hEt, hEr, -⟩ := record_origin hrun hnc hy m
@@ -81,9 +82,10 @@ theorem lockInv_state (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun d
     fun hFE => ⟨hEt, honest_held_anc hrun hnc hy hFE hEt⟩, fun l hl X hX hXr => ?_⟩
   rw [← hst] at hl
   rcases SA.state_reachable sp hr hy m with h0 | ⟨Φ, t, hreach, -⟩
-  · rw [h0] at hl
+  · obtain ⟨_, hs⟩ := SA.voteStart_iff.1 (hrun.vstart y)
+    rw [h0, hs] at hl
     exact absurd hl (Set.notMem_empty l)
-  · obtain ⟨-, -, hli⟩ := SA.lockInv_of_reachable hU hreach
+  · obtain ⟨-, -, hli⟩ := SA.lockInv_of_reachable_from hU (hrun.vstart y) hreach
     obtain ⟨E', hE'U, hE'r, -, hlE⟩ := SA.lockInv_iff.1 hli
     obtain rfl : E' = E := hU.1 hE'U hEU (hE'r.trans (by rw [hst]; exact hEr.symm))
     exact hlE l hl X hX hXr
@@ -138,7 +140,7 @@ theorem fastLock_compatible_at {n : Nat} (hvi : OutageVoteInv D n) {y : Fin sp.n
   have hU := D.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨hcount, hCV⟩ := SA.fastLock_counted hrun' hy hfl
-  rw [D.stock] at hcount -- TEMP(C2): C3/C4 replaces
+  rw [D.stock] at hcount -- §S S14
   by_cases hs : s < D.j₀
   · -- an update or a selection of a label `< j₀` is within `b₀`
     have hj₀ := D.hj₀.1

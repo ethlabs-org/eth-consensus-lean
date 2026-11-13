@@ -29,8 +29,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **S3 at full reads, over sources `G`**: with `f < n/2`, the honest attestations at heights
 `≥ h_j` sourced by `G`, the sources pairwise compatible and compatible with `B`, a held block `B` is
 at or below `fc_root` or in the full viable tree. -/
-private theorem held_viable_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
+private theorem held_viable_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
     {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
     (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
     (hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D')
@@ -68,9 +68,8 @@ private theorem held_viable_of (hrun : GoldilocksRun proposer dg H tr) (hnc : No
 
 /-- `held_origin_viable` with `f < n/2` and the origins whose event precedes the cut pairwise
 compatible. -/
-private theorem held_origin_viable_of (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr)
-    (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
+private theorem held_origin_viable_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
     (hP : ∀ C s C' s', OriginBefore tr H C s i → OriginBefore tr H C' s' i →
       Compatible (tr.HonestBlocks H) C C')
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -122,7 +121,7 @@ theorem held_origin_viable_upTo {b : Time} (hrun : GoldilocksRun proposer dg H t
       (by omega) (hC.within hi) (hC'.within hi)) hBc hBt
 
 /-- Full-read viability uses the finite frontier and fault bound, with no service premise. -/
-theorem held_origin_viable_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
+theorem held_origin_viable_before {b : Time} {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n)
     (hP : ∀ s, OriginsBelowUpTo tr H s b) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) (hi : ∀ k < i, tr.time k ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))}

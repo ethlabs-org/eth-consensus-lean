@@ -441,13 +441,16 @@ private theorem Inv.restart {FGP : Type} {ro : ReplayOrder sp FGP} {U : Set (Blk
   rw [acRestart_blockStamp ro self A hΦ' ht' hC hg]
   exact hle Pa hPa
 
-/-- Every state reachable with the unlock given satisfies the invariant. -/
+/-- Every state reachable with the unlock given from a start up to the vote permission satisfies
+the invariant. -/
 private theorem inv_of_reachableU {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp.n}
-    {U : Set (Blk sp.n FGP)} (hU : Coherent U) {A : SAState sp.n} {Φ : Frm sp.n FGP} {t₀ : Time}
-    (h : ReachableAtU (ro := ro) wm self U A Φ t₀) :
+    {U : Set (Blk sp.n FGP)} (hU : Coherent U) {s₀ A : SAState sp.n} {Φ : Frm sp.n FGP}
+    {t₀ : Time} (h₀ : VoteStart sp.genesisRoot s₀)
+    (h : ReachableAtUFrom (ro := ro) wm s₀ self U A Φ t₀) :
     Inv sp ro U A Φ t₀ := by
   induction h with
   | init Φ hi hf =>
+    obtain ⟨m, rfl⟩ := voteStart_iff.1 h₀
     obtain ⟨htree, hroot, -, hpar, -⟩ := hi
     have hF : ∀ X ∈ Φ.tree, X = Φ.F := fun X hX => by rw [htree] at hX; exact hX
     refine ⟨hf, ⟨Φ.F, hf.2 (htree ▸ rfl), hroot, hpar⟩, le_rfl,
@@ -477,15 +480,17 @@ private theorem inv_of_reachableU {FGP : Type} {ro : ReplayOrder sp FGP} {self :
 
 /-- **A0.1, pool capacity.** -/
 theorem pool_cap : PoolCap sp :=
-  fun _ _ _ _ hU _ _ _ h => (inv_of_reachableU sp hU h.toU).pool
+  fun _ _ _ _ hU _ _ _ h => (inv_of_reachableU sp hU (voteStart_initial _) h.toU).pool
 
-/-- **A0.1, pool capacity**, at the states reachable with the unlock given. -/
+/-- **A0.1, pool capacity**, at the states reachable with the unlock given from a start up to
+the vote permission. -/
 theorem pool_capU (FGP : Type) (ro : ReplayOrder sp FGP) (self : Fin sp.n)
-    (U : Set (Blk sp.n FGP)) (hU : Coherent U) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t₀ : Time)
-    (h : ReachableAtU (ro := ro) wm self U A Φ t₀) :
+    (U : Set (Blk sp.n FGP)) (hU : Coherent U) {s₀ : SAState sp.n}
+    (h₀ : VoteStart sp.genesisRoot s₀) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t₀ : Time)
+    (h : ReachableAtUFrom (ro := ro) wm s₀ self U A Φ t₀) :
     ∀ σ, (∀ x ∈ A.pool σ, x.slot = σ) ∧
       ∀ i : Fin sp.n, ((A.pool σ).filter (fun x => x.val = i)).dedup.length ≤ 2 :=
-  (inv_of_reachableU sp hU h).pool
+  (inv_of_reachableU sp hU h₀ h).pool
 
 /-- At a reachable state, every block of the frame tree has a stamp at or before the time of the
 last call (finite, or `−∞` for genesis). -/
@@ -493,26 +498,30 @@ theorem tree_blockStamp_le {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp
     {U : Set (Blk sp.n FGP)} (hU : Coherent U) {A : SAState sp.n} {Φ : Frm sp.n FGP} {t₀ : Time}
     (h : (goldilocksSA sp FGP ro).ReachableAt self U A Φ t₀) :
     ∀ X ∈ Φ.tree, A.blockStamp X.root ≤ ETime.of t₀ :=
-  (inv_of_reachableU sp hU h.toU).stamp_le
+  (inv_of_reachableU sp hU (voteStart_initial _) h.toU).stamp_le
 
-/-- `tree_blockStamp_le` at the states reachable with the unlock given. -/
+/-- `tree_blockStamp_le` at the states reachable with the unlock given from a start up to the
+vote permission. -/
 theorem tree_blockStamp_leU {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp.n}
-    {U : Set (Blk sp.n FGP)} (hU : Coherent U) {A : SAState sp.n} {Φ : Frm sp.n FGP} {t₀ : Time}
-    (h : ReachableAtU (ro := ro) wm self U A Φ t₀) :
+    {U : Set (Blk sp.n FGP)} (hU : Coherent U) {s₀ A : SAState sp.n} {Φ : Frm sp.n FGP}
+    {t₀ : Time} (h₀ : VoteStart sp.genesisRoot s₀)
+    (h : ReachableAtUFrom (ro := ro) wm s₀ self U A Φ t₀) :
     ∀ X ∈ Φ.tree, A.blockStamp X.root ≤ ETime.of t₀ :=
-  (inv_of_reachableU sp hU h).stamp_le
+  (inv_of_reachableU sp hU h₀ h).stamp_le
 
 /-- **A0.1, stamps along parent edges.** -/
 theorem stamp_parent : StampParent sp :=
-  fun _ _ _ _ hU _ _ _ h => (inv_of_reachableU sp hU h.toU).stamp_parent
+  fun _ _ _ _ hU _ _ _ h => (inv_of_reachableU sp hU (voteStart_initial _) h.toU).stamp_parent
 
-/-- **A0.1, stamps along parent edges**, at the states reachable with the unlock given. -/
+/-- **A0.1, stamps along parent edges**, at the states reachable with the unlock given from a
+start up to the vote permission. -/
 theorem stamp_parentU (FGP : Type) (ro : ReplayOrder sp FGP) (self : Fin sp.n)
-    (U : Set (Blk sp.n FGP)) (hU : Coherent U) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t₀ : Time)
-    (h : ReachableAtU (ro := ro) wm self U A Φ t₀) :
+    (U : Set (Blk sp.n FGP)) (hU : Coherent U) {s₀ : SAState sp.n}
+    (h₀ : VoteStart sp.genesisRoot s₀) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t₀ : Time)
+    (h : ReachableAtUFrom (ro := ro) wm s₀ self U A Φ t₀) :
     ∀ B ∈ Φ.tree, ∀ Pa ∈ Φ.tree, B.parent = some Pa.root →
       A.blockStamp Pa.root ≤ A.blockStamp B.root :=
-  (inv_of_reachableU sp hU h).stamp_parent
+  (inv_of_reachableU sp hU h₀ h).stamp_parent
 
 end Consensus.Goldilocks.SA
 

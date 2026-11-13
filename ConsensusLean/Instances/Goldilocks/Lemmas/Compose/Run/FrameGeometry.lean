@@ -18,7 +18,7 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A}
 
 /-- The FG projection and the node have the same honest stores. -/
-theorem store_eq (hr : Node.LocalRun proposer dg H sg tr)
+theorem store_eq {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
     tr.projFG.store y i = (tr.state y i).fg := by
   change (tr.projFG.state y i).1 = _
@@ -36,7 +36,7 @@ theorem anc_mem {ACP : Type} {S : Set (NodeBlock P ACP)} {B W : NodeBlock P ACP}
   · exact (Anc.mem h he).1
 
 /-- Ancestry in the honest-block universe lifts below a held block. -/
-theorem honest_held_anc (hr : Node.LocalRun proposer dg H sg tr)
+theorem honest_held_anc {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     {y : Fin P.n} (hy : y ∈ H) {i : Nat} {B W : A.Blk}
     (h : Anc (tr.HonestBlocks H) B W) (hW : W ∈ (tr.state y i).fg.tree) :
@@ -63,7 +63,7 @@ private theorem anc_height {ACP : Type} {acp₀ : ACP} {H₀ : Set (Fin P.n)}
     · exact ⟨by omega, fun _ => by omega⟩
 
 /-- Height is monotone along ancestry, with constant entries on height plateaus. -/
-theorem honest_held_height (hr : Node.LocalRun proposer dg H sg tr)
+theorem honest_held_height {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     {y : Fin P.n} (hy : y ∈ H) {i : Nat} {B W : A.Blk}
     (h : (tr.state y i).fg.Anc B W) :
@@ -74,7 +74,7 @@ theorem honest_held_height (hr : Node.LocalRun proposer dg H sg tr)
   exact anc_height hf hy h
 
 /-- Two entry blocks of one height below one held block coincide. -/
-theorem held_entry_unique (hr : Node.LocalRun proposer dg H sg tr)
+theorem held_entry_unique {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     {y : Fin P.n} (hy : y ∈ H) {i : Nat} {E E' W : A.Blk}
     (hW : W ∈ (tr.state y i).fg.tree)
@@ -89,7 +89,7 @@ theorem held_entry_unique (hr : Node.LocalRun proposer dg H sg tr)
   · exact hT.symm.trans (((honest_held_height hr hf hy h).2 hh).trans hT')
 
 /-- The chain invariants of a held block need no AC projection law. -/
-theorem honest_held_chain (hr : Node.LocalRun proposer dg H sg tr)
+theorem honest_held_chain {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) {i : Nat} {B : A.Blk}
     (hB : B ∈ (tr.state y i).fg.tree) :
     1 ≤ ((tr.state y i).fg.σ B.root).h ∧
@@ -100,7 +100,7 @@ theorem honest_held_chain (hr : Node.LocalRun proposer dg H sg tr)
   exact ⟨h1, h2, h3⟩
 
 /-- Genesis is an ancestor of every honest block. -/
-theorem honest_genesis_anc (hr : Node.LocalRun proposer dg H sg tr)
+theorem honest_genesis_anc {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     {B : A.Blk} (hB : B ∈ tr.HonestBlocks H) :
     P.genesisBlock A.genesisPayload ∈ tr.HonestBlocks H ∧
       Anc (tr.HonestBlocks H) (P.genesisBlock A.genesisPayload) B := by
@@ -109,7 +109,7 @@ theorem honest_genesis_anc (hr : Node.LocalRun proposer dg H sg tr)
   exact ⟨⟨y, hy, i, hg⟩, (hanc B hBt).mono fun X hX => ⟨y, hy, i, hX⟩⟩
 
 /-- Zero justified height names the actual genesis block. -/
-theorem justified_genesis (hr : Node.LocalRun proposer dg H sg tr)
+theorem justified_genesis {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} {i : Nat} (h0 : (tr.state y i).fg.hj = 0) (hy : y ∈ H) :
     (tr.state y i).fg.J = P.genesisBlock A.genesisPayload := by
   have hR := fg_reachable hr hy i

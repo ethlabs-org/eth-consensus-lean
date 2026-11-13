@@ -221,6 +221,7 @@ theorem tickRun_goldilocksRun :
   stock := rfl
   toLocalRun := tickRun_localRun rfl rfl _
   genesis_root_ok := dg1_genesis
+  vstart := fun _ => SA.voteStart_initial _
   carried_vote_unforgeable y _ i B hB v hv _ := by
     obtain ⟨acc, hc⟩ := hB
     obtain ⟨d, p, hr, hB⟩ := onTick_block_made N1 dg1 _ _ _ _ (tickRun_label_mem hc.2)

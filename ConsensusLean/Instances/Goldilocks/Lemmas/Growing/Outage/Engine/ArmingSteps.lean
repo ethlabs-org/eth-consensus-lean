@@ -39,7 +39,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The head of a vote of a node honest at `d`, cast at a time `≤ d`, is held in the prefix
 through `d` (the one block held while honest with its root). -/
-private theorem head_mem_upTo (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+private theorem head_mem_upTo {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {d : Time} (hd : 0 ≤ d) {x : Fin sp.n} (hx : x ∈ H d) {j : Nat}
     (hjd : tr.time j ≤ d) {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.VoteAt tr.projAC x j e)
     {Hd : SA.Blk sp.n (List (FG.Att sp.n))} (hHd : Hd ∈ tr.HonestBlocksAt H)
@@ -47,7 +48,7 @@ private theorem head_mem_upTo (hrun : Consensus.Goldilocks.Growing.GoldilocksRun
   have hv' : SA.VoteAt (tr.upTo d).projAC x j e := by
     rw [RunTrace.upTo_projAC]; exact sa_voteAt_upTo.mpr ⟨hjd, hv⟩
   obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := SA.honest_head
-    (goldilocks_ac_projection sp ro dg (H d) (tr.upTo d) proposer (hrun.upTo hd) (hnc.upTo d))
+    (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d))
     hx hv'
   obtain rfl : Hd = Hd₂ := (honestBlocksAt_coherent hrun hnc).1 hHd (upTo_subset hrun hd hHd₂)
     (hHdr.trans hHd₂r.symm)
@@ -59,7 +60,9 @@ slot count charged at `t_c`, has a result `D` extending an origin `C` within `b`
 held in its frame when `Σ.F ⪯ C`, and a supporter of `D` honest at its cast and at `t_c` in its
 pool. -/
 theorem update_result_extends_origin_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C3b replaces
+    (hnc : NoCollRun dg tr)
     {ΔF b : Time} (hinv : SleepyInvariantUpTo tr H b) (hsync : SleepyServiceBefore tr H ΔF b)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {σ : Nat} (hC : OriginWithin tr H C σ b)
     {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
@@ -85,8 +88,8 @@ theorem update_result_extends_origin_at
     rintro x ⟨hx, hw, hj⟩
     obtain ⟨j, e, hv, hs, -⟩ :=
       vote_of_awake_joined_at hrun hnc (hrun.antitone (by rw [ht]; linarith) hx)
-        (mayVote_stock_at hrun hnc (ts_add_delta_nonneg _)
-          (hrun.antitone (by rw [ht]; linarith) hx)) hw hj
+        (mayVote_at hrun hnc (ts_add_delta_nonneg _) -- TEMP(C2): C3b replaces
+          (hrun.antitone (by rw [ht]; linarith) hx) (hmv _ _)) hw hj
     exact ⟨hx, j, e, hv, hs⟩
   have hvb : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → tr.time j ≤ sp.ts s + sp.Δ := by
     rintro x j e hv hs
@@ -211,7 +214,9 @@ theorem update_result_extends_origin_at
 /-- **P≤ at an update cut**: an update within `b` of a node honest at it has root cover, or
 Lemma P's frame conclusion. -/
 theorem update_result_or_root_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C3b replaces
+    (hnc : NoCollRun dg tr)
     {ΔF b : Time} (hinv : SleepyInvariantUpTo tr H b) (hsync : SleepyServiceBefore tr H ΔF b)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {σ : Nat} (hC : OriginWithin tr H C σ b)
     (hCU : C ∈ tr.HonestBlocksAt H) {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
@@ -230,14 +235,16 @@ theorem update_result_or_root_at
         hy).1 with hCF | hFC
   · exact Or.inl hCF
   have ht : tr.time c = sp.ts s + 6 * sp.Δ := hu.2.2.1
-  obtain ⟨hCt, D, hD, hCD, -⟩ := update_result_extends_origin_at hrun hnc hinv hsync hC hy hσs hu
+  obtain ⟨hCt, D, hD, hCD, -⟩ := update_result_extends_origin_at hrun hmv hnc hinv hsync hC hy hσs
+      hu
     (by linarith) hfb hFC
   exact Or.inr ⟨hFC, hCt, D, hD, hCD⟩
 
 /-- **The saved attestations** at an update of slot `s ≥ k` by a node honest at its cut `c`
 (lifted to the prefix through `t_c`). -/
 theorem saved_rows_above_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
     {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y c s ℓ) (hks : sp.k ≤ s)
     (hFC : Anc (tr.HonestBlocksAt H) (tr.state y c).fg.F C)
@@ -280,7 +287,8 @@ theorem saved_rows_above_at
 /-- **An own optimistic selection is compatible with a later result of the same label**, at
 cuts of a node honest at the result (lifted to the prefix through the result's time). -/
 theorem own_optimistic_compatible_result_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {k c s : Nat} (hy : y ∈ H (tr.time c))
     {B' D : SA.Blk sp.n (List (FG.Att sp.n))} {CV CV' : Set (SA.Vote sp.n)}
     (hO : SA.OptimisticLockAt tr.projAC y k s B' CV) (hR : SA.ResultAt tr.projAC y c s D CV')
@@ -300,7 +308,8 @@ its cut `c`, with a result `D ⪰ C` supported by a pool vote of a node honest a
 The opponents `Opp` contain the validators compromised by `t_c`; the optimistic voters of a
 slot-`(s + 1)` selection are classified at `t_c` (a voter honest then has a genuine vote). -/
 theorem cover_gate_veto_above_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     {C D : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
     {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y c s ℓ)
@@ -347,8 +356,9 @@ theorem cover_gate_veto_above_at
     rcases h with h | h
     · exact Or.inr (hVB'.trans (hBO.trans h))
     · exact SA.anc_total hU h (hVB'.trans hBO)
-  obtain ⟨L, hL, hLr, O, hLO, k', hk', CV, hO'⟩ := SA.lock_below_origin hacr.localRun hy c l
-    (by rw [projAC_upTo_state hrun le_rfl, projAC_state_at hrun hy]; exact hl)
+  obtain ⟨L, hL, hLr, O, hLO, k', hk', CV, hO'⟩ :=
+    SA.lock_below_origin_from hacr.localRun hacr.vstart hy c l
+      (by rw [projAC_upTo_state hrun le_rfl, projAC_state_at hrun hy]; exact hl)
   obtain rfl : B₀ = L := (hU.1 (hsub hL) (hHB hB₀) (hLr.trans hB₀r.symm)).symm
   have hLO' := hLO.mono hsub
   have hk'c := hm hk'.le
@@ -458,7 +468,7 @@ theorem cover_gate_veto_above_at
 /-- (R1) Awake on `[a, z]` and honest at `z`: every restart up to `z` is at or before every
 public `τ ∈ [a, z]`. -/
 theorem restart_le_of_awakeOn_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     {a z τ : Time} (hy : y ∈ H z) (haw : ∀ u, a ≤ u → u ≤ z → tr.awake y u)
     (haτ : a ≤ τ) (hτz : τ ≤ z) (hτ0 : 0 ≤ τ) (hpub : sp.toParams.IsPublic τ)
     {k : Nat} (hk : tr.RestartAt y k) (hkz : tr.time k ≤ z) : tr.time k ≤ τ := by
@@ -480,7 +490,7 @@ theorem restart_le_of_awakeOn_at
 /-- A node awake on `[a, z]` and honest at `z`, with `a ≤ t_r`, runs the update of every slot
 `q ≥ r` whose update is by `z`. -/
 theorem update_of_awakeOn_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {w : Fin sp.n}
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {w : Fin sp.n}
     {a z : Time} (hw : w ∈ H z) (haw : ∀ u, a ≤ u → u ≤ z → tr.awake w u) {r q : Nat}
     (ha : a ≤ sp.ts r) (hrq : r ≤ q) (hqz : sp.ts q + 6 * sp.Δ ≤ z) :
     ∃ k ℓ, SA.UpdateAt tr.projAC w k q ℓ := by
@@ -516,7 +526,9 @@ at its cast and at the update supports, and every saved attestation of the slow 
 block of the frame above `C`. The slot counts are charged at the update times (`hB` through
 `b' ≥ z`). -/
 theorem armed_first_update_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C3b replaces
+    (hnc : NoCollRun dg tr)
     {ΔF b b' : Time} (hinv : SleepyInvariantUpTo tr H b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b')
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {σ : Nat} (hC : OriginWithin tr H C σ b)
@@ -564,7 +576,7 @@ theorem armed_first_update_at
       (show sp.toParams.IsPublic _ from Dvd.intro (4 * ((s - sp.k + 1 : Nat) : Int))
         (by simp only [SAParams.ts]; ring)) hrr ((hm hr').trans (htc ▸ hsz))
   refine ⟨Nat.find hex₀, ℓ, hu, hfirst, hnr, fun hFC => ?_⟩
-  obtain ⟨hCt, D, hD, hCD, hsupp⟩ := update_result_extends_origin_at hrun hnc hinv hsync hC hwc
+  obtain ⟨hCt, D, hD, hCD, hsupp⟩ := update_result_extends_origin_at hrun hmv hnc hinv hsync hC hwc
     (by omega) hu hsb (hfbu hu hsz) hFC
   refine ⟨hCt, D, hD, hCD, hsupp, ?_⟩
   have hCtfg : C ∈ (tr.state w (Nat.find hex₀)).fg.tree := by
@@ -589,14 +601,15 @@ theorem armed_first_update_at
       RunTrace.upTo_state_of_le hm le_rfl] at hFm
     have hFk : Anc (tr.HonestBlocksAt H) (tr.state w k).fg.F C :=
       (hFm.mono (upTo_subset hrun hd)).trans hFC
-    obtain ⟨-, R, hR, hCR, -⟩ := update_result_extends_origin_at hrun hnc hinv hsync hC hwk
+    obtain ⟨-, R, hR, hCR, -⟩ := update_result_extends_origin_at hrun hmv hnc hinv hsync hC hwk
       (by omega) hu' (by linarith) (hfbu hu' (by linarith)) hFk
     exact ⟨R, hR, hCR.mono (frameIn_at hrun hnc hwk hu'.1).2⟩
 
 /-- The post-state locks of an update by a node honest at it are those of
 `update_confirmation`. -/
 private theorem locks_after_update_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {w : Fin sp.n} {c s : Nat} (hw : w ∈ H (tr.time c)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hu : SA.UpdateAt tr.projAC w c s ℓ) :
     (tr.state w (c + 1)).ac.locks =
@@ -624,7 +637,9 @@ private theorem slot_update_time {s : Nat} : sp.slot (sp.ts s + 6 * sp.Δ) = s +
 /-- **O1 at an update within `b`**: the first update of slot `s` of a cohort member, at a time
 `≤ b`, has root cover, or stores a lock of slot `s` on a block of its frame above `C`. -/
 theorem armed_lock_formed_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C3b replaces
+    (hnc : NoCollRun dg tr)
     {ΔF b b' : Time} (hinv : SleepyInvariantUpTo tr H b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b')
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {σ : Nat} (hC : OriginWithin tr H C σ b)
@@ -640,12 +655,12 @@ theorem armed_lock_formed_at
           (⟨L.root, s, f, s + sp.k⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks) := by
   have hΔ := sp.toParams.hΔ
   have hk2 := sp.two_le_k
-  obtain ⟨c, ℓ, hu, -, -, hP⟩ := armed_first_update_at hrun hnc hinv hsync hB hC hw hzb haw hks
+  obtain ⟨c, ℓ, hu, -, -, hP⟩ := armed_first_update_at hrun hmv hnc hinv hsync hB hC hw hzb haw hks
     hσs ha hsz (by linarith)
   have htc : tr.time c = sp.ts s + 6 * sp.Δ := hu.2.2.1
   have hwc : w ∈ H (tr.time c) := hrun.antitone (htc ▸ hsz) hw
   refine ⟨c, ℓ, hu, ?_⟩
-  rcases update_result_or_root_at hrun hnc hinv hsync hC hCU hwc (by omega) hu (htc ▸ hsb)
+  rcases update_result_or_root_at hrun hmv hnc hinv hsync hC hCU hwc (by omega) hu (htc ▸ hsb)
       (hB.slot s (tr.time c) (Nat.zero_le _) (by rw [htc]; linarith) (by rw [htc]; linarith)
         htc.le) with
       hroot | ⟨hFC, -, -⟩
@@ -671,7 +686,9 @@ lock of slot `s` and expiry `s + k` above `C`. The opponents `Opp` hold the vali
 compromised by the update's time `t_s + 6Δ`; a slot-`(s + 1)` caster honest then is in `Hold` or
 `Opp`. -/
 theorem armed_lock_cover_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C3b replaces
+    (hnc : NoCollRun dg tr)
     {ΔF b b' : Time} (hinv : SleepyInvariantUpTo tr H b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b')
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {σ : Nat} (hC : OriginWithin tr H C σ b)
@@ -694,7 +711,7 @@ theorem armed_lock_cover_at
         ∃ L f, ℓ.frame.Anc C L ∧
           (⟨L.root, s, f, s + sp.k⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks) := by
   have hΔ := sp.toParams.hΔ
-  obtain ⟨c, ℓ, hu, hfirst, hnr, hP⟩ := armed_first_update_at hrun hnc hinv hsync hB hC hw hzb
+  obtain ⟨c, ℓ, hu, hfirst, hnr, hP⟩ := armed_first_update_at hrun hmv hnc hinv hsync hB hC hw hzb
     haw hks hσs ha hsz hsb
   have htc : tr.time c = sp.ts s + 6 * sp.Δ := hu.2.2.1
   have hwc : w ∈ H (tr.time c) := hrun.antitone (htc ▸ hsz) hw

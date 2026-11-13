@@ -611,8 +611,8 @@ theorem acBlock_prev (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (
 
 /-- **An honest signing `fg_attest(C)` is the FG update's**: the cut before is the node's
 `ac_to_fg` at the same time, which returned `C`, and the FG state is the same at both. -/
-theorem attest_source (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {j : Nat}
-    {C : A.Blk} {a : FG.Att P.n} (hc : tr.CallAt y j (.fg (.attest C (some a)))) :
+theorem attest_source (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+    {j : Nat} {C : A.Blk} {a : FG.Att P.n} (hc : tr.CallAt y j (.fg (.attest C (some a)))) :
     ∃ j', j = j' + 1 ∧ ∃ ℓ : ACLabel A, tr.CallAt y j' (.ac ℓ) ∧ ℓ.call = .toFG ∧
       tr.time j' = tr.time j ∧ (A.toFG (tr.state y j').ac ℓ.frame (tr.time j')).2 = some C ∧
       (tr.state y j).fg = (tr.state y j').fg := by
@@ -664,15 +664,16 @@ theorem msgCall_group (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} 
   exact ⟨j, hg⟩
 
 /-- **An `fg_attest` call is in a tick.** -/
-theorem attestCall_tick (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {C : A.Blk} {s : Option (FG.Att P.n)} (hc : tr.CallAt y i (.fg (.attest C s))) :
+theorem attestCall_tick (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+    {i : Nat} {C : A.Blk} {s : Option (FG.Att P.n)} (hc : tr.CallAt y i (.fg (.attest C s))) :
     ∃ j, j ≤ i ∧ tr.TickAt proposer dg y j (tr.time i) := by
   obtain ⟨j, e, k, hg, rfl, hk⟩ := call_in_group h hy hc
   obtain ⟨x, rfl⟩ := exec_attest proposer dg y _ _ e (List.mem_of_getElem? hk)
   exact ⟨j, by omega, x, hg⟩
 
 /-- **Before the tick of a time, a node's cuts at that time are restarts.** -/
-theorem before_tick (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {j k : Nat}
+theorem before_tick (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+    {j k : Nat}
     {t : Time} {c : Cut A} (hg : tr.TickAt proposer dg y j t) (hc : tr.CallAt y k c) (hk : k < j)
     (ht : tr.time k = t) : ∃ ℓ : ACLabel A, c = .ac ℓ ∧ ℓ.call = .restart := by
   obtain ⟨j', e, m, hg', rfl, hm⟩ := call_in_group h hy hc
@@ -688,7 +689,7 @@ theorem before_tick (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : 
 
 /-- **The FG cuts of a node at the time of its `fg_attest` and before it are its own
 proposal's** (the tick's proposal step). -/
-theorem fg_before_attest (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n}
+theorem fg_before_attest (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {i j : Nat}
     {ℓ : FGLabel P A.Payload} {C : A.Blk} {s : Option (FG.Att P.n)}
     (hc : tr.CallAt y j (.fg (.attest C s))) (hi : tr.CallAt y i (.fg ℓ)) (hij : i < j)
@@ -722,7 +723,7 @@ theorem accept_in_tick (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n}
   · exact ⟨rfl, htk ▸ hp.2.1.symm⟩
 
 /-- **A call that is not a restart is in a group of a tick or a delivery.** -/
-theorem group_not_restart (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n}
+theorem group_not_restart (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {i : Nat}
     (hc : tr.IsCall y i) (hnr : ¬ tr.RestartAt y i) :
     ∃ j e, j ≤ i ∧ tr.GroupAt proposer dg y j (tr.time i) e ∧ 0 < e.phase := by
@@ -736,7 +737,7 @@ theorem group_not_restart (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n}
   | _ => simp [Event.phase]
 
 /-- **A restart call is a restart group of its own.** -/
-theorem restartCall_group (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n}
+theorem restartCall_group (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {k : Nat}
     (hk : tr.RestartAt y k) : tr.GroupAt proposer dg y k (tr.time k) .restart := by
   obtain ⟨ℓ, hc, hr⟩ := hk

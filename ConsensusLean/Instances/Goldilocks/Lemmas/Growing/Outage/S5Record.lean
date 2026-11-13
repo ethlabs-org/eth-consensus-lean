@@ -30,11 +30,12 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- **The early record, at a read time**: an update at label `r` by a node honest at it makes its
 effective record `⪰ P` at every later cut `c'` read at a time `t` at which it is honest (every cut
 before `c'` at a time `≤ t`). -/
-theorem record_above_of_update_r_by (D : OutageLockPremises tr H proposer dg)
+theorem record_above_of_update_r_by (D : OutageLockPremises tr H proposer dg ini)
     (hS : ∀ y, ReceiverServiceAfterAt H (tr.HonestBlocksAt H) D.b₁ y tr.projAC)
     (hinv : ∀ i, OutageLockInv D i) {w : Fin sp.n} {c : Nat} (hw : w ∈ H (tr.time c))
     {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
@@ -74,7 +75,7 @@ theorem record_above_of_update_r_by (D : OutageLockPremises tr H proposer dg)
 
 /-- **The early record**: an update at label `r` by a node honest at it makes its effective
 record `⪰ P` at every later cut at which it is honest. -/
-theorem record_above_of_update_r_at (D : OutageLockPremises tr H proposer dg)
+theorem record_above_of_update_r_at (D : OutageLockPremises tr H proposer dg ini)
     (hS : ∀ y, ReceiverServiceAfterAt H (tr.HonestBlocksAt H) D.b₁ y tr.projAC)
     (hinv : ∀ i, OutageLockInv D i) {w : Fin sp.n} {c : Nat} (hw : w ∈ H (tr.time c))
     {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}

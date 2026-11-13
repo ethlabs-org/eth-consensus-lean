@@ -25,10 +25,11 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- **The extending majority at the first restored label**, charged at every `d ≤ z`: `A₀` casts
 and extends `P`; the opponents at `z` lie in `(H z)ᶜ ∪ W`. -/
-theorem restored_majority_at_r_at (D : OutageLockPremises tr H proposer dg)
+theorem restored_majority_at_r_at (D : OutageLockPremises tr H proposer dg ini)
     (hinv : ∀ i, OutageLockInv D i)
     (hcall : ∃ x i, x ∈ H (tr.time i) ∧ tr.IsCall x i ∧ sp.ts D.r + sp.Δ ≤ tr.time i) :
     ∀ d ≤ D.z, ExtendingMajorityAt tr H D.P D.r d := by
@@ -48,8 +49,8 @@ theorem restored_majority_at_r_at (D : OutageLockPremises tr H proposer dg)
       obtain ⟨haw, hjn⟩ := OutageVoteInv.cohort_ready_at D hx hrk.1 hrk.2 hcall
       obtain ⟨k, e, hv, hs, -⟩ :=
         vote_of_awake_joined_at D.hrun D.hnc (D.hrun.antitone hrz (D.hA₀ hx))
-          (mayVote_stock_at D.hrun D.hnc (ts_add_delta_nonneg _)
-            (D.hrun.antitone hrz (D.hA₀ hx))) haw hjn
+          (mayVote_at D.hrun D.hnc (ts_add_delta_nonneg _) -- TEMP(C2): C3c replaces
+            (D.hrun.antitone hrz (D.hA₀ hx)) (D.hmv _ _)) haw hjn
       exact extendingCastersAt_iff.2 ⟨D.hA₀ hx, k, e, hv, hs,
         (hinv (k + 1)).votes x k (Nat.lt_succ_self k) e hv (hs ▸ hslot.1) (hs ▸ hslot.2)
           (Or.inr hx)⟩

@@ -30,7 +30,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The FG state of a reader honest at `t ≥ 0`, before a cut whose earlier cuts are at or before
 `t`, is reachable. -/
-theorem fg_reachable_at (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n} {i : Nat}
+theorem fg_reachable_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
+    {i : Nat}
     {t : Time} (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) :
     Store.Reachable (goldilocksNode sp ro).genesisPayload (tr.state y i).fg := by
   have h := fg_reachable (hrun.upTo ht0).toLocalRun hy i
@@ -46,7 +47,7 @@ theorem tree_subset_at {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t)
 (every earlier cut at or before `t ≤ b`), at any time `u`, is held while honest and on the chain of
 the origins within `b`. -/
 theorem confirmed_read_on_chain_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) {y : Fin sp.n}
+    {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr) {y : Fin sp.n}
     {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b)
     (hy : y ∈ H t) (u : Time) :
     (goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) u ∈

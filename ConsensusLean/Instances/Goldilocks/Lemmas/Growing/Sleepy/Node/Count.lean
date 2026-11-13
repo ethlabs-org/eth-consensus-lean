@@ -38,7 +38,9 @@ theorem ts_natCast_nonneg (s : Nat) : (0 : Time) ≤ sp.ts s := by
 
 /-- **FB in voter form**: for a slot `s ≥ σ₀`, at `d ∈ [t_s + Δ, min b (t_s + 6Δ)]`, the
 validators compromised by `d` are fewer than the slot-`s` voters still honest at `d`. -/
-theorem faults_lt_voters (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem faults_lt_voters {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C4 replaces
+    (hnc : NoCollRun dg tr)
     {b : Time} {σ₀ : Nat} (hB : SleepyBoundsFrom tr H σ₀ b) {s : Nat} {d : Time} (hs : σ₀ ≤ s)
     (h1 : sp.ts s + sp.Δ ≤ d) (hdb : d ≤ b) (h6 : d ≤ sp.ts s + 6 * sp.Δ) :
     (H d)ᶜ.ncard < (VotersAt tr H s d).ncard := by
@@ -46,7 +48,8 @@ theorem faults_lt_voters (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
     (Set.ncard_le_ncard (fun y hy => ?_) (Set.toFinite _))
   obtain ⟨k, e, hv, hs, -⟩ :=
     vote_of_awake_joined_at hrun hnc (hrun.antitone h1 hy.1)
-      (mayVote_stock_at hrun hnc (ts_add_delta_nonneg _) (hrun.antitone h1 hy.1)) hy.2.1 hy.2.2
+      (mayVote_at hrun hnc (ts_add_delta_nonneg _) (hrun.antitone h1 hy.1) (hmv _ _)) hy.2.1 hy.2.2
+      -- TEMP(C2): C4 replaces
   exact votersAt_iff.2 ⟨hy.1, k, e, hv, hs⟩
 
 /-- **An origin within `b` has a supporter honest at its vote**: a slot-`s` vote at a time `≤ b`
@@ -55,7 +58,9 @@ counted votes meet the validators honest at `d = t_s + 6Δ` that were awake and 
 (all participants of the writer's update, the slot count at `d`); an optimistic selection's `3n/4`
 voters meet `H d` at the check's time `d` (`2 f_d < n`). -/
 theorem honest_supporter_at
-    (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C4 replaces
+    (hnc : NoCollRun dg tr)
     {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
     (hB : SleepyBoundsFrom tr H σ₀ b) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hs : σ₀ ≤ s) (ha : a ≤ sp.ts s) (hC : OriginWithin tr H C s b) :
@@ -77,7 +82,8 @@ theorem honest_supporter_at
         SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := fun y hy => by
       have h := awake_participant_window_before (hrun.upTo hd) (hnc.upTo _) hsvc ha hX
         (by rw [RunTrace.upTo_projAC]; exact (sa_updateAt_upTo hm).mpr ⟨le_rfl, hu⟩)
-        (le_min hi₀ le_rfl) hy.1 (mayVote_stock (hrun.upTo hd) (hnc.upTo _) hy.1 _)
+        (le_min hi₀ le_rfl) hy.1 -- TEMP(C2): C4 replaces
+        (mayVote_of_start (hrun.upTo hd) (hnc.upTo _) hy.1 (hmv _ _))
         ⟨hy.2.1, by rw [ht₀]; linarith⟩ (joinedAt_upTo hy.2.2)
       rwa [RunTrace.upTo_projAC, projAC_upTo_state hrun le_rfl] at h
     have hSV : {w | ∃ v ∈ CV, v.val = w} ⊆ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
@@ -110,7 +116,7 @@ theorem honest_supporter_at
     dsimp only at hsel'
     split_ifs at hsel'
     have h34 := (SA.deepest_mem hsel').1.2.1
-    rw [hsl, hrun.stock] at h34
+    rw [hsl, hrun.stock] at h34 -- TEMP(C2): C4 replaces
     have hf := hB.two (tr.time i₀) (hrun.time_nonneg i₀) hi₀
     obtain ⟨u, ⟨v, hv, rfl, R, hR, hRr, hCR⟩, huH⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard (s := (H (tr.time i₀))ᶜ)

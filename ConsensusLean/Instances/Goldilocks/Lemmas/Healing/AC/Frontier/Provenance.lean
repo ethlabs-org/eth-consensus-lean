@@ -221,7 +221,8 @@ theorem lock_below_originAC (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n} (hy : 
     ∀ l ∈ (tr.state y i).locks, ∃ L ∈ U, L.root = l.block ∧
       ∃ O, Anc U L O ∧ OriginWithinAC tr H O l.slot b := by
   intro l hl
-  obtain ⟨L, hL, hLr, O, hLO, k, hk, CV, hO⟩ := lock_below_originU hr hy i l hl
+  obtain ⟨L, hL, hLr, O, hLO, k, hk, CV, hO⟩ := lock_below_originU hr
+    (fun _ => SA.voteStart_initial _) hy i l hl
   exact ⟨L, hL, hLr, O, hLO, originWithinAC_iff.2 ⟨y, hy, k, CV, hi k hk, hO⟩⟩
 
 /-- **The lock field of the frontier**: at a cut within `b`, every stored lock names a block of

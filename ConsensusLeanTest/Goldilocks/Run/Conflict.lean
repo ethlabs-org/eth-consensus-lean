@@ -726,6 +726,7 @@ theorem conflictRun_goldilocksRun : GoldilocksRun (fun _ => v0) dg6 H conflictRu
   stock := rfl
   toLocalRun := conflictRun_localRun
   genesis_root_ok := (dg6_none _ _ _ _).symm
+  vstart := fun _ => SA.voteStart_initial _
   carried_vote_unforgeable y _ i B h v hv := by
     obtain ⟨acc, hc⟩ := h
     obtain ⟨k, -, rfl, -⟩ := blockCall_blk hc

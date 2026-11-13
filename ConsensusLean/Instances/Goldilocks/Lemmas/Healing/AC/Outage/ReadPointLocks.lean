@@ -68,7 +68,8 @@ theorem fastLock_countedU
       have := Set.ncard_le_ncard hsub
       omega
     · rintro v ⟨hv, R, hR, hRr, hBR⟩
-      refine ⟨optimisticPoint_pool_slotU hr hw hpt hv, R, hΦU hR, hRr, ?_, Anc.mono hΦU hBR⟩
+      refine ⟨optimisticPoint_pool_slotU hr (fun _ => voteStart_initial _) hw hpt hv, R, hΦU hR,
+        hRr, ?_, Anc.mono hΦU hBR⟩
       have := frame_slot_leU sp hr hw hpt.1 R hR
       omega
 

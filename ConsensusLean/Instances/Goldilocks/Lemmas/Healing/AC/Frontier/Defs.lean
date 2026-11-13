@@ -207,8 +207,9 @@ theorem vote_of_awake_joinedAC (hr : ACLocalRunU wm u H U tr) (htick : TickDuty 
       exact WithBot.coe_le_coe.2 (hj k hrk (hti ▸ hr.time_mono hk.le))
   by_cases hv : (tr.state y i).votedSlot = sp.slot (tr.time i)
   · rw [hti, hslot] at hv
-    obtain ⟨j, hj, e, hve, hes⟩ := (cast_of_votedSlotU hr hy i s hv).resolve_right
-      (by rw [traceWithM_mayVote hr hy i]; decide)
+    obtain ⟨j, hj, e, hve, hes⟩ :=
+      (cast_of_votedSlotU hr (fun _ => voteStart_initial _) hy i s hv).resolve_right
+        (by rw [traceWithM_mayVote hr hy i]; decide)
     exact ⟨j, e, hve, hes, hti ▸ hr.time_mono hj.le⟩
   · have htv : tr.time i = sp.ts (sp.slot (tr.time i)) + sp.Δ := by rw [hti, hslot]
     obtain ⟨e, he, hes⟩ := tryVote_votesWith (wm := wm) (L := u i) y ℓ.frame hjs hv htv

@@ -45,7 +45,8 @@ theorem carry_of_post_gst_senders_at (hp : ResetPremisesUpTo tr H proposer dg g 
   have hr := hac.localRun.upTo hd
   have hc' := (SA.upTo_castAt).mpr ⟨le_rfl, hc⟩
   have hsync := reset_syncACAt hp (lo := g) (hi := sp.ts s + 2 * sp.Δ) le_rfl
-  have hcarry := Compose.Growing.carryAt_of_delivered hr hy hc' hs (CV := CV) fun v hv => by
+  have hcarry := Compose.Growing.carryAt_of_delivered hr (fun _ => SA.voteStart_initial _) hy hc'
+      hs (CV := CV) fun v hv => by
     obtain ⟨hvs, ⟨w, k, hw, hsend, hk1, hk2⟩, Hv, hHvr, hFHv,
       w', kw, hw', hacc, hgk, hkwt⟩ := hW v hv
     refine ⟨hvs, ⟨tr.time k, hk1, hk2, fun hdl => ?_⟩, Hv, hHvr,

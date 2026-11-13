@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingInvariant
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationDecode
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 
 public section
 
@@ -215,16 +216,18 @@ theorem received_child_decodes {V : Type} [Fintype V] {E : Env V}
     rootOf_digests_of_mem S rho _ _ (List.mem_filterMap.mpr ⟨_, hc, rfl⟩)]
 
 /-- Own proposals obtain wire validity from reachable node execution, rather than from
-a receipt guard (which own-block recording does not run). -/
+a receipt guard (which own-block recording does not run). From an AC start `s₀` up to the vote
+permission. -/
 theorem own_proposal_decodes {V : Type} [Fintype V] {E : Env V}
     (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
     (proposer : Nat → Fin (Fintype.card V)) (self : Fin (Fintype.card V))
     (cfg cfg' : Node.Config (goldilocksNode (S.params (pubOf E) hn) (S.ro _)))
     (t : Time) (x : Nat)
-    (hq : (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).Requirements)
     (hg : ((S.params (pubOf E) hn).toParams.genesisBlock
       (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload).RootOk (digestOf S rho))
-    (hr : Node.Reachable proposer (digestOf S rho) self cfg)
+    {s₀ : (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).State}
+    (hr : Node.Reachable proposer (digestOf S rho) self cfg s₀)
+    (h₀ : SA.VoteStart (S.params (pubOf E) hn).genesisRoot s₀)
     (hs : Node.Step proposer (digestOf S rho) self cfg (.tick x) t cfg')
     (hp : Node.Proposes (P := (S.params (pubOf E) hn).toParams) proposer self t) :
     let r := Node.acProposal
@@ -235,9 +238,9 @@ theorem own_proposal_decodes {V : Type} [Fintype V] {E : Env V}
         (blockObj _ B) = some B := by
   dsimp only
   intro d p hdp
-  have h := Compose.honest_block_accepted
+  have h := Compose.honest_block_accepted_from
     (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) proposer (digestOf S rho) self
-    hq hg cfg cfg' t x hr hs hp d p hdp
+    (Compose.requirements_from _ _ h₀) hg cfg cfg' t x hr hs hp d p hdp
   exact canonical_block_decodes S rho hn _ (by simp only [Node.mkBlock, ne_eq,
       reduceCtorEq, not_false_eq_true]) h.2.2.2.2.2.1
     (fun a ha => (h.2.2.2.1 a ha).1) h.2.2.2.2.1
@@ -260,11 +263,8 @@ theorem accepted_child_decodes {V : Type} [Fintype V] [DecidableEq V] {E : Env V
     obtain ⟨root, _, hr, _, _, _, _, _⟩ := Store.onBlock_eq_some ha
     exact canonical_block_decodes S rho hn B (by rw [hr]; simp) hw.1 hw.2.1 hw.2.2
   · obtain ⟨cfg, hr, hst, hs⟩ := Compose.group_step run.toLocalRun hy hg
-    have req := SA.interface_requirements (S.params (pubOf E) hn)
-      (List (FG.Att (Fintype.card V))) (S.ro _)
     have hd := own_proposal_decodes S rho hn (runProposer S rho hn) y cfg _ _ x
-      ⟨req.1, req.2.1, req.2.2.1, req.2.2.2, SA.proposal_payload_valid _ _ _⟩
-      run.genesis_root_ok hr hs hp d p (by rw [hst]; exact hdp)
+      run.genesis_root_ok hr (SA.voteStart_initial _) hs hp d p (by rw [hst]; exact hdp)
     simpa only [hst, Node.acProposal, Node.tickStep, Node.acCall, hB] using hd
 
 /-- Acceptance preserves both decoder inventory and held-block correspondence together. -/

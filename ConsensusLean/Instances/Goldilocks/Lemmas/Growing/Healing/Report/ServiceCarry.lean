@@ -156,7 +156,8 @@ theorem carry_of_service_senders
     simp only [SAParams.ts] at h ⊢
     push_cast at h
     linarith only [h]
-  have hcarry := carryAt_of_delivered hr hy hc' hs (CV := CV) fun v hv => by
+  have hcarry := carryAt_of_delivered hr (fun _ => SA.voteStart_initial _) hy hc' hs (CV := CV)
+      fun v hv => by
     obtain ⟨hvs, ⟨w, k, hwk, hsend, hk1, hk2⟩, Hv, hHvr, hFHv, hacc⟩ := hW v hv
     refine ⟨hvs, ⟨tr.time k, hk1, hk2, fun hdl => ?_⟩, Hv, hHvr, ?_⟩
     · rw [ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) (k := i) hm le_rfl] at hdl

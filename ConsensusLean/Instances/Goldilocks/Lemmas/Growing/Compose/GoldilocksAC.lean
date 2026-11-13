@@ -7,11 +7,18 @@ public section
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-/-- Votes retain their honest emission provenance at the reading cut. -/
-theorem goldilocks_ac_projection : GoldilocksACProjection := by
-  intro sp ro dg H tr proposer h hnc
-  have retained (i : Nat) := Compose.goldilocks_ac_projection sp ro dg (H (tr.time i))
-    (tr.upTo (tr.time i)) proposer (h.upTo (h.time_nonneg i)) (hnc.upTo _)
+/-- Votes retain their honest emission provenance at the reading cut, from starts up to the vote
+permission. -/
+theorem goldilocks_ac_projection_from {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {H : Time → Set (Fin sp.n)}
+    {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (h : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) :
+    SA.Growing.ACRun proposer tr.projAC H (tr.HonestBlocksAt H) ini := by
+  have retained (i : Nat) :=
+    Compose.goldilocks_ac_projection_from (h.upTo (h.time_nonneg i)) (hnc.upTo _)
   have call {y i ℓ} (hc : tr.projAC.CallAt y i ℓ) :
       (tr.upTo (tr.time i)).projAC.CallAt y i ℓ := by
     rw [RunTrace.upTo_projAC]
@@ -24,14 +31,16 @@ theorem goldilocks_ac_projection : GoldilocksACProjection := by
     exact ⟨j, hj, e, (SA.upTo_voteAt.mp he).2, hev⟩
   refine ⟨h.stock,
     ac_projection _ _ dg H _ tr proposer (Compose.requirements sp ro)
-      (fun y _ => Compose.payloadFrom_initial (Compose.requirements sp ro) y) h.toLocalRun hnc,
+      (fun y _ U _ s Φ t₀ h' => SA.proposal_payload_validFrom _ (h.vstart y).pool y U s Φ t₀ h')
+      h.toLocalRun hnc,
     { pool_vote := fun y i σ hy v hv hval => ?_
       message_vote := fun y i ℓ v hy hc hm hv =>
         emission ((retained i).honest.message_vote y hy i ℓ v (call hc) hm hv)
       carried_vote := fun y i ℓ hy hc B hB v hv hval =>
         emission ((retained i).honest.carried_vote y hy i ℓ (call hc) B hB v hv hval)
       proposer := fun B hB hng => ?_
-      one_block := fun y i ℓ B y' i' ℓ' B' hy hc hB hy' hc' hB' hp hprop hslot => ?_ }⟩
+      one_block := fun y i ℓ B y' i' ℓ' B' hy hc hB hy' hc' hB' hp hprop hslot => ?_ },
+    h.vstart⟩
   · apply emission
     apply (retained i).honest.pool_vote y hy i σ v
     · simpa only [RunTrace.upTo_projAC,
@@ -91,6 +100,11 @@ theorem goldilocks_ac_projection : GoldilocksACProjection := by
         have he := h.tick_unique B'.proposer j₀ j₀' _ (hprop ▸ hpstart) ht ht'
         rw [hje, he, ← hje', hprop] at hj
         exact (Cut.fg.inj (Option.some.inj (hj.2.symm.trans hj'.2)) |> FGLabel.block.inj).1
+
+/-- Votes retain their honest emission provenance at the reading cut:
+`goldilocks_ac_projection_from` at the initial starts. -/
+theorem goldilocks_ac_projection : GoldilocksACProjection :=
+  fun _ _ _ _ _ _ h hnc => goldilocks_ac_projection_from h hnc
 
 end Consensus.Goldilocks.Compose.Growing
 

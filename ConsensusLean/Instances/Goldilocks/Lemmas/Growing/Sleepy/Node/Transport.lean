@@ -54,7 +54,8 @@ relayed to `y` from a time before `t_s + 2Δ` (likewise) or that `y` accepted be
 `t_s + 3Δ`, then `Carry_y(s, ·, ·)` holds for the counted votes: `carryAt_of_served`, with the
 frames closed under acceptance by `frame_anc_accepted`. This is the voter's side of
 `carryAt_of_writer_heads`, without the sender. -/
-theorem carryAt_of_delivered (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {s : Nat}
+theorem carryAt_of_delivered {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {s : Nat}
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
     {e : SA.Em sp FGP} (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1)
     {CV : Set (Vote sp.n)}
@@ -66,7 +67,7 @@ theorem carryAt_of_delivered (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
             ∃ k ≤ i, T.AcceptAt y k Hv ∧ T.time k < T.deadline y k τ)) ∨
           SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ))) :
     SA.CarryAt T U y i e s CV :=
-  carryAt_of_served hr (frame_anc_accepted hr hy) hy hc hs hW
+  carryAt_of_served hr hini (frame_anc_accepted hr hy) hy hc hs hW
 
 private theorem tryVote_pool (x : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP)
     (t : Time) (σ : Nat) : A.pool σ ⊆ (SA.tryVote sp x A Φ t).1.pool σ := by
@@ -112,7 +113,7 @@ private theorem blockReceipt_held (A : SA.SAState sp.n) {t : Time} {B : SA.Blk s
 
 /-- **A slot-`s` vote of an honest voter's merged view of slot `s + 1`** is in the voter's pool
 after a call at or before its vote, or two other votes of its validator are. -/
-private theorem merged_in_pool (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+private theorem merged_in_pool {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
     {e : SA.Em sp FGP} (hc : SA.CastAt T y i ℓ e) {s : Nat} (hs : e.msg.slot = s + 1) :
     ∀ v ∈ (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
@@ -164,7 +165,7 @@ at a time `≤ b`, with the service from `a` (`a + κ ≤ t_s`), `Carry_y(s, ·,
 slot `s` that a writer `w` sent or admitted while honest at a time in `[t_s, t_s + 2Δ)`, whose
 heads are above the voter's `Σ.F` and are genesis or accepted by `w` while honest before
 `t_s + 2Δ`. A head accepted before `a` is caught up by the voter before `a + κ ≤ t_s`. -/
-theorem carryAt_of_writer_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem carryAt_of_writer_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {s : Nat}
     (hsa : a + κ ≤ sp.ts s) {w y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
@@ -179,7 +180,8 @@ theorem carryAt_of_writer_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
   have hm := hrun.time_mono
   have hd := hrun.time_nonneg i
-  have hr := (acRun_upTo hrun hnc hd).localRun
+  have hra := acRun_upTo hrun hnc hd
+  have hr := hra.localRun
   have hsub := upTo_subset hrun hd
   have hΔ := sp.toParams.hΔ
   have ha : a ≤ sp.ts s := (le_add_of_nonneg_right hsync.kappa).trans hsa
@@ -188,7 +190,7 @@ theorem carryAt_of_writer_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     rw [hs] at h
     exact (SA.ts_le_iff_le_slot sp hd (s : Int)).2 (by omega)
   have hc' : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
-  have hcarry := carryAt_of_delivered hr hy hc' hs (CV := CV) fun v hv => by
+  have hcarry := carryAt_of_delivered hr hra.vstart hy hc' hs (CV := CV) fun v hv => by
     obtain ⟨hvs, ⟨k, hwk, hsend, hk1, hk2⟩, Hv, hHvr, hFHv, hacc⟩ := hW v hv
     refine ⟨hvs, ⟨tr.time k, hk1, hk2, fun hdl => ?_⟩, Hv, hHvr, ?_⟩
     · rw [ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) hm (le_refl _)] at hdl
@@ -221,7 +223,7 @@ theorem carryAt_of_writer_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 each was sent or admitted by it while honest at a time in `[t_s, t_s + 2Δ)`, and its head, held
 while honest, extends the result and is genesis or was accepted by the writer while honest before
 `t_s + 2Δ`. -/
-theorem result_writer_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem result_writer_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {X : Fin sp.n} {i₀ s : Nat} (hX : X ∈ H (tr.time i₀))
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hR : SA.ResultAt tr.projAC X i₀ s C CV) :
@@ -235,7 +237,7 @@ theorem result_writer_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   have hsub := upTo_subset hrun hd
   intro v hv
   obtain ⟨hvs, ⟨k, hk, hk1, hk2⟩, Hv, hHv, hHvr, hCHv, hacc⟩ :=
-    result_writer (acRun_upTo hrun hnc hd).localRun hX
+    result_writer (acRun_upTo hrun hnc hd).localRun (acRun_upTo hrun hnc hd).vstart hX
       ((sa_resultAt_upTo hrun.time_mono).mpr ⟨le_rfl, hR⟩) v hv
   obtain ⟨hkd, hk⟩ := (ac_sendOrAdmit_upTo hrun.time_mono).mp hk
   refine ⟨hvs, ⟨k, hrun.antitone hkd hX, hk, hk1, hk2⟩, Hv, hsub hHv, hHvr, hCHv.mono hsub,
@@ -246,7 +248,8 @@ theorem result_writer_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 /-- **A result's counted votes reach the next voters** (`Carry_y`) under growing faults: the
 writer honest at its update, the voter at its slot-`(s+1)` vote at a time `≤ b`, with the
 voter's `Σ.F` at or below the result and the service from `a` (`a + κ ≤ t_s`). -/
-theorem result_carry_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem result_carry_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {X : Fin sp.n} {i₀ s : Nat}
     (hsa : a + κ ≤ sp.ts s)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (hX : X ∈ H (tr.time i₀))
@@ -261,7 +264,7 @@ theorem result_carry_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : N
 
 /-- **An optimistic selection's counted votes reach the next voters** (`Carry_y`) under growing
 faults, as `result_carry_at`, the checker honest at its check. -/
-theorem optimistic_carry_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem optimistic_carry_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {X : Fin sp.n} {i₀ s : Nat} (hsa : a + κ ≤ sp.ts s)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
@@ -280,7 +283,7 @@ theorem optimistic_carry_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 sent or admitted at a time in `[t_s, t_s + 5Δ]` is held at an update of slot `s` (at
 `t_s + 6Δ ≤ b`) of a writer honest then whose restarts are at or before `t_s`, or two other votes
 of its validator are. -/
-private theorem served_held_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem served_held_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {X x : Fin sp.n} {c s : Nat} (ha : a ≤ sp.ts s) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hX : X ∈ H (tr.time c))
@@ -324,7 +327,7 @@ private theorem served_held_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 `b`, every slot-`s` vote of the merged view of a node honest at its slot-`(s+1)` vote is in the
 writer's pool, or its validator equivocates there. The voter relays each vote it admitted while
 honest; the writer receives it before its update (`t_s + 6Δ`). -/
-theorem result_writer_pool_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem result_writer_pool_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {X : Fin sp.n} {i₀ s : Nat} (ha : a ≤ sp.ts s)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
@@ -365,7 +368,7 @@ theorem result_writer_pool_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     have hj' : SA.joined sp ((tr.projAC.upTo (tr.time i)).post i) (tr.time i) := by
       unfold SA.joined; rw [SA.restartTime_of_castAt hr hy hc']; exact hyj
     intro k hk hrk
-    have := ((SA.joined_awake sp) _ ro _ _ _ hr y hy i ℓ hc'.1 hj').2 k hk hrk
+    have := (SA.joined_awakeU sp _ ro _ _ _ hr.toU y hy i ℓ hc'.1 hj').2 k hk hrk
     change tr.time k ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) at this
     rwa [hsi, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by push_cast; ring] at this
   -- every slot-`s` vote of the voter's pool up to its vote reaches the writer
@@ -373,8 +376,8 @@ theorem result_writer_pool_at (hrun : Growing.GoldilocksRun proposer dg H tr)
       v ∈ (tr.projAC.state X i₀).pool s ∨
         v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state X i₀).pool s} := by
     intro k hk v hv
-    have hvs : v.slot = s := SA.state_pool_slot sp hr hy (k + 1) s v hv
-    rcases SA.pool_origin hr hy (k + 1) v (hvs ▸ hv) with
+    have hvs : v.slot = s := SA.state_pool_slot_from sp hr hrun.vstart hy (k + 1) s v hv
+    rcases SA.pool_origin_from hr hrun.vstart hy (k + 1) v (hvs ▸ hv) with
       ⟨k', hk', hsend, -, hsl⟩ | ⟨k', hk', ℓk, hck, hrk, -, B, hB, hvB⟩
     · have hsk : sp.ts s ≤ tr.time k' :=
         (SA.ts_le_iff_le_slot sp (hrun.time_nonneg k') s).2 (by rw [← hvs]; exact_mod_cast hsl)

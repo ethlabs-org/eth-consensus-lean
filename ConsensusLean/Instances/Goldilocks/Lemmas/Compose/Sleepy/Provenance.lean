@@ -229,13 +229,11 @@ private theorem good_mono {T T' : Set (SA.Blk sp.n (List (FG.Att sp.n)))} {i i' 
   exact ⟨L, hT hL, hLr, C, hmono hC, hLC⟩
 
 /-- The AC projection of a Goldilocks run is an AC trace with the contract. -/
-private theorem ac_run (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) :
-    ACLocalRun (goldilocksNode sp ro) H (tr.HonestBlocks H) tr.projAC :=
-  have h := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  have hq : (goldilocksNode sp ro).Requirements :=
-    ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
-  ac_projection _ _ dg H _ tr proposer hq (fun y _ => payloadFrom_initial hq y)
-    hrun.toLocalRun hnc
+private theorem ac_run {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) :
+    ACLocalRun (goldilocksNode sp ro) H (tr.HonestBlocks H) tr.projAC ini :=
+  ac_projection _ _ dg H _ tr proposer (requirements sp ro)
+    (fun y _ => payloadFrom_initial (requirements_from sp ro (hrun.vstart y)) y) hrun.toLocalRun hnc
 
 private theorem down_lockOK {T : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
     {Φ : SA.Frm sp.n (List (FG.Att sp.n))} (hU : Coherent (tr.HonestBlocks H))
@@ -246,7 +244,7 @@ private theorem down_lockOK {T : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-- At an AC call of an honest node, `Good` passes from the state before to the state after,
 with the origins of the call's own selections. -/
-private theorem good_acCall (hrun : GoldilocksRun proposer dg H tr)
+private theorem good_acCall {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.CallAt y i (.ac ℓ))
     (h : Good (RecOK tr H (tr.state y i).fg.tree (i + 1))
@@ -334,7 +332,7 @@ private theorem good_acCall (hrun : GoldilocksRun proposer dg H tr)
       exact h.2
 
 /-- An FG cut of an honest node leaves its AC state. -/
-private theorem ac_of_fg (hrun : GoldilocksRun proposer dg H tr)
+private theorem ac_of_fg {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : FGLabel sp.toParams (Payload sp.n)} (hc : tr.CallAt y i (.fg ℓ)) :
     (tr.post i).ac = (tr.state y i).ac := by
@@ -428,7 +426,7 @@ theorem record_step_origin (hrun : GoldilocksRun proposer dg H tr)
     exact Or.inl rfl
 
 /-- The tree of an honest node only grows across a cut. -/
-private theorem tree_succ (hrun : GoldilocksRun proposer dg H tr)
+private theorem tree_succ {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     (tr.state y i).fg.tree ⊆ (tr.state y (i + 1)).fg.tree := by
   by_cases hc : ∃ c, tr.CallAt y i c
@@ -455,19 +453,20 @@ private theorem tree_succ (hrun : GoldilocksRun proposer dg H tr)
 /-- `Good` at every cut of an honest node: its record names a block of its tree that is genesis
 or an origin, and each stored lock a block of its tree below an origin of its slot from an
 earlier cut. -/
-private theorem good_state (hrun : GoldilocksRun proposer dg H tr)
+private theorem good_state {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     Good (RecOK tr H (tr.state y i).fg.tree i) (LockOK tr H (tr.state y i).fg.tree i)
       (tr.state y i).ac := by
   induction i with
   | zero =>
-    have h0 : tr.state y 0 = Node.init _ := hrun.init y hy
+    have h0 : tr.state y 0 = Node.initWith _ (ini y) := hrun.init y hy
+    obtain ⟨m, hm⟩ := SA.voteStart_iff.1 (hrun.vstart y)
     obtain ⟨-, -, hg, -⟩ := Store.accepted_tree _ _ _ _ (fg_reachable hrun.toLocalRun hy 0)
     refine ⟨⟨_, hg, ?_, Or.inl rfl⟩, ?_⟩
-    · rw [h0]
+    · rw [h0, hm]
       rfl
-    · rw [h0]
+    · rw [h0, hm]
       exact fun l hl => absurd hl (Set.notMem_empty l)
   | succ i ih =>
     have ih' := good_mono ih (tree_succ hrun hy i) (Nat.le_succ i)
@@ -625,8 +624,8 @@ private theorem honest_of_quorum {t : Time} (hfb : tr.FaultBound H t) {Q : Finse
   omega
 
 /-- The record names a held genesis or an actual origin strictly before this cut. -/
-theorem record_origin_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
+theorem record_origin_before {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y i).ac.latestConfirmed ∧
       (C.root = sp.genesisRoot ∨ ∃ s, OriginBefore tr H C s i) :=
   (good_state hrun hnc hy i).1
@@ -640,8 +639,9 @@ theorem record_origin_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoColl
   ⟨C, hC, hCr, h.imp_right fun ⟨s, hs⟩ => ⟨s, hs.within hi⟩⟩
 
 /-- **The record names genesis or an origin**, a block of the node's tree. -/
-theorem record_origin (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) (i : Nat) :
+theorem record_origin {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y i).ac.latestConfirmed ∧
       (C.root = sp.genesisRoot ∨ ∃ s, Origin tr H C s) :=
   have ⟨C, hC, hCr, h⟩ := (good_state hrun hnc hy i).1
@@ -649,15 +649,17 @@ theorem record_origin (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun d
 
 /-- **Every stored lock sits below an origin of its slot** whose event precedes the cut, and names
 a block of the node's tree. -/
-theorem lock_origin (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) (i : Nat) :
+theorem lock_origin {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state y i).ac.locks, ∃ L ∈ (tr.state y i).fg.tree, L.root = l.block ∧
       ∃ C, OriginBefore tr H C l.slot i ∧ Anc (tr.HonestBlocks H) L C :=
   (good_state hrun hnc hy i).2
 
 /-- **Every FG source at a cut within `b` is on the chain of the origins within `b`**: it is the
 block of a live fast lock. -/
-theorem source_on_chain_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem source_on_chain_upTo {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {b : Time} (hi : ∀ k < i, tr.time k ≤ b)
     {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : SA.ToFGAt tr.projAC y i ℓ C) : OnOriginChainWithin tr H C b := by
@@ -683,7 +685,8 @@ theorem source_on_chain (hrun : GoldilocksRun proposer dg H tr)
 /-- **Every honest attestation signed at a cut within `b` names a block on the chain of the origins
 within `b`**: an honest attestation's height pair names the entry of its source's state, an
 ancestor of the source. -/
-theorem row_on_chain_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem row_on_chain_upTo {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {x : Fin sp.n} (hx : x ∈ H) {k : Nat} {a : FG.Att sp.n} (h : tr.SignAt x k a) {b : Time}
     (hk : ∀ k' < k, tr.time k' ≤ b) :
     ∃ E ∈ tr.HonestBlocks H, E.root = a.T ∧ OnOriginChainWithin tr H E b := by

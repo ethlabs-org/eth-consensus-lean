@@ -219,15 +219,21 @@ private theorem voterBlockTree_closed {A : SAState sp.n} {Φ : Frm sp.n FGP}
 
 variable (sp)
 
-/-- **A0.6.** -/
-theorem interface_requirements : InterfaceRequirements sp := by
-  intro FGP ro
+/-- **A0.6** from a start up to the vote permission: the requirements 1–4 of the SA started at
+`s₀`, i.e. at the states reachable from `s₀` (`ACInterface.reachableAtFrom_iff`). -/
+theorem interface_requirements_from (FGP : Type) (ro : ReplayOrder sp FGP) {s₀ : SAState sp.n}
+    (h₀ : VoteStart sp.genesisRoot s₀) :
+    ({ goldilocksSA sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqHeads ∧
+      ({ goldilocksSA sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqSource ∧
+      ({ goldilocksSA sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqOutputs ∧
+      ({ goldilocksSA sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqParent := by
   have hall : ∀ (Φ : Frm sp.n FGP), ∀ B ∈ Φ.tree, ∀ X, Φ.Anc X B → X ∈ Φ.tree :=
     fun Φ B hB X hX => mem_of_anc hX hB
   refine ⟨?_, ?_, ?_, ?_⟩
   · -- requirement 1: the heads of the duties
     intro x U hU A Φ t₀ hr
-    obtain ⟨⟨hΦ, hΦU⟩, ht₀, h⟩ := lockInv_of_reachable hU hr
+    replace hr := ACInterface.reachableAtFrom_iff.2 hr
+    obtain ⟨⟨hΦ, hΦU⟩, ht₀, h⟩ := lockInv_of_reachable_from hU h₀ hr
     refine ⟨fun σ _ d p hp => ?_, fun t c Φ' ht hok e he d hd => ?_⟩
     · change (acProposal sp A Φ _).2 = _ at hp
       unfold acProposal at hp
@@ -235,13 +241,16 @@ theorem interface_requirements : InterfaceRequirements sp := by
       split_ifs at hp
       simp only [Option.some.injEq, Prod.mk.injEq] at hp
       obtain ⟨rfl, -⟩ := hp
-      exact headOK_of hU hΦ hΦU (h.unlock hU hΦ hΦU _ _ _) (fun _ h => h) (hall Φ) _ _
-    · obtain ⟨A₁, V, σ, h1, h2, rfl⟩ := (h.callOK hU ⟨hΦ, hΦU⟩ hok).step_emits hU hok.1.1
-        hok.1.2 x t (ht₀.trans ht) c e he d hd
-      have hsp := stamp_parent sp FGP ro x U hU _ _ _ (ACInterface.ReachableAtFrom.step c hr ht hok)
+      exact headOK_of (ro := ro) hU hΦ hΦU (h.unlock hU hΦ hΦU _ _ _) (fun _ h => h) (hall Φ) _ _
+    · rw [ACInterface.step_ofStart] at he
+      replace hok := ACInterface.callOK_ofStart.1 hok
+      obtain ⟨A₁, V, σ, h1, h2, rfl⟩ := (h.callOK hU ⟨hΦ, hΦU⟩ hok).step_emits hU hok.1.1
+        hok.1.2 x t (ht₀.trans ht) c.ofStart e he d hd
+      have hsp := stamp_parentU sp FGP ro x U hU h₀ _ _ _
+        (ACInterface.ReachableAtFrom.step c.ofStart hr ht hok).toU
       beta_reduce at hsp
       rw [← h2] at hsp
-      exact headOK_of hU hok.1.1 hok.1.2 h1 (fun B hB => voteDomain_subset_tree hB)
+      exact headOK_of (ro := ro) hU hok.1.1 hok.1.2 h1 (fun B hB => voteDomain_subset_tree hB)
         (voteDomain_anc_closed (voterBlockTree_closed hsp _)) V σ
   · -- requirement 2: the block for the FG
     intro x U hU A Φ t₀ hr t ht C hC
@@ -249,7 +258,8 @@ theorem interface_requirements : InterfaceRequirements sp := by
     exact (toFG_candidate hC).1
   · -- requirement 3: the head and the confirmed tip
     intro x U hU A Φ t₀ hr t _
-    obtain ⟨⟨hΦ, hΦU⟩, -, h⟩ := lockInv_of_reachable hU hr
+    obtain ⟨⟨hΦ, hΦU⟩, -, h⟩ :=
+      lockInv_of_reachable_from hU h₀ (ACInterface.reachableAtFrom_iff.2 hr)
     change Φ.Anc Φ.fcRoot (acHead sp A Φ t) ∧ Φ.Anc Φ.F (acConfirmed sp A Φ t) ∧
       Φ.Anc (acConfirmed sp A Φ t) (acHead sp A Φ t)
     obtain ⟨ha, -⟩ := anc_getAnchor hΦ (h.liveBlocks_chain hU hΦ hΦU (t := t))
@@ -285,6 +295,10 @@ theorem interface_requirements : InterfaceRequirements sp := by
     unfold acHead latestView
     simp only [hsl, hlt, ↓reduceIte]
     rfl
+
+/-- **A0.6**: `interface_requirements_from` at the initial state. -/
+theorem interface_requirements : InterfaceRequirements sp := fun FGP ro =>
+  interface_requirements_from sp FGP ro (s₀ := SAState.initial sp.genesisRoot) (voteStart_initial _)
 
 end Consensus.Goldilocks.SA
 

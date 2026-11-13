@@ -289,7 +289,8 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
   have hAC := Compose.projAC_state rhoc_run.toLocalRun hy (k + 1)
   by_cases hv : ((tr S).state y (k + 1)).ac.votedSlot = 1
   · obtain ⟨j, hj, e, he, hes⟩ :=
-      (SA.cast_of_votedSlot hac hy (k + 1) 1 (by rw [hAC]; exact hv)).resolve_right
+      (SA.cast_of_votedSlot hac (fun _ => SA.voteStart_initial _) hy (k + 1) 1
+        (by rw [hAC]; exact hv)).resolve_right
         (by rw [SA.trace_mayVote_stock hac hy (k + 1)]; decide)
     exact ⟨j, e, he, hes, ((rhoc_run (S := S)).time_mono hj.le).trans (ht ▸ hk)⟩
   -- the frame holds a ready proposal of slot `1`: the twin's block, or `Σ.F`

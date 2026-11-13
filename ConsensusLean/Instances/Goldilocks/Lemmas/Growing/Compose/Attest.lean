@@ -166,7 +166,7 @@ theorem vote_or_restart (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propo
         linarith)
   set A := (tr.projAC.upTo (tr.time i)).state y j₀ with hA
   by_cases hvs : A.votedSlot = ((s + 1 : Nat) : Int)
-  · rcases SA.cast_of_votedSlot hri hy j₀ (s + 1) hvs with
+  · rcases SA.cast_of_votedSlot hri (fun _ => SA.voteStart_initial _) hy j₀ (s + 1) hvs with
       ⟨j, hj, e, ⟨ℓ', hc', he'⟩, hes⟩ | hmf
     · exact ⟨j, hj.trans hj₀i, ℓ', e, (SA.upTo_castAt.mp ⟨hc', he'⟩).2, hes⟩
     · exact absurd (SA.trace_mayVote_stock hri hy j₀ _) (by rw [hmf]; decide)

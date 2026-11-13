@@ -66,7 +66,7 @@ theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
   have hW : voters V.votes ⊆ K.committee s := by
     rintro u ⟨v, hv, rfl⟩
     have hK := hT y hy i ℓ e hc s v hv
-    rwa [merged_vote_slot hr hy hc v hv] at hK
+    rwa [merged_vote_slot hr (fun _ => voteStart_initial _) hy hc v hv] at hK
   have hE : equivocators V.votes ⊆ K.committee s ∩ Hᶜ := by
     intro w hw
     refine ⟨?_, fun hwH => honest_not_equivocator hrun hy hc hwH hw⟩
@@ -155,13 +155,14 @@ theorem optimistic_isBest_of_carry
   let V := mergedVoteView sp e.readPoint ℓ.frame (s + 1)
   have hcover : SX ⊆ supporters ℓ.frame V s B ∪ equivocators V.votes := by
     rintro w ⟨v, hv, rfl, R, hR, hRr, hDR⟩
-    exact carried_cover hrun hy hc hs hBt hcarry ⟨hv, R, hR, hRr, hDR⟩
+    exact carried_cover hrun hy hc hs hBt hcarry
+      ⟨hv, R, hR, hRr, hDR⟩
       (optimisticPoint_pool_slot hr hx hpt hv) ⟨R, hΦxU hR, hRr,
         (frame_slot_le sp hr hx hpt.1 R hR).trans hslx.le, hBD.trans (Anc.mono hΦxU hDR)⟩
   have hW : voters V.votes ⊆ K.committee s := by
     rintro u ⟨v, hv, rfl⟩
     have hK := hT y hy i ℓ e hc s v hv
-    rwa [merged_vote_slot hr hy hc v hv] at hK
+    rwa [merged_vote_slot hr (fun _ => voteStart_initial _) hy hc v hv] at hK
   have hE : equivocators V.votes ⊆ K.committee s ∩ Hᶜ := by
     intro w hw
     refine ⟨?_, fun hwH => honest_not_equivocator hrun hy hc hwH hw⟩

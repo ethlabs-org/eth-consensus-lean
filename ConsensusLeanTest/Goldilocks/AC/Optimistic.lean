@@ -772,6 +772,7 @@ theorem acRun_W : ACRun (fun _ => v0) trW Set.univ U₁ where
   stock := rfl
   localRun := localRun_W
   honest := honest_W
+  vstart := fun _ => voteStart_initial _
 
 /-! ## The premises -/
 

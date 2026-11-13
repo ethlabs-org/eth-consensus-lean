@@ -46,7 +46,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
-private theorem held_σ_eq (hrun : GoldilocksRun proposer dg H tr)
+private theorem held_σ_eq {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y z : Fin sp.n}
     (hy : y ∈ H) (hz : z ∈ H) {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hBy : B ∈ (tr.state y i).fg.tree) (hBz : B ∈ (tr.state z j).fg.tree) :
@@ -59,7 +59,9 @@ private theorem held_σ_eq (hrun : GoldilocksRun proposer dg H tr)
 
 section Geometry
 
-variable (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n)
+variable {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+  (hnc : NoCollRun dg tr)
+  (hf : 2 * Hᶜ.ncard < sp.n)
   {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
 
 include hrun hnc hy in
@@ -216,7 +218,7 @@ variable (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) (hsl : 
 
 /-- Justification provenance uses only the numerical fault bound and the supplied attestation
 sources. -/
-theorem justified_honest_source_before (hrun : GoldilocksRun proposer dg H tr)
+theorem justified_honest_source_before {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
     (hsrc : HonestRowsSourced tr H G y i)
@@ -227,7 +229,7 @@ theorem justified_honest_source_before (hrun : GoldilocksRun proposer dg H tr)
   justified_honest_source_of hrun hnc hf hy (hsrc.above _) hj
 
 /-- `frame_crossing_source` with the numerical fault bound in place of `Sleepy`. -/
-theorem frame_crossing_source_before (hrun : GoldilocksRun proposer dg H tr)
+theorem frame_crossing_source_before {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourced tr H G y i)
     {W : SA.Blk sp.n (List (FG.Att sp.n))} (hW : W ∈ (tr.state y i).fg.tree) {j : Nat}

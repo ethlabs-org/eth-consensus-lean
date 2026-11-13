@@ -751,7 +751,7 @@ theorem outage_s5_inner
       by_cases hw : v.val ∈ H
       · obtain ⟨j, -, e', hve, he'⟩ := SA.honest_merged_vote hr' hy hcast hvm hw
         have hvs : e'.msg.slot = D.r := by
-          rw [he']; exact SA.merged_vote_slot hr hy hcast v hvm
+          rw [he']; exact SA.merged_vote_slot hr (fun _ => SA.voteStart_initial _) hy hcast v hvm
         rcases caster_mem_r D hw hve hvs with h | h
         · exact Or.inl h
         · exact Or.inr (Or.inr h)

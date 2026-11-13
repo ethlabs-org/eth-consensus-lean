@@ -20,7 +20,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 section Geometry
 
-variable (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n)
+variable {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+  (hnc : NoCollRun dg tr)
+  (hf : 2 * Hᶜ.ncard < sp.n)
   {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
 
 include hrun hnc hf hy in

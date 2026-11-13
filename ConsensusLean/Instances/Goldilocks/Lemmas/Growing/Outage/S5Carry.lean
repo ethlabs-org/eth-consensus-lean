@@ -41,7 +41,8 @@ under receiver service from `g ≤ t_q + Δ`, at a slot-`(q+1)` vote of `y` hone
 cast (or it is genesis), by `t_q + Δ`, and `y`, joined (so with no restart after `t_q`), receives
 it by `max(τ, g) + Δ ≤ t_q + 2Δ`. -/
 theorem honest_head_accepted_after_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {g : Time} {y : Fin sp.n} (hS : ReceiverServiceAfterAt H (tr.HonestBlocksAt H) g y tr.projAC)
     {q : Nat} (hg : g ≤ sp.ts q + sp.Δ) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
@@ -85,7 +86,8 @@ at their cast whose heads extend `y`'s `Σ.F`: each is sent by its voter by `t_s
 accepted by then, so `y` (joined, no restart after `t_s`) holds the vote and accepts the head and
 its ancestors before `t_s + 3Δ`. -/
 theorem carryAt_after_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {g : Time} {y : Fin sp.n} (hS : ReceiverServiceAfterAt H (tr.HonestBlocksAt H) g y tr.projAC)
     {s : Nat} (hg : g ≤ sp.ts s + sp.Δ) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
@@ -171,18 +173,18 @@ theorem carryAt_after_at
     have hheld : ∀ u ∈ (T.state y (k' + 1)).pool s,
         SA.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
       intro u hu
-      have hus : u.slot = s := SA.state_pool_slot sp hr hy (k' + 1) s u hu
+      have hus : u.slot = s := SA.state_pool_slot_from sp hr hrun.vstart hy (k' + 1) s u hu
       obtain ⟨hpool, hstamp⟩ := Healing.readPoint_pool_of_ne hr hy hcT (σ := s) (by omega)
       have hu' := SA.pool_mono hr hy (show k' + 1 ≤ i + 1 by omega) hnr s hu
       refine ⟨by rw [hus, ← hpool]; exact hu', ?_⟩
       rw [← hstamp u hus]
-      rcases SA.pool_origin hr hy (i + 1) u (by rw [hus]; exact hu') with
+      rcases SA.pool_origin_from hr hrun.vstart hy (i + 1) u (by rw [hus]; exact hu') with
         ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
       · rw [hst₁, SA.etime_of_lt_of]
         by_cases hk₁k' : k₁ ≤ k'
         · exact lt_of_le_of_lt (hr.time_mono hk₁k') hk'lt
         · obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, rfl⟩ | ⟨-, hn₁, -⟩⟩ := hsend₁
-          · have h := (cast_head_fcRoot hr hy ⟨hc₁, he₁⟩).2
+          · have h := (cast_head_fcRoot_from hr hrun.vstart hy ⟨hc₁, he₁⟩).2
             rw [hus] at h
             linarith only [h, hΔ]
           · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
@@ -198,8 +200,9 @@ theorem carryAt_after_at
         exact absurd h hv'
       · have ha' : a ∈ (T.state y (k' + 1)).pool s := by rw [← hvs]; exact ha
         have hc' : c ∈ (T.state y (k' + 1)).pool s := by rw [← hvs]; exact hc''
-        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv, SA.state_pool_slot sp hr hy _ s a ha',
-          SA.state_pool_slot sp hr hy _ s c hc', hheld a ha', hheld c hc'⟩
+        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv, SA.state_pool_slot_from sp hr hrun.vstart hy _ s
+            a ha',
+          SA.state_pool_slot_from sp hr hrun.vstart hy _ s c hc', hheld a ha', hheld c hc'⟩
         · rintro rfl; exact hv' ha'
         · rintro rfl; exact hv' hc'
 

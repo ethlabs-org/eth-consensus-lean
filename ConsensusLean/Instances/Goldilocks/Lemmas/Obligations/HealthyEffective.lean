@@ -124,7 +124,8 @@ theorem effective_record_frame_of_run
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
     {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i j r : Nat} (hij : i ≤ j)
     {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (hFO : Compatible (tr.HonestBlocks H) (tr.state y j).fg.F O)
@@ -132,7 +133,7 @@ theorem effective_record_frame_of_run
       ((SA.lookup (Node.frame (tr.state y i)) r).getD (tr.state y i).fg.F)) :
     Anc (tr.HonestBlocks H) O
       ((SA.lookup (Node.frame (tr.state y j)) r).getD (tr.state y j).fg.F) := by
-  have hU := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
+  have hU := (Compose.goldilocks_ac_projection_from hrun hnc).localRun.coherent
   have hreach := Compose.fg_reachable hrun.toLocalRun hy j
   have hΨ := (Store.frame_realization _ _ _ _ hreach).1
   apply effective_record_frame_of_compatible hU (Φ := Node.frame (tr.state y i)) hΨ
@@ -171,7 +172,7 @@ theorem effective_record_writes_of_compatible (hU : Coherent U)
 /-- An update tick runs exactly the preceding slot's update, without a vote attempt. -/
 theorem post_of_update
     {ro : SA.ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SA.SATrace sp FGP ro}
-    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr)
+    {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {c s : Nat}
     {ell : ACLabel (SA.goldilocksSA sp FGP ro)} (hu : SA.UpdateAt tr y c s ell) :
     tr.post c = SA.updateConfirmation sp (tr.state y c) ell.frame (tr.time c) s := by
@@ -201,7 +202,7 @@ theorem post_of_update
 /-- A non-vetoed update covers its result in the effective post-call record. -/
 theorem effective_record_after_update
     {ro : SA.ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SA.SATrace sp FGP ro}
-    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr)
+    {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {c s : Nat}
     {ell : ACLabel (SA.goldilocksSA sp FGP ro)} (hu : SA.UpdateAt tr y c s ell)
     {C : SA.Blk sp.n FGP} {CV : Set (SA.Vote sp.n)} (hR : SA.ResultAt tr y c s C CV)
@@ -315,7 +316,8 @@ theorem effectiveRecordInterval_of_candidates_before {b : Time}
 
 /-- The interval contract preserves the effective record across every intervening cut. -/
 theorem effective_record_of_interval
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i j : Nat} (hij : i ≤ j)
     {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (hint : EffectiveRecordInterval tr H y i j O)
@@ -323,7 +325,7 @@ theorem effective_record_of_interval
       (tr.state y i).ac.latestConfirmed).getD (tr.state y i).fg.F)) :
     Anc (tr.HonestBlocks H) O ((SA.lookup (Node.frame (tr.state y j))
       (tr.state y j).ac.latestConfirmed).getD (tr.state y j).fg.F) := by
-  have hU := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
+  have hU := (Compose.goldilocks_ac_projection_from hrun hnc).localRun.coherent
   have step : ∀ q, i ≤ q → q ≤ j → Anc (tr.HonestBlocks H) O
       ((SA.lookup (Node.frame (tr.state y q)) (tr.state y q).ac.latestConfirmed).getD
         (tr.state y q).fg.F) := by

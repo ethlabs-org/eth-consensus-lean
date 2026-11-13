@@ -48,7 +48,8 @@ private theorem createAtt_T {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : FG
 
 /-- **(SRC)**: an FG source at a cut `k` of a node honest then is compatible with `B` when every
 lock stored at `k` names a held block compatible with `B`. -/
-theorem source_compatible_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem source_compatible_at {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hlocks : ∀ l ∈ (tr.state y k).ac.locks, ∃ L ∈ (tr.state y k).fg.tree, L.root = l.block ∧
@@ -111,7 +112,8 @@ theorem rows_sourced_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propo
 before `n` of a node honest then, compatible with `B`, every attestation of the tree at cut `n` of
 a node honest at a time `t ≥ 0` after every cut before `n`, by a validator honest at `t`, has a
 source compatible with `B`, held by that validator at its signing cut. -/
-theorem rows_sourced_by (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem rows_sourced_by {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {B : SA.Blk sp.n (List (FG.Att sp.n))} {n : Nat}
     (hsrc : ∀ x k, k < n → x ∈ H (tr.time k) → ∀ ℓ C, SA.ToFGAt tr.projAC x k ℓ C →
       Compatible (tr.HonestBlocksAt H) C B)
@@ -153,7 +155,8 @@ theorem rows_sourced_by (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propo
 `i` of a node honest at a time `t ≥ 0` after every cut before `i`, with `2 f_t < n`. The
 justification's honest source is found in the prefix through `t`; `B` is only held while
 honest. -/
-theorem J_compatible_by (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem J_compatible_by {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t)
     (ht : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) (hf : 2 * (H t)ᶜ.ncard < sp.n)
     {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
@@ -197,7 +200,8 @@ theorem J_compatible_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propo
 /-- **OB-F at a read time**: at a cut `n` of a node honest at a time `t ≥ 0` after every cut
 before `n`, with `2 f_t < n` and the rows sourced by blocks compatible with a block `B` held while
 honest, `Σ.F` and `Σ.J` are compatible with `B`. -/
-theorem caches_compatible_by (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem caches_compatible_by {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {n : Nat} {t : Time} (ht0 : 0 ≤ t)
     (ht : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t) (hf : 2 * (H t)ᶜ.ncard < sp.n)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBU : B ∈ tr.HonestBlocksAt H)

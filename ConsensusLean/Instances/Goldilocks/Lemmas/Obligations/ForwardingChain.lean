@@ -48,9 +48,12 @@ theorem scheduled_proposal_child_decodes_of_step {V : Type} [Fintype V] [Decidab
     (hp : Node.Proposes (P := (S.params (pubOf E) hn).toParams)
       (runProposer S rho hn) (rho.ownKey v) t)
     {cfg cfg' : Node.Config (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
-    -- Node run: a reachable configuration holding the engine state of `v` before the tick steps
-    -- through the tick at `t`, and the genesis block is well rooted.
-    (hr : Node.Reachable (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) cfg)
+    -- Node run: a configuration reachable from an AC start `s₀` up to the vote permission,
+    -- holding the engine state of `v` before the tick, steps through the tick at `t`, and the
+    -- genesis block is well rooted.
+    {s₀ : (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).State}
+    (hr : Node.Reachable (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) cfg s₀)
+    (h₀ : SA.VoteStart (S.params (pubOf E) hn).genesisRoot s₀)
     (hst : cfg.st = (stateAt S rho hn v i).node)
     (hs : Node.Step (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) cfg
       (.tick (encodeTxs (mempool rho.inbox v t))) t cfg')
@@ -75,12 +78,8 @@ theorem scheduled_proposal_child_decodes_of_step {V : Type} [Fintype V] [Decidab
   have hself := self_eq_ownKey S rho hn v i
   rw [stateAt_eq] at hself
   have hnow := atProposal_now S rho hn v (rho.stateBefore i v) t hsel
-  have req := SA.interface_requirements (S.params (pubOf E) hn)
-    (List (FG.Att (Fintype.card V))) (S.ro _)
   have hdecode := own_proposal_decodes S rho hn (runProposer S rho hn) (rho.ownKey v)
-    cfg _ t (encodeTxs (mempool rho.inbox v t))
-    ⟨req.1, req.2.1, req.2.2.1, req.2.2.2, SA.proposal_payload_valid _ _ _⟩
-    hg hr hs hp d p (by
+    cfg _ t (encodeTxs (mempool rho.inbox v t)) hg hr h₀ hs hp d p (by
       rw [hst]
       simpa only [hnode, hnow, Node.tickStep, stateAt_eq, hself] using hdp)
   simpa only [hnode, hnow, atProposal_mempool, hst, Node.tickStep, stateAt_eq, hself]

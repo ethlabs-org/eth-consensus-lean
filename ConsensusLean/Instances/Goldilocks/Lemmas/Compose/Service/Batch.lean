@@ -40,7 +40,8 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 /-- Honest votes reach a joined updater using service through `t_s + 2Δ` only: every delivery
 the update counts has its deadline by then, so the update itself may be after `b` (the windowed
 form at `a = κ = 0`). -/
-theorem honest_vote_at_update_early (hrun : SA.ACRun proposer T H U) {b : Time} {k₀ : Nat}
+theorem honest_vote_at_update_early {ini} (hrun : SA.ACRun proposer T H U ini)
+    {b : Time} {k₀ : Nat}
     {s : Nat} (hsync : SA.ServiceBefore H U b T) (hsb : sp.ts s + 2 * sp.Δ ≤ b) {y : Fin sp.n}
     (hy : y ∈ H) {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hu : SA.UpdateAt T y k₀ s ℓ)
     {P : SA.Blk sp.n FGP} (hPU : P ∈ U) (hFP : Anc U ℓ.frame.F P)

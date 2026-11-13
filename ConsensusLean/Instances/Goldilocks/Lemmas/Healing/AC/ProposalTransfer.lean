@@ -600,7 +600,7 @@ private theorem trivial_optimistic_first_proposalU
       fastLock_fastLock_compatibleU hS.toHealthyBaseU hx (Or.inr hopt') hX (Or.inr hopt)
         (by linarith))
   rintro v ⟨hv, R, hR, hRr, -⟩
-  have hvs := optimisticPoint_pool_slotU hr hX hpt hv
+  have hvs := optimisticPoint_pool_slotU hr (fun _ => voteStart_initial _) hX hpt hv
   obtain ⟨k, hk, hsend, h1, -⟩ := pool_sentU hr hX (fun _ _ hrk => restart_beforeU hS hX hσ hrk)
     (optimisticPoint_pool_postU hr hX hpt σ hv)
   have hkt : tr.time k < sp.ts σ + 3 * sp.Δ :=

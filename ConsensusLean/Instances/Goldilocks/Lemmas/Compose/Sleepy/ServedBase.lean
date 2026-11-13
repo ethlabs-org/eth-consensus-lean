@@ -38,15 +38,17 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- A vote of the slot-`L` pool of an honest node is a vote of its latest view, of slot `L`. -/
-theorem mem_latest_votes (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem mem_latest_votes {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i L : Nat} {t : Time}
     (hL : (L : Int) = (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
     {u : Vote sp.n} (hu : u ∈ (tr.projAC.state y i).pool L) :
     u ∈ (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1.votes := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  have hus : u.slot = L := SA.state_pool_slot sp hr hy i L u hu
+  have hr := (goldilocks_ac_projection_from hrun hnc).localRun
+  have hus : u.slot = L := SA.state_pool_slot_from sp hr hrun.vstart hy i L u hu
   have hst : (tr.projAC.state y i).voteStamp u < ⊤ := by
-    rcases SA.pool_origin hr hy i u (hus ▸ hu) with ⟨k, -, -, h, -⟩ | ⟨k, -, -, -, -, h, -⟩ <;>
+    rcases SA.pool_origin_from hr hrun.vstart hy i u (hus ▸ hu) with
+      ⟨k, -, -, h, -⟩ | ⟨k, -, -, -, -, h, -⟩ <;>
       rw [h] <;> exact WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _)
   rw [projAC_state hrun.toLocalRun hy] at hu hst
   simp only [SA.latestView] at hL ⊢

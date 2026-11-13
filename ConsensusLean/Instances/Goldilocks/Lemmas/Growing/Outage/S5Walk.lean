@@ -45,6 +45,7 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Two blocks of one coherent set with the same parent root: one below the other is the other. -/
 private theorem eq_of_anc_sibling {S : Set (SA.Blk sp.n (List (FG.Att sp.n)))} (hS : Coherent S)
@@ -71,7 +72,7 @@ private theorem createAtt_T {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : FG
     unfold FG.Record.heightPair at hp
     split_ifs at hp <;> cases hp <;> rfl
 
-variable (D : OutageLockPremises tr H proposer dg)
+variable (D : OutageLockPremises tr H proposer dg ini)
 
 /-- **The Hi walk**: under Hi at cut `i`, `w` honest at `t_i` with `2 f_{t_i} < n`, a head walk
 of the node's frame over the viable tree of an ancestor-closed domain extends `P`, when the live
@@ -202,7 +203,7 @@ theorem vote_extends_of_hi_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n
   have hfr : ℓ.frame = Node.frame (tr.state y i) := frame_of_projAC_at D.hrun hy hc.1
   obtain ⟨hΦ, hΦU⟩ := frameIn_at D.hrun D.hnc hy hc.1
   obtain ⟨-, -, -, hhead⟩ := castAt_spec_at D.hrun D.hnc hy hc
-  have hdomA := SA.voteDomain_anc hr hy hcT
+  have hdomA := SA.voteDomain_anc_from hr D.hrun.vstart hy hcT
   have hne : (ℓ.frame.viableTree (SA.voteDomain sp e.readPoint ℓ.frame e.msg.slot)).Nonempty ∨
       ℓ.frame.tree ⊆ SA.voteDomain sp e.readPoint ℓ.frame e.msg.slot := by
     by_cases hv :

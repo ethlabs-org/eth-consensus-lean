@@ -110,7 +110,7 @@ theorem proposal_majority_at_update_from (hrun : Growing.GoldilocksRun proposer 
   set A := tr.projAC.state y k₀
   set Hv := VotersAt tr H s d
   have hcount : (H d)ᶜ.ncard < Hv.ncard :=
-    faults_lt_voters hrun hnc hB hσ₀ (by rw [ht]; linarith) hb (by rw [ht])
+    faults_lt_voters hrun (fun _ _ => rfl) hnc hB hσ₀ (by rw [ht]; linarith) hb (by rw [ht])
   -- a validator honest at `d` has one slot-`s` vote in the pool: its vote
   have hone : ∀ x j e, HVoteAt tr H x j e → x ∈ H d → e.msg.slot = s →
       ∀ v ∈ A.pool s, v.val = x → v = e.msg := by
@@ -166,7 +166,7 @@ theorem proposal_majority_at_update_at (hrun : Growing.GoldilocksRun proposer dg
 /-- **No result of an update of a node honest then is vetoed**: a live lock block is an ancestor
 of a stored lock block, on the origin chain (S1); the result is an origin; blocks on the origin
 chain are compatible. -/
-theorem result_not_vetoed_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem result_not_vetoed_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hinv : SleepyInvariantUpTo tr H b)
     {y : Fin sp.n} {k₀ s : Nat} (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)

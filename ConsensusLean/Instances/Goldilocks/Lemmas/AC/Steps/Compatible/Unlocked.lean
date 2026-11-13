@@ -21,6 +21,7 @@ namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → SAState sp.n}
 
 private theorem genesis_mem_U (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
@@ -34,8 +35,8 @@ private theorem genesis_mem_U (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) 
 
 /-- The counted votes of an honest fast lock of slot `s` on `B`: their validators are at least
 half of the committee, and each is a slot-`s` vote whose head, of slot at most `s`, extends `B`
-inside `U`. -/
-theorem fastLock_counted (hrun : ACRun proposer tr H U)
+inside `U`. From starts up to the vote permission. -/
+theorem fastLock_counted (hrun : ACRun proposer tr H U ini)
     {w : Fin sp.n} (hw : w ∈ H) {i₀ s : Nat}
     {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr w i₀ s B CV) :
     sp.committeeSize ≤ 2 * {u | ∃ v ∈ CV, v.val = u}.ncard ∧
@@ -50,8 +51,9 @@ theorem fastLock_counted (hrun : ACRun proposer tr H U)
       rintro u ⟨hu, x, ⟨hx, hres⟩, hval, -, hanc⟩
       exact ⟨x, ⟨hx, hval ▸ hu, hres, hanc⟩, hval⟩
     · rintro v ⟨hvp, -, hres, R, hR, hRr, hBR⟩
-      refine ⟨state_pool_slot sp hr hw i₀ s v hvp, R, hΦU hR, hRr, ?_, Anc.mono hΦU hBR⟩
-      have hvs := state_pool_slot sp hr hw i₀ s v hvp
+      refine ⟨state_pool_slot_from sp hr hrun.vstart hw i₀ s v hvp, R, hΦU hR, hRr, ?_,
+        Anc.mono hΦU hBR⟩
+      have hvs := state_pool_slot_from sp hr hrun.vstart hw i₀ s v hvp
       unfold resolutionTime at hres
       split at hres
       · exact absurd hres (by simp [ETime.of])
@@ -74,7 +76,8 @@ theorem fastLock_counted (hrun : ACRun proposer tr H U)
       have := Set.ncard_le_ncard hsub
       omega
     · rintro v ⟨hv, R, hR, hRr, hBR⟩
-      refine ⟨optimisticPoint_pool_slot hr hw hpt hv, R, hΦU hR, hRr, ?_, Anc.mono hΦU hBR⟩
+      refine ⟨optimisticPoint_pool_slot_from hr hrun.vstart hw hpt hv, R, hΦU hR, hRr, ?_,
+        Anc.mono hΦU hBR⟩
       have := frame_slot_le sp hr hw hpt.1 R hR
       omega
 

@@ -44,8 +44,8 @@ vote, with the honest attestations at heights `≥ h_j` sourced by `G` (sources 
 and compatible with `B`), a block `B` of the honest blocks is in the viable tree of the voter block
 tree, or at or below `fc_root`, when `B` and every source above `Σ.F` have frozen witnesses (blocks
 of the voter block tree above them). -/
-theorem vote_frame_of_witnesses (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} {y : Fin sp.n}
+theorem vote_frame_of_witnesses {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
     (hs : e.msg.slot = s + 1)

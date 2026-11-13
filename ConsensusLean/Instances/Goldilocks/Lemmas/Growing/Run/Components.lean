@@ -23,8 +23,8 @@ variable {FGP : Type} {A : ACInterface P FGP} {H : Time → Set (Fin P.n)} {U : 
   {tr : ACTrace A}
 
 /-- **Retention of the AC contract.** -/
-theorem ACLocalRun.upTo (h : Growing.ACLocalRun A H U tr) {d : Time} (hd : 0 ≤ d) :
-    Consensus.Goldilocks.ACLocalRun A (H d) U (tr.upTo d) := by
+theorem ACLocalRun.upTo {ini} (h : Growing.ACLocalRun A H U tr ini) {d : Time} (hd : 0 ≤ d) :
+    Consensus.Goldilocks.ACLocalRun A (H d) U (tr.upTo d) ini := by
   have hm := h.time_mono
   have anti : ∀ {t}, t ≤ d → H d ⊆ H t := fun ht => h.antitone ht
   have hstate : ∀ {y i}, tr.time i ≤ d → (tr.upTo d).state y i = tr.state y i :=

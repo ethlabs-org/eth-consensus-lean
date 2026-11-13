@@ -304,7 +304,8 @@ theorem carry_of_senders (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     have hts1 : sp.ts ((s + 1 : Nat) : Int) = sp.ts s + 4 * sp.Δ := by
       simp only [SAParams.ts]; push_cast; ring
     linarith only [h, hts1]
-  have hcarry := Compose.Growing.carryAt_of_delivered hr hy hc' hs (CV := CV) fun v hv => by
+  have hcarry := Compose.Growing.carryAt_of_delivered hr (fun _ => SA.voteStart_initial _) hy hc'
+      hs (CV := CV) fun v hv => by
     obtain ⟨hvs, ⟨w, k, hwk, hsend, hk1, hk2⟩, Hv, hHvr, hFHv, hacc⟩ := hW v hv
     refine ⟨hvs, ⟨tr.time k, hk1, hk2, fun hdl => ?_⟩, Hv, hHvr, ?_⟩
     · rw [projAC_deadline_upTo hrun le_rfl] at hdl

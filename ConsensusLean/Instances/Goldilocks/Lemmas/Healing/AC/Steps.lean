@@ -70,11 +70,13 @@ theorem drain_tightU
   simp only [SAParams.ts] at hT
   have hlk := mul_nonneg hΔ.le (show (0 : Int) ≤ l.slot + sp.k - σ by omega)
   cases hf : l.fast
-  · obtain ⟨j, -, B, hsl, hLB⟩ := slow_lock_provenanceU hr hw hy i l hl hf
+  · obtain ⟨j, -, B, hsl, hLB⟩ := slow_lock_provenanceU hr
+      (fun _ => SA.voteStart_initial _) hw hy i l hl hf
     refine ⟨B, hLB, goodOrigin_iff.2 (Or.inr ⟨y, hy, j, hsl, ?_⟩)⟩
     simp only [SAParams.ts]
     linarith
-  · obtain ⟨j, -, B, CV, hfl, hLB⟩ := fast_lock_provenanceU hr hy i l hl hf
+  · obtain ⟨j, -, B, CV, hfl, hLB⟩ := fast_lock_provenanceU hr
+      (fun _ => voteStart_initial _) hy i l hl hf
     refine ⟨B, hLB, goodOrigin_iff.2 (Or.inl ⟨y, hy, j, CV, hfl, ?_⟩)⟩
     have := mul_nonneg hΔ.le (show (0 : Int) ≤ sp.k - 1 by omega)
     simp only [SAParams.ts]

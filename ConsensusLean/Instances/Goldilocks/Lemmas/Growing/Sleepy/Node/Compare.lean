@@ -43,7 +43,7 @@ private def Released (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) 
       tr.time k < sp.ts s + 2 * sp.Δ}
 
 /-- Lift a forwarded vote of the prefix through `d` to a release while honest. -/
-private theorem released_of_fwd (hrun : Growing.GoldilocksRun proposer dg H tr) {d : Time}
+private theorem released_of_fwd {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) {d : Time}
     (hd : 0 ≤ d) {X : Fin sp.n} (hX : X ∈ H d) {s : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
     {u : Fin sp.n} (hu : u ∈ SA.Fwd (tr.projAC.upTo d) ((tr.upTo d).HonestBlocks (H d)) X s D) :
     u ∈ Released tr H X s D := by
@@ -55,7 +55,7 @@ private theorem released_of_fwd (hrun : Growing.GoldilocksRun proposer dg H tr) 
 /-- **A result's side**, at the update of slot `s` (at `t_s + 6Δ`) of a writer honest then: its
 restarts are at or before `t_s`; its counted validators `S` are more than half of its voters,
 released by it while honest, and each has a non-equivocating pool vote extending the result. -/
-private theorem result_side_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem result_side_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {Y : Fin sp.n} {c s : Nat} (hY : Y ∈ H (tr.time c))
     {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hR : SA.ResultAt tr.projAC Y c s D CV) :
@@ -79,8 +79,8 @@ private theorem result_side_at (hrun : Growing.GoldilocksRun proposer dg H tr)
       ((ac_restartAt_upTo tr.projAC).2 ⟨hrun.time_mono hk, hrk⟩)
   · rintro u ⟨v, ⟨hvp, -, hres, R, hR, hRr, hDR⟩, rfl⟩
     have hvp' : v ∈ ((tr.projAC.upTo (tr.time c)).state Y c).pool s := hst.symm ▸ hvp
-    have hvs := SA.state_pool_slot sp hr.localRun hY c s v hvp'
-    obtain ⟨k, hsend, h1, h2⟩ := SA.admitted_of_held hr.localRun hY hvs hvp' le_rfl
+    have hvs := SA.state_pool_slot_from sp hr.localRun hr.vstart hY c s v hvp'
+    obtain ⟨k, hsend, h1, h2⟩ := SA.admitted_of_held_from hr.localRun hr.vstart hY hvs hvp' le_rfl
       (fun k _ hstk => by
         rw [hst] at hstk
         have hst' : (tr.projAC.state Y c).voteStamp v < SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
@@ -102,7 +102,7 @@ private theorem result_side_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 committee are optimistic voters of the selection, released by the checker while honest; an
 optimistic voter honest at the check has its one slot-`s` vote there. -/
 private theorem optimistic_side_at
-    (hrun : Growing.GoldilocksRun proposer dg H tr)
+    {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {X : Fin sp.n} {k s : Nat} (hX : X ∈ H (tr.time k))
     {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : SA.OptimisticLockAt tr.projAC X k s D CV) :
@@ -116,7 +116,7 @@ private theorem optimistic_side_at
   have hr := acRun_upTo hrun hnc hd
   obtain ⟨ℓ, A, hpt, hU, h34, hfwd⟩ := SA.optimistic_side hr hX
     ((sa_optimisticLockAt_upTo hrun.time_mono).2 ⟨le_rfl, hfl⟩)
-  rw [hrun.stock] at h34
+  rw [hrun.stock] at h34 -- TEMP(C2): C4 replaces
   refine ⟨ℓ, A, fun B hB => upTo_subset hrun hd (hU hB), h34,
     fun u hu => released_of_fwd hrun hd hX (hfwd hu), fun v hv hvH => ?_⟩
   obtain ⟨hvs, j, hj, e, hve, rfl⟩ := SA.optimisticPoint_pool_vote hr hX hpt hv hvH
@@ -126,7 +126,7 @@ private theorem optimistic_side_at
 /-- **A released vote reaches an update** of slot `s` (at `t_s + 6Δ ≤ b`) of a writer honest then,
 with its restarts at or before `t_s`: the writer holds it, or two other votes of its validator.
 The release is served with the sender honest at the release and the writer at its call. -/
-private theorem released_held_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem released_held_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {X Y : Fin sp.n} {c s : Nat} (ha : a ≤ sp.ts s) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hY : Y ∈ H (tr.time c))
@@ -164,7 +164,7 @@ private theorem released_held_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 /-- **Against an update**: at the update of slot `s` of a writer honest then, whose counted
 validators `S` support `DY` without equivocating, the validators `T` with votes for a block `D`
 incompatible with `DY`, released while honest by another node, are voters there, none in `S`. -/
-private theorem against_update_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem against_update_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {X Y : Fin sp.n} {c s : Nat} (ha : a ≤ sp.ts s) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hY : Y ∈ H (tr.time c))
@@ -205,7 +205,7 @@ private theorem ncard_le_n (T : Set (Fin sp.n)) : T.ncard ≤ sp.n :=
 /-- **A result and an optimistic selection of one label are compatible** (relay only), the writer
 honest at its update within `b`, the checker honest at its check. -/
 theorem result_optimistic_compatible_at
-    (hrun : Growing.GoldilocksRun proposer dg H tr)
+    {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {s : Nat}
     (ha : a ≤ sp.ts s)
     {X x : Fin sp.n} {i i' : Nat} (hX : X ∈ H (tr.time i)) (hib : tr.time i ≤ b)
@@ -223,7 +223,7 @@ theorem result_optimistic_compatible_at
 /-- **Two origins within `b` of one label are compatible** (RR, RO, OO), each read at its own
 cut; the shared validator of two optimistic selections is honest at the later check. -/
 theorem same_label_compatible_at
-    (hrun : Growing.GoldilocksRun proposer dg H tr)
+    {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
     (hB : SleepyBoundsFrom tr H σ₀ b) {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (ha : a ≤ sp.ts s) (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b) :
@@ -282,7 +282,8 @@ of label `s` is below an origin of its label (`HealedOrigin.below_origin`); a me
 (`honest_supporter_at`, then `V_s`); members of label `s` compare through their origins
 (`same_label_compatible_at`). -/
 theorem origins_below_succ_at
-    (hrun : Growing.GoldilocksRun proposer dg H tr)
+    {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C4 replaces
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
     (hB : SleepyBoundsFrom tr H σ₀ b) {g : Time} {rL rO s : Nat} (hs : σ₀ ≤ s) (ha : a ≤ sp.ts s)
     (hP : HealedOriginsBelow tr H g rL rO s b) (hV : HealedVotesBelow tr H g rL rO s b) :
@@ -293,7 +294,7 @@ theorem origins_below_succ_at
       HealedOrigin tr H g rL rO C' j b → Compatible (tr.HonestBlocksAt H) C C' := by
     intro C C' j hj hC hC'
     obtain ⟨O, hO, hCO⟩ := hC.below_origin hrun hnc
-    obtain ⟨x, i, e, hv, hib, hes, hext⟩ := honest_supporter_at hrun hnc hsync hB hs ha hO
+    obtain ⟨x, i, e, hv, hib, hes, hext⟩ := honest_supporter_at hrun hmv hnc hsync hB hs ha hO
     exact compatible_of_voteExtends hU (voteExtends_of_anc hext hCO)
       (healedVotesBelow_iff.1 hV C' j hC' x i e hv hib (by omega) (by omega))
   intro C j C' j' hj hj' hC hC'

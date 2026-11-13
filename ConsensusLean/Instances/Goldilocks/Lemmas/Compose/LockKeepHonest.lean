@@ -25,14 +25,15 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **Honest held votes do not equivocate per slot.** At an AC cut `j` of an honest node `y`, two
 votes of the same honest validator and the same slot among the votes held across the cut are
 equal. -/
-theorem heldVotes_honest_unique (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem heldVotes_honest_unique {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     (hc : tr.CallAt y j (.ac ℓ)) {x x' : Vote sp.n}
     (hx : x ∈ SA.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac (Node.frame (tr.state y j)))
     (hx' : x' ∈
       SA.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac (Node.frame (tr.state y j)))
     (hxH : x.val ∈ H) (hval : x'.val = x.val) (hs : x.slot = x'.slot) : x = x' := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hrun' := goldilocks_ac_projection_from hrun hnc
   have hr := hrun'.localRun
   have hcA : tr.projAC.CallAt y j ℓ := projAC_callAt.2 hc
   have hfr : ℓ.frame = Node.frame (tr.state y j) := (hrun.cutLaw y hy j _ hc).1
@@ -56,7 +57,7 @@ theorem heldVotes_honest_unique (hrun : GoldilocksRun proposer dg H tr) (hnc : N
   obtain ⟨k', e', he', rfl⟩ := hem x' hx' (hval ▸ hxH)
   rw [hval] at he'
   exact congrArg (fun e : SA.Em sp (List (FG.Att sp.n)) => e.msg)
-    (SA.one_vote_per_slot sp _ ro H _ _ hr _ hxH k k' e e' he he' hs).2
+    (SA.one_vote_per_slotU sp _ ro H _ _ hr.toU _ hxH k k' e e' he he' hs).2
 
 end Consensus.Goldilocks.Compose
 

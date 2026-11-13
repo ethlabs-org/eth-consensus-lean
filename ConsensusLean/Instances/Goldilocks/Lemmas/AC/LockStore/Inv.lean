@@ -249,13 +249,15 @@ private theorem LockInv.step {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : L
 
 omit hU hΦ hΦU
 
-/-- **The lock invariant at reachable states.** -/
-theorem lockInv_of_reachable {ro : ReplayOrder sp FGP} {x : Fin sp.n} (hU : Coherent U)
+/-- **The lock invariant at the states reachable from a start up to the vote permission.** -/
+theorem lockInv_of_reachable_from {ro : ReplayOrder sp FGP} {x : Fin sp.n} (hU : Coherent U)
+    {s₀ : SAState sp.n} (h₀ : VoteStart sp.genesisRoot s₀)
     {A : (goldilocksSA sp FGP ro).State} {Φ : (goldilocksSA sp FGP ro).Frm} {t₀ : Time}
-    (hr : (goldilocksSA sp FGP ro).ReachableAt x U A Φ t₀) :
+    (hr : (goldilocksSA sp FGP ro).ReachableAtFrom s₀ x U A Φ t₀) :
     (goldilocksSA sp FGP ro).FrameIn U Φ ∧ 0 ≤ t₀ ∧ LockInv U A Φ := by
   induction hr with
   | init Φ hinit hin =>
+    obtain ⟨m, rfl⟩ := voteStart_iff.1 h₀
     obtain ⟨htree, hroot, -⟩ := hinit
     have hF : Φ.F ∈ Φ.tree := htree ▸ rfl
     refine ⟨hin, le_rfl, Φ.F, hin.2 hF, hroot, fun _ => hF, fun l hl => ?_⟩
@@ -265,6 +267,14 @@ theorem lockInv_of_reachable {ro : ReplayOrder sp FGP} {x : Fin sp.n} (hU : Cohe
     obtain ⟨hF, hX⟩ := callOK_retains sp hU hin hok
     refine ⟨hok.1, ht₀.trans ht, LockInv.step hU hok.1.1 hok.1.2 ?_ x _ (ht₀.trans ht) c⟩
     exact ⟨E, hE, hEr, fun h => hX E (hEt (hF.trans h)) h, hlE⟩
+
+/-- **The lock invariant at reachable states**: `lockInv_of_reachable_from` at the initial
+state. -/
+theorem lockInv_of_reachable {ro : ReplayOrder sp FGP} {x : Fin sp.n} (hU : Coherent U)
+    {A : (goldilocksSA sp FGP ro).State} {Φ : (goldilocksSA sp FGP ro).Frm} {t₀ : Time}
+    (hr : (goldilocksSA sp FGP ro).ReachableAt x U A Φ t₀) :
+    (goldilocksSA sp FGP ro).FrameIn U Φ ∧ 0 ≤ t₀ ∧ LockInv U A Φ :=
+  lockInv_of_reachable_from hU (voteStart_initial _) hr
 
 private theorem optimistic_blockStamp (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).blockStamp = A.blockStamp := by
