@@ -139,16 +139,17 @@ structure HighCanonical
     (tr : RunTrace A) (H : Time → Set (Fin P.n)) (g b : Time) : Prop where
   no_high_contest : ∀ p i, p ∈ H (tr.time i) → tr.time i ≤ b →
     ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax)
-  row_origin : ∀ y k att, y ∈ H (tr.time k) → tr.SignAt y k att → tr.time k ≤ b →
+  row_origin : ∀ y k att, y ∈ H (max (cutZ P g) (tr.time k)) →
+    tr.SignAt y k att → tr.time k ≤ b →
     HZ tr H g + 1 ≤ att.h →
-    ∃ r < k, ∃ j B, Origin tr y r j B ∧ y ∈ H (tr.time r) ∧
+    ∃ r < k, ∃ j B, Origin tr y r j B ∧ y ∈ H (max (cutZ P g) (tr.time r)) ∧
       HZ tr H g + 1 ≤ ((tr.state y r).fg.σ B.root).h ∧
       ∃ E ∈ (tr.state y r).fg.tree, (tr.state y r).fg.Anc E B ∧ E.root = att.T ∧
         ((tr.state y r).fg.σ E.root).h = att.h ∧ ((tr.state y r).fg.σ E.root).Th = E.root
   entry_eq : ∀ x x' i j i' j' B B' y₁ y₂ m₁ m₂ Z₁ Z₂ t₁ t₂,
-    x ∈ H (tr.time i) → Origin tr x i j B → tr.time i ≤ b →
+    x ∈ H (max (cutZ P g) (tr.time i)) → Origin tr x i j B → tr.time i ≤ b →
     HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h →
-    x' ∈ H (tr.time i') → Origin tr x' i' j' B' → tr.time i' ≤ b →
+    x' ∈ H (max (cutZ P g) (tr.time i')) → Origin tr x' i' j' B' → tr.time i' ≤ b →
     HZ tr H g + 1 ≤ ((tr.state x' i').fg.σ B'.root).h →
     Anc (tr.HonestBlocksAt H) Z₁ B → Anc (tr.HonestBlocksAt H) Z₂ B' →
     0 ≤ t₁ → (∀ q < m₁, tr.time q ≤ t₁) → y₁ ∈ H t₁ →
@@ -169,6 +170,7 @@ structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg) 
   report_in_frame : ∀ {cm proposer dg H tr} {y : Fin P.n} {i : Nat} {R : A.Blk},
     runs.Run cm proposer dg H tr → y ∈ H (tr.time i) → ReportAt tr y i R →
     R ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot R
+  /-- Certificate: no open obligation recorded. The proposal anchor preserves the frame floor. -/
   proposal_floor : ∀ {cm proposer dg H tr} {lo hi : Time} {floor u : Nat} {kindJ : Prop}
     {J B : A.Blk} {z : Fin P.n} {kB : Nat},
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → FrameWindow tr H lo hi floor kindJ J →
@@ -176,47 +178,47 @@ structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg) 
     lo ≤ P.slotTime u → P.slotTime u ≤ hi →
     (H (P.slotTime u))ᶜ.ncard < 2 * P.fg.q - P.n →
     floor ≤ ((tr.state z (kB + 1)).fg.σ B.root).h
-  warm_exists : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time} {s₀ N G floor : Nat} {kindJ : Prop}
-    {J : A.Blk}, runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
-    SlotWindow tr H s₀ N floor kindJ J → gbar g + 4 * P.Δ ≤ P.slotTime s₀ →
-    1 ≤ G → s₀ + warmup + G ≤ N + 1 → P.slotTime N + 2 * P.Δ ≤ b →
-    (∀ v k att, v ∈ H (tr.time k) → tr.SignAt v k att →
-      tr.time k ≤ P.slotTime N + 2 * P.Δ → att.h ≤ HZ tr H g) →
-    ProposalGap tr H proposer G s₀ N →
-    ∃ u, s₀ ≤ u ∧ u + 1 ≤ s₀ + warmup + G ∧ s₀ + warmup ≤ u ∧
-      ∃ z k X, HonestProposal tr H proposer u z k X
-  report_follow : ∀ {cm proposer dg H tr} {g ΔF b : Time} {s₀ N u floor : Nat} {kindJ : Prop}
-    {J B : A.Blk} {z : Fin P.n} {kB : Nat},
+  /-- After warmup, an honest proposal is reported within one slot plus two delays,
+  and later honest proposal heads extend the report. Certificate: cert obligation open:
+  honest committee members support an honest proposal after healing. -/
+  report_follow : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time}
+    {s₀ N u floor : Nat} {kindJ : Prop} {J B : A.Blk} {z : Fin P.n} {kB : Nat},
+    βK ≤ 1 / 2 →
+    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
     FrameWindow tr H (P.slotTime s₀) (P.slotTime N + 2 * P.Δ) floor kindJ J →
-    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → Service tr H g ΔF b →
-    (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
-    (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
-    CatchRun tr H g (2 * P.Δ) → NoRestartAfter tr H (gbar g) →
-    gbar g + 4 * P.Δ ≤ P.slotTime s₀ → s₀ ≤ u → s₀ + warmup ≤ u →
+    gbar g + 4 * P.Δ ≤ P.slotTime s₀ → s₀ + warmup ≤ u →
     u + 1 ≤ N → P.slotTime N + 2 * P.Δ ≤ b →
-    z ∈ H (P.slotTime u + P.Δ) → z = proposer u → tr.ProposesAt z kB B → B.slot = u →
+    HonestProposal tr H proposer u z kB B →
     ∀ y, y ∈ H (P.slotTime (u + 1) + 2 * P.Δ) →
       ∃ i R, y ∈ H (tr.time i) ∧ ReportAt tr y i R ∧ P.slotTime u ≤ tr.time i ∧
         tr.time i ≤ P.slotTime (u + 1) + 2 * P.Δ ∧ Anc (tr.HonestBlocksAt H) B R ∧
         ∀ x, u + follow ≤ x → x ≤ N → ∀ w c d, w ∈ H (tr.time c) →
           ProposalHeadAt tr w c d → tr.time c = P.slotTime x → Anc (tr.HonestBlocksAt H) R d.head
-  /-- New source law, without a horizon bundle or a high-root compatibility conclusion. -/
-  report_origin : ∀ {cm proposer dg H tr} {y : Fin P.n} {i : Nat} {R : A.Blk},
-    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    y ∈ H (tr.time i) → ReportAt tr y i R →
+  /-- A high honest report after a reset has an earlier origin extending it.
+  Certificate: no open obligation recorded. -/
+  report_origin : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time}
+    {y : Fin P.n} {i : Nat} {R : A.Blk},
+    βK ≤ 1 / 2 →
+    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
+    IsReset tr H g a → a ≤ b → y ∈ H (tr.time i) → tr.time i ≤ b → ReportAt tr y i R →
+    HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h →
     ∃ r ≤ i, ∃ j B, y ∈ H (tr.time r) ∧ Origin tr y r j B ∧
       B ∈ (tr.state y r).fg.tree ∧ Anc (tr.HonestBlocksAt H) R B
-  origins_comparable : ∀ {cm proposer dg H tr} {g ΔF a b : Time} {x x' : Fin P.n}
+  /-- High honest FG sources after a reset are compatible across all slots.
+  Certificate: cert obligation open: same-slot FG-source safety plus C1.1 across slots,
+  including the analogue excluding high sources before cutZ. -/
+  origins_comparable : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {x x' : Fin P.n}
     {i j i' j' : Nat} {B B' : A.Blk},
-    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → Service tr H g ΔF b →
-    (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
-    (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
-    IsReset tr H g a → a ≤ b → (∃ k, FirstCutAfter tr k (cutZ P g) ∧ tr.time k ≤ b) →
-    x ∈ H (tr.time i) → Origin tr x i j B → tr.time i ≤ b →
+    βK ≤ 1 / 2 →
+    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
+    IsReset tr H g a → a ≤ b →
+    x ∈ H (max (cutZ P g) (tr.time i)) → Origin tr x i j B → tr.time i ≤ b →
     HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h →
-    x' ∈ H (tr.time i') → Origin tr x' i' j' B' → tr.time i' ≤ b →
+    x' ∈ H (max (cutZ P g) (tr.time i')) → Origin tr x' i' j' B' → tr.time i' ≤ b →
     HZ tr H g + 1 ≤ ((tr.state x' i').fg.σ B'.root).h →
     Compatible (tr.HonestBlocksAt H) B B'
+  /-- Canonical high sources yield chained honest proposals after the AC's drain bound.
+  Certificate: cert obligation open: the certificate healing bound. -/
   heal_after_reset : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time},
     βK ≤ 1 / 2 →
     runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →

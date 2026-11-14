@@ -233,14 +233,14 @@ def round_of_warm_at (O : ACHealing A sg runs) : Prop :=
 /-- A high origin combines own-write honesty, protocol origin, and the exact height bound. -/
 def HighOrigin (O : ACHealing A sg runs) (tr : RunTrace A) (H : Time → Set (Fin P.n)) (g : Time)
     (x : Fin P.n) (i j : Nat) (B : A.Blk) : Prop :=
-  x ∈ H (tr.time i) ∧ O.Origin tr x i j B ∧
+  x ∈ H (max (cutZ P g) (tr.time i)) ∧ O.Origin tr x i j B ∧
     HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h
 
 /-- UNPROVED leaf 12: strict source cut, original entry identities and ancestry. -/
 def high_row_source_at (O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {g : Time} {v : Fin P.n} {d : Nat} {att : FG.Att P.n},
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    v ∈ H (tr.time d) → tr.SignAt v d att → HZ tr H g + 1 ≤ att.h →
+    v ∈ H (max (cutZ P g) (tr.time d)) → tr.SignAt v d att → HZ tr H g + 1 ≤ att.h →
     ∃ r < d, ∃ l Og, HighOrigin A sg O tr H g v r l Og ∧
       ∃ E ∈ (tr.state v r).fg.tree, (tr.state v r).fg.Anc E Og ∧
         E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
