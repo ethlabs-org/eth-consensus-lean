@@ -52,8 +52,8 @@ into every later state.
 * `sleepyServiceFrom_of_reset`: the reset service with the catch-up is the sleepy service from `ḡ`.
 * `seeded_reader_called_at`: a reader honest at `t ≥ t_{r+k}`, read at or before cut `i` with
   `t ≤ time i`, has an AC call before `i` at or after `t_{r−k−3}`.
-* `seeded_rows_above_at`: the high rows of a reader are sourced below members (`RowsAbove` at
-  `H_z + 1` on the prefix through the read).
+* `seeded_rows_above_at`: the high rows of a reader read after `c_z` are sourced below members
+  (`RowsAbove` at `H_z + 1` on the prefix through the read).
 * `seeded_reader_on_chain_at`: `Σ.F` and `fc_root` of a reader with such a call are on the healed
   chain.
 * `seeded_caches_of`, `seeded_viable_of`: the cache facts and the full-read viability of the seeded
@@ -252,12 +252,13 @@ theorem seeded_reader_called_at (hrun : Growing.GoldilocksRun proposer dg H tr) 
 theorem HighOrigin.mem_tree (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {x : Fin sp.n} {q l : Nat} {S : SA.Blk sp.n (List (FG.Att sp.n))}
     (hS : Healing.Growing.HighOrigin tr H g x q l S) : S ∈ (tr.state x q).fg.tree := by
+  have hx := hrun.antitone (le_max_right _ _) hS.1
   obtain ⟨CV, ell, D, hcall, hfl, rfl⟩ := hS.2.2.1
   obtain ⟨ell', hcall', hD⟩ := Healing.fastLock_mem hfl
   obtain rfl : ell = ell' := Option.some.inj (hcall.2.symm.trans hcall'.2)
-  obtain ⟨hΦ, -⟩ := frameIn_at hrun hnc hS.1 hcall
+  obtain ⟨hΦ, -⟩ := frameIn_at hrun hnc hx hcall
   have h := (SA.viableAncestor_anc hΦ hD).1
-  have hfr := frame_of_projAC_at hrun hS.1 hcall
+  have hfr := frame_of_projAC_at hrun hx hcall
   rw [hfr] at h ⊢
   exact h.1
 
@@ -272,6 +273,7 @@ private theorem low_finalized_below (hrun : Growing.GoldilocksRun proposer dg H 
     Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F S := by
   have hreach := Healing.Growing.fg_reachable_at hrun ht0 hi hy
   have hU := honestBlocksAt_coherent hrun hnc
+  have hx := hrun.antitone (le_max_right _ _) hS.1
   have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocksAt H := fun X hX => ⟨y, i, t, ht0, hi, hy, hX⟩
   have hcoh : Coherent (tr.state y i).fg.tree := hU.mono hsub
   have hg := Healing.Store.genesis_mem hreach
@@ -280,8 +282,8 @@ private theorem low_finalized_below (hrun : Growing.GoldilocksRun proposer dg H 
       (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) S :=
     ((Goldilocks.Store.accepted_tree _ _ _ _
       (Healing.Growing.fg_reachable_at hrun (hrun.time_nonneg q) (fun _ h => hrun.time_mono h.le)
-        hS.1)).2.2.2 S hSt).mono
-        (fun X hX => ⟨x, q, tr.time q, hrun.time_nonneg q, fun _ h => hrun.time_mono h.le, hS.1,
+        hx)).2.2.2 S hSt).mono
+        (fun X hX => ⟨x, q, tr.time q, hrun.time_nonneg q, fun _ h => hrun.time_mono h.le, hx,
           hX⟩)
   obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, -, ⟨Bf, hBf, hBfF⟩⟩ :=
     Goldilocks.Store.cache_invariants _ _ _ _ hreach
@@ -302,7 +304,7 @@ private theorem low_finalized_below (hrun : Growing.GoldilocksRun proposer dg H 
   have h₁ := Healing.h_le_of_store_anc hreach hFJ
   have hSh := hS.2.2.2
   exact Growing.GoldilocksRun.finalized_anc_of_lt_conv hrun hnc hcv ht0 hi hy
-    (hrun.time_nonneg q) (fun _ h => hrun.time_mono h.le) hS.1 hBf hFm hBfF.symm hSt (by omega)
+    (hrun.time_nonneg q) (fun _ h => hrun.time_mono h.le) hx hBf hFm hBfF.symm hSt (by omega)
 
 /-- **A low reader with a call from `t_{r−k−3}` on holds the reset seed `S`**, a high origin of a
 label `< r` written by `T`, with `Σ.F ⪯ S`: at the call at `t_{r−k−3}` before the read, `Σ.F` is
@@ -369,7 +371,8 @@ theorem low_fcRoot_below (hrun : Growing.GoldilocksRun proposer dg H tr)
   · rw [Goldilocks.Store.fcRoot_of_not_contest _ hk.1 hk.2]
     have hSh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ S.root).h := by
       rw [Healing.Growing.σ_eq_honest_at hrun hnc ht0 hi hy (hrun.time_nonneg q)
-        (fun _ h => hrun.time_mono h.le) hS.1 hSy (HighOrigin.mem_tree hrun hnc hS)]
+        (fun _ h => hrun.time_mono h.le) (hrun.antitone (le_max_right _ _) hS.1) hSy
+        (HighOrigin.mem_tree hrun hnc hS)]
       exact hS.2.2.2
     obtain ⟨-, -, -, -, hZm, -⟩ := Goldilocks.Store.cache_invariants _ _ _ _ hreach
     have hSm := hZm S hSy
@@ -439,16 +442,18 @@ private theorem signed_source_lock (hrun : Growing.GoldilocksRun proposer dg H t
   exact ⟨_, hsk, hT.symm, c, by omega, l₀.slot, B', CV, hlab, hfl,
     (hVB.mono hΦU).trans (hL'B'.mono (upTo_subset hrun hd))⟩
 
-/-- **The source of a high honest row** of a reader `y` honest at `d`, read before cut `i`: the row
-names a held entry of height `≥ H_z + 1` and its signer is honest at `d`. It was signed at a cut
-`k` before `y` accepted its block at `m < i`, and its honest source `D` (held by the signer at a
-cut `≤ k`) is below a member `C` of the healed family of label `l`, written by the signer at a cut
-`c < k` and below the signer's origin `O` of label `l` at that cut. Up to `T` this is the reset
-cluster's high row (`high_row_source_at`: the entry is on the chain of the signer's high origin);
-after `T` it is the signer's lock write (`signed_source_lock`). -/
+/-- **The source of a high honest row** of a reader `y` honest at `d ≥ c_z`, read before cut `i`:
+the row names a held entry of height `≥ H_z + 1` and its signer is honest at `d`, hence at `c_z`.
+It was signed at a cut `k` before `y` accepted its block at `m < i`, and its honest source `D`
+(held by the signer at a cut `≤ k`) is below a member `C` of the healed family of label `l`,
+written by the signer at a cut `c < k` and below the signer's origin `O` of label `l` at that
+cut. Up to `T` this is the reset cluster's high row (`high_row_source_at`: the entry is on the
+chain of the signer's high origin); after `T` it is the signer's lock write
+(`signed_source_lock`). -/
 private theorem high_row_member (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {d : Time} (hd : 0 ≤ d) {y : Fin sp.n}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {d : Time} (hd : 0 ≤ d)
+    (hzd : Healing.cutZ sp.toParams g ≤ d) {y : Fin sp.n}
     {i : Nat} (hi : ∀ k < i, tr.time k ≤ d) (hy : y ∈ H d)
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y i).fg.tree) {a : FG.Att sp.n}
     (ha : a ∈ X.fgPayload) (hav : a.val ∈ H d) {E : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -480,14 +485,16 @@ private theorem high_row_member (hrun : Growing.GoldilocksRun proposer dg H tr)
     rw [← hEr, Healing.Growing.σ_eq_honest_at hrun hnc hd hi hy hk0 hkle hv hE hE₀] at hEh
     omega
   rcases le_or_gt (tr.time k) T with hkT | hkT
-  · obtain ⟨q, hqk, l, O', ho, E', hE', hE'O', hE'r, -, hE'T⟩ := hp.high_row_source_at hv hS hah
+  · obtain ⟨q, hqk, l, O', ho, E', hE', hE'O', hE'r, -, hE'T⟩ :=
+      hp.high_row_source_at (hrun.antitone (max_le hzd hkd) hav) hS hah
+    have hx := hrun.antitone (le_max_right _ _) ho.1
     obtain ⟨CV, ℓw, D', hcw, hfl, rfl⟩ := ho.2.2.1
-    obtain ⟨O, OV, hO, hD'O⟩ := lock_below_origin_at hrun hnc ho.1 (Or.inl ⟨CV, hfl⟩)
+    obtain ⟨O, OV, hO, hD'O⟩ := lock_below_origin_at hrun hnc hx (Or.inl ⟨CV, hfl⟩)
     have hq0 := hrun.time_nonneg q
     refine ⟨m, hmi, hA, k, hkm, hS, E', ⟨q, hqk.le, hE', hE'T.trans hE'r⟩, q, hqk, _, l, O, OV,
       .of_high le_rfl ho, hO, hE'O'.mono fun _ h => ⟨a.val, q, tr.time q, hq0,
-        fun _ h' => hrun.time_mono h'.le, ho.1, h⟩, ?_⟩
-    exact (Anc.mono (frameIn_at hrun hnc ho.1 hcw).2 (SA.anc_viableAncestor _ D')).trans hD'O
+        fun _ h' => hrun.time_mono h'.le, hx, h⟩, ?_⟩
+    exact (Anc.mono (frameIn_at hrun hnc hx hcw).2 (SA.anc_viableAncestor _ D')).trans hD'O
   · obtain ⟨D, hD, hDT, c, hck, l, C, CV, hrl, hfl, hDC⟩ :=
       signed_source_lock hrun hnc hseed hv hS (hdT.trans hkT.le)
     have hvc := hrun.antitone (hrun.time_mono hck.le) hv
@@ -495,12 +502,14 @@ private theorem high_row_member (hrun : Growing.GoldilocksRun proposer dg H tr)
     exact ⟨m, hmi, hA, k, hkm, hS, D, ⟨k, le_rfl, hD, hDT⟩, c, hck, C, l, O, OV,
       .of_lock hrl (lockWithin_iff.2 ⟨a.val, c, hvc, le_rfl, Or.inl ⟨CV, hfl⟩⟩), hO, hDC, hCO⟩
 
-/-- **The high rows on the prefix through `d`**, sourced below members satisfying `Q`: the
+/-- **The high rows on the prefix through `d ≥ c_z`**, sourced below members satisfying `Q`: the
 `RowsAbove` premise of the store geometry at height `H_z + 1`, for every property `Q` of the
-members that the classification of each high row supplies. -/
+members that the classification of each high row supplies. The signers, honest at `d`, are then
+honest at `c_z`, which `H_z` bounds. -/
 theorem rowsAbove_of (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {d : Time} (hd : 0 ≤ d) {y : Fin sp.n}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {d : Time} (hd : 0 ≤ d)
+    (hzd : Healing.cutZ sp.toParams g ≤ d) {y : Fin sp.n}
     {i : Nat} (hi : ∀ k < i, tr.time k ≤ d) (hy : y ∈ H d)
     {Q : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
     (hQ : ∀ m < i, ∀ X, tr.AcceptAt y m X → ∀ a ∈ X.fgPayload, a.val ∈ H d →
@@ -515,7 +524,7 @@ theorem rowsAbove_of (hrun : Growing.GoldilocksRun proposer dg H tr)
   refine Compose.rowsAbove_iff.2 fun X hX a ha hav ⟨E, hE, hEr⟩ hh => ?_
   rw [hst] at hX hE hh
   obtain ⟨m, hmi, hA, k, hkm, hS, D, ⟨k', hk'k, hD, hDT⟩, c, hck, C, l, O, OV, hC, hO, hDC, hCO⟩ :=
-    high_row_member hrun hnc hseed hd hi hy hX ha hav hE hEr hh
+    high_row_member hrun hnc hseed hd hzd hi hy hX ha hav hE hEr hh
   have hmd : tr.time m ≤ d := hi m hmi
   have hcd : tr.time c ≤ d := (hrun.time_mono (by omega : c ≤ m)).trans hmd
   have hk'le : ∀ q < k', tr.time q ≤ d := fun q hq => (hrun.time_mono (by omega)).trans hmd
@@ -571,19 +580,20 @@ private theorem onHealedChain_compatible (hrun : Growing.GoldilocksRun proposer 
   obtain ⟨C', s', hC', hYC'⟩ := onHealedChain_iff.1 hY
   exact compatible_of_anc_both (honestBlocksAt_coherent hrun hnc) hXC hYC' (hP C s C' s' hC hC')
 
-/-- **The high rows of a seeded reader**, read at `t ≥ 0` (earlier cuts at times `≤ t`, the reader
-honest at `t`): on the prefix through `t`, every row of its tree naming a held entry of height
-`≥ H_z + 1`, by a signer honest at `t`, has an honest source below a member of the healed family
-within `t` held in the prefix (`RowsAbove` at height `H_z + 1`). -/
+/-- **The high rows of a seeded reader**, read at `t ≥ c_z` (earlier cuts at times `≤ t`, the
+reader honest at `t`): on the prefix through `t`, every row of its tree naming a held entry of
+height `≥ H_z + 1`, by a signer honest at `t`, has an honest source below a member of the healed
+family within `t` held in the prefix (`RowsAbove` at height `H_z + 1`). -/
 theorem seeded_rows_above_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {y : Fin sp.n} {i : Nat} {t : Time}
-    (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) :
+    (ht0 : 0 ≤ t) (hzt : Healing.cutZ sp.toParams g ≤ t) (hi : ∀ k < i, tr.time k ≤ t)
+    (hy : y ∈ H t) :
     Compose.RowsAbove (tr.upTo t) (H t)
       (fun D => ∃ C l, HealedOrigin tr H g r (r + sp.k - 1) C l t ∧
         C ∈ (tr.upTo t).HonestBlocks (H t) ∧ Anc ((tr.upTo t).HonestBlocks (H t)) D C) y i
       (Healing.Growing.HZ tr H g + 1) :=
-  rowsAbove_of hrun hnc hseed ht0 hi hy fun m hmi _ _ _ _ _ _ _ _ c _ _ _ _ _ hC _ =>
+  rowsAbove_of hrun hnc hseed ht0 hzt hi hy fun m hmi _ _ _ _ _ _ _ _ c _ _ _ _ _ hC _ =>
     hC.mono ((hrun.time_mono (by omega : c ≤ m)).trans (hi m hmi))
 
 /-- **`Σ.F` and `fc_root` of a seeded reader are on the healed chain.** Low (`h_j ≤ H_z`): both are
@@ -615,7 +625,11 @@ theorem seeded_reader_on_chain_at (hrun : Growing.GoldilocksRun proposer dg H tr
     exact ⟨below hFS hSc, below (low_fcRoot_below hrun hnc ht0 hi hy hlow hS hSy hFS) hSc⟩
   have hst := Trace.upTo_state tr y hi
   have hJ : OnHealedChain tr H g r (r + sp.k - 1) (tr.state y i).fg.J b := by
-    have hsrc := rowsAbove_mono (seeded_rows_above_at hrun hnc hseed ht0 hi hy)
+    have hzt : Healing.cutZ sp.toParams g ≤ t := by
+      obtain ⟨c, hci, -, -, hc⟩ := hcall
+      obtain ⟨a₀, hp₀, -, -, hlo, -⟩ := hseed.reset_timing
+      linarith [hp₀.cutZ_lt_reset_at, hi c hci, sp.toParams.hΔ]
+    have hsrc := rowsAbove_mono (seeded_rows_above_at hrun hnc hseed ht0 hzt hi hy)
       (show Healing.Growing.HZ tr H g + 1 ≤ ((tr.upTo t).state y i).fg.hj by rw [hst]; omega)
     obtain ⟨-, -, D, ⟨C, l, hC, -, hDC⟩, hDs⟩ := Compose.justified_honest_source_of
       (hrun.upTo ht0) (hnc.upTo _) hf hy hsrc (by rw [hst]; omega)
@@ -699,7 +713,11 @@ theorem seeded_viable_of (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
   · exact ⟨C, hCt.1, .refl, hfl⟩
   -- the sources of the high rows compare with `C`, inside the prefix
   have hCP : C ∈ (tr.upTo t).HonestBlocks (H t) := ⟨y, hy, i, by rw [hst]; exact hCt.1⟩
-  have hsrc := seeded_rows_above_at hrun hnc hseed ht0 hi hy
+  have hzt : Healing.cutZ sp.toParams g ≤ t := by
+    obtain ⟨c, hci, -, -, hc⟩ := hcall
+    obtain ⟨a₀, hp₀, -, -, hlo, -⟩ := hseed.reset_timing
+    linarith [hp₀.cutZ_lt_reset_at, hi c hci, sp.toParams.hΔ]
+  have hsrc := seeded_rows_above_at hrun hnc hseed ht0 hzt hi hy
   have hmem : ∀ {C'} {l : Nat}, HealedOrigin tr H g r (r + sp.k - 1) C' l t →
       OnHealedChain tr H g r (r + sp.k - 1) C' b :=
     fun hC' => onHealedChain_iff.2 ⟨_, _, hC'.mono htb, .refl⟩
@@ -714,7 +732,8 @@ theorem seeded_viable_of (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
       low_seed_held hrun hnc hcv hseed ht0 hi hy hcall hlow
     have hSh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ S.root).h := by
       rw [Healing.Growing.σ_eq_honest_at hrun hnc ht0 hi hy (hrun.time_nonneg q)
-        (fun _ h => hrun.time_mono h.le) hS.1 hSy (HighOrigin.mem_tree hrun hnc hS)]
+        (fun _ h => hrun.time_mono h.le) (hrun.antitone (le_max_right _ _) hS.1) hSy
+        (HighOrigin.mem_tree hrun hnc hS)]
       exact hS.2.2.2
     by_cases hSf : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ S.root).h
     · have hCS : Anc (tr.HonestBlocksAt H) C S := by
@@ -1071,7 +1090,10 @@ theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr)
   let Q : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop := fun C l =>
     HealedOrigin tr H g r (r + sp.k - 1) C l b ∧ l ≤ s ∧ ∃ x k e', HVoteAt tr H x k e' ∧
       e'.msg.slot ≤ s ∧ SA.VoteExtends (tr.HonestBlocksAt H) e'.msg C
-  have hsrc := rowsAbove_of hrun hnc hseed hd hi hy (Q := Q)
+  have hzd : Healing.cutZ sp.toParams g ≤ tr.time i := by
+    obtain ⟨a₀, hp₀, -, -, hlo, -, hlt, -⟩ := hseed.reset_timing
+    linarith [hp₀.cutZ_lt_reset_at, sp.toParams.hΔ]
+  have hsrc := rowsAbove_of hrun hnc hseed hd hzd hi hy (Q := Q)
     fun m hmi X hA a ha hav k hkm hS c hck C l O OV hC hO => by
       have hl := member_label_le hrun hnc (fun d h0 hdb => hB.two d h0 hdb) hy hc hes hib hmi hA
         (hrun.antitone (hrun.time_mono hmi.le) hav) hkm hS hck hO hstock
@@ -1120,7 +1142,8 @@ theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr)
         fun hBt hFB hfl => ?_⟩
       have hSh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ S.root).h := by
         rw [Healing.Growing.σ_eq_honest_at hrun hnc hd hi hy (hrun.time_nonneg q)
-          (fun _ h => hrun.time_mono h.le) hS.1 hSy (HighOrigin.mem_tree hrun hnc hS)]
+          (fun _ h => hrun.time_mono h.le) (hrun.antitone (le_max_right _ _) hS.1) hSy
+          (HighOrigin.mem_tree hrun hnc hS)]
         exact hS.2.2.2
       by_cases hSf : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ S.root).h
       · have hBS : Anc (tr.HonestBlocksAt H) B S := by

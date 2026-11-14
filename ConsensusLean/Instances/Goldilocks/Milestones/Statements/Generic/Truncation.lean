@@ -21,13 +21,14 @@ variable {runs : ACRun A sg}
 def NoRestartUpTo (tr : RunTrace A) (H : Time → Set (Fin P.n)) (t b : Time) : Prop :=
   ∀ y k, y ∈ H (tr.time k) → tr.RestartAt y k → tr.time k ≤ b → tr.time k ≤ t
 
-/-- Warm proposal supply, with the original non-strict signing cutoff. -/
+/-- Warm proposal supply, with the original non-strict signing cutoff, for signers honest at
+their signing and at `c_z`. -/
 structure DrainOutputs (O : ACHealing A sg runs) (tr : RunTrace A) (proposer : Nat → Fin P.n)
     (H : Time → Set (Fin P.n)) (g : Time) (G Ld : Nat) (b : Time) : Prop where
   warm : ∀ {s₀ N floor : Nat} {kindJ : Prop} {J : A.Blk},
     SlotWindow tr H s₀ N floor kindJ J →
     gbar g + 4 * P.Δ ≤ P.slotTime s₀ → s₀ + Ld ≤ N → P.slotTime N + 2 * P.Δ ≤ b →
-    (∀ v k att, v ∈ H (tr.time k) → tr.SignAt v k att →
+    (∀ v k att, v ∈ H (max (cutZ P g) (tr.time k)) → tr.SignAt v k att →
       tr.time k ≤ P.slotTime N + 2 * P.Δ → att.h ≤ HZ tr H g) →
     ProposalGap tr H proposer G s₀ N →
     ∃ u, (s₀ ≤ u ∧ s₀ + O.warmup ≤ u) ∧ u ≤ s₀ + Ld ∧

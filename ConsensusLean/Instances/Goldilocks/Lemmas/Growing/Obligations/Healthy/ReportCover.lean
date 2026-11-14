@@ -35,9 +35,9 @@ public section
 
 `report_cover_of_unanimous_at`, the growing form of `Obligations.UpTo.report_cover_of_unanimous`:
 after the drain, every node honest at the update deadline `t_u + 6Δ` of a unanimous slot `u` reports
-a descendant of its proposal `P` by then, unless a node honest at its report already reports a
-strictly higher descendant. Each node is honest at its own cut, and a held state is read at a
-time after the state's cuts.
+a descendant of its proposal `P` by then, unless a node honest at its report and at `c_z` already
+reports a strictly higher descendant. Each node is honest at its own cut, and a held state is read
+at a time after the state's cuts.
 
 The update of the node honest at `t_u + 6Δ` holds `P` (`unanimous_head_held_at_call_at`), with
 finality below `P` (`finality_alternative_before_update_at`), in its full viable tree
@@ -123,10 +123,11 @@ theorem unanimous_head_held_at_call_at (hp : ResetPremisesUpTo tr H proposer dg 
   exact ⟨hPj, store_anc_of_honest_anc_at hrun hp.noColl hd' (before_cut hrun j) hy hFP hPj⟩
 
 /-- **A held target above a high seed is fully viable, or an earlier strictly higher report
-extends it**, at a call of a node honest at it by the horizon, when the target is compatible with
-every earlier high origin. -/
+extends it**, at a call of a node honest at it and at `c_z` by the horizon, when the target is
+compatible with every earlier high origin. The reporter is honest at its report and at `c_z`:
+the call is after `c_z`, as the caller holds the target above the seed. -/
 theorem held_target_viable_or_higher_report_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y v : Fin sp.n} {i q m : Nat} (hy : y ∈ H (tr.time i))
+    {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y i ell)
     (hib : tr.time i ≤ b) {P S : SA.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ ell.frame.tree) (hseed : HighOrigin tr H g v q m S)
@@ -134,16 +135,18 @@ theorem held_target_viable_or_higher_report_at (hp : ResetPremisesUpTo tr H prop
     (hcompare : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
       Compatible (tr.HonestBlocksAt H) P B) :
     P ∈ ell.frame.viableTree ell.frame.tree ∨
-      ∃ x r ell' C, x ∈ H (tr.time r) ∧ r < i ∧ SA.ToFGAt tr.projAC x r ell' C ∧
-        Anc (tr.HonestBlocksAt H) P C ∧
+      ∃ x r ell' C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
+        SA.ToFGAt tr.projAC x r ell' C ∧ Anc (tr.HonestBlocksAt H) P C ∧
         ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
   have hrun := hp.run
+  have hy := hrun.antitone (le_max_right _ _) hyz
   have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
   have hd := hrun.time_nonneg i
   have hle := before_cut hrun i
   obtain ⟨hPhi, hPhiS⟩ := frame_tree_subset_at hrun hp.noColl hy hcall
   have hPhiU := frame_subset_at hrun hp.noColl hy hcall
   have hPy := hPhiS hPt
+  have hcz := ProposalImpl.cutZ_lt_of_anc_at hp hseed (by rwa [max_comm]) hPy hSP
   have hfr := frame_eq_at hrun hy hcall
   have hroot : Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot P := by
     by_cases hlow : (tr.state y i).fg.hj ≤ HZ tr H g
@@ -185,7 +188,8 @@ theorem held_target_viable_or_higher_report_at (hp : ResetPremisesUpTo tr H prop
     have hxle : ∀ k < r, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono (by omega)
     have hPx := mem_of_honest_anc_at hrun hp.noColl hd hxle hx hPR hJx
     have hσ := σ_eq_honest_at hrun hp.noColl hd hle hy hd hxle hx hPy hPx
-    exact Or.inr ⟨x, r, ell', C, hrun.antitone (hrun.time_mono hri.le) hx, hri, hto,
+    exact Or.inr ⟨x, r, ell', C,
+      hrun.antitone (max_le hcz.le (hrun.time_mono hri.le)) hx, hri, hto,
       hPR.trans hJC, by rw [← hσ, hCh]; exact hPh⟩
 
 /-- **At the update deadline, finality below the unanimous head gives full viability or an
@@ -203,10 +207,21 @@ theorem unanimous_viable_or_higher_report_at
     (ht : tr.time j = sp.ts u + 6 * sp.Δ)
     (hFP : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F P) :
     P ∈ ell.frame.viableTree ell.frame.tree ∨
-      ∃ x r e C, x ∈ H (tr.time r) ∧ r < j ∧ SA.ToFGAt tr.projAC x r e C ∧
-        tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P C ∧
+      ∃ x r e C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < j ∧
+        SA.ToFGAt tr.projAC x r e C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+        Anc (tr.HonestBlocksAt H) P C ∧
         ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
   have hjb : tr.time j ≤ b := ht ▸ hTb
+  have hcz : cutZ sp.toParams g ≤ tr.time j := by
+    have hk := sp.two_le_k
+    have hts := hp.clean_window_timing_at (s := u) (by
+      rw [Healing.cleanLabel_eq]
+      rw [Healing.drainTime_eq] at hR
+      have := (SA.ts_le_iff sp).1 hR
+      push_cast at this
+      omega) u (by omega)
+    rw [ht]
+    linarith [sp.toParams.hΔ]
   have hPt := unanimous_head_held_at_call_at hp hc hP hun hgu hR hy hcall
     (by rw [ht]; linarith [sp.toParams.hΔ]) hjb hFP
   obtain ⟨v, q, m, S, ho, hqb, _, hqt⟩ := hp.reset_seed_before_slot_at hR
@@ -216,7 +231,8 @@ theorem unanimous_viable_or_higher_report_at
       Compatible (tr.HonestBlocksAt H) P B := fun x r l B hrj horig =>
     (high_origin_compatible_before_update_at hp hc hP hslot hu hun hgu hR hTb
       horig ((hp.run.time_mono hrj.le).trans ht.le)).symm
-  rcases held_target_viable_or_higher_report_at hp hy hcall hjb hPt ho hqb hSP hcompare with
+  rcases held_target_viable_or_higher_report_at hp (by rwa [max_eq_right hcz]) hcall hjb hPt ho
+      hqb hSP hcompare with
     hv | ⟨x, r, e, C, hx, hrj, hto, hPC, hh⟩
   · exact Or.inl hv
   · exact Or.inr ⟨x, r, e, C, hx, hrj, hto, (hp.run.time_mono hrj.le).trans ht.le, hPC, hh⟩
@@ -233,8 +249,9 @@ theorem finality_alternative_before_update_at
     (hTb : sp.ts u + 6 * sp.Δ ≤ b) {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     (ha : a ≤ tr.time k) (ht : tr.time k ≤ sp.ts u + 6 * sp.Δ) :
     Anc (tr.HonestBlocksAt H) (tr.state y k).fg.F P ∨
-      ∃ z r ell C, z ∈ H (tr.time r) ∧ r < k ∧ SA.ToFGAt tr.projAC z r ell C ∧
-        tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P C ∧
+      ∃ z r ell C, z ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < k ∧
+        SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+        Anc (tr.HonestBlocksAt H) P C ∧
         ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
   rcases hp.finality_below_or_higher_report_at hy (ht.trans hTb)
       (finalized_compatible_before_update_at hp hc hP hslot hu hun hgu hR hTb hy ha ht) with
@@ -275,7 +292,7 @@ theorem report_of_viable_unanimous_pool_at (hp : ResetPremisesUpTo tr H proposer
 
 /-- **Reports above a unanimous post-drain proposal `P` of slot `u` by `t_u + 6Δ`** under growing
 faults: every node honest at `t_u + 6Δ` reports a descendant of `P` by then, or a node honest at
-its report reports a strict height increase above `P`. -/
+its report and at `c_z` reports a strict height increase above `P`. -/
 theorem report_cover_of_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     (hc : CatchRun tr H g (2 * sp.Δ)) {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ tr.HonestBlocksAt H) (hslot : P.slot = u) (hu : 0 < u)
@@ -286,12 +303,13 @@ theorem report_cover_of_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g 
     (hTb : sp.ts u + 6 * sp.Δ ≤ b) :
     (∀ y, y ∈ H (sp.ts u + 6 * sp.Δ) → ∃ r e R, SA.ToFGAt tr.projAC y r e R ∧
       tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P R) ∨
-    (∃ x r e C, x ∈ H (tr.time r) ∧ SA.ToFGAt tr.projAC x r e C ∧
+    (∃ x r e C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ SA.ToFGAt tr.projAC x r e C ∧
       tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P C ∧
       ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h) := by
   classical
-  by_cases hescape : ∃ x r e C, x ∈ H (tr.time r) ∧ SA.ToFGAt tr.projAC x r e C ∧
-      tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P C ∧
+  by_cases hescape : ∃ x r e C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧
+      SA.ToFGAt tr.projAC x r e C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+      Anc (tr.HonestBlocksAt H) P C ∧
       ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h
   · exact Or.inr hescape
   left

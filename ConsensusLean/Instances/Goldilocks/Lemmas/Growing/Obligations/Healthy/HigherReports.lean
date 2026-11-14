@@ -15,17 +15,19 @@ public section
 
 The growing forms of the report lemmas of `Healing/Retention/Records` and the held-target floor
 report of `Healing/Outcome/SupplierFrames`, with each node honest at its own cut and a held-state
-reader honest at an observation time after the state's cuts:
+reader honest at an observation time after the state's cuts. Each higher report is by a node
+honest at it and at `c_z`, so that its high descendant has a high origin (`high_report_origin_at`):
 
-* `ResetPremisesUpTo.higher_report_of_signed_entry_at`: an attestation, signed while honest,
-  naming a held entry strictly above the target yields a strictly higher report of its signer;
+* `ResetPremisesUpTo.higher_report_of_signed_entry_at`: an attestation, signed while honest and
+  honest at `c_z`, naming a held entry strictly above the target yields a strictly higher report
+  of its signer;
 * `ResetPremisesUpTo.finality_below_or_higher_report_at`: finality compatible with the target is
   below it, or an earlier strictly higher report extends it;
 * `ResetPremisesUpTo.held_target_high_floor_report_before_at`: a held target below the head-height
   floor yields an earlier strictly higher report.
 
-The finalization quorum of a held chain meets the validators honest at the reader's cut; each
-signature is then read on the prefix through its own signing. -/
+The finalization quorum of a held chain meets the validators honest at the later of the reader's
+cut and `c_z`; each signature is then read on the prefix through its own signing. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
@@ -38,22 +40,25 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 namespace ResetPremisesUpTo
 
 /-- **A signed entry above the target yields a strictly higher report**: an attestation signed at
-`d < i` by a node honest at its signing, naming an entry held at `i` strictly above a held target,
-is preceded by a report of its signer extending the target, at a strictly higher height. -/
+`d < i` by a node honest at its signing and at `c_z`, naming an entry held at `i` strictly above a
+held target, is preceded by a report of its signer, honest at it and at `c_z`, extending the
+target, at a strictly higher height. -/
 theorem higher_report_of_signed_entry_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {y z : Fin sp.n} {i d : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t)
-    (hy : y ∈ H t) (hz : z ∈ H (tr.time d)) {P E : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hy : y ∈ H t) (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time d)))
+    {P E : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ (tr.state y i).fg.tree) (hE : E ∈ (tr.state y i).fg.tree)
     {att : FG.Att sp.n} (hs : tr.SignAt z d att) (hdi : d < i)
     (hT : att.T = E.root) (hPE : Anc (tr.HonestBlocksAt H) P E)
     (hlt : ((tr.state y i).fg.σ P.root).h < ((tr.state y i).fg.σ E.root).h) :
-    ∃ r ell C, z ∈ H (tr.time r) ∧ r < i ∧ SA.ToFGAt tr.projAC z r ell C ∧
-      Anc (tr.HonestBlocksAt H) P C ∧
+    ∃ r ell C, z ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
+      SA.ToFGAt tr.projAC z r ell C ∧ Anc (tr.HonestBlocksAt H) P C ∧
       ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
   have hrun := hp.run
   have hm := hrun.time_mono
   have hU := Compose.Growing.honest_blocks_coherent hrun hp.noColl
   have hd := hrun.time_nonneg d
+  have hz := hrun.antitone (le_max_right _ _) hzz
   obtain ⟨r, hrd, hrt, ell, C, E', hto, hC, hE', hE'r, hEC, -, -, hEh, -⟩ :=
     Healing.signAt_report_entry (hrun.upTo hd) hz ((RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs⟩)
   subst hrd
@@ -69,22 +74,23 @@ theorem higher_report_of_signed_entry_at (hp : ResetPremisesUpTo tr H proposer d
     ⟨y, i, t, ht, hle, hy, hE⟩ (hE'r.trans hT)
   have hPC := hPE.trans (honest_anc_of_store_anc_at hr0 hzle hzr hEC)
   have hPr := mem_of_honest_anc_at hrun hp.noColl hr0 hzle hzr hPC hC
-  refine ⟨r, ell, C, hzr, by omega, (toFGAt_upTo_iff hm hrr).mp hto, hPC, ?_⟩
+  refine ⟨r, ell, C, by rwa [hrt'], by omega, (toFGAt_upTo_iff hm hrr).mp hto, hPC, ?_⟩
   rw [← hEh, σ_eq_honest_at hrun hp.noColl hr0 hzle hzr ht hle hy hPr hP,
     σ_eq_honest_at hrun hp.noColl hr0 hzle hzr ht hle hy hE' hE]
   exact hlt
 
 /-- **A finalized descendant yields a strictly higher report**: a finalized block `X` of a held
 chain, strictly above a target `P`, of a node honest at its cut `k ≤ b`, is the finalization
-entry signed by a validator honest at `k`, whose report extends `P` at a strictly higher height. -/
+entry signed by a validator honest at `k` and at `c_z` (the quorum is read at the later of the
+two), whose report extends `P` at a strictly higher height. -/
 private theorem finalized_descendant_report_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) (hkb : tr.time k ≤ b)
     {W X P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) (hX : X ∈ (tr.state y k).fg.tree)
     (hXr : X.root = ((tr.state y k).fg.σ W.root).F)
     (hPX : Anc (tr.HonestBlocksAt H) P X) (hne : P ≠ X) :
-    ∃ z r ell C, z ∈ H (tr.time r) ∧ r < k ∧ SA.ToFGAt tr.projAC z r ell C ∧
-      Anc (tr.HonestBlocksAt H) P C ∧
+    ∃ z r ell C, z ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < k ∧
+      SA.ToFGAt tr.projAC z r ell C ∧ Anc (tr.HonestBlocksAt H) P C ∧
       ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
   have hrun := hp.run
   have hm := hrun.time_mono
@@ -106,12 +112,14 @@ private theorem finalized_descendant_report_at (hp : ResetPremisesUpTo tr H prop
     · exact absurd hY.2.2 (by simp [Params.genesisBlock])
   obtain ⟨Q, hQ, hrows⟩ := FG.FGParams.finalized_quorum _ hcs hpos
   change Finset (Fin sp.n) at Q
-  have hex : ∃ v ∈ Q, v ∈ H (tr.time k) := by
+  have hex : ∃ v ∈ Q, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) := by
     by_contra hn
-    have hqsub : (↑Q : Set (Fin sp.n)) ⊆ (H (tr.time k))ᶜ := fun v hv hvH => hn ⟨v, hv, hvH⟩
+    have hqsub : (↑Q : Set (Fin sp.n)) ⊆ (H (max (cutZ sp.toParams g) (tr.time k)))ᶜ :=
+      fun v hv hvH => hn ⟨v, hv, hvH⟩
     have hh := Set.ncard_le_ncard hqsub (Set.toFinite _)
     rw [Set.ncard_coe_finset] at hh
-    have hf := hp.faults _ hk0 hkb
+    obtain ⟨j, hj, hjb⟩ := hp.snapshot
+    have hf := hp.faults _ (hk0.trans (le_max_right _ _)) (max_le (hj.2.le.trans hjb) hkb)
     have hn : 0 < sp.n := sp.toParams.hn
     change (2 * sp.n + 2) / 3 ≤ Q.card at hQ
     omega
@@ -120,7 +128,8 @@ private theorem finalized_descendant_report_at (hp : ResetPremisesUpTo tr H prop
   simp only [FG.FGParams.chainAtts, List.mem_flatMap] at hatt
   obtain ⟨Z', hZ', hatt⟩ := hatt
   obtain ⟨Z, hZ, rfl⟩ := List.mem_map.1 hZ'
-  have haH : att.val ∈ H (tr.time k) := hav ▸ hv
+  have haHz : att.val ∈ H (max (cutZ sp.toParams g) (tr.time k)) := hav ▸ hv
+  have haH := hrun.antitone (le_max_right _ _) haHz
   -- the row was signed while honest, before its block's acceptance at `y`
   have hstk : (tr.upTo (tr.time k)).state y k = tr.state y k :=
     RunTrace.upTo_state_of_le hm le_rfl
@@ -175,16 +184,20 @@ private theorem finalized_descendant_report_at (hp : ResetPremisesUpTo tr H prop
         hp.noColl).mono hsubr) (hXEr.trans hE₀P))
     exact ⟨⟨r, ell, C, hzr, by omega, (toFGAt_upTo_iff hm hrr).mp hto, hPC,
       hlt.trans_eq hEh⟩⟩
-  exact ⟨att.val, r, ell, C, hzr, by omega, hto, hPC, hlt⟩
+  exact ⟨att.val, r, ell, C,
+    hrun.antitone (max_le_max le_rfl ((hm (by omega : r ≤ s)).trans hsk)) haHz, by omega, hto,
+    hPC, hlt⟩
 
 /-- **Finality compatible with a target is below it, or an earlier strictly higher report
-extends the target**, at a cut `k ≤ b` of a node honest at it. -/
+extends the target**, at a cut `k ≤ b` of a node honest at it; the reporter is honest at its
+report and at `c_z`. -/
 theorem finality_below_or_higher_report_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) (hkb : tr.time k ≤ b)
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hcompat : Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F P) :
     Anc (tr.HonestBlocksAt H) (tr.state y k).fg.F P ∨
-      ∃ z r ell C, z ∈ H (tr.time r) ∧ r < k ∧ SA.ToFGAt tr.projAC z r ell C ∧
+      ∃ z r ell C, z ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < k ∧
+        SA.ToFGAt tr.projAC z r ell C ∧
         Anc (tr.HonestBlocksAt H) P C ∧
         ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
   rcases hcompat with h | h
@@ -212,8 +225,8 @@ theorem held_target_high_floor_report_before_at
     (hcompare : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
       Compatible (tr.HonestBlocksAt H) P B)
     (hfloor : ((tr.state y i).fg.σ P.root).h < (tr.state y i).fg.headHeightFloor) :
-    ∃ x r ell C, x ∈ H (tr.time r) ∧ r < i ∧ SA.ToFGAt tr.projAC x r ell C ∧
-      Anc (tr.HonestBlocksAt H) P C ∧
+    ∃ x r ell C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
+      SA.ToFGAt tr.projAC x r ell C ∧ Anc (tr.HonestBlocksAt H) P C ∧
       ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
   have hrun := hp.run
   have hU := Compose.Growing.honest_blocks_coherent hrun hp.noColl
@@ -226,7 +239,7 @@ theorem held_target_high_floor_report_before_at
     (store_anc_of_honest_anc_at hrun hp.noColl hd hle hy hSP hPy)
   have hSf : ((tr.state v q).fg.σ S.root).h < (tr.state y i).fg.headHeightFloor := by
     rw [σ_eq_honest_at hrun hp.noColl (hrun.time_nonneg q) (fun _ hk => hrun.time_mono hk.le)
-      hseed.1 hd hle hy hSs hSy]
+      (hrun.antitone (le_max_right _ _) hseed.1) hd hle hy hSs hSy]
     omega
   obtain ⟨x, r, l, B, E, hri, ho, -, hE, hEB, -, hEf, d, att, hrd, hdi, hxd, hs, hT⟩ :=
     hp.high_floor_signed_source_of_row_bound_at hseed hd hle hy hib
@@ -252,8 +265,13 @@ theorem held_target_high_floor_report_before_at
     · have := Healing.h_le_of_store_anc hr
         (store_anc_of_honest_anc_at hrun hp.noColl hd hle hy h hPy)
       omega
+  -- the signer wrote a high origin, so it is honest at `c_z` too
+  have hxdz : x ∈ H (max (cutZ sp.toParams g) (tr.time d)) := by
+    rcases le_total (cutZ sp.toParams g) (tr.time d) with h | h
+    · rwa [max_eq_right h]
+    · rw [max_eq_left h]; exact hrun.antitone (le_max_left _ _) ho.1
   obtain ⟨j, ell, C, hxj, hji, hto, hPC, hh⟩ :=
-    hp.higher_report_of_signed_entry_at hd hle hy hxd hPy hE hs hdi hT hPE (by omega)
+    hp.higher_report_of_signed_entry_at hd hle hy hxdz hPy hE hs hdi hT hPE (by omega)
   exact ⟨x, j, ell, C, hxj, hji, hto, hPC, hh⟩
 
 end ResetPremisesUpTo

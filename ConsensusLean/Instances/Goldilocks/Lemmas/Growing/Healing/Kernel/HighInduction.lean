@@ -72,10 +72,11 @@ theorem high_origin_votes_of_domain_before_at
       intro z d n O hd hO z' d' n' O' hd' hO'
       exact origins_compatible_before_at hp prior hO ((hp.run.time_mono hd.le).trans hkb)
         (Or.inl hd) hO' ((hp.run.time_mono hd'.le).trans hkb) hd'
-    have hvi := hdomain ho.1 hy (highOrigin_mem_at hp.run hp.noColl ho) hib hc hkb
+    have hvi := hdomain (hp.run.antitone (le_max_right _ _) ho.1) hy
+      (highOrigin_mem_at hp.run hp.noColl ho) hib hc hkb
       (hp.high_origin_held_at_vote_at ho hib hy hc hkb hj) ho hib hj
       (Or.inl .refl) compare compare pair
-    exact high_vote_extends_of_domain_at hp ho hib hy hc hkb hj hvi
+    exact high_vote_extends_of_domain_at hp ho hy hc hkb hj hvi
       (fun z q e' hq hv hs => prior x i j B ho hib z q e' hq
         (Compose.Growing.hVoteAt_iff.1 hv).1 ((hp.run.time_mono hq.le).trans hkb)
         (Compose.Growing.hVoteAt_iff.1 hv).2 hs)

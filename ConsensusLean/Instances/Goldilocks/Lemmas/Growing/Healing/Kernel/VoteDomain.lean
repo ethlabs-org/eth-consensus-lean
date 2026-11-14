@@ -68,6 +68,7 @@ theorem held_target_vote_domain_of_row_bound_before_at
     · exact ⟨B, hBt, .refl, hfloor⟩
     have hBfloor := lt_of_not_ge hfloor
     have hSsrc := Outcome.high_origin_mem_at hp.run hp.noColl hS
+    have hv := hp.run.antitone (le_max_right _ _) hS.1
     by_cases hSf : (tr.state y i).fg.headHeightFloor ≤ ((tr.state v q).fg.σ S.root).h
     · have hBS' : Anc (tr.HonestBlocksAt H) B S := by
         rcases hBS with h | h
@@ -76,12 +77,12 @@ theorem held_target_vote_domain_of_row_bound_before_at
           have hh := Healing.h_le_of_store_anc hreach
             (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hy h hBy)
           rw [← σ_eq_honest_at hp.run hp.noColl (hp.run.time_nonneg q)
-            (fun _ hc => hp.run.time_mono hc.le) hS.1 ht hle hy hSsrc hSy] at hh
+            (fun _ hc => hp.run.time_mono hc.le) hv ht hle hy hSsrc hSy] at hh
           omega
       have hSy := high_origin_held_at_vote_at hp hS hqb hy hcast hm (hFB.trans hBS')
       have hSf' : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ S.root).h := by
         rw [← σ_eq_honest_at hp.run hp.noColl (hp.run.time_nonneg q)
-          (fun _ hc => hp.run.time_mono hc.le) hS.1 ht hle hy hSsrc hSy]
+          (fun _ hc => hp.run.time_mono hc.le) hv ht hle hy hSsrc hSy]
         exact hSf
       exact raw_target_frozen_witness_at hp hS hqb hy hcast hm hFB hBS' hSy .refl hSf'
     · obtain ⟨z, d, n, O, E, hd, ho, hn, hE, hEO, _, hEf⟩ :=

@@ -43,6 +43,7 @@ theorem protected_source_compatible_high_origin_of_sources_at
     {y : Fin sp.n} {q t : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g y q t D) (hqb : tr.time q ≤ b) :
     Compatible (tr.HonestBlocksAt H) B D := by
+  have hyo := hp.run.antitone (le_max_right _ _) ho.1
   have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hcoh := hac.localRun.coherent
   have hframe : ∀ z k ell, z ∈ H (tr.time k) → tr.projAC.CallAt z k ell →
@@ -79,11 +80,11 @@ theorem protected_source_compatible_high_origin_of_sources_at
     have hcomp : Compatible (tr.HonestBlocksAt H) C E := by
       rcases hfl with ⟨ell, R, hu, hR, hfast, _⟩ | hop
       · have hER := ((SA.deepest_mem hfast).1.1.2.2).mono
-          (hframe y q ell ho.1 hu.1)
-        rcases hsame ho.1 hqb hC (Or.inl ⟨ell, hu, hR, rfl⟩) with h | h
+          (hframe y q ell hyo hu.1)
+        rcases hsame hyo hqb hC (Or.inl ⟨ell, hu, hR, rfl⟩) with h | h
         · exact SA.anc_total hcoh h hER
         · exact Or.inr (hER.trans h)
-      · exact hsame ho.1 hqb hC (Or.inr hop)
+      · exact hsame hyo hqb hC (Or.inr hop)
     rcases hcomp with h | h
     · exact SA.anc_total hcoh (hBC.trans h) hDE
     · exact SA.anc_total hcoh hBC (hDE.trans h)
@@ -93,7 +94,7 @@ theorem protected_source_compatible_high_origin_of_sources_at
       have hn : 0 < sp.n := sp.toParams.hn
       omega
     have hEB := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg q)) _
-      SA.CommitteeP.full ho.1 (Nat.lt_succ_self q)
+      SA.CommitteeP.full hyo (Nat.lt_succ_self q)
       ((SA.upTo_fastLockAt hp.run.time_mono).mpr ⟨le_rfl, hfl⟩) (SA.cs2_full hp.stock hf)
       (by
         intro z hz j _ e hv hes

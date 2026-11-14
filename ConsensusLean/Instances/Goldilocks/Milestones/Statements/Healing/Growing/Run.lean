@@ -54,10 +54,13 @@ noncomputable def HZ (g : Time) : Nat :=
     (tr.state y j).fg.hmax = h}
 
 /-- **The reset `a_z`** under growing faults: the first time at which a validator honest at its
-signing signs an attestation whose height pair has height `H_z + 1`. -/
+signing and at `c_z` signs an attestation whose height pair has height `H_z + 1`. A signer
+compromised by `c_z` is charged as faulty: `H_z` does not bound it. -/
 def IsReset (g a : Time) : Prop :=
-  (∃ y k att, y ∈ H (tr.time k) ∧ tr.SignAt y k att ∧ att.h = HZ tr H g + 1 ∧ tr.time k = a) ∧
-    ∀ y k att, y ∈ H (tr.time k) → tr.SignAt y k att → att.h = HZ tr H g + 1 → a ≤ tr.time k
+  (∃ y k att, y ∈ H (max (cutZ P g) (tr.time k)) ∧ tr.SignAt y k att ∧
+      att.h = HZ tr H g + 1 ∧ tr.time k = a) ∧
+    ∀ y k att, y ∈ H (max (cutZ P g) (tr.time k)) → tr.SignAt y k att →
+      att.h = HZ tr H g + 1 → a ≤ tr.time k
 
 /-- The entries of heights `≥ H_z + 1` of the chains accepted by nodes honest at their cuts. -/
 def HighEntries (Hz : Nat) : Set (NodeBlock P A.Payload) :=
@@ -130,10 +133,11 @@ structure HSShared (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF : Ti
   /-- `δ_t ≥ ⌈(6Δ + Δ_F)/(4Δ)⌉`. -/
   timeoutDelay : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.δt : Time)
 
-/-- **A high origin** `(B, j)` under growing faults: written by `x` honest at its write. -/
+/-- **A high origin** `(B, j)` under growing faults: written by `x` honest at its write and at
+`c_z`. -/
 def HighOrigin (g : Time) (x : Fin sp.n) (i j : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) :
     Prop :=
-  x ∈ H (tr.time i) ∧ tr.JoinedAt x (tr.time i) ∧
+  x ∈ H (max (cutZ sp.toParams g) (tr.time i)) ∧ tr.JoinedAt x (tr.time i) ∧
     (∃ CV, Compose.StoredFastLockAt tr x i j B CV) ∧
     HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h
 
@@ -163,10 +167,12 @@ structure RetentionAt (g a : Time) : Prop where
       (B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
         Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot)
   /-- (R4) For every `h ≥ H_z + 1`, the nonempty target, timeout and lock entries at `h` of the
-  client records of nodes at cuts at which they are honest name at most one block. -/
+  client records of nodes at cuts at which they are honest, and honest at `c_z`, name at most
+  one block. -/
   records : ∀ h, HZ tr H g + 1 ≤ h →
-    {r | ∃ y i, y ∈ H (tr.time i) ∧ ((tr.state y i).record.target h = some r ∨
-      r ∈ (tr.state y i).record.timeout h ∨ (tr.state y i).record.lock h = some r)}.Subsingleton
+    {r | ∃ y i, y ∈ H (max (cutZ sp.toParams g) (tr.time i)) ∧
+      ((tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h ∨
+        (tr.state y i).record.lock h = some r)}.Subsingleton
 
 end Goldilocks
 
@@ -197,8 +203,8 @@ def CutAndReset : Prop :=
         att.h = HZ tr H g + 1) ∧
     ∀ a, IsReset tr H g a →
       cutZ sp.toParams g < a ∧
-      (∀ y k att, y ∈ H (tr.time k) → tr.SignAt y k att → HZ tr H g + 1 ≤ att.h →
-        a ≤ tr.time k) ∧
+      (∀ y k att, y ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt y k att →
+        HZ tr H g + 1 ≤ att.h → a ≤ tr.time k) ∧
       (∀ y k src signed, y ∈ H (tr.time k) → tr.CallAt y k (.fg (.attest src signed)) →
         tr.time k = a → (tr.state y k).fg.hmax ≤ HZ tr H g + 1) ∧
       (∀ y k att, y ∈ H (tr.time k) → tr.SignAt y k att → tr.time k = a →

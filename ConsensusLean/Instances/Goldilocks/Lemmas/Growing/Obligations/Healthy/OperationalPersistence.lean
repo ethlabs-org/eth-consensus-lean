@@ -95,8 +95,15 @@ theorem UpTo.operational_proposal_below_later_parent_at
     (show sp.ts u + sp.Δ ≤ b by linarith) ho hqt
   have hT0 : 0 ≤ sp.ts u + 6 * sp.Δ := by
     have := hrun.time_nonneg k; rw [htk] at this; linarith
-  obtain ⟨z, r, ellr, C, hz, hrep, hrt, hPC⟩ :
-      ∃ z r ellr C, z ∈ H (tr.time r) ∧ SA.ToFGAt tr.projAC z r ellr C ∧
+  have hczT : Healing.cutZ sp.toParams g ≤ sp.ts u + 6 * sp.Δ := by
+    have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
+      have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+      omega
+    have hle : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts u := (SA.ts_le_iff sp).2 (by omega)
+    linarith [sp.toParams.hΔ]
+  obtain ⟨z, r, ellr, C, hzz, hrep, hrt, hPC⟩ :
+      ∃ z r ellr C, z ∈ H (max (Healing.cutZ sp.toParams g) (tr.time r)) ∧
+        SA.ToFGAt tr.projAC z r ellr C ∧
         tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P C := by
     rcases Healing.Growing.report_cover_of_unanimous_at hp hc hPU hPs hu hPg hun hgu hRnext hTb
       with hall | hsome
@@ -109,14 +116,15 @@ theorem UpTo.operational_proposal_below_later_parent_at
         have := Fin.pos p
         omega
       obtain ⟨r, ellr, C, hrep, ht, hPC⟩ := hall w hw
-      exact ⟨w, r, ellr, C, hrun.antitone ht hw, hrep, ht, hPC⟩
+      exact ⟨w, r, ellr, C, hrun.antitone (max_le hczT ht) hw, hrep, ht, hPC⟩
     · obtain ⟨z, r, ellr, C, hz, hrep, ht, hPC, _⟩ := hsome
       exact ⟨z, r, ellr, C, hz, hrep, ht, hPC⟩
+  have hz := hrun.antitone (le_max_right _ _) hzz
   have hCt : C ∈ (tr.state z r).fg.tree := Healing.Growing.toFG_mem_tree_at hrun hz hrep
   have hhigh := hp.high_of_anc_at ho (hrun.time_nonneg r) (fun _ hq => hrun.time_mono hq.le) hz
     hCt (hSP.trans hPC)
   obtain ⟨io, hior, jo, O, D, CV, hO, _, _, hCO, _⟩ :=
-    hp.high_report_origin_at hz hrep (hrt.trans hTb) hhigh
+    hp.high_report_origin_at hzz hrep (hrt.trans hTb) hhigh
   have hTv : sp.ts u + 6 * sp.Δ < sp.ts v := by
     have hle : sp.ts (u + 2 : Nat) ≤ sp.ts v := (SA.ts_le_iff sp).2 (by omega)
     simp only [SAParams.ts] at hle ⊢

@@ -20,16 +20,18 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- No honest advance implies no finality lock at the frontier before the deadline. -/
 theorem lock_none_of_noAdvance_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {T t : Time} {h : Nat}
-    (hna : ∀ v k att, v ∈ H (tr.time k) → tr.SignAt v k att → tr.time k < T → att.h ≤ h)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {c T t : Time} {h : Nat}
+    (hna : ∀ v k att, v ∈ H (max c (tr.time k)) → tr.SignAt v k att → tr.time k < T → att.h ≤ h)
     {y : Fin sp.n} {i : Nat} (ht : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t)
-    (hy : y ∈ H t) (htT : t < T) : (tr.state y i).record.lock h = none := by
+    (hyc : y ∈ H (max c t)) (htT : t < T) : (tr.state y i).record.lock h = none := by
+  have hy := hrun.antitone (le_max_right _ _) hyc
   rcases hl : (tr.state y i).record.lock h with _ | r
   · rfl
   obtain ⟨k, hk, att, hs, hfin⟩ := (record_facts_at hrun ht hle hy).2.2 h r hl
   have hwf := Healing.signAt_wellFormed (hrun.upTo ht) hy
     ((RunTrace.upTo_signAt tr).mpr ⟨hle k hk, hs⟩)
-  have hbound := hna y k att (hrun.antitone (hle k hk) hy) hs ((hle k hk).trans_lt htT)
+  have hbound := hna y k att (hrun.antitone (max_le_max le_rfl (hle k hk)) hyc) hs
+    ((hle k hk).trans_lt htT)
   have := hwf.2 (h, r) (by simp [hfin])
   omega
 

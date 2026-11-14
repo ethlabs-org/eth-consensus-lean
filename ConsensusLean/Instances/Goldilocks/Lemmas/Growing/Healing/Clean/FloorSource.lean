@@ -68,8 +68,8 @@ theorem high_floor_signed_source_of_row_bound_at
     have hO₁ := Outcome.high_origin_mem_at hrun hnc0 ho₁
     have hO₂ := Outcome.high_origin_mem_at hrun hnc0 ho₂
     rcases hpair v₁ r₁ l₁ O₁ hr₁ ho₁ v₂ r₂ l₂ O₂ hr₂ ho₂ with h | h
-    · exact ⟨v₂, r₂, O₂, ho₂.1, hO₂, h, .refl⟩
-    · exact ⟨v₁, r₁, O₁, ho₁.1, hO₁, .refl, h⟩
+    · exact ⟨v₂, r₂, O₂, hrun.antitone (le_max_right _ _) ho₂.1, hO₂, h, .refl⟩
+    · exact ⟨v₁, r₁, O₁, hrun.antitone (le_max_right _ _) ho₁.1, hO₁, .refl, h⟩
   have hnc : ¬ ((tr.state y k).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state y k).fg.hmax) := by
     rintro ⟨⟨hmj, C, hC, -, hCh, hJC⟩, hmax⟩
     obtain ⟨-, hJm, -, ⟨Bj, hBj, hBjJ, hBjhj⟩, -⟩ :=
@@ -133,15 +133,16 @@ theorem high_floor_signed_source_of_row_bound_at
       (by clear * - hfloor hCh hEh; omega)
   have hvd : v ∈ H (tr.time d₁) := hrun.antitone (hle d₁ hd₁) hv
   have hi0 := hrun.time_nonneg i
+  have hx := hrun.antitone (le_max_right _ _) ho.1
   have hBO : Anc (tr.HonestBlocksAt H) B O := by
     rcases hcomp v r l O (by clear * - hd₁ hrd; omega) hoO with h | h
     · exact h
     · exfalso
       have hEB := hEO.trans h
-      have hEx := mem_of_honest_anc_at hrun hnc0 hi0 (hcut i) ho.1 hEB hBx
-      have hle' := h_le_of_store_anc (fg_reachable_at hrun hi0 (hcut i) ho.1)
-        (store_anc_of_honest_anc_at hrun hnc0 hi0 (hcut i) ho.1 hEB hBx)
-      rw [σ_eq_honest_at hrun hnc0 hi0 (hcut i) ho.1 ht hle hy hEx hE] at hle'
+      have hEx := mem_of_honest_anc_at hrun hnc0 hi0 (hcut i) hx hEB hBx
+      have hle' := h_le_of_store_anc (fg_reachable_at hrun hi0 (hcut i) hx)
+        (store_anc_of_honest_anc_at hrun hnc0 hi0 (hcut i) hx hEB hBx)
+      rw [σ_eq_honest_at hrun hnc0 hi0 (hcut i) hx ht hle hy hEx hE] at hle'
       clear * - hfloor hEh hle'; omega
   exact ⟨v, r, l, O, E, by clear * - hd₁ hrd; omega, hoO,
     hrow W hW att ha v d₁ hvd hsd hd₁ r l O hrd hoO, hE, hEO, hBO,

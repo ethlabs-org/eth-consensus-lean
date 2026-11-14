@@ -43,11 +43,12 @@ def exists_slot_align : Prop :=
     ∀ af : Time, 0 ≤ af → ∃ s₀ : Nat,
       af ≤ P.slotTime s₀ ∧ 4 * P.Δ * (s₀ : ℤ) < af + 4 * P.Δ
 
-/-- UNPROVED leaf 1: an honest high signing gives a reset no later. -/
+/-- UNPROVED leaf 1: a high signing by a signer honest at it and at `c_z` gives a reset no
+later. -/
 def reset_of_height_advance_at (runs : ACRun A sg) : Prop :=
   ∀ {cm proposer dg H tr} {g : Time} {y : Fin P.n} {k : Nat} {att : FG.Att P.n},
     runs.Run cm proposer dg H tr →
-    (H (tr.time k))ᶜ.ncard < P.fg.q → y ∈ H (tr.time k) →
+    (H (max (cutZ P g) (tr.time k)))ᶜ.ncard < P.fg.q → y ∈ H (max (cutZ P g) (tr.time k)) →
     tr.SignAt y k att → HZ tr H g + 1 ≤ att.h →
     ∃ a, IsReset tr H g a ∧ a ≤ tr.time k
 
@@ -55,7 +56,7 @@ def reset_of_height_advance_at (runs : ACRun A sg) : Prop :=
 def hmax_le_of_noAdvance_at (runs : ACRun A sg) : Prop :=
   ∀ {cm proposer dg H tr} {g T : Time} {y : Fin P.n} {i : Nat},
     runs.Run cm proposer dg H tr → NoAdvance tr H g T →
-    y ∈ H (tr.time i) → (H (tr.time i))ᶜ.ncard < P.fg.q → tr.time i < T →
+    y ∈ H (tr.time i) → (H (max (cutZ P g) (tr.time i)))ᶜ.ncard < P.fg.q → tr.time i < T →
     (tr.state y i).fg.hmax ≤ HZ tr H g + 1
 
 /-- UNPROVED snapshot and call supply for the lower-bound leaf. -/
@@ -94,20 +95,20 @@ def row_or_high_of_report_at (runs : ACRun A sg) : Prop :=
         att.T = ((tr.state y i).fg.σ B.root).Th) ∨
         ((tr.state y i).fg.σ B.root).h < ((tr.state y i).fg.σ R.root).h)
 
-/-- UNPROVED leaf 6: high report implies a reset. -/
+/-- UNPROVED leaf 6: a high report by a reporter honest at it and at `c_z` implies a reset. -/
 def reset_of_high_report_at (runs : ACRun A sg) : Prop :=
   ∀ {cm proposer dg H tr} {g : Time} {y : Fin P.n} {i : Nat} {R : A.Blk},
-    runs.Run cm proposer dg H tr → y ∈ H (tr.time i) →
-    (H (tr.time i))ᶜ.ncard < P.fg.q → ReportAt tr y i R →
+    runs.Run cm proposer dg H tr → y ∈ H (max (cutZ P g) (tr.time i)) →
+    (H (max (cutZ P g) (tr.time i)))ᶜ.ncard < P.fg.q → ReportAt tr y i R →
     HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h →
     ∃ a, IsReset tr H g a ∧ a ≤ tr.time i
 
-/-- UNPROVED FG-call companion of leaf 6. -/
+/-- UNPROVED FG-call companion of leaf 6, with the same charge at `c_z`. -/
 def reset_of_high_source_at (runs : ACRun A sg) : Prop :=
   ∀ {cm proposer dg H tr} {g : Time} {y : Fin P.n} {k : Nat} {C : A.Blk}
     {s : Option (FG.Att P.n)},
-    runs.Run cm proposer dg H tr → y ∈ H (tr.time k) →
-    (H (tr.time k))ᶜ.ncard < P.fg.q → tr.CallAt y k (.fg (.attest C s)) →
+    runs.Run cm proposer dg H tr → y ∈ H (max (cutZ P g) (tr.time k)) →
+    (H (max (cutZ P g) (tr.time k)))ᶜ.ncard < P.fg.q → tr.CallAt y k (.fg (.attest C s)) →
     HZ tr H g + 1 ≤ ((tr.state y k).fg.σ C.root).h →
     ∃ a, IsReset tr H g a ∧ a ≤ tr.time k
 

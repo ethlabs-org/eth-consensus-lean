@@ -40,7 +40,8 @@ theorem target_compatible_later_origin_before_at
     have := hp.faults _ ht hrb
     have hn : 0 < sp.n := sp.toParams.hn
     omega
-  obtain ⟨hx, _, ⟨CV, ell, D, hcall, hfl, rfl⟩, _⟩ := ho
+  obtain ⟨hxz, _, ⟨CV, ell, D, hcall, hfl, rfl⟩, _⟩ := ho
+  have hx := hp.run.antitone (le_max_right _ _) hxz
   obtain ⟨ell', hcall', hD⟩ := Healing.fastLock_mem hfl
   obtain rfl : ell = ell' := Option.some.inj (hcall.2.symm.trans hcall'.2)
   obtain ⟨hPhi, htree⟩ := frame_tree_subset_at hp.run hp.noColl hx hcall

@@ -97,7 +97,7 @@ theorem ResetPremisesUpTo.reset_proposal_passes_at {b : Time}
   have hhigh' : SA.HighLocksCompatible (tr.HonestBlocksAt H) (tr.projAC.state p i)
       (tr.time i) s O := by simpa only [Nat.add_sub_cancel] using hhigh
   have hcut : cutZ sp.toParams g ≤ sp.ts s :=
-    (hp.cutZ_le_ts_of_highOrigin_at ho hrb).trans ((SA.ts_le_iff sp).mpr (by omega))
+    (hp.cutZ_le_ts_of_highOrigin_at ho).trans ((SA.ts_le_iff sp).mpr (by omega))
   have hsg : SA.gbar g + 4 * sp.Δ ≤ sp.ts s := by
     have := lt_cutZ sp g
     linarith
@@ -165,14 +165,15 @@ theorem ResetPremisesUpTo.reset_proposal_passes_at {b : Time}
       · exact Or.inr (narrow hY h)
   · have hls : l = s := by omega
     obtain ⟨CV, ellx, D, hcx, hfl, hO⟩ := ho.2.2.1
+    have hx := hp.run.antitone (le_max_right _ _) ho.1
     have hfls := hls ▸ hfl
     obtain ⟨ell', hcx', hDt⟩ := Healing.fastLock_mem hfl
     obtain rfl : ellx = ell' := Option.some.inj (hcx.2.symm.trans hcx'.2)
-    obtain ⟨hPhix, hPhixTree⟩ := frame_tree_subset_at hp.run hp.noColl ho.1 hcx
+    obtain ⟨hPhix, hPhixTree⟩ := frame_tree_subset_at hp.run hp.noColl hx hcx
     have hPhixU : ellx.frame.tree ⊆ tr.HonestBlocksAt H := by
       intro C hC
       exact ⟨x, r, tr.time r, hp.run.time_nonneg r, fun _ hq => hm hq.le,
-        ho.1, hPhixTree hC⟩
+        hx, hPhixTree hC⟩
     have hOD : Anc (tr.HonestBlocksAt H) O D := by
       rw [hO]
       exact (SA.anc_viableAncestor ellx.frame D).mono hPhixU
@@ -180,10 +181,10 @@ theorem ResetPremisesUpTo.reset_proposal_passes_at {b : Time}
     · have ht' : tr.time r = sp.ts s + 6 * sp.Δ := ht
       rw [hsucc] at hrt
       linarith
-    refine SA.Growing.optimistic_first_proposal_anc_at hac hf ho.1 hop hOD hpH hci
+    refine SA.Growing.optimistic_first_proposal_anc_at hac hf hx hop hOD hpH hci
       (SA.proposal_slot hti) hd ⟨hOt, Or.inl hV⟩ ?_ hhigh' hp.stock
     intro v hv
-    obtain ⟨hvs, hsend, B, hB, hBr, hDB, hacc⟩ := fastLock_writer_at hac.localRun ho.1
+    obtain ⟨hvs, hsend, B, hB, hBr, hDB, hacc⟩ := fastLock_writer_at hac.localRun hx
       (Or.inr hop) v hv
     have hFB := hFO.trans (hOD.trans hDB)
     refine SA.Growing.heldAtProposal_of_writer_at hac.localRun

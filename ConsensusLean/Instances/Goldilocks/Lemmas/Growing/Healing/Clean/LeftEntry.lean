@@ -7,8 +7,9 @@ public section
 /-! # Left-entry provenance under the reset premises
 
 The growing form of `Healing/Retention/Prefix`'s `left_entry_origin`: the reader is honest at an
-observation `t ≤ b`, where the premises bound the faults below the replay quorum, and the
-signer's high origin is honest at its own write. -/
+observation `t ≤ b`, the premises bound the faults below the replay quorum at the later of `t`
+and `c_z` (the snapshot is observed by `b`), and the signer's high origin is honest at its own
+write and at `c_z`. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
@@ -30,11 +31,12 @@ theorem left_entry_origin_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v d, v ∈ H t ∧ d < k ∧
       tr.SignAt v d att ∧ att.T = E.root ∧ ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧
         Anc (tr.HonestBlocksAt H) E O := by
-  have hq : (H t)ᶜ.ncard < sp.toParams.fg.q := by
-    have h3 := hp.faults t ht htb
+  have hq : (H (max (cutZ sp.toParams g) t))ᶜ.ncard < sp.toParams.fg.q := by
+    obtain ⟨j, hj, hjb⟩ := hp.snapshot
+    have h3 := hp.faults _ (ht.trans (le_max_right _ _)) (max_le (hj.2.le.trans hjb) htb)
     have hn := sp.toParams.hn
     have he : sp.n = sp.toParams.n := rfl
-    change (H t)ᶜ.ncard < (2 * sp.toParams.n + 2) / 3
+    change (H (max (cutZ sp.toParams g) t))ᶜ.ncard < (2 * sp.toParams.n + 2) / 3
     omega
   obtain ⟨W, hW, att, ha, v, hv, d, hd, hs, hT, rest⟩ :=
     Outcome.left_entry_origin_at hp.run hp.noColl ht hle hy hq hE hET hEh hEC hlt

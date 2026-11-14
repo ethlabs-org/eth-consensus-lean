@@ -24,7 +24,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem ResetPremisesUpTo.reset_seed_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) :
     ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ a ∧ l ≤ sp.slot a := by
-  obtain ⟨⟨y, k, att, hy, hs, hh, hka⟩, -⟩ := hp.reset
+  obtain ⟨⟨y, k, att, hyz, hs, hh, hka⟩, -⟩ := hp.reset
+  have hy := hp.run.antitone (le_max_right _ _) hyz
   have hr := hp.run.upTo (hp.run.time_nonneg k)
   obtain ⟨r, hkr, hrt, ell, C, E, hto, _, _, _, _, _, _, _, hCa⟩ :=
     Healing.signAt_report_entry hr hy ((RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs⟩)
@@ -34,7 +35,7 @@ theorem ResetPremisesUpTo.reset_seed_at
     rw [RunTrace.upTo_state_of_le hp.run.time_mono hrt'] at hCa
     omega
   obtain ⟨io, hio, l, O, D, CV, ho, _, hfl, _, _⟩ := hp.high_report_origin_at
-    (hp.run.antitone hrt' hy) ((toFGAt_upTo_iff hp.run.time_mono hrt').mp hto)
+    (hp.run.antitone (max_le_max le_rfl hrt') hyz) ((toFGAt_upTo_iff hp.run.time_mono hrt').mp hto)
     (hrt'.trans (hka.le.trans hp.reset_le)) hCa'
   have htime : sp.ts l ≤ tr.time io := by
     rcases hfl with ⟨ell', C', ⟨_, _, ht, _⟩, _⟩ | ⟨ell', A, _, hsl, _⟩

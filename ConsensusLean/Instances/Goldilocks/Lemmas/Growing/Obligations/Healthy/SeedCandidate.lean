@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.High
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.SeedCandidacy
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -47,6 +48,7 @@ private theorem high_J_root_at_state (hp : ResetPremisesUpTo tr H proposer dg g 
   have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun X hX => ⟨y, k, t, ht, hle, hy, hX⟩
   have hgB := ((Store.accepted_tree _ _ _ _ hreach).2.2.2 B hBy).mono hsub
+  have hcz := hp.cutZ_le_of_high_hj_at ht hle hy hhigh
   have hrow : ∀ E ∈ (tr.state y k).fg.tree,
       HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h →
       ((tr.state y k).fg.σ E.root).Th = E.root → ¬ Compatible (tr.HonestBlocksAt H) E B →
@@ -74,10 +76,11 @@ private theorem high_J_root_at_state (hp : ResetPremisesUpTo tr H proposer dg g 
     have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg d)
       (fun q hq => hrun.time_mono hq.le) hv ht hle hy hE' hE
     obtain ⟨r, hrd, l, O, ho, E₀, hE₀, hE₀O, hE₀r, -⟩ :=
-      Outcome.high_row_source_at hrun hnc hv hs (by rw [← hE'h, hσ]; exact hEh)
+      Outcome.high_row_source_at hrun hnc (hrun.antitone (max_le hcz (hle d hdk)) haH) hs
+        (by rw [← hE'h, hσ]; exact hEh)
     have hsub₀ : (tr.state att.val r).fg.tree ⊆ tr.HonestBlocksAt H :=
       fun _ h => ⟨att.val, r, tr.time r, hrun.time_nonneg r,
-        fun q hq => hrun.time_mono hq.le, ho.1, h⟩
+        fun q hq => hrun.time_mono hq.le, hrun.antitone (le_max_right _ _) ho.1, h⟩
     obtain rfl : E₀ = E' := hU.1 (hsub₀ hE₀) (hsub' hE') (hE₀r.trans hE'r.symm)
     have hEO : Anc (tr.HonestBlocksAt H) E₀ O := hE₀O.mono hsub₀
     rcases hcompare _ r l O (by clear * - hi' hrd hdi; omega) ho with hBO | hOB
@@ -164,7 +167,8 @@ theorem guarded_seed_ancestor_candidate_at_state_at
     (Compose.Growing.honest_blocks_coherent hrun hnc) (fun X hX => ⟨y, i, t, ht, hle, hy, hX⟩)
     (Healing.h_le_of_store_anc hreach) hPt
     (fun hSy => congrArg (·.h) (σ_eq_honest_at hrun hnc (hrun.time_nonneg q)
-      (fun r hr => hrun.time_mono hr.le) hseed.1 ht hle hy hSs hSy).symm)
+      (fun r hr => hrun.time_mono hr.le) (hrun.antitone (le_max_right _ _) hseed.1) ht hle hy
+      hSs hSy).symm)
     hhold hPS ?_ (Origin := fun B => ∃ x r l, r < i ∧ HighOrigin tr H g x r l B)
     (fun B ⟨x, r, l, hri, ho⟩ => hcompare x r l B hri ho) fun hSf => ?_
   · by_cases hlow : (tr.state y i).fg.hj ≤ HZ tr H g

@@ -60,11 +60,12 @@ theorem reset_vote_root_source_at
       exact congrArg (·.root) (h.trans (he.trans hg))
   right
   by_cases hh : HZ tr H g + 1 ≤ (tr.state y j).fg.hj
-  · have hq : (H (tr.time j))ᶜ.ncard < sp.toParams.fg.q := by
-      have h3 := hp.faults (tr.time j) ht hjb
+  · have hq : (H (max (cutZ sp.toParams g) (tr.time j)))ᶜ.ncard < sp.toParams.fg.q := by
+      obtain ⟨k, hk, hkb⟩ := hp.snapshot
+      have h3 := hp.faults _ (ht.trans (le_max_right _ _)) (max_le (hk.2.le.trans hkb) hjb)
       have hn := sp.toParams.hn
-      change 3 * (H (tr.time j))ᶜ.ncard ≤ sp.toParams.n - 1 at h3
-      change (H (tr.time j))ᶜ.ncard < (2 * sp.toParams.n + 2) / 3
+      change 3 * (H (max (cutZ sp.toParams g) (tr.time j)))ᶜ.ncard ≤ sp.toParams.n - 1 at h3
+      change (H (max (cutZ sp.toParams g) (tr.time j)))ᶜ.ncard < (2 * sp.toParams.n + 2) / 3
       omega
     obtain ⟨W, hW, att, ha, v, hv, d, hdj, hs, _, r, hrd, l, O, ho, hJO⟩ :=
       Outcome.left_entry_origin_at (g := g) hp.run hp.noColl ht hj hy hq hJm hJT (by omega) hEC

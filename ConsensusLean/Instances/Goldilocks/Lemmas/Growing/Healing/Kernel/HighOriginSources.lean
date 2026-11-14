@@ -50,7 +50,8 @@ theorem highOrigin_raw_head_at
     (ho : HighOrigin tr H g x r l O) :
     ∃ ell D CV, tr.projAC.CallAt x r ell ∧ SA.FastLockAt tr.projAC x r l D CV ∧
       Anc (tr.HonestBlocksAt H) O D := by
-  obtain ⟨hx, _, ⟨CV, ell, D, hc, hf, rfl⟩, _⟩ := ho
+  obtain ⟨hxz, _, ⟨CV, ell, D, hc, hf, rfl⟩, _⟩ := ho
+  have hx := hrun.antitone (le_max_right _ _) hxz
   obtain ⟨ell', hc', hD⟩ := Healing.fastLock_mem hf
   obtain rfl : ell = ell' := Option.some.inj (hc.2.symm.trans hc'.2)
   obtain ⟨hok, hsub⟩ := frame_tree_subset_at hrun hnc hx hc

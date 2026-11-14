@@ -15,12 +15,16 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-/-- Actual accepted-tree rows are authentic for the cohort surviving at observation. -/
+/-- Actual accepted-tree rows are authentic for the cohort surviving at observation, with
+honesty read at the later of each cut and a cutoff `c`. -/
 theorem local_observations
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) (Hz : Nat) (b : Time) :
-    LocalSources.Observations (fun v i => (tr.state v i).fg) tr.time H tr.SignAt Hz b := by
-  intro y k hy _ E hE _ _ W hW att ha haT haH
+    (hnc : Compose.NoCollRun dg tr) (c : Time) (Hz : Nat) (b : Time) :
+    LocalSources.Observations (fun v i => (tr.state v i).fg) tr.time (fun t => H (max c t))
+      tr.SignAt Hz b := by
+  intro y k hyc _ E hE _ _ W hW att ha haT haHc
+  have hy := hrun.antitone (le_max_right _ _) hyc
+  have haH := hrun.antitone (le_max_right _ _) haHc
   have hk0 := hrun.time_nonneg k
   have hlek : ∀ q < k, tr.time q ≤ tr.time k := fun q hq => hrun.time_mono hq.le
   have he := Trace.upTo_state tr y hlek
@@ -46,35 +50,39 @@ theorem local_observations
   obtain rfl : Es = E := hU.1 (hsub' hEs) (hsub hE) (hEsr.trans haT)
   have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg d)
     (fun q hq => hrun.time_mono hq.le) hv hk0 hlek hy hEs hE
-  exact ⟨d, hdk, hs, hv, Es, hEs, hEsr, hEsh, congrArg FG.ChainState.h hσ⟩
+  exact ⟨d, hdk, hs, hrun.antitone (max_le_max le_rfl (hlek d hdk)) haHc, Es, hEs, hEsr, hEsh,
+    congrArg FG.ChainState.h hσ⟩
 
 /-- The signed-source supplier includes actual source-tree membership, recovered from the
-stored fast-lock event on the source's own honest prefix, not inferred from highness. -/
+stored fast-lock event on the source's own honest prefix, not inferred from highness. Honesty is
+read at the later of each cut and `c_z`, the charge of a high origin's writer. -/
 theorem local_sources
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (g b : Time) :
-    LocalSources.Sources (fun v i => (tr.state v i).fg) tr.time H tr.SignAt
+    LocalSources.Sources (fun v i => (tr.state v i).fg) tr.time
+      (fun t => H (max (cutZ sp.toParams g) t)) tr.SignAt
       (HighOrigin tr H g) tr.JoinedAt (tr.HonestBlocksAt H) (HZ tr H g) b := by
-  intro v d att hv hdb hs hh
+  intro v d att hvz hdb hs hh
   obtain ⟨r, hrd, l, O, ho, E0, hE0, hEO, hEr, hEh, hETh⟩ :=
-    high_row_source_at hrun hnc hv hs hh
+    high_row_source_at hrun hnc hvz hs hh
+  have hv := hrun.antitone (le_max_right _ _) ho.1
   have hr0 := hrun.time_nonneg r
   have hler : ∀ q < r, tr.time q ≤ tr.time r := fun q hq => hrun.time_mono hq.le
   obtain ⟨CV, ell, D, hc, hfl, hO⟩ := ho.2.2.1
-  have hframe := frame_of_call hrun ho.1 hc
+  have hframe := frame_of_call hrun hv hc
   have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time r))
     (tr.upTo (tr.time r)) proposer (hrun.upTo hr0) (hnc.upTo _)).localRun
   have hc' : (tr.upTo (tr.time r)).projAC.CallAt v r ell := by
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩
-  have hPhi := (SA.frameIn_of_callAt hr ho.1 hc').1
+  have hPhi := (SA.frameIn_of_callAt hr hv hc').1
   have hOt : O ∈ (tr.state v r).fg.tree := by
     rw [hO, hframe]
     have hm := (SA.viableAncestor_anc hPhi (fastLockAt_frame_mem hfl hc)).1
     rw [hframe] at hm
     exact hm.1
   have hsub : (tr.state v r).fg.tree ⊆ tr.HonestBlocksAt H :=
-    fun _ h => ⟨v, r, tr.time r, hr0, hler, ho.1, h⟩
+    fun _ h => ⟨v, r, tr.time r, hr0, hler, hv, h⟩
   exact ⟨r, hrd, l, O, ho, ho.1, ho.2.1, (hrun.time_mono hrd.le).trans hdb,
     hOt, ho.2.2.2, E0, hE0, hEO.mono hsub, hEr, hEh, hETh⟩
 

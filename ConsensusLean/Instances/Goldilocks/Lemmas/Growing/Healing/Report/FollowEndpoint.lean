@@ -111,8 +111,7 @@ theorem proposal_report_follow_at
   have hit := htime.trans ht.le
   have hib := hit.trans (hT.trans hmb)
   refine ⟨i, ellr, R, hyi, hR,
-    toFG_time_ge_of_ancestor_slot_at hrun hnc hyi (hf _ (hrun.time_nonneg i) hib) hR hPs hPR
-      hstock,
+    toFG_time_ge_of_ancestor_slot_at hrun hnc hyi hR hPs hPR,
     hit, hPR, ?_⟩
   intro x hx hNx w c ellp hw hcp hcall htc d pay hd
   have hbound : tr.time i ≤ sp.ts N + sp.Δ := by

@@ -157,6 +157,7 @@ theorem low_finalized_below_origin_at (hp : ResetPremisesUpTo tr H proposer dg g
   have hnc := hp.noColl
   have hi0 := hrun.time_nonneg i
   have hlei : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
+  have hx := hrun.antitone (le_max_right _ _) ho.1
   have hBt := Outcome.high_origin_mem_at hrun hnc ho
   have hreach := fg_reachable_at hrun ht hle hy
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
@@ -167,8 +168,8 @@ theorem low_finalized_below_origin_at (hp : ResetPremisesUpTo tr H proposer dg g
   have hgB : Anc (tr.HonestBlocksAt H)
       (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) B :=
     ((Goldilocks.Store.accepted_tree _ _ _ _
-      (fg_reachable_at hrun hi0 hlei ho.1)).2.2.2 B hBt).mono
-        (fun X hX => (⟨x, i, tr.time i, hi0, hlei, ho.1, hX⟩ : X ∈ tr.HonestBlocksAt H))
+      (fg_reachable_at hrun hi0 hlei hx)).2.2.2 B hBt).mono
+        (fun X hX => (⟨x, i, tr.time i, hi0, hlei, hx, hX⟩ : X ∈ tr.HonestBlocksAt H))
   obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, -, ⟨Bf, hBf, hBfF⟩⟩ :=
     Goldilocks.Store.cache_invariants _ _ _ _ hreach
   have hgF : (tr.state y m).fg.Anc (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload)
@@ -201,9 +202,9 @@ theorem low_finalized_below_origin_at (hp : ResetPremisesUpTo tr H proposer dg g
     have hn := sp.toParams.hn
     change _ < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n
     clear * - h3 hn; omega
-  have h := hfg.finalized_anc_of_lt_at ht hle hy hi0 hlei ho.1 hH (k := m) (m := i) (X := Bf)
+  have h := hfg.finalized_anc_of_lt_at ht hle hy hi0 hlei hx hH (k := m) (m := i) (X := Bf)
     (F := (tr.state y m).fg.F) (W := B)
-  rw [projFG_store_at hrun ht hle hy, projFG_store_at hrun hi0 hlei ho.1] at h
+  rw [projFG_store_at hrun ht hle hy, projFG_store_at hrun hi0 hlei hx] at h
   have hhigh := ho.2.2.2
   exact h hBf hFm hBfF.symm hBt (by omega)
 

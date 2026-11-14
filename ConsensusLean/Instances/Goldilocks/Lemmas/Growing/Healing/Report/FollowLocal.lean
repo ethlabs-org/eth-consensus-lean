@@ -67,20 +67,19 @@ theorem toFG_candidates_compatible_at_call_at
   · exact Or.inl (h.mono (RunTrace.honestBlocks_upTo_subset hr.time_mono hd))
   · exact Or.inr (h.mono (RunTrace.honestBlocks_upTo_subset hr.time_mono hd))
 
-/-- An actual report above a slot-`u` block cannot precede slot `u`.
-Only the reporter's honesty and fault bound at the report cut are used. -/
+/-- An actual report above a slot-`u` block cannot precede slot `u`: the report is a block of
+the reporter's frame, whose blocks are of slots at most the call's. Only the reporter's honesty
+at the report cut is used. -/
 theorem toFG_time_ge_of_ancestor_slot_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i u : Nat}
-    (hy : y ∈ H (tr.time i)) (hf : 3 * (H (tr.time i))ᶜ.ncard ≤ sp.n - 1)
+    (hy : y ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)} {P R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : SA.ToFGAt tr.projAC y i ell R) (hPs : P.slot = u)
-    (hPR : Anc (tr.HonestBlocksAt H) P R) (hstock : sp.committeeSize = sp.n) :
+    (hPR : Anc (tr.HonestBlocksAt H) P R) :
     sp.ts u ≤ tr.time i := by
   have hr := hrun.toLocalRun
   have hd := hr.time_nonneg i
-  have hp := hrun.upTo hd
-  have hn := hnc.upTo (tr.time i)
   have hs := Trace.upTo_state tr.projAC y (d := tr.time i) (i := i)
     (fun k hk => hr.time_mono hk.le)
   have hR' : SA.ToFGAt (tr.upTo (tr.time i)).projAC y i ell R := by
@@ -89,41 +88,13 @@ theorem toFG_time_ge_of_ancestor_slot_at
       exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hR.1⟩
     · simpa only [RunTrace.upTo_projAC, hs, Trace.upTo_time] using hR.2.2
   have hac := Compose.goldilocks_ac_projection sp ro dg (H (tr.time i))
-    (tr.upTo (tr.time i)) proposer hp hn
-  have hPhi := SA.frameIn_of_callAt hac.localRun hy hR'.1
-  have hRc := SA.toFG_candidate hR'.2.2
-  have hRh : R ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) :=
-    hPhi.2 hRc.1.1
-  have hPR' := RunTrace.anc_upTo_of_right hr hnc hd hRh hPR
-  obtain ⟨a, _, j, D, CV, ho, hRD, hj⟩ := Healing.toFG_fast_origin hp hn hy hR'
-  have hPD := (Anc.slot_le hac.localRun.coherent (hPR'.trans hRD)).1
-  have hDj := Healing.fast_selection_slot_le hp hn hf hy ho hstock
-  have hu : u ≤ sp.slot (tr.time i) := by
-    simp only [Trace.upTo_time] at hj
-    omega
-  exact (SA.ts_le_iff_le_slot sp hd _).2 (by exact_mod_cast hu)
-
-/-- A proposer's stored locks have older labels at its own honest proposal call. -/
-theorem stored_lock_lt_at_proposal_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {s i : Nat}
-    (hf : 3 * (H (tr.time i))ᶜ.ncard ≤ sp.n - 1) (hs1 : 1 ≤ s)
-    {ell : ACLabel (goldilocksNode sp ro)} (hz : proposer s ∈ H (tr.time i))
-    (hc : tr.projAC.CallAt (proposer s) i ell) (hcall : ell.call = .proposal)
-    (hti : tr.time i = sp.ts s) {l : SA.Lock}
-    (hl : l ∈ (tr.projAC.state (proposer s) i).locks) (hstock : sp.committeeSize = sp.n) :
-    l.slot < s := by
-  have hr := hrun.toLocalRun
-  have hd := hr.time_nonneg i
-  have hc' : (tr.upTo (tr.time i)).projAC.CallAt (proposer s) i ell := by
-    rw [RunTrace.upTo_projAC]
-    exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
-  have hl' : l ∈ ((tr.upTo (tr.time i)).projAC.state (proposer s) i).locks := by
-    simpa only [RunTrace.upTo_projAC,
-      Trace.upTo_state tr.projAC (proposer s) (d := tr.time i) (i := i)
-        (fun k hk => hr.time_mono hk.le)] using hl
-  exact Healing.stored_lock_lt_at_proposal (hrun.upTo hd) (hnc.upTo (tr.time i))
-    hf hs1 hz hc' hcall hti hl' hstock
+    (tr.upTo (tr.time i)) proposer (hrun.upTo hd) (hnc.upTo (tr.time i))
+  have hRc := (SA.toFG_candidate hR'.2.2).1.1
+  have hRs : R.slot ≤ sp.slot (tr.time i) := SA.frame_slot_le sp hac.localRun hy hR'.1 R hRc
+  have hPR' := RunTrace.anc_upTo_of_right hr hnc hd
+    ((SA.frameIn_of_callAt hac.localRun hy hR'.1).2 hRc) hPR
+  have hPRs := (Anc.slot_le hac.localRun.coherent hPR').1
+  exact (SA.ts_le_iff_le_slot sp hd _).2 (by omega)
 
 end Consensus.Goldilocks.Healing.Growing
 

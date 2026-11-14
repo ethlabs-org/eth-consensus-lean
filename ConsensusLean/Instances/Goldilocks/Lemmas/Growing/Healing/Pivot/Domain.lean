@@ -71,6 +71,7 @@ theorem held_target_proposal_domain_before_of_sources_at
     · exact ⟨B, hBt, .refl, hfloor⟩
     obtain ⟨v, q, m, S, hS, hqt, hBS⟩ := hseed
     have hSsrc := highOrigin_mem_at hp.run hp.noColl hS
+    have hv := hp.run.antitone (le_max_right _ _) hS.1
     by_cases hSf : (tr.state p i).fg.headHeightFloor ≤ ((tr.state v q).fg.σ S.root).h
     · have hBS' : Anc (tr.HonestBlocksAt H) B S := by
         rcases hBS with h | h
@@ -79,13 +80,13 @@ theorem held_target_proposal_domain_before_of_sources_at
           have hh := h_le_of_store_anc hreach
             (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hpH h hBy)
           rw [← σ_eq_honest_at hp.run hp.noColl (hp.run.time_nonneg q)
-            (fun _ hq => hp.run.time_mono hq.le) hS.1 ht hle hpH hSsrc hSy] at hh
+            (fun _ hq => hp.run.time_mono hq.le) hv ht hle hpH hSsrc hSy] at hh
           omega
       have hSt := held hS hqt hBS'
       refine ⟨S, hSt, hBS', ?_⟩
       change (tr.state p i).fg.headHeightFloor ≤ _
       rw [← σ_eq_honest_at hp.run hp.noColl (hp.run.time_nonneg q)
-        (fun _ hq => hp.run.time_mono hq.le) hS.1 ht hle hpH hSsrc
+        (fun _ hq => hp.run.time_mono hq.le) hv ht hle hpH hSsrc
         ((frame_tree_subset_at hp.run hp.noColl hpH hci).2 hSt)]
       exact hSf
     · obtain ⟨z, q', n, O, E, hqi, ho, hn, hE, hEO, _, hEf⟩ :=

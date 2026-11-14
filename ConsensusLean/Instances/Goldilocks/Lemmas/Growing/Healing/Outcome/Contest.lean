@@ -48,11 +48,12 @@ theorem no_high_contest_at
   have hreach := fg_reachable_at hp.run ht hi hpH
   have hsub : (tr.state p i).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨p, i, tr.time i, ht, hi, hpH, h⟩
-  have hq : (H (tr.time i))ᶜ.ncard < sp.toParams.fg.q := by
-    have h3 := hp.faults (tr.time i) ht hib
+  have hq : (H (max (cutZ sp.toParams g) (tr.time i)))ᶜ.ncard < sp.toParams.fg.q := by
+    obtain ⟨j, hj, hjb⟩ := hp.snapshot
+    have h3 := hp.faults _ (ht.trans (le_max_right _ _)) (max_le (hj.2.le.trans hjb) hib)
     have hn := sp.toParams.hn
-    change (H (tr.time i))ᶜ.ncard < (2 * sp.toParams.n + 2) / 3
-    change 3 * (H (tr.time i))ᶜ.ncard ≤ sp.toParams.n - 1 at h3
+    change (H (max (cutZ sp.toParams g) (tr.time i)))ᶜ.ncard < (2 * sp.toParams.n + 2) / 3
+    change 3 * (H (max (cutZ sp.toParams g) (tr.time i)))ᶜ.ncard ≤ sp.toParams.n - 1 at h3
     omega
   rintro ⟨⟨hmj, C, hC, _, hCh, hJC⟩, hmax⟩
   obtain ⟨_, hJm, _, ⟨Bj, hBj, hBjJ, hBjhj⟩, _⟩ := Store.cache_invariants _ _ _ _ hreach
@@ -74,8 +75,8 @@ theorem no_high_contest_at
     have hO₂ := high_origin_mem_at hp.run hp.noColl ho₂
     rcases hp.origins_compatible_at ho₁ ((hi r₁ (by omega)).trans hib)
         ho₂ ((hi r₂ (by omega)).trans hib) with h | h
-    · exact ⟨v₂, r₂, O₂, ho₂.1, hO₂, h, .refl⟩
-    · exact ⟨v₁, r₁, O₁, ho₁.1, hO₁, .refl, h⟩
+    · exact ⟨v₂, r₂, O₂, hp.run.antitone (le_max_right _ _) ho₂.1, hO₂, h, .refl⟩
+    · exact ⟨v₁, r₁, O₁, hp.run.antitone (le_max_right _ _) ho₁.1, hO₁, .refl, h⟩
   obtain ⟨z, m, W, hz, hW, hO₁W, hO₂W⟩ := upper
   have hm : ∀ q < m, tr.time q ≤ tr.time m := fun q hq => hp.run.time_mono hq.le
   have h₁ := hECO.trans hO₁W

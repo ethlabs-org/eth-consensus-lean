@@ -41,13 +41,15 @@ theorem high_origin_frozen_head_at
   have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   obtain ⟨ellX, D, CV, hcx, hfl, hOD⟩ := highOrigin_raw_head_at hp.run hp.noColl ho
   have hr := hac.upTo (hp.run.time_nonneg r)
+  have hlab := hp.cutZ_le_ts_of_highOrigin_at ho
   have hf : 2 * (H (tr.time r))ᶜ.ncard < sp.n := by
     have := hp.faults (tr.time r) (hp.run.time_nonneg r) hrb
     have hn := sp.toParams.hn
     change 0 < sp.n at hn
     omega
   obtain ⟨z, hz, j, ev, hv, hes, W, hW, hWr, hDW⟩ :=
-    SA.fastLock_honest_vote hr hf ho.1 ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hp.stock
+    SA.fastLock_honest_vote hr hf (hp.run.antitone (le_max_right _ _) ho.1)
+      ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hp.stock
   obtain ⟨hjr, hv₀⟩ := SA.upTo_voteAt.mp hv
   have hzj := hp.run.antitone hjr hz
   obtain ⟨ellZ, hcz, he⟩ := hv₀
@@ -59,8 +61,7 @@ theorem high_origin_frozen_head_at
   subst W'
   have hOW := hOD.trans hDW
   have hzZ : z ∈ H (max (tr.time j) (cutZ sp.toParams g)) :=
-    hp.run.antitone (max_le hjr ((hp.cutZ_le_ts_of_highOrigin_at ho hrb).trans
-      (ts_le_of_fastLock_at hp.run hfl))) hz
+    hp.run.antitone (max_le hjr (hlab.trans (ts_le_of_fastLock_at hp.run hfl))) hz
   have hWz : W ∈ (tr.state z j).fg.tree :=
     (frame_tree_subset_at hp.run hp.noColl hzj hcz).2 hW't
   have hZj := cutZ_lt_of_anc_at hp ho hzZ hWz hOW
@@ -115,7 +116,7 @@ theorem high_origin_frozen_head_at
     have := le_gbar g
     have := sp.toParams.hΔ
     linarith
-  have hWT := relay_mem_voterBlockTree_at hp hzc₀ hacc₀ hgc
+  have hWT := relay_mem_voterBlockTree_at (s := l) hp hzc₀ hacc₀ hgc
     (by have := sp.toParams.hΔ; linarith) hy hc (by omega)
     (hFO.trans hOW)
   exact ⟨W, hWT, hOW⟩

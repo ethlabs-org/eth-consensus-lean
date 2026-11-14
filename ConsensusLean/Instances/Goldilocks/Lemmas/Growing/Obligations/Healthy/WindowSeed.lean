@@ -112,7 +112,8 @@ theorem seed_height_at {g ΔR a b gS ΔF : Time}
   have hOv := Healing.Growing.highOrigin_mem_at hrun hnc ho
   have hOh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state (proposer s₀) kX).fg.σ O.root).h := by
     rw [← Healing.Growing.σ_eq_honest_at hrun hnc (hrun.time_nonneg r)
-      (fun _ hq => hrun.time_mono hq.le) ho.1 h0 hle0 hpH hOv hOst]
+      (fun _ hq => hrun.time_mono hq.le) (hrun.antitone (le_max_right _ _) ho.1) h0 hle0 hpH hOv
+      hOst]
     exact ho.2.2.2
   have hQh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state (proposer s₀) kX).fg.σ Q.root).h :=
     hOh.trans (Healing.h_le_of_store_anc hr hOQs)
@@ -167,7 +168,7 @@ theorem seed_height_at {g ΔR a b gS ΔF : Time}
       (fun y j e hy hv hjb hs' => hun y j e hy hv hs' hjb) hgu hR1 hub with
     hall | ⟨x, r, e, C, hx, hto, hrt', hQC, hlt⟩
   swap
-  · exact (hesc x r e C hx hto hrt' hQC hlt).elim
+  · exact (hesc x r e C (hrun.antitone (le_max_right _ _) hx) hto hrt' hQC hlt).elim
   -- C2: the entry of the seed, its target attestations, and the timeout crossing at `P₀`
   obtain ⟨⟨E, hE, hEr, hEQ, hEh, hETh⟩, -⟩ :=
     Goldilocks.Store.entry_state_of_source _ _ _ _ hr Q hQst
@@ -198,9 +199,19 @@ theorem seed_height_at {g ΔR a b gS ΔF : Time}
     hScard ?_ (by rw [hP₀s]; omega)
   · rw [hcross.1]
     omega
+  have hczu : Healing.cutZ sp.toParams g ≤ sp.ts u + 6 * sp.Δ := by
+    have hk := sp.two_le_k
+    have hts := hp.clean_window_timing_at (s := u) (by
+      rw [Healing.cleanLabel_eq]
+      rw [Healing.drainTime_eq] at hR1
+      have := (SA.ts_le_iff sp).1 hR1
+      push_cast at this
+      omega) u (by omega)
+    linarith [sp.toParams.hΔ]
   intro z hz
   have hzH : z ∈ H (sp.ts u + 6 * sp.Δ) := (Finset.mem_filter.1 hz).2
   obtain ⟨r, ell, R, hrep, hrt', hQR⟩ := hall z hzH
+  have hzrz := hrun.antitone (max_le hczu hrt') hzH
   have hzr : z ∈ H (tr.time r) := hrun.antitone hrt' hzH
   have hleR : ∀ q < r, tr.time q ≤ tr.time r := fun _ hq => hrun.time_mono hq.le
   have hr0 := hrun.time_nonneg r
@@ -216,15 +227,15 @@ theorem seed_height_at {g ΔR a b gS ΔF : Time}
     omega
   have hrb : tr.time r ≤ b := by linarith
   obtain ⟨io, -, jo, O', -, -, ho', hiob, -, hCO, -⟩ :=
-    hp.high_report_origin_at hzr hrep hrb (by rw [hRh]; exact hEhT)
+    hp.high_report_origin_at hzrz hrep hrb (by rw [hRh]; exact hEhT)
   have hER := hEQh.trans hQR
   have hEO := hER.trans hCO
   obtain ⟨j, att, hsg, hjt, hah⟩ :=
-    hp.sign_of_report_at hzr hrep hrb h0 hle0 hpH hE rfl hETe hEhT hER hRh ho' hiob hEO
+    hp.sign_of_report_at hzrz hrep hrb h0 hle0 hpH hE rfl hETe hEhT hER hRh ho' hiob hEO
   have hzj : z ∈ H (tr.time j) := hrun.antitone hjt hzr
   obtain ⟨-, haT, -⟩ :=
-    hp.row_target_of_sign_at hzj hsg (hjt.trans hrb) h0 hle0 hpH hE rfl hETe hEhT ho' hiob hEO
-      hah
+    hp.row_target_of_sign_at (hrun.antitone (max_le_max le_rfl hjt) hzrz) hsg (hjt.trans hrb) h0
+      hle0 hpH hE rfl hETe hEhT ho' hiob hEO hah
   exact ⟨j, att, hzj, hsg, hjt.trans hrt', hah.trans (hEh.trans hPr1.symm),
     haT.trans hPrTh.symm⟩
 

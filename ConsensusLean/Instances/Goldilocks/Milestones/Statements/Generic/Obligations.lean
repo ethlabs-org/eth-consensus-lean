@@ -43,9 +43,11 @@ abbrev SlotWindow (tr : RunTrace A) (H : Time → Set (Fin P.n))
     (s₀ N floor : Nat) (kindJ : Prop) (J : A.Blk) : Prop :=
   FrameWindow tr H (P.slotTime s₀) (P.slotTime N + 2 * P.Δ) floor kindJ J
 
-/-- No honest signing strictly before T exceeds the snapshot height. -/
+/-- No signing strictly before T by a signer honest at it and at `c_z` exceeds the snapshot
+height. -/
 def NoAdvance (tr : RunTrace A) (H : Time → Set (Fin P.n)) (g T : Time) : Prop :=
-  ∀ v k att, v ∈ H (tr.time k) → tr.SignAt v k att → tr.time k < T → att.h ≤ HZ tr H g
+  ∀ v k att, v ∈ H (max (cutZ P g) (tr.time k)) → tr.SignAt v k att → tr.time k < T →
+    att.h ≤ HZ tr H g
 
 /-- Every G-slot interval contains an actual designated honest proposal. -/
 def ProposalGap (tr : RunTrace A) (H : Time → Set (Fin P.n))

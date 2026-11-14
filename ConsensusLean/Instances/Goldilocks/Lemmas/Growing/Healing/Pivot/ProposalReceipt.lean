@@ -57,14 +57,15 @@ theorem proposal_holds_old_at
   · left
     obtain ⟨ellX, D, CV, hcx, hfl, hOD⟩ := highOrigin_raw_head_at hp.run hp.noColl ho
     have hr' := hac.upTo (hp.run.time_nonneg r)
+    have hlab := hp.cutZ_le_ts_of_highOrigin_at ho
     have hf : 2 * (H (tr.time r))ᶜ.ncard < sp.n := by
       have := hp.faults (tr.time r) (hp.run.time_nonneg r) hrb
       have hn := sp.toParams.hn
       change 0 < sp.n at hn
       omega
     obtain ⟨z, hz, j, e, hv, hes, B, hB, hBr, hDB⟩ :=
-      SA.fastLock_honest_vote hr' hf ho.1 ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩)
-        hp.stock
+      SA.fastLock_honest_vote hr' hf (hp.run.antitone (le_max_right _ _) ho.1)
+        ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hp.stock
     obtain ⟨hjr, hv₀⟩ := (SA.upTo_voteAt).mp hv
     have hzj := hp.run.antitone hjr hz
     obtain ⟨ellZ, hcz, he⟩ := hv₀
@@ -76,8 +77,7 @@ theorem proposal_holds_old_at
     subst B'
     have hOB := hOD.trans hDB
     have hzZ : z ∈ H (max (tr.time j) (cutZ sp.toParams g)) :=
-      hp.run.antitone (max_le hjr ((hp.cutZ_le_ts_of_highOrigin_at ho hrb).trans
-        (ts_le_of_fastLock_at hp.run hfl))) hz
+      hp.run.antitone (max_le hjr (hlab.trans (ts_le_of_fastLock_at hp.run hfl))) hz
     have hBz : B ∈ (tr.state z j).fg.tree :=
       (frame_tree_subset_at hp.run hp.noColl hzj hcz).2 hB't
     have hZj := cutZ_lt_of_anc_at hp ho hzZ hBz hOB

@@ -66,7 +66,7 @@ theorem finalized_compatible_high_origin_at
     · exact Or.inl ((hFJ.mono hsub).trans (genesis_root_anc_at hp.run hp.noColl
         (hsub hJm) (congrArg (·.root) hg)
         ⟨x, i, tr.time i, hp.run.time_nonneg i, fun _ hq => hp.run.time_mono hq.le,
-          ho.1, highOrigin_mem_at hp.run hp.noColl ho⟩))
+          hp.run.antitone (le_max_right _ _) ho.1, highOrigin_mem_at hp.run hp.noColl ho⟩))
     · obtain ⟨_, _, _, _, v, d, _, hdc, _, _, r, hrd, m, B, hB, hJB⟩ :=
         hp.left_entry_origin_at ht hle hz hcb hJm hJT (by omega) hEC
           (by have := Store.hj_lt_h hr hC; omega)
@@ -102,7 +102,7 @@ theorem finalized_below_high_origin_at
       genesis_root_anc_at hp.run hp.noColl (hsub hFm)
         (congrArg (·.root) (he.trans hg))
         ⟨v, r, tr.time r, hp.run.time_nonneg r, fun _ hq => hp.run.time_mono hq.le,
-          ho.1, highOrigin_mem_at hp.run hp.noColl ho⟩⟩
+          hp.run.antitone (le_max_right _ _) ho.1, highOrigin_mem_at hp.run hp.noColl ho⟩⟩
   by_cases hh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj
   · obtain ⟨_, _, _, _, v, d, _, hdk, _, _, r, hrd, l, B, ho, hJB⟩ :=
       hp.left_entry_origin_at ht hle hy hkb hJm hJT (by omega) hEC

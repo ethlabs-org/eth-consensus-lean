@@ -184,16 +184,18 @@ namespace ResetPremisesUpTo
 variable {b : Time}
 
 /-- **The source of a high attestation**, under growing faults. An attestation of height
-`≥ H_z + 1` signed at cut `d` by a node honest at its signing names the entry `E` (at its
-height) of the chain of a high origin `(O, l)` written by the signer at a cut `r < d`. -/
+`≥ H_z + 1` signed at cut `d` by a node honest at its signing and at `c_z` names the entry `E`
+(at its height) of the chain of a high origin `(O, l)` written by the signer at a cut `r < d`. -/
 theorem high_row_source_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {v : Fin sp.n} {d : Nat} (hv : v ∈ H (tr.time d)) {att : FG.Att sp.n}
+    {v : Fin sp.n} {d : Nat} (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d)))
+    {att : FG.Att sp.n}
     (hs : tr.SignAt v d att) (hh : HZ tr H g + 1 ≤ att.h) :
     ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧ ∃ E ∈ (tr.state v r).fg.tree,
       (tr.state v r).fg.Anc E O ∧ E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
       ((tr.state v r).fg.σ E.root).Th = E.root := by
   have hrun := hp.run
   have h0 := hrun.time_nonneg d
+  have hv := hrun.antitone (le_max_right _ _) hvz
   have hs' : (tr.upTo (tr.time d)).SignAt v d att := (RunTrace.upTo_signAt _).mpr ⟨le_rfl, hs⟩
   obtain ⟨r, hrd, l, O, CV, ℓw, D, hcw, hfl, rfl, hj, hOt, hOh, E, hEt, hEO, hEr, hEh, hET⟩ :=
     row_source_static (hrun.upTo h0) (hp.noColl.upTo _) hv hs'
@@ -207,8 +209,8 @@ theorem high_row_source_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
   have hfl' : SA.FastLockAt tr.projAC v r l D CV :=
     (fastLockAt_upTo_iff hrun.time_mono hrt).mp hfl
   have hj' : tr.JoinedAt v (tr.time r) := (joinedAt_upTo_iff hrt).mp hj
-  refine ⟨r, hrd, l, _, ⟨hrun.antitone hrt hv, hj', ⟨CV, ℓw, D, hcw', hfl', rfl⟩, hh.trans hOh⟩,
-    E, hEt, hEO, hEr, hEh, hET⟩
+  refine ⟨r, hrd, l, _, ⟨hrun.antitone (max_le_max le_rfl hrt) hvz, hj',
+    ⟨CV, ℓw, D, hcw', hfl', rfl⟩, hh.trans hOh⟩, E, hEt, hEO, hEr, hEh, hET⟩
 
 /-- Entries at equal height below one held block agree, at a holder honest at an observation
 time after its cuts. -/
@@ -257,15 +259,17 @@ theorem high_entry_eq_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {x 
     exact entry_root_eq_at hp h0 hlek hw hD hZ₁D hZ₂D (by rw [← e₁, ← e₂, hh])
       (by rw [← e₁, hT₁]) (by rw [← e₂, hT₂])
   rcases hp.origins_compatible_at ho hib ho' hi'b with hBB' | hB'B
-  · exact key ho'.1 (highOrigin_mem_at hp.run hp.noColl ho') (h₁.trans hBB') h₂
-  · exact key ho.1 (highOrigin_mem_at hp.run hp.noColl ho) h₁ (h₂.trans hB'B)
+  · exact key (hp.run.antitone (le_max_right _ _) ho'.1) (highOrigin_mem_at hp.run hp.noColl ho')
+      (h₁.trans hBB') h₂
+  · exact key (hp.run.antitone (le_max_right _ _) ho.1) (highOrigin_mem_at hp.run hp.noColl ho) h₁
+      (h₂.trans hB'B)
 
 /-- **A high record entry is the high-chain entry of its height**: a record of a node honest at
-`t ≤ b` after its cuts, with a target, timeout or lock entry at `h ≥ H_z + 1`, names the root of
-every entry at `h` below a bounded high origin. -/
+`t ≤ b` after its cuts and at `c_z`, with a target, timeout or lock entry at `h ≥ H_z + 1`, names
+the root of every entry at `h` below a bounded high origin. -/
 theorem record_entry_eq_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) {h r : Nat} (hh : HZ tr H g + 1 ≤ h)
+    (hyz : y ∈ H (max (cutZ sp.toParams g) t)) (htb : t ≤ b) {h r : Nat} (hh : HZ tr H g + 1 ≤ h)
     (hr : (tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h ∨
       (tr.state y i).record.lock h = some r)
     {xo : Fin sp.n} {io jo : Nat} {B E : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -275,18 +279,19 @@ theorem record_entry_eq_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     (hEh : ((tr.state z m).fg.σ E.root).h = h)
     (hET : ((tr.state z m).fg.σ E.root).Th = E.root) : r = E.root := by
   have hrun := hp.run
+  have hy := hrun.antitone (le_max_right _ _) hyz
   have hU := Compose.Growing.honest_blocks_coherent hrun hp.noColl
   have leC : ∀ k : Nat, ∀ q < k, tr.time q ≤ tr.time k := fun _ _ hq => hrun.time_mono hq.le
   have target : ∀ k < i, ∀ att, tr.SignAt y k att → att.h = h → att.T = r → r = E.root := by
     intro k hki att hs hah har
     have hkt : tr.time k ≤ t := hle k hki
-    have hyk : y ∈ H (tr.time k) := hrun.antitone hkt hy
     obtain ⟨q, hqk, l, O, hO, X, hX, hXO, hXr, hXh, hXT⟩ :=
-      hp.high_row_source_at hyk hs (hah ▸ hh)
+      hp.high_row_source_at (hrun.antitone (max_le_max le_rfl hkt) hyz) hs (hah ▸ hh)
     have hq0 := hrun.time_nonneg q
+    have hOq := hrun.antitone (le_max_right _ _) hO.1
     exact har.symm.trans (hXr.symm.trans (hp.high_entry_eq_at hO
       ((hrun.time_mono hqk.le).trans (hkt.trans htb)) ho hiob
-      (honest_anc_of_store_anc_at hq0 (leC q) hO.1 hXO) hEB hq0 (leC q) hO.1 hu hlez hz hX hE
+      (honest_anc_of_store_anc_at hq0 (leC q) hOq hXO) hEB hq0 (leC q) hOq hu hlez hz hX hE
       (hXh.trans (hah.trans hEh.symm)) hXT hET))
   have horig := client_record_origin_at hrun ht0 hle hy h r
   rcases hr with ht | ht | hl
@@ -304,26 +309,28 @@ theorem record_entry_eq_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
       (hX'r.trans hXr.symm)
     have hle' := Healing.h_le_of_store_anc (fg_reachable_at hrun hk0 (leC k) hyk) hJX
     obtain ⟨q, hqk, l, O, hO, X'', hX'', hXO, hX''r, _, _⟩ :=
-      hp.high_row_source_at hyk hs (by omega)
+      hp.high_row_source_at (hrun.antitone (max_le_max le_rfl hkt) hyz) hs (by omega)
     have hq0 := hrun.time_nonneg q
-    obtain rfl : X'' = X' := hU.1 ⟨y, q, _, hq0, leC q, hO.1, hX''⟩
+    have hOq := hrun.antitone (le_max_right _ _) hO.1
+    obtain rfl : X'' = X' := hU.1 ⟨y, q, _, hq0, leC q, hOq, hX''⟩
       ⟨y, k, _, hk0, leC k, hyk, hX⟩ (hX''r.trans hX'r.symm)
     have hJO : Anc (tr.HonestBlocksAt H) J O :=
       (honest_anc_of_store_anc_at hk0 (leC k) hyk hJX).trans
-        (honest_anc_of_store_anc_at hq0 (leC q) hO.1 hXO)
+        (honest_anc_of_store_anc_at hq0 (leC q) hOq hXO)
     exact hJr.symm.trans (hp.high_entry_eq_at hO
       ((hrun.time_mono hqk.le).trans (hkt.trans htb)) ho hiob
       hJO hEB hk0 (leC k) hyk hu hlez hz hJ hE (hJh.trans hEh.symm) hJT hET)
 
 /-- The target and timeout fields of a high entry's attestation, signed by a node honest at its
-signing, do not require its predecessor to be high. -/
+signing and at `c_z`, do not require its predecessor to be high. -/
 private theorem sign_target_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) {att : FG.Att sp.n}
+    {y : Fin sp.n} {k : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time k)))
+    {att : FG.Att sp.n}
     (hs : tr.SignAt y k att) (hkb : tr.time k ≤ b) (hh : HZ tr H g + 1 ≤ att.h)
     (he : (tr.state y k).record.timeout att.h = ∅) : att.timeout = false := by
   have leC : ∀ k : Nat, ∀ q < k, tr.time q ≤ tr.time k := fun _ _ hq => hp.run.time_mono hq.le
   obtain ⟨src, hc⟩ := hs
-  have hcl := (hp.run.cutLaw y k _ hc hy).1
+  have hcl := (hp.run.cutLaw y k _ hc (hp.run.antitone (le_max_right _ _) hyz)).1
   change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
     ((tr.state y k).fg.σ src.root).Th) = some (att, _) at hcl
   obtain ⟨_, hah, haT, _, _, hτ⟩ := createAtt_fields hcl
@@ -332,39 +339,45 @@ private theorem sign_target_before_at (hp : ResetPremisesUpTo tr H proposer dg g
   rw [← hah, ← haT] at hτ
   rcases hτ hto with h' | ⟨T', hT', hne⟩
   · exact h' he
-  · obtain ⟨q, hqk, l, O, hO, E, hE, hEO, hEr, hEh, hET⟩ := hp.high_row_source_at hy ⟨src, hc⟩ hh
+  · obtain ⟨q, hqk, l, O, hO, E, hE, hEO, hEr, hEh, hET⟩ := hp.high_row_source_at hyz ⟨src, hc⟩ hh
     have hq0 := hp.run.time_nonneg q
-    exact hne ((hp.record_entry_eq_at (hp.run.time_nonneg k) (leC k) hy hkb hh (Or.inl hT') hO
-      ((hp.run.time_mono hqk.le).trans hkb) (honest_anc_of_store_anc_at hq0 (leC q) hO.1 hEO)
-      hq0 (leC q) hO.1 hE hEh hET).trans hEr)
+    have hOq := hp.run.antitone (le_max_right _ _) hO.1
+    exact hne ((hp.record_entry_eq_at (hp.run.time_nonneg k) (leC k) hyz hkb hh (Or.inl hT') hO
+      ((hp.run.time_mono hqk.le).trans hkb) (honest_anc_of_store_anc_at hq0 (leC q) hOq hEO)
+      hq0 (leC q) hOq hE hEh hET).trans hEr)
 
-/-- A node honest at `t ≤ b`, after its cuts, has no recorded timeout at a high height. -/
+/-- A node honest at `t ≤ b`, after its cuts, and at `c_z` has no recorded timeout at a high
+height. -/
 private theorem timeout_empty_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y : Fin sp.n} {t : Time} (ht0 : 0 ≤ t) (hy : y ∈ H t) (htb : t ≤ b) :
+    {y : Fin sp.n} {t : Time} (ht0 : 0 ≤ t) (hyz : y ∈ H (max (cutZ sp.toParams g) t))
+    (htb : t ≤ b) :
     ∀ i, (∀ q < i, tr.time q ≤ t) → ∀ h, HZ tr H g + 1 ≤ h →
       (tr.state y i).record.timeout h = ∅
-  | 0, _, h, _ => by rw [Trace.state, hp.run.init y (hp.run.antitone ht0 hy)]; rfl
+  | 0, _, h, _ => by
+    rw [Trace.state, hp.run.init y (hp.run.antitone (ht0.trans (le_max_right _ _)) hyz)]; rfl
   | i + 1, hle, h, hh => by
     have hle' : ∀ q < i, tr.time q ≤ t := fun q hq => hle q (by omega)
     have hit : tr.time i ≤ t := hle i (by omega)
-    have hyi := hp.run.antitone hit hy
+    have hyiz := hp.run.antitone (max_le_max le_rfl hit) hyz
+    have hyi := hp.run.antitone (le_max_right _ _) hyiz
     rcases record_step_at hp.run hyi with he | ⟨att, hs, he⟩ <;> rw [he]
-    · exact timeout_empty_before_at hp ht0 hy htb i hle' h hh
+    · exact timeout_empty_before_at hp ht0 hyz htb i hle' h hh
     · simp only [FG.Record.recordAtt]
       split_ifs with hto
       · rw [Function.update_apply]
         split_ifs with hha
         · subst hha
-          have := sign_target_before_at hp hyi hs (hit.trans htb) hh
-            (timeout_empty_before_at hp ht0 hy htb i hle' _ hh)
+          have := sign_target_before_at hp hyiz hs (hit.trans htb) hh
+            (timeout_empty_before_at hp ht0 hyz htb i hle' _ hh)
           simp_all
-        · exact timeout_empty_before_at hp ht0 hy htb i hle' h hh
-      · exact timeout_empty_before_at hp ht0 hy htb i hle' h hh
+        · exact timeout_empty_before_at hp ht0 hyz htb i hle' h hh
+      · exact timeout_empty_before_at hp ht0 hyz htb i hle' h hh
 
 /-- Finite normalization of a high signature's target and timeout fields, for a signer honest
-at its signing. -/
+at its signing and at `c_z`. -/
 theorem row_target_of_sign_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {z : Fin sp.n} {j : Nat} (hz : z ∈ H (tr.time j)) {att : FG.Att sp.n}
+    {z : Fin sp.n} {j : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time j)))
+    {att : FG.Att sp.n}
     (hs : tr.SignAt z j att) (hjb : tr.time j ≤ b)
     {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ q < m, tr.time q ≤ t) (hy : y ∈ H t) (hT : T ∈ (tr.state y m).fg.tree)
@@ -378,23 +391,25 @@ theorem row_target_of_sign_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b
   have leC : ∀ k : Nat, ∀ q < k, tr.time q ≤ tr.time k := fun _ _ hq => hp.run.time_mono hq.le
   have hh : HZ tr H g + 1 ≤ att.h := hatt ▸ hhT
   obtain ⟨src, hc⟩ := hs
-  have hcl := (hp.run.cutLaw z j _ hc hz).1
+  have hcl := (hp.run.cutLaw z j _ hc (hp.run.antitone (le_max_right _ _) hzz)).1
   change (tr.state z j).record.createAtt z ((tr.state z j).fg.σ
     ((tr.state z j).fg.σ src.root).Th) = some (att, _) at hcl
   obtain ⟨hv, _, _, _, _, _⟩ := createAtt_fields hcl
-  obtain ⟨q, hqj, l, O, hO, E, hE, hEO, hEr, hEh, hET⟩ := hp.high_row_source_at hz ⟨src, hc⟩ hh
+  obtain ⟨q, hqj, l, O, hO, E, hE, hEO, hEr, hEh, hET⟩ := hp.high_row_source_at hzz ⟨src, hc⟩ hh
   have hq0 := hp.run.time_nonneg q
+  have hOq := hp.run.antitone (le_max_right _ _) hO.1
   have hTr : att.T = T.root := hEr.symm.trans (hp.high_entry_eq_at hO
     ((hp.run.time_mono hqj.le).trans hjb) ho hiob
-    (honest_anc_of_store_anc_at hq0 (leC q) hO.1 hEO) hTB hq0 (leC q) hO.1 ht hle hy hE hT
+    (honest_anc_of_store_anc_at hq0 (leC q) hOq hEO) hTB hq0 (leC q) hOq ht hle hy hE hT
     (hEh.trans hatt) hET hTe)
-  exact ⟨hv, hTr, sign_target_before_at hp hz ⟨src, hc⟩ hjb hh
-    (timeout_empty_before_at hp (hp.run.time_nonneg j) hz hjb j (leC j) _ hh)⟩
+  exact ⟨hv, hTr, sign_target_before_at hp hzz ⟨src, hc⟩ hjb hh
+    (timeout_empty_before_at hp (hp.run.time_nonneg j) hzz hjb j (leC j) _ hh)⟩
 
-/-- Historical signatures of a node honest at its signing carry the exact predecessor (of a
-height whose previous height is justified) when that predecessor is high. -/
+/-- Historical signatures of a node honest at its signing and at `c_z` carry the exact
+predecessor (of a height whose previous height is justified) when that predecessor is high. -/
 theorem row_of_sign_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {z : Fin sp.n} {j : Nat} (hz : z ∈ H (tr.time j)) {att : FG.Att sp.n}
+    {z : Fin sp.n} {j : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time j)))
+    {att : FG.Att sp.n}
     (hs : tr.SignAt z j att) (hjb : tr.time j ≤ b)
     {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ q < m, tr.time q ≤ t) (hy : y ∈ H t) (hT : T ∈ (tr.state y m).fg.tree)
@@ -407,11 +422,12 @@ theorem row_of_sign_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
       (σT.previousHeightJustified → att.fin = some (σT.hj, σT.J)) := by
   subst hσ
   have hrun := hp.run
+  have hz := hrun.antitone (le_max_right _ _) hzz
   have leC : ∀ k : Nat, ∀ q < k, tr.time q ≤ tr.time k := fun _ _ hq => hrun.time_mono hq.le
   have hj0 := hrun.time_nonneg j
   have hU := Compose.Growing.honest_blocks_coherent hrun hp.noColl
   obtain ⟨hv, hTr, htimeout⟩ :=
-    hp.row_target_of_sign_at hz hs hjb ht hle hy hT rfl hTe hhT ho hiob hTB hatt
+    hp.row_target_of_sign_at hzz hs hjb ht hle hy hT rfl hTe hhT ho hiob hTB hatt
   obtain ⟨src, hc⟩ := hs
   have hcl := (hrun.cutLaw z j _ hc hz).1
   change (tr.state z j).record.createAtt z ((tr.state z j).fg.σ
@@ -427,7 +443,7 @@ theorem row_of_sign_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
   rw [hfin, hR, σ_eq_honest_at hrun hp.noColl hj0 (leC j) hz ht hle hy hE' hT]
   obtain ⟨J₀, hJ₀, hJ₀T, hJ₀r, hJ₀h, hJ₀T'⟩ :=
     (Healing.chain_pairs_entry (fg_reachable_at hrun ht hle hy) hT).1 hb.1
-  have heq := fun r hr => (hp.record_entry_eq_at hj0 (leC j) hz hjb (hhj hb) (i := j) (r := r)
+  have heq := fun r hr => (hp.record_entry_eq_at hj0 (leC j) hzz hjb (hhj hb) (i := j) (r := r)
     hr ho hiob ((honest_anc_of_store_anc_at ht hle hy hJ₀T).trans hTB) ht hle hy hJ₀ hJ₀h
     hJ₀T').trans hJ₀r
   have hperm : (tr.state z j).record.permits ((tr.state y m).fg.σ T.root).hj
@@ -440,10 +456,11 @@ theorem row_of_sign_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
   unfold FG.Record.finalityPair
   simp only [hb, hperm, ↓reduceIte]
 
-/-- A bounded same-height report of a node honest at the report supplies a signature of it by
-the report's time, including the case where previously signed content suppresses the call. -/
+/-- A bounded same-height report of a node honest at the report and at `c_z` supplies a signature
+of it by the report's time, including the case where previously signed content suppresses the
+call. -/
 theorem sign_of_report_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {z : Fin sp.n} {r : Nat} (hz : z ∈ H (tr.time r))
+    {z : Fin sp.n} {r : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time r)))
     {ell : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hrep : SA.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
     {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
@@ -458,6 +475,7 @@ theorem sign_of_report_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
   subst hσ
   have hrun := hp.run
   have hnc := hp.noColl
+  have hz := hrun.antitone (le_max_right _ _) hzz
   have h0 := hrun.time_nonneg r
   have leR : ∀ q < r, tr.time q ≤ tr.time r := fun _ hq => hrun.time_mono hq.le
   have leR1 : ∀ q < r + 1, tr.time q ≤ tr.time r := fun _ hq => hrun.time_mono (by omega)
@@ -497,16 +515,16 @@ theorem sign_of_report_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     rw [hσe] at hcl
     rcases createAtt_refused hcl with ⟨hl, hl'⟩ | ⟨c, hc, _⟩
     · obtain ⟨r', hr'⟩ := Option.ne_none_iff_exists'.1 hl
-      have := hp.record_entry_eq_at h0 leR1 hz hrb hhT (Or.inr (Or.inr hr'))
+      have := hp.record_entry_eq_at h0 leR1 hzz hrb hhT (Or.inr (Or.inr hr'))
         ho hiob hTB ht hle hy hT rfl hTe
       exact absurd (by rw [hr', this, hTe]) hl'
     · obtain ⟨k, hk, att, hsk, rfl⟩ := sent_origin_at hrun h0 leR1 hz hc
       exact ⟨k, att, hsk, (hrun.time_mono hk.le).trans hts'.le, by assumption⟩
 
-/-- A bounded same-height report of a node honest at the report supplies the exact entry
-attestation, with historical finality permission checked at the actual signing cut. -/
+/-- A bounded same-height report of a node honest at the report and at `c_z` supplies the exact
+entry attestation, with historical finality permission checked at the actual signing cut. -/
 theorem row_of_report_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {z : Fin sp.n} {r : Nat} (hz : z ∈ H (tr.time r))
+    {z : Fin sp.n} {r : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time r)))
     {ell : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hrep : SA.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
     {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
@@ -518,17 +536,18 @@ theorem row_of_report_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     ∃ j att, tr.SignAt z j att ∧ tr.time j ≤ tr.time r ∧ att.val = z ∧
       att.h = σT.h ∧ att.T = T.root ∧ att.timeout = false ∧
       (σT.previousHeightJustified → att.fin = some (σT.hj, σT.J)) := by
-  obtain ⟨io, _, jo, O, _, _, ho, hiob, _, hCO, _⟩ := hp.high_report_origin_at hz hrep hrb
+  obtain ⟨io, _, jo, O, _, _, ho, hiob, _, hCO, _⟩ := hp.high_report_origin_at hzz hrep hrb
     (by rw [hCh]; exact hhT)
   have hTO := hTC.trans hCO
   obtain ⟨j, att, hs, htj, hh⟩ :=
-    hp.sign_of_report_at hz hrep hrb ht hle hy hT hσ hTe hhT hTC hCh ho hiob hTO
-  obtain ⟨hv, hroot, htimeout, hfin⟩ := hp.row_of_sign_at (hp.run.antitone htj hz) hs
+    hp.sign_of_report_at hzz hrep hrb ht hle hy hT hσ hTe hhT hTC hCh ho hiob hTO
+  obtain ⟨hv, hroot, htimeout, hfin⟩ :=
+    hp.row_of_sign_at (hp.run.antitone (max_le_max le_rfl htj) hzz) hs
     (htj.trans hrb) ht hle hy hT hσ hTe hhT hhj ho hiob hTO hh
   exact ⟨j, att, hs, htj, hv, hh, hroot, htimeout, hfin⟩
 
-/-- Same-height reports, by `d`, from every node honest at `d` yield a quorum of nodes honest at
-`d` with exact entry signatures by `d`. Historical reports count without any freshness
+/-- Same-height reports, by `d`, from every node honest at `d` and at `c_z` yield a quorum of
+such nodes with exact entry signatures by `d`. Historical reports count without any freshness
 assumption. -/
 theorem row_signers_of_reports_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
@@ -536,31 +555,33 @@ theorem row_signers_of_reports_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF
     {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
     (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.previousHeightJustified → HZ tr H g + 1 ≤ σT.hj)
     {d : Time} (hd : 0 ≤ d) (hdb : d ≤ b)
-    (hreports : ∀ z, z ∈ H d → ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ d ∧
-      Anc (tr.HonestBlocksAt H) T C ∧ ((tr.state z r).fg.σ C.root).h = σT.h) :
+    (hreports : ∀ z, z ∈ H (max (cutZ sp.toParams g) d) → ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧
+      tr.time r ≤ d ∧ Anc (tr.HonestBlocksAt H) T C ∧ ((tr.state z r).fg.σ C.root).h = σT.h) :
     ∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
-      ∀ z ∈ ids, z ∈ H d ∧ ∃ att j, tr.SignAt z j att ∧ att.val = z ∧
+      ∀ z ∈ ids, z ∈ H (max (cutZ sp.toParams g) d) ∧ ∃ att j, tr.SignAt z j att ∧ att.val = z ∧
         att.h = σT.h ∧ att.T = T.root ∧ att.timeout = false ∧ tr.time j ≤ d ∧
         (σT.previousHeightJustified → att.fin = some (σT.hj, σT.J)) := by
   classical
-  refine ⟨Finset.univ.filter (· ∈ H d), ?_, ?_⟩
-  · have hcard : (Finset.univ.filter (· ∈ H d)).card = (H d).ncard := by
+  let d' := max (cutZ sp.toParams g) d
+  refine ⟨Finset.univ.filter (· ∈ H d'), ?_, ?_⟩
+  · have hcard : (Finset.univ.filter (· ∈ H d')).card = (H d').ncard := by
       rw [← Set.ncard_coe_finset]
       congr 1
       ext z
       simp
     rw [hcard]
-    have hn : (H d).ncard + (H d)ᶜ.ncard = sp.n := by
+    have hn : (H d').ncard + (H d')ᶜ.ncard = sp.n := by
       rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-    have hf := hp.faults d hd hdb
+    obtain ⟨j, hj, hjb⟩ := hp.snapshot
+    have hf := hp.faults d' (hd.trans (le_max_right _ _)) (max_le (hj.2.le.trans hjb) hdb)
     change (2 * sp.n + 2) / 3 ≤ _
     omega
   · intro z hz
     have hzH := (Finset.mem_filter.1 hz).2
     obtain ⟨r, ell, C, hr, hrd, hTC, hh⟩ := hreports z hzH
     obtain ⟨j, att, hs, htj, hv, hah, hroot, htimeout, hfin⟩ :=
-      hp.row_of_report_at (hp.run.antitone hrd hzH) hr (hrd.trans hdb) ht hle hy hT hσ hTe hhT
-        hhj hTC hh
+      hp.row_of_report_at (hp.run.antitone (max_le_max le_rfl hrd) hzH) hr (hrd.trans hdb) ht
+        hle hy hT hσ hTe hhT hhj hTC hh
     exact ⟨hzH, att, j, hs, hv, hah, hroot, htimeout, htj.trans hrd, hfin⟩
 
 end ResetPremisesUpTo

@@ -28,6 +28,7 @@ theorem clean_source_compatible_high_origin_at
     {y : Fin sp.n} {q t : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g y q t D) (hqb : tr.time q ≤ b) :
     Compatible (tr.HonestBlocksAt H) C D := by
+  have hyo := hp.run.antitone (le_max_right _ _) ho.1
   have hm := hp.run.time_mono
   have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hU := hac.localRun.coherent
@@ -48,32 +49,32 @@ theorem clean_source_compatible_high_origin_at
   · obtain ⟨CV', ell, E, hcall, hfl, hD⟩ := ho.2.2.1
     obtain ⟨ell', hc', hE⟩ := Healing.fastLock_mem hfl
     obtain rfl : ell = ell' := Option.some.inj (hcall.2.symm.trans hc'.2)
-    have hframe := frame_tree_subset_at hp.run hp.noColl ho.1 hcall
+    have hframe := frame_tree_subset_at hp.run hp.noColl hyo hcall
     have sub : ell.frame.tree ⊆ tr.HonestBlocksAt H := fun _ hB =>
-      ⟨y, q, tr.time q, hp.run.time_nonneg q, fun _ hk => hm hk.le, ho.1, hframe.2 hB⟩
+      ⟨y, q, tr.time q, hp.run.time_nonneg q, fun _ hk => hm hk.le, hyo, hframe.2 hB⟩
     have hDE : Anc (tr.HonestBlocksAt H) D E := by
       rw [hD]
       exact (SA.anc_viableAncestor ell.frame E).mono sub
     have hCE : Compatible (tr.HonestBlocksAt H) C E := by
       rcases hfl with ⟨ellX, R, hu, hR, hfast, _⟩ | hop
       · have hER := ((SA.deepest_mem hfast).1.1.2.2).mono
-          ((SA.frameIn_of_callAt (hac.upTo (hp.run.time_nonneg q)).localRun ho.1
+          ((SA.frameIn_of_callAt (hac.upTo (hp.run.time_nonneg q)).localRun hyo
             ((Trace.upTo_callAt _).mpr ⟨le_rfl, hu.1⟩)).2)
-        have hRC := hp.result_source_compatible_at ho.1 hx ⟨ellX, hu, hR, rfl⟩ hC
+        have hRC := hp.result_source_compatible_at hyo hx ⟨ellX, hu, hR, rfl⟩ hC
           hqb hrb hts
         rcases hRC with h | h
         · exact Or.inr (hER.trans h)
         · exact SA.anc_total hU h hER
-      · exact hp.sources_same_label_compatible_at hx ho.1 hC (Or.inr hop) hrb hqb hts
+      · exact hp.sources_same_label_compatible_at hx hyo hC (Or.inr hop) hrb hqb hts
     rcases hCE with h | h
     · exact SA.anc_total hU h hDE
     · exact Or.inr (hDE.trans h)
   · obtain ⟨CV', ell, E, hcall, hfl, hD⟩ := ho.2.2.1
     obtain ⟨ell', hc', hE⟩ := Healing.fastLock_mem hfl
     obtain rfl : ell = ell' := Option.some.inj (hcall.2.symm.trans hc'.2)
-    have hframe := frame_tree_subset_at hp.run hp.noColl ho.1 hcall
+    have hframe := frame_tree_subset_at hp.run hp.noColl hyo hcall
     have sub : ell.frame.tree ⊆ tr.HonestBlocksAt H := fun _ hB =>
-      ⟨y, q, tr.time q, hp.run.time_nonneg q, fun _ hk => hm hk.le, ho.1, hframe.2 hB⟩
+      ⟨y, q, tr.time q, hp.run.time_nonneg q, fun _ hk => hm hk.le, hyo, hframe.2 hB⟩
     have hDE : Anc (tr.HonestBlocksAt H) D E := by
       rw [hD]
       exact (SA.anc_viableAncestor ell.frame E).mono sub
@@ -82,7 +83,7 @@ theorem clean_source_compatible_high_origin_at
       have := Fin.pos x
       omega
     have hEC := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg q)) _
-      SA.CommitteeP.full ho.1 (Nat.lt_succ_self q) ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩)
+      SA.CommitteeP.full hyo (Nat.lt_succ_self q) ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩)
       (SA.cs2_full hp.stock hf) (B := C) (by
         intro z hz j hj e hv hes
         obtain ⟨hjq, hv⟩ := SA.upTo_voteAt.mp hv

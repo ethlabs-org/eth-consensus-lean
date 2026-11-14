@@ -53,9 +53,10 @@ theorem HealedOrigin.below_origin {ini} (hrun : Growing.GoldilocksRun proposer d
   · exact ⟨C, h, .refl⟩
   · exact h.below_origin hrun hnc
   · obtain ⟨CV, ell, D, hcall, hfl, rfl⟩ := ho.2.2.1
-    obtain ⟨O, OV, hO, hDO⟩ := lock_below_origin_at hrun hnc ho.1 (Or.inl ⟨CV, hfl⟩)
-    exact ⟨O, originWithin_iff.2 ⟨x, i, OV, ho.1, hib, hO⟩,
-      (Anc.mono (frameIn_at hrun hnc ho.1 hcall).2 (SA.anc_viableAncestor _ D)).trans hDO⟩
+    have hx := hrun.antitone (le_max_right _ _) ho.1
+    obtain ⟨O, OV, hO, hDO⟩ := lock_below_origin_at hrun hnc hx (Or.inl ⟨CV, hfl⟩)
+    exact ⟨O, originWithin_iff.2 ⟨x, i, OV, hx, hib, hO⟩,
+      (Anc.mono (frameIn_at hrun hnc hx hcall).2 (SA.anc_viableAncestor _ D)).trans hDO⟩
 
 /-- A member of the healed family is held while honest. -/
 theorem HealedOrigin.mem {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)

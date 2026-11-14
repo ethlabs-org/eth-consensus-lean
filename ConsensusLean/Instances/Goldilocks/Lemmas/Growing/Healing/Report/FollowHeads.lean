@@ -55,12 +55,6 @@ theorem FrameWindow.toFG_later_proposal_head_at
   have hfast' := (SA.upTo_fastLockAt (d := tr.time a) hrun.time_mono).mpr ⟨le_rfl, hfast⟩
   have hfast'' : SA.FastLockAt (tr.upTo (tr.time a)).projAC y a j D CV := by
     simpa only [RunTrace.upTo_projAC] using hfast'
-  have hDj := Healing.fast_selection_slot_le (hrun.upTo (hrun.time_nonneg a))
-    (hnc.upTo _) (hf _ (hrun.time_nonneg a) (hatime.trans (hihi.trans hmb))) hya hfast''
-    hstock
-  have hjlo : u ≤ j := by
-    have := (Anc.slot_le hac.localRun.coherent (hPR.trans hRD)).1
-    omega
   have hjtime : sp.ts j ≤ tr.time a := by
     rcases hfast with ⟨_, _, hu, _⟩ | ⟨_, _, _, hs, _⟩
     · have he : tr.time a = sp.ts j + 6 * sp.Δ := hu.2.2.1
@@ -69,18 +63,39 @@ theorem FrameWindow.toFG_later_proposal_head_at
       exact (SA.ts_le_iff_le_slot sp (hrun.time_nonneg a) _).2 (by rw [hs'])
   have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
     (SA.ts_le_iff sp).2 (by exact_mod_cast hpq)
+  have hk := sp.two_le_k
+  have hPD := (Anc.slot_le hac.localRun.coherent (hPR.trans hRD)).1
+  -- the label is after the window start, so after GST (`hm`), before the count:
+  -- `u ≤ D.slot ≤ slot(t_a) ≤ j + 1`
+  have hs₀j : sp.ts s₀ ≤ sp.ts j := by
+    have hDa := Compose.Growing.frame_slot_le_at hrun hnc hya ha D hD
+    have hsa : sp.slot (tr.time a) ≤ j + 1 := by
+      rcases hfast with ⟨_, _, hu, _⟩ | ⟨_, _, _, hs, _⟩
+      · have he : tr.time a = sp.ts j + 6 * sp.Δ := hu.2.2.1
+        by_contra hn
+        have h2 := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg a) ((j + 2 : Nat) : Int)).2
+          (by push_cast; omega)
+        have h8 : sp.ts ((j + 2 : Nat) : Int) = sp.ts j + 8 * sp.Δ := by
+          simp only [SAParams.ts]; push_cast; ring
+        linarith only [he, h2, h8, sp.toParams.hΔ]
+      · have hs' : sp.slot (tr.time a) = j := hs
+        omega
+    exact hts (by omega)
+  have hDj := Healing.fast_selection_slot_le (hrun.upTo (hrun.time_nonneg a))
+    (hnc.upTo _) (hf _ (hrun.time_nonneg a) (hatime.trans (hihi.trans hmb))) hya hfast''
+    hstock
+  have hjlo : u ≤ j := by omega
   have hjhi : j ≤ u + 1 := by
     by_contra hn
     have hlo := hts (show u + 2 ≤ j by omega)
     have hstep := SA.ts_succ (u + 1) (sp := sp)
     linarith only [hlo, hjtime, hatime, ht, hstep, sp.toParams.hΔ]
-  have hk := sp.two_le_k
   rcases hfast with hreg | hopt
   · exact hRD.trans ((hframe.regular_later_heads_at hrun hnc hsvc hawake hf hcatch hnr
       (by omega) (by omega) (by omega) hm (by omega) hmb hya
       (Or.inl ⟨CV, hreg⟩) hstock r (by omega) hrN).2 (by omega) z c ellp hz hcp hcall hti d pay
       hd)
-  · have halo : sp.ts s₀ ≤ tr.time a := (hts (by omega)).trans hjtime
+  · have halo : sp.ts s₀ ≤ tr.time a := hs₀j.trans hjtime
     have ho := (SA.upTo_optimisticLockAt hrun.time_mono).mpr ⟨le_rfl, hopt⟩
     have hat := (SA.optimisticLockAt_spec hr hya ho (SA.CommitteeDict.full sp.n)
       (fun _ _ _ => SA.mem_full _ _)).1

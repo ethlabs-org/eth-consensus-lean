@@ -119,21 +119,22 @@ theorem optimistic_vote_domain_before_at (hp : ResetPremisesUpTo tr H proposer d
     rcases lt_trichotomy n s with hn | rfl | hn
     · exact hp.target_compatible_older_origin_at ho hcb hzq hv hqb hvs hn hVB
     · obtain ⟨CV', ellD, D, hcD, hfl, hO⟩ := ho.2.2.1
+      have hw := hp.run.antitone (le_max_right _ _) ho.1
       have hwU : (tr.state w c).fg.tree ⊆ tr.HonestBlocksAt H :=
-        fun _ h => ⟨w, c, tr.time c, hp.run.time_nonneg c, fun _ hq => hm hq.le, ho.1, h⟩
+        fun _ h => ⟨w, c, tr.time c, hp.run.time_nonneg c, fun _ hq => hm hq.le, hw, h⟩
       have hOD : Anc (tr.HonestBlocksAt H) O D := by
         rw [hO]
         exact (SA.anc_viableAncestor ellD.frame D).mono
-          ((frame_tree_subset_at hp.run hp.noColl ho.1 hcD).2.trans hwU)
+          ((frame_tree_subset_at hp.run hp.noColl hw hcD).2.trans hwU)
       have hcomp : Compatible (tr.HonestBlocksAt H) B D := by
         rcases hfl with ⟨ellD', R, huD, hR, hfast, _⟩ | hop'
         · have hDR := ((SA.deepest_mem hfast).1.1.2.2).mono
-            ((frame_tree_subset_at hp.run hp.noColl ho.1 huD.1).2.trans hwU)
-          rcases hp.result_source_compatible_at ho.1 hx ⟨ellD', huD, hR, rfl⟩ (Or.inr hop)
+            ((frame_tree_subset_at hp.run hp.noColl hw huD.1).2.trans hwU)
+          rcases hp.result_source_compatible_at hw hx ⟨ellD', huD, hR, rfl⟩ (Or.inr hop)
               hcb hrb hts with h | h
           · exact Or.inr (hDR.trans h)
           · exact SA.anc_total hU h hDR
-        · exact hp.optimistic_sources_compatible_at hx ho.1 hrb hcb hop hop'
+        · exact hp.optimistic_sources_compatible_at hx hw hrb hcb hop hop'
       rcases hcomp with h | h
       · exact SA.anc_total hU h hOD
       · exact Or.inr (hOD.trans h)

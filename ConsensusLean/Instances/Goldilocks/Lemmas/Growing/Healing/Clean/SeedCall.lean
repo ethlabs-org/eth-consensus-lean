@@ -27,19 +27,20 @@ theorem ResetPremisesUpTo.reset_seed_held_at_call_at
   obtain ⟨v, r, l, S, hS, hra, _⟩ := hp.reset_seed_at
   refine ⟨v, r, l, S, hS, hra, hra.trans hp.reset_le, ?_⟩
   intro y c ell hy hcall hac hcb hF
+  have hv := hp.run.antitone (le_max_right _ _) hS.1
   obtain ⟨CV, ellS, D, hcallS, hfl, hSD⟩ := hS.2.2.1
   obtain ⟨ellS', hcallS', hD⟩ := Healing.fastLock_mem hfl
   obtain rfl : ellS = ellS' := Option.some.inj (hcallS.2.symm.trans hcallS'.2)
   have hSm : S ∈ ellS.frame.tree := by
     rw [hSD]
-    exact (SA.viableAncestor_anc (frame_tree_subset_at hp.run hp.noColl hS.1 hcallS).1 hD).1
+    exact (SA.viableAncestor_anc (frame_tree_subset_at hp.run hp.noColl hv hcallS).1 hD).1
   have hcut := hp.cutZ_lt_reset_at
   have hnext : SA.gbar g < sp.ts (sp.slot (SA.gbar g) + 1 : Nat) := by
     exact not_le.mp ((SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g)
       ((sp.slot (SA.gbar g) + 1 : Nat) : Int)).not.mpr (by push_cast; omega))
   rw [Healing.cutZ_eq] at hcut
   have hΔ := sp.toParams.hΔ
-  apply hp.reset_frame_relay_at hc hS.1 hy hcallS hcall hSm hcb ?_ ?_ (by linarith) hF
+  apply hp.reset_frame_relay_at hc hv hy hcallS hcall hSm hcb ?_ ?_ (by linarith) hF
   · simp only [SAParams.ts] at hcut hnext
     push_cast at hcut hnext
     linarith

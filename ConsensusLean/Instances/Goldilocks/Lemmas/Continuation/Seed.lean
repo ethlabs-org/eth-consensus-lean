@@ -61,8 +61,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   of the labels from `r` on start after GST.
 * `frontier`: the healed family within `T` is pairwise compatible through the labels `≤ σ`, and
   extended by every honest vote up to `T` of a later slot `≤ σ + 1`.
-* `rows`: a high FG row signed up to `T` by a node honest then names an entry of its store below a
-  family member.
+* `rows`: a high FG row signed up to `T` by a node honest then and at `c_z` names an entry of its
+  store below a family member.
 * `seedHeld`: a high origin written up to `T` is in the frame of every honest call at a time in
   `[t_{r−k−3}, T]` whose finalized block it extends (`t_{r−k−3} = t_{slot a + 2} ≥ a + Δ`).
 * `covered`: from a time `t₁ ≤ T` on, the record of every reader honest at a read point up to `T`
@@ -76,7 +76,8 @@ structure HandoverSeed (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)
   timing : sp.ts σ + 8 * sp.Δ ≤ T ∧ r + sp.k ≤ σ + 1 ∧ SA.gbar g + 20 * sp.Δ ≤ sp.ts r
   frontier : HealedOriginsBelow tr H g r (r + sp.k - 1) (σ + 1) T ∧
     HealedVotesBelow tr H g r (r + sp.k - 1) (σ + 1) T
-  rows : ∀ y k att, y ∈ H (tr.time k) → tr.SignAt y k att → tr.time k ≤ T →
+  rows : ∀ y k att, y ∈ H (max (Healing.cutZ sp.toParams g) (tr.time k)) → tr.SignAt y k att →
+    tr.time k ≤ T →
     Healing.Growing.HZ tr H g + 1 ≤ att.h →
     ∃ C s, HealedOrigin tr H g r (r + sp.k - 1) C s T ∧ ∃ E ∈ (tr.state y k).fg.tree,
       E.root = att.T ∧ Anc (tr.HonestBlocksAt H) E C
@@ -258,13 +259,14 @@ theorem HandoverSeed.of_reset {T : Time} {r σ : Nat}
   · rw [healedVotesBelow_iff]
     intro C j hC y i e hv hib hje _
     exact member_votes hp hc hr hC y i e hv hib hje
-  · intro y k att hy hs hkT hh
-    obtain ⟨q, hqk, l, O, ho, E, hE, hEO, hEr, -⟩ := hp.high_row_source_at hy hs hh
+  · intro y k att hyz hs hkT hh
+    obtain ⟨q, hqk, l, O, ho, E, hE, hEO, hEr, -⟩ := hp.high_row_source_at hyz hs hh
     have hqT := (hrun.time_mono hqk.le).trans hkT
     refine ⟨O, l, HealedOrigin.of_high hqT ho, E,
-      tree_mono_at hrun (hrun.time_nonneg k) hy (fun _ h => hrun.time_mono h.le) hqk.le hE, hEr,
+      tree_mono_at hrun (hrun.time_nonneg k) (hrun.antitone (le_max_right _ _) hyz)
+        (fun _ h => hrun.time_mono h.le) hqk.le hE, hEr,
       hEO.mono fun _ h => ⟨y, q, tr.time q, hrun.time_nonneg q,
-        fun _ h' => hrun.time_mono h'.le, ho.1, h⟩⟩
+        fun _ h' => hrun.time_mono h'.le, hrun.antitone (le_max_right _ _) ho.1, h⟩⟩
   · obtain ⟨v, q, l, S, hS, -, hqT, hheld⟩ := hp.reset_seed_held_at_call_at hc
     refine ⟨v, q, l, S, hS, hqT, fun y c ell hy hcall hc0 hcT hF =>
       hheld y c ell hy hcall ?_ hcT hF⟩

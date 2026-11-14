@@ -26,9 +26,9 @@ counted vote is sent, and its head accepted, by a node honest at that cut, after
 
 An acceptance of a head above a high origin is after the snapshot cut `c_z`
 (`cutZ_lt_of_anc_at`), which needs the holder honest at the later of the acceptance and `c_z`:
-the first carry's writer is honest through its write, which is after `c_z`; a later carry's
+the first carry's writer is honest at its write and at `c_z` (`HighOrigin`); a later carry's
 voter casts its vote of label `m > j` after `c_z`, so its acceptance before the vote is read
-there. A genesis head is excluded by the height of a high origin. -/
+there. A genesis head is excluded by the height of a high origin (`not_genesis_above_at`). -/
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
@@ -39,51 +39,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
-/-- A bounded high origin's write is at or after the snapshot cut `c_z`. -/
-private theorem cutZ_le_write (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b) :
-    cutZ sp.toParams g ≤ tr.time i := by
-  obtain ⟨-, D, CV, -, hfl, -⟩ := highOrigin_raw_head_at hp.run hp.noColl ho
-  exact (hp.cutZ_le_ts_of_highOrigin_at ho hib).trans (ts_le_of_fastLock_at hp.run hfl)
-
-/-- No genesis block is above a bounded high origin. -/
-private theorem not_genesis_above (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
-    {G : SA.Blk sp.n (List (FG.Att sp.n))} (hGU : G ∈ tr.HonestBlocksAt H)
-    (hBG : Anc (tr.HonestBlocksAt H) B G) (hg : G.root = sp.genesisRoot) : False := by
-  have hm := hp.run.time_mono
-  have hi0 := hp.run.time_nonneg i
-  have hle : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hm hq.le
-  have hreach := fg_reachable_at hp.run hi0 hle ho.1
-  have heq : G = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
-    (Compose.Growing.honest_blocks_coherent hp.run hp.noColl).1 hGU
-      ⟨x, i, tr.time i, hi0, hle, ho.1, (Store.accepted_tree _ _ _ _ hreach).2.2.1⟩ hg
-  have hGx : G ∈ (tr.state x i).fg.tree := heq ▸ (Store.accepted_tree _ _ _ _ hreach).2.2.1
-  have hh := hp.high_of_anc_at ho hi0 hle ho.1 hGx hBG
-  rw [heq, show (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).root =
-      sp.toParams.genesisRoot from rfl, Store.σ_genesis hreach] at hh
-  change HZ tr H g + 1 ≤ 1 at hh
-  obtain ⟨kZ, hkZ, _⟩ := hp.snapshot
-  have hxZ := hp.run.antitone (cutZ_le_write hp ho hib) ho.1
-  have hZ0 : 0 ≤ cutZ sp.toParams g := by
-    linarith [Healing.lt_cutZ sp g, SA.gbar_nonneg g, sp.toParams.hΔ]
-  have hreachZ := fg_reachable_at hp.run hZ0 hkZ.1 hxZ
-  have hGZ := (Store.accepted_tree _ _ _ _ hreachZ).2.2.1
-  have hbnd := (Store.cache_invariants _ _ _ _ hreachZ).2.2.2.2.1 _ hGZ
-  rw [show (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).root =
-      sp.toParams.genesisRoot from rfl, Store.σ_genesis hreachZ] at hbnd
-  have hmax : (tr.state x kZ).fg.hmax ≤ HZ tr H g := by
-    refine le_csSup (((Set.finite_range fun v => (tr.state v kZ).fg.hmax).subset ?_).bddAbove)
-      ⟨x, hxZ, kZ, hkZ, rfl⟩
-    rintro _ ⟨v, _, c', hc', rfl⟩
-    obtain rfl := hc'.unique hkZ
-    exact ⟨v, rfl⟩
-  change 1 ≤ (tr.state x kZ).fg.hmax at hbnd
-  omega
-
-/-- **An acceptance of a head above a bounded high origin is after GST**, for an acceptor honest
+/-- **An acceptance of a head above a high origin is after GST**, for an acceptor honest
 at the later of its acceptance and `c_z`. -/
 private theorem gst_le_acceptance (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -107,7 +63,7 @@ theorem first_carry_of_finalized_anc_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (Vote sp.n)}
-    (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
+    (ho : HighOrigin tr H g x i j B)
     (hfl : Compose.StoredFastLockAt tr x i j B CV)
     (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -116,26 +72,26 @@ theorem first_carry_of_finalized_anc_at
     SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y k e j CV := by
   have hm := hp.run.time_mono
   have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hx := hp.run.antitone (le_max_right _ _) ho.1
   have hxU : (tr.state x i).fg.tree ⊆ tr.HonestBlocksAt H :=
-    fun _ h => ⟨x, i, tr.time i, hp.run.time_nonneg i, fun _ hq => hm hq.le, ho.1, h⟩
+    fun _ h => ⟨x, i, tr.time i, hp.run.time_nonneg i, fun _ hq => hm hq.le, hx, h⟩
   obtain ⟨ellw, D, hcw, hflD, rfl⟩ := hfl
   have hBD : Anc (tr.HonestBlocksAt H) (ellw.frame.viableAncestor D) D :=
     (SA.anc_viableAncestor _ D).mono
-      ((frame_tree_subset_at hp.run hp.noColl ho.1 hcw).2.trans hxU)
-  have hZi := cutZ_le_write hp ho hib
+      ((frame_tree_subset_at hp.run hp.noColl hx hcw).2.trans hxU)
   have hgj : g ≤ sp.ts j := by
-    have := hp.cutZ_le_ts_of_highOrigin_at ho hib
+    have := hp.cutZ_le_ts_of_highOrigin_at ho
     linarith [Healing.lt_cutZ sp g, SA.le_gbar g, sp.toParams.hΔ]
   refine carry_of_post_gst_senders_at hp hgj hy hc hs fun v hv => ?_
   obtain ⟨hvs, ⟨k', hxk, hsend, hk1, hk2⟩, Hv, hHvU, hHvr, hDHv, hacc⟩ :=
-    fastLock_writer_at hac.localRun ho.1 hflD v hv
+    fastLock_writer_at hac.localRun hx hflD v hv
   have hBHv := hBD.trans hDHv
   refine ⟨hvs, ⟨x, k', hxk, hsend, hk1, hk2⟩, Hv, hHvr, hF.trans hBHv, ?_⟩
   rcases hacc with hg | ⟨q, hxq, haq, hqt⟩
-  · exact (not_genesis_above hp ho hib hHvU hBHv hg).elim
+  · exact (hp.not_genesis_above_at ho hHvU hBHv hg).elim
   have hxmax : x ∈ H (max (tr.time q) (cutZ sp.toParams g)) := by
     rcases le_total (tr.time q) (cutZ sp.toParams g) with h | h
-    · rw [max_eq_right h]; exact hp.run.antitone hZi ho.1
+    · rw [max_eq_right h]; exact hp.run.antitone (le_max_left _ _) ho.1
     · rw [max_eq_left h]; exact hxq
   exact ⟨x, q, hxq, haq, gst_le_acceptance hp ho hxmax haq hBHv, hqt⟩
 
@@ -143,7 +99,7 @@ theorem first_carry_of_finalized_anc_at
 theorem later_carry_of_finalized_anc_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {x y : Fin sp.n} {i j k m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
+    (ho : HighOrigin tr H g x i j B)
     (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ell e) (_hkb : tr.time k ≤ b)
@@ -157,7 +113,7 @@ theorem later_carry_of_finalized_anc_at
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hU := hac.localRun.coherent
-  have hZj := hp.cutZ_le_ts_of_highOrigin_at ho hib
+  have hZj := hp.cutZ_le_ts_of_highOrigin_at ho
   have hjm' := (SA.ts_le_iff sp).mpr (show (j : Int) ≤ m by clear * - hjm; omega)
   have hgm : g ≤ sp.ts m := by
     linarith [Healing.lt_cutZ sp g, SA.le_gbar g]
@@ -196,7 +152,7 @@ theorem later_carry_of_finalized_anc_at
   have hcq'' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcq)
   rcases Compose.frame_anc_accepted hrq hzq q ellq hcq'' Hd hHd Hd .refl with hg |
       ⟨c, hcq₀, hacc⟩
-  · exact (not_genesis_above hp ho hib hHdU hBHv hg).elim
+  · exact (hp.not_genesis_above_at ho hHdU hBHv hg).elim
   obtain ⟨-, hacc⟩ := (ACTrace.upTo_acceptAt).mp hacc
   have hct : tr.time c ≤ tr.time q := hm hcq₀
   have hzmax : z ∈ H (max (tr.time c) (cutZ sp.toParams g)) :=

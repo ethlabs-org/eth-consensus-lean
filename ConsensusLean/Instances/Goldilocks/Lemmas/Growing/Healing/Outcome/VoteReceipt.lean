@@ -49,13 +49,15 @@ theorem high_origin_held_at_vote_at
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc'.1
   obtain ⟨ellX, D, CV, hcx, hfl, hBD⟩ := highOrigin_raw_head_at hp.run hp.noColl ho
   have hr' := hac.upTo (hp.run.time_nonneg i)
+  have hlab := hp.cutZ_le_ts_of_highOrigin_at ho
   have hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n := by
     have := hp.faults (tr.time i) (hp.run.time_nonneg i) hib
     have hn := sp.toParams.hn
     change 0 < sp.n at hn
     omega
   obtain ⟨z, hz, q, ez, hv, hes, W, hW, hWr, hDW⟩ :=
-    SA.fastLock_honest_vote hr' hf ho.1 ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hp.stock
+    SA.fastLock_honest_vote hr' hf (hp.run.antitone (le_max_right _ _) ho.1)
+      ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hp.stock
   obtain ⟨hqi, hv₀⟩ := (SA.upTo_voteAt).mp hv
   have hzq := hp.run.antitone hqi hz
   obtain ⟨ellZ, hcz, he⟩ := hv₀
@@ -68,8 +70,7 @@ theorem high_origin_held_at_vote_at
   change tr.time q ≤ sp.ts ez.msg.slot + sp.Δ at hqt
   have hBW := hBD.trans hDW
   have hzZ : z ∈ H (max (tr.time q) (cutZ sp.toParams g)) :=
-    hp.run.antitone (max_le hqi ((hp.cutZ_le_ts_of_highOrigin_at ho hib).trans
-      (ts_le_of_fastLock_at hp.run hfl))) hz
+    hp.run.antitone (max_le hqi (hlab.trans (ts_le_of_fastLock_at hp.run hfl))) hz
   have hWz : W ∈ (tr.state z q).fg.tree :=
     (frame_tree_subset_at hp.run hp.noColl hzq hcz).2 hW't
   have hZq := cutZ_lt_of_anc_at hp ho hzZ hWz hBW

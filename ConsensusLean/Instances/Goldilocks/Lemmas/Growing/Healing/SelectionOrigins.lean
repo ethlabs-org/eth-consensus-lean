@@ -68,15 +68,16 @@ theorem high_origins_before_next_slot_below_at
       (he.trans (hun w q e hwq ⟨ellv, hcast⟩ (hq.trans hub) hs))
     exact heq ▸ hBH
   · obtain ⟨ell', hc', hD⟩ := Healing.fastLock_mem hfl
+    have hx := hp.run.antitone (le_max_right _ _) ho.1
     obtain rfl : ell = ell' := Option.some.inj (hcall.2.symm.trans hc'.2)
     have hac := (Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl)
     obtain ⟨hPhi, hsub⟩ : FrameOK ell.frame ∧ ell.frame.tree ⊆ tr.HonestBlocksAt H := by
-      rcases hac.localRun.frameLaw x r ell ho.1 hcall with
+      rcases hac.localRun.frameLaw x r ell hx hcall with
         ⟨_, _, _, _, h⟩ | ⟨_, _, _, _, _, h⟩ <;> exact h.1
     have hBD := (SA.anc_viableAncestor ell.frame D).mono hsub
     rw [← hB] at hBD
-    exact hBD.trans (hp.same_slot_source_below_unanimous_at hc ho.1
-      (Or.inl ⟨CV, hfl⟩) hrb (hp.cutZ_le_ts_of_highOrigin_at ho hrb) hP hun)
+    exact hBD.trans (hp.same_slot_source_below_unanimous_at hc hx
+      (Or.inl ⟨CV, hfl⟩) hrb (hp.cutZ_le_ts_of_highOrigin_at ho) hP hun)
 
 end Consensus.Goldilocks.Healing.Growing
 

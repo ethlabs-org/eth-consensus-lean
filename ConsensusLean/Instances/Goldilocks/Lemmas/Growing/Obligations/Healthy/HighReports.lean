@@ -85,7 +85,7 @@ theorem highOrigin_mem_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun pro
   obtain ⟨hx, -, ⟨CV, ℓ, D, hc, hfl, rfl⟩, -⟩ := ho
   obtain ⟨ℓ', hc', hD⟩ := Healing.fastLock_mem hfl
   obtain rfl : ℓ = ℓ' := Option.some.inj (hc.2.symm.trans hc'.2)
-  obtain ⟨hok, hsub⟩ := frame_tree_subset_at hrun hnc hx hc
+  obtain ⟨hok, hsub⟩ := frame_tree_subset_at hrun hnc (hrun.antitone (le_max_right _ _) hx) hc
   exact hsub (SA.viableAncestor_anc hok hD).1
 
 /-- A report's block is held in the reporter's tree, for a reporter honest at the report (the
@@ -116,14 +116,16 @@ theorem high_of_anc_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {x : 
   have h₁ := Healing.h_le_of_store_anc (fg_reachable_at hp.run ht hle hz)
     (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hz hBW hW)
   rw [← σ_eq_honest_at hp.run hp.noColl (hp.run.time_nonneg i)
-    (fun _ hq => hp.run.time_mono hq.le) ho.1 ht hle hz hBx hBz] at h₁
+    (fun _ hq => hp.run.time_mono hq.le) (hp.run.antitone (le_max_right _ _) ho.1) ht hle hz hBx
+    hBz] at h₁
   exact ho.2.2.2.trans h₁
 
 /-- **A high report has a stored high origin written before it**, under growing faults: the
-report's block `C` of a node honest at its report is below the stored viable image `O` of an
-earlier fast-lock write of the same node, and `O` is high as `C ⪯ O` is. -/
+report's block `C` of a node honest at its report and at `c_z` is below the stored viable image
+`O` of an earlier fast-lock write of the same node, and `O` is high as `C ⪯ O` is. -/
 theorem high_report_origin_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {z : Fin sp.n} {r : Nat} (hz : z ∈ H (tr.time r)) {ell : ACLabel (goldilocksNode sp ro)}
+    {z : Fin sp.n} {r : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time r)))
+    {ell : ACLabel (goldilocksNode sp ro)}
     {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hrep : SA.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
     (hhC : HZ tr H g + 1 ≤ ((tr.state z r).fg.σ C.root).h) :
@@ -132,6 +134,7 @@ theorem high_report_origin_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b
       Anc (tr.HonestBlocksAt H) O D := by
   have hrun := hp.run
   have hnc := hp.noColl
+  have hz := hrun.antitone (le_max_right _ _) hzz
   have hd := hrun.time_nonneg r
   have hrun' := hrun.upTo hd
   have hU' := RunTrace.honestBlocks_upTo_subset hrun.time_mono (H := H) hd
@@ -181,7 +184,7 @@ theorem high_report_origin_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b
     exact (joinedAt_upTo_iff hior).mp (Healing.joinedAt_of_fastLockAt hrun' (hnc.upTo _) hz hfl)
   refine ⟨io, hio, l₀.slot, O, D, CV, ?_, hior.trans hrb, hflt, hCO,
     Anc.mono hU' (hOD.2.mono hPhiwU)⟩
-  exact ⟨hzi, hj, ⟨CV, ellw, D, hcwt, hflt, rfl⟩, hOh⟩
+  exact ⟨hrun.antitone (max_le_max le_rfl hior) hzz, hj, ⟨CV, ellw, D, hcwt, hflt, rfl⟩, hOh⟩
 
 end ResetPremisesUpTo
 

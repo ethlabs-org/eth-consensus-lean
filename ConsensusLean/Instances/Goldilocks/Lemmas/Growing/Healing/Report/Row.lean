@@ -20,14 +20,15 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-/-- An actual report either supplies a row signed while honest or is strictly higher. -/
+/-- An actual report by a reporter honest at it and at `c_z` either supplies a row signed while
+honest or is strictly higher. -/
 theorem row_or_high_of_report_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {g T : Time}
     (hf : ∀ t, 0 ≤ t → t < T → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hna : ∀ v k att, v ∈ H (tr.time k) → tr.SignAt v k att →
+    (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
       tr.time k < T → att.h ≤ HZ tr H g)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
+    {y : Fin sp.n} {i : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     {ell : ACLabel (goldilocksNode sp ro)} {R P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : SA.ToFGAt tr.projAC y i ell R) (hiT : tr.time i < T)
     (hPR : Anc (tr.HonestBlocksAt H) P R)
@@ -41,6 +42,7 @@ theorem row_or_high_of_report_at
         att.h = ((tr.state y i).fg.σ P.root).h ∧
         att.T = ((tr.state y i).fg.σ P.root).Th) ∨
         ((tr.state y i).fg.σ P.root).h < ((tr.state y i).fg.σ R.root).h) := by
+  have hy := hrun.antitone (le_max_right _ _) hyz
   have ht0 := hrun.time_nonneg i
   have hle : ∀ k < i, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono hk.le
   have hr := hrun.upTo ht0
@@ -97,7 +99,7 @@ theorem row_or_high_of_report_at
       (tr.state y (i + 1)).record.lock ((tr.state y i).fg.σ P.root).h = some E.root := by
     rcases hkind heq.symm with hHZ | hk
     · rw [hHZ]
-      exact Or.inl (lock_none_of_noAdvance_at hrun hna ht0 hle' hy hiT)
+      exact Or.inl (lock_none_of_noAdvance_at hrun hna ht0 hle' hyz hiT)
     · apply lock_free_or_entry_of_frame_at hrun hnc ht0 hle' hy hf' hEnt hCh
       rwa [hfg]
   have hrow := client_progress_of_lock_at hrun ht0 hle' ht'.le hy hatt hEnt hCh hlock

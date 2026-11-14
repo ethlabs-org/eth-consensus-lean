@@ -102,20 +102,21 @@ theorem signed_entry_source
   · rw [hσE, hEh']
   · rw [hσE, hETh']
 
-/-- A high signed row has an earlier high origin, honest at its own write.
-The snapshot height is used only as a numerical lower bound. -/
+/-- A high signed row by a signer honest at it and at `c_z` has an earlier high origin, honest at
+its own write and at `c_z`. The snapshot height is used only as a numerical lower bound. -/
 theorem high_row_source_at
     {H : Time → Set (Fin sp.n)}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {g : Time}
     {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
-    (hv : v ∈ H (tr.time d)) (hs : tr.SignAt v d att)
+    (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
     (hh : HZ tr H g + 1 ≤ att.h) :
     ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧
       ∃ E ∈ (tr.state v r).fg.tree, (tr.state v r).fg.Anc E O ∧
         E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
         ((tr.state v r).fg.σ E.root).Th = E.root := by
   have ht := hrun.time_nonneg d
+  have hv := hrun.antitone (le_max_right _ _) hvz
   have hs' := (RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs⟩
   obtain ⟨r, hrd, l, O, hj, hstored, hOh, E, hE, hEO, hEr, hEh, hETh⟩ :=
     signed_entry_source (hrun.upTo ht) (hnc.upTo _) hv hs'
@@ -143,7 +144,7 @@ theorem high_row_source_at
       rw [heAC] at hrest
       exact Or.inr ⟨ell, A, ⟨((Trace.upTo_callAt tr.projAC).mp hc).2, hrest⟩,
         hA, hsel, hCV⟩
-  exact ⟨r, hrd, l, O, ⟨hrun.antitone hrt hv, hj',
+  exact ⟨r, hrd, l, O, ⟨hrun.antitone (max_le_max le_rfl hrt) hvz, hj',
     ⟨CV, ell, D, hc', hfl', hO⟩, hh.trans hOh⟩, E, hE, hEO, hEr, hEh, hETh⟩
 
 end Consensus.Goldilocks.Healing.Growing.Outcome

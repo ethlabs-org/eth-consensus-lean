@@ -6,8 +6,8 @@ public section
 
 /-! # A left replay entry has an origin honest at its own write
 
-Count signers at the reader's observation. Those signers were honest at delivery
-and at signing, even if other historical holders have since been compromised.
+Count signers at the later of the reader's observation and `c_z`. Those signers were honest at
+delivery, at signing and at `c_z`, even if other historical holders have since been compromised.
 -/
 
 namespace Consensus.Goldilocks.Healing.Growing.Outcome
@@ -18,13 +18,14 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g : Time}
 
-/-- A high entry left by a held chain was named by an earlier honest signer.
-The source origin's honesty is at its write, not the reader's later observation. -/
+/-- A high entry left by a held chain was named by an earlier signer honest at it and at `c_z`;
+the quorum budget is read at the later of the observation and `c_z`. The source origin's
+honesty is at its write and at `c_z`, not the reader's later observation. -/
 theorem left_entry_origin_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
-    (hq : (H t)ᶜ.ncard < sp.toParams.fg.q)
+    (hq : (H (max (cutZ sp.toParams g) t))ᶜ.ncard < sp.toParams.fg.q)
     {E C : SA.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ (tr.state y k).fg.tree)
     (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
     (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h)
@@ -35,8 +36,9 @@ theorem left_entry_origin_at
         ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧
           Anc (tr.HonestBlocksAt H) E O := by
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
-  obtain ⟨W, hW, att, ha, haT, haH⟩ := Healing.honest_att_of_left
+  obtain ⟨W, hW, att, ha, haT, haHz⟩ := Healing.honest_att_of_left
     (fg_reachable_at hrun ht hle hy) hq hET hEC hlt
+  have haH := hrun.antitone (le_max_right _ _) haHz
   have he := Trace.upTo_state tr y hle
   have hW' : W ∈ ((tr.upTo t).state y k).fg.tree := by rwa [he]
   rcases Healing.tree_accepted (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i, hik, hA⟩
@@ -62,10 +64,11 @@ theorem left_entry_origin_at
   have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg d)
     (fun q hq => hrun.time_mono hq.le) hv ht hle hy hE' hE
   obtain ⟨r, hrd, l, O, ho, E₀, hE₀, hE₀O, hE₀r, -⟩ :=
-    high_row_source_at hrun hnc hv hs (by rw [← hE'h, hσ]; exact hEh)
+    high_row_source_at hrun hnc (hrun.antitone (max_le_max le_rfl (hle d hdk)) haHz) hs
+      (by rw [← hE'h, hσ]; exact hEh)
   have hsub₀ : (tr.state att.val r).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨att.val, r, tr.time r, hrun.time_nonneg r,
-      fun q hq => hrun.time_mono hq.le, ho.1, h⟩
+      fun q hq => hrun.time_mono hq.le, hrun.antitone (le_max_right _ _) ho.1, h⟩
   have hEq₀ : E₀ = E := hU.1 (hsub₀ hE₀) (hsub hE) (hE₀r.trans haT)
   subst E₀
   exact ⟨W, hW, att, ha, att.val, haH, d, hdk, hs, haT, r, hrd, l, O, ho,

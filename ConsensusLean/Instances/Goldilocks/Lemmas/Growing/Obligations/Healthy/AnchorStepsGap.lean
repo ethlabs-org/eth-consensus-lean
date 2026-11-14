@@ -138,7 +138,7 @@ theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
       (fun y j e hy hv hjb hs' => hun y j e hy hv hs' hjb) hgu hR1 hTb with
     hall | ⟨x, r, e, C, hx, hto, ht, hAC, hlt⟩
   swap
-  · exact (hcross x r e C hx hto ht hAC hlt).elim
+  · exact (hcross x r e C (hrun.antitone (le_max_right _ _) hx) hto ht hAC hlt).elim
   have hr := Healing.Growing.fg_reachable_at hrun h0 hle0 hpX
   obtain ⟨E, hE, hEr, hEA, hEh, hETh, hEJ, hEhj⟩ := Healing.entry_J_hj hr hAp
   have hTe : ((tr.state (proposer (s + c)) kX).fg.σ E.root).Th = E.root := by
@@ -152,10 +152,12 @@ theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
     obtain ⟨-, h2⟩ := hbd
     omega
   have hd0 : 0 ≤ sp.ts s + 6 * sp.Δ := by linarith [SA.gbar_nonneg g]
-  have hreports : ∀ z, z ∈ H (sp.ts s + 6 * sp.Δ) → ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧
+  have hreports : ∀ z, z ∈ H (max (Healing.cutZ sp.toParams g) (sp.ts s + 6 * sp.Δ)) →
+      ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧
       tr.time r ≤ sp.ts s + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) E C ∧
       ((tr.state z r).fg.σ C.root).h = ((tr.state (proposer (s + c)) kX).fg.σ E.root).h := by
-    intro z hz
+    intro z hzz
+    have hz := hrun.antitone (le_max_right _ _) hzz
     obtain ⟨r, e, R, hto, ht, hAR⟩ := hall z hz
     have hzr : z ∈ H (tr.time r) := hrun.antitone ht hz
     have hleR : ∀ q < r, tr.time q ≤ tr.time r := fun _ hq => hrun.time_mono hq.le
@@ -175,7 +177,8 @@ theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
   obtain ⟨hPrJ, hPrhj⟩ := Healing.J_hj_eq_of_anc hr hAPr heq
   refine ⟨ids, hcard, fun z hz => ?_⟩
   obtain ⟨hzd, att, j, hsig, -, hah, haT, hato, hjt, hfin⟩ := hids z hz
-  refine ⟨j, att, hrun.antitone hjt hzd, hsig, hjt, ?_, ?_, hato, fun hbd _ => ?_⟩
+  refine ⟨j, att, hrun.antitone (hjt.trans (le_max_right _ _)) hzd, hsig, hjt, ?_, ?_, hato,
+    fun hbd _ => ?_⟩
   · rw [hah, hEh, heq]
   · rw [haT, hEr, hPrTh]
   · have hbE : ((tr.state (proposer (s + c)) kX).fg.σ E.root).previousHeightJustified := by

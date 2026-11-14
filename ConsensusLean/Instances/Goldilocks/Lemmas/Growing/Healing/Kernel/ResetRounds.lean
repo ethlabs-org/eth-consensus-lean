@@ -138,16 +138,18 @@ theorem report_kind_of_floor_at
   have h := Healing.report_kind_of_floor hr hy (by rwa [hs]) (by rwa [hs])
   rwa [hs] at h
 
-/-- A high source forces a historical reset even when the client suppresses signing. -/
+/-- A high source of a caller honest at it and at `c_z` forces a historical reset even when the
+client suppresses signing. -/
 theorem reset_of_high_source_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {g : Time}
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    (hq : (H (tr.time k))ᶜ.ncard < sp.toParams.fg.q)
+    {y : Fin sp.n} {k : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time k)))
+    (hq : (H (max (cutZ sp.toParams g) (tr.time k)))ᶜ.ncard < sp.toParams.fg.q)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Option (FG.Att sp.n)}
     (hc : tr.CallAt y k (.fg (.attest C s)))
     (hh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ C.root).h) :
     ∃ a, IsReset tr H g a ∧ a ≤ tr.time k := by
   classical
+  have hy := hrun.antitone (le_max_right _ _) hyz
   have hl := hrun.upTo (hrun.time_nonneg k)
   have hst := Trace.upTo_state tr y (i := k) (fun q hq => hrun.time_mono hq.le)
   have hr := fg_reachable_at hrun (hrun.time_nonneg k) (fun q hq => hrun.time_mono hq.le) hy
@@ -166,10 +168,11 @@ theorem reset_of_high_source_at
   by_cases hprev : ∃ j < k, ∃ att, tr.SignAt y j att ∧ HZ tr H g + 1 ≤ att.h
   · obtain ⟨j, hj, att, hs, hh⟩ := hprev
     have hjt := hrun.time_mono hj.le
-    have hqj : (H (tr.time j))ᶜ.ncard < sp.toParams.fg.q := by
+    have hjz := max_le_max (le_refl (cutZ sp.toParams g)) hjt
+    have hqj : (H (max (cutZ sp.toParams g) (tr.time j)))ᶜ.ncard < sp.toParams.fg.q := by
       exact lt_of_le_of_lt (Set.ncard_le_ncard (Set.compl_subset_compl.mpr
-        (hrun.antitone hjt)) (Set.toFinite _)) hq
-    obtain ⟨a, ha, haj⟩ := reset_of_height_advance_at hrun hqj (hrun.antitone hjt hy) hs hh
+        (hrun.antitone hjz)) (Set.toFinite _)) hq
+    obtain ⟨a, ha, haj⟩ := reset_of_height_advance_at hrun hqj (hrun.antitone hjz hyz) hs hh
     exact ⟨a, ha, haj.trans hjt⟩
   have hlock : (tr.state y k).record.lock ((tr.state y k).fg.σ C.root).h = none := by
     by_contra hn
@@ -194,7 +197,7 @@ theorem reset_of_high_source_at
   cases s with
   | some att =>
     have hcl := (hrun.cutLaw y k _ hc hy).1
-    apply reset_of_height_advance_at hrun hq hy ⟨C, hc⟩
+    apply reset_of_height_advance_at hrun hq hyz ⟨C, hc⟩
     rw [(Store.createAtt_eq hcl).1, he]
     exact hh
   | none =>
@@ -216,15 +219,17 @@ theorem reset_of_high_source_at
     rw [hany τ] at hcl
     simp only [Bool.false_eq_true, ↓reduceIte, reduceCtorEq] at hcl
 
-/-- The adjacent client call of a high report supplies the reset, including suppression. -/
+/-- The adjacent client call of a high report, by a reporter honest at it and at `c_z`, supplies
+the reset, including suppression. -/
 theorem reset_of_high_report_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {g : Time}
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    (hq : (H (tr.time i))ᶜ.ncard < sp.toParams.fg.q)
+    {y : Fin sp.n} {i : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
+    (hq : (H (max (cutZ sp.toParams g) (tr.time i)))ᶜ.ncard < sp.toParams.fg.q)
     {ell : ACLabel (goldilocksNode sp ro)} {R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : SA.ToFGAt tr.projAC y i ell R)
     (hh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
     ∃ a, IsReset tr H g a ∧ a ≤ tr.time i := by
+  have hy := hrun.antitone (le_max_right _ _) hyz
   have hr := hrun.upTo (hrun.time_nonneg i)
   have hst := Trace.upTo_state tr y (i := i) (fun q hq => hrun.time_mono hq.le)
   obtain ⟨hc, hto, hres⟩ := hR
@@ -245,7 +250,7 @@ theorem reset_of_high_report_at
   rw [hs1, hst] at hfg
   have hh' : HZ tr H g + 1 ≤ ((tr.state y (i + 1)).fg.σ R.root).h := by
     rwa [hfg]
-  obtain ⟨a, ha, hat⟩ := reset_of_high_source_at hrun (ht' ▸ hy) (ht' ▸ hq) hatt' hh'
+  obtain ⟨a, ha, hat⟩ := reset_of_high_source_at hrun (ht' ▸ hyz) (ht' ▸ hq) hatt' hh'
   exact ⟨a, ha, by rwa [ht'] at hat⟩
 
 /-- A proposal's immediate acceptance is held while its proposer is honest
@@ -330,7 +335,7 @@ theorem round_of_warm_at
     (hΔF : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
     (hux : u + sp.toParams.fg.δt ≤ x) (hxN : x ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
     (hTb : T ≤ b)
-    (hna : ∀ v k att, v ∈ H (tr.time k) → tr.SignAt v k att →
+    (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
       tr.time k < T → att.h ≤ HZ tr H g)
     (hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ < T)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
@@ -347,6 +352,11 @@ theorem round_of_warm_at
     simpa only [sp.slotTime_eq, hXs, SAParams.ts] using hX.2.2
   have huN : u + 1 ≤ N := by omega
   have hu0 := hts (show s₀ ≤ u by omega)
+  have hcu : cutZ sp.toParams g ≤ sp.ts u := by
+    have h4 := hts (show s₀ + 4 ≤ u by have := sp.two_le_k; omega)
+    have he : sp.ts (s₀ + 4 : Nat) = sp.ts s₀ + 16 * sp.Δ := by
+      simp only [SAParams.ts]; push_cast; ring
+    linarith [cutZ_le sp g]
   have hv : gbar g ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
     have := hts (show s₀ ≤ u + 1 by omega)
     linarith
@@ -402,7 +412,8 @@ theorem round_of_warm_at
   obtain ⟨i, ell, R, hyi, hR, htil, hti, hPR, hRd⟩ := hfol y hy
   have hRyD := hRd x (by omega) hxN p c ellp hpc hc' hcall hct d pay hd'
   obtain ⟨hPy, hRy, hor⟩ := row_or_high_of_report_at hrun hnc
-    (fun t ht htT => hf t ht (htT.le.trans hTb)) hna hyi hR (by linarith) hPR
+    (fun t ht htT => hf t ht (htT.le.trans hTb)) hna
+    (by rwa [max_eq_right (hcu.trans htil)]) hR (by linarith) hPR
     (fun heq => Or.inr (report_kind_of_warm_at hrun hnc hframe hz0 hdes hP hPs hu0
       (by linarith [hts huN]) hfi hyi hR hPR (hu0.trans htil)
       (by linarith [hts huN]) heq))
@@ -430,9 +441,15 @@ theorem reset_of_high_proposal_at
   have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
   have hts : sp.ts (u + 1 : Nat) ≤ sp.ts N := (SA.ts_le_iff sp).2 (by exact_mod_cast hN)
   obtain ⟨y, hy⟩ := hH
-  obtain ⟨i, ell, R, hyi, hR, _, hti, hPR, _⟩ :=
+  obtain ⟨i, ell, R, hyi, hR, htil, hti, hPR, _⟩ :=
     proposal_report_follow_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm hN hmb
       hz hdes hP hPs (hrun.antitone (by linarith) hy) hstock
+  have hcz : cutZ sp.toParams g ≤ tr.time i := by
+    have h4 : sp.ts (s₀ + 4 : Nat) ≤ sp.ts u :=
+      (SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ + 4 ≤ u by have := sp.two_le_k; omega))
+    have he : sp.ts (s₀ + 4 : Nat) = sp.ts s₀ + 16 * sp.Δ := by
+      simp only [SAParams.ts]; push_cast; ring
+    linarith [cutZ_le sp g]
   have htime : tr.time kP = sp.ts u := by
     simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hP.2.2
   have hzk : z ∈ H (tr.time kP) := hrun.antitone (by rw [htime]; linarith) hz
@@ -450,6 +467,7 @@ theorem reset_of_high_proposal_at
     have hn := sp.toParams.hn
     change (H (tr.time i))ᶜ.ncard < (2 * sp.n + 2) / 3
     omega
+  rw [← max_eq_right hcz] at hyi hq
   obtain ⟨a, ha, hat⟩ := reset_of_high_report_at hrun hyi hq hR hhR
   exact ⟨a, ha, hat.trans hti⟩
 
@@ -468,7 +486,7 @@ theorem rise_reset_rounds_at
     (hΔF : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
     (hgp : ProposalGap tr H proposer G s₀ N)
     (hmb : sp.ts N + 2 * sp.Δ ≤ b) (hH : (H b).Nonempty) (hTb : T ≤ b)
-    (hna : ∀ v k att, v ∈ H (tr.time k) → tr.SignAt v k att →
+    (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
       tr.time k < T → att.h ≤ HZ tr H g)
     (r : Nat) {u : Nat} (hwarm : s₀ + 2 * sp.k ≤ u)
     (hN : u + r * (sp.toParams.fg.δt + G - 1) + 1 ≤ N)
@@ -589,13 +607,22 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
       (H t)ᶜ.ncard < sp.toParams.fg.q ∧
         (H t)ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
     exact faults_lt_quorums sp.toParams.hn (hf t ht htb)
-  by_cases hadv : ∃ y k att, y ∈ H (tr.time k) ∧ tr.SignAt y k att ∧
-      tr.time k ≤ B ∧ HZ tr H g + 1 ≤ att.h
+  have hczb : cutZ sp.toParams g ≤ b := by
+    have hδ' : (3 : Time) ≤ sp.toParams.fg.δt := by exact_mod_cast hδ
+    have hG' : (1 : Time) ≤ G := by exact_mod_cast hG
+    have hLd' : (0 : Time) ≤ Ld := Nat.cast_nonneg _
+    have hprod := mul_nonneg (show (0 : Time) ≤ 20 * Ld + 24 * (sp.toParams.fg.δt + G - 1) by
+      linarith) (show (0 : Time) ≤ D by linarith)
+    have hB : B = r + (20 * Ld + 24 * (sp.toParams.fg.δt + G - 1) + 54) * D + 5 * (2 * D) :=
+      Obligations.resetBoundRounds_eq _ _ _ _ _ _
+    linarith
+  by_cases hadv : ∃ y k att, y ∈ H (max (cutZ sp.toParams g) (tr.time k)) ∧
+      tr.SignAt y k att ∧ tr.time k ≤ B ∧ HZ tr H g + 1 ≤ att.h
   · obtain ⟨y, k, att, hy, hs, hk, hh⟩ := hadv
     obtain ⟨a, ha, hat⟩ := reset_of_height_advance_at hrun
-      (hfq (hrun.time_nonneg k) (hk.trans hb)).1 hy hs hh
+      (hfq ((hrun.time_nonneg k).trans (le_max_right _ _)) (max_le hczb (hk.trans hb))).1 hy hs hh
     exact ⟨a, ha, hat.trans hk⟩
-  have hna : ∀ y k att, y ∈ H (tr.time k) → tr.SignAt y k att →
+  have hna : ∀ y k att, y ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt y k att →
       tr.time k < B → att.h ≤ HZ tr H g := by
     intro y k att hy hs hk
     by_contra hh
@@ -615,7 +642,8 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
     have hmax : max (cutZ sp.toParams g) (tr.time i) = tr.time i := max_eq_right hczle
     refine ⟨HZ_le_hmax_at hrun hnc hsvc hcatch
       (hH.mono (hrun.antitone (hczle.trans hib))) hsnap hy ?_ hcall (hlo.trans hi),
-      hmax_le_of_noAdvance_at hrun hna hy (hfq (hrun.time_nonneg i) hib).1 hiB⟩
+      hmax_le_of_noAdvance_at hrun hna hy (by rw [hmax]; exact (hfq (hrun.time_nonneg i) hib).1)
+        hiB⟩
     rw [hmax]
     exact (hfq (hrun.time_nonneg i) hib).2
   have hd : 0 ≤ d := by dsimp [d]; positivity
@@ -789,7 +817,7 @@ private theorem drainOutputs_truncH {g b : Time} {G Ld : Nat}
     obtain ⟨u, hu, huL, z, kP, P, hz, hdes, hP, hPs, hh⟩ :=
       hd.warm (frameWindow_of_truncH hw hmb) hm hN hmb
         (fun v k att hv hs hk => by
-          have h := hsig v k att ⟨hv, hk.trans hmb⟩ hs hk
+          have h := hsig v k att ⟨hv, max_le hcz (hk.trans hmb)⟩ hs hk
           rwa [HZ_truncH hcz] at h)
         (proposalGap_of_truncH hgp)
     have hts : sp.ts u ≤ sp.ts N := (SA.ts_le_iff sp).2 (by exact_mod_cast (show u ≤ N by omega))
@@ -804,7 +832,7 @@ private theorem isReset_of_truncH {g a b : Time} (hcz : cutZ sp.toParams g ≤ b
   obtain ⟨⟨y, k, att, hy, hs, hh, hk⟩, hmin⟩ := h
   refine ⟨⟨y, k, att, hy.1, hs, hh, hk⟩, fun y' k' att' hy' hs' hh' => ?_⟩
   by_cases hk' : tr.time k' ≤ b
-  · exact hmin y' k' att' ⟨hy', hk'⟩ hs' hh'
+  · exact hmin y' k' att' ⟨hy', max_le hcz hk'⟩ hs' hh'
   · exact hab.trans (lt_of_not_ge hk').le
 
 /-- **The reset bound from finite service**, reading restarts only up to `b`: the rounds of

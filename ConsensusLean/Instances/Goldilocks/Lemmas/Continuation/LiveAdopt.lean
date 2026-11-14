@@ -151,7 +151,10 @@ theorem seeded_updater_F_anc (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ 
       (SA.slot_arithmetic sp s).2.2
     rw [ht, h6]
     simpa using (SA.slot_arithmetic sp (s + 1)).1 2 (by omega)
-  have hsrc := rowsAbove_of hrun hnc hS.seed hd hi hy (Q := fun C _ => R C)
+  have hzd : Healing.cutZ sp.toParams g ≤ tr.time k₀ := by
+    have := ts_le_ts (sp := sp) (show r ≤ r + sp.k by omega)
+    linarith [Healing.cutZ_le sp g, hS.seed.timing.2.2]
+  have hsrc := rowsAbove_of hrun hnc hS.seed hd hzd hi hy (Q := fun C _ => R C)
     fun m hm X hX a ha hav k hkm hsg c hck C l O OV hC hO => by
       have hck₀ : tr.time c ≤ tr.time k₀ := hrun.time_mono (by omega)
       have hCb := hC.mono (hck₀.trans hb)

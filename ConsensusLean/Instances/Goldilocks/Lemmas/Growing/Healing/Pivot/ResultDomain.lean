@@ -63,7 +63,7 @@ theorem result_prefix_vote_domain_before_of_domain_at
   have hdb := hda.trans hp.reset_le
   have hms : m < s := by rw [Healing.cleanLabel_eq] at hs; omega
   have hts : cutZ sp.toParams g ≤ sp.ts s :=
-    (hp.cutZ_le_ts_of_highOrigin_at hseed hdb).trans ((SA.ts_le_iff sp).mpr (by omega))
+    (hp.cutZ_le_ts_of_highOrigin_at hseed).trans ((SA.ts_le_iff sp).mpr (by omega))
   have htiming : SA.gbar g + 4 * sp.Δ ≤ sp.ts s := by
     have := lt_cutZ sp g
     have := sp.toParams.hΔ
@@ -95,22 +95,23 @@ theorem result_prefix_vote_domain_before_of_domain_at
     rcases lt_trichotomy n s with hn | rfl | hn
     · exact target_compatible_older_origin_at hp ho hcb hzq hv hqb hvs hn hVB
     · obtain ⟨ellD, D, DV, _, hfl, hOD⟩ := highOrigin_raw_head_at hp.run hp.noColl ho
+      have hw := hp.run.antitone (le_max_right _ _) ho.1
       have hsvc := hp.sync.ac_service_at hp.run (lo := g) (hi := b) le_rfl
       have hcomp : Compatible (tr.HonestBlocksAt H) C D := by
         rcases hfl with ⟨ellD, R, huD, hR, hfast, _⟩ | hop
         · have hDR := ((SA.deepest_mem hfast).1.1.2.2).mono
-            (SA.frameIn_of_callAt (hac.upTo (hp.run.time_nonneg c)).localRun ho.1
+            (SA.frameIn_of_callAt (hac.upTo (hp.run.time_nonneg c)).localRun hw
               ((Trace.upTo_callAt _).mpr ⟨le_rfl, huD.1⟩)).2
-          have hRR := SA.Growing.result_result_compatible_window_before_at hac hsvc hgs hx ho.1
+          have hRR := SA.Growing.result_result_compatible_window_before_at hac hsvc hgs hx hw
             ⟨ellX, hupd, hconf, hCV⟩ ⟨ellD, huD, hR, rfl⟩ hrb hcb
             (fun k hk hrest => hreset x k (hp.run.antitone (hp.run.time_mono hk) hx)
               ((hp.run.time_mono hk).trans hrb) hrest)
-            (fun k hk hrest => hreset w k (hp.run.antitone (hp.run.time_mono hk) ho.1)
+            (fun k hk hrest => hreset w k (hp.run.antitone (hp.run.time_mono hk) hw)
               ((hp.run.time_mono hk).trans hcb) hrest)
           rcases hRR with h | h
           · exact SA.anc_total hcoh h hDR
           · exact Or.inr (hDR.trans h)
-        · exact SA.Growing.result_optimistic_compatible_window_before_at hac hsvc hgs hx ho.1
+        · exact SA.Growing.result_optimistic_compatible_window_before_at hac hsvc hgs hx hw
             ⟨ellX, hupd, hconf, hCV⟩ hop hrb hcb
             (fun k hk hrest => hreset x k (hp.run.antitone (hp.run.time_mono hk) hx)
               ((hp.run.time_mono hk).trans hrb) hrest) hp.stock

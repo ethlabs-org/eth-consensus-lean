@@ -87,7 +87,10 @@ theorem seeded_reader_old (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b) 
   have hUP := (Compose.projFG_localRun hrun' hnc').coherent
   have hsub := upTo_subset hrun ht0
   -- the high rows, sourced below members of the old family
-  have hsrc := rowsAbove_of hrun hnc hS.seed ht0 hi hy
+  have hzt : Healing.cutZ sp.toParams g ≤ t := by
+    have := ts_le_ts (sp := sp) (show r ≤ r + sp.k by omega)
+    linarith [Healing.cutZ_le sp g, hS.seed.timing.2.2]
+  have hsrc := rowsAbove_of hrun hnc hS.seed ht0 hzt hi hy
     (Q := fun C _ => ∃ O, SeededOld tr H g r b s O ∧ Anc (tr.HonestBlocksAt H) C O)
     fun m hm X hX a ha hav k hkm hsg c hck C l O OV hC hO => by
       have hct' : tr.time c ≤ t := (hrun.time_mono (show c ≤ m by omega)).trans (hi m hm)
@@ -148,7 +151,8 @@ theorem seeded_reader_old (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b) 
       have hSB : Anc (tr.HonestBlocksAt H) S B := hOB S (hseedOld hS' hqT hl)
       have hSh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ S.root).h := by
         rw [Healing.Growing.σ_eq_honest_at hrun hnc ht0 hi hy (hrun.time_nonneg q)
-          (fun _ h => hrun.time_mono h.le) hS'.1 hSy (HighOrigin.mem_tree hrun hnc hS')]
+          (fun _ h => hrun.time_mono h.le) (hrun.antitone (le_max_right _ _) hS'.1) hSy
+          (HighOrigin.mem_tree hrun hnc hS')]
         exact hS'.2.2.2
       have hSBh := Healing.h_le_of_store_anc hreach (held_anc_at hrun hnc ht0 hy hi hSB hB)
       by_cases hSf : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ S.root).h

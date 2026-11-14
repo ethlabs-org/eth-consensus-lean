@@ -27,7 +27,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem high_vote_extends_of_domain_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
+    (ho : HighOrigin tr H g x i j B)
     (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ell e) (hkb : tr.time k ≤ b) (hj : j < e.msg.slot)
@@ -37,6 +37,7 @@ theorem high_vote_extends_of_domain_at
       j < e'.msg.slot → SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
     SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
   have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hx := hp.run.antitone (le_max_right _ _) ho.1
   have ⟨hPhi, hPhiU⟩ := Compose.Growing.frameIn_at hp.run hp.noColl hy hc.1
   obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, _⟩ :=
     Compose.Growing.cast_head_fcRoot_at hp.run hp.noColl hy hc
@@ -46,7 +47,7 @@ theorem high_vote_extends_of_domain_at
   have hslot := (Compose.Growing.castAt_spec_at hp.run hp.noColl hy hc).2.1
   have hts : sp.ts e.msg.slot ≤ tr.time k :=
     (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg k) _).mpr (by rw [hslot])
-  have hcut := hp.cutZ_le_ts_of_highOrigin_at ho hib
+  have hcut := hp.cutZ_le_ts_of_highOrigin_at ho
   have hf := fault_bound_late_at hp
     (hcut.trans (((SA.ts_le_iff sp).mpr (show (j : Int) ≤ e.msg.slot by omega)).trans hts)) hkb
   have he : SA.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) k e.msg.slot B := by
@@ -54,19 +55,19 @@ theorem high_vote_extends_of_domain_at
     exact hprior z q e' hq (Compose.Growing.hVoteAt_iff.2 ⟨hz, hv⟩) (by omega)
   by_cases hs : e.msg.slot = j + 1
   · obtain ⟨CV, ellx, D, hcx, hfl, hBD⟩ := ho.2.2.1
-    have htree := (frame_tree_subset_at hp.run hp.noColl ho.1 hcx).2
+    have htree := (frame_tree_subset_at hp.run hp.noColl hx hcx).2
     have hsub : ellx.frame.tree ⊆ tr.HonestBlocksAt H := fun _ h =>
       ⟨x, i, tr.time i, hp.run.time_nonneg i, fun _ hq => hp.run.time_mono hq.le,
-        ho.1, htree h⟩
+        hx, htree h⟩
     have hBD' : Anc (tr.HonestBlocksAt H) B D := by
       rw [hBD]
       exact (SA.anc_viableAncestor ellx.frame D).mono hsub
     have hgj : g ≤ sp.ts j := by
       linarith [lt_cutZ sp g, le_gbar g, sp.toParams.hΔ]
     exact SA.Growing.first_transfer_stored hac _ (fun _ => SA.CommitteeP.full)
-      (fun _ => SA.CommitteeT.full) (SA.size_binding_full hp.stock) ho.1 hfl hBD' hy hc hs
+      (fun _ => SA.CommitteeT.full) (SA.size_binding_full hp.stock) hx hfl hBD' hy hc hs
       (reset_syncACAt hp hgj)
-      (first_carry_of_finalized_anc_at hp ho hib ⟨ellx, D, hcx, hfl, hBD⟩ hy hc hkb hs hF)
+      (first_carry_of_finalized_anc_at hp ho ⟨ellx, D, hcx, hfl, hBD⟩ hy hc hkb hs hF)
       ((SA.ncard_inter_full_lt_iff _ _ _).2 hf) (SA.Growing.cs2_full_of_faultBoundAt hp.stock hf)
       (Or.inl (by simpa only [← hs] using hvi)) (by simpa only [hs] using he)
   · obtain ⟨m, hm⟩ : ∃ m, e.msg.slot = m + 1 := ⟨e.msg.slot - 1, by omega⟩
@@ -94,7 +95,7 @@ theorem high_vote_extends_of_domain_at
       rw [hm, hn] at hts
       change sp.ts m + sp.Δ ≤ tr.time k
       linarith [sp.toParams.hΔ]
-    · have hcarry := later_carry_of_finalized_anc_at hp ho hib hy hc hkb hm hjm hF
+    · have hcarry := later_carry_of_finalized_anc_at hp ho hy hc hkb hm hjm hF
         (fun z q e' hq hv hs => hprior z q e' hq hv (by omega))
       have ht : tr.projAC.time = tr.time := by rfl
       rw [ht]
