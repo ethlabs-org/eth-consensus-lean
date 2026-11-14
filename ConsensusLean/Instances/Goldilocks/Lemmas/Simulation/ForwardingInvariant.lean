@@ -201,7 +201,7 @@ theorem dutyStep_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : BoundS
   | propose s hs => exact dutyStep_propose_pendingReady S rho hn v nd s hs ha hr
   | act s k =>
     dsimp only
-    erw [dutyStep_act S rho]
+    rw [dutyStep_act S rho v nd s k]
     exact ⟨ha, hr⟩
   | poll t =>
     by_cases hsel : rho.ownKey v ∈ rho.sel .poll

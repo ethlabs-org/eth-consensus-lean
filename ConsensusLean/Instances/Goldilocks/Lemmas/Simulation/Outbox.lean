@@ -588,7 +588,7 @@ theorem signedCandidate_poll (v : V) (nd : Model.Node (Model.protoOf (compiled
   erw [List.filterMap_append, List.filterMap_append, Option.toList_map, List.filterMap_map,
     List.filterMap_map, List.filterMap_map]
   congr 2
-  · erw [pollOrdinary_eq]
+  · rw [pollOrdinary_eq S rho v (poll (shapeOf S hn nd) t).2]
     apply List.filterMap_congr
     rintro ⟨b, cs⟩ -
     dsimp only [Function.comp]

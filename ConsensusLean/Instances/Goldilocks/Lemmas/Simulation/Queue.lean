@@ -816,7 +816,7 @@ private theorem prefix_inventory (hprot : PollAttProtected S rho hn) (hv : rho.E
     rw [runDuties_fst_append, runDuties_fst_cons, runDuties_fst_nil]
     cases he : ds[p] with
     | act s k =>
-      erw [dutyStep_act S rho]
+      rw [dutyStep_act S rho v _ s k]
       exact hi
     | propose s hs => exact proposal_duty_inventory S rho hn v _ s hs hi
     | pollPropose k => exact tick_duty_inventory S rho hn v _ k hi

@@ -435,7 +435,7 @@ theorem releaseAll_voteForward_suffix (hash : Blocks.Header Info → Nat)
     (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E) hash x nd (pre ++ cs)).2 =
       (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E) hash x nd pre).2 ++ cs := by
   dsimp only
-  erw [Model.releaseAll_append (P := Model.protoOf (compiled (goldilocksWith S)) E)]
+  rw [Model.releaseAll_append (P := Model.protoOf (compiled (goldilocksWith S)) E) hash x nd pre]
   dsimp only
   congr 1
   apply (releaseAll_of_prefix_guards (Model.protoOf (compiled (goldilocksWith S)) E)
