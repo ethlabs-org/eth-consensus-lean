@@ -7,9 +7,9 @@ file per instance). Every Lean name here is fully qualified (namespace `Consensu
 ## Review path
 
 To check a claim: find its node in CLAIMS (its §"Lean status" names the Lean statement and its status), read the
-statement, then its row and modelling notes in the section below. Challenge certifies three Goldilocks statements,
-the endpoint `MeetsObligations`, headline `GoldilocksCorrect`, and its additive explicit-excuse form
-`GoldilocksCorrectWithExcuses`
+statement, then its row and modelling notes in the section below. Challenge certifies four Goldilocks statements,
+the endpoint `MeetsObligations`, headline `GoldilocksCorrect`, its additive explicit-excuse form
+`GoldilocksCorrectWithExcuses`, and the outage row at every vote binding `PersistsWith`
 (`ConsensusLean/Instances/Goldilocks/Statements/Obligations`, trusted surface, protected snapshot).
 The comparator checks that `Solution.lean` proves them, by `Proofs/Growing/Obligations/Main.lean`,
 `ShapeObligations.correct` and the validity-split corollary in `Lemmas/Model/Excuses.lean`.
@@ -40,6 +40,7 @@ are unchanged. The latter also owns the frame-sequence vocabulary, not needed by
 | `Consensus.Goldilocks.MeetsObligations` (Ebb-and-Flow obligations) | `Statements/Obligations` | CLAIMS §"The obligations endpoint" | Obligations | proved in Solution |
 | `Consensus.Goldilocks.GoldilocksCorrect` (`CorrectProtocol`) | `Statements/Obligations` | CLAIMS §"The obligations endpoint" with `ObligationsSufficient` | Obligations | proved in Solution |
 | `Consensus.Goldilocks.GoldilocksCorrectWithExcuses` (the same per-run table, or an explicit binding failure) | `Statements/Obligations` | CLAIMS §"The obligations endpoint", restated on structural runs | Obligations | proved in Solution |
+| `Consensus.Goldilocks.PersistsWith` (the `persists` row of the obligations for `goldilocksWith S`, at every vote binding) | `Statements/Obligations` | CLAIMS §"The obligations endpoint", the outage row, per vote binding | Obligations | proved in Solution |
 | `Consensus.Goldilocks.MeetsObligationsConstant`, `Consensus.Goldilocks.GoldilocksCorrectConstant` (on constant-fault runs) | `Milestones/Statements/Obligations/Constant` | CLAIMS §"The obligations endpoint" with `ObligationsSufficientOn` | Obligations | proved (corollary) |
 
 The additive headline `Consensus.Goldilocks.GoldilocksCorrectWithExcuses` keeps schedule and sleep as

@@ -12,8 +12,9 @@ public import ConsensusLean.Lemmas.Model.Excuses
 
 Each statement of `ConsensusLean/Statements/Review.lean` is proved by the existing theorem whose
 type it is, so the kernel checks the statement against that theorem's type; the Goldilocks
-obligations endpoint is proved by its milestone proof, and the headline `GoldilocksCorrect` by that
-proof and `ShapeObligations.correct`.
+obligations endpoint is proved by its milestone proof, the headline `GoldilocksCorrect` by that
+proof and `ShapeObligations.correct`, and the outage row at every vote binding `PersistsWith` by
+the binding-generic outage claim.
 This module is the comparator's solution
 module (`comparator.json`). The other Goldilocks milestones are proved lemmas, pinned by
 `ConsensusLeanTest/MilestoneAxioms.lean` (`docs/decisions.md`
@@ -45,6 +46,10 @@ theorem Consensus.Goldilocks.meetsObligations : Consensus.Goldilocks.MeetsObliga
 theorem Consensus.Goldilocks.goldilocksCorrect : Consensus.Goldilocks.GoldilocksCorrect :=
   fun S A V => Consensus.Shape.ShapeObligations.correct
     (Consensus.Goldilocks.Growing.meets_obligations S A).2 V
+
+/-- Goldilocks survives outages at every vote binding. -/
+theorem Consensus.Goldilocks.persistsWith : Consensus.Goldilocks.PersistsWith :=
+  Consensus.Goldilocks.Growing.persists_with
 
 /-- Goldilocks' full per-run behaviour, or a forgery, credential failure or
 inadmissible selection. Collisions excuse only `Holds`, never `HoldsAlways` rows;

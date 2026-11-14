@@ -481,11 +481,12 @@ detail in `TRUST.md`.
 
 ## Trusted surface and Challenge scope
 
-- **Challenge certifies exactly seven statements**: the five generic review statements
+- **Challenge certifies exactly nine statements**: the five generic review statements
   (`Review.ObligationsSufficient`, `ObligationsSufficientOn`, `RegimesRealizable`, `LogFaithful`,
   `HeldIffServed`), and the Goldilocks endpoint and headline, `MeetsObligations` and `GoldilocksCorrect`
-  (§"Adversary growth"). Reason: keep the trusted surface to the generic definition
-  of a correct protocol plus the one instance endpoint and its headline. The other Goldilocks milestones (M₁, FGStore, ACBase, ACSteps, Compose, Persist, Regimes,
+  (§"Adversary growth"), the headline's explicit-excuse form `GoldilocksCorrectWithExcuses`, and the
+  outage row at every vote binding, `PersistsWith`. Reason: keep the trusted surface to the generic definition
+  of a correct protocol plus the one instance endpoint and its headline forms. The other Goldilocks milestones (M₁, FGStore, ACBase, ACSteps, Compose, Persist, Regimes,
   Service, Healing) are means to the endpoint, not claims a reviewer must read.
   - They stay proved and built as ordinary lemmas, but are not comparator roots and not trusted: their statement
     modules, and every declaration of the instance Spec that only they reach (a compiled walk of the statement
@@ -521,6 +522,23 @@ detail in `TRUST.md`.
   `meets_obligations`), with their parameters and no further hypothesis, so it adds no trusted reach: every
   constant it mentions is already reached by those two statements. It states the protocol's correctness in one
   place, so a reader need not compose the two statements.
+- **The outage row is certified at every vote binding; the other rows stay at the population binding.**
+  `PersistsWith` states the `persists` claim of `ShapeClaimsAt`, verbatim, for the binding-generic family
+  `goldilocksWith S` at every `S : BoundSetup` (population-wide votes or a per-slot committee), at the same
+  contract `goldilocksContract A (contract_coefficients S A)`. `MeetsObligations` and `GoldilocksCorrect` are
+  unchanged: they quantify over `Setup` and read the population binding. Reason: the committee clauses of the
+  outage regime (the cohort inequality inside each committee selected in the band, committee sleepy
+  participation) come in addition to its population clauses and are its only binding-dependent premises, and
+  the outage proof is binding-generic; the healthy, sleepy and static rows are proved at the population binding
+  only. At the population binding every validator is selected, so the committee clauses coincide with the
+  population ones, and the statement is the stock `persists` field
+  (`Obligations.Test.Contract.claims_with_persistsWith`). A proper-subset committee binding,
+  `AsChainShape.Regression.committeeOne`, is `Obligations.Test.Contract.goldilocksWith_committeeOne`; its
+  outage regime has a clean witness whose committee is never the population
+  (`Obligations.Test.Contract.committeeOne_outage_witness`).
+  It adds no constant to the trusted reach (`goldilocks S` is `goldilocksWith ⟨S, stock⟩`, so `MeetsObligations`
+  already reaches every constant it mentions), but it makes the committee branches of `goldilocksWith` (vote
+  roles, own-role permission, threshold denominator) part of what a reviewer reads.
 - **The simulation interface and canonical trace are proof-side.** The Refinement simulation interface and the
   canonical trace construction are in the non-exposed `Lemmas/Simulation/{Interface,TraceDefs}`, with
   characterising lemmas for proof consumers; the digest adapter `dgOf` and the delivery relation `DeliverSeq` sit

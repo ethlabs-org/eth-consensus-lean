@@ -58,9 +58,11 @@ The definition also rules out vacuous protocols: a protocol that never sends any
 | Goldilocks' timing constants (catch-up, healing time, latency) | `goldilocksContract` in [`Instances/Goldilocks/Statements/Obligations.lean`](ConsensusLean/Instances/Goldilocks/Statements/Obligations.lean) |
 | the proofs | `ConsensusLean/Lemmas/`, `ConsensusLean/Proofs/`, `ConsensusLean/Instances/Goldilocks/Proofs/` |
 
-The certified result is seven Lean statements, listed in [`Challenge.lean`](Challenge.lean). The headline is `goldilocksCorrect`: Goldilocks is correct. The others support it:
+The certified result is nine Lean statements, listed in [`Challenge.lean`](Challenge.lean). The headline is `goldilocksCorrect`: Goldilocks is correct. The others support it:
 
 - `MeetsObligations`: Goldilocks meets the obligations;
+- `GoldilocksCorrectWithExcuses`: the headline on each single run, or an explicit binding failure (forgery, credential failure, inadmissible selection);
+- `PersistsWith`: Goldilocks' outage guarantee also holds when votes come from a per-slot committee rather than from all validators;
 - `ObligationsSufficient`: every chain shape that meets the obligations (`ShapeObligations`) is correct;
 - `ObligationsSufficientOn`: the same on a class of runs, in particular on constant faults, the static adversary at full strength;
 - `RegimesRealizable`: the regimes can actually occur, so the guarantees are not vacuous;

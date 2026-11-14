@@ -53,7 +53,8 @@ compiles alpha-equality, binder-kind and axiom pins. Primary statement: `Consens
 its form on a class of runs `ObligationsSufficientOn` (at constant faults, the static adversary at full strength);
 secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`. Challenge adds the Goldilocks endpoint and headline,
 `MeetsObligations` and `Consensus.Goldilocks.GoldilocksCorrect` (Goldilocks is a `CorrectProtocol` under the growing
-adversary), from `Instances/Goldilocks/Statements/Obligations.lean`.
+adversary), the headline's explicit-excuse form `GoldilocksCorrectWithExcuses`, and the outage row at every vote
+binding `PersistsWith`, from `Instances/Goldilocks/Statements/Obligations.lean`.
 
 **Changes are recorded, not gated.** Every non-merge commit that touches a trusted path carries a line
 `Trusted-surface: <what changes and why>`; `scripts/review-boundary.sh` (self-tested on throwaway repositories)

@@ -33,8 +33,10 @@ The time numbers (catch-up, heal, latency, arming lag, outage budget, no-sleep m
 delay) are coefficients of `ΔAC`, the node and the engine delay alike (`Δp = Δe`: L0 delivers
 strictly before the bound).
 
-**The certified pair** (`MeetsObligations`, `GoldilocksCorrect`): the endpoint and the headline,
-with `ObligationsSufficient`.
+**The certified statements**: the endpoint `MeetsObligations` and the headline `GoldilocksCorrect`
+(with `ObligationsSufficient`), the per-run headline `GoldilocksCorrectWithExcuses`, and the outage
+row at every vote binding, `PersistsWith`: the `persists` claim for the binding-generic family
+`goldilocksWith S` (population-wide or per-slot committee votes) at the same contract.
 
 Statements only: no proofs here. -/
 
@@ -197,6 +199,37 @@ def GoldilocksCorrectWithExcuses : Prop :=
     CorrectProtocolWithExcuses (Model.sysOf schema (compiled (goldilocks S)) V)
       (shapeProgress (goldilocks S) V) (goldilocksContract A (contract_coefficients S A))
       (fun r => r.2.StructuralValid) (fun r => r.2.BindingFailure)
+
+/-- **Goldilocks survives outages at every vote binding.** For every bound setup `S` (a setup
+with a vote binding: population-wide votes, or votes by a per-slot committee selected by the
+binding), every assumption set `A` (the FG delay in slots `fgSlots ≥ 2` and the timeout
+`3·fgSlots ≤ δ_t`) and every finite validator type `V`, the binding's family `goldilocksWith S`
+satisfies the `persists` claim of `ShapeClaimsAt`, verbatim, at the contract
+`goldilocksContract A (contract_coefficients S A)`: on every valid run in the outage regime
+`[b₀, b₁)` armed at `T`, the stable (`confirmed`) chain read at `T` by every node ready at `T` is a
+prefix of the resilience target (`available`, also `confirmed`) read by every node ready at any
+time from the recovery point `b₁ + 9·ΔAC` to the horizon, or a hash collision is observed. The
+outage regime's population clauses still apply: η-sleepy participation to the horizon, and the
+no-sleep window and the cohort inequality on `[outageStart, outageEnd]` on the view retained
+through `cohortAt`. Its committee clauses come in addition: inside each nonempty committee
+selected in the band `[b₀ − 2ΔAC, b₀ + (4k − 2)ΔAC]`, the cohort inequality on the retained view,
+and committee sleepy participation (η = 0 at this contract) throughout, look-ahead `5ΔAC`. At the
+population binding every validator is selected, so the committee clauses coincide with the
+population cohort and sleepy clauses, and the statement is the `persists` field of
+`MeetsObligations`. Only this row is stated per binding: the other rows of `MeetsObligations` and
+`GoldilocksCorrect` stay at the population binding. -/
+def PersistsWith : Prop :=
+  ∀ (S : BoundSetup) (A : ContractAssumptions S.toSetup) (V : Type) [Fintype V] [DecidableEq V],
+    ∀ g, schema.output .stable = some g → ∀ T b₀ b₁,
+      (Sys (goldilocksWith S) V).Holds ((Sys (goldilocksWith S) V).Outage
+        (shapeProgress (goldilocksWith S) V).toExternal
+        (goldilocksContract A (contract_coefficients S.toSetup A)) T b₀ b₁) fun r =>
+        (chainTrace r.2).ProtectedReadyFrom
+          ((Sys (goldilocksWith S) V).cDur
+            (goldilocksContract A (contract_coefficients S.toSetup A)) r)
+          g (resilienceTarget schema g) T
+          ((Sys (goldilocksWith S) V).recoveryAt
+            (goldilocksContract A (contract_coefficients S.toSetup A)) b₁ r)
 
 end Consensus.Goldilocks
 

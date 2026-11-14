@@ -4,5 +4,6 @@
                     "Consensus.Review.obligationsSufficientOn",
                     "Consensus.Goldilocks.meetsObligations",
                     "Consensus.Goldilocks.goldilocksCorrect",
-                    "Consensus.Goldilocks.goldilocksCorrectWithExcuses"],
+                    "Consensus.Goldilocks.goldilocksCorrectWithExcuses",
+                    "Consensus.Goldilocks.persistsWith"],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"] }

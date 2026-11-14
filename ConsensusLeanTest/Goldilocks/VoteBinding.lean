@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.AsChainShape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.VoteMember
 
 public section
 
@@ -15,7 +16,8 @@ shape.
 the slot's committee role and other poll bodies keep the poll role (`committeeOne_voteRole`,
 `committeeOne_candidateRole_vote`, `committeeOne_candidateRole_att`); initialization installs the
 own committee membership as the vote permission (`committeeOne_init_mayVote`), so a node outside
-the slot's committee emits no vote of that slot (`committeeOne_nonmember_silent`); every admissible
+the slot's committee emits no vote of that slot (`committeeOne_nonmember_silent`), at every cut of
+a valid engine run as well (`committeeOne_nonmember_silent_at`); every admissible
 committee has one key, the committee size, a proper subset of every population of two or more
 (`committeeOne_committeeSize`, `committeeOne_selected_proper`).
 -/
@@ -171,6 +173,26 @@ theorem committeeOne_nonmember_silent (S : Setup) (pub : Public) (hn : 1 ≤ pub
   have h := SA.emits_mayVote (S.ro pub.n) key _ Φ t c e he
   rw [hs, committeeOne_init_mayVote S pub hn key p s, hp] at h
   exact Bool.false_ne_true h
+
+/-- On a valid engine run, a node outside the slot-`s` committee emits no slot-`s` vote from its
+AC state at any cut of the run, at any call, frame and time: every handler keeps the installed
+permission (`Simulation.stateAt_mayVote`). -/
+theorem committeeOne_nonmember_silent_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, committeeOne⟩)) E)
+    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (v : V) (i : Nat) (s : Slot)
+    (hs : rho.ownKey v ∉ rho.sel (.duty s .vote))
+    (key : Fin (Fintype.card V)) (Φ : SA.Frm (Fintype.card V) (List (FG.Att (Fintype.card V))))
+    (t : Time)
+    (c : (SA.goldilocksSA (BoundSetup.params ⟨S, committeeOne⟩ (Model.pubOf E) hn)
+      (List (FG.Att (Fintype.card V))) (S.ro _)).Call) :
+    ∀ e ∈ ((SA.goldilocksSA (BoundSetup.params ⟨S, committeeOne⟩ (Model.pubOf E) hn)
+      (List (FG.Att (Fintype.card V))) (S.ro _)).step key
+        (Simulation.stateAt ⟨S, committeeOne⟩ rho hn v i).node.ac Φ t c).2,
+      e.msg.slot ≠ s := by
+  intro e he hes
+  have h := SA.emits_mayVote (S.ro _) key _ Φ t c e he
+  rw [hes, Simulation.stateAt_mayVote ⟨S, committeeOne⟩ rho hn hv v i] at h
+  exact hs (of_decide_eq_true h)
 
 /-- The committee size, the vote threshold denominator, is `1` at every nonempty population. -/
 theorem committeeOne_committeeSize (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) :

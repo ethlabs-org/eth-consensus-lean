@@ -13,8 +13,9 @@ the chain shape: slots, proposers, votes and a state machine, compiled to an L1 
 
 ## The headline statement
 
-`Challenge.lean` certifies seven statements: the five review statements below and, for Goldilocks, the endpoint
-and headline below. The headline is `Consensus.Goldilocks.GoldilocksCorrect`, from
+`Challenge.lean` certifies nine statements: the five review statements below and, for Goldilocks, the endpoint
+and headline below, the headline's explicit-excuse form `GoldilocksCorrectWithExcuses`, and the outage row at
+every vote binding `PersistsWith` (the endpoint's `persists` claim for `goldilocksWith S`, every `S : BoundSetup`). The headline is `Consensus.Goldilocks.GoldilocksCorrect`, from
 `ConsensusLean/Instances/Goldilocks/Statements/Obligations.lean` (in namespace `Consensus.Goldilocks`), together
 with the endpoint it composes:
 

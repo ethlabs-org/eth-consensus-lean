@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 public import ConsensusLean.Instances.Goldilocks.Proofs.Obligations.Main
 public import ConsensusLean.Proofs.RegimesRealizable.Main
 public import Solution
+public import ConsensusLeanTest.Goldilocks.VoteBinding
 @[expose] public section
 
 /-! # Witnesses for the Goldilocks acceptance coefficients
@@ -42,6 +43,12 @@ Labelled by kind (CONTRIBUTING "Statements"):
   `meetsObligations_realizable_small` gives its contract's active witnesses on five validators
   (`Shape.regimes_realizable` from `ShapeObligations`'s admissibility, progress-fit and tolerance
   fields).
+* (a) The outage row at every vote binding: `claims_with_persistsWith` (at the population binding
+  `PersistsWith` is the stock `persists` field), `goldilocksWith_committeeOne` (a committee
+  binding with a proper-subset committee, `Regression.committeeOne`), and its outage regime is
+  not vacuous: `committeeOne_realizable` (its regimes on five validators),
+  `committeeOne_selected_ne_univ` and `committeeOne_outage_witness` (a clean outage witness whose
+  committee is never the population).
 * The profile label is a restatement: `schema_profile` (the schema is Ebb-and-Flow, not BFT or
   available, decided on the schema alone), `meetsObligations_iff_unlabelled` (the endpoint is
   equivalent to the unlabelled obligations), and the rejections `not_obligationsAs_bft` and
@@ -351,6 +358,80 @@ theorem goldilocksCorrectWithExcuses_nonvacuous :
       fun c₁ c₂ g₁ g₂ hlt hg₁ hg₂ => hb.nested c₁ c₂ g₁ g₂ hlt hg₁ hg₂ r rfl,
       fun g hg => hb.finalMonotone g hg r rfl⟩
   · exact (hf he).elim
+
+/-! ## The outage row at every vote binding
+
+`PersistsWith` states the `persists` claim for `goldilocksWith S` at every bound setup. At the
+population binding it is the stock field (`claims_with_persistsWith`); at a committee binding it
+reads a genuine proper subset (`goldilocksWith_committeeOne`), and its outage regime has a clean
+witness whose committee is a proper subset at every time (`committeeOne_realizable`,
+`committeeOne_selected_ne_univ`, `committeeOne_outage_witness`). -/
+
+/-- (a) At the population binding `PersistsWith` supplies the `persists` field of the stock claims
+verbatim: the stock claims with that field replaced by `persistsWith ⟨S, stock⟩` elaborate. -/
+theorem claims_with_persistsWith (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V]
+    [DecidableEq V] :
+    ShapeClaimsAt (goldilocks S) (goldilocksContract A (contract_coefficients S A)) V :=
+  { (Consensus.Goldilocks.meetsObligations S A).2.claims V with
+    persists := Consensus.Goldilocks.persistsWith ⟨S, stock⟩ A V }
+
+/-- (a) The committee case of `PersistsWith` is not the population case: at `committeeOne` the
+family signs votes in the committee role selected `.sized 1`, and the SA committee size (the vote
+threshold denominator) is `1`, a proper subset of every population of at least two validators. -/
+theorem goldilocksWith_committeeOne (S : Setup) (pub : Model.Public) (hn : 2 ≤ pub.n) :
+    (goldilocksWith ⟨S, Regression.committeeOne⟩ pub).skel.participationKind =
+        some VoteKind.vote ∧
+      (goldilocksWith ⟨S, Regression.committeeOne⟩ pub).skel.kindSel VoteKind.vote = .sized 1 ∧
+      (S.params pub (by omega) Regression.committeeOne).committeeSize = 1 ∧
+      (S.params pub (by omega) Regression.committeeOne).committeeSize < pub.n := by
+  have h := Regression.committeeOne_committeeSize S pub (by omega)
+  exact ⟨rfl, rfl, h, by omega⟩
+
+/-- (a) The committee binding's regimes are realizable on at least five validators, the outage
+regime with its committee clauses included (`Shape.regimes_realizable`). The contract's
+admissibility and tolerance are the stock ones; its progress fit is `rfl` at every binding (the
+proposer selection is `.sized 1`). -/
+theorem committeeOne_realizable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V]
+    [DecidableEq V] (hn : 5 ≤ Fintype.card V) :
+    RealizableActive (goldilocksWith ⟨S, Regression.committeeOne⟩) (K S A) V :=
+  regimes_realizable _ _ (meetsObligations_admissible S A) (fun _ _ _ _ => rfl)
+    (meetsObligations_progressTolerant S A) V hn
+
+/-- (a) On every valid run of the committee binding on at least two validators, the committee the
+outage regime reads (`External.selected`, the slot's vote committee) is not the whole population at
+any time: the committee clauses are not the population clauses. -/
+theorem committeeOne_selected_ne_univ (S : Setup) (V : Type) [Fintype V] [DecidableEq V]
+    (hn : 2 ≤ Fintype.card V) (r : (Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) V).Run)
+    (hv : (Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) V).Valid r) (t : Time) :
+    (shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) V).toExternal.selected
+      ((Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) V).pt r).env
+      ((shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) V).toExternal.ext r) t ≠
+      Finset.univ := by
+  intro h
+  have hc (s : Slot) : (r.2.sel (.duty s VoteKind.vote)).card = min 1 (Fintype.card V) :=
+    hv.selValid (.duty s VoteKind.vote)
+  have hcard := congrArg Finset.card h
+  change ((r.2.sel (.duty _ VoteKind.vote)).map r.2.key.toEmbedding).card = _ at hcard
+  rw [Finset.card_map, hc, Finset.card_univ] at hcard
+  omega
+
+/-- (a) **The committee outage regime is not vacuous**: on five validators, at `Δ = ΔF = 2`, a
+clean witness of the committee binding lies in the outage regime of the obligations contract,
+and its committee is a proper subset at every time. -/
+theorem committeeOne_outage_witness (S : Setup) (A : ContractAssumptions S) :
+    ∃ r T b₀ b₁,
+      (Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).WitnessAt 2 2 r ∧
+      (Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).Outage
+        (shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).toExternal
+        (K S A) T b₀ b₁ r ∧
+      ∀ t, (shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).toExternal.selected
+        ((Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).pt r).env
+        ((shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).toExternal.ext r)
+        t ≠ Finset.univ := by
+  obtain ⟨r, T, b₀, b₁, hw, ho, -, -⟩ :=
+    (committeeOne_realizable S A (Fin 5) (by decide)).outage 2 2 0 (by decide) (by decide)
+  exact ⟨r, T, b₀, b₁, hw, ho,
+    committeeOne_selected_ne_univ S (Fin 5) (by decide) r hw.1.1⟩
 
 /-! ## The profile label
 
