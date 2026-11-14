@@ -237,13 +237,23 @@ theorem trace_mayVote {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
       rw [hs]
       exact ih
 
-/-- Stock traces retain the always-permitted initial binding. -/
+/-- **The read-time gate**: on a trace from the canonical committee start, an honest node may
+vote in slot `s` at a cut iff it is a member of the slot-`s` committee. -/
+theorem trace_mayVote_iff {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {K : CommitteeDict sp.n}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr (committeeStart sp.genesisRoot K))
+    {y : Fin sp.n} (hy : y ∈ H) (i s : Nat) :
+    (tr.state y i).mayVote s = true ↔ y ∈ K.committee s := by
+  rw [trace_mayVote hr hy i, committeeStart_mayVote]
+
+/-- Stock traces retain the always-permitted initial binding: the gate at the full committee,
+whose canonical start is the stock one (`committeeStart_full`). -/
 theorem trace_mayVote_stock {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
     (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H)
-    (i s : Nat) : (tr.state y i).mayVote s = true := by
-  rw [trace_mayVote hr hy i]
-  rfl
+    (i s : Nat) : (tr.state y i).mayVote s = true :=
+  (trace_mayVote_iff (K := CommitteeDict.full sp.n) (by rw [committeeStart_full]; exact hr) hy
+    i s).2 (Set.mem_univ y)
 
 /-! ## The emission gate -/
 
