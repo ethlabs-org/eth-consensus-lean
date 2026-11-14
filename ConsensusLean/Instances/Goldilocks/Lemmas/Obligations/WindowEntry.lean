@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowUnanimous
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowParents
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OperationalReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Live
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High

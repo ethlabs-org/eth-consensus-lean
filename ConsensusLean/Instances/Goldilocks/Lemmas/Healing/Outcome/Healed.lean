@@ -5,21 +5,12 @@ public section
 
 /-! # Goldilocks Healing: the record half of the Healed bundle
 
-For `healed` and `record_premises_on_C`. The paper derives C2*⁺ (i), (ii) and R0 from the
-clean-height premise CH. Under the reset they hold without CH at every height `h ≥ H_z + 1`, for
-the entry `E h` of the high chain at `h` (`HighEntry`: a block below a high origin, held by an
-honest node, whose state has height `h` and entry `E h` itself):
-
-* C2*⁺ (i), attestations: every honest attestation at `h` names `E h` (`high_row_entry`);
-* C2*⁺ (ii), locks: every honest `Λ.lock[h]` is `⊥` or `E h`
-  (`ResetPremisesUpTo.high_lock_entry_of_upTo`);
-* R0: `permits(Λ, h, E h)` at every cut (`permits_high_entry`).
-
-`HealedRecords` collects them from a height `h₀` on, with RH (`H_z + 1 ≤ h₀`).
-`healed_records_of_reset_canonical_upTo` proves it from `ResetPremisesUpTo`, RH, and the high
-entries at the heights `≥ h₀`. RH and the high entries are explicit: in the paper they come from CH
-(iii) and from the lemma that gives the AC components C3 and C4 (the fields `Healed.c3` and
-`Healed.c4` of `Obligations.Healed`), conditional on CH and a further paper premise. -/
+The vocabulary only. `HighEntry … h Z`: `Z` is an entry of the high chain at height `h` (a block
+below a high origin, held by an honest node whose state has height `h` and entry `Z`).
+`HealedRecords … h₀ E` collects, for the entries `E h`, C2*⁺ (i) (every honest attestation at a
+height `h ≥ h₀` names `E h`), C2*⁺ (ii) (every honest `Λ.lock[h]` with `h ≥ h₀` is `⊥` or `E h`)
+and R0 (`permits(Λ, h₀, E h₀)` at every cut), with RH (`H_z + 1 ≤ h₀`). The paper derives
+C2*⁺ (i), (ii) and R0 from the clean-height premise CH. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -36,41 +27,6 @@ structure HighEntry (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time)
   origin : ∃ x i j B, HighOrigin tr H g x i j B ∧ Anc (tr.HonestBlocks H) Z B
   held : ∃ z ∈ H, ∃ m, Z ∈ (tr.state z m).fg.tree ∧ ((tr.state z m).fg.σ Z.root).h = h ∧
     ((tr.state z m).fg.σ Z.root).Th = Z.root
-
-/-- **C2*⁺ (i) under the reset (bounded form).** An honest attestation at a height `h ≥ H_z + 1`,
-signed by the horizon `b`, names the entry of the high chain at `h`. -/
-theorem ResetPremisesUpTo.high_row_entry {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {v : Fin sp.n} (hv : v ∈ H)
-    {d : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hdb : tr.time d ≤ b)
-    (hh : HZ tr H g + 1 ≤ att.h)
-    {xo : Fin sp.n} {io jo : Nat} {B E : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g xo io jo B) (hiob : tr.time io ≤ b)
-    (hEB : Anc (tr.HonestBlocks H) E B) {z : Fin sp.n} (hz : z ∈ H) {m : Nat}
-    (hE : E ∈ (tr.state z m).fg.tree) (hEh : ((tr.state z m).fg.σ E.root).h = att.h)
-    (hET : ((tr.state z m).fg.σ E.root).Th = E.root) : att.T = E.root := by
-  obtain ⟨q, hqd, l, O, hO, X, hX, hXO, hXr, hXh, hXT⟩ := hp.high_row_source hv hs hh
-  exact hXr.symm.trans (hp.high_entry_eq hO ((hp.run.time_mono hqd.le).trans hdb) ho hiob
-    (hXO.mono fun D hD => ⟨v, hv, q, hD⟩) hEB hv hz hX hE (hXh.trans hEh.symm) hXT hET)
-
-/-- **R0 under the reset (bounded form).** At a cut by the horizon `b`, an honest record permits
-the entry of the high chain at every height `h ≥ H_z + 1`. -/
-theorem ResetPremisesUpTo.permits_high_entry {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {y : Fin sp.n} (hy : y ∈ H)
-    {i h : Nat} (hib : tr.time i ≤ b) (hh : HZ tr H g + 1 ≤ h)
-    {xo : Fin sp.n} {io jo : Nat} {B E : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g xo io jo B) (hiob : tr.time io ≤ b)
-    (hEB : Anc (tr.HonestBlocks H) E B) {z : Fin sp.n} (hz : z ∈ H) {m : Nat}
-    (hE : E ∈ (tr.state z m).fg.tree) (hEh : ((tr.state z m).fg.σ E.root).h = h)
-    (hET : ((tr.state z m).fg.σ E.root).Th = E.root) :
-    (tr.state y i).record.permits h E.root := by
-  have key := fun r hr => hp.record_entry_eq hy (r := r) hib hh hr ho hiob hEB hz hE hEh hET
-  refine ⟨?_, fun r hr => Finset.mem_singleton.2 (key r (Or.inr (Or.inl hr))), ?_⟩
-  · rcases ht : (tr.state y i).record.target h with _ | r
-    · exact Or.inl rfl
-    · exact Or.inr (by rw [key r (Or.inl ht)])
-  · rcases hl : (tr.state y i).record.lock h with _ | r
-    · exact Or.inl rfl
-    · exact Or.inr (by rw [key r (Or.inr (Or.inr hl))])
 
 /-- **The record half of the Healed bundle** from the height `h₀` on, for the entries `E h` of
 the chain: RH, C2*⁺ (i) attestations, C2*⁺ (ii) locks, and R0 at `h₀`. -/

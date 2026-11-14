@@ -5,7 +5,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Candidate
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Sources
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Reader
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
@@ -14,7 +13,7 @@ public section
 
 /-! # Outage under growing faults: consumers of the invariant at a reader
 
-The growing-fault forms of the reader part of `Obligations/OutageLockSafety/Reader`, for a node
+Consumers of the lock invariant at a reader, for a node
 read at a time `t ≥ 0` at which it is honest, after every cut before the cut read (`_by`), and
 at the cut's own time (`_at`):
 
@@ -27,6 +26,40 @@ at the cut's own time (`_at`):
   `2 f_t < n` at the read time.
 
 The read-point form of (i) at a cast is in `Outage/S5Step`. -/
+
+namespace Consensus.Goldilocks.Compose
+
+open SA (SAParams ReplayOrder Payload Vote)
+
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+
+/-- **The lock invariant at every honest cut**, in the cut's own frame: the stored record names a
+block of the node's tree above every stored lock block (`lockInv_of_reachable` at the last AC
+call, or none at the initial state), and the record is in the frame once `Σ.F` is below it. -/
+theorem lockInv_state {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) (m : Nat) :
+    SA.LockInv (tr.HonestBlocks H) (tr.state y m).ac (Node.frame (tr.state y m)) := by
+  have hr := (goldilocks_ac_projection_from hrun hnc).localRun
+  have hU := hr.coherent
+  have hst := projAC_state hrun.toLocalRun hy m
+  obtain ⟨E, hEt, hEr, -⟩ := record_origin hrun hnc hy m
+  have hEU : E ∈ tr.HonestBlocks H := ⟨y, hy, m, hEt⟩
+  refine SA.lockInv_iff.2 ⟨E, hEU, hEr,
+    fun hFE => ⟨hEt, honest_held_anc hrun hnc hy hFE hEt⟩, fun l hl X hX hXr => ?_⟩
+  rw [← hst] at hl
+  rcases SA.state_reachable sp hr hy m with h0 | ⟨Φ, t, hreach, -⟩
+  · obtain ⟨_, hs⟩ := SA.voteStart_iff.1 (hrun.vstart y)
+    rw [h0, hs] at hl
+    exact absurd hl (Set.notMem_empty l)
+  · obtain ⟨-, -, hli⟩ := SA.lockInv_of_reachable_from hU (hrun.vstart y) hreach
+    obtain ⟨E', hE'U, hE'r, -, hlE⟩ := SA.lockInv_iff.1 hli
+    obtain rfl : E' = E := hU.1 hE'U hEU (hE'r.trans (by rw [hst]; exact hEr.symm))
+    exact hlE l hl X hX hXr
+
+end Consensus.Goldilocks.Compose
 
 namespace Consensus.Goldilocks.Compose.Growing
 

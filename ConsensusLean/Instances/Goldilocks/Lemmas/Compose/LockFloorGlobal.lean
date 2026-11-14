@@ -43,15 +43,6 @@ theorem floor_frame_transport {ini} (hrun : GoldilocksRun proposer dg H tr ini) 
   have h1 : Anc (tr.state y i').fg.tree B₀ B := (h.mono fun X hX => hX.1).mono hsub
   exact ⟨⟨hsub hB.1, hB0.2.trans h1⟩, Anc.restrict hB0.2 h1⟩
 
-/-- **Frame-tree membership** (N2): a block of an honest tree at cut `i` is in the frame's tree
-at a later cut `j` when it is at or above the finalized block there. -/
-theorem frame_mem_of_tree (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
-    {i j : Nat} (hij : i ≤ j) {B₀ : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hB0 : B₀ ∈ (tr.state y i).fg.tree)
-    (hF : (tr.state y j).fg.Anc (tr.state y j).fg.F B₀) :
-    B₀ ∈ (tr.state y j).fg.toFrame.tree :=
-  ⟨tree_mono hrun.toLocalRun hy hij hB0, hF⟩
-
 /-- **The floor over one cut.** At an honest `y`, cut `i`: the floor, no expiry, `B₀` in the
 trees at `i` and `i + 1` and its own viable ancestor at `i`, and `unlock` at the AC call's view
 keeping `B₀` (or `slot(t_i) − 1 ≤ j`) give the floor at `i + 1`. -/

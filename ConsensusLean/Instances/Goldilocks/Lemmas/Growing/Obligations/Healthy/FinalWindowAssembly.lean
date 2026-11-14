@@ -3,7 +3,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.AnchorStepsGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HSSharedOfQuery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalDutyProposal
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalWindowAssembly
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalQueryTiming
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -11,7 +10,7 @@ public section
 
 /-! # Assembly of the route-A final window, under growing faults
 
-The growing form of `Obligations/FinalWindowAssembly`:
+The route-A final window on the canonical growing trace:
 
 * `final_latency_gap_at`: the final latency budget covers a window of span `3c` at the FG gap
   `c = fgSlots` and one node delay;

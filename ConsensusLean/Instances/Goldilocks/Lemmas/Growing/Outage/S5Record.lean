@@ -12,7 +12,7 @@ public section
 
 /-! # Outage under growing faults: the early record
 
-The growing-fault form of `Obligations/OutageS5/Record`. An update of the first restored label
+An update of the first restored label
 `r` by a node honest at it makes its effective record a block above `P` at every later cut read
 at a time at which the node is honest (`record_above_of_update_r_by`; at the cut's own time,
 `record_above_of_update_r_at`):

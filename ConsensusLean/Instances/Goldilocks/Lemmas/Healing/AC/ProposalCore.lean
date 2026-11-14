@@ -912,7 +912,7 @@ theorem update_first_proposal (hrun : ACRun proposer tr H U)
               (hprop := by rwa [acProposal_eq_acProposalWith_slot hslot] at hprop) (hV := hV)
                   (hP := hP) (hW := hW) (hhigh := hhigh)
 
-/-- `optimistic_first_proposal_stored` with the unlock given. -/
+/-- The first proposal after an optimistic write is stored, with the unlock given. -/
 theorem optimistic_first_proposal_storedU
     {uL : Nat → Set Lock} (hrun : ACRunU wm uL proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat} {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
@@ -973,66 +973,6 @@ theorem optimistic_first_proposal_storedU
     (proposal_locksU hr hx hc hV.1 hL (Or.inl ⟨SX, fun w hw => (hcover hw).symm, by omega⟩) hhigh)
     fun X' Cx hCx hp hCxD => isBest_of_cover hΦ (ofLists_support_subset _ _ _ _)
       (fun _ h => h.1) hcover h3 hCx hp hCxD
-
-/-- Optimistic proposal transfer for an ancestor B of the selected block D. -/
-theorem optimistic_first_proposal_stored (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
-    {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat} {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    (hopt : OptimisticLockAt tr X i₀ σ D CV) {B : Blk sp.n FGP} (hBD : Anc U B D)
-    {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
-    (hslot : sp.slot (tr.time i) = σ + 1) {d : DutyHead sp.n FGP (Payload sp.n)}
-    {pay : Payload sp.n}
-    (hprop : (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay))
-    (hV : B ∈ ℓ.frame.tree ∧
-      (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot))
-    (hP : ∀ v ∈ CV, HeldAtProposal (tr.state x i) ℓ.frame σ v)
-    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B)
-    (hstock : sp.committeeSize = sp.n) :
-    Anc U B d.head :=
-  optimistic_first_proposal_storedU (hrun := hrun.toU) (hf := hf) (X := X) (hX := hX) (i₀ := i₀)
-      (σ := σ) (D := D) (CV := CV) (hopt := hopt) (B := B) (hBD := hBD) (x := x) (hx := hx)
-          (i := i) (ℓ := ℓ) (hc := hc)
-      (hL := unlockRel_unlock (frameIn_of_callAt hrun.localRun hx hc).1 _ _ _ _) (hslot := hslot)
-          (d := d) (pay := pay) (hprop := by rwa [acProposal_eq_acProposalWith_slot hslot] at hprop)
-              (hV := hV) (hP := hP) (hhigh := hhigh) (hstock := hstock)
-
-/-- Two actual optimistic selections of the same slot are compatible, by honest
-quorum overlap and one vote per slot. No delivery or head-viability premise is used. -/
-theorem optimisticLock_pair_compatible (hrun : ACRun proposer tr H U)
-    (hf : 2 * Hᶜ.ncard < sp.n)
-    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {i j s : Nat}
-    {D E : Blk sp.n FGP} {CV CW : Set (Vote sp.n)}
-    (hd : OptimisticLockAt tr x i s D CV) (he : OptimisticLockAt tr y j s E CW)
-    (hstock : sp.committeeSize = sp.n) : Compatible U D E := by
-  have hr := hrun.localRun
-  obtain ⟨-, hnD, ellD, A, hpD, -, hvD, hhD, -⟩ :=
-    optimisticLockAt_spec hrun hx hd (CommitteeDict.full sp.n) (fun _ _ _ => mem_full _ _)
-  obtain ⟨-, hnE, ellE, A', hpE, -, hvE, hhE, -⟩ :=
-    optimisticLockAt_spec hrun hy he (CommitteeDict.full sp.n) (fun _ _ _ => mem_full _ _)
-  rw [hstock] at hnD hnE
-  have hi := Set.ncard_inter_add_ncard_union (voters CV) (voters CW)
-  have hu := Set.ncard_le_ncard (Set.subset_univ (voters CV ∪ voters CW))
-  rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hu
-  obtain ⟨w, ⟨⟨v, hv, hvw⟩, v', hv', hv'w⟩, hw⟩ :=
-    Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
-      (t := voters CV ∩ voters CW) (by omega)
-  have hw : w ∈ H := not_not.mp hw
-  obtain ⟨a, -, ev, hev, hevv⟩ := hhD v hv (hvw ▸ hw)
-  obtain ⟨b, -, ev', hev', hevv'⟩ := hhE v' hv' (hv'w ▸ hw)
-  have heqv : v = v' := by
-    have hvval : v.val = v'.val := hvw.trans hv'w.symm
-    have heq := (one_vote_per_slot sp) FGP ro H U tr hr v.val (hvw ▸ hw)
-      a b ev ev' (by simpa only [← hevv] using hev)
-      (by simpa only [← hevv', hvval] using hev')
-      (by rw [hevv, hevv', (hvD v hv).2.1, (hvE v' hv').2.1])
-    exact hevv.symm.trans ((congrArg (fun e : Em sp FGP => e.msg) heq.2).trans hevv')
-  obtain ⟨R, hR, hRr, hDR⟩ := (hvD v hv).2.2
-  obtain ⟨R', hR', hR'r, hER'⟩ := (hvE v' hv').2.2
-  have hDU := (frameIn_of_callAt hr hx hpD.1).2
-  have hEU := (frameIn_of_callAt hr hy hpE.1).2
-  obtain rfl : R' = R := hr.coherent.1 (hEU hR') (hDU hR)
-    (hR'r.trans ((congrArg Vote.head heqv).symm.trans hRr.symm))
-  exact anc_total hr.coherent (hDR.mono hDU) (hER'.mono hEU)
 
 /-- `optimistic_first_proposal` with the unlock given. -/
 theorem optimistic_first_proposalU

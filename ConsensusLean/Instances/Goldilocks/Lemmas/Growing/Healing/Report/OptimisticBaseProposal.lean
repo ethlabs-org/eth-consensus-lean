@@ -18,8 +18,7 @@ public section
 
 /-! # The optimistic first-proposal base under growing faults
 
-The growing form of `Healing.optimistic_next_proposal_of_early_witness`
-(`Healing/OptimisticBase`): an actual optimistic write of slot `s` by a node honest at its write,
+An actual optimistic write of slot `s` by a node honest at its write,
 with an early-held floor witness of the prefix `X`, puts `X` below the duty head of every honest
 proposal of slot `s + 1`. The writer, the witness holder and the proposer are honest at their own
 cuts only, and the proposer's restarts are bounded by its proposal's joinedness, not by a

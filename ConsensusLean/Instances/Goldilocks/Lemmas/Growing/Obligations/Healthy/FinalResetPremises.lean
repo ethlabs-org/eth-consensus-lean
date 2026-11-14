@@ -15,12 +15,11 @@ public section
 
 /-! # The reset premises and the placement of a final query, under growing faults
 
-The growing form of `Obligations/FinalResetPremises`, with each node honest at its own cut and
-the fault bound per time:
+Each node is honest at its own cut and the fault bound is per time:
 
-* `final_query_gap_at` (`final_query_gap`): the honest-proposer gap of a final query, as the
+* `final_query_gap_at`: the honest-proposer gap of a final query, as the
   kernel's `ProposalGap` (the designated proposer honest through its slot's hold);
-* `final_reset_premises_of_shared_at` (`final_reset_premises_of_shared`): from the shared HS
+* `final_reset_premises_of_shared_at`: from the shared HS
   premises at a forwarding delay `ΔF` and the final pattern `[0, c, 2c, 3c]` with `2 ≤ c` and
   `3c ≤ δ_t`, a reset `a` with its finite premises through the horizon and the placement;
 * `final_reset_premises_at`: its instance at the FG gap `c = fgSlots` and the protocol FG delay.

@@ -17,8 +17,8 @@ public section
 
 /-! # Engine output transport under growing faults
 
-The growing-fault forms of the static engine transports `engine_outputValid`, `engine_nested`
-and `engine_finalMonotone`, without a constant-fault premise. An engine reader honest at its
+The engine output transports (validity, nesting and final monotonicity), without a
+constant-fault premise. An engine reader honest at its
 engine cut `i` is read at the trace cut `cutMap i`. Every trace cut before it is at a time no
 later than `rho.cutTime i` (`cutMap_time_le`), so the prefix of the canonical trace through
 `rho.cutTime i` is a static run for the keys honest then (`prefix_reader_at`), and the static
@@ -130,8 +130,8 @@ theorem held_att_in_view_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (
     exact List.mem_append_left _ (List.mem_map.mpr ⟨a, ha, rfl⟩)
 
 /-- **R.8 output validity under growing faults.** Every read of a node honest at its engine cut
-is linked, has increasing positions and proposal-role provenance. The growing form of
-`engine_outputValid`: the static argument on the reader's prefix run. -/
+is linked, has increasing positions and proposal-role provenance, by the static argument on the
+reader's prefix run. -/
 theorem engine_outputValid_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
     (rho : Model.Run (compiled (goldilocks S)) E)
     (hv : rho.ExecutionValid)

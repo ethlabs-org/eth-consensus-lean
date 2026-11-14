@@ -20,15 +20,14 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTransport
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Concrete
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
 /-! # Final healthy liveness under growing faults (route A)
 
-The growing form of the final branch of `Obligations/Concrete`
-(`meetsObligations_healthyLive_final`): a final query has a window of four honest anchors with its
+The final branch of the obligations proof (`meetsObligations_healthyLive_final_growing`): a
+final query has a window of four honest anchors with its
 run premises and anchor steps (`final_window_extract_at`), whose first anchor is covered by the
 finalized cache of every node ready from the deadline (`final_cache_coverage_at`); the payload
 projection (`final_payload_projection_at`) turns that into the shape's proposal liveness.

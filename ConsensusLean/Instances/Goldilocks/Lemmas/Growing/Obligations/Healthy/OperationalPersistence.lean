@@ -12,8 +12,7 @@ public section
 
 /-! # Persistence of a bounded operational proposal, under growing faults
 
-The growing form of `Obligations/OperationalPersistence` and of the C4 wrappers of
-`Obligations/HealedUpTo`:
+The persistence of a bounded operational proposal and the C4 wrappers:
 
 * `UpTo.operational_proposal_below_later_parent_at`: a post-drain operational proposal of slot
   `u`, by its proposer honest through `t_u + hold`, is an honest ancestor of the duty head of every

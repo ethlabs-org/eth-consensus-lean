@@ -39,9 +39,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : 
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
-/-- **The attestation at a high report** (as `row_or_high_of_report` in `M1/Rise`, with the lock
-clause from high-record uniqueness instead of the frame kind). An honest report `R ⪰ P` at cut `i`,
-`P` high: `y` signed the attestation `(σ[P].h, σ[P].T_h)` by `t_i`, or `σ[R].h > σ[P].h`. -/
+/-- **The attestation at a high report** (with the lock clause from high-record uniqueness). An
+honest report `R ⪰ P` at cut `i`, `P` high: `y` signed the attestation `(σ[P].h, σ[P].T_h)` by
+`t_i`, or `σ[R].h > σ[P].h`. -/
 private theorem row_of_high_report (hp : ResetPremises tr H proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     {R P : SA.Blk sp.n (List (FG.Att sp.n))} (hR : SA.ToFGAt tr.projAC y i ell R)

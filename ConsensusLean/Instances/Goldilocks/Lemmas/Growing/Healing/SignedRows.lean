@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalSignedUpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalCrosses
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -8,9 +8,9 @@ public section
 
 /-! # Signed rows at an honest proposal, under growing faults
 
-The growing forms of `Healing/ProposalSignedUpTo`. The proposer is honest at its proposal cut
-and read on the prefix through it; each signer is honest at its signing, which is all the delivery
-of its row (`ResetService.signedRow`) and its validity need:
+The justification from signed attestations under growing faults. The proposer is honest at its
+proposal cut and read on the prefix through it; each signer is honest at its signing, which is all
+the delivery of its row (`ResetService.signedRow`) and its validity need:
 
 * `justify_of_signed_rows'_upTo_at`: a quorum of target rows signed by `v` justifies the height
   of the parent's state at the proposal;

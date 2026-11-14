@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorGlobal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepGlobal
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Service
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -10,8 +9,9 @@ public section
 
 /-! # Outage lock safety under growing faults: the premise package and the cut invariant
 
-The vocabulary of `Obligations/OutageLockSafety/Defs` for a time-indexed honest set
-`H : Time → Set (Fin n)`. Every node quantifier reads honesty at the cut of the event it
+The outage lock-safety argument at trace level, for a time-indexed honest set
+`H : Time → Set (Fin n)`. `VoteCompat U v B`: the head of the vote `v` is a block of `U`
+compatible with `B`. Every node quantifier reads honesty at the cut of the event it
 constrains (`HVoteAt`, `y ∈ H (tr.time k)` for the state at cut `k`).
 
 * `OutageLockPremises`: the premise package. The cohort is retained at the window end `z`
@@ -35,6 +35,35 @@ constrains (`HVoteAt`, `y ∈ H (tr.time k)` for the state at cut `k`).
   whose vote does not extend `B`).
 
 The receiver service after GST, `ReceiverServiceAfterAt`, is in `Outage/Service`. -/
+
+namespace Consensus.Goldilocks.Compose
+
+open SA (SAParams ReplayOrder Payload Vote)
+
+
+section VoteCompat
+
+variable {FGP : Type} {n : Nat}
+
+/-- The head of the vote `v` is a block of `U` compatible with `B` (the form of `OutageS5StepAt`:
+regression votes with head below `B` satisfy it). -/
+def VoteCompat (U : Set (SA.Blk n FGP)) (v : Vote n) (B : SA.Blk n FGP) : Prop :=
+  ∃ Hd ∈ U, Hd.root = v.head ∧ Compatible U Hd B
+
+theorem voteCompat_iff {U : Set (SA.Blk n FGP)} {v : Vote n} {B : SA.Blk n FGP} :
+    VoteCompat U v B ↔ ∃ Hd ∈ U, Hd.root = v.head ∧ Compatible U Hd B :=
+  Iff.rfl
+
+/-- A vote that extends `B` is compatible with it. -/
+theorem _root_.Consensus.Goldilocks.SA.VoteExtends.voteCompat {sp : SAParams}
+    {U : Set (SA.Blk sp.n FGP)} {v : Vote sp.n} {B : SA.Blk sp.n FGP}
+    (h : SA.VoteExtends U v B) : VoteCompat U v B :=
+  let ⟨Hd, hHd, hr, hB⟩ := h
+  ⟨Hd, hHd, hr, Or.inr hB⟩
+
+end VoteCompat
+
+end Consensus.Goldilocks.Compose
 
 namespace Consensus.Goldilocks.Compose.Growing
 

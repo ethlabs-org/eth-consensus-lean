@@ -11,8 +11,7 @@ public section
 
 /-! # The shared HS premises of a healthy run under growing faults
 
-The growing form of `Obligations/HSSharedRun` and `HSSharedOfQuery`, on the canonical growing
-trace with the time-indexed honest keys:
+The shared HS premises on the canonical growing trace with the time-indexed honest keys:
 
 * `hsSharedUpTo_of_rows_at`: the shared HS premises through the horizon at a parametric `Δ_F`,
   from attestation service at `Δ_F`. The fault bound holds at every `t ∈ [0, horizon]` since

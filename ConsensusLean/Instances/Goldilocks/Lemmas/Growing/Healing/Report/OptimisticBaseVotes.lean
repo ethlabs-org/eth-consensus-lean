@@ -11,8 +11,7 @@ public section
 
 /-! # The optimistic next-vote base under growing faults
 
-The growing form of `Healing.optimistic_next_votes_of_early_witness` (`Healing/OptimisticBase`):
-an actual optimistic write of slot `s` by a node honest at its write, with an early-held
+An actual optimistic write of slot `s` by a node honest at its write, with an early-held
 floor witness of the prefix, makes every next-slot vote of a node honest at its cast extend the
 prefix. The witness/relay induction is the common `next_votes_of_early_witness_at`; the
 lock-specific step carries the writer's counted votes to the voter (`carry_of_service_senders`

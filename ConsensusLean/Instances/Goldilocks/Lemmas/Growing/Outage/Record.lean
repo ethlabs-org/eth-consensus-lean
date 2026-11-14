@@ -12,15 +12,14 @@ public section
 
 /-! # Outage under growing faults: the record from a restored update (`record_above_from_at`)
 
-The growing-fault form of `Obligations/OutageLockSafety/Record`. After an update of a restored
-label `m ≥ r` by a node honest at it, whose result extends `P`, the updater's effective record
-extends `P` at every later cut `i` read at a time `t` at which the updater is honest (every cut
-before `i` at a time `≤ t`). The argument is the static one on the prefix through `t` with the
-honest set `H t`: the record interval after the update (`record_interval_upTo`: the writes come
-from results of labels `≥ r`, compatible with `P` by (R), and from optimistic selections,
-compatible with `P` by `fastLock_compatible_at`; `Σ.F` is compatible with `P` by OB-F), and the
-veto case of `late_reader_record_cover`, the live locks being compatible with `P` by (i). Each
-compatibility comes into the prefix from the blocks held while honest (`compatible_upTo`). -/
+After an update of a restored label `m ≥ r` by a node honest at it, whose result extends `P`, the
+updater's effective record extends `P` at every later cut `i` read at a time `t` at which the
+updater is honest (every cut before `i` at a time `≤ t`). The argument runs on the prefix through
+`t` with the honest set `H t`: the record interval after the update (`record_interval_upTo`: the
+writes come from results of labels `≥ r`, compatible with `P` by (R), and from optimistic
+selections, compatible with `P` by `fastLock_compatible_at`; `Σ.F` is compatible with `P` by OB-F),
+and the veto case of `late_reader_record_cover`, the live locks being compatible with `P` by (i).
+Each compatibility comes into the prefix from the blocks held while honest (`compatible_upTo`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -106,7 +105,7 @@ private theorem record_interval_upTo (hinv : ∀ i, OutageLockInv D i) {y : Fin 
     rw [hst1]
     exact (down _ hF ((hinv (q + 1)).caches y (q + 1) t le_rfl ht0 hq1 hy).1).symm
 
-/-- **`record_above_from` under growing faults**: after an update of a restored label `m ≥ r`
+/-- **The record stays above `P` under growing faults**: after an update of a restored label `m ≥ r`
 whose result `C` extends `P`, the effective record of the updater extends `P` at every later cut
 `i` read at a time `t` at which it is honest (every cut before `i` at a time `≤ t`), whether the
 result is accepted or vetoed. -/

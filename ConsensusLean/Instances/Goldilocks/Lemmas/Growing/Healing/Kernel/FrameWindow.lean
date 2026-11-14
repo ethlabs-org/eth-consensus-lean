@@ -90,8 +90,7 @@ private theorem hj_lt_hmax_obs (hrun : Consensus.Goldilocks.Growing.GoldilocksRu
 /-! ### The frame-key lag between independently honest observations -/
 
 /-- **The frame-key lag** with the source `x` honest at its cut `i` and the receiver `z` honest at
-its cut `m`, after a call of `z` at or after the relay deadline of `i` (`frameKey_lag_le` at
-`τ = tr.time i`). -/
+its cut `m`, after a call of `z` at or after the relay deadline of `i`. -/
 theorem frameKey_lag_obs (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
     (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)

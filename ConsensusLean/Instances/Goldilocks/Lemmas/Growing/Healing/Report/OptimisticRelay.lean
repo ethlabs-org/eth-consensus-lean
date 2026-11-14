@@ -12,8 +12,7 @@ public section
 
 /-! # An early-accepted block reaches a next-slot proposal, under growing faults
 
-The growing form of `Healing.relay_source_at_proposal` (`Healing/NextVotesCore`): a block
-accepted before `t_s + 2Δ` by a node honest at its acceptance reaches the frame of an honest
+A block accepted before `t_s + 2Δ` by a node honest at its acceptance reaches the frame of an honest
 proposal call at `t_{s+1}`, with a finite block stamp there. Post-`ḡ` acceptances relay through
 the finite service, earlier ones through Catch; the sender need not stay honest. The proposer's
 restarts are bounded by the caller (from the proposal's joinedness), not by a whole-run premise.

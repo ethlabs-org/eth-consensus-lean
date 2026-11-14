@@ -19,7 +19,7 @@ public section
 
 /-! # The next result above a clean optimistic source, under growing faults
 
-The growing form of `Healing.optimistic_next_result_of_floor`: a clean optimistic source, written
+The next optimistic result above the floor under growing faults: a clean optimistic source, written
 by a node honest at its write, above the finalized block of the next update of a node honest at
 that update, is extended by its result.
 

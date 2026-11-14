@@ -137,8 +137,7 @@ theorem protected_target_cases (hp : ResetPremises tr H proposer dg g ΔF a)
       Anc.mono (SA.frameIn_of_callAt hr hx hupd.1).2 hBC⟩
   · exact Or.inr (Or.inr (Or.inr ⟨hp', hP, hun⟩))
 
-/-- An honest proposal is the proposer's own block at its slot start (as
-`Obligations.proposesAt_of_honestProposalRun`). -/
+/-- An honest proposal is the proposer's own block at its slot start. -/
 private theorem proposesAt_of_honestProposal (hrun : GoldilocksRun proposer dg H tr) {s : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : proposer s ∈ H)
     (hP : SA.HonestProposal tr.projAC (proposer s) s P) :

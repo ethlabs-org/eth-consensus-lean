@@ -17,8 +17,7 @@ public section
 
 /-! # Growing-fault confirmed queries: producer slot and payload projection
 
-The confirmed-chain suppliers of `Obligations/NonfinalSuppliers` and `NonfinalEndpoints` for a
-`ConfirmedQueryAt`, on the canonical growing trace:
+The confirmed-chain suppliers for a `ConfirmedQueryAt`, on the canonical growing trace:
 
 * `confirmed_ready_mono_at`, `confirmed_duration_supply_at`: readiness at a smaller duration;
 * `ConfirmedProducerSlotAt`, `confirmed_query_slot_at`: the recurrence selects a slot whose

@@ -9,7 +9,7 @@ public section
 
 The coefficient arithmetic of the final route: the heal margin of the final capability pays the
 horizon step `B + (12c − 2)Δ` of a gap-`c` window of the reset bound `B`, for every `c` with
-`3c ≤ δ_t` (`final_heal_horizon_fit`). Base of `FinalResetPremises`. -/
+`3c ≤ δ_t` (`final_heal_horizon_fit`), used by the final query timing (`FinalQueryTiming`). -/
 
 namespace Consensus.Goldilocks.Obligations
 

@@ -239,16 +239,6 @@ theorem frame_crossing_source_before {ini} (hrun : GoldilocksRun proposer dg H t
       ∃ D, G D ∧ IsHonestSource tr H D E.root :=
   frame_crossing_source_of hrun hnc hf hy (hsrc.above 0) hW (Nat.zero_le j) hj1 hj2
 
-/-- **`Σ.J` is compatible with a block compatible with every source satisfying `G`**, with the
-numerical fault bound; no pairwise premise on the sources. -/
-theorem J_compatible_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourced tr H G y i)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B) (hB : B ∈ tr.HonestBlocks H) :
-    Compatible (tr.HonestBlocks H) (tr.state y i).fg.J B :=
-  J_compatible hrun hnc hf hy (hsrc.above _) hGB hB
-
 end Wrappers
 
 end Consensus.Goldilocks.Compose

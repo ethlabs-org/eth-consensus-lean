@@ -272,44 +272,6 @@ theorem anchor_compatible_of_live_candidates
   rw [ha]
   exact hcomp D (SA.deepest_mem hD).1
 
-/-- Scoped service and current-label votes complete the head certificate, after the
-record has been classified against its actual-clock anchor. -/
-theorem read_head_support_of_target_votes
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time} (ht0 : 0 ≤ t)
-    (hle : ∀ q < i, tr.time q ≤ t) (hti : t ≤ tr.time i)
-    (hw : tr.awake y t) (hj : tr.JoinedAt y t)
-    {a : Time} (hsync : SyncACWindowBefore H (tr.HonestBlocks H) a t tr.projAC)
-    (hcatch : CatchACWindowBefore tr.projAC H (tr.HonestBlocks H) a (2 * sp.Δ) t)
-    {L : Nat} (hL : (L : Int) =
-      (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
-    (ha : a ≤ sp.ts L) {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hR : R ∈ (Node.frame (tr.state y i)).tree)
-    (hanchor : Compatible (Node.frame (tr.state y i)).tree
-      (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R)
-    (hsource : (Node.frame (tr.state y i)).Anc R
-        (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
-      (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
-        ∀ z ∈ H, ∀ q, tr.time q ≤ t → ∀ e, SA.VoteAt tr.projAC z q e →
-          e.msg.slot = L → SA.VoteExtends (tr.HonestBlocks H) e.msg R))
-    (hfault : Hᶜ.ncard <
-      {x | x ∈ H ∧ tr.awake x (sp.ts L + sp.Δ) ∧ tr.JoinedAt x (sp.ts L + sp.Δ)}.ncard) :
-    Compatible (Node.frame (tr.state y i)).tree
-      (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R ∧
-      ((Node.frame (tr.state y i)).Anc R
-        (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
-      (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
-        (SA.voters (SA.latestView sp (tr.state y i).ac
-          (Node.frame (tr.state y i)) t).1.votes).ncard <
-          2 * (SA.supporters (Node.frame (tr.state y i))
-            (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
-            (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R).ncard)) := by
-  refine ⟨hanchor, ?_⟩
-  rcases hsource with h | ⟨hv, hvotes⟩
-  · exact Or.inl h
-  · exact Or.inr ⟨hv, read_majority_of_target_votes hrun hnc hy ht0 hle hti hw hj
-      hsync hcatch hL ha hR hvotes hfault⟩
-
 /-- **G1, G2 at a read** (for R.1): the state of an honest node before cut `i`, read at a time
 `t` at or after every cut before `i` and at or before cut `i`, the node awake and joined at `t`
 (when `t ≥ 0`): the anchor at `t` is compatible with the record's block `R`, and `R` is at or

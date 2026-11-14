@@ -7,7 +7,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 The outage budget (`goldilocksContract`, `Statements/Obligations.lean`: `4k − 5`)
 bounds the outage length: `b₁ − b₀ ≤ budget · Δ`. The lock-safety arithmetic
-(`OutageLockSafety/Arming.lean`, the private `query_numbers`, conjunct 5) needs the end of the
+(`Growing/Outage/Engine/Query.lean`, `query_numbers_at`, conjunct 5) needs the end of the
 outage before the restored-label bound of the cover label `j₀ = coverLabel b₀`:
 `b₁ ≤ t_{j₀+k} + Δ`, so that the first restored label (the least `r` with `b₁ ≤ t_r + Δ`) is at
 most `j₀ + k`. The cover gates give `b₀ < t_{j₀} + 6Δ` (`coverLabel_gates`), hence with budget
@@ -21,8 +21,8 @@ so conjunct 5 fails (`19 > 18`), and the first restored label is `3 = j₀ + k +
 `(j₀, j₀ + k]`. With `4k − 5` the same start allows at most `b₁ = 17 ≤ 18`, and in general every
 start and every outage within that budget satisfies the bound (`budget_four_k_minus_five_bound`).
 
-The arithmetic is stated directly on `SAParams` and `Compose.coverLabel`, as `query_numbers` is
-private. Labelled by kind (CONTRIBUTING "Statements"): (r) `budget_four_k_minus_four_breaks`,
+The arithmetic is stated directly on `SAParams` and `Compose.coverLabel`, independently of the
+outage query. Labelled by kind (CONTRIBUTING "Statements"): (r) `budget_four_k_minus_four_breaks`,
 (control) `budget_four_k_minus_five_bound`. -/
 
 namespace Consensus.Goldilocks.BudgetTightness
@@ -96,7 +96,7 @@ theorem budget_four_k_minus_four_breaks :
 
 /-- (control) **Budget `4k − 5` keeps the restored-label bound** at `k = 2`, `Δ = 2`: for every
 start `b₀ ≥ 2Δ` with cover label `j₀` and every end `b₁` within the budget,
-`b₁ ≤ t_{j₀+k} + Δ − 1` (the one tick of slack of `query_numbers`' conjunct 5). -/
+`b₁ ≤ t_{j₀+k} + Δ − 1` (the one tick of slack of `query_numbers_at`' conjunct 5). -/
 theorem budget_four_k_minus_five_bound (b₀ b₁ : Time) (hb₀ : 2 * sp₂.Δ ≤ b₀)
     (hb : b₁ - b₀ ≤ ((4 * sp₂.k - 5 : Nat) : Int) * sp₂.Δ) :
     b₁ ≤ sp₂.ts (Compose.coverLabel sp₂ b₀ + sp₂.k : Nat) + sp₂.Δ - 1 := by

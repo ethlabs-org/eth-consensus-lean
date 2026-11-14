@@ -12,7 +12,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Re
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReadySafety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Sleepy
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalEndpoints
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSuppliers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthySuppliers
 public import ConsensusLean.Spec.Shape.Claims
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ConfirmedSupply
 import ConsensusLean.Lemmas.Tactic.Linarith

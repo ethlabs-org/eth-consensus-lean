@@ -251,17 +251,6 @@ theorem readPoint_blockStamp_lt_of_acceptedBefore
   · obtain rfl := accept_unique sp hr hy hk ⟨ell, hc.1, hcall⟩
     exact (not_lt_of_ge ht) hkt
 
-/-- A block accepted before the freeze belongs to an honest vote's frozen domain,
-including genesis. -/
-theorem voterBlockTree_of_acceptedBefore (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksSA sp FGP ro)}
-    {e : Em sp FGP} (hc : CastAt tr y i ell e) {B : Blk sp.n FGP}
-    (hB : B ∈ ell.frame.tree) (hacc : AcceptedBefore tr y B (freeze sp e.msg.slot))
-    (hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < freeze sp e.msg.slot)
-    (ht : freeze sp e.msg.slot ≤ tr.time i) :
-    B ∈ voterBlockTree sp e.readPoint ell.frame e.msg.slot :=
-  ⟨hB, Or.inl (readPoint_blockStamp_lt_of_acceptedBefore hr hy hc hB hacc hrs ht)⟩
-
 /-- `carried_supporter` with the unlock given, from starts up to the vote permission. -/
 theorem carried_supporterU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)

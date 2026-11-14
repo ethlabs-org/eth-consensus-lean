@@ -402,15 +402,6 @@ theorem sleepyFrom_iff {ΔF : Time} {s₀ : Nat} :
         tr.FaultBound H (sp.ts s + d) :=
   Iff.rfl
 
-theorem originFrom_iff {C : SA.Blk sp.n (List (FG.Att sp.n))} {s s₀ : Nat} :
-    OriginFrom tr H C s s₀ ↔ Origin tr H C s ∧ s₀ ≤ s :=
-  Iff.rfl
-
-theorem onOriginChainFrom_iff {B : SA.Blk sp.n (List (FG.Att sp.n))} {s₀ : Nat} :
-    OnOriginChainFrom tr H B s₀ ↔
-      B.root = sp.genesisRoot ∨ ∃ C s, OriginFrom tr H C s s₀ ∧ Anc (tr.HonestBlocks H) B C :=
-  Iff.rfl
-
 /-- `t_0 = 0`. -/
 theorem ts_natCast_zero : sp.ts ((0 : Nat) : Int) = 0 := by
   simp [SAParams.ts]

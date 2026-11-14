@@ -8,8 +8,8 @@ public import ConsensusLean.Spec.Shape.OnRuns
 
 The obligations endpoint and the headline on the runs whose faults do not grow, at the contract
 `goldilocksContract A (contract_coefficients S A)` of `Statements/Obligations`: no longer comparator
-roots, they follow from the growing-fault pair (`meetsObligationsConstant_of_growing`) and are
-proved directly from the constant-fault milestones (`Proofs/Obligations`). Rejection tests on the
+roots, they follow from the growing-fault pair: `Proofs/Obligations` derives them by restricting the
+growing-fault endpoint to these runs (`meetsObligationsConstant_of_growing`). Rejection tests on the
 static adversary are stated at this class of runs (`docs/decisions.md` §"Adversary growth").
 
 Statements only: no proofs here. -/

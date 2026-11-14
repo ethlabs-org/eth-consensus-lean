@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowExists
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PreAdvance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
 
 public section

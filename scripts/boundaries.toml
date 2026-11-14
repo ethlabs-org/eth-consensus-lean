@@ -691,8 +691,10 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = """growing-fault siblings of the Goldilocks lemmas: they may use every static lemma layer, and no
-static layer, trusted layer, Main or Solution may import them, so the static proofs and the
-constant-fault certificate do not depend on them"""
+static layer, trusted layer, Main or Solution may import them, so the static proofs do not depend on
+them. One reviewed exception: the constant-fault endpoint (Proofs/Obligations/Main) imports the
+growing-fault endpoint (Proofs/Growing/Obligations/Main), since it is its corollary
+(meetsObligationsConstant_of_growing)"""
 
 [[layer]]
 name = "Instances.Goldilocks.Lemmas.Continuation"
@@ -1158,6 +1160,11 @@ reason = "A0b concrete canonical regression contracts name the unchanged old gro
 from = ["ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.VotesK"]
 to = ["ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.UpTo"]
 reason = "Growing committee participation uses the existing polymorphic trace prefix definition; no run model or engine dependency"
+
+[[exception]]
+from = ["ConsensusLean.Instances.Goldilocks.Proofs.Obligations.Main"]
+to = ["ConsensusLean.Instances.Goldilocks.Proofs.Growing.Obligations.Main"]
+reason = "the constant-fault endpoint is the corollary of the growing-fault endpoint (meetsObligationsConstant_of_growing); no separate constant-fault assembly"
 
 # Settings of scripts/check.sh (check-boundaries.py reads only proofs_component_prefixes and trusted_paths).
 [checks]

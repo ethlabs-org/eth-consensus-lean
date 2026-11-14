@@ -2,6 +2,7 @@ module
 public import ConsensusLeanTest.Goldilocks.Refinement.Simulation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 public import ConsensusLean.Lemmas.Model.Constant
 @[expose] public section

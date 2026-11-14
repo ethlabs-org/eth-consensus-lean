@@ -31,7 +31,7 @@ def GoldilocksHealingData (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.
 The existential is an unproved contract, never a definition of a supplier instance.
 `Run` is the original growing run, for population-sized committees (`sp.committeeSize = sp.n`).
 `warmup` and `Warm` come from the warmth premise in
-`Growing/Healing/Kernel/ResetRounds.lean:329`; `follow = 3` is the skeleton choice,
+`Growing/Healing/Kernel/ResetRounds.lean:328`; `follow = 3` is the skeleton choice,
 with no upstream standalone statement; `drain` is the skeleton choice `2 * sp.k + 5`,
 not a newly proved upstream bound. `Origin` is the joined stored-fast-lock source
 used by `Growing/Healing/RowService.lean` (the new source supplier remains unproved).

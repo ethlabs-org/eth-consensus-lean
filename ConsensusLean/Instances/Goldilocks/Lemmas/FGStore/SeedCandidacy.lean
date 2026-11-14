@@ -14,9 +14,8 @@ whenever the seed's height is below it. The witness is `P` itself if it meets th
 if the seed does, else the origin's entry, oriented above `P` by height monotonicity.
 
 The store geometry is all that is used: honesty, the run and the source of the high entry are the
-callers' premises (`Obligations.UpTo.guarded_seed_ancestor_candidate_at_state`,
-`Obligations.UpTo.held_target_ancestor_candidate_at_state`,
-`Healing.Growing.ResetPremisesUpTo.guarded_seed_ancestor_candidate_at_state_at`). -/
+callers' premises
+(`Healing.Growing.ResetPremisesUpTo.guarded_seed_ancestor_candidate_at_state_at`). -/
 
 namespace Consensus.Goldilocks.Store
 

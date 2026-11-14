@@ -9,7 +9,7 @@ public section
 
 /-! # Outage engine part under growing faults: the repair of a ready reader's read
 
-`outage_protected_at`, the growing-fault form of `Obligations/OutageRepair`: from the recovery
+`outage_protected_at`: from the recovery
 point, the confirmed read of every source ready at `T` is a prefix of the read of every reader
 ready at `t`. The source is armed (`outage_arming_at`); the lock module's premise package and
 invariant come from the arming (`outageLockPremises_of_arming_at`, `outage_lock_inv_at` with the

@@ -92,10 +92,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-theorem store_eq_fg (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
-    (i : Nat) : tr.projFG.store y i = (tr.state y i).fg := by
-  simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]
-
 /-- `h_j < h_max` in every honest store. -/
 theorem hj_lt_hmax {ini} (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H)
     (i : Nat) : (tr.state y i).fg.hj < (tr.state y i).fg.hmax :=
@@ -148,18 +144,6 @@ theorem J_eq_of_hj_eq_run (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose
     (Compose.fg_reachable hrun.toLocalRun hz m) (Compose.honest_blocks_coherent hrun.toLocalRun hnc)
     (fun _ h => ⟨y, hy, i, h⟩) (fun _ h => ⟨z, hz, m, h⟩) hf (held_atts_safe_run hrun hnc hy hz i m)
     he
-
-/-- `Σ.F` of an honest store is below every honest-held block of state height `≥ h_max`
-(G1.2 with `h_F ≤ h_j < h ≤ h_max`). -/
-theorem F_anc_of_hmax_le (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H)
-    {i m : Nat} {W : SA.Blk sp.n (List (FG.Att sp.n))} (hW : W ∈ (tr.state z m).fg.tree)
-    (hh : (tr.state y i).fg.hmax ≤ ((tr.state z m).fg.σ W.root).h) :
-    Anc (tr.HonestBlocks H) (tr.state y i).fg.F W :=
-  (Goldilocks.Store.F_anc_of_hmax_le_of_safe (Compose.fg_reachable hrun.toLocalRun hy i)
-    (Compose.fg_reachable hrun.toLocalRun hz m) (Compose.honest_blocks_coherent hrun.toLocalRun hnc)
-    (fun _ h => ⟨y, hy, i, h⟩) (fun _ h => ⟨z, hz, m, h⟩) hf (held_atts_safe_run hrun hnc hy hz i m)
-    hW hh).mono fun _ h => ⟨z, hz, m, h⟩
 
 /-- Equal merged keys at two honest cuts in kind J give equal `Σ.J`. -/
 theorem frameKey'_eq_J (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)

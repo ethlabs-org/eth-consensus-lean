@@ -66,36 +66,13 @@ theorem accepted_in_view {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S :
   accepted_in_view_of_releases ⟨S, stock⟩ rho hn hv (tick_block_releases S rho hn hf hv hv')
       hacc hki
 
-/-- CLAIMS R.8/F.2 and Refinement G1.5: every held non-genesis block was accepted earlier;
-`accepted_in_view` retains the engine event index needed to put it in this reader's view.
-
-Paper argument (implementation bridge, not a quotation): apply `tree_cases` at node cut
-`cutMap i`. Its genesis alternative contradicts `hg`; otherwise it gives acceptance at some
-`k < cutMap i`. Apply `accepted_in_view` with that strict inequality. That theorem locates an
-engine event `j` with `cutMap j ≤ k`; monotonicity forces `j < i`, so even simultaneous events
-cannot move evidence past the read. No collision or awake-at-read assumption is needed.
-Status: proved relative to the existing simulation/acceptance lemmas. -/
-theorem held_in_view {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {v : V} (hv' : v ∉ rho.faultyAt 0)
-    {i : Nat} {B : Blk (S.params (pubOf E) hn)}
-    (hB : B ∈
-        ((simTrace ⟨S, stock⟩ rho hn).state (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn i)).fg.tree)
-    (hg : B.root ≠ (S.params (pubOf E) hn).genesisRoot) :
-    blockObj (S.params (pubOf E) hn) B ∈ rho.ViewIdx v i := by
-  rcases Compose.tree_cases (simTrace_goldilocksRun S rho hn hf hv).toLocalRun
-      (honest_ownKey (S := ⟨S, stock⟩) hv') hB with hgen | ⟨k, hk, hacc⟩
-  · exact (hg (congrArg Block.root hgen)).elim
-  · exact accepted_in_view S rho hn hf hv hv' hacc hk
-
 /-- CLAIMS G1.5 evidence binding: canonical block objects carry their payload attestations,
 and views are closed under carried objects. Genesis has no attestations. This applies to ANY
 held block, as required by R.7's two witness chains, not just finalized ancestors.
 
 Paper argument: reachable-store coherence identifies any held block with genesis root as
-genesis itself, whose FG payload is empty. Membership of `a` excludes that case. By
-`held_in_view`, `blockObj B` is in the view. Its carried list is `payloadObjs B.fgPayload
+genesis itself, whose FG payload is empty. Membership of `a` excludes that case. A held block is
+in the view: `blockObj B` is in the view. Its carried list is `payloadObjs B.fgPayload
 B.acPayload`, which includes `attObj a` by list-map membership. Compose this direct containment
 with the view's witnessing containment (`mem_viewIdx_iff`); views are transitively closed
 under carried objects. This uses every held block, not the false restriction that R.7's

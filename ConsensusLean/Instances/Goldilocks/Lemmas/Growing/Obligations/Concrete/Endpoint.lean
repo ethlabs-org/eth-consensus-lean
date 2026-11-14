@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Fields
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Concrete
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 
 public section
 

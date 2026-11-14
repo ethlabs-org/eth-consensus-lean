@@ -21,10 +21,9 @@ public section
 
 /-! # Crossings and anchor height steps of the route-A window, under growing faults
 
-The growing forms of the trace lemmas of `Obligations/WindowAnchorStep`,
-`Obligations/WindowUnanimous` and `Obligations/WindowParentsUpTo` that the seed height and the
-anchor steps read. Each node is honest at its own cut; a reader of a held state is honest at an
-observation time after the state's cuts:
+The trace lemmas of the route-A window crossings and anchor height steps on the canonical growing
+trace, which the seed height and the anchor steps read. Each node is honest at its own cut; a
+reader of a held state is honest at an observation time after the state's cuts:
 
 * `proposal_parent_held_at`: an honest proposal's parent is held by its proposer at the cut;
 * `anchor_height_step_or_crossed_at`, `anchorStep_of_or_crossed_at`: the anchor height step,

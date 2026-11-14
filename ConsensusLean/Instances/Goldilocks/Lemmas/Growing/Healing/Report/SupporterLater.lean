@@ -7,7 +7,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OptimisticBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -16,8 +15,7 @@ public section
 
 /-! # An optimistic supporter's anchor and the later honest calls, under growing faults
 
-The growing form of `Healing.FrameWindow.optimistic_supporter_later_heads`
-(`Healing/OptimisticBase`). The supporter `x` is honest at its slot-`s` cast `i` and,
+The supporter `x` is honest at its slot-`s` cast `i` and,
 independently, at its optimistic write `a`. Its frame at the cast supplies the early viable
 witness: the cast's anchor `L` has a viable head above it in the supporter's own frame
 (`proposal_root_viable_at`), read at the cast. The optimistic later-head propagation

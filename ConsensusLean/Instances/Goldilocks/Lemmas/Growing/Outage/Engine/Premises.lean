@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Arming
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Schedule
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Arming
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

@@ -16,9 +16,7 @@ The characterising lemmas of the fixed assumptions (`ContractAssumptions`: the F
 (`finalWindow`, gap `fgSlots`), the coefficients (`contract_catchUp`,
 `contract_heal`, `contract_latency`) and the contract `goldilocksContract`, all defined in the
 statement module `Statements/Obligations`, and the abbreviation `K`. The FG transport is
-instantiated at the actual protocol FG delay `protoFGDelay` (HSSharedRun, HSSharedOfQuery); the
-monotone lift `PSyncFGAttTransport.mono` exists, but the obligations proof uses it only at
-`le_rfl`. -/
+instantiated at the actual protocol FG delay `protoFGDelay` (HSSharedRun). -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape
@@ -168,6 +166,31 @@ theorem contract_coefficients_latency (S : Setup) (A : ContractAssumptions S) :
 
 noncomputable abbrev K (S : Setup) (A : ContractAssumptions S) :=
   goldilocksContract A (contract_coefficients S A)
+
+/-- Selection-aware singleton duties make every recurrence fit. -/
+theorem meetsObligations_progressFits (S : Setup) (A : ContractAssumptions S) :
+    ProgressFits (K S A) (goldilocks S) := by
+  intro cap i pub s
+  rfl
+
+/-- At an outer gap beyond the local span there is room for a bad slot. -/
+theorem meetsObligations_progressTolerant (S : Setup) (A : ContractAssumptions S) :
+    ProgressTolerant schema (K S A) := by
+  intro cap _ N
+  let P := if cap = .final then finalWindow A else Pattern.single
+  exact ⟨⟨P.span + 2, by omega⟩, Nat.le_refl _⟩
+
+/-- Fixed thresholds and positive finite catch-up/budget are admissible. -/
+theorem meetsObligations_admissible (S : Setup) (A : ContractAssumptions S) :
+    (K S A).params.Admissible := by
+  rw [goldilocksContract_params_eq]
+  exact {
+    catchUp_pos := (contract_coefficients S A).catchUp.pos
+    θ_range := by norm_num [Params.standard]
+    β_range := by norm_num [Params.standard]
+    cover_range := by norm_num [Params.standard]
+    α_range := by norm_num [Params.standard]
+    budget_pos := by have := S.two_le_k; dsimp [Params.standard]; omega }
 
 /-- The readiness duration of an obligations contract with catch-up `≥ 19` covers `18Δ + 1`, for
 any coefficient record `C`, so that it also serves the witnesses over `goldilocksContract A C`.

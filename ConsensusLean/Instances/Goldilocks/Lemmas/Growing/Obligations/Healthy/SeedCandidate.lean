@@ -10,7 +10,7 @@ public section
 /-! # A guarded high seed supplies current candidacy, under growing faults
 
 `guarded_seed_ancestor_candidate_at_state_at`, the growing form of
-`Obligations.UpTo.guarded_seed_ancestor_candidate_at_state`: at a state of a reader honest at an
+The guarded seed ancestor candidate: at a state of a reader honest at an
 observation `t ≤ b`, every earlier cut at a time `≤ t`, a target held in the reader's frame,
 compatible with a bounded high seed that is held whenever it is above finalization, and compatible
 with every earlier high origin, is an ancestor candidate of the frame.

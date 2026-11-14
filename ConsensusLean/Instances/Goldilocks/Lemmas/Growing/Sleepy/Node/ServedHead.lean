@@ -7,7 +7,7 @@ public section
 /-! # Goldilocks under `Sleepy` with growing faults: the head certificate from target votes
 
 The growing-fault forms of `read_majority_of_target_votes` and
-`read_head_support_of_target_votes` (`Compose/Sleepy/Served`), lifted to the prefix through the
+The served head support from target votes, lifted to the prefix through the
 read time `t` with the honest set `H t`. The reader is honest at `t` (`y ∈ H t`, `0 ≤ t`, every
 cut before `i` at a time `≤ t ≤ tr.time i`), awake and joined at `t`. The window service is the
 static one of that prefix (a service whose senders are honest at the send and recipients at the

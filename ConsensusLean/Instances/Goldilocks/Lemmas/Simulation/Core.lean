@@ -114,33 +114,6 @@ theorem simTrace_emission_not_restart (hconst : rho.point.ConstantFaults) (hv : 
   rw [hempty] at he
   exact List.not_mem_nil he
 
-/-- The first trace cut of a public tick is its actual AC-tick call. -/
-theorem tick_boundary_call (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∉ rho.faultyAt 0) {i : Nat} {t : Time}
-    (he : rho.events[i]? = some (.tick v t))
-    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
-    (simTrace S rho hn).CallAt (rho.ownKey v) (cutMap S rho hn i)
-      (Node.acCall (rho.ownKey v) (stateAt S rho hn v i).node t .tick).2 ∧
-      (simTrace S rho hn).time (cutMap S rho hn i) = t := by
-  have hg := (simTrace_tick_public_group S rho hn hconst hv v hv' i t he hp).1
-  have hstate := simTrace_state S rho hn hconst hv v hv' i
-    (Nat.le_of_lt (List.getElem?_eq_some_iff.mp he).1)
-  have hlen : 0 < (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-      ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) t
-      (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2.length := by
-    exact List.length_pos_iff.mpr hg.1
-  obtain ⟨hnode, htime, -, -, hlabel⟩ := hg.2.1 0 hlen
-  have hget : (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-      ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) t
-      (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2[0]'hlen =
-      (Node.acCall (rho.ownKey v) (stateAt S rho hn v i).node t .tick).2 := by
-    change (Node.acCall (rho.ownKey v)
-      ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) t .tick).2 = _
-    rw [hstate]
-  rw [hget] at hlabel
-  exact ⟨⟨by simpa only [Nat.add_zero] using hnode,
-    by simpa only [Nat.add_zero] using hlabel⟩, by simpa only [Nat.add_zero] using htime⟩
-
 /-- A trace restart is produced by an actual engine restart, never by tick or
 recursive delivery processing. The interval identifies its exact engine event. -/
 theorem simTrace_restart_event {y : Fin (Fintype.card V)} {k : Nat}

@@ -7,7 +7,7 @@ public section
 /-! # The read context of a healthy reader under growing faults (definitions)
 
 The read point of a reader after the repair window, with the finite service it reads under: the
-growing form of `Obligations.HealthyReadContext`, indexed by the read point `(n, t)` itself (the
+read context of healed safety, indexed by the read point `(n, t)` itself (the
 reader's state before trace cut `n`, read at its stored clock `t`). The reader is honest, awake
 and joined at `t`; the service windows are the static ones of the validators honest at `t` on the
 prefix through `t`; the fault bound is charged at `t` against the validators awake and joined at

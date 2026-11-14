@@ -23,7 +23,7 @@ invariant holds at every mode, with no width condition:
 * `lockInv_stateAC`: the invariant of the state before an honest call, in the call's frame
   (the composite `lockInv_state`, the node's frame read as the call's frame);
 * `liveBlocks_chain_atAC`: the live lock blocks of the state before an honest call lie on one
-  chain of the call's frame, at every time (the composite `liveBlocks_chain_at`). -/
+  chain of the call's frame, at every time. -/
 
 namespace Consensus.Goldilocks.SA
 

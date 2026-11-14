@@ -16,8 +16,7 @@ public section
 
 /-! # Arbitrary-prefix unanimity through a held witness, under growing faults
 
-The growing forms of `Healing.unanimous_next_votes_of_witness` and
-`Healing.unanimous_next_proposal_of_witness` (`Healing/PreAdvance`). The prefix `X` need not be a
+Next-slot votes and proposals extend a prefix with a held witness. The prefix `X` need not be a
 proposal or have slot `m`; prior votes need only extend it. Each reader (a next-slot voter or
 proposer) is honest at its own cut, and the witness `Q` is held by it there. Its replay height
 is the one the source `z` saw at its own cut (replay is the same at independently honest

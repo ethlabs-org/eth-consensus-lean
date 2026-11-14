@@ -24,7 +24,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.HeadLock
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyConfirmedSupply
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -32,7 +31,7 @@ public section
 /-! # The read after an operational update, under growing faults (open)
 
 `operational_update_read_after_at`, the growing form of
-`Obligations.operational_update_read_after`: the fresh fast lock and the effective record of an
+The read after an operational update: the fresh fast lock and the effective record of an
 actual honest update of the post-drain operational proposal `P` of slot `u` put `P` under the
 confirmed read of the updater at the end of the update time `t_u + 6Δ`. The proposer is honest
 through `t_u + Δ`, the updater and reader is honest at the read time (so at its update cut, of the

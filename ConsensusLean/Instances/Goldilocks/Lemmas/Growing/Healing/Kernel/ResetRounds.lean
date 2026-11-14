@@ -4,7 +4,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.F
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.NoAdvance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowEndpoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.Row
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseRounds
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

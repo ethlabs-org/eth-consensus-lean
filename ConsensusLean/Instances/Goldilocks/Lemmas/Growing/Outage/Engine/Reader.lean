@@ -13,7 +13,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Induction
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Step
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageReaderGate
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageGateSlot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
@@ -28,8 +27,7 @@ public section
 
 /-! # Outage engine part under growing faults: the reader's gate, the read prefix and the bridge
 
-The growing-fault forms of `Obligations/OutageReaderGate`, `Obligations/OutageBridge` and
-`Obligations/OutageS5/Suppliers`. A reader `w` ready at `t` from the recovery point is honest at
+A reader `w` ready at `t` from the recovery point is honest at
 `t`; it is read at the trace cut `j` of the end of `t`, every cut before `j` at a time `≤ t`
 (`ready_read_cut_at`), so every reader fact is read at the time `t` (the `_by` lemmas):
 

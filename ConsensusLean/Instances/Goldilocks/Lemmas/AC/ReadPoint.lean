@@ -11,7 +11,8 @@ locks (`tryVote_readPoint_locks_eq`), and that a read-point lock of a slot other
 sits below a stored lock of the same slot (`readPoint_locks_below_stored`). Public SA-level
 copies of private lemmas of `Lemmas/Compose/Sleepy/Transfer`, for H.1's transfer steps. Every
 read-point lock, of any slot, sits below a stored lock or below the block of the receipt's
-optimistic confirmation at the same cut (`readPoint_locks_provenance`). -/
+optimistic confirmation at the same cut, the optimistic arm with its cut bound
+(`readPoint_locks_provenance_strict`). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -238,47 +239,7 @@ private theorem vote_tryVote_input_point (hr : ACLocalRun (goldilocksSA sp FGP r
     rw [((restart_state sp) FGP ro y _ ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he'
     simp at he'
 
-/-- **Read-point lock provenance.** At an honest vote of a slot `> 0`, every lock of the read
-point names a frame block below the block of a stored lock, or below the block that the
-receipt's optimistic confirmation at the same cut selects (a lock of the vote's slot). -/
-theorem readPoint_locks_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    {e : Em sp FGP} (hc : CastAt tr y i ℓ e) (hpos : 0 < sp.slot (tr.time i)) :
-    ∀ l' ∈ e.readPoint.locks, ∃ B' ∈ ℓ.frame.tree, B'.root = l'.block ∧
-      ((∃ l ∈ (tr.state y i).locks, ∃ B ∈ ℓ.frame.tree, B.root = l.block ∧ ℓ.frame.Anc B' B) ∨
-       ∃ B CV, OptimisticLockAt tr y i (sp.slot (tr.time i)) B CV ∧ ℓ.frame.Anc B' B) := by
-  obtain ⟨P, he, hP⟩ := vote_tryVote_input_point hr hy hc
-  have hΦ := (frameIn_of_callAt hr hy hc.1).1
-  intro l' hl'
-  rw [tryVote_readPoint_locks_eq he] at hl'
-  simp only [hpos, ↓reduceIte] at hl'
-  obtain ⟨l₁, hl₁, -, -, -, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩ :=
-    ((locks_move_back sp) FGP ℓ.frame P.locks (tr.time i) hΦ).2.2 _ _ l' hl'
-  refine ⟨B', hB', hB'r, ?_⟩
-  rcases hP with rfl | ⟨A, rfl, hAl, hpt, -⟩
-  · exact Or.inl ⟨l₁, hl₁, B₁, hB₁, hB₁r, hA⟩
-  unfold optimisticConfirmation at hl₁
-  split at hl₁
-  · exact Or.inl ⟨l₁, hAl ▸ hl₁, B₁, hB₁, hB₁r, hA⟩
-  rename_i B hsel
-  rw [updateLatestConfirmed_keeps_locks] at hl₁
-  obtain ⟨l₂, hl₂, -, -, -, B₂, hB₂, hB₂r, B₁', hB₁', hB₁'r, hA'⟩ :=
-    ((locks_move_back sp) FGP ℓ.frame A.locks (tr.time i) hΦ).2.1 _ _ l₁ hl₁
-  obtain rfl : B₁' = B₁ := hΦ.coherent.1 hB₁' hB₁ (hB₁'r.trans hB₁r.symm)
-  rcases hl₂ with hl₂ | ⟨p, hp, rfl⟩
-  · exact Or.inl ⟨l₂, hAl ▸ hl₂, B₂, hB₂, hB₂r, hA.trans hA'⟩
-  · rw [Set.mem_singleton_iff] at hp
-    subst hp
-    have hBt : B ∈ ℓ.frame.tree := by
-      have h := hsel
-      unfold optimisticSelect at h
-      dsimp only at h
-      split_ifs at h
-      exact (deepest_mem h).1.1
-    obtain rfl : B₂ = B := hΦ.coherent.1 hB₂ hBt hB₂r
-    exact Or.inr ⟨B₂, _, ⟨ℓ, A, hpt, rfl, hsel, rfl⟩, hA.trans hA'⟩
-
-/-- `readPoint_locks_provenance` with the cut bound of the optimistic arm: the read point's
+/-- The provenance of a read-point lock, with the cut bound of the optimistic arm: the read point's
 optimistic lock is written by the receipt's check (`on_message`/`on_block`, before the own vote of
 the call), so its counted honest votes were cast at cuts before `i`.
 From starts up to the vote permission. -/

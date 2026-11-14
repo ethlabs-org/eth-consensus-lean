@@ -651,8 +651,9 @@ Modelling choices:
   so a run satisfying `Healthy(g)` with an honest validator is infinite. The trace of a model run is clamped to
   `[0, horizon]` (`awakeAt`, `Lemmas/Simulation/TraceDefs`). So the whole-run Healing statements (HR.1, HR.3, HR.4,
   H.2 (run), H.3, H.4 and HS.1–HS.4) never apply to the obligations proof's runs, and none of them is in its closure:
-  the obligations proof uses the finite-horizon forms (`ResetPremisesUpTo`, `HSSharedUpTo`, `GSTRunUpTo`) and the
-  frame-window route (`Lemmas/Healing/M1`), not the phase service.
+  the obligations proof uses the finite-horizon forms over per-cut honesty (`Healing.Growing.ResetPremisesUpTo`,
+  `Healing.Growing.HSSharedUpTo`, `Lemmas/Growing/Healing/Retention/Defs`) and the frame-window route
+  (`Lemmas/Healing/M1`, `Lemmas/Growing/Healing/M1`), not the phase service.
 
 ## Regimes
 
@@ -718,8 +719,8 @@ Modelling choices:
   obligation 8's strict-vs-endpoint receipt is settled by the L0 text. The spec treats admission as an instantaneous send. The model's persistent-relay variants
   still break R.1 when relay waits for an awake tick or is one unit late, so buffering across sleep or adding
   relay slack is not the chosen repair. `SyncAC` stays unchanged, and `SyncOn` except for its attestation clause and `delta_le` (below). At `Δ_p = Δ_e` the engine
-  `PSync` supplies the node services the obligations proof uses (`message_service_psync`,
-  `block_service_psync`, `signed_row_service_psync`, `catchRun_of_psync`, `resetService_of_psync`); the full
+  `PSync` supplies the node services the obligations proof uses (`message_service_psync_at`,
+  `block_service_psync_at`, `signed_row_service_psync_at`, `catchRun_of_psync_at`, `resetService_of_psync_at`); the full
   transport stays open: `PSync ⇒ GSTRun` (`PSyncTransport`), `SyncUntil ⇒ SyncBefore`
   (`SyncUntilTransport`) and `PSync 0 ⇒ SyncRun` (`SyncRunTransport`), in `Lemmas/Obligations/NetworkTransport`,
   each under `Δ ≤ Δ_F`; they are goals for the concrete adapter, not premises of `MeetsObligations`.

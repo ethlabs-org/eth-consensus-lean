@@ -19,10 +19,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
-import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.SeedCandidacy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Update
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -117,41 +115,6 @@ theorem honest_votes_in_slot {b : Time}
   intro y hy r hr hrs
   exact restart_before_unanimous_slot hp hR hy
     (Compose.projAC_restartAt.mp hrs) (hr.trans hub)
-
-/-- An actual unanimous vote bounds every pre-slot high origin, by finite retention.
-The origin need not precede the vote in cut order. -/
-theorem old_origin_below_unanimous {b : Time}
-    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
-    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : P ∈ tr.HonestBlocks H)
-    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
-      e.msg.slot = u → e.msg.head = P.root)
-    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
-    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    (hub : sp.ts u + sp.Δ ≤ b)
-    {x : Fin sp.n} {r m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : Healing.HighOrigin tr H g x r m B) (ht : tr.time r < sp.ts u) :
-    Anc (tr.HonestBlocks H) B P := by
-  have hmu : m < u := by
-    obtain ⟨_, _, _, _, hfl, _⟩ := hp.highOrigin_mem ho
-    rcases hfl with ⟨ell, C, hu, _⟩ | ⟨ell, A, _, hs, _⟩
-    · have htime : tr.time r = sp.ts m + 6 * sp.Δ := hu.2.2.1
-      have hts : sp.ts m < sp.ts u := by linarith [sp.toParams.hΔ]
-      have := (SA.ts_lt_iff sp).1 hts
-      omega
-    · have hs' : sp.slot (tr.time r) = m := hs
-      have hlt := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) (u : Int)).not.mp
-        (not_le.mpr ht)
-      omega
-  obtain ⟨q, e, hv, hs, hq⟩ := honest_votes_in_slot hp hc hgu hR hub x ho.1
-  obtain ⟨ell, hcast⟩ := hv
-  have hrb : tr.time r ≤ b := by linarith [sp.toParams.hΔ]
-  obtain ⟨Hd, hHd, he, hBH⟩ :=
-    hp.high_origin_votes_before q (hq.trans hub) x r m B ho hrb x ho.1 ell e hcast (by omega)
-  have heq : Hd = P := hp.honest_coherent.1 hHd hP
-    (he.trans (hun x ho.1 q e ⟨ell, hcast⟩ (hq.trans hub) hs))
-  exact heq ▸ hBH
 
 /-- Finite writer service carries the previous honest vote batch to a bounded
 next-slot cast. Only actual previous votes, bounded by this cast, are consulted. -/
@@ -624,132 +587,6 @@ theorem operational_update_selection {b : Time}
         ((hp.run.time_mono hr.le).trans hjb))
   exact ⟨hPt, hp.ready_update_selection_of_pool hy hup hPt hPg hpool hlocks⟩
 
-/-- The effective post-update record extends the actual operational proposal in
-the update's frame, including when the raw record keeps a later optimistic source. -/
-theorem operational_update_effective_record {b : Time}
-    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
-    (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
-    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    (hup : SA.UpdateAt tr.projAC y j u ell) :
-    Anc (tr.HonestBlocks H) P
-      ((SA.lookup ell.frame (tr.projAC.post j).latestConfirmed).getD ell.frame.F) := by
-  obtain ⟨hPt, _, _, _, _, hrecord⟩ :=
-    operational_update_selection hp hc hpH hdesignated hactual hPs hR hgu hTb hy hup
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hup.1
-  rw [hrecord]
-  exact (effective_record_update_slot_growth (sp := sp) hPhi hPt).1.mono hPhiU
-
-/-- Selection repairs source recency even if it retains a strict descendant of
-the proposal. The source precedes the actual update's post-state. -/
-theorem operational_update_recent_source {b : Time}
-    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
-    (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
-    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    (hup : SA.UpdateAt tr.projAC y j u ell)
-    {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hlookup : SA.lookup (Node.frame (tr.state y (j + 1)))
-      (tr.state y (j + 1)).ac.latestConfirmed = some R) :
-    ∃ x ∈ H, ∃ q s CV, q ≤ j ∧ tr.time q ≤ tr.time j ∧ u ≤ s ∧
-      (SA.ResultAt tr.projAC x q s R CV ∨ SA.OptimisticLockAt tr.projAC x q s R CV) := by
-  obtain ⟨hPt, hconf, _, _, _, hrecord⟩ :=
-    operational_update_selection hp hc hpH hdesignated hactual hPs hR hgu hTb hy hup
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  have hc' := Compose.projAC_callAt.mp hup.1
-  have hlaw := hp.run.toLocalRun.cutLaw y hy j _ hc'
-  have hframe : Node.frame (tr.state y (j + 1)) = ell.frame := by
-    rw [tr.state_succ_of_call hc', hlaw.1]
-    exact congrArg Store.toFrame hlaw.2.2.1
-  have hstate := Compose.projAC_state hp.run.toLocalRun hy (j + 1)
-  rw [tr.projAC.state_succ_of_call hup.1] at hstate
-  have hgrowth := (effective_record_update_slot_growth (sp := sp) (A := tr.projAC.state y j)
-    (SA.frameIn_of_callAt hr hy hup.1).1 hPt).2
-  rw [← hrecord, hstate, ← hframe, hlookup] at hgrowth
-  simp only [Option.getD_some] at hgrowth
-  rcases hgrowth with rfl | hlt
-  · exact ⟨y, hy, j, u, _, le_rfl, le_rfl, le_rfl, Or.inl ⟨ell, hup, hconf, rfl⟩⟩
-  obtain ⟨C, hC, hCr, hsource⟩ := Compose.record_origin_before hp.run hp.noColl hy (j + 1)
-  obtain ⟨hRm, hRr⟩ := SA.lookup_eq_some hlookup
-  have heq : C = R := hp.honest_coherent.1 ⟨y, hy, j + 1, hC⟩
-    ⟨y, hy, j + 1, hRm.1⟩ (hCr.trans hRr.symm)
-  subst C
-  rcases hsource with hz | ⟨s, hs⟩
-  · have he := Compose.honest_eq_genesis hp.run hp.honest_coherent
-      (show R ∈ tr.HonestBlocks H from ⟨y, hy, j + 1, hC⟩) hz
-    rw [he] at hlt
-    exact False.elim (Nat.not_lt_zero _ hlt)
-  obtain ⟨x, hx, q, hq, CV, hsrc⟩ := Compose.originBefore_iff.mp hs
-  refine ⟨x, hx, q, s, CV, by omega, hp.run.time_mono (by omega), ?_, hsrc⟩
-  rw [hPs] at hlt
-  rcases hsrc with ⟨e, hu, hsel, _⟩ | ⟨e, A, ho, hslot, hsel, _⟩
-  · have hRs := SA.frame_slot_le sp hr hx hu.1 R (SA.deepest_mem hsel).1.1
-    have hsl : sp.slot (tr.projAC.time q) = s + 1 := by
-      rw [hu.2.2.1]
-      apply SA.slot_of_mem sp (s + 1) <;>
-        simp only [SA.SAParams.ts] <;> push_cast <;> linarith [sp.toParams.hΔ]
-    rw [hsl] at hRs
-    omega
-  · have hm : R ∈ e.frame.tree := by
-      unfold SA.optimisticSelect at hsel
-      dsimp only at hsel
-      split_ifs at hsel
-      exact (SA.deepest_mem hsel).1.1
-    have hRs := SA.frame_slot_le sp hr hx ho.1 R hm
-    change sp.slot (tr.projAC.time q) = s at hslot
-    omega
-
-/-- Retaining the local entry at the height floor gives a candidate, without a
-remote-report alternative, at a state with a bounded completed prefix. -/
-theorem held_target_ancestor_candidate_at_state {b : Time}
-    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y v : Fin sp.n} (hy : y ∈ H) {i q m : Nat}
-    (hib : ∀ r < i, tr.time r ≤ b) {P S : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hPt : P ∈ (Node.frame (tr.state y i)).tree)
-    (hseed : Healing.HighOrigin tr H g v q m S)
-    (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocks H) S P)
-    (hcompare : ∀ x r l B, r < i → Healing.HighOrigin tr H g x r l B →
-      Compatible (tr.HonestBlocks H) P B) :
-    (Node.frame (tr.state y i)).AncestorCandidate P := by
-  have hreach := Compose.fg_reachable hp.run.toLocalRun hy i
-  have hPy := hPt.1
-  have hSy := hp.mem_tree_of_anc hy hSP hPy
-  obtain ⟨-, -, -, -, -, -, -, -, -, hSs⟩ := hp.highOrigin_mem hseed
-  refine Store.guarded_seed_ancestor_candidate hreach hp.honest_coherent
-    (fun X hX => ⟨y, hy, i, hX⟩) (Healing.σ_h_le_of_anc hreach) hPt
-    (fun hSy => congrArg (·.h) (hp.σ_eq_run hseed.1 hy hSs hSy).symm) (fun _ => hSy)
-    (Or.inr hSP) ?_
-    (Origin := fun B => ∃ x r l, r < i ∧ Healing.HighOrigin tr H g x r l B)
-    (fun B ⟨x, r, l, hri, ho⟩ => hcompare x r l B hri ho) fun hSf => ?_
-  · by_cases hlow : (tr.state y i).fg.hj ≤ Healing.HZ tr H g
-    · exact hp.low_root_of_held_seed_at_state hy hPy hy hseed hSy hlow
-        (Or.inr hSP) (fun _ => hPy)
-    · exact hp.high_J_root_of_held_at_state_before hy hPy hy (by omega) hcompare
-  obtain ⟨x, r, l, B, E, hri, ho, -, hE, hEB, -, hEf, -⟩ :=
-    hp.high_floor_signed_source_of_row_bound hseed hy (u := sp.slot (tr.time i) + 1)
-      (fun W hW att ha z hz d hd hdi r' l O hrd ho => by
-        obtain ⟨-, D, CV, -, hfl, -⟩ := hp.highOrigin_mem ho
-        have ht : sp.ts l ≤ tr.time r' := by
-          rcases hfl with ⟨ell, C, ⟨-, -, ht, -⟩, -⟩ | ⟨ell, A, -, hsl, -⟩
-          · change tr.time r' = sp.ts l + 6 * sp.Δ at ht
-            linarith [sp.toParams.hΔ]
-          · change sp.slot (tr.time r') = l at hsl
-            exact (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r') l).2 (by omega)
-        have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg i) l).1
-          (ht.trans (hp.run.time_mono (by omega)))
-        omega)
-      (fun x r l B hri ho x' r' l' B' hr'i ho' => hp.origins_compatible ho
-        (hib r hri) ho' (hib r' hr'i))
-      (fun x r l B hri ho => hp.origins_compatible hseed hqb ho (hib r hri)) hSf
-  exact ⟨B, ⟨x, r, l, hri, ho⟩, E, hE, hEB, hEf⟩
-
 /-- At a bounded call holding a target above a bounded high seed, compatible
 causal origins give full viability or an actual earlier strictly higher report. -/
 theorem held_target_viable_or_higher_report {b : Time}
@@ -812,61 +649,6 @@ theorem held_target_viable_or_higher_report {b : Time}
     exact Or.inr ⟨x, hx, r, ell', C, hri, hto, hPR.trans hJC, by
       rw [← hσ, hCh]
       exact hPh⟩
-
-/-- Bounded nonunanimous next-update selection: the finalized-floor guard is
-explicit, while actual votes, their pool membership and resolution are produced. -/
-theorem optimistic_next_result_of_floor {b : Time}
-    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
-    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {r s j : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    (hop : SA.OptimisticLockAt tr.projAC x r s B CV)
-    (hs : Healing.cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hrb : tr.time r ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y j (s + 1) ell)
-    (hjb : tr.time j ≤ b) (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts (s + 1 : Nat))
-    (hR : Healing.drainTime sp a ≤ sp.ts (s + 1 + 1 : Nat))
-    (hFB : Anc (tr.HonestBlocks H) ell.frame.F B) :
-    ∃ D DV, SA.ResultAt tr.projAC y j (s + 1) D DV ∧ Anc (tr.HonestBlocks H) B D := by
-  have hS := Healing.healthy_base_of_reset_catch_before hp hc
-  have hr := hS.run.localRun
-  have htime : tr.time j = sp.ts (s + 1 : Nat) + 6 * sp.Δ := hu.2.2.1
-  have hd := sp.toParams.hΔ
-  have hrs : ∀ k ≤ j, tr.projAC.RestartAt y k → tr.time k < sp.ts (s + 1 : Nat) := by
-    intro k hkj hk
-    have hh := restart_before_unanimous_slot hp hR hy (Compose.projAC_restartAt.mp hk)
-      ((hp.run.time_mono hkj).trans hjb)
-    have hlt := (SA.ts_lt_iff sp).mpr (show ((s + 1 : Nat) : Int) - 1 < (s + 1 : Nat) by omega)
-    exact hh.trans_lt hlt
-  have hext : ∀ z ∈ H, ∀ q e, SA.VoteAt tr.projAC z q e → e.msg.slot = s + 1 →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
-    intro z hz q e hv hes
-    have hqb : tr.time q ≤ b := by
-      have ht := SA.vote_time_le hr hz hv
-      obtain ⟨ellq, hcast⟩ := hv
-      rw [← (SA.castAt_spec hr hz hcast).2.1, hes] at ht
-      exact ht.trans (by linarith)
-    obtain ⟨ellq, hcast⟩ := hv
-    exact hp.fast_source_votes_before hc hx (Or.inr hop)
-      (by have := sp.two_le_k; omega) hrb q hqb z hz ellq e hcast (by omega)
-  obtain ⟨hpool, hres⟩ := hp.extending_votes_resolved_before hc hy hu.1 hgu
-    (by linarith) hjb
-    (fun k hkj t _ => Compose.ac_deadline_le_of_restarts
-      (fun k' hk' hk => (hrs k' (hk'.trans hkj) hk).le) t) hrs hFB hext
-  have hall := honest_votes_in_slot hp hc hgu hR (show sp.ts (s + 1 : Nat) + sp.Δ ≤ b by linarith)
-  have hH : H ⊆ {v | v ∈ H ∧ ∃ vote ∈ (tr.projAC.state y j).pool (s + 1), vote.val = v} := by
-    intro z hz
-    obtain ⟨q, e, hv, hes, _⟩ := hall z hz
-    obtain ⟨ellq, hcast⟩ := hv
-    exact ⟨hz, e.msg, hpool z hz q e ⟨ellq, hcast⟩ hes, (SA.castAt_spec hr hz hcast).1⟩
-  have hcount := Set.ncard_le_ncard hH
-  have hsum : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have hf := hp.faults
-  have hn : 0 < sp.n := sp.toParams.hn
-  obtain ⟨D, hconf, hBD, _⟩ := SA.update_extends_of_resolved_votes hS.run
-    (SA.CommitteeDict.full sp.n) (fun _ _ => SA.mem_full _ _)
-    (by rw [SA.ncard_inter_full, hp.stock]; omega) hext hy hu (by rw [hp.stock]; omega) hres
-  exact ⟨D, _, ⟨ell, hu, hconf, rfl⟩, hBD⟩
 
 /-- A deepest block of `T` lying in `S ⊆ T` is the deepest block of `S`. -/
 theorem deepest_of_subset {FGP : Type} {Φ : SA.Frm sp.n FGP}

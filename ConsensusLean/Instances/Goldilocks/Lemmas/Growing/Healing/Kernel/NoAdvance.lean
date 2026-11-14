@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Range
 
 public section
 

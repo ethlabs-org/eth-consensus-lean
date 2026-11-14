@@ -17,7 +17,7 @@ public section
 /-! # Engine final accountability under growing faults
 
 The growing-fault form of the static R.7 engine transport (`compatible_reads`,
-`final_accountable_of_noColl` and the arithmetic of `shape_finalAccountable`), without a
+`final_accountable_of_noColl` and the conviction arithmetic), without a
 constant-fault premise. Each reader is honest at its own engine cut and read at its mapped trace
 cut, which is a read point of the prefix through its engine cut time; compatibility is read inside
 the blocks held while honest.

@@ -18,7 +18,7 @@ public section
 
 /-! # Mature record or anchor coverage under growing faults
 
-The growing form of `Obligations.healthy_current_mature_or_anchor`: at a read point after the
+The mature-or-anchor dichotomy under growing faults: at a read point after the
 repair window, the reader's looked-up record is below its anchor or below a mature result of a
 node honest at its own cut. The reader is honest at its read time; its earlier updates at labels
 past the join are a premise (`hupd`), which an engine read discharges from the stored clock. -/

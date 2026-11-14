@@ -15,10 +15,10 @@ public section
 
 /-! # The outage over AC traces, the restored side: delivery under service from `b₁`
 
-The delivery rows of the outage census (`Compose/Regimes/OutageDelivery`, and `carryAt_after` of
-`Obligations/OutageS5/Step`), stated over an AC trace of the SA with the unlock given at a write
-mode (`ACLocalRunU wm u`, `ACRunU wm u`), with the receiver-scoped service after `g`
-(`Compose.ReceiverServiceAfter H U g y tr` at every honest `y`) as hypothesis:
+The delivery rows of the outage census (`Compose/Regimes/OutageDelivery`), stated over an AC
+trace of the SA with the unlock given at a write mode (`ACLocalRunU wm u`, `ACRunU wm u`), with
+the receiver-scoped service after `g` (`Compose.ReceiverServiceAfter H U g y tr` at every honest
+`y`) as hypothesis:
 
 * `vote_signer_slotAC`: an honest vote is its caster's, of the slot of its cast time;
 * D1 (`accepted_held_before_earlyAC`): a held block (genesis, or accepted by an honest node by
@@ -64,7 +64,7 @@ theorem vote_signer_slotAC (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n} (hx : x
 
 /-! ### D1–D3 -/
 
-/-- **D1** (L1, relay half; `Compose.accepted_held_before_early` with the unlock given). A block
+/-- **D1** (L1, relay half, with the unlock given). A block
 that is genesis or that an honest node accepted by `t_q + Δ`, and that is above the call's `Φ.F`,
 is in the call's frame and stamped before `t_q + 2Δ`, at every honest call from `t_q + 2Δ` with
 no restart after `t_q`, under the service from `g ≤ t_q + Δ`. -/
@@ -178,7 +178,7 @@ theorem vote_pooled_before_earlyAC (hrun : ACRunU wm u proposer tr H U)
     exact (hres k₁ hk₁.le ⟨ℓ₁, hc₁, hr₁⟩).trans_lt
       (lt_add_of_pos_right _ (mul_pos two_pos hΔ))
 
-/-- **D3** (L1 without its head facts; `Compose.vote_resolved_before_early` with the unlock
+/-- **D3** (L1 without its head facts, with the unlock
 given). The vote is pooled, its head is in the call's frame, and the vote is resolved before
 `t_q + 2Δ`, given the head's slot bound and its acceptance by the voter by `t_q + Δ` (or
 genesis). -/
@@ -209,9 +209,9 @@ theorem vote_resolved_before_earlyAC (hrun : ACRunU wm u proposer tr H U)
 
 /-! ### `Carry_y` after the outage -/
 
-/-- **An honest head of a slot at most `q` is accepted by `y` before the freeze `t_q + 3Δ`**
-(`Compose.honest_head_accepted_after` with the unlock given), under the service from
-`g ≤ t_q + Δ`, at an honest slot-`(q+1)` vote of `y` whose call's `Φ.F` it extends: its voter
+/-- **An honest head of a slot at most `q` is accepted by `y` before the freeze `t_q + 3Δ`**,
+with the unlock given, under the service from `g ≤ t_q + Δ`, at an honest slot-`(q+1)` vote
+of `y` whose call's `Φ.F` it extends: its voter
 accepted it by `t_q + Δ` (or it is genesis), and `y`, joined (so with no restart after `t_q`),
 receives it by `max(τ, g) + Δ ≤ t_q + 2Δ`. -/
 theorem honest_head_accepted_afterAC (hr : ACLocalRunU wm u H U tr)
@@ -245,7 +245,7 @@ theorem honest_head_accepted_afterAC (hr : ACLocalRunU wm u H U tr)
     (by have := hdl i le_rfl; linarith only [this, hti, hΔ]) hFHd
   exact Or.inr ⟨k', hAy, by have := hdl k' hk'i; linarith only [this, hk't, hΔ]⟩
 
-/-- **`Carry_y` after the outage's GST** (`Compose.carryAt_after` with the unlock given): at an
+/-- **`Carry_y` after the outage's GST**, with the unlock given: at an
 honest slot-`(s+1)` vote of `y`, under the service from `g ≤ t_s + Δ`, `Carry_y(s, ·, ·)` holds
 for honest slot-`s` votes whose heads extend the call's `Φ.F`: each is sent by its voter by
 `t_s + Δ` and its head accepted by then, so `y` (joined, no restart after `t_s`) holds the vote

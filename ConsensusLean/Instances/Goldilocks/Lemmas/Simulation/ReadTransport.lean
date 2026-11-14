@@ -9,7 +9,7 @@ public section
 /-! # Shared steps of the R.7/R.8 engine read transport
 
 The steps of R.8 output validity and of R.7 compatible reads shared by the constant-fault
-`engine_outputValid` and `compatible_reads` (`Simulation/Transport`) and the growing-fault
+`compatible_reads` (`Simulation/Transport`) and the growing-fault
 `engine_outputValid_at` (`Growing/Simulation/Endpoint/Outputs`) and `compatible_reads_at`
 (`Growing/Simulation/Endpoint/Accountable`). Each fault model supplies its own reachable stores,
 root facts, view and coherent block set.

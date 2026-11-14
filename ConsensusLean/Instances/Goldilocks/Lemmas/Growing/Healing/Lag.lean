@@ -1,7 +1,9 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Range
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PreAdvance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

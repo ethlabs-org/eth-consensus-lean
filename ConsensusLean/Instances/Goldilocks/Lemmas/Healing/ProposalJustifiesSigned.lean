@@ -4,16 +4,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeMature
 
 public section
 
-/-! # Goldilocks Healing: the justification from signed attestations
+/-! # Goldilocks Healing: the parent of an honest proposal is held
 
-`justify_of_rows'` (`ProposalJustifies`) with its two run-level premises discharged:
-
-* the parent of an honest proposal is held by the proposer at the proposal cut
-  (`proposal_parent_held`: `onBlock` accepts only a block whose parent is stored);
-* the delivery premise `∃ k' < kX, ProcessAttAt p k' att` follows from a signing time `≤ v`
-  with `ḡ ≤ v` and `v + Δ_F ≤ t_{kX}`, by `rows_delivered` (`ConsumeMature`; `GST(g)`'s
-  attestation delivery `SyncOn.attestation` inside `HSShared.healthy`, and no honest restart
-  after `ḡ`). -/
+`proposal_parent_held`: the parent of an honest proposal is held by the proposer at the proposal
+cut (`onBlock` accepts only a block whose parent is stored), a run-level premise of the
+justification from signed attestations. -/
 
 namespace Consensus.Goldilocks.Healing
 

@@ -6,8 +6,7 @@ public section
 /-! # Goldilocks Obligations: the Healed bundle
 
 The paper's `healed`, with the components of Healed(S.heal) that the window proof uses.
-`Healed` extends the record half `Healing.HealedRecords` (C2*⁺ (i), (ii), R0, RH; proved
-under the bounded reset by `healed_records_of_reset_canonical_upTo`) with
+`Healed` extends the record half `Healing.HealedRecords` (C2*⁺ (i), (ii), R0, RH) with
 the AC components C3 and C4 at the heal time `tH` as explicit fields. In the paper C3 and C4 are
 CONDITIONAL on CH (`Healing.HealedRecords`) and a further paper premise; they are not proved
 here. C1 and C5 are `HealthyRun`; the paper's other components are not fields (no Lean statement

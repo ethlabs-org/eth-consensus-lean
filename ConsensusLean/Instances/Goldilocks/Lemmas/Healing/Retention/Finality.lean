@@ -401,29 +401,6 @@ theorem finalized_below_floor_held (hrun : GoldilocksRun proposer dg H tr)
   rw [hst hy, hst hz] at h
   exact h hX hF hXF.symm hW hstrict
 
-/-- Equal frame floors and root kind suffice for cross-node finality
-ancestry of an actual viable head. J roots agree only in the J-root case. -/
-theorem finalized_below_viable_head (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i m : Nat}
-    (hfloor : (tr.state y i).fg.headHeightFloor = (tr.state z m).fg.headHeightFloor)
-    (hkind : ((tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧
-        ¬(tr.state y i).fg.Contest) ↔
-      ((tr.state z m).fg.hmax = (tr.state z m).fg.hj + 1 ∧ ¬(tr.state z m).fg.Contest))
-    (hJ : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 →
-      ¬(tr.state y i).fg.Contest → (tr.state y i).fg.J = (tr.state z m).fg.J)
-    {W : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hv : W ∈ (tr.state z m).fg.toFrame.viableHeads) :
-    Anc (tr.HonestBlocks H) (tr.state y i).fg.F W := by
-  rcases hv with ⟨hW, -, hroot, hheight⟩
-  refine finalized_below_floor_held hrun hnc hf hy hz hW (hfloor ▸ hheight) ?_
-  intro hm hc
-  have hkz := hkind.mp ⟨hm, hc⟩
-  have he : (tr.state z m).fg.fcRoot = (tr.state z m).fg.J := by
-    simp [Goldilocks.Store.fcRoot, hkz.1, hkz.2]
-  rw [he, ← hJ hm hc] at hroot
-  exact hroot.mono (fun B hB => ⟨z, hz, m, hB⟩)
-
 /-- A locally held floor-viable block satisfying the J-root condition is a viable frame head.
 This is local: no agreement between different frames is assumed. -/
 theorem viable_head_of_floor (hrun : GoldilocksRun proposer dg H tr)

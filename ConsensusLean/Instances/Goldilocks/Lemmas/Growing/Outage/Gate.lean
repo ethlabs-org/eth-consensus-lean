@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageGate
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Honest
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
@@ -16,7 +15,7 @@ public section
 
 /-! # Outage under growing faults: the reader's gate count and read majority (L1, L-gate, L3)
 
-The growing-fault forms of `Compose/Regimes/OutageGate`, under the receiver service after GST
+The outage gate count and read majority under growing faults, with the receiver service after GST
 (`ReceiverServiceAfterAt`):
 
 * `vote_held_before_early_at` (L1): a slot-`q` vote of a node honest at its cast and still honest

@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 public import ConsensusLean.Main
-public import ConsensusLean.Instances.Goldilocks.Proofs.Obligations.Main
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Obligations.Constant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Endpoint
 public import ConsensusLean.Lemmas.Shape.OnRuns
 
@@ -17,6 +17,14 @@ constant-fault endpoint follows (`meetsObligationsConstant_of_growing`). This mo
 Goldilocks entry of the comparator solution. The compiled proposer hold-zero counterexample
 (`ConsensusLeanTest/Goldilocks/Regimes/ProposerHold.lean`) shows the hold `1` of the contract is
 needed. -/
+
+namespace Consensus.Goldilocks.Obligations
+
+/-- The Goldilocks schema provides the final, stable and available capabilities. -/
+theorem schema_matches_ebbAndFlow : Profile.ebbAndFlow.Matches AsChainShape.schema := by
+  intro cap; cases cap <;> rfl
+
+end Consensus.Goldilocks.Obligations
 
 namespace Consensus.Goldilocks.Growing
 

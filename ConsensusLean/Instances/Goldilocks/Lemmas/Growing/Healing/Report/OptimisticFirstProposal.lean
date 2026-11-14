@@ -10,11 +10,10 @@ public section
 
 /-! # The first proposal after an optimistic write, under growing faults
 
-The growing form of `SA.optimistic_first_proposal_stored` (`Healing/AC/ProposalCore`): the writer
-is honest at its write and the proposer at its proposal call, independently. The writer's pool
-and counted voters are read on the prefix through the write; the proposer's view, equivocators
-and locks on the prefix through the proposal, over the validators honest there, which is where
-the fault count is charged. -/
+The writer is honest at its write and the proposer at its proposal call, independently. The
+writer's pool and counted voters are read on the prefix through the write; the proposer's view,
+equivocators and locks on the prefix through the proposal, over the validators honest there,
+which is where the fault count is charged. -/
 
 namespace Consensus.Goldilocks.SA.Growing
 

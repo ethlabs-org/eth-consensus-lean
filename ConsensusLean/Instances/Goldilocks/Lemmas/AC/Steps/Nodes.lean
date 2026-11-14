@@ -329,7 +329,7 @@ theorem optimistic_transfer : OptimisticTransfer sp :=
     optimistic_transfer_stored sp hrun K hP hT hsize hx hopt .refl hf hf1 hy hc hs hcarry hviab
       hearlier
 
-/-- `first_transfer_stored_of_pool` with the unlock given. -/
+/-- The first transfer of a pooled lock into the store, with the unlock given. -/
 theorem first_transfer_stored_of_poolU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
@@ -437,37 +437,6 @@ theorem first_transfer_stored_of_poolU
   · exact he ▸ hBt
   · exact (Anc.mem hcore he).2
 
-/-- **A1.2, for the stored block.** A1.2 for a block `B ⪯ D` of a fast lock on `D` (the block
-the lock stores after moving back): every hypothesis and the conclusion are about `B`, with the
-counted votes `CV` of `D`. -/
-theorem first_transfer_stored_of_pool {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-    (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
-    (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
-    {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
-    (hfl : FastLockAt tr x i₀ s D CV) (hBD : Anc U B D) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
-    (hs : e.msg.slot = s + 1)
-    (hmerged : ∀ ℓX, UpdateAt tr x i₀ s ℓX →
-      ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
-        v ∈ (tr.state x i₀).pool s ∨
-          v.val ∈ equivocators {w | w ∈ (tr.state x i₀).pool s})
-    (hpool : ∀ ℓX, UpdateAt tr x i₀ s ℓX → ∀ k ≤ i,
-      ∀ v ∈ (tr.state y (k + 1)).pool s,
-        v ∈ (tr.state x i₀).pool s ∨
-          v.val ∈ equivocators {w | w ∈ (tr.state x i₀).pool s})
-    (hcarry : CarryAt tr U y i e s CV) (hfault : FaultBoundK K s tr H (tr.time i))
-    (hf1 : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize)
-    (hviab : ViableAtVote ℓ e (s + 1) B) (hearlier : EarlierVotesExtend tr H U i (s + 1) B) :
-    VoteExtends U e.msg B :=
-  first_transfer_stored_of_poolU (FGP := FGP) (ro := ro) (H := H) (U := U) (tr := tr)
-      (proposer := proposer) (hrun := hrun.toU) (K := K) (hP := hP) (hT := hT) (hsize := hsize)
-      (s := s) (x := x) (y := y)
-          (i₀ := i₀) (i := i) (B := B) (D := D) (CV := CV) (ℓ := ℓ) (e := e) (hx := hx)
-              (hfl := hfl) (hBD := hBD) (hy := hy) (hc := hc) (hs := hs) (hmerged := hmerged)
-                  (hpool := hpool) (hcarry := hcarry) (hfault := hfault) (hf1 := hf1)
-                      (hviab := hviab) (hearlier := hearlier)
-
 /-- `first_transfer_stored` with the unlock given. -/
 theorem first_transfer_storedU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
@@ -509,28 +478,6 @@ theorem first_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (F
               (hfl := hfl) (hBD := hBD) (hy := hy) (hc := hc) (hs := hs) (hsync := hsync)
                   (hcarry := hcarry) (hfault := hfault) (hf1 := hf1) (hviab := hviab)
                       (hearlier := hearlier)
-
-/-- A1.2 on a finite service prefix. The update can occur after the receiving
-vote; both pool inclusions use the actual writer's observation cutoff. -/
-theorem first_transfer_stored_window_before {FGP : Type} {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    {proposer : Nat → Fin sp.n} (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n)
-    (hP : CommitteeP K tr H) (hT : CommitteeT K tr H)
-    (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
-    {a b : Time} (hsync : ServiceWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
-    {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
-    (hfl : FastLockAt tr x i₀ s D CV) (hi₀ : tr.time i₀ ≤ b)
-    (hBD : Anc U B D) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
-    (hs : e.msg.slot = s + 1)
-    (hcarry : CarryAt tr U y i e s CV) (hfault : FaultBoundK K s tr H (tr.time i))
-    (hf1 : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize)
-    (hviab : ViableAtVote ℓ e (s + 1) B)
-    (hearlier : EarlierVotesExtend tr H U i (s + 1) B) : VoteExtends U e.msg B :=
-  first_transfer_stored_of_pool sp hrun K hP hT hsize hx hfl hBD hy hc hs
-    (fun _ hu => writer_merged_window_before hrun hsync hx ha hu hi₀ hy hc hs)
-    (fun _ hu _ hk => writer_pool_window_before hrun hsync hx ha hu hi₀ hy hc hs hk)
-    hcarry hfault hf1 hviab hearlier
 
 /-- **A1.2**, over a run with the unlock given. -/
 theorem first_transferU (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))

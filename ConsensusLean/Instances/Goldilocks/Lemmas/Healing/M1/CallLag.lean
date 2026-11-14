@@ -1,5 +1,7 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Range
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PreAdvance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
 import ConsensusLean.Lemmas.Tactic.Linarith

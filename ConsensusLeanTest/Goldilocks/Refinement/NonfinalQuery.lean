@@ -1,19 +1,20 @@
 module
 public import ConsensusLeanTest.Goldilocks.Refinement.Final
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSuppliers
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyGap
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthySuppliers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ProposerGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyResetEnvelope
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageArming
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageSuppliers
 public import ConsensusLean.Proofs.RegimesRealizable.Main
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # Witnesses: the healthy-nonfinal and outage queries are inhabited at the obligations contract
 
-Kinds (a) and (r) (CONTRIBUTING "Statements") for the three engine queries that the nonfinal
-endpoints of `Lemmas/Obligations/Concrete` build: `ConfirmedQuery` (Healthy branch; the Sleepy
-branch's fields are `GoldilocksSleepyWitness.sleepyQuery_fields`), `HealthyPreparationQuery` and
-`OutageQuery`. Unlike the field witnesses of `Goldilocks/Refinement/Sleepy` and
+Kinds (a) and (r) (CONTRIBUTING "Statements") for the three constant-fault engine queries:
+`ConfirmedQuery` (Healthy branch; the Sleepy branch's fields are
+`GoldilocksSleepyWitness.sleepyQuery_fields`), `HealthyPreparationQuery` and `OutageQuery`.
+Unlike the field witnesses of `Goldilocks/Refinement/Sleepy` and
 `Goldilocks/Refinement/Final`, these inhabit the structures at `K S A` itself: the coefficients are
 defined, so no coefficient record is abstracted.
 
@@ -26,15 +27,14 @@ outage witness of `Shape.regimes_realizable` at `K S A` on five validators.
   query is inhabited.
 * (a) non-vacuous conclusions of proved consumers on them: `confirmedQuery_producer`
   (`healthy_query_slot` gives a producer slot), `healthyPreparation_fit`
-  (`healthy_reset_fit`, with `ready < heal` strictly), `outageQuery_lag` (`outage_node_lag`).
+  (`healthy_reset_fit`, with `ready < heal` strictly), `outageQuery_lag` (`outageQuery_node_lag`).
 * (r) `no_confirmedQuery_short`: a valid, collision-free, Healthy run with nonfinal progress whose
   horizon is below the latency deadline is the run of no `ConfirmedQuery` (the `bounded` field
   is a real constraint); `outageQuery_start_ge`: no outage query starts before the arming lag
   `(4k + 6)Δ`; `healthyPreparationQuery_not_final`: the `nonfinal` guard excludes `.final`.
-* `*_applies`: the endpoint hypotheses of `meetsObligations_healthyLive`,
-  `meetsObligations_healedSafe` and `meetsObligations_persists` build the query with exactly those
-  run, capability, index, GST and times (as `Concrete.lean` does), so the witnesses above are
-  instances of what the endpoints use. -/
+* `*_applies`: the hypotheses of the healthy-liveness, healed-safety and persistence claims
+  build the query with exactly those run, capability, index, GST and times, so the witnesses
+  above are instances of those claims' hypotheses. -/
 
 namespace Consensus.Goldilocks.Obligations.Test.NonfinalQueryWitness
 open AsChainShape Simulation
@@ -220,17 +220,26 @@ theorem outageQuery_witness : ∃ Q : OutageQuery S A (Fin 5), 0 ≤ Q.T := by
   obtain ⟨Q, -, hT, -, -⟩ := outageQuery_applies S A r (by decide) T b₀ b₁ hf hv hc ho
   exact ⟨Q, hT ▸ Q.outage.1.1⟩
 
-/-- (a) Non-vacuous: `outage_node_lag` on that query, `T + (4k + 6)Δ ≤ b₀`. -/
+/-- The lag `4k + 6` of an outage query is the node lag `(4k + 6)Δ`. -/
+theorem outageQuery_node_lag {V : Type} [Fintype V] [DecidableEq V] (Q : OutageQuery S A V) :
+    Q.T + (4 * Q.params.k + 6) * Q.params.Δ ≤ Q.start := by
+  obtain ⟨⟨-, hlag, -, -⟩, -⟩ := Q.outage
+  change Q.T + ((4 * S.k + 6 : Nat) : Int) * Q.run.1.ΔAC ≤ Q.start at hlag
+  change Q.T + (4 * (S.k : Int) + 6) * Q.run.1.ΔAC ≤ Q.start
+  push_cast at hlag
+  linarith
+
+/-- (a) Non-vacuous: `outageQuery_node_lag` on that query, `T + (4k + 6)Δ ≤ b₀`. -/
 theorem outageQuery_lag : ∃ Q : OutageQuery S A (Fin 5),
     Q.T + (4 * Q.params.k + 6) * Q.params.Δ ≤ Q.start := by
   obtain ⟨Q, -⟩ := outageQuery_witness S A
-  exact ⟨Q, outage_node_lag S A (Fin 5) Q⟩
+  exact ⟨Q, outageQuery_node_lag S A Q⟩
 
 /-- (r) No outage query starts before the arming lag: every `OutageQuery` has
 `(4k + 6)Δ ≤ b₀` (`T ≥ 0`), so a run whose outage starts earlier is the run of none. -/
 theorem outageQuery_start_ge {V : Type} [Fintype V] [DecidableEq V] (Q : OutageQuery S A V) :
     (4 * Q.params.k + 6) * Q.params.Δ ≤ Q.start := by
-  have h := outage_node_lag S A V Q
+  have h := outageQuery_node_lag S A Q
   have hT : 0 ≤ Q.T := Q.outage.1.1
   linarith
 

@@ -1,21 +1,19 @@
 module
 public import ConsensusLeanTest.Goldilocks.Refinement.Sleepy
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Concrete
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Final
 @[expose] public section
 
 /-! # Witness: the final liveness query's hypotheses are jointly satisfiable
 
-Kind (a), joint satisfiability (CONTRIBUTING "Statements"), for the fields of `FinalQuery`, the
-hypotheses of `meetsObligations_healthyLive_final`. `FinalQuery` fixes the contract to `K S A`; the
-theorem below states the same fields over `goldilocksContract A C` for every coefficient record
-`C`. At
-`C = contract_coefficients S A` they are the structure's fields, since `K S A` is that
-abbreviation.
+Kind (a), joint satisfiability (CONTRIBUTING "Statements"), for the fields of the final liveness
+query, the hypotheses of `Growing.meetsObligations_healthyLive_final_growing`, stated over
+`goldilocksContract A C` for every coefficient record `C` (at `C = contract_coefficients S A`,
+the contract `K S A`).
 
 * `healthy_run`: the two-validator run of `Goldilocks/Refinement/Sleepy` (everyone awake and honest,
   engine `Δ = 2`) is Healthy from GST 0 for every `goldilocksContract A C`.
 * `finalQuery_fields`: on that run with horizon `H = (heal + latency)·Δ` (at `.final`, index 1),
-  the `FinalQuery` fields hold with GST 0 and query time `heal·Δ`: validity, no collision, Healthy,
+  the final query's fields hold with GST 0 and query time `heal·Δ`: validity, no collision, Healthy,
   final progress (the four-anchor `finalWindow`) on `[ready, H]`, maturity, the latency deadline
   inside the horizon, and a ready reader at the deadline. -/
 
@@ -47,7 +45,7 @@ theorem healthy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : 
   · exact le_mul_of_one_le_left zero_le_two
       (by exact_mod_cast (goldilocksContract A C).params.fgDelay.pos)
 
-/-- (a) The `FinalQuery` fields, over `goldilocksContract A C`, are jointly satisfiable: index 1,
+/-- (a) The final query's fields, over `goldilocksContract A C`, are jointly satisfiable: index 1,
 GST 0, query time `heal·Δ`, horizon `(heal + latency)·Δ` (engine `Δ = 2`). -/
 theorem finalQuery_fields (A : ContractAssumptions S) (C : ContractCoefficients) :
     ∃ r : (Sys (goldilocks S) (Fin 2)).Run, ∃ query : Time, 1 ≤ Fintype.card (Fin 2) ∧

@@ -12,7 +12,7 @@ public section
 /-! # A held target is an ancestor candidate, under growing faults
 
 `held_target_ancestor_candidate_at_state_at`, the growing form of
-`Obligations.UpTo.held_target_ancestor_candidate_at_state`: at a state of a reader honest at an
+The held-target ancestor candidate: at a state of a reader honest at an
 observation `t ≤ b`, every earlier cut at a time `≤ t`, a held target above a bounded high seed
 and compatible with every earlier high origin is an ancestor candidate of the reader's frame.
 

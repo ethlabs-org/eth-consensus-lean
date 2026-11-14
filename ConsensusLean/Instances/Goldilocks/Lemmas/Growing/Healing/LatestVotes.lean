@@ -12,7 +12,7 @@ public section
 
 /-! # The latest votes after a recent result, under growing faults
 
-The growing form of `Healing.ResetPremisesUpTo.latest_votes_of_recent_result`: the finite
+The latest votes of a recent result under growing faults: the finite
 result-prefix boundary `late_result_prefix_votes_before_at` read at one vote of a node honest at
 it, by `t ≤ b`, with a label past the result's. -/
 

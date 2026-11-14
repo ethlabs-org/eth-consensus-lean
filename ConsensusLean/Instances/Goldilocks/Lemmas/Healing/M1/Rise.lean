@@ -7,7 +7,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # The rise (ROUND, two rounds, the high source)
+/-! # The rise (ROUND at one proposal)
 
 * `rows_delivered_service` (ROW-deliver): an attestation signed by `v ≥ ḡ` is processed by the
   honest proposer before its proposal cut when `v + Δ_F ≤ t_x ≤ b`. Only `ResetService.signedRow`
@@ -16,12 +16,6 @@ public section
   honest node has an attestation for `P`'s height and entry by `v`, or a block in `(P, D]` above
   `P`'s height: `σ[X].h ≥ σ[P].h + 1`. ROW-include is the landed `proposal_rows_placed` (the payload
   is the pool filtered by validity at the parent and "not on the chain"; no cap).
-* `row_or_high_of_report` (ROW-sign at the actual report): an honest report `R ⪰ P` gives a
-  attestation for `(σ[P].h, σ[P].T_h)` signed by the report time, or `σ[R].h > σ[P].h`.
-* `FrameWindow.round_of_warm` (ROUND at a warm proposal): the drain's actual reports
-  (`proposal_report_follow`) feed `round_cross` at the next honest proposal of slot
-  `x ∈ [u + δ_t, N]`.
-* The rise reset itself is `FrameWindow.rise_reset_rounds` in `M1/RiseRounds`.
 
 `Δ_F` stays a parameter: the timing premise is `6Δ + Δ_F ≤ 4Δ·δ_t`. -/
 
@@ -176,136 +170,6 @@ theorem round_cross (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCol
     have hRDh := h_le_of_store_anc hr (store_anc_of_honest_anc hrun hnc hp hRD hPr)
     rw [σ_eq_honest hrun hnc hw hp hPw hPst, σ_eq_honest hrun hnc hw hp hRw hRst] at hhR
     clear * - hlt hhR hRDh; omega
-
-/-- **ROW-sign at the actual report.** An honest report `R ⪰ P` at cut `i` before `T`: `y` signed an
-attestation for `(σ[P].h, σ[P].T_h)` by `t_i`, or `σ[R].h > σ[P].h`. At equal heights the lock
-premise is the height `HZ` (`lock_none_of_noAdvance`, from NoAdvance) or the kind clause of
-`lock_free_or_entry_of_frame` (`M1/PreAdvanceFacts`). -/
-theorem row_or_high_of_report (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) {g T : Time}
-    (hna : ∀ v ∈ H, ∀ k att, tr.SignAt v k att → tr.time k < T → att.h ≤ HZ tr H g)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    {R P : SA.Blk sp.n (List (FG.Att sp.n))} (hR : SA.ToFGAt tr.projAC y i ell R)
-    (hiT : tr.time i < T) (hPR : Anc (tr.HonestBlocks H) P R)
-    (hkind : ((tr.state y i).fg.σ R.root).h = ((tr.state y i).fg.σ P.root).h →
-      ((tr.state y i).fg.σ P.root).h = HZ tr H g ∨
-      (tr.state y i).fg.hj < ((tr.state y i).fg.σ P.root).h ∨
-      ((tr.state y i).fg.hj = ((tr.state y i).fg.σ P.root).h ∧
-        (tr.state y i).fg.Anc (tr.state y i).fg.J R)) :
-    P ∈ (tr.state y i).fg.tree ∧ R ∈ (tr.state y i).fg.tree ∧
-      ((∃ k att, tr.SignAt y k att ∧ tr.time k ≤ tr.time i ∧
-        att.h = ((tr.state y i).fg.σ P.root).h ∧ att.T = ((tr.state y i).fg.σ P.root).Th) ∨
-      ((tr.state y i).fg.σ P.root).h < ((tr.state y i).fg.σ R.root).h) := by
-  have hRm := toFG_mem_tree hrun hy hR
-  have hPm := mem_of_honest_anc hrun hnc hy hPR hRm
-  have hr := Compose.fg_reachable hrun.toLocalRun hy i
-  have hPRs := store_anc_of_honest_anc hrun hnc hy hPR hRm
-  have hle := h_le_of_store_anc hr hPRs
-  refine ⟨hPm, hRm, ?_⟩
-  rcases hle.lt_or_eq with hlt | heq
-  · exact Or.inr hlt
-  left
-  have hf' : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    clear * - hf hn; omega
-  obtain ⟨hc, hto, hres⟩ := hR
-  rw [Compose.projAC_state hrun.toLocalRun hy] at hres
-  obtain ⟨sg, hatt, ht, hfg⟩ :=
-    toFG_attest hrun.toLocalRun hy (Compose.projAC_callAt.mp hc) hto hres
-  obtain ⟨⟨E, hE, hEr, hER, hEh, hETh⟩, -⟩ :=
-    Goldilocks.Store.entry_state_of_source _ _ _ _ hr R hRm
-  have hEnt : EntryOf (tr.state y (i + 1)).fg R E ((tr.state y i).fg.σ P.root).h := by
-    rw [hfg]
-    exact ⟨⟨hE, hETh.trans hEr.symm⟩, hEh.trans heq.symm, hER⟩
-  have hCh : ((tr.state y (i + 1)).fg.σ R.root).h = ((tr.state y i).fg.σ P.root).h := by
-    rw [hfg]; exact heq.symm
-  have hTh : E.root = ((tr.state y i).fg.σ P.root).Th :=
-    hEr.trans (Th_eq_of_anc hr hPRs heq.symm)
-  have hrow : (∃ att, sg = some att ∧ att.h = ((tr.state y i).fg.σ P.root).h ∧
-      att.T = E.root) ∨ ∃ k' < i + 1, ∃ att, tr.SignAt y k' att ∧
-        att.h = ((tr.state y i).fg.σ P.root).h ∧ att.T = E.root := by
-    rcases hkind heq.symm with hHZ | hk
-    · rw [hHZ] at hEnt hCh ⊢
-      exact client_signs_HZ_of_noAdvance hrun hna hy (by rw [ht]; exact hiT) hatt hEnt hCh
-    · refine client_signs_of_frame hrun hnc hf' hy hatt hEnt hCh ?_
-      rw [hfg]; exact hk
-  rcases hrow with ⟨att, rfl, hah, haT⟩ | ⟨k', hk', att, hs, hah, haT⟩
-  · exact ⟨i + 1, att, ⟨R, hatt⟩, ht.le, hah, haT.trans hTh⟩
-  · exact ⟨k', att, hs, hrun.time_mono (Nat.lt_succ_iff.mp hk'), hah, haT.trans hTh⟩
-
-/-- **ROUND at a warm proposal.** `P` is the actual warm proposal of slot `u` (FrameWindow drain),
-`X` an actual honest proposal of slot `x ∈ [u + δ_t, N]`. The attestations come from the actual
-reports of `proposal_report_follow`; at each report of the same height as `P`, `report_kind_of_warm`
-derives the kind premise of `lock_free_or_entry_of_frame` from the frame floor. This strengthens
-the interface by removing the redundant lock premise, without changing the conclusion. -/
-theorem FrameWindow.round_of_warm
-    {g ΔF b T : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
-    {J P X : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * sp.Δ)
-      floor kindJ J)
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hsvc : ResetService tr H g ΔF b)
-    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
-    (hnr : NoRestartAfter tr H (gbar g))
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
-    (hδ : 3 ≤ sp.toParams.fg.δt)
-    (hΔF : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
-    (hux : u + sp.toParams.fg.δt ≤ x) (hxN : x ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
-    (hna : ∀ v ∈ H, ∀ k att, tr.SignAt v k att → tr.time k < T → att.h ≤ HZ tr H g)
-    (hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ < T)
-    {z : Fin sp.n} (hz : z ∈ H) (hdes : z = proposer u)
-    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    {p : Fin sp.n} (hp : p ∈ H) (hdx : p = proposer x)
-    {kX : Nat} (hX : tr.ProposesAt p kX X) (hXs : X.slot = x) (hstock : sp.committeeSize = sp.n) :
-    P ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
-      ((tr.state p (kX + 1)).fg.σ P.root).h + 1 ≤
-        ((tr.state p (kX + 1)).fg.σ X.root).h := by
-  have hk := sp.two_le_k
-  have hΔ := sp.toParams.hΔ
-  obtain ⟨s, rfl⟩ : ∃ s, u = s + 1 := ⟨u - 1, by clear * - hwarm hk; omega⟩
-  have hts {a c : Nat} (h : a ≤ c) : sp.ts a ≤ sp.ts c :=
-    (SA.ts_le_iff sp).2 (by exact_mod_cast h)
-  obtain ⟨-, k, ℓ, d, pay, hc, hcall, hd, htc, hpar, -⟩ :=
-    honestProposalRun_of_proposesAt hrun hnc hp hdx hX hXs
-  have hpx : proposer x ∈ H := hdx ▸ hp
-  have hrep := fun y (hy : y ∈ H) => hframe.proposal_report_follow hrun hnc hsvc hawake hf
-    hcatch hnr hm hwarm (by clear * - hxN hux hδ; omega) hmb hz hdes hP hPs hy hstock
-  have hfol : ∀ y ∈ H, ∃ i ell R, SA.ToFGAt tr.projAC y i ell R ∧
-      tr.time i ≤ sp.ts (s + 2 : Nat) + 2 * sp.Δ ∧ Anc (tr.HonestBlocks H) P R ∧
-      Anc (tr.HonestBlocks H) R d.head := by
-    intro y hy
-    obtain ⟨i, ell, R, hR, hti, hPR, hf⟩ := hrep y hy
-    exact ⟨i, ell, R, hR, hti, hPR,
-      hf x (by clear * - hux hδ; omega) hxN (proposer x) hpx k ℓ hc hcall htc d pay hd⟩
-  obtain ⟨-, hPm, -⟩ := accept_of_proposesAt hrun hnc hz hP
-  obtain ⟨i₀, -, R₀, -, -, hPR₀, hR₀d⟩ := hfol z hz
-  have htX : tr.time kX = sp.ts x := by
-    have : tr.time kX = sp.ts X.slot := by rw [hX.2.2, sp.slotTime_eq]; rfl
-    rw [this, hXs]
-  have hv : gbar g ≤ sp.ts (s + 2 : Nat) + 2 * sp.Δ := by
-    have := hts (show s₀ ≤ s + 2 by clear * - hwarm; omega); linarith only [hm, hΔ, this]
-  have hvx : sp.ts (s + 2 : Nat) + 2 * sp.Δ + ΔF ≤ tr.time kX := by
-    rw [htX]
-    have h1 := hts (show s + 1 + sp.toParams.fg.δt ≤ x by clear * - hux; omega)
-    have h2 : sp.ts (s + 1 + sp.toParams.fg.δt : Nat) =
-        sp.ts (s + 2 : Nat) + 4 * sp.Δ * (sp.toParams.fg.δt : Time) - 4 * sp.Δ := by
-      simp only [SAParams.ts]; push_cast; ring
-    linarith only [hΔF, h1, h2]
-  refine round_cross hrun hnc hsvc hnr hf ⟨z, hz, kP + 1, hPm⟩ (hPR₀.trans hR₀d) hpar hp hX
-    hv hvx (by rw [htX]; linarith only [hts hxN, hmb, hΔ]) (by clear * - hXs hux hPs; omega) ?_
-  intro y hy
-  obtain ⟨i, ell, R, hR, hti, hPR, hRd⟩ := hfol y hy
-  have hiT : tr.time i < T := lt_of_le_of_lt hti hT
-  obtain ⟨hPy, hRy, hor⟩ := row_or_high_of_report hrun hnc hf hna hy hR hiT hPR
-    (fun heq => Or.inr (hframe.report_kind_of_warm hrun hnc hsvc hawake hf hcatch hnr
-      hm hwarm (by clear * - hxN hux hδ; omega) hmb hz hdes hP hPs hstock y hy i ell R hR hPR hti
-      heq))
-  rcases hor with ⟨k', att, hs, hk', hah, haT⟩ | hlt
-  · exact Or.inl ⟨y, hy, i, hPy, k', att, hs, hk'.trans hti, hah, haT⟩
-  · exact Or.inr ⟨R, hRd, y, hy, i, hPy, hRy, hlt⟩
 
 end Consensus.Goldilocks.Healing
 

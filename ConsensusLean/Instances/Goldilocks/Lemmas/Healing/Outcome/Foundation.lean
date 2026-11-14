@@ -830,31 +830,6 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
       rw [← hm]
       exact Or.inl hv
 
-/-- Restrict the finite result induction to one later view label, including every
-vote at that clock. The actual raw witness need not be the record's last setter. -/
-theorem ResetPremisesUpTo.latest_votes_of_recent_result {b t : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {x : Fin sp.n} (hx : x ∈ H) {r s L : Nat}
-    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocks H) B C)
-    (hrb : tr.time r ≤ b) (hts : cutZ sp.toParams g ≤ sp.ts s)
-    (hdomain : ∀ y ∈ H, ∀ i ell e, SA.CastAt tr.projAC y i ell e →
-      tr.time i ≤ b → s < e.msg.slot →
-      (∀ z ∈ H, ∀ q < i, ∀ e', SA.VoteAt tr.projAC z q e' →
-        s < e'.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e'.msg B) →
-      Anc (tr.HonestBlocks H) B ell.frame.fcRoot ∨
-        B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
-    (hstored : ∀ y ∈ H, ∀ i ell e, SA.CastAt tr.projAC y i ell e →
-      tr.time i ≤ b → e.msg.slot = s + 1 → ∀ l ∈ (tr.projAC.state y i).locks,
-        sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
-        ∀ Y ∈ tr.HonestBlocks H, Y.root = l.block → Compatible (tr.HonestBlocks H) Y B)
-    (htb : t ≤ b) (hsL : s < L) :
-    ∀ z ∈ H, ∀ q, tr.time q ≤ t → ∀ e, SA.VoteAt tr.projAC z q e →
-      e.msg.slot = L → SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  rintro z hz q hqt e ⟨ell, hcast⟩ he
-  exact hp.late_result_prefix_votes_before hc hx hres hBC hrb hts hdomain hstored
-    q (hqt.trans htb) z hz ell e hcast (he ▸ hsL)
-
 /-- A clean raw source and any high origin share a later honest vote head. This uses
 the already proved clean-source transfer, rather than assuming support at a source gate. -/
 theorem clean_source_compatible_high_origin

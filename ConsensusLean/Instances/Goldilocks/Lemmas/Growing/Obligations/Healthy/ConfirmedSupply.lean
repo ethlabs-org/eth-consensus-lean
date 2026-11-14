@@ -7,7 +7,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyConfirmedEndpoint
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Lemmas.Model.Constant
 
@@ -15,7 +14,7 @@ public section
 
 /-! # The healthy confirmed supply under growing faults
 
-`healthy_confirmed_supply_at`, the growing form of `Obligations.healthy_confirmed_supply`: on a
+`healthy_confirmed_supply_at`, the healthy confirmed supply under growing faults: on a
 healthy run with progress from the ready point, a confirmed proposal after the heal point is in the
 confirmed read of every node ready at the deadline.
 

@@ -5,15 +5,13 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.HeadLock
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.NextVotesCore
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
 /-! # The next votes after a supporter of label `s`, under growing faults
 
-`FrameWindow.next_votes_of_supporter_at`, the growing form of the static
-`FrameWindow.next_votes_of_supporter` (`Healing/NextVotesCore`): the supporter is honest at its
+`FrameWindow.next_votes_of_supporter_at`: the supporter is honest at its
 cast of slot `s`, every later voter at its own cast, and ancestry is in the blocks held while
 honest. The cast head is classified on the supporter's honest prefix
 (`vote_head_classification_of_service_at`): a viable head goes to the caller's base step, a

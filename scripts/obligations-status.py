@@ -22,9 +22,7 @@ PROVED_EVIDENCE = 'Proved; no direct owner in compiled audit at '
 # rows: their REFRESH/RATINGS entries (and their RENAMED_COMPONENTS entries) take effect only in the self-test
 # fixture; the real ledger lists them under historical_removed by their old names. (Their *_ge_sleepy lemmas are
 # in Lemmas/Obligations/ContractDefs and are rows.)
-REFRESH = ('healthy_preserve', 'contract_heal', 'final_window_extract',
-           'final_reset_premises', 'healthy_preparation_initialize', 'healthy_repair_schedule',
-           'healthy_confirmed_supply')
+REFRESH = ('contract_heal', 'final_window_extract', 'final_reset_premises')
 RATINGS = {
     'contract_catchUp': ('paper-partial', 'Settled coefficient audit: simultaneous finite engine envelope and repaired transport remain; no arbitrary witness choice.'),
     'contract_heal': ('lean-proved', 'Closed at 4078bc74 (S6): contract_catchUp + 2·healMargin + 3 at every capability, a named parameter-only value (ResetCoefficients) fitted to the proved reset envelope. contract_heal_ge_reset is the coefficient inequality of the nonfinal envelope, contract_heal_ge_final the final route heal-bound margin; a later leaf may raise healMargin, consumers use only these ≥-forms.'),
@@ -43,18 +41,7 @@ RATINGS = {
     'final_cache_acceptance': ('paper-partial', 'Settled final-liveness audit: actual last-carrier acceptance, retained lookup/cache for every reader and processing/read deadline budget remain.'),
     # Historical rating; the declaration is retired by R0, see RETIRED.
     'healthy_old_inventory_initialize': ('paper-open (research)', 'Global future first arrivals require upper coverage or strict below-hj, including equality; bounded actual reset production missing.'),
-    'healthy_preparation_initialize': ('lean-proved', 'Proved at 2d943744 (moved unchanged to HealthyResetEnvelope.lean): the joint (E) tuple from healthy_reset_envelope (ΔF = Δ, a ≤ ready + R·Δ), ResetPremisesUpTo.reset_seed, base slot slot(ready) + 1 and the query the maximum of the lower bound; every timing bound, including the reserve and the base timing W, is one step from contract_heal_ge_reset.'),
-    'healthy_repair_schedule': ('lean-proved', 'Proved at f4997e9f through the reserved route: healthy_preparation_initialize at the same Q, h0, hb, hp, then healthy_repair_schedule_of_preparation (580f1e4); the reserve is Dprep.reserve, paid by contract_heal_ge_reset.'),
-    'healthy_prepare': ('paper-partial', 'Body proved: heal-cut archival records from the operational update and recent stored locks by lock_origin, from W and the preparation schedule; since R0 no cache or inventory is produced. Sorry-dependent through its premise types and callees, not a direct sorry.'),
-    'healthy_preserve': ('paper-proved awaiting Lean', 'Since R0 only records and recent locks are preserved: retained records via archival tree/F monotonicity/restart, recent locks via lock_origin. The former J quorum/inventory and F≤J cache steps were removed with those fields.'),
-    'healthy_cut_tips_comparable': ('paper-partial', '103bfbd extracts actual stored-clock read-tip comparability; same equality-time pre-endCut gap. Engine output transport is proved.'),
-    'healthy_cut_tips_ancestor': ('paper-partial', '103bfbd extracts directed actual stored-clock read-tip ancestry; temporal/equality-time gap remains. Engine output transport is proved.'),
-    'healthy_cut_agreement': ('paper-partial', 'Old-row realization/replacement, origin comparability and actual engine read transport; heal-time cuts can precede endCut-heal.'),
-    'healthy_cut_monotone': ('paper-partial', 'Temporal DCA lower bound and equality-time/readiness transport; common-chain membership does not prevent backwards reads.'),
-    'healthy_confirmed_supply': ('lean-proved', 'Proved at db4b864f: healthy_confirmed_supply_of_initializer (HealthyConfirmedEndpoint, cb3e1846) applied to healthy_preparation_initialize; statement unchanged.'),
-    'outage_arm': ('paper-partial', 'Inherited record/lookup and exact reader extraction; arming is not protection.'),
     'outage_repair': ('paper-open (research)', 'Covering nonvetoed renewal, pool bound/resolutions, RESULT compatibility, persistence and both reader branches remain.'),
-    'outage_pre_service': ('paper-partial', 'Old duplicate-fresh signature obstruction retired by migration; replacement engine service unproved. Outage applicability not established.'),
     'vote_old_live_lock_below_parent': ('paper-proved awaiting Lean', 'Provenance+l+2 transfer and separate optimistic u−1 branch; non-vote full-tree domain/service integration remains.'),
     'ready_unanimous': ('paper-partial', 'Actual first-deviation head/walk/payload equality remains, not merely parent extension.'),
     'higher_report_window_origin': ('paper-proved awaiting Lean', 'Reset_origin_below and same-store high_of_anc establish high C, then high_report_origin; no unheld receiver height.'),
@@ -137,7 +124,9 @@ RENAMED_COMPONENTS = {
     # The FG attestation names in the scanned Lemmas; the removed cF lemmas have no successor.
     'clean_rowCut': 'clean_fgAttCut', 'isRow_attObj': 'isFGAtt_attObj', 'log_row_iff': 'log_fgAtt_iff',
     'not_isRow_forwardObj': 'not_isFGAtt_forwardObj', 'not_isRow_of_decodeForward': 'not_isFGAtt_of_decodeForward',
-    # The field theorems and the existential endpoint of the obligations proof (Concrete).
+    # The field theorems and the existential endpoint of the former constant-fault obligations proof
+    # (Lemmas/Obligations/Concrete, deleted): historical targets. A target that no longer exists leaves the
+    # name as it is, so its rows stay historical.
     'accepted': 'meetsObligations_exists',
     **{'accepted_' + s: 'meetsObligations_' + s for s in (
         'outputValid', 'nested', 'finalMonotone', 'finalAccountable', 'healthyLive_final', 'healthyLive',
@@ -147,12 +136,14 @@ STEP1_OLD = 'Consensus.Goldilocks.Refinement.'
 STEP1_NEW = ('Consensus.Goldilocks.Obligations.', 'Consensus.Goldilocks.Simulation.',
              'Consensus.Goldilocks.AsChainShape.', 'Consensus.Goldilocks.')
 # The `fields` keys: the closure members named `Refinement.accepted_*` before the split (the contract coefficients
-# and their lemmas, the endpoint proof's field theorems, and `accepted_in_view`).
+# and their lemmas, the endpoint proof's field theorems, and `accepted_in_view`), the growing endpoint's field
+# theorems (`Obligations.Growing.meetsObligations_*`), and the root itself.
 FIELD_PREFIXES = ('Consensus.Goldilocks.contract_', 'Consensus.Goldilocks.Obligations.contract_',
                   'Consensus.Goldilocks.Obligations.accepted_', 'Consensus.Goldilocks.Obligations.meetsObligations_',
+                  'Consensus.Goldilocks.Obligations.Growing.meetsObligations_',
                   'Consensus.Goldilocks.Simulation.accepted_')
 # (The field theorems are now `meetsObligations_*`; `Obligations.accepted_*` keeps the block-acceptance
-# lemmas `accepted_child_decodes` and `accepted_slotTime_le`, and the root `meetsObligations_exists` is a key.)
+# lemmas `accepted_child_decodes` and `accepted_slotTime_le`; the audited root is `ROOT` below.)
 
 
 def renamed(name, current):
@@ -221,10 +212,15 @@ def retired_rows(previous, current):
     return [{k: kept[n][k] for k in RETIRED_FIELDS if k in kept[n]} for n in sorted(kept)]
 
 
+# The obligations endpoint whose closure the ledger audits, and its module.
+ROOT = 'Consensus.Goldilocks.Obligations.Growing.meetsObligations_growing'
+ROOT_MODULE = 'ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Endpoint'
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.parse_args()
-    root = 'Consensus.Goldilocks.Obligations.meetsObligations_exists'
+    root = ROOT
     scope = 'ConsensusLean/Instances/Goldilocks/Lemmas'
     # The ledger's first audit.
     baseline = run('git', 'rev-parse', 'eed6d0b5').strip()
@@ -287,7 +283,7 @@ def main : IO Unit := do
     seeds = sorted({p for n in seeds for p in owned.get(n) or aliases.get(n, [n])})
     records = [json.loads(line) for line in run(
         'lake', 'exe', 'spec-surface', 'dependencies', '--from', root, *seeds,
-        '--modules', 'ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Concrete',
+        '--modules', ROOT_MODULE,
         *modules).splitlines()]
     missing = [r for r in records if 'missing' in r]
     if missing:
@@ -334,19 +330,6 @@ def main : IO Unit := do
         for key in ('evidence', 'obstruction'):
             if key in prior:
                 row[key] = prior[key]
-        if short in ('outage_arm', 'healthy_preserve') and name not in owners and not proved:
-            row['status'] = 'unknown'
-            row['evidence'] = ('Body proved at 649f0286; shared coefficient type dependencies remain. Exact endCut(T), both lookup alternatives and actual read prefix; arming is not protection.' if short == 'outage_arm' else
-                               'Body proved from the existing base: records by induction and recent locks by lock_origin; R0 removed the cache and inventory fields. Shared coefficient type dependencies remain, not a direct sorry.')
-        if short in ('sleepy_query_sync', 'sleepy_safety_inputs'):
-            row.pop('obstruction', None)
-            if name not in owners and dependencies == [
-                    'Consensus.Goldilocks.contract_heal']:
-                row['status'] = 'unknown'
-                row['evidence'] = ('Body proved; full closure depends on contract_heal through '
-                                   'K S A = goldilocksContract A (contract_coefficients S A). '
-                                   'The query and Sleepy premise types include the sorry definition; '
-                                   'this is not a direct sorry in the proof body.')
         if short == 'final_duty_proposal' and name not in owners and dependencies == [
                 'Consensus.Goldilocks.contract_heal']:
             row['status'] = 'unknown'
@@ -374,7 +357,7 @@ def main : IO Unit := do
                         '79cdddc8) do not resolve here.'],
               'historical_removed': sorted(historical - current.keys()),
               'fields': {n: sorted(closure([n], edges) & owners) for n in sorted(accepted)
-                         if n.startswith(FIELD_PREFIXES)},
+                         if n == root or n.startswith(FIELD_PREFIXES)},
               'rows': rows,
               'retired': retired_rows(previous, current)}
     path.write_text(json.dumps(result, indent=2) + '\n')

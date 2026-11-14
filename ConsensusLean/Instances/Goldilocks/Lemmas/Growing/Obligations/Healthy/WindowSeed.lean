@@ -8,7 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Rep
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalPersistence
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowSeed
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinPair
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -16,7 +16,7 @@ public section
 
 /-! # The seed height of the route-A window, under growing faults
 
-The growing form of `Obligations/WindowSeed`: an honest seed proposal `Q` at a slot `u` after the
+On the canonical growing trace, an honest seed proposal `Q` at a slot `u` after the
 drain, and an honest proposal `P₀` at a slot `s₀ ≥ u + δt` by the horizon `b`, give
 `H_z + 2 ≤ σ[P₀].h` at every holder of `P₀` honest at an observation time after the holder's
 earlier cuts (`seed_height_at`), and at the proposer of `P₀` just after its proposal cut

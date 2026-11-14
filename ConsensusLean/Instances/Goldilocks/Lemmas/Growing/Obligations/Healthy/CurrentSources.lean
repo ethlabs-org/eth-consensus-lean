@@ -19,7 +19,7 @@ public section
 
 /-! # The current-record sources under growing faults
 
-The record geometry of healed safety (`Obligations/HealedSafety`) for a healed-safety query, with
+The record geometry of healed safety for a healed-safety query, with
 every reader honest at its read time and every source writer honest at its own cut:
 
 * `healthy_current_sources_compatible_at`: two record covers (`HealthyRecordCoverAt`) of readers

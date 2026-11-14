@@ -8,8 +8,7 @@ public section
 
 /-! # A final query's proposer duty gives an actual proposal, under growing faults
 
-`final_duty_proposal_run_at`, the growing form of `final_duty_proposal_run`
-(`Obligations/FinalDutyProposal`, `ProposerGap.duty_proposal_run`): an honest-ready proposer duty
+`final_duty_proposal_run_at`: an honest-ready proposer duty
 at a slot `s > 0` with `t_s ≤ horizon`, at the duty hold `Δ_AC` of the final recurrence, gives the
 designated proposer's actual proposal at `t_s`, accepted by its proposer, as a growing
 `HonestProposalRun`. The duty's look-ahead `min (t_s + Δ_AC) horizon` is exactly the proposer's

@@ -218,33 +218,6 @@ theorem effective_record_after_update
   rw [ite_eq_right hnv]
   exact (effective_record_update_slot_growth (sp := sp) hΦ (SA.deepest_mem hC).1.1).1
 
-/-- Fixed-call-frame ancestry after an AC call is ancestry in the actual next
-state: AC execution changes neither FG nor its frame. -/
-theorem effective_record_after_ac_call
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
-    {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
-    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
-    (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
-    {j : Nat} {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
-    {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : Anc (tr.HonestBlocks H) P
-      ((SA.lookup ell.frame (tr.projAC.post j).latestConfirmed).getD ell.frame.F)) :
-    Anc (tr.HonestBlocks H) P
-      ((SA.lookup (Node.frame (tr.state y (j + 1)))
-        (tr.state y (j + 1)).ac.latestConfirmed).getD (tr.state y (j + 1)).fg.F) := by
-  have hc' := Compose.projAC_callAt.mp hc
-  have hlaw := hrun.toLocalRun.cutLaw y hy j _ hc'
-  have hframe : Node.frame (tr.state y (j + 1)) = ell.frame := by
-    rw [tr.state_succ_of_call hc', hlaw.1]
-    exact congrArg Store.toFrame hlaw.2.2.1
-  have hstate := Compose.projAC_state hrun.toLocalRun hy (j + 1)
-  rw [tr.projAC.state_succ_of_call hc] at hstate
-  change Anc (tr.HonestBlocks H) P
-    ((SA.lookup (Node.frame (tr.state y (j + 1)))
-      (tr.state y (j + 1)).ac.latestConfirmed).getD (Node.frame (tr.state y (j + 1))).F)
-  rw [hframe, ← hstate]
-  exact hP
-
 /-- A head certificate is checked at the actual read clock. Floor coverage also
 allows the prefix to lie outside the current frame. -/
 theorem anc_acHead_of_current_certificate
@@ -283,36 +256,6 @@ structure EffectiveRecordInterval (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.
     Anc (tr.HonestBlocks H) O
       ((SA.lookup (Node.frame (tr.state y (q + 1)))
         (tr.state y (q + 1)).ac.latestConfirmed).getD (tr.state y (q + 1)).fg.F)
-
-/-- Finite actual-source comparison supplies the interval without manufacturing later
-votes. Candidate and floor comparisons remain local producer obligations. -/
-theorem effectiveRecordInterval_of_candidates_before {b : Time}
-    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y : Fin sp.n} {i j : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hy : y ∈ H)
-    (hcandidates : ∀ q, i ≤ q → q < j → ∀ D s CV,
-      SA.ResultAt tr.projAC y q s D CV ∨ SA.OptimisticLockAt tr.projAC y q s D CV →
-      Compatible (tr.HonestBlocks H) O D)
-    (hframes : ∀ q, i ≤ q → q < j →
-      Compatible (tr.HonestBlocks H) (tr.state y (q + 1)).fg.F O) :
-    EffectiveRecordInterval tr H y i j O := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
-  have hst := Compose.projAC_state hp.run.toLocalRun hy
-  refine ⟨fun q hiq hqj => Or.inl ?_⟩
-  refine ⟨(fun D => ∃ s CV, SA.ResultAt tr.projAC y q s D CV ∨
-    SA.OptimisticLockAt tr.projAC y q s D CV), ?_, ?_, hframes q hiq hqj⟩
-  · by_cases hcall : ∃ ell, tr.projAC.CallAt y q ell
-    · obtain ⟨ell, hcall⟩ := hcall
-      have hw := Compose.call_writes hac.localRun hy hcall
-      rw [← tr.projAC.state_succ_of_call hcall, hst, hst,
-        Compose.frame_of_projAC hp.run hy hcall] at hw
-      exact hw
-    · have he : (tr.state y (q + 1)).ac.latestConfirmed = (tr.state y q).ac.latestConfirmed := by
-        rw [← hst, tr.projAC.state_succ_of_not (fun ell h => hcall ⟨ell, h⟩), hst]
-      rw [he]
-      exact Compose.writes_iff.mpr .refl
-  · rintro D ⟨s, CV, hD⟩
-    exact hcandidates q hiq hqj D s CV hD
 
 /-- The interval contract preserves the effective record across every intervening cut. -/
 theorem effective_record_of_interval

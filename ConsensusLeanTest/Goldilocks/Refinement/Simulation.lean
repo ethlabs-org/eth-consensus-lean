@@ -6,7 +6,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 import all ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Concrete
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Proofs.RegimesRealizable.Main
 import ConsensusLean.Lemmas.Tactic.Linarith

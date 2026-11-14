@@ -129,7 +129,7 @@ theorem quorums_meet [Finite V] (C : Set V) {N : Nat} {F O₁ O₂ : Set V} (hN 
 
 /-! ## `Nodes`, `CarryPrefix` -/
 
-/-- **The optimistic cover count** (`optimistic_transfer_storedU`, `optimistic_isBest_of_carry`):
+/-- **The optimistic cover count** (`optimistic_transfer_storedU`):
 the equivocators and the voters outside a three-quarter quorum `SX` are fewer than `SX`. -/
 theorem cover_count [Finite V] (C : Set V) {N : Nat} {F E W SX : Set V} (hN : C.ncard = N)
     (hSX : SX ⊆ C) (hW : W ⊆ C) (hE : E ⊆ C ∩ F) (h34 : 3 * N ≤ 4 * SX.ncard)

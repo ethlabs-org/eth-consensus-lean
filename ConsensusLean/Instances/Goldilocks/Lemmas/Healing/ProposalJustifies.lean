@@ -17,11 +17,6 @@ The chain step `FGParams.justify_of_target_chain` (`FGChain/Live`) at trace leve
   `σ[Pr]` (`Store.rows_counted`); one in the payload sets them in the counting (`Store.foldl_bits`);
   then `FGParams.justify_of_target_previousHeightNotJustified` or
   `FGParams.justify_of_target_previousHeightJustified`.
-* `justify_of_rows'` (the run): an honest proposal `X` on `Pr`, where the proposer has processed
-  each attestation before its proposal cut (the delivery premise): every attestation is in the
-  pool, so it is on `Pr`'s chain or in `proposal_attestations` (it is valid against `σ[Pr]`: it
-  names the entry). Honest attestations are not equivocations; the weight is that of the honest
-  signers, no `2q − n` slack.
 -/
 
 namespace Consensus.Goldilocks.Healing
@@ -154,37 +149,6 @@ theorem proposal_rows_placed (hrun : GoldilocksRun proposer dg H tr)
     refine List.mem_filter.2 ⟨hpool, decide_eq_true ⟨Or.inl ⟨?_, ?_⟩, hon⟩⟩
     · rw [hdroot, hah]
     · rw [hdroot, haT]
-
-/-- **Justification at an honest proposal**: an honest proposal `X` at the cut `kX` on the parent
-`Pr` of the proposer's tree, with parent state `σ = σ[Pr]` (the proposer's, at `kX`), and a set `S ⊆
-H` of weight `≥ q` of honest validators, each of which signed a target row for `(σ.h, σ.T_h)` (with
-the finality pair `(σ.h_j, σ.J)` at a height whose previous height is justified where it is pending)
-that the proposer processed before `kX` (delivery): `X`'s state justifies `(σ.h, σ.T_h)`, and at a
-height whose previous height is justified it has `h_F = σ.h_j`. -/
-theorem justify_of_rows' (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
-    (hPr : Pr ∈ (tr.state p kX).fg.tree)
-    (S : Finset (Fin sp.n)) (hSH : ∀ v ∈ S, v ∈ H) (hS : sp.toParams.fg.q ≤ S.card)
-    (hdel : ∀ v ∈ S, ∃ k att, tr.SignAt v k att ∧ att.h = ((tr.state p kX).fg.σ Pr.root).h ∧
-      att.T = ((tr.state p kX).fg.σ Pr.root).Th ∧ att.timeout = false ∧
-      (((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
-        (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J) ∈
-          ((tr.state p kX).fg.σ Pr.root).pending →
-        att.fin = some (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J)) ∧
-      ∃ k' < kX, tr.ProcessAttAt p k' att) :
-    ((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h ∧
-      ((tr.post kX).fg.σ X.root).J = ((tr.state p kX).fg.σ Pr.root).Th ∧
-      (((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
-        ((tr.post kX).fg.σ X.root).hF = ((tr.state p kX).fg.σ Pr.root).hj) := by
-  classical
-  obtain ⟨hfg, hXt, hPrt, hσX, hσPr, hplace⟩ := proposal_rows_placed hrun hnc hp hX hpar hPr
-  have := justify_step' hfg hp hXt hPrt hpar S hS fun v hv => by
-    obtain ⟨k, att, hsig, hah, haT, hto, hfin, hproc⟩ := hdel v hv
-    rw [← hσPr]
-    exact ⟨att, signAt_val hrun (hSH v hv) hsig, hah, haT, hto, hfin, hplace att hproc hah haT⟩
-  rw [hσX, hσPr]
-  exact this
 
 end Run
 

@@ -30,14 +30,13 @@ public section
 
 /-! # The current-read checks of healed safety under growing faults
 
-The checks of `Obligations/HealedSafety` on a reader's current state at a read point after the
+The healed-safety checks on a reader's current state at a read point after the
 repair window (`HealthyReadContextAt`), with the reader honest at its read time and every source
 writer honest at its own cut:
 
 * `guarded_seed_ancestor_candidate_at_state_at`: a target compatible with a bounded high seed,
   held whenever it is above finalization, and with every earlier high origin, is an ancestor
-  candidate of the reader's frame (the growing form of
-  `UpTo.guarded_seed_ancestor_candidate_at_state`; the argument is
+  candidate of the reader's frame (the argument is
   `ResetPremisesUpTo.guarded_seed_ancestor_candidate_at_state_at`);
 * `healthy_current_live_candidates_at`: the reader's live lock blocks and fork-choice root are
   compatible with its looked-up record;

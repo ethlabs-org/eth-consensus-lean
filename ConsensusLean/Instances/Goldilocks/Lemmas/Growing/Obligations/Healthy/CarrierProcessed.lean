@@ -12,14 +12,14 @@ public section
 
 /-! # The carrier of the last anchor is processed by the deadline, under growing faults
 
-The growing form of `Obligations/CarrierProcessed`:
+Under growing faults:
 
-* `publication_held_ready_tail_at` (`publication_held_ready_tail`): one protocol-delay tail after
+* `publication_held_ready_tail_at`: one protocol-delay tail after
   an actual publication of an origin honest at its event is held strictly before the read time of
   a node ready there;
-* `held_forward_blockCall_lt_at` (`held_forward_blockCall_lt`): a held forwarding wrapper of a
+* `held_forward_blockCall_lt_at`: a held forwarding wrapper of a
   signer honest at its stamp is processed before the holding bound;
-* `carrier_processed_of_honest_at` (`carrier_processed_of_honest`), the premise `hcarrier` of
+* `carrier_processed_of_honest_at`, the premise `hcarrier` of
   `final_window_extract_of_gap_at`: every node ready at the deadline processes an honest proposal
   of a slot `s` by the deadline, when `query < t_s` and `t_s + Δ ≤ deadline`. -/
 

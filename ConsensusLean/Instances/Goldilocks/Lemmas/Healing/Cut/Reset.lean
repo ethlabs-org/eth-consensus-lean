@@ -342,38 +342,6 @@ theorem reset_le_of_high (hrun : GoldilocksRun proposer dg H tr) (hh : tr.Health
     omega
   · exact hR.2 y hy k att hs hatt.symm
 
-/-- An honest signature above the frontier forces a reset no later than its signing time,
-without healthy continuation or an existing reset witness. -/
-theorem reset_of_height_advance (hrun : GoldilocksRun proposer dg H tr)
-    (hq : Hᶜ.ncard < sp.toParams.fg.q) {y : Fin sp.n} (hy : y ∈ H)
-    {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att)
-    (hh : HZ tr H g + 1 ≤ att.h) :
-    ∃ a, IsReset tr H g a ∧ a ≤ tr.time k := by
-  classical
-  have hex₀ : ∃ j, ∃ z ∈ H, ∃ b, tr.SignAt z j b ∧ b.h = HZ tr H g + 1 ∧
-      tr.time j ≤ tr.time k := by
-    rcases hh.lt_or_eq with hh | hh
-    · obtain ⟨E, hE, -, hEh⟩ := signAt_entry hrun hy hs
-      obtain ⟨Y, hYE, b, hb, hbH, hbh⟩ := Store.exists_honest_att_of_lt
-        (Compose.fg_reachable hrun.toLocalRun hy k) hq hE (HZ tr H g + 1)
-        (by omega) (by omega)
-      have hY : Y ∈ (tr.state y k).fg.tree := by
-        by_cases he : Y = E
-        · exact he ▸ hE
-        · exact (Anc.mem hYE he).1
-      obtain ⟨src, hc⟩ := hs
-      obtain ⟨j, hj, hjk⟩ := signed_before_attest hrun.toLocalRun hy hc hY hb hbH
-      exact ⟨j, b.val, hbH, b, hj, hbh, hjk.le⟩
-    · exact ⟨k, y, hy, att, hs, hh.symm, le_rfl⟩
-  obtain ⟨j, v, hv, c, hc, hch, hjk⟩ := hex₀
-  have hex : ∃ j, ∃ z ∈ H, ∃ b, tr.SignAt z j b ∧ b.h = HZ tr H g + 1 :=
-    ⟨j, v, hv, c, hc, hch⟩
-  obtain ⟨z, hz, b, hb, hbh⟩ := Nat.find_spec hex
-  have hR : IsReset tr H g (tr.time (Nat.find hex)) :=
-    ⟨⟨z, hz, Nat.find hex, b, hb, hbh, rfl⟩,
-      fun v hv j c hc hch => hrun.time_mono (Nat.find_min' hex ⟨v, hv, c, hc, hch⟩)⟩
-  exact ⟨_, hR, (hR.2 v hv j c hc hch).trans hjk⟩
-
 /-- **HR.1 (c), the frontier at the ticks at the reset is `≤ H_z + 1`.** -/
 theorem hmax_le_at_reset (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
     {a : Time}

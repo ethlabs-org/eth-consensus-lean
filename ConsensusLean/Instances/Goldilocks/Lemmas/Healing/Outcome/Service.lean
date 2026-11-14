@@ -1,10 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
-import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.ClientSteps
 
 public section
@@ -27,8 +25,7 @@ C1.2 itself is not proved here.
   (`carrier_below_origin_before`), since HR.4 (R2) makes every honest `Σ.F` compatible with the
   origin; a higher report above an honest ready proposal lies below a high origin
   (`higher_report_window_origin_before`).
-* **The finite reset service adapter**: Catch and Sync windows at the actual reset
-  (`catch_window_at_reset_of_reset_catch_before`, `sync_window_at_reset_of_reset_before`). -/
+-/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -57,12 +54,6 @@ private theorem parent_mem (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y
 end FGTraces
 
 /-! ## Runs: deadlines and the relay of a carrier -/
-
-section Runs
-
-variable {P : Params} {A : NodeAC P} {tr : RunTrace A}
-
-end Runs
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n}
@@ -456,86 +447,6 @@ private theorem fg_run (hrun : GoldilocksRun proposer dg H tr) (hsh : HSShared t
       (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
       SA.proposal_payload_valid sp _ ro⟩
     hsh.genesisRoot hrun.toLocalRun hsh.noColl
-
-/-- Catch before GST and acceptance relay after GST give Catch at the actual reset,
-without awake or service obligations beyond the finite observation horizon. -/
-theorem catch_window_at_reset_of_reset_catch_before {b t : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (htb : t ≤ b) :
-    CatchACWindowBefore tr.projAC H (tr.HonestBlocks H) a (2 * sp.Δ) t := by
-  have hca := cutZ_lt_reset_of_snapshot hp.run
-    (by obtain ⟨k, hk, -⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset
-  have hga : SA.gbar g < a := by linarith [lt_cutZ sp g, sp.toParams.hΔ]
-  have hra : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ a := by
-    apply le_trans _ hca.le
-    rw [cutZ_eq]
-    exact (SA.ts_le_iff sp).mpr (by omega)
-  constructor
-  intro x hx i B ha hi y hy j ell hj ht hjt hF
-  change a + 2 * sp.Δ ≤ tr.time j at ht
-  change tr.time j ≤ t at hjt
-  by_cases hgi : tr.projAC.time i < SA.gbar g
-  · obtain ⟨k, hk, hak, hkt⟩ := projection_catch_of_run hp.run hc x hx i B ha hgi
-      y hy j ell hj (by change SA.gbar g + 2 * sp.Δ ≤ tr.time j; linarith) hF
-    exact ⟨k, hk, hak, by linarith⟩
-  · obtain ⟨i', rfl, ha', hti⟩ := fg_accept_before hp.run.toLocalRun hx ha
-    change tr.time (i' + 1) < a at hi
-    change ¬ tr.time (i' + 1) < SA.gbar g at hgi
-    have hia : tr.time i' < a := by simpa only [hti] using hi
-    have hgg : g ≤ tr.time i' := (SA.le_gbar g).trans (by
-      simpa only [hti] using le_of_not_gt hgi)
-    have hmax : max (tr.time i') g = tr.time i' := max_eq_left hgg
-    have hdeadline : ∀ k ≤ j, tr.deadline y k (tr.time i') sp.Δ ≤ a + sp.Δ := by
-      intro k hkj
-      apply le_trans (Compose.deadline_le_of_restarts (a := a) (fun r hr hrest =>
-        (restart_le_before hp hy hrest
-          ((hp.run.time_mono (hr.trans hkj)).trans (hjt.trans htb))).trans hra) _ _)
-      rw [max_eq_right hia.le]
-    obtain ⟨k, hk, hak, hkt⟩ := hp.sync.relay x hx i' B ha' hgg y hy j
-      ⟨_, Compose.projAC_callAt.mp hj⟩ (by
-        rw [hmax]
-        exact (hdeadline j le_rfl).trans (by linarith [sp.toParams.hΔ]))
-      (by rwa [Compose.frame_of_projAC hp.run hy hj] at hF)
-    obtain ⟨hak', htk, -⟩ := ac_block_after hp.run.toLocalRun hy hak
-    have hkj : k < j := by
-      rcases hk.lt_or_eq with hk | rfl
-      · exact hk
-      · exact absurd (hak.2.symm.trans (Compose.projAC_callAt.mp hj).2) (by simp)
-    refine ⟨k + 1, hkj, hak', ?_⟩
-    change tr.time (k + 1) < a + 2 * sp.Δ
-    rw [htk]
-    rw [hmax] at hkt
-    exact lt_of_lt_of_le hkt ((hdeadline k hk).trans (by linarith [sp.toParams.hΔ]))
-
-/-- Finite reset service supplies AC synchrony from the actual reset, retaining the
-recipient deadline cutoff and strict processing deadlines. -/
-theorem sync_window_at_reset_of_reset_before {b t : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (htb : t ≤ b) :
-    SyncACWindowBefore H (tr.HonestBlocks H) a t tr.projAC := by
-  have hca := cutZ_lt_reset_of_snapshot hp.run
-    (by obtain ⟨k, hk, -⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset
-  have hga : g ≤ a := by
-    have := SA.le_gbar g
-    have := lt_cutZ sp g
-    linarith [sp.toParams.hΔ]
-  have hs := hp.sync.syncAC (hi := b) hp.run hga
-  have hsource : ∀ y j (u : Time), u ≤ tr.projAC.deadline y j u := by
-    intro y j u
-    unfold ACTrace.deadline
-    have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-    cases tr.projAC.lastWake y j with
-    | bot => change u ≤ u + sp.Δ; linarith
-    | coe w =>
-      change u ≤ max u w + sp.Δ
-      have := le_max_left u w
-      linarith
-  constructor
-  · intro x hx i m hm hi y hy j ell hj ht hd
-    exact hs.1 x hx i m hm hi ((hsource y j _).trans (ht.trans htb))
-      y hy j ell hj hd
-  · intro x hx i B hB hi y hy j ell hj ht hd hF
-    exact hs.2 x hx i B hB hi ((hsource y j _).trans (ht.trans htb))
-      y hy j ell hj hd hF
 
 end Consensus.Goldilocks.Healing
 

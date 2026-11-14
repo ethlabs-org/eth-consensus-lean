@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Proofs.RegimesRealizable.Main
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Concrete
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.OutageSupply
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section

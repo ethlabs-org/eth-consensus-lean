@@ -11,8 +11,8 @@ public section
 
 /-! # The healthy cut adapters under growing faults
 
-The two read-tip facts that healed safety reduces to (the growing forms of
-`Obligations.healthy_cut_tips_comparable` and `Obligations.healthy_cut_tips_ancestor`). An engine
+The two read-tip facts that healed safety reduces to: comparability across readers and temporal
+ancestry for one reader. An engine
 reader ready at a cut from the heal point is read at the trace cut after its last own event, at
 its stored clock (`engine_read_point`), with ancestry inside the blocks held while honest.
 

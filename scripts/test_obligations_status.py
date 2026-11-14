@@ -28,7 +28,7 @@ class StatusTests(unittest.TestCase):
         source = 'namespace ' + prefix[:-1] + '\n' + '\n'.join(
             'theorem ' + n + ' : True := by ' + ('sorry' if n in sorry else 'trivial')
             for n in names)
-        records = [{'declaration': 'Consensus.Goldilocks.Obligations.meetsObligations_exists',
+        records = [{'declaration': status.ROOT,
                     'dependencies': [prefix + n for n in names]}]
         records += [{'declaration': prefix + n,
                      'dependencies': ['sorryAx'] if n in sorry else
@@ -70,34 +70,23 @@ class StatusTests(unittest.TestCase):
             finally:
                 os.chdir(cwd)
 
-    def test_sleepy_regeneration_distinguishes_body_and_type_dependency(self):
-        names = ['contract_heal', 'sleepy_query_sync', 'sleepy_safety_inputs',
-                 'simTrace_vote_forwarded', 'final_duty_proposal']
+    def test_regeneration_distinguishes_body_and_type_dependency(self):
+        names = ['contract_heal', 'simTrace_vote_forwarded', 'final_duty_proposal']
         rows = self.regenerate(
-            names, {'contract_heal'},
-            {n: ['contract_heal'] for n in ('sleepy_query_sync', 'sleepy_safety_inputs',
-                                            'final_duty_proposal')},
-            lambda n: {'status': 'paper-open (research)', 'obstruction': 'stale obstruction',
-                       'evidence': 'stale', 'owner-thread': 'T-fixture', 'derisk-verdict': 'complete'})
-        for n in names[1:3]:
-            r = rows[n]
-            self.assertFalse(r['direct_sorry'])
-            self.assertEqual(r['lean-status'], 'sorry-dependent')
-            self.assertEqual(r['status'], 'unknown')
-            self.assertEqual(r['blocked-by'], [self.PREFIX + 'contract_heal'])
-            self.assertIn('Body proved', r['evidence'])
-            self.assertIn('K S A', r['evidence'])
-            self.assertNotIn('obstruction', r)
-            # a prior ledger's routing and process fields are not carried into the public row
-            self.assertLessEqual(set(r), set(status.ROW_FIELDS))
-        self.assertEqual(rows[names[3]]['status'], 'lean-proved')
+            names, {'contract_heal'}, {'final_duty_proposal': ['contract_heal']},
+            lambda n: {'status': 'paper-open (research)', 'evidence': 'stale',
+                       'owner-thread': 'T-fixture', 'derisk-verdict': 'complete'})
+        self.assertEqual(rows['simTrace_vote_forwarded']['status'], 'lean-proved')
         duty = rows['final_duty_proposal']
         self.assertFalse(duty['direct_sorry'])
         self.assertEqual(duty['lean-status'], 'sorry-dependent')
         self.assertEqual(duty['status'], 'unknown')
+        self.assertEqual(duty['blocked-by'], [self.PREFIX + 'contract_heal'])
         self.assertIn('final_duty_proposal_run', duty['evidence'])
         self.assertIn('K S A', duty['evidence'])
-        self.assertTrue(rows[names[0]]['direct_sorry'])
+        # a prior ledger's routing and process fields are not carried into the public row
+        self.assertLessEqual(set(duty), set(status.ROW_FIELDS))
+        self.assertTrue(rows['contract_heal']['direct_sorry'])
 
     def test_step1_renames_keep_former_owners(self):
         # The historical blob names the former owner by its earlier name: it keeps its row under
@@ -134,10 +123,19 @@ class StatusTests(unittest.TestCase):
                          [self.PREFIX + 'Obligations.meetsObligations_claims'])
         self.assertEqual(ledger['historical_removed'], [])
 
+    def test_fields_cover_the_growing_endpoint(self):
+        # the root and the growing endpoint's field theorems are field keys; other closure members are not
+        field = 'Obligations.Growing.meetsObligations_persists_growing'
+        ledger = self.regenerate([field, 'Obligations.Growing.outage_helper'], set(), {}, lambda n: {},
+                                 prior_rows=[], document=True)
+        self.assertIn(status.ROOT, ledger['fields'])
+        self.assertIn(self.PREFIX + field, ledger['fields'])
+        self.assertNotIn(self.PREFIX + 'Obligations.Growing.outage_helper', ledger['fields'])
+
     def test_proved_rows_refresh_ratings_and_skip_unproved_overrides(self):
         # every row was reviewed before (it has a status), with stale prose evidence
-        names = ['final_reset_premises', 'outage_arm', 'sleepy_query_sync', 'healthy_cut_agreement',
-                 'outage_repair']
+        names = ['final_reset_premises', 'ready_unanimous', 'final_duty_proposal',
+                 'vote_old_live_lock_below_parent', 'outage_repair']
         prior = lambda n: {'status': 'paper-partial', 'evidence': 'Open: stale prose that remains'}
         rows = self.regenerate(names, {'outage_repair'}, {}, prior)
         # (a) a REFRESH name takes its current RATINGS entry, not the previous evidence
@@ -146,7 +144,7 @@ class StatusTests(unittest.TestCase):
                          status.RATINGS['final_reset_premises'][1])
         self.assertEqual(rows['final_reset_premises']['status'], 'lean-proved')
         # (b) proved rows do not take the unproved-only overrides; their prose becomes the audit fact
-        for n in ('outage_arm', 'sleepy_query_sync', 'healthy_cut_agreement'):
+        for n in ('ready_unanimous', 'final_duty_proposal', 'vote_old_live_lock_below_parent'):
             self.assertEqual(rows[n]['status'], 'lean-proved')
             self.assertEqual(rows[n]['evidence'], status.PROVED_EVIDENCE + 'fixture-.')
         # an open row keeps its reviewed evidence
@@ -156,16 +154,16 @@ class StatusTests(unittest.TestCase):
         again = self.regenerate(names, {'outage_repair'}, {},
                                 lambda n: {k: v for k, v in rows[n].items() if k != 'name'},
                                 head='later-pin')
-        self.assertEqual(again['outage_arm']['evidence'], status.PROVED_EVIDENCE + 'fixture-.')
+        self.assertEqual(again['ready_unanimous']['evidence'], status.PROVED_EVIDENCE + 'fixture-.')
 
     def test_regressed_rows_drop_proof_ratings_and_evidence(self):
         # proved at an earlier audit, now back to a sorry: a lean-proved REFRESH entry and an
         # audit-fact row
-        self.assertIn('healthy_repair_schedule', status.REFRESH)
-        self.assertEqual(status.RATINGS['healthy_repair_schedule'][0], 'lean-proved')
-        names = ['healthy_repair_schedule', 'outage_arm']
-        before = {'healthy_repair_schedule': status.RATINGS['healthy_repair_schedule'][1],
-                  'outage_arm': status.PROVED_EVIDENCE + 'earlier.'}
+        self.assertIn('final_reset_premises', status.REFRESH)
+        self.assertEqual(status.RATINGS['final_reset_premises'][0], 'lean-proved')
+        names = ['final_reset_premises', 'ready_unanimous']
+        before = {'final_reset_premises': status.RATINGS['final_reset_premises'][1],
+                  'ready_unanimous': status.PROVED_EVIDENCE + 'earlier.'}
         prior = lambda n: {'status': 'lean-proved', 'evidence': before[n]}
         rows = self.regenerate(names, set(names), {}, prior)
         for n in names:
@@ -227,7 +225,7 @@ class StatusTests(unittest.TestCase):
         sources = {'A': 'namespace Consensus.Goldilocks\nprivate theorem foo : True := by trivial\n',
                    'B': 'namespace Consensus.Goldilocks\n\n\nprivate theorem foo : True := by trivial\n'}
         privates = {m: self.PRIVATE.format(m) + 'foo' for m in sources}
-        root = 'Consensus.Goldilocks.Obligations.meetsObligations_exists'
+        root = status.ROOT
         records = [{'declaration': root, 'dependencies': sorted(privates.values())}]
         records += [{'declaration': p, 'dependencies': []} for p in privates.values()]
 

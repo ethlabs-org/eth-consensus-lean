@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -25,6 +24,40 @@ public section
   (the committee slot count at `t_{j₀} + 6Δ`, pre-`b₀` service), R-mid (the cohort `K m ∩ A₀`
   against `K m ∩ ((H z)ᶜ ∪ W)`, at `t_k ≤ z` by `hzc`), R-late (`late` and the committee slot
   count at `t_m + 6Δ`). -/
+
+namespace Consensus.Goldilocks.Compose
+
+open SA (SAParams ReplayOrder Payload Vote)
+
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+
+/-- **A result's counted validators meet a participant set.** At an honest update with result
+`C`, if `T` are voters of the update's pool and `|Q| < |T|`, some counted vote is of a validator in
+`T` or outside `Q`. -/
+theorem exists_counted_of_participants {X : Fin sp.n} {i₀ s : Nat}
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hR : SA.ResultAt tr.projAC X i₀ s C CV) {T Q : Set (Fin sp.n)}
+    (hT : T ⊆ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s}) (hQT : Q.ncard < T.ncard) :
+    ∃ v ∈ CV, v.val ∈ T ∨ v.val ∉ Q := by
+  by_contra hno
+  push Not at hno
+  have hmaj := SA.result_majority hR
+  obtain ⟨ℓ, -, -, hCV⟩ := hR
+  have hSV : {w | ∃ v ∈ CV, v.val = w} ⊆ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
+    rintro w ⟨v, hv, rfl⟩
+    rw [hCV] at hv
+    exact ⟨v, hv.1, rfl⟩
+  have hdisj : Disjoint T {w | ∃ v ∈ CV, v.val = w} :=
+    Set.disjoint_left.2 fun w hwT ⟨v, hv, hvw⟩ => (hno v hv).1 (hvw ▸ hwT)
+  have h1 := Set.ncard_union_eq hdisj
+  have h2 := Set.ncard_le_ncard (Set.union_subset hT hSV)
+  have h3 : {w | ∃ v ∈ CV, v.val = w}.ncard ≤ Q.ncard :=
+    Set.ncard_le_ncard fun w ⟨v, hv, hvw⟩ => hvw ▸ (hno v hv).2
+  omega
+
+end Consensus.Goldilocks.Compose
 
 namespace Consensus.Goldilocks.Compose.Growing
 

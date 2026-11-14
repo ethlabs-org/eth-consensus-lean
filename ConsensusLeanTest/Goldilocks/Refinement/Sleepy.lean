@@ -1,18 +1,18 @@
 module
 public import ConsensusLeanTest.Goldilocks.Refinement.Simulation
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalEndpoints
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSuppliers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthySuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # Witnesses: the Sleepy leaves' and vote forwarding's hypotheses are satisfiable
 
-Kind (a), joint satisfiability (CONTRIBUTING "Statements"), for the hypotheses of
-`sleepy_safety_inputs` (`SleepySafetyQuery`) and of `sleepy_query_sync` (`ConfirmedQuery`,
-Sleepy branch). Both structures fix the contract to `K S A`. The theorems below state the same
-fields over `goldilocksContract A C` for every coefficient record `C`; at
-`C = contract_coefficients S A` they are the structures' fields, since `K S A` is that
-abbreviation.
+Kind (a), joint satisfiability (CONTRIBUTING "Statements"), for a valid, collision-free Sleepy
+run and for the fields of `ConfirmedQuery` (Sleepy branch). The query fixes the contract to
+`K S A`. The theorems below state the same fields over `goldilocksContract A C` for every
+coefficient record `C`; at `C = contract_coefficients S A` they are the query's fields, since
+`K S A` is that abbreviation.
 
 * `sleepySafety_fields`: a valid, collision-free Sleepy run of `goldilocks S` on two validators,
   with any horizon `H ≥ 0`.
@@ -93,7 +93,7 @@ theorem sleepy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : T
     rw [point_readyAt, point_faulty]
     norm_num
 
-/-- (a) The `SleepySafetyQuery` fields, over `goldilocksContract A C`, are jointly satisfiable at
+/-- (a) A valid, collision-free Sleepy run, over `goldilocksContract A C`, exists at
 every horizon `H ≥ 0`. -/
 theorem sleepySafety_fields (A : ContractAssumptions S) (C : ContractCoefficients)
     (H : Time) (hH : 0 ≤ H) :

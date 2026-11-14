@@ -5,7 +5,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundati
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealedC4
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportCover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Domain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
@@ -16,8 +15,7 @@ public section
 
 /-! # C4 of the healed window under growing faults: no reorg of honest proposals
 
-The growing form of `Obligations/HealedC4` and of the window-facing C4 wrappers of
-`Obligations/HealedUpTo`, with each proposer honest through its own slot's `t_s + hold`:
+C4 and its window-facing wrappers, with each proposer honest through its own slot's `t_s + hold`:
 
 * `proposesAt_of_honestProposalRun_at`: an honest proposal run is made operationally;
   `honestProposalRun_slot_at`, `accept_of_proposesAt_at` (the static `accept_of_proposesAt` on the
@@ -109,8 +107,7 @@ theorem proposal_held_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun prop
   obtain ⟨-, -, -, ht⟩ := accept_next_at hrun hm ha
   exact ⟨k, hk, hm, ht, hP'⟩
 
-/-- The duty head of a proposal is the walk from the anchor after the proposal's unlocking (as the
-static `Obligations/HealedC4`'s private helper). -/
+/-- The duty head of a proposal is the walk from the anchor after the proposal's unlocking. -/
 private theorem acProposal_start_anchor {A : SA.SAState sp.n}
     {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {t : Time}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}

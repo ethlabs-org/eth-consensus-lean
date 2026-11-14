@@ -6,7 +6,7 @@ public section
 
 /-! # The anchor chain of a window through a horizon, under growing faults
 
-The growing form of `Obligations/WindowAnchorsUpTo`: from the finite reset premises and
+The window anchor chain under growing faults: from the finite reset premises and
 Catch(2Δ), honest proposals of increasing post-drain slots form an honest-ancestry chain, by the
 growing C4 wrappers (`honest_proposal_below_next_upTo_at`, `honest_proposal_below_later_upTo_at`).
 Guards as in the static form: `t_{s₁} ≤ b`, and `t_{s₀} + 6Δ ≤ b` for an adjacent pair. -/

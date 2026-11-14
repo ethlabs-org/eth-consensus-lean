@@ -6,10 +6,9 @@ public section
 
 /-! # The healthy repair schedule under growing faults (definitions)
 
-The repair schedule, opening, receiver repair and record cover of a healed-safety query, each
-the counterpart of `Lemmas/Obligations/HealedSafetyConditional` and `HealedSafety` with honesty
-read at the time of each event or observation: a source is honest at its own cut, a proposer or
-receiver at its readiness time, and blocks are held by nodes honest when they held them
+The repair schedule, opening, receiver repair and record cover of a healed-safety query, with
+honesty read at the time of each event or observation: a source is honest at its own cut, a
+proposer or receiver at its readiness time, and blocks are held by nodes honest when they held them
 (`HonestBlocksAt`). No honest set is fixed across the run. Definitions only. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing

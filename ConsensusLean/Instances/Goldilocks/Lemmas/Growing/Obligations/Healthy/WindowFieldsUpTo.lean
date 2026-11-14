@@ -7,7 +7,7 @@ public section
 
 /-! # The fields of a final window from four honest anchors, under growing faults
 
-The growing form of `Obligations/WindowCoverageUpTo` and `Obligations/WindowFieldsUpTo`:
+The window fields on the canonical growing trace:
 
 * `finalWindow_fields_of_honest_anchors_at`: proposal cuts, the proposers' acceptances, the
   post-store as the proposer's next state, and the anchor chain;

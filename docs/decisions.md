@@ -265,7 +265,7 @@ detail in `TRUST.md`.
     `fgSlots`; this is not a theorem that removes all row assumptions.
   - heal `catchUp + M_f` (`contract_heal`), with `M_f = healMargin = 20 L_drain + 8k + 28δ_t + 28X + 56` and
     `L_drain = 2k + X` (expanded `48k + 28δ_t + 48X + 56`; heal `387` at `k = 2, X = 1, δ_t = 6`). It is the final
-    route's heal bound on the key-dependent rise-round route at `λ = 2Δ` (`exists_reset_of_drain_rounds_awake`,
+    route's heal bound on the key-dependent rise-round route at `λ = 2Δ` (`exists_reset_of_drain_rounds_awake_at`,
     `resetBoundRounds`, `healBoundCoeffRounds_at_two`), which gives a lower heal than the earlier five-window frame
     route; the untrusted reset coefficient `healthyResetCoeff = 20 L_drain + 24(δ_t + X) + 40` moves with it, and
     `M_f` also covers the nonfinal reset envelope for `δ_t ≥ 6` (`healMargin_ge_reset`, slack `4δ_t − 13`). A
@@ -537,8 +537,10 @@ detail in `TRUST.md`.
 - **Simulation and obligations are separate closures.** The proofs split by import closure into
   `Lemmas/Simulation` (the simulation statements, namespace `Goldilocks.Simulation`, `SimulationStatements`), which
   never imports the obligations, and `Lemmas/Obligations` with `Proofs/Obligations` (namespace
-  `Goldilocks.Obligations`). The field theorems of the obligations proof (`Lemmas/Obligations/Concrete`) follow
-  `MeetsObligations`: `meetsObligations_*`, with the existential endpoint `meetsObligations_exists`.
+  `Goldilocks.Obligations`). The field theorems of the obligations proof
+  (`Lemmas/Growing/Obligations/Concrete`) follow `MeetsObligations`: `meetsObligations_*_growing`, with the
+  endpoint `Growing.meetsObligations_growing`. The constant-fault endpoint `meets_obligations_constant` is its
+  corollary (`meetsObligationsConstant_of_growing`); there is no separate constant-fault assembly.
   Block-acceptance names (`accepted_tree`, `accepted_in_view`, `accepted_child_decodes`, …) are a different concept.
 - **The Baseline sheet and its tests were removed.** The earlier pinned properties sheet was never approved and
   was off every live path: nothing in the closure of `Challenge`, `Solution` or the obligations endpoint imported
@@ -552,12 +554,12 @@ detail in `TRUST.md`.
   internal span, never on `X`; no local parameter may silently depend on `X`.
 - **Route A, four anchors.** `finalWindow A = [0, c, 2c, 3c]` at `c = fgSlots` (span `3c`, `[0, 2, 4, 6]` at
   `fgSlots = 2`), with the timeout `3·fgSlots ≤ δ_t`. The window coverage comes from the anchor route
-  (`cacheCoverage_of_anchor_window_upTo`, `Lemmas/Obligations/WindowAnchorRoute`): honest proposers only at the four
-  anchors, three anchor steps of `c`, and `P₃.slot ≤ P₀.slot + δ_t`. Only this coverage lemma needs the span bound;
-  the seed needs `δ_t ≥ 4`. `δ_t` is a fixed constant, independent of `X`; tolerance keeps `X = span + 2` as an
-  existential witness only, and every leaf stays valid for all positive `X`. The row delay enters only through the
-  rise timeout `6Δ + ΔF ≤ 4Δ·δ_t`, paid by `3c ≤ δ_t`; the transport runs at the actual protocol FG delay
-  `protoFGDelay` (`FinalQuery.hsSharedUpTo`).
+  (`cacheCoverage_of_anchor_window_upTo_at`, `Lemmas/Growing/Obligations/Healthy/WindowAnchorRoute`): honest proposers
+  only at the four anchors, three anchor steps of `c`, and `P₃.slot ≤ P₀.slot + δ_t`. Only this coverage lemma needs
+  the span bound; the seed needs `δ_t ≥ 4`. `δ_t` is a fixed constant, independent of `X`; tolerance keeps
+  `X = span + 2` as an existential witness only, and every leaf stays valid for all positive `X`. The row delay
+  enters only through the rise timeout `6Δ + ΔF ≤ 4Δ·δ_t`, paid by `3c ≤ δ_t`; the transport runs at the actual
+  protocol FG delay `protoFGDelay` (`FinalQueryAt.hsSharedUpTo_at`).
 - **Other routes.** The first-crossing/bounded-crossing assembly (`[0, δ_t − 1, δ_t + 1, δ_t + 3]`, `δ_t ≥ 4`) is
   retired. The two-proposer route (route B) is parked: it has no proved supplier.
 
@@ -687,8 +689,8 @@ detail in `TRUST.md`.
 
 - **Sleepy row-independence.** Do the sleepy claims hold at every `ΔFG > 0`, as `System.Sleepy` (no ratio) states,
   for every family? Goldilocks's `sleepySafe`, `sleepyLive` and `persists` are proved with no ratio premise, for
-  each positive `ΔFG`, in the two-bound model (`Obligations.meetsObligations_exists`, standard axioms). That model
-  still imposes finite row delivery at `ΔFG`: `System.Sleepy` contains `PSync 0` and `System.Outage` contains
+  each positive `ΔFG`, in the two-bound model (`Obligations.Growing.meetsObligations_growing`, standard axioms). That
+  model still imposes finite row delivery at `ΔFG`: `System.Sleepy` contains `PSync 0` and `System.Outage` contains
   `OutageNet`, whose `fgAtts` clause delivers rows by `ΔFG`. This is not independence from any row-delivery
   assumption, and it does not allow unbounded or missing delivery. Generically the question is open.
 - **All-occurrences provenance.** Collision transport targets the constructed trace; provenance over all

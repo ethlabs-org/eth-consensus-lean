@@ -13,14 +13,14 @@ public section
 
 /-! # The outage over AC traces, the restored side: the gate count and read majority
 
-The gate rows of the outage census (`Compose/Regimes/OutageGate`), stated over an AC trace of the
+The gate rows of the outage census, stated over an AC trace of the
 SA with the unlock given at a write mode (`ACRunU wm u`), with the receiver-scoped service after
 `g` (`Compose.ReceiverServiceAfter`) as hypothesis and the frames of the calls in place of node
 frames:
 
 * the extending majority at a label (`ExtendingCastersAC`, `OpponentsAC`, `ExtendingMajorityAC`:
-  `Compose.ExtendingCasters`, `Compose.Opponents`, `Compose.ExtendingMajority` read on the AC
-  trace, with ancestry inside `U`);
+  the honest slot-`q` casters extending a block, its opponents and their comparison, read on the
+  AC trace, with ancestry inside `U`);
 * L1 (`vote_held_before_earlyAC`): an honest slot-`q` vote whose head extends the call's `Φ.F`
   is pooled, its head is in the call's frame, and the vote is resolved before `t_q + 2Δ`, at
   every honest call from `t_q + 2Δ` without a restart after `t_q` (D3 with the voter's head facts,
@@ -132,7 +132,7 @@ private theorem pool_voters_sub (hrun : ACRunU wm u proposer tr H U) {y : Fin sp
 
 /-! ### L1, L-gate, L3 -/
 
-/-- **L1** (`Compose.vote_held_before_early` with the unlock given). An honest slot-`q` vote
+/-- **L1** (with the unlock given). An honest slot-`q` vote
 whose head extends the call's `Φ.F` is held, its head in the call's frame, and resolved strictly
 before `t_q + 2Δ`, at every honest call from `t_q + 2Δ` with no restart after `t_q`, under the
 service from `g ≤ t_q + Δ`. -/
@@ -165,7 +165,7 @@ theorem vote_held_before_earlyAC (hrun : ACRunU wm u proposer tr H U)
   exact vote_resolved_before_earlyAC hrun hS hy hc hct hg hres hx ⟨ℓv, hcv, hev⟩ hes hHd hHdr
     (by rw [← hes]; exact hHd₀s) hacc hF
 
-/-- **L-gate** (`Compose.gate_result_extends` with the unlock given). A joined honest update of a
+/-- **L-gate** (with the unlock given). A joined honest update of a
 label `s` from GST (`g ≤ t_s + Δ`) whose call's frame is below `B` returns a result, and every
 result of it extends `B`, when the extending casters of the label outnumber its opponents. -/
 theorem gate_result_extendsAC (hrun : ACRunU wm u proposer tr H U)
@@ -238,7 +238,7 @@ theorem gate_result_extendsAC (hrun : ACRunU wm u proposer tr H U)
   subst hCD
   exact hBD.mono hΦU
 
-/-- **L3** (`Compose.read_majority_of_extending` with the unlock given, read at a call). The latest
+/-- **L3** (with the unlock given, read at a call). The latest
 view of the state after an honest call, with that call's frame, has fewer voters than twice the
 supporters of `B`, when the extending casters of the view's label outnumber its opponents and
 every extending vote is delivered (pooled after the call, its head in the call's frame with a
