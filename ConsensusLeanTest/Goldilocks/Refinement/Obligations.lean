@@ -45,12 +45,14 @@ Labelled by kind (CONTRIBUTING "Statements"):
   `meetsObligations_realizable_small` gives its contract's active witnesses on five validators
   (`Shape.regimes_realizable` from `ShapeObligations`'s admissibility, progress-fit and tolerance
   fields).
-* (a) The outage row at every vote binding: `claims_with_persistsWith` (at the population binding
-  `PersistsWith` is the stock `persists` field), `goldilocksWith_committeeOne` (a committee
-  binding with a proper-subset committee, `Regression.committeeOne`), and its outage regime is
-  not vacuous: `committeeOne_realizable` (its regimes on five validators),
-  `committeeOne_selected_ne_univ` and `committeeOne_outage_witness` (a clean outage witness whose
-  committee is never the population).
+* (a) The outage and sleepy rows at every vote binding: `claims_with_persistsWith` and
+  `claims_with_sleepyWith` (at the population binding `PersistsWith` and `SleepyWith` are the
+  stock fields), `goldilocksWith_committeeOne` (a committee binding with a proper-subset
+  committee, `Regression.committeeOne`), and its outage and sleepy regimes are not vacuous:
+  `committeeOne_realizable` (its regimes on five validators), `committeeOne_selected_ne_univ`,
+  `committeeOne_outage_witness` (a clean outage witness whose committee is never the population)
+  and `committeeOne_sleepy_witness` (at every output capability and index, a clean witness of
+  `SleepyWith`'s sleepy premises whose committee is never the population).
 * The profile label is a restatement: `schema_profile` (the schema is Ebb-and-Flow, not BFT or
   available, decided on the schema alone), `meetsObligations_iff_unlabelled` (the endpoint is
   equivalent to the unlabelled obligations), and the rejections `not_obligationsAs_bft` and
@@ -377,13 +379,17 @@ theorem goldilocksCorrectWithExcuses_nonvacuous :
       fun g hg => hb.finalMonotone g hg r rfl⟩
   · exact (hf he).elim
 
-/-! ## The outage row at every vote binding
+/-! ## The outage and sleepy rows at every vote binding
 
 `PersistsWith` states the `persists` claim for `goldilocksWith S` at every bound setup. At the
 population binding it is the stock field (`claims_with_persistsWith`); at a committee binding it
 reads a genuine proper subset (`goldilocksWith_committeeOne`), and its outage regime has a clean
 witness whose committee is a proper subset at every time (`committeeOne_realizable`,
-`committeeOne_selected_ne_univ`, `committeeOne_outage_witness`). -/
+`committeeOne_selected_ne_univ`, `committeeOne_outage_witness`). `SleepyWith` states both sleepy
+claims at every bound setup; at the population binding they are the stock fields
+(`claims_with_sleepyWith`), and at the committee binding its sleepy regime has, at every output
+capability and index, a clean witness whose committee is a proper subset at every time
+(`committeeOne_sleepy_witness`). -/
 
 /-- (a) At the population binding `PersistsWith` supplies the `persists` field of the stock claims
 verbatim: the stock claims with that field replaced by `persistsWith ⟨S, stock⟩` elaborate. -/
@@ -459,6 +465,29 @@ theorem committeeOne_outage_witness (S : Setup) (A : ContractAssumptions S) :
     (committeeOne_realizable S A (Fin 5) (by decide)).outage 2 2 0 (by decide) (by decide)
   exact ⟨r, T, b₀, b₁, hw, ho,
     committeeOne_selected_ne_univ S (Fin 5) (by decide) r hw.1.1⟩
+
+/-- (a) **The committee sleepy regime is not vacuous**: on five validators, at `Δ = ΔF = 2`, for
+every output capability `cap` and index `i`, a clean witness of the committee binding satisfies
+`SleepyWith`'s liveness premise at `cap, i` (`System.Sleepy` at the obligations contract and the
+contract's proposer progress over the whole run, the first two conjuncts of `SleepyLive`), hence
+also its safety premise (`System.Sleepy`), and its committee is a proper subset at every time. -/
+theorem committeeOne_sleepy_witness (S : Setup) (A : ContractAssumptions S) (cap : Capability)
+    (i : (K S A).Idx) :
+    ∃ r,
+      (Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).WitnessAt 2 2 r ∧
+      ((Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).Sleepy
+          (shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).toExternal
+          (K S A) r ∧
+        (Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).prog
+          (shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)) (K S A) cap i 0
+          ((Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).pt r).horizon r) ∧
+      ∀ t, (shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).toExternal.selected
+        ((Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).pt r).env
+        ((shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).toExternal.ext r)
+        t ≠ Finset.univ := by
+  obtain ⟨r, hw, ⟨hs, hp, -⟩, -⟩ :=
+    (committeeOne_realizable S A (Fin 5) (by decide)).sleepy cap i 2 2 (by decide) (by decide)
+  exact ⟨r, hw, ⟨hs, hp⟩, committeeOne_selected_ne_univ S (Fin 5) (by decide) r hw.1.1⟩
 
 /-! ## The profile label
 

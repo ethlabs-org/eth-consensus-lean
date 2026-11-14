@@ -656,7 +656,10 @@ detail in `TRUST.md`.
   `sleepyLive` rows of `ShapeClaimsAt` for `goldilocksWith S` at every `BoundSetup`, at the same
   obligations contract. The committee-native `System.Sleepy` supplies population and committee
   participation; liveness retains whole-run proposer progress. No additional premise is introduced.
-  The population fidelity witness is `Obligations.Test.Contract.claims_with_sleepyWith`.
+  The population fidelity witness is `Obligations.Test.Contract.claims_with_sleepyWith`. At the committee binding
+  `AsChainShape.Regression.committeeOne`, the sleepy regime has, at every capability and index, a clean witness of
+  both sleepy premises whose committee is never the population
+  (`Obligations.Test.Contract.committeeOne_sleepy_witness`).
   This interim root, like `PersistsWith`, is removed when the full binding-generic endpoint subsumes it.
 - **The simulation interface and canonical trace are proof-side.** The Refinement simulation interface and the
   canonical trace construction are in the non-exposed `Lemmas/Simulation/{Interface,TraceDefs}`, with

@@ -59,6 +59,7 @@ example := ``Consensus.Goldilocks.Obligations.Test.Contract.goldilocksWith_commi
 example := ``Consensus.Goldilocks.Obligations.Test.Contract.committeeOne_realizable
 example := ``Consensus.Goldilocks.Obligations.Test.Contract.committeeOne_selected_ne_univ
 example := ``Consensus.Goldilocks.Obligations.Test.Contract.committeeOne_outage_witness
+example := ``Consensus.Goldilocks.Obligations.Test.Contract.committeeOne_sleepy_witness
 example := ``Consensus.Review.obligationsSufficient
 example := ``Consensus.Review.obligationsSufficientOn
 example := ``Consensus.Review.regimesRealizable
