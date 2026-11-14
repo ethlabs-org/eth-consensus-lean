@@ -27,11 +27,12 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 /-- **The duration and the canonical query of a repair schedule.** With `ready = ḡ + C·d + 1`
 and the catch-up `C ≥ 19`: `18Δ ≤ C·d`, and the query `max(ready, drainTime a)` of a reset `a`
 bounds `ready`, `drainTime a`, `t_{slot a + 2k + 4}`, `ḡ + 4Δ` and `0`. -/
-theorem healthy_repair_lower (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
+theorem healthy_repair_lower (run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run)
+    (hn : 1 ≤ Fintype.card V)
     (gst a : Time) :
     let sp := S.params (Model.pubOf run.1) hn
-    let ready := (Sys (goldilocks S) V).ready (K S A) gst run
-    18 * sp.Δ ≤ (Sys (goldilocks S) V).cDur (K S A) run ∧
+    let ready := (Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run
+    18 * sp.Δ ≤ (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run ∧
       max ready (max (Healing.drainTime sp a)
           (max (sp.ts (sp.slot a + 2 * sp.k + 4 : Nat)) (max (SA.gbar gst + 4 * sp.Δ) 0))) ≤
         max ready (Healing.drainTime sp a) := by
@@ -39,16 +40,17 @@ theorem healthy_repair_lower (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fint
   have hc : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
     exact_mod_cast contract_catchUp_ge_sleepy S A
   have hd : (1 : Time) ≤ run.1.ΔAC := run.1.ΔAC_pos
-  have hduration : 18 * sp.Δ + 1 ≤ (Sys (goldilocks S) V).cDur (K S A) run := by
+  have hduration : 18 * sp.Δ + 1 ≤ (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run := by
     simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
     change 18 * run.1.ΔAC + 1 ≤ (contract_catchUp S A : Nat) * run.1.ΔAC
     linarith [mul_le_mul_of_nonneg_right hc (by linarith : (0 : Time) ≤ run.1.ΔAC)]
   have hΔ := sp.toParams.hΔ
   have hready : SA.gbar gst + 4 * sp.Δ ≤ ready := by
-    change max gst 0 + 4 * sp.Δ ≤ max gst 0 + (Sys (goldilocks S) V).cDur (K S A) run + 1
+    change max gst 0 + 4 * sp.Δ ≤
+      max gst 0 + (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run + 1
     linarith
   have hzero : 0 ≤ ready := by
-    change 0 ≤ max gst 0 + (Sys (goldilocks S) V).cDur (K S A) run + 1
+    change 0 ≤ max gst 0 + (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run + 1
     linarith [le_max_right gst 0]
   have hold : sp.ts (sp.slot a + 2 * sp.k + 4 : Nat) ≤ Healing.drainTime sp a := by
     rw [Healing.drainTime_eq]

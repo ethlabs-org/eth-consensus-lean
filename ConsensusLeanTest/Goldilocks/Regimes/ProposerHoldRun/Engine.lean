@@ -35,14 +35,15 @@ variable {S : Setup}
 
 /-- The duty of a tick signed in a proposer role is the proposal of a positive slot at its slot
 time. -/
-theorem duty_proposer {t : Time} {d : (Model.protoOf (compiled (goldilocks S)) env).Duty}
-    (hd : d ∈ (Model.protoOf (compiled (goldilocks S)) env).duties t) {s : Nat}
-    (hr : (Model.protoOf (compiled (goldilocks S)) env).role d = .proposer s) :
+theorem duty_proposer {t : Time}
+    {d : (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).Duty}
+    (hd : d ∈ (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).duties t) {s : Nat}
+    (hr : (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).role d = .proposer s) :
     t = (s : Time) * 12 ∧ 0 < s := by
   by_cases ht : 0 ≤ t
   swap
-  · erw [Simulation.duties_eq_nil ⟨S, stock⟩ t (not_le.mp ht)] at hd; cases hd
-  erw [Simulation.duties_eq ⟨S, stock⟩ t ht] at hd
+  · rw [Simulation.duties_eq_nil ⟨S, stock⟩ t (not_le.mp ht)] at hd; cases hd
+  rw [Simulation.duties_eq ⟨S, stock⟩ t ht] at hd
   rcases List.mem_append.mp hd with hd | hd
   · rcases List.mem_append.mp hd with hd | hd
     · rcases List.mem_append.mp hd with hd | hd
@@ -69,15 +70,16 @@ theorem duty_proposer {t : Time} {d : (Model.protoOf (compiled (goldilocks S)) e
     · cases hd
 
 /-- The duties of a delivery are poll steps. -/
-theorem deliverDuty_poll {t : Time} {d : (Model.protoOf (compiled (goldilocks S)) env).Duty}
-    (hd : d ∈ (Model.protoOf (compiled (goldilocks S)) env).deliverDuties t) :
-    (Model.protoOf (compiled (goldilocks S)) env).role d = .poll := by
+theorem deliverDuty_poll {t : Time}
+    {d : (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).Duty}
+    (hd : d ∈ (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).deliverDuties t) :
+    (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).role d = .poll := by
   by_cases ht : 0 ≤ t
-  · erw [Simulation.deliverDuties_eq ⟨S, stock⟩ t ht] at hd
+  · rw [Simulation.deliverDuties_eq ⟨S, stock⟩ t ht] at hd
     rcases hd with _ | ⟨_, hd⟩
     · rfl
     · cases hd
-  · erw [Simulation.deliverDuties_eq_nil ⟨S, stock⟩ t (not_le.mp ht)] at hd; cases hd
+  · rw [Simulation.deliverDuties_eq_nil ⟨S, stock⟩ t (not_le.mp ht)] at hd; cases hd
 
 /-- **A released root signed in a proposer role** is the proposal of a tick at the slot time, by a
 node selected for the slot. -/
@@ -109,9 +111,9 @@ theorem root_proposer {i : Nat} {o : Obj S} (ho : o ∈ (rho S).releasesAt i)
       · obtain ⟨d, hd, st, -, hc⟩ := (rho S).deliverCandidate_iff.mp hc
         obtain ⟨m, cs', -, -, -, rfl⟩ := (rho S).mem_signedCandidate.mp hc
         injection ha with _ hr
-        have hrole : (Model.protoOf (compiled (goldilocks S)) env).candidateRole d m =
-            (Model.protoOf (compiled (goldilocks S)) env).role d := rfl
-        erw [hrole] at hr
+        have hrole : (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).candidateRole d m =
+            (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).role d := rfl
+        rw [hrole] at hr
         rw [deliverDuty_poll hd] at hr
         cases hr
       · obtain ⟨mc, -, rfl⟩ := Model.mem_gossipCandidates.mp hc
@@ -228,7 +230,8 @@ theorem delivered_proposal {i : Nat} {w : Fin 5} {o : Obj S} {t : Time}
 
 variable (S) in
 /-- The run up to `12` with the faults of `12` constant: key `1` is honest there. -/
-noncomputable def rho12 : Model.Run (compiled (goldilocks S)) env := ((rho S).truncate 12).retain 12
+noncomputable def rho12 : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) env :=
+  ((rho S).truncate 12).retain 12
 
 theorem rho12_valid : (rho12 S).ExecutionValid :=
   Model.Run.retain_valid (Model.Run.truncate_valid (rho_valid S) (by norm_num)
@@ -279,7 +282,7 @@ theorem key1_vote_slot {i : Nat} {e : Ev S} (he : (rho S).events[i]? = some e) (
     rho12_not_hashCollision
   have hac := (Compose.goldilocks_ac_projection _ _ _ _ _ _ hrun hnc).localRun
   have hy : (rho12 S).ownKey 1 ∈ Simulation.honestKeys ⟨S, stock⟩ (rho12 S) := by
-    erw [Simulation.mem_honestKeys_iff]
+    rw [Simulation.mem_honestKeys_iff]
     rw [show (rho12 S).key ((rho12 S).ownKey 1) = 1 from (rho12 S).key.apply_symm_apply 1]
     exact hv'
   have hspec := SA.castAt_spec hac hy ⟨Compose.projAC_callAt.mpr hc, hem⟩

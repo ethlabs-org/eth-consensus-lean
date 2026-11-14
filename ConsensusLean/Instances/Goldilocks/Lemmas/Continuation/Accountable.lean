@@ -151,7 +151,7 @@ open AsChainShape Simulation
 open Shape
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup) (A : ContractAssumptions S)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+  (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- **The engine premise gives the trace form.** `ConvictedBelow` of the run (at `α = 1/3`) gives
 `ChainConvictedBelow` on the canonical trace with the time-indexed honest keys. A trace state
@@ -162,7 +162,7 @@ genesis or accepted before `cutMap q`, `accepted_in_view_at`). `convicted_count`
 crossing set by the convictions of the two views. Consumed by the continuation endpoint, which
 supplies `ChainConvictedBelow` to the seeded invariant and the continued reads. -/
 theorem chainConvictedBelow_at (hv : rho.ExecutionValid)
-    (hcb : (Sys (goldilocks S) V).ConvictedBelow (K S A) ⟨E, rho⟩) :
+    (hcb : (Sys (goldilocksWith ⟨S, stock⟩) V).ConvictedBelow (K S A) ⟨E, rho⟩) :
     Compose.Growing.ChainConvictedBelow (simTraceAt ⟨S, stock⟩ rho hn)
         (honestKeysAt ⟨S, stock⟩ rho) := by
   classical
@@ -179,9 +179,10 @@ theorem chainConvictedBelow_at (hv : rho.ExecutionValid)
       · exact Or.inr (hv₂ B hB c hc)
     exact ⟨a, b, hmem a ha, hmem b hb, hak, hab⟩
   have hc := hcb (rho.key y) (rho.key z) q₁ q₂ hq₁ hq₂ hh₁ hh₂
-  have hsub : convicted rho.Slashable Vw ⊆ convicted ((Sys (goldilocks S) V).convicts ⟨E, rho⟩)
-      ((Sys (goldilocks S) V).view ⟨E, rho⟩ (rho.key y) q₁ ∪
-        (Sys (goldilocks S) V).view ⟨E, rho⟩ (rho.key z) q₂) := by
+  have hsub : convicted rho.Slashable Vw ⊆ convicted
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).convicts ⟨E, rho⟩)
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).view ⟨E, rho⟩ (rho.key y) q₁ ∪
+        (Sys (goldilocksWith ⟨S, stock⟩) V).view ⟨E, rho⟩ (rho.key z) q₂) := by
     intro x hx
     simp only [convicted, Finset.mem_filter, Finset.mem_univ, true_and] at hx ⊢
     obtain ⟨o, ho, o', ho', h⟩ := hx

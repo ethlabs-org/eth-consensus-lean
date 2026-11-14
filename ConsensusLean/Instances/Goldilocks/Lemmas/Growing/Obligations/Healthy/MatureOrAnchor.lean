@@ -77,7 +77,8 @@ Young optimistic writers retain their normalized lock until the next-result dead
 reach the next result or finalization at the reader's update of the next label. -/
 theorem healthy_current_mature_or_anchor_at (Q : HealthyPreparationQueryAt S A V)
     (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
+    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
     (D : HealthyRepairScheduleAt S A V Q) (O : HealthyRepairOpeningAt S A V Q D)
     (hrepair : HealthyReceiverRepairAt S A V Q D O) {y : Fin Q.params.n} {n : Nat} {t : Time}

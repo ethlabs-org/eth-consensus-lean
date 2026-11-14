@@ -40,7 +40,7 @@ open Shape
 open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+  (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Engine readiness bridge. Map honesty by the key equivalence
 and awake intervals by canonical simulation. Both ends are inside the finite horizon; the
@@ -437,7 +437,7 @@ than assuming the node recurrence in an unconditional obligations theorem. -/
 def SleepyRecurrenceSupplier : Prop :=
   ∀ (k : ℕ+) b, 0 ≤ b → b ≤ rho.horizon → rho.ExecutionValid →
     Blocks.PatternRecurrence rho.point rho.key (fun s => rho.sel (.proposer s))
-      (goldilocks S (pubOf E)).skel.grid ⟨Blocks.Pattern.single, k, 0⟩
+      (goldilocksWith ⟨S, stock⟩ (pubOf E)).skel.grid ⟨Blocks.Pattern.single, k, 0⟩
       (Regimes.catchUp (S.params (pubOf E) hn)) 0 b →
     Regimes.ProposerRecurrence (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
         (runProposer ⟨S, stock⟩ rho hn)
@@ -532,7 +532,7 @@ theorem confirmed_inBy (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionVa
     split <;> simp
   have hout := hprefix.subset hmem
   change headerOf (S.params (pubOf E) hn) P ∈ (chainTrace rho).read .confirmed v i
-  erw [read_eq_out ⟨S, stock⟩ rho hn, outOf, hs.state v hhon i hi, hcut.2.2]
+  rw [read_eq_out ⟨S, stock⟩ rho hn, outOf, hs.state v hhon i hi, hcut.2.2]
   exact hout
 
 theorem sleepy_inBy (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
@@ -603,7 +603,7 @@ theorem readPoint_after_event {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 /-- A completed local event leaves the stored clock at that event's time, including
 deliveries (whose preceding tick is forced by execution validity). -/
 theorem now_after_local_event (hv : rho.ExecutionValid) {v : V} {i : Nat}
-    {e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {e : Model.Event V (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) E).Object}
     (he : rho.events[i]? = some e) (hev : e.node = v) :
     (stateAt ⟨S, stock⟩ rho hn v (i + 1)).now = e.time := by
   rw [now_eq_lastClock ⟨S, stock⟩ rho hn hv]
@@ -679,7 +679,7 @@ theorem tick_before_stored_clock (hv : rho.ExecutionValid) {v : V} {p i : Nat} {
 
 /-- A stored clock cannot be ahead of the next engine event. -/
 theorem now_le_event (hv : rho.ExecutionValid) (v : V) {i : Nat}
-    {e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {e : Model.Event V (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) E).Object}
     (he : rho.events[i]? = some e) : (stateAt ⟨S, stock⟩ rho hn v i).now ≤ e.time := by
   rcases stateAt_last_local_event S rho hn hv v i with h | ⟨j, hj, f, hf, _, _, ht⟩
   · rw [h, stateAt_eq ⟨S, stock⟩ rho hn]

@@ -152,9 +152,10 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 /-- Engine readiness from health: a validator honest at `t ∈ [ready, horizon]` is ready at `t`
 (`HealthyOn` keeps it awake on `[max g 0, horizon]` while honest). -/
 private theorem confirmed_ready_of_healthy_at (Q : ConfirmedQueryAt S A V)
-    (hh : (Sys (goldilocks S) V).Healthy (K S A) Q.gst Q.run) {v : V} {t : Time}
+    (hh : (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy (K S A) Q.gst Q.run) {v : V} {t : Time}
     (hv : Q.run.2.point.HonestAt v t)
-    (hr : (Sys (goldilocks S) V).ready (K S A) Q.gst Q.run ≤ t) (htb : t ≤ Q.run.2.horizon) :
+    (hr : (Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) Q.gst Q.run ≤ t)
+        (htb : t ≤ Q.run.2.horizon) :
     Q.run.2.point.Ready Q.duration v t := by
   refine ⟨hv, fun τ hτ hτt => hh.2.1.2 v τ ?_ (hτt.trans htb)
     (fun h => hv (Q.run.2.point.faultyAt_mono hτt h))⟩
@@ -179,7 +180,7 @@ private theorem confirmed_end_cut_at (Q : ConfirmedQueryAt S A V) {v : V} {t : T
     Nat.findGreatest_spec (P := fun i => (chainTrace Q.run.2).cutTime i ≤ t)
       (Nat.zero_le _) ht
   have hlo := (now_bounds_cut S Q.run.2 Q.hn Q.valid v hle).2
-  erw [hnow] at hlo
+  rw [hnow] at hlo
   exact ⟨hcut, hnow, le_antisymm hup hlo, hle⟩
 
 /-- `CutAfter` determines its cut. -/
@@ -202,7 +203,7 @@ private theorem readAfter_lastOwn (Q : ConfirmedQueryAt S A V) {v : V} {n : Nat}
   have h₂ := simTraceAt_state_all ⟨S, stock⟩ Q.run.2 Q.hn Q.valid v n hn
   rw [← stateAt_lastOwn S Q.run.2 Q.hn v n] at h₁
   unfold Regimes.readAfter
-  erw [← h₁, ← h₂]
+  rw [← h₁, ← h₂]
 
 /-- **Healthy selected-proposal service under growing faults**: a confirmed proposal after the
 heal point, in the confirmed read of every node ready at the deadline. The proposal is the actual
@@ -210,11 +211,11 @@ proposal of the slot that the recurrence selects at the query's readiness, whose
 honest through its slot time plus `Δ`; every reader honest at `t_u + 6Δ` holds it then, and a
 reader ready at the deadline keeps it by its tip ancestry. -/
 theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt S A V)
-    (hh : (Sys (goldilocks S) V).Healthy (K S A) Q.gst Q.run)
-    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
-      Q.cap Q.index ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run)
+    (hh : (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy (K S A) Q.gst Q.run)
+    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) Q.cap Q.index ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) Q.gst Q.run)
       Q.run.2.horizon Q.run)
-    (ht : (Sys (goldilocks S) V).heal (K S A) Q.cap Q.index Q.gst Q.run ≤ Q.query) :
+    (ht : (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) Q.cap Q.index Q.gst Q.run ≤ Q.query) :
     ∃ P : ConfirmedProposalAt Q,
       ∀ y j, Regimes.Growing.ReadyAt Q.trace Q.keys Q.duration y Q.deadline →
         Regimes.CutAfter Q.trace j Q.deadline →
@@ -235,8 +236,9 @@ theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt S A V)
   have hqD : Q.query ≤ Q.deadline :=
     le_add_of_nonneg_right (mul_nonneg (Nat.cast_nonneg _) (zero_le_one.trans hd))
   have hb : Q'.heal ≤ Q'.bound := ht.trans (hqD.trans Q.bounded)
-  have hp' : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q'.cap Q'.index
-      Q'.ready Q'.heal Q'.run := (shapeProgress (goldilocks S) V).mono le_rfl hb hp
+  have hp' : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) Q'.cap Q'.index
+      Q'.ready Q'.heal Q'.run := (shapeProgress (goldilocksWith ⟨S, stock⟩) V).mono le_rfl hb hp
   obtain ⟨W, ⟨Dprep⟩⟩ := healthy_preparation_initialize_at S A V Q' h0 hb hp'
   have hrh : Q'.ready ≤ Q'.heal := by
     linarith only [W.ready_le, W.records, hΔ]

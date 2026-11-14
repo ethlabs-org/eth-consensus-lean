@@ -41,7 +41,7 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 through its slot's hold. -/
 theorem final_query_gap_at (Q : FinalQueryAt S A V) {c : Nat}
     (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {s₀ N : Nat}
-    (hs : max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0 + 4 * Q.params.Δ ≤
+    (hs : max ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) Q.gst Q.run) 0 + 4 * Q.params.Δ ≤
       Q.params.ts s₀)
     (hN : Q.params.ts (N + 3 * c : Nat) ≤ Q.run.2.horizon) :
     ∀ x₀, s₀ ≤ x₀ → x₀ + (Q.index : Nat) ≤ N + 1 → ∃ x, x₀ ≤ x ∧ x < x₀ + (Q.index : Nat) ∧
@@ -62,7 +62,7 @@ theorem final_reset_premises_of_shared_at (Q : FinalQueryAt S A V) {c : Nat} (hc
     ∃ ΔR a : Time,
       Healing.Growing.ResetPremisesUpTo Q.trace Q.keys (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
         (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔR a Q.run.2.horizon ∧
-      max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
+      max (max ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) Q.gst Q.run) 0)
           ((finalGridAt S A V Q).slotTime (finalSeedMinAt S A V Q a) - 1) +
           ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGridAt S A V Q).slotLen ≤
         Q.query + (finalGridAt S A V Q).slotLen := by
@@ -113,7 +113,7 @@ theorem final_reset_premises_at (Q : FinalQueryAt S A V) :
     ∃ ΔR a : Time,
       Healing.Growing.ResetPremisesUpTo Q.trace Q.keys (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
         (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔR a Q.run.2.horizon ∧
-      max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
+      max (max ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) Q.gst Q.run) 0)
           ((finalGridAt S A V Q).slotTime (finalSeedMinAt S A V Q a) - 1) +
           ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGridAt S A V Q).slotLen ≤
         Q.query + (finalGridAt S A V Q).slotLen :=

@@ -99,7 +99,7 @@ theorem read_finalized_at (hv : rho.ExecutionValid) (v : V) {i : Nat}
 /-- The tree of a node honest at its engine cut is reachable at the mapped cut and inside the
 blocks held while honest. -/
 theorem held_tree_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i)) :
     ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn i)).fg.Reachable
@@ -116,7 +116,7 @@ theorem held_tree_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Set
 engine cut, compatibility of their finalized tips inside the blocks held while honest makes one
 finalized engine read a prefix of the other. -/
 theorem compatible_reads_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
     {u v : V} {i j : Nat} (hi : i ≤ rho.events.length) (hj : j ≤ rho.events.length)
@@ -130,14 +130,14 @@ theorem compatible_reads_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (
   obtain ⟨hrj, hsj⟩ := held_tree_at S rho hn hv hj hv'
   have hU := Compose.Growing.honest_blocks_coherent
       (simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv) hnc
-  erw [read_finalized_at ⟨S, stock⟩ rho hn hv u hi, read_finalized_at ⟨S, stock⟩ rho hn hv v hj]
+  rw [read_finalized_at ⟨S, stock⟩ rho hn hv u hi, read_finalized_at ⟨S, stock⟩ rho hn hv v hj]
   exact chainTo_compatible hri hrj hU hsi hsj (Store.cache_invariants _ _ _ _ hri).1
     (Store.cache_invariants _ _ _ _ hrj).1 hc
 
 /-- Two finalized reads of nodes each honest at its own engine cut are prefix-related, or their
 two views convict `2q − n` validators. -/
 theorem final_accountable_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
     {u v : V} {i j : Nat} (hi : i ≤ rho.events.length) (hj : j ≤ rho.events.length)
@@ -176,7 +176,7 @@ theorem final_accountable_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} 
 `α ≤ 1/3`: two finalized reads of nodes each honest at its own engine cut are compatible, or the
 union of their views convicts `nα` validators; the only escape is an observed hash collision. -/
 theorem engine_finalAccountable_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hv : rho.ExecutionValid)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hv : rho.ExecutionValid)
     {α : ℚ} (hα : α ≤ 1 / 3) :
     (chainTrace rho).AccountablySafe rho.ViewIdx rho.Slashable α .finalized 0 ∨
       rho.HashCollision := by

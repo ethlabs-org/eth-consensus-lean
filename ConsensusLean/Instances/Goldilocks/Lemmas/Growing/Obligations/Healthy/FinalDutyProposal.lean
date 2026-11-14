@@ -22,7 +22,7 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 
 /-- The query's catch-up duration covers the protocol catch-up `18 Δp`. -/
 theorem final_catchUp_le_cDur_at (Q : FinalQueryAt S A V) :
-    Regimes.catchUp Q.params ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run :=
+    Regimes.catchUp Q.params ≤ (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run :=
   catchUp_le_cDur S A V Q.run Q.hn
 
 /-- **Duty to actual proposal** under growing faults. An honest-ready proposer duty at a slot
@@ -32,16 +32,19 @@ duration, and a growing `HonestProposalRun`. -/
 theorem final_duty_proposal_run_at (Q : FinalQueryAt S A V) {s : Nat} (hs : 0 < s)
     (hth : Q.params.ts s ≤ Q.run.2.horizon)
     (hduty : HonestReadyIn Q.run.2.point Q.run.2.key (fun s => Q.run.2.sel (.proposer s)) s
-      ((Sys (goldilocks S) V).cDur (K S A) Q.run)
-      ((goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime s) Q.run.2.point.env.ΔAC) :
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run)
+      ((goldilocksWith ⟨S, stock⟩ (Model.pubOf Q.run.1)).skel.grid.slotTime s)
+          Q.run.2.point.env.ΔAC) :
     ∃ k P, Healing.Growing.HonestProposalRun Q.trace Q.keys
         (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) s P ∧
       Q.trace.ProposesAt (runProposer ⟨S, stock⟩ Q.run.2 Q.hn s) k P ∧
       Q.trace.AcceptAt (runProposer ⟨S, stock⟩ Q.run.2 Q.hn s) k P ∧
       Q.trace.time k = Q.params.ts s ∧ P.slot = s ∧
-      Regimes.Growing.ReadyAt Q.trace Q.keys ((Sys (goldilocks S) V).cDur (K S A) Q.run)
+      Regimes.Growing.ReadyAt Q.trace Q.keys
+        ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run)
         (runProposer ⟨S, stock⟩ Q.run.2 Q.hn s) (Q.params.ts s) := by
-  have htime : (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime s = Q.params.ts s := by
+  have htime : (goldilocksWith ⟨S, stock⟩ (Model.pubOf Q.run.1)).skel.grid.slotTime s =
+      Q.params.ts s := by
     change (s : Time) * (4 * Q.run.1.ΔAC) = 4 * Q.run.1.ΔAC * s
     ring
   have hmem : runProposer ⟨S, stock⟩ Q.run.2 Q.hn s ∈ Q.run.2.sel (.proposer s) := by
@@ -57,7 +60,7 @@ theorem final_duty_proposal_run_at (Q : FinalQueryAt S A V) {s : Nat} (hs : 0 < 
   have hnode := ready_transport_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid h0 hth hR
   have hkey : Q.run.2.ownKey (Q.run.2.key (runProposer ⟨S, stock⟩ Q.run.2 Q.hn s)) =
       runProposer ⟨S, stock⟩ Q.run.2 Q.hn s := Q.run.2.key.symm_apply_apply _
-  erw [hkey] at hnode
+  rw [hkey] at hnode
   have hhold : runProposer ⟨S, stock⟩ Q.run.2 Q.hn s ∈
       Q.keys (Q.params.ts s + Regimes.Growing.hold Q.params) := by
     rw [mem_honestKeysAt_iff ⟨S, stock⟩ Q.run.2]

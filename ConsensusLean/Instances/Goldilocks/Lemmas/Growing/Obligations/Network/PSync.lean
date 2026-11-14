@@ -155,7 +155,7 @@ theorem acceptance_relay_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rho.Exec
 /-- Holdings of a decoded wrapper of a signer honest at its stamp give a block call after the
 stamp. Local publication uses the actual acceptance; receipt uses recursive block processing. -/
 theorem held_forward_blockCall_before_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y x : Fin (Fintype.card V)} {j : Nat} {o : Wire (Fintype.card V)} {t d D : Time}
     {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
@@ -199,10 +199,10 @@ theorem held_forward_blockCall_before_at {V : Type} [Fintype V] [DecidableEq V] 
 /-- A decoded publication by an origin honest at its event receives block service at the
 processing cut's GST deadline, including publications before GST. -/
 theorem publication_blockDeliveredBy_psync_at {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {g : Time} (hnet : rho.log.PSync rho.point g)
-    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
+    (r : Publication (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) E))
     (hr : (publisherExecution ⟨S, stock⟩ rho).actual r)
     {τ : Time} (hτ : 0 ≤ τ) (ht : (publisherExecution ⟨S, stock⟩ rho).eventTime r.event = τ)
     (hx : rho.key r.origin ∉ rho.faultyAt τ)
@@ -240,7 +240,7 @@ theorem publication_blockDeliveredBy_psync_at {V : Type} [Fintype V] [DecidableE
 
 /-- An own-block call of a node honest at it is an acceptance under collision freedom. -/
 theorem ownBlockAt_accept_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
     {y : Fin (Fintype.card V)} {i : Nat}
@@ -283,7 +283,7 @@ theorem ownBlockAt_accept_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 recipient honest at its call within the horizon, with the source-time lower bound and the
 effective `max(source, GST)` processing deadline. -/
 theorem block_service_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
     {g : Time} (hnet : rho.log.PSync rho.point g)
@@ -431,7 +431,7 @@ theorem message_service_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.Execution
 attestation service at a parametric `Δ_F` as a premise (`hrow`). Senders are honest at their
 event, recipients at their call; actual recipient calls lie within the engine horizon. -/
 theorem resetService_of_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
     {g ΔF : Time} (hnet : rho.log.PSync rho.point g)
@@ -457,7 +457,7 @@ at every node honest at that snapshot, when every node honest at a time of
 `[max g 0, max g 0 + Δ − 1]` (within the horizon) is awake then: the snapshot node's publication
 window. The snapshot supplies the finite service horizon. -/
 theorem catchRun_of_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
     {g : Time} (hnet : rho.log.PSync rho.point g)

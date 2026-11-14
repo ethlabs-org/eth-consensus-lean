@@ -26,7 +26,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
 /-- Under constant faults every block a public tick of an honest node calls at a positive
 position is released at that event. -/
 private theorem tick_block_releases {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0) {j : Nat} {t : Time}
     (he : rho.events[j]? = some (.tick v t))
@@ -40,7 +40,7 @@ private theorem tick_block_releases {V : Type} [Fintype V] [DecidableEq V] {E : 
 /-- Every called block, accepted or refused, has its canonical object in the final view
 of the honest engine node responsible for the call. -/
 theorem occurring_in_view {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {B : Blk (S.params (pubOf E) hn)}
     (hB : (simTrace ⟨S, stock⟩ rho hn).Occurs B) :
@@ -56,7 +56,7 @@ theorem occurring_in_view {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S 
 
 /-- An accepted block is in its reader's engine view at every subsequent mapped cut. -/
 theorem accepted_in_view {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0)
     {k i : Nat} {B : Blk (S.params (pubOf E) hn)}
@@ -79,7 +79,7 @@ under carried objects. This uses every held block, not the false restriction tha
 witness chains end at the finalized tips. The proof uses the acceptance alternative directly;
 the genesis alternative has no attestations. Status: proved. -/
 theorem held_att_in_view {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0)
     {i : Nat} {B : Blk (S.params (pubOf E) hn)}

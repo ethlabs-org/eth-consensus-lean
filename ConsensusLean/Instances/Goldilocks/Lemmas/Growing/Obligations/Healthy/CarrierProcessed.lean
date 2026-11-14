@@ -30,13 +30,13 @@ open Blocks Shape
 section Engine
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-  (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+  (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
 
 /-- One protocol-delay publication tail is held strictly before a ready read, under growing
 faults: the origin is honest at its event and the reader at its read time. -/
 theorem publication_held_ready_tail_at (hn : 1 ≤ Fintype.card V) {g : Time}
     (hnet : rho.log.PSync rho.point g)
-    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
+    (r : Publication (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) E))
     (hr : (publisherExecution ⟨S, stock⟩ rho).actual r)
     (hx : rho.key r.origin ∉ rho.faultyAt ((publisherExecution ⟨S, stock⟩ rho).eventTime r.event))
     (hrow : ¬ rho.log.fgAtt r.object)
@@ -111,7 +111,7 @@ theorem carrier_processed_of_honest_at (Q : FinalQueryAt S A V) :
       (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) s P → Q.query < Q.params.ts s →
       Q.params.ts s + Q.params.Δ ≤ Q.deadline →
       ∀ y, Regimes.Growing.ReadyAt Q.trace Q.keys
-        ((Sys (goldilocks S) V).cDur (K S A) Q.run) y Q.deadline →
+        ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) y Q.deadline →
       ∃ j, Q.trace.BlockCallAt y j P ∧ Q.trace.time j ≤ Q.deadline := by
   intro s P hP hq hD y hy
   have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
@@ -136,7 +136,7 @@ theorem carrier_processed_of_honest_at (Q : FinalQueryAt S A V) :
     have h3 : Q.gst ≤ Q.params.ts s := by linarith
     have h4 : (0 : Time) ≤ Q.params.ts s := by linarith
     rw [max_eq_left h3, max_eq_left h4]
-  have hc : Q.params.Δ ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run + 1 := by
+  have hc : Q.params.Δ ≤ (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run + 1 := by
     have hc1 : (1 : Time) ≤ ((K S A).params.catchUp : Time) := by
       rw [goldilocksContract_params_eq]
       change (1 : Time) ≤ ((contract_coefficients S A).catchUp : Nat)

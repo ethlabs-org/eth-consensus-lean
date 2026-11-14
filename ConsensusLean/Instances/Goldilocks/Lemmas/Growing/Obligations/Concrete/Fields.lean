@@ -22,8 +22,10 @@ public section
 
 /-! # The growing-fault endpoint: the nine chain-level claims
 
-Each theorem is the field of `ShapeClaimsAt (goldilocks S) (K S A) V` of the same name, verbatim:
-no constant-fault premise and no other premise beyond the field's own.
+Each theorem is the field of `ShapeClaimsAt (goldilocks S) (K S A) V` of the same name, stated at
+the population binding `goldilocksWith ⟨S, stock⟩` (`goldilocks S` is defined as
+`goldilocksWith ⟨S, stock⟩` and unfolds to it definitionally), with no constant-fault premise and
+no other premise beyond the field's own.
 
 * `outputValid`, `nested`, `finalMonotone`, `finalAccountable`: the engine output transports;
 * `sleepySafe`: finite engine sleepy safety, with the finite service from raw synchrony
@@ -41,14 +43,15 @@ open Blocks Shape
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
-theorem meetsObligations_outputValid_growing : (Sys (goldilocks S) V).HoldsAlways fun r =>
+theorem meetsObligations_outputValid_growing :
+    (Sys (goldilocksWith ⟨S, stock⟩) V).HoldsAlways fun r =>
     ∀ c g, schema.output c = some g → OutputValid r.2 g := by
   intro r hv c g _
   exact engine_outputValid_at S r.2 hv g
 
 theorem meetsObligations_nested_growing : ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank →
     schema.output c₁ = some g₁ → schema.output c₂ = some g₂ →
-    (Sys (goldilocks S) V).HoldsAlways fun r => (chainTrace r.2).Nested g₁ g₂ := by
+    (Sys (goldilocksWith ⟨S, stock⟩) V).HoldsAlways fun r => (chainTrace r.2).Nested g₁ g₂ := by
   intro c₁ c₂ g₁ g₂ hr h₁ h₂ r hv
   cases c₁ <;> cases c₂ <;> simp only [Capability.rank] at hr <;> try omega
   all_goals have he₁ := Option.some.inj h₁
@@ -60,14 +63,14 @@ theorem meetsObligations_nested_growing : ∀ c₁ c₂ g₁ g₂, c₁.rank < c
   · exact engine_nested_at S r.2 hv
 
 theorem meetsObligations_finalMonotone_growing : ∀ g, schema.output .final = some g →
-    (Sys (goldilocks S) V).HoldsAlways fun r => (chainTrace r.2).Monotone g 0 := by
+    (Sys (goldilocksWith ⟨S, stock⟩) V).HoldsAlways fun r => (chainTrace r.2).Monotone g 0 := by
   intro g hg r hv
   have hg' : g = .finalized := (Option.some.inj hg).symm
   subst g
   exact engine_finalMonotone_at S r.2 hv
 
 theorem meetsObligations_finalAccountable_growing : ∀ g, schema.output .final = some g →
-    (Sys (goldilocks S) V).Holds (fun _ => True) fun r =>
+    (Sys (goldilocksWith ⟨S, stock⟩) V).Holds (fun _ => True) fun r =>
       (chainTrace r.2).AccountablySafe r.2.ViewIdx r.2.Slashable (K S A).params.α g 0 := by
   intro g hg r hv _
   have hg' : g = .finalized := (Option.some.inj hg).symm
@@ -75,9 +78,9 @@ theorem meetsObligations_finalAccountable_growing : ∀ g, schema.output .final 
   exact engine_finalAccountable_at S r.2 hv (by norm_num [Params.standard])
 
 theorem meetsObligations_sleepySafe_growing : ∀ cap g, (cap = .available ∨ cap = .stable) →
-    schema.output cap = some g → (Sys (goldilocks S) V).Holds
-      ((Sys (goldilocks S) V).Sleepy (K S A)) fun r =>
-        (chainTrace r.2).ReadySafe ((Sys (goldilocks S) V).cDur (K S A) r) g 0 := by
+    schema.output cap = some g → (Sys (goldilocksWith ⟨S, stock⟩) V).Holds
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy (K S A)) fun r =>
+        (chainTrace r.2).ReadySafe ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r) g 0 := by
   intro cap g hcap hg r hv hs
   have hg' : g = Out.confirmed := by
     rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
@@ -87,7 +90,7 @@ theorem meetsObligations_sleepySafe_growing : ∀ cap g, (cap = .available ∨ c
   left
   by_cases hn : 1 ≤ Fintype.card V
   · have hd : Regimes.catchUp (S.params (Model.pubOf r.1) hn) + 1 ≤
-        (Sys (goldilocks S) V).cDur (K S A) r := by
+        (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r := by
       have hc19 : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
         exact_mod_cast contract_catchUp_ge_sleepy S A
       have hd : (1 : Time) ≤ r.1.ΔAC := r.1.ΔAC_pos
@@ -101,7 +104,7 @@ theorem meetsObligations_sleepySafe_growing : ∀ cap g, (cap = .available ∨ c
         (5 * (S.params (Model.pubOf r.1) hn).Δ) 0 r.2.horizon :=
       sleepyOn_of_duration V _ ((le_add_of_nonneg_right zero_le_one).trans hd) hs.2
     have safe := sleepy_safe_engine_at S r.2 hn hv hnc hsync hhalf
-    have ready : ∀ v t, r.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) r) v t →
+    have ready : ∀ v t, r.2.point.Ready ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r) v t →
         r.2.point.Ready (Regimes.catchUp (S.params (Model.pubOf r.1) hn) + 1) v t := by
       intro v t h
       refine ⟨h.1, fun τ hlo hhi => h.2 τ ?_ hhi⟩
@@ -114,13 +117,14 @@ theorem meetsObligations_sleepySafe_growing : ∀ cap g, (cap = .available ∨ c
 
 theorem meetsObligations_healedSafe_growing : ∀ cap g, (cap = .available ∨ cap = .stable) →
     schema.output cap = some g → ∀ (i : (K S A).Idx) (gst : Time),
-      (Sys (goldilocks S) V).Holds
-        (fun r => (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
-          (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap i
-            ((Sys (goldilocks S) V).ready (K S A) gst r)
-            ((Sys (goldilocks S) V).heal (K S A) cap i gst r) r)
-        fun r => (chainTrace r.2).ReadySafe ((Sys (goldilocks S) V).cDur (K S A) r)
-          g ((Sys (goldilocks S) V).heal (K S A) cap i gst r) := by
+      (Sys (goldilocksWith ⟨S, stock⟩) V).Holds
+        (fun r => (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy (K S A) gst r ∧
+          (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+            (K S A) cap i
+            ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst r)
+            ((Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap i gst r) r)
+        fun r => (chainTrace r.2).ReadySafe ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r)
+          g ((Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap i gst r) := by
   intro cap g hcap hg idx gst r hv ⟨hh, hp⟩
   have hg' : g = Out.confirmed := by
     rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
@@ -130,8 +134,9 @@ theorem meetsObligations_healedSafe_growing : ∀ cap g, (cap = .available ∨ c
   left
   have htime : ∀ k, k ≤ (chainTrace r.2).cuts →
       (chainTrace r.2).cutTime k ≤ r.2.horizon :=
-    (Model.sysOf_laws schema (compiled (goldilocks S)) V).trace r hv |>.cutTime_le_horizon
-  let heal := (Sys (goldilocks S) V).heal (K S A) cap idx gst r
+    (Model.sysOf_laws schema (compiled (goldilocksWith ⟨S, stock⟩)) V).trace r hv
+        |>.cutTime_le_horizon
+  let heal := (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap idx gst r
   by_cases hb : heal ≤ r.2.horizon
   · by_cases hn : 1 ≤ Fintype.card V
     · let Q : HealthyPreparationQueryAt S A V := ⟨r, hn, cap, hcap, idx, gst, r.2.horizon, hv,
@@ -171,12 +176,15 @@ theorem meetsObligations_persists_growing (S : BoundSetup) (A : ContractAssumpti
 the payload projection. -/
 theorem meetsObligations_healthyLive_confirmed_growing : ∀ cap g, cap ≠ .final →
     schema.output cap = some g →
-    ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks S) V).Holds
-      (fun r => (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
-        (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap i
-          ((Sys (goldilocks S) V).ready (K S A) gst r) ((Sys (goldilocks S) V).pt r).horizon r)
-      fun r => ProposalLiveReady r.2 ((Sys (goldilocks S) V).cDur (K S A) r) g
-        ((Sys (goldilocks S) V).heal (K S A) cap i gst r) ((K S A).params.latency cap i) := by
+    ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocksWith ⟨S, stock⟩) V).Holds
+      (fun r => (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy (K S A) gst r ∧
+        (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+          (K S A) cap i
+          ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst r)
+              ((Sys (goldilocksWith ⟨S, stock⟩) V).pt r).horizon r)
+      fun r => ProposalLiveReady r.2 ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r) g
+        ((Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap i gst r)
+            ((K S A).params.latency cap i) := by
   intro cap g hf hg idx gst r hv ⟨hh, hp⟩
   have hcap : cap = .available ∨ cap = .stable := by cases cap <;> simp_all
   have hg' : g = Out.confirmed := by
@@ -196,12 +204,15 @@ theorem meetsObligations_healthyLive_confirmed_growing : ∀ cap g, cap ≠ .fin
   exact confirmed_payload_projection_at S A V Q h0 P cover
 
 theorem meetsObligations_healthyLive_growing : ∀ cap g, schema.output cap = some g →
-    ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks S) V).Holds
-      (fun r => (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
-        (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap i
-          ((Sys (goldilocks S) V).ready (K S A) gst r) ((Sys (goldilocks S) V).pt r).horizon r)
-      fun r => ProposalLiveReady r.2 ((Sys (goldilocks S) V).cDur (K S A) r) g
-        ((Sys (goldilocks S) V).heal (K S A) cap i gst r) ((K S A).params.latency cap i) := by
+    ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocksWith ⟨S, stock⟩) V).Holds
+      (fun r => (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy (K S A) gst r ∧
+        (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+          (K S A) cap i
+          ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst r)
+              ((Sys (goldilocksWith ⟨S, stock⟩) V).pt r).horizon r)
+      fun r => ProposalLiveReady r.2 ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r) g
+        ((Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap i gst r)
+            ((K S A).params.latency cap i) := by
   intro cap g hg
   by_cases hf : cap = .final
   · subst cap
@@ -209,11 +220,12 @@ theorem meetsObligations_healthyLive_growing : ∀ cap g, schema.output cap = so
   · exact meetsObligations_healthyLive_confirmed_growing S A V cap g hf hg
 
 theorem meetsObligations_sleepyLive_growing : ∀ cap g, (cap = .available ∨ cap = .stable) →
-    schema.output cap = some g → ∀ i : (K S A).Idx, (Sys (goldilocks S) V).Holds
-      (fun r => (Sys (goldilocks S) V).Sleepy (K S A) r ∧
-        (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap i 0
-          ((Sys (goldilocks S) V).pt r).horizon r)
-      fun r => ProposalLiveReady r.2 ((Sys (goldilocks S) V).cDur (K S A) r) g 0
+    schema.output cap = some g → ∀ i : (K S A).Idx, (Sys (goldilocksWith ⟨S, stock⟩) V).Holds
+      (fun r => (Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy (K S A) r ∧
+        (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+          (K S A) cap i 0
+          ((Sys (goldilocksWith ⟨S, stock⟩) V).pt r).horizon r)
+      fun r => ProposalLiveReady r.2 ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r) g 0
         ((K S A).params.latency cap i) := by
   intro cap g hcap hg idx r hv ⟨hs, hp⟩
   have hg' : g = Out.confirmed := by

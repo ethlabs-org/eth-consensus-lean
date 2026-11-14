@@ -17,19 +17,20 @@ open AsChainShape Simulation Blocks Shape
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
 /-- A ready designated duty produces a proposal, with honesty at its actual production cut. -/
-theorem duty_proposal_run_at (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
-    (hv : (Sys (goldilocks S) V).Valid run) (hnc : ¬ run.2.HashCollision)
+theorem duty_proposal_run_at (run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run)
+    (hn : 1 ≤ Fintype.card V)
+    (hv : (Sys (goldilocksWith ⟨S, stock⟩) V).Valid run) (hnc : ¬ run.2.HashCollision)
     {s : Nat} {hold : Time} (hs : 0 < s)
     (hth : (S.params (Model.pubOf run.1) hn).ts s ≤ run.2.horizon)
     (hduty : HonestReadyIn run.2.point run.2.key (fun s => run.2.sel (.proposer s)) s
-      ((Sys (goldilocks S) V).cDur (K S A) run)
-      ((goldilocks S (Model.pubOf run.1)).skel.grid.slotTime s) hold) :
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run)
+      ((goldilocksWith ⟨S, stock⟩ (Model.pubOf run.1)).skel.grid.slotTime s) hold) :
     ∃ k P, runProposer ⟨S, stock⟩ run.2 hn s ∈
         honestKeysAt ⟨S, stock⟩ run.2 ((S.params (Model.pubOf run.1) hn).ts s + hold) ∧
       (simTraceAt ⟨S, stock⟩ run.2 hn).ProposesAt (runProposer ⟨S, stock⟩ run.2 hn s) k P ∧
       (simTraceAt ⟨S, stock⟩ run.2 hn).time k = (S.params (Model.pubOf run.1) hn).ts s ∧ P.slot =
           s := by
-  have htime : (goldilocks S (Model.pubOf run.1)).skel.grid.slotTime s =
+  have htime : (goldilocksWith ⟨S, stock⟩ (Model.pubOf run.1)).skel.grid.slotTime s =
       (S.params (Model.pubOf run.1) hn).ts s := by
     change (s : Time) * (4 * run.1.ΔAC) = 4 * run.1.ΔAC * s
     ring
@@ -45,7 +46,7 @@ theorem duty_proposal_run_at (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fint
     simp only [SA.SAParams.ts]
     positivity
   have hnode := ready_transport_at ⟨S, stock⟩ run.2 hn hv h0 hth hR
-  erw [show run.2.ownKey (run.2.key (runProposer ⟨S, stock⟩ run.2 hn s)) =
+  rw [show run.2.ownKey (run.2.key (runProposer ⟨S, stock⟩ run.2 hn s)) =
     runProposer ⟨S, stock⟩ run.2 hn s from run.2.key.symm_apply_apply _] at hnode
   have hshort : Regimes.Growing.ReadyAt (simTraceAt ⟨S, stock⟩ run.2 hn)
       (honestKeysAt ⟨S, stock⟩ run.2)
@@ -74,8 +75,8 @@ theorem duty_proposal_run_at (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fint
 /-- Nonfinal progress supplies actual proposals in every required slot window. -/
 theorem healthy_preparation_gap_at (Q : HealthyPreparationQueryAt S A V)
     (hb : Q.heal ≤ Q.run.2.horizon)
-    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
-      Q.cap Q.index Q.ready Q.heal Q.run)
+    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) Q.cap Q.index Q.ready Q.heal Q.run)
     {s₀ N : Nat} (hs : max Q.ready 0 + 4 * Q.params.Δ ≤ Q.params.ts s₀)
     (hN : Q.params.ts N ≤ Q.heal) :
     ∀ a, s₀ ≤ a → a + (Q.index : Nat) ≤ N + 1 →
@@ -85,23 +86,25 @@ theorem healthy_preparation_gap_at (Q : HealthyPreparationQueryAt S A V)
           Q.trace.time k = Q.params.ts x ∧ P.slot = x := by
   have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
   have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
-      (fun s => Q.run.2.sel (.proposer s)) (goldilocks S (Model.pubOf Q.run.1)).skel.grid
-      ⟨Pattern.single, Q.index, 1⟩ ((Sys (goldilocks S) V).cDur (K S A) Q.run)
+      (fun s => Q.run.2.sel (.proposer s))
+          (goldilocksWith ⟨S, stock⟩ (Model.pubOf Q.run.1)).skel.grid
+      ⟨Pattern.single, Q.index, 1⟩ ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run)
       Q.ready Q.heal := by
     simpa only [System.prog, shapeProgress, shapeHolds, goldilocksContract, ite_eq_right hcap,
       Model.sysExternal, System.pt, Sys, Model.sysOf, Model.Run.point] using hp
-  have htime : ∀ s : Nat, (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime s =
+  have htime : ∀ s : Nat, (goldilocksWith ⟨S, stock⟩ (Model.pubOf Q.run.1)).skel.grid.slotTime s =
       Q.params.ts s := fun s => by
     change (s : Time) * (4 * Q.run.1.ΔAC) = 4 * Q.run.1.ΔAC * s
     ring
-  have hL : (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotLen = 4 * Q.params.Δ := by
+  have hL : (goldilocksWith ⟨S, stock⟩ (Model.pubOf Q.run.1)).skel.grid.slotLen =
+      4 * Q.params.Δ := by
     have h1 := htime 1
     simp only [TimeGrid.slotTime, SA.SAParams.ts] at h1
     push_cast at h1
     linarith
-  have hspan : (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime N +
+  have hspan : (goldilocksWith ⟨S, stock⟩ (Model.pubOf Q.run.1)).skel.grid.slotTime N +
       (((⟨Pattern.single, Q.index, 1⟩ : Recurrence).pattern.span : Nat) : Time) *
-        (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotLen = Q.params.ts N := by
+        (goldilocksWith ⟨S, stock⟩ (Model.pubOf Q.run.1)).skel.grid.slotLen = Q.params.ts N := by
     simp [htime, Pattern.single, Pattern.span]
   have hgap := recurrence_gap hrec (by simp [Pattern.single]) (s₀ := s₀) (N := N)
     (by rw [hL, htime]; exact hs) (by rw [hspan]; exact hN)

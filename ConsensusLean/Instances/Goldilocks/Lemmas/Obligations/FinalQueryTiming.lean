@@ -35,16 +35,18 @@ open SA (gbar)
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
 /-- The grid of the run's family has the protocol slot times. -/
-private theorem grid_slotTime (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
+private theorem grid_slotTime (run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run)
+    (hn : 1 ≤ Fintype.card V)
     (s : Nat) :
-    (goldilocks S (Model.pubOf run.1)).skel.grid.slotTime s =
+    (goldilocksWith ⟨S, stock⟩ (Model.pubOf run.1)).skel.grid.slotTime s =
       (S.params (Model.pubOf run.1) hn).ts s := by
   change (s : Time) * (4 * run.1.ΔAC) = 4 * run.1.ΔAC * s
   ring
 
 /-- The grid's slot length is `4Δ`. -/
-private theorem grid_slotLen (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V) :
-    (goldilocks S (Model.pubOf run.1)).skel.grid.slotLen =
+private theorem grid_slotLen (run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run)
+    (hn : 1 ≤ Fintype.card V) :
+    (goldilocksWith ⟨S, stock⟩ (Model.pubOf run.1)).skel.grid.slotLen =
       4 * (S.params (Model.pubOf run.1) hn).Δ := by
   have h1 := grid_slotTime S V run hn 1
   simp only [TimeGrid.slotTime, SA.SAParams.ts] at h1
@@ -52,14 +54,16 @@ private theorem grid_slotLen (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fint
   linarith only [h1]
 
 /-- The final progress premise is the recurrence of the final pattern on the run's grid. -/
-private theorem final_recurrence {run : (Sys (goldilocks S) V).Run} {index : (K S A).Idx}
+private theorem final_recurrence {run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run}
+    {index : (K S A).Idx}
     {gst : Time}
-    (hprog : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) .final index
-      ((Sys (goldilocks S) V).ready (K S A) gst run) run.2.horizon run) :
+    (hprog : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) .final index
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) run.2.horizon run) :
     PatternRecurrence run.2.point run.2.key
-      (fun s => run.2.sel (.proposer s)) (goldilocks S (Model.pubOf run.1)).skel.grid
-      ⟨finalWindow A, index, 1⟩ ((Sys (goldilocks S) V).cDur (K S A) run)
-      ((Sys (goldilocks S) V).ready (K S A) gst run) run.2.horizon := by
+      (fun s => run.2.sel (.proposer s)) (goldilocksWith ⟨S, stock⟩ (Model.pubOf run.1)).skel.grid
+      ⟨finalWindow A, index, 1⟩ ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run)
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) run.2.horizon := by
   simpa only [System.prog, shapeProgress, shapeHolds, goldilocksContract, ↓reduceIte,
     Model.sysExternal, System.pt, Sys, Model.sysOf, Model.Run.point] using hprog
 
@@ -67,25 +71,28 @@ private theorem final_recurrence {run : (Sys (goldilocks S) V).Run} {index : (K 
 span `3c`), with `max ready 0 + 4Δ ≤ t_{s₀}` and `t_{N + 3c} ≤ horizon`, every slot window
 `[x₀, x₀ + X)` inside `[s₀, N]` has a slot `x > 0` with `t_x ≤ horizon` whose designated proposer
 duty is honest and ready for the catch-up duration, with the hold `Δ_AC`. -/
-theorem final_query_duty (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
+theorem final_query_duty (run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run) (hn : 1 ≤ Fintype.card V)
     (index : (K S A).Idx) (gst : Time)
-    (hprog : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) .final index
-      ((Sys (goldilocks S) V).ready (K S A) gst run) run.2.horizon run)
+    (hprog : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) .final index
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) run.2.horizon run)
     {c : Nat} (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {s₀ N : Nat}
-    (hs : max ((Sys (goldilocks S) V).ready (K S A) gst run) 0 +
+    (hs : max ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) 0 +
         4 * (S.params (Model.pubOf run.1) hn).Δ ≤ (S.params (Model.pubOf run.1) hn).ts s₀)
     (hN : (S.params (Model.pubOf run.1) hn).ts (N + 3 * c : Nat) ≤ run.2.horizon) :
     ∀ x₀, s₀ ≤ x₀ → x₀ + (index : Nat) ≤ N + 1 → ∃ x, x₀ ≤ x ∧ x < x₀ + (index : Nat) ∧
       0 < x ∧ (S.params (Model.pubOf run.1) hn).ts x ≤ run.2.horizon ∧
       HonestReadyIn run.2.point run.2.key (fun s => run.2.sel (.proposer s)) x
-        ((Sys (goldilocks S) V).cDur (K S A) run)
-        ((goldilocks S (Model.pubOf run.1)).skel.grid.slotTime x) run.2.point.env.ΔAC := by
+        ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run)
+        ((goldilocksWith ⟨S, stock⟩ (Model.pubOf run.1)).skel.grid.slotTime x)
+            run.2.point.env.ΔAC := by
   have hrec := final_recurrence S A V hprog
-  have hspan : (goldilocks S (Model.pubOf run.1)).skel.grid.slotTime N +
+  have hspan : (goldilocksWith ⟨S, stock⟩ (Model.pubOf run.1)).skel.grid.slotTime N +
       (((⟨finalWindow A, index, 1⟩ : Recurrence).pattern.span : Nat) : Time) *
-        (goldilocks S (Model.pubOf run.1)).skel.grid.slotLen =
+        (goldilocksWith ⟨S, stock⟩ (Model.pubOf run.1)).skel.grid.slotLen =
       (S.params (Model.pubOf run.1) hn).ts (N + 3 * c : Nat) := by
-    rw [← grid_slotTime S V run hn, (goldilocks S (Model.pubOf run.1)).skel.grid.slotTime_add]
+    rw [← grid_slotTime S V run hn,
+      (goldilocksWith ⟨S, stock⟩ (Model.pubOf run.1)).skel.grid.slotTime_add]
     simp [finalWindow_span_of_offsets S A hpat]
   have hgap := recurrence_gap hrec (by rw [hpat]; simp) (s₀ := s₀) (N := N)
     (by rw [grid_slotLen S V run hn, grid_slotTime S V run hn]; exact hs)
@@ -100,7 +107,7 @@ theorem final_query_duty (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.
     · exfalso
       have hs0 : s₀ = 0 := Nat.eq_zero_of_le_zero (hx₀.trans (hxl.trans h.le))
       subst hs0
-      have := le_max_right ((Sys (goldilocks S) V).ready (K S A) gst run) 0
+      have := le_max_right ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) 0
       simp only [SA.SAParams.ts] at hs
       push_cast at hs
       linarith only [hs, this, hΔ]
@@ -119,32 +126,33 @@ anchors `s₀ + [0, c, 2c, 3c]` (each at a positive slot within the horizon): `t
 `t_{s₀ + 3c}` within the horizon, the drain of `a` before `t_u ≤ t_{s₀}`, `ḡ + 4Δ ≤ t_u`,
 `ḡ ≤ t_u + 6Δ`, `ḡ ≤ t_{s₀} + 6Δ`, the query before `t_{s₀}` and `t_{s₀ + 3c}`, and the slack
 `t_{s₀ + 3c} + Δ ≤ deadline`. -/
-theorem final_window_slots (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
+theorem final_window_slots (run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run) (hn : 1 ≤ Fintype.card V)
     (index : (K S A).Idx) (gst query : Time)
-    (hprog : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) .final index
-      ((Sys (goldilocks S) V).ready (K S A) gst run) run.2.horizon run)
+    (hprog : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) .final index
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) run.2.horizon run)
     (hbounded : query + ((K S A).params.latency .final index : Time) * run.1.ΔAC ≤
       run.2.horizon)
     {c : Nat} (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {a : Time}
     (hlat : query + 4 * ((index : Nat) + 3 * c) * (S.params (Model.pubOf run.1) hn).Δ +
         (S.params (Model.pubOf run.1) hn).Δ ≤
       query + ((K S A).params.latency .final index : Time) * run.1.ΔAC)
-    (hplace : max (max ((Sys (goldilocks S) V).ready (K S A) gst run) 0)
-        ((goldilocks S (Model.pubOf run.1)).skel.grid.slotTime
+    (hplace : max (max ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) 0)
+        ((goldilocksWith ⟨S, stock⟩ (Model.pubOf run.1)).skel.grid.slotTime
           ((S.params (Model.pubOf run.1) hn).slot a + 2 * (S.params (Model.pubOf run.1) hn).k + 5) -
           1) +
         ((((index : Nat) + S.δt : Nat) : Time)) *
-          (goldilocks S (Model.pubOf run.1)).skel.grid.slotLen ≤
-      query + (goldilocks S (Model.pubOf run.1)).skel.grid.slotLen) :
+          (goldilocksWith ⟨S, stock⟩ (Model.pubOf run.1)).skel.grid.slotLen ≤
+      query + (goldilocksWith ⟨S, stock⟩ (Model.pubOf run.1)).skel.grid.slotLen) :
     let sp := S.params (Model.pubOf run.1) hn
-    let G := (goldilocks S (Model.pubOf run.1)).skel.grid
+    let G := (goldilocksWith ⟨S, stock⟩ (Model.pubOf run.1)).skel.grid
     ∃ u s₀ : Nat, 0 < u ∧ u + sp.toParams.fg.δt ≤ s₀ ∧
       HonestReadyIn run.2.point run.2.key (fun s => run.2.sel (.proposer s)) u
-        ((Sys (goldilocks S) V).cDur (K S A) run) (G.slotTime u) run.2.point.env.ΔAC ∧
+        ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run) (G.slotTime u) run.2.point.env.ΔAC ∧
       (∀ i : Fin 4, 0 < s₀ + ![0, c, 2 * c, 3 * c] i ∧
         sp.ts (s₀ + ![0, c, 2 * c, 3 * c] i : Nat) ≤ run.2.horizon ∧
         HonestReadyIn run.2.point run.2.key (fun s => run.2.sel (.proposer s))
-          (s₀ + ![0, c, 2 * c, 3 * c] i) ((Sys (goldilocks S) V).cDur (K S A) run)
+          (s₀ + ![0, c, 2 * c, 3 * c] i) ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run)
           (G.slotTime (s₀ + ![0, c, 2 * c, 3 * c] i)) run.2.point.env.ΔAC) ∧
       sp.ts u ≤ run.2.horizon ∧ sp.ts s₀ ≤ run.2.horizon ∧
       sp.ts (s₀ + 3 * c : Nat) ≤ run.2.horizon ∧
@@ -165,12 +173,12 @@ theorem final_window_slots (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintyp
     ring
   have hL : (0 : Time) < G.slotLen := G.slotLen_pos
   have hi : (1 : Time) ≤ ((index : Nat) : Time) := by exact_mod_cast index.pos
-  have hq : max (max ((Sys (goldilocks S) V).ready (K S A) gst run) 0) 0 ≤ query := by
+  have hq : max (max ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) 0) 0 ≤ query := by
     have h1 : G.slotLen ≤ ((((index : Nat) + S.δt : Nat) : Time)) * G.slotLen := by
       have : (1 : Time) ≤ ((((index : Nat) + S.δt : Nat) : Time)) := by
         push_cast; linarith only [hi, Int.natCast_nonneg S.δt]
       exact le_mul_of_one_le_left hL.le this
-    have := le_max_left (max ((Sys (goldilocks S) V).ready (K S A) gst run) 0)
+    have := le_max_left (max ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) 0)
       (G.slotTime (sp.slot a + 2 * sp.k + 5) - 1)
     rw [max_eq_left (le_max_right _ _)]
     linarith only [this, hplace, h1]
@@ -188,8 +196,10 @@ theorem final_window_slots (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintyp
     exact (SA.ts_le_iff sp).2 (by exact_mod_cast humin)
   have hgu : gbar gst + 4 * sp.Δ ≤ sp.ts u := by
     have hc := catchUp_le_cDur S A V run hn
-    have hready : gbar gst + 4 * sp.Δ < (Sys (goldilocks S) V).ready (K S A) gst run := by
-      change max gst 0 + 4 * sp.Δ < max gst 0 + (Sys (goldilocks S) V).cDur (K S A) run + 1
+    have hready :
+        gbar gst + 4 * sp.Δ < (Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run := by
+      change max gst 0 + 4 * sp.Δ <
+        max gst 0 + (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run + 1
       simp only [Regimes.catchUp] at hc
       linarith only [hc, hΔ]
     have h1 := ((le_max_left _ _).trans (le_max_left _ _)).trans_lt hut₁
@@ -209,7 +219,7 @@ theorem final_window_slots (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintyp
   have hanc : ∀ i : Fin 4, 0 < s₀ + ![0, c, 2 * c, 3 * c] i ∧
       sp.ts (s₀ + ![0, c, 2 * c, 3 * c] i : Nat) ≤ run.2.horizon ∧
       HonestReadyIn run.2.point run.2.key (fun s => run.2.sel (.proposer s))
-        (s₀ + ![0, c, 2 * c, 3 * c] i) ((Sys (goldilocks S) V).cDur (K S A) run)
+        (s₀ + ![0, c, 2 * c, 3 * c] i) ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run)
         (G.slotTime (s₀ + ![0, c, 2 * c, 3 * c] i)) run.2.point.env.ΔAC := fun i =>
     ⟨Nat.lt_of_lt_of_le (Nat.lt_of_lt_of_le hu0 ((Nat.le_add_right _ _).trans hus'))
       (Nat.le_add_right _ _), (hts _ _ (Nat.add_le_add_left (hoff i) _)).trans hb3,
@@ -228,17 +238,17 @@ theorem final_window_slots (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintyp
 horizon`; every gap window that the reset frame reads, `t_N + 2Δ < B`, ends within the horizon,
 `t_{N + 3c} ≤ horizon`; and every reset `0 ≤ a ≤ B` has the placement (H3) of the two queries at
 `u_min = slot a + 2k + 5`. -/
-theorem final_reset_bounds (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
+theorem final_reset_bounds (run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run) (hn : 1 ≤ Fintype.card V)
     (index : (K S A).Idx) (gst query : Time)
-    (hmature : (Sys (goldilocks S) V).heal (K S A) .final index gst run ≤ query)
+    (hmature : (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) .final index gst run ≤ query)
     (hbounded : query + ((K S A).params.latency .final index : Time) * run.1.ΔAC ≤
       run.2.horizon)
     {c : Nat} (hc2 : 2 ≤ c) (h3c : 3 * c ≤ S.δt) :
     let sp := S.params (Model.pubOf run.1) hn
-    let ready := (Sys (goldilocks S) V).ready (K S A) gst run
+    let ready := (Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run
     let B := resetBoundRounds ready sp.Δ (2 * sp.Δ) sp.toParams.fg.δt (index : Nat)
       (healthyDrainLen S index)
-    let G := (goldilocks S (Model.pubOf run.1)).skel.grid
+    let G := (goldilocksWith ⟨S, stock⟩ (Model.pubOf run.1)).skel.grid
     0 ≤ ready ∧ gbar gst ≤ ready ∧ Healing.cutZ sp.toParams gst + sp.Δ + 1 ≤ ready + 4 * sp.Δ ∧
       ready + 4 * sp.Δ ≤ B ∧ B ≤ run.2.horizon ∧
       (∀ N : Nat, sp.ts N + 2 * sp.Δ < B → sp.ts (N + 3 * c : Nat) ≤ run.2.horizon) ∧

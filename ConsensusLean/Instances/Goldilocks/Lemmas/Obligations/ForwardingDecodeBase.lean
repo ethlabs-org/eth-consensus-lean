@@ -248,7 +248,7 @@ theorem own_proposal_decodes {V : Type} [Fintype V] {E : Env V}
 /-- Every honest acceptance in the simulating trace has a valid canonical child wire.
 Receipt validity and own-proposal validity are proved by their respective run laws. -/
 theorem accepted_child_decodes {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (y : Fin (Fintype.card V)) (hy : y ∈ honestKeys ⟨S, stock⟩ rho)
     (i : Nat) (B : Blk (S.params (pubOf E) hn))

@@ -26,11 +26,13 @@ horizon, a query at `query ≥ max ready 0` with its deadline within the horizon
 `s ≥ 1` with `query < t_s`, `t_s + 6Δ` at most the deadline, `0 ≤ t_s ≤ horizon`, and the
 selected proposer of `s` ready at `t_s` with duration `cDur` and not faulty at
 `min (t_s + ΔAC) horizon`. -/
-theorem nonfinal_query_slot (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
+theorem nonfinal_query_slot (run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run)
+    (hn : 1 ≤ Fintype.card V)
     {cap : Capability} (hnf : cap = .available ∨ cap = .stable) (index : (K S A).Idx)
     {query ready : Time}
     (hbounded : query + ((K S A).params.latency cap index : Time) * run.1.ΔAC ≤ run.2.horizon)
-    (hprogress : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
+    (hprogress : (Sys (goldilocksWith ⟨S, stock⟩) V).prog
+      (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
       cap index ready run.2.horizon run)
     (hquery : max ready 0 ≤ query) :
     ∃ s : Nat, 1 ≤ s ∧ query < (S.params (Model.pubOf run.1) hn).ts s ∧
@@ -38,7 +40,7 @@ theorem nonfinal_query_slot (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Finty
         query + ((K S A).params.latency cap index : Time) * run.1.ΔAC ∧
       0 ≤ (S.params (Model.pubOf run.1) hn).ts s ∧
       (S.params (Model.pubOf run.1) hn).ts s ≤ run.2.horizon ∧
-      run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) run)
+      run.2.point.Ready ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run)
         (run.2.key (runProposer ⟨S, stock⟩ run.2 hn s)) ((S.params (Model.pubOf run.1) hn).ts s) ∧
       run.2.key (runProposer ⟨S, stock⟩ run.2 hn s) ∉ run.2.faultyAt
         (min ((S.params (Model.pubOf run.1) hn).ts s + run.1.ΔAC) run.2.horizon) := by
@@ -46,8 +48,8 @@ theorem nonfinal_query_slot (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Finty
   have hquery0 : 0 ≤ query := (le_max_right ready 0).trans hquery
   have hcap : cap ≠ .final := by rcases hnf with h | h <;> simp [h]
   have hrec : PatternRecurrence run.2.point run.2.key
-      (fun s => run.2.sel (.proposer s)) (goldilocks S (Model.pubOf run.1)).skel.grid
-      ⟨Pattern.single, index, 1⟩ ((Sys (goldilocks S) V).cDur (K S A) run) ready
+      (fun s => run.2.sel (.proposer s)) (goldilocksWith ⟨S, stock⟩ (Model.pubOf run.1)).skel.grid
+      ⟨Pattern.single, index, 1⟩ ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run) ready
         run.2.horizon := by
     simpa only [System.prog, shapeProgress, shapeHolds, goldilocksContract, ite_eq_right hcap,
       Model.sysExternal, System.cDur, System.pt, Sys, Model.sysOf, Model.Run.point]
@@ -73,7 +75,7 @@ theorem nonfinal_query_slot (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Finty
       goldilocksWith, skeleton] using hwin)
     (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, goldilocksWith, skeleton,
       Model.Run.point] using hwin)
-  have htime : (goldilocks S (Model.pubOf run.1)).skel.grid.slotTime s =
+  have htime : (goldilocksWith ⟨S, stock⟩ (Model.pubOf run.1)).skel.grid.slotTime s =
       (S.params (Model.pubOf run.1) hn).ts s := by
     change (s : Time) * (4 * run.1.ΔAC) = 4 * run.1.ΔAC * s
     ring

@@ -468,7 +468,7 @@ theorem signedCandidate_propose_canonical {V : Type} [Fintype V] {E : Env V} (S 
   injection hauth with hk _
   injection hmsg with hhd
   subst hk hhd hcs
-  erw [propose_candidateRole_item S (E := E) s hs]
+  rw [propose_candidateRole_item S (E := E) s hs]
   exact proposal_blockObj (shapeOf S hn nd) s q.1 q.2.1 q.2.2 hq
     (rho.ownKey v) (encodeTxs nd.st.2) d atts p hdec
 

@@ -41,8 +41,8 @@ theorem healthy_preparation_reset_fit_at (Q : HealthyPreparationQueryAt S A V) :
 /-- Actual proposals from progress and finite healthy service supply a bounded reset. -/
 theorem healthy_preparation_reset_at (Q : HealthyPreparationQueryAt S A V)
     (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
-      Q.cap Q.index Q.ready Q.heal Q.run) :
+    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) Q.cap Q.index Q.ready Q.heal Q.run) :
     ∃ ΔF a, Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
         (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔF a Q.bound ∧
       a ≤ Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
@@ -56,8 +56,9 @@ theorem healthy_preparation_reset_at (Q : HealthyPreparationQueryAt S A V)
   have haw := healthy_preparation_awake_at S A V Q
   have hf := healthy_preparation_faults_at S A V Q
   have hfit := healthy_preparation_reset_fit_at S A V Q
-  have hready : Q.ready = max Q.gst 0 + (Sys (goldilocks S) V).cDur (K S A) Q.run + 1 := rfl
-  have hcDur : 0 ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run :=
+  have hready : Q.ready =
+      max Q.gst 0 + (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run + 1 := rfl
+  have hcDur : 0 ≤ (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run :=
     mul_nonneg (Int.natCast_nonneg _) Q.run.1.ΔAC_pos.le
   have hr0 : 0 ≤ Q.ready := by rw [hready]; linarith only [le_max_right Q.gst 0, hcDur]
   have hgr : SA.gbar Q.gst ≤ Q.ready := by

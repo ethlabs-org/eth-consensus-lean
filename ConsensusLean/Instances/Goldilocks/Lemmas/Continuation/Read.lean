@@ -595,7 +595,7 @@ open Blocks Shape Node
 open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+  (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- **The engine reads from the trace's ready-reader safety.** If the canonical trace is
 `ReadySafeOn` with catch-up `c ≥ 0` from `t₀` through the horizon, the engine's confirmed output is

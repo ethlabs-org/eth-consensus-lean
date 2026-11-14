@@ -130,7 +130,8 @@ theorem continued_live_after_handover (S : Setup) (A : ContractAssumptions S) (V
     change T ≤ q + _
     linarith
   exact Obligations.Growing.continued_proposal_live_at S A V Q hcv hseed hTQ hsvc' (hB.mono hqb)
-    (hinv Q.deadline hTQ hsvc' (hB.mono hqb) hcv) hp (by rw [hready]; linarith) hdt₁
+    (hinv Q.deadline hTQ hsvc' (hB.mono hqb) hcv) hp
+    (by change Sy.ready K gst ⟨E, rho⟩ ≤ q; rw [hready]; linarith) hdt₁
     (by change t₁ + 8 * sp.Δ ≤ q; linarith)
 
 end Consensus.Goldilocks

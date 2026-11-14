@@ -32,10 +32,10 @@ theorem protoFGDelay_pos (pub : Model.Public) : 0 < protoFGDelay pub := by
 the engine FG delay is within the contract's bound, `ΔFG ≤ (4·fgSlots − 6)·ΔAC`, so the protocol
 delays satisfy `6Δ_p + Δ_F,p ≤ 4Δ_p·fgSlots` (`fgDelay_bound_iff`), with
 `Δ_F,p = protoFGDelay (pubOf E)`. -/
-theorem protoFGDelay_delivery_of_fgDelay (run : (Sys (goldilocks S) V).Run)
+theorem protoFGDelay_delivery_of_fgDelay (run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run)
     (hn : 1 ≤ Fintype.card V)
-    (hfg : ((Sys (goldilocks S) V).pt run).env.ΔFG ≤
-      ((K S A).params.fgDelay : Time) * ((Sys (goldilocks S) V).pt run).env.ΔAC) :
+    (hfg : ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).env.ΔFG ≤
+      ((K S A).params.fgDelay : Time) * ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).env.ΔAC) :
     6 * (S.params (Model.pubOf run.1) hn).Δ + protoFGDelay (Model.pubOf run.1) ≤
       4 * (S.params (Model.pubOf run.1) hn).Δ * (A.fgSlots : Time) := by
   have h := hfg
@@ -46,10 +46,10 @@ theorem protoFGDelay_delivery_of_fgDelay (run : (Sys (goldilocks S) V).Run)
 /-- **The rise timeout under the FG delay bound of `K S A`** at the protocol FG delay:
 `6Δ_p + Δ_F,p ≤ 4Δ_p·fgSlots ≤ 4Δ_p·δ_t`, from `protoFGDelay_delivery_of_fgDelay` and
 `3·fgSlots ≤ δ_t` (`ContractAssumptions.timeout`). -/
-theorem protoFGDelay_timeout_of_fgDelay (run : (Sys (goldilocks S) V).Run)
+theorem protoFGDelay_timeout_of_fgDelay (run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run)
     (hn : 1 ≤ Fintype.card V)
-    (hfg : ((Sys (goldilocks S) V).pt run).env.ΔFG ≤
-      ((K S A).params.fgDelay : Time) * ((Sys (goldilocks S) V).pt run).env.ΔAC) :
+    (hfg : ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).env.ΔFG ≤
+      ((K S A).params.fgDelay : Time) * ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).env.ΔAC) :
     6 * (S.params (Model.pubOf run.1) hn).Δ + protoFGDelay (Model.pubOf run.1) ≤
       4 * (S.params (Model.pubOf run.1) hn).Δ * (S.δt : Time) := by
   have h := protoFGDelay_delivery_of_fgDelay S A V run hn hfg

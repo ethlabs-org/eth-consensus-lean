@@ -67,7 +67,7 @@ theorem cutTime_bounds (hv : rho.ExecutionValid) {i : Nat} (hi : i ≤ rho.event
 trace through `rho.cutTime i` is a static run for the keys honest then, the node's key is one of
 them, and the prefix agrees with the trace on the node's state at `cutMap i`. -/
 theorem prefix_reader_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i)) :
     GoldilocksRun (runProposer ⟨S, stock⟩ rho hn) (digestOf ⟨S, stock⟩ rho)
@@ -95,7 +95,7 @@ theorem accepted_in_view_at (hv : rho.ExecutionValid) {v : V} {k i : Nat}
 
 /-- A held non-genesis block of a node honest at its engine cut is in its engine view there. -/
 theorem held_in_view_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i))
     {B : Blk (S.params (pubOf E) hn)}
@@ -111,7 +111,7 @@ theorem held_in_view_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : 
 
 /-- Attestations carried by a held block of a node honest at its engine cut are in its view. -/
 theorem held_att_in_view_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i))
     {B : Blk (S.params (pubOf E) hn)}
@@ -133,7 +133,7 @@ theorem held_att_in_view_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (
 is linked, has increasing positions and proposal-role provenance, by the static argument on the
 reader's prefix run. -/
 theorem engine_outputValid_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hv : rho.ExecutionValid)
     (g : Out) : OutputValid rho g := by
   intro v i hi hh
@@ -149,7 +149,7 @@ theorem engine_outputValid_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     fun X hX hg => by
       rw [hs] at hX
       exact held_in_view_at S rho hn hv hi hh hX hg
-  erw [read_eq_out ⟨S, stock⟩ rho hn]
+  rw [read_eq_out ⟨S, stock⟩ rho hn]
   simp only [outOf, ← simTraceAt_state ⟨S, stock⟩ rho hn hv hh hi, ← hs]
   cases g with
   | finalized => exact hvalid _ (Store.cache_invariants _ _ _ _ hr).1
@@ -160,7 +160,7 @@ theorem engine_outputValid_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 /-- **R.8 nesting under growing faults.** At every engine cut of a node honest there, its
 finalized read is a prefix of its confirmed read. -/
 theorem engine_nested_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hv : rho.ExecutionValid)
     :
     (chainTrace rho).Nested .finalized .confirmed := by
@@ -174,7 +174,7 @@ theorem engine_nested_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S :
   have hC := (Regimes.sa_tips (A := (((simTraceAt ⟨S, stock⟩ rho hn).upTo (rho.cutTime i)).state
     (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn i)).ac) hΦ (stateAt ⟨S, stock⟩ rho hn v i).now).1
   have ha := hΦ.rooted.2 _ hC
-  erw [read_eq_out ⟨S, stock⟩ rho hn, read_eq_out ⟨S, stock⟩ rho hn]
+  rw [read_eq_out ⟨S, stock⟩ rho hn, read_eq_out ⟨S, stock⟩ rho hn]
   simp only [outOf, ← simTraceAt_state ⟨S, stock⟩ rho hn hv hh hi, ← hs]
   exact chainTo_prefix hr (ha.mono (fun _ h => h.1))
 
@@ -182,7 +182,7 @@ theorem engine_nested_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S :
 engine cuts at which it is honest only extend. Both cuts are read on the prefix through the later
 one. -/
 theorem engine_finalMonotone_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hv : rho.ExecutionValid)
     :
     (chainTrace rho).Monotone .finalized 0 := by
@@ -201,9 +201,9 @@ theorem engine_finalMonotone_at {V : Type} [Fintype V] [DecidableEq V] {E : Env 
     exact Trace.upTo_state _ _ fun k hk => (cutMap_time_le ⟨S, stock⟩ rho hn hv hi' k hk).trans hct
   have hri := Compose.fg_reachable hrun.toLocalRun hy (cutMap ⟨S, stock⟩ rho hn i)
   have hrj := Compose.fg_reachable hrun.toLocalRun hy (cutMap ⟨S, stock⟩ rho hn j)
-  erw [read_eq_out ⟨S, stock⟩ rho hn, read_eq_out ⟨S, stock⟩ rho hn]
+  rw [read_eq_out ⟨S, stock⟩ rho hn, read_eq_out ⟨S, stock⟩ rho hn]
   simp only [outOf]
-  erw [simTraceAt_state_all ⟨S, stock⟩ rho hn hv v i hi',
+  rw [simTraceAt_state_all ⟨S, stock⟩ rho hn hv v i hi',
     simTraceAt_state_all ⟨S, stock⟩ rho hn hv v j hj', ← hsi, ← hs]
   have hmono := cutMap_mono ⟨S, stock⟩ rho hn hij
   rw [chainTo_mono hri (Compose.tree_mono hrun.toLocalRun hy hmono)

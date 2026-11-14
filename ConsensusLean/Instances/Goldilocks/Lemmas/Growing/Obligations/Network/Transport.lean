@@ -146,7 +146,7 @@ theorem isCall_time_le_horizon (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionVa
 
 /-- Signatures of a node honest at the signing cut are well-formed attestations. -/
 theorem signed_att_wellFormed_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} {i : Nat}
     (hy : y ∈ honestKeysAt ⟨S, stock⟩ rho ((simTraceAt ⟨S, stock⟩ rho hn).time i))
@@ -180,7 +180,7 @@ theorem released_att_processAt_at (hn : 1 ≤ Fintype.card V) (hv : rho.Executio
 /-- Holdings suffice for processing before an observation deadline, even for an old receipt. No
 honesty premise: the processing is the holder's own release or its receipt. -/
 theorem held_att_processed_before_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)}
     {a : FG.Att (Fintype.card V)} (hwf : a.WellFormed) {j : Nat} {d D : Time}
@@ -245,7 +245,7 @@ of the engine log serves the signed attestations of a node honest at its signing
 protocol FG delay `Δ_F,p = protoFGDelay (pubOf E)`, at every recipient call within the horizon by
 a recipient honest at the call. -/
 theorem signed_row_service_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) :
     PSyncFGAttTransportAt ⟨S, stock⟩ rho (simTraceAt ⟨S, stock⟩ rho hn)
         (honestKeysAt ⟨S, stock⟩ rho)

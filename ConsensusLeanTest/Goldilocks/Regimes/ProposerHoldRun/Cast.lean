@@ -89,7 +89,7 @@ theorem twin_event {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) :
     ∃ i : Nat, (rhoc S).events[i]? = some (Model.Event.deliver ((rhoc S).key y) (twin S) 13) := by
   have hv : (rhoc S).key y ∉ ({0, 1} : Finset (Fin 5)) := by
     have := hy
-    erw [mem_honestKeys_iff, rhoc_faultyAt] at this
+    rw [mem_honestKeys_iff, rhoc_faultyAt] at this
     exact this
   have hρ : Model.Event.deliver ((rhoc S).key y) (twin S) 13 ∈ (rho S).events := by
     rw [rho_events]
@@ -352,13 +352,13 @@ theorem twin_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) :
       [twin S] from
     twin_parts] at hd
   rcases deliverSeq_single hd with ⟨e, hce, hg⟩ | hce | ⟨e, hce, hz⟩
-  · erw [canon_twin] at hce
+  · rw [canon_twin] at hce
     cases hce
     obtain ⟨k, X, hacc, hX, hk⟩ := group_accept hy hg
     exact accept_vote hy hacc hX hk
-  · erw [canon_twin] at hce
+  · rw [canon_twin] at hce
     cases hce
-  · erw [canon_twin] at hce
+  · rw [canon_twin] at hce
     cases hce
     simp only [exec, onBlock] at hz
     split_ifs at hz with hfut

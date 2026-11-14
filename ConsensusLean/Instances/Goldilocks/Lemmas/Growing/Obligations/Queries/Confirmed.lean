@@ -88,7 +88,8 @@ structure ConfirmedProducerSlotAt (Q : ConfirmedQueryAt S A V) where
 /-- Recurrence/grid selection after an explicit readiness start, at the exact readiness
 duration, with the proposer's hold. -/
 theorem confirmed_query_slot_at (Q : ConfirmedQueryAt S A V) {ready : Time}
-    (hprogress : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
+    (hprogress : (Sys (goldilocksWith ⟨S, stock⟩) V).prog
+      (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
       Q.cap Q.index ready Q.run.2.horizon Q.run)
     (hquery : max ready 0 ≤ Q.query) : Nonempty (ConfirmedProducerSlotAt S A V Q) := by
   obtain ⟨s, hs1, hlo, hmargin, hts0, htsh, hR, hH⟩ := nonfinal_query_slot S A V Q.run Q.hn
@@ -96,7 +97,7 @@ theorem confirmed_query_slot_at (Q : ConfirmedQueryAt S A V) {ready : Time}
   have hnode := ready_transport_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid hts0 htsh hR
   have hkey : Q.run.2.ownKey (Q.run.2.key (runProposer ⟨S, stock⟩ Q.run.2 Q.hn s)) =
       runProposer ⟨S, stock⟩ Q.run.2 Q.hn s := Q.run.2.key.symm_apply_apply _
-  erw [hkey] at hnode
+  rw [hkey] at hnode
   have hhold : runProposer ⟨S, stock⟩ Q.run.2 Q.hn s ∈
       Q.keys (Q.params.ts s + Regimes.Growing.hold Q.params) := by
     rw [mem_honestKeysAt_iff ⟨S, stock⟩ Q.run.2]

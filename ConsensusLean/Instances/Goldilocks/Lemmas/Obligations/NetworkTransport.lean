@@ -58,7 +58,7 @@ def protoFGDelay (pub : Model.Public) : Time := pub.ΔFG
 theorem protoFGDelay_eq (pub : Model.Public) : protoFGDelay pub = pub.ΔFG := by rfl
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-  (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+  (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
   {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (ΔF : Time)
 
@@ -119,7 +119,7 @@ deadline may equal the cutoff: the engine endpoint is still strictly below it. -
 theorem publication_held_syncUntil (hn : 1 ≤ Fintype.card V) (hconst : rho.point.ConstantFaults)
     {b : Time}
     (hnet : rho.log.SyncUntil rho.point b)
-    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
+    (r : Publication (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) E))
     (hr : (publisherExecution ⟨S, stock⟩ rho).actual r) (hx : rho.key r.origin ∉ rho.faultyAt 0)
     (hrow : ¬ rho.log.fgAtt r.object)
     {y : V} (hy : y ∉ rho.faultyAt 0) {a : Time}
@@ -169,7 +169,7 @@ theorem publication_held_before_deadline (hn : 1 ≤ Fintype.card V)
     (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {b : Time} (hbh : b ≤ rho.horizon)
     (hnet : rho.log.SyncUntil rho.point b)
-    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
+    (r : Publication (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) E))
     (hr : (publisherExecution ⟨S, stock⟩ rho).actual r) (hx : rho.key r.origin ∉ rho.faultyAt 0)
     (hrow : ¬ rho.log.fgAtt r.object)
     {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys ⟨S, stock⟩ rho) {j : Nat}
@@ -227,7 +227,7 @@ theorem held_forward_accepted_before (hn : 1 ≤ Fintype.card V) (hconst : rho.p
         hrun hnc
       hi ((mem_honestKeys_iff ⟨S, stock⟩ rho y).mp hy) (.refl o)
       ((mem_honestKeys_iff ⟨S, stock⟩ rho x).mp hx) hdecode (event_before hi rfl)
-      (by erw [hkey]; exact hF) huD
+      (by rw [hkey]; exact hF) huD
     exact ⟨k, (hk.trans_le (event_before hi rfl)).le, hkey ▸ ha, ht⟩
 
 /-- Acceptance service is measured at the processing cut, even when later restarts
@@ -236,7 +236,7 @@ theorem publication_acceptedBy_syncUntil (hn : 1 ≤ Fintype.card V)
     (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho hn))
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
-    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
+    (r : Publication (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) E))
     (hr : (publisherExecution ⟨S, stock⟩ rho).actual r) (hx : rho.key r.origin ∉ rho.faultyAt 0)
     {τ : Time} (hτ : 0 ≤ τ) (ht : (publisherExecution ⟨S, stock⟩ rho).eventTime r.event = τ)
     {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}

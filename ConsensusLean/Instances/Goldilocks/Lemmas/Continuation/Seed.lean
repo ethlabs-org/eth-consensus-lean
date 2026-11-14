@@ -319,7 +319,8 @@ query is at most `ready + (R + 8k + 20)Δ`, and the heal margin leaves `8Δ + 1`
 start: `t₀ + 8Δ + 1 ≤ heal`. -/
 theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤ Q.heal)
     (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
+    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
     ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
         (digestOf ⟨S, stock⟩ Q.run.2) Q.gst (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ ∧
@@ -393,7 +394,8 @@ theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤
 `0 ≤ heal ≤ T` and progress on `[ready, heal]` (`handover_seed_cover_at`). -/
 theorem handover_seed_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤ Q.heal)
     (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
+    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
     ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
       (digestOf ⟨S, stock⟩ Q.run.2) Q.gst (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ :=

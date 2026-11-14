@@ -211,7 +211,8 @@ theorem healthy_repair_schedule_of_preparation_at
 its reset time, service delay and query (`healthy_repair_schedule_of_preparation_at`). -/
 theorem healthy_repair_schedule_at (Q : HealthyPreparationQueryAt S A V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
+    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
     Nonempty (HealthyRepairScheduleAt S A V Q) := by
   obtain ⟨W', ⟨Dprep⟩⟩ := healthy_preparation_initialize_at S A V Q h0 hb hp
@@ -262,7 +263,7 @@ theorem healthy_current_record_sources_before_now_at (Q : HealthyPreparationQuer
   have hready : Q.ready < Q.params.ts O.slot + 6 * Q.params.Δ :=
     ((le_max_left _ _).trans D.lower).trans_lt (lt_add_of_lt_of_nonneg O.fresh h6)
   have hzero : 0 ≤ Q.ready := by
-    change 0 ≤ max Q.gst 0 + (Sys (goldilocks S) V).cDur (K S A) Q.run + 1
+    change 0 ≤ max Q.gst 0 + (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run + 1
     exact add_nonneg (add_nonneg (le_max_right _ _)
       ((mul_nonneg (by decide) hd.le).trans D.duration_bound)) zero_le_one
   have ht0 : 0 ≤ t := (hzero.trans hready.le).trans hTt.le
@@ -270,11 +271,11 @@ theorem healthy_current_record_sources_before_now_at (Q : HealthyPreparationQuer
   have hyT : y ∈ Q.keys (Q.params.ts O.slot + 6 * Q.params.Δ) :=
     honestKeysAt_antitone ⟨S, stock⟩ Q.run.2 hTt.le hy
   have hr : Regimes.Growing.ReadyAt Q.trace Q.keys
-      ((Sys (goldilocks S) V).cDur (K S A) Q.run) y
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) y
       (Q.params.ts O.slot + 6 * Q.params.Δ) := by
     refine ⟨hyT, fun τ hτ hτT => ?_⟩
     have hgτ : max Q.gst 0 ≤ τ := by
-      change max Q.gst 0 + (Sys (goldilocks S) V).cDur (K S A) Q.run + 1 <
+      change max Q.gst 0 + (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run + 1 <
         Q.params.ts O.slot + 6 * Q.params.Δ at hready
       refine (le_of_lt ?_).trans ((le_max_right _ _).trans hτ)
       rw [sub_sub, lt_sub_iff_add_lt, ← add_assoc]

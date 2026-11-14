@@ -249,24 +249,27 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 after the heal point, with progress from readiness and a query at or after the heal point, is in
 the hand-over disjunct of `ConfirmedQueryAt.regime` (the regime conjuncts of `Handover`, without
 its conviction bound). -/
-theorem handover_query_regime {run : (Sys (goldilocks S) V).Run} {cap : Capability}
+theorem handover_query_regime {run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run} {cap : Capability}
     {index : (K S A).Idx} {gst T query : Time}
-    (h : (Sys (goldilocks S) V).Handover (K S A) gst T run)
-    (hT : (Sys (goldilocks S) V).heal (K S A) cap index gst run ≤ T)
-    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap index
-      ((Sys (goldilocks S) V).ready (K S A) gst run) run.2.horizon run)
-    (hq : (Sys (goldilocks S) V).heal (K S A) cap index gst run ≤ query) :
-    ∃ T, ((Sys (goldilocks S) V).log run).PSync ((Sys (goldilocks S) V).pt run) gst ∧
-      ((Sys (goldilocks S) V).pt run).HealthyOn (K S A).params.β gst T ∧
-      ((Sys (goldilocks S) V).pt run).env.ΔFG ≤
-        ((K S A).params.fgDelay : Time) * ((Sys (goldilocks S) V).pt run).env.ΔAC ∧
-      ((Sys (goldilocks S) V).pt run).SleepyOn (K S A).params.θ
-        ((Sys (goldilocks S) V).cDur (K S A) run) ((Sys (goldilocks S) V).aheadDur (K S A) run) T
-        ((Sys (goldilocks S) V).pt run).horizon ∧
-      (Sys (goldilocks S) V).heal (K S A) cap index gst run ≤ T ∧
-      (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap index
-        ((Sys (goldilocks S) V).ready (K S A) gst run) run.2.horizon run ∧
-      (Sys (goldilocks S) V).heal (K S A) cap index gst run ≤ query :=
+    (h : (Sys (goldilocksWith ⟨S, stock⟩) V).Handover (K S A) gst T run)
+    (hT : (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap index gst run ≤ T)
+    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) cap index
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) run.2.horizon run)
+    (hq : (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap index gst run ≤ query) :
+    ∃ T, ((Sys (goldilocksWith ⟨S, stock⟩) V).log run).PSync
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run) gst ∧
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).HealthyOn (K S A).params.β gst T ∧
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).env.ΔFG ≤
+        ((K S A).params.fgDelay : Time) * ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).env.ΔAC ∧
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).SleepyOn (K S A).params.θ
+        ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run)
+            ((Sys (goldilocksWith ⟨S, stock⟩) V).aheadDur (K S A) run) T
+        ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).horizon ∧
+      (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap index gst run ≤ T ∧
+      (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
+        cap index ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) run.2.horizon run ∧
+      (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap index gst run ≤ query :=
   ⟨T, h.1, h.2.1, h.2.2.1, h.2.2.2.1, hT, hp, hq⟩
 
 /-- **Proposal liveness after a hand-over**, for a nonfinal query at or after `t₁` and `t_{r+k}`,
@@ -282,9 +285,11 @@ theorem continued_proposal_live_at (Q : ConfirmedQueryAt S A V) {ΔF T : Time} {
     (hB : Compose.Growing.SleepyBoundsFrom Q.trace Q.keys r Q.deadline)
     (hinv : Compose.Growing.SeededInvariant Q.trace Q.keys Q.gst r (r + Q.params.k - 1) t₁
       Q.deadline)
-    (hprogress : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
-      Q.cap Q.index ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) Q.run.2.horizon Q.run)
-    (hready : (Sys (goldilocks S) V).ready (K S A) Q.gst Q.run ≤ Q.query)
+    (hprogress : (Sys (goldilocksWith ⟨S, stock⟩) V).prog
+      (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
+      Q.cap Q.index ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) Q.gst Q.run) Q.run.2.horizon
+          Q.run)
+    (hready : (Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) Q.gst Q.run ≤ Q.query)
     (hdt₁ : Q.params.ts (r + Q.params.k : Nat) ≤ t₁) (ht₁ : t₁ + 8 * Q.params.Δ ≤ Q.query) :
     ∃ τ k h, Q.query < τ ∧ Q.run.2.point.Ready Q.duration (Q.run.2.key k) τ ∧
       HonestProposal Q.run.2 τ k h ∧ InBy Q.run.2 Q.duration .confirmed h Q.deadline := by

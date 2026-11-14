@@ -80,21 +80,22 @@ read at its stored clock, past the repair reserve. -/
 private theorem healthy_engine_read_point_at {Q : HealthyPreparationQueryAt S A V}
     (D : HealthyRepairScheduleAt S A V Q) {v : V} {i : Nat}
     (hi : (chainTrace Q.run.2).InCuts Q.heal i)
-    (hv : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
+    (hv : Q.run.2.point.Ready ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime i)) :
     Regimes.ReadPoint Q.trace (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i))
         (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now ∧
       0 ≤ (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now ∧
       (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now ≤ Q.run.2.horizon ∧
-      Regimes.Growing.ReadyAt Q.trace Q.keys ((Sys (goldilocks S) V).cDur (K S A) Q.run - 1)
+      Regimes.Growing.ReadyAt Q.trace Q.keys
+        ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run - 1)
         (Q.run.2.ownKey v) (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now ∧
       D.query + (4 * (Q.index : Time) + 6) * Q.params.Δ <
           (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now := by
   have hΔ := Q.params.toParams.hΔ
   have hΔ1 : 1 ≤ Q.params.Δ := hΔ
-  have hc : 0 ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run - 1 := by
+  have hc : 0 ≤ (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run - 1 := by
     linarith only [D.duration_bound, hΔ1]
-  have hr : Q.run.2.point.Ready (((Sys (goldilocks S) V).cDur (K S A) Q.run - 1) + 1) v
+  have hr : Q.run.2.point.Ready (((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run - 1) + 1) v
       (Q.run.2.cutTime i) := by simpa only [sub_add_cancel, chainTrace] using hv
   obtain ⟨hrp, h0, hh, hra, -⟩ := engine_read_point S Q.run.2 Q.hn Q.valid hc hi.1 hr
   have hlag := stored_now_ge_cutTime_sub_one S Q.run.2 Q.hn Q.valid hi.1 hc hr
@@ -106,7 +107,7 @@ the query's bound. -/
 theorem healthy_current_read_context_at (Q : HealthyPreparationQueryAt S A V)
     (D : HealthyRepairScheduleAt S A V Q) {v : V} {i : Nat}
     (hi : (chainTrace Q.run.2).InCuts Q.heal i)
-    (hv : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
+    (hv : Q.run.2.point.Ready ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime i))
     (htb : (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now ≤ Q.bound) :
     Nonempty (HealthyReadContextAt S A V Q D (Q.run.2.ownKey v)
@@ -123,7 +124,7 @@ theorem healthy_current_read_context_at (Q : HealthyPreparationQueryAt S A V)
   obtain ⟨L, hL, haL, hLt⟩ := healthy_read_label_at S A V D (Q.trace.state y n).ac
     (Node.frame (Q.trace.state y n)) ht0 hdrain
   have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
-  have hc8 : 8 * Q.params.Δ ≤ ((Sys (goldilocks S) V).cDur (K S A) Q.run - 1) + 1 := by
+  have hc8 : 8 * Q.params.Δ ≤ ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run - 1) + 1 := by
     linarith only [D.duration_bound, hΔ]
   obtain ⟨hw, hj⟩ := Compose.ready_implies_joined _ _ _ _ _ _ (hrun.upTo ht0) y hra.1 t
     _ ht0 hc8 fun u h1 h2 => ⟨hra.2 u h1 h2, h2⟩
@@ -151,12 +152,13 @@ theorem healthy_current_read_context_at (Q : HealthyPreparationQueryAt S A V)
 point within the query's bound, reads its effective record. -/
 theorem healthy_current_record_read_at (Q : HealthyPreparationQueryAt S A V)
     (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
+    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
     (D : HealthyRepairScheduleAt S A V Q) (O : HealthyRepairOpeningAt S A V Q D)
     (hrepair : HealthyReceiverRepairAt S A V Q D O) {v : V} {i : Nat}
     (hi : (chainTrace Q.run.2).InCuts Q.heal i)
-    (hv : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
+    (hv : Q.run.2.point.Ready ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime i))
     (htb : (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now ≤ Q.bound) :
     Regimes.readAfter Q.trace (Q.run.2.ownKey v)

@@ -120,7 +120,7 @@ theorem ready_read_cut_at (hv : rho.ExecutionValid)
 proposer ready at `τ ∈ [0, horizon]` (with any hold) is a proposal released at `τ` by a key ready
 at `τ` in the engine. -/
 theorem ready_proposal_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {c τ h : Time} (hτh : τ ≤ rho.horizon)
     {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
     (hP : Regimes.Growing.ReadyProposalAt (simTraceAt ⟨S, stock⟩ rho hn)
@@ -148,7 +148,7 @@ theorem ready_proposal_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 block is an ancestor of the final cache of every node ready at `t ∈ [0, horizon]` after all
 events at `t`, its header is in the finalized read of every engine node ready at `t`. -/
 theorem finalized_inBy_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
     {c t : Time} (hc : 0 ≤ c) (ht : 0 ≤ t) (hth : t ≤ rho.horizon)
@@ -180,7 +180,7 @@ theorem finalized_inBy_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   have hh : v ∉ rho.faultyAt (rho.cutTime i) := fun h =>
     hr.1 (rho.faultyAt_mono (cutTime_endCut_le ⟨S, stock⟩ rho ht) h)
   change headerOf (S.params (pubOf E) hn) P ∈ (chainTrace rho).read .finalized v i
-  erw [read_eq_out ⟨S, stock⟩ rho hn, outOf, ← simTraceAt_state ⟨S, stock⟩ rho hn hv hh hi]
+  rw [read_eq_out ⟨S, stock⟩ rho hn, outOf, ← simTraceAt_state ⟨S, stock⟩ rho hn hv hh hi]
   exact hout
 
 /-- **Inclusion is engine confirmed output** under growing faults: if a proposal released at
@@ -188,7 +188,7 @@ theorem finalized_inBy_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 every node ready at `t ≤ horizon` after all events at `t`, its header is in the confirmed read of
 every engine node ready at `t`. -/
 theorem confirmed_inBy_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
     {c : Time} (hc : 0 ≤ c) {τ t h : Time} (hτ : 0 ≤ τ) (hτt : τ ≤ t) (hth : t ≤ rho.horizon)
@@ -237,7 +237,7 @@ theorem confirmed_inBy_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   have hh : v ∉ rho.faultyAt (rho.cutTime i) := fun h =>
     hr.1 (rho.faultyAt_mono (cutTime_endCut_le ⟨S, stock⟩ rho ht) h)
   change headerOf (S.params (pubOf E) hn) P ∈ (chainTrace rho).read .confirmed v i
-  erw [read_eq_out ⟨S, stock⟩ rho hn, outOf, ← simTraceAt_state ⟨S, stock⟩ rho hn hv hh hi,
+  rw [read_eq_out ⟨S, stock⟩ rho hn, outOf, ← simTraceAt_state ⟨S, stock⟩ rho hn hv hh hi,
     hcut.2.2]
   exact hout
 

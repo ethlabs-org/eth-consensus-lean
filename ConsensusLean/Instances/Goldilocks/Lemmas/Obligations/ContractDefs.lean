@@ -122,21 +122,25 @@ clause read on full committees, and the committee look-ahead `5` is the populati
 `ahead = 5` (`EtaSleepyOn.committee_univ`). The committee clause is redundant there, not vacuous. -/
 theorem goldilocksContract_outage_stock_iff {S : Setup} (A : ContractAssumptions S)
     (C : ContractCoefficients) {V : Type} [Fintype V] [DecidableEq V] {T b₀ b₁ : Time}
-    {r : (Sys (goldilocks S) V).Run} :
-    (Sys (goldilocks S) V).Outage (shapeProgress (goldilocks S) V).toExternal
+    {r : (Sys (goldilocksWith ⟨S, stock⟩) V).Run} :
+    (Sys (goldilocksWith ⟨S, stock⟩) V).Outage
+        (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal
         (goldilocksContract A C) T b₀ b₁ r ↔
-      OutageTimes (goldilocksContract A C).params ((Sys (goldilocks S) V).pt r).env.ΔAC
+      OutageTimes (goldilocksContract A C).params ((Sys (goldilocksWith ⟨S, stock⟩) V).pt r).env.ΔAC
           T b₀ b₁ ∧
-        ((Sys (goldilocks S) V).log r).OutageNet ((Sys (goldilocks S) V).pt r) b₀ b₁ ∧
-        ((Sys (goldilocks S) V).pt r).EtaSleepyOn (goldilocksContract A C).params.θ
-          (((goldilocksContract A C).params.η : Time) * ((Sys (goldilocks S) V).pt r).env.ΔAC)
-          (max ((Sys (goldilocks S) V).cDur (goldilocksContract A C) r)
+        ((Sys (goldilocksWith ⟨S, stock⟩) V).log r).OutageNet
+            ((Sys (goldilocksWith ⟨S, stock⟩) V).pt r) b₀ b₁ ∧
+        ((Sys (goldilocksWith ⟨S, stock⟩) V).pt r).EtaSleepyOn (goldilocksContract A C).params.θ
+          (((goldilocksContract A C).params.η : Time) *
+              ((Sys (goldilocksWith ⟨S, stock⟩) V).pt r).env.ΔAC)
+          (max ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (goldilocksContract A C) r)
             (((goldilocksContract A C).params.η : Time) *
-              ((Sys (goldilocks S) V).pt r).env.ΔAC - 1))
-          ((Sys (goldilocks S) V).aheadDur (goldilocksContract A C) r) 0
-          ((Sys (goldilocks S) V).pt r).horizon := by
-  have hsel : (shapeProgress (goldilocks S) V).toExternal.selected
-      ((Sys (goldilocks S) V).pt r).env ((shapeProgress (goldilocks S) V).toExternal.ext r) =
+              ((Sys (goldilocksWith ⟨S, stock⟩) V).pt r).env.ΔAC - 1))
+          ((Sys (goldilocksWith ⟨S, stock⟩) V).aheadDur (goldilocksContract A C) r) 0
+          ((Sys (goldilocksWith ⟨S, stock⟩) V).pt r).horizon := by
+  have hsel : (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal.selected
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).pt r).env
+          ((shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal.ext r) =
       fun _ => Finset.univ := rfl
   constructor
   · exact fun ⟨ht, hn, hs, _⟩ => ⟨ht, hn, hs⟩
@@ -160,7 +164,7 @@ noncomputable abbrev K (S : Setup) (A : ContractAssumptions S) :=
 
 /-- Selection-aware singleton duties make every recurrence fit. -/
 theorem meetsObligations_progressFits (S : Setup) (A : ContractAssumptions S) :
-    ProgressFits (K S A) (goldilocks S) := by
+    ProgressFits (K S A) (goldilocksWith ⟨S, stock⟩) := by
   intro cap i pub s
   rfl
 
@@ -188,8 +192,8 @@ any coefficient record `C`, so that it also serves the witnesses over `goldilock
 At `K S A` the premise is `contract_catchUp_ge_sleepy`. -/
 theorem cDur_ge_of_catchUp {S : Setup} (A : ContractAssumptions S) (V : Type) [Fintype V]
     [DecidableEq V] (C : ContractCoefficients) (hC : 19 ≤ (C.catchUp : Nat))
-    (r : (Sys (goldilocks S) V).Run) :
-    18 * r.1.ΔAC + 1 ≤ (Sys (goldilocks S) V).cDur (goldilocksContract A C) r := by
+    (r : (Sys (goldilocksWith ⟨S, stock⟩) V).Run) :
+    18 * r.1.ΔAC + 1 ≤ (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (goldilocksContract A C) r := by
   have hd : (1 : Time) ≤ r.1.ΔAC := r.1.ΔAC_pos
   have hc : (19 : Time) ≤ (C.catchUp : Nat) := by exact_mod_cast hC
   change 18 * r.1.ΔAC + 1 ≤ ((C.catchUp : Nat) : Time) * r.1.ΔAC
@@ -201,10 +205,10 @@ base `max ready 0 + 4Δp`. Generic in `C` as `cDur_ge_of_catchUp`; its instance 
 `C := contract_coefficients S A`, `hC := contract_catchUp_ge_sleepy S A`. -/
 theorem cutZ_fit_of_catchUp {S : Setup} (A : ContractAssumptions S) (V : Type) [Fintype V]
     [DecidableEq V] (C : ContractCoefficients) (hC : 19 ≤ (C.catchUp : Nat))
-    (r : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V) (g : Time) :
+    (r : (Sys (goldilocksWith ⟨S, stock⟩) V).Run) (hn : 1 ≤ Fintype.card V) (g : Time) :
     Healing.cutZ (S.params (Model.pubOf r.1) hn).toParams g +
         (S.params (Model.pubOf r.1) hn).Δ + 1 ≤
-      max ((Sys (goldilocks S) V).ready (goldilocksContract A C) g r) 0 +
+      max ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (goldilocksContract A C) g r) 0 +
         4 * (S.params (Model.pubOf r.1) hn).Δ := by
   have h := cDur_ge_of_catchUp A V C hC r
   have hΔ : (S.params (Model.pubOf r.1) hn).Δ = r.1.ΔAC := rfl

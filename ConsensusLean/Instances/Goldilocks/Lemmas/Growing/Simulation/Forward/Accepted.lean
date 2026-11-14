@@ -193,7 +193,7 @@ theorem received_forward_accepted_before_of_released_at (hv : rho.ExecutionValid
 envelope its genuine release at its stamp. -/
 theorem received_forward_accepted_before_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
     {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V) stock}
@@ -218,7 +218,7 @@ theorem received_forward_accepted_before_at {V : Type} [Fintype V] [DecidableEq 
     rfl
   obtain ⟨j', s, hj', hs, ho⟩ := hv.unforgeable i v receipt u he o hc (rho.key x) hsign hx
   have hkx : rho.ownKey (rho.key x) = x := rho.key.symm_apply_apply _
-  have hts : t = s := released_forward_stamp ⟨S, stock⟩ rho hn hv hs ho (by erw [hkx]; exact hd)
+  have hts : t = s := released_forward_stamp ⟨S, stock⟩ rho hn hv hs ho (by rw [hkx]; exact hd)
   subst hts
   have hxt : rho.key x ∉ rho.faultyAt t := fun h =>
     hx (rho.faultyAt_mono (sendsAt_time_le ⟨S, stock⟩ rho hv hs (Or.inr ⟨receipt, he⟩) hj'.le) h)

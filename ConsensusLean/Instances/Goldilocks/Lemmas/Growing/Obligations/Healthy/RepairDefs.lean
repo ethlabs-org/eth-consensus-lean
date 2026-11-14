@@ -27,7 +27,7 @@ structure HealthyRepairScheduleAt (Q : HealthyPreparationQueryAt S A V) where
         Q.bound
   cleanLabel : Nat
   cleanLabel_eq : cleanLabel = Healing.cleanLabel Q.params resetTime
-  duration_bound : 18 * Q.params.Δ ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run
+  duration_bound : 18 * Q.params.Δ ≤ (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run
   oldLabel : Nat
   old_bound : cleanLabel + 2 * Q.params.k + 1 ≤ oldLabel
   query : Time
@@ -51,7 +51,7 @@ structure HealthyRepairOpeningAt (Q : HealthyPreparationQueryAt S A V)
   accepts : Q.trace.AcceptAt (runProposer ⟨S, stock⟩ Q.run.2 Q.hn slot) cut block
   time : Q.trace.time cut = Q.params.ts slot
   ready : Regimes.Growing.ReadyAt Q.trace Q.keys
-    ((Sys (goldilocks S) V).cDur (K S A) Q.run)
+    ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run)
     (runProposer ⟨S, stock⟩ Q.run.2 Q.hn slot) (Q.params.ts slot)
   held : runProposer ⟨S, stock⟩ Q.run.2 Q.hn slot ∈ Q.keys (Q.params.ts slot + Q.params.Δ)
 
@@ -61,7 +61,7 @@ honest at its own cut, no later than the update and with a label past the old la
 def HealthyReceiverRepairAt (Q : HealthyPreparationQueryAt S A V)
     (D : HealthyRepairScheduleAt S A V Q) (O : HealthyRepairOpeningAt S A V Q D) : Prop :=
   ∀ y, Regimes.Growing.ReadyAt Q.trace Q.keys
-      ((Sys (goldilocks S) V).cDur (K S A) Q.run) y
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) y
       (Q.params.ts O.slot + 6 * Q.params.Δ) → ∃ j ell,
     SA.UpdateAt Q.trace.projAC y j O.slot ell ∧
     Q.trace.time j = Q.params.ts O.slot + 6 * Q.params.Δ ∧
@@ -92,7 +92,7 @@ theorem healthyReceiverRepairAt_iff {Q : HealthyPreparationQueryAt S A V}
     {D : HealthyRepairScheduleAt S A V Q} {O : HealthyRepairOpeningAt S A V Q D} :
     HealthyReceiverRepairAt S A V Q D O ↔
       ∀ y, Regimes.Growing.ReadyAt Q.trace Q.keys
-          ((Sys (goldilocks S) V).cDur (K S A) Q.run) y
+          ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) y
           (Q.params.ts O.slot + 6 * Q.params.Δ) → ∃ j ell,
         SA.UpdateAt Q.trace.projAC y j O.slot ell ∧
         Q.trace.time j = Q.params.ts O.slot + 6 * Q.params.Δ ∧

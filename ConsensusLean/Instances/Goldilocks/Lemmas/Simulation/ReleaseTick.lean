@@ -69,19 +69,19 @@ theorem release_head (v : V) (nd : Model.Node (Model.protoOf (compiled (goldiloc
       (pollOrdinary S rho v (ob.map fun b => (b, [])))).2 = relHead S rho v nd.seen ob := by
   cases ob with
   | none =>
-    erw [pollOrdinary_eq]
+    rw [pollOrdinary_eq]
     rfl
   | some b =>
     rw [Option.map_some]
     by_cases hk : rho.ownKey v ∈ rho.sel (pollRole S.vote (pubOf E).n b)
-    · erw [pollOrdinary_some_pos S rho hk]
+    · rw [pollOrdinary_some_pos S rho hk]
       have hr : Model.releasable nd.seen (pollObj S rho v b) = true := by
         simp [Model.releasable, Model.Obj.carried]
       have hd := pollObj_ready S rho v (Model.closure nd.seen) b
       simp only [Model.releaseAll, hr, hd, Bool.true_and, Bool.and_true, relHead,
         Option.elim_some, hk, true_and]
       split <;> rfl
-    · erw [pollOrdinary_some_neg S rho hk]
+    · rw [pollOrdinary_some_neg S rho hk]
       simp [Model.releaseAll, relHead, hk]
 
 omit [DecidableEq V] in
@@ -122,7 +122,7 @@ theorem dutyStep_poll_batch (v : V) (nd : Model.Node (Model.protoOf (compiled
   simp only [show (Model.protoOf (compiled (goldilocksWith S)) E).role (.poll k) = .poll from rfl,
       hsel, ↓reduceIte]
   rw [signedCandidate_poll S rho hn v nd k hsel]
-  erw [List.append_assoc]
+  rw [List.append_assoc]
   exact congrArg Prod.snd (Model.releaseAll_append _ _ _ _ _)
 
 omit [DecidableEq V] in

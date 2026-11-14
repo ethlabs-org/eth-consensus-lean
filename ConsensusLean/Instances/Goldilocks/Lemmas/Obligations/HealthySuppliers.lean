@@ -25,25 +25,25 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type)
 
 /-- Healthy context carries no progress beyond the separately supplied interval. -/
 structure HealthyPreparationQuery where
-  run : (Sys (goldilocks S) V).Run
+  run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run
   constant : run.2.point.ConstantFaults
   hn : 1 ≤ Fintype.card V
   cap : Capability
   nonfinal : cap = .available ∨ cap = .stable
   index : (K S A).Idx
   gst : Time
-  valid : (Sys (goldilocks S) V).Valid run
+  valid : (Sys (goldilocksWith ⟨S, stock⟩) V).Valid run
   noCollision : ¬ run.2.HashCollision
-  healthy : (Sys (goldilocks S) V).Healthy (K S A) gst run
+  healthy : (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy (K S A) gst run
 
 namespace HealthyPreparationQuery
 variable {S A V}
 abbrev params (Q : HealthyPreparationQuery S A V) := S.params (Model.pubOf Q.run.1) Q.hn
 noncomputable abbrev trace (Q : HealthyPreparationQuery S A V) := simTrace ⟨S, stock⟩ Q.run.2 Q.hn
 noncomputable abbrev heal (Q : HealthyPreparationQuery S A V) :=
-  (Sys (goldilocks S) V).heal (K S A) Q.cap Q.index Q.gst Q.run
+  (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) Q.cap Q.index Q.gst Q.run
 noncomputable abbrev ready (Q : HealthyPreparationQuery S A V) :=
-  (Sys (goldilocks S) V).ready (K S A) Q.gst Q.run
+  (Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) Q.gst Q.run
 noncomputable abbrev cut (Q : HealthyPreparationQuery S A V) :=
   cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.heal)
 end HealthyPreparationQuery

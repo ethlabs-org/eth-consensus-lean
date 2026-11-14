@@ -486,6 +486,12 @@ detail in `TRUST.md`.
   The test `ConsensusLeanTest/Goldilocks/VoteBinding.lean` checks that the population binding equals the
   population-only shape (`stock_legacy`), and exercises a proper-subset binding of one key per slot. Which
   certified statement holds at which binding is in §"Trusted surface and Challenge scope".
+  The stock-only proofs are stated at `goldilocksWith ⟨S, stock⟩`, the form of the binding-generic simulation
+  lemmas they rewrite with: the static queries (`OutageQuery`, `ConfirmedQuery`, `HealthyPreparationQuery`), the
+  growing queries (`ConfirmedQueryAt`, `SleepySafetyQueryAt`, `FinalQueryAt`, `HealthyPreparationQueryAt`) and
+  `FinalWindowDataAt`, the lemmas over them and the fields of the growing endpoint. The trusted statements and
+  `meetsObligations_growing` keep `goldilocks S`, which is defined as `goldilocksWith ⟨S, stock⟩` and unfolds to it
+  definitionally.
 - **Votes leave through the poll outbox and are signed in their historical role (`candidateRole`).** No binding
   schedules a committee duty (`kinds := []`): the AC emits a vote at a delivery or a tick, the shape queues it, and
   the next selected poll releases it, possibly in a later slot. The generic `candidateRole d m` names the role

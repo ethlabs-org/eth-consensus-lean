@@ -98,7 +98,7 @@ theorem one_lt_threshold :
   change 1 < 2 * 3 - Fintype.card (Fin 4)
   simp
 
-variable {S} {rho : Model.Run (compiled (goldilocks S)) point.env}
+variable {S} {rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) point.env}
 
 theorem point_constant (hp : rho.point = point) : rho.point.ConstantFaults := by
   rw [hp]
@@ -176,7 +176,7 @@ theorem not_callAt_of_not_honest (hp : rho.point = point) (hv : rho.ExecutionVal
     simTrace_cut ⟨S, stock⟩ rho one_le_card (hl ▸ Option.some_ne_none ℓ)
   apply hy
   rw [mem_honestKeys_iff ⟨S, stock⟩ rho]
-  erw [← hnode, hn, show rho.key (rho.ownKey ev.node) = ev.node from rho.key.apply_symm_apply _]
+  rw [← hnode, hn, show rho.key (rho.ownKey ev.node) = ev.node from rho.key.apply_symm_apply _]
   have h := hv.honest_only ev (List.mem_of_getElem? he)
   simp only [rho.faultyAt_eq_zero (point_constant hp)] at h ⊢
   exact h

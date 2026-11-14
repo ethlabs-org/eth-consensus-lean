@@ -31,14 +31,15 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 the trace cut after its last own event at its stored clock, within the query's bound. -/
 theorem healthy_cut_tips_comparable_at (Q : HealthyPreparationQueryAt S A V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
+    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
     (u v : V) (i j : Nat)
     (hi : (chainTrace Q.run.2).InCuts Q.heal i)
     (hj : (chainTrace Q.run.2).InCuts Q.heal j)
-    (hu : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) u
+    (hu : Q.run.2.point.Ready ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) u
       ((chainTrace Q.run.2).cutTime i))
-    (hv : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
+    (hv : Q.run.2.point.Ready ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime j))
     (hub : (stateAt ⟨S, stock⟩ Q.run.2 Q.hn u i).now ≤ Q.bound)
     (hvb : (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v j).now ≤ Q.bound) :
@@ -65,14 +66,15 @@ theorem healthy_cut_tips_comparable_at (Q : HealthyPreparationQueryAt S A V)
 the later read within the query's bound. -/
 theorem healthy_cut_tips_ancestor_at (Q : HealthyPreparationQueryAt S A V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
+    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
     (v : V) (i j : Nat)
     (hi : (chainTrace Q.run.2).InCuts Q.heal i) (hij : i ≤ j)
     (hj : (chainTrace Q.run.2).InCuts Q.heal j)
-    (hvi : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
+    (hvi : Q.run.2.point.Ready ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime i))
-    (hvj : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
+    (hvj : Q.run.2.point.Ready ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime j))
     (hjb : (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v j).now ≤ Q.bound) :
     Anc (Q.trace.HonestBlocksAt Q.keys)

@@ -28,7 +28,8 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 
 /-- A restarting node of the canonical trace is asleep one tick before its restart, whatever its
 honesty. -/
-private theorem asleep_before_restart_at {E : Env V} (rho : Model.Run (compiled (goldilocks S)) E)
+private theorem asleep_before_restart_at {E : Env V}
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (y : Fin (Fintype.card V)) (i : Nat)
     (hr : (simTraceAt ⟨S, stock⟩ rho hn).RestartAt y i) :
     ¬ (simTraceAt ⟨S, stock⟩ rho hn).awake y ((simTraceAt ⟨S, stock⟩ rho hn).time i - 1) := by
@@ -50,9 +51,11 @@ private theorem asleep_before_restart_at {E : Env V} (rho : Model.Run (compiled 
 
 /-- **The shared HS premises of a healthy run through its horizon under growing faults, from
 attestation service at `Δ_F`**, at GST `g` and the digest of the run. -/
-theorem hsSharedUpTo_of_rows_at (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
-    (valid : (Sys (goldilocks S) V).Valid run) (noCollision : ¬ run.2.HashCollision) {g : Time}
-    (healthy : (Sys (goldilocks S) V).Healthy (K S A) g run) {ΔF : Time}
+theorem hsSharedUpTo_of_rows_at (run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run)
+    (hn : 1 ≤ Fintype.card V)
+    (valid : (Sys (goldilocksWith ⟨S, stock⟩) V).Valid run) (noCollision : ¬ run.2.HashCollision)
+    {g : Time}
+    (healthy : (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy (K S A) g run) {ΔF : Time}
     (hrow : PSyncFGAttTransportAt ⟨S, stock⟩ run.2 (simTraceAt ⟨S, stock⟩ run.2 hn)
         (honestKeysAt ⟨S, stock⟩ run.2) ΔF)
     (hΔF : 0 < ΔF)

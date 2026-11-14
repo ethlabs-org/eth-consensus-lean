@@ -132,8 +132,8 @@ theorem read_hdr {h : Header Info}
   have hhon : (2 : Fin 5) ∉ (rhoc S).faultyAt 0 := by rw [rhoc_faultyAt]; decide
   have hy : (rhoc S).ownKey 2 ∈ H S :=
     (mem_honestKeys_iff ⟨S, stock⟩ (rhoc S) _).mpr
-        (by erw [ownKey_key' ⟨S, stock⟩ (rhoc S)]; exact hhon)
-  erw [read_eq_out ⟨S, stock⟩ (rhoc S) one_le_card, outOf,
+        (by rw [ownKey_key' ⟨S, stock⟩ (rhoc S)]; exact hhon)
+  rw [read_eq_out ⟨S, stock⟩ (rhoc S) one_le_card, outOf,
     simTrace_state ⟨S, stock⟩ (rhoc S) one_le_card rhoc_const rhoc_valid 2 hhon _ hi,
         hcut.2.2] at hh
   set y := (rhoc S).ownKey 2

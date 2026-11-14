@@ -22,7 +22,7 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 
 /-- The catch-up duration of a healed-safety query is at least one. -/
 private theorem one_le_cDur (Q : HealthyPreparationQueryAt S A V) :
-    1 ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run := by
+    1 ≤ (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run := by
   have hc : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
     exact_mod_cast contract_catchUp_ge_sleepy S A
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
@@ -35,16 +35,17 @@ on `[ready, heal]` and the heal point within the horizon, the confirmed reads of
 the heal point are safe. -/
 theorem healthy_ready_safety_at (Q : HealthyPreparationQueryAt S A V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound) (hB : Q.run.2.horizon ≤ Q.bound)
-    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
+    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
-    (chainTrace Q.run.2).ReadySafe ((Sys (goldilocks S) V).cDur (K S A) Q.run)
+    (chainTrace Q.run.2).ReadySafe ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run)
       .confirmed Q.heal := by
-  have hc0 : 0 ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run - 1 := by
+  have hc0 : 0 ≤ (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run - 1 := by
     linarith [one_le_cDur S A V Q]
   have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
-  have hr : ∀ {v i}, Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
+  have hr : ∀ {v i}, Q.run.2.point.Ready ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime i) →
-      Q.run.2.point.Ready (((Sys (goldilocks S) V).cDur (K S A) Q.run - 1) + 1) v
+      Q.run.2.point.Ready (((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run - 1) + 1) v
         (Q.run.2.cutTime i) := fun h => by simpa only [sub_add_cancel, chainTrace] using h
   constructor
   · intro u v i j hi hj hu hv

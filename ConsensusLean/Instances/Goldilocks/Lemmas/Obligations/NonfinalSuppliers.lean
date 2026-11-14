@@ -24,7 +24,7 @@ open Blocks Shape
 /-- A different honest recipient processes a first-release vote envelope before its
 processing-cut deadline. Network holdings alone do not cover source self-service. -/
 theorem vote_message_service_other {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid) {b : Time} (hbh : b ≤ rho.horizon)
     (hnet : rho.log.SyncUntil rho.point b)
     {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : SA.Vote (Fintype.card V)}
@@ -55,7 +55,7 @@ theorem vote_message_service_other {V : Type} [Fintype V] [DecidableEq V] {E : E
     have hbound : a + E.ΔAC - 1 ≤ b := hslack.le.trans (heq' ▸ hb)
     have hheld := hnet.msgs (rho.key x) _ τ ⟨source, hs, hrel⟩
       ((rho.point.honestAt_iff_zero hconst _ _).mpr ((mem_honestKeys_iff ⟨S, stock⟩ rho x).mp hx))
-      (by erw [log_fgAtt_iff]; simp [isFGAtt, IsAttObj]) (rho.key y)
+      (by rw [log_fgAtt_iff]; simp [isFGAtt, IsAttObj]) (rho.key y)
       a ha hbound (hbound.trans hbh)
       ((rho.point.honestAt_iff_zero hconst _ _).mpr ((mem_honestKeys_iff ⟨S, stock⟩ rho y).mp hy))
       (fun u hau hud => hw u hau (hud.trans (hslack.le.trans (heq' ▸ hd))))
@@ -85,7 +85,7 @@ theorem vote_message_service_other {V : Type} [Fintype V] [DecidableEq V] {E : E
 /-- Finite canonical service needs only raw synchrony through its deadline bound.
 Self-service uses fresh processing at the source time, never retention across a restart. -/
 theorem sleepyServiceBefore_of_syncUntil {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho hn))
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b) :
@@ -134,9 +134,9 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type)
 
 /-- Sleepy network service survives removal of the system's environment tags.
 Validity supplies nonnegative send times before converting PSync at zero. -/
-theorem sleepy_raw_syncUntil (r : (Sys (goldilocks S) V).Run)
-    (hv : (Sys (goldilocks S) V).Valid r)
-    (hsleepy : (Sys (goldilocks S) V).Sleepy (K S A) r) (b : Time) :
+theorem sleepy_raw_syncUntil (r : (Sys (goldilocksWith ⟨S, stock⟩) V).Run)
+    (hv : (Sys (goldilocksWith ⟨S, stock⟩) V).Valid r)
+    (hsleepy : (Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy (K S A) r) (b : Time) :
     r.2.log.SyncUntil r.2.point b := by
   have hp : r.2.log.PSync r.2.point 0 := (Model.sysOf_delivers_iff _ _ _ _).mp hsleepy.1
   apply hp.syncUntil_zero ?_ b
@@ -149,7 +149,7 @@ theorem sleepy_raw_syncUntil (r : (Sys (goldilocks S) V).Run)
 /-- Draft: the two non-final liveness routes keep their distinct capability budgets.
 The endpoint readiness duration is unchanged; this is not protocol catchUp. -/
 structure ConfirmedQuery where
-  run : (Sys (goldilocks S) V).Run
+  run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run
   constant : run.2.point.ConstantFaults
   hn : 1 ≤ Fintype.card V
   cap : Capability
@@ -157,18 +157,18 @@ structure ConfirmedQuery where
   index : (K S A).Idx
   gst : Time
   query : Time
-  valid : (Sys (goldilocks S) V).Valid run
+  valid : (Sys (goldilocksWith ⟨S, stock⟩) V).Valid run
   noCollision : ¬ run.2.HashCollision
   regime :
-    ((Sys (goldilocks S) V).Sleepy (K S A) run ∧
-      (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap index
-        0 run.2.horizon run ∧ 0 ≤ query) ∨
-    ((Sys (goldilocks S) V).Healthy (K S A) gst run ∧
-      (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap index
-        ((Sys (goldilocks S) V).ready (K S A) gst run) run.2.horizon run ∧
-      (Sys (goldilocks S) V).heal (K S A) cap index gst run ≤ query)
+    ((Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy (K S A) run ∧
+      (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
+        cap index 0 run.2.horizon run ∧ 0 ≤ query) ∨
+    ((Sys (goldilocksWith ⟨S, stock⟩) V).Healthy (K S A) gst run ∧
+      (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
+        cap index ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) run.2.horizon run ∧
+      (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap index gst run ≤ query)
   bounded : query + ((K S A).params.latency cap index : Time) * run.1.ΔAC ≤ run.2.horizon
-  reader : ∃ v, run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) run) v
+  reader : ∃ v, run.2.point.Ready ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run) v
     (query + ((K S A).params.latency cap index : Time) * run.1.ΔAC)
 
 namespace ConfirmedQuery
@@ -176,7 +176,7 @@ variable {S A V}
 abbrev params (Q : ConfirmedQuery S A V) := S.params (Model.pubOf Q.run.1) Q.hn
 noncomputable abbrev trace (Q : ConfirmedQuery S A V) := simTrace ⟨S, stock⟩ Q.run.2 Q.hn
 noncomputable abbrev duration (Q : ConfirmedQuery S A V) :=
-  (Sys (goldilocks S) V).cDur (K S A) Q.run
+  (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run
 noncomputable abbrev deadline (Q : ConfirmedQuery S A V) : Time :=
   Q.query + ((K S A).params.latency Q.cap Q.index : Time) * Q.run.1.ΔAC
 end ConfirmedQuery
@@ -210,7 +210,8 @@ structure ConfirmedProducerSlot (Q : ConfirmedQuery S A V) where
 /-- Recurrence/grid selection after an explicit readiness start, at exact cDur.
 No healthy or sleepy run premise is needed; the joint latency lower bound remains a dependency. -/
 theorem healthy_query_slot (Q : ConfirmedQuery S A V) {ready : Time}
-    (hprogress : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
+    (hprogress : (Sys (goldilocksWith ⟨S, stock⟩) V).prog
+      (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
       Q.cap Q.index ready Q.run.2.horizon Q.run)
     (hquery : max ready 0 ≤ Q.query) : Nonempty (ConfirmedProducerSlot S A V Q) := by
   obtain ⟨s, hs1, hlo, hmargin, hts0, htsh, hR, -⟩ := nonfinal_query_slot S A V Q.run Q.hn

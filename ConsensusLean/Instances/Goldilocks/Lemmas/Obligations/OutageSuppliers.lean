@@ -16,16 +16,16 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type)
   [Fintype V] [DecidableEq V]
 
 structure OutageQuery where
-  run : (Sys (goldilocks S) V).Run
+  run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run
   constant : run.2.point.ConstantFaults
   hn : 1 ≤ Fintype.card V
   T : Time
   start : Time
   stop : Time
-  valid : (Sys (goldilocks S) V).Valid run
+  valid : (Sys (goldilocksWith ⟨S, stock⟩) V).Valid run
   noCollision : ¬ run.2.HashCollision
-  outage : (Sys (goldilocks S) V).Outage
-    (shapeProgress (goldilocks S) V).toExternal (K S A) T start stop run
+  outage : (Sys (goldilocksWith ⟨S, stock⟩) V).Outage
+    (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) T start stop run
 
 namespace OutageQuery
 variable {S A V}

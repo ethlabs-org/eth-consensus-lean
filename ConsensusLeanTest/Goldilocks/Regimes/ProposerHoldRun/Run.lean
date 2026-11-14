@@ -57,18 +57,20 @@ abbrev key (i : Nat) (h : i < 5 := by decide) : Fin (Fintype.card (Fin 5)) := �
 variable (S : Setup)
 
 /-- The objects of the compiled family in `env`. -/
-abbrev Obj := (Model.protoOf (compiled (goldilocks S)) env).Object
+abbrev Obj := (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).Object
 
 /-- The run's event type. -/
 abbrev Ev := Model.Event (Fin 5) (Obj S)
 
 /-- Key `1` proposes slot `1`, key `2` every other slot; everyone polls. -/
-def sel : (Model.protoOf (compiled (goldilocks S)) env).Role → Finset (Fin (Fintype.card (Fin 5)))
+def sel : (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).Role →
+    Finset (Fin (Fintype.card (Fin 5)))
   | .proposer s => if s = 1 then {key 1} else {key 2}
   | .duty _ k => k.elim
   | .poll => Finset.univ
 
-theorem sel_admits : (Model.protoOf (compiled (goldilocks S)) env).SelAdmits (sel S) := by
+theorem sel_admits :
+    (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).SelAdmits (sel S) := by
   intro r
   cases r with
   | proposer s =>
@@ -106,7 +108,7 @@ theorem hash_injective : Function.Injective hash := by
     exact enc_injective hab
 
 /-- The base run: the point, the PKI, the selection and the hash; no events. -/
-noncomputable def base : Model.Run (compiled (goldilocks S)) env :=
+noncomputable def base : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) env :=
   ⟨faulty, faulty_mono, 41, [], Equiv.refl _, sel S, fun _ _ => [], fun _ _ => [], hash⟩
 
 /-- Key `1`'s releases at time `12` are held back by `2`. -/
@@ -116,7 +118,7 @@ def delay (e : Ev S) : Time := if e.node = 1 ∧ e.time = 12 then 2 else 0
 def inj (t : Time) (_ : Fin 5) : List (Obj S) := if t = 13 then [twin S] else []
 
 /-- **The run.** -/
-noncomputable def rho : Model.Run (compiled (goldilocks S)) env :=
+noncomputable def rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) env :=
   (base S).injectRun (delay S) (inj S)
 
 theorem rho_faultyAt : (rho S).faultyAt = faulty := Model.Run.withEvents_faultyAt _ _

@@ -445,7 +445,7 @@ section Engine
 open Healing.Growing Shape
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+  (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- A healthy update no later than the stored clock has actually completed, before the read point
 after the node's last own event. The equality case uses the engine tick's position, not trace-time

@@ -141,12 +141,12 @@ theorem confirmedQuery_healthy :
   subst hE
   have hhor : rho.horizon = horizonT S A := congrArg EnvPoint.horizon hp
   let Q : ConfirmedQuery S A (Fin 2) := ⟨⟨_, rho⟩,
-    (by rw [hp]; exact fun _ => rfl), one_le_card, .available, Or.inl rfl,
-    (1 : ℕ+), 0, healT S A, hv, hc,
+    (by change rho.point.ConstantFaults; rw [hp]; exact fun _ => rfl), one_le_card, .available,
+    Or.inl rfl, (1 : ℕ+), 0, healT S A, hv, hc,
     Or.inr ⟨hh, healthy_run_prog S A hp hs _ _,
       by change max (0 : Time) 0 + _ * 2 ≤ healT S A; simp⟩,
     by rw [hhor]; change healT S A + _ * 2 ≤ horizonT S A; exact le_rfl,
-    ⟨0, by rw [hp]; exact point_ready _ _ _ _⟩⟩
+    ⟨0, by change rho.point.Ready _ _ _; rw [hp]; exact point_ready _ _ _ _⟩⟩
   exact ⟨Q, rfl, hp, hs, rfl, rfl, rfl, rfl, hh⟩
 
 /-- (a) Non-vacuous: on that query `healthy_query_slot` gives a producer slot (an honest ready

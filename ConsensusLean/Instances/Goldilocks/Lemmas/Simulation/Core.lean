@@ -176,7 +176,7 @@ theorem noRestart_between_same_time_sends (hv : rho.ExecutionValid)
 be a restart. This is the interval needed for a fresh admission inside that event. -/
 theorem pool_mono_through_same_time_send {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hconst : rho.point.ConstantFaults)
     (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys ⟨S, stock⟩ rho)
@@ -200,7 +200,7 @@ theorem pool_mono_through_same_time_send {V : Type} [Fintype V] [DecidableEq V] 
 /-- Freshness at any sending-event cut gives an aggregate boundary pool insertion.
 Non-restart retention covers both sides of the source cut. -/
 theorem sending_event_pool_insertion {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys ⟨S, stock⟩ rho)
     {i k : Nat} {t : Time} {m : SA.Vote (Fintype.card V)}
@@ -234,7 +234,7 @@ is backed by a pool cut in its event. Only that release-to-pool supplier remains
 explicit; stamp authentication and restart-free retention are proved here. -/
 theorem admission_voteForward_first_of_release_pool {V : Type} [Fintype V] [DecidableEq V]
     {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hconst : rho.point.ConstantFaults)
     (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys ⟨S, stock⟩ rho)
@@ -252,7 +252,7 @@ theorem admission_voteForward_first_of_release_pool {V : Type} [Fintype V] [Deci
   obtain ⟨u, hsend⟩ := voteForward_release_sender ⟨S, stock⟩ rho hj
   have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
   have ht : t = u := released_voteForward_stamp ⟨S, stock⟩ rho hn hv hsend m
-      (by erw [hkey]; exact hj)
+      (by rw [hkey]; exact hj)
   subst u
   obtain ⟨c, hjc, hcj, hm⟩ := hpool j hji hj
   have hck := hcj.trans ((cutMap_mono ⟨S, stock⟩ rho hn (Nat.succ_le_of_lt hji)).trans hlo)
@@ -262,7 +262,7 @@ theorem admission_voteForward_first_of_release_pool {V : Type} [Fintype V] [Deci
 /-- A fresh admission's exact signed envelope has no earlier release, even when
 the original vote signer is faulty. Event pool provenance discharges the supplier. -/
 theorem admission_voteForward_first {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys ⟨S, stock⟩ rho)
     {i k : Nat} {t : Time} {m : SA.Vote (Fintype.card V)}
@@ -275,14 +275,14 @@ theorem admission_voteForward_first {V : Type} [Fintype V] [DecidableEq V] {E : 
   intro j _ hj
   obtain ⟨u, hsend⟩ := voteForward_release_sender ⟨S, stock⟩ rho hj
   have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
-  have hm := released_voteForward_pool ⟨S, stock⟩ rho hn hv hsend m (by erw [hkey]; exact hj)
+  have hm := released_voteForward_pool ⟨S, stock⟩ rho hn hv hsend m (by rw [hkey]; exact hj)
   have hjlen : j + 1 ≤ rho.events.length := by
     rcases hsend with he | ⟨o, he⟩ <;>
       exact Nat.succ_le_of_lt (List.getElem?_eq_some_iff.mp he).1
   rw [simTrace_state ⟨S, stock⟩ rho hn hconst hv (rho.key y)
       ((mem_honestKeys_iff ⟨S, stock⟩ rho y).mp hy)
     (j + 1) hjlen] at hm
-  erw [hkey] at hm
+  rw [hkey] at hm
   exact ⟨cutMap ⟨S, stock⟩ rho hn (j + 1), cutMap_mono ⟨S, stock⟩ rho hn (Nat.le_succ j),
       le_rfl, hm⟩
 
@@ -470,7 +470,7 @@ theorem held_voteForward_source_or_process (hconst : rho.point.ConstantFaults)
 /-- Option C's publication supplier: actual same-event release and first release,
 not merely candidate construction or pool membership. -/
 theorem simTrace_vote_forwarded {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     :
     ∀ y ∈ honestKeys ⟨S, stock⟩ rho, ∀ k (m : SA.Vote (Fintype.card V)),
@@ -535,7 +535,7 @@ theorem simTrace_vote_forwarded {V : Type} [Fintype V] [DecidableEq V] {E : Env 
 
 /-- The simulating trace and cut map of a valid engine run simulate it. -/
 theorem simTrace_simulates {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     :
     Simulates ⟨S, stock⟩ rho hn (simTrace ⟨S, stock⟩ rho hn) (cutMap ⟨S, stock⟩ rho hn) where

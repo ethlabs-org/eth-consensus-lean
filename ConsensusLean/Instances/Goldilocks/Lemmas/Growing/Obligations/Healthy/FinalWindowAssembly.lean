@@ -75,11 +75,12 @@ theorem final_window_extract_of_gap_at (Q : FinalQueryAt S A V) {c : Nat} (hc2 :
           Q.run.2.horizon)
     (hpropose : ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
       HonestReadyIn Q.run.2.point Q.run.2.key
-      (fun s => Q.run.2.sel (.proposer s)) s ((Sys (goldilocks S) V).cDur (K S A) Q.run)
+      (fun s => Q.run.2.sel (.proposer s)) s
+          ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run)
       ((finalGridAt S A V Q).slotTime s) Q.run.2.point.env.ΔAC →
       ∃ P, Healing.Growing.HonestProposalRun Q.trace Q.keys
         (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) s P)
-    (hplace : max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
+    (hplace : max (max ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) Q.gst Q.run) 0)
         ((finalGridAt S A V Q).slotTime (finalSeedMinAt S A V Q a) - 1) +
         ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGridAt S A V Q).slotLen ≤
       Q.query + (finalGridAt S A V Q).slotLen)
@@ -87,7 +88,7 @@ theorem final_window_extract_of_gap_at (Q : FinalQueryAt S A V) {c : Nat} (hc2 :
       (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) s P → Q.query < Q.params.ts s →
       Q.params.ts s + Q.params.Δ ≤ Q.deadline →
       ∀ y, Regimes.Growing.ReadyAt Q.trace Q.keys
-        ((Sys (goldilocks S) V).cDur (K S A) Q.run) y Q.deadline →
+        ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) y Q.deadline →
       ∃ j, Q.trace.BlockCallAt y j P ∧ Q.trace.time j ≤ Q.deadline) :
     ∃ W : FinalWindowDataAt S A V Q, W.gap = c ∧
       Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧ W.AnchorRun ∧ W.AnchorSteps := by
@@ -115,7 +116,7 @@ theorem final_window_extract_of_gap_at (Q : FinalQueryAt S A V) {c : Nat} (hc2 :
     hR hb3 hgS₀ hh₀
   -- the window fields
   have hready : ∀ i, Regimes.Growing.ReadyAt Q.trace H
-      ((Sys (goldilocks S) V).cDur (K S A) Q.run)
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run)
       (P i).proposer (Q.params.toParams.slotTime (s₀ + ![0, c, 2 * c, 3 * c] i)) := by
     intro i
     obtain ⟨-, hti, hr⟩ := hanc i
@@ -130,7 +131,7 @@ theorem final_window_extract_of_gap_at (Q : FinalQueryAt S A V) {c : Nat} (hc2 :
     have h0 : (0 : Time) ≤ Q.params.ts (s₀ + ![0, c, 2 * c, 3 * c] i : Nat) :=
       mul_nonneg (mul_nonneg zero_le_four hΔ.le) (Int.natCast_nonneg _)
     have hnode := ready_transport_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid h0 hti hR'
-    erw [show Q.run.2.ownKey (Q.run.2.key (runProposer ⟨S, stock⟩ Q.run.2 Q.hn _)) =
+    rw [show Q.run.2.ownKey (Q.run.2.key (runProposer ⟨S, stock⟩ Q.run.2 Q.hn _)) =
       runProposer ⟨S, stock⟩ Q.run.2 Q.hn _ from Q.run.2.key.symm_apply_apply _] at hnode
     obtain ⟨-, -, -, -, -, -, -, -, -, -, -, hpr, -⟩ := hP i
     rw [hpr, Q.params.slotTime_eq]

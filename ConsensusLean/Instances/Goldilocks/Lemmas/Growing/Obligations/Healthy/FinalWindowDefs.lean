@@ -41,7 +41,7 @@ noncomputable abbrev finalSeedMinAt (Q : FinalQueryAt S A V) (a : Time) : Nat :=
 
 /-- The slot grid of the query's protocol instance. -/
 noncomputable abbrev finalGridAt (Q : FinalQueryAt S A V) : TimeGrid :=
-  (goldilocks S (Model.pubOf Q.run.1)).skel.grid
+  (goldilocksWith ⟨S, stock⟩ (Model.pubOf Q.run.1)).skel.grid
 
 /-- Four actual honest anchors and processing of the last one by the original deadline. -/
 structure FinalWindowDataAt (Q : FinalQueryAt S A V) where
@@ -55,13 +55,14 @@ structure FinalWindowDataAt (Q : FinalQueryAt S A V) where
   proposals : ∀ a, Q.trace.ProposesAt (block a).proposer (cut a) (block a)
   accepted : ∀ a, Q.trace.AcceptAt (block a).proposer (cut a) (block a)
   ready : ∀ a, Regimes.Growing.ReadyAt Q.trace Q.keys
-    ((Sys (goldilocks S) V).cDur (K S A) Q.run) (block a).proposer (Q.trace.time (cut a))
+    ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) (block a).proposer
+        (Q.trace.time (cut a))
   fresh : Q.query < Q.trace.time (cut 0)
   ordered : StrictMono cut
   bounded : ∀ a, Q.trace.time (cut a) ≤ Q.deadline
   chain : ∀ a b, a ≤ b → Anc (Q.trace.HonestBlocksAt Q.keys) (block a) (block b)
   carrierProcessed : ∀ y, Regimes.Growing.ReadyAt Q.trace Q.keys
-    ((Sys (goldilocks S) V).cDur (K S A) Q.run) y Q.deadline →
+    ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) y Q.deadline →
     ∃ j, Q.trace.BlockCallAt y j (block 3) ∧ Q.trace.time j ≤ Q.deadline
 
 namespace FinalWindowDataAt
@@ -93,7 +94,7 @@ def AnchorSteps : Prop :=
 def CacheCoverage : Prop :=
   ∀ y t j, Q.deadline ≤ t → t ≤ Q.run.2.horizon →
     Regimes.Growing.ReadyAt Q.trace Q.keys
-      ((Sys (goldilocks S) V).cDur (K S A) Q.run) y t → Regimes.CutAfter Q.trace j t →
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) y t → Regimes.CutAfter Q.trace j t →
     W.Extends (W.block 0) (Q.trace.state y j).fg.F
 
 theorem anchorRun_iff : W.AnchorRun ↔
@@ -112,7 +113,8 @@ theorem anchorSteps_iff : W.AnchorSteps ↔
 theorem cacheCoverage_iff : W.CacheCoverage ↔
     ∀ y t j, Q.deadline ≤ t → t ≤ Q.run.2.horizon →
       Regimes.Growing.ReadyAt Q.trace Q.keys
-        ((Sys (goldilocks S) V).cDur (K S A) Q.run) y t → Regimes.CutAfter Q.trace j t →
+        ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) y t →
+        Regimes.CutAfter Q.trace j t →
       W.Extends (W.block 0) (Q.trace.state y j).fg.F := Iff.rfl
 
 end FinalWindowDataAt

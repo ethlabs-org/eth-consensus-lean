@@ -24,7 +24,8 @@ open Consensus.Model (pubOf)
 variable (S : Setup)
 
 /-- **The retained run** at the horizon. -/
-noncomputable abbrev rhoc : Model.Run (compiled (goldilocks S)) env := (rho S).retain 41
+noncomputable abbrev rhoc : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) env :=
+  (rho S).retain 41
 
 variable {S}
 
@@ -58,7 +59,7 @@ variable (S) in
 abbrev H : Set (Fin (Fintype.card (Fin 5))) := honestKeys ⟨S, stock⟩ (rhoc S)
 
 theorem mem_H (y : Fin (Fintype.card (Fin 5))) : y ∈ H S ↔ y.val ≠ 0 ∧ y.val ≠ 1 := by
-  erw [mem_honestKeys_iff, rhoc_faultyAt, rhoc_key]
+  rw [mem_honestKeys_iff, rhoc_faultyAt, rhoc_key]
   change (⟨y.val, by simpa using y.isLt⟩ : Fin 5) ∉ ({0, 1} : Finset (Fin 5)) ↔ _
   simp only [Finset.mem_insert, Finset.mem_singleton, not_or]
   constructor

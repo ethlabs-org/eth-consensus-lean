@@ -248,7 +248,7 @@ theorem simTrace_wire (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) 
 /-- **The simulating trace is a Goldilocks run** at the engine's digest, for the honest keys.
 Stated over the population binding `S : Setup`. -/
 theorem simTrace_goldilocksRun {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     GoldilocksRun (runProposer ⟨S, stock⟩ rho hn) (digestOf ⟨S, stock⟩ rho)
       (honestKeys ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho hn) where

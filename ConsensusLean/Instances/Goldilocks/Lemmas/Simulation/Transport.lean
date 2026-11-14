@@ -65,7 +65,7 @@ The target no longer quantifies arbitrary simulation witnesses, whose laws do no
 this provenance.
 Tagged freshness is proved by `genesisFresh`; it does not by itself prove occurrence coverage. -/
 theorem noCollRun_simTrace {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (hnc : ¬ rho.HashCollision) :
     Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho hn) := by
@@ -92,7 +92,7 @@ there. Compare with A's reader using the shared-tip result. Handle either ancest
 and use `read_finalized` at the bounded cuts. Status: argument complete relative to coherent
 honest blocks; the cross-store parent-walk lemma is proved. -/
 theorem compatible_reads {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho hn))
     {u v : V} (hu : u ∉ rho.faultyAt 0) (hv' : v ∉ rho.faultyAt 0) {i j : Nat}
@@ -116,7 +116,7 @@ theorem compatible_reads {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S :
       ((simTrace ⟨S, stock⟩ rho hn).state (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn j)).fg.tree ⊆
       (simTrace ⟨S, stock⟩ rho hn).HonestBlocks (honestKeys ⟨S, stock⟩ rho) := fun _ h =>
           ⟨_, hv'', _, h⟩
-  erw [read_finalized hs hu hi, read_finalized hs hv' hj]
+  rw [read_finalized hs hu hi, read_finalized hs hv' hj]
   exact chainTo_compatible hri hrj hU hsi hsj (Store.cache_invariants _ _ _ _ hri).1
     (Store.cache_invariants _ _ _ _ hrj).1 hc
 
@@ -163,7 +163,7 @@ those blocks. Each `ChainAtts` membership includes a held block Y containing the
 `convicted_count` to W and compose the bounds. X₁,X₂ need not be finalized ancestors.
 Status: argument complete relative to the named simulation/evidence/compatibility bridges. -/
 theorem final_accountable_of_noColl {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho hn))
     {u v : V} (hu : u ∉ rho.faultyAt 0) (hv' : v ∉ rho.faultyAt 0) {i j : Nat}

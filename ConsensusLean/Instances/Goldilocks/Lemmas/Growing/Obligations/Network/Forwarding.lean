@@ -112,7 +112,7 @@ theorem scheduled_proposal_child_decodes_at {V : Type} [Fintype V] [DecidableEq 
 /-- At a scheduled honest tick, the proposal duty preserves the joint invariant without
 assuming child decoding: reachable proposal execution supplies it. -/
 theorem decoded_held_scheduled_proposal_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (v : V) (i : Nat) (t : Time)
     (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
@@ -129,7 +129,7 @@ theorem decoded_held_scheduled_proposal_at {V : Type} [Fintype V] [DecidableEq V
 
 /-- Every actual honest tick preserves the joint invariant, including its own proposal. -/
 theorem decoded_held_tick_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (v : V) (i : Nat) (t : Time)
     (he : rho.events[i]? = some (.tick v t))
@@ -143,7 +143,7 @@ theorem decoded_held_tick_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 /-- Every reachable honest engine state has decoded wrappers corresponding to held blocks.
 No decoder, parent-slot, payload-validity or clock premise is assumed. -/
 theorem stateAt_decoded_held_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (v : V) (i : Nat) :
     WrappersDecoded (digests rho.hash) (stateAt ⟨S, stock⟩ rho hn v i) ∧
@@ -174,7 +174,7 @@ theorem delivery_acceptance_decoded_publication_at {V : Type} [Fintype V] [Decid
 
 /-- Scheduled proposal acceptance publishes its exact decoded wrapper in the same tick. -/
 theorem tick_proposal_acceptance_decoded_publication_at {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (v : V)
     (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)

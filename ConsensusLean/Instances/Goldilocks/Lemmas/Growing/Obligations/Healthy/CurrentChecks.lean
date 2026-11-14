@@ -126,7 +126,8 @@ private theorem read_opening (Q : HealthyPreparationQueryAt S A V)
 live lock blocks and its fork-choice root, at a read point after the repair window. -/
 theorem healthy_current_live_candidates_at (Q : HealthyPreparationQueryAt S A V)
     (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
+    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
     (D : HealthyRepairScheduleAt S A V Q) {y : Fin Q.params.n} {n : Nat} {t : Time}
     (C : HealthyReadContextAt S A V Q D y n t)
@@ -191,7 +192,8 @@ repair window: the record's clean source and the guarded reset seed make it an a
 candidate. The supplied recent result is not needed. -/
 theorem healthy_current_record_viable_at (Q : HealthyPreparationQueryAt S A V)
     (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
+    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
     (D : HealthyRepairScheduleAt S A V Q) {y : Fin Q.params.n} {n : Nat} {t : Time}
     (C : HealthyReadContextAt S A V Q D y n t)

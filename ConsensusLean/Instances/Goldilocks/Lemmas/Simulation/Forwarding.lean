@@ -304,7 +304,7 @@ theorem dutyStep_poll_pending {V : Type} [Fintype V] {E : Env V} (S : BoundSetup
   simp only [show (protoOf (compiled (goldilocksWith S)) E).role (.poll t) = .poll from rfl,
     hsel, ↓reduceIte]
   rw [signedCandidate_poll_eq S rho hn v nd t hsel hself]
-  erw [Model.releaseAll_append (P := protoOf (compiled (goldilocksWith S)) E)]
+  rw [Model.releaseAll_append (P := protoOf (compiled (goldilocksWith S)) E)]
   apply List.mem_append_left
   erw [releaseAll_forward_suffix S hn rho.hash (rho.ownKey v)
     ⟨((protoOf (compiled (goldilocksWith S)) E).act nd.st (.poll t)).1, nd.seen⟩ _ _ hr hshape]

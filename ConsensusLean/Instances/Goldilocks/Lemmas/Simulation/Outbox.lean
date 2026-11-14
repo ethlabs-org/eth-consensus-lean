@@ -565,7 +565,7 @@ theorem signedCandidate_of_default_mem (v : V) (d : (Model.protoOf (compiled
     apply filterMap_eq_map_of
     rintro ⟨m, cs⟩ hm
     dsimp only
-    erw [h _ hm, ite_eq_left hk]
+    rw [h _ hm, ite_eq_left hk]
   · rw [ite_eq_right hk, ite_eq_right hk]
 
 omit [DecidableEq V] in
@@ -592,19 +592,19 @@ theorem signedCandidate_poll (v : V) (nd : Model.Node (Model.protoOf (compiled
     apply List.filterMap_congr
     rintro ⟨b, cs⟩ -
     dsimp only [Function.comp]
-    erw [effRole_poll S (E := E) t b]
+    rw [effRole_poll S (E := E) t b]
   · apply filterMap_eq_map_of
     rintro ⟨τ, cs⟩ -
     have hf := poll_candidateRole_of_not_vote S (E := E) t (b := .forward τ) fun _ h => by cases h
     dsimp only [Function.comp]
-    erw [hf, ite_eq_left hsel]
+    rw [hf, ite_eq_left hsel]
   · apply filterMap_eq_map_of
     rintro ⟨τ, m⟩ -
     have hf := poll_candidateRole_of_not_vote S (E := E) t
       (b := .voteForward τ (encodeVote m))
       fun _ h => by cases h
     dsimp only [Function.comp]
-    erw [hf, ite_eq_left hsel]
+    rw [hf, ite_eq_left hsel]
     rfl
 
 omit [DecidableEq V] in
@@ -710,7 +710,7 @@ theorem dutyStep_poll_rel (v : V) (nd : Model.Node (Model.protoOf (compiled (gol
     hsel, ↓reduceIte]
   rw [signedCandidate_poll S rho hn v nd t hsel, (poll_outbox _ _).2, hb, Option.map_some]
   erw [pollOrdinary_some_pos S rho hrole]
-  erw [List.append_assoc, List.singleton_append]
+  rw [List.append_assoc, List.singleton_append]
   have hc : (Model.releasable nd.seen (pollObj S rho v b) &&
       Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) nd.seen
         (pollObj S rho v b)) = true :=

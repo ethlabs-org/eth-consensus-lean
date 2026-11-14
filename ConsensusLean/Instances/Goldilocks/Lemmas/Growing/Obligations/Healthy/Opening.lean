@@ -52,15 +52,17 @@ opening of a proposer ready at its slot start and still honest `Δ` later; finit
 operational selection then repair every receiver ready at its update. -/
 theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A V)
     (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
+    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+      (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
     (D : HealthyRepairScheduleAt S A V Q) :
     ∃ O : HealthyRepairOpeningAt S A V Q D, HealthyReceiverRepairAt S A V Q D O := by
   classical
   have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
   have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
-      (fun s => Q.run.2.sel (.proposer s)) (goldilocks S (Model.pubOf Q.run.1)).skel.grid
-      ⟨Pattern.single, Q.index, 1⟩ ((Sys (goldilocks S) V).cDur (K S A) Q.run)
+      (fun s => Q.run.2.sel (.proposer s))
+          (goldilocksWith ⟨S, stock⟩ (Model.pubOf Q.run.1)).skel.grid
+      ⟨Pattern.single, Q.index, 1⟩ ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run)
       Q.ready Q.heal := by
     simpa only [System.prog, shapeProgress, shapeHolds, goldilocksContract, ite_eq_right hcap,
       Model.sysExternal, System.cDur, System.pt, Sys, Model.sysOf, Model.Run.point] using hp
@@ -72,7 +74,8 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
     linarith only [D.reserve, hd]
   have hbh : Q.heal ≤ Q.run.2.horizon := hb.trans Q.bound_le
   obtain ⟨s, hlo, hhi, hr⟩ := hrec D.query hq hwin (hwin.trans hbh)
-  have htime : (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime s = Q.params.ts s := by
+  have htime : (goldilocksWith ⟨S, stock⟩ (Model.pubOf Q.run.1)).skel.grid.slotTime s =
+      Q.params.ts s := by
     change (s : Time) * (4 * Q.run.1.ΔAC) = 4 * Q.run.1.ΔAC * s
     ring
   rw [htime] at hlo hhi
@@ -94,7 +97,7 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
   have hkey : Q.run.2.ownKey (Q.run.2.key (runProposer ⟨S, stock⟩ Q.run.2 Q.hn s)) =
       runProposer ⟨S, stock⟩ Q.run.2 Q.hn s := Q.run.2.key.symm_apply_apply _
   have hnode := ready_transport_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid (hq0.trans hlo.le) hsb hR
-  erw [hkey] at hnode
+  rw [hkey] at hnode
   have hheld : runProposer ⟨S, stock⟩ Q.run.2 Q.hn s ∈ Q.keys (Q.params.ts s + Q.params.Δ) := by
     have hla : Q.run.2.point.lookAhead (((1 : Nat) : Time) * Q.run.2.point.env.ΔAC)
         (Q.params.ts s) = Q.params.ts s + Q.params.Δ := by
@@ -104,7 +107,7 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
       exact min_eq_left hsΔ
     rw [hla] at hH
     have h := honest_ownKey_at ⟨S, stock⟩ Q.run.2 hH hsΔ
-    erw [hkey] at h
+    rw [hkey] at h
     exact h
   have hold : D.oldLabel < s := by
     exact_mod_cast (SA.ts_lt_iff Q.params).mp
@@ -115,7 +118,7 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
     refine ⟨hnode.1, fun t ht hts => hnode.2 t ?_ hts⟩
     apply le_trans _ ht
     apply max_le_max_left
-    have : Regimes.catchUp Q.params ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run := by
+    have : Regimes.catchUp Q.params ≤ (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run := by
       simpa only [Regimes.catchUp] using D.duration_bound
     linarith only [this]
   have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid

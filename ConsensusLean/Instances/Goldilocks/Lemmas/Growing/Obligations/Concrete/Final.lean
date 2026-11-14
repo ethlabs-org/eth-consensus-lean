@@ -81,7 +81,8 @@ private theorem final_faults_at (Q : FinalQueryAt S A V) {t : Time} (ht : 0 ≤ 
 theorem final_duty_proposal_at (Q : FinalQueryAt S A V) :
     ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
       HonestReadyIn Q.run.2.point Q.run.2.key
-      (fun s => Q.run.2.sel (.proposer s)) s ((Sys (goldilocks S) V).cDur (K S A) Q.run)
+      (fun s => Q.run.2.sel (.proposer s)) s
+          ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run)
       ((finalGridAt S A V Q).slotTime s) Q.run.2.point.env.ΔAC →
       ∃ P, Healing.Growing.HonestProposalRun Q.trace Q.keys (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) s
           P := by
@@ -176,7 +177,7 @@ theorem final_cache_coverage_at (Q : FinalQueryAt S A V) (W : FinalWindowDataAt 
     rw [← horg, ← htime]
     exact ⟨r.event, (publisherExecution ⟨S, stock⟩ Q.run.2).actual_event r hr,
       (publisherExecution ⟨S, stock⟩ Q.run.2).actual_release r hr⟩
-  have hcd : Q.params.Δ ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run + 1 := by
+  have hcd : Q.params.Δ ≤ (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run + 1 := by
     have hc1 : (1 : Time) ≤ ((K S A).params.catchUp : Time) := by
       rw [goldilocksContract_params_eq]
       change (1 : Time) ≤ ((contract_coefficients S A).catchUp : Nat)
@@ -267,12 +268,14 @@ theorem final_payload_projection_at
       ∃ W : FinalWindowDataAt S A V Q, Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧
         W.CacheCoverage) :
     ∀ g, schema.output .final = some g →
-    ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks S) V).Holds
-      (fun r => (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
-        (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) .final i
-          ((Sys (goldilocks S) V).ready (K S A) gst r) ((Sys (goldilocks S) V).pt r).horizon r)
-      fun r => ProposalLiveReady r.2 ((Sys (goldilocks S) V).cDur (K S A) r)
-        g ((Sys (goldilocks S) V).heal (K S A) .final i gst r)
+    ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocksWith ⟨S, stock⟩) V).Holds
+      (fun r => (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy (K S A) gst r ∧
+        (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+          (K S A) .final i
+          ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst r)
+              ((Sys (goldilocksWith ⟨S, stock⟩) V).pt r).horizon r)
+      fun r => ProposalLiveReady r.2 ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r)
+        g ((Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) .final i gst r)
         ((K S A).params.latency .final i) := by
   intro g hg i gst r hv ⟨hhealthy, hprog⟩
   have hg' : g = Out.finalized := Option.some.inj hg.symm
@@ -294,11 +297,11 @@ theorem final_payload_projection_at
     exact (add_nonneg hg0 hp).trans hm
   have hτh : Q.trace.time (W.cut 0) ≤ r.2.horizon := (W.bounded 0).trans hb
   have hproposal : Regimes.Growing.ReadyProposalAt Q.trace Q.keys
-      ((Sys (goldilocks S) V).cDur (K S A) r) (Q.trace.time (W.cut 0)) 0 (W.block 0) :=
+      ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r) (Q.trace.time (W.cut 0)) 0 (W.block 0) :=
     ⟨_, W.cut 0, W.ready 0, by rw [add_zero]; exact (W.ready 0).1, W.proposals 0, rfl⟩
   obtain ⟨k, hk, hrel⟩ := ready_proposal_at S r.2 hn hv hτh hproposal
   refine ⟨Q.trace.time (W.cut 0), k, headerOf Q.params (W.block 0), W.fresh, hk, hrel, ?_⟩
-  have hc : 0 ≤ (Sys (goldilocks S) V).cDur (K S A) r := by
+  have hc : 0 ≤ (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r := by
     exact mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le
   have hdeadline : 0 ≤ Q.deadline := ht.trans (by
     change t ≤ t + _
@@ -324,12 +327,14 @@ theorem final_payload_projection_at
 /-- **Final healthy liveness under growing faults**: the `healthyLive` field of the shape claims
 at the final capability. -/
 theorem meetsObligations_healthyLive_final_growing : ∀ g, schema.output .final = some g →
-    ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks S) V).Holds
-      (fun r => (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
-        (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) .final i
-          ((Sys (goldilocks S) V).ready (K S A) gst r) ((Sys (goldilocks S) V).pt r).horizon r)
-      fun r => ProposalLiveReady r.2 ((Sys (goldilocks S) V).cDur (K S A) r)
-        g ((Sys (goldilocks S) V).heal (K S A) .final i gst r)
+    ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocksWith ⟨S, stock⟩) V).Holds
+      (fun r => (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy (K S A) gst r ∧
+        (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+          (K S A) .final i
+          ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst r)
+              ((Sys (goldilocksWith ⟨S, stock⟩) V).pt r).horizon r)
+      fun r => ProposalLiveReady r.2 ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r)
+        g ((Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) .final i gst r)
         ((K S A).params.latency .final i) :=
   final_payload_projection_at S A V fun Q => by
     obtain ⟨W, hslack, run, steps⟩ := final_window_extract_at S A V Q

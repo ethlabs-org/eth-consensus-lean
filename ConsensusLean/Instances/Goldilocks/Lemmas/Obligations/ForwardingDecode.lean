@@ -23,7 +23,7 @@ open Consensus.Model
 
 /-- A scheduled honest proposal's actual pre-record state supplies canonical child validity. -/
 theorem scheduled_proposal_child_decodes {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (v : V) (hh : v ∉ rho.faultyAt 0) (i : Nat) (t : Time)
     (he : rho.events[i]? = some (.tick v t))
@@ -54,7 +54,7 @@ theorem scheduled_proposal_child_decodes {V : Type} [Fintype V] [DecidableEq V] 
 /-- At a scheduled honest tick, the proposal duty preserves the joint invariant without
 assuming child decoding: reachable proposal execution supplies it. -/
 theorem decoded_held_scheduled_proposal {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (v : V) (hhon : v ∉ rho.faultyAt 0) (i : Nat) (t : Time)
     (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
@@ -71,7 +71,7 @@ theorem decoded_held_scheduled_proposal {V : Type} [Fintype V] [DecidableEq V] {
 
 /-- Every actual honest tick preserves the joint invariant, including its own proposal. -/
 theorem decoded_held_tick {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (v : V) (hhon : v ∉ rho.faultyAt 0) (i : Nat) (t : Time)
     (he : rho.events[i]? = some (.tick v t))
@@ -85,7 +85,7 @@ theorem decoded_held_tick {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 /-- Every reachable honest engine state has decoded wrappers corresponding to held blocks.
 No decoder, parent-slot, payload-validity or clock premise is assumed. -/
 theorem stateAt_decoded_held {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (v : V) (hh : v ∉ rho.faultyAt 0) (i : Nat) :
     WrappersDecoded (digests rho.hash) (stateAt ⟨S, stock⟩ rho hn v i) ∧
@@ -96,10 +96,10 @@ theorem stateAt_decoded_held {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 /-- Receipt acceptances publish a wrapper that decodes, not merely a candidate with the
 right syntactic shape. The queue and decoder witnesses use the same processed state. -/
 theorem delivery_acceptance_decoded_publication {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hn : 1 ≤ Fintype.card V) (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} (hhon : v ∉ rho.faultyAt 0)
-    {i : Nat} {o : (protoOf (compiled (goldilocks S)) E).Object} {t : Time}
+    {i : Nat} {o : (protoOf (compiled (goldilocksWith ⟨S, stock⟩)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t))
     (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
     (hr : r ∈ eventCuts ⟨S, stock⟩ rho hn i) (hb : r.label = .fg (.block B true))
@@ -116,7 +116,7 @@ theorem delivery_acceptance_decoded_publication {V : Type} [Fintype V] [Decidabl
 
 /-- Scheduled proposal acceptance publishes its exact decoded wrapper in the same tick. -/
 theorem tick_proposal_acceptance_decoded_publication {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hn : 1 ≤ Fintype.card V) (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (v : V) (hh : v ∉ rho.faultyAt 0)
     (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
@@ -143,7 +143,7 @@ theorem tick_proposal_acceptance_decoded_publication {V : Type} [Fintype V] [Dec
 
 /-- Every accepting cut of an honest tick has a successfully decoded publication. -/
 theorem tick_acceptance_decoded_publication {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
     (hn : 1 ≤ Fintype.card V) (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (v : V) (hh : v ∉ rho.faultyAt 0)
     (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t))
@@ -165,7 +165,7 @@ theorem tick_acceptance_decoded_publication {V : Type} [Fintype V] [DecidableEq 
 /-- Every honest acceptance has an actual, exactly decoded same-event publication.
 All decoding premises follow from execution validity and reachable state invariants. -/
 theorem forwardAtAcceptance {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     ForwardAtAcceptance ⟨S, stock⟩ rho hn (simTrace ⟨S, stock⟩ rho hn) (cutMap ⟨S, stock⟩ rho hn)
       (publisherExecution ⟨S, stock⟩ rho) := by

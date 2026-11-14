@@ -23,7 +23,7 @@ open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+  (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- A labelled trace cut is before the end of the mapped cuts. -/
 private theorem lt_cutMap_length {k : Nat} (hk : (simTrace ⟨S, stock⟩ rho hn).label k ≠ none) :
@@ -38,7 +38,7 @@ private theorem cutTime_succ_eq {q : Nat}
     rho.cutTime (q + 1) = (simTraceAt ⟨S, stock⟩ rho hn).time (cutMap ⟨S, stock⟩ rho hn q) := by
   have hl : (simTrace ⟨S, stock⟩ rho hn).label (cutMap ⟨S, stock⟩ rho hn q) ≠ none := by
     rw [simTrace_label ⟨S, stock⟩ rho hn, List.getElem?_eq_getElem
-        (by erw [length_allCuts]; exact hlen)]
+        (by rw [length_allCuts]; exact hlen)]
     simp
   obtain ⟨_, i, ev, _, he, hlo, hhi, -, -, ht, -⟩ := simTrace_cut ⟨S, stock⟩ rho hn hl
   obtain rfl : i = q := by
@@ -50,8 +50,7 @@ private theorem cutTime_succ_eq {q : Nat}
       omega
   rw [simTraceAt_eq ⟨S, stock⟩ rho hn, ht]
   simp only [Model.Run.cutTime]
-  erw [he]
-  rfl
+  rw [he]
 
 /-- **The held attestations of a node honest at `t` are in its view at an honest engine cut.**
 For a node honest at `t ≥ 0`, before a trace cut `i` whose earlier cuts are at or before `t`,
