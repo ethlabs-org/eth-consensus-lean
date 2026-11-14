@@ -90,7 +90,7 @@ individual fields; it is **not** a reduction from local correctness. Admissibili
 service, progress-fit and progress-tolerance remain the four separate downstream
 inputs of GenericMeetsObligations. They are not supplied by this row.
 
-Each reduction fixes one EngineBinding B and uses exactly M = B.map E rho hv.
+Each reduction fixes one EngineBinding B and uses exactly M = B.map E hE rho hv.
 Local contracts C, outage policy D and stored-read context R are indexed by that M;
 no fresh run, changed map, replacement proposal or unrestricted Prop callback is used.
 

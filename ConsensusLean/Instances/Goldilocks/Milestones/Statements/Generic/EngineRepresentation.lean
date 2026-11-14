@@ -123,12 +123,14 @@ structure GrowingRunTransport (M : RunMap rho payload) (runs : ACRun A M.signer)
   run : rho.ExecutionValid → runs.Run M.committee M.proposer M.digest M.honest M.trace
   no_collision : rho.ExecutionValid → ¬ rho.HashCollision → Compose.NoCollRun M.digest M.trace
 
-/-- Signer equality transports the single protocol correctness record to each run map. -/
-structure EngineBinding (payload : A.Blk → Set Nat) (sg : A.Msg → Fin P.n)
+/-- A fixed node interface represents environments with the same public parameters.
+Signer equality transports its protocol correctness record to each run map. -/
+structure EngineBinding (pub : Model.Public) (payload : A.Blk → Set Nat) (sg : A.Msg → Fin P.n)
     (runs : ACRun A sg) where
-  map : ∀ (E : Env V) (rho : Model.Run (compiled F) E),
+  map : ∀ (E : Env V), Model.pubOf E = pub → ∀ (rho : Model.Run (compiled F) E),
     rho.ExecutionValid → RunMap rho payload
-  signer_eq : ∀ E rho hv, sg = (map E rho hv).signer
-  run_transport : ∀ E rho hv, GrowingRunTransport (map E rho hv) (signer_eq E rho hv ▸ runs)
+  signer_eq : ∀ E hE rho hv, sg = (map E hE rho hv).signer
+  run_transport : ∀ E hE rho hv,
+    GrowingRunTransport (map E hE rho hv) (signer_eq E hE rho hv ▸ runs)
 
 end Consensus.Goldilocks.Generic

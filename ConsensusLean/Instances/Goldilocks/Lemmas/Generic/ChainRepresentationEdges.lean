@@ -89,23 +89,25 @@ def FinalMonotoneChainEdge (M : RunMap (A := A) rho payload) : Prop :=
   ChainRepresentation A M.chain M.header → HonestChainReads M →
     rho.ExecutionValid → ∀ g, O.output .final = some g → (chainTrace rho).Monotone g 0
 
-/-- UNPROVED system-level nesting assembly with the original `HoldsAlways` wrapper.
+/-- UNPROVED system-level nesting assembly at fixed public parameters, without an excuse.
 One binding supplies one map per valid run, reused for every output and read. -/
-def NestedChainsAlways (B : EngineBinding (F := F) (V := V) payload sg runs) : Prop :=
-  (∀ E rho (hv : rho.ExecutionValid),
-    ChainRepresentation A (B.map E rho hv).chain (B.map E rho hv).header ∧
-      HonestChainReads (B.map E rho hv)) →
+def NestedChainsAlways {pub : Model.Public}
+    (B : EngineBinding (F := F) (V := V) pub payload sg runs) : Prop :=
+  (∀ E hE rho (hv : rho.ExecutionValid),
+    ChainRepresentation A (B.map E hE rho hv).chain (B.map E hE rho hv).header ∧
+      HonestChainReads (B.map E hE rho hv)) →
     ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank → O.output c₁ = some g₁ → O.output c₂ = some g₂ →
-      (Sys F V).HoldsAlways fun r => (chainTrace r.2).Nested g₁ g₂
+      (Sys F V).HoldsAlways fun r => Model.pubOf r.1 = pub → (chainTrace r.2).Nested g₁ g₂
 
 /-- UNPROVED system-level final monotonicity assembly. The wrapper has no collision
-escape, constant-fault restriction or new regime antecedent. -/
-def FinalChainsAlways (B : EngineBinding (F := F) (V := V) payload sg runs) : Prop :=
-  (∀ E rho (hv : rho.ExecutionValid),
-    ChainRepresentation A (B.map E rho hv).chain (B.map E rho hv).header ∧
-      HonestChainReads (B.map E rho hv)) →
+escape or constant-fault restriction; the binding fixes only public parameters. -/
+def FinalChainsAlways {pub : Model.Public}
+    (B : EngineBinding (F := F) (V := V) pub payload sg runs) : Prop :=
+  (∀ E hE rho (hv : rho.ExecutionValid),
+    ChainRepresentation A (B.map E hE rho hv).chain (B.map E hE rho hv).header ∧
+      HonestChainReads (B.map E hE rho hv)) →
     ∀ g, O.output .final = some g →
-      (Sys F V).HoldsAlways fun r => (chainTrace r.2).Monotone g 0
+      (Sys F V).HoldsAlways fun r => Model.pubOf r.1 = pub → (chainTrace r.2).Monotone g 0
 
 end Consensus.Goldilocks.Generic
 
