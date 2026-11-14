@@ -89,7 +89,6 @@ structure Premises (tr : RunTrace A) (H : Time → Set (Fin P.n))
     (sg : A.Msg → Fin P.n) (g ΔF b : Time) : Prop where
   committee : CommitteeFaultsUpTo βK cm H g b
   noColl : Compose.NoCollRun dg tr
-  genesisRoot : (P.genesisBlock A.genesisPayload).RootOk dg
   sync : Service tr H g ΔF b
   awake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t
   faults : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1
@@ -130,6 +129,9 @@ structure ACRun (A : NodeAC P) (sg : A.Msg → Fin P.n) where
   /-- Requirements hold at every node's actual committee start. -/
   run_requirements : ∀ {cm proposer dg H tr}, Run cm proposer dg H tr →
     ∀ y, ({ A with initial := start cm y } : NodeAC P).Requirements
+  /-- The run supplies the genesis digest equation independently of a finite horizon. -/
+  run_root : ∀ {cm proposer dg H tr}, Run cm proposer dg H tr →
+    (P.genesisBlock A.genesisPayload).RootOk dg
   run_truncate : ∀ {cm proposer dg H tr} (b : Time),
     Run cm proposer dg H tr → Run cm proposer dg (truncH H b) tr
 

@@ -105,8 +105,7 @@ def FinalAccountabilityReduction (C : ACCorrectLocal A sg)
   (∀ E rho (hv : rho.ExecutionValid),
     let M := B.map E rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E rho hv ▸ C
-    A.Requirements ∧ (P.genesisBlock A.genesisPayload).RootOk M.digest ∧
-      EngineReadPoint M ∧ ActualReadAccountability M L.run ∧
+    A.Requirements ∧ EngineReadPoint M ∧ ActualReadAccountability M L.run ∧
       ClaimDeadlineFit M K L ∧ ReadRepresentation M ∧ HonestReadTransport M ∧
       HonestChainReads M ∧
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →

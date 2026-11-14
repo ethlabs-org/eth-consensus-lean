@@ -109,7 +109,7 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | `FinalProposerTransport` | Concrete/Final final payload projection | Same W.block 0/W.cut 0; non-genesis and engine-cDur ready at actual proposal time. Local W.ready is not this. |
 | `FinalReadTransport.processed` | concrete carrier-processing supply / final payload projection | Real strict-earlier BlockCallAt via CarrierProcessed, with own processing honesty and deadline, at an actual ReadyReadPoint. Current FinalCarrierSupply instead requires ReadyCut at trace.time j. |
 | `FinalReadTransport.cache` | FinalCacheSupply's local conclusion at actual reader time | Retains Premises, same W, acceptance, ancestry, all three height steps, actual carrier processing and population threshold at t. This is local block ancestry, not a chain or liveness claim. Its actual-read realization is OPEN. |
-| `ActualReadAccountability` | Growing/Simulation/Endpoint/Accountable.finalAccountable_readPoint:53 | Keeps both own-read honesty times, bounded read points, local run/no-collision, original 2q−n population cardinality and ChainAtts witnesses. Generic.FinalAccountable reads trace.time and cannot substitute. Additional generic Requirements/genesis-root inputs remain explicit. |
+| `ActualReadAccountability` | Growing/Simulation/Endpoint/Accountable.finalAccountable_readPoint:53 | Keeps both own-read honesty times, bounded read points, local run/no-collision, original 2q−n population cardinality and ChainAtts witnesses. Generic.FinalAccountable reads trace.time and cannot substitute. An additional generic Requirements input remains explicit; the genesis root comes from the run (`ACRun.run_root`). |
 | `ActualResetSupply` | Growing/Obligations/Healthy/PreparationReset.healthy_preparation_reset_at:42 | Actual IsReset and healing.Run under healthy preparation, all advertised progress forms and heal≤horizon. Not inferred from ResetProgressSupply's gap/window. |
 | `HighCanonicalSupply` | Generic/Obligations.HighCanonical and ACHealing.heal_after_reset source prerequisites | Same run, horizon, reset and Premises; never derived by applying heal_after_reset itself. |
 | `PreparationPremisesSupply` | Healthy/PreparationReset and Generic/Obligations.Premises | Exact nonfinal healthy-preparation progress interval and horizon. Final-only DeadlinePremisesSupply does not supply this. |
@@ -147,7 +147,7 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | fixed outage recovery floor / endpoint fit | ACCorrectLocal.recovery/recovery_nonneg; OutageRecoveryBinding.duration at SAME M/K/C | NEW OPEN exact-policy matching target; no inference from sample coverage or readiness |
 | outage pre/post service | OutageServiceSupply | NEW OPEN exact implication, concrete service mismatch recorded above |
 | resilience target tip | ResilienceTipTransport | NEW OPEN representation only |
-| RootOk at actual reads | HonestReadTransport.roots; genesis separately for accountability/Premises | Existing OPEN supplier; never inferred from unrelated dc names |
+| RootOk at actual reads | HonestReadTransport.roots; genesis from the run (`ACRun.run_root`) | Existing OPEN supplier; never inferred from unrelated dc names |
 | honest union coherence | explicit clean-run → Coherent hypothesis | OPEN instance supplier, never added to HoldsAlways |
 | held-store inclusion in honest union | HonestBlocksAt witnesses y=validator.symm v, cut=M.cut i, t=cutTime i, using before_time/honest_eq and nonnegative actual cutTime | DERIVED, not a new supplier |
 | chain prefix from local ancestry | ReadRepresentation.ancestor_prefix, with actual held membership/root/coherence premises; same M.chain/header | Existing OPEN representation; no final claim assumed |
@@ -163,7 +163,6 @@ OPEN obligations of the instance realization:
 | Premises field | Required source accounting |
 | --- | --- |
 | noColl | GrowingRunTransport.no_collision at same M |
-| genesisRoot | instance genesis-root/digest derivation |
 | sync | Service at the consuming deadline, including strict signedRow processing; GSTRunAt alone is not this record |
 | awake | finite healthy awake bound at the same deadline/horizon |
 | faults | finite healthy cardinal bound at the same deadline/horizon |

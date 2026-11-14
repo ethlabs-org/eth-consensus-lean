@@ -54,7 +54,7 @@ def final_cache_coverage_at {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
     (start gap floor : Nat) (kindJ : Prop) (J : A.Blk)
     (block : Fin 4 → A.Blk) (cut : Fin 4 → Nat),
     βK ≤ 1 / 2 →
-    A.Requirements → (P.genesisBlock A.genesisPayload).RootOk dg →
+    A.Requirements →
     C.run.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF deadline →
     FrameWindow tr H (P.slotTime start) deadline floor kindJ J →
     HealedFrom tr H proposer start deadline → 2 ≤ gap → 3 * gap ≤ P.δt →

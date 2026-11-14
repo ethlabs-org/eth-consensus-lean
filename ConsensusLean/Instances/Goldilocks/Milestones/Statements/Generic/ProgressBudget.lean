@@ -180,7 +180,7 @@ def FinalCacheSupply (M : RunMap rho payload) (runs : ACRun A M.signer)
     (catchUp hold : Time) : Prop :=
   ∀ (βK : ℚ) g ΔF query deadline (W : FinalProductionWindow M catchUp hold query deadline),
     βK ≤ 1 / 2 →
-    A.Requirements → (P.genesisBlock A.genesisPayload).RootOk M.digest →
+    A.Requirements →
     runs.Run M.committee M.proposer M.digest M.honest M.trace →
     Premises M.trace M.honest M.committee βK M.proposer M.digest M.signer g ΔF deadline →
     HealedFrom M.trace M.honest M.proposer W.start deadline →

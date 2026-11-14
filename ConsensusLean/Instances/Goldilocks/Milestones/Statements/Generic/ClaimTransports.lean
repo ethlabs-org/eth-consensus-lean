@@ -162,7 +162,7 @@ The population cardinality and ChainAtts are unchanged; E1's chain_att_view,
 att_signer and att_conflict separately bind these witnesses to engine evidence.
 NEW UNRESOLVED SUFFICIENCY TARGET for an arbitrary AC. -/
 def ActualReadAccountability (M : RunMap rho payload) (runs : ACRun A M.signer) : Prop :=
-  A.Requirements → (P.genesisBlock A.genesisPayload).RootOk M.digest →
+  A.Requirements →
   runs.Run M.committee M.proposer M.digest M.honest M.trace →
   Compose.NoCollRun M.digest M.trace → ∀ y z i j t u,
   HonestReadPoint M.trace M.honest rho.horizon y i t →
