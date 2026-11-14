@@ -203,6 +203,71 @@ theorem CommitteeSleepyOn.mono {K : Time → Finset V} {θ θ' : ℚ} {η η' c 
     exact lt_of_le_of_lt ((mul_le_mul_of_nonneg_left hn h0).trans
       (mul_le_mul_of_nonneg_right hθ (by positivity))) ht
 
+/-- A shorter look-ahead weakens the guarded committee budget (`θ ≥ 0`): the earlier retention
+charges fewer faults, and a validator ready only there is among the later faults. -/
+theorem CommitteeSleepyOn.ahead_mono {K : Time → Finset V} {θ : ℚ} {η c W W' a b : Time}
+    (h : p.CommitteeSleepyOn K θ η c W a b) (hW : W' ≤ W) (h0 : 0 ≤ θ) :
+    p.CommitteeSleepyOn K θ η c W' a b := by
+  classical
+  intro t hat htb hK
+  have ht := h t hat htb hK
+  dsimp only at ht ⊢
+  have hde : p.lookAhead W' t ≤ p.lookAhead W t :=
+    min_le_min_right _ (show t + W' ≤ t + W by linarith)
+  generalize p.lookAhead W' t = d at hde ⊢
+  generalize p.lookAhead W t = e at hde ht
+  have hrq : (((p.retain e).readyAt c t ∩ K t).card : ℚ) ≤
+      ((p.retain d).readyAt c t ∩ K t).card := by
+    refine Nat.cast_le.mpr (Finset.card_le_card
+      (Finset.inter_subset_inter (fun v hv => ?_) (Finset.Subset.refl _)))
+    simp only [readyAt, Finset.mem_filter, Finset.mem_univ, true_and] at hv ⊢
+    exact ⟨fun hf => hv.1 (p.faultyAt_mono hde hf), hv.2⟩
+  split_ifs at ht ⊢ with hη
+  · have hbase : ∀ q : EnvPoint V, (q.readyAt c t ∩ K t).card + (q.faultyAt t ∩ K t).card =
+        ((q.readyAt c t ∪ q.faultyAt t) ∩ K t).card := fun q => by
+      rw [Finset.union_inter_distrib_right, Finset.card_union_of_disjoint]
+      apply Finset.disjoint_left.mpr
+      intro v hr hf
+      have hr' := (Finset.mem_inter.mp hr).1
+      simp only [readyAt, Finset.mem_filter, Finset.mem_univ, true_and] at hr'
+      exact hr'.1 (Finset.mem_inter.mp hf).1
+    have hs : ((p.retain d).readyAt c t ∪ (p.retain d).faultyAt t) ∩ K t ⊆
+        ((p.retain e).readyAt c t ∪ (p.retain e).faultyAt t) ∩ K t := by
+      refine Finset.inter_subset_inter (fun v hv => ?_) (Finset.Subset.refl _)
+      by_cases hf : v ∈ p.faultyAt e
+      · exact Finset.mem_union_right _ hf
+      rcases Finset.mem_union.mp hv with hv | hv
+      · apply Finset.mem_union_left
+        simp only [readyAt, Finset.mem_filter, Finset.mem_univ, true_and] at hv ⊢
+        exact ⟨hf, hv.2⟩
+      · exact False.elim (hf (p.faultyAt_mono hde hv))
+    have hn : ((((p.retain d).readyAt c t ∩ K t).card +
+        ((p.retain d).faultyAt t ∩ K t).card : Nat) : ℚ) ≤
+        ((((p.retain e).readyAt c t ∩ K t).card + ((p.retain e).faultyAt t ∩ K t).card : Nat) :
+          ℚ) := by
+      rw [hbase, hbase]
+      exact_mod_cast Finset.card_le_card hs
+    exact lt_of_le_of_lt (mul_le_mul_of_nonneg_left hn h0) (lt_of_lt_of_le ht hrq)
+  · have hs : ((p.retain d).readyAt c t ∪ (p.retain d).awakeIn (max 0 (t - η)) t ∪
+        (p.retain d).faultyAt t) ∩ K t ⊆ ((p.retain e).readyAt c t ∪
+          (p.retain e).awakeIn (max 0 (t - η)) t ∪ (p.retain e).faultyAt t) ∩ K t := by
+      refine Finset.inter_subset_inter (fun v hv => ?_) (Finset.Subset.refl _)
+      by_cases hf : v ∈ p.faultyAt e
+      · exact Finset.mem_union_right _ hf
+      apply Finset.mem_union_left
+      rcases Finset.mem_union.mp hv with hv | hv
+      · rcases Finset.mem_union.mp hv with hv | hv
+        · apply Finset.mem_union_left
+          simp only [readyAt, Finset.mem_filter, Finset.mem_univ, true_and] at hv ⊢
+          exact ⟨hf, hv.2⟩
+        · apply Finset.mem_union_right
+          simp only [awakeIn, Finset.mem_filter, Finset.mem_univ, true_and] at hv ⊢
+          obtain ⟨u, hau, hut, -, haw⟩ := hv
+          exact ⟨u, hau, hut, hf, haw⟩
+      · exact False.elim (hf (p.faultyAt_mono hde hv))
+    exact lt_of_le_of_lt (mul_le_mul_of_nonneg_left (by exact_mod_cast Finset.card_le_card hs) h0)
+      (lt_of_lt_of_le ht hrq)
+
 omit [DecidableEq V] in
 /-- A larger fault bound is weaker. -/
 theorem HealthyOn.mono {β β' : ℚ} {g b : Time} (h : p.HealthyOn β' g b) (hle : β' ≤ β) :
@@ -246,20 +311,29 @@ theorem cDur_of_catchUp (hc : K'.params.catchUp = K.params.catchUp) :
     S.cDur K' r = S.cDur K r := by
   unfold cDur; rw [hc]
 
-omit [DecidableEq V] in
-/-- Weaker thresholds (same catch-up) keep the sleepy regime. -/
-theorem Sleepy.of_le (hc : K'.params.catchUp = K.params.catchUp) (hθ : K'.params.θ ≤ K.params.θ)
+/-- Weaker thresholds (same catch-up and population look-ahead, a shorter committee look-ahead,
+`θ' ≥ 0`) keep the sleepy regime. -/
+theorem Sleepy.of_le {X : External S} (hc : K'.params.catchUp = K.params.catchUp)
+    (h0 : 0 ≤ K'.params.θ) (hθ : K'.params.θ ≤ K.params.θ)
     (hW : K'.params.ahead = K.params.ahead)
-    (h : S.Sleepy K r) : S.Sleepy K' r := by
-  refine ⟨h.1, ?_⟩
-  rw [cDur_of_catchUp hc]
-  simpa only [aheadDur, hW] using EnvPoint.SleepyOn.mono h.2 hθ
+    (hCommittee : K'.params.committeeAhead ≤ K.params.committeeAhead)
+    (h : S.Sleepy X K r) : S.Sleepy X K' r := by
+  refine ⟨h.1, ?_, ?_⟩
+  · rw [cDur_of_catchUp hc]
+    simpa only [aheadDur, hW] using EnvPoint.SleepyOn.mono h.2.1 hθ
+  · have hw : S.committeeAheadDur K' r ≤ S.committeeAheadDur K r :=
+      mul_le_mul_of_nonneg_right (by exact_mod_cast hCommittee) (S.pt r).env.ΔAC_pos.le
+    rw [cDur_of_catchUp hc]
+    exact (EnvPoint.CommitteeSleepyOn.mono h.2.2 h0 hθ le_rfl).ahead_mono hw h0
 
-omit [DecidableEq V] in
-/-- A weaker fault bound and a larger FG delay bound keep the healthy regime. -/
-theorem Healthy.of_le {g : Time} (hβ : K.params.β ≤ K'.params.β)
-    (hr : K.params.fgDelay ≤ K'.params.fgDelay) (h : S.Healthy K g r) : S.Healthy K' g r := by
-  refine ⟨h.1, EnvPoint.HealthyOn.mono h.2.1 hβ, h.2.2.trans ?_⟩
+/-- A weaker fault bound, a weaker committee fault fraction and a larger FG delay bound keep the
+healthy regime. -/
+theorem Healthy.of_le {X : External S} {g : Time} (hβ : K.params.β ≤ K'.params.β)
+    (hβK : K.params.βK ≤ K'.params.βK) (hr : K.params.fgDelay ≤ K'.params.fgDelay)
+    (h : S.Healthy X K g r) : S.Healthy X K' g r := by
+  refine ⟨h.1, EnvPoint.HealthyOn.mono h.2.1 hβ, h.2.2.1.trans ?_,
+    fun t ha hb hK => (h.2.2.2 t ha hb hK).trans_le
+      (mul_le_mul_of_nonneg_right hβK (Nat.cast_nonneg _))⟩
   have hr' : ((K.params.fgDelay : Nat) : Time) ≤ (K'.params.fgDelay : Nat) := by
     exact_mod_cast hr
   exact mul_le_mul_of_nonneg_right hr' (S.pt r).env.ΔAC_pos.le

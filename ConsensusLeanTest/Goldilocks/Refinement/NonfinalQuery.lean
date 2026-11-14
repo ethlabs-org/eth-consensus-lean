@@ -51,7 +51,7 @@ theorem confirmedQuery_applies {V : Type} [Fintype V] [DecidableEq V]
     (hcap : cap = .available ∨ cap = .stable) (idx : (K S A).Idx) (gst t : Time)
     (hf : r.2.point.ConstantFaults)
     (hv : (Sys (goldilocks S) V).Valid r) (hc : ¬ r.2.HashCollision)
-    (hh : (Sys (goldilocks S) V).Healthy (K S A) gst r)
+    (hh : (Sys (goldilocks S) V).Healthy (shapeProgress (goldilocks S) V).toExternal (K S A) gst r)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap idx
       ((Sys (goldilocks S) V).ready (K S A) gst r) r.2.horizon r)
     (ht : (Sys (goldilocks S) V).heal (K S A) cap idx gst r ≤ t)
@@ -68,7 +68,8 @@ theorem healthyPreparationQuery_applies {V : Type} [Fintype V] [DecidableEq V]
     (hcap : cap = .available ∨ cap = .stable) (idx : (K S A).Idx) (gst : Time)
     (hf : r.2.point.ConstantFaults)
     (hv : (Sys (goldilocks S) V).Valid r) (hc : ¬ r.2.HashCollision)
-    (hh : (Sys (goldilocks S) V).Healthy (K S A) gst r) :
+    (hh : (Sys (goldilocks S) V).Healthy
+        (shapeProgress (goldilocks S) V).toExternal (K S A) gst r) :
     ∃ Q : HealthyPreparationQuery S A V, Q.run = r ∧ Q.cap = cap ∧ Q.index = idx ∧
       Q.gst = gst :=
   ⟨⟨r, hf, hn, cap, hcap, idx, gst, hv, hc, hh⟩, rfl, rfl, rfl, rfl⟩
@@ -135,7 +136,8 @@ theorem confirmedQuery_healthy :
     ∃ Q : ConfirmedQuery S A (Fin 2), Q.run.1 = (point (horizonT S A)).env ∧
       Q.run.2.point = point (horizonT S A) ∧ Q.run.2.sel = sel S (horizonT S A) ∧
       Q.cap = .available ∧ Q.index = (1 : ℕ+) ∧ Q.gst = 0 ∧ Q.query = healT S A ∧
-      (Sys (goldilocks S) (Fin 2)).Healthy (K S A) 0 Q.run := by
+      (Sys (goldilocks S) (Fin 2)).Healthy
+          (shapeProgress (goldilocks S) (Fin 2)).toExternal (K S A) 0 Q.run := by
   obtain ⟨⟨E, rho⟩, hE, hp, hs, -, hv, hc, hh⟩ :=
     healthy_run S A (contract_coefficients S A) (horizonT S A) (horizonT_nonneg S A)
   subst hE
@@ -184,7 +186,8 @@ run of no `ConfirmedQuery` at `.available`, index 1, with a query at or after `h
 theorem no_confirmedQuery_short :
     ∃ r : (Sys (goldilocks S) (Fin 2)).Run, (Sys (goldilocks S) (Fin 2)).Valid r ∧
         ¬ r.2.HashCollision ∧
-      (Sys (goldilocks S) (Fin 2)).Healthy (K S A) 0 r ∧
+      (Sys (goldilocks S) (Fin 2)).Healthy
+          (shapeProgress (goldilocks S) (Fin 2)).toExternal (K S A) 0 r ∧
       (Sys (goldilocks S) (Fin 2)).prog (shapeProgress (goldilocks S) (Fin 2)) (K S A) .available
         (1 : ℕ+) ((Sys (goldilocks S) (Fin 2)).ready (K S A) 0 r) r.2.horizon r ∧
       ∀ Q : ConfirmedQuery S A (Fin 2), Q.run = r → Q.cap = .available → Q.index = (1 : ℕ+) →

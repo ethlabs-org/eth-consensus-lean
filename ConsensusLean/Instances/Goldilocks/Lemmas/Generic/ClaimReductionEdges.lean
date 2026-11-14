@@ -45,7 +45,7 @@ def SleepySafetyReduction (B : EngineBinding (A := A) (F := F) (V := V) payload)
       ReadRepresentation M ∧ HonestReadTransport M ∧
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →
     ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
-      (Sys F V).Holds ((Sys F V).Sleepy K) fun r =>
+      (Sys F V).Holds ((Sys F V).Sleepy (shapeProgress F V).toExternal K) fun r =>
         (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g 0
 
 /-- UNPROVED sleepy proposal reduction, keeping the original progress interval,
@@ -66,7 +66,8 @@ def SleepyLivenessReduction (B : EngineBinding (A := A) (F := F) (V := V) payloa
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →
     ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
       ∀ idx : K.Idx, (Sys F V).Holds
-        (fun r => (Sys F V).Sleepy K r ∧ (Sys F V).prog (shapeProgress F V) K cap idx 0
+        (fun r => (Sys F V).Sleepy (shapeProgress F V).toExternal K r ∧
+          (Sys F V).prog (shapeProgress F V) K cap idx 0
           ((Sys F V).pt r).horizon r)
         fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g 0 (K.params.latency cap idx)
 
@@ -91,7 +92,8 @@ def HealthyLivenessReduction (B : EngineBinding (A := A) (F := F) (V := V) paylo
       ReadRepresentation M ∧ HonestReadTransport M ∧
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →
     ∀ cap g, O.output cap = some g → ∀ (idx : K.Idx) (gst : Time), (Sys F V).Holds
-      (fun r => (Sys F V).Healthy K gst r ∧ (Sys F V).prog (shapeProgress F V) K cap idx
+      (fun r => (Sys F V).Healthy (shapeProgress F V).toExternal K gst r ∧
+        (Sys F V).prog (shapeProgress F V) K cap idx
         ((Sys F V).ready K gst r) ((Sys F V).pt r).horizon r)
       fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g ((Sys F V).heal K cap idx gst r)
         (K.params.latency cap idx)
@@ -154,7 +156,8 @@ def HealedSafetyReduction (B : EngineBinding (A := A) (F := F) (V := V) payload)
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →
     ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
       ∀ (idx : K.Idx) (gst : Time), (Sys F V).Holds
-        (fun r => (Sys F V).Healthy K gst r ∧ (Sys F V).prog (shapeProgress F V) K cap idx
+        (fun r => (Sys F V).Healthy (shapeProgress F V).toExternal K gst r ∧
+          (Sys F V).prog (shapeProgress F V) K cap idx
           ((Sys F V).ready K gst r) ((Sys F V).heal K cap idx gst r) r)
         fun r => (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g
           ((Sys F V).heal K cap idx gst r)
@@ -173,21 +176,24 @@ def GenericClaimsBundling (K : Contract ProgressReq) : Prop :=
     (∀ g, O.output .final = some g → (Sys F V).Holds (fun _ => True)
       fun r => (chainTrace r.2).AccountablySafe r.2.ViewIdx r.2.Slashable K.params.α g 0) ∧
     (∀ cap g, O.output cap = some g → ∀ (idx : K.Idx) (gst : Time), (Sys F V).Holds
-      (fun r => (Sys F V).Healthy K gst r ∧ (Sys F V).prog (shapeProgress F V) K cap idx
+      (fun r => (Sys F V).Healthy (shapeProgress F V).toExternal K gst r ∧
+        (Sys F V).prog (shapeProgress F V) K cap idx
         ((Sys F V).ready K gst r) ((Sys F V).pt r).horizon r)
       fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g
         ((Sys F V).heal K cap idx gst r) (K.params.latency cap idx)) ∧
     (∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
-      (Sys F V).Holds ((Sys F V).Sleepy K) fun r =>
+      (Sys F V).Holds ((Sys F V).Sleepy (shapeProgress F V).toExternal K) fun r =>
         (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g 0) ∧
     (∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
       ∀ idx : K.Idx, (Sys F V).Holds
-        (fun r => (Sys F V).Sleepy K r ∧ (Sys F V).prog (shapeProgress F V) K cap idx 0
+        (fun r => (Sys F V).Sleepy (shapeProgress F V).toExternal K r ∧
+          (Sys F V).prog (shapeProgress F V) K cap idx 0
           ((Sys F V).pt r).horizon r)
         fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g 0 (K.params.latency cap idx)) ∧
     (∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
       ∀ (idx : K.Idx) (gst : Time), (Sys F V).Holds
-        (fun r => (Sys F V).Healthy K gst r ∧ (Sys F V).prog (shapeProgress F V) K cap idx
+        (fun r => (Sys F V).Healthy (shapeProgress F V).toExternal K gst r ∧
+          (Sys F V).prog (shapeProgress F V) K cap idx
           ((Sys F V).ready K gst r) ((Sys F V).heal K cap idx gst r) r)
         fun r => (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g
           ((Sys F V).heal K cap idx gst r)) ∧

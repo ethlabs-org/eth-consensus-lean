@@ -90,7 +90,7 @@ theorem final_agree (h : CorrectProtocol S X K) {g : S.schema.Id}
 /-- Final safety in the healthy regime: the faults are below `β ≤ α`. -/
 theorem final_safe_healthy (h : CorrectProtocol S X K) {g : S.schema.Id}
     (hg : S.schema.output .final = some g) (r : S.Run) (hv : S.Valid r) {gst : Time}
-    (hH : S.Healthy K gst r) : (S.trace r).Safe g 0 ∨ S.Excuse r := by
+    (hH : S.Healthy X.toExternal K gst r) : (S.trace r).Safe g 0 ∨ S.Excuse r := by
   have hb : (S.pt r).FaultsBelow K.params.α :=
     hH.2.1.faultsBelow.mono _ h.behaviour.admissible.α_range.1
   exact (h.final_agree hg r hv hb).imp
@@ -151,23 +151,32 @@ private theorem cDur_prefix {r r' : S.Run} {b : Time} (hP : (S.trace r').PrefixO
     S.cDur K r' = S.cDur K r := by
   unfold System.cDur; rw [hP.env]
 
-/-- Sleepy safety of the past: a run synchronous and sleepy up to `b` is safe
-for ready readers at cuts up to `b`, whatever happens after `b`. -/
+/-- Sleepy safety of the past: a run synchronous and sleepy up to `b`, with the selected
+committees sleepy on the prefix point through `b`, is safe for ready readers at cuts up to `b`,
+whatever happens after `b`. -/
 theorem sleepySafe_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S.schema.Id}
     (hcap : cap = .available ∨ cap = .stable) (hg : S.schema.output cap = some g)
     (r : S.Run) (hv : S.Valid r) {b : Time} (hb0 : 0 ≤ b) (hbh : b ≤ (S.pt r).horizon)
     (hs : (S.log r).SyncUntil (S.pt r) b)
-    (hθ : (S.pt r).SleepyOn K.params.θ (S.cDur K r) (S.aheadDur K r) 0 b) :
+    (hθ : (S.pt r).SleepyOn K.params.θ (S.cDur K r) (S.aheadDur K r) 0 b)
+    (hcommitteeSleepy : ({ S.pt r with horizon := b } : EnvPoint V).CommitteeSleepyOn
+      (X.selected (S.pt r).env (X.ext r)) K.params.θ 0 (S.cDur K r)
+      (S.committeeAheadDur K r) 0 b) :
     (S.trace r).ReadySafeUpTo (S.cDur K r) g 0 b ∨ S.Excuse r := by
-  obtain ⟨r', hv', hP, -, hL, hE, -⟩ := h.adequate.prefixClosed r hv b hb0 hbh
+  obtain ⟨r', hv', hP, -, hL, hE, -, hselected⟩ := h.adequate.prefixClosed r hv b hb0 hbh
   have hc := cDur_prefix (K := K) hP
   have ha : S.aheadDur K r' = S.aheadDur K r := by
     unfold System.aheadDur; rw [hP.env]
-  have hreg : S.Sleepy K r' := by
+  have hcommitteeAhead : S.committeeAheadDur K r' = S.committeeAheadDur K r := by
+    unfold System.committeeAheadDur; rw [hP.env]
+  have hselection : X.selected (S.pt r').env (X.ext r') =
+      X.selected (S.pt r).env (X.ext r) := funext hselected
+  have hreg : S.Sleepy X.toExternal K r' := by
     unfold System.Sleepy
-    rw [hc, ha, show S.pt r' = { S.pt r with horizon := b } from hP.point]
+    rw [hselection, hc, ha, hcommitteeAhead,
+      show S.pt r' = { S.pt r with horizon := b } from hP.point]
     refine ⟨?_, hθ.prefix hbh (by linarith [h.behaviour.admissible.θ_range.2])
-      h.behaviour.admissible.θ_range.1⟩
+      h.behaviour.admissible.θ_range.1, hcommitteeSleepy⟩
     have hd : (S.log r).Delivers (S.pt r) (fun a => max a 0 + (S.pt r).env.ΔAC - 1)
         (fun a => max a 0 + (S.pt r).env.ΔFG - 1) b :=
       hs.reindex (f := fun a => max a 0) (fun a => le_max_left a 0) (fun _ => rfl) (fun _ => rfl)
@@ -179,28 +188,37 @@ theorem sleepySafe_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S.
   · rw [hc] at hr; exact Or.inl (hP.readySafeUpTo hr)
   · exact Or.inr (hE he)
 
-/-- Sleepy liveness for deadlines in a prefix, independently of later compromises. -/
+/-- Sleepy liveness for deadlines in a prefix, independently of later compromises, with the
+selected committees sleepy on the prefix point through `b`. -/
 theorem sleepyLive_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S.schema.Id}
     (hcap : cap = .available ∨ cap = .stable) (hg : S.schema.output cap = some g)
     (r : S.Run) (hv : S.Valid r) (i : K.Idx) {b : Time} (hb0 : 0 ≤ b)
     (hbh : b ≤ (S.pt r).horizon) (hs : (S.log r).SyncUntil (S.pt r) b)
     (hθ : (S.pt r).SleepyOn K.params.θ (S.cDur K r) (S.aheadDur K r) 0 b)
+    (hcommitteeSleepy : ({ S.pt r with horizon := b } : EnvPoint V).CommitteeSleepyOn
+      (X.selected (S.pt r).env (X.ext r)) K.params.θ 0 (S.cDur K r)
+      (S.committeeAheadDur K r) 0 b)
     (hp : S.prog X K cap i 0 b r) :
     (∀ x t t', (S.pt r).SubmittedToSome x t →
       max t 0 + (S.pt r).env.ΔAC + S.lat K cap i r ≤ t' →
       t' ≤ b → ∀ v, (S.pt r).Ready (S.cDur K r) v t' →
         x ∈ (S.trace r).readAt g v t') ∨ S.Excuse r := by
-  obtain ⟨r', hv', hP, _, hL, hE, hX, -⟩ := h.adequate.prefixClosed r hv b hb0 hbh
+  obtain ⟨r', hv', hP, _, hL, hE, hX, hselected⟩ := h.adequate.prefixClosed r hv b hb0 hbh
   have hc := cDur_prefix (K := K) hP
   have ha : S.aheadDur K r' = S.aheadDur K r := by
     unfold System.aheadDur; rw [hP.env]
   have hlat : S.lat K cap i r' = S.lat K cap i r := by
     unfold System.lat; rw [hP.env]
-  have hreg : S.Sleepy K r' := by
+  have hcommitteeAhead : S.committeeAheadDur K r' = S.committeeAheadDur K r := by
+    unfold System.committeeAheadDur; rw [hP.env]
+  have hselection : X.selected (S.pt r').env (X.ext r') =
+      X.selected (S.pt r).env (X.ext r) := funext hselected
+  have hreg : S.Sleepy X.toExternal K r' := by
     unfold System.Sleepy
-    rw [hc, ha, show S.pt r' = { S.pt r with horizon := b } from hP.point]
+    rw [hselection, hc, ha, hcommitteeAhead,
+      show S.pt r' = { S.pt r with horizon := b } from hP.point]
     refine ⟨?_, hθ.prefix hbh (by linarith [h.behaviour.admissible.θ_range.2])
-      h.behaviour.admissible.θ_range.1⟩
+      h.behaviour.admissible.θ_range.1, hcommitteeSleepy⟩
     have hd := hs.reindex (f := fun a => max a 0) (fun a => le_max_left a 0)
       (fun _ => rfl) (fun _ => rfl) le_rfl
     exact hd.prefix hL hbh
@@ -217,8 +235,8 @@ theorem sleepyLive_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S.
   · exact Or.inr (hE he)
 
 /-- Healed safety of the past: a run partially synchronous with GST `gst` and
-healthy up to `b` (FG delay within its bound), with progress on `[ready, heal]` and
-`heal ≤ b`, is
+healthy up to `b` (FG delay within its bound, selected committees healthy on `[max gst 0, b]`),
+with progress on `[ready, heal]` and `heal ≤ b`, is
 safe for ready readers at cuts in `[heal, b]`, whatever happens after `b`. -/
 theorem healedSafe_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S.schema.Id}
     (hcap : cap = .available ∨ cap = .stable) (hg : S.schema.output cap = some g)
@@ -228,19 +246,23 @@ theorem healedSafe_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S.
       (fun a => max a gst + (S.pt r).env.ΔFG - 1) b)
     (hH : (S.pt r).HealthyOn K.params.β gst b)
     (hrat : (S.pt r).env.ΔFG ≤ (K.params.fgDelay : Time) * (S.pt r).env.ΔAC)
+    (hcommitteeHealthy : (S.pt r).CommitteeHealthyOn (X.selected (S.pt r).env (X.ext r))
+      K.params.βK (max gst 0) b)
     (hp : S.prog X K cap i (S.ready K gst r) (S.heal K cap i gst r) r)
     (hhb : S.heal K cap i gst r ≤ b) :
     (S.trace r).ReadySafeUpTo (S.cDur K r) g (S.heal K cap i gst r) b ∨ S.Excuse r := by
-  obtain ⟨r', hv', hP, -, hL, hE, hX, -⟩ := h.adequate.prefixClosed r hv b hb0 hbh
+  obtain ⟨r', hv', hP, -, hL, hE, hX, hselected⟩ := h.adequate.prefixClosed r hv b hb0 hbh
   have hc := cDur_prefix (K := K) hP
   have hheal : S.heal K cap i gst r' = S.heal K cap i gst r := by
     unfold System.heal; rw [hP.env]
   have hready : S.ready K gst r' = S.ready K gst r := by
     unfold System.ready; rw [hc]
-  have hreg : S.Healthy K gst r' := by
+  have hselection : X.selected (S.pt r').env (X.ext r') =
+      X.selected (S.pt r).env (X.ext r) := funext hselected
+  have hreg : S.Healthy X.toExternal K gst r' := by
     unfold System.Healthy
-    rw [show S.pt r' = { S.pt r with horizon := b } from hP.point]
-    refine ⟨?_, hH, hrat⟩
+    rw [hselection, show S.pt r' = { S.pt r with horizon := b } from hP.point]
+    refine ⟨?_, hH, hrat, hcommitteeHealthy⟩
     exact hs.prefix hL hbh
       (fun _ => le_max_add_sub_one (S.pt r).env.ΔAC_pos)
       (fun _ => le_max_add_sub_one (S.pt r).env.ΔFG_pos)
@@ -253,7 +275,8 @@ theorem healedSafe_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S.
   · rw [hc, hheal] at hr; exact Or.inl (hP.readySafeUpTo hr)
   · exact Or.inr (hE he)
 
-/-- Healthy liveness for deadlines in a prefix, with progress only up to its horizon. -/
+/-- Healthy liveness for deadlines in a prefix, with progress only up to its horizon and the
+selected committees healthy on `[max gst 0, b]`. -/
 theorem healthyLive_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S.schema.Id}
     (hg : S.schema.output cap = some g) (r : S.Run) (hv : S.Valid r) (i : K.Idx)
     (gst : Time) {b : Time} (hb0 : 0 ≤ b) (hbh : b ≤ (S.pt r).horizon)
@@ -261,12 +284,14 @@ theorem healthyLive_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S
       (fun a => max a gst + (S.pt r).env.ΔFG - 1) b)
     (hH : (S.pt r).HealthyOn K.params.β gst b)
     (hrat : (S.pt r).env.ΔFG ≤ (K.params.fgDelay : Time) * (S.pt r).env.ΔAC)
+    (hcommitteeHealthy : (S.pt r).CommitteeHealthyOn (X.selected (S.pt r).env (X.ext r))
+      K.params.βK (max gst 0) b)
     (hp : S.prog X K cap i (S.ready K gst r) b r) :
     (∀ x t t', (S.pt r).SubmittedToSome x t →
       max t (S.heal K cap i gst r) + (S.pt r).env.ΔAC + S.lat K cap i r ≤ t' →
       t' ≤ b → ∀ v, (S.pt r).Ready (S.cDur K r) v t' →
         x ∈ (S.trace r).readAt g v t') ∨ S.Excuse r := by
-  obtain ⟨r', hv', hP, _, hL, hE, hX, -⟩ := h.adequate.prefixClosed r hv b hb0 hbh
+  obtain ⟨r', hv', hP, _, hL, hE, hX, hselected⟩ := h.adequate.prefixClosed r hv b hb0 hbh
   have hc := cDur_prefix (K := K) hP
   have hheal : S.heal K cap i gst r' = S.heal K cap i gst r := by
     unfold System.heal; rw [hP.env]
@@ -274,12 +299,14 @@ theorem healthyLive_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S
     unfold System.ready; rw [hc]
   have hlat : S.lat K cap i r' = S.lat K cap i r := by
     unfold System.lat; rw [hP.env]
-  have hreg : S.Healthy K gst r' := by
+  have hselection : X.selected (S.pt r').env (X.ext r') =
+      X.selected (S.pt r).env (X.ext r) := funext hselected
+  have hreg : S.Healthy X.toExternal K gst r' := by
     unfold System.Healthy
-    rw [show S.pt r' = { S.pt r with horizon := b } from hP.point]
+    rw [hselection, show S.pt r' = { S.pt r with horizon := b } from hP.point]
     exact ⟨hs.prefix hL hbh
       (fun _ => le_max_add_sub_one (S.pt r).env.ΔAC_pos)
-      (fun _ => le_max_add_sub_one (S.pt r).env.ΔFG_pos), hH, hrat⟩
+      (fun _ => le_max_add_sub_one (S.pt r).env.ΔFG_pos), hH, hrat, hcommitteeHealthy⟩
   have hpr : S.prog X K cap i (S.ready K gst r') (S.pt r').horizon r' := by
     rw [hready, show (S.pt r').horizon = b from congrArg EnvPoint.horizon hP.point]
     unfold System.prog at hp ⊢
@@ -356,7 +383,7 @@ theorem served (h : CorrectProtocol S X K) (hn : 5 ≤ Fintype.card V) {cap : Ca
     {g : S.schema.Id} (_hcap : cap = .final ∨ cap = .available)
     (hg : S.schema.output cap = some g) (i : K.Idx) (Δ gst : Time) (hΔ : 1 < Δ)
     (hgst : 0 ≤ gst) :
-    ∃ r, S.Witness r ∧ (S.pt r).env.ΔAC = Δ ∧ S.Healthy K gst r ∧
+    ∃ r, S.Witness r ∧ (S.pt r).env.ΔAC = Δ ∧ S.Healthy X.toExternal K gst r ∧
       S.prog X K cap i (S.ready K gst r) (S.pt r).horizon r ∧
       ∃ x u w t t', (S.pt r).HonestAt u t ∧ (S.pt r).HonestAt w t' ∧ w ≠ u ∧
         x ∈ (S.pt r).submit u t ∧ (∀ τ, x ∉ (S.pt r).submit w τ) ∧

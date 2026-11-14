@@ -125,22 +125,24 @@ structure Behaviour (S : System V) (X : Progress S Prog) (K : Contract Prog) :
   /-- Every provided output, at every index: healthy from a GST with progress
   from `ready` to the horizon, transaction liveness from the heal point. -/
   healthyLive : ∀ cap g, S.schema.output cap = some g → ∀ i gst, S.Holds
-    (fun r => S.Healthy K gst r ∧ S.prog X K cap i (S.ready K gst r) (S.pt r).horizon r)
+    (fun r => S.Healthy X.toExternal K gst r ∧
+      S.prog X K cap i (S.ready K gst r) (S.pt r).horizon r)
     (fun r => (S.trace r).TxLive (S.cDur K r) g (S.heal K cap i gst r) (S.lat K cap i r))
   /-- Available and stable: ready-reader safety when sleepy. -/
   sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) → S.schema.output cap = some g →
-    S.Holds (S.Sleepy K) (fun r => (S.trace r).ReadySafe (S.cDur K r) g 0)
+    S.Holds (S.Sleepy X.toExternal K) (fun r => (S.trace r).ReadySafe (S.cDur K r) g 0)
   /-- Available and stable: transaction liveness when sleepy, with progress on
   the whole run. -/
   sleepyLive : ∀ cap g, (cap = .available ∨ cap = .stable) → S.schema.output cap = some g →
-    ∀ i, S.Holds (fun r => S.Sleepy K r ∧ S.prog X K cap i 0 (S.pt r).horizon r)
+    ∀ i, S.Holds (fun r => S.Sleepy X.toExternal K r ∧ S.prog X K cap i 0 (S.pt r).horizon r)
       (fun r => (S.trace r).TxLive (S.cDur K r) g 0 (S.lat K cap i r))
   /-- Available and stable: ready-reader safety from the heal point when
   healthy from a GST ("stay in recovery"; progress needed only on
   `[ready, heal]`). -/
   healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) → S.schema.output cap = some g →
     ∀ i gst, S.Holds
-      (fun r => S.Healthy K gst r ∧ S.prog X K cap i (S.ready K gst r) (S.heal K cap i gst r) r)
+      (fun r => S.Healthy X.toExternal K gst r ∧
+        S.prog X K cap i (S.ready K gst r) (S.heal K cap i gst r) r)
       (fun r => (S.trace r).ReadySafe (S.cDur K r) g (S.heal K cap i gst r))
   /-- Outage resilience of the stable output, into the resilience target:
   what a node ready at `T` reads as stable is kept by every ready reader from
@@ -225,7 +227,7 @@ variable (S : System V)
 regime, progress on the whole run, and an active liveness claim. -/
 def SleepyLive (X : Progress S Prog) (K : Contract Prog) (cap : Capability) (i : K.Idx)
     (r : S.Run) : Prop :=
-  S.Sleepy K r ∧ S.prog X K cap i 0 (S.pt r).horizon r ∧
+  S.Sleepy X.toExternal K r ∧ S.prog X K cap i 0 (S.pt r).horizon r ∧
     (S.pt r).TxLiveActive (S.cDur K r) 0 (S.lat K cap i r)
 
 /-- Healed liveness of `cap` at `i` after GST `g` is exercised on run `r`: a
@@ -233,7 +235,7 @@ log eager from `g`, the healthy regime from `g`, progress from `ready` to
 the horizon, and an active liveness claim from the heal point. -/
 def HealthyLive (X : Progress S Prog) (K : Contract Prog) (cap : Capability) (i : K.Idx)
     (g : Time) (r : S.Run) : Prop :=
-  (S.log r).EagerFrom (S.pt r) g ∧ S.Healthy K g r ∧
+  (S.log r).EagerFrom (S.pt r) g ∧ S.Healthy X.toExternal K g r ∧
     S.prog X K cap i (S.ready K g r) (S.pt r).horizon r ∧
     (S.pt r).TxLiveActive (S.cDur K r) (S.heal K cap i g r) (S.lat K cap i r)
 

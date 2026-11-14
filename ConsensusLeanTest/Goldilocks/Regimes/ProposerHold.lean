@@ -75,7 +75,8 @@ chain. -/
 theorem sleepyLive_hold_zero_false (A : ContractAssumptions S) :
     ¬ (Sys (goldilocks S) (Fin 5)).Holds
         (fun r =>
-          (Sys (goldilocks S) (Fin 5)).Sleepy (holdContract A (contract_coefficients S A) 0) r ∧
+          (Sys (goldilocks S) (Fin 5)).Sleepy (shapeProgress (goldilocks S) (Fin 5)).toExternal
+              (holdContract A (contract_coefficients S A) 0) r ∧
           (Sys (goldilocks S) (Fin 5)).prog (shapeProgress (goldilocks S) (Fin 5))
             (holdContract A (contract_coefficients S A) 0) .available 1 0
             ((Sys (goldilocks S) (Fin 5)).pt r).horizon r)

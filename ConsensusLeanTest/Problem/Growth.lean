@@ -383,13 +383,15 @@ theorem growing_sleepyLive_prefix (h : CorrectProtocol S X K)
     (r : S.Run) (hv : S.Valid r) (hp : S.pt r = growthPoint) (i : K.Idx)
     (hs : (S.log r).SyncUntil (S.pt r) 6)
     (hb : (S.pt r).SleepyOn K.params.θ (S.cDur K r) (S.aheadDur K r) 0 6)
+    (hcs : ({ S.pt r with horizon := 6 } : EnvPoint (Fin 7)).CommitteeSleepyOn
+      (X.selected (S.pt r).env (X.ext r)) K.params.θ 0 (S.cDur K r) (S.committeeAheadDur K r) 0 6)
     (hx : S.prog X K .available i 0 6 r) :
     (∀ x t t', (S.pt r).SubmittedToSome x t →
       max t 0 + (S.pt r).env.ΔAC + S.lat K .available i r ≤ t' → t' ≤ 6 →
       ∀ v, (S.pt r).Ready (S.cDur K r) v t' → x ∈ (S.trace r).readAt g v t') ∨
       S.Excuse r :=
   h.sleepyLive_prefix (Or.inl rfl) hg r hv i (by decide)
-    (by rw [hp]; decide) hs hb hx
+    (by rw [hp]; decide) hs hb hcs hx
 
 /-- Healthy prefix liveness uses the two-increase profile's healthy budget,
 not a terminal constant-fault projection. -/
@@ -401,13 +403,14 @@ theorem growing_healthyLive_prefix (h : CorrectProtocol S X K)
       (fun a => max a 0 + (S.pt r).env.ΔAC - 1)
       (fun a => max a 0 + (S.pt r).env.ΔFG - 1) 8)
     (hr : (S.pt r).env.ΔFG ≤ (K.params.fgDelay : Time) * (S.pt r).env.ΔAC)
+    (hch : (S.pt r).CommitteeHealthyOn (X.selected (S.pt r).env (X.ext r)) K.params.βK (max 0 0) 8)
     (hx : S.prog X K .final i (S.ready K 0 r) 8 r) :
     (∀ x t t', (S.pt r).SubmittedToSome x t →
       max t (S.heal K .final i 0 r) + (S.pt r).env.ΔAC + S.lat K .final i r ≤ t' →
       t' ≤ 8 → ∀ v, (S.pt r).Ready (S.cDur K r) v t' →
         x ∈ (S.trace r).readAt g v t') ∨ S.Excuse r :=
   h.healthyLive_prefix hg r hv i 0 (by decide) (by rw [hp]; exact le_rfl) hs
-    (by rw [hp, hβ]; exact growthPoint_healthy) hr hx
+    (by rw [hp, hβ]; exact growthPoint_healthy) hr hch hx
 
 end PrefixLiveness
 

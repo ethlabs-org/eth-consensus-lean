@@ -59,25 +59,28 @@ structure ShapeClaimsAt (F : ChainShapeFamily O Info) (K : Contract ProgressReq)
   /-- Every provided chain, at every index: healthy from `gst` with progress
   from `ready` to the horizon, proposals are included from the heal point. -/
   healthyLive : ∀ cap g, O.output cap = some g → ∀ (i : K.Idx) (gst : Time), (Sys F V).Holds
-    (fun r => (Sys F V).Healthy K gst r ∧ (Sys F V).prog (shapeProgress F V) K cap i
+    (fun r => (Sys F V).Healthy (shapeProgress F V).toExternal K gst r ∧
+      (Sys F V).prog (shapeProgress F V) K cap i
       ((Sys F V).ready K gst r) ((Sys F V).pt r).horizon r)
     fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g ((Sys F V).heal K cap i gst r)
       (K.params.latency cap i)
   /-- Sleepy safety of an available or stable chain, for ready readers. -/
   sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
-    (Sys F V).Holds ((Sys F V).Sleepy K) fun r =>
+    (Sys F V).Holds ((Sys F V).Sleepy (shapeProgress F V).toExternal K) fun r =>
       (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g 0
   /-- Sleepy liveness, with progress on the whole run. -/
   sleepyLive : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
     ∀ i : K.Idx, (Sys F V).Holds
-      (fun r => (Sys F V).Sleepy K r ∧ (Sys F V).prog (shapeProgress F V) K cap i 0
+      (fun r => (Sys F V).Sleepy (shapeProgress F V).toExternal K r ∧
+        (Sys F V).prog (shapeProgress F V) K cap i 0
         ((Sys F V).pt r).horizon r)
       fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g 0 (K.params.latency cap i)
   /-- Healed safety: healthy from `gst` with progress on `[ready, heal]`,
   ready readers are safe from the heal point. -/
   healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
     ∀ (i : K.Idx) (gst : Time), (Sys F V).Holds
-      (fun r => (Sys F V).Healthy K gst r ∧ (Sys F V).prog (shapeProgress F V) K cap i
+      (fun r => (Sys F V).Healthy (shapeProgress F V).toExternal K gst r ∧
+        (Sys F V).prog (shapeProgress F V) K cap i
         ((Sys F V).ready K gst r) ((Sys F V).heal K cap i gst r) r)
       fun r => (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g ((Sys F V).heal K cap i gst r)
   /-- Outage resilience of the stable chain, into the resilience target. -/

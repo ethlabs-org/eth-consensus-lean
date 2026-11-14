@@ -78,15 +78,15 @@ variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type} {S : System V}
 
 /- M1: the healed regime requires every honest validator awake to the horizon
 ("stay in recovery"); a run that leaves it is outside the regime. -/
-omit [DecidableEq V] in
-theorem m1_healthy_awake_to_horizon (r : S.Run) (g : Time) (h : S.Healthy K g r) :
+theorem m1_healthy_awake_to_horizon (r : S.Run) (g : Time) (h : S.Healthy X.toExternal K g r) :
     (S.pt r).HealthyOn K.params.β g (S.pt r).horizon := h.2.1
 
 /- M4: partially synchronous safety and liveness are mandated: they are
 fields of the fixed behaviour table (liveness for every provided output). -/
 theorem m4_psync_live_mandated (h : CorrectProtocol S X K) (cap : Capability) (g : S.schema.Id)
     (hg : S.schema.output cap = some g) (i : K.Idx) (gst : Time) :
-    S.Holds (fun r => S.Healthy K gst r ∧ S.prog X K cap i (S.ready K gst r) (S.pt r).horizon r)
+    S.Holds (fun r => S.Healthy X.toExternal K gst r ∧
+        S.prog X K cap i (S.ready K gst r) (S.pt r).horizon r)
       (fun r => (S.trace r).TxLive (S.cDur K r) g (S.heal K cap i gst r) (S.lat K cap i r)) :=
   h.behaviour.healthyLive cap g hg i gst
 
@@ -98,12 +98,11 @@ theorem m5_final_agree (h : CorrectProtocol S X K) {g : S.schema.Id} (hg : S.sch
 
 /- M21: the healthy regime bounds the faults below `β ≤ α`, so final
 safety holds there. -/
-omit [DecidableEq V] in
-theorem m21_healthy_faults_below (r : S.Run) (g : Time) (h : S.Healthy K g r) :
+theorem m21_healthy_faults_below (r : S.Run) (g : Time) (h : S.Healthy X.toExternal K g r) :
     (S.pt r).FaultsBelow K.params.β := h.2.1.faultsBelow
 
 theorem m21_final_safe_healthy (h : CorrectProtocol S X K) {g : S.schema.Id} (hg : S.schema.output .final = some g) (r : S.Run)
-    (hv : S.Valid r) {gst : Time} (hH : S.Healthy K gst r) :
+    (hv : S.Valid r) {gst : Time} (hH : S.Healthy X.toExternal K gst r) :
     (S.trace r).Safe g 0 ∨ S.Excuse r :=
   h.final_safe_healthy hg r hv hH
 
@@ -111,7 +110,7 @@ theorem m21_final_safe_healthy (h : CorrectProtocol S X K) {g : S.schema.Id} (hg
 accountability for every honest reader, unconditionally. -/
 theorem m24_sleepy_ready_safe (h : CorrectProtocol S X K) (cap : Capability) (g : S.schema.Id)
     (hc : cap = .available ∨ cap = .stable) (hg : S.schema.output cap = some g) :
-    S.Holds (S.Sleepy K) (fun r => (S.trace r).ReadySafe (S.cDur K r) g 0) :=
+    S.Holds (S.Sleepy X.toExternal K) (fun r => (S.trace r).ReadySafe (S.cDur K r) g 0) :=
   h.behaviour.sleepySafe cap g hc hg
 
 theorem m24_final_accountable (h : CorrectProtocol S X K) {g : S.schema.Id} (hg : S.schema.output .final = some g) :

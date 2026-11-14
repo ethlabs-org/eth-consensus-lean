@@ -34,7 +34,8 @@ structure HealthyPreparationQuery where
   gst : Time
   valid : (Sys (goldilocksWith ⟨S, stock⟩) V).Valid run
   noCollision : ¬ run.2.HashCollision
-  healthy : (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy (K S A) gst run
+  healthy : (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy
+      (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) gst run
 
 namespace HealthyPreparationQuery
 variable {S A V}

@@ -19,7 +19,7 @@ theorem regimes_realizable (F : ChainShapeFamily O Info) (K : Contract ProgressR
   refine ⟨fun cap i Δ ΔF hΔ1 hΔF1 => ?_, fun cap i Δ ΔF g hΔ1 hΔF1 hr hg => ?_,
     fun cap hc ho => ?_, fun Δ ΔF k hΔ1 hΔF1 => ?_,
     fun cap ho Δ ΔF g hΔ1 hΔF1 hr hg => ?_, ?_, ?_, ?_⟩
-  · obtain ⟨rho, -, -, hw, hs, hp, hpa, ht⟩ := sleepy_witness key hn (zero_lt_one.trans hΔ1)
+  · obtain ⟨rho, -, hw, hs, hp, hpa, ht⟩ := sleepy_witness key hn (zero_lt_one.trans hΔ1)
       (zero_lt_one.trans hΔF1) _ ha hΔ1 hΔF1 hf cap i le_rfl
     exact ⟨⟨_, rho⟩, ⟨hw, by change rho.point.env.ΔAC = Δ; rw [Model.Run.point, realPoint_env],
       by change rho.point.env.ΔFG = ΔF; rw [Model.Run.point, realPoint_env]⟩, ⟨hs, hp, ht⟩, hpa⟩
@@ -33,7 +33,7 @@ theorem regimes_realizable (F : ChainShapeFamily O Info) (K : Contract ProgressR
       have hg := le_max_right g 0
       have : (0 : Time) ≤ (K.params.catchUp : Time) * Δ := mul_nonneg (by positivity) hΔ.le
       linarith only [hg, this]
-    obtain ⟨rho, -, -, hw, he, hs, hp, hpa, ht, hsa⟩ := healthy_witness key hn hΔ hΔF
+    obtain ⟨rho, -, hw, he, hs, hp, hpa, ht, hsa⟩ := healthy_witness key hn hΔ hΔF
       ((max g 0 + (K.params.heal cap i : Time) * Δ) +
         (max g 0 + (K.params.catchUp : Time) * Δ + 1) + (K.params.latency cap i : Time) * Δ +
         progLen F K cap i (⟨Δ, hΔ, ΔF, hΔF, allAwake⟩ : Env V) + Δ + 2) ha hΔ1 hΔF1 hf cap i g hr
@@ -44,7 +44,7 @@ theorem regimes_realizable (F : ChainShapeFamily O Info) (K : Contract ProgressR
       ⟨he, hs, hp, ht⟩, hsa, hpa⟩
   · obtain ⟨i, hi⟩ := ht cap ho (Fintype.card V)
     refine ⟨i, fun Δ ΔF hΔ1 hΔF1 => ?_⟩
-    obtain ⟨rho, -, -, hw, hs, hp, hpa, hl, hb⟩ :=
+    obtain ⟨rho, -, hw, hs, hp, hpa, hl, hb⟩ :=
       sleepyStress_witness key hn (zero_lt_one.trans hΔ1) (zero_lt_one.trans hΔF1) _ ha hΔ1 hΔF1
         hf cap i hi le_rfl
     exact ⟨⟨_, rho⟩, ⟨hw, by change rho.point.env.ΔAC = Δ; rw [Model.Run.point, realPoint_env],
@@ -75,14 +75,17 @@ theorem regimes_realizable (F : ChainShapeFamily O Info) (K : Contract ProgressR
       have hg := le_max_right g 0
       have : (0 : Time) ≤ (K.params.catchUp : Time) * Δ := mul_nonneg (by positivity) hΔ.le
       linarith only [hg, this]
-    obtain ⟨sel, hsel, hprog, hbad⟩ := bad_selection key hn hΔ hΔF
+    obtain ⟨key', z, hz, hk1, hgood⟩ :=
+      exists_witness_key key hn (extremalCommittee F (⟨Δ, hΔ, ΔF, hΔF, allAwake⟩ : Env V))
+    obtain ⟨sel, hsel, hduty, hprog, hbad⟩ := bad_selection key hn hΔ hΔF
       ((max g 0 + (K.params.heal cap i : Time) * Δ) +
         (max g 0 + (K.params.catchUp : Time) * Δ + 1) + (K.params.latency cap i : Time) * Δ +
         progLen F K cap i (⟨Δ, hΔ, ΔF, hΔF, allAwake⟩ : Env V) + Δ + 2) allAwake
-        (fun _ => allAwake_apply _ _)
+        (fun _ => allAwake_apply _ _) key' z hz hk1
         hf cap i hi
     obtain ⟨rho, hpt, hk, hs, hw, he, hs', hp, hpa, ht', -⟩ :=
-      healthy_witness_sel key hn hΔ hΔF _ ha hΔ1 hΔF1 cap i g sel hsel hprog hr
+      healthy_witness_sel key hn hΔ hΔF _ ha hΔ1 hΔF1 cap i g key' sel hsel hduty
+        (by rw [realPoint_env]; exact hgood) hprog hr
         (by linarith only [hheal, hrdy, hlat, hL, hΔ])
         (by linarith only [hheal, hrdy, hlat, hL, hΔ])
         (by linarith only [hheal, hrdy, hlat, hL, hΔ])
@@ -92,18 +95,18 @@ theorem regimes_realizable (F : ChainShapeFamily O Info) (K : Contract ProgressR
       ⟨he, hs', hp, ht'⟩, hpa,
       hbad rho hs hk (congrArg EnvPoint.faultyAt hpt)⟩
   · intro cap i Δ ΔF hΔ hΔF
-    obtain ⟨r, hv, hnexc, hAC, hFG, he, hs, -, hp, hl, hgrowth, hpa⟩ :=
+    obtain ⟨r, hv, hnexc, hAC, hFG, he, hs, hcs, -, -, hp, hl, hgrowth, hpa⟩ :=
       growing_live_witness F K key hn ha hf cap i Δ ΔF 0 0 0 hΔ hΔF
     exact ⟨r, hv, hnexc, hAC, hFG,
-      ⟨⟨he.psync le_rfl (by rwa [hAC]) (by rwa [hFG]), hs⟩, hp, hl⟩, hgrowth, hpa⟩
+      ⟨⟨he.psync le_rfl (by rwa [hAC]) (by rwa [hFG]), hs, hcs⟩, hp, hl⟩, hgrowth, hpa⟩
   · intro cap i Δ ΔF g hΔ hΔF hr hg
-    obtain ⟨r, hv, hnexc, hAC, hFG, he, -, hh, hp, hl, hgrowth, hpa⟩ :=
+    obtain ⟨r, hv, hnexc, hAC, hFG, he, -, -, hh, hch, hp, hl, hgrowth, hpa⟩ :=
       growing_live_witness F K key hn ha hf cap i Δ ΔF g
         (max g 0 + (K.params.heal cap i : Time) * Δ)
         (max g 0 + (K.params.catchUp : Time) * Δ + 1) hΔ hΔF
     rw [← hAC] at hr
     exact ⟨r, hv, hnexc, hAC, hFG,
-      ⟨he, ⟨he.psync le_rfl (by rwa [hAC]) (by rwa [hFG]), hh, by rwa [hFG]⟩,
+      ⟨he, ⟨he.psync le_rfl (by rwa [hAC]) (by rwa [hFG]), hh, by rwa [hFG], hch⟩,
         by simpa only [System.ready, System.cDur, hAC] using hp,
         by simpa only [System.heal, hAC] using hl⟩,
       by simpa only [System.heal, hAC] using hgrowth,

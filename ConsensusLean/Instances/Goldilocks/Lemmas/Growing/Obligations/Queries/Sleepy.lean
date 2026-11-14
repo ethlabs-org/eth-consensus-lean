@@ -32,7 +32,8 @@ theorem sleepyOn_of_duration (p : EnvPoint V) {c d W a b : Time} (hcd : c ≤ d)
 
 /-- The finite sleepy service through the query deadline. -/
 theorem sleepy_query_sync_at (Q : ConfirmedQueryAt S A V)
-    (hsleepy : (Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy (K S A) Q.run) :
+    (hsleepy : (Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy
+        (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) Q.run) :
     Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.deadline :=
   sleepyServiceBefore_of_syncUntil_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
     (noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision) Q.bounded
@@ -40,10 +41,11 @@ theorem sleepy_query_sync_at (Q : ConfirmedQueryAt S A V)
 
 /-- The two sleepy count shapes through the query deadline. -/
 theorem sleepy_query_bounds_at (Q : ConfirmedQueryAt S A V)
-    (hsleepy : (Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy (K S A) Q.run) :
+    (hsleepy : (Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy
+        (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) Q.run) :
     Compose.Growing.SleepyBoundsFrom Q.trace Q.keys 0 Q.deadline :=
   sleepy_bounds_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.bounded (fun t ht htb =>
-    sleepyOn_of_duration V _ (confirmed_duration_supply_at S A V Q) hsleepy.2 t ht
+    sleepyOn_of_duration V _ (confirmed_duration_supply_at S A V Q) hsleepy.2.1 t ht
       (htb.trans Q.bounded))
     (add_nonneg (Compose.Growing.ts_natCast_nonneg 0) Q.params.toParams.hΔ.le) (le_max_right _ _)
 
@@ -81,7 +83,8 @@ theorem sleepy_query_producer_at (Q : ConfirmedQueryAt S A V) {ready : Time}
 
 /-- A confirmed proposal with its sleepy service inputs. -/
 theorem sleepy_serviced_proposal_supply_at (Q : ConfirmedQueryAt S A V)
-    (hsleepy : (Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy (K S A) Q.run)
+    (hsleepy : (Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy
+        (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) Q.run)
     (hprogress : (Sys (goldilocksWith ⟨S, stock⟩) V).prog
       (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
       Q.cap Q.index 0 Q.run.2.horizon Q.run)

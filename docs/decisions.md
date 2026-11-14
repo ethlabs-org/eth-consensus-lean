@@ -336,6 +336,17 @@ detail in `TRUST.md`.
   The clause is vacuous at empty selections; at a population-wide selection with `committeeAhead ≤ ahead` it
   follows from the population clause, so a protocol without a participation role meets exactly the population
   regime at such numbers.
+- **Committee clauses of the sleepy and healthy regimes.** Sleepy retains its population participation condition
+  and adds the same condition inside selected committees, without look-back and with the committee look-ahead.
+  Healthy retains the population fault fraction β and uses the contract fraction βK for each nonempty committee
+  selected from GST onward, charging faults at the horizon. Correctness statements are parameterized; instances
+  supply their concrete fractions. Admissible pins βK = ½ and requires β ≤ βK. The pin excludes a faulty committee
+  majority; βK stays a parameter because correctness is meant to allow non-optimal protocols later, with optimal
+  fault tolerance stated separately. β ≤ βK relates population to committee: it makes the population bound imply
+  the committee bound at full selection. Without it every β in (½, 1] would be admissible, and Healthy at full
+  selection would be strictly stronger there than the population Healthy. Population thresholds serve population
+  claims; committee bounds serve committee-counted claims. Full selection preserves Healthy for admissible
+  contracts. The standard and Goldilocks values β = ⅓ and βK = ½ satisfy these conditions.
 - **Node-level regime rows.** The node-level rows R.1, R.2, R.7 and R.8 (`Milestones/Statements/Regimes/{Sleepy,
   Always}`) are proved milestones, and the obligations proof uses their definitions. The node-level rows R.3–R.6
   (healed, final, outage, weak continuation) are not stated: R.3–R.5 correspond to the generic rows `healedSafe`,

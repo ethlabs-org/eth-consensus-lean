@@ -145,7 +145,7 @@ abbrev ctrlK : Contract ProgressReq where
 theorem ctrlK_admissible : ctrlK.params.Admissible := by
   have h := Params.standard_admissible (Idx := ℕ+) (catchUp := 1) (lag := 1) (budget := 1)
     (heal := fun _ _ => 1) (latency := fun _ _ => 1) le_rfl le_rfl
-  exact ⟨h.1, h.2, h.3, h.4, h.5, h.6⟩
+  exact ⟨h.1, h.2, h.3, h.4, h.5, h.6, h.7, h.8⟩
 
 theorem ctrlK_progressFits : ProgressFits ctrlK ctrlFamily := by
   intro cap k pub
@@ -194,14 +194,15 @@ theorem progLen_nonneg' (cap : Capability) :
 /-- **Positive controls** (sleepy, and healthy at GST `5` with a log silent
 before `5`), for every capability at index `1`. -/
 theorem positive_controls (cap : Capability) :
-    (∃ r : S.Run, S.pt r = ptA ∧ S.Witness r ∧ S.Sleepy ctrlK r ∧
+    (∃ r : S.Run, S.pt r = ptA ∧ S.Witness r ∧ S.Sleepy X.toExternal ctrlK r ∧
       S.prog X ctrlK cap k1 0 (S.pt r).horizon r ∧ ProgressActive ctrlFamily ctrlK cap k1 0 r.2 ∧
       (S.pt r).TxLiveActive (S.cDur ctrlK r) 0 (S.lat ctrlK cap k1 r) ∧
       ∃ x, ∃ w ∈ r.2.point.honestAt 0, (∀ τ, x ∉ r.2.submit w τ) ∧
         ∃ τ, 0 ≤ τ ∧ x ∈ r.2.relay w τ) ∧
     (∃ r : S.Run, S.pt r = ptA ∧ S.Witness r ∧
       (∀ w m t, (S.log r).recv w m t → 5 ≤ t) ∧ (S.log r).EagerFrom (S.pt r) 5 ∧
-      S.Healthy ctrlK 5 r ∧ S.prog X ctrlK cap k1 (S.ready ctrlK 5 r) (S.pt r).horizon r ∧
+      S.Healthy X.toExternal ctrlK 5 r ∧
+      S.prog X ctrlK cap k1 (S.ready ctrlK 5 r) (S.pt r).horizon r ∧
       ProgressActive ctrlFamily ctrlK cap k1 (S.ready ctrlK 5 r) r.2 ∧
       (S.pt r).TxLiveActive (S.cDur ctrlK r) (S.heal ctrlK cap k1 5 r) (S.lat ctrlK cap k1 r) ∧
       SafeActive (S.cDur ctrlK r) (S.heal ctrlK cap k1 5 r) (S.pt r)) := by
@@ -209,7 +210,7 @@ theorem positive_controls (cap : Capability) :
   have hL0 := progLen_nonneg' cap
   have hlat : (ctrlK.params.latency cap k1 : Time) * 2 = 2 := by cases cap <;> rfl
   constructor
-  · obtain ⟨rho, hpt, -, hw, hs, hp, hpa, ht⟩ :=
+  · obtain ⟨rho, hpt, hw, hs, hp, hpa, ht⟩ :=
       sleepy_witness (F := ctrlFamily) key5 card5 two_pos two_pos 40 ctrlK_admissible
         (by norm_num) (by norm_num) ctrlK_progressFits cap k1 (by rw [hlat]; linarith)
     refine ⟨⟨_, rho⟩, hpt, hw, hs, hp, hpa, ht, ?_⟩
@@ -220,7 +221,7 @@ theorem positive_controls (cap : Capability) :
   · have hheal : max (5 : Time) 0 + (ctrlK.params.heal cap k1 : Time) * 2 = 7 := by
       cases cap <;> rfl
     have hrdy : max (5 : Time) 0 + (ctrlK.params.catchUp : Time) * 2 + 1 = 8 := by decide
-    obtain ⟨rho, hpt, -, hw, he, hH, hp, hpa, ht, hsa⟩ :=
+    obtain ⟨rho, hpt, hw, he, hH, hp, hpa, ht, hsa⟩ :=
       healthy_witness (F := ctrlFamily) key5 card5 two_pos two_pos 40 ctrlK_admissible
         (by norm_num) (by norm_num) ctrlK_progressFits cap k1 5
         (le_mul_of_one_le_left zero_le_two (by exact_mod_cast ctrlK.params.fgDelay.pos))

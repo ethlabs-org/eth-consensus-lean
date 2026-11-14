@@ -478,7 +478,7 @@ sleepy-live. -/
 theorem stable_alias_final_sleepy_live (h : CorrectProtocol S X K) {g : S.schema.Id}
     (hs : S.schema.output .stable = some g) (_hf : S.schema.output .final = some g)
     (i : K.Idx) :
-    S.Holds (fun r => S.Sleepy K r ∧ S.prog X K .stable i 0 (S.pt r).horizon r)
+    S.Holds (fun r => S.Sleepy X.toExternal K r ∧ S.prog X K .stable i 0 (S.pt r).horizon r)
       (fun r => (S.trace r).TxLive (S.cDur K r) g 0 (S.lat K .stable i r)) :=
   h.behaviour.sleepyLive .stable g (Or.inr rfl) hs i
 

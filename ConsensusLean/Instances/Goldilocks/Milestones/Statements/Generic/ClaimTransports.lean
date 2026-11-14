@@ -52,7 +52,8 @@ No claim is made that every witness of either old supplier is admissible. -/
 structure ProposalWitnessRefinement (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) : Prop where
   sleepy : rho.ExecutionValid → ∀ cap idx t,
-    (cap = .available ∨ cap = .stable) → (Sys F V).Sleepy K ⟨E, rho⟩ →
+    (cap = .available ∨ cap = .stable) →
+    (Sys F V).Sleepy (shapeProgress F V).toExternal K ⟨E, rho⟩ →
     (Sys F V).prog (shapeProgress F V) K cap idx 0 rho.horizon ⟨E, rho⟩ →
     0 ≤ t → t + (K.params.latency cap idx : Time) * E.ΔAC ≤ rho.horizon →
     (∃ v, rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩) v
@@ -61,7 +62,8 @@ structure ProposalWitnessRefinement (M : RunMap rho payload) (K : Contract Progr
       M.trace.time k + C.margin ≤ t + (K.params.latency cap idx : Time) * E.ΔAC ∧
       AdmissibleProposal M K C B k
   healthy : rho.ExecutionValid → ∀ cap idx gst t,
-    (cap = .available ∨ cap = .stable) → (Sys F V).Healthy K gst ⟨E, rho⟩ →
+    (cap = .available ∨ cap = .stable) →
+    (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
     (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K gst ⟨E, rho⟩)
       rho.horizon ⟨E, rho⟩ →
     (Sys F V).heal K cap idx gst ⟨E, rho⟩ ≤ t →
@@ -99,7 +101,7 @@ of FinalWindowSupply. Every Premises field, including service, snapshot, noResta
 catch-up, slot arithmetic and nonempty, must be independently discharged. -/
 def DeadlinePremisesSupply (M : RunMap rho payload) (K : Contract ProgressReq) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ idx gst query,
-    (Sys F V).Healthy K gst ⟨E, rho⟩ →
+    (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
     (Sys F V).prog (shapeProgress F V) K .final idx ((Sys F V).ready K gst ⟨E, rho⟩)
       rho.horizon ⟨E, rho⟩ →
     (Sys F V).heal K .final idx gst ⟨E, rho⟩ ≤ query →
@@ -178,7 +180,8 @@ SUFFICIENCY TARGET for all advertised progress forms. -/
 def ActualResetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ cap idx gst,
-  (cap = .available ∨ cap = .stable) → (Sys F V).Healthy K gst ⟨E, rho⟩ →
+  (cap = .available ∨ cap = .stable) →
+  (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
   (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K gst ⟨E, rho⟩)
     ((Sys F V).heal K cap idx gst ⟨E, rho⟩) ⟨E, rho⟩ →
   (Sys F V).heal K cap idx gst ⟨E, rho⟩ ≤ rho.horizon →
@@ -191,7 +194,7 @@ premises. NEW UNRESOLVED SUFFICIENCY TARGET at the same full run and horizon. -/
 def HighCanonicalSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ gst a,
-  (Sys F V).Healthy K gst ⟨E, rho⟩ →
+  (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
   C.healing.Run M.proposer M.digest M.honest M.trace →
   Premises M.trace M.honest M.proposer M.digest M.signer gst E.ΔFG rho.horizon →
   Healing.Growing.IsReset M.trace M.honest gst a → a ≤ rho.horizon →
@@ -202,7 +205,8 @@ Healthy/PreparationReset and Generic/Obligations.Premises. NEW UNRESOLVED
 SUFFICIENCY TARGET; final-query DeadlinePremisesSupply cannot supply this row. -/
 def PreparationPremisesSupply (M : RunMap rho payload) (K : Contract ProgressReq) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ cap idx gst,
-  (cap = .available ∨ cap = .stable) → (Sys F V).Healthy K gst ⟨E, rho⟩ →
+  (cap = .available ∨ cap = .stable) →
+  (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
   (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K gst ⟨E, rho⟩)
     ((Sys F V).heal K cap idx gst ⟨E, rho⟩) ⟨E, rho⟩ →
   (Sys F V).heal K cap idx gst ⟨E, rho⟩ ≤ rho.horizon →
@@ -215,7 +219,8 @@ separate from ActualResetSupply avoids asserting that every possible reset is ea
 def ResetHealBudgetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ cap idx gst,
-  (cap = .available ∨ cap = .stable) → (Sys F V).Healthy K gst ⟨E, rho⟩ →
+  (cap = .available ∨ cap = .stable) →
+  (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
   (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K gst ⟨E, rho⟩)
     ((Sys F V).heal K cap idx gst ⟨E, rho⟩) ⟨E, rho⟩ →
   (Sys F V).heal K cap idx gst ⟨E, rho⟩ ≤ rho.horizon →
@@ -281,7 +286,8 @@ No ReadySafe or chain-prefix conclusion is hidden in this interface. -/
 def HealedReadAncestry (M : RunMap rho payload) (K : Contract ProgressReq)
     (R : StoredReadContext M) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ cap idx gst,
-  (cap = .available ∨ cap = .stable) → (Sys F V).Healthy K gst ⟨E, rho⟩ →
+  (cap = .available ∨ cap = .stable) →
+  (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
   (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K gst ⟨E, rho⟩)
     ((Sys F V).heal K cap idx gst ⟨E, rho⟩) ⟨E, rho⟩ →
   0 ≤ (Sys F V).heal K cap idx gst ⟨E, rho⟩ →

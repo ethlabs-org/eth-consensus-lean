@@ -76,7 +76,6 @@ public import ConsensusLeanTest.Goldilocks.Mirror.Node
 public import ConsensusLeanTest.Goldilocks.Mirror.Setup
 public import ConsensusLeanTest.Goldilocks.NodeEngine
 public import ConsensusLeanTest.Goldilocks.NodeEngineTrace
-public import ConsensusLeanTest.Goldilocks.VoteBinding
 public import ConsensusLeanTest.Goldilocks.Persist.Premises
 public import ConsensusLeanTest.Goldilocks.Persist.RecentSource
 public import ConsensusLeanTest.Goldilocks.Refinement.Constant
@@ -126,12 +125,14 @@ public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.SA
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Step
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Sync
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.World
+public import ConsensusLeanTest.Goldilocks.VoteBinding
 public import ConsensusLeanTest.GrowingAC
 public import ConsensusLeanTest.Index
 public import ConsensusLeanTest.MilestoneAxioms
 public import ConsensusLeanTest.Model.Basic
 public import ConsensusLeanTest.Model.Growth
 public import ConsensusLeanTest.Model.Lift
+public import ConsensusLeanTest.Problem.CommitteeRegimes
 public import ConsensusLeanTest.Problem.Continuation
 public import ConsensusLeanTest.Problem.CorrectProtocol
 public import ConsensusLeanTest.Problem.Growth

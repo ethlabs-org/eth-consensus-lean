@@ -66,7 +66,7 @@ def ResetProgressSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     (healing : ACHealing A M.signer) : Prop :=
   rho.ExecutionValid → ∀ cap idx g,
     (cap = .available ∨ cap = .stable) →
-    (Sys F V).Healthy K g ⟨E, rho⟩ →
+    (Sys F V).Healthy (shapeProgress F V).toExternal K g ⟨E, rho⟩ →
     (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K g ⟨E, rho⟩)
       ((Sys F V).heal K cap idx g ⟨E, rho⟩) ⟨E, rho⟩ →
     (Sys F V).heal K cap idx g ⟨E, rho⟩ ≤ rho.horizon →
@@ -80,7 +80,8 @@ by the fixed contract, including notReadyAtMost and nonsingle recurrence pattern
 def ProposalBudgetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     (catchUp hold margin : Time) : Prop :=
   rho.ExecutionValid → ∀ cap idx g t,
-    (cap = .available ∨ cap = .stable) → (Sys F V).Healthy K g ⟨E, rho⟩ →
+    (cap = .available ∨ cap = .stable) →
+    (Sys F V).Healthy (shapeProgress F V).toExternal K g ⟨E, rho⟩ →
     (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K g ⟨E, rho⟩)
       rho.horizon ⟨E, rho⟩ →
     (Sys F V).heal K cap idx g ⟨E, rho⟩ ≤ t →
@@ -94,7 +95,8 @@ def ProposalBudgetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
 def SleepyProposalBudgetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     (catchUp hold margin : Time) : Prop :=
   rho.ExecutionValid → ∀ cap idx t,
-    (cap = .available ∨ cap = .stable) → (Sys F V).Sleepy K ⟨E, rho⟩ →
+    (cap = .available ∨ cap = .stable) →
+    (Sys F V).Sleepy (shapeProgress F V).toExternal K ⟨E, rho⟩ →
     (Sys F V).prog (shapeProgress F V) K cap idx 0 rho.horizon ⟨E, rho⟩ →
     0 ≤ t → t + (K.params.latency cap idx : Time) * E.ΔAC ≤ rho.horizon →
     (∃ v, rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩) v
@@ -140,7 +142,7 @@ No spacing follows merely from the timeout, and no gap or latency is enlarged he
 def FinalWindowSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     (healing : ACHealing A M.signer) (catchUp hold : Time) : Prop :=
   rho.ExecutionValid → ∀ idx g t,
-    (Sys F V).Healthy K g ⟨E, rho⟩ →
+    (Sys F V).Healthy (shapeProgress F V).toExternal K g ⟨E, rho⟩ →
     (Sys F V).prog (shapeProgress F V) K .final idx ((Sys F V).ready K g ⟨E, rho⟩)
       rho.horizon ⟨E, rho⟩ →
     (Sys F V).heal K .final idx g ⟨E, rho⟩ ≤ t →

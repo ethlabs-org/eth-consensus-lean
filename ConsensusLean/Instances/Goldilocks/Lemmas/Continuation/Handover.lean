@@ -7,7 +7,8 @@ public section
 /-! # The hand-over regime (generic facts)
 
 Facts about `System.Handover` that the continuation proof reads: a hand-over at or after the
-horizon is the healthy regime (`Handover.healthy`); full participation on `[max g 0, T]` extends
+horizon meets the population part of the healthy regime (`Handover.healthy`); full participation
+on `[max g 0, T]` extends
 the sleepy budget at `T` back to `ready g` (`Handover.sleepyOn_from_ready`); at `θ = ½` and
 `β ≤ ½`, fewer than half of the validators are compromised at every time up to the horizon
 (`Handover.two_faults_lt`). -/
@@ -60,13 +61,15 @@ private theorem aheadDur_nonneg (K : Contract Prog) (r : S.Run) : 0 ≤ S.aheadD
   mul_nonneg (Nat.cast_nonneg _) (S.pt r).env.ΔAC_pos.le
 
 omit [DecidableEq V] in
-/-- A hand-over at or after the horizon is the healthy regime: faults only grow, so the fault
-bound at `T` bounds the faults at the horizon, and the awake window `[max g 0, horizon]` lies in
-`[max g 0, T]`. -/
+/-- A hand-over at or after the horizon meets the population part of the healthy regime: faults
+only grow, so the fault bound at `T` bounds the faults at the horizon, and the awake window
+`[max g 0, horizon]` lies in `[max g 0, T]`. The committee clause of `System.Healthy` is not
+part of the hand-over. -/
 theorem Handover.healthy {K : Contract Prog} {g T : Time} {r : S.Run}
-    (h : S.Handover K g T r) (hT : (S.pt r).horizon ≤ T) : S.Healthy K g r := by
+    (h : S.Handover K g T r) (hT : (S.pt r).horizon ≤ T) :
+    (S.log r).PSync (S.pt r) g ∧ (S.pt r).HealthyOn K.params.β g (S.pt r).horizon ∧
+      (S.pt r).env.ΔFG ≤ (K.params.fgDelay : Time) * (S.pt r).env.ΔAC := by
   obtain ⟨hnet, ⟨hf, haw⟩, hΔ, -, -⟩ := h
-  unfold System.Healthy
   refine ⟨hnet, ⟨lt_of_le_of_lt ?_ hf, fun v t hg ht => haw v t hg (ht.trans hT)⟩, hΔ⟩
   exact_mod_cast Finset.card_le_card ((S.pt r).faultyAt_mono hT)
 

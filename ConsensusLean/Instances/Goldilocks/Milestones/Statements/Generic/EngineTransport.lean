@@ -36,10 +36,11 @@ structure ServiceTransport (M : RunMap rho payload) : Prop where
 
 structure RegimeTransport (M : RunMap rho payload) (K : Contract ProgressReq)
     (look : Time) : Prop where
-  sleepy : rho.ExecutionValid → ¬ rho.HashCollision → (Sys F V).Sleepy K ⟨E, rho⟩ →
+  sleepy : rho.ExecutionValid → ¬ rho.HashCollision →
+    (Sys F V).Sleepy (shapeProgress F V).toExternal K ⟨E, rho⟩ →
     M.trace.SleepyPrefixAt M.honest E.ΔFG look rho.horizon
   healthy : rho.ExecutionValid → ¬ rho.HashCollision → ∀ g,
-    (Sys F V).Healthy K g ⟨E, rho⟩ →
+    (Sys F V).Healthy (shapeProgress F V).toExternal K g ⟨E, rho⟩ →
     M.trace.GSTRunAt M.honest E.ΔFG g ∧
     (∀ y t, max g 0 ≤ t → t ≤ rho.horizon → y ∈ M.honest t → M.trace.awake y t) ∧
     (∀ t, 0 ≤ t → t ≤ rho.horizon → 3 * (M.honest t)ᶜ.ncard ≤ P.n - 1)
@@ -50,7 +51,8 @@ structure ProposalProgressTransport (M : RunMap rho payload) (K : Contract Progr
     (healing : ACHealing A M.signer)
     (catchUp hold margin : Time) : Prop where
   sleepy : rho.ExecutionValid → ∀ cap idx t,
-    (cap = .available ∨ cap = .stable) → (Sys F V).Sleepy K ⟨E, rho⟩ →
+    (cap = .available ∨ cap = .stable) →
+    (Sys F V).Sleepy (shapeProgress F V).toExternal K ⟨E, rho⟩ →
     (Sys F V).prog (shapeProgress F V) K cap idx 0 rho.horizon ⟨E, rho⟩ →
     0 ≤ t → t + (K.params.latency cap idx : Time) * E.ΔAC ≤ rho.horizon →
     (∃ v, rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩) v
@@ -59,7 +61,7 @@ structure ProposalProgressTransport (M : RunMap rho payload) (K : Contract Progr
       M.trace.time k + margin ≤ t + (K.params.latency cap idx : Time) * E.ΔAC
   healthy : rho.ExecutionValid → ∀ cap idx gst t,
     (cap = .available ∨ cap = .stable) →
-    (Sys F V).Healthy K gst ⟨E, rho⟩ →
+    (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
     (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K gst ⟨E, rho⟩)
       rho.horizon ⟨E, rho⟩ →
     (Sys F V).heal K cap idx gst ⟨E, rho⟩ ≤ t →
@@ -69,7 +71,8 @@ structure ProposalProgressTransport (M : RunMap rho payload) (K : Contract Progr
     ∃ B k, t < M.trace.time k ∧ ReadyProposal M.trace M.honest catchUp hold B k ∧
       M.trace.time k + margin ≤ t + (K.params.latency cap idx : Time) * E.ΔAC
   healing_gap : rho.ExecutionValid → ∀ cap idx gst (recurrence : Recurrence),
-    (cap = .available ∨ cap = .stable) → (Sys F V).Healthy K gst ⟨E, rho⟩ →
+    (cap = .available ∨ cap = .stable) →
+    (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
     K.progress cap idx = .recur recurrence → recurrence.pattern = Pattern.single →
     (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K gst ⟨E, rho⟩)
       ((Sys F V).heal K cap idx gst ⟨E, rho⟩) ⟨E, rho⟩ →

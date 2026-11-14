@@ -136,7 +136,8 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type)
 Validity supplies nonnegative send times before converting PSync at zero. -/
 theorem sleepy_raw_syncUntil (r : (Sys (goldilocksWith ⟨S, stock⟩) V).Run)
     (hv : (Sys (goldilocksWith ⟨S, stock⟩) V).Valid r)
-    (hsleepy : (Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy (K S A) r) (b : Time) :
+    (hsleepy : (Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy
+        (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) r) (b : Time) :
     r.2.log.SyncUntil r.2.point b := by
   have hp : r.2.log.PSync r.2.point 0 := (Model.sysOf_delivers_iff _ _ _ _).mp hsleepy.1
   apply hp.syncUntil_zero ?_ b
@@ -160,10 +161,12 @@ structure ConfirmedQuery where
   valid : (Sys (goldilocksWith ⟨S, stock⟩) V).Valid run
   noCollision : ¬ run.2.HashCollision
   regime :
-    ((Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy (K S A) run ∧
+    ((Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy
+        (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) run ∧
       (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
         cap index 0 run.2.horizon run ∧ 0 ≤ query) ∨
-    ((Sys (goldilocksWith ⟨S, stock⟩) V).Healthy (K S A) gst run ∧
+    ((Sys (goldilocksWith ⟨S, stock⟩) V).Healthy
+        (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) gst run ∧
       (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
         cap index ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) run.2.horizon run ∧
       (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap index gst run ≤ query)

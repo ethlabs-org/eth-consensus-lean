@@ -16,8 +16,8 @@ The proved headline theorem is `goldilocksCorrect`. It says that Goldilocks is a
 
 | Regime | Network | Participation |
 |---|---|---|
-| sleepy | synchronous from the start | at every time `t`, *ready* validators still honest at `min (t + ahead·ΔAC) horizon` outnumber the validators compromised by then (Goldilocks proof target: `ahead = 5`); under constant faults, the faulty ones (a validator is ready after a short awake catch-up period) |
-| healthy | synchronous after a GST, and `ΔFG` is at most (4·`fgSlots` − 6)·`ΔAC` | fewer than *n*/3 faulty; every honest validator awake after the GST |
+| sleepy | synchronous from the start | at every time `t`, *ready* validators still honest at `min (t + ahead·ΔAC) horizon` outnumber the validators compromised by then, in the population and in every nonempty selected committee (no look-back) (Goldilocks proof target: `ahead = 5`); under constant faults, the faulty ones (a validator is ready after a short awake catch-up period) |
+| healthy | synchronous after a GST, and `ΔFG` is at most (4·`fgSlots` − 6)·`ΔAC` | fewer than *n*/3 faulty, and fewer than half of each committee selected after the GST, charged at the horizon; every honest validator awake after the GST |
 | outage | one bounded period of asynchrony | at every run time, η-sleepy participation (θ = ½) in the population and every nonempty committee selected in the look-back: validators ready with catch-up `max (19ΔAC) (η·ΔAC − 1)` outnumber faulty validators plus the other honest validators awake anywhere in the look-back, with faults charged at `min (t + 5ΔAC) horizon`; Goldilocks sets `η = 12k + 7`, and selection times are clamped at zero. Validators may fall asleep; readers retain catch-up `19ΔAC` |
 
 **The guarantees.** For Goldilocks, certified against a growing adversary (faults that only grow over a run); the constant-fault statements follow from these.

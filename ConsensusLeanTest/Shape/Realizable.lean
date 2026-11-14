@@ -211,7 +211,7 @@ safety active after the heal point. -/
 theorem healed_witness_late (h : Realizable S X K) (cap : Capability)
     (i : K.Idx) :
     ∃ r, S.Witness r ∧ (S.pt r).env.ΔAC = 7 ∧ (∀ w m t, (S.log r).recv w m t → 1000 ≤ t) ∧
-      S.Healthy K 1000 r ∧ 1000 ≤ S.heal K cap i 1000 r ∧
+      S.Healthy X.toExternal K 1000 r ∧ 1000 ≤ S.heal K cap i 1000 r ∧
       S.prog X K cap i (S.ready K 1000 r) (S.pt r).horizon r ∧
       (S.pt r).TxLiveActive (S.cDur K r) (S.heal K cap i 1000 r) (S.lat K cap i r) ∧
       SafeActive (S.cDur K r) (S.heal K cap i 1000 r) (S.pt r) := by
@@ -253,7 +253,8 @@ theorem healed_witness_late_control (cap : Capability) :
       ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).pt r).env.ΔAC = 7 ∧
       (∀ w m t, ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).log r).recv w m t →
         1000 ≤ t) ∧
-      (sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).Healthy ctrlK 1000 r ∧
+      (sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).Healthy
+        (shapeProgress ctrlFamily (Fin 5)).toExternal ctrlK 1000 r ∧
       SafeActive ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).cDur ctrlK r)
         ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).heal ctrlK cap (1 : ℕ+) 1000 r)
         ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).pt r) := by

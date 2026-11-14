@@ -112,6 +112,18 @@ theorem reject_theta : ¬ ({ std with θ := 3 / 5 } : Params Unit).Admissible :=
 theorem reject_beta : ¬ ({ std with β := 1 / 4 } : Params Unit).Admissible :=
   fun h => by have := h.β_range; norm_num at this
 
+/-- A committee fraction other than ½ (here a faulty committee majority) is rejected. -/
+theorem reject_betaK_majority : ¬ ({ std with βK := 3 / 5 } : Params Unit).Admissible :=
+  fun h => by have := h.βK_eq; norm_num at this
+
+/-- A committee fraction below the population fraction is rejected. -/
+theorem reject_betaK_below_population : ¬ ({ std with βK := 1 / 4 } : Params Unit).Admissible :=
+  fun h => by have := h.β_le_βK; norm_num [std, Params.standard] at this
+
+/-- The shared half boundary is admitted. -/
+theorem accept_beta_half : ({ std with β := 1 / 2, α := 1 / 2 } : Params Unit).Admissible := by
+  refine ⟨by decide, ?_, ?_, ?_, ?_, ?_, ?_, by decide⟩ <;> norm_num [std, Params.standard]
+
 /-- A cover above ½ is rejected (an `Admissible` range check only: no regime
 reads `cover`). -/
 theorem reject_cover : ¬ ({ std with cover := 3 / 5 } : Params Unit).Admissible :=

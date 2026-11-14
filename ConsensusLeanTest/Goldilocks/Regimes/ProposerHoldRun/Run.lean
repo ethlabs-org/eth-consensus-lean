@@ -218,22 +218,37 @@ theorem retain_readyAt {d : Time} (hd : 13 ≤ d) (c t : Time) :
 variable {S}
 
 /-- **The sleepy regime of the contract** (`PSync 0`, and `θ = ½` participation on the views
-retained through the look-ahead `ahead·ΔAC = 15`: three ready against two compromised). -/
+retained through the look-ahead `ahead·ΔAC = 15`: three ready against two compromised; the stock
+binding selects every validator, so the committee clause is the population one at the committee
+look-ahead `committeeAhead = ahead`). -/
 theorem run_sleepy (A : ContractAssumptions S) (C : ContractCoefficients) (h : Nat) :
-    (Sys (goldilocks S) (Fin 5)).Sleepy (holdContract A C h) (run S) := by
-  refine ⟨(Model.sysOf_delivers_iff (rho S) _ _ _).mpr (rho_psync S), ?_⟩
-  intro t ht0 ht
-  rw [show (Sys (goldilocks S) (Fin 5)).aheadDur (holdContract A C h) (run S) = 15 from rfl]
-  rw [run_pt] at ht ⊢
-  have hd : 13 ≤ EnvPoint.lookAhead ⟨env, faulty, faulty_mono, 41, fun _ _ => []⟩ 15 t := by
-    change 13 ≤ min (t + 15) 41
-    dsimp only [Time] at *
-    omega
-  unfold EnvPoint.ReadyAbove
-  rw [retain_readyAt hd]
-  simp only [EnvPoint.faultCount, EnvPoint.retain, faulty_of_ge hd]
-  change (1 / 2 : ℚ) * (_ + _) < _
-  norm_num [Finset.card_insert_of_notMem, Finset.mem_insert, Finset.mem_singleton]
+    (Sys (goldilocks S) (Fin 5)).Sleepy
+        (shapeProgress (goldilocks S) (Fin 5)).toExternal (holdContract A C h) (run S) := by
+  have hpop : ((Sys (goldilocks S) (Fin 5)).pt (run S)).SleepyOn (holdContract A C h).params.θ
+      ((Sys (goldilocks S) (Fin 5)).cDur (holdContract A C h) (run S))
+      ((Sys (goldilocks S) (Fin 5)).aheadDur (holdContract A C h) (run S)) 0
+      ((Sys (goldilocks S) (Fin 5)).pt (run S)).horizon := by
+    intro t ht0 ht
+    rw [show (Sys (goldilocks S) (Fin 5)).aheadDur (holdContract A C h) (run S) = 15 from rfl]
+    rw [run_pt] at ht ⊢
+    have hd : 13 ≤ EnvPoint.lookAhead ⟨env, faulty, faulty_mono, 41, fun _ _ => []⟩ 15 t := by
+      change 13 ≤ min (t + 15) 41
+      dsimp only [Time] at *
+      omega
+    unfold EnvPoint.ReadyAbove
+    rw [retain_readyAt hd]
+    simp only [EnvPoint.faultCount, EnvPoint.retain, faulty_of_ge hd]
+    change (1 / 2 : ℚ) * (_ + _) < _
+    norm_num [Finset.card_insert_of_notMem, Finset.mem_insert, Finset.mem_singleton]
+  refine ⟨(Model.sysOf_delivers_iff (rho S) _ _ _).mpr (rho_psync S), hpop, ?_⟩
+  have hsel : (shapeProgress (goldilocks S) (Fin 5)).toExternal.selected
+      ((Sys (goldilocks S) (Fin 5)).pt (run S)).env
+      ((shapeProgress (goldilocks S) (Fin 5)).toExternal.ext (run S)) = fun _ => Finset.univ :=
+    rfl
+  rw [hsel]
+  exact EnvPoint.EtaSleepyOn.committee_univ
+    (fun t ht hb => EnvPoint.etaReadyAbove_zero_iff.mpr (hpop t ht hb)) le_rfl
+    (by change (1 / 2 : ℚ) ≤ 1; norm_num) (by change (0 : ℚ) ≤ 1 / 2; norm_num)
 
 /-- The slot times of the run: slots of `4·ΔAC = 12`. -/
 theorem grid_slotTime (s : Nat) :

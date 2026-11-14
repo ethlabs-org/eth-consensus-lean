@@ -67,6 +67,10 @@ structure Params (Idx : Type) where
   θ : ℚ
   /-- Healthy fault bound: fewer than `β·n` faulty (`System.Healthy`). -/
   β : ℚ
+  /-- Healthy committee fault fraction (`System.Healthy`). Fixed at ½ by `Admissible` for now;
+  kept as a parameter because correctness is meant to allow non-optimal protocols later, with
+  optimal fault tolerance stated separately. -/
+  βK : ℚ
   /-- A cover fraction `cover·n`: read by no regime (the outage has no
   absolute participation premise); kept for `Admissible`. -/
   cover : ℚ
@@ -105,7 +109,7 @@ namespace Params
 
 variable {Idx : Type}
 
-/-- The standard thresholds `θ = ½`, `β = ⅓`, `cover = ½`, `α = ⅓`,
+/-- The standard thresholds `θ = ½`, `β = ⅓`, `βK = ½`, `cover = ½`, `α = ⅓`,
 look-back, look-aheads and recovery delay `0`, and FG delay bound `1` (an
 instance sets them with
 `{ standard … with η := k, recovery := D, fgDelay := r }`). -/
@@ -114,6 +118,7 @@ def standard (catchUp lag budget : Nat) (heal latency : Capability → Idx → N
   catchUp := catchUp
   θ := 1 / 2
   β := 1 / 3
+  βK := 1 / 2
   cover := 1 / 2
   α := 1 / 3
   lag := lag
@@ -125,14 +130,21 @@ def standard (catchUp lag budget : Nat) (heal latency : Capability → Idx → N
   fgDelay := 1
   ahead := 0
 
-/-- Admissible numbers: thresholds no stronger than standard (the healthy
-fault bound `β ≥ ⅓`: a larger `β` admits more faults, a weaker premise),
+/-- Admissible numbers: the pin `βK = ½` excludes a faulty committee majority, and `β ≤ βK`
+ensures the population bound implies the committee bound at full selection. `βK` is fixed at ½ by
+`Admissible` for now; kept as a parameter because correctness is meant to allow non-optimal
+protocols later, with optimal fault tolerance stated separately.
+For `θ`, `β` and `cover`, thresholds are no stronger than standard: smaller
+`θ` and `cover`, and larger `β`, weaken the regime premise.
+The remaining bounds require
 `β ≤ α` (so the healthy regime implies faults below the accountable
 fraction), a positive catch-up and a positive budget. -/
 structure Admissible (P : Params Idx) : Prop where
   catchUp_pos : 1 ≤ P.catchUp
   θ_range : 0 ≤ P.θ ∧ P.θ ≤ 1 / 2
   β_range : 1 / 3 ≤ P.β
+  βK_eq : P.βK = 1 / 2
+  β_le_βK : P.β ≤ P.βK
   cover_range : 0 ≤ P.cover ∧ P.cover ≤ 1 / 2
   α_range : P.β ≤ P.α ∧ P.α ≤ 1
   budget_pos : 1 ≤ P.budget
@@ -172,6 +184,13 @@ awake then (full participation). -/
 def HealthyOn (β : ℚ) (g b : Time) : Prop :=
   (p.faultCount b : ℚ) < β * Fintype.card V ∧
     ∀ v t, max g 0 ≤ t → t ≤ b → p.HonestAt v t → p.env.awake v t = true
+
+/-- In every nonempty committee selected in `[a, b]`, fewer than fraction `β`
+of its members are compromised by `b`. Selection time and fault-charge time
+are separate: the same selected set is counted at the horizon. -/
+def CommitteeHealthyOn (K : Time → Finset V) (β : ℚ) (a b : Time) : Prop :=
+  ∀ t, a ≤ t → t ≤ b → (K t).Nonempty →
+    ((p.faultyAt b ∩ K t).card : ℚ) < β * (K t).card
 
 end EnvPoint
 
@@ -243,19 +262,28 @@ variable [Fintype V] [DecidableEq V]
 
 /-- **Sleepy**: synchrony (`PSync 0`) and, at every time `t`, the validators
 ready at `t` and still honest at `t + ahead·ΔAC` (clamped to the horizon) exceed
-fraction `θ` of them and the validators compromised by then (look-ahead `aheadDur`). -/
-def Sleepy (K : Contract Prog) (r : S.Run) : Prop :=
+fraction `θ` of them and the validators compromised by then (look-ahead `aheadDur`).
+The same bound holds inside every nonempty selected committee, with look-ahead
+`committeeAheadDur`, no look-back, and the same reader catch-up. At full selection,
+`committeeAhead ≤ ahead` makes the committee clause follow from the population clause. -/
+def Sleepy (X : External S) (K : Contract Prog) (r : S.Run) : Prop :=
   (S.log r).PSync (S.pt r) 0 ∧
-    (S.pt r).SleepyOn K.params.θ (S.cDur K r) (S.aheadDur K r) 0 (S.pt r).horizon
+    (S.pt r).SleepyOn K.params.θ (S.cDur K r) (S.aheadDur K r) 0 (S.pt r).horizon ∧
+    (S.pt r).CommitteeSleepyOn (X.selected (S.pt r).env (X.ext r)) K.params.θ 0
+      (S.cDur K r) (S.committeeAheadDur K r) 0 (S.pt r).horizon
 
 /-- **Healthy from GST `g`**: partial synchrony with GST `g`, fewer than
 `β·n` validators compromised by the horizon, and full participation: every
 validator honest at a time of `[max g 0, horizon]` is awake then (awake, not
 ready: readiness restricts readers and progress only); and the FG delay is within its bound,
-`ΔFG ≤ fgDelay·ΔAC`. -/
-def Healthy (K : Contract Prog) (g : Time) (r : S.Run) : Prop :=
+`ΔFG ≤ fgDelay·ΔAC`. Each nonempty committee selected in `[max g 0, horizon]`
+has fewer than fraction `βK` compromised members, charged at the horizon.
+Full-selection fidelity holds when `β ≤ βK`. -/
+def Healthy (X : External S) (K : Contract Prog) (g : Time) (r : S.Run) : Prop :=
   (S.log r).PSync (S.pt r) g ∧ (S.pt r).HealthyOn K.params.β g (S.pt r).horizon ∧
-    (S.pt r).env.ΔFG ≤ (K.params.fgDelay : Time) * (S.pt r).env.ΔAC
+    (S.pt r).env.ΔFG ≤ (K.params.fgDelay : Time) * (S.pt r).env.ΔAC ∧
+    (S.pt r).CommitteeHealthyOn (X.selected (S.pt r).env (X.ext r)) K.params.βK
+      (max g 0) (S.pt r).horizon
 
 /-- **Outage `[b₀, b₁)` armed at `T`** (`OutageTimes`): synchronous before
 `b₀`, partially synchronous with GST `b₁`, η-sleepy throughout (look-back

@@ -35,22 +35,26 @@ structure ShapeClaimsOnAt (F : ChainShapeFamily O Info) (K : Contract ProgressRe
     (Sys F V).Holds (fun r => Q ((Sys F V).pt r))
     fun r => (chainTrace r.2).AccountablySafe r.2.ViewIdx r.2.Slashable K.params.α g 0
   healthyLive : ∀ cap g, O.output cap = some g → ∀ (i : K.Idx) (gst : Time), (Sys F V).Holds
-    (fun r => Q ((Sys F V).pt r) ∧ (Sys F V).Healthy K gst r ∧
+    (fun r => Q ((Sys F V).pt r) ∧
+      (Sys F V).Healthy (shapeProgress F V).toExternal K gst r ∧
       (Sys F V).prog (shapeProgress F V) K cap i ((Sys F V).ready K gst r)
         ((Sys F V).pt r).horizon r)
     fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g ((Sys F V).heal K cap i gst r)
       (K.params.latency cap i)
   sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
-    (Sys F V).Holds (fun r => Q ((Sys F V).pt r) ∧ (Sys F V).Sleepy K r) fun r =>
+    (Sys F V).Holds (fun r => Q ((Sys F V).pt r) ∧
+      (Sys F V).Sleepy (shapeProgress F V).toExternal K r) fun r =>
       (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g 0
   sleepyLive : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
     ∀ i : K.Idx, (Sys F V).Holds
-      (fun r => Q ((Sys F V).pt r) ∧ (Sys F V).Sleepy K r ∧
+      (fun r => Q ((Sys F V).pt r) ∧
+        (Sys F V).Sleepy (shapeProgress F V).toExternal K r ∧
         (Sys F V).prog (shapeProgress F V) K cap i 0 ((Sys F V).pt r).horizon r)
       fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g 0 (K.params.latency cap i)
   healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
     ∀ (i : K.Idx) (gst : Time), (Sys F V).Holds
-      (fun r => Q ((Sys F V).pt r) ∧ (Sys F V).Healthy K gst r ∧
+      (fun r => Q ((Sys F V).pt r) ∧
+        (Sys F V).Healthy (shapeProgress F V).toExternal K gst r ∧
         (Sys F V).prog (shapeProgress F V) K cap i ((Sys F V).ready K gst r)
           ((Sys F V).heal K cap i gst r) r)
       fun r => (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g ((Sys F V).heal K cap i gst r)

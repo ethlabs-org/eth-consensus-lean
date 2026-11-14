@@ -268,8 +268,8 @@ One field per row (`finalAccountable`, `healthyLive`, `sleepySafe`, `sleepyLive`
 | `final_agree` | `FaultsBelow α` ⇒ `Agree final 0 ∨ HC`, in any network |
 | `final_safe_healthy` | `Healthy g` ⇒ `Safe final 0 ∨ HC` (uses `β ≤ α`) |
 | `persists_final_compatible` | through an outage, the stable read at `T` and the final read of a reader ready from `b₁ + recovery·ΔAC` are compatible |
-| **prefix forms** `sleepySafe_prefix` | `SyncUntil b ∧ SleepyOn θ c 0 b` ⇒ `ReadySafeUpTo c g 0 b ∨ HC`: the past is safe whatever happens after `b` |
-| `healedSafe_prefix` | partial synchrony with GST `g` for deadlines up to `b`, `HealthyOn β g b`, `prog[ready, heal]` and `heal ≤ b` ⇒ `ReadySafeUpTo c g heal b ∨ HC` |
+| **prefix forms** `sleepySafe_prefix` | `SyncUntil b ∧ SleepyOn θ c 0 b`, and the selected committees sleepy on the prefix point through `b` ⇒ `ReadySafeUpTo c g 0 b ∨ HC`: the past is safe whatever happens after `b` |
+| `healedSafe_prefix` | partial synchrony with GST `g` for deadlines up to `b`, `HealthyOn β g b`, `CommitteeHealthyOn βK [max g 0, b]`, `prog[ready, heal]` and `heal ≤ b` ⇒ `ReadySafeUpTo c g heal b ∨ HC` |
 | `outage_prefix` | the outage regime up to `b` ⇒ protection of ready readers at reading times in `[b₁ + recovery·ΔAC, b]` ∨ HC |
 
 `TxLive c g start D` covers every submission: a transaction submitted to an
@@ -389,12 +389,24 @@ Here `p` is the environment point (awake profile, honest set, horizon,
 submissions), `L` is the run's log, `n = |V|`, `ready_t = readyAt c t` and
 `faulty` is the complement of the honest set.
 
+Sleepy and Healthy also read the selected committees from the external data `X`.
+Sleepy adds `CommitteeSleepyOn` with no look-back, the same reader catch-up,
+and look-ahead `committeeAhead·ΔAC`. Healthy adds a committee fault bound:
+for every nonempty committee selected at `t ∈ [max g 0, horizon]`,
+`|faulty_horizon ∩ K t| < βK · |K t|`.
+Population conditions below remain unchanged. At full selection the population
+bound implies the committee bound when β ≤ βK, which `Admissible` requires (with the pin βK = ½;
+standard values ⅓ and ½).
+At full selection, Sleepy reduces to its population form when `committeeAhead ≤ ahead`
+and `0 ≤ θ ≤ 1`.
+
 | Regime | Definition |
 |---|---|
-| `System.Sleepy` | `L.PSync p 0 ∧ ∀ t ∈ [0, horizon], θ·(\|ready_t\| + f_d) < \|ready_t\|` on the view retained through `d = min (t + ahead·ΔAC) horizon` (ready at `t` and honest at `d`; `f_d` compromised by `d`) |
-| `System.Healthy g` | `L.PSync p g ∧ f_horizon < β·n ∧ ∀ t ∈ [max g 0, horizon], every validator honest at t is awake at t ∧ ΔFG ≤ fgDelay·ΔAC` (full participation; awake, not ready; the FG delay bound is an upper envelope, not a deadline) |
+| `System.Sleepy X` | `L.PSync p 0 ∧ ∀ t ∈ [0, horizon], θ·(\|ready_t\| + f_d) < \|ready_t\|` on the view retained through `d = min (t + ahead·ΔAC) horizon` (ready at `t` and honest at `d`; `f_d` compromised by `d`) `∧ CommitteeSleepyOn selected θ 0 c (committeeAhead·ΔAC) 0 horizon` |
+| `System.Healthy X g` | `L.PSync p g ∧ f_horizon < β·n ∧ ∀ t ∈ [max g 0, horizon], every validator honest at t is awake at t ∧ ΔFG ≤ fgDelay·ΔAC ∧ CommitteeHealthyOn selected βK (max g 0) horizon` (full participation; awake, not ready; the FG delay bound is an upper envelope, not a deadline) |
 | `System.Outage X T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepyOn θ (η·ΔAC) c_out (ahead·ΔAC) 0 horizon ∧ ∀ δ ∈ [0, η·ΔAC], CommitteeSleepyOn (fun t => selected (max 0 (t − δ))) θ (η·ΔAC) c_out (committeeAhead·ΔAC) 0 horizon`, with `c_out = max c (η·ΔAC − 1)` |
 | `CommitteeSleepyOn K θ η c W 0 horizon` | at each `t` with `K t` nonempty, on the view retained through `t + W`: the η-sleepy inequality (plain sleepy for `η = 0`) with every set intersected with `K t` |
+| `CommitteeHealthyOn K βK a b` | at each `t ∈ [a, b]` with `K t` nonempty, `\|faulty_b ∩ K t\| < βK·\|K t\|` (selection at `t`, faults charged at `b`) |
 | `OutageTimes` | `0 ≤ T ∧ T + lag·ΔAC ≤ b₀ ∧ b₀ ≤ b₁ ∧ b₁ ≤ b₀ + budget·ΔAC` |
 | η-sleepy at `t` (`η > 0`) | `θ·\|ready_t ∪ awakeIn [max 0 (t − η·ΔAC), t] ∪ faulty\| < \|ready_t\|` on the same retained view (one fixed partition, so the union keeps identities) |
 
@@ -419,7 +431,7 @@ the regimes, not of the environment. Weaker thresholds keep each regime
 ```lean
 structure Params (Idx : Type) where
   catchUp : Nat   -- reader catch-up c = catchUp·ΔAC
-  θ β cover α : ℚ -- sleepy, healthy fault bound, cover (read by no regime), accountable fraction
+  θ β βK cover α : ℚ -- sleepy, population and committee healthy bounds, cover, accountable fraction
   lag budget η : Nat                         -- outage arming lag, budget, look-back (ΔAC-coefficients)
   recovery : Nat                             -- outage recovery delay (ΔAC-coefficient)
   heal latency : Capability → Idx → Nat      -- heal point after max g 0; transaction latency
@@ -427,13 +439,13 @@ structure Params (Idx : Type) where
   ahead : Nat                                -- population fault look-ahead (ΔAC-coefficient)
   committeeAhead : Nat := 0                  -- committee fault look-ahead (ΔAC-coefficient)
 def Params.standard (catchUp lag budget heal latency) :=
-  { catchUp, θ := ½, β := ⅓, cover := ½, α := ⅓, lag, budget, η := 0,
+  { catchUp, θ := ½, β := ⅓, βK := ½, cover := ½, α := ⅓, lag, budget, η := 0,
     recovery := 0, heal, latency, fgDelay := 1, ahead := 0, committeeAhead := 0 }
 structure Params.Admissible (P) : Prop :=
-  1 ≤ catchUp,  0 ≤ θ ≤ ½,  ⅓ ≤ β,  0 ≤ cover ≤ ½,  β ≤ α ≤ 1,  1 ≤ budget
+  1 ≤ catchUp,  0 ≤ θ ≤ ½,  ⅓ ≤ β,  βK = ½,  β ≤ βK,  0 ≤ cover ≤ ½,  β ≤ α ≤ 1,  1 ≤ budget
 ```
 
-A contract cannot buy its claims with easier **thresholds**: `θ` and `cover`
+For the population **thresholds**, a contract cannot buy its claims with easier premises: `θ` and `cover`
 (`cover` is read by no regime) must be at most their standard values (a smaller value is a weaker regime
 premise, hence a stronger claim), and the healthy fault bound `β` at least
 its standard `⅓` (the premise is `|faulty| < β·n`: a larger `β` admits more
@@ -441,6 +453,11 @@ faults). Accountability requires `β ≤ α ≤ 1` (a larger `α` convicts more,
 hence is stronger; at the standard `β = ⅓`, `α ≥ ⅓`), so the healthy regime
 bounds faults below `β ≤ α` (`HealthyOn.faultsBelow`) and final safety holds
 there (`final_safe_healthy`).
+The committee bound is separate: the pin `βK = ½` excludes faulty committee majorities.
+`βK` is fixed at ½ by `Admissible` for now and kept as a parameter, because correctness is
+meant to allow non-optimal protocols later, with optimal fault tolerance stated separately.
+`β ≤ βK` relates the population bound to the committee bound: it preserves full-selection
+fidelity (the population bound implies the committee bound at full selection).
 `standard_admissible` shows that the standard numbers are admissible. The
 other numbers are not bounded and carry part of the verdict: a larger
 `catchUp` means fewer ready readers, a larger `lag` an earlier protected source

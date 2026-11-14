@@ -200,15 +200,23 @@ theorem refuted_of_empty (F : ChainShapeFamily schema Unit)
     ext v
     simp only [EnvPoint.readyAt, Finset.mem_filter, Finset.mem_univ, iff_true]
     exact ⟨trivial, hready c t v⟩
-  have hsleepy : (Sys F (Fin 1)).Sleepy testK ⟨env, r⟩ := by
-    refine ⟨(Model.sysOf_delivers_iff r _ _ _).mpr sync, ?_⟩
-    intro t _ _
-    change (r.point.retain _).ReadyAbove (1 / 2) _ t
-    have hr (d : Time) : r.point.retain d = r.point := rfl
-    rw [hr]
-    unfold EnvPoint.ReadyAbove EnvPoint.faultCount
-    rw [hreadyAt, hfaulty]
-    norm_num
+  have hr (d : Time) : r.point.retain d = r.point := rfl
+  have hsleepy : (Sys F (Fin 1)).Sleepy (shapeProgress F (Fin 1)).toExternal testK ⟨env, r⟩ := by
+    refine ⟨(Model.sysOf_delivers_iff r _ _ _).mpr sync, ?_, ?_⟩
+    · intro t _ _
+      change (r.point.retain _).ReadyAbove (1 / 2) _ t
+      rw [hr]
+      unfold EnvPoint.ReadyAbove EnvPoint.faultCount
+      rw [hreadyAt, hfaulty]
+      norm_num
+    · intro t _ _ hK
+      set C := (shapeProgress F (Fin 1)).selected ((Sys F (Fin 1)).pt ⟨env, r⟩).env
+        ((shapeProgress F (Fin 1)).ext ⟨env, r⟩) t
+      have hc : (0 : ℚ) < C.card := Nat.cast_pos.mpr hK.card_pos
+      change (1 / 2 : ℚ) * (((r.point.retain _).readyAt _ t ∩ C).card +
+        ((r.point.retain _).faultyAt t ∩ C).card : ℕ) < ((r.point.retain _).readyAt _ t ∩ C).card
+      rw [hr, hreadyAt, hfaulty, Finset.univ_inter, Finset.empty_inter, Finset.card_empty, add_zero]
+      linarith
   have hprog : (Sys F (Fin 1)).prog (shapeProgress F (Fin 1)) testK .available (1 : ℕ+) 0
       r.horizon ⟨env, r⟩ := by
     change PatternRecurrence r.point r.key (fun s => r.sel (ShapeRole.proposer s)) _ _ _ _ _

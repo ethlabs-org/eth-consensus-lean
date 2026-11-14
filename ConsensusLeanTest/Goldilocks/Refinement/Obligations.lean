@@ -523,14 +523,15 @@ theorem shapeObligations_of_fgDelay_le {O : OutputSchema} {Info : Type} [Decidab
     (hd : d ≤ K.params.fgDelay) (h : ShapeObligationsOn F K Q) :
     ShapeObligationsOn F (withFGDelay K d) Q := by
   have hH : ∀ (V : Type) [Fintype V] [DecidableEq V] (g : Time) (r : (Sys F V).Run),
-      (Sys F V).Healthy (withFGDelay K d) g r → (Sys F V).Healthy K g r := by
+      (Sys F V).Healthy (shapeProgress F V).toExternal (withFGDelay K d) g r →
+        (Sys F V).Healthy (shapeProgress F V).toExternal K g r := by
     intro V _ _ g r hr
-    refine ⟨hr.1, hr.2.1, hr.2.2.trans ?_⟩
+    refine ⟨hr.1, hr.2.1, hr.2.2.1.trans ?_, hr.2.2.2⟩
     have hd' : ((d : Nat) : Time) ≤ (K.params.fgDelay : Nat) := by exact_mod_cast hd
     exact mul_le_mul_of_nonneg_right hd' ((Sys F V).pt r).env.ΔAC_pos.le
   have ha := h.admissible
-  refine ⟨fun V _ _ => ?_, ⟨ha.1, ha.2, ha.3, ha.4, ha.5, ha.6⟩, h.serves, h.progressFits,
-    h.progressTolerant⟩
+  refine ⟨fun V _ _ => ?_, ⟨ha.1, ha.2, ha.3, ha.4, ha.5, ha.6, ha.7, ha.8⟩, h.serves,
+    h.progressFits, h.progressTolerant⟩
   have c := h.claims V
   exact
     { outputValid := c.outputValid

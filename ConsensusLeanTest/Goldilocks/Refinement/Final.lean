@@ -32,10 +32,11 @@ theorem healthy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : 
     ∃ r : (Sys (goldilocks S) (Fin 2)).Run, r.1 = (point H).env ∧ r.2.point = point H ∧
       r.2.sel = sel S H ∧ r.2.key = Equiv.refl _ ∧
       (Sys (goldilocks S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
-      (Sys (goldilocks S) (Fin 2)).Healthy (goldilocksContract A C) 0 r := by
+      (Sys (goldilocks S) (Fin 2)).Healthy
+          (shapeProgress (goldilocks S) (Fin 2)).toExternal (goldilocksContract A C) 0 r := by
   obtain ⟨rho, hp, hk, hs, hv, hc, -, he⟩ := Shape.coverage (goldilocks S) (point H) hH
     (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0
-  refine ⟨⟨(point H).env, rho⟩, rfl, hp, hs, hk, hv, hc, ?_, ⟨?_, ?_⟩, ?_⟩
+  refine ⟨⟨(point H).env, rho⟩, rfl, hp, hs, hk, hv, hc, ?_, ⟨?_, ?_⟩, ?_, ?_⟩
   · exact (Model.sysOf_delivers_iff rho _ _ _).mpr
       (he.psync le_rfl (show (1 : Time) < 2 by decide) (show (1 : Time) < 2 by decide))
   · change ((rho.point.faultyAt rho.point.horizon).card : ℚ) < _ * _
@@ -44,13 +45,19 @@ theorem healthy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : 
   · exact fun _ _ _ _ _ => rfl
   · exact le_mul_of_one_le_left zero_le_two
       (by exact_mod_cast (goldilocksContract A C).params.fgDelay.pos)
+  · change rho.point.CommitteeHealthyOn (fun _ => Finset.univ) _ _ _
+    intro t _ _ _
+    change ((rho.point.faultyAt rho.point.horizon ∩ Finset.univ).card : ℚ) < _ * _
+    rw [hp, point_faulty]
+    norm_num [Params.standard]
 
 /-- (a) The final query's fields, over `goldilocksContract A C`, are jointly satisfiable: index 1,
 GST 0, query time `heal·Δ`, horizon `(heal + latency)·Δ` (engine `Δ = 2`). -/
 theorem finalQuery_fields (A : ContractAssumptions S) (C : ContractCoefficients) :
     ∃ r : (Sys (goldilocks S) (Fin 2)).Run, ∃ query : Time, 1 ≤ Fintype.card (Fin 2) ∧
       (Sys (goldilocks S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
-      (Sys (goldilocks S) (Fin 2)).Healthy (goldilocksContract A C) 0 r ∧
+      (Sys (goldilocks S) (Fin 2)).Healthy
+          (shapeProgress (goldilocks S) (Fin 2)).toExternal (goldilocksContract A C) 0 r ∧
       (Sys (goldilocks S) (Fin 2)).prog (shapeProgress (goldilocks S) (Fin 2))
           (goldilocksContract A C)
         .final (1 : ℕ+) ((Sys (goldilocks S) (Fin 2)).ready (goldilocksContract A C) 0 r)

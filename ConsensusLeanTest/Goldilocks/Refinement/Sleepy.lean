@@ -78,13 +78,16 @@ theorem sleepy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : T
     ∃ r : (Sys (goldilocks S) (Fin 2)).Run, r.1 = (point H).env ∧ r.2.point = point H ∧
       r.2.sel = sel S H ∧ r.2.key = Equiv.refl _ ∧
       (Sys (goldilocks S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
-      (Sys (goldilocks S) (Fin 2)).Sleepy (goldilocksContract A C) r := by
+      (Sys (goldilocks S) (Fin 2)).Sleepy
+          (shapeProgress (goldilocks S) (Fin 2)).toExternal (goldilocksContract A C) r := by
   obtain ⟨rho, hp, hk, hs, hv, hc, -, he⟩ := Shape.coverage (goldilocks S) (point H) hH
     (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0
-  refine ⟨⟨(point H).env, rho⟩, rfl, hp, hs, hk, hv, hc, ?_, ?_⟩
-  · exact (Model.sysOf_delivers_iff rho _ _ _).mpr
-      (he.psync le_rfl (show (1 : Time) < 2 by decide) (show (1 : Time) < 2 by decide))
-  · intro t _ _
+  let r : (Sys (goldilocks S) (Fin 2)).Run := ⟨(point H).env, rho⟩
+  have hpop : ((Sys (goldilocks S) (Fin 2)).pt r).SleepyOn (goldilocksContract A C).params.θ
+      ((Sys (goldilocks S) (Fin 2)).cDur (goldilocksContract A C) r)
+      ((Sys (goldilocks S) (Fin 2)).aheadDur (goldilocksContract A C) r) 0
+      ((Sys (goldilocks S) (Fin 2)).pt r).horizon := by
+    intro t _ _
     change (rho.point.retain _).ReadyAbove (1 / 2) _ t
     rw [hp]
     have hr (d : Time) : (point H).retain d = point H := rfl
@@ -92,6 +95,17 @@ theorem sleepy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : T
     unfold EnvPoint.ReadyAbove EnvPoint.faultCount
     rw [point_readyAt, point_faulty]
     norm_num
+  refine ⟨r, rfl, hp, hs, hk, hv, hc,
+    (Model.sysOf_delivers_iff rho _ _ _).mpr
+      (he.psync le_rfl (show (1 : Time) < 2 by decide) (show (1 : Time) < 2 by decide)), hpop, ?_⟩
+  have hsel : (shapeProgress (goldilocks S) (Fin 2)).toExternal.selected
+      ((Sys (goldilocks S) (Fin 2)).pt r).env
+      ((shapeProgress (goldilocks S) (Fin 2)).toExternal.ext r) = fun _ => Finset.univ :=
+    rfl
+  rw [hsel]
+  exact EnvPoint.EtaSleepyOn.committee_univ
+    (fun t ht hb => EnvPoint.etaReadyAbove_zero_iff.mpr (hpop t ht hb)) le_rfl
+    (by change (1 / 2 : ℚ) ≤ 1; norm_num) (by change (0 : ℚ) ≤ 1 / 2; norm_num)
 
 /-- (a) A valid, collision-free Sleepy run, over `goldilocksContract A C`, exists at
 every horizon `H ≥ 0`. -/
@@ -99,7 +113,8 @@ theorem sleepySafety_fields (A : ContractAssumptions S) (C : ContractCoefficient
     (H : Time) (hH : 0 ≤ H) :
     ∃ r : (Sys (goldilocks S) (Fin 2)).Run, 1 ≤ Fintype.card (Fin 2) ∧ r.2.horizon = H ∧
       (Sys (goldilocks S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
-      (Sys (goldilocks S) (Fin 2)).Sleepy (goldilocksContract A C) r := by
+      (Sys (goldilocks S) (Fin 2)).Sleepy
+          (shapeProgress (goldilocks S) (Fin 2)).toExternal (goldilocksContract A C) r := by
   obtain ⟨r, -, hp, -, -, hv, hc, hs⟩ := sleepy_run S A C H hH
   exact ⟨r, one_le_card, congrArg EnvPoint.horizon hp, hv, hc, hs⟩
 
@@ -110,7 +125,8 @@ theorem sleepyQuery_fields (A : ContractAssumptions S) (C : ContractCoefficients
     (H : Time) (hH : 2 * (C.latency .available 1 : Time) ≤ H) :
     ∃ r : (Sys (goldilocks S) (Fin 2)).Run, 1 ≤ Fintype.card (Fin 2) ∧ r.2.horizon = H ∧
       (Sys (goldilocks S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
-      ((Sys (goldilocks S) (Fin 2)).Sleepy (goldilocksContract A C) r ∧
+      ((Sys (goldilocks S) (Fin 2)).Sleepy
+          (shapeProgress (goldilocks S) (Fin 2)).toExternal (goldilocksContract A C) r ∧
         (Sys (goldilocks S) (Fin 2)).prog (shapeProgress (goldilocks S) (Fin 2))
             (goldilocksContract A C)
           .available (1 : ℕ+) 0 r.2.horizon r ∧ (0 : Time) ≤ 0) ∧

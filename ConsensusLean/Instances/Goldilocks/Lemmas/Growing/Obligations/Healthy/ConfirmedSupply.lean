@@ -152,8 +152,9 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 /-- Engine readiness from health: a validator honest at `t ∈ [ready, horizon]` is ready at `t`
 (`HealthyOn` keeps it awake on `[max g 0, horizon]` while honest). -/
 private theorem confirmed_ready_of_healthy_at (Q : ConfirmedQueryAt S A V)
-    (hh : (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy (K S A) Q.gst Q.run) {v : V} {t : Time}
-    (hv : Q.run.2.point.HonestAt v t)
+    (hh : (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy
+        (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) Q.gst Q.run)
+    {v : V} {t : Time} (hv : Q.run.2.point.HonestAt v t)
     (hr : (Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) Q.gst Q.run ≤ t)
         (htb : t ≤ Q.run.2.horizon) :
     Q.run.2.point.Ready Q.duration v t := by
@@ -211,7 +212,8 @@ proposal of the slot that the recurrence selects at the query's readiness, whose
 honest through its slot time plus `Δ`; every reader honest at `t_u + 6Δ` holds it then, and a
 reader ready at the deadline keeps it by its tip ancestry. -/
 theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt S A V)
-    (hh : (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy (K S A) Q.gst Q.run)
+    (hh : (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy
+        (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) Q.gst Q.run)
     (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
       (K S A) Q.cap Q.index ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) Q.gst Q.run)
       Q.run.2.horizon Q.run)
@@ -224,7 +226,7 @@ theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt S A V)
   classical
   let Q' : HealthyPreparationQueryAt S A V :=
     ⟨Q.run, Q.hn, Q.cap, Q.nonfinal, Q.index, Q.gst, Q.run.2.horizon, Q.valid, Q.noCollision,
-      le_rfl, hh⟩
+      le_rfl, ⟨hh.1, hh.2.1, hh.2.2.1⟩⟩
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   have hΔ := Q.params.toParams.hΔ
   have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid

@@ -55,7 +55,8 @@ theorem hsSharedUpTo_of_rows_at (run : (Sys (goldilocksWith ⟨S, stock⟩) V).R
     (hn : 1 ≤ Fintype.card V)
     (valid : (Sys (goldilocksWith ⟨S, stock⟩) V).Valid run) (noCollision : ¬ run.2.HashCollision)
     {g : Time}
-    (healthy : (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy (K S A) g run) {ΔF : Time}
+    (healthy : (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy
+        (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) g run) {ΔF : Time}
     (hrow : PSyncFGAttTransportAt ⟨S, stock⟩ run.2 (simTraceAt ⟨S, stock⟩ run.2 hn)
         (honestKeysAt ⟨S, stock⟩ run.2) ΔF)
     (hΔF : 0 < ΔF)
@@ -114,12 +115,12 @@ theorem hsSharedUpTo_at (Q : FinalQueryAt S A V) :
       (protoFGDelay (Model.pubOf Q.run.1)) Q.run.2.horizon :=
   hsSharedUpTo_of_rows_at S A V Q.run Q.hn Q.valid Q.noCollision Q.healthy
     (signed_row_service_psync_at S Q.run.2 Q.hn Q.valid) (protoFGDelay_pos _)
-    (protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2)
+    (protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2.1)
 
 /-- **The FG transport of a final query** at its FG gap: `6Δ + Δ_F,p ≤ 4Δ·fgSlots`. -/
 theorem protoFGDelay_delivery_at (Q : FinalQueryAt S A V) :
     6 * Q.params.Δ + protoFGDelay (Model.pubOf Q.run.1) ≤ 4 * Q.params.Δ * (A.fgSlots : Time) :=
-  protoFGDelay_delivery_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2
+  protoFGDelay_delivery_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2.1
 
 end FinalQueryAt
 
