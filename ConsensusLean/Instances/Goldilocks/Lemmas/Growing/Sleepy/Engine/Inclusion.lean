@@ -23,82 +23,76 @@ open AsChainShape Simulation
 open Shape
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- **Finite inclusion under growing faults.** Through `b ≥ 0`, under the finite service and the
-two count shapes, a proposal released at `τ` by a proposer ready at `τ` and honest through its
-hold is in the confirmed read of every node ready at `t ∈ [τ + 6Δ, b]`, after all events at `t`. -/
+/-- **Finite inclusion under growing faults.** Through `b ≥ 0`, under the finite service, the
+two count shapes and the committee premises of a slot dictionary `K`, a proposal released at `τ`
+by a proposer ready at `τ` and honest through its hold is in the confirmed read of every node
+ready at `t ∈ [τ + 6Δ, b]`, after all events at `t`. -/
 theorem sleepy_include_finite_at (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn)) {b : Time}
-        (hb0 : 0 ≤ b)
-    (hsync : Compose.Growing.SleepyServiceBefore (simTraceAt ⟨S, stock⟩ rho hn)
-        (honestKeysAt ⟨S, stock⟩ rho)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {b : Time} (hb0 : 0 ≤ b)
+    (hsync : Compose.Growing.SleepyServiceBefore (simTraceAt S rho hn) (honestKeysAt S rho)
       (S.params (pubOf E) hn).Δ b)
-    (hB : Compose.Growing.SleepyBoundsFrom (simTraceAt ⟨S, stock⟩ rho hn)
-        (honestKeysAt ⟨S, stock⟩ rho) 0 b)
+    (hB : Compose.Growing.SleepyBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho) 0 b)
     {τ t : Time} {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
-    (hP : Regimes.Growing.ReadyProposalAt (simTraceAt ⟨S, stock⟩ rho hn)
-        (honestKeysAt ⟨S, stock⟩ rho)
+    (hP : Regimes.Growing.ReadyProposalAt (simTraceAt S rho hn) (honestKeysAt S rho)
       (Regimes.catchUp (S.params (pubOf E) hn)) τ (Regimes.Growing.hold (S.params (pubOf E) hn))
       P)
     (hmargin : τ + 6 * (S.params (pubOf E) hn).Δ ≤ t) (htb : t ≤ b)
     {y : Fin (Fintype.card V)} {j : Nat}
-    (hy : Regimes.Growing.ReadyAt (simTraceAt ⟨S, stock⟩ rho hn) (honestKeysAt ⟨S, stock⟩ rho)
+    (hy : Regimes.Growing.ReadyAt (simTraceAt S rho hn) (honestKeysAt S rho)
       (Regimes.catchUp (S.params (pubOf E) hn)) y t)
-    (hj : Regimes.CutAfter (simTraceAt ⟨S, stock⟩ rho hn) j t) :
-    Anc ((simTraceAt ⟨S, stock⟩ rho hn).HonestBlocksAt (honestKeysAt ⟨S, stock⟩ rho)) P
-      (Regimes.readAfter (simTraceAt ⟨S, stock⟩ rho hn) y j t) :=
-  Regimes.Growing.include_sleepy_at (simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv) hnc hb0
-      hsync hB hP
-    hmargin htb hy hj
-    (Compose.Growing.CommitteeFacts.of_full (simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv) hnc rfl)
-    (Compose.Growing.CommitteeBoundsFrom.of_full
-      (simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv) hB)
+    (hj : Regimes.CutAfter (simTraceAt S rho hn) j t) {K : SA.CommitteeDict (Fintype.card V)}
+    (hKB : Compose.Growing.CommitteeFacts (simTraceAt S rho hn) (honestKeysAt S rho) K)
+    (hBK : Compose.Growing.CommitteeBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho) K 0 b) :
+    Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho)) P
+      (Regimes.readAfter (simTraceAt S rho hn) y j t) :=
+  Regimes.Growing.include_sleepy_at (simTraceAt_goldilocksRun S rho hn hv) hnc hb0 hsync hB hP
+    hmargin htb hy hj hKB hBK
 
 /-- **Finite growth under growing faults.** For `b = t + (4k + 6)Δ` with `t ≥ 0`, `k ≥ 1`, under
-the finite service and the two count shapes through `b`, and one proposer ready at its slot
-start and honest through its hold in every window of `k` slots up to `b`: some proposal released
-at `τ ∈ (t, b − 6Δ]` by a proposer ready at `τ` and honest through its hold is in every ready
-read at `b`, in no ready read at `t`, and each ready read at `t` is an ancestor of each ready read
-at `b`. -/
+the finite service, the two count shapes and the committee premises of a slot dictionary `K`
+through `b`, and one proposer ready at its slot start and honest through its hold in every window
+of `k` slots up to `b`: some proposal released at `τ ∈ (t, b − 6Δ]` by a proposer ready at `τ`
+and honest through its hold is in every ready read at `b`, in no ready read at `t`, and each
+ready read at `t` is an ancestor of each ready read at `b`. -/
 theorem sleepy_grow_finite_at (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn)) {t b : Time}
-        {k : Nat}
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {t b : Time} {k : Nat}
     (ht : 0 ≤ t) (hk : 1 ≤ k) (hb : b = t + (4 * k + 6) * (S.params (pubOf E) hn).Δ)
-    (hsync : Compose.Growing.SleepyServiceBefore (simTraceAt ⟨S, stock⟩ rho hn)
-        (honestKeysAt ⟨S, stock⟩ rho)
+    (hsync : Compose.Growing.SleepyServiceBefore (simTraceAt S rho hn) (honestKeysAt S rho)
       (S.params (pubOf E) hn).Δ b)
-    (hB : Compose.Growing.SleepyBoundsFrom (simTraceAt ⟨S, stock⟩ rho hn)
-        (honestKeysAt ⟨S, stock⟩ rho) 0 b)
-    (hrec : Regimes.Growing.ProposerRecurrence (simTraceAt ⟨S, stock⟩ rho hn)
-        (honestKeysAt ⟨S, stock⟩ rho)
-      (runProposer ⟨S, stock⟩ rho hn) (Regimes.catchUp (S.params (pubOf E) hn)) k
-      (Regimes.Growing.hold (S.params (pubOf E) hn)) 0 b) :
+    (hB : Compose.Growing.SleepyBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho) 0 b)
+    (hrec : Regimes.Growing.ProposerRecurrence (simTraceAt S rho hn) (honestKeysAt S rho)
+      (runProposer S rho hn) (Regimes.catchUp (S.params (pubOf E) hn)) k
+      (Regimes.Growing.hold (S.params (pubOf E) hn)) 0 b)
+    {K : SA.CommitteeDict (Fintype.card V)}
+    (hKB : Compose.Growing.CommitteeFacts (simTraceAt S rho hn) (honestKeysAt S rho) K)
+    (hBK : Compose.Growing.CommitteeBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho) K 0 b) :
     ∃ τ P, t < τ ∧ τ + 6 * (S.params (pubOf E) hn).Δ ≤ b ∧
-      Regimes.Growing.ReadyProposalAt (simTraceAt ⟨S, stock⟩ rho hn) (honestKeysAt ⟨S, stock⟩ rho)
+      Regimes.Growing.ReadyProposalAt (simTraceAt S rho hn) (honestKeysAt S rho)
         (Regimes.catchUp (S.params (pubOf E) hn)) τ
         (Regimes.Growing.hold (S.params (pubOf E) hn)) P ∧
-      (∀ y j, Regimes.Growing.ReadyAt (simTraceAt ⟨S, stock⟩ rho hn) (honestKeysAt ⟨S, stock⟩ rho)
+      (∀ y j, Regimes.Growing.ReadyAt (simTraceAt S rho hn) (honestKeysAt S rho)
         (Regimes.catchUp (S.params (pubOf E) hn)) y b →
-        Regimes.CutAfter (simTraceAt ⟨S, stock⟩ rho hn) j b →
-        Anc ((simTraceAt ⟨S, stock⟩ rho hn).HonestBlocksAt (honestKeysAt ⟨S, stock⟩ rho)) P
-          (Regimes.readAfter (simTraceAt ⟨S, stock⟩ rho hn) y j b)) ∧
-      ∀ x jx, Regimes.Growing.ReadyAt (simTraceAt ⟨S, stock⟩ rho hn) (honestKeysAt ⟨S, stock⟩ rho)
+        Regimes.CutAfter (simTraceAt S rho hn) j b →
+        Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho)) P
+          (Regimes.readAfter (simTraceAt S rho hn) y j b)) ∧
+      ∀ x jx, Regimes.Growing.ReadyAt (simTraceAt S rho hn) (honestKeysAt S rho)
         (Regimes.catchUp (S.params (pubOf E) hn)) x t →
-        Regimes.CutAfter (simTraceAt ⟨S, stock⟩ rho hn) jx t →
-        ¬ Anc ((simTraceAt ⟨S, stock⟩ rho hn).HonestBlocksAt (honestKeysAt ⟨S, stock⟩ rho)) P
-          (Regimes.readAfter (simTraceAt ⟨S, stock⟩ rho hn) x jx t) ∧
-        ∀ y j, Regimes.Growing.ReadyAt (simTraceAt ⟨S, stock⟩ rho hn) (honestKeysAt ⟨S, stock⟩ rho)
+        Regimes.CutAfter (simTraceAt S rho hn) jx t →
+        ¬ Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho)) P
+          (Regimes.readAfter (simTraceAt S rho hn) x jx t) ∧
+        ∀ y j, Regimes.Growing.ReadyAt (simTraceAt S rho hn) (honestKeysAt S rho)
           (Regimes.catchUp (S.params (pubOf E) hn)) y b →
-          Regimes.CutAfter (simTraceAt ⟨S, stock⟩ rho hn) j b →
-          Anc ((simTraceAt ⟨S, stock⟩ rho hn).HonestBlocksAt (honestKeysAt ⟨S, stock⟩ rho))
-            (Regimes.readAfter (simTraceAt ⟨S, stock⟩ rho hn) x jx t)
-            (Regimes.readAfter (simTraceAt ⟨S, stock⟩ rho hn) y j b) := by
+          Regimes.CutAfter (simTraceAt S rho hn) j b →
+          Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho))
+            (Regimes.readAfter (simTraceAt S rho hn) x jx t)
+            (Regimes.readAfter (simTraceAt S rho hn) y j b) := by
   let sp := S.params (pubOf E) hn
-  let tr := simTraceAt ⟨S, stock⟩ rho hn
-  let H := honestKeysAt ⟨S, stock⟩ rho
-  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv
+  let tr := simTraceAt S rho hn
+  let H := honestKeysAt S rho
+  have hrun := simTraceAt_goldilocksRun S rho hn hv
   have hΔ := sp.toParams.hΔ
   have hcoh := Compose.Growing.honest_blocks_coherent hrun hnc
   have hb0 : 0 ≤ b := by rw [hb]; positivity
@@ -136,7 +130,8 @@ theorem sleepy_grow_finite_at (hv : rho.ExecutionValid)
   have hinc : ∀ y j, Regimes.Growing.ReadyAt tr H (Regimes.catchUp sp) y b →
       Regimes.CutAfter tr j b →
       Anc (tr.HonestBlocksAt H) P (Regimes.readAfter tr y j b) :=
-    fun y j hy hj => sleepy_include_finite_at S rho hn hv hnc hb0 hsync hB hRP htsD le_rfl hy hj
+    fun y j hy hj =>
+      sleepy_include_finite_at S rho hn hv hnc hb0 hsync hB hRP htsD le_rfl hy hj hKB hBK
   have hnot : ∀ x jx, Regimes.Growing.ReadyAt tr H (Regimes.catchUp sp) x t →
       Regimes.CutAfter tr jx t →
       ¬ Anc (tr.HonestBlocksAt H) P (Regimes.readAfter tr x jx t) := by
@@ -167,9 +162,9 @@ theorem sleepy_grow_finite_at (hv : rho.ExecutionValid)
     omega
   refine ⟨sp.ts s, P, hts, htsD, hRP, hinc,
     fun x jx hx hjx => ⟨hnot x jx hx hjx, fun y j hy hj => ?_⟩⟩
-  have hsafe := sleepy_safe_finite_at S rho hn hv hnc hb0 hsync hB
+  have hsafe := sleepy_safe_finite_at S rho hn hv hnc hb0 hsync hB hKB hBK
   have hcompat := hsafe.agree x y jx j t b ⟨hjx.1, hjx.2.le⟩ ⟨hj.1, hj.2.le⟩
-    (cutAfter_boundary_at ⟨S, stock⟩ rho hn hv hjx) (cutAfter_boundary_at ⟨S, stock⟩ rho hn hv hj)
+    (cutAfter_boundary_at S rho hn hv hjx) (cutAfter_boundary_at S rho hn hv hj)
     ht (by linarith) hb0 le_rfl hx hy
   rcases hcompat with h | h
   · exact h

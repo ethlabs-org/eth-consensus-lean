@@ -247,7 +247,7 @@ theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt ⟨S, stock⟩ A V)
     linarith only [W.ready_le, W.records, hΔ]
   -- the selected proposal at the query's own readiness
   obtain ⟨Ws⟩ := confirmed_query_slot_at ⟨S, stock⟩ A V Q hp (max_le (hrh.trans ht) (h0.trans ht))
-  obtain ⟨B, k, hBp, he, htk⟩ := confirmed_slot_event_at S A V Q Ws
+  obtain ⟨B, k, hBp, he, htk⟩ := confirmed_slot_event_at ⟨S, stock⟩ A V Q Ws
   have hr : Regimes.Growing.ReadyAt Q.trace Q.keys Q.duration B.proposer (Q.trace.time k) := by
     rw [hBp, htk]; exact Ws.ready
   have hacc := proposal_accepted_at hrun hnc hr.1 he

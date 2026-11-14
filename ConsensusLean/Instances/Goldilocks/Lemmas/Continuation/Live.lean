@@ -299,7 +299,7 @@ theorem continued_proposal_live_at (Q : ConfirmedQueryAt ⟨S, stock⟩ A V) {Δ
   have hrq : Q.params.ts (r + Q.params.k : Nat) ≤ Q.query := by
     linarith [Q.params.toParams.hΔ]
   have h0 : 0 ≤ Q.query := (Compose.Growing.ts_natCast_nonneg _).trans hrq
-  obtain ⟨P, hm, hh⟩ := sleepy_query_producer_at S A V Q hprogress (max_le hready h0)
+  obtain ⟨P, hm, hh⟩ := sleepy_query_producer_at ⟨S, stock⟩ A V Q hprogress (max_le hready h0)
   have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
   have hd := confirmed_duration_supply_at ⟨S, stock⟩ A V Q

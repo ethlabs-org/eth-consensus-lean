@@ -42,7 +42,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- An own proposal of a node honest at its cut is an acceptance, under collision freedom (the
 static `proposal_accepted` on the prefix through the cut). -/
-theorem proposal_accepted_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem proposal_accepted_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} {k : Nat} (hp : p ∈ H (tr.time k))
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : tr.ProposesAt p k P) : tr.AcceptAt p k P := by
   have hP' : (tr.upTo (tr.time k)).ProposesAt p k P :=
@@ -104,19 +104,16 @@ theorem confirmed_query_slot_at (Q : ConfirmedQueryAt S A V) {ready : Time}
     exact hH
   exact ⟨⟨s, hs1, hlo, hmargin, hnode, hhold⟩⟩
 
-/-- The selected slot's actual canonical proposal event, at the slot time (at the stock binding
-until the proposer-service lemmas take any initial state). -/
-theorem confirmed_slot_event_at (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V]
-    [DecidableEq V] (Q : ConfirmedQueryAt ⟨S, stock⟩ A V)
-    (W : ConfirmedProducerSlotAt ⟨S, stock⟩ A V Q) :
+/-- The selected slot's actual canonical proposal event, at the slot time. -/
+theorem confirmed_slot_event_at (Q : ConfirmedQueryAt S A V)
+    (W : ConfirmedProducerSlotAt S A V Q) :
     ∃ (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) (k : Nat),
-      B.proposer = runProposer ⟨S, stock⟩ Q.run.2 Q.hn W.slot ∧
+      B.proposer = runProposer S Q.run.2 Q.hn W.slot ∧
       Q.trace.ProposesAt B.proposer k B ∧ Q.trace.time k = Q.params.ts W.slot := by
   obtain ⟨k, B, hp, ht⟩ := Regimes.Growing.ready_proposer_proposes_at
-    (simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid)
-    (noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision)
-    W.positive (confirmed_ready_mono_at ⟨S, stock⟩ A V Q
-      (confirmed_duration_supply_at ⟨S, stock⟩ A V Q) W.ready)
+    (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid)
+    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision)
+    W.positive (confirmed_ready_mono_at S A V Q (confirmed_duration_supply_at S A V Q) W.ready)
   exact ⟨B, k, hp.2.1, hp.2.1 ▸ hp, ht⟩
 
 /-- Coverage of a confirmed proposal at every ready read at the deadline is the engine payload

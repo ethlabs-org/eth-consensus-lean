@@ -16,6 +16,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSupp
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthySuppliers
 public import ConsensusLean.Spec.Shape.Claims
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ConfirmedSupply
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Members
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -104,7 +105,8 @@ theorem meetsObligations_sleepySafe_growing : ∀ cap g, (cap = .available ∨ c
     have hhalf : r.2.point.SleepyOn (1 / 2) (Regimes.catchUp (S.params (Model.pubOf r.1) hn))
         (5 * (S.params (Model.pubOf r.1) hn).Δ) 0 r.2.horizon :=
       sleepyOn_of_duration V _ ((le_add_of_nonneg_right zero_le_one).trans hd) hs.2.1
-    have safe := sleepy_safe_engine_at S r.2 hn hv hnc hsync hhalf
+    obtain ⟨KD, hKB, hBK⟩ := sleepy_committee_at ⟨S, stock⟩ A r hn hv hc hs le_rfl
+    have safe := sleepy_safe_engine_at ⟨S, stock⟩ r.2 hn hv hnc hsync hhalf hKB hBK
     have ready : ∀ v t, r.2.point.Ready ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r) v t →
         r.2.point.Ready (Regimes.catchUp (S.params (Model.pubOf r.1) hn) + 1) v t := by
       intro v t h
@@ -243,9 +245,10 @@ theorem meetsObligations_sleepyLive_growing : ∀ cap g, (cap = .available ∨ c
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨hr.choose⟩
   let Q : ConfirmedQueryAt ⟨S, stock⟩ A V := ⟨r, hn, cap, hcap, idx, 0, t, hv, hc,
     Or.inl ⟨hs, hp, ht⟩, hb, hr⟩
-  obtain ⟨P, service⟩ := sleepy_serviced_proposal_supply_at S A V Q hs hp ht
+  obtain ⟨P, service⟩ := sleepy_serviced_proposal_supply_at ⟨S, stock⟩ A V Q hs hp ht
+  obtain ⟨KD, hKB, hBK⟩ := sleepy_committee_at ⟨S, stock⟩ A r hn hv hc hs Q.bounded
   exact confirmed_payload_projection_at ⟨S, stock⟩ A V Q ht P
-    (sleepy_serviced_proposal_coverage_at S A V Q P service)
+    (sleepy_serviced_proposal_coverage_at ⟨S, stock⟩ A V Q P service hKB hBK)
 
 end Consensus.Goldilocks.Obligations.Growing
 
