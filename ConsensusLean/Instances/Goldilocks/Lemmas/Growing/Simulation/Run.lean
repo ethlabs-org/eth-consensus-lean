@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Block
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Wire
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Interface
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RoleBinding
 
 public section
 
@@ -41,6 +42,28 @@ up to the vote permission. -/
 theorem simIni_voteStart (y : Fin (Fintype.card V)) :
     SA.VoteStart (S.params (pubOf E) hn).genesisRoot (simIni S rho hn y) :=
   ⟨_, S.vote.installVote_eq_mayVote _ _⟩
+
+/-- **The engine's starts are the canonical committee start** of any dictionary binding the run's
+vote-role selection: `simIni` differs from the initial state only in its vote permission
+(`installVote_eq_mayVote`), which is that selection (`simTraceAt_mayVote` at cut `0`). -/
+theorem simIni_eq_committeeStart (hv : rho.ExecutionValid) {K : SA.CommitteeDict (Fintype.card V)}
+    (hK : K.BindsSel rho S.vote.voteRole) :
+    simIni S rho hn = SA.committeeStart (S.params (pubOf E) hn).genesisRoot K := by
+  funext y
+  have h0 := simTraceAt_mayVote S rho hn hv y 0
+  change ((simTraceAt S rho hn).init y).ac.mayVote = _ at h0
+  rw [simTraceAt_eq, simTrace_init_eq] at h0
+  have hm : (simIni S rho hn y).mayVote =
+      (SA.committeeStart (S.params (pubOf E) hn).genesisRoot K y).mayVote := by
+    funext s
+    rw [Bool.eq_iff_iff, SA.committeeStart_mayVote, (K.bindsSel_iff rho _).1 hK s y]
+    rw [show (simIni S rho hn y).mayVote s = _ from congrFun h0 s]
+    simp
+  refine (S.vote.installVote_eq_mayVote _ _).trans ?_
+  change { (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).initial with
+    mayVote := (simIni S rho hn y).mayVote } = _
+  rw [hm]
+  rfl
 
 /-- The canonical event expansion obeys all Goldilocks run laws under growing compromise, from
 the engine's own starts `simIni`. -/
