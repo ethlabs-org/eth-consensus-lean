@@ -735,7 +735,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Frame",
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
-         "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
+         "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Instances.Goldilocks.Milestones.Statements.Generic"]
 about = """growing-fault siblings of the Goldilocks lemmas: they may use every static lemma layer, and no
 static layer, trusted layer, Main or Solution may import them, so the static proofs do not depend on
 them. One reviewed exception: the constant-fault endpoint (Proofs/Obligations/Main) imports the
@@ -763,7 +764,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Frame",
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
-         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
+         "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Instances.Goldilocks.Milestones.Statements.Generic"]
 about = """continuation support (the side property GoldilocksContinues, not part of correctness): the
 growing-fault lemmas plus the continuation statements; only the continuation milestone and the tests
 import it, so no correctness proof depends on the side property"""
@@ -969,7 +971,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Frame",
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
-         "Instances.Goldilocks.Proofs.Obligations", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
+         "Instances.Goldilocks.Proofs.Obligations", "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Instances.Goldilocks.Milestones.Statements.Generic"]
 about = """Goldilocks growing-fault obligations endpoint, the Goldilocks entry of Solution; each other
 growing-fault milestone is its own layer Proofs.Growing.<M>"""
 
@@ -995,7 +998,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Frame",
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
-         "Instances.Goldilocks.Proofs.Obligations", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
+         "Instances.Goldilocks.Proofs.Obligations", "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Instances.Goldilocks.Milestones.Statements.Generic"]
 about = "Goldilocks growing-fault FG trace and service milestone"
 
 [[layer]]
@@ -1021,7 +1025,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Frame",
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
-         "Instances.Goldilocks.Proofs.Obligations", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
+         "Instances.Goldilocks.Proofs.Obligations", "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Instances.Goldilocks.Milestones.Statements.Generic"]
 about = "Goldilocks growing-fault AC milestone"
 
 [[layer]]
@@ -1044,7 +1049,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Frame",
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
-         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
+         "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Instances.Goldilocks.Milestones.Statements.Generic"]
 about = "Goldilocks growing Compose projections, persistence and always rows"
 
 [[layer]]
@@ -1072,7 +1078,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
          "Instances.Goldilocks.Lemmas.Continuation", "Instances.Goldilocks.Proofs.Obligations",
          "Instances.Goldilocks.Proofs.Growing.Obligations",
-         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
+         "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Instances.Goldilocks.Milestones.Statements.Generic"]
 about = """Goldilocks continuation after healing under corruption growth (the side property
 GoldilocksContinues, not part of correctness)"""
 
@@ -1143,7 +1150,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Proofs.Service", "Instances.Goldilocks.Proofs.Healing",
          "Instances.Goldilocks.Proofs.Regimes", "Instances.Goldilocks.Proofs.Obligations",
          "Instances.Goldilocks.Lemmas.Growing", "Instances.Goldilocks.Proofs.Growing.Obligations",
-         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
+         "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Instances.Goldilocks.Milestones.Statements.Generic"]
 about = "comparator solution: the review statements and the Goldilocks obligations endpoint (through its Main)"
 
 [[layer]]
