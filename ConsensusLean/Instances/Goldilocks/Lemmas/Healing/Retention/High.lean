@@ -10,22 +10,12 @@ A block whose state height is `≥ H_z + 1` is not held by an honest node
 at a cut at or before `c_z` (`cutZ_lt_of_high`: the state before the first cut after `c_z` has
 `Σ.h_max ≤ H_z`); every honest block above a high origin is high (`high_of_anc`), so its
 acceptances are after `c_z`. With the store facts these need: heights do not decrease along
-ancestry (`σ_h_le_of_anc`), ancestry below a held block is ancestry in the tree
+ancestry (`h_le_of_store_anc`, `Cut/Store`), ancestry below a held block is ancestry in the tree
 (`anc_tree_of_anc`), and one state per block across honest stores (`σ_eq_run`). -/
 
 namespace Consensus.Goldilocks.Healing
 
 open SA (SAParams ReplayOrder Vote Payload gbar)
-
-/-- **Along ancestry the state height does not decrease** (a reachable store). -/
-theorem σ_h_le_of_anc {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
-    (hr : st.Reachable acp₀) {A W : NodeBlock P ACP} (h : st.Anc A W) :
-    (st.σ A.root).h ≤ (st.σ W.root).h := by
-  induction h with
-  | refl => exact le_rfl
-  | tail _ hYW ih =>
-    obtain ⟨-, -, -, ht⟩ := Store.step_σ hr hYW.2.1 hYW.2.2
-    rcases stateTransition_bits ht with ⟨hh, -⟩ | ⟨hh, -⟩ <;> omega
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
@@ -204,7 +194,7 @@ theorem high_of_anc {x : Fin sp.n} {i j : Nat}
     HZ tr H g + 1 ≤ ((tr.state z k).fg.σ W.root).h := by
   obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := hp.highOrigin_mem ho
   have hBz := hp.mem_tree_of_anc hz hBW hW
-  have h₁ := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hz k)
+  have h₁ := h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun hz k)
     (hp.anc_tree_of_anc hz hBW hW)
   rw [← hp.σ_eq_run ho.1 hz hBx hBz] at h₁
   exact ho.2.2.2.trans h₁

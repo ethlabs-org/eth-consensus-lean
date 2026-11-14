@@ -162,7 +162,7 @@ theorem guarded_seed_ancestor_candidate_at_state_at
   have hSs := Outcome.high_origin_mem_at hrun hnc hseed
   refine Store.guarded_seed_ancestor_candidate hreach
     (Compose.Growing.honest_blocks_coherent hrun hnc) (fun X hX => ⟨y, i, t, ht, hle, hy, hX⟩)
-    (Healing.σ_h_le_of_anc hreach) hPt
+    (Healing.h_le_of_store_anc hreach) hPt
     (fun hSy => congrArg (·.h) (σ_eq_honest_at hrun hnc (hrun.time_nonneg q)
       (fun r hr => hrun.time_mono hr.le) hseed.1 ht hle hy hSs hSy).symm)
     hhold hPS ?_ (Origin := fun B => ∃ x r l, r < i ∧ HighOrigin tr H g x r l B)

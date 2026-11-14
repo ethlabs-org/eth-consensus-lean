@@ -27,21 +27,6 @@ open AsChainShape Simulation
 
 open SA (SAParams ReplayOrder Payload gbar)
 
-/-- **Entry-slot constancy:** while the height stays along ancestry, the entry slot stays. -/
-private theorem ThSlot_eq_of_anc_at {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
-    (hr : st.Reachable acp₀) {A W : NodeBlock P ACP} (h : st.Anc A W)
-    (hh : (st.σ W.root).h = (st.σ A.root).h) :
-    (st.σ W.root).ThSlot = (st.σ A.root).ThSlot := by
-  induction h with
-  | refl => rfl
-  | @tail Y Y' hAY hYY' ih =>
-    obtain ⟨-, hY', hp⟩ := hYY'
-    obtain ⟨-, -, -, ht⟩ := Healing.Store.step_σ hr hY' hp
-    have h₁ := Healing.h_le_of_store_anc hr hAY
-    rcases P.fg.stateTransition_ThSlot ht with ⟨e, e', -⟩ | ⟨e, -, -⟩
-    · rw [e']; exact ih (by rw [← e]; exact hh)
-    · omega
-
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
@@ -193,8 +178,8 @@ theorem seed_height_at {g ΔR a b gS ΔF : Time}
   have hPrTh : ((tr.state (proposer s₀) kX).fg.σ Pr.root).Th = E.root :=
     (Healing.Th_eq_of_anc hr hQPrs hPr1).trans hEr.symm
   have hThS : ((tr.state (proposer s₀) kX).fg.σ Pr.root).ThSlot ≤ u := by
-    rw [ThSlot_eq_of_anc_at hr hQPrs hPr1, ← hQs]
-    exact Goldilocks.Store.ThSlot_le_slot hr hQst
+    rw [Healing.ThSlot_eq_of_anc hr hQPrs hPr1, ← hQs]
+    exact Healing.ThSlot_le_slot hr hQst
   let S : Finset (Fin sp.n) := Finset.univ.filter (· ∈ H (sp.ts u + 6 * sp.Δ))
   have hScard : sp.toParams.fg.q ≤ S.card := by
     have hcard : S.card = (H (sp.ts u + 6 * sp.Δ)).ncard := by

@@ -162,7 +162,7 @@ private theorem finalized_descendant_report_at (hp : ResetPremisesUpTo tr H prop
     have hPXr := store_anc_of_honest_anc_at hrun hp.noColl hr0 hrle hzr hPX hXr'
     have hrr' := fg_reachable_at hrun hr0 hrle hzr
     have hPE := hPXr.trans hXEr
-    have hle := Healing.σ_h_le_of_anc hrr' hPE
+    have hle := Healing.h_le_of_store_anc hrr' hPE
     have hlt : ((tr.state att.val r).fg.σ P.root).h <
         ((tr.state att.val r).fg.σ E.root).h := by
       apply lt_of_le_of_ne hle
@@ -222,7 +222,8 @@ theorem held_target_high_floor_report_before_at
   have hr := fg_reachable_at hrun hd hle hy
   have hSy := mem_of_honest_anc_at hrun hp.noColl hd hle hy hSP hPy
   have hSs := highOrigin_mem_at hrun hp.noColl hseed
-  have hSh := Healing.σ_h_le_of_anc hr (store_anc_of_honest_anc_at hrun hp.noColl hd hle hy hSP hPy)
+  have hSh := Healing.h_le_of_store_anc hr
+    (store_anc_of_honest_anc_at hrun hp.noColl hd hle hy hSP hPy)
   have hSf : ((tr.state v q).fg.σ S.root).h < (tr.state y i).fg.headHeightFloor := by
     rw [σ_eq_honest_at hrun hp.noColl (hrun.time_nonneg q) (fun _ hk => hrun.time_mono hk.le)
       hseed.1 hd hle hy hSs hSy]
@@ -248,7 +249,8 @@ theorem held_target_high_floor_report_before_at
       · exact Or.inr (hEB.trans h)
     rcases hcomp with h | h
     · exact h
-    · have := Healing.σ_h_le_of_anc hr (store_anc_of_honest_anc_at hrun hp.noColl hd hle hy h hPy)
+    · have := Healing.h_le_of_store_anc hr
+        (store_anc_of_honest_anc_at hrun hp.noColl hd hle hy h hPy)
       omega
   obtain ⟨j, ell, C, hxj, hji, hto, hPC, hh⟩ :=
     hp.higher_report_of_signed_entry_at hd hle hy hxd hPy hE hs hdi hT hPE (by omega)

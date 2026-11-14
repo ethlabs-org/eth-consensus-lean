@@ -132,10 +132,17 @@ to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameKey",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLagCore",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache"]
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Deadline",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalCrosses"]
 reason = """the generic healing leaves over any NodeAC use these AC-generic run facts; their closure reaches
 Lemmas.AC (Compose.Reach) and some of these modules also hold SA lemmas, so the cut guard
-ConsensusLeanTest.Goldilocks.Generic.HealingLeavesCut checks the theorems' constants; leaf paths only"""
+ConsensusLeanTest.Goldilocks.Generic.HealingLeavesCut checks the theorems' constants. Compose.Run.Deadline: the
+RunTrace definitions live in Milestones.Spec.Run, which no Common or FG lemma layer may import, so the two RunTrace
+lemmas sit in Compose.Run (Lemmas/Compose/Run/Deadline.lean); the module holds nothing else. Healing.ProposalCrosses
+is the single edge to the static family generalised in place (ConsumeBase, ConsumeCrossing, ProposalJustifies,
+ProposalJustifiesSigned, ProposalCrosses); it grows the closure of HealingLeaves, itself included, from 275 to 283
+modules (Compose.Run.Deadline is already in it, through the frame-window modules). Leaf paths only"""
 
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing",

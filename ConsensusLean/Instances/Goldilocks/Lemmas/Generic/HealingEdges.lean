@@ -25,10 +25,12 @@ def reset_or_noAdvance : Prop :=
     runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b → T ≤ b →
     (∃ a, IsReset tr H g a ∧ a ≤ T) ∨ NoAdvance tr H g T
 
-/-- UNPROVED rise assembly from original leaves and the protocol warmth obligations. -/
+/-- UNPROVED rise assembly from original leaves and the protocol warmth obligations. Proposal
+membership is no longer a premise: `proposal_mem_at_from` (`HealingLeaves`) proves it at any start,
+and the run supplies the start, requirements and genesis root (`ACRun.run_local`,
+`ACRun.run_requirements`, `ACRun.run_root`). -/
 def rise_reset_rounds_at_of (O : ACHealing A sg runs) : Prop :=
-  reset_of_high_proposal_at A sg O → round_of_warm_at A sg O →
-    proposal_mem_at A sg runs → rise_reset_rounds_at A sg O
+  reset_of_high_proposal_at A sg O → round_of_warm_at A sg O → rise_reset_rounds_at A sg O
 
 /-- UNPROVED whole-run endpoint assembly; no bundled premise replaces the endpoint's inputs. -/
 def exists_reset_of_drain_rounds_noRestartAfter_at_of (O : ACHealing A sg runs) : Prop :=

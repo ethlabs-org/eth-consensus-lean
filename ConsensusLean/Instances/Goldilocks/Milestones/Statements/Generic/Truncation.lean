@@ -35,12 +35,6 @@ structure DrainOutputs (O : ACHealing A sg runs) (tr : RunTrace A) (proposer : N
         tr.ProposesAt z kB B ∧ B.slot = u ∧
           HZ tr H g ≤ ((tr.state z (kB + 1)).fg.σ B.root).h + 1
 
-/-- UNPROVED original proposal-membership leaf. -/
-def proposal_mem_at (runs : ACRun A sg) : Prop :=
-  ∀ {cm proposer dg H tr} {p : Fin P.n} {k : Nat} {B : A.Blk},
-    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    p ∈ H (tr.time k) → tr.ProposesAt p k B → B ∈ (tr.state p (k + 1)).fg.tree
-
 /-- UNPROVED old-premise rise contract, retaining the timeout and strict no-advance cutoff. -/
 def rise_reset_rounds_at (O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b T : Time}

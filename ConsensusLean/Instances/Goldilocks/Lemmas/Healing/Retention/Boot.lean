@@ -541,7 +541,7 @@ theorem ResetPremisesUpTo.high_floor_signed_source_of_row_bound {b : Time}
     · exfalso
       have hEB := hEO.trans h
       have hEx := hp.mem_tree_of_anc ho.1 hEB hBx
-      have hle := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun ho.1 i)
+      have hle := h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun ho.1 i)
         (hp.anc_tree_of_anc ho.1 hEB hBx)
       rw [hp.σ_eq_run ho.1 hy hEx hE] at hle
       clear * - hfloor hEh hle; omega
@@ -751,7 +751,7 @@ theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat
     · exfalso
       have hEB := hEO.trans h
       have hEx := mem_tree_of_anc hp ho.1 hEB hBx
-      have hle := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun ho.1 i)
+      have hle := h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun ho.1 i)
         (anc_tree_of_anc hp ho.1 hEB hBx)
       rw [σ_eq_run hp ho.1 hy hEx hE] at hle
       clear * - hfloor hEh hle; omega
@@ -774,7 +774,7 @@ theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat
   have hHvT := relay_mem_voterBlockTree hr (sync_after hp (sp.ts l + 2 * sp.Δ)) hoO.1 hkw hkwg
     hkwt le_rfl hy hc (by clear * - hlm; omega) (hF.trans (hBO.trans hOHv))
   have hHvy : Hv ∈ (tr.state y k).fg.tree := frame_tree_subset hp hy hc.1 hHvT.1
-  have hh := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy (hEO.trans hOHv) hHvy)
+  have hh := h_le_of_store_anc hreach (anc_tree_of_anc hp hy (hEO.trans hOHv) hHvy)
   refine ⟨Hv, hHvT, hBO.trans hOHv, ?_⟩
   change (tr.state y k).fg.headHeightFloor ≤ _
   clear * - hfl hEh hh; omega
@@ -812,7 +812,7 @@ theorem ResetPremisesUpTo.raw_target_frozen_witness {b : Time}
   have hHvT := relay_mem_voterBlockTree hr (hp.sync.syncAC hp.run le_rfl) ho.1 hkw hkwg
     hkwt le_rfl hy hc hl (hFB.trans (hBO.trans hOHv))
   have hHvy : Hv ∈ (tr.state y k).fg.tree := hp.frame_tree_subset hy hc.1 hHvT.1
-  have hh := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hy k)
+  have hh := h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun hy k)
     (hp.anc_tree_of_anc hy (hEO.trans hOHv) hHvy)
   exact ⟨Hv, hHvT, hBO.trans hOHv, hfloor.trans hh⟩
 
@@ -870,7 +870,7 @@ theorem vote_height_lead (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
     hkwt le_rfl hy hc (by clear * - hj; omega) (hF.trans hBHv)
   have hHvy : Hv ∈ (tr.state y k).fg.tree := frame_tree_subset hp hy hc.1 hHvT.1
   have hBy := mem_tree_of_anc hp hy hBHv hHvy
-  have hh := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hy k)
+  have hh := h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun hy k)
     (anc_tree_of_anc hp hy hBHv hHvy)
   rw [← σ_eq_run hp ho.1 hy hBx hBy] at hh
   exact ⟨Hv, hHvT, hBHv, hfl.trans hh⟩

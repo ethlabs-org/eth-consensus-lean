@@ -76,7 +76,7 @@ theorem held_target_proposal_domain_before_of_sources_at
         rcases hBS with h | h
         · exact h
         · have hSy := mem_of_honest_anc_at hp.run hp.noColl ht hle hpH h hBy
-          have hh := σ_h_le_of_anc hreach
+          have hh := h_le_of_store_anc hreach
             (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hpH h hBy)
           rw [← σ_eq_honest_at hp.run hp.noColl (hp.run.time_nonneg q)
             (fun _ hq => hp.run.time_mono hq.le) hS.1 ht hle hpH hSsrc hSy] at hh
@@ -93,7 +93,7 @@ theorem held_target_proposal_domain_before_of_sources_at
       have hBO : Anc (tr.HonestBlocksAt H) B O := by
         rcases hcompare z q' n O hqi ho with h | h
         · exact h
-        · have hh := σ_h_le_of_anc hreach
+        · have hh := h_le_of_store_anc hreach
             (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hpH (hEO.trans h) hBy)
           omega
       obtain ⟨_, D, CV, _, hf, _⟩ := highOrigin_raw_head_at hp.run hp.noColl ho
@@ -115,7 +115,7 @@ theorem held_target_proposal_domain_before_of_sources_at
           change sp.slot (tr.time q') = n at hsl
           omega
       have hOt := held ho htime hBO
-      have hh := σ_h_le_of_anc hreach
+      have hh := h_le_of_store_anc hreach
         (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hpH hEO
           ((frame_tree_subset_at hp.run hp.noColl hpH hci).2 hOt))
       exact ⟨O, hOt, hBO, hEf.trans hh⟩

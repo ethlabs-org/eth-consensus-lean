@@ -538,7 +538,7 @@ theorem protected_call_viable (hp : ResetPremises tr H proposer dg g ΔF a)
       · exact Or.inl (hEO.trans h)
     have hBE : Anc (tr.HonestBlocks H) B E := by
       rcases hcmp with h | h
-      · have := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy h hBf.1)
+      · have := h_le_of_store_anc hreach (anc_tree_of_anc hp hy h hBf.1)
         omega
       · exact h
     refine ⟨C₀, hC₀, (anc_tree_of_anc hp hy hBE hE).trans hEC, ?_⟩

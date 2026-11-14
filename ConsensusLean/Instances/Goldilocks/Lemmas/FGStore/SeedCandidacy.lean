@@ -39,7 +39,7 @@ frame of a reachable store, given the target's comparison with the fork-choice r
 entry at or past the head-height floor below an origin whenever the seed is below the floor. -/
 theorem guarded_seed_ancestor_candidate (hreach : st.Reachable acp₀)
     {U : Set (NodeBlock p ACP)} (hU : Coherent U) (hsub : st.tree ⊆ U)
-    -- heights do not decrease along the store's ancestry (`Healing.σ_h_le_of_anc`)
+    -- heights do not decrease along the store's ancestry (`Healing.h_le_of_store_anc`)
     (hmono : ∀ {A B : NodeBlock p ACP}, st.Anc A B → (st.σ A.root).h ≤ (st.σ B.root).h)
     {P S : NodeBlock p ACP} (hPt : P ∈ st.toFrame.tree) {s : Nat}
     -- the seed's height `s`, as read where the seed was written, is its height in this store

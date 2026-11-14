@@ -139,7 +139,7 @@ theorem high_floor_signed_source_of_row_bound_at
     · exfalso
       have hEB := hEO.trans h
       have hEx := mem_of_honest_anc_at hrun hnc0 hi0 (hcut i) ho.1 hEB hBx
-      have hle' := σ_h_le_of_anc (fg_reachable_at hrun hi0 (hcut i) ho.1)
+      have hle' := h_le_of_store_anc (fg_reachable_at hrun hi0 (hcut i) ho.1)
         (store_anc_of_honest_anc_at hrun hnc0 hi0 (hcut i) ho.1 hEB hBx)
       rw [σ_eq_honest_at hrun hnc0 hi0 (hcut i) ho.1 ht hle hy hEx hE] at hle'
       clear * - hfloor hEh hle'; omega

@@ -94,25 +94,6 @@ def row_or_high_of_report_at (runs : ACRun A sg) : Prop :=
         att.T = ((tr.state y i).fg.σ B.root).Th) ∨
         ((tr.state y i).fg.σ B.root).h < ((tr.state y i).fg.σ R.root).h)
 
-/-- UNPROVED leaf 5: rows or higher reports force a round crossing. -/
-def round_cross_at : Prop :=
-  ∀ {proposer dg H tr} {g ΔF b v : Time} {B D X : A.Blk} {p : Fin P.n} {kX : Nat},
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
-    Service tr H g ΔF b → NoRestartAfter tr H (gbar g) →
-    B ∈ tr.HonestBlocksAt H → Anc (tr.HonestBlocksAt H) B D → X.parent = some D.root →
-    p ∈ H (tr.time kX) → tr.ProposesAt p kX X →
-    3 * (H (tr.time kX))ᶜ.ncard ≤ P.n - 1 →
-    gbar g ≤ v → v + ΔF ≤ tr.time kX → tr.time kX ≤ b → B.slot + P.δt ≤ X.slot →
-    (∀ y ∈ H (tr.time kX),
-      (∃ w c, w ∈ H (tr.time c) ∧ B ∈ (tr.state w c).fg.tree ∧
-        ∃ k att, y ∈ H (tr.time k) ∧ tr.SignAt y k att ∧ tr.time k ≤ v ∧
-          att.h = ((tr.state w c).fg.σ B.root).h ∧ att.T = ((tr.state w c).fg.σ B.root).Th) ∨
-      ∃ R, Anc (tr.HonestBlocksAt H) R D ∧ ∃ w c, w ∈ H (tr.time c) ∧
-        B ∈ (tr.state w c).fg.tree ∧ R ∈ (tr.state w c).fg.tree ∧
-          ((tr.state w c).fg.σ B.root).h < ((tr.state w c).fg.σ R.root).h) →
-    B ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
-      ((tr.state p (kX + 1)).fg.σ B.root).h + 1 ≤ ((tr.state p (kX + 1)).fg.σ X.root).h
-
 /-- UNPROVED leaf 6: high report implies a reset. -/
 def reset_of_high_report_at (runs : ACRun A sg) : Prop :=
   ∀ {cm proposer dg H tr} {g : Time} {y : Fin P.n} {i : Nat} {R : A.Blk},

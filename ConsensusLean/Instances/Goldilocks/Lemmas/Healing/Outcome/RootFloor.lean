@@ -46,7 +46,7 @@ theorem headHeightFloor_le_of_entries_below (hr : st.Reachable acp₀) {hz : Nat
   obtain ⟨_, _, _, _, _, ⟨C, hC, hCh⟩, _⟩ := Store.cache_invariants _ _ _ _ hr
   obtain ⟨E, hE, hEC, hEh, hET⟩ := entry_at_height hr hC (h := st.hmax - 1)
     (by clear * - hfloor; omega) (by clear * - hCh; omega)
-  have := σ_h_le_of_anc hr (hcross E hE C hET (by clear * - hBh hfloor hEh; omega) hEC
+  have := h_le_of_store_anc hr (hcross E hE C hET (by clear * - hBh hfloor hEh; omega) hEC
     (by clear * - hfloor hCh hEh; omega))
   clear * - hfloor hEh this; omega
 

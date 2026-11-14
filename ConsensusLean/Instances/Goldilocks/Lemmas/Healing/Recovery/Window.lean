@@ -165,7 +165,7 @@ theorem good_window_of_rows (hp : ResetPremises tr H proposer dg g ΔF a)
     obtain ⟨i, hik, hi⟩ := rows_delivered hs (by linarith) hw hW hdelivery
       (hrows z z.property).1 (hsig z) (ht z)
     rw [hstore]
-    exact processed_att_retained hp.run hw hi hik
+    exact processed_att_retained hp.run.toLocalRun hw hi hik
   · simpa only [Nat.zero_add] using And.intro hto (show 1 ≤ FG.FGParams.KW by decide)
 
 end Consensus.Goldilocks.Healing.Recovery

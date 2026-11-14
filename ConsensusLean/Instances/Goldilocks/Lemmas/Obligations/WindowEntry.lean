@@ -25,9 +25,6 @@ height has its previous height justified.
   and every held `D ⪯ W` with parent `Z ⪰ X` at height `σ[X].h` or `σ[X].h + 1` has
   `D.slot < σ[Z].ThSlot + δt`, held `X ⪯ D₁ ⪯ D₂ ⪯ W` justify the two entries and `D₂`
   finalized the held block of root `σ[X].Th` at height `σ[X].h`.
-* `Store.ThSlot_le_slot`, `Store.ThSlot_mono`: `σ[Z].ThSlot ≤ Z.slot`, and the entry slot grows
-  along an ancestry. `Store.theorem_F_of_anc_slot`: `theorem_F_of_anc` with the timing premise
-  `W.slot < σ[X].ThSlot + δt`.
 * `Store.finalized_covers_of_window`: with held `X ⪯ W ⪯ B₃` as in the slot form, and `B₀`
   below the entry block of `σ[X]`, the block of root `σ[B₃].F` is held and `B₀ ⪯` it (the
   `CacheCoverage` premise shape); `finalized_covers_of_window'`: per-height timing;
@@ -134,25 +131,6 @@ theorem chain_states_of_anc' (hr : st.Reachable acp₀) {X W : NodeBlock P ACP}
       obtain ⟨rfl, -⟩ := List.append_inj' he' rfl
       obtain ⟨hB, hXB, hBW, hBs, hσ, hY, hZ⟩ := hpre d₁ B d₂' rfl
       exact ⟨hB, hXB, hBW.tail ⟨hW, hW', hp⟩, by omega, hσ, hY, hZ⟩
-
-
-/-- **The entry slot is at most the slot.** In a reachable store, a held `Z` has
-`σ[Z].ThSlot ≤ Z.slot`. -/
-theorem ThSlot_le_slot (hr : st.Reachable acp₀) {Z : NodeBlock P ACP} (hZ : Z ∈ st.tree) :
-    (st.σ Z.root).ThSlot ≤ Z.slot := by
-  obtain ⟨hcoh, -, hg⟩ := (accepted_tree P ACP acp₀ st hr).2
-  induction hg Z hZ with
-  | refl =>
-    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, Healing.Store.σ_genesis hr]
-    exact Nat.zero_le _
-  | @tail Y Y' hGY hYY' ih =>
-    obtain ⟨hY, hY', hp⟩ := hYY'
-    obtain ⟨-, -, -, ht⟩ := Healing.Store.step_σ hr hY' hp
-    have hsl : Y.slot < Y'.slot := hcoh.2 Y hY Y' hY' hp
-    have := ih hY
-    rcases P.fg.stateTransition_ThSlot ht with ⟨-, e, -⟩ | ⟨-, e, -⟩
-    · rw [e]; omega
-    · rw [e]; rfl
 
 /-- Along one block, the finalized pair and the pending pairs of the new state are old ones
 (pending, or the old finalized pair) or the old height's entry pair (a copy of the private

@@ -203,7 +203,7 @@ theorem ResetPremisesUpTo.record_entry_eq {b : Time}
     obtain ⟨X', hX', hX'r, hX'h⟩ := signAt_entry hp.run hy hs
     obtain rfl : X' = X := hp.honest_coherent.1 ⟨y, hy, k, hX'⟩ ⟨y, hy, k, hX⟩
       (hX'r.trans hXr.symm)
-    have hle := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hy k) hJX
+    have hle := h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun hy k) hJX
     obtain ⟨q, hqk, l, O, hO, X'', hX'', hXO, hX''r, _, _⟩ := hp.high_row_source hy hs (by omega)
     obtain rfl : X'' = X' := hp.honest_coherent.1 ⟨y, hy, q, hX''⟩ ⟨y, hy, k, hX⟩
       (hX''r.trans hX'r.symm)

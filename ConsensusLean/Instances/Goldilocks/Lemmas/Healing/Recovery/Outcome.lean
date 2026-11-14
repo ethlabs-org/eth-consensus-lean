@@ -340,7 +340,7 @@ theorem rows_or_early_outcome (supply : ReadyProposalReportSupply tr H proposer 
         cases ht'
         exact frame_tree_subset hp hz hr.1 (SA.deepest_mem hC').1.1.1
     have hσ := σ_eq_run hp hz hy (mem_tree_of_anc hp hz hTC hCr) hT
-    have hle := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hz r)
+    have hle := h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun hz r)
       (anc_tree_of_anc hp hz hTC hCr)
     have hn := nohigher z hz r ell C hr ht hTC
     refine ⟨r, ell, C, hr, ht, hTC, ?_⟩

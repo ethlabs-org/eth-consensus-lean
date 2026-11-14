@@ -534,7 +534,7 @@ theorem ResetPremisesUpTo.held_target_vote_domain_before {b : Time}
         rcases hBS with h | h
         · exact h
         · have hSy := hp.mem_tree_of_anc hy h hBy
-          have hh := σ_h_le_of_anc hreach (hp.anc_tree_of_anc hy h hBy)
+          have hh := h_le_of_store_anc hreach (hp.anc_tree_of_anc hy h hBy)
           rw [← hp.σ_eq_run hS.1 hy hSsrc hSy] at hh
           omega
       have hSy := hp.high_origin_held_at_vote hS hy hcast hm (hFB.trans hBS')
@@ -547,7 +547,7 @@ theorem ResetPremisesUpTo.held_target_vote_domain_before {b : Time}
       have hBO : Anc (tr.HonestBlocks H) B O := by
         rcases hcompare z d n O hd ho with h | h
         · exact h
-        · have hh := σ_h_le_of_anc hreach (hp.anc_tree_of_anc hy (hEO.trans h) hBy)
+        · have hh := h_le_of_store_anc hreach (hp.anc_tree_of_anc hy (hEO.trans h) hBy)
           omega
       exact hp.raw_target_frozen_witness ho hy hcast hn hFB hBO hE hEO hEf
   exact (vote_viable_of_root hp.run hp.noColl hy hcast hroot (Or.inl hkeep)).symm
@@ -761,14 +761,14 @@ theorem held_target_vote_domain_before
     rcases hcomp with h | h
     · exact h
     · have hEB := hEO.trans h
-      have hh := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy hEB hBy)
+      have hh := h_le_of_store_anc hreach (anc_tree_of_anc hp hy hEB hBy)
       omega
   by_cases hSf : (tr.state y i).fg.headHeightFloor ≤ ((tr.state v r₀).fg.σ S.root).h
   · have hBS' : Anc (tr.HonestBlocks H) B S := by
       rcases hBS with h | h
       · exact h
       · have hSy := mem_tree_of_anc hp hy h hBy
-        have hh := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy h hBy)
+        have hh := h_le_of_store_anc hreach (anc_tree_of_anc hp hy h hBy)
         rw [← σ_eq_run hp hS.1 hy hSsrc hSy] at hh
         omega
     have hSy := high_origin_held_at_vote hp hS hy hcast hm (hFB.trans hBS')

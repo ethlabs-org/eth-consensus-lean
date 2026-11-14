@@ -66,33 +66,43 @@ theorem exists_firstCutAfter_of_healthy (hrun : GoldilocksRun proposer dg H tr)
 
 /-! ## Blocks -/
 
-/-- **An honest proposal is accepted by its proposer at its cut**, so it is held after it. -/
-theorem accept_of_proposesAt (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {W : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hW : tr.ProposesAt p k W) :
+/-- **An honest proposal is accepted by its proposer at its cut**, so it is held after it: for any
+AC, from the proposer's AC start `ini p` at which the AC meets the requirements. -/
+theorem accept_of_proposesAt_from {P : Params} {A : NodeAC P}
+    {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n}
+    {tr : RunTrace A} {proposer : Nat → Fin P.n} {ini : Fin P.n → A.State}
+    (h : Node.LocalRun proposer dg H sg tr ini)
+    (hroot : (P.genesisBlock A.genesisPayload).RootOk dg) (hnc : Compose.NoCollRun dg tr)
+    {p : Fin P.n} (hp : p ∈ H) (hq : ({ A with initial := ini p } : NodeAC P).Requirements)
+    {k : Nat} {W : A.Blk} (hW : tr.ProposesAt p k W) :
     tr.AcceptAt p k W ∧ W ∈ (tr.state p (k + 1)).fg.tree ∧ tr.post k = tr.state p (k + 1) := by
   obtain ⟨⟨⟨acc, hc⟩, hpos⟩, -, -⟩ := hW
-  rcases Compose.blockCall_cases hrun.toLocalRun hp hc with hg |
+  rcases Compose.blockCall_cases h hp hc with hg |
     ⟨j, x, rfl, hg, hpr, d, p', hdp, rfl, -, -, -, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
-  have hreq : (goldilocksNode sp ro).Requirements :=
-    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
-      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
-      SA.proposal_payload_valid sp _ ro⟩
-  obtain ⟨hacc, -⟩ :=
-    own_block_accepted hrun.toLocalRun hreq hrun.genesis_root_ok hnc hp hg hpr hdp
+  obtain ⟨hacc, -⟩ := own_block_accepted h hq hroot hnc hp hg hpr hdp
   have he := hc.2.symm.trans hacc.2
   simp only [Option.some.injEq, Cut.fg.injEq, FGLabel.block.injEq] at he
   obtain rfl := he.2
   refine ⟨hc, ?_, (tr.state_succ_of_call hc).symm⟩
-  have hlaw := hrun.cutLaw p hp _ _ hc
+  have hlaw := h.cutLaw p hp _ _ hc
   rw [tr.state_succ_of_call hc, (Goldilocks.Store.tree_grows _ _ _ _
-    (Compose.fg_reachable hrun.toLocalRun hp _)).1 _ _ hlaw.2.1]
+    (Compose.fg_reachable h hp _)).1 _ _ hlaw.2.1]
   exact Set.mem_insert _ _
 
+/-- **An honest proposal is accepted by its proposer at its cut** (`accept_of_proposesAt_from`
+at the Goldilocks requirements from the run's starts). -/
+theorem accept_of_proposesAt {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
+    {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {W : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hW : tr.ProposesAt p k W) :
+    tr.AcceptAt p k W ∧ W ∈ (tr.state p (k + 1)).fg.tree ∧ tr.post k = tr.state p (k + 1) :=
+  accept_of_proposesAt_from hrun.toLocalRun hrun.genesis_root_ok hnc hp
+    (Compose.requirements_from sp ro (hrun.vstart p)) hW
+
 /-- The right end of an ancestry inside `S` is in `S` when the left end is. -/
-theorem mem_of_anc_right {S : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
-    {A B : SA.Blk sp.n (List (FG.Att sp.n))} (h : Anc S A B) (hA : A ∈ S) : B ∈ S := by
+theorem mem_of_anc_right {n : Nat} {FGP ACP : Type} {S : Set (Block n FGP ACP)}
+    {A B : Block n FGP ACP} (h : Anc S A B) (hA : A ∈ S) : B ∈ S := by
   induction h with
   | refl => exact hA
   | tail _ hst _ => exact hst.2.1

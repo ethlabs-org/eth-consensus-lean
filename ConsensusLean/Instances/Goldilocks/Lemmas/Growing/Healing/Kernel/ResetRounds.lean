@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.F
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.NoAdvance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowEndpoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.Row
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -247,17 +248,15 @@ theorem reset_of_high_report_at
   obtain ⟨a, ha, hat⟩ := reset_of_high_source_at hrun (ht' ▸ hy) (ht' ▸ hq) hatt' hh'
   exact ⟨a, ha, by rwa [ht'] at hat⟩
 
-/-- A proposal's immediate acceptance is held while its proposer is honest. -/
+/-- A proposal's immediate acceptance is held while its proposer is honest
+(`Generic.proposal_mem_at_from` at the Goldilocks requirements from the run's starts). -/
 theorem proposal_mem_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} {k : Nat}
     (hp : p ∈ H (tr.time k)) {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : tr.ProposesAt p k P) : P ∈ (tr.state p (k + 1)).fg.tree := by
-  have hr := hrun.upTo (hrun.time_nonneg k)
-  have hP' : (tr.upTo (tr.time k)).ProposesAt p k P :=
-    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2.1, hP.2.2⟩
-  have hm := (Healing.accept_of_proposesAt hr (hnc.upTo _) hp hP').2.1
-  rwa [Trace.upTo_state tr p (fun q hq => hrun.time_mono (by omega))] at hm
+    (hP : tr.ProposesAt p k P) : P ∈ (tr.state p (k + 1)).fg.tree :=
+  Generic.proposal_mem_at_from hrun.toLocalRun
+    (fun y => Compose.requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok hnc hp hP
 
 /-- The report's actual frame supplies its fork-choice-root ancestry. -/
 theorem report_root_at

@@ -24,19 +24,6 @@ namespace Consensus.Goldilocks.Healing
 
 open SA (SAParams ReplayOrder Vote Payload gbar)
 
-/-- **Entry constancy** (G0.2 (i)): while the height stays along ancestry, the entry stays. -/
-theorem Th_eq_of_anc {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
-    (hr : st.Reachable acp₀) {A W : NodeBlock P ACP} (h : st.Anc A W)
-    (hh : (st.σ W.root).h = (st.σ A.root).h) : (st.σ W.root).Th = (st.σ A.root).Th := by
-  induction h with
-  | refl => rfl
-  | tail hAY hYW ih =>
-    obtain ⟨-, -, -, ht⟩ := Store.step_σ hr hYW.2.1 hYW.2.2
-    have h₁ := σ_h_le_of_anc hr hAY
-    rcases (Goldilocks.Store.step_fields ht).1 with ⟨he, hT⟩ | ⟨he, -⟩
-    · rw [hT]; exact ih (by omega)
-    · omega
-
 /-- Two self-entries at the same height below one held carrier are the same block. -/
 theorem self_entries_eq {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
     (hr : st.Reachable acp₀) {X J Y : NodeBlock P ACP}
@@ -416,7 +403,7 @@ theorem ResetPremisesUpTo.finalized_descendant_report {b : Time}
   have hPXr := hp.anc_tree_of_anc haH hPX hXr'
   have hrr := Compose.fg_reachable hp.run.toLocalRun haH r
   have hPE := hPXr.trans hXEr
-  have hle := σ_h_le_of_anc hrr hPE
+  have hle := h_le_of_store_anc hrr hPE
   have hlt : ((tr.state att.val r).fg.σ P.root).h <
       ((tr.state att.val r).fg.σ E.root).h := by
     apply lt_of_le_of_ne hle
@@ -515,7 +502,7 @@ theorem high_record_entry (hp : ResetPremises tr H proposer dg g ΔF a)
     obtain ⟨E', hE', hE'r, hE'h⟩ := signAt_entry hp.run hy hs
     obtain rfl : E' = E :=
       (honest_coherent hp).1 ⟨y, hy, k, hE'⟩ ⟨y, hy, k, hE⟩ (hE'r.trans hEr.symm)
-    have hJE' := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hy k) hJE
+    have hJE' := h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun hy k) hJE
     obtain ⟨x, i', j, B, ho, E'', hE'', hE''B, hE''r, -, -⟩ := hrow hs (by omega)
     obtain rfl : E'' = E' :=
       (honest_coherent hp).1 ⟨x, ho.1, i', hE''⟩ ⟨y, hy, k, hE'⟩ (hE''r.trans hE'r.symm)

@@ -141,7 +141,7 @@ theorem coverage_of_finalizing_carrier (hp : ResetPremises tr H proposer dg g Δ
   have hPy := mem_tree_of_anc hp hy hPFy hFm
   have hpostP : tr.post iP = tr.state q (iP + 1) := (tr.state_succ_of_call hP).symm
   rw [hpostP, ← σ_eq_run hp hy hq hPy (accept_mem hq hP)] at hPh
-  exact hPh.trans (σ_h_le_of_anc hRy (anc_tree_of_anc hp hy hPFy hFm))
+  exact hPh.trans (h_le_of_store_anc hRy (anc_tree_of_anc hp hy hPFy hFm))
 
 end Consensus.Goldilocks.Healing.Recovery
 

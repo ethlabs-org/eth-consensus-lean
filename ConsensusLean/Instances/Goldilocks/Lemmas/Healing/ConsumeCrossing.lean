@@ -99,6 +99,93 @@ theorem crossing_step (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ 
 
 end Chain
 
+/-! ## The pool of an honest node (any AC) -/
+
+section Pool
+
+variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
+  {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A} {proposer : Nat → Fin P.n}
+  {ini : Fin P.n → A.State}
+
+/-- `fg_on_attestation` keeps the pool and adds its attestation. -/
+private theorem mem_onAttestation {ACP : Type} {st : Store P ACP} {a b : FG.Att P.n}
+    (h : a ∈ st.atts ∨ a = b) : a ∈ (st.onAttestation b).atts := by
+  unfold _root_.Consensus.Goldilocks.Store.onAttestation
+  split_ifs with hb
+  · rcases h with h | rfl
+    exacts [h, hb]
+  · simpa using h
+
+/-- `addAtts` keeps the pool and adds its attestations. -/
+private theorem mem_addAtts {ACP : Type} {st : Store P ACP} {a : FG.Att P.n}
+    {l : List (FG.Att P.n)} (h : a ∈ st.atts ∨ a ∈ l) : a ∈ (st.addAtts l).atts := by
+  induction l generalizing st with
+  | nil => exact h.resolve_right (by simp)
+  | cons b l ih =>
+    change a ∈ ((st.onAttestation b).addAtts l).atts
+    rcases h with h | h
+    · exact ih (Or.inl (mem_onAttestation (Or.inl h)))
+    · rcases List.mem_cons.1 h with rfl | h
+      · exact ih (Or.inl (mem_onAttestation (Or.inr rfl)))
+      · exact ih (Or.inr h)
+
+/-- An accepted block keeps the pool and adds its payload. -/
+private theorem mem_onBlock {ACP : Type} {st st' : Store P ACP} {B : NodeBlock P ACP}
+    (hB : st.onBlock B = some st') {a : FG.Att P.n}
+    (h : a ∈ st.atts ∨ a ∈ B.fgPayload) : a ∈ st'.atts := by
+  obtain ⟨pr, σ', -, -, -, -, -, rfl⟩ := Goldilocks.Store.onBlock_eq_some hB
+  refine mem_addAtts (h.imp_left fun h => ?_)
+  rw [(Goldilocks.Store.updateFinality_spec _ σ').2.2.1]
+  exact h
+
+/-- **The pool of an honest node only grows.** -/
+private theorem atts_mono (h : Node.LocalRun proposer dg H sg tr ini)
+    {y : Fin P.n} (hy : y ∈ H) {i j : Nat}
+    (hij : i ≤ j) {a : FG.Att P.n} (ha : a ∈ (tr.state y i).fg.atts) :
+    a ∈ (tr.state y j).fg.atts := by
+  induction j, hij using Nat.le_induction with
+  | base => exact ha
+  | succ j _ ih =>
+    have ha := ih
+    rcases fg_step h hy j with he | ⟨B, -, hB⟩ | ⟨b, -, he⟩
+    · rwa [he]
+    · exact mem_onBlock hB (Or.inl ha)
+    · rw [he]
+      exact mem_onAttestation (Or.inl ha)
+
+/-- A processed attestation is in the pool after the cut. -/
+private theorem mem_atts_of_process (h : Node.LocalRun proposer dg H sg tr ini)
+    {y : Fin P.n} (hy : y ∈ H)
+    {k : Nat} {a : FG.Att P.n} (hp : tr.ProcessAttAt y k a) :
+    a ∈ (tr.state y (k + 1)).fg.atts := by
+  rcases hp with hc | ⟨B, hc, ha⟩
+  · rw [tr.state_succ_of_call hc, (h.cutLaw y hy k _ hc).1]
+    exact mem_onAttestation (Or.inr rfl)
+  · rw [tr.state_succ_of_call hc]
+    exact mem_onBlock (h.cutLaw y hy k _ hc).2.1 (Or.inr ha)
+
+/-- Processed attestations persist in the honest node's durable attestation pool. -/
+theorem processed_att_retained (h : Node.LocalRun proposer dg H sg tr ini)
+    {y : Fin P.n} (hy : y ∈ H) {k j : Nat} {a : FG.Att P.n}
+    (hp : tr.ProcessAttAt y k a) (hkj : k < j) : a ∈ (tr.state y j).fg.atts := by
+  exact atts_mono h hy (by omega) (mem_atts_of_process h hy hp)
+
+/-- An honest validator signs its own attestations. -/
+theorem signAt_val (h : Node.LocalRun proposer dg H sg tr ini)
+    {y : Fin P.n} (hy : y ∈ H) {k : Nat}
+    {att : FG.Att P.n} (hs : tr.SignAt y k att) : att.val = y := by
+  obtain ⟨src, hc⟩ := hs
+  have h := (h.cutLaw y hy k _ hc).1
+  unfold _root_.Consensus.Goldilocks.Store.attest FG.Record.createAtt at h
+  split at h
+  · cases h
+  · split_ifs at h
+    simp only [Option.some.injEq, Prod.mk.injEq] at h
+    obtain ⟨rfl, -⟩ := h
+    rfl
+
+end Pool
+
 /-! ## The run -/
 
 section Run
@@ -115,82 +202,6 @@ private theorem fg_run (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr
       (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
       SA.proposal_payload_valid sp _ ro⟩
   exact Compose.fg_projection _ _ dg H _ tr proposer hreq hs.genesisRoot hrun.toLocalRun hs.noColl
-
-/-- An honest validator signs its own attestations. -/
-private theorem signAt_val (hrun : GoldilocksRun proposer dg H tr)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {att : FG.Att sp.n} (hs : tr.SignAt y k att) : att.val = y := by
-  obtain ⟨src, hc⟩ := hs
-  have h := (hrun.cutLaw y hy k _ hc).1
-  unfold _root_.Consensus.Goldilocks.Store.attest FG.Record.createAtt at h
-  split at h
-  · cases h
-  · split_ifs at h
-    simp only [Option.some.injEq, Prod.mk.injEq] at h
-    obtain ⟨rfl, -⟩ := h
-    rfl
-
-/-- `fg_on_attestation` keeps the pool and adds its attestation. -/
-private theorem mem_onAttestation {st : Store sp.toParams (Payload sp.n)} {a b : FG.Att sp.n}
-    (h : a ∈ st.atts ∨ a = b) : a ∈ (st.onAttestation b).atts := by
-  unfold _root_.Consensus.Goldilocks.Store.onAttestation
-  split_ifs with hb
-  · rcases h with h | rfl
-    exacts [h, hb]
-  · simpa using h
-
-/-- `addAtts` keeps the pool and adds its attestations. -/
-private theorem mem_addAtts {st : Store sp.toParams (Payload sp.n)} {a : FG.Att sp.n}
-    {l : List (FG.Att sp.n)} (h : a ∈ st.atts ∨ a ∈ l) : a ∈ (st.addAtts l).atts := by
-  induction l generalizing st with
-  | nil => exact h.resolve_right (by simp)
-  | cons b l ih =>
-    change a ∈ ((st.onAttestation b).addAtts l).atts
-    rcases h with h | h
-    · exact ih (Or.inl (mem_onAttestation (Or.inl h)))
-    · rcases List.mem_cons.1 h with rfl | h
-      · exact ih (Or.inl (mem_onAttestation (Or.inr rfl)))
-      · exact ih (Or.inr h)
-
-/-- An accepted block keeps the pool and adds its payload. -/
-private theorem mem_onBlock {st st' : Store sp.toParams (Payload sp.n)}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : st.onBlock B = some st') {a : FG.Att sp.n}
-    (h : a ∈ st.atts ∨ a ∈ B.fgPayload) : a ∈ st'.atts := by
-  obtain ⟨pr, σ', -, -, -, -, -, rfl⟩ := Goldilocks.Store.onBlock_eq_some hB
-  refine mem_addAtts (h.imp_left fun h => ?_)
-  rw [(Goldilocks.Store.updateFinality_spec _ σ').2.2.1]
-  exact h
-
-/-- **The pool of an honest node only grows.** -/
-private theorem atts_mono (hrun : GoldilocksRun proposer dg H tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i j : Nat}
-    (hij : i ≤ j) {a : FG.Att sp.n} (ha : a ∈ (tr.state y i).fg.atts) :
-    a ∈ (tr.state y j).fg.atts := by
-  induction j, hij using Nat.le_induction with
-  | base => exact ha
-  | succ j _ ih =>
-    have ha := ih
-    rcases fg_step hrun.toLocalRun hy j with he | ⟨B, -, hB⟩ | ⟨b, -, he⟩
-    · rwa [he]
-    · exact mem_onBlock hB (Or.inl ha)
-    · rw [he]
-      exact mem_onAttestation (Or.inl ha)
-
-/-- A processed attestation is in the pool after the cut. -/
-private theorem mem_atts_of_process (hrun : GoldilocksRun proposer dg H tr)
-    {y : Fin sp.n} (hy : y ∈ H)
-    {k : Nat} {a : FG.Att sp.n} (h : tr.ProcessAttAt y k a) : a ∈ (tr.state y (k + 1)).fg.atts := by
-  rcases h with hc | ⟨B, hc, ha⟩
-  · rw [tr.state_succ_of_call hc, (hrun.cutLaw y hy k _ hc).1]
-    exact mem_onAttestation (Or.inr rfl)
-  · rw [tr.state_succ_of_call hc]
-    exact mem_onBlock (hrun.cutLaw y hy k _ hc).2.1 (Or.inr ha)
-
-/-- Processed attestations persist in the honest node's durable attestation pool. -/
-theorem processed_att_retained (hrun : GoldilocksRun proposer dg H tr)
-    {y : Fin sp.n} (hy : y ∈ H) {k j : Nat} {a : FG.Att sp.n}
-    (h : tr.ProcessAttAt y k a) (hkj : k < j) : a ∈ (tr.state y j).fg.atts := by
-  exact atts_mono hrun hy (by omega) (mem_atts_of_process hrun hy h)
 
 /-- **The mature crossing at an honest proposal**: an honest
 proposal `X` on the parent `Pr`, with `E ⪯ Pr` an entry of height `h` (held by an honest node),
@@ -251,8 +262,8 @@ theorem crossing_of_rows (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
     intro v hv
     have hvH : v ∈ H := (Finset.mem_filter.1 hv).2
     obtain ⟨k, att, hsig, hah, haT, k', hk', hproc⟩ := hdel v hvH
-    refine ⟨att, signAt_val hrun hvH hsig, by rw [hst, hσE, hEh, hah], haT, ?_⟩
-    have hpool := atts_mono hrun hp (show k' + 1 ≤ kX by omega) (mem_atts_of_process hrun hp hproc)
+    refine ⟨att, signAt_val hrun.toLocalRun hvH hsig, by rw [hst, hσE, hEh, hah], haT, ?_⟩
+    have hpool := processed_att_retained hrun.toLocalRun hp hproc (show k' < kX by omega)
     by_cases hon : (tr.state p kX).fg.OnChain d.head att
     · right
       obtain ⟨Z, hZ, hZd, haZ⟩ := hon

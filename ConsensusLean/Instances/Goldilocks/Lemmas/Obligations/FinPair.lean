@@ -59,7 +59,7 @@ theorem J_hj_eq_of_anc {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P AC
   | refl => exact ⟨rfl, rfl⟩
   | tail hAY hYW ih =>
     obtain ⟨-, -, -, ht⟩ := Store.step_σ hr hYW.2.1 hYW.2.2
-    have h₁ := σ_h_le_of_anc hr hAY
+    have h₁ := h_le_of_store_anc hr hAY
     rcases stateTransition_bits ht with ⟨hh', -⟩ | ⟨hh', -⟩
     · obtain ⟨hJ, hj⟩ := step_J_of_h ht hh'
       rw [hJ, hj]

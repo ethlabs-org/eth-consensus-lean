@@ -302,7 +302,7 @@ theorem record_entry_eq_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     obtain ⟨X', hX', hX'r, hX'h⟩ := signAt_entry_at hrun hyk hs
     obtain rfl : X' = X := hU.1 ⟨y, k, _, hk0, leC k, hyk, hX'⟩ ⟨y, k, _, hk0, leC k, hyk, hX⟩
       (hX'r.trans hXr.symm)
-    have hle' := Healing.σ_h_le_of_anc (fg_reachable_at hrun hk0 (leC k) hyk) hJX
+    have hle' := Healing.h_le_of_store_anc (fg_reachable_at hrun hk0 (leC k) hyk) hJX
     obtain ⟨q, hqk, l, O, hO, X'', hX'', hXO, hX''r, _, _⟩ :=
       hp.high_row_source_at hyk hs (by omega)
     have hq0 := hrun.time_nonneg q

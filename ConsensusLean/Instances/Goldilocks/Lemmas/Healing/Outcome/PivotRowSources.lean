@@ -214,7 +214,7 @@ theorem ResetPremisesUpTo.held_target_proposal_domain_before {b : Time}
         rcases hBS with h | h
         · exact h
         · have hSy := hp.mem_tree_of_anc hpH h hBy
-          have hh := σ_h_le_of_anc hreach (hp.anc_tree_of_anc hpH h hBy)
+          have hh := h_le_of_store_anc hreach (hp.anc_tree_of_anc hpH h hBy)
           rw [← hp.σ_eq_run hS.1 hpH hSsrc hSy] at hh
           clear * - hfloor hSf hh; omega
       have hSt := held hS hqt hBS'
@@ -228,7 +228,7 @@ theorem ResetPremisesUpTo.held_target_proposal_domain_before {b : Time}
       have hBO : Anc (tr.HonestBlocks H) B O := by
         rcases hcompare z q' n O hqi ho with h | h
         · exact h
-        · have hh := σ_h_le_of_anc hreach (hp.anc_tree_of_anc hpH (hEO.trans h) hBy)
+        · have hh := h_le_of_store_anc hreach (hp.anc_tree_of_anc hpH (hEO.trans h) hBy)
           clear * - hfloor hEf hh; omega
       obtain ⟨_, D, CV, _, hf, _⟩ := hp.highOrigin_mem ho
       have htime : tr.time q' < sp.ts u := by
@@ -249,7 +249,7 @@ theorem ResetPremisesUpTo.held_target_proposal_domain_before {b : Time}
           change sp.slot (tr.time q') = n at hsl
           omega
       have hOt := held ho htime hBO
-      have hh := σ_h_le_of_anc hreach
+      have hh := h_le_of_store_anc hreach
         (hp.anc_tree_of_anc hpH hEO (mem_tree_of_frame hp.run hpH hci hOt))
       exact ⟨O, hOt, hBO, hEf.trans hh⟩
   obtain ⟨C, hCt, hBC, hCv⟩ := hdesc
@@ -861,7 +861,7 @@ theorem ResetPremisesUpTo.held_high_origin_viable {b : Time}
       · exact Anc.total hU hEO h
     have hBE : Anc (tr.HonestBlocks H) B E := by
       rcases hcmp with h | h
-      · have := σ_h_le_of_anc hreach (hp.anc_tree_of_anc hpH h hBf.1)
+      · have := h_le_of_store_anc hreach (hp.anc_tree_of_anc hpH h hBf.1)
         clear * - hfloor hEh this; omega
       · exact h
     refine ⟨C, hC, (hp.anc_tree_of_anc hpH hBE hE).trans hEC, ?_⟩

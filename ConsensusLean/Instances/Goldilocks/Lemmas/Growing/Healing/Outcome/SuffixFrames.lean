@@ -132,7 +132,7 @@ theorem reset_competitor_reflect_at (hp : ResetPremisesUpTo tr H proposer dg g �
   rw [Outcome.frame_of_call hrun hpi hci] at hXv hBt ⊢
   have hXBs := store_anc_of_honest_anc_at hrun hnc hi0 hle hpi hXB hBt.1
   exact ⟨hBt.1, hBt.2, hXv.2.2.1.trans hXBs,
-    le_trans hXv.2.2.2 (Healing.σ_h_le_of_anc (fg_reachable_at hrun hi0 hle hpi) hXBs)⟩
+    le_trans hXv.2.2.2 (Healing.h_le_of_store_anc (fg_reachable_at hrun hi0 hle hpi) hXBs)⟩
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 

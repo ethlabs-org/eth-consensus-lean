@@ -87,7 +87,7 @@ private theorem proposal_rows_placed_at
 private theorem signAt_val_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) {att : FG.Att sp.n}
     (hs : tr.SignAt y k att) : att.val = y :=
-  Healing.signAt_val (hrun.upTo (hrun.time_nonneg k)) hy
+  Healing.signAt_val (hrun.upTo (hrun.time_nonneg k)).toLocalRun hy
     ((RunTrace.upTo_signAt _).mpr ⟨le_rfl, hs⟩)
 
 /-- No restart of a node honest at a proposal cut within the horizon after `ḡ`. -/

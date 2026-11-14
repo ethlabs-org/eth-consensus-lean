@@ -191,7 +191,7 @@ theorem cross_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoC
   have := cross_step hfg hp hXt hPrt hpar S hS (fun v hv => by
       obtain ⟨k, att, hsig, hah, haT, hproc⟩ := hdel v hv
       rw [← hσPr]
-      exact ⟨att, signAt_val hrun (hSH v hv) hsig, hah, haT, hplace att hproc hah haT⟩)
+      exact ⟨att, signAt_val hrun.toLocalRun (hSH v hv) hsig, hah, haT, hplace att hproc hah haT⟩)
     (by rw [← hσPr]; exact hage)
   rw [hσX, hσPr]
   exact this

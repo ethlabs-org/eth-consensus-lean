@@ -74,36 +74,24 @@ theorem justify_step' (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ 
 
 end Chain
 
-section Run
+section AnyAC
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
+  {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A} {proposer : Nat → Fin P.n}
+  {ini : Fin P.n → A.State}
 
-/-- An honest validator signs its own attestations. -/
-theorem signAt_val (hrun : GoldilocksRun proposer dg H tr)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {att : FG.Att sp.n} (hs : tr.SignAt y k att) : att.val = y := by
-  obtain ⟨src, hc⟩ := hs
-  have h := (hrun.cutLaw y hy k _ hc).1
-  unfold _root_.Consensus.Goldilocks.Store.attest FG.Record.createAtt at h
-  split at h
-  · cases h
-  · split_ifs at h
-    simp only [Option.some.injEq, Prod.mk.injEq] at h
-    obtain ⟨rfl, -⟩ := h
-    rfl
-
-/-- **The attestations of an honest proposal**: for an honest proposal `X` at the
-cut `kX` on the held parent `Pr`, the FG projection is a local run, the store after the cut holds
-`X` and `Pr` with the same states, and every attestation that the proposer processed before `kX` and
-that names `Pr`'s entry is in `X`'s payload or on `Pr`'s chain. -/
-theorem proposal_rows_placed (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} (hp : p ∈ H) {kX : Nat}
-    {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
+/-- **The attestations of an honest proposal**, for any AC from starts `ini` at which it meets the
+requirements: for an honest proposal `X` at the cut `kX` on the held parent `Pr`, the FG
+projection is a local run, the store after the cut holds `X` and `Pr` with the same states, and
+every attestation that the proposer processed before `kX` and that names `Pr`'s entry is in `X`'s
+payload or on `Pr`'s chain. -/
+theorem proposal_rows_placed_from (h : Node.LocalRun proposer dg H sg tr ini)
+    (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P).Requirements)
+    (hroot : (P.genesisBlock A.genesisPayload).RootOk dg)
+    (hnc : Compose.NoCollRun dg tr) {p : Fin P.n} (hp : p ∈ H) {kX : Nat}
+    {X Pr : A.Blk} (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
     (hPr : Pr ∈ (tr.state p kX).fg.tree) :
-    FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
+    FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
       X ∈ (tr.projFG.store p (kX + 1)).tree ∧ Pr ∈ (tr.projFG.store p (kX + 1)).tree ∧
       (tr.post kX).fg.σ X.root = (tr.projFG.store p (kX + 1)).σ X.root ∧
       (tr.state p kX).fg.σ Pr.root = (tr.projFG.store p (kX + 1)).σ Pr.root ∧
@@ -111,14 +99,16 @@ theorem proposal_rows_placed (hrun : GoldilocksRun proposer dg H tr)
         att.h = ((tr.state p kX).fg.σ Pr.root).h → att.T = ((tr.state p kX).fg.σ Pr.root).Th →
         att ∈ X.fgPayload ∨ (tr.projFG.store p (kX + 1)).OnChain Pr att := by
   classical
-  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
-  obtain ⟨hacc, hXt, hpost⟩ := accept_of_proposesAt hrun hnc hp hX
-  have hst := Compose.store_eq hrun hp (kX + 1)
-  have hmono := Compose.tree_mono hrun.toLocalRun hp (Nat.le_succ kX)
+  have hU := Compose.honest_blocks_coherent h hnc
+  obtain ⟨hacc, hXt, hpost⟩ := accept_of_proposesAt_from h hroot hnc hp (hq p hp) hX
+  have hst : tr.projFG.store p (kX + 1) = (tr.state p (kX + 1)).fg := by
+    change (tr.projFG.state p (kX + 1)).1 = _
+    rw [Compose.projFG_state h hp]
+  have hmono := Compose.tree_mono h hp (Nat.le_succ kX)
   have hPrU : Pr ∈ tr.HonestBlocks H := ⟨p, hp, kX, hPr⟩
   have hXU : X ∈ tr.HonestBlocks H := ⟨p, hp, kX + 1, hXt⟩
   -- `X` is `propose_block`'s block on `d.head`, with the pool before the tick
-  rcases Compose.blockCall_cases hrun.toLocalRun hp hacc with hg |
+  rcases Compose.blockCall_cases h hp hacc with hg |
     ⟨j, x, -, -, -, d, pay, -, hB, -, -, -, hfgj⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hX.1.2
   have hpay : X.fgPayload = (tr.state p kX).fg.proposalAttestations d.head := by
@@ -129,14 +119,15 @@ theorem proposal_rows_placed (hrun : GoldilocksRun proposer dg H tr)
   -- `σ[Pr]` before the proposal cut
   have hσPr : (tr.state p kX).fg.σ Pr.root = (tr.state p (kX + 1)).fg.σ Pr.root := by
     obtain ⟨_, _, _, _, _, _, _, hsf, _⟩ :=
-      Goldilocks.Store.onBlock_fields (hrun.cutLaw p hp kX _ hacc).2.1
+      Goldilocks.Store.onBlock_fields (h.cutLaw p hp kX _ hacc).2.1
     have hne : Pr.root ≠ X.root := fun he => by
       obtain rfl : Pr = X := hU.1 hPrU hXU he
       exact lt_irrefl _ (hU.2 _ hPrU _ hPrU hpar)
     rw [tr.state_succ_of_call hacc, hsf, Function.update_of_ne hne]
-  refine ⟨Compose.projFG_localRun hrun hnc, by rw [hst]; exact hXt, by rw [hst]; exact hmono hPr,
-    by rw [hpost, hst], by rw [hst, hσPr], fun att ⟨k', hk', hproc⟩ hah haT => ?_⟩
-  have hpool := processed_att_retained hrun hp hproc hk'
+  refine ⟨Compose.fg_projection_from hq hroot h hnc, by rw [hst]; exact hXt,
+    by rw [hst]; exact hmono hPr, by rw [hpost, hst], by rw [hst, hσPr],
+    fun att ⟨k', hk', hproc⟩ hah haT => ?_⟩
+  have hpool := processed_att_retained h hp hproc hk'
   rw [hst]
   by_cases hon : (tr.state p kX).fg.OnChain d.head att
   · right
@@ -149,6 +140,33 @@ theorem proposal_rows_placed (hrun : GoldilocksRun proposer dg H tr)
     refine List.mem_filter.2 ⟨hpool, decide_eq_true ⟨Or.inl ⟨?_, ?_⟩, hon⟩⟩
     · rw [hdroot, hah]
     · rw [hdroot, haT]
+
+end AnyAC
+
+section Run
+
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+
+/-- **The attestations of an honest proposal** (`proposal_rows_placed_from` at the Goldilocks
+requirements from the run's starts). -/
+theorem proposal_rows_placed {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} (hp : p ∈ H) {kX : Nat}
+    {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
+    (hPr : Pr ∈ (tr.state p kX).fg.tree) :
+    FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
+      X ∈ (tr.projFG.store p (kX + 1)).tree ∧ Pr ∈ (tr.projFG.store p (kX + 1)).tree ∧
+      (tr.post kX).fg.σ X.root = (tr.projFG.store p (kX + 1)).σ X.root ∧
+      (tr.state p kX).fg.σ Pr.root = (tr.projFG.store p (kX + 1)).σ Pr.root ∧
+      ∀ att, (∃ k' < kX, tr.ProcessAttAt p k' att) →
+        att.h = ((tr.state p kX).fg.σ Pr.root).h → att.T = ((tr.state p kX).fg.σ Pr.root).Th →
+        att ∈ X.fgPayload ∨ (tr.projFG.store p (kX + 1)).OnChain Pr att :=
+  proposal_rows_placed_from hrun.toLocalRun
+    (fun y _ => Compose.requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok hnc hp hX
+    hpar hPr
 
 end Run
 

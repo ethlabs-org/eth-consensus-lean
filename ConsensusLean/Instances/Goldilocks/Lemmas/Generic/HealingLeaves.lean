@@ -21,6 +21,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.H
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLagCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Deadline
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalCrosses
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -43,6 +45,11 @@ Leaf 3 (`exists_frameWindow_seq_of_service_at_from`): per-cut height range and r
 a frame window of the requested length, by the sequential pigeonhole over the cuts of nodes
 honest at them with the merged-key lag between independently honest observations
 (`frameKey'_lag_obs_from`).
+
+Proposal membership and leaf 5, the round crossing (`proposal_mem_at_from`,
+`round_cross_at_from`): an honest proposal is held by its proposer after its cut, and delivered
+historical rows (`rows_delivered_service_at_from`, under the signed-row service clause) or higher
+reports raise the proposal one height above the crossed block.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -426,6 +433,198 @@ theorem exists_frameWindow_seq_of_service_at_from
 
 end FrameWindowLeaf
 
-end Consensus.Goldilocks.Generic
+/-! ## Proposal membership and leaf 5, the round crossing -/
 
-end
+section RoundCross
+
+variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
+
+open SA (gbar)
+open Healing.Growing (NoRestartAfter)
+
+/-- An honestly signed row is processed strictly before a sufficiently late honest proposal,
+even if the signer has been compromised by then, under the signed-row service clause
+(`Service.signedRow`, `Healing.Growing.ResetService.signedRow`). -/
+theorem rows_delivered_service_at_from {g ΔF b v : Time}
+    (hrows : ∀ x i att, x ∈ H (tr.time i) → tr.SignAt x i att →
+      ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j → tr.time j ≤ b →
+        tr.deadline y j (max (tr.time i) g) ΔF ≤ tr.time j →
+        ∃ k ≤ j, tr.ProcessAttAt y k att ∧
+          tr.time k < tr.deadline y k (max (tr.time i) g) ΔF)
+    (hnr : NoRestartAfter tr H (gbar g))
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hv : gbar g ≤ v) {p : Fin P.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
+    {X : A.Blk} (hX : tr.ProposesAt p kX X)
+    (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b) {y : Fin P.n} {k : Nat}
+    (hy : y ∈ H (tr.time k)) {att : FG.Att P.n} (hsig : tr.SignAt y k att)
+    (hk : tr.time k ≤ v) : ∃ k' < kX, tr.ProcessAttAt p k' att := by
+  have hdl0 : ∀ j ≤ kX, ∀ τ : Time,
+      tr.deadline p j τ ΔF ≤ max τ (gbar g) + ΔF := fun j hj τ =>
+    Compose.deadline_le_of_restarts
+      (fun k' hk' hr => hnr p k' (hrun.antitone (hrun.time_mono (hk'.trans hj)) hp) hr) τ ΔF
+  have hg : max (tr.time k) g ≤ v := max_le hk ((Healing.le_gbar g).trans hv)
+  have hdl : ∀ j ≤ kX,
+      tr.deadline p j (max (tr.time k) g) ΔF ≤ v + ΔF := by
+    intro j hj
+    have := hdl0 j hj (max (tr.time k) g)
+    have := max_le hg hv
+    linarith
+  obtain ⟨acc, hcall⟩ := hX.1.1
+  obtain ⟨k', hk', hproc, hlt⟩ := hrows y k att hy hsig p kX hp
+    ⟨_, hcall⟩ hkb (by linarith [hdl kX le_rfl])
+  refine ⟨k', lt_of_le_of_ne hk' fun h => ?_, hproc⟩
+  subst h
+  linarith only [hdl k' le_rfl, hlt, hvx]
+
+/-- A proposal's immediate acceptance is held while its proposer is honest, for a run from starts
+`ini` at which the AC meets the requirements, with the genesis root: the middle component of
+`Healing.accept_of_proposesAt_from` on the proposer's prefix. -/
+theorem proposal_mem_at_from
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hq : ∀ y, ({ A with initial := ini y } : NodeAC P).Requirements)
+    (hroot : (P.genesisBlock A.genesisPayload).RootOk dg)
+    (hnc : Compose.NoCollRun dg tr) {p : Fin P.n} {k : Nat}
+    (hp : p ∈ H (tr.time k)) {B : A.Blk}
+    (hB : tr.ProposesAt p k B) : B ∈ (tr.state p (k + 1)).fg.tree := by
+  have hr := hrun.upTo (hrun.time_nonneg k)
+  have hB' : (tr.upTo (tr.time k)).ProposesAt p k B :=
+    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hB.1⟩, hB.2.1, hB.2.2⟩
+  have hm := (Healing.accept_of_proposesAt_from hr hroot (hnc.upTo _) hp (hq p) hB').2.1
+  rwa [Trace.upTo_state tr p (fun q hq => hrun.time_mono (by omega))] at hm
+
+/-- Leaf 5: delivered historical rows cross one height; honesty is read separately at every cut.
+For a run from starts `ini` at which the AC meets the requirements, with the genesis root and the
+signed-row service clause (`Service.signedRow`). -/
+theorem round_cross_at_from
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hq : ∀ y, ({ A with initial := ini y } : NodeAC P).Requirements)
+    (hroot : (P.genesisBlock A.genesisPayload).RootOk dg)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b v : Time}
+    (hrows : ∀ x i att, x ∈ H (tr.time i) → tr.SignAt x i att →
+      ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j → tr.time j ≤ b →
+        tr.deadline y j (max (tr.time i) g) ΔF ≤ tr.time j →
+        ∃ k ≤ j, tr.ProcessAttAt y k att ∧
+          tr.time k < tr.deadline y k (max (tr.time i) g) ΔF)
+    (hnr : NoRestartAfter tr H (gbar g))
+    {B D X : A.Blk} (hBH : B ∈ tr.HonestBlocksAt H)
+    (hBD : Anc (tr.HonestBlocksAt H) B D) (hpar : X.parent = some D.root)
+    {p : Fin P.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
+    (hX : tr.ProposesAt p kX X) (hf : 3 * (H (tr.time kX))ᶜ.ncard ≤ P.n - 1)
+    (hv : gbar g ≤ v) (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b)
+    (hage : B.slot + P.δt ≤ X.slot)
+    (hrow : ∀ y ∈ H (tr.time kX),
+      (∃ w c, w ∈ H (tr.time c) ∧ B ∈ (tr.state w c).fg.tree ∧
+        ∃ k att, y ∈ H (tr.time k) ∧ tr.SignAt y k att ∧
+          tr.time k ≤ v ∧ att.h = ((tr.state w c).fg.σ B.root).h ∧
+          att.T = ((tr.state w c).fg.σ B.root).Th) ∨
+      ∃ R, Anc (tr.HonestBlocksAt H) R D ∧ ∃ w c, w ∈ H (tr.time c) ∧
+        B ∈ (tr.state w c).fg.tree ∧ R ∈ (tr.state w c).fg.tree ∧
+          ((tr.state w c).fg.σ B.root).h < ((tr.state w c).fg.σ R.root).h) :
+    B ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
+      ((tr.state p (kX + 1)).fg.σ B.root).h + 1 ≤
+        ((tr.state p (kX + 1)).fg.σ X.root).h := by
+  classical
+  have hage' : B.slot + P.fg.δt ≤ X.slot := hage
+  have hd := hrun.time_nonneg kX
+  have hle : ∀ q < kX, tr.time q ≤ tr.time kX := fun q hq => hrun.time_mono hq.le
+  have hle1 : ∀ q < kX + 1, tr.time q ≤ tr.time kX := fun q hq =>
+    hrun.time_mono (by omega)
+  have hs := Trace.upTo_state tr p hle
+  have hs1 := Trace.upTo_state tr p hle1
+  -- Restrict only the proposer's local execution; historical witnesses remain in the full trace.
+  have hr := hrun.upTo hd
+  have hX' : (tr.upTo (tr.time kX)).ProposesAt p kX X :=
+    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hX.1⟩, hX.2.1, hX.2.2⟩
+  have hcoh := Compose.Growing.honest_blocks_coherent_local hrun hnc
+  obtain ⟨Pr, hpar', hPr⟩ :=
+    Healing.proposal_parent_held_from hr hroot (hnc.upTo _) hp (hq p) hX'
+  rw [hs] at hPr
+  obtain ⟨-, hXm, he⟩ := Healing.accept_of_proposesAt_from hr hroot (hnc.upTo _) hp (hq p) hX'
+  rw [hs1] at hXm he
+  have hPrH : Pr ∈ tr.HonestBlocksAt H := ⟨p, kX, _, hd, hle, hp, hPr⟩
+  have hDH : D ∈ tr.HonestBlocksAt H := by
+    rcases Relation.ReflTransGen.cases_tail hBD with rfl | ⟨Z, -, hZ⟩
+    · exact hBH
+    · exact hZ.2.1
+  obtain rfl : D = Pr := hcoh.1 hDH hPrH (Option.some_injective _ (hpar.symm.trans hpar'))
+  have hR := fg_reachable_at_from hrun hd hle hp
+  have hR1 := fg_reachable_at_from hrun hd hle1 hp
+  have hBDs := store_anc_of_honest_anc_at_from hrun hnc hd hle hp hBD hPr
+  have hBst : B ∈ (tr.state p kX).fg.tree := by
+    by_cases he : B = D
+    · exact he ▸ hPr
+    · exact (Anc.mem hBDs he).1
+  have hBDh := Healing.h_le_of_store_anc hR hBDs
+  have hmono : (tr.state p kX).fg.tree ⊆ (tr.state p (kX + 1)).fg.tree := by
+    simpa only [hs, hs1] using Compose.tree_mono hr hp (Nat.le_succ kX)
+  have hDm := hmono hPr
+  have hBm := hmono hBst
+  have hσB := σ_eq_honest_at_from hrun hnc hd hle hp hd hle1 hp hBst hBm
+  have hσD := σ_eq_honest_at_from hrun hnc hd hle hp hd hle1 hp hPr hDm
+  have hle' := Healing.h_le_of_store_anc hR1 (.single ⟨hDm, hXm, hpar⟩)
+  refine ⟨hBm, hXm, ?_⟩
+  rw [← hσB]
+  rw [← hσD] at hle'
+  by_cases hlt : ((tr.state p kX).fg.σ B.root).h < ((tr.state p kX).fg.σ D.root).h
+  · omega
+  have hDh : ((tr.state p kX).fg.σ D.root).h = ((tr.state p kX).fg.σ B.root).h := by omega
+  have hDTh := Healing.Th_eq_of_anc hR hBDs hDh
+  have hThS : ((tr.state p kX).fg.σ D.root).ThSlot ≤ B.slot := by
+    rw [Healing.ThSlot_eq_of_anc hR hBDs hDh]
+    exact Healing.ThSlot_le_slot hR hBst
+  let S := Finset.univ.filter (· ∈ H (tr.time kX))
+  have hScard : P.fg.q ≤ S.card := by
+    have hcard : S.card = (H (tr.time kX)).ncard := by
+      rw [← Set.ncard_coe_finset]
+      congr 1
+      ext z
+      simp [S]
+    rw [hcard]
+    have hn : (H (tr.time kX)).ncard + (H (tr.time kX))ᶜ.ncard = P.n := by
+      rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+    change (2 * P.n + 2) / 3 ≤ _
+    omega
+  obtain ⟨hfg, hXt, hDt, hσX, hσD', hplace⟩ :=
+    Healing.proposal_rows_placed_from hr (fun y _ => hq y) hroot (hnc.upTo _) hp hX' hpar
+      (by rwa [hs])
+  have hcross := Healing.cross_step hfg hp hXt hDt hpar S hScard ?_ ?_
+  · have h1 := hcross.1
+    rw [← hσX, he, ← hσD', hs] at h1
+    omega
+  · intro y hyS
+    have hy : y ∈ H (tr.time kX) := (Finset.mem_filter.1 hyS).2
+    rcases hrow y hy with ⟨w, c, hw, hBw, k, att, hyk, hsig, hk, hah, haT⟩ |
+      ⟨R, hRD, w, c, hw, hBw, hRw, hhR⟩
+    · have hσ := σ_eq_honest_at_from hrun hnc (hrun.time_nonneg c)
+        (fun q hq => hrun.time_mono hq.le) hw hd hle hp hBw hBst
+      rw [hσ] at hah haT
+      have hproc := rows_delivered_service_at_from hrows hnr hrun hv hp hX hvx hkb hyk hsig hk
+      have hval := Healing.signAt_val (hrun.upTo (hrun.time_nonneg k)) hyk
+        ((RunTrace.upTo_signAt _).mpr ⟨le_rfl, hsig⟩)
+      rw [← hσD', hs]
+      refine ⟨att, hval, hah.trans hDh.symm, haT.trans hDTh.symm, ?_⟩
+      exact hplace att (by
+        obtain ⟨j, hj, hproc⟩ := hproc
+        exact ⟨j, hj, (RunTrace.upTo_processAttAt _).mpr ⟨hrun.time_mono hj.le, hproc⟩⟩)
+        (by rw [hs]; exact hah.trans hDh.symm)
+        (by rw [hs]; exact haT.trans hDTh.symm)
+    · exfalso
+      have hRDs := store_anc_of_honest_anc_at_from hrun hnc hd hle hp hRD hPr
+      have hRst : R ∈ (tr.state p kX).fg.tree := by
+        by_cases he : R = D
+        · exact he ▸ hPr
+        · exact (Anc.mem hRDs he).1
+      have hRDh := Healing.h_le_of_store_anc hR hRDs
+      rw [σ_eq_honest_at_from hrun hnc (hrun.time_nonneg c)
+          (fun q hq => hrun.time_mono hq.le) hw hd hle hp hBw hBst,
+        σ_eq_honest_at_from hrun hnc (hrun.time_nonneg c)
+          (fun q hq => hrun.time_mono hq.le) hw hd hle hp hRw hRst] at hhR
+      omega
+  · rw [← hσD', hs]
+    omega
+
+end RoundCross
+
+end Consensus.Goldilocks.Generic

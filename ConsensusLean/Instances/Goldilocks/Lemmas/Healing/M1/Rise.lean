@@ -23,39 +23,6 @@ namespace Consensus.Goldilocks.Healing
 
 open SA (SAParams ReplayOrder Payload gbar)
 
-/-- Entry-slot constancy while the height stays along ancestry (as in `WindowSeed`). -/
-private theorem ThSlot_eq_of_anc' {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
-    (hr : st.Reachable acp₀) {A W : NodeBlock P ACP} (h : st.Anc A W)
-    (hh : (st.σ W.root).h = (st.σ A.root).h) :
-    (st.σ W.root).ThSlot = (st.σ A.root).ThSlot := by
-  induction h with
-  | refl => rfl
-  | @tail Y Y' hAY hYY' ih =>
-    obtain ⟨-, hY', hp⟩ := hYY'
-    obtain ⟨-, -, -, ht⟩ := Store.step_σ hr hY' hp
-    have h₁ := h_le_of_store_anc hr hAY
-    rcases P.fg.stateTransition_ThSlot ht with ⟨e, e', -⟩ | ⟨e, -, -⟩
-    · rw [e']; exact ih (by rw [← e]; exact hh)
-    · omega
-
-/-- The entry slot is at most the slot (as `Store.ThSlot_le_slot` in Obligations). -/
-private theorem ThSlot_le_slot' {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
-    (hr : st.Reachable acp₀) {Z : NodeBlock P ACP} (hZ : Z ∈ st.tree) :
-    (st.σ Z.root).ThSlot ≤ Z.slot := by
-  obtain ⟨hcoh, -, hg⟩ := (Goldilocks.Store.accepted_tree P ACP acp₀ st hr).2
-  induction hg Z hZ with
-  | refl =>
-    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, Store.σ_genesis hr]
-    exact Nat.zero_le _
-  | @tail Y Y' hGY hYY' ih =>
-    obtain ⟨hY, hY', hp⟩ := hYY'
-    obtain ⟨-, -, -, ht⟩ := Store.step_σ hr hY' hp
-    have hsl : Y.slot < Y'.slot := hcoh.2 Y hY Y' hY' hp
-    have := ih hY
-    rcases P.fg.stateTransition_ThSlot ht with ⟨-, e, -⟩ | ⟨-, e, -⟩
-    · rw [e]; (clear * - hsl this; omega)
-    · rw [e]; rfl
-
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
@@ -138,8 +105,8 @@ theorem round_cross (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCol
     clear * - hPDh hlt; omega
   have hDTh := Th_eq_of_anc hr hPDs hDh
   have hThS : ((tr.state p kX).fg.σ D.root).ThSlot ≤ P.slot := by
-    rw [ThSlot_eq_of_anc' hr hPDs hDh]
-    exact ThSlot_le_slot' hr hPst
+    rw [ThSlot_eq_of_anc hr hPDs hDh]
+    exact ThSlot_le_slot hr hPst
   let S : Finset (Fin sp.n) := Finset.univ.filter (· ∈ H)
   have hScard : sp.toParams.fg.q ≤ S.card := by
     have hcard : S.card = H.ncard := by

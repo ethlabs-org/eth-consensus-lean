@@ -160,7 +160,7 @@ theorem ResetPremisesUpTo.held_target_high_floor_report_before {b : Time}
   have hSy := hp.mem_tree_of_anc hy hSP hPy
   have hr := Compose.fg_reachable hp.run.toLocalRun hy i
   obtain ⟨-, -, -, -, -, -, -, -, -, hSs⟩ := hp.highOrigin_mem hseed
-  have hSh := σ_h_le_of_anc hr (hp.anc_tree_of_anc hy hSP hPy)
+  have hSh := h_le_of_store_anc hr (hp.anc_tree_of_anc hy hSP hPy)
   have hSf : ((tr.state v q).fg.σ S.root).h < (tr.state y i).fg.headHeightFloor := by
     rw [hp.σ_eq_run hseed.1 hy hSs hSy]
     omega
@@ -184,7 +184,7 @@ theorem ResetPremisesUpTo.held_target_high_floor_report_before {b : Time}
       · exact Or.inr (hEB.trans h)
     rcases hcomp with h | h
     · exact h
-    · have := σ_h_le_of_anc hr (hp.anc_tree_of_anc hy h hPy)
+    · have := h_le_of_store_anc hr (hp.anc_tree_of_anc hy h hPy)
       omega
   obtain ⟨j, ell, C, hji, hto, hPC, hh⟩ :=
     hp.higher_report_of_signed_entry hy ho.1 hPy hE hs hdi hT hPE (by omega)

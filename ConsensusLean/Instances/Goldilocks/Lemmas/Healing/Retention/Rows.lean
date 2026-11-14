@@ -26,16 +26,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-! ## Store facts at the honest nodes -/
 
-/-- Along ancestry in a reachable store the state height does not decrease. -/
-theorem h_le_of_store_anc {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
-    (hr : st.Reachable acp₀) {A W : NodeBlock P ACP} (h : st.Anc A W) :
-    (st.σ A.root).h ≤ (st.σ W.root).h := by
-  induction h with
-  | refl => exact le_rfl
-  | tail _ hYW ih =>
-    obtain ⟨-, -, -, ht⟩ := Store.step_σ hr hYW.2.1 hYW.2.2
-    rcases stateTransition_bits ht with ⟨hh, -⟩ | ⟨hh, -⟩ <;> omega
-
 /-- Ancestry inside the honest blocks below a block of an honest tree is ancestry in that tree
 (honest trees are parent-closed down to genesis). -/
 theorem store_anc_of_honest_anc (hrun : GoldilocksRun proposer dg H tr)

@@ -90,7 +90,7 @@ theorem held_high_origin_viable_at
       · exact Anc.total hU hEO h
     have hBE : Anc (tr.HonestBlocksAt H) B E := by
       rcases hcmp with h | h
-      · have hh := σ_h_le_of_anc hreach
+      · have hh := h_le_of_store_anc hreach
           (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hpH h hBf.1)
         omega
       · exact h

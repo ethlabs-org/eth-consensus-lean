@@ -127,7 +127,7 @@ theorem clean_caches (hp : ResetPremises tr H proposer dg g ΔF a) (hgT : gbar g
   · rw [he]; exact Or.inl hgB
   have hhigh : HZ tr H g + 1 ≤ (tr.state y j).fg.hj := by
     have h1 := high_F_firstCut hp hgT hF hy hs hj
-    have h2 := σ_h_le_of_anc hreach hFJ
+    have h2 := h_le_of_store_anc hreach hFJ
     omega
   have hrow : ∀ E ∈ (tr.state y j).fg.tree,
       HZ tr H g + 1 ≤ ((tr.state y j).fg.σ E.root).h →
@@ -167,7 +167,7 @@ theorem clean_fgAttCut (hp : ResetPremises tr H proposer dg g ΔF a) (hgT : gbar
   obtain rfl : E₁ = E' := hU.1 ⟨_, hvH, d, hE₁⟩ hE'U (hE₁r.trans hT)
   have hFm := (Store.cache_invariants _ _ _ _ (Compose.fg_reachable hp.run.toLocalRun hy j)).1
   have hFv := mem_tree_of_anc hp hvH hFE hE₁
-  have hh := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hvH d)
+  have hh := h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun hvH d)
     (anc_tree_of_anc hp hvH hFE hE₁)
   rw [← σ_eq_run hp hy hvH hFm hFv] at hh
   exact no_honest_row_conflicting hp ho hvH hE₁
@@ -232,7 +232,7 @@ theorem late_write_high (hp : ResetPremises tr H proposer dg g ΔF a) (hgT : gba
     rw [Compose.frame_of_projAC hp.run hx hc] at hB
     obtain ⟨hBt, hFB⟩ := hB
     have h1 := hF.at_call x hx i hcall (by linarith)
-    have h2 := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hx i) hFB
+    have h2 := h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun hx i) hFB
     rw [Compose.frame_of_projAC hp.run hx hc]
     exact h1.trans h2
 
@@ -247,7 +247,7 @@ theorem late_source_origin (hp : ResetPremises tr H proposer dg g ΔF a)
   have hCm := Healing.toFG_mem_frame hC.2.2
   rw [Compose.frame_of_projAC hp.run hy hC.1] at hCm
   have hh := (hF.at_call y hy k ⟨_, Compose.projAC_callAt.1 hC.1⟩ ht).trans
-    (σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hy k) hCm.2)
+    (h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun hy k) hCm.2)
   exact ⟨hh, high_report_origin hp hy hC hh⟩
 
 /-- **R3: late sources are compatible.** -/
@@ -340,7 +340,7 @@ theorem late_entry_high (hp : ResetPremises tr H proposer dg g ΔF a) (hgT : gba
       (SA.ts_le_iff sp).2 (by exact_mod_cast h1.1.trans h2)
     linarith
   · have hF₀y := mem_tree_of_anc hp hy hFE hEt
-    have hh := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy hFE hEt)
+    have hh := h_le_of_store_anc hreach (anc_tree_of_anc hp hy hFE hEt)
     rw [← σ_eq_run hp hy hy hF₀m hF₀y] at hh
     exact hF₀.trans hh
 
