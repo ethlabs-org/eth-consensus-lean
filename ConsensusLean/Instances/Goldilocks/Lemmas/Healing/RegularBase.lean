@@ -106,7 +106,8 @@ theorem proposal_views_agree_before
   have hipb : tr.time ip ≤ b := by rw [hti]; exact hjlo.trans hjb
   have hPhiY := SA.frameIn_of_callAt hr hy hc.1
   have hPhiP := SA.frameIn_of_callAt hr hz hp.1
-  apply SA.view_agree_window_before hS.run hz hy hdesignated hp hti hc
+  apply SA.view_agree_window_before hS.run (fun _ => SA.voteStart_initial _)
+    hz hy hdesignated hp hti hc
     ⟨P, hP, hPs, hpay⟩ (SA.serviceWindowBefore_of_sync hS.sync) (by linarith only [hm, hΔ]) hipb
   · intro B hB _ hstamp hFB
     rw [SA.readPoint_blockStamp_eq hr hy hc] at hstamp

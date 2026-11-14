@@ -278,9 +278,10 @@ theorem optimistic_next_proposal_of_early_witness_at
       have h := Compose.projAC_state hpre.toLocalRun hy i
       rw [RunTrace.upTo_projAC] at h
       rwa [h] at hl
-    have hlsb := Compose.proposal_locks_slot_of hpre (hnc.upTo _) hf2 hy
+    have hlsb := Compose.proposal_locks_slot_of hpre (hnc.upTo _) hy
       (by rw [RunTrace.upTo_projAC]; exact hcp) hcall
-      (by rw [RunTrace.upTo_projAC]; exact hdp) hti hstock l hl'
+      (by rw [RunTrace.upTo_projAC]; exact hdp) hti SA.CommitteeP.full
+      (SA.cs2_full hstock hf2) l hl'
     have heq : l.slot = s := by omega
     obtain ⟨L', hL', hL'r, -⟩ := SA.lock_below_origin hr hy i l hl
     obtain rfl : L = L' := hU.1 hL (subU hL') (hLr.trans hL'r.symm)

@@ -216,7 +216,8 @@ theorem view_agree_window_before
     have hstate : (tr.upTo (tr.time j)).state p i = tr.state p i :=
       Trace.upTo_state tr p fun _ hk => (hr.time_mono hk.le).trans hjt
     simpa only [hstate, Trace.upTo_time] using hp
-  exact SA.view_agree_window_before (hrun.upTo hd) (hr.antitone (le_max_right _ _) hp) hy
+  exact SA.view_agree_window_before (hrun.upTo hd) (fun _ => SA.voteStart_initial _)
+    (hr.antitone (le_max_right _ _) hp) hy
     hpp hprop' hti hc' hP (hsync.upTo hr) ha hb hyp hpy
 
 theorem view_agree_before

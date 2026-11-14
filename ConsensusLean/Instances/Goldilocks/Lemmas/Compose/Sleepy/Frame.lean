@@ -192,7 +192,8 @@ end Geometry
 
 /-- The scoped floor argument needs a fault bound, not the Sleepy regime. Only honest attestations
 whose entry height is at least the reader's `h_j` need source witnesses. -/
-theorem floor_or_crossing_scoped (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem floor_or_crossing_scoped {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
     (hsrc : ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H →

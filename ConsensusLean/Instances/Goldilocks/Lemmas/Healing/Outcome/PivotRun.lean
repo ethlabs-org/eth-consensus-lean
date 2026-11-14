@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -134,7 +135,8 @@ theorem proposal_no_optimistic_of_run
     (hcall : ℓp.call = .proposal)
     (hti : tr.time i = sp.ts s) (hstock : sp.committeeSize = sp.n) :
     ∀ x ∈ H, ∀ k' < i, ∀ C CV, ¬ SA.OptimisticLockAt tr.projAC x k' s C CV :=
-  Compose.proposal_no_optimistic_of hrun hnc hf hpH hc hcall hti hstock
+  Compose.proposal_no_optimistic_of hrun hnc SA.CommitteeP.full (SA.cs2_full hstock hf)
+    hpH hc hcall hti
 
 /-- Whole-run specialization of operational proposal ordering. -/
 theorem proposal_no_optimistic (hp : ResetPremises tr H proposer dg g ΔF a) {p : Fin sp.n}

@@ -44,7 +44,7 @@ theorem frameIn_of_call (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {x
 
 /-- `frame_accepted` with the unlock given. -/
 theorem frame_acceptedU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ {ℓ : ACLabel (goldilocksSA sp FGP ro)}, tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
       X.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k X := by
@@ -86,7 +86,7 @@ theorem frame_accepted (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fi
 
 /-- The genesis block of an honest node's initial frame is in `U`, with slot `0`. -/
 private theorem genesis_memU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ {ℓ : ACLabel (goldilocksSA sp FGP ro)}, tr.CallAt y i ℓ →
       ∃ G ∈ U, G.root = sp.genesisRoot ∧ G.slot = 0 := by
@@ -100,7 +100,7 @@ private theorem genesis_memU
 
 /-- `frameBlock_unique` with the unlock given. -/
 theorem frameBlock_uniqueU
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {σ : Nat} (hσ : σ ≠ 0)
+    {ini} {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini) {σ : Nat} (hσ : σ ≠ 0)
     (hp : proposer σ ∈ H) {B B' : Blk sp.n FGP} (hB : HonestFrameBlock tr H B)
     (hB' : HonestFrameBlock tr H B') (hs : B.slot = σ) (hs' : B'.slot = σ) : B = B' := by
   have hr := hrun.localRun

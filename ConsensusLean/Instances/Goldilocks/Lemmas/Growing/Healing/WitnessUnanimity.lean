@@ -398,9 +398,10 @@ theorem unanimous_next_proposal_of_witness_at
       have h := Compose.projAC_state hpre.toLocalRun hy i
       rw [RunTrace.upTo_projAC] at h
       rwa [h] at hl
-    have hls := Compose.proposal_locks_slot_of hpre (hnc.upTo _) hf2 hy
+    have hls := Compose.proposal_locks_slot_of hpre (hnc.upTo _) hy
       (by rw [RunTrace.upTo_projAC]; exact hcp) hcall
-      (by rw [RunTrace.upTo_projAC]; exact hdp) hti hstock l hl'
+      (by rw [RunTrace.upTo_projAC]; exact hdp) hti SA.CommitteeP.full
+      (SA.cs2_full hstock hf2) l hl'
     have heq : l.slot = m := by omega
     obtain ⟨O, hLO, a, CV, hopt⟩ := SA.proposal_high_lock hr hy hti hl hlm hL hLr
     rw [heq] at hopt

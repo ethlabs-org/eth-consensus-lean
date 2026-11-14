@@ -28,7 +28,7 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time}
 
 /-- **An honest node accepts its own proposal** (C0.3, under `NoColl`). -/
-theorem proposal_accepted (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem proposal_accepted {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : tr.ProposesAt p k P) : tr.AcceptAt p k P := by
   have h := hrun.toLocalRun
@@ -36,7 +36,8 @@ theorem proposal_accepted (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
   rcases blockCall_cases h hp hcall with hg | ⟨j, x, rfl, hg, hpr, d, pay, hdp, hB, hacc, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   obtain ⟨cfg, hreach, hst, hstep⟩ := group_step h hp hg
-  have hC03 := honest_block_accepted proposer dg p (requirements sp ro) hrun.genesis_root_ok cfg _
+  have hC03 := honest_block_accepted_from proposer dg p
+    (requirements_from sp ro (hrun.vstart p)) hrun.genesis_root_ok cfg _
     (tr.time (j + 2)) x hreach hstep hpr d pay (by rw [hst]; exact hdp)
   simp only [hst] at hC03
   have key : NoCollOn dg (insert P (tr.state p j).fg.tree) →
@@ -48,7 +49,7 @@ theorem proposal_accepted (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
   obtain rfl : acc = true := hacc.2 ⟨fg', hon⟩
   exact hcall
 /-- **The honest proposal is the only honest block of its slot.** -/
-theorem eq_of_slot (hrun : GoldilocksRun proposer dg H tr)
+theorem eq_of_slot {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : tr.ProposesAt p k P)
     {R : SA.Blk sp.n (List (FG.Att sp.n))} (hR : R ∈ tr.HonestBlocks H) (hRs : R.slot = P.slot) :

@@ -75,7 +75,8 @@ theorem proposal_anchor_old_at (hrun : Growing.GoldilocksRun proposer dg H tr)
       ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocksAt H) d.start O := by
   have h0 := hrun.time_nonneg i
   obtain ⟨hc', hd'⟩ := proposal_upTo hrun hc hd
-  rcases proposal_anchor_old_of (hrun.upTo h0) (hnc.upTo _) hf hp hc' hcall hd' hti hstock with
+  rcases proposal_anchor_old_of (hrun.upTo h0) (hnc.upTo _) hf hp hc' hcall hd' hti
+    SA.CommitteeP.full (SA.cs2_full hstock hf) with
     h | ⟨O, hO, hsO⟩
   · exact Or.inl h
   · exact Or.inr ⟨O, oldOrigin_of_upTo hrun hO, hsO.mono (upTo_subset hrun h0)⟩
@@ -96,7 +97,8 @@ theorem proposal_suffix_viable_at (hrun : Growing.GoldilocksRun proposer dg H tr
   obtain ⟨hc', hd'⟩ := proposal_upTo hrun hc hd
   exact proposal_suffix_viable_of (hrun.upTo h0) (hnc.upTo _) hf hp hc' hcall hd' hti hDt
     (fun O hO => RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0
-      (frame_upTo_at hrun hnc hp hc hDt) (hDold O (oldOrigin_of_upTo hrun hO))) hstock
+      (frame_upTo_at hrun hnc hp hc hDt) (hDold O (oldOrigin_of_upTo hrun hO)))
+    SA.CommitteeP.full (SA.cs2_full hstock hf)
 
 /-- **A voter's anchor is below `D`, or on `P`'s chain above `D`** (lifted at the vote's time `d`,
 with the proposer honest then): for a block `D` above every old origin and below `Q = P.parent`, at
@@ -134,7 +136,9 @@ theorem vote_anchor_cases_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (fun x hx j' hj' e' hv hs => by
       rw [RunTrace.upTo_projAC] at hv
       obtain ⟨hjd, hv⟩ := sa_voteAt_upTo.mp hv
-      exact hE x j' e' hj' (hVoteAt_iff.2 ⟨hrun.antitone hjd hx, hv⟩) hs) hstock
+      exact hE x j' e' hj' (hVoteAt_iff.2 ⟨hrun.antitone hjd hx, hv⟩) hs)
+    (SA.CommitteeDict.full sp.n) SA.CommitteeP.full (SA.size_binding_full hstock)
+    (SA.cs2_full hstock hf) (SA.mem_full _ _)
   rcases h with h | ⟨h1, h2, h3⟩
   · exact Or.inl (h.mono hsub)
   · exact Or.inr ⟨h1.mono hsub, h2.mono hsub, hsub h3⟩

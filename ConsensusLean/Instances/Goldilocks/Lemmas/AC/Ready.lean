@@ -20,7 +20,7 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-- `readPoint_blockStamp_eq` with the unlock given. -/
 theorem readPoint_blockStamp_eqU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
+    {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     e.readPoint.blockStamp = (tr.post i).blockStamp := by
@@ -28,7 +28,7 @@ theorem readPoint_blockStamp_eqU
     SA.admitVote_blockStamp]
 
 /-- The read point of an honest vote has the block stamps of the state its call leaves. -/
-theorem readPoint_blockStamp_eq (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+theorem readPoint_blockStamp_eq {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     e.readPoint.blockStamp = (tr.post i).blockStamp :=
@@ -93,7 +93,7 @@ private theorem step_ready
 
 /-- `cast_ready` with the unlock given. -/
 theorem cast_readyU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (ht : tr.time i < sp.ts e.msg.slot + sp.Δ) :
     voteReady sp ℓ.frame e.msg.slot := by
@@ -109,7 +109,7 @@ theorem cast_readyU
 
 /-- **An early vote is ready**: an honest vote cast before `t_s + Δ` has a block of its slot in
 its frame (`vote_ready`). -/
-theorem cast_ready (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+theorem cast_ready {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (ht : tr.time i < sp.ts e.msg.slot + sp.Δ) :
     voteReady sp ℓ.frame e.msg.slot :=

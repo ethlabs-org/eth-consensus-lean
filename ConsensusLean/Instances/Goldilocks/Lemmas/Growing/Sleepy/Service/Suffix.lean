@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -160,7 +161,9 @@ private theorem genesis_voter_facts (hrun : Growing.GoldilocksRun proposer dg H 
     have := Compose.head_slot_lt (hrun.upTo h0) (hnc.upTo _) hpj hP' hPs hc' hd' hPQ
     omega
   refine ⟨hs0, ?_, fun B hB hQB => ?_⟩
-  · rcases Compose.vote_fcRoot_old_of (hrun.upTo h0) (hnc.upTo _) hf hs0 hy hcy' hes hstock
+  · rcases Compose.vote_fcRoot_old_of (hrun.upTo h0) (hnc.upTo _) hf hs0 hy hcy' hes
+      (SA.CommitteeDict.full sp.n) SA.CommitteeP.full (SA.size_binding_full hstock)
+      (SA.cs2_full hstock hf) (SA.mem_full _ _)
       with hg | ⟨O, hO, hfO⟩
     · exact honestAt_genesis_root_anc hrun hU (hΦyU hΦy.fcRoot_mem) hg (hΦpU hQt)
     · exact Anc.mono hsub (hfO.trans (hold' O hO))
@@ -169,7 +172,8 @@ private theorem genesis_voter_facts (hrun : Growing.GoldilocksRun proposer dg H 
     have h := Compose.vote_floor_le_of (hrun.upTo h0) (hnc.upTo _) hf hs0 hy hcy' hes
       (by rw [hst]; exact hB) (fun O hO =>
         (hold' O hO).trans (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 hBP hQB))
-      hstock
+      (SA.CommitteeDict.full sp.n) SA.CommitteeP.full (SA.size_binding_full hstock)
+      (SA.cs2_full hstock hf) (SA.mem_full _ _)
     rwa [hst] at h
 
 /-- The genesis start of the catch-up: `0 + 0 ≤ t_{s−1}` for `s > 0`. -/

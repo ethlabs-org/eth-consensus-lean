@@ -140,9 +140,9 @@ theorem proposal_start_supported_at
     have hret := hp.run.upTo (hp.run.time_nonneg i)
     have hs : (tr.upTo (tr.time i)).projAC.state p i = tr.projAC.state p i := by
       rw [RunTrace.upTo_projAC]; exact hstate
-    refine Compose.proposal_locks_slot_of hret (hp.noColl.upTo _) ?_ hpH
+    refine Compose.proposal_locks_slot_of hret (hp.noColl.upTo _) hpH
       (by rw [RunTrace.upTo_projAC]; exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hci⟩) hcall
-      (by rw [hs]; exact hd) hti hp.stock l₁
+      (by rw [hs]; exact hd) hti SA.CommitteeP.full (SA.cs2_full hp.stock ?_) l₁
       (by rw [← Compose.projAC_state hret.toLocalRun hpH i, hs]; exact hl₁)
     have h3 := hp.faults _ (hp.run.time_nonneg i) hib
     have hn := sp.toParams.hn
