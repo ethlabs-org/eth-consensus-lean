@@ -129,15 +129,13 @@ theorem sleepyServiceBefore_of_syncUntil {V : Type} [Fintype V] [DecidableEq V] 
   · intro x hx i B hi h0 y hy j hj hb hd hF
     exact acceptance_relay_syncUntil S rho hn hconst hv hnc hbh hnet hx hi h0 hy hj hb hd hF
 
-variable (S : Setup) (A : ContractAssumptions S) (V : Type)
-  [Fintype V] [DecidableEq V]
-
 /-- Sleepy network service survives removal of the system's environment tags.
 Validity supplies nonnegative send times before converting PSync at zero. -/
-theorem sleepy_raw_syncUntil (r : (Sys (goldilocksWith ⟨S, stock⟩) V).Run)
-    (hv : (Sys (goldilocksWith ⟨S, stock⟩) V).Valid r)
-    (hsleepy : (Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy
-        (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) r) (b : Time) :
+theorem sleepy_raw_syncUntil (S : BoundSetup) (A : ContractAssumptions S.toSetup) (V : Type)
+    [Fintype V] [DecidableEq V] (r : (Sys (goldilocksWith S) V).Run)
+    (hv : (Sys (goldilocksWith S) V).Valid r)
+    (hsleepy : (Sys (goldilocksWith S) V).Sleepy
+        (shapeProgress (goldilocksWith S) V).toExternal (K S.toSetup A) r) (b : Time) :
     r.2.log.SyncUntil r.2.point b := by
   have hp : r.2.log.PSync r.2.point 0 := (Model.sysOf_delivers_iff _ _ _ _).mp hsleepy.1
   apply hp.syncUntil_zero ?_ b
@@ -146,6 +144,9 @@ theorem sleepy_raw_syncUntil (r : (Sys (goldilocksWith ⟨S, stock⟩) V).Run)
   obtain ⟨i, he | ⟨o, he⟩, -⟩ := hs
   · exact (hv.in_horizon _ (List.mem_of_getElem? he)).1
   · exact (hv.in_horizon _ (List.mem_of_getElem? he)).1
+
+variable (S : Setup) (A : ContractAssumptions S) (V : Type)
+  [Fintype V] [DecidableEq V]
 
 /-- Draft: the two non-final liveness routes keep their distinct capability budgets.
 The endpoint readiness duration is unchanged; this is not protocol catchUp. -/
@@ -217,7 +218,7 @@ theorem healthy_query_slot (Q : ConfirmedQuery S A V) {ready : Time}
       (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
       Q.cap Q.index ready Q.run.2.horizon Q.run)
     (hquery : max ready 0 ≤ Q.query) : Nonempty (ConfirmedProducerSlot S A V Q) := by
-  obtain ⟨s, hs1, hlo, hmargin, hts0, htsh, hR, -⟩ := nonfinal_query_slot S A V Q.run Q.hn
+  obtain ⟨s, hs1, hlo, hmargin, hts0, htsh, hR, -⟩ := nonfinal_query_slot ⟨S, stock⟩ A V Q.run Q.hn
     Q.nonfinal Q.index Q.bounded hprogress hquery
   have hnode := ready_transport S Q.run.2 Q.hn Q.valid hts0 htsh hR
   rw [show Q.run.2.ownKey (Q.run.2.key (runProposer ⟨S, stock⟩ Q.run.2 Q.hn s)) =

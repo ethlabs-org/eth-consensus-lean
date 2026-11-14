@@ -37,7 +37,7 @@ theorem sleepy_query_sync_at (Q : ConfirmedQueryAt S A V)
     Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.deadline :=
   sleepyServiceBefore_of_syncUntil_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
     (noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision) Q.bounded
-    (sleepy_raw_syncUntil S A V Q.run Q.valid hsleepy Q.deadline)
+    (sleepy_raw_syncUntil ⟨S, stock⟩ A V Q.run Q.valid hsleepy Q.deadline)
 
 /-- The two sleepy count shapes through the query deadline. -/
 theorem sleepy_query_bounds_at (Q : ConfirmedQueryAt S A V)
