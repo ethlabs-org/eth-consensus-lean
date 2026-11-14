@@ -107,11 +107,11 @@ def exists_frameWindow_seq_of_service_at : Prop :=
       ∃ floor kindJ J, FrameWindow tr H a (a + len v) floor kindJ J
 
 /-- UNPROVED leaf 4: explicit report-tree membership avoids an AC-specific inference. -/
-def row_or_high_of_report_at : Prop :=
-  ∀ {proposer dg H tr} {g T : Time} {y : Fin P.n} {i : Nat} {R B : A.Blk},
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+def row_or_high_of_report_at (runs : ACRun A sg) : Prop :=
+  ∀ {cm proposer dg H tr} {g T : Time} {y : Fin P.n} {i : Nat} {R B : A.Blk},
+    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     (∀ t, 0 ≤ t → t < T → 3 * (H t)ᶜ.ncard ≤ P.n - 1) → NoAdvance tr H g T →
-    y ∈ H (tr.time i) → ReportAt tr y i R → tr.time i < T →
+    y ∈ H (max (cutZ P g) (tr.time i)) → ReportAt tr y i R → tr.time i < T →
     R ∈ (tr.state y i).fg.tree → Anc (tr.HonestBlocksAt H) B R →
     (((tr.state y i).fg.σ R.root).h = ((tr.state y i).fg.σ B.root).h →
       ((tr.state y i).fg.σ B.root).h = HZ tr H g ∨

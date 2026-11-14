@@ -422,7 +422,8 @@ def exists_frameWindow_seq_of_service_at_bridge : Prop :=
 /-- UNPROVED report-row implication, Report/Row.lean:24.
 The old consequent has no added report-tree membership premise. -/
 def row_or_high_of_report_at_bridge : Prop :=
-  row_or_high_of_report_at (goldilocksNode sp ro) (fun v => v.val) →
+  ∀ R, GoldilocksRunData sp ro R →
+    row_or_high_of_report_at (goldilocksNode sp ro) (fun v => v.val) R →
     ∀ {proposer dg H tr}, row_or_high_of_report_at_goldilocks (sp := sp) (ro := ro)
       (proposer := proposer) (dg := dg) (H := H) (tr := tr)
 
