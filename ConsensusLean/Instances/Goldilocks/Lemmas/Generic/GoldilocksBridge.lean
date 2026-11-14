@@ -118,26 +118,6 @@ def proposal_mem_at_goldilocks : Prop := ∀
     (_hp : p ∈ H (tr.time k)) {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (_hP : tr.ProposesAt p k P), P ∈ (tr.state p (k + 1)).fg.tree
 
-/-- Original side: `Growing/Healing/Kernel/Boundaries.lean:29`, real-time window. -/
-def exists_frameWindow_seq_of_service_at_goldilocks : Prop := ∀
-    (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (_hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
-    (_hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    (_hsvc : ResetService tr H g ΔF b) (_hcatch : CatchRun tr H g κ)
-    {lo lam T : Time} {hz : Nat} (len : Nat → Time)
-    (_hlen : ∀ v, 0 ≤ len v) (_hlam : 0 ≤ lam) (_hlo : gbar g + κ ≤ lo) (_hTb : T ≤ b)
-    (_hrange : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i < T →
-      hz ≤ (tr.state y i).fg.hmax ∧ (tr.state y i).fg.hmax ≤ hz + 1)
-    (_hcall : ∀ z i m, z ∈ H (tr.time m) → lo ≤ tr.time i →
-      tr.time i + lam ≤ tr.time m → tr.time m < T →
-      ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
-    (_hT : lo + ∑ j ∈ Finset.range 5, (len (2 * hz + j) + lam) < T),
-    ∃ v, 2 * hz ≤ v ∧ v ≤ 2 * hz + 4 ∧ ∃ a, lo + lam ≤ a ∧
-      a + len v ≤ lo + ∑ j ∈ Finset.range (v - 2 * hz + 1), (len (2 * hz + j) + lam) ∧
-      (∀ y i, y ∈ H (tr.time i) → a ≤ tr.time i → tr.time i ≤ a + len v →
-        Healing.frameKey' (tr.state y i).fg = v) ∧
-      ∃ floor kindJ J, Healing.Growing.FrameWindow tr H a (a + len v) floor kindJ J
-
 /-- Original side: `Growing/Healing/Report/Row.lean:24`; no added tree premise. -/
 def row_or_high_of_report_at_goldilocks : Prop := ∀
     (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
@@ -399,12 +379,6 @@ def reset_of_high_report_at_bridge : Prop :=
 def proposal_mem_at_bridge : Prop :=
   proposal_mem_at (goldilocksNode sp ro) (fun v => v.val) (goldilocksRunInterface sp ro) →
     ∀ {proposer dg H tr}, proposal_mem_at_goldilocks (sp := sp) (ro := ro)
-      (proposer := proposer) (dg := dg) (H := H) (tr := tr)
-
-/-- UNPROVED real-time window implication, Boundaries.lean:29; not the slot-window endpoint. -/
-def exists_frameWindow_seq_of_service_at_bridge : Prop :=
-  exists_frameWindow_seq_of_service_at (goldilocksNode sp ro) (fun v => v.val) →
-    ∀ {proposer dg H tr}, exists_frameWindow_seq_of_service_at_goldilocks (sp := sp) (ro := ro)
       (proposer := proposer) (dg := dg) (H := H) (tr := tr)
 
 /-- UNPROVED report-row implication, Report/Row.lean:24.

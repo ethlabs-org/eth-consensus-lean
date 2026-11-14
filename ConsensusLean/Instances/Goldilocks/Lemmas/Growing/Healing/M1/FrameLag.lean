@@ -24,22 +24,6 @@ theorem ResetService.toService {g ΔF b : Time} (h : ResetService tr H g ΔF b) 
     Generic.Service tr H g ΔF b :=
   ⟨h.deltaF, h.message, h.block, h.relay, h.signedRow⟩
 
-/-- Relay and catch-up carry a held block to a receiver whose height has not passed it. -/
-theorem held_of_relay_le_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b κ τ : Time}
-    (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)
-    {x z : Fin sp.n} {i m : Nat} (hτ0 : 0 ≤ τ) (hx : x ∈ H τ)
-    (hz : z ∈ H (tr.time m))
-    (hf : (H (max τ (tr.time m)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state x i).fg.tree)
-    (hh : (tr.state z m).fg.hmax ≤ ((tr.state x i).fg.σ B.root).h)
-    (hτ : ∀ k < i, tr.time k ≤ τ)
-    (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max τ g) sp.Δ ≤ tr.time j)
-    (hcm : gbar g + κ ≤ tr.time m) : B ∈ (tr.state z m).fg.tree :=
-  Generic.held_of_relay_le_at_from hrun.toLocalRun hnc hsvc.toService hcatch hτ0 hx hz hf hB hh
-    hτ hcall hcm
-
 /-- After its relay obligation is paid, a receiver has at least the snapshot height. -/
 theorem HZ_le_hmax_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)

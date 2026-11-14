@@ -15,6 +15,13 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Deadline
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWindowExists
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameKey
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Healing
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLagCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
@@ -31,6 +38,11 @@ Leaf 2, lower bound (`HZ_le_hmax_at_from`): after its relay obligation is paid, 
 at its cut has at least the snapshot height `HZ`. Relay and catch-up carry a held block of
 height at least the receiver's `h_max` to the receiver (`held_of_relay_le_at_from`), and the
 block's state is the same at both holders (`σ_eq_honest_at_from`).
+
+Leaf 3 (`exists_frameWindow_seq_of_service_at_from`): per-cut height range and relay calls give
+a frame window of the requested length, by the sequential pigeonhole over the cuts of nodes
+honest at them with the merged-key lag between independently honest observations
+(`frameKey'_lag_obs_from`).
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -262,6 +274,157 @@ theorem store_anc_of_honest_anc_at_from
     (Compose.NoCollRun.upTo hnc t) hy hanc (by rwa [hs])
 
 end StoreAnc
+
+/-! ## Leaf 3, the frame window -/
+
+section FrameWindowLeaf
+
+variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
+
+open SA (gbar)
+open Healing.Growing (CatchRun)
+
+/-- The merged frame key of the generic statements is the merged frame key of the stores. -/
+theorem frameKey'_eq (st : Store P A.Payload) : frameKey' A st = Healing.frameKey' st := by
+  rw [Healing.frameKey'_def, Healing.keyMerge_eq, Healing.frameKey_def]
+  rfl
+
+/-- `Σ.J` of two stores observed while honest with equal `h_j` agree. -/
+private theorem J_eq_of_hj_eq_obs_from
+    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hnc : Compose.NoCollRun dg tr) {y x : Fin P.n} {m i : Nat} {u t : Time}
+    (hu : 0 ≤ u) (hytime : ∀ k < m, tr.time k ≤ u) (hy : y ∈ H u)
+    (ht : 0 ≤ t) (hxtime : ∀ k < i, tr.time k ≤ t) (hx : x ∈ H t)
+    (hf : (H (max u t))ᶜ.ncard < 2 * P.fg.q - P.n)
+    (he : (tr.state y m).fg.hj = (tr.state x i).fg.hj) :
+    (tr.state y m).fg.J = (tr.state x i).fg.J :=
+  Healing.Store.J_eq_of_cache_hj_eq_of_safe (fg_reachable_at_from h hu hytime hy)
+    (fg_reachable_at_from h ht hxtime hx) (Compose.Growing.honest_blocks_coherent_local h hnc)
+    (fun _ hX => ⟨y, m, u, hu, hytime, hy, hX⟩) (fun _ hX => ⟨x, i, t, ht, hxtime, hx, hX⟩) hf
+    (held_atts_safe_at_from h hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
+    he
+
+/-- `h_j < h_max` at a store observed while honest. -/
+private theorem hj_lt_hmax_obs_from
+    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    {y : Fin P.n} {i : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t)
+    (hy : y ∈ H t) : (tr.state y i).fg.hj < (tr.state y i).fg.hmax :=
+  Healing.Store.hj_lt_hmax_of_reachable (fg_reachable_at_from h ht hle hy)
+
+/-- **The frame-key lag** with the source `x` honest at its cut `i` and the receiver `z` honest at
+its cut `m`, after a call of `z` at or after the relay deadline of `i`. -/
+theorem frameKey_lag_obs_from
+    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
+    (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * P.fg.q - P.n)
+    (hsvc : Service tr H g ΔF b) (hcatch : CatchRun tr H g κ)
+    {x z : Fin P.n} {i m : Nat} (hx : x ∈ H (tr.time i)) (hz : z ∈ H (tr.time m))
+    (him : tr.time i ≤ tr.time m) (hmb : tr.time m ≤ b)
+    (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) P.Δ ≤ tr.time j)
+    (hcm : gbar g + κ ≤ tr.time m) :
+    Healing.frameKey (tr.state x i).fg ≤ Healing.frameKey (tr.state z m).fg := by
+  have hi0 := h.time_nonneg i
+  have hm0 := h.time_nonneg m
+  have hxle : ∀ k < i, tr.time k ≤ tr.time i := fun k hk => h.time_mono hk.le
+  have hzle : ∀ k < m, tr.time k ≤ tr.time m := fun k hk => h.time_mono hk.le
+  have hfmi : (H (max (tr.time i) (tr.time m)))ᶜ.ncard < 2 * P.fg.q - P.n := by
+    rw [max_eq_right him]; exact hf _ hm0 hmb
+  exact Healing.frameKey_le_of_relay (fg_reachable_at_from h hi0 hxle hx)
+    (fg_reachable_at_from h hm0 hzle hz)
+    (Compose.Growing.honest_blocks_coherent_local h hnc)
+    (fun _ hX => ⟨x, i, tr.time i, hi0, hxle, hx, hX⟩)
+    (fun _ hX => ⟨z, m, tr.time m, hm0, hzle, hz, hX⟩) (hf _ hm0 hmb)
+    (held_atts_safe_at_from h hm0 hzle hz hi0 hxle hx le_rfl him)
+    (held_atts_safe_at_from h hm0 hzle hz hm0 hzle hz le_rfl le_rfl)
+    (fun _ _ hBC hC => store_anc_of_honest_anc_at_from h hnc hi0 hxle hx hBC hC)
+    (fun _ _ hBC hC => store_anc_of_honest_anc_at_from h hnc hm0 hzle hz hBC hC)
+    (fun _ hB hh => held_of_relay_le_at_from h hnc hsvc hcatch hi0 hx hz hfmi hB hh hxle hcall
+      hcm)
+
+/-- **The merged-key lag** between independently honest observations. -/
+theorem frameKey'_lag_obs_from
+    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
+    (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * P.fg.q - P.n)
+    (hsvc : Service tr H g ΔF b) (hcatch : CatchRun tr H g κ)
+    {x z : Fin P.n} {i m : Nat} (hx : x ∈ H (tr.time i)) (hz : z ∈ H (tr.time m))
+    (him : tr.time i ≤ tr.time m) (hmb : tr.time m ≤ b)
+    (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) P.Δ ≤ tr.time j)
+    (hcm : gbar g + κ ≤ tr.time m) :
+    Healing.frameKey' (tr.state x i).fg ≤ Healing.frameKey' (tr.state z m).fg :=
+  (Healing.frameKey'_def _).symm ▸ (Healing.frameKey'_def _).symm ▸ Healing.keyMerge_mono
+    (frameKey_lag_obs_from h hnc hf hsvc hcatch hx hz him hmb hcall hcm)
+
+/-- A merged key that is constant over the cuts of `[lo, hi]` of nodes honest at them gives a
+`FrameWindow`, when `hi ≤ b`. -/
+theorem frameWindow_of_frameKey'_eq_obs_from
+    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hnc : Compose.NoCollRun dg tr) {b : Time}
+    (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * P.fg.q - P.n)
+    {lo hi : Time} (hhi : hi ≤ b)
+    (hK : ∀ y z i m, y ∈ H (tr.time i) → z ∈ H (tr.time m) → lo ≤ tr.time i →
+      tr.time i ≤ hi → lo ≤ tr.time m → tr.time m ≤ hi →
+      Healing.frameKey' (tr.state y i).fg = Healing.frameKey' (tr.state z m).fg) :
+    ∃ floor kindJ J, FrameWindow tr H lo hi floor kindJ J := by
+  have hle : ∀ i k, k < i → tr.time k ≤ tr.time i := fun _ _ hk => h.time_mono hk.le
+  obtain ⟨floor, kindJ, J, h1, h2, h3⟩ := Healing.frameData_of_frameKey'_eq
+    (fun y i => y ∈ H (tr.time i)) tr.time (fun y i => (tr.state y i).fg)
+    (P.genesisBlock A.genesisPayload)
+    (fun y i hy => hj_lt_hmax_obs_from h (h.time_nonneg i) (hle i) hy) hK
+    (fun y z i m hy hz _ hi _ hm he => J_eq_of_hj_eq_obs_from h hnc (h.time_nonneg i) (hle i) hy
+      (h.time_nonneg m) (hle m) hz
+      (hf _ ((h.time_nonneg i).trans (le_max_left _ _)) (max_le (hi.trans hhi) (hm.trans hhi)))
+      he)
+  exact ⟨floor, kindJ, J, ⟨h1, h2, h3⟩⟩
+
+/-- **Leaf 3.** Per-cut height range and relay calls produce a frame window, by the sequential
+pigeonhole over the cuts of nodes honest at them with the merged-key lag between independently
+honest observations, for any node run under growing faults from any starts `ini`. -/
+theorem exists_frameWindow_seq_of_service_at_from
+    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
+    (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * P.fg.q - P.n)
+    (hsvc : Service tr H g ΔF b) (hcatch : CatchRun tr H g κ)
+    {lo lam T : Time} {hz : Nat} (len : Nat → Time)
+    (hlen : ∀ v, 0 ≤ len v) (hlam : 0 ≤ lam) (hlo : gbar g + κ ≤ lo) (hTb : T ≤ b)
+    (hrange : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i < T →
+      hz ≤ (tr.state y i).fg.hmax ∧ (tr.state y i).fg.hmax ≤ hz + 1)
+    (hcall : ∀ z i m, z ∈ H (tr.time m) → lo ≤ tr.time i →
+      tr.time i + lam ≤ tr.time m → tr.time m < T →
+      ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) P.Δ ≤ tr.time j)
+    (hT : lo + ∑ j ∈ Finset.range 5, (len (2 * hz + j) + lam) < T) :
+    ∃ v, 2 * hz ≤ v ∧ v ≤ 2 * hz + 4 ∧ ∃ a, lo + lam ≤ a ∧
+      a + len v ≤ lo + ∑ j ∈ Finset.range (v - 2 * hz + 1), (len (2 * hz + j) + lam) ∧
+      (∀ y i, y ∈ H (tr.time i) → a ≤ tr.time i → tr.time i ≤ a + len v →
+        frameKey' A (tr.state y i).fg = v) ∧
+      ∃ floor kindJ J, FrameWindow tr H a (a + len v) floor kindJ J := by
+  obtain ⟨v, hv1, hv2, a, h1, h2, hK⟩ := Healing.Growing.exists_const_window_seq
+    (fun y i => y ∈ H (tr.time i)) tr.time (fun y i => Healing.frameKey' (tr.state y i).fg)
+    (2 * hz) 4 len hlen hlam
+    (fun y i hy h1 h2 => by
+      have := hrange y i hy h1 h2
+      exact Healing.frameKey'_bounds this.1 this.2)
+    (fun x z i m hx hz' hi _ him hmT => frameKey'_lag_obs_from h hnc hf hsvc hcatch hx hz'
+      ((le_add_of_nonneg_right hlam).trans him) (hmT.le.trans hTb)
+      (hcall z i m hz' hi him hmT) (hlo.trans (hi.trans ((le_add_of_nonneg_right hlam).trans him))))
+    hT
+  -- the window ends before `T`
+  have hS : ∀ j, j ≤ 4 → ∑ i ∈ Finset.range (j + 1), (len (2 * hz + i) + lam) ≤
+      ∑ i ∈ Finset.range 5, (len (2 * hz + i) + lam) := fun j hj =>
+    Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_mono (by omega))
+      fun i _ _ => add_nonneg (hlen _) hlam
+  have hend : a + len v < T := by
+    have := hS (v - 2 * hz) (by omega)
+    linarith
+  refine ⟨v, hv1, hv2, a, h1, h2,
+    fun y i hy hi1 hi2 => by rw [frameKey'_eq]; exact hK y i hy hi1 hi2,
+    frameWindow_of_frameKey'_eq_obs_from h hnc hf (hend.le.trans hTb) ?_⟩
+  intro y z i m hy hz' hi1 hi2 hm1 hm2
+  rw [hK y i hy hi1 hi2, hK z m hz' hm1 hm2]
+
+end FrameWindowLeaf
 
 end Consensus.Goldilocks.Generic
 

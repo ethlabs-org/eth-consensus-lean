@@ -76,25 +76,6 @@ def callLag_of_awake_at (runs : ACRun A sg) : Prop :=
     tr.time i + 2 * P.Δ ≤ tr.time m → tr.time m ≤ b →
     ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) P.Δ ≤ tr.time j
 
-/-- UNPROVED leaf 3: real-time constant-frame window, with key-dependent lengths. -/
-def exists_frameWindow_seq_of_service_at : Prop :=
-  ∀ {proposer dg H tr} {g ΔF b κ lo lam T : Time} {hz : Nat} (len : Nat → Time),
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
-    (∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * P.fg.q - P.n) →
-    Service tr H g ΔF b → CatchRun tr H g κ →
-    (∀ v, 0 ≤ len v) → 0 ≤ lam → gbar g + κ ≤ lo → T ≤ b →
-    (∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i < T →
-      hz ≤ (tr.state y i).fg.hmax ∧ (tr.state y i).fg.hmax ≤ hz + 1) →
-    (∀ z i m, z ∈ H (tr.time m) → lo ≤ tr.time i →
-      tr.time i + lam ≤ tr.time m → tr.time m < T →
-      ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) P.Δ ≤ tr.time j) →
-    lo + ∑ j ∈ Finset.range 5, (len (2 * hz + j) + lam) < T →
-    ∃ v, 2 * hz ≤ v ∧ v ≤ 2 * hz + 4 ∧ ∃ a, lo + lam ≤ a ∧
-      a + len v ≤ lo + ∑ j ∈ Finset.range (v - 2 * hz + 1), (len (2 * hz + j) + lam) ∧
-      (∀ y i, y ∈ H (tr.time i) → a ≤ tr.time i → tr.time i ≤ a + len v →
-        frameKey' A (tr.state y i).fg = v) ∧
-      ∃ floor kindJ J, FrameWindow tr H a (a + len v) floor kindJ J
-
 /-- UNPROVED leaf 4: explicit report-tree membership avoids an AC-specific inference. -/
 def row_or_high_of_report_at (runs : ACRun A sg) : Prop :=
   ∀ {cm proposer dg H tr} {g T : Time} {y : Fin P.n} {i : Nat} {R B : A.Blk},
