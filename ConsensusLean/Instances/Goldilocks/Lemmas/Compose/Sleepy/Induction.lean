@@ -14,7 +14,8 @@ The bounded frontier: `P_0` and `V_0` hold vacuously;
 every finite frontier holds (`frontier`), and unbounded S1 and S2 follow. With the provenance of
 records, locks, sources and caches (`Sleepy/Provenance`) and full viability (`held_origin_viable`)
 this is `SleepyInvariant` (`sleepy_invariant`), and R.1's safety part, pairwise compatibility of
-the honest confirmed outputs (`sleepy_confirmed_compatible`).
+the honest confirmed outputs (`sleepy_confirmed_compatible`). The frontier steps and the
+invariants take population-sized committees as a premise (`hstock : sp.committeeSize = sp.n`).
 
 The same induction runs up to a horizon `b` under the send-window prefix premises
 (`SleepyPrefix`: `Sync[0, b − Δ]`, `f < h_t` at the slot points `≤ b`), for the origins within
@@ -52,8 +53,8 @@ theorem frontier
     have hP := origins_below_succ hrun hnc hsl ih.1 ih.2 hstock
     exact ⟨hP, votes_below_succ hrun hnc hsl hP ih.2 hstock⟩
 
-/-- **The Sleepy record invariant** (S1–S3) holds of every Goldilocks run under `Sleepy` and
-`NoColl`. -/
+/-- **The Sleepy record invariant** (S1–S3) holds of every Goldilocks run with population-sized
+committees (`sp.committeeSize = sp.n`) under `Sleepy` and `NoColl`. -/
 theorem sleepy_invariant
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) (hstock : sp.committeeSize = sp.n) : SleepyInvariant tr H := by
@@ -104,8 +105,9 @@ theorem frontier_before
     exact ⟨hP, votes_below_succ_before hrun hnc hb hsync hfb hP ih.2 hstock⟩
 
 /-- **The Sleepy record invariant up to `b`** (S1–S3 for the origins within `b`, the honest votes
-at times `≤ b` and the cuts within `b`) holds of every Goldilocks run under `NoColl` and the
-send-window prefix premises `SleepyPrefix` up to `b`, whatever happens after `b`. -/
+at times `≤ b` and the cuts within `b`) holds of every Goldilocks run with population-sized
+committees (`sp.committeeSize = sp.n`) under `NoColl` and the send-window prefix premises
+`SleepyPrefix` up to `b`, whatever happens after `b`. -/
 theorem sleepy_invariant_upTo
     {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)

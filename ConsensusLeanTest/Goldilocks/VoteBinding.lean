@@ -17,7 +17,9 @@ the slot's committee role and other poll bodies keep the poll role (`committeeOn
 `committeeOne_candidateRole_vote`, `committeeOne_candidateRole_att`); initialization installs the
 own committee membership as the vote permission (`committeeOne_init_mayVote`), so a node outside
 the slot's committee emits no vote of that slot (`committeeOne_nonmember_silent`), at every cut of
-a valid engine run as well (`committeeOne_nonmember_silent_at`); every admissible
+a valid engine run as well (`committeeOne_nonmember_silent_at`), while a member of the slot's
+committee releases its pending vote, signed in the committee role, at its poll step
+(`committeeOne_member_releases_vote`); every admissible
 committee has one key, the committee size, a proper subset of every population of two or more
 (`committeeOne_committeeSize`, `committeeOne_selected_proper`).
 -/
@@ -207,5 +209,26 @@ theorem committeeOne_selected_proper (S : Setup) (pub : Public) (hn : 2 ≤ pub.
   refine ⟨hT, Finset.ssubset_univ_iff.2 fun h => ?_⟩
   rw [h, Finset.card_univ, Fintype.card_fin] at hT
   omega
+
+/-- A member of the slot's committee releases its pending vote along the committee-role release
+path: when the poll step's outbox starts with the vote body of `m` and the node's key is selected
+for the slot-`m.slot` vote duty, the poll step of a valid engine run releases that vote signed in
+the committee role `.duty m.slot .vote` (`Simulation.dutyStep_poll_rel`). -/
+theorem committeeOne_member_releases_vote {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, committeeOne⟩)) E)
+    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith ⟨S, committeeOne⟩)) E)) (t : Nat)
+    (m : SA.Vote (Fintype.card V))
+    (hb : (Simulation.pollPre (Simulation.shapeOf ⟨S, committeeOne⟩ hn nd)).outbox.head? =
+      some (.vote (encodeVote m)))
+    (hs : rho.ownKey v ∈ rho.sel (.duty m.slot .vote)) :
+    (Model.Obj.mk (.signed (rho.ownKey v) (.duty m.slot .vote)) (.data (.vote (encodeVote m))) [] :
+      (Model.protoOf (compiled (goldilocksWith ⟨S, committeeOne⟩)) E).Object) ∈
+      (rho.dutyStep v nd (.poll t)).2 := by
+  have h := Simulation.dutyStep_poll_rel ⟨S, committeeOne⟩ rho hn v nd t
+    (Simulation.poll_selected ⟨S, committeeOne⟩ rho hv v) hb
+    (by rw [Simulation.pollRole_vote]; exact hs)
+    (Simulation.protects_pollObj_vote ⟨S, committeeOne⟩ rho v _ _ _)
+  rwa [Simulation.pollObj, Simulation.pollRole_vote, committeeOne_voteRole] at h
 
 end Consensus.Goldilocks.AsChainShape.Regression

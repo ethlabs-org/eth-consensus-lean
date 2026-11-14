@@ -11,15 +11,16 @@ goldilocks-spec.tex §"State" and §"Votes and views".
 
 * The wire message is the Goldfish vote `(val_index, s, H)`, which names its head by root.
   Signatures are not modelled (as for the FG's attestations): the signer of a vote is its
-  validator, the committee of every slot is `V` (so the committee test holds by typing), and
-  unforgeability is a run premise (claims §"Runs").
+  validator, and unforgeability is a run premise (claims §"Runs"). The own committee test is the
+  vote permission `mayVote` of the state, installed by the execution at init; at the
+  population-wide binding it permits every slot (the spec's committee `V`).
 * The payload of a block is `(votes, support_votes)`, two lists.
 * The state `𝒜 = (gf_votes[·], timestamp[·], saved_confirmation[·], locks, latest_confirmed,
-  fg_reported, voted_slot, restart_time)`. The AC holds blocks only by name (root). Stamps are
-  on the extended time line `ETime` (`⊥ = −∞`, `⊤ = +∞`): `timestamp[genesis] = −∞`, and a vote
-  or block the AC never accepted reads `+∞` (no rule reads such a stamp at a reachable state).
-  `restart_time` is `−∞` before any restart. Saved confirmations are kept for every integer
-  slot, negative ones included (`⊥` initially). -/
+  fg_reported, voted_slot, restart_time)`, with the vote permission `mayVote`. The AC holds
+  blocks only by name (root). Stamps are on the extended time line `ETime` (`⊥ = −∞`,
+  `⊤ = +∞`): `timestamp[genesis] = −∞`, and a vote or block the AC never accepted reads `+∞` (no
+  rule reads such a stamp at a reachable state). `restart_time` is `−∞` before any restart.
+  Saved confirmations are kept for every integer slot, negative ones included (`⊥` initially). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -72,7 +73,9 @@ structure SAState (n : Nat) where
   latestConfirmed : Nat
   /-- `fg_reported`: the latest block given to the FG (a root). -/
   fgReported : Nat
-  /-- `voted_slot`: the slot of the latest vote (`−1` initially). -/
+  /-- `voted_slot`: the latest slot whose voting transition passed the joining, timing and
+  readiness guards, including an attempt the permission `mayVote` denies (which emits no vote);
+  `−1` initially. -/
   votedSlot : Int
   /-- `restart_time`: the time of the latest restart (`−∞` initially). -/
   restartTime : WithBot Time

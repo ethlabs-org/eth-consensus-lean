@@ -53,7 +53,8 @@ structure LocalRun {A : NodeAC P} (proposer : Nat → Fin P.n)
     (ini : Fin P.n → A.State := fun _ => A.initial) : Prop where
   /-- Compromise is permanent: a validator honest at a time was honest at every earlier time. -/
   antitone : Antitone H
-  /-- Each node honest at time `0` starts from the initial node state. -/
+  /-- Each node `y` honest at time `0` starts from the initial node state with its given AC start
+  `ini y` (`Node.initWith`; by default the initial AC state). -/
   init : ∀ y ∈ H 0, tr.init y = Node.initWith A (ini y)
   /-- Every labelled cut of a node honest at its time lies in the group of a top-level event. -/
   grouped : ∀ y i c, tr.CallAt y i c → y ∈ H (tr.time i) →

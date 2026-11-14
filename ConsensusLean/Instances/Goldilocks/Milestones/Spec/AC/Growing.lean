@@ -25,7 +25,8 @@ structure ACLocalRun (A : ACInterface P FGP) (H : Time → Set (Fin P.n)) (U : S
   antitone : Antitone H
   /-- `U` is coherent: roots injective, slots increasing along parent edges. -/
   coherent : Coherent U
-  /-- Each node honest at time `0` starts from the initial AC state. -/
+  /-- Each node `y` honest at time `0` starts from its given AC state `ini y` (by default
+  `A.initial`). -/
   init : ∀ y ∈ H 0, tr.init y = ini y
   /-- Each call of a node honest at its time executes the AC on the pre-state, the label's frame
   and the cut's time. -/

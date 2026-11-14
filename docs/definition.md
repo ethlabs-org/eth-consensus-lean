@@ -641,7 +641,7 @@ The generated library root only collects imports.
 7. `ConsensusLean/Spec/Problem/Profile.lean`: Profiles (`ebbAndFlow`, `bft`, `available`) and `Profile.Matches`, the exact capability set of a schema.
 8. `ConsensusLean/Spec/Model/Objects.lean`: Authenticated wire objects, carried-object closure, signers, items and decidable equality.
 9. `ConsensusLean/Spec/Model/Protocol.lean`: Public parameters, closed selections, protocol interfaces (including the per-candidate signing role `candidateRole` and the observed participation role `participationRole`), selection admissibility and families.
-10. `ConsensusLean/Spec/Model/Run.lean`: Events and their order, runs, engine state (initialized with the own role membership), signing in both the duty's and the candidate's role, releases, inboxes, views, slashing protection and local reads.
+10. `ConsensusLean/Spec/Model/Run.lean`: Events and their order, runs, engine state (initialized with the own role membership), signing (checks duty-role and candidate-role membership, then signs in the candidate role), releases, inboxes, views, slashing protection and local reads.
 11. `ConsensusLean/Spec/Model/Conditions.lean`: Signature unforgeability, valid selections, credentials, `ExecutionValid` and the engine communication log.
 12. `ConsensusLean/Spec/Model/System.lean`: Evidence-based conviction, observed hash collisions, `sysOf`, and external PKI/selection data with the observed participating population (`sysExternal`).
 13. `ConsensusLean/Spec/Model/Served.lean`: Engine holding at a deadline (`Run.Served`), used by the `HeldIffServed` review statement.

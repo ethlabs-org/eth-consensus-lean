@@ -75,7 +75,8 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   State : Type
   /-- Signing roles. A signature binds its role. -/
   Role : Type
-  /-- Duties: each signs in its role, at the times `duties` lists it. -/
+  /-- Duties: each executes, at the times `duties` lists it, only when its role (`role`) selects
+  the key; each candidate it returns is signed in that candidate's role (`candidateRole`). -/
   Duty : Type
   /-- Items: what the engine hashes (for example block headers). -/
   Item : Type
@@ -111,8 +112,10 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   /-- The clock update at a tick, with the node's cumulative own and relayed transactions
   so far. -/
   clock : State → Time → List Tx → State
-  /-- Duty `d`: the new state and ordered candidates signed in its selected role.
-  An unselected duty does not execute. For a selected duty the engine applies
+  /-- Duty `d`: the new state and ordered candidates. A candidate `m` is signed in
+  `candidateRole d m` (by default the duty's role `role d`), and only if both that role and the
+  duty's role select the key; otherwise it is dropped. The duty's role gates execution: an
+  unselected duty does not execute. For a selected duty the engine applies
   the state even if candidates are refused. Own membership is known at init;
   there is no release feedback, no fault or awake oracle, and no other nodes'
   membership. A later duty (also within the tick)

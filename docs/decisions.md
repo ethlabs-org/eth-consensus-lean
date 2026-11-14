@@ -323,12 +323,13 @@ detail in `TRUST.md`.
   bandLen·ΔAC]`, on the same retained view as `CohortOn`; `CommitteeSleepyOn` asks η-sleepy participation inside
   each nonempty selected committee throughout, with its own look-ahead `committeeAhead·ΔAC`. Reasons: a committee
   protocol counts its votes inside the slot's committee, so its outage argument needs the honest majority there,
-  not only in the population; the band is fixed by `b₀` and the contract's numbers, never by run events, so the
-  premise is decided by the selection alone; a committee is the one selected for its observation slot, and a
-  later fault charge reads that same set rather than selecting again. Both clauses are vacuous at empty
-  selections; at a population-wide selection with `committeeAhead ≤ ahead` they follow from the population
-  clauses, so a protocol without a participation role meets exactly the population regime at such numbers. The
-  band numbers are contract numbers (§"Contract numbers").
+  not only in the population; the band is fixed by `b₀` and the contract's numbers and the committees by the
+  public selection, never by run events; the inequalities are evaluated from participation and faults on the
+  retained view; a committee is the one selected for its observation slot, and a later fault charge reads that
+  same set rather than selecting again. Both clauses are vacuous at empty selections; at a population-wide
+  selection with `committeeAhead ≤ ahead` they follow from the population clauses, so a protocol without a
+  participation role meets exactly the population regime at such numbers. The band numbers are contract numbers
+  (§"Contract numbers").
 - **Node-level regime rows.** The node-level rows R.1, R.2, R.7 and R.8 (`Milestones/Statements/Regimes/{Sleepy,
   Always}`) are proved milestones, and the obligations proof uses their definitions. The node-level rows R.3–R.6
   (healed, final, outage, weak continuation) are not stated: R.3–R.5 correspond to the generic rows `healedSafe`,

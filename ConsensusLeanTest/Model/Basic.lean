@@ -128,6 +128,18 @@ def env : Env (Fin 2) := ⟨3, by decide, 3, by decide, fun _ _ => true⟩
 def sel : Bool → Finset (Fin (Fintype.card (Fin 2))) :=
   fun r => if r then {0} else Finset.univ
 
+/-- A public participation query switches roles at a fixed time, not when nodes wake. -/
+def participationFamily : ProtocolFamily schema := fun pub =>
+  { proto pub with participationRole := fun t => some (decide (t < 4)) }
+
+/-- The observed selection follows the participation query: the singleton selection of role
+`true` before time `4`, the whole population of role `false` from `4` on. -/
+theorem participation_observation_selected :
+    let X := sysExternal schema participationFamily (Fin 2)
+    let x : X.Ext env := (pkiFin 2, sel)
+    X.selected env x 3 = {0} ∧ X.selected env x 4 = Finset.univ := by
+  decide
+
 theorem sel_valid (rho : Run family env) (h : rho.sel = sel) : rho.SelValid := by
   intro r
   rw [h]

@@ -9,15 +9,16 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Interface
 
 The part of `Spec/AC/Trace` that no Challenge statement reaches (`docs/decisions.md`
 §"Trusted surface and Challenge scope"): the milestone statements use it; it is not on the trusted
-surface. Names and bodies are unchanged.
+surface.
 
 The AC component trace: a `Trace` over the AC state alone,
 whose labelled cuts are AC calls (`ACLabel`, `Spec/AC/Trace`). FG cuts and the other nodes' cuts
 are stutters (no label).
 
-`ACLocalRun A H U tr` is the contract a node run's projection satisfies (claims C0.5 (a), (b)),
-for the honest validators `H`, inside the coherent set `U`: each honest node starts from the
-initial AC state and each call executes the AC on its pre-state, under the frame law at call
+`ACLocalRun A H U tr ini` is the contract a node run's projection satisfies (claims C0.5 (a),
+(b)), for the honest validators `H`, inside the coherent set `U`: each honest node `y` starts
+from its given AC state `ini y` (by default the initial AC state `A.initial`) and each call
+executes the AC on its pre-state, under the frame law at call
 boundaries (`CallOK`), in the run's time order from `0`, with the run's sleep and wake laws; its
 fields state each. `SyncAC A H U a b tr` is the
 network premise `Sync[a, b]` (claims §"Premises") as the AC trace observes it: a deadline is
@@ -78,7 +79,7 @@ structure ACLocalRun (A : ACInterface P FGP) (H : Set (Fin P.n)) (U : Set A.Blk)
     (tr : ACTrace A) (ini : Fin P.n → A.State := fun _ => A.initial) : Prop where
   /-- `U` is coherent: roots injective, slots increasing along parent edges. -/
   coherent : Coherent U
-  /-- Each honest node starts from the initial AC state. -/
+  /-- Each honest node `y` starts from its given AC state `ini y` (by default `A.initial`). -/
   init : ∀ y ∈ H, tr.init y = ini y
   /-- Each call of an honest node executes the AC on the pre-state, the label's frame and the
   cut's time: the post-state and the emissions are the call's. -/

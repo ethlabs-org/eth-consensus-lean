@@ -19,9 +19,11 @@ At a tick of awake node `v` at `t`, the engine
 2. runs the due duties one after the other, in `duties` order, each from the
    state the previous one left. A duty whose role does not select `v`'s key is
    skipped: no state change and no candidates (`dutyStep`). A selected duty's
-   `act` gives a new state, which the engine applies, and a message, which
-   becomes a candidate signed with `v`'s own key in the duty's role and goes
-   through release (3) before the next duty runs;
+   `act` gives a new state, which the engine applies, and ordered messages. Each
+   message `m` becomes a candidate signed with `v`'s own key in its candidate
+   role `candidateRole d m`, kept only if that role selects `v`'s key as the
+   duty's role does (`signedCandidate`); the candidates go through release (3),
+   in order, before the next duty runs;
 3. releases a candidate only if every object it carries is already in the
    closure of `seen` (so honest code passes on no object it has not seen),
    slashing protection allows it (`protects`: a candidate signed by the own

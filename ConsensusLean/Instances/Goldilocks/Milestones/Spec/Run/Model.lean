@@ -18,7 +18,8 @@ trace a run of the protocol. Faulty nodes have no cuts: what they send is an inp
   node and time, and labels exactly the handler's cuts in order (`GroupAt`). The `event` id is
   injective on groups. A dropped future-slot block makes no cuts, so it is not an event of the
   run.
-* **Laws** (`LocalRun`): every honest node starts from the initial node state; every labelled
+* **Laws** (`LocalRun`): every honest node `y` starts from the initial node state with its given
+  AC start `ini y` (`Node.initWith`; by default the initial AC state); every labelled
   honest cut lies in a group and obeys the cut law (`Node.CutStep`); a delivery passes the wire
   checks; the cut order is by time from `0`; finitely many cuts in every bounded interval
   (claims §"Runs", the well-foundedness of F.5 (run)); at one time, restarts come before ticks
@@ -213,7 +214,8 @@ structure LocalRun {A : NodeAC P} (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload)
     (H : Set (Fin P.n)) (sg : A.Msg → Fin P.n) (tr : RunTrace A)
     (ini : Fin P.n → A.State := fun _ => A.initial) : Prop where
-  /-- Each honest node starts from the initial node state. -/
+  /-- Each honest node `y` starts from the initial node state with its given AC start `ini y`
+  (`Node.initWith`; by default the initial AC state, which gives `Node.init A`). -/
   init : ∀ y ∈ H, tr.init y = Node.initWith A (ini y)
   /-- Every labelled cut of an honest node lies in the group of a top-level event. -/
   grouped : ∀ y ∈ H, ∀ i c, tr.CallAt y i c →

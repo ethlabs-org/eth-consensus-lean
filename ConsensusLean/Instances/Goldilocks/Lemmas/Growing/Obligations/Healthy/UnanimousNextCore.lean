@@ -383,9 +383,8 @@ theorem unanimous_next_votes_extend_core_at
         unfold SA.FaultBoundAt at hf
         omega
       refine SA.Growing.next_transfer sp _ ro H _ tr.projAC proposer hacr
-        (SA.CommitteeDict.full sp.n)
-        ⟨fun _ _ _ _ _ s _ _ => SA.mem_full s _, fun _ _ _ _ _ _ s _ _ => SA.mem_full s _⟩
-        (fun _ _ _ _ _ _ _ v _ => SA.mem_full v.slot _) (SA.size_binding_full hstock)
+        (SA.CommitteeDict.full sp.n) SA.CommitteePAt.full SA.CommitteeTAt.full
+        (SA.size_binding_full hstock)
         u y j P ell e hy hcast hs ?_ (by rw [hstock]; exact hhalf) hcarry
         ((SA.ncard_inter_full_lt_iff _ _ _).2 hf) (SA.Growing.cs2_full_of_faultBoundAt hstock hf)
         (Or.inl hvi) ?_

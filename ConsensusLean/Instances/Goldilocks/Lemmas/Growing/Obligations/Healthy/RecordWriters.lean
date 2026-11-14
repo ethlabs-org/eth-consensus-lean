@@ -511,11 +511,6 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b :
   have hcall : (simTraceAt ⟨S, stock⟩ rho hn).CallAt (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn p)
       (Node.acCall (rho.ownKey v) ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v)
         (cutMap ⟨S, stock⟩ rho hn p)) T .tick).2 := by
-    have hget : (Node.exec (runProposer ⟨S, stock⟩ rho hn) (digestOf ⟨S, stock⟩ rho) (rho.ownKey v)
-        ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn p)) T
-        (.tick (Blocks.encodeTxs (Model.mempool rho.inbox v T)))).2[0]'hlen0 =
-        (Node.acCall (rho.ownKey v) ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v)
-          (cutMap ⟨S, stock⟩ rho hn p)) T .tick).2 := rfl
     exact ⟨hnode, hlabel⟩
   have htime : (simTraceAt ⟨S, stock⟩ rho hn).time (cutMap ⟨S, stock⟩ rho hn p) = T := by
     simpa only [Nat.add_zero] using htime

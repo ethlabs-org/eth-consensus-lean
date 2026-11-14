@@ -165,7 +165,8 @@ theorem ready_update_selection_of_pool_core_at
     SA.fastSelect_eq_result hPhi hPt hPg (by unfold SA.FastTest; rw [hstock]; omega)
   exact ⟨hconf, hnv, hfast, update_selection_of_confirmation_at hrun hnc hy hu hconf hnv⟩
 
-/-- The finite-reset wrapper supplies only execution, no collisions and the cut fault bound. -/
+/-- The finite-reset wrapper supplies execution, no collisions, the cut fault bound and the
+population-sized-committee equality `sp.committeeSize = sp.n` (`hp.stock`). -/
 theorem ResetPremisesUpTo.ready_update_selection_of_pool_at {g ΔF a b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {y : Fin sp.n} {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}

@@ -6,19 +6,22 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Common.Params
 /-! # Goldilocks SA: schedule and parameters
 
 `specs/goldilocks/tex/goldilocks-spec.tex` §"Schedule":
-slot `s` starts at `t_s = 4Δs`, so `slot(t) = ⌊t/(4Δ)⌋`, and its committee is all of `V`. The
-formula `t_s = 4Δs` also gives the times of negative slots (`ts` takes an integer slot), which
-the rules read at slot `0` (`t_{-1} + 3Δ`, `t_{slot(t)-1}`). The lock window is `k ≥ 2` slots
-and the fast increment `c ≥ 2` slots.
+slot `s` starts at `t_s = 4Δs`, so `slot(t) = ⌊t/(4Δ)⌋`, and in the spec its committee is all of
+`V`. The formula `t_s = 4Δs` also gives the times of negative slots (`ts` takes an integer slot),
+which the rules read at slot `0` (`t_{-1} + 3Δ`, `t_{slot(t)-1}`). The lock window is `k ≥ 2`
+slots and the fast increment `c ≥ 2` slots.
 
-`SAParams` extends the shared parameters (`Params`) by the lock window, the fast increment and
-the hypothesis that the shared slot times are the SA's. `R`, `K_W`, `δ_t`'s lower bound and the
-source delay are the FG's and the regimes' (goldilocks-spec §"Schedule"); no SA rule reads them. -/
+`SAParams` extends the shared parameters (`Params`) by the lock window, the fast increment, the
+hypothesis that the shared slot times are the SA's, and the public committee size
+`committeeSize`, the denominator of the fixed vote thresholds (fast, optimistic, unlock). The
+spec's all-of-`V` committee is the specialization `committeeSize = n` (the default). `R`, `K_W`,
+`δ_t`'s lower bound and the source delay are the FG's and the regimes' (goldilocks-spec
+§"Schedule"); no SA rule reads them. -/
 
 namespace Consensus.Goldilocks.SA
 
 /-- The SA's parameters: the shared parameters, whose slot times are `t_s = 4Δs`, the lock
-window `k ≥ 2` and the fast increment `c ≥ 2`. -/
+window `k ≥ 2`, the fast increment `c ≥ 2` and the public committee size. -/
 structure SAParams where
   /-- The shared parameters. -/
   toParams : Params
