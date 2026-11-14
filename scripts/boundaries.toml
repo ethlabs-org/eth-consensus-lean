@@ -116,6 +116,25 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements",
 about = "unproved generic surface edges; endpoint and acceptance closures remain isolated"
 
 [[exception]]
+from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves"]
+to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo"]
+reason = """the generic healing leaves over any NodeAC use these AC-generic run facts; their closure reaches
+Lemmas.AC only through Compose.Reach, and the cut check guards the theorems' constants; leaf paths only"""
+
+[[exception]]
+from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing",
+        "ConsensusLean.Instances.Goldilocks.Lemmas.Continuation",
+        "ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation",
+        "ConsensusLean.Instances.Goldilocks.Proofs.Growing.Obligations",
+        "Solution"]
+to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves"]
+reason = """the Goldilocks originals of the generic healing leaves (Growing.Healing.HeldSignedAt, HeldSafetyAt) are
+their instances; the other entries reach HealingLeaves only through those originals; HealingLeaves only"""
+
+[[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge"]
 to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.Row",
