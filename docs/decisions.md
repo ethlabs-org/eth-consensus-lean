@@ -602,11 +602,11 @@ detail in `TRUST.md`.
   Service, Healing) are means to the endpoint, not claims a reviewer must read.
   - They stay proved and built as ordinary lemmas, but are not comparator roots and not trusted: their statement
     modules, and every declaration of the instance Spec that only they reach (a compiled walk of the statement
-    closure of the six roots, types and definition bodies, not proofs), live with unchanged names and bodies in
+    closure of the ten roots, types and definition bodies, not proofs), live with unchanged names and bodies in
     the untrusted `Instances/Goldilocks/Milestones/` layer family. It mirrors the Spec/Statements sub-layers, so the
     allow matrix carries over; it allows `@[expose]` (the statements are unfolded by their proofs and tests) and no
     `sorry`, which is why it is not `Lemmas`.
-  - What the six roots reach stays in `Spec/`, `Statements/Obligations` and `AsChainShape.lean`, protected; a
+  - What the ten roots reach stays in `Spec/`, `Statements/Obligations` and `AsChainShape.lean`, protected; a
     `protected` layer may import only trusted and protected layers (check-boundaries.py), so that closure cannot
     reach Milestones.
   - The milestones stay gated: `ConsensusLeanTest/MilestoneAxioms.lean` states and axiom-pins each, and check.sh

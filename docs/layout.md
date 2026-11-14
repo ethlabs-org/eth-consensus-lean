@@ -19,7 +19,7 @@ Reference snapshots that no target builds or checks (an earlier Goldilocks Lean 
 | `Init.lean` | Curated public imports: `Mathlib.Init` and `Mathlib.Tactic.Common`. |
 | `Core/`, `ToMathlib/` | Trusted support; both empty for now. |
 | `Spec/{Problem,Model,Blocks,Shape}/` | Trusted definitions. |
-| `Statements/Review.lean` | The four review statements. |
+| `Statements/Review.lean` | The five review statements. |
 | `Lemmas/{Problem,Model,Blocks,Shape}/` | Derived definitions, lemmas, canonical runs and witnesses. |
 | `Proofs/<M>/Main.lean` | Milestones: `Behaviour`, `RegimesRealizable`, `Faithful`. |
 | `Main.lean` | `ShapeObligations.correct` and `ShapeObligations.activeService`. |

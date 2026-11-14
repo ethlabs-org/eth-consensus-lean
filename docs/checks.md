@@ -19,7 +19,7 @@ Everything outside the trusted files is checked by Lean; `scripts/check.sh` chec
 6. **Review pins:** require the tests root to import the compiled alpha-equality guards and exact axiom pins.
 7. **Backstop:** grep for `sorry`/`admit` outside the sorry layers (comments included; their count inside them, comments and strings removed and only as a term or tactic, is reported), proof `example`s (only a bare `example := @Name` or ``` example := ``Name ``` reference is allowed), native proofs, kernel bypasses and `debug.` options, Spec metacommands and unsafe lakefile options.
 8. **Vendored:** verify all vendored EthLib copies against `scripts/vendor.sha256`.
-9. **Comparator config:** pin challenge/solution modules, every statement name (the four review statements and the closed statements of the `milestone_statements_modules`, today the obligations endpoint and the headline `GoldilocksCorrect`, each of which must have one) and exactly the three standard axioms; validate the Spec-only challenge.
+9. **Comparator config:** pin challenge/solution modules, every statement name (the five review statements and the closed statements of the `milestone_statements_modules`, each of which must have one: the obligations endpoint, the headline `GoldilocksCorrect`, its explicit-excuse form `GoldilocksCorrectWithExcuses`, `PersistsWith` and `SleepyWith`) and exactly the three standard axioms; validate the Spec-only challenge.
 10. **Lake check (needs bubblewrap; skipped and listed as CI-only where `bwrap` is missing):** sandboxed build, export and kernel replay of the default targets, rejecting extra axioms. It rejects `sorryAx` too, so it checks the default targets only while the files of the sorry layers hold no `sorry`/`admit` term or tactic outside comments and strings (an `admit`-named field, binder or projection is not one; otherwise a NOTE and, in CI, a warning); then the checks of the part proved in Solution, the `Solution` closure, are 3b, 5 and 11. Its fixtures always run.
 11. **Lake comparator (needs bubblewrap, likewise):** statement/axiom matching, sandboxed replay and agreement of reachable constants between challenge and solution exports.
 12. **Docs:** require the marked file list of [`docs/definition.md`](definition.md#reading-order-the-trusted-files) to equal every file of the trusted layers exactly, and every `Consensus.…` name cited in `docs/roadmap.md` and `docs/goldilocks-mapping.md` to be listed in `ConsensusLeanTest/Index.lean`, whose build checks that it exists.
@@ -103,11 +103,12 @@ root or prefix with descendants.
 
 ## The statement pins and the comparator
 
-`Solution.lean` proves each review statement by its source theorem, and the one instance statement
-of `Challenge.lean`, the Goldilocks obligations endpoint `MeetsObligations` (a closed
-`Prop` definition of `milestone_statements_modules` in `scripts/boundaries.toml`), by its milestone
-proof. The headline `GoldilocksCorrect`, the other closed `Prop` of that module, is proved by composing the two:
-`ShapeObligations.correct` applied to `meets_obligations`. Challenge certifies these six statements and nothing
+`Solution.lean` proves each review statement by its source theorem, and the closed `Prop` definitions of
+`milestone_statements_modules` in `scripts/boundaries.toml`, the Goldilocks obligations endpoint `MeetsObligations`
+and the outage and sleepy rows at every vote binding `PersistsWith` and `SleepyWith`, by their milestone proofs. The
+headline `GoldilocksCorrect` is proved by composing the review statement and the endpoint: `ShapeObligations.correct`
+applied to `meets_obligations`, and its explicit-excuse form `GoldilocksCorrectWithExcuses` by
+`correctProtocol_with_excuses` applied to the headline. Challenge certifies these ten statements and nothing
 else: the trusted surface is the generic definition of a correct protocol plus the one instance module. The other Goldilocks milestones are ordinary proved lemmas:
 their statements are in the untrusted `Instances/Goldilocks/Milestones/` layers,
 `ConsensusLeanTest/MilestoneAxioms.lean` states and pins each one, and check.sh step 3b gates their closure
@@ -178,8 +179,9 @@ Spec drift is checked by the snapshot diff, committed with each change.
   other finished instance milestones' `Main`s, so all of them must be finished; a new milestone may stay unfinished
   while neither imports it (step 3b's report lists what is unfinished). The instances reach the generic library only
   through `Main`, inside the closure, so everything they use is finished today. Step 9 and the comparator check the
-  closed statements of the `milestone_statements_modules` (instance statements modules under `trusted_paths`; today
-  the obligations endpoint and the headline) next to the review statements. The review pins and the comparator check the axioms
+  closed statements of the `milestone_statements_modules` (instance statements modules under `trusted_paths`: the
+  obligations endpoint, the headline and its explicit-excuse form, `PersistsWith` and `SleepyWith`) next to the review
+  statements. The review pins and the comparator check the axioms
   of the review and endpoint theorems too; `MilestoneAxioms` those of the other milestones (untrusted). axiom-audit's
   shared memo can under-count inside an inductive/constructor cycle when the declaration that uses the axiom directly
   is not audited (the tests gate, whose roots exclude the library): check-decls still fails a direct `sorry` outside
