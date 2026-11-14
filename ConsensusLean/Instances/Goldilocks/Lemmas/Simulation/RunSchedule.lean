@@ -59,12 +59,6 @@ private theorem event_awake (hv : rho.ExecutionValid) {i : Nat}
   | deliver v o t => exact hv.deliver_awake v o t hm
   | restart v t => exact (hv.restart_at_wake v t hm).2.1
 
-private theorem index_le {i i' k k' : Nat} (hk : cutMap S rho hn i ≤ k)
-    (hk' : k' < cutMap S rho hn (i' + 1)) (h : k ≤ k') : i ≤ i' := by
-  by_contra hlt
-  have := cutMap_mono S rho hn (show i' + 1 ≤ i by omega)
-  omega
-
 private theorem labelled_iff (k : Nat) :
     (simTrace S rho hn).label k ≠ none ↔ k < (allCuts S rho hn).length := by
   simp [simTrace_label]
@@ -186,7 +180,7 @@ theorem simTrace_time_mono (hv : rho.ExecutionValid) : Monotone (simTrace S rho 
     obtain ⟨-, i, ev, -, he, h1, -, -, -, ht, -⟩ := simTrace_cut S rho hn hl
     obtain ⟨-, i', ev', -, he', -, h2', -, -, ht', -⟩ := simTrace_cut S rho hn hl'
     rw [ht, ht']
-    rcases (index_le S rho hn h1 h2' hkk').lt_or_eq with h | rfl
+    rcases (cutMap_index_le S rho hn h1 h2' hkk').lt_or_eq with h | rfl
     · rcases keyLe_of_lt S rho hv he he' h with h | h
       · exact h.le
       · exact h.1.le
@@ -212,7 +206,7 @@ theorem simTrace_phase_order (hv : rho.ExecutionValid) :
   obtain ⟨-, i, ev, he, h1, -, -, -, -, ht, hph⟩ := groupAt_start S rho hn hg
   obtain ⟨-, i', ev', he', -, h2', -, -, -, ht', hph'⟩ := groupAt_start S rho hn hg'
   rw [hph, hph']
-  rcases (index_le S rho hn h1 h2' hjj'.le).lt_or_eq with h | rfl
+  rcases (cutMap_index_le S rho hn h1 h2' hjj'.le).lt_or_eq with h | rfl
   · rcases keyLe_of_lt S rho hv he he' h with h | h
     · rw [ht, ht'] at h; exact absurd h (lt_irrefl _)
     · exact h.2
@@ -382,7 +376,7 @@ theorem simTrace_sleep_of_restart (hv : rho.ExecutionValid) :
     have hle := simTrace_time_mono S rho hn hv hj.le
     rw [ht₁, ht] at hle
     rw [ht₁]
-    have hi₁ : i₁ ≤ i₀ := index_le S rho hn h1₁ h2 hj.le
+    have hi₁ : i₁ ≤ i₀ := cutMap_index_le S rho hn h1₁ h2 hj.le
     have hne : ev₁.time ≠ t := by
       intro heq
       rcases hi₁.lt_or_eq with hlt | rfl

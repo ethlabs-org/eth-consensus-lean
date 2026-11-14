@@ -91,16 +91,21 @@ theorem simTrace_inHorizon_iff (t : Time) :
   simp [RunTrace.InHorizon, simTrace_label, simTrace_time, simTrace_observationHorizon,
     cutLabel_eq, cutTime_eq]
 
+/-- Every time up to the run's horizon is in the trace's horizon. -/
+theorem simTrace_inHorizon_of_le {t : Time} (ht : t ≤ rho.horizon) :
+    (simTrace S rho hn).InHorizon t := by
+  refine (simTrace_inHorizon_iff S rho hn t).mpr
+    ⟨(allCuts S rho hn).length, Or.inr ht, ?_⟩
+  simp only [cutTime_eq, List.getElem?_length, Option.elim_none]
+  linarith
+
 /-- An honest node is awake only within the run's horizon. -/
 theorem simTrace_awake_in_horizon :
     ∀ y ∈ honestKeys S rho, ∀ t, (simTrace S rho hn).awake y t →
       (simTrace S rho hn).InHorizon t := by
   intro y _ t h
   rw [simTrace_awake_iff, awakeAt_iff] at h
-  refine (simTrace_inHorizon_iff S rho hn t).mpr
-    ⟨(allCuts S rho hn).length, Or.inr h.2.2, ?_⟩
-  simp only [cutTime_eq, List.getElem?_length, Option.elim_none]
-  linarith [h.2.2]
+  exact simTrace_inHorizon_of_le S rho hn h.2.2
 
 /-- An honest node awake in the environment within the horizon is awake in the trace. -/
 theorem simTrace_awake_before_horizon :
@@ -114,6 +119,13 @@ theorem cutMap_mono : Monotone (cutMap S rho hn) :=
   monotone_nat_of_le_succ fun i => by
     rw [cutMap_succ]
     exact Nat.le_add_right _ _
+
+/-- A cut at or after event `i`'s first cut and at or before event `i'`'s last cut has `i ≤ i'`. -/
+theorem cutMap_index_le {i i' k k' : Nat} (hk : cutMap S rho hn i ≤ k)
+    (hk' : k' < cutMap S rho hn (i' + 1)) (h : k ≤ k') : i ≤ i' := by
+  by_contra hlt
+  have := cutMap_mono S rho hn (show i' + 1 ≤ i by omega)
+  omega
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
