@@ -63,7 +63,7 @@ def rise_reset_rounds (O : ACHealing A sg runs) : Prop :=
 
 /-- UNPROVED canonical-high assembly, including independently bounded historical readers. -/
 def highCanonical (O : ACHealing A sg runs) : Prop :=
-  high_row_source_at A sg O → no_high_contest_at A sg O → high_entry_eq_at A sg O →
+  high_row_source_at A sg O → no_high_contest_at A sg runs → high_entry_eq_at A sg O →
   ∀ {cm βK tr H proposer dg g ΔF b a}, βK ≤ 1 / 2 →
     runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
     IsReset tr H g a → a ≤ b → HighCanonical O.Origin tr H g b

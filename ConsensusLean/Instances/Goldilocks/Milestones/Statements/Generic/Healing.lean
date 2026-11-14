@@ -246,32 +246,20 @@ def high_row_source_at (O : ACHealing A sg runs) : Prop :=
         E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
         ((tr.state v r).fg.σ E.root).Th = E.root
 
-/-- The eight old reset-premise fields, without catch-up or timeout assumptions. -/
-structure ResetPremisesUpTo (_O : ACHealing A sg runs)
-    (tr : RunTrace A) (H : Time → Set (Fin P.n)) (cm : Time → Finset (Fin P.n))
-    (proposer : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)
-    (g ΔF a b : Time) : Prop where
-  run : runs.Run cm proposer dg H tr
-  noColl : Compose.NoCollRun dg tr
-  sync : Service tr H g ΔF b
-  awake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t
-  faults : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1
-  reset : IsReset tr H g a
-  reset_le : a ≤ b
-  snapshot : ∃ k, FirstCutAfter tr k (cutZ P g) ∧ tr.time k ≤ b
-
-/-- UNPROVED leaf 13: no high contest under only the old reset premises. -/
-def no_high_contest_at (O : ACHealing A sg runs) : Prop :=
-  ∀ {cm proposer dg H tr} {g ΔF a b : Time} {p : Fin P.n} {i : Nat},
-    ResetPremisesUpTo A sg O tr H cm proposer dg g ΔF a b →
+/-- UNPROVED leaf 13: no high contest under committee-aware reset premises. -/
+def no_high_contest_at (runs : ACRun A sg) : Prop :=
+  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {p : Fin P.n} {i : Nat},
+    βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
+    Premises tr H cm βK proposer dg sg g ΔF b → IsReset tr H g a → a ≤ b →
     p ∈ H (tr.time i) → tr.time i ≤ b →
     ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax)
 
 /-- UNPROVED leaf 14: independently bounded historical readers, not event-only readers. -/
 def high_entry_eq_at (O : ACHealing A sg runs) : Prop :=
-  ∀ {cm proposer dg H tr} {g ΔF a b : Time} {x x' : Fin P.n} {i j i' j' : Nat}
+  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {x x' : Fin P.n} {i j i' j' : Nat}
     {B B' Z₁ Z₂ : A.Blk} {y₁ y₂ : Fin P.n} {m₁ m₂ : Nat} {t₁ t₂ : Time},
-    ResetPremisesUpTo A sg O tr H cm proposer dg g ΔF a b →
+    βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
+    Premises tr H cm βK proposer dg sg g ΔF b → IsReset tr H g a → a ≤ b →
     HighOrigin A sg O tr H g x i j B → tr.time i ≤ b →
     HighOrigin A sg O tr H g x' i' j' B' → tr.time i' ≤ b →
     Anc (tr.HonestBlocksAt H) Z₁ B → Anc (tr.HonestBlocksAt H) Z₂ B' →

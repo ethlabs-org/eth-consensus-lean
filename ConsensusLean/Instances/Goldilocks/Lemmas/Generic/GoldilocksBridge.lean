@@ -492,7 +492,7 @@ def high_row_source_at_bridge : Prop :=
 def no_high_contest_at_bridge : Prop :=
   ∀ R, ∀ O : ACHealing (goldilocksNode sp ro) (fun v => v.val) R,
     GoldilocksHealingData sp ro O →
-    no_high_contest_at (goldilocksNode sp ro) (fun v => v.val) O →
+    no_high_contest_at (goldilocksNode sp ro) (fun v => v.val) R →
       ∀ {proposer dg H tr}, no_high_contest_at_goldilocks (sp := sp) (ro := ro)
         (proposer := proposer) (dg := dg) (H := H) (tr := tr)
 
