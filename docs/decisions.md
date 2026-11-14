@@ -499,8 +499,9 @@ detail in `TRUST.md`.
   certified statement holds at which binding is in §"Trusted surface and Challenge scope".
   The stock-only proofs are stated at `goldilocksWith ⟨S, stock⟩`, the form of the binding-generic simulation
   lemmas they rewrite with: the static queries (`OutageQuery`, `ConfirmedQuery`, `HealthyPreparationQuery`), the
-  growing queries (`ConfirmedQueryAt`, `SleepySafetyQueryAt`, `FinalQueryAt`, `HealthyPreparationQueryAt`) and
-  `FinalWindowDataAt`, the lemmas over them and the fields of the growing endpoint. The trusted statements and
+  growing queries (`SleepySafetyQueryAt`, `FinalQueryAt`, `HealthyPreparationQueryAt`) and `FinalWindowDataAt`,
+  the lemmas over them and the fields of the growing endpoint. The growing confirmed query `ConfirmedQueryAt`
+  takes every `S : BoundSetup`; its stock users pass `⟨S, stock⟩`. The trusted statements and
   `meetsObligations_growing` keep `goldilocks S`, which is defined as `goldilocksWith ⟨S, stock⟩` and unfolds to it
   definitionally.
 - **Votes leave through the poll outbox and are signed in their historical role (`candidateRole`).** No binding

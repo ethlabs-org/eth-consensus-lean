@@ -151,7 +151,7 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 
 /-- Engine readiness from health: a validator honest at `t ∈ [ready, horizon]` is ready at `t`
 (`HealthyOn` keeps it awake on `[max g 0, horizon]` while honest). -/
-private theorem confirmed_ready_of_healthy_at (Q : ConfirmedQueryAt S A V)
+private theorem confirmed_ready_of_healthy_at (Q : ConfirmedQueryAt ⟨S, stock⟩ A V)
     (hh : (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy
         (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) Q.gst Q.run)
     {v : V} {t : Time} (hv : Q.run.2.point.HonestAt v t)
@@ -166,7 +166,7 @@ private theorem confirmed_ready_of_healthy_at (Q : ConfirmedQueryAt S A V)
 
 /-- The end-of-time cut of a ready validator: `CutAfter` at its trace cut, the stored clock, and
 `cutTime (endCut t) = t`. -/
-private theorem confirmed_end_cut_at (Q : ConfirmedQueryAt S A V) {v : V} {t : Time}
+private theorem confirmed_end_cut_at (Q : ConfirmedQueryAt ⟨S, stock⟩ A V) {v : V} {t : Time}
     (ht : 0 ≤ t) (hth : t ≤ Q.run.2.horizon) (hr : Q.run.2.point.Ready Q.duration v t) :
     Regimes.CutAfter Q.trace (cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t ∧
       (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v ((chainTrace Q.run.2).endCut t)).now = t ∧
@@ -174,7 +174,7 @@ private theorem confirmed_end_cut_at (Q : ConfirmedQueryAt S A V) {v : V} {t : T
       (chainTrace Q.run.2).endCut t ≤ Q.run.2.events.length := by
   obtain ⟨hcut, -, hnow⟩ := ready_read_cut_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid (c := Q.duration)
     ((mul_nonneg (by norm_num) Q.params.toParams.hΔ.le :
-      (0 : Time) ≤ Regimes.catchUp Q.params).trans (confirmed_duration_supply_at S A V Q))
+      (0 : Time) ≤ Regimes.catchUp Q.params).trans (confirmed_duration_supply_at ⟨S, stock⟩ A V Q))
     ht hth hr
   have hle : (chainTrace Q.run.2).endCut t ≤ Q.run.2.events.length := Nat.findGreatest_le _
   have hup : (chainTrace Q.run.2).cutTime ((chainTrace Q.run.2).endCut t) ≤ t :=
@@ -185,7 +185,8 @@ private theorem confirmed_end_cut_at (Q : ConfirmedQueryAt S A V) {v : V} {t : T
   exact ⟨hcut, hnow, le_antisymm hup hlo, hle⟩
 
 /-- `CutAfter` determines its cut. -/
-private theorem confirmed_cutAfter_unique (Q : ConfirmedQueryAt S A V) {i j : Nat} {t : Time}
+private theorem confirmed_cutAfter_unique (Q : ConfirmedQueryAt ⟨S, stock⟩ A V) {i j : Nat}
+    {t : Time}
     (hi : Regimes.CutAfter Q.trace i t) (hj : Regimes.CutAfter Q.trace j t) : i = j := by
   rcases lt_trichotomy i j with h | h | h
   · exact absurd (hj.1 i h) (not_le.2 hi.2)
@@ -194,7 +195,7 @@ private theorem confirmed_cutAfter_unique (Q : ConfirmedQueryAt S A V) {i j : Na
 
 /-- The read of a node at the trace cut after its last own event before an engine cut is its read
 at the trace cut of that engine cut. -/
-private theorem readAfter_lastOwn (Q : ConfirmedQueryAt S A V) {v : V} {n : Nat}
+private theorem readAfter_lastOwn (Q : ConfirmedQueryAt ⟨S, stock⟩ A V) {v : V} {n : Nat}
     (hn : n ≤ Q.run.2.events.length) (t : Time) :
     Regimes.readAfter Q.trace (Q.run.2.ownKey v)
         (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v n)) t =
@@ -211,7 +212,7 @@ heal point, in the confirmed read of every node ready at the deadline. The propo
 proposal of the slot that the recurrence selects at the query's readiness, whose proposer is
 honest through its slot time plus `Δ`; every reader honest at `t_u + 6Δ` holds it then, and a
 reader ready at the deadline keeps it by its tip ancestry. -/
-theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt S A V)
+theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt ⟨S, stock⟩ A V)
     (hh : (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy
         (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) Q.gst Q.run)
     (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
@@ -245,7 +246,7 @@ theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt S A V)
   have hrh : Q'.ready ≤ Q'.heal := by
     linarith only [W.ready_le, W.records, hΔ]
   -- the selected proposal at the query's own readiness
-  obtain ⟨Ws⟩ := confirmed_query_slot_at S A V Q hp (max_le (hrh.trans ht) (h0.trans ht))
+  obtain ⟨Ws⟩ := confirmed_query_slot_at ⟨S, stock⟩ A V Q hp (max_le (hrh.trans ht) (h0.trans ht))
   obtain ⟨B, k, hBp, he, htk⟩ := confirmed_slot_event_at S A V Q Ws
   have hr : Regimes.Growing.ReadyAt Q.trace Q.keys Q.duration B.proposer (Q.trace.time k) := by
     rw [hBp, htk]; exact Ws.ready

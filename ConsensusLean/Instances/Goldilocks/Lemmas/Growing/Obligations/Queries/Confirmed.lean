@@ -52,7 +52,7 @@ theorem proposal_accepted_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 
 end Node
 
-variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
+variable (S : BoundSetup) (A : ContractAssumptions S.toSetup) (V : Type) [Fintype V] [DecidableEq V]
 
 /-- Readiness at a larger duration is readiness at a smaller one. -/
 theorem confirmed_ready_mono_at (Q : ConfirmedQueryAt S A V) {c d : Time} (hcd : c ≤ d) {y t}
@@ -64,12 +64,12 @@ theorem confirmed_ready_mono_at (Q : ConfirmedQueryAt S A V) {c d : Time} (hcd :
 /-- The query's readiness duration covers the node catch-up. -/
 theorem confirmed_duration_supply_at (Q : ConfirmedQueryAt S A V) :
     Regimes.catchUp Q.params ≤ Q.duration := by
-  have hc : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
-    exact_mod_cast contract_catchUp_ge_sleepy S A
+  have hc : (19 : Time) ≤ (contract_catchUp S.toSetup A : Nat) := by
+    exact_mod_cast contract_catchUp_ge_sleepy S.toSetup A
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   simp only [ConfirmedQueryAt.duration, System.cDur,
     Params.standard, contract_coefficients_catchUp]
-  change 18 * Q.run.1.ΔAC ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
+  change 18 * Q.run.1.ΔAC ≤ (contract_catchUp S.toSetup A : Nat) * Q.run.1.ΔAC
   linarith [mul_le_mul_of_nonneg_right hc (zero_le_one.trans hd)]
 
 /-- A slot selected by the recurrence: after the query, its proposal margin `6Δ` before the
@@ -81,39 +81,42 @@ structure ConfirmedProducerSlotAt (Q : ConfirmedQueryAt S A V) where
   fresh : Q.query < Q.params.ts slot
   margin : Q.params.ts slot + 6 * Q.params.Δ ≤ Q.deadline
   ready : Regimes.Growing.ReadyAt Q.trace Q.keys Q.duration
-    (runProposer ⟨S, stock⟩ Q.run.2 Q.hn slot) (Q.params.ts slot)
-  hold : runProposer ⟨S, stock⟩ Q.run.2 Q.hn slot ∈
+    (runProposer S Q.run.2 Q.hn slot) (Q.params.ts slot)
+  hold : runProposer S Q.run.2 Q.hn slot ∈
     Q.keys (Q.params.ts slot + Regimes.Growing.hold Q.params)
 
 /-- Recurrence/grid selection after an explicit readiness start, at the exact readiness
 duration, with the proposer's hold. -/
 theorem confirmed_query_slot_at (Q : ConfirmedQueryAt S A V) {ready : Time}
-    (hprogress : (Sys (goldilocksWith ⟨S, stock⟩) V).prog
-      (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
+    (hprogress : (Sys (goldilocksWith S) V).prog
+      (shapeProgress (goldilocksWith S) V) (K S.toSetup A)
       Q.cap Q.index ready Q.run.2.horizon Q.run)
     (hquery : max ready 0 ≤ Q.query) : Nonempty (ConfirmedProducerSlotAt S A V Q) := by
-  obtain ⟨s, hs1, hlo, hmargin, hts0, htsh, hR, hH⟩ := nonfinal_query_slot ⟨S, stock⟩ A V Q.run Q.hn
+  obtain ⟨s, hs1, hlo, hmargin, hts0, htsh, hR, hH⟩ := nonfinal_query_slot S A V Q.run Q.hn
     Q.nonfinal Q.index Q.bounded hprogress hquery
-  have hnode := ready_transport_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid hts0 htsh hR
-  have hkey : Q.run.2.ownKey (Q.run.2.key (runProposer ⟨S, stock⟩ Q.run.2 Q.hn s)) =
-      runProposer ⟨S, stock⟩ Q.run.2 Q.hn s := Q.run.2.key.symm_apply_apply _
+  have hnode := ready_transport_at S Q.run.2 Q.hn Q.valid hts0 htsh hR
+  have hkey : Q.run.2.ownKey (Q.run.2.key (runProposer S Q.run.2 Q.hn s)) =
+      runProposer S Q.run.2 Q.hn s := Q.run.2.key.symm_apply_apply _
   rw [hkey] at hnode
-  have hhold : runProposer ⟨S, stock⟩ Q.run.2 Q.hn s ∈
+  have hhold : runProposer S Q.run.2 Q.hn s ∈
       Q.keys (Q.params.ts s + Regimes.Growing.hold Q.params) := by
-    rw [mem_honestKeysAt_iff ⟨S, stock⟩ Q.run.2]
+    rw [mem_honestKeysAt_iff S Q.run.2]
     exact hH
   exact ⟨⟨s, hs1, hlo, hmargin, hnode, hhold⟩⟩
 
-/-- The selected slot's actual canonical proposal event, at the slot time. -/
-theorem confirmed_slot_event_at (Q : ConfirmedQueryAt S A V)
-    (W : ConfirmedProducerSlotAt S A V Q) :
+/-- The selected slot's actual canonical proposal event, at the slot time (at the stock binding
+until the proposer-service lemmas take any initial state). -/
+theorem confirmed_slot_event_at (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V]
+    [DecidableEq V] (Q : ConfirmedQueryAt ⟨S, stock⟩ A V)
+    (W : ConfirmedProducerSlotAt ⟨S, stock⟩ A V Q) :
     ∃ (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) (k : Nat),
       B.proposer = runProposer ⟨S, stock⟩ Q.run.2 Q.hn W.slot ∧
       Q.trace.ProposesAt B.proposer k B ∧ Q.trace.time k = Q.params.ts W.slot := by
   obtain ⟨k, B, hp, ht⟩ := Regimes.Growing.ready_proposer_proposes_at
     (simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid)
     (noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision)
-    W.positive (confirmed_ready_mono_at S A V Q (confirmed_duration_supply_at S A V Q) W.ready)
+    W.positive (confirmed_ready_mono_at ⟨S, stock⟩ A V Q
+      (confirmed_duration_supply_at ⟨S, stock⟩ A V Q) W.ready)
   exact ⟨B, k, hp.2.1, hp.2.1 ▸ hp, ht⟩
 
 /-- Coverage of a confirmed proposal at every ready read at the deadline is the engine payload
@@ -130,11 +133,11 @@ theorem confirmed_payload_projection_at (Q : ConfirmedQueryAt S A V)
   have hprop : Regimes.Growing.ReadyProposalAt Q.trace Q.keys Q.duration
       (Q.trace.time P.cut) 0 P.block :=
     ⟨_, P.cut, P.ready, by simpa using P.ready.1, P.proposal, rfl⟩
-  obtain ⟨k, hk, hr⟩ := ready_proposal_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
+  obtain ⟨k, hk, hr⟩ := ready_proposal_at S Q.run.2 Q.hn Q.valid
     (P.bounded.trans Q.bounded) hprop
   refine ⟨_, k, headerOf Q.params P.block, P.fresh, hk, hr, ?_⟩
-  exact confirmed_inBy_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
-    (noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision)
+  exact confirmed_inBy_at S Q.run.2 Q.hn Q.valid
+    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision)
     (mul_nonneg (Int.natCast_nonneg _) Q.run.1.ΔAC_pos.le)
     hτ P.bounded Q.bounded hprop coverage
 

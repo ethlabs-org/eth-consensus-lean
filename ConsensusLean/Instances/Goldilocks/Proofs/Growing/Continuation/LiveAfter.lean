@@ -119,8 +119,9 @@ theorem continued_live_after_handover (S : Setup) (A : ContractAssumptions S) (V
     (by rw [Obligations.contract_catchUp_val]; norm_num) (psync_of_sys hh.1)
     (gst_le_heal K rho cap i gst) ?_ x t t' hsub hdt hTt hth v hv'
   intro q hq hTq hqh hrq
-  let Q : Obligations.Growing.ConfirmedQueryAt S A V := ⟨⟨E, rho⟩, hn, cap, hcap, i, gst, q, hv,
-    hx, Or.inr (Or.inr (Obligations.Growing.handover_query_regime S A V hh hhT hp hq)), hqh, hrq⟩
+  let Q : Obligations.Growing.ConfirmedQueryAt ⟨S, stock⟩ A V :=
+    ⟨⟨E, rho⟩, hn, cap, hcap, i, gst, q, hv,
+      hx, Or.inr (Or.inr (Obligations.Growing.handover_query_regime S A V hh hhT hp hq)), hqh, hrq⟩
   have hqb : Q.deadline ≤ rho.horizon := hqh
   have hsvc' : Healing.Growing.ResetService Q.trace Q.keys gst
       (Obligations.protoFGDelay (Model.pubOf E)) Q.deadline :=

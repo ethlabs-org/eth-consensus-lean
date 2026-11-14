@@ -277,7 +277,8 @@ with progress from the healthy readiness `ready ≤ query`: some proposal releas
 by a key ready then is in every ready read at the deadline. The proposal of the progress window's
 slot (`sleepy_query_producer_at`) is after the query, so of a slot `≥ r + k + 1`, and included
 at the deadline (`continued_include_at`); its payload projection is the engine obligation. -/
-theorem continued_proposal_live_at (Q : ConfirmedQueryAt S A V) {ΔF T : Time} {r σ : Nat}
+theorem continued_proposal_live_at (Q : ConfirmedQueryAt ⟨S, stock⟩ A V) {ΔF T : Time}
+    {r σ : Nat}
     (hcv : Compose.Growing.ChainConvictedBelow Q.trace Q.keys)
     (hseed : Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
       (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔF T r σ) (hTb : T ≤ Q.deadline) {t₁ : Time}
@@ -299,7 +300,7 @@ theorem continued_proposal_live_at (Q : ConfirmedQueryAt S A V) {ΔF T : Time} {
   obtain ⟨P, hm, hh⟩ := sleepy_query_producer_at S A V Q hprogress (max_le hready h0)
   have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
-  have hd := confirmed_duration_supply_at S A V Q
+  have hd := confirmed_duration_supply_at ⟨S, stock⟩ A V Q
   -- the proposal's slot time is after `t_{r+k}`, so it is `≥ t_{r+k+1}`
   have hslot : Q.params.ts (r + Q.params.k + 1 : Nat) ≤ Q.trace.time P.cut := by
     have hpt := P.proposal.2.2
@@ -308,10 +309,11 @@ theorem continued_proposal_live_at (Q : ConfirmedQueryAt S A V) {ΔF T : Time} {
     rw [hpt] at hlt ⊢
     have := (SA.ts_lt_iff Q.params).1 hlt
     exact (SA.ts_le_iff Q.params).2 (by push_cast at this ⊢; omega)
-  refine confirmed_payload_projection_at S A V Q h0 P fun y j hy hj => ?_
+  refine confirmed_payload_projection_at ⟨S, stock⟩ A V Q h0 P fun y j hy hj => ?_
   exact Compose.Growing.continued_include_at hrun hnc hcv hseed hTb hsvc hB hinv hdt₁
-    ⟨P.block.proposer, P.cut, confirmed_ready_mono_at S A V Q hd P.ready, hh, P.proposal, rfl⟩
-    (ht₁.trans P.fresh.le) hslot hm le_rfl (confirmed_ready_mono_at S A V Q hd hy) hj
+    ⟨P.block.proposer, P.cut, confirmed_ready_mono_at ⟨S, stock⟩ A V Q hd P.ready, hh, P.proposal,
+      rfl⟩
+    (ht₁.trans P.fresh.le) hslot hm le_rfl (confirmed_ready_mono_at ⟨S, stock⟩ A V Q hd hy) hj
 
 end Consensus.Goldilocks.Obligations.Growing
 

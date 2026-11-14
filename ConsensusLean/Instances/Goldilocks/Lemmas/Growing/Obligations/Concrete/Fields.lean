@@ -198,13 +198,13 @@ theorem meetsObligations_healthyLive_confirmed_growing : ∀ cap g, cap ≠ .fin
   left
   intro t ht hb hr
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨hr.choose⟩
-  let Q : ConfirmedQueryAt S A V := ⟨r, hn, cap, hcap, idx, gst, t, hv, hc,
+  let Q : ConfirmedQueryAt ⟨S, stock⟩ A V := ⟨r, hn, cap, hcap, idx, gst, t, hv, hc,
     Or.inr (Or.inl ⟨hh, hp, ht⟩), hb, hr⟩
   obtain ⟨P, cover⟩ := healthy_confirmed_supply_at S A V Q hh hp ht
   have h0 : 0 ≤ t :=
     (add_nonneg (le_max_right gst 0)
       (mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le)).trans ht
-  exact confirmed_payload_projection_at S A V Q h0 P cover
+  exact confirmed_payload_projection_at ⟨S, stock⟩ A V Q h0 P cover
 
 theorem meetsObligations_healthyLive_growing : ∀ cap g, schema.output cap = some g →
     ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocksWith ⟨S, stock⟩) V).Holds
@@ -241,10 +241,10 @@ theorem meetsObligations_sleepyLive_growing : ∀ cap g, (cap = .available ∨ c
   left
   intro t ht hb hr
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨hr.choose⟩
-  let Q : ConfirmedQueryAt S A V := ⟨r, hn, cap, hcap, idx, 0, t, hv, hc,
+  let Q : ConfirmedQueryAt ⟨S, stock⟩ A V := ⟨r, hn, cap, hcap, idx, 0, t, hv, hc,
     Or.inl ⟨hs, hp, ht⟩, hb, hr⟩
   obtain ⟨P, service⟩ := sleepy_serviced_proposal_supply_at S A V Q hs hp ht
-  exact confirmed_payload_projection_at S A V Q ht P
+  exact confirmed_payload_projection_at ⟨S, stock⟩ A V Q ht P
     (sleepy_serviced_proposal_coverage_at S A V Q P service)
 
 end Consensus.Goldilocks.Obligations.Growing

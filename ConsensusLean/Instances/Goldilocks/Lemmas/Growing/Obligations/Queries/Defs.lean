@@ -34,52 +34,53 @@ the whole run, or in the healthy regime, or handing over to the sleepy regime at
 after the heal point (the regime conjuncts of `System.Handover`: healthy up to `T`, sleepy from
 `T`), with progress from readiness and a query time at least
 the heal point, and a ready reader at the deadline `query + latency·ΔAC ≤ horizon`. -/
-structure ConfirmedQueryAt where
-  run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run
+structure ConfirmedQueryAt (S : BoundSetup) (A : ContractAssumptions S.toSetup) (V : Type)
+    [Fintype V] [DecidableEq V] where
+  run : (Sys (goldilocksWith S) V).Run
   hn : 1 ≤ Fintype.card V
   cap : Capability
   nonfinal : cap = .available ∨ cap = .stable
-  index : (K S A).Idx
+  index : (K S.toSetup A).Idx
   gst : Time
   query : Time
-  valid : (Sys (goldilocksWith ⟨S, stock⟩) V).Valid run
+  valid : (Sys (goldilocksWith S) V).Valid run
   noCollision : ¬ run.2.HashCollision
   regime :
-    ((Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy
-        (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) run ∧
-      (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
+    ((Sys (goldilocksWith S) V).Sleepy
+        (shapeProgress (goldilocksWith S) V).toExternal (K S.toSetup A) run ∧
+      (Sys (goldilocksWith S) V).prog (shapeProgress (goldilocksWith S) V) (K S.toSetup A)
         cap index 0 run.2.horizon run ∧ 0 ≤ query) ∨
-    ((Sys (goldilocksWith ⟨S, stock⟩) V).Healthy
-        (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) gst run ∧
-      (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
-        cap index ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) run.2.horizon run ∧
-      (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap index gst run ≤ query) ∨
-    (∃ T, ((Sys (goldilocksWith ⟨S, stock⟩) V).log run).PSync
-      ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run) gst ∧
-      ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).HealthyOn (K S A).params.β gst T ∧
-      ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).env.ΔFG ≤
-        ((K S A).params.fgDelay : Time) * ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).env.ΔAC ∧
-      ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).SleepyOn (K S A).params.θ
-        ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run)
-            ((Sys (goldilocksWith ⟨S, stock⟩) V).aheadDur (K S A) run) T
-        ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).horizon ∧
-      (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap index gst run ≤ T ∧
-      (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
-        cap index ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) run.2.horizon run ∧
-      (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap index gst run ≤ query)
-  bounded : query + ((K S A).params.latency cap index : Time) * run.1.ΔAC ≤ run.2.horizon
-  reader : ∃ v, run.2.point.Ready ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run) v
-    (query + ((K S A).params.latency cap index : Time) * run.1.ΔAC)
+    ((Sys (goldilocksWith S) V).Healthy
+        (shapeProgress (goldilocksWith S) V).toExternal (K S.toSetup A) gst run ∧
+      (Sys (goldilocksWith S) V).prog (shapeProgress (goldilocksWith S) V) (K S.toSetup A)
+        cap index ((Sys (goldilocksWith S) V).ready (K S.toSetup A) gst run) run.2.horizon run ∧
+      (Sys (goldilocksWith S) V).heal (K S.toSetup A) cap index gst run ≤ query) ∨
+    (∃ T, ((Sys (goldilocksWith S) V).log run).PSync
+      ((Sys (goldilocksWith S) V).pt run) gst ∧
+      ((Sys (goldilocksWith S) V).pt run).HealthyOn (K S.toSetup A).params.β gst T ∧
+      ((Sys (goldilocksWith S) V).pt run).env.ΔFG ≤
+        ((K S.toSetup A).params.fgDelay : Time) * ((Sys (goldilocksWith S) V).pt run).env.ΔAC ∧
+      ((Sys (goldilocksWith S) V).pt run).SleepyOn (K S.toSetup A).params.θ
+        ((Sys (goldilocksWith S) V).cDur (K S.toSetup A) run)
+            ((Sys (goldilocksWith S) V).aheadDur (K S.toSetup A) run) T
+        ((Sys (goldilocksWith S) V).pt run).horizon ∧
+      (Sys (goldilocksWith S) V).heal (K S.toSetup A) cap index gst run ≤ T ∧
+      (Sys (goldilocksWith S) V).prog (shapeProgress (goldilocksWith S) V) (K S.toSetup A)
+        cap index ((Sys (goldilocksWith S) V).ready (K S.toSetup A) gst run) run.2.horizon run ∧
+      (Sys (goldilocksWith S) V).heal (K S.toSetup A) cap index gst run ≤ query)
+  bounded : query + ((K S.toSetup A).params.latency cap index : Time) * run.1.ΔAC ≤ run.2.horizon
+  reader : ∃ v, run.2.point.Ready ((Sys (goldilocksWith S) V).cDur (K S.toSetup A) run) v
+    (query + ((K S.toSetup A).params.latency cap index : Time) * run.1.ΔAC)
 
 namespace ConfirmedQueryAt
-variable {S A V}
+variable {S : BoundSetup} {A : ContractAssumptions S.toSetup} {V}
 abbrev params (Q : ConfirmedQueryAt S A V) := S.params (Model.pubOf Q.run.1) Q.hn
-noncomputable abbrev trace (Q : ConfirmedQueryAt S A V) := simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn
-noncomputable abbrev keys (Q : ConfirmedQueryAt S A V) := honestKeysAt ⟨S, stock⟩ Q.run.2
+noncomputable abbrev trace (Q : ConfirmedQueryAt S A V) := simTraceAt S Q.run.2 Q.hn
+noncomputable abbrev keys (Q : ConfirmedQueryAt S A V) := honestKeysAt S Q.run.2
 noncomputable abbrev duration (Q : ConfirmedQueryAt S A V) :=
-  (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run
+  (Sys (goldilocksWith S) V).cDur (K S.toSetup A) Q.run
 noncomputable abbrev deadline (Q : ConfirmedQueryAt S A V) : Time :=
-  Q.query + ((K S A).params.latency Q.cap Q.index : Time) * Q.run.1.ΔAC
+  Q.query + ((K S.toSetup A).params.latency Q.cap Q.index : Time) * Q.run.1.ΔAC
 end ConfirmedQueryAt
 
 /-- A sleepy safety query: a valid, collision-free sleepy run. No progress, query or reader. -/

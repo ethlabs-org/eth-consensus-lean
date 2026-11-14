@@ -15,7 +15,7 @@ namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 open Blocks Shape
 
-variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
+variable {S : BoundSetup} {A : ContractAssumptions S.toSetup} {V : Type} [Fintype V] [DecidableEq V]
 
 /-- Actual production at a finite cut by a proposer ready there, not an eligible schedule slot
 alone. Acceptance is explicit: release alone does not imply local acceptance. -/
