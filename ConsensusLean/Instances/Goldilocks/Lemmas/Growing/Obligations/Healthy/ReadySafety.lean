@@ -49,9 +49,10 @@ theorem healthy_ready_safety_at (Q : HealthyPreparationQueryAt S A V)
         (Q.run.2.cutTime i) := fun h => by simpa only [sub_add_cancel, chainTrace] using h
   constructor
   · intro u v i j hi hj hu hv
-    obtain ⟨hrp, h0', hh, hra, hread⟩ := engine_read_point S Q.run.2 Q.hn Q.valid hc0 hi.1 (hr hu)
+    obtain ⟨hrp, h0', hh, hra, hread⟩ :=
+      engine_read_point ⟨S, stock⟩ Q.run.2 Q.hn Q.valid hc0 hi.1 (hr hu)
     obtain ⟨hrp', h0'', hh', hra', hread'⟩ :=
-      engine_read_point S Q.run.2 Q.hn Q.valid hc0 hj.1 (hr hv)
+      engine_read_point ⟨S, stock⟩ Q.run.2 Q.hn Q.valid hc0 hj.1 (hr hv)
     rw [hread, hread']
     rcases healthy_cut_tips_comparable_at S A V Q h0 hb hp u v i j hi hj hu hv (hh.trans hB)
       (hh'.trans hB) with hc | hc
@@ -61,9 +62,9 @@ theorem healthy_ready_safety_at (Q : HealthyPreparationQueryAt S A V)
         (read_prefix ⟨S, stock⟩ Q.run.2 Q.hn Q.valid hnc h0'' hrp'.1 hra'.1 h0' hrp.1 hra.1 hc)
   · intro v i j hi hij hj hvi hvj
     obtain ⟨hrp, h0', -, hra, hread⟩ :=
-      engine_read_point S Q.run.2 Q.hn Q.valid hc0 hi.1 (hr hvi)
+      engine_read_point ⟨S, stock⟩ Q.run.2 Q.hn Q.valid hc0 hi.1 (hr hvi)
     obtain ⟨hrp', h0'', hh', hra', hread'⟩ :=
-      engine_read_point S Q.run.2 Q.hn Q.valid hc0 hj.1 (hr hvj)
+      engine_read_point ⟨S, stock⟩ Q.run.2 Q.hn Q.valid hc0 hj.1 (hr hvj)
     rw [hread, hread']
     exact read_prefix ⟨S, stock⟩ Q.run.2 Q.hn Q.valid hnc h0' hrp.1 hra.1 h0'' hrp'.1 hra'.1
       (healthy_cut_tips_ancestor_at S A V Q h0 hb hp v i j hi hij hj hvi hvj (hh'.trans hB))

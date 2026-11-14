@@ -130,10 +130,10 @@ theorem confirmed_payload_projection_at (Q : ConfirmedQueryAt S A V)
   have hprop : Regimes.Growing.ReadyProposalAt Q.trace Q.keys Q.duration
       (Q.trace.time P.cut) 0 P.block :=
     ⟨_, P.cut, P.ready, by simpa using P.ready.1, P.proposal, rfl⟩
-  obtain ⟨k, hk, hr⟩ := ready_proposal_at S Q.run.2 Q.hn Q.valid
+  obtain ⟨k, hk, hr⟩ := ready_proposal_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
     (P.bounded.trans Q.bounded) hprop
   refine ⟨_, k, headerOf Q.params P.block, P.fresh, hk, hr, ?_⟩
-  exact confirmed_inBy_at S Q.run.2 Q.hn Q.valid
+  exact confirmed_inBy_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
     (noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision)
     (mul_nonneg (Int.natCast_nonneg _) Q.run.1.ΔAC_pos.le)
     hτ P.bounded Q.bounded hprop coverage

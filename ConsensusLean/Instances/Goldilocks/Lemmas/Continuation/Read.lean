@@ -618,21 +618,23 @@ theorem continued_safe_engine_at (hv : rho.ExecutionValid)
     linarith
   constructor
   · intro u v i j hi hj hu hv'
-    obtain ⟨hrp, h0, hh, hra, hread⟩ := engine_read_point S rho hn hv hc hi.1 hu
-    obtain ⟨hrp', h0', hh', hra', hread'⟩ := engine_read_point S rho hn hv hc hj.1 hv'
+    obtain ⟨hrp, h0, hh, hra, hread⟩ := engine_read_point ⟨S, stock⟩ rho hn hv hc hi.1 hu
+    obtain ⟨hrp', h0', hh', hra', hread'⟩ := engine_read_point ⟨S, stock⟩ rho hn hv hc hj.1 hv'
     rw [hread, hread']
-    rcases hsafe.agree _ _ _ _ _ _ hrp hrp' (cutMap_boundary S rho hn _ _)
-        (cutMap_boundary S rho hn _ _) (hlag _ _ hi hu) hh (hlag _ _ hj hv') hh' hra hra' with
+    rcases hsafe.agree _ _ _ _ _ _ hrp hrp' (cutMap_boundary ⟨S, stock⟩ rho hn _ _)
+        (cutMap_boundary ⟨S, stock⟩ rho hn _ _) (hlag _ _ hi hu) hh (hlag _ _ hj hv') hh' hra hra'
+        with
       hc | hc
     · exact Or.inl (read_prefix ⟨S, stock⟩ rho hn hv hnc h0 hrp.1 hra.1 h0' hrp'.1 hra'.1 hc)
     · exact Or.inr (read_prefix ⟨S, stock⟩ rho hn hv hnc h0' hrp'.1 hra'.1 h0 hrp.1 hra.1 hc)
   · intro v i j hi hij hj hvi hvj
-    obtain ⟨hrp, h0, -, hra, hread⟩ := engine_read_point S rho hn hv hc hi.1 hvi
-    obtain ⟨hrp', h0', hh', hra', hread'⟩ := engine_read_point S rho hn hv hc hj.1 hvj
+    obtain ⟨hrp, h0, -, hra, hread⟩ := engine_read_point ⟨S, stock⟩ rho hn hv hc hi.1 hvi
+    obtain ⟨hrp', h0', hh', hra', hread'⟩ := engine_read_point ⟨S, stock⟩ rho hn hv hc hj.1 hvj
     rw [hread, hread']
     exact read_prefix ⟨S, stock⟩ rho hn hv hnc h0 hrp.1 hra.1 h0' hrp'.1 hra'.1
-      (hsafe.mono _ _ _ _ _ hrp hrp' (cutMap_boundary S rho hn _ _)
-        (cutMap_boundary S rho hn _ _) (cutMap_mono ⟨S, stock⟩ rho hn (lastOwn_mono S rho v hij))
+      (hsafe.mono _ _ _ _ _ hrp hrp' (cutMap_boundary ⟨S, stock⟩ rho hn _ _)
+        (cutMap_boundary ⟨S, stock⟩ rho hn _ _)
+        (cutMap_mono ⟨S, stock⟩ rho hn (lastOwn_mono ⟨S, stock⟩ rho v hij))
         (now_mono ⟨S, stock⟩ rho hn hv v hij) (hlag _ _ hi hvi) hh' hra hra')
 
 end Consensus.Goldilocks.Obligations.Growing

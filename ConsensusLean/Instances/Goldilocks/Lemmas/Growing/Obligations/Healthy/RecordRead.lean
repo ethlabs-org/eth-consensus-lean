@@ -82,7 +82,7 @@ private theorem healthy_engine_read_point_at {Q : HealthyPreparationQueryAt S A 
     (hi : (chainTrace Q.run.2).InCuts Q.heal i)
     (hv : Q.run.2.point.Ready ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime i)) :
-    Regimes.ReadPoint Q.trace (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i))
+    Regimes.ReadPoint Q.trace (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v i))
         (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now ∧
       0 ≤ (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now ∧
       (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now ≤ Q.run.2.horizon ∧
@@ -97,7 +97,7 @@ private theorem healthy_engine_read_point_at {Q : HealthyPreparationQueryAt S A 
     linarith only [D.duration_bound, hΔ1]
   have hr : Q.run.2.point.Ready (((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run - 1) + 1) v
       (Q.run.2.cutTime i) := by simpa only [sub_add_cancel, chainTrace] using hv
-  obtain ⟨hrp, h0, hh, hra, -⟩ := engine_read_point S Q.run.2 Q.hn Q.valid hc hi.1 hr
+  obtain ⟨hrp, h0, hh, hra, -⟩ := engine_read_point ⟨S, stock⟩ Q.run.2 Q.hn Q.valid hc hi.1 hr
   have hlag := stored_now_ge_cutTime_sub_one ⟨S, stock⟩ Q.run.2 Q.hn Q.valid hi.1 hc hr
   have hhi : Q.heal ≤ Q.run.2.cutTime i := hi.2
   exact ⟨hrp, h0, hh, hra, by linarith only [D.reserve, hhi, hlag]⟩
@@ -111,11 +111,11 @@ theorem healthy_current_read_context_at (Q : HealthyPreparationQueryAt S A V)
       ((chainTrace Q.run.2).cutTime i))
     (htb : (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now ≤ Q.bound) :
     Nonempty (HealthyReadContextAt S A V Q D (Q.run.2.ownKey v)
-      (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i))
+      (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v i))
           (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now) := by
   obtain ⟨hrp, ht0, -, hra, hrep⟩ := healthy_engine_read_point_at S A V D hi hv
   set t := (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now
-  set n := cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i)
+  set n := cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v i)
   set y := Q.run.2.ownKey v
   have hΔ := Q.params.toParams.hΔ
   have hq : D.query < t := by
@@ -162,14 +162,15 @@ theorem healthy_current_record_read_at (Q : HealthyPreparationQueryAt S A V)
       ((chainTrace Q.run.2).cutTime i))
     (htb : (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now ≤ Q.bound) :
     Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i))
+        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v i))
         (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now =
       (SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v)
-          (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i))))
+          (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v i))))
         (Q.trace.state (Q.run.2.ownKey v)
-          (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i))).ac.latestConfirmed).getD
+          (cutMap ⟨S, stock⟩ Q.run.2 Q.hn
+            (lastOwn ⟨S, stock⟩ Q.run.2 v i))).ac.latestConfirmed).getD
         (Q.trace.state (Q.run.2.ownKey v)
-          (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i))).fg.F := by
+          (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v i))).fg.F := by
   obtain ⟨C⟩ := healthy_current_read_context_at S A V Q D hi hv htb
   have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
@@ -179,22 +180,22 @@ theorem healthy_current_record_read_at (Q : HealthyPreparationQueryAt S A V)
   have hupd : ∀ u : Nat, Q.params.ts (Q.params.slot (SA.gbar Q.gst) + 1 : Nat) ≤ Q.params.ts u →
       Q.params.ts u + 6 * Q.params.Δ ≤ (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now →
       ∃ j ell, SA.UpdateAt Q.trace.projAC (Q.run.2.ownKey v) j u ell ∧
-        j < cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i) := fun u hslot ht =>
+        j < cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v i) := fun u hslot ht =>
     update_before_stored_clock_at S Q.run.2 Q.hn Q.valid D.reset Q.bound_le hhon hslot ht
       C.time_bound
   have hΦ : FrameOK (Node.frame (Q.trace.state (Q.run.2.ownKey v)
-      (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i)))) := by
+      (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v i)))) := by
     have h := Compose.frameOK_state (hrun.upTo C.time_nonneg).toLocalRun C.honest
-      (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i))
+      (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v i))
     rwa [Trace.upTo_state Q.trace _ C.readPoint.1] at h
   refine read_eq_record_of_current_votes_at hrun hnc C.time_nonneg C.honest C.readPoint C.awake
     C.joined C.sync C.catchup C.latest C.reset_le (fun R hR =>
       ⟨healthy_current_live_candidates_at S A V Q hb hp D C hR, ?_⟩) C.label_le C.fault
   apply read_source_of_recent_result_at D.reset hc C.time_bound
   by_cases hfc : (Node.frame (Q.trace.state (Q.run.2.ownKey v)
-      (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i)))).Anc R
+      (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v i)))).Anc R
       (Node.frame (Q.trace.state (Q.run.2.ownKey v)
-        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i)))).fcRoot
+        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v i)))).fcRoot
   · exact Or.inl (hfc.trans ((SA.anc_getAnchor hΦ
       (healthy_current_live_chain_at S A V Q D C)).2 _ (Or.inr rfl)))
   rcases healthy_current_mature_or_anchor_at S A V Q hb hp D O hrepair C hupd hR with

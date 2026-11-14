@@ -242,7 +242,7 @@ private theorem compatible_tree {sp : SA.SAParams} {U : Set (SA.Blk sp.n (List (
 /-- **The extending majority past the first restored label**: at a label `q > r`, every vote of a
 node honest at its cast extends the origin (`restored_votes_extend_at`), so the committee slot
 count at `d ∈ [t_q + Δ, t_q + 6Δ]` within the horizon gives the extending majority charged at `d`
-(the gate `Q.hGate` permits every member to vote). -/
+(the gate `voteK_gate` permits every member to vote). -/
 theorem extending_majority_after_r_at (Q : OutageQueryAt S A V)
     (service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start)
     {v : V} (hsh : Q.start ≤ Q.run.2.horizon) (ar : OutageArmingAt Q v)
@@ -259,7 +259,7 @@ theorem extending_majority_after_r_at (Q : OutageQueryAt S A V)
   have hall := Compose.Growing.restored_votes_extend_at _ hSD hinv
   rw [outageLockPremises_of_arming_at_P, outageLockPremises_of_arming_at_r] at hall
   exact Compose.Growing.extendingMajority_of_all_at hrun hnc
-    (fun t ht x hx i _ s => Q.hGate x (hrun.antitone ht hx) i s)
+    (fun t ht x hx i _ s => voteK_gate S Q.run.2 Q.hn Q.valid x (hrun.antitone ht hx) i s)
     (fun x k e hv hs => hall x k e hv (by rw [hs]; exact hrq)) hd₁
     ((Q.boundsK hrun hdh).slotK q d (Nat.zero_le _) hd₁ le_rfl hd₂)
 
@@ -367,7 +367,8 @@ theorem outage_reader_bridge_at (Q : OutageQueryAt S A V)
       rw [Compose.Growing.frame_of_projAC_at hrun hŵG G.update.1]
       exact ((hFc G.cut hcj.le).trans hFt).trans hTO
     obtain ⟨⟨C, CV, hR⟩, hall⟩ :=
-      Compose.Growing.gate_result_extends_at hrun hnc (Q.committeeP hrun) hŵG hS G.update
+      Compose.Growing.gate_result_extends_at hrun hnc
+        (voteK_committeeP S Q.run.2 Q.hn Q.valid Q.noCollision hrun) hŵG hS G.update
         G.restored hmaj hFB
     have h := Compose.Growing.record_above_from_at hinv G.update hR (by rw [hr]; exact hrs.le)
       (by rw [hP]; exact hall C CV hR) j t hcj ht0 hjt hŵ
@@ -447,7 +448,8 @@ theorem outage_reader_bridge_at (Q : OutageQueryAt S A V)
         · exact he ▸ hHd't.1
         · exact (Anc.mem hfa he).1
       exact Compose.Growing.frame_mem_of_tree_at hrun hnc ht0 hŵ hjt htt hFt
-    have hL3 := Compose.Growing.read_majority_of_extending_at hrun hnc (Q.committeeP hrun) ht0 hŵ
+    have hL3 := Compose.Growing.read_majority_of_extending_at hrun hnc
+      (voteK_committeeP S Q.run.2 Q.hn Q.valid Q.noCollision hrun) ht0 hŵ
       hjt G.view hmaj' hBt hdeliv
     have hanchor : Compatible (Node.frame st).tree
         (SA.getAnchor Q.params st.ac (Node.frame st) t) ar.tip :=

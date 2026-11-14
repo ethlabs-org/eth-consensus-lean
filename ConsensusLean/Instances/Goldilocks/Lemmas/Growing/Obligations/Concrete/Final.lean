@@ -300,7 +300,7 @@ theorem final_payload_projection_at
   have hproposal : Regimes.Growing.ReadyProposalAt Q.trace Q.keys
       ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r) (Q.trace.time (W.cut 0)) 0 (W.block 0) :=
     ⟨_, W.cut 0, W.ready 0, by rw [add_zero]; exact (W.ready 0).1, W.proposals 0, rfl⟩
-  obtain ⟨k, hk, hrel⟩ := ready_proposal_at S r.2 hn hv hτh hproposal
+  obtain ⟨k, hk, hrel⟩ := ready_proposal_at ⟨S, stock⟩ r.2 hn hv hτh hproposal
   refine ⟨Q.trace.time (W.cut 0), k, headerOf Q.params (W.block 0), W.fresh, hk, hrel, ?_⟩
   have hc : 0 ≤ (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r := by
     exact mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le
@@ -321,7 +321,7 @@ theorem final_payload_projection_at
       simp only [Node.mkBlock]
       erw [dgOf_eq]
       exact taggedRoot_ne _ _
-  exact finalized_inBy_at S r.2 hn hv
+  exact finalized_inBy_at ⟨S, stock⟩ r.2 hn hv
     (noCollRun_simTraceAt ⟨S, stock⟩ r.2 hn hv hcollision) hc hdeadline hb hroot
     (fun y j hy hj => W.cacheCoverage_iff.mp hcover y Q.deadline j le_rfl hb hy hj)
 

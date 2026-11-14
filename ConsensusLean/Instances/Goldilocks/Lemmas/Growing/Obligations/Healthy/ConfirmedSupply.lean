@@ -197,12 +197,12 @@ at the trace cut of that engine cut. -/
 private theorem readAfter_lastOwn (Q : ConfirmedQueryAt S A V) {v : V} {n : Nat}
     (hn : n ≤ Q.run.2.events.length) (t : Time) :
     Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v n)) t =
+        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v n)) t =
       Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap ⟨S, stock⟩ Q.run.2 Q.hn n) t := by
-  have hq := (lastOwn_spec S Q.run.2 v n).1
+  have hq := (lastOwn_spec ⟨S, stock⟩ Q.run.2 v n).1
   have h₁ := simTraceAt_state_all ⟨S, stock⟩ Q.run.2 Q.hn Q.valid v _ (hq.trans hn)
   have h₂ := simTraceAt_state_all ⟨S, stock⟩ Q.run.2 Q.hn Q.valid v n hn
-  rw [← stateAt_lastOwn S Q.run.2 Q.hn v n] at h₁
+  rw [← stateAt_lastOwn ⟨S, stock⟩ Q.run.2 Q.hn v n] at h₁
   unfold Regimes.readAfter
   rw [← h₁, ← h₂]
 

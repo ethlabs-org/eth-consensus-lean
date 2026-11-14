@@ -44,7 +44,7 @@ theorem healthy_cut_tips_comparable_at (Q : HealthyPreparationQueryAt S A V)
     (hub : (stateAt ⟨S, stock⟩ Q.run.2 Q.hn u i).now ≤ Q.bound)
     (hvb : (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v j).now ≤ Q.bound) :
     let C := fun v i => Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-      (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i))
+      (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v i))
           (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now
     Anc (Q.trace.HonestBlocksAt Q.keys) (C u i) (C v j) ∨
       Anc (Q.trace.HonestBlocksAt Q.keys) (C v j) (C u i) := by
@@ -79,14 +79,14 @@ theorem healthy_cut_tips_ancestor_at (Q : HealthyPreparationQueryAt S A V)
     (hjb : (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v j).now ≤ Q.bound) :
     Anc (Q.trace.HonestBlocksAt Q.keys)
       (Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i))
+        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v i))
             (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now)
       (Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v j))
+        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v j))
             (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v j).now) := by
   obtain ⟨D⟩ := healthy_repair_schedule_at S A V Q h0 hb hp
   obtain ⟨O, hr⟩ := healthy_bounded_repairing_opening_at S A V Q hb hp D
-  have hnn := cutMap_mono ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn_mono S Q.run.2 v hij)
+  have hnn := cutMap_mono ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn_mono ⟨S, stock⟩ Q.run.2 v hij)
   have htt := now_mono ⟨S, stock⟩ Q.run.2 Q.hn Q.valid v hij
   obtain ⟨Ci⟩ := healthy_current_read_context_at S A V Q D hi hvi (htt.trans hjb)
   obtain ⟨Cj⟩ := healthy_current_read_context_at S A V Q D hj hvj hjb

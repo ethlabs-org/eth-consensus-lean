@@ -19,7 +19,7 @@ service and an armed ready source, with `P` its origin, `A₀ = holdersAt`, `W =
   awake in `[a, z]` is in `A₀ ∪ W`, since the look-back covers `[a, z]`; `A₀` is awake throughout
   `[a, z]`, since the outage catch-up covers it; inside each band committee `K m`,
   `|K m ∩ ((H z)ᶜ ∪ W)| < |K m ∩ A₀|` (`opponents_lt_K`, from the look-back committee clause).
-* The slot committees are the query's `Q.K`, with their facts `Q.facts` (size, P, frames,
+* The slot committees are the query's `Q.K`, with their facts `voteK_facts` (size, P, frames,
   gate) and their count shapes `Q.boundsK` (from the committee η-sleepy premise).
 * The two count shapes through every horizon come from the η-sleepy premise (η-sleepy implies
   sleepy at half readiness, `sleepy_bounds_at`); the Sleepy invariant up to the start from the
@@ -108,7 +108,7 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
     W := Q.opponentsAt
     hrun := hrun
     K := Q.K
-    facts := Q.facts hrun
+    facts := voteK_facts S Q.run.2 Q.hn Q.valid Q.noCollision hrun
     hnc := hnc
     hj₀ := ⟨hnum.1, hnum.2.1⟩
     hr := hr
@@ -137,7 +137,8 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
       · rcases ar.armed with ⟨htg, ho⟩ | ⟨hCw, -⟩
         · exact absurd (ho ▸ htg) hg
         · exact Or.inr (hCw.mono hTs)
-    hpre := Compose.Growing.sleepy_invariant_at hrun hnc (Q.facts hrun) (hT0.trans hTs) service
+    hpre := Compose.Growing.sleepy_invariant_at hrun hnc
+      (voteK_facts S Q.run.2 Q.hn Q.valid Q.noCollision hrun) (hT0.trans hTs) service
       (hBb _ hsh) (Q.boundsK hrun hsh)
     hpreSvc := service
     hB := fun b ⟨_, _, _, hc, hle⟩ => hBb b (hle.trans (Q.call_le_horizon hc))

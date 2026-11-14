@@ -461,7 +461,7 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b :
       (stateAt ⟨S, stock⟩ rho hn v i).now)
     (htb : (stateAt ⟨S, stock⟩ rho hn v i).now ≤ b) :
     ∃ j ell, SA.UpdateAt (simTraceAt ⟨S, stock⟩ rho hn).projAC (rho.ownKey v) j u ell ∧
-      j < cutMap ⟨S, stock⟩ rho hn (lastOwn S rho v i) := by
+      j < cutMap ⟨S, stock⟩ rho hn (lastOwn ⟨S, stock⟩ rho v i) := by
   let sp := S.params (Model.pubOf E) hn
   let T := sp.ts u + 6 * sp.Δ
   have hDelta := sp.toParams.hΔ
@@ -502,7 +502,7 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b :
     have hbound' : sp.ts u + 6 * sp.Δ ≤ sp.ts (sp.slot (SA.gbar g) + 1 : Nat) := hbound
     linarith
   have hpi := tick_before_stored_clock ⟨S, stock⟩ rho hn hvalid he hT0 ht hnr
-  have hpl : p + 1 ≤ lastOwn S rho v i := by
+  have hpl : p + 1 ≤ lastOwn ⟨S, stock⟩ rho v i := by
     rw [lastOwn_eq]
     exact Nat.le_findGreatest (by omega) (Or.inr ⟨_, by simpa using he, rfl⟩)
   obtain ⟨hgroup, hlen⟩ := simTraceAt_tick_public_group ⟨S, stock⟩ rho hn hvalid he hpub

@@ -69,8 +69,8 @@ theorem held_state {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 end Held
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The first cut of an event's group is at position `0`. -/
 private theorem groupRecs_head_pos {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
@@ -84,10 +84,10 @@ private theorem groupRecs_head_pos {sp : SA.SAParams} {ro : SA.ReplayOrder sp (L
 
 /-- The first cut of a delivery is at position `0`. -/
 private theorem deliverRecs_head_pos {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {binding : VoteBinding}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) :
-    ∀ (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
+    ∀ (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
       {r : CutRec sp ro}, (deliverRecs proposer dg hs self t i os st sub)[0]? = some r →
       r.pos = 0
   | [], st, sub, r, h => by simp [deliverRecs_nil] at h
@@ -106,8 +106,8 @@ private theorem deliverRecs_head_pos {sp : SA.SAParams}
 
 /-- The first cut of an engine event is at position `0`. -/
 private theorem eventCuts_head_pos (i : Nat) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
-    (h : (eventCuts ⟨S, stock⟩ rho hn i)[0]? = some r) : r.pos = 0 := by
-  rw [eventCuts_eq ⟨S, stock⟩ rho hn] at h
+    (h : (eventCuts S rho hn i)[0]? = some r) : r.pos = 0 := by
+  rw [eventCuts_eq S rho hn] at h
   split at h
   · split at h
     · exact groupRecs_head_pos _ _ _ _ _ _ _ h
@@ -119,16 +119,16 @@ private theorem eventCuts_head_pos (i : Nat) {r : CutRec (S.params (pubOf E) hn)
 /-- The trace cut at engine cut `q` is a boundary of every node: if it is a call, it is the first
 cut of its engine event. -/
 theorem cutMap_boundary (y : Fin (Fintype.card V)) (q : Nat) :
-    Regimes.Boundary (simTraceAt ⟨S, stock⟩ rho hn) y (cutMap ⟨S, stock⟩ rho hn q) := by
+    Regimes.Boundary (simTraceAt S rho hn) y (cutMap S rho hn q) := by
   rintro ⟨c, hc⟩
-  rw [simTraceAt_eq ⟨S, stock⟩ rho hn] at hc ⊢
+  rw [simTraceAt_eq S rho hn] at hc ⊢
   obtain ⟨r, i, ev, hr, _, hlo, hhi, hri, _, _, hpos, _⟩ :=
-    simTrace_cut ⟨S, stock⟩ rho hn (k := cutMap ⟨S, stock⟩ rho hn q) (by rw [hc.2]; simp)
-  have hiq : cutMap ⟨S, stock⟩ rho hn i = cutMap ⟨S, stock⟩ rho hn q := by
+    simTrace_cut S rho hn (k := cutMap S rho hn q) (by rw [hc.2]; simp)
+  have hiq : cutMap S rho hn i = cutMap S rho hn q := by
     rcases Nat.lt_or_ge i q with h | h
-    · have := cutMap_mono ⟨S, stock⟩ rho hn (show i + 1 ≤ q by omega)
+    · have := cutMap_mono S rho hn (show i + 1 ≤ q by omega)
       omega
-    · exact le_antisymm hlo (cutMap_mono ⟨S, stock⟩ rho hn h)
+    · exact le_antisymm hlo (cutMap_mono S rho hn h)
   rw [hiq, Nat.sub_self] at hri
   rw [hpos]
   exact eventCuts_head_pos S rho hn i hri
@@ -163,10 +163,10 @@ theorem lastOwn_mono (v : V) {i i' : Nat} (h : i ≤ i') :
 open Classical in
 /-- No own event between `lastOwn v i` and `i` changes `v`'s engine state. -/
 theorem stateAt_lastOwn (v : V) (i : Nat) :
-    stateAt ⟨S, stock⟩ rho hn v i = stateAt ⟨S, stock⟩ rho hn v (lastOwn S rho v i) := by
+    stateAt S rho hn v i = stateAt S rho hn v (lastOwn S rho v i) := by
   have hq := (lastOwn_spec S rho v i).1
   suffices h : ∀ m, lastOwn S rho v i ≤ m → m ≤ i →
-      stateAt ⟨S, stock⟩ rho hn v m = stateAt ⟨S, stock⟩ rho hn v (lastOwn S rho v i) from h i
+      stateAt S rho hn v m = stateAt S rho hn v (lastOwn S rho v i) from h i
           hq le_rfl
   intro m hm
   induction m, hm using Nat.le_induction with
@@ -177,30 +177,30 @@ theorem stateAt_lastOwn (v : V) (i : Nat) :
       ∃ e, rho.events[q - 1]? = some e ∧ e.node = v) (Nat.lt_succ_of_le hm) hmi
     simp only [not_or, not_exists, not_and] at hnot
     cases he : rho.events[m]? with
-    | none => rw [stateAt_succ_none ⟨S, stock⟩ rho hn v he, ih (by omega)]
-    | some e => rw [state_of_other ⟨S, stock⟩ rho hn v m e he (hnot.2 e he), ih (by omega)]
+    | none => rw [stateAt_succ_none S rho hn v he, ih (by omega)]
+    | some e => rw [state_of_other S rho hn v m e he (hnot.2 e he), ih (by omega)]
 
 /-- The trace cut after `v`'s last own event before engine cut `i` is a read point at `v`'s
 stored clock at `i`, which is the time of that engine cut. -/
 theorem lastOwn_readPoint (hv : rho.ExecutionValid) (v : V) (i : Nat) :
-    Regimes.ReadPoint (simTraceAt ⟨S, stock⟩ rho hn) (cutMap ⟨S, stock⟩ rho hn (lastOwn S rho v i))
-        (stateAt ⟨S, stock⟩ rho hn v i).now ∧
-      rho.cutTime (lastOwn S rho v i) = (stateAt ⟨S, stock⟩ rho hn v i).now := by
+    Regimes.ReadPoint (simTraceAt S rho hn) (cutMap S rho hn (lastOwn S rho v i))
+        (stateAt S rho hn v i).now ∧
+      rho.cutTime (lastOwn S rho v i) = (stateAt S rho hn v i).now := by
   have hs := stateAt_lastOwn S rho hn v i
   obtain ⟨-, hq⟩ := lastOwn_spec S rho v i
   generalize lastOwn S rho v i = q at hs hq ⊢
-  rw [simTraceAt_eq ⟨S, stock⟩ rho hn, hs]
+  rw [simTraceAt_eq S rho hn, hs]
   cases q with
   | zero =>
-    rw [cutMap_zero ⟨S, stock⟩ rho hn]
+    rw [cutMap_zero S rho hn]
     exact ⟨⟨fun k hk => absurd hk (Nat.not_lt_zero k), by
-      rw [stateAt_eq ⟨S, stock⟩ rho hn]; exact simTrace_time_nonneg ⟨S, stock⟩ rho hn hv 0⟩, by
-        rw [stateAt_eq ⟨S, stock⟩ rho hn]; rfl⟩
+      rw [stateAt_eq S rho hn]; exact simTrace_time_nonneg S rho hn hv 0⟩, by
+        rw [stateAt_eq S rho hn]; rfl⟩
   | succ j =>
     obtain ⟨e, he, hev⟩ : ∃ e, rho.events[j]? = some e ∧ e.node = v := by
       simpa only [Nat.add_one_ne_zero, false_or, Nat.add_sub_cancel] using hq
-    rw [now_after_local_event ⟨S, stock⟩ rho hn hv he hev]
-    exact ⟨readPoint_after_event ⟨S, stock⟩ rho hn hv he, by simp [Model.Run.cutTime, he]⟩
+    rw [now_after_local_event S rho hn hv he hev]
+    exact ⟨readPoint_after_event S rho hn hv he, by simp [Model.Run.cutTime, he]⟩
 
 /-- **Every engine output of a node honest at its engine cut is read at the trace cut after its
 last own event**, at its stored clock: the trace state there is the node's engine state. Only
@@ -208,13 +208,13 @@ honesty at `rho.cutTime i` is used. -/
 theorem engine_read_eq_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i)) (g : Out) :
     (chainTrace rho).read g v i =
-      outOf ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v)
-          (cutMap ⟨S, stock⟩ rho hn (lastOwn S rho v i)))
-        (stateAt ⟨S, stock⟩ rho hn v i).now g := by
-  have hnT := (now_bounds_cut ⟨S, stock⟩ rho hn hv v hi).2
+      outOf ((simTraceAt S rho hn).state (rho.ownKey v)
+          (cutMap S rho hn (lastOwn S rho v i)))
+        (stateAt S rho hn v i).now g := by
+  have hnT := (now_bounds_cut S rho hn hv v hi).2
   have hhq : v ∉ rho.faultyAt (rho.cutTime (lastOwn S rho v i)) := fun h =>
     hh (rho.faultyAt_mono ((lastOwn_readPoint S rho hn hv v i).2.trans_le hnT) h)
-  rw [read_eq_out ⟨S, stock⟩ rho hn, simTraceAt_state ⟨S, stock⟩ rho hn hv hhq
+  rw [read_eq_out S rho hn, simTraceAt_state S rho hn hv hhq
       ((lastOwn_spec S rho v i).1.trans hi),
     ← stateAt_lastOwn]
 
@@ -224,37 +224,34 @@ a read point at which it is ready with catch-up `c`, in `[0, horizon]`, and its 
 confirmed read is the chain of `readAfter` there. -/
 theorem engine_read_point (hv : rho.ExecutionValid) {c : Time} (hc : 0 ≤ c) {v : V}
     {i : Nat} (hi : i ≤ rho.events.length) (hr : rho.point.Ready (c + 1) v (rho.cutTime i)) :
-    Regimes.ReadPoint (simTraceAt ⟨S, stock⟩ rho hn) (cutMap ⟨S, stock⟩ rho hn (lastOwn S rho v i))
-        (stateAt ⟨S, stock⟩ rho hn v i).now ∧
-      0 ≤ (stateAt ⟨S, stock⟩ rho hn v i).now ∧ (stateAt ⟨S, stock⟩ rho hn v i).now ≤ rho.horizon ∧
-      Regimes.Growing.ReadyAt (simTraceAt ⟨S, stock⟩ rho hn) (honestKeysAt ⟨S, stock⟩ rho) c
+    Regimes.ReadPoint (simTraceAt S rho hn) (cutMap S rho hn (lastOwn S rho v i))
+        (stateAt S rho hn v i).now ∧
+      0 ≤ (stateAt S rho hn v i).now ∧ (stateAt S rho hn v i).now ≤ rho.horizon ∧
+      Regimes.Growing.ReadyAt (simTraceAt S rho hn) (honestKeysAt S rho) c
           (rho.ownKey v)
-        (stateAt ⟨S, stock⟩ rho hn v i).now ∧
+        (stateAt S rho hn v i).now ∧
       (chainTrace rho).read .confirmed v i =
-        chainTo ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v)
-            (cutMap ⟨S, stock⟩ rho hn (lastOwn S rho v i))).fg.blocks
-          ((Regimes.readAfter (simTraceAt ⟨S, stock⟩ rho hn) (rho.ownKey v)
-            (cutMap ⟨S, stock⟩ rho hn (lastOwn S rho v i))
-                (stateAt ⟨S, stock⟩ rho hn v i).now).slot + 1)
-          (Regimes.readAfter (simTraceAt ⟨S, stock⟩ rho hn) (rho.ownKey v)
-            (cutMap ⟨S, stock⟩ rho hn (lastOwn S rho v i))
-                (stateAt ⟨S, stock⟩ rho hn v i).now) := by
-  have hlaws := (Model.sysOf_laws schema (compiled (goldilocksWith ⟨S, stock⟩)) V).trace ⟨E, rho⟩ hv
+        chainTo ((simTraceAt S rho hn).state (rho.ownKey v)
+            (cutMap S rho hn (lastOwn S rho v i))).fg.blocks
+          ((Regimes.readAfter (simTraceAt S rho hn) (rho.ownKey v)
+            (cutMap S rho hn (lastOwn S rho v i))
+                (stateAt S rho hn v i).now).slot + 1)
+          (Regimes.readAfter (simTraceAt S rho hn) (rho.ownKey v)
+            (cutMap S rho hn (lastOwn S rho v i))
+                (stateAt S rho hn v i).now) := by
+  have hlaws := (Model.sysOf_laws schema (compiled (goldilocksWith S)) V).trace ⟨E, rho⟩ hv
   have hih := hlaws.cutTime_le_horizon i hi
   change rho.cutTime i ≤ rho.horizon at hih
-  obtain ⟨hn0, hnT⟩ := now_bounds_cut ⟨S, stock⟩ rho hn hv v hi
-  have hnh : (stateAt ⟨S, stock⟩ rho hn v i).now ≤ rho.horizon := hnT.trans hih
+  obtain ⟨hn0, hnT⟩ := now_bounds_cut S rho hn hv v hi
+  have hnh : (stateAt S rho hn v i).now ≤ rho.horizon := hnT.trans hih
   refine ⟨(lastOwn_readPoint S rho hn hv v i).1, hn0, hnh,
-    ready_transport_at ⟨S, stock⟩ rho hn hv hn0 hnh
-      (ready_at_stored_now ⟨S, stock⟩ rho hn hv hi hc hr), ?_⟩
+    ready_transport_at S rho hn hv hn0 hnh (ready_at_stored_now S rho hn hv hi hc hr), ?_⟩
   rw [engine_read_eq_at S rho hn hv hi hr.1, outOf]
   rfl
 
 /-- Ancestry, inside the blocks held while honest, of the reads of two nodes each honest at its
 read time with every earlier cut no later is a prefix of their confirmed chains. -/
-theorem read_prefix {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid)
+theorem read_prefix (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {y z : Fin (Fintype.card V)} {j j' : Nat} {t t' : Time}
     (ht : 0 ≤ t) (hj : ∀ k < j, (simTraceAt S rho hn).time k ≤ t) (hy : y ∈ honestKeysAt S rho t)
