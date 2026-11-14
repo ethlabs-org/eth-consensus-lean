@@ -1209,3 +1209,169 @@ sorry = true
 allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "GenericStatements"]'''], ['''allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q"]
 ''', '''allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "GenericStatements"]
 '''], ['''"Main", "Sol"]''', '''"Main", "Sol", "GenericStatements"]''']]
+
+# The growing lemmas use the generic assembly layer (scripts/boundaries.toml: Instances.Goldilocks.Lemmas.Growing
+# allows Instances.Goldilocks.Lemmas.Generic). In miniature: Lemmas and, by downward closure, Proofs, Main, Sol and
+# Test allow GenericEdges (with GenericStatements), and GenericEdges itself gains no new reach.
+[GrowingGenericEdgesAllowed]
+files."Fx/GenericStatements/Contract.lean" = "module\npublic import Fx.Spec.A\npublic def contract : Prop := Nat = Nat\n"
+files."Fx/Lemmas/Generic/Edge.lean" = "module\npublic import Fx.GenericStatements.Contract\npublic def edge : Prop := contract → contract\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.GenericStatements.Contract\npublic import Fx.Lemmas.Generic.Edge"]]
+edit."Fx/Lemmas/L.lean" = [['public import Fx.Statements.S', "public import Fx.Statements.S\npublic import Fx.Lemmas.Generic.Edge"]]
+edit."FxSol.lean" = [['module', "module\n\npublic import Fx.Lemmas.Generic.Edge"]]
+edit."boundaries.toml" = [['''[[exception]]''', '''[[layer]]
+name = "GenericStatements"
+prefixes = ["Fx.GenericStatements"]
+allow = ["Init", "ToMathlib", "Spec"]
+expose = true
+sorry = false
+[[layer]]
+name = "GenericEdges"
+prefixes = ["Fx.Lemmas.Generic"]
+allow = ["Init", "ToMathlib", "Spec", "GenericStatements"]
+sorry = false
+[[exception]]'''], ['''prefixes = ["Fx.Lemmas"]''', '''prefixes = ["Fx.Lemmas.L", "Fx.Lemmas.M", "Fx.Lemmas.N"]'''], ['''allow = ["Init", "ToMathlib", "Spec", "Statements"]
+
+[[layer]]
+name = "Proofs.P"''', '''allow = ["Init", "ToMathlib", "Spec", "Statements", "GenericStatements", "GenericEdges"]
+
+[[layer]]
+name = "Proofs.P"'''], ['''name = "Proofs.P"
+prefixes = ["Fx.Proofs.P"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]''', '''name = "Proofs.P"
+prefixes = ["Fx.Proofs.P"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "GenericStatements", "GenericEdges"]'''], ['''name = "Proofs.Q"
+prefixes = ["Fx.Proofs.Q"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]''', '''name = "Proofs.Q"
+prefixes = ["Fx.Proofs.Q"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "GenericStatements", "GenericEdges"]'''], ['''allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q"]
+''', '''allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "GenericStatements", "GenericEdges"]
+'''], ['''"Main", "Sol"]''', '''"Main", "Sol", "GenericStatements", "GenericEdges"]'''], ['''"Proofs.Q", "Main"]
+expose = true''', '''"Proofs.Q", "Main", "GenericStatements", "GenericEdges"]
+expose = true''']]
+
+[GrowingGenericEdgesNoNewReach]
+expect = "FAIL[import] Fx.Lemmas.L (layer Lemmas) imported by Fx.Lemmas.Generic.Edge (layer GenericEdges)"
+files."Fx/GenericStatements/Contract.lean" = "module\npublic import Fx.Spec.A\npublic def contract : Prop := Nat = Nat\n"
+files."Fx/Lemmas/Generic/Edge.lean" = "module\npublic import Fx.GenericStatements.Contract\npublic import Fx.Lemmas.L\npublic def edge : Prop := contract → contract\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.GenericStatements.Contract\npublic import Fx.Lemmas.Generic.Edge"]]
+edit."boundaries.toml" = [['''[[exception]]''', '''[[layer]]
+name = "GenericStatements"
+prefixes = ["Fx.GenericStatements"]
+allow = ["Init", "ToMathlib", "Spec"]
+expose = true
+sorry = false
+[[layer]]
+name = "GenericEdges"
+prefixes = ["Fx.Lemmas.Generic"]
+allow = ["Init", "ToMathlib", "Spec", "GenericStatements"]
+sorry = false
+[[exception]]'''], ['''prefixes = ["Fx.Lemmas"]''', '''prefixes = ["Fx.Lemmas.L", "Fx.Lemmas.M", "Fx.Lemmas.N"]'''], ['''allow = ["Init", "ToMathlib", "Spec", "Statements"]
+
+[[layer]]
+name = "Proofs.P"''', '''allow = ["Init", "ToMathlib", "Spec", "Statements", "GenericStatements", "GenericEdges"]
+
+[[layer]]
+name = "Proofs.P"'''], ['''name = "Proofs.P"
+prefixes = ["Fx.Proofs.P"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]''', '''name = "Proofs.P"
+prefixes = ["Fx.Proofs.P"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "GenericStatements", "GenericEdges"]'''], ['''name = "Proofs.Q"
+prefixes = ["Fx.Proofs.Q"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]''', '''name = "Proofs.Q"
+prefixes = ["Fx.Proofs.Q"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "GenericStatements", "GenericEdges"]'''], ['''allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q"]
+''', '''allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "GenericStatements", "GenericEdges"]
+'''], ['''"Main", "Sol"]''', '''"Main", "Sol", "GenericStatements", "GenericEdges"]'''], ['''"Proofs.Q", "Main"]
+expose = true''', '''"Proofs.Q", "Main", "GenericStatements", "GenericEdges"]
+expose = true''']]
+
+[GrowingGenericEdgesRejectsTrusted]
+expect = "FAIL[import] Fx.Lemmas.Generic.Edge (layer GenericEdges) imported by Fx.Statements.S (layer Statements)"
+files."Fx/GenericStatements/Contract.lean" = "module\npublic import Fx.Spec.A\npublic def contract : Prop := Nat = Nat\n"
+files."Fx/Lemmas/Generic/Edge.lean" = "module\npublic import Fx.GenericStatements.Contract\npublic def edge : Prop := contract → contract\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.GenericStatements.Contract\npublic import Fx.Lemmas.Generic.Edge"]]
+edit."Fx/Statements/S.lean" = [['module', "module\n\npublic import Fx.Lemmas.Generic.Edge"]]
+edit."boundaries.toml" = [['''[[exception]]''', '''[[layer]]
+name = "GenericStatements"
+prefixes = ["Fx.GenericStatements"]
+allow = ["Init", "ToMathlib", "Spec"]
+expose = true
+sorry = false
+[[layer]]
+name = "GenericEdges"
+prefixes = ["Fx.Lemmas.Generic"]
+allow = ["Init", "ToMathlib", "Spec", "GenericStatements"]
+sorry = false
+[[exception]]'''], ['''prefixes = ["Fx.Lemmas"]''', '''prefixes = ["Fx.Lemmas.L", "Fx.Lemmas.M", "Fx.Lemmas.N"]'''], ['''allow = ["Init", "ToMathlib", "Spec", "Statements"]
+
+[[layer]]
+name = "Proofs.P"''', '''allow = ["Init", "ToMathlib", "Spec", "Statements", "GenericStatements", "GenericEdges"]
+
+[[layer]]
+name = "Proofs.P"'''], ['''name = "Proofs.P"
+prefixes = ["Fx.Proofs.P"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]''', '''name = "Proofs.P"
+prefixes = ["Fx.Proofs.P"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "GenericStatements", "GenericEdges"]'''], ['''name = "Proofs.Q"
+prefixes = ["Fx.Proofs.Q"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]''', '''name = "Proofs.Q"
+prefixes = ["Fx.Proofs.Q"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "GenericStatements", "GenericEdges"]'''], ['''allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q"]
+''', '''allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "GenericStatements", "GenericEdges"]
+'''], ['''"Main", "Sol"]''', '''"Main", "Sol", "GenericStatements", "GenericEdges"]'''], ['''"Proofs.Q", "Main"]
+expose = true''', '''"Proofs.Q", "Main", "GenericStatements", "GenericEdges"]
+expose = true''']]
+
+[GrowingGenericEdgesRequiresClosure]
+expect = "FAIL[config] layer Sol: allow is not downward-closed: it allows Lemmas, which allows GenericEdges"
+files."Fx/GenericStatements/Contract.lean" = "module\npublic import Fx.Spec.A\npublic def contract : Prop := Nat = Nat\n"
+files."Fx/Lemmas/Generic/Edge.lean" = "module\npublic import Fx.GenericStatements.Contract\npublic def edge : Prop := contract → contract\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.GenericStatements.Contract\npublic import Fx.Lemmas.Generic.Edge"]]
+edit."Fx/Lemmas/L.lean" = [['public import Fx.Statements.S', "public import Fx.Statements.S\npublic import Fx.Lemmas.Generic.Edge"]]
+edit."boundaries.toml" = [['''[[exception]]''', '''[[layer]]
+name = "GenericStatements"
+prefixes = ["Fx.GenericStatements"]
+allow = ["Init", "ToMathlib", "Spec"]
+expose = true
+sorry = false
+[[layer]]
+name = "GenericEdges"
+prefixes = ["Fx.Lemmas.Generic"]
+allow = ["Init", "ToMathlib", "Spec", "GenericStatements"]
+sorry = false
+[[exception]]'''], ['''prefixes = ["Fx.Lemmas"]''', '''prefixes = ["Fx.Lemmas.L", "Fx.Lemmas.M", "Fx.Lemmas.N"]'''], ['''allow = ["Init", "ToMathlib", "Spec", "Statements"]
+
+[[layer]]
+name = "Proofs.P"''', '''allow = ["Init", "ToMathlib", "Spec", "Statements", "GenericStatements", "GenericEdges"]
+
+[[layer]]
+name = "Proofs.P"'''], ['''name = "Proofs.P"
+prefixes = ["Fx.Proofs.P"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]''', '''name = "Proofs.P"
+prefixes = ["Fx.Proofs.P"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "GenericStatements", "GenericEdges"]'''], ['''name = "Proofs.Q"
+prefixes = ["Fx.Proofs.Q"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]''', '''name = "Proofs.Q"
+prefixes = ["Fx.Proofs.Q"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "GenericStatements", "GenericEdges"]'''], ['''allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q"]
+''', '''allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "GenericStatements", "GenericEdges"]
+'''], ['''"Main", "Sol"]''', '''"Main", "Sol", "GenericStatements", "GenericEdges"]'''], ['''"Proofs.Q", "Main"]
+expose = true''', '''"Proofs.Q", "Main", "GenericStatements"]
+expose = true''']]
