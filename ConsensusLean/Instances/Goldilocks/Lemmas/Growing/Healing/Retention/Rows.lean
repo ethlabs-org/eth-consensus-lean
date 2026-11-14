@@ -33,13 +33,8 @@ theorem store_anc_of_honest_anc_at
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
     {A C : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : Anc (tr.HonestBlocksAt H) A C) (hC : C ∈ (tr.state y k).fg.tree) :
-    (tr.state y k).fg.Anc A C := by
-  have hs := Trace.upTo_state tr y hle
-  have hc : C ∈ (tr.upTo t).HonestBlocks (H t) := ⟨y, hy, k, by rwa [hs]⟩
-  have hanc := RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht hc h
-  rw [← hs]
-  exact Healing.store_anc_of_honest_anc (hrun.upTo ht)
-    (Compose.NoCollRun.upTo hnc t) hy hanc (by rwa [hs])
+    (tr.state y k).fg.Anc A C :=
+  Generic.store_anc_of_honest_anc_at_from hrun.toLocalRun hnc ht hle hy h hC
 
 /-- Ancestry in a tree observed while honest lies in the historical honest universe. -/
 theorem honest_anc_of_store_anc_at {y : Fin sp.n} {k : Nat} {t : Time}

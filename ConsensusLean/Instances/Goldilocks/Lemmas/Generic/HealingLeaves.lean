@@ -14,6 +14,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Deadline
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 
 public section
 
@@ -236,6 +237,31 @@ theorem HZ_le_hmax_at_from (h : Consensus.Goldilocks.Growing.LocalRun proposer d
   omega
 
 end HZLowerBound
+
+/-! ## Store ancestry below honest blocks -/
+
+section StoreAnc
+
+variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
+
+/-- Historical ancestry descends into the reader's actual held tree, for any node run under
+growing faults from any starts `ini`. -/
+theorem store_anc_of_honest_anc_at_from
+    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hnc : Compose.NoCollRun dg tr) {y : Fin P.n} {k : Nat} {t : Time}
+    (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
+    {B C : A.Blk} (hBC : Anc (tr.HonestBlocksAt H) B C) (hC : C ∈ (tr.state y k).fg.tree) :
+    (tr.state y k).fg.Anc B C := by
+  have hs := Trace.upTo_state tr y hle
+  have hc : C ∈ (tr.upTo t).HonestBlocks (H t) := ⟨y, hy, k, by rwa [hs]⟩
+  have hanc := RunTrace.anc_upTo_of_right h hnc ht hc hBC
+  rw [← hs]
+  exact Healing.store_anc_of_honest_anc_from (h.upTo ht)
+    (Compose.NoCollRun.upTo hnc t) hy hanc (by rwa [hs])
+
+end StoreAnc
 
 end Consensus.Goldilocks.Generic
 

@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 
 public section
 
@@ -72,6 +73,23 @@ theorem accept_mem_from (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) {k
   rw [tr.state_succ_of_call hA, (Store.tree_grows _ _ _ _
     (Compose.fg_reachable h hy k)).1 B _ (h.cutLaw y hy k _ hA).2.1]
   exact Set.mem_insert _ _
+
+/-- Ancestry inside the honest blocks below a block of an honest tree is ancestry in that tree
+(honest trees are parent-closed down to genesis), at any start. -/
+theorem store_anc_of_honest_anc_from (h : LocalRun proposer dg H sg tr ini)
+    (hnc : Compose.NoCollRun dg tr) (hy : y ∈ H) {k : Nat} {B C : A.Blk}
+    (hBC : Anc (tr.HonestBlocks H) B C) (hC : C ∈ (tr.state y k).fg.tree) :
+    (tr.state y k).fg.Anc B C := by
+  have hr := Compose.fg_reachable h hy k
+  have hU := Compose.honest_blocks_coherent h hnc
+  induction hBC with
+  | refl => exact .refl
+  | tail _ hYC ih =>
+    rcases ((Store.accepted_tree _ _ _ _ hr).2.2.2 _ hC).cases_tail with hg | ⟨Z, -, hZ⟩
+    · exact absurd hYC.2.2 (by rw [hg]; simp [Params.genesisBlock])
+    obtain rfl : Z = _ := hU.1 ⟨y, hy, k, hZ.1⟩ hYC.1
+      (Option.some.inj (hZ.2.2.symm.trans hYC.2.2))
+    exact (ih hZ.1).tail hZ
 
 /-- A block of an honest node's FG state is genesis or was accepted by it at an earlier cut. -/
 theorem tree_accepted (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) {m : Nat} {B : A.Blk}

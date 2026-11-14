@@ -42,17 +42,8 @@ theorem store_anc_of_honest_anc (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {A C : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : Anc (tr.HonestBlocks H) A C) (hC : C ∈ (tr.state y k).fg.tree) :
-    (tr.state y k).fg.Anc A C := by
-  have hr := Compose.fg_reachable hrun.toLocalRun hy k
-  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
-  induction h with
-  | refl => exact .refl
-  | tail _ hYC ih =>
-    rcases ((Store.accepted_tree _ _ _ _ hr).2.2.2 _ hC).cases_tail with hg | ⟨Z, -, hZ⟩
-    · exact absurd hYC.2.2 (by rw [hg]; simp [Params.genesisBlock])
-    obtain rfl : Z = _ := hU.1 ⟨y, hy, k, hZ.1⟩ hYC.1
-      (Option.some.inj (hZ.2.2.symm.trans hYC.2.2))
-    exact (ih hZ.1).tail hZ
+    (tr.state y k).fg.Anc A C :=
+  store_anc_of_honest_anc_from hrun.toLocalRun hnc hy h hC
 
 /-- A block below (inside the honest blocks) a block of an honest tree is in that tree. -/
 theorem mem_of_honest_anc (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)

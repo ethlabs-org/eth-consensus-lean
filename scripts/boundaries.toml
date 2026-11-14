@@ -126,7 +126,8 @@ to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Deadline",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle"]
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry"]
 reason = """the generic healing leaves over any NodeAC use these AC-generic run facts; their closure reaches
 Lemmas.AC (Compose.Reach) and some of these modules also hold SA lemmas, so the cut guard
 ConsensusLeanTest.Goldilocks.Generic.HealingLeavesCut checks the theorems' constants; leaf paths only"""
