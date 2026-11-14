@@ -58,14 +58,11 @@ private theorem originWithin_of_upTo' (hrun : Growing.GoldilocksRun proposer dg 
 
 /-- **The static read invariant of the prefix** through the read time `t ≥ 0`, for a reader
 honest at `t` and the state before a cut `m` whose earlier cuts are at or before `t`, from the
-dynamic invariant up to `b ≥ t`, the service up to `b` and the slot counts at `t`. -/
+dynamic invariant up to `b ≥ t` and the service up to `b`. -/
 private theorem readInvWith_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsync : SleepyServiceBefore tr H ΔF b) {y : Fin sp.n} {m : Nat} {t : Time}
-    (hy : y ∈ H t) (ht0 : 0 ≤ t) (htb : t ≤ b)
-    (hfb : ∀ s : Nat, sp.ts s + sp.Δ ≤ t → t < sp.ts s + 6 * sp.Δ →
-      tr.FaultBoundAt H (sp.ts s + sp.Δ) t)
-    (hm : ∀ k < m, tr.time k ≤ t) :
+    (hy : y ∈ H t) (ht0 : 0 ≤ t) (htb : t ≤ b) (hm : ∀ k < m, tr.time k ≤ t) :
     Compose.ReadInvWith (tr.upTo t) (H t) (fun B => OnOriginChainWithin tr H B b)
       (fun C s => OriginWithin tr H C s b) y m t
       (Compose.ReadSyncOrService (tr.upTo t) (H t) t) := by
@@ -104,8 +101,7 @@ private theorem readInvWith_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
         { message := fun x hx k v hv h0 z hz j ℓ hc hdl hj =>
             hac.message x hx k v hv h0 z hz j ℓ hc (hdl.trans (le_min htb le_rfl)) hj
           relay := fun x hx k B hB h0 z hz j ℓ hc hdl hj ha =>
-            hac.relay x hx k B hB h0 z hz j ℓ hc (hdl.trans (le_min htb le_rfl)) hj ha }
-      awake := fun s h1 h2 => faultBound_upTo (d := t) h1 (hfb s h1 h2) }
+            hac.relay x hx k B hB h0 z hz j ℓ hc (hdl.trans (le_min htb le_rfl)) hj ha } }
 
 /-- **G1, G2 at a read under growing faults** (the dynamic `read_head_support_before`): the state
 of a node before cut `i`, read at a time `t ∈ [0, b]` at which it is honest, at or after every
@@ -135,9 +131,12 @@ theorem read_head_support_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)
               R).ncard)) := by
   have hst : (tr.upTo t).state y i = tr.state y i := Trace.upTo_state tr y hle
   have h := Compose.read_head_support_of (hrun.upTo ht0) (hnc.upTo _) hy
-    (fun m hm _ => readInvWith_upTo hinv hrun hnc hsync hy ht0 htb hfb hm) hle hti
+    (fun m hm _ => readInvWith_upTo hinv hrun hnc hsync hy ht0 htb hm) hle hti
     (fun _ => ⟨⟨hwj.1, le_rfl⟩, joinedAt_upTo hwj.2⟩) (R := R)
     (by rw [RecordAt, hst]; exact hR)
+    fun m hm _ hrd hRm _ hO hjl => Compose.latest_majority (hrun.upTo ht0) (hnc.upTo _) hy
+      (readInvWith_upTo hinv hrun hnc hsync hy ht0 htb hm)
+      (fun s h1 h2 => faultBound_upTo (d := t) h1 (hfb s h1 h2)) hrd hRm.1 hO hjl
   rwa [hst] at h
 
 /-- **G1, G2 at a served cut under growing faults**: at a cut `i ≤ b` of a node honest then,

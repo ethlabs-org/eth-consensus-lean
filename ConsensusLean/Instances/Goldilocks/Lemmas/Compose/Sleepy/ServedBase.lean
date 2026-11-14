@@ -56,7 +56,8 @@ theorem mem_latest_votes {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   simp [SA.voteView, SA.voteViewList, SA.View.ofLists, SA.SAState.poolAt, hu, hst]
 
 /-- The FG state of an honest node only grows: its tree, and its finalized tip, to a descendant. -/
-theorem fg_grows (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {j i : Nat}
+theorem fg_grows {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {j i : Nat}
     (h : j ≤ i) : (tr.state y j).fg.tree ⊆ (tr.state y i).fg.tree ∧
       Anc (tr.HonestBlocks H) (tr.state y j).fg.F (tr.state y i).fg.F := by
   induction i, h using Nat.le_induction with

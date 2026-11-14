@@ -135,14 +135,13 @@ private theorem ReadInv.of_full (hinv : SleepyInvariant tr H)
     origin := fun _ _ h => h.origin
     viable := fun m _ C s hO hC => hinv.viable y hy m C s hO hC
     vote_extends := fun C s hO x hx k _ e hv hs => hinv.vote_extends C s hO x hx k e hv hs
-    sync := syncAC_of_sleepy hrun hsl le_rfl
-    awake := fun s _ _ => faults_lt_awake_joined hsl s }
+    sync := syncAC_of_sleepy hrun hsl le_rfl }
 
 private theorem ReadInvWith.of_before {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} (hi : ∀ k < i, tr.time k ≤ b) {t : Time}
-    (ht : t ≤ b) (hfb : ∀ s : Nat, sp.ts s + sp.Δ ≤ t → tr.FaultBound H (sp.ts s + sp.Δ)) :
+    (ht : t ≤ b) :
     ReadInvWith tr H (fun B => OnOriginChainWithin tr H B b)
       (fun C s => OriginWithin tr H C s b) y i t (ReadSyncOrService tr H t) :=
   have ⟨C, hC, hCr, hgo⟩ := hinv.record y hy i hi
@@ -161,8 +160,7 @@ private theorem ReadInvWith.of_before {b : Time} (hinv : SleepyInvariantUpTo tr 
       message := fun x hx k m hm h0 z hz j ℓ hc hd hj =>
         hsync.message x hx k m hm h0 z hz j ℓ hc (hd.trans ht) hj
       relay := fun x hx k B hB h0 z hz j ℓ hc hd hj ha =>
-        hsync.relay x hx k B hB h0 z hz j ℓ hc (hd.trans ht) hj ha }
-    awake := fun s h _ => hfb s h }
+        hsync.relay x hx k B hB h0 z hz j ℓ hc (hd.trans ht) hj ha } }
 
 private theorem latest_majority_of_target_votes_at_read
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
@@ -296,6 +294,9 @@ theorem read_head_support (hinv : SleepyInvariant tr H) (hrun : GoldilocksRun pr
               R).ncard)) :=
   read_head_support_of hrun hnc hy
     (fun m _ _ => (ReadInv.of_full hinv hrun hnc hsl hy m t).service) hle hti hwj hR
+    fun m _ _ hrd hRm _ hO hjl => latest_majority hrun hnc hy
+      (ReadInv.of_full hinv hrun hnc hsl hy m t).service
+      (fun s _ _ => faults_lt_awake_joined hsl s) hrd hRm.1 hO hjl
 
 /-- G1, G2 with recipient service bounded by the read time, not the next cut's time.
 Only the fault bounds at `t_s + Δ ≤ t` are needed for the latest-view majority. -/
@@ -320,7 +321,10 @@ theorem read_head_support_before {b : Time} (hinv : SleepyInvariantUpTo tr H b)
               R).ncard)) :=
   read_head_support_of hrun hnc hy
     (fun _ hm _ => ReadInvWith.of_before hinv hrun hnc hsync hy
-      (fun k hk => (hm k hk).trans htb) htb hfb) hle hti hwj hR
+      (fun k hk => (hm k hk).trans htb) htb) hle hti hwj hR
+    fun _ hm _ hrd hRm _ hO hjl => latest_majority hrun hnc hy
+      (ReadInvWith.of_before hinv hrun hnc hsync hy (fun k hk => (hm k hk).trans htb) htb)
+      (fun s h _ => hfb s h) hrd hRm.1 hO hjl
 
 /-- **G1, G2 at a served cut**: at a cut of an honest node awake and joined at its time that has
 run the update of slot `slot(t) − 2` or `slot(t) − 1` with no restart since (A1.6's condition,
@@ -333,8 +337,10 @@ theorem served_head_support (hinv : SleepyInvariant tr H) (hrun : GoldilocksRun 
     HeadSupport tr y i R :=
   -- the update clause is not needed here: joining at `t` already excludes the restarts after the
   -- latest view's slot started, which would clear the pools
-  have h := head_support_at hrun hnc hy (ReadInv.of_full hinv hrun hnc hsl hy i (tr.time i)).service
-    (fun _ hk => hrun.time_mono hk.le) (fun _ => readAt_self hrun hy hc hw hj) hR
+  have hI := (ReadInv.of_full hinv hrun hnc hsl hy i (tr.time i)).service
+  have h := head_support_at hrun hnc hy hI (fun _ hk => hrun.time_mono hk.le) hR
+    fun _ _ hO hjl => latest_majority hrun hnc hy hI (fun s _ _ => faults_lt_awake_joined hsl s)
+      (readAt_self hrun hy hc hw hj) hR.1 hO hjl
   ⟨h.1, h.2⟩
 
 /-- **The served-cut facts under `Sleepy`** (`ServedFacts`, the target of the Service

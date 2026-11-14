@@ -516,7 +516,7 @@ theorem toFG_locks (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) :
 the record unchanged or names a block of the frame that it wrote, as a result of its update, or
 as the selection of one of its optimistic checks with that slot's fast lock on its viable
 ancestor. -/
-theorem call_reclock (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+theorem call_reclock {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     KeepAll ℓ.frame (tr.time i) (tr.state x i) (tr.post i) ∧
       RecLock ℓ.frame (tr.time i) (tr.state x i).latestConfirmed
