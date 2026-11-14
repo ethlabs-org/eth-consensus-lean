@@ -105,6 +105,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Deadline
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FamilyIdentity
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FamilyPackages
