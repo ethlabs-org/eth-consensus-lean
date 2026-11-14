@@ -269,7 +269,7 @@ theorem VoteBinding.candidateRole_poll_vote (B : VoteBinding) {n : Nat} (t : Nat
   | some k =>
     simp [VoteBinding.candidateRole, VoteBinding.voteRole, hp, decodeVote, encodeVote, v.val.isLt]
 
-/-- Non-vote poll bodies retain the poll role for every binding (F3′). -/
+/-- Non-vote poll bodies retain the poll role for every binding. -/
 theorem VoteBinding.candidateRole_poll_nonvote (B : VoteBinding) (n t : Nat) (b : Body)
     (h : ∀ w, b ≠ .vote w) :
     (B.candidateRole n (.poll t) (.data b)).getD .poll = .poll := by
@@ -864,7 +864,7 @@ noncomputable def goldilocksWith (S : BoundSetup) :
 noncomputable def goldilocks (S : Setup) : ChainShapeFamily schema Info :=
   goldilocksWith ⟨S, stock⟩
 
-/-- The population-wide instance is `goldilocksWith` at the stock binding. -/
+/-- Unfolds `goldilocks` to `goldilocksWith ⟨S, stock⟩`, for rewriting. -/
 theorem goldilocks_stock (S : Setup) : goldilocks S = goldilocksWith ⟨S, stock⟩ := rfl
 
 /-- The family installs the actual own-role predicate in the committee node's initial AC state. -/

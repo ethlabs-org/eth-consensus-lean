@@ -62,8 +62,8 @@ theorem fastLock_carry_service_at
   refine ⟨hvs, ⟨x, k, hk, hsend, hlo, hhi⟩, Hv, hroot, hFD.trans hanc, ?_⟩
   exact hacc.imp_right fun ⟨k', hk', hacc', ht⟩ => ⟨x, k', hk', hacc', ht⟩
 
-/-- The regular fast transfer step with service and fault margins at the receiving cut, at the
-full committee (`hstock`, §S.2 scope-(ii) item). -/
+/-- The regular fast transfer step with service and fault margins at the receiving cut, for
+population-sized committees (`hstock`). -/
 theorem first_transfer_service_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)

@@ -32,7 +32,7 @@ namespace Consensus.Goldilocks.SA
 variable {wm : SA.WriteMode}
 
 /-- **H.1 at `ḡ + (8k + 4)Δ`** (claims H.1, proof shape, with the locks settled from the slot
-start `t_{p−1} ≥ ḡ + 8kΔ`), for a population-sized committee. -/
+start `t_{p−1} ≥ ḡ + 8kΔ`), for population-sized committees. -/
 theorem ac_healing_standalone_tight (sp : SAParams) (hstock : sp.committeeSize = sp.n) :
     ACHealingStandaloneTight (sp := sp) :=
   fun _ _ _ _ _ _ _ hrun hdr htriv hheal hcatch _ _ hpH hP hp =>
@@ -45,8 +45,8 @@ theorem standalone_of_tight (sp : SAParams) (h : ACHealingStandaloneTight (sp :=
     h FGP ro H U tr proposer g hrun hdr htriv hheal hcatch p P hpH hP
       (by have := sp.toParams.hΔ; unfold Θ at hp; linarith)
 
-/-- **H.1, AC healing standalone** (claims H.1, proof shape): from H.1 at `ḡ + (8k + 4)Δ`, for a
-population-sized committee. -/
+/-- **H.1, AC healing standalone** (claims H.1, proof shape): from H.1 at `ḡ + (8k + 4)Δ`, for
+population-sized committees. -/
 theorem ac_healing_standalone (sp : SAParams) (hstock : sp.committeeSize = sp.n) :
     ACHealingStandalone (sp := sp) :=
   standalone_of_tight sp (ac_healing_standalone_tight sp hstock)
@@ -164,14 +164,14 @@ theorem corollary_of_standalone_tight (sp : SAParams) (h : ACHealingStandaloneTi
     (fun p P hpH hP hp => (h FGP ro H U tr proposer g hrun hdr htriv hheal hcatch p P hpH hP
       (by linarith)).2) t (by linarith)
 
-/-- **H.1, corollary**: H.1 at an honest proposal of `Prop(G_p)`, for a population-sized
-committee. -/
+/-- **H.1, corollary**: H.1 at an honest proposal of `Prop(G_p)`, for population-sized
+committees. -/
 theorem ac_healing_standalone_corollary (sp : SAParams) (hstock : sp.committeeSize = sp.n) :
     ACHealingStandaloneCorollary (sp := sp) :=
   corollary_of_standalone sp (ac_healing_standalone sp hstock) hstock
 
 /-- **H.1 at `ḡ + (8k + 4)Δ`, corollary** (proposal-block inclusion): H.1 at `ḡ + (8k + 4)Δ` at
-an honest proposal of `Prop(G_p)`, for a population-sized committee. -/
+an honest proposal of `Prop(G_p)`, for population-sized committees. -/
 theorem ac_healing_standalone_tight_corollary (sp : SAParams) (hstock : sp.committeeSize = sp.n) :
     ACHealingStandaloneTightCorollary (sp := sp) :=
   corollary_of_standalone_tight sp (ac_healing_standalone_tight sp hstock) hstock

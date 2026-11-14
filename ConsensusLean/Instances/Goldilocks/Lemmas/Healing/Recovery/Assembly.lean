@@ -12,7 +12,9 @@ public section
 The coverage proof supplies the fresh proposal, actual finalizing carrier and permanent high
 cached finality. C1.3 forgets the proposal's high-height witness; O.1 applies that coverage at
 `Rstar`, then uses recovery from high finality with the unchanged `12Δ` margin. HR.5 is already
-proved independently. The coverage supplier is an explicit argument, not an added axiom. -/
+proved independently. The coverage supplier is a hypothesis of
+`recovery_statements_of_coverage`; `recovery_statements` (`Proofs/Healing/Main`) discharges it by
+`pattern_coverage_supply`. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -30,7 +32,7 @@ namespace Consensus.Goldilocks.Healing.Recovery
 open SA (SAParams ReplayOrder Payload gbar)
 
 /-- The strengthened coverage supplier discharges all three public Recovery statements.
-The supplier remains an explicit proof input until the coverage proof is complete. -/
+`recovery_statements` supplies it by `pattern_coverage_supply`. -/
 theorem recovery_statements_of_coverage
     (hcoverage : ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
       (proposer : Nat → Fin sp.n)

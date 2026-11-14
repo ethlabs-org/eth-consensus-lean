@@ -174,8 +174,8 @@ theorem goldilocksSourceEvidenceCompatibility :
   intro s m w x i₀ i P C CV ℓ hw he hs hc hf hx ho hd
   exact False.elim hd
 
-/-- The family's lock threshold counts the population, so this reads the stock committee
-(`hstock`, §S.2 scope-(ii) item). -/
+/-- The family's lock threshold counts the population, so this holds for population-sized
+committees (`hstock : committeeSize = n`). -/
 theorem goldilocksLockWrites (hr : ACRun proposer o H U) (hstock : sp.committeeSize = sp.n) :
     FamilyFacts.LockWrites (goldilocksFamily sp FGP ro) o H U := by
   constructor

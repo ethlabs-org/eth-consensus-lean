@@ -57,7 +57,7 @@ structure SeededRun (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
   conv : ChainConvictedBelow tr H
   horizon : T ≤ b
   drain : sp.ts (r + sp.k : Nat) ≤ t₁
-  /-- The stock committee (§S scope-(ii) item S16). -/
+  /-- The committee is population-sized (`committeeSize = n`). -/
   stock : sp.committeeSize = sp.n
 
 variable {T : Time} {r σ : Nat} {t₁ b : Time}

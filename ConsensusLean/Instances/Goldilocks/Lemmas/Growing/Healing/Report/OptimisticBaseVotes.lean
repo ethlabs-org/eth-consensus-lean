@@ -29,7 +29,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- An optimistic write propagates an arbitrary viable prefix to next-slot votes. The transfer
-is at the full committee (`hstock`, §S.2 scope-(ii) item). -/
+is for population-sized committees (`hstock`). -/
 theorem optimistic_next_votes_of_early_witness_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}

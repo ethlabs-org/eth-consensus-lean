@@ -457,7 +457,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.S
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.SlowTransfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.SupporterLater
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.WitnessRelay
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Finality

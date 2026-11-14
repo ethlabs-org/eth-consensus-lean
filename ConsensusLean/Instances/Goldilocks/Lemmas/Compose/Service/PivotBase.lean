@@ -417,8 +417,7 @@ theorem fcRoot_of_rows_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
 (`F ≤ fc_root ≤ D_s` at the vote reads): every honest attestation the voter holds was signed before
 the vote, with a source below an origin before the signing (`attestation_source`); a regular one of
 label `l` is written at `t_l + 6Δ ≤ t_s + Δ`, so `l ≤ s − 2`; an optimistic one has label at most
-`s`, and not `s` (`no_optimistic_before_held_row`, at the full committee: `hstock`, §S.2
-scope-(ii) item). -/
+`s`, and not `s` (`no_optimistic_before_held_row`, for population-sized committees: `hstock`). -/
 theorem vote_fcRoot_old_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} (hs : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}

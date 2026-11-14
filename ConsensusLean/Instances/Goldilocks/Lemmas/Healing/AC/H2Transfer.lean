@@ -615,8 +615,8 @@ theorem result_prefix_vote_extends_of_stored (hrun : ACRun proposer tr H U)
 /-- Later transfer needs extension only at earlier cuts, for the predecessor and
 current labels. Slot monotonicity places every predecessor vote before this cast. The `Sync`
 argument is no longer needed (A1.3 dropped it); it stays for the callers' interface. The transfer
-counts the batch at the full committee, which reads the stock committee (`hstock`, §S.2
-scope-(ii) item). -/
+counts the batch over the whole population, so it holds for population-sized committees
+(`hstock`). -/
 theorem next_vote_extends_before (hrun : ACRun proposer tr H U)
     {m i : Nat} {y : Fin sp.n} {B : Blk sp.n FGP}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}

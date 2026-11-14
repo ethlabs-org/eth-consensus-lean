@@ -79,7 +79,7 @@ structure HealthyBaseU (m : WriteMode) (u : Nat → Set Lock) (tr : SATrace sp F
   healthy : HealthyACCore tr H U g
   faults : 2 * Hᶜ.ncard < sp.n
   catchUp : CatchAC tr H U g (2 * sp.Δ)
-  /-- The stock committee (§S scope-(ii) item S1). -/
+  /-- The committee is population-sized (`committeeSize = n`). -/
   stock : sp.committeeSize = sp.n
 
 /-- `StandaloneRun` with the writes of the mode `m` and the unlock given by the oracle `u`. -/

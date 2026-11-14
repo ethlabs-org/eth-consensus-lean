@@ -32,7 +32,7 @@ private theorem hmax_le_snapshot {y : Fin sp.n} (hy : y ∈ H (cutZ sp.toParams 
   exact ⟨z, rfl⟩
 
 /-- The reset lies after the snapshot from its fault bound alone. The counted fast-lock votes
-are a committee half, read at the stock committee (`hstock`, §S.2 scope-(ii) item). -/
+are a committee half, read for population-sized committees (`hstock`). -/
 theorem cutZ_lt_reset_of_fault_bound_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr)

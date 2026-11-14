@@ -36,8 +36,8 @@ private theorem toFG_some {sp : SAParams} {FGP : Type} {A : SAState sp.n}
     cases h
     exact ⟨(deepest_mem hC').1, hj, rfl⟩
 
-/-- Source compatibility for an ancestor of the block stored by a historical fast lock. Stock
-committee only (`committeeSize = n`, §S). -/
+/-- Source compatibility for an ancestor of the block stored by a historical fast lock. Only for
+population-sized committees (`committeeSize = n`). -/
 theorem source_compatible_stored (sp : SAParams)
     (FGP : Type) (ro : ReplayOrder sp FGP)
     (proposer : Nat → Fin sp.n) (H : Time → Set (Fin sp.n))
@@ -98,7 +98,7 @@ theorem source_compatible_stored (sp : SAParams)
       push_cast at this
       omega
     · omega
-  -- the stock committee (§S): every validator, `committeeSize = n`
+  -- a population-sized committee: every validator, `committeeSize = n`
   rcases lt_trichotomy s l₀.slot with hlt | heq | hgt
   · refine down hLB' (fastLock_compatible_of_votes hrun _ (fun _ => CommitteeP.full) hxj hj hfl'
       (cs2_full hstk hf) ?_)

@@ -7,10 +7,10 @@ public section
 
 /-! # Vote bindings: the population binding and a proper-subset committee
 
-`legacySkeleton`, `legacyShape` and `legacyGoldilocks` are the 9124-form population shape: the
-population instance's bodies, with only the permission argument the model interface now passes.
-No production module imports them. `stock_legacy`: the population binding equals the 9124-form
-shape.
+`legacySkeleton`, `legacyShape` and `legacyGoldilocks` are the population shape written without a
+vote binding: the population instance's bodies, with only the permission argument the model
+interface now passes. No production module imports them. `stock_legacy`: the population binding
+equals that shape.
 
 `committeeOne` is a committee binding whose selection is one key per slot. Its votes are signed in
 the slot's committee role and other poll bodies keep the poll role (`committeeOne_voteRole`,
@@ -100,7 +100,7 @@ noncomputable def legacyGoldilocks (S : Setup) : ChainShapeFamily schema Info :=
     conflicts := conflicts (binding := stock)
     isFGAtt := isFGAtt (binding := stock) }
 
-/-- The population binding equals the 9124-form shape. -/
+/-- The population binding equals the shape written without a vote binding. -/
 theorem stock_legacy (S : Setup) : goldilocksWith ⟨S, stock⟩ = legacyGoldilocks S := by
   funext pub
   let X := goldilocksWith ⟨S, stock⟩ pub

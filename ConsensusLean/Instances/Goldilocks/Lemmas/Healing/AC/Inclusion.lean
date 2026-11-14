@@ -15,7 +15,7 @@ raw-origin transfer, `H2Transfer`), so before every proposal of a slot `p` with
 
 namespace Consensus.Goldilocks.SA
 
-/-- **H.2, AC inclusion from the retention premise**, for a population-sized committee. -/
+/-- **H.2, AC inclusion from the retention premise**, for population-sized committees. -/
 theorem ac_inclusion (sp : SAParams) (hstock : sp.committeeSize = sp.n) :
     ACInclusion (sp := sp) := by
   intro FGP ro H U tr proposer g t₀ hrun hdr hh hc hg hinv p P hpH hP hp

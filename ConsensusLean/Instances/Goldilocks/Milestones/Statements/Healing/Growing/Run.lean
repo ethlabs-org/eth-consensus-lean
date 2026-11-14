@@ -282,7 +282,8 @@ def HeightScopedRetention : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF : Time), sp.committeeSize = sp.n →
+    (tr : GoldilocksTrace sp ro) (g ΔF : Time),
+    sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → tr.HealthyRunAt H ΔF g →
     Compose.NoCollRun dg tr → ∀ a, IsReset tr H g a → RetentionAt tr H g a
 
@@ -331,7 +332,8 @@ def RunInclusion : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF : Time), sp.committeeSize = sp.n →
+    (tr : GoldilocksTrace sp ro) (g ΔF : Time),
+    sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
     (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg →
     tr.HealthyRunAt H ΔF g → CatchRun tr H g (2 * sp.Δ) →

@@ -29,7 +29,7 @@ def GoldilocksHealingData (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.
 
 /-- Intended full-set Goldilocks healing supplier, with its original run and arithmetic warmth.
 The existential is an unproved contract, never a definition of a supplier instance.
-`Run` is the original growing run, at population-sized committees (`sp.committeeSize = sp.n`).
+`Run` is the original growing run, for population-sized committees (`sp.committeeSize = sp.n`).
 `warmup` and `Warm` come from the warmth premise in
 `Growing/Healing/Kernel/ResetRounds.lean:329`; `follow = 3` is the skeleton choice,
 with no upstream standalone statement; `drain` is the skeleton choice `2 * sp.k + 5`,

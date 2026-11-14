@@ -169,8 +169,8 @@ private theorem vote_frame_of {s₀ : Nat} {b : Time} (hrun : GoldilocksRun prop
 /-- **S3 at votes up to `b` (the frozen witness)**: at an honest slot-`(s+1)` vote at a time
 `≤ b`, a block `B` of the honest blocks that is compatible with every origin within `b` of label
 at most `s` and that some honest slot-`s` vote extends is in the viable tree of the voter block
-tree, or at or below `fc_root` (inside the honest blocks). The row sources are read at the full
-committee (`hstock`, §S.2 scope-(ii) item). -/
+tree, or at or below `fc_root` (inside the honest blocks). The row sources are read for
+population-sized committees (`hstock`). -/
 theorem vote_frame_upTo
     {b : Time} (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)
@@ -208,7 +208,7 @@ theorem vote_frame_upTo
   exact ⟨x', hx', k', e'', hve', hs''.trans_le hj, Hd, hHd, hHdr, hDC.trans hCHd⟩
 
 /-- The frozen witness at a vote needs only recipient service within its finite horizon
-(`hstock`, §S.2 scope-(ii) item, as for `vote_frame_upTo`). -/
+(for population-sized committees, `hstock`, as for `vote_frame_upTo`). -/
 theorem vote_frame_before
     {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)

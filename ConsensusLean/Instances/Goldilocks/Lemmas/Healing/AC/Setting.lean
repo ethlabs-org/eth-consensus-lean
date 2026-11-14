@@ -44,7 +44,7 @@ structure HealthyBase (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Bl
   driven : Driven proposer tr H
   healthy : HealthyAC tr H U g
   catchUp : CatchAC tr H U g (2 * sp.Δ)
-  /-- The stock committee (§S scope-(ii) item S3). -/
+  /-- The committee is population-sized (`committeeSize = n`). -/
   stock : sp.committeeSize = sp.n
 
 /-- Finite health with deadline-bounded service. Driven duties remain conditional
@@ -57,7 +57,7 @@ structure HealthyBaseUpTo (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set
   catchUp : CatchACWindowBefore tr H U (gbar g) (2 * sp.Δ) b
   awake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t
   faults : 3 * Hᶜ.ncard ≤ sp.n - 1
-  /-- The stock committee (§S scope-(ii) item S5). -/
+  /-- The committee is population-sized (`committeeSize = n`). -/
   stock : sp.committeeSize = sp.n
 
 /-- **H.1's premises** over an AC trace of the SA: the healthy premises (`HealthyBase`) and

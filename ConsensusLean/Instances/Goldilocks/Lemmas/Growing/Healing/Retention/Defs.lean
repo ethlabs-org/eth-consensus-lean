@@ -61,7 +61,7 @@ structure ResetPremisesUpTo (proposer : Nat → Fin sp.n)
   reset : IsReset tr H g a
   reset_le : a ≤ b
   snapshot : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g) ∧ tr.time k ≤ b
-  /-- The stock committee (§S scope-(ii) item S13). -/
+  /-- The committee is population-sized (`committeeSize = n`). -/
   stock : sp.committeeSize = sp.n
 
 end Consensus.Goldilocks.Healing.Growing

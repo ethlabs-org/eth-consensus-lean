@@ -43,7 +43,7 @@ private theorem toFG_some {FGP : Type} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t
 
 /-- **A1.9 for the stored block**: `SourceCompatible` for a fast lock on `D`, with every
 hypothesis and the conclusion about a block `B ⪯ D` (the block the lock stores,
-`Φ.viableAncestor D`). Stock committee only (`committeeSize = n`, §S). -/
+`Φ.viableAncestor D`). Only for population-sized committees (`committeeSize = n`). -/
 theorem source_compatible_stored :
     ∀ (FGP : Type) (ro : ReplayOrder sp FGP)
     (proposer : Nat → Fin sp.n) (H : Set (Fin sp.n))
@@ -104,7 +104,7 @@ theorem source_compatible_stored :
       push_cast at this
       omega
     · omega
-  -- the stock committee (§S): every validator, `committeeSize = n`
+  -- a population-sized committee: every validator, `committeeSize = n`
   rcases lt_trichotomy s l₀.slot with hlt | heq | hgt
   · -- a later slot: its honest votes extend `B`
     refine down hLB' (fastLock_compatible_of_votes hrun _ CommitteeP.full hx hj hfl'

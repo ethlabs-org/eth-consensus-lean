@@ -326,8 +326,8 @@ private theorem cast_time (hrun : Consensus.Goldilocks.Growing.GoldilocksRun pro
 strong induction on the vote's cut. The batch is counted at the voter's cut: every validator
 honest at `t_{u+1}` voted in slot `u` by `t_u + Δ` (`hvotes`), and the fault bound at the cut
 (`hfault`) leaves more than half of the validators honest then. The fork-choice root and the
-head-height floor of each cast (`hroot`, `hfloor`) are inputs. The transfer counts the batch at
-the full committee, which reads the stock committee (`hstock`, §S.2 scope-(ii) item). -/
+head-height floor of each cast (`hroot`, `hfloor`) are inputs. The transfer counts the batch over
+the whole population, so it holds for population-sized committees (`hstock`). -/
 theorem unanimous_next_votes_extend_core_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
@@ -442,8 +442,8 @@ private theorem optimistic_supporter_at
     hsub (hU hR), hRr, (hBR.mono hU).mono hsub⟩
 
 /-- **A slot-`(u+1)` optimistic selection of a node honest at it is compatible with the unanimous
-proposal `P`**: its supporting vote, of a node honest at its cast, extends both (`hstock`, §S.2
-scope-(ii) item, as for `unanimous_next_votes_extend_core_at`). -/
+proposal `P`**: its supporting vote, of a node honest at its cast, extends both (for
+population-sized committees, `hstock`, as for `unanimous_next_votes_extend_core_at`). -/
 theorem unanimous_next_optimistic_compatible_core_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)

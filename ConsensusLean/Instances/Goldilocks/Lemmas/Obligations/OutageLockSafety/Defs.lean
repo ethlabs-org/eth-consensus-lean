@@ -176,7 +176,7 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
   that slot. -/
   PG : ∀ w ∈ H, ∀ c m ℓ, SA.UpdateAt tr.projAC w c m ℓ → r ≤ m →
     ∀ x ∈ H, ∀ i e, SA.VoteAt tr.projAC x i e → e.msg.slot = m → e.msg ∈ (tr.state w c).ac.pool m
-  /-- The stock committee (§S scope-(ii) item S14). -/
+  /-- The committee is population-sized (`committeeSize = n`). -/
   stock : sp.committeeSize = sp.n
 
 variable {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}

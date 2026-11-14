@@ -54,7 +54,7 @@ structure ResetPremises (proposer : Nat → Fin sp.n)
   healthy : tr.HealthyRun H ΔF g
   noColl : Compose.NoCollRun dg tr
   reset : IsReset tr H g a
-  /-- The stock committee (§S scope-(ii) item S11). -/
+  /-- The committee is population-sized (`committeeSize = n`). -/
   stock : sp.committeeSize = sp.n
 
 /-- GST service at actual receiver calls through `b`. Effective send times and strict
@@ -124,7 +124,7 @@ structure ResetPremisesUpTo (proposer : Nat → Fin sp.n)
   reset : IsReset tr H g a
   reset_le : a ≤ b
   snapshot : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g) ∧ tr.time k ≤ b
-  /-- The stock committee (§S scope-(ii) item S12). -/
+  /-- The committee is population-sized (`committeeSize = n`). -/
   stock : sp.committeeSize = sp.n
 
 /-- Whole-run premises restrict to any horizon containing the actual reset. -/

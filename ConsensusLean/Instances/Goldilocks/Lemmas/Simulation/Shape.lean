@@ -56,12 +56,12 @@ theorem pollRole_eq (B : VoteBinding) (n : Nat) (b : Body) :
     pollRole B n b = (B.candidateRole n (.poll 0) (.data b)).getD .poll := by
   rfl
 
-/-- A poll signs a canonical vote body in the vote's role (F3). -/
+/-- A poll signs a canonical vote body in the vote's role. -/
 theorem pollRole_vote (B : VoteBinding) {n : Nat} (m : Vote n) :
     pollRole B n (.vote (encodeVote m)) = B.voteRole m.slot :=
   B.candidateRole_poll_vote 0 m
 
-/-- A poll signs every non-vote body in the poll role (F3′). -/
+/-- A poll signs every non-vote body in the poll role. -/
 theorem pollRole_of_not_vote (B : VoteBinding) (n : Nat) {b : Body} (hb : ∀ w, b ≠ .vote w) :
     pollRole B n b = .poll :=
   B.candidateRole_poll_nonvote n 0 b hb
