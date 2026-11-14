@@ -208,9 +208,9 @@ detail in `TRUST.md`.
   constant-fault proofs' window audit. None is a service constant:
   - sleepy look-ahead `5`: support at the participation point `t_s + Δ` of a slot's votes is last counted by the
     slot's confirmation update at `t_s + 6Δ`, whose pool admits equivocating second votes;
-  - cohort look-ahead `0`: every count of the outage cohort ends by the update of label `j₀ + k`, at least `2Δ`
-    before the no-sleep window's end;
-  - committee look-ahead `5`: the sleepy look-ahead's window inside each slot committee (§"Contract numbers");
+  - outage population and committee look-aheads `5`: at each observation time `t`, support is honest through
+    `min (t + 5Δ) horizon`. The committee may have been selected earlier in the look-back; its charge is still
+    relative to `t`, so population and committee counts use the same retained view;
   - proposer hold `1`: a proposer compromised before the slot's votes are cast can split them with a smaller-root
     second proposal (fork choice breaks score ties by the smaller root), and all votes are cast by the tick at
     `t_s + Δ`.
@@ -248,7 +248,7 @@ detail in `TRUST.md`.
   assumption. The resilience fractions stay ⅓ and ½. These numbers are not claimed minimal.
 - **Fixed assumptions, then guarantees.** `ContractAssumptions` is fixed before any coefficient is chosen and is
   independent of the outer gap `X`; the coefficients (`contract_coefficients`) are closed formulas in `k`, `δ_t`,
-  `fgSlots` and `X`. The outage lag, budget, no-sleep margin and recovery delay are fixed numbers, not guarantees.
+  `fgSlots` and `X`. The outage lag, budget, look-back and recovery delay are fixed numbers, not guarantees.
 - **No ratio on the review surface.** `ContractAssumptions` takes the FG delay in slots, `fgSlots ≥ 2`, with the
   timeout `3·fgSlots ≤ δ_t`; the contract sets `fgDelay := 4·fgSlots − 6`, so healthy runs have
   `6·ΔAC + ΔFG ≤ 4·fgSlots·ΔAC` (the paper's `c_F ≤ fgSlots`). Nothing is lost against the earlier ratio
@@ -258,7 +258,7 @@ detail in `TRUST.md`.
 - **All time numbers are `ΔAC`-coefficients**, the node and the engine delay alike (`Δ_p = Δ_e` under half-open
   delivery). Current values:
   - catch-up `19` (`contract_catchUp`): it covers the Sleepy margin, `18ΔAC + 1 ≤ 19ΔAC` for every `ΔAC ≥ 1`. It is
-    flat, not `k`-dependent: no proof needs a `k`-dependent catch-up.
+    flat, not `k`-dependent. Outage participation has a separate, longer catch-up; readers keep this one.
   - latency `4X + 6` for available and stable (independent of `fgSlots`), `4(X + 3·fgSlots) + 1` for final: the
     final latency covers the window of span `3·fgSlots` (`finalWindow`) and one delay. The post-heal proofs do not
     consume the row-timing components of their premise bundles, which is why the nonfinal latency does not read
@@ -273,8 +273,12 @@ detail in `TRUST.md`.
     so both get stronger; `Admissible` does not bound the heal, and the generic realizability witnesses give
     `SafeActive` from every start, so realizability is unaffected.
   - arming lag `4k + 6`: the label before the outage label (`k + 1½` slots before `b₀`) is fully armed by `b₀`.
-  - no-sleep margin `4k + 6`: the window `[b₀ − (4k + 6)ΔAC, b₁ + (4k + 6)ΔAC]` starts by `t_{j₀ − k}` (the formation
-    window of the arming lock) and ends after the restored votes of labels up to `j₀ + k`.
+  - look-back `η = 12k + 7`: the proof window `[b₀ − (4k + 6)ΔAC, b₁ + (4k + 6)ΔAC]` starts by
+    `t_{j₀ − k}` (the formation window of the arming lock) and ends after the restored votes of labels up to
+    `j₀ + k`. Its length is at most `(budget + 2(4k + 6))ΔAC = (12k + 7)ΔAC`; clamping only shortens it.
+  - outage participation catch-up `max cDur (η·ΔAC − 1)`: `Ready c` requires awake time throughout
+    `[max 0 (t − c − 1), t]`, so readiness covers the full look-back. The `1` is one time unit, not one delay.
+    At the endpoint this catch-up is `(12k + 7)ΔAC − 1`, while readers and the other regimes keep `19ΔAC`.
   - recovery delay `9`: enough for the restored votes of the locked validators to bring the confirmed read back
     above the record.
   - outage budget `4k − 5`: the bound of the obligations proof. The lock window keeps an unpolluted label for gaps
@@ -284,52 +288,54 @@ detail in `TRUST.md`.
     restored-label bound: at `k = 2`, `Δ = 2`, start `11` (`j₀ = 0`) the bound is `18`; `4k − 5` gives stop `≤ 17`
     and `4k − 4` gives `19 > 18`. The earlier `4k − 6` came from the node-level phase-sensitive outage condition
     (V), which went with the node-level regime rows.
-  - committee band lead `2` and length `4k` (`bandLead`, `bandLen`): the band `[b₀ − 2ΔAC, b₀ + (4k − 2)ΔAC]`
-    holds a time of every slot `j₀ … j₀ + k` of the outage lock argument. The cover label `j₀` is the slot of
-    `b₀ − 2ΔAC` (`coverLabel`), so the band starts in slot `j₀`, and `t_{j₀} + 2ΔAC ≤ b₀` puts the band's end at or
-    after `t_{j₀} + 4kΔAC = t_{j₀+k}`. The fast lock of label `j₀` counts the slot-`j₀` committee, so that slot
-    needs a band time. Lead `2` is the least that gives one: `b₀` lies in slot `j₀ + 1` whenever
-    `t_{j₀+1} ≤ b₀ < t_{j₀+1} + 2ΔAC`, and `b₀ − ΔAC` does whenever `b₀ ≥ t_{j₀} + 5ΔAC`, so with lead `0` or `1`
-    no band time lies in slot `j₀` for those outages. Length `4k` is the least that reaches slot `j₀ + k` at the
-    earliest outage `b₀ = t_{j₀} + 2ΔAC`.
+  - committee look-back `η·ΔAC`: the participation bound at `t` holds in every nonempty committee selected
+    at `s ∈ [max 0 (t − η·ΔAC), t]`. This supplies the proof's slot committees at a common observation time,
+    with a common ready set and fault charge. Reusing `η` avoids another parameter; `(8k + 3)ΔAC` suffices
+    to cover the proof's committee selection times, but is not used as a separate bound.
   - committee look-ahead `5` (`committeeAhead`): a slot committee's support at `t_s + ΔAC` is charged with the
-    faults up to the slot's confirmation update at `t_s + 6ΔAC`, as for the sleepy look-ahead. It stays at most
-    `ahead`, so at the population binding, which selects every validator, both committee clauses follow from the
-    population ones (`goldilocksContract_outage_stock_iff`).
-  - look-back `η = 0` (`Params.standard`): see §"Regimes".
+    faults up to the slot's confirmation update at `t_s + 6ΔAC`, as for the sleepy look-ahead. The outage
+    clause uses this same look-ahead relative to the observation time, not the earlier selection time.
+    Each look-ahead is set from its own consumer, with no general rule between them. At the Goldilocks numbers
+    the committee look-ahead is at most the population one (`5 ≤ 5`), so at the population binding, which selects
+    every validator, the committee clause is redundant and the stock reduction holds.
 - **Catch-up is a guarantee coefficient, but its effect is mixed.** A smaller catch-up makes more validators ready
   (shorter `cDur`), which weakens the sleepy and outage participation premises, but it also starts the healthy
   progress window (`healthyLive`, `healedSafe`, `prog [ready, …]`) earlier, so a catch-up change can make those
-  rows incomparable with the former ones. No-sleep `4k + 6` does not cover `catchUp + 1` for `k ≤ 3`; no proof uses
-  that relation.
+  rows incomparable with the former ones. The outage participation catch-up is the maximum of `cDur` and
+  `η·ΔAC − 1`, so reducing `cDur` below the latter does not change outage participation.
 
 ## Regimes
 
-- **The generic outage is slow arming only, with no absolute-majority participation premise.** `System.Outage` has
-  `NoSleepOn a z` (no honest validator falls asleep in `[a, z]`, waking allowed; `a = b₀ − noSleep·Δ`,
-  `z = b₁ + noSleep·Δ`, clamped to `[0, horizon]`) and `CohortOn a z` (faulty plus late wakers fewer than the
-  honest validators awake at `a`; half of all is the lemma `CohortOn.two_mul_lt`). `CorrectProtocol.persists`
-  protects every `Ready` reader from `b₁ + recovery·Δ` (`ProtectedReadyFrom`). `Params` has the fields `noSleep`
-  and `recovery`. `Params.cover` is kept but read by no regime.
-- **The Goldilocks outage regime is plain sleepy.** `goldilocksContract` keeps `Params.standard`'s `η = 0` and has
-  no look-back assumption, so `Outage`'s participation premise `EtaSleepyOn θ (η·Δ)` is plain sleepy and its window
-  bound is `b₁ ≤ b₀ + budget·Δ`. Reason: the proof uses only the plain-sleepy consequence
-  (`EtaReadyAbove.readyAbove`) and the budget bound, and a weaker premise makes `persists` claim more.
+- **The generic outage has run-wide η-sleepy participation and no always-awake participation premise.**
+  `System.Outage` has exactly four clauses: `OutageTimes`, `OutageNet`, population η-sleepy participation, and
+  η-sleepy participation inside every nonempty committee selected in the look-back. Both participation clauses hold
+  at every `t ∈ [0, horizon]` with catch-up `max cDur (η·ΔAC − 1)`. Selection times are clamped to `0`: the
+  shifted selection reads `max 0 (t − δ)`, never a pre-run time. Validators may sleep and wake; those awake
+  somewhere in the look-back but not ready count against its participation bound. This supplies a continuously
+  awake support set without requiring every honest participant to stay awake. `CorrectProtocol.persists` still
+  protects every reader ready with `cDur` from `b₁ + recovery·Δ` (`ProtectedReadyFrom`). `Params.cover` is kept
+  but read by no regime.
+- **The Goldilocks outage regime uses `η = 12k + 7` and `θ = ½`.** The look-back covers the proof window and
+  the participation catch-up makes its ready validators awake throughout that window (§"Contract numbers").
+  Both look-aheads are `5`, so the population and committee inequalities use one retained view. At `η = 0`,
+  the generic participation clauses reduce to plain sleepy with `cDur`; `Params.standard` keeps that default.
+- **Outage participation is η-sleepy, without an always-awake set.** Honest validators may fall asleep inside
+  the proof window; instead, the θ-fraction participation bound over the look-back holds at every run time, in
+  the population and in every nonempty committee selected in the look-back (a majority at the Goldilocks
+  `θ = ½`). Increasing `η` strengthens this participation premise.
 - **Sleepy and Outage carry no ratio** (§"Network and delivery"); only Healthy bounds `ΔFG`.
-- **Committee clauses of the outage regime.** `System.Outage` also reads the external selection
+- **Committee clause of the outage regime.** `System.Outage` also reads the external selection
   (`External.selected`: in the model, the actual selection of the protocol's public `participationRole` at the
-  observation slot, the whole population when it has none). `CommitteeCohortOn` asks the cohort inequality inside
-  each nonempty committee selected at a time of the public band `[b₀ − bandLead·ΔAC, b₀ − bandLead·ΔAC +
-  bandLen·ΔAC]`, on the same retained view as `CohortOn`; `CommitteeSleepyOn` asks η-sleepy participation inside
-  each nonempty selected committee throughout, with its own look-ahead `committeeAhead·ΔAC`. Reasons: a committee
-  protocol counts its votes inside the slot's committee, so its outage argument needs the honest majority there,
-  not only in the population; the band is fixed by `b₀` and the contract's numbers and the committees by the
-  public selection, never by run events; the inequalities are evaluated from participation and faults on the
-  retained view; a committee is the one selected for its observation slot, and a later fault charge reads that
-  same set rather than selecting again. Both clauses are vacuous at empty selections; at a population-wide
-  selection with `committeeAhead ≤ ahead` they follow from the population clauses, so a protocol without a
-  participation role meets exactly the population regime at such numbers. The band numbers are contract numbers
-  (§"Contract numbers").
+  observation slot, the whole population when it has none). Its look-back committee clause asks η-sleepy
+  participation, at every run time `t`, inside each nonempty committee selected at `max 0 (t − δ)` for
+  `δ ∈ [0, η·ΔAC]`, with the outage catch-up and its own look-ahead `committeeAhead·ΔAC`. Reasons: a committee
+  protocol counts its votes inside the slot's committee, so its outage argument needs the participation bound there,
+  not only in the population; quantifying over the look-back reaches every committee the proof counts at one
+  common observation time, with one ready set and fault charge, and no run-dependent band; a committee is the one
+  selected for its observation slot, and a later fault charge reads that same set rather than selecting again.
+  The clause is vacuous at empty selections; at a population-wide selection with `committeeAhead ≤ ahead` it
+  follows from the population clause, so a protocol without a participation role meets exactly the population
+  regime at such numbers.
 - **Node-level regime rows.** The node-level rows R.1, R.2, R.7 and R.8 (`Milestones/Statements/Regimes/{Sleepy,
   Always}`) are proved milestones, and the obligations proof uses their definitions. The node-level rows R.3–R.6
   (healed, final, outage, weak continuation) are not stated: R.3–R.5 correspond to the generic rows `healedSafe`,
@@ -475,7 +481,8 @@ detail in `TRUST.md`.
 - **The population binding is the specification.** The specification's committee of every slot is all of `V`, and
   `goldilocks S` is `goldilocksWith ⟨S, stock⟩`. At `stock` every committee definition reduces to the
   specification's: votes are signed in the poll role, `mayVote` holds at every slot, `committeeSize = n`, and the
-  committee clauses of `System.Outage` follow from the population ones (`goldilocksContract_outage_stock_iff`).
+  committee clause of `System.Outage` at the Goldilocks contract (committee look-ahead `5 ≤ 5`, the population
+  one) follows from the population clause (`goldilocksContract_outage_stock_iff`).
   The test `ConsensusLeanTest/Goldilocks/VoteBinding.lean` checks that the population binding equals the
   population-only shape (`stock_legacy`), and exercises a proper-subset binding of one key per slot. Which
   certified statement holds at which binding is in §"Trusted surface and Challenge scope".
@@ -610,12 +617,12 @@ detail in `TRUST.md`.
   `PersistsWith` states the `persists` claim of `ShapeClaimsAt`, verbatim, for the binding-generic family
   `goldilocksWith S` at every `S : BoundSetup` (population-wide votes or a per-slot committee), at the same
   contract `goldilocksContract A (contract_coefficients S A)`. `MeetsObligations` and `GoldilocksCorrect`
-  quantify over `Setup` and read the population binding. Reason: the committee clauses of the
-  outage regime (the cohort inequality inside each committee selected in the band, committee sleepy
-  participation) come in addition to its population clauses and are its only binding-dependent premises, and
-  the outage proof is binding-generic; the healthy, sleepy and static rows are proved at the population binding
-  only. At the population binding the committee clauses follow from the population ones (§"Committee
-  modelling"), so the statement is the stock `persists` field
+  quantify over `Setup` and read the population binding. Reason: the look-back committee clause of the
+  outage regime reads the binding's selection and is its only binding-dependent premise, and the outage proof is
+  binding-generic; the healthy, sleepy and static rows are proved at the population binding only. At the
+  population binding the committee clause follows from the population clause at this contract (committee
+  look-ahead `5 ≤ 5`; §"Committee modelling"), so the
+  statement is the stock `persists` field
   (`Obligations.Test.Contract.claims_with_persistsWith`). A proper-subset committee binding,
   `AsChainShape.Regression.committeeOne`, is `Obligations.Test.Contract.goldilocksWith_committeeOne`; its
   outage regime has a clean witness whose committee is never the population

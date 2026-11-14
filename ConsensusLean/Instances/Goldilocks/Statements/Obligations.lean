@@ -29,7 +29,7 @@ gap `X`.
   and latency `contract_latency`. Only the final latency reads the assumptions (`fgSlots`)
   directly; heal depends on `fgSlots` only through the `δ_t` that `3·fgSlots ≤ δ_t` requires.
 
-The time numbers (catch-up, heal, latency, arming lag, outage budget, no-sleep margin, recovery
+The time numbers (catch-up, heal, latency, arming lag, outage budget, outage look-back, recovery
 delay) are coefficients of `ΔAC`, the node and the engine delay alike (`Δp = Δe`: L0 delivers
 strictly before the bound).
 
@@ -58,7 +58,8 @@ def healMargin (S : Setup) (X : ℕ+) : Nat :=
 the healthy regime assumes `6·ΔAC + ΔFG ≤ 4·fgSlots·ΔAC` (`fgDelay`, `Params.fgDelay`), the
 paper's `c_F ≤ fgSlots`; the timeout pays the route-A window, `3·fgSlots ≤ δ_t`. The final
 pattern is determined by these, not chosen by a caller; outer gaps never enter the timeout
-bound. The outage regime is plain sleepy (`η = 0`), so no outage look-back is assumed. -/
+bound. The contract fixes the outage look-back at `η = 12k + 7`, independently of these
+FG delay and timeout assumptions. -/
 structure ContractAssumptions (S : Setup) where
   fgSlots : Nat
   two_le_fgSlots : 2 ≤ fgSlots
@@ -120,26 +121,27 @@ An abbreviation exposes the index type for the adapter signatures.
 Outage numbers (slot `4ΔAC`; slow arming only):
 * arming lag `4k + 6`: the label before the outage label (`k + 1½` slots before `b₀`) is fully
   armed by `b₀`;
-* no-sleep margin `4k + 6`: the window `[b₀ − (4k+6)ΔAC, b₁ + (4k+6)ΔAC]` starts by
-  `t_{j₀ − k}` (the formation window of the arming lock) and ends after the restored votes of
-  labels up to `j₀ + k`;
+* look-back `η = 12k + 7`: the proof window
+  `[b₀ − (4k+6)ΔAC, b₁ + (4k+6)ΔAC]` has length at most
+  `(budget + 2(4k+6))ΔAC = (12k+7)ΔAC`;
+* outage participation catch-up `max cDur (η·ΔAC − 1)`: readiness covers the whole
+  look-back, since `Ready c` requires `c + 1` awake time units. Readers keep `cDur`;
 * recovery delay `9`: enough for the restored votes of the locked validators to bring
   the confirmed read back above the record;
-* budget `4k − 5` and look-back `η = 0` (`Params.standard`): the outage regime is plain sleepy;
-  `4k − 5` is the bound of the obligations proof (the lock window keeps an unpolluted label for
+* budget `4k − 5`: the bound of the obligations proof (the lock window keeps an unpolluted label for
   outages up to `(4k − 5)ΔAC`, `exists_unpolluted_label`).
 The reasons behind these numbers are in `docs/decisions.md` §"Contract numbers".
 The growing-fault windows (`docs/decisions.md` §"Adversary growth"):
 * sleepy look-ahead `ahead = 5`: support at the participation point `t_s + Δ` of a
   slot's votes is last counted by the slot's confirmation update at `t_s + 6Δ`;
-* outage cohort look-ahead `0`: every count of the cohort ends by the update of
-  label `j₀ + k`, before the no-sleep window's end;
 * proposer hold `1`: a proposer honest through `t_s + Δ`, when the slot's votes are
   cast, cannot split them with a second proposal of its slot;
-* committee band lead `2` and length `4k`: the band `[b₀ − 2ΔAC, b₀ + (4k − 2)ΔAC]` starts in
-  the slot of `b₀ − 2ΔAC`, the outage's cover label `j₀`, and reaches label `j₀ + k`;
-* committee look-ahead `5`: the sleepy look-ahead inside each slot committee, at most `ahead`, so
-  at the population binding the committee clauses follow from the population ones.
+* committee look-ahead `5`: the same fault charge as the population clause. At every run time,
+  the bound holds for every nonempty committee selected in the preceding `η·ΔAC`, restricted
+  to nonnegative selection times. This includes the proof's committees at one common observation
+  time. Each look-ahead is set from its own consumer; at these numbers the committee look-ahead
+  is at most `ahead` (`5 ≤ 5`), so at the population binding the committee clause is redundant
+  and the stock reduction holds.
 These numbers are not claimed minimal. -/
 abbrev goldilocksContract {S : Setup} (A : ContractAssumptions S)
     (C : ContractCoefficients) : Contract ProgressReq where
@@ -147,13 +149,10 @@ abbrev goldilocksContract {S : Setup} (A : ContractAssumptions S)
   idx_nonempty := ⟨1⟩
   params := { Params.standard (catchUp := C.catchUp) (lag := 4 * S.k + 6)
       (budget := 4 * S.k - 5) (heal := C.heal) (latency := C.latency) with
-    noSleep := 4 * S.k + 6
+    η := 12 * S.k + 7
     recovery := 9
     fgDelay := A.fgDelay
     ahead := 5
-    cohortAhead := 0
-    bandLead := 2
-    bandLen := 4 * S.k
     committeeAhead := 5 }
   progress := fun cap X =>
     .recur
@@ -209,15 +208,12 @@ satisfies the `persists` claim of `ShapeClaimsAt`, verbatim, at the contract
 `[b₀, b₁)` armed at `T`, the stable (`confirmed`) chain read at `T` by every node ready at `T` is a
 prefix of the resilience target (`available`, also `confirmed`) read by every node ready at any
 time from the recovery point `b₁ + 9·ΔAC` to the horizon, or a hash collision is observed. The
-outage regime's population clauses still apply: η-sleepy participation to the horizon, and the
-no-sleep window and the cohort inequality on `[outageStart, outageEnd]` on the view retained
-through `cohortAt`. Its committee clauses come in addition: inside each nonempty committee
-selected in the band `[b₀ − 2ΔAC, b₀ + (4k − 2)ΔAC]`, the cohort inequality on the retained view,
-and committee sleepy participation (η = 0 at this contract) throughout, look-ahead `5ΔAC`. At the
-population binding every validator is selected, so the committee clauses coincide with the
-population cohort and sleepy clauses, and the statement is the `persists` field of
-`MeetsObligations`. Only this row is stated per binding: the other rows of `MeetsObligations` and
-`GoldilocksCorrect` stay at the population binding. -/
+premise is `System.Outage` at this contract: its population clause does not depend on the
+binding, and its look-back committee clause reads the binding's selection. At the population
+binding every validator is selected and the committee look-ahead is at most the population one
+(`5 ≤ 5`), so the committee clause is implied by the population clause, and the statement is
+the `persists` field of `MeetsObligations`. Only this row is stated per binding: the other rows
+of `MeetsObligations` and `GoldilocksCorrect` stay at the population binding. -/
 def PersistsWith : Prop :=
   ∀ (S : BoundSetup) (A : ContractAssumptions S.toSetup) (V : Type) [Fintype V] [DecidableEq V],
     ∀ g, schema.output .stable = some g → ∀ T b₀ b₁,

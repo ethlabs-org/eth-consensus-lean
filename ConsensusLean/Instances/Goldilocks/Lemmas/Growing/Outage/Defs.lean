@@ -14,15 +14,16 @@ The outage lock-safety argument at trace level, for a time-indexed honest set
 compatible with `B`. Every node quantifier reads honesty at the cut of the event it
 constrains (`HVoteAt`, `y ∈ H (tr.time k)` for the state at cut `k`).
 
-* `OutageLockPremises`: the premise package. The cohort is retained at the window end `z`
+* `OutageLockPremises`: the premise package. The holders `A₀` and the look-back opponents `W` are
+  retained at the window end `z`
   (`A₀ ⊆ H z`, `W ⊆ H z`); a validator honest at `z` and awake in `[a, z]`
   is in `A₀ ∪ W` (`hawake`). The fault bound is the count shapes `SleepyBoundsFrom` from slot `0`
-  through every horizon that an honest call reaches (`hB`). Every cohort count runs at a time
+  through every horizon that an honest call reaches (`hB`). Every opponents count runs at a time
   `≤ z`: a time up to `t_{j₀+k} + 6Δ` that an honest call reaches is at or before `z` (`hzc`).
   The slot committees `K` carry their facts (`facts`: size, P, frames, gate), their count
-  shapes (`hBK`) and, inside each band committee, the cohort count (`hcohortK`).
+  shapes (`hBK`) and, inside each band committee, the opponents count (`hopponentsK`).
 * `two_mul_lt_K`: `2·|K m ∩ ((H z)ᶜ ∪ W)| < committeeSize` at a band label; `two_faults_lt_K`:
-  `2·|K s ∩ (H d)ᶜ| < committeeSize` at `d ∈ [t_s, t_s + 6Δ]`; `cohort_classify`: a vote cast in
+  `2·|K s ∩ (H d)ᶜ| < committeeSize` at `d ∈ [t_s, t_s + 6Δ]`; `holder_or_opponent`: a vote cast in
   `[a, z]` by a node honest then is by `A₀`, by `W`, or by a validator compromised by `z`.
 * `OutageVoteInv`, `OutageLockInv`, `OutageS5StepAt`: the cut invariant, with every event field at
   the cut of its event, and the per-node state fields (`locks`, `caches`, `viable`) at a read
@@ -115,7 +116,8 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin
   /-- The outage start and stop. -/
   b₀ : Time
   b₁ : Time
-  /-- The no-sleep window `[a, z]`; `z` is also the time the cohort is retained at. -/
+  /-- The proof window `[a, z]`; `z` is also the time the holders and opponents are
+  retained at. -/
   a : Time
   z : Time
   /-- The protected block. -/
@@ -124,7 +126,8 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin
   σ : Nat
   j₀ : Nat
   r : Nat
-  /-- The cohort awake at `a`, and the late wakers, both honest at `z`. -/
+  /-- The holders `A₀`, awake throughout `[a, z]`, and the look-back opponents `W` (other
+  validators awake in the window), both honest at `z`. -/
   A₀ : Set (Fin sp.n)
   W : Set (Fin sp.n)
   hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini
@@ -151,22 +154,22 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin
   call reaches. -/
   hBK : ∀ b, (∃ x i, x ∈ H (tr.time i) ∧ tr.IsCall x i ∧ b ≤ tr.time i) →
     CommitteeBoundsFrom tr H K 0 b
-  /-- The cohort, retained at `z`. -/
+  /-- The holders and opponents, retained at `z`. -/
   hA₀ : A₀ ⊆ H z
   hW : W ⊆ H z ∧ Disjoint A₀ W
-  /-- Inside each slot committee of the band, the cohort outnumbers the compromised and the late
-  wakers, at every label that an honest call reaches. -/
-  hcohortK : ∀ m, j₀ ≤ m → m ≤ j₀ + sp.k →
+  /-- Inside each slot committee of the band, the holders outnumber the compromised and the
+  look-back opponents, at every label that an honest call reaches. -/
+  hopponentsK : ∀ m, j₀ ≤ m → m ≤ j₀ + sp.k →
     (∃ x i, x ∈ H (tr.time i) ∧ tr.IsCall x i ∧ sp.ts m ≤ tr.time i) →
     (K.committee m ∩ ((H z)ᶜ ∪ W)).ncard < (K.committee m ∩ A₀).ncard
-  /-- Every validator honest at `z` and awake in `[a, z]` is in `A₀` or a late waker. -/
+  /-- Every validator honest at `z` and awake in `[a, z]` is in `A₀` or in `W`. -/
   hawake : ∀ x t, a ≤ t → t ≤ z → x ∈ H z → tr.awake x t → x ∈ A₀ ∪ W
   /-- `A₀` is awake throughout `[a, z]`; a restart of `A₀` up to `z` is at most `a + Δ`. -/
   hA₀awake : ∀ x ∈ A₀, ∀ t, a ≤ t → t ≤ z → tr.awake x t
   hA₀join : ∀ x ∈ A₀, ∀ k, tr.RestartAt x k → tr.time k ≤ z → tr.time k ≤ a + sp.Δ
   ha : a + sp.Δ ≤ sp.ts j₀
-  /-- Every cohort consumption is inside the window: a time up to `t_{j₀+k} + 6Δ` that an honest
-  call reaches is at or before `z`. -/
+  /-- Every holder and opponent count is inside the window: a time up to `t_{j₀+k} + 6Δ` that an
+  honest call reaches is at or before `z`. -/
   hzc : ∀ t, t ≤ sp.ts (j₀ + sp.k : Nat) + 6 * sp.Δ →
     (∃ x i, x ∈ H (tr.time i) ∧ tr.IsCall x i ∧ t ≤ tr.time i) → t ≤ z
   /-- Arming: the label-`(j₀ − 1)` lock of every member of `A₀`, when `P` is not genesis and the
@@ -213,7 +216,7 @@ theorem two_mul_lt_K (D : OutageLockPremises tr H proposer dg ini) {m : Nat} (h�
       (D.K.committee m).ncard :=
     Set.ncard_le_ncard (Set.union_subset Set.inter_subset_left Set.inter_subset_left)
   rw [D.facts.hsize m] at h2
-  have := D.hcohortK m h₁ h₂ hr
+  have := D.hopponentsK m h₁ h₂ hr
   omega
 
 /-- **CS2 inside a slot committee**: at `d ∈ [t_s, t_s + 6Δ]` that an honest call reaches, the
@@ -229,9 +232,9 @@ theorem two_faults_lt_K (D : OutageLockPremises tr H proposer dg ini) {s : Nat} 
   · exact hB.twoK s d (Nat.zero_le _) h₁ le_rfl hd
   exact hB.two_of_slotK (Nat.zero_le _) (by linarith [sp.toParams.hΔ]) le_rfl h₂
 
-/-- **The cohort classification**: a vote cast in `[a, z]` by a node honest at its cast is by a
-member of `A₀`, by a late waker, or by a validator compromised by `z`. -/
-theorem cohort_classify (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n} {k : Nat}
+/-- **Holder or opponent**: a vote cast in `[a, z]` by a node honest at its cast is by a
+member of `A₀`, by a member of `W`, or by a validator compromised by `z`. -/
+theorem holder_or_opponent (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n} {k : Nat}
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x k e) (hka : D.a ≤ tr.time k)
     (hkz : tr.time k ≤ D.z) : x ∈ D.A₀ ∨ x ∈ D.W ∨ x ∉ H D.z := by
   by_cases hxz : x ∈ H D.z

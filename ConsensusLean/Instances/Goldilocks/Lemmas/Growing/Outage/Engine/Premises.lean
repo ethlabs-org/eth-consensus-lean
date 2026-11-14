@@ -10,14 +10,15 @@ public section
 
 `outageLockPremises_of_arming_at` builds the trace-level premise package
 `Compose.Growing.OutageLockPremises` of the lock module from an outage query, its pre-start
-service and an armed ready source, with `P` its origin, `A₀ = holdersAt`, `W = lateKeysAt`,
+service and an armed ready source, with `P` its origin, `A₀ = holdersAt`, `W = opponentsAt`,
 `j₀` the cover label and `r` the restored label.
 
-* The cohort premises come from the outage's no-sleep and cohort counts on the view retained
-  through the cohort time `cohortAt = outageEnd = z`, with no rewrite of the retained view:
-  `A₀ ⊆ H z`, `W ⊆ H z`, and a validator honest at `z` awake in `[a, z]`
-  is in `A₀ ∪ W`; inside each band committee `K m`, `|K m ∩ ((H z)ᶜ ∪ W)| < |K m ∩ A₀|`
-  (`cohort_lt_K`, from the committee cohort premise).
+* The holder and opponent premises come from the outage's η-sleepy counts at the window end
+  `z`, on the view retained through `z`: `A₀` (ready at `z` with the outage catch-up) and `W`
+  (the other validators awake in the look-back) are honest at `z`; a validator honest at `z`
+  awake in `[a, z]` is in `A₀ ∪ W`, since the look-back covers `[a, z]`; `A₀` is awake throughout
+  `[a, z]`, since the outage catch-up covers it; inside each band committee `K m`,
+  `|K m ∩ ((H z)ᶜ ∪ W)| < |K m ∩ A₀|` (`opponents_lt_K`, from the look-back committee clause).
 * The slot committees are the query's `Q.K`, with their facts `Q.facts` (size, P, frames,
   gate) and their count shapes `Q.boundsK` (from the committee η-sleepy premise).
 * The two count shapes through every horizon come from the η-sleepy premise (η-sleepy implies
@@ -73,8 +74,8 @@ variable {S : BoundSetup} {A : ContractAssumptions S.toSetup} {V : Type} [Fintyp
 
 open Classical in
 /-- **The adapter**: the premise package of the lock module under growing faults from an armed
-ready source, with `P` its origin, `A₀` the cohort, `W` its late wakers, `j₀` the cover label and
-`r` the restored label. -/
+ready source, with `P` its origin, `A₀` the holders, `W` its opponents awake in the look-back,
+`j₀` the cover label and `r` the restored label. -/
 noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
     (service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start)
     {v : V} (hsh : Q.start ≤ Q.run.2.horizon)
@@ -97,14 +98,14 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
   have hwin := outage_window_cover_at Q
   { b₀ := Q.start
     b₁ := Q.stop
-    a := (Sys (goldilocksWith S) V).outageStart (K S.toSetup A) Q.start Q.run
-    z := (Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run
+    a := Q.winStart
+    z := Q.winEnd
     P := ar.origin
     σ := if ar.origin.root = Q.params.genesisRoot then 0 else ar.σ
     j₀ := Compose.coverLabel Q.params Q.start
     r := Q.restoredLabel
     A₀ := Q.holdersAt
-    W := Q.lateKeysAt
+    W := Q.opponentsAt
     hrun := hrun
     K := Q.K
     facts := Q.facts hrun
@@ -142,9 +143,9 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
     hB := fun b ⟨_, _, _, hc, hle⟩ => hBb b (hle.trans (Q.call_le_horizon hc))
     hBK := fun b ⟨_, _, _, hc, hle⟩ => Q.boundsK hrun (hle.trans (Q.call_le_horizon hc))
     hA₀ := Q.holdersAt_subset
-    hW := ⟨Q.lateKeysAt_subset, Q.holdersAt_disjoint⟩
-    hcohortK := fun m h₁ h₂ ⟨_, _, _, hc, hle⟩ =>
-      Q.cohort_lt_K h₁ h₂ (hle.trans (Q.call_le_horizon hc)) hsh
+    hW := ⟨Q.opponentsAt_subset, Q.holdersAt_disjoint⟩
+    hopponentsK := fun m h₁ h₂ ⟨_, _, _, hc, hle⟩ =>
+      Q.opponents_lt_K h₁ h₂ (hle.trans (Q.call_le_horizon hc)) hsh
     hawake := fun x t hat htz hxz haw => Q.classify hat htz hxz haw
     hA₀awake := fun x hx t hat htz => Q.holder_awake hx hat htz
     hA₀join := fun x hx k hk hkz =>

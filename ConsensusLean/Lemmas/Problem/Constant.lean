@@ -128,16 +128,6 @@ theorem healthyOn_constant_iff {p : EnvPoint V} (h : p.ConstantFaults) (β : ℚ
   · exact fun ⟨hb, ha⟩ => ⟨hb, fun v hv t ht htb => ha v t ht htb hv⟩
   · exact fun ⟨hb, ha⟩ => ⟨hb, fun v t ht htb hv => ha v hv t ht htb⟩
 
-theorem noSleepOn_constant_iff {p : EnvPoint V} (h : p.ConstantFaults) (a b : Time) :
-    p.NoSleepOn a b ↔ ∀ v ∈ p.honestAt 0, ∀ t, a ≤ t → t ≤ b →
-      p.env.awake v t = true → p.AwakeOnClosed v t b := by
-  simp only [NoSleepOn, HonestAt, h b, honestAt, Finset.mem_sdiff,
-    Finset.mem_univ, true_and]
-
-theorem cohortOn_constant_iff {p : EnvPoint V} (h : p.ConstantFaults) (a b : Time) :
-    p.CohortOn a b ↔ (p.faultyAt 0 ∪ p.lateWakers a b).card < (p.awakeAt a).card := by
-  simp only [CohortOn, h b]
-
 omit [Fintype V] [DecidableEq V] in
 theorem txLiveActive_constant_iff {p : EnvPoint V} (h : p.ConstantFaults) (c start D : Time) :
     p.TxLiveActive c start D ↔ ∃ (x : Tx) (t t' : Time) (u w : V),
@@ -283,16 +273,14 @@ theorem outage_constant_iff [Fintype V] [DecidableEq V] {Prog : Type}
       (S.log r).OutageNet (S.pt r) b₀ b₁ ∧
       (∀ t, 0 ≤ t → t ≤ (S.pt r).horizon →
         (S.pt r).EtaReadyAbove K.params.θ ((K.params.η : Time) * (S.pt r).env.ΔAC)
-          (S.cDur K r) t) ∧
-      (S.pt r).NoSleepOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r) ∧
-      (S.pt r).CohortOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r) ∧
-      (S.pt r).CommitteeCohortOn (X.selected (S.pt r).env (X.ext r))
-        (S.outageStart K b₀ r) (S.outageEnd K b₁ r)
-        (S.bandStart K b₀ r) (S.bandEnd K b₀ r) ∧
-      (S.pt r).CommitteeSleepyOn (X.selected (S.pt r).env (X.ext r)) K.params.θ
-        ((K.params.η : Time) * (S.pt r).env.ΔAC) (S.cDur K r)
-        (S.committeeAheadDur K r) 0 (S.pt r).horizon := by
-  simp only [Outage, EnvPoint.retain_eq hc, EnvPoint.etaSleepyOn_iff hc]
+          (max (S.cDur K r) ((K.params.η : Time) * (S.pt r).env.ΔAC - 1)) t) ∧
+      ∀ δ : Time, 0 ≤ δ → δ ≤ (K.params.η : Time) * (S.pt r).env.ΔAC →
+        (S.pt r).CommitteeSleepyOn
+          (fun t => X.selected (S.pt r).env (X.ext r) (max 0 (t - δ)))
+          K.params.θ ((K.params.η : Time) * (S.pt r).env.ΔAC)
+          (max (S.cDur K r) ((K.params.η : Time) * (S.pt r).env.ΔAC - 1))
+          (S.committeeAheadDur K r) 0 (S.pt r).horizon := by
+  simp only [Outage, EnvPoint.etaSleepyOn_iff hc]
 
 /-- At the horizon, constant-fault historical evidence is exactly the old terminal honest view. -/
 theorem honestEvidenceBy_eq (hS : S.Laws) (hr : S.Valid r)

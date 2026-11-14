@@ -237,7 +237,7 @@ theorem fastLock_compatible_at {n : Nat} (hvi : OutageVoteInv D n) {y : Fin sp.n
     obtain ⟨j, hj, e, hve, rfl⟩ := hcut v hv hvH
     exact hB (compatible_of_voteCompat hU hRU hRr hBR (hcomp j hj e hve rfl hvs))
   by_cases hsK : s ≤ D.j₀ + sp.k
-  · -- the cohort count at `t_c ≤ z`: the counted validators lie in `K s ∩ ((H z)ᶜ ∪ W)`
+  · -- the opponents count at `t_c ≤ z`: the counted validators lie in `K s ∩ ((H z)ᶜ ∪ W)`
     have hcz := hcz hsK
     have hsub : {u | ∃ v ∈ CV, v.val = u} ⊆ D.K.committee s ∩ ((H D.z)ᶜ ∪ D.W) := by
       intro u hu
@@ -246,7 +246,7 @@ theorem fastLock_compatible_at {n : Nat} (hvi : OutageVoteInv D n) {y : Fin sp.n
       by_contra hu
       simp only [Set.mem_union, Set.mem_compl_iff, not_or, not_not] at hu
       exact hgood v hv (D.hrun.antitone hcz hu.1) fun j hj e hve he hes =>
-        hvi.voteCompat_of_not_lateWaker_at hj hve (by omega) fun _ => hu
+        hvi.voteCompat_of_not_opponent_at hj hve (by omega) fun _ => hu
     have := Set.ncard_le_ncard hsub
     have := D.two_mul_lt_K (not_lt.1 hs) hsK ⟨y, c, hyc, hcall, fastLockAt_ts_le D.hrun hfl⟩
     omega

@@ -290,28 +290,16 @@ theorem outage_committee_margin {V : Type} [Fintype V] [DecidableEq V]
       exact le_trans (Finset.card_le_card Finset.inter_subset_left) (by simp)
     omega
 
-/-- A constant awake profile with a selected ready majority meets both guarded
-committee clauses. This applies to every retained view used by the witnesses. -/
+/-- A constant awake profile with a selected ready majority meets the committee clause, for
+every look-back and catch-up. This applies to every retained view used by the witnesses. -/
 theorem committee_of_constant_awake {V : Type} [Fintype V] [DecidableEq V]
-    (p : EnvPoint V) (C : Finset V) (θ : ℚ) (η c W a z retention lo hi : Time)
+    (p : EnvPoint V) (C : Finset V) (θ : ℚ) (η c W : Time)
     (hθ : 0 ≤ θ ∧ θ ≤ 1 / 2) (hc : 0 ≤ c)
     (haw : ∀ v t u, p.env.awake v t = p.env.awake v u)
     (hmajority : ∀ d, C.Nonempty →
       (p.faultyAt d ∩ C).card < ((p.retain d).awakeAt 0 ∩ C).card) :
-    (p.retain retention).CommitteeCohortOn (fun _ => C) a z lo hi ∧
-      p.CommitteeSleepyOn (fun _ => C) θ η c W 0 p.horizon := by
+    p.CommitteeSleepyOn (fun _ => C) θ η c W 0 p.horizon := by
   classical
-  have hlate (d : Time) : (p.retain d).lateWakers a z = ∅ := by
-    rw [EnvPoint.lateWakers, Finset.sdiff_eq_empty_iff_subset]
-    intro v hv
-    obtain ⟨_, u, -, -, hh, hu⟩ := Finset.mem_filter.mp hv
-    exact Finset.mem_filter.mpr ⟨Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, hh⟩,
-      (haw v a u).trans hu⟩
-  have hawake (d t : Time) : (p.retain d).awakeAt t = (p.retain d).awakeAt 0 := by
-    ext v
-    change (v ∈ (Finset.univ \ p.faultyAt d).filter (fun w => p.env.awake w t = true)) ↔
-      v ∈ (Finset.univ \ p.faultyAt d).filter (fun w => p.env.awake w 0 = true)
-    simp only [Finset.mem_filter, haw v t 0]
   have hready (d t : Time) (ht : 0 ≤ t) :
       (p.retain d).readyAt c t = (p.retain d).awakeAt 0 := by
     ext v
@@ -324,34 +312,30 @@ theorem committee_of_constant_awake {V : Type} [Fintype V] [DecidableEq V]
       obtain ⟨hh, hr⟩ := Finset.mem_filter.mp hv
       exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, (Finset.mem_sdiff.mp hh).2,
         fun u _ _ => (haw v u 0).trans hr⟩
-  constructor
-  · intro t _ _ _ hC
-    rw [hlate retention, Finset.union_empty, hawake retention a]
-    exact hmajority retention hC
-  · intro t ht _ hC
-    let d := p.lookAhead W t
-    have hm := hmajority d hC
-    have hmq : ((p.faultyAt d ∩ C).card : ℚ) <
-        (((p.retain d).awakeAt 0 ∩ C).card : ℚ) := by exact_mod_cast hm
-    have hcount : θ * (((((p.retain d).awakeAt 0 ∩ C).card +
-        (p.faultyAt d ∩ C).card : Nat) : ℚ)) <
-        (((p.retain d).awakeAt 0 ∩ C).card : ℚ) := by
-      push_cast
-      linarith [mul_le_mul_of_nonneg_right hθ.2
-        (show (0 : ℚ) ≤ ((p.retain d).awakeAt 0 ∩ C).card + (p.faultyAt d ∩ C).card by positivity)]
-    dsimp only
-    split_ifs
-    · rw [hready d t ht]
-      exact hcount
-    · have hsub : (p.retain d).awakeIn (max 0 (t - η)) t ⊆ (p.retain d).awakeAt 0 := by
-        intro v hv
-        obtain ⟨_, u, -, -, hh, hu⟩ := Finset.mem_filter.mp hv
-        exact Finset.mem_filter.mpr ⟨Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, hh⟩,
-          (haw v 0 u).trans hu⟩
-      rw [hready d t ht, Finset.union_eq_left.mpr hsub]
-      have hn := Finset.card_union_le ((p.retain d).awakeAt 0 ∩ C) (p.faultyAt d ∩ C)
-      rw [← Finset.union_inter_distrib_right] at hn
-      exact lt_of_le_of_lt (mul_le_mul_of_nonneg_left (by exact_mod_cast hn) hθ.1) hcount
+  intro t ht _ hC
+  let d := p.lookAhead W t
+  have hm := hmajority d hC
+  have hmq : ((p.faultyAt d ∩ C).card : ℚ) <
+      (((p.retain d).awakeAt 0 ∩ C).card : ℚ) := by exact_mod_cast hm
+  have hcount : θ * (((((p.retain d).awakeAt 0 ∩ C).card +
+      (p.faultyAt d ∩ C).card : Nat) : ℚ)) <
+      (((p.retain d).awakeAt 0 ∩ C).card : ℚ) := by
+    push_cast
+    linarith [mul_le_mul_of_nonneg_right hθ.2
+      (show (0 : ℚ) ≤ ((p.retain d).awakeAt 0 ∩ C).card + (p.faultyAt d ∩ C).card by positivity)]
+  dsimp only
+  split_ifs
+  · rw [hready d t ht]
+    exact hcount
+  · have hsub : (p.retain d).awakeIn (max 0 (t - η)) t ⊆ (p.retain d).awakeAt 0 := by
+      intro v hv
+      obtain ⟨_, u, -, -, hh, hu⟩ := Finset.mem_filter.mp hv
+      exact Finset.mem_filter.mpr ⟨Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, hh⟩,
+        (haw v 0 u).trans hu⟩
+    rw [hready d t ht, Finset.union_eq_left.mpr hsub]
+    have hn := Finset.card_union_le ((p.retain d).awakeAt 0 ∩ C) (p.faultyAt d ∩ C)
+    rw [← Finset.union_inter_distrib_right] at hn
+    exact lt_of_le_of_lt (mul_le_mul_of_nonneg_left (by exact_mod_cast hn) hθ.1) hcount
 
 /-! ## The bad-slot selection -/
 
@@ -435,12 +419,11 @@ select key `1`, honest and always awake); transaction `42` submitted to
   transaction relay is part of the log too). The witness exercises delayed
   delivery only as far as the family sends messages before `g`;
 * outage: honest `key 2` always asleep, so at most two validators are not
-  ready at any time, and nobody falls asleep or wakes late (the no-sleep window
-  holds for every margin; the late wakers are empty); with `n ≥ 5`, the cohort
-  count is `1 < n − 2` (the faulty `key 0` against the `n − 2` awake honest
-  validators), and η-sleepy participation holds for every look-back `η` (the
-  look-back set has at most `n` members); this is where five validators are
-  needed. The log is eager from `0`: the outage witness exercises
+  ready at any time, for every catch-up; η-sleepy participation holds for every
+  look-back `η` (the look-back set has at most `n` members), and inside every
+  committee of the time-constant selection; with `n ≥ 5` the count is
+  `1 < n − 2` (the faulty `key 0` against the `n − 2` awake honest validators);
+  this is where five validators are needed. The log is eager from `0`: the outage witness exercises
   participation (one honest sleeper in the window, a ready reader from the
   recovery point), not asynchrony.
 
@@ -505,8 +488,6 @@ theorem kv_ne {j j' : Nat} {hj : j < 5} {hj' : j' < 5} (h : j ≠ j') :
 theorem realPoint_env :
     (realPoint key hn Δ hΔ ΔF hΔF awake H).env = ⟨Δ, hΔ, ΔF, hΔF, awake⟩ := by rfl
 
-theorem realPoint_horizon : (realPoint key hn Δ hΔ ΔF hΔF awake H).horizon = H := by rfl
-
 theorem realPoint_constant : (realPoint key hn Δ hΔ ΔF hΔF awake H).ConstantFaults :=
   fun _ => rfl
 
@@ -565,52 +546,6 @@ theorem asleepAlways_readyAt (c t : Time) :
   rw [Finset.card_erase_of_mem h2] at h
   have := realPoint_card_honest key hn hΔ hΔF (asleepAlways (kv key hn 2 (by decide))) H 0
   omega
-
-/-- One sleeper `key 2`: no honest validator falls asleep, nobody wakes late,
-and the honest validators awake at any time are all but the sleeper. -/
-theorem asleepAlways_cohort (a b : Time) :
-    (realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H).NoSleepOn a b ∧
-      (realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H).CohortOn a b := by
-  classical
-  set p := realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H
-  have h2 : kv key hn 2 (by decide) ∈ p.honestAt a := by
-    exact Finset.mem_sdiff.mpr ⟨Finset.mem_univ _,
-      realPoint_honest key hn hΔ hΔF _ H (by decide) (by decide)⟩
-  have hlate : p.lateWakers a b = ∅ := by
-    rw [EnvPoint.lateWakers, Finset.sdiff_eq_empty_iff_subset]
-    intro v hv
-    obtain ⟨_, u, -, -, hh, hu⟩ := Finset.mem_filter.mp hv
-    refine Finset.mem_filter.mpr ⟨?_, ?_⟩
-    · exact Finset.mem_sdiff.mpr ⟨Finset.mem_univ _,
-        (p.honestAt_iff_zero (realPoint_constant key hn hΔ hΔF _ H) v a).mpr
-          ((p.honestAt_iff_zero (realPoint_constant key hn hΔ hΔF _ H) v u).mp hh)⟩
-    have hu' : asleepAlways (kv key hn 2 (by decide)) v u = true := hu
-    have ha' : asleepAlways (kv key hn 2 (by decide)) v a = true := by
-      rw [asleepAlways_apply] at hu' ⊢; exact hu'
-    exact ha'
-  have hawake : p.awakeAt a = (p.honestAt a).erase (kv key hn 2 (by decide)) := by
-    ext v
-    rw [Finset.mem_erase]
-    constructor
-    · intro hv
-      obtain ⟨hh, ha⟩ := Finset.mem_filter.mp hv
-      have ha' : asleepAlways (kv key hn 2 (by decide)) v a = true := ha
-      rw [asleepAlways_apply] at ha'
-      exact ⟨by simpa using ha', hh⟩
-    · rintro ⟨hne, hh⟩
-      refine Finset.mem_filter.mpr ⟨hh, ?_⟩
-      change asleepAlways (kv key hn 2 (by decide)) v a = true
-      simp [asleepAlways_apply, hne]
-  have hc : (p.honestAt a).card + 1 = Fintype.card V :=
-    realPoint_card_honest key hn hΔ hΔF (asleepAlways (kv key hn 2 (by decide))) H a
-  refine ⟨fun v _ t _ _ ht u _ _ => ?_, ?_⟩
-  · have ht' : asleepAlways (kv key hn 2 (by decide)) v t = true := ht
-    change asleepAlways (kv key hn 2 (by decide)) v u = true
-    rw [asleepAlways_apply] at ht' ⊢; exact ht'
-  · unfold EnvPoint.CohortOn
-    rw [hlate, Finset.union_empty, realPoint_faulty, Finset.card_singleton, hawake,
-      Finset.card_erase_of_mem h2]
-    omega
 
 /-- Selected support at the one-fault, one-sleeper point. -/
 theorem asleepAlways_committee_margin (C : Finset V)
@@ -1139,10 +1074,10 @@ theorem sleepyStress_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 :
     change ((realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key 2) H).awakeAt t).card ≤ _
     rw [awakeUpTo_card key hn hΔ hΔF H 2 (by omega)]
 
-/-- The outage witness `(T, [b₀, b₁))`: honest `key 2` always asleep (so it
-sleeps in the window without falling asleep in the no-sleep window), everyone
-else always awake, the synchronous canonical run, horizon
-`H ≥ b₁ + recovery·Δ`. -/
+/-- The outage witness `(T, [b₀, b₁))`: honest `key 2` always asleep, everyone
+else always awake (so readiness does not depend on the catch-up and the
+look-back adds no opponent), the synchronous canonical run, horizon
+`H ≥ b₁ + recovery·Δ`, at every look-back `η`. -/
 theorem outage_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF)
     {T b₀ b₁ : Time}
     (hT : OutageTimes K.params Δ T b₀ b₁) (hTb : T < b₀) (hb : b₀ + Δ ≤ b₁)
@@ -1175,21 +1110,17 @@ theorem outage_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < �
     (asleepAlways (kv key hn 2 (by decide))) H (j := 1) (t := t) (by decide) (by decide)
   have hh2 := fun t => realPoint_honest key hn hΔ hΔF
     (asleepAlways (kv key hn 2 (by decide))) H (j := 2) (t := t) (by decide) (by decide)
-  obtain ⟨hns, hco⟩ := asleepAlways_cohort key hn hΔ hΔF H
-    ((Sys F V).outageStart K b₀ ⟨_, rho⟩) ((Sys F V).outageEnd K b₁ ⟨_, rho⟩)
   have hcomm := committee_of_constant_awake p C K.params.θ
-    ((K.params.η : Time) * Δ) ((Sys F V).cDur K ⟨_, rho⟩)
+    ((K.params.η : Time) * Δ)
+    (max ((Sys F V).cDur K ⟨_, rho⟩) ((K.params.η : Time) * Δ - 1))
     ((Sys F V).committeeAheadDur K ⟨_, rho⟩)
-    ((Sys F V).outageStart K b₀ ⟨_, rho⟩) ((Sys F V).outageEnd K b₁ ⟨_, rho⟩)
-    ((Sys F V).cohortAt K b₁ ⟨_, rho⟩)
-    ((Sys F V).bandStart K b₀ ⟨_, rho⟩) ((Sys F V).bandEnd K b₀ ⟨_, rho⟩)
-    ha.θ_range (mul_nonneg (by positivity) hΔ.le) (fun _ _ _ => rfl)
+    ha.θ_range (le_max_of_le_left (mul_nonneg (by positivity) hΔ.le)) (fun _ _ _ => rfl)
     (asleepAlways_committee_margin key hn hΔ hΔF H C hgood)
   have hselEq : (shapeProgress F V).selected p.env (key', sel) = fun _ => C := funext hselected
   refine ⟨rho, rfl, ⟨hv, hnc, fun _ => rfl, ?_,
       ⟨_, Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, hh1 _⟩⟩⟩,
     ⟨hT, ⟨?_, hse.psync (by linarith only [hb, hTb, hT0, hΔ]) hΔ1 hΔF1⟩,
-      ?_, hns, hco, ?_, ?_⟩,
+      ?_, fun δ _ _ => ?_⟩,
     ⟨hT0, hTb, hb, ⟨_, hh1 _, fun u _ _ => hawake1 u⟩,
       ⟨_, b₀, le_rfl, by linarith only [hb, hΔ], hh2 _,
         show asleepAlways (kv key hn 2 (by decide)) (kv key hn 2 (by decide)) b₀ = false by
@@ -1202,17 +1133,13 @@ theorem outage_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < �
       (he.syncUntil (Model.Run.log_sendsFromZero rho hv) le_rfl hΔ1 hΔF1 b₀)
   · intro t _ _
     exact etaReadyAbove_of_card hn ha.θ_range _ _ t (asleepAlways_readyAt key hn hΔ hΔF H _ t)
-  · change (p.retain ((Sys F V).cohortAt K b₁ ⟨_, rho⟩)).CommitteeCohortOn
-      ((shapeProgress F V).selected p.env (key', sel))
-      ((Sys F V).outageStart K b₀ ⟨_, rho⟩) ((Sys F V).outageEnd K b₁ ⟨_, rho⟩)
-      ((Sys F V).bandStart K b₀ ⟨_, rho⟩) ((Sys F V).bandEnd K b₀ ⟨_, rho⟩)
-    rw [hselEq]
-    exact hcomm.1
-  · change p.CommitteeSleepyOn ((shapeProgress F V).selected p.env (key', sel)) K.params.θ
-      ((K.params.η : Time) * Δ) ((Sys F V).cDur K ⟨_, rho⟩)
+  · change p.CommitteeSleepyOn
+      (fun t => (shapeProgress F V).selected p.env (key', sel) (max 0 (t - δ))) K.params.θ
+      ((K.params.η : Time) * Δ)
+      (max ((Sys F V).cDur K ⟨_, rho⟩) ((K.params.η : Time) * Δ - 1))
       ((Sys F V).committeeAheadDur K ⟨_, rho⟩) 0 H
     rw [hselEq]
-    exact hcomm.2
+    exact hcomm
 
 end Witnesses
 

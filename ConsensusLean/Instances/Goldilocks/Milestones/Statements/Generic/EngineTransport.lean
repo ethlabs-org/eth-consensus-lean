@@ -91,17 +91,13 @@ structure OutageTransport (M : RunMap rho payload) (D : OutagePolicy M)
     (K : Contract ProgressReq) (catchUp look : Time) : Prop where
   participation : rho.ExecutionValid → ∀ T b₀ b₁,
     (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ ⟨E, rho⟩ →
-    D.point.EtaSleepyOn (1 / 2) ((K.params.η : Time) * E.ΔAC) catchUp
+    D.point.EtaSleepyOn (1 / 2) ((K.params.η : Time) * E.ΔAC)
+      (max catchUp ((K.params.η : Time) * E.ΔAC - 1))
       ((Sys F V).aheadDur K ⟨E, rho⟩) 0 D.point.horizon ∧
-    (D.point.retain ((Sys F V).cohortAt K b₁ ⟨E, rho⟩)).NoSleepOn
-      ((Sys F V).outageStart K b₀ ⟨E, rho⟩) ((Sys F V).outageEnd K b₁ ⟨E, rho⟩) ∧
-    (D.point.retain ((Sys F V).cohortAt K b₁ ⟨E, rho⟩)).CohortOn
-      ((Sys F V).outageStart K b₀ ⟨E, rho⟩) ((Sys F V).outageEnd K b₁ ⟨E, rho⟩) ∧
-    D.point.CommitteeSleepyOn D.committee (1 / 2) ((K.params.η : Time) * E.ΔAC)
-      catchUp look 0 D.point.horizon ∧
-    (D.point.retain ((Sys F V).cohortAt K b₁ ⟨E, rho⟩)).CommitteeCohortOn D.committee
-      ((Sys F V).outageStart K b₀ ⟨E, rho⟩) ((Sys F V).outageEnd K b₁ ⟨E, rho⟩)
-      ((Sys F V).bandStart K b₀ ⟨E, rho⟩) ((Sys F V).bandEnd K b₀ ⟨E, rho⟩)
+    ∀ δ, 0 ≤ δ → δ ≤ (K.params.η : Time) * E.ΔAC →
+      D.point.CommitteeSleepyOn (fun t => D.committee (max 0 (t - δ))) (1 / 2)
+        ((K.params.η : Time) * E.ΔAC) (max catchUp ((K.params.η : Time) * E.ΔAC - 1))
+        look 0 D.point.horizon
 
 def CarrierProcessed (M : RunMap rho payload) (B : A.Blk) (y : Fin P.n)
     (j : Nat) (sent deadline : Time) : Prop :=

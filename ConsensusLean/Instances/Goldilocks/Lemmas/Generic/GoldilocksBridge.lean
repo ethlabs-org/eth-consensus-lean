@@ -499,7 +499,7 @@ def high_entry_eq_at_bridge : Prop :=
       ∀ {dg H tr proposer}, high_entry_eq_at_goldilocks (sp := sp) (ro := ro)
         (dg := dg) (H := H) (tr := tr) (proposer := proposer)
 
-/-- UNPROVED headline bridge to the landed `Statements/Obligations.lean:172` statement,
+/-- UNPROVED headline bridge to the landed `Statements/Obligations.lean:171` statement,
 used verbatim. The antecedent retains the full shape obligations for every original setup
 and assumption set, as in `Proofs/Growing/Obligations/Main.lean:35`; local AC evidence alone
 does not supply these obligations. Intended consumer: future generic correctness assembly.

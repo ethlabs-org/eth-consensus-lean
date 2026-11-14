@@ -35,8 +35,8 @@ strictly before the bound), horizon `40`:
     protocol messages; it shows the regime is met with nothing received
     before the GST.
 * `outage_control`: `T = 2 < b₀ = 6 < b₁ = 8`, honest `key 2` always asleep,
-  outage regime (η-sleepy with look-back `2`; no honest validator falls asleep
-  in the no-sleep window `[2, 12]`; the cohort counts, with a faulty opponent)
+  outage regime (η-sleepy with look-back `2` and outage catch-up `3`, in the
+  population and every look-back committee, with a faulty opponent)
   and active outage (a protected source, a sleeper inside the window, a ready
   reader from the recovery point `14`).
 
@@ -125,11 +125,11 @@ def ctrlShape (pub : Public) : ChainShape pub CtrlOut Unit where
 def ctrlFamily : ChainShapeFamily ctrlSchema Unit := ctrlShape
 
 /-- Standard thresholds; catch-up, arming lag and outage budget `1`; outage
-look-back `η = 2`, no-sleep margin `2` and recovery delay `3`; heal and
-latency `1` for every capability and index. -/
+look-back `η = 2` and recovery delay `3`; heal and latency `1` for every
+capability and index. -/
 def ctrlParams : Params ℕ+ :=
   { Params.standard 1 1 1 (fun _ _ => 1) (fun _ _ => 1) with
-    η := 2, noSleep := 2, recovery := 3 }
+    η := 2, recovery := 3 }
 
 /-- The control contract over the control schema: `ctrlParams`, index the
 gap `k`, one honest ready proposer per window of `k` slots (available,
@@ -256,14 +256,15 @@ theorem ctrl_not_obligations (K : Contract ProgressReq) :
   · exact hw.2.1 he
 
 /-- **Outage control**: `T = 2 < b₀ = 6 < b₁ = 8` (at `Δ = 2`), honest `key 2` always
-asleep, a faulty `key 0`: the outage regime holds (its no-sleep window is
-`[2, 12]` and its recovery point `14`) and the outage is active, with a ready
-reader at the horizon `40 ≥ 14`. -/
+asleep, a faulty `key 0`: the outage regime holds (look-back `η·Δ = 4`, outage
+catch-up `max 2 3 = 3`, recovery point `14`) and the outage is active, with a
+ready reader at the horizon `40 ≥ 14`. -/
 theorem outage_control :
     ∃ r : S.Run, S.pt r = ptS ∧ S.Witness r ∧
       S.Outage (shapeProgress ctrlFamily (Fin 5)).toExternal ctrlK 2 6 8 r ∧
       OutageActive (S.cDur ctrlK r) 6 2 6 8 (S.pt r) ∧
-      S.outageStart ctrlK 6 r = 2 ∧ S.outageEnd ctrlK 8 r = 12 ∧ S.recoveryAt ctrlK 8 r = 14 ∧
+      max (S.cDur ctrlK r) ((ctrlK.params.η : Time) * (S.pt r).env.ΔAC - 1) = 3 ∧
+      S.recoveryAt ctrlK 8 r = 14 ∧
       (S.pt r).HonestAt (kv key5 card5 2 (by decide)) 0 ∧
       (∀ t, (S.pt r).env.awake (kv key5 card5 2 (by decide)) t = false) ∧
       ((S.pt r).faultyAt 0).Nonempty := by
@@ -271,18 +272,15 @@ theorem outage_control :
     outage_witness (F := ctrlFamily) key5 card5 two_pos two_pos 40 ctrlK_admissible
       (by norm_num) (by norm_num) (T := 2) (b₀ := 6) (b₁ := 8)
       ⟨by norm_num, by decide, by norm_num, by decide⟩ (by norm_num) (by norm_num) (by decide)
-  have hC : ctrlK.params.noSleep = 2 := rfl
+  have hη : ctrlK.params.η = 2 := rfl
+  have hc : ctrlK.params.catchUp = 1 := rfl
   have hR : ctrlK.params.recovery = 3 := rfl
   have hD : ((ctrlK.params.recovery : Nat) : Time) * 2 = 6 := by rw [hR]; norm_num
   rw [hD] at hoa
-  refine ⟨⟨_, rho⟩, hpt, hw, ho, hoa, ?_, ?_, ?_, ?_, ?_, hw.2.2.2.1⟩
-  · change min (max 0 (6 - ((ctrlK.params.noSleep : Nat) : Time) * rho.point.env.ΔAC))
-      rho.point.horizon = 2
-    rw [hpt, realPoint_env, realPoint_horizon, hC]
-    norm_num
-  · change min (8 + ((ctrlK.params.noSleep : Nat) : Time) * rho.point.env.ΔAC)
-      rho.point.horizon = 12
-    rw [hpt, realPoint_env, realPoint_horizon, hC]
+  refine ⟨⟨_, rho⟩, hpt, hw, ho, hoa, ?_, ?_, ?_, ?_, hw.2.2.2.1⟩
+  · change max (((ctrlK.params.catchUp : Nat) : Time) * rho.point.env.ΔAC)
+      (((ctrlK.params.η : Nat) : Time) * rho.point.env.ΔAC - 1) = 3
+    rw [hpt, realPoint_env, hη, hc]
     norm_num
   · change 8 + ((ctrlK.params.recovery : Nat) : Time) * rho.point.env.ΔAC = 14
     rw [hpt, realPoint_env, hR]

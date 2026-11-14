@@ -44,7 +44,7 @@ its tests; not declarations of this library), **scope** (outside the definition)
 * M20 cross-node nesting: dropped; compatibility follows from safety and local nesting; sheet `liveDC` retains its cross-time growth claim.
 * M21 recovery fault bound: construction, `HealthyOn.faultsBelow` and `β ≤ α` (`CorrectProtocol.final_safe_healthy`; `m21_healthy_faults_below`, `m21_final_safe_healthy`); test `faulty_third_not_healthy`.
 * M22 instance vs the archived development: removed, with the sheet's migration obligations (archived).
-* M23 cover / budget: sheet `budget_implies_V`; the outage has no cover: the cohort count gives `OutageE1` (`EnvPoint.CohortOn.two_mul_lt`), obligation (4).
+* M23 cover / budget: sheet `budget_implies_V`; the outage has no cover: the η-sleepy count at the proof window end gives the holder majority `OutageE1` (`EnvPoint.opponents_inter_lt_of_retain`), obligation (4).
 * M24 reader scope: construction, `ReadySafe` (ready readers) for available/stable, `AccountablySafe` (every honest reader) for final (`m24_sleepy_ready_safe`, `m24_final_accountable`).
 * M25 ready vs awake: healthy = every honest validator awake (full participation), readers and progress ready; test `healthy_rotating_sleeper`; obligation (6).
 * M26 two delay bounds: `Env` and `Public` carry `ΔAC` and `ΔFG` (`docs/decisions.md` §"Network and delivery"); `Realizable` quantifies every `ΔAC > 1` and `ΔFG > 1` (half-open delivery), the healthy regime within `ΔFG ≤ fgDelay·ΔAC`.

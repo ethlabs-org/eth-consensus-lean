@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.Obligations.Main
 public import ConsensusLean.Proofs.RegimesRealizable.Main
 public import Solution
 public import ConsensusLeanTest.Goldilocks.VoteBinding
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # Witnesses for the Goldilocks acceptance coefficients
@@ -16,8 +17,9 @@ Labelled by kind (CONTRIBUTING "Statements"):
 * (b) The coefficients at those setups (phase 2, `Δp = Δe`): `contract_catchUp` is `19` at every
   `k` (`catchUp_small`, `catchUp_large`, `catchUp_of_k_le_four`, `catchUp_of_five_le_k`,
   `catchUp_k_four`, `catchUp_k_five`, each also against the former `max 37 (8k + 4)`); the outage
-  no-sleep margin `4k + 6` covers catch-up + 1 only from `k = 4` on (`noSleep_covers_catchUp`,
-  `noSleep_k_two_five`); lag `4k + 6`, recovery `9`, budget `4k − 5` (`outage_lag_recovery_budget`);
+  look-back `12k + 7` is the proof window `budget + 2·lag` and covers catch-up + 1 at every `k`
+  (`eta_covers_window`, `eta_k_two_five`); lag `4k + 6`, recovery `9`, budget `4k − 5`
+  (`outage_lag_recovery_budget`);
   heal `catchUp + M_f` on the rise-round route, `387` at `k = 2, δt = 6, X = 1`, below the
   five-window and the phase-1 coefficients (`heal_drop`). `contract_latency` takes its documented
   value (`4X + 6`, `4(X + 3c) + 1`) at each capability, and both Sleepy margins hold there.
@@ -137,21 +139,37 @@ theorem catchUp_k_five (S : Setup) (A : ContractAssumptions S) (hk : S.k = 5) :
   rw [contract_catchUp_val, hk]
   decide
 
-/-- (b) **Verdict flip** (phase 2): the outage no-sleep margin `4k + 6` no longer covers
-catch-up + 1 = `20` at every `k`. It does from `k = 4` on (`22`), not at `k ≤ 3` (`14` at
-`k = 2`, `18` at `k = 3`); the phase-1 margin `max 38 (8k + 16)` covered `37 + 1` at every `k`. -/
-theorem noSleep_covers_catchUp (S : Setup) (A : ContractAssumptions S) :
-    (4 ≤ S.k → (contract_catchUp S A : Nat) + 1 ≤ (K S A).params.noSleep) ∧
-      (S.k ≤ 3 → (K S A).params.noSleep < (contract_catchUp S A : Nat) + 1) := by
-  rw [contract_catchUp_val]
-  change (4 ≤ S.k → 19 + 1 ≤ 4 * S.k + 6) ∧ (S.k ≤ 3 → 4 * S.k + 6 < 19 + 1)
-  omega
+/-- (b) The outage look-back `η = 12k + 7` is exactly the proof window `budget + 2·lag`
+(`(4k − 5) + 2(4k + 6)`), and it covers the readers' catch-up `19`, so the outage catch-up
+`max cDur (η·Δ − 1)` is `η·Δ − 1` at every `k` and every `Δ ≥ 1`. -/
+theorem eta_covers_window (S : Setup) (A : ContractAssumptions S) :
+    (K S A).params.η = (K S A).params.budget + 2 * (K S A).params.lag ∧
+      (contract_catchUp S A : Nat) + 1 ≤ (K S A).params.η ∧
+      ∀ Δ : Time, 1 ≤ Δ →
+        max (((K S A).params.catchUp : Time) * Δ) (((K S A).params.η : Time) * Δ - 1) =
+          ((K S A).params.η : Time) * Δ - 1 := by
+  have hk := S.two_le_k
+  have hη : ((K S A).params.η : Time) = 12 * (S.k : Int) + 7 := by
+    change ((12 * S.k + 7 : Nat) : Int) = _; push_cast; ring
+  have hc : ((K S A).params.catchUp : Time) = 19 := by
+    change ((contract_catchUp S A : Nat) : Int) = 19
+    rw [contract_catchUp_val]; rfl
+  have hk2 : (2 : Int) ≤ S.k := by exact_mod_cast hk
+  refine ⟨?_, ?_, fun Δ hΔ => max_eq_right ?_⟩
+  · change 12 * S.k + 7 = (4 * S.k - 5) + 2 * (4 * S.k + 6)
+    omega
+  · rw [contract_catchUp_val]
+    change 19 + 1 ≤ 12 * S.k + 7
+    omega
+  · rw [hη, hc]
+    have : (0 : Time) ≤ ((S.k : Int) - 2) * Δ := mul_nonneg (by linarith) (by linarith)
+    linarith
 
-/-- (b) The no-sleep margin `4k + 6` at `k = 2` and `k = 5`. -/
-theorem noSleep_k_two_five (S : Setup) (A : ContractAssumptions S) :
-    (S.k = 2 → (K S A).params.noSleep = 14) ∧ (S.k = 5 → (K S A).params.noSleep = 26) := by
+/-- (b) The outage look-back `12k + 7` at `k = 2` and `k = 5`. -/
+theorem eta_k_two_five (S : Setup) (A : ContractAssumptions S) :
+    (S.k = 2 → (K S A).params.η = 31) ∧ (S.k = 5 → (K S A).params.η = 67) := by
   refine ⟨fun hk => ?_, fun hk => ?_⟩ <;>
-    · change 4 * S.k + 6 = _
+    · change 12 * S.k + 7 = _
       rw [hk]
 
 /-- (b) The arming lag and recovery delay: lag `4k + 6` (`14` at `k = 2`), recovery `9`,
@@ -250,10 +268,10 @@ theorem fgSlots_two (X : ℕ+) :
   ⟨rfl, assumptionsSmall.six_le_δt, by rw [finalWindow_offsets]; rfl, by rw [finalWindow_span]; rfl,
     by rw [contract_latency_final]; rfl, rfl⟩
 
-/-- (b) The outage contract is plain sleepy with budget `4k − 5`: at `k = 2`, `η = 0` and
+/-- (b) The outage contract's look-back `12k + 7` and budget `4k − 5`: at `k = 2`, `η = 31` and
 `budget = 3`. -/
 theorem outage_eta_budget :
-    (K setupSmall assumptionsSmall).params.η = 0 ∧
+    (K setupSmall assumptionsSmall).params.η = 31 ∧
       (K setupSmall assumptionsSmall).params.budget = 3 := ⟨rfl, rfl⟩
 
 /-- The assumptions at `setupRow` with FG gap `3` (`9 ≤ 30`). -/
@@ -388,7 +406,7 @@ theorem goldilocksWith_committeeOne (S : Setup) (pub : Model.Public) (hn : 2 ≤
   exact ⟨rfl, rfl, h, by omega⟩
 
 /-- (a) The committee binding's regimes are realizable on at least five validators, the outage
-regime with its committee clauses included (`Shape.regimes_realizable`). The contract's
+regime with its committee clause included (`Shape.regimes_realizable`). The contract's
 admissibility and tolerance are the stock ones; its progress fit is `rfl` at every binding (the
 proposer selection is `.sized 1`). -/
 theorem committeeOne_realizable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V]
@@ -399,7 +417,7 @@ theorem committeeOne_realizable (S : Setup) (A : ContractAssumptions S) (V : Typ
 
 /-- (a) On every valid run of the committee binding on at least two validators, the committee the
 outage regime reads (`External.selected`, the slot's vote committee) is not the whole population at
-any time: the committee clauses are not the population clauses. -/
+any time: the committee clause is not the population clause. -/
 theorem committeeOne_selected_ne_univ (S : Setup) (V : Type) [Fintype V] [DecidableEq V]
     (hn : 2 ≤ Fintype.card V) (r : (Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) V).Run)
     (hv : (Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) V).Valid r) (t : Time) :

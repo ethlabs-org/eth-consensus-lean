@@ -283,10 +283,12 @@ works as follows. Take a node **ready** at `T` and its `stable` read at `T`.
 That read is a prefix of the `target` read (the available output if
 provided, else the stable output) at every `t ∈ [b₁ + recovery·ΔAC, horizon]`,
 for every node ready at `t`. The outage regime has no absolute participation
-premise: besides η-sleepy participation, no honest validator falls asleep in
-the no-sleep window `[b₀ − noSleep·ΔAC, b₁ + noSleep·ΔAC]` (clamped to
-`[0, horizon]`; waking is allowed), and the faulty validators with the late
-wakers of that window are fewer than the honest validators awake at its start.
+premise: at every run time it requires η-sleepy participation with catch-up
+`c_out = max c (η·ΔAC − 1)`, both in the population and in every nonempty
+committee selected in the look-back at a nonnegative time. Readiness for this
+participation bound covers the whole look-back; validators may sleep and wake
+within it, but those not ready count against the threshold. Readers retain
+the original catch-up `c = catchUp·ΔAC`.
 
 An outage run is partially synchronous with GST `b₁` (`OutageNet b₀ b₁`
 contains `PSync b₁`), so the after-GST rows apply with `g = b₁` when their
@@ -391,14 +393,20 @@ submissions), `L` is the run's log, `n = |V|`, `ready_t = readyAt c t` and
 |---|---|
 | `System.Sleepy` | `L.PSync p 0 ∧ ∀ t ∈ [0, horizon], θ·(\|ready_t\| + f_d) < \|ready_t\|` on the view retained through `d = min (t + ahead·ΔAC) horizon` (ready at `t` and honest at `d`; `f_d` compromised by `d`) |
 | `System.Healthy g` | `L.PSync p g ∧ f_horizon < β·n ∧ ∀ t ∈ [max g 0, horizon], every validator honest at t is awake at t ∧ ΔFG ≤ fgDelay·ΔAC` (full participation; awake, not ready; the FG delay bound is an upper envelope, not a deadline) |
-| `System.Outage X T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepyOn θ (η·ΔAC) c (ahead·ΔAC) 0 horizon ∧ NoSleepOn a z ∧ CohortOn a z ∧ CommitteeCohortOn K a z bandStart bandEnd ∧ CommitteeSleepyOn K θ (η·ΔAC) c (committeeAhead·ΔAC) 0 horizon`; `NoSleepOn`, `CohortOn` and `CommitteeCohortOn` on the view retained through `cohortAt = min (z + cohortAhead·ΔAC) horizon` (`a`, `z`: `outageStart`, `outageEnd`; the surviving cohort); `K t = X.selected E x t`, the committee selected at `t` by the run's external data `x` (§"Committees"); the band `[bandStart, bandEnd] = [b₀ − bandLead·ΔAC, b₀ − bandLead·ΔAC + bandLen·ΔAC]` |
-| `CommitteeCohortOn K a z s e` | at each `t ∈ [max 0 s, min e horizon]` with `K t` nonempty: `\|(faulty_z ∪ lateWakers a z) ∩ K t\| < \|awake_a ∩ K t\|`, the cohort inequality inside the committee |
+| `System.Outage X T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepyOn θ (η·ΔAC) c_out (ahead·ΔAC) 0 horizon ∧ ∀ δ ∈ [0, η·ΔAC], CommitteeSleepyOn (fun t => selected (max 0 (t − δ))) θ (η·ΔAC) c_out (committeeAhead·ΔAC) 0 horizon`, with `c_out = max c (η·ΔAC − 1)` |
 | `CommitteeSleepyOn K θ η c W 0 horizon` | at each `t` with `K t` nonempty, on the view retained through `t + W`: the η-sleepy inequality (plain sleepy for `η = 0`) with every set intersected with `K t` |
 | `OutageTimes` | `0 ≤ T ∧ T + lag·ΔAC ≤ b₀ ∧ b₀ ≤ b₁ ∧ b₁ ≤ b₀ + budget·ΔAC` |
 | η-sleepy at `t` (`η > 0`) | `θ·\|ready_t ∪ awakeIn [max 0 (t − η·ΔAC), t] ∪ faulty\| < \|ready_t\|` on the same retained view (one fixed partition, so the union keeps identities) |
 
-With `η = 0`, η-sleepy is plain sleepy (tests: `etaSleepyOn_zero`,
-`System.outage_eta_zero`). For `η > 0`, every validator awake at some time
+The committee clause evaluates readiness and faults at observation time `t`,
+but selects the committee at each `s ∈ [max 0 (t − η·ΔAC), t]`. Faults are charged
+at `min (t + committeeAhead·ΔAC) horizon`. Empty committees impose no condition.
+The population clause uses `ahead` instead, and both use `c_out` for readiness.
+Goldilocks sets `η = 12k + 7`, `θ = ½` and both look-aheads to `5`; its endpoint's
+reader catch-up stays `19ΔAC`.
+
+With `η = 0`, η-sleepy is plain sleepy and `c_out = c` (tests: `System.outage_eta_zero`).
+For `η > 0`, every validator awake at some time
 in the look-back window counts against the threshold, even one that was
 never ready. For `0 ≤ θ`, `0 < η`, `0 ≤ c` and `0 ≤ t`, η-sleepy implies the
 awake-count form (tests: `EtaReadyAbove.awakeForm`). The look-back is clamped at `0`: no
@@ -413,16 +421,14 @@ structure Params (Idx : Type) where
   catchUp : Nat   -- reader catch-up c = catchUp·ΔAC
   θ β cover α : ℚ -- sleepy, healthy fault bound, cover (read by no regime), accountable fraction
   lag budget η : Nat                         -- outage arming lag, budget, look-back (ΔAC-coefficients)
-  noSleep recovery : Nat                     -- outage no-sleep margin C, recovery delay D (ΔAC-coefficients)
+  recovery : Nat                             -- outage recovery delay (ΔAC-coefficient)
   heal latency : Capability → Idx → Nat      -- heal point after max g 0; transaction latency
   fgDelay : ℕ+                               -- healthy regime: ΔFG ≤ fgDelay·ΔAC (larger = weaker premise)
-  ahead cohortAhead : Nat                    -- participation and outage-cohort look-aheads (ΔAC-coefficients)
-  bandLead bandLen : Nat := 0                -- outage committee band [b₀ − bandLead·ΔAC, + bandLen·ΔAC]
-  committeeAhead : Nat := 0                  -- committee participation look-ahead (ΔAC-coefficient)
+  ahead : Nat                                -- population fault look-ahead (ΔAC-coefficient)
+  committeeAhead : Nat := 0                  -- committee fault look-ahead (ΔAC-coefficient)
 def Params.standard (catchUp lag budget heal latency) :=
-  { catchUp, θ := ½, β := ⅓, cover := ½, α := ⅓, lag, budget, η := 0, noSleep := 0,
-    recovery := 0, heal, latency, fgDelay := 1, ahead := 0, cohortAhead := 0 }
-    -- bandLead, bandLen, committeeAhead: their defaults 0
+  { catchUp, θ := ½, β := ⅓, cover := ½, α := ⅓, lag, budget, η := 0,
+    recovery := 0, heal, latency, fgDelay := 1, ahead := 0, committeeAhead := 0 }
 structure Params.Admissible (P) : Prop :=
   1 ≤ catchUp,  0 ≤ θ ≤ ½,  ⅓ ≤ β,  0 ≤ cover ≤ ½,  β ≤ α ≤ 1,  1 ≤ budget
 ```
@@ -439,13 +445,11 @@ there (`final_safe_healthy`).
 other numbers are not bounded and carry part of the verdict: a larger
 `catchUp` means fewer ready readers, a larger `lag` an earlier protected source
 (`T ≤ b₀ − lag·ΔAC`, a stronger premise),
-a larger `η` a stricter outage participation condition, a larger `noSleep` a
-longer no-sleep window, a larger `recovery` a later protected reader, a small
-`budget` a short outage, and larger heal points and latencies weaker claims.
-Larger look-aheads `ahead`, `cohortAhead` and `committeeAhead` charge
-participation with later faults, a stronger premise. A larger `bandLen` asks the
-committee cohort inequality at more times, a stronger premise; `bandLead` places
-the band relative to `b₀` and has no direction. Any `η` is
+a larger `η` a longer participation catch-up and look-back over validators and
+committees, a larger `recovery` a later protected reader, a small
+`budget` a short outage, and larger heal points and latencies weaker claims. Larger
+look-aheads `ahead` and `committeeAhead` charge participation with later faults,
+a stronger premise. Any `η` is
 realizable (`outage_witness`); the reviewer reads these as numbers.
 
 ### Committees (`participationRole`, `candidateRole`)
@@ -475,10 +479,10 @@ population size:
 execution; `External.selected` is the selection of `participationRole t`
 (every validator for `none`). A later fault charge reads the committee
 selected for the observation slot; it does not select again. `System.Outage`
-reads the selection in two clauses, the cohort inequality inside each
-committee selected in the public band and committee η-sleepy participation
-with its own look-ahead; both are vacuous at empty selections, and the
-population clauses stay separate premises. Honest code learns only its own
+reads the selection in its look-back committee clause: η-sleepy participation
+inside each nonempty committee selected in the look-back, with its own
+look-ahead; it is vacuous at empty selections, and the population clause stays
+a separate premise. Honest code learns only its own
 role membership, at `init`.
 
 That the declared committee is the one whose votes the protocol counts is the
@@ -636,7 +640,7 @@ The generated library root only collects imports.
 2. `ConsensusLean/Spec/Problem/Basic.lean`: L0 vocabulary: capabilities, output schemas, environments and points, traces, communication logs and systems.
 3. `ConsensusLean/Spec/Problem/Network.lean`: Delivery and holding (`Held`, `TxHeld`), partial synchrony, synchrony up to a cut, outage networks and eager logs.
 4. `ConsensusLean/Spec/Problem/Properties.lean`: Trace claims: agreement, monotonicity, ready-reader safety, nesting, transaction liveness, resilience and local accountability.
-5. `ConsensusLean/Spec/Problem/Regimes.lean`: `Params`, `Contract`, admissible numbers, the external run data `External` and its selected population, sleepy/healthy/outage regimes (with the outage's committee clauses over the external selection and its public band) and the `cDur`, `heal`, `ready`, `lat` accessors.
+5. `ConsensusLean/Spec/Problem/Regimes.lean`: `Params`, `Contract`, admissible numbers, the external run data `External` and its selected population, sleepy/healthy/outage regimes (with the outage's look-back committee clause over the external selection) and the `cDur`, `heal`, `ready`, `lat` accessors.
 6. `ConsensusLean/Spec/Problem/CorrectProtocol.lean`: Progress readers, the property table (`Behaviour`), system adequacy, active claims and witnesses, `Realizable`, and `CorrectProtocol`.
 7. `ConsensusLean/Spec/Problem/Profile.lean`: Profiles (`ebbAndFlow`, `bft`, `available`) and `Profile.Matches`, the exact capability set of a schema.
 8. `ConsensusLean/Spec/Model/Objects.lean`: Authenticated wire objects, carried-object closure, signers, items and decidable equality.
@@ -710,9 +714,9 @@ Every participation budget is today's static count evaluated on the view
 retained through the count's consumption horizon (`EnvPoint.retain`,
 `EnvPoint.lookAhead`). Participation at `t` is charged with the faults of
 `t + ahead·ΔAC`, and validators compromised by then do not count as support.
-The outage cohort, and the committee cohort of the outage band, are charged at
-`outageEnd + cohortAhead·ΔAC`; committee participation at `t` is charged with
-the faults of `t + committeeAhead·ΔAC`. The healthy
+Outage committee participation at `t` is charged at `t + committeeAhead·ΔAC`,
+independently of the committee's selection time in the look-back; all charge
+times are clamped to the horizon. The healthy
 budget is the bound at the horizon, which by monotonicity is the bound at every
 time. A recurrence's good proposer stays honest `hold·ΔAC` after its slot. A
 larger window is a stronger premise. `ΔFG` enters no window.
@@ -785,7 +789,7 @@ are the intended ones.
   with a recurrence requirement.
 - Committees are public selections. A protocol may declare a participation
   role, a `.fixed` or `.sized` selection per slot, and the outage regime's
-  committee clauses are relative to it (§"Committees"); the sleepy and healthy
+  look-back committee clause is relative to it (§"Committees"); the sleepy and healthy
   regimes are population-wide. Gasper's partitioned selection is deferred.
 - Phases are multiples of `ΔAC`. For `pollSel := .fixed univ`, poll provenance
   accepts any validator's header.

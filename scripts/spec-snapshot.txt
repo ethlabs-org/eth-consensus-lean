@@ -1666,22 +1666,14 @@ recursor Consensus.Contract.rec : {Prog : Type} → {motive : Consensus.Contract
   #1400083370/-
 def Consensus.Contract.recOn : {Prog : Type} → {motive : Consensus.Contract Prog → Sort u} → (t : Consensus.Contract Prog) → ((Idx : Type) → (idx_nonempty : Nonempty.{1} Idx) → (params : Consensus.Params Idx) → (progress : Consensus.Capability → Idx → Prog) → motive { Idx := Idx, idx_nonempty := idx_nonempty, params := params, progress := progress }) → motive t := fun {Prog} {motive} t mk => Consensus.Contract.rec.{u} mk t
   #762638074/3809613802
-def Consensus.EnvPoint.CohortOn : {V : Type} → [Fintype.{0} V] → [DecidableEq.{1} V] → Consensus.EnvPoint V → Consensus.Time → Consensus.Time → Prop := fun {V} [Fintype.{0} V] [DecidableEq.{1} V] p a b => LT.lt.{0} (Finset.card.{0} (Union.union.{0} (p.faultyAt b) (p.lateWakers a b))) (Finset.card.{0} (p.awakeAt a))
-  #1874356538/291280049
-def Consensus.EnvPoint.CommitteeCohortOn : {V : Type} → [Fintype.{0} V] → [DecidableEq.{1} V] → Consensus.EnvPoint V → (Consensus.Time → Finset.{0} V) → Consensus.Time → Consensus.Time → Consensus.Time → Consensus.Time → Prop := fun {V} [Fintype.{0} V] [DecidableEq.{1} V] p K a z bandStart bandEnd => ∀ (t : Consensus.Time), LE.le.{0} (Max.max.{0} 0 bandStart) t → LE.le.{0} t bandEnd → LE.le.{0} t p.horizon → Finset.Nonempty.{0} (K t) → LT.lt.{0} (Finset.card.{0} (Inter.inter.{0} (Union.union.{0} (p.faultyAt z) (p.lateWakers a z)) (K t))) (Finset.card.{0} (Inter.inter.{0} (p.awakeAt a) (K t)))
-  #2431152472/1040609676
 def Consensus.EnvPoint.CommitteeSleepyOn : {V : Type} → [Fintype.{0} V] → [DecidableEq.{1} V] → Consensus.EnvPoint V → (Consensus.Time → Finset.{0} V) → Rat → Consensus.Time → Consensus.Time → Consensus.Time → Consensus.Time → Consensus.Time → Prop := fun {V} [Fintype.{0} V] [DecidableEq.{1} V] p K θ η c W a b => ∀ (t : Consensus.Time), LE.le.{0} a t → LE.le.{0} t b → Finset.Nonempty.{0} (K t) → have q := p.retain (p.lookAhead W t); ite.{1} (LE.le.{0} η 0) (LT.lt.{0} (HMul.hMul.{0, 0, 0} θ (Nat.cast.{0} (HAdd.hAdd.{0, 0, 0} (Finset.card.{0} (Inter.inter.{0} (q.readyAt c t) (K t))) (Finset.card.{0} (Inter.inter.{0} (q.faultyAt t) (K t)))))) (Nat.cast.{0} (Finset.card.{0} (Inter.inter.{0} (q.readyAt c t) (K t))))) (LT.lt.{0} (HMul.hMul.{0, 0, 0} θ (Nat.cast.{0} (Finset.card.{0} (Inter.inter.{0} (Union.union.{0} (Union.union.{0} (q.readyAt c t) (q.awakeIn (Max.max.{0} 0 (HSub.hSub.{0, 0, 0} t η)) t)) (q.faultyAt t)) (K t))))) (Nat.cast.{0} (Finset.card.{0} (Inter.inter.{0} (q.readyAt c t) (K t)))))
   #1041698071/3986845662
 def Consensus.EnvPoint.EtaSleepyOn : {V : Type} → [Fintype.{0} V] → [DecidableEq.{1} V] → Consensus.EnvPoint V → Rat → Consensus.Time → Consensus.Time → Consensus.Time → Consensus.Time → Consensus.Time → Prop := fun {V} [Fintype.{0} V] [DecidableEq.{1} V] p θ η c W a b => ∀ (t : Consensus.Time), LE.le.{0} a t → LE.le.{0} t b → (p.retain (p.lookAhead W t)).EtaReadyAbove θ η c t
   #2018175433/4281609603
 def Consensus.EnvPoint.HealthyOn : {V : Type} → [Fintype.{0} V] → Consensus.EnvPoint V → Rat → Consensus.Time → Consensus.Time → Prop := fun {V} [Fintype.{0} V] p β g b => And (LT.lt.{0} (Nat.cast.{0} (p.faultCount b)) (HMul.hMul.{0, 0, 0} β (Nat.cast.{0} (Fintype.card.{0} V)))) (∀ (v : V) (t : Consensus.Time), LE.le.{0} (Max.max.{0} g 0) t → LE.le.{0} t b → p.HonestAt v t → Eq.{1} (p.env.awake v t) Bool.true)
   #2609240895/1782646396
-def Consensus.EnvPoint.NoSleepOn : {V : Type} → Consensus.EnvPoint V → Consensus.Time → Consensus.Time → Prop := fun {V} p a b => ∀ (v : V), p.HonestAt v b → ∀ (t : Consensus.Time), LE.le.{0} a t → LE.le.{0} t b → Eq.{1} (p.env.awake v t) Bool.true → p.AwakeOnClosed v t b
-  #3676208798/3670646923
 def Consensus.EnvPoint.SleepyOn : {V : Type} → [Fintype.{0} V] → Consensus.EnvPoint V → Rat → Consensus.Time → Consensus.Time → Consensus.Time → Consensus.Time → Prop := fun {V} [Fintype.{0} V] p θ c W a b => ∀ (t : Consensus.Time), LE.le.{0} a t → LE.le.{0} t b → (p.retain (p.lookAhead W t)).ReadyAbove θ c t
   #1677068568/1985797208
-def Consensus.EnvPoint.lateWakers : {V : Type} → [Fintype.{0} V] → [DecidableEq.{1} V] → Consensus.EnvPoint V → Consensus.Time → Consensus.Time → Finset.{0} V := fun {V} [Fintype.{0} V] [DecidableEq.{1} V] p a b => SDiff.sdiff.{0} (p.awakeIn a b) (p.awakeAt a)
-  #1894216309/3045139084
 induct Consensus.External : {V : Type} → Consensus.System V → Type 1
   #671829390/-
 def Consensus.External.Admits : {V : Type} → {S : Consensus.System V} → (self : Consensus.External S) → (E : Consensus.Env V) → self.Ext E → Prop := fun V S self => self.3
@@ -1739,59 +1731,49 @@ theorem Consensus.Params.Admissible.β_range : ∀ {Idx : Type} {P : Consensus.P
   #1955291555/-
 theorem Consensus.Params.Admissible.θ_range : ∀ {Idx : Type} {P : Consensus.Params Idx}, P.Admissible → And (LE.le.{0} 0 P.θ) (LE.le.{0} P.θ (1 / 2))
   #4046970334/-
-def Consensus.Params._sizeOf_1 #1694046750/2761955343
+def Consensus.Params._sizeOf_1 #1694046750/1856295098
 def Consensus.Params._sizeOf_inst #1492179805/1259801662
-def Consensus.Params.ahead : {Idx : Type} → Consensus.Params Idx → Nat := fun Idx self => self.14
-  #1617075574/4184189853
-def Consensus.Params.bandLead : {Idx : Type} → Consensus.Params Idx → Nat := fun Idx self => self.16
-  #1617075574/3189558369
-def Consensus.Params.bandLead._default #3082712640/802335202
-def Consensus.Params.bandLen : {Idx : Type} → Consensus.Params Idx → Nat := fun Idx self => self.17
-  #1617075574/1021993905
-def Consensus.Params.bandLen._default #3082712640/802335202
+def Consensus.Params.ahead : {Idx : Type} → Consensus.Params Idx → Nat := fun Idx self => self.13
+  #1617075574/174202414
 def Consensus.Params.budget : {Idx : Type} → Consensus.Params Idx → Nat := fun Idx self => self.7
   #1617075574/2663365416
-def Consensus.Params.casesOn : {Idx : Type} → {motive : Consensus.Params Idx → Sort u} → (t : Consensus.Params Idx) → ((catchUp : Nat) → (θ β cover α : Rat) → (lag budget η noSleep recovery : Nat) → (heal latency : Consensus.Capability → Idx → Nat) → (fgDelay : PNat) → (ahead cohortAhead bandLead bandLen committeeAhead : Nat) → motive { catchUp := catchUp, θ := θ, β := β, cover := cover, α := α, lag := lag, budget := budget, η := η, noSleep := noSleep, recovery := recovery, heal := heal, latency := latency, fgDelay := fgDelay, ahead := ahead, cohortAhead := cohortAhead, bandLead := bandLead, bandLen := bandLen, committeeAhead := committeeAhead }) → motive t := fun {Idx} {motive} t mk => Consensus.Params.rec.{u} (fun catchUp θ β cover α lag budget η noSleep recovery heal latency fgDelay ahead cohortAhead bandLead bandLen committeeAhead => mk catchUp θ β cover α lag budget η noSleep recovery heal latency fgDelay ahead cohortAhead bandLead bandLen committeeAhead) t
-  #1732460662/3374251050
+def Consensus.Params.casesOn : {Idx : Type} → {motive : Consensus.Params Idx → Sort u} → (t : Consensus.Params Idx) → ((catchUp : Nat) → (θ β cover α : Rat) → (lag budget η recovery : Nat) → (heal latency : Consensus.Capability → Idx → Nat) → (fgDelay : PNat) → (ahead committeeAhead : Nat) → motive { catchUp := catchUp, θ := θ, β := β, cover := cover, α := α, lag := lag, budget := budget, η := η, recovery := recovery, heal := heal, latency := latency, fgDelay := fgDelay, ahead := ahead, committeeAhead := committeeAhead }) → motive t := fun {Idx} {motive} t mk => Consensus.Params.rec.{u} (fun catchUp θ β cover α lag budget η recovery heal latency fgDelay ahead committeeAhead => mk catchUp θ β cover α lag budget η recovery heal latency fgDelay ahead committeeAhead) t
+  #2507361785/1588916005
 def Consensus.Params.catchUp : {Idx : Type} → Consensus.Params Idx → Nat := fun Idx self => self.1
   #1617075574/1319953638
-def Consensus.Params.cohortAhead : {Idx : Type} → Consensus.Params Idx → Nat := fun Idx self => self.15
-  #1617075574/3281105440
-def Consensus.Params.committeeAhead : {Idx : Type} → Consensus.Params Idx → Nat := fun Idx self => self.18
-  #1617075574/2919826433
+def Consensus.Params.committeeAhead : {Idx : Type} → Consensus.Params Idx → Nat := fun Idx self => self.14
+  #1617075574/4184189853
 def Consensus.Params.committeeAhead._default #3082712640/802335202
 def Consensus.Params.cover : {Idx : Type} → Consensus.Params Idx → Rat := fun Idx self => self.4
   #1386151514/1852162704
 def Consensus.Params.ctorIdx #1617075574/4215170856
-def Consensus.Params.fgDelay : {Idx : Type} → Consensus.Params Idx → PNat := fun Idx self => self.13
-  #2924711653/174202414
-def Consensus.Params.heal : {Idx : Type} → Consensus.Params Idx → Consensus.Capability → Idx → Nat := fun Idx self => self.11
-  #1154832410/2653657400
+def Consensus.Params.fgDelay : {Idx : Type} → Consensus.Params Idx → PNat := fun Idx self => self.12
+  #2924711653/248949648
+def Consensus.Params.heal : {Idx : Type} → Consensus.Params Idx → Consensus.Capability → Idx → Nat := fun Idx self => self.10
+  #1154832410/4293789416
 def Consensus.Params.lag : {Idx : Type} → Consensus.Params Idx → Nat := fun Idx self => self.6
   #1617075574/1044407850
-def Consensus.Params.latency : {Idx : Type} → Consensus.Params Idx → Consensus.Capability → Idx → Nat := fun Idx self => self.12
-  #1154832410/248949648
-ctor Consensus.Params.mk : {Idx : Type} → Nat → Rat → Rat → Rat → Rat → Nat → Nat → Nat → Nat → Nat → (Consensus.Capability → Idx → Nat) → (Consensus.Capability → Idx → Nat) → PNat → Nat → Nat → Nat → Nat → Nat → Consensus.Params Idx
-  #37325314/-
-def Consensus.Params.mk._flat_ctor #37325314/3796722247
-theorem Consensus.Params.mk.inj #555691814/-
-theorem Consensus.Params.mk.injEq #646376121/-
-def Consensus.Params.mk.noConfusion : {Idx : Type} → {P : Sort u} → {catchUp : Nat} → {θ β cover α : Rat} → {lag budget η noSleep recovery : Nat} → {heal latency : Consensus.Capability → Idx → Nat} → {fgDelay : PNat} → {ahead cohortAhead bandLead bandLen committeeAhead catchUp' : Nat} → {θ' β' cover' α' : Rat} → {lag' budget' η' noSleep' recovery' : Nat} → {heal' latency' : Consensus.Capability → Idx → Nat} → {fgDelay' : PNat} → {ahead' cohortAhead' bandLead' bandLen' committeeAhead' : Nat} → Eq.{1} { catchUp := catchUp, θ := θ, β := β, cover := cover, α := α, lag := lag, budget := budget, η := η, noSleep := noSleep, recovery := recovery, heal := heal, latency := latency, fgDelay := fgDelay, ahead := ahead, cohortAhead := cohortAhead, bandLead := bandLead, bandLen := bandLen, committeeAhead := committeeAhead } { catchUp := catchUp', θ := θ', β := β', cover := cover', α := α', lag := lag', budget := budget', η := η', noSleep := noSleep', recovery := recovery', heal := heal', latency := latency', fgDelay := fgDelay', ahead := ahead', cohortAhead := cohortAhead', bandLead := bandLead', bandLen := bandLen', committeeAhead := committeeAhead' } → (Eq.{1} catchUp catchUp' → Eq.{1} θ θ' → Eq.{1} β β' → Eq.{1} cover cover' → Eq.{1} α α' → Eq.{1} lag lag' → Eq.{1} budget budget' → Eq.{1} η η' → Eq.{1} noSleep noSleep' → Eq.{1} recovery recovery' → HEq.{1} heal heal' → HEq.{1} latency latency' → Eq.{1} fgDelay fgDelay' → Eq.{1} ahead ahead' → Eq.{1} cohortAhead cohortAhead' → Eq.{1} bandLead bandLead' → Eq.{1} bandLen bandLen' → Eq.{1} committeeAhead committeeAhead' → P) → P := fun {Idx} {P} {catchUp} {θ β cover α} {lag budget η noSleep recovery} {heal latency} {fgDelay} {ahead cohortAhead bandLead bandLen committeeAhead catchUp'} {θ' β' cover' α'} {lag' budget' η' noSleep' recovery'} {heal' latency'} {fgDelay'} {ahead' cohortAhead' bandLead' bandLen' committeeAhead'} eq k => id.{u} (Consensus.Params.noConfusion.{u} ⋯ ⋯ k)
-  #4255259817/691858166
-theorem Consensus.Params.mk.sizeOf_spec #3131430634/-
-def Consensus.Params.noConfusion : {P : Sort u} → {Idx : Type} → {t : Consensus.Params Idx} → {Idx' : Type} → {t' : Consensus.Params Idx'} → Eq.{2} Idx Idx' → HEq.{1} t t' → Consensus.Params.noConfusionType.{u} P t t' := fun {P} {Idx} {t} {Idx'} {t'} eq_1 eq_2 => Eq.ndrec.{u, 2} (motive := fun {Idx'} => {t' : Consensus.Params Idx'} → HEq.{1} t t' → Consensus.Params.noConfusionType.{u} P t t') (fun {t'} eq_2 => Eq.ndrec.{u, 1} (Consensus.Params.casesOn.{u} t fun catchUp θ β cover α lag budget η noSleep recovery heal latency fgDelay ahead cohortAhead bandLead bandLen committeeAhead k => k ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯) ⋯) eq_1 eq_2
-  #1258213877/2222088788
-def Consensus.Params.noConfusionType #856122032/2738014472
-def Consensus.Params.noSleep : {Idx : Type} → Consensus.Params Idx → Nat := fun Idx self => self.9
+def Consensus.Params.latency : {Idx : Type} → Consensus.Params Idx → Consensus.Capability → Idx → Nat := fun Idx self => self.11
+  #1154832410/2653657400
+ctor Consensus.Params.mk : {Idx : Type} → Nat → Rat → Rat → Rat → Rat → Nat → Nat → Nat → Nat → (Consensus.Capability → Idx → Nat) → (Consensus.Capability → Idx → Nat) → PNat → Nat → Nat → Consensus.Params Idx
+  #331190294/-
+def Consensus.Params.mk._flat_ctor #331190294/616714683
+theorem Consensus.Params.mk.inj #2070052273/-
+theorem Consensus.Params.mk.injEq #2440109499/-
+def Consensus.Params.mk.noConfusion : {Idx : Type} → {P : Sort u} → {catchUp : Nat} → {θ β cover α : Rat} → {lag budget η recovery : Nat} → {heal latency : Consensus.Capability → Idx → Nat} → {fgDelay : PNat} → {ahead committeeAhead catchUp' : Nat} → {θ' β' cover' α' : Rat} → {lag' budget' η' recovery' : Nat} → {heal' latency' : Consensus.Capability → Idx → Nat} → {fgDelay' : PNat} → {ahead' committeeAhead' : Nat} → Eq.{1} { catchUp := catchUp, θ := θ, β := β, cover := cover, α := α, lag := lag, budget := budget, η := η, recovery := recovery, heal := heal, latency := latency, fgDelay := fgDelay, ahead := ahead, committeeAhead := committeeAhead } { catchUp := catchUp', θ := θ', β := β', cover := cover', α := α', lag := lag', budget := budget', η := η', recovery := recovery', heal := heal', latency := latency', fgDelay := fgDelay', ahead := ahead', committeeAhead := committeeAhead' } → (Eq.{1} catchUp catchUp' → Eq.{1} θ θ' → Eq.{1} β β' → Eq.{1} cover cover' → Eq.{1} α α' → Eq.{1} lag lag' → Eq.{1} budget budget' → Eq.{1} η η' → Eq.{1} recovery recovery' → HEq.{1} heal heal' → HEq.{1} latency latency' → Eq.{1} fgDelay fgDelay' → Eq.{1} ahead ahead' → Eq.{1} committeeAhead committeeAhead' → P) → P := fun {Idx} {P} {catchUp} {θ β cover α} {lag budget η recovery} {heal latency} {fgDelay} {ahead committeeAhead catchUp'} {θ' β' cover' α'} {lag' budget' η' recovery'} {heal' latency'} {fgDelay'} {ahead' committeeAhead'} eq k => id.{u} (Consensus.Params.noConfusion.{u} ⋯ ⋯ k)
+  #3225592362/3420568019
+theorem Consensus.Params.mk.sizeOf_spec #810320905/-
+def Consensus.Params.noConfusion : {P : Sort u} → {Idx : Type} → {t : Consensus.Params Idx} → {Idx' : Type} → {t' : Consensus.Params Idx'} → Eq.{2} Idx Idx' → HEq.{1} t t' → Consensus.Params.noConfusionType.{u} P t t' := fun {P} {Idx} {t} {Idx'} {t'} eq_1 eq_2 => Eq.ndrec.{u, 2} (motive := fun {Idx'} => {t' : Consensus.Params Idx'} → HEq.{1} t t' → Consensus.Params.noConfusionType.{u} P t t') (fun {t'} eq_2 => Eq.ndrec.{u, 1} (Consensus.Params.casesOn.{u} t fun catchUp θ β cover α lag budget η recovery heal latency fgDelay ahead committeeAhead k => k ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯) ⋯) eq_1 eq_2
+  #1258213877/2496548129
+def Consensus.Params.noConfusionType #856122032/3185165575
+recursor Consensus.Params.rec : {Idx : Type} → {motive : Consensus.Params Idx → Sort u} → ((catchUp : Nat) → (θ β cover α : Rat) → (lag budget η recovery : Nat) → (heal latency : Consensus.Capability → Idx → Nat) → (fgDelay : PNat) → (ahead committeeAhead : Nat) → motive { catchUp := catchUp, θ := θ, β := β, cover := cover, α := α, lag := lag, budget := budget, η := η, recovery := recovery, heal := heal, latency := latency, fgDelay := fgDelay, ahead := ahead, committeeAhead := committeeAhead }) → (t : Consensus.Params Idx) → motive t
+  #877168909/-
+def Consensus.Params.recOn : {Idx : Type} → {motive : Consensus.Params Idx → Sort u} → (t : Consensus.Params Idx) → ((catchUp : Nat) → (θ β cover α : Rat) → (lag budget η recovery : Nat) → (heal latency : Consensus.Capability → Idx → Nat) → (fgDelay : PNat) → (ahead committeeAhead : Nat) → motive { catchUp := catchUp, θ := θ, β := β, cover := cover, α := α, lag := lag, budget := budget, η := η, recovery := recovery, heal := heal, latency := latency, fgDelay := fgDelay, ahead := ahead, committeeAhead := committeeAhead }) → motive t := fun {Idx} {motive} t mk => Consensus.Params.rec.{u} mk t
+  #2507361785/1272109127
+def Consensus.Params.recovery : {Idx : Type} → Consensus.Params Idx → Nat := fun Idx self => self.9
   #1617075574/3517279188
-recursor Consensus.Params.rec : {Idx : Type} → {motive : Consensus.Params Idx → Sort u} → ((catchUp : Nat) → (θ β cover α : Rat) → (lag budget η noSleep recovery : Nat) → (heal latency : Consensus.Capability → Idx → Nat) → (fgDelay : PNat) → (ahead cohortAhead bandLead bandLen committeeAhead : Nat) → motive { catchUp := catchUp, θ := θ, β := β, cover := cover, α := α, lag := lag, budget := budget, η := η, noSleep := noSleep, recovery := recovery, heal := heal, latency := latency, fgDelay := fgDelay, ahead := ahead, cohortAhead := cohortAhead, bandLead := bandLead, bandLen := bandLen, committeeAhead := committeeAhead }) → (t : Consensus.Params Idx) → motive t
-  #3810786707/-
-def Consensus.Params.recOn : {Idx : Type} → {motive : Consensus.Params Idx → Sort u} → (t : Consensus.Params Idx) → ((catchUp : Nat) → (θ β cover α : Rat) → (lag budget η noSleep recovery : Nat) → (heal latency : Consensus.Capability → Idx → Nat) → (fgDelay : PNat) → (ahead cohortAhead bandLead bandLen committeeAhead : Nat) → motive { catchUp := catchUp, θ := θ, β := β, cover := cover, α := α, lag := lag, budget := budget, η := η, noSleep := noSleep, recovery := recovery, heal := heal, latency := latency, fgDelay := fgDelay, ahead := ahead, cohortAhead := cohortAhead, bandLead := bandLead, bandLen := bandLen, committeeAhead := committeeAhead }) → motive t := fun {Idx} {motive} t mk => Consensus.Params.rec.{u} mk t
-  #1732460662/531460598
-def Consensus.Params.recovery : {Idx : Type} → Consensus.Params Idx → Nat := fun Idx self => self.10
-  #1617075574/4293789416
-def Consensus.Params.standard : {Idx : Type} → Nat → Nat → Nat → (Consensus.Capability → Idx → Nat) → (Consensus.Capability → Idx → Nat) → Consensus.Params Idx := fun {Idx} catchUp lag budget heal latency => { catchUp := catchUp, θ := 1 / 2, β := 1 / 3, cover := 1 / 2, α := 1 / 3, lag := lag, budget := budget, η := 0, noSleep := 0, recovery := 0, heal := heal, latency := latency, fgDelay := 1, ahead := 0, cohortAhead := 0 }
-  #1628824251/3432189308
+def Consensus.Params.standard : {Idx : Type} → Nat → Nat → Nat → (Consensus.Capability → Idx → Nat) → (Consensus.Capability → Idx → Nat) → Consensus.Params Idx := fun {Idx} catchUp lag budget heal latency => { catchUp := catchUp, θ := 1 / 2, β := 1 / 3, cover := 1 / 2, α := 1 / 3, lag := lag, budget := budget, η := 0, recovery := 0, heal := heal, latency := latency, fgDelay := 1, ahead := 0 }
+  #1628824251/2353760842
 theorem Consensus.Params.standard._proof_1 #3031492042/-
 def Consensus.Params.α : {Idx : Type} → Consensus.Params Idx → Rat := fun Idx self => self.5
   #1386151514/2440399728
@@ -1803,30 +1785,20 @@ def Consensus.Params.θ : {Idx : Type} → Consensus.Params Idx → Rat := fun I
   #1386151514/576839434
 def Consensus.System.Healthy : {V : Type} → (S : Consensus.System V) → {Prog : Type} → [Fintype.{0} V] → Consensus.Contract Prog → Consensus.Time → S.Run → Prop := fun {V} S {Prog} [Fintype.{0} V] K g r => And (Consensus.CommLog.PSync (S.pt r) (S.log r) g) (And ((S.pt r).HealthyOn K.params.β g (S.pt r).horizon) (LE.le.{0} (S.pt r).env.ΔFG (HMul.hMul.{0, 0, 0} (Nat.cast.{0} K.params.fgDelay.val) (S.pt r).env.ΔAC)))
   #3786107350/2492895397
-def Consensus.System.Outage : {V : Type} → (S : Consensus.System V) → {Prog : Type} → [Fintype.{0} V] → [DecidableEq.{1} V] → Consensus.External S → Consensus.Contract Prog → Consensus.Time → Consensus.Time → Consensus.Time → S.Run → Prop := fun {V} S {Prog} [Fintype.{0} V] [DecidableEq.{1} V] X K T b₀ b₁ r => And (Consensus.OutageTimes K.params (S.pt r).env.ΔAC T b₀ b₁) (And (Consensus.CommLog.OutageNet (S.pt r) (S.log r) b₀ b₁) (And ((S.pt r).EtaSleepyOn K.params.θ (HMul.hMul.{0, 0, 0} (Nat.cast.{0} K.params.η) (S.pt r).env.ΔAC) (S.cDur K r) (S.aheadDur K r) 0 (S.pt r).horizon) (And (((S.pt r).retain (S.cohortAt K b₁ r)).NoSleepOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r)) (And (((S.pt r).retain (S.cohortAt K b₁ r)).CohortOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r)) (And (((S.pt r).retain (S.cohortAt K b₁ r)).CommitteeCohortOn (X.selected (S.pt r).env (X.ext r)) (S.outageStart K b₀ r) (S.outageEnd K b₁ r) (S.bandStart K b₀ r) (S.bandEnd K b₀ r)) ((S.pt r).CommitteeSleepyOn (X.selected (S.pt r).env (X.ext r)) K.params.θ (HMul.hMul.{0, 0, 0} (Nat.cast.{0} K.params.η) (S.pt r).env.ΔAC) (S.cDur K r) (S.committeeAheadDur K r) 0 (S.pt r).horizon))))))
-  #3531732085/3628699616
+def Consensus.System.Outage : {V : Type} → (S : Consensus.System V) → {Prog : Type} → [Fintype.{0} V] → [DecidableEq.{1} V] → Consensus.External S → Consensus.Contract Prog → Consensus.Time → Consensus.Time → Consensus.Time → S.Run → Prop := fun {V} S {Prog} [Fintype.{0} V] [DecidableEq.{1} V] X K T b₀ b₁ r => And (Consensus.OutageTimes K.params (S.pt r).env.ΔAC T b₀ b₁) (And (Consensus.CommLog.OutageNet (S.pt r) (S.log r) b₀ b₁) (And ((S.pt r).EtaSleepyOn K.params.θ (HMul.hMul.{0, 0, 0} (Nat.cast.{0} K.params.η) (S.pt r).env.ΔAC) (Max.max.{0} (S.cDur K r) (HSub.hSub.{0, 0, 0} (HMul.hMul.{0, 0, 0} (Nat.cast.{0} K.params.η) (S.pt r).env.ΔAC) 1)) (S.aheadDur K r) 0 (S.pt r).horizon) (∀ (δ : Consensus.Time), LE.le.{0} 0 δ → LE.le.{0} δ (HMul.hMul.{0, 0, 0} (Nat.cast.{0} K.params.η) (S.pt r).env.ΔAC) → (S.pt r).CommitteeSleepyOn (fun t => X.selected (S.pt r).env (X.ext r) (Max.max.{0} 0 (HSub.hSub.{0, 0, 0} t δ))) K.params.θ (HMul.hMul.{0, 0, 0} (Nat.cast.{0} K.params.η) (S.pt r).env.ΔAC) (Max.max.{0} (S.cDur K r) (HSub.hSub.{0, 0, 0} (HMul.hMul.{0, 0, 0} (Nat.cast.{0} K.params.η) (S.pt r).env.ΔAC) 1)) (S.committeeAheadDur K r) 0 (S.pt r).horizon)))
+  #3531732085/3604764346
 def Consensus.System.Sleepy : {V : Type} → (S : Consensus.System V) → {Prog : Type} → [Fintype.{0} V] → Consensus.Contract Prog → S.Run → Prop := fun {V} S {Prog} [Fintype.{0} V] K r => And (Consensus.CommLog.PSync (S.pt r) (S.log r) 0) ((S.pt r).SleepyOn K.params.θ (S.cDur K r) (S.aheadDur K r) 0 (S.pt r).horizon)
   #3586623323/789565811
 def Consensus.System.aheadDur : {V : Type} → (S : Consensus.System V) → {Prog : Type} → Consensus.Contract Prog → S.Run → Consensus.Time := fun {V} S {Prog} K r => HMul.hMul.{0, 0, 0} (Nat.cast.{0} K.params.ahead) (S.pt r).env.ΔAC
   #2677098564/229758888
-def Consensus.System.bandEnd : {V : Type} → (S : Consensus.System V) → {Prog : Type} → Consensus.Contract Prog → Consensus.Time → S.Run → Consensus.Time := fun {V} S {Prog} K b₀ r => HAdd.hAdd.{0, 0, 0} (S.bandStart K b₀ r) (HMul.hMul.{0, 0, 0} (Nat.cast.{0} K.params.bandLen) (S.pt r).env.ΔAC)
-  #195491206/4261047469
-def Consensus.System.bandStart : {V : Type} → (S : Consensus.System V) → {Prog : Type} → Consensus.Contract Prog → Consensus.Time → S.Run → Consensus.Time := fun {V} S {Prog} K b₀ r => HSub.hSub.{0, 0, 0} b₀ (HMul.hMul.{0, 0, 0} (Nat.cast.{0} K.params.bandLead) (S.pt r).env.ΔAC)
-  #195491206/3627200711
 def Consensus.System.cDur : {V : Type} → (S : Consensus.System V) → {Prog : Type} → Consensus.Contract Prog → S.Run → Consensus.Time := fun {V} S {Prog} K r => HMul.hMul.{0, 0, 0} (Nat.cast.{0} K.params.catchUp) (S.pt r).env.ΔAC
   #2677098564/2711715840
-def Consensus.System.cohortAt : {V : Type} → (S : Consensus.System V) → {Prog : Type} → Consensus.Contract Prog → Consensus.Time → S.Run → Consensus.Time := fun {V} S {Prog} K b₁ r => Min.min.{0} (HAdd.hAdd.{0, 0, 0} (S.outageEnd K b₁ r) (HMul.hMul.{0, 0, 0} (Nat.cast.{0} K.params.cohortAhead) (S.pt r).env.ΔAC)) (S.pt r).horizon
-  #195491206/1663406503
 def Consensus.System.committeeAheadDur : {V : Type} → (S : Consensus.System V) → {Prog : Type} → Consensus.Contract Prog → S.Run → Consensus.Time := fun {V} S {Prog} K r => HMul.hMul.{0, 0, 0} (Nat.cast.{0} K.params.committeeAhead) (S.pt r).env.ΔAC
   #2677098564/3510603363
 def Consensus.System.heal : {V : Type} → (S : Consensus.System V) → {Prog : Type} → (K : Consensus.Contract Prog) → Consensus.Capability → K.Idx → Consensus.Time → S.Run → Consensus.Time := fun {V} S {Prog} K cap i g r => HAdd.hAdd.{0, 0, 0} (Max.max.{0} g 0) (HMul.hMul.{0, 0, 0} (Nat.cast.{0} (K.params.heal cap i)) (S.pt r).env.ΔAC)
   #1228219382/1401950467
 def Consensus.System.lat : {V : Type} → (S : Consensus.System V) → {Prog : Type} → (K : Consensus.Contract Prog) → Consensus.Capability → K.Idx → S.Run → Consensus.Time := fun {V} S {Prog} K cap i r => HMul.hMul.{0, 0, 0} (Nat.cast.{0} (K.params.latency cap i)) (S.pt r).env.ΔAC
   #1455751266/2717942226
-def Consensus.System.outageEnd : {V : Type} → (S : Consensus.System V) → {Prog : Type} → Consensus.Contract Prog → Consensus.Time → S.Run → Consensus.Time := fun {V} S {Prog} K b₁ r => Min.min.{0} (HAdd.hAdd.{0, 0, 0} b₁ (HMul.hMul.{0, 0, 0} (Nat.cast.{0} K.params.noSleep) (S.pt r).env.ΔAC)) (S.pt r).horizon
-  #195491206/287488419
-def Consensus.System.outageStart : {V : Type} → (S : Consensus.System V) → {Prog : Type} → Consensus.Contract Prog → Consensus.Time → S.Run → Consensus.Time := fun {V} S {Prog} K b₀ r => Min.min.{0} (Max.max.{0} 0 (HSub.hSub.{0, 0, 0} b₀ (HMul.hMul.{0, 0, 0} (Nat.cast.{0} K.params.noSleep) (S.pt r).env.ΔAC))) (S.pt r).horizon
-  #195491206/821975547
 def Consensus.System.pt : {V : Type} → (S : Consensus.System V) → S.Run → Consensus.EnvPoint V := fun {V} S r => (S.trace r).point
   #1930732205/3596897860
 def Consensus.System.ready : {V : Type} → (S : Consensus.System V) → {Prog : Type} → Consensus.Contract Prog → Consensus.Time → S.Run → Consensus.Time := fun {V} S {Prog} K g r => HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (Max.max.{0} g 0) (S.cDur K r)) 1

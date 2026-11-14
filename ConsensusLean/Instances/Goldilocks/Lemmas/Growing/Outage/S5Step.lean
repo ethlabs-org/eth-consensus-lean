@@ -32,9 +32,9 @@ then, from `OutageLockInv D i` (`k ≤ i`) and receiver service from `b₁`:
 * `outage_s5_inner_at` (INV): root cover, Hi (`vote_extends_of_hi_at`), or Lo with the batch walk.
   For `q > r` the batch is every slot-`q` vote (each extends `P` by induction on the cut), counted
   at the voter's cut (`vote_extends_of_batch_at`, `faults_lt_voters`). For `q = r` the batch is the
-  members of the cohort `A₀` in the slot-`r` committee `K_r`: the voters honest at the vote's time
-  `t_k ≤ t_r + 5Δ ≤ z` are members, classified at their cast (`cohort_classify`), the others are
-  compromised by `z`, and `hcohortK` counts the rest in `K_r`;
+  members of the holders `A₀` in the slot-`r` committee `K_r`: the voters honest at the vote's time
+  `t_k ≤ t_r + 5Δ ≤ z` are members, classified at their cast (`holder_or_opponent`), the others are
+  compromised by `z`, and `hopponentsK` counts the rest in `K_r`;
 * `outage_s5_step_at` (lock safety's `hS5`) and `restored_votes_extend_at`. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
@@ -367,7 +367,7 @@ theorem OutageLockInv.mono {i k : Nat} (h : OutageLockInv D i) (hk : k ≤ i) :
 /-- **INV, the inner cut induction**: from the invariant at the cuts before `i` and receiver
 service from `b₁`, every vote at a cut `≤ i` of a slot after `r`, by a node honest at its cut,
 extends `P`. Root cover, Hi (H1) or Lo (G4 and the batch walk). For `q > r` the slot-`q` votes all
-extend `P` by induction and are counted at the voter's cut; for `q = r` the cohort `A₀` is counted
+extend `P` by induction and are counted at the voter's cut; for `q = r` the holders `A₀` is counted
 against `(H z)ᶜ ∪ W` at `z ≥ t_k`. -/
 theorem outage_s5_inner_at
     (hS : ∀ y, ReceiverServiceAfterAt H (tr.HonestBlocksAt H) D.b₁ y tr.projAC)
@@ -448,7 +448,7 @@ theorem outage_s5_inner_at
         simpa only [Set.mem_univ, true_and] using h)
       hL
   · -- `q = r`: the members of `A₀` in `K_r` cast and extend `P`; the other casters honest at
-    -- `t_k` are members, late wakers or compromised by `z ≥ t_k`
+    -- `t_k` are members, look-back opponents or compromised by `z ≥ t_k`
     have hσ := D.hσ
     have hrk := D.hrk
     have hrK := ts_le_ts (sp := sp) hrk.2
@@ -464,11 +464,11 @@ theorem outage_s5_inner_at
     have hcallr : ∃ x i, x ∈ H (tr.time i) ∧ tr.IsCall x i ∧
         sp.ts D.r + sp.Δ ≤ tr.time i :=
       ⟨y, k, hy, hcallk, by linarith only [htk1, hts, hΔ]⟩
-    have hco := D.hcohortK D.r (by omega) hrk.2 (honestCall_mono hcallr (by linarith only [hΔ]))
+    have hco := D.hopponentsK D.r (by omega) hrk.2 (honestCall_mono hcallr (by linarith only [hΔ]))
     have hSXv : ∀ x ∈ D.K.committee D.r ∩ D.A₀, ∃ j e', HVoteAt tr H x j e' ∧
         e'.msg.slot = D.r := by
       intro x hx
-      obtain ⟨haw, hjn⟩ := OutageVoteInv.cohort_ready_at D hx.2 hrk.1 hrk.2 hcallr
+      obtain ⟨haw, hjn⟩ := OutageVoteInv.holder_ready_at D hx.2 hrk.1 hrk.2 hcallr
       have hxr : x ∈ H (sp.ts D.r + sp.Δ) := hrun.antitone
         (D.hzc _ (by linarith only [hrK, hΔ]) hcallr) (D.hA₀ hx.2)
       obtain ⟨j, e', hve, hvs, -⟩ := vote_of_awake_joined_at hrun D.hnc hxr
@@ -490,7 +490,7 @@ theorem outage_s5_inner_at
       have hj₁ : sp.ts (D.j₀ + 1 : Nat) = sp.ts D.j₀ + 4 * sp.Δ := by
         simp only [SAParams.ts]; push_cast; ring
       have hjk := (vote_cut_lt hrun D.hnc hve hvs htk1).2
-      rcases D.cohort_classify hve (by linarith only [D.ha, hts', hjr, hj₁, hΔ])
+      rcases D.holder_or_opponent hve (by linarith only [D.ha, hts', hjr, hj₁, hΔ])
           ((hrun.time_mono hjk.le).trans hkz) with h | h | h
       · exact Or.inl h
       · exact Or.inr (Or.inr h)

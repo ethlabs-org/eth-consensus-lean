@@ -19,7 +19,7 @@ at a time at which the node is honest (`record_above_of_update_r_by`; at the cut
 
 * when `P ⪯ Σ.F` at the update, the effective record is a block of the later frame, so it extends
   that frame's `Σ.F`, which extends the update's;
-* otherwise the gate's result extends `P` (`gate_result_extends_at` with the cohort majority
+* otherwise the gate's result extends `P` (`gate_result_extends_at` with the holder majority
   `restored_majority_at_r_at`, charged at the update's cut `t_r + 6Δ ≤ z`), and
   `record_above_from_at` keeps the record above `P`, whether the result is accepted or vetoed. -/
 

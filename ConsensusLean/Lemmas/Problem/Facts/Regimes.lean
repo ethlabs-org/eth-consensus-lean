@@ -36,25 +36,6 @@ theorem HealthyOn.faultsBelow {β : ℚ} {g : Time} (h : p.HealthyOn β g p.hori
     p.FaultsBelow β :=
   faultsBelow_iff.mpr h.1
 
-/-- The outage cohort count bounds the opponents by half of all validators:
-the faulty validators, the late wakers and the honest validators awake at `a`
-are disjoint, so `2·|faulty ∪ late| < |faulty ∪ late| + |awake a| ≤ n`. -/
-theorem CohortOn.two_mul_lt {a b : Time} (h : p.CohortOn a b)
-    (hab : p.faultyAt b ⊆ p.faultyAt a) :
-    2 * (p.faultyAt b ∪ p.lateWakers a b).card < Fintype.card V := by
-  classical
-  have hdisj : Disjoint (p.faultyAt b ∪ p.lateWakers a b) (p.awakeAt a) := by
-    rw [Finset.disjoint_left]
-    intro v hv ha
-    have hah : v ∉ p.faultyAt a := (Finset.mem_sdiff.mp (Finset.mem_filter.mp ha).1).2
-    rcases Finset.mem_union.mp hv with hf | hl
-    · exact hah (hab hf)
-    · exact (Finset.mem_sdiff.mp hl).2 ha
-  have hcard := Finset.card_union_of_disjoint hdisj
-  have hle := Finset.card_le_univ ((p.faultyAt b ∪ p.lateWakers a b) ∪ p.awakeAt a)
-  unfold CohortOn at h
-  omega
-
 /-- At zero look-back, η-readiness is plain readiness. -/
 theorem etaReadyAbove_zero_iff {θ : ℚ} {c t : Time} :
     p.EtaReadyAbove θ 0 c t ↔ p.ReadyAbove θ c t := by
@@ -162,11 +143,61 @@ theorem EtaSleepyOn.committee_univ {θ : ℚ} {η c W W' a b : Time}
     (min_le_min_right _ (show t + W' ≤ t + W by linarith)) hθ h0
   simpa [lookAhead, EtaReadyAbove, ReadyAbove, faultCount] using ht
 
-/-- A population cohort satisfies every full-committee band, including an empty band. -/
-theorem CohortOn.committee_univ {a z lo hi : Time} (h : p.CohortOn a z) :
-    p.CommitteeCohortOn (fun _ => Finset.univ) a z lo hi := by
-  intro _ _ _ _ _
-  simpa only [CohortOn, Finset.inter_univ] using h
+/-- **The opponents of the ready validators** inside a set `K`, from a half-threshold look-back
+count on the view retained through `e`: on the view retained through any `d ≤ e`, the validators
+seen awake in `[max 0 (t − η), t]` but not ready, together with those compromised by `d`, are fewer
+than the ready ones. Ready validators are honest, so they are disjoint from the compromised ones;
+retaining through an earlier time keeps every ready validator and charges fewer faults. -/
+theorem opponents_inter_lt_of_retain {η c t d e : Time} (K : Finset V) (hde : d ≤ e)
+    (h : (1 / 2 : ℚ) * ((((p.retain e).readyAt c t ∪ (p.retain e).awakeIn (max 0 (t - η)) t ∪
+      (p.retain e).faultyAt t) ∩ K).card : ℚ) < (((p.retain e).readyAt c t ∩ K).card : ℚ)) :
+    ((((p.retain d).awakeIn (max 0 (t - η)) t \ (p.retain d).readyAt c t) ∪
+      (p.retain d).faultyAt t) ∩ K).card < ((p.retain d).readyAt c t ∩ K).card := by
+  classical
+  have hRF : ∀ v ∈ (p.retain e).readyAt c t, v ∉ (p.retain e).faultyAt t :=
+    fun v hv => (Finset.mem_filter.mp hv).2.1
+  have hR : (p.retain e).readyAt c t ⊆ (p.retain d).readyAt c t := by
+    intro v hv
+    simp only [readyAt, Finset.mem_filter, Finset.mem_univ, true_and] at hv ⊢
+    exact ⟨fun hf => hv.1 (p.faultyAt_mono hde hf), hv.2⟩
+  have hopp : ((p.retain d).awakeIn (max 0 (t - η)) t \ (p.retain d).readyAt c t) ∪
+      (p.retain d).faultyAt t ⊆ ((p.retain e).awakeIn (max 0 (t - η)) t \
+        (p.retain e).readyAt c t) ∪ (p.retain e).faultyAt t := by
+    intro v hv
+    by_cases hf : v ∈ (p.retain e).faultyAt t
+    · exact Finset.mem_union_right _ hf
+    rcases Finset.mem_union.mp hv with hv | hv
+    · obtain ⟨hi, hr⟩ := Finset.mem_sdiff.mp hv
+      refine Finset.mem_union_left _ (Finset.mem_sdiff.mpr ⟨?_, fun h => hr (hR h)⟩)
+      simp only [awakeIn, Finset.mem_filter, Finset.mem_univ, true_and] at hi ⊢
+      obtain ⟨u, hau, hut, -, haw⟩ := hi
+      exact ⟨u, hau, hut, hf, haw⟩
+    · exact Finset.mem_union_right _ (p.faultyAt_mono hde hv)
+  set R := (p.retain e).readyAt c t
+  set I := (p.retain e).awakeIn (max 0 (t - η)) t
+  set F := (p.retain e).faultyAt t
+  have heq : (R ∪ I ∪ F) ∩ K = (R ∩ K) ∪ (((I \ R) ∪ F) ∩ K) := by
+    ext v
+    simp only [Finset.mem_inter, Finset.mem_union, Finset.mem_sdiff]
+    tauto
+  have hdisj : Disjoint (R ∩ K) (((I \ R) ∪ F) ∩ K) := by
+    refine Finset.disjoint_left.mpr fun v hv hw => ?_
+    rcases Finset.mem_union.mp (Finset.mem_inter.mp hw).1 with hi | hf
+    · exact (Finset.mem_sdiff.mp hi).2 (Finset.mem_inter.mp hv).1
+    · exact hRF v (Finset.mem_inter.mp hv).1 hf
+  rw [heq, Finset.card_union_of_disjoint hdisj] at h
+  have he : (((I \ R) ∪ F) ∩ K).card < (R ∩ K).card := by
+    have hq : ((((I \ R) ∪ F) ∩ K).card : ℚ) < (R ∩ K).card := by
+      push_cast at h
+      linarith
+    exact_mod_cast hq
+  calc ((((p.retain d).awakeIn (max 0 (t - η)) t \ (p.retain d).readyAt c t) ∪
+        (p.retain d).faultyAt t) ∩ K).card
+      ≤ (((I \ R) ∪ F) ∩ K).card :=
+        Finset.card_le_card (Finset.inter_subset_inter hopp (Finset.Subset.refl _))
+    _ < (R ∩ K).card := he
+    _ ≤ ((p.retain d).readyAt c t ∩ K).card :=
+        Finset.card_le_card (Finset.inter_subset_inter hR (Finset.Subset.refl _))
 
 end EnvPoint
 
@@ -186,30 +217,17 @@ theorem net (h : S.Outage X K T b₀ b₁ r) :
 /-- An outage run satisfies the population η-sleepy conjunct `EtaSleepyOn` on the horizon. -/
 theorem etaSleepy (h : S.Outage X K T b₀ b₁ r) :
     (S.pt r).EtaSleepyOn K.params.θ ((K.params.η : Time) * (S.pt r).env.ΔAC)
-      (S.cDur K r) (S.aheadDur K r) 0 (S.pt r).horizon := h.2.2.1
+      (max (S.cDur K r) ((K.params.η : Time) * (S.pt r).env.ΔAC - 1))
+      (S.aheadDur K r) 0 (S.pt r).horizon := h.2.2.1
 
-/-- An outage run satisfies the no-sleep conjunct `NoSleepOn` of the retained cohort. -/
-theorem noSleep (h : S.Outage X K T b₀ b₁ r) :
-    ((S.pt r).retain (S.cohortAt K b₁ r)).NoSleepOn
-      (S.outageStart K b₀ r) (S.outageEnd K b₁ r) := h.2.2.2.1
-
-/-- An outage run satisfies the cohort conjunct `CohortOn` of the retained cohort. -/
-theorem cohort (h : S.Outage X K T b₀ b₁ r) :
-    ((S.pt r).retain (S.cohortAt K b₁ r)).CohortOn
-      (S.outageStart K b₀ r) (S.outageEnd K b₁ r) := h.2.2.2.2.1
-
-/-- An outage run satisfies the committee cohort conjunct `CommitteeCohortOn` on the band. -/
-theorem committeeCohort (h : S.Outage X K T b₀ b₁ r) :
-    ((S.pt r).retain (S.cohortAt K b₁ r)).CommitteeCohortOn
-      (X.selected (S.pt r).env (X.ext r)) (S.outageStart K b₀ r) (S.outageEnd K b₁ r)
-      (S.bandStart K b₀ r) (S.bandEnd K b₀ r) := h.2.2.2.2.2.1
-
-/-- An outage run satisfies the committee η-sleepy conjunct `CommitteeSleepyOn` on the
-horizon. -/
-theorem committeeSleepy (h : S.Outage X K T b₀ b₁ r) :
-    (S.pt r).CommitteeSleepyOn (X.selected (S.pt r).env (X.ext r)) K.params.θ
-      ((K.params.η : Time) * (S.pt r).env.ΔAC) (S.cDur K r) (S.committeeAheadDur K r)
-      0 (S.pt r).horizon := h.2.2.2.2.2.2
+/-- An outage run satisfies the look-back committee η-sleepy conjunct `CommitteeSleepyOn` on the
+horizon, for each look-back `δ ∈ [0, η·ΔAC]` (selection at `max 0 (t − δ)`). -/
+theorem committeeSleepy (h : S.Outage X K T b₀ b₁ r) {δ : Time} (h0 : 0 ≤ δ)
+    (hδ : δ ≤ (K.params.η : Time) * (S.pt r).env.ΔAC) :
+    (S.pt r).CommitteeSleepyOn (fun t => X.selected (S.pt r).env (X.ext r) (max 0 (t - δ)))
+      K.params.θ ((K.params.η : Time) * (S.pt r).env.ΔAC)
+      (max (S.cDur K r) ((K.params.η : Time) * (S.pt r).env.ΔAC - 1))
+      (S.committeeAheadDur K r) 0 (S.pt r).horizon := h.2.2.2 δ h0 hδ
 
 end System.Outage
 

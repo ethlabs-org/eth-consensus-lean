@@ -129,7 +129,7 @@ theorem cover_base_at {i : Nat} (hinv : OutageLockInv D i) {x : Fin sp.n} (hx : 
 /-- **(H) for a cast of `A₀` after `b₀`**, by a node honest at its cast: through the
 label-`(j₀ − 1)` protection for slots `≤ j₀ − 1 + k`, and through the cover protection for slot
 `j₀ + k`. -/
-theorem cohort_vote_extends_at {i : Nat} (hinv : OutageLockInv D i) {x : Fin sp.n}
+theorem holder_vote_extends_at {i : Nat} (hinv : OutageLockInv D i) {x : Fin sp.n}
     (hx : x ∈ D.A₀) {e : SA.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x i e)
     (hsK : e.msg.slot ≤ D.j₀ + sp.k) (hb : D.b₀ < tr.time i) :
     SA.VoteExtends (tr.HonestBlocksAt H) e.msg D.P := by
@@ -319,7 +319,7 @@ theorem outage_lock_inv_at (D : OutageLockPremises tr H proposer dg ini) (hS5 : 
       intro x e hv hs hsK hpre
       by_cases hb : tr.time i ≤ D.b₀
       · exact D.vote_extends_pre hv hb hs
-      · exact hinv.cohort_vote_extends_at (hpre.resolve_left hb) hv hsK (not_le.1 hb)
+      · exact hinv.holder_vote_extends_at (hpre.resolve_left hb) hv hsK (not_le.1 hb)
     have hvi : OutageVoteInv D (i + 1) :=
       ⟨fun x k hk e hv hs hsK hpre => by
           rcases Nat.lt_succ_iff_lt_or_eq.1 hk with hk | rfl

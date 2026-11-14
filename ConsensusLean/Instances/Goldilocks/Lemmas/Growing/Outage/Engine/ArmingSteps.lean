@@ -468,7 +468,7 @@ theorem cover_gate_veto_above_at
     · exact ⟨⟨l, hl, hls', B₀, hB₀, hB₀r, rfl⟩, SA.anc_tree_of_anc_U hU hΦ hHB hCt hCV' hVt⟩
     · exact (hnoU (Or.inr (hVC.trans hCD'))).elim
 
-/-! ### The armed updates of a cohort member -/
+/-! ### The armed updates of a holder -/
 
 /-- (R1) Awake on `[a, z]` and honest at `z`: every restart up to `z` is at or before every
 public `τ ∈ [a, z]`. -/
@@ -524,7 +524,7 @@ theorem update_of_awakeOn_at
   rw [RunTrace.upTo_projAC] at hu
   exact ⟨k, ℓ, ((sa_updateAt_upTo hrun.time_mono).mp hu).2⟩
 
-/-- **The first armed update** of slot `s` of a cohort member `w` (honest at `z`, awake on
+/-- **The first armed update** of slot `s` of a holder `w` (honest at `z`, awake on
 `[a, z]`): it exists, its restarts are at or before `t_{s−k+1}`, and when `Σ.F ⪯ C` the origin
 `C` (of a label `σ ≤ s − k`) is in its frame below its result, which a pool vote of a node honest
 at its cast and at the update supports, and every saved attestation of the slow test names a
@@ -640,7 +640,7 @@ private theorem slot_update_time {s : Nat} : sp.slot (sp.ts s + 6 * sp.Δ) = s +
   rw [h6]
   exact SA.slot_of_mem sp (s + 1) (by linarith) (by simp only [SAParams.ts]; push_cast; linarith)
 
-/-- **O1 at an update within `b`**: the first update of slot `s` of a cohort member, at a time
+/-- **O1 at an update within `b`**: the first update of slot `s` of a holder, at a time
 `≤ b`, has root cover, or stores a lock of slot `s` on a block of its frame above `C`. -/
 theorem armed_lock_formed_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
@@ -684,7 +684,7 @@ theorem armed_lock_formed_at
       (htc ▸ hsb) hD) hCt hCg hCD hrows hlive hcand
   exact Or.inr ⟨L, f, hL, hCL, (locks_after_update_at hrun hnc hwc hu).symm ▸ hl⟩
 
-/-- **O1 at the cover gate**: the first update of slot `s` of a cohort member, whose slot's
+/-- **O1 at the cover gate**: the first update of slot `s` of a holder, whose slot's
 votes are delivered by `t_s + 2Δ ≤ b` but which may itself be after `b`. Given (F), (VA) when
 `Σ.F ⪯ C`, and (N) for the `Hold` votes of slot `s + 1` before it, it has root cover or stores a
 lock of slot `s` and expiry `s + k` above `C`. The opponents `Opp` hold the validators

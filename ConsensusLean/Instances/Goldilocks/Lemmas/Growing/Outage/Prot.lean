@@ -233,7 +233,7 @@ theorem unlockKeeps_at {k : Nat} (hvi : OutageVoteInv D k) {y : Fin sp.n}
     (SA.ts_le_iff_le_slot sp (D.hrun.time_nonneg k) _).2 (by omega)
   refine unlockKeeps_of_voteCompat_at D.hrun D.hnc D.facts hy hG
     (by rw [hc']; exact D.two_mul_lt_K (by omega) (by omega) ⟨y, k, hy, hc, hts⟩) hP
-    fun x hx k' hk' e hv hes => hvi.voteCompat_of_not_lateWaker_at hk' hv (by omega)
+    fun x hx k' hk' e hv hes => hvi.voteCompat_of_not_opponent_at hk' hv (by omega)
       fun _ => ⟨hx.1, hx.2⟩
 
 /-- **One step of the protection**: at a cut `k` of a node honest then, `Prot x k j m` with

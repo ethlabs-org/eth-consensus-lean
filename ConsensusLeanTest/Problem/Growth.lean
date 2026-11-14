@@ -137,33 +137,40 @@ theorem sleepyOn_ahead_not_terminal :
     rw [EnvPoint.ReadyAbove, readyAt_eq _ 3 (by decide)] at hh
     norm_num [EnvPoint.faultCount, EnvPoint.retain, point] at hh
 
-private theorem awakeAt_retained (d t : Time) :
-    (point.retain d).awakeAt t = if 5 ≤ d then {2} else {0, 1, 2} := by
-  ext v
-  fin_cases v <;> by_cases hd : 5 ≤ d <;>
-    simp [EnvPoint.awakeAt, EnvPoint.honestAt, EnvPoint.retain, point, hd]
-
-private theorem lateWakers_retained (d : Time) :
-    (point.retain d).lateWakers 3 4 = ∅ := by
-  classical
-  ext v
-  simp only [EnvPoint.lateWakers, Finset.mem_sdiff, Finset.notMem_empty, iff_false,
-    not_and]
-  intro h hn
-  obtain ⟨u, _, _, hv, ha⟩ := (Finset.mem_filter.mp h).2
-  apply hn
-  simp only [EnvPoint.awakeAt, Finset.mem_filter, EnvPoint.honestAt,
-    Finset.mem_sdiff, Finset.mem_univ, true_and]
-  exact ⟨hv, ha⟩
-
-/-- The formation-time cohort passes, but charging the compromised cohort members rejects it. -/
-theorem retained_cohort_rejected :
-    (point.retain 4).CohortOn 3 4 ∧ ¬ (point.retain 5).CohortOn 3 4 := by
-  constructor
-  · rw [EnvPoint.CohortOn, lateWakers_retained, awakeAt_retained]
-    norm_num [EnvPoint.retain, point]
-  · rw [EnvPoint.CohortOn, lateWakers_retained, awakeAt_retained]
-    norm_num [EnvPoint.retain, point]
+/-- The look-back count at formation passes, but charging the compromised ready validators
+rejects it: retained through `5`, the two compromised supporters leave the ready set and count as
+faulty. -/
+theorem retained_lookback_rejected :
+    (point.retain 4).EtaReadyAbove (1 / 2) 1 0 4 ∧
+      ¬ (point.retain 5).EtaReadyAbove (1 / 2) 1 0 4 := by
+  have hpos : ¬ (1 : Time) ≤ 0 := by norm_num
+  have hR4 : ((point.retain 4).readyAt 0 4).card = 3 := by rw [readyAt_eq]; rfl
+  have hR5 : ((point.retain 5).readyAt 0 4).card = 1 := by rw [readyAt_eq]; rfl
+  have pass : ∀ U R : Finset (Fin 5), R.card = 3 → (1 / 2 : ℚ) * U.card < R.card := by
+    intro U R hR
+    have hU : (U.card : ℚ) ≤ 5 := by
+      exact_mod_cast (Finset.card_le_univ U).trans (by simp)
+    rw [hR]
+    push_cast
+    linarith
+  have reject : ∀ U R : Finset (Fin 5), R.card = 1 → ({0, 1, 2} : Finset (Fin 5)) ⊆ U →
+      ¬ (1 / 2 : ℚ) * U.card < R.card := by
+    intro U R hR hsub h
+    have h3 := Finset.card_le_card hsub
+    rw [show ({0, 1, 2} : Finset (Fin 5)).card = 3 from rfl] at h3
+    have h3' : (3 : ℚ) ≤ U.card := by exact_mod_cast h3
+    rw [hR] at h
+    push_cast at h
+    linarith
+  simp only [EnvPoint.EtaReadyAbove, hpos, ↓reduceIte]
+  refine ⟨pass _ _ hR4, reject _ _ hR5 ?_⟩
+  rw [readyAt_eq]
+  intro v hv
+  simp only [Finset.mem_insert, Finset.mem_singleton] at hv
+  rcases hv with rfl | rfl | rfl
+  · exact Finset.mem_union_right _ (by simp [EnvPoint.retain, point])
+  · exact Finset.mem_union_right _ (by simp [EnvPoint.retain, point])
+  · exact Finset.mem_union_left _ (Finset.mem_union_left _ (by simp))
 
 /-- One existing fault grows to two while exactly two honest validators remain awake. -/
 def stressPoint : EnvPoint (Fin 5) :=

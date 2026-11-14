@@ -74,11 +74,6 @@ modelling"); the certified committee claim is the outage persistence row. A1.9
 `Consensus.Goldilocks.SA.HealthyBaseU` and `Consensus.Goldilocks.Healing.HSShared` carry it as a field: they are
 stated at population-sized committees only, and no certified statement reaches them.
 
-## Planned
-
-- Outage: replace the no-sleep and cohort clauses (`NoSleepOn`, `CohortOn`, `CommitteeCohortOn`) with run-wide
-  η-sleepy participation.
-
 ## Shape examples
 
 `ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean` (not instances, not on the trusted surface): contract values with admissibility, progress-fit and

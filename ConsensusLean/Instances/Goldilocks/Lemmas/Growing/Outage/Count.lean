@@ -13,15 +13,15 @@ public section
   `B` through a vote head, inside a coherent set of blocks;
 * `OutageLockPremises.compatible_of_within`, `vote_extends_pre`: origins and votes within `b₀`
   are compatible with, or extend, `P` (the Sleepy invariant up to `b₀`);
-* `OutageVoteInv.voteCompat_of_not_lateWaker_at` (OL-W): a vote of a slot `≥ j₀`, by a node
-  honest at its cast, still honest at `z` and not a late waker when the slot is at most `j₀ + k`,
-  has a head compatible with `P`;
+* `OutageVoteInv.voteCompat_of_not_opponent_at` (OL-W): a vote of a slot `≥ j₀`, by a node
+  honest at its cast, still honest at `z` and not a look-back opponent when the slot is at most
+  `j₀ + k`, has a head compatible with `P`;
 * `counted_honest_vote_at` (Lemma G at a result): a counted vote of a validator honest at the
   writer's update was cast by it while honest;
 * `OutageVoteInv.result_compatible_at` (R): the result of an update of an unpolluted label by a
   node honest at it is compatible with `P`. Every branch counts at the writer's update cut `k`,
   inside the slot committee `K m` (P puts the counted signers there): R-pre (within `b₀`), R-j₀
-  (the committee slot count at `t_{j₀} + 6Δ`, pre-`b₀` service), R-mid (the cohort `K m ∩ A₀`
+  (the committee slot count at `t_{j₀} + 6Δ`, pre-`b₀` service), R-mid (the holders `K m ∩ A₀`
   against `K m ∩ ((H z)ᶜ ∪ W)`, at `t_k ≤ z` by `hzc`), R-late (`late` and the committee slot
   count at `t_m + 6Δ`). -/
 
@@ -218,8 +218,8 @@ theorem mono {i i' : Nat} (hinv : OutageVoteInv D i) (hi : i' ≤ i) : OutageVot
 
 /-- **OL-W**: at a cut before `i`, a vote of a slot `≥ j₀` by a node honest at its cast has a
 head compatible with `P` when, for a slot at most `j₀ + k`, its voter is still honest at `z` and
-is not a late waker. -/
-theorem voteCompat_of_not_lateWaker_at {i : Nat} (hinv : OutageVoteInv D i) {x : Fin sp.n}
+is not a look-back opponent. -/
+theorem voteCompat_of_not_opponent_at {i : Nat} (hinv : OutageVoteInv D i) {x : Fin sp.n}
     {k : Nat} (hk : k < i) {e : SA.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x k e)
     (hs : D.j₀ ≤ e.msg.slot) (hxz : e.msg.slot ≤ D.j₀ + sp.k → x ∈ H D.z ∧ x ∉ D.W) :
     VoteCompat (tr.HonestBlocksAt H) e.msg D.P := by
@@ -244,7 +244,7 @@ theorem voteCompat_of_not_lateWaker_at {i : Nat} (hinv : OutageVoteInv D i) {x :
 
 /-- A member of `A₀` is awake and joined at `t_m + Δ` for a label `m ∈ [j₀ + 1, j₀ + k]` that an
 honest call reaches. -/
-theorem cohort_ready_at (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n}
+theorem holder_ready_at (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n}
     (hx : x ∈ D.A₀) {m : Nat} (hm : D.j₀ + 1 ≤ m) (hmK : m ≤ D.j₀ + sp.k)
     (hcall : ∃ y i, y ∈ H (tr.time i) ∧ tr.IsCall y i ∧ sp.ts m + sp.Δ ≤ tr.time i) :
     tr.awake x (sp.ts m + sp.Δ) ∧ tr.JoinedAt x (sp.ts m + sp.Δ) := by
@@ -363,12 +363,12 @@ theorem result_compatible_at {i : Nat} (hinv : OutageVoteInv D i) {y : Fin sp.n}
     have hT : D.K.committee m ∩ D.A₀ ⊆ SA.voters {v | v ∈ (tr.projAC.state y k).pool m} := by
       rintro x ⟨hxK, hx⟩
       have hcm := honestCall_mono hcall (show sp.ts m + sp.Δ ≤ tr.time k by rw [ht]; linarith)
-      obtain ⟨haw, hjn⟩ := cohort_ready_at D hx (by omega) hmK hcm
+      obtain ⟨haw, hjn⟩ := holder_ready_at D hx (by omega) hmK hcm
       exact voter_of_ready D hy hu hm
         (D.hrun.antitone (D.hzc _ (by linarith [ts_le_ts (sp := sp) hmK]) hcm) (D.hA₀ hx)) hxK
         haw hjn
     obtain ⟨v, hv, hvT⟩ := Compose.exists_counted_of_participants hR hT
-      (D.hcohortK m (by omega) hmK
+      (D.hopponentsK m (by omega) hmK
         (honestCall_mono hcall (show sp.ts m ≤ tr.time k by rw [ht]; linarith)))
     have hvz : v.val ∈ H D.z := by
       rcases hvT with h | h
@@ -377,7 +377,7 @@ theorem result_compatible_at {i : Nat} (hinv : OutageVoteInv D i) {y : Fin sp.n}
     refine finish v hv (D.hrun.antitone hkz hvz) fun j hj e hve he hs => ?_
     rcases hvT with hA | hQ
     · exact (hinv.votes v.val j (by omega) e hve (by omega) (by omega) (Or.inr hA.2)).voteCompat
-    · exact hinv.voteCompat_of_not_lateWaker_at (by omega) hve (by omega)
+    · exact hinv.voteCompat_of_not_opponent_at (by omega) hve (by omega)
         fun _ => ⟨hvz, fun h => hQ ⟨hmemCV v hv, Or.inr h⟩⟩
   · -- R-late: every slot-`m` vote is compatible with `P` (`late`); the committee members honest
     -- at the update and awake and joined at `t_m + Δ` reach it

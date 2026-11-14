@@ -44,10 +44,10 @@ it rejects.
 * `faulty_third_not_healthy` (M21): healthy at `β` bounds the faults below `β`
   (`HealthyOn.faultsBelow`), on every point; so a point with one faulty
   validator among three is never healthy at `β = ⅓`, however awake.
-* `outage_cohort_teeth`: the no-sleep conjunct rejects an honest validator
-  falling asleep in the window and accepts a late waker; the cohort count
-  accepts one late waker against three honest validators awake at the window
-  start and rejects two late wakers against two.
+* `outage_lookback_teeth`: the outage's η-sleepy count admits an honest
+  validator falling asleep in the window and one late waker against three
+  validators ready throughout, and rejects two late wakers against two ready
+  ones, where plain sleepy participation holds.
 * `outage_times_teeth`: with lag `2`, budget `3`, `Δ = 1`, `OutageTimes`
   accepts `T = 0, [2, 5)`, and rejects an arming at a negative time, an arming
   less than `lag·Δ` before the window, a window longer than `budget·Δ`, and an
@@ -209,86 +209,6 @@ theorem HealthyOn.mono {β β' : ℚ} {g b : Time} (h : p.HealthyOn β' g b) (hl
     p.HealthyOn β g b :=
   ⟨lt_of_lt_of_le h.1 (mul_le_mul_of_nonneg_right hle (by positivity)), h.2⟩
 
-omit [Fintype V] [DecidableEq V] in
-/-- A no-sleep window keeps its property on every subwindow. -/
-theorem NoSleepOn.mono {a b a' b' : Time} (hf : p.ConstantFaults)
-    (h : p.NoSleepOn a b) (ha : a ≤ a') (hb : b' ≤ b) :
-    p.NoSleepOn a' b' :=
-  fun v hv t ht1 ht2 hat u hu1 hu2 =>
-    h v ((p.honestAt_iff_zero hf v b).mpr ((p.honestAt_iff_zero hf v b').mp hv))
-      t (ha.trans ht1) (ht2.trans hb) hat u hu1 (hu2.trans hb)
-
-/-- Under no-sleep on `[a, b]`, the cohort count on `[a, b]` holds on every
-subwindow `[a', b']`: the late wakers of `[a', b']` are late wakers of
-`[a, b]` (a validator awake at `a` stays awake through `a'`), and the
-validators awake at `a` are still awake at `a'`. -/
-theorem CohortOn.mono {a b a' b' : Time} (hf : p.ConstantFaults)
-    (hns : p.NoSleepOn a b) (h : p.CohortOn a b)
-    (ha : a ≤ a') (hab : a' ≤ b') (hb : b' ≤ b) : p.CohortOn a' b' := by
-  classical
-  dsimp only [ConstantFaults] at hf
-  have hab' : a ≤ b := ha.trans (hab.trans hb)
-  have hsub : p.faultyAt 0 ∪ p.lateWakers a' b' ⊆ p.faultyAt 0 ∪ p.lateWakers a b := by
-    apply Finset.union_subset_union_right
-    intro v hv
-    simp only [EnvPoint.lateWakers, EnvPoint.awakeIn, EnvPoint.awakeAt,
-      EnvPoint.honestAt, Finset.mem_sdiff, Finset.mem_filter, Finset.mem_univ,
-      true_and, EnvPoint.HonestAt] at hv ⊢
-    simp only [hf] at hv ⊢
-    simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hv ⊢
-    obtain ⟨⟨u, hu1, hu2, hh, hu⟩, hn⟩ := hv
-    exact ⟨⟨u, ha.trans hu1, hu2.trans hb, hh, hu⟩,
-      fun h0 => hn ⟨hh, hns v (by simpa only [EnvPoint.HonestAt, hf] using hh)
-        a le_rfl hab' h0.2 a' ha (hab.trans hb)⟩⟩
-  have hA : p.awakeAt a ⊆ p.awakeAt a' := by
-    intro v hv
-    simp only [EnvPoint.awakeAt, EnvPoint.honestAt, Finset.mem_filter,
-      Finset.mem_sdiff, Finset.mem_univ, true_and] at hv ⊢
-    simp only [hf] at hv ⊢
-    exact ⟨hv.1, hns v (by simpa only [EnvPoint.HonestAt, hf] using hv.1)
-      a le_rfl hab' hv.2 a' ha (hab.trans hb)⟩
-  have h1 := Finset.card_le_card hsub
-  have h2 := Finset.card_le_card hA
-  unfold CohortOn at h ⊢
-  simp only [hf] at h ⊢
-  omega
-
-/-- No-sleep also preserves each guarded selected cohort on a subwindow. -/
-theorem CommitteeCohortOn.mono {K : Time → Finset V} {a b a' b' lo hi : Time}
-    (hf : p.ConstantFaults) (hns : p.NoSleepOn a b)
-    (h : p.CommitteeCohortOn K a b lo hi)
-    (ha : a ≤ a') (hab : a' ≤ b') (hb : b' ≤ b) :
-    p.CommitteeCohortOn K a' b' lo hi := by
-  classical
-  dsimp only [ConstantFaults] at hf
-  have hab' : a ≤ b := ha.trans (hab.trans hb)
-  have hsub : p.faultyAt 0 ∪ p.lateWakers a' b' ⊆ p.faultyAt 0 ∪ p.lateWakers a b := by
-    apply Finset.union_subset_union_right
-    intro v hv
-    simp only [EnvPoint.lateWakers, EnvPoint.awakeIn, EnvPoint.awakeAt,
-      EnvPoint.honestAt, Finset.mem_sdiff, Finset.mem_filter, Finset.mem_univ,
-      true_and, EnvPoint.HonestAt] at hv ⊢
-    simp only [hf] at hv ⊢
-    simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hv ⊢
-    obtain ⟨⟨u, hu1, hu2, hh, hu⟩, hn⟩ := hv
-    exact ⟨⟨u, ha.trans hu1, hu2.trans hb, hh, hu⟩,
-      fun h0 => hn ⟨hh, hns v (by simpa only [EnvPoint.HonestAt, hf] using hh)
-        a le_rfl hab' h0.2 a' ha (hab.trans hb)⟩⟩
-  have hA : p.awakeAt a ⊆ p.awakeAt a' := by
-    intro v hv
-    simp only [EnvPoint.awakeAt, EnvPoint.honestAt, Finset.mem_filter,
-      Finset.mem_sdiff, Finset.mem_univ, true_and] at hv ⊢
-    simp only [hf] at hv ⊢
-    exact ⟨hv.1, hns v (by simpa only [EnvPoint.HonestAt, hf] using hv.1)
-      a le_rfl hab' hv.2 a' ha (hab.trans hb)⟩
-  intro t htlo hthi hth hK
-  have ht := h t htlo hthi hth hK
-  simp only [hf] at ht ⊢
-  exact lt_of_le_of_lt
-    (Finset.card_le_card (Finset.inter_subset_inter hsub (Finset.Subset.refl _)))
-    (lt_of_lt_of_le ht
-      (Finset.card_le_card (Finset.inter_subset_inter hA (Finset.Subset.refl _))))
-
 end EnvPoint
 
 namespace System
@@ -296,23 +216,30 @@ namespace System
 variable {V : Type} [Fintype V] [DecidableEq V] {S : System V} {Prog Prog' : Type}
   {K : Contract Prog} {K' : Contract Prog'} {r : S.Run}
 
-/-- With look-back `η = 0`, the outage regime's participation is plain
-sleepy throughout. -/
+/-- With look-back `η = 0`, the outage regime's participation is plain sleepy
+throughout, in the population and in each selected committee, at the readers'
+catch-up `cDur` (the outage catch-up `max cDur (0 − 1)` is `cDur`). -/
 theorem outage_eta_zero {X : External S} (hη : K.params.η = 0) {T b₀ b₁ : Time} :
     S.Outage X K T b₀ b₁ r ↔ OutageTimes K.params (S.pt r).env.ΔAC T b₀ b₁ ∧
       (S.log r).OutageNet (S.pt r) b₀ b₁ ∧
       (S.pt r).SleepyOn K.params.θ (S.cDur K r) (S.aheadDur K r) 0 (S.pt r).horizon ∧
-      ((S.pt r).retain (S.cohortAt K b₁ r)).NoSleepOn
-        (S.outageStart K b₀ r) (S.outageEnd K b₁ r) ∧
-      ((S.pt r).retain (S.cohortAt K b₁ r)).CohortOn
-        (S.outageStart K b₀ r) (S.outageEnd K b₁ r) ∧
-      ((S.pt r).retain (S.cohortAt K b₁ r)).CommitteeCohortOn
-        (X.selected (S.pt r).env (X.ext r)) (S.outageStart K b₀ r) (S.outageEnd K b₁ r)
-        (S.bandStart K b₀ r) (S.bandEnd K b₀ r) ∧
       (S.pt r).CommitteeSleepyOn (X.selected (S.pt r).env (X.ext r)) K.params.θ
         0 (S.cDur K r) (S.committeeAheadDur K r) 0 (S.pt r).horizon := by
+  have h0 : ((K.params.η : Time) * (S.pt r).env.ΔAC) = 0 := by simp [hη]
+  have hc : max (S.cDur K r) (0 - 1) = S.cDur K r := by
+    refine max_eq_left ?_
+    have : (0 : Time) ≤ S.cDur K r := mul_nonneg (by positivity) (S.pt r).env.ΔAC_pos.le
+    linarith
   unfold Outage
-  rw [show ((K.params.η : Time) * (S.pt r).env.ΔAC) = 0 by simp [hη], EnvPoint.etaSleepyOn_zero]
+  rw [h0, hc, EnvPoint.etaSleepyOn_zero]
+  refine and_congr_right' (and_congr_right' (and_congr_right' ⟨fun h => ?_, fun h δ hδ0 hδ => ?_⟩))
+  · intro t ht htb hne
+    have := h 0 le_rfl le_rfl t ht htb (by simpa only [sub_zero, max_eq_right ht] using hne)
+    simpa only [sub_zero, max_eq_right ht] using this
+  · obtain rfl : δ = 0 := le_antisymm hδ hδ0
+    intro t ht htb hne
+    have := h t ht htb (by simpa only [sub_zero, max_eq_right ht] using hne)
+    simpa only [sub_zero, max_eq_right ht] using this
 
 omit [Fintype V] [DecidableEq V] in
 theorem cDur_of_catchUp (hc : K'.params.catchUp = K.params.catchUp) :
@@ -337,51 +264,28 @@ theorem Healthy.of_le {g : Time} (hβ : K.params.β ≤ K'.params.β)
     exact_mod_cast hr
   exact mul_le_mul_of_nonneg_right hr' (S.pt r).env.ΔAC_pos.le
 
-/-- Weaker thresholds (`θ' ≥ 0`), a shorter look-back, a shorter lag, a
-larger budget and a smaller no-sleep margin (same catch-up) keep the outage
-regime. -/
+/-- Weaker thresholds (`θ' ≥ 0`), a shorter lag and a larger budget (same
+catch-up, look-back and look-aheads) keep the outage regime. -/
 theorem Outage.of_le {X : External S} {T b₀ b₁ : Time}
     (hc : K'.params.catchUp = K.params.catchUp)
-    (h0 : 0 ≤ K'.params.θ) (hθ : K'.params.θ ≤ K.params.θ) (hη : K'.params.η ≤ K.params.η)
+    (h0 : 0 ≤ K'.params.θ) (hθ : K'.params.θ ≤ K.params.θ) (hη : K'.params.η = K.params.η)
     (hl : K'.params.lag ≤ K.params.lag) (hb : K.params.budget ≤ K'.params.budget)
-    (hC : K'.params.noSleep ≤ K.params.noSleep) (hf : (S.pt r).ConstantFaults)
     (hW : K'.params.ahead = K.params.ahead)
-    (hLead : K'.params.bandLead = K.params.bandLead)
-    (hLen : K'.params.bandLen = K.params.bandLen)
     (hCommittee : K'.params.committeeAhead = K.params.committeeAhead)
     (h : S.Outage X K T b₀ b₁ r) : S.Outage X K' T b₀ b₁ r := by
-  obtain ⟨⟨hT, hlag, h01, hbud⟩, hn, hs, hns, hco, hcc, hcs⟩ := h
-  rw [EnvPoint.retain_eq hf] at hns hco hcc
-  rw [System.Outage, EnvPoint.retain_eq hf]
+  obtain ⟨⟨hT, hlag, h01, hbud⟩, hn, hs, hcs⟩ := h
   have hΔ : (0 : Time) ≤ (S.pt r).env.ΔAC := (S.pt r).env.ΔAC_pos.le
   have hl' : ((K'.params.lag : Nat) : Time) ≤ (K.params.lag : Time) := by exact_mod_cast hl
   have hb' : ((K.params.budget : Nat) : Time) ≤ (K'.params.budget : Time) := by exact_mod_cast hb
-  have hC' : ((K'.params.noSleep : Nat) : Time) ≤ (K.params.noSleep : Time) := by exact_mod_cast hC
-  have hlag0 : (0 : Time) ≤ (K.params.lag : Time) * (S.pt r).env.ΔAC := by positivity
-  have hC0 : (0 : Time) ≤ (K'.params.noSleep : Time) * (S.pt r).env.ΔAC := by positivity
-  have ha : S.outageStart K b₀ r ≤ S.outageStart K' b₀ r := by
-    unfold outageStart
-    exact min_le_min (max_le_max le_rfl
-      (sub_le_sub_left (mul_le_mul_of_nonneg_right hC' hΔ) _)) le_rfl
-  have hz : S.outageEnd K' b₁ r ≤ S.outageEnd K b₁ r := by
-    unfold outageEnd
-    exact min_le_min (add_le_add_right (mul_le_mul_of_nonneg_right hC' hΔ) _) le_rfl
-  have haz : S.outageStart K' b₀ r ≤ S.outageEnd K' b₁ r := by
-    unfold outageStart outageEnd
-    exact min_le_min (max_le (by linarith) (by linarith)) le_rfl
-  refine ⟨⟨hT, ?_, h01, ?_⟩, hn, ?_, hns.mono hf ha hz,
-    hco.mono hf hns ha haz hz, ?_, ?_⟩
+  refine ⟨⟨hT, ?_, h01, ?_⟩, hn, ?_, fun δ hδ0 hδ => ?_⟩
   · exact le_trans (add_le_add_right (mul_le_mul_of_nonneg_right hl' hΔ) _) hlag
   · exact hbud.trans (add_le_add_right (mul_le_mul_of_nonneg_right hb' hΔ) _)
-  · rw [cDur_of_catchUp hc]
-    have hη' : ((K'.params.η : Nat) : Time) ≤ (K.params.η : Time) := by exact_mod_cast hη
-    simpa only [aheadDur, hW] using
-      EnvPoint.EtaSleepyOn.mono hs h0 hθ (mul_le_mul_of_nonneg_right hη' hΔ)
-  · simpa only [bandEnd, bandStart, hLead, hLen] using hcc.mono hf hns ha haz hz
-  · rw [cDur_of_catchUp hc]
-    have hη' : ((K'.params.η : Nat) : Time) ≤ (K.params.η : Time) := by exact_mod_cast hη
+  · rw [cDur_of_catchUp hc, hη]
+    simpa only [aheadDur, hW] using EnvPoint.EtaSleepyOn.mono hs h0 hθ le_rfl
+  · rw [hη] at hδ
+    rw [cDur_of_catchUp hc, hη]
     simpa only [committeeAheadDur, hCommittee] using
-      EnvPoint.CommitteeSleepyOn.mono hcs h0 hθ (mul_le_mul_of_nonneg_right hη' hΔ)
+      EnvPoint.CommitteeSleepyOn.mono (hcs δ hδ0 hδ) h0 hθ le_rfl
 
 end System
 
@@ -630,7 +534,7 @@ theorem outage_times_teeth :
 
 end Times
 
-section OutageCohort
+section OutageLookBack
 
 /-- Five validators, `0` faulty; honest `4` asleep before `3` and awake from
 `3` (a late waker); `Δ = 1`, horizon `10`, no submissions. -/
@@ -645,63 +549,82 @@ def ptW2 : EnvPoint (Fin 5) :=
     fun _ => {0}, monotone_const, 10,
     fun _ _ => []⟩
 
-theorem ptW_lateWakers : ptW.lateWakers 0 10 = {4} := by
-  ext v
-  simp only [EnvPoint.lateWakers, EnvPoint.awakeIn, EnvPoint.awakeAt, Finset.mem_sdiff,
-    Finset.mem_filter]
-  fin_cases v <;> simp [ptW, EnvPoint.honestAt, EnvPoint.HonestAt]
-  exact ⟨3, by norm_num⟩
+theorem ptW_readyAt (c t : Time) : ({1, 2, 3} : Finset (Fin 5)) ⊆ ptW.readyAt c t := by
+  classical
+  intro v hv
+  unfold EnvPoint.readyAt
+  refine Finset.mem_filter.mpr ⟨?_, ?_, fun u _ _ => ?_⟩ <;>
+    fin_cases hv <;> simp [ptW, EnvPoint.HonestAt]
 
-theorem ptW_awakeAt : ptW.awakeAt 0 = {1, 2, 3} := by
-  ext v; fin_cases v <;> simp [EnvPoint.awakeAt, EnvPoint.honestAt, ptW]
+theorem ptW2_readyAt (c t : Time) : ({1, 2} : Finset (Fin 5)) ⊆ ptW2.readyAt c t := by
+  classical
+  intro v hv
+  unfold EnvPoint.readyAt
+  refine Finset.mem_filter.mpr ⟨?_, ?_, fun u _ _ => ?_⟩ <;>
+    fin_cases hv <;> simp [ptW2, EnvPoint.HonestAt]
 
-theorem ptW_faulty (t : Time) : ptW.faultyAt t = {0} := rfl
+/-- At `ptW2`, a validator ready at `10` with catch-up `9` is awake at `0`, so it is `1` or `2`. -/
+theorem ptW2_readyAt_sub : ptW2.readyAt 9 10 ⊆ ({1, 2} : Finset (Fin 5)) := by
+  classical
+  intro v hv
+  obtain ⟨-, hh, hr⟩ := Finset.mem_filter.mp hv
+  have h0 := hr 0 (by norm_num) (by norm_num)
+  fin_cases v <;> simp_all [ptW2, EnvPoint.HonestAt]
 
-theorem ptW2_lateWakers : ptW2.lateWakers 0 10 = {3, 4} := by
-  ext v
-  simp only [EnvPoint.lateWakers, EnvPoint.awakeIn, EnvPoint.awakeAt, Finset.mem_sdiff,
-    Finset.mem_filter]
-  fin_cases v <;> simp [ptW2, EnvPoint.honestAt, EnvPoint.HonestAt] <;>
-    exact ⟨3, by norm_num⟩
+/-- At `ptW2`, every honest validator is awake at `3`, so the look-back set with the faulty `0`
+is every validator. -/
+theorem ptW2_lookBack_univ :
+    ptW2.readyAt 9 10 ∪ ptW2.awakeIn (max 0 (10 - 10)) 10 ∪ ptW2.faultyAt 10 = Finset.univ := by
+  classical
+  refine Finset.eq_univ_of_forall fun v => ?_
+  by_cases hv : v = 0
+  · subst hv; exact Finset.mem_union_right _ (Finset.mem_singleton_self _)
+  · refine Finset.mem_union_left _ (Finset.mem_union_right _ (Finset.mem_filter.mpr
+      ⟨Finset.mem_univ _, 3, by norm_num, by norm_num, ?_, ?_⟩))
+    · simpa [ptW2, EnvPoint.HonestAt] using hv
+    · simp [ptW2]
 
-theorem ptW2_awakeAt : ptW2.awakeAt 0 = {1, 2} := by
-  ext v; fin_cases v <;> simp [EnvPoint.awakeAt, EnvPoint.honestAt, ptW2]
+/-- The outage's η-sleepy count (`θ = ½`, look-back `10`, catch-up `9`, at `10`, so the window
+`[0, 10]`) has teeth:
+* the sleeper point `ptS` (honest `4` asleep on `[2, 5]`) meets it: sleeping in the window is
+  allowed, and the sleeper counts against the three validators ready throughout;
+* `ptW` (honest `4` wakes at `3`) meets it: `½·5 < 3`;
+* `ptW2` (honest `3` and `4` wake at `3`) violates it: the late wakers count against the ready
+  validators, `½·5 ≮ 2`, although every honest validator is awake from `3` and the plain sleepy
+  count (`η = 0`) holds there. -/
+theorem outage_lookback_teeth :
+    ptS.EtaReadyAbove (1 / 2) 10 9 10 ∧ ptW.EtaReadyAbove (1 / 2) 10 9 10 ∧
+      ¬ ptW2.EtaReadyAbove (1 / 2) 10 9 10 ∧ ptW2.ReadyAbove (1 / 2) 9 10 := by
+  have hpos : ¬ (10 : Time) ≤ 0 := by norm_num
+  have key : ∀ U R : Finset (Fin 5), 3 ≤ R.card → (1 / 2 : ℚ) * U.card < R.card := by
+    intro U R hR
+    have hU : (U.card : ℚ) ≤ 5 := by
+      exact_mod_cast (Finset.card_le_univ U).trans (by simp)
+    have hR' : (3 : ℚ) ≤ R.card := by exact_mod_cast hR
+    linarith
+  refine ⟨?_, ?_, fun h => ?_, ?_⟩
+  · simp only [EnvPoint.EtaReadyAbove, hpos, ↓reduceIte]
+    have h3 := Finset.card_le_card (ptS_readyAt 9 10)
+    rw [show ({1, 2, 3} : Finset (Fin 5)).card = 3 from rfl] at h3
+    exact key _ _ h3
+  · simp only [EnvPoint.EtaReadyAbove, hpos, ↓reduceIte]
+    have h3 := Finset.card_le_card (ptW_readyAt 9 10)
+    rw [show ({1, 2, 3} : Finset (Fin 5)).card = 3 from rfl] at h3
+    exact key _ _ h3
+  · simp only [EnvPoint.EtaReadyAbove, hpos, ↓reduceIte, ptW2_lookBack_univ, Finset.card_univ,
+      Fintype.card_fin] at h
+    have h2 : ((ptW2.readyAt 9 10).card : ℚ) ≤ 2 := by
+      exact_mod_cast Finset.card_le_card ptW2_readyAt_sub
+    push_cast at h
+    linarith
+  · have h2 : (2 : ℚ) ≤ (ptW2.readyAt 9 10).card := by
+      exact_mod_cast Finset.card_le_card (ptW2_readyAt 9 10)
+    unfold EnvPoint.ReadyAbove EnvPoint.faultCount
+    rw [show ptW2.faultyAt 10 = {0} from rfl, Finset.card_singleton]
+    push_cast
+    linarith
 
-theorem ptW2_faulty (t : Time) : ptW2.faultyAt t = {0} := rfl
-
-/-- The outage's no-sleep and cohort conjuncts have teeth, on the window
-`[0, 10]`:
-* the sleeper point `ptS` (honest `4` awake at `0`, asleep at `2`) violates
-  `NoSleepOn`: an honest validator falls asleep in the window;
-* `ptW` (honest `4` wakes at `3`) meets `NoSleepOn` (waking is allowed) and
-  `CohortOn` with a nonempty late-waker set: `|{0} ∪ {4}| = 2 < 3 = |{1, 2, 3}|`;
-* `ptW2` (honest `3` and `4` wake at `3`) meets `NoSleepOn` but violates
-  `CohortOn`: the late wakers count against the cohort,
-  `|{0} ∪ {3, 4}| = 3 ≮ 2 = |{1, 2}|`, although every honest validator is
-  awake from `3`. -/
-theorem outage_cohort_teeth :
-    ¬ ptS.NoSleepOn 0 10 ∧
-    ptW.NoSleepOn 0 10 ∧ ptW.CohortOn 0 10 ∧ (ptW.lateWakers 0 10).Nonempty ∧
-    ptW2.NoSleepOn 0 10 ∧ ¬ ptW2.CohortOn 0 10 := by
-  refine ⟨fun h => ?_, fun v _ t _ _ ht u htu _ => ?_, ?_, ?_, fun v _ t _ _ ht u htu _ => ?_, ?_⟩
-  · have := h 4 (by simp [EnvPoint.HonestAt, ptS]) 0 le_rfl (by norm_num)
-      (by decide) 2 (by norm_num) (by norm_num)
-    revert this; decide
-  · simp only [ptW, decide_eq_true_eq] at ht ⊢
-    rcases ht with h | h
-    · exact Or.inl h
-    · exact Or.inr (h.trans htu)
-  · unfold EnvPoint.CohortOn
-    rw [ptW_lateWakers, ptW_awakeAt, ptW_faulty]; decide
-  · rw [ptW_lateWakers]; exact Finset.singleton_nonempty _
-  · simp only [ptW2, decide_eq_true_eq] at ht ⊢
-    rcases ht with h | h
-    · exact Or.inl h
-    · exact Or.inr (h.trans htu)
-  · unfold EnvPoint.CohortOn
-    rw [ptW2_lateWakers, ptW2_awakeAt, ptW2_faulty]; decide
-
-end OutageCohort
+end OutageLookBack
 
 end Consensus.Shape.Tests.Regimes
 

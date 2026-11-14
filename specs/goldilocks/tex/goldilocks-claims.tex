@@ -2102,9 +2102,11 @@ Heal margin $M_f$ & $20L+8k+28\delta_{\mathrm t}+28X+56=48k+28\delta_{\mathrm t}
 Heal, every capability & $19+M_f=48k+28\delta_{\mathrm t}+48X+75$\\
 Latency, available and stable & $4X+6$\\
 Latency, final & $4(X+3c)+1$\\
-Arming lag; no-sleep margin & $4k+6$; $4k+6$\\
+Arming lag & $4k+6$\\
 Outage budget; recovery delay & $4k-5$; $9$\\
-Outage look-back $\eta$ & $0$ (plain sleepy outage)\\
+Outage look-back $\eta$ & $12k+7$\\
+Outage participation catch-up (duration) & $\max(19\Delta,\eta\Delta-1)$\\
+Population and committee look-aheads & $5$; $5$\\
 \hline
 \end{tabular}
 \end{center}
@@ -2113,6 +2115,14 @@ the node statement of R.1 use $18\Delta$, and $18\Delta+1\leq19\Delta$ for
 every $\Delta\geq1$.  The four-anchor final pattern is not the $M$
 consecutive honest ready proposals with retained inclusion of
 $\mathsf{UPat}$ (\S``O.1''); the two must not be identified.
+Outage participation is $\eta$-sleepy throughout the run, with the separate
+catch-up above; readers retain catch-up $19\Delta$. At each observation time~$t$,
+the committee inequality holds for every nonempty committee selected at
+$\max(0,t-\delta)$ for $0\leq\delta\leq\eta\Delta$, with faults charged at
+$\min(t+5\Delta,\mathrm{horizon})$. The look-back covers the proof window:
+$(4k-5)+2(4k+6)=12k+7$. Readiness uses the closed interval beginning at
+$\max(0,t-c_{\mathrm{out}}-1)$, so the separate catch-up covers that whole
+look-back without requiring every honest participant to remain awake.
 
 \subsection{Regime rows}
 
