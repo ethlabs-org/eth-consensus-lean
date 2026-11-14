@@ -22,11 +22,12 @@ the four anchors and their height steps are explicit data, not a second window r
 The designated proposals are a progress premise, not an output guarantee. -/
 def final_window_extract_at {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
     (C : ACCorrectLocal A sg) : Prop :=
-  ∀ (tr : RunTrace A) (H : Time → Set (Fin P.n)) (proposer : Nat → Fin P.n)
+  ∀ (cm : Time → Finset (Fin P.n)) (tr : RunTrace A)
+    (H : Time → Set (Fin P.n)) (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (g ΔF deadline : Time)
     (start gap floor : Nat) (kindJ : Prop) (J : A.Blk)
     (block : Fin 4 → A.Blk) (cut : Fin 4 → Nat),
-    C.healing.Run proposer dg H tr → Premises tr H proposer dg sg g ΔF deadline →
+    C.run.Run cm proposer dg H tr → Premises tr H proposer dg sg g ΔF deadline →
     FrameWindow tr H (P.slotTime start) deadline floor kindJ J →
     HealedFrom tr H proposer start deadline → 2 ≤ gap → 3 * gap ≤ P.δt →
     StrictMono cut →
@@ -46,12 +47,13 @@ def final_window_extract_at {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
 Population safety and actual processing of the carrier remain explicit inputs. -/
 def final_cache_coverage_at {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
     (C : ACCorrectLocal A sg) : Prop :=
-  ∀ (tr : RunTrace A) (H : Time → Set (Fin P.n)) (proposer : Nat → Fin P.n)
+  ∀ (cm : Time → Finset (Fin P.n)) (tr : RunTrace A)
+    (H : Time → Set (Fin P.n)) (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (g ΔF deadline : Time)
     (start gap floor : Nat) (kindJ : Prop) (J : A.Blk)
     (block : Fin 4 → A.Blk) (cut : Fin 4 → Nat),
     A.Requirements → (P.genesisBlock A.genesisPayload).RootOk dg →
-    C.healing.Run proposer dg H tr → Premises tr H proposer dg sg g ΔF deadline →
+    C.run.Run cm proposer dg H tr → Premises tr H proposer dg sg g ΔF deadline →
     FrameWindow tr H (P.slotTime start) deadline floor kindJ J →
     HealedFrom tr H proposer start deadline → 2 ≤ gap → 3 * gap ≤ P.δt →
     StrictMono cut →
@@ -72,11 +74,13 @@ def final_cache_coverage_at {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
 
 /-- Prefix-reader bridge on generic runs: freeze honesty at the observation, retain the
 prefix run and recover the original state at every cut no later than the observation. -/
-def prefix_reader_edge {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n) : Prop :=
-  ∀ (proposer : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)
+def prefix_reader_edge {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
+    (runs : ACRun A sg) : Prop :=
+  ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload)
     (H : Time → Set (Fin P.n)) (tr : RunTrace A),
-    Growing.LocalRun proposer dg H sg tr →
-    ∀ d, 0 ≤ d → Node.LocalRun proposer dg (H d) sg (tr.upTo d) ∧
+    runs.Run cm proposer dg H tr →
+    ∀ d, 0 ≤ d → Node.LocalRun proposer dg (H d) sg (tr.upTo d) (runs.start cm) ∧
       ∀ y i, (∀ k < i, tr.time k ≤ d) → (tr.upTo d).state y i = tr.state y i
 
 /-- Collision freedom transports to a prefix; this is not supplied evidence. -/

@@ -993,7 +993,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.E
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineTransport
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.FG
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.FiniteRegime
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Healing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations

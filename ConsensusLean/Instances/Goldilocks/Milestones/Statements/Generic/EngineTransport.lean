@@ -13,15 +13,11 @@ variable {P : Params} {A : NodeAC P} {O : OutputSchema} {Info : Type}
   {E : Env V}
 
 variable {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
-structure GrowingRunTransport (M : RunMap rho payload) : Prop where
-  local_run : rho.ExecutionValid →
-    Growing.LocalRun M.proposer M.digest M.honest M.signer M.trace
-  no_collision : rho.ExecutionValid → ¬ rho.HashCollision → Compose.NoCollRun M.digest M.trace
 
-structure PrefixTransport (M : RunMap rho payload) : Prop where
+structure PrefixTransport (M : RunMap rho payload) (runs : ACRun A M.signer) : Prop where
   reader : rho.ExecutionValid → ∀ i, i ≤ rho.events.length →
     Node.LocalRun M.proposer M.digest (M.honest (rho.cutTime i)) M.signer
-      (M.trace.upTo (rho.cutTime i))
+      (M.trace.upTo (rho.cutTime i)) (runs.start M.committee)
   state : ∀ i, i ≤ rho.events.length → ∀ y,
     (M.trace.upTo (rho.cutTime i)).state y (M.cut i) = M.trace.state y (M.cut i)
   no_collision : ∀ d, Compose.NoCollRun M.digest M.trace →
@@ -48,7 +44,7 @@ structure RegimeTransport (M : RunMap rho payload) (K : Contract ProgressReq)
     ReadyRead M c (M.validator.symm v) (M.cut i) (rho.cutTime i)
 
 structure ProposalProgressTransport (M : RunMap rho payload) (K : Contract ProgressReq)
-    (healing : ACHealing A M.signer)
+    {runs : ACRun A M.signer} (healing : ACHealing A M.signer runs)
     (catchUp hold margin : Time) : Prop where
   sleepy : rho.ExecutionValid → ∀ cap idx t,
     (cap = .available ∨ cap = .stable) →

@@ -110,6 +110,20 @@ def HealedFrom (tr : RunTrace A) (H : Time → Set (Fin P.n))
 def truncH (H : Time → Set (Fin P.n)) (b : Time) : Time → Set (Fin P.n) :=
   fun t => {y | y ∈ H t ∧ t ≤ b}
 
+/-- The AC's run predicate and committee start, shared by the assembly obligations. -/
+structure ACRun (A : NodeAC P) (sg : A.Msg → Fin P.n) where
+  Run : (Time → Finset (Fin P.n)) → (Nat → Fin P.n) →
+    Digest (List (FG.Att P.n)) A.Payload → (Time → Set (Fin P.n)) → RunTrace A → Prop
+  start : (Time → Finset (Fin P.n)) → Fin P.n → A.State
+  start_univ : start (fun _ => Finset.univ) = fun _ => A.initial
+  run_local : ∀ {cm proposer dg H tr}, Run cm proposer dg H tr →
+    Growing.LocalRun proposer dg H sg tr (start cm)
+  /-- Requirements hold at every node's actual committee start. -/
+  run_requirements : ∀ {cm proposer dg H tr}, Run cm proposer dg H tr →
+    ∀ y, ({ A with initial := start cm y } : NodeAC P).Requirements
+  run_truncate : ∀ {cm proposer dg H tr} (b : Time),
+    Run cm proposer dg H tr → Run cm proposer dg (truncH H b) tr
+
 /-- Canonical high entries, with historical honesty read at independently bounded cuts. -/
 structure HighCanonical
     (Origin : RunTrace A → Fin P.n → Nat → Nat → A.Blk → Prop)
@@ -136,60 +150,40 @@ structure HighCanonical
     ((tr.state y₂ m₂).fg.σ Z₂.root).Th = Z₂.root → Z₁.root = Z₂.root
 
 /-- Protocol obligations for growing runs. New source and warmth laws require genuine suppliers. -/
-structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) where
-  Run : (Nat → Fin P.n) → Digest (List (FG.Att P.n)) A.Payload →
-    (Time → Set (Fin P.n)) → RunTrace A → Prop
+structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg) where
   warmup : Nat
   follow : Nat
   drain : Nat
-  Warm : RunTrace A → (Time → Set (Fin P.n)) → Nat → Nat → Prop
   Origin : RunTrace A → Fin P.n → Nat → Nat → A.Blk → Prop
-  run_local : ∀ {proposer dg H tr}, Run proposer dg H tr → Growing.LocalRun proposer dg H sg tr
-  run_truncate : ∀ {proposer dg H tr} (b : Time),
-    Run proposer dg H tr → Run proposer dg (truncH H b) tr
-  /-- Only forward transport is needed by the drain-output transfer. The bound is in time units. -/
-  warm_truncate : ∀ {proposer dg H tr} {s₀ u : Nat} {b : Time},
-    Run proposer dg H tr → P.slotTime u + P.Δ ≤ b →
-    Warm tr H s₀ u → Warm tr (truncH H b) s₀ u
-  follow_le : ∀ {proposer dg H tr} {g ΔF b : Time},
-    Run proposer dg H tr → Premises tr H proposer dg sg g ΔF b → follow ≤ P.δt
-  report_in_frame : ∀ {proposer dg H tr} {y : Fin P.n} {i : Nat} {R : A.Blk},
-    Run proposer dg H tr → y ∈ H (tr.time i) → ReportAt tr y i R →
+  follow_le : ∀ {cm proposer dg H tr} {g ΔF b : Time},
+    runs.Run cm proposer dg H tr → Premises tr H proposer dg sg g ΔF b → follow ≤ P.δt
+  report_in_frame : ∀ {cm proposer dg H tr} {y : Fin P.n} {i : Nat} {R : A.Blk},
+    runs.Run cm proposer dg H tr → y ∈ H (tr.time i) → ReportAt tr y i R →
     R ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot R
-  proposal_floor : ∀ {proposer dg H tr} {lo hi : Time} {floor u : Nat} {kindJ : Prop}
+  proposal_floor : ∀ {cm proposer dg H tr} {lo hi : Time} {floor u : Nat} {kindJ : Prop}
     {J B : A.Blk} {z : Fin P.n} {kB : Nat},
-    Run proposer dg H tr → Compose.NoCollRun dg tr → FrameWindow tr H lo hi floor kindJ J →
+    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → FrameWindow tr H lo hi floor kindJ J →
     z ∈ H (P.slotTime u) → z = proposer u → tr.ProposesAt z kB B → B.slot = u →
     lo ≤ P.slotTime u → P.slotTime u ≤ hi →
     (H (P.slotTime u))ᶜ.ncard < 2 * P.fg.q - P.n →
     floor ≤ ((tr.state z (kB + 1)).fg.σ B.root).h
-  warm_exists : ∀ {proposer dg H tr} {g ΔF b : Time} {s₀ N G floor : Nat} {kindJ : Prop}
-    {J : A.Blk}, Run proposer dg H tr → Premises tr H proposer dg sg g ΔF b →
+  warm_exists : ∀ {cm proposer dg H tr} {g ΔF b : Time} {s₀ N G floor : Nat} {kindJ : Prop}
+    {J : A.Blk}, runs.Run cm proposer dg H tr → Premises tr H proposer dg sg g ΔF b →
     SlotWindow tr H s₀ N floor kindJ J → gbar g + 4 * P.Δ ≤ P.slotTime s₀ →
     1 ≤ G → s₀ + warmup + G ≤ N + 1 → P.slotTime N + 2 * P.Δ ≤ b →
     (∀ v k att, v ∈ H (tr.time k) → tr.SignAt v k att →
       tr.time k ≤ P.slotTime N + 2 * P.Δ → att.h ≤ HZ tr H g) →
     ProposalGap tr H proposer G s₀ N →
-    ∃ u, s₀ ≤ u ∧ u + 1 ≤ s₀ + warmup + G ∧ Warm tr H s₀ u ∧
+    ∃ u, s₀ ≤ u ∧ u + 1 ≤ s₀ + warmup + G ∧ s₀ + warmup ≤ u ∧
       ∃ z k X, HonestProposal tr H proposer u z k X
-  /-- New persistence law at the old round premises, not an arithmetic theorem for arbitrary ACs. -/
-  warm_mono : ∀ {proposer dg H tr} {g ΔF b : Time} {s₀ N u u' floor : Nat}
-    {kindJ : Prop} {J : A.Blk},
-    Run proposer dg H tr → Compose.NoCollRun dg tr → Service tr H g ΔF b →
-    (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
-    (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
-    CatchRun tr H g (2 * P.Δ) → NoRestartAfter tr H (gbar g) →
-    SlotWindow tr H s₀ N floor kindJ J → gbar g + 4 * P.Δ ≤ P.slotTime s₀ →
-    P.slotTime N + 2 * P.Δ ≤ b → s₀ ≤ u → Warm tr H s₀ u → u ≤ u' → u' ≤ N →
-    Warm tr H s₀ u'
-  report_follow : ∀ {proposer dg H tr} {g ΔF b : Time} {s₀ N u floor : Nat} {kindJ : Prop}
+  report_follow : ∀ {cm proposer dg H tr} {g ΔF b : Time} {s₀ N u floor : Nat} {kindJ : Prop}
     {J B : A.Blk} {z : Fin P.n} {kB : Nat},
     FrameWindow tr H (P.slotTime s₀) (P.slotTime N + 2 * P.Δ) floor kindJ J →
-    Run proposer dg H tr → Compose.NoCollRun dg tr → Service tr H g ΔF b →
+    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → Service tr H g ΔF b →
     (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
     CatchRun tr H g (2 * P.Δ) → NoRestartAfter tr H (gbar g) →
-    gbar g + 4 * P.Δ ≤ P.slotTime s₀ → s₀ ≤ u → Warm tr H s₀ u →
+    gbar g + 4 * P.Δ ≤ P.slotTime s₀ → s₀ ≤ u → s₀ + warmup ≤ u →
     u + 1 ≤ N → P.slotTime N + 2 * P.Δ ≤ b →
     z ∈ H (P.slotTime u + P.Δ) → z = proposer u → tr.ProposesAt z kB B → B.slot = u →
     ∀ y, y ∈ H (P.slotTime (u + 1) + 2 * P.Δ) →
@@ -198,14 +192,14 @@ structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) where
         ∀ x, u + follow ≤ x → x ≤ N → ∀ w c d, w ∈ H (tr.time c) →
           ProposalHeadAt tr w c d → tr.time c = P.slotTime x → Anc (tr.HonestBlocksAt H) R d.head
   /-- New source law, without a horizon bundle or a high-root compatibility conclusion. -/
-  report_origin : ∀ {proposer dg H tr} {y : Fin P.n} {i : Nat} {R : A.Blk},
-    Run proposer dg H tr → Compose.NoCollRun dg tr →
+  report_origin : ∀ {cm proposer dg H tr} {y : Fin P.n} {i : Nat} {R : A.Blk},
+    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     y ∈ H (tr.time i) → ReportAt tr y i R →
     ∃ r ≤ i, ∃ j B, y ∈ H (tr.time r) ∧ Origin tr y r j B ∧
       B ∈ (tr.state y r).fg.tree ∧ Anc (tr.HonestBlocksAt H) R B
-  origins_comparable : ∀ {proposer dg H tr} {g ΔF a b : Time} {x x' : Fin P.n}
+  origins_comparable : ∀ {cm proposer dg H tr} {g ΔF a b : Time} {x x' : Fin P.n}
     {i j i' j' : Nat} {B B' : A.Blk},
-    Run proposer dg H tr → Compose.NoCollRun dg tr → Service tr H g ΔF b →
+    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → Service tr H g ΔF b →
     (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
     IsReset tr H g a → a ≤ b → (∃ k, FirstCutAfter tr k (cutZ P g) ∧ tr.time k ≤ b) →
@@ -214,8 +208,9 @@ structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) where
     x' ∈ H (tr.time i') → Origin tr x' i' j' B' → tr.time i' ≤ b →
     HZ tr H g + 1 ≤ ((tr.state x' i').fg.σ B'.root).h →
     Compatible (tr.HonestBlocksAt H) B B'
-  heal_after_reset : ∀ {proposer dg H tr} {g ΔF a b : Time},
-    Run proposer dg H tr → Premises tr H proposer dg sg g ΔF b → IsReset tr H g a → a ≤ b →
+  heal_after_reset : ∀ {cm proposer dg H tr} {g ΔF a b : Time},
+    runs.Run cm proposer dg H tr → Premises tr H proposer dg sg g ΔF b →
+    IsReset tr H g a → a ≤ b →
     HighCanonical Origin tr H g b → HealedFrom tr H proposer (P.slotOf a + drain) b
 
 end Consensus.Goldilocks.Generic

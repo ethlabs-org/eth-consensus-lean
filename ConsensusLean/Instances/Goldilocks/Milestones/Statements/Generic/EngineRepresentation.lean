@@ -22,6 +22,10 @@ structure RunMap (rho : Model.Run (compiled F) E) (payload : A.Blk → Set Nat) 
   digest : Digest (List (FG.Att P.n)) A.Payload
   signer : A.Msg → Fin P.n
   honest : Time → Set (Fin P.n)
+  committee : Time → Finset (Fin P.n)
+  committee_eq : ∀ y t, 0 ≤ t →
+    (y ∈ committee t ↔ validator y ∈
+      (Model.sysExternal O (compiled F) V).selected E (rho.key, rho.sel) t)
   cut : Nat → Nat
   cut_mono : Monotone cut
   event : Nat → Nat
@@ -114,20 +118,17 @@ def ReadyRead (M : RunMap rho payload) (c : Time) (y : Fin P.n) (i : Nat)
     0 ≤ t ∧ t ≤ rho.horizon ∧
     ∀ u, max 0 (t - c - 1) ≤ u → u ≤ t → M.trace.awake y u
 
-structure EngineBinding (payload : A.Blk → Set Nat) where
+/-- The compiled execution supplies the protocol run at its selected-committee start. -/
+structure GrowingRunTransport (M : RunMap rho payload) (runs : ACRun A M.signer) : Prop where
+  run : rho.ExecutionValid → runs.Run M.committee M.proposer M.digest M.honest M.trace
+  no_collision : rho.ExecutionValid → ¬ rho.HashCollision → Compose.NoCollRun M.digest M.trace
+
+/-- Signer equality transports the single protocol correctness record to each run map. -/
+structure EngineBinding (payload : A.Blk → Set Nat) (sg : A.Msg → Fin P.n)
+    (runs : ACRun A sg) where
   map : ∀ (E : Env V) (rho : Model.Run (compiled F) E),
     rho.ExecutionValid → RunMap rho payload
-
-structure CoveringWitnessBinding (p : EnvPoint V)
-    (ext : (Model.sysExternal O (compiled F) V).Ext p.env) (gst : Time)
-    (rho : Model.Run (compiled F) p.env) (M : RunMap (A := A) rho payload) : Prop where
-  valid : rho.ExecutionValid
-  clean : ¬ rho.HashCollision
-  point : rho.point = p
-  external : (rho.key, rho.sel) = ext
-  eager : rho.log.EagerFrom rho.point gst
-  progress : ∀ π c s t, (shapeProgress F V).holds π c s t p ext →
-    (shapeProgress F V).holds π c s t rho.point (rho.key, rho.sel)
-  local_run : Growing.LocalRun M.proposer M.digest M.honest M.signer M.trace
+  signer_eq : ∀ E rho hv, sg = (map E rho hv).signer
+  run_transport : ∀ E rho hv, GrowingRunTransport (map E rho hv) (signer_eq E rho hv ▸ runs)
 
 end Consensus.Goldilocks.Generic

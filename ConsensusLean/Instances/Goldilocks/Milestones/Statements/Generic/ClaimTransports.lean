@@ -81,6 +81,8 @@ or honesty at the next micro-cut is asserted. The state identity is a NEW UNRESO
 SUFFICIENCY TARGET for an arbitrary RunMap. -/
 structure EndReadTransport (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) : Prop where
+  strict_cut : rho.ExecutionValid → ∀ t, 0 ≤ t → t ≤ rho.horizon →
+    t < M.trace.time (M.cut ((chainTrace rho).endCut t))
   ready : rho.ExecutionValid → ∀ v t, 0 ≤ t → t ≤ rho.horizon →
     rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩) v t →
     ReadyReadPoint M.trace M.honest rho.horizon C.catchUp (M.validator.symm v)
@@ -135,7 +137,7 @@ structure FinalReadTransport (M : RunMap rho payload) (C : ACCorrectLocal A M.si
     CarrierProcessed M (W.block 3) y j (M.trace.time (W.cut 3)) deadline
   cache : ∀ gst query deadline
     (W : FinalProductionWindow M C.catchUp C.hold query deadline),
-    A.Requirements → C.healing.Run M.proposer M.digest M.honest M.trace →
+    A.Requirements → C.run.Run M.committee M.proposer M.digest M.honest M.trace →
     Premises M.trace M.honest M.proposer M.digest M.signer gst E.ΔFG deadline →
     HealedFrom M.trace M.honest M.proposer W.start deadline →
     (∀ a, M.trace.AcceptAt (W.block a).proposer (W.cut a) (W.block a)) →
@@ -158,9 +160,9 @@ finalAccountable_readPoint (not the cut-time-only Generic.FinalAccountable).
 The population cardinality and ChainAtts are unchanged; E1's chain_att_view,
 att_signer and att_conflict separately bind these witnesses to engine evidence.
 NEW UNRESOLVED SUFFICIENCY TARGET for an arbitrary AC. -/
-def ActualReadAccountability (M : RunMap rho payload) : Prop :=
+def ActualReadAccountability (M : RunMap rho payload) (runs : ACRun A M.signer) : Prop :=
   A.Requirements → (P.genesisBlock A.genesisPayload).RootOk M.digest →
-  Growing.LocalRun M.proposer M.digest M.honest M.signer M.trace →
+  runs.Run M.committee M.proposer M.digest M.honest M.trace →
   Compose.NoCollRun M.digest M.trace → ∀ y z i j t u,
   HonestReadPoint M.trace M.honest rho.horizon y i t →
   HonestReadPoint M.trace M.honest rho.horizon z j u →
@@ -185,7 +187,7 @@ def ActualResetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
   (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K gst ⟨E, rho⟩)
     ((Sys F V).heal K cap idx gst ⟨E, rho⟩) ⟨E, rho⟩ →
   (Sys F V).heal K cap idx gst ⟨E, rho⟩ ≤ rho.horizon →
-  ∃ a, C.healing.Run M.proposer M.digest M.honest M.trace ∧
+  ∃ a, C.run.Run M.committee M.proposer M.digest M.honest M.trace ∧
     Healing.Growing.IsReset M.trace M.honest gst a ∧ a ≤ rho.horizon
 
 /-- OPEN source prerequisites of heal_after_reset, never obtained by applying that
@@ -195,7 +197,7 @@ def HighCanonicalSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ gst a,
   (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
-  C.healing.Run M.proposer M.digest M.honest M.trace →
+  C.run.Run M.committee M.proposer M.digest M.honest M.trace →
   Premises M.trace M.honest M.proposer M.digest M.signer gst E.ΔFG rho.horizon →
   Healing.Growing.IsReset M.trace M.honest gst a → a ≤ rho.horizon →
   HighCanonical C.healing.Origin M.trace M.honest gst rho.horizon

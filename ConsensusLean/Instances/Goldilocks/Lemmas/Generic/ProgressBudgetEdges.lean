@@ -24,7 +24,7 @@ variable {P : Params} {A : NodeAC P} {O : OutputSchema} {Info : Type}
 /-- UNPROVED specialization of the healing-gap law at the advertised recurrence.
 Only the consuming interval's ready and report-deadline bounds are required. -/
 def reset_progress_of_single (M : RunMap rho payload) (K : Contract ProgressReq)
-    (healing : ACHealing A M.signer) : Prop :=
+    {runs : ACRun A M.signer} (healing : ACHealing A M.signer runs) : Prop :=
   ∀ cap idx g (r : Recurrence),
     K.progress cap idx = .recur r → r.pattern = Pattern.single →
     (∀ a b, (Sys F V).ready K g ⟨E, rho⟩ ≤ P.slotTime a →
@@ -45,7 +45,7 @@ def final_cache_of_frame (M : RunMap rho payload) (C : ACCorrectLocal A M.signer
     floor kindJ J,
     FrameWindow M.trace M.honest (P.slotTime W.start) deadline floor kindJ J →
     A.Requirements → (P.genesisBlock A.genesisPayload).RootOk M.digest →
-    C.healing.Run M.proposer M.digest M.honest M.trace →
+    C.run.Run M.committee M.proposer M.digest M.honest M.trace →
     Premises M.trace M.honest M.proposer M.digest M.signer g ΔF deadline →
     HealedFrom M.trace M.honest M.proposer W.start deadline →
     FinalHeightSupply M C.catchUp C.hold query deadline W →

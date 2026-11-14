@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Mod
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GenericRun
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.PersistKernel
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.BlockFinality
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations
 
 @[expose] public section
 
@@ -23,13 +24,15 @@ edges, not local AC fields. Generic window data and its healing/engine bridges r
 namespace Consensus.Goldilocks.Generic
 
 variable {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
+variable (runs : ACRun A sg)
 
 /-- Conflicting finalized reads expose population evidence, without a fault-bound premise. -/
 def FinalAccountable : Prop :=
-  ∀ (proposer : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)
+  ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload)
     (H : Time → Set (Fin P.n)) (tr : RunTrace A),
     A.Requirements → (P.genesisBlock A.genesisPayload).RootOk dg →
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     ∀ y z i j, y ∈ H (tr.time i) → z ∈ H (tr.time j) →
       ¬ Compatible (tr.HonestBlocksAt H) (tr.finalizedAt y i) (tr.finalizedAt z j) →
       ∃ X₁ ∈ (tr.state y i).fg.tree, ∃ X₂ ∈ (tr.state z j).fg.tree,
@@ -41,27 +44,30 @@ def FinalAccountable : Prop :=
 
 /-- Honest signings cannot frame their signer; honesty is charged at the later signing. -/
 def NonFraming : Prop :=
-  ∀ (proposer : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)
+  ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload)
     (H : Time → Set (Fin P.n)) (tr : RunTrace A),
-    Growing.LocalRun proposer dg H sg tr →
+    runs.Run cm proposer dg H tr →
     ∀ v k k' a b, tr.SignAt v k a → tr.SignAt v k' b →
       v ∈ H (max (tr.time k) (tr.time k')) → ¬ FG.slashable a b
 
 /-- Population faults below `2*q-n` at the later read imply compatible finalized tips. -/
 def FinalizedSafe : Prop :=
-  ∀ (proposer : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)
+  ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload)
     (H : Time → Set (Fin P.n)) (tr : RunTrace A),
     A.Requirements → (P.genesisBlock A.genesisPayload).RootOk dg →
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     ∀ y z i j, y ∈ H (tr.time i) → z ∈ H (tr.time j) →
       (H (max (tr.time i) (tr.time j)))ᶜ.ncard < 2 * P.q - P.n →
       Compatible (tr.HonestBlocksAt H) (tr.finalizedAt y i) (tr.finalizedAt z j)
 
 /-- The finalized cache is monotone at ordered cuts of a node still honest at the later cut. -/
 def FinalMonotone : Prop :=
-  ∀ (proposer : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)
+  ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload)
     (H : Time → Set (Fin P.n)) (tr : RunTrace A),
-    Growing.LocalRun proposer dg H sg tr →
+    runs.Run cm proposer dg H tr →
     ∀ y i j, i ≤ j → y ∈ H (tr.time j) →
       (tr.state y j).fg.Anc (tr.finalizedAt y i) (tr.finalizedAt y j)
 

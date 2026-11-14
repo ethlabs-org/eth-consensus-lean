@@ -61,49 +61,51 @@ structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
   recovery : Time
   /-- The local outage policy cannot start recovery before the outage ends. -/
   recovery_nonneg : 0 ≤ recovery
+  /-- One run/start owner for the local and healing obligations. -/
+  run : ACRun A sg
   /-- Healing is a separate protocol obligation, not implied by this record's endpoint claims. -/
-  healing : ACHealing A sg
+  healing : ACHealing A sg run
   /-- The transaction/input projection of a block, supplied as data. -/
   payload : A.Blk → Set Nat
   /-- Durations cannot make readiness or deadlines negative. -/
   durations : 0 ≤ look ∧ 0 ≤ catchUp ∧ 0 ≤ margin ∧ 0 ≤ latency ∧ 0 ≤ hold
   /-- L1: the confirmed tip is held, extends the finalized root and precedes the head. -/
-  tipsValid : ∀ (proposer : Nat → Fin P.n)
+  tipsValid : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
-    (tr : RunTrace A), Growing.LocalRun proposer dg H sg tr →
+    (tr : RunTrace A), run.Run cm proposer dg H tr →
     ∀ y i, y ∈ H (tr.time i) →
       tr.confirmedAt y i ∈ (Node.frame (tr.state y i)).tree ∧
       (Node.frame (tr.state y i)).Anc (tr.finalizedAt y i) (tr.confirmedAt y i) ∧
       (Node.frame (tr.state y i)).Anc (tr.confirmedAt y i) (tr.headAt y i)
   /-- L3: ready confirmed reads under growing sleepy service are compatible. -/
-  sleepyReadySafe : ∀ (proposer : Nat → Fin P.n)
+  sleepyReadySafe : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
-    (tr : RunTrace A) (ΔF : Time), Growing.LocalRun proposer dg H sg tr →
+    (tr : RunTrace A) (ΔF : Time), run.Run cm proposer dg H tr →
     Compose.NoCollRun dg tr → tr.SleepyRunAt H ΔF look →
     ∀ y z i j, ReadyCut tr H catchUp y i → ReadyCut tr H catchUp z j →
       Compatible (tr.HonestBlocksAt H) (tr.confirmedAt y i) (tr.confirmedAt z j)
   /-- L4: a serviced ready proposal is confirmed at every ready read past its deadline. -/
-  sleepyProposalSupply : ∀ (proposer : Nat → Fin P.n)
+  sleepyProposalSupply : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
-    (tr : RunTrace A) (ΔF : Time), Growing.LocalRun proposer dg H sg tr →
+    (tr : RunTrace A) (ΔF : Time), run.Run cm proposer dg H tr →
     Compose.NoCollRun dg tr → tr.SleepyRunAt H ΔF look →
     ∀ B k y j, ReadyProposal tr H catchUp hold B k →
       tr.time k + margin ≤ tr.time j → ReadyCut tr H catchUp y j →
       Anc (tr.HonestBlocksAt H) B (tr.confirmedAt y j)
   /-- L5: the same serviced proposal's projected payload is covered by that output. -/
-  sleepyInclusionCoverage : ∀ (proposer : Nat → Fin P.n)
+  sleepyInclusionCoverage : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
-    (tr : RunTrace A) (ΔF : Time), Growing.LocalRun proposer dg H sg tr →
+    (tr : RunTrace A) (ΔF : Time), run.Run cm proposer dg H tr →
     Compose.NoCollRun dg tr → tr.SleepyRunAt H ΔF look →
     ∀ B k y j, ReadyProposal tr H catchUp hold B k →
       tr.time k + margin ≤ tr.time j → ReadyCut tr H catchUp y j →
       payload B ⊆ payload (tr.confirmedAt y j)
   /-- L6: proposal chaining needs this additional confirmed-tip obligation.
   Ready reads after the healed slot agree, and include its honest proposal after the margin. -/
-  healedTips : ∀ (proposer : Nat → Fin P.n)
+  healedTips : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
     (tr : RunTrace A) (ΔF g b : Time) (s₁ : Nat),
-    healing.Run proposer dg H tr → Compose.NoCollRun dg tr →
+    run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     tr.HealthyRunAt H ΔF g → HealedFrom tr H proposer s₁ b →
     max g 0 ≤ P.slotTime s₁ →
     (∀ y z i j, P.slotTime s₁ + margin ≤ tr.time i → tr.time i ≤ b →
@@ -114,17 +116,17 @@ structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
       ∀ y j, tr.time k + margin ≤ tr.time j → tr.time j ≤ b →
         ReadyCut tr H catchUp y j → Anc (tr.HonestBlocksAt H) X (tr.confirmedAt y j)
   /-- L7: under healthy service, a fresh ready proposal is confirmed within the latency. -/
-  healthyConfirmedSupply : ∀ (proposer : Nat → Fin P.n)
+  healthyConfirmedSupply : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
-    (tr : RunTrace A) (ΔF g healed : Time), Growing.LocalRun proposer dg H sg tr →
+    (tr : RunTrace A) (ΔF g healed : Time), run.Run cm proposer dg H tr →
     Compose.NoCollRun dg tr → tr.HealthyRunAt H ΔF g → max g 0 + margin ≤ healed →
     ∀ B k y j, ReadyProposal tr H catchUp hold B k → healed ≤ tr.time k →
       tr.time k + latency ≤ tr.time j → ReadyCut tr H catchUp y j →
       Anc (tr.HonestBlocksAt H) B (tr.confirmedAt y j)
   /-- L8: ancestry of a proposal into either output preserves its projected payload. -/
-  payloadProjection : ∀ (proposer : Nat → Fin P.n)
+  payloadProjection : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
-    (tr : RunTrace A), Growing.LocalRun proposer dg H sg tr →
+    (tr : RunTrace A), run.Run cm proposer dg H tr →
     ∀ B y j, y ∈ H (tr.time j) →
       (Anc (tr.HonestBlocksAt H) B (tr.confirmedAt y j) →
         payload B ⊆ payload (tr.confirmedAt y j)) ∧
@@ -136,11 +138,11 @@ structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
   outage times to the contract (arming lag, budget, fixed look-back) is an open generic-layer
   defect. The fixed local recovery policy bounds every target; its adequacy remains a supplier
   obligation. Internal locks and S5 are not fields. -/
-  outageProtected : ∀ (proposer : Nat → Fin P.n)
+  outageProtected : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
     (tr : RunTrace A) (p : EnvPoint (Fin P.n)) (K : Time → Finset (Fin P.n))
     (η populationLook ΔF T b₀ b₁ recoveryTime : Time),
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+    run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     RunPointBinding tr H p → 0 ≤ T → T ≤ b₀ → b₀ ≤ b₁ → b₁ ≤ recoveryTime →
     b₁ + recovery ≤ recoveryTime →
     tr.SyncRunAt H ΔF 0 b₀ → tr.GSTRunAt H ΔF b₁ →

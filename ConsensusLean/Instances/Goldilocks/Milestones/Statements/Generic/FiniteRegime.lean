@@ -38,15 +38,15 @@ def sleepyPrefix_restrict : Prop :=
     tr.SleepyPrefixAt H ΔF look b → tr.SleepyPrefixAt H ΔF look d
 
 /-- UNPROVED trace-prefix transport, retaining the finite, clamped count predicate. -/
-def sleepyPrefix_upTo : Prop :=
-  ∀ proposer dg H tr ΔF look b,
-    Growing.LocalRun proposer dg H sg tr →
+def sleepyPrefix_upTo (runs : ACRun A sg) : Prop :=
+  ∀ cm proposer dg H tr ΔF look b,
+    runs.Run cm proposer dg H tr →
     tr.SleepyPrefixAt H ΔF look b → (tr.upTo b).SleepyPrefixAt H ΔF look b
 
 /-- UNPROVED prefix service supplier. Strict signed-row processing remains an obligation. -/
-def prefixService_of_gst : Prop :=
-  ∀ proposer dg H tr g ΔF b,
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+def prefixService_of_gst (runs : ACRun A sg) : Prop :=
+  ∀ cm proposer dg H tr g ΔF b,
+    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     0 ≤ b → tr.GSTRunAt H ΔF g → PrefixService tr H g ΔF b
 
 /-- UNPROVED honesty truncation on the retained trace, matching `resetService_truncH`.
@@ -65,16 +65,16 @@ def readyCut_upTo : Prop :=
 Constructing this type provides no supplier. The proposal hold must survive the horizon. -/
 structure FiniteLocal (C : ACCorrectLocal A sg) : Prop where
   /-- Bounded L3, with each reader honest at its own cut. -/
-  sleepyReadySafe : ∀ proposer dg H tr ΔF b,
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+  sleepyReadySafe : ∀ cm proposer dg H tr ΔF b,
+    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     tr.SleepyPrefixAt H ΔF C.look b →
     ∀ y z i j, 0 ≤ tr.time i → tr.time i ≤ b →
       0 ≤ tr.time j → tr.time j ≤ b →
       ReadyCut tr H C.catchUp y i → ReadyCut tr H C.catchUp z j →
       Compatible (tr.HonestBlocksAt H) (tr.confirmedAt y i) (tr.confirmedAt z j)
   /-- Bounded L4; coverage does not produce a proposal. -/
-  sleepyProposalSupply : ∀ proposer dg H tr ΔF b,
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+  sleepyProposalSupply : ∀ cm proposer dg H tr ΔF b,
+    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     tr.SleepyPrefixAt H ΔF C.look b →
     ∀ B k y j, 0 ≤ tr.time k → tr.time k + C.hold ≤ b →
       ReadyProposal tr H C.catchUp C.hold B k →
@@ -82,8 +82,8 @@ structure FiniteLocal (C : ACCorrectLocal A sg) : Prop where
       ReadyCut tr H C.catchUp y j →
       Anc (tr.HonestBlocksAt H) B (tr.confirmedAt y j)
   /-- Bounded L5, retaining the actual payload projection. -/
-  sleepyInclusionCoverage : ∀ proposer dg H tr ΔF b,
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+  sleepyInclusionCoverage : ∀ cm proposer dg H tr ΔF b,
+    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     tr.SleepyPrefixAt H ΔF C.look b →
     ∀ B k y j, 0 ≤ tr.time k → tr.time k + C.hold ≤ b →
       ReadyProposal tr H C.catchUp C.hold B k →
@@ -91,8 +91,8 @@ structure FiniteLocal (C : ACCorrectLocal A sg) : Prop where
       ReadyCut tr H C.catchUp y j →
       C.payload B ⊆ C.payload (tr.confirmedAt y j)
   /-- Bounded L6; healing and the real healed slot remain separate inputs. -/
-  healedTips : ∀ proposer dg H tr ΔF g b s₁,
-    C.healing.Run proposer dg H tr → Compose.NoCollRun dg tr →
+  healedTips : ∀ cm proposer dg H tr ΔF g b s₁,
+    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     HealthyPrefix tr H ΔF g b → HealedFrom tr H proposer s₁ b →
     max g 0 ≤ P.slotTime s₁ →
     (∀ y z i j, P.slotTime s₁ + C.margin ≤ tr.time i → tr.time i ≤ b →
@@ -105,8 +105,8 @@ structure FiniteLocal (C : ACCorrectLocal A sg) : Prop where
         ReadyCut tr H C.catchUp y j →
         Anc (tr.HonestBlocksAt H) X (tr.confirmedAt y j)
   /-- Bounded L7; actual proposal existence is not a field of this record. -/
-  healthyConfirmedSupply : ∀ proposer dg H tr ΔF g healed b,
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+  healthyConfirmedSupply : ∀ cm proposer dg H tr ΔF g healed b,
+    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     HealthyPrefix tr H ΔF g b → max g 0 + C.margin ≤ healed →
     ∀ B k y j, ReadyProposal tr H C.catchUp C.hold B k →
       healed ≤ tr.time k → tr.time k + C.hold ≤ b →

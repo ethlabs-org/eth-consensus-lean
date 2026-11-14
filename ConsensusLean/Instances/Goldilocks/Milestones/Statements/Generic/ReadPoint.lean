@@ -49,17 +49,17 @@ Sources: CorrectLocal.tipsValid/payloadProjection; lead LeadTipsValid/LeadHeldIn
 Growing/Simulation/Endpoint/Outputs.engine_outputValid_at and engine_nested_at.
 The held-tree-to-view, root, chain and codec suppliers remain separate E1 contracts. -/
 structure LocalReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where
-  tips : ∀ proposer dg H (tr : RunTrace A),
-    Growing.LocalRun proposer dg H sg tr → ∀ b y i t,
+  tips : ∀ cm proposer dg H (tr : RunTrace A),
+    C.run.Run cm proposer dg H tr → ∀ b y i t,
     HonestReadPoint tr H b y i t →
       confirmedRead tr y i t ∈ (Node.frame (tr.state y i)).tree ∧
       (Node.frame (tr.state y i)).Anc (tr.finalizedAt y i) (confirmedRead tr y i t) ∧
       (Node.frame (tr.state y i)).Anc (confirmedRead tr y i t) (headRead tr y i t)
-  held : ∀ proposer dg H (tr : RunTrace A),
-    Growing.LocalRun proposer dg H sg tr → ∀ b y i t,
+  held : ∀ cm proposer dg H (tr : RunTrace A),
+    C.run.Run cm proposer dg H tr → ∀ b y i t,
     HonestReadPoint tr H b y i t → confirmedRead tr y i t ∈ (tr.state y i).fg.tree
-  payload : ∀ proposer dg H (tr : RunTrace A),
-    Growing.LocalRun proposer dg H sg tr → ∀ b B y i t,
+  payload : ∀ cm proposer dg H (tr : RunTrace A),
+    C.run.Run cm proposer dg H tr → ∀ b B y i t,
     HonestReadPoint tr H b y i t →
       (Anc (tr.HonestBlocksAt H) B (confirmedRead tr y i t) →
         C.payload B ⊆ C.payload (confirmedRead tr y i t)) ∧
@@ -71,38 +71,40 @@ consequences of actual-cut contracts. Source: CorrectLocal L3/L4/L5, lead
 LeadSleepyReadySafe/LeadConfirmedSupply, and Regimes/Growing.SleepySafe/IncludeSleepy.
 The same-reader extension clause retains both real event boundaries. -/
 structure SleepyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where
-  safe : ∀ proposer dg H (tr : RunTrace A) ΔF b,
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+  safe : ∀ cm proposer dg H (tr : RunTrace A) ΔF b,
+    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     tr.SleepyPrefixAt H ΔF C.look b → ∀ y z i j t u,
     ReadyReadPoint tr H b C.catchUp y i t → ReadyReadPoint tr H b C.catchUp z j u →
     ReadBoundary tr y i → ReadBoundary tr z j →
       Compatible (tr.HonestBlocksAt H) (confirmedRead tr y i t) (confirmedRead tr z j u)
-  extension : ∀ proposer dg H (tr : RunTrace A) ΔF b,
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+  extension : ∀ cm proposer dg H (tr : RunTrace A) ΔF b,
+    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     tr.SleepyPrefixAt H ΔF C.look b → ∀ y i j t u,
     ReadyReadPoint tr H b C.catchUp y i t → ReadyReadPoint tr H b C.catchUp y j u →
     ReadBoundary tr y i → ReadBoundary tr y j → i ≤ j → t ≤ u →
       Anc (tr.HonestBlocksAt H) (confirmedRead tr y i t) (confirmedRead tr y j u)
-  proposal : ∀ proposer dg H (tr : RunTrace A) ΔF b,
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+  proposal : ∀ cm proposer dg H (tr : RunTrace A) ΔF b,
+    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     tr.SleepyPrefixAt H ΔF C.look b → ∀ B k y j t,
     ReadyProposal tr H C.catchUp C.hold B k → 0 ≤ tr.time k →
     tr.time k + C.hold ≤ b → tr.time k ≤ b → tr.time k + C.margin ≤ t →
     ReadyReadPoint tr H b C.catchUp y j t → ReadBoundary tr y j →
+    t < tr.time j →
       Anc (tr.HonestBlocksAt H) B (confirmedRead tr y j t)
-  inclusion : ∀ proposer dg H (tr : RunTrace A) ΔF b,
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+  inclusion : ∀ cm proposer dg H (tr : RunTrace A) ΔF b,
+    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     tr.SleepyPrefixAt H ΔF C.look b → ∀ B k y j t,
     ReadyProposal tr H C.catchUp C.hold B k → 0 ≤ tr.time k →
     tr.time k + C.hold ≤ b → tr.time k ≤ b → tr.time k + C.margin ≤ t →
     ReadyReadPoint tr H b C.catchUp y j t → ReadBoundary tr y j →
+    t < tr.time j →
       C.payload B ⊆ C.payload (confirmedRead tr y j t)
 
 /-- L6/L7 use the shared finite healthy regime, never an all-future schedule. -/
 structure HealthyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where
   /-- L6: CorrectLocal.healedTips; lead LeadHealedTips, evaluated at actual read times. -/
-  healed : ∀ proposer dg H (tr : RunTrace A) ΔF g b s₁,
-    C.healing.Run proposer dg H tr → Compose.NoCollRun dg tr →
+  healed : ∀ cm proposer dg H (tr : RunTrace A) ΔF g b s₁,
+    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     HealthyPrefix tr H ΔF g b → HealedFrom tr H proposer s₁ b →
     max g 0 ≤ P.slotTime s₁ →
     (∀ y z i j t u, P.slotTime s₁ + C.margin ≤ t →
@@ -112,24 +114,26 @@ structure HealthyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : 
       Compatible (tr.HonestBlocksAt H) (confirmedRead tr y i t) (confirmedRead tr z j u)) ∧
     ∀ z k X, HonestProposal tr H proposer s₁ z k X → 0 ≤ tr.time k → tr.time k ≤ b →
       ∀ y j t, tr.time k + C.margin ≤ t → ReadyReadPoint tr H b C.catchUp y j t →
-      ReadBoundary tr y j → Anc (tr.HonestBlocksAt H) X (confirmedRead tr y j t)
+      ReadBoundary tr y j → t < tr.time j →
+      Anc (tr.HonestBlocksAt H) X (confirmedRead tr y j t)
   /-- L7: CorrectLocal.healthyConfirmedSupply; lead LeadConfirmedSupply. -/
-  proposal : ∀ proposer dg H (tr : RunTrace A) ΔF g b healed,
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+  proposal : ∀ cm proposer dg H (tr : RunTrace A) ΔF g b healed,
+    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     HealthyPrefix tr H ΔF g b → max g 0 + C.margin ≤ healed →
     ∀ B k y j t, ReadyProposal tr H C.catchUp C.hold B k →
     0 ≤ tr.time k → tr.time k ≤ b → tr.time k + C.hold ≤ b → healed ≤ tr.time k →
     tr.time k + C.latency ≤ t → ReadyReadPoint tr H b C.catchUp y j t →
-    ReadBoundary tr y j → Anc (tr.HonestBlocksAt H) B (confirmedRead tr y j t)
+    ReadBoundary tr y j → t < tr.time j →
+    Anc (tr.HonestBlocksAt H) B (confirmedRead tr y j t)
 
 /-- L9 preserves the actual source read at T and destination read at t. Source:
 CorrectLocal.outageProtected and lead LeadOutageProtected, over the same population and
 look-back committee η-sleepy premises at a binder look-back `η`; tying `η` and the outage times
 to the contract is an open generic-layer defect. -/
 structure OutageReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where
-  protection : ∀ proposer dg H (tr : RunTrace A) (p : EnvPoint (Fin P.n))
+  protection : ∀ cm proposer dg H (tr : RunTrace A) (p : EnvPoint (Fin P.n))
     (K : Time → Finset (Fin P.n)) η populationLook ΔF T b₀ b₁ recoveryTime,
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     RunPointBinding tr H p → 0 ≤ T → T ≤ b₀ → b₀ ≤ b₁ → b₁ ≤ recoveryTime →
     b₁ + C.recovery ≤ recoveryTime →
     tr.SyncRunAt H ΔF 0 b₀ → tr.GSTRunAt H ΔF b₁ →

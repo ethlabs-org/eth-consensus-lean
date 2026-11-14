@@ -25,7 +25,8 @@ variable {P : Params} {A : NodeAC P} {O : OutputSchema} {Info : Type}
 
 /-- A real reset-consuming slot window, including its report deadline and post-reset drain.
 The gap is positive and the entire budget is inside the advertised healing time. -/
-structure ResetBudgetWindow {sg : A.Msg → Fin P.n} (healing : ACHealing A sg)
+structure ResetBudgetWindow {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
+    (healing : ACHealing A sg runs)
     (g ready healed : Time) where
   start : Nat
   gap : Nat
@@ -39,7 +40,8 @@ structure ResetBudgetWindow {sg : A.Msg → Fin P.n} (healing : ACHealing A sg)
 
 /-- The explicit four-delay grid and sufficient coefficient budget. This definition supplies
 no slot alignment or budget witness. The ready/snapshot reserve remains visible. -/
-def ResetCoefficientFit {sg : A.Msg → Fin P.n} (healing : ACHealing A sg)
+def ResetCoefficientFit {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
+    (healing : ACHealing A sg runs)
     (g ready : Time) (healCoeff G : Nat) : Prop :=
   (∀ s, P.slotTime s = (s : Time) * (4 * P.Δ)) ∧ 1 ≤ G ∧
     max ready (max (gbar g) (cutZ P g)) +
@@ -48,14 +50,15 @@ def ResetCoefficientFit {sg : A.Msg → Fin P.n} (healing : ACHealing A sg)
 
 /-- UNPROVED arithmetic interface from grid/coefficient fit to a real consuming window.
 No progress or protocol witness is assumed by the numerical premise. -/
-def reset_window_of_coefficients {sg : A.Msg → Fin P.n} (healing : ACHealing A sg) : Prop :=
+def reset_window_of_coefficients {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
+    (healing : ACHealing A sg runs) : Prop :=
   ∀ g ready healCoeff G, ResetCoefficientFit healing g ready healCoeff G →
     ∃ W : ResetBudgetWindow healing g ready (gbar g + (healCoeff : Time) * P.Δ), W.gap = G
 
 /-- UNPROVED advertised-coefficient fit, for all nonfinal indices and progress forms.
 The chosen gap is data in the conclusion, not an unsupported progress-form exclusion. -/
 def ContractResetFit (M : RunMap rho payload) (K : Contract ProgressReq)
-    (healing : ACHealing A M.signer) : Prop :=
+    {runs : ACRun A M.signer} (healing : ACHealing A M.signer runs) : Prop :=
   ∀ cap idx g, (cap = .available ∨ cap = .stable) →
     ∃ G, ResetCoefficientFit healing g ((Sys F V).ready K g ⟨E, rho⟩)
       (K.params.heal cap idx) G
@@ -63,7 +66,7 @@ def ContractResetFit (M : RunMap rho payload) (K : Contract ProgressReq)
 /-- All-form reset production: no recurrence shape or not-ready form is silently dropped.
 This is an open supplier obligation, not evidence that arbitrary contracts meet its budget. -/
 def ResetProgressSupply (M : RunMap rho payload) (K : Contract ProgressReq)
-    (healing : ACHealing A M.signer) : Prop :=
+    {runs : ACRun A M.signer} (healing : ACHealing A M.signer runs) : Prop :=
   rho.ExecutionValid → ∀ cap idx g,
     (cap = .available ∨ cap = .stable) →
     (Sys F V).Healthy (shapeProgress F V).toExternal K g ⟨E, rho⟩ →
@@ -140,7 +143,8 @@ def FinalHeightSupply (M : RunMap rho payload) (catchUp hold query deadline : Ti
 The same selected window must have delivery spacing, healing and actual height evidence.
 No spacing follows merely from the timeout, and no gap or latency is enlarged here. -/
 def FinalWindowSupply (M : RunMap rho payload) (K : Contract ProgressReq)
-    (healing : ACHealing A M.signer) (catchUp hold : Time) : Prop :=
+    (runs : ACRun A M.signer)
+    (catchUp hold : Time) : Prop :=
   rho.ExecutionValid → ∀ idx g t,
     (Sys F V).Healthy (shapeProgress F V).toExternal K g ⟨E, rho⟩ →
     (Sys F V).prog (shapeProgress F V) K .final idx ((Sys F V).ready K g ⟨E, rho⟩)
@@ -154,7 +158,7 @@ def FinalWindowSupply (M : RunMap rho payload) (K : Contract ProgressReq)
       6 * P.Δ + E.ΔFG ≤ 4 * P.Δ * (W.gap : Time) ∧
       HealedFrom M.trace M.honest M.proposer W.start
         (t + (K.params.latency .final idx : Time) * E.ΔAC) ∧
-      healing.Run M.proposer M.digest M.honest M.trace ∧
+      runs.Run M.committee M.proposer M.digest M.honest M.trace ∧
       FinalHeightSupply M catchUp hold t
         (t + (K.params.latency .final idx : Time) * E.ΔAC) W
 
@@ -168,11 +172,11 @@ def FinalCarrierSupply (M : RunMap rho payload) (catchUp hold : Time) : Prop :=
 
 /-- Direct cache-production interface without an unsupported constant-frame supplier.
 Actual anchor acceptance, ancestry, heights and carrier processing stay explicit inputs. -/
-def FinalCacheSupply (M : RunMap rho payload) (healing : ACHealing A M.signer)
+def FinalCacheSupply (M : RunMap rho payload) (runs : ACRun A M.signer)
     (catchUp hold : Time) : Prop :=
   ∀ g ΔF query deadline (W : FinalProductionWindow M catchUp hold query deadline),
     A.Requirements → (P.genesisBlock A.genesisPayload).RootOk M.digest →
-    healing.Run M.proposer M.digest M.honest M.trace →
+    runs.Run M.committee M.proposer M.digest M.honest M.trace →
     Premises M.trace M.honest M.proposer M.digest M.signer g ΔF deadline →
     HealedFrom M.trace M.honest M.proposer W.start deadline →
     (∀ a, M.trace.AcceptAt (W.block a).proposer (W.cut a) (W.block a)) →

@@ -19,6 +19,7 @@ variable {P : Params} {A : NodeAC P} {O : OutputSchema} {Info : Type}
   [DecidableEq Info] [Countable Info]
   {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V]
   {E : Env V} {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
+  {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
 
 /-- The node state at the mapped cut of this engine reader, not a fresh simulation witness. -/
 noncomputable abbrev mappedReadState (M : RunMap (A := A) rho payload)
@@ -90,7 +91,7 @@ def FinalMonotoneChainEdge (M : RunMap (A := A) rho payload) : Prop :=
 
 /-- UNPROVED system-level nesting assembly with the original `HoldsAlways` wrapper.
 One binding supplies one map per valid run, reused for every output and read. -/
-def NestedChainsAlways (B : EngineBinding (A := A) (F := F) (V := V) payload) : Prop :=
+def NestedChainsAlways (B : EngineBinding (F := F) (V := V) payload sg runs) : Prop :=
   (∀ E rho (hv : rho.ExecutionValid),
     ChainRepresentation A (B.map E rho hv).chain (B.map E rho hv).header ∧
       HonestChainReads (B.map E rho hv)) →
@@ -99,7 +100,7 @@ def NestedChainsAlways (B : EngineBinding (A := A) (F := F) (V := V) payload) : 
 
 /-- UNPROVED system-level final monotonicity assembly. The wrapper has no collision
 escape, constant-fault restriction or new regime antecedent. -/
-def FinalChainsAlways (B : EngineBinding (A := A) (F := F) (V := V) payload) : Prop :=
+def FinalChainsAlways (B : EngineBinding (F := F) (V := V) payload sg runs) : Prop :=
   (∀ E rho (hv : rho.ExecutionValid),
     ChainRepresentation A (B.map E rho hv).chain (B.map E rho hv).header ∧
       HonestChainReads (B.map E rho hv)) →

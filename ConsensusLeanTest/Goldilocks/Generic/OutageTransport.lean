@@ -14,7 +14,8 @@ with a ready source at `T` and a ready reader at a destination time `t` in `[rec
 (`OutageActive`), on which the participation premises hold at the contract's look-back `η·ΔAC`
 (`OutageTransport.participation_of_outage`): population and look-back committee η-sleepy
 participation with the outage catch-up `max cDur (η·ΔAC − 1)`. The local trace premises
-(`Growing.LocalRun`, `RunPointBinding`, `NoCollRun`, the read point) are not constructed here. -/
+(the shared run `ACRun.Run` at a committee schedule, `RunPointBinding`, `NoCollRun`, the read
+point) are not constructed here. -/
 
 namespace Consensus.Goldilocks.Generic.Test.OutageTransport
 open AsChainShape Shape Obligations
