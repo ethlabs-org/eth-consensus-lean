@@ -116,6 +116,14 @@ def ReqPayload : Prop :=
     (A.proposal s Φ (P.slotTime σ)).2 = some (d, p) →
       ∀ B : A.Blk, B.slot = σ → B.acPayload = p → A.validPayload B
 
+/-- **Requirement 5 from the start `s₀`** at validator `self`: requirement 5 at the states of
+`self` reachable from `s₀` (`ReachableAtFrom s₀`). At `s₀ = A.initial` it is requirement 5 at
+`self`. -/
+def ReqPayloadFrom (s₀ : A.State) (self : Fin P.n) : Prop :=
+  ∀ U : Set A.Blk, Coherent U → ∀ s Φ t₀, A.ReachableAtFrom s₀ self U s Φ t₀ →
+    ∀ σ : Nat, t₀ ≤ P.slotTime σ → ∀ d p, (A.proposal s Φ (P.slotTime σ)).2 = some (d, p) →
+      ∀ B : A.Blk, B.slot = σ → B.acPayload = p → A.validPayload B
+
 /-- The interface requirements 1–5 (claims A0.6 with A0.9): what the FG and the node may
 assume of an AC. -/
 structure Requirements : Prop where

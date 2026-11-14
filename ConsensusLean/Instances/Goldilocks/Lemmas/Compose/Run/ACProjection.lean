@@ -77,10 +77,7 @@ private theorem frame_flat (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin 
 /-- The call law for an AC call of `y` at `i` after the frame of `a`, without AC calls of `y`
 in `[a, i)` and without an accepting cut of `y` just before `a`. -/
 private theorem callOK_from (hq : A.Requirements)
-    (hpay : ∀ y ∈ H, ∀ U : Set A.Blk, Coherent U → ∀ s Φ t₀,
-      A.ReachableAtFrom (ini y) y U s Φ t₀ → ∀ σ : Nat, t₀ ≤ P.slotTime σ → ∀ d p,
-        (A.proposal s Φ (P.slotTime σ)).2 = some (d, p) →
-          ∀ B : A.Blk, B.slot = σ → B.acPayload = p → A.validPayload B)
+    (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
     (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {a i : Nat} {ℓ : ACLabel A} (hc : tr.CallAt y i (.ac ℓ)) (hai : a ≤ i)
     (hno : ∀ k, a ≤ k → k < i → ∀ ℓ' : ACLabel A, ¬ tr.CallAt y k (.ac ℓ'))

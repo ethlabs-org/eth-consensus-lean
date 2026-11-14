@@ -151,14 +151,12 @@ reachable with the AC start `s₀` (by default the AC's initial state), the acce
 coherent and the AC state is reachable inside it (`ACInterface.ReachableAtFrom s₀`): from `s₀` by
 calls at nondecreasing times, under the call law (`CallOK`: well-formed frames in `Σ.T`, equal
 frames between calls except `Φ ⊑_B Φ'` at `ac_on_block(Φ', B)`, wire-checked inputs), with the
-frame of the last call the current `fg_to_ac(Σ)` and its time at most the clock. Requirement 5 at
-the states reachable from `s₀` supplies the own block's payload check; at `s₀ = A.initial` it is
-requirement 5 at `self`. -/
+frame of the last call the current `fg_to_ac(Σ)` and its time at most the clock. Requirement 5
+from `s₀` (`ACInterface.ReqPayloadFrom s₀ self`) supplies the own block's payload check; at
+`s₀ = A.initial` it is requirement 5 at `self`. -/
 def ACStatesReachable (s₀ : A.State := A.initial) : Prop :=
   A.Requirements →
-  (∀ U : Set A.Blk, Coherent U → ∀ s Φ t₀, A.ReachableAtFrom s₀ self U s Φ t₀ →
-    ∀ σ : Nat, t₀ ≤ P.slotTime σ → ∀ d p, (A.proposal s Φ (P.slotTime σ)).2 = some (d, p) →
-      ∀ B : A.Blk, B.slot = σ → B.acPayload = p → A.validPayload B) →
+  A.ReqPayloadFrom s₀ self →
   ∀ cfg : Config A, Reachable proposer dg self cfg s₀ →
     Coherent cfg.st.fg.tree ∧
       ∃ t₀, t₀ ≤ cfg.time ∧ A.ReachableAtFrom s₀ self cfg.st.fg.tree cfg.st.ac (frame cfg.st) t₀

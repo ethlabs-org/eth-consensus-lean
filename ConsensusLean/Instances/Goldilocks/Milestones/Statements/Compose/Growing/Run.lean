@@ -75,16 +75,14 @@ def ReadyImpliesJoined : Prop :=
       tr.awake y t ∧ tr.JoinedAt y t
 
 /-- **C0.5 under growing faults, the AC projection**, from the AC starts `ini` of the run, with
-requirement 5 at the AC states reachable from each start `ini y` of a node honest at time `0`
-(requirement 5 itself at the default start `ini y = A.initial`). -/
+requirement 5 from each start `ini y` of a node honest at time `0` (`ACInterface.ReqPayloadFrom`;
+requirement 5 itself at the default start `ini y = A.initial`). -/
 def ACProjection : Prop :=
   ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload)
     (H : Time → Set (Fin P.n)) (sg : A.Msg → Fin P.n) (tr : RunTrace A)
     (proposer : Nat → Fin P.n) {ini : Fin P.n → A.State},
     A.Requirements →
-    (∀ y ∈ H 0, ∀ U : Set A.Blk, Coherent U → ∀ s Φ t₀, A.ReachableAtFrom (ini y) y U s Φ t₀ →
-      ∀ σ : Nat, t₀ ≤ P.slotTime σ → ∀ d p, (A.proposal s Φ (P.slotTime σ)).2 = some (d, p) →
-        ∀ B : A.Blk, B.slot = σ → B.acPayload = p → A.validPayload B) →
+    (∀ y ∈ H 0, A.ReqPayloadFrom (ini y) y) →
     Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini →
       NoCollRun dg tr →
       Consensus.Goldilocks.Growing.ACLocalRun A H (tr.HonestBlocksAt H) tr.projAC ini

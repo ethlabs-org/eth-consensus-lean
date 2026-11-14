@@ -104,21 +104,12 @@ theorem finalized_monotone : FinalizedMonotone proposer dg self := by
 
 /-! ### The AC state and the record, handler by handler -/
 
-/-- Requirement 5 of the AC started at `s₀` (`{A with initial := s₀}`) is requirement 5 at the
-states reachable from `s₀` (`ACInterface.reachableAtFrom_iff`): the local premise of
-`ACStatesReachable` and `ACProjection` (at the default start, requirement 5 itself). -/
+/-- Requirement 5 of the AC started at `s₀` (`{A with initial := s₀}`) is requirement 5 from `s₀`
+(`ACInterface.ReqPayloadFrom s₀`, through `ACInterface.reachableAtFrom_iff`): the local premise of
+`ACStatesReachable` and `ACProjection`. -/
 theorem payloadFrom_initial {s₀ : A.State} (hq : ({ A with initial := s₀ } : NodeAC P).Requirements)
-    (v : Fin P.n) :
-    ∀ U : Set A.Blk, Coherent U → ∀ s Φ t₀, A.ReachableAtFrom s₀ v U s Φ t₀ →
-      ∀ σ : Nat, t₀ ≤ P.slotTime σ → ∀ d p, (A.proposal s Φ (P.slotTime σ)).2 = some (d, p) →
-        ∀ B : A.Blk, B.slot = σ → B.acPayload = p → A.validPayload B :=
+    (v : Fin P.n) : A.ReqPayloadFrom s₀ v :=
   fun U hU s Φ t₀ hr => hq.payload v U hU s Φ t₀ (ACInterface.reachableAtFrom_iff.1 hr)
-
-/-- Requirement 5 at the states of `v` reachable from the AC start `s₀`. -/
-private abbrev PayloadFrom (s₀ : A.State) (v : Fin P.n) : Prop :=
-  ∀ U : Set A.Blk, Coherent U → ∀ s Φ t₀, A.ReachableAtFrom s₀ v U s Φ t₀ →
-    ∀ σ : Nat, t₀ ≤ P.slotTime σ → ∀ d p, (A.proposal s Φ (P.slotTime σ)).2 = some (d, p) →
-      ∀ B : A.Blk, B.slot = σ → B.acPayload = p → A.validPayload B
 
 /-- The node invariant at a state for calls at time `t`, from the AC start `s₀`: the FG state is
 reachable; under requirement 5 from `s₀`, the AC state is reachable from `s₀` inside the tree with
@@ -127,7 +118,7 @@ the pool holds well-formed attestations; the record is the client run over some 
 attestations are in the pool; when genesis has its digest as root, every held block does. -/
 private structure NInv (v : Fin P.n) (s₀ : A.State) (st : NodeState A) (t : Time) : Prop where
   fg : st.fg.Reachable A.genesisPayload
-  ac : PayloadFrom s₀ v → ∃ t₀ ≤ t, A.ReachableAtFrom s₀ v st.fg.tree st.ac (frame st) t₀
+  ac : A.ReqPayloadFrom s₀ v → ∃ t₀ ≤ t, A.ReachableAtFrom s₀ v st.fg.tree st.ac (frame st) t₀
   rcd : ∃ σes : List (FG.ChainState P.n),
     st.record = (FG.Record.run v FG.Record.empty σes).1 ∧
       ∀ a ∈ (FG.Record.run v FG.Record.empty σes).2, a ∈ st.fg.atts
@@ -266,7 +257,8 @@ private theorem NInv.mono {st : NodeState A} {t t' : Time} (h : NInv dg self s�
 
 /-- An AC call keeps everything but the AC state. -/
 private theorem NInv.ac' {st : NodeState A} {t : Time} (h : NInv dg self s₀ st t) (s : A.State)
-    (hs : PayloadFrom s₀ self → ∃ t₀ ≤ t, A.ReachableAtFrom s₀ self st.fg.tree s (frame st) t₀) :
+    (hs : A.ReqPayloadFrom s₀ self →
+      ∃ t₀ ≤ t, A.ReachableAtFrom s₀ self st.fg.tree s (frame st) t₀) :
     NInv dg self s₀ { st with ac := s } t :=
   ⟨h.fg, hs, h.rcd, h.wf, h.roots⟩
 
@@ -325,7 +317,7 @@ private theorem NInv.onAttestation {st : NodeState A} {t : Time} (h : NInv dg se
     ⟨σes, hrec, fun b hb => (atts_onAttestation _ a).2 (hsub b hb)⟩
 
 private theorem NInv.onBlock {st : NodeState A} {t : Time} (h : NInv dg self s₀ st t)
-    (B : A.Blk) (hv : PayloadFrom s₀ self → A.validPayload B) (hro : B.RootOk dg) :
+    (B : A.Blk) (hv : A.ReqPayloadFrom s₀ self → A.validPayload B) (hro : B.RootOk dg) :
     NInv dg self s₀ (onBlock self st t B).1 t := by
   unfold Node.onBlock
   split_ifs with hf

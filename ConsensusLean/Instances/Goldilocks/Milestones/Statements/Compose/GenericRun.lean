@@ -65,16 +65,14 @@ validators, inside the honest blocks of the run, for an AC with requirements 1�
 under `NoColl`, from the AC starts `ini` of the run. Requirement 5 is needed: the own block's
 `ac_on_block` call must satisfy `CallOK`, whose `validPayload` the FG does not check (the FG
 accepts without reading the AC payload), so it holds only because the AC's own proposal passes
-`ac_valid_payload`; it is taken at the AC states reachable from each honest start `ini y`, which
-at the default start `ini y = A.initial` is requirement 5 itself. -/
+`ac_valid_payload`; it is taken from each honest start `ini y` (`ACInterface.ReqPayloadFrom`),
+which at the default start `ini y = A.initial` is requirement 5 itself. -/
 def ACProjection : Prop :=
   ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n))
     (sg : A.Msg → Fin P.n) (tr : RunTrace A) (proposer : Nat → Fin P.n)
     {ini : Fin P.n → A.State},
     A.Requirements →
-    (∀ y ∈ H, ∀ U : Set A.Blk, Coherent U → ∀ s Φ t₀, A.ReachableAtFrom (ini y) y U s Φ t₀ →
-      ∀ σ : Nat, t₀ ≤ P.slotTime σ → ∀ d p, (A.proposal s Φ (P.slotTime σ)).2 = some (d, p) →
-        ∀ B : A.Blk, B.slot = σ → B.acPayload = p → A.validPayload B) →
+    (∀ y ∈ H, A.ReqPayloadFrom (ini y) y) →
     Node.LocalRun proposer dg H sg tr ini → NoCollRun dg tr →
       ACLocalRun A H (tr.HonestBlocks H) tr.projAC ini
 
