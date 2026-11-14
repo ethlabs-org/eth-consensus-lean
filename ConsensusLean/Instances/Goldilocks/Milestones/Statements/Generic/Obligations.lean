@@ -74,11 +74,20 @@ structure Service (tr : RunTrace A) (H : Time → Set (Fin P.n)) (g ΔF b : Time
       tr.deadline y j (max (tr.time i) g) ΔF ≤ tr.time j →
       ∃ k ≤ j, tr.ProcessAttAt y k att ∧ tr.time k < tr.deadline y k (max (tr.time i) g) ΔF
 
+/-- Nonempty committees selected from GST onward obey the contract fraction at
+every charge time up to the horizon. No pre-GST selection count is assumed. -/
+def CommitteeFaultsUpTo (βK : ℚ) (cm : Time → Finset (Fin P.n))
+    (H : Time → Set (Fin P.n)) (g b : Time) : Prop :=
+  ∀ t d, max g 0 ≤ t → t ≤ b → 0 ≤ d → d ≤ b →
+    (cm t).Nonempty →
+      (((↑(cm t) : Set (Fin P.n)) ∩ (H d)ᶜ).ncard : ℚ) < βK * (cm t).card
+
 /-- Strong bundled premises for corollary forms, never a replacement for old-premise leaves. -/
 structure Premises (tr : RunTrace A) (H : Time → Set (Fin P.n))
+    (cm : Time → Finset (Fin P.n)) (βK : ℚ)
     (proposer : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)
     (sg : A.Msg → Fin P.n) (g ΔF b : Time) : Prop where
-  run : Growing.LocalRun proposer dg H sg tr
+  committee : CommitteeFaultsUpTo βK cm H g b
   noColl : Compose.NoCollRun dg tr
   genesisRoot : (P.genesisBlock A.genesisPayload).RootOk dg
   sync : Service tr H g ΔF b
@@ -86,7 +95,7 @@ structure Premises (tr : RunTrace A) (H : Time → Set (Fin P.n))
   faults : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1
   catchUp : CatchRun tr H g (2 * P.Δ)
   noRestart : NoRestartAfter tr H (gbar g)
-  timeoutDelay : 3 ≤ P.δt ∧ ∀ s, P.slotTime s + 6 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)
+  timeoutDelay : ∀ s, P.slotTime s + 6 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)
   slotLen : ∀ s, P.slotTime s + 4 * P.Δ ≤ P.slotTime (s + 1)
   snapshot : ∃ k, FirstCutAfter tr k (cutZ P g) ∧ tr.time k ≤ b
   nonempty : (H b).Nonempty
@@ -155,8 +164,8 @@ structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg) 
   follow : Nat
   drain : Nat
   Origin : RunTrace A → Fin P.n → Nat → Nat → A.Blk → Prop
-  follow_le : ∀ {cm proposer dg H tr} {g ΔF b : Time},
-    runs.Run cm proposer dg H tr → Premises tr H proposer dg sg g ΔF b → follow ≤ P.δt
+  follow_le : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time},
+    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b → follow ≤ P.δt
   report_in_frame : ∀ {cm proposer dg H tr} {y : Fin P.n} {i : Nat} {R : A.Blk},
     runs.Run cm proposer dg H tr → y ∈ H (tr.time i) → ReportAt tr y i R →
     R ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot R
@@ -167,8 +176,8 @@ structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg) 
     lo ≤ P.slotTime u → P.slotTime u ≤ hi →
     (H (P.slotTime u))ᶜ.ncard < 2 * P.fg.q - P.n →
     floor ≤ ((tr.state z (kB + 1)).fg.σ B.root).h
-  warm_exists : ∀ {cm proposer dg H tr} {g ΔF b : Time} {s₀ N G floor : Nat} {kindJ : Prop}
-    {J : A.Blk}, runs.Run cm proposer dg H tr → Premises tr H proposer dg sg g ΔF b →
+  warm_exists : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time} {s₀ N G floor : Nat} {kindJ : Prop}
+    {J : A.Blk}, runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
     SlotWindow tr H s₀ N floor kindJ J → gbar g + 4 * P.Δ ≤ P.slotTime s₀ →
     1 ≤ G → s₀ + warmup + G ≤ N + 1 → P.slotTime N + 2 * P.Δ ≤ b →
     (∀ v k att, v ∈ H (tr.time k) → tr.SignAt v k att →
@@ -208,8 +217,9 @@ structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg) 
     x' ∈ H (tr.time i') → Origin tr x' i' j' B' → tr.time i' ≤ b →
     HZ tr H g + 1 ≤ ((tr.state x' i').fg.σ B'.root).h →
     Compatible (tr.HonestBlocksAt H) B B'
-  heal_after_reset : ∀ {cm proposer dg H tr} {g ΔF a b : Time},
-    runs.Run cm proposer dg H tr → Premises tr H proposer dg sg g ΔF b →
+  heal_after_reset : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time},
+    βK ≤ 1 / 2 →
+    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
     IsReset tr H g a → a ≤ b →
     HighCanonical Origin tr H g b → HealedFrom tr H proposer (P.slotOf a + drain) b
 

@@ -22,12 +22,13 @@ the four anchors and their height steps are explicit data, not a second window r
 The designated proposals are a progress premise, not an output guarantee. -/
 def final_window_extract_at {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
     (C : ACCorrectLocal A sg) : Prop :=
-  ∀ (cm : Time → Finset (Fin P.n)) (tr : RunTrace A)
+  ∀ (cm : Time → Finset (Fin P.n)) (βK : ℚ) (tr : RunTrace A)
     (H : Time → Set (Fin P.n)) (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (g ΔF deadline : Time)
     (start gap floor : Nat) (kindJ : Prop) (J : A.Blk)
     (block : Fin 4 → A.Blk) (cut : Fin 4 → Nat),
-    C.run.Run cm proposer dg H tr → Premises tr H proposer dg sg g ΔF deadline →
+    βK ≤ 1 / 2 →
+    C.run.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF deadline →
     FrameWindow tr H (P.slotTime start) deadline floor kindJ J →
     HealedFrom tr H proposer start deadline → 2 ≤ gap → 3 * gap ≤ P.δt →
     StrictMono cut →
@@ -47,13 +48,14 @@ def final_window_extract_at {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
 Population safety and actual processing of the carrier remain explicit inputs. -/
 def final_cache_coverage_at {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
     (C : ACCorrectLocal A sg) : Prop :=
-  ∀ (cm : Time → Finset (Fin P.n)) (tr : RunTrace A)
+  ∀ (cm : Time → Finset (Fin P.n)) (βK : ℚ) (tr : RunTrace A)
     (H : Time → Set (Fin P.n)) (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (g ΔF deadline : Time)
     (start gap floor : Nat) (kindJ : Prop) (J : A.Blk)
     (block : Fin 4 → A.Blk) (cut : Fin 4 → Nat),
+    βK ≤ 1 / 2 →
     A.Requirements → (P.genesisBlock A.genesisPayload).RootOk dg →
-    C.run.Run cm proposer dg H tr → Premises tr H proposer dg sg g ΔF deadline →
+    C.run.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF deadline →
     FrameWindow tr H (P.slotTime start) deadline floor kindJ J →
     HealedFrom tr H proposer start deadline → 2 ≤ gap → 3 * gap ≤ P.δt →
     StrictMono cut →

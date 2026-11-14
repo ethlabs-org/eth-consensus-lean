@@ -21,7 +21,8 @@ variable {runs : ACRun A sg}
 /-- UNPROVED reset-or-no-advance corollary of the high-signing leaf. -/
 def reset_or_noAdvance : Prop :=
   reset_of_height_advance_at A sg runs →
-  ∀ {tr H proposer dg g ΔF b T}, Premises tr H proposer dg sg g ΔF b → T ≤ b →
+  ∀ {cm βK tr H proposer dg g ΔF b T},
+    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b → T ≤ b →
     (∃ a, IsReset tr H g a ∧ a ≤ T) ∨ NoAdvance tr H g T
 
 /-- UNPROVED rise assembly from original leaves and the protocol warmth obligations. -/
@@ -48,8 +49,9 @@ def exists_reset_of_drain_rounds_awake_at_of (O : ACHealing A sg runs) : Prop :=
 /-- UNPROVED bundled rise corollary, retaining the exact proposal and cutoff inputs. -/
 def rise_reset_rounds (O : ACHealing A sg runs) : Prop :=
   rise_reset_rounds_at A sg O →
-  ∀ {cm tr H proposer dg g ΔF b s₀ N G floor kindJ J T},
-    runs.Run cm proposer dg H tr → Premises tr H proposer dg sg g ΔF b →
+  ∀ {cm βK tr H proposer dg g ΔF b s₀ N G floor kindJ J T},
+    βK ≤ 1 / 2 →
+    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
     SlotWindow tr H s₀ N floor kindJ J → gbar g + 4 * P.Δ ≤ P.slotTime s₀ →
     1 ≤ G → ProposalGap tr H proposer G s₀ N → P.slotTime N + 2 * P.Δ ≤ b →
     T ≤ b → NoAdvance tr H g T → ∀ (r : Nat) {u z k X},
@@ -62,16 +64,16 @@ def rise_reset_rounds (O : ACHealing A sg runs) : Prop :=
 /-- UNPROVED canonical-high assembly, including independently bounded historical readers. -/
 def highCanonical (O : ACHealing A sg runs) : Prop :=
   high_row_source_at A sg O → no_high_contest_at A sg O → high_entry_eq_at A sg O →
-  ∀ {cm tr H proposer dg g ΔF b a},
-    runs.Run cm proposer dg H tr → Premises tr H proposer dg sg g ΔF b →
+  ∀ {cm βK tr H proposer dg g ΔF b a}, βK ≤ 1 / 2 →
+    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
     IsReset tr H g a → a ≤ b → HighCanonical O.Origin tr H g b
 
 /-- UNPROVED slot-budget reset assembly; it is not the old real-time endpoint. -/
 def exists_reset (O : ACHealing A sg runs) : Prop :=
   reset_or_noAdvance A sg (runs := runs) → exists_frameWindow_seq_of_service_at A sg →
   rounds_le_warm_proposal_at A sg runs → rise_reset_rounds A sg O →
-  ∀ {cm tr H proposer dg g ΔF b G s},
-    runs.Run cm proposer dg H tr → Premises tr H proposer dg sg g ΔF b → 1 ≤ G →
+  ∀ {cm βK tr H proposer dg g ΔF b G s}, βK ≤ 1 / 2 →
+    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b → 1 ≤ G →
     gbar g ≤ P.slotTime s → cutZ P g ≤ P.slotTime s →
     ProposalGap tr H proposer G s (s + resetSlots O.warmup G P.δt) →
     P.slotTime (s + resetSlots O.warmup G P.δt) ≤ b →
@@ -80,8 +82,8 @@ def exists_reset (O : ACHealing A sg runs) : Prop :=
 /-- UNPROVED proposal-chaining assembly; no confirmed-tip guarantee is asserted. -/
 def generic_healing (O : ACHealing A sg runs) : Prop :=
   exists_reset A sg O → highCanonical A sg O →
-  ∀ {cm tr H proposer dg g ΔF b G s},
-    runs.Run cm proposer dg H tr → Premises tr H proposer dg sg g ΔF b → 1 ≤ G →
+  ∀ {cm βK tr H proposer dg g ΔF b G s}, βK ≤ 1 / 2 →
+    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b → 1 ≤ G →
     gbar g ≤ P.slotTime s → cutZ P g ≤ P.slotTime s →
     ProposalGap tr H proposer G s (s + resetSlots O.warmup G P.δt) →
     P.slotTime (s + resetSlots O.warmup G P.δt) ≤ b →

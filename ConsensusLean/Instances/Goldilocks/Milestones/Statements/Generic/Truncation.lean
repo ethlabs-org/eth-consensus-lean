@@ -89,7 +89,9 @@ def proposal_mem_at (runs : ACRun A sg) : Prop :=
 
 /-- UNPROVED old-premise rise contract, retaining the timeout and strict no-advance cutoff. -/
 def rise_reset_rounds_at (O : ACHealing A sg runs) : Prop :=
-  ∀ {cm proposer dg H tr} {g ΔF b T : Time} {s₀ N G floor : Nat} {kindJ : Prop} {J : A.Blk},
+  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b T : Time}
+    {s₀ N G floor : Nat} {kindJ : Prop} {J : A.Blk},
+    βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
     SlotWindow tr H s₀ N floor kindJ J →
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → Service tr H g ΔF b →
     (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
@@ -108,7 +110,8 @@ def rise_reset_rounds_at (O : ACHealing A sg runs) : Prop :=
 
 /-- UNPROVED whole-run endpoint, with the public four-delay grid assumption explicit. -/
 def exists_reset_of_drain_rounds_noRestartAfter_at (O : ACHealing A sg runs) : Prop :=
-  ∀ {cm proposer dg H tr} {g ΔF b r : Time} {G Ld : Nat},
+  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b r : Time} {G Ld : Nat},
+    βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
     (∀ s : Nat, P.slotTime s = (s : Time) * (4 * P.Δ)) →
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) → Service tr H g ΔF b →
@@ -124,7 +127,8 @@ def exists_reset_of_drain_rounds_noRestartAfter_at (O : ACHealing A sg runs) : P
 
 /-- UNPROVED finite-horizon endpoint; restarts are constrained only up to b. -/
 def exists_reset_of_drain_rounds_awake_at (O : ACHealing A sg runs) : Prop :=
-  ∀ {cm proposer dg H tr} {g ΔF b r : Time} {G Ld : Nat},
+  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b r : Time} {G Ld : Nat},
+    βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
     (∀ s : Nat, P.slotTime s = (s : Time) * (4 * P.Δ)) →
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) → Service tr H g ΔF b →

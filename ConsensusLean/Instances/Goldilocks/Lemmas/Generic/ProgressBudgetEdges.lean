@@ -41,12 +41,13 @@ def reset_progress_of_single (M : RunMap rho payload) (K : Contract ProgressReq)
 as an explicit input. This is not a production law for FrameWindow. -/
 def final_cache_of_frame (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) : Prop :=
   final_cache_coverage_at A M.signer C →
-  ∀ g ΔF query deadline (W : FinalProductionWindow M C.catchUp C.hold query deadline)
+  ∀ (βK : ℚ) g ΔF query deadline (W : FinalProductionWindow M C.catchUp C.hold query deadline)
     floor kindJ J,
+    βK ≤ 1 / 2 →
     FrameWindow M.trace M.honest (P.slotTime W.start) deadline floor kindJ J →
     A.Requirements → (P.genesisBlock A.genesisPayload).RootOk M.digest →
     C.run.Run M.committee M.proposer M.digest M.honest M.trace →
-    Premises M.trace M.honest M.proposer M.digest M.signer g ΔF deadline →
+    Premises M.trace M.honest M.committee βK M.proposer M.digest M.signer g ΔF deadline →
     HealedFrom M.trace M.honest M.proposer W.start deadline →
     FinalHeightSupply M C.catchUp C.hold query deadline W →
     ∀ y j, deadline ≤ M.trace.time j →

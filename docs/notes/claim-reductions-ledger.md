@@ -162,7 +162,6 @@ OPEN obligations of the instance realization:
 
 | Premises field | Required source accounting |
 | --- | --- |
-| run | GrowingRunTransport.run at same M |
 | noColl | GrowingRunTransport.no_collision at same M |
 | genesisRoot | instance genesis-root/digest derivation |
 | sync | Service at the consuming deadline, including strict signedRow processing; GSTRunAt alone is not this record |

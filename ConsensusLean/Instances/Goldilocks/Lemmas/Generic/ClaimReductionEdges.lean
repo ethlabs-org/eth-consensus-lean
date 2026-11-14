@@ -76,6 +76,7 @@ jointly selects the same window, its delivery-spacing guard at E.ΔFG and pointw
 No constant FrameWindow production or progress-form exclusion is assumed. -/
 def HealthyLivenessReduction (C : ACCorrectLocal A sg)
     (B : EngineBinding (F := F) (V := V) payload sg C.run) (K : Contract ProgressReq) : Prop :=
+  K.params.Admissible → HealthyBetaFit K →
   (∀ E rho (hv : rho.ExecutionValid),
     let M := B.map E rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E rho hv ▸ C
@@ -139,6 +140,7 @@ stored-read context and transport; representation still supplies the chain-prefi
 def HealedSafetyReduction (C : ACCorrectLocal A sg)
     (B : EngineBinding (F := F) (V := V) payload sg C.run) (K : Contract ProgressReq)
     (R : ∀ E rho (hv : rho.ExecutionValid), StoredReadContext (B.map E rho hv)) : Prop :=
+  K.params.Admissible → HealthyBetaFit K →
   (∀ E rho (hv : rho.ExecutionValid),
     let M := B.map E rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E rho hv ▸ C

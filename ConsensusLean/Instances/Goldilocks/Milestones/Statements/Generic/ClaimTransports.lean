@@ -110,7 +110,7 @@ def DeadlinePremisesSupply (M : RunMap rho payload) (K : Contract ProgressReq) :
     query + (K.params.latency .final idx : Time) * E.ΔAC ≤ rho.horizon →
     (∃ v, rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩) v
       (query + (K.params.latency .final idx : Time) * E.ΔAC)) →
-    Premises M.trace M.honest M.proposer M.digest M.signer gst E.ΔFG
+    Premises M.trace M.honest M.committee K.params.βK M.proposer M.digest M.signer gst E.ΔFG
       (query + (K.params.latency .final idx : Time) * E.ΔAC)
 
 /-- OPEN final anchor readiness; source: final payload projection's serviced proposer.
@@ -135,10 +135,11 @@ structure FinalReadTransport (M : RunMap rho payload) (C : ACCorrectLocal A M.si
     deadline ≤ t → ReadyReadPoint M.trace M.honest rho.horizon C.catchUp y j t →
     ReadBoundary M.trace y j →
     CarrierProcessed M (W.block 3) y j (M.trace.time (W.cut 3)) deadline
-  cache : ∀ gst query deadline
+  cache : ∀ (βK : ℚ) gst query deadline
     (W : FinalProductionWindow M C.catchUp C.hold query deadline),
+    βK ≤ 1 / 2 →
     A.Requirements → C.run.Run M.committee M.proposer M.digest M.honest M.trace →
-    Premises M.trace M.honest M.proposer M.digest M.signer gst E.ΔFG deadline →
+    Premises M.trace M.honest M.committee βK M.proposer M.digest M.signer gst E.ΔFG deadline →
     HealedFrom M.trace M.honest M.proposer W.start deadline →
     (∀ a, M.trace.AcceptAt (W.block a).proposer (W.cut a) (W.block a)) →
     (∀ a b, a ≤ b → Anc (M.trace.HonestBlocksAt M.honest) (W.block a) (W.block b)) →
@@ -198,7 +199,8 @@ def HighCanonicalSupply (M : RunMap rho payload) (K : Contract ProgressReq)
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ gst a,
   (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
   C.run.Run M.committee M.proposer M.digest M.honest M.trace →
-  Premises M.trace M.honest M.proposer M.digest M.signer gst E.ΔFG rho.horizon →
+  Premises M.trace M.honest M.committee K.params.βK M.proposer M.digest M.signer
+    gst E.ΔFG rho.horizon →
   Healing.Growing.IsReset M.trace M.honest gst a → a ≤ rho.horizon →
   HighCanonical C.healing.Origin M.trace M.honest gst rho.horizon
 
@@ -212,7 +214,8 @@ def PreparationPremisesSupply (M : RunMap rho payload) (K : Contract ProgressReq
   (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K gst ⟨E, rho⟩)
     ((Sys F V).heal K cap idx gst ⟨E, rho⟩) ⟨E, rho⟩ →
   (Sys F V).heal K cap idx gst ⟨E, rho⟩ ≤ rho.horizon →
-  Premises M.trace M.honest M.proposer M.digest M.signer gst E.ΔFG rho.horizon
+  Premises M.trace M.honest M.committee K.params.βK M.proposer M.digest M.signer
+    gst E.ΔFG rho.horizon
 
 /-- OPEN selected-reset drain/slot budget. Source: Healthy/PreparationInitialize,
 healthy_preparation_initialize_late_at. NEW UNRESOLVED SUFFICIENCY TARGET: a reset

@@ -55,6 +55,10 @@ def reset_window_of_coefficients {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
   ∀ g ready healCoeff G, ResetCoefficientFit healing g ready healCoeff G →
     ∃ W : ResetBudgetWindow healing g ready (gbar g + (healCoeff : Time) * P.Δ), W.gap = G
 
+/-- The population FG needs a fault fraction at most a third; committee counts
+use the separate contract fraction `βK`. -/
+def HealthyBetaFit (K : Contract ProgressReq) : Prop := K.params.β ≤ 1 / 3
+
 /-- UNPROVED advertised-coefficient fit, for all nonfinal indices and progress forms.
 The chosen gap is data in the conclusion, not an unsupported progress-form exclusion. -/
 def ContractResetFit (M : RunMap rho payload) (K : Contract ProgressReq)
@@ -174,10 +178,11 @@ def FinalCarrierSupply (M : RunMap rho payload) (catchUp hold : Time) : Prop :=
 Actual anchor acceptance, ancestry, heights and carrier processing stay explicit inputs. -/
 def FinalCacheSupply (M : RunMap rho payload) (runs : ACRun A M.signer)
     (catchUp hold : Time) : Prop :=
-  ∀ g ΔF query deadline (W : FinalProductionWindow M catchUp hold query deadline),
+  ∀ (βK : ℚ) g ΔF query deadline (W : FinalProductionWindow M catchUp hold query deadline),
+    βK ≤ 1 / 2 →
     A.Requirements → (P.genesisBlock A.genesisPayload).RootOk M.digest →
     runs.Run M.committee M.proposer M.digest M.honest M.trace →
-    Premises M.trace M.honest M.proposer M.digest M.signer g ΔF deadline →
+    Premises M.trace M.honest M.committee βK M.proposer M.digest M.signer g ΔF deadline →
     HealedFrom M.trace M.honest M.proposer W.start deadline →
     (∀ a, M.trace.AcceptAt (W.block a).proposer (W.cut a) (W.block a)) →
     (∀ a b, a ≤ b → Anc (M.trace.HonestBlocksAt M.honest) (W.block a) (W.block b)) →

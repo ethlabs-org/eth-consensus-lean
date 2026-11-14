@@ -198,8 +198,10 @@ def report_kind_of_warm_at (runs : ACRun A sg) : Prop :=
 
 /-- UNPROVED leaf 10: a warm high proposal forces the next reset. -/
 def reset_of_high_proposal_at (O : ACHealing A sg runs) : Prop :=
-  ∀ {cm proposer dg H tr} {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop} {J B : A.Blk}
+  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time} {s₀ u N floor : Nat}
+    {kindJ : Prop} {J B : A.Blk}
     {z : Fin P.n} {kB : Nat},
+    βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
     SlotWindow tr H s₀ N floor kindJ J → runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     Service tr H g ΔF b → (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
@@ -212,8 +214,9 @@ def reset_of_high_proposal_at (O : ACHealing A sg runs) : Prop :=
 
 /-- UNPROVED leaf 11: both compared heights are read in the later proposer's store. -/
 def round_of_warm_at (O : ACHealing A sg runs) : Prop :=
-  ∀ {cm proposer dg H tr} {g ΔF b T : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
+  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b T : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
     {J B X : A.Blk} {z : Fin P.n} {kB : Nat} {p : Fin P.n} {kX : Nat},
+    βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
     SlotWindow tr H s₀ N floor kindJ J → runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     Service tr H g ΔF b → (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →

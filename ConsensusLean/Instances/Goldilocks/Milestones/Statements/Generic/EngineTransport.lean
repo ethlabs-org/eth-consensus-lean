@@ -39,7 +39,11 @@ structure RegimeTransport (M : RunMap rho payload) (K : Contract ProgressReq)
     (Sys F V).Healthy (shapeProgress F V).toExternal K g ⟨E, rho⟩ →
     M.trace.GSTRunAt M.honest E.ΔFG g ∧
     (∀ y t, max g 0 ≤ t → t ≤ rho.horizon → y ∈ M.honest t → M.trace.awake y t) ∧
-    (∀ t, 0 ≤ t → t ≤ rho.horizon → 3 * (M.honest t)ᶜ.ncard ≤ P.n - 1)
+    (∀ d, 0 ≤ d → d ≤ rho.horizon → ((M.honest d)ᶜ.ncard : ℚ) < K.params.β * P.n) ∧
+    (∀ t d, max g 0 ≤ t → t ≤ rho.horizon → 0 ≤ d → d ≤ rho.horizon →
+      (M.committee t).Nonempty →
+      (((↑(M.committee t) : Set (Fin P.n)) ∩ (M.honest d)ᶜ).ncard : ℚ) <
+        K.params.βK * (M.committee t).card)
   ready : ∀ c v i, i ≤ rho.events.length → rho.point.Ready c v (rho.cutTime i) →
     ReadyRead M c (M.validator.symm v) (M.cut i) (rho.cutTime i)
 
