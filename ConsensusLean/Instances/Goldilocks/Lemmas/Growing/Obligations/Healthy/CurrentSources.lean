@@ -43,10 +43,10 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 private theorem finalized_zero (Q : HealthyPreparationQueryAt S A V) (y : Fin Q.params.n) :
     (Q.trace.state y 0).fg.F =
       Q.params.toParams.genesisBlock (goldilocksNode Q.params (S.ro _)).genesisPayload := by
-  have h := simTrace_init_eq S Q.run.2 Q.hn y
+  have h := simTrace_init_eq ⟨S, stock⟩ Q.run.2 Q.hn y
   have h2 : Q.trace.state y 0 = Q.trace.init y := rfl
-  have h3 : Q.trace.init y = (simTrace S Q.run.2 Q.hn).init y :=
-    congrArg (fun T => Trace.init T y) (simTraceAt_eq S Q.run.2 Q.hn)
+  have h3 : Q.trace.init y = (simTrace ⟨S, stock⟩ Q.run.2 Q.hn).init y :=
+    congrArg (fun T => Trace.init T y) (simTraceAt_eq ⟨S, stock⟩ Q.run.2 Q.hn)
   rw [h2, h3, h]
   rfl
 
@@ -55,7 +55,7 @@ private theorem readPoint_zero (Q : HealthyPreparationQueryAt S A V) {n : Nat} {
     (hrp : Regimes.ReadPoint Q.trace n t) (ht : t < 0) : n = 0 := by
   by_contra hn
   have := hrp.1 0 (Nat.pos_of_ne_zero hn)
-  have := (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid).time_nonneg 0
+  have := (simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid).time_nonneg 0
   linarith
 
 /-- The block of a result or optimistic selection of a node honest at its write is held while
@@ -65,8 +65,8 @@ private theorem source_mem (Q : HealthyPreparationQueryAt S A V) {x : Fin Q.para
     (hx : x ∈ Q.keys (Q.trace.time r))
     (hC : SA.ResultAt Q.trace.projAC x r s C CV ∨ SA.OptimisticLockAt Q.trace.projAC x r s C CV) :
     C ∈ Q.trace.HonestBlocksAt Q.keys := by
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
+  have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
   have hC' : ∃ ell, Q.trace.projAC.CallAt x r ell ∧ C ∈ ell.frame.tree := by
     rcases hC with ⟨ell, hu, hconf, -⟩ | ⟨ell, A, hpt, -, hsel, -⟩
     · exact ⟨ell, hu.1, (SA.deepest_mem hconf).1.1⟩
@@ -98,8 +98,8 @@ private theorem finalized_safe_read (Q : HealthyPreparationQueryAt S A V)
     (hz : z ∈ Q.keys t') :
     Goldilocks.Compatible (Q.trace.HonestBlocksAt Q.keys)
       (Q.trace.state y n).fg.F (Q.trace.state z n').fg.F := by
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
+  have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have h := SA.interface_requirements Q.params (List (FG.Att Q.params.n)) (S.ro _)
   have fg : Consensus.Goldilocks.Growing.FGLocalRun
@@ -179,7 +179,7 @@ private theorem finalized_compatible_source (Q : HealthyPreparationQueryAt S A V
   · obtain rfl := readPoint_zero S A V Q hrp ht
     rw [finalized_zero]
     exact Or.inl (Compose.Growing.honestAt_genesis_anc
-      (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid) (source_mem S A V Q hx hC)).2
+      (simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid) (source_mem S A V Q hx hC)).2
   exact D.reset.finalized_compatible_clean_source_at (healthy_schedule_catch_at S A V Q D) hx hC
     (by simpa only [D.cleanLabel_eq] using hs) hrb ht hrp.1 hy htb
 
@@ -223,8 +223,8 @@ theorem healthy_current_record_interval_at (Q : HealthyPreparationQueryAt S A V)
     EffectiveRecordIntervalAt Q.trace Q.keys y n n'
       ((SA.lookup (Node.frame (Q.trace.state y n)) (Q.trace.state y n).ac.latestConfirmed).getD
         (Q.trace.state y n).fg.F) := by
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
+  have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
   have hΔ := Q.params.toParams.hΔ
   have hc := healthy_schedule_catch_at S A V Q D
   have htb : t ≤ Q.bound := htt.trans ht'b

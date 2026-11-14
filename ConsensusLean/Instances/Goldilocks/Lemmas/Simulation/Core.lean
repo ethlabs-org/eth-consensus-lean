@@ -206,22 +206,22 @@ theorem pool_mono_through_same_time_send {V : Type} [Fintype V] [DecidableEq V] 
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hconst : rho.point.ConstantFaults)
     (hv : rho.ExecutionValid)
-    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys ⟨S, stock⟩ rho)
     {a b : Nat} {t : Time} (ha : rho.SendsAt (rho.key y) a t)
     (hb : rho.SendsAt (rho.key y) b t) {k l : Nat}
-    (hak : cutMap S rho hn a ≤ k) (hkl : k ≤ l)
-    (hlb : l ≤ cutMap S rho hn (b + 1)) (σ : Nat) :
-    ((simTrace S rho hn).state y k).ac.pool σ ⊆
-      ((simTrace S rho hn).state y l).ac.pool σ := by
+    (hak : cutMap ⟨S, stock⟩ rho hn a ≤ k) (hkl : k ≤ l)
+    (hlb : l ≤ cutMap ⟨S, stock⟩ rho hn (b + 1)) (σ : Nat) :
+    ((simTrace ⟨S, stock⟩ rho hn).state y k).ac.pool σ ⊆
+      ((simTrace ⟨S, stock⟩ rho hn).state y l).ac.pool σ := by
   have hr := simTrace_goldilocksRun S rho hn hconst hv
   have hnr : ∀ i, a ≤ i → i < b + 1 → ∀ u,
       rho.events[i]? ≠ some (.restart (rho.key y) u) := by
     intro i hai hib u he
     rcases Nat.lt_or_eq_of_le (Nat.lt_succ_iff.mp hib) with hib | rfl
-    · exact noRestart_between_same_time_sends S rho hv ha hb hai hib _ u he
+    · exact noRestart_between_same_time_sends ⟨S, stock⟩ rho hv ha hb hai hib _ u he
     · rcases hb with hb | ⟨o, hb⟩ <;> rw [he] at hb <;> cases hb
   have hm := Compose.pool_mono hr hy hkl (fun j hkj hjl =>
-    simTrace_noRestart_between S rho hn hnr (hak.trans hkj) (hjl.trans_le hlb)) σ
+    simTrace_noRestart_between ⟨S, stock⟩ rho hn hnr (hak.trans hkj) (hjl.trans_le hlb)) σ
   simpa only [Compose.projAC_state hr.toLocalRun hy] using hm
 
 /-- Freshness at any sending-event cut gives an aggregate boundary pool insertion.
@@ -229,22 +229,23 @@ Non-restart retention covers both sides of the source cut. -/
 theorem sending_event_pool_insertion {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys ⟨S, stock⟩ rho)
     {i k : Nat} {t : Time} {m : SA.Vote (Fintype.card V)}
     (hs : rho.SendsAt (rho.key y) i t)
-    (hlo : cutMap S rho hn i ≤ k) (hhi : k < cutMap S rho hn (i + 1))
-    (hc : (simTrace S rho hn).IsCall y k)
-    (hold : m ∉ ((simTrace S rho hn).state y k).ac.pool m.slot)
-    (hnew : m ∈ ((simTrace S rho hn).post k).ac.pool m.slot) :
-    m ∉ (stateAt S rho hn (rho.key y) i).node.ac.pool m.slot ∧
-      m ∈ (stateAt S rho hn (rho.key y) (i + 1)).node.ac.pool m.slot := by
+    (hlo : cutMap ⟨S, stock⟩ rho hn i ≤ k) (hhi : k < cutMap ⟨S, stock⟩ rho hn (i + 1))
+    (hc : (simTrace ⟨S, stock⟩ rho hn).IsCall y k)
+    (hold : m ∉ ((simTrace ⟨S, stock⟩ rho hn).state y k).ac.pool m.slot)
+    (hnew : m ∈ ((simTrace ⟨S, stock⟩ rho hn).post k).ac.pool m.slot) :
+    m ∉ (stateAt ⟨S, stock⟩ rho hn (rho.key y) i).node.ac.pool m.slot ∧
+      m ∈ (stateAt ⟨S, stock⟩ rho hn (rho.key y) (i + 1)).node.ac.pool m.slot := by
   have hi : i < rho.events.length := by
     rcases hs with h | ⟨o, h⟩ <;> exact (List.getElem?_eq_some_iff.mp h).1
   have hstate (j : Nat) (hj : j ≤ rho.events.length) :
-      (stateAt S rho hn (rho.key y) j).node =
-        (simTrace S rho hn).state y (cutMap S rho hn j) := by
+      (stateAt ⟨S, stock⟩ rho hn (rho.key y) j).node =
+        (simTrace ⟨S, stock⟩ rho hn).state y (cutMap ⟨S, stock⟩ rho hn j) := by
     simpa only [Model.Run.ownKey, Equiv.symm_apply_apply] using
-      simTrace_state S rho hn hconst hv (rho.key y) ((mem_honestKeys_iff S rho y).mp hy) j hj
+      simTrace_state ⟨S, stock⟩ rho hn hconst hv (rho.key y)
+          ((mem_honestKeys_iff ⟨S, stock⟩ rho y).mp hy) j hj
   constructor
   · rw [hstate i hi.le]
     intro hm
@@ -253,7 +254,7 @@ theorem sending_event_pool_insertion {V : Type} [Fintype V] [DecidableEq V] {E :
     apply pool_mono_through_same_time_send S rho hn hconst hv hy hs hs
       (hlo.trans (Nat.le_succ k)) (by omega) le_rfl m.slot
     obtain ⟨c, hc⟩ := hc
-    rwa [(simTrace S rho hn).state_succ_of_call hc]
+    rwa [(simTrace ⟨S, stock⟩ rho hn).state_succ_of_call hc]
 
 /-- Fresh admission rules out an earlier exact envelope once every earlier release
 is backed by a pool cut in its event. Only that release-to-pool supplier remains
@@ -263,24 +264,25 @@ theorem admission_voteForward_first_of_release_pool {V : Type} [Fintype V] [Deci
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hconst : rho.point.ConstantFaults)
     (hv : rho.ExecutionValid)
-    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys ⟨S, stock⟩ rho)
     {i k : Nat} {t : Time} {m : SA.Vote (Fintype.card V)}
     (hs : rho.SendsAt (rho.key y) i t)
-    (hlo : cutMap S rho hn i ≤ k) (hhi : k < cutMap S rho hn (i + 1))
-    (hf : m ∉ ((simTrace S rho hn).state y k).ac.pool m.slot)
+    (hlo : cutMap ⟨S, stock⟩ rho hn i ≤ k) (hhi : k < cutMap ⟨S, stock⟩ rho hn (i + 1))
+    (hf : m ∉ ((simTrace ⟨S, stock⟩ rho hn).state y k).ac.pool m.slot)
     (hpool : ∀ j < i, Model.Obj.mk (.signed y .poll)
       (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ rho.releasesAt j →
-      ∃ c, cutMap S rho hn j ≤ c ∧ c ≤ cutMap S rho hn (j + 1) ∧
-        m ∈ ((simTrace S rho hn).state y c).ac.pool m.slot) :
+      ∃ c, cutMap ⟨S, stock⟩ rho hn j ≤ c ∧ c ≤ cutMap ⟨S, stock⟩ rho hn (j + 1) ∧
+        m ∈ ((simTrace ⟨S, stock⟩ rho hn).state y c).ac.pool m.slot) :
     ∀ j < i, Model.Obj.mk (.signed y .poll)
       (.data (.voteForward t (encodeVote m))) [voteObj m] ∉ rho.releasesAt j := by
   intro j hji hj
-  obtain ⟨u, hsend⟩ := voteForward_release_sender S rho hj
+  obtain ⟨u, hsend⟩ := voteForward_release_sender ⟨S, stock⟩ rho hj
   have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
-  have ht : t = u := released_voteForward_stamp S rho hn hv hsend m (by simpa only [hkey] using hj)
+  have ht : t = u := released_voteForward_stamp ⟨S, stock⟩ rho hn hv hsend m
+      (by erw [hkey]; exact hj)
   subst u
   obtain ⟨c, hjc, hcj, hm⟩ := hpool j hji hj
-  have hck := hcj.trans ((cutMap_mono S rho hn (Nat.succ_le_of_lt hji)).trans hlo)
+  have hck := hcj.trans ((cutMap_mono ⟨S, stock⟩ rho hn (Nat.succ_le_of_lt hji)).trans hlo)
   exact hf (pool_mono_through_same_time_send S rho hn hconst hv hy hsend hs
     hjc hck hhi.le m.slot hm)
 
@@ -289,24 +291,27 @@ the original vote signer is faulty. Event pool provenance discharges the supplie
 theorem admission_voteForward_first {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys ⟨S, stock⟩ rho)
     {i k : Nat} {t : Time} {m : SA.Vote (Fintype.card V)}
     (hs : rho.SendsAt (rho.key y) i t)
-    (hlo : cutMap S rho hn i ≤ k) (hhi : k < cutMap S rho hn (i + 1))
-    (hf : m ∉ ((simTrace S rho hn).state y k).ac.pool m.slot) :
+    (hlo : cutMap ⟨S, stock⟩ rho hn i ≤ k) (hhi : k < cutMap ⟨S, stock⟩ rho hn (i + 1))
+    (hf : m ∉ ((simTrace ⟨S, stock⟩ rho hn).state y k).ac.pool m.slot) :
     ∀ j < i, Model.Obj.mk (.signed y .poll)
       (.data (.voteForward t (encodeVote m))) [voteObj m] ∉ rho.releasesAt j := by
   apply admission_voteForward_first_of_release_pool S rho hn hconst hv hy hs hlo hhi hf
   intro j _ hj
-  obtain ⟨u, hsend⟩ := voteForward_release_sender S rho hj
+  obtain ⟨u, hsend⟩ := voteForward_release_sender ⟨S, stock⟩ rho hj
   have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
-  have hm := released_voteForward_pool S rho hn hv hsend m (by simpa only [hkey] using hj)
+  have hm := released_voteForward_pool ⟨S, stock⟩ rho hn hv hsend m (by erw [hkey]; exact hj)
   have hjlen : j + 1 ≤ rho.events.length := by
     rcases hsend with he | ⟨o, he⟩ <;>
       exact Nat.succ_le_of_lt (List.getElem?_eq_some_iff.mp he).1
-  rw [simTrace_state S rho hn hconst hv (rho.key y) ((mem_honestKeys_iff S rho y).mp hy)
-    (j + 1) hjlen, hkey] at hm
-  exact ⟨cutMap S rho hn (j + 1), cutMap_mono S rho hn (Nat.le_succ j), le_rfl, hm⟩
+  rw [simTrace_state ⟨S, stock⟩ rho hn hconst hv (rho.key y)
+      ((mem_honestKeys_iff ⟨S, stock⟩ rho y).mp hy)
+    (j + 1) hjlen] at hm
+  erw [hkey] at hm
+  exact ⟨cutMap ⟨S, stock⟩ rho hn (j + 1), cutMap_mono ⟨S, stock⟩ rho hn (Nat.le_succ j),
+      le_rfl, hm⟩
 
 /-- Every non-restart AC cut lies in a sending engine event of the same node and time.
 This is interval transport only; it does not assume the publication supplier. -/
@@ -495,30 +500,30 @@ theorem simTrace_vote_forwarded {V : Type} [Fintype V] [DecidableEq V] {E : Env 
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     :
-    ∀ y ∈ honestKeys S rho, ∀ k (m : SA.Vote (Fintype.card V)),
-    let tr := simTrace S rho hn
+    ∀ y ∈ honestKeys ⟨S, stock⟩ rho, ∀ k (m : SA.Vote (Fintype.card V)),
+    let tr := simTrace ⟨S, stock⟩ rho hn
     (tr.EmitAt y k m ∨
       ((tr.MsgCallAt y k m ∨ ∃ ℓ B, tr.CallAt y k (.ac ℓ) ∧ ℓ.call = .block B ∧
           m ∈ SA.blockVotes B) ∧
         m ∉ (tr.state y k).ac.pool m.slot ∧ m ∈ (tr.post k).ac.pool m.slot)) →
-    let envelope : (Model.protoOf (compiled (goldilocksWith S)) E).Object :=
+    let envelope : (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) E).Object :=
       .mk (.signed y .poll) (.data (.voteForward (tr.time k) (encodeVote m))) [voteObj m]
-    ∃ i, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
+    ∃ i, cutMap ⟨S, stock⟩ rho hn i ≤ k ∧ k < cutMap ⟨S, stock⟩ rho hn (i + 1) ∧
       rho.SendsAt (rho.key y) i (tr.time k) ∧ envelope ∈ rho.releasesAt i ∧
       ∀ j < i, envelope ∉ rho.releasesAt j := by
   intro y hy k m
   dsimp only
   intro hsource
-  have hevent : ∃ i, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
-      rho.SendsAt (rho.key y) i ((simTrace S rho hn).time k) := by
+  have hevent : ∃ i, cutMap ⟨S, stock⟩ rho hn i ≤ k ∧ k < cutMap ⟨S, stock⟩ rho hn (i + 1) ∧
+      rho.SendsAt (rho.key y) i ((simTrace ⟨S, stock⟩ rho hn).time k) := by
     rcases hsource with ⟨ℓ, hc, e, he, -⟩ | ⟨hc, -, -⟩
-    · exact simTrace_call_sending_event S rho hn hc
-        (simTrace_emission_not_restart S rho hn hconst hv hy hc he)
+    · exact simTrace_call_sending_event ⟨S, stock⟩ rho hn hc
+        (simTrace_emission_not_restart ⟨S, stock⟩ rho hn hconst hv hy hc he)
     · rcases hc with ⟨ℓ, hc, hm⟩ | ⟨ℓ, B, hc, hb, -⟩
-      · exact simTrace_call_sending_event S rho hn hc (by rw [hm]; simp)
-      · exact simTrace_call_sending_event S rho hn hc (by rw [hb]; simp)
+      · exact simTrace_call_sending_event ⟨S, stock⟩ rho hn hc (by rw [hm]; simp)
+      · exact simTrace_call_sending_event ⟨S, stock⟩ rho hn hc (by rw [hb]; simp)
   obtain ⟨i, hlo, hhi, hs⟩ := hevent
-  have hfresh : m ∉ ((simTrace S rho hn).state y k).ac.pool m.slot := by
+  have hfresh : m ∉ ((simTrace ⟨S, stock⟩ rho hn).state y k).ac.pool m.slot := by
     rcases hsource with hem | ⟨-, hf, -⟩
     · have hr := simTrace_goldilocksRun S rho hn hconst hv
       obtain ⟨ℓ, hc, e, he, hev⟩ := hem
@@ -535,11 +540,11 @@ theorem simTrace_vote_forwarded {V : Type} [Fintype V] [DecidableEq V] {E : Env 
         (Nat.le_refl k) ⟨ℓ, hc, e, he, hev⟩ hm rfl m.slot
       simpa only [Compose.projAC_state hr.toLocalRun hy] using hf
     · exact hf
-  have hcall : (simTrace S rho hn).IsCall y k := by
+  have hcall : (simTrace ⟨S, stock⟩ rho hn).IsCall y k := by
     rcases hsource with ⟨ℓ, hc, -⟩ | ⟨hc, -⟩
     · exact ⟨_, hc⟩
     · rcases hc with ⟨ℓ, hc, -⟩ | ⟨ℓ, B, hc, -⟩ <;> exact ⟨_, hc⟩
-  have hpost : m ∈ ((simTrace S rho hn).post k).ac.pool m.slot := by
+  have hpost : m ∈ ((simTrace ⟨S, stock⟩ rho hn).post k).ac.pool m.slot := by
     rcases hsource with hem | ⟨-, -, hpost⟩
     · exact Compose.emitted_vote_mem_post (simTrace_goldilocksRun S rho hn hconst hv) hy hem
     · exact hpost
@@ -547,11 +552,11 @@ theorem simTrace_vote_forwarded {V : Type} [Fintype V] [DecidableEq V] {E : Env 
     hcall hfresh hpost
   refine ⟨i, hlo, hhi, hs, ?_, admission_voteForward_first S rho hn hconst hv hy hs hlo hhi hfresh⟩
   rcases hs with he | ⟨o, he⟩
-  · have hr := tick_pool_insertion_released S rho hn hconst hv
-      ((mem_honestKeys_iff S rho y).mp hy) he m hold hnew
+  · have hr := tick_pool_insertion_released ⟨S, stock⟩ rho hn hconst hv
+      ((mem_honestKeys_iff ⟨S, stock⟩ rho y).mp hy) he m hold hnew
     simp only [Model.Run.ownKey, Equiv.symm_apply_apply] at hr
     exact hr
-  · have hr := delivery_pool_insertion_released S rho hn hconst hv he m hold hnew
+  · have hr := delivery_pool_insertion_released ⟨S, stock⟩ rho hn hconst hv he m hold hnew
     simp only [Model.Run.ownKey, Equiv.symm_apply_apply] at hr
     exact hr
 
@@ -560,32 +565,36 @@ theorem simTrace_simulates {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     :
-    Simulates S rho hn (simTrace S rho hn) (cutMap S rho hn) where
+    Simulates ⟨S, stock⟩ rho hn (simTrace ⟨S, stock⟩ rho hn) (cutMap ⟨S, stock⟩ rho hn) where
   run := simTrace_goldilocksRun S rho hn hf hv
-  ι_zero := cutMap_zero S rho hn
-  ι_mono := cutMap_mono S rho hn
-  covered := simTrace_covered S rho hn
-  state := simTrace_state S rho hn hf hv
-  now := now_eq_lastClock S rho hn hv
-  tick_public := simTrace_tick_public_group S rho hn hf hv
-  tick_other := simTrace_tick_other S rho hn hv
-  deliver := simTrace_deliver S rho hn hf hv
-  restart := simTrace_restart S rho hn hf hv
-  awake_of := simTrace_awake_of S rho hn hv
-  awake_to := simTrace_awake_to S rho hn hv
-  block_released := simTrace_block_released S rho hn hf hv (simTrace_goldilocksRun S rho hn hf hv)
-  vote_released := simTrace_vote_released S rho hn hf hv (simTrace_goldilocksRun S rho hn hf hv)
-  att_released := simTrace_att_released S rho hn hf hv (simTrace_goldilocksRun S rho hn hf hv)
-  block_relayed := simTrace_block_relayed S rho hn hv
+  ι_zero := cutMap_zero ⟨S, stock⟩ rho hn
+  ι_mono := cutMap_mono ⟨S, stock⟩ rho hn
+  covered := simTrace_covered ⟨S, stock⟩ rho hn
+  state := simTrace_state ⟨S, stock⟩ rho hn hf hv
+  now := now_eq_lastClock ⟨S, stock⟩ rho hn hv
+  tick_public := simTrace_tick_public_group ⟨S, stock⟩ rho hn hf hv
+  tick_other := simTrace_tick_other ⟨S, stock⟩ rho hn hv
+  deliver := simTrace_deliver ⟨S, stock⟩ rho hn hf hv
+  restart := simTrace_restart ⟨S, stock⟩ rho hn hf hv
+  awake_of := simTrace_awake_of ⟨S, stock⟩ rho hn hv
+  awake_to := simTrace_awake_to ⟨S, stock⟩ rho hn hv
+  block_released := simTrace_block_released ⟨S, stock⟩ rho hn hf hv
+      (simTrace_goldilocksRun S rho hn hf hv)
+  vote_released := simTrace_vote_released ⟨S, stock⟩ rho hn hf hv
+      (simTrace_goldilocksRun S rho hn hf hv)
+  att_released := simTrace_att_released ⟨S, stock⟩ rho hn hf hv
+      (simTrace_goldilocksRun S rho hn hf hv)
+  block_relayed := simTrace_block_relayed ⟨S, stock⟩ rho hn hv
   vote_forwarded := simTrace_vote_forwarded S rho hn hf hv
-  att_relayed := simTrace_att_relayed S rho hn hv
+  att_relayed := simTrace_att_relayed ⟨S, stock⟩ rho hn hv
 
 /-- **The engine simulates the node** (`EngineSimulatesNode`): every valid engine run of the
 family is simulated by `simTrace` with `cutMap`. -/
 theorem engineSimulatesNode (V : Type) [Fintype V] [DecidableEq V] (S : Setup)
-    : EngineSimulatesNode V S :=
-  (engineSimulatesNode_iff V S).mpr
-    fun _ rho hn hf hv => ⟨simTrace S rho hn, cutMap S rho hn, simTrace_simulates S rho hn hf hv⟩
+    : EngineSimulatesNode V ⟨S, stock⟩ :=
+  (engineSimulatesNode_iff V ⟨S, stock⟩).mpr
+    fun _ rho hn hf hv =>
+        ⟨simTrace ⟨S, stock⟩ rho hn, cutMap ⟨S, stock⟩ rho hn, simTrace_simulates S rho hn hf hv⟩
 
 end Consensus.Goldilocks.Simulation
 

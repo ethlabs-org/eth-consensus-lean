@@ -478,6 +478,8 @@ def Consensus.Goldilocks.AsChainShape.goldilocksWith : Consensus.Goldilocks.AsCh
   #3345961043/500588258
 theorem Consensus.Goldilocks.AsChainShape.goldilocksWith_init_mayVote : ∀ (S : Consensus.Goldilocks.AsChainShape.BoundSetup) (pub : Consensus.Model.Public) (hn : LE.le.{0} 1 pub.n), Ne.{1} S.vote.participationKind Option.none.{0} → ∀ (key : Fin pub.n) (p : Consensus.Shape.ShapeRole S.vote.Kind → Bool) (s : Consensus.Blocks.Slot), Eq.{1} (((Consensus.Goldilocks.AsChainShape.goldilocksWith S pub).init key p hn).node.ac.mayVote s) (p (S.vote.voteRole s))
   #2342362113/-
+theorem Consensus.Goldilocks.AsChainShape.goldilocks_stock : ∀ (S : Consensus.Goldilocks.AsChainShape.Setup), Eq.{2} (Consensus.Goldilocks.AsChainShape.goldilocks S) (Consensus.Goldilocks.AsChainShape.goldilocksWith { toSetup := S, vote := Consensus.Goldilocks.AsChainShape.stock })
+  #3006340616/-
 def Consensus.Goldilocks.AsChainShape.headerOf : (sp : Consensus.Goldilocks.SA.SAParams) → Consensus.Goldilocks.AsChainShape.Blk sp → Consensus.Blocks.Header Consensus.Goldilocks.AsChainShape.Info := fun sp B => { parent := Consensus.Goldilocks.AsChainShape.parentRef sp.genesisRoot B.parent, pos := B.slot, input := B.input, info := Consensus.Goldilocks.AsChainShape.encodeInfo B.fgPayload B.acPayload }
   #3974982509/1973076576
 theorem Consensus.Goldilocks.AsChainShape.instCountableWireAtt : Countable.{1} Consensus.Goldilocks.AsChainShape.WireAtt

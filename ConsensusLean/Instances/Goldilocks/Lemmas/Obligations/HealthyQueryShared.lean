@@ -23,7 +23,7 @@ variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [Decidab
 theorem HealthyPreparationQuery.hsSharedUpTo_of_le (Q : HealthyPreparationQuery S A V)
     (ΔF : Time) (hΔF : protoFGDelay (Model.pubOf Q.run.1) ≤ ΔF)
     (htd : 6 * Q.params.Δ + ΔF ≤ 4 * Q.params.Δ * (S.δt : Time)) :
-    Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst
+    Healing.HSSharedUpTo Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) (digestOf ⟨S, stock⟩ Q.run.2) Q.gst
       ΔF Q.run.2.horizon :=
   hsSharedUpTo_of_healthy S A V Q.run Q.hn Q.constant Q.valid Q.noCollision Q.healthy hΔF htd
 

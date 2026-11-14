@@ -33,9 +33,9 @@ theorem healthy_confirmed_supply (Q : ConfirmedQuery S A V)
       Q.run.2.horizon Q.run)
     (ht : (Sys (goldilocks S) V).heal (K S A) Q.cap Q.index Q.gst Q.run ≤ Q.query) :
     ∃ P : ConfirmedProposal S A V Q,
-      ∀ y j, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration y Q.deadline →
+      ∀ y j, Regimes.ReadyAt Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) Q.duration y Q.deadline →
         Regimes.CutAfter Q.trace j Q.deadline →
-        Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) P.block
+        Anc (Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2)) P.block
           (Regimes.readAfter Q.trace y j Q.deadline) :=
   healthy_confirmed_supply_of_initializer S A V Q hh hp ht (healthy_preparation_initialize S A V)
 
@@ -44,14 +44,14 @@ Both regimes retain their own cap/index budget and the engine-scaled deadline. -
 theorem confirmed_payload_projection (Q : ConfirmedQuery S A V)
     (h0 : 0 ≤ Q.query) (P : ConfirmedProposal S A V Q)
     (coverage : ∀ y j,
-      Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration y Q.deadline →
+      Regimes.ReadyAt Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) Q.duration y Q.deadline →
       Regimes.CutAfter Q.trace j Q.deadline →
-      Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) P.block
+      Anc (Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2)) P.block
         (Regimes.readAfter Q.trace y j Q.deadline)) :
     ∃ τ k h, Q.query < τ ∧ Q.run.2.point.Ready Q.duration (Q.run.2.key k) τ ∧
       HonestProposal Q.run.2 τ k h ∧ InBy Q.run.2 Q.duration .confirmed h Q.deadline := by
   have hτ := h0.trans P.fresh.le
-  have hprop : Regimes.ReadyProposalAt Q.trace (honestKeys S Q.run.2) Q.duration
+  have hprop : Regimes.ReadyProposalAt Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) Q.duration
       (Q.trace.time P.cut) P.block := ⟨_, P.cut, P.ready, P.proposal, rfl⟩
   obtain ⟨k, hk, hr⟩ := ready_proposal S Q.run.2 Q.hn Q.constant Q.valid hτ
     (P.bounded.trans Q.bounded) hprop
@@ -78,12 +78,12 @@ existing sleepy_safe_engine leaf, not an endCut-only assertion. -/
 theorem sleepy_safety_inputs (Q : SleepySafetyQuery S A V) :
     Regimes.catchUp (S.params (Model.pubOf Q.run.1) Q.hn) + 1 ≤
       (Sys (goldilocks S) V).cDur (K S A) Q.run ∧
-    Compose.SleepyServiceBefore (simTrace S Q.run.2 Q.hn) (honestKeys S Q.run.2)
+    Compose.SleepyServiceBefore (simTrace ⟨S, stock⟩ Q.run.2 Q.hn) (honestKeys ⟨S, stock⟩ Q.run.2)
       (S.params (Model.pubOf Q.run.1) Q.hn).Δ Q.run.2.horizon ∧
     (∀ s : Nat, ∀ d ∈ ({0, (S.params (Model.pubOf Q.run.1) Q.hn).Δ,
       2 * (S.params (Model.pubOf Q.run.1) Q.hn).Δ} : Set Time),
       (S.params (Model.pubOf Q.run.1) Q.hn).ts s + d ≤ Q.run.2.horizon →
-      (simTrace S Q.run.2 Q.hn).FaultBound (honestKeys S Q.run.2)
+      (simTrace ⟨S, stock⟩ Q.run.2 Q.hn).FaultBound (honestKeys ⟨S, stock⟩ Q.run.2)
         ((S.params (Model.pubOf Q.run.1) Q.hn).ts s + d)) := by
   have hduration : Regimes.catchUp (S.params (Model.pubOf Q.run.1) Q.hn) + 1 ≤
       (Sys (goldilocks S) V).cDur (K S A) Q.run := by

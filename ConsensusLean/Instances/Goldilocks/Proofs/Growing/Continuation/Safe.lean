@@ -85,8 +85,8 @@ theorem continued_safe_growing (hc : GoldilocksCorrect) (S : Setup) (A : Contrac
   obtain ⟨r', σ, hseed, t₁, -, hdt, hlate, hinv⟩ :=
     Obligations.Growing.handover_invariant_at
       (Obligations.Growing.handoverQuery S A V hn hv hx hcap i hh hT) h0 hb hp'
-  have hnc := noCollRun_simTraceAt S rho hn hv hx
-  have hrun := simTraceAt_goldilocksRun S rho hn hv
+  have hnc := noCollRun_simTraceAt ⟨S, stock⟩ rho hn hv hx
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv
   -- the reset service through the horizon, from partial synchrony
   have hsvc := Obligations.Growing.resetService_of_psync_at S rho hn hv hnc
     ((Model.sysOf_delivers_iff _ _ _ _).mp hh.1)
@@ -115,7 +115,7 @@ theorem continued_safe_growing (hc : GoldilocksCorrect) (S : Setup) (A : Contrac
     change 18 * E.ΔAC ≤ Sy.cDur K ⟨E, rho⟩
     rw [hcD]
     linarith
-  have hB := Obligations.Growing.sleepy_bounds_at S rho hn hv le_rfl hhalf hσr
+  have hB := Obligations.Growing.sleepy_bounds_at ⟨S, stock⟩ rho hn hv le_rfl hhalf hσr
     (le_max_of_le_left ((hσr.trans hrT).trans hT))
   -- conviction below a third on held chains
   have hcv := Obligations.Growing.chainConvictedBelow_at S A rho hn hv hh.2.2.2.2

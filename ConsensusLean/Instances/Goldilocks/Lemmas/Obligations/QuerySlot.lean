@@ -39,8 +39,8 @@ theorem nonfinal_query_slot (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Finty
       0 ≤ (S.params (Model.pubOf run.1) hn).ts s ∧
       (S.params (Model.pubOf run.1) hn).ts s ≤ run.2.horizon ∧
       run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) run)
-        (run.2.key (runProposer S run.2 hn s)) ((S.params (Model.pubOf run.1) hn).ts s) ∧
-      run.2.key (runProposer S run.2 hn s) ∉ run.2.faultyAt
+        (run.2.key (runProposer ⟨S, stock⟩ run.2 hn s)) ((S.params (Model.pubOf run.1) hn).ts s) ∧
+      run.2.key (runProposer ⟨S, stock⟩ run.2 hn s) ∉ run.2.faultyAt
         (min ((S.params (Model.pubOf run.1) hn).ts s + run.1.ΔAC) run.2.horizon) := by
   classical
   have hquery0 : 0 ≤ query := (le_max_right ready 0).trans hquery
@@ -86,9 +86,11 @@ theorem nonfinal_query_slot (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Finty
     linarith
   have hready := hr 0 (by simp [Pattern.single])
   simp only [Nat.add_zero] at hready
-  have hmem : runProposer S run.2 hn s ∈ run.2.sel (.proposer s) := by
-    simp only [runProposer_eq, dite_eq_left hready.1]
-    exact Finset.min'_mem _ _
+  have hmem : runProposer ⟨S, stock⟩ run.2 hn s ∈ run.2.sel (.proposer s) := by
+    rw [runProposer_eq ⟨S, stock⟩ run.2 hn]
+    split
+    · exact Finset.min'_mem _ _
+    · exact absurd hready.1 ‹_›
   obtain ⟨hR, hH⟩ := hready.2 _ hmem
   rw [htime] at hR hH
   have hs1 : 1 ≤ s := by

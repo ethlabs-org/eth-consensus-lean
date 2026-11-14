@@ -131,11 +131,13 @@ theorem read_hdr {h : Header Info}
   have hi : (chainTrace (rhoc S)).endCut 41 ≤ (rhoc S).events.length := Nat.findGreatest_le _
   have hhon : (2 : Fin 5) ∉ (rhoc S).faultyAt 0 := by rw [rhoc_faultyAt]; decide
   have hy : (rhoc S).ownKey 2 ∈ H S :=
-    (mem_honestKeys_iff S (rhoc S) _).mpr (by rw [ownKey_key']; exact hhon)
-  rw [read_eq_out S (rhoc S) one_le_card, outOf,
-    simTrace_state S (rhoc S) one_le_card rhoc_const rhoc_valid 2 hhon _ hi, hcut.2.2] at hh
+    (mem_honestKeys_iff ⟨S, stock⟩ (rhoc S) _).mpr
+        (by erw [ownKey_key' ⟨S, stock⟩ (rhoc S)]; exact hhon)
+  erw [read_eq_out ⟨S, stock⟩ (rhoc S) one_le_card, outOf,
+    simTrace_state ⟨S, stock⟩ (rhoc S) one_le_card rhoc_const rhoc_valid 2 hhon _ hi,
+        hcut.2.2] at hh
   set y := (rhoc S).ownKey 2
-  set j := cutMap S (rhoc S) one_le_card ((chainTrace (rhoc S)).endCut 41)
+  set j := cutMap ⟨S, stock⟩ (rhoc S) one_le_card ((chainTrace (rhoc S)).endCut 41)
   set C := Regimes.readAfter (tr S) y j 41 with hCdef
   change h ∈ chainTo ((tr S).state y j).fg.blocks (C.slot + 1) C at hh
   have hprev := hcut.1.1

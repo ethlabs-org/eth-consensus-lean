@@ -451,17 +451,17 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 after the node's last own event. The equality case uses the engine tick's position, not trace-time
 comparison. Honesty is at the stored clock only, which is within the reset premises' bound. -/
 theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b : Time}
-    (hp : ResetPremisesUpTo (simTraceAt S rho hn) (honestKeysAt S rho)
-      (runProposer S rho hn) (digestOf S rho) g ΔF a b) (hbh : b ≤ rho.horizon)
-    {v : V} {i u : Nat} (hv : v ∉ rho.faultyAt (stateAt S rho hn v i).now)
+    (hp : ResetPremisesUpTo (simTraceAt ⟨S, stock⟩ rho hn) (honestKeysAt ⟨S, stock⟩ rho)
+      (runProposer ⟨S, stock⟩ rho hn) (digestOf ⟨S, stock⟩ rho) g ΔF a b) (hbh : b ≤ rho.horizon)
+    {v : V} {i u : Nat} (hv : v ∉ rho.faultyAt (stateAt ⟨S, stock⟩ rho hn v i).now)
     (hslot : (S.params (Model.pubOf E) hn).ts
       ((S.params (Model.pubOf E) hn).slot (SA.gbar g) + 1 : Nat) ≤
         (S.params (Model.pubOf E) hn).ts u)
     (ht : (S.params (Model.pubOf E) hn).ts u + 6 * (S.params (Model.pubOf E) hn).Δ ≤
-      (stateAt S rho hn v i).now)
-    (htb : (stateAt S rho hn v i).now ≤ b) :
-    ∃ j ell, SA.UpdateAt (simTraceAt S rho hn).projAC (rho.ownKey v) j u ell ∧
-      j < cutMap S rho hn (lastOwn S rho v i) := by
+      (stateAt ⟨S, stock⟩ rho hn v i).now)
+    (htb : (stateAt ⟨S, stock⟩ rho hn v i).now ≤ b) :
+    ∃ j ell, SA.UpdateAt (simTraceAt ⟨S, stock⟩ rho hn).projAC (rho.ownKey v) j u ell ∧
+      j < cutMap ⟨S, stock⟩ rho hn (lastOwn S rho v i) := by
   let sp := S.params (Model.pubOf E) hn
   let T := sp.ts u + 6 * sp.Δ
   have hDelta := sp.toParams.hΔ
@@ -478,23 +478,25 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b :
   have hvT : v ∉ rho.faultyAt T := fun h => hv (rho.faultyAt_mono ht h)
   have hpub : sp.toParams.IsPublic T :=
     ⟨4 * (u : Int) + 6, by dsimp [T, SA.SAParams.ts]; ring⟩
-  have hy : rho.ownKey v ∈ honestKeysAt S rho T := honest_ownKey_at S rho hvT hTh
+  have hy : rho.ownKey v ∈ honestKeysAt ⟨S, stock⟩ rho T := honest_ownKey_at ⟨S, stock⟩ rho hvT hTh
   have hawake := hp.awake _ T hy (by dsimp [T]; linarith) hTb
   have hawake' : E.awake v T = true := by
     simpa only [Model.Run.ownKey, Equiv.apply_symm_apply] using
-      ((simTraceAt_awake_bounds S rho hn _ T).mp hawake).1
+      ((simTraceAt_awake_bounds ⟨S, stock⟩ rho hn _ T).mp hawake).1
   obtain ⟨p, he⟩ := List.mem_iff_getElem?.mp (hvalid.tick_total v T hT0.le hTh hvT hawake')
   have hm := hp.run.time_mono
   have hnr : ∀ q < i, rho.events[q]? ≠ some (.restart v T) := by
     intro q _ hrestart
     obtain ⟨_, rec, hrec, hnode, htime, ell, hlabel, hcall⟩ :=
-      restart_getElem? S rho hn hrestart
-    have hrs : (simTraceAt S rho hn).RestartAt (rho.ownKey v) (cutMap S rho hn q) := by
+      restart_getElem? ⟨S, stock⟩ rho hn hrestart
+    have hrs : (simTraceAt ⟨S, stock⟩ rho hn).RestartAt (rho.ownKey v)
+        (cutMap ⟨S, stock⟩ rho hn q) := by
       refine ⟨ell, ⟨?_, ?_⟩, hcall⟩
-      · rw [simTraceAt_eq, simTrace_node, hrec]; exact hnode
-      · rw [simTraceAt_eq, simTrace_label, hrec, Option.map_some, hlabel]
-    have htime' : (simTraceAt S rho hn).time (cutMap S rho hn q) = T := by
-      rw [simTraceAt_eq, simTrace_time, hrec]; exact htime
+      · rw [simTraceAt_eq ⟨S, stock⟩ rho hn, simTrace_node ⟨S, stock⟩ rho hn, hrec]; exact hnode
+      · rw [simTraceAt_eq ⟨S, stock⟩ rho hn, simTrace_label ⟨S, stock⟩ rho hn, hrec,
+          Option.map_some, hlabel]
+    have htime' : (simTraceAt ⟨S, stock⟩ rho hn).time (cutMap ⟨S, stock⟩ rho hn q) = T := by
+      rw [simTraceAt_eq ⟨S, stock⟩ rho hn, simTrace_time ⟨S, stock⟩ rho hn, hrec]; exact htime
     have hbound := hp.restart_le_before_at (htime' ▸ hy) hrs (htime' ▸ hTb)
     rw [htime'] at hbound
     have hbound' : sp.ts u + 6 * sp.Δ ≤ sp.ts (sp.slot (SA.gbar g) + 1 : Nat) := hbound
@@ -503,53 +505,54 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b :
   have hpl : p + 1 ≤ lastOwn S rho v i := by
     rw [lastOwn_eq]
     exact Nat.le_findGreatest (by omega) (Or.inr ⟨_, by simpa using he, rfl⟩)
-  obtain ⟨hgroup, hlen⟩ := simTraceAt_tick_public_group S rho hn hvalid he hpub
+  obtain ⟨hgroup, hlen⟩ := simTraceAt_tick_public_group ⟨S, stock⟩ rho hn hvalid he hpub
   have hlen0 := List.length_pos_iff.mpr hgroup.1
   obtain ⟨hnode, htime, -, -, hlabel⟩ := hgroup.2.1 0 hlen0
-  have hcall : (simTraceAt S rho hn).CallAt (rho.ownKey v) (cutMap S rho hn p)
-      (Node.acCall (rho.ownKey v) ((simTraceAt S rho hn).state (rho.ownKey v)
-        (cutMap S rho hn p)) T .tick).2 := by
-    have hget : (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-        ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn p)) T
+  have hcall : (simTraceAt ⟨S, stock⟩ rho hn).CallAt (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn p)
+      (Node.acCall (rho.ownKey v) ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v)
+        (cutMap ⟨S, stock⟩ rho hn p)) T .tick).2 := by
+    have hget : (Node.exec (runProposer ⟨S, stock⟩ rho hn) (digestOf ⟨S, stock⟩ rho) (rho.ownKey v)
+        ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn p)) T
         (.tick (Blocks.encodeTxs (Model.mempool rho.inbox v T)))).2[0]'hlen0 =
-        (Node.acCall (rho.ownKey v) ((simTraceAt S rho hn).state (rho.ownKey v)
-          (cutMap S rho hn p)) T .tick).2 := rfl
-    exact ⟨by simpa only [Nat.add_zero] using hnode,
-      by simpa only [Nat.add_zero, hget] using hlabel⟩
-  have htime : (simTraceAt S rho hn).time (cutMap S rho hn p) = T := by
+        (Node.acCall (rho.ownKey v) ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v)
+          (cutMap ⟨S, stock⟩ rho hn p)) T .tick).2 := rfl
+    exact ⟨hnode, hlabel⟩
+  have htime : (simTraceAt ⟨S, stock⟩ rho hn).time (cutMap ⟨S, stock⟩ rho hn p) = T := by
     simpa only [Nat.add_zero] using htime
   obtain ⟨ell, hcallA, hcalltick⟩ : ∃ ell,
-      (simTraceAt S rho hn).projAC.CallAt (rho.ownKey v) (cutMap S rho hn p) ell ∧
+      (simTraceAt ⟨S, stock⟩ rho hn).projAC.CallAt (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn p) ell ∧
         ell.call = .tick := ⟨_, Compose.projAC_callAt.2 hcall, rfl⟩
-  refine ⟨cutMap S rho hn p, ell, ⟨hcallA, hcalltick, htime, ?_⟩, ?_⟩
+  refine ⟨cutMap ⟨S, stock⟩ rho hn p, ell, ⟨hcallA, hcalltick, htime, ?_⟩, ?_⟩
   · have hr := hp.run.upTo hT0.le
     have hac := (Compose.goldilocks_ac_projection _ _ _ _ _ _ hr (hp.noColl.upTo T)).localRun
-    have hj : SA.joined sp (((simTraceAt S rho hn).upTo T).projAC.state (rho.ownKey v)
-        (cutMap S rho hn p)) ((simTraceAt S rho hn).time (cutMap S rho hn p)) := by
+    have hj : SA.joined sp (((simTraceAt ⟨S, stock⟩ rho hn).upTo T).projAC.state (rho.ownKey v)
+        (cutMap ⟨S, stock⟩ rho hn p))
+            ((simTraceAt ⟨S, stock⟩ rho hn).time (cutMap ⟨S, stock⟩ rho hn p)) := by
       unfold SA.joined
-      rcases SA.restartTime_state hac hy (cutMap S rho hn p) with h | ⟨r, hri, hrs, h⟩
+      rcases SA.restartTime_state hac hy (cutMap ⟨S, stock⟩ rho hn p) with h | ⟨r, hri, hrs, h⟩
       · rw [h]; exact bot_le
       · rw [h]
         apply WithBot.coe_le_coe.mpr
-        have hrs' : (simTraceAt S rho hn).RestartAt (rho.ownKey v) r :=
+        have hrs' : (simTraceAt ⟨S, stock⟩ rho hn).RestartAt (rho.ownKey v) r :=
           ((RunTrace.upTo_restartAt _).mp (Compose.projAC_restartAt.mp hrs)).2
-        have hrd : (simTraceAt S rho hn).time r ≤ T := (hm hri.le).trans htime.le
+        have hrd : (simTraceAt ⟨S, stock⟩ rho hn).time r ≤ T := (hm hri.le).trans htime.le
         have hrestart := hp.restart_le_before_at (hp.run.antitone hrd hy) hrs' (hrd.trans hTb)
         have hsl : sp.slot T = u + 1 :=
           SA.slot_of_mem sp (u + 1)
             (by dsimp [T]; simp only [SA.SAParams.ts]; linarith)
             (by dsimp [T]; simp only [SA.SAParams.ts]; linarith)
-        change (simTraceAt S rho hn).time r ≤
-          sp.ts ((sp.slot ((simTraceAt S rho hn).time (cutMap S rho hn p)) : Int) - 1)
+        change (simTraceAt ⟨S, stock⟩ rho hn).time r ≤
+          sp.ts ((sp.slot ((simTraceAt ⟨S, stock⟩ rho hn).time (cutMap ⟨S, stock⟩ rho hn p)) :
+              Int) - 1)
         rw [htime, hsl]
         simpa using hrestart.trans hslot'
-    have hstate : ((simTraceAt S rho hn).projAC.upTo T).state (rho.ownKey v)
-        (cutMap S rho hn p) = (simTraceAt S rho hn).projAC.state (rho.ownKey v)
-          (cutMap S rho hn p) :=
+    have hstate : ((simTraceAt ⟨S, stock⟩ rho hn).projAC.upTo T).state (rho.ownKey v)
+        (cutMap ⟨S, stock⟩ rho hn p) = (simTraceAt ⟨S, stock⟩ rho hn).projAC.state (rho.ownKey v)
+          (cutMap ⟨S, stock⟩ rho hn p) :=
       Trace.upTo_state _ _ (fun q hq => (hm hq.le).trans htime.le)
     rw [RunTrace.upTo_projAC, hstate] at hj
     exact hj
-  · have hmono := cutMap_mono S rho hn hpl
+  · have hmono := cutMap_mono ⟨S, stock⟩ rho hn hpl
     omega
 
 end Engine

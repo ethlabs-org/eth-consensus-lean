@@ -46,8 +46,8 @@ theorem final_query_gap_at (Q : FinalQueryAt S A V) {c : Nat}
       Q.params.ts s₀)
     (hN : Q.params.ts (N + 3 * c : Nat) ≤ Q.run.2.horizon) :
     ∀ x₀, s₀ ≤ x₀ → x₀ + (Q.index : Nat) ≤ N + 1 → ∃ x, x₀ ≤ x ∧ x < x₀ + (Q.index : Nat) ∧
-      runProposer S Q.run.2 Q.hn x ∈ Q.keys (Q.params.ts x + Q.params.Δ) ∧
-      ∃ k P, Q.trace.ProposesAt (runProposer S Q.run.2 Q.hn x) k P ∧ P.slot = x := by
+      runProposer ⟨S, stock⟩ Q.run.2 Q.hn x ∈ Q.keys (Q.params.ts x + Q.params.Δ) ∧
+      ∃ k P, Q.trace.ProposesAt (runProposer ⟨S, stock⟩ Q.run.2 Q.hn x) k P ∧ P.slot = x := by
   intro x₀ hx₀ hxN
   obtain ⟨x, hxl, hxr, hx0, hxh, hx⟩ :=
     final_query_duty S A V Q.run Q.hn Q.index Q.gst Q.progress hpat hs hN x₀ hx₀ hxN
@@ -58,17 +58,17 @@ theorem final_query_gap_at (Q : FinalQueryAt S A V) {c : Nat}
 gap `c`**, under growing faults. -/
 theorem final_reset_premises_of_shared_at (Q : FinalQueryAt S A V) {c : Nat} (hc2 : 2 ≤ c)
     (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {ΔF : Time}
-    (hs : Healing.Growing.HSSharedUpTo Q.trace Q.keys (digestOf S Q.run.2) Q.gst ΔF
+    (hs : Healing.Growing.HSSharedUpTo Q.trace Q.keys (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔF
       Q.run.2.horizon) :
     ∃ ΔR a : Time,
-      Healing.Growing.ResetPremisesUpTo Q.trace Q.keys (runProposer S Q.run.2 Q.hn)
-        (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon ∧
+      Healing.Growing.ResetPremisesUpTo Q.trace Q.keys (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
+        (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔR a Q.run.2.horizon ∧
       max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
           ((finalGridAt S A V Q).slotTime (finalSeedMinAt S A V Q a) - 1) +
           ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGridAt S A V Q).slotLen ≤
         Q.query + (finalGridAt S A V Q).slotLen := by
   classical
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
   set H := Q.keys
   have hD : 0 < Q.params.Δ := Q.params.toParams.hΔ
   have hδeq : Q.params.toParams.fg.δt = S.δt := rfl
@@ -85,7 +85,7 @@ theorem final_reset_premises_of_shared_at (Q : FinalQueryAt S A V) {c : Nat} (hc
     exact catchRun_of_psync_at S Q.run.2 Q.hn Q.valid hs.noColl hnet
       (fun v t ht hb _ hv => Q.healthy.2.1.2 v t ht hb hv)
   -- the drain
-  have hdrain : Healing.Growing.DrainOutputs Q.trace (runProposer S Q.run.2 Q.hn) H Q.gst
+  have hdrain : Healing.Growing.DrainOutputs Q.trace (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) H Q.gst
       (Q.index : Nat) (healthyDrainLen S Q.index) Q.run.2.horizon :=
     Healing.Growing.drainOutputs_of_service_at hrun hs.noColl hs.sync hs.awake hs.faults hcatch
       (by rw [healthyDrainLen_val, hk]; exact Nat.le_succ _)
@@ -112,8 +112,8 @@ theorem final_reset_premises_of_shared_at (Q : FinalQueryAt S A V) {c : Nat} (hc
 /-- **The reset premises and the placement of a final query**, under growing faults. -/
 theorem final_reset_premises_at (Q : FinalQueryAt S A V) :
     ∃ ΔR a : Time,
-      Healing.Growing.ResetPremisesUpTo Q.trace Q.keys (runProposer S Q.run.2 Q.hn)
-        (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon ∧
+      Healing.Growing.ResetPremisesUpTo Q.trace Q.keys (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
+        (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔR a Q.run.2.horizon ∧
       max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
           ((finalGridAt S A V Q).slotTime (finalSeedMinAt S A V Q a) - 1) +
           ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGridAt S A V Q).slotLen ≤

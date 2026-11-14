@@ -104,17 +104,18 @@ theorem point_constant (hp : rho.point = point) : rho.point.ConstantFaults := by
   exact fun _ => rfl
 
 /-- The faulty keys of a run at `point` are one: `f = 1`. -/
-theorem faulty_ncard (hp : rho.point = point) : (honestKeys S rho)ᶜ.ncard = 1 := by
-  have heq : (honestKeys S rho)ᶜ = rho.key ⁻¹' (↑(rho.point.faultyAt 0) : Set (Fin 4)) := by
+theorem faulty_ncard (hp : rho.point = point) : (honestKeys ⟨S, stock⟩ rho)ᶜ.ncard = 1 := by
+  have heq : (honestKeys ⟨S, stock⟩ rho)ᶜ = rho.key ⁻¹'
+      (↑(rho.point.faultyAt 0) : Set (Fin 4)) := by
     ext k
-    simp [mem_honestKeys_iff, Model.Run.point]
+    simp [mem_honestKeys_iff ⟨S, stock⟩ rho, Model.Run.point]
   rw [heq, Set.ncard_preimage_of_injective_subset_range rho.key.injective
     (by simp [rho.key.surjective.range_eq]), Set.ncard_coe_finset, hp, point_faulty]
   rfl
 
 /-- The honest keys of a run at `point` are three. -/
-theorem honest_ncard (hp : rho.point = point) : (honestKeys S rho).ncard = 3 := by
-  have h := Set.ncard_add_ncard_compl (honestKeys S rho)
+theorem honest_ncard (hp : rho.point = point) : (honestKeys ⟨S, stock⟩ rho).ncard = 3 := by
+  have h := Set.ncard_add_ncard_compl (honestKeys ⟨S, stock⟩ rho)
   rw [faulty_ncard hp, Nat.card_eq_fintype_card] at h
   change _ + 1 = 4 at h
   omega
@@ -122,14 +123,14 @@ theorem honest_ncard (hp : rho.point = point) : (honestKeys S rho).ncard = 3 := 
 /-- The honest keys are awake and joined at every `t ∈ [0, 40]`: `h_t = 3`. -/
 theorem honestAwakeJoined_eq (hp : rho.point = point) (hv : rho.ExecutionValid) {t : Time}
     (ht : 0 ≤ t) (htb : t ≤ 40) :
-    (simTrace S rho one_le_card).honestAwakeJoined (honestKeys S rho) t = 3 := by
+    (simTrace ⟨S, stock⟩ rho one_le_card).honestAwakeJoined (honestKeys ⟨S, stock⟩ rho) t = 3 := by
   have hhor : rho.horizon = 40 := congrArg EnvPoint.horizon hp
-  have hawake : ∀ y u, 0 ≤ u → u ≤ 40 → (simTrace S rho one_le_card).awake y u := by
+  have hawake : ∀ y u, 0 ≤ u → u ≤ 40 → (simTrace ⟨S, stock⟩ rho one_le_card).awake y u := by
     intro y u h0 h1
-    rw [simTrace_awake_iff, awakeAt_iff]
+    rw [simTrace_awake_iff ⟨S, stock⟩ rho one_le_card, awakeAt_iff ⟨S, stock⟩ rho one_le_card]
     exact ⟨rfl, h0, hhor ▸ h1⟩
-  have hset : {y | y ∈ honestKeys S rho ∧ (simTrace S rho one_le_card).awake y t ∧
-      (simTrace S rho one_le_card).JoinedAt y t} = honestKeys S rho := by
+  have hset : {y | y ∈ honestKeys ⟨S, stock⟩ rho ∧ (simTrace ⟨S, stock⟩ rho one_le_card).awake y t ∧
+      (simTrace ⟨S, stock⟩ rho one_le_card).JoinedAt y t} = honestKeys ⟨S, stock⟩ rho := by
     ext y
     refine ⟨fun h => h.1, fun hy => ⟨hy, ?_⟩⟩
     exact Compose.ready_implies_joined _ _ _ _ _ _
@@ -142,8 +143,8 @@ theorem honestAwakeJoined_eq (hp : rho.point = point) (hv : rho.ExecutionValid) 
 /-- `f = 1 < h_t` at every `t ∈ [0, 40]`. -/
 theorem faultBound (hp : rho.point = point) (hv : rho.ExecutionValid) {t : Time}
     (ht : 0 ≤ t) (htb : t ≤ 40) :
-    (simTrace S rho one_le_card).FaultBound (honestKeys S rho) t := by
-  change (honestKeys S rho)ᶜ.ncard < _
+    (simTrace ⟨S, stock⟩ rho one_le_card).FaultBound (honestKeys ⟨S, stock⟩ rho) t := by
+  change (honestKeys ⟨S, stock⟩ rho)ᶜ.ncard < _
   rw [faulty_ncard hp, honestAwakeJoined_eq hp hv ht htb]
   decide
 
@@ -153,7 +154,7 @@ theorem slot_faultBound (hp : rho.point = point) (hv : rho.ExecutionValid) :
     ∀ s : Nat, ∀ d ∈ ({0, (S.params (pubOf point.env) one_le_card).Δ,
       2 * (S.params (pubOf point.env) one_le_card).Δ} : Set Time),
       (S.params (pubOf point.env) one_le_card).ts s + d ≤ 40 →
-      (simTrace S rho one_le_card).FaultBound (honestKeys S rho)
+      (simTrace ⟨S, stock⟩ rho one_le_card).FaultBound (honestKeys ⟨S, stock⟩ rho)
         ((S.params (pubOf point.env) one_le_card).ts s + d) := by
   have hhor : rho.horizon = 40 := congrArg EnvPoint.horizon hp
   refine sleepy_faultBound S rho one_le_card (point_constant hp) hv (W := 0) hhor.ge ?_
@@ -167,33 +168,35 @@ theorem slot_faultBound (hp : rho.point = point) (hv : rho.ExecutionValid) :
 /-- A key outside the honest keys makes no call in `simTrace`. -/
 theorem not_callAt_of_not_honest (hp : rho.point = point) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card (Fin 4))}
-    (hy : y ∉ honestKeys S rho) (k : Nat) (ℓ) : ¬ (simTrace S rho one_le_card).CallAt y k ℓ := by
+    (hy : y ∉ honestKeys ⟨S, stock⟩ rho) (k : Nat) (ℓ) : ¬
+        (simTrace ⟨S, stock⟩ rho one_le_card).CallAt y k ℓ := by
   rintro ⟨hnode, hl⟩
   obtain ⟨_, _, ev, _, he, -, -, -, hn, -⟩ :=
-    simTrace_cut S rho one_le_card (hl ▸ Option.some_ne_none ℓ)
+    simTrace_cut ⟨S, stock⟩ rho one_le_card (hl ▸ Option.some_ne_none ℓ)
   apply hy
-  rw [mem_honestKeys_iff]
-  rw [← hnode, hn, show rho.key (rho.ownKey ev.node) = ev.node from rho.key.apply_symm_apply _]
-  simpa only [rho.faultyAt_eq_zero (point_constant hp)] using
-    hv.honest_only ev (List.mem_of_getElem? he)
+  rw [mem_honestKeys_iff ⟨S, stock⟩ rho]
+  erw [← hnode, hn, show rho.key (rho.ownKey ev.node) = ev.node from rho.key.apply_symm_apply _]
+  have h := hv.honest_only ev (List.mem_of_getElem? he)
+  simp only [rho.faultyAt_eq_zero (point_constant hp)] at h ⊢
+  exact h
 
 /-- The faulty key is silent: it has no engine event, and it makes no call in `simTrace`, so
 it signs no attestation and emits no AC message there. -/
 theorem faulty_silent (hp : rho.point = point) (hk : rho.key = Equiv.refl _)
     (hv : rho.ExecutionValid) :
-    faultyKey ∉ honestKeys S rho ∧ (∀ e ∈ rho.events, e.node ≠ rho.key faultyKey) ∧
-      (∀ k ℓ, ¬ (simTrace S rho one_le_card).CallAt faultyKey k ℓ) ∧
-      (∀ k a, ¬ (simTrace S rho one_le_card).SignAt faultyKey k a) ∧
-      ∀ k m, ¬ (simTrace S rho one_le_card).EmitAt faultyKey k m := by
+    faultyKey ∉ honestKeys ⟨S, stock⟩ rho ∧ (∀ e ∈ rho.events, e.node ≠ rho.key faultyKey) ∧
+      (∀ k ℓ, ¬ (simTrace ⟨S, stock⟩ rho one_le_card).CallAt faultyKey k ℓ) ∧
+      (∀ k a, ¬ (simTrace ⟨S, stock⟩ rho one_le_card).SignAt faultyKey k a) ∧
+      ∀ k m, ¬ (simTrace ⟨S, stock⟩ rho one_le_card).EmitAt faultyKey k m := by
   have hhon : rho.faultyAt 0 = {0} := congrArg (fun p => p.faultyAt 0) hp
-  have hf : faultyKey ∉ honestKeys S rho := by
-    rw [mem_honestKeys_iff]
+  have hf : faultyKey ∉ honestKeys ⟨S, stock⟩ rho := by
+    rw [mem_honestKeys_iff ⟨S, stock⟩ rho]
     rw [hk, hhon]
     decide
   have hc := not_callAt_of_not_honest hp hv hf
   refine ⟨hf, fun e he h => hf ?_, hc, fun k a ⟨_, h⟩ => hc k _ h,
     fun k m ⟨_, h, _⟩ => hc k _ h⟩
-  rw [mem_honestKeys_iff]
+  rw [mem_honestKeys_iff ⟨S, stock⟩ rho]
   simpa only [rho.faultyAt_eq_zero (point_constant hp), h] using hv.honest_only e he
 
 variable (S)
@@ -203,11 +206,12 @@ with `NoCollRun`, one faulty key (`f = 1`), and `f < 2q − n`. -/
 theorem faulty_run :
     ∃ rho : Model.Run (compiled (goldilocks S)) point.env, rho.point = point ∧
       rho.key = Equiv.refl _ ∧ rho.sel = sel S ∧ rho.ExecutionValid ∧
-      GoldilocksRun (runProposer S rho one_le_card) (digestOf S rho) (honestKeys S rho)
-        (simTrace S rho one_le_card) ∧
-      Compose.NoCollRun (digestOf S rho) (simTrace S rho one_le_card) ∧
-      (honestKeys S rho)ᶜ.ncard = 1 ∧
-      (honestKeys S rho)ᶜ.ncard < 2 * (S.params (pubOf point.env) one_le_card).toParams.q -
+      GoldilocksRun (runProposer ⟨S, stock⟩ rho one_le_card) (digestOf ⟨S, stock⟩ rho)
+          (honestKeys ⟨S, stock⟩ rho)
+        (simTrace ⟨S, stock⟩ rho one_le_card) ∧
+      Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho one_le_card) ∧
+      (honestKeys ⟨S, stock⟩ rho)ᶜ.ncard = 1 ∧
+      (honestKeys ⟨S, stock⟩ rho)ᶜ.ncard < 2 * (S.params (pubOf point.env) one_le_card).toParams.q -
         (S.params (pubOf point.env) one_le_card).n := by
   obtain ⟨rho, hp, hk, hs, hv, hc, -, -⟩ := Shape.coverage (goldilocks S) point (by decide)
     (by exact Equiv.refl _) (sel S) (sel_admits S) 0
@@ -221,13 +225,14 @@ theorem faulty_run :
 key signs a slashable pair. -/
 theorem faulty_run_safe :
     ∃ rho : Model.Run (compiled (goldilocks S)) point.env, rho.point = point ∧
-      rho.ExecutionValid ∧ (honestKeys S rho)ᶜ.ncard = 1 ∧
-      (∀ y ∈ honestKeys S rho, ∀ z ∈ honestKeys S rho, ∀ i j,
-        Compatible ((simTrace S rho one_le_card).HonestBlocks (honestKeys S rho))
-          ((simTrace S rho one_le_card).finalizedAt y i)
-          ((simTrace S rho one_le_card).finalizedAt z j)) ∧
-      ∀ v ∈ honestKeys S rho, ∀ k k' a b, (simTrace S rho one_le_card).SignAt v k a →
-        (simTrace S rho one_le_card).SignAt v k' b → ¬ FG.slashable a b := by
+      rho.ExecutionValid ∧ (honestKeys ⟨S, stock⟩ rho)ᶜ.ncard = 1 ∧
+      (∀ y ∈ honestKeys ⟨S, stock⟩ rho, ∀ z ∈ honestKeys ⟨S, stock⟩ rho, ∀ i j,
+        Compatible ((simTrace ⟨S, stock⟩ rho one_le_card).HonestBlocks (honestKeys ⟨S, stock⟩ rho))
+          ((simTrace ⟨S, stock⟩ rho one_le_card).finalizedAt y i)
+          ((simTrace ⟨S, stock⟩ rho one_le_card).finalizedAt z j)) ∧
+      ∀ v ∈ honestKeys ⟨S, stock⟩ rho, ∀ k k' a b, (simTrace ⟨S, stock⟩ rho one_le_card).SignAt
+          v k a →
+        (simTrace ⟨S, stock⟩ rho one_le_card).SignAt v k' b → ¬ FG.slashable a b := by
   obtain ⟨rho, hp, -, -, hv, hrun, hnc, hf, hlt⟩ := faulty_run S
   exact ⟨rho, hp, hv, hf, Regimes.finalized_safe _ _ _ _ _ _ hrun hnc hlt,
     Regimes.non_framing _ _ _ _ _ _ hrun⟩
@@ -237,16 +242,17 @@ and collision freedom, `f = 1 < 2q − n`, `f < h_t` at every `t ∈ [0, 40]` (`
 silent faulty key. -/
 theorem faulty_run_premises :
     ∃ rho : Model.Run (compiled (goldilocks S)) point.env, rho.ExecutionValid ∧
-      GoldilocksRun (runProposer S rho one_le_card) (digestOf S rho) (honestKeys S rho)
-        (simTrace S rho one_le_card) ∧
-      Compose.NoCollRun (digestOf S rho) (simTrace S rho one_le_card) ∧
-      (honestKeys S rho)ᶜ.ncard = 1 ∧
-      (honestKeys S rho)ᶜ.ncard < 2 * (S.params (pubOf point.env) one_le_card).toParams.q -
+      GoldilocksRun (runProposer ⟨S, stock⟩ rho one_le_card) (digestOf ⟨S, stock⟩ rho)
+          (honestKeys ⟨S, stock⟩ rho)
+        (simTrace ⟨S, stock⟩ rho one_le_card) ∧
+      Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho one_le_card) ∧
+      (honestKeys ⟨S, stock⟩ rho)ᶜ.ncard = 1 ∧
+      (honestKeys ⟨S, stock⟩ rho)ᶜ.ncard < 2 * (S.params (pubOf point.env) one_le_card).toParams.q -
         (S.params (pubOf point.env) one_le_card).n ∧
       (∀ t : Time, 0 ≤ t → t ≤ 40 →
-        (simTrace S rho one_le_card).honestAwakeJoined (honestKeys S rho) t = 3 ∧
-        (simTrace S rho one_le_card).FaultBound (honestKeys S rho) t) ∧
-      ∀ k ℓ, ¬ (simTrace S rho one_le_card).CallAt faultyKey k ℓ := by
+        (simTrace ⟨S, stock⟩ rho one_le_card).honestAwakeJoined (honestKeys ⟨S, stock⟩ rho) t = 3 ∧
+        (simTrace ⟨S, stock⟩ rho one_le_card).FaultBound (honestKeys ⟨S, stock⟩ rho) t) ∧
+      ∀ k ℓ, ¬ (simTrace ⟨S, stock⟩ rho one_le_card).CallAt faultyKey k ℓ := by
   obtain ⟨rho, hp, hk, -, hv, hrun, hnc, hf, hlt⟩ := faulty_run S
   exact ⟨rho, hv, hrun, hnc, hf, hlt,
     fun _ ht htb => ⟨honestAwakeJoined_eq hp hv ht htb, faultBound hp hv ht htb⟩,

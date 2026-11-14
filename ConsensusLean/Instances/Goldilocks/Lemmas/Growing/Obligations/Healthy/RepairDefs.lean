@@ -24,7 +24,8 @@ structure HealthyRepairScheduleAt (Q : HealthyPreparationQueryAt S A V) where
   resetTime : Time
   deltaF : Time
   reset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
-    (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst deltaF resetTime Q.bound
+    (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) (digestOf ⟨S, stock⟩ Q.run.2) Q.gst deltaF resetTime
+        Q.bound
   cleanLabel : Nat
   cleanLabel_eq : cleanLabel = Healing.cleanLabel Q.params resetTime
   duration_bound : 18 * Q.params.Δ ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run
@@ -47,13 +48,13 @@ structure HealthyRepairOpeningAt (Q : HealthyPreparationQueryAt S A V)
   bounded : Q.params.ts slot ≤ D.query + 4 * (Q.index : Time) * Q.params.Δ
   old_lt : D.oldLabel < slot
   label : block.slot = slot
-  proposes : Q.trace.ProposesAt (runProposer S Q.run.2 Q.hn slot) cut block
-  accepts : Q.trace.AcceptAt (runProposer S Q.run.2 Q.hn slot) cut block
+  proposes : Q.trace.ProposesAt (runProposer ⟨S, stock⟩ Q.run.2 Q.hn slot) cut block
+  accepts : Q.trace.AcceptAt (runProposer ⟨S, stock⟩ Q.run.2 Q.hn slot) cut block
   time : Q.trace.time cut = Q.params.ts slot
   ready : Regimes.Growing.ReadyAt Q.trace Q.keys
     ((Sys (goldilocks S) V).cDur (K S A) Q.run)
-    (runProposer S Q.run.2 Q.hn slot) (Q.params.ts slot)
-  held : runProposer S Q.run.2 Q.hn slot ∈ Q.keys (Q.params.ts slot + Q.params.Δ)
+    (runProposer ⟨S, stock⟩ Q.run.2 Q.hn slot) (Q.params.ts slot)
+  held : runProposer ⟨S, stock⟩ Q.run.2 Q.hn slot ∈ Q.keys (Q.params.ts slot + Q.params.Δ)
 
 /-- Immediate repair of every receiver ready at the opening's update: its update of the opening's
 label, and every record looked up just after it covered by a result or optimistic lock of a node

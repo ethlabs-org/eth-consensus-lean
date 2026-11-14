@@ -141,8 +141,8 @@ theorem tips_comparable_of_origin_witnesses_at (Q : HealthyPreparationQueryAt S 
     (hCC : Goldilocks.Compatible (Q.trace.HonestBlocksAt Q.keys) C C') :
     Goldilocks.Compatible (Q.trace.HonestBlocksAt Q.keys) R R' := by
   have hU := Compose.Growing.honest_blocks_coherent
-    (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid)
-    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision)
+    (simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid)
+    (noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision)
   rcases hCC with h | h
   · exact Anc.total hU (hR.trans h) hR'
   · exact Anc.total hU hR (hR'.trans h)
@@ -152,7 +152,7 @@ theorem healthy_query_call_time_le_at (Q : HealthyPreparationQueryAt S A V)
     {y : Fin Q.params.n} {j : Nat} (hj : Q.trace.IsCall y j) :
     Q.trace.time j ≤ Q.run.2.horizon := by
   obtain ⟨ell, _, hlabel⟩ := hj
-  exact simTraceAt_labelled_time_le S Q.run.2 Q.hn Q.valid (by rw [hlabel]; simp)
+  exact simTraceAt_labelled_time_le ⟨S, stock⟩ Q.run.2 Q.hn Q.valid (by rw [hlabel]; simp)
 
 /-- The catch-up of a query with a repair schedule: its reset, after the snapshot `c_z > ḡ + 8Δ`,
 is within the query's bound. -/
@@ -168,7 +168,7 @@ schedule. Neither the reset nor the reserve is produced here. -/
 theorem healthy_repair_schedule_of_reset_at
     (Q : HealthyPreparationQueryAt S A V) {ΔF a : Time}
     (hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
-      (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2)
+      (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) (digestOf ⟨S, stock⟩ Q.run.2)
       Q.gst ΔF a Q.bound)
     (hreserve : max Q.ready (Healing.drainTime Q.params a) +
       (4 * (Q.index : Time) + 6) * Q.params.Δ < Q.heal - 1) :
@@ -268,7 +268,7 @@ theorem healthy_current_record_sources_before_now_at (Q : HealthyPreparationQuer
   have ht0 : 0 ≤ t := (hzero.trans hready.le).trans hTt.le
   -- the receiver is ready at the update time
   have hyT : y ∈ Q.keys (Q.params.ts O.slot + 6 * Q.params.Δ) :=
-    honestKeysAt_antitone S Q.run.2 hTt.le hy
+    honestKeysAt_antitone ⟨S, stock⟩ Q.run.2 hTt.le hy
   have hr : Regimes.Growing.ReadyAt Q.trace Q.keys
       ((Sys (goldilocks S) V).cDur (K S A) Q.run) y
       (Q.params.ts O.slot + 6 * Q.params.Δ) := by
@@ -281,9 +281,9 @@ theorem healthy_current_record_sources_before_now_at (Q : HealthyPreparationQuer
       exact hready
     have hτb : τ ≤ Q.bound := hτT.trans (hTt.le.trans htb)
     have hτh : τ ≤ Q.run.2.horizon := hτb.trans Q.bound_le
-    have hyτ : y ∈ Q.keys τ := honestKeysAt_antitone S Q.run.2 hτT hyT
-    rw [mem_honestKeysAt_iff, min_eq_left hτh] at hyτ
-    rw [simTraceAt_awake_iff, awakeAt_iff]
+    have hyτ : y ∈ Q.keys τ := honestKeysAt_antitone ⟨S, stock⟩ Q.run.2 hτT hyT
+    rw [mem_honestKeysAt_iff ⟨S, stock⟩ Q.run.2, min_eq_left hτh] at hyτ
+    rw [simTraceAt_awake_iff ⟨S, stock⟩ Q.run.2 Q.hn, awakeAt_iff ⟨S, stock⟩ Q.run.2 Q.hn]
     exact ⟨Q.healthy.2.1.2 _ τ hgτ hτb hyτ, (le_max_right _ _).trans hgτ, hτh⟩
   obtain ⟨a, ell, ha, hat, -, hcover⟩ := healthyReceiverRepairAt_iff.mp hrepair y hr
   have han : a < n := by
@@ -309,7 +309,7 @@ theorem healthy_current_record_sources_before_now_at (Q : HealthyPreparationQuer
       have hle1 : ∀ q < k + 1, Q.trace.time q ≤ t := fun q hq => hrp.1 q (by omega)
       have hle0 : ∀ q < k, Q.trace.time q ≤ t := fun q hq => hrp.1 q (by omega)
       have hkt : Q.trace.time k ≤ t := hrp.1 k (by omega)
-      have hyk : y ∈ Q.keys (Q.trace.time k) := honestKeysAt_antitone S Q.run.2 hkt hy
+      have hyk : y ∈ Q.keys (Q.trace.time k) := honestKeysAt_antitone ⟨S, stock⟩ Q.run.2 hkt hy
       rcases record_step_origin_at hrun hyk with heq | ⟨C, hC, hCr, s, CV, hs⟩
       · obtain ⟨x, q, s, B, DV, hx, hqk, hqb, hsl, hB, hRB⟩ :=
           ih (Nat.le_of_succ_le hkn) R

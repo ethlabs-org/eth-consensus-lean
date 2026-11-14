@@ -79,7 +79,7 @@ theorem continued_live_after_handover (S : Setup) (A : ContractAssumptions S) (V
   obtain ⟨r', σ, hseed, t₁, -, hdt₁, hlate, hinv⟩ :=
     Obligations.Growing.handover_invariant_at
       (Obligations.Growing.handoverQuery S A V hn hv hx hcap i hh hTh) h0 hb hp'
-  have hnc := noCollRun_simTraceAt S rho hn hv hx
+  have hnc := noCollRun_simTraceAt ⟨S, stock⟩ rho hn hv hx
   -- the reset service through the horizon, from partial synchrony
   have hsvc := Obligations.Growing.resetService_of_psync_at S rho hn hv hnc
     ((Model.sysOf_delivers_iff _ _ _ _).mp hh.1)
@@ -109,7 +109,7 @@ theorem continued_live_after_handover (S : Setup) (A : ContractAssumptions S) (V
     change 18 * E.ΔAC ≤ Sy.cDur K ⟨E, rho⟩
     rw [hcD]
     linarith
-  have hB := Obligations.Growing.sleepy_bounds_at S rho hn hv le_rfl hhalf hσr
+  have hB := Obligations.Growing.sleepy_bounds_at ⟨S, stock⟩ rho hn hv le_rfl hhalf hσr
     (le_max_of_le_left ((hσr.trans hrT).trans hTh))
   -- conviction below a third on held chains
   have hcv := Obligations.Growing.chainConvictedBelow_at S A rho hn hv hh.2.2.2.2

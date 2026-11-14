@@ -82,8 +82,8 @@ structure ConfirmedProducerSlotAt (Q : ConfirmedQueryAt S A V) where
   fresh : Q.query < Q.params.ts slot
   margin : Q.params.ts slot + 6 * Q.params.Δ ≤ Q.deadline
   ready : Regimes.Growing.ReadyAt Q.trace Q.keys Q.duration
-    (runProposer S Q.run.2 Q.hn slot) (Q.params.ts slot)
-  hold : runProposer S Q.run.2 Q.hn slot ∈
+    (runProposer ⟨S, stock⟩ Q.run.2 Q.hn slot) (Q.params.ts slot)
+  hold : runProposer ⟨S, stock⟩ Q.run.2 Q.hn slot ∈
     Q.keys (Q.params.ts slot + Regimes.Growing.hold Q.params)
 
 /-- Recurrence/grid selection after an explicit readiness start, at the exact readiness
@@ -94,13 +94,13 @@ theorem confirmed_query_slot_at (Q : ConfirmedQueryAt S A V) {ready : Time}
     (hquery : max ready 0 ≤ Q.query) : Nonempty (ConfirmedProducerSlotAt S A V Q) := by
   obtain ⟨s, hs1, hlo, hmargin, hts0, htsh, hR, hH⟩ := nonfinal_query_slot S A V Q.run Q.hn
     Q.nonfinal Q.index Q.bounded hprogress hquery
-  have hnode := ready_transport_at S Q.run.2 Q.hn Q.valid hts0 htsh hR
-  have hkey : Q.run.2.ownKey (Q.run.2.key (runProposer S Q.run.2 Q.hn s)) =
-      runProposer S Q.run.2 Q.hn s := Q.run.2.key.symm_apply_apply _
-  rw [hkey] at hnode
-  have hhold : runProposer S Q.run.2 Q.hn s ∈
+  have hnode := ready_transport_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid hts0 htsh hR
+  have hkey : Q.run.2.ownKey (Q.run.2.key (runProposer ⟨S, stock⟩ Q.run.2 Q.hn s)) =
+      runProposer ⟨S, stock⟩ Q.run.2 Q.hn s := Q.run.2.key.symm_apply_apply _
+  erw [hkey] at hnode
+  have hhold : runProposer ⟨S, stock⟩ Q.run.2 Q.hn s ∈
       Q.keys (Q.params.ts s + Regimes.Growing.hold Q.params) := by
-    rw [mem_honestKeysAt_iff]
+    rw [mem_honestKeysAt_iff ⟨S, stock⟩ Q.run.2]
     exact hH
   exact ⟨⟨s, hs1, hlo, hmargin, hnode, hhold⟩⟩
 
@@ -108,11 +108,11 @@ theorem confirmed_query_slot_at (Q : ConfirmedQueryAt S A V) {ready : Time}
 theorem confirmed_slot_event_at (Q : ConfirmedQueryAt S A V)
     (W : ConfirmedProducerSlotAt S A V Q) :
     ∃ (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) (k : Nat),
-      B.proposer = runProposer S Q.run.2 Q.hn W.slot ∧
+      B.proposer = runProposer ⟨S, stock⟩ Q.run.2 Q.hn W.slot ∧
       Q.trace.ProposesAt B.proposer k B ∧ Q.trace.time k = Q.params.ts W.slot := by
   obtain ⟨k, B, hp, ht⟩ := Regimes.Growing.ready_proposer_proposes_at
-    (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid)
-    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision)
+    (simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid)
+    (noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision)
     W.positive (confirmed_ready_mono_at S A V Q (confirmed_duration_supply_at S A V Q) W.ready)
   exact ⟨B, k, hp.2.1, hp.2.1 ▸ hp, ht⟩
 
@@ -134,7 +134,7 @@ theorem confirmed_payload_projection_at (Q : ConfirmedQueryAt S A V)
     (P.bounded.trans Q.bounded) hprop
   refine ⟨_, k, headerOf Q.params P.block, P.fresh, hk, hr, ?_⟩
   exact confirmed_inBy_at S Q.run.2 Q.hn Q.valid
-    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision)
+    (noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision)
     (mul_nonneg (Int.natCast_nonneg _) Q.run.1.ΔAC_pos.le)
     hτ P.bounded Q.bounded hprop coverage
 

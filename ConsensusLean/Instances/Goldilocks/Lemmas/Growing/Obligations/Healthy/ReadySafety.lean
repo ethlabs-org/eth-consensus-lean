@@ -41,7 +41,7 @@ theorem healthy_ready_safety_at (Q : HealthyPreparationQueryAt S A V)
       .confirmed Q.heal := by
   have hc0 : 0 ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run - 1 := by
     linarith [one_le_cDur S A V Q]
-  have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
   have hr : ∀ {v i}, Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime i) →
       Q.run.2.point.Ready (((Sys (goldilocks S) V).cDur (K S A) Q.run - 1) + 1) v
@@ -54,15 +54,17 @@ theorem healthy_ready_safety_at (Q : HealthyPreparationQueryAt S A V)
     rw [hread, hread']
     rcases healthy_cut_tips_comparable_at S A V Q h0 hb hp u v i j hi hj hu hv (hh.trans hB)
       (hh'.trans hB) with hc | hc
-    · exact Or.inl (read_prefix S Q.run.2 Q.hn Q.valid hnc h0' hrp.1 hra.1 h0'' hrp'.1 hra'.1 hc)
-    · exact Or.inr (read_prefix S Q.run.2 Q.hn Q.valid hnc h0'' hrp'.1 hra'.1 h0' hrp.1 hra.1 hc)
+    · exact Or.inl
+        (read_prefix ⟨S, stock⟩ Q.run.2 Q.hn Q.valid hnc h0' hrp.1 hra.1 h0'' hrp'.1 hra'.1 hc)
+    · exact Or.inr
+        (read_prefix ⟨S, stock⟩ Q.run.2 Q.hn Q.valid hnc h0'' hrp'.1 hra'.1 h0' hrp.1 hra.1 hc)
   · intro v i j hi hij hj hvi hvj
     obtain ⟨hrp, h0', -, hra, hread⟩ :=
       engine_read_point S Q.run.2 Q.hn Q.valid hc0 hi.1 (hr hvi)
     obtain ⟨hrp', h0'', hh', hra', hread'⟩ :=
       engine_read_point S Q.run.2 Q.hn Q.valid hc0 hj.1 (hr hvj)
     rw [hread, hread']
-    exact read_prefix S Q.run.2 Q.hn Q.valid hnc h0' hrp.1 hra.1 h0'' hrp'.1 hra'.1
+    exact read_prefix ⟨S, stock⟩ Q.run.2 Q.hn Q.valid hnc h0' hrp.1 hra.1 h0'' hrp'.1 hra'.1
       (healthy_cut_tips_ancestor_at S A V Q h0 hb hp v i j hi hij hj hvi hvj (hh'.trans hB))
 
 end Consensus.Goldilocks.Obligations.Growing

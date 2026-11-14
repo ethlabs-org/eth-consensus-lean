@@ -227,30 +227,30 @@ deadline coverage for the same actual confirmed proposal. -/
 theorem healthy_confirmed_coverage_of_service
     (Q : ConfirmedQuery S A V) (P : ConfirmedProposal S A V Q)
     {a ΔF : Time} {u : Nat}
-    (hp : Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
-      (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2)
+    (hp : Healing.ResetPremisesUpTo Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
+      (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) (digestOf ⟨S, stock⟩ Q.run.2)
       Q.gst ΔF a Q.run.2.horizon)
-    (hc : Healing.CatchRun Q.trace (honestKeys S Q.run.2)
+    (hc : Healing.CatchRun Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
       Q.gst (2 * Q.params.Δ))
-    (hdesignated : P.block.proposer = runProposer S Q.run.2 Q.hn u)
+    (hdesignated : P.block.proposer = runProposer ⟨S, stock⟩ Q.run.2 Q.hn u)
     (hPs : P.block.slot = u)
     (hR : Healing.drainTime Q.params a ≤ Q.params.ts u)
     (hgu : SA.gbar Q.gst + 4 * Q.params.Δ ≤ Q.params.ts u)
     (hmargin : Q.params.ts u + 6 * Q.params.Δ ≤ Q.deadline)
-    (hlocks : ∀ y ∈ honestKeys S Q.run.2, ∀ j ell,
+    (hlocks : ∀ y ∈ honestKeys ⟨S, stock⟩ Q.run.2, ∀ j ell,
       SA.UpdateAt Q.trace.projAC y j u ell →
       ∃ e, u + 2 ≤ e ∧ (⟨P.block.root, u, true, e⟩ : SA.Lock) ∈ (Q.trace.projAC.post j).locks)
     (hcut : ∃ i, Regimes.CutAfter Q.trace i (Q.params.ts u + 6 * Q.params.Δ))
     (hcontinue : ∀ y i j,
-      Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration y Q.deadline →
+      Regimes.ReadyAt Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) Q.duration y Q.deadline →
       Regimes.CutAfter Q.trace i (Q.params.ts u + 6 * Q.params.Δ) →
       Regimes.CutAfter Q.trace j Q.deadline →
-      Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2))
+      Anc (Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2))
         (Regimes.readAfter Q.trace y i (Q.params.ts u + 6 * Q.params.Δ))
         (Regimes.readAfter Q.trace y j Q.deadline)) :
-    ∀ y j, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration y Q.deadline →
+    ∀ y j, Regimes.ReadyAt Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) Q.duration y Q.deadline →
       Regimes.CutAfter Q.trace j Q.deadline →
-      Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) P.block
+      Anc (Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2)) P.block
         (Regimes.readAfter Q.trace y j Q.deadline) := by
   obtain ⟨i, hi⟩ := hcut
   intro y j hy hj

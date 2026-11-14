@@ -51,22 +51,24 @@ theorem hsSharedUpTo_of_rows (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fint
     (hconst : run.2.point.ConstantFaults)
     (valid : (Sys (goldilocks S) V).Valid run) (noCollision : ¬ run.2.HashCollision) {g : Time}
     (healthy : (Sys (goldilocks S) V).Healthy (K S A) g run) {ΔF : Time}
-    (hrow : PSyncFGAttTransport S run.2 (simTrace S run.2 hn) (honestKeys S run.2) ΔF)
+    (hrow : PSyncFGAttTransport S run.2 (simTrace ⟨S, stock⟩ run.2 hn)
+        (honestKeys ⟨S, stock⟩ run.2) ΔF)
     (hΔF : 0 < ΔF)
     (htd : 6 * (S.params (Model.pubOf run.1) hn).Δ + ΔF ≤
       4 * (S.params (Model.pubOf run.1) hn).Δ * (S.δt : Time)) :
-    Healing.HSSharedUpTo (simTrace S run.2 hn) (honestKeys S run.2) (digestOf S run.2) g
+    Healing.HSSharedUpTo (simTrace ⟨S, stock⟩ run.2 hn) (honestKeys ⟨S, stock⟩ run.2)
+        (digestOf ⟨S, stock⟩ run.2) g
       ΔF run.2.horizon := by
   have hnc := noCollRun_simTrace S run.2 hn hconst valid noCollision
   have hnet : run.2.log.PSync run.2.point g := (Model.sysOf_delivers_iff _ _ _ _).mp healthy.1
-  have hawake : ∀ y ∈ honestKeys S run.2, ∀ t, SA.gbar g ≤ t → t ≤ run.2.horizon →
-      (simTrace S run.2 hn).awake y t := by
+  have hawake : ∀ y ∈ honestKeys ⟨S, stock⟩ run.2, ∀ t, SA.gbar g ≤ t → t ≤ run.2.horizon →
+      (simTrace ⟨S, stock⟩ run.2 hn).awake y t := by
     intro y hy t hg hb
-    rw [simTrace_awake_iff, awakeAt_iff]
+    rw [simTrace_awake_iff ⟨S, stock⟩ run.2 hn, awakeAt_iff ⟨S, stock⟩ run.2 hn]
     exact ⟨healthy.2.1.2 (run.2.key y) t hg hb
       ((run.2.point.honestAt_iff_zero hconst _ _).mpr
-        ((mem_honestKeys_iff S run.2 y).mp hy)), le_trans (le_max_right _ _) hg, hb⟩
-  refine ⟨hnc, simTrace_genesis_root_ok S run.2 hn,
+        ((mem_honestKeys_iff ⟨S, stock⟩ run.2 y).mp hy)), le_trans (le_max_right _ _) hg, hb⟩
+  refine ⟨hnc, simTrace_genesis_root_ok ⟨S, stock⟩ run.2 hn,
     resetService_of_psync S run.2 hn hconst valid hnc hnet hrow hΔF, hawake, ?_, ?_, htd⟩
   · have hpop := healthy.2.1.1
     change ((run.2.faultyAt run.2.horizon).card : ℚ) <
@@ -74,12 +76,12 @@ theorem hsSharedUpTo_of_rows (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fint
     rw [run.2.faultyAt_eq_zero hconst] at hpop
     rw [goldilocksContract_params_eq] at hpop
     change ((run.2.faultyAt 0).card : ℚ) < 1 / 3 * Fintype.card V at hpop
-    have hfault : (honestKeys S run.2)ᶜ.ncard = (run.2.faultyAt 0).card := by
-      have heq : (honestKeys S run.2)ᶜ = run.2.key ⁻¹' (↑(run.2.faultyAt 0) : Set V) := by
-        ext k; simp [mem_honestKeys_iff]
+    have hfault : (honestKeys ⟨S, stock⟩ run.2)ᶜ.ncard = (run.2.faultyAt 0).card := by
+      have heq : (honestKeys ⟨S, stock⟩ run.2)ᶜ = run.2.key ⁻¹' (↑(run.2.faultyAt 0) : Set V) := by
+        ext k; simp [mem_honestKeys_iff ⟨S, stock⟩ run.2]
       rw [heq, Set.ncard_preimage_of_injective_subset_range run.2.key.injective
         (by simp [run.2.key.surjective.range_eq]), Set.ncard_coe_finset]
-    change 3 * (honestKeys S run.2)ᶜ.ncard ≤ Fintype.card V - 1
+    change 3 * (honestKeys ⟨S, stock⟩ run.2)ᶜ.ncard ≤ Fintype.card V - 1
     rw [hfault]
     have hn3 : 3 * (run.2.faultyAt 0).card < Fintype.card V := by
       exact_mod_cast (show (3 : ℚ) * (run.2.faultyAt 0).card < Fintype.card V by linarith)
@@ -87,7 +89,7 @@ theorem hsSharedUpTo_of_rows (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fint
   · intro y hy k hk hkb
     by_contra hlt
     rw [not_le] at hlt
-    exact simTrace_asleep_before_restart S run.2 hn valid y hy k hk
+    exact simTrace_asleep_before_restart ⟨S, stock⟩ run.2 hn valid y hy k hk
       (hawake y hy _ (Int.le_sub_one_of_lt hlt) (by linarith))
 
 /-- The protocol FG delay is positive. -/
@@ -136,7 +138,8 @@ theorem hsSharedUpTo_of_healthy (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ F
     (hΔF : protoFGDelay (Model.pubOf run.1) ≤ ΔF)
     (htd : 6 * (S.params (Model.pubOf run.1) hn).Δ + ΔF ≤
       4 * (S.params (Model.pubOf run.1) hn).Δ * (S.δt : Time)) :
-    Healing.HSSharedUpTo (simTrace S run.2 hn) (honestKeys S run.2) (digestOf S run.2) g
+    Healing.HSSharedUpTo (simTrace ⟨S, stock⟩ run.2 hn) (honestKeys ⟨S, stock⟩ run.2)
+        (digestOf ⟨S, stock⟩ run.2) g
       ΔF run.2.horizon :=
   hsSharedUpTo_of_rows S A V run hn hconst valid noCollision healthy
     ((signed_row_service_psync S run.2 hn hconst valid).mono _ _ _ _ hΔF)

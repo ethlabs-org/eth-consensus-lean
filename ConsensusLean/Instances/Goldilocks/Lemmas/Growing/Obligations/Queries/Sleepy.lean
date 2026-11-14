@@ -34,15 +34,15 @@ theorem sleepyOn_of_duration (p : EnvPoint V) {c d W a b : Time} (hcd : c ≤ d)
 theorem sleepy_query_sync_at (Q : ConfirmedQueryAt S A V)
     (hsleepy : (Sys (goldilocks S) V).Sleepy (K S A) Q.run) :
     Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.deadline :=
-  sleepyServiceBefore_of_syncUntil_at S Q.run.2 Q.hn Q.valid
-    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) Q.bounded
+  sleepyServiceBefore_of_syncUntil_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
+    (noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision) Q.bounded
     (sleepy_raw_syncUntil S A V Q.run Q.valid hsleepy Q.deadline)
 
 /-- The two sleepy count shapes through the query deadline. -/
 theorem sleepy_query_bounds_at (Q : ConfirmedQueryAt S A V)
     (hsleepy : (Sys (goldilocks S) V).Sleepy (K S A) Q.run) :
     Compose.Growing.SleepyBoundsFrom Q.trace Q.keys 0 Q.deadline :=
-  sleepy_bounds_at S Q.run.2 Q.hn Q.valid Q.bounded (fun t ht htb =>
+  sleepy_bounds_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.bounded (fun t ht htb =>
     sleepyOn_of_duration V _ (confirmed_duration_supply_at S A V Q) hsleepy.2 t ht
       (htb.trans Q.bounded))
     (add_nonneg (Compose.Growing.ts_natCast_nonneg 0) Q.params.toParams.hΔ.le) (le_max_right _ _)
@@ -70,8 +70,8 @@ theorem sleepy_query_producer_at (Q : ConfirmedQueryAt S A V) {ready : Time}
   obtain ⟨B, k, hp, he, ht⟩ := confirmed_slot_event_at S A V Q W
   have hr : Regimes.Growing.ReadyAt Q.trace Q.keys Q.duration B.proposer (Q.trace.time k) := by
     rw [hp, ht]; exact W.ready
-  have hacc := proposal_accepted_at (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid)
-    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) hr.1 he
+  have hacc := proposal_accepted_at (simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid)
+    (noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision) hr.1 he
   have hmargin : Q.trace.time k + 6 * Q.params.Δ ≤ Q.deadline := by
     rw [ht]; exact W.margin
   have hbound : Q.trace.time k ≤ Q.deadline :=
@@ -98,7 +98,7 @@ theorem sleepy_serviced_proposal_coverage_at (Q : ConfirmedQueryAt S A V)
       Anc (Q.trace.HonestBlocksAt Q.keys) P.block (Regimes.readAfter Q.trace y j Q.deadline) := by
   intro y j hy hj
   exact sleepy_include_finite_at S Q.run.2 Q.hn Q.valid
-    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision)
+    (noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision)
     (W.nonnegative.trans P.bounded) W.sync W.bounds
     ⟨P.block.proposer, P.cut, confirmed_ready_mono_at S A V Q W.duration P.ready, W.hold,
       P.proposal, rfl⟩ W.margin le_rfl

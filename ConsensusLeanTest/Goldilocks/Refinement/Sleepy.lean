@@ -142,11 +142,11 @@ deadline `t₀ + Δp = 2`, and the theorem's conclusion then gives its first rel
 envelope. -/
 theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
     ∃ rho : Model.Run (compiled (goldilocks S)) (point H).env, rho.ExecutionValid ∧
-      ∃ y ∈ honestKeys S rho, ∃ (k : Nat) (m : SA.Vote (Fintype.card (Fin 2))),
-        (simTrace S rho one_le_card).EmitAt y k m ∧ m.slot = 0 ∧
-        (simTrace S rho one_le_card).time k ≤ 2 ∧
-        ∃ i, rho.SendsAt (rho.key y) i ((simTrace S rho one_le_card).time k) ∧
-          .mk (.signed y .poll) (.data (.voteForward ((simTrace S rho one_le_card).time k)
+      ∃ y ∈ honestKeys ⟨S, stock⟩ rho, ∃ (k : Nat) (m : SA.Vote (Fintype.card (Fin 2))),
+        (simTrace ⟨S, stock⟩ rho one_le_card).EmitAt y k m ∧ m.slot = 0 ∧
+        (simTrace ⟨S, stock⟩ rho one_le_card).time k ≤ 2 ∧
+        ∃ i, rho.SendsAt (rho.key y) i ((simTrace ⟨S, stock⟩ rho one_le_card).time k) ∧
+          .mk (.signed y .poll) (.data (.voteForward ((simTrace ⟨S, stock⟩ rho one_le_card).time k)
             (encodeVote m))) [voteObj m] ∈ rho.releasesAt i := by
   obtain ⟨rho, hp, -, -, hv, hc, -, -⟩ := Shape.coverage (goldilocks S) (point H)
     (le_trans (by decide) hH)
@@ -160,15 +160,15 @@ theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
   have hrun := simTrace_goldilocksRun S rho hn hf hv
   have hnc := noCollRun_simTrace S rho hn hf hv hc
   let y : Fin (Fintype.card (Fin 2)) := ⟨0, hn⟩
-  have hy : y ∈ honestKeys S rho := by
-    rw [mem_honestKeys_iff]
+  have hy : y ∈ honestKeys ⟨S, stock⟩ rho := by
+    rw [mem_honestKeys_iff ⟨S, stock⟩ rho]
     rw [hhon]
     exact Finset.notMem_empty _
   let sp := S.params (pubOf (point H).env) hn
   have ht : sp.ts 0 + sp.Δ = 2 := by rfl
-  have hawake : ∀ u : Time, 0 ≤ u → u ≤ 2 → (simTrace S rho hn).awake y u := by
+  have hawake : ∀ u : Time, 0 ≤ u → u ≤ 2 → (simTrace ⟨S, stock⟩ rho hn).awake y u := by
     intro u h0 h2
-    rw [simTrace_awake_iff, awakeAt_iff]
+    rw [simTrace_awake_iff ⟨S, stock⟩ rho one_le_card, awakeAt_iff ⟨S, stock⟩ rho one_le_card]
     exact ⟨rfl, h0, by rw [hhor]; exact h2.trans hH⟩
   have h0 : (0 : Time) ≤ sp.ts 0 + sp.Δ := by rw [ht]; decide
   have hc8 : 8 * sp.Δ ≤ 8 * sp.Δ + 1 := Int.le_add_one le_rfl
@@ -177,7 +177,8 @@ theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
       hawake u ((le_max_left _ _).trans hu) (hu'.trans ht.le))
   obtain ⟨k, e, ⟨ℓ, hcall, he⟩, hslot, htime⟩ :=
     Compose.vote_of_awake_joined hrun hnc hy (s := 0) (Compose.mayVote_stock hrun hnc hy 0) hw hj
-  have hem : (simTrace S rho hn).EmitAt y k e.msg := ⟨ℓ, Compose.projAC_callAt.mp hcall, e, he, rfl⟩
+  have hem : (simTrace ⟨S, stock⟩ rho hn).EmitAt y k e.msg :=
+      ⟨ℓ, Compose.projAC_callAt.mp hcall, e, he, rfl⟩
   obtain ⟨i, -, -, hsend, hrel, -⟩ :=
     simTrace_vote_forwarded S rho hn hf hv y hy k e.msg (Or.inl hem)
   exact ⟨rho, hv, y, hy, k, e.msg, hem, hslot, htime.trans ht.le, i, hsend, hrel⟩

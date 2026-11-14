@@ -167,11 +167,11 @@ private theorem confirmed_ready_of_healthy_at (Q : ConfirmedQueryAt S A V)
 `cutTime (endCut t) = t`. -/
 private theorem confirmed_end_cut_at (Q : ConfirmedQueryAt S A V) {v : V} {t : Time}
     (ht : 0 ≤ t) (hth : t ≤ Q.run.2.horizon) (hr : Q.run.2.point.Ready Q.duration v t) :
-    Regimes.CutAfter Q.trace (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t ∧
-      (stateAt S Q.run.2 Q.hn v ((chainTrace Q.run.2).endCut t)).now = t ∧
+    Regimes.CutAfter Q.trace (cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t ∧
+      (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v ((chainTrace Q.run.2).endCut t)).now = t ∧
       (chainTrace Q.run.2).cutTime ((chainTrace Q.run.2).endCut t) = t ∧
       (chainTrace Q.run.2).endCut t ≤ Q.run.2.events.length := by
-  obtain ⟨hcut, -, hnow⟩ := ready_read_cut_at S Q.run.2 Q.hn Q.valid (c := Q.duration)
+  obtain ⟨hcut, -, hnow⟩ := ready_read_cut_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid (c := Q.duration)
     ((mul_nonneg (by norm_num) Q.params.toParams.hΔ.le :
       (0 : Time) ≤ Regimes.catchUp Q.params).trans (confirmed_duration_supply_at S A V Q))
     ht hth hr
@@ -180,7 +180,7 @@ private theorem confirmed_end_cut_at (Q : ConfirmedQueryAt S A V) {v : V} {t : T
     Nat.findGreatest_spec (P := fun i => (chainTrace Q.run.2).cutTime i ≤ t)
       (Nat.zero_le _) ht
   have hlo := (now_bounds_cut S Q.run.2 Q.hn Q.valid v hle).2
-  rw [hnow] at hlo
+  erw [hnow] at hlo
   exact ⟨hcut, hnow, le_antisymm hup hlo, hle⟩
 
 /-- `CutAfter` determines its cut. -/
@@ -195,14 +195,15 @@ private theorem confirmed_cutAfter_unique (Q : ConfirmedQueryAt S A V) {i j : Na
 at the trace cut of that engine cut. -/
 private theorem readAfter_lastOwn (Q : ConfirmedQueryAt S A V) {v : V} {n : Nat}
     (hn : n ≤ Q.run.2.events.length) (t : Time) :
-    Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v n)) t =
-      Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn n) t := by
+    Regimes.readAfter Q.trace (Q.run.2.ownKey v)
+        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v n)) t =
+      Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap ⟨S, stock⟩ Q.run.2 Q.hn n) t := by
   have hq := (lastOwn_spec S Q.run.2 v n).1
-  have h₁ := simTraceAt_state_all S Q.run.2 Q.hn Q.valid v _ (hq.trans hn)
-  have h₂ := simTraceAt_state_all S Q.run.2 Q.hn Q.valid v n hn
+  have h₁ := simTraceAt_state_all ⟨S, stock⟩ Q.run.2 Q.hn Q.valid v _ (hq.trans hn)
+  have h₂ := simTraceAt_state_all ⟨S, stock⟩ Q.run.2 Q.hn Q.valid v n hn
   rw [← stateAt_lastOwn S Q.run.2 Q.hn v n] at h₁
   unfold Regimes.readAfter
-  rw [← h₁, ← h₂]
+  erw [← h₁, ← h₂]
 
 /-- **Healthy selected-proposal service under growing faults**: a confirmed proposal after the
 heal point, in the confirmed read of every node ready at the deadline. The proposal is the actual
@@ -226,8 +227,8 @@ theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt S A V)
       le_rfl, hh⟩
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   have hΔ := Q.params.toParams.hΔ
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
+  have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
   -- the preparation query: `0 ≤ heal ≤ query ≤ deadline ≤ horizon`, progress on `[ready, heal]`
   have h0 : 0 ≤ Q'.heal := by
     change 0 ≤ max Q.gst 0 + ((K S A).params.heal Q.cap Q.index : Time) * Q.run.1.ΔAC
@@ -288,7 +289,7 @@ theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt S A V)
   have hT0 : 0 ≤ Q.params.ts Ws.slot + 6 * Q.params.Δ := h0.trans hhT
   intro y j hy hj
   have hhonD : Q.run.2.point.HonestAt (Q.run.2.key y) Q.deadline := by
-    have h := (mem_honestKeysAt_iff S Q.run.2 _ y).mp hy.1
+    have h := (mem_honestKeysAt_iff ⟨S, stock⟩ Q.run.2 _ y).mp hy.1
     rwa [min_eq_left Q.bounded] at h
   have hhonT : Q.run.2.point.HonestAt (Q.run.2.key y) (Q.params.ts Ws.slot + 6 * Q.params.Δ) :=
     fun h => hhonD (Q.run.2.point.faultyAt_mono hmargin h)
@@ -298,7 +299,7 @@ theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt S A V)
   obtain ⟨hcD, hnD, htD, hlD⟩ := confirmed_end_cut_at S A V Q (hT0.trans hmargin) Q.bounded hvD
   obtain rfl := confirmed_cutAfter_unique S A V Q hj hcD
   have hyT : y ∈ Q.keys (Q.params.ts Ws.slot + 6 * Q.params.Δ) := by
-    rw [mem_honestKeysAt_iff, min_eq_left hTb]
+    rw [mem_honestKeysAt_iff ⟨S, stock⟩ Q.run.2, min_eq_left hTb]
     exact hhonT
   have hfirst := hread y _ hyT hcT
   have hanc := healthy_cut_tips_ancestor_at S A V Q' h0 hb hp'

@@ -91,8 +91,8 @@ private theorem read_frame (Q : HealthyPreparationQueryAt S A V)
       (Node.frame (Q.trace.state y n)).tree ⊆ Q.trace.HonestBlocksAt Q.keys ∧
       Q.trace.projAC.state y n = (Q.trace.state y n).ac ∧
       SA.LocksWF Q.params (Q.trace.state y n).ac.locks := by
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
+  have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
   have ht := C.time_nonneg
   have hle := C.readPoint.1
   have hst : (Q.trace.upTo t).state y n = Q.trace.state y n := Trace.upTo_state Q.trace y hle
@@ -137,8 +137,8 @@ theorem healthy_current_live_candidates_at (Q : HealthyPreparationQueryAt S A V)
     ∀ X ∈ SA.liveLockBlocks Q.params (Q.trace.state y n).ac.locks (Node.frame (Q.trace.state y n))
         t ∪ {(Node.frame (Q.trace.state y n)).fcRoot},
       Goldilocks.Compatible (Node.frame (Q.trace.state y n)).tree X R := by
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
+  have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hc := healthy_schedule_catch_at S A V Q D
   obtain ⟨hPhi, hsub, hst, hwf⟩ := read_frame S A V Q D C
@@ -270,8 +270,8 @@ theorem healthy_current_stored_locks_at (Q : HealthyPreparationQueryAt S A V)
         l.slot ≤ s → ∀ Y ∈ Q.trace.HonestBlocksAt Q.keys, Y.root = l.block →
           Goldilocks.Compatible (Q.trace.HonestBlocksAt Q.keys) Y R := by
   intro z q ell e hz he hqb hes
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
+  have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
   have hd := hrun.time_nonneg q
   have hac := (Compose.goldilocks_ac_projection _ _ _ (Q.keys (Q.trace.time q))
     (Q.trace.upTo (Q.trace.time q)) _ (hrun.upTo hd) (hnc.upTo _)).localRun
@@ -294,8 +294,8 @@ theorem healthy_current_live_chain_at (Q : HealthyPreparationQueryAt S A V)
       ∀ Y ∈ SA.liveLockBlocks Q.params (Q.trace.state y n).ac.locks
         (Node.frame (Q.trace.state y n)) t,
       Goldilocks.Compatible (Node.frame (Q.trace.state y n)).tree X Y := by
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
+  have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   obtain ⟨hPhi, hsub, hst, hwf⟩ := read_frame S A V Q D C
   have hlow := D.lower

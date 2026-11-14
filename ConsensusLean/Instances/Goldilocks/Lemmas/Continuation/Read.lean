@@ -604,12 +604,14 @@ read at the read point of its last own event (`engine_read_point`), whose clock 
 unit behind the cut (`stored_now_ge_cutTime_sub_one`), and ancestry of the reads inside the blocks
 held while honest is a prefix of their confirmed chains (`read_prefix`). -/
 theorem continued_safe_engine_at (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {c t₀ : Time} (hc : 0 ≤ c)
-    (hsafe : Regimes.Growing.ReadySafeOn (simTraceAt S rho hn) (honestKeysAt S rho) c t₀
+    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn)) {c t₀ : Time}
+        (hc : 0 ≤ c)
+    (hsafe : Regimes.Growing.ReadySafeOn (simTraceAt ⟨S, stock⟩ rho hn)
+        (honestKeysAt ⟨S, stock⟩ rho) c t₀
       rho.horizon) :
     (chainTrace rho).ReadySafe (c + 1) .confirmed (t₀ + 1) := by
   have hlag : ∀ v i, (chainTrace rho).InCuts (t₀ + 1) i →
-      rho.point.Ready (c + 1) v (rho.cutTime i) → t₀ ≤ (stateAt S rho hn v i).now := by
+      rho.point.Ready (c + 1) v (rho.cutTime i) → t₀ ≤ (stateAt ⟨S, stock⟩ rho hn v i).now := by
     intro v i hi hr
     have := stored_now_ge_cutTime_sub_one S rho hn hv hi.1 hc hr
     have h2 : t₀ + 1 ≤ rho.cutTime i := hi.2
@@ -622,15 +624,15 @@ theorem continued_safe_engine_at (hv : rho.ExecutionValid)
     rcases hsafe.agree _ _ _ _ _ _ hrp hrp' (cutMap_boundary S rho hn _ _)
         (cutMap_boundary S rho hn _ _) (hlag _ _ hi hu) hh (hlag _ _ hj hv') hh' hra hra' with
       hc | hc
-    · exact Or.inl (read_prefix S rho hn hv hnc h0 hrp.1 hra.1 h0' hrp'.1 hra'.1 hc)
-    · exact Or.inr (read_prefix S rho hn hv hnc h0' hrp'.1 hra'.1 h0 hrp.1 hra.1 hc)
+    · exact Or.inl (read_prefix ⟨S, stock⟩ rho hn hv hnc h0 hrp.1 hra.1 h0' hrp'.1 hra'.1 hc)
+    · exact Or.inr (read_prefix ⟨S, stock⟩ rho hn hv hnc h0' hrp'.1 hra'.1 h0 hrp.1 hra.1 hc)
   · intro v i j hi hij hj hvi hvj
     obtain ⟨hrp, h0, -, hra, hread⟩ := engine_read_point S rho hn hv hc hi.1 hvi
     obtain ⟨hrp', h0', hh', hra', hread'⟩ := engine_read_point S rho hn hv hc hj.1 hvj
     rw [hread, hread']
-    exact read_prefix S rho hn hv hnc h0 hrp.1 hra.1 h0' hrp'.1 hra'.1
+    exact read_prefix ⟨S, stock⟩ rho hn hv hnc h0 hrp.1 hra.1 h0' hrp'.1 hra'.1
       (hsafe.mono _ _ _ _ _ hrp hrp' (cutMap_boundary S rho hn _ _)
-        (cutMap_boundary S rho hn _ _) (cutMap_mono S rho hn (lastOwn_mono S rho v hij))
+        (cutMap_boundary S rho hn _ _) (cutMap_mono ⟨S, stock⟩ rho hn (lastOwn_mono S rho v hij))
         (now_mono S rho hn hv v hij) (hlag _ _ hi hvi) hh' hra hra')
 
 end Consensus.Goldilocks.Obligations.Growing

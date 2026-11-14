@@ -35,8 +35,8 @@ theorem hgp_of_healthyQuery (Q : HealthyPreparationQuery S A V)
     {s₀ N : Nat} (hs : max Q.ready 0 + 4 * Q.params.Δ ≤ Q.params.ts s₀)
     (hN : Q.params.ts N ≤ Q.heal) :
     ∀ a, s₀ ≤ a → a + (Q.index : Nat) ≤ N + 1 → ∃ x, a ≤ x ∧ x < a + (Q.index : Nat) ∧
-      runProposer S Q.run.2 Q.hn x ∈ honestKeys S Q.run.2 ∧
-      ∃ k P, Q.trace.ProposesAt (runProposer S Q.run.2 Q.hn x) k P ∧ P.slot = x := by
+      runProposer ⟨S, stock⟩ Q.run.2 Q.hn x ∈ honestKeys ⟨S, stock⟩ Q.run.2 ∧
+      ∃ k P, Q.trace.ProposesAt (runProposer ⟨S, stock⟩ Q.run.2 Q.hn x) k P ∧ P.slot = x := by
   have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
   have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) (goldilocks S (Model.pubOf Q.run.1)).skel.grid

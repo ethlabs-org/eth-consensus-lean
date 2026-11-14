@@ -33,7 +33,7 @@ structure OutageQuery where
 namespace OutageQuery
 variable {S A V}
 abbrev params (Q : OutageQuery S A V) := S.params (Model.pubOf Q.run.1) Q.hn
-noncomputable abbrev trace (Q : OutageQuery S A V) := simTrace S Q.run.2 Q.hn
+noncomputable abbrev trace (Q : OutageQuery S A V) := simTrace ⟨S, stock⟩ Q.run.2 Q.hn
 noncomputable abbrev duration (Q : OutageQuery S A V) :=
   (Sys (goldilocks S) V).cDur (K S A) Q.run
 end OutageQuery
@@ -41,7 +41,7 @@ end OutageQuery
 /-- Pre-outage service through start, saturating at the finite engine horizon.
 Only labelled recipient cuts require service; no unrestricted SyncRun is inferred. -/
 theorem outage_pre_service (Q : OutageQuery S A V) :
-    Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.start := by
+    Compose.SleepyServiceBefore Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) Q.params.Δ Q.start := by
   let b := min Q.start Q.run.2.horizon
   have h0 : Q.run.2.log.SyncUntil Q.run.2.point Q.start :=
     (Model.sysOf_delivers_iff _ _ _ _).mp Q.outage.net.1
@@ -53,7 +53,7 @@ theorem outage_pre_service (Q : OutageQuery S A V) :
     (min_le_right Q.start Q.run.2.horizon) hnet
   have bound {y j} (hj : Q.trace.IsCall y j) : Q.trace.time j ≤ Q.run.2.horizon := by
     obtain ⟨l, hl⟩ := hj
-    exact simTrace_labelled_time_le S Q.run.2 Q.hn Q.valid (by rw [hl.2]; simp)
+    exact simTrace_labelled_time_le ⟨S, stock⟩ Q.run.2 Q.hn Q.valid (by rw [hl.2]; simp)
   refine ⟨service.deltaF, ⟨?_, ?_⟩, ?_⟩
   · intro x hx i m hi h0 y hy j l hj hb hd
     exact service.ac.message x hx i m hi h0 y hy j l hj
@@ -71,15 +71,15 @@ The witness itself does not assert its protection through the outage. -/
 structure OutageArmedRead (Q : OutageQuery S A V) (v : V) where
   block : SA.Blk Q.params.n (List (FG.Att Q.params.n))
   held : block ∈ (Node.frame (Q.trace.state (Q.run.2.ownKey v)
-    (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T)))).tree
+    (cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T)))).tree
   record :
     let st := Q.trace.state (Q.run.2.ownKey v)
-      (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T))
+      (cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T))
     SA.lookup (Node.frame st) st.ac.latestConfirmed = some block ∨
       (SA.lookup (Node.frame st) st.ac.latestConfirmed = none ∧ block = (Node.frame st).F)
   read : (chainTrace Q.run.2).readAt .confirmed v Q.T <+:
     chainTo (Q.trace.state (Q.run.2.ownKey v)
-      (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T))).fg.blocks
+      (cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T))).fg.blocks
       (block.slot + 1) block
 
 set_option linter.unusedVariables false in
@@ -88,17 +88,18 @@ neither beyond the effective record nor beyond the head. This needs no recency
 of the record and proves no subsequent protection. The service argument remains
 for compatibility with the outage assembly. -/
 theorem outage_arm (Q : OutageQuery S A V)
-    (service : Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.start)
+    (service : Compose.SleepyServiceBefore Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) Q.params.Δ
+        Q.start)
     (v : V) (hv : Q.run.2.point.Ready Q.duration v Q.T) :
     Nonempty (OutageArmedRead S A V Q v) := by
   let i := (chainTrace Q.run.2).endCut Q.T
-  let j := cutMap S Q.run.2 Q.hn i
+  let j := cutMap ⟨S, stock⟩ Q.run.2 Q.hn i
   let st := Q.trace.state (Q.run.2.ownKey v) j
   let Φ := Node.frame st
   have hi : i ≤ Q.run.2.events.length := Nat.findGreatest_le _
   have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
   have hh := (Q.run.2.point.honestAt_iff_zero Q.constant v Q.T).mp hv.1
-  have hy := honest_ownKey (S := S) hh
+  have hy := honest_ownKey (S := ⟨S, stock⟩) hh
   have hr := Compose.fg_reachable hrun.toLocalRun hy j
   have hΦ : FrameOK Φ := (Store.frame_realization _ _ _ _ hr).1
   let R := (SA.lookup Φ st.ac.latestConfirmed).getD Φ.F
@@ -120,9 +121,9 @@ theorem outage_arm (Q : OutageQuery S A V)
     | some D => exact (SA.deepest_mem hd).1.2.1
   refine ⟨⟨R, hR, hrecord, ?_⟩⟩
   change (chainTrace Q.run.2).read .confirmed v i <+: _
-  rw [read_eq_out S Q.run.2 Q.hn, outOf,
-    simTrace_state S Q.run.2 Q.hn Q.constant Q.valid v hh i hi]
-  exact chainTo_prefix hr ((hanc (stateAt S Q.run.2 Q.hn v i).now).mono (fun _ h => h.1))
+  erw [read_eq_out ⟨S, stock⟩ Q.run.2 Q.hn, outOf,
+    simTrace_state ⟨S, stock⟩ Q.run.2 Q.hn Q.constant Q.valid v hh i hi]
+  exact chainTo_prefix hr ((hanc (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now).mono (fun _ h => h.1))
 
 end Consensus.Goldilocks.Obligations
 end

@@ -93,8 +93,8 @@ theorem meetsObligations_sleepySafe_growing : ∀ cap g, (cap = .available ∨ c
       simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
       change 18 * r.1.ΔAC + 1 ≤ (contract_catchUp S A : Nat) * r.1.ΔAC
       linarith [mul_le_mul_of_nonneg_right hc19 (by linarith : (0 : Time) ≤ r.1.ΔAC)]
-    have hnc := noCollRun_simTraceAt S r.2 hn hv hc
-    have hsync := sleepyServiceBefore_of_syncUntil_at S r.2 hn hv hnc le_rfl
+    have hnc := noCollRun_simTraceAt ⟨S, stock⟩ r.2 hn hv hc
+    have hsync := sleepyServiceBefore_of_syncUntil_at ⟨S, stock⟩ r.2 hn hv hnc le_rfl
       (sleepy_raw_syncUntil S A V r hv hs r.2.horizon)
     have hhalf : r.2.point.SleepyOn (1 / 2) (Regimes.catchUp (S.params (Model.pubOf r.1) hn))
         (5 * (S.params (Model.pubOf r.1) hn).Δ) 0 r.2.horizon :=

@@ -135,19 +135,19 @@ theorem healthy_cut_tips_ancestor_of_preparation (Q : HealthyPreparationQuery S 
       ((chainTrace Q.run.2).cutTime i))
     (hvj : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime j)) :
-    Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2))
-      (Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)
-        (stateAt S Q.run.2 Q.hn v i).now)
-      (Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn j)
-        (stateAt S Q.run.2 Q.hn v j).now) := by
+    Anc (Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2))
+      (Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap ⟨S, stock⟩ Q.run.2 Q.hn i)
+        (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now)
+      (Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap ⟨S, stock⟩ Q.run.2 Q.hn j)
+        (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v j).now) := by
   have states := healthy_preserve S A V Q h0 hb W (healthy_prepare S A V Q h0 hb hp W Dprep)
   obtain ⟨D, -, -, -⟩ := healthy_repair_schedule_of_preparation S A V Q W Dprep
   obtain ⟨O, hr⟩ := healthy_bounded_repairing_opening S A V Q h0 hb hp W states D
   rw [healthy_current_record_read S A V Q h0 hb hp W states D O hr hi hvi,
     healthy_current_record_read S A V Q h0 hb hp W states D O hr hj hvj]
   exact effective_record_of_interval D.reset.run D.reset.noColl
-    (honest_ownKey (S := S) ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hvi.1))
-    (cutMap_mono S Q.run.2 Q.hn hij)
+    (honest_ownKey (S := ⟨S, stock⟩) ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hvi.1))
+    (cutMap_mono ⟨S, stock⟩ Q.run.2 Q.hn hij)
     (healthy_current_record_interval S A V Q h0 hb hp W states D O hr hi hj hij hvi) .refl
 
 /-- Engine readiness from health: an honest validator is ready at every `t ∈ [ready, horizon]`
@@ -168,8 +168,8 @@ private theorem confirmed_ready_of_healthy (Q : ConfirmedQuery S A V)
 and `cutTime (endCut t) = t` (`now_bounds_cut` gives the lower bound). -/
 private theorem confirmed_end_cut (Q : ConfirmedQuery S A V) {v : V} {t : Time}
     (ht : 0 ≤ t) (hth : t ≤ Q.run.2.horizon) (hr : Q.run.2.point.Ready Q.duration v t) :
-    Regimes.CutAfter Q.trace (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t ∧
-      (stateAt S Q.run.2 Q.hn v ((chainTrace Q.run.2).endCut t)).now = t ∧
+    Regimes.CutAfter Q.trace (cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t ∧
+      (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v ((chainTrace Q.run.2).endCut t)).now = t ∧
       (chainTrace Q.run.2).cutTime ((chainTrace Q.run.2).endCut t) = t ∧
       (chainTrace Q.run.2).endCut t ≤ Q.run.2.events.length := by
   obtain ⟨hcut, -, hnow⟩ := ready_read_cut S Q.run.2 Q.hn Q.constant Q.valid (c := Q.duration)
@@ -206,9 +206,9 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
         Q'.ready Q'.heal Q'.run →
       ∃ W : HealthyBaseTiming S A V Q', Nonempty (HealthyPreparationSchedule S A V Q' W)) :
     ∃ P : ConfirmedProposal S A V Q,
-      ∀ y j, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration y Q.deadline →
+      ∀ y j, Regimes.ReadyAt Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) Q.duration y Q.deadline →
         Regimes.CutAfter Q.trace j Q.deadline →
-        Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) P.block
+        Anc (Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2)) P.block
           (Regimes.readAfter Q.trace y j Q.deadline) := by
   classical
   let Q' : HealthyPreparationQuery S A V :=
@@ -230,7 +230,7 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
   -- the selected proposal at the query's own readiness
   obtain ⟨Ws⟩ := healthy_query_slot S A V Q hp (max_le (hrh.trans ht) (h0.trans ht))
   obtain ⟨B, k, hBp, he, htk⟩ := confirmed_slot_event S A V Q Ws
-  have hr : Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration B.proposer
+  have hr : Regimes.ReadyAt Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) Q.duration B.proposer
       (Q.trace.time k) := by rw [hBp, htk]; exact Ws.ready
   have hacc := Compose.proposal_accepted (simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid)
     (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision) hr.1 he
@@ -258,7 +258,7 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
   have hR : Healing.drainTime Q.params Dprep.resetTime ≤ Q.params.ts Ws.slot := hdr.trans hq.le
   have hgu : SA.gbar Q.gst + 4 * Q.params.Δ ≤ Q.params.ts Ws.slot := hgr.trans hq.le
   have hTb : Q.params.ts Ws.slot + 6 * Q.params.Δ ≤ Q.run.2.horizon := hmargin.trans Q.bounded
-  have hlocks : ∀ y ∈ honestKeys S Q.run.2, ∀ j ell,
+  have hlocks : ∀ y ∈ honestKeys ⟨S, stock⟩ Q.run.2, ∀ j ell,
       SA.UpdateAt Q.trace.projAC y j Ws.slot ell →
       ∃ e, Ws.slot + 2 ≤ e ∧ (⟨B.root, Ws.slot, true, e⟩ : SA.Lock) ∈
         (Q.trace.projAC.post j).locks :=
@@ -279,7 +279,7 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
     hbound⟩ Dprep.reset hc hBp hPs hR hgu hmargin hlocks hcut ?_
   -- the later-read continuation from the preparation schedule
   intro y i j hy hi hj
-  have hhon := (mem_honestKeys_iff S Q.run.2 y).mp hy.1
+  have hhon := (mem_honestKeys_iff ⟨S, stock⟩ Q.run.2 y).mp hy.1
   have hvT := confirmed_ready_of_healthy S A V Q hh (v := Q.run.2.key y) hhon hrT hTb
   have hvD := confirmed_ready_of_healthy S A V Q hh (v := Q.run.2.key y) hhon
     (hrT.trans hmargin) Q.bounded

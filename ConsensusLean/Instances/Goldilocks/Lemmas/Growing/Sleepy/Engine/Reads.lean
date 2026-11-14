@@ -123,22 +123,23 @@ theorem ready_proposal_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {c τ h : Time} (hτh : τ ≤ rho.horizon)
     {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
-    (hP : Regimes.Growing.ReadyProposalAt (simTraceAt S rho hn) (honestKeysAt S rho) c τ h P) :
+    (hP : Regimes.Growing.ReadyProposalAt (simTraceAt ⟨S, stock⟩ rho hn)
+        (honestKeysAt ⟨S, stock⟩ rho) c τ h P) :
     ∃ k, rho.point.Ready c (rho.key k) τ ∧
       Shape.HonestProposal rho τ k (headerOf (S.params (pubOf E) hn) P) := by
   obtain ⟨p, k, hr, -, hP, htime⟩ := hP
   have hp := hP.2.1
   subst p
   have hhon : rho.point.HonestAt (rho.key P.proposer) τ := by
-    have h := (mem_honestKeysAt_iff S rho τ P.proposer).mp hr.1
+    have h := (mem_honestKeysAt_iff ⟨S, stock⟩ rho τ P.proposer).mp hr.1
     rwa [min_eq_left hτh] at h
   refine ⟨P.proposer, ⟨hhon, ?_⟩, hhon, .proposer P.slot, payloadObjs P.fgPayload P.acPayload,
     rfl, ?_⟩
   · intro u hu hut
     have h := hr.2 u hu hut
-    rw [simTraceAt_awake_iff, awakeAt_iff] at h
+    rw [simTraceAt_awake_iff ⟨S, stock⟩ rho hn, awakeAt_iff ⟨S, stock⟩ rho hn] at h
     exact h.1
-  · have hrel := (simTraceAt_simulates S rho hn hv).block_released P.proposer k P
+  · have hrel := (simTraceAt_simulates ⟨S, stock⟩ rho hn hv).block_released P.proposer k P
       (by rw [htime]; exact hr.1) hP.1
     rw [htime] at hrel
     exact hrel
@@ -149,36 +150,37 @@ events at `t`, its header is in the finalized read of every engine node ready at
 theorem finalized_inBy_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
+    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
     {c t : Time} (hc : 0 ≤ c) (ht : 0 ≤ t) (hth : t ≤ rho.horizon)
     {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
     (hroot : P.root ≠ (S.params (pubOf E) hn).genesisRoot)
-    (hinc : ∀ y j, Regimes.Growing.ReadyAt (simTraceAt S rho hn) (honestKeysAt S rho) c y t →
-      Regimes.CutAfter (simTraceAt S rho hn) j t →
-      Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho)) P
-        ((simTraceAt S rho hn).state y j).fg.F) :
+    (hinc : ∀ y j, Regimes.Growing.ReadyAt (simTraceAt ⟨S, stock⟩ rho hn)
+        (honestKeysAt ⟨S, stock⟩ rho) c y t →
+      Regimes.CutAfter (simTraceAt ⟨S, stock⟩ rho hn) j t →
+      Anc ((simTraceAt ⟨S, stock⟩ rho hn).HonestBlocksAt (honestKeysAt ⟨S, stock⟩ rho)) P
+        ((simTraceAt ⟨S, stock⟩ rho hn).state y j).fg.F) :
     InBy rho c .finalized (headerOf (S.params (pubOf E) hn) P) t := by
   intro v hr
   let i := (chainTrace rho).endCut t
-  let j := cutMap S rho hn i
-  have hrun := simTraceAt_goldilocksRun S rho hn hv
+  let j := cutMap ⟨S, stock⟩ rho hn i
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv
   have hi : i ≤ rho.events.length := Nat.findGreatest_le _
-  have hcut := ready_read_cut_at S rho hn hv hc ht hth hr
-  have hready := ready_transport_at S rho hn hv ht hth hr
+  have hcut := ready_read_cut_at ⟨S, stock⟩ rho hn hv hc ht hth hr
+  have hready := ready_transport_at ⟨S, stock⟩ rho hn hv ht hth hr
   obtain ⟨hreach, -, hsub⟩ := held_state hrun ht hcut.1.1 hready.1
   have htip := (Store.cache_invariants _ _ _ _ hreach).1
   have ha := hinc _ j hready hcut.1
   have hanc := anc_in_store hreach (Compose.Growing.honest_blocks_coherent hrun hnc) hsub ha htip
   have hprefix := chainTo_prefix hreach hanc
   have hmem : headerOf (S.params (pubOf E) hn) P ∈
-      chainTo ((simTraceAt S rho hn).state (rho.ownKey v) j).fg.blocks (P.slot + 1) P := by
+      chainTo ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v) j).fg.blocks (P.slot + 1) P := by
     simp only [chainTo, ite_eq_right hroot]
     split <;> simp
   have hout := hprefix.subset hmem
   have hh : v ∉ rho.faultyAt (rho.cutTime i) := fun h =>
-    hr.1 (rho.faultyAt_mono (cutTime_endCut_le S rho ht) h)
+    hr.1 (rho.faultyAt_mono (cutTime_endCut_le ⟨S, stock⟩ rho ht) h)
   change headerOf (S.params (pubOf E) hn) P ∈ (chainTrace rho).read .finalized v i
-  rw [read_eq_out S rho hn, outOf, ← simTraceAt_state S rho hn hv hh hi]
+  erw [read_eq_out ⟨S, stock⟩ rho hn, outOf, ← simTraceAt_state ⟨S, stock⟩ rho hn hv hh hi]
   exact hout
 
 /-- **Inclusion is engine confirmed output** under growing faults: if a proposal released at
@@ -188,52 +190,55 @@ every engine node ready at `t`. -/
 theorem confirmed_inBy_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
+    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
     {c : Time} (hc : 0 ≤ c) {τ t h : Time} (hτ : 0 ≤ τ) (hτt : τ ≤ t) (hth : t ≤ rho.horizon)
     {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
-    (hP : Regimes.Growing.ReadyProposalAt (simTraceAt S rho hn) (honestKeysAt S rho) c τ h P)
-    (hinc : ∀ y j, Regimes.Growing.ReadyAt (simTraceAt S rho hn) (honestKeysAt S rho) c y t →
-      Regimes.CutAfter (simTraceAt S rho hn) j t →
-      Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho)) P
-        (Regimes.readAfter (simTraceAt S rho hn) y j t)) :
+    (hP : Regimes.Growing.ReadyProposalAt (simTraceAt ⟨S, stock⟩ rho hn)
+        (honestKeysAt ⟨S, stock⟩ rho) c τ h P)
+    (hinc : ∀ y j, Regimes.Growing.ReadyAt (simTraceAt ⟨S, stock⟩ rho hn)
+        (honestKeysAt ⟨S, stock⟩ rho) c y t →
+      Regimes.CutAfter (simTraceAt ⟨S, stock⟩ rho hn) j t →
+      Anc ((simTraceAt ⟨S, stock⟩ rho hn).HonestBlocksAt (honestKeysAt ⟨S, stock⟩ rho)) P
+        (Regimes.readAfter (simTraceAt ⟨S, stock⟩ rho hn) y j t)) :
     InBy rho c .confirmed (headerOf (S.params (pubOf E) hn) P) t := by
-  have hrun := simTraceAt_goldilocksRun S rho hn hv
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv
   have hroot : P.root ≠ (S.params (pubOf E) hn).genesisRoot := by
     obtain ⟨p, k, hp, -, hprop, hk⟩ := hP
     obtain ⟨⟨acc, hc⟩, hpos⟩ := hprop.1
     have hr := (hrun.upTo hτ).toLocalRun
-    have hc' := (Trace.upTo_callAt_of_le (simTraceAt S rho hn) (d := τ) hk.le).2 hc
+    have hc' := (Trace.upTo_callAt_of_le (simTraceAt ⟨S, stock⟩ rho hn) (d := τ) hk.le).2 hc
     rcases Compose.blockCall_cases hr hp.1 hc' with hg | hg
-    · have h0 : (simTraceAt S rho hn).pos k = 0 :=
+    · have h0 : (simTraceAt ⟨S, stock⟩ rho hn).pos k = 0 :=
         (hg.2.1 0 (List.length_pos_iff.mpr hg.1)).2.2.2.1
       exact False.elim (hpos (by simpa using h0))
     · obtain ⟨j, x, _, _, _, d, p', _, hB, _⟩ := hg
-      rw [hB, digestOf_eq]
+      rw [hB, digestOf_eq ⟨S, stock⟩ rho]
       simp only [Node.mkBlock]
       erw [dgOf_eq]
       exact taggedRoot_ne _ _
   intro v hr
   let i := (chainTrace rho).endCut t
-  let j := cutMap S rho hn i
+  let j := cutMap ⟨S, stock⟩ rho hn i
   have hi : i ≤ rho.events.length := Nat.findGreatest_le _
   have ht : 0 ≤ t := hτ.trans hτt
-  have hcut := ready_read_cut_at S rho hn hv hc ht hth hr
-  have hready := ready_transport_at S rho hn hv ht hth hr
+  have hcut := ready_read_cut_at ⟨S, stock⟩ rho hn hv hc ht hth hr
+  have hready := ready_transport_at ⟨S, stock⟩ rho hn hv ht hth hr
   obtain ⟨hreach, hframe, hsub⟩ := held_state hrun ht hcut.1.1 hready.1
   have htip := (Regimes.sa_tips
-    (A := ((simTraceAt S rho hn).state (rho.ownKey v) j).ac) hframe t).1.1
+    (A := ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v) j).ac) hframe t).1.1
   have ha := hinc _ j hready hcut.1
   have hanc := anc_in_store hreach (Compose.Growing.honest_blocks_coherent hrun hnc) hsub ha htip
   have hprefix := chainTo_prefix hreach hanc
   have hmem : headerOf (S.params (pubOf E) hn) P ∈
-      chainTo ((simTraceAt S rho hn).state (rho.ownKey v) j).fg.blocks (P.slot + 1) P := by
+      chainTo ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v) j).fg.blocks (P.slot + 1) P := by
     simp only [chainTo, ite_eq_right hroot]
     split <;> simp
   have hout := hprefix.subset hmem
   have hh : v ∉ rho.faultyAt (rho.cutTime i) := fun h =>
-    hr.1 (rho.faultyAt_mono (cutTime_endCut_le S rho ht) h)
+    hr.1 (rho.faultyAt_mono (cutTime_endCut_le ⟨S, stock⟩ rho ht) h)
   change headerOf (S.params (pubOf E) hn) P ∈ (chainTrace rho).read .confirmed v i
-  rw [read_eq_out S rho hn, outOf, ← simTraceAt_state S rho hn hv hh hi, hcut.2.2]
+  erw [read_eq_out ⟨S, stock⟩ rho hn, outOf, ← simTraceAt_state ⟨S, stock⟩ rho hn hv hh hi,
+    hcut.2.2]
   exact hout
 
 end Consensus.Goldilocks.Obligations.Growing

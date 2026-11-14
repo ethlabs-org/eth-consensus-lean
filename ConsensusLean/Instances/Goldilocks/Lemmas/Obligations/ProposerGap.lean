@@ -107,32 +107,34 @@ theorem duty_proposal_run (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype
     (hduty : HonestReadyIn run.2.point run.2.key (fun s => run.2.sel (.proposer s)) s
       ((Sys (goldilocks S) V).cDur (K S A) run)
       ((goldilocks S (Model.pubOf run.1)).skel.grid.slotTime s) hold) :
-    ∃ k P, Healing.HonestProposalRun (simTrace S run.2 hn) (honestKeys S run.2)
-        (runProposer S run.2 hn) s P ∧
-      (simTrace S run.2 hn).ProposesAt (runProposer S run.2 hn s) k P ∧
-      (simTrace S run.2 hn).AcceptAt (runProposer S run.2 hn s) k P ∧
-      (simTrace S run.2 hn).time k = (S.params (Model.pubOf run.1) hn).ts s ∧ P.slot = s ∧
-      Regimes.ReadyAt (simTrace S run.2 hn) (honestKeys S run.2)
+    ∃ k P, Healing.HonestProposalRun (simTrace ⟨S, stock⟩ run.2 hn) (honestKeys ⟨S, stock⟩ run.2)
+        (runProposer ⟨S, stock⟩ run.2 hn) s P ∧
+      (simTrace ⟨S, stock⟩ run.2 hn).ProposesAt (runProposer ⟨S, stock⟩ run.2 hn s) k P ∧
+      (simTrace ⟨S, stock⟩ run.2 hn).AcceptAt (runProposer ⟨S, stock⟩ run.2 hn s) k P ∧
+      (simTrace ⟨S, stock⟩ run.2 hn).time k = (S.params (Model.pubOf run.1) hn).ts s ∧ P.slot = s ∧
+      Regimes.ReadyAt (simTrace ⟨S, stock⟩ run.2 hn) (honestKeys ⟨S, stock⟩ run.2)
         ((Sys (goldilocks S) V).cDur (K S A) run)
-        (runProposer S run.2 hn s) ((S.params (Model.pubOf run.1) hn).ts s) := by
+        (runProposer ⟨S, stock⟩ run.2 hn s) ((S.params (Model.pubOf run.1) hn).ts s) := by
   have htime : (goldilocks S (Model.pubOf run.1)).skel.grid.slotTime s =
       (S.params (Model.pubOf run.1) hn).ts s := by
     change (s : Time) * (4 * run.1.ΔAC) = 4 * run.1.ΔAC * s
     ring
-  have hmem : runProposer S run.2 hn s ∈ run.2.sel (.proposer s) := by
-    simp only [runProposer_eq, dite_eq_left hduty.1]
-    exact Finset.min'_mem _ _
+  have hmem : runProposer ⟨S, stock⟩ run.2 hn s ∈ run.2.sel (.proposer s) := by
+    rw [runProposer_eq ⟨S, stock⟩ run.2 hn]
+    split
+    · exact Finset.min'_mem _ _
+    · exact absurd hduty.1 ‹_›
   have hR := (hduty.2 _ hmem).1
   rw [htime] at hR
   have h0 : (0 : Time) ≤ (S.params (Model.pubOf run.1) hn).ts s := by
     have := (S.params (Model.pubOf run.1) hn).toParams.hΔ
     simp only [SA.SAParams.ts]; positivity
   have hnode := ready_transport S run.2 hn hv h0 hth hR
-  rw [show run.2.ownKey (run.2.key (runProposer S run.2 hn s)) =
-    runProposer S run.2 hn s from run.2.key.symm_apply_apply _] at hnode
-  have hshort : Regimes.ReadyAt (simTrace S run.2 hn) (honestKeys S run.2)
+  rw [show run.2.ownKey (run.2.key (runProposer ⟨S, stock⟩ run.2 hn s)) =
+    runProposer ⟨S, stock⟩ run.2 hn s from run.2.key.symm_apply_apply _] at hnode
+  have hshort : Regimes.ReadyAt (simTrace ⟨S, stock⟩ run.2 hn) (honestKeys ⟨S, stock⟩ run.2)
       (Regimes.catchUp (S.params (Model.pubOf run.1) hn))
-      (runProposer S run.2 hn s) ((S.params (Model.pubOf run.1) hn).ts s) := by
+      (runProposer ⟨S, stock⟩ run.2 hn s) ((S.params (Model.pubOf run.1) hn).ts s) := by
     refine ⟨hnode.1, fun t ht hts => hnode.2 t ?_ hts⟩
     apply le_trans _ ht
     apply max_le_max_left

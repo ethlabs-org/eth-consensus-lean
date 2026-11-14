@@ -32,9 +32,9 @@ theorem outage_psync (Q : OutageQuery S A V) : Q.run.2.log.PSync Q.run.2.point Q
 
 /-- PG for the lock module (`OutageLockOthers.pg`). -/
 theorem outage_pool_delivery (Q : OutageQuery S A V) :
-    ∀ w ∈ honestKeys S Q.run.2, ∀ c m ℓ, SA.UpdateAt Q.trace.projAC w c m ℓ →
+    ∀ w ∈ honestKeys ⟨S, stock⟩ Q.run.2, ∀ c m ℓ, SA.UpdateAt Q.trace.projAC w c m ℓ →
       Q.stop ≤ Q.params.ts m + Q.params.Δ →
-      ∀ x ∈ honestKeys S Q.run.2, ∀ i e, SA.VoteAt Q.trace.projAC x i e → e.msg.slot = m →
+      ∀ x ∈ honestKeys ⟨S, stock⟩ Q.run.2, ∀ i e, SA.VoteAt Q.trace.projAC x i e → e.msg.slot = m →
         e.msg ∈ (Q.trace.state w c).ac.pool m := by
   intro w hw c m ℓ hu hstop x hx i e hv hes
   have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
@@ -68,7 +68,7 @@ theorem outage_pool_delivery (Q : OutageQuery S A V) :
   have hj : Q.trace.IsCall w c := ⟨_, Compose.projAC_callAt.mp hu.1⟩
   have hb : Q.trace.time c ≤ Q.run.2.horizon := by
     obtain ⟨l, hl⟩ := hj
-    exact simTrace_labelled_time_le S Q.run.2 Q.hn Q.valid (by rw [hl.2]; simp)
+    exact simTrace_labelled_time_le ⟨S, stock⟩ Q.run.2 Q.hn Q.valid (by rw [hl.2]; simp)
   have hi : Q.trace.SendOrAdmitAt x i e.msg := by
     obtain ⟨ℓx, hcx, hex⟩ := hv
     exact ⟨ℓx, Compose.projAC_callAt.mp hcx, Or.inl ⟨e, hex, rfl⟩⟩

@@ -84,16 +84,18 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
   have hsb : Q.params.ts s ≤ Q.run.2.horizon := by linarith only [hsΔ, hd]
   have hready := hr 0 (by simp [Pattern.single])
   simp only [Nat.add_zero] at hready
-  have hmem : runProposer S Q.run.2 Q.hn s ∈ Q.run.2.sel (.proposer s) := by
-    simp only [runProposer_eq, dite_eq_left hready.1]
-    exact Finset.min'_mem _ _
+  have hmem : runProposer ⟨S, stock⟩ Q.run.2 Q.hn s ∈ Q.run.2.sel (.proposer s) := by
+    rw [runProposer_eq ⟨S, stock⟩ Q.run.2 Q.hn]
+    split
+    · exact Finset.min'_mem _ _
+    · exact absurd hready.1 ‹_›
   obtain ⟨hR, hH⟩ := hready.2 _ hmem
   rw [htime] at hR hH
-  have hkey : Q.run.2.ownKey (Q.run.2.key (runProposer S Q.run.2 Q.hn s)) =
-      runProposer S Q.run.2 Q.hn s := Q.run.2.key.symm_apply_apply _
-  have hnode := ready_transport_at S Q.run.2 Q.hn Q.valid (hq0.trans hlo.le) hsb hR
-  rw [hkey] at hnode
-  have hheld : runProposer S Q.run.2 Q.hn s ∈ Q.keys (Q.params.ts s + Q.params.Δ) := by
+  have hkey : Q.run.2.ownKey (Q.run.2.key (runProposer ⟨S, stock⟩ Q.run.2 Q.hn s)) =
+      runProposer ⟨S, stock⟩ Q.run.2 Q.hn s := Q.run.2.key.symm_apply_apply _
+  have hnode := ready_transport_at ⟨S, stock⟩ Q.run.2 Q.hn Q.valid (hq0.trans hlo.le) hsb hR
+  erw [hkey] at hnode
+  have hheld : runProposer ⟨S, stock⟩ Q.run.2 Q.hn s ∈ Q.keys (Q.params.ts s + Q.params.Δ) := by
     have hla : Q.run.2.point.lookAhead (((1 : Nat) : Time) * Q.run.2.point.env.ΔAC)
         (Q.params.ts s) = Q.params.ts s + Q.params.Δ := by
       change min (Q.params.ts s + ((1 : Nat) : Time) * Q.run.1.ΔAC) Q.run.2.horizon =
@@ -101,22 +103,23 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
       rw [Nat.cast_one, one_mul]
       exact min_eq_left hsΔ
     rw [hla] at hH
-    have h := honest_ownKey_at S Q.run.2 hH hsΔ
-    rwa [hkey] at h
+    have h := honest_ownKey_at ⟨S, stock⟩ Q.run.2 hH hsΔ
+    erw [hkey] at h
+    exact h
   have hold : D.oldLabel < s := by
     exact_mod_cast (SA.ts_lt_iff Q.params).mp
       (lt_of_le_of_lt ((le_max_left _ _).trans ((le_max_right _ _).trans
         ((le_max_right _ _).trans D.lower))) hlo)
   have hshort : Regimes.Growing.ReadyAt Q.trace Q.keys (Regimes.catchUp Q.params)
-      (runProposer S Q.run.2 Q.hn s) (Q.params.ts s) := by
+      (runProposer ⟨S, stock⟩ Q.run.2 Q.hn s) (Q.params.ts s) := by
     refine ⟨hnode.1, fun t ht hts => hnode.2 t ?_ hts⟩
     apply le_trans _ ht
     apply max_le_max_left
     have : Regimes.catchUp Q.params ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run := by
       simpa only [Regimes.catchUp] using D.duration_bound
     linarith only [this]
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
+  have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
   obtain ⟨k, P, hP, ht⟩ := Regimes.Growing.ready_proposer_proposes_at hrun hnc (s := s)
     (Nat.zero_le D.oldLabel |>.trans_lt hold) hshort
   have hlabel : P.slot = s := by
@@ -127,7 +130,7 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
       simp only [SA.SAParams.ts] at this
       exact (mul_left_cancel₀ (mul_pos (by norm_num : (0 : Time) < 4) hd).ne' this).symm
     exact_mod_cast he
-  have hpk : runProposer S Q.run.2 Q.hn s ∈ Q.keys (Q.trace.time k) := by
+  have hpk : runProposer ⟨S, stock⟩ Q.run.2 Q.hn s ∈ Q.keys (Q.trace.time k) := by
     rw [ht]; exact hnode.1
   let O : HealthyRepairOpeningAt S A V Q D :=
     ⟨s, k, P, hlo, hbound, hold, hlabel, hP, proposal_accepted_at hrun hnc hpk hP, ht, hnode,

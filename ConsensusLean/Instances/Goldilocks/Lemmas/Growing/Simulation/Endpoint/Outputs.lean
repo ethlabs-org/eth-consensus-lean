@@ -70,14 +70,17 @@ theorem prefix_reader_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S :
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i)) :
-    GoldilocksRun (runProposer S rho hn) (digestOf S rho) (honestKeysAt S rho (rho.cutTime i))
-        ((simTraceAt S rho hn).upTo (rho.cutTime i)) ∧
-      rho.ownKey v ∈ honestKeysAt S rho (rho.cutTime i) ∧
-      ∀ y, ((simTraceAt S rho hn).upTo (rho.cutTime i)).state y (cutMap S rho hn i) =
-        (simTraceAt S rho hn).state y (cutMap S rho hn i) := by
-  obtain ⟨h0, hh'⟩ := cutTime_bounds S rho hv hi
-  exact ⟨(simTraceAt_goldilocksRun S rho hn hv).upTo h0, honest_ownKey_at S rho hh hh',
-    fun y => Trace.upTo_state _ y (cutMap_time_le S rho hn hv hi)⟩
+    GoldilocksRun (runProposer ⟨S, stock⟩ rho hn) (digestOf ⟨S, stock⟩ rho)
+        (honestKeysAt ⟨S, stock⟩ rho (rho.cutTime i))
+        ((simTraceAt ⟨S, stock⟩ rho hn).upTo (rho.cutTime i)) ∧
+      rho.ownKey v ∈ honestKeysAt ⟨S, stock⟩ rho (rho.cutTime i) ∧
+      ∀ y, ((simTraceAt ⟨S, stock⟩ rho hn).upTo (rho.cutTime i)).state y
+          (cutMap ⟨S, stock⟩ rho hn i) =
+        (simTraceAt ⟨S, stock⟩ rho hn).state y (cutMap ⟨S, stock⟩ rho hn i) := by
+  obtain ⟨h0, hh'⟩ := cutTime_bounds ⟨S, stock⟩ rho hv hi
+  exact ⟨(simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv).upTo h0, honest_ownKey_at ⟨S, stock⟩ rho
+      hh hh',
+    fun y => Trace.upTo_state _ y (cutMap_time_le ⟨S, stock⟩ rho hn hv hi)⟩
 
 /-- An accepted block is in its reader's engine view at every later mapped cut. The acceptance
 is an honest event; no honesty of the reader at the later cut is needed. -/
@@ -96,14 +99,15 @@ theorem held_in_view_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : 
     (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i))
     {B : Blk (S.params (pubOf E) hn)}
-    (hB : B ∈ ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.tree)
+    (hB : B ∈
+        ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn i)).fg.tree)
     (hg : B.root ≠ (S.params (pubOf E) hn).genesisRoot) :
     blockObj (S.params (pubOf E) hn) B ∈ rho.ViewIdx v i := by
   obtain ⟨hrun, hy, hs⟩ := prefix_reader_at S rho hn hv hi hh
   rw [← hs] at hB
   rcases Compose.tree_cases hrun.toLocalRun hy hB with hgen | ⟨k, hk, hacc⟩
   · exact (hg (congrArg Block.root hgen)).elim
-  · exact accepted_in_view_at S rho hn hv ((RunTrace.upTo_acceptAt _).mp hacc).2 hk
+  · exact accepted_in_view_at ⟨S, stock⟩ rho hn hv ((RunTrace.upTo_acceptAt _).mp hacc).2 hk
 
 /-- Attestations carried by a held block of a node honest at its engine cut are in its view. -/
 theorem held_att_in_view_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
@@ -111,14 +115,15 @@ theorem held_att_in_view_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (
     (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i))
     {B : Blk (S.params (pubOf E) hn)}
-    (hB : B ∈ ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.tree)
+    (hB : B ∈
+        ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn i)).fg.tree)
     {a : FG.Att (Fintype.card V)} (ha : a ∈ B.fgPayload) : attObj a ∈ rho.ViewIdx v i := by
   obtain ⟨hrun, hy, hs⟩ := prefix_reader_at S rho hn hv hi hh
   rw [← hs] at hB
   rcases Compose.tree_cases hrun.toLocalRun hy hB with hgen | ⟨k, hk, hacc⟩
   · subst B
     simp [Params.genesisBlock] at ha
-  · have hb := accepted_in_view_at S rho hn hv ((RunTrace.upTo_acceptAt _).mp hacc).2 hk
+  · have hb := accepted_in_view_at ⟨S, stock⟩ rho hn hv ((RunTrace.upTo_acceptAt _).mp hacc).2 hk
     obtain ⟨j, o, hj, ho, hc⟩ := rho.mem_viewIdx_iff.mp hb
     refine rho.mem_viewIdx_iff.mpr ⟨j, o, hj, ho, hc.trans (.step ?_ (.refl _))⟩
     change attObj a ∈ payloadObjs B.fgPayload B.acPayload
@@ -134,9 +139,9 @@ theorem engine_outputValid_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   intro v i hi hh
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
   obtain ⟨hrun, hy, hs⟩ := prefix_reader_at S rho hn hv hi hh
-  set T := (simTraceAt S rho hn).upTo (rho.cutTime i)
-  have hr := Compose.fg_reachable hrun.toLocalRun hy (cutMap S rho hn i)
-  have hvalid := reader_chains_valid S rho hn (cutMap S rho hn i) i hr
+  set T := (simTraceAt ⟨S, stock⟩ rho hn).upTo (rho.cutTime i)
+  have hr := Compose.fg_reachable hrun.toLocalRun hy (cutMap ⟨S, stock⟩ rho hn i)
+  have hvalid := reader_chains_valid ⟨S, stock⟩ rho hn (cutMap ⟨S, stock⟩ rho hn i) i hr
     (fun X hX hg => by
       obtain ⟨hroot, _, _, P, _, hpar, _⟩ :=
         (Regimes.validOutput_of_mem hrun hy hX).2 X .refl hg
@@ -144,13 +149,13 @@ theorem engine_outputValid_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     fun X hX hg => by
       rw [hs] at hX
       exact held_in_view_at S rho hn hv hi hh hX hg
-  rw [read_eq_out S rho hn]
-  simp only [outOf, ← simTraceAt_state S rho hn hv hh hi, ← hs]
+  erw [read_eq_out ⟨S, stock⟩ rho hn]
+  simp only [outOf, ← simTraceAt_state ⟨S, stock⟩ rho hn hv hh hi, ← hs]
   cases g with
   | finalized => exact hvalid _ (Store.cache_invariants _ _ _ _ hr).1
   | confirmed =>
     have hΦ := (Store.frame_realization _ _ _ _ hr).1
-    exact hvalid _ (Regimes.sa_tips hΦ (stateAt S rho hn v i).now).1.1
+    exact hvalid _ (Regimes.sa_tips hΦ (stateAt ⟨S, stock⟩ rho hn v i).now).1.1
 
 /-- **R.8 nesting under growing faults.** At every engine cut of a node honest there, its
 finalized read is a prefix of its confirmed read. -/
@@ -164,13 +169,13 @@ theorem engine_nested_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S :
   change i ≤ rho.events.length at hi
   change v ∉ rho.faultyAt (rho.cutTime i) at hh
   obtain ⟨hrun, hy, hs⟩ := prefix_reader_at S rho hn hv hi hh
-  have hr := Compose.fg_reachable hrun.toLocalRun hy (cutMap S rho hn i)
+  have hr := Compose.fg_reachable hrun.toLocalRun hy (cutMap ⟨S, stock⟩ rho hn i)
   have hΦ := (Store.frame_realization _ _ _ _ hr).1
-  have hC := (Regimes.sa_tips (A := (((simTraceAt S rho hn).upTo (rho.cutTime i)).state
-    (rho.ownKey v) (cutMap S rho hn i)).ac) hΦ (stateAt S rho hn v i).now).1
+  have hC := (Regimes.sa_tips (A := (((simTraceAt ⟨S, stock⟩ rho hn).upTo (rho.cutTime i)).state
+    (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn i)).ac) hΦ (stateAt ⟨S, stock⟩ rho hn v i).now).1
   have ha := hΦ.rooted.2 _ hC
-  rw [read_eq_out S rho hn, read_eq_out S rho hn]
-  simp only [outOf, ← simTraceAt_state S rho hn hv hh hi, ← hs]
+  erw [read_eq_out ⟨S, stock⟩ rho hn, read_eq_out ⟨S, stock⟩ rho hn]
+  simp only [outOf, ← simTraceAt_state ⟨S, stock⟩ rho hn hv hh hi, ← hs]
   exact chainTo_prefix hr (ha.mono (fun _ h => h.1))
 
 /-- **R.8 final monotonicity under growing faults.** The finalized reads of a node at two ordered
@@ -187,18 +192,20 @@ theorem engine_finalMonotone_at {V : Type} [Fintype V] [DecidableEq V] {E : Env 
   have hj' : j ≤ rho.events.length := hj.1
   change v ∉ rho.faultyAt (rho.cutTime j) at hh
   obtain ⟨hrun, hy, hs⟩ := prefix_reader_at S rho hn hv hj' hh
-  have hsi : ((simTraceAt S rho hn).upTo (rho.cutTime j)).state (rho.ownKey v)
-      (cutMap S rho hn i) = (simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i) := by
-    have hlaws := (Model.sysOf_laws schema (compiled (goldilocksWith S)) V).trace ⟨E, rho⟩ hv
+  have hsi : ((simTraceAt ⟨S, stock⟩ rho hn).upTo (rho.cutTime j)).state (rho.ownKey v)
+      (cutMap ⟨S, stock⟩ rho hn i) = (simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v)
+          (cutMap ⟨S, stock⟩ rho hn i) := by
+    have hlaws := (Model.sysOf_laws schema (compiled (goldilocksWith ⟨S, stock⟩)) V).trace
+        ⟨E, rho⟩ hv
     have hct : rho.cutTime i ≤ rho.cutTime j := hlaws.cutTime_mono i j hij hj'
-    exact Trace.upTo_state _ _ fun k hk => (cutMap_time_le S rho hn hv hi' k hk).trans hct
-  have hri := Compose.fg_reachable hrun.toLocalRun hy (cutMap S rho hn i)
-  have hrj := Compose.fg_reachable hrun.toLocalRun hy (cutMap S rho hn j)
-  rw [read_eq_out S rho hn, read_eq_out S rho hn]
+    exact Trace.upTo_state _ _ fun k hk => (cutMap_time_le ⟨S, stock⟩ rho hn hv hi' k hk).trans hct
+  have hri := Compose.fg_reachable hrun.toLocalRun hy (cutMap ⟨S, stock⟩ rho hn i)
+  have hrj := Compose.fg_reachable hrun.toLocalRun hy (cutMap ⟨S, stock⟩ rho hn j)
+  erw [read_eq_out ⟨S, stock⟩ rho hn, read_eq_out ⟨S, stock⟩ rho hn]
   simp only [outOf]
-  rw [simTraceAt_state_all S rho hn hv v i hi', simTraceAt_state_all S rho hn hv v j hj', ← hsi,
-    ← hs]
-  have hmono := cutMap_mono S rho hn hij
+  erw [simTraceAt_state_all ⟨S, stock⟩ rho hn hv v i hi',
+    simTraceAt_state_all ⟨S, stock⟩ rho hn hv v j hj', ← hsi, ← hs]
+  have hmono := cutMap_mono ⟨S, stock⟩ rho hn hij
   rw [chainTo_mono hri (Compose.tree_mono hrun.toLocalRun hy hmono)
     (Store.cache_invariants _ _ _ _ hri).1]
   exact chainTo_prefix hrj (Regimes.finalized_monotone _ _ _ _ _ _ hrun _ hy _ _ hmono)

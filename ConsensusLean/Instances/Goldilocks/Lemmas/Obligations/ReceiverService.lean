@@ -23,18 +23,20 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 /-- PSync after `g` gives the receiver-scoped strict AC service for an honest receiver `y`. -/
 theorem receiverServiceAfter_of_psync (hn : 1 ≤ Fintype.card V)
     (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho hn))
     {g : Time} (hnet : rho.log.PSync rho.point g)
-    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) :
-    Compose.ReceiverServiceAfter (honestKeys S rho)
-      ((simTrace S rho hn).HonestBlocks (honestKeys S rho)) g y (simTrace S rho hn).projAC := by
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys ⟨S, stock⟩ rho) :
+    Compose.ReceiverServiceAfter (honestKeys ⟨S, stock⟩ rho)
+      ((simTrace ⟨S, stock⟩ rho hn).HonestBlocks (honestKeys ⟨S, stock⟩ rho)) g y
+          (simTrace ⟨S, stock⟩ rho hn).projAC := by
   have h := (simTrace_goldilocksRun S rho hn hconst hv).toLocalRun
-  have bound {j : Nat} {ℓ} (hc : (simTrace S rho hn).CallAt y j ℓ) :
-      (simTrace S rho hn).time j ≤ rho.horizon :=
-    simTrace_labelled_time_le S rho hn hv (by rw [hc.2]; simp)
+  have bound {j : Nat} {ℓ} (hc : (simTrace ⟨S, stock⟩ rho hn).CallAt y j ℓ) :
+      (simTrace ⟨S, stock⟩ rho hn).time j ≤ rho.horizon :=
+    simTrace_labelled_time_le ⟨S, stock⟩ rho hn hv (by rw [hc.2]; simp)
   refine ⟨fun x hx i m hsa j ℓ hc hdl => ?_, fun x hx i B hacc j ℓ hc hdl hanc => ?_⟩
   · obtain ⟨ℓ₀, hc₀, hm⟩ := hsa
-    have hsa' : (simTrace S rho hn).SendOrAdmitAt x i m := ⟨ℓ₀, Compose.projAC_callAt.1 hc₀, by
+    have hsa' : (simTrace ⟨S, stock⟩ rho hn).SendOrAdmitAt x i m :=
+        ⟨ℓ₀, Compose.projAC_callAt.1 hc₀, by
       rw [Compose.projAC_state h hx] at hm
       exact hm⟩
     have hc := Compose.projAC_callAt.1 hc
@@ -47,7 +49,7 @@ theorem receiverServiceAfter_of_psync (hn : 1 ≤ Fintype.card V)
   · obtain ⟨ℓ₀, hc₀, hb⟩ := hacc
     have hc := Compose.projAC_callAt.1 hc
     obtain ⟨i', rfl, hi', hti⟩ := Compose.acBlock_prev h hx (Compose.projAC_callAt.1 hc₀) hb
-    have hfr : ℓ.frame.F = ((simTrace S rho hn).state y j).fg.F := by
+    have hfr : ℓ.frame.F = ((simTrace ⟨S, stock⟩ rho hn).state y j).fg.F := by
       rw [(h.cutLaw y hy j _ hc).1]
       rfl
     obtain ⟨k, hkj, hk, hlt⟩ := acceptance_relay_psync_any S rho hn hconst hv hnc hnet hx hi'
@@ -58,13 +60,14 @@ theorem receiverServiceAfter_of_psync (hn : 1 ≤ Fintype.card V)
       rcases Nat.lt_or_eq_of_le hkj with hlt' | rfl
       · omega
       · cases Option.some.inj (hk.2.symm.trans hc.2)
-    have hnr : ¬ (simTrace S rho hn).RestartAt y (k + 1) := fun ⟨ℓr, hcr, hr⟩ => by
+    have hnr : ¬ (simTrace ⟨S, stock⟩ rho hn).RestartAt y (k + 1) := fun ⟨ℓr, hcr, hr⟩ => by
       cases Option.some.inj (hc'.2.symm.trans hcr.2)
       rw [hb'] at hr
       cases hr
     refine ⟨k + 1, hkj', ⟨ℓ', Compose.projAC_callAt.2 hc', hb'⟩, ?_⟩
-    change (simTrace S rho hn).time (k + 1) <
-      (simTrace S rho hn).projAC.deadline y (k + 1) (max ((simTrace S rho hn).time (i' + 1)) g)
+    change (simTrace ⟨S, stock⟩ rho hn).time (k + 1) <
+      (simTrace ⟨S, stock⟩ rho hn).projAC.deadline y (k + 1)
+          (max ((simTrace ⟨S, stock⟩ rho hn).time (i' + 1)) g)
     rw [Compose.projAC_deadline, htk, ← hti]
     simp only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] at hlt ⊢
     exact hlt

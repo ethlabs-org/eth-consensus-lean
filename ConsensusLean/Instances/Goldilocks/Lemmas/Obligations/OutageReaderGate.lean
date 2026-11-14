@@ -41,14 +41,16 @@ structure OutageReaderGate (Q : OutageQuery S A V) (w : V) (t : Time) where
   cut : Nat
   label : ACLabel (SA.goldilocksSA Q.params (List (FG.Att Q.params.n)) (S.ro Q.params.n))
   update : SA.UpdateAt Q.trace.projAC (Q.run.2.ownKey w) cut slot label
-  cut_lt : cut < cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)
+  cut_lt : cut < cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)
   restarts : ∀ k, Q.trace.projAC.RestartAt (Q.run.2.ownKey w) k → Q.trace.time k ≤ t →
     Q.trace.time k ≤ Q.params.ts slot
-  read : Regimes.CutAfter Q.trace (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t
+  read : Regimes.CutAfter Q.trace (cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t
   view : (SA.latestView Q.params
-      (Q.trace.state (Q.run.2.ownKey w) (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t))).ac
+      (Q.trace.state (Q.run.2.ownKey w)
+          (cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t))).ac
       (Node.frame (Q.trace.state (Q.run.2.ownKey w)
-        (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)))) t).2 = ((slot + 1 : Nat) : Int)
+        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)))) t).2 =
+            ((slot + 1 : Nat) : Int)
 
 /-- The query's catch-up duration covers the node catch-up `18Δ`, from
 `contract_catchUp_ge_sleepy`. -/
@@ -68,7 +70,7 @@ theorem outage_reader_gate (Q : OutageQuery S A V) {t : Time}
   set sp := Q.params
   set tr := Q.trace
   set y := Q.run.2.ownKey w
-  set j := cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)
+  set j := cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   have hΔ : sp.Δ = Q.run.1.ΔAC := rfl
   have hrec : Q.stop + 9 * Q.run.1.ΔAC ≤ t := by
@@ -82,7 +84,7 @@ theorem outage_reader_gate (Q : OutageQuery S A V) {t : Time}
   have ht0 : 0 ≤ t := by linarith
   -- E0: the reader is ready on the node trace
   have hR := ready_transport S Q.run.2 Q.hn Q.valid ht0 hth hw
-  have hy : y ∈ honestKeys S Q.run.2 := hR.1
+  have hy : y ∈ honestKeys ⟨S, stock⟩ Q.run.2 := hR.1
   -- E1: the latest gate `s = slot(t − 6Δ)`
   obtain ⟨s, hrestored, hgate, hnext⟩ := outage_latest_gate sp hb₁ hrec
   obtain ⟨hslu, hle⟩ := outage_gate_restarts sp hgate hnext
@@ -135,11 +137,11 @@ theorem outage_reader_gate (Q : OutageQuery S A V) {t : Time}
 theorem outage_reader_prefix (Q : OutageQuery S A V) {v : V}
     (hv : Q.run.2.point.Ready Q.duration v Q.T) {t : Time} (hTt : Q.T ≤ t)
     (hth : t ≤ Q.run.2.horizon) {w : V} (hw : Q.run.2.point.Ready Q.duration w t)
-    (h : Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2))
+    (h : Anc (Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2))
       (Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-        (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T)) Q.T)
+        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T)) Q.T)
       (Regimes.readAfter Q.trace (Q.run.2.ownKey w)
-        (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t)) :
+        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t)) :
     (chainTrace Q.run.2).readAt .confirmed v Q.T <+:
       (chainTrace Q.run.2).readAt (resilienceTarget schema .confirmed) w t := by
   have hT0 : 0 ≤ Q.T := Q.outage.1.1

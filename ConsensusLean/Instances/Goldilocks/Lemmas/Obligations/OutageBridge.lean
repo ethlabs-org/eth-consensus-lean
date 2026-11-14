@@ -74,7 +74,8 @@ variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [Decidab
 /-- **The reader bridge.** A reader ready at `t` from the recovery point reads above the armed
 read tip, given the head, early and late record inputs at the origin. -/
 theorem outage_reader_bridge (Q : OutageQuery S A V)
-    (service : Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.start)
+    (service : Compose.SleepyServiceBefore Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) Q.params.Δ
+        Q.start)
     {v : V} (hv : Q.run.2.point.Ready Q.duration v Q.T) (hTh : Q.T ≤ Q.run.2.horizon)
     (hsh : Q.start ≤ Q.run.2.horizon) (ar : OutageArming S A V Q v)
     (hS5 : OutageS5Step Q service hv hTh hsh ar)
@@ -82,16 +83,16 @@ theorem outage_reader_bridge (Q : OutageQuery S A V)
     (hth : t ≤ Q.run.2.horizon) {w : V} (hw : Q.run.2.point.Ready Q.duration w t)
     -- head at the read label (`outage_reader_head`)
     (hhead : ∀ G : OutageReaderGate S A V Q w t,
-      Compose.ExtendingMajority Q.trace (honestKeys S Q.run.2) ar.origin (G.slot + 1) ∨
-        Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) ar.origin
+      Compose.ExtendingMajority Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) ar.origin (G.slot + 1) ∨
+        Anc (Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2)) ar.origin
           (SA.acHead Q.params
             (Q.trace.state (Q.run.2.ownKey w)
-              (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t))).ac
+              (cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t))).ac
             (Node.frame (Q.trace.state (Q.run.2.ownKey w)
-              (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)))) t))
+              (cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)))) t))
     -- early record (`outage_reader_early`)
     (hearly : ∀ c ℓ, SA.UpdateAt Q.trace.projAC (Q.run.2.ownKey w) c Q.restoredLabel ℓ →
-      ∀ c', c < c' → Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) ar.origin
+      ∀ c', c < c' → Anc (Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2)) ar.origin
         ((SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey w) c'))
           (Q.trace.state (Q.run.2.ownKey w) c').ac.latestConfirmed).getD
           (Q.trace.state (Q.run.2.ownKey w) c').fg.F))
@@ -99,13 +100,13 @@ theorem outage_reader_bridge (Q : OutageQuery S A V)
     (hlate : (¬ ∃ c ℓ, SA.UpdateAt Q.trace.projAC (Q.run.2.ownKey w) c Q.restoredLabel ℓ) →
       (∃ s' c ℓ, SA.UpdateAt Q.trace.projAC (Q.run.2.ownKey w) c s' ℓ ∧ Q.restoredLabel < s' ∧
           Q.trace.time c ≤ t ∧
-          Compose.ExtendingMajority Q.trace (honestKeys S Q.run.2) ar.origin s') ∨
-        Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) ar.origin
+          Compose.ExtendingMajority Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) ar.origin s') ∨
+        Anc (Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2)) ar.origin
           (Q.trace.state (Q.run.2.ownKey w)
-            (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t))).fg.F) :
-    Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) ar.tip
+            (cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t))).fg.F) :
+    Anc (Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2)) ar.tip
       (Regimes.readAfter Q.trace (Q.run.2.ownKey w)
-        (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t) := by
+        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t) := by
   classical
   obtain ⟨G⟩ := outage_reader_gate S A V Q ht hth hw
   have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
@@ -114,15 +115,15 @@ theorem outage_reader_bridge (Q : OutageQuery S A V)
   have hr := hrun'.localRun
   have hU := hr.coherent
   have hΔ : 0 < Q.params.Δ := Q.params.toParams.hΔ
-  have hŵ := honest_ownKey (S := S)
+  have hŵ := honest_ownKey (S := ⟨S, stock⟩)
     ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hw.1)
   have hS := outage_receiver_service S A V Q _ hŵ
   have hspec := restoredLabel_spec Q
   have hts1 : ∀ s : Nat, Q.params.ts (s + 1 : Nat) = Q.params.ts s + 4 * Q.params.Δ := by
     intro s; simp only [SA.SAParams.ts]; push_cast; ring
   set ŵ := Q.run.2.ownKey w
-  set U := Q.trace.HonestBlocks (honestKeys S Q.run.2)
-  set j := cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)
+  set U := Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2)
+  set j := cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)
   set st := Q.trace.state ŵ j
   have hΦ : FrameOK (Node.frame st) := Compose.frameOK_state hrun.toLocalRun hŵ j
   have hΦU : (Node.frame st).tree ⊆ U := fun X hX => ⟨ŵ, hŵ, j, hX.1⟩
@@ -207,7 +208,7 @@ theorem outage_reader_bridge (Q : OutageQuery S A V)
       have h2 := hrun.time_mono hk
       linarith
     -- every vote extending the tip is delivered to the read cut
-    have hdeliv : ∀ x ∈ honestKeys S Q.run.2, ∀ k e, SA.VoteAt Q.trace.projAC x k e →
+    have hdeliv : ∀ x ∈ honestKeys ⟨S, stock⟩ Q.run.2, ∀ k e, SA.VoteAt Q.trace.projAC x k e →
         e.msg.slot = q → SA.VoteExtends U e.msg ar.tip →
         e.msg ∈ st.ac.pool q ∧ ∃ Hd ∈ (Node.frame st).tree, Hd.root = e.msg.head ∧
           st.ac.blockStamp Hd.root < ⊤ := by
@@ -225,17 +226,18 @@ theorem outage_reader_bridge (Q : OutageQuery S A V)
         · exact absurd hrt (not_lt.2 le_top)
         · exact (max_lt_iff.1 hrt).2.trans (WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _))
       have hpool' : e.msg ∈ st.ac.pool q := by
-        rw [← Compose.projAC_state hrun.toLocalRun hŵ j]
+        erw [← Compose.projAC_state hrun.toLocalRun hŵ j]
         exact SA.pool_mono hr hŵ hGj hnr q hpool
       have hfg : Hd ∈ (Q.trace.state ŵ G.cut).fg.tree := by
         rw [hFG] at hHdt; exact hHdt.1
       refine ⟨hpool', Hd, mem_frame_between hrun hnc hŵ ((Compose.fg_grows hrun hŵ hGj).1 hfg)
         (hFt.trans hBHd) .refl, hHdr, ?_⟩
-      rw [← Compose.projAC_state hrun.toLocalRun hŵ j]
+      erw [← Compose.projAC_state hrun.toLocalRun hŵ j]
       exact Compose.blockStamp_finite hr hŵ hGj hnr hbst
     -- the tip is in the frame: an extending caster's head is, above the tip
     have hBt : ar.tip ∈ (Node.frame st).tree := by
-      have hpos : 0 < (Compose.ExtendingCasters Q.trace (honestKeys S Q.run.2) ar.tip q).ncard :=
+      have hpos : 0 <
+          (Compose.ExtendingCasters Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) ar.tip q).ncard :=
         lt_of_le_of_lt (Nat.zero_le _) (Compose.extendingMajority_iff.1 hmaj')
       obtain ⟨x, hxE⟩ := Set.nonempty_of_ncard_ne_zero hpos.ne'
       obtain ⟨hx, k, e, hv, hes, Hd, hHdU, hHdr, hBHd⟩ := Compose.extendingCasters_iff.1 hxE

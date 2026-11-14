@@ -46,13 +46,13 @@ structure HealthyPreparationQuery where
 namespace HealthyPreparationQuery
 variable {S A V}
 abbrev params (Q : HealthyPreparationQuery S A V) := S.params (Model.pubOf Q.run.1) Q.hn
-noncomputable abbrev trace (Q : HealthyPreparationQuery S A V) := simTrace S Q.run.2 Q.hn
+noncomputable abbrev trace (Q : HealthyPreparationQuery S A V) := simTrace ⟨S, stock⟩ Q.run.2 Q.hn
 noncomputable abbrev heal (Q : HealthyPreparationQuery S A V) :=
   (Sys (goldilocks S) V).heal (K S A) Q.cap Q.index Q.gst Q.run
 noncomputable abbrev ready (Q : HealthyPreparationQuery S A V) :=
   (Sys (goldilocks S) V).ready (K S A) Q.gst Q.run
 noncomputable abbrev cut (Q : HealthyPreparationQuery S A V) :=
-  cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.heal)
+  cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.heal)
 end HealthyPreparationQuery
 
 /-- ResetService's message/block/relay fields quantify actual receiver calls, not
@@ -63,7 +63,7 @@ theorem healthy_query_call_time_le (Q : HealthyPreparationQuery S A V)
     {y : Fin Q.params.n} {j : Nat} (hj : Q.trace.IsCall y j) :
     Q.trace.time j ≤ Q.run.2.horizon := by
   obtain ⟨ell, _, hlabel⟩ := hj
-  exact simTrace_labelled_time_le S Q.run.2 Q.hn Q.valid (by rw [hlabel]; simp)
+  exact simTrace_labelled_time_le ⟨S, stock⟩ Q.run.2 Q.hn Q.valid (by rw [hlabel]; simp)
 
 /-- The finite engine query supplies run validity, collision freedom, awake participation
 and the fault bound. Service, actual reset existence and its snapshot remain explicit.
@@ -71,22 +71,23 @@ The service horizon is the full engine horizon, so `healthy_query_call_time_le`
 supplies the receiver bound for the unguarded AC service fields. -/
 theorem reset_premises_of_healthy_query (Q : HealthyPreparationQuery S A V)
     {ΔF a : Time}
-    (hsync : Healing.ResetService Q.trace (honestKeys S Q.run.2)
+    (hsync : Healing.ResetService Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
       Q.gst ΔF Q.run.2.horizon)
-    (hreset : Healing.IsReset Q.trace (honestKeys S Q.run.2) Q.gst a)
+    (hreset : Healing.IsReset Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) Q.gst a)
     (ha : a ≤ Q.run.2.horizon)
     (hsnapshot : ∃ k, Healing.FirstCutAfter Q.trace k
       (Healing.cutZ Q.params.toParams Q.gst) ∧ Q.trace.time k ≤ Q.run.2.horizon) :
-    Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
-      (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a Q.run.2.horizon := by
+    Healing.ResetPremisesUpTo Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
+      (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔF a
+          Q.run.2.horizon := by
   refine ⟨simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid,
     noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision,
     hsync, ?_, ?_, hreset, ha, hsnapshot, rfl⟩
   · intro y hy t ht htb
-    rw [simTrace_awake_iff, awakeAt_iff]
+    rw [simTrace_awake_iff ⟨S, stock⟩ Q.run.2 Q.hn, awakeAt_iff ⟨S, stock⟩ Q.run.2 Q.hn]
     exact ⟨Q.healthy.2.1.2 (Q.run.2.key y) t ht htb
       ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mpr
-        ((mem_honestKeys_iff S Q.run.2 y).mp hy)),
+        ((mem_honestKeys_iff ⟨S, stock⟩ Q.run.2 y).mp hy)),
       (le_max_right Q.gst 0).trans ht, htb⟩
   · have hpop := Q.healthy.2.1.1
     change ((Q.run.2.faultyAt Q.run.2.horizon).card : ℚ) <
@@ -94,10 +95,11 @@ theorem reset_premises_of_healthy_query (Q : HealthyPreparationQuery S A V)
     rw [Q.run.2.faultyAt_eq_zero Q.constant] at hpop
     rw [goldilocksContract_params_eq] at hpop
     change ((Q.run.2.faultyAt 0).card : ℚ) < 1 / 3 * Fintype.card V at hpop
-    have hfault : (honestKeys S Q.run.2)ᶜ.ncard = (Q.run.2.faultyAt 0).card := by
-      have heq : (honestKeys S Q.run.2)ᶜ = Q.run.2.key ⁻¹' (↑(Q.run.2.faultyAt 0) : Set V) := by
+    have hfault : (honestKeys ⟨S, stock⟩ Q.run.2)ᶜ.ncard = (Q.run.2.faultyAt 0).card := by
+      have heq : (honestKeys ⟨S, stock⟩ Q.run.2)ᶜ = Q.run.2.key ⁻¹'
+          (↑(Q.run.2.faultyAt 0) : Set V) := by
         ext k
-        simp [mem_honestKeys_iff]
+        simp [mem_honestKeys_iff ⟨S, stock⟩ Q.run.2]
       rw [heq, Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
         (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset]
     rw [hfault]
@@ -109,7 +111,7 @@ theorem reset_premises_of_healthy_query (Q : HealthyPreparationQuery S A V)
 /-- Finite catch service follows directly from the healthy engine's PSync and awake interval.
 It is upstream of repair schedules so reset-envelope producers can use it without a cycle. -/
 theorem healthy_repair_catch (Q : HealthyPreparationQuery S A V) :
-    Healing.CatchRun Q.trace (honestKeys S Q.run.2) Q.gst (2 * Q.params.Δ) := by
+    Healing.CatchRun Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) Q.gst (2 * Q.params.Δ) := by
   have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
     (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
   exact catchRun_of_psync S Q.run.2 Q.hn Q.constant Q.valid
@@ -122,9 +124,9 @@ oldHonest_inventory_preserved. OldHonest includes signed entries not yet held by
 the receiver. OldEntryCovered has an eventual whole-run origin: this predicate
 is NOT prefix-local preparation and supplies no vote-label/causal strengthening. -/
 def HealthyOldInventory (Q : HealthyPreparationQuery S A V) (s₀ i : Nat) : Prop :=
-  ∀ y ∈ honestKeys S Q.run.2, ∀ E h,
-    Healing.OldHonest Q.trace (honestKeys S Q.run.2) s₀ E h →
-      Healing.OldEntryCovered Q.trace (honestKeys S Q.run.2) s₀ E ∨
+  ∀ y ∈ honestKeys ⟨S, stock⟩ Q.run.2, ∀ E h,
+    Healing.OldHonest Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) s₀ E h →
+      Healing.OldEntryCovered Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) s₀ E ∨
         h < (Q.trace.state y i).fg.hj
 
 /-- Arithmetic required by the existing weak-base consumers. This records
@@ -145,13 +147,14 @@ structure HealthyPreparationSchedule (Q : HealthyPreparationQuery S A V)
     (W : HealthyBaseTiming S A V Q) where
   resetTime : Time
   deltaF : Time
-  reset : Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
-    (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst deltaF resetTime Q.run.2.horizon
+  reset : Healing.ResetPremisesUpTo Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
+    (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) (digestOf ⟨S, stock⟩ Q.run.2) Q.gst deltaF resetTime
+        Q.run.2.horizon
   seedNode : Fin Q.params.n
   seedCut : Nat
   seedLabel : Nat
   seed : SA.Blk Q.params.n (List (FG.Att Q.params.n))
-  seed_origin : Healing.HighOrigin Q.trace (honestKeys S Q.run.2) Q.gst
+  seed_origin : Healing.HighOrigin Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) Q.gst
     seedNode seedCut seedLabel seed
   seed_time : Q.trace.time seedCut ≤ resetTime
   seed_label : seedLabel ≤ Q.params.slot resetTime
@@ -178,23 +181,23 @@ No stronger OriginBefore is inferred from a label bound. The former cache and
 old-entry inventory fields were removed (R0): nothing outside `healthy_preserve`'s own
 preservation plumbing read them. -/
 structure HealthyStateFacts (Q : HealthyPreparationQuery S A V) (s₀ i : Nat) : Prop where
-  records : ∀ y ∈ honestKeys S Q.run.2,
+  records : ∀ y ∈ honestKeys ⟨S, stock⟩ Q.run.2,
     ∃ C ∈ (Q.trace.state y i).fg.tree,
       C.root = (Q.trace.state y i).ac.latestConfirmed ∧
-      (Compose.OnOriginChainFrom Q.trace (honestKeys S Q.run.2) C s₀ ∨
-        Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) C (Q.trace.state y i).fg.F)
-  locks : ∀ y ∈ honestKeys S Q.run.2, ∀ l ∈ (Q.trace.state y i).ac.locks,
+      (Compose.OnOriginChainFrom Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) C s₀ ∨
+        Anc (Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2)) C (Q.trace.state y i).fg.F)
+  locks : ∀ y ∈ honestKeys ⟨S, stock⟩ Q.run.2, ∀ l ∈ (Q.trace.state y i).ac.locks,
     s₀ ≤ l.slot → ∃ L ∈ (Q.trace.state y i).fg.tree, L.root = l.block ∧
-      Compose.OnOriginChainFrom Q.trace (honestKeys S Q.run.2) L s₀
+      Compose.OnOriginChainFrom Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) L s₀
 
 /-- Every recent stored lock has a recent origin, at any canonical cut.
 The witness is archival tree membership, not membership in a filtered frame. -/
 theorem healthy_locks (Q : HealthyPreparationQuery S A V) (s₀ i : Nat)
-    {y : Fin Q.params.n} (hy : y ∈ honestKeys S Q.run.2)
+    {y : Fin Q.params.n} (hy : y ∈ honestKeys ⟨S, stock⟩ Q.run.2)
     {l : SA.Lock} (hl : l ∈ (Q.trace.state y i).ac.locks)
     (hs : s₀ ≤ l.slot) :
     ∃ L ∈ (Q.trace.state y i).fg.tree, L.root = l.block ∧
-      Compose.OnOriginChainFrom Q.trace (honestKeys S Q.run.2) L s₀ := by
+      Compose.OnOriginChainFrom Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) L s₀ := by
   obtain ⟨L, hL, hr, C, hC, hLC⟩ := Compose.lock_origin
     (simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid)
     (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision) hy i l hl
@@ -252,21 +255,23 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
   have hTb : Q.params.ts u + 6 * Q.params.Δ ≤ Q.run.2.horizon := by linarith
   have hready := hr 0 (by simp [Pattern.single])
   simp only [Nat.add_zero] at hready
-  have hmem : runProposer S Q.run.2 Q.hn u ∈ Q.run.2.sel (.proposer u) := by
-    simp only [runProposer_eq, dite_eq_left hready.1]
-    exact Finset.min'_mem _ _
+  have hmem : runProposer ⟨S, stock⟩ Q.run.2 Q.hn u ∈ Q.run.2.sel (.proposer u) := by
+    rw [runProposer_eq ⟨S, stock⟩ Q.run.2 Q.hn]
+    split
+    · exact Finset.min'_mem _ _
+    · exact absurd hready.1 ‹_›
   have hR := (hready.2 _ hmem).1
   rw [htime] at hR
   have hnode := ready_transport S Q.run.2 Q.hn Q.valid (hq0.trans hlo.le)
     (show Q.params.ts u ≤ Q.run.2.horizon by linarith) hR
-  rw [show Q.run.2.ownKey (Q.run.2.key (runProposer S Q.run.2 Q.hn u)) =
-    runProposer S Q.run.2 Q.hn u from Q.run.2.key.symm_apply_apply _] at hnode
+  rw [show Q.run.2.ownKey (Q.run.2.key (runProposer ⟨S, stock⟩ Q.run.2 Q.hn u)) =
+    runProposer ⟨S, stock⟩ Q.run.2 Q.hn u from Q.run.2.key.symm_apply_apply _] at hnode
   have hWu : W.slot < u := by
     exact_mod_cast (SA.ts_lt_iff Q.params).mp
       (lt_of_le_of_lt ((le_max_left _ _).trans ((le_max_right _ _).trans
         ((le_max_right _ _).trans D.lower))) hlo)
-  have hshort : Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) (Regimes.catchUp Q.params)
-      (runProposer S Q.run.2 Q.hn u) (Q.params.ts u) := by
+  have hshort : Regimes.ReadyAt Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) (Regimes.catchUp Q.params)
+      (runProposer ⟨S, stock⟩ Q.run.2 Q.hn u) (Q.params.ts u) := by
     refine ⟨hnode.1, fun t ht hts => hnode.2 t ?_ hts⟩
     apply le_trans _ ht
     apply max_le_max_left
@@ -299,13 +304,13 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
     intro hn
     simp [RunTrace.projAC, hn] at hl
   obtain ⟨_, m, e, _, he, _, hjend, _, _, hte, _⟩ :=
-    simTrace_cut S Q.run.2 Q.hn hjlabel
+    simTrace_cut ⟨S, stock⟩ Q.run.2 Q.hn hjlabel
   have hjt : Q.trace.time j = Q.params.ts u + 6 * Q.params.Δ := hup.2.2.1
   have hte' : Q.trace.time j = e.time := hte
   have hm : m < (chainTrace Q.run.2).endCut Q.heal :=
-    (event_before_endCut S Q.run.2 Q.valid h0 he).2 (by rw [← hte', hjt]; linarith)
+    (event_before_endCut ⟨S, stock⟩ Q.run.2 Q.valid h0 he).2 (by rw [← hte', hjt]; linarith)
   have hjcut : j < Q.cut := hjend.trans_le
-    (cutMap_mono S Q.run.2 Q.hn (show m + 1 ≤ (chainTrace Q.run.2).endCut Q.heal by omega))
+    (cutMap_mono ⟨S, stock⟩ Q.run.2 Q.hn (show m + 1 ≤ (chainTrace Q.run.2).endCut Q.heal by omega))
   obtain ⟨C, hC, hCr, l, hl, hsource⟩ :=
     UpTo.archival_record_source_after_operational_update D.reset hcatch hnode.1 rfl hP hPs
       hdrain hgu hTb hy hup hjcut
@@ -321,19 +326,20 @@ theorem healthy_preserve (Q : HealthyPreparationQuery S A V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.run.2.horizon)
     (W : HealthyBaseTiming S A V Q)
     (base : HealthyStateFacts S A V Q W.slot Q.cut) :
-    ∀ i, Q.cut ≤ i → i ≤ cutMap S Q.run.2 Q.hn Q.run.2.events.length →
+    ∀ i, Q.cut ≤ i → i ≤ cutMap ⟨S, stock⟩ Q.run.2 Q.hn Q.run.2.events.length →
       HealthyStateFacts S A V Q W.slot i := by
   have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
   have htime : ∀ k, Q.cut ≤ k → Q.trace.label k ≠ none → Q.heal ≤ Q.trace.time k := by
     intro k hk hl
-    obtain ⟨_, m, e, _, he, _, hmk, _, _, ht, _⟩ := simTrace_cut S Q.run.2 Q.hn hl
+    obtain ⟨_, m, e, _, he, _, hmk, _, _, ht, _⟩ := simTrace_cut ⟨S, stock⟩ Q.run.2 Q.hn hl
     rw [ht]
     apply le_of_not_gt
     intro het
-    have hm := (event_before_endCut S Q.run.2 Q.valid h0 he).2 het.le
-    have hcut := cutMap_mono S Q.run.2 Q.hn
+    have hm : m < (chainTrace Q.run.2).endCut Q.heal :=
+      (event_before_endCut ⟨S, stock⟩ Q.run.2 Q.valid h0 he).2 het.le
+    have hcut := cutMap_mono ⟨S, stock⟩ Q.run.2 Q.hn
       (show m + 1 ≤ (chainTrace Q.run.2).endCut Q.heal by omega)
-    change cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.heal) ≤ k at hk
+    change cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.heal) ≤ k at hk
     omega
   intro i hi hih
   refine ⟨?_, fun y hy l hl hs => healthy_locks S A V Q W.slot i hy hl hs⟩

@@ -70,8 +70,8 @@ structure ConfirmedQueryAt where
 namespace ConfirmedQueryAt
 variable {S A V}
 abbrev params (Q : ConfirmedQueryAt S A V) := S.params (Model.pubOf Q.run.1) Q.hn
-noncomputable abbrev trace (Q : ConfirmedQueryAt S A V) := simTraceAt S Q.run.2 Q.hn
-noncomputable abbrev keys (Q : ConfirmedQueryAt S A V) := honestKeysAt S Q.run.2
+noncomputable abbrev trace (Q : ConfirmedQueryAt S A V) := simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn
+noncomputable abbrev keys (Q : ConfirmedQueryAt S A V) := honestKeysAt ⟨S, stock⟩ Q.run.2
 noncomputable abbrev duration (Q : ConfirmedQueryAt S A V) :=
   (Sys (goldilocks S) V).cDur (K S A) Q.run
 noncomputable abbrev deadline (Q : ConfirmedQueryAt S A V) : Time :=
@@ -89,8 +89,8 @@ structure SleepySafetyQueryAt where
 namespace SleepySafetyQueryAt
 variable {S A V}
 abbrev params (Q : SleepySafetyQueryAt S A V) := S.params (Model.pubOf Q.run.1) Q.hn
-noncomputable abbrev trace (Q : SleepySafetyQueryAt S A V) := simTraceAt S Q.run.2 Q.hn
-noncomputable abbrev keys (Q : SleepySafetyQueryAt S A V) := honestKeysAt S Q.run.2
+noncomputable abbrev trace (Q : SleepySafetyQueryAt S A V) := simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn
+noncomputable abbrev keys (Q : SleepySafetyQueryAt S A V) := honestKeysAt ⟨S, stock⟩ Q.run.2
 end SleepySafetyQueryAt
 
 /-- A final liveness query: a valid, collision-free healthy run with final progress from
@@ -115,8 +115,8 @@ structure FinalQueryAt where
 namespace FinalQueryAt
 variable {S A V}
 abbrev params (Q : FinalQueryAt S A V) := S.params (Model.pubOf Q.run.1) Q.hn
-noncomputable abbrev trace (Q : FinalQueryAt S A V) := simTraceAt S Q.run.2 Q.hn
-noncomputable abbrev keys (Q : FinalQueryAt S A V) := honestKeysAt S Q.run.2
+noncomputable abbrev trace (Q : FinalQueryAt S A V) := simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn
+noncomputable abbrev keys (Q : FinalQueryAt S A V) := honestKeysAt ⟨S, stock⟩ Q.run.2
 noncomputable abbrev deadline (Q : FinalQueryAt S A V) : Time :=
   Q.query + ((K S A).params.latency .final Q.index : Time) * Q.run.1.ΔAC
 end FinalQueryAt
@@ -145,14 +145,15 @@ structure HealthyPreparationQueryAt where
 namespace HealthyPreparationQueryAt
 variable {S A V}
 abbrev params (Q : HealthyPreparationQueryAt S A V) := S.params (Model.pubOf Q.run.1) Q.hn
-noncomputable abbrev trace (Q : HealthyPreparationQueryAt S A V) := simTraceAt S Q.run.2 Q.hn
-noncomputable abbrev keys (Q : HealthyPreparationQueryAt S A V) := honestKeysAt S Q.run.2
+noncomputable abbrev trace (Q : HealthyPreparationQueryAt S A V) := simTraceAt ⟨S, stock⟩
+    Q.run.2 Q.hn
+noncomputable abbrev keys (Q : HealthyPreparationQueryAt S A V) := honestKeysAt ⟨S, stock⟩ Q.run.2
 noncomputable abbrev heal (Q : HealthyPreparationQueryAt S A V) :=
   (Sys (goldilocks S) V).heal (K S A) Q.cap Q.index Q.gst Q.run
 noncomputable abbrev ready (Q : HealthyPreparationQueryAt S A V) :=
   (Sys (goldilocks S) V).ready (K S A) Q.gst Q.run
 noncomputable abbrev cut (Q : HealthyPreparationQueryAt S A V) :=
-  cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.heal)
+  cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.heal)
 end HealthyPreparationQueryAt
 
 /-- **An outage query under growing faults**: a valid collision-free run with its outage
@@ -173,7 +174,7 @@ variable {S A V}
 
 /-- A static outage query, with its constant-fault field forgotten. -/
 def _root_.Consensus.Goldilocks.Obligations.OutageQuery.toAt (Q : OutageQuery S A V) :
-    OutageQueryAt S A V :=
+    OutageQueryAt ⟨S, stock⟩ A V :=
   ⟨Q.run, Q.hn, Q.T, Q.start, Q.stop, Q.valid, Q.noCollision, Q.outage⟩
 
 namespace OutageQueryAt

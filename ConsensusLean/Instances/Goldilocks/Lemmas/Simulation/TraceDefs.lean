@@ -429,14 +429,4 @@ theorem simTrace_observationHorizon :
 
 end Simulation
 
-/-! ## Stock-caller build scaffold (interim, removed at D2) -/
-
-open AsChainShape in
-/-- **Interim build scaffold, removed at D2** by a codemod writing `⟨S, stock⟩` explicitly; the
-landing gate checks that no `Coe Setup BoundSetup` instance remains. A population-wide
-`S : Setup` passed where the binding-generic simulation layer takes `S : BoundSetup` elaborates
-to `⟨S, stock⟩`, so `goldilocks S` is `goldilocksWith ⟨S, stock⟩` by `rfl`. The binding-generic
-layer is stated over `S : BoundSetup` and declares no `Setup` binder (gate G7). -/
-instance stockBoundSetupCoe : Coe Setup BoundSetup := ⟨fun S => ⟨S, stock⟩⟩
-
 end Consensus.Goldilocks

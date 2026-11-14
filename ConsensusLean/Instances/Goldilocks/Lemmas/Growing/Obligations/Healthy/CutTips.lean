@@ -40,10 +40,11 @@ theorem healthy_cut_tips_comparable_at (Q : HealthyPreparationQueryAt S A V)
       ((chainTrace Q.run.2).cutTime i))
     (hv : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime j))
-    (hub : (stateAt S Q.run.2 Q.hn u i).now ≤ Q.bound)
-    (hvb : (stateAt S Q.run.2 Q.hn v j).now ≤ Q.bound) :
+    (hub : (stateAt ⟨S, stock⟩ Q.run.2 Q.hn u i).now ≤ Q.bound)
+    (hvb : (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v j).now ≤ Q.bound) :
     let C := fun v i => Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-      (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i)) (stateAt S Q.run.2 Q.hn v i).now
+      (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i))
+          (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now
     Anc (Q.trace.HonestBlocksAt Q.keys) (C u i) (C v j) ∨
       Anc (Q.trace.HonestBlocksAt Q.keys) (C v j) (C u i) := by
   obtain ⟨D⟩ := healthy_repair_schedule_at S A V Q h0 hb hp
@@ -73,22 +74,25 @@ theorem healthy_cut_tips_ancestor_at (Q : HealthyPreparationQueryAt S A V)
       ((chainTrace Q.run.2).cutTime i))
     (hvj : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime j))
-    (hjb : (stateAt S Q.run.2 Q.hn v j).now ≤ Q.bound) :
+    (hjb : (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v j).now ≤ Q.bound) :
     Anc (Q.trace.HonestBlocksAt Q.keys)
       (Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-        (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i)) (stateAt S Q.run.2 Q.hn v i).now)
+        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v i))
+            (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now)
       (Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-        (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v j)) (stateAt S Q.run.2 Q.hn v j).now) := by
+        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn S Q.run.2 v j))
+            (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v j).now) := by
   obtain ⟨D⟩ := healthy_repair_schedule_at S A V Q h0 hb hp
   obtain ⟨O, hr⟩ := healthy_bounded_repairing_opening_at S A V Q hb hp D
-  have hnn := cutMap_mono S Q.run.2 Q.hn (lastOwn_mono S Q.run.2 v hij)
+  have hnn := cutMap_mono ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn_mono S Q.run.2 v hij)
   have htt := now_mono S Q.run.2 Q.hn Q.valid v hij
   obtain ⟨Ci⟩ := healthy_current_read_context_at S A V Q D hi hvi (htt.trans hjb)
   obtain ⟨Cj⟩ := healthy_current_read_context_at S A V Q D hj hvj hjb
   rw [healthy_current_record_read_at S A V Q hb hp D O hr hi hvi (htt.trans hjb),
     healthy_current_record_read_at S A V Q hb hp D O hr hj hvj hjb]
-  exact effective_record_of_interval_at (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid)
-    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) Cj.time_nonneg Cj.readPoint.1
+  exact effective_record_of_interval_at (simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid)
+    (noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision) Cj.time_nonneg
+        Cj.readPoint.1
     Cj.honest hnn
     (healthy_current_record_interval_at S A V Q hb D O hr Ci.readPoint Cj.readPoint hnn htt
       Cj.time_bound Cj.honest Ci.repaired) .refl

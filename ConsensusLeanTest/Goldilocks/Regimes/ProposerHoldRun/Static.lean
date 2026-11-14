@@ -55,10 +55,10 @@ theorem rhoc_honest (v : Fin 5) : v ∉ (rhoc S).faultyAt 0 ↔ v ≠ 0 ∧ v �
 
 variable (S) in
 /-- The honest keys of the retained run. -/
-abbrev H : Set (Fin (Fintype.card (Fin 5))) := honestKeys S (rhoc S)
+abbrev H : Set (Fin (Fintype.card (Fin 5))) := honestKeys ⟨S, stock⟩ (rhoc S)
 
 theorem mem_H (y : Fin (Fintype.card (Fin 5))) : y ∈ H S ↔ y.val ≠ 0 ∧ y.val ≠ 1 := by
-  rw [mem_honestKeys_iff, rhoc_faultyAt, rhoc_key]
+  erw [mem_honestKeys_iff, rhoc_faultyAt, rhoc_key]
   change (⟨y.val, by simpa using y.isLt⟩ : Fin 5) ∉ ({0, 1} : Finset (Fin 5)) ↔ _
   simp only [Finset.mem_insert, Finset.mem_singleton, not_or]
   constructor
@@ -88,13 +88,14 @@ theorem rhoc_sleepyOn (c W : Time) : (rhoc S).point.SleepyOn (1 / 2) c W 0 41 :=
 variable (S) in
 /-- The node trace of the retained run. -/
 noncomputable abbrev tr : GoldilocksTrace (S.params (pubOf env) one_le_card) (S.ro _) :=
-  simTrace S (rhoc S) one_le_card
+  simTrace ⟨S, stock⟩ (rhoc S) one_le_card
 
-theorem rhoc_run : GoldilocksRun (runProposer S (rhoc S) one_le_card) (digestOf S (rhoc S)) (H S)
+theorem rhoc_run : GoldilocksRun (runProposer ⟨S, stock⟩ (rhoc S) one_le_card)
+    (digestOf ⟨S, stock⟩ (rhoc S)) (H S)
     (tr S) :=
   simTrace_goldilocksRun S (rhoc S) one_le_card rhoc_const rhoc_valid
 
-theorem rhoc_noColl : Compose.NoCollRun (digestOf S (rhoc S)) (tr S) :=
+theorem rhoc_noColl : Compose.NoCollRun (digestOf ⟨S, stock⟩ (rhoc S)) (tr S) :=
   noCollRun_simTrace S (rhoc S) one_le_card rhoc_const rhoc_valid rhoc_not_hashCollision
 
 theorem rhoc_service :

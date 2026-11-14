@@ -87,8 +87,8 @@ private theorem final_node_requirements (Q : FinalQuery S A V) :
   exact ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid _ _ _⟩
 
 private theorem final_fg_run (Q : FinalQuery S A V) :
-    FGLocalRun (goldilocksNode Q.params (S.ro _)).genesisPayload (honestKeys S Q.run.2)
-      (Q.trace.HonestBlocks (honestKeys S Q.run.2)) Q.trace.projFG := by
+    FGLocalRun (goldilocksNode Q.params (S.ro _)).genesisPayload (honestKeys ⟨S, stock⟩ Q.run.2)
+      (Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2)) Q.trace.projFG := by
   have hr := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
   exact Compose.fg_projection _ _ _ _ _ _ _ (final_node_requirements S A V Q)
     hr.genesis_root_ok hr.toLocalRun
@@ -121,12 +121,13 @@ theorem final_window_of_production (Q : FinalQuery S A V) (start : Nat)
     (slots : ∀ a, (block a).slot = start + (![0, 2, 4, 6] a))
     (proposals : ∀ a, Q.trace.ProposesAt (block a).proposer (cut a) (block a))
     (accepted : ∀ a, Q.trace.AcceptAt (block a).proposer (cut a) (block a))
-    (ready : ∀ a, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
+    (ready : ∀ a, Regimes.ReadyAt Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
       ((Sys (goldilocks S) V).cDur (K S A) Q.run) (block a).proposer (Q.trace.time (cut a)))
     (fresh : Q.query < Q.trace.time (cut 0)) (ordered : StrictMono cut)
     (bounded : ∀ a, Q.trace.time (cut a) ≤ Q.deadline)
-    (chain : ∀ a b, a ≤ b → Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) (block a) (block b))
-    (carrier : ∀ y, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
+    (chain : ∀ a b, a ≤ b → Anc (Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2)) (block a)
+        (block b))
+    (carrier : ∀ y, Regimes.ReadyAt Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
       ((Sys (goldilocks S) V).cDur (K S A) Q.run) y Q.deadline →
       ∃ j, Q.trace.BlockCallAt y j (block 3) ∧ Q.trace.time j ≤ Q.deadline) :
     Nonempty (FinalWindowData S A V Q) :=
@@ -145,8 +146,9 @@ Proved by `final_reset_premises_of_query` (FinalResetPremises.lean): the generic
 coefficient `contract_heal_ge_final`. -/
 theorem final_reset_premises (Q : FinalQuery S A V) :
     ∃ ΔR a : Time,
-      Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
-        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon ∧
+      Healing.ResetPremisesUpTo Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
+        (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔR a
+            Q.run.2.horizon ∧
       max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
           ((finalGrid S A V Q).slotTime (finalSeedMin S A V Q a) - 1) +
           ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGrid S A V Q).slotLen ≤
@@ -162,8 +164,8 @@ theorem final_duty_proposal (Q : FinalQuery S A V) :
       HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s ((Sys (goldilocks S) V).cDur (K S A) Q.run)
       ((finalGrid S A V Q).slotTime s) Q.run.2.point.env.ΔAC →
-      ∃ P, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2)
-        (runProposer S Q.run.2 Q.hn) s P := by
+      ∃ P, Healing.HonestProposalRun Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
+        (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) s P := by
   intro s hs hth hduty
   obtain ⟨_, P, hP, -⟩ := final_duty_proposal_run S A V Q hs hth hduty
   exact ⟨P, hP⟩
@@ -225,7 +227,7 @@ theorem final_cache_coverage_of_prior_cache (Q : FinalQuery S A V)
       W.Extends (W.block 0) F)
     (producer : ∀ F, W.store.blocks (W.state (W.block 3)).F = some F →
       ∀ y t j, Q.deadline ≤ t → t ≤ Q.run.2.horizon →
-      Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
+      Regimes.ReadyAt Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
         ((Sys (goldilocks S) V).cDur (K S A) Q.run) y t → Regimes.CutAfter Q.trace j t →
       ∃ k ≤ j, W.Extends F (Q.trace.state y k).fg.F ∨
         W.Extends (W.block 0) (Q.trace.state y k).fg.F) : W.CacheCoverage := by
@@ -254,24 +256,24 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
   have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
   have fg := final_fg_run S A V Q
   have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision
-  have hst : ∀ z, z ∈ honestKeys S Q.run.2 → ∀ k,
+  have hst : ∀ z, z ∈ honestKeys ⟨S, stock⟩ Q.run.2 → ∀ k,
       Q.trace.projFG.store z k = (Q.trace.state z k).fg := by
     intro z hz k
     simp only [FGTrace.store, Compose.projFG_state run.toLocalRun hz k]
   have hsource : W.store = Q.trace.projFG.store (W.block 3).proposer (W.cut 3 + 1) := by
     rw [hst _ (W.ready 3).1]
     exact congrArg NodeState.fg (final_anchor_post S A V Q W 3)
-  have hf : (honestKeys S Q.run.2)ᶜ.ncard < 2 * Q.params.toParams.fg.q - Q.params.n := by
+  have hf : (honestKeys ⟨S, stock⟩ Q.run.2)ᶜ.ncard < 2 * Q.params.toParams.fg.q - Q.params.n := by
     have hpop := Q.healthy.2.1.1
     change ((Q.run.2.point.faultyAt Q.run.2.horizon).card : ℚ) <
       (K S A).params.β * Fintype.card V at hpop
     rw [Q.constant _] at hpop
     rw [goldilocksContract_params_eq] at hpop
     change ((Q.run.2.point.faultyAt 0).card : ℚ) < 1 / 3 * Fintype.card V at hpop
-    have hfault : (honestKeys S Q.run.2)ᶜ.ncard = (Q.run.2.point.faultyAt 0).card := by
-      have heq : (honestKeys S Q.run.2)ᶜ =
+    have hfault : (honestKeys ⟨S, stock⟩ Q.run.2)ᶜ.ncard = (Q.run.2.point.faultyAt 0).card := by
+      have heq : (honestKeys ⟨S, stock⟩ Q.run.2)ᶜ =
           Q.run.2.key ⁻¹' (↑(Q.run.2.point.faultyAt 0) : Set V) := by
-        ext k; simp [mem_honestKeys_iff, Model.Run.point]
+        ext k; simp [mem_honestKeys_iff ⟨S, stock⟩ Q.run.2, Model.Run.point]
       rw [heq, Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
         (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset]
     rw [hfault]
@@ -293,7 +295,7 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
     subst X'
     exact hanc.mono (by rw [hsource]; exact fg.tree_subset _ (W.ready 3).1 _)
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
-    (forwardAtAcceptance_iff S Q.run.2 Q.hn _ _ _).mp
+    (forwardAtAcceptance_iff ⟨S, stock⟩ Q.run.2 Q.hn _ _ _).mp
       (forwardAtAcceptance S Q.run.2 Q.hn Q.constant Q.valid) _ (W.ready 3).1 _ _ (W.accepted 3)
   refine W.cacheCoverage_iff.mpr ?_
   intro y t j hdt hth hy hj
@@ -306,7 +308,7 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
   have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
     (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
   obtain ⟨d, hheld, hdt'⟩ := publication_held_ready_tail S Q.run.2 Q.hn Q.constant hnet r hr
-    (horg ▸ (mem_honestKeys_iff S Q.run.2 _).mp (W.ready 3).1)
+    (horg ▸ (mem_honestKeys_iff ⟨S, stock⟩ Q.run.2 _).mp (W.ready 3).1)
     (not_isFGAtt_of_decodeForward hdecode) hy hth
     (by rw [htime]; exact tail.1.trans hdt) tail.2
   obtain ⟨k, hkj, hacc, hkt⟩ := held_forward_accepted_before S Q.run.2 Q.hn Q.constant Q.valid hnc
@@ -325,7 +327,7 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
     · exact he ▸ hpostB
     · exact (Anc.mem hpostXB he).1
   have hσ := Store.σ_eq_of_held fg (W.ready 3).1 hy.1 (hsource ▸ hB) hpostB
-  have hkFX : Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2))
+  have hkFX : Anc (Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2))
       (Q.trace.projFG.store y k).F X := by
     rw [hst _ hy.1]
     exact ((Compose.fg_grows run hy.1 hkj).2).trans hFX
@@ -346,7 +348,7 @@ theorem final_cache_acceptance (Q : FinalQuery S A V) (W : FinalWindowData S A V
     exact (le_add_of_nonneg_right (mul_nonneg (Int.natCast_nonneg _) hd.le)).trans Q.mature
   have hs : max Q.gst 0 ≤ Q.trace.time (W.cut 3) :=
     (hq.trans W.fresh.le).trans
-      (simTrace_time_mono S Q.run.2 Q.hn Q.valid (W.ordered.monotone (by decide)))
+      (simTrace_time_mono ⟨S, stock⟩ Q.run.2 Q.hn Q.valid (W.ordered.monotone (by decide)))
   constructor
   · simpa only [max_eq_left ((le_max_left _ _).trans hs),
       max_eq_left ((le_max_right _ _).trans hs)] using hslack
@@ -393,7 +395,7 @@ theorem final_payload_projection
     exact (add_nonneg hg0 hp).trans hm
   have hτ : 0 ≤ Q.trace.time (W.cut 0) := ht.trans W.fresh.le
   have hτh : Q.trace.time (W.cut 0) ≤ r.2.horizon := (W.bounded 0).trans hb
-  have hproposal : Regimes.ReadyProposalAt Q.trace (honestKeys S r.2)
+  have hproposal : Regimes.ReadyProposalAt Q.trace (honestKeys ⟨S, stock⟩ r.2)
       ((Sys (goldilocks S) V).cDur (K S A) r) (Q.trace.time (W.cut 0)) (W.block 0) :=
     ⟨_, W.cut 0, W.ready 0, W.proposals 0, rfl⟩
   obtain ⟨k, hk, hrel⟩ := ready_proposal S r.2 hn hconst hv hτ hτh hproposal
@@ -409,7 +411,7 @@ theorem final_payload_projection
     · have hz := (hg.2.1 0 (List.length_pos_iff.mpr hg.1)).2.2.2.1
       exact False.elim ((W.proposals 0).1.2 (by simpa using hz))
     · obtain ⟨j, x, _, _, _, d, p, _, hB, _⟩ := hg
-      rw [hB, digestOf_eq]
+      rw [hB, digestOf_eq ⟨S, stock⟩ r.2]
       simp only [Node.mkBlock]
       erw [dgOf_eq]
       exact taggedRoot_ne _ _

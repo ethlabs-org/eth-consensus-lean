@@ -102,13 +102,15 @@ theorem held_tree_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Set
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i)) :
-    ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.Reachable
+    ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn i)).fg.Reachable
         (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload ∧
-      ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.tree ⊆
-        (simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho) := by
+      ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn i)).fg.tree ⊆
+        (simTraceAt ⟨S, stock⟩ rho hn).HonestBlocksAt (honestKeysAt ⟨S, stock⟩ rho) := by
   obtain ⟨hrun, hy, hs⟩ := prefix_reader_at S rho hn hv hi hh
-  refine ⟨hs _ ▸ Compose.fg_reachable hrun.toLocalRun hy (cutMap S rho hn i), fun B hB => ?_⟩
-  exact ⟨_, _, _, (cutTime_bounds S rho hv hi).1, cutMap_time_le S rho hn hv hi, hy, hB⟩
+  refine ⟨hs _ ▸ Compose.fg_reachable hrun.toLocalRun hy (cutMap ⟨S, stock⟩ rho hn i), fun B
+      hB => ?_⟩
+  exact ⟨_, _, _, (cutTime_bounds ⟨S, stock⟩ rho hv hi).1, cutMap_time_le ⟨S, stock⟩ rho hn hv hi,
+      hy, hB⟩
 
 /-- **Compatible held tips give prefix-related finalized reads.** For two nodes each honest at its
 engine cut, compatibility of their finalized tips inside the blocks held while honest makes one
@@ -116,18 +118,19 @@ finalized engine read a prefix of the other. -/
 theorem compatible_reads_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
+    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
     {u v : V} {i j : Nat} (hi : i ≤ rho.events.length) (hj : j ≤ rho.events.length)
     (hu : u ∉ rho.faultyAt (rho.cutTime i)) (hv' : v ∉ rho.faultyAt (rho.cutTime j))
-    (hc : Compatible ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho))
-      ((simTraceAt S rho hn).finalizedAt (rho.ownKey u) (cutMap S rho hn i))
-      ((simTraceAt S rho hn).finalizedAt (rho.ownKey v) (cutMap S rho hn j))) :
+    (hc : Compatible ((simTraceAt ⟨S, stock⟩ rho hn).HonestBlocksAt (honestKeysAt ⟨S, stock⟩ rho))
+      ((simTraceAt ⟨S, stock⟩ rho hn).finalizedAt (rho.ownKey u) (cutMap ⟨S, stock⟩ rho hn i))
+      ((simTraceAt ⟨S, stock⟩ rho hn).finalizedAt (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn j))) :
     Consensus.Compatible ((chainTrace rho).read .finalized u i)
       ((chainTrace rho).read .finalized v j) := by
   obtain ⟨hri, hsi⟩ := held_tree_at S rho hn hv hi hu
   obtain ⟨hrj, hsj⟩ := held_tree_at S rho hn hv hj hv'
-  have hU := Compose.Growing.honest_blocks_coherent (simTraceAt_goldilocksRun S rho hn hv) hnc
-  rw [read_finalized_at S rho hn hv u hi, read_finalized_at S rho hn hv v hj]
+  have hU := Compose.Growing.honest_blocks_coherent
+      (simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv) hnc
+  erw [read_finalized_at ⟨S, stock⟩ rho hn hv u hi, read_finalized_at ⟨S, stock⟩ rho hn hv v hj]
   exact chainTo_compatible hri hrj hU hsi hsj (Store.cache_invariants _ _ _ _ hri).1
     (Store.cache_invariants _ _ _ _ hrj).1 hc
 
@@ -136,7 +139,7 @@ two views convict `2q − n` validators. -/
 theorem final_accountable_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
+    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
     {u v : V} {i j : Nat} (hi : i ≤ rho.events.length) (hj : j ≤ rho.events.length)
     (hu : u ∉ rho.faultyAt (rho.cutTime i)) (hv' : v ∉ rho.faultyAt (rho.cutTime j)) :
     Consensus.Compatible ((chainTrace rho).read .finalized u i)
@@ -144,25 +147,27 @@ theorem final_accountable_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} 
       2 * (S.params (pubOf E) hn).toParams.q - Fintype.card V ≤
         (convicted rho.Slashable (rho.ViewIdx u i ∪ rho.ViewIdx v j)).card := by
   classical
-  by_cases hc : Compatible ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho))
-      ((simTraceAt S rho hn).finalizedAt (rho.ownKey u) (cutMap S rho hn i))
-      ((simTraceAt S rho hn).finalizedAt (rho.ownKey v) (cutMap S rho hn j))
+  by_cases hc : Compatible
+      ((simTraceAt ⟨S, stock⟩ rho hn).HonestBlocksAt (honestKeysAt ⟨S, stock⟩ rho))
+      ((simTraceAt ⟨S, stock⟩ rho hn).finalizedAt (rho.ownKey u) (cutMap ⟨S, stock⟩ rho hn i))
+      ((simTraceAt ⟨S, stock⟩ rho hn).finalizedAt (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn j))
   · exact Or.inl (compatible_reads_at S rho hn hv hnc hi hj hu hv' hc)
   · right
     obtain ⟨-, hyu, -⟩ := prefix_reader_at S rho hn hv hi hu
     obtain ⟨-, hyv, -⟩ := prefix_reader_at S rho hn hv hj hv'
     obtain ⟨X, _, Y, _, W, hW, hw⟩ := finalAccountable_readPoint
-      (simTraceAt_goldilocksRun S rho hn hv) hnc (cutTime_bounds S rho hv hi).1
-      (cutMap_time_le S rho hn hv hi) hyu (cutTime_bounds S rho hv hj).1
-      (cutMap_time_le S rho hn hv hj) hyv hc
-    have hmem : ∀ a ∈ Regimes.ChainAtts (simTraceAt S rho hn) (rho.ownKey u)
-        (cutMap S rho hn i) X ∪ Regimes.ChainAtts (simTraceAt S rho hn) (rho.ownKey v)
-        (cutMap S rho hn j) Y, attObj a ∈ rho.ViewIdx u i ∪ rho.ViewIdx v j := by
+      (simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv) hnc (cutTime_bounds ⟨S, stock⟩ rho hv hi).1
+      (cutMap_time_le ⟨S, stock⟩ rho hn hv hi) hyu (cutTime_bounds ⟨S, stock⟩ rho hv hj).1
+      (cutMap_time_le ⟨S, stock⟩ rho hn hv hj) hyv hc
+    have hmem : ∀ a ∈ Regimes.ChainAtts (simTraceAt ⟨S, stock⟩ rho hn) (rho.ownKey u)
+        (cutMap ⟨S, stock⟩ rho hn i) X ∪ Regimes.ChainAtts (simTraceAt ⟨S, stock⟩ rho hn)
+            (rho.ownKey v)
+        (cutMap ⟨S, stock⟩ rho hn j) Y, attObj a ∈ rho.ViewIdx u i ∪ rho.ViewIdx v j := by
       intro a ha
       rcases ha with ⟨B, hB, _, ha⟩ | ⟨B, hB, _, ha⟩
       · exact Or.inl (held_att_in_view_at S rho hn hv hi hu hB ha)
       · exact Or.inr (held_att_in_view_at S rho hn hv hj hv' hB ha)
-    refine hW.trans (convicted_count S rho W ?_)
+    refine hW.trans (convicted_count ⟨S, stock⟩ rho W ?_)
     intro k hk
     obtain ⟨a, ha, b, hb, hak, hab⟩ := hw k hk
     exact ⟨a, b, hmem a ha, hmem b hb, hak, hab⟩
@@ -180,7 +185,7 @@ theorem engine_finalAccountable_at {V : Type} [Fintype V] [DecidableEq V] {E : E
   left
   intro u v i j hi hj hu hv'
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨u⟩
-  rcases final_accountable_at S rho hn hv (noCollRun_simTraceAt S rho hn hv hc)
+  rcases final_accountable_at S rho hn hv (noCollRun_simTraceAt ⟨S, stock⟩ rho hn hv hc)
       hi.1 hj.1 hu hv' with h | h
   · exact Or.inl h
   right

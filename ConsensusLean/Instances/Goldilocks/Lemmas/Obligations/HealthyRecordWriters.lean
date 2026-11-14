@@ -360,19 +360,19 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 The equality case uses the engine tick's position, not trace-time comparison. -/
 theorem update_before_stored_clock (hf : rho.point.ConstantFaults)
     (hvalid : rho.ExecutionValid) {g ΔF a : Time}
-    (hp : Healing.ResetPremisesUpTo (simTrace S rho hn) (honestKeys S rho)
-      (runProposer S rho hn) (digestOf S rho) g ΔF a rho.horizon)
+    (hp : Healing.ResetPremisesUpTo (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
+      (runProposer ⟨S, stock⟩ rho hn) (digestOf ⟨S, stock⟩ rho) g ΔF a rho.horizon)
     {v : V} (hv : v ∉ rho.faultyAt 0) {i u : Nat}
     (hslot : (S.params (Model.pubOf E) hn).ts
       ((S.params (Model.pubOf E) hn).slot (SA.gbar g) + 1 : Nat) ≤
         (S.params (Model.pubOf E) hn).ts u)
     (ht : (S.params (Model.pubOf E) hn).ts u + 6 * (S.params (Model.pubOf E) hn).Δ ≤
-      (stateAt S rho hn v i).now)
-    (htb : (stateAt S rho hn v i).now ≤ rho.horizon) :
-    ∃ j ell, SA.UpdateAt (simTrace S rho hn).projAC (rho.ownKey v) j u ell ∧
-      j < cutMap S rho hn i := by
+      (stateAt ⟨S, stock⟩ rho hn v i).now)
+    (htb : (stateAt ⟨S, stock⟩ rho hn v i).now ≤ rho.horizon) :
+    ∃ j ell, SA.UpdateAt (simTrace ⟨S, stock⟩ rho hn).projAC (rho.ownKey v) j u ell ∧
+      j < cutMap ⟨S, stock⟩ rho hn i := by
   let sp := S.params (Model.pubOf E) hn
-  let tr := simTrace S rho hn
+  let tr := simTrace ⟨S, stock⟩ rho hn
   let T := sp.ts u + 6 * sp.Δ
   have hT0 : 0 < T := by
     dsimp [T, SA.SAParams.ts]
@@ -385,9 +385,9 @@ theorem update_before_stored_clock (hf : rho.point.ConstantFaults)
     exact (not_le.mp hnext).le.trans hslot
   have hpub : sp.toParams.IsPublic T :=
     ⟨4 * (u : Int) + 6, by dsimp [T, SA.SAParams.ts]; ring⟩
-  have hy : rho.ownKey v ∈ honestKeys S rho := honest_ownKey hv
+  have hy : rho.ownKey v ∈ honestKeys ⟨S, stock⟩ rho := honest_ownKey hv
   have hawake := hp.awake _ hy T (by dsimp [T]; linarith [sp.toParams.hΔ]) hTb
-  rw [simTrace_awake_iff, awakeAt_iff] at hawake
+  rw [simTrace_awake_iff ⟨S, stock⟩ rho hn, awakeAt_iff ⟨S, stock⟩ rho hn] at hawake
   have hawake' : E.awake v T = true := by
     simpa only [Model.Run.ownKey, Equiv.apply_symm_apply] using hawake.1
   have hfT : rho.faultyAt T = rho.faultyAt 0 := hf T
@@ -397,13 +397,13 @@ theorem update_before_stored_clock (hf : rho.point.ConstantFaults)
   have hnr : ∀ q < i, rho.events[q]? ≠ some (.restart v T) := by
     intro q _ hrestart
     obtain ⟨_, rec, hrec, hnode, htime, ell, hlabel, hcall⟩ :=
-      restart_getElem? S rho hn hrestart
-    have hrs : tr.RestartAt (rho.ownKey v) (cutMap S rho hn q) := by
+      restart_getElem? ⟨S, stock⟩ rho hn hrestart
+    have hrs : tr.RestartAt (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn q) := by
       refine ⟨ell, ⟨?_, ?_⟩, hcall⟩
-      · rw [simTrace_node, hrec]; exact hnode
-      · rw [simTrace_label, hrec, Option.map_some, hlabel]
-    have htime' : tr.time (cutMap S rho hn q) = T := by
-      rw [simTrace_time, hrec]; exact htime
+      · rw [simTrace_node ⟨S, stock⟩ rho hn, hrec]; exact hnode
+      · rw [simTrace_label ⟨S, stock⟩ rho hn, hrec, Option.map_some, hlabel]
+    have htime' : tr.time (cutMap ⟨S, stock⟩ rho hn q) = T := by
+      rw [simTrace_time ⟨S, stock⟩ rho hn, hrec]; exact htime
     have hbound := Healing.restart_le_before hp hy hrs (htime' ▸ hTb)
     rw [htime'] at hbound
     have hbound' : T ≤ sp.ts (sp.slot (SA.gbar g) + 1 : Nat) := by
@@ -411,15 +411,15 @@ theorem update_before_stored_clock (hf : rho.point.ConstantFaults)
     dsimp [T] at hbound'
     linarith [sp.toParams.hΔ]
   have hpi := tick_before_stored_clock S rho hn hvalid he hT0 ht hnr
-  obtain ⟨hgroup, hlen⟩ := simTrace_tick_public_group S rho hn hf hvalid v hv p T he hpub
-  obtain ⟨hcall, htime⟩ := tick_boundary_call S rho hn hf hvalid hv he hpub
+  obtain ⟨hgroup, hlen⟩ := simTrace_tick_public_group ⟨S, stock⟩ rho hn hf hvalid v hv p T he hpub
+  obtain ⟨hcall, htime⟩ := tick_boundary_call ⟨S, stock⟩ rho hn hf hvalid hv he hpub
   obtain ⟨ell, hcallA, hcalltick⟩ : ∃ ell,
-      tr.projAC.CallAt (rho.ownKey v) (cutMap S rho hn p) ell ∧
+      tr.projAC.CallAt (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn p) ell ∧
         ell.call = .tick := ⟨_, Compose.projAC_callAt.2 hcall, rfl⟩
-  refine ⟨cutMap S rho hn p, ell, ⟨hcallA, hcalltick, htime, ?_⟩, ?_⟩
+  refine ⟨cutMap ⟨S, stock⟩ rho hn p, ell, ⟨hcallA, hcalltick, htime, ?_⟩, ?_⟩
   · have hr := (Compose.goldilocks_ac_projection _ _ _ _ _ _ hp.run hp.noColl).localRun
     unfold SA.joined
-    rcases SA.restartTime_state hr hy (cutMap S rho hn p) with h | ⟨r, hrp, hrs, h⟩
+    rcases SA.restartTime_state hr hy (cutMap ⟨S, stock⟩ rho hn p) with h | ⟨r, hrp, hrs, h⟩
     · rw [h]; exact bot_le
     · rw [h]
       apply WithBot.coe_le_coe.mpr
@@ -433,7 +433,7 @@ theorem update_before_stored_clock (hf : rho.point.ConstantFaults)
       rw [htime, hsl]
       simpa using hbound.trans hslot
   · have hpos := List.length_pos_of_ne_nil hgroup.1
-    have hmono := cutMap_mono S rho hn (Nat.succ_le_of_lt hpi)
+    have hmono := cutMap_mono ⟨S, stock⟩ rho hn (Nat.succ_le_of_lt hpi)
     rw [hlen] at hmono
     omega
 

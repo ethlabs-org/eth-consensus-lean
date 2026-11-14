@@ -118,14 +118,14 @@ theorem decoded_held_scheduled_proposal_at {V : Type} [Fintype V] [DecidableEq V
     (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
     (ht : t = (S.params (pubOf E) hn).toParams.slotTime s)
     (hd : WrappersDecoded (digests rho.hash)
-      (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)))
+      (shapeOf ⟨S, stock⟩ hn (atProposal ⟨S, stock⟩ rho v (rho.stateBefore i v) t)))
     (hh : WrappersHeld (digests rho.hash)
-      (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t))) :
-    let nd := atProposal S rho v (rho.stateBefore i v) t
-    let st' := shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1
+      (shapeOf ⟨S, stock⟩ hn (atProposal ⟨S, stock⟩ rho v (rho.stateBefore i v) t))) :
+    let nd := atProposal ⟨S, stock⟩ rho v (rho.stateBefore i v) t
+    let st' := shapeOf ⟨S, stock⟩ hn (rho.dutyStep v nd (.propose s hs)).1
     WrappersDecoded (digests rho.hash) st' ∧ WrappersHeld (digests rho.hash) st' := by
-  exact decoded_held_scheduled_proposal_of_own S rho hn hv v i t he s hs ht hd hh
-    ⟨scheduled_proposal_child_decodes_at S rho hn hv v⟩
+  exact decoded_held_scheduled_proposal_of_own ⟨S, stock⟩ rho hn hv v i t he s hs ht hd hh
+    ⟨scheduled_proposal_child_decodes_at ⟨S, stock⟩ rho hn hv v⟩
 
 /-- Every actual honest tick preserves the joint invariant, including its own proposal. -/
 theorem decoded_held_tick_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
@@ -133,12 +133,12 @@ theorem decoded_held_tick_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (hv : rho.ExecutionValid)
     (v : V) (i : Nat) (t : Time)
     (he : rho.events[i]? = some (.tick v t))
-    (hd : WrappersDecoded (digests rho.hash) (stateAt S rho hn v i))
-    (hh : WrappersHeld (digests rho.hash) (stateAt S rho hn v i)) :
-    let st' := shapeOf S hn (rho.tick (rho.stateBefore i v) v t).1
+    (hd : WrappersDecoded (digests rho.hash) (stateAt ⟨S, stock⟩ rho hn v i))
+    (hh : WrappersHeld (digests rho.hash) (stateAt ⟨S, stock⟩ rho hn v i)) :
+    let st' := shapeOf ⟨S, stock⟩ hn (rho.tick (rho.stateBefore i v) v t).1
     WrappersDecoded (digests rho.hash) st' ∧ WrappersHeld (digests rho.hash) st' := by
-  exact decoded_held_tick_of_own S rho hn hv v i t he hd hh
-    ⟨scheduled_proposal_child_decodes_at S rho hn hv v⟩
+  exact decoded_held_tick_of_own ⟨S, stock⟩ rho hn hv v i t he hd hh
+    ⟨scheduled_proposal_child_decodes_at ⟨S, stock⟩ rho hn hv v⟩
 
 /-- Every reachable honest engine state has decoded wrappers corresponding to held blocks.
 No decoder, parent-slot, payload-validity or clock premise is assumed. -/
@@ -146,10 +146,10 @@ theorem stateAt_decoded_held_at {V : Type} [Fintype V] [DecidableEq V] {E : Env 
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (v : V) (i : Nat) :
-    WrappersDecoded (digests rho.hash) (stateAt S rho hn v i) ∧
-    WrappersHeld (digests rho.hash) (stateAt S rho hn v i) := by
-  exact stateAt_decoded_held_of_own S rho hn hv v
-    ⟨scheduled_proposal_child_decodes_at S rho hn hv v⟩ i
+    WrappersDecoded (digests rho.hash) (stateAt ⟨S, stock⟩ rho hn v i) ∧
+    WrappersHeld (digests rho.hash) (stateAt ⟨S, stock⟩ rho hn v i) := by
+  exact stateAt_decoded_held_of_own ⟨S, stock⟩ rho hn hv v
+    ⟨scheduled_proposal_child_decodes_at ⟨S, stock⟩ rho hn hv v⟩ i
 
 /-- Receipt acceptances publish a wrapper that decodes, not merely a candidate with the
 right syntactic shape. The queue and decoder witnesses use the same processed state. -/
@@ -181,20 +181,23 @@ theorem tick_proposal_acceptance_decoded_publication_at {V : Type} [Fintype V] [
     (hone : (skeleton (pubOf E)).proposeAt t = [.propose s hs])
     (ht : t = (S.params (pubOf E) hn).toParams.slotTime s)
     (B : Blk (S.params (pubOf E) hn))
-    (ha : .fg (.block B true) ∈ (Node.tickStep (runProposer S rho hn) (digestOf S rho)
-      (rho.ownKey v) (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node
+    (ha : .fg (.block B true) ∈
+        (Node.tickStep (runProposer ⟨S, stock⟩ rho hn) (digestOf ⟨S, stock⟩ rho)
+      (rho.ownKey v)
+          (shapeOf ⟨S, stock⟩ hn (atProposal ⟨S, stock⟩ rho v (rho.stateBefore i v) t)).node
       t (encodeTxs (mempool rho.inbox v t)) .proposal).2)
     (hchild : decodeBlock (S.params (pubOf E) hn) (binding := stock)
       (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B) :
-    ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
+    ∃ p q, (publisherExecution ⟨S, stock⟩ rho).actual q ∧ q.event = i ∧
       q.origin = rho.ownKey v ∧
       q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B ∧
       decodeForward (S.params (pubOf E) hn) (digests rho.hash q.object) q.object =
         some (rho.ownKey v, t, p, B) := by
-  exact tick_proposal_acceptance_decoded_publication_of_queued S rho hn hv v i t he s hs hone
-    ht B hchild ⟨scheduled_proposal_child_decodes_at S rho hn hv v⟩
-    (tick_proposal_acceptance_queued_at S rho hn hv v i t he s hs hone ht B ha)
+  exact tick_proposal_acceptance_decoded_publication_of_queued ⟨S, stock⟩ rho hn hv v i t he s
+      hs hone
+    ht B hchild ⟨scheduled_proposal_child_decodes_at ⟨S, stock⟩ rho hn hv v⟩
+    (tick_proposal_acceptance_queued_at ⟨S, stock⟩ rho hn hv v i t he s hs hone ht B ha)
 
 /-- Every accepting cut of an honest tick has a successfully decoded publication. -/
 theorem tick_acceptance_decoded_publication_at {V : Type} [Fintype V] [DecidableEq V]

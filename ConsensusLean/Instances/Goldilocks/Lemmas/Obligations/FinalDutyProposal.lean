@@ -39,13 +39,14 @@ theorem final_duty_proposal_run (Q : FinalQuery S A V) {s : Nat} {hold : Time} (
     (hduty : HonestReadyIn Q.run.2.point Q.run.2.key (fun s => Q.run.2.sel (.proposer s)) s
       ((Sys (goldilocks S) V).cDur (K S A) Q.run)
       ((goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime s) hold) :
-    ∃ k P, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2)
-        (runProposer S Q.run.2 Q.hn) s P ∧
-      Q.trace.ProposesAt (runProposer S Q.run.2 Q.hn s) k P ∧
-      Q.trace.AcceptAt (runProposer S Q.run.2 Q.hn s) k P ∧
+    ∃ k P, Healing.HonestProposalRun Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
+        (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) s P ∧
+      Q.trace.ProposesAt (runProposer ⟨S, stock⟩ Q.run.2 Q.hn s) k P ∧
+      Q.trace.AcceptAt (runProposer ⟨S, stock⟩ Q.run.2 Q.hn s) k P ∧
       Q.trace.time k = Q.params.ts s ∧ P.slot = s ∧
-      Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) ((Sys (goldilocks S) V).cDur (K S A) Q.run)
-        (runProposer S Q.run.2 Q.hn s) (Q.params.ts s) :=
+      Regimes.ReadyAt Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
+          ((Sys (goldilocks S) V).cDur (K S A) Q.run)
+        (runProposer ⟨S, stock⟩ Q.run.2 Q.hn s) (Q.params.ts s) :=
   duty_proposal_run S A V Q.run Q.hn Q.constant Q.valid Q.noCollision hs hth hduty
 
 end Consensus.Goldilocks.Obligations

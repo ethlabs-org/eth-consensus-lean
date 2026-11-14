@@ -37,8 +37,8 @@ theorem skeleton_proposerSel (s : Nat) :
 
 /-- In an admitted run, the node schedule is the selected proposer. -/
 theorem selValid_proposer (hsel : rho.SelValid) (s : Nat) :
-    rho.sel (.proposer s) = {runProposer S rho hn s} :=
-  Simulation.selValid_proposer S rho hn hsel s
+    rho.sel (.proposer s) = {runProposer ⟨S, stock⟩ rho hn s} :=
+  Simulation.selValid_proposer ⟨S, stock⟩ rho hn hsel s
 
 include hn in
 /-- The schedule with everyone polling is an admissible selection. -/
@@ -64,14 +64,14 @@ variable [DecidableEq V]
 /-- Exact-time release cannot be satisfied solely by a later send, even at the horizon. -/
 theorem released_requires_same_time (v : V)
     (o : (Model.protoOf (compiled (goldilocks S)) E).Object) (τ : Time)
-    (h : ReleasedFrom S rho v o τ) : rho.releases v o τ :=
-  (releasedFrom_iff S rho v o τ).mp h
+    (h : ReleasedFrom ⟨S, stock⟩ rho v o τ) : rho.releases v o τ :=
+  (releasedFrom_iff ⟨S, stock⟩ rho v o τ).mp h
 
 /-- An admission at the horizon still requires a relay at that same time. -/
 theorem relayed_at_horizon (v : V) (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
-    (h : RelayedFrom S rho v o rho.horizon) :
+    (h : RelayedFrom ⟨S, stock⟩ rho v o rho.horizon) :
     ∃ cs, o ∈ cs ∧ rho.releases v (.mk .none (.data .relay) cs) rho.horizon :=
-  (relayedFrom_iff S rho v o rho.horizon).mp h
+  (relayedFrom_iff ⟨S, stock⟩ rho v o rho.horizon).mp h
 
 /-- At the stock binding `releasedFrom_of_pending` concludes its population-wide form, by `rfl`:
 the pending body was released as the object signed in the poll role. -/
@@ -181,9 +181,9 @@ theorem terminal_observation (S : Setup) :
       rho.ExecutionValid ∧ rho.horizon = 1 ∧
       rho.point.Ready (Regimes.catchUp (S.params (pubOf terminalPoint.env) (by decide)))
         0 rho.horizon ∧
-      (simTrace S rho (by decide)).awake (rho.ownKey 0) rho.horizon ∧
-      ∃ j, (simTrace S rho (by decide)).label j = none ∧
-        Regimes.CutAfter (simTrace S rho (by decide)) j rho.horizon := by
+      (simTrace ⟨S, stock⟩ rho (by decide)).awake (rho.ownKey 0) rho.horizon ∧
+      ∃ j, (simTrace ⟨S, stock⟩ rho (by decide)).label j = none ∧
+        Regimes.CutAfter (simTrace ⟨S, stock⟩ rho (by decide)) j rho.horizon := by
   let sel : (Model.protoOf (compiled (goldilocks S)) terminalPoint.env).Role →
       Finset (Fin (Fintype.card (Fin 1))) := fun _ => Finset.univ
   have hsel : (Model.protoOf (compiled (goldilocks S)) terminalPoint.env).SelAdmits sel := by
@@ -199,16 +199,16 @@ theorem terminal_observation (S : Setup) :
       0 rho.horizon := by
     rw [hp]
     exact ⟨by simp [EnvPoint.HonestAt, terminalPoint], fun _ _ _ => rfl⟩
-  refine ⟨rho, hv, hh, hr, ?_, (allCuts S rho (by decide)).length, ?_, ?_⟩
-  · rw [simTrace_awake_iff, awakeAt_iff]
+  refine ⟨rho, hv, hh, hr, ?_, (allCuts ⟨S, stock⟩ rho (by decide)).length, ?_, ?_⟩
+  · rw [simTrace_awake_iff ⟨S, stock⟩ rho (by decide), awakeAt_iff ⟨S, stock⟩ rho (by decide)]
     exact ⟨rfl, hv.horizon_nonneg, le_rfl⟩
-  · rw [simTrace_label, List.getElem?_length]; rfl
+  · rw [simTrace_label ⟨S, stock⟩ rho (by decide), List.getElem?_length]; rfl
   · constructor
     · intro k hk
-      apply simTrace_labelled_time_le S rho (by decide) hv
-      rw [simTrace_label, List.getElem?_eq_getElem hk]
+      apply simTrace_labelled_time_le ⟨S, stock⟩ rho (by decide) hv
+      rw [simTrace_label ⟨S, stock⟩ rho (by decide), List.getElem?_eq_getElem hk]
       simp
-    · rw [simTrace_time, List.getElem?_length]
+    · rw [simTrace_time ⟨S, stock⟩ rho (by decide), List.getElem?_length]
       simp
 
 /-- Raw hashes at and on both sides of genesis round-trip without naming genesis.

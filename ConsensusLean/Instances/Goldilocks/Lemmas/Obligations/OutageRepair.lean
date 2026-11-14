@@ -31,7 +31,8 @@ the suppliers `outage_reader_head`, `outage_reader_early`, `outage_reader_late`)
 of the two read tips is the engine read prefix (`outage_reader_prefix`). The armed-read witness
 `armed` of `outage_arm` is not needed. -/
 theorem outage_repair (Q : OutageQuery S A V)
-    (service : Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.start)
+    (service : Compose.SleepyServiceBefore Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) Q.params.Δ
+        Q.start)
     (v : V) (hv : Q.run.2.point.Ready Q.duration v Q.T)
     (armed : OutageArmedRead S A V Q v)
     (t : Time) (ht : (Sys (goldilocks S) V).recoveryAt (K S A) Q.stop Q.run ≤ t)

@@ -163,16 +163,17 @@ crossing set by the convictions of the two views. Consumed by the continuation e
 supplies `ChainConvictedBelow` to the seeded invariant and the continued reads. -/
 theorem chainConvictedBelow_at (hv : rho.ExecutionValid)
     (hcb : (Sys (goldilocks S) V).ConvictedBelow (K S A) ⟨E, rho⟩) :
-    Compose.Growing.ChainConvictedBelow (simTraceAt S rho hn) (honestKeysAt S rho) := by
+    Compose.Growing.ChainConvictedBelow (simTraceAt ⟨S, stock⟩ rho hn)
+        (honestKeysAt ⟨S, stock⟩ rho) := by
   classical
   intro y z i j t t' ht hi hy ht' hj hz X₁ hX₁ X₂ hX₂ W hW
   obtain ⟨q₁, hq₁, hh₁, hv₁⟩ := held_atts_in_view_at S rho hn hv ht hi hy
   obtain ⟨q₂, hq₂, hh₂, hv₂⟩ := held_atts_in_view_at S rho hn hv ht' hj hz
   set Vw := rho.ViewIdx (rho.key y) q₁ ∪ rho.ViewIdx (rho.key z) q₂
-  have hcount := convicted_count S rho (A := Vw) W fun k hk => by
+  have hcount := convicted_count ⟨S, stock⟩ rho (A := Vw) W fun k hk => by
     obtain ⟨a, ha, b, hb, hak, hab⟩ := hW k hk
-    have hmem : ∀ c ∈ Regimes.ChainAtts (simTraceAt S rho hn) y i X₁ ∪
-        Regimes.ChainAtts (simTraceAt S rho hn) z j X₂, attObj c ∈ Vw := by
+    have hmem : ∀ c ∈ Regimes.ChainAtts (simTraceAt ⟨S, stock⟩ rho hn) y i X₁ ∪
+        Regimes.ChainAtts (simTraceAt ⟨S, stock⟩ rho hn) z j X₂, attObj c ∈ Vw := by
       rintro c (⟨B, hB, -, hc⟩ | ⟨B, hB, -, hc⟩)
       · exact Or.inl (hv₁ B hB c hc)
       · exact Or.inr (hv₂ B hB c hc)

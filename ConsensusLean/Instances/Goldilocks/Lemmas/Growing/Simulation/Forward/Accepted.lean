@@ -195,32 +195,34 @@ theorem received_forward_accepted_before_at {V : Type} [Fintype V] [DecidableEq 
     (S : Setup)
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
+    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
     {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V) stock}
     {x : Fin (Fintype.card V)} {u t deadline : Time}
     {p : Option (Wire (Fintype.card V) stock)} {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u)) {t₀ : Time}
-    (hj₀ : ∀ k < j, (simTraceAt S rho hn).time k ≤ t₀) (hy : v ∉ rho.faultyAt t₀)
+    (hj₀ : ∀ k < j, (simTraceAt ⟨S, stock⟩ rho hn).time k ≤ t₀) (hy : v ∉ rho.faultyAt t₀)
     (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt u)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B))
-    (hij : cutMap S rho hn (i + 1) ≤ j)
-    (hFB : Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho))
-      ((simTraceAt S rho hn).state (rho.ownKey v) j).fg.F B)
+    (hij : cutMap ⟨S, stock⟩ rho hn (i + 1) ≤ j)
+    (hFB : Anc ((simTraceAt ⟨S, stock⟩ rho hn).HonestBlocksAt (honestKeysAt ⟨S, stock⟩ rho))
+      ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v) j).fg.F B)
     (hu : u < deadline) :
-    ∃ k < cutMap S rho hn (i + 1), (simTraceAt S rho hn).AcceptAt (rho.ownKey v) k B ∧
-      (simTraceAt S rho hn).time k ≤ u ∧ (simTraceAt S rho hn).time k < deadline := by
+    ∃ k < cutMap ⟨S, stock⟩ rho hn (i + 1), (simTraceAt ⟨S, stock⟩ rho hn).AcceptAt
+        (rho.ownKey v) k B ∧
+      (simTraceAt ⟨S, stock⟩ rho hn).time k ≤ u ∧ (simTraceAt ⟨S, stock⟩ rho hn).time k <
+          deadline := by
   have hsign : rho.signerOf o = some (rho.key x) := by
     change o.signer?.map rho.key = some (rho.key x)
     rw [decodeForward_signer hd]
     rfl
   obtain ⟨j', s, hj', hs, ho⟩ := hv.unforgeable i v receipt u he o hc (rho.key x) hsign hx
   have hkx : rho.ownKey (rho.key x) = x := rho.key.symm_apply_apply _
-  have hts : t = s := released_forward_stamp S rho hn hv hs ho (by rw [hkx]; exact hd)
+  have hts : t = s := released_forward_stamp ⟨S, stock⟩ rho hn hv hs ho (by erw [hkx]; exact hd)
   subst hts
   have hxt : rho.key x ∉ rho.faultyAt t := fun h =>
-    hx (rho.faultyAt_mono (sendsAt_time_le S rho hv hs (Or.inr ⟨receipt, he⟩) hj'.le) h)
-  exact received_forward_accepted_before_of_released_at S rho hn hv hnc he hj₀ hy hc hxt
+    hx (rho.faultyAt_mono (sendsAt_time_le ⟨S, stock⟩ rho hv hs (Or.inr ⟨receipt, he⟩) hj'.le) h)
+  exact received_forward_accepted_before_of_released_at ⟨S, stock⟩ rho hn hv hnc he hj₀ hy hc hxt
     ⟨j', hs, ho⟩ hd hij hFB hu
 
 end Consensus.Goldilocks.Simulation

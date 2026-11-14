@@ -20,9 +20,9 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 /-- The hypothesis `hS` of `Compose.restored_majority` in query form: receiver-scoped strict AC
 service from the outage's GST, for every honest receiver. -/
 theorem outage_receiver_service (Q : OutageQuery S A V) :
-    ∀ y ∈ honestKeys S Q.run.2,
-      Compose.ReceiverServiceAfter (honestKeys S Q.run.2)
-        (Q.trace.HonestBlocks (honestKeys S Q.run.2)) Q.stop y Q.trace.projAC :=
+    ∀ y ∈ honestKeys ⟨S, stock⟩ Q.run.2,
+      Compose.ReceiverServiceAfter (honestKeys ⟨S, stock⟩ Q.run.2)
+        (Q.trace.HonestBlocks (honestKeys ⟨S, stock⟩ Q.run.2)) Q.stop y Q.trace.projAC :=
   fun _ hy => receiverServiceAfter_of_psync S Q.run.2 Q.hn Q.constant Q.valid
     (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision) (outage_psync S A V Q) hy
 

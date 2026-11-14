@@ -250,31 +250,31 @@ Stated over the population binding `S : Setup`, its 9124 form. -/
 theorem simTrace_goldilocksRun {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
-    GoldilocksRun (runProposer S rho hn) (digestOf S rho)
-      (honestKeys S rho) (simTrace S rho hn) where
+    GoldilocksRun (runProposer ⟨S, stock⟩ rho hn) (digestOf ⟨S, stock⟩ rho)
+      (honestKeys ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho hn) where
   vstart := fun _ => SA.voteStart_initial _
-  init := simTrace_init S rho hn
-  grouped := simTrace_grouped S rho hn hf hv
-  cutLaw := simTrace_cutLaw S rho hn hf hv
-  wire := simTrace_wire S rho hn hf hv
-  proposerCredential := simTrace_proposerCredential S rho hn hv
-  time_nonneg := simTrace_time_nonneg S rho hn hv
-  time_mono := simTrace_time_mono S rho hn hv
-  finite := simTrace_finite S rho hn hv
-  phase_order := simTrace_phase_order S rho hn hv
-  tick_public := simTrace_tick_public S rho hn hv
-  tick_unique := simTrace_tick_unique S rho hn hv
-  tick_of_awake := simTrace_tick_of_awake S rho hn hf hv
-  awake_in_horizon := simTrace_awake_in_horizon S rho hn
-  awake_of_call := simTrace_awake_of_call S rho hn hv
-  restart_of_sleep := simTrace_restart_of_sleep S rho hn hf hv
-  restart_at_wake := simTrace_restart_at_wake S rho hn hf hv
-  sleep_of_restart := simTrace_sleep_of_restart S rho hn hv
-  block_unforgeable := simTrace_block_unforgeable S rho hn hf hv
-  att_unforgeable := simTrace_att_unforgeable S rho hn hf hv
-  msg_unforgeable := simTrace_msg_unforgeable S rho hn hf hv
-  genesis_root_ok := simTrace_genesis_root_ok S rho hn
-  carried_vote_unforgeable := simTrace_carried_vote_unforgeable S rho hn hf hv
+  init := simTrace_init ⟨S, stock⟩ rho hn
+  grouped := simTrace_grouped ⟨S, stock⟩ rho hn hf hv
+  cutLaw := simTrace_cutLaw ⟨S, stock⟩ rho hn hf hv
+  wire := simTrace_wire ⟨S, stock⟩ rho hn hf hv
+  proposerCredential := simTrace_proposerCredential ⟨S, stock⟩ rho hn hv
+  time_nonneg := simTrace_time_nonneg ⟨S, stock⟩ rho hn hv
+  time_mono := simTrace_time_mono ⟨S, stock⟩ rho hn hv
+  finite := simTrace_finite ⟨S, stock⟩ rho hn hv
+  phase_order := simTrace_phase_order ⟨S, stock⟩ rho hn hv
+  tick_public := simTrace_tick_public ⟨S, stock⟩ rho hn hv
+  tick_unique := simTrace_tick_unique ⟨S, stock⟩ rho hn hv
+  tick_of_awake := simTrace_tick_of_awake ⟨S, stock⟩ rho hn hf hv
+  awake_in_horizon := simTrace_awake_in_horizon ⟨S, stock⟩ rho hn
+  awake_of_call := simTrace_awake_of_call ⟨S, stock⟩ rho hn hv
+  restart_of_sleep := simTrace_restart_of_sleep ⟨S, stock⟩ rho hn hf hv
+  restart_at_wake := simTrace_restart_at_wake ⟨S, stock⟩ rho hn hf hv
+  sleep_of_restart := simTrace_sleep_of_restart ⟨S, stock⟩ rho hn hv
+  block_unforgeable := simTrace_block_unforgeable ⟨S, stock⟩ rho hn hf hv
+  att_unforgeable := simTrace_att_unforgeable ⟨S, stock⟩ rho hn hf hv
+  msg_unforgeable := simTrace_msg_unforgeable ⟨S, stock⟩ rho hn hf hv
+  genesis_root_ok := simTrace_genesis_root_ok ⟨S, stock⟩ rho hn
+  carried_vote_unforgeable := simTrace_carried_vote_unforgeable ⟨S, stock⟩ rho hn hf hv
 
 end Consensus.Goldilocks.Simulation
 

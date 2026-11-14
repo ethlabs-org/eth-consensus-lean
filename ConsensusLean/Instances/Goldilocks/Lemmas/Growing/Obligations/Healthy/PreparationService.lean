@@ -21,8 +21,8 @@ theorem healthy_preparation_awake_at (Q : HealthyPreparationQueryAt S A V) :
       Q.trace.awake y t := by
   intro y t hy hg hb
   have hh := hb.trans Q.bound_le
-  rw [simTraceAt_awake_iff, awakeAt_iff]
-  rw [mem_honestKeysAt_iff, min_eq_left hh] at hy
+  rw [simTraceAt_awake_iff ⟨S, stock⟩ Q.run.2 Q.hn, awakeAt_iff ⟨S, stock⟩ Q.run.2 Q.hn]
+  rw [mem_honestKeysAt_iff ⟨S, stock⟩ Q.run.2, min_eq_left hh] at hy
   exact ⟨Q.healthy.2.1.2 _ t hg hb hy, (le_max_right _ _).trans hg, hh⟩
 
 /-- The healthy fault bound at the query's bound also bounds every earlier cut. -/
@@ -38,7 +38,7 @@ theorem healthy_preparation_faults_at (Q : HealthyPreparationQueryAt S A V) :
     1 / 3 * Fintype.card V at hpop
   have heq : (Q.keys t)ᶜ = Q.run.2.key ⁻¹' (↑(Q.run.2.faultyAt t) : Set V) := by
     ext y
-    simp [mem_honestKeysAt_iff, min_eq_left (ht.trans Q.bound_le)]
+    simp [mem_honestKeysAt_iff ⟨S, stock⟩ Q.run.2, min_eq_left (ht.trans Q.bound_le)]
   rw [heq, Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
     (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset]
   have hcard := Finset.card_le_card (Q.run.2.faultyAt_mono ht)
@@ -54,7 +54,7 @@ theorem healthy_preparation_service_at (Q : HealthyPreparationQueryAt S A V) :
     Healing.Growing.ResetService Q.trace Q.keys Q.gst
       (protoFGDelay (Model.pubOf Q.run.1)) Q.bound := by
   have hs := resetService_of_psync_at S Q.run.2 Q.hn Q.valid
-    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision)
+    (noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision)
     ((Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1)
     (signed_row_service_psync_at S Q.run.2 Q.hn Q.valid) (protoFGDelay_pos _)
   exact ⟨hs.deltaF, hs.message, hs.block, hs.relay,
@@ -69,15 +69,15 @@ theorem healthy_preparation_noRestart_at (Q : HealthyPreparationQueryAt S A V) :
   intro y i hy hr hib
   by_contra h
   have hgi : SA.gbar Q.gst < Q.trace.time i := lt_of_not_ge h
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hy0 : y ∈ honestKeys S Q.run.2 := by
-    rw [mem_honestKeys_iff]
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
+  have hy0 : y ∈ honestKeys ⟨S, stock⟩ Q.run.2 := by
+    rw [mem_honestKeys_iff ⟨S, stock⟩ Q.run.2]
     have hz := hrun.antitone (hrun.time_nonneg i) hy
-    rw [mem_honestKeysAt_iff, min_eq_left Q.valid.horizon_nonneg] at hz
+    rw [mem_honestKeysAt_iff ⟨S, stock⟩ Q.run.2, min_eq_left Q.valid.horizon_nonneg] at hz
     exact hz
-  have hs := simTrace_asleep_before_restart S Q.run.2 Q.hn Q.valid y hy0 i
-    (by simpa only [simTraceAt_eq] using hr)
-  rw [← simTraceAt_eq] at hs
+  have hs := simTrace_asleep_before_restart ⟨S, stock⟩ Q.run.2 Q.hn Q.valid y hy0 i
+    (by simpa only [simTraceAt_eq ⟨S, stock⟩ Q.run.2 Q.hn] using hr)
+  rw [← simTraceAt_eq ⟨S, stock⟩ Q.run.2 Q.hn] at hs
   exact hs (healthy_preparation_awake_at S A V Q y (Q.trace.time i - 1)
     (hrun.antitone (by linarith) hy) (Int.le_sub_one_of_lt hgi) (by linarith))
 

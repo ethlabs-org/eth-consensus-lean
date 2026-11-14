@@ -58,12 +58,12 @@ theorem msg_delivered {y : Fin (Fintype.card (Fin 5))} {k : Nat}
   obtain ⟨ℓ, ⟨hnode, hlab⟩, hcall⟩ := hc
   have hl : (tr S).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, i, ev, _, he, hstart, _, hidx, _, _, _, hlab'⟩ :=
-    simTrace_cut S (rhoc S) one_le_card hl
+    simTrace_cut ⟨S, stock⟩ (rhoc S) one_le_card hl
   have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
   have hmem := List.mem_of_getElem? hidx
   obtain ⟨v, o, t, rfl⟩ :=
-    eq_deliver_of_cut S (rhoc S) one_le_card he hmem (Or.inr ⟨ℓ, m, hrl, hcall⟩)
-  rw [eventCuts_deliver S (rhoc S) one_le_card i v o t he] at hmem
+    eq_deliver_of_cut ⟨S, stock⟩ (rhoc S) one_le_card he hmem (Or.inr ⟨ℓ, m, hrl, hcall⟩)
+  rw [eventCuts_deliver ⟨S, stock⟩ (rhoc S) one_le_card i v o t he] at hmem
   obtain ⟨o', e, st', ho, hce, q, hq, hc, _⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
   have hcut := List.getElem_mem hq
   rw [← hc, hrl] at hcut
@@ -100,17 +100,19 @@ theorem msg_delivered {y : Fin (Fintype.card (Fin 5))} {k : Nat}
 /-- A block event of the retained trace processes a delivered block object. -/
 theorem wire_block {y : Fin (Fintype.card (Fin 5))} {j : Nat} {t : Time}
     {B : Blk (S.params (pubOf env) one_le_card)}
-    (hg : (tr S).GroupAt (runProposer S (rhoc S) one_le_card) (digestOf S (rhoc S)) y j t
+    (hg : (tr S).GroupAt (runProposer ⟨S, stock⟩ (rhoc S) one_le_card)
+        (digestOf ⟨S, stock⟩ (rhoc S)) y j t
       (.block B)) :
     ∃ (i : Nat) (w : Fin 5) (o : Obj S), (rhoc S).events[i]? = some (Model.Event.deliver w o t) ∧
       Model.Obj.Contains o (blockObj (S.params (pubOf env) one_le_card) B) := by
   obtain ⟨r, i, ev, he, hstart, _, hidx, hpos, _, het, hphase⟩ :=
-    groupAt_start S (rhoc S) one_le_card hg
+    groupAt_start ⟨S, stock⟩ (rhoc S) one_le_card hg
   obtain ⟨hne, hcuts, _⟩ := hg
   obtain ⟨_, _, _, _, hl⟩ := hcuts 0 (List.length_pos_of_ne_nil hne)
   rw [Nat.add_zero] at hl
-  have hr : (allCuts S (rhoc S) one_le_card)[j]? = some r := by
-    have h := allCuts_getElem?_add S (rhoc S) one_le_card i (j - cutMap S (rhoc S) one_le_card i)
+  have hr : (allCuts ⟨S, stock⟩ (rhoc S) one_le_card)[j]? = some r := by
+    have h := allCuts_getElem?_add ⟨S, stock⟩ (rhoc S) one_le_card i
+        (j - cutMap ⟨S, stock⟩ (rhoc S) one_le_card i)
       (List.getElem?_eq_some_iff.mp he).1 (List.getElem?_eq_some_iff.mp hidx).1
     rw [Nat.add_sub_cancel' hstart, hidx] at h
     exact h
@@ -119,9 +121,9 @@ theorem wire_block {y : Fin (Fintype.card (Fin 5))} {j : Nat} {t : Time}
   | restart v t' => simp [Event.phase, Model.Event.phase] at hphase
   | deliver v o t' =>
     have hrmem := List.mem_of_getElem? hidx
-    rw [eventCuts_deliver S (rhoc S) one_le_card i v o t' he] at hrmem
+    rw [eventCuts_deliver ⟨S, stock⟩ (rhoc S) one_le_card i v o t' he] at hrmem
     have hrlabel : (tr S).label j = some r.label := by
-      rw [simTrace_label, hr]
+      rw [simTrace_label ⟨S, stock⟩ (rhoc S) one_le_card, hr]
       rfl
     obtain ⟨c, cs, hcs⟩ := List.exists_cons_of_ne_nil hne
     rw [hrlabel, Option.some.injEq, List.getElem_of_eq hcs] at hl
@@ -298,7 +300,7 @@ end ACStep
 /-- No restart in the retained trace: everyone is awake throughout. -/
 theorem no_restart {y : Fin (Fintype.card (Fin 5))} {k : Nat} : ¬ (tr S).RestartAt y k := by
   intro h
-  obtain ⟨i, -, -, he⟩ := simTrace_restart_event S (rhoc S) one_le_card h
+  obtain ⟨i, -, -, he⟩ := simTrace_restart_event ⟨S, stock⟩ (rhoc S) one_le_card h
   have := (rhoc_valid.restart_at_wake _ _ (List.mem_of_getElem? he)).2
   simp [Wakes, env] at this
 

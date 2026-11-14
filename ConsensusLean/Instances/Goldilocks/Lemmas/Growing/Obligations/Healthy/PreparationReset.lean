@@ -44,14 +44,14 @@ theorem healthy_preparation_reset_at (Q : HealthyPreparationQueryAt S A V)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
       Q.cap Q.index Q.ready Q.heal Q.run) :
     ∃ ΔF a, Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
-        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a Q.bound ∧
+        (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔF a Q.bound ∧
       a ≤ Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
         (healthyResetSlack S Q.index : Time) := by
   classical
   have hΔ : 0 < Q.params.Δ := Q.params.toParams.hΔ
   have hδeq : Q.params.toParams.fg.δt = S.δt := rfl
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
+  have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
   have hs := healthy_preparation_service_at S A V Q
   have haw := healthy_preparation_awake_at S A V Q
   have hf := healthy_preparation_faults_at S A V Q

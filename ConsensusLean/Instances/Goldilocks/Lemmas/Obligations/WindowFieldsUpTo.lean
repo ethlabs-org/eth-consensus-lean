@@ -99,20 +99,20 @@ anchor to every node ready at the deadline). -/
 theorem finalWindow_data_of_honest_anchors_gap (Q : FinalQuery S A V)
     {proposer : Nat → Fin Q.params.n}
     {dg : Digest (List (FG.Att Q.params.n)) (Payload Q.params.n)} {g ΔF a b : Time}
-    (hp : Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2) proposer dg g ΔF a b)
-    (hc : Healing.CatchRun Q.trace (honestKeys S Q.run.2) g (2 * Q.params.Δ)) {c : Nat}
+    (hp : Healing.ResetPremisesUpTo Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) proposer dg g ΔF a b)
+    (hc : Healing.CatchRun Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) g (2 * Q.params.Δ)) {c : Nat}
     (hc2 : 2 ≤ c) (h3c : 3 * c ≤ S.δt) (start : Nat)
     {P : Fin 4 → SA.Blk Q.params.n (List (FG.Att Q.params.n))}
-    (hP : ∀ i, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2) proposer
+    (hP : ∀ i, Healing.HonestProposalRun Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) proposer
       (start + ![0, c, 2 * c, 3 * c] i) (P i))
     (hR : Healing.drainTime Q.params a ≤ Q.params.ts start)
     (hb : Q.params.ts (start + 3 * c) ≤ b)
     (hq : Q.query < Q.params.toParams.slotTime start)
     (hD : Q.params.toParams.slotTime (start + 3 * c) ≤ Q.deadline)
-    (hready : ∀ i, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
+    (hready : ∀ i, Regimes.ReadyAt Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
       ((Sys (goldilocks S) V).cDur (K S A) Q.run) (P i).proposer
       (Q.params.toParams.slotTime (start + ![0, c, 2 * c, 3 * c] i)))
-    (hcarrier : ∀ y, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
+    (hcarrier : ∀ y, Regimes.ReadyAt Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
       ((Sys (goldilocks S) V).cDur (K S A) Q.run) y Q.deadline →
       ∃ j, Q.trace.BlockCallAt y j (P 3) ∧ Q.trace.time j ≤ Q.deadline) :
     ∃ W : FinalWindowData S A V Q, W.start = start ∧ W.gap = c ∧ W.block = P := by

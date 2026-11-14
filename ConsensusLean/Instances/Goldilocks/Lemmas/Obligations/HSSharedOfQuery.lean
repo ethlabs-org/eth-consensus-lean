@@ -27,9 +27,9 @@ namespace FinalQuery
 /-- **The shared HS premises of a final query at a parametric `Δ_F`**, from attestation service at
 `Δ_F` (`hrow`), `0 < Δ_F` (only the field `ResetService.deltaF`) and `6Δ + Δ_F ≤ 4Δ·δt`. -/
 theorem hsSharedUpTo_of_rows (Q : FinalQuery S A V) (ΔF : Time)
-    (hrow : PSyncFGAttTransport S Q.run.2 Q.trace (honestKeys S Q.run.2) ΔF)
+    (hrow : PSyncFGAttTransport S Q.run.2 Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) ΔF)
     (hΔF : 0 < ΔF) (htd : 6 * Q.params.Δ + ΔF ≤ 4 * Q.params.Δ * (S.δt : Time)) :
-    Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst
+    Healing.HSSharedUpTo Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) (digestOf ⟨S, stock⟩ Q.run.2) Q.gst
       ΔF Q.run.2.horizon :=
   Obligations.hsSharedUpTo_of_rows S A V Q.run Q.hn Q.constant Q.valid Q.noCollision
     Q.healthy hrow hΔF htd
@@ -39,7 +39,7 @@ protocol FG delay `Δ_F,p = protoFGDelay (pubOf E)` with the network's attestati
 (`signed_row_service_psync`) and the rise timeout `protoFGDelay_timeout_of_fgDelay`, and the digest
 of the run. This is the instantiation point of `Δ_F` for the final route. -/
 theorem hsSharedUpTo (Q : FinalQuery S A V) :
-    Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst
+    Healing.HSSharedUpTo Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) (digestOf ⟨S, stock⟩ Q.run.2) Q.gst
       (protoFGDelay (Model.pubOf Q.run.1)) Q.run.2.horizon :=
   Q.hsSharedUpTo_of_rows _ (signed_row_service_psync S Q.run.2 Q.hn Q.constant Q.valid)
     (protoFGDelay_pos _)

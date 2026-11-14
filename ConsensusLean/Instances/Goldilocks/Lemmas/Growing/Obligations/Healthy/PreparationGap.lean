@@ -24,42 +24,47 @@ theorem duty_proposal_run_at (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fint
     (hduty : HonestReadyIn run.2.point run.2.key (fun s => run.2.sel (.proposer s)) s
       ((Sys (goldilocks S) V).cDur (K S A) run)
       ((goldilocks S (Model.pubOf run.1)).skel.grid.slotTime s) hold) :
-    ∃ k P, runProposer S run.2 hn s ∈
-        honestKeysAt S run.2 ((S.params (Model.pubOf run.1) hn).ts s + hold) ∧
-      (simTraceAt S run.2 hn).ProposesAt (runProposer S run.2 hn s) k P ∧
-      (simTraceAt S run.2 hn).time k = (S.params (Model.pubOf run.1) hn).ts s ∧ P.slot = s := by
+    ∃ k P, runProposer ⟨S, stock⟩ run.2 hn s ∈
+        honestKeysAt ⟨S, stock⟩ run.2 ((S.params (Model.pubOf run.1) hn).ts s + hold) ∧
+      (simTraceAt ⟨S, stock⟩ run.2 hn).ProposesAt (runProposer ⟨S, stock⟩ run.2 hn s) k P ∧
+      (simTraceAt ⟨S, stock⟩ run.2 hn).time k = (S.params (Model.pubOf run.1) hn).ts s ∧ P.slot =
+          s := by
   have htime : (goldilocks S (Model.pubOf run.1)).skel.grid.slotTime s =
       (S.params (Model.pubOf run.1) hn).ts s := by
     change (s : Time) * (4 * run.1.ΔAC) = 4 * run.1.ΔAC * s
     ring
-  have hmem : runProposer S run.2 hn s ∈ run.2.sel (.proposer s) := by
-    simp only [runProposer_eq, dite_eq_left hduty.1]
-    exact Finset.min'_mem _ _
+  have hmem : runProposer ⟨S, stock⟩ run.2 hn s ∈ run.2.sel (.proposer s) := by
+    rw [runProposer_eq ⟨S, stock⟩ run.2 hn]
+    split
+    · exact Finset.min'_mem _ _
+    · exact absurd hduty.1 ‹_›
   have hR := (hduty.2 _ hmem).1
   rw [htime] at hR
   have h0 : (0 : Time) ≤ (S.params (Model.pubOf run.1) hn).ts s := by
     have := (S.params (Model.pubOf run.1) hn).toParams.hΔ
     simp only [SA.SAParams.ts]
     positivity
-  have hnode := ready_transport_at S run.2 hn hv h0 hth hR
-  rw [show run.2.ownKey (run.2.key (runProposer S run.2 hn s)) =
-    runProposer S run.2 hn s from run.2.key.symm_apply_apply _] at hnode
-  have hshort : Regimes.Growing.ReadyAt (simTraceAt S run.2 hn) (honestKeysAt S run.2)
+  have hnode := ready_transport_at ⟨S, stock⟩ run.2 hn hv h0 hth hR
+  erw [show run.2.ownKey (run.2.key (runProposer ⟨S, stock⟩ run.2 hn s)) =
+    runProposer ⟨S, stock⟩ run.2 hn s from run.2.key.symm_apply_apply _] at hnode
+  have hshort : Regimes.Growing.ReadyAt (simTraceAt ⟨S, stock⟩ run.2 hn)
+      (honestKeysAt ⟨S, stock⟩ run.2)
       (Regimes.catchUp (S.params (Model.pubOf run.1) hn))
-      (runProposer S run.2 hn s) ((S.params (Model.pubOf run.1) hn).ts s) := by
+      (runProposer ⟨S, stock⟩ run.2 hn s) ((S.params (Model.pubOf run.1) hn).ts s) := by
     refine ⟨hnode.1, fun t ht hts => hnode.2 t ?_ hts⟩
     apply le_trans _ ht
     apply max_le_max_left
     have := catchUp_le_cDur S A V run hn
     linarith
   obtain ⟨k, P, hP, ht⟩ := Regimes.Growing.ready_proposer_proposes_at
-    (simTraceAt_goldilocksRun S run.2 hn hv)
-    (noCollRun_simTraceAt S run.2 hn hv hnc) hs hshort
+    (simTraceAt_goldilocksRun ⟨S, stock⟩ run.2 hn hv)
+    (noCollRun_simTraceAt ⟨S, stock⟩ run.2 hn hv hnc) hs hshort
   refine ⟨k, P, ?_, hP, ht, ?_⟩
   · have hh := (hduty.2 _ hmem).2
     rw [htime] at hh
-    simpa only [EnvPoint.HonestAt, EnvPoint.lookAhead, mem_honestKeysAt_iff,
-      Model.Run.point] using hh
+    simp only [EnvPoint.HonestAt, EnvPoint.lookAhead, Model.Run.point] at hh
+    rw [mem_honestKeysAt_iff ⟨S, stock⟩ run.2]
+    exact hh
   · have h := hP.2.2
     rw [ht, (S.params (Model.pubOf run.1) hn).slotTime_eq] at h
     simp only [SA.SAParams.ts] at h
@@ -75,8 +80,8 @@ theorem healthy_preparation_gap_at (Q : HealthyPreparationQueryAt S A V)
     (hN : Q.params.ts N ≤ Q.heal) :
     ∀ a, s₀ ≤ a → a + (Q.index : Nat) ≤ N + 1 →
       ∃ x, a ≤ x ∧ x < a + (Q.index : Nat) ∧
-        ∃ k P, runProposer S Q.run.2 Q.hn x ∈ Q.keys (Q.params.ts x + Q.params.Δ) ∧
-          Q.trace.ProposesAt (runProposer S Q.run.2 Q.hn x) k P ∧
+        ∃ k P, runProposer ⟨S, stock⟩ Q.run.2 Q.hn x ∈ Q.keys (Q.params.ts x + Q.params.Δ) ∧
+          Q.trace.ProposesAt (runProposer ⟨S, stock⟩ Q.run.2 Q.hn x) k P ∧
           Q.trace.time k = Q.params.ts x ∧ P.slot = x := by
   have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
   have hrec : PatternRecurrence Q.run.2.point Q.run.2.key

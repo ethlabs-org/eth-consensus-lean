@@ -149,18 +149,19 @@ theorem signed_att_wellFormed_at {V : Type} [Fintype V] [DecidableEq V] {E : Env
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} {i : Nat}
-    (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i))
-    {a : FG.Att (Fintype.card V)} (hs : (simTraceAt S rho hn).SignAt y i a) :
+    (hy : y ∈ honestKeysAt ⟨S, stock⟩ rho ((simTraceAt ⟨S, stock⟩ rho hn).time i))
+    {a : FG.Att (Fintype.card V)} (hs : (simTraceAt ⟨S, stock⟩ rho hn).SignAt y i a) :
     a.WellFormed := by
   obtain ⟨C, hc⟩ := hs
-  have hrun := simTraceAt_goldilocksRun S rho hn hv
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv
   have hsign := (hrun.cutLaw y i _ hc hy).1
-  have hst := Trace.upTo_state (simTraceAt S rho hn) y (d := (simTraceAt S rho hn).time i)
+  have hst := Trace.upTo_state (simTraceAt ⟨S, stock⟩ rho hn) y
+      (d := (simTraceAt ⟨S, stock⟩ rho hn).time i)
     (i := i) fun k hk => hrun.time_mono hk.le
   have hr := Compose.fg_reachable (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy i
   rw [hst] at hr
   obtain ⟨h1, h2, h3⟩ := Store.entry_input hr
-    (((simTraceAt S rho hn).state y i).fg.σ C.root).Th
+    (((simTraceAt ⟨S, stock⟩ rho hn).state y i).fg.σ C.root).Th
   exact Compose.createAtt_wellFormed h1 h2 h3 hsign
 
 /-- An actual canonical attestation release includes own processing in that tick. No honesty
@@ -184,23 +185,24 @@ theorem held_att_processed_before_at {V : Type} [Fintype V] [DecidableEq V] {E :
     {y : Fin (Fintype.card V)}
     {a : FG.Att (Fintype.card V)} (hwf : a.WellFormed) {j : Nat} {d D : Time}
     (hh : rho.log.Held rho.point (rho.key y) (attObj a) d)
-    (hd : d < D) (hj : D ≤ (simTraceAt S rho hn).time j) :
-    ∃ k ≤ j, (simTraceAt S rho hn).ProcessAttAt y k a ∧ (simTraceAt S rho hn).time k < D := by
+    (hd : d < D) (hj : D ≤ (simTraceAt ⟨S, stock⟩ rho hn).time j) :
+    ∃ k ≤ j, (simTraceAt ⟨S, stock⟩ rho hn).ProcessAttAt y k a ∧ (simTraceAt ⟨S, stock⟩ rho hn).time
+        k < D := by
   obtain ⟨u, hud, hs, _⟩ := hh
   have huD := hud.trans_lt hd
-  have hp : ∃ k, (simTraceAt S rho hn).ProcessAttAt (rho.ownKey (rho.key y)) k a ∧
-      (simTraceAt S rho hn).time k = u := by
+  have hp : ∃ k, (simTraceAt ⟨S, stock⟩ rho hn).ProcessAttAt (rho.ownKey (rho.key y)) k a ∧
+      (simTraceAt ⟨S, stock⟩ rho hn).time k = u := by
     rcases hs with hs | ⟨i, hi⟩
-    · exact released_att_processAt_at S rho hn hv hs
+    · exact released_att_processAt_at ⟨S, stock⟩ rho hn hv hs
     · obtain ⟨k, _, hk, ht⟩ := received_att_processAt S rho hn hi hwf (.refl _)
-      rw [simTraceAt_eq]
+      rw [simTraceAt_eq ⟨S, stock⟩ rho hn]
       exact ⟨k, hk, ht⟩
   obtain ⟨k, hk, ht⟩ := hp
-  have hlt : (simTraceAt S rho hn).time k < D := ht ▸ huD
+  have hlt : (simTraceAt ⟨S, stock⟩ rho hn).time k < D := ht ▸ huD
   refine ⟨k, ?_, ?_, hlt⟩
   · by_contra h
     exact (not_lt_of_ge (hj.trans
-      ((simTraceAt_goldilocksRun S rho hn hv).time_mono (by omega)))) hlt
+      ((simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv).time_mono (by omega)))) hlt
   · have he : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
     exact he ▸ hk
 
@@ -245,21 +247,23 @@ a recipient honest at the call. -/
 theorem signed_row_service_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) :
-    PSyncFGAttTransportAt S rho (simTraceAt S rho hn) (honestKeysAt S rho)
+    PSyncFGAttTransportAt ⟨S, stock⟩ rho (simTraceAt ⟨S, stock⟩ rho hn)
+        (honestKeysAt ⟨S, stock⟩ rho)
       (protoFGDelay (Model.pubOf E)) := by
   intro g hnet x i a hx hsign y j hy hj hb hd
-  have hsim := simTraceAt_simulates S rho hn hv
-  have run := simTraceAt_goldilocksRun S rho hn hv
+  have hsim := simTraceAt_simulates ⟨S, stock⟩ rho hn hv
+  have run := simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv
   have hwf := signed_att_wellFormed_at S rho hn hv hx hsign
   have hrel := hsim.att_released x i a hx hsign
   have hτ := run.time_nonneg i
-  have hih := signAt_time_le_horizon S rho hn hv hsign
-  have hrowa : rho.log.fgAtt (attObj a) := (log_fgAtt_iff S rho _).mpr (isFGAtt_attObj a)
+  have hih := signAt_time_le_horizon ⟨S, stock⟩ rho hn hv hsign
+  have hrowa : rho.log.fgAtt (attObj a) := (log_fgAtt_iff ⟨S, stock⟩ rho _).mpr (isFGAtt_attObj a)
   induction j using Nat.strong_induction_on with
   | h j ih =>
-    obtain ⟨w, hw, heq₀, haw⟩ := deadline_awake_interval_at S rho hn hv hy hj
+    obtain ⟨w, hw, heq₀, haw⟩ := deadline_awake_interval_at ⟨S, stock⟩ rho hn hv hy hj
       (hτ.trans (le_max_left _ g))
-    have heq : (simTraceAt S rho hn).deadline y j (max ((simTraceAt S rho hn).time i) g)
+    have heq : (simTraceAt ⟨S, stock⟩ rho hn).deadline y j
+        (max ((simTraceAt ⟨S, stock⟩ rho hn).time i) g)
         (protoFGDelay (Model.pubOf E)) = w + protoFGDelay (Model.pubOf E) := by
       unfold RunTrace.deadline at heq₀ ⊢
       linarith only [heq₀]
@@ -267,25 +271,25 @@ theorem signed_row_service_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : 
     have slack : w + E.ΔFG - 1 < w + protoFGDelay (Model.pubOf E) := by
       rw [protoFGDelay_eq]
       exact sub_one_lt _
-    have hbound : w + E.ΔFG - 1 ≤ (simTraceAt S rho hn).time j :=
+    have hbound : w + E.ΔFG - 1 ≤ (simTraceAt ⟨S, stock⟩ rho hn).time j :=
       slack.le.trans (heq ▸ hd)
     have held := hnet.fgAtts (rho.key x)
-      (attObj a) _ ((releasedFrom_iff S rho _ _ _).mp hrel)
-      (not_faulty_of_mem_honestKeysAt S rho hx le_rfl hih)
+      (attObj a) _ ((releasedFrom_iff ⟨S, stock⟩ rho _ _ _).mp hrel)
+      (not_faulty_of_mem_honestKeysAt ⟨S, stock⟩ rho hx le_rfl hih)
       hrowa (rho.key y) w
       ((le_max_left _ g).trans hw) (by rw [hgw]; exact hbound.trans hb)
       (by rw [hgw]; exact hbound.trans hb)
-      (by rw [hgw]; exact not_faulty_of_mem_honestKeysAt S rho hy hbound (hbound.trans hb))
+      (by rw [hgw]; exact not_faulty_of_mem_honestKeysAt ⟨S, stock⟩ rho hy hbound (hbound.trans hb))
       (by rw [hgw]; exact fun t hwt htd => haw t hwt (htd.trans hbound))
     rw [hgw] at held
     obtain ⟨k, hkj, hp, ht⟩ := held_att_processed_before_at S rho hn hv hwf held
       (heq ▸ slack) hd
-    by_cases hk : (simTraceAt S rho hn).time k <
-        (simTraceAt S rho hn).deadline y k (max ((simTraceAt S rho hn).time i) g)
+    by_cases hk : (simTraceAt ⟨S, stock⟩ rho hn).time k <
+        (simTraceAt ⟨S, stock⟩ rho hn).deadline y k (max ((simTraceAt ⟨S, stock⟩ rho hn).time i) g)
           (protoFGDelay (Model.pubOf E))
     · exact ⟨k, hkj, hp, hk⟩
     · have hkj' : k < j := lt_of_le_of_ne hkj (by intro he; subst k; exact hk ht)
-      have hc : (simTraceAt S rho hn).IsCall y k := by
+      have hc : (simTraceAt ⟨S, stock⟩ rho hn).IsCall y k := by
         rcases hp with hp | ⟨B, hp, _⟩
         · exact ⟨_, hp⟩
         · exact ⟨_, hp⟩

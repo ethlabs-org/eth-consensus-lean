@@ -60,8 +60,8 @@ theorem final_query_gap (Q : FinalQuery S A V) {c : Nat}
       Q.params.ts s₀)
     (hN : Q.params.ts (N + 3 * c : Nat) ≤ Q.run.2.horizon) :
     ∀ x₀, s₀ ≤ x₀ → x₀ + (Q.index : Nat) ≤ N + 1 → ∃ x, x₀ ≤ x ∧ x < x₀ + (Q.index : Nat) ∧
-      runProposer S Q.run.2 Q.hn x ∈ honestKeys S Q.run.2 ∧
-      ∃ k P, Q.trace.ProposesAt (runProposer S Q.run.2 Q.hn x) k P ∧ P.slot = x := by
+      runProposer ⟨S, stock⟩ Q.run.2 Q.hn x ∈ honestKeys ⟨S, stock⟩ Q.run.2 ∧
+      ∃ k P, Q.trace.ProposesAt (runProposer ⟨S, stock⟩ Q.run.2 Q.hn x) k P ∧ P.slot = x := by
   intro x₀ hx₀ hxN
   obtain ⟨x, hxl, hxr, hx0, hxh, hx⟩ :=
     final_query_duty S A V Q.run Q.hn Q.index Q.gst Q.progress hpat hs hN x₀ hx₀ hxN
@@ -77,18 +77,20 @@ premises through the horizon at GST `Q.gst` and `ΔR = ΔF`, and the placement `
 `final_reset_bounds`. -/
 theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 ≤ c)
     (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {ΔF : Time}
-    (hs : Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst ΔF
+    (hs : Healing.HSSharedUpTo Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) (digestOf ⟨S, stock⟩ Q.run.2)
+        Q.gst ΔF
       Q.run.2.horizon) :
     ∃ ΔR a : Time,
-      Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
-        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon ∧
+      Healing.ResetPremisesUpTo Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
+        (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔR a
+            Q.run.2.horizon ∧
       max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
           ((finalGrid S A V Q).slotTime (finalSeedMin S A V Q a) - 1) +
           ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGrid S A V Q).slotLen ≤
         Q.query + (finalGrid S A V Q).slotLen := by
   classical
   have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
-  set H := honestKeys S Q.run.2
+  set H := honestKeys ⟨S, stock⟩ Q.run.2
   have hδeq : Q.params.toParams.fg.δt = S.δt := rfl
   have hk : Q.params.k = S.k := rfl
   obtain ⟨hr0, hgr, hcz, h4B, hBh, hgapN, hplace⟩ :=
@@ -96,7 +98,7 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
   -- whole-run no restart: a restart is a labelled call, at a time `≤ horizon`
   have hnr : Healing.NoRestartAfter Q.trace H (gbar Q.gst) :=
     fun y hy k hk => hs.noRestart y hy k hk
-      (simTrace_labelled_time_le S Q.run.2 Q.hn Q.valid (by
+      (simTrace_labelled_time_le ⟨S, stock⟩ Q.run.2 Q.hn Q.valid (by
         obtain ⟨ℓ, hc, -⟩ := hk
         obtain ⟨_, hl⟩ := hc
         intro hn
@@ -112,7 +114,7 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
       (fun v hv t ht hb => Q.healthy.2.1.2 v t ht hb
         ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mpr hv))
   -- the drain
-  have hdrain : DrainOutputs Q.trace (runProposer S Q.run.2 Q.hn) H Q.gst (Q.index : Nat)
+  have hdrain : DrainOutputs Q.trace (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) H Q.gst (Q.index : Nat)
       (healthyDrainLen S Q.index) Q.run.2.horizon :=
     drainOutputs_of_service hrun hs.noColl hs.sync hs.awake hs.faults hcatch hnr
       (by rw [healthyDrainLen_val, hk]; exact Nat.le_succ _) rfl
@@ -142,8 +144,9 @@ placement `(P)` with `u_min = finalSeedMin Q a`. `final_reset_premises_of_shared
 (`FinalQuery.hsSharedUpTo`). -/
 theorem final_reset_premises_of_query (Q : FinalQuery S A V) :
     ∃ ΔR a : Time,
-      Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
-        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon ∧
+      Healing.ResetPremisesUpTo Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
+        (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔR a
+            Q.run.2.horizon ∧
       max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
           ((finalGrid S A V Q).slotTime (finalSeedMin S A V Q a) - 1) +
           ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGrid S A V Q).slotLen ≤

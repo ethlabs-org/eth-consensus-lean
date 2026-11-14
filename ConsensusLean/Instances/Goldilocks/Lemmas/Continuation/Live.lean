@@ -276,8 +276,8 @@ slot (`sleepy_query_producer_at`) is after the query, so of a slot `≥ r + k + 
 at the deadline (`continued_include_at`); its payload projection is the engine obligation. -/
 theorem continued_proposal_live_at (Q : ConfirmedQueryAt S A V) {ΔF T : Time} {r σ : Nat}
     (hcv : Compose.Growing.ChainConvictedBelow Q.trace Q.keys)
-    (hseed : Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer S Q.run.2 Q.hn)
-      (digestOf S Q.run.2) Q.gst ΔF T r σ) (hTb : T ≤ Q.deadline) {t₁ : Time}
+    (hseed : Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
+      (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔF T r σ) (hTb : T ≤ Q.deadline) {t₁ : Time}
     (hsvc : Healing.Growing.ResetService Q.trace Q.keys Q.gst ΔF Q.deadline)
     (hB : Compose.Growing.SleepyBoundsFrom Q.trace Q.keys r Q.deadline)
     (hinv : Compose.Growing.SeededInvariant Q.trace Q.keys Q.gst r (r + Q.params.k - 1) t₁
@@ -292,8 +292,8 @@ theorem continued_proposal_live_at (Q : ConfirmedQueryAt S A V) {ΔF T : Time} {
     linarith [Q.params.toParams.hΔ]
   have h0 : 0 ≤ Q.query := (Compose.Growing.ts_natCast_nonneg _).trans hrq
   obtain ⟨P, hm, hh⟩ := sleepy_query_producer_at S A V Q hprogress (max_le hready h0)
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
+  have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
   have hd := confirmed_duration_supply_at S A V Q
   -- the proposal's slot time is after `t_{r+k}`, so it is `≥ t_{r+k+1}`
   have hslot : Q.params.ts (r + Q.params.k + 1 : Nat) ≤ Q.trace.time P.cut := by

@@ -41,8 +41,8 @@ theorem duty_proposer {t : Time} {d : (Model.protoOf (compiled (goldilocks S)) e
     t = (s : Time) * 12 ∧ 0 < s := by
   by_cases ht : 0 ≤ t
   swap
-  · rw [Simulation.duties_eq_nil S t (not_le.mp ht)] at hd; cases hd
-  rw [Simulation.duties_eq S t ht] at hd
+  · erw [Simulation.duties_eq_nil ⟨S, stock⟩ t (not_le.mp ht)] at hd; cases hd
+  erw [Simulation.duties_eq ⟨S, stock⟩ t ht] at hd
   rcases List.mem_append.mp hd with hd | hd
   · rcases List.mem_append.mp hd with hd | hd
     · rcases List.mem_append.mp hd with hd | hd
@@ -73,11 +73,11 @@ theorem deliverDuty_poll {t : Time} {d : (Model.protoOf (compiled (goldilocks S)
     (hd : d ∈ (Model.protoOf (compiled (goldilocks S)) env).deliverDuties t) :
     (Model.protoOf (compiled (goldilocks S)) env).role d = .poll := by
   by_cases ht : 0 ≤ t
-  · rw [Simulation.deliverDuties_eq S t ht] at hd
+  · erw [Simulation.deliverDuties_eq ⟨S, stock⟩ t ht] at hd
     rcases hd with _ | ⟨_, hd⟩
     · rfl
     · cases hd
-  · rw [Simulation.deliverDuties_eq_nil S t (not_le.mp ht)] at hd; cases hd
+  · erw [Simulation.deliverDuties_eq_nil ⟨S, stock⟩ t (not_le.mp ht)] at hd; cases hd
 
 /-- **A released root signed in a proposer role** is the proposal of a tick at the slot time, by a
 node selected for the slot. -/
@@ -273,25 +273,25 @@ theorem key1_vote_slot {i : Nat} {e : Ev S} (he : (rho S).events[i]? = some e) (
   have hconst : (rho12 S).point.ConstantFaults := Model.Run.retain_constant
   have hv' : (1 : Fin 5) ∉ (rho12 S).faultyAt 0 := by rw [rho12_faultyAt]; decide
   obtain ⟨k, -, ℓ, hc, em, hem, rfl⟩ :=
-    Simulation.released_vote_cut S (rho12 S) one_le_card hconst rho12_valid hs hv' hv
+    Simulation.released_vote_cut ⟨S, stock⟩ (rho12 S) one_le_card hconst rho12_valid hs hv' hv
   have hrun := Simulation.simTrace_goldilocksRun S (rho12 S) one_le_card hconst rho12_valid
   have hnc := Simulation.noCollRun_simTrace S (rho12 S) one_le_card hconst rho12_valid
     rho12_not_hashCollision
   have hac := (Compose.goldilocks_ac_projection _ _ _ _ _ _ hrun hnc).localRun
-  have hy : (rho12 S).ownKey 1 ∈ Simulation.honestKeys S (rho12 S) := by
-    rw [Simulation.mem_honestKeys_iff]
+  have hy : (rho12 S).ownKey 1 ∈ Simulation.honestKeys ⟨S, stock⟩ (rho12 S) := by
+    erw [Simulation.mem_honestKeys_iff]
     rw [show (rho12 S).key ((rho12 S).ownKey 1) = 1 from (rho12 S).key.apply_symm_apply 1]
     exact hv'
   have hspec := SA.castAt_spec hac hy ⟨Compose.projAC_callAt.mpr hc, hem⟩
   rw [hspec.2.1]
-  have hl : (Simulation.simTrace S (rho12 S) one_le_card).label k ≠ none := by
+  have hl : (Simulation.simTrace ⟨S, stock⟩ (rho12 S) one_le_card).label k ≠ none := by
     rw [hc.2]; simp
-  have hth := Simulation.simTrace_labelled_time_le S (rho12 S) one_le_card rho12_valid hl
+  have hth := Simulation.simTrace_labelled_time_le ⟨S, stock⟩ (rho12 S) one_le_card rho12_valid hl
   change _ ≤ (12 : Time) at hth
   have h0 := hrun.time_nonneg k
   have hsl := SA.slot_eq (sp := S.params (pubOf env) one_le_card) h0
   have hle : ((S.params (pubOf env) one_le_card).slot
-      ((Simulation.simTrace S (rho12 S) one_le_card).time k) : Int) ≤ 1 := by
+      ((Simulation.simTrace ⟨S, stock⟩ (rho12 S) one_le_card).time k) : Int) ≤ 1 := by
     rw [hsl]
     exact Int.ediv_le_of_le_mul (by change (0 : Int) < 4 * 3; norm_num)
       (by change _ ≤ (1 : Int) * (4 * 3); linarith)

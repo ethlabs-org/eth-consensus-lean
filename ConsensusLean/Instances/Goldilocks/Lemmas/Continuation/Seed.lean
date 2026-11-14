@@ -321,8 +321,8 @@ theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤
     (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
-    ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer S Q.run.2 Q.hn)
-        (digestOf S Q.run.2) Q.gst (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ ∧
+    ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
+        (digestOf ⟨S, stock⟩ Q.run.2) Q.gst (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ ∧
       ∃ t₀, t₀ ≤ Q.bound ∧ Q.params.ts (r + Q.params.k : Nat) ≤ t₀ ∧
         t₀ + 8 * Q.params.Δ + 1 ≤ Q.heal ∧
         ∀ y n t, t₀ ≤ t → t ≤ Q.bound → y ∈ Q.keys t → Regimes.ReadPoint Q.trace n t →
@@ -332,8 +332,10 @@ theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤
   obtain ⟨W, Dprep, hlate⟩ := healthy_preparation_initialize_late_at S A V Q h0 hb hp
   obtain ⟨D, -, -, hDq⟩ := healthy_repair_schedule_of_preparation_at S A V Q W Dprep
   obtain ⟨O, hrepair⟩ := healthy_bounded_repairing_opening_at S A V Q hb hp D
-  have hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys (runProposer S Q.run.2 Q.hn)
-      (digestOf S Q.run.2) Q.gst (protoFGDelay (Model.pubOf Q.run.1)) D.resetTime Q.bound :=
+  have hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
+      (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
+      (digestOf ⟨S, stock⟩ Q.run.2) Q.gst (protoFGDelay (Model.pubOf Q.run.1)) D.resetTime
+          Q.bound :=
     { D.reset with sync := healthy_preparation_service_at S A V Q }
   have hΔ := Q.params.toParams.hΔ
   have hX : (1 : Time) ≤ (Q.index : Time) := by exact_mod_cast Q.index.pos
@@ -393,8 +395,8 @@ theorem handover_seed_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤ Q.hea
     (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
-    ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer S Q.run.2 Q.hn)
-      (digestOf S Q.run.2) Q.gst (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ :=
+    ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
+      (digestOf ⟨S, stock⟩ Q.run.2) Q.gst (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ :=
   let ⟨r, σ, h, _⟩ := handover_seed_cover_at S A V Q h0 hb hp
   ⟨r, σ, h⟩
 

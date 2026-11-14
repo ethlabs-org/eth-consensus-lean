@@ -51,7 +51,8 @@ theorem handoverQuery_eq (hn : 1 ≤ Fintype.card V) {r : (Sys (goldilocks S) V)
     (hh : (Sys (goldilocks S) V).Handover (K S A) g T r)
     (hTh : T ≤ ((Sys (goldilocks S) V).pt r).horizon) :
     let Q := handoverQuery S A V hn hv hx hcap i hh hTh
-    Q.run = r ∧ Q.keys = honestKeysAt S r.2 ∧ Q.trace = simTraceAt S r.2 hn ∧ Q.gst = g ∧
+    Q.run = r ∧ Q.keys = honestKeysAt ⟨S, stock⟩ r.2 ∧ Q.trace = simTraceAt ⟨S, stock⟩ r.2 hn ∧
+        Q.gst = g ∧
       Q.cap = cap ∧ Q.index = i ∧ Q.bound = T ∧
       Q.ready = (Sys (goldilocks S) V).ready (K S A) g r ∧
       Q.heal = (Sys (goldilocks S) V).heal (K S A) cap i g r :=
@@ -86,8 +87,10 @@ theorem handover_seed_of_handover_at (hn : 1 ≤ Fintype.card V) {r : (Sys (gold
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap i
       ((Sys (goldilocks S) V).ready (K S A) g r) ((Sys (goldilocks S) V).heal (K S A) cap i g r)
       r) :
-    ∃ rL σ, Compose.Growing.HandoverSeed (simTraceAt S r.2 hn) (honestKeysAt S r.2)
-      (runProposer S r.2 hn) (digestOf S r.2) g (protoFGDelay (Model.pubOf r.1)) T rL σ :=
+    ∃ rL σ, Compose.Growing.HandoverSeed (simTraceAt ⟨S, stock⟩ r.2 hn)
+        (honestKeysAt ⟨S, stock⟩ r.2)
+      (runProposer ⟨S, stock⟩ r.2 hn) (digestOf ⟨S, stock⟩ r.2) g (protoFGDelay (Model.pubOf r.1)) T
+          rL σ :=
   let h := handover_query_at hn hv hx hcap hh hTh hT hp
   handover_seed_at S A V (handoverQuery S A V hn hv hx hcap i hh hTh) h.1 h.2.1 h.2.2
 
@@ -101,8 +104,8 @@ theorem handover_invariant_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤ 
     (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
-    ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer S Q.run.2 Q.hn)
-        (digestOf S Q.run.2) Q.gst (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ ∧
+    ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
+        (digestOf ⟨S, stock⟩ Q.run.2) Q.gst (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ ∧
       ∃ t₁, t₁ ≤ Q.bound ∧ Q.params.ts (r + Q.params.k : Nat) ≤ t₁ ∧
         t₁ + 8 * Q.params.Δ + 1 ≤ Q.heal ∧
         ∀ b, Q.bound ≤ b →

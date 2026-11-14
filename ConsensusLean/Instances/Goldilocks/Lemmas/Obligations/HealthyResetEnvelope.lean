@@ -44,14 +44,14 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 /-- The shared HS premises of the query through the horizon at the protocol FG delay
 `Δ_F,p = protoFGDelay` (`6Δ + Δ_F,p ≤ 4Δ·fgSlots ≤ 4Δ·δ_t`, `protoFGDelay_timeout_of_fgDelay`). -/
 private theorem healthy_hsShared (Q : HealthyPreparationQuery S A V) :
-    Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst
+    Healing.HSSharedUpTo Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) (digestOf ⟨S, stock⟩ Q.run.2) Q.gst
       (protoFGDelay (Model.pubOf Q.run.1)) Q.run.2.horizon :=
   Q.hsSharedUpTo_of_le _ le_rfl (protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2)
 
 /-- The whole-run no-restart premise: a restart is a labelled call, at a time `≤ horizon`, so
 the bounded one of `healthy_hsShared` covers it. -/
 private theorem healthy_noRestartAfter (Q : HealthyPreparationQuery S A V) :
-    Healing.NoRestartAfter Q.trace (honestKeys S Q.run.2) (gbar Q.gst) :=
+    Healing.NoRestartAfter Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) (gbar Q.gst) :=
   fun y hy k hk => (healthy_hsShared S A V Q).noRestart y hy k hk
     (healthy_query_call_time_le S A V Q (by obtain ⟨ℓ, hc, -⟩ := hk; exact ⟨_, hc⟩))
 
@@ -66,10 +66,12 @@ theorem healthy_reset_envelope_of_fit (Q : HealthyPreparationQuery S A V)
       Q.cap Q.index Q.ready Q.heal Q.run)
     (hfit : Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
       (healthyResetSlack S Q.index : Time) ≤ Q.heal)
-    (hdrain : DrainOutputs Q.trace (runProposer S Q.run.2 Q.hn) (honestKeys S Q.run.2) Q.gst
+    (hdrain : DrainOutputs Q.trace (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
+        (honestKeys ⟨S, stock⟩ Q.run.2) Q.gst
       (Q.index : Nat) (healthyDrainLen S Q.index) Q.run.2.horizon) :
-    ∃ ΔF a, Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
-        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a Q.run.2.horizon ∧
+    ∃ ΔF a, Healing.ResetPremisesUpTo Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
+        (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔF a
+            Q.run.2.horizon ∧
       a ≤ Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
         (healthyResetSlack S Q.index : Time) := by
   classical
@@ -92,7 +94,7 @@ theorem healthy_reset_envelope_of_fit (Q : HealthyPreparationQuery S A V)
     at hcz
   rw [max_eq_left hr0] at hcz
   have hnr := healthy_noRestartAfter S A V Q
-  have hH : (honestKeys S Q.run.2).Nonempty :=
+  have hH : (honestKeys ⟨S, stock⟩ Q.run.2).Nonempty :=
     nonempty_of_fault_bound hs.faults Q.params.toParams.hn
   -- the reset bound `B = ready + R·Δ`
   have hBeq : resetBoundRounds Q.ready Q.params.Δ (2 * Q.params.Δ) Q.params.toParams.fg.δt
@@ -144,10 +146,12 @@ theorem healthy_reset_envelope_of_drain (Q : HealthyPreparationQuery S A V)
     (hb : Q.heal ≤ Q.run.2.horizon)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
       Q.cap Q.index Q.ready Q.heal Q.run)
-    (hdrain : DrainOutputs Q.trace (runProposer S Q.run.2 Q.hn) (honestKeys S Q.run.2) Q.gst
+    (hdrain : DrainOutputs Q.trace (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
+        (honestKeys ⟨S, stock⟩ Q.run.2) Q.gst
       (Q.index : Nat) (healthyDrainLen S Q.index) Q.run.2.horizon) :
-    ∃ ΔF a, Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
-        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a Q.run.2.horizon ∧
+    ∃ ΔF a, Healing.ResetPremisesUpTo Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
+        (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔF a
+            Q.run.2.horizon ∧
       a ≤ Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
         (healthyResetSlack S Q.index : Time) :=
   healthy_reset_envelope_of_fit S A V Q hb hp (healthy_reset_fit S A V Q) hdrain
@@ -161,8 +165,9 @@ theorem healthy_reset_envelope (Q : HealthyPreparationQuery S A V)
     (hb : Q.heal ≤ Q.run.2.horizon)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
       Q.cap Q.index Q.ready Q.heal Q.run) :
-    ∃ ΔF a, Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
-        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a Q.run.2.horizon ∧
+    ∃ ΔF a, Healing.ResetPremisesUpTo Q.trace (honestKeys ⟨S, stock⟩ Q.run.2)
+        (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔF a
+            Q.run.2.horizon ∧
       a ≤ Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
         (healthyResetSlack S Q.index : Time) := by
   have hs := healthy_hsShared S A V Q

@@ -23,7 +23,7 @@ theorem healthy_repair_catch_at (Q : HealthyPreparationQueryAt S A V)
     (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
   have hb' : max Q.gst 0 + Q.run.1.ΔAC ≤ Q.bound := hb
   exact catchRun_of_psync_at S Q.run.2 Q.hn Q.valid
-    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision)
+    (noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision)
     hnet (fun v t ht _ htw hv => Q.healthy.2.1.2 v t ht (by linarith only [htw, hb']) hv)
 
 end Consensus.Goldilocks.Obligations.Growing

@@ -16,18 +16,19 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 def TraceRegression : Prop :=
   simTraceNodeAt (O := AsChainShape.schema) (family S)
     (fun | Out.finalized => true | .confirmed => false)
-    (reshape S rho) hn traceData = Simulation.simTraceAt S rho hn
+    (reshape S rho) hn traceData = Simulation.simTraceAt ⟨S, AsChainShape.stock⟩ rho hn
 
 def CutMapRegression : Prop :=
   cutMapNode (O := AsChainShape.schema) (family S)
     (fun | Out.finalized => true | .confirmed => false)
-    (reshape S rho) hn traceData = Simulation.cutMap S rho hn
+    (reshape S rho) hn traceData = Simulation.cutMap ⟨S, AsChainShape.stock⟩ rho hn
 
 /-- Engine representation is fieldwise; it includes every durable queue and stored clock. -/
 def StateRegression : Prop := rho.ExecutionValid → ∀ v i, i ≤ rho.events.length →
   v ∉ rho.faultyAt (rho.cutTime i) →
   engineState (O := AsChainShape.schema) (family S)
     (fun | Out.finalized => true | .confirmed => false)
-    (reshape S rho) hn v i = view S (Model.pubOf E) hn (Simulation.stateAt S rho hn v i)
+    (reshape S rho) hn v i =
+      view S (Model.pubOf E) hn (Simulation.stateAt ⟨S, AsChainShape.stock⟩ rho hn v i)
 
 end Consensus.Goldilocks.NodeEngine.Concrete

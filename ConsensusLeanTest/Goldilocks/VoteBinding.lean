@@ -100,9 +100,6 @@ noncomputable def legacyGoldilocks (S : Setup) : ChainShapeFamily schema Info :=
     conflicts := conflicts (binding := stock)
     isFGAtt := isFGAtt (binding := stock) }
 
-/-- The public stock subject reduces to the stock binding without a transport. -/
-theorem goldilocks_stock (S : Setup) : goldilocks S = goldilocksWith ⟨S, stock⟩ := by rfl
-
 /-- The population binding equals the 9124-form shape. -/
 theorem stock_legacy (S : Setup) : goldilocksWith ⟨S, stock⟩ = legacyGoldilocks S := by
   funext pub
