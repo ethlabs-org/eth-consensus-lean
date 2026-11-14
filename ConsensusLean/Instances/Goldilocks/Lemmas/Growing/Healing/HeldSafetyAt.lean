@@ -31,7 +31,7 @@ with a signer honest at a time `d` after both observations, were signed by that 
 run on the prefix up to `d`, which client safety (G0.5) keeps free of slashable pairs. -/
 theorem held_atts_safe_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {y x : Fin sp.n} {m i : Nat} {u t d : Time}
+    {y x : Fin sp.n} {m i : Nat} {u t d : Time}
     (hu : 0 ≤ u) (hytime : ∀ k < m, tr.time k ≤ u) (hy : y ∈ H u)
     (ht : 0 ≤ t) (hxtime : ∀ k < i, tr.time k ≤ t) (hx : x ∈ H t) (hud : u ≤ d) (htd : t ≤ d)
     (a b : FG.Att sp.n) (ha : ∃ Y ∈ (tr.state y m).fg.tree, a ∈ Y.fgPayload)
@@ -46,10 +46,8 @@ theorem held_atts_safe_at
     (RunTrace.upTo_signAt tr).mpr ⟨(hytime k hk).trans hud, hka⟩
   have hlb' : (tr.upTo d).SignAt a.val l b :=
     (RunTrace.upTo_signAt tr).mpr ⟨(hxtime l hl).trans htd, hlb⟩
-  have hfg := Compose.fg_projection sp.toParams (goldilocksNode sp ro) dg (H d)
-    (fun v => v.val) (tr.upTo d) proposer (Compose.requirements sp ro)
-    hr.genesis_root_ok hr.toLocalRun (hnc.upTo _)
-  obtain ⟨inputs, hin, hs⟩ := Store.signed_run hfg hav (max k l + 1)
+  obtain ⟨inputs, hin, hs⟩ :=
+    Store.signed_run_of_exec (Compose.fg_exec hr.toLocalRun) hav (max k l + 1)
   exact FG.client_safety sp.toParams.fg a.val inputs hin
     a (hs k (by omega) a ⟨_, Compose.projFG_callAt.mpr hka'.choose_spec⟩)
     b (hs l (by omega) b ⟨_, Compose.projFG_callAt.mpr hlb'.choose_spec⟩) hab

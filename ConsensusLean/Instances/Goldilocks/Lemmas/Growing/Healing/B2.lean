@@ -38,7 +38,7 @@ theorem F_anc_of_hmax_le_at
     (fg_reachable_at hrun hu hytime hy) (fg_reachable_at hrun ht hxtime hx)
     (Compose.Growing.honest_blocks_coherent hrun hnc) (fun _ h => ⟨y, m, u, hu, hytime, hy, h⟩)
     (fun _ h => ⟨x, i, t, ht, hxtime, hx, h⟩) hf
-    (held_atts_safe_at hrun hnc hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
+    (held_atts_safe_at hrun hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
     hB hle
 
 end Consensus.Goldilocks.Healing.Growing

@@ -61,7 +61,7 @@ theorem finalized_anc_obs
     (fg_reachable_at hrun hu hytime hy) (fg_reachable_at hrun ht hxtime hx)
     (Compose.Growing.honest_blocks_coherent hrun hnc) (fun _ h => ⟨y, m, u, hu, hytime, hy, h⟩)
     (fun _ h => ⟨x, i, t, ht, hxtime, hx, h⟩) hf
-    (held_atts_safe_at hrun hnc hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
+    (held_atts_safe_at hrun hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
     hX hFt hFr hW hlt
 
 /-- `Σ.J` of two stores observed while honest with equal `h_j` agree: two justification quorums
@@ -78,7 +78,7 @@ private theorem J_eq_of_hj_eq_obs
   Store.J_eq_of_cache_hj_eq_of_safe (fg_reachable_at hrun hu hytime hy)
     (fg_reachable_at hrun ht hxtime hx) (Compose.Growing.honest_blocks_coherent hrun hnc)
     (fun _ h => ⟨y, m, u, hu, hytime, hy, h⟩) (fun _ h => ⟨x, i, t, ht, hxtime, hx, h⟩) hf
-    (held_atts_safe_at hrun hnc hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
+    (held_atts_safe_at hrun hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
     he
 
 /-- `h_j < h_max` at a store observed while honest. -/
@@ -110,8 +110,8 @@ theorem frameKey_lag_obs (hrun : Consensus.Goldilocks.Growing.GoldilocksRun prop
     (Compose.Growing.honest_blocks_coherent hrun hnc)
     (fun _ h => ⟨x, i, tr.time i, hi0, hxle, hx, h⟩)
     (fun _ h => ⟨z, m, tr.time m, hm0, hzle, hz, h⟩) (hf _ hm0 hmb)
-    (held_atts_safe_at hrun hnc hm0 hzle hz hi0 hxle hx le_rfl him)
-    (held_atts_safe_at hrun hnc hm0 hzle hz hm0 hzle hz le_rfl le_rfl)
+    (held_atts_safe_at hrun hm0 hzle hz hi0 hxle hx le_rfl him)
+    (held_atts_safe_at hrun hm0 hzle hz hm0 hzle hz le_rfl le_rfl)
     (fun _ _ h hC => store_anc_of_honest_anc_at hrun hnc hi0 hxle hx h hC)
     (fun _ _ h hC => store_anc_of_honest_anc_at hrun hnc hm0 hzle hz h hC)
     (fun _ hB hh => held_of_relay_le_at hrun hnc hsvc hcatch hi0 hx hz hfmi hB hh hxle hcall hcm)
