@@ -613,7 +613,7 @@ theorem continued_safe_engine_at (hv : rho.ExecutionValid)
   have hlag : ∀ v i, (chainTrace rho).InCuts (t₀ + 1) i →
       rho.point.Ready (c + 1) v (rho.cutTime i) → t₀ ≤ (stateAt ⟨S, stock⟩ rho hn v i).now := by
     intro v i hi hr
-    have := stored_now_ge_cutTime_sub_one S rho hn hv hi.1 hc hr
+    have := stored_now_ge_cutTime_sub_one ⟨S, stock⟩ rho hn hv hi.1 hc hr
     have h2 : t₀ + 1 ≤ rho.cutTime i := hi.2
     linarith
   constructor
@@ -633,7 +633,7 @@ theorem continued_safe_engine_at (hv : rho.ExecutionValid)
     exact read_prefix ⟨S, stock⟩ rho hn hv hnc h0 hrp.1 hra.1 h0' hrp'.1 hra'.1
       (hsafe.mono _ _ _ _ _ hrp hrp' (cutMap_boundary S rho hn _ _)
         (cutMap_boundary S rho hn _ _) (cutMap_mono ⟨S, stock⟩ rho hn (lastOwn_mono S rho v hij))
-        (now_mono S rho hn hv v hij) (hlag _ _ hi hvi) hh' hra hra')
+        (now_mono ⟨S, stock⟩ rho hn hv v hij) (hlag _ _ hi hvi) hh' hra hra')
 
 end Consensus.Goldilocks.Obligations.Growing
 

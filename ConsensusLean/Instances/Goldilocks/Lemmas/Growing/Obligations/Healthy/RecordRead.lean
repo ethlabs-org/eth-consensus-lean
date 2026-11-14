@@ -98,7 +98,7 @@ private theorem healthy_engine_read_point_at {Q : HealthyPreparationQueryAt S A 
   have hr : Q.run.2.point.Ready (((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) Q.run - 1) + 1) v
       (Q.run.2.cutTime i) := by simpa only [sub_add_cancel, chainTrace] using hv
   obtain ⟨hrp, h0, hh, hra, -⟩ := engine_read_point S Q.run.2 Q.hn Q.valid hc hi.1 hr
-  have hlag := stored_now_ge_cutTime_sub_one S Q.run.2 Q.hn Q.valid hi.1 hc hr
+  have hlag := stored_now_ge_cutTime_sub_one ⟨S, stock⟩ Q.run.2 Q.hn Q.valid hi.1 hc hr
   have hhi : Q.heal ≤ Q.run.2.cutTime i := hi.2
   exact ⟨hrp, h0, hh, hra, by linarith only [D.reserve, hhi, hlag]⟩
 
@@ -175,7 +175,7 @@ theorem healthy_current_record_read_at (Q : HealthyPreparationQueryAt S A V)
   have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
   have hc := healthy_schedule_catch_at S A V Q D
   have hhon : v ∉ Q.run.2.faultyAt (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now := fun h =>
-    hv.1 (Q.run.2.faultyAt_mono (now_bounds_cut S Q.run.2 Q.hn Q.valid v hi.1).2 h)
+    hv.1 (Q.run.2.faultyAt_mono (now_bounds_cut ⟨S, stock⟩ Q.run.2 Q.hn Q.valid v hi.1).2 h)
   have hupd : ∀ u : Nat, Q.params.ts (Q.params.slot (SA.gbar Q.gst) + 1 : Nat) ≤ Q.params.ts u →
       Q.params.ts u + 6 * Q.params.Δ ≤ (stateAt ⟨S, stock⟩ Q.run.2 Q.hn v i).now →
       ∃ j ell, SA.UpdateAt Q.trace.projAC (Q.run.2.ownKey v) j u ell ∧

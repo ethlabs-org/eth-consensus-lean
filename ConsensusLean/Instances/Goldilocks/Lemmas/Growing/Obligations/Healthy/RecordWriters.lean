@@ -501,7 +501,7 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b :
     rw [htime'] at hbound
     have hbound' : sp.ts u + 6 * sp.Δ ≤ sp.ts (sp.slot (SA.gbar g) + 1 : Nat) := hbound
     linarith
-  have hpi := tick_before_stored_clock S rho hn hvalid he hT0 ht hnr
+  have hpi := tick_before_stored_clock ⟨S, stock⟩ rho hn hvalid he hT0 ht hnr
   have hpl : p + 1 ≤ lastOwn S rho v i := by
     rw [lastOwn_eq]
     exact Nat.le_findGreatest (by omega) (Or.inr ⟨_, by simpa using he, rfl⟩)

@@ -199,7 +199,7 @@ theorem lastOwn_readPoint (hv : rho.ExecutionValid) (v : V) (i : Nat) :
   | succ j =>
     obtain ⟨e, he, hev⟩ : ∃ e, rho.events[j]? = some e ∧ e.node = v := by
       simpa only [Nat.add_one_ne_zero, false_or, Nat.add_sub_cancel] using hq
-    rw [now_after_local_event S rho hn hv he hev]
+    rw [now_after_local_event ⟨S, stock⟩ rho hn hv he hev]
     exact ⟨readPoint_after_event ⟨S, stock⟩ rho hn hv he, by simp [Model.Run.cutTime, he]⟩
 
 /-- **Every engine output of a node honest at its engine cut is read at the trace cut after its
@@ -211,7 +211,7 @@ theorem engine_read_eq_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
       outOf ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v)
           (cutMap ⟨S, stock⟩ rho hn (lastOwn S rho v i)))
         (stateAt ⟨S, stock⟩ rho hn v i).now g := by
-  have hnT := (now_bounds_cut S rho hn hv v hi).2
+  have hnT := (now_bounds_cut ⟨S, stock⟩ rho hn hv v hi).2
   have hhq : v ∉ rho.faultyAt (rho.cutTime (lastOwn S rho v i)) := fun h =>
     hh (rho.faultyAt_mono ((lastOwn_readPoint S rho hn hv v i).2.trans_le hnT) h)
   rw [read_eq_out ⟨S, stock⟩ rho hn, simTraceAt_state ⟨S, stock⟩ rho hn hv hhq
@@ -242,10 +242,11 @@ theorem engine_read_point (hv : rho.ExecutionValid) {c : Time} (hc : 0 ≤ c) {v
   have hlaws := (Model.sysOf_laws schema (compiled (goldilocksWith ⟨S, stock⟩)) V).trace ⟨E, rho⟩ hv
   have hih := hlaws.cutTime_le_horizon i hi
   change rho.cutTime i ≤ rho.horizon at hih
-  obtain ⟨hn0, hnT⟩ := now_bounds_cut S rho hn hv v hi
+  obtain ⟨hn0, hnT⟩ := now_bounds_cut ⟨S, stock⟩ rho hn hv v hi
   have hnh : (stateAt ⟨S, stock⟩ rho hn v i).now ≤ rho.horizon := hnT.trans hih
   refine ⟨(lastOwn_readPoint S rho hn hv v i).1, hn0, hnh,
-    ready_transport_at ⟨S, stock⟩ rho hn hv hn0 hnh (ready_at_stored_now S rho hn hv hi hc hr), ?_⟩
+    ready_transport_at ⟨S, stock⟩ rho hn hv hn0 hnh
+      (ready_at_stored_now ⟨S, stock⟩ rho hn hv hi hc hr), ?_⟩
   rw [engine_read_eq_at S rho hn hv hi hr.1, outOf]
   rfl
 

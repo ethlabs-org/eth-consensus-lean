@@ -86,7 +86,7 @@ theorem sleepy_safe_engine_at (hv : rho.ExecutionValid)
     exact read_prefix ⟨S, stock⟩ rho hn hv hnc h0 hrp.1 hra.1 h0' hrp'.1 hra'.1
       (hsafe.mono _ _ _ _ _ hrp hrp' (cutMap_boundary S rho hn _ _)
         (cutMap_boundary S rho hn _ _) (cutMap_mono ⟨S, stock⟩ rho hn (lastOwn_mono S rho v hij))
-        (now_mono S rho hn hv v hij) h0 hh' hra hra')
+        (now_mono ⟨S, stock⟩ rho hn hv v hij) h0 hh' hra hra')
 
 end Consensus.Goldilocks.Obligations.Growing
 

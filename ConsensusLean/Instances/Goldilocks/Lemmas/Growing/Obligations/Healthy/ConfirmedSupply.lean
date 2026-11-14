@@ -180,7 +180,7 @@ private theorem confirmed_end_cut_at (Q : ConfirmedQueryAt S A V) {v : V} {t : T
   have hup : (chainTrace Q.run.2).cutTime ((chainTrace Q.run.2).endCut t) ≤ t :=
     Nat.findGreatest_spec (P := fun i => (chainTrace Q.run.2).cutTime i ≤ t)
       (Nat.zero_le _) ht
-  have hlo := (now_bounds_cut S Q.run.2 Q.hn Q.valid v hle).2
+  have hlo := (now_bounds_cut ⟨S, stock⟩ Q.run.2 Q.hn Q.valid v hle).2
   rw [hnow] at hlo
   exact ⟨hcut, hnow, le_antisymm hup hlo, hle⟩
 
@@ -311,7 +311,8 @@ theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt S A V)
     (Nat.le_findGreatest hlT (by rw [htT]; exact hmargin))
     ⟨hlD, by rw [htD]; exact hhT.trans hmargin⟩
     (by rw [htT]; exact hvT) (by rw [htD]; exact hvD)
-    (((now_bounds_cut S Q.run.2 Q.hn Q.valid (Q.run.2.key y) hlD).2.trans_eq htD).trans Q.bounded)
+    (((now_bounds_cut ⟨S, stock⟩ Q.run.2 Q.hn Q.valid (Q.run.2.key y) hlD).2.trans_eq htD).trans
+      Q.bounded)
   rw [hnT, hnD, readAfter_lastOwn S A V Q hlT, readAfter_lastOwn S A V Q hlD,
     show Q.run.2.ownKey (Q.run.2.key y) = y from Q.run.2.key.symm_apply_apply _] at hanc
   exact hfirst.trans hanc
