@@ -12,6 +12,11 @@ SCRIPT = Path(__file__).with_name("push-main.sh").resolve()
 # The fixtures' Git ignores the user's global and system config: a global core.hooksPath would also apply to the
 # bare remote and disable the pre-receive hook that stands in for a remote rule.
 os.environ.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
+# The fixtures run push-main at its default retry rounds and lock TTL: an inherited PUSH_MAIN_TRIES=1 makes the
+# concurrent landers give up on their intended contention, and an inherited PUSH_MAIN_LOCK_TTL=0 lets a lander take
+# over a lock that is still held.
+for name in [name for name in os.environ if name.startswith("PUSH_MAIN_")]:
+    del os.environ[name]
 
 
 def run(*args, cwd):
