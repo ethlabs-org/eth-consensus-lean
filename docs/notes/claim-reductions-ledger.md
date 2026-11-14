@@ -152,7 +152,7 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | honest union coherence | explicit clean-run → Coherent hypothesis | OPEN instance supplier, never added to HoldsAlways |
 | held-store inclusion in honest union | HonestBlocksAt witnesses y=validator.symm v, cut=M.cut i, t=cutTime i, using before_time/honest_eq and nonnegative actual cutTime | DERIVED, not a new supplier |
 | chain prefix from local ancestry | ReadRepresentation.ancestor_prefix, with actual held membership/root/coherence premises; same M.chain/header | Existing OPEN representation; no final claim assumed |
-| actual tip held / payload ancestry | LocalReadPoint and appropriate SleepyReadPoint/HealthyReadPoint; final cache invariants | Existing OPEN suppliers; finite actual-time consumers only |
+| actual tip held / payload ancestry | OutputValidityEdge; LocalReadPoint and appropriate SleepyReadPoint/HealthyReadPoint; final cache invariants | OPEN: OutputValidityEdge needs the honest reader's output tip at M.clock of its stored state to belong to the mapped FG tree. Neither ReadRepresentation nor HonestReadTransport supplies this membership. For Goldilocks, finalized membership follows from FG reachability and confirmed membership from AC ReqOutputs, as in engine_outputValid_at. No supplier field is added here; the finite actual-time suppliers remain OPEN |
 | engine view and conviction binding | HonestReadTransport.chain_att_view, M.att_signer/att_conflict; key/validator equivalences | Existing OPEN map/provenance realization; source population count unchanged |
 
 ### Premises production: no silently discharged field
