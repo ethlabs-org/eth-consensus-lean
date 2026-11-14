@@ -24,7 +24,7 @@ open Node
 
 variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
   {proposer : Nat → Fin P.n} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n}
-  {tr : RunTrace A} {y : Fin P.n}
+  {tr : RunTrace A} {ini : Fin P.n → A.State} {y : Fin P.n}
 
 /-! ## Traces -/
 
@@ -32,7 +32,7 @@ variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
 
 /-- One cut of an honest node: its FG state stays, accepts a block, or processes an
 attestation. -/
-theorem fg_step (h : LocalRun proposer dg H sg tr) (hy : y ∈ H) (m : Nat) :
+theorem fg_step (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) (m : Nat) :
     (tr.state y (m + 1)).fg = (tr.state y m).fg ∨
       (∃ B, tr.AcceptAt y m B ∧ (tr.state y m).fg.onBlock B = some (tr.state y (m + 1)).fg) ∨
       ∃ a, tr.AttCallAt y m a ∧
@@ -67,7 +67,7 @@ theorem hmax_mono (h : LocalRun proposer dg H sg tr) (hy : y ∈ H) :
     rw [he, ha]
 
 /-- A block of an honest node's FG state is genesis or was accepted by it at an earlier cut. -/
-theorem tree_accepted (h : LocalRun proposer dg H sg tr) (hy : y ∈ H) {m : Nat} {B : A.Blk}
+theorem tree_accepted (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) {m : Nat} {B : A.Blk}
     (hB : B ∈ (tr.state y m).fg.tree) :
     B = P.genesisBlock A.genesisPayload ∨ ∃ k < m, tr.AcceptAt y k B := by
   induction m with
