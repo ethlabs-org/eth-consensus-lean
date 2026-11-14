@@ -73,13 +73,18 @@ structure RunMap (rho : Model.Run (compiled F) E) (payload : A.Blk → Set Nat) 
     tip g st t = A.confirmed st.ac (Node.frame st) t
 
 variable {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
+
+/-- Chain laws apply to held tips in a reachable local store. A chain map may end in its tip
+whether or not that tip is held, so reachability of the store alone does not make the chain
+held or valid. -/
 structure ReadRepresentation (M : RunMap rho payload) : Prop where
-  chain_held : ∀ st tip B, B ∈ M.chain st tip → B ∈ st.fg.tree
+  chain_held : ∀ st tip, st.fg.Reachable A.genesisPayload → tip ∈ st.fg.tree →
+    ∀ B, B ∈ M.chain st tip → B ∈ st.fg.tree
   linked : ∀ st tip, st.fg.Reachable A.genesisPayload →
-    (∀ B ∈ st.fg.tree, B.RootOk M.digest) →
+    tip ∈ st.fg.tree → (∀ B ∈ st.fg.tree, B.RootOk M.digest) →
     Chain.Linked rho.hash ((M.chain st tip).map M.header)
   increasing : ∀ st tip, st.fg.Reachable A.genesisPayload →
-    Chain.PosIncreasing ((M.chain st tip).map M.header)
+    tip ∈ st.fg.tree → Chain.PosIncreasing ((M.chain st tip).map M.header)
   ancestor_prefix : ∀ u v i j, i ≤ rho.events.length → j ≤ rho.events.length →
     rho.point.HonestAt u (rho.cutTime i) → rho.point.HonestAt v (rho.cutTime j) →
     let st := M.trace.state (M.validator.symm u) (M.cut i)
