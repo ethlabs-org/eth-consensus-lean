@@ -109,7 +109,10 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements",
          "Instances.Goldilocks.Milestones.Statements.AC",
          "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Milestones.Statements.Compose",
-         "Instances.Goldilocks.Milestones.Statements.Generic"]
+         "Instances.Goldilocks.Milestones.Statements.Generic",
+         # the FG-only lemma layers (no AC, SA, Compose or Healing layer), for the generic H2 proofs
+         "Lemmas", "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.FGChain",
+         "Instances.Goldilocks.Lemmas.FGStore"]
 about = "unproved generic surface edges; endpoint and acceptance closures remain isolated"
 
 [[exception]]
