@@ -8,19 +8,22 @@ public section
 
 `Lemmas/Generic/HealingLeaves` imports AC-generic run modules by an exception
 (`scripts/boundaries.toml`) whose closure reaches `Lemmas.AC`, so the import boundaries do not
-keep Goldilocks content out of the leaves. This build-time check does: for every theorem declared
-in the module `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves`, it walks the
-constants of the theorem's type and value, and of the type and value of every constant reached,
+keep Goldilocks content out of the leaves. This build-time check does: for every constant declared
+in the module `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves` (theorems,
+definitions and auxiliary constants alike), it walks the constants of its type and value, and of
+the type and value of every constant reached,
 with the constructors and the inductive of every inductive, constructor and recursor reached, to a
 fixpoint, and fails if a reached constant is a Goldilocks-AC constant: one under
-`Consensus.Goldilocks.SA` or whose name contains `goldilocksNode`, `GoldilocksTrace` or
-`GoldilocksRun`, outside `allowed`. It also fails on a reached name that is not in the
-environment, on an empty set of leaves, and on an unused `allowed` entry or one whose own cone
-holds another Goldilocks-AC constant.
+`Consensus.Goldilocks.SA` or `Consensus.Goldilocks.AsChainShape`, or whose name contains
+`goldilocksNode`, `GoldilocksTrace` or `GoldilocksRun`, outside `allowed`. It also fails on a
+reached name that is not in the environment, on a module that declares no theorem, and on an
+unused `allowed` entry or one whose own cone holds another Goldilocks-AC constant.
 
 Controls, so that a broken walk cannot pass: the Goldilocks instance `held_atts_safe_at` must
-reach Goldilocks-AC constants, and every leaf's cone must be strictly larger than its cone
-without theorem values, so imported proofs are walked. -/
+reach Goldilocks-AC constants, and the cone of every theorem of the module whose name is not
+internal (auxiliary and private theorems are skipped) must be strictly larger than its cone
+without theorem values, so imported proofs are walked. A root that is not a theorem has its value
+walked in both modes, so this control does not apply to it. -/
 
 open Lean Meta
 
@@ -29,7 +32,8 @@ namespace Consensus.Goldilocks.Generic.Test.HealingLeavesCut
 /-- A Goldilocks-AC constant. -/
 meta def goldilocksAC (n : Name) : Bool :=
   let s := n.toString
-  (`Consensus.Goldilocks.SA).isPrefixOf n || (s.splitOn "goldilocksNode").length > 1 ||
+  (`Consensus.Goldilocks.SA).isPrefixOf n || (`Consensus.Goldilocks.AsChainShape).isPrefixOf n ||
+    (s.splitOn "goldilocksNode").length > 1 ||
     (s.splitOn "GoldilocksTrace").length > 1 || (s.splitOn "GoldilocksRun").length > 1
 
 /-- The constants reached from `root`, each with the constant it was reached from; with
@@ -87,12 +91,12 @@ meta def check (mod : Name) (allowed : List Name) (control : Name × Name) : Met
   let env ← importModules #[{ module := mod }, { module := control.1 }] {} (trustLevel := 1024)
     (leakEnv := true)
   let some idx := env.getModuleIdx? mod | throwError "module {mod} is not imported"
-  let theorems := env.constants.fold (init := #[]) fun acc c info =>
-    if env.getModuleIdxFor? c == some idx && !c.isInternal && info.isTheorem then acc.push c
-    else acc
+  let roots := env.constants.fold (init := #[]) fun acc c _ =>
+    if env.getModuleIdxFor? c == some idx then acc.push c else acc
+  let theorems := roots.filter fun c => !c.isInternal && (env.find? c).any (·.isTheorem)
   if theorems.isEmpty then throwError "no theorem declared in {mod}"
   let mut used : NameSet := {}
-  for t in theorems do
+  for t in roots do
     let parent := cone env t
     for (n, _) in parent.toList do
       unless env.contains n do
