@@ -40,7 +40,7 @@ omit [DecidableEq V] in
 up to the vote permission. -/
 theorem simIni_voteStart (y : Fin (Fintype.card V)) :
     SA.VoteStart (S.params (pubOf E) hn).genesisRoot (simIni S rho hn y) :=
-  ⟨_, installVote_eq_mayVote S.vote _ _⟩
+  ⟨_, S.vote.installVote_eq_mayVote _ _⟩
 
 /-- The canonical event expansion obeys all Goldilocks run laws under growing compromise, from
 the engine's own starts `simIni`. -/

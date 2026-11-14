@@ -248,17 +248,12 @@ def VoteBinding.installVote (B : VoteBinding) {n : Nat}
   | none => a
   | some _ => { a with mayVote := fun s => p (B.voteRole s) }
 
-/-- A committee vote candidate names exactly its historical signing role. -/
-theorem VoteBinding.candidateRole_vote (B : VoteBinding)
-    (h : B.participationKind ≠ none) {n : Nat} (d : ShapeDuty B.Kind) (v : Vote n) :
-    B.candidateRole n d (.data (.vote (encodeVote v))) = some (B.voteRole v.slot) := by
-  cases hp : B.participationKind with
-  | none => exact False.elim (h hp)
-  | some k => simp [VoteBinding.candidateRole, hp, decodeVote, encodeVote, v.val.isLt]
-
-/-- Stock poll emissions keep the poll role after the optional override is resolved. -/
-theorem stock_candidateRole_poll (n t : Nat) (m : Msg (Header Info) Body) :
-    (stock.candidateRole n (.poll t) m).getD (.poll : ShapeRole stock.Kind) = .poll := by rfl
+/-- Installing the own-role vote permission changes no field of the state other than `mayVote`. -/
+theorem VoteBinding.installVote_eq_mayVote (B : VoteBinding) {n : Nat}
+    (p : ShapeRole B.Kind → Bool) (a : SA.SAState n) :
+    B.installVote p a = { a with mayVote := (B.installVote p a).mayVote } := by
+  unfold VoteBinding.installVote
+  cases B.participationKind <;> rfl
 
 /-- Resolving the optional override on a poll gives the vote's role for every binding. -/
 theorem VoteBinding.candidateRole_poll_vote (B : VoteBinding) {n : Nat} (t : Nat) (v : Vote n) :
@@ -291,35 +286,38 @@ theorem VoteBinding.installVote_mayVote (B : VoteBinding) (h : B.participationKi
 /-- The single wire carrier, parameterised by the vote binding. -/
 abbrev Wire (n : Nat) (binding : VoteBinding := stock) := ShapeObj n binding.Kind Info Body
 
+variable (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  {binding : optParam VoteBinding stock}
+
 /-- The exact dependency reference of a parent-bearing forwarding shape. This computable
 projection needs no protocol parameters or digests and certifies no validity or provenance.
 Raw blocks and genesis-wrapper shapes have no dependency reference. -/
-def forwardParent? {binding : optParam VoteBinding stock} {n : Nat} :
+def forwardParent? {n : Nat} :
     Wire n (binding := binding) → Option (Wire n (binding := binding))
   | .mk (.signed _ .poll) (.data (.forward _)) [parent, _] => some parent
   | _ => none
 
 /-- The canonical object of a vote: signed by its validator in the binding's effective vote role,
 carrying nothing. -/
-def voteObj {binding : optParam VoteBinding stock} {n : Nat} (v : Vote n) :
+def voteObj {n : Nat} (v : Vote n) :
     Wire n (binding := binding) :=
   .mk (.signed v.val (binding.voteRole v.slot)) (.data (.vote (encodeVote v))) []
 
 /-- The canonical object of an attestation: signed by its validator in its effective role (`.poll`),
 carrying nothing. -/
-def attObj {binding : optParam VoteBinding stock} {n : Nat} (a : FG.Att n) :
+def attObj {n : Nat} (a : FG.Att n) :
     Wire n (binding := binding) :=
   .mk (.signed a.val .poll) (.data (.att (encodeAtt a))) []
 
 /-- The objects a block carries: the canonical objects of its attestations, then of its votes
 and support votes. -/
-def payloadObjs {binding : optParam VoteBinding stock} {n : Nat}
+def payloadObjs {n : Nat}
     (atts : List (FG.Att n)) (p : Payload n) : List (Wire n (binding := binding)) :=
   atts.map (attObj (binding := binding)) ++ (p.1 ++ p.2).map (voteObj (binding := binding))
 
 /-- A standalone attestation object: an attestation body signed in the `.poll` role, carrying
 nothing (the shape of `attObj`, whether or not its body decodes). -/
-def IsAttObj {binding : optParam VoteBinding stock} {n : Nat} : Wire n (binding := binding) → Prop
+def IsAttObj {n : Nat} : Wire n (binding := binding) → Prop
   | .mk (.signed _ .poll) (.data (.att _)) [] => True
   | _ => False
 
@@ -334,13 +332,13 @@ Model choice (`docs/decisions.md` §"Network and delivery"): attestations bundle
 a vote in one relay wrapper are delivered strictly before `ΔAC`, the bound of the bundle; so such
 attestations reach the other nodes strictly before `ΔAC` instead of `ΔFG` (faster than a standalone
 attestation whenever `ΔAC < ΔFG`). -/
-def isFGAtt {binding : optParam VoteBinding stock} {n : Nat} : Wire n (binding := binding) → Prop
+def isFGAtt {n : Nat} : Wire n (binding := binding) → Prop
   | .mk .none (.data .relay) cs => cs ≠ [] ∧ ∀ c ∈ cs, IsAttObj (binding := binding) c
   | o => IsAttObj (binding := binding) o
 
 /-- The slashing rule: two canonical attestation objects whose attestations are `slashable`
 (E1/E2 of fg.tex). -/
-def conflicts {binding : optParam VoteBinding stock} {n : Nat} :
+def conflicts {n : Nat} :
     Wire n (binding := binding) → Wire n (binding := binding) → Bool
   | .mk (.signed k .poll) (.data (.att w)) [], .mk (.signed k' .poll) (.data (.att w')) [] =>
       match decodeAtt n w, decodeAtt n w' with
@@ -371,8 +369,6 @@ def rootOf (hs : List (Header Info × Nat)) (h : Header Info) : Option Nat :=
 
 /-! ## The shape -/
 
-variable (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-
 /-- The public parameters of `sp`: the type index of `goldilocksShape`. Only `n` (keys and
 objects) and `ΔAC` (`skeleton`'s grid, overridden by `goldilocksShape`) are read from it; its FG
 delay is set to `sp.Δ` only to fill the field and is read by no definition. The run's FG delay
@@ -393,11 +389,12 @@ def blockOf (d : Nat) (h : Header Info) (k : Fin sp.n) (atts : List (FG.Att sp.n
   ⟨taggedRoot sp.genesisRoot d, parentRoot sp.genesisRoot h.parent, h.pos, k, h.input, atts, p⟩
 
 /-- The skeleton uses protocol delay `Δ_p = pub.ΔAC`, selecting one proposer per `4Δ_p`, with
-everyone in the poll role and no committee kinds; two poll steps (the release of the
-bodies queued since the last tick), the node's tick as the poll proposal step, the slot proposal,
-then two poll steps (the FG update and the release of the tick's bodies); one poll step at every
-delivery (the release of the vote the delivery emitted, if any; the FG update is never due at a
-delivery). -/
+everyone in the poll role and no scheduled committee duties (`kinds` is empty; the binding supplies
+its historical vote kind, that kind's selection and the participation kind); two poll steps (the
+release of the bodies queued since the last tick), the node's tick as the poll proposal step, the
+slot proposal, then two poll steps (the FG update and the release of the tick's bodies); one poll
+step at every delivery (the release of the vote the delivery emitted, if any; the FG update is
+never due at a delivery). -/
 def skeleton (pub : Public) (binding : VoteBinding := stock) : Skeleton pub.n where
   grid := ⟨4 * pub.ΔAC, mul_pos (by decide) pub.ΔAC_pos⟩
   proposerSel := fun _ => .sized 1
@@ -443,7 +440,7 @@ def emitted (cs : List (Cut (goldilocksNode sp ro))) : List Body :=
     | .fg _ => []
 
 /-- Queue `o` for relay if `c`. -/
-def relayIf {binding : optParam VoteBinding stock} (st : State sp ro (binding := binding))
+def relayIf (st : State sp ro (binding := binding))
     (c : Prop) [Decidable c] (o : Wire sp.n (binding := binding)) :
     State sp ro (binding := binding) :=
   if c then { st with relayBuf := st.relayBuf ++ [o] } else st
@@ -451,7 +448,7 @@ def relayIf {binding : optParam VoteBinding stock} (st : State sp ro (binding :=
 variable (sp) in
 /-- The canonical object of a non-genesis block: its header as an item signed by its proposer in
 its slot's proposer role, carrying its payload's objects. -/
-def blockObj {binding : optParam VoteBinding stock} (B : Blk sp) : Wire sp.n (binding := binding) :=
+def blockObj (B : Blk sp) : Wire sp.n (binding := binding) :=
   .mk (.signed B.proposer (.proposer B.slot)) (.item (headerOf sp B))
     (payloadObjs (binding := binding) B.fgPayload B.acPayload)
 
@@ -461,7 +458,7 @@ open Classical in
 passed: a header signed in its slot's proposer role, whose indices decode, with a raw digest,
 carrying its payload's objects, with well-formed attestations and a
 valid AC payload. Such an object is `blockObj` of the block it decodes to. -/
-noncomputable def decodeBlock {binding : optParam VoteBinding stock}
+noncomputable def decodeBlock
     (hs : List (Header Info × Nat)) :
     Wire sp.n (binding := binding) → Option (Blk sp)
   | .mk (.signed k (.proposer s)) (.item h) cs =>
@@ -478,7 +475,7 @@ variable (sp) in
 /-- A signed forwarding wrapper. The optional exact parent wrapper precedes the canonical
 child block, so recursive delivery processing replays the parent first. Construction alone
 does not certify acceptance, freshness, or dependency readiness. -/
-def forwardObj {binding : optParam VoteBinding stock} (origin : Fin sp.n) (acceptedAt : Time)
+def forwardObj (origin : Fin sp.n) (acceptedAt : Time)
     (parent : Option (Wire sp.n (binding := binding)))
     (B : Blk sp) : Wire sp.n (binding := binding) :=
   .mk (.signed origin .poll) (.data (.forward acceptedAt))
@@ -487,7 +484,7 @@ def forwardObj {binding : optParam VoteBinding stock} (origin : Fin sp.n) (accep
 /-- Queue a wrapper only for an actual successful block cut. Parent lookup uses node roots;
 the wire encoding stays in `blockObj`. A missing non-genesis parent leaves the queue unchanged:
 the reachable-state invariant must rule out that case, rather than minting an orphan wrapper. -/
-def queueAccepted {binding : optParam VoteBinding stock} (st : State sp ro (binding := binding))
+def queueAccepted (st : State sp ro (binding := binding))
     (B : Blk sp) : State sp ro (binding := binding) :=
   match B.parent with
   | none => st
@@ -505,7 +502,7 @@ def queueAccepted {binding : optParam VoteBinding stock} (st : State sp ro (bind
 /-- Record handler state and emissions, then queue successful acceptances and fresh vote
 insertions. Candidate votes come from message/block calls and own emissions, not restart
 replay. The pool difference preserves admission's duplicate and two-vote-cap checks. -/
-def apply {binding : optParam VoteBinding stock} (st : State sp ro (binding := binding))
+def apply (st : State sp ro (binding := binding))
     (r : NodeState (goldilocksNode sp ro) × List (Cut (goldilocksNode sp ro))) :
     State sp ro (binding := binding) :=
   let publications := r.2.foldl (fun s c => match c with
@@ -530,7 +527,7 @@ def apply {binding : optParam VoteBinding stock} (st : State sp ro (binding := b
 variable (sp) in
 /-- The vote a received object is the canonical object of (`voteObj`): signed by its validator
 in the `.poll` role, carrying nothing. -/
-def decodeVoteObj {binding : optParam VoteBinding stock} :
+def decodeVoteObj :
     Wire sp.n (binding := binding) → Option (Vote sp.n) :=
   match binding.participationKind with
   | none => fun
@@ -545,7 +542,7 @@ def decodeVoteObj {binding : optParam VoteBinding stock} :
 variable (sp) in
 /-- The well-formed attestation a received object is the canonical object of (`attObj`): signed
 by its validator in the `.poll` role, carrying nothing. -/
-def decodeAttObj {binding : optParam VoteBinding stock} :
+def decodeAttObj :
     Wire sp.n (binding := binding) → Option (FG.Att sp.n)
   | .mk (.signed k .poll) (.data (.att w)) [] =>
       (decodeAtt sp.n w).filter fun a => k = a.val ∧ a.WellFormed
@@ -554,7 +551,7 @@ def decodeAttObj {binding : optParam VoteBinding stock} :
 variable (sp ro) in
 /-- The node's top-level event a received object stands for, given the digests `hs`: the block,
 vote or attestation it is the canonical object of; none for anything else (dropped). -/
-noncomputable def canonEvent {binding : optParam VoteBinding stock}
+noncomputable def canonEvent
     (hs : List (Header Info × Nat)) (o : Wire sp.n (binding := binding)) :
     Option (Node.Event (goldilocksNode sp ro)) :=
   match decodeBlock sp (binding := binding) hs o, decodeVoteObj sp (binding := binding) o,
@@ -568,7 +565,7 @@ open Classical in
 /-- Processing one received object through its canonical node handler. Blocks held after
 the call and attestations use unsigned relay; fresh vote insertions use the signed queue in
 `apply`. Noncanonical wrappers make no call; their carried objects are processed separately. -/
-noncomputable def processOne {binding : optParam VoteBinding stock} (hs : List (Header Info × Nat))
+noncomputable def processOne (hs : List (Header Info × Nat))
     (st : State sp ro (binding := binding)) (o : Wire sp.n (binding := binding)) :
     State sp ro (binding := binding) :=
   match canonEvent sp ro (binding := binding) hs o with
@@ -587,11 +584,11 @@ carried object. Noncanonical wrappers make no node call. A canonical block is pr
 its payload votes and attestations, which receive their own message/attestation calls even if
 the block is refused. Thus admitting a payload vote is followed by actual message processing
 at the same delivery time, rather than merely adding it to the AC pool. -/
-def delivered {binding : optParam VoteBinding stock} (o : Wire sp.n (binding := binding)) :
+def delivered (o : Wire sp.n (binding := binding)) :
     List (Wire sp.n (binding := binding)) := o.parts
 
 /-- Processing a delivered object: its `delivered` objects one by one through `processOne`. -/
-noncomputable def process {binding : optParam VoteBinding stock}
+noncomputable def process
     (st : State sp ro (binding := binding))
     (o : Wire sp.n (binding := binding)) (hs : List (Header Info × Nat)) :
     State sp ro (binding := binding) :=
@@ -621,7 +618,7 @@ def dependencies (n : Nat) {binding : optParam VoteBinding stock} :
 /-- Recording an own released object: the relay wrapper empties the relay queue; the own block
 (now with its digest) goes through the own `on_block`, as `propose_block` does; a released vote
 or attestation was admitted when emitted or signed. -/
-noncomputable def recordOwn {binding : optParam VoteBinding stock}
+noncomputable def recordOwn
     (st : State sp ro (binding := binding))
     (o : Wire sp.n (binding := binding)) (hs : List (Header Info × Nat)) :
     State sp ro (binding := binding) :=
@@ -636,7 +633,7 @@ noncomputable def recordOwn {binding : optParam VoteBinding stock}
 
 open Classical in
 /-- The node's tick at a public time: `ac_on_tick`, its votes queued, the FG update made due. -/
-noncomputable def nodeTick {binding : optParam VoteBinding stock}
+noncomputable def nodeTick
     (st : State sp ro (binding := binding)) :
     State sp ro (binding := binding) :=
   if sp.toParams.IsPublic st.now then
@@ -647,7 +644,7 @@ noncomputable def nodeTick {binding : optParam VoteBinding stock}
 /-- The slot proposal of the slot's proposer: `ac_proposal`; the header names the head and
 carries the proposal's attestations (`proposal_attestations`) and the AC payload. The engine
 writes the slot and the input and signs; the own `on_block` runs in `recordOwn`. -/
-noncomputable def propose {binding : optParam VoteBinding stock}
+noncomputable def propose
     (st : State sp ro (binding := binding))
     (_s : Slot) : State sp ro (binding := binding) ×
       Option (ParentRef × Info × List (Wire sp.n (binding := binding))) :=
@@ -663,7 +660,7 @@ noncomputable def propose {binding : optParam VoteBinding stock}
 /-- The FG update: `ac_to_fg`, then `attest(C)` at the source `C` it returns (`fg_attest`; when
 it signs, the new record, the own `on_attestation` and the attestation queued), as
 `Node.tickStep … .fgUpdate`. -/
-noncomputable def fgUpdate {binding : optParam VoteBinding stock}
+noncomputable def fgUpdate
     (st : State sp ro (binding := binding)) :
     State sp ro (binding := binding) :=
   let r := Node.acToFG st.node st.now
@@ -679,7 +676,7 @@ noncomputable def fgUpdate {binding : optParam VoteBinding stock}
 
 /-- A poll step: the FG update when due, then the oldest queued ordinary body.
 Clear the forwarding queue; `pollBatch` captures its contents before this step. -/
-noncomputable def poll {binding : optParam VoteBinding stock}
+noncomputable def poll
     (st : State sp ro (binding := binding))
     (_ : Time) : State sp ro (binding := binding) ×
       Option (Body × List (Wire sp.n (binding := binding))) :=
@@ -691,7 +688,7 @@ noncomputable def poll {binding : optParam VoteBinding stock}
 /-- Keep the ordinary emission and parent-first block wrappers at their original offsets,
 then drain vote envelopes. Both queues are read before polling; the FG update admits no votes.
 The engine signs the list and checks each candidate against its actual release prefix. -/
-noncomputable def pollBatch {binding : optParam VoteBinding stock}
+noncomputable def pollBatch
     (st : State sp ro (binding := binding))
     (t : Time) : State sp ro (binding := binding) ×
       List (Body × List (Wire sp.n (binding := binding))) :=
@@ -723,7 +720,7 @@ noncomputable def outOf (st : NodeState (goldilocksNode sp ro)) (t : Time) : Out
 /-- A restart at time `t`: `𝒜` becomes `ac_restart(𝒜, Φ, t)` (only the locks and the latest
 confirmation persist; its emissions are queued), the time is set, no FG update is due. `Σ`, `Λ`,
 the queued bodies, the relay queue and the forwarding state are kept. -/
-noncomputable def restore {binding : optParam VoteBinding stock} (k : Fin sp.n)
+noncomputable def restore (k : Fin sp.n)
     (d : State sp ro (binding := binding)) (t : Time) : State sp ro (binding := binding) :=
   let r := Node.restart k d.node t
   { apply { d with self := k, now := t } r with fgDue := false }
@@ -863,16 +860,6 @@ noncomputable def goldilocksWith (S : BoundSetup) :
 /-- The population-wide instance is the stock vote binding. -/
 noncomputable def goldilocks (S : Setup) : ChainShapeFamily schema Info :=
   goldilocksWith ⟨S, stock⟩
-
-/-- Unfolds `goldilocks` to `goldilocksWith ⟨S, stock⟩`, for rewriting. -/
-theorem goldilocks_stock (S : Setup) : goldilocks S = goldilocksWith ⟨S, stock⟩ := rfl
-
-/-- The family installs the actual own-role predicate in the committee node's initial AC state. -/
-theorem goldilocksWith_init_mayVote (S : BoundSetup) (pub : Public) (hn : 1 ≤ pub.n)
-    (h : S.vote.participationKind ≠ none) (key : Fin pub.n)
-    (p : ShapeRole S.vote.Kind → Bool) (s : Slot) :
-    (((goldilocksWith S pub).init key p hn).node.ac).mayVote s = p (S.vote.voteRole s) := by
-  exact S.vote.installVote_mayVote h p _ s
 
 end Consensus.Goldilocks.AsChainShape
 

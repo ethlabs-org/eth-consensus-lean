@@ -39,12 +39,6 @@ theorem candidateRole_item (B : VoteBinding) (n : Nat) (d : ShapeDuty B.Kind) (h
     B.candidateRole n d (.item h) = none := by
   cases hp : B.participationKind <;> simp [VoteBinding.candidateRole, hp]
 
-/-- Installing the own-role vote permission changes no field of the state other than `mayVote`. -/
-theorem installVote_eq_mayVote (B : VoteBinding) {n : Nat} (p : ShapeRole B.Kind → Bool)
-    (a : SA.SAState n) : B.installVote p a = { a with mayVote := (B.installVote p a).mayVote } := by
-  unfold VoteBinding.installVote
-  split <;> rfl
-
 /-- The role in which a poll duty signs the body `b`: its effective candidate role (the
 binding's override, else the poll role). -/
 def pollRole (B : VoteBinding) (n : Nat) (b : Body) : ShapeRole B.Kind :=
