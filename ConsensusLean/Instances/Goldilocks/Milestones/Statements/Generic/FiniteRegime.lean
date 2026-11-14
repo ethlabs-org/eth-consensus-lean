@@ -41,7 +41,7 @@ def prefixService_of_gst (runs : ACRun A sg) : Prop :=
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     0 ≤ b → tr.GSTRunAt H ΔF g → PrefixService tr H g ΔF b
 
-/-- UNPROVED honesty truncation on the retained trace, matching `resetService_truncH`.
+/-- UNPROVED honesty truncation on the retained trace.
 Returning to the original trace's relay ancestry needs a separate supplier. -/
 def prefixService_truncH : Prop :=
   ∀ (tr : RunTrace A) H g ΔF b,

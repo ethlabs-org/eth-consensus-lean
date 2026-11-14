@@ -132,8 +132,6 @@ structure ACRun (A : NodeAC P) (sg : A.Msg → Fin P.n) where
   /-- The run supplies the genesis digest equation independently of a finite horizon. -/
   run_root : ∀ {cm proposer dg H tr}, Run cm proposer dg H tr →
     (P.genesisBlock A.genesisPayload).RootOk dg
-  run_truncate : ∀ {cm proposer dg H tr} (b : Time),
-    Run cm proposer dg H tr → Run cm proposer dg (truncH H b) tr
 
 /-- Canonical high entries, with historical honesty read at independently bounded cuts. -/
 structure HighCanonical

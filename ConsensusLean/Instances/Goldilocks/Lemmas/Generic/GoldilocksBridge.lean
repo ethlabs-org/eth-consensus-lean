@@ -304,11 +304,6 @@ def exists_reset_of_drain_rounds_awake_at_goldilocks : Prop := ∀
     ∃ a, IsReset tr H g a ∧
       a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld
 
-/-- Public restatement of the private supplier at `Kernel/ResetRounds.lean:707`. -/
-def goldilocksRun_truncH : Prop := ∀
-    (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (b : Time),
-    Consensus.Goldilocks.Growing.GoldilocksRun proposer dg (fun t => {y | y ∈ H t ∧ t ≤ b}) tr
-
 /-- Original side: `Growing/Healing/Outcome/RowSource.lean:107`. -/
 def high_row_source_at_goldilocks {tr : GoldilocksTrace sp ro}
     {H : Time → Set (Fin sp.n)} : Prop := ∀
