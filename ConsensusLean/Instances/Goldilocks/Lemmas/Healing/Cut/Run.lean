@@ -52,7 +52,7 @@ theorem fg_step (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) (m : Nat) 
     exact Or.inl rfl
 
 /-- `Σ.h_max` of an honest node only grows. -/
-theorem hmax_mono (h : LocalRun proposer dg H sg tr) (hy : y ∈ H) :
+theorem hmax_mono (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) :
     Monotone fun m => (tr.state y m).fg.hmax := by
   refine monotone_nat_of_le_succ fun m => ?_
   rcases fg_step h hy m with he | ⟨B, -, hB⟩ | ⟨a, -, he⟩
@@ -65,6 +65,13 @@ theorem hmax_mono (h : LocalRun proposer dg H sg tr) (hy : y ∈ H) :
     exact le_max_left _ _
   · obtain ⟨atts, ha⟩ := (tr.state y m).fg.onAttestation_eq a
     rw [he, ha]
+
+/-- A block that an honest node accepts at cut `k` is in its FG state after the cut. -/
+theorem accept_mem_from (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) {k : Nat}
+    {B : A.Blk} (hA : tr.AcceptAt y k B) : B ∈ (tr.state y (k + 1)).fg.tree := by
+  rw [tr.state_succ_of_call hA, (Store.tree_grows _ _ _ _
+    (Compose.fg_reachable h hy k)).1 B _ (h.cutLaw y hy k _ hA).2.1]
+  exact Set.mem_insert _ _
 
 /-- A block of an honest node's FG state is genesis or was accepted by it at an earlier cut. -/
 theorem tree_accepted (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) {m : Nat} {B : A.Blk}

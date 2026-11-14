@@ -1,11 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
-import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 
 public section
 
@@ -34,12 +30,7 @@ theorem F_anc_of_hmax_le_at
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state x i).fg.tree)
     (hle : (tr.state y m).fg.hmax ≤ ((tr.state x i).fg.σ B.root).h) :
     Anc (tr.HonestBlocksAt H) (tr.state y m).fg.F B :=
-  honest_anc_of_store_anc_at ht hxtime hx <| Store.F_anc_of_hmax_le_of_safe
-    (fg_reachable_at hrun hu hytime hy) (fg_reachable_at hrun ht hxtime hx)
-    (Compose.Growing.honest_blocks_coherent hrun hnc) (fun _ h => ⟨y, m, u, hu, hytime, hy, h⟩)
-    (fun _ h => ⟨x, i, t, ht, hxtime, hx, h⟩) hf
-    (held_atts_safe_at hrun hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
-    hB hle
+  Generic.F_anc_of_hmax_le_at_from hrun.toLocalRun hnc hu hytime hy ht hxtime hx hf hB hle
 
 end Consensus.Goldilocks.Healing.Growing
 

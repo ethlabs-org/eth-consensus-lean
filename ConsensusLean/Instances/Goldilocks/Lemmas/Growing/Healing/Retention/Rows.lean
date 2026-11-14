@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 
 public section
 
@@ -22,9 +23,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem fg_reachable_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) :
-    (tr.state y i).fg.Reachable (goldilocksNode sp ro).genesisPayload := by
-  simpa only [Trace.upTo_state tr y hle] using
-    Compose.fg_reachable (hrun.upTo ht).toLocalRun hy i
+    (tr.state y i).fg.Reachable (goldilocksNode sp ro).genesisPayload :=
+  Generic.fg_reachable_at_from hrun.toLocalRun ht hle hy
 
 /-- Historical ancestry descends into the reader's actual held tree. -/
 theorem store_anc_of_honest_anc_at
@@ -46,7 +46,7 @@ theorem honest_anc_of_store_anc_at {y : Fin sp.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
     {A C : SA.Blk sp.n (List (FG.Att sp.n))} (h : (tr.state y k).fg.Anc A C) :
     Anc (tr.HonestBlocksAt H) A C :=
-  h.mono fun _ hB => ⟨y, k, t, ht, hle, hy, hB⟩
+  Generic.honest_anc_of_store_anc_at_from ht hle hy h
 
 /-- Parent closure at a held-state observation. -/
 theorem mem_of_honest_anc_at
@@ -70,10 +70,7 @@ theorem σ_eq_honest_at
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hBy : B ∈ (tr.state y i).fg.tree) (hBz : B ∈ (tr.state z j).fg.tree) :
     (tr.state y i).fg.σ B.root = (tr.state z j).fg.σ B.root :=
-  Store.σ_eq_of_mem (fg_reachable_at hrun ht hle hy) (fg_reachable_at hrun hu hle' hz)
-    (Compose.Growing.honest_blocks_coherent hrun hnc).1
-    (fun _ hX => ⟨y, i, t, ht, hle, hy, hX⟩)
-    (fun _ hX => ⟨z, j, u, hu, hle', hz, hX⟩) hBy hBz
+  Generic.σ_eq_honest_at_from hrun.toLocalRun hnc ht hle hy hu hle' hz hBy hBz
 
 end Consensus.Goldilocks.Healing.Growing
 

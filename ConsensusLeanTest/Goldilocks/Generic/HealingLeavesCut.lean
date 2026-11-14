@@ -118,7 +118,8 @@ meta def check (mod : Name) (allowed : List Name) (control : Name × Name) : Met
         proofs are not walked"
 
 run_meta do
-  let allowed := []
+  -- `SA.gbar g = max g 0` is in `SA` by placement only; the generic statements open it.
+  let allowed := [``Consensus.Goldilocks.SA.gbar]
   check `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves allowed
     (`ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt,
       ``Consensus.Goldilocks.Healing.Growing.held_atts_safe_at)

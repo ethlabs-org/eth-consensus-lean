@@ -120,9 +120,16 @@ from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves"]
 to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo"]
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Deadline",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle"]
 reason = """the generic healing leaves over any NodeAC use these AC-generic run facts; their closure reaches
-Lemmas.AC only through Compose.Reach, and the cut check guards the theorems' constants; leaf paths only"""
+Lemmas.AC (Compose.Reach) and some of these modules also hold SA lemmas, so the cut guard
+ConsensusLeanTest.Goldilocks.Generic.HealingLeavesCut checks the theorems' constants; leaf paths only"""
 
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing",
@@ -131,8 +138,11 @@ from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing",
         "ConsensusLean.Instances.Goldilocks.Proofs.Growing.Obligations",
         "Solution"]
 to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves"]
-reason = """the Goldilocks originals of the generic healing leaves (Growing.Healing.HeldSignedAt, HeldSafetyAt) are
-their instances; the other entries reach HealingLeaves only through those originals; HealingLeaves only"""
+reason = """the Goldilocks originals of the generic healing leaves (in Lemmas.Growing) are their instances; the
+other entries reach HealingLeaves only through those originals. A prefix form, not exact modules: an exception
+does not extend to the importers of its from modules, and with the two importing modules as exact entries the
+checker reports 266 findings, without the Solution entry 2 (Solution reaches the originals through
+Proofs.Growing.Obligations.Main). HealingLeaves only"""
 
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge"]

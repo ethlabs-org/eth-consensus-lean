@@ -71,20 +71,6 @@ def hmax_le_of_noAdvance_at_goldilocks : Prop := ∀
     (_hq : (H (tr.time i))ᶜ.ncard < sp.toParams.fg.q) (_hiT : tr.time i < T),
     (tr.state y i).fg.hmax ≤ HZ tr H g + 1
 
-/-- Original side: `Growing/Healing/M1/FrameLag.lean:93`, lower range bound. -/
-def HZ_le_hmax_at_goldilocks : Prop := ∀
-    (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (_hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
-    (_hsvc : ResetService tr H g ΔF b) (_hcatch : CatchRun tr H g κ)
-    (_hH : (H (cutZ sp.toParams g)).Nonempty)
-    (_hsnap : ∃ j, FirstCutAfter tr j (cutZ sp.toParams g))
-    {z : Fin sp.n} {m : Nat} (_hz : z ∈ H (tr.time m))
-    (_hf : (H (max (cutZ sp.toParams g) (tr.time m)))ᶜ.ncard <
-      2 * sp.toParams.fg.q - sp.n)
-    (_hcall : ∃ j < m, tr.IsCall z j ∧
-      tr.deadline z j (max (cutZ sp.toParams g) g) sp.Δ ≤ tr.time j)
-    (_hcm : gbar g + κ ≤ tr.time m), HZ tr H g ≤ (tr.state z m).fg.hmax
-
 /-- Original side: `Growing/Healing/Kernel/DrainWarm.lean:70`. -/
 def snapshotCall_of_awake_at_goldilocks : Prop := ∀
     (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {g b : Time}
@@ -383,12 +369,6 @@ def reset_of_height_advance_at_bridge : Prop :=
 def hmax_le_of_noAdvance_at_bridge : Prop :=
   hmax_le_of_noAdvance_at (goldilocksNode sp ro) (fun v => v.val) (goldilocksRunInterface sp ro) →
     ∀ {proposer dg H tr}, hmax_le_of_noAdvance_at_goldilocks (sp := sp) (ro := ro)
-      (proposer := proposer) (dg := dg) (H := H) (tr := tr)
-
-/-- UNPROVED lower half of the original range, M1/FrameLag.lean:93. -/
-def HZ_le_hmax_at_bridge : Prop :=
-  HZ_le_hmax_at (goldilocksNode sp ro) (fun v => v.val) →
-    ∀ {proposer dg H tr}, HZ_le_hmax_at_goldilocks (sp := sp) (ro := ro)
       (proposer := proposer) (dg := dg) (H := H) (tr := tr)
 
 /-- UNPROVED snapshot-call implication at `goldilocksRunInterface`, DrainWarm.lean:70. -/

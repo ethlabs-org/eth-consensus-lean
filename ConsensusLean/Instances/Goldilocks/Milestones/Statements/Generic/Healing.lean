@@ -58,17 +58,6 @@ def hmax_le_of_noAdvance_at (runs : ACRun A sg) : Prop :=
     y ∈ H (tr.time i) → (H (tr.time i))ᶜ.ncard < P.fg.q → tr.time i < T →
     (tr.state y i).fg.hmax ≤ HZ tr H g + 1
 
-/-- UNPROVED leaf 2 lower bound, with its original snapshot and call premises. -/
-def HZ_le_hmax_at : Prop :=
-  ∀ {proposer dg H tr} {g ΔF b κ : Time} {z : Fin P.n} {m : Nat},
-    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
-    Service tr H g ΔF b → CatchRun tr H g κ →
-    (H (cutZ P g)).Nonempty → (∃ j, FirstCutAfter tr j (cutZ P g)) →
-    z ∈ H (tr.time m) →
-    (H (max (cutZ P g) (tr.time m)))ᶜ.ncard < 2 * P.fg.q - P.n →
-    (∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (cutZ P g) g) P.Δ ≤ tr.time j) →
-    gbar g + κ ≤ tr.time m → HZ tr H g ≤ (tr.state z m).fg.hmax
-
 /-- UNPROVED snapshot and call supply for the lower-bound leaf. -/
 def snapshotCall_of_awake_at (runs : ACRun A sg) : Prop :=
   ∀ {cm proposer dg H tr} {g b : Time} {z : Fin P.n} {m : Nat},

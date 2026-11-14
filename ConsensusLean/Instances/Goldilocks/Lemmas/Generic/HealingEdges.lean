@@ -33,7 +33,6 @@ def rise_reset_rounds_at_of (O : ACHealing A sg runs) : Prop :=
 /-- UNPROVED whole-run endpoint assembly; no bundled premise replaces the endpoint's inputs. -/
 def exists_reset_of_drain_rounds_noRestartAfter_at_of (O : ACHealing A sg runs) : Prop :=
   reset_of_height_advance_at A sg runs → hmax_le_of_noAdvance_at A sg runs →
-  HZ_le_hmax_at A sg →
   snapshotCall_of_awake_at A sg runs → callLag_of_awake_at A sg runs →
   exists_frameWindow_seq_of_service_at A sg → exists_slot_align (P := P) →
   rounds_le_warm_proposal_at A sg runs → rise_reset_rounds_at A sg O →
