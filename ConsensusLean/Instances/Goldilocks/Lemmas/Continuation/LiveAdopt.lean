@@ -241,8 +241,9 @@ theorem seeded_adopt_result (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b
   have hF := seeded_updater_F_anc hS hs hPU hPs hall hy hu (by linarith) hb
   obtain ⟨hPt, hFP⟩ := proposal_held_at_update_from hrun hnc hS.sync hp hP hPs (by linarith) hy
     hu hb hF
-  have hmaj := proposal_majority_at_update_from hrun hnc hS.sync hS.bounds hrs' (by linarith)
-    (by linarith) hy hu hb hPt hall hS.stock
+  have hmaj := proposal_majority_at_update_from hrun hnc hS.sync
+    (CommitteeFacts.of_full hrun hnc hS.stock) (CommitteeBoundsFrom.of_full hrun hS.bounds)
+    hrs' (by linarith) (by linarith) hy hu hb hPt hall
   have hC := adopt_result_of hrun hnc hPs hy hu hPt hFP hmaj
   refine ⟨hC, seeded_result_not_vetoed hS hy hu (by linarith) hb (l := s)
     (.of_origin (by omega) (originWithin_iff.2 ⟨y, k₀, _, hy, hb,

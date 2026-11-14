@@ -98,7 +98,8 @@ theorem confirmed_read_on_chain_at {b : Time} (hinv : SleepyInvariantUpTo tr H b
 read time within `b` (every earlier cut at or before it), at any times, are compatible inside the
 blocks held while honest. -/
 theorem SleepyInvariantUpTo.read_compatible_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) {y y' : Fin sp.n}
+    {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
+    {y y' : Fin sp.n}
     {i i' : Nat} {t t' : Time} (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b)
     (hy : y ∈ H t) (ht0' : 0 ≤ t') (hi' : ∀ k < i', tr.time k ≤ t') (htb' : t' ≤ b)
     (hy' : y' ∈ H t') (u u' : Time) :
@@ -112,7 +113,7 @@ theorem SleepyInvariantUpTo.read_compatible_at {b : Time} (hinv : SleepyInvarian
 /-- The effective record of a reader honest at `t` is the later of the record's block `C` and
 `Σ.F`. -/
 private theorem effective_record_spec_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) {y : Fin sp.n}
+    {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr) {y : Fin sp.n}
     {m : Nat} {t : Time} (ht0 : 0 ≤ t) (hm : ∀ k < m, tr.time k ≤ t) (htb : t ≤ b)
     (hy : y ∈ H t) :
     ∃ C ∈ tr.HonestBlocksAt H, C.root = (tr.state y m).ac.latestConfirmed ∧
@@ -152,7 +153,7 @@ private theorem effective_record_spec_at {b : Time} (hinv : SleepyInvariantUpTo 
 `j` at or before `t'`, the effective record (the record's block if the frame holds it, else `Σ.F`)
 before `j` extends the one before `i ≤ j`, inside the blocks held while honest. -/
 theorem SleepyInvariantUpTo.effective_record_mono_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) {y : Fin sp.n}
+    {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr) {y : Fin sp.n}
     {i j : Nat} {t' : Time} (hij : i ≤ j) (ht0 : 0 ≤ t') (hj : ∀ k < j, tr.time k ≤ t')
     (ht'b : t' ≤ b) (hy : y ∈ H t') :
     Anc (tr.HonestBlocksAt H)
@@ -187,20 +188,22 @@ theorem SleepyInvariantUpTo.effective_record_mono_at {b : Time} (hinv : SleepyIn
 
 /-- A node ready at `t ≥ 0` (catch-up `18Δ`, honest at `t`) is awake and joined at `t` (the static
 `ready_implies_joined` on the prefix through `t`). -/
-theorem ready_awake_joined_at (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+theorem ready_awake_joined_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {y : Fin sp.n}
     {t : Time} (ht0 : 0 ≤ t) (hready : Regimes.Growing.ReadyAt tr H (Regimes.catchUp sp) y t) :
     tr.awake y t ∧ tr.JoinedAt y t := by
-  obtain ⟨hw, hj⟩ := ready_implies_joined sp ro dg (H t) (tr.upTo t) proposer (hrun.upTo ht0) y
-    hready.1 t (Regimes.catchUp sp) ht0 (by simp only [Regimes.catchUp]; linarith [sp.toParams.hΔ])
+  obtain ⟨hw, hj⟩ := ready_implies_joined_of (hrun.upTo ht0) hready.1 ht0
+    (by simp only [Regimes.catchUp]; linarith [sp.toParams.hΔ])
     (fun u h1 h2 => ⟨hready.2 u h1 h2, h2⟩)
   exact ⟨hw.1, fun k hk hkt => hj k ((RunTrace.upTo_restartAt tr).mpr ⟨hkt, hk⟩) hkt⟩
 
 /-- **The ready read is the effective record.** At a read point `(j, t)` with `0 ≤ t ≤ b` of a
 node ready at `t` (honest at `t`): when the frame holds the block `R` named by the record,
 `readAfter y j t = R`; otherwise it is `Σ.F`. The latest-view count is charged at `t`. -/
-theorem ready_read_record_at {ΔF b : Time} (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem ready_read_record_at {ΔF b : Time} {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hinv : SleepyInvariantUpTo tr H b)
-    (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b) {y : Fin sp.n}
+    (hsync : SleepyServiceBefore tr H ΔF b) {K : SA.CommitteeDict sp.n}
+    (hKB : CommitteeFacts tr H K) (hBK : CommitteeBoundsFrom tr H K 0 b) {y : Fin sp.n}
     {j : Nat} {t : Time} (hrp : Regimes.ReadPoint tr j t) (ht0 : 0 ≤ t)
     (hready : Regimes.Growing.ReadyAt tr H (Regimes.catchUp sp) y t) (htb : t ≤ b) :
     (∃ R ∈ (Node.frame (tr.state y j)).tree,
@@ -215,7 +218,7 @@ theorem ready_read_record_at {ΔF b : Time} (hrun : Growing.GoldilocksRun propos
       R.root = (tr.state y j).ac.latestConfirmed
   · obtain ⟨R, hR, hRr⟩ := hin
     obtain ⟨hc, hs⟩ := read_head_support_at hinv hrun hnc hsync hy ht0 htb
-      (fun s h1 h2 => hB.slot s t (Nat.zero_le _) h1 htb h2.le) hrp.1 hrp.2
+      hKB hBK hrp.1 hrp.2
       (ready_awake_joined_at hrun ht0 hready)
       ⟨hR, hRr⟩
     exact Or.inl ⟨R, hR, hRr, SA.acConfirmed_eq hΦ hR hRr (SA.anc_acHead hΦ hR hc hs)⟩

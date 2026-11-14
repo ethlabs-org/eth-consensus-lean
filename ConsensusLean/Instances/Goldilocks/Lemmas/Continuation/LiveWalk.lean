@@ -212,9 +212,11 @@ theorem seeded_proposer_holds (hS : SeededRun tr H proposer dg g ΔF T r σ t₁
     have hρ : SA.gbar g ≤ sp.ts (r + sp.k - 1 : Nat) := by
       have := hS.gbar_le (show r ≤ r + sp.k - 1 by omega)
       linarith
-    refine proposal_holds_old_from hS.run hS.noColl hS.sync hS.bounds (ρ := r + sp.k - 1)
+    refine proposal_holds_old_from hS.run hS.noColl hS.sync
+      (CommitteeFacts.of_full hS.run hS.noColl hS.stock)
+      (CommitteeBoundsFrom.of_full hS.run hS.bounds) (ρ := r + sp.k - 1)
       (by omega) hρ hp hc hcall hd hti hb hκ (fun O m hOm hm _ => OnHealedChain.compatible
-        hS.run hS.noColl hS.inv.origins_compatible hF (.of_origin hm hOm)) hS.stock C
+        hS.run hS.noColl hS.inv.origins_compatible hF (.of_origin hm hOm)) C
       (oldOriginAbove_iff.2 ⟨x, k, s - 1, CV, hx, by omega, Or.inr ⟨hO, by omega⟩⟩)
 
 /-- **The proposal walk of slot `s ≥ σ + 1` passes every member of the old family**, at a proposal
@@ -237,10 +239,12 @@ theorem seeded_walk_passes (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b)
   have hdt : sp.ts (r + sp.k : Nat) ≤ tr.time i := hS.drain.trans ht₁
   obtain ⟨lC, -, hCm⟩ := hC.member hS.run (hti ▸ hb) hrs
   have hfr := frame_of_projAC_at hS.run hp hc
-  refine proposal_walk_passes_from hS.run hS.noColl hS.sync hS.bounds hp hc hcall hd hti hb hs0
+  refine proposal_walk_passes_from hS.run hS.noColl hS.sync hp hc hcall hd hti hb hs0
     (by omega) (by linarith) hκ (seeded_proposer_holds hS hs hp hc hcall hd hti ht₁ hb hC)
     (fun hCt => ?_) ?_ (fun l hl hlive D hD => hS.inv.origins_compatible D l.slot C lC
-      (.of_lock (hS.live_label hp hdt hl hlive) (hD.mono hb)) hCm) hS.stock
+      (.of_lock (hS.live_label hp hdt hl hlive) (hD.mono hb)) hCm)
+    (CommitteeFacts.of_full hS.run hS.noColl hS.stock)
+    (CommitteeBoundsFrom.of_full hS.run hS.bounds)
   · rw [hfr] at hCt ⊢
     exact hS.inv.viable p i (tr.time i) ht₁ hi hb hp (hS.called hp hdt le_rfl) C
       (onHealedChain_iff.2 ⟨C, lC, hCm, .refl⟩) hCt

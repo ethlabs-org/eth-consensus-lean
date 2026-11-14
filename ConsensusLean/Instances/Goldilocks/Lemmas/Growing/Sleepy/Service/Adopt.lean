@@ -18,8 +18,9 @@ honest at `t_s + Δ` and the update of slot `s` (at `d = t_s + 6Δ`) of a node h
   acceptance is relayed to the updater, honest at its call, by `t_s + Δ`);
 * `proposal_majority_at_update_at`, **the double-count channel** (TL §1.5), charged at `d`: the
   slot-`s` voters still honest at `d` (`VotersAt s d`) support `P` (their votes are `P`, in the
-  pool and resolved), the pool's voters are among them or compromised by `d`, and
-  `(H d)ᶜ < |VotersAt s d|` (`faults_lt_voters`, the slot count at `d`);
+  pool and resolved), the pool's voters are among them or members of the slot-`s` committee
+  `K s` compromised by `d`, and `|K s ∩ (H d)ᶜ| < |VotersAt s d|` (`faults_lt_voters`, the
+  committee slot count at `d`);
 * `result_not_vetoed_at`, `adopt_result_at`, `update_adopts_at`: the update returns `P`, not
   vetoed, and the record moves to `P` or keeps a deeper block. -/
 
@@ -34,7 +35,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **`P` is in the updater's frame, above its `Σ.F`**, under the service from `a ≤ t_s`, when the
 updater's `Σ.F` is below `P`: the acceptance relay brings `P`, accepted at `t_s` by its proposer
 honest then, to the updater (restarts at or before `t_s`) before `t_s + Δ`. -/
-theorem proposal_held_at_update_from (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem proposal_held_at_update_from {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
@@ -79,30 +80,31 @@ theorem proposal_held_at_update_from (hrun : Growing.GoldilocksRun proposer dg H
 /-- **`P` is in the updater's frame, above its `Σ.F`**: `Σ.F ⪯ P`
 (`updater_F_anc_proposal_at`), so the acceptance relay brings `P`, accepted at `t_s` by its
 proposer honest then, to the updater (restarts at or before `t_s`) before `t_s + Δ`. -/
-theorem proposal_held_at_update_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem proposal_held_at_update_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
     (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
-    (hstock : sp.committeeSize = sp.n) :
+    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hBK : CommitteeBoundsFrom tr H K 0 b) :
     P ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F P := by
   exact proposal_held_at_update_from hrun hnc (hsync.toFrom hrun) hp hP hPs (ts_natCast_nonneg _)
-    hy hu hb (updater_F_anc_proposal_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hstock)
+    hy hu hb (updater_F_anc_proposal_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hKB hBK)
 
 /-- **`P` has a strict majority at the update's test**, under the service from `a ≤ t_s` with its
 catch-up before `a + κ ≤ t_s + 2Δ` and the counts from `σ₀ ≤ s`, for `P` held at the update and
 every honest slot-`s` vote `P`: the double-count channel charged at the update's cut
 `d = t_s + 6Δ`, as in `proposal_majority_at_update_at`. -/
-theorem proposal_majority_at_update_from (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem proposal_majority_at_update_from {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
-    (hB : SleepyBoundsFrom tr H σ₀ b) {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hBK : CommitteeBoundsFrom tr H K σ₀ b) {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hσ₀ : σ₀ ≤ s) (ha : a ≤ sp.ts s) (hκ : a + κ ≤ sp.ts s + 2 * sp.Δ) {y : Fin sp.n}
     {k₀ : Nat} (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) (hPt : P ∈ ℓ.frame.tree)
-    (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root)
-    (hstock : sp.committeeSize = sp.n) :
+    (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root) :
     (SA.voters {v | v ∈ (tr.state y k₀).ac.pool s}).ncard <
       2 * SA.confirmationScore sp (tr.state y k₀).ac ℓ.frame s P := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -112,10 +114,8 @@ theorem proposal_majority_at_update_from (hrun : Growing.GoldilocksRun proposer 
   set d := tr.time k₀
   set A := tr.projAC.state y k₀
   set Hv := VotersAt tr H s d
-  have hcount : (H d)ᶜ.ncard < Hv.ncard := by
-    have h := faults_lt_voters hrun hnc (CommitteeFacts.of_full hrun hnc hstock)
-      (CommitteeBoundsFrom.of_full hrun hB) hσ₀ (by rw [ht]; linarith) hb (by rw [ht])
-    rwa [SA.ncard_inter_full] at h
+  have hcount : (K.committee s ∩ (H d)ᶜ).ncard < Hv.ncard :=
+    faults_lt_voters hrun hnc hKB hBK hσ₀ (by rw [ht]; linarith) hb (by rw [ht])
   -- a validator honest at `d` has one slot-`s` vote in the pool: its vote
   have hone : ∀ x j e, HVoteAt tr H x j e → x ∈ H d → e.msg.slot = s →
       ∀ v ∈ A.pool s, v.val = x → v = e.msg := by
@@ -136,39 +136,41 @@ theorem proposal_majority_at_update_from (hrun : Growing.GoldilocksRun proposer 
       (hall x j e hv hs).symm, Relation.ReflTransGen.refl⟩
     rintro ⟨v, hv₁, v', hv', hne, hvx, hv'x⟩
     exact hne ((hone x j e hv hxd hs v hv₁ hvx).trans (hone x j e hv hxd hs v' hv' hv'x).symm)
-  have hvot : SA.voters {v | v ∈ A.pool s} ⊆ Hv ∪ (H d)ᶜ := by
+  have hvot : SA.voters {v | v ∈ A.pool s} ⊆ Hv ∪ (K.committee s ∩ (H d)ᶜ) := by
     rintro w ⟨v, hv, rfl⟩
     by_cases hw : v.val ∈ H d
     · obtain ⟨j, -, e, he, rfl⟩ := pool_vote_at hrun hnc hy hv hw
       exact Or.inl (votersAt_iff.2 ⟨hw, j, e, he, state_pool_slot_at hrun hnc hy s _ hv⟩)
-    · exact Or.inr hw
+    · exact Or.inr ⟨hKB.hP.1 d y hy k₀ (fun k hk => hrun.time_mono hk.le) s v hv, hw⟩
   have h1 := Set.ncard_le_ncard hvot (Set.toFinite _)
-  have h2 := Set.ncard_union_le Hv (H d)ᶜ
+  have h2 := Set.ncard_union_le Hv (K.committee s ∩ (H d)ᶜ)
   have h3 := Set.ncard_le_ncard hsupp (Set.toFinite _)
   change _ < 2 * (SA.supporters ℓ.frame _ s P).ncard
   omega
 
 /-- **`P` has a strict majority at the update's test**, the double-count channel charged at the
 update's cut `d = t_s + 6Δ`: the slot-`s` voters still honest at `d` have one slot-`s` vote each,
-which is `P`, in the pool and resolved before `t_s + 2Δ`; every other voter of the pool is
-compromised by `d`; and `(H d)ᶜ < |VotersAt s d|`. -/
-theorem proposal_majority_at_update_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+which is `P`, in the pool and resolved before `t_s + 2Δ`; every other voter of the pool is a
+member of the slot-`s` committee `K s` compromised by `d`; and
+`|K s ∩ (H d)ᶜ| < |VotersAt s d|`. -/
+theorem proposal_majority_at_update_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
     (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
-    (hstock : sp.committeeSize = sp.n) :
+    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hBK : CommitteeBoundsFrom tr H K 0 b) :
     (SA.voters {v | v ∈ (tr.state y k₀).ac.pool s}).ncard <
       2 * SA.confirmationScore sp (tr.state y k₀).ac ℓ.frame s P := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have ht : tr.time k₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
-  exact proposal_majority_at_update_from hrun hnc (hsync.toFrom hrun) hB (Nat.zero_le _)
+  exact proposal_majority_at_update_from hrun hnc (hsync.toFrom hrun)
+    hKB hBK (Nat.zero_le _)
     (ts_natCast_nonneg _) (by rw [zero_add]; exact add_nonneg (ts_natCast_nonneg _) (by linarith))
-    hy hu hb (proposal_held_at_update_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hstock).1
-    (honest_votes_eq_proposal_at_update_at hrun hnc hsync hB hinv hp hP hPs (ht ▸ hb) hstock)
-    hstock
+    hy hu hb (proposal_held_at_update_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hKB hBK).1
+    (honest_votes_eq_proposal_at_update_at hrun hnc hsync hB hinv hp hP hPs (ht ▸ hb) hKB hBK)
 
 /-- **No result of an update of a node honest then is vetoed**: a live lock block is an ancestor
 of a stored lock block, on the origin chain (S1); the result is an origin; blocks on the origin
@@ -208,7 +210,8 @@ theorem result_not_vetoed_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
 /-- **The update of slot `s` returns exactly `P`** when `P` is held above `Σ.F` with a strict
 majority at the update's test: every block with a strict majority is on one chain with it, and no
 block above it has a resolved slot-`s` supporter. -/
-theorem adopt_result_of (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem adopt_result_of {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
     (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hPt : P ∈ ℓ.frame.tree)
@@ -221,26 +224,28 @@ theorem adopt_result_of (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : N
 /-- **The update of slot `s` returns exactly `P`, not vetoed**: `P` is held above `Σ.F` with a
 strict majority, every block with a strict majority is on one chain with it, and no block above
 it has a resolved slot-`s` supporter. -/
-theorem adopt_result_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem adopt_result_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
     (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
-    (hstock : sp.committeeSize = sp.n) :
+    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hBK : CommitteeBoundsFrom tr H K 0 b) :
     SA.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some P ∧
       ¬ SA.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) P := by
   have hres := adopt_result_of hrun hnc hPs hy hu
-    (proposal_held_at_update_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hstock).1
-    (proposal_held_at_update_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hstock).2
-    (proposal_majority_at_update_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hstock)
+    (proposal_held_at_update_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hKB hBK).1
+    (proposal_held_at_update_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hKB hBK).2
+    (proposal_majority_at_update_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hKB hBK)
   exact ⟨hres, result_not_vetoed_at hrun hnc hb0 hinv hy hu hb hres⟩
 
 /-- **An update whose result is `P`, not vetoed, adopts `P`**: after it, the record of the
 updater names a block of the update's frame that extends `P` (the record moves to `P` or keeps a
 deeper block). -/
-theorem update_adopts_of (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem update_adopts_of {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {y : Fin sp.n} {k₀ : Nat}
     (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ)
@@ -274,17 +279,18 @@ theorem update_adopts_of (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
 
 /-- **The update of slot `s` adopts `P`**: after the update of slot `s` of a node honest then,
 through `b`, its record names a block held while honest that extends `P`. -/
-theorem update_adopts_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem update_adopts_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
     (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
-    (hstock : sp.committeeSize = sp.n) :
+    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hBK : CommitteeBoundsFrom tr H K 0 b) :
     ∃ E ∈ tr.HonestBlocksAt H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
       Anc (tr.HonestBlocksAt H) P E := by
-  obtain ⟨hC, hv⟩ := adopt_result_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hstock
+  obtain ⟨hC, hv⟩ := adopt_result_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hKB hBK
   obtain ⟨E, hE, hEr, hPE⟩ := update_adopts_of hrun hnc hy hu hC hv
   exact ⟨E, (frameIn_at hrun hnc hy hu.1).2 hE, hEr, hPE⟩
 

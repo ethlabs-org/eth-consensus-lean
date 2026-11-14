@@ -70,7 +70,7 @@ theorem originWithin_upTo_mem {ini} (hrun : Growing.GoldilocksRun proposer dg H 
 `2 f_d < n`): at a cut of a node honest then, a block `B` it holds that is compatible with every
 origin before the cut, when the origins within `d` are pairwise compatible, is at or below
 `fc_root` or in the full viable tree. -/
-theorem held_origin_viable_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem held_origin_viable_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     (hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n)
     (hP : ∀ C s C' s', OriginWithin tr H C s (tr.time i) → OriginWithin tr H C' s' (tr.time i) →

@@ -204,7 +204,9 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     rcases hms.lt_or_eq with hlt | heq
     · have hFc := (hinv.caches y k₁ (tr.time k₁) ht₁u (fun _ h => hrun.time_mono h.le) hk₁b
         hyk₁ hcall₁).1
-      refine update_adopts_extended_from hrun hnc hS.sync hB hyk₁ hupd hk₁b (by omega)
+      refine update_adopts_extended_from hrun hnc hS.sync
+        (CommitteeFacts.of_full hrun hnc hS.stock) (CommitteeBoundsFrom.of_full hrun hB)
+        hyk₁ hupd hk₁b (by omega)
         (by linarith [hS.gbar_le (show r ≤ m by omega)])
         (by linarith [hS.gbar_le (show r ≤ m by omega)])
         (OnHealedChain.compatible hrun hnc hinv.origins_compatible hFc hPm).symm
@@ -212,7 +214,7 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr)
         (fun C hC => seeded_result_not_vetoed hS hyk₁ hupd ht₁u hk₁b (l := m)
           (.of_origin (by omega) (originWithin_iff.2 ⟨y, k₁, _, hyk₁, hk₁b,
             Or.inl ⟨ℓ₁, hupd, by rw [projAC_state_at hrun hyk₁]; exact hC, rfl⟩⟩))
-          (SA.deepest_mem hC).1.1) hS.stock
+          (SA.deepest_mem hC).1.1)
       obtain ⟨hx, ℓx, hc, he⟩ := hVoteAt_iff.1 hv
       have h := (cast_head_fcRoot_at hrun hnc hx ⟨hc, he⟩).2
       rw [hes] at h

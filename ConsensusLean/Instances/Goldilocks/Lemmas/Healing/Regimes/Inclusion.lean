@@ -160,7 +160,8 @@ theorem ready_record_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
 /-- **A proposer ready at its slot start proposes** (node-level: its tick at `t_s` runs
 the proposal step, `ac_proposal` returns a proposal since it is joined, and C0.3 accepts the own
 block). -/
-theorem ready_proposer_proposes (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem ready_proposer_proposes {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {s : Nat} (hs : 0 < s) (hready : ReadyAt tr H (catchUp sp) (proposer s) (sp.ts s)) :
     ∃ k P, tr.ProposesAt (proposer s) k P ∧ tr.time k = sp.ts s := by
   have hΔ := sp.toParams.hΔ
@@ -171,14 +172,14 @@ theorem ready_proposer_proposes (hrun : GoldilocksRun proposer dg H tr) (hnc : N
     SA.slot_of_mem sp s le_rfl (by simp only [SAParams.ts]; push_cast; linarith)
   have hpub : sp.toParams.IsPublic (sp.ts s) := ⟨4 * s, by simp only [SAParams.ts]; ring⟩
   have hc : (8 : Time) * sp.Δ ≤ catchUp sp + 1 := by simp only [catchUp]; linarith
-  have hJ := ready_implies_joined sp ro dg H tr proposer hrun p hp _ (catchUp sp) ht0 hc hready.2
+  have hJ := ready_implies_joined_of hrun hp ht0 hc hready.2
   obtain ⟨j, x, hg⟩ := hrun.tick_of_awake p hp _ ht0 hpub hJ.1
   have hP : Node.Proposes proposer p (sp.ts s) :=
     ⟨by rw [hslot]; exact hs, by rw [hslot, sp.slotTime_eq]; simp only [SAParams.ts],
       by rw [hslot]⟩
   obtain ⟨hc₀, ht₀⟩ := Healing.tick_first_cut hg
   have hj : SA.joined sp (tr.state p j).ac (sp.ts s) :=
-    ((joined_projection sp ro dg H tr proposer hrun p hp _).2.1 j ⟨_, hc₀⟩
+    ((joined_projection_from hrun hp _).2.1 j ⟨_, hc₀⟩
       (fun ⟨ℓ, hc', hr⟩ => by
         have := Option.some.inj (hc₀.2.symm.trans hc'.2)
         simp only [Node.acCall, Cut.ac.injEq] at this
@@ -204,7 +205,7 @@ theorem ready_proposer_proposes (hrun : GoldilocksRun proposer dg H tr) (hnc : N
       simp [hj'] at hpr
     | some dp => exact ⟨dp.1, dp.2, rfl⟩
   obtain ⟨hacc, ht₂⟩ := Healing.own_block_accepted hrun.toLocalRun
-    (requirements sp ro) hrun.genesis_root_ok hnc hp hg hP hr
+    (requirements_from sp ro (hrun.vstart p)) hrun.genesis_root_ok hnc hp hg hP hr
   refine ⟨j + 2, _, ⟨⟨⟨true, hacc⟩, ?_⟩, rfl, ?_⟩, ht₂⟩
   · -- the own block is the third cut of the tick, so not the first of a group
     have hlen : 2 < (Node.exec proposer dg p (tr.state p j) (sp.ts s) (.tick x)).2.length := by

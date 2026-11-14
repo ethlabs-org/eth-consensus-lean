@@ -69,7 +69,8 @@ theorem HealedOrigin.mem {ini} (hrun : Growing.GoldilocksRun proposer dg H tr in
 
 /-- **Compatibility with the origins gives compatibility with the family**: a block compatible
 with every origin within `b` of label `≤ s` is compatible with every member of label `≤ s`. -/
-theorem HealedOrigin.compatible_of_origins (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem HealedOrigin.compatible_of_origins {ini}
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {g : Time} {rL rO s : Nat} {b : Time}
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : ∀ C j, OriginWithin tr H C j b → j ≤ s → Compatible (tr.HonestBlocksAt H) B C) :

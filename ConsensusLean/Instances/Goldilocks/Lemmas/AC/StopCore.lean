@@ -22,7 +22,7 @@ variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-- **The stop at `Q`, from its two leaves.** -/
-theorem stop_core (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+theorem stop_core {ini} (hrun : ACRun proposer tr H U ini) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y j ℓ e) {s : Nat}
     (hes : e.msg.slot = s) {Q P : Blk sp.n FGP} (hPs : P.slot = s)
     (hPQ : P.parent = some Q.root) (hpH : P.proposer ∈ H)

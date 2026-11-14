@@ -34,7 +34,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **The run's proposal of `P` is `ac_proposal`'s** at `t_s`, on the duty head `Q = P.parent`,
 with the payload `pay`, for a proposer honest at its proposal (the static `proposal_data` on the
 prefix through it). -/
-theorem proposal_data_at (hrun : Growing.GoldilocksRun proposer dg H tr) {p : Fin sp.n} {k : Nat}
+theorem proposal_data_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (tr.time k))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) :
     ∃ i ℓp d pay, tr.projAC.CallAt p i ℓp ∧ ℓp.call = .proposal ∧
@@ -54,7 +55,8 @@ theorem proposal_data_at (hrun : Growing.GoldilocksRun proposer dg H tr) {p : Fi
 tree and no old child of `Q = P.parent` eligible there: at `Q` the voter's only eligible child is
 `P`, and its walk has no best child at `P`. The proposer is honest at the vote (cast by
 `t_s + Δ`), so `SA.stop_core` applies on the prefix through the vote. -/
-theorem stop_at_parent_of (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem stop_at_parent_of {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s)
@@ -95,7 +97,8 @@ theorem stop_at_parent_of (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc :
 /-- **The stop at `P.parent`** under growing faults: at `Q` the voter's only eligible child is
 `P`, and its walk has no best child at `P`. The proposer is honest at the vote (cast by
 `t_s + Δ`), so `SA.stop_core` applies on the prefix through the vote. -/
-theorem stop_at_parent_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem stop_at_parent_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
@@ -107,7 +110,8 @@ theorem stop_at_parent_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc :
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
-    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) (hstock : sp.committeeSize = sp.n) :
+    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) {K : SA.CommitteeDict sp.n}
+    (hKB : CommitteeFacts tr H K) (hBK : CommitteeBoundsFrom tr H K 0 b) :
     (P ∈ {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
         B.parent = some d.head.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
           (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} ∧
@@ -121,12 +125,12 @@ theorem stop_at_parent_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc :
         B.parent = some P.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
           (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C := by
   obtain ⟨D, -, hDQ, hviab, -⟩ := pivot_at hrun hnc hsync hB hinv hp hP hPs hc hcall hd hti
-    hPQ hib hstock
+    hPQ hib hKB hBK
   exact stop_at_parent_of hrun hnc hp hP hPs hPQ hy hcy hes
     (proposal_at_voter_at hrun hnc hsync hB hinv hp hP hPs hc hcall hd hti hPQ hy hcy hes hib hjb
-      hstock)
+      hKB hBK)
     (fun X hX hXQ hXs => old_child_ineligible_at hrun hnc hsync hB hinv hp hP hPs hc hcall hd
-      hti hPQ hDQ hviab hy hcy hes hib hjb hX hXQ hXs hstock)
+      hti hPQ hDQ hviab hy hcy hes hib hjb hX hXQ hXs hKB hBK)
 
 /-- **Every slot-`s` vote of a node honest at its vote is the proposal `P` of slot `s`**, from a
 pivot `D` of the proposal walk (`hvot`, as in `pivot_of`), the suffix agreement from `D` at every
@@ -134,7 +138,7 @@ honest vote (`hsuf`), `P` in every honest voter's viable voter block tree (`hvt`
 of `Q` eligible there (`hold`): by induction on the vote's cut (the first vote not `P`), each
 voter's walk reaches a block of the path from `D` through `Q` to `P`, follows the proposal walk to
 `Q`, steps to `P` and stops there. -/
-theorem honest_votes_eq_proposal_of (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem honest_votes_eq_proposal_of {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {i : Nat}
@@ -217,26 +221,27 @@ theorem honest_votes_eq_proposal_of (hrun : Growing.GoldilocksRun proposer dg H 
 proposer still honest at `t_s + Δ`, through `b ≥ t_s`: by induction on the vote's cut (the first
 vote not `P`; `pivot_at` reads the earlier ones), each voter's walk reaches a block of the path
 from the pivot `D` to `P`, follows the proposal walk to `Q`, steps to `P` and stops there. -/
-theorem honest_votes_eq_proposal_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem honest_votes_eq_proposal_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) (hsb : sp.ts s ≤ b)
-    (hstock : sp.committeeSize = sp.n) :
+    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hBK : CommitteeBoundsFrom tr H K 0 b) :
     ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → tr.time j ≤ b → e.msg.head = P.root := by
   have hk : tr.time k = sp.ts s := by rw [hP.2.2, sp.slotTime_eq, hPs]; rfl
   have hpk : p ∈ H (tr.time k) := hrun.antitone (by rw [hk]; linarith [sp.toParams.hΔ]) hp
   obtain ⟨i, ℓp, d, pay, hc, hcall, hd, hti, hPQ, -⟩ := proposal_data_at hrun hpk hP hPs
   have hib : tr.time i ≤ b := hti ▸ hsb
   obtain ⟨D, hsD, hDQ, hviab, hvot⟩ := pivot_at hrun hnc hsync hB hinv hp hP hPs hc hcall hd hti
-    hPQ hib hstock
+    hPQ hib hKB hBK
   exact honest_votes_eq_proposal_of hrun hnc hp hP hPs hc hd hti hPQ hsD hDQ hvot
     (fun y j ℓy e hy hcy hes hjb => suffix_agree_at hrun hnc hsync hB hinv hp hP hPs hc hcall hd
-      hti hPQ hsD hDQ hviab hy hcy hes hib hjb hstock)
+      hti hPQ hsD hDQ hviab hy hcy hes hib hjb hKB hBK)
     (fun y j ℓy e hy hcy hes hjb => proposal_at_voter_at hrun hnc hsync hB hinv hp hP hPs hc hcall
-      hd hti hPQ hy hcy hes hib hjb hstock)
+      hd hti hPQ hy hcy hes hib hjb hKB hBK)
     (fun y j ℓy e hy hcy hes hjb B hBv hBQ hBs => old_child_ineligible_at hrun hnc hsync hB hinv
-      hp hP hPs hc hcall hd hti hPQ hDQ hviab hy hcy hes hib hjb hBv hBQ hBs hstock)
+      hp hP hPs hc hcall hd hti hPQ hDQ hviab hy hcy hes hib hjb hBv hBQ hBs hKB hBK)
 
 end Consensus.Goldilocks.Compose.Growing
 

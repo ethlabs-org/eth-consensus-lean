@@ -50,7 +50,7 @@ with the payload `pay`. An own block is processed inside a tick (position `≠ 0
 proposal step's (`blockCall_cases`), made by `Node.proposeBlock` from `ac_proposal`'s duty head and
 payload at the cut after the tick's `ac_on_tick`. -/
 theorem proposal_data {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} (hrun : GoldilocksRun proposer dg H tr)
+    {tr : GoldilocksTrace sp ro} {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) :
     ∃ i ℓp d pay, tr.projAC.CallAt p i ℓp ∧ ℓp.call = .proposal ∧

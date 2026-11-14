@@ -231,7 +231,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : 
 `a + κ ≤ t_s + 2Δ` at calls from `a + κ` through the update's time `b'`. -/
 theorem honest_batch_at_update_window {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {a κ b b' : Time}
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     (hsync : SA.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
     (hcatch : CatchACWindowBefore tr.projAC H (tr.HonestBlocks H) a κ b')
     {y : Fin sp.n} (hy : y ∈ H) {k₀ s : Nat}
@@ -244,7 +244,7 @@ theorem honest_batch_at_update_window {dg : Digest (List (FG.Att sp.n)) (Payload
         SA.resolutionTime (tr.projAC.state y k₀) ℓ.frame e.msg <
           SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
   intro x hx j e hv hes
-  have hr := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hr := goldilocks_ac_projection_from hrun hnc
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr.localRun hy hu.1
   exact (honest_vote_at_update_window hr hsync hcatch ha hκ hsb hb' hy hu (hΦU hPt)
     (Anc.mono hΦU (hΦ.rooted.2 P hPt)) hx hv hes (hall x hx j e hv hes)).2

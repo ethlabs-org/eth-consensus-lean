@@ -302,10 +302,12 @@ theorem tick_proposal_call (h : Node.LocalRun proposer dg H sg tr)
   exact (congrArg Prod.fst hstep).symm
 
 /-- **C0.3 in a run: the own block of a proposal is accepted** at once, at the cut after the
-`ac_proposal` cut. -/
-theorem own_block_accepted (h : Node.LocalRun proposer dg H sg tr) (hq : A.Requirements)
+`ac_proposal` cut, from the node's AC start `ini y` at which the AC meets the requirements
+(`{A with initial := ini y}`; at the initial starts, the requirements themselves). -/
+theorem own_block_accepted (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
+    (hq : ({ A with initial := ini y } : NodeAC P).Requirements)
     (hroot : (P.genesisBlock A.genesisPayload).RootOk dg) (hnc : Compose.NoCollRun dg tr)
-    {y : Fin P.n} (hy : y ∈ H) {j : Nat} {t : Time} {x : Nat}
+    (hy : y ∈ H) {j : Nat} {t : Time} {x : Nat}
     (hg : tr.GroupAt proposer dg y j t (.tick x)) (hP : Proposes proposer y t)
     {d : DutyHead P.n (List (FG.Att P.n)) A.Payload} {pay : A.Payload}
     (hr : (Node.acProposal (tickStep proposer dg y (tr.state y j) t x .acTick).1 t).2.2 =
@@ -347,7 +349,7 @@ theorem own_block_accepted (h : Node.LocalRun proposer dg H sg tr) (hq : A.Requi
   simp only at hst
   subst hst
   obtain ⟨-, -, -, -, -, -, hacc⟩ :=
-    Compose.honest_block_accepted proposer dg y hq hroot _ _ t x hR hS hP d pay hr
+    Compose.honest_block_accepted_from proposer dg y hq hroot _ _ t x hR hS hP d pay hr
   have hsub : insert (mkBlock dg y
       (Node.acProposal (tickStep proposer dg y (tr.state y j) t x .acTick).1 t).1.fg t x d.head pay)
       (tr.state y j).fg.tree ⊆ insert (P.genesisBlock A.genesisPayload) {B | tr.Occurs B} :=

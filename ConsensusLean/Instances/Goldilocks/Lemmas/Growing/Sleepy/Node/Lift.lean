@@ -467,7 +467,8 @@ theorem mayVote_of_castAt_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
     (sa_castAt_upTo.mpr ⟨le_rfl, hc⟩)
   rwa [projAC_upTo_state hrun le_rfl, projAC_state_at hrun hy] at h
 
-theorem frame_slot_le_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem frame_slot_le_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y i ℓ) : ∀ B ∈ ℓ.frame.tree, B.slot ≤ sp.slot (tr.time i) :=
   SA.frame_slot_le sp (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
@@ -676,12 +677,13 @@ theorem mem_tree_of_acceptAt_at {ini} (hrun : Growing.GoldilocksRun proposer dg 
     (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hBU hFB)
 
 /-- A vote of the pool of a node honest at cut `i` has a finite stamp. -/
-theorem pool_stamp_lt_top_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem pool_stamp_lt_top_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {σ : Nat}
     {v : Vote sp.n} (hv : v ∈ (tr.projAC.state y i).pool σ) :
     (tr.projAC.state y i).voteStamp v < ⊤ := by
   have hvs := state_pool_slot_at hrun hnc hy σ v hv
-  have h := SA.pool_origin (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy i v
+  have h := SA.pool_origin_from (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun
+    hrun.vstart hy i v
     (by rw [projAC_upTo_state hrun le_rfl, hvs]; exact hv)
   rw [projAC_upTo_state hrun le_rfl] at h
   rcases h with ⟨k, -, -, hst, -⟩ | ⟨k, -, -, -, -, hst, -⟩ <;>

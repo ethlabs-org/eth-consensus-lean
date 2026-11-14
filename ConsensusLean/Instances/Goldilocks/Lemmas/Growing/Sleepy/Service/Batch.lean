@@ -31,7 +31,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The restarts of a node honest at its update of slot `s` (joined), up to the update, are at or
 before `t_s`. -/
-theorem update_restarts_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem update_restarts_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     (hy : y ∈ H (tr.time k₀)) (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) :
     ∀ k ≤ k₀, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts s := by
@@ -44,7 +45,8 @@ theorem update_restarts_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc 
 /-- **Transport of the catch-up from `a`** to the prefix through `d ≥ 0`: an AC acceptance of a
 node honest then, before `a`, is accepted before `a + κ` at every call from `a + κ` through `d` of
 a validator honest at `d` whose `Σ.F` it extends. -/
-private theorem SleepyServiceFrom.acCatch_upTo (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem SleepyServiceFrom.acCatch_upTo {ini}
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {a κ b d : Time} (h : SleepyServiceFrom tr H ΔF a κ b) (hd : 0 ≤ d) :
     CatchACWindowBefore (tr.upTo d).projAC (H d) ((tr.upTo d).HonestBlocks (H d)) a κ d := by
   have hm := hrun.time_mono
@@ -61,7 +63,7 @@ private theorem SleepyServiceFrom.acCatch_upTo (hrun : Growing.GoldilocksRun pro
 `a ≤ t_s` and `a + κ ≤ t_s + 2Δ`): at the update of slot `s` of a node honest then, through `b`,
 when every slot-`s` vote of a node honest at its vote names `P ∈ Φ`, every such vote of a
 validator still honest at the update is in the updater's pool, resolved before `t_s + 2Δ`. -/
-theorem honest_batch_at_update_from (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem honest_batch_at_update_from {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {y : Fin sp.n} {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀))
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) (ha : a ≤ sp.ts s)
@@ -103,7 +105,7 @@ theorem honest_batch_at_update_from (hrun : Growing.GoldilocksRun proposer dg H 
 `b`, when every slot-`s` vote of a node honest at its vote names `P ∈ Φ`, every such vote of a
 validator still honest at the update is in the updater's pool, resolved before `t_s + 2Δ` (the
 form from `a = κ = 0`). -/
-theorem honest_batch_at_update_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem honest_batch_at_update_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) {y : Fin sp.n}
     {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀))
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
@@ -123,7 +125,7 @@ a slot-`s` vote of a node honest at its vote and still honest at the update, who
 block held while honest) is above the update's `Σ.F`, is in the pool, resolved before
 `t_s + 2Δ`, with `Q` in the frame (the static `honest_vote_at_update_before` on the prefix through
 the update). -/
-theorem honest_vote_at_update_from (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem honest_vote_at_update_from {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {y : Fin sp.n}
     {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀))
@@ -165,7 +167,7 @@ a slot-`s` vote of a node honest at its vote and still honest at the update, who
 block held while honest) is above the update's `Σ.F`, is in the pool, resolved before
 `t_s + 2Δ`, with `Q` in the frame (the static `honest_vote_at_update_before` on the prefix through
 the update; the form from `a = κ = 0`). -/
-theorem honest_vote_at_update_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem honest_vote_at_update_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) {y : Fin sp.n}
     {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀))
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)

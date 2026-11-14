@@ -10,7 +10,8 @@ public section
 /-! # Goldilocks under `Sleepy` with growing faults: finite inclusion and growth
 
 The growing-fault form of `Healing/Regimes/Inclusion` (R.2), finite through `b`, from the finite
-service and the count shapes through `b`:
+service, the count shapes through `b`, and the committee premises of a slot dictionary `K`
+(`CommitteeFacts`, `CommitteeBoundsFrom K 0 b`):
 
 * `ready_record_extends_at`: a reader ready at `t ≥ τ + 6Δ` ran the update of the slot
   `slot(t − 6Δ) ≥ slot(P)` (honest then, as `t_m + 6Δ ≤ t`), which adopts `P`
@@ -33,7 +34,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **A proposer ready at its slot start proposes then**, under growing faults: the static
 `ready_proposer_proposes` on the prefix through `t_s`. -/
 theorem ready_proposer_proposes_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {s : Nat} (hs : 0 < s)
     (hready : ReadyAt tr H (catchUp sp) (proposer s) (sp.ts s)) :
     ∃ k P, tr.ProposesAt (proposer s) k P ∧ tr.time k = sp.ts s := by
@@ -44,24 +45,27 @@ theorem ready_proposer_proposes_at
 
 /-- A node honest at `t ≥ 0` and awake through the catch-up window before `t` is awake and joined
 at `t` (the static `ready_implies_joined` on the prefix through `t`). -/
-private theorem ready_joined_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+private theorem ready_joined_at {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {t c : Time} (hy : y ∈ H t) (ht : 0 ≤ t) (hc : 8 * sp.Δ ≤ c + 1)
     (hawake : ∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) :
     tr.awake y t ∧ tr.JoinedAt y t := by
-  obtain ⟨hw, hj⟩ := Compose.ready_implies_joined _ _ _ _ _ _ (hrun.upTo ht) y hy t c ht hc
+  obtain ⟨hw, hj⟩ := Compose.ready_implies_joined_of (hrun.upTo ht) hy ht hc
     fun u h1 h2 => ⟨hawake u h1 h2, h2⟩
   exact ⟨hw.1, fun k hk hkt => hj k ((RunTrace.upTo_restartAt tr).2 ⟨hkt, hk⟩) hkt⟩
 
 /-- **A ready reader's record extends a ready proposal** under growing faults: for a proposal `P`
 released at `τ` by a proposer ready at `τ` and honest through its hold, and `y` ready at
 `t ∈ [τ + 6Δ, b]`, the record of `y` after all events at `t`, or its `Σ.F`, extends `P`. -/
-theorem ready_record_extends_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem ready_record_extends_at {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b)
     (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)
     (hinv : SleepyInvariantUpTo tr H b) {τ : Time} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposalAt tr H (catchUp sp) τ (hold sp) P) {y : Fin sp.n} {t : Time} {j : Nat}
     (ht : τ + 6 * sp.Δ ≤ t) (hy : ReadyAt tr H (catchUp sp) y t) (hj : CutAfter tr j t)
-    (htb : t ≤ b) (hstock : sp.committeeSize = sp.n) :
+    (htb : t ≤ b) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hBK : CommitteeBoundsFrom tr H K 0 b) :
     ∃ E ∈ tr.HonestBlocksAt H, E.root = (tr.state y j).ac.latestConfirmed ∧
       (Anc (tr.HonestBlocksAt H) P E ∨ Anc (tr.HonestBlocksAt H) P (tr.state y j).fg.F) := by
   have hΔ := sp.toParams.hΔ
@@ -95,7 +99,7 @@ theorem ready_record_extends_at (hrun : Consensus.Goldilocks.Growing.GoldilocksR
   have hk₁ : tr.time k₁ = u := hupd.2.2.1
   have hyk₁ : y ∈ H (tr.time k₁) := hk₁ ▸ hyu
   obtain ⟨E, hE, hEr, hPE⟩ := later_update_adopts_at hrun hnc hb0 hsync hB hinv hp hPa rfl hyk₁
-    hms hupd (by rw [hk₁]; linarith) hstock
+    hms hupd (by rw [hk₁]; linarith) hKB hBK
   -- the record only extends from the update to `j`
   have hj₁j : k₁ + 1 ≤ j := by
     by_contra hh
@@ -125,9 +129,10 @@ theorem ready_record_extends_at (hrun : Consensus.Goldilocks.Growing.GoldilocksR
 /-- **The read after all events at `t` extends `P` when the record or `Σ.F` does**, for a reader
 ready at `t ≤ b`. -/
 theorem read_extends_of_record_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b) {y : Fin sp.n}
+    (hsync : SleepyServiceBefore tr H ΔF b) {K : SA.CommitteeDict sp.n}
+    (hKB : CommitteeFacts tr H K) (hBK : CommitteeBoundsFrom tr H K 0 b) {y : Fin sp.n}
     {j : Nat} {t : Time} (ht0 : 0 ≤ t) (hj : CutAfter tr j t)
     (hready : ReadyAt tr H (catchUp sp) y t) (htb : t ≤ b) {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hE : ∃ E ∈ tr.HonestBlocksAt H, E.root = (tr.state y j).ac.latestConfirmed ∧
@@ -141,7 +146,7 @@ theorem read_extends_of_record_at
   have hreach := Compose.fg_reachable (hrun.upTo ht0).toLocalRun hy j
   rw [hst] at hreach
   obtain ⟨E, hE, hEr, hPE⟩ := hE
-  rcases ready_read_record_at hrun hnc hinv hsync hB ⟨hj.1, hj.2.le⟩ ht0 hready htb with
+  rcases ready_read_record_at hrun hnc hinv hsync hKB hBK ⟨hj.1, hj.2.le⟩ ht0 hready htb with
     ⟨R, hR, hRr, hread⟩ | ⟨hin, hread⟩
   · rw [hread]
     obtain rfl : R = E := hcoh.1 (hmem hR.1) hE (hRr.trans hEr.symm)
@@ -176,7 +181,8 @@ theorem read_extends_of_record_at
 /-- **Finite inclusion under growing faults.** Through `b ≥ 0`, a proposal released at `τ` by a
 proposer ready at `τ` and honest through its hold is in the confirmed read of every node ready at
 `t ∈ [τ + 6Δ, b]`, after all events at `t`. -/
-theorem include_sleepy_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem include_sleepy_at {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b)
     (hsync : Compose.Growing.SleepyServiceBefore tr H ΔF b)
     (hB : Compose.Growing.SleepyBoundsFrom tr H 0 b) {τ : Time}
@@ -184,29 +190,31 @@ theorem include_sleepy_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun pro
     (hP : ReadyProposalAt tr H (Regimes.catchUp sp) τ (hold sp) P) {y : Fin sp.n} {t : Time}
     {j : Nat} (hmargin : τ + 6 * sp.Δ ≤ t) (htb : t ≤ b)
     (hy : ReadyAt tr H (Regimes.catchUp sp) y t) (hj : Regimes.CutAfter tr j t)
-    (hstock : sp.committeeSize = sp.n) :
+    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hBK : CommitteeBoundsFrom tr H K 0 b) :
     Anc (tr.HonestBlocksAt H) P (Regimes.readAfter tr y j t) := by
-  have hinv := sleepy_invariant_at hrun hnc (CommitteeFacts.of_full hrun hnc hstock) hb0 hsync
-    hB (CommitteeBoundsFrom.of_full hrun hB)
+  have hinv := sleepy_invariant_at hrun hnc hKB hb0 hsync hB hBK
   have hτ0 : 0 ≤ τ := by
     obtain ⟨p, kP, -, -, -, hkP⟩ := hP
     exact hkP ▸ hrun.time_nonneg kP
   have ht0 : 0 ≤ t := by linarith [sp.toParams.hΔ]
-  exact read_extends_of_record_at hrun hnc hinv hsync hB ht0 hj hy htb
-    (ready_record_extends_at hrun hnc hb0 hsync hB hinv hP hmargin hy hj htb hstock)
+  exact read_extends_of_record_at hrun hnc hinv hsync hKB hBK ht0 hj hy htb
+    (ready_record_extends_at hrun hnc hb0 hsync hB hinv hP hmargin hy hj htb hKB hBK)
 
 /-- **Finite growth under growing faults.** For `t ≥ 0`, `k ≥ 1` and `t + (4k + 6)Δ ≤ b`, with one
 proposer ready at its slot start and honest through its hold in every window of `k` slots up to
 `t + (4k + 6)Δ`: some proposal released after `t` by a proposer ready then and honest through its
 hold is in every ready read at `t + (4k + 6)Δ`, in no ready read at `t`, and each ready read at `t`
 is an ancestor of each ready read at `t + (4k + 6)Δ`. -/
-theorem grow_sleepy_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem grow_sleepy_at {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b)
     (hsync : Compose.Growing.SleepyServiceBefore tr H ΔF b)
     (hB : Compose.Growing.SleepyBoundsFrom tr H 0 b) {k : Nat} (hk : 1 ≤ k) {t : Time} (ht : 0 ≤ t)
     (htb : t + (4 * k + 6) * sp.Δ ≤ b)
     (hrec : ProposerRecurrence tr H proposer (Regimes.catchUp sp) k (hold sp) 0
-      (t + (4 * k + 6) * sp.Δ)) (hstock : sp.committeeSize = sp.n) :
+      (t + (4 * k + 6) * sp.Δ)) {K : SA.CommitteeDict sp.n}
+    (hKB : CommitteeFacts tr H K) (hBK : CommitteeBoundsFrom tr H K 0 b) :
     ∃ τ P, t < τ ∧ ReadyProposalAt tr H (Regimes.catchUp sp) τ (hold sp) P ∧
       (∀ y j, ReadyAt tr H (Regimes.catchUp sp) y (t + (4 * k + 6) * sp.Δ) →
         Regimes.CutAfter tr j (t + (4 * k + 6) * sp.Δ) →
@@ -257,7 +265,7 @@ theorem grow_sleepy_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propos
     ⟨_, kP, hready, hhold, hP, hkP⟩
   have hinc : ∀ y j, ReadyAt tr H (catchUp sp) y (t + D) → CutAfter tr j (t + D) →
       Anc (tr.HonestBlocksAt H) P (readAfter tr y j (t + D)) := fun y j hy hj =>
-    include_sleepy_at hrun hnc hb0 hsync hB hRP htsD htb hy hj hstock
+    include_sleepy_at hrun hnc hb0 hsync hB hRP htsD htb hy hj hKB hBK
   -- `P` is newer than every block of a read at `t`
   have hnot : ∀ x jx, ReadyAt tr H (catchUp sp) x t → CutAfter tr jx t →
       ¬ Anc (tr.HonestBlocksAt H) P (readAfter tr x jx t) := by
@@ -282,8 +290,7 @@ theorem grow_sleepy_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propos
       linarith
     omega
   refine ⟨sp.ts s, P, hts, hRP, hinc, hnot, fun x jx y j hx hjx hy hj => ?_⟩
-  have hinv := sleepy_invariant_at hrun hnc (CommitteeFacts.of_full hrun hnc hstock) hb0 hsync
-    hB (CommitteeBoundsFrom.of_full hrun hB)
+  have hinv := sleepy_invariant_at hrun hnc hKB hb0 hsync hB hBK
   rcases hinv.read_compatible_at hrun hnc ht hjx.1 (by linarith) hx.1 hD0 hj.1 htb hy.1
       t (t + D) with h | h
   · exact h

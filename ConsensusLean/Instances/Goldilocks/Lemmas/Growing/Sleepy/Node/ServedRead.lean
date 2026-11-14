@@ -2,6 +2,10 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.ServedSteps
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Gate
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Regimes
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
@@ -42,9 +46,75 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
+/-- An older origin has a read majority when the latest slot's honest votes are delivered. -/
+private theorem origin_read_majority_at {ini}
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
+    {b : Time} (hinv : SleepyInvariantUpTo tr H b)
+    (hsync : SleepyServiceBefore tr H ΔF b) {K : SA.CommitteeDict sp.n}
+    (hKB : CommitteeFacts tr H K) (hBK : CommitteeBoundsFrom tr H K 0 b)
+    {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (htb : t ≤ b)
+    (hy : y ∈ H t) (hi : ∀ k < i, tr.time k ≤ t)
+    {R : SA.Blk sp.n (List (FG.Att sp.n))} {j q : Nat}
+    (hO : OriginWithin tr H R j b) (hjq : j < q)
+    (hL : (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 = q)
+    (hrd : ReadAtCut proposer dg (tr.upTo t) y i t)
+    (hRt : R ∈ (Node.frame (tr.state y i)).tree) :
+    (SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1.votes).ncard <
+      2 * (SA.supporters (Node.frame (tr.state y i))
+        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
+        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R).ncard := by
+  have hst : (tr.upTo t).state y i = tr.state y i := Trace.upTo_state tr y hi
+  have hLp : (q : Int) = (SA.latestView sp ((tr.upTo t).state y i).ac
+      (Node.frame ((tr.upTo t).state y i)) t).2 := by rw [hst]; exact hL.symm
+  have hqt : sp.ts q + sp.Δ ≤ t := by
+    have h := (latest_slot_tick_at_read (hrun.upTo ht0) hy hrd hLp).1
+    linarith [sp.toParams.hΔ]
+  have hall : ∀ x k e, HVoteAt tr H x k e → e.msg.slot = q →
+      SA.VoteExtends (tr.HonestBlocksAt H) e.msg R := by
+    intro x k e hv hs
+    obtain ⟨hx, ℓ, hc⟩ := hVoteAt_iff.1 hv
+    have hkt := (cast_time_at hrun hnc hx hc).2
+    rw [hs] at hkt
+    exact hinv.vote_extends R j hO x k e hv (hkt.trans (hqt.trans htb)) (hs ▸ hjq)
+  exact read_majority_of_extending_at hrun hnc hKB.hP ht0 hy hi hL
+    (extendingMajority_of_all_at hrun hnc hKB.hGate hall hqt
+      (hBK.slotK q t (Nat.zero_le _) hqt htb (latestView_lt_six ht0 hL.symm).le))
+    hRt (by
+      intro x k e hv hx hs hext
+      obtain ⟨hxk, ℓ, hc⟩ := hVoteAt_iff.1 hv
+      have hkt := (cast_time_at hrun hnc hxk hc).2
+      rw [hs] at hkt
+      have hvp : SA.VoteAt (tr.upTo t).projAC x k e := by
+        rw [RunTrace.upTo_projAC]
+        exact sa_voteAt_upTo.mpr ⟨hkt.trans hqt, ℓ, hc⟩
+      have hac := (SleepyServiceBefore.upTo hrun hsync ht0).ac
+      have hsyncp : ReadSyncOrService (tr.upTo t) (H t) t := Or.inr
+        { message := fun x hx k v hv h0 z hz j ℓ hc hdl hj =>
+            hac.message x hx k v hv h0 z hz j ℓ hc (hdl.trans (le_min htb le_rfl)) hj
+          relay := fun x hx k B hB h0 z hz j ℓ hc hdl hj ha =>
+            hac.relay x hx k B hB h0 z hz j ℓ hc
+              (hdl.trans (le_min htb le_rfl)) hj ha }
+      have hpool := latest_vote_delivered (hrun.upTo ht0) (hnc.upTo t)
+        (Or.inl hsyncp) hy hrd hLp hx hvp hs
+      obtain ⟨Hd, hHd, hHdr, hRHd⟩ := voteExtends_upTo hrun hnc ht0 hx hvp hext
+      have hΦ := frameOK_at hrun ht0 hy hi
+      have hΦU : (Node.frame (tr.state y i)).tree ⊆ (tr.upTo t).HonestBlocks (H t) := by
+        intro X hX
+        exact ⟨y, hy, i, by rw [hst]; exact hX.1⟩
+      have hF : Anc ((tr.upTo t).HonestBlocks (H t))
+          ((tr.upTo t).state y i).fg.F Hd := by
+        rw [hst]
+        exact ((hΦ.rooted.2 R hRt).mono hΦU).trans hRHd
+      obtain ⟨hHdt, hstamp⟩ := honest_head_in_frame_at_read (hrun.upTo ht0) (hnc.upTo t)
+        (Or.inl hsyncp) hy hrd hLp hx hvp hs hHd hHdr hF
+      rw [hst] at hpool hHdt
+      rw [projAC_state (hrun.upTo ht0).toLocalRun hy i, hst] at hstamp
+      exact ⟨hpool, Hd, hHdt, hHdr, hstamp⟩)
+
 /-- The origins before a cut of the prefix through `d` are origins of the run, within every
 horizon after the cut's earlier cuts. -/
-private theorem originWithin_of_upTo' (hrun : Growing.GoldilocksRun proposer dg H tr) {d b : Time}
+private theorem originWithin_of_upTo' {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {d b : Time}
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {s m : Nat}
     (hm : ∀ k < m, tr.time k ≤ b) (h : Compose.OriginBefore (tr.upTo d) (H d) C s m) :
     OriginWithin tr H C s b := by
@@ -60,9 +130,10 @@ private theorem originWithin_of_upTo' (hrun : Growing.GoldilocksRun proposer dg 
 honest at `t` and the state before a cut `m` whose earlier cuts are at or before `t`, from the
 dynamic invariant up to `b ≥ t` and the service up to `b`. -/
 private theorem readInvWith_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     (hsync : SleepyServiceBefore tr H ΔF b) {y : Fin sp.n} {m : Nat} {t : Time}
-    (hy : y ∈ H t) (ht0 : 0 ≤ t) (htb : t ≤ b) (hm : ∀ k < m, tr.time k ≤ t) :
+    (hy : y ∈ H t) (ht0 : 0 ≤ t) (htb : t ≤ b)
+    (hm : ∀ k < m, tr.time k ≤ t) :
     Compose.ReadInvWith (tr.upTo t) (H t) (fun B => OnOriginChainWithin tr H B b)
       (fun C s => OriginWithin tr H C s b) y m t
       (Compose.ReadSyncOrService (tr.upTo t) (H t) t) := by
@@ -101,20 +172,23 @@ private theorem readInvWith_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
         { message := fun x hx k v hv h0 z hz j ℓ hc hdl hj =>
             hac.message x hx k v hv h0 z hz j ℓ hc (hdl.trans (le_min htb le_rfl)) hj
           relay := fun x hx k B hB h0 z hz j ℓ hc hdl hj ha =>
-            hac.relay x hx k B hB h0 z hz j ℓ hc (hdl.trans (le_min htb le_rfl)) hj ha } }
+            hac.relay x hx k B hB h0 z hz j ℓ hc
+              (hdl.trans (le_min htb le_rfl)) hj ha } }
 
 /-- **G1, G2 at a read under growing faults** (the dynamic `read_head_support_before`): the state
 of a node before cut `i`, read at a time `t ∈ [0, b]` at which it is honest, at or after every
 cut before `i` and at or before cut `i`, the node awake and joined at `t`: the anchor at `t` is
 compatible with the record's block `R`, and `R` is at or below it, or viable with a strict majority
-of the latest view's voters at `t` as supporters. The slot count is charged at the read time `t`,
-for the slots `s` with `t_s + Δ ≤ t < t_s + 6Δ`. -/
+of the latest view's voters at `t` as supporters. For an older origin of `R` the majority is the
+committee slot count of `hBK` at the latest view's slot, charged at the read time `t`, over that
+slot's honest votes, which extend the origin and are delivered before the read
+(`origin_read_majority_at`). -/
 theorem read_head_support_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     (hsync : SleepyServiceBefore tr H ΔF b) {y : Fin sp.n} {i : Nat} {t : Time}
     (hy : y ∈ H t) (ht0 : 0 ≤ t) (htb : t ≤ b)
-    (hfb : ∀ s : Nat, sp.ts s + sp.Δ ≤ t → t < sp.ts s + 6 * sp.Δ →
-      tr.FaultBoundAt H (sp.ts s + sp.Δ) t)
+    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hBK : CommitteeBoundsFrom tr H K 0 b)
     (hle : ∀ k < i, tr.time k ≤ t) (hti : t ≤ tr.time i)
     (hwj : tr.awake y t ∧ tr.JoinedAt y t) {R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : RecordAt tr y i R) :
@@ -134,29 +208,36 @@ theorem read_head_support_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     (fun m hm _ => readInvWith_upTo hinv hrun hnc hsync hy ht0 htb hm) hle hti
     (fun _ => ⟨⟨hwj.1, le_rfl⟩, joinedAt_upTo hwj.2⟩) (R := R)
     (by rw [RecordAt, hst]; exact hR)
-    fun m hm _ hrd hRm _ hO hjl => Compose.latest_majority (hrun.upTo ht0) (hnc.upTo _) hy
-      (readInvWith_upTo hinv hrun hnc hsync hy ht0 htb hm)
-      (fun s h1 h2 => faultBound_upTo (d := t) h1 (hfb s h1 h2)) hrd hRm.1 hO hjl
+    (by
+      intro m hm _ hrd hRm j hO hjl
+      have hstm : (tr.upTo t).state y m = tr.state y m := Trace.upTo_state tr y hm
+      rw [RecordAt, hstm] at hRm
+      rw [hstm] at hjl ⊢
+      obtain ⟨q, hq⟩ : ∃ q : Nat, (q : Int) =
+          (SA.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).2 :=
+        ⟨_, Int.toNat_of_nonneg (by omega)⟩
+      exact origin_read_majority_at hrun hnc hinv hsync hKB hBK ht0 htb hy hm hO
+        (by omega) hq.symm hrd hRm.1)
   rwa [hst] at h
 
 /-- **G1, G2 at a served cut under growing faults**: at a cut `i ≤ b` of a node honest then,
 joined at its time, the record's block has `HeadSupport` (the read at `t = tr.time i`). -/
 theorem served_head_support_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     (hsync : SleepyServiceBefore tr H ΔF b) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
-    (hfb : ∀ s : Nat, sp.ts s + sp.Δ ≤ tr.time i → tr.time i < sp.ts s + 6 * sp.Δ →
-      tr.FaultBoundAt H (sp.ts s + sp.Δ) (tr.time i))
+    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hBK : CommitteeBoundsFrom tr H K 0 b)
     (hc : tr.IsCall y i) (hj : tr.JoinedAt y (tr.time i)) {R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : RecordAt tr y i R) : HeadSupport tr y i R :=
-  have h := read_head_support_at hinv hrun hnc hsync hy (hrun.time_nonneg i) hib hfb
+  have h := read_head_support_at hinv hrun hnc hsync hy (hrun.time_nonneg i) hib hKB hBK
     (fun _ hk => hrun.time_mono hk.le) le_rfl ⟨hrun.awake_of_call y i hy hc, hj⟩ hR
   ⟨h.1, h.2⟩
 
 /-- **G3 under growing faults, the record step**: at a cut of a node honest then, with every cut up
 to it at a time `≤ b`, the record moves to a descendant (inside the blocks held while honest). -/
 theorem record_step_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) (hi : ∀ k ≤ i, tr.time k ≤ b) :
     ∀ E ∈ tr.HonestBlocksAt H, E.root = (tr.state y i).ac.latestConfirmed →
       ∃ E' ∈ tr.HonestBlocksAt H, E'.root = (tr.state y (i + 1)).ac.latestConfirmed ∧

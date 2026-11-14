@@ -51,7 +51,10 @@ theorem sleepy_include_finite_at (hv : rho.ExecutionValid)
       (Regimes.readAfter (simTraceAt ⟨S, stock⟩ rho hn) y j t) :=
   Regimes.Growing.include_sleepy_at (simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv) hnc hb0
       hsync hB hP
-    hmargin htb hy hj rfl
+    hmargin htb hy hj
+    (Compose.Growing.CommitteeFacts.of_full (simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv) hnc rfl)
+    (Compose.Growing.CommitteeBoundsFrom.of_full
+      (simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv) hB)
 
 /-- **Finite growth under growing faults.** For `b = t + (4k + 6)Δ` with `t ≥ 0`, `k ≥ 1`, under
 the finite service and the two count shapes through `b`, and one proposer ready at its slot
