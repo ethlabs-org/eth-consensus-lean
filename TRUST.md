@@ -118,8 +118,8 @@ All-knowing adversary whose set of compromised validators grows (`EnvPoint.fault
 immediate and permanent, with the ordinary signing key (no forward-secure keys, no corruption delay); it takes
 effect before every event of its time; an honest release keeps its provenance after its signer is compromised.
 Every lawful trace is quantified, so adaptive scheduling and corruption are covered; no probabilistic or
-computational adversary is modelled. The Goldilocks claims are certified for constant faults only while its proofs
-migrate (§2). Per instance the reviewer binds outputs to user reads,
+computational adversary is modelled. The Goldilocks claims are certified under this growing adversary; the
+constant-fault endpoint and headline are corollaries. Per instance the reviewer binds outputs to user reads,
 `conflicts` to the enforced slashing rule, and numbers to the intended values.
 
 ## 6. Out of scope
