@@ -100,29 +100,6 @@ structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
     ∀ B k y j, ReadyProposal tr H catchUp hold B k →
       tr.time k + margin ≤ tr.time j → ReadyCut tr H catchUp y j →
       payload B ⊆ payload (tr.confirmedAt y j)
-  /-- L6: proposal chaining needs this additional confirmed-tip obligation.
-  Ready reads after the healed slot agree, and include its honest proposal after the margin. -/
-  healedTips : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
-    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
-    (tr : RunTrace A) (ΔF g b : Time) (s₁ : Nat),
-    run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    tr.HealthyRunAt H ΔF g → HealedFrom tr H proposer s₁ b →
-    max g 0 ≤ P.slotTime s₁ →
-    (∀ y z i j, P.slotTime s₁ + margin ≤ tr.time i → tr.time i ≤ b →
-      P.slotTime s₁ + margin ≤ tr.time j → tr.time j ≤ b →
-      ReadyCut tr H catchUp y i → ReadyCut tr H catchUp z j →
-      Compatible (tr.HonestBlocksAt H) (tr.confirmedAt y i) (tr.confirmedAt z j)) ∧
-    ∀ z k X, HonestProposal tr H proposer s₁ z k X →
-      ∀ y j, tr.time k + margin ≤ tr.time j → tr.time j ≤ b →
-        ReadyCut tr H catchUp y j → Anc (tr.HonestBlocksAt H) X (tr.confirmedAt y j)
-  /-- L7: under healthy service, a fresh ready proposal is confirmed within the latency. -/
-  healthyConfirmedSupply : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
-    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
-    (tr : RunTrace A) (ΔF g healed : Time), run.Run cm proposer dg H tr →
-    Compose.NoCollRun dg tr → tr.HealthyRunAt H ΔF g → max g 0 + margin ≤ healed →
-    ∀ B k y j, ReadyProposal tr H catchUp hold B k → healed ≤ tr.time k →
-      tr.time k + latency ≤ tr.time j → ReadyCut tr H catchUp y j →
-      Anc (tr.HonestBlocksAt H) B (tr.confirmedAt y j)
   /-- L8: ancestry of a proposal into either output preserves its projected payload. -/
   payloadProjection : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))

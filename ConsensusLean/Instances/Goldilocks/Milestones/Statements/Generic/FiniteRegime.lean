@@ -16,14 +16,6 @@ namespace Consensus.Goldilocks.Generic
 
 variable {P : Params} {A : NodeAC P}
 
-/-- The healthy transport's service, with awake and fault bounds only through `b`.
-Service retains its event-delivery meaning; no future awake schedule is required. -/
-def HealthyPrefix (tr : RunTrace A) (H : Time → Set (Fin P.n))
-    (ΔF g b : Time) : Prop :=
-  0 ≤ b ∧ tr.GSTRunAt H ΔF g ∧
-    (∀ y t, max g 0 ≤ t → t ≤ b → y ∈ H t → tr.awake y t) ∧
-    (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1)
-
 /-- Service on the retained event trace, not service for arbitrary future calls. -/
 def PrefixService (tr : RunTrace A) (H : Time → Set (Fin P.n))
     (g ΔF b : Time) : Prop :=
@@ -90,29 +82,6 @@ structure FiniteLocal (C : ACCorrectLocal A sg) : Prop where
       tr.time k + C.margin ≤ tr.time j → tr.time j ≤ b →
       ReadyCut tr H C.catchUp y j →
       C.payload B ⊆ C.payload (tr.confirmedAt y j)
-  /-- Bounded L6; healing and the real healed slot remain separate inputs. -/
-  healedTips : ∀ cm proposer dg H tr ΔF g b s₁,
-    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    HealthyPrefix tr H ΔF g b → HealedFrom tr H proposer s₁ b →
-    max g 0 ≤ P.slotTime s₁ →
-    (∀ y z i j, P.slotTime s₁ + C.margin ≤ tr.time i → tr.time i ≤ b →
-      P.slotTime s₁ + C.margin ≤ tr.time j → tr.time j ≤ b →
-      ReadyCut tr H C.catchUp y i → ReadyCut tr H C.catchUp z j →
-      Compatible (tr.HonestBlocksAt H) (tr.confirmedAt y i) (tr.confirmedAt z j)) ∧
-    ∀ z k X, HonestProposal tr H proposer s₁ z k X →
-      0 ≤ tr.time k → tr.time k + C.hold ≤ b →
-      ∀ y j, tr.time k + C.margin ≤ tr.time j → tr.time j ≤ b →
-        ReadyCut tr H C.catchUp y j →
-        Anc (tr.HonestBlocksAt H) X (tr.confirmedAt y j)
-  /-- Bounded L7; actual proposal existence is not a field of this record. -/
-  healthyConfirmedSupply : ∀ cm proposer dg H tr ΔF g healed b,
-    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    HealthyPrefix tr H ΔF g b → max g 0 + C.margin ≤ healed →
-    ∀ B k y j, ReadyProposal tr H C.catchUp C.hold B k →
-      healed ≤ tr.time k → tr.time k + C.hold ≤ b →
-      tr.time k + C.latency ≤ tr.time j → tr.time j ≤ b →
-      ReadyCut tr H C.catchUp y j →
-      Anc (tr.HonestBlocksAt H) B (tr.confirmedAt y j)
 
 end Consensus.Goldilocks.Generic
 

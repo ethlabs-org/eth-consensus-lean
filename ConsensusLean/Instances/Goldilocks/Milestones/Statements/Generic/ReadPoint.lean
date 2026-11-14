@@ -15,6 +15,9 @@ engine_outputValid_at and engine_nested_at; lead LeadHeldInView and LeadTipsVali
 
 namespace Consensus.Goldilocks.Generic
 
+open SA (gbar)
+open Healing.Growing (IsReset)
+
 variable {P : Params} {A : NodeAC P}
 
 /-- Source: Regimes/Sleepy.ReadPoint. No equality with the next cut time is asserted. -/
@@ -102,12 +105,16 @@ structure SleepyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : P
 
 /-- L6/L7 use the shared finite healthy regime, never an all-future schedule. -/
 structure HealthyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where
-  /-- L6: CorrectLocal.healedTips; lead LeadHealedTips, evaluated at actual read times. -/
-  healed : ∀ cm proposer dg H (tr : RunTrace A) ΔF g b s₁,
-    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    HealthyPrefix tr H ΔF g b → HealedFrom tr H proposer s₁ b →
+  /-- L6: healed agreement requires an honest opening proposal; reads use actual times. -/
+  healed : ∀ cm βK proposer dg H (tr : RunTrace A) ΔF g a b s₁,
+    βK ≤ 1 / 2 →
+    C.run.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
+    IsReset tr H g a → a ≤ b → P.slotOf a + C.healing.drain ≤ s₁ →
+    HealedFrom tr H proposer s₁ b →
     max g 0 ≤ P.slotTime s₁ →
-    (∀ y z i j t u, P.slotTime s₁ + C.margin ≤ t →
+    ((∃ z k X, HonestProposal tr H proposer s₁ z k X) →
+      P.slotTime s₁ + 6 * P.Δ ≤ b → gbar g + 4 * P.Δ ≤ P.slotTime s₁ →
+      ∀ y z i j t u, P.slotTime s₁ + C.margin ≤ t →
       P.slotTime s₁ + C.margin ≤ u →
       ReadyReadPoint tr H b C.catchUp y i t → ReadyReadPoint tr H b C.catchUp z j u →
       ReadBoundary tr y i → ReadBoundary tr z j →
@@ -116,11 +123,13 @@ structure HealthyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : 
       ∀ y j t, tr.time k + C.margin ≤ t → ReadyReadPoint tr H b C.catchUp y j t →
       ReadBoundary tr y j → t < tr.time j →
       Anc (tr.HonestBlocksAt H) X (confirmedRead tr y j t)
-  /-- L7: CorrectLocal.healthyConfirmedSupply; lead LeadConfirmedSupply. -/
-  proposal : ∀ cm proposer dg H (tr : RunTrace A) ΔF g b healed,
-    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    HealthyPrefix tr H ΔF g b → max g 0 + C.margin ≤ healed →
+  /-- L7: a ready proposal after the reset drain is confirmed within the latency. -/
+  proposal : ∀ cm βK proposer dg H (tr : RunTrace A) ΔF g a b healed,
+    βK ≤ 1 / 2 →
+    C.run.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
+    IsReset tr H g a → a ≤ b → max g 0 + C.margin ≤ healed →
     ∀ B k y j t, ReadyProposal tr H C.catchUp C.hold B k →
+    P.slotOf a + C.healing.drain ≤ B.slot → gbar g + 4 * P.Δ ≤ P.slotTime B.slot →
     0 ≤ tr.time k → tr.time k ≤ b → tr.time k + C.hold ≤ b → healed ≤ tr.time k →
     tr.time k + C.latency ≤ t → ReadyReadPoint tr H b C.catchUp y j t →
     ReadBoundary tr y j → t < tr.time j →
