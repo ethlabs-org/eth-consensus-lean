@@ -591,11 +591,13 @@ detail in `TRUST.md`.
 
 ## Trusted surface and Challenge scope
 
-- **Challenge certifies exactly nine statements**: the five generic review statements
+- **Challenge declares ten statements**: the five generic review statements
   (`Review.ObligationsSufficient`, `ObligationsSufficientOn`, `RegimesRealizable`, `LogFaithful`,
   `HeldIffServed`), and the Goldilocks endpoint and headline, `MeetsObligations` and `GoldilocksCorrect`
   (§"Adversary growth"), the headline's explicit-excuse form `GoldilocksCorrectWithExcuses`, and the
-  outage row at every vote binding, `PersistsWith`. Reason: keep the trusted surface to the generic definition
+  outage row at every vote binding, `PersistsWith`, and the interim sleepy safety and liveness pair,
+  `SleepyWith`. The latter must land with its Solution proof and comparator entry.
+  Reason: keep the trusted surface to the generic definition
   of a correct protocol plus the one instance endpoint and its headline forms. The other Goldilocks milestones (M₁, FGStore, ACBase, ACSteps, Compose, Persist, Regimes,
   Service, Healing) are means to the endpoint, not claims a reviewer must read.
   - They stay proved and built as ordinary lemmas, but are not comparator roots and not trusted: their statement
@@ -638,7 +640,8 @@ detail in `TRUST.md`.
   contract `goldilocksContract A (contract_coefficients S A)`. `MeetsObligations` and `GoldilocksCorrect`
   quantify over `Setup` and read the population binding. Reason: the look-back committee clause of the
   outage regime reads the binding's selection and is its only binding-dependent premise, and the outage proof is
-  binding-generic; the healthy, sleepy and static rows are proved at the population binding only. At the
+  binding-generic; the healthy and static rows are proved at the population binding only; the sleepy rows at
+  every binding (`SleepyWith`, below). At the
   population binding the committee clause follows from the population clause at this contract (committee
   look-ahead `5 ≤ 5`; §"Committee modelling"), so the
   statement is the stock `persists` field
@@ -649,6 +652,12 @@ detail in `TRUST.md`.
   It adds no constant to the trusted reach (`goldilocks S` is `goldilocksWith ⟨S, stock⟩`, so `MeetsObligations`
   already reaches every constant it mentions), but it makes the committee branches of `goldilocksWith` (vote
   roles, own-role permission, threshold denominator) part of what a reviewer reads.
+- **The sleepy pair is stated at every vote binding.** `SleepyWith` repeats the `sleepySafe` and
+  `sleepyLive` rows of `ShapeClaimsAt` for `goldilocksWith S` at every `BoundSetup`, at the same
+  obligations contract. The committee-native `System.Sleepy` supplies population and committee
+  participation; liveness retains whole-run proposer progress. No additional premise is introduced.
+  The population fidelity witness is `Obligations.Test.Contract.claims_with_sleepyWith`.
+  This interim root, like `PersistsWith`, is removed when the full binding-generic endpoint subsumes it.
 - **The simulation interface and canonical trace are proof-side.** The Refinement simulation interface and the
   canonical trace construction are in the non-exposed `Lemmas/Simulation/{Interface,TraceDefs}`, with
   characterising lemmas for proof consumers; the digest adapter `dgOf` and the delivery relation `DeliverSeq` sit

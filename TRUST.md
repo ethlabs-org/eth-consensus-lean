@@ -54,7 +54,9 @@ its form on a class of runs `ObligationsSufficientOn` (at constant faults, the s
 secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`. Challenge adds the Goldilocks endpoint and headline,
 `MeetsObligations` and `Consensus.Goldilocks.GoldilocksCorrect` (Goldilocks is a `CorrectProtocol` under the growing
 adversary), the headline's explicit-excuse form `GoldilocksCorrectWithExcuses`, and the outage row at every vote
-binding `PersistsWith`, from `Instances/Goldilocks/Statements/Obligations.lean`.
+binding `PersistsWith`, from `Instances/Goldilocks/Statements/Obligations.lean`. The interim
+`SleepyWith` root states sleepy safety and liveness at every vote binding; its Challenge entry
+must land together with its Solution proof and comparator entry.
 
 **Changes are recorded, not gated.** Every non-merge commit that touches a trusted path carries a line
 `Trusted-surface: <what changes and why>`; `scripts/review-boundary.sh` (self-tested on throwaway repositories)

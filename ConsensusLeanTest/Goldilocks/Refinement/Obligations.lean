@@ -393,6 +393,15 @@ theorem claims_with_persistsWith (S : Setup) (A : ContractAssumptions S) (V : Ty
   { (Consensus.Goldilocks.meetsObligations S A).2.claims V with
     persists := Consensus.Goldilocks.persistsWith ⟨S, stock⟩ A V }
 
+/-- (a) At the population binding `SleepyWith` supplies both sleepy fields of the stock
+claims verbatim, with no additional premise. -/
+theorem claims_with_sleepyWith (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V]
+    [DecidableEq V] :
+    ShapeClaimsAt (goldilocks S) (goldilocksContract A (contract_coefficients S A)) V :=
+  { (Consensus.Goldilocks.meetsObligations S A).2.claims V with
+    sleepySafe := (Consensus.Goldilocks.sleepyWith ⟨S, stock⟩ A V).1
+    sleepyLive := (Consensus.Goldilocks.sleepyWith ⟨S, stock⟩ A V).2 }
+
 /-- (a) The committee case of `PersistsWith` is not the population case: at `committeeOne` the
 family signs votes in the committee role selected `.sized 1`, and the SA committee size (the vote
 threshold denominator) is `1`, a proper subset of every population of at least two validators. -/

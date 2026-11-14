@@ -227,6 +227,34 @@ def PersistsWith : Prop :=
           ((Sys (goldilocksWith S) V).recoveryAt
             (goldilocksContract A (contract_coefficients S.toSetup A)) b₁ r)
 
+/-- **Goldilocks is sleepy-safe and sleepy-live at every vote binding.** For every bound
+setup, timing-assumption set and finite validator type, the `sleepySafe` and `sleepyLive`
+claims of `ShapeClaimsAt` hold verbatim at the obligations contract. `System.Sleepy` requires
+synchrony from the start and both population and selected-committee sleepy participation.
+Safety concerns ready readers from time zero; liveness additionally requires the contract's
+proposer progress over the whole run and gives its proposal-inclusion latency. Both rows
+allow an observed hash collision through `Holds`. No other obligations are restated. -/
+def SleepyWith : Prop :=
+  ∀ (S : BoundSetup) (A : ContractAssumptions S.toSetup) (V : Type) [Fintype V] [DecidableEq V],
+    (∀ cap g, (cap = .available ∨ cap = .stable) → schema.output cap = some g →
+      (Sys (goldilocksWith S) V).Holds ((Sys (goldilocksWith S) V).Sleepy
+        (shapeProgress (goldilocksWith S) V).toExternal
+        (goldilocksContract A (contract_coefficients S.toSetup A))) fun r =>
+        (chainTrace r.2).ReadySafe ((Sys (goldilocksWith S) V).cDur
+          (goldilocksContract A (contract_coefficients S.toSetup A)) r) g 0) ∧
+    (∀ cap g, (cap = .available ∨ cap = .stable) → schema.output cap = some g →
+      ∀ i : (goldilocksContract A (contract_coefficients S.toSetup A)).Idx,
+        (Sys (goldilocksWith S) V).Holds
+          (fun r => (Sys (goldilocksWith S) V).Sleepy
+            (shapeProgress (goldilocksWith S) V).toExternal
+            (goldilocksContract A (contract_coefficients S.toSetup A)) r ∧
+            (Sys (goldilocksWith S) V).prog (shapeProgress (goldilocksWith S) V)
+              (goldilocksContract A (contract_coefficients S.toSetup A)) cap i 0
+              ((Sys (goldilocksWith S) V).pt r).horizon r)
+          fun r => ProposalLiveReady r.2 ((Sys (goldilocksWith S) V).cDur
+            (goldilocksContract A (contract_coefficients S.toSetup A)) r) g 0
+            ((goldilocksContract A (contract_coefficients S.toSetup A)).params.latency cap i))
+
 end Consensus.Goldilocks
 
 end

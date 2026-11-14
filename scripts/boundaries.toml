@@ -1190,7 +1190,8 @@ review_axioms_module = "ConsensusLeanTest.ReviewAxioms"
 review_root = "ConsensusLeanTest"
 # Comparator. Step 9 checks comparator.json against these modules and against the closed Prop
 # definitions of `statements_module` (the review statements, paired with their source theorems by
-# `review_axioms_module`) and of `milestone_statements_modules` (today the Goldilocks obligations endpoint alone: a
+# `review_axioms_module`) and of `milestone_statements_modules` (the Goldilocks endpoint module,
+# including the interim binding-generic PersistsWith and SleepyWith rows: a
 # statements module under `trusted_paths` whose closed Prop definitions `Solution` proves directly; docs/decisions.md
 # §"Trusted surface and Challenge scope"); the challenge imports exactly these modules, in this order. Step 11 runs `lake comparator` (where bwrap exists).
 challenge_module = "Challenge"
