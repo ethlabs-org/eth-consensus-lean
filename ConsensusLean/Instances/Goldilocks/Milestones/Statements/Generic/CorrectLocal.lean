@@ -131,6 +131,12 @@ structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
       recoveryTime ≤ tr.time j → tr.time j ≤ p.horizon → ReadyCut tr H catchUp y j →
       Anc (tr.HonestBlocksAt H) (tr.confirmedAt x i) (tr.confirmedAt y j)
 
+/-- A run interface transported along signer equality has the same runs. -/
+theorem ACRun.cast_run {A : NodeAC P} {sg sg' : A.Msg → Fin P.n} (h : sg = sg') (R : ACRun A sg) :
+    (h ▸ R).Run = R.Run := by
+  subst sg'
+  rfl
+
 end Consensus.Goldilocks.Generic
 
 end
