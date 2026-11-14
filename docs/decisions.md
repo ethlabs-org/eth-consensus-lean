@@ -500,8 +500,9 @@ detail in `TRUST.md`.
   The stock-only proofs are stated at `goldilocksWith ⟨S, stock⟩`, the form of the binding-generic simulation
   lemmas they rewrite with: the static queries (`OutageQuery`, `ConfirmedQuery`, `HealthyPreparationQuery`), the
   growing queries (`SleepySafetyQueryAt`, `FinalQueryAt`, `HealthyPreparationQueryAt`) and `FinalWindowDataAt`,
-  the lemmas over them and the fields of the growing endpoint. The growing confirmed query `ConfirmedQueryAt`
-  takes every `S : BoundSetup`; its stock users pass `⟨S, stock⟩`. The trusted statements and
+  the lemmas over them and the fields of the growing endpoint other than `sleepySafe`, `sleepyLive` and
+  `persists`. Those three fields and the growing confirmed query `ConfirmedQueryAt` take every
+  `S : BoundSetup`; their stock users pass `⟨S, stock⟩`. The trusted statements and
   `meetsObligations_growing` keep `goldilocks S`, which is defined as `goldilocksWith ⟨S, stock⟩` and unfolds to it
   definitionally.
 - **Votes leave through the poll outbox and are signed in their historical role (`candidateRole`).** No binding

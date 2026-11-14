@@ -27,8 +27,8 @@ theorem meetsObligations_claims_growing :
     finalMonotone := meetsObligations_finalMonotone_growing S V
     finalAccountable := meetsObligations_finalAccountable_growing S A V
     healthyLive := meetsObligations_healthyLive_growing S A V
-    sleepySafe := meetsObligations_sleepySafe_growing S A V
-    sleepyLive := meetsObligations_sleepyLive_growing S A V
+    sleepySafe := meetsObligations_sleepySafe_growing ⟨S, stock⟩ A V
+    sleepyLive := meetsObligations_sleepyLive_growing ⟨S, stock⟩ A V
     healedSafe := meetsObligations_healedSafe_growing S A V
     persists := meetsObligations_persists_growing ⟨S, stock⟩ A V }
 

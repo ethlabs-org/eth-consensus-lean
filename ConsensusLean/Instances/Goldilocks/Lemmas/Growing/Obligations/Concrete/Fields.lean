@@ -23,24 +23,96 @@ public section
 
 /-! # The growing-fault endpoint: the nine chain-level claims
 
-Each theorem is the field of `ShapeClaimsAt (goldilocks S) (K S A) V` of the same name, stated at
-the population binding `goldilocksWith ⟨S, stock⟩` (`goldilocks S` is defined as
-`goldilocksWith ⟨S, stock⟩` and unfolds to it definitionally), with no constant-fault premise and
-no other premise beyond the field's own.
+Each theorem is the field of `ShapeClaimsAt (goldilocks S) (K S A) V` of the same name, with no
+constant-fault premise and no other premise beyond the field's own. `sleepySafe`, `sleepyLive` and
+`persists` are stated for every vote binding `S : BoundSetup` at `goldilocksWith S` (the endpoint
+passes `⟨S, stock⟩`); the others at the population binding `goldilocksWith ⟨S, stock⟩`
+(`goldilocks S` is defined as `goldilocksWith ⟨S, stock⟩` and unfolds to it definitionally).
 
 * `outputValid`, `nested`, `finalMonotone`, `finalAccountable`: the engine output transports;
 * `sleepySafe`: finite engine sleepy safety, with the finite service from raw synchrony
-  (`Simulation.sleepyServiceBefore_of_syncUntil_at`) and the L0 budget at the contract's sleepy
-  look-ahead `5Δ` and catch-up `≥ 19Δ`;
+  (`Simulation.sleepyServiceBefore_of_syncUntil_at`), the L0 budget at the contract's sleepy
+  look-ahead `5Δ` and catch-up `≥ 19Δ`, and the committee premises of the run's committees
+  through the horizon, from the committee clause of `Sleepy` (`sleepy_committee_at`);
 * `healedSafe`: healed safety of a healthy preparation query;
 * `persists`: outage protection of an outage query;
 * `healthyLive`: the final branch from `meetsObligations_healthyLive_final_growing`, the
   confirmed branch from the healthy confirmed supply;
-* `sleepyLive`: the sleepy serviced proposal of the selected slot, with the proposer's hold. -/
+* `sleepyLive`: the sleepy serviced proposal of the selected slot, with the proposer's hold and the
+  committee premises through the query deadline (`sleepy_committee_at`). -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation Obligations
 open Blocks Shape
+
+theorem meetsObligations_sleepySafe_growing (S : BoundSetup) (A : ContractAssumptions S.toSetup)
+    (V : Type) [Fintype V] [DecidableEq V] :
+    ∀ cap g, (cap = .available ∨ cap = .stable) →
+    schema.output cap = some g → (Sys (goldilocksWith S) V).Holds
+      ((Sys (goldilocksWith S) V).Sleepy
+          (shapeProgress (goldilocksWith S) V).toExternal (K S.toSetup A)) fun r =>
+        (chainTrace r.2).ReadySafe ((Sys (goldilocksWith S) V).cDur (K S.toSetup A) r) g 0 := by
+  intro cap g hcap hg r hv hs
+  have hg' : g = Out.confirmed := by
+    rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
+  subst g
+  by_cases hc : r.2.HashCollision
+  · exact Or.inr hc
+  left
+  by_cases hn : 1 ≤ Fintype.card V
+  · have hd : Regimes.catchUp (S.params (Model.pubOf r.1) hn) + 1 ≤
+        (Sys (goldilocksWith S) V).cDur (K S.toSetup A) r := by
+      have hc19 : (19 : Time) ≤ (contract_catchUp S.toSetup A : Nat) := by
+        exact_mod_cast contract_catchUp_ge_sleepy S.toSetup A
+      have hd : (1 : Time) ≤ r.1.ΔAC := r.1.ΔAC_pos
+      simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
+      change 18 * r.1.ΔAC + 1 ≤ (contract_catchUp S.toSetup A : Nat) * r.1.ΔAC
+      linarith [mul_le_mul_of_nonneg_right hc19 (by linarith : (0 : Time) ≤ r.1.ΔAC)]
+    have hnc := noCollRun_simTraceAt S r.2 hn hv hc
+    have hsync := sleepyServiceBefore_of_syncUntil_at S r.2 hn hv hnc le_rfl
+      (sleepy_raw_syncUntil S A V r hv hs r.2.horizon)
+    have hhalf : r.2.point.SleepyOn (1 / 2) (Regimes.catchUp (S.params (Model.pubOf r.1) hn))
+        (5 * (S.params (Model.pubOf r.1) hn).Δ) 0 r.2.horizon :=
+      sleepyOn_of_duration V _ ((le_add_of_nonneg_right zero_le_one).trans hd) hs.2.1
+    obtain ⟨KD, hKB, hBK⟩ := sleepy_committee_at S A r hn hv hc hs le_rfl
+    have safe := sleepy_safe_engine_at S r.2 hn hv hnc hsync hhalf hKB hBK
+    have ready : ∀ v t, r.2.point.Ready ((Sys (goldilocksWith S) V).cDur (K S.toSetup A) r) v t →
+        r.2.point.Ready (Regimes.catchUp (S.params (Model.pubOf r.1) hn) + 1) v t := by
+      intro v t h
+      refine ⟨h.1, fun τ hlo hhi => h.2 τ ?_ hhi⟩
+      exact (max_le_max_left 0 (sub_le_sub_right (sub_le_sub_left hd t) 1)).trans hlo
+    exact ⟨fun u v i j hi hj hu hv => safe.1 u v i j hi hj (ready _ _ hu) (ready _ _ hv),
+      fun v i j hi hij hj hvi hvj => safe.2 v i j hi hij hj (ready _ _ hvi) (ready _ _ hvj)⟩
+  · have hempty : IsEmpty V :=
+      Fintype.card_eq_zero_iff.mp (Nat.lt_one_iff.mp (Nat.lt_of_not_le hn))
+    exact ⟨fun u => (hempty.false u).elim, fun v => (hempty.false v).elim⟩
+
+theorem meetsObligations_sleepyLive_growing (S : BoundSetup) (A : ContractAssumptions S.toSetup)
+    (V : Type) [Fintype V] [DecidableEq V] :
+    ∀ cap g, (cap = .available ∨ cap = .stable) →
+    schema.output cap = some g → ∀ i : (K S.toSetup A).Idx, (Sys (goldilocksWith S) V).Holds
+      (fun r => (Sys (goldilocksWith S) V).Sleepy
+          (shapeProgress (goldilocksWith S) V).toExternal (K S.toSetup A) r ∧
+        (Sys (goldilocksWith S) V).prog (shapeProgress (goldilocksWith S) V)
+          (K S.toSetup A) cap i 0
+          ((Sys (goldilocksWith S) V).pt r).horizon r)
+      fun r => ProposalLiveReady r.2 ((Sys (goldilocksWith S) V).cDur (K S.toSetup A) r) g 0
+        ((K S.toSetup A).params.latency cap i) := by
+  intro cap g hcap hg idx r hv ⟨hs, hp⟩
+  have hg' : g = Out.confirmed := by
+    rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
+  subst g
+  by_cases hc : r.2.HashCollision
+  · exact Or.inr hc
+  left
+  intro t ht hb hr
+  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨hr.choose⟩
+  let Q : ConfirmedQueryAt S A V := ⟨r, hn, cap, hcap, idx, 0, t, hv, hc,
+    Or.inl ⟨hs, hp, ht⟩, hb, hr⟩
+  obtain ⟨P, service⟩ := sleepy_serviced_proposal_supply_at S A V Q hs hp ht
+  obtain ⟨KD, hKB, hBK⟩ := sleepy_committee_at S A r hn hv hc hs Q.bounded
+  exact confirmed_payload_projection_at S A V Q ht P
+    (sleepy_serviced_proposal_coverage_at S A V Q P service hKB hBK)
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
@@ -77,46 +149,6 @@ theorem meetsObligations_finalAccountable_growing : ∀ g, schema.output .final 
   have hg' : g = .finalized := (Option.some.inj hg).symm
   subst g
   exact engine_finalAccountable_at S r.2 hv (by norm_num [Params.standard])
-
-theorem meetsObligations_sleepySafe_growing : ∀ cap g, (cap = .available ∨ cap = .stable) →
-    schema.output cap = some g → (Sys (goldilocksWith ⟨S, stock⟩) V).Holds
-      ((Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy
-          (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A)) fun r =>
-        (chainTrace r.2).ReadySafe ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r) g 0 := by
-  intro cap g hcap hg r hv hs
-  have hg' : g = Out.confirmed := by
-    rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
-  subst g
-  by_cases hc : r.2.HashCollision
-  · exact Or.inr hc
-  left
-  by_cases hn : 1 ≤ Fintype.card V
-  · have hd : Regimes.catchUp (S.params (Model.pubOf r.1) hn) + 1 ≤
-        (Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r := by
-      have hc19 : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
-        exact_mod_cast contract_catchUp_ge_sleepy S A
-      have hd : (1 : Time) ≤ r.1.ΔAC := r.1.ΔAC_pos
-      simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
-      change 18 * r.1.ΔAC + 1 ≤ (contract_catchUp S A : Nat) * r.1.ΔAC
-      linarith [mul_le_mul_of_nonneg_right hc19 (by linarith : (0 : Time) ≤ r.1.ΔAC)]
-    have hnc := noCollRun_simTraceAt ⟨S, stock⟩ r.2 hn hv hc
-    have hsync := sleepyServiceBefore_of_syncUntil_at ⟨S, stock⟩ r.2 hn hv hnc le_rfl
-      (sleepy_raw_syncUntil ⟨S, stock⟩ A V r hv hs r.2.horizon)
-    have hhalf : r.2.point.SleepyOn (1 / 2) (Regimes.catchUp (S.params (Model.pubOf r.1) hn))
-        (5 * (S.params (Model.pubOf r.1) hn).Δ) 0 r.2.horizon :=
-      sleepyOn_of_duration V _ ((le_add_of_nonneg_right zero_le_one).trans hd) hs.2.1
-    obtain ⟨KD, hKB, hBK⟩ := sleepy_committee_at ⟨S, stock⟩ A r hn hv hc hs le_rfl
-    have safe := sleepy_safe_engine_at ⟨S, stock⟩ r.2 hn hv hnc hsync hhalf hKB hBK
-    have ready : ∀ v t, r.2.point.Ready ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r) v t →
-        r.2.point.Ready (Regimes.catchUp (S.params (Model.pubOf r.1) hn) + 1) v t := by
-      intro v t h
-      refine ⟨h.1, fun τ hlo hhi => h.2 τ ?_ hhi⟩
-      exact (max_le_max_left 0 (sub_le_sub_right (sub_le_sub_left hd t) 1)).trans hlo
-    exact ⟨fun u v i j hi hj hu hv => safe.1 u v i j hi hj (ready _ _ hu) (ready _ _ hv),
-      fun v i j hi hij hj hvi hvj => safe.2 v i j hi hij hj (ready _ _ hvi) (ready _ _ hvj)⟩
-  · have hempty : IsEmpty V :=
-      Fintype.card_eq_zero_iff.mp (Nat.lt_one_iff.mp (Nat.lt_of_not_le hn))
-    exact ⟨fun u => (hempty.false u).elim, fun v => (hempty.false v).elim⟩
 
 theorem meetsObligations_healedSafe_growing : ∀ cap g, (cap = .available ∨ cap = .stable) →
     schema.output cap = some g → ∀ (i : (K S A).Idx) (gst : Time),
@@ -224,31 +256,6 @@ theorem meetsObligations_healthyLive_growing : ∀ cap g, schema.output cap = so
   · subst cap
     exact meetsObligations_healthyLive_final_growing S A V g hg
   · exact meetsObligations_healthyLive_confirmed_growing S A V cap g hf hg
-
-theorem meetsObligations_sleepyLive_growing : ∀ cap g, (cap = .available ∨ cap = .stable) →
-    schema.output cap = some g → ∀ i : (K S A).Idx, (Sys (goldilocksWith ⟨S, stock⟩) V).Holds
-      (fun r => (Sys (goldilocksWith ⟨S, stock⟩) V).Sleepy
-          (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) r ∧
-        (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
-          (K S A) cap i 0
-          ((Sys (goldilocksWith ⟨S, stock⟩) V).pt r).horizon r)
-      fun r => ProposalLiveReady r.2 ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) r) g 0
-        ((K S A).params.latency cap i) := by
-  intro cap g hcap hg idx r hv ⟨hs, hp⟩
-  have hg' : g = Out.confirmed := by
-    rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
-  subst g
-  by_cases hc : r.2.HashCollision
-  · exact Or.inr hc
-  left
-  intro t ht hb hr
-  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨hr.choose⟩
-  let Q : ConfirmedQueryAt ⟨S, stock⟩ A V := ⟨r, hn, cap, hcap, idx, 0, t, hv, hc,
-    Or.inl ⟨hs, hp, ht⟩, hb, hr⟩
-  obtain ⟨P, service⟩ := sleepy_serviced_proposal_supply_at ⟨S, stock⟩ A V Q hs hp ht
-  obtain ⟨KD, hKB, hBK⟩ := sleepy_committee_at ⟨S, stock⟩ A r hn hv hc hs Q.bounded
-  exact confirmed_payload_projection_at ⟨S, stock⟩ A V Q ht P
-    (sleepy_serviced_proposal_coverage_at ⟨S, stock⟩ A V Q P service hKB hBK)
 
 end Consensus.Goldilocks.Obligations.Growing
 
