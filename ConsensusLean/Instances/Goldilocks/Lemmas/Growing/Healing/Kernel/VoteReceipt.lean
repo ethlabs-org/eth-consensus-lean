@@ -70,35 +70,8 @@ theorem high_origin_frozen_head_at
     exact hjt
   rcases Compose.frame_anc_accepted hrj hzj j ellZ hcz' W hW't W .refl with hg |
       ⟨c, hcj, hacc⟩
-  · have hreach := fg_reachable_at hp.run (hp.run.time_nonneg j)
-      (fun _ hq => hm hq.le) hzj
-    have heq : W = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
-      (Compose.Growing.honest_blocks_coherent hp.run hp.noColl).1
-        ⟨z, j, tr.time j, hp.run.time_nonneg j, fun _ hq => hm hq.le, hzj, hWz⟩
-        ⟨z, j, tr.time j, hp.run.time_nonneg j, fun _ hq => hm hq.le, hzj,
-          (Store.accepted_tree _ _ _ _ hreach).2.2.1⟩ hg
-    have hh := hp.high_of_anc_at ho (hp.run.time_nonneg j)
-      (fun _ hq => hm hq.le) hzj hWz hOW
-    rw [heq, show (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).root =
-        sp.toParams.genesisRoot from rfl, Store.σ_genesis hreach] at hh
-    change HZ tr H g + 1 ≤ 1 at hh
-    obtain ⟨kZ, hkZ, _⟩ := hp.snapshot
-    have hzZ' := hp.run.antitone (le_max_right _ _) hzZ
-    have hZ0 : 0 ≤ cutZ sp.toParams g := by
-      linarith [lt_cutZ sp g, SA.gbar_nonneg g, sp.toParams.hΔ]
-    have hreachZ := fg_reachable_at hp.run hZ0 hkZ.1 hzZ'
-    have hGZ := (Store.accepted_tree _ _ _ _ hreachZ).2.2.1
-    have hbnd := (Store.cache_invariants _ _ _ _ hreachZ).2.2.2.2.1 _ hGZ
-    rw [show (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).root =
-        sp.toParams.genesisRoot from rfl, Store.σ_genesis hreachZ] at hbnd
-    have hmax : (tr.state z kZ).fg.hmax ≤ HZ tr H g := by
-      refine le_csSup (((Set.finite_range fun v => (tr.state v kZ).fg.hmax).subset ?_).bddAbove)
-        ⟨z, hzZ', kZ, hkZ, rfl⟩
-      rintro _ ⟨v, _, c', hc', rfl⟩
-      obtain rfl := hc'.unique hkZ
-      exact ⟨v, rfl⟩
-    change 1 ≤ (tr.state z kZ).fg.hmax at hbnd
-    omega
+  · exact (hp.not_genesis_above_at ho
+      ⟨z, j, tr.time j, hp.run.time_nonneg j, fun _ hq => hm hq.le, hzj, hWz⟩ hOW hg).elim
   have hctj : tr.time c ≤ tr.time j := hm hcj
   have hacc₀ := ACTrace.upTo_acceptAt.mp hacc |>.2
   have hzc : z ∈ H (max (tr.time c) (cutZ sp.toParams g)) :=
