@@ -546,8 +546,9 @@ detail in `TRUST.md`.
   `SA.Growing.ACHealingStandaloneCorollary` and `SA.Growing.ACInclusion` over `SA.Growing.ACRun`; and the five
   `SA.*All` healing statements. The premise bundles `PersistPremises` (constant and growing faults) and the premise
   bundles of the healing statements (`HealthyBaseU` in `Milestones/Statements/Healing/ACU` and `HSShared` in
-  `Milestones/Statements/Healing/Run`), and the proof-side bundles built on them, carry it as a field, and
-  `GoldilocksHealingData` takes it as a conjunct of `O.Run`. The lemmas on those chains take it as an explicit
+  `Milestones/Statements/Healing/Run`), and the proof-side bundles built on them, carry it as a field;
+  `GoldilocksRunData`, the run conjunct of `GoldilocksHealingData`, does not: it consists of the committee-start
+  `Run` and `start` equations. The lemmas on those chains take it as an explicit
   argument `hstock`; at the population binding it holds by `rfl`. No certified statement reaches any of them;
   each is the population-binding case of a statement whose committee form is not stated. Reason: the run records
   hold at every binding, so the premise marks exactly the statements that need population-sized committees.

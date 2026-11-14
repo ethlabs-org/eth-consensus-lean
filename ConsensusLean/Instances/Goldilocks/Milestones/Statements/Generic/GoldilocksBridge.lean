@@ -17,12 +17,16 @@ namespace Consensus.Goldilocks.Generic
 
 open SA (SAParams ReplayOrder)
 
-/-- The run equation of the full-set Goldilocks supplier: the original growing run, for
-population-sized committees. -/
+/-- Read a time-indexed committee at each slot's start. -/
+def dictOfTime (sp : SAParams) (cm : Time → Finset (Fin sp.n)) : SA.CommitteeDict sp.n :=
+  ⟨fun s => ↑(cm (sp.toParams.slotTime s))⟩
+
+/-- The run and start equations of the committee-indexed Goldilocks supplier. -/
 def GoldilocksRunData (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (R : ACRun (goldilocksNode sp ro) (fun v => v.val)) : Prop :=
-  R.Run = (fun _ proposer dg H tr =>
-    sp.committeeSize = sp.n ∧ Growing.GoldilocksRun proposer dg H tr)
+  R.Run = (fun cm proposer dg H tr => Growing.GoldilocksRun proposer dg H tr
+    (SA.committeeStart sp.genesisRoot (dictOfTime sp cm))) ∧
+  R.start = (fun cm => SA.committeeStart sp.genesisRoot (dictOfTime sp cm))
 
 /-- Exact data equations for the intended Goldilocks supplier, not its field evidence. -/
 def GoldilocksHealingData (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
@@ -33,10 +37,9 @@ def GoldilocksHealingData (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.
     O.Origin = (fun tr x i j B => tr.JoinedAt x (tr.time i) ∧
       ∃ CV, Compose.StoredFastLockAt tr x i j B CV)
 
-/-- Intended full-set Goldilocks healing supplier, with its original run and arithmetic warmth.
+/-- Intended committee-indexed Goldilocks healing supplier, with arithmetic warmth.
 The existential is an unproved contract, never a definition of a supplier instance.
-`Run` is the original growing run, for population-sized committees (`sp.committeeSize = sp.n`).
-`warmup` comes from the warmth premise in
+`Run` uses the canonical committee start. `warmup` comes from the warmth premise in
 `Growing/Healing/Kernel/ResetRounds.lean:328`; `follow = 3` is the skeleton choice,
 with no upstream standalone statement; `drain` is the skeleton choice `2 * sp.k + 5`,
 not a newly proved upstream bound. `Origin` is the joined stored-fast-lock source
