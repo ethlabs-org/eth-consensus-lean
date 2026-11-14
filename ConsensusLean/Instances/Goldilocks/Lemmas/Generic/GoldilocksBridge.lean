@@ -13,9 +13,11 @@ public section
 /-! # Goldilocks old-premise bridge statements
 
 The shared run interface supplies the canonical committee start and its run laws. The remaining
-unproved Prop contracts retain the original Goldilocks statement sides and connect them
+unproved Prop contracts give Goldilocks-side targets and connect them
 to the generic contracts by conditional implications; they supply no healing evidence.
-Every original premise and conclusion is retained, up to unused proof-binder alpha-renaming.
+These targets are not verbatim types of the concrete theorems: some omit the concrete
+`hstock : sp.committeeSize = sp.n` premise. Those targets therefore require a stronger result;
+the stock-sized theorem alone does not discharge them at an arbitrary committee size.
 
 This leaf has an isolated concrete bridge proof closure, not a vocabulary-only closure.
 `Kernel.Boundaries` supplies `FrameWindow`, `ProposalGap`, `DrainOutputs`, `NoRestartUpTo`,
