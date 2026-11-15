@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Candidate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 
 public section
@@ -31,19 +32,6 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-
-/-- An attestation names the entry of its entry state. -/
-private theorem createAtt_T {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : FG.ChainState n}
-    {a : FG.Att n} (h : Λ.createAtt v σe = some (a, Λ')) : a.T = σe.Th := by
-  unfold FG.Record.createAtt at h
-  rcases hp : Λ.heightPair σe.h σe.Th with _ | ⟨h', T, τ⟩
-  · rw [hp] at h; cases h
-  · rw [hp] at h
-    dsimp only at h
-    split_ifs at h
-    obtain ⟨rfl, -⟩ := Prod.mk.inj (Option.some.inj h)
-    unfold FG.Record.heightPair at hp
-    split_ifs at hp <;> cases hp <;> rfl
 
 /-- **(SRC)**: an FG source at a cut `k` of a node honest then is compatible with `B` when every
 lock stored at `k` names a held block compatible with `B`. -/

@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameSourceGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
@@ -122,20 +123,6 @@ theorem honest_row_signed_before {ini} (hrun : GoldilocksRun proposer dg H tr in
       hrun.att_unforgeable y hy m a (Or.inr ⟨X, ⟨true, projFG_callAt.1 hA⟩, ha⟩) hav⟩
 
 /-! ### Honest sources -/
-
-/-- The target of an attestation that `create_attestation` signs is the entry of its entry
-state. (As `Persist/Attest`'s `createAtt_T`.) -/
-private theorem createAtt_T {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : FG.ChainState n}
-    {a : FG.Att n} (h : Λ.createAtt v σe = some (a, Λ')) : a.T = σe.Th := by
-  unfold FG.Record.createAtt at h
-  rcases hp : Λ.heightPair σe.h σe.Th with _ | ⟨h', T, τ⟩
-  · rw [hp] at h; cases h
-  · rw [hp] at h
-    dsimp only at h
-    split_ifs at h
-    obtain ⟨rfl, -⟩ := Prod.mk.inj (Option.some.inj h)
-    unfold FG.Record.heightPair at hp
-    split_ifs at hp <;> cases hp <;> rfl
 
 /-- `D` is an honest source naming the entry `T`: a block of an honest node's tree whose state
 has the entry `T`. -/

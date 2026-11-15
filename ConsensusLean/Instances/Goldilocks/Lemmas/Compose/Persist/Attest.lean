@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Source
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -21,25 +22,6 @@ open SA (SAParams ReplayOrder goldilocksSA Vote Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
   {H : Set (Fin sp.n)} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {proposer : Nat → Fin sp.n}
-
-/-! ### The attestation's target -/
-
-/-- The target of an attestation that `create_attestation` signs is the entry of its entry
-state. -/
-theorem createAtt_T {Λ : FG.Record} {v : Fin sp.n} {σe : FG.ChainState sp.n} {a : FG.Att sp.n}
-    {Λ' : FG.Record} (h : Λ.createAtt v σe = some (a, Λ')) : a.T = σe.Th := by
-  unfold FG.Record.createAtt at h
-  cases hp : Λ.heightPair σe.h σe.Th with
-  | none => rw [hp] at h; cases h
-  | some p =>
-    obtain ⟨h', T, τ⟩ := p
-    rw [hp] at h
-    dsimp only at h
-    split_ifs at h
-    obtain ⟨rfl, -⟩ := Prod.mk.inj (Option.some.inj h)
-    unfold FG.Record.heightPair at hp
-    split_ifs at hp <;> simp only [Option.some.injEq, Prod.mk.injEq] at hp <;>
-      exact hp.2.1.symm
 
 /-- An honest signing is at a public time (it is a cut of a tick, C0.5 (c)). -/
 theorem sign_public (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}

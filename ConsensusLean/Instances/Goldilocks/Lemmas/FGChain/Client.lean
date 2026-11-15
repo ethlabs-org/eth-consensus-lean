@@ -215,4 +215,24 @@ theorem client_safety (gp : FGParams) : ClientSafety gp := by
 
 end Consensus.Goldilocks.FG
 
+namespace Consensus.Goldilocks.Compose
+
+/-- A signed attestation targets the entry of its entry state. -/
+theorem createAtt_T {n : Nat} {Λ : FG.Record} {v : Fin n} {σe : FG.ChainState n} {a : FG.Att n}
+    {Λ' : FG.Record} (h : Λ.createAtt v σe = some (a, Λ')) : a.T = σe.Th := by
+  unfold FG.Record.createAtt at h
+  cases hp : Λ.heightPair σe.h σe.Th with
+  | none => rw [hp] at h; cases h
+  | some p =>
+    obtain ⟨h', T, τ⟩ := p
+    rw [hp] at h
+    dsimp only at h
+    split_ifs at h
+    obtain ⟨rfl, -⟩ := Prod.mk.inj (Option.some.inj h)
+    unfold FG.Record.heightPair at hp
+    split_ifs at hp <;> simp only [Option.some.injEq, Prod.mk.injEq] at hp <;>
+      exact hp.2.1.symm
+
+end Consensus.Goldilocks.Compose
+
 end

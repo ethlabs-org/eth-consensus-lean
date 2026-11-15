@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.P
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 import ConsensusLean.Lemmas.Tactic.Linarith
 import Mathlib.Tactic.Ring
 
@@ -88,21 +89,6 @@ private theorem pre_reachable {ac : ACTrace A} {U : Set A.Blk}
   · refine ⟨ℓ'.frame, ac.time j, ?_, hr.time_mono hj.le, hok⟩
     rw [no_call_state (Nat.succ_le_of_lt hj) hn, Trace.state_succ_of_call _ hc']
     exact reach j ℓ' hc'
-
-private theorem createAtt_T {Λ : FG.Record} {v : Fin P.n} {σe : FG.ChainState P.n}
-    {a : FG.Att P.n} {Λ' : FG.Record} (h : Λ.createAtt v σe = some (a, Λ')) : a.T = σe.Th := by
-  unfold FG.Record.createAtt at h
-  cases hp : Λ.heightPair σe.h σe.Th with
-  | none => rw [hp] at h; cases h
-  | some p =>
-    obtain ⟨h', T, τ⟩ := p
-    rw [hp] at h
-    dsimp only at h
-    split_ifs at h
-    obtain ⟨rfl, -⟩ := Prod.mk.inj (Option.some.inj h)
-    unfold FG.Record.heightPair at hp
-    split_ifs at hp <;> simp only [Option.some.injEq, Prod.mk.injEq] at hp <;>
-      exact hp.2.1.symm
 
 private theorem attest_not_excluded (hq : A.Requirements)
     (hr : Node.LocalRun proposer dg H sg tr) (hnc : Compose.NoCollRun dg tr)

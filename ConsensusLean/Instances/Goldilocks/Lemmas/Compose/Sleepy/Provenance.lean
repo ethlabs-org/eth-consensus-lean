@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Locks
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
@@ -496,23 +497,6 @@ theorem toFG_candidate {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.
     split_ifs at h
     cases h
     exact (SA.deepest_mem hC').1
-
-/-- An attestation names the entry of its entry state. -/
-private theorem createAtt_T {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : FG.ChainState n}
-    {a : FG.Att n} (h : Λ.createAtt v σe = some (a, Λ')) : a.T = σe.Th := by
-  have hT : ∀ hc T τ, Λ.heightPair σe.h σe.Th = some (hc, T, τ) → T = σe.Th := by
-    intro hc T τ hp
-    unfold FG.Record.heightPair at hp
-    split_ifs at hp <;> simp only [Option.some.injEq, Prod.mk.injEq] at hp
-    all_goals exact hp.2.1.symm
-  unfold FG.Record.createAtt at h
-  rcases hp : Λ.heightPair σe.h σe.Th with _ | ⟨hc, T, τ⟩
-  · simp [hp] at h
-  · simp only [hp] at h
-    split_ifs at h
-    simp only [Option.some.injEq, Prod.mk.injEq] at h
-    rw [← h.1]
-    exact hT _ _ _ hp
 
 /-! ### The justified and finalized blocks of a chain have a quorum of attestations -/
 
