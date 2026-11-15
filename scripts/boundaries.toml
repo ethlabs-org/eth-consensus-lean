@@ -138,7 +138,8 @@ HealingLeavesCut traversal and controls. Exact source edges only"""
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges"]
+        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges",
+        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge"]
 to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention",
@@ -180,7 +181,8 @@ Healing.M1.RiseWindow holds the store-level floor and rise-round bound, for leaf
 the store-level entry at a height and the honest attestation on a left entry, for leaf 13. HealingRounds, the leaves
 over a healing supplier, imports HealingLeaves, and the same cut guard checks its constants. HealingEdges, the
 generic assembly edges, imports HealingLeaves and HealingRounds, and the same cut guard checks its
-constants.
+constants. GoldilocksBridge, the concrete bridge leaf, imports HealingLeaves, HealingRounds and HealingEdges for
+the truncation transport and leaves 12 to 14 in its proved bridges; it is a Goldilocks module, outside the cut guard.
 Leaf paths only"""
 
 [[exception]]

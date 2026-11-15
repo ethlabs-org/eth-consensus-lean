@@ -7,6 +7,9 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
 
 public section
 
@@ -15,6 +18,12 @@ public section
 The shared run interface supplies the canonical committee start and its run laws. The remaining
 unproved Prop contracts give Goldilocks-side targets and connect them
 to the generic contracts by conditional implications; they supply no healing evidence.
+The high-row, no-contest and historical-entry bridges are proved from the proved generic leaves
+for every supplier (`high_row_source_at_of_healing`, `no_high_contest_at_of_healing`, and
+`ACHealing.origins_comparable` with `high_entry_eq_at_from`). The finite reset record bounds
+restarts only up to its horizon, so the last two use the generic premises on the honest sets
+truncated after it (`premises_truncH`, `ACRun.run_truncH`); the historical-entry one compares
+only the two origins there and keeps its arbitrary observation times.
 These targets use committee-indexed starts, positive matching committee sizes, and membership
 facts under collision freedom. Population FG fault bounds remain population bounds; committee
 fault bounds are separate. The concrete stock proofs need in-place committee generalisation.
@@ -450,28 +459,78 @@ def exists_reset_of_drain_rounds_awake_at_bridge : Prop :=
       ∀ {proposer dg H tr}, exists_reset_of_drain_rounds_awake_at_goldilocks (sp := sp) (ro := ro)
         (proposer := proposer) (dg := dg) (H := H) (tr := tr)
 
-/-- UNPROVED high-row implication, Outcome/RowSource.lean:107. -/
-def high_row_source_at_bridge : Prop :=
-  ∀ O : ACHealing (goldilocksNode sp ro) (fun v => v.val) (goldilocksRunInterface sp ro),
-    GoldilocksHealingData sp ro O →
-    high_row_source_at (goldilocksNode sp ro) (fun v => v.val) O →
-      ∀ {proposer dg tr H}, high_row_source_at_goldilocks (sp := sp) (ro := ro)
-        (proposer := proposer) (dg := dg) (tr := tr) (H := H)
+/-- The finite reset record on the honest sets truncated after its horizon `b`: `c_z ≤ b` (the
+snapshot cut is by `b`), the interface run (`ACRun.run_truncH`), the bundled premises with
+restarts bounded up to `b` (`premises_truncH`; slot spacing from the four-delay grid), and the
+reset (`isReset_truncH_iff`). -/
+private theorem resetPremisesUpTo_truncH {g ΔF a b : Time} {cm : Time → Finset (Fin sp.n)}
+    {βK : ℚ} (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) :
+    cutZ sp.toParams g ≤ b ∧
+      (goldilocksRunInterface sp ro).Run cm proposer dg (truncH H b) tr ∧
+      Premises tr (truncH H b) cm βK proposer dg (fun v => v.val) g ΔF b ∧
+      IsReset tr (truncH H b) g a := by
+  obtain ⟨j, hj, hjb⟩ := hp.snapshot
+  have hcz : cutZ sp.toParams g ≤ b := hj.2.le.trans hjb
+  refine ⟨hcz, (goldilocksRunInterface sp ro).run_truncH
+    ⟨hp.run, hp.committee_pos, hp.committeeFacts.hsize, fun _ => hp.committeeFacts⟩ b,
+    premises_truncH hp.committeeFaults hp.noColl
+      ⟨hp.sync.deltaF, hp.sync.message, hp.sync.block, hp.sync.relay, hp.sync.signedRow⟩
+      hp.awake hp.faults hp.catchUp hp.noRestart hp.timeoutDelay
+      (slotLen_of_grid fun s => by rw [sp.slotTime_eq]; ring) hp.snapshot
+      hp.nonempty,
+    (isReset_truncH_iff hcz hp.reset_le).mpr hp.reset⟩
 
-/-- UNPROVED no-contest implication, Outcome/Contest.lean:41; committee-aware reset record. -/
-def no_high_contest_at_bridge : Prop :=
-  ∀ O : ACHealing (goldilocksNode sp ro) (fun v => v.val) (goldilocksRunInterface sp ro),
-    no_high_contest_at (goldilocksNode sp ro) (fun v => v.val) O →
-      ∀ {proposer dg H tr}, no_high_contest_at_goldilocks (sp := sp) (ro := ro)
-        (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+/-- High-row implication for the conditional target `high_row_source_at_goldilocks`, by leaf 12
+(`high_row_source_at_of_healing`). The target already takes the bundled premises; the supplier's
+origin is the joined stored fast lock (`GoldilocksHealingData`). -/
+theorem high_row_source_at_bridge
+    (O : ACHealing (goldilocksNode sp ro) (fun v => v.val) (goldilocksRunInterface sp ro))
+    (hD : GoldilocksHealingData sp ro O) :
+    ∀ {proposer dg tr H}, high_row_source_at_goldilocks (sp := sp) (ro := ro)
+      (proposer := proposer) (dg := dg) (tr := tr) (H := H) := by
+  intro proposer dg tr H cm βK g ΔF a b hβ hrun hp hr hab v d att hv hdb hs hh
+  obtain ⟨-, -, -, -, hOrig⟩ := hD
+  obtain ⟨r, hrd, l, Og, ⟨hx, hOr, hOh⟩, hE⟩ :=
+    high_row_source_at_of_healing O hβ hrun hp hr hab hv hdb hs hh
+  rw [hOrig] at hOr
+  exact ⟨r, hrd, l, Og, ⟨hx, hOr.1, hOr.2, hOh⟩, hE⟩
 
-/-- UNPROVED historical-entry implication, RowService.lean:235.
-Arbitrary observation times are retained. -/
-def high_entry_eq_at_bridge : Prop :=
-  ∀ O : ACHealing (goldilocksNode sp ro) (fun v => v.val) (goldilocksRunInterface sp ro),
-    GoldilocksHealingData sp ro O →
-    high_entry_eq_at (goldilocksNode sp ro) (fun v => v.val) O →
-      ∀ {dg H tr proposer}, high_entry_eq_at_goldilocks (sp := sp) (ro := ro)
-        (dg := dg) (H := H) (tr := tr) (proposer := proposer)
+/-- No-contest implication, `Outcome.no_high_contest_at`; committee-aware reset record. The reset
+record bounds restarts only up to its horizon `b`, so the no-contest leaf
+(`no_high_contest_at_of_healing`) applies on the honest sets truncated after `b`
+(`resetPremisesUpTo_truncH`), where the store reader at `time i ≤ b` is honest and `H_z` is
+unchanged. -/
+theorem no_high_contest_at_bridge
+    (O : ACHealing (goldilocksNode sp ro) (fun v => v.val) (goldilocksRunInterface sp ro)) :
+    ∀ {proposer dg H tr}, no_high_contest_at_goldilocks (sp := sp) (ro := ro)
+      (proposer := proposer) (dg := dg) (H := H) (tr := tr) := by
+  intro proposer dg H tr g ΔF a b cm βK hp p i hpH hib
+  obtain ⟨hcz, hrun, hP, hres⟩ := resetPremisesUpTo_truncH hp
+  have h := no_high_contest_at_of_healing O hp.beta_le hrun hP hres hp.reset_le (p := p)
+    ⟨hpH, hib⟩ hib
+  rwa [HZ_truncH hcz] at h
+
+/-- Historical-entry implication, `ResetPremisesUpTo.high_entry_eq_at`. Arbitrary observation times
+are retained: only the two origins, whose cuts are `≤ b`, are compared on the honest sets truncated
+after `b` (`ACHealing.origins_comparable`, through `resetPremisesUpTo_truncH`); their compatibility
+over the truncated honest blocks is compatibility over `H`'s, and `high_entry_eq_at_from` applies on
+the original run with the original observations and ancestry. -/
+theorem high_entry_eq_at_bridge
+    (O : ACHealing (goldilocksNode sp ro) (fun v => v.val) (goldilocksRunInterface sp ro))
+    (hD : GoldilocksHealingData sp ro O) :
+    ∀ {dg H tr proposer}, high_entry_eq_at_goldilocks (sp := sp) (ro := ro)
+      (dg := dg) (H := H) (tr := tr) (proposer := proposer) := by
+  intro dg H tr proposer g ΔF a b cm βK hp x x' i j i' j' B B' Z₁ Z₂ ho hib ho' hi'b h₁ h₂
+    y₁ y₂ m₁ m₂ t₁ t₂ ht₁ hle₁ hy₁ ht₂ hle₂ hy₂ hZ₁ hZ₂ hh hT₁ hT₂
+  obtain ⟨-, -, -, -, hOrig⟩ := hD
+  obtain ⟨hcz, hrun, hP, hres⟩ := resetPremisesUpTo_truncH hp
+  have hc := O.origins_comparable hp.beta_le hrun hP hres hp.reset_le
+    ⟨ho.1, max_le hcz hib⟩ (by rw [hOrig]; exact ⟨ho.2.1, ho.2.2.1⟩) hib
+    (by rw [HZ_truncH hcz]; exact ho.2.2.2)
+    ⟨ho'.1, max_le hcz hi'b⟩ (by rw [hOrig]; exact ⟨ho'.2.1, ho'.2.2.1⟩) hi'b
+    (by rw [HZ_truncH hcz]; exact ho'.2.2.2)
+  have hsub := honestBlocksAt_truncH_subset (tr := tr) (H := H) b
+  exact high_entry_eq_at_from hp.run.toLocalRun hp.noColl (hc.imp (Anc.mono hsub) (Anc.mono hsub))
+    h₁ h₂ ht₁ hle₁ hy₁ ht₂ hle₂ hy₂ hZ₁ hZ₂ hh hT₁ hT₂
 
 end Consensus.Goldilocks.Generic
