@@ -134,7 +134,8 @@ to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Deadline",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalCrosses"]
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalCrosses",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RecordsCore"]
 reason = """the generic healing leaves over any NodeAC use these AC-generic run facts; their closure reaches
 Lemmas.AC (Compose.Reach) and some of these modules also hold SA lemmas, so the cut guard
 ConsensusLeanTest.Goldilocks.Generic.HealingLeavesCut checks the theorems' constants. Compose.Run.Deadline: the
@@ -142,7 +143,8 @@ RunTrace definitions live in Milestones.Spec.Run, which no Common or FG lemma la
 lemmas sit in Compose.Run (Lemmas/Compose/Run/Deadline.lean); the module holds nothing else. Healing.ProposalCrosses
 is the single edge to the static family generalised in place (ConsumeBase, ConsumeCrossing, ProposalJustifies,
 ProposalJustifiesSigned, ProposalCrosses); it grows the closure of HealingLeaves, itself included, from 275 to 283
-modules (Compose.Run.Deadline is already in it, through the frame-window modules). Leaf paths only"""
+modules (Compose.Run.Deadline is already in it, through the frame-window modules). Healing.Retention.RecordsCore
+holds the client-record provenance at any start, for the reset leaves. Leaf paths only"""
 
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge"]

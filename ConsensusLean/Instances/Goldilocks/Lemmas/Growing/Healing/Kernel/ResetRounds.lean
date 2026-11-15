@@ -147,77 +147,8 @@ theorem reset_of_high_source_at
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Option (FG.Att sp.n)}
     (hc : tr.CallAt y k (.fg (.attest C s)))
     (hh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ C.root).h) :
-    ∃ a, IsReset tr H g a ∧ a ≤ tr.time k := by
-  classical
-  have hy := hrun.antitone (le_max_right _ _) hyz
-  have hl := hrun.upTo (hrun.time_nonneg k)
-  have hst := Trace.upTo_state tr y (i := k) (fun q hq => hrun.time_mono hq.le)
-  have hr := fg_reachable_at hrun (hrun.time_nonneg k) (fun q hq => hrun.time_mono hq.le) hy
-  have he : ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).h =
-      ((tr.state y k).fg.σ C.root).h := by
-    rcases hC : (tr.state y k).fg.blocks C.root with _ | X
-    · rw [Store.σ_of_blocks_none hr hC]
-      exact congrArg FG.ChainState.h (Store.σ_genesis hr)
-    · have hXr := Store.Reachable.blocks_root hr hC
-      have hX : X ∈ (tr.state y k).fg.tree := by
-        change (tr.state y k).fg.blocks X.root = some X
-        rw [hXr]; exact hC
-      obtain ⟨⟨E, _, hEr, _, hEh, _⟩, _⟩ := Store.entry_state_of_source _ _ _ _ hr X hX
-      rw [← hXr, ← hEr]
-      exact hEh
-  by_cases hprev : ∃ j < k, ∃ att, tr.SignAt y j att ∧ HZ tr H g + 1 ≤ att.h
-  · obtain ⟨j, hj, att, hs, hh⟩ := hprev
-    have hjt := hrun.time_mono hj.le
-    have hjz := max_le_max (le_refl (cutZ sp.toParams g)) hjt
-    have hqj : (H (max (cutZ sp.toParams g) (tr.time j)))ᶜ.ncard < sp.toParams.fg.q := by
-      exact lt_of_le_of_lt (Set.ncard_le_ncard (Set.compl_subset_compl.mpr
-        (hrun.antitone hjz)) (Set.toFinite _)) hq
-    obtain ⟨a, ha, haj⟩ := reset_of_height_advance_at hrun hqj (hrun.antitone hjz hyz) hs hh
-    exact ⟨a, ha, haj.trans hjt⟩
-  have hlock : (tr.state y k).record.lock ((tr.state y k).fg.σ C.root).h = none := by
-    by_contra hn
-    obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.1 hn
-    obtain ⟨j, hj, att, hs, hfin⟩ :=
-      (Healing.client_record_origin_of_run hl hy _ r k).2 (by rwa [hst])
-    have hw := (Healing.signAt_wellFormed hl hy hs).2
-      (((tr.state y k).fg.σ C.root).h, r) (by simp [hfin])
-    exact hprev ⟨j, hj, att, ((RunTrace.upTo_signAt tr).mp hs).2, by omega⟩
-  have hsent : ∀ b ∈ (tr.state y k).record.sent,
-      b.1 ≠ ((tr.state y k).fg.σ C.root).h := by
-    intro b hb hbh
-    obtain ⟨j, hj, att, hs, heq⟩ := Healing.sent_origin hl hy k (by rwa [hst])
-    have hah : att.h = b.1 := congrArg Prod.fst heq
-    exact hprev ⟨j, hj, att, ((RunTrace.upTo_signAt tr).mp hs).2, by omega⟩
-  have hany (τ : Bool) : (tr.state y k).record.sent.any (fun b =>
-      b.1 = ((tr.state y k).fg.σ C.root).h ∧ (!τ ∨ b.2.1 =
-        ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th)) = false := by
-    apply List.any_eq_false.2
-    intro b hb
-    simp [hsent b hb]
-  cases s with
-  | some att =>
-    have hcl := (hrun.cutLaw y k _ hc hy).1
-    apply reset_of_height_advance_at hrun hq hyz ⟨C, hc⟩
-    rw [(Store.createAtt_eq hcl).1, he]
-    exact hh
-  | none =>
-    have hcl := (hrun.cutLaw y k _ hc hy).1
-    exfalso
-    change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
-      ((tr.state y k).fg.σ C.root).Th) = none at hcl
-    have hτ : ∃ τ, (tr.state y k).record.heightPair ((tr.state y k).fg.σ C.root).h
-        ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th =
-        some (((tr.state y k).fg.σ C.root).h,
-          ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th, τ) := by
-      unfold FG.Record.heightPair
-      simp only [hlock, ne_eq, not_true_eq_false, false_and, ↓reduceIte]
-      split_ifs <;> exact ⟨_, rfl⟩
-    obtain ⟨τ, hτ⟩ := hτ
-    unfold FG.Record.createAtt at hcl
-    rw [he, hτ] at hcl
-    dsimp only at hcl
-    rw [hany τ] at hcl
-    simp only [Bool.false_eq_true, ↓reduceIte, reduceCtorEq] at hcl
+    ∃ a, IsReset tr H g a ∧ a ≤ tr.time k :=
+  Generic.reset_of_high_source_at_from hrun.toLocalRun hyz hq hc hh
 
 /-- The adjacent client call of a high report, by a reporter honest at it and at `c_z`, supplies
 the reset, including suppression. -/

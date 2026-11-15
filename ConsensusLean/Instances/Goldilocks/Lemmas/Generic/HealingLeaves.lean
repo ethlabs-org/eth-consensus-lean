@@ -23,6 +23,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Deadline
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalCrosses
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RecordsCore
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -58,6 +59,10 @@ attestation above it would have been signed before the observation.
 Leaf 1 (`reset_of_height_advance_at_from`): a signing above `HZ` by a signer honest at it and at
 `c_z` gives a reset no later; an honest attestation at `HZ + 1` below it was signed first, and the
 earliest such signing is the reset.
+
+Leaf 6c (`reset_of_high_source_at_from`): a high `fg_attest` source of a caller honest at it and
+at `c_z` forces a reset no later; with no earlier high signing, the client's record has no lock or
+sent content at that height, so the call signs and leaf 1 applies.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -188,6 +193,94 @@ theorem reset_of_height_advance_at_from {P : Params} {A : NodeAC P}
       intro v i c hv hc hch
       exact hrun.time_mono (Nat.find_min' hex ⟨v, c, hv, hc, hch⟩)⟩
   exact ⟨_, hR, (hR.2 z j att hz hs hh).trans hjk⟩
+
+/-! ## Leaf 6c -/
+
+/-- A high FG source forces a reset, including when its client suppresses signing. -/
+theorem reset_of_high_source_at_from {P : Params} {A : NodeAC P}
+    {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
+    {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+    {ini : Fin P.n → A.State} {g : Time} {y : Fin P.n} {k : Nat} {C : A.Blk}
+    {s : Option (FG.Att P.n)}
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hyz : y ∈ H (max (Healing.cutZ P g) (tr.time k)))
+    (hq : (H (max (Healing.cutZ P g) (tr.time k)))ᶜ.ncard < P.fg.q)
+    (hc : tr.CallAt y k (.fg (.attest C s)))
+    (hh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y k).fg.σ C.root).h) :
+    ∃ a, Healing.Growing.IsReset tr H g a ∧ a ≤ tr.time k := by
+  classical
+  have hy := hrun.antitone (le_max_right _ _) hyz
+  have hl := hrun.upTo (hrun.time_nonneg k)
+  have hst := Trace.upTo_state tr y (i := k) (fun q hq => hrun.time_mono hq.le)
+  have hr := Compose.fg_reachable hl hy k
+  rw [hst] at hr
+  have he : ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).h =
+      ((tr.state y k).fg.σ C.root).h := by
+    rcases hC : (tr.state y k).fg.blocks C.root with _ | X
+    · rw [Healing.Store.σ_of_blocks_none hr hC]
+      exact congrArg FG.ChainState.h (Healing.Store.σ_genesis hr)
+    · have hXr := Store.Reachable.blocks_root hr hC
+      have hX : X ∈ (tr.state y k).fg.tree := by
+        change (tr.state y k).fg.blocks X.root = some X
+        rw [hXr]; exact hC
+      obtain ⟨⟨E, _, hEr, _, hEh, _⟩, _⟩ := Store.entry_state_of_source _ _ _ _ hr X hX
+      rw [← hXr, ← hEr]
+      exact hEh
+  by_cases hprev : ∃ j < k, ∃ att, tr.SignAt y j att ∧
+      Healing.Growing.HZ tr H g + 1 ≤ att.h
+  · obtain ⟨j, hj, att, hs, hh⟩ := hprev
+    have hjt := hrun.time_mono hj.le
+    have hjz := max_le_max (le_refl (Healing.cutZ P g)) hjt
+    have hqj : (H (max (Healing.cutZ P g) (tr.time j)))ᶜ.ncard < P.fg.q := by
+      exact lt_of_le_of_lt (Set.ncard_le_ncard (Set.compl_subset_compl.mpr
+        (hrun.antitone hjz)) (Set.toFinite _)) hq
+    obtain ⟨a, ha, haj⟩ := reset_of_height_advance_at_from hrun hqj
+      (hrun.antitone hjz hyz) hs hh
+    exact ⟨a, ha, haj.trans hjt⟩
+  have hlock : (tr.state y k).record.lock ((tr.state y k).fg.σ C.root).h = none := by
+    by_contra hn
+    obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.1 hn
+    obtain ⟨j, hj, att, hs, hfin⟩ :=
+      (Healing.client_record_origin_from hl hy _ r k).2 (by rwa [hst])
+    have hw := (Healing.signAt_wellFormed_from hl hy hs).2
+      (((tr.state y k).fg.σ C.root).h, r) (by simp [hfin])
+    exact hprev ⟨j, hj, att, ((RunTrace.upTo_signAt tr).mp hs).2, by omega⟩
+  have hsent : ∀ b ∈ (tr.state y k).record.sent,
+      b.1 ≠ ((tr.state y k).fg.σ C.root).h := by
+    intro b hb hbh
+    obtain ⟨j, hj, att, hs, heq⟩ := Healing.sent_origin_from hl hy k (by rwa [hst])
+    have hah : att.h = b.1 := congrArg Prod.fst heq
+    exact hprev ⟨j, hj, att, ((RunTrace.upTo_signAt tr).mp hs).2, by omega⟩
+  have hany (τ : Bool) : (tr.state y k).record.sent.any (fun b =>
+      b.1 = ((tr.state y k).fg.σ C.root).h ∧ (!τ ∨ b.2.1 =
+        ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th)) = false := by
+    apply List.any_eq_false.2
+    intro b hb
+    simp [hsent b hb]
+  cases s with
+  | some att =>
+    have hcl := (hrun.cutLaw y k _ hc hy).1
+    apply reset_of_height_advance_at_from hrun hq hyz ⟨C, hc⟩
+    rw [(Healing.Store.createAtt_eq hcl).1, he]
+    exact hh
+  | none =>
+    have hcl := (hrun.cutLaw y k _ hc hy).1
+    exfalso
+    change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
+      ((tr.state y k).fg.σ C.root).Th) = none at hcl
+    have hτ : ∃ τ, (tr.state y k).record.heightPair ((tr.state y k).fg.σ C.root).h
+        ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th =
+        some (((tr.state y k).fg.σ C.root).h,
+          ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th, τ) := by
+      unfold FG.Record.heightPair
+      simp only [hlock, ne_eq, not_true_eq_false, false_and, ↓reduceIte]
+      split_ifs <;> exact ⟨_, rfl⟩
+    obtain ⟨τ, hτ⟩ := hτ
+    unfold FG.Record.createAtt at hcl
+    rw [he, hτ] at hcl
+    dsimp only at hcl
+    rw [hany τ] at hcl
+    simp only [Bool.false_eq_true, ↓reduceIte, reduceCtorEq] at hcl
 
 /-! ## Leaf 2, lower bound -/
 
