@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 
 public section
 
@@ -69,28 +70,8 @@ theorem hmax_le_of_noAdvance_at
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     (hq : (H (max (cutZ sp.toParams g) (tr.time i)))ᶜ.ncard < sp.toParams.fg.q)
     (hiT : tr.time i < T) :
-    (tr.state y i).fg.hmax ≤ HZ tr H g + 1 := by
-  have hr := hrun.upTo (hrun.time_nonneg i)
-  have hs : (tr.upTo (tr.time i)).state y i = tr.state y i :=
-    Trace.upTo_state tr y (fun _ hk => hrun.time_mono hk.le)
-  have hR := Compose.fg_reachable hr.toLocalRun hy i
-  obtain ⟨_, _, _, _, _, ⟨X, hX, hXh⟩, _⟩ := Store.cache_invariants _ _ _ _ hR
-  by_contra hlt
-  rw [← hs] at hlt
-  obtain ⟨Y, hYX, a, ha, haH, hah⟩ := Store.exists_honest_att_of_lt hR hq hX
-    (HZ tr H g + 1) (by omega) (by omega)
-  have hY : Y ∈ ((tr.upTo (tr.time i)).state y i).fg.tree := by
-    by_cases he : Y = X
-    · exact he ▸ hX
-    · exact (Anc.mem hYX he).1
-  rcases Healing.tree_accepted hr.toLocalRun hy hY with rfl | ⟨k, hki, hA⟩
-  · cases ha
-  obtain ⟨j, hjk, hj⟩ := hr.toLocalRun.att_unforgeable y hy k a
-    (Or.inr ⟨Y, ⟨true, hA⟩, ha⟩) (hrun.antitone (le_max_right _ _) haH)
-  have hjT : tr.time j < T := (hrun.time_mono (by omega)).trans_lt hiT
-  obtain ⟨hjt, hj⟩ := (RunTrace.upTo_signAt tr).mp hj
-  have := hna a.val j a (hrun.antitone (max_le_max le_rfl hjt) haH) hj hjT
-  omega
+    (tr.state y i).fg.hmax ≤ HZ tr H g + 1 :=
+  Generic.hmax_le_of_noAdvance_at_from hrun.toLocalRun hna hy hq hiT
 
 end Consensus.Goldilocks.Healing.Growing
 

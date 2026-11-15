@@ -50,6 +50,10 @@ Proposal membership and leaf 5, the round crossing (`proposal_mem_at_from`,
 `round_cross_at_from`): an honest proposal is held by its proposer after its cut, and delivered
 historical rows (`rows_delivered_service_at_from`, under the signed-row service clause) or higher
 reports raise the proposal one height above the crossed block.
+
+Leaf 2, upper bound (`hmax_le_of_noAdvance_at_from`): before any height advance by a signer
+honest at it and at `c_z`, an honest observer's `h_max` is at most `HZ + 1`; an honest
+attestation above it would have been signed before the observation.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -102,6 +106,41 @@ theorem held_atts_safe_at_from {P : Params} {A : NodeAC P} {proposer : Nat → F
   exact FG.client_safety P.fg a.val inputs hin
     a (hs k (by omega) a ⟨_, Compose.projFG_callAt.mpr hka'.choose_spec⟩)
     b (hs l (by omega) b ⟨_, Compose.projFG_callAt.mpr hlb'.choose_spec⟩) hab
+
+/-! ## Leaf 2, upper bound -/
+
+/-- Before any height advance, an honest observer's cached height is at most the snapshot
+height plus one, with the quorum budget charged at the later of the snapshot and observation. -/
+theorem hmax_le_of_noAdvance_at_from {P : Params} {A : NodeAC P}
+    {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
+    {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+    {ini : Fin P.n → A.State} {g T : Time} {y : Fin P.n} {i : Nat}
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hna : NoAdvance tr H g T) (hy : y ∈ H (tr.time i))
+    (hq : (H (max (Healing.cutZ P g) (tr.time i)))ᶜ.ncard < P.fg.q)
+    (hiT : tr.time i < T) :
+    (tr.state y i).fg.hmax ≤ Healing.Growing.HZ tr H g + 1 := by
+  have hr := hrun.upTo (hrun.time_nonneg i)
+  have hs : (tr.upTo (tr.time i)).state y i = tr.state y i :=
+    Trace.upTo_state tr y (fun _ hk => hrun.time_mono hk.le)
+  have hR := Compose.fg_reachable hr hy i
+  obtain ⟨_, _, _, _, _, ⟨X, hX, hXh⟩, _⟩ := Store.cache_invariants _ _ _ _ hR
+  by_contra hlt
+  rw [← hs] at hlt
+  obtain ⟨Y, hYX, a, ha, haH, hah⟩ := Healing.Store.exists_honest_att_of_lt hR hq hX
+    (Healing.Growing.HZ tr H g + 1) (by omega) (by omega)
+  have hY : Y ∈ ((tr.upTo (tr.time i)).state y i).fg.tree := by
+    by_cases he : Y = X
+    · exact he ▸ hX
+    · exact (Anc.mem hYX he).1
+  rcases Healing.tree_accepted hr hy hY with rfl | ⟨k, hki, hA⟩
+  · cases ha
+  obtain ⟨j, hjk, hj⟩ := hr.att_unforgeable y hy k a
+    (Or.inr ⟨Y, ⟨true, hA⟩, ha⟩) (hrun.antitone (le_max_right _ _) haH)
+  have hjT : tr.time j < T := (hrun.time_mono (by omega)).trans_lt hiT
+  obtain ⟨hjt, hj⟩ := (RunTrace.upTo_signAt tr).mp hj
+  have := hna a.val j a (hrun.antitone (max_le_max le_rfl hjt) haH) hj hjT
+  omega
 
 /-! ## Leaf 2, lower bound -/
 
