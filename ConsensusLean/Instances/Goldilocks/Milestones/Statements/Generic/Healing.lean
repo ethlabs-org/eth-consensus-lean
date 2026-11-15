@@ -201,8 +201,9 @@ def HighOrigin (O : ACHealing A sg runs) (tr : RunTrace A) (H : Time → Set (Fi
   x ∈ H (max (cutZ P g) (tr.time i)) ∧ O.Origin tr x i j B ∧
     HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h
 
-/-- UNPROVED leaf 12: strict source cut, original entry identities and ancestry.
-The reset premises are required by the abstract origin producer `report_origin`. -/
+/-- Leaf 12: strict source cut, original entry identities and ancestry.
+The reset premises are required by the abstract origin producer `report_origin`. Proved over any
+supplier by `high_row_source_at_of_healing` (Lemmas/Generic/HealingRounds). -/
 def high_row_source_at (O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time}
     {v : Fin P.n} {d : Nat} {att : FG.Att P.n},
