@@ -227,7 +227,8 @@ def no_high_contest_at (_O : ACHealing A sg runs) : Prop :=
     p ∈ H (tr.time i) → tr.time i ≤ b →
     ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax)
 
-/-- UNPROVED leaf 14: independently bounded historical readers, not event-only readers. -/
+/-- Leaf 14: independently bounded historical readers, not event-only readers. Proved over any
+supplier by `high_entry_eq_at_of_healing` (Lemmas/Generic/HealingRounds). -/
 def high_entry_eq_at (O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {x x' : Fin P.n} {i j i' j' : Nat}
     {B B' Z₁ Z₂ : A.Blk} {y₁ y₂ : Fin P.n} {m₁ m₂ : Nat} {t₁ t₂ : Time},

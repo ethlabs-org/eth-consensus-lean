@@ -50,6 +50,8 @@ Leaf 13 (`no_high_contest_at_of_healing`), over any `ACHealing`: in a contest at
 block. A held honest attestation on each (`Healing.honest_att_of_left`) was signed from a report
 (leaf 7) whose origin holds the entry (`origin_below_report`); `ACHealing.origins_comparable`
 makes the two origins compatible, and leaf 14 makes the entries equal, so `J` is below the chain.
+Leaf 14 (`high_entry_eq_at_of_healing`), over any `ACHealing`: the two high origins are compatible
+by `ACHealing.origins_comparable`, and `high_entry_eq_at_from` applies on the run.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -472,5 +474,23 @@ theorem no_high_contest_at_of_healing (O : ACHealing A sg runs) : no_high_contes
   exact hJC (heq ▸ hECC)
 
 end NoHighContest
+
+/-! ## Leaf 14 over a healing supplier -/
+
+section HighEntrySupplier
+
+variable {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n}
+
+/-- Leaf 14 over any healing supplier: the two high origins are compatible by
+`ACHealing.origins_comparable`, and `high_entry_eq_at_from` applies on the run. -/
+theorem high_entry_eq_at_of_healing {runs : ACRun A sg} (O : ACHealing A sg runs) :
+    high_entry_eq_at A sg O := by
+  intro cm proposer dg H tr βK g ΔF a b x x' i j i' j' B B' Z₁ Z₂ y₁ y₂ m₁ m₂ t₁ t₂ hβ hrun hP
+    hr hab ho hib ho' hi'b h₁ h₂ ht₁ hle₁ hy₁ ht₂ hle₂ hy₂ hZ₁ hZ₂ hh hT₁ hT₂
+  exact high_entry_eq_at_from (runs.run_local hrun) hP.noColl
+    (O.origins_comparable hβ hrun hP hr hab ho.1 ho.2.1 hib ho.2.2 ho'.1 ho'.2.1 hi'b ho'.2.2)
+    h₁ h₂ ht₁ hle₁ hy₁ ht₂ hle₂ hy₂ hZ₁ hZ₂ hh hT₁ hT₂
+
+end HighEntrySupplier
 
 end Consensus.Goldilocks.Generic
