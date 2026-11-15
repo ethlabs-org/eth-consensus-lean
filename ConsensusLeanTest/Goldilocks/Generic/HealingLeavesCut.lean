@@ -1,17 +1,20 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt
 
 public section
 
-/-! # Cut guard: the generic healing leaves use no Goldilocks AC
+/-! # Cut guard: the generic healing leaves and edges use no Goldilocks AC
 
-`Lemmas/Generic/HealingLeaves` and `Lemmas/Generic/HealingRounds` import AC-generic run modules by
-an exception (`scripts/boundaries.toml`) whose closure reaches `Lemmas.AC`, so the import
-boundaries do not keep Goldilocks content out of the leaves. This build-time check does: for every
-constant declared in the module `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves`,
-and separately in `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds` (theorems,
+`Lemmas/Generic/HealingLeaves`, `Lemmas/Generic/HealingRounds` and `Lemmas/Generic/HealingEdges`
+reach AC-generic run modules under an exception (`scripts/boundaries.toml`) whose closure reaches
+`Lemmas.AC`, so the import boundaries do not keep Goldilocks content out of the leaves and edges.
+This build-time check does: for every constant declared in the module
+`ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves`, and separately in
+`ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds` and
+`ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges` (theorems,
 definitions and auxiliary constants alike), it walks the constants of its type and value, and of
 the type and value of every constant reached,
 with the constructors and the inductive of every inductive, constructor and recursor reached, to a
@@ -123,7 +126,8 @@ run_meta do
   -- `SA.gbar g = max g 0` is in `SA` by placement only; the generic statements open it.
   let allowed := [``Consensus.Goldilocks.SA.gbar]
   for mod in [`ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves,
-      `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds] do
+      `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds,
+      `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges] do
     check mod allowed
       (`ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt,
         ``Consensus.Goldilocks.Healing.Growing.held_atts_safe_at)

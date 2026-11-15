@@ -148,7 +148,7 @@ variable {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n} {runs : ACRun A sg
 open Healing (cutZ)
 
 /-- The fault bound up to the horizon gives fewer than `q` faulty nodes there. -/
-private theorem faults_lt_q {H : Time → Set (Fin P.n)} {b : Time}
+theorem faults_lt_q {H : Time → Set (Fin P.n)} {b : Time}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) {t : Time} (ht : 0 ≤ t)
     (htb : t ≤ b) : (H t)ᶜ.ncard < P.fg.q := by
   have h3 := hf t ht htb

@@ -1,11 +1,20 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
 
 public section
 
-/-! # Open generic healing assembly edges
+/-! # Generic healing assembly edges
 
-All definitions below are UNPROVED implication contracts, not theorem evidence.
+The assembly edges over any node AC, from the generic healing leaves (`HealingLeaves` and
+`HealingRounds`).
+
+`reset_or_noAdvance` is proved: a high signing before `T` by a signer honest at it and at `c_z`
+gives a reset no later (leaf 1, `reset_of_height_advance_at_from`); without one, `NoAdvance` holds
+at `T`.
+
+The remaining definitions are UNPROVED implication contracts, not theorem evidence.
 Old-premise leaves remain primary; bundled-premise forms are conditional corollaries.
 -/
 
@@ -15,15 +24,36 @@ open SA (gbar)
 open Healing (cutZ)
 open Healing.Growing (HZ IsReset)
 
+section Proved
+
+variable {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
+
+/-- Reset or no advance: by a horizon of the bundled premises, either a reset happens by `T` or
+no signer honest at its signing and at `c_z` signs above `HZ` before `T`. A high signing gives
+the reset by leaf 1, with fewer than `q` faulty nodes at `max c_z t_k ≤ b` (`Premises.faults`,
+`Premises.snapshot`). -/
+theorem reset_or_noAdvance :
+    ∀ {cm βK tr H proposer dg g ΔF b T},
+      runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b → T ≤ b →
+      (∃ a, IsReset tr H g a ∧ a ≤ T) ∨ NoAdvance tr H g T := by
+  intro cm βK tr H proposer dg g ΔF b T hrun hP hTb
+  by_cases hadv : ∃ v k att, v ∈ H (max (cutZ P g) (tr.time k)) ∧ tr.SignAt v k att ∧
+      tr.time k < T ∧ HZ tr H g + 1 ≤ att.h
+  · obtain ⟨v, k, att, hv, hs, hk, hh⟩ := hadv
+    have hrl := runs.run_local hrun
+    obtain ⟨j, hj, hjb⟩ := hP.snapshot
+    have hmax : max (cutZ P g) (tr.time k) ≤ b := max_le (hj.2.le.trans hjb) (hk.le.trans hTb)
+    obtain ⟨a, ha, hak⟩ := reset_of_height_advance_at_from hrl
+      (faults_lt_q hP.faults ((hrl.time_nonneg k).trans (le_max_right _ _)) hmax) hv hs hh
+    exact Or.inl ⟨a, ha, hak.trans hk.le⟩
+  · refine Or.inr fun v k att hv hs hk => ?_
+    by_contra h
+    exact hadv ⟨v, k, att, hv, hs, hk, by omega⟩
+
+end Proved
+
 variable {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
 variable {runs : ACRun A sg}
-
-/-- UNPROVED reset-or-no-advance corollary of the high-signing leaf. -/
-def reset_or_noAdvance : Prop :=
-  reset_of_height_advance_at A sg runs →
-  ∀ {cm βK tr H proposer dg g ΔF b T},
-    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b → T ≤ b →
-    (∃ a, IsReset tr H g a ∧ a ≤ T) ∨ NoAdvance tr H g T
 
 /-- UNPROVED rise assembly from original leaves and the protocol warmth obligations. Proposal
 membership is no longer a premise: `proposal_mem_at_from` (`HealingLeaves`) proves it at any start,
@@ -49,7 +79,6 @@ def highCanonical (O : ACHealing A sg runs) : Prop :=
 
 /-- UNPROVED slot-budget reset assembly; it is not the old real-time endpoint. -/
 def exists_reset (O : ACHealing A sg runs) : Prop :=
-  reset_or_noAdvance A sg (runs := runs) →
   rounds_le_warm_proposal_at A sg O → rise_reset_rounds_at A sg O →
   ∀ {cm βK tr H proposer dg g ΔF b G s}, βK ≤ 1 / 2 →
     (∀ u, P.slotTime (u + 1) + 2 * P.Δ + ΔF ≤ P.slotTime (u + P.δt)) →
