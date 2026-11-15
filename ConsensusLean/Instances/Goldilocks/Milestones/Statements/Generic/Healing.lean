@@ -153,7 +153,8 @@ def report_kind_of_warm_at (_O : ACHealing A sg runs) : Prop :=
       ((tr.state y i).fg.hj = ((tr.state y i).fg.σ B.root).h ∧
         (tr.state y i).fg.Anc (tr.state y i).fg.J R)
 
-/-- UNPROVED leaf 10: a warm high proposal forces the next reset. -/
+/-- Leaf 10: a warm high proposal forces the next reset. Proved over any supplier by
+`reset_of_high_proposal_at_of_healing` (Lemmas/Generic/HealingRounds). -/
 def reset_of_high_proposal_at (O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time} {s₀ u N floor : Nat}
     {kindJ : Prop} {J B : A.Blk}

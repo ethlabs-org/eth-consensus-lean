@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.H
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
@@ -19,6 +20,11 @@ window floor. At a constant merged key `v ≥ 2HZ` the proposer's store has
 `HZ + 1 ≤ floor + r(v)` (`Healing.le_floor_add_riseRounds`); a report at the proposal's height
 above it is at or above the reader's floor, so above `h_j`, or at it with `J` below the report
 (`ACHealing.report_in_frame`).
+
+Leaf 10 (`reset_of_high_proposal_at_of_healing`), over any `ACHealing`: the leaf's premises are
+`Premises`, so `ACHealing.report_follow` gives a node honest at the horizon a report above a warm
+high proposal by the next slot's report deadline. The reader is honest at `c_z` and at the report,
+the report is at least as high as the proposal in its store, and leaf 6 gives the reset.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -107,5 +113,52 @@ theorem report_kind_of_warm_at_of_healing (O : ACHealing A sg runs) :
     · exact Or.inl (by omega)
 
 end WarmProposal
+
+/-! ## Leaf 10 -/
+
+section HighProposal
+
+variable {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
+
+open Healing (cutZ)
+
+/-- The fault bound up to the horizon gives fewer than `q` faulty nodes there. -/
+private theorem faults_lt_q {H : Time → Set (Fin P.n)} {b : Time}
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) {t : Time} (ht : 0 ≤ t)
+    (htb : t ≤ b) : (H t)ᶜ.ncard < P.fg.q := by
+  have h3 := hf t ht htb
+  have hn := P.hn
+  change _ < (2 * P.n + 2) / 3
+  omega
+
+/-- Leaf 10: a warm high honest proposal forces a reset by the next slot's report deadline. The
+leaf's premises are `Premises`; `ACHealing.report_follow` gives a report above the proposal by an
+observer honest at the horizon, which is honest at `c_z` and at the report, and the report is at
+least as high as the proposal in the reader's store; leaf 6 gives the reset. -/
+theorem reset_of_high_proposal_at_of_healing (O : ACHealing A sg runs) :
+    reset_of_high_proposal_at A sg O := by
+  intro cm proposer dg H tr βK g ΔF b s₀ u N floor kindJ J B z kB hβ hcom hframe hrun hnc hsvc
+    hawake hf hcatch hnr hsl htd hsnap hm hs₀ hwarm hN hmb hH hz hdes hB hBs hh
+  have hrl := runs.run_local hrun
+  have hΔ := P.hΔ
+  obtain ⟨y, hy⟩ := hH
+  have hP : Premises tr H cm βK proposer dg sg g ΔF b :=
+    ⟨hcom, hnc, hsvc, hawake, hf, hcatch, hnr, htd, hsl, hsnap, ⟨y, hy⟩⟩
+  have hu1N : P.slotTime (u + 1) ≤ P.slotTime N := P.slotTime_strictMono.monotone hN
+  obtain ⟨i, R, hyi, hR, -, hti, hBR, -⟩ := O.report_follow hβ hrun hP hframe hm hwarm hN hmb
+    ⟨hz, hdes, hB, hBs⟩ y (hrl.antitone (by linarith) hy)
+  have hzk : z ∈ H (tr.time kB) := hrl.antitone (by rw [hB.2.2, hBs]; linarith) hz
+  obtain ⟨-, hBRs, hσ⟩ :=
+    proposal_below_held_at hrun hnc hzk hB hyi hBR (O.report_in_frame hrun hyi hR).1
+  have hBR' := Healing.h_le_of_store_anc
+    (fg_reachable_at_from hrl (hrl.time_nonneg i) (fun q hq => hrl.time_mono hq.le) hyi) hBRs
+  rw [← hσ] at hBR'
+  obtain ⟨k, hk, hkb⟩ := hsnap
+  have hmaxb : max (cutZ P g) (tr.time i) ≤ b := max_le (hk.2.le.trans hkb) (by linarith)
+  obtain ⟨a, ha, hat⟩ := reset_of_high_report_at_from hrl (hrl.antitone hmaxb hy)
+    (faults_lt_q hf ((hrl.time_nonneg i).trans (le_max_right _ _)) hmaxb) hR (hh.trans hBR')
+  exact ⟨a, ha, hat.trans hti⟩
+
+end HighProposal
 
 end Consensus.Goldilocks.Generic
