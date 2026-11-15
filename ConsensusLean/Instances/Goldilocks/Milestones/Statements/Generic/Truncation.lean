@@ -5,7 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.H
 
 /-! # Generic finite-horizon healing contracts
 
-Every implication is UNPROVED. These types supply no theorem evidence.
+These types supply no theorem evidence. An implication whose docstring names a theorem is proved
+by it; the others are UNPROVED.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -36,7 +37,8 @@ structure DrainOutputs (O : ACHealing A sg runs) (tr : RunTrace A) (proposer : N
         tr.ProposesAt z kB B ∧ B.slot = u ∧
           HZ tr H g ≤ ((tr.state z (kB + 1)).fg.σ B.root).h + 1
 
-/-- UNPROVED old-premise rise contract, retaining the timeout and strict no-advance cutoff. -/
+/-- Old-premise rise contract, retaining the timeout and strict no-advance cutoff. Proved over any
+supplier by `rise_reset_rounds_at_of` (Lemmas/Generic/HealingEdges). -/
 def rise_reset_rounds_at (O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b T : Time}
     {s₀ N G floor : Nat} {kindJ : Prop} {J : A.Blk},
