@@ -116,6 +116,10 @@ def HealedFrom (tr : RunTrace A) (H : Time → Set (Fin P.n))
     HonestProposal tr H proposer s z k X → HonestProposal tr H proposer s' z' k' X' →
     Anc (tr.HonestBlocksAt H) X X'
 
+/-- Honesty truncated after a finite horizon. -/
+def truncH (H : Time → Set (Fin P.n)) (b : Time) : Time → Set (Fin P.n) :=
+  fun t => {y | y ∈ H t ∧ t ≤ b}
+
 /-- The AC's run predicate and committee start, shared by the assembly obligations. -/
 structure ACRun (A : NodeAC P) (sg : A.Msg → Fin P.n) where
   Run : (Time → Finset (Fin P.n)) → (Nat → Fin P.n) →
@@ -130,6 +134,9 @@ structure ACRun (A : NodeAC P) (sg : A.Msg → Fin P.n) where
   /-- The run supplies the genesis digest equation independently of a finite horizon. -/
   run_root : ∀ {cm proposer dg H tr}, Run cm proposer dg H tr →
     (P.genesisBlock A.genesisPayload).RootOk dg
+  /-- Removing honesty strictly after a horizon preserves the same run and committee start. -/
+  run_truncH : ∀ {cm proposer dg H tr}, Run cm proposer dg H tr →
+    ∀ b, Run cm proposer dg (truncH H b) tr
 
 /-- Canonical high entries, with historical honesty read at independently bounded cuts. -/
 structure HighCanonical

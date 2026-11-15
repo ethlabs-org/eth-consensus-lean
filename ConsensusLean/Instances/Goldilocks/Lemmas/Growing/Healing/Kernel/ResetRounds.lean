@@ -614,28 +614,20 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
 
 /-! ### Truncation after `b`
 
-The honest sets truncated after `b` keep every honesty read up to `b` and drop every later one, so
-a restart honest on them is at a time `≤ b`, where `NoRestartUpTo` bounds it. -/
+The honest sets truncated after `b` (`Generic.truncH`) keep every honesty read up to `b` and drop
+every later one, so a restart honest on them is at a time `≤ b`, where `NoRestartUpTo` bounds it.
+The run-independent facts are the generic ones (`Lemmas/Generic/HealingLeaves`). -/
 
-/-- The honest sets truncated after `b`: `y` is honest at `t ≤ b` as in `H`, and at no `t > b`. -/
-private def truncH (K : Time → Set (Fin sp.n)) (b : Time) : Time → Set (Fin sp.n) :=
-  fun t => {y | y ∈ K t ∧ t ≤ b}
+open Generic (truncH truncH_eq_of_le truncH_antitone honestBlocksAt_truncH_subset catchRun_truncH
+  HZ_truncH isReset_truncH_iff)
 
-private theorem truncH_eq_of_le {b t : Time} (ht : t ≤ b) : truncH H b t = H t :=
-  Set.ext fun _ => and_iff_left ht
-
-/-- **The truncation is antitone.** Membership at `t'` gives `t' ≤ b`, hence `t ≤ b` for every
-`t ≤ t'`, and honesty at `t` is the antitonicity of `H`. -/
-private theorem truncH_antitone (hH : Antitone H) (b : Time) : Antitone (truncH H b) := by
-  intro t t' htt' y hy
-  exact ⟨hH htt' hy.1, htt'.trans hy.2⟩
-
-/-- **The run laws transfer to the truncation.** Antitonicity is `truncH_antitone`. Every other
-law of `GoldilocksRun` reads honesty only in its hypotheses, and `truncH H b t ⊆ H t`, so each law
-for `H` is the law for `truncH H b` (with the honesty premises projected by `.1`). -/
-private theorem goldilocksRun_truncH
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (b : Time) :
-    Consensus.Goldilocks.Growing.GoldilocksRun proposer dg (truncH H b) tr where
+/-- **The run laws transfer to the truncation**, from any starts `ini`. Antitonicity is
+`Generic.truncH_antitone`. Every other law of `GoldilocksRun` reads honesty only in its hypotheses,
+and `truncH H b t ⊆ H t`, so each law for `H` is the law for `truncH H b` (with the honesty
+premises projected by `.1`). -/
+theorem goldilocksRun_truncH {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (b : Time) :
+    Consensus.Goldilocks.Growing.GoldilocksRun proposer dg (truncH H b) tr ini where
   vstart := hrun.vstart
   antitone := truncH_antitone hrun.antitone b
   init y hy := hrun.init y hy.1
@@ -662,10 +654,6 @@ private theorem goldilocksRun_truncH
   carried_vote_unforgeable y i B hy hB v hv hs :=
     hrun.carried_vote_unforgeable y i B hy.1 hB v hv hs.1
 
-private theorem honestBlocksAt_truncH_subset (b : Time) :
-    tr.HonestBlocksAt (truncH H b) ⊆ tr.HonestBlocksAt H :=
-  fun _ ⟨y, i, t, ht, hle, hy, hB⟩ => ⟨y, i, t, ht, hle, hy.1, hB⟩
-
 private theorem resetService_truncH {g ΔF b' : Time} (hs : ResetService tr H g ΔF b')
     (b : Time) : ResetService tr (truncH H b) g ΔF b' where
   deltaF := hs.deltaF
@@ -674,16 +662,6 @@ private theorem resetService_truncH {g ΔF b' : Time} (hs : ResetService tr H g 
   relay x i B hx hB hg y j hy hj hd hF :=
     hs.relay x i B hx.1 hB hg y j hy.1 hj hd (Anc.mono (honestBlocksAt_truncH_subset b) hF)
   signedRow x i att hx hsg y j hy := hs.signedRow x i att hx.1 hsg y j hy.1
-
-private theorem catchRun_truncH {g κ : Time} (hc : CatchRun tr H g κ) (b : Time) :
-    CatchRun tr (truncH H b) g κ :=
-  fun x i B hx hA hlt y j hy hfirst hF =>
-    hc x i B hx.1 hA hlt y j hy.1 hfirst (Anc.mono (honestBlocksAt_truncH_subset b) hF)
-
-/-- `H_z` is read at `c_z`, where the truncation is `H` itself. -/
-private theorem HZ_truncH {g b : Time} (hcz : cutZ sp.toParams g ≤ b) :
-    HZ tr (truncH H b) g = HZ tr H g := by
-  simp only [HZ, truncH_eq_of_le hcz]
 
 private theorem proposalGap_truncH {G s₀ N : Nat} {b : Time}
     (hgp : ProposalGap tr H proposer G s₀ N) (hN : sp.ts N + sp.Δ ≤ b) :
@@ -723,16 +701,6 @@ private theorem drainOutputs_truncH {g b : Time} {G Ld : Nat}
     have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
     refine ⟨u, hu, huL, z, kP, P, ⟨hz, by linarith⟩, hdes, hP, hPs, ?_⟩
     rwa [HZ_truncH hcz]
-
-private theorem isReset_of_truncH {g a b : Time} (hcz : cutZ sp.toParams g ≤ b)
-    (h : IsReset tr (truncH H b) g a) (hab : a ≤ b) : IsReset tr H g a := by
-  unfold IsReset at h ⊢
-  rw [HZ_truncH hcz] at h
-  obtain ⟨⟨y, k, att, hy, hs, hh, hk⟩, hmin⟩ := h
-  refine ⟨⟨y, k, att, hy.1, hs, hh, hk⟩, fun y' k' att' hy' hs' hh' => ?_⟩
-  by_cases hk' : tr.time k' ≤ b
-  · exact hmin y' k' att' ⟨hy', max_le hcz hk'⟩ hs' hh'
-  · exact hab.trans (lt_of_not_ge hk').le
 
 /-- **The reset bound from finite service**, reading restarts only up to `b`: the rounds of
 `exists_reset_of_drain_rounds_noRestartAfter_at` run on the honest sets truncated after `b`, where
@@ -776,7 +744,7 @@ theorem exists_reset_of_drain_rounds_awake_at
     (hH.mono fun _ hy => ⟨hy, le_rfl⟩) hδ hΔF hr hgr hG hcz hb
     (fun s₀ N hs₀ hN => proposalGap_truncH (hgp s₀ N hs₀ hN) (by linarith))
     (drainOutputs_truncH hdrain hczb) hstock
-  exact ⟨a, isReset_of_truncH hczb ha (hab.trans hb), hab⟩
+  exact ⟨a, (isReset_truncH_iff hczb (hab.trans hb)).mp ha, hab⟩
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

@@ -5,8 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.H
 
 /-! # Generic finite-horizon healing contracts
 
-These types supply no theorem evidence. An implication whose docstring names a theorem is proved
-by it; the others are UNPROVED.
+These types supply no theorem evidence. Each implication is proved over any healing supplier by
+the theorem its docstring names.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -80,7 +80,8 @@ def exists_reset_of_drain_rounds_noRestartAfter_at (O : ACHealing A sg runs) : P
       ProposalGap tr H proposer G s₀ N) → DrainOutputs A sg O tr proposer H g G Ld b →
     ∃ a, IsReset tr H g a ∧ a ≤ resetBoundRounds r P.Δ (2 * P.Δ) P.δt G Ld
 
-/-- UNPROVED finite-horizon endpoint; restarts are constrained only up to b. -/
+/-- Finite-horizon endpoint; restarts are constrained only up to b. Proved over any supplier by
+`exists_reset_of_drain_rounds_awake_at_of` (Lemmas/Generic/HealingEdges). -/
 def exists_reset_of_drain_rounds_awake_at (O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b r : Time} {G Ld : Nat},
     βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →

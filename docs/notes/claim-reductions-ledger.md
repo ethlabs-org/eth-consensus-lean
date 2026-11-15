@@ -236,6 +236,16 @@ OPEN obligations of the instance realization:
 | snapshot | actual FirstCutAfter cutZ witness within consuming deadline |
 | nonempty | actual honest population nonempty at consuming deadline |
 
+A source that bounds honest restarts only up to the horizon `b` (`NoRestartUpTo`)
+does not supply `noRestart` on `H`. It supplies the whole record on the honest sets
+truncated after `b`: `premises_truncH` (Lemmas/Generic/HealingEdges.lean) builds
+`Premises tr (truncH H b) …` from the other fields as stated here, and
+`ACRun.run_truncH` gives the run there. `H_z` and a reset by `b` are unchanged by the
+truncation (`HZ_truncH`, `isReset_truncH_iff` in Lemmas/Generic/HealingLeaves.lean).
+`ACRun.run_truncH` is an instance obligation; Goldilocks supplies it in
+`goldilocksRunInterface` (Lemmas/Generic/GoldilocksBridge.lean), from
+`KernelProof.goldilocksRun_truncH` and `CommitteeFacts.truncH`.
+
 ### Generic healing report-delivery delay
 
 OPEN instance obligation: `round_of_warm_at`, `rise_reset_rounds_at`,

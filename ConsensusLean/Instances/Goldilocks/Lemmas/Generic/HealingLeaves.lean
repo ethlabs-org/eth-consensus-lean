@@ -99,6 +99,11 @@ Its `fg_attest` call follows in the same tick with the same store; the lock at t
 free (no advance) or names the entry (the client record's provenance, `Healing.record_facts`,
 and its signed finality pairs, `Healing.signed_fin_justified`), so the client signs the row now or
 signed it before (`Healing.client_progress_of_lock`).
+
+Truncation after a horizon (`truncH_eq_of_le`, `truncH_antitone`, `honestBlocksAt_truncH_subset`,
+`catchRun_truncH`, `HZ_truncH`, `isReset_truncH_iff`): the honest sets truncated after `b` agree
+with `H` up to `b`; their honest blocks are a subset of those for `H`; catch-up transports to the
+truncation; and under the stated bounds `H_z` and the reset by `b` agree with those for `H`.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -1336,5 +1341,52 @@ theorem row_or_high_of_report_at_from
     exact ⟨k, att, hrun.antitone hkt hy, hsign, hkt, hah, haT.trans hTh⟩
 
 end RowOrHigh
+
+/-! ## Honesty truncated after a horizon -/
+
+section Truncation
+
+variable {P : Params} {A : NodeAC P} {tr : RunTrace A} {H : Time → Set (Fin P.n)}
+
+open Healing (cutZ)
+open Healing.Growing (HZ IsReset CatchRun)
+
+theorem truncH_eq_of_le {b t : Time} (ht : t ≤ b) : truncH H b t = H t :=
+  Set.ext fun _ => and_iff_left ht
+
+/-- The truncation of an antitone honest set is antitone: membership at `t'` gives `t' ≤ b`. -/
+theorem truncH_antitone (hH : Antitone H) (b : Time) : Antitone (truncH H b) :=
+  fun _ _ htt' _ hy => ⟨hH htt' hy.1, htt'.trans hy.2⟩
+
+theorem honestBlocksAt_truncH_subset (b : Time) :
+    tr.HonestBlocksAt (truncH H b) ⊆ tr.HonestBlocksAt H :=
+  fun _ ⟨y, i, t, ht, hle, hy, hB⟩ => ⟨y, i, t, ht, hle, hy.1, hB⟩
+
+theorem catchRun_truncH {g κ : Time} (hc : CatchRun tr H g κ) (b : Time) :
+    CatchRun tr (truncH H b) g κ :=
+  fun x i B hx hA hlt y j hy hfirst hF =>
+    hc x i B hx.1 hA hlt y j hy.1 hfirst (Anc.mono (honestBlocksAt_truncH_subset b) hF)
+
+/-- `H_z` is read at `c_z`, where the truncation is `H` itself. -/
+theorem HZ_truncH {g b : Time} (hcz : cutZ P g ≤ b) : HZ tr (truncH H b) g = HZ tr H g := by
+  simp only [HZ, truncH_eq_of_le hcz]
+
+/-- With `c_z` and the reset by `b`, the reset on the truncation is the reset for `H`: its signing
+is by `b`, where the truncation is `H`, and a signing after `b` is after the reset. -/
+theorem isReset_truncH_iff {g a b : Time} (hcz : cutZ P g ≤ b) (hab : a ≤ b) :
+    IsReset tr (truncH H b) g a ↔ IsReset tr H g a := by
+  unfold IsReset
+  rw [HZ_truncH hcz]
+  constructor
+  · rintro ⟨⟨y, k, att, hy, hs, hh, hk⟩, hmin⟩
+    refine ⟨⟨y, k, att, hy.1, hs, hh, hk⟩, fun y' k' att' hy' hs' hh' => ?_⟩
+    by_cases hk' : tr.time k' ≤ b
+    · exact hmin y' k' att' ⟨hy', max_le hcz hk'⟩ hs' hh'
+    · exact hab.trans (lt_of_not_ge hk').le
+  · rintro ⟨⟨y, k, att, hy, hs, hh, hk⟩, hmin⟩
+    exact ⟨⟨y, k, att, ⟨hy, max_le hcz (hk.le.trans hab)⟩, hs, hh, hk⟩,
+      fun y' k' att' hy' hs' hh' => hmin y' k' att' hy'.1 hs' hh'⟩
+
+end Truncation
 
 end Consensus.Goldilocks.Generic

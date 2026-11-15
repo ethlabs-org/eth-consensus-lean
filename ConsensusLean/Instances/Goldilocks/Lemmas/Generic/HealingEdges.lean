@@ -47,13 +47,24 @@ leaf 1, or no advance; leaf 3 then gives a frame window of the rise length, the 
 deficit and the rise the reset. The rise's slot length, spacing and timeout premises come from
 the numerical timeout bound on the grid (`slotLen_of_grid`, `spacing_grid_equation`,
 `timeout_grid_equation`).
+
+`exists_reset_of_drain_rounds_awake_at_of` proves the finite-horizon endpoint
+`exists_reset_of_drain_rounds_awake_at`, which bounds restarts only up to `b`: the whole-run
+endpoint runs on the honest sets truncated after `b` (`truncH`), a run by `ACRun.run_truncH`.
+Every premise up to `b` is the premise for `H`, no restart honest there is after `b`, and `H_z`
+and the reset are those for `H`, since `c_z` and the reset bound are `≤ b`.
+
+`premises_truncH` assembles the bundled premises on the honest sets truncated after `b` from the
+premises for `H` with restarts bounded only up to `b` (`NoRestartUpTo`). With
+`ACRun.run_truncH`, `HZ_truncH` and `isReset_truncH_iff` (`HealingLeaves`) it lets a finite-horizon
+consumer apply the bundled leaves on the truncation.
 -/
 
 namespace Consensus.Goldilocks.Generic
 
 open SA (gbar)
 open Healing (cutZ FirstCutAfter riseLen)
-open Healing.Growing (HZ IsReset)
+open Healing.Growing (HZ IsReset CatchRun)
 
 /-! ## Four-delay grid timing -/
 
@@ -523,6 +534,104 @@ theorem exists_reset_of_drain_rounds_noRestartAfter_at_of (O : ACHealing A sg ru
     ((timeout_grid_equation ΔF hgrid).mpr hΔF) hgpN hmb hH hb hna rr hu0 hwarm huN
     (by linarith) hz hdes hX hXs hrise
   exact ⟨a, ha, hat.trans (by linarith)⟩
+
+/-! ## Truncation after the horizon -/
+
+private theorem committeeFaultsUpTo_truncH {βK : ℚ} {cm : Time → Finset (Fin P.n)}
+    {H : Time → Set (Fin P.n)} {g b : Time} (hcom : CommitteeFaultsUpTo βK cm H g b) :
+    CommitteeFaultsUpTo βK cm (truncH H b) g b :=
+  fun t d ht htb hd hdb hne => by rw [truncH_eq_of_le hdb]; exact hcom t d ht htb hd hdb hne
+
+private theorem faults_truncH {H : Time → Set (Fin P.n)} {b : Time}
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) :
+    ∀ t, 0 ≤ t → t ≤ b → 3 * (truncH H b t)ᶜ.ncard ≤ P.n - 1 :=
+  fun t ht htb => by rw [truncH_eq_of_le htb]; exact hf t ht htb
+
+/-- Service is read only at honest cuts, which the truncation projects; relay ancestry over the
+truncated honest blocks is ancestry over `H`'s. -/
+private theorem service_truncH {tr : RunTrace A} {H : Time → Set (Fin P.n)} {g ΔF b' : Time}
+    (hs : Service tr H g ΔF b') (b : Time) : Service tr (truncH H b) g ΔF b' where
+  deltaF := hs.deltaF
+  message x i m hx hm y j hy := hs.message x i m hx.1 hm y j hy.1
+  block x i B hx hB y j hy := hs.block x i B hx.1 hB y j hy.1
+  relay x i B hx hB hg y j hy hj hd hF :=
+    hs.relay x i B hx.1 hB hg y j hy.1 hj hd (Anc.mono (honestBlocksAt_truncH_subset b) hF)
+  signedRow x i att hx hsg y j hy := hs.signedRow x i att hx.1 hsg y j hy.1
+
+/-- **The premises on the honest sets truncated after `b`**, with restarts bounded only up to
+`b`. Committee faults, faults, service, wakefulness and catch-up read honesty up to `b`, or only
+in hypotheses, where the truncation is `H` or a subset of it; a restart honest on the truncation
+is at a time `≤ b`, so `NoRestartUpTo` bounds it. The run on the truncation is
+`ACRun.run_truncH`. -/
+theorem premises_truncH {cm : Time → Finset (Fin P.n)} {βK : ℚ} {proposer : Nat → Fin P.n}
+    {dg : Digest (List (FG.Att P.n)) A.Payload} {tr : RunTrace A} {H : Time → Set (Fin P.n)}
+    {g ΔF b : Time} (hcom : CommitteeFaultsUpTo βK cm H g b) (hnc : Compose.NoCollRun dg tr)
+    (hsvc : Service tr H g ΔF b) (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) (hcatch : CatchRun tr H g (2 * P.Δ))
+    (hnr : NoRestartUpTo A tr H (gbar g) b)
+    (htd : ∀ s, P.slotTime s + 6 * P.Δ + ΔF ≤ P.slotTime (s + P.δt))
+    (hsl : ∀ s, P.slotTime s + 4 * P.Δ ≤ P.slotTime (s + 1))
+    (hsnap : ∃ k, FirstCutAfter tr k (cutZ P g) ∧ tr.time k ≤ b) (hH : (H b).Nonempty) :
+    Premises tr (truncH H b) cm βK proposer dg sg g ΔF b where
+  committee := committeeFaultsUpTo_truncH hcom
+  noColl := hnc
+  sync := service_truncH hsvc b
+  awake y t hy := hawake y t hy.1
+  faults := faults_truncH hf
+  catchUp := catchRun_truncH hcatch b
+  noRestart y k hy hk := hnr y k hy.1 hk hy.2
+  timeoutDelay := htd
+  slotLen := hsl
+  snapshot := hsnap
+  nonempty := hH.mono fun _ hy => ⟨hy, le_rfl⟩
+
+/-- The finite-horizon endpoint over the supplier `O`: the whole-run endpoint
+(`exists_reset_of_drain_rounds_noRestartAfter_at_of`) on the honest sets truncated after `b`,
+which are a run (`ACRun.run_truncH`). Committee faults, faults, service, wakefulness, catch-up,
+the proposal gap and the drain outputs read honesty up to `b`, or only in hypotheses, where the
+truncation is `H` or a subset of it; a restart honest on the truncation is at a time `≤ b`, so
+`NoRestartUpTo` bounds it. `H_z` is read at `c_z ≤ b`, and a reset on the truncation by the
+bound `≤ b` is the reset for `H`: a later signing is after it. -/
+theorem exists_reset_of_drain_rounds_awake_at_of (O : ACHealing A sg runs) :
+    exists_reset_of_drain_rounds_awake_at A sg O := by
+  intro cm proposer dg H tr βK g ΔF b r G Ld hβ hcom hgrid hrun hnc hf hsvc hawake hcatch hnr hH
+    hfol hΔF hr hgr hG hcz hb hgp hdrain
+  have hΔ : 1 ≤ P.Δ := P.hΔ
+  have hmono := P.slotTime_strictMono.monotone
+  have hBlo : r + 4 * P.Δ ≤ resetBoundRounds r P.Δ (2 * P.Δ) P.δt G Ld := by
+    have h1 : (0 : Time) ≤ Ld := Nat.cast_nonneg _
+    have h2 : (0 : Time) ≤ P.δt := Nat.cast_nonneg _
+    have h3 : (1 : Time) ≤ G := by exact_mod_cast hG
+    have hc : (0 : Time) ≤ 20 * (Ld : Time) + 24 * ((P.δt : Time) + G - 1) := by linarith
+    have := mul_nonneg hc (show (0 : Time) ≤ P.Δ by linarith)
+    unfold resetBoundRounds
+    linarith
+  have hczb : cutZ P g ≤ b := by linarith
+  obtain ⟨a, ha, hab⟩ := exists_reset_of_drain_rounds_noRestartAfter_at_of O hβ
+    (committeeFaultsUpTo_truncH hcom) hgrid (runs.run_truncH hrun b) hnc (faults_truncH hf)
+    (service_truncH hsvc b) (fun y t hy => hawake y t hy.1) (catchRun_truncH hcatch b)
+    (fun y k hy hk => hnr y k hy.1 hk hy.2)
+    (hH.mono fun _ hy => ⟨hy, le_rfl⟩) hfol hΔF hr hgr hG hcz hb
+    (fun s₀ N hs₀ hN a ha haN => by
+      obtain ⟨x, hax, hxa, hx, hX⟩ := hgp s₀ N hs₀ hN a ha haN
+      exact ⟨x, hax, hxa, ⟨hx, by linarith [hmono (show x ≤ N by omega)]⟩, hX⟩)
+    ⟨by
+      intro s₀ N floor kindJ J hw hm hN hmb hsig hgpT
+      obtain ⟨u, hu, huL, z, kB, X, hz, hdes, hX, hXs, hh⟩ :=
+        hdrain.warm
+          ⟨fun y i hy hl hh => hw.floor_eq y i ⟨hy, hh.trans hmb⟩ hl hh,
+            fun y i hy hl hh => hw.kind_iff y i ⟨hy, hh.trans hmb⟩ hl hh,
+            fun y i hy hl hh => hw.root_eq y i ⟨hy, hh.trans hmb⟩ hl hh⟩ hm hN hmb
+          (fun v k att hv hs hk => by
+            have h := hsig v k att ⟨hv, max_le hczb (hk.trans hmb)⟩ hs hk
+            rwa [HZ_truncH hczb] at h)
+          (fun a ha haN => by
+            obtain ⟨x, hax, hxa, hx, hX⟩ := hgpT a ha haN
+            exact ⟨x, hax, hxa, hx.1, hX⟩)
+      refine ⟨u, hu, huL, z, kB, X, ⟨hz, by linarith [hmono (show u ≤ N by omega)]⟩, hdes, hX,
+        hXs, ?_⟩
+      rwa [HZ_truncH hczb]⟩
+  exact ⟨a, (isReset_truncH_iff hczb (hab.trans hb)).mp ha, hab⟩
 
 end Edges
 
