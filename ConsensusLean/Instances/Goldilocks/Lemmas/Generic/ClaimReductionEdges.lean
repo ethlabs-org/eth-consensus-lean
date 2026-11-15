@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ClaimTransports
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Correctness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.EngineEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ChainRepresentationEdges
 
@@ -83,7 +82,7 @@ def HealthyLivenessReduction (C : ACCorrectLocal A sg)
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
-    A.Requirements ∧ RegimeTransport M K L.look ∧
+    RegimeTransport M K L.look ∧
       ProposalProgressTransport M K L.healing L.catchUp L.hold L.margin ∧
       ProposalBudgetSupply M K L.catchUp L.hold L.margin ∧
       ProposalWitnessRefinement M K L ∧ ClaimDeadlineFit M K L ∧
@@ -108,7 +107,7 @@ def FinalAccountabilityReduction (C : ACCorrectLocal A sg)
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
-    A.Requirements ∧ EngineReadPoint M ∧ ActualReadAccountability M L.run ∧
+    EngineReadPoint M ∧ ActualReadAccountability M L.run ∧
       ClaimDeadlineFit M K L ∧ ReadRepresentation M ∧ HonestReadTransport M ∧
       HonestChainReads M ∧
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →
@@ -162,47 +161,6 @@ def HealedSafetyReduction (C : ACCorrectLocal A sg)
           ((Sys F V).ready K gst r) ((Sys F V).heal K cap idx gst r) r)
         fun r => (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g
           ((Sys F V).heal K cap idx gst r)
-
-/-- UNPROVED mechanical bundling only, not a reduction from local correctness.
-Each premise is an individual endpoint field, not evidence supplied by this file.
-No whole ShapeClaims premise is used; the four non-claim obligations remain downstream. -/
-def GenericClaimsBundling (K : Contract ProgressReq) : Prop :=
-  (∀ (V : Type) [Fintype V] [DecidableEq V],
-    ((Sys F V).HoldsAlways fun r => ∀ c g, O.output c = some g → OutputValid r.2 g) ∧
-    (∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank → O.output c₁ = some g₁ →
-      O.output c₂ = some g₂ →
-      (Sys F V).HoldsAlways fun r => (chainTrace r.2).Nested g₁ g₂) ∧
-    (∀ g, O.output .final = some g →
-      (Sys F V).HoldsAlways fun r => (chainTrace r.2).Monotone g 0) ∧
-    (∀ g, O.output .final = some g → (Sys F V).Holds (fun _ => True)
-      fun r => (chainTrace r.2).AccountablySafe r.2.ViewIdx r.2.Slashable K.params.α g 0) ∧
-    (∀ cap g, O.output cap = some g → ∀ (idx : K.Idx) (gst : Time), (Sys F V).Holds
-      (fun r => (Sys F V).Healthy (shapeProgress F V).toExternal K gst r ∧
-        (Sys F V).prog (shapeProgress F V) K cap idx
-        ((Sys F V).ready K gst r) ((Sys F V).pt r).horizon r)
-      fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g
-        ((Sys F V).heal K cap idx gst r) (K.params.latency cap idx)) ∧
-    (∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
-      (Sys F V).Holds ((Sys F V).Sleepy (shapeProgress F V).toExternal K) fun r =>
-        (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g 0) ∧
-    (∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
-      ∀ idx : K.Idx, (Sys F V).Holds
-        (fun r => (Sys F V).Sleepy (shapeProgress F V).toExternal K r ∧
-          (Sys F V).prog (shapeProgress F V) K cap idx 0
-          ((Sys F V).pt r).horizon r)
-        fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g 0 (K.params.latency cap idx)) ∧
-    (∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
-      ∀ (idx : K.Idx) (gst : Time), (Sys F V).Holds
-        (fun r => (Sys F V).Healthy (shapeProgress F V).toExternal K gst r ∧
-          (Sys F V).prog (shapeProgress F V) K cap idx
-          ((Sys F V).ready K gst r) ((Sys F V).heal K cap idx gst r) r)
-        fun r => (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g
-          ((Sys F V).heal K cap idx gst r)) ∧
-    (∀ g, O.output .stable = some g → ∀ T b₀ b₁,
-      (Sys F V).Holds ((Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁) fun r =>
-        (chainTrace r.2).ProtectedReadyFrom ((Sys F V).cDur K r) g
-          (resilienceTarget O g) T ((Sys F V).recoveryAt K b₁ r))) →
-    GenericClaims F K
 
 end Consensus.Goldilocks.Generic
 

@@ -39,8 +39,9 @@ missing source prerequisite, not a valid-run counterexample, and supplies no pro
 
 ## Verdict and ownership
 
-All eight booked items are STATED: six conditional reductions, the output-validity
-HoldsAlways wrapper, and the GenericClaims bundler. Existing CHAIN-REP nesting and
+The conditional reductions and the local-supplier capstone are STATED: six regime reductions,
+the output-validity HoldsAlways wrapper, and `meetsObligations_of_local`.
+Existing CHAIN-REP nesting and
 final-monotonicity edges are reused, not duplicated. Every new edge is an admission-free
 Prop definition, not a theorem. Compilation establishes well-formedness only: it does
 not establish truth, sufficient premises, realizability, or nonvacuity.
@@ -64,19 +65,24 @@ Paths below are relative to `ConsensusLean/Instances/Goldilocks/`.
 | sleepyLive | `SleepyLivenessReduction` | Fields:206–212 |
 | healedSafe | `HealedSafetyReduction` | Fields:114–122 |
 | persists | `PersistenceReduction` | Fields:150–153 |
-| GenericClaims bundler | `GenericClaimsBundling` | Concrete/Endpoint:21–32 |
+| local-supplier assembly | `meetsObligations_of_local` in `CorrectnessEdges.lean` | Concrete/Endpoint:21–32 |
 
 The conclusion telescopes preserve the original capability tests, all progress forms,
 ready→horizon versus ready→heal intervals, ready-reader conditionality, HoldsAlways
 versus Holds, and the original hash-collision excuse. No NoColl or constant-fault
-premise is added to an unconditional claim. The bundler mechanically consumes the nine
-individual fields; it is **not** a reduction from local correctness. Admissibility,
-service, progress-fit and progress-tolerance remain the four separate downstream
-inputs of GenericMeetsObligations. They are not supplied by this row.
+premise is added to an unconditional claim. The capstone consumes one `LocalClaimSuppliers`
+record per mapped valid run, not endpoint claims or reduction propositions. Its intended proof
+composes the reductions. Admissibility, service, progress-fit, progress-tolerance and
+`HealthyBetaFit` and `CommitteeHalfFit` remain separate inputs. The stored-read context and outage policy remain
+explicit data families. No proof of the capstone is supplied.
 
-Each reduction fixes one EngineBinding B and uses exactly M = B.map E hE rho hv.
+Each reduction fixes one public-indexed EngineBinding B and uses exactly M = B.map E hE rho hv.
 Local contracts C, outage policy D and stored-read context R are indexed by that M;
 no fresh run, changed map, replacement proposal or unrestricted Prop callback is used.
+The capstone's AC families are indexed by public parameters with a positive population;
+`shapeClaimsAt_of_isEmpty` proves every empty-population claim directly from its quantifiers.
+The two public-restriction recovery lemmas preserve the unconditional and excused wrappers
+separately. The final obligations still quantify over every finite validator type.
 
 ## New interface rows and source limitations
 

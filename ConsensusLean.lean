@@ -998,7 +998,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.T
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ChainRepresentation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ClaimTransports
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.CorrectLocal
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Correctness
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineRepresentation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineTransport
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.FG
