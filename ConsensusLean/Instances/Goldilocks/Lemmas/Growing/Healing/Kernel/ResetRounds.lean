@@ -49,7 +49,8 @@ private theorem faults_lt_quorums {f n : Nat} (hn : 0 < n) (hf : 3 * f ≤ n - 1
     f < (2 * n + 2) / 3 ∧ f < 2 * ((2 * n + 2) / 3) - n := by
   omega
 
-/-- Wakefulness supplies a relay call before an independently honest receiver cut. -/
+/-- Wakefulness supplies a relay call before an independently honest receiver cut
+(`Generic.callLag_of_awake_at_from` at the Goldilocks run). -/
 theorem callLag_of_awake_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {g b lo : Time}
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -57,17 +58,8 @@ theorem callLag_of_awake_at
     (hz : z ∈ H (tr.time m)) (hi : lo ≤ tr.time i)
     (him : tr.time i + 2 * sp.Δ ≤ tr.time m) (hmb : tr.time m ≤ b) :
     ∃ j < m, tr.IsCall z j ∧
-      tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j := by
-  have hr := hrun.upTo (hrun.time_nonneg m)
-  have ha : ∀ y ∈ H (tr.time m), ∀ t, gbar g ≤ t → t ≤ tr.time m →
-      (tr.upTo (tr.time m)).awake y t := fun y hy t ht htm =>
-    ⟨hawake y t (hrun.antitone htm hy) ht (htm.trans hmb), htm⟩
-  obtain ⟨j, hjm, hc, hd⟩ := Healing.callLag_of_awake hr ha hlo
-    (T := tr.time m + 1) le_rfl z hz i m hi him
-      (show tr.time m < tr.time m + 1 by linarith)
-  have hjt := ((RunTrace.upTo_isCall tr).mp hc).1
-  refine ⟨j, hjm, ((RunTrace.upTo_isCall tr).mp hc).2, ?_⟩
-  rwa [RunTrace.upTo_deadline hrun.time_mono hjt] at hd
+      tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j :=
+  Generic.callLag_of_awake_at_from hrun.toLocalRun hawake hlo hz hi him hmb
 
 /-- The proposal's own full frame already bounds its parent by the common floor. -/
 theorem floor_le_warm_proposal_at

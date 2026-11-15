@@ -67,7 +67,8 @@ theorem full_frame_viable_witness_at
         (by change (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot Q
             rw [he]; exact hFQs) hQt
 
-/-- Public ticks supply the snapshot relay call before the receiver's actual observation. -/
+/-- Public ticks supply the snapshot relay call before the receiver's actual observation
+(`Generic.snapshotCall_of_awake_at_from` at the Goldilocks run). -/
 theorem snapshotCall_of_awake_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {g b : Time}
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -75,20 +76,8 @@ theorem snapshotCall_of_awake_at
     (hfit : cutZ sp.toParams g + sp.Δ + 1 ≤ tr.time m) (hmb : tr.time m ≤ b) :
     (∃ j, FirstCutAfter tr j (cutZ sp.toParams g)) ∧
       ∃ j < m, tr.IsCall z j ∧
-        tr.deadline z j (max (cutZ sp.toParams g) g) sp.Δ ≤ tr.time j := by
-  have hr := hrun.upTo (hrun.time_nonneg m)
-  have ha : ∀ y ∈ H (tr.time m), ∀ t, gbar g ≤ t → t ≤ tr.time m →
-      (tr.upTo (tr.time m)).awake y t := fun y hy t ht htm =>
-    ⟨hawake y t (hrun.antitone htm hy) ht (htm.trans hmb), htm⟩
-  obtain ⟨j, hj, -⟩ := Healing.snapshot_of_awake hr ha ⟨z, hz⟩
-    (show cutZ sp.toParams g + sp.Δ ≤ tr.time m by linarith)
-  refine ⟨⟨j, hj⟩, ?_⟩
-  obtain ⟨j, hjm, hc, hd⟩ := Healing.snapshotCall_of_awake hr ha hfit
-    (T := tr.time m + 1) le_rfl z hz m le_rfl
-    (show tr.time m < tr.time m + 1 by linarith)
-  have hjt := ((RunTrace.upTo_isCall tr).mp hc).1
-  refine ⟨j, hjm, ((RunTrace.upTo_isCall tr).mp hc).2, ?_⟩
-  rwa [RunTrace.upTo_deadline hrun.time_mono hjt] at hd
+        tr.deadline z j (max (cutZ sp.toParams g) g) sp.Δ ≤ tr.time j :=
+  Generic.snapshotCall_of_awake_at_from hrun.toLocalRun hawake hz hfit hmb
 
 /-- Snapshot relay at the proposal call bounds a warm proposal's replay height. -/
 theorem warm_proposal_height_at

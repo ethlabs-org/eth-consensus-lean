@@ -25,6 +25,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Deadline
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalCrosses
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RecordsCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -82,6 +83,12 @@ observation, and along that store's ancestry the entry is constant at one height
 
 Slot alignment (`exists_slot_align_of_grid`): on the four-delay grid, `s₀ = ⌈a_f / 4Δ⌉` has
 `a_f ≤ t_{s₀}` and `4Δ·s₀ < a_f + 4Δ`.
+
+Relay calls from wakefulness (`snapshotCall_of_awake_at_from`, `callLag_of_awake_at_from`): a
+node awake on `[ḡ, b]` ticks at every public time there, and its restarts are at or before
+`t_{slot(ḡ)+1} ≤ c_z`, so after `c_z` the call at a public time meets the relay deadline
+(`Healing.callLag_of_awake`, `Healing.snapshotCall_of_awake` on the receiver's prefix, for any
+node AC and any slot schedule).
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -385,6 +392,63 @@ theorem sign_from_report_at_from {P : Params} {A : NodeAC P}
   have hETh' : ((tr.state y i).fg.σ E.root).Th = E.root := by rw [hETh, hEr]
   refine ⟨i, by omega, C, ⟨ℓ, ((Trace.upTo_callAt tr).mp hci).2, hto, hC⟩, ht',
     by rw [hah, hEh], E, hE, hEC, by rw [haT, hETh'], hah.symm, hETh'⟩
+
+/-! ## Relay calls from wakefulness -/
+
+section CallLag
+
+variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
+
+open SA (gbar)
+open Healing (FirstCutAfter cutZ)
+
+/-- Public ticks supply the snapshot and the snapshot relay call before an honest receiver's
+cut at or after `c_z + Δ + 1`: the static `Healing.snapshot_of_awake` and
+`Healing.snapshotCall_of_awake` on the receiver's prefix. -/
+theorem snapshotCall_of_awake_at_from
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini) {g b : Time}
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    {z : Fin P.n} {m : Nat} (hz : z ∈ H (tr.time m))
+    (hfit : cutZ P g + P.Δ + 1 ≤ tr.time m) (hmb : tr.time m ≤ b) :
+    (∃ j, FirstCutAfter tr j (cutZ P g)) ∧
+      ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (cutZ P g) g) P.Δ ≤ tr.time j := by
+  have hr := hrun.upTo (hrun.time_nonneg m)
+  have ha : ∀ y ∈ H (tr.time m), ∀ t, gbar g ≤ t → t ≤ tr.time m →
+      (tr.upTo (tr.time m)).awake y t := fun y hy t ht htm =>
+    ⟨hawake y t (hrun.antitone htm hy) ht (htm.trans hmb), htm⟩
+  obtain ⟨j, hj, -⟩ := Healing.snapshot_of_awake hr ha ⟨z, hz⟩
+    (show cutZ P g + P.Δ ≤ tr.time m by linarith)
+  refine ⟨⟨j, hj⟩, ?_⟩
+  obtain ⟨j, hjm, hc, hd⟩ := Healing.snapshotCall_of_awake hr ha hfit
+    (T := tr.time m + 1) le_rfl z hz m le_rfl
+    (show tr.time m < tr.time m + 1 by linarith)
+  have hjt := ((RunTrace.upTo_isCall tr).mp hc).1
+  refine ⟨j, hjm, ((RunTrace.upTo_isCall tr).mp hc).2, ?_⟩
+  rwa [RunTrace.upTo_deadline hrun.time_mono hjt] at hd
+
+/-- Wakefulness supplies a relay call before an independently honest receiver cut, at the
+two-delay lag: the static `Healing.callLag_of_awake` on the receiver's prefix. -/
+theorem callLag_of_awake_at_from
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini) {g b lo : Time}
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hlo : cutZ P g ≤ lo) {z : Fin P.n} {i m : Nat}
+    (hz : z ∈ H (tr.time m)) (hi : lo ≤ tr.time i)
+    (him : tr.time i + 2 * P.Δ ≤ tr.time m) (hmb : tr.time m ≤ b) :
+    ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) P.Δ ≤ tr.time j := by
+  have hr := hrun.upTo (hrun.time_nonneg m)
+  have ha : ∀ y ∈ H (tr.time m), ∀ t, gbar g ≤ t → t ≤ tr.time m →
+      (tr.upTo (tr.time m)).awake y t := fun y hy t ht htm =>
+    ⟨hawake y t (hrun.antitone htm hy) ht (htm.trans hmb), htm⟩
+  obtain ⟨j, hjm, hc, hd⟩ := Healing.callLag_of_awake hr ha hlo
+    (T := tr.time m + 1) le_rfl z hz i m hi him
+      (show tr.time m < tr.time m + 1 by linarith)
+  have hjt := ((RunTrace.upTo_isCall tr).mp hc).1
+  refine ⟨j, hjm, ((RunTrace.upTo_isCall tr).mp hc).2, ?_⟩
+  rwa [RunTrace.upTo_deadline hrun.time_mono hjt] at hd
+
+end CallLag
 
 /-! ## Leaf 2, lower bound -/
 

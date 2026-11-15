@@ -136,7 +136,8 @@ to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Deadline",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalCrosses",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RecordsCore",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source"]
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag"]
 reason = """the generic healing leaves over any NodeAC use these AC-generic run facts; their closure reaches
 Lemmas.AC (Compose.Reach) and some of these modules also hold SA lemmas, so the cut guard
 ConsensusLeanTest.Goldilocks.Generic.HealingLeavesCut checks the theorems' constants. Compose.Run.Deadline: the
@@ -146,7 +147,8 @@ is the single edge to the static family generalised in place (ConsumeBase, Consu
 ProposalJustifiesSigned, ProposalCrosses); it grows the closure of HealingLeaves, itself included, from 275 to 283
 modules (Compose.Run.Deadline is already in it, through the frame-window modules). Healing.Retention.RecordsCore
 holds the client-record provenance at any start, and Healing.Source the toFG-to-attest step at any start, for the
-reset leaves. Leaf paths only"""
+reset leaves. Healing.M1.CallLag holds the relay calls from wakefulness at any start and any slot schedule, for the
+snapshot and call-lag leaves. Leaf paths only"""
 
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge"]

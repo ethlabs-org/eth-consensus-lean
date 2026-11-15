@@ -117,7 +117,7 @@ theorem healthy_preparation_reset_at (Q : HealthyPreparationQueryAt S A V)
       t ≤ Q.bound → (Q.trace.upTo Q.bound).awake y t := by
     intro y hy t ht htb
     exact ⟨haw y t (hrun.antitone htb hy) ht htb, htb⟩
-  obtain ⟨j, hj, hjt⟩ := Healing.snapshot_of_awake (hrun.upTo hb0) haw' hH
+  obtain ⟨j, hj, hjt⟩ := Healing.snapshot_of_awake (hrun.upTo hb0).toLocalRun haw' hH
     (by linarith only [hcz, h4B, hb])
   refine ⟨_, a, Healing.Growing.resetPremisesUpTo_of_reset_at hrun hnc hs haw hf ha
     (hab.trans (hBh.trans hb)) ⟨j, hj, hjt⟩ rfl, ?_⟩
