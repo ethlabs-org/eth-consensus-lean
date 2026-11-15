@@ -216,9 +216,10 @@ def high_row_source_at (O : ACHealing A sg runs) : Prop :=
         E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
         ((tr.state v r).fg.σ E.root).Th = E.root
 
-/-- UNPROVED leaf 13: no high contest. The Prop is parameterized by a healing supplier whose value
-does not occur in its body; its proof uses the supplier's `report_origin`, `report_in_frame` and
-`origins_comparable`. -/
+/-- Leaf 13: no high contest. The Prop is parameterized by a healing supplier whose value does not
+occur in its body; its proof uses the supplier's `report_origin`, `report_in_frame` and
+`origins_comparable`. Proved over any supplier by `no_high_contest_at_of_healing`
+(Lemmas/Generic/HealingRounds). -/
 def no_high_contest_at (_O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {p : Fin P.n} {i : Nat},
     βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →

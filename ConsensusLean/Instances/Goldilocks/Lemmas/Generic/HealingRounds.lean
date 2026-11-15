@@ -7,6 +7,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Common.StatementsBundle
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Prefix
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -42,6 +44,12 @@ Leaf 12 (`high_row_source_at_of_healing`), over any `ACHealing`: a high signing 
 a premised reset comes from a report at the same time (leaf 7). `ACHealing.report_origin` gives
 that report a high origin no later, and the signed entry, below the report, is below the origin in
 the origin's store with the same replay state (`origin_below_report`).
+
+Leaf 13 (`no_high_contest_at_of_healing`), over any `ACHealing`: in a contest at `h_max ≥ HZ + 2`,
+`J` and the entry of the contested chain at `h_j` are two high self-entries, each left by a held
+block. A held honest attestation on each (`Healing.honest_att_of_left`) was signed from a report
+(leaf 7) whose origin holds the entry (`origin_below_report`); `ACHealing.origins_comparable`
+makes the two origins compatible, and leaf 14 makes the entries equal, so `J` is below the chain.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -377,5 +385,92 @@ theorem high_row_source_at_of_healing (O : ACHealing A sg runs) : high_row_sourc
   exact ⟨r, by omega, l, Og, ho, E, hEm, hEOg, hEr, by rw [hσ, hEh], by rw [hσ, hETh]⟩
 
 end HighRowSource
+
+/-! ## Leaf 13 -/
+
+section NoHighContest
+
+variable {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
+
+open Healing (cutZ)
+open Healing.Growing (HZ IsReset)
+
+/-- A high self-entry, held at an observation honest by the horizon of a premised reset and left
+by a held block, lies below a high origin. A held attestation on it by a signer honest at `c_z`
+and at the observation (`Healing.honest_att_of_left`) was signed before the cut, from a report
+(leaf 7) whose origin holds the entry (`origin_below_report`). -/
+private theorem origin_of_left_entry (O : ACHealing A sg runs) {cm proposer dg H tr} {βK : ℚ}
+    {g ΔF a b : Time} (hβ : βK ≤ 1 / 2) (hrun : runs.Run cm proposer dg H tr)
+    (hp : Premises tr H cm βK proposer dg sg g ΔF b) (hres : IsReset tr H g a) (hab : a ≤ b)
+    {y : Fin P.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
+    (hyt : y ∈ H t) (htb : t ≤ b) (hq : (H (max (cutZ P g) t))ᶜ.ncard < P.fg.q)
+    {E C : A.Blk} (hE : E ∈ (tr.state y k).fg.tree)
+    (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
+    (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h)
+    (hEC : (tr.state y k).fg.Anc E C)
+    (hlt : ((tr.state y k).fg.σ E.root).h < ((tr.state y k).fg.σ C.root).h) :
+    ∃ v r l Og, HighOrigin A sg O tr H g v r l Og ∧ tr.time r ≤ b ∧
+      Anc (tr.HonestBlocksAt H) E Og := by
+  have hl := runs.run_local hrun
+  have hnc := hp.noColl
+  obtain ⟨W, hW, att, hatt, haT, haH⟩ :=
+    Healing.honest_att_of_left (fg_reachable_at_from hl ht hle hyt) hq hET hEC hlt
+  obtain ⟨d, hdk, hs⟩ := held_att_signed_at_from hl ht hle hyt ⟨W, hW, hatt⟩
+    (hl.antitone (le_max_right _ _) haH)
+  have hdt := hle d hdk
+  obtain ⟨i, -, R, hR, hti, hah, E', hE', hE'R, hE'r, hE'h, -⟩ :=
+    sign_from_report_at_from hl (runs.run_requirements hrun)
+      (hl.antitone hdt (hl.antitone (le_max_right _ _) haH)) hs
+  have hit : tr.time i ≤ t := hti ▸ hdt
+  have hvi : att.val ∈ H (tr.time i) := hl.antitone hit (hl.antitone (le_max_right _ _) haH)
+  have hi0 := hl.time_nonneg i
+  have hlei : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hl.time_mono hq.le
+  obtain rfl : E' = E := (Compose.Growing.honest_blocks_coherent_local hl hnc).1
+    ⟨att.val, i, tr.time i, hi0, hlei, hvi, hE'⟩ ⟨y, k, t, ht, hle, hyt, hE⟩ (hE'r.trans haT)
+  have hσE := σ_eq_honest_at_from hl hnc hi0 hlei hvi ht hle hyt hE' hE
+  rw [hσE] at hE'h
+  obtain ⟨r, hri, l, Og, ho, -, hEOg, -⟩ := origin_below_report O hβ hrun hp hres hab
+    (hl.antitone (max_le_max le_rfl hit) haH) (hit.trans htb) hR (by omega) hE' hE'R
+  exact ⟨att.val, r, l, Og, ho, (hl.time_mono hri).trans (hit.trans htb),
+    honest_anc_of_store_anc_at_from hi0 (fun q hq => hl.time_mono (by omega)) hvi hEOg⟩
+
+/-- Leaf 13: by the horizon of a premised reset, no honest store contests at `h_max ≥ HZ + 2`.
+In a contest, `J` is a self-entry at `h_j ≥ HZ + 1` not below the contested chain `C`; the entry
+of `C` at `h_j` is another. Both are left by held blocks, so both lie below high origins
+(`origin_of_left_entry`), which `ACHealing.origins_comparable` makes compatible; leaf 14 makes the
+two entries equal, so `J` is below `C`. -/
+theorem no_high_contest_at_of_healing (O : ACHealing A sg runs) : no_high_contest_at A sg O := by
+  intro cm proposer dg H tr βK g ΔF a b p i hβ hrun hp ha hab hpH hib
+  rintro ⟨⟨hmj, C, hC, -, hCh, hJC⟩, hmax⟩
+  have hrl := runs.run_local hrun
+  have ht := hrl.time_nonneg i
+  have hi : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrl.time_mono hq.le
+  have hU := Compose.Growing.honest_blocks_coherent_local hrl hp.noColl
+  have hreach := fg_reachable_at_from hrl ht hi hpH
+  have hsub : (tr.state p i).fg.tree ⊆ tr.HonestBlocksAt H :=
+    fun _ h => ⟨p, i, tr.time i, ht, hi, hpH, h⟩
+  have hq : (H (max (cutZ P g) (tr.time i)))ᶜ.ncard < P.fg.q := by
+    obtain ⟨j, hj, hjb⟩ := hp.snapshot
+    exact faults_lt_q hp.faults (ht.trans (le_max_right _ _)) (max_le (hj.2.le.trans hjb) hib)
+  obtain ⟨_, hJm, _, ⟨Bj, hBj, hBjJ, hBjhj⟩, _⟩ := Store.cache_invariants _ _ _ _ hreach
+  obtain ⟨EJ, hEJ, hEJr, hEJB, hcase⟩ := Healing.Store.J_entry_of_reachable hreach hBj
+  obtain rfl : EJ = (tr.state p i).fg.J := hU.1 (hsub hEJ) (hsub hJm) (hEJr.trans hBjJ)
+  rcases hcase with hg | ⟨hJh, hJT⟩
+  · exact hJC (hg ▸ (Store.accepted_tree _ _ _ _ hreach).2.2.2 C hC)
+  have hjlt := Healing.Store.hj_lt_h hreach hBj
+  obtain ⟨EC, hEC, hECC, hECh, hECT⟩ := Healing.entry_at_height hreach hC
+    (h := (tr.state p i).fg.hj) (by omega) (by omega)
+  obtain ⟨v₁, r₁, l₁, B₁, ho₁, hr₁b, hJB₁⟩ := origin_of_left_entry O hβ hrun hp ha hab
+    ht hi hpH hib hq hEJ hJT (by omega) hEJB (by omega)
+  obtain ⟨v₂, r₂, l₂, B₂, ho₂, hr₂b, hECB₂⟩ := origin_of_left_entry O hβ hrun hp ha hab
+    ht hi hpH hib hq hEC hECT (by omega) hECC (by omega)
+  have he := high_entry_eq_at_from hrl hp.noColl
+    (O.origins_comparable hβ hrun hp ha hab ho₁.1 ho₁.2.1 hr₁b ho₁.2.2 ho₂.1 ho₂.2.1 hr₂b
+      ho₂.2.2)
+    hJB₁ hECB₂ ht hi hpH ht hi hpH hEJ hEC (by omega) hJT hECT
+  have heq : EC = (tr.state p i).fg.J := hU.1 (hsub hEC) (hsub hEJ) he.symm
+  exact hJC (heq ▸ hECC)
+
+end NoHighContest
 
 end Consensus.Goldilocks.Generic
