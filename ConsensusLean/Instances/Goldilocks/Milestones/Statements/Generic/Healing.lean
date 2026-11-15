@@ -6,8 +6,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.O
 /-! # Generic healing leaf contracts
 
 Every contract is an intended theorem type. Old-premise leaves are primary; no definition here
-supplies theorem evidence or replaces an existing theorem. A contract whose docstring names a
-theorem is proved by it; the others are UNPROVED.
+supplies theorem evidence or replaces an existing theorem. Each contract's docstring names the
+theorem that proves it.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -38,14 +38,16 @@ def resetSlots (W G δt : Nat) : Nat := ∑ j ∈ Finset.range 5, (windowSlots W
 def resetBoundRounds (r D lam δt X Ld : ℤ) : ℤ :=
   r + (20 * Ld + 24 * (δt + X - 1) + 54) * D + 5 * lam
 
-/-- UNPROVED grid alignment contract, not a chosen alignment witness. -/
+/-- Grid alignment contract, not a chosen alignment witness. Proved by `exists_slot_align_of_grid`
+(Lemmas/Generic/HealingLeaves). -/
 def exists_slot_align : Prop :=
   (∀ s : Nat, P.slotTime s = (s : Time) * (4 * P.Δ)) →
     ∀ af : Time, 0 ≤ af → ∃ s₀ : Nat,
       af ≤ P.slotTime s₀ ∧ 4 * P.Δ * (s₀ : ℤ) < af + 4 * P.Δ
 
-/-- UNPROVED leaf 1: a high signing by a signer honest at it and at `c_z` gives a reset no
-later. -/
+/-- Leaf 1: a high signing by a signer honest at it and at `c_z` gives a reset no later. Proved for
+any run predicate by `reset_of_height_advance_at_from` (Lemmas/Generic/HealingLeaves), through
+`ACRun.run_local`. -/
 def reset_of_height_advance_at (runs : ACRun A sg) : Prop :=
   ∀ {cm proposer dg H tr} {g : Time} {y : Fin P.n} {k : Nat} {att : FG.Att P.n},
     runs.Run cm proposer dg H tr →
@@ -53,14 +55,16 @@ def reset_of_height_advance_at (runs : ACRun A sg) : Prop :=
     tr.SignAt y k att → HZ tr H g + 1 ≤ att.h →
     ∃ a, IsReset tr H g a ∧ a ≤ tr.time k
 
-/-- UNPROVED leaf 2 upper bound, under strictly no advance. -/
+/-- Leaf 2 upper bound, under strictly no advance. Proved for any run predicate by
+`hmax_le_of_noAdvance_at_from` (Lemmas/Generic/HealingLeaves), through `ACRun.run_local`. -/
 def hmax_le_of_noAdvance_at (runs : ACRun A sg) : Prop :=
   ∀ {cm proposer dg H tr} {g T : Time} {y : Fin P.n} {i : Nat},
     runs.Run cm proposer dg H tr → NoAdvance tr H g T →
     y ∈ H (tr.time i) → (H (max (cutZ P g) (tr.time i)))ᶜ.ncard < P.fg.q → tr.time i < T →
     (tr.state y i).fg.hmax ≤ HZ tr H g + 1
 
-/-- UNPROVED snapshot and call supply for the lower-bound leaf. -/
+/-- Snapshot and call supply for the lower-bound leaf. Proved for any run predicate by
+`snapshotCall_of_awake_at_from` (Lemmas/Generic/HealingLeaves), through `ACRun.run_local`. -/
 def snapshotCall_of_awake_at (runs : ACRun A sg) : Prop :=
   ∀ {cm proposer dg H tr} {g b : Time} {z : Fin P.n} {m : Nat},
     runs.Run cm proposer dg H tr →
@@ -69,7 +73,8 @@ def snapshotCall_of_awake_at (runs : ACRun A sg) : Prop :=
     (∃ j, FirstCutAfter tr j (cutZ P g)) ∧
       ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (cutZ P g) g) P.Δ ≤ tr.time j
 
-/-- UNPROVED relay-call supply at the two-delay lag. -/
+/-- Relay-call supply at the two-delay lag. Proved for any run predicate by
+`callLag_of_awake_at_from` (Lemmas/Generic/HealingLeaves), through `ACRun.run_local`. -/
 def callLag_of_awake_at (runs : ACRun A sg) : Prop :=
   ∀ {cm proposer dg H tr} {g b lo : Time} {z : Fin P.n} {i m : Nat},
     runs.Run cm proposer dg H tr →
@@ -78,7 +83,9 @@ def callLag_of_awake_at (runs : ACRun A sg) : Prop :=
     tr.time i + 2 * P.Δ ≤ tr.time m → tr.time m ≤ b →
     ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) P.Δ ≤ tr.time j
 
-/-- UNPROVED leaf 4: explicit report-tree membership avoids an AC-specific inference. -/
+/-- Leaf 4: explicit report-tree membership avoids an AC-specific inference. Proved for any run
+predicate by `row_or_high_of_report_at_from` (Lemmas/Generic/HealingLeaves), through
+`ACRun.run_local`. -/
 def row_or_high_of_report_at (runs : ACRun A sg) : Prop :=
   ∀ {cm proposer dg H tr} {g T : Time} {y : Fin P.n} {i : Nat} {R B : A.Blk},
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
@@ -96,7 +103,9 @@ def row_or_high_of_report_at (runs : ACRun A sg) : Prop :=
         att.T = ((tr.state y i).fg.σ B.root).Th) ∨
         ((tr.state y i).fg.σ B.root).h < ((tr.state y i).fg.σ R.root).h)
 
-/-- UNPROVED leaf 6: a high report by a reporter honest at it and at `c_z` implies a reset. -/
+/-- Leaf 6: a high report by a reporter honest at it and at `c_z` implies a reset. Proved for any
+run predicate by `reset_of_high_report_at_from` (Lemmas/Generic/HealingLeaves), through
+`ACRun.run_local`. -/
 def reset_of_high_report_at (runs : ACRun A sg) : Prop :=
   ∀ {cm proposer dg H tr} {g : Time} {y : Fin P.n} {i : Nat} {R : A.Blk},
     runs.Run cm proposer dg H tr → y ∈ H (max (cutZ P g) (tr.time i)) →
@@ -104,7 +113,9 @@ def reset_of_high_report_at (runs : ACRun A sg) : Prop :=
     HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h →
     ∃ a, IsReset tr H g a ∧ a ≤ tr.time i
 
-/-- UNPROVED FG-call companion of leaf 6, with the same charge at `c_z`. -/
+/-- FG-call companion of leaf 6 (leaf 6c), with the same charge at `c_z`. Proved for any run
+predicate by `reset_of_high_source_at_from` (Lemmas/Generic/HealingLeaves), through
+`ACRun.run_local`. -/
 def reset_of_high_source_at (runs : ACRun A sg) : Prop :=
   ∀ {cm proposer dg H tr} {g : Time} {y : Fin P.n} {k : Nat} {C : A.Blk}
     {s : Option (FG.Att P.n)},
@@ -113,7 +124,9 @@ def reset_of_high_source_at (runs : ACRun A sg) : Prop :=
     HZ tr H g + 1 ≤ ((tr.state y k).fg.σ C.root).h →
     ∃ a, IsReset tr H g a ∧ a ≤ tr.time k
 
-/-- UNPROVED new leaf 7: signing provenance, without a stronger horizon bundle. -/
+/-- New leaf 7: signing provenance, without a stronger horizon bundle. Proved for any run predicate
+by `sign_from_report_at_from` (Lemmas/Generic/HealingLeaves), through `ACRun.run_local` and
+`ACRun.run_requirements`. -/
 def sign_from_report (runs : ACRun A sg) : Prop :=
   ∀ {cm proposer dg H tr} {y : Fin P.n} {k : Nat} {att : FG.Att P.n},
     runs.Run cm proposer dg H tr → y ∈ H (tr.time k) → tr.SignAt y k att →
