@@ -140,7 +140,7 @@ structure FinalReadTransport (M : RunMap rho payload) (C : ACCorrectLocal A M.si
   cache : ∀ (βK : ℚ) gst query deadline
     (W : FinalProductionWindow M C.catchUp C.hold query deadline),
     βK ≤ 1 / 2 →
-    A.Requirements → C.run.Run M.committee M.proposer M.digest M.honest M.trace →
+    C.run.Run M.committee M.proposer M.digest M.honest M.trace →
     Premises M.trace M.honest M.committee βK M.proposer M.digest M.signer gst E.ΔFG deadline →
     HealedFrom M.trace M.honest M.proposer W.start deadline →
     (∀ a, M.trace.AcceptAt (W.block a).proposer (W.cut a) (W.block a)) →
@@ -164,7 +164,6 @@ The population cardinality and ChainAtts are unchanged; E1's chain_att_view,
 att_signer and att_conflict separately bind these witnesses to engine evidence.
 NEW UNRESOLVED SUFFICIENCY TARGET for an arbitrary AC. -/
 def ActualReadAccountability (M : RunMap rho payload) (runs : ACRun A M.signer) : Prop :=
-  A.Requirements →
   runs.Run M.committee M.proposer M.digest M.honest M.trace →
   Compose.NoCollRun M.digest M.trace → ∀ y z i j t u,
   HonestReadPoint M.trace M.honest rho.horizon y i t →

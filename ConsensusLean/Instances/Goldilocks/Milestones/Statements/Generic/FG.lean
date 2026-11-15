@@ -31,7 +31,6 @@ def FinalAccountable : Prop :=
   ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload)
     (H : Time → Set (Fin P.n)) (tr : RunTrace A),
-    A.Requirements →
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     ∀ y z i j, y ∈ H (tr.time i) → z ∈ H (tr.time j) →
       ¬ Compatible (tr.HonestBlocksAt H) (tr.finalizedAt y i) (tr.finalizedAt z j) →
@@ -56,7 +55,6 @@ def FinalizedSafe : Prop :=
   ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload)
     (H : Time → Set (Fin P.n)) (tr : RunTrace A),
-    A.Requirements →
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     ∀ y z i j, y ∈ H (tr.time i) → z ∈ H (tr.time j) →
       (H (max (tr.time i) (tr.time j)))ᶜ.ncard < 2 * P.q - P.n →

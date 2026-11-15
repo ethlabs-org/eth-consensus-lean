@@ -45,7 +45,6 @@ def final_cache_of_frame (M : RunMap rho payload) (C : ACCorrectLocal A M.signer
     floor kindJ J,
     βK ≤ 1 / 2 →
     FrameWindow M.trace M.honest (P.slotTime W.start) deadline floor kindJ J →
-    A.Requirements →
     C.run.Run M.committee M.proposer M.digest M.honest M.trace →
     Premises M.trace M.honest M.committee βK M.proposer M.digest M.signer g ΔF deadline →
     HealedFrom M.trace M.honest M.proposer W.start deadline →

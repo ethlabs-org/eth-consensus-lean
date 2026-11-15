@@ -84,6 +84,13 @@ The capstone's AC families are indexed by public parameters with a positive popu
 The two public-restriction recovery lemmas preserve the unconditional and excused wrappers
 separately. The final obligations still quantify over every finite validator type.
 
+Final-cache and population-accountability contracts take the committee-indexed AC run as
+their single source of requirements and genesis-root validity. `run_requirements` supplies
+requirements at the actual committee starts, not at the default initial state; `run_root`
+supplies genesis validity for the run's digest. These rows therefore take neither a separate
+`A.Requirements` premise nor a genesis `RootOk` premise. Per-block root-validity hypotheses
+in the engine representation remain independent and unchanged.
+
 ## New interface rows and source limitations
 
 Every row is in `Milestones/Statements/Generic/ClaimTransports.lean` and remains OPEN.
