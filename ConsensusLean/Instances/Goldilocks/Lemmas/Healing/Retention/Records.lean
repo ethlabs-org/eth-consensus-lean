@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RecordsCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.FinalityPair
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutSteps
 
@@ -35,19 +36,6 @@ theorem self_entries_eq {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P A
   rcases Anc.total hcoh hXY hJY with h | h
   · exact hXT.symm.trans ((Th_eq_of_anc hr h hh.symm).symm.trans hJT)
   · exact hXT.symm.trans ((Th_eq_of_anc hr h hh).trans hJT)
-
-/-- `create_attestation`'s new record is the old one with the attestation recorded. -/
-private theorem createAtt_record {n : Nat} {Λ Λ' : FG.Record} {v : Fin n}
-    {σe : FG.ChainState n} {a : FG.Att n} (h : Λ.createAtt v σe = some (a, Λ')) :
-    Λ' = Λ.recordAtt a := by
-  unfold FG.Record.createAtt at h
-  split at h
-  · cases h
-  · dsimp only at h
-    split_ifs at h
-    simp only [Option.some.injEq, Prod.mk.injEq] at h
-    obtain ⟨rfl, rfl⟩ := h
-    rfl
 
 /-- `create_attestation`'s finality pair is the record's `finality_pair` of the entry state. -/
 private theorem createAtt_fin {n : Nat} {Λ Λ' : FG.Record} {v : Fin n}
@@ -142,84 +130,8 @@ theorem client_record_origin_of_run (hrun : GoldilocksRun proposer dg H tr)
     ((tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h →
       ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.h = h ∧ att.T = r) ∧
     ((tr.state y i).record.lock h = some r →
-      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.fin = some (h, r))
-  | 0 => by
-    rw [Trace.state, hrun.init y hy]
-    refine ⟨fun hx => ?_, fun hx => ?_⟩ <;>
-      simp [Node.initWith, FG.Record.empty] at hx
-  | i + 1 => by
-    obtain ⟨ih₁, ih₂⟩ := client_record_origin_of_run hrun hy h r i
-    have old : (tr.state y (i + 1)).record = (tr.state y i).record →
-        ((tr.state y (i + 1)).record.target h = some r ∨
-            r ∈ (tr.state y (i + 1)).record.timeout h →
-          ∃ k < i + 1, ∃ att, tr.SignAt y k att ∧ att.h = h ∧ att.T = r) ∧
-        ((tr.state y (i + 1)).record.lock h = some r →
-          ∃ k < i + 1, ∃ att, tr.SignAt y k att ∧ att.fin = some (h, r)) := fun he => by
-      rw [he]
-      exact ⟨fun hx => let ⟨k, hk, att, h'⟩ := ih₁ hx; ⟨k, by omega, att, h'⟩,
-        fun hx => let ⟨k, hk, att, h'⟩ := ih₂ hx; ⟨k, by omega, att, h'⟩⟩
-    by_cases hc : ∃ c, tr.CallAt y i c
-    · obtain ⟨c, hc⟩ := hc
-      have hlaw := hrun.cutLaw y hy i c hc
-      have hsucc := tr.state_succ_of_call hc
-      cases c with
-      | ac ℓ => exact old (by rw [hsucc]; exact hlaw.2.2.2)
-      | fg ℓ =>
-        cases ℓ with
-        | block B acc =>
-          cases acc with
-          | true => exact old (by rw [hsucc]; exact hlaw.2.2.2)
-          | false => exact old (by rw [hsucc, hlaw.2])
-        | attestation a' => exact old (by rw [hsucc]; exact hlaw.2.2)
-        | attest C s =>
-          cases s with
-          | none => exact old (by rw [hsucc, hlaw.2])
-          | some a' =>
-            have hrec : (tr.state y (i + 1)).record = (tr.state y i).record.recordAtt a' :=
-              hsucc ▸ createAtt_record hlaw.1
-            have hs : tr.SignAt y i a' := ⟨C, hc⟩
-            rw [hrec]
-            refine ⟨fun hx => ?_, fun hx => ?_⟩
-            · have key : (tr.state y i).record.target h = some r ∨
-                  r ∈ (tr.state y i).record.timeout h ∨ (a'.h = h ∧ a'.T = r) := by
-                rcases hx with hx | hx
-                · dsimp only [FG.Record.recordAtt] at hx
-                  split_ifs at hx
-                  · rw [Function.update_apply] at hx
-                    split_ifs at hx with hh
-                    · exact Or.inr (Or.inr ⟨hh.symm, Option.some.inj hx⟩)
-                    · exact Or.inl hx
-                  · exact Or.inl hx
-                · dsimp only [FG.Record.recordAtt] at hx
-                  split_ifs at hx
-                  · rw [Function.update_apply] at hx
-                    split_ifs at hx with hh
-                    · rcases Finset.mem_insert.1 hx with rfl | hx
-                      · exact Or.inr (Or.inr ⟨hh.symm, rfl⟩)
-                      · exact Or.inr (Or.inl (by rw [hh]; exact hx))
-                    · exact Or.inr (Or.inl hx)
-                  · exact Or.inr (Or.inl hx)
-              rcases key with hx | hx | ⟨h₁, h₂⟩
-              · obtain ⟨k, hk, att, h'⟩ := ih₁ (Or.inl hx)
-                exact ⟨k, by omega, att, h'⟩
-              · obtain ⟨k, hk, att, h'⟩ := ih₁ (Or.inr hx)
-                exact ⟨k, by omega, att, h'⟩
-              · exact ⟨i, by omega, a', hs, h₁, h₂⟩
-            · dsimp only [FG.Record.recordAtt] at hx
-              rcases hf : a'.fin with _ | ⟨p₁, p₂⟩
-              · rw [hf] at hx
-                dsimp only at hx
-                obtain ⟨k, hk, att, h'⟩ := ih₂ hx
-                exact ⟨k, by omega, att, h'⟩
-              · rw [hf] at hx
-                dsimp only at hx
-                rw [Function.update_apply] at hx
-                split_ifs at hx with hh
-                · cases Option.some.inj hx
-                  exact ⟨i, by omega, a', hs, by rw [hf, hh]⟩
-                · obtain ⟨k, hk, att, h'⟩ := ih₂ hx
-                  exact ⟨k, by omega, att, h'⟩
-    · exact old (by rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩])
+      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.fin = some (h, r)) :=
+  client_record_origin_from hrun.toLocalRun hy h r
 
 /-- Whole-run reset specialization of actual record provenance. -/
 theorem client_record_origin (hp : ResetPremises tr H proposer dg g ΔF a)
@@ -235,62 +147,20 @@ theorem record_step_of_run (hrun : GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     (tr.state y (i + 1)).record = (tr.state y i).record ∨
       ∃ att, tr.SignAt y i att ∧
-        (tr.state y (i + 1)).record = (tr.state y i).record.recordAtt att := by
-  by_cases hc : ∃ c, tr.CallAt y i c
-  · obtain ⟨c, hc⟩ := hc
-    have hlaw := hrun.cutLaw y hy i c hc
-    have hsucc := tr.state_succ_of_call hc
-    cases c with
-    | ac ℓ => exact Or.inl (by rw [hsucc]; exact hlaw.2.2.2)
-    | fg ℓ =>
-      rcases ℓ with ⟨B, _ | _⟩ | a' | ⟨C, _ | a'⟩
-      · exact Or.inl (by rw [hsucc, hlaw.2])
-      · exact Or.inl (by rw [hsucc]; exact hlaw.2.2.2)
-      · exact Or.inl (by rw [hsucc]; exact hlaw.2.2)
-      · exact Or.inl (by rw [hsucc, hlaw.2])
-      · exact Or.inr ⟨a', ⟨C, hc⟩, hsucc ▸ createAtt_record hlaw.1⟩
-  · exact Or.inl (by rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩])
+        (tr.state y (i + 1)).record = (tr.state y i).record.recordAtt att :=
+  record_step_from hrun.toLocalRun hy i
 
 /-- The sent contents of an honest record were signed earlier. -/
 theorem sent_origin (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
     {b : FG.Content} : ∀ i, b ∈ (tr.state y i).record.sent →
-      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b
-  | 0, hb => by
-    rw [Trace.state, hrun.init y hy] at hb
-    simp [Node.initWith, FG.Record.empty] at hb
-  | i + 1, hb => by
-    rcases record_step_of_run hrun hy i with he | ⟨att, hs, he⟩ <;> rw [he] at hb
-    · obtain ⟨k, hk, h⟩ := sent_origin hrun hy i hb
-      exact ⟨k, by omega, h⟩
-    · rcases List.mem_append.1 hb with hb | hb
-      · obtain ⟨k, hk, h⟩ := sent_origin hrun hy i hb
-        exact ⟨k, by omega, h⟩
-      · exact ⟨i, by omega, att, hs, (List.mem_singleton.1 hb).symm⟩
+      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b :=
+  sent_origin_from hrun.toLocalRun hy
 
 /-- Honest signatures are well formed using the store at their own signing cut. -/
 theorem signAt_wellFormed (hrun : GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n}
-    (hs : tr.SignAt y k att) : att.WellFormed := by
-  obtain ⟨src, hc⟩ := hs
-  have hcl := (hrun.cutLaw y hy k _ hc).1
-  have hr := Compose.fg_reachable hrun.toLocalRun hy k
-  change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
-    ((tr.state y k).fg.σ src.root).Th) = some (att, _) at hcl
-  rcases hsrc : (tr.state y k).fg.blocks src.root with _ | X
-  · have hg : ((tr.state y k).fg.σ src.root).Th = sp.genesisRoot := by
-      rw [Store.σ_of_blocks_none hr hsrc]; rfl
-    rw [hg, Store.σ_genesis hr] at hcl
-    exact Compose.createAtt_wellFormed le_rfl Nat.one_pos (by simp [FG.ChainState.init]) hcl
-  · have hXr := Goldilocks.Store.Reachable.blocks_root hr hsrc
-    have hX : X ∈ (tr.state y k).fg.tree := by
-      change (tr.state y k).fg.blocks X.root = some X
-      rw [hXr]; exact hsrc
-    obtain ⟨⟨E, hE, hEr, -⟩, -⟩ := Store.entry_state_of_source _ _ _ _ hr X hX
-    obtain ⟨c, -, -, -, hcs⟩ := Store.chain_state_of_chain _ _ _ _ hr E hE
-    obtain ⟨h1, -, h3, -, -, -, -, h8, -⟩ := FG.chain_invariants sp.toParams.fg _ _ hcs
-    rw [hXr] at hEr
-    rw [← hEr] at hcl
-    exact Compose.createAtt_wellFormed h1 h3 (fun p hp => lt_of_le_of_lt (h8 p hp).2 h3) hcl
+    (hs : tr.SignAt y k att) : att.WellFormed :=
+  signAt_wellFormed_from hrun.toLocalRun hy hs
 
 /-- **The finality pair of an honest attestation names an entry of its source's chain** (G0.2
 (h)): the finality pair `(h, r)` that `fg_attest` signs (the justification of the entry state at an

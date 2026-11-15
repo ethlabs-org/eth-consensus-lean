@@ -89,10 +89,8 @@ theorem faulty_lt_q (hh : tr.HealthyRun H ΔF g) : Hᶜ.ncard < sp.toParams.fg.q
 /-- The height pair an honest node signs names a block it holds, of that height. -/
 theorem signAt_entry (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {att : FG.Att sp.n} (hs : tr.SignAt y k att) :
-    ∃ E ∈ (tr.state y k).fg.tree, E.root = att.T ∧ ((tr.state y k).fg.σ E.root).h = att.h := by
-  obtain ⟨src, hc⟩ := hs
-  exact Store.exists_entry_of_createAtt (Compose.fg_reachable hrun.toLocalRun hy k)
-    (hrun.cutLaw y hy k _ hc).1
+    ∃ E ∈ (tr.state y k).fg.tree, E.root = att.T ∧ ((tr.state y k).fg.σ E.root).h = att.h :=
+  signAt_entry_from hrun.toLocalRun hy hs
 
 /-- An honest signed attestation comes from an actual earlier report, with its full
 entry/source witnesses. The report and signing have the same time and FG store. -/

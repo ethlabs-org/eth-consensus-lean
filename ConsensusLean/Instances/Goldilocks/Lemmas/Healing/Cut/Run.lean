@@ -31,6 +31,14 @@ variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
 
 /-! ## The FG state of an honest node -/
 
+/-- An honest signed attestation targets an entry held by its signer, at any AC start. -/
+theorem signAt_entry_from (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) {k : Nat}
+    {att : FG.Att P.n} (hs : tr.SignAt y k att) :
+    ∃ E ∈ (tr.state y k).fg.tree, E.root = att.T ∧ ((tr.state y k).fg.σ E.root).h = att.h := by
+  obtain ⟨src, hc⟩ := hs
+  exact Store.exists_entry_of_createAtt (Compose.fg_reachable h hy k)
+    (h.cutLaw y hy k _ hc).1
+
 /-- One cut of an honest node: its FG state stays, accepts a block, or processes an
 attestation. -/
 theorem fg_step (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) (m : Nat) :
@@ -123,7 +131,8 @@ theorem tree_accepted (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) {m :
       exact hB
 
 /-- An attestation in the pool of an honest node was processed by it at an earlier cut. -/
-theorem pool_processed (h : LocalRun proposer dg H sg tr) (hy : y ∈ H) {m : Nat} {a : FG.Att P.n}
+theorem pool_processed (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H)
+    {m : Nat} {a : FG.Att P.n}
     (ha : a ∈ (tr.state y m).fg.atts) : ∃ k < m, tr.ProcessAttAt y k a := by
   induction m with
   | zero =>
@@ -206,7 +215,7 @@ theorem tick_block_payload {st : NodeState A} {t : Time} {x : Nat} {B : A.Blk} {
       split at h <;> simp [Node.onAttestation] at h
 
 /-- An `fg_attest` cut lies in a tick, after the earlier cuts of that tick. -/
-theorem tick_of_attest (h : LocalRun proposer dg H sg tr) (hy : y ∈ H) {k : Nat} {C : A.Blk}
+theorem tick_of_attest (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) {k : Nat} {C : A.Blk}
     {s : Option (FG.Att P.n)} (hc : tr.CallAt y k (.fg (.attest C s))) :
     ∃ j₀ ≤ k, ∃ x, tr.GroupAt proposer dg y j₀ (tr.time k) (.tick x) ∧ ∀ i, j₀ ≤ i → i ≤ k →
       ∃ c ∈ (onTick proposer dg y (tr.state y j₀) (tr.time k) x).2, tr.label i = some c := by
@@ -225,7 +234,8 @@ theorem tick_of_attest (h : LocalRun proposer dg H sg tr) (hy : y ∈ H) {k : Na
 
 /-- **The honest attestations on a block held at an `fg_attest` cut were signed before its
 time.** -/
-theorem signed_before_attest (h : LocalRun proposer dg H sg tr) (hy : y ∈ H) {k : Nat} {C : A.Blk}
+theorem signed_before_attest (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H)
+    {k : Nat} {C : A.Blk}
     {s : Option (FG.Att P.n)} (hc : tr.CallAt y k (.fg (.attest C s))) {Y : A.Blk}
     (hY : Y ∈ (tr.state y k).fg.tree) {a : FG.Att P.n} (ha : a ∈ Y.fgPayload) (haH : a.val ∈ H) :
     ∃ j, tr.SignAt a.val j a ∧ tr.time j < tr.time k := by

@@ -132,11 +132,11 @@ private theorem toFG_next (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P
       split <;> simp
 
 variable {proposer} {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
-  {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
 /-- **An honest `ac_to_fg` cut that returns `C` is followed by `fg_attest(C)`**, at the same
 time, with the FG state unchanged. -/
-theorem toFG_attest (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {k : Nat}
+theorem toFG_attest (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel A} {C : A.Blk} (hk : tr.CallAt y k (.ac ℓ)) (hc : ℓ.call = .toFG)
     (hC : (A.toFG (tr.state y k).ac ℓ.frame (tr.time k)).2 = some C) :
     ∃ s, tr.CallAt y (k + 1) (.fg (.attest C s)) ∧ tr.time (k + 1) = tr.time k ∧
