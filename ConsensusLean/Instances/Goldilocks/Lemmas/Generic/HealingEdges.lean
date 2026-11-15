@@ -5,14 +5,16 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
 import ConsensusLean.Instances.Goldilocks.Lemmas.Common.StatementsBundle
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWindowExists
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
 import ConsensusLean.Lemmas.Tactic.Linarith
+import Mathlib.Tactic.Ring
 
 public section
 
 /-! # Generic healing assembly edges
 
 The assembly edges over any node AC, from the generic healing leaves (`HealingLeaves` and
-`HealingRounds`).
+`HealingRounds`). Every edge is a theorem.
 
 `reset_or_noAdvance` is proved: a high signing before `T` by a signer honest at it and at `c_z`
 gives a reset no later (leaf 1, `reset_of_height_advance_at_from`); without one, `NoAdvance` holds
@@ -37,17 +39,66 @@ the rise resets before the budget's end.
 `generic_healing` chains honest proposals after that reset: `exists_reset`, then `highCanonical`
 and `ACHealing.heal_after_reset`.
 
-`exists_reset_of_drain_rounds_noRestartAfter_at_of` remains an UNPROVED implication contract, not
-theorem evidence.
+`exists_reset_of_drain_rounds_noRestartAfter_at_of` proves the whole-run endpoint
+`exists_reset_of_drain_rounds_noRestartAfter_at` over any `ACHealing` on the four-delay grid
+`t_s = s · 4Δ`. Before the real-time bound there is either a high signing, giving the reset by
+leaf 1, or no advance; leaf 3 then gives a frame window of the rise length, the grid alignment
+(`exists_slot_align_of_grid`) a slot window inside it, `DrainOutputs` a warm proposal, leaf 8 its
+deficit and the rise the reset. The rise's slot length, spacing and timeout premises come from
+the numerical timeout bound on the grid (`slotLen_of_grid`, `spacing_grid_equation`,
+`timeout_grid_equation`).
 -/
 
 namespace Consensus.Goldilocks.Generic
 
 open SA (gbar)
-open Healing (cutZ)
+open Healing (cutZ FirstCutAfter riseLen)
 open Healing.Growing (HZ IsReset)
 
-section Proved
+/-! ## Four-delay grid timing -/
+
+private theorem grid_span {P : Params} (hgrid : ∀ s : Nat, P.slotTime s = (s : Time) * (4 * P.Δ))
+    (s d : Nat) : P.slotTime (s + d) = P.slotTime s + 4 * P.Δ * (d : Time) := by
+  rw [hgrid, hgrid]
+  push_cast
+  ring
+
+/-- On the four-delay grid `t_s = s · 4Δ`, the timeout inequality at every slot is the numerical
+bound `6Δ + ΔF ≤ 4Δ · δt`. -/
+theorem timeout_grid_equation {P : Params} (ΔF : Time)
+    (hgrid : ∀ s : Nat, P.slotTime s = (s : Time) * (4 * P.Δ)) :
+    (∀ s, P.slotTime s + 6 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) ↔
+      6 * P.Δ + ΔF ≤ 4 * P.Δ * (P.δt : Time) := by
+  constructor
+  · intro h
+    linarith [h 0, grid_span hgrid 0 P.δt]
+  · intro h s
+    linarith [grid_span hgrid s P.δt]
+
+/-- On the four-delay grid every slot is `4Δ` long. -/
+theorem slotLen_of_grid {P : Params} (hgrid : ∀ s : Nat, P.slotTime s = (s : Time) * (4 * P.Δ)) :
+    ∀ s, P.slotTime s + 4 * P.Δ ≤ P.slotTime (s + 1) := fun s => by
+  have h := grid_span hgrid s 1
+  push_cast at h
+  linarith
+
+/-- On the four-delay grid, the report-delivery spacing at every slot is the same numerical bound
+`6Δ + ΔF ≤ 4Δ · δt`. -/
+theorem spacing_grid_equation {P : Params} (ΔF : Time)
+    (hgrid : ∀ s : Nat, P.slotTime s = (s : Time) * (4 * P.Δ)) :
+    (∀ s, P.slotTime (s + 1) + 2 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) ↔
+      6 * P.Δ + ΔF ≤ 4 * P.Δ * (P.δt : Time) := by
+  constructor
+  · intro h
+    have h1 := grid_span hgrid 0 1
+    push_cast at h1
+    linarith [h 0, grid_span hgrid 0 P.δt]
+  · intro h s
+    have h1 := grid_span hgrid s 1
+    push_cast at h1
+    linarith [grid_span hgrid s P.δt]
+
+section Edges
 
 variable {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
 
@@ -330,18 +381,150 @@ theorem generic_healing (O : ACHealing A sg runs) :
   exact ⟨a, ha, hat, O.heal_after_reset hβ hrun hP ha (hat.trans hb)
     (highCanonical O hβ hrun hP ha (hat.trans hb))⟩
 
-end Proved
+/-- The whole-run endpoint over the supplier `O`, on the four-delay grid. Five integer-aligned
+attempts fit before `B = resetBoundRounds r Δ 2Δ δt G Ld`. A high signing by `B` gives the reset by
+leaf 1; otherwise there is no advance before `B`, so honest heights after `r + 4Δ` are in
+`[HZ, HZ + 1]` (leaf 2, both bounds) and leaf 3 gives a frame window at a constant merged key `v`
+of the rise length `riseLen`. The grid alignment puts a slot window `[s₀, N]` inside it, with
+`N = s₀ + Ld + r(v)·(δt + G - 1) + 1`; `DrainOutputs` gives a warm proposal `u ≤ s₀ + Ld`, leaf 8
+its deficit `r(v)`, and the rise the reset by `t_{u + r(v)·(δt + G - 1) + 1} + 2Δ ≤ B`. The rise's
+snapshot is the first cut after `c_z`, which is no later than the warm proposal's cut. -/
+theorem exists_reset_of_drain_rounds_noRestartAfter_at_of (O : ACHealing A sg runs) :
+    exists_reset_of_drain_rounds_noRestartAfter_at A sg O := by
+  intro cm proposer dg H tr βK g ΔF b r G Ld hβ hcom hgrid hrun hnc hf hsvc hawake hcatch hnr hH
+    hfol hΔF hr hgr hG hcz hb hgp hdrain
+  classical
+  have hrl := runs.run_local hrun
+  let D := P.Δ
+  let ρ : Nat := P.δt + G - 1
+  let lo := r + 4 * D
+  let d := 4 * D * ((Ld : Time) + 2)
+  let rt := 4 * D * (ρ : Time)
+  let B := resetBoundRounds r D (2 * D) P.δt G Ld
+  have hD : 1 ≤ D := P.hΔ
+  have hρ : (ρ : Time) = (P.δt : Time) + G - 1 := by
+    dsimp [ρ]
+    rw [Nat.cast_sub (by omega), Nat.cast_add, Nat.cast_one]
+  have hB : B = r + (20 * Ld + 24 * (P.δt + G - 1) + 54) * D + 5 * (2 * D) := rfl
+  have hfq {t : Time} (ht : 0 ≤ t) (htb : t ≤ b) :
+      (H t)ᶜ.ncard < P.fg.q ∧ (H t)ᶜ.ncard < 2 * P.fg.q - P.n :=
+    ⟨faults_lt_q hf ht htb, P.fg.faults_lt_quorum_margin (hf t ht htb)⟩
+  have hBlo : lo + 4 * D ≤ B := by
+    have hG' : (1 : Time) ≤ G := by exact_mod_cast hG
+    have hLd' : (0 : Time) ≤ Ld := Nat.cast_nonneg _
+    have hδ' : (0 : Time) ≤ P.δt := Nat.cast_nonneg _
+    have hprod := mul_nonneg (show (0 : Time) ≤ 20 * Ld + 24 * (P.δt + G - 1) by linarith)
+      (show (0 : Time) ≤ D by linarith)
+    rw [hB]
+    dsimp [lo]
+    nlinarith
+  have hczb : cutZ P g ≤ b := by dsimp [lo] at hBlo; linarith
+  by_cases hadv : ∃ y k att, y ∈ H (max (cutZ P g) (tr.time k)) ∧
+      tr.SignAt y k att ∧ tr.time k ≤ B ∧ HZ tr H g + 1 ≤ att.h
+  · obtain ⟨y, k, att, hy, hs, hk, hh⟩ := hadv
+    obtain ⟨a, ha, hat⟩ := reset_of_height_advance_at_from hrl
+      (hfq ((hrl.time_nonneg k).trans (le_max_right _ _)) (max_le hczb (hk.trans hb))).1 hy hs hh
+    exact ⟨a, ha, hat.trans hk⟩
+  have hna : NoAdvance tr H g B := by
+    intro y k att hy hs hk
+    by_contra hh
+    exact hadv ⟨y, k, att, hy, hs, hk.le, by omega⟩
+  have hlo : gbar g + 2 * D ≤ lo := by dsimp [lo]; linarith
+  have hrange : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i < B →
+      HZ tr H g ≤ (tr.state y i).fg.hmax ∧ (tr.state y i).fg.hmax ≤ HZ tr H g + 1 := by
+    intro y i hy hi hiB
+    have hib : tr.time i ≤ b := hiB.le.trans hb
+    obtain ⟨hsnap, hcall⟩ := snapshotCall_of_awake_at_from hrl hawake hy (hcz.trans hi) hib
+    have hczle : cutZ P g ≤ tr.time i := by dsimp [lo, D] at hi; linarith
+    have hmax : max (cutZ P g) (tr.time i) = tr.time i := max_eq_right hczle
+    refine ⟨HZ_le_hmax_at_from hrl hnc hsvc hcatch (hH.mono (hrl.antitone hczb)) hsnap hy ?_
+      hcall (hlo.trans hi),
+      hmax_le_of_noAdvance_at_from hrl hna hy (by rw [hmax]; exact (hfq (hrl.time_nonneg i) hib).1)
+        hiB⟩
+    rw [hmax]
+    exact (hfq (hrl.time_nonneg i) hib).2
+  have hd : 0 ≤ d := by dsimp [d]; positivity
+  have hrt : 0 ≤ rt := by dsimp [rt]; positivity
+  have hlen := Healing.riseLen_nonneg hd hrt (show 0 ≤ 2 * D - 1 by linarith only [hD]) (HZ tr H g)
+  have hsum : lo + ∑ j ∈ Finset.range 5,
+      (riseLen d rt (2 * D - 1) (HZ tr H g) (2 * HZ tr H g + j) + 2 * D) = B - 5 := by
+    rw [Healing.sum_riseLen, hB]
+    dsimp [lo, d, rt]
+    rw [hρ]
+    ring
+  obtain ⟨v, hv, hvhi, af, haf, hend, hK, floor, kindJ, J, hwin⟩ :=
+    exists_frameWindow_seq_of_service_at_from hrl hnc
+      (fun t ht htb => (hfq ht htb).2) hsvc hcatch
+      (riseLen d rt (2 * D - 1) (HZ tr H g)) hlen (by linarith only [hD]) hlo hb hrange
+      (fun z i m hz hi him hm => callLag_of_awake_at_from hrl hawake
+        (by dsimp [lo, D]; linarith) hz hi him (hm.le.trans hb))
+      (by rw [hsum]; exact sub_lt_self B (by decide))
+  let len := riseLen d rt (2 * D - 1) (HZ tr H g) v
+  have hsub : ∑ j ∈ Finset.range (v - 2 * HZ tr H g + 1),
+      (riseLen d rt (2 * D - 1) (HZ tr H g) (2 * HZ tr H g + j) + 2 * D) ≤
+      ∑ j ∈ Finset.range 5,
+      (riseLen d rt (2 * D - 1) (HZ tr H g) (2 * HZ tr H g + j) + 2 * D) :=
+    Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_mono (by omega))
+      (fun j _ _ => add_nonneg (hlen _) (by linarith only [hD]))
+  have hwinB : af + len ≤ B - 5 := by linarith [hsum]
+  obtain ⟨s₀, hslo, hshi⟩ := exists_slot_align_of_grid hgrid af
+    (by dsimp [lo] at haf; linarith only [haf, hr, hD])
+  let rr := riseRounds (HZ tr H g) v
+  have hrr : rr = Healing.riseRounds (HZ tr H g) v := by
+    rw [Healing.riseRounds_eq]
+    rfl
+  let N := s₀ + Ld + rr * ρ + 1
+  have hNtime : P.slotTime N = 4 * D * ((s₀ : Time) + Ld + (rr : Time) * (ρ : Time) + 1) := by
+    rw [hgrid]
+    dsimp [N]
+    ring
+  have hlenEq : len = 4 * D * ((Ld : Time) + (rr : Time) * (ρ : Time) + 2) + 2 * D - 1 := by
+    dsimp [len]
+    rw [Healing.riseLen_eq, ← hrr]
+    dsimp [d, rt]
+    ring
+  have hfit : P.slotTime N + 2 * D ≤ af + len := by
+    rw [hNtime, hlenEq]
+    have halign := Int.le_sub_one_of_lt hshi
+    linarith only [halign]
+  have hmono := P.slotTime_strictMono.monotone
+  have hframe : SlotWindow tr H s₀ N floor kindJ J :=
+    ⟨fun y i hy hi hj => hwin.floor_eq y i hy (hslo.trans hi) (hj.trans hfit),
+      fun y i hy hi hj => hwin.kind_iff y i hy (hslo.trans hi) (hj.trans hfit),
+      fun y i hy hi hj => hwin.root_eq y i hy (hslo.trans hi) (hj.trans hfit)⟩
+  have hsready : r + 4 * D ≤ P.slotTime s₀ := by dsimp [lo] at haf; linarith
+  have hm : gbar g + 4 * D ≤ P.slotTime s₀ := by linarith
+  have hmb : P.slotTime N + 2 * D ≤ b := by linarith
+  have hgpN := hgp s₀ N hsready (by linarith)
+  have hLdN : s₀ + Ld ≤ N := by dsimp [N]; omega
+  obtain ⟨u, ⟨hu0, hwarm⟩, huLd, z, kB, X, hz, hdes, hX, hXs, -⟩ := hdrain.warm hframe hm hLdN
+    hmb (fun y k att hy hs hk => hna y k att hy hs (by linarith)) hgpN
+  have huN : u + rr * ρ + 1 ≤ N := by dsimp [N]; omega
+  have huN' := hmono (show u ≤ N by omega)
+  have htX : tr.time kB = P.slotTime u := by rw [hX.2.2, hXs]
+  have hzk : z ∈ H (tr.time kB) := hrl.antitone (by rw [htX]; linarith) hz
+  have hz0 : z ∈ H (P.slotTime u) := htX ▸ hzk
+  have hulo : af ≤ P.slotTime u := hslo.trans (hmono hu0)
+  have huhi : P.slotTime u ≤ af + len := by linarith
+  have hrise := rounds_le_warm_proposal_at_of_healing O hrun hnc hwin hK hv hulo huhi hz0 hdes hX
+    hXs (hfq (by linarith) (by linarith)).2
+  obtain ⟨⟨j, hj⟩, -⟩ := snapshotCall_of_awake_at_from hrl hawake hzk
+    (by rw [htX]; linarith) (by rw [htX]; linarith)
+  have hjk : j ≤ kB := by
+    by_contra hlt
+    have := hj.1 kB (by omega)
+    rw [htX] at this
+    linarith
+  have hsnap : ∃ k, FirstCutAfter tr k (cutZ P g) ∧ tr.time k ≤ b :=
+    ⟨j, hj, (hrl.time_mono hjk).trans (by rw [htX]; linarith)⟩
+  have hend' := hmono huN
+  obtain ⟨a, ha, hat⟩ := rise_reset_rounds_at_of O hβ hcom hframe hrun hnc hsvc hawake hf hcatch hnr
+    (slotLen_of_grid hgrid) ((spacing_grid_equation ΔF hgrid).mpr hΔF) hsnap hm hfol hG
+    ((timeout_grid_equation ΔF hgrid).mpr hΔF) hgpN hmb hH hb hna rr hu0 hwarm huN
+    (by linarith) hz hdes hX hXs hrise
+  exact ⟨a, ha, hat.trans (by linarith)⟩
 
-variable {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
-variable {runs : ACRun A sg}
-
-/-- UNPROVED whole-run endpoint assembly; no bundled premise replaces the endpoint's inputs. -/
-def exists_reset_of_drain_rounds_noRestartAfter_at_of (O : ACHealing A sg runs) : Prop :=
-  reset_of_height_advance_at A sg runs → hmax_le_of_noAdvance_at A sg runs →
-  snapshotCall_of_awake_at A sg runs → callLag_of_awake_at A sg runs →
-  exists_slot_align (P := P) →
-  rounds_le_warm_proposal_at A sg O → rise_reset_rounds_at A sg O →
-    exists_reset_of_drain_rounds_noRestartAfter_at A sg O
+end Edges
 
 end Consensus.Goldilocks.Generic
 

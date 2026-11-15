@@ -62,7 +62,8 @@ def rise_reset_rounds_at (O : ACHealing A sg runs) : Prop :=
       HZ tr H g + 1 ≤ ((tr.state z (kB + 1)).fg.σ B.root).h + r →
       ∃ a, IsReset tr H g a ∧ a ≤ P.slotTime (u + r * (P.δt + G - 1) + 1) + 2 * P.Δ
 
-/-- UNPROVED whole-run endpoint, with the public four-delay grid assumption explicit. -/
+/-- Whole-run endpoint, with the public four-delay grid assumption explicit. Proved over any
+supplier by `exists_reset_of_drain_rounds_noRestartAfter_at_of` (Lemmas/Generic/HealingEdges). -/
 def exists_reset_of_drain_rounds_noRestartAfter_at (O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b r : Time} {G Ld : Nat},
     βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →

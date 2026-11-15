@@ -343,17 +343,6 @@ def high_entry_eq_at_goldilocks
     (_hT₁ : ((tr.state y₁ m₁).fg.σ Z₁.root).Th = Z₁.root)
     (_hT₂ : ((tr.state y₂ m₂).fg.σ Z₂.root).Th = Z₂.root), Z₁.root = Z₂.root
 
-/-- UNPROVED grid equation used by the rise and finite-horizon endpoint bridges.
-The numerical side is the timeout premise of `Healing.Growing.round_of_warm_at`
-and the finite endpoint in Kernel/Boundaries.
-The grid is the explicit premise of `Generic/Truncation.lean:63,80`; its cell length
-is instantiated to `4 * P.Δ`, not an arbitrary slot duration. -/
-def timeout_grid_equation {P : Params} : Prop :=
-  ∀ (ΔF : Time),
-    (∀ s : Nat, P.slotTime s = (s : Time) * (4 * P.Δ)) →
-      ((∀ s, P.slotTime s + 6 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) ↔
-        6 * P.Δ + ΔF ≤ 4 * P.Δ * (P.δt : Time))
-
 /-! Each consequent below universally closes its committee-indexed target. Historical signing
 is charged at the maximum of the snapshot and event time. No ready-majority premise is added. -/
 

@@ -249,7 +249,10 @@ The first healthy-reduction consumer must supply this inequality; the old
 `Premises.timeoutDelay` and `Premises.slotLen` do not together imply it.
 The leaves also require `slotLen`; the assemblies obtain it from `Premises`.
 Goldilocks can supply the delay from its four-Δ grid and numerical timeout
-bound, but that generic instance obligation is not discharged here.
+bound: on that grid, `spacing_grid_equation` (Lemmas/Generic/HealingEdges.lean)
+turns the bound into the delay, as the grid endpoint
+`exists_reset_of_drain_rounds_noRestartAfter_at_of` does. The generic instance
+obligation for an arbitrary schedule is not discharged here.
 `round_of_warm_at` additionally requires `(H b).Nonempty`, explicit in its
 generic contract (Milestones/Statements/Generic/Healing.lean). Earlier proposer
 honesty does not supply honesty at the later horizon. The rise contract already
