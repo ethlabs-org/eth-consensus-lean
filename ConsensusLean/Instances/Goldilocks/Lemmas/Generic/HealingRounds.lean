@@ -3,6 +3,10 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.H
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
+import ConsensusLean.Instances.Goldilocks.Lemmas.Common.StatementsBundle
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -25,6 +29,14 @@ Leaf 10 (`reset_of_high_proposal_at_of_healing`), over any `ACHealing`: the leaf
 `Premises`, so `ACHealing.report_follow` gives a node honest at the horizon a report above a warm
 high proposal by the next slot's report deadline. The reader is honest at `c_z` and at the report,
 the report is at least as high as the proposal in its store, and leaf 6 gives the reset.
+
+Leaf 11 (`round_of_warm_at_of_healing`), over any `ACHealing`: an honest proposal comes from the
+proposal call just before its block cut, and its parent is that call's duty head
+(`proposalHead_of_proposesAt`). `ACHealing.report_follow` puts a report above the warm proposal
+and below that head for every node honest at the later proposal; leaf 4, with leaf 9 for the
+report kind, makes each report a row of the warm proposal or strictly higher, and leaf 5 crosses
+one height. The report-delivery spacing `t_{s+1} + 2Δ + ΔF ≤ t_{s+δt}` gives the row deadline and
+`δt ≥ 2`, so the later proposal is at or after `c_z`.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -160,5 +172,149 @@ theorem reset_of_high_proposal_at_of_healing (O : ACHealing A sg runs) :
   exact ⟨a, ha, hat.trans hti⟩
 
 end HighProposal
+
+/-! ## Leaf 11 -/
+
+section WarmRound
+
+open Node in
+/-- An honest proposal comes from the proposal call just before its block cut, at the same time:
+the block's parent is the head of the duty that call returned. For any node run from any starts
+`ini`. -/
+private theorem proposalHead_of_proposesAt {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n}
+    {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
+    {tr : RunTrace A} {ini : Fin P.n → A.State} (h : Node.LocalRun proposer dg H sg tr ini)
+    {p : Fin P.n} (hp : p ∈ H) {kX : Nat} {X : A.Blk} (hX : tr.ProposesAt p kX X) :
+    ∃ c < kX, ∃ d, ProposalHeadAt tr p c d ∧ tr.time c = tr.time kX ∧
+      X.parent = some d.head.root := by
+  obtain ⟨⟨⟨acc, hc⟩, hpos⟩, -, -⟩ := hX
+  rcases Compose.blockCall_cases h hp hc with hg |
+    ⟨j, x, rfl, hg, hpr, d, p', hdp, rfl, -, -, -, -⟩
+  · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
+  have hcs : (exec proposer dg p (tr.state p j) (tr.time (j + 2)) (.tick x)).2 =
+      [(acCall p (tr.state p j) (tr.time (j + 2)) .tick).2] ++
+        ((acProposal (tickStep proposer dg p (tr.state p j) (tr.time (j + 2)) x .acTick).1
+          (tr.time (j + 2))).2.1 ::
+          (proposeBlock dg p (acProposal (tickStep proposer dg p (tr.state p j)
+            (tr.time (j + 2)) x .acTick).1 (tr.time (j + 2))).1 (tr.time (j + 2)) x d.head p').2) ++
+        (tickStep proposer dg p (proposeBlock dg p (acProposal (tickStep proposer dg p
+          (tr.state p j) (tr.time (j + 2)) x .acTick).1 (tr.time (j + 2))).1 (tr.time (j + 2)) x
+          d.head p').1 (tr.time (j + 2)) x .fgUpdate).2 := by
+    simp only [exec, onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil,
+      List.nil_append]
+    have hdp' := hdp
+    simp only [tickStep] at hdp'
+    simp only [tickStep, ite_eq_left hpr, hdp']
+  have hl1 : 1 < (exec proposer dg p (tr.state p j) (tr.time (j + 2)) (.tick x)).2.length := by
+    rw [hcs]; simp
+  obtain ⟨hn0, ht0, -, -, hl0⟩ := hg.2.1 0 (by omega)
+  obtain ⟨hn1, ht1, -, -, hl1'⟩ := hg.2.1 1 hl1
+  simp only [hcs, List.cons_append, List.getElem_cons_zero,
+    List.getElem_cons_succ, Nat.add_zero] at hl0 hl1' hn0 ht0
+  have hc0 : tr.CallAt p j (acCall p (tr.state p j) (tr.time (j + 2)) .tick).2 := ⟨hn0, hl0⟩
+  have hs1 : tr.state p (j + 1) =
+      (tickStep proposer dg p (tr.state p j) (tr.time (j + 2)) x .acTick).1 := by
+    rw [tr.state_succ_of_call hc0]
+    obtain ⟨hfr, hst, hfg, hrec⟩ := h.cutLaw p hp j _ hc0
+    simp only at hfr hst
+    rw [ht0] at hst
+    simp only [tickStep, acCall]
+    cases hpj : tr.post j
+    rw [hpj] at hst hfg hrec
+    simp only at hst hfg hrec
+    rw [← hfg, ← hrec, hst]
+  refine ⟨j + 1, by omega, d, ⟨⟨.proposal, frame (tickStep proposer dg p (tr.state p j)
+    (tr.time (j + 2)) x .acTick).1, []⟩, p', ⟨hn1, hl1'⟩, rfl, ?_⟩, ht1, rfl⟩
+  rw [hs1, ht1]
+  simpa [acProposal] using hdp
+
+variable {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
+
+open SA (gbar)
+open Healing (cutZ)
+
+/-- Leaf 11: a later honest proposal `δt` slots after a warm one, before any height advance, is
+one height above it in its proposer's store. `ACHealing.report_follow` gives every node honest at
+the later proposal a report above the earlier proposal and below the later proposal's parent
+(`proposalHead_of_proposesAt`); leaf 4, with leaf 9 for the report kind, makes the report a row of
+the earlier proposal or strictly higher, and leaf 5 crosses one height. The report-delivery
+spacing `t_{s+1} + 2Δ + ΔF ≤ t_{s+δt}` gives the row deadline and `δt ≥ 2`, so the later proposal
+is at or after `c_z`. -/
+theorem round_of_warm_at_of_healing (O : ACHealing A sg runs) : round_of_warm_at A sg O := by
+  intro cm proposer dg H tr βK g ΔF b T s₀ u x N floor kindJ J B X z kB p kX hβ hcom hframe hrun
+    hnc hsvc hawake hf hcatch hnr hsl hrd hsnap hm hs₀u hwarm hfol htd hux hxN hmb hHb hTb hna
+    hT hz hdes hB hBs hp hdx hX hXs
+  have hrl := runs.run_local hrun
+  have hΔ := P.hΔ
+  have hdF := hsvc.deltaF
+  have hmono := P.slotTime_strictMono.monotone
+  have hδ2 : 2 ≤ P.δt := by
+    by_contra h1
+    have h := hrd 0
+    have := hmono (show 0 + P.δt ≤ 0 + 1 by omega)
+    linarith
+  have hu1N : u + 1 ≤ N := by omega
+  have hvx : P.slotTime (u + 1) + 2 * P.Δ + ΔF ≤ P.slotTime x := (hrd u).trans (hmono hux)
+  have hczx : cutZ P g ≤ P.slotTime x := by
+    have hg := ((slotOfSpec_iff.mp slotOf_spec) P (gbar g) (Healing.gbar_nonneg g)).1
+    have hs₀ : P.slotOf (gbar g) + 1 ≤ s₀ := by
+      by_contra h
+      have := hmono (show s₀ ≤ P.slotOf (gbar g) by omega)
+      linarith
+    exact hmono (show P.slotOf (gbar g) + 3 ≤ x by omega)
+  have hP : Premises tr H cm βK proposer dg sg g ΔF b :=
+    ⟨hcom, hnc, hsvc, hawake, hf, hcatch, hnr, htd, hsl, hsnap, hHb⟩
+  have htX : tr.time kX = P.slotTime x := by rw [hX.2.2, hXs]
+  have htB : tr.time kB = P.slotTime u := by rw [hB.2.2, hBs]
+  have hvle : P.slotTime (u + 1) + 2 * P.Δ ≤ tr.time kX := by rw [htX]; linarith
+  have hxb : tr.time kX ≤ b := by rw [htX]; linarith [hmono hxN]
+  have hfol' := fun y (hy : y ∈ H (tr.time kX)) =>
+    O.report_follow hβ hrun hP hframe hm hwarm hu1N hmb ⟨hz, hdes, hB, hBs⟩ y
+      (hrl.antitone hvle hy)
+  -- The later proposal's parent is the head of its proposal call.
+  have hX' : (tr.upTo (tr.time kX)).ProposesAt p kX X :=
+    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hX.1⟩, hX.2.1, hX.2.2⟩
+  obtain ⟨c, hckX, d, ⟨ℓ, pay, hcℓ, hcall, hd⟩, htc, hpar⟩ :=
+    proposalHead_of_proposesAt (hrl.upTo (hrl.time_nonneg kX)) hp hX'
+  have hcs := Trace.upTo_state tr p (i := c) (d := tr.time kX)
+    (fun q hq => hrl.time_mono (by omega))
+  have htc' : tr.time c = tr.time kX := htc
+  have hhead : ProposalHeadAt tr p c d :=
+    ⟨ℓ, pay, ((Trace.upTo_callAt tr).mp hcℓ).2, hcall, by rw [← hcs]; exact hd⟩
+  have hhx := fun (R : A.Blk) (hRd : ∀ x', u + O.follow ≤ x' → x' ≤ N → ∀ w c d,
+      w ∈ H (tr.time c) → ProposalHeadAt tr w c d → tr.time c = P.slotTime x' →
+        Anc (tr.HonestBlocksAt H) R d.head) =>
+    hRd x (by omega) hxN p c d (htc' ▸ hp) hhead (htc'.trans htX)
+  obtain ⟨-, Rp, -, -, -, -, hBRp, hRpd⟩ := hfol' p hp
+  -- The earlier proposal is held while its proposer is honest.
+  have hzk : z ∈ H (tr.time kB) := hrl.antitone (by rw [htB]; linarith) hz
+  have hBH : B ∈ tr.HonestBlocksAt H :=
+    ⟨z, kB + 1, tr.time kB, hrl.time_nonneg kB, fun q hq => hrl.time_mono (by omega), hzk,
+      proposal_mem_at_from hrl (runs.run_requirements hrun) (runs.run_root hrun) hnc hzk hB⟩
+  refine round_cross_at_from hrl (runs.run_requirements hrun) (runs.run_root hrun) hnc
+    hsvc.signedRow hnr hBH (hBRp.trans (hhx Rp hRpd)) hpar hp hX
+    (hf _ (hrl.time_nonneg kX) hxb) (v := P.slotTime (u + 1) + 2 * P.Δ)
+    (by linarith [hmono (show s₀ ≤ u + 1 by omega)]) (by rw [htX]; exact hvx) hxb
+    (by rw [hBs, hXs]; exact hux) ?_
+  intro y hy
+  obtain ⟨i, R, hyi, hR, htil, hti, hBR, hRd⟩ := hfol' y hy
+  have hyz : y ∈ H (max (cutZ P g) (tr.time i)) :=
+    hrl.antitone (max_le (htX ▸ hczx) (hti.trans hvle)) hy
+  have hlo : P.slotTime s₀ ≤ P.slotTime u := hmono hs₀u
+  have hhi : P.slotTime u ≤ P.slotTime N + 2 * P.Δ := by linarith [hmono (show u ≤ N by omega)]
+  obtain ⟨hBy, hRy, hor⟩ := row_or_high_of_report_at_from hrl hnc
+    (fun t ht htT => hf t ht (htT.le.trans hTb)) hna hyz hR (hti.trans_lt hT)
+    (O.report_in_frame hrun hyi hR).1 hBR
+    (fun heq => Or.inr
+      (report_kind_of_warm_at_of_healing O hrun hnc hframe (hrl.antitone (by linarith) hz) hdes
+        hB hBs hlo hhi
+        (P.fg.faults_lt_quorum_margin
+          (hf _ (by linarith [hmono (Nat.zero_le u), P.slotTime_zero]) (by linarith)))
+        hyi hR hBR (hlo.trans htil) (by linarith [hmono hu1N]) heq))
+  rcases hor with ⟨k, att, hyk, hs, hk, hah, haT⟩ | hh
+  · exact Or.inl ⟨y, i, hyi, hBy, k, att, hyk, hs, hk.trans hti, hah, haT⟩
+  · exact Or.inr ⟨R, hhx R hRd, y, i, hyi, hBy, hRy, hh⟩
+
+end WarmRound
 
 end Consensus.Goldilocks.Generic

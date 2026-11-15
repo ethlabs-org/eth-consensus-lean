@@ -173,7 +173,8 @@ def reset_of_high_proposal_at (O : ACHealing A sg runs) : Prop :=
     HZ tr H g + 1 ≤ ((tr.state z (kB + 1)).fg.σ B.root).h →
     ∃ a, IsReset tr H g a ∧ a ≤ P.slotTime (u + 1) + 2 * P.Δ
 
-/-- UNPROVED leaf 11: both compared heights are read in the later proposer's store. -/
+/-- Leaf 11: both compared heights are read in the later proposer's store. Proved over any
+supplier by `round_of_warm_at_of_healing` (Lemmas/Generic/HealingRounds). -/
 def round_of_warm_at (O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b T : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
     {J B X : A.Blk} {z : Fin P.n} {kB : Nat} {p : Fin P.n} {kX : Nat},
