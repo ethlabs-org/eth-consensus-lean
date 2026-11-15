@@ -34,8 +34,11 @@ slots, gives a slot window at a constant merged key, and the five attempts fit i
 proposal from the gap in that window is at most `riseRounds` rounds below `HZ + 1` (leaf 8), and
 the rise resets before the budget's end.
 
-The remaining definitions are UNPROVED implication contracts, not theorem evidence.
-Old-premise leaves remain primary; bundled-premise forms are conditional corollaries.
+`generic_healing` chains honest proposals after that reset: `exists_reset`, then `highCanonical`
+and `ACHealing.heal_after_reset`.
+
+`exists_reset_of_drain_rounds_noRestartAfter_at_of` remains an UNPROVED implication contract, not
+theorem evidence.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -309,6 +312,24 @@ theorem exists_reset (O : ACHealing A sg runs) :
     hP.nonempty hb hna _ hs₀u hul huN (by linarith) hpu rfl hB hBs hrise
   exact ⟨a, ha, hat.trans (by linarith)⟩
 
+/-- Proposal chaining after the slot-budget reset: `exists_reset` gives the reset `a` by the
+budget's end, `highCanonical` the canonical high entries by the horizon, and
+`ACHealing.heal_after_reset` chains honest proposals from `slot(a) + drain`. No confirmed-tip
+guarantee is asserted. -/
+theorem generic_healing (O : ACHealing A sg runs) :
+    ∀ {cm βK tr H proposer dg g ΔF b G s}, βK ≤ 1 / 2 →
+      (∀ u, P.slotTime (u + 1) + 2 * P.Δ + ΔF ≤ P.slotTime (u + P.δt)) →
+      runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b → 1 ≤ G →
+      gbar g ≤ P.slotTime s → cutZ P g ≤ P.slotTime s →
+      ProposalGap tr H proposer G s (s + resetSlots O.warmup G P.δt) →
+      P.slotTime (s + resetSlots O.warmup G P.δt) ≤ b →
+      ∃ a, IsReset tr H g a ∧ a ≤ P.slotTime (s + resetSlots O.warmup G P.δt) ∧
+        HealedFrom tr H proposer (P.slotOf a + O.drain) b := by
+  intro cm βK tr H proposer dg g ΔF b G s hβ hsp hrun hP hG hgs hcs hgp hb
+  obtain ⟨a, ha, hat⟩ := exists_reset O hβ hsp hrun hP hG hgs hcs hgp hb
+  exact ⟨a, ha, hat, O.heal_after_reset hβ hrun hP ha (hat.trans hb)
+    (highCanonical O hβ hrun hP ha (hat.trans hb))⟩
+
 end Proved
 
 variable {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
@@ -321,17 +342,6 @@ def exists_reset_of_drain_rounds_noRestartAfter_at_of (O : ACHealing A sg runs) 
   exists_slot_align (P := P) →
   rounds_le_warm_proposal_at A sg O → rise_reset_rounds_at A sg O →
     exists_reset_of_drain_rounds_noRestartAfter_at A sg O
-
-/-- UNPROVED proposal-chaining assembly; no confirmed-tip guarantee is asserted. -/
-def generic_healing (O : ACHealing A sg runs) : Prop :=
-  ∀ {cm βK tr H proposer dg g ΔF b G s}, βK ≤ 1 / 2 →
-    (∀ u, P.slotTime (u + 1) + 2 * P.Δ + ΔF ≤ P.slotTime (u + P.δt)) →
-    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b → 1 ≤ G →
-    gbar g ≤ P.slotTime s → cutZ P g ≤ P.slotTime s →
-    ProposalGap tr H proposer G s (s + resetSlots O.warmup G P.δt) →
-    P.slotTime (s + resetSlots O.warmup G P.δt) ≤ b →
-    ∃ a, IsReset tr H g a ∧ a ≤ P.slotTime (s + resetSlots O.warmup G P.δt) ∧
-      HealedFrom tr H proposer (P.slotOf a + O.drain) b
 
 end Consensus.Goldilocks.Generic
 

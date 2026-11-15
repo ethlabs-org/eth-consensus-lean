@@ -241,6 +241,10 @@ OPEN obligations of the instance realization:
 OPEN instance obligation: `round_of_warm_at`, `rise_reset_rounds_at`,
 `exists_reset` and `generic_healing` require
 `∀ s, P.slotTime (s + 1) + 2 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)`.
+They are proved over any `ACHealing` with this inequality as a premise
+(`round_of_warm_at_of_healing` in Lemmas/Generic/HealingRounds.lean;
+`rise_reset_rounds_at_of`, `exists_reset` and `generic_healing` in
+Lemmas/Generic/HealingEdges.lean), so the obligation is only its supply.
 The first healthy-reduction consumer must supply this inequality; the old
 `Premises.timeoutDelay` and `Premises.slotLen` do not together imply it.
 The leaves also require `slotLen`; the assemblies obtain it from `Premises`.
