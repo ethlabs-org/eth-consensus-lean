@@ -145,7 +145,7 @@ abbrev ctrlK : Contract ProgressReq where
 theorem ctrlK_admissible : ctrlK.params.Admissible := by
   have h := Params.standard_admissible (Idx := ℕ+) (catchUp := 1) (lag := 1) (budget := 1)
     (heal := fun _ _ => 1) (latency := fun _ _ => 1) le_rfl le_rfl
-  exact ⟨h.1, h.2, h.3, h.4, h.5, h.6, h.7, h.8⟩
+  exact ⟨h.1, h.2, h.3, h.4, h.5⟩
 
 theorem ctrlK_progressFits : ProgressFits ctrlK ctrlFamily := by
   intro cap k pub
@@ -170,7 +170,10 @@ abbrev X : Progress S ProgressReq := shapeProgress ctrlFamily (Fin 5)
 /-- The PKI. -/
 def key5 : Fin (Fintype.card (Fin 5)) ≃ Fin 5 := extremalKey 4
 
-theorem card5 : 5 ≤ Fintype.card (Fin 5) := by simp
+theorem card5 : 3 ≤ Fintype.card (Fin 5) := by simp
+
+theorem ctrl_room : ctrlK.params.Room (Fintype.card (Fin 5)) := by
+  norm_num [Params.Room, ctrlK, ctrlParams, Params.standard]
 
 /-- The concrete index `k = 1`. -/
 def k1 : ctrlK.Idx := (1 : ℕ+)
@@ -212,7 +215,8 @@ theorem positive_controls (cap : Capability) :
   constructor
   · obtain ⟨rho, hpt, hw, hs, hp, hpa, ht⟩ :=
       sleepy_witness (F := ctrlFamily) key5 card5 two_pos two_pos 40 ctrlK_admissible
-        (by norm_num) (by norm_num) ctrlK_progressFits cap k1 (by rw [hlat]; linarith)
+        ctrl_room (by norm_num) (by norm_num) ctrlK_progressFits cap k1
+        (by rw [hlat]; linarith)
     refine ⟨⟨_, rho⟩, hpt, hw, hs, hp, hpa, ht, ?_⟩
     have hps : CommLog.PSync rho.point rho.log 0 :=
       (Model.sysOf_delivers_iff (O := ctrlSchema) rho _ _ _).mp hs.1
@@ -223,7 +227,7 @@ theorem positive_controls (cap : Capability) :
     have hrdy : max (5 : Time) 0 + (ctrlK.params.catchUp : Time) * 2 + 1 = 8 := by decide
     obtain ⟨rho, hpt, hw, he, hH, hp, hpa, ht, hsa⟩ :=
       healthy_witness (F := ctrlFamily) key5 card5 two_pos two_pos 40 ctrlK_admissible
-        (by norm_num) (by norm_num) ctrlK_progressFits cap k1 5
+        ctrl_room (by norm_num) (by norm_num) ctrlK_progressFits cap k1 5
         (le_mul_of_one_le_left zero_le_two (by exact_mod_cast ctrlK.params.fgDelay.pos))
         (by rw [hheal, hlat]; norm_num) (by rw [hheal]; norm_num)
         (by rw [hrdy]; linarith)
@@ -233,7 +237,7 @@ theorem positive_controls (cap : Capability) :
 generic theorem at concrete numbers). -/
 theorem ctrl_realizable : Realizable S X ctrlK :=
   (regimes_realizable ctrlFamily ctrlK ctrlK_admissible ctrlK_progressFits ctrlK_progressTolerant
-    (Fin 5) card5).toRealizable
+    (Fin 5) ctrl_room).toRealizable
 
 /-- **The do-nothing family is not accepted** (rejection): at every contract.
 `ShapeObligations` gives active service (`ShapeObligations.activeService`), a transaction relayed
@@ -243,11 +247,12 @@ theorem ctrl_not_obligations (K : Contract ProgressReq) :
     ¬ ShapeObligationsOn ctrlFamily K (fun _ p => p.ConstantFaults) := by
   intro h
   obtain ⟨i⟩ := K.idx_nonempty
-  have hc := h.correct _ (Fin 5)
+  obtain ⟨n, hn⟩ := h.admissible.exists_room
+  have hc := h.correct _ (Fin n)
   have hrat : (2 : Time) ≤ (K.params.fgDelay : Time) * 2 :=
     le_mul_of_one_le_left (by norm_num) (by exact_mod_cast K.params.fgDelay.pos)
   obtain ⟨r, ⟨hw, _, _⟩, ⟨_, hH, hp, ha⟩, _⟩ :=
-    (hc.realizable (by simp)).healthy .available i 2 2 0
+    (hc.realizable (by simpa using hn)).healthy .available i 2 2 0
       (by norm_num) (by norm_num) hrat le_rfl
   rcases hc.behaviour.healthyLive .available _ rfl i 0 r
       ⟨hw.1, hw.2.2.1⟩ ⟨hH, hp⟩ with hl | he
@@ -271,7 +276,7 @@ theorem outage_control :
       ((S.pt r).faultyAt 0).Nonempty := by
   obtain ⟨rho, hpt, hw, ho, hoa⟩ :=
     outage_witness (F := ctrlFamily) key5 card5 two_pos two_pos 40 ctrlK_admissible
-      (by norm_num) (by norm_num) (T := 2) (b₀ := 6) (b₁ := 8)
+      ctrl_room (by norm_num) (by norm_num) (T := 2) (b₀ := 6) (b₁ := 8)
       ⟨by norm_num, by decide, by norm_num, by decide⟩ (by norm_num) (by norm_num) (by decide)
   have hη : ctrlK.params.η = 2 := rfl
   have hc : ctrlK.params.catchUp = 1 := rfl

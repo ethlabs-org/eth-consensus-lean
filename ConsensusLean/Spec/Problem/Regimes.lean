@@ -8,13 +8,13 @@ public import Mathlib.Data.PNat.Basic
 
 A protocol's contract (`Contract`) supplies only numbers (`Params`) and a
 progress requirement per capability and index. Every duration is a
-coefficient of `ΔAC`. `Params.Admissible` bounds the thresholds by the standard
-ones (`Params.standard`), so a contract cannot buy its claims with stronger
-thresholds. The other numbers are instance numbers that the reviewer reads;
+coefficient of `ΔAC`. `Params.Admissible` admits realizable fractions;
+`Params.OptimalFaultTolerance` separately pins the optimal fractions.
+The other numbers are instance numbers that the reviewer reads;
 they are not bounded: the generic outage witness of the realizability proofs
 assumes of a shape contract's numbers only `Admissible`, so every `η`, `lag`,
-`recovery` and every `budget ≥ 1` is realizable there (with at least
-five validators, `ΔAC, ΔFG > 1`, on every window `(T, [b₀, b₁))` with
+`recovery` and every `budget ≥ 1` is realizable there (with
+enough validators to satisfy `Params.Room`, `ΔAC, ΔFG > 1`, on every window `(T, [b₀, b₁))` with
 `OutageTimes` (`0 ≤ T`, `T + lag·ΔAC ≤ b₀`, `b₁ ≤ b₀ + budget·ΔAC`), `T < b₀` and
 `b₀ + ΔAC ≤ b₁`, and a horizon at or after `b₁ + recovery·ΔAC`). The direction of
 each, for a larger value:
@@ -67,13 +67,8 @@ structure Params (Idx : Type) where
   θ : ℚ
   /-- Healthy fault bound: fewer than `β·n` faulty (`System.Healthy`). -/
   β : ℚ
-  /-- Healthy committee fault fraction (`System.Healthy`). Fixed at ½ by `Admissible` for now;
-  kept as a parameter because correctness is meant to allow non-optimal protocols later, with
-  optimal fault tolerance stated separately. -/
+  /-- Healthy committee fault fraction (`System.Healthy`). -/
   βK : ℚ
-  /-- A cover fraction `cover·n`: read by no regime (the outage has no
-  absolute participation premise); kept for `Admissible`. -/
-  cover : ℚ
   /-- Accountable fraction of the final output. -/
   α : ℚ
   /-- Arming lag: `T + lag·ΔAC ≤ b₀`. -/
@@ -109,7 +104,7 @@ namespace Params
 
 variable {Idx : Type}
 
-/-- The standard thresholds `θ = ½`, `β = ⅓`, `βK = ½`, `cover = ½`, `α = ⅓`,
+/-- The standard thresholds `θ = ½`, `β = ⅓`, `βK = ½`, `α = ⅓`,
 look-back, look-aheads and recovery delay `0`, and FG delay bound `1` (an
 instance sets them with
 `{ standard … with η := k, recovery := D, fgDelay := r }`). -/
@@ -119,7 +114,6 @@ def standard (catchUp lag budget : Nat) (heal latency : Capability → Idx → N
   θ := 1 / 2
   β := 1 / 3
   βK := 1 / 2
-  cover := 1 / 2
   α := 1 / 3
   lag := lag
   budget := budget
@@ -130,24 +124,29 @@ def standard (catchUp lag budget : Nat) (heal latency : Capability → Idx → N
   fgDelay := 1
   ahead := 0
 
-/-- Admissible numbers: the pin `βK = ½` excludes a faulty committee majority, and `β ≤ βK`
-ensures the population bound implies the committee bound at full selection. `βK` is fixed at ½ by
-`Admissible` for now; kept as a parameter because correctness is meant to allow non-optimal
-protocols later, with optimal fault tolerance stated separately.
-For `θ`, `β` and `cover`, thresholds are no stronger than standard: smaller
-`θ` and `cover`, and larger `β`, weaken the regime premise.
-The remaining bounds require
-`β ≤ α` (so the healthy regime implies faults below the accountable
-fraction), a positive catch-up and a positive budget. -/
+/-- Admissible numbers allow realizable participation and positive fault bounds.
+The population healthy bound is at most the accountable fraction. No ordering of
+the population and committee fault bounds, or optimality, is assumed. -/
 structure Admissible (P : Params Idx) : Prop where
   catchUp_pos : 1 ≤ P.catchUp
-  θ_range : 0 ≤ P.θ ∧ P.θ ≤ 1 / 2
-  β_range : 1 / 3 ≤ P.β
-  βK_eq : P.βK = 1 / 2
-  β_le_βK : P.β ≤ P.βK
-  cover_range : 0 ≤ P.cover ∧ P.cover ≤ 1 / 2
+  θ_range : 0 ≤ P.θ ∧ P.θ < 1
+  β_range : 0 < P.β ∧ 0 < P.βK
   α_range : P.β ≤ P.α ∧ P.α ≤ 1
   budget_pos : 1 ≤ P.budget
+
+/-- The optimal fault-tolerance fractions: a ready majority for sleepy and outage
+participation, fewer than half faulty in healthy committees, and fewer than a third
+faulty in the healthy population. Accountability `α` is not pinned. -/
+structure OptimalFaultTolerance (P : Params Idx) : Prop where
+  θ_eq : P.θ = 1 / 2
+  β_eq : P.β = 1 / 3
+  βK_eq : P.βK = 1 / 2
+
+/-- Enough validators for the realizability witnesses, derived from the fractions.
+At the optimal fractions this is exactly `5 ≤ n`; no fixed floor is imposed. -/
+def Room (P : Params Idx) (n : Nat) : Prop :=
+  P.θ * (n : ℚ) < (n : ℚ) - 2 ∧
+    1 < P.β * ((n : ℚ) - 1) ∧ 1 < P.βK * ((n : ℚ) - 1)
 
 end Params
 

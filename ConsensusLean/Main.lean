@@ -60,14 +60,14 @@ open Consensus.Model (pubOf sysOf)
 variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
 
 /-- Output `g`, serving capability `cap`, actively serves transactions: for
-every population of at least five, every index, `Δ > 1` and GST `gst ≥ 0`, some
+every population satisfying `Params.Room`, every index, `Δ > 1` and GST `gst ≥ 0`, some
 clean witness run (valid, no excuse, a faulty validator) in the healthy regime
 from `gst`, with the progress of `cap` at the index, has a transaction
 submitted to one honest node in the `g`-read of another honest node that was
 never submitted it (it arrived by relay and was ordered by the protocol). -/
 def ActiveService (F : ChainShapeFamily O Info) (K : Contract ProgressReq) (cap : Capability)
     (g : O.Id) : Prop :=
-  ∀ (V : Type) [Fintype V] [DecidableEq V], 5 ≤ Fintype.card V →
+  ∀ (V : Type) [Fintype V] [DecidableEq V], K.params.Room (Fintype.card V) →
     ∀ (i : K.Idx) (Δ gst : Time), 1 < Δ → 0 ≤ gst →
     ∃ r, (Sys F V).Witness r ∧ ((Sys F V).pt r).env.ΔAC = Δ ∧
       (Sys F V).Healthy (shapeProgress F V).toExternal K gst r ∧

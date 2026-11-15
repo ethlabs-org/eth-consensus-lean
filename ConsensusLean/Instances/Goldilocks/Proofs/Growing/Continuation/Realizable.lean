@@ -13,7 +13,8 @@ public section
 /-! # Non-vacuity of continuation after healing (`Continues.realizable`)
 
 `handover_realizable`: for every chain-shape family whose progress requirements are recurrences
-fitting its skeleton, at admissible numbers with `β ≤ ⅓`, and at least five validators, every
+fitting its skeleton, at admissible numbers with explicit `θ ≤ ½` and `β ≤ ⅓` premises,
+and at least five validators, every
 `ΔAC > 1`, `ΔFG > 1` within the FG delay bound and every GST `g` have a valid excuse-free run that
 hands over to the sleepy regime at the heal point `T = max g 0 + heal·ΔAC`, with
 `⌈n/3⌉ ≥ β·n` validators compromised from `κ = T + 1` on and both continuation claims active
@@ -59,7 +60,7 @@ private theorem lateKeys_card (key : Fin (Fintype.card V) ≃ V) :
 
 omit [DecidableEq V] in
 private theorem kv_notMem_lateKeys (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
-    {j : Nat} (hj : j < 5) (hj3 : j < 3) : kv key hn j hj ∉ lateKeys key := by
+    {j : Nat} (hj : j < 3) : kv key (by omega) j hj ∉ lateKeys key := by
   rw [lateKeys, kv_eq]
   change key.toEmbedding ⟨j, _⟩ ∉ _
   rw [Finset.mem_map' key.toEmbedding, Finset.mem_filter]
@@ -94,15 +95,15 @@ private theorem handoverPoint_submit (v : V) (t : Time) :
     (handoverPoint key hn Δ hΔ ΔF hΔF H κ).submit v t =
       if v = key ⟨1, by omega⟩ ∧ t = 0 then [42] else [] := by rfl
 
-private theorem handoverPoint_honest {j : Nat} (hj : j < 5) (hj3 : j < 3) (t : Time) :
-    (handoverPoint key hn Δ hΔ ΔF hΔF H κ).HonestAt (kv key hn j hj) t := by
+private theorem handoverPoint_honest {j : Nat} (hj : j < 3) (hj3 : j < 3) (t : Time) :
+    (handoverPoint key hn Δ hΔ ΔF hΔF H κ).HonestAt (kv key (by omega) j hj) t := by
   simp only [EnvPoint.HonestAt, handoverPoint_faulty]
   split_ifs
-  · exact kv_notMem_lateKeys key hn hj hj3
+  · exact kv_notMem_lateKeys key hn hj3
   · exact Finset.notMem_empty _
 
-private theorem handoverPoint_ready {j : Nat} (hj : j < 5) (hj3 : j < 3) (c t : Time) :
-    (handoverPoint key hn Δ hΔ ΔF hΔF H κ).Ready c (kv key hn j hj) t :=
+private theorem handoverPoint_ready {j : Nat} (hj : j < 3) (hj3 : j < 3) (c t : Time) :
+    (handoverPoint key hn Δ hΔ ΔF hΔF H κ).Ready c (kv key (by omega) j hj) t :=
   ⟨handoverPoint_honest key hn hΔ hΔF H κ hj hj3 t, fun _ _ _ => allAwake_apply _ _⟩
 
 /-- At `θ ≤ ½` the sleepy bound holds everywhere: every retained view has at most
@@ -135,13 +136,13 @@ private theorem handoverPoint_sleepy {θ : ℚ} (hθ : 0 ≤ θ ∧ θ ≤ 1 / 2
     (by positivity : (0 : ℚ) ≤ (((p.retain d).readyAt c t).card : ℚ) + (p.faultyAt d).card)]
 
 /-- No faults before `κ`: healthy, with full participation, up to any `T < κ`. -/
-private theorem handoverPoint_healthy {β : ℚ} (hβ : 1 / 3 ≤ β) (g T : Time) (hT : T < κ) :
+private theorem handoverPoint_healthy {β : ℚ} (hβ : 0 < β) (g T : Time) (hT : T < κ) :
     (handoverPoint key hn Δ hΔ ΔF hΔF H κ).HealthyOn β g T := by
   refine ⟨?_, fun _ _ _ _ _ => allAwake_apply _ _⟩
   unfold EnvPoint.faultCount
   rw [handoverPoint_faulty, ite_eq_right (not_le.mpr hT), Finset.card_empty, Nat.cast_zero]
   have hn' : (0 : ℚ) < Fintype.card V := by exact_mod_cast (by omega : 0 < Fintype.card V)
-  exact mul_pos (lt_of_lt_of_le (by norm_num) hβ) hn'
+  exact mul_pos hβ hn'
 
 /-- At `κ` at least fraction `β ≤ ⅓` of the validators are compromised. -/
 private theorem handoverPoint_beta {β : ℚ} (hβ : β ≤ 1 / 3) :
@@ -176,14 +177,15 @@ private theorem handoverPoint_holds (F : ChainShapeFamily O Info) (K : Contract 
 key `2` at the horizon. -/
 private theorem handoverPoint_txLiveActive (c start D : Time) (hH : max 0 start + Δ + D ≤ H) :
     (handoverPoint key hn Δ hΔ ΔF hΔF H κ).TxLiveActive c start D := by
-  refine ⟨42, 0, H, kv key hn 1 (by decide), kv key hn 2 (by decide), le_rfl,
+  refine ⟨42, 0, H, kv key (by omega) 1 (by decide), kv key (by omega) 2 (by decide), le_rfl,
     handoverPoint_honest key hn hΔ hΔF H κ (by decide) (by decide) _, allAwake_apply _ _, ?_,
-    kv_ne key hn (by decide), ?_, hH, le_rfl,
+    kv_ne key (by omega) (by decide), ?_, hH, le_rfl,
     handoverPoint_ready key hn hΔ hΔF H κ (by decide) (by decide) _ _⟩
   · simp only [handoverPoint_submit, kv_eq, and_self, ↓reduceIte, List.mem_cons,
       List.not_mem_nil, or_false]
   · intro τ
-    have hne : kv key hn 2 (by decide) ≠ key ⟨1, by omega⟩ := kv_ne key hn (hj' := by decide)
+    have hne : kv key (by omega) 2 (by decide) ≠ key ⟨1, by omega⟩ :=
+      kv_ne key (by omega) (hj' := by decide)
       (by decide)
     simp only [handoverPoint_submit, hne, false_and, ↓reduceIte, List.not_mem_nil,
       not_false_eq_true]
@@ -191,8 +193,8 @@ private theorem handoverPoint_txLiveActive (c start D : Time) (hH : max 0 start 
 /-- Safety is active after `t₀`: keys `1` and `2` ready at `t₀ + 1`, key `1` again at `t₀ + 2`. -/
 private theorem handoverPoint_safeActive (c t₀ : Time) (hH : t₀ + 2 ≤ H) :
     SafeActive c t₀ (handoverPoint key hn Δ hΔ ΔF hΔF H κ) :=
-  ⟨kv key hn 1 (by decide), kv key hn 2 (by decide), t₀ + 1, t₀ + 2,
-    kv_ne key hn (by decide), lt_add_one t₀, add_lt_add_right one_lt_two t₀, hH,
+  ⟨kv key (by omega) 1 (by decide), kv key (by omega) 2 (by decide), t₀ + 1, t₀ + 2,
+    kv_ne key (by omega) (by decide), lt_add_one t₀, add_lt_add_right one_lt_two t₀, hH,
     handoverPoint_ready key hn hΔ hΔF H κ (by decide) (by decide) _ _,
     handoverPoint_ready key hn hΔ hΔF H κ (by decide) (by decide) _ _,
     handoverPoint_ready key hn hΔ hΔF H κ (by decide) (by decide) _ _⟩
@@ -200,12 +202,14 @@ private theorem handoverPoint_safeActive (c t₀ : Time) (hH : t₀ + 2 ≤ H) :
 end Point
 
 /-- **Hand-over witness**: for a family whose progress requirements are fitting recurrences, at
-admissible numbers with `β ≤ ⅓` and at least five validators, every `ΔAC > 1`, `ΔFG > 1` within
+admissible numbers with explicit `θ ≤ ½` and `β ≤ ⅓` premises and at least five validators,
+every `ΔAC > 1`, `ΔFG > 1` within
 the FG delay bound and every GST `g` have a valid excuse-free run that hands over at the heal
 point `T`, with at least fraction `β` compromised by `κ = T + 1`, progress from `ready` to the
 horizon, and liveness and safety active after `κ`. -/
 theorem handover_realizable (F : ChainShapeFamily O Info) (K : Contract ProgressReq)
-    (ha : K.params.Admissible) (hβ : K.params.β ≤ 1 / 3) (hf : ProgressFits K F)
+    (ha : K.params.Admissible) (hθ : K.params.θ ≤ 1 / 2)
+    (hβ : K.params.β ≤ 1 / 3) (hf : ProgressFits K F)
     (hrec : ∀ cap i, ∃ ρ, K.progress cap i = .recur ρ) (hn : 5 ≤ Fintype.card V)
     (cap : Capability) (i : K.Idx) (Δ ΔF g : Time) (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF)
     (hr : ΔF ≤ (K.params.fgDelay : Time) * Δ) :
@@ -243,8 +247,8 @@ theorem handover_realizable (F : ChainShapeFamily O Info) (K : Contract Progress
   have hL := Model.sysOf_laws O (compiled F) V
   refine ⟨r, T, κ, hv, hnc, rfl, rfl,
     ⟨hse.psync le_rfl hΔ1 hΔF1,
-      handoverPoint_healthy key hn hΔ hΔF H κ ha.β_range g T (lt_add_one T), hr,
-      handoverPoint_sleepy key hn hΔ hΔF H κ ha.θ_range _ _ _ _, ?_⟩,
+      handoverPoint_healthy key hn hΔ hΔF H κ ha.β_range.1 g T (lt_add_one T), hr,
+      handoverPoint_sleepy key hn hΔ hΔF H κ ⟨ha.θ_range.1, hθ⟩ _ _ _ _, ?_⟩,
     le_rfl, handoverPoint_holds key hn hΔ hΔF H κ F K hf hrec cap i _ _ _,
     handoverPoint_beta key hn hΔ hΔF H κ hβ,
     handoverPoint_txLiveActive key hn hΔ hΔF H κ _ _ _ ?_,
@@ -263,8 +267,7 @@ theorem handover_realizable (F : ChainShapeFamily O Info) (K : Contract Progress
     have hempty : Consensus.convicted ((Sys F V).convicts r) ((Sys F V).view r u i ∪
         (Sys F V).view r v j) = ∅ := Finset.subset_empty.mp (hconv ▸ hsub)
     rw [hempty, Finset.card_empty, Nat.cast_zero]
-    have hα : 0 < K.params.α :=
-      lt_of_lt_of_le (by norm_num) (ha.β_range.trans ha.α_range.1)
+    have hα : 0 < K.params.α := ha.β_range.1.trans_le ha.α_range.1
     have hn' : (0 : ℚ) < Fintype.card V := by exact_mod_cast (by omega : 0 < Fintype.card V)
     exact mul_pos hα hn'
   · change max 0 κ + Δ + (K.params.latency cap i : Time) * Δ ≤ H
@@ -299,12 +302,10 @@ theorem continues_realizable (S : Setup) (A : ContractAssumptions S)
     { catchUp_pos := (contract_coefficients S A).catchUp.pos
       θ_range := by norm_num [K, Params.standard]
       β_range := by norm_num [K, Params.standard]
-      βK_eq := by norm_num [K, Params.standard]
-      β_le_βK := by norm_num [K, Params.standard]
-      cover_range := by norm_num [K, Params.standard]
       α_range := by norm_num [K, Params.standard]
       budget_pos := by have := S.two_le_k; dsimp [K, Params.standard]; omega }
   exact handover_realizable (goldilocks S) K ha (by norm_num [K, Params.standard])
+    (by norm_num [K, Params.standard])
     (fun _ _ _ _ => rfl) (fun _ _ => ⟨_, rfl⟩) hn cap i ΔAC ΔFG g hΔ hΔF hr
 
 end Consensus.Goldilocks

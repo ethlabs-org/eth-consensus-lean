@@ -46,7 +46,7 @@ theorem outage_witness_l9_premises (S : Setup) (A : ContractAssumptions S) :
   have ha := meetsObligations_admissible S A
   have hk := S.two_le_k
   let key : Fin (Fintype.card (Fin 5)) ≃ Fin 5 := finCongr (Fintype.card_fin 5)
-  have hn : 5 ≤ Fintype.card (Fin 5) := by simp
+  have hn : 3 ≤ Fintype.card (Fin 5) := by simp
   have hl : (0 : Time) ≤ (K.params.lag : Time) * 2 := by positivity
   have hr : (0 : Time) ≤ (K.params.recovery : Time) * 2 := by positivity
   let b₀ : Time := (K.params.lag : Time) * 2 + 1
@@ -60,7 +60,9 @@ theorem outage_witness_l9_premises (S : Setup) (A : ContractAssumptions S) :
       exact_mod_cast this
     simp only [b₁]; linarith
   obtain ⟨rho, hp, hwit, ho, hact⟩ := outage_witness (F := goldilocks S) key hn (Δ := 2)
-    (by decide) (ΔF := 2) (by decide) H ha (by decide) (by decide) hT (by simp [b₀]; positivity)
+    (by decide) (ΔF := 2) (by decide) H ha
+    (((Obligations.meetsObligations_optimalFaultTolerance S A).room_iff _).mpr (by decide))
+    (by decide) (by decide) hT (by simp [b₀]; positivity)
     (by simp [b₁]) le_rfl
   obtain ⟨-, -, -, ⟨u, hu⟩, -, w, t, hwt, htH, hw⟩ := hact
   have hΔ : (Y.pt ⟨_, rho⟩).env.ΔAC = 2 := by

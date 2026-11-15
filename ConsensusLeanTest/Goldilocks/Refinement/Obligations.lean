@@ -334,7 +334,9 @@ theorem meetsObligations_realizable_small :
       (goldilocksContract assumptionsSmall (contract_coefficients setupSmall assumptionsSmall))
       (Fin 5) :=
   have h := (meets_obligations_constant setupSmall assumptionsSmall).2
-  regimes_realizable _ _ h.admissible h.progressFits h.progressTolerant (Fin 5) (by decide)
+  regimes_realizable _ _ h.admissible h.progressFits h.progressTolerant (Fin 5)
+    (((meetsObligations_optimalFaultTolerance setupSmall assumptionsSmall).room_iff _).mpr
+      (by decide))
 
 /-- (a) **The headline is not vacuous**: `goldilocksCorrect` at `setupSmall`, `assumptionsSmall` on
 five validators gives the realizability branch of `CorrectProtocol`, a clean witness for every
@@ -343,8 +345,9 @@ theorem goldilocksCorrect_realizable_small :
     Realizable (Model.sysOf schema (compiled (goldilocks setupSmall)) (Fin 5))
       (shapeProgress (goldilocks setupSmall) (Fin 5))
       (goldilocksContract assumptionsSmall (contract_coefficients setupSmall assumptionsSmall)) :=
-  (Consensus.Goldilocks.goldilocksCorrect setupSmall assumptionsSmall (Fin 5)).realizable
-    (by decide)
+  (Consensus.Goldilocks.goldilocksCorrect setupSmall assumptionsSmall (Fin 5)).1.realizable
+    (((meetsObligations_optimalFaultTolerance setupSmall assumptionsSmall).room_iff _).mpr
+      (by decide))
 
 /-- (a) The explicit excuses do not absorb all structural runs: reuse a clean,
 active sleepy realizability witness at delays two, and check the full property
@@ -428,7 +431,8 @@ theorem committeeOne_realizable (S : Setup) (A : ContractAssumptions S) (V : Typ
     [DecidableEq V] (hn : 5 ≤ Fintype.card V) :
     RealizableActive (goldilocksWith ⟨S, Regression.committeeOne⟩) (K S A) V :=
   regimes_realizable _ _ (meetsObligations_admissible S A) (fun _ _ _ _ => rfl)
-    (meetsObligations_progressTolerant S A) V hn
+    (meetsObligations_progressTolerant S A) V
+    (((meetsObligations_optimalFaultTolerance S A).room_iff _).mpr hn)
 
 /-- (a) On every valid run of the committee binding on at least two validators, the committee the
 outage regime reads (`External.selected`, the slot's vote committee) is not the whole population at
@@ -568,7 +572,7 @@ theorem shapeObligations_of_fgDelay_le {O : OutputSchema} {Info : Type} [Decidab
     have hd' : ((d : Nat) : Time) ≤ (K.params.fgDelay : Nat) := by exact_mod_cast hd
     exact mul_le_mul_of_nonneg_right hd' ((Sys F V).pt r).env.ΔAC_pos.le
   have ha := h.admissible
-  refine ⟨fun V _ _ => ?_, ⟨ha.1, ha.2, ha.3, ha.4, ha.5, ha.6, ha.7, ha.8⟩, h.serves,
+  refine ⟨fun V _ _ => ?_, ⟨ha.1, ha.2, ha.3, ha.4, ha.5⟩, h.serves,
     h.progressFits, h.progressTolerant⟩
   have c := h.claims V
   exact

@@ -59,6 +59,10 @@ def reset_window_of_coefficients {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
 use the separate contract fraction `βK`. -/
 def HealthyBetaFit (K : Contract ProgressReq) : Prop := K.params.β ≤ 1 / 3
 
+/-- The committee reduction uses a fault fraction at most a half. This is an
+instance fit, not a restriction on admissible correctness contracts. -/
+def CommitteeHalfFit (K : Contract ProgressReq) : Prop := K.params.βK ≤ 1 / 2
+
 /-- UNPROVED advertised-coefficient fit, for all nonfinal indices and progress forms.
 The chosen gap is data in the conclusion, not an unsupported progress-form exclusion. -/
 def ContractResetFit (M : RunMap rho payload) (K : Contract ProgressReq)

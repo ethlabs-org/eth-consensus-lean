@@ -3,6 +3,7 @@ public import ConsensusLean.Lemmas.Problem.DerivedFacts
 public import ConsensusLean.Spec.Problem.Regimes
 import ConsensusLean.Lemmas.Problem.Facts.Atoms
 public import Mathlib.Tactic.NormNum
+import Mathlib.Algebra.Order.Archimedean.Basic
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -22,7 +23,37 @@ theorem standard_admissible {catchUp lag budget : Nat} {heal latency : Capabilit
     (h : 1 ≤ catchUp) (hb : 1 ≤ budget) :
     (standard catchUp lag budget heal latency).Admissible :=
   ⟨h, by norm_num [standard], by norm_num [standard], by norm_num [standard],
-    by norm_num [standard], by norm_num [standard], by norm_num [standard], hb⟩
+    hb⟩
+
+/-- The optimal fractions require exactly five or more validators. -/
+theorem OptimalFaultTolerance.room_iff {P : Params Idx} (h : P.OptimalFaultTolerance)
+    (n : Nat) : P.Room n ↔ 5 ≤ n := by
+  simp only [Room, h.θ_eq, h.β_eq, h.βK_eq]
+  constructor
+  · rintro ⟨hθ, hβ, -⟩
+    have : (4 : ℚ) < n := by linarith
+    have : 4 < n := by exact_mod_cast this
+    omega
+  · intro hn
+    have : (5 : ℚ) ≤ n := by exact_mod_cast hn
+    constructor
+    · linarith
+    · constructor <;> linarith
+
+/-- Any admissible fractions leave room in a sufficiently large population. -/
+theorem Admissible.exists_room {P : Params Idx} (h : P.Admissible) : ∃ n, P.Room n := by
+  obtain ⟨n, hn⟩ := exists_nat_gt
+    (max (2 / (1 - P.θ)) (max (1 + 1 / P.β) (1 + 1 / P.βK)))
+  have hθ := (le_max_left _ _).trans_lt hn
+  have hβ := (le_max_left _ _).trans_lt ((le_max_right _ _).trans_lt hn)
+  have hβK := (le_max_right _ _).trans_lt ((le_max_right _ _).trans_lt hn)
+  have hd : 0 < 1 - P.θ := sub_pos.mpr h.θ_range.2
+  have hθ' := (div_lt_iff₀ hd).mp hθ
+  have hβ' : 1 / P.β < (n : ℚ) - 1 := by linarith
+  have hβK' : 1 / P.βK < (n : ℚ) - 1 := by linarith
+  have hb := (div_lt_iff₀ h.β_range.1).mp hβ'
+  have hbk := (div_lt_iff₀ h.β_range.2).mp hβK'
+  refine ⟨n, ?_, ?_, ?_⟩ <;> linarith
 
 end Params
 

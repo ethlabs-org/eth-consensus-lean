@@ -32,22 +32,25 @@ def MeetsObligations : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S),
     ShapeObligationsAs .ebbAndFlow (goldilocks S) (goldilocksContract A (contract_coefficients S A))
 
-/-- **Goldilocks is correct**, the headline statement: for every setup `S`, every assumption set
+/-- **Goldilocks is correct and optimally fault tolerant**, the headline statement:
+for every setup `S`, every assumption set
 `A` (the FG delay in slots `fgSlots ≥ 2` and the timeout `3·fgSlots ≤ δ_t`) and every finite
 validator type `V`, the Goldilocks family, compiled and run by the general execution model
 (`sysOf schema (compiled (goldilocks S)) V`, with progress read by `shapeProgress`), is an L0
-`CorrectProtocol` at the contract `goldilocksContract A (contract_coefficients S A)`. It composes
-`MeetsObligations` with the review statement `ObligationsSufficient`; it has their parameters and
-no further hypothesis. -/
+`CorrectProtocol` at the contract `goldilocksContract A (contract_coefficients S A)`,
+whose fractions satisfy `Params.OptimalFaultTolerance`. Correctness composes
+`MeetsObligations` with the review statement `ObligationsSufficient`; optimality
+pins the contract's fractions. Neither conjunct adds a hypothesis. -/
 def GoldilocksCorrect : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V],
     CorrectProtocol (Model.sysOf schema (compiled (goldilocks S)) V)
-      (shapeProgress (goldilocks S) V) (goldilocksContract A (contract_coefficients S A))
+      (shapeProgress (goldilocks S) V) (goldilocksContract A (contract_coefficients S A)) ∧
+      (goldilocksContract A (contract_coefficients S A)).params.OptimalFaultTolerance
 ```
 
-`Solution.lean` proves it as `fun S A V => ShapeObligations.correct (Obligations.meets_obligations S A).2 V`: the
+The correctness conjunct follows from `ShapeObligations.correct (Obligations.meets_obligations S A).2 V`: the
 generic statement `ObligationsSufficient` below, applied to the Goldilocks endpoint `MeetsObligations` without its
-profile label (`.2`; the profile is below). The other
+profile label (`.2`; the profile is below). Optimality follows from the contract's standard fractions. The other
 four certified statements are the generic ones that follow.
 
 ## The statements
@@ -65,7 +68,8 @@ def ObligationsSufficient : Prop :=
     ∀ (V : Type) [Fintype V] [DecidableEq V],
       CorrectProtocol (sysOf O (compiled F) V) (shapeProgress F V) K
 
-/-- L2 beyond `CorrectProtocol`: with ≥ 5 validators, a family whose progress fits its skeleton and
+/-- L2 beyond `CorrectProtocol`: with a validator count satisfying `Params.Room`,
+a family whose progress fits its skeleton and
 an admissible, progress-tolerant contract have active witnesses, including the bad-proposer witness
 that gives `ProgressTolerant` its meaning (`RealizableActive.badProposer`). `ShapeObligations F K`
 carries the three premises as fields. Exactly the type of `Consensus.Shape.regimes_realizable`. -/
@@ -73,7 +77,8 @@ def RegimesRealizable : Prop :=
   ∀ {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
     (F : ChainShapeFamily O Info) (K : Contract ProgressReq),
     K.params.Admissible → ProgressFits K F → ProgressTolerant O K →
-    ∀ (V : Type) [Fintype V] [DecidableEq V], 5 ≤ Fintype.card V → RealizableActive F K V
+    ∀ (V : Type) [Fintype V] [DecidableEq V],
+      K.params.Room (Fintype.card V) → RealizableActive F K V
 
 /-- L1: the system's log is the engine's communication. Exactly the type of
 `Consensus.Model.sysOf_log_faithful`. -/
@@ -203,7 +208,7 @@ that a claim or regime evaluates.
     with the same reads, views and log up to `b`, no new excuse, and the same
     progress on windows that end by `b`. It preserves the original run's
     selected population at every time, not just times up to `b`.
-- **`Realizable`** (at least five validators): every regime is met by a clean
+- **`Realizable`** (a validator count satisfying `Params.Room`): every regime is met by a clean
   witness. A witness is valid, has no excuse, and has a faulty and an honest
   validator. The witnesses exist at every `ΔAC` and every FG delay `ΔFG` (healthy: every
   `ΔFG ≤ fgDelay·ΔAC`), at every GST `g ≥ 0` (healthy: with a
@@ -219,12 +224,12 @@ that a claim or regime evaluates.
   A **stress witness** exercises liveness with many honest validators
   asleep, so a progress requirement cannot quietly demand near-full
   participation. For every provided available or stable output and every
-  validator count, at *one* index (it may depend on the validators, not on
+  validator count satisfying `Params.Room`, at *one* index for each eligible `k`
+  (it may depend on the validators, capability and `k`, not on
   `ΔAC` or `ΔFG`):
   - `sleepyStress`: at every `ΔAC` and `ΔFG`, a sleepy witness where at most
-    two honest validators are awake at any one time (`AwakeAtMost 2`; the
-    witness also has a faulty validator, and with `θ ≤ ½` two ready honest
-    validators meet the sleepy threshold), with `prog[0, horizon]` and
+    `k` honest validators are awake at any one time, for every `k ≥ 2` with
+    `θ·(k + 1) < k`, with `prog[0, horizon]` and
     `TxLiveActive`.
 
   The healthy regime is full participation, so it has no stress witness.
@@ -397,8 +402,8 @@ and look-ahead `committeeAhead·ΔAC`. Healthy adds a committee fault bound:
 for every nonempty committee selected at `t ∈ [max g 0, horizon]`,
 `|faulty_horizon ∩ K t| < βK · |K t|`.
 Population conditions below remain unchanged. At full selection the population
-bound implies the committee bound when β ≤ βK, which `Admissible` requires (with the pin βK = ½;
-standard values ⅓ and ½).
+bound implies the committee bound under the explicit premise β ≤ βK of
+`healthy_iff_of_full_selection`; the standard values ⅓ and ½ satisfy it.
 At full selection, Sleepy reduces to its population form when `committeeAhead ≤ ahead`
 and `0 ≤ θ ≤ 1`.
 
@@ -433,7 +438,7 @@ the regimes, not of the environment. Weaker thresholds keep each regime
 ```lean
 structure Params (Idx : Type) where
   catchUp : Nat   -- reader catch-up c = catchUp·ΔAC
-  θ β βK cover α : ℚ -- sleepy, population and committee healthy bounds, cover, accountable fraction
+  θ β βK α : ℚ -- sleepy, population and committee healthy bounds, accountable fraction
   lag budget η : Nat                         -- outage arming lag, budget, look-back (ΔAC-coefficients)
   recovery : Nat                             -- outage recovery delay (ΔAC-coefficient)
   heal latency : Capability → Idx → Nat      -- heal point after max g 0; transaction latency
@@ -441,25 +446,25 @@ structure Params (Idx : Type) where
   ahead : Nat                                -- population fault look-ahead (ΔAC-coefficient)
   committeeAhead : Nat := 0                  -- committee fault look-ahead (ΔAC-coefficient)
 def Params.standard (catchUp lag budget heal latency) :=
-  { catchUp, θ := ½, β := ⅓, βK := ½, cover := ½, α := ⅓, lag, budget, η := 0,
+  { catchUp, θ := ½, β := ⅓, βK := ½, α := ⅓, lag, budget, η := 0,
     recovery := 0, heal, latency, fgDelay := 1, ahead := 0, committeeAhead := 0 }
 structure Params.Admissible (P) : Prop :=
-  1 ≤ catchUp,  0 ≤ θ ≤ ½,  ⅓ ≤ β,  βK = ½,  β ≤ βK,  0 ≤ cover ≤ ½,  β ≤ α ≤ 1,  1 ≤ budget
+  1 ≤ catchUp,  0 ≤ θ < 1,  0 < β,  0 < βK,  β ≤ α ≤ 1,  1 ≤ budget
 ```
 
-For the population **thresholds**, a contract cannot buy its claims with easier premises: `θ` and `cover`
-(`cover` is read by no regime) must be at most their standard values (a smaller value is a weaker regime
-premise, hence a stronger claim), and the healthy fault bound `β` at least
-its standard `⅓` (the premise is `|faulty| < β·n`: a larger `β` admits more
-faults). Accountability requires `β ≤ α ≤ 1` (a larger `α` convicts more,
-hence is stronger; at the standard `β = ⅓`, `α ≥ ⅓`), so the healthy regime
-bounds faults below `β ≤ α` (`HealthyOn.faultsBelow`) and final safety holds
-there (`final_safe_healthy`).
-The committee bound is separate: the pin `βK = ½` excludes faulty committee majorities.
-`βK` is fixed at ½ by `Admissible` for now and kept as a parameter, because correctness is
-meant to allow non-optimal protocols later, with optimal fault tolerance stated separately.
-`β ≤ βK` relates the population bound to the committee bound: it preserves full-selection
-fidelity (the population bound implies the committee bound at full selection).
+Correctness admits non-optimal fractions. `Params.OptimalFaultTolerance` separately states
+`θ = ½`, `β = ⅓` and `βK = ½`; it leaves accountability `α` unpinned.
+Accountability retains `β ≤ α ≤ 1`, so healthy faults are below the accountable fraction.
+There is no ordering between `β` and `βK` in admissibility: full-selection healthy equivalence
+takes `β ≤ βK` explicitly, which standard and Goldilocks fractions satisfy.
+The healthy generic reductions require the instance fits `HealthyBetaFit` (`β ≤ ⅓`)
+and `CommitteeHalfFit` (`βK ≤ ½`); these do not restrict the definition of correctness.
+The unused `cover` number is absent.
+
+`Params.Room P n` is `θ·n < n − 2 ∧ 1 < β·(n − 1) ∧ 1 < βK·(n − 1)`, over rationals.
+Admissibility permits some such `n`. At the optimal fractions this is exactly `5 ≤ n`,
+and the stress clause is equivalent to asking for at most two awake honest validators.
+For other fractions both realizability bounds follow the contract instead of imposing optimality.
 `standard_admissible` shows that the standard numbers are admissible. The
 other numbers are not bounded and carry part of the verdict: a larger
 `catchUp` means fewer ready readers, a larger `lag` an earlier protected source

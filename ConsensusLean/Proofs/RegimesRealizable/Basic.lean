@@ -20,7 +20,7 @@ public section
   faulty.
 * Generic realizability (`regimes_realizable`): L0
   `Realizable` for every family whose progress fits its skeleton and every
-  progress-tolerant admissible contract and at least five validators, with active progress
+  progress-tolerant admissible contract with `Params.Room`, with active progress
   windows (`ProgressActive`). Witnesses: `sleepy_witness`,
   `healthy_witness`, `outage_witness` and `sleepyStress_witness` (a bounded
   awake profile), and the L2-only bad-proposer witness (`healthy_witness_sel`
@@ -54,7 +54,8 @@ theorem RealizableActive.toRealizable {V : Type} [Fintype V] [DecidableEq V]
     (h.sleepy cap i Δ ΔF hΔ hΔF).imp fun _ h => ⟨h.1, h.2.1⟩
   healthy cap i Δ ΔF g hΔ hΔF hr hg :=
     (h.healthy cap i Δ ΔF g hΔ hΔF hr hg).imp fun _ h => ⟨h.1, h.2.1, h.2.2.1⟩
-  sleepyStress cap hc ho := (h.sleepyStress cap hc ho).imp fun _ h Δ ΔF hΔ hΔF =>
+  sleepyStress cap hc ho k hk hθ :=
+    (h.sleepyStress cap hc ho k hk hθ).imp fun _ h Δ ΔF hΔ hΔF =>
     (h Δ ΔF hΔ hΔF).imp fun _ h => ⟨h.1, h.2.1, h.2.2.1⟩
   outage := h.outage
   sleepyGrowth cap i Δ ΔF hΔ hΔF :=
@@ -180,13 +181,25 @@ theorem outageSel_selected (F : ChainShapeFamily O Info) {V : Type}
   | some k => simp [shapeProgress, Model.sysExternal, protoOf, compiled, compile,
       outageSel, hk]
 
-/-- A small committee leaves two distinct identities for the fault and sleeper.
-Otherwise its size supplies the majority margin. -/
-theorem exists_outage_pair {N : Nat} (hn : 5 ≤ N) (C : Finset (Fin N)) :
-    ∃ f s : Fin N, f ≠ s ∧ (f ∉ C ∧ s ∉ C ∨ N - 1 ≤ C.card) := by
+/-- Put both exceptional identities outside a small committee, and the sleeper
+outside a committee missing exactly one identity. -/
+theorem exists_outage_pair {N : Nat} (hn : 3 ≤ N) (C : Finset (Fin N)) :
+    ∃ f s : Fin N, f ≠ s ∧
+      (f ∉ C ∧ s ∉ C ∨ N - 1 ≤ C.card ∧ (C.card < N → s ∉ C)) := by
   classical
   by_cases hc : N - 1 ≤ C.card
-  · exact ⟨⟨0, by omega⟩, ⟨2, by omega⟩, by simp, Or.inr hc⟩
+  · by_cases hfull : C.card < N
+    · obtain ⟨s, hs⟩ : ∃ s, s ∉ C := by
+        by_contra h
+        push Not at h
+        have he := Finset.eq_univ_of_forall h
+        simp only [he, Finset.card_univ, Fintype.card_fin, lt_self_iff_false] at hfull
+      obtain ⟨f, hf⟩ : ∃ f : Fin N, f ≠ s := by
+        by_cases h0 : (⟨0, by omega⟩ : Fin N) = s
+        · exact ⟨⟨1, by omega⟩, by rw [← h0]; simp⟩
+        · exact ⟨⟨0, by omega⟩, h0⟩
+      exact ⟨f, s, hf, Or.inr ⟨hc, fun _ => hs⟩⟩
+    · exact ⟨⟨0, by omega⟩, ⟨2, by omega⟩, by simp, Or.inr ⟨hc, fun h => (hfull h).elim⟩⟩
   · have hcard := Finset.card_sdiff_add_card_eq_card (Finset.subset_univ C)
     have htwo : 1 < (Finset.univ \ C).card := by
       simp only [Finset.card_univ, Fintype.card_fin] at hcard
@@ -210,12 +223,14 @@ theorem exists_perm_pair {N : Nat} {a b : Fin N} (hab : a ≠ b) (f s : Fin N) (
 /-- Reindex the PKI so a fixed committee avoids the witness's two exceptional
 validators, unless its cardinality already supplies the required margin. -/
 theorem exists_outage_key {V : Type} [Fintype V]
-    (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
+    (key : Fin (Fintype.card V) ≃ V) (hn : 3 ≤ Fintype.card V)
     (C : Finset (Fin (Fintype.card V))) :
     ∃ key' : Fin (Fintype.card V) ≃ V,
       (key ⟨0, by omega⟩ ∉ C.map key'.toEmbedding ∧
         key ⟨2, by omega⟩ ∉ C.map key'.toEmbedding) ∨
-      Fintype.card V - 1 ≤ (C.map key'.toEmbedding).card := by
+      Fintype.card V - 1 ≤ (C.map key'.toEmbedding).card ∧
+        ((C.map key'.toEmbedding).card < Fintype.card V →
+          key ⟨2, by omega⟩ ∉ C.map key'.toEmbedding) := by
   obtain ⟨f, s, hfs, hgood⟩ := exists_outage_pair hn C
   obtain ⟨e, he0, he2⟩ := exists_perm_pair (a := ⟨0, by omega⟩) (b := ⟨2, by omega⟩)
     (by simp) f s hfs
@@ -233,19 +248,25 @@ theorem exists_outage_key {V : Type} [Fintype V]
       have hj2 : e.symm j = ⟨2, by omega⟩ := key.injective he
       have hjs : j = s := by simpa only [Equiv.apply_symm_apply, he2] using congrArg e hj2
       exact hs (hjs ▸ hj)
-  · exact Or.inr (by simpa only [Finset.card_map] using hlarge)
+  · refine Or.inr ⟨by simpa only [Finset.card_map] using hlarge.1, ?_⟩
+    intro hc hv
+    obtain ⟨j, hj, he⟩ := Finset.mem_map.mp hv
+    have hj2 : e.symm j = ⟨2, by omega⟩ := key.injective he
+    have hjs : j = s := by simpa only [Equiv.apply_symm_apply, he2] using congrArg e hj2
+    exact hlarge.2 (by simpa only [Finset.card_map] using hc) (hjs ▸ hj)
 
 /-- Choose one constant admitted participation set and a compatible PKI.
 The environment and its exceptional validators remain unchanged. -/
 theorem exists_outage_selection (F : ChainShapeFamily O Info) {V : Type}
     [Fintype V] [DecidableEq V] (E : Env V) (key : Fin (Fintype.card V) ≃ V)
-    (hn : 5 ≤ Fintype.card V) :
+    (hn : 3 ≤ Fintype.card V) :
     ∃ (key' : Fin (Fintype.card V) ≃ V)
       (sel : (protoOf (compiled F) E).Role → Finset (Fin (Fintype.card V))) (C : Finset V),
       (protoOf (compiled F) E).SelAdmits sel ∧
       (∀ t, (shapeProgress F V).selected E (key', sel) t = C) ∧
       ((key ⟨0, by omega⟩ ∉ C ∧ key ⟨2, by omega⟩ ∉ C) ∨
-        Fintype.card V - 1 ≤ C.card) := by
+        Fintype.card V - 1 ≤ C.card ∧
+          (C.card < Fintype.card V → key ⟨2, by omega⟩ ∉ C)) := by
   classical
   cases hk : (F (pubOf E)).skel.participationKind with
   | none =>
@@ -267,16 +288,29 @@ theorem exists_outage_selection (F : ChainShapeFamily O Info) {V : Type}
       rw [outageSel_selected]
       simp only [hk, Option.isSome_some, ↓reduceIte]
 
-/-- Removing the fault and sleeper leaves more support than selected faults,
-either because both are outside the committee or because the committee has margin. -/
+/-- The refined placement supplies the weighted participation margin. -/
 theorem outage_committee_margin {V : Type} [Fintype V] [DecidableEq V]
-    (hn : 5 ≤ Fintype.card V) (C : Finset V)
+    {θ : ℚ} (hθ : 0 ≤ θ ∧ θ < 1)
+    (hroom : θ * (Fintype.card V : ℚ) < (Fintype.card V : ℚ) - 2) (C : Finset V)
     (f s : V) (hC : C.Nonempty)
-    (hgood : f ∉ C ∧ s ∉ C ∨ Fintype.card V - 1 ≤ C.card) :
-    ({f} ∩ C).card < ((C.erase f).erase s).card := by
+    (hgood : f ∉ C ∧ s ∉ C ∨ Fintype.card V - 1 ≤ C.card ∧
+      (C.card < Fintype.card V → s ∉ C)) :
+    θ * ((((C.erase f).erase s).card : ℚ) + ({f} ∩ C).card) <
+      ((C.erase f).erase s).card := by
+  classical
+  have hsum : ((C.erase f).erase s).card + ({f} ∩ C).card ≤ C.card := by
+    have he : (C.erase f).card + ({f} ∩ C).card = C.card := by
+      by_cases hf : f ∈ C
+      · have := Finset.card_pos.mpr ⟨f, hf⟩
+        rw [Finset.card_erase_of_mem hf, Finset.singleton_inter_of_mem hf,
+          Finset.card_singleton]; omega
+      · rw [Finset.erase_eq_of_notMem hf, Finset.singleton_inter_of_notMem hf,
+          Finset.card_empty, Nat.add_zero]
+    exact (Nat.add_le_add_right (Finset.card_le_card (Finset.erase_subset _ _)) _).trans he.le
   rcases hgood with ⟨hf, hs⟩ | hlarge
-  · simpa [Finset.erase_eq_of_notMem hf, Finset.erase_eq_of_notMem hs,
-      Finset.singleton_inter_of_notMem hf] using hC.card_pos
+  · simp only [Finset.erase_eq_of_notMem hf, Finset.erase_eq_of_notMem hs,
+      Finset.singleton_inter_of_notMem hf, Finset.card_empty, Nat.cast_zero, add_zero]
+    exact mul_lt_of_lt_one_left (by exact_mod_cast hC.card_pos) hθ.2
   · have hlow₁ : C.card ≤ (C.erase f).card + 1 := by
       by_cases hf : f ∈ C
       · rw [Finset.card_erase_of_mem hf]; omega
@@ -285,9 +319,19 @@ theorem outage_committee_margin {V : Type} [Fintype V] [DecidableEq V]
       by_cases hs : s ∈ C.erase f
       · rw [Finset.card_erase_of_mem hs]; omega
       · rw [Finset.erase_eq_of_notMem hs]; omega
-    have hfault : ({f} ∩ C).card ≤ 1 := by
-      exact le_trans (Finset.card_le_card Finset.inter_subset_left) (by simp)
-    omega
+    have hsupport : Fintype.card V ≤ ((C.erase f).erase s).card + 2 := by
+      by_cases hc : C.card < Fintype.card V
+      · have hs := hlarge.2 hc
+        have hs' : s ∉ C.erase f := fun h => hs (Finset.mem_of_mem_erase h)
+        rw [Finset.erase_eq_of_notMem hs']
+        omega
+      · omega
+    have hbound : (((C.erase f).erase s).card : ℚ) + ({f} ∩ C).card ≤
+        (Fintype.card V : ℚ) := by
+      exact_mod_cast hsum.trans (Finset.card_le_univ C)
+    have hs : (Fintype.card V : ℚ) ≤ ((C.erase f).erase s).card + 2 := by
+      exact_mod_cast hsupport
+    exact (mul_le_mul_of_nonneg_left hbound hθ.1).trans_lt (by linarith only [hroom, hs])
 
 /-- The committee index set the extremal selection reads at every time: every key without a
 participation kind, else the extremal keys of the participation kind's specification. -/
@@ -317,13 +361,13 @@ theorem selected_of_duty (F : ChainShapeFamily O Info) {V : Type} [Fintype V] [D
 `z`), unless `D` misses at most one key. Of the two indices outside a small `D`
 (`exists_outage_pair`) one is not `1`. -/
 theorem exists_witness_key {V : Type} [Fintype V]
-    (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
+    (key : Fin (Fintype.card V) ≃ V) (hn : 3 ≤ Fintype.card V)
     (D : Finset (Fin (Fintype.card V))) :
     ∃ (key' : Fin (Fintype.card V) ≃ V) (z : Fin (Fintype.card V)),
       key' z = key ⟨0, by omega⟩ ∧ key' ⟨1, by omega⟩ = key ⟨1, by omega⟩ ∧
       (key ⟨0, by omega⟩ ∉ D.map key'.toEmbedding ∨
         Fintype.card V - 1 ≤ (D.map key'.toEmbedding).card) := by
-  obtain ⟨f, s, hfs, hgood⟩ := exists_outage_pair hn D
+  obtain ⟨f, s, hfs, hgood⟩ := exists_outage_pair (by omega) D
   rcases hgood with ⟨hf, hs⟩ | hlarge
   · obtain ⟨j, hjD, hj1⟩ : ∃ j, j ∉ D ∧ j ≠ ⟨1, by omega⟩ := by
       by_cases h : f = ⟨1, by omega⟩
@@ -338,12 +382,13 @@ theorem exists_witness_key {V : Type} [Fintype V]
       have hx0 : Equiv.swap ⟨0, by omega⟩ j x = ⟨0, by omega⟩ := key.injective he
       rw [Equiv.swap_apply_eq_iff, Equiv.swap_apply_left] at hx0
       exact hjD (hx0 ▸ hx)
-  · exact ⟨key, ⟨0, by omega⟩, rfl, rfl, Or.inr (by simpa only [Finset.card_map] using hlarge)⟩
+  · exact ⟨key, ⟨0, by omega⟩, rfl, rfl,
+      Or.inr (by simpa only [Finset.card_map] using hlarge.1)⟩
 
 /-- A run PKI and an index `q ∈ D` of key `1` that move the faulty `key 0` out of a nonempty
 committee `D` other than the whole population. -/
 theorem exists_stress_key {V : Type} [Fintype V]
-    (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
+    (key : Fin (Fintype.card V) ≃ V) (hn : 3 ≤ Fintype.card V)
     (D : Finset (Fin (Fintype.card V))) :
     ∃ (key' : Fin (Fintype.card V) ≃ V) (q : Fin (Fintype.card V)),
       key' q = key ⟨1, by omega⟩ ∧ (D.Nonempty →
@@ -368,14 +413,15 @@ theorem exists_stress_key {V : Type} [Fintype V]
     by_contra hD
     exact h ⟨hne, hD⟩
 
-/-- A constant awake profile with a selected ready majority meets the committee clause, for
+/-- A constant awake profile with weighted selected support meets the committee clause, for
 every look-back and catch-up. This applies to every retained view used by the witnesses. -/
 theorem committee_of_constant_awake {V : Type} [Fintype V] [DecidableEq V]
     (p : EnvPoint V) (C : Finset V) (θ : ℚ) (η c W : Time)
-    (hθ : 0 ≤ θ ∧ θ ≤ 1 / 2) (hc : 0 ≤ c)
+    (hθ : 0 ≤ θ) (hc : 0 ≤ c)
     (haw : ∀ v t u, p.env.awake v t = p.env.awake v u)
-    (hmajority : ∀ d, C.Nonempty →
-      (p.faultyAt d ∩ C).card < ((p.retain d).awakeAt 0 ∩ C).card) :
+    (hmargin : ∀ d, C.Nonempty →
+      θ * (((p.retain d).awakeAt 0 ∩ C).card + (p.faultyAt d ∩ C).card : ℚ) <
+        ((p.retain d).awakeAt 0 ∩ C).card) :
     p.CommitteeSleepyOn (fun _ => C) θ η c W 0 p.horizon := by
   classical
   have hready (d t : Time) (ht : 0 ≤ t) :
@@ -392,19 +438,11 @@ theorem committee_of_constant_awake {V : Type} [Fintype V] [DecidableEq V]
         fun u _ _ => (haw v u 0).trans hr⟩
   intro t ht _ hC
   let d := p.lookAhead W t
-  have hm := hmajority d hC
-  have hmq : ((p.faultyAt d ∩ C).card : ℚ) <
-      (((p.retain d).awakeAt 0 ∩ C).card : ℚ) := by exact_mod_cast hm
-  have hcount : θ * (((((p.retain d).awakeAt 0 ∩ C).card +
-      (p.faultyAt d ∩ C).card : Nat) : ℚ)) <
-      (((p.retain d).awakeAt 0 ∩ C).card : ℚ) := by
-    push_cast
-    linarith [mul_le_mul_of_nonneg_right hθ.2
-      (show (0 : ℚ) ≤ ((p.retain d).awakeAt 0 ∩ C).card + (p.faultyAt d ∩ C).card by positivity)]
+  have hcount := hmargin d hC
   dsimp only
   split_ifs
   · rw [hready d t ht]
-    exact hcount
+    exact_mod_cast hcount
   · have hsub : (p.retain d).awakeIn (max 0 (t - η)) t ⊆ (p.retain d).awakeAt 0 := by
       intro v hv
       obtain ⟨_, u, -, -, hh, hu⟩ := Finset.mem_filter.mp hv
@@ -413,29 +451,34 @@ theorem committee_of_constant_awake {V : Type} [Fintype V] [DecidableEq V]
     rw [hready d t ht, Finset.union_eq_left.mpr hsub]
     have hn := Finset.card_union_le ((p.retain d).awakeAt 0 ∩ C) (p.faultyAt d ∩ C)
     rw [← Finset.union_inter_distrib_right] at hn
-    exact lt_of_le_of_lt (mul_le_mul_of_nonneg_left (by exact_mod_cast hn) hθ.1) hcount
+    have hnq : ((((p.retain d).awakeAt 0 ∪ p.faultyAt d) ∩ C).card : ℚ) ≤
+        ((p.retain d).awakeAt 0 ∩ C).card + (p.faultyAt d ∩ C).card := by
+      exact_mod_cast hn
+    exact lt_of_le_of_lt (mul_le_mul_of_nonneg_left hnq hθ) hcount
 
-/-- With at most one fault `f` charged at `b`, a constant committee without `f`, or with at least
-`n − 1 ≥ 4` members, keeps its faulty fraction below any `βK ≥ ⅓`. -/
+/-- The room bound controls a selected committee with at most one fault. -/
 theorem committeeHealthy_of_one_fault {V : Type} [Fintype V] [DecidableEq V]
-    (hn : 5 ≤ Fintype.card V) (p : EnvPoint V) (C : Finset V) (f : V) {βK : ℚ}
-    (hβK : 1 / 3 ≤ βK) (a b : Time) (hf : p.faultyAt b ⊆ {f})
+    (hn : 3 ≤ Fintype.card V) (p : EnvPoint V) (C : Finset V) (f : V) {βK : ℚ}
+    (hβK : 0 < βK) (hroom : 1 < βK * ((Fintype.card V : ℚ) - 1))
+    (a b : Time) (hf : p.faultyAt b ⊆ {f})
     (hgood : f ∉ C ∨ Fintype.card V - 1 ≤ C.card) :
     p.CommitteeHealthyOn (fun _ => C) βK a b := by
   intro _ _ _ hC
   change ((p.faultyAt b ∩ C).card : ℚ) < βK * C.card
   have hle := Finset.card_le_card (Finset.inter_subset_inter hf (Finset.Subset.refl C))
-  have hpos := hC.card_pos
-  have hβ : (1 / 3 : ℚ) * C.card ≤ βK * C.card := mul_le_mul_of_nonneg_right hβK (Nat.cast_nonneg _)
   rcases hgood with hfC | hlarge
   · rw [Finset.singleton_inter_of_notMem hfC, Finset.card_empty] at hle
-    have hC1 : (1 : ℚ) ≤ C.card := by exact_mod_cast hpos
     rw [Nat.eq_zero_of_le_zero hle, Nat.cast_zero]
-    linarith
+    exact mul_pos hβK (by exact_mod_cast hC.card_pos)
   · have h1 : ({f} ∩ C).card ≤ 1 := (Finset.card_le_card Finset.inter_subset_left).trans (by simp)
-    have h4 : (4 : ℚ) ≤ C.card := by exact_mod_cast (by omega : 4 ≤ C.card)
+    have hn1 : Fintype.card V - 1 + 1 = Fintype.card V := by omega
+    have hsize : (Fintype.card V : ℚ) - 1 ≤ C.card := by
+      have hq : ((Fintype.card V - 1 : Nat) : ℚ) + 1 = Fintype.card V := by
+        exact_mod_cast hn1
+      have hq' : ((Fintype.card V - 1 : Nat) : ℚ) ≤ C.card := by exact_mod_cast hlarge
+      linarith only [hq, hq']
     have hF : ((p.faultyAt b ∩ C).card : ℚ) ≤ 1 := by exact_mod_cast hle.trans h1
-    linarith
+    exact hF.trans_lt (hroom.trans_le (mul_le_mul_of_nonneg_left hsize hβK.le))
 
 /-! ## The bad-slot selection -/
 
@@ -503,7 +546,7 @@ theorem badSel_duty (F : ChainShapeFamily O Info) {V : Type} [Fintype V] (E : En
 /-! ## Generic realizability
 
 `regimes_realizable`: for every family whose progress fits its skeleton and
-every admissible, progress-tolerant contract, with at least five validators,
+every admissible, progress-tolerant contract, with `Params.Room`,
 every regime of the
 L0 table is met by a clean witness with active claims, at every `Δ`, every
 GST and arbitrarily late outages; in addition, every progress window of the
@@ -517,9 +560,9 @@ select key `1`, honest and always awake); transaction `42` submitted to
 faulty key's index, so the run PKI is reindexed as for the outage witness: it
 keeps key `1` and moves the faulty key out of the committee unless the committee
 misses at most one key (`exists_witness_key`); then the committee is sleepy and
-its faulty fraction is below every `βK ≥ ⅓` (`committeeHealthy_of_one_fault`).
+its faulty fraction is below `βK` by `Room` (`committeeHealthy_of_one_fault`).
 
-* stress: two honest keys (`1`, `2`) awake (sleepy), whatever `n`; the run PKI
+* stress: `m = min k (n − 1)` honest keys awake, with `θ·(m + 1) < m`; the run PKI
   puts key `1` inside a committee that is not every key and the faulty key outside it
   (`exists_stress_key`), and key `1` proposes every slot (`stress_selection`);
 * bad proposer: the healthy witness (everyone awake) under the bad-slot
@@ -527,7 +570,7 @@ its faulty fraction is below every `βK ≥ ⅓` (`committeeHealthy_of_one_fault
   `s % (span + 2) = span + 1` (so every window of a recurrence with
   `span + 2 ≤ gap` holds a faulty proposer slot and a whole good pattern);
 * sleepy and healthy: everyone awake (healthy is full participation, and the
-  one faulty validator is below `β·n` for `β ≥ ⅓`, `n ≥ 5`); the healthy witness is the canonical
+  one faulty validator is below `β·n` by `Room`); the healthy witness is the canonical
   run from the GST `g`, whose log has no message receipt before `g` (protocol
   messages sent before `g` are received at `g` by the recipients awake then;
   transaction relay is part of the log too). The witness exercises delayed
@@ -535,14 +578,13 @@ its faulty fraction is below every `βK ≥ ⅓` (`committeeHealthy_of_one_fault
 * outage: honest `key 2` always asleep, so at most two validators are not
   ready at any time, for every catch-up; η-sleepy participation holds for every
   look-back `η` (the look-back set has at most `n` members), and inside every
-  committee of the time-constant selection; with `n ≥ 5` the count is
-  `1 < n − 2` (the faulty `key 0` against the `n − 2` awake honest validators);
-  this is where five validators are needed. The log is eager from `0`: the outage witness exercises
+  committee of the time-constant selection. `Room` supplies `θ·n < n − 2`, and the
+  selection keeps the sleeper outside a committee missing exactly one identity.
+  The log is eager from `0`: the outage witness exercises
   participation (one honest sleeper in the window, a ready reader from the
   recovery point), not asynchrony.
 
-Thresholds are proved at the standard bounds (`θ ≤ ½`, `β ≥ ⅓`), which
-`Params.Admissible` guarantees. -/
+Thresholds use the contract's fractions and `Params.Room`, not fixed optimal fractions. -/
 
 section Realize
 
@@ -556,12 +598,12 @@ variable {F K}
 /-- The witness point: `Δ`, awake profile `awake`, horizon `H`; validator
 `key 0` faulty, every other validator honest; transaction `42` submitted to
 `key 1` at time `0`. -/
-def realPoint (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V) (Δ : Time)
+def realPoint (key : Fin (Fintype.card V) ≃ V) (hn : 3 ≤ Fintype.card V) (Δ : Time)
     (hΔ : 0 < Δ) (ΔF : Time) (hΔF : 0 < ΔF) (awake : V → Time → Bool) (H : Time) : EnvPoint V :=
   ⟨⟨Δ, hΔ, ΔF, hΔF, awake⟩, fun _ => {key ⟨0, by omega⟩}, monotone_const, H,
     fun v t => if v = key ⟨1, by omega⟩ ∧ t = 0 then [42] else []⟩
 
-theorem realPoint_eq (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V) (Δ : Time)
+theorem realPoint_eq (key : Fin (Fintype.card V) ≃ V) (hn : 3 ≤ Fintype.card V) (Δ : Time)
     (hΔ : 0 < Δ) (ΔF : Time) (hΔF : 0 < ΔF) (awake : V → Time → Bool) (H : Time) :
     realPoint key hn Δ hΔ ΔF hΔF awake H =
       ⟨⟨Δ, hΔ, ΔF, hΔF, awake⟩, fun _ => {key ⟨0, by omega⟩}, monotone_const, H,
@@ -582,18 +624,18 @@ theorem asleepAlways_apply (s : V) (v : V) (t : Time) :
 
 section Point
 
-variable (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V) {Δ : Time} (hΔ : 0 < Δ)
+variable (key : Fin (Fintype.card V) ≃ V) (hn : 3 ≤ Fintype.card V) {Δ : Time} (hΔ : 0 < Δ)
   {ΔF : Time} (hΔF : 0 < ΔF)
   (awake : V → Time → Bool) (H : Time)
 
 /-- The validator of key `j`. -/
-abbrev kv (j : Nat) (hj : j < 5) : V := key ⟨j, by omega⟩
+abbrev kv (j : Nat) (hj : j < 3) : V := key ⟨j, by omega⟩
 
 omit [DecidableEq V] in
-theorem kv_eq (j : Nat) (hj : j < 5) : kv key hn j hj = key ⟨j, by omega⟩ := by rfl
+theorem kv_eq (j : Nat) (hj : j < 3) : kv key hn j hj = key ⟨j, by omega⟩ := by rfl
 
 omit [DecidableEq V] in
-theorem kv_ne {j j' : Nat} {hj : j < 5} {hj' : j' < 5} (h : j ≠ j') :
+theorem kv_ne {j j' : Nat} {hj : j < 3} {hj' : j' < 3} (h : j ≠ j') :
     kv key hn j hj ≠ kv key hn j' hj' := by
   intro he
   have := congrArg Fin.val (key.injective he)
@@ -608,7 +650,7 @@ theorem realPoint_constant : (realPoint key hn Δ hΔ ΔF hΔF awake H).Constant
 theorem realPoint_faulty (t : Time) :
     (realPoint key hn Δ hΔ ΔF hΔF awake H).faultyAt t = {kv key hn 0 (by decide)} := by rfl
 
-theorem realPoint_honest {j : Nat} (hj : j < 5) (h0 : j ≠ 0) {t : Time} :
+theorem realPoint_honest {j : Nat} (hj : j < 3) (h0 : j ≠ 0) {t : Time} :
     (realPoint key hn Δ hΔ ΔF hΔF awake H).HonestAt (kv key hn j hj) t := by
   simpa only [EnvPoint.HonestAt, realPoint_faulty, Finset.mem_singleton] using
     (kv_ne key hn (hj' := by decide) h0)
@@ -662,11 +704,15 @@ theorem asleepAlways_readyAt (c t : Time) :
   omega
 
 /-- Selected support at the one-fault, one-sleeper point. -/
-theorem asleepAlways_committee_margin (C : Finset V)
+theorem asleepAlways_committee_margin {θ : ℚ} (hθ : 0 ≤ θ ∧ θ < 1)
+    (hroom : θ * (Fintype.card V : ℚ) < (Fintype.card V : ℚ) - 2) (C : Finset V)
     (hgood : kv key hn 0 (by decide) ∉ C ∧ kv key hn 2 (by decide) ∉ C ∨
-      Fintype.card V - 1 ≤ C.card) (d : Time) (hC : C.Nonempty) :
+      Fintype.card V - 1 ≤ C.card ∧
+        (C.card < Fintype.card V → kv key hn 2 (by decide) ∉ C))
+    (d : Time) (hC : C.Nonempty) :
     let p := realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H
-    (p.faultyAt d ∩ C).card < ((p.retain d).awakeAt 0 ∩ C).card := by
+    θ * (((p.retain d).awakeAt 0 ∩ C).card + (p.faultyAt d ∩ C).card : ℚ) <
+      ((p.retain d).awakeAt 0 ∩ C).card := by
   classical
   dsimp only
   have hset :
@@ -680,14 +726,16 @@ theorem asleepAlways_committee_margin (C : Finset V)
       decide_eq_false_iff_not, Finset.mem_erase]
     tauto
   rw [hset, realPoint_faulty]
-  exact outage_committee_margin hn C _ _ hC hgood
+  exact outage_committee_margin hθ hroom C _ _ hC hgood
 
 /-- Selected support at the one-fault, everyone-awake point. -/
-theorem allAwake_committee_margin (C : Finset V)
+theorem allAwake_committee_margin {θ : ℚ} (hθ : 0 ≤ θ ∧ θ < 1)
+    (hroom : θ * (Fintype.card V : ℚ) < (Fintype.card V : ℚ) - 2) (C : Finset V)
     (hgood : kv key hn 0 (by decide) ∉ C ∨ Fintype.card V - 1 ≤ C.card) (d : Time)
     (hC : C.Nonempty) :
     let p := realPoint key hn Δ hΔ ΔF hΔF allAwake H
-    (p.faultyAt d ∩ C).card < ((p.retain d).awakeAt 0 ∩ C).card := by
+    θ * (((p.retain d).awakeAt 0 ∩ C).card + (p.faultyAt d ∩ C).card : ℚ) <
+      ((p.retain d).awakeAt 0 ∩ C).card := by
   classical
   dsimp only
   have hset : ((realPoint key hn Δ hΔ ΔF hΔF allAwake H).retain d).awakeAt 0 ∩ C =
@@ -698,49 +746,63 @@ theorem allAwake_committee_margin (C : Finset V)
     simp only [Finset.mem_inter, Finset.mem_filter, Finset.mem_sdiff, Finset.mem_univ,
       Finset.mem_singleton, true_and, allAwake_apply, and_true, Finset.mem_erase]
   rw [hset, realPoint_faulty]
-  have h := outage_committee_margin hn C _ _ hC (hgood.imp (fun h => ⟨h, h⟩) id)
-  rwa [Finset.erase_idem] at h
+  rcases hgood with hf | hlarge
+  · simp only [Finset.erase_eq_of_notMem hf, Finset.singleton_inter_of_notMem hf,
+      Finset.card_empty, Nat.cast_zero, add_zero]
+    exact mul_lt_of_lt_one_left (by exact_mod_cast hC.card_pos) hθ.2
+  · have hc : C.card ≤ (C.erase (kv key hn 0 (by decide))).card + 1 := by
+      by_cases hf : kv key hn 0 (by decide) ∈ C
+      · rw [Finset.card_erase_of_mem hf]; omega
+      · rw [Finset.erase_eq_of_notMem hf]; omega
+    have hs : (Fintype.card V : ℚ) ≤ (C.erase (kv key hn 0 (by decide))).card + 2 := by
+      exact_mod_cast (by omega : Fintype.card V ≤ (C.erase (kv key hn 0 (by decide))).card + 2)
+    have hsum : (C.erase (kv key hn 0 (by decide))).card +
+        ({kv key hn 0 (by decide)} ∩ C).card ≤ Fintype.card V := by
+      by_cases hf : kv key hn 0 (by decide) ∈ C
+      · have := Finset.card_pos.mpr ⟨_, hf⟩
+        rw [Finset.card_erase_of_mem hf, Finset.singleton_inter_of_mem hf,
+          Finset.card_singleton]
+        have := Finset.card_le_univ C
+        omega
+      · simpa only [Finset.erase_eq_of_notMem hf, Finset.singleton_inter_of_notMem hf,
+          Finset.card_empty, Nat.add_zero] using Finset.card_le_univ C
+    have hsumq : ((C.erase (kv key hn 0 (by decide))).card : ℚ) +
+        ({kv key hn 0 (by decide)} ∩ C).card ≤ Fintype.card V := by exact_mod_cast hsum
+    exact (mul_le_mul_of_nonneg_left hsumq hθ.1).trans_lt (by linarith only [hroom, hs])
 
-include hn in
 omit [DecidableEq V] in
-/-- The numbers: with `n ≥ 5`, one faulty and at most two not ready, the
-sleepy threshold `θ ≤ ½` holds. -/
-theorem readyAbove_of_card {p : EnvPoint V} {θ : ℚ} (hθ : 0 ≤ θ ∧ θ ≤ 1 / 2) (c t : Time)
-    (hf : (p.faultyAt t).card = 1) (hr : Fintype.card V ≤ (p.readyAt c t).card + 2) :
+/-- The room margin covers at most two unavailable validators. -/
+theorem readyAbove_of_card {p : EnvPoint V} {θ : ℚ} (hθ : 0 ≤ θ)
+    (hroom : θ * (Fintype.card V : ℚ) < (Fintype.card V : ℚ) - 2) (c t : Time)
+    (hr : Fintype.card V ≤ (p.readyAt c t).card + 2) :
     p.ReadyAbove θ c t := by
-  unfold EnvPoint.ReadyAbove EnvPoint.faultCount
-  rw [hf]
+  classical
+  rw [p.readyAbove_iff_union]
+  have hbound : ((p.readyAt c t ∪ p.faultyAt t).card : ℚ) ≤ Fintype.card V := by
+    exact_mod_cast Finset.card_le_univ _
   have hr' : ((Fintype.card V : Nat) : ℚ) ≤ ((p.readyAt c t).card : ℚ) + 2 := by exact_mod_cast hr
-  have hn' : (5 : ℚ) ≤ (Fintype.card V : ℚ) := by exact_mod_cast hn
-  push_cast
-  linarith only [hr', hn', hθ.1, mul_le_mul_of_nonneg_right hθ.2
-    (by positivity : (0 : ℚ) ≤ ((p.readyAt c t).card : ℚ) + 1)]
+  exact (mul_le_mul_of_nonneg_left hbound hθ).trans_lt (by linarith only [hroom, hr'])
 
-include hn in
-/-- The numbers: with `n ≥ 5` and at most two not ready, η-sleepy
-participation `θ ≤ ½` holds for every look-back (the look-back set has at
-most `n` members). -/
-theorem etaReadyAbove_of_card {p : EnvPoint V} {θ : ℚ} (hθ : 0 ≤ θ ∧ θ ≤ 1 / 2) (η c t : Time)
+/-- The room margin covers every look-back, whose union has at most `n` members. -/
+theorem etaReadyAbove_of_card {p : EnvPoint V} {θ : ℚ} (hθ : 0 ≤ θ)
+    (hroom : θ * (Fintype.card V : ℚ) < (Fintype.card V : ℚ) - 2) (η c t : Time)
     (hr : Fintype.card V ≤ (p.readyAt c t).card + 2) : p.EtaReadyAbove θ η c t := by
   have hr' : ((Fintype.card V : Nat) : ℚ) ≤ ((p.readyAt c t).card : ℚ) + 2 := by exact_mod_cast hr
-  have hn' : (5 : ℚ) ≤ (Fintype.card V : ℚ) := by exact_mod_cast hn
   have key : ∀ A : Finset V, θ * (A.card : ℚ) < (p.readyAt c t).card := fun A => by
     have hs : (A.card : ℚ) ≤ (Fintype.card V : ℚ) := by exact_mod_cast Finset.card_le_univ _
-    linarith only [hs, hr', hn', hθ.1,
-      mul_le_mul_of_nonneg_right hθ.2 (Nat.cast_nonneg (α := ℚ) A.card)]
+    exact (mul_le_mul_of_nonneg_left hs hθ).trans_lt (by linarith only [hroom, hr'])
   unfold EnvPoint.EtaReadyAbove
   split_ifs
   · exact (p.readyAbove_iff_union θ c t).mpr (key _)
   · exact key _
 
-include hn in
 omit [DecidableEq V] in
-/-- The numbers: with `n ≥ 5` and `β ≥ ⅓`, one faulty validator is below
-`β·n`. -/
-theorem one_lt_beta_mul_card {β : ℚ} (hβ : 1 / 3 ≤ β) : ((1 : Nat) : ℚ) < β * Fintype.card V := by
-  have hn' : (5 : ℚ) ≤ (Fintype.card V : ℚ) := by exact_mod_cast hn
-  push_cast
-  linarith only [hn', mul_le_mul_of_nonneg_right hβ (by positivity : (0 : ℚ) ≤ Fintype.card V)]
+/-- Room for a fault in `n − 1` implies room in the population. -/
+theorem one_lt_beta_mul_card {β : ℚ} (hβ : 0 < β)
+    (hroom : 1 < β * ((Fintype.card V : ℚ) - 1)) :
+    ((1 : Nat) : ℚ) < β * Fintype.card V := by
+  norm_num only [Nat.cast_one]
+  linarith only [hroom, hβ]
 
 end Point
 
@@ -785,7 +847,7 @@ theorem awakeUpTo_apply (key : Fin (Fintype.card V) ≃ V) (k : Nat) (v : V) (t 
     awakeUpTo key k v t = decide ((key.symm v).val ≤ k) := by rfl
 
 /-- The honest awake set contains exactly keys `1` through `k`. -/
-theorem awakeUpTo_card (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
+theorem awakeUpTo_card (key : Fin (Fintype.card V) ≃ V) (hn : 3 ≤ Fintype.card V)
     {Δ : Time} (hΔ : 0 < Δ) {ΔF : Time} (hΔF : 0 < ΔF) (H : Time) (k : Nat)
     (hk : k < Fintype.card V) (t : Time) :
     ((realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key k) H).awakeAt t).card = k := by
@@ -812,7 +874,7 @@ theorem awakeUpTo_card (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.ca
 
 /-- Always-awake honest validators are ready, so the bounded profile has at
 least `k` ready validators. -/
-theorem awakeUpTo_ready (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
+theorem awakeUpTo_ready (key : Fin (Fintype.card V) ≃ V) (hn : 3 ≤ Fintype.card V)
     {Δ : Time} (hΔ : 0 < Δ) {ΔF : Time} (hΔF : 0 < ΔF) (H : Time) (k : Nat)
     (hk : k < Fintype.card V) (c t : Time) :
     k ≤ ((realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key k) H).readyAt c t).card := by
@@ -824,41 +886,40 @@ theorem awakeUpTo_ready (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.c
 
 /-- Selected support at the stress point: every validator, or a committee holding key `1` but
 not the faulty key `0`. -/
-theorem awakeUpTo_committee_margin (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
+theorem awakeUpTo_committee_margin (key : Fin (Fintype.card V) ≃ V) (hn : 3 ≤ Fintype.card V)
     {Δ : Time} (hΔ : 0 < Δ) {ΔF : Time} (hΔF : 0 < ΔF) (H : Time) (C : Finset V)
+    (m : Nat) (hm : 2 ≤ m) (hmn : m < Fintype.card V) {θ : ℚ}
+    (hθ : θ < 1) (hmargin : θ * ((m : ℚ) + 1) < m)
     (hgood : C = Finset.univ ∨ kv key hn 0 (by decide) ∉ C ∧ kv key hn 1 (by decide) ∈ C)
     (d : Time) :
-    let p := realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key 2) H
-    (p.faultyAt d ∩ C).card < ((p.retain d).awakeAt 0 ∩ C).card := by
+    let p := realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key m) H
+    θ * (((p.retain d).awakeAt 0 ∩ C).card + (p.faultyAt d ∩ C).card : ℚ) <
+      ((p.retain d).awakeAt 0 ∩ C).card := by
   classical
   dsimp only
-  have hmem (j : Nat) (hj : j < 5) (h0 : j ≠ 0) (h2 : j ≤ 2) : kv key hn j hj ∈
-      ((realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key 2) H).retain d).awakeAt 0 := by
+  have hmem (j : Nat) (hj : j < 3) (h0 : j ≠ 0) (h2 : j ≤ m) : kv key hn j hj ∈
+      ((realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key m) H).retain d).awakeAt 0 := by
     refine Finset.mem_filter.mpr ⟨Finset.mem_sdiff.mpr ⟨Finset.mem_univ _,
-      realPoint_honest key hn hΔ hΔF (awakeUpTo key 2) H hj h0 (t := d)⟩, ?_⟩
-    change awakeUpTo key 2 (kv key hn j hj) 0 = true
+      realPoint_honest key hn hΔ hΔF (awakeUpTo key m) H hj h0 (t := d)⟩, ?_⟩
+    change awakeUpTo key m (kv key hn j hj) 0 = true
     simp only [awakeUpTo_apply, kv_eq, Equiv.symm_apply_apply, decide_eq_true_eq]
     exact h2
   rw [realPoint_faulty]
   rcases hgood with rfl | ⟨h0, h1⟩
   · rw [Finset.inter_univ, Finset.inter_univ, Finset.card_singleton]
-    have hsub : ({kv key hn 1 (by decide), kv key hn 2 (by decide)} : Finset V) ⊆
-        ((realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key 2) H).retain d).awakeAt 0 := by
-      intro v hv
-      rcases Finset.mem_insert.mp hv with rfl | hv
-      · exact hmem 1 (by decide) (by decide) (by decide)
-      · rw [Finset.mem_singleton.mp hv]
-        exact hmem 2 (by decide) (by decide) (by decide)
-    have hc := Finset.card_le_card hsub
-    rw [Finset.card_pair (kv_ne key hn (by decide))] at hc
-    omega
-  · rw [Finset.singleton_inter_of_notMem h0, Finset.card_empty]
-    exact Finset.card_pos.mpr
-      ⟨_, Finset.mem_inter.mpr ⟨hmem 1 (by decide) (by decide) (by decide), h1⟩⟩
+    have he : (realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key m) H).retain d =
+        realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key m) H :=
+      EnvPoint.retain_eq (realPoint_constant key hn hΔ hΔF _ H) d
+    rw [he, awakeUpTo_card key hn hΔ hΔF H m hmn]
+    exact hmargin
+  · simp only [Finset.singleton_inter_of_notMem h0, Finset.card_empty, Nat.cast_zero, add_zero]
+    apply mul_lt_of_lt_one_left _ hθ
+    exact_mod_cast (Finset.card_pos.mpr
+      ⟨_, Finset.mem_inter.mpr ⟨hmem 1 (by decide) (by decide) (by omega), h1⟩⟩)
 
 section Witnesses
 
-variable (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V) {Δ : Time} (hΔ : 0 < Δ)
+variable (key : Fin (Fintype.card V) ≃ V) (hn : 3 ≤ Fintype.card V) {Δ : Time} (hΔ : 0 < Δ)
   {ΔF : Time} (hΔF : 0 < ΔF)
   (H : Time)
 
@@ -1023,7 +1084,8 @@ theorem real_run (F : ChainShapeFamily O Info) (p : EnvPoint V) (hp : 0 ≤ p.ho
 `H` long enough for one liveness deadline and one progress window. The run PKI keeps key `1` and
 moves the faulty key `0` out of the extremal committee unless that committee misses at most one
 key (`exists_witness_key`), so every selected committee is sleepy too. -/
-theorem sleepy_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF)
+theorem sleepy_witness (ha : K.params.Admissible) (hroom : K.params.Room (Fintype.card V))
+    (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF)
     (hf : ProgressFits K F) (cap : Capability)
     (i : K.Idx)
     (hH : Δ + (K.params.latency cap i : Time) * Δ +
@@ -1045,8 +1107,8 @@ theorem sleepy_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < �
     (extremalSel F p.env) p.submit relay hash
   have hcomm := committee_of_constant_awake p ((extremalCommittee F p.env).map key'.toEmbedding)
     K.params.θ 0 ((Sys F V).cDur K ⟨_, rho⟩) ((Sys F V).committeeAheadDur K ⟨_, rho⟩)
-    ha.θ_range (mul_nonneg (by positivity) hΔ.le) (fun _ _ _ => rfl)
-    (allAwake_committee_margin key hn hΔ hΔF H _ hgood)
+    ha.θ_range.1 (mul_nonneg (by positivity) hΔ.le) (fun _ _ _ => rfl)
+    (allAwake_committee_margin key hn hΔ hΔF H ha.θ_range hroom.1 _ hgood)
   refine ⟨rho, rfl, ⟨hv, hnc, fun _ => rfl, ?_, ?_⟩,
     ⟨(Model.sysOf_eagerFrom _ he).psync le_rfl hΔ1 hΔF1, ?_, ?_⟩,
     allAwake_holds key hn hΔ hΔF H key' hk1 hf cap i _ _ _, ?_, ?_⟩
@@ -1055,10 +1117,8 @@ theorem sleepy_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < �
   · exact ⟨_, Finset.mem_sdiff.mpr ⟨Finset.mem_univ _,
       realPoint_honest key hn hΔ hΔF allAwake H (j := 1) (by decide) (by decide)⟩⟩
   · intro t _ _
-    refine readyAbove_of_card hn ha.θ_range _ t ?_ ?_
-    · change (p.faultyAt t).card = 1
-      rw [realPoint_faulty]; rfl
-    · exact (allAwake_readyAt key hn hΔ hΔF H _ t).trans (Nat.le_succ _)
+    exact readyAbove_of_card ha.θ_range.1 hroom.1 _ t
+      ((allAwake_readyAt key hn hΔ hΔF H _ t).trans (Nat.le_succ _))
   · change p.CommitteeSleepyOn ((shapeProgress F V).selected p.env (key', extremalSel F p.env))
       K.params.θ 0 ((Sys F V).cDur K ⟨_, rho⟩) ((Sys F V).committeeAheadDur K ⟨_, rho⟩) 0 H
     rw [funext (selected_of_duty F p.env key' _ fun _ _ => rfl)]
@@ -1075,7 +1135,8 @@ participation, one faulty validator, outside the extremal committee unless that 
 at most one key), the canonical run from `g` (no receipt before `g`), horizon `H` long enough for
 one liveness deadline after the heal point, two cuts after it, and one progress window from
 `ready`. -/
-theorem healthy_witness_sel (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF)
+theorem healthy_witness_sel (ha : K.params.Admissible) (hroom : K.params.Room (Fintype.card V))
+    (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF)
     (cap : Capability) (i : K.Idx) (g : Time) (key' : Fin (Fintype.card V) ≃ V)
     (sel : (protoOf (compiled F) (realPoint key hn Δ hΔ ΔF hΔF allAwake H).env).Role →
       Finset (Fin (Fintype.card V)))
@@ -1128,11 +1189,11 @@ theorem healthy_witness_sel (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 
   · refine ⟨?_, fun _ _ _ _ _ => rfl⟩
     change ((p.faultyAt H).card : ℚ) < K.params.β * Fintype.card V
     rw [realPoint_faulty, Finset.card_singleton]
-    exact one_lt_beta_mul_card hn ha.β_range
+    exact one_lt_beta_mul_card ha.β_range.1 hroom.2.1
   · change p.CommitteeHealthyOn ((shapeProgress F V).selected p.env (key', sel))
       K.params.βK (max g 0) H
     rw [funext (selected_of_duty F p.env key' sel hduty)]
-    exact committeeHealthy_of_one_fault hn p _ _ (by rw [ha.βK_eq]; norm_num) _ _
+    exact committeeHealthy_of_one_fault hn p _ _ ha.β_range.2 hroom.2.2 _ _
       (subset_of_eq (realPoint_faulty key hn hΔ hΔF allAwake H H)) hgood
   · change max ((max g 0 + (K.params.catchUp : Time) * Δ + 1)) 0 +
       progLen F K cap i (⟨Δ, hΔ, ΔF, hΔF, allAwake⟩ : Env V) ≤ H
@@ -1144,7 +1205,8 @@ theorem healthy_witness_sel (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 
 
 /-- The healthy witness at GST `g` under the extremal selection (key `1`
 proposes every slot) and the run PKI of `exists_witness_key`. -/
-theorem healthy_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF)
+theorem healthy_witness (ha : K.params.Admissible) (hroom : K.params.Room (Fintype.card V))
+    (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF)
     (hf : ProgressFits K F) (cap : Capability)
     (i : K.Idx) (g : Time) (hr : ΔF ≤ (K.params.fgDelay : Time) * Δ)
     (h1 : max g 0 + (K.params.heal cap i : Time) * Δ + Δ + (K.params.latency cap i : Time) * Δ ≤ H)
@@ -1164,7 +1226,7 @@ theorem healthy_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < 
       SafeActive ((Sys F V).cDur K ⟨_, rho⟩) ((Sys F V).heal K cap i g ⟨_, rho⟩) rho.point := by
   obtain ⟨key', _, -, hk1, hgood⟩ :=
     exists_witness_key key hn (extremalCommittee F (realPoint key hn Δ hΔ ΔF hΔF allAwake H).env)
-  obtain ⟨rho, hp, -, -, h⟩ := healthy_witness_sel key hn hΔ hΔF H ha hΔ1 hΔF1 cap i g key' _
+  obtain ⟨rho, hp, -, -, h⟩ := healthy_witness_sel key hn hΔ hΔF H ha hroom hΔ1 hΔF1 cap i g key' _
     (extremalSel_admits F _) (fun _ _ => rfl) hgood
     (allAwake_holds key hn hΔ hΔF H key' hk1 hf cap i) hr h1 h2 h3
   exact ⟨rho, hp, h⟩
@@ -1235,41 +1297,44 @@ theorem bad_selection (awake : V → Time → Bool)
     · exact NotReadyOn.of_card_le ht
     · unfold BadProposerEvery; rw [hreq]; trivial
 
-/-- Sleepy stress: only honest keys `1` and `2` stay awake, with active
-liveness and progress on the synchronous canonical run: with one faulty
-validator and `θ ≤ ½`, two ready honest validators meet the sleepy
-threshold. The run PKI puts key `1` at an index of the extremal committee and the faulty key `0`
+/-- Sleepy stress: honest keys `1` through `m` stay awake, with active
+liveness and progress on the synchronous canonical run. The strict margin
+`θ·(m + 1) < m` covers the single faulty validator.
+The run PKI puts key `1` at an index of the extremal committee and the faulty key `0`
 outside it, unless the committee is every key (`exists_stress_key`); key `1` proposes every slot
 (`stress_selection`), so every selected committee is sleepy too. -/
-theorem sleepyStress_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF)
+theorem sleepyStress_witness (ha : K.params.Admissible) (m : Nat) (hm : 2 ≤ m)
+    (hmn : m < Fintype.card V) (hmargin : K.params.θ * ((m : ℚ) + 1) < m)
+    (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF)
     (hf : ProgressFits K F) (cap : Capability)
     (i : K.Idx) (ht : ProgressReq.Tolerates (Fintype.card V) (K.progress cap i))
     (hH : Δ + (K.params.latency cap i : Time) * Δ +
-      progLen F K cap i (⟨Δ, hΔ, ΔF, hΔF, (awakeUpTo key 2)⟩ : Env V) ≤ H) :
-    ∃ rho : Model.Run (compiled F) (realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key 2) H).env,
-      rho.point = realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key 2) H ∧
+      progLen F K cap i (⟨Δ, hΔ, ΔF, hΔF, (awakeUpTo key m)⟩ : Env V) ≤ H) :
+    ∃ rho : Model.Run (compiled F) (realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key m) H).env,
+      rho.point = realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key m) H ∧
       (Sys F V).Witness ⟨_, rho⟩ ∧ (Sys F V).Sleepy (shapeProgress F V).toExternal K ⟨_, rho⟩ ∧
       (Sys F V).prog (shapeProgress F V) K cap i 0 rho.horizon ⟨_, rho⟩ ∧
       ProgressActive F K cap i 0 rho ∧
       rho.point.TxLiveActive ((Sys F V).cDur K ⟨_, rho⟩) 0
         ((Sys F V).lat K cap i ⟨_, rho⟩) ∧
-      rho.point.AwakeAtMost 2 := by
-  have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, ΔF, hΔF, (awakeUpTo key 2)⟩ : Env V)
+      rho.point.AwakeAtMost m := by
+  have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, ΔF, hΔF, (awakeUpTo key m)⟩ : Env V)
   have hlat : 0 ≤ (K.params.latency cap i : Time) * Δ := mul_nonneg (by positivity) hΔ.le
   have hH0 : 0 ≤ H := by linarith only [hH, hL, hlat, hΔ]
-  let p := realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key 2) H
-  have ha1 : ∀ t, awakeUpTo key 2 (kv key hn 1 (by decide)) t = true := by
-    intro t; simp [awakeUpTo_apply, kv_eq]
+  let p := realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key m) H
+  have ha1 : ∀ t, awakeUpTo key m (kv key hn 1 (by decide)) t = true := by
+    intro t; simp only [awakeUpTo_apply, kv_eq, Equiv.symm_apply_apply, decide_eq_true_eq]
+    omega
   obtain ⟨key', q, hq, hgood⟩ := exists_stress_key key hn (extremalCommittee F p.env)
   obtain ⟨sel, hsel, hduty, hprog⟩ :=
-    stress_selection key hn hΔ hΔF H (awakeUpTo key 2) ha1 key' q hq hf cap i ht
+    stress_selection key hn hΔ hΔF H (awakeUpTo key m) ha1 key' q hq hf cap i ht
   obtain ⟨hash, relay, events, hv, hnc, he⟩ := real_run_sel key' F p hH0 0 sel hsel
   let rho := Model.Run.mk (F := compiled F) (E := p.env) p.faultyAt monotone_const H events key'
     sel p.submit relay hash
   have hcomm := committee_of_constant_awake p ((extremalCommittee F p.env).map key'.toEmbedding)
     K.params.θ 0 ((Sys F V).cDur K ⟨_, rho⟩) ((Sys F V).committeeAheadDur K ⟨_, rho⟩)
-    ha.θ_range (mul_nonneg (by positivity) hΔ.le) (fun _ _ _ => rfl) fun d hC => by
-      refine awakeUpTo_committee_margin key hn hΔ hΔF H _ ?_ d
+    ha.θ_range.1 (mul_nonneg (by positivity) hΔ.le) (fun _ _ _ => rfl) fun d hC => by
+      refine awakeUpTo_committee_margin key hn hΔ hΔF H _ m hm hmn ha.θ_range.2 hmargin ?_ d
       rcases hgood (Finset.map_nonempty.mp hC) with hD | ⟨h0, hqD⟩
       · left; rw [hD]; exact Finset.map_univ_equiv key'
       · right
@@ -1281,36 +1346,38 @@ theorem sleepyStress_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 :
   · change (p.faultyAt 0).Nonempty
     rw [realPoint_faulty]; exact Finset.singleton_nonempty _
   · exact ⟨_, Finset.mem_sdiff.mpr ⟨Finset.mem_univ _,
-      realPoint_honest key hn hΔ hΔF (awakeUpTo key 2) H (j := 1) (by decide) (by decide)⟩⟩
+      realPoint_honest key hn hΔ hΔF (awakeUpTo key m) H (j := 1) (by decide) (by decide)⟩⟩
   · intro t _ _
     change p.ReadyAbove K.params.θ ((K.params.catchUp : Time) * Δ) t
     unfold EnvPoint.ReadyAbove EnvPoint.faultCount
     rw [realPoint_faulty, Finset.card_singleton]
-    have hr := awakeUpTo_ready key hn hΔ hΔF H 2 (by omega) (((K.params.catchUp : Time) * Δ)) t
-    have hr' : (2 : ℚ) ≤ (p.readyAt (((K.params.catchUp : Time) * Δ)) t).card := by
+    have hr := awakeUpTo_ready key hn hΔ hΔF H m hmn (((K.params.catchUp : Time) * Δ)) t
+    have hr' : (m : ℚ) ≤ (p.readyAt (((K.params.catchUp : Time) * Δ)) t).card := by
       exact_mod_cast hr
-    have := ha.θ_range.2
+    have hmono := mul_nonneg (sub_nonneg.mpr ha.θ_range.2.le) (sub_nonneg.mpr hr')
     push_cast
-    linarith only [hr', this, mul_le_mul_of_nonneg_right this (zero_le_two.trans hr')]
+    linarith only [hmargin, hmono]
   · change p.CommitteeSleepyOn ((shapeProgress F V).selected p.env (key', sel))
       K.params.θ 0 ((Sys F V).cDur K ⟨_, rho⟩) ((Sys F V).committeeAheadDur K ⟨_, rho⟩) 0 H
     rw [funext (selected_of_duty F p.env key' sel hduty)]
     exact hcomm
-  · change max 0 0 + progLen F K cap i (⟨Δ, hΔ, ΔF, hΔF, (awakeUpTo key 2)⟩ : Env V) ≤ H
+  · change max 0 0 + progLen F K cap i (⟨Δ, hΔ, ΔF, hΔF, (awakeUpTo key m)⟩ : Env V) ≤ H
     simp only [max_self, zero_add]; linarith only [hH, hΔ, hlat]
   · refine profile_txLiveActive key hn hΔ hΔF H _ ha1
-      (by intro t; simp [awakeUpTo_apply, kv_eq]) _ rfl _ _ _ ?_
+      (by intro t; simp only [awakeUpTo_apply, kv_eq, Equiv.symm_apply_apply,
+        decide_eq_true_eq]; omega) _ rfl _ _ _ ?_
     change max 0 0 + Δ + (K.params.latency cap i : Time) * Δ ≤ H
     simp only [max_self, zero_add]; linarith only [hH, hL]
   · intro t _ _
     change (p.awakeAt t).card ≤ _
-    rw [awakeUpTo_card key hn hΔ hΔF H 2 (by omega)]
+    rw [awakeUpTo_card key hn hΔ hΔF H m hmn]
 
 /-- The outage witness `(T, [b₀, b₁))`: honest `key 2` always asleep, everyone
 else always awake (so readiness does not depend on the catch-up and the
 look-back adds no opponent), the synchronous canonical run, horizon
 `H ≥ b₁ + recovery·Δ`, at every look-back `η`. -/
-theorem outage_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF)
+theorem outage_witness (ha : K.params.Admissible) (hroom : K.params.Room (Fintype.card V))
+    (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF)
     {T b₀ b₁ : Time}
     (hT : OutageTimes K.params Δ T b₀ b₁) (hTb : T < b₀) (hb : b₀ + Δ ≤ b₁)
     (hH : b₁ + (K.params.recovery : Time) * Δ ≤ H) :
@@ -1346,8 +1413,8 @@ theorem outage_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < �
     ((K.params.η : Time) * Δ)
     (max ((Sys F V).cDur K ⟨_, rho⟩) ((K.params.η : Time) * Δ - 1))
     ((Sys F V).committeeAheadDur K ⟨_, rho⟩)
-    ha.θ_range (le_max_of_le_left (mul_nonneg (by positivity) hΔ.le)) (fun _ _ _ => rfl)
-    (asleepAlways_committee_margin key hn hΔ hΔF H C hgood)
+    ha.θ_range.1 (le_max_of_le_left (mul_nonneg (by positivity) hΔ.le)) (fun _ _ _ => rfl)
+    (asleepAlways_committee_margin key hn hΔ hΔF H ha.θ_range hroom.1 C hgood)
   have hselEq : (shapeProgress F V).selected p.env (key', sel) = fun _ => C := funext hselected
   refine ⟨rho, rfl, ⟨hv, hnc, fun _ => rfl, ?_,
       ⟨_, Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, hh1 _⟩⟩⟩,
@@ -1364,7 +1431,8 @@ theorem outage_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < �
   · exact (Model.sysOf_delivers_iff (O := O) rho _ _ _).mpr
       (he.syncUntil (Model.Run.log_sendsFromZero rho hv) le_rfl hΔ1 hΔF1 b₀)
   · intro t _ _
-    exact etaReadyAbove_of_card hn ha.θ_range _ _ t (asleepAlways_readyAt key hn hΔ hΔF H _ t)
+    exact etaReadyAbove_of_card ha.θ_range.1 hroom.1 _ _ t
+      (asleepAlways_readyAt key hn hΔ hΔF H _ t)
   · change p.CommitteeSleepyOn
       (fun t => (shapeProgress F V).selected p.env (key', sel) (max 0 (t - δ))) K.params.θ
       ((K.params.η : Time) * Δ)

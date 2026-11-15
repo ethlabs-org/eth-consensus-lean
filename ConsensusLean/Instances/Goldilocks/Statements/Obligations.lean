@@ -170,17 +170,20 @@ def MeetsObligations : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S),
     ShapeObligationsAs .ebbAndFlow (goldilocks S) (goldilocksContract A (contract_coefficients S A))
 
-/-- **Goldilocks is correct**, the headline statement: for every setup `S`, every assumption set
+/-- **Goldilocks is correct and optimally fault tolerant**, the headline statement:
+for every setup `S`, every assumption set
 `A` (the FG delay in slots `fgSlots ≥ 2` and the timeout `3·fgSlots ≤ δ_t`) and every finite
 validator type `V`, the Goldilocks family, compiled and run by the general execution model
 (`sysOf schema (compiled (goldilocks S)) V`, with progress read by `shapeProgress`), is an L0
-`CorrectProtocol` at the contract `goldilocksContract A (contract_coefficients S A)`. It composes
-`MeetsObligations` with the review statement `ObligationsSufficient`; it has their parameters and
-no further hypothesis. -/
+`CorrectProtocol` at the contract `goldilocksContract A (contract_coefficients S A)`,
+whose fractions satisfy `Params.OptimalFaultTolerance`. Correctness composes
+`MeetsObligations` with the review statement `ObligationsSufficient`; optimality
+pins the contract's fractions. Neither conjunct adds a hypothesis. -/
 def GoldilocksCorrect : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V],
     CorrectProtocol (Model.sysOf schema (compiled (goldilocks S)) V)
-      (shapeProgress (goldilocks S) V) (goldilocksContract A (contract_coefficients S A))
+      (shapeProgress (goldilocks S) V) (goldilocksContract A (contract_coefficients S A)) ∧
+      (goldilocksContract A (contract_coefficients S A)).params.OptimalFaultTolerance
 
 /-- **Goldilocks is correct or a binding fails.** For every setup, timing
 assumption set and finite validator type, on every structurally valid run the
@@ -212,8 +215,9 @@ premise is `System.Outage` at this contract: its population clause does not depe
 binding, and its look-back committee clause reads the binding's selection. At the population
 binding every validator is selected and the committee look-ahead is at most the population one
 (`5 ≤ 5`), so the committee clause is implied by the population clause, and the statement is
-the `persists` field of `MeetsObligations`. Only this row is stated per binding: the other rows
-of `MeetsObligations` and `GoldilocksCorrect` stay at the population binding. -/
+the `persists` field of `MeetsObligations`. `PersistsWith` and `SleepyWith` are stated per binding
+over `BoundSetup`; `MeetsObligations` and `GoldilocksCorrect` are stated at the population binding
+over `Setup`. -/
 def PersistsWith : Prop :=
   ∀ (S : BoundSetup) (A : ContractAssumptions S.toSetup) (V : Type) [Fintype V] [DecidableEq V],
     ∀ g, schema.output .stable = some g → ∀ T b₀ b₁,

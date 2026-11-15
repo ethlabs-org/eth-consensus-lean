@@ -235,14 +235,15 @@ theorem outage_witness_late (h : Realizable S X K) :
   obtain ⟨r, T, b₀, b₁, ⟨hw, hΔ, -⟩, ho, ha, hT⟩ := h.outage 7 7 1000 (by norm_num) (by norm_num)
   exact ⟨r, T, b₀, b₁, hw, hΔ, ho, ha, by norm_num at hT; exact hT⟩
 
-/-- Every good system with at least five validators has both late witnesses. -/
-theorem good_late_witnesses (h : CorrectProtocol S X K) (h5 : 5 ≤ Fintype.card V) (cap : Capability)
+/-- Every good system with room for its fractions has both late witnesses. -/
+theorem good_late_witnesses (h : CorrectProtocol S X K)
+    (hn : K.params.Room (Fintype.card V)) (cap : Capability)
     (i : K.Idx) :
     (∃ r, S.Witness r ∧ (S.pt r).env.ΔAC = 7 ∧ 1000 ≤ S.heal K cap i 1000 r ∧
       SafeActive (S.cDur K r) (S.heal K cap i 1000 r) (S.pt r)) ∧
     ∃ r T b₀ b₁, S.Witness r ∧ S.Outage X.toExternal K T b₀ b₁ r ∧ 7000 ≤ T := by
-  obtain ⟨r, hw, hΔ, -, -, hh, -, -, hs⟩ := healed_witness_late (h.realizable h5) cap i
-  obtain ⟨r', T, b₀, b₁, hw', -, ho, -, hT⟩ := outage_witness_late (h.realizable h5)
+  obtain ⟨r, hw, hΔ, -, -, hh, -, -, hs⟩ := healed_witness_late (h.realizable hn) cap i
+  obtain ⟨r', T, b₀, b₁, hw', -, ho, -, hT⟩ := outage_witness_late (h.realizable hn)
   exact ⟨⟨r, hw, hΔ, hh, hs⟩, r', T, b₀, b₁, hw', ho, hT⟩
 
 open Consensus.Shape.Tests.Controls (ctrlSchema ctrlFamily ctrlK ctrl_realizable)
@@ -273,6 +274,68 @@ theorem outage_witness_late_control :
   outage_witness_late ctrl_realizable
 
 end Late
+
+section SmallPopulations
+
+open Consensus.Shape.Tests.Controls (ctrlShape ctrlSchema)
+
+/-- Both full selection and a committee missing one validator have active duties. -/
+def smallFamily (proper : Bool) : ChainShapeFamily ctrlSchema Unit := fun pub =>
+  { ctrlShape pub with skel :=
+    { (ctrlShape pub).skel with
+      participationKind := some .head
+      kindSel := fun _ => if proper then .sized (pub.n - 1) else .fixed Finset.univ } }
+
+/-- Small-population fractions with a tolerant singleton recurrence. -/
+abbrev smallContract (θ β : ℚ) : Contract ProgressReq where
+  Idx := ℕ+
+  idx_nonempty := ⟨1⟩
+  params := { Params.standard 1 1 1 (fun _ _ => 1) (fun _ _ => 1) with
+    θ := θ, β := β, βK := β, α := β }
+  progress := fun _ k => .recur ⟨Pattern.single, k, 0⟩
+
+/-- All active regimes, including outage and fault growth, at three validators. -/
+theorem realizableActive_three (proper : Bool) :
+    RealizableActive (smallFamily proper) (smallContract (1/4) (3/4)) (Fin 3) := by
+  apply regimes_realizable
+  · constructor <;> norm_num [smallContract, Params.standard]
+  · intro _ _ _ _; rfl
+  · intro _ _ _
+    exact ⟨2, show Pattern.single.span + 2 ≤ (2 : ℕ+).val by decide⟩
+  · norm_num [Params.Room, smallContract]
+
+/-- All active regimes, including outage and fault growth, at four validators. -/
+theorem realizableActive_four (proper : Bool) :
+    RealizableActive (smallFamily proper) (smallContract (2/5) (1/2)) (Fin 4) := by
+  apply regimes_realizable
+  · constructor <;> norm_num [smallContract, Params.standard]
+  · intro _ _ _ _; rfl
+  · intro _ _ _
+    exact ⟨2, show Pattern.single.span + 2 ≤ (2 : ℕ+).val by decide⟩
+  · norm_num [Params.Room, smallContract]
+
+/-- Above-half participation admits active stress at three awake validators and at bounds
+at least the population size, for both full and proper committees. -/
+theorem stress_above_half (proper : Bool) (k : Nat) (hk : 3 ≤ k) :
+    let F := smallFamily proper
+    let K := smallContract (2/3) (1/2)
+    ∃ i r, (Sys F (Fin 7)).WitnessAt 2 2 r ∧
+      (Sys F (Fin 7)).SleepyLive (shapeProgress F (Fin 7)) K .available i r ∧
+      ((Sys F (Fin 7)).pt r).AwakeAtMost k ∧ ProgressActive F K .available i 0 r.2 := by
+  have h : RealizableActive (smallFamily proper) (smallContract (2/3) (1/2)) (Fin 7) := by
+    apply regimes_realizable
+    · constructor <;> norm_num [smallContract, Params.standard]
+    · intro _ _ _ _; rfl
+    · intro _ _ _
+      exact ⟨2, show Pattern.single.span + 2 ≤ (2 : ℕ+).val by decide⟩
+    · norm_num [Params.Room, smallContract]
+  have hkq : (3 : ℚ) ≤ k := by exact_mod_cast hk
+  obtain ⟨i, hi⟩ := h.sleepyStress .available (Or.inl rfl) rfl k (by omega)
+    (by change (2/3 : ℚ) * ((k : ℚ) + 1) < k; linarith)
+  obtain ⟨r, hr⟩ := hi 2 2 (by norm_num) (by norm_num)
+  exact ⟨i, r, hr⟩
+
+end SmallPopulations
 
 end Consensus.Shape.Tests.Realizable
 

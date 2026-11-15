@@ -75,9 +75,10 @@ structure RealizableActive (V : Type) [Fintype V] [DecidableEq V] : Prop where
     SafeActive ((Sys F V).cDur K r) ((Sys F V).heal K cap i g r) ((Sys F V).pt r) ∧
     ProgressActive F K cap i ((Sys F V).ready K g r) r.2
   sleepyStress : ∀ cap, (cap = .available ∨ cap = .stable) → (O.output cap).isSome →
+    ∀ k : Nat, 2 ≤ k → K.params.θ * ((k : ℚ) + 1) < (k : ℚ) →
     ∃ i, ∀ ΔAC ΔFG : Time, 1 < ΔAC → 1 < ΔFG → ∃ r, (Sys F V).WitnessAt ΔAC ΔFG r ∧
       (Sys F V).SleepyLive (shapeProgress F V) K cap i r ∧
-      ((Sys F V).pt r).AwakeAtMost 2 ∧ ProgressActive F K cap i 0 r.2
+      ((Sys F V).pt r).AwakeAtMost k ∧ ProgressActive F K cap i 0 r.2
   outage : ∀ (ΔAC ΔFG : Time) (k : Nat), 1 < ΔAC → 1 < ΔFG →
     ∃ r T b₀ b₁, (Sys F V).WitnessAt ΔAC ΔFG r ∧
     (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ r ∧

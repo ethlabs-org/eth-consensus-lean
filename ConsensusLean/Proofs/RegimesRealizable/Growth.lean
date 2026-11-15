@@ -19,7 +19,7 @@ variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
 variable {V : Type} [Fintype V] [DecidableEq V]
 
 /-- A single compromise at `κ`, with the only transaction submitted to its source at zero. -/
-def growthPoint (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
+def growthPoint (key : Fin (Fintype.card V) ≃ V) (hn : 3 ≤ Fintype.card V)
     (Δ : Time) (hΔ : 0 < Δ) (ΔF : Time) (hΔF : 0 < ΔF)
     (awake : V → Time → Bool) (H κ : Time) : EnvPoint V :=
   ⟨⟨Δ, hΔ, ΔF, hΔF, awake⟩, fun t => if κ ≤ t then {key ⟨0, by omega⟩} else ∅,
@@ -33,7 +33,7 @@ def growthPoint (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
       · exact Finset.Subset.refl _,
     H, fun v t => if v = key ⟨0, by omega⟩ ∧ t = 0 then [42] else []⟩
 
-theorem growthPoint_eq (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
+theorem growthPoint_eq (key : Fin (Fintype.card V) ≃ V) (hn : 3 ≤ Fintype.card V)
     (Δ : Time) (hΔ : 0 < Δ) (ΔF : Time) (hΔF : 0 < ΔF)
     (awake : V → Time → Bool) (H κ : Time) :
     growthPoint key hn Δ hΔ ΔF hΔF awake H κ =
@@ -52,7 +52,7 @@ theorem growthPoint_eq (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.ca
   rfl
 
 section Point
-variable (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
+variable (key : Fin (Fintype.card V) ≃ V) (hn : 3 ≤ Fintype.card V)
   {Δ : Time} (hΔ : 0 < Δ) {ΔF : Time} (hΔF : 0 < ΔF)
   (awake : V → Time → Bool) (H κ : Time)
 
@@ -69,7 +69,7 @@ theorem growthPoint_strict_growth (hκ : 0 < κ) (hH : κ ≤ H) :
   simp only [growthPoint_faulty, not_le.mpr hκ, le_rfl, ↓reduceIte]
   exact Finset.empty_ssubset_singleton
 
-theorem growthPoint_honest {j : Nat} (hj : j < 5) (h0 : j ≠ 0) (t : Time) :
+theorem growthPoint_honest {j : Nat} (hj : j < 3) (h0 : j ≠ 0) (t : Time) :
     (growthPoint key hn Δ hΔ ΔF hΔF awake H κ).HonestAt (kv key hn j hj) t := by
   simp only [EnvPoint.HonestAt, growthPoint_faulty]
   split_ifs
@@ -89,20 +89,21 @@ theorem growthPoint_ready_subset (c t d : Time) :
   · exact hv.1
   · exact Finset.notMem_empty _
 
-theorem growthPoint_eta {θ : ℚ} (hθ : 0 ≤ θ ∧ θ ≤ 1 / 2)
+theorem growthPoint_eta {θ : ℚ} (hθ : 0 ≤ θ)
+    (hroom : θ * (Fintype.card V : ℚ) < (Fintype.card V : ℚ) - 2)
     (hready : ∀ c t, Fintype.card V ≤
       ((realPoint key hn Δ hΔ ΔF hΔF awake H).readyAt c t).card + 2)
     (η c W a b : Time) :
     (growthPoint key hn Δ hΔ ΔF hΔF awake H κ).EtaSleepyOn θ η c W a b := by
   intro t _ _
-  apply etaReadyAbove_of_card hn hθ
+  apply etaReadyAbove_of_card hθ hroom
   exact (hready c t).trans (Nat.add_le_add_right
     (Finset.card_le_card (growthPoint_ready_subset key hn hΔ hΔF awake H κ c t _)) 2)
 
 end Point
 
 section Activity
-variable (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
+variable (key : Fin (Fintype.card V) ≃ V) (hn : 3 ≤ Fintype.card V)
   {Δ : Time} (hΔ : 0 < Δ) {ΔF : Time} (hΔF : 0 < ΔF) (H κ : Time)
 
 /-- The permanently honest selected proposer satisfies every fitting recurrence, including hold,
@@ -187,12 +188,15 @@ end Activity
 /-- Before the sole compromise selected support only increases; afterwards it
 is the static witness's support. The bound holds at every retention time. -/
 theorem growthPoint_committee_margin (key : Fin (Fintype.card V) ≃ V)
-    (hn : 5 ≤ Fintype.card V) {Δ : Time} (hΔ : 0 < Δ) {ΔF : Time} (hΔF : 0 < ΔF)
+    (hn : 3 ≤ Fintype.card V) {Δ : Time} (hΔ : 0 < Δ) {ΔF : Time} (hΔF : 0 < ΔF)
     (awake : V → Time → Bool) (H κ : Time) (C : Finset V) (d : Time)
-    (h : ((realPoint key hn Δ hΔ ΔF hΔF awake H).faultyAt d ∩ C).card <
-      (((realPoint key hn Δ hΔ ΔF hΔF awake H).retain d).awakeAt 0 ∩ C).card) :
+    {θ : ℚ} (hθ : 0 ≤ θ ∧ θ < 1)
+    (h : θ * ((((realPoint key hn Δ hΔ ΔF hΔF awake H).retain d).awakeAt 0 ∩ C).card +
+      ((realPoint key hn Δ hΔ ΔF hΔF awake H).faultyAt d ∩ C).card : ℚ) <
+        (((realPoint key hn Δ hΔ ΔF hΔF awake H).retain d).awakeAt 0 ∩ C).card) :
     let p := growthPoint key hn Δ hΔ ΔF hΔF awake H κ
-    (p.faultyAt d ∩ C).card < ((p.retain d).awakeAt 0 ∩ C).card := by
+    θ * (((p.retain d).awakeAt 0 ∩ C).card + (p.faultyAt d ∩ C).card : ℚ) <
+      ((p.retain d).awakeAt 0 ∩ C).card := by
   classical
   let p := growthPoint key hn Δ hΔ ΔF hΔF awake H κ
   let q := realPoint key hn Δ hΔ ΔF hΔF awake H
@@ -208,18 +212,25 @@ theorem growthPoint_committee_margin (key : Fin (Fintype.card V) ≃ V)
     exact Finset.mem_filter.mpr ⟨Finset.mem_sdiff.mpr
       ⟨Finset.mem_univ _, fun hv => (Finset.mem_sdiff.mp hh).2 (hf hv)⟩, by
         simpa only [q, p, EnvPoint.retain, realPoint_env, growthPoint] using hw⟩
-  exact lt_of_le_of_lt
-    (Finset.card_le_card (Finset.inter_subset_inter hf (Finset.Subset.refl _)))
-    (lt_of_lt_of_le h (Finset.card_le_card
-      (Finset.inter_subset_inter ha (Finset.Subset.refl _))))
+  have hfq : ((p.faultyAt d ∩ C).card : ℚ) ≤ (q.faultyAt d ∩ C).card := by
+    exact_mod_cast Finset.card_le_card (Finset.inter_subset_inter hf (Finset.Subset.refl _))
+  have haq : (((q.retain d).awakeAt 0 ∩ C).card : ℚ) ≤
+      ((p.retain d).awakeAt 0 ∩ C).card := by
+    exact_mod_cast Finset.card_le_card (Finset.inter_subset_inter ha (Finset.Subset.refl _))
+  have hfm := mul_le_mul_of_nonneg_left hfq hθ.1
+  have hrm := mul_nonneg (sub_nonneg.mpr hθ.2.le) (sub_nonneg.mpr haq)
+  change θ * (((q.retain d).awakeAt 0 ∩ C).card + (q.faultyAt d ∩ C).card : ℚ) <
+    ((q.retain d).awakeAt 0 ∩ C).card at h
+  linarith only [h, hfm, hrm]
 
 /-- A canonical growing run, with active progress and a later reader after the source compromise;
 the run PKI keeps key `1` and moves the faulty key `0` out of the extremal committee unless that
 committee misses at most one key (`exists_witness_key`), so the selected committees are sleepy
 and healthy too. -/
 theorem growing_live_witness (F : ChainShapeFamily O Info) (K : Contract ProgressReq)
-    (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
-    (ha : K.params.Admissible) (hf : ProgressFits K F) (cap : Capability) (i : K.Idx)
+    (key : Fin (Fintype.card V) ≃ V) (hn : 3 ≤ Fintype.card V)
+    (ha : K.params.Admissible) (hroom : K.params.Room (Fintype.card V))
+    (hf : ProgressFits K F) (cap : Capability) (i : K.Idx)
     (Δ ΔF g start progressStart : Time) (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF) :
     ∃ r : (Sys F V).Run, (Sys F V).Valid r ∧ ¬ (Sys F V).Excuse r ∧
       ((Sys F V).pt r).env.ΔAC = Δ ∧ ((Sys F V).pt r).env.ΔFG = ΔF ∧
@@ -259,7 +270,7 @@ theorem growing_live_witness (F : ChainShapeFamily O Info) (K : Contract Progres
     ?_, ?_, ?_, ?_, growthPoint_holds key hn hΔ hΔF H 1 F K key' hk1 hf cap i _ _ _,
     growthPoint_txLiveActive key hn hΔ hΔF H 1 _ _ _ (by decide) ?_,
     growthPoint_active key hn hΔ hΔF H 1 _ _ _ (by decide) hΔ1 hH ?_, ?_⟩
-  · have hη := growthPoint_eta key hn hΔ hΔF allAwake H 1 ha.θ_range
+  · have hη := growthPoint_eta key hn hΔ hΔF allAwake H 1 ha.θ_range.1 hroom.1
       (fun c t => (allAwake_readyAt key hn hΔ hΔF H c t).trans (Nat.le_succ _))
       0 ((Sys F V).cDur K ⟨p.env, rho⟩) ((Sys F V).aheadDur K ⟨p.env, rho⟩) 0 H
     intro t ht hb
@@ -269,19 +280,19 @@ theorem growing_live_witness (F : ChainShapeFamily O Info) (K : Contract Progres
       0 H
     rw [hsel]
     exact committee_of_constant_awake p _ K.params.θ 0 ((Sys F V).cDur K ⟨p.env, rho⟩)
-      ((Sys F V).committeeAheadDur K ⟨p.env, rho⟩) ha.θ_range
+      ((Sys F V).committeeAheadDur K ⟨p.env, rho⟩) ha.θ_range.1
       (mul_nonneg (by positivity) hΔ.le)
       (fun v t u => (allAwake_apply v t).trans (allAwake_apply v u).symm) fun d hC =>
-        growthPoint_committee_margin key hn hΔ hΔF allAwake H 1 _ d
-          (allAwake_committee_margin key hn hΔ hΔF H _ hgood d hC)
+        growthPoint_committee_margin key hn hΔ hΔF allAwake H 1 _ d ha.θ_range
+          (allAwake_committee_margin key hn hΔ hΔF H ha.θ_range hroom.1 _ hgood d hC)
   · refine ⟨?_, fun v t _ _ _ => allAwake_apply v t⟩
     change ((p.faultyAt H).card : ℚ) < K.params.β * Fintype.card V
     rw [growthPoint_faulty, ite_eq_left hH, Finset.card_singleton]
-    exact one_lt_beta_mul_card hn ha.β_range
+    exact one_lt_beta_mul_card ha.β_range.1 hroom.2.1
   · change p.CommitteeHealthyOn ((shapeProgress F V).selected p.env (key', extremalSel F p.env))
       K.params.βK (max g 0) H
     rw [hsel]
-    exact committeeHealthy_of_one_fault hn p _ _ (by rw [ha.βK_eq]; norm_num) _ _
+    exact committeeHealthy_of_one_fault hn p _ _ ha.β_range.2 hroom.2.2 _ _
       (subset_of_eq (by rw [growthPoint_faulty, ite_eq_left hH])) hgood
   · change max 0 start + Δ + (K.params.latency cap i : Time) * Δ ≤ H
     dsimp [H]; linarith
@@ -293,8 +304,9 @@ theorem growing_live_witness (F : ChainShapeFamily O Info) (K : Contract Progres
 
 /-- An outage with a protected source compromised after arming and a surviving reader. -/
 theorem growing_outage_witness (F : ChainShapeFamily O Info) (K : Contract ProgressReq)
-    (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
-    (ha : K.params.Admissible) (Δ ΔF : Time) (k : Nat)
+    (key : Fin (Fintype.card V) ≃ V) (hn : 3 ≤ Fintype.card V)
+    (ha : K.params.Admissible) (hroom : K.params.Room (Fintype.card V))
+    (Δ ΔF : Time) (k : Nat)
     (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF) :
     ∃ r T b₀ b₁ u κ, (Sys F V).Valid r ∧ ¬ (Sys F V).Excuse r ∧
       ((Sys F V).pt r).env.ΔAC = Δ ∧ ((Sys F V).pt r).env.ΔFG = ΔF ∧
@@ -324,7 +336,7 @@ theorem growing_outage_witness (F : ChainShapeFamily O Info) (K : Contract Progr
   let rho := Model.Run.mk (F := compiled F) (E := p.env) p.faultyAt p.faultyAt_mono H
     events key' sel p.submit relay hash
   let r : (Sys F V).Run := ⟨p.env, rho⟩
-  have haw (j : Nat) (hj : j < 5) (hj2 : j ≠ 2) (t : Time) :
+  have haw (j : Nat) (hj : j < 3) (hj2 : j ≠ 2) (t : Time) :
       awake (kv key hn j hj) t = true := by
     simp only [awake, asleepAlways_apply, Bool.not_eq_true', decide_eq_false_iff_not]
     exact kv_ne key hn hj2
@@ -339,15 +351,15 @@ theorem growing_outage_witness (F : ChainShapeFamily O Info) (K : Contract Progr
   have hcomm := committee_of_constant_awake p C K.params.θ
     ((K.params.η : Time) * Δ) (max ((Sys F V).cDur K r) ((K.params.η : Time) * Δ - 1))
     ((Sys F V).committeeAheadDur K r)
-    ha.θ_range (le_max_of_le_left (mul_nonneg (by positivity) hΔ.le))
+    ha.θ_range.1 (le_max_of_le_left (mul_nonneg (by positivity) hΔ.le))
     (by intro v t u; simp only [p, growthPoint, awake, asleepAlways_apply])
-    (fun d hC => growthPoint_committee_margin key hn hΔ hΔF awake H κ C d
-      (asleepAlways_committee_margin key hn hΔ hΔF H C hgood d hC))
+    (fun d hC => growthPoint_committee_margin key hn hΔ hΔF awake H κ C d ha.θ_range
+      (asleepAlways_committee_margin key hn hΔ hΔF H ha.θ_range hroom.1 C hgood d hC))
   have hselEq : (shapeProgress F V).selected p.env (key', sel) = fun _ => C := funext hselected
   have hse := Model.sysOf_eagerFrom (O := O) rho he
   refine ⟨r, T, b₀, b₁, kv key hn 0 (by decide), κ, hv, hnc, rfl, rfl,
     ⟨⟨hT, ?_, ?_, ?_⟩, ⟨?_, hse.psync (by dsimp [b₁, b₀]; linarith) hΔ1 hΔF1⟩,
-      growthPoint_eta key hn hΔ hΔF awake H κ ha.θ_range
+      growthPoint_eta key hn hΔ hΔF awake H κ ha.θ_range.1 hroom.1
         (asleepAlways_readyAt key hn hΔ hΔF H) _ _ _ _ _, fun δ _ _ => ?_⟩,
     ⟨hT, ?_, le_rfl, ⟨_, hready0⟩,
       ⟨kv key hn 2 (by decide), b₀, le_rfl, by dsimp [b₁]; linarith,

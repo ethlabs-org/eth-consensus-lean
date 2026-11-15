@@ -17,9 +17,10 @@ detail in `TRUST.md`.
   `CorrectProtocol.*`) is correctness; `ShapeObligations` (`Spec/Shape/Obligations.lean`, field `.correct`) is the
   set of obligations a shape meets; the review statement `Review.ObligationsSufficient` says that meeting the
   obligations gives a correct protocol. The families are `Model.ProtocolFamily` and `Shape.ChainShapeFamily`.
-- **The regimes' meaning.** Healthy means full participation with faults below ⅓. Liveness premises tolerate one
-  bad proposer slot per window (`ProgressTolerant`). The sleepy stress witness keeps at most two honest validators
-  awake. Available and stable monotonicity are conditional, final monotonicity is unconditional. `available` may
+- **The regimes' meaning.** Healthy means full participation with faults below the contract's β bound,
+  and selected committees below βK. Liveness premises tolerate one bad proposer slot per window
+  (`ProgressTolerant`). Sleepy stress asks for every awake bound `k ≥ 2` with `θ·(k + 1) < k`.
+  Available and stable monotonicity are conditional, final monotonicity is unconditional. `available` may
   bind to `ac_confirmed`.
 - **Profiles are checked labels, not property sets.** `Profile` names three standard capability sets:
   `ebbAndFlow` (final, stable, available), `bft` (final only) and `available` (available and stable).
@@ -245,7 +246,17 @@ detail in `TRUST.md`.
 - **Assumptions are minimal, guarantees may be loose.** Loose numbers are acceptable for the latency, healing-time
   and catch-up guarantees, never as a reason to strengthen an assumption. Progress recurrence is as weak as the
   proofs allow (no consecutive honest proposers), and the same premise-minimisation rule applies to every contract
-  assumption. The resilience fractions stay ⅓ and ½. These numbers are not claimed minimal.
+  assumption. Generic correctness admits non-optimal fractions; Goldilocks pins the optimal ⅓ and ½.
+- **Correctness and optimality are separate.** `Admissible` requires `0 ≤ θ < 1`, positive β and βK,
+  and `β ≤ α ≤ 1`, with positive catch-up and budget. It neither orders β and βK nor caps βK at ½.
+  `OptimalFaultTolerance` pins `θ = ½`, `β = ⅓`, `βK = ½`, leaving α unpinned; one θ governs both
+  population and committee participation. The unused cover fraction is absent. `GoldilocksCorrect`
+  conjoins correctness with optimality; generic correctness does not assume optimality.
+- **Realizability follows the fractions.** `Params.Room` requires `θ·n < n − 2`,
+  `1 < β·(n − 1)` and `1 < βK·(n − 1)`, over rationals. Admissibility permits such a population,
+  so the realizability guard is not vacuous. Stress quantifies over every `k ≥ 2` with `θ·(k + 1) < k`,
+  before choosing its index and delays; the two-node minimum retains distinct-node liveness activity.
+  At the optimal fractions these are exactly the former population minimum five and awake bound two.
 - **Fixed assumptions, then guarantees.** `ContractAssumptions` is fixed before any coefficient is chosen and is
   independent of the outer gap `X`; the coefficients (`contract_coefficients`) are closed formulas in `k`, `δ_t`,
   `fgSlots` and `X`. The outage lag, budget, look-back and recovery delay are fixed numbers, not guarantees.
@@ -313,8 +324,7 @@ detail in `TRUST.md`.
   shifted selection reads `max 0 (t − δ)`, never a pre-run time. Validators may sleep and wake; those awake
   somewhere in the look-back but not ready count against its participation bound. This supplies a continuously
   awake support set without requiring every honest participant to stay awake. `CorrectProtocol.persists` still
-  protects every reader ready with `cDur` from `b₁ + recovery·Δ` (`ProtectedReadyFrom`). `Params.cover` is kept
-  but read by no regime.
+  protects every reader ready with `cDur` from `b₁ + recovery·Δ` (`ProtectedReadyFrom`).
 - **The Goldilocks outage regime uses `η = 12k + 7` and `θ = ½`.** The look-back covers the proof window and
   the participation catch-up makes its ready validators awake throughout that window (§"Contract numbers").
   Both look-aheads are `5`, so the population and committee inequalities use one retained view. At `η = 0`,
@@ -340,13 +350,11 @@ detail in `TRUST.md`.
   and adds the same condition inside selected committees, without look-back and with the committee look-ahead.
   Healthy retains the population fault fraction β and uses the contract fraction βK for each nonempty committee
   selected from GST onward, charging faults at the horizon. Correctness statements are parameterized; instances
-  supply their concrete fractions. Admissible pins βK = ½ and requires β ≤ βK. The pin excludes a faulty committee
-  majority; βK stays a parameter because correctness is meant to allow non-optimal protocols later, with optimal
-  fault tolerance stated separately. β ≤ βK relates population to committee: it makes the population bound imply
-  the committee bound at full selection. Without it every β in (½, 1] would be admissible, and Healthy at full
-  selection would be strictly stronger there than the population Healthy. Population thresholds serve population
-  claims; committee bounds serve committee-counted claims. Full selection preserves Healthy for admissible
-  contracts. The standard and Goldilocks values β = ⅓ and βK = ½ satisfy these conditions.
+  supply their concrete fractions. Full-selection healthy equivalence takes β ≤ βK explicitly:
+  it makes the population bound imply the committee bound at full selection, but is not an admissibility
+  restriction. The standard and Goldilocks values β = ⅓ and βK = ½ satisfy it. The healthy generic
+  reductions separately require `HealthyBetaFit` (β ≤ ⅓) and `CommitteeHalfFit` (βK ≤ ½), discharged
+  by the instance. Population thresholds serve population claims; committee bounds serve committee-counted claims.
 - **Node-level regime rows.** The node-level rows R.1, R.2, R.7 and R.8 (`Milestones/Statements/Regimes/{Sleepy,
   Always}`) are proved milestones, and the obligations proof uses their definitions. The node-level rows R.3–R.6
   (healed, final, outage, weak continuation) are not stated: R.3–R.5 correspond to the generic rows `healedSafe`,
@@ -630,10 +638,12 @@ detail in `TRUST.md`.
   (`ConsensusLeanTest/Goldilocks/Refinement/Constant`).
 - **The headline statement `GoldilocksCorrect`** is certified next to `MeetsObligations`: for every setup,
   assumption set and finite validator type, the Goldilocks family in the general execution model is an L0
-  `CorrectProtocol` at `goldilocksContract A (contract_coefficients S A)`. It is the composition of
+  `CorrectProtocol` at `goldilocksContract A (contract_coefficients S A)`, conjoined with that contract's
+  `Params.OptimalFaultTolerance`. The correctness conjunct is the composition of
   `MeetsObligations` with `Review.ObligationsSufficient` (proved in `Solution` by `ShapeObligations.correct` of
-  `meets_obligations`), with their parameters and no further hypothesis, so it adds no trusted reach: every
-  constant it mentions is already reached by those two statements. It states the protocol's correctness in one
+  `meets_obligations`), with their parameters and no further hypothesis. The optimality conjunct adds
+  `Params.OptimalFaultTolerance` to the trusted reach without adding a Challenge root. It states correctness
+  and optimality in one
   place, so a reader need not compose the two statements.
 - **The outage row is certified at every vote binding; the other rows stay at the population binding.**
   `PersistsWith` states the `persists` claim of `ShapeClaimsAt`, verbatim, for the binding-generic family

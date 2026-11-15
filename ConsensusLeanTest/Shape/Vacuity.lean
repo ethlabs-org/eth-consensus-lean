@@ -10,13 +10,9 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 * A bound of one validator not ready, or any bound below `n − 2` at every
   index, fails the sleepy stress requirement (at most two honest awake).
-* **Admissibility rejections** (M10): a contract cannot buy its claims with a
-  stronger environment. Each of `θ = 3/5`, `β = 1/4` (fewer faults than a
-  third), `cover = 3/5`, `α = 1/4` (with `β = 1/3`: `β > α`), `budget = 0` and
-  `catchUp = 0`,
-  changed alone from admissible standard numbers, is rejected
-  (`reject_theta` … `reject_catchUp`, bundled as `admissibility_rejections`);
-  `standard_admissible` is the control (the standard numbers are admissible).
+* **Admissibility boundaries**: `θ = 1`, `β = 0`, `βK = 0`, `α < β`, `budget = 0`
+  and `catchUp = 0` are rejected. Nonoptimal positive fractions remain admissible;
+  optimality is a separate contract property.
 * **Progress fit** (M29): `allProposers_unfit` (a recurrence does
   not fit a family that selects every key as proposer; the matching run-level
   fact is `Realizable.allProposers_no_witness`);
@@ -51,10 +47,11 @@ theorem notReadyAtMost_below_not_realizable {O : OutputSchema} {Info : Type}
     (K : Contract ProgressReq) (V : Type) [Fintype V] [DecidableEq V]
     (_hn : 5 ≤ Fintype.card V) (ho : (O.output .available).isSome) (m : K.Idx → ℕ+)
     (hm : ∀ i, (m i : Nat) + 3 ≤ Fintype.card V)
+    (hθ : K.params.θ * 3 < 2)
     (hp : ∀ i, K.progress .available i = .notReadyAtMost (m i)) :
     ¬ Realizable (sysOf O (compiled F) V) (shapeProgress F V) K := by
   intro h
-  obtain ⟨i, hi⟩ := h.sleepyStress .available (Or.inl rfl) ho
+  obtain ⟨i, hi⟩ := h.sleepyStress .available (Or.inl rfl) ho 2 le_rfl (by norm_num; exact hθ)
   obtain ⟨r, ⟨-, hd, -⟩, ⟨-, hprog, hlive⟩, hawake⟩ := hi 2 2 (by norm_num) (by norm_num)
   let S := sysOf O (compiled F) V
   have hc : 0 ≤ S.cDur K r := mul_nonneg (by positivity) (S.pt r).env.ΔAC_pos.le
@@ -81,9 +78,11 @@ theorem notReadyAtMost_one_not_realizable {O : OutputSchema} {Info : Type}
     [DecidableEq Info] [Countable Info] (F : ChainShapeFamily O Info)
     (K : Contract ProgressReq) (V : Type) [Fintype V] [DecidableEq V]
     (hn : 5 ≤ Fintype.card V) (ho : (O.output .available).isSome)
+    (hθ : K.params.θ * 3 < 2)
     (hp : ∀ i, K.progress .available i = .notReadyAtMost 1) :
     ¬ Realizable (sysOf O (compiled F) V) (shapeProgress F V) K :=
-  notReadyAtMost_below_not_realizable F K V hn ho (fun _ => 1) (fun _ => by simp; omega) hp
+  notReadyAtMost_below_not_realizable F K V hn ho (fun _ => 1)
+    (fun _ => by simp; omega) hθ hp
 
 /-- A fixed bound of one cannot tolerate arbitrary numbers not ready. -/
 theorem notReadyAtMost_one_not_tolerant {O : OutputSchema} (K : Contract ProgressReq)
@@ -104,39 +103,62 @@ def std : Params Unit := Params.standard 1 0 1 (fun _ _ => 1) (fun _ _ => 1)
 theorem standard_admissible : std.Admissible :=
   Params.standard_admissible le_rfl le_rfl
 
-/-- A sleepy threshold above ½ is rejected. -/
-theorem reject_theta : ¬ ({ std with θ := 3 / 5 } : Params Unit).Admissible :=
+/-- Standard fractions are optimal and recover the five-validator boundary. -/
+theorem standard_optimal_room (n : Nat) :
+    std.OptimalFaultTolerance ∧ (std.Room n ↔ 5 ≤ n) := by
+  have h : std.OptimalFaultTolerance := by constructor <;> norm_num [std, Params.standard]
+  exact ⟨h, h.room_iff n⟩
+
+/-- At the optimum, the generalized awake requirement is exactly the two-awake requirement. -/
+theorem optimal_stress_iff {V : Type} [Fintype V] [DecidableEq V] (p : EnvPoint V) :
+    (∀ k : Nat, 2 ≤ k → std.θ * ((k : ℚ) + 1) < k → p.AwakeAtMost k) ↔
+      p.AwakeAtMost 2 := by
+  constructor
+  · intro h
+    exact h 2 le_rfl (by norm_num [std, Params.standard])
+  · intro h k hk _ t ht hH
+    exact (h t ht hH).trans hk
+
+/-- The strict upper boundary on sleepy participation is rejected. -/
+theorem reject_theta : ¬ ({ std with θ := 1 } : Params Unit).Admissible :=
   fun h => by have := h.θ_range.2; norm_num at this
 
-/-- A healthy fault bound below ⅓ (a stronger premise) is rejected. -/
-theorem reject_beta : ¬ ({ std with β := 1 / 4 } : Params Unit).Admissible :=
-  fun h => by have := h.β_range; norm_num at this
+/-- A zero healthy fault bound is rejected. -/
+theorem reject_beta : ¬ ({ std with β := 0 } : Params Unit).Admissible :=
+  fun h => by have := h.β_range.1; norm_num at this
 
-/-- A committee fraction other than ½ (here a faulty committee majority) is rejected. -/
-theorem reject_betaK_majority : ¬ ({ std with βK := 3 / 5 } : Params Unit).Admissible :=
-  fun h => by have := h.βK_eq; norm_num at this
+/-- A zero committee fault bound is rejected. -/
+theorem reject_betaK : ¬ ({ std with βK := 0 } : Params Unit).Admissible :=
+  fun h => by have := h.β_range.2; norm_num at this
 
-/-- A committee fraction below the population fraction is rejected. -/
-theorem reject_betaK_below_population : ¬ ({ std with βK := 1 / 4 } : Params Unit).Admissible :=
-  fun h => by have := h.β_le_βK; norm_num [std, Params.standard] at this
+/-- Nonoptimal sleepy, population and committee fractions remain admissible. -/
+theorem admissible_nonoptimal :
+    ({ std with θ := 3 / 5, β := 1 / 4, βK := 3 / 5 } : Params Unit).Admissible ∧
+    ¬ ({ std with θ := 3 / 5, β := 1 / 4, βK := 3 / 5 } : Params Unit).OptimalFaultTolerance := by
+  constructor
+  · constructor <;> norm_num [std, Params.standard]
+  · intro h
+    have := h.θ_eq
+    norm_num at this
+
+/-- Committee tolerance need not dominate population tolerance. -/
+theorem accept_betaK_below_population :
+    ({ std with βK := 1 / 4 } : Params Unit).Admissible := by
+  constructor <;> norm_num [std, Params.standard]
 
 /-- The shared half boundary is admitted. -/
 theorem accept_beta_half : ({ std with β := 1 / 2, α := 1 / 2 } : Params Unit).Admissible := by
-  refine ⟨by decide, ?_, ?_, ?_, ?_, ?_, ?_, by decide⟩ <;> norm_num [std, Params.standard]
+  constructor <;> norm_num [std, Params.standard]
 
-/-- A cover above ½ is rejected (an `Admissible` range check only: no regime
-reads `cover`). -/
-theorem reject_cover : ¬ ({ std with cover := 3 / 5 } : Params Unit).Admissible :=
-  fun h => by have := h.cover_range.2; norm_num at this
-
-/-- `α = 1/4` is rejected at every admissible-range `β` (`β ≥ 1/3`). -/
-theorem reject_alpha_any {Idx : Type} (P : Params Idx) (hα : P.α = 1 / 4) : ¬ P.Admissible :=
-  fun h => by have := h.α_range.1; have := h.β_range; rw [hα] at *; linarith
+/-- Accountability may equal a smaller positive population tolerance. -/
+theorem accept_alpha_quarter :
+    ({ std with β := 1 / 4, α := 1 / 4 } : Params Unit).Admissible := by
+  constructor <;> norm_num [std, Params.standard]
 
 /-- An accountable fraction below `β` is rejected (`α = 1/4`, `β = 1/3`):
 the healthy regime would not bound the faults below `α`. -/
 theorem reject_alpha : ¬ ({ std with α := 1 / 4 } : Params Unit).Admissible :=
-  reject_alpha_any _ rfl
+  fun h => by have := h.α_range.1; norm_num [std, Params.standard] at this
 
 /-- An empty outage budget is rejected (no outage would be admitted). -/
 theorem reject_budget : ¬ ({ std with budget := 0 } : Params Unit).Admissible :=
@@ -146,15 +168,15 @@ theorem reject_budget : ¬ ({ std with budget := 0 } : Params Unit).Admissible :
 theorem reject_catchUp : ¬ ({ std with catchUp := 0 } : Params Unit).Admissible :=
   fun h => by have := h.catchUp_pos; simp at this
 
-/-- All six rejections, beside the control. -/
+/-- Strict fraction boundaries and timing rejections, beside the control. -/
 theorem admissibility_rejections :
-    std.Admissible ∧ ¬ ({ std with θ := 3 / 5 } : Params Unit).Admissible ∧
-      ¬ ({ std with β := 1 / 4 } : Params Unit).Admissible ∧
-      ¬ ({ std with cover := 3 / 5 } : Params Unit).Admissible ∧
+    std.Admissible ∧ ¬ ({ std with θ := 1 } : Params Unit).Admissible ∧
+      ¬ ({ std with β := 0 } : Params Unit).Admissible ∧
+      ¬ ({ std with βK := 0 } : Params Unit).Admissible ∧
       ¬ ({ std with α := 1 / 4 } : Params Unit).Admissible ∧
       ¬ ({ std with budget := 0 } : Params Unit).Admissible ∧
       ¬ ({ std with catchUp := 0 } : Params Unit).Admissible :=
-  ⟨standard_admissible, reject_theta, reject_beta, reject_cover, reject_alpha, reject_budget,
+  ⟨standard_admissible, reject_theta, reject_beta, reject_betaK, reject_alpha, reject_budget,
     reject_catchUp⟩
 
 end Admissibility

@@ -44,8 +44,9 @@ theorem Consensus.Goldilocks.meetsObligations : Consensus.Goldilocks.MeetsObliga
 
 /-- Goldilocks is correct. -/
 theorem Consensus.Goldilocks.goldilocksCorrect : Consensus.Goldilocks.GoldilocksCorrect :=
-  fun S A V => Consensus.Shape.ShapeObligations.correct
-    (Consensus.Goldilocks.Growing.meets_obligations S A).2 V
+  fun S A V => ⟨Consensus.Shape.ShapeObligations.correct
+    (Consensus.Goldilocks.Growing.meets_obligations S A).2 V,
+    Consensus.Goldilocks.Obligations.meetsObligations_optimalFaultTolerance S A⟩
 
 /-- Goldilocks survives outages at every vote binding. -/
 theorem Consensus.Goldilocks.persistsWith : Consensus.Goldilocks.PersistsWith :=
@@ -62,6 +63,6 @@ including slots beyond the horizon, in data fixed before execution, not only
 observed events. No binding premise is assumed. -/
 theorem Consensus.Goldilocks.goldilocksCorrectWithExcuses :
     Consensus.Goldilocks.GoldilocksCorrectWithExcuses :=
-  fun S A V => Consensus.Model.correctProtocol_with_excuses (goldilocksCorrect S A V)
+  fun S A V => Consensus.Model.correctProtocol_with_excuses (goldilocksCorrect S A V).1
 
 end

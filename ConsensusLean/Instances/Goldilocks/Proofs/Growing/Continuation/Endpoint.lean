@@ -46,8 +46,10 @@ theorem continued_safe_past_horizon (hc : GoldilocksCorrect) (S : Setup)
           (Sy.heal K cap i gst r) r →
         (Sy.trace r).ReadySafe (Sy.cDur K r) g (Sy.heal K cap i gst r) ∨ Sy.Excuse r := by
   intro Sy K cap g hcap hg i gst T r hv hh hT hp
-  have hβ : K.params.β ≤ K.params.βK := (Obligations.meetsObligations_admissible S A).β_le_βK
-  exact (hc S A V).behaviour.healedSafe cap g hcap hg i gst r hv
+  have hβ : K.params.β ≤ K.params.βK := by
+    change (1 / 3 : ℚ) ≤ 1 / 2
+    norm_num
+  exact (hc S A V).1.behaviour.healedSafe cap g hcap hg i gst r hv
     ⟨(System.healthy_iff_of_full_selection _ K r (fun _ => rfl) hβ gst).mpr (hh.healthy hT), hp⟩
 
 /-- **`continuedLive` past the horizon**: on a hand-over run with `horizon ≤ T`, transaction
@@ -63,8 +65,10 @@ theorem continued_live_past_horizon (hc : GoldilocksCorrect) (S : Setup)
         (Sy.trace r).TxLive (Sy.cDur K r) g (Sy.heal K cap i gst r) (Sy.lat K cap i r) ∨
           Sy.Excuse r := by
   intro Sy K cap g hg i gst T r hv hh hT hp
-  have hβ : K.params.β ≤ K.params.βK := (Obligations.meetsObligations_admissible S A).β_le_βK
-  exact (hc S A V).behaviour.healthyLive cap g hg i gst r hv
+  have hβ : K.params.β ≤ K.params.βK := by
+    change (1 / 3 : ℚ) ≤ 1 / 2
+    norm_num
+  exact (hc S A V).1.behaviour.healthyLive cap g hg i gst r hv
     ⟨(System.healthy_iff_of_full_selection _ K r (fun _ => rfl) hβ gst).mpr (hh.healthy hT), hp⟩
 
 /-- **`TxLive` for the deadlines up to the hand-over**: on a hand-over run with `heal ≤ T ≤
@@ -88,8 +92,10 @@ theorem continued_live_upTo_handover (hc : GoldilocksCorrect) (S : Setup)
   intro Sy K cap g hg i gst T r hv hh hTh hhT hp
   have h0 : 0 ≤ Sy.heal K cap i gst r :=
     add_nonneg (le_max_right gst 0) (mul_nonneg (Nat.cast_nonneg _) (Sy.pt r).env.ΔAC_pos.le)
-  have hβ : K.params.β ≤ K.params.βK := (Obligations.meetsObligations_admissible S A).β_le_βK
-  exact (hc S A V).healthyLive_prefix hg r hv i gst (h0.trans hhT) hTh
+  have hβ : K.params.β ≤ K.params.βK := by
+    change (1 / 3 : ℚ) ≤ 1 / 2
+    norm_num
+  exact (hc S A V).1.healthyLive_prefix hg r hv i gst (h0.trans hhT) hTh
     (CommLog.Delivers.reindex (f := id) hh.1 (fun _ => le_rfl) (fun _ => rfl) (fun _ => rfl) hTh)
     hh.2.1 hh.2.2.1 (hh.2.1.committee_univ hβ)
     ((shapeProgress (goldilocks S) V).mono le_rfl hTh hp)

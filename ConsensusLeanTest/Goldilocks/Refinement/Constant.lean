@@ -20,7 +20,7 @@ namespace Consensus.Goldilocks.Obligations.Test.Constant
 theorem goldilocksCorrectConstant_of_growing (h : GoldilocksCorrect) :
     GoldilocksCorrectConstant := by
   intro S A V _ _
-  obtain ⟨hb, ha, hr⟩ := h S A V
+  obtain ⟨hb, ha, hr⟩ := (h S A V).1
   refine ⟨?_, ha, hr⟩
   dsimp only [System.restrict, Progress.restrict]
   exact

@@ -10,7 +10,7 @@ public import ConsensusLean.Spec.Problem.Profile
 
 `ShapeObligations F K` is what an instance must establish: its shape claims
 (`ShapeClaims`, proved by the protocol), admissible numbers
-(`Params.Admissible`: thresholds no stronger than standard), a served ledger
+(`Params.Admissible`: realizable fractions, not necessarily optimal), a served ledger
 (`OutputSchema.Serves`: a final output, or an available one), and progress
 requirements that fit the skeleton (`ProgressFits`: a recurrence needs
 one proposer per slot), and tolerate arbitrary numbers of validators not

@@ -44,7 +44,8 @@ def ObligationsSufficientOn : Prop :=
     ShapeObligationsOn F K Q → ∀ (V : Type) [Fintype V] [DecidableEq V],
       CorrectProtocolOn (sysOf O (compiled F) V) (shapeProgress F V) K (Q V)
 
-/-- L2 beyond `CorrectProtocol`: with ≥ 5 validators, a family whose progress fits its skeleton and
+/-- L2 beyond `CorrectProtocol`: with a validator count satisfying `Params.Room`,
+a family whose progress fits its skeleton and
 an admissible, progress-tolerant contract have active witnesses, including the bad-proposer witness
 that gives `ProgressTolerant` its meaning (`RealizableActive.badProposer`). `ShapeObligations F K`
 carries the three premises as fields. Exactly the type of `Consensus.Shape.regimes_realizable`. -/
@@ -52,7 +53,8 @@ def RegimesRealizable : Prop :=
   ∀ {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
     (F : ChainShapeFamily O Info) (K : Contract ProgressReq),
     K.params.Admissible → ProgressFits K F → ProgressTolerant O K →
-    ∀ (V : Type) [Fintype V] [DecidableEq V], 5 ≤ Fintype.card V → RealizableActive F K V
+    ∀ (V : Type) [Fintype V] [DecidableEq V],
+      K.params.Room (Fintype.card V) → RealizableActive F K V
 
 /-- L1: the system's log is the engine's communication. Exactly the type of
 `Consensus.Model.sysOf_log_faithful`. -/

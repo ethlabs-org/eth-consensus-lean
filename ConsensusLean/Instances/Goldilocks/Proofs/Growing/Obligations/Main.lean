@@ -35,7 +35,8 @@ theorem meets_obligations : MeetsObligations := fun S A =>
 
 /-- **Goldilocks is correct**: the endpoint composed with `ShapeObligations.correct`. -/
 theorem goldilocks_correct : GoldilocksCorrect := fun S A V =>
-  Consensus.Shape.ShapeObligations.correct (meets_obligations S A).2 V
+  ⟨Consensus.Shape.ShapeObligations.correct (meets_obligations S A).2 V,
+    Obligations.meetsObligations_optimalFaultTolerance S A⟩
 
 /-- **Goldilocks survives outages at every vote binding**: the binding-generic outage claim
 `meetsObligations_persists_growing` at every bound setup. -/

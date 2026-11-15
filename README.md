@@ -6,6 +6,10 @@ A machine-checked proof, in [Lean 4](https://lean-lang.org), that **Goldilocks**
 
 The proved headline theorem is `goldilocksCorrect`. It says that Goldilocks is a `CorrectProtocol` for every finite set of validators and every choice of its parameters (the lock window `k ≥ 2`, the timeout `δt` and the rest), given two assumptions on its timing: `fgSlots`, which bounds the finality gadget's attestation delay in a healthy network (see the healthy regime below), is at least 2, and the timeout is at least `3·fgSlots`. Every timing constant in the guarantees is an explicit formula in these parameters. Its proof composes two parts. The first is generic: a precise definition of a correct consensus protocol, and a theorem that any protocol written in a standard blockchain form and meeting a list of conditions on a class of runs satisfies it on that class. The second shows that Goldilocks meets those conditions.
 
+The headline also states `Params.OptimalFaultTolerance`: Goldilocks uses `θ = ½`, `β = ⅓` and `βK = ½`.
+Generic correctness admits non-optimal fractions; its realizability population and awake-count requirements
+follow those fractions. Optimality is a conjunct of the Goldilocks headline, not a premise of correctness.
+
 ## What "correct" means
 
 **The setting.** There are *n* validators, each with one signing key. Some are *faulty*: the adversary controls them completely and knows everything, but cannot forge honest signatures. The set of faulty validators can grow during a run. A compromise is immediate and permanent, and from then on the adversary holds the validator's ordinary key. It can sign anything with that key, including objects that claim an earlier slot, while what the validator did while honest stays honest. A constant set is the static adversary. Honest validators can be *asleep* (offline) and wake up later. Clients submit transactions to awake honest validators. Each honest validator *reads* chains from its local view; Goldilocks gives two reads: the **confirmed** chain (from the available chain) and the **finalized** chain (from the finality gadget).

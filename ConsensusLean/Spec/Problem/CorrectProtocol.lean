@@ -14,12 +14,12 @@ contract `K` (numbers only). Three parts:
 * `Adequate`: the acceptance interface that rules out a vacuous system
   (coverage of every environment point and GST by a valid, excuse-free run;
   prefix closure).
-* `Realizable` (for at least five validators): every regime, at every `ΔAC > 1`
+* `Realizable` (for a validator count satisfying `Params.Room`): every regime, at every `ΔAC > 1`
   and `ΔFG > 1` (the healthy regime within its FG delay bound), every GST and
   arbitrarily late outages, is met by a clean witness with
-  active claims, plus a sleepy stress witness with at most two honest
-  validators awake; and the sleepy, healthy and outage regimes have witnesses on
-  which faults grow inside the active part (`GrowthActive`).
+  active claims, plus a sleepy stress witness with at most `k` honest validators
+  awake for every `k ≥ 2` with `θ·(k + 1) < k`; and the sleepy, healthy and outage regimes have
+  witnesses on which faults grow inside the active part (`GrowthActive`).
 
 What L0 cannot check, and L1 proves once for the model: the log is the
 engine's real communication (`Model.sysOf_log_faithful`), and the external data
@@ -247,8 +247,9 @@ claims, at every `ΔAC > 1` and `ΔFG > 1` (the healthy regime at every
 delivery, which no protocol-agnostic eager log meets, `CommLog.PSync`),
 every GST (with a log silent before it), and arbitrarily late outages; and
 every provided available or stable output is live, at one index (per
-validator type and capability) that serves every `ΔAC` and `ΔFG`, with at most
-two honest validators awake (sleepy stress witness). The sleepy witnesses
+validator type, capability and awake bound) that serves every `ΔAC` and `ΔFG`,
+with at most `k` honest validators awake for each `k ≥ 2` satisfying
+`θ·(k + 1) < k` (sleepy stress witness). The sleepy witnesses
 carry liveness activity (`TxLiveActive`, inside `SleepyLive`) but no
 safety-activity (`SafeActive`) witness: `SafeActive` is asked only of the
 healthy witness, so no sleepy witness is required to exercise `sleepySafe`'s
@@ -268,16 +269,17 @@ structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
     S.HealthyLive X K cap i g r ∧ SafeActive (S.cDur K r) (S.heal K cap i g r) (S.pt r)
   /-- Sleepy stress: every provided available or stable output is live, at
   one index chosen before the delays (it may depend on the validators and the
-  capability, not on `ΔAC` or `ΔFG`), on a sleepy witness at every `ΔAC` and `ΔFG`
-  where at most two honest validators are awake at any time, whatever the
-  number of validators (the witness has a
-  faulty validator, so with `θ ≤ ½` two ready honest validators meet the
-  sleepy threshold). A progress requirement that demands any growing
+  capability and `k`, not on `ΔAC` or `ΔFG`), on a sleepy witness at every `ΔAC` and `ΔFG`
+  where at most `k` honest validators are awake at any time, for every `k ≥ 2`
+  with `θ·(k + 1) < k`. The bound is independent of the population size;
+  two awake validators are required for the distinct-node activity witness.
+  A progress requirement that demands any growing
   participation at every index (e.g. at most `n − 3` validators not ready)
   fails here. -/
   sleepyStress : ∀ cap, (cap = .available ∨ cap = .stable) → (S.schema.output cap).isSome →
+    ∀ k : Nat, 2 ≤ k → K.params.θ * ((k : ℚ) + 1) < (k : ℚ) →
     ∃ i, ∀ ΔAC ΔFG : Time, 1 < ΔAC → 1 < ΔFG →
-      ∃ r, S.WitnessAt ΔAC ΔFG r ∧ S.SleepyLive X K cap i r ∧ (S.pt r).AwakeAtMost 2
+      ∃ r, S.WitnessAt ΔAC ΔFG r ∧ S.SleepyLive X K cap i r ∧ (S.pt r).AwakeAtMost k
   outage : ∀ (ΔAC ΔFG : Time) (k : Nat), 1 < ΔAC → 1 < ΔFG →
     ∃ r T b₀ b₁, S.WitnessAt ΔAC ΔFG r ∧ S.Outage X.toExternal K T b₀ b₁ r ∧
       OutageActive (S.cDur K r) ((K.params.recovery : Time) * ΔAC) T b₀ b₁ (S.pt r) ∧
@@ -310,7 +312,7 @@ structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
 structure CorrectProtocol (S : System V) (X : Progress S Prog) (K : Contract Prog) : Prop where
   behaviour : Behaviour S X K
   adequate : S.Adequate X
-  realizable : 5 ≤ Fintype.card V → Realizable S X K
+  realizable : K.params.Room (Fintype.card V) → Realizable S X K
 
 /-! ### Correctness on a class of runs
 
@@ -343,7 +345,7 @@ structure CorrectProtocolOn (S : System V) (X : Progress S Prog) (K : Contract P
     (Q : EnvPoint V → Prop) : Prop where
   behaviour : Behaviour (S.restrict fun r => Q (S.pt r)) (X.restrict fun r => Q (S.pt r)) K
   adequate : S.Adequate X
-  realizable : 5 ≤ Fintype.card V → Realizable S X K
+  realizable : K.params.Room (Fintype.card V) → Realizable S X K
 
 /-- Restrict behaviour to the single run `r`: validity means "is `r`", and
 the original excuse is retained at that run. All reads, evidence and communication
@@ -374,7 +376,7 @@ structure CorrectProtocolWithExcuses (S : System V) (X : Progress S Prog) (K : C
   behaviour : ∀ r, Structural r →
     Behaviour (S.atRun r) (X.atRun r) K ∨ Failure r
   adequate : S.Adequate X
-  realizable : 5 ≤ Fintype.card V → Realizable S X K
+  realizable : K.params.Room (Fintype.card V) → Realizable S X K
 
 end Consensus
 

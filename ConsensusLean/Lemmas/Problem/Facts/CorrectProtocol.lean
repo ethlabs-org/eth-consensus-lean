@@ -374,12 +374,12 @@ theorem outage_prefix (h : CorrectProtocol S X K) {g : S.schema.Id}
   · exact Or.inr (hE he)
 
 /-- Active service of a provided final or available output `g` (capability
-`cap`): with at least five validators, at every index, `Δ > 1` and GST `gst ≥ 0`,
+`cap`): with a population satisfying `Params.Room`, at every index, `Δ > 1` and GST `gst ≥ 0`,
 some clean witness in the healthy regime from `gst`, with the progress of `cap`
 at the index, has a transaction submitted to one honest node in the `g`-read of
 another honest node that was never submitted it. From the healthy witness of
 `Realizable` and `Behaviour.healthyLive`; the witness has no excuse. -/
-theorem served (h : CorrectProtocol S X K) (hn : 5 ≤ Fintype.card V) {cap : Capability}
+theorem served (h : CorrectProtocol S X K) (hn : K.params.Room (Fintype.card V)) {cap : Capability}
     {g : S.schema.Id} (_hcap : cap = .final ∨ cap = .available)
     (hg : S.schema.output cap = some g) (i : K.Idx) (Δ gst : Time) (hΔ : 1 < Δ)
     (hgst : 0 ≤ gst) :

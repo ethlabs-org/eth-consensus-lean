@@ -183,11 +183,14 @@ theorem meetsObligations_admissible (S : Setup) (A : ContractAssumptions S) :
     catchUp_pos := (contract_coefficients S A).catchUp.pos
     θ_range := by norm_num [Params.standard]
     β_range := by norm_num [Params.standard]
-    βK_eq := by norm_num [Params.standard]
-    β_le_βK := by norm_num [Params.standard]
-    cover_range := by norm_num [Params.standard]
     α_range := by norm_num [Params.standard]
     budget_pos := by have := S.two_le_k; dsimp [Params.standard]; omega }
+
+/-- The stock contract retains the optimal fault-tolerance fractions. -/
+theorem meetsObligations_optimalFaultTolerance (S : Setup) (A : ContractAssumptions S) :
+    (K S A).params.OptimalFaultTolerance := by
+  rw [goldilocksContract_params_eq]
+  constructor <;> norm_num [Params.standard]
 
 /-- The readiness duration of an obligations contract with catch-up `≥ 19` covers `18Δ + 1`, for
 any coefficient record `C`, so that it also serves the witnesses over `goldilocksContract A C`.

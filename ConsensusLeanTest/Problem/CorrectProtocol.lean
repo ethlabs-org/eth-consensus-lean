@@ -17,8 +17,8 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 * Submission-dependent censoring progress is rejected by `submit_irrel`.
 * Vacuous systems are not good:
   `false_progress_not_correct` (a progress reader that never holds violates
-  `Realizable` for `|V| ≥ 5`), `no_admissible_not_correct` (no admissible
-  external data, e.g. `Admits := False`, violates `Adequate.admits`),
+  `Realizable` when `K.params.Room (Fintype.card V)` holds), `no_admissible_not_correct`
+  (no admissible external data, e.g. `Admits := False`, violates `Adequate.admits`),
   `empty_valid_not_correct` (no valid run violates `Adequate.covers`),
   `excuse_true_not_correct` (an excuse on every run, likewise).
 * `prefix_sync_then_async`: a log synchronous for deadlines up
@@ -114,13 +114,13 @@ theorem censoring_progress_rejected (v : V) (π : Prog) (c s e : Time)
   have := hall v 0 43 (by simp)
   norm_num at this
 
-/-- A progress reader that never holds: not good (for `|V| ≥ 5`). -/
+/-- A progress reader that never holds: not good when the contract's `Room` condition holds. -/
 theorem false_progress_not_correct (hX : ∀ π c s e p x, ¬ X.holds π c s e p x)
-    (h5 : 5 ≤ Fintype.card V) :
+    (hn : K.params.Room (Fintype.card V)) :
     ¬ CorrectProtocolOn S X K (fun p => p.ConstantFaults) := by
   intro h
   obtain ⟨i⟩ := K.idx_nonempty
-  obtain ⟨r, -, -, hp, -⟩ := (h.realizable h5).sleepy .available i 2 2 (by norm_num)
+  obtain ⟨r, -, -, hp, -⟩ := (h.realizable hn).sleepy .available i 2 2 (by norm_num)
     (by norm_num)
   exact hX _ _ _ _ _ _ hp
 

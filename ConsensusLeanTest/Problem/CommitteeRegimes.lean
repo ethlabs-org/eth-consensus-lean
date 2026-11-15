@@ -10,11 +10,11 @@ variable {V : Type} [Fintype V] [DecidableEq V] {S : System V}
 
 /-- Full selection adds no restriction when the population bound implies the committee bound. -/
 theorem healthy_stock (hfull : ∀ t, X.selected (S.pt r).env (X.ext r) t = Finset.univ)
-    (ha : K.params.Admissible) (g : Time) :
+    (hβ : K.params.β ≤ K.params.βK) (g : Time) :
     S.Healthy X K g r ↔ (S.log r).PSync (S.pt r) g ∧
       (S.pt r).HealthyOn K.params.β g (S.pt r).horizon ∧
       (S.pt r).env.ΔFG ≤ K.params.fgDelay.val * (S.pt r).env.ΔAC := by
-  exact System.healthy_iff_of_full_selection X K r hfull ha.β_le_βK g
+  exact System.healthy_iff_of_full_selection X K r hfull hβ g
 
 /-- Full selection recovers sleepy participation when its look-ahead is no larger. -/
 theorem sleepy_stock (hfull : ∀ t, X.selected (S.pt r).env (X.ext r) t = Finset.univ)
