@@ -40,7 +40,9 @@ structure RunMap (rho : Model.Run (compiled F) E) (payload : A.Blk → Set Nat) 
   state : (F (Model.pubOf E)).State → NodeState A
   state_eq : ∀ v i, i ≤ rho.events.length → rho.point.HonestAt v (rho.cutTime i) →
     state (rho.stateBefore i v).st.1 = trace.state (validator.symm v) (cut i)
-  honest_eq : ∀ y t, y ∈ honest t ↔ rho.point.HonestAt (validator y) t
+  /-- The simulated run freezes compromise at the observation horizon. -/
+  honest_eq : ∀ y t, y ∈ honest t ↔
+    rho.point.HonestAt (validator y) (min t rho.horizon)
   awake_eq : ∀ y t, trace.awake y t ↔ E.awake (validator y) t = true ∧
     0 ≤ t ∧ t ≤ rho.horizon
   horizon_eq : ∀ t, trace.InHorizon t ↔ t ≤ rho.horizon
@@ -57,10 +59,13 @@ structure RunMap (rho : Model.Run (compiled F) E) (payload : A.Blk → Set Nat) 
     (Model.protoOf (compiled F) E).conflicts (attObject a) (attObject b) = true
   tip : O.Id → NodeState A → Time → A.Blk
   chain : NodeState A → A.Blk → List A.Blk
+  /-- The protocol's stored output clock, not the engine cut's observation time. -/
+  clock : (F (Model.pubOf E)).State → Time
   output_eq : ∀ g v i, i ≤ rho.events.length →
     (F (Model.pubOf E)).out g (rho.stateBefore i v).st.1 =
       (chain (state (rho.stateBefore i v).st.1)
-        (tip g (state (rho.stateBefore i v).st.1) (rho.cutTime i))).map header
+        (tip g (state (rho.stateBefore i v).st.1)
+          (clock (rho.stateBefore i v).st.1))).map header
   available_tip : ∀ g, O.output .available = some g → ∀ st t,
     tip g st t = A.confirmed st.ac (Node.frame st) t
 

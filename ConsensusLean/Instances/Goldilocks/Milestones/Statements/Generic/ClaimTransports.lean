@@ -95,7 +95,8 @@ structure EndReadTransport (M : RunMap rho payload) (K : Contract ProgressReq)
     (chainTrace rho).readAt g v t =
       (M.chain (M.trace.state (M.validator.symm v) (M.cut ((chainTrace rho).endCut t)))
         (M.tip g (M.trace.state (M.validator.symm v)
-          (M.cut ((chainTrace rho).endCut t))) t)).map M.header
+          (M.cut ((chainTrace rho).endCut t)))
+          (M.clock (rho.stateBefore ((chainTrace rho).endCut t) v).st.1))).map M.header
 
 /-- OPEN precise deadline premises; source: concrete healthy preparation/final queries
 and Premises in Generic/Obligations. NEW UNRESOLVED SUFFICIENCY TARGET, not a consequence
@@ -278,7 +279,8 @@ structure StoredReadTransport (M : RunMap rho payload) (R : StoredReadContext M)
     (R.cut v i) (R.now v i)
   current_tip : rho.ExecutionValid → ∀ v i, i ≤ rho.events.length →
     rho.point.HonestAt v (rho.cutTime i) →
-    R.tip v i = confirmedRead M.trace (M.validator.symm v) (M.cut i) (rho.cutTime i)
+    R.tip v i = confirmedRead M.trace (M.validator.symm v) (M.cut i)
+      (M.clock (rho.stateBefore i v).st.1)
   now_bound : rho.ExecutionValid → ∀ v i, i ≤ rho.events.length →
     rho.point.HonestAt v (rho.cutTime i) → R.now v i ≤ rho.horizon
 

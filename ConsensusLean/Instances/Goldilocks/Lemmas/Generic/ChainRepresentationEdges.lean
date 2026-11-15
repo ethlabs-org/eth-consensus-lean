@@ -35,12 +35,13 @@ suppliers are OPEN; a value of `RunMap` alone does not establish these invariant
 structure HonestChainReads (M : RunMap (A := A) rho payload) : Prop where
   /-- Output read transport: E1 `output_eq` and `state_eq`; concrete
   `Simulation/Chains.lean:31` and growing endpoint `Outputs.lean:160,182`.
-  The output clock stays the actual engine read clock, with no equality to trace time. -/
+  The output clock is the protocol's stored clock, not the observation or trace time. -/
   output_read : ∀ v i, i ≤ rho.events.length →
     rho.point.HonestAt v (rho.cutTime i) → ∀ g,
     (chainTrace rho).read g v i =
       (M.chain (mappedReadState M v i)
-        (M.tip g (mappedReadState M v i) (rho.cutTime i))).map M.header
+        (M.tip g (mappedReadState M v i)
+          (M.clock (rho.stateBefore i v).st.1))).map M.header
   /-- Reachability of the store at each actual honest engine read. -/
   reachable : rho.ExecutionValid → ∀ v i, i ≤ rho.events.length →
     rho.point.HonestAt v (rho.cutTime i) →
@@ -53,8 +54,8 @@ structure HonestChainReads (M : RunMap (A := A) rho payload) : Prop where
     rho.point.HonestAt v (rho.cutTime i) → ∀ c₁ c₂ g₁ g₂,
     c₁.rank < c₂.rank → O.output c₁ = some g₁ → O.output c₂ = some g₂ →
     (mappedReadState M v i).fg.Anc
-      (M.tip g₁ (mappedReadState M v i) (rho.cutTime i))
-      (M.tip g₂ (mappedReadState M v i) (rho.cutTime i))
+      (M.tip g₁ (mappedReadState M v i) (M.clock (rho.stateBefore i v).st.1))
+      (M.tip g₂ (mappedReadState M v i) (M.clock (rho.stateBefore i v).st.1))
   /-- Finalized cache membership at the old honest read, required by store growth. -/
   finalized_held : rho.ExecutionValid → ∀ v i, i ≤ rho.events.length →
     rho.point.HonestAt v (rho.cutTime i) →
