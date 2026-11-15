@@ -576,8 +576,10 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
     Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_mono (by omega))
       (fun j _ _ => add_nonneg (hlen _) (by linarith only [hD]))
   have hwinB : af + len ≤ B - 5 := by linarith [hsum]
-  obtain ⟨s₀, hslo, hshi⟩ := Obligations.exists_slot_align sp (af := af)
+  obtain ⟨s₀, hslo, hshi⟩ := Generic.exists_slot_align_of_grid (P := sp.toParams)
+    (fun s => by rw [sp.slotTime_eq]; ring) af
     (by dsimp [lo] at haf; linarith only [haf, hr, hD])
+  replace hslo : af ≤ sp.ts s₀ := by rw [sp.slotTime_eq] at hslo; exact hslo
   let rr := riseRounds (HZ tr H g) v
   let N := s₀ + Ld + rr * ρ + 1
   have hNtime : sp.ts N = 4 * D * ((s₀ : Time) + Ld + (rr : Time) * (ρ : Time) + 1) := by

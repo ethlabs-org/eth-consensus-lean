@@ -79,9 +79,29 @@ blocks are the same block. Both lie below the later block, which some node holds
 observation, and along that store's ancestry the entry is constant at one height
 (`Healing.Th_eq_of_anc`). The generic leaf compares its high origins by
 `ACHealing.origins_comparable`.
+
+Slot alignment (`exists_slot_align_of_grid`): on the four-delay grid, `s₀ = ⌈a_f / 4Δ⌉` has
+`a_f ≤ t_{s₀}` and `4Δ·s₀ < a_f + 4Δ`.
 -/
 
 namespace Consensus.Goldilocks.Generic
+
+/-- **Slot alignment** on the four-delay grid: `s₀ = ⌈a_f / 4Δ⌉` has `a_f ≤ t_{s₀}` and
+`4Δ·s₀ < a_f + 4Δ`, for any schedule whose slot `s` starts at `s · 4Δ`. -/
+theorem exists_slot_align_of_grid {P : Params} : exists_slot_align (P := P) := by
+  intro hgrid af haf
+  have h4D : 0 < 4 * P.Δ := by linarith only [P.hΔ]
+  set s₀Z : ℤ := (af + 4 * P.Δ - 1) / (4 * P.Δ) with hs₀Z
+  have hs₀lo := Int.ediv_mul_le (af + 4 * P.Δ - 1) h4D.ne'
+  have hs₀hi := Int.lt_ediv_add_one_mul_self (af + 4 * P.Δ - 1) h4D
+  rw [← hs₀Z] at hs₀lo hs₀hi
+  have hs₀nn : 0 ≤ s₀Z := Int.ediv_nonneg (by linarith only [haf, h4D]) h4D.le
+  have hs₀c : ((s₀Z.toNat : Nat) : ℤ) = s₀Z := Int.toNat_of_nonneg hs₀nn
+  refine ⟨s₀Z.toNat, ?_, ?_⟩
+  · rw [hgrid, hs₀c]
+    linarith only [hs₀hi]
+  · rw [hs₀c]
+    linarith only [hs₀lo]
 
 /-- An attestation on a block held at an observation honest at `t`, with a signer honest at `t`,
 was signed before the cut, for any node run under growing faults from any starts `ini`. -/
