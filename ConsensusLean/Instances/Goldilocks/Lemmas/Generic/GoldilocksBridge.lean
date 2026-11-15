@@ -54,6 +54,12 @@ noncomputable def goldilocksRunInterface (sp : SAParams)
   run_requirements h y := Compose.requirements_from sp ro (h.vstart y)
   run_root h := h.genesis_root_ok
 
+/-- The run projection uses the committee-indexed initial AC states. -/
+theorem goldilocksRunInterface_run_iff (cm : Time → Finset (Fin sp.n)) :
+    (goldilocksRunInterface sp ro).Run cm proposer dg H tr ↔
+      Growing.GoldilocksRun proposer dg H tr
+        (SA.committeeStart sp.genesisRoot (dictOfTime sp cm)) := by rfl
+
 /-- Original side: `Growing/Healing/Kernel/NoAdvance.lean:23`. -/
 def reset_of_height_advance_at_goldilocks : Prop := ∀
     (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
