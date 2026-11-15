@@ -236,26 +236,29 @@ def ResetHealBudgetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     P.slotTime (P.slotOf a + C.healing.drain) + C.margin ≤
       (Sys F V).heal K cap idx gst ⟨E, rho⟩
 
-/-- OPEN exact matching of the fixed local outage policy to the advertised duration.
-NEW UNRESOLVED SUFFICIENCY TARGET: neither a concrete recovery equation nor its
-adequacy is supplied. Equality is this interface's restriction, not necessary for
-persistence: a larger advertised duration may safely dominate the local floor.
-Rewriting this equation makes the local guard reflexive at System.recoveryAt;
-it does not establish either guarded protection supplier. -/
+/-- Exact matching of the fixed local outage policy to the advertised contract.
+These equations supply numerical rewriting, not the protection obligation OC-K.
+`RunMap.delta_eq` fixes the delay across all environments covered by one local record. -/
 structure OutageRecoveryBinding (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) : Prop where
   /-- One fixed local duration matches the same run's advertised recovery duration. -/
   duration : C.recovery = (K.params.recovery : Time) * E.ΔAC
+  threshold : C.θ = K.params.θ
+  catchUp : C.catchUp = (Sys F V).cDur K ⟨E, rho⟩
+  look : C.look = (Sys F V).aheadDur K ⟨E, rho⟩
+  committeeLook : C.committeeLook = (Sys F V).committeeAheadDur K ⟨E, rho⟩
+  eta : C.outageEta = (K.params.η : Time) * E.ΔAC
+  lag : C.outageLag = (K.params.lag : Time) * E.ΔAC
+  budget : C.outageBudget = (K.params.budget : Time) * E.ΔAC
 
-/-- OPEN pre-outage service at the consuming bound. Source:
-Outage/Engine/Query.outage_pre_service_at supplies SleepyServiceBefore, NOT this
-SyncRunAt package. NEW UNRESOLVED SUFFICIENCY TARGET: the precise service-type
-derivation remains open, as does the Delta reserve mismatch with ServiceTransport.sync.
-The original service transport is not strengthened. -/
-def OutageServiceSupply (M : RunMap rho payload) (K : Contract ProgressReq) : Prop :=
+/-- Pre-outage recipient-deadline service and post-outage synchrony.
+The concrete supplier is `outage_pre_service_at`; its message interpretation permits
+fresh processing or retained evidence. Instance transport remains an obligation. -/
+def OutageServiceSupply (M : RunMap rho payload) (K : Contract ProgressReq)
+    (C : ACCorrectLocal A M.signer) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ T b₀ b₁,
   (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ ⟨E, rho⟩ →
-  M.trace.SyncRunAt M.honest E.ΔFG 0 b₀ ∧ M.trace.GSTRunAt M.honest E.ΔFG b₁
+  ACServiceBefore C M.trace M.honest E.ΔFG b₀ ∧ M.trace.GSTRunAt M.honest E.ΔFG b₁
 
 /-- OPEN schema representation, not protection. Source: Concrete/Fields.persists
 and Outage/Engine/Repair.outage_protected_at use the confirmed alias for both

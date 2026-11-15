@@ -6,37 +6,21 @@ production correction inherited from `9d668433` over interface base `ca0a119c`.
 Branch: `work/surface-recovery-guard`. This is a forward statement correction,
 not a landing, proof, freeze, or source-acceptance release.
 
-## Fixed recovery policy forward correction
+## Fixed outage policy
 
-The DA accepted a fixed ACCorrectLocal.recovery and separate recovery_nonneg law.
-L9 and OutageReadPoint now retain their original b₁ ≤ recoveryTime bound and add
-b₁ + C.recovery ≤ recoveryTime. Their service, sample, readiness, actual-read and
-ancestry clauses are otherwise unchanged. The original durations conjunction is unchanged.
-The former telescope lacked a policy floor; this is not a valid-run counterexample
-or a proof that the former suppliers were false. Samples are not an inverse delay law.
+L9 now lives only in `OutageReadPoint.protection`. The actual-cut twin is deleted.
+The local data fix threshold, catch-up, recovery, both independent look-aheads,
+η, arming lag and budget. `OutageRecoveryBinding` matches all eight to the contract
+by equality. `RunMap.delta_eq` fixes `P.Δ = E.ΔAC` in every covered environment.
+The participation catch-up is derived as `max cDur (η·ΔAC − 1)`.
+Reads remain non-strict. Certificate: cert obligation open: OC-K.
 
-OutageRecoveryBinding.duration matches the SAME M/K/C by
-`C.recovery = (K.params.recovery : Time) * E.ΔAC`. This is a **NEW UNRESOLVED
-SUFFICIENCY TARGET**, not a supplied fact. PersistenceReduction explicitly consumes it.
-At recoveryTime = recoveryAt, rewriting the equation and unfolding recoveryAt makes
-the added floor guard reflexive; recovery_nonneg gives the retained b₁ bound.
-Exact equality is a deliberate policy-matching RESTRICTION, not mathematically
-necessary for persistence: a larger advertised recovery may safely dominate a smaller
-local floor. Unequal durations are not automatically unsound. No per-read choice,
-generic coefficient 9, or claim of arbitrary-duration protection is introduced.
-GBR's concrete duration equation/adequacy and dc's corresponding policy fit remain OPEN.
-The endpoint, Holds/collision alternative and independent service-reserve gap are unchanged.
-
-Constructor/consumer accounting: ACCorrectLocal has two additional fields; its generated
-constructor, recursors and projections must be included in the exact dump drift report.
-Only its outageProtected field formula gains the guard; other field formulas retain
-their text. ReadPoint.protection gains the same guard. Seven direct consumer leaves
-(GBR, FiniteRegime, ReadPoint, ClaimTransports, CorrectnessEdges, ProgressBudgetEdges,
-ClaimReductionEdges) elaborate against the changed record without unrelated formula edits.
-No explicit public ACCorrectLocal construction or outage field invocation was found.
-dc D-INST owns LeadLocalRunContracts and LeadOutagePrefixHandoff migration and the
-leadACCorrectLocal OPEN data note; framework owns staged integration. Their rebuild
-and the exact full-dump constructor/projection accounting remain separate required gates.
+`ACServiceBefore` uses recipient-deadline cutoffs and the AC-owned `served` predicate.
+Fresh delivery implies `served`; Goldilocks interprets it as fresh processing or
+stamped retained evidence (`SA.MessageServedBefore`). Only message service and node
+acceptance relay are required. Growing AC relay follows the `acBlock_prev`/`accept_next`
+derivation in `Growing/Compose/Sync`. Instance interpretations remain pending.
+The unused `ServiceTransport` is deleted; generic `Service` is unchanged.
 
 ## Guarded-window forward adaptation
 
@@ -115,7 +99,7 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | `HighCanonicalSupply` | Generic/Obligations.HighCanonical and ACHealing.heal_after_reset source prerequisites | Same run, horizon, reset and Premises; never derived by applying heal_after_reset itself. |
 | `PreparationPremisesSupply` | Healthy/PreparationReset and Generic/Obligations.Premises | Exact nonfinal healthy-preparation progress interval and horizon. Final-only DeadlinePremisesSupply does not supply this. |
 | `ResetHealBudgetSupply` | Healthy/PreparationInitialize.healthy_preparation_initialize_late_at:30 | Selects an actual reset a with max GST 0 ≤ slotTime(slotOf a + drain), and that slot time + margin ≤ advertised heal. Does not claim every reset is early. No unbudgeted healed slot. |
-| `OutageServiceSupply` | Outage/Engine/Query.outage_pre_service_at:52, outage_psync_at | **Source-type discrepancy remains OPEN:** concrete theorem supplies SleepyServiceBefore, not SyncRunAt. The new exact target asks SyncRunAt through b₀; existing ServiceTransport.sync only supplies b₀−Δ. No strengthening of that existing declaration or erasure of the reserve. |
+| `OutageServiceSupply` | Outage/Engine/Query.outage_pre_service_at, outage_psync_at | Supplies `ACServiceBefore` through b₀ and post-outage GST. AC-owned message service includes fresh and retained evidence; node acceptance relay remains explicit. Instance transport is pending. |
 | `ResilienceTipTransport` | Concrete/Fields.persists; Outage/Engine/Repair.outage_protected_at:29 | Schema/capability target tip is confirmed at actual t. This is representation, not protected-read ancestry. |
 | `StoredReadContext` / `StoredReadTransport` | Healthy/CutTips.healthy_cut_tips_ancestor_at:77 at E1 498dd8b5 | Concrete source is readAfter at cutMap(lastOwn …), stateAt.now. Goldilocks: `goldilocksStoredReadContext`, `goldilocksRunMap_storedReadTransport`; no implementation for an arbitrary AC. source_tip/current_tip explicitly request its correspondence to confirmedRead; now_bound retains the later stored-clock horizon bound. No clock equality or direct arbitrary-AC realization is claimed. |
 | `HealedReadAncestry` | same healthy_cut_tips_ancestor_at | Translates HealthyPreparationQueryAt's fields into the same M's valid/clean run, nonfinal capability, Healthy, actual ready→heal progress, nonnegative/bounded heal, ordered engine cuts, BOTH ready reads and later stored-now≤horizon. Conclusion stays LOCAL BLOCK ANCESTRY between R.tip values; StoredReadTransport separately identifies the current reads. |

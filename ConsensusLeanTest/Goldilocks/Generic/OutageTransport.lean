@@ -8,7 +8,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 /-! # Witness: the L9 endpoint and participation premises on a valid outage run
 
 Kind (a), joint satisfiability, for the environmental part of the local premises of L9
-(`ACCorrectLocal.outageProtected`, `OutageReadPoint.protection`): an endpoint and participation
+(`OutageReadPoint.protection`): an endpoint and participation
 witness. `outage_witness` at `goldilocksContract` gives a valid run of
 `goldilocks { S with vote := AsChainShape.stock }` in `Outage`
 with a ready source at `T` and a ready reader at a destination time `t` in `[recoveryAt, horizon]`
@@ -33,13 +33,13 @@ theorem outage_witness_l9_premises (S : Setup) (A : ContractAssumptions S) :
     ∃ (r : Y.Run) (T b₀ b₁ t : Time) (u w : Fin 5),
       Y.Valid r ∧ Y.Outage X K T b₀ b₁ r ∧ Y.recoveryAt K b₁ r ≤ t ∧ t ≤ (Y.pt r).horizon ∧
       (Y.pt r).Ready (Y.cDur K r) u T ∧ (Y.pt r).Ready (Y.cDur K r) w t ∧
-      0 ≤ T ∧ T ≤ b₀ ∧ b₀ ≤ b₁ ∧ b₁ ≤ Y.recoveryAt K b₁ r ∧
-      (Y.pt r).EtaSleepyOn (1 / 2) ((K.params.η : Time) * (Y.pt r).env.ΔAC)
+      OutageTimes K.params (Y.pt r).env.ΔAC T b₀ b₁ ∧ b₁ ≤ Y.recoveryAt K b₁ r ∧
+      (Y.pt r).EtaSleepyOn K.params.θ ((K.params.η : Time) * (Y.pt r).env.ΔAC)
         (max (Y.cDur K r) ((K.params.η : Time) * (Y.pt r).env.ΔAC - 1))
         (Y.aheadDur K r) 0 (Y.pt r).horizon ∧
       ∀ δ, 0 ≤ δ → δ ≤ (K.params.η : Time) * (Y.pt r).env.ΔAC →
         (Y.pt r).CommitteeSleepyOn
-          (fun t => X.selected (Y.pt r).env (X.ext r) (max 0 (t - δ))) (1 / 2)
+          (fun t => X.selected (Y.pt r).env (X.ext r) (max 0 (t - δ))) K.params.θ
           ((K.params.η : Time) * (Y.pt r).env.ΔAC)
           (max (Y.cDur K r) ((K.params.η : Time) * (Y.pt r).env.ΔAC - 1))
           (Y.committeeAheadDur K r) 0 (Y.pt r).horizon := by
@@ -72,9 +72,8 @@ theorem outage_witness_l9_premises (S : Setup) (A : ContractAssumptions S) :
     rw [hp, realPoint_env]
   have hrec : Y.recoveryAt K b₁ ⟨_, rho⟩ = H := by
     simp only [System.recoveryAt, hΔ, H]
-  obtain ⟨hη, hcs⟩ := OutageTransport.participation_of_outage K rfl hwit.1 0 b₀ b₁ ho
-  refine ⟨⟨_, rho⟩, 0, b₀, b₁, t, u, w, hwit.1, ho, hrec.le.trans hwt, htH, hu, hw, le_rfl,
-    by simp only [b₀]; linarith, by simp only [b₁]; linarith,
+  obtain ⟨hη, hcs⟩ := OutageTransport.participation_of_outage K hwit.1 0 b₀ b₁ ho
+  refine ⟨⟨_, rho⟩, 0, b₀, b₁, t, u, w, hwit.1, ho, hrec.le.trans hwt, htH, hu, hw, ho.1,
     by rw [hrec]; simp only [H]; linarith, hη, hcs⟩
 
 end Consensus.Goldilocks.Generic.Test.OutageTransport

@@ -135,21 +135,21 @@ structure HealthyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : 
     ReadBoundary tr y j → t < tr.time j →
     Anc (tr.HonestBlocksAt H) B (confirmedRead tr y j t)
 
-/-- L9 preserves the actual source read at T and destination read at t. Source:
-CorrectLocal.outageProtected and lead LeadOutageProtected, over the same population and
-look-back committee η-sleepy premises at a binder look-back `η`; tying `η` and the outage times
-to the contract is an open generic-layer defect. -/
+/-- L9 preserves the actual source and destination reads under the fixed outage policy.
+Population and committee look-aheads are independent. Reads remain non-strict.
+Certificate: cert obligation open: OC-K. -/
 structure OutageReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where
   protection : ∀ cm proposer dg H (tr : RunTrace A) (p : EnvPoint (Fin P.n))
-    (K : Time → Finset (Fin P.n)) η populationLook ΔF T b₀ b₁ recoveryTime,
+    ΔF T b₀ b₁ recoveryTime,
     C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    RunPointBinding tr H p → 0 ≤ T → T ≤ b₀ → b₀ ≤ b₁ → b₁ ≤ recoveryTime →
+    RunPointBinding tr H p → 0 ≤ T → T + C.outageLag ≤ b₀ →
+    b₀ ≤ b₁ → b₁ ≤ b₀ + C.outageBudget → b₁ ≤ recoveryTime →
     b₁ + C.recovery ≤ recoveryTime →
-    tr.SyncRunAt H ΔF 0 b₀ → tr.GSTRunAt H ΔF b₁ →
-    p.EtaSleepyOn (1 / 2) η (max C.catchUp (η - 1)) populationLook 0 p.horizon →
-    (∀ δ, 0 ≤ δ → δ ≤ η →
-      p.CommitteeSleepyOn (fun t => K (max 0 (t - δ))) (1 / 2) η (max C.catchUp (η - 1))
-        C.look 0 p.horizon) → ∀ x i y j t,
+    ACServiceBefore C tr H ΔF b₀ → tr.GSTRunAt H ΔF b₁ →
+    p.EtaSleepyOn C.θ C.outageEta (max C.catchUp (C.outageEta - 1)) C.look 0 p.horizon →
+    (∀ δ, 0 ≤ δ → δ ≤ C.outageEta →
+      p.CommitteeSleepyOn (fun t => cm (max 0 (t - δ))) C.θ C.outageEta
+        (max C.catchUp (C.outageEta - 1)) C.committeeLook 0 p.horizon) → ∀ x i y j t,
     ReadyReadPoint tr H p.horizon C.catchUp x i T → ReadBoundary tr x i →
     recoveryTime ≤ t → ReadyReadPoint tr H p.horizon C.catchUp y j t →
     ReadBoundary tr y j →

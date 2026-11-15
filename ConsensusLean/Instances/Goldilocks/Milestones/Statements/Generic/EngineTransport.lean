@@ -23,13 +23,6 @@ structure PrefixTransport (M : RunMap rho payload) (runs : ACRun A M.signer) : P
   no_collision : ∀ d, Compose.NoCollRun M.digest M.trace →
     Compose.NoCollRun M.digest (M.trace.upTo d)
 
-structure ServiceTransport (M : RunMap rho payload) : Prop where
-  sync : rho.ExecutionValid → ¬ rho.HashCollision → ∀ b,
-    rho.log.SyncUntil rho.point b →
-    M.trace.SyncRunAt M.honest E.ΔFG 0 (b - P.Δ)
-  gst : rho.ExecutionValid → ¬ rho.HashCollision → ∀ g, rho.log.PSync rho.point g →
-    M.trace.GSTRunAt M.honest E.ΔFG g
-
 structure RegimeTransport (M : RunMap rho payload) (K : Contract ProgressReq)
     (look : Time) : Prop where
   sleepy : rho.ExecutionValid → ¬ rho.HashCollision →
@@ -86,21 +79,21 @@ structure ProposalProgressTransport (M : RunMap rho payload) (K : Contract Progr
 
 structure OutagePolicy (M : RunMap rho payload) where
   point : EnvPoint (Fin P.n)
-  committee : Time → Finset (Fin P.n)
   binding : RunPointBinding M.trace M.honest point
   horizon : point.horizon = rho.horizon
 
 structure OutageTransport (M : RunMap rho payload) (D : OutagePolicy M)
-    (K : Contract ProgressReq) (catchUp look : Time) : Prop where
+    (K : Contract ProgressReq) : Prop where
   participation : rho.ExecutionValid → ∀ T b₀ b₁,
     (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ ⟨E, rho⟩ →
-    D.point.EtaSleepyOn (1 / 2) ((K.params.η : Time) * E.ΔAC)
-      (max catchUp ((K.params.η : Time) * E.ΔAC - 1))
+    D.point.EtaSleepyOn K.params.θ ((K.params.η : Time) * E.ΔAC)
+      (max ((Sys F V).cDur K ⟨E, rho⟩) ((K.params.η : Time) * E.ΔAC - 1))
       ((Sys F V).aheadDur K ⟨E, rho⟩) 0 D.point.horizon ∧
     ∀ δ, 0 ≤ δ → δ ≤ (K.params.η : Time) * E.ΔAC →
-      D.point.CommitteeSleepyOn (fun t => D.committee (max 0 (t - δ))) (1 / 2)
-        ((K.params.η : Time) * E.ΔAC) (max catchUp ((K.params.η : Time) * E.ΔAC - 1))
-        look 0 D.point.horizon
+      D.point.CommitteeSleepyOn (fun t => M.committee (max 0 (t - δ))) K.params.θ
+        ((K.params.η : Time) * E.ΔAC)
+        (max ((Sys F V).cDur K ⟨E, rho⟩) ((K.params.η : Time) * E.ΔAC - 1))
+        ((Sys F V).committeeAheadDur K ⟨E, rho⟩) 0 D.point.horizon
 
 def CarrierProcessed (M : RunMap rho payload) (B : A.Blk) (y : Fin P.n)
     (j : Nat) (sent deadline : Time) : Prop :=

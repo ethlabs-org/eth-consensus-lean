@@ -116,17 +116,17 @@ def FinalAccountabilityReduction (C : ACCorrectLocal A sg)
       fun r => (chainTrace r.2).AccountablySafe r.2.ViewIdx r.2.Slashable K.params.α g 0
 
 /-- UNPROVED outage reduction with the original source/destination, recovery time
-and collision alternative. The same local supplier's fixed recovery policy is explicitly
-matched to the advertised duration. The independent pre-outage service reserve remains
-an unresolved supplier, never a strengthening of ServiceTransport.sync. -/
+and collision alternative. The fixed local policy matches the contract by equality;
+recipient-deadline service permits AC-owned retained evidence. OC-K and the instance
+transports remain obligations, not consequences of these numerical fits. -/
 def PersistenceReduction (C : ACCorrectLocal A sg)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
     (D : ∀ E hE rho (hv : rho.ExecutionValid), OutagePolicy (B.map E hE rho hv)) : Prop :=
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
-    OutageTransport M (D E hE rho hv) K L.catchUp L.look ∧
-      OutageRecoveryBinding M K L ∧ OutageServiceSupply M K ∧
+    OutageTransport M (D E hE rho hv) K ∧
+      OutageRecoveryBinding M K L ∧ OutageServiceSupply M K L ∧
       ResilienceTipTransport M ∧ OutageReadPoint L ∧
       EndReadTransport M K L ∧ LocalReadPoint L ∧
       ReadRepresentation M ∧ HonestReadTransport M ∧

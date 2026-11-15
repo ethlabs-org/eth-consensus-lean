@@ -59,10 +59,20 @@ structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
   hold : Time
   /-- Fixed local outage recovery duration, not chosen separately for each reader. -/
   recovery : Time
+  /-- Fixed outage participation threshold and durations, matched to the contract separately. -/
+  θ : ℚ
+  outageEta : Time
+  outageLag : Time
+  outageBudget : Time
+  committeeLook : Time
   /-- The local outage policy cannot start recovery before the outage ends. -/
   recovery_nonneg : 0 ≤ recovery
   /-- One run/start owner for the local and healing obligations. -/
   run : ACRun A sg
+  /-- AC-owned message service, allowing fresh delivery or retained protocol evidence. -/
+  served : RunTrace A → Fin P.n → Nat → Time → A.Msg → Prop
+  served_of_delivered : ∀ {cm proposer dg H tr} {y j τ m}, run.Run cm proposer dg H tr →
+    tr.MsgDeliveredBy y j τ τ m → served tr y j τ m
   /-- Healing is a separate protocol obligation, not implied by this record's endpoint claims. -/
   healing : ACHealing A sg run
   /-- The transaction/input projection of a block, supplied as data. -/
@@ -109,33 +119,28 @@ structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
         payload B ⊆ payload (tr.confirmedAt y j)) ∧
       (Anc (tr.HonestBlocksAt H) B (tr.finalizedAt y j) →
         payload B ⊆ payload (tr.finalizedAt y j))
-  /-- L9: outage protection uses the participation vocabulary of the outage regime: population and
-  look-back committee η-sleepy participation with the outage catch-up `max catchUp (η − 1)`, at a
-  binder look-back `η`. Network transport and schedule binding are separate. Tying `η` and the
-  outage times to the contract (arming lag, budget, fixed look-back) is an open generic-layer
-  defect. The fixed local recovery policy bounds every target; its adequacy remains a supplier
-  obligation. Internal locks and S5 are not fields. -/
-  outageProtected : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
-    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
-    (tr : RunTrace A) (p : EnvPoint (Fin P.n)) (K : Time → Finset (Fin P.n))
-    (η populationLook ΔF T b₀ b₁ recoveryTime : Time),
-    run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    RunPointBinding tr H p → 0 ≤ T → T ≤ b₀ → b₀ ≤ b₁ → b₁ ≤ recoveryTime →
-    b₁ + recovery ≤ recoveryTime →
-    tr.SyncRunAt H ΔF 0 b₀ → tr.GSTRunAt H ΔF b₁ →
-    p.EtaSleepyOn (1 / 2) η (max catchUp (η - 1)) populationLook 0 p.horizon →
-    (∀ δ, 0 ≤ δ → δ ≤ η →
-      p.CommitteeSleepyOn (fun t => K (max 0 (t - δ))) (1 / 2) η (max catchUp (η - 1)) look
-        0 p.horizon) →
-    ∀ x i y j, tr.time i = T → ReadyCut tr H catchUp x i →
-      recoveryTime ≤ tr.time j → tr.time j ≤ p.horizon → ReadyCut tr H catchUp y j →
-      Anc (tr.HonestBlocksAt H) (tr.confirmedAt x i) (tr.confirmedAt y j)
 
 /-- A run interface transported along signer equality has the same runs. -/
 theorem ACRun.cast_run {A : NodeAC P} {sg sg' : A.Msg → Fin P.n} (h : sg = sg') (R : ACRun A sg) :
     (h ▸ R).Run = R.Run := by
   subst sg'
   rfl
+
+/-- Pre-outage service under growing honesty, cut off at the recipient's deadline.
+Message service is AC-owned; node acceptance relay retains its processing bounds.
+Certificate: part of the open OC-K obligation. -/
+structure ACServiceBefore {A : NodeAC P} {sg : A.Msg → Fin P.n}
+    (C : ACCorrectLocal A sg) (tr : RunTrace A) (H : Time → Set (Fin P.n))
+    (ΔF b : Time) : Prop where
+  deltaF : 0 < ΔF
+  message : ∀ x i m, x ∈ H (tr.time i) → tr.SendOrAdmitAt x i m → 0 ≤ tr.time i →
+    ∀ y j ℓ, y ∈ H (tr.time j) → tr.CallAt y j (.ac ℓ) →
+      tr.deadline y j (tr.time i) P.Δ ≤ b →
+      tr.deadline y j (tr.time i) P.Δ ≤ tr.time j → C.served tr y j (tr.time i) m
+  relay : ∀ x i B, x ∈ H (tr.time i) → tr.AcceptAt x i B → 0 ≤ tr.time i →
+    ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j → tr.deadline y j (tr.time i) P.Δ ≤ b →
+      tr.deadline y j (tr.time i) P.Δ ≤ tr.time j →
+      Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B → tr.BlockAcceptedBy y j (tr.time i) B
 
 end Consensus.Goldilocks.Generic
 
