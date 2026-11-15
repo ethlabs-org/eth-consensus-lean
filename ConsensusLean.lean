@@ -606,6 +606,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Sched
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Signing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.SigningPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Simulates
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.SleepyWindows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Trace

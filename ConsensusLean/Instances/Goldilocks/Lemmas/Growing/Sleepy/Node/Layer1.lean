@@ -86,6 +86,22 @@ def GoldilocksExtension : Prop :=
       ReadBoundary tr y i → ReadBoundary tr y j → i ≤ j → t ≤ u →
       Anc (tr.HonestBlocksAt H) (confirmedRead tr y i t) (confirmedRead tr y j u)
 
+/-- Serviced proposal ancestry at the actual bounded read. The source route is
+`sleepy_serviced_proposal_coverage_at` / `include_sleepy_at`; the committee facts
+remain explicit as in the other adapters. Catch-up and hold dominate the concrete
+durations, and the margin covers six delays. No proposal witness is selected here. -/
+def GoldilocksProposalCoverage : Prop :=
+  ∀ cm proposer dg H tr p c look committeeLook ΔF b hold margin,
+    (goldilocksRunInterface sp ro).Run cm proposer dg H tr → Compose.NoCollRun dg tr →
+    Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
+    GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
+    sp.Δ ≤ hold → 6 * sp.Δ ≤ margin →
+    AnchoredFrames (goldilocksEvents sp ro) tr H b →
+    ∀ B k y j t, ReadyProposal tr H c hold B k → 0 ≤ tr.time k →
+    tr.time k + hold ≤ b → tr.time k ≤ b → tr.time k + margin ≤ t →
+    ReadyReadPoint tr H b c y j t → ReadBoundary tr y j → t < tr.time j →
+      Anc (tr.HonestBlocksAt H) B (confirmedRead tr y j t)
+
 end Consensus.Goldilocks.Generic.SleepyLayer1
 
 end

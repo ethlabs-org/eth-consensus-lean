@@ -119,9 +119,9 @@ anchored-frame premises as `Extension`.
 | `SleepyLayer1.OutputProvenance` | Actual-read output provenance; held membership plus ancestry to an event or frame floor. Held membership overlaps `LocalReadPoint.held` deliberately so the standalone generic `ReadAgreement` Prop target has a coherent genesis-root case without importing the unrelated payload fields. |
 | `SleepyLayer1.Extension` | Same-reader ancestry at ordered cuts and evaluation times; not inferred from compatibility. Concrete discharge remains OPEN. |
 | `SleepyLayer1.SourceProvenance` | Report source is an ancestor of a same-reporter confirmation event at an earlier or equal cut. The source need not equal the event block. |
-| `PopulationQuorumSupply` | Shared FG requires `2 * (H t)ᶜ.ncard < P.n`; arbitrary admissible thresholds do not supply it. This is independent of committee counts. |
-| `SleepyWindowSupply` | One mapped point supplies population and committee sleepy regimes with independent look-ahead fits. Catch-up domination comes only from `ClaimDeadlineFit.catchUp`. Threshold/look-ahead equalities also occur in outage matching, but sleepy claims do not consume outage policy; neither regime interface depends on the other. |
-| `SleepyLayer1.ProposalCoverage` | Ready serviced proposal ancestry at a bounded actual read. Source routes: `sleepy_serviced_proposal_coverage_at` with committee bounds from `sleepy_committee_at`; the generic-to-Goldilocks coverage head is not yet stated. Both windows and anchored frames are explicit; the hold must survive the horizon. Payload inclusion follows from this ancestry and `LocalReadPoint.payload`, with the ready read's honest-read projection; no separate inclusion supplier remains. |
+| `PopulationQuorumSupply` | Shared FG requires `2 * (H t)ᶜ.ncard < P.n`; arbitrary admissible thresholds do not supply it. `Simulation.GoldilocksPopulationQuorumSupply` states the canonical-map discharge with explicit `1/2 ≤ K.params.θ`. It uses the population clause, independently of committee counts; proof OPEN. |
+| `SleepyWindowSupply` | `Simulation.GoldilocksSleepyWindowSupply` states the canonical-map discharge with explicit threshold and two independent look-ahead equalities. One mapped point supplies both regimes; proof OPEN. Catch-up domination comes only from `ClaimDeadlineFit.catchUp`. Sleepy claims do not consume outage policy; neither regime interface depends on the other. |
+| `SleepyLayer1.ProposalCoverage` | `GoldilocksProposalCoverage` states the concrete conditional head. Source routes: `sleepy_serviced_proposal_coverage_at` / `include_sleepy_at`, with committee facts and bounds supplied on the engine route by `sleepy_committee_at`. Both windows and anchored frames are explicit, hold is at least Δ and margin at least 6Δ; the hold must survive the horizon. Proof and local-data matching remain OPEN. Payload inclusion follows from this ancestry and `LocalReadPoint.payload`, with the ready read's honest-read projection; no separate inclusion supplier remains. |
 
 The generic FG rows (`CacheProvenance`, `RowProvenance`, `ConditionalViability`)
 and glue rows (`FramesFromSources`, `ReadAgreement`, `ReadyReadSafety`) remain
@@ -134,8 +134,8 @@ generic adapter targets; naming their sources does not discharge them.
 `Extension` and coverage contracts do not imply this for arbitrary committees.
 Its source must be a property of the selected-committee RunMap together with the
 concrete run interface, reviewed with the instance discharge; it is not added as
-an unconditional generic law. This instance-fit proof is deferred because this
-packet specifies conditional generic suppliers, not the concrete selection adapter.
+an unconditional generic law. `Simulation.GoldilocksSlotConstancy` states that
+exact canonical-map obligation; its proof remains OPEN.
 The separate committee-facts source is the committee-valid run interface, which
 lands separately. Bare abstract collision freedom is not its proof, and the
 canonical run transport in this tree does not yet carry that conjunct.
