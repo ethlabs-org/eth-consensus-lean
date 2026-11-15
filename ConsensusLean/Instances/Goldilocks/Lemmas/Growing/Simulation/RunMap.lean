@@ -16,7 +16,8 @@ public section
 `goldilocksRunMap S rho hn hv` represents a valid engine run of `goldilocksWith S` by its
 canonical growing trace `simTraceAt`: keys are the run's PKI, states and the output clock are read
 at `hn`, the cut map is `cutMap`, and the output chains are `blocksTo` up to `outTip`. Its data
-fields that the run transport reads are characterised by the `goldilocksRunMap_*` lemmas. -/
+fields that the run transport and the read suppliers read are characterised by the
+`goldilocksRunMap_*` lemmas. -/
 
 namespace Consensus.Goldilocks.Simulation
 
@@ -76,6 +77,10 @@ noncomputable def goldilocksRunMap (hv : rho.ExecutionValid) :
 
 variable (hv : rho.ExecutionValid)
 
+/-- The run map's validators are the run's PKI. -/
+@[simp] theorem goldilocksRunMap_validator :
+    (goldilocksRunMap S rho hn hv).validator = rho.key := by rfl
+
 /-- The run map's trace is the canonical growing trace. -/
 @[simp] theorem goldilocksRunMap_trace :
     (goldilocksRunMap S rho hn hv).trace = simTraceAt S rho hn := by rfl
@@ -99,6 +104,37 @@ variable (hv : rho.ExecutionValid)
 /-- The run map's committee is the run committee. -/
 @[simp] theorem goldilocksRunMap_committee :
     (goldilocksRunMap S rho hn hv).committee = runCommittee S rho hn := by rfl
+
+/-- The run map's cut map is `cutMap`. -/
+@[simp] theorem goldilocksRunMap_cut :
+    (goldilocksRunMap S rho hn hv).cut = cutMap S rho hn := by rfl
+
+/-- A block's header is its engine header. -/
+@[simp] theorem goldilocksRunMap_header :
+    (goldilocksRunMap S rho hn hv).header = headerOf _ := by rfl
+
+/-- A block's proposal object is its engine block object. -/
+@[simp] theorem goldilocksRunMap_proposalObject :
+    (goldilocksRunMap S rho hn hv).proposalObject = blockObj _ := by rfl
+
+/-- An attestation's object is its engine attestation object. -/
+@[simp] theorem goldilocksRunMap_attObject :
+    (goldilocksRunMap S rho hn hv).attObject = attObj := by rfl
+
+/-- The run map's output tips are `outTip`. -/
+@[simp] theorem goldilocksRunMap_tip :
+    (goldilocksRunMap S rho hn hv).tip = outTip _ _ := by rfl
+
+/-- The run map's output clock is the engine state's stored clock. -/
+@[simp] theorem goldilocksRunMap_clock (s : (goldilocksWith S (pubOf E)).State) :
+    (goldilocksRunMap S rho hn hv).clock s = (s hn).now := by rfl
+
+/-- The run map's chain follows the store's parents up to the supplied tip. -/
+@[simp] theorem goldilocksRunMap_chain
+    (st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _)))
+    (tip : (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).Blk) :
+    (goldilocksRunMap S rho hn hv).chain st tip =
+      blocksTo st.fg.blocks (tip.slot + 1) tip := by rfl
 
 end Consensus.Goldilocks.Simulation
 

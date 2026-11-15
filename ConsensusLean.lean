@@ -602,6 +602,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunCommittee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMapFields
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMapReadPoint
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMapRepresentation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunTransport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Schedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Signing

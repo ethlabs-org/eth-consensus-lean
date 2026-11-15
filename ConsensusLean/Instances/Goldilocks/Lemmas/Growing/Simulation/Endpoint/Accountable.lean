@@ -98,19 +98,15 @@ theorem read_finalized_at (hv : rho.ExecutionValid) (v : V) {i : Nat}
 
 /-- The tree of a node honest at its engine cut is reachable at the mapped cut and inside the
 blocks held while honest. -/
-theorem held_tree_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) {v : V} {i : Nat}
+theorem held_tree_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i)) :
-    ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn i)).fg.Reachable
+    ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.Reachable
         (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload ∧
-      ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn i)).fg.tree ⊆
-        (simTraceAt ⟨S, stock⟩ rho hn).HonestBlocksAt (honestKeysAt ⟨S, stock⟩ rho) := by
+      ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.tree ⊆
+        (simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho) := by
   obtain ⟨hrun, hy, hs⟩ := prefix_reader_at S rho hn hv hi hh
-  refine ⟨hs _ ▸ Compose.fg_reachable hrun.toLocalRun hy (cutMap ⟨S, stock⟩ rho hn i), fun B
-      hB => ?_⟩
-  exact ⟨_, _, _, (cutTime_bounds ⟨S, stock⟩ rho hv hi).1, cutMap_time_le ⟨S, stock⟩ rho hn hv hi,
-      hy, hB⟩
+  refine ⟨hs _ ▸ Compose.fg_reachable hrun.toLocalRun hy (cutMap S rho hn i), fun B hB => ?_⟩
+  exact ⟨_, _, _, (cutTime_bounds S rho hv hi).1, cutMap_time_le S rho hn hv hi, hy, hB⟩
 
 /-- **Compatible held tips give prefix-related finalized reads.** For two nodes each honest at its
 engine cut, compatibility of their finalized tips inside the blocks held while honest makes one
@@ -126,8 +122,8 @@ theorem compatible_reads_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (
       ((simTraceAt ⟨S, stock⟩ rho hn).finalizedAt (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn j))) :
     Consensus.Compatible ((chainTrace rho).read .finalized u i)
       ((chainTrace rho).read .finalized v j) := by
-  obtain ⟨hri, hsi⟩ := held_tree_at S rho hn hv hi hu
-  obtain ⟨hrj, hsj⟩ := held_tree_at S rho hn hv hj hv'
+  obtain ⟨hri, hsi⟩ := held_tree_at ⟨S, stock⟩ rho hn hv hi hu
+  obtain ⟨hrj, hsj⟩ := held_tree_at ⟨S, stock⟩ rho hn hv hj hv'
   have hU := Compose.Growing.honest_blocks_coherent
       (simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv) hnc
   rw [read_finalized_at ⟨S, stock⟩ rho hn hv u hi, read_finalized_at ⟨S, stock⟩ rho hn hv v hj]
@@ -153,8 +149,8 @@ theorem final_accountable_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} 
       ((simTraceAt ⟨S, stock⟩ rho hn).finalizedAt (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn j))
   · exact Or.inl (compatible_reads_at S rho hn hv hnc hi hj hu hv' hc)
   · right
-    obtain ⟨-, hyu, -⟩ := prefix_reader_at S rho hn hv hi hu
-    obtain ⟨-, hyv, -⟩ := prefix_reader_at S rho hn hv hj hv'
+    obtain ⟨-, hyu, -⟩ := prefix_reader_at ⟨S, stock⟩ rho hn hv hi hu
+    obtain ⟨-, hyv, -⟩ := prefix_reader_at ⟨S, stock⟩ rho hn hv hj hv'
     obtain ⟨X, _, Y, _, W, hW, hw⟩ := finalAccountable_readPoint
       (simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv) hnc (cutTime_bounds ⟨S, stock⟩ rho hv hi).1
       (cutMap_time_le ⟨S, stock⟩ rho hn hv hi) hyu (cutTime_bounds ⟨S, stock⟩ rho hv hj).1
@@ -165,8 +161,8 @@ theorem final_accountable_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} 
         (cutMap ⟨S, stock⟩ rho hn j) Y, attObj a ∈ rho.ViewIdx u i ∪ rho.ViewIdx v j := by
       intro a ha
       rcases ha with ⟨B, hB, _, ha⟩ | ⟨B, hB, _, ha⟩
-      · exact Or.inl (held_att_in_view_at S rho hn hv hi hu hB ha)
-      · exact Or.inr (held_att_in_view_at S rho hn hv hj hv' hB ha)
+      · exact Or.inl (held_att_in_view_at ⟨S, stock⟩ rho hn hv hi hu hB ha)
+      · exact Or.inr (held_att_in_view_at ⟨S, stock⟩ rho hn hv hj hv' hB ha)
     refine hW.trans (convicted_count ⟨S, stock⟩ rho W ?_)
     intro k hk
     obtain ⟨a, ha, b, hb, hak, hab⟩ := hw k hk

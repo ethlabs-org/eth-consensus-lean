@@ -117,7 +117,7 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | `ResetHealBudgetSupply` | Healthy/PreparationInitialize.healthy_preparation_initialize_late_at:30 | Selects an actual reset a with max GST 0 ≤ slotTime(slotOf a + drain), and that slot time + margin ≤ advertised heal. Does not claim every reset is early. No unbudgeted healed slot. |
 | `OutageServiceSupply` | Outage/Engine/Query.outage_pre_service_at:52, outage_psync_at | **Source-type discrepancy remains OPEN:** concrete theorem supplies SleepyServiceBefore, not SyncRunAt. The new exact target asks SyncRunAt through b₀; existing ServiceTransport.sync only supplies b₀−Δ. No strengthening of that existing declaration or erasure of the reserve. |
 | `ResilienceTipTransport` | Concrete/Fields.persists; Outage/Engine/Repair.outage_protected_at:29 | Schema/capability target tip is confirmed at actual t. This is representation, not protected-read ancestry. |
-| `StoredReadContext` / `StoredReadTransport` | Healthy/CutTips.healthy_cut_tips_ancestor_at:77 at E1 498dd8b5 | Concrete source is readAfter at cutMap(lastOwn …), stateAt.now. Data cut/now/tip has no implementation. source_tip/current_tip explicitly request its correspondence to confirmedRead; now_bound retains the later stored-clock horizon bound. No clock equality or direct arbitrary-AC realization is claimed. |
+| `StoredReadContext` / `StoredReadTransport` | Healthy/CutTips.healthy_cut_tips_ancestor_at:77 at E1 498dd8b5 | Concrete source is readAfter at cutMap(lastOwn …), stateAt.now. Goldilocks: `goldilocksStoredReadContext`, `goldilocksRunMap_storedReadTransport`; no implementation for an arbitrary AC. source_tip/current_tip explicitly request its correspondence to confirmedRead; now_bound retains the later stored-clock horizon bound. No clock equality or direct arbitrary-AC realization is claimed. |
 | `HealedReadAncestry` | same healthy_cut_tips_ancestor_at | Translates HealthyPreparationQueryAt's fields into the same M's valid/clean run, nonfinal capability, Healthy, actual ready→heal progress, nonnegative/bounded heal, ordered engine cuts, BOTH ready reads and later stored-now≤horizon. Conclusion stays LOCAL BLOCK ANCESTRY between R.tip values; StoredReadTransport separately identifies the current reads. |
 
 ## Field-by-field premise discharge map
@@ -128,7 +128,7 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | --- | --- | --- |
 | growing local run, no collision | GrowingRunTransport.run/no_collision | Existing OPEN supplier; collision excuse is split only in Holds rows |
 | engine/local Δ identity | M.delta_eq | Map data, realization OPEN |
-| bounded own-read honesty, read boundary | EngineReadPoint.honest/boundary, RegimeTransport.ready + EngineReadPoint.ready | Existing OPEN suppliers, actual engine cutTime retained |
+| bounded own-read honesty, read boundary | EngineReadPoint.honest/boundary, RegimeTransport.ready + EngineReadPoint.ready | EngineReadPoint supplied for Goldilocks (`goldilocksRunMap_engineReadPoint`); OPEN for an arbitrary map; RegimeTransport.ready stays OPEN; actual engine cutTime retained |
 | end-time readiness and output state/time | EndReadTransport.ready/boundary/output | ready/boundary at t, output at M.clock of state at endCut t; readiness at t → stored-clock ready read point is MISSING, with no next-cut honesty or clock equality |
 | local versus engine catch-up, latency/heal | ClaimDeadlineFit.catchUp/latency_le_margin/healthy_start | NEW OPEN numerical targets; current catchUp only states C.catchUp ≤ cDur. Stored-clock bridge requires the proposed C.catchUp + 1 ≤ cDur strengthening on the integration head |
 | nonnegative durations | ACCorrectLocal.durations | Existing local data; no extra numerical supplier |
@@ -148,12 +148,12 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | fixed outage recovery floor / endpoint fit | ACCorrectLocal.recovery/recovery_nonneg; OutageRecoveryBinding.duration at SAME M/K/C | NEW OPEN exact-policy matching target; no inference from sample coverage or readiness |
 | outage pre/post service | OutageServiceSupply | NEW OPEN exact implication, concrete service mismatch recorded above |
 | resilience target tip | ResilienceTipTransport | NEW OPEN representation only |
-| RootOk at actual reads | HonestReadTransport.roots; genesis from the run (`ACRun.run_root`) | Existing OPEN supplier; never inferred from unrelated dc names |
+| RootOk at actual reads | HonestReadTransport.roots; genesis from the run (`ACRun.run_root`) | supplied for Goldilocks (`goldilocksRunMap_honestReadTransport`); OPEN for an arbitrary map; never inferred from unrelated dc names |
 | honest union coherence | explicit clean-run → Coherent hypothesis | OPEN instance supplier, never added to HoldsAlways |
 | held-store inclusion in honest union | HonestBlocksAt witnesses y=validator.symm v, cut=M.cut i, t=cutTime i, using before_time/honest_eq and nonnegative actual cutTime | DERIVED, not a new supplier |
-| chain prefix from local ancestry | ReadRepresentation.ancestor_prefix, with actual held membership/root/coherence premises; same M.chain/header | Existing OPEN representation; no final claim assumed |
+| chain prefix from local ancestry | ReadRepresentation.ancestor_prefix, with actual held membership/root/coherence premises; same M.chain/header | supplied for Goldilocks (`goldilocksRunMap_readRepresentation`); OPEN for an arbitrary map; no final claim assumed |
 | actual tip held / payload ancestry | OutputValidityEdge; LocalReadPoint and appropriate SleepyReadPoint/HealthyReadPoint; final cache invariants | OPEN: OutputValidityEdge needs the honest reader's output tip at M.clock of its stored state to belong to the mapped FG tree. Neither ReadRepresentation nor HonestReadTransport supplies this membership. For Goldilocks, finalized membership follows from FG reachability and confirmed membership from AC ReqOutputs, as in engine_outputValid_at. No supplier field is added here; the finite actual-time suppliers remain OPEN |
-| engine view and conviction binding | HonestReadTransport.chain_att_view, M.att_signer/att_conflict; key/validator equivalences | Existing OPEN map/provenance realization; source population count unchanged |
+| engine view and conviction binding | HonestReadTransport.chain_att_view, M.att_signer/att_conflict; key/validator equivalences | supplied for Goldilocks (`goldilocksRunMap_honestReadTransport`); OPEN for an arbitrary map; source population count unchanged |
 
 ### Premises production: no silently discharged field
 

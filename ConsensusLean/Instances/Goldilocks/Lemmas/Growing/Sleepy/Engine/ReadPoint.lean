@@ -22,7 +22,8 @@ horizon), so a node compromised in between is not honest there. Such a reader is
 the trace cut after its last own event before `i` (`cutMap (lastOwn v i)`), at its stored clock:
 
 * `lastOwn v i`: the engine cut after `v`'s last own event before `i` (`0` if none), monotone in
-  `i`, at which `v`'s engine state is its state at `i` (`stateAt_lastOwn`);
+  `i`, at which `v`'s engine state is its state at `i` (`stateAt_lastOwn`), so its read at the
+  trace cut there is its read at the trace cut of `i` (`readAfter_lastOwn`);
 * `cutMap_boundary`: the trace cut at an engine cut is a boundary of every node;
 * `lastOwn_readPoint`, `engine_read_eq_at`: for a node honest at `cutTime i`, that cut is a read
   point at its stored clock, and every engine output at `i` is read from the trace state there;
@@ -179,6 +180,19 @@ theorem stateAt_lastOwn (v : V) (i : Nat) :
     cases he : rho.events[m]? with
     | none => rw [stateAt_succ_none S rho hn v he, ih (by omega)]
     | some e => rw [state_of_other S rho hn v m e he (hnot.2 e he), ih (by omega)]
+
+/-- The read of `v` at the trace cut after its last own event before a bounded engine cut `i` is
+its read at the trace cut of `i`, at every time. -/
+theorem readAfter_lastOwn (hv : rho.ExecutionValid) (v : V) {i : Nat}
+    (hi : i ≤ rho.events.length) (t : Time) :
+    Regimes.readAfter (simTraceAt S rho hn) (rho.ownKey v)
+        (cutMap S rho hn (lastOwn S rho v i)) t =
+      Regimes.readAfter (simTraceAt S rho hn) (rho.ownKey v) (cutMap S rho hn i) t := by
+  have h₁ := simTraceAt_state_all S rho hn hv v _ ((lastOwn_spec S rho v i).1.trans hi)
+  have h₂ := simTraceAt_state_all S rho hn hv v i hi
+  rw [← stateAt_lastOwn S rho hn v i] at h₁
+  unfold Regimes.readAfter
+  rw [← h₁, ← h₂]
 
 /-- The trace cut after `v`'s last own event before engine cut `i` is a read point at `v`'s
 stored clock at `i`, which is the time of that engine cut. -/

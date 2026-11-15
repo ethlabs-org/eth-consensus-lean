@@ -193,20 +193,6 @@ private theorem confirmed_cutAfter_unique (Q : ConfirmedQueryAt ⟨S, stock⟩ A
   · exact h
   · exact absurd (hi.1 j h) (not_le.2 hj.2)
 
-/-- The read of a node at the trace cut after its last own event before an engine cut is its read
-at the trace cut of that engine cut. -/
-private theorem readAfter_lastOwn (Q : ConfirmedQueryAt ⟨S, stock⟩ A V) {v : V} {n : Nat}
-    (hn : n ≤ Q.run.2.events.length) (t : Time) :
-    Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-        (cutMap ⟨S, stock⟩ Q.run.2 Q.hn (lastOwn ⟨S, stock⟩ Q.run.2 v n)) t =
-      Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap ⟨S, stock⟩ Q.run.2 Q.hn n) t := by
-  have hq := (lastOwn_spec ⟨S, stock⟩ Q.run.2 v n).1
-  have h₁ := simTraceAt_state_all ⟨S, stock⟩ Q.run.2 Q.hn Q.valid v _ (hq.trans hn)
-  have h₂ := simTraceAt_state_all ⟨S, stock⟩ Q.run.2 Q.hn Q.valid v n hn
-  rw [← stateAt_lastOwn ⟨S, stock⟩ Q.run.2 Q.hn v n] at h₁
-  unfold Regimes.readAfter
-  rw [← h₁, ← h₂]
-
 /-- **Healthy selected-proposal service under growing faults**: a confirmed proposal after the
 heal point, in the confirmed read of every node ready at the deadline. The proposal is the actual
 proposal of the slot that the recurrence selects at the query's readiness, whose proposer is
@@ -314,7 +300,8 @@ theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt ⟨S, stock⟩ A V)
     (by rw [htT]; exact hvT) (by rw [htD]; exact hvD)
     (((now_bounds_cut ⟨S, stock⟩ Q.run.2 Q.hn Q.valid (Q.run.2.key y) hlD).2.trans_eq htD).trans
       Q.bounded)
-  rw [hnT, hnD, readAfter_lastOwn S A V Q hlT, readAfter_lastOwn S A V Q hlD,
+  rw [hnT, hnD, readAfter_lastOwn ⟨S, stock⟩ Q.run.2 Q.hn Q.valid _ hlT,
+    readAfter_lastOwn ⟨S, stock⟩ Q.run.2 Q.hn Q.valid _ hlD,
     show Q.run.2.ownKey (Q.run.2.key y) = y from Q.run.2.key.symm_apply_apply _] at hanc
   exact hfirst.trans hanc
 

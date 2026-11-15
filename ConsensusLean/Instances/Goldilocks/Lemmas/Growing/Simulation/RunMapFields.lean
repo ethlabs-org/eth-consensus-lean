@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Schedule
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Cuts
@@ -13,7 +14,6 @@ public section
 The data `goldilocksRunMap` needs beyond existing definitions, with the laws that no existing
 lemma states:
 
-* `blocksTo`: `chainTo` as a block list, whose headers are `chainTo` (`blocksTo_map`);
 * `outTip`: the tip of each output, so a node's output is the header list of `blocksTo` up to it
   (`outOf_eq_blocksTo`);
 * `payloadOf`: the transactions decoded from a block's header input;
@@ -32,42 +32,6 @@ section Chain
 
 variable {sp : SAParams}
 
-/-- The blocks from genesis (excluded) to `B`, oldest first: `chainTo` before taking headers. -/
-noncomputable def blocksTo (blocks : Nat → Option (Blk sp)) : Nat → Blk sp → List (Blk sp)
-  | 0, _ => []
-  | fuel + 1, B =>
-      if B.root = sp.genesisRoot then []
-      else
-        (match B.parent.bind blocks with
-          | some Bp => blocksTo blocks fuel Bp
-          | none => []) ++ [B]
-
-/-- `blocksTo` without fuel is empty. -/
-theorem blocksTo_zero (blocks : Nat → Option (Blk sp)) (B : Blk sp) :
-    blocksTo blocks 0 B = [] := by rfl
-
-/-- `blocksTo` walks one parent step and appends the block. -/
-theorem blocksTo_succ (blocks : Nat → Option (Blk sp)) (fuel : Nat) (B : Blk sp) :
-    blocksTo blocks (fuel + 1) B =
-      if B.root = sp.genesisRoot then []
-      else
-        (match B.parent.bind blocks with
-          | some Bp => blocksTo blocks fuel Bp
-          | none => []) ++ [B] := by rfl
-
-/-- The headers of `blocksTo` are `chainTo`. -/
-theorem blocksTo_map (blocks : Nat → Option (Blk sp)) :
-    ∀ fuel B, (blocksTo blocks fuel B).map (headerOf sp) = chainTo blocks fuel B
-  | 0, B => by rw [blocksTo_zero, chainTo, List.map_nil]
-  | fuel + 1, B => by
-    rw [blocksTo_succ, chainTo]
-    split_ifs
-    · rfl
-    · rw [List.map_append, List.map_singleton]
-      cases B.parent.bind blocks with
-      | none => rfl
-      | some Bp => rw [blocksTo_map blocks fuel Bp]
-
 variable (sp) (ro : ReplayOrder sp (List (FG.Att sp.n)))
 
 /-- The tip of each output of a node state at time `t`, as in `outOf`: `Σ.F` for `finalized`,
@@ -79,6 +43,11 @@ noncomputable def outTip : Out → NodeState (goldilocksNode sp ro) → Time →
 /-- The confirmed tip is the AC's confirmed block. -/
 theorem outTip_confirmed (st : NodeState (goldilocksNode sp ro)) (t : Time) :
     outTip sp ro .confirmed st t = (goldilocksNode sp ro).confirmed st.ac (Node.frame st) t := by
+  rfl
+
+/-- The finalized tip is the FG store's finalized block. -/
+theorem outTip_finalized (st : NodeState (goldilocksNode sp ro)) (t : Time) :
+    outTip sp ro .finalized st t = st.fg.F := by
   rfl
 
 /-- Each node output is the header list of `blocksTo` up to its tip (fuel: the tip's slot). -/

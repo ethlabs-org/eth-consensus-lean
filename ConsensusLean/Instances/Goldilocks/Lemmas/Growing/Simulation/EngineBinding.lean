@@ -34,6 +34,13 @@ noncomputable def goldilocksEngineBinding (S : BoundSetup) (pub : Model.Public)
     subst hE
     exact goldilocksRunMap_transport S rho hn hv
 
+/-- At an environment's public parameters the binding uses its canonical run map. -/
+theorem goldilocksEngineBinding_map (S : BoundSetup) (E : Env V)
+    (hn : 1 ≤ (pubOf E).n) (rho : Model.Run (compiled (goldilocksWith S)) E)
+    (hv : rho.ExecutionValid) :
+    (goldilocksEngineBinding S (pubOf E) hn).map E rfl rho hv =
+      goldilocksRunMap S rho hn hv := by rfl
+
 end Consensus.Goldilocks.Simulation
 
 end
