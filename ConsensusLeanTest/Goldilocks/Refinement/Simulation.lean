@@ -28,22 +28,26 @@ open Shape
 open Consensus.Model (pubOf SelSpec)
 
 variable {V : Type} [Fintype V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+  (rho : Model.Run (compiled (goldilocks { S with vote := AsChainShape.stock })) E)
+  (hn : 1 ≤ Fintype.card V)
 
 /-- The skeleton requires one proposer without fixing its identity. -/
 theorem skeleton_proposerSel (s : Nat) :
-    (goldilocks S (pubOf E)).skel.proposerSel s = .sized 1 := rfl
+    (goldilocks { S with vote := AsChainShape.stock } (pubOf E)).skel.proposerSel s =
+      .sized 1 := rfl
 
 /-- In an admitted run, the node schedule is the selected proposer. -/
 theorem selValid_proposer (hsel : rho.SelValid) (s : Nat) :
-    rho.sel (.proposer s) = {runProposer ⟨S, stock⟩ rho hn s} :=
-  Simulation.selValid_proposer ⟨S, stock⟩ rho hn hsel s
+    rho.sel (.proposer s) = {runProposer { S with vote := stock } rho hn s} :=
+  Simulation.selValid_proposer { S with vote := stock } rho hn hsel s
 
 include hn in
 /-- The schedule with everyone polling is an admissible selection. -/
 theorem selValid_exists :
-    ∃ sel : (Model.protoOf (compiled (goldilocks S)) E).Role → Finset (Fin (Fintype.card V)),
-      (Model.protoOf (compiled (goldilocks S)) E).SelAdmits sel := by
+    ∃ sel : (Model.protoOf (compiled (goldilocks { S with vote := AsChainShape.stock })) E).Role →
+        Finset (Fin (Fintype.card V)),
+      (Model.protoOf (compiled (goldilocks { S with vote := AsChainShape.stock })) E).SelAdmits
+        sel := by
   refine ⟨fun r => match r with
     | .proposer _ => {⟨0, hn⟩}
     | .duty _ k => k.elim
@@ -51,7 +55,8 @@ theorem selValid_exists :
   intro r
   cases r with
   | proposer s =>
-    change ((goldilocks S (pubOf E)).skel.proposerSel s).Admits _
+    change ((goldilocks { S with vote := AsChainShape.stock }
+      (pubOf E)).skel.proposerSel s).Admits _
     rw [skeleton_proposerSel S s]
     change ({(⟨0, hn⟩ : Fin (Fintype.card V))} : Finset _).card = min 1 (Fintype.card V)
     simp [min_eq_left hn]
@@ -62,25 +67,27 @@ variable [DecidableEq V]
 
 /-- Exact-time release cannot be satisfied solely by a later send, even at the horizon. -/
 theorem released_requires_same_time (v : V)
-    (o : (Model.protoOf (compiled (goldilocks S)) E).Object) (τ : Time)
-    (h : ReleasedFrom ⟨S, stock⟩ rho v o τ) : rho.releases v o τ :=
-  (releasedFrom_iff ⟨S, stock⟩ rho v o τ).mp h
+    (o : (Model.protoOf (compiled (goldilocks { S with vote := AsChainShape.stock })) E).Object)
+    (τ : Time)
+    (h : ReleasedFrom { S with vote := stock } rho v o τ) : rho.releases v o τ :=
+  (releasedFrom_iff { S with vote := stock } rho v o τ).mp h
 
 /-- An admission at the horizon still requires a relay at that same time. -/
-theorem relayed_at_horizon (v : V) (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
-    (h : RelayedFrom ⟨S, stock⟩ rho v o rho.horizon) :
+theorem relayed_at_horizon (v : V)
+    (o : (Model.protoOf (compiled (goldilocks { S with vote := AsChainShape.stock })) E).Object)
+    (h : RelayedFrom { S with vote := stock } rho v o rho.horizon) :
     ∃ cs, o ∈ cs ∧ rho.releases v (.mk .none (.data .relay) cs) rho.horizon :=
-  (relayedFrom_iff ⟨S, stock⟩ rho v o rho.horizon).mp h
+  (relayedFrom_iff { S with vote := stock } rho v o rho.horizon).mp h
 
 /-- At the stock binding `releasedFrom_of_pending` concludes its population-wide form, by `rfl`:
 the pending body was released as the object signed in the poll role. -/
 theorem releasedFrom_of_pending_stock (hv : rho.ExecutionValid) {i : Nat}
-    {ev : Model.Event V (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) E).Object}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocks { S with vote := stock })) E).Object}
     (he : rho.events[i]? = some ev) {b : Body}
-    (hb : b ∈ (stateAt ⟨S, stock⟩ rho hn ev.node (i + 1)).outbox) :
-    ReleasedFrom ⟨S, stock⟩ rho ev.node
+    (hb : b ∈ (stateAt { S with vote := stock } rho hn ev.node (i + 1)).outbox) :
+    ReleasedFrom { S with vote := stock } rho ev.node
       (Model.Obj.mk (.signed (rho.ownKey ev.node) .poll) (.data b) []) ev.time :=
-  releasedFrom_of_pending ⟨S, stock⟩ rho hn hv he hb
+  releasedFrom_of_pending { S with vote := stock } rho hn hv he hb
 
 omit [DecidableEq V] in
 /-- A canonical block carrying one vote runs the block handler first and then the actual
@@ -176,38 +183,45 @@ def terminalPoint : EnvPoint (Fin 1) :=
 /-- A ready reader remains awake at the finite horizon, and a strictly later unlabelled
 cut exists. The old constant-horizon filler makes this conclusion impossible. -/
 theorem terminal_observation (S : Setup) :
-    ∃ rho : Model.Run (compiled (goldilocks S)) terminalPoint.env,
+    ∃ rho : Model.Run (compiled (goldilocks { S with vote := AsChainShape.stock }))
+      terminalPoint.env,
       rho.ExecutionValid ∧ rho.horizon = 1 ∧
-      rho.point.Ready (Regimes.catchUp (S.params (pubOf terminalPoint.env) (by decide)))
+      rho.point.Ready (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params
+        (pubOf terminalPoint.env) (by decide)))
         0 rho.horizon ∧
-      (simTrace ⟨S, stock⟩ rho (by decide)).awake (rho.ownKey 0) rho.horizon ∧
-      ∃ j, (simTrace ⟨S, stock⟩ rho (by decide)).label j = none ∧
-        Regimes.CutAfter (simTrace ⟨S, stock⟩ rho (by decide)) j rho.horizon := by
-  let sel : (Model.protoOf (compiled (goldilocks S)) terminalPoint.env).Role →
+      (simTrace { S with vote := stock } rho (by decide)).awake (rho.ownKey 0) rho.horizon ∧
+      ∃ j, (simTrace { S with vote := stock } rho (by decide)).label j = none ∧
+        Regimes.CutAfter (simTrace { S with vote := stock } rho (by decide)) j rho.horizon := by
+  let sel : (Model.protoOf (compiled (goldilocks { S with vote := AsChainShape.stock }))
+      terminalPoint.env).Role →
       Finset (Fin (Fintype.card (Fin 1))) := fun _ => Finset.univ
-  have hsel : (Model.protoOf (compiled (goldilocks S)) terminalPoint.env).SelAdmits sel := by
+  have hsel : (Model.protoOf (compiled (goldilocks { S with vote := AsChainShape.stock }))
+      terminalPoint.env).SelAdmits sel := by
     intro r
     cases r with
     | proposer s => change (Finset.univ : Finset (Fin 1)).card = min 1 1; decide
     | poll => rfl
     | duty s k => exact k.elim
-  obtain ⟨rho, hp, _, _, hv, _, _, _⟩ := Shape.coverage (goldilocks S) terminalPoint
+  obtain ⟨rho, hp, _, _, hv, _, _, _⟩ := Shape.coverage
+    (goldilocks { S with vote := AsChainShape.stock }) terminalPoint
     (by decide) (by exact Equiv.refl _) sel hsel 0
   have hh : rho.horizon = 1 := congrArg EnvPoint.horizon hp
-  have hr : rho.point.Ready (Regimes.catchUp (S.params (pubOf terminalPoint.env) (by decide)))
+  have hr : rho.point.Ready (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf terminalPoint.env) (by decide)))
       0 rho.horizon := by
     rw [hp]
     exact ⟨by simp [EnvPoint.HonestAt, terminalPoint], fun _ _ _ => rfl⟩
-  refine ⟨rho, hv, hh, hr, ?_, (allCuts ⟨S, stock⟩ rho (by decide)).length, ?_, ?_⟩
-  · rw [simTrace_awake_iff ⟨S, stock⟩ rho (by decide), awakeAt_iff ⟨S, stock⟩ rho (by decide)]
+  refine ⟨rho, hv, hh, hr, ?_, (allCuts { S with vote := stock } rho (by decide)).length, ?_, ?_⟩
+  · rw [simTrace_awake_iff { S with vote := stock } rho (by decide),
+      awakeAt_iff { S with vote := stock } rho (by decide)]
     exact ⟨rfl, hv.horizon_nonneg, le_rfl⟩
-  · rw [simTrace_label ⟨S, stock⟩ rho (by decide), List.getElem?_length]; rfl
+  · rw [simTrace_label { S with vote := stock } rho (by decide), List.getElem?_length]; rfl
   · constructor
     · intro k hk
-      apply simTrace_labelled_time_le ⟨S, stock⟩ rho (by decide) hv
-      rw [simTrace_label ⟨S, stock⟩ rho (by decide), List.getElem?_eq_getElem hk]
+      apply simTrace_labelled_time_le { S with vote := stock } rho (by decide) hv
+      rw [simTrace_label { S with vote := stock } rho (by decide), List.getElem?_eq_getElem hk]
       simp
-    · rw [simTrace_time ⟨S, stock⟩ rho (by decide), List.getElem?_length]
+    · rw [simTrace_time { S with vote := stock } rho (by decide), List.getElem?_length]
       simp
 
 /-- Raw hashes at and on both sides of genesis round-trip without naming genesis.
@@ -221,23 +235,26 @@ theorem tagged_genesis_boundary :
 slots of `4Δ = 8`. -/
 theorem protocol_delay_grid (S : Setup) :
     let pub : Model.Public := ⟨1, 2, by decide, 2, by decide⟩
-    (S.params pub (by decide)).Δ = 2 ∧
-      (goldilocks S pub).skel.grid.slotTime 1 = 8 ∧
-      (goldilocksShape (S.params pub (by decide)) (S.ro 1)).skel.grid.slotTime 1 = 8 := by
+    (({ S with vote := AsChainShape.stock } : Setup).params pub (by decide)).Δ = 2 ∧
+      (goldilocks { S with vote := AsChainShape.stock } pub).skel.grid.slotTime 1 = 8 ∧
+      (goldilocksShape (({ S with vote := AsChainShape.stock } : Setup).params pub (by decide))
+        (S.ro 1)).skel.grid.slotTime 1 = 8 := by
   exact ⟨rfl, rfl, rfl⟩
 
 /-- Half-open engine delivery (held by `base + Δ − 1`) is strict protocol delivery
 (`< base + Δ_p`) at `Δ_p = Δ_e`. -/
 theorem protocol_delivery_endpoint (S : Setup) (pub : Model.Public) (hn : 1 ≤ pub.n)
     (base delivered : Time) (h : delivered ≤ base + pub.ΔAC - 1) :
-    delivered < base + (S.params pub hn).Δ := by
+    delivered < base + (({ S with vote := AsChainShape.stock } : Setup).params pub hn).Δ := by
   change delivered < base + pub.ΔAC
   linarith
 
 /-- **Control**: the protocol delay adds no slack, so a receipt at the engine bound
 `base + Δ` itself is not strictly before `base + Δ_p`. -/
 theorem protocol_delivery_bound_not_strict (S : Setup) (pub : Model.Public) (hn : 1 ≤ pub.n)
-    (base : Time) : ¬ base + pub.ΔAC < base + (S.params pub hn).Δ := by
+    (base : Time) :
+    ¬ base + pub.ΔAC <
+      base + (({ S with vote := AsChainShape.stock } : Setup).params pub hn).Δ := by
   change ¬ base + pub.ΔAC < base + pub.ΔAC
   exact lt_irrefl _
 

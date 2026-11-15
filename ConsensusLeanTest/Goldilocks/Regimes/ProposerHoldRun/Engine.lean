@@ -36,14 +36,16 @@ variable {S : Setup}
 /-- The duty of a tick signed in a proposer role is the proposal of a positive slot at its slot
 time. -/
 theorem duty_proposer {t : Time}
-    {d : (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).Duty}
-    (hd : d ∈ (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).duties t) {s : Nat}
-    (hr : (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).role d = .proposer s) :
+    {d : (Model.protoOf (compiled (goldilocks { S with vote := stock })) env).Duty}
+    (hd : d ∈ (Model.protoOf (compiled (goldilocks { S with vote := stock })) env).duties t)
+    {s : Nat}
+    (hr : (Model.protoOf (compiled (goldilocks { S with vote := stock })) env).role d =
+      .proposer s) :
     t = (s : Time) * 12 ∧ 0 < s := by
   by_cases ht : 0 ≤ t
   swap
-  · rw [Simulation.duties_eq_nil ⟨S, stock⟩ t (not_le.mp ht)] at hd; cases hd
-  rw [Simulation.duties_eq ⟨S, stock⟩ t ht] at hd
+  · rw [Simulation.duties_eq_nil { S with vote := stock } t (not_le.mp ht)] at hd; cases hd
+  rw [Simulation.duties_eq { S with vote := stock } t ht] at hd
   rcases List.mem_append.mp hd with hd | hd
   · rcases List.mem_append.mp hd with hd | hd
     · rcases List.mem_append.mp hd with hd | hd
@@ -71,15 +73,16 @@ theorem duty_proposer {t : Time}
 
 /-- The duties of a delivery are poll steps. -/
 theorem deliverDuty_poll {t : Time}
-    {d : (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).Duty}
-    (hd : d ∈ (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).deliverDuties t) :
-    (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).role d = .poll := by
+    {d : (Model.protoOf (compiled (goldilocks { S with vote := stock })) env).Duty}
+    (hd : d ∈ (Model.protoOf (compiled (goldilocks { S with vote := stock }))
+      env).deliverDuties t) :
+    (Model.protoOf (compiled (goldilocks { S with vote := stock })) env).role d = .poll := by
   by_cases ht : 0 ≤ t
-  · rw [Simulation.deliverDuties_eq ⟨S, stock⟩ t ht] at hd
+  · rw [Simulation.deliverDuties_eq { S with vote := stock } t ht] at hd
     rcases hd with _ | ⟨_, hd⟩
     · rfl
     · cases hd
-  · rw [Simulation.deliverDuties_eq_nil ⟨S, stock⟩ t (not_le.mp ht)] at hd; cases hd
+  · rw [Simulation.deliverDuties_eq_nil { S with vote := stock } t (not_le.mp ht)] at hd; cases hd
 
 /-- **A released root signed in a proposer role** is the proposal of a tick at the slot time, by a
 node selected for the slot. -/
@@ -111,8 +114,9 @@ theorem root_proposer {i : Nat} {o : Obj S} (ho : o ∈ (rho S).releasesAt i)
       · obtain ⟨d, hd, st, -, hc⟩ := (rho S).deliverCandidate_iff.mp hc
         obtain ⟨m, cs', -, -, -, rfl⟩ := (rho S).mem_signedCandidate.mp hc
         injection ha with _ hr
-        have hrole : (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).candidateRole d m =
-            (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).role d := rfl
+        have hrole : (Model.protoOf (compiled (goldilocks { S with vote := stock }))
+            env).candidateRole d m =
+            (Model.protoOf (compiled (goldilocks { S with vote := stock })) env).role d := rfl
         rw [hrole] at hr
         rw [deliverDuty_poll hd] at hr
         cases hr
@@ -230,7 +234,7 @@ theorem delivered_proposal {i : Nat} {w : Fin 5} {o : Obj S} {t : Time}
 
 variable (S) in
 /-- The run up to `12` with the faults of `12` constant: key `1` is honest there. -/
-noncomputable def rho12 : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) env :=
+noncomputable def rho12 : Model.Run (compiled (goldilocks { S with vote := stock })) env :=
   ((rho S).truncate 12).retain 12
 
 theorem rho12_valid : (rho12 S).ExecutionValid :=
@@ -276,25 +280,29 @@ theorem key1_vote_slot {i : Nat} {e : Ev S} (he : (rho S).events[i]? = some e) (
   have hconst : (rho12 S).point.ConstantFaults := Model.Run.retain_constant
   have hv' : (1 : Fin 5) ∉ (rho12 S).faultyAt 0 := by rw [rho12_faultyAt]; decide
   obtain ⟨k, -, ℓ, hc, em, hem, rfl⟩ :=
-    Simulation.released_vote_cut ⟨S, stock⟩ (rho12 S) one_le_card hconst rho12_valid hs hv' hv
+    Simulation.released_vote_cut { S with vote := stock } (rho12 S) one_le_card hconst
+      rho12_valid hs hv' hv
   have hrun := Simulation.simTrace_goldilocksRun S (rho12 S) one_le_card hconst rho12_valid
   have hnc := Simulation.noCollRun_simTrace S (rho12 S) one_le_card hconst rho12_valid
     rho12_not_hashCollision
   have hac := (Compose.goldilocks_ac_projection _ _ _ _ _ _ hrun hnc).localRun
-  have hy : (rho12 S).ownKey 1 ∈ Simulation.honestKeys ⟨S, stock⟩ (rho12 S) := by
+  have hy : (rho12 S).ownKey 1 ∈ Simulation.honestKeys { S with vote := stock } (rho12 S) := by
     rw [Simulation.mem_honestKeys_iff]
     rw [show (rho12 S).key ((rho12 S).ownKey 1) = 1 from (rho12 S).key.apply_symm_apply 1]
     exact hv'
   have hspec := SA.castAt_spec hac hy ⟨Compose.projAC_callAt.mpr hc, hem⟩
   rw [hspec.2.1]
-  have hl : (Simulation.simTrace ⟨S, stock⟩ (rho12 S) one_le_card).label k ≠ none := by
+  have hl : (Simulation.simTrace { S with vote := stock } (rho12 S)
+      one_le_card).label k ≠ none := by
     rw [hc.2]; simp
-  have hth := Simulation.simTrace_labelled_time_le ⟨S, stock⟩ (rho12 S) one_le_card rho12_valid hl
+  have hth := Simulation.simTrace_labelled_time_le { S with vote := stock } (rho12 S) one_le_card
+    rho12_valid hl
   change _ ≤ (12 : Time) at hth
   have h0 := hrun.time_nonneg k
-  have hsl := SA.slot_eq (sp := S.params (pubOf env) one_le_card) h0
-  have hle : ((S.params (pubOf env) one_le_card).slot
-      ((Simulation.simTrace ⟨S, stock⟩ (rho12 S) one_le_card).time k) : Int) ≤ 1 := by
+  have hsl := SA.slot_eq
+    (sp := ({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card) h0
+  have hle : ((({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card).slot
+      ((Simulation.simTrace { S with vote := stock } (rho12 S) one_le_card).time k) : Int) ≤ 1 := by
     rw [hsl]
     exact Int.ediv_le_of_le_mul (by change (0 : Int) < 4 * 3; norm_num)
       (by change _ ≤ (1 : Int) * (4 * 3); linarith)

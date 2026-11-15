@@ -27,7 +27,7 @@ open AsChainShape Simulation
 open Shape Blocks
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-  (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
+  (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
 
 /-- A received forwarding wrapper of a signer honest at its stamp carries a stamp no later than
 the receipt: were the receipt earlier, the signer would be honest at it. -/
@@ -48,7 +48,7 @@ theorem received_forward_stamp_le_of_stamp_at (hn : 1 ≤ Fintype.card V)
 honest at its call, before the effective `max(source, GST)` deadline. -/
 theorem publication_held_before_gst_deadline_at (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {g : Time} (hnet : rho.log.PSync rho.point g)
-    (r : Publication (Model.protoOf (compiled (goldilocksWith S)) E))
+    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
     (hr : (publisherExecution S rho).actual r)
     (hx : rho.key r.origin ∉ rho.faultyAt ((publisherExecution S rho).eventTime r.event))
     (hrow : ¬ rho.log.fgAtt r.object)
@@ -84,7 +84,7 @@ pre-GST one, at the effective `max(source, GST)` deadline at the acceptance cut.
 theorem publication_acceptedBy_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {g : Time} (hnet : rho.log.PSync rho.point g)
-    (r : Publication (Model.protoOf (compiled (goldilocksWith S)) E))
+    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
     (hr : (publisherExecution S rho).actual r)
     {τ : Time} (hτ : 0 ≤ τ) (ht : (publisherExecution S rho).eventTime r.event = τ)
     (hx : rho.key r.origin ∉ rho.faultyAt τ)
@@ -155,84 +155,96 @@ theorem acceptance_relay_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rho.Exec
 /-- Holdings of a decoded wrapper of a signer honest at its stamp give a block call after the
 stamp. Local publication uses the actual acceptance; receipt uses recursive block processing. -/
 theorem held_forward_blockCall_before_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y x : Fin (Fintype.card V)} {j : Nat} {o : Wire (Fintype.card V)} {t d D : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    {p : Option (Wire (Fintype.card V))}
+    {B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn)}
     (hx : rho.key x ∉ rho.faultyAt t)
     (hheld : rho.log.Held rho.point (rho.key y) o d)
-    (hdecode : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+    (hdecode : decodeForward (({ S with vote := AsChainShape.stock } : Setup).params
+      (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B))
-    (hd : d < D) (hj : D ≤ (simTraceAt ⟨S, stock⟩ rho hn).time j) :
-    ∃ k ≤ j, t ≤ (simTraceAt ⟨S, stock⟩ rho hn).time k ∧
-      (simTraceAt ⟨S, stock⟩ rho hn).BlockCallAt y k B ∧ (simTraceAt ⟨S, stock⟩ rho hn).time k <
+    (hd : d < D) (hj : D ≤ (simTraceAt { S with vote := stock } rho hn).time j) :
+    ∃ k ≤ j, t ≤ (simTraceAt { S with vote := stock } rho hn).time k ∧
+      (simTraceAt { S with vote := stock } rho hn).BlockCallAt y k B ∧
+        (simTraceAt { S with vote := stock } rho hn).time k <
           D := by
-  have hmono := (simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv).time_mono
-  rw [simTraceAt_eq ⟨S, stock⟩ rho hn] at hj hmono ⊢
+  have hmono := (simTraceAt_goldilocksRun { S with vote := stock } rho hn hv).time_mono
+  rw [simTraceAt_eq { S with vote := stock } rho hn] at hj hmono ⊢
   obtain ⟨u, hud, hsource, _⟩ := hheld
   have huD : u < D := hud.trans_lt hd
   have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply _
-  have before {k : Nat} (hk : (simTrace ⟨S, stock⟩ rho hn).time k < D) : k ≤ j := by
+  have before {k : Nat} (hk : (simTrace { S with vote := stock } rho hn).time k < D) : k ≤ j := by
     by_contra h
     have htime := hmono (show j ≤ k by omega)
     exact (not_lt_of_ge (hj.trans htime)) hk
   rcases hsource with hs | hr
   · obtain ⟨i, hi, ho⟩ := hs
-    have hxy := released_forward_signer ⟨S, stock⟩ rho hn hi ho hdecode
+    have hxy := released_forward_signer { S with vote := stock } rho hn hi ho hdecode
     rw [hxy] at hdecode
-    have hstamp : t = u := released_forward_stamp ⟨S, stock⟩ rho hn hv hi ho hdecode
-    have hacc : ∃ k < cutMap ⟨S, stock⟩ rho hn (i + 1),
-        (simTrace ⟨S, stock⟩ rho hn).AcceptAt (rho.ownKey (rho.key y)) k B ∧
-        (simTrace ⟨S, stock⟩ rho hn).time k = t := by
+    have hstamp : t = u := released_forward_stamp { S with vote := stock } rho hn hv hi ho hdecode
+    have hacc : ∃ k < cutMap { S with vote := stock } rho hn (i + 1),
+        (simTrace { S with vote := stock } rho hn).AcceptAt (rho.ownKey (rho.key y)) k B ∧
+        (simTrace { S with vote := stock } rho hn).time k = t := by
       rcases hi with he | ⟨receipt, he⟩
-      · exact tick_released_forward_acceptance ⟨S, stock⟩ rho hn hv he ho hdecode
-      · exact delivery_released_forward_acceptance ⟨S, stock⟩ rho hn hv he ho hdecode
+      · exact tick_released_forward_acceptance { S with vote := stock } rho hn hv he ho hdecode
+      · exact delivery_released_forward_acceptance { S with vote := stock } rho hn hv he ho hdecode
     obtain ⟨k, _, ha, ht⟩ := hacc
-    have hk : (simTrace ⟨S, stock⟩ rho hn).time k < D := ht ▸ hstamp ▸ huD
+    have hk : (simTrace { S with vote := stock } rho hn).time k < D := ht ▸ hstamp ▸ huD
     exact ⟨k, before hk, ht.ge, ⟨true, hkey ▸ ha⟩, hk⟩
   · obtain ⟨i, hi⟩ := hr
-    have htu := received_forward_stamp_le_of_stamp_at ⟨S, stock⟩ rho hn hv hi (.refl o) hx hdecode
-    obtain ⟨k, _, hc, ht⟩ := received_forward_blockCall ⟨S, stock⟩ rho hn hi (.refl o) hdecode htu
-    have hk : (simTrace ⟨S, stock⟩ rho hn).time k < D := ht ▸ huD
+    have htu := received_forward_stamp_le_of_stamp_at
+      { S with vote := stock } rho hn hv hi (.refl o) hx hdecode
+    obtain ⟨k, _, hc, ht⟩ := received_forward_blockCall
+      { S with vote := stock } rho hn hi (.refl o) hdecode htu
+    have hk : (simTrace { S with vote := stock } rho hn).time k < D := ht ▸ huD
     exact ⟨k, before hk, ht ▸ htu, hkey ▸ hc, hk⟩
 
 /-- A decoded publication by an origin honest at its event receives block service at the
 processing cut's GST deadline, including publications before GST. -/
 theorem publication_blockDeliveredBy_psync_at {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
     (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {g : Time} (hnet : rho.log.PSync rho.point g)
-    (r : Publication (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) E))
-    (hr : (publisherExecution ⟨S, stock⟩ rho).actual r)
-    {τ : Time} (hτ : 0 ≤ τ) (ht : (publisherExecution ⟨S, stock⟩ rho).eventTime r.event = τ)
+    (r : Publication (Model.protoOf (compiled (goldilocks { S with vote := stock })) E))
+    (hr : (publisherExecution { S with vote := stock } rho).actual r)
+    {τ : Time} (hτ : 0 ≤ τ)
+    (ht : (publisherExecution { S with vote := stock } rho).eventTime r.event = τ)
     (hx : rho.key r.origin ∉ rho.faultyAt τ)
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
-    (hdecode : decodeForward (S.params (Model.pubOf E) hn)
+    {p : Option (Wire (Fintype.card V))}
+    {B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn)}
+    (hdecode : decodeForward (({ S with vote := AsChainShape.stock } : Setup).params
+      (Model.pubOf E) hn)
       (Model.digests rho.hash r.object) r.object = some (r.origin, τ, p, B))
     {y : Fin (Fintype.card V)} {j : Nat}
-    (hy : y ∈ honestKeysAt ⟨S, stock⟩ rho ((simTraceAt ⟨S, stock⟩ rho hn).time j))
-    (hj : (simTraceAt ⟨S, stock⟩ rho hn).IsCall y j)
-    (hb : (simTraceAt ⟨S, stock⟩ rho hn).deadline y j (max τ g)
-      (S.params (Model.pubOf E) hn).Δ ≤ rho.horizon)
-    (hd : (simTraceAt ⟨S, stock⟩ rho hn).deadline y j (max τ g)
-      (S.params (Model.pubOf E) hn).Δ ≤ (simTraceAt ⟨S, stock⟩ rho hn).time j) :
-    (simTraceAt ⟨S, stock⟩ rho hn).BlockDeliveredBy y j τ (max τ g) B := by
-  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv
+    (hy : y ∈ honestKeysAt { S with vote := stock } rho
+      ((simTraceAt { S with vote := stock } rho hn).time j))
+    (hj : (simTraceAt { S with vote := stock } rho hn).IsCall y j)
+    (hb : (simTraceAt { S with vote := stock } rho hn).deadline y j (max τ g)
+      (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).Δ ≤ rho.horizon)
+    (hd : (simTraceAt { S with vote := stock } rho hn).deadline y j (max τ g)
+      (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).Δ ≤
+        (simTraceAt { S with vote := stock } rho hn).time j) :
+    (simTraceAt { S with vote := stock } rho hn).BlockDeliveredBy y j τ (max τ g) B := by
+  have hrun := simTraceAt_goldilocksRun { S with vote := stock } rho hn hv
   induction j using Nat.strong_induction_on with
   | h j ih =>
-    obtain ⟨d, hheld, hlt⟩ := publication_held_before_gst_deadline_at ⟨S, stock⟩ rho hn hv hnet
+    obtain ⟨d, hheld, hlt⟩ := publication_held_before_gst_deadline_at
+      { S with vote := stock } rho hn hv hnet
       r hr (ht ▸ hx) (not_isFGAtt_of_decodeForward hdecode) hy hj hτ ht hb hd
     obtain ⟨k, hkj, hlo, hcall, htime⟩ := held_forward_blockCall_before_at S rho hn hv
       hx hheld hdecode hlt hd
-    by_cases hk : (simTraceAt ⟨S, stock⟩ rho hn).time k <
-        (simTraceAt ⟨S, stock⟩ rho hn).deadline y k (max τ g) (S.params (Model.pubOf E) hn).Δ
+    by_cases hk : (simTraceAt { S with vote := stock } rho hn).time k <
+        (simTraceAt { S with vote := stock } rho hn).deadline y k (max τ g)
+          (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).Δ
     · exact ⟨k, hkj, hlo, hcall, hk⟩
     · have hkj' : k < j := lt_of_le_of_ne hkj (by
         intro heq
         subst k
         exact hk htime)
-      have hmono := deadline_mono_cut_at ⟨S, stock⟩ rho hn hv y (max τ g)
-        (S.params (Model.pubOf E) hn).Δ hkj
+      have hmono := deadline_mono_cut_at { S with vote := stock } rho hn hv y (max τ g)
+        (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).Δ hkj
       obtain ⟨acc, hc⟩ := hcall
       obtain ⟨l, hl, hlo', hc', ht'⟩ := ih k hkj' (hrun.antitone (hrun.time_mono hkj) hy)
         ⟨_, hc⟩ (hmono.trans hb) (le_of_not_gt hk)
@@ -240,16 +252,18 @@ theorem publication_blockDeliveredBy_psync_at {V : Type} [Fintype V] [DecidableE
 
 /-- An own-block call of a node honest at it is an acceptance under collision freedom. -/
 theorem ownBlockAt_accept_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
+    (hnc : Compose.NoCollRun (digestOf { S with vote := stock } rho)
+      (simTraceAt { S with vote := stock } rho hn))
     {y : Fin (Fintype.card V)} {i : Nat}
-    (hy : y ∈ honestKeysAt ⟨S, stock⟩ rho ((simTraceAt ⟨S, stock⟩ rho hn).time i))
-    {B : Blk (S.params (Model.pubOf E) hn)}
-    (hown : (simTraceAt ⟨S, stock⟩ rho hn).OwnBlockAt y i B) :
-    (simTraceAt ⟨S, stock⟩ rho hn).AcceptAt y i B := by
-  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv
-  set d := (simTraceAt ⟨S, stock⟩ rho hn).time i
+    (hy : y ∈ honestKeysAt { S with vote := stock } rho
+      ((simTraceAt { S with vote := stock } rho hn).time i))
+    {B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn)}
+    (hown : (simTraceAt { S with vote := stock } rho hn).OwnBlockAt y i B) :
+    (simTraceAt { S with vote := stock } rho hn).AcceptAt y i B := by
+  have hrun := simTraceAt_goldilocksRun { S with vote := stock } rho hn hv
+  set d := (simTraceAt { S with vote := stock } rho hn).time i
   have run := hrun.upTo (hrun.time_nonneg i)
   have hnc' := Compose.NoCollRun.upTo hnc (d := d)
   obtain ⟨⟨acc, hc⟩, hpos⟩ := hown
@@ -260,17 +274,20 @@ theorem ownBlockAt_accept_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     simp only [Nat.add_zero] at h0
     exact False.elim (hpos h0)
   · obtain ⟨cfg, hr, hst, hs⟩ := Compose.group_step run.toLocalRun hy hg
-    have req := SA.interface_requirements (S.params (Model.pubOf E) hn)
+    have req := SA.interface_requirements
+      (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn)
       (List (FG.Att (Fintype.card V))) (S.ro _)
     have h := Compose.honest_block_accepted
-      (A := goldilocksNode (S.params (Model.pubOf E) hn) (S.ro _))
-      (runProposer ⟨S, stock⟩ rho hn) (digestOf ⟨S, stock⟩ rho) y
+      (A := goldilocksNode
+        (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn) (S.ro _))
+      (runProposer { S with vote := stock } rho hn) (digestOf { S with vote := stock } rho) y
       ⟨req.1, req.2.1, req.2.2.1, req.2.2.2, SA.proposal_payload_valid _ _ _⟩
       run.genesis_root_ok cfg _ _ x hr hs hp dd p (by rw [hst]; exact hdp)
     simp only [hst] at h
-    have key : Compose.NoCollOn (digestOf ⟨S, stock⟩ rho)
-        (insert B (((simTraceAt ⟨S, stock⟩ rho hn).upTo d).state y j).fg.tree) →
-        ∃ fg', (((simTraceAt ⟨S, stock⟩ rho hn).upTo d).state y j).fg.onBlock B = some fg' := by
+    have key : Compose.NoCollOn (digestOf { S with vote := stock } rho)
+        (insert B (((simTraceAt { S with vote := stock } rho hn).upTo d).state y j).fg.tree) →
+        ∃ fg', (((simTraceAt { S with vote := stock } rho hn).upTo d).state y j).fg.onBlock B =
+          some fg' := by
       rw [hB]
       exact fun hnc => (h.2.2.2.2.2.2 hnc).2
     have hon := key (hnc'.mono (Set.insert_subset_iff.2
@@ -283,33 +300,38 @@ theorem ownBlockAt_accept_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 recipient honest at its call within the horizon, with the source-time lower bound and the
 effective `max(source, GST)` processing deadline. -/
 theorem block_service_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
+    (hnc : Compose.NoCollRun (digestOf { S with vote := stock } rho)
+      (simTraceAt { S with vote := stock } rho hn))
     {g : Time} (hnet : rho.log.PSync rho.point g)
     {x : Fin (Fintype.card V)} {i : Nat}
-    (hx : x ∈ honestKeysAt ⟨S, stock⟩ rho ((simTraceAt ⟨S, stock⟩ rho hn).time i))
-    {B : Blk (S.params (Model.pubOf E) hn)}
-    (hi : (simTraceAt ⟨S, stock⟩ rho hn).AcceptAt x i B ∨
-        (simTraceAt ⟨S, stock⟩ rho hn).OwnBlockAt x i B)
+    (hx : x ∈ honestKeysAt { S with vote := stock } rho
+      ((simTraceAt { S with vote := stock } rho hn).time i))
+    {B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn)}
+    (hi : (simTraceAt { S with vote := stock } rho hn).AcceptAt x i B ∨
+        (simTraceAt { S with vote := stock } rho hn).OwnBlockAt x i B)
     {y : Fin (Fintype.card V)} {j : Nat}
-    (hy : y ∈ honestKeysAt ⟨S, stock⟩ rho ((simTraceAt ⟨S, stock⟩ rho hn).time j))
-    (hj : (simTraceAt ⟨S, stock⟩ rho hn).IsCall y j)
-        (hb : (simTraceAt ⟨S, stock⟩ rho hn).time j ≤ rho.horizon)
-    (hd : (simTraceAt ⟨S, stock⟩ rho hn).deadline y j
-        (max ((simTraceAt ⟨S, stock⟩ rho hn).time i) g)
-      (S.params (Model.pubOf E) hn).Δ ≤ (simTraceAt ⟨S, stock⟩ rho hn).time j) :
-    (simTraceAt ⟨S, stock⟩ rho hn).BlockDeliveredBy y j ((simTraceAt ⟨S, stock⟩ rho hn).time i)
-      (max ((simTraceAt ⟨S, stock⟩ rho hn).time i) g) B := by
+    (hy : y ∈ honestKeysAt { S with vote := stock } rho
+      ((simTraceAt { S with vote := stock } rho hn).time j))
+    (hj : (simTraceAt { S with vote := stock } rho hn).IsCall y j)
+        (hb : (simTraceAt { S with vote := stock } rho hn).time j ≤ rho.horizon)
+    (hd : (simTraceAt { S with vote := stock } rho hn).deadline y j
+        (max ((simTraceAt { S with vote := stock } rho hn).time i) g)
+      (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).Δ ≤
+        (simTraceAt { S with vote := stock } rho hn).time j) :
+    (simTraceAt { S with vote := stock } rho hn).BlockDeliveredBy y j
+      ((simTraceAt { S with vote := stock } rho hn).time i)
+      (max ((simTraceAt { S with vote := stock } rho hn).time i) g) B := by
   have ha := hi.elim id (ownBlockAt_accept_at S rho hn hv hnc hx)
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
-    (forwardAtAcceptanceAt_iff ⟨S, stock⟩ rho hn _ _ _).mp
-      (forwardAtAcceptance_at ⟨S, stock⟩ rho hn hv) x i B hx ha
-  have hih : (simTraceAt ⟨S, stock⟩ rho hn).time i ≤ rho.horizon :=
-    isCall_time_le_horizon ⟨S, stock⟩ rho hn hv ⟨_, ha⟩
+    (forwardAtAcceptanceAt_iff { S with vote := stock } rho hn _ _ _).mp
+      (forwardAtAcceptance_at { S with vote := stock } rho hn hv) x i B hx ha
+  have hih : (simTraceAt { S with vote := stock } rho hn).time i ≤ rho.horizon :=
+    isCall_time_le_horizon { S with vote := stock } rho hn hv ⟨_, ha⟩
   exact publication_blockDeliveredBy_psync_at S rho hn hv hnet r hr
-    ((simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv).time_nonneg i) htime
-    (horg ▸ not_faulty_of_mem_honestKeysAt ⟨S, stock⟩ rho hx le_rfl hih) (p := p)
+    ((simTraceAt_goldilocksRun { S with vote := stock } rho hn hv).time_nonneg i) htime
+    (horg ▸ not_faulty_of_mem_honestKeysAt { S with vote := stock } rho hx le_rfl hih) (p := p)
     (by rw [horg]; exact hdecode) hy hj (hd.trans hb) hd
 
 /-- A first-release vote envelope of a sender honest at its release reaches a different recipient
@@ -431,74 +453,81 @@ theorem message_service_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.Execution
 attestation service at a parametric `Δ_F` as a premise (`hrow`). Senders are honest at their
 event, recipients at their call; actual recipient calls lie within the engine horizon. -/
 theorem resetService_of_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
+    (hnc : Compose.NoCollRun (digestOf { S with vote := stock } rho)
+      (simTraceAt { S with vote := stock } rho hn))
     {g ΔF : Time} (hnet : rho.log.PSync rho.point g)
-    (hrow : PSyncFGAttTransportAt ⟨S, stock⟩ rho (simTraceAt ⟨S, stock⟩ rho hn)
-        (honestKeysAt ⟨S, stock⟩ rho) ΔF)
+    (hrow : PSyncFGAttTransportAt { S with vote := stock } rho
+      (simTraceAt { S with vote := stock } rho hn)
+        (honestKeysAt { S with vote := stock } rho) ΔF)
     (hΔF : 0 < ΔF) :
-    Healing.Growing.ResetService (simTraceAt ⟨S, stock⟩ rho hn) (honestKeysAt ⟨S, stock⟩ rho) g ΔF
+    Healing.Growing.ResetService (simTraceAt { S with vote := stock } rho hn)
+      (honestKeysAt { S with vote := stock } rho) g ΔF
       rho.horizon := by
   refine ⟨hΔF, ?_, ?_, ?_, ?_⟩
   · intro x i m hx hi y j hy hj hd
-    exact message_service_psync_at ⟨S, stock⟩ rho hn hv hnet hx hi hy hj
-      (isCall_time_le_horizon ⟨S, stock⟩ rho hn hv hj) hd
+    exact message_service_psync_at { S with vote := stock } rho hn hv hnet hx hi hy hj
+      (isCall_time_le_horizon { S with vote := stock } rho hn hv hj) hd
   · intro x i B hx hi y j hy hj hd
     exact block_service_psync_at S rho hn hv hnc hnet hx hi hy hj
-      (isCall_time_le_horizon ⟨S, stock⟩ rho hn hv hj) hd
+      (isCall_time_le_horizon { S with vote := stock } rho hn hv hj) hd
   · intro x i B hx hi _ y j hy hj hd hF
-    exact acceptance_relay_psync_any_at ⟨S, stock⟩ rho hn hv hnc hnet hx hi hy hj
-      (isCall_time_le_horizon ⟨S, stock⟩ rho hn hv hj) hd hF
-  · exact (psyncFGAttTransportAt_iff ⟨S, stock⟩ rho _ _ _).mp hrow g hnet
+    exact acceptance_relay_psync_any_at { S with vote := stock } rho hn hv hnc hnet hx hi hy hj
+      (isCall_time_le_horizon { S with vote := stock } rho hn hv hj) hd hF
+  · exact (psyncFGAttTransportAt_iff { S with vote := stock } rho _ _ _).mp hrow g hnet
 
 /-- Old acceptances by nodes honest at their cut catch up before the first `2Δ` snapshot after GST
 at every node honest at that snapshot, when every node honest at a time of
 `[max g 0, max g 0 + Δ − 1]` (within the horizon) is awake then: the snapshot node's publication
 window. The snapshot supplies the finite service horizon. -/
 theorem catchRun_of_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
+    (hnc : Compose.NoCollRun (digestOf { S with vote := stock } rho)
+      (simTraceAt { S with vote := stock } rho hn))
     {g : Time} (hnet : rho.log.PSync rho.point g)
     (hawake : ∀ v u, max g 0 ≤ u → u ≤ rho.horizon → u ≤ max g 0 + E.ΔAC - 1 →
       v ∉ rho.faultyAt u → E.awake v u = true) :
-    Healing.Growing.CatchRun (simTraceAt ⟨S, stock⟩ rho hn) (honestKeysAt ⟨S, stock⟩ rho) g
-      (2 * (S.params (Model.pubOf E) hn).Δ) := by
+    Healing.Growing.CatchRun (simTraceAt { S with vote := stock } rho hn)
+      (honestKeysAt { S with vote := stock } rho) g
+      (2 * (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).Δ) := by
   intro x i B hx hi hbefore y j hy hfirst hF
-  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv
+  have hrun := simTraceAt_goldilocksRun { S with vote := stock } rho hn hv
   have hstart := hfirst.1
-  change max g 0 + 2 * E.ΔAC ≤ (simTraceAt ⟨S, stock⟩ rho hn).time j at hstart
-  have hbound : (simTraceAt ⟨S, stock⟩ rho hn).time j ≤ rho.horizon + 1 := by
-    rw [simTraceAt_eq ⟨S, stock⟩ rho hn]
-    cases hj : (allCuts ⟨S, stock⟩ rho hn)[j]? with
-    | none => rw [(simTrace_of_getElem?_none ⟨S, stock⟩ rho hn hj).2]
+  change max g 0 + 2 * E.ΔAC ≤ (simTraceAt { S with vote := stock } rho hn).time j at hstart
+  have hbound : (simTraceAt { S with vote := stock } rho hn).time j ≤ rho.horizon + 1 := by
+    rw [simTraceAt_eq { S with vote := stock } rho hn]
+    cases hj : (allCuts { S with vote := stock } rho hn)[j]? with
+    | none => rw [(simTrace_of_getElem?_none { S with vote := stock } rho hn hj).2]
     | some r =>
-      have hl : (simTrace ⟨S, stock⟩ rho hn).label j ≠ none := by
-        rw [simTrace_label ⟨S, stock⟩ rho hn, hj]; simp
-      have hh := simTrace_labelled_time_le ⟨S, stock⟩ rho hn hv hl
+      have hl : (simTrace { S with vote := stock } rho hn).label j ≠ none := by
+        rw [simTrace_label { S with vote := stock } rho hn, hj]; simp
+      have hh := simTrace_labelled_time_le { S with vote := stock } rho hn hv hl
       linarith only [hh]
   have hservice : max g 0 + E.ΔAC - 1 ≤ rho.horizon := by
     linarith only [E.ΔAC_pos, hstart, hbound]
-  have hih : (simTraceAt ⟨S, stock⟩ rho hn).time i ≤ rho.horizon :=
-    isCall_time_le_horizon ⟨S, stock⟩ rho hn hv ⟨_, hi⟩
+  have hih : (simTraceAt { S with vote := stock } rho hn).time i ≤ rho.horizon :=
+    isCall_time_le_horizon { S with vote := stock } rho hn hv ⟨_, hi⟩
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
-    (forwardAtAcceptanceAt_iff ⟨S, stock⟩ rho hn _ _ _).mp
-      (forwardAtAcceptance_at ⟨S, stock⟩ rho hn hv) x i B hx hi
+    (forwardAtAcceptanceAt_iff { S with vote := stock } rho hn _ _ _).mp
+      (forwardAtAcceptance_at { S with vote := stock } rho hn hv) x i B hx hi
   have hxt : rho.key r.origin ∉ rho.faultyAt
-      ((publisherExecution ⟨S, stock⟩ rho).eventTime r.event) := by
-    rw [horg, htime]; exact not_faulty_of_mem_honestKeysAt ⟨S, stock⟩ rho hx le_rfl hih
+      ((publisherExecution { S with vote := stock } rho).eventTime r.event) := by
+    rw [horg, htime];
+      exact not_faulty_of_mem_honestKeysAt { S with vote := stock } rho hx le_rfl hih
   -- the snapshot time, clamped to the horizon: `y` is honest there
-  set T := SA.gbar g + 2 * (S.params (Model.pubOf E) hn).Δ
+  set T := SA.gbar g +
+    2 * (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).Δ
   have hyT : rho.key y ∉ rho.faultyAt (min T rho.horizon) := by
-    rw [mem_honestKeysAt_iff ⟨S, stock⟩ rho] at hy
+    rw [mem_honestKeysAt_iff { S with vote := stock } rho] at hy
     exact hy
   have hdlT : max g 0 + E.ΔAC - 1 ≤ min T rho.horizon := by
     refine le_min ?_ hservice
     change max g 0 + E.ΔAC - 1 ≤ max g 0 + 2 * E.ΔAC
     linarith only [E.ΔAC_pos]
   have hmax : max (max g 0) g = max g 0 := max_eq_left (le_max_left _ _)
-  obtain ⟨hheld, hslack⟩ := publication_held_psync_at ⟨S, stock⟩ rho hn hnet r hr hxt
+  obtain ⟨hheld, hslack⟩ := publication_held_psync_at { S with vote := stock } rho hn hnet r hr hxt
     (not_isFGAtt_of_decodeForward hdecode)
     (a := max g 0) (by rw [hmax]; exact fun h => hyT (rho.faultyAt_mono hdlT h))
     (by rw [htime]; exact hbefore.le)
@@ -508,22 +537,25 @@ theorem catchRun_of_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
       exact fun u hlo hhi => hawake (rho.key y) u hlo (hhi.trans hservice) hhi
         (fun h => hyT (rho.faultyAt_mono (hhi.trans hdlT) h)))
   rw [hmax] at hheld hslack
-  have hdeadline : max g 0 + (S.params (Model.pubOf E) hn).Δ ≤
-      (simTraceAt ⟨S, stock⟩ rho hn).time j := by
+  have hdeadline : max g 0 +
+      (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).Δ ≤
+      (simTraceAt { S with vote := stock } rho hn).time j := by
     change max g 0 + E.ΔAC ≤ _
     linarith only [E.ΔAC_pos, hstart]
-  have hj₀ : ∀ k < j, (simTraceAt ⟨S, stock⟩ rho hn).time k ≤ min T rho.horizon := by
+  have hj₀ : ∀ k < j, (simTraceAt { S with vote := stock } rho hn).time k ≤ min T rho.horizon := by
     intro k hk
-    have hkT : (simTraceAt ⟨S, stock⟩ rho hn).time k < T := hfirst.2 k hk
+    have hkT : (simTraceAt { S with vote := stock } rho hn).time k < T := hfirst.2 k hk
     have hT : T ≤ rho.horizon + 1 := hfirst.1.trans hbound
     refine le_min hkT.le ?_
     exact Int.lt_add_one_iff.mp (hkT.trans_le hT)
-  have hrel : rho.releases (rho.key x) r.object ((simTraceAt ⟨S, stock⟩ rho hn).time i) := by
+  have hrel : rho.releases (rho.key x) r.object
+      ((simTraceAt { S with vote := stock } rho hn).time i) := by
     rw [← horg, ← htime]
-    exact ⟨r.event, (publisherExecution ⟨S, stock⟩ rho).actual_event r hr,
-      (publisherExecution ⟨S, stock⟩ rho).actual_release r hr⟩
-  obtain ⟨k, hkj, hk, hkt⟩ := held_forward_accepted_before_at ⟨S, stock⟩ rho hn hv hnc hj₀ hyT
-    (not_faulty_of_mem_honestKeysAt ⟨S, stock⟩ rho hx le_rfl hih) hrel hheld
+    exact ⟨r.event, (publisherExecution { S with vote := stock } rho).actual_event r hr,
+      (publisherExecution { S with vote := stock } rho).actual_release r hr⟩
+  obtain ⟨k, hkj, hk, hkt⟩ := held_forward_accepted_before_at
+    { S with vote := stock } rho hn hv hnc hj₀ hyT
+    (not_faulty_of_mem_honestKeysAt { S with vote := stock } rho hx le_rfl hih) hrel hheld
     hdecode hslack hdeadline hF
   refine ⟨k, lt_of_le_of_ne hkj ?_, hk⟩
   intro heq

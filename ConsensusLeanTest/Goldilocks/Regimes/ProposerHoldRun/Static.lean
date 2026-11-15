@@ -24,7 +24,7 @@ open Consensus.Model (pubOf)
 variable (S : Setup)
 
 /-- **The retained run** at the horizon. -/
-noncomputable abbrev rhoc : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) env :=
+noncomputable abbrev rhoc : Model.Run (compiled (goldilocks { S with vote := stock })) env :=
   (rho S).retain 41
 
 variable {S}
@@ -56,7 +56,7 @@ theorem rhoc_honest (v : Fin 5) : v ∉ (rhoc S).faultyAt 0 ↔ v ≠ 0 ∧ v �
 
 variable (S) in
 /-- The honest keys of the retained run. -/
-abbrev H : Set (Fin (Fintype.card (Fin 5))) := honestKeys ⟨S, stock⟩ (rhoc S)
+abbrev H : Set (Fin (Fintype.card (Fin 5))) := honestKeys { S with vote := stock } (rhoc S)
 
 theorem mem_H (y : Fin (Fintype.card (Fin 5))) : y ∈ H S ↔ y.val ≠ 0 ∧ y.val ≠ 1 := by
   rw [mem_honestKeys_iff, rhoc_faultyAt, rhoc_key]
@@ -88,27 +88,32 @@ theorem rhoc_sleepyOn (c W : Time) : (rhoc S).point.SleepyOn (1 / 2) c W 0 41 :=
 
 variable (S) in
 /-- The node trace of the retained run. -/
-noncomputable abbrev tr : GoldilocksTrace (S.params (pubOf env) one_le_card) (S.ro _) :=
-  simTrace ⟨S, stock⟩ (rhoc S) one_le_card
+noncomputable abbrev tr : GoldilocksTrace
+    (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card) (S.ro _) :=
+  simTrace { S with vote := stock } (rhoc S) one_le_card
 
-theorem rhoc_run : GoldilocksRun (runProposer ⟨S, stock⟩ (rhoc S) one_le_card)
-    (digestOf ⟨S, stock⟩ (rhoc S)) (H S)
+theorem rhoc_run : GoldilocksRun (runProposer { S with vote := stock } (rhoc S) one_le_card)
+    (digestOf { S with vote := stock } (rhoc S)) (H S)
     (tr S) :=
   simTrace_goldilocksRun S (rhoc S) one_le_card rhoc_const rhoc_valid
 
-theorem rhoc_noColl : Compose.NoCollRun (digestOf ⟨S, stock⟩ (rhoc S)) (tr S) :=
+theorem rhoc_noColl : Compose.NoCollRun (digestOf { S with vote := stock } (rhoc S)) (tr S) :=
   noCollRun_simTrace S (rhoc S) one_le_card rhoc_const rhoc_valid rhoc_not_hashCollision
 
 theorem rhoc_service :
-    Compose.SleepyServiceBefore (tr S) (H S) (S.params (pubOf env) one_le_card).Δ 41 :=
+    Compose.SleepyServiceBefore (tr S) (H S)
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card).Δ 41 :=
   Obligations.sleepyServiceBefore_of_syncUntil S (rhoc S) one_le_card rhoc_const rhoc_valid
     rhoc_noColl
     (by rw [rhoc_horizon]) rhoc_sync
 
-theorem rhoc_faultBound : ∀ s : Nat, ∀ d ∈ ({0, (S.params (pubOf env) one_le_card).Δ,
-    2 * (S.params (pubOf env) one_le_card).Δ} : Set Time),
-    (S.params (pubOf env) one_le_card).ts s + d ≤ 41 →
-    (tr S).FaultBound (H S) ((S.params (pubOf env) one_le_card).ts s + d) :=
+theorem rhoc_faultBound : ∀ s : Nat, ∀ d ∈
+    ({0, (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card).Δ,
+    2 * (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf env) one_le_card).Δ} : Set Time),
+    (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card).ts s + d ≤ 41 →
+    (tr S).FaultBound (H S) ((({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf env) one_le_card).ts s + d) :=
   Obligations.sleepy_faultBound S (rhoc S) one_le_card rhoc_const rhoc_valid (W := 0)
     (by rw [rhoc_horizon]) (rhoc_sleepyOn _ _)
 

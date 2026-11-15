@@ -24,23 +24,23 @@ horizon, a query at `query ≥ max ready 0` with its deadline within the horizon
 `s ≥ 1` with `query < t_s`, `t_s + 6Δ` at most the deadline, `0 ≤ t_s ≤ horizon`, and the
 selected proposer of `s` ready at `t_s` with duration `cDur` and not faulty at
 `min (t_s + ΔAC) horizon`. -/
-theorem nonfinal_query_slot (S : BoundSetup) (A : ContractAssumptions S.toSetup) (V : Type)
-    [Fintype V] [DecidableEq V] (run : (Sys (goldilocksWith S) V).Run)
+theorem nonfinal_query_slot (S : Setup) (A : ContractAssumptions S) (V : Type)
+    [Fintype V] [DecidableEq V] (run : (Sys (goldilocks S) V).Run)
     (hn : 1 ≤ Fintype.card V)
-    {cap : Capability} (hnf : cap = .available ∨ cap = .stable) (index : (K S.toSetup A).Idx)
+    {cap : Capability} (hnf : cap = .available ∨ cap = .stable) (index : (K S A).Idx)
     {query ready : Time}
     (hbounded :
-      query + ((K S.toSetup A).params.latency cap index : Time) * run.1.ΔAC ≤ run.2.horizon)
-    (hprogress : (Sys (goldilocksWith S) V).prog
-      (shapeProgress (goldilocksWith S) V) (K S.toSetup A)
+      query + ((K S A).params.latency cap index : Time) * run.1.ΔAC ≤ run.2.horizon)
+    (hprogress : (Sys (goldilocks S) V).prog
+      (shapeProgress (goldilocks S) V) (K S A)
       cap index ready run.2.horizon run)
     (hquery : max ready 0 ≤ query) :
     ∃ s : Nat, 1 ≤ s ∧ query < (S.params (Model.pubOf run.1) hn).ts s ∧
       (S.params (Model.pubOf run.1) hn).ts s + 6 * (S.params (Model.pubOf run.1) hn).Δ ≤
-        query + ((K S.toSetup A).params.latency cap index : Time) * run.1.ΔAC ∧
+        query + ((K S A).params.latency cap index : Time) * run.1.ΔAC ∧
       0 ≤ (S.params (Model.pubOf run.1) hn).ts s ∧
       (S.params (Model.pubOf run.1) hn).ts s ≤ run.2.horizon ∧
-      run.2.point.Ready ((Sys (goldilocksWith S) V).cDur (K S.toSetup A) run)
+      run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) run)
         (run.2.key (runProposer S run.2 hn s)) ((S.params (Model.pubOf run.1) hn).ts s) ∧
       run.2.key (runProposer S run.2 hn s) ∉ run.2.faultyAt
         (min ((S.params (Model.pubOf run.1) hn).ts s + run.1.ΔAC) run.2.horizon) := by
@@ -48,20 +48,20 @@ theorem nonfinal_query_slot (S : BoundSetup) (A : ContractAssumptions S.toSetup)
   have hquery0 : 0 ≤ query := (le_max_right ready 0).trans hquery
   have hcap : cap ≠ .final := by rcases hnf with h | h <;> simp [h]
   have hrec : PatternRecurrence run.2.point run.2.key
-      (fun s => run.2.sel (.proposer s)) (goldilocksWith S (Model.pubOf run.1)).skel.grid
-      ⟨Pattern.single, index, 1⟩ ((Sys (goldilocksWith S) V).cDur (K S.toSetup A) run) ready
+      (fun s => run.2.sel (.proposer s)) (goldilocks S (Model.pubOf run.1)).skel.grid
+      ⟨Pattern.single, index, 1⟩ ((Sys (goldilocks S) V).cDur (K S A) run) ready
         run.2.horizon := by
     simpa only [System.prog, shapeProgress, shapeHolds, goldilocksContract, ite_eq_right hcap,
       Model.sysExternal, System.cDur, System.pt, Sys, Model.sysOf, Model.Run.point]
       using hprogress
-  have hlat : (4 * (index : Time) + 6) ≤ contract_latency S.toSetup A cap index := by
-    exact_mod_cast contract_latency_ge_sleepy S.toSetup A cap index hnf
+  have hlat : (4 * (index : Time) + 6) ≤ contract_latency S A cap index := by
+    exact_mod_cast contract_latency_ge_sleepy S A cap index hnf
   have hd : (1 : Time) ≤ run.1.ΔAC := run.1.ΔAC_pos
   have hi : (0 : Time) ≤ index := by positivity
   have hbudget : (4 * (index : Time) + 6) * (S.params (Model.pubOf run.1) hn).Δ ≤
-      ((K S.toSetup A).params.latency cap index : Time) * run.1.ΔAC := by
-    rw [show (K S.toSetup A).params.latency cap index = contract_latency S.toSetup A cap index from
-      congrFun (congrFun (contract_coefficients_latency S.toSetup A) cap) index]
+      ((K S A).params.latency cap index : Time) * run.1.ΔAC := by
+    rw [show (K S A).params.latency cap index = contract_latency S A cap index from
+      congrFun (congrFun (contract_coefficients_latency S A) cap) index]
     change (4 * (index : Time) + 6) * run.1.ΔAC ≤ _
     exact mul_le_mul_of_nonneg_right hlat (zero_le_one.trans hd)
   have hwin : query + (index : Time) * (4 * (S.params (Model.pubOf run.1) hn).Δ) ≤
@@ -72,17 +72,17 @@ theorem nonfinal_query_slot (S : BoundSetup) (A : ContractAssumptions S.toSetup)
     linarith
   obtain ⟨s, hlo, hhi, hr⟩ := hrec query (by simpa using hquery)
     (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks,
-      goldilocksWith, skeleton] using hwin)
-    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, goldilocksWith, skeleton,
+      goldilocks, skeleton] using hwin)
+    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, goldilocks, skeleton,
       Model.Run.point] using hwin)
-  have htime : (goldilocksWith S (Model.pubOf run.1)).skel.grid.slotTime s =
+  have htime : (goldilocks S (Model.pubOf run.1)).skel.grid.slotTime s =
       (S.params (Model.pubOf run.1) hn).ts s := by
     change (s : Time) * (4 * run.1.ΔAC) = 4 * run.1.ΔAC * s
     ring
   rw [htime] at hlo hhi
   have hmargin : (S.params (Model.pubOf run.1) hn).ts s +
       6 * (S.params (Model.pubOf run.1) hn).Δ ≤
-      query + ((K S.toSetup A).params.latency cap index : Time) * run.1.ΔAC := by
+      query + ((K S A).params.latency cap index : Time) * run.1.ΔAC := by
     change (S.params (Model.pubOf run.1) hn).ts s ≤
       query + (index : Time) * (4 * (S.params (Model.pubOf run.1) hn).Δ) at hhi
     linarith

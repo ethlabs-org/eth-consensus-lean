@@ -81,8 +81,8 @@ theorem pool_mem_of_run {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
     · rw [trA.state_succ_of_not fun ℓ h => hc ⟨ℓ, h⟩]
       exact ih
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
   {K : SA.CommitteeDict (Fintype.card V)}
 
 /-- **The committee of an observed vote object**: its signer is selected for the vote role of

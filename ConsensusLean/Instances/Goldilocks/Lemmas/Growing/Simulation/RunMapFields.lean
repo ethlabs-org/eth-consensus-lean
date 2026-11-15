@@ -60,17 +60,17 @@ theorem outOf_eq_blocksTo (st : NodeState (goldilocksNode sp ro)) (t : Time) (g 
 end Chain
 
 /-- The transactions of a block: those decoded from its header's input. -/
-def payloadOf (S : BoundSetup) {pub : Model.Public} {hn : 1 ≤ pub.n}
+def payloadOf (S : Setup) {pub : Model.Public} {hn : 1 ≤ pub.n}
     (B : Blk (S.params pub hn)) : Set Nat :=
   {tx | tx ∈ decodeTxs (headerOf _ B).input}
 
 /-- A block's payload is the transactions decoded from its header's input. -/
-theorem payloadOf_eq (S : BoundSetup) {pub : Model.Public} {hn : 1 ≤ pub.n}
+theorem payloadOf_eq (S : Setup) {pub : Model.Public} {hn : 1 ≤ pub.n}
     (B : Blk (S.params pub hn)) :
     payloadOf S B = {tx | tx ∈ decodeTxs (headerOf _ B).input} := by rfl
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 open Classical in
 /-- The engine event whose trace cuts contain cut `k` (`0` if there is none). -/

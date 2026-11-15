@@ -31,19 +31,25 @@ variable {S : Setup}
 
 variable (S) in
 /-- Genesis or the twin's block. -/
-def Small (B : Blk (S.params (pubOf env) one_le_card)) : Prop :=
-  B.root = (S.params (pubOf env) one_le_card).genesisRoot ∨
-    blockObj (S.params (pubOf env) one_le_card) B = twin S
+def Small
+    (B : Blk (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf env) one_le_card)) : Prop :=
+  B.root = (({ S with vote := AsChainShape.stock } : Setup).params
+    (pubOf env) one_le_card).genesisRoot ∨
+    blockObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+      B = twin S
 
 theorem honest_coherent' : Coherent ((tr S).HonestBlocks (H S)) :=
   Compose.honest_coherent rhoc_run rhoc_noColl
 
 /-- The ancestors of genesis or of the twin's block among the honest blocks are genesis or the
 twin's block. -/
-theorem small_anc {B C : Blk (S.params (pubOf env) one_le_card)}
+theorem small_anc
+    {B C : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)}
     (h : Anc ((tr S).HonestBlocks (H S)) B C) (hs : Small S C) : Small S B := by
   have hgen : ∀ {D}, D ∈ (tr S).HonestBlocks (H S) →
-      D.root = (S.params (pubOf env) one_le_card).genesisRoot → D.parent = none := by
+      D.root = (({ S with vote := AsChainShape.stock } : Setup).params
+        (pubOf env) one_le_card).genesisRoot → D.parent = none := by
     intro D hD hr
     rw [Compose.honest_eq_genesis rhoc_run honest_coherent' hD hr]
     rfl
@@ -53,7 +59,8 @@ theorem small_anc {B C : Blk (S.params (pubOf env) one_le_card)}
   · exact absurd hDC.2.2 (by rw [hgen hDC.2.1 hs]; simp)
   have hp := congrArg Header.parent (headerOf_of_twin hs)
   simp only [headerOf, hdr, hDC.2.2, parentRef] at hp
-  have hDg : D.root = (S.params (pubOf env) one_le_card).genesisRoot := by
+  have hDg : D.root = (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf env) one_le_card).genesisRoot := by
     by_contra hne
     simp [hne] at hp
   rcases Relation.ReflTransGen.cases_tail hBD with rfl | ⟨E, -, hED⟩
@@ -77,14 +84,18 @@ theorem H_ncard_le : (H S).ncard ≤ 3 := by
     (by rw [Set.ncard_coe_finset]; decide)
 
 /-- **No origin of a label `≥ 2` within `41`.** -/
-theorem origin_label {C : Blk (S.params (pubOf env) one_le_card)} {s : Nat}
+theorem origin_label
+    {C : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)}
+    {s : Nat}
     (hC : Compose.OriginWithin (tr S) (H S) C s 41) : s ≤ 1 := by
   by_contra hs
   push Not at hs
   have hrun' := Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl
   obtain ⟨x, hx, i, CV, hi, ⟨ℓ, hu, -⟩ | hO⟩ := Compose.originWithin_iff.mp hC
-  · have ht : (tr S).time i = (S.params (pubOf env) one_le_card).ts s +
-        6 * (S.params (pubOf env) one_le_card).Δ := hu.2.2.1
+  · have ht : (tr S).time i = (({ S with vote := AsChainShape.stock } : Setup).params
+        (pubOf env) one_le_card).ts s +
+        6 * (({ S with vote := AsChainShape.stock } : Setup).params
+          (pubOf env) one_le_card).Δ := hu.2.2.1
     rw [ht] at hi
     change 4 * 3 * (s : Int) + 6 * 3 ≤ 41 at hi
     omega
@@ -103,7 +114,9 @@ theorem origin_label {C : Blk (S.params (pubOf env) one_le_card)} {s : Nat}
     omega
 
 /-- **Every origin within `41` is genesis or the twin's block.** -/
-theorem origin_small {C : Blk (S.params (pubOf env) one_le_card)} {s : Nat}
+theorem origin_small
+    {C : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)}
+    {s : Nat}
     (hC : Compose.OriginWithin (tr S) (H S) C s 41) : Small S C := by
   have hs := origin_label hC
   obtain ⟨x, hx, j, e, hv, -, hes, D, hD, hDr, hCD⟩ :=
@@ -119,9 +132,11 @@ theorem origin_small {C : Blk (S.params (pubOf env) one_le_card)} {s : Nat}
 theorem read_hdr {h : Header Info}
     (hh : h ∈ (chainTrace (rhoc S)).read .confirmed 2 ((chainTrace (rhoc S)).endCut 41)) :
     h = hdr := by
-  have hready : (rhoc S).point.Ready (Regimes.catchUp (S.params (pubOf env) one_le_card)) 2 41 := by
+  have hready : (rhoc S).point.Ready (Regimes.catchUp
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)) 2 41 := by
     have : (2 : Fin 5) ∈ (rhoc S).point.readyAt
-        (Regimes.catchUp (S.params (pubOf env) one_le_card)) 41 := by
+        (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params
+          (pubOf env) one_le_card)) 41 := by
       rw [rhoc_readyAt]; decide
     classical
     exact (Finset.mem_filter.mp this).2
@@ -131,13 +146,13 @@ theorem read_hdr {h : Header Info}
   have hi : (chainTrace (rhoc S)).endCut 41 ≤ (rhoc S).events.length := Nat.findGreatest_le _
   have hhon : (2 : Fin 5) ∉ (rhoc S).faultyAt 0 := by rw [rhoc_faultyAt]; decide
   have hy : (rhoc S).ownKey 2 ∈ H S :=
-    (mem_honestKeys_iff ⟨S, stock⟩ (rhoc S) _).mpr
-        (by rw [ownKey_key' ⟨S, stock⟩ (rhoc S)]; exact hhon)
-  rw [read_eq_out ⟨S, stock⟩ (rhoc S) one_le_card, outOf,
-    simTrace_state ⟨S, stock⟩ (rhoc S) one_le_card rhoc_const rhoc_valid 2 hhon _ hi,
+    (mem_honestKeys_iff { S with vote := stock } (rhoc S) _).mpr
+        (by rw [ownKey_key' { S with vote := stock } (rhoc S)]; exact hhon)
+  rw [read_eq_out { S with vote := stock } (rhoc S) one_le_card, outOf,
+    simTrace_state { S with vote := stock } (rhoc S) one_le_card rhoc_const rhoc_valid 2 hhon _ hi,
         hcut.2.2] at hh
   set y := (rhoc S).ownKey 2
-  set j := cutMap ⟨S, stock⟩ (rhoc S) one_le_card ((chainTrace (rhoc S)).endCut 41)
+  set j := cutMap { S with vote := stock } (rhoc S) one_le_card ((chainTrace (rhoc S)).endCut 41)
   set C := Regimes.readAfter (tr S) y j 41 with hCdef
   change h ∈ chainTo ((tr S).state y j).fg.blocks (C.slot + 1) C at hh
   have hprev := hcut.1.1

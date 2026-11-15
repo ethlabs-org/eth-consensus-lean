@@ -14,7 +14,7 @@ open Blocks Shape Node
 section Trace
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 private theorem tick_forward_queue (hv : rho.ExecutionValid) {i : Nat} {v : V}
     {u t : Time} {o : Wire (Fintype.card V) S.vote} {p : Option (Wire (Fintype.card V) S.vote)}
@@ -29,26 +29,26 @@ private theorem tick_forward_queue (hv : rho.ExecutionValid) {i : Nat} {v : V}
   have hu := (hv.in_horizon _ (List.mem_of_getElem? he)).1
   have hw := hv.tick_awake v u (List.mem_of_getElem? he)
   have hsel := poll_selected S rho hv v
-  have noPoll (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+  have noPoll (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
       (hempty : (shapeOf S hn nd).forwards = [])
       (h : o ∈ (rho.dutyStep v nd (.poll u.toNat)).2) : False := by
     have hq := poll_release_forward_queue S rho hn v nd u.toNat h hd
     rw [hempty] at hq
     exact List.not_mem_nil hq
-  have noGossip (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
-      (h : o ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E)
+  have noGossip (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+      (h : o ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
         rho.hash (rho.ownKey v) nd
-        (Model.gossipCandidates (Model.protoOf (compiled (goldilocksWith S)) E) nd.st u)).2) : False
+        (Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) nd.st u)).2) : False
             :=
     gossip_not_forward S rho hn nd u (Model.releaseAll_subset _ _ _ _ o h) hd
   have hclock : (shapeOf S hn
-      (⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st u
+      (⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st u
         (Model.mempool rho.inbox v u), (rho.stateBefore i v).seen⟩ :
-        Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))).forwards = [] := by
+        Model.Node (Model.protoOf (compiled (goldilocks S)) E))).forwards = [] := by
     have h := forwards_empty S rho hn hv v i
     rw [stateAt_eq] at h
     exact h
-  have hpoll (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) :
+  have hpoll (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) :
       (shapeOf S hn (rho.dutyStep v nd (.poll u.toNat)).1).forwards = [] := by
     rw [dutyStep_poll S rho hn v nd u.toNat hsel, poll_forwards]
   simp only [Model.Run.releasesAt, he] at ho

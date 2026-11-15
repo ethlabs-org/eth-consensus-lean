@@ -84,15 +84,9 @@ open Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload)
 
-/-- The SA parameters of a bound setup at `pub`: the setup's parameters at its own vote binding
-(the parameters of `goldilocksWith S`). -/
-abbrev _root_.Consensus.Goldilocks.AsChainShape.BoundSetup.params (S : BoundSetup)
-    (pub : Model.Public) (hn : 1 ≤ pub.n) : SAParams :=
-  S.toSetup.params pub hn (binding := S.vote)
-
 /-- A bound setup's committee is nonempty at every population with a validator: the population
 binding's committee is the population, a committee binding's by `VoteBinding.committeeSize_pos`. -/
-theorem _root_.Consensus.Goldilocks.AsChainShape.BoundSetup.committeeSize_pos (S : BoundSetup)
+theorem _root_.Consensus.Goldilocks.AsChainShape.Setup.committeeSize_pos (S : Setup)
     (pub : Model.Public) (hn : 1 ≤ pub.n) : 0 < (S.params pub hn).committeeSize := by
   change 0 < S.vote.committeeSize pub
   unfold VoteBinding.committeeSize
@@ -125,8 +119,8 @@ theorem dgOf_eq {n : Nat} (hash : Header Info → Nat) (g : Nat) (par : Option N
       | some r => taggedRoot g (hash ⟨parentRef g (some r), slot, x, encodeInfo atts p⟩) := by
   rfl
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The honest keys of the engine run. -/
 def honestKeys : Set (Fin (Fintype.card V)) := {k | rho.key k ∉ rho.faultyAt 0}
@@ -353,7 +347,7 @@ theorem eventCuts_tick_other (i : Nat) (v : V) (t : Time)
 
 /-- The cuts of an engine delivery. -/
 theorem eventCuts_deliver (i : Nat) (v : V)
-    (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object)
+    (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
     (t : Time) (he : rho.events[i]? = some (.deliver v o t)) :
     eventCuts S rho hn i =
       deliverRecs (runProposer S rho hn) (digestOf S rho)

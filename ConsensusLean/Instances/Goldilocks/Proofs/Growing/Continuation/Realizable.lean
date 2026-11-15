@@ -287,13 +287,14 @@ compiled family at the headline contract, from `handover_realizable` (every Gold
 requirement is a recurrence with one proposer per slot, and `β = ⅓`). -/
 theorem continues_realizable (S : Setup) (A : ContractAssumptions S)
     (V : Type) [Fintype V] [DecidableEq V] :
-    let Sy := Model.sysOf schema (compiled (goldilocks S)) V
+    let Sy := Model.sysOf schema (compiled (goldilocks { S with vote := AsChainShape.stock })) V
     let K := goldilocksContract A (contract_coefficients S A)
     5 ≤ Fintype.card V → ∀ cap i (ΔAC ΔFG g : Time), (cap = .available ∨ cap = .stable) →
       1 < ΔAC → 1 < ΔFG → ΔFG ≤ (K.params.fgDelay : Time) * ΔAC → 0 ≤ g →
       ∃ r T κ, Sy.Valid r ∧ ¬ Sy.Excuse r ∧ (Sy.pt r).env.ΔAC = ΔAC ∧
         (Sy.pt r).env.ΔFG = ΔFG ∧ Sy.Handover K g T r ∧ Sy.heal K cap i g r ≤ T ∧
-        Sy.prog (shapeProgress (goldilocks S) V) K cap i (Sy.ready K g r) (Sy.pt r).horizon r ∧
+        Sy.prog (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) V)
+          K cap i (Sy.ready K g r) (Sy.pt r).horizon r ∧
         K.params.β * Fintype.card V ≤ ((Sy.pt r).faultCount κ : ℚ) ∧
         (Sy.pt r).TxLiveActive (Sy.cDur K r) κ (Sy.lat K cap i r) ∧
         SafeActive (Sy.cDur K r) κ (Sy.pt r) := by
@@ -304,7 +305,8 @@ theorem continues_realizable (S : Setup) (A : ContractAssumptions S)
       β_range := by norm_num [K, Params.standard]
       α_range := by norm_num [K, Params.standard]
       budget_pos := by have := S.two_le_k; dsimp [K, Params.standard]; omega }
-  exact handover_realizable (goldilocks S) K ha (by norm_num [K, Params.standard])
+  exact handover_realizable (goldilocks { S with vote := AsChainShape.stock }) K ha
+    (by norm_num [K, Params.standard])
     (by norm_num [K, Params.standard])
     (fun _ _ _ _ => rfl) (fun _ _ => ⟨_, rfl⟩) hn cap i ΔAC ΔFG g hΔ hΔF hr
 

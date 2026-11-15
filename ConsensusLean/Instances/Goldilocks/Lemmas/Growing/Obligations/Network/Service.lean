@@ -29,13 +29,13 @@ open AsChainShape Simulation
 open Shape Blocks
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-  (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
+  (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
 
 /-- An actual publication by an origin honest at its event is held strictly before a qualifying
 node deadline of a recipient honest at its call. -/
 theorem publication_held_before_deadline_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
-    (r : Publication (Model.protoOf (compiled (goldilocksWith S)) E))
+    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
     (hr : (publisherExecution S rho).actual r)
     (hx : rho.key r.origin ∉ rho.faultyAt ((publisherExecution S rho).eventTime r.event))
     (hrow : ¬ rho.log.fgAtt r.object)
@@ -102,7 +102,7 @@ observation deadline. The origin is honest at its publication, the recipient at 
 theorem publication_acceptedBy_syncUntil_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
-    (r : Publication (Model.protoOf (compiled (goldilocksWith S)) E))
+    (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
     (hr : (publisherExecution S rho).actual r)
     {τ : Time} (hτ : 0 ≤ τ) (ht : (publisherExecution S rho).eventTime r.event = τ)
     (hx : rho.key r.origin ∉ rho.faultyAt τ)
@@ -235,8 +235,8 @@ open AsChainShape Obligations.Growing
 open Shape Blocks
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- **The finite sleepy service under growing faults** from raw synchrony through its deadline
 bound `b ≤ horizon`: senders honest at their sends, recipients honest at their reading calls

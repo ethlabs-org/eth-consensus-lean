@@ -492,27 +492,28 @@ detail in `TRUST.md`.
 
 ### Committee modelling
 
-- **One family for every vote binding.** `goldilocksWith S` is the Goldilocks family at a `BoundSetup`, a
-  `Setup` with a `VoteBinding`: the signing kinds, their public selection at each population, the participation
+- **One family for every vote binding.** `goldilocks S` is the Goldilocks family at a
+  `Setup` with a mandatory `VoteBinding`: the signing kinds, their public selection at each population, the participation
   kind, and a proof that every selection is nonempty at a nonempty population. The population binding `stock` has
   no kind; `committee sel hsel` has the one historical vote kind `VoteKind.vote`, selected by `sel`. Codec, state
   machine and step order are the same for every binding.
 - **The population binding is the specification.** The specification's committee of every slot is all of `V`, and
-  `goldilocks S` is `goldilocksWith ⟨S, stock⟩`. At `stock` every committee definition reduces to the
+  `goldilocks {S with vote := stock}` selects it explicitly. At `stock` every committee definition reduces to the
   specification's: votes are signed in the poll role, `mayVote` holds at every slot, `committeeSize = n`, and the
   committee clause of `System.Outage` at the Goldilocks contract (committee look-ahead `5 ≤ 5`, the population
   one) follows from the population clause (`goldilocksContract_outage_stock_iff`).
   The test `ConsensusLeanTest/Goldilocks/VoteBinding.lean` checks that the population binding equals the
   population-only shape (`stock_legacy`), and exercises a proper-subset binding of one key per slot. Which
   certified statement holds at which binding is in §"Trusted surface and Challenge scope".
-  The stock-only proofs are stated at `goldilocksWith ⟨S, stock⟩`, the form of the binding-generic simulation
+  The stock-only proofs are stated at `goldilocks {S with vote := stock}`, the form of the binding-generic simulation
   lemmas they rewrite with: the static queries (`OutageQuery`, `ConfirmedQuery`, `HealthyPreparationQuery`), the
   growing queries (`SleepySafetyQueryAt`, `FinalQueryAt`, `HealthyPreparationQueryAt`) and `FinalWindowDataAt`,
   the lemmas over them and the fields of the growing endpoint other than `sleepySafe`, `sleepyLive` and
   `persists`. Those three fields and the growing confirmed query `ConfirmedQueryAt` take every
-  `S : BoundSetup`; their stock users pass `⟨S, stock⟩`. The trusted statements and
-  `meetsObligations_growing` keep `goldilocks S`, which is defined as `goldilocksWith ⟨S, stock⟩` and unfolds to it
-  definitionally.
+  `S : Setup`; their stock users pass `{S with vote := stock}`. The stock trusted statements and
+  `meetsObligations_growing` explicitly use `goldilocks {S with vote := stock}`. Source contract assumptions
+  and coefficients retain their original setup index; stock query consumers reconstruct the same assumption
+  fields locally when the query requires the updated setup index.
 - **Votes leave through the poll outbox and are signed in their historical role (`candidateRole`).** No binding
   schedules a committee duty (`kinds := []`): the AC emits a vote at a delivery or a tick, the shape queues it, and
   the next selected poll releases it, possibly in a later slot. The generic `candidateRole d m` names the role
@@ -647,7 +648,7 @@ detail in `TRUST.md`.
   place, so a reader need not compose the two statements.
 - **The outage row is certified at every vote binding; the other rows stay at the population binding.**
   `PersistsWith` states the `persists` claim of `ShapeClaimsAt`, verbatim, for the binding-generic family
-  `goldilocksWith S` at every `S : BoundSetup` (population-wide votes or a per-slot committee), at the same
+  `goldilocks S` at every `S : Setup` (population-wide votes or a per-slot committee), at the same
   contract `goldilocksContract A (contract_coefficients S A)`. `MeetsObligations` and `GoldilocksCorrect`
   quantify over `Setup` and read the population binding. Reason: the look-back committee clause of the
   outage regime reads the binding's selection and is its only binding-dependent premise, and the outage proof is
@@ -660,11 +661,11 @@ detail in `TRUST.md`.
   `AsChainShape.Regression.committeeOne`, is `Obligations.Test.Contract.goldilocksWith_committeeOne`; its
   outage regime has a clean witness whose committee is never the population
   (`Obligations.Test.Contract.committeeOne_outage_witness`).
-  It adds no constant to the trusted reach (`goldilocks S` is `goldilocksWith ⟨S, stock⟩`, so `MeetsObligations`
-  already reaches every constant it mentions), but it makes the committee branches of `goldilocksWith` (vote
+  It adds no constant to the trusted reach (`MeetsObligations` already reaches every constant it mentions),
+  but it makes the committee branches of `goldilocks` (vote
   roles, own-role permission, threshold denominator) part of what a reviewer reads.
 - **The sleepy pair is stated at every vote binding.** `SleepyWith` repeats the `sleepySafe` and
-  `sleepyLive` rows of `ShapeClaimsAt` for `goldilocksWith S` at every `BoundSetup`, at the same
+  `sleepyLive` rows of `ShapeClaimsAt` for `goldilocks S` at every `Setup`, at the same
   obligations contract. The committee-native `System.Sleepy` supplies population and committee
   participation; liveness retains whole-run proposer progress. No additional premise is introduced.
   The population fidelity witness is `Obligations.Test.Contract.claims_with_sleepyWith`. At the committee binding

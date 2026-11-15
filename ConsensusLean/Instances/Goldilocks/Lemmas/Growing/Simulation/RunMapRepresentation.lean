@@ -24,8 +24,8 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Shape Blocks
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] (S : BoundSetup) {E : Env V}
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] (S : Setup) {E : Env V}
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
   (hv : rho.ExecutionValid)
 
 /-- The canonical chain map satisfies the generic held-tip representation laws. -/
@@ -104,7 +104,7 @@ theorem goldilocksRunMap_honestReadTransport :
 /-- The public-indexed binding supplies both chain representation contracts. -/
 theorem goldilocksEngineBinding_readTransport (pub : Model.Public) (hn : 1 ≤ pub.n)
     (E : Env V) (hE : pubOf E = pub)
-    (rho : Model.Run (compiled (goldilocksWith S)) E) (hv : rho.ExecutionValid) :
+    (rho : Model.Run (compiled (goldilocks S)) E) (hv : rho.ExecutionValid) :
     let M := (goldilocksEngineBinding S pub hn).map E hE rho hv
     Generic.ReadRepresentation M ∧ Generic.HonestReadTransport M := by
   subst pub

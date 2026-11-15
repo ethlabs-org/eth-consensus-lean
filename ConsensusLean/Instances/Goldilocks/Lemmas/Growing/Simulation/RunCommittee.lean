@@ -18,8 +18,8 @@ open AsChainShape Shape Blocks
 open Obligations.Growing (voteK mem_voteK_iff_selected)
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] (S : BoundSetup) {E : Env V}
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] (S : Setup) {E : Env V}
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- **The committee of a run at time `t`**: the committee of the slot of `t`. -/
 noncomputable def runCommittee : Time → Finset (Fin (Fintype.card V)) := by
@@ -29,7 +29,7 @@ noncomputable def runCommittee : Time → Finset (Fin (Fintype.card V)) := by
 /-- **The committee at `t ≥ 0` is the selection the participation premises read at `t`.** -/
 theorem runCommittee_eq (hv : rho.ExecutionValid) :
     ∀ y t, 0 ≤ t → (y ∈ runCommittee S rho hn t ↔ rho.key y ∈
-      (Model.sysExternal _ (compiled (goldilocksWith S)) V).selected
+      (Model.sysExternal _ (compiled (goldilocks S)) V).selected
         E (rho.key, rho.sel) t) := by
   intro y t ht
   classical

@@ -449,12 +449,12 @@ theorem proposal_blockObj {sp : SA.SAParams}
 
 /-- The engine's proposal candidate supplies the canonical-child premise used by own
 recording. It is identified from the actual duty, not inferred from an arbitrary header. -/
-theorem signedCandidate_propose_canonical {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
-    (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (s : Slot) (hs : 0 < s)
-    (o : (protoOf (compiled (goldilocksWith S)) E).Object)
+theorem signedCandidate_propose_canonical {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
+    (o : (protoOf (compiled (goldilocks S)) E).Object)
     (ho : o ∈ rho.signedCandidate v (.propose s hs)
-      ((protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).2) :
+      ((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).2) :
     ∀ k s' hd cs, o = .mk (.signed k (.proposer s')) (.item hd) cs →
       ∀ atts p d, decodeInfo (Fintype.card V) hd.info = some (atts, p) →
         blockObj (S.params (pubOf E) hn)
@@ -515,10 +515,10 @@ theorem pendingReady_own_release {sp : SA.SAParams}
 
 /-- Release induction uses actual successful prefixes. Rejected candidates leave both
 invariants unchanged; each successful canonical candidate extends seen before recording. -/
-theorem releaseAll_pendingReady {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
+theorem releaseAll_pendingReady {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (hn : 1 ≤ Fintype.card V) (hash : Header Info → Nat) (origin : Fin (Fintype.card V))
-    (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E))
-    (cs : List (protoOf (compiled (goldilocksWith S)) E).Object)
+    (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
+    (cs : List (protoOf (compiled (goldilocks S)) E).Object)
     (ha : WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ nd.seen.flatMap Obj.parts) (shapeOf S hn nd))
     (hr : PendingReady nd.seen (pendingWrappers (shapeOf S hn nd)))
@@ -527,7 +527,7 @@ theorem releaseAll_pendingReady {V : Type} [Fintype V] {E : Env V} (S : BoundSet
       ∀ atts p d, decodeInfo (Fintype.card V) hd.info = some (atts, p) →
         blockObj (S.params (pubOf E) hn)
           (blockOf (S.params (pubOf E) hn) d hd k atts p) = o) :
-    let result := (Model.releaseAll (protoOf (compiled (goldilocksWith S)) E) hash origin nd cs).1
+    let result := (Model.releaseAll (protoOf (compiled (goldilocks S)) E) hash origin nd cs).1
     WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ result.seen.flatMap Obj.parts) (shapeOf S hn result) ∧
       PendingReady result.seen (pendingWrappers (shapeOf S hn result)) := by
@@ -538,16 +538,16 @@ theorem releaseAll_pendingReady {V : Type} [Fintype V] {E : Env V} (S : BoundSet
     split
     · have hh := pendingReady_own_release (sp := S.params (pubOf E) hn)
         (nd.seen : List (Wire (Fintype.card V) S.vote)) (shapeOf S hn nd) o
-        (Model.digests (P := protoOf (compiled (goldilocksWith S)) E) hash o)
+        (Model.digests (P := protoOf (compiled (goldilocks S)) E) hash o)
         ha hr (hc o List.mem_cons_self)
       exact ih _ hh.1 hh.2 (fun c h => hc c (List.mem_cons_of_mem o h))
     · exact ih nd ha hr (fun c h => hc c (List.mem_cons_of_mem o h))
 
 /-- Actual proposal duties preserve both invariants from their input state,
 without an extra canonical-child assumption on their caller. -/
-theorem dutyStep_propose_pendingReady {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
-    (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (s : Slot) (hs : 0 < s)
+theorem dutyStep_propose_pendingReady {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
     (ha : WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ nd.seen.flatMap Obj.parts) (shapeOf S hn nd))
     (hr : PendingReady nd.seen (pendingWrappers (shapeOf S hn nd))) :
@@ -560,13 +560,13 @@ theorem dutyStep_propose_pendingReady {V : Type} [Fintype V] {E : Env V} (S : Bo
   swap
   · exact ⟨ha, hr⟩
   apply releaseAll_pendingReady S hn rho.hash (rho.ownKey v)
-  · change WrappersAccounted _ (((protoOf (compiled (goldilocksWith S)) E).act nd.st
+  · change WrappersAccounted _ (((protoOf (compiled (goldilocks S)) E).act nd.st
       (.propose s hs)).1.1 hn)
     rw [shapeOf_act_propose S hn]
     unfold propose
     dsimp only
     split <;> exact ha
-  · change PendingReady _ (pendingWrappers (((protoOf (compiled (goldilocksWith S)) E).act nd.st
+  · change PendingReady _ (pendingWrappers (((protoOf (compiled (goldilocks S)) E).act nd.st
       (.propose s hs)).1.1 hn))
     rw [shapeOf_act_propose S hn]
     unfold propose
@@ -804,9 +804,9 @@ private theorem wrappersCover_nodeTick {sp : SA.SAParams}
 
 /-- Every actual duty prefix preserves coverage, including an own block's recording. -/
 theorem runDuties_wrappersCover {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E))
-    (ds : List (protoOf (compiled (goldilocksWith S)) E).Duty)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
+    (ds : List (protoOf (compiled (goldilocks S)) E).Duty)
     (h : WrappersCover (shapeOf S hn nd)) :
     WrappersCover (shapeOf S hn (rho.runDuties v nd ds).1) := by
   exact runDuties_pres S rho hn WrappersCover wrappersCover_recordOwn wrappersCover_propose
@@ -817,7 +817,7 @@ boundary. Initially only genesis is held. Block acceptance updates both maps tog
 all other handlers preserve them, including restart. No execution-validity assumption is
 needed for this structural invariant. -/
 theorem stateAt_wrappersCover {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) : ∀ i, WrappersCover (stateAt S rho hn v i)
   | 0 => by
     rw [stateAt_zero]

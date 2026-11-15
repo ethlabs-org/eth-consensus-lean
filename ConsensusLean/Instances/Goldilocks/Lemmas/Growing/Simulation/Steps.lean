@@ -21,8 +21,8 @@ open Consensus.Model (pubOf)
 
 section Engine
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The release guarantee applies to the selected proposal at its scheduled slot start. -/
 theorem proposal_releasable_at (hv : rho.ExecutionValid)

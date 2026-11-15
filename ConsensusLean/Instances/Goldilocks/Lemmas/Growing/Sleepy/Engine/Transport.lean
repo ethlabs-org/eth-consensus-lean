@@ -97,8 +97,8 @@ private theorem sleepyBoundsFrom_of_faultBoundAt (hanti : Antitone H) {a b : Tim
 
 end Lift
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 set_option linter.unusedVariables false in
 /-- **Engine readiness under growing faults.** An engine node ready at `t ∈ [0, horizon]` is ready

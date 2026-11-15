@@ -43,7 +43,7 @@ is `honestKeysAt` (the keys uncompromised at each time).
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 open Blocks Shape
-variable {S : BoundSetup} {A : ContractAssumptions S.toSetup} {V : Type} [Fintype V] [DecidableEq V]
+variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
 
 /-- A call of the trace is at or before the engine horizon. -/
 theorem OutageQueryAt.call_le_horizon (Q : OutageQueryAt S A V) {y : Fin (Fintype.card V)}
@@ -102,11 +102,11 @@ theorem outage_pool_delivery_query_at (Q : OutageQueryAt S A V) :
 /-- The catch-up duration of an outage query covers the node catch-up `18Δ`. -/
 theorem outage_duration_supply_at (Q : OutageQueryAt S A V) :
     Regimes.catchUp Q.params ≤ Q.duration := by
-  have hc : (19 : Time) ≤ (contract_catchUp S.toSetup A : Nat) := by
-    exact_mod_cast contract_catchUp_ge_sleepy S.toSetup A
+  have hc : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
+    exact_mod_cast contract_catchUp_ge_sleepy S A
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   simp only [OutageQueryAt.duration, System.cDur, Params.standard, contract_coefficients_catchUp]
-  change 18 * Q.run.1.ΔAC ≤ (contract_catchUp S.toSetup A : Nat) * Q.run.1.ΔAC
+  change 18 * Q.run.1.ΔAC ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
   linarith [mul_le_mul_of_nonneg_right hc (zero_le_one.trans hd)]
 
 /-- (A1) The lag `4k + 6` is the node lag `(4k+6)Δ`. -/
@@ -130,7 +130,7 @@ abbrev OutageQueryAt.winEnd (Q : OutageQueryAt S A V) : Time :=
 
 /-- The look-back `η·Δ` of the outage premise. -/
 noncomputable abbrev OutageQueryAt.lookBack (Q : OutageQueryAt S A V) : Time :=
-  ((K S.toSetup A).params.η : Time) * Q.run.1.ΔAC
+  ((K S A).params.η : Time) * Q.run.1.ΔAC
 
 /-- The participation catch-up of the outage premise, `max cDur (η·Δ − 1)`. -/
 noncomputable abbrev OutageQueryAt.outCatch (Q : OutageQueryAt S A V) : Time :=
@@ -146,7 +146,7 @@ theorem look_back_le_winStart (Q : OutageQueryAt S A V) :
   have hhor : 0 ≤ Q.run.2.horizon := Q.valid.horizon_nonneg
   have hbcast : ((4 * S.k - 5 : Nat) : Int) = 4 * (S.k : Int) - 5 := by omega
   change Q.stop ≤ Q.start + ((4 * S.k - 5 : Nat) : Int) * Q.run.1.ΔAC at hbud
-  have hη : ((K S.toSetup A).params.η : Time) = 12 * (S.k : Int) + 7 := by
+  have hη : ((K S A).params.η : Time) = 12 * (S.k : Int) + 7 := by
     change ((12 * S.k + 7 : Nat) : Int) = _; push_cast; ring
   have hL : ((4 * S.k + 6 : Nat) : Int) = 4 * (S.k : Int) + 6 := by push_cast; ring
   rw [hbcast] at hbud
@@ -156,7 +156,7 @@ theorem look_back_le_winStart (Q : OutageQueryAt S A V) :
     rw [← hL]; exact min_le_left _ _
   refine le_min (max_le (le_max_left _ _) (le_trans ?_ (le_max_right _ _)))
     (max_le hhor (by linarith))
-  change Q.winEnd - ((K S.toSetup A).params.η : Time) * Q.run.1.ΔAC ≤
+  change Q.winEnd - ((K S A).params.η : Time) * Q.run.1.ΔAC ≤
     Q.start - ((4 * S.k + 6 : Nat) : Int) * Q.run.1.ΔAC
   rw [hη, hL]
   linarith
@@ -289,7 +289,7 @@ theorem OutageQueryAt.mem_opponentsAt {Q : OutageQueryAt S A V} {x : Fin (Fintyp
 
 /-- The sleepy look-ahead of the contract is `5Δ`. -/
 theorem OutageQueryAt.aheadDur_eq (Q : OutageQueryAt S A V) :
-    (Sys (goldilocksWith S) V).aheadDur (K S.toSetup A) Q.run = 5 * Q.params.Δ := by
+    (Sys (goldilocks S) V).aheadDur (K S A) Q.run = 5 * Q.params.Δ := by
   change ((5 : Nat) : Int) * Q.run.1.ΔAC = 5 * Q.run.1.ΔAC
   norm_num
 

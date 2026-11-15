@@ -19,7 +19,8 @@ variable (S : Setup) (A : ContractAssumptions S)
 
 /-- The nine chain-level claims on every run. -/
 theorem meetsObligations_claims_growing :
-    ∀ (V : Type) [Fintype V] [DecidableEq V], ShapeClaimsAt (goldilocks S) (K S A) V := by
+    ∀ (V : Type) [Fintype V] [DecidableEq V],
+      ShapeClaimsAt (goldilocks { S with vote := AsChainShape.stock }) (K S A) V := by
   intro V _ _
   exact {
     outputValid := meetsObligations_outputValid_growing S V
@@ -27,13 +28,17 @@ theorem meetsObligations_claims_growing :
     finalMonotone := meetsObligations_finalMonotone_growing S V
     finalAccountable := meetsObligations_finalAccountable_growing S A V
     healthyLive := meetsObligations_healthyLive_growing S A V
-    sleepySafe := meetsObligations_sleepySafe_growing ⟨S, stock⟩ A V
-    sleepyLive := meetsObligations_sleepyLive_growing ⟨S, stock⟩ A V
+    sleepySafe := meetsObligations_sleepySafe_growing { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V
+    sleepyLive := meetsObligations_sleepyLive_growing { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V
     healedSafe := meetsObligations_healedSafe_growing S A V
-    persists := meetsObligations_persists_growing ⟨S, stock⟩ A V }
+    persists := meetsObligations_persists_growing { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V }
 
 /-- **The growing-fault endpoint** at the coefficients `contract_coefficients S A`. -/
-theorem meetsObligations_growing : ShapeObligations (goldilocks S) (K S A) :=
+theorem meetsObligations_growing :
+    ShapeObligations (goldilocks { S with vote := AsChainShape.stock }) (K S A) :=
   { claims := meetsObligations_claims_growing S A
     admissible := meetsObligations_admissible S A
     serves := by simp [OutputSchema.Serves, schema]

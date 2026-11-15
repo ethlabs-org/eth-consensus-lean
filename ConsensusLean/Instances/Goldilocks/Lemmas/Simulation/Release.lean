@@ -199,15 +199,15 @@ end TickCuts
 
 section ProposeDuty
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 omit [DecidableEq V] in
 /-- **The proposal duty is the node's proposal step, release by release.** At the start of slot
 `s` with the proposal carrying only seen objects, the engine's `propose` duty releases the canonical
 objects of the blocks of the node's proposal step and queues that step's emissions. -/
 theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled
-    (goldilocksWith S)) E))
+    (goldilocks S)) E))
     (s : Slot) (hs : 0 < s)
     (hsel : rho.sel (.proposer s) = {runProposer S rho hn s})
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
@@ -227,7 +227,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled
   have hact2 := act_propose_snd S hn nd s hs
   have hact1 := shapeOf_act_propose S hn nd.st s hs
   unfold Model.Run.dutyStep
-  generalize (Model.protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs) =
+  generalize (Model.protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs) =
       a at hact1 hact2
   have hP : Proposes (P := (S.params (pubOf E) hn).toParams) (runProposer S rho hn) (rho.ownKey v)
         (shapeOf S hn nd).now ↔
@@ -238,7 +238,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled
       rw [hsel]
       exact Finset.mem_singleton.2 (hp.trans hself).symm
     have hrel := hrel hmem
-    simp only [show (Model.protoOf (compiled (goldilocksWith S)) E).role (.propose s hs) =
+    simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
       .proposer s from rfl, hmem, ↓reduceIte]
     simp only [propose] at hact1 hact2 hrel
     simp only [Node.tickStep, hP.2 hp, ite_true]
@@ -257,7 +257,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled
         List.append_nil]
     · simp only [hr] at hact1 hact2 hrel
       rw [hact2]
-      have hrole : (Model.protoOf (compiled (goldilocksWith S)) E).role (.propose s hs) =
+      have hrole : (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
           .proposer s := rfl
       simp only [Option.map, Option.toList_some]
       erw [signedCandidate_of_default_mem S rho v (.propose s hs) _ (fun mc hmc => by
@@ -275,7 +275,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled
               (shapeOf S hn nd).now).1.fg.proposalAttestations d.head) p⟩)
           (payloadObjs ((acProposal (shapeOf S hn nd).node
               (shapeOf S hn nd).now).1.fg.proposalAttestations d.head) p)) &&
-          Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) nd.seen
+          Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
             (Model.Obj.mk (.signed (rho.ownKey v) (.proposer s))
               (.item ⟨parentRef (S.params (pubOf E) hn).genesisRoot (some d.head.root), s,
                 encodeTxs nd.st.2, encodeInfo ((acProposal (shapeOf S hn nd).node
@@ -338,7 +338,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled
       rw [hsel, Finset.mem_singleton]
       intro heq
       exact hp (heq.symm.trans hself.symm)
-    simp only [show (Model.protoOf (compiled (goldilocksWith S)) E).role (.propose s hs) =
+    simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
       .proposer s from rfl, hmem, ↓reduceIte]
     simp only [blockObjs_nil, emitted, List.flatMap_nil, List.append_nil, and_true]
     rfl

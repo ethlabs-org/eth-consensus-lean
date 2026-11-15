@@ -16,20 +16,21 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type)
   [Fintype V] [DecidableEq V]
 
 structure OutageQuery where
-  run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run
+  run : (Sys (goldilocks { S with vote := stock }) V).Run
   constant : run.2.point.ConstantFaults
   hn : 1 ≤ Fintype.card V
   T : Time
   start : Time
   stop : Time
-  valid : (Sys (goldilocksWith ⟨S, stock⟩) V).Valid run
+  valid : (Sys (goldilocks { S with vote := stock }) V).Valid run
   noCollision : ¬ run.2.HashCollision
-  outage : (Sys (goldilocksWith ⟨S, stock⟩) V).Outage
-    (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) T start stop run
+  outage : (Sys (goldilocks { S with vote := stock }) V).Outage
+    (shapeProgress (goldilocks { S with vote := stock }) V).toExternal (K S A) T start stop run
 
 namespace OutageQuery
 variable {S A V}
-abbrev params (Q : OutageQuery S A V) := S.params (Model.pubOf Q.run.1) Q.hn
+abbrev params (Q : OutageQuery S A V) :=
+  ({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf Q.run.1) Q.hn
 end OutageQuery
 
 end Consensus.Goldilocks.Obligations

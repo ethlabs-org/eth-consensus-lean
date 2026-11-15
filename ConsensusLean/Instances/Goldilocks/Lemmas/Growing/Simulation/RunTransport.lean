@@ -23,8 +23,8 @@ open AsChainShape Shape Blocks
 open Obligations.Growing (voteK voteK_bindsSel)
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] (S : BoundSetup) {E : Env V}
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] (S : Setup) {E : Env V}
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- **The engine's starts are the run's selected-committee start.** -/
 theorem simIni_eq_runStart (hv : rho.ExecutionValid) :

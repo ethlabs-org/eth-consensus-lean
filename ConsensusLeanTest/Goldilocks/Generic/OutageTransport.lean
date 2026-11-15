@@ -9,7 +9,8 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 Kind (a), joint satisfiability, for the environmental part of the local premises of L9
 (`ACCorrectLocal.outageProtected`, `OutageReadPoint.protection`): an endpoint and participation
-witness. `outage_witness` at `goldilocksContract` gives a valid run of `goldilocks S` in `Outage`
+witness. `outage_witness` at `goldilocksContract` gives a valid run of
+`goldilocks { S with vote := AsChainShape.stock }` in `Outage`
 with a ready source at `T` and a ready reader at a destination time `t` in `[recoveryAt, horizon]`
 (`OutageActive`), on which the participation premises hold at the contract's look-back `η·ΔAC`
 (`OutageTransport.participation_of_outage`): population and look-back committee η-sleepy
@@ -26,8 +27,8 @@ the arming time `T`, a ready reader at a destination time `t` in `[recoveryAt, h
 participation premises of L9 at the contract's look-back, through
 `OutageTransport.participation_of_outage`. -/
 theorem outage_witness_l9_premises (S : Setup) (A : ContractAssumptions S) :
-    let Y := Sys (goldilocks S) (Fin 5)
-    let X := (shapeProgress (goldilocks S) (Fin 5)).toExternal
+    let Y := Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)
+    let X := (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).toExternal
     let K := goldilocksContract A (contract_coefficients S A)
     ∃ (r : Y.Run) (T b₀ b₁ t : Time) (u w : Fin 5),
       Y.Valid r ∧ Y.Outage X K T b₀ b₁ r ∧ Y.recoveryAt K b₁ r ≤ t ∧ t ≤ (Y.pt r).horizon ∧
@@ -59,7 +60,8 @@ theorem outage_witness_l9_premises (S : Setup) (A : ContractAssumptions S) :
       have : 3 ≤ 4 * S.k - 5 := by omega
       exact_mod_cast this
     simp only [b₁]; linarith
-  obtain ⟨rho, hp, hwit, ho, hact⟩ := outage_witness (F := goldilocks S) key hn (Δ := 2)
+  obtain ⟨rho, hp, hwit, ho, hact⟩ := outage_witness
+    (F := goldilocks { S with vote := AsChainShape.stock }) key hn (Δ := 2)
     (by decide) (ΔF := 2) (by decide) H ha
     (((Obligations.meetsObligations_optimalFaultTolerance S A).room_iff _).mpr (by decide))
     (by decide) (by decide) hT (by simp [b₀]; positivity)

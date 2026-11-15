@@ -22,13 +22,13 @@ open Consensus.Model (pubOf)
 
 variable {binding : VoteBinding}
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 omit [DecidableEq V] in
 /-- Running the duties `ds ++ ds'` runs `ds`, then `ds'` from the node `ds` reach. -/
 theorem runDuties_append (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (ds ds') :
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (ds ds') :
     rho.runDuties v nd (ds ++ ds') =
       let r := rho.runDuties v nd ds
       let r' := rho.runDuties v r.1 ds'
@@ -47,8 +47,8 @@ theorem runDuties_append (v : V)
 omit [DecidableEq V] in
 /-- An attestation that a duty releases is the ordinary attestation candidate of a selected
 poll. -/
-theorem dutyStep_att_poll {v : V} (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
-    (d : (Model.protoOf (compiled (goldilocksWith S)) E).Duty) {a : FG.Att (Fintype.card V)}
+theorem dutyStep_att_poll {v : V} (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) {a : FG.Att (Fintype.card V)}
     (ha : attObj a ∈ (rho.dutyStep v nd d).2) :
     ∃ t, d = .poll t ∧ rho.ownKey v ∈ rho.sel .poll ∧
       (poll (nd.st.1 hn) t).2 = some (.att (encodeAtt a), []) := by
@@ -65,7 +65,7 @@ theorem dutyStep_att_poll {v : V} (nd : Model.Node (Model.protoOf (compiled (gol
     cases d with
     | act s k => exact absurd hm List.not_mem_nil
     | propose s hs =>
-      have hr : (Model.protoOf (compiled (goldilocksWith S)) E).candidateRole (.propose s hs)
+      have hr : (Model.protoOf (compiled (goldilocks S)) E).candidateRole (.propose s hs)
           (.data (.att (encodeAtt a))) = .proposer s := by
         change (S.vote.candidateRole _ (.propose s hs) (.data (.att (encodeAtt a)))).getD
           (.proposer s) = .proposer s
@@ -76,14 +76,14 @@ theorem dutyStep_att_poll {v : V} (nd : Model.Node (Model.protoOf (compiled (gol
         exact h.trans hr
       cases hh
     | pollPropose t =>
-      change _ ∈ (Option.map _ ((goldilocksWith S (pubOf E)).pollPropose nd.st.1 t).2).toList at hm
-      simp only [goldilocksWith, dite_eq_left hn] at hm
+      change _ ∈ (Option.map _ ((goldilocks S (pubOf E)).pollPropose nd.st.1 t).2).toList at hm
+      simp only [goldilocks, dite_eq_left hn] at hm
       cases hm
     | poll t =>
       have hp : (poll (nd.st.1 hn) t).2 = some (.att (encodeAtt a), []) := by
-        change _ ∈ (((goldilocksWith S (pubOf E)).pollBatch nd.st.1 t).2.map
+        change _ ∈ (((goldilocks S (pubOf E)).pollBatch nd.st.1 t).2.map
           (fun (b, cs) => (Model.Msg.data b, cs))) at hm
-        simp only [goldilocksWith, dite_eq_left hn] at hm
+        simp only [goldilocks, dite_eq_left hn] at hm
         change _ ∈ ((pollBatch (nd.st.1 hn) t).2.map
           (fun (b, cs) => (Model.Msg.data b, cs))) at hm
         obtain ⟨⟨b, cs⟩, hb, heq⟩ := List.mem_map.mp hm
@@ -103,10 +103,10 @@ theorem dutyStep_att_poll {v : V} (nd : Model.Node (Model.protoOf (compiled (gol
 
 omit [DecidableEq V] in
 /-- Gossip releases no attestation. -/
-theorem attObj_not_mem_gossip (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
+theorem attObj_not_mem_gossip (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (k : Fin (Fintype.card V)) (t : Time) (a : FG.Att (Fintype.card V)) :
-    attObj a ∉ (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E) rho.hash k nd
-      (Model.gossipCandidates (Model.protoOf (compiled (goldilocksWith S)) E) nd.st t)).2 := by
+    attObj a ∉ (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd
+      (Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) nd.st t)).2 := by
   intro ha
   obtain ⟨mc, _, he⟩ := Model.mem_gossipCandidates.mp
     (Model.releaseAll_subset _ _ _ _ _ ha)
@@ -117,7 +117,7 @@ omit [DecidableEq V] in
 /-- An attestation in the closure of what a node has seen after duties was seen before them
 or released by them. -/
 theorem attObj_mem_closure_runDuties (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (ds)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (ds)
     (a : FG.Att (Fintype.card V))
     (ha : attObj a ∈ Model.closure (rho.runDuties v nd ds).1.seen) :
     attObj a ∈ Model.closure nd.seen ∨ attObj a ∈ (rho.runDuties v nd ds).2 := by
@@ -133,18 +133,18 @@ theorem attObj_mem_closure_runDuties (v : V)
       simp only [hsel, ↓reduceIte]
       let Q := fun o => o = attObj (binding := S.vote) a →
         attObj a ∈ Model.closure (rho.runDuties v nd ds).1.seen ∨
-          attObj a ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E)
+          attObj a ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
             rho.hash (rho.ownKey v)
-            ⟨((Model.protoOf (compiled (goldilocksWith S)) E).act (rho.runDuties v nd ds).1.st d).1,
+            ⟨((Model.protoOf (compiled (goldilocks S)) E).act (rho.runDuties v nd ds).1.st d).1,
               (rho.runDuties v nd ds).1.seen⟩
             (rho.signedCandidate v d
-              ((Model.protoOf (compiled (goldilocksWith S)) E).act
+              ((Model.protoOf (compiled (goldilocks S)) E).act
                   (rho.runDuties v nd ds).1.st d).2)).2
       have hp := Model.releaseAll_preserves rho.hash (rho.ownKey v) Q
-        ⟨((Model.protoOf (compiled (goldilocksWith S)) E).act (rho.runDuties v nd ds).1.st d).1,
+        ⟨((Model.protoOf (compiled (goldilocks S)) E).act (rho.runDuties v nd ds).1.st d).1,
           (rho.runDuties v nd ds).1.seen⟩
         (rho.signedCandidate v d
-          ((Model.protoOf (compiled (goldilocksWith S)) E).act (rho.runDuties v nd ds).1.st d).2)
+          ((Model.protoOf (compiled (goldilocks S)) E).act (rho.runDuties v nd ds).1.st d).2)
         (fun o ho b hb he => Or.inl (he ▸ (Model.mem_closure_iff _ _).mpr ⟨o, ho, hb⟩))
         (fun o ho he => Or.inr (he ▸ ho))
       obtain ⟨o, ho, hc⟩ := (Model.mem_closure_iff _ _).mp ha

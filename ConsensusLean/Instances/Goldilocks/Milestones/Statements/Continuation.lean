@@ -26,8 +26,9 @@ open Blocks Shape
 at the headline contract, for every setup, assumption set and finite validator type. -/
 def GoldilocksContinues : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V],
-    Continues (Model.sysOf schema (compiled (goldilocks S)) V)
-      (shapeProgress (goldilocks S) V) (goldilocksContract A (contract_coefficients S A))
+    Continues (Model.sysOf schema (compiled (goldilocks { S with vote := AsChainShape.stock })) V)
+      (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) V)
+      (goldilocksContract A (contract_coefficients S A))
 
 end Consensus.Goldilocks
 

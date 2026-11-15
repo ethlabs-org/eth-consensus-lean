@@ -42,16 +42,21 @@ variable (S : Setup)
 
 /-- Validator `1` proposes every slot; everyone polls. -/
 def sel :
-    (Model.protoOf (compiled (goldilocks S)) point.env).Role → Finset (Fin (Fintype.card (Fin 2)))
+    (Model.protoOf (compiled (goldilocks { S with vote := AsChainShape.stock })) point.env).Role →
+      Finset (Fin (Fintype.card (Fin 2)))
   | .proposer _ => {⟨1, by decide⟩}
   | .duty _ k => k.elim
   | .poll => Finset.univ
 
-theorem sel_admits : (Model.protoOf (compiled (goldilocks S)) point.env).SelAdmits (sel S) := by
+theorem sel_admits :
+    (Model.protoOf (compiled (goldilocks { S with vote := AsChainShape.stock }))
+      point.env).SelAdmits
+      (sel S) := by
   intro r
   cases r with
   | proposer s =>
-    change ((goldilocks S (pubOf point.env)).skel.proposerSel s).Admits _
+    change ((goldilocks { S with vote := AsChainShape.stock }
+      (pubOf point.env)).skel.proposerSel s).Admits _
     rw [Test.skeleton_proposerSel S s]
     change ({(⟨1, by decide⟩ : Fin (Fintype.card (Fin 2)))} : Finset _).card =
       min 1 (Fintype.card (Fin 2))
@@ -60,22 +65,26 @@ theorem sel_admits : (Model.protoOf (compiled (goldilocks S)) point.env).SelAdmi
   | poll => rfl
 
 /-- The protocol parameters of the run: `Δ = 2`, slots of `8`. -/
-abbrev sp := S.params (pubOf point.env) one_le_card
+abbrev sp := ({ S with vote := AsChainShape.stock } : Setup).params (pubOf point.env) one_le_card
 
 theorem sp_Δ : (sp S).Δ = 2 := rfl
 
 /-- The run has a restart of validator `0` at time `1`, its first cut. -/
 theorem restart_at_one :
-    ∃ rho : Model.Run (compiled (goldilocks S)) point.env, rho.ExecutionValid ∧
-      GoldilocksRun (runProposer ⟨S, stock⟩ rho one_le_card) (digestOf ⟨S, stock⟩ rho)
-          (honestKeys ⟨S, stock⟩ rho)
-        (simTrace ⟨S, stock⟩ rho one_le_card) ∧
-      ∃ y ∈ honestKeys ⟨S, stock⟩ rho,
-        (∀ u : Time, (simTrace ⟨S, stock⟩ rho one_le_card).awake y u ↔ 1 ≤ u ∧ u ≤ 64) ∧
-        ∃ k, (simTrace ⟨S, stock⟩ rho one_le_card).RestartAt y k ∧
-          (simTrace ⟨S, stock⟩ rho one_le_card).time k = 1 ∧
-          ∀ j < k, ¬ (simTrace ⟨S, stock⟩ rho one_le_card).IsCall y j := by
-  obtain ⟨rho, hp, hk, -, hv, -, -, -⟩ := Shape.coverage (goldilocks S) point (by decide)
+    ∃ rho : Model.Run (compiled (goldilocks { S with vote := AsChainShape.stock })) point.env,
+      rho.ExecutionValid ∧
+      GoldilocksRun (runProposer { S with vote := stock } rho one_le_card)
+          (digestOf { S with vote := stock } rho)
+          (honestKeys { S with vote := stock } rho)
+        (simTrace { S with vote := stock } rho one_le_card) ∧
+      ∃ y ∈ honestKeys { S with vote := stock } rho,
+        (∀ u : Time, (simTrace { S with vote := stock } rho one_le_card).awake y u ↔
+          1 ≤ u ∧ u ≤ 64) ∧
+        ∃ k, (simTrace { S with vote := stock } rho one_le_card).RestartAt y k ∧
+          (simTrace { S with vote := stock } rho one_le_card).time k = 1 ∧
+          ∀ j < k, ¬ (simTrace { S with vote := stock } rho one_le_card).IsCall y j := by
+  obtain ⟨rho, hp, hk, -, hv, -, -, -⟩ := Shape.coverage
+    (goldilocks { S with vote := AsChainShape.stock }) point (by decide)
     (by exact Equiv.refl _) (sel S) (sel_admits S) 0
   have hn := one_le_card
   have hhon (t : Time) : rho.faultyAt t = ∅ := congrArg (fun p => p.faultyAt t) hp
@@ -86,13 +95,14 @@ theorem restart_at_one :
   have hrun := simTrace_goldilocksRun S rho hn hf hv
   let y : Fin (Fintype.card (Fin 2)) := ⟨0, hn⟩
   have hky : rho.key y = 0 := by rw [hk]; rfl
-  have hy : y ∈ honestKeys ⟨S, stock⟩ rho := by
-    rw [mem_honestKeys_iff ⟨S, stock⟩ rho]
+  have hy : y ∈ honestKeys { S with vote := stock } rho := by
+    rw [mem_honestKeys_iff { S with vote := stock } rho]
     rw [hhon]
     exact Finset.notMem_empty _
-  have haw : ∀ u : Time, (simTrace ⟨S, stock⟩ rho hn).awake y u ↔ 1 ≤ u ∧ u ≤ 64 := by
+  have haw : ∀ u : Time, (simTrace { S with vote := stock } rho hn).awake y u ↔ 1 ≤ u ∧ u ≤ 64 := by
     intro u
-    rw [simTrace_awake_iff ⟨S, stock⟩ rho one_le_card, awakeAt_iff ⟨S, stock⟩ rho one_le_card,
+    rw [simTrace_awake_iff { S with vote := stock } rho one_le_card,
+        awakeAt_iff { S with vote := stock } rho one_le_card,
         hky, hhor]
     change decide ((0 : Fin 2) ≠ 0 ∨ 1 ≤ u) = true ∧ 0 ≤ u ∧ u ≤ 64 ↔ _
     simp only [ne_eq, not_true_eq_false, false_or, decide_eq_true_eq]
@@ -101,7 +111,7 @@ theorem restart_at_one :
     · rintro ⟨h1, h2⟩; exact ⟨h1, by linarith, h2⟩
   obtain ⟨k, hR, hk0, hk1⟩ := hrun.restart_at_wake y hy 0 1 le_rfl (by decide)
     (fun h => absurd ((haw 0).1 h).1 (by decide)) ((haw 1).2 ⟨le_rfl, by decide⟩)
-  have hk : (simTrace ⟨S, stock⟩ rho hn).time k = 1 :=
+  have hk : (simTrace { S with vote := stock } rho hn).time k = 1 :=
     le_antisymm hk1 (by simpa using Int.add_one_le_of_lt hk0)
   refine ⟨rho, hv, hrun, y, hy, haw, k, hR, hk, fun j hj hc => ?_⟩
   obtain ⟨u, hu0, huk, -, hprev⟩ := hrun.sleep_of_restart y hy k hR
@@ -113,22 +123,25 @@ theorem restart_at_one :
 at `t = 8Δ + 1 = 17` with `c = 8Δ − 1 = 15`, validator `0` is awake on `[1, 17]`, has a restart at
 time `1 ≤ t`, and F.4 gives that this restart is at or before `t_{slot 17 − 1} = t_1 = 8`. -/
 theorem readyImpliesJoined_restart :
-    ∃ rho : Model.Run (compiled (goldilocks S)) point.env, rho.ExecutionValid ∧
-      GoldilocksRun (runProposer ⟨S, stock⟩ rho one_le_card) (digestOf ⟨S, stock⟩ rho)
-          (honestKeys ⟨S, stock⟩ rho)
-        (simTrace ⟨S, stock⟩ rho one_le_card) ∧
-      ∃ y ∈ honestKeys ⟨S, stock⟩ rho, ∃ k, (simTrace ⟨S, stock⟩ rho one_le_card).RestartAt y k ∧
-        (simTrace ⟨S, stock⟩ rho one_le_card).time k = 1 ∧
+    ∃ rho : Model.Run (compiled (goldilocks { S with vote := AsChainShape.stock })) point.env,
+      rho.ExecutionValid ∧
+      GoldilocksRun (runProposer { S with vote := stock } rho one_le_card)
+          (digestOf { S with vote := stock } rho)
+          (honestKeys { S with vote := stock } rho)
+        (simTrace { S with vote := stock } rho one_le_card) ∧
+      ∃ y ∈ honestKeys { S with vote := stock } rho, ∃ k,
+        (simTrace { S with vote := stock } rho one_le_card).RestartAt y k ∧
+        (simTrace { S with vote := stock } rho one_le_card).time k = 1 ∧
         8 * (sp S).Δ ≤ (8 * (sp S).Δ - 1) + 1 ∧
         (∀ u : Time, max 0 ((8 * (sp S).Δ + 1) - (8 * (sp S).Δ - 1) - 1) ≤ u →
-          u ≤ 8 * (sp S).Δ + 1 → (simTrace ⟨S, stock⟩ rho one_le_card).awake y u) ∧
-        (simTrace ⟨S, stock⟩ rho one_le_card).awake y (8 * (sp S).Δ + 1) ∧
-        (simTrace ⟨S, stock⟩ rho one_le_card).JoinedAt y (8 * (sp S).Δ + 1) ∧
+          u ≤ 8 * (sp S).Δ + 1 → (simTrace { S with vote := stock } rho one_le_card).awake y u) ∧
+        (simTrace { S with vote := stock } rho one_le_card).awake y (8 * (sp S).Δ + 1) ∧
+        (simTrace { S with vote := stock } rho one_le_card).JoinedAt y (8 * (sp S).Δ + 1) ∧
         (sp S).toParams.slotOf (8 * (sp S).Δ + 1) = 2 ∧
         (sp S).toParams.slotTime ((sp S).toParams.slotOf (8 * (sp S).Δ + 1) - 1) = 8 := by
   obtain ⟨rho, hv, hrun, y, hy, haw, k, hR, hk, -⟩ := restart_at_one S
   have hwin : ∀ u : Time, max 0 ((8 * (sp S).Δ + 1) - (8 * (sp S).Δ - 1) - 1) ≤ u →
-      u ≤ 8 * (sp S).Δ + 1 → (simTrace ⟨S, stock⟩ rho one_le_card).awake y u := by
+      u ≤ 8 * (sp S).Δ + 1 → (simTrace { S with vote := stock } rho one_le_card).awake y u := by
     intro u h1 h2
     have h1' := le_of_max_le_right h1
     rw [sp_Δ] at h1' h2
@@ -142,11 +155,13 @@ theorem readyImpliesJoined_restart :
 /-- The restart branch of `readyImpliesJoined_restart`, read off: the restart at time `1` is in
 `(0, t_1]` and `slot 17 > 0`. -/
 theorem readyImpliesJoined_restart_bound :
-    ∃ rho : Model.Run (compiled (goldilocks S)) point.env, rho.ExecutionValid ∧
-      ∃ y ∈ honestKeys ⟨S, stock⟩ rho, ∃ k, (simTrace ⟨S, stock⟩ rho one_le_card).RestartAt y k ∧
-        0 < (simTrace ⟨S, stock⟩ rho one_le_card).time k ∧
+    ∃ rho : Model.Run (compiled (goldilocks { S with vote := AsChainShape.stock })) point.env,
+      rho.ExecutionValid ∧
+      ∃ y ∈ honestKeys { S with vote := stock } rho, ∃ k,
+        (simTrace { S with vote := stock } rho one_le_card).RestartAt y k ∧
+        0 < (simTrace { S with vote := stock } rho one_le_card).time k ∧
         0 < (sp S).toParams.slotOf (8 * (sp S).Δ + 1) ∧
-        (simTrace ⟨S, stock⟩ rho one_le_card).time k ≤
+        (simTrace { S with vote := stock } rho one_le_card).time k ≤
           (sp S).toParams.slotTime ((sp S).toParams.slotOf (8 * (sp S).Δ + 1) - 1) := by
   obtain ⟨rho, hv, -, y, hy, k, hR, hk, -, -, -, hj, -, -⟩ := readyImpliesJoined_restart S
   obtain ⟨h0, hle⟩ := hj k hR (by rw [hk, sp_Δ]; decide)

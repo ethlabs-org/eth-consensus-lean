@@ -16,8 +16,8 @@ open AsChainShape
 open Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- A vote emitted at cut `k` by `y` is released by `y`'s engine node at the cut's time.
 Premise `htick`: a public tick releases the votes its cuts emit (`tick_releases` for constant

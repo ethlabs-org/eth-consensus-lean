@@ -43,8 +43,8 @@ theorem chainTo_compatible {sp : SA.SAParams} {acp₀ : SA.Payload sp.n}
   · exact .inl (chainTo_prefix_of_anc hr hr' hU hs hs' hB hC hc)
   · exact .inr (chainTo_prefix_of_anc hr' hr hU hs' hs hC hB hc)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 omit [DecidableEq V] in
 /-- A block with a parent whose root is its tagged digest is referenced by the engine hash of its

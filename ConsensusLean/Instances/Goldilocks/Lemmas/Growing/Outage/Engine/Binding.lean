@@ -25,7 +25,7 @@ variable {V : Type} [Fintype V] [DecidableEq V]
 
 section Run
 
-variable (S : BoundSetup) {E : Env V} (rho : Model.Run (compiled (goldilocksWith S)) E)
+variable (S : Setup) {E : Env V} (rho : Model.Run (compiled (goldilocks S)) E)
 
 /-- The committee dictionary of a run: the keys selected for each slot's vote role. -/
 def voteK : SA.CommitteeDict (Fintype.card V) :=
@@ -64,7 +64,7 @@ theorem voteK_ncard (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (s : N
       change _ = T at hsel
       rw [hsel]
 
-/-- Every slot committee of a valid run is nonempty (`BoundSetup.committeeSize_pos`). -/
+/-- Every slot committee of a valid run is nonempty (`Setup.committeeSize_pos`). -/
 theorem voteK_nonempty (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (s : Nat) :
     ((voteK S rho).committee s).Nonempty :=
   Set.nonempty_of_ncard_ne_zero (by
@@ -76,13 +76,13 @@ the protocol slot from time `0` on), and without a participation kind both selec
 theorem mem_voteK_iff_selected (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) {t : Time}
     (ht : 0 ≤ t) {x : Fin (Fintype.card V)} :
     x ∈ (voteK S rho).committee ((S.params (Model.pubOf E) hn).slot t) ↔
-      rho.key x ∈ (shapeProgress (goldilocksWith S) V).toExternal.selected
-        rho.point.env ((shapeProgress (goldilocksWith S) V).toExternal.ext ⟨E, rho⟩) t := by
+      rho.key x ∈ (shapeProgress (goldilocks S) V).toExternal.selected
+        rho.point.env ((shapeProgress (goldilocks S) V).toExternal.ext ⟨E, rho⟩) t := by
   have hslot : (t / (4 * (S.params (Model.pubOf E) hn).Δ)).toNat =
       (S.params (Model.pubOf E) hn).slot t := by
     have h := SA.slot_eq (S.params (Model.pubOf E) hn) ht
     omega
-  have hrole : (Model.protoOf (compiled (goldilocksWith S)) rho.point.env).participationRole t =
+  have hrole : (Model.protoOf (compiled (goldilocks S)) rho.point.env).participationRole t =
       S.vote.participationKind.map
         (fun k => ShapeRole.duty ((S.params (Model.pubOf E) hn).slot t) k) := by
     rw [← hslot]; rfl
@@ -98,7 +98,7 @@ theorem mem_voteK_iff_selected (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionVa
 
 end Run
 
-variable {S : BoundSetup} {A : ContractAssumptions S.toSetup}
+variable {S : Setup} {A : ContractAssumptions S}
 
 /-- The committee dictionary of an outage query: the run's `voteK`. -/
 abbrev OutageQueryAt.K (Q : OutageQueryAt S A V) : SA.CommitteeDict (Fintype.card V) :=

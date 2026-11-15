@@ -10,18 +10,21 @@ open AsChainShape (Setup Out)
 def traceData : TraceData := ⟨AsChainShape.taggedRoot⟩
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (Shape.compiled (AsChainShape.goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+  (rho : Model.Run (Shape.compiled (AsChainShape.goldilocks { S with vote := AsChainShape.stock }))
+    E)
+  (hn : 1 ≤ Fintype.card V)
 
 /-- Exact canonical equality, not existence of a trace with a matching contract. -/
 def TraceRegression : Prop :=
   simTraceNodeAt (O := AsChainShape.schema) (family S)
     (fun | Out.finalized => true | .confirmed => false)
-    (reshape S rho) hn traceData = Simulation.simTraceAt ⟨S, AsChainShape.stock⟩ rho hn
+    (reshape S rho) hn traceData =
+      Simulation.simTraceAt { S with vote := AsChainShape.stock } rho hn
 
 def CutMapRegression : Prop :=
   cutMapNode (O := AsChainShape.schema) (family S)
     (fun | Out.finalized => true | .confirmed => false)
-    (reshape S rho) hn traceData = Simulation.cutMap ⟨S, AsChainShape.stock⟩ rho hn
+    (reshape S rho) hn traceData = Simulation.cutMap { S with vote := AsChainShape.stock } rho hn
 
 /-- Engine representation is fieldwise; it includes every durable queue and stored clock. -/
 def StateRegression : Prop := rho.ExecutionValid → ∀ v i, i ≤ rho.events.length →
@@ -29,6 +32,7 @@ def StateRegression : Prop := rho.ExecutionValid → ∀ v i, i ≤ rho.events.l
   engineState (O := AsChainShape.schema) (family S)
     (fun | Out.finalized => true | .confirmed => false)
     (reshape S rho) hn v i =
-      view S (Model.pubOf E) hn (Simulation.stateAt ⟨S, AsChainShape.stock⟩ rho hn v i)
+      view S (Model.pubOf E) hn
+        (Simulation.stateAt { S with vote := AsChainShape.stock } rho hn v i)
 
 end Consensus.Goldilocks.NodeEngine.Concrete

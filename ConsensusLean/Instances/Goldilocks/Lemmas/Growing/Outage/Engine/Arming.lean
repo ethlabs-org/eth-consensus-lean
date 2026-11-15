@@ -35,7 +35,7 @@ origins within `T`, S-vote, and O1 at `j₀ − 1` (`armed_lock_formed_at`) and 
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 open Blocks Shape
-variable {S : BoundSetup} {A : ContractAssumptions S.toSetup} {V : Type} [Fintype V] [DecidableEq V]
+variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
 
 
 namespace OutageQueryAt
@@ -62,9 +62,9 @@ theorem boundsK (Q : OutageQueryAt S A V) {ini}
   have hdur := outage_duration_supply_at Q
   have hcu : Regimes.catchUp Q.params = 18 * Q.params.Δ := rfl
   have hΔ := Q.params.toParams.hΔ
-  refine voteK_bounds S Q.run.2 Q.hn Q.valid hrun (Obligations.K S.toSetup A) le_rfl
-    (η := ((Obligations.K S.toSetup A).params.η : Time) * Q.run.1.ΔAC)
-    (c := max Q.duration (((Obligations.K S.toSetup A).params.η : Time) * Q.run.1.ΔAC - 1))
+  refine voteK_bounds S Q.run.2 Q.hn Q.valid hrun (Obligations.K S A) le_rfl
+    (η := ((Obligations.K S A).params.η : Time) * Q.run.1.ΔAC)
+    (c := max Q.duration (((Obligations.K S A).params.η : Time) * Q.run.1.ΔAC - 1))
     ((by linarith : 8 * Q.params.Δ ≤ Q.duration + 1).trans (add_le_add (le_max_left _ _) le_rfl))
     (by change 5 * Q.run.1.ΔAC ≤ ((5 : Nat) : Int) * Q.run.1.ΔAC; norm_num) hb
     fun t h₁ h₂ => ?_
@@ -175,7 +175,7 @@ theorem opponents_lt_K (Q : OutageQueryAt S A V) {m : Nat}
   change Q.stop ≤ Q.start + ((4 * S.k - 5 : Nat) : Int) * Q.run.1.ΔAC at hbud
   rw [hbcast] at hbud
   have hL : ((4 * S.k + 6 : Nat) : Int) = 4 * (S.k : Int) + 6 := by push_cast; ring
-  have hη : ((Obligations.K S.toSetup A).params.η : Time) = 12 * (S.k : Int) + 7 := by
+  have hη : ((Obligations.K S A).params.η : Time) = 12 * (S.k : Int) + 7 := by
     change ((12 * S.k + 7 : Nat) : Int) = _; push_cast; ring
   have hk : (Q.params.k : Int) = S.k := rfl
   have hΔeq : Q.params.Δ = Q.run.1.ΔAC := rfl
@@ -194,20 +194,20 @@ theorem opponents_lt_K (Q : OutageQueryAt S A V) {m : Nat}
     linarith
   have hδ : Q.winEnd - t ≤ Q.lookBack := by
     have hkΔ : (0 : Time) ≤ (S.k : Int) * Q.run.1.ΔAC := mul_nonneg (by positivity) (by linarith)
-    change Q.winEnd - t ≤ ((Obligations.K S.toSetup A).params.η : Time) * Q.run.1.ΔAC
+    change Q.winEnd - t ≤ ((Obligations.K S A).params.η : Time) * Q.run.1.ΔAC
     rw [hη]
     linarith
   have hsel : max 0 (Q.winEnd - (Q.winEnd - t)) = t := by
     rw [sub_sub_cancel, max_eq_right ht0]
-  have hne : ((shapeProgress (goldilocksWith S) V).toExternal.selected Q.run.2.point.env
-      ((shapeProgress (goldilocksWith S) V).toExternal.ext Q.run)
+  have hne : ((shapeProgress (goldilocks S) V).toExternal.selected Q.run.2.point.env
+      ((shapeProgress (goldilocks S) V).toExternal.ext Q.run)
         (max 0 (Q.winEnd - (Q.winEnd - t)))).Nonempty := by
     rw [hsel]
     obtain ⟨x, hx⟩ := voteK_nonempty S Q.run.2 Q.hn Q.valid (Q.params.slot t)
     exact ⟨_, (mem_voteK_iff_selected S Q.run.2 Q.hn Q.valid ht0).1 hx⟩
   have hc := Q.outage.committeeSleepy (sub_nonneg.2 htz) hδ Q.winEnd hz0 Q.end_le_horizon hne
   have hpos : ¬ Q.lookBack ≤ 0 := by
-    change ¬ ((Obligations.K S.toSetup A).params.η : Time) * Q.run.1.ΔAC ≤ 0
+    change ¬ ((Obligations.K S A).params.η : Time) * Q.run.1.ΔAC ≤ 0
     rw [hη]
     exact not_le.2 (mul_pos (by linarith) (by linarith))
   dsimp only at hc
@@ -215,10 +215,10 @@ theorem opponents_lt_K (Q : OutageQueryAt S A V) {m : Nat}
   · exact absurd hη0 hpos
   have hcnt := EnvPoint.opponents_inter_lt_of_retain (p := Q.run.2.point)
     (η := Q.lookBack) (c := Q.outCatch) (t := Q.winEnd) (d := Q.winEnd)
-    (e := Q.run.2.point.lookAhead ((Sys (goldilocksWith S) V).committeeAheadDur
-      (Obligations.K S.toSetup A) Q.run) Q.winEnd)
-    ((shapeProgress (goldilocksWith S) V).toExternal.selected Q.run.2.point.env
-      ((shapeProgress (goldilocksWith S) V).toExternal.ext Q.run)
+    (e := Q.run.2.point.lookAhead ((Sys (goldilocks S) V).committeeAheadDur
+      (Obligations.K S A) Q.run) Q.winEnd)
+    ((shapeProgress (goldilocks S) V).toExternal.selected Q.run.2.point.env
+      ((shapeProgress (goldilocks S) V).toExternal.ext Q.run)
         (max 0 (Q.winEnd - (Q.winEnd - t))))
     (le_min (by
       change Q.winEnd ≤ Q.winEnd + ((5 : Nat) : Int) * Q.run.1.ΔAC
@@ -226,8 +226,8 @@ theorem opponents_lt_K (Q : OutageQueryAt S A V) {m : Nat}
       linarith) Q.end_le_horizon) hc
   rw [hsel] at hcnt
   have hK : Q.K.committee (Q.params.slot t) = Q.run.2.key ⁻¹'
-      ↑((shapeProgress (goldilocksWith S) V).toExternal.selected Q.run.2.point.env
-        ((shapeProgress (goldilocksWith S) V).toExternal.ext Q.run) t) :=
+      ↑((shapeProgress (goldilocks S) V).toExternal.selected Q.run.2.point.env
+        ((shapeProgress (goldilocks S) V).toExternal.ext Q.run) t) :=
     Set.ext fun _ => mem_voteK_iff_selected S Q.run.2 Q.hn Q.valid ht0
   rw [hK]
   exact Q.opponents_lt_on _ hcnt

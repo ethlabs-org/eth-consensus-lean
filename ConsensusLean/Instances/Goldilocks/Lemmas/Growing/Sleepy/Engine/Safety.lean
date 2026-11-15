@@ -34,8 +34,8 @@ open Blocks Shape Node
 open Consensus.Model (pubOf)
 
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- **Finite ready-reader safety of the canonical growing trace** through `b ≥ 0`, from the finite
 service, the two count shapes and the committee premises of a slot dictionary `K` through `b`. -/

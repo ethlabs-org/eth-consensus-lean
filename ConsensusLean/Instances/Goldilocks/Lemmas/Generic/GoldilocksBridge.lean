@@ -439,7 +439,7 @@ reductions remain open; this proposition supplies none of their evidence. -/
 def goldilocks_correct_bridge : Prop :=
   generic_correct (O := AsChainShape.schema) (Info := AsChainShape.Info) →
     (∀ (S : AsChainShape.Setup) (A : ContractAssumptions S),
-      Shape.ShapeObligations (AsChainShape.goldilocks S)
+      Shape.ShapeObligations (AsChainShape.goldilocks { S with vote := AsChainShape.stock })
         (goldilocksContract A (contract_coefficients S A))) →
     GoldilocksCorrect
 

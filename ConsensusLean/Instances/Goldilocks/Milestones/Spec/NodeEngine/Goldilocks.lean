@@ -12,7 +12,7 @@ open SA (SAState)
 
 noncomputable def runtime (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) :
     Runtime pub hn (SAState pub.n) (SA.Vote pub.n) (SA.Payload pub.n) :=
-  let A := goldilocksNode (S.params pub hn (binding := AsChainShape.stock)) (S.ro _)
+  let A := goldilocksNode (({ S with vote := AsChainShape.stock } : Setup).params pub hn) (S.ro _)
   ⟨S.genesisRoot, S.δt, ⟨A.validPayload, A.validMsg, A.holdsMsg, A.genesisPayload,
     A.initial, A.onMessage, A.onBlock, A.onTick, A.proposal, A.toFG, A.confirmed,
     A.head, A.restart⟩⟩
@@ -32,12 +32,12 @@ noncomputable def wire (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) :
   decodeInfo := AsChainShape.decodeInfo pub.n
   payloadMsgs p := p.1 ++ p.2
   payloadObjs := AsChainShape.payloadObjs (binding := AsChainShape.stock)
-  headerOf := AsChainShape.headerOf (S.params pub hn)
-  blockOf := AsChainShape.blockOf (S.params pub hn)
+  headerOf := AsChainShape.headerOf (({ S with vote := AsChainShape.stock } : Setup).params pub hn)
+  blockOf := AsChainShape.blockOf (({ S with vote := AsChainShape.stock } : Setup).params pub hn)
   parentRef := AsChainShape.parentRef S.genesisRoot
   rootOf := AsChainShape.rootOf
   canonEvent := AsChainShape.canonEvent (binding := AsChainShape.stock)
-    (S.params pub hn) (S.ro _)
+    (({ S with vote := AsChainShape.stock } : Setup).params pub hn) (S.ro _)
   relayBody := .relay
   forwardBody := .forward
   msgForwardBody t m := .voteForward t (AsChainShape.encodeVote m)
@@ -72,14 +72,16 @@ noncomputable def shape (S : Setup) : ChainShapeFamily AsChainShape.schema Info 
 
 /-- Fieldwise view, never equality of nominal state types. -/
 noncomputable def view (S : Setup) (pub : Public) (hn : 1 ≤ pub.n)
-    (st : AsChainShape.State (S.params pub hn (binding := AsChainShape.stock)) (S.ro _)
+    (st : AsChainShape.State (({ S with vote := AsChainShape.stock } : Setup).params pub hn)
+      (S.ro _)
       (binding := AsChainShape.stock)) : State (wire S pub hn) :=
   ⟨st.self, ⟨st.node.fg, st.node.ac, st.node.record⟩, st.now, st.outbox, st.relayBuf,
     st.fgDue, st.wrappers, st.forwards, st.voteForwards⟩
 
 /-- Copy external run data, not its derived state or releases. -/
 noncomputable def reshape {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (AsChainShape.goldilocks S)) E) :
+    (S : Setup)
+    (rho : Model.Run (compiled (AsChainShape.goldilocks { S with vote := AsChainShape.stock })) E) :
     Model.Run (compiled (shape S)) E where
   faultyAt := rho.faultyAt
   faultyAt_mono := rho.faultyAt_mono

@@ -48,7 +48,7 @@ namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 open Blocks Shape
 
-variable {S : BoundSetup} {A : ContractAssumptions S.toSetup} {V : Type} [Fintype V] [DecidableEq V]
+variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
 
 /-- **E0–E4 under growing faults**: the latest gate of a reader ready at `t` from the recovery
 point, read at the trace cut of the end of `t`. -/
@@ -103,7 +103,7 @@ private theorem restarts_of_joined (Q : OutageQueryAt S A V)
 /-- **E0–E4 under growing faults**: the latest gate of a reader ready at `t` from the recovery
 point `b₁ + 9Δ`. Only readiness, joining, the gate tick and the read cut are used. -/
 theorem outage_reader_gate_at (Q : OutageQueryAt S A V)
-    {t : Time} (ht : (Sys (goldilocksWith S) V).recoveryAt (K S.toSetup A) Q.stop Q.run ≤ t)
+    {t : Time} (ht : (Sys (goldilocks S) V).recoveryAt (K S A) Q.stop Q.run ≤ t)
     (hth : t ≤ Q.run.2.horizon) {w : V} (hw : Q.run.2.point.Ready Q.duration w t) :
     Nonempty (OutageReaderGateAt Q w t) := by
   set sp := Q.params
@@ -269,7 +269,7 @@ theorem outage_reader_bridge_at (Q : OutageQueryAt S A V)
     (service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start)
     {v : V} (hsh : Q.start ≤ Q.run.2.horizon) (ar : OutageArmingAt Q v)
     (hinv : ∀ i, Compose.Growing.OutageLockInv (outageLockPremises_of_arming_at Q service hsh ar) i)
-    {t : Time} (ht : (Sys (goldilocksWith S) V).recoveryAt (K S.toSetup A) Q.stop Q.run ≤ t)
+    {t : Time} (ht : (Sys (goldilocks S) V).recoveryAt (K S A) Q.stop Q.run ≤ t)
     (hth : t ≤ Q.run.2.horizon) {w : V} (hw : Q.run.2.point.Ready Q.duration w t) :
     Anc (Q.trace.HonestBlocksAt Q.keys) ar.tip
       (Regimes.readAfter Q.trace (Q.run.2.ownKey w)

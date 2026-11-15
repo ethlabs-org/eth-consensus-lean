@@ -26,8 +26,8 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Shape Blocks Generic
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] (S : BoundSetup) {E : Env V}
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] (S : Setup) {E : Env V}
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
   (hv : rho.ExecutionValid)
 
 /-- The actual confirmed read at the cut after the last own event and the stored clock. -/
@@ -93,7 +93,7 @@ theorem goldilocksRunMap_storedReadTransport :
 `goldilocksStoredReadContext`, which do not depend on the map. -/
 noncomputable def goldilocksEngineStoredReadContext (pub : Model.Public) (hn : 1 ≤ pub.n)
     (E : Env V) (hE : pubOf E = pub)
-    (rho : Model.Run (compiled (goldilocksWith S)) E) (hv : rho.ExecutionValid) :
+    (rho : Model.Run (compiled (goldilocks S)) E) (hv : rho.ExecutionValid) :
     StoredReadContext ((goldilocksEngineBinding S pub hn).map E hE rho hv) := by
   subst pub
   exact ⟨(goldilocksStoredReadContext S rho hn hv).cut,
@@ -102,7 +102,7 @@ noncomputable def goldilocksEngineStoredReadContext (pub : Model.Public) (hn : 1
 /-- The public-indexed binding supplies engine cut-time read points. -/
 theorem goldilocksEngineBinding_engineReadPoint (pub : Model.Public) (hn : 1 ≤ pub.n)
     (E : Env V) (hE : pubOf E = pub)
-    (rho : Model.Run (compiled (goldilocksWith S)) E) (hv : rho.ExecutionValid) :
+    (rho : Model.Run (compiled (goldilocks S)) E) (hv : rho.ExecutionValid) :
     EngineReadPoint ((goldilocksEngineBinding S pub hn).map E hE rho hv) := by
   subst pub
   rw [goldilocksEngineBinding_map]
@@ -111,7 +111,7 @@ theorem goldilocksEngineBinding_engineReadPoint (pub : Model.Public) (hn : 1 ≤
 /-- The public-indexed binding supplies the actual stored-read correspondence. -/
 theorem goldilocksEngineBinding_storedReadTransport (pub : Model.Public) (hn : 1 ≤ pub.n)
     (E : Env V) (hE : pubOf E = pub)
-    (rho : Model.Run (compiled (goldilocksWith S)) E) (hv : rho.ExecutionValid) :
+    (rho : Model.Run (compiled (goldilocks S)) E) (hv : rho.ExecutionValid) :
     StoredReadTransport ((goldilocksEngineBinding S pub hn).map E hE rho hv)
       (goldilocksEngineStoredReadContext S pub hn E hE rho hv) := by
   subst pub

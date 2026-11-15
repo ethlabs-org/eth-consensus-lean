@@ -52,7 +52,7 @@ theorem proposal_accepted_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
 
 end Node
 
-variable (S : BoundSetup) (A : ContractAssumptions S.toSetup) (V : Type) [Fintype V] [DecidableEq V]
+variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
 /-- Readiness at a larger duration is readiness at a smaller one. -/
 theorem confirmed_ready_mono_at (Q : ConfirmedQueryAt S A V) {c d : Time} (hcd : c ≤ d) {y t}
@@ -64,12 +64,12 @@ theorem confirmed_ready_mono_at (Q : ConfirmedQueryAt S A V) {c d : Time} (hcd :
 /-- The query's readiness duration covers the node catch-up. -/
 theorem confirmed_duration_supply_at (Q : ConfirmedQueryAt S A V) :
     Regimes.catchUp Q.params ≤ Q.duration := by
-  have hc : (19 : Time) ≤ (contract_catchUp S.toSetup A : Nat) := by
-    exact_mod_cast contract_catchUp_ge_sleepy S.toSetup A
+  have hc : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
+    exact_mod_cast contract_catchUp_ge_sleepy S A
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   simp only [ConfirmedQueryAt.duration, System.cDur,
     Params.standard, contract_coefficients_catchUp]
-  change 18 * Q.run.1.ΔAC ≤ (contract_catchUp S.toSetup A : Nat) * Q.run.1.ΔAC
+  change 18 * Q.run.1.ΔAC ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
   linarith [mul_le_mul_of_nonneg_right hc (zero_le_one.trans hd)]
 
 /-- A slot selected by the recurrence: after the query, its proposal margin `6Δ` before the
@@ -88,8 +88,8 @@ structure ConfirmedProducerSlotAt (Q : ConfirmedQueryAt S A V) where
 /-- Recurrence/grid selection after an explicit readiness start, at the exact readiness
 duration, with the proposer's hold. -/
 theorem confirmed_query_slot_at (Q : ConfirmedQueryAt S A V) {ready : Time}
-    (hprogress : (Sys (goldilocksWith S) V).prog
-      (shapeProgress (goldilocksWith S) V) (K S.toSetup A)
+    (hprogress : (Sys (goldilocks S) V).prog
+      (shapeProgress (goldilocks S) V) (K S A)
       Q.cap Q.index ready Q.run.2.horizon Q.run)
     (hquery : max ready 0 ≤ Q.query) : Nonempty (ConfirmedProducerSlotAt S A V Q) := by
   obtain ⟨s, hs1, hlo, hmargin, hts0, htsh, hR, hH⟩ := nonfinal_query_slot S A V Q.run Q.hn

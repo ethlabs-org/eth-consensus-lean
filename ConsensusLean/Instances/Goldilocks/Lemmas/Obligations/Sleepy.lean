@@ -40,7 +40,7 @@ open Shape
 open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+  (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Engine readiness bridge. Map honesty by the key equivalence
 and awake intervals by canonical simulation. Both ends are inside the finite horizon; the
@@ -49,22 +49,27 @@ but supplies no engine proof. -/
 theorem ready_transport (_hv : rho.ExecutionValid) {c : Time} {v : V} {t : Time}
     (_ht : 0 ≤ t) (hth : t ≤ rho.horizon)
     (hr : rho.point.Ready c v t) :
-    Regimes.ReadyAt (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
+    Regimes.ReadyAt (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
       c (rho.ownKey v) t := by
   have hkey : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
   constructor
-  · rw [mem_honestKeys_iff ⟨S, stock⟩ rho]
+  · rw [mem_honestKeys_iff { S with vote := stock } rho]
     rw [hkey]
     exact fun h => hr.1 (rho.faultyAt_mono _ht h)
   · intro τ hτ hτt
-    rw [simTrace_awake_iff ⟨S, stock⟩ rho hn, awakeAt_iff ⟨S, stock⟩ rho hn, hkey]
+    rw [simTrace_awake_iff { S with vote := stock } rho hn,
+      awakeAt_iff { S with vote := stock } rho hn, hkey]
     exact ⟨hr.2 τ hτ hτt, (le_max_left _ _).trans hτ, hτt.trans hth⟩
 
 theorem sleepy_ready (hv : rho.ExecutionValid) {v : V} {t : Time}
     (ht : 0 ≤ t) (hth : t ≤ rho.horizon)
-    (hr : rho.point.Ready (Regimes.catchUp (S.params (pubOf E) hn)) v t) :
-    Regimes.ReadyAt (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-      (Regimes.catchUp (S.params (pubOf E) hn)) (rho.ownKey v) t :=
+    (hr : rho.point.Ready (Regimes.catchUp
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) v t) :
+    Regimes.ReadyAt (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
+      (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn))
+        (rho.ownKey v) t :=
   ready_transport S rho hn hv ht hth hr
 
 /-- Quorum bridge. Half-ready means faulty < ready; transport
@@ -74,51 +79,62 @@ the node readiness/join lemma, not on synchrony or whole-run participation. -/
 theorem sleepy_faultBound (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {b : Time} {W : Time}
     (hb : b ≤ rho.horizon)
-    (hhalf : rho.point.SleepyOn (1 / 2) (Regimes.catchUp (S.params (pubOf E) hn)) W 0 b) :
-    ∀ s : Nat, ∀ d ∈ ({0, (S.params (pubOf E) hn).Δ,
-      2 * (S.params (pubOf E) hn).Δ} : Set Time), (S.params (pubOf E) hn).ts s + d ≤ b →
-      (simTrace ⟨S, stock⟩ rho hn).FaultBound (honestKeys ⟨S, stock⟩ rho)
-          ((S.params (pubOf E) hn).ts s + d) := by
+    (hhalf : rho.point.SleepyOn (1 / 2) (Regimes.catchUp
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) W 0 b) :
+    ∀ s : Nat, ∀ d ∈ ({0, (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ,
+      2 * (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ} : Set Time),
+        (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).ts s + d ≤ b →
+      (simTrace { S with vote := stock } rho hn).FaultBound
+        (honestKeys { S with vote := stock } rho)
+          ((({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).ts s + d) := by
   classical
   intro s d hd htb
-  let t := (S.params (pubOf E) hn).ts s + d
-  have hΔ := (S.params (pubOf E) hn).toParams.hΔ
+  let t := (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).ts s + d
+  have hΔ := (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).toParams.hΔ
   have ht : 0 ≤ t := by
     simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hd
     rcases hd with rfl | rfl | rfl <;>
       dsimp [t, SA.SAParams.ts] <;> positivity
   have hh := (rho.point.sleepyOn_iff hconst _ _ _ _ _).mp hhalf t ht htb
   have hlt : (rho.faultyAt 0).card <
-      (rho.point.readyAt (Regimes.catchUp (S.params (pubOf E) hn)) t).card := by
+      (rho.point.readyAt (Regimes.catchUp
+        (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) t).card := by
     unfold EnvPoint.ReadyAbove at hh
     have hq : ((rho.faultyAt 0).card : ℚ) <
-        (rho.point.readyAt (Regimes.catchUp (S.params (pubOf E) hn)) t).card := by
+        (rho.point.readyAt (Regimes.catchUp
+          (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) t).card := by
       simp only [EnvPoint.faultCount, Model.Run.point, rho.faultyAt_eq_zero hconst] at hh
       change (1 / 2 : ℚ) *
-        ((rho.point.readyAt (Regimes.catchUp (S.params (pubOf E) hn)) t).card +
+        ((rho.point.readyAt (Regimes.catchUp
+          (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) t).card +
           (rho.faultyAt 0).card) <
-        (rho.point.readyAt (Regimes.catchUp (S.params (pubOf E) hn)) t).card at hh
+        (rho.point.readyAt (Regimes.catchUp
+          (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) t).card at hh
       linarith
     exact_mod_cast hq
-  have hf : (honestKeys ⟨S, stock⟩ rho)ᶜ.ncard = (rho.faultyAt 0).card := by
-    have heq : (honestKeys ⟨S, stock⟩ rho)ᶜ = rho.key ⁻¹' (↑(rho.faultyAt 0) : Set V) := by
+  have hf : (honestKeys { S with vote := stock } rho)ᶜ.ncard = (rho.faultyAt 0).card := by
+    have heq : (honestKeys { S with vote := stock } rho)ᶜ =
+        rho.key ⁻¹' (↑(rho.faultyAt 0) : Set V) := by
       ext k
-      simp [mem_honestKeys_iff ⟨S, stock⟩ rho]
+      simp [mem_honestKeys_iff { S with vote := stock } rho]
     rw [heq, Set.ncard_preimage_of_injective_subset_range rho.key.injective
       (by simp [rho.key.surjective.range_eq]), Set.ncard_coe_finset]
-  have hcount : (rho.point.readyAt (Regimes.catchUp (S.params (pubOf E) hn)) t).card ≤
-      (simTrace ⟨S, stock⟩ rho hn).honestAwakeJoined (honestKeys ⟨S, stock⟩ rho) t := by
+  have hcount : (rho.point.readyAt (Regimes.catchUp
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) t).card ≤
+      (simTrace { S with vote := stock } rho hn).honestAwakeJoined
+        (honestKeys { S with vote := stock } rho) t := by
     rw [← Set.ncard_coe_finset]
     apply Set.ncard_le_ncard_of_injOn rho.ownKey
     · intro v hv'
-      have hr : rho.point.Ready (Regimes.catchUp (S.params (pubOf E) hn)) v t :=
+      have hr : rho.point.Ready (Regimes.catchUp
+          (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) v t :=
         (Finset.mem_filter.mp hv').2
       have hready := sleepy_ready S rho hn hv ht (htb.trans hb) hr
       refine ⟨hready.1, ?_⟩
       exact Compose.ready_implies_joined _ _ _ _ _ _ (simTrace_goldilocksRun S rho hn hconst hv)
         _ hready.1 t _ ht (by unfold Regimes.catchUp; linarith) hready.2
     · exact rho.key.symm.injective.injOn
-  change (honestKeys ⟨S, stock⟩ rho)ᶜ.ncard < _
+  change (honestKeys { S with vote := stock } rho)ᶜ.ncard < _
   rw [hf]
   exact hlt.trans_le hcount
 
@@ -132,13 +148,14 @@ to the consumer and contract rather than assumed away. -/
 def SleepyServiceSupplier : Prop :=
   ∀ b, 0 ≤ b → b ≤ rho.horizon → rho.ExecutionValid →
     rho.log.SyncUntil rho.point b →
-    Compose.SleepyServiceBefore (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-        (S.params (pubOf E) hn).Δ b
+    Compose.SleepyServiceBefore (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
+        (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ b
 
 theorem event_before_endCut {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hv : rho.ExecutionValid) {t : Time} (ht : 0 ≤ t)
-    {i : Nat} {e : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
+    {i : Nat} {e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
     (he : rho.events[i]? = some e) :
     i < (chainTrace rho).endCut t ↔ e.time ≤ t := by
   classical
@@ -181,54 +198,57 @@ theorem ready_read_cut (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionVa
     {c : Time} (hc : 0 ≤ c) {v : V} {t : Time}
     (ht : 0 ≤ t) (hth : t ≤ rho.horizon)
     (hr : rho.point.Ready c v t) :
-    Regimes.CutAfter (simTrace ⟨S, stock⟩ rho hn)
-        (cutMap ⟨S, stock⟩ rho hn ((chainTrace rho).endCut t)) t ∧
-      Regimes.Boundary (simTrace ⟨S, stock⟩ rho hn) (rho.ownKey v)
-        (cutMap ⟨S, stock⟩ rho hn ((chainTrace rho).endCut t)) ∧
-      (stateAt ⟨S, stock⟩ rho hn v ((chainTrace rho).endCut t)).now = t := by
+    Regimes.CutAfter (simTrace { S with vote := stock } rho hn)
+        (cutMap { S with vote := stock } rho hn ((chainTrace rho).endCut t)) t ∧
+      Regimes.Boundary (simTrace { S with vote := stock } rho hn) (rho.ownKey v)
+        (cutMap { S with vote := stock } rho hn ((chainTrace rho).endCut t)) ∧
+      (stateAt { S with vote := stock } rho hn v ((chainTrace rho).endCut t)).now = t := by
   classical
   let n := (chainTrace rho).endCut t
-  let j := cutMap ⟨S, stock⟩ rho hn n
+  let j := cutMap { S with vote := stock } rho hn n
   have hnle : n ≤ rho.events.length := Nat.findGreatest_le _
-  have hprev : ∀ k < j, (simTrace ⟨S, stock⟩ rho hn).time k ≤ t := by
+  have hprev : ∀ k < j, (simTrace { S with vote := stock } rho hn).time k ≤ t := by
     intro k hk
-    have hlen : k < (allCuts ⟨S, stock⟩ rho hn).length := by
-      rw [length_allCuts ⟨S, stock⟩ rho hn]
-      exact hk.trans_le (cutMap_mono ⟨S, stock⟩ rho hn hnle)
-    have hl : (simTrace ⟨S, stock⟩ rho hn).label k ≠ none := by
-      rw [simTrace_label ⟨S, stock⟩ rho hn, List.getElem?_eq_getElem hlen]
+    have hlen : k < (allCuts { S with vote := stock } rho hn).length := by
+      rw [length_allCuts { S with vote := stock } rho hn]
+      exact hk.trans_le (cutMap_mono { S with vote := stock } rho hn hnle)
+    have hl : (simTrace { S with vote := stock } rho hn).label k ≠ none := by
+      rw [simTrace_label { S with vote := stock } rho hn, List.getElem?_eq_getElem hlen]
       simp
-    obtain ⟨_, i, e, _, he, hi, _, _, _, htime, _⟩ := simTrace_cut ⟨S, stock⟩ rho hn hl
+    obtain ⟨_, i, e, _, he, hi, _, _, _, htime, _⟩ :=
+      simTrace_cut { S with vote := stock } rho hn hl
     have hin : i < n := by
       by_contra h
-      have := cutMap_mono ⟨S, stock⟩ rho hn (Nat.le_of_not_gt h)
+      have := cutMap_mono { S with vote := stock } rho hn (Nat.le_of_not_gt h)
       omega
     rw [htime]
-    exact (event_before_endCut ⟨S, stock⟩ rho hv ht he).mp hin
-  have hnext : t < (simTrace ⟨S, stock⟩ rho hn).time j := by
-    cases hrj : (allCuts ⟨S, stock⟩ rho hn)[j]? with
+    exact (event_before_endCut { S with vote := stock } rho hv ht he).mp hin
+  have hnext : t < (simTrace { S with vote := stock } rho hn).time j := by
+    cases hrj : (allCuts { S with vote := stock } rho hn)[j]? with
     | none =>
-      rw [(simTrace_of_getElem?_none ⟨S, stock⟩ rho hn hrj).2]
+      rw [(simTrace_of_getElem?_none { S with vote := stock } rho hn hrj).2]
       linarith
     | some r =>
-      have hl : (simTrace ⟨S, stock⟩ rho hn).label j ≠ none := by
-        rw [simTrace_label ⟨S, stock⟩ rho hn, hrj]; simp
-      obtain ⟨_, i, e, _, he, _, hi, _, _, htime, _⟩ := simTrace_cut ⟨S, stock⟩ rho hn hl
+      have hl : (simTrace { S with vote := stock } rho hn).label j ≠ none := by
+        rw [simTrace_label { S with vote := stock } rho hn, hrj]; simp
+      obtain ⟨_, i, e, _, he, _, hi, _, _, htime, _⟩ :=
+        simTrace_cut { S with vote := stock } rho hn hl
       have hni : n ≤ i := by
         by_contra h
-        have := cutMap_mono ⟨S, stock⟩ rho hn (show i + 1 ≤ n by omega)
+        have := cutMap_mono { S with vote := stock } rho hn (show i + 1 ≤ n by omega)
         omega
       rw [htime]
       exact lt_of_not_ge fun het => by
-        have : i < n := (event_before_endCut ⟨S, stock⟩ rho hv ht he).mpr het
+        have : i < n := (event_before_endCut { S with vote := stock } rho hv ht he).mpr het
         omega
   refine ⟨⟨hprev, hnext⟩, ?_, ?_⟩
   · rintro ⟨c, hc⟩
-    have hy : rho.ownKey v ∈ honestKeys ⟨S, stock⟩ rho := by
-      rw [mem_honestKeys_iff ⟨S, stock⟩ rho]
+    have hy : rho.ownKey v ∈ honestKeys { S with vote := stock } rho := by
+      rw [mem_honestKeys_iff { S with vote := stock } rho]
       rw [show rho.key (rho.ownKey v) = v from rho.key.apply_symm_apply v]
       exact fun h => hr.1 (rho.faultyAt_mono ht h)
-    obtain ⟨j0, e, hg, hle, hlt⟩ := simTrace_grouped ⟨S, stock⟩ rho hn hconst hv _ hy j c hc
+    obtain ⟨j0, e, hg, hle, hlt⟩ := simTrace_grouped
+      { S with vote := stock } rho hn hconst hv _ hy j c hc
     have heq : j0 = j := by
       by_contra h
       have h0 := (hg.2.1 0 (by omega)).2.1
@@ -242,12 +262,12 @@ theorem ready_read_cut (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionVa
       apply max_le ht
       linarith) le_rfl
     obtain ⟨i, hi⟩ := List.mem_iff_getElem?.mp (hv.tick_total v t ht hth hr.1 hw)
-    have hin : i < n := (event_before_endCut ⟨S, stock⟩ rho hv ht hi).mpr le_rfl
-    rw [now_eq_lastClock ⟨S, stock⟩ rho hn hv]
-    apply lastClock_of_between ⟨S, stock⟩ rho v t i (Or.inl hi) n hin
+    have hin : i < n := (event_before_endCut { S with vote := stock } rho hv ht hi).mpr le_rfl
+    rw [now_eq_lastClock { S with vote := stock } rho hn hv]
+    apply lastClock_of_between { S with vote := stock } rho v t i (Or.inl hi) n hin
     intro k hik hkn e he
-    have hlo := keyLe_of_lt ⟨S, stock⟩ rho hv hi he hik
-    have hhi := (event_before_endCut ⟨S, stock⟩ rho hv ht he).mp hkn
+    have hlo := keyLe_of_lt { S with vote := stock } rho hv hi he hik
+    have hhi := (event_before_endCut { S with vote := stock } rho hv ht he).mp hkn
     rcases hlo with hlo | ⟨hlo, _⟩
     · exact le_antisymm hhi hlo.le
     · exact hlo.symm
@@ -255,15 +275,16 @@ theorem ready_read_cut (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionVa
 theorem sleepy_read_cut (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} {t : Time}
     (ht : 0 ≤ t) (hth : t ≤ rho.horizon)
-    (hr : rho.point.Ready (Regimes.catchUp (S.params (pubOf E) hn)) v t) :
-    Regimes.CutAfter (simTrace ⟨S, stock⟩ rho hn)
-        (cutMap ⟨S, stock⟩ rho hn ((chainTrace rho).endCut t)) t ∧
-      Regimes.Boundary (simTrace ⟨S, stock⟩ rho hn) (rho.ownKey v)
-        (cutMap ⟨S, stock⟩ rho hn ((chainTrace rho).endCut t)) ∧
-      (stateAt ⟨S, stock⟩ rho hn v ((chainTrace rho).endCut t)).now = t :=
+    (hr : rho.point.Ready (Regimes.catchUp
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) v t) :
+    Regimes.CutAfter (simTrace { S with vote := stock } rho hn)
+        (cutMap { S with vote := stock } rho hn ((chainTrace rho).endCut t)) t ∧
+      Regimes.Boundary (simTrace { S with vote := stock } rho hn) (rho.ownKey v)
+        (cutMap { S with vote := stock } rho hn ((chainTrace rho).endCut t)) ∧
+      (stateAt { S with vote := stock } rho hn v ((chainTrace rho).endCut t)).now = t :=
   ready_read_cut S rho hn hconst hv (by
     unfold Regimes.catchUp
-    have := (S.params (pubOf E) hn).toParams.hΔ
+    have := (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).toParams.hΔ
     linarith) ht hth hr
 
 set_option linter.unusedVariables false in
@@ -271,16 +292,23 @@ set_option linter.unusedVariables false in
 Canonical execution uses `runProposer S rho hn`, selected by `rho.sel`.
 The unused horizon premise is retained to preserve the existing named-argument interface. -/
 theorem sleepy_safe_finite (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho hn)) {b : Time}
+    (hnc : Compose.NoCollRun (digestOf { S with vote := stock } rho)
+      (simTrace { S with vote := stock } rho hn)) {b : Time}
     (hb0 : 0 ≤ b) (hbh : b ≤ rho.horizon)
-    (hsync : Compose.SleepyServiceBefore (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-      (S.params (pubOf E) hn).Δ b)
-    (hf : ∀ s : Nat, ∀ d ∈ ({0, (S.params (pubOf E) hn).Δ,
-      2 * (S.params (pubOf E) hn).Δ} : Set Time), (S.params (pubOf E) hn).ts s + d ≤ b →
-      (simTrace ⟨S, stock⟩ rho hn).FaultBound (honestKeys ⟨S, stock⟩ rho)
-          ((S.params (pubOf E) hn).ts s + d)) :
-    Regimes.ReadySafeOn (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-      (Regimes.catchUp (S.params (pubOf E) hn)) 0 b := by
+    (hsync : Compose.SleepyServiceBefore (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ b)
+    (hf : ∀ s : Nat, ∀ d ∈ ({0,
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ,
+      2 * (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ} : Set Time),
+        (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).ts s + d ≤ b →
+      (simTrace { S with vote := stock } rho hn).FaultBound
+        (honestKeys { S with vote := stock } rho)
+          ((({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).ts s + d)) :
+    Regimes.ReadySafeOn (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
+      (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params
+        (pubOf E) hn)) 0 b := by
   exact Regimes.sleepy_safe_before (simTrace_goldilocksRun S rho hn hconst hv) hnc hb0 hsync hf rfl
 
 set_option linter.unusedVariables false in
@@ -290,25 +318,34 @@ margin ends before the observation. Every service dependency must fit `SleepySer
 `IncludeSleepy` is the paper source, not an applicable finite theorem. No future participation
 or whole-run extension is assumed. Uses the canonical run with `runProposer S rho hn`. -/
 theorem sleepy_include_finite (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho hn)) {b : Time}
+    (hnc : Compose.NoCollRun (digestOf { S with vote := stock } rho)
+      (simTrace { S with vote := stock } rho hn)) {b : Time}
     (hb0 : 0 ≤ b) (hbh : b ≤ rho.horizon)
-    (hsync : Compose.SleepyServiceBefore (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-      (S.params (pubOf E) hn).Δ b)
-    (hf : ∀ s : Nat, ∀ d ∈ ({0, (S.params (pubOf E) hn).Δ,
-      2 * (S.params (pubOf E) hn).Δ} : Set Time), (S.params (pubOf E) hn).ts s + d ≤ b →
-      (simTrace ⟨S, stock⟩ rho hn).FaultBound (honestKeys ⟨S, stock⟩ rho)
-          ((S.params (pubOf E) hn).ts s + d))
+    (hsync : Compose.SleepyServiceBefore (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ b)
+    (hf : ∀ s : Nat, ∀ d ∈ ({0,
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ,
+      2 * (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ} : Set Time),
+        (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).ts s + d ≤ b →
+      (simTrace { S with vote := stock } rho hn).FaultBound
+        (honestKeys { S with vote := stock } rho)
+          ((({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).ts s + d))
     {τ t : Time} {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
     (hτ : 0 ≤ τ) (hτb : τ ≤ b)
-    (hP : Regimes.ReadyProposalAt (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-      (Regimes.catchUp (S.params (pubOf E) hn)) τ P)
-    (hmargin : τ + 6 * (S.params (pubOf E) hn).Δ ≤ t) (htb : t ≤ b)
+    (hP : Regimes.ReadyProposalAt (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
+      (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) τ P)
+    (hmargin : τ + 6 * (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ ≤ t)
+    (htb : t ≤ b)
     {y : Fin (Fintype.card V)} {j : Nat}
-    (hy : Regimes.ReadyAt (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-      (Regimes.catchUp (S.params (pubOf E) hn)) y t)
-    (hj : Regimes.CutAfter (simTrace ⟨S, stock⟩ rho hn) j t) :
-    Anc ((simTrace ⟨S, stock⟩ rho hn).HonestBlocks (honestKeys ⟨S, stock⟩ rho)) P
-      (Regimes.readAfter (simTrace ⟨S, stock⟩ rho hn) y j t) := by
+    (hy : Regimes.ReadyAt (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
+      (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) y t)
+    (hj : Regimes.CutAfter (simTrace { S with vote := stock } rho hn) j t) :
+    Anc ((simTrace { S with vote := stock } rho hn).HonestBlocks
+      (honestKeys { S with vote := stock } rho)) P
+      (Regimes.readAfter (simTrace { S with vote := stock } rho hn) y j t) := by
   have hrun := simTrace_goldilocksRun S rho hn hconst hv
   have hinv := Compose.sleepy_invariant_before hrun hnc hb0 hsync hf rfl
   exact Regimes.read_extends_of_record_before hrun hnc hinv
@@ -323,42 +360,64 @@ upper producer bound is needed to transport release/proposal evidence inside the
 The recurrence is for `runProposer S rho hn` (from `rho.sel`), never a setup-fixed schedule.
 The engine pattern-to-recurrence and duration adapters remain separate OPEN suppliers. -/
 theorem sleepy_grow_finite (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho hn)) {t b : Time}
+    (hnc : Compose.NoCollRun (digestOf { S with vote := stock } rho)
+      (simTrace { S with vote := stock } rho hn)) {t b : Time}
         {k : Nat}
-    (ht : 0 ≤ t) (hk : 1 ≤ k) (hb : b = t + (4 * k + 6) * (S.params (pubOf E) hn).Δ)
+    (ht : 0 ≤ t) (hk : 1 ≤ k)
+    (hb : b = t + (4 * k + 6) *
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ)
     (hbh : b ≤ rho.horizon)
-    (hsync : Compose.SleepyServiceBefore (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-      (S.params (pubOf E) hn).Δ b)
-    (hf : ∀ s : Nat, ∀ d ∈ ({0, (S.params (pubOf E) hn).Δ,
-      2 * (S.params (pubOf E) hn).Δ} : Set Time), (S.params (pubOf E) hn).ts s + d ≤ b →
-      (simTrace ⟨S, stock⟩ rho hn).FaultBound (honestKeys ⟨S, stock⟩ rho)
-          ((S.params (pubOf E) hn).ts s + d))
-    (hrec : Regimes.ProposerRecurrence (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-      (runProposer ⟨S, stock⟩ rho hn) (Regimes.catchUp (S.params (pubOf E) hn)) k 0 b)
-    (_hreader : ∃ v, Regimes.ReadyAt (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-      (Regimes.catchUp (S.params (pubOf E) hn)) v b) :
-    ∃ τ P, t < τ ∧ τ + 6 * (S.params (pubOf E) hn).Δ ≤ b ∧
-      Regimes.ReadyProposalAt (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-        (Regimes.catchUp (S.params (pubOf E) hn)) τ P ∧
-      (∀ y j, Regimes.ReadyAt (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-        (Regimes.catchUp (S.params (pubOf E) hn)) y b →
-        Regimes.CutAfter (simTrace ⟨S, stock⟩ rho hn) j b →
-        Anc ((simTrace ⟨S, stock⟩ rho hn).HonestBlocks (honestKeys ⟨S, stock⟩ rho)) P
-          (Regimes.readAfter (simTrace ⟨S, stock⟩ rho hn) y j b)) ∧
-      ∀ x jx, Regimes.ReadyAt (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-        (Regimes.catchUp (S.params (pubOf E) hn)) x t →
-        Regimes.CutAfter (simTrace ⟨S, stock⟩ rho hn) jx t →
-        ¬ Anc ((simTrace ⟨S, stock⟩ rho hn).HonestBlocks (honestKeys ⟨S, stock⟩ rho)) P
-          (Regimes.readAfter (simTrace ⟨S, stock⟩ rho hn) x jx t) ∧
-        ∀ y j, Regimes.ReadyAt (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-          (Regimes.catchUp (S.params (pubOf E) hn)) y b →
-          Regimes.CutAfter (simTrace ⟨S, stock⟩ rho hn) j b →
-          Anc ((simTrace ⟨S, stock⟩ rho hn).HonestBlocks (honestKeys ⟨S, stock⟩ rho))
-            (Regimes.readAfter (simTrace ⟨S, stock⟩ rho hn) x jx t)
-            (Regimes.readAfter (simTrace ⟨S, stock⟩ rho hn) y j b) := by
-  let sp := S.params (pubOf E) hn
-  let tr := simTrace ⟨S, stock⟩ rho hn
-  let H := honestKeys ⟨S, stock⟩ rho
+    (hsync : Compose.SleepyServiceBefore (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ b)
+    (hf : ∀ s : Nat, ∀ d ∈ ({0,
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ,
+      2 * (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ} : Set Time),
+        (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).ts s + d ≤ b →
+      (simTrace { S with vote := stock } rho hn).FaultBound
+        (honestKeys { S with vote := stock } rho)
+          ((({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).ts s + d))
+    (hrec : Regimes.ProposerRecurrence (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
+      (runProposer { S with vote := stock } rho hn)
+      (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) k 0 b)
+    (_hreader : ∃ v, Regimes.ReadyAt (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
+      (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) v b) :
+    ∃ τ P, t < τ ∧ τ +
+      6 * (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ ≤ b ∧
+      Regimes.ReadyProposalAt (simTrace { S with vote := stock } rho hn)
+        (honestKeys { S with vote := stock } rho)
+        (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params
+          (pubOf E) hn)) τ P ∧
+      (∀ y j, Regimes.ReadyAt (simTrace { S with vote := stock } rho hn)
+        (honestKeys { S with vote := stock } rho)
+        (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params
+          (pubOf E) hn)) y b →
+        Regimes.CutAfter (simTrace { S with vote := stock } rho hn) j b →
+        Anc ((simTrace { S with vote := stock } rho hn).HonestBlocks
+          (honestKeys { S with vote := stock } rho)) P
+          (Regimes.readAfter (simTrace { S with vote := stock } rho hn) y j b)) ∧
+      ∀ x jx, Regimes.ReadyAt (simTrace { S with vote := stock } rho hn)
+        (honestKeys { S with vote := stock } rho)
+        (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params
+          (pubOf E) hn)) x t →
+        Regimes.CutAfter (simTrace { S with vote := stock } rho hn) jx t →
+        ¬ Anc ((simTrace { S with vote := stock } rho hn).HonestBlocks
+          (honestKeys { S with vote := stock } rho)) P
+          (Regimes.readAfter (simTrace { S with vote := stock } rho hn) x jx t) ∧
+        ∀ y j, Regimes.ReadyAt (simTrace { S with vote := stock } rho hn)
+          (honestKeys { S with vote := stock } rho)
+          (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params
+            (pubOf E) hn)) y b →
+          Regimes.CutAfter (simTrace { S with vote := stock } rho hn) j b →
+          Anc ((simTrace { S with vote := stock } rho hn).HonestBlocks
+            (honestKeys { S with vote := stock } rho))
+            (Regimes.readAfter (simTrace { S with vote := stock } rho hn) x jx t)
+            (Regimes.readAfter (simTrace { S with vote := stock } rho hn) y j b) := by
+  let sp := ({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn
+  let tr := simTrace { S with vote := stock } rho hn
+  let H := honestKeys { S with vote := stock } rho
   have hrun := simTrace_goldilocksRun S rho hn hconst hv
   have hΔ := sp.toParams.hΔ
   have hcoh := Compose.honest_blocks_coherent hrun.toLocalRun hnc
@@ -437,11 +496,12 @@ than assuming the node recurrence in an unconditional obligations theorem. -/
 def SleepyRecurrenceSupplier : Prop :=
   ∀ (k : ℕ+) b, 0 ≤ b → b ≤ rho.horizon → rho.ExecutionValid →
     Blocks.PatternRecurrence rho.point rho.key (fun s => rho.sel (.proposer s))
-      (goldilocksWith ⟨S, stock⟩ (pubOf E)).skel.grid ⟨Blocks.Pattern.single, k, 0⟩
-      (Regimes.catchUp (S.params (pubOf E) hn)) 0 b →
-    Regimes.ProposerRecurrence (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-        (runProposer ⟨S, stock⟩ rho hn)
-      (Regimes.catchUp (S.params (pubOf E) hn)) k 0 b
+      (goldilocks { S with vote := stock } (pubOf E)).skel.grid ⟨Blocks.Pattern.single, k, 0⟩
+      (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) 0 b →
+    Regimes.ProposerRecurrence (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
+        (runProposer { S with vote := stock } rho hn)
+      (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) k 0 b
 
 /-- Proposal evidence bridge. Unpack the canonical producer's
 tick and `block_released`: its signed header is the engine proposal, and readiness transfers
@@ -451,21 +511,23 @@ theorem ready_proposal (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionVa
     {c : Time} {τ : Time}
     (_hτ : 0 ≤ τ) (_hτh : τ ≤ rho.horizon)
     {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
-    (hP : Regimes.ReadyProposalAt (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
+    (hP : Regimes.ReadyProposalAt (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
       c τ P) :
     ∃ k, rho.point.Ready c (rho.key k) τ ∧
-      Shape.HonestProposal rho τ k (headerOf (S.params (pubOf E) hn) P) := by
+      Shape.HonestProposal rho τ k
+        (headerOf (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn) P) := by
   obtain ⟨p, k, hr, hP, htime⟩ := hP
   have hp := hP.2.1
   subst p
-  have hhon := (mem_honestKeys_iff ⟨S, stock⟩ rho P.proposer).mp hr.1
+  have hhon := (mem_honestKeys_iff { S with vote := stock } rho P.proposer).mp hr.1
   have hhon : rho.point.HonestAt (rho.key P.proposer) τ :=
     (rho.point.honestAt_iff_zero hconst _ _).mpr hhon
   refine ⟨P.proposer, ⟨hhon, ?_⟩, hhon, .proposer P.slot, payloadObjs P.fgPayload P.acPayload,
     rfl, ?_⟩
   · intro u hu hut
-    exact (simTrace_awake_of ⟨S, stock⟩ rho hn hv P.proposer hr.1 u (hr.2 u hu hut)).1
-  · have hrel := simTrace_block_released ⟨S, stock⟩ rho hn hconst hv
+    exact (simTrace_awake_of { S with vote := stock } rho hn hv P.proposer hr.1 u (hr.2 u hu hut)).1
+  · have hrel := simTrace_block_released { S with vote := stock } rho hn hconst hv
       (simTrace_goldilocksRun S rho hn hconst hv)
       P.proposer hr.1 k P hP.1
     rw [htime] at hrel
@@ -474,10 +536,14 @@ theorem ready_proposal (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionVa
 theorem sleepy_proposal (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid) {τ : Time}
     (hτ : 0 ≤ τ) (hτh : τ ≤ rho.horizon)
     {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
-    (hP : Regimes.ReadyProposalAt (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-      (Regimes.catchUp (S.params (pubOf E) hn)) τ P) :
-    ∃ k, rho.point.Ready (Regimes.catchUp (S.params (pubOf E) hn)) (rho.key k) τ ∧
-      Shape.HonestProposal rho τ k (headerOf (S.params (pubOf E) hn) P) :=
+    (hP : Regimes.ReadyProposalAt (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
+      (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) τ P) :
+    ∃ k, rho.point.Ready
+      (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn))
+        (rho.key k) τ ∧
+      Shape.HonestProposal rho τ k
+        (headerOf (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn) P) :=
   ready_proposal S rho hn hconst hv hτ hτh hP
 
 /-- Inclusion-to-chain consumer. Parent-closed coherent stores
@@ -486,79 +552,91 @@ supplies the end-of-time cut and exact output clock. Keep readiness, producer pr
 collision freedom and the finite observation bound; ancestry alone is not engine inclusion.
 Depends on the chain lemmas, canonical simulation and the encoding repair. -/
 theorem confirmed_inBy (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho hn))
+    (hnc : Compose.NoCollRun (digestOf { S with vote := stock } rho)
+      (simTrace { S with vote := stock } rho hn))
     {c : Time} (hc : 0 ≤ c) {τ t : Time}
     (hτ : 0 ≤ τ) (hτt : τ ≤ t) (hth : t ≤ rho.horizon)
     {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
-    (hP : Regimes.ReadyProposalAt (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
+    (hP : Regimes.ReadyProposalAt (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
       c τ P)
-    (hinc : ∀ y j, Regimes.ReadyAt (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
+    (hinc : ∀ y j, Regimes.ReadyAt (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
       c y t →
-      Regimes.CutAfter (simTrace ⟨S, stock⟩ rho hn) j t →
-      Anc ((simTrace ⟨S, stock⟩ rho hn).HonestBlocks (honestKeys ⟨S, stock⟩ rho)) P
-        (Regimes.readAfter (simTrace ⟨S, stock⟩ rho hn) y j t)) :
+      Regimes.CutAfter (simTrace { S with vote := stock } rho hn) j t →
+      Anc ((simTrace { S with vote := stock } rho hn).HonestBlocks
+        (honestKeys { S with vote := stock } rho)) P
+        (Regimes.readAfter (simTrace { S with vote := stock } rho hn) y j t)) :
     InBy rho c .confirmed
-      (headerOf (S.params (pubOf E) hn) P) t := by
+      (headerOf (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn) P) t := by
   have hs := simTrace_simulates S rho hn hconst hv
-  have hroot : P.root ≠ (S.params (pubOf E) hn).genesisRoot := by
+  have hroot : P.root ≠
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).genesisRoot := by
     obtain ⟨p, k, hp, hprop, _⟩ := hP
     obtain ⟨⟨acc, hc⟩, hpos⟩ := hprop.1
     rcases Compose.blockCall_cases hs.run.toLocalRun hp.1 hc with hg | hg
     · have := (hg.2.1 0 (List.length_pos_iff.mpr hg.1)).2.2.2.1
       exact False.elim (hpos (by simpa using this))
     · obtain ⟨j, x, _, _, _, d, p', _, hB, _⟩ := hg
-      rw [hB, digestOf_eq ⟨S, stock⟩ rho]
+      rw [hB, digestOf_eq { S with vote := stock } rho]
       simp only [Node.mkBlock]
       erw [dgOf_eq]
       exact taggedRoot_ne _ _
   intro v hr
   let i := (chainTrace rho).endCut t
-  let j := cutMap ⟨S, stock⟩ rho hn i
+  let j := cutMap { S with vote := stock } rho hn i
   have hi : i ≤ rho.events.length := Nat.findGreatest_le _
   have hhon := (rho.point.honestAt_iff_zero hconst v t).mp hr.1
-  have hy := honest_ownKey (S := ⟨S, stock⟩) hhon
+  have hy := honest_ownKey (S := { S with vote := stock }) hhon
   have hreach := Compose.fg_reachable hs.run.toLocalRun hy j
   have hframe := (Store.frame_realization _ _ _ _ hreach).1
   have htip := (Regimes.sa_tips
-    (A := ((simTrace ⟨S, stock⟩ rho hn).state (rho.ownKey v) j).ac) hframe t).1.1
+    (A := ((simTrace { S with vote := stock } rho hn).state (rho.ownKey v) j).ac) hframe t).1.1
   have hcut := ready_read_cut S rho hn hconst hv hc (hτ.trans hτt) hth hr
   have ha := hinc _ j (ready_transport S rho hn hv (hτ.trans hτt) hth hr) hcut.1
   have hanc := anc_in_store hreach (Compose.honest_blocks_coherent hs.run.toLocalRun hnc)
     (fun _ h => ⟨_, hy, j, h⟩) ha htip
   have hprefix := chainTo_prefix hreach hanc
-  have hmem : headerOf (S.params (pubOf E) hn) P ∈
-      chainTo ((simTrace ⟨S, stock⟩ rho hn).state (rho.ownKey v) j).fg.blocks (P.slot + 1) P := by
+  have hmem : headerOf (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn) P ∈
+      chainTo ((simTrace { S with vote := stock } rho hn).state (rho.ownKey v) j).fg.blocks
+        (P.slot + 1) P := by
     simp only [chainTo, ite_eq_right hroot]
     split <;> simp
   have hout := hprefix.subset hmem
-  change headerOf (S.params (pubOf E) hn) P ∈ (chainTrace rho).read .confirmed v i
-  rw [read_eq_out ⟨S, stock⟩ rho hn, outOf, hs.state v hhon i hi, hcut.2.2]
+  change headerOf (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn) P ∈
+    (chainTrace rho).read .confirmed v i
+  rw [read_eq_out { S with vote := stock } rho hn, outOf, hs.state v hhon i hi, hcut.2.2]
   exact hout
 
 theorem sleepy_inBy (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho hn)) {τ t : Time}
+    (hnc : Compose.NoCollRun (digestOf { S with vote := stock } rho)
+      (simTrace { S with vote := stock } rho hn)) {τ t : Time}
     (hτ : 0 ≤ τ) (hτt : τ ≤ t) (hth : t ≤ rho.horizon)
     {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
-    (hP : Regimes.ReadyProposalAt (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-      (Regimes.catchUp (S.params (pubOf E) hn)) τ P)
-    (hinc : ∀ y j, Regimes.ReadyAt (simTrace ⟨S, stock⟩ rho hn) (honestKeys ⟨S, stock⟩ rho)
-      (Regimes.catchUp (S.params (pubOf E) hn)) y t →
-      Regimes.CutAfter (simTrace ⟨S, stock⟩ rho hn) j t →
-      Anc ((simTrace ⟨S, stock⟩ rho hn).HonestBlocks (honestKeys ⟨S, stock⟩ rho)) P
-        (Regimes.readAfter (simTrace ⟨S, stock⟩ rho hn) y j t)) :
-    InBy rho (Regimes.catchUp (S.params (pubOf E) hn)) .confirmed
-      (headerOf (S.params (pubOf E) hn) P) t :=
+    (hP : Regimes.ReadyProposalAt (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
+      (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) τ P)
+    (hinc : ∀ y j, Regimes.ReadyAt (simTrace { S with vote := stock } rho hn)
+      (honestKeys { S with vote := stock } rho)
+      (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) y t →
+      Regimes.CutAfter (simTrace { S with vote := stock } rho hn) j t →
+      Anc ((simTrace { S with vote := stock } rho hn).HonestBlocks
+        (honestKeys { S with vote := stock } rho)) P
+        (Regimes.readAfter (simTrace { S with vote := stock } rho hn) y j t)) :
+    InBy rho (Regimes.catchUp
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) .confirmed
+      (headerOf (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn) P) t :=
   confirmed_inBy S rho hn hconst hv hnc (by
     unfold Regimes.catchUp
-    have := (S.params (pubOf E) hn).toParams.hΔ
+    have := (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).toParams.hΔ
     linarith) hτ hτt hth hP hinc
 
 /-- The mapped post-event cut is a nonstrict read point at the event time.
 Other nodes may still have events at the same time. -/
 theorem readPoint_after_event {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {i : Nat}
-    {e : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
+    {e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
     (he : rho.events[i]? = some e) :
     Regimes.ReadPoint (simTrace S rho hn) (cutMap S rho hn (i + 1)) e.time := by
   have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
@@ -602,13 +680,13 @@ theorem readPoint_after_event {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
 section Clock
 
-variable (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
+variable (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
   (hn : 1 ≤ Fintype.card V)
 
 /-- A completed local event leaves the stored clock at that event's time, including
 deliveries (whose preceding tick is forced by execution validity). -/
 theorem now_after_local_event (hv : rho.ExecutionValid) {v : V} {i : Nat}
-    {e : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
+    {e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
     (he : rho.events[i]? = some e) (hev : e.node = v) :
     (stateAt S rho hn v (i + 1)).now = e.time := by
   rw [now_eq_lastClock S rho hn hv]
@@ -684,7 +762,7 @@ theorem tick_before_stored_clock (hv : rho.ExecutionValid) {v : V} {p i : Nat} {
 
 /-- A stored clock cannot be ahead of the next engine event. -/
 theorem now_le_event (hv : rho.ExecutionValid) (v : V) {i : Nat}
-    {e : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
+    {e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
     (he : rho.events[i]? = some e) : (stateAt S rho hn v i).now ≤ e.time := by
   rcases stateAt_last_local_event S rho hn hv v i with h | ⟨j, hj, f, hf, _, _, ht⟩
   · rw [h, stateAt_eq S rho hn]

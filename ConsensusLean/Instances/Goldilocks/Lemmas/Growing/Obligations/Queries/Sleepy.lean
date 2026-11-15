@@ -22,7 +22,7 @@ namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation Obligations
 open Blocks Shape
 
-variable (S : BoundSetup) (A : ContractAssumptions S.toSetup) (V : Type) [Fintype V] [DecidableEq V]
+variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
 omit [DecidableEq V] in
 /-- Shortening the readiness duration preserves sleepy participation. -/
@@ -32,8 +32,8 @@ theorem sleepyOn_of_duration (p : EnvPoint V) {c d W a b : Time} (hcd : c ≤ d)
 
 /-- The finite sleepy service through the query deadline. -/
 theorem sleepy_query_sync_at (Q : ConfirmedQueryAt S A V)
-    (hsleepy : (Sys (goldilocksWith S) V).Sleepy
-        (shapeProgress (goldilocksWith S) V).toExternal (K S.toSetup A) Q.run) :
+    (hsleepy : (Sys (goldilocks S) V).Sleepy
+        (shapeProgress (goldilocks S) V).toExternal (K S A) Q.run) :
     Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.deadline :=
   sleepyServiceBefore_of_syncUntil_at S Q.run.2 Q.hn Q.valid
     (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) Q.bounded
@@ -41,8 +41,8 @@ theorem sleepy_query_sync_at (Q : ConfirmedQueryAt S A V)
 
 /-- The two sleepy count shapes through the query deadline. -/
 theorem sleepy_query_bounds_at (Q : ConfirmedQueryAt S A V)
-    (hsleepy : (Sys (goldilocksWith S) V).Sleepy
-        (shapeProgress (goldilocksWith S) V).toExternal (K S.toSetup A) Q.run) :
+    (hsleepy : (Sys (goldilocks S) V).Sleepy
+        (shapeProgress (goldilocks S) V).toExternal (K S A) Q.run) :
     Compose.Growing.SleepyBoundsFrom Q.trace Q.keys 0 Q.deadline :=
   sleepy_bounds_at S Q.run.2 Q.hn Q.valid Q.bounded (fun t ht htb =>
     sleepyOn_of_duration V _ (confirmed_duration_supply_at S A V Q) hsleepy.2.1 t ht
@@ -63,8 +63,8 @@ structure SleepyProposalServiceAt (Q : ConfirmedQueryAt S A V)
 /-- Actual production from the selected slot: the canonical proposal event and its own
 acceptance, with the proposer's hold, for progress from a readiness start `ready ≤ query`. -/
 theorem sleepy_query_producer_at (Q : ConfirmedQueryAt S A V) {ready : Time}
-    (hprogress : (Sys (goldilocksWith S) V).prog
-      (shapeProgress (goldilocksWith S) V) (K S.toSetup A)
+    (hprogress : (Sys (goldilocks S) V).prog
+      (shapeProgress (goldilocks S) V) (K S A)
       Q.cap Q.index ready Q.run.2.horizon Q.run)
     (hquery : max ready 0 ≤ Q.query) :
     ∃ P : ConfirmedProposalAt Q, Q.trace.time P.cut + 6 * Q.params.Δ ≤ Q.deadline ∧
@@ -83,10 +83,10 @@ theorem sleepy_query_producer_at (Q : ConfirmedQueryAt S A V) {ready : Time}
 
 /-- A confirmed proposal with its sleepy service inputs. -/
 theorem sleepy_serviced_proposal_supply_at (Q : ConfirmedQueryAt S A V)
-    (hsleepy : (Sys (goldilocksWith S) V).Sleepy
-        (shapeProgress (goldilocksWith S) V).toExternal (K S.toSetup A) Q.run)
-    (hprogress : (Sys (goldilocksWith S) V).prog
-      (shapeProgress (goldilocksWith S) V) (K S.toSetup A)
+    (hsleepy : (Sys (goldilocks S) V).Sleepy
+        (shapeProgress (goldilocks S) V).toExternal (K S A) Q.run)
+    (hprogress : (Sys (goldilocks S) V).prog
+      (shapeProgress (goldilocks S) V) (K S A)
       Q.cap Q.index 0 Q.run.2.horizon Q.run)
     (hquery : 0 ≤ Q.query) :
     ∃ P : ConfirmedProposalAt Q, SleepyProposalServiceAt S A V Q P := by

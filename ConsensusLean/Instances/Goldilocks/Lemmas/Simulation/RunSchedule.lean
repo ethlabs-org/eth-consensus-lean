@@ -23,8 +23,8 @@ open SA (SAParams ReplayOrder Vote Payload blockVotes)
 
 variable {binding : VoteBinding}
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-! ## `LocalRun` -/
 
@@ -51,7 +51,7 @@ theorem key_of_ownKey {v : V} {y : Fin (Fintype.card V)} (h : rho.ownKey v = y) 
   rw [← h]; exact (rho.key.apply_symm_apply v).symm
 
 private theorem event_awake (hv : rho.ExecutionValid) {i : Nat}
-    {ev : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
     (he : rho.events[i]? = some ev) : E.awake ev.node ev.time = true := by
   have hm := List.mem_of_getElem? he
   cases ev with

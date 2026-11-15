@@ -159,10 +159,10 @@ theorem accepted_slotTime_le {sp : SA.SAParams}
 Only child wire validity and time bounds remain local inputs; parent slot order follows
 from the reachable FG store and durable-map correspondence. -/
 theorem decoded_acceptance_enqueue {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
-    (hdec : WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st)
-    (hheld : WrappersHeld (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st)
+    (hdec : WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
+    (hheld : WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
     (hcover : WrappersCover st)
     (hreach : st.node.fg.Reachable (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
     (B : Blk (S.params (pubOf E) hn))
@@ -170,7 +170,7 @@ theorem decoded_acceptance_enqueue {V : Type} [Fintype V] {E : Env V}
     (hb : decodeBlock (S.params (pubOf E) hn) (binding := S.vote) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B)
     (ht : 0 ≤ st.now) :
-    WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash)
+    WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash)
       (queueAccepted st B) := by
   obtain ⟨root, p, hr, hp, _, _⟩ := onBlock_queues_acceptance_parent st B hcover ha
   have hfg : ∃ fg', st.node.fg.onBlock B = some fg' := by
@@ -204,7 +204,7 @@ theorem _root_.Consensus.Goldilocks.Simulation.WrappersDecoded.accept {sp : SA.S
 /-- A canonical child decoded during a receipt also decodes under its own digest table.
 This discharges child wire validity for delivery acceptances without any payload premise. -/
 theorem received_child_decodes {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (receipt o : Wire (Fintype.card V) S.vote) (B : Blk (S.params (pubOf E) hn))
     (hc : Obj.Contains receipt o)
     (hd : decodeBlock (S.params (pubOf E) hn) (digests rho.hash receipt) o = some B) :
@@ -219,7 +219,7 @@ theorem received_child_decodes {V : Type} [Fintype V] {E : Env V}
 a receipt guard (which own-block recording does not run). From an AC start `s₀` up to the vote
 permission. -/
 theorem own_proposal_decodes {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (proposer : Nat → Fin (Fintype.card V)) (self : Fin (Fintype.card V))
     (cfg cfg' : Node.Config (goldilocksNode (S.params (pubOf E) hn) (S.ro _)))
     (t : Time) (x : Nat)
@@ -248,12 +248,14 @@ theorem own_proposal_decodes {V : Type} [Fintype V] {E : Env V}
 /-- Every honest acceptance in the simulating trace has a valid canonical child wire.
 Receipt validity and own-proposal validity are proved by their respective run laws. -/
 theorem accepted_child_decodes {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
+    (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (y : Fin (Fintype.card V)) (hy : y ∈ honestKeys ⟨S, stock⟩ rho)
-    (i : Nat) (B : Blk (S.params (pubOf E) hn))
-    (hc : (simTrace ⟨S, stock⟩ rho hn).CallAt y i (.fg (.block B true))) :
-    decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
+    (y : Fin (Fintype.card V)) (hy : y ∈ honestKeys { S with vote := stock } rho)
+    (i : Nat) (B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn))
+    (hc : (simTrace { S with vote := stock } rho hn).CallAt y i (.fg (.block B true))) :
+    decodeBlock (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)
+      (binding := stock) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B := by
   have run := simTrace_goldilocksRun S rho hn hf hv
   rcases Compose.blockCall_cases run.toLocalRun hy hc with hg |
@@ -261,9 +263,11 @@ theorem accepted_child_decodes {V : Type} [Fintype V] [DecidableEq V] {E : Env V
   · have hw := run.wire y hy i _ _ hg
     have ha := (run.cutLaw y hy i _ hc).2.1
     obtain ⟨root, _, hr, _, _, _, _, _⟩ := Store.onBlock_eq_some ha
-    exact canonical_block_decodes ⟨S, stock⟩ rho hn B (by rw [hr]; simp) hw.1 hw.2.1 hw.2.2
+    exact canonical_block_decodes { S with vote := stock } rho hn B
+      (by rw [hr]; simp) hw.1 hw.2.1 hw.2.2
   · obtain ⟨cfg, hr, hst, hs⟩ := Compose.group_step run.toLocalRun hy hg
-    have hd := own_proposal_decodes ⟨S, stock⟩ rho hn (runProposer ⟨S, stock⟩ rho hn) y cfg _ _ x
+    have hd := own_proposal_decodes { S with vote := stock } rho hn
+      (runProposer { S with vote := stock } rho hn) y cfg _ _ x
       run.genesis_root_ok hr (SA.voteStart_initial _) hs hp d p (by rw [hst]; exact hdp)
     subst hB
     simp only [hst, Node.acProposal, Node.tickStep, Node.acCall] at hd
@@ -271,10 +275,10 @@ theorem accepted_child_decodes {V : Type} [Fintype V] [DecidableEq V] {E : Env V
 
 /-- Acceptance preserves both decoder inventory and held-block correspondence together. -/
 theorem decoded_held_accept {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
-    (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st)
-    (hh : WrappersHeld (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st)
+    (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
+    (hh : WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
     (hc : WrappersCover st)
     (hr : st.node.fg.Reachable (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
     (B : Blk (S.params (pubOf E) hn))
@@ -282,8 +286,8 @@ theorem decoded_held_accept {V : Type} [Fintype V] {E : Env V}
     (hb : decodeBlock (S.params (pubOf E) hn) (binding := S.vote) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B) (ht : 0 ≤ st.now) :
     let st' := apply st (Node.onBlock st.self st.node st.now B)
-    WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st' ∧
-    WrappersHeld (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st' := by
+    WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' ∧
+    WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' := by
   have hq := decoded_acceptance_enqueue S rho hn st hd hh hc hr B ha hb ht
   refine ⟨hq.accept st B hc ha, ?_⟩
   obtain ⟨root, p, hpar, hp, _, _⟩ := onBlock_queues_acceptance_parent st B hc ha
@@ -306,10 +310,10 @@ theorem decoded_held_accept {V : Type} [Fintype V] {E : Env V}
 /-- Block handling preserves the joint invariant even when the block is refused.
 Only the accepting branch needs a valid child wire. -/
 theorem decoded_held_onBlock {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
-    (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st)
-    (hh : WrappersHeld (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st)
+    (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
+    (hh : WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
     (hc : WrappersCover st)
     (hr : st.node.fg.Reachable (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
     (B : Blk (S.params (pubOf E) hn))
@@ -317,8 +321,8 @@ theorem decoded_held_onBlock {V : Type} [Fintype V] {E : Env V}
       decodeBlock (S.params (pubOf E) hn) (binding := S.vote) (digests rho.hash (blockObj _ B))
         (blockObj _ B) = some B) (ht : 0 ≤ st.now) :
     let st' := apply st (Node.onBlock st.self st.node st.now B)
-    WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st' ∧
-    WrappersHeld (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st' := by
+    WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' ∧
+    WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' := by
   by_cases ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2
   · exact decoded_held_accept S rho hn st hd hh hc hr B ha (hb ha) ht
   · unfold Node.onBlock at ha ⊢
@@ -331,16 +335,16 @@ theorem decoded_held_onBlock {V : Type} [Fintype V] {E : Env V}
 /-- Processing a child carried by a receipt preserves decoding and held correspondence.
 The decoder guard supplies the child's wire validity in the block branch. -/
 theorem decoded_held_processOne {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
-    (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st)
-    (hh : WrappersHeld (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st)
+    (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
+    (hh : WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
     (hc : WrappersCover st)
     (hr : st.node.fg.Reachable (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
     (receipt o : Wire (Fintype.card V) S.vote) (ho : Obj.Contains receipt o) (ht : 0 ≤ st.now) :
     let st' := processOne (digests rho.hash receipt) st o
-    WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st' ∧
-    WrappersHeld (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st' := by
+    WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' ∧
+    WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' := by
   unfold processOne
   split
   · rename_i B he
@@ -364,25 +368,25 @@ theorem decoded_held_processOne {V : Type} [Fintype V] {E : Env V}
 
 /-- A complete parent-first receipt traversal preserves both wrapper invariants. -/
 theorem decoded_held_process {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
-    (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st)
-    (hh : WrappersHeld (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st)
+    (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
+    (hh : WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
     (hc : WrappersCover st)
     (hr : st.node.fg.Reachable (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
     (receipt : Wire (Fintype.card V) S.vote) (ht : 0 ≤ st.now) :
     let st' := process st receipt (digests rho.hash receipt)
-    WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st' ∧
-    WrappersHeld (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st' := by
+    WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' ∧
+    WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' := by
   have fold : ∀ (os : List (Wire (Fintype.card V) S.vote)),
       (∀ o ∈ os, Obj.Contains receipt o) → ∀ st,
-      WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st →
-      WrappersHeld (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st →
+      WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st →
+      WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st →
       WrappersCover st → st.node.fg.Reachable
         (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload → 0 ≤ st.now →
-      WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash)
+      WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash)
         (os.foldl (processOne (digests rho.hash receipt)) st) ∧
-      WrappersHeld (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash)
+      WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash)
         (os.foldl (processOne (digests rho.hash receipt)) st) := by
     intro os
     induction os with
@@ -463,8 +467,8 @@ theorem decoded_held_restore {sp : SA.SAParams}
 /-- The entire engine delivery, including its poll drain and gossip, preserves the joint
 wrapper invariant. This does not assume that a refused candidate was published. -/
 theorem decoded_held_deliver {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E))
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
     (hd : WrappersDecoded (digests rho.hash) (shapeOf S hn nd))
     (hh : WrappersHeld (digests rho.hash) (shapeOf S hn nd))
     (hc : WrappersCover (shapeOf S hn nd))
@@ -487,8 +491,8 @@ theorem decoded_held_deliver {V : Type} [Fintype V] {E : Env V}
 
 /-- The actual tick prefix up to proposal preserves the joint wrapper invariant. -/
 theorem decoded_held_atProposal {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (t : Time)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (t : Time)
     (hd : WrappersDecoded (digests rho.hash) (shapeOf S hn nd))
     (hh : WrappersHeld (digests rho.hash) (shapeOf S hn nd))
     (ht : (shapeOf S hn nd).now ≤ t) (hsel : rho.ownKey v ∈ rho.sel .poll) :
@@ -505,10 +509,10 @@ theorem decoded_held_atProposal {V : Type} [Fintype V] {E : Env V}
 
 /-- Recording a valid canonical own block preserves the joint wrapper invariant. -/
 theorem decoded_held_recordOwn_block {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
-    (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st)
-    (hh : WrappersHeld (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st)
+    (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
+    (hh : WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
     (hc : WrappersCover st)
     (hr : st.node.fg.Reachable (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
     (B : Blk (S.params (pubOf E) hn)) (hpar : B.parent ≠ none)
@@ -517,8 +521,8 @@ theorem decoded_held_recordOwn_block {V : Type} [Fintype V] {E : Env V}
       (blockObj _ B) = some B) (ht : 0 ≤ st.now) :
     let st' := recordOwn st (blockObj (S.params (pubOf E) hn) B)
       (digests rho.hash (blockObj _ B))
-    WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st' ∧
-    WrappersHeld (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st' := by
+    WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' ∧
+    WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' := by
   dsimp only
   rw [recordOwn_canonical_block S rho hn st B hpar hroot]
   exact decoded_held_onBlock S rho hn st hd hh hc hr B (fun _ => hb) ht
@@ -526,8 +530,8 @@ theorem decoded_held_recordOwn_block {V : Type} [Fintype V] {E : Env V}
 /-- A selected proposal with a canonical singleton candidate preserves both invariants,
 whether the engine releases it or rejects it. -/
 theorem decoded_held_proposal_candidate {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (s : Slot) (hs : 0 < s)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
     (hd : WrappersDecoded (digests rho.hash) (shapeOf S hn nd))
     (hh : WrappersHeld (digests rho.hash) (shapeOf S hn nd))
     (hc : WrappersCover (propose (shapeOf S hn nd) s).1)
@@ -539,42 +543,42 @@ theorem decoded_held_proposal_candidate {V : Type} [Fintype V] {E : Env V}
       (blockObj _ B) = some B) (ht : 0 ≤ (shapeOf S hn nd).now)
     (hsel : rho.ownKey v ∈ rho.sel (.proposer s))
     (hcs : rho.signedCandidate v (.propose s hs)
-      ((protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).2 = [blockObj _ B]) :
+      ((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).2 = [blockObj _ B]) :
     let st' := shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1
     WrappersDecoded (digests rho.hash) st' ∧ WrappersHeld (digests rho.hash) st' := by
   have hp := decoded_held_propose (shapeOf S hn nd) s hd hh
   dsimp only
   simp only [Model.Run.dutyStep,
-    show (protoOf (compiled (goldilocksWith S)) E).role (.propose s hs) = .proposer s from rfl,
+    show (protoOf (compiled (goldilocks S)) E).role (.propose s hs) = .proposer s from rfl,
     hsel, ↓reduceIte, hcs]
   erw [Model.releaseAll]
   split
   · change WrappersDecoded (digests rho.hash) (recordOwn
-        (((protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).1.1 hn)
+        (((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).1.1 hn)
         (blockObj _ B) (digests rho.hash (blockObj _ B))) ∧
       WrappersHeld (digests rho.hash) (recordOwn
-        (((protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).1.1 hn)
+        (((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).1.1 hn)
         (blockObj _ B) (digests rho.hash (blockObj _ B)))
     rw [shapeOf_act_propose S hn]
     exact decoded_held_recordOwn_block S rho hn _ hp.1 hp.2 hc hr B hpar hroot hb
       ((propose_now (shapeOf S hn nd) s).symm ▸ ht)
   · change WrappersDecoded (digests rho.hash)
-      (((protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).1.1 hn) ∧
+      (((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).1.1 hn) ∧
       WrappersHeld (digests rho.hash)
-      (((protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).1.1 hn)
+      (((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).1.1 hn)
     rw [shapeOf_act_propose S hn]
     exact hp
 
 /-- The engine's selected proposal candidate is the node's canonical constructed block. -/
 theorem proposal_candidate_block {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (s : Slot) (hs : 0 < s)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
     (hsel : rho.ownKey v ∈ rho.sel (.proposer s))
     (hslot : (S.params (pubOf E) hn).toParams.slotOf (shapeOf S hn nd).now = s) :
     let r := Node.acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now
     ∀ d p, r.2.2 = some (d, p) →
       rho.signedCandidate v (.propose s hs)
-        ((protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).2 =
+        ((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).2 =
       [blockObj (S.params (pubOf E) hn) (Node.mkBlock (digestOf S rho) (rho.ownKey v)
         r.1.fg (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p)] := by
   dsimp only
@@ -584,14 +588,14 @@ theorem proposal_candidate_block {V : Type} [Fintype V] {E : Env V}
   erw [signedCandidate_of_default_mem S rho v (.propose s hs) _ (fun mc hmc => by
     rw [List.mem_singleton.mp hmc]
     exact propose_candidateRole_item S s hs _)]
-  simp only [show (protoOf (compiled (goldilocksWith S)) E).role (.propose s hs) = .proposer s
+  simp only [show (protoOf (compiled (goldilocks S)) E).role (.propose s hs) = .proposer s
     from rfl, hsel, ↓reduceIte]
   simp only [blockObj, Node.mkBlock, headerOf, hslot]
   rfl
 
 /-- The engine clock is nonnegative and never exceeds the next event's time. -/
 theorem stateAt_clock_bounds {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) (v : V) (i : Nat) :
     0 ≤ (stateAt S rho hn v i).now ∧
       ∀ j e, i ≤ j → rho.events[j]? = some e → (stateAt S rho hn v i).now ≤ e.time := by
@@ -631,9 +635,9 @@ theorem stateAt_clock_bounds {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 /-- A queued canonical wrapper decodes to its exact child, parent and acceptance stamp.
 The child decoder fixes identity without any root-injectivity assumption. -/
 theorem pending_forward_decodes {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
-    (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st)
+    (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
     (t : Time) (p : Option (Wire (Fintype.card V) S.vote)) (B : Blk (S.params (pubOf E) hn))
     (hp : forwardObj _ st.self t p B ∈ pendingWrappers st)
     (hb : decodeBlock (S.params (pubOf E) hn) (binding := S.vote) (digests rho.hash (blockObj _ B))

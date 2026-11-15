@@ -206,11 +206,11 @@ theorem conflicts_eq_false_of_not_att' {n : Nat} (o o' : Wire n binding)
 
 /-- The engine's own-object guard passes any object that is not attestation data signed in the
 poll role, against any seen list. -/
-theorem protects_of_not_att {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
-    (k : Fin (Fintype.card V)) (seen : List (Model.protoOf (compiled (goldilocksWith S)) E).Object)
-    (c : (Model.protoOf (compiled (goldilocksWith S)) E).Object)
+theorem protects_of_not_att {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (k : Fin (Fintype.card V)) (seen : List (Model.protoOf (compiled (goldilocks S)) E).Object)
+    (c : (Model.protoOf (compiled (goldilocks S)) E).Object)
     (h : ∀ k w, c ≠ .mk (.signed k .poll) (.data (.att w)) []) :
-    Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) k seen c = true := by
+    Model.protects (Model.protoOf (compiled (goldilocks S)) E) k seen c = true := by
   unfold Model.protects
   split
   · have hc : ∀ o, conflicts c o = false := fun o => conflicts_eq_false_of_not_att c o h
@@ -224,11 +224,11 @@ theorem protects_of_not_att {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
   · rfl
 
 /-- Vote-forward envelopes never conflict with attestations, irrespective of the vote author. -/
-theorem protects_voteForward {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
+theorem protects_voteForward {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (k x : Fin (Fintype.card V))
-    (seen : List (Model.protoOf (compiled (goldilocksWith S)) E).Object)
+    (seen : List (Model.protoOf (compiled (goldilocks S)) E).Object)
     (t : Time) (v : Vote (Fintype.card V)) :
-    Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) k seen
+    Model.protects (Model.protoOf (compiled (goldilocks S)) E) k seen
       (.mk (.signed x .poll) (.data (.voteForward t (encodeVote v))) [voteObj v]) = true :=
   protects_of_not_att S k seen _ (fun _ _ h => by cases h)
 
@@ -243,11 +243,11 @@ theorem dependencies_voteForward {n : Nat} (held : List (Wire n binding))
       List.append_nil, List.all_cons, List.all_nil, Bool.and_self]
 
 /-- The only release-holdings obligation is the canonical carried vote at the actual prefix. -/
-theorem releasable_voteForward {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
+theorem releasable_voteForward {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (x : Fin (Fintype.card V))
-    (seen : List (Model.protoOf (compiled (goldilocksWith S)) E).Object)
+    (seen : List (Model.protoOf (compiled (goldilocks S)) E).Object)
     (t : Time) (v : Vote (Fintype.card V)) (hv : voteObj v ∈ Model.closure seen) :
-    Model.releasable (P := Model.protoOf (compiled (goldilocksWith S)) E) seen
+    Model.releasable (P := Model.protoOf (compiled (goldilocks S)) E) seen
       (.mk (.signed x .poll) (.data (.voteForward t (encodeVote v))) [voteObj v]) = true := by
   classical
   simp only [Model.releasable, Model.Obj.carried, List.all_eq_true, decide_eq_true_eq]
@@ -330,16 +330,16 @@ theorem dependencies_forwardObj (seen : List (Wire sp.n binding)) (origin : Fin 
 
 /-- Exact held parent and child suffice for all three forwarding release guards.
 The remaining completeness obligation is to establish these holdings at each actual prefix. -/
-theorem forwardObj_release_guards {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
+theorem forwardObj_release_guards {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (hn : 1 ≤ Fintype.card V) (seen : List (Wire (Fintype.card V) S.vote))
     (x : Fin (Fintype.card V)) (t : Time) (p : Option (Wire (Fintype.card V) S.vote))
     (B : Blk (S.params (Model.pubOf E) hn))
     (h : ∀ c ∈ p.toList ++ [blockObj _ B], c ∈ seen.flatMap Model.Obj.parts) :
-    Model.releasable (P := Model.protoOf (compiled (goldilocksWith S)) E) seen
+    Model.releasable (P := Model.protoOf (compiled (goldilocks S)) E) seen
         (forwardObj _ x t p B) = true ∧
-      Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) x seen
+      Model.protects (Model.protoOf (compiled (goldilocks S)) E) x seen
         (forwardObj _ x t p B) = true ∧
-      (Model.protoOf (compiled (goldilocksWith S)) E).dependencies.ready (Model.closure seen)
+      (Model.protoOf (compiled (goldilocks S)) E).dependencies.ready (Model.closure seen)
         (forwardObj _ x t p B) = true := by
   classical
   refine ⟨?_, protects_of_not_att S x seen _ (fun _ _ he => by cases he), ?_⟩

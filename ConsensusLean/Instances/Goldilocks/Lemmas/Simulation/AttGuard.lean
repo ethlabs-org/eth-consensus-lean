@@ -23,20 +23,20 @@ open Consensus.Model (pubOf)
 
 variable {binding : VoteBinding}
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- **An engine signing passes the own-object guard** of a duty prefix `nd`: self-conflict is
 excluded by `hns`; any conflicting own-signed object `nd` has seen is another engine signing by
 `hseen`, which `hns` excludes too. Both conflict orientations are covered. -/
 theorem att_protected_of_signings {v : V}
-    {nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)}
+    {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
     (hns : ∀ {j q j' q' : Nat} {a b : FG.Att (Fintype.card V)},
       EngineSignsAt S rho hn v j q a → EngineSignsAt S rho hn v j' q' b → ¬ FG.slashable a b)
     (hseen : ∀ {a : FG.Att (Fintype.card V)}, a.val = rho.ownKey v →
       attObj a ∈ Model.closure nd.seen → ∃ j q, EngineSignsAt S rho hn v j q a)
     {j q : Nat} {a : FG.Att (Fintype.card V)} (ha : EngineSignsAt S rho hn v j q a) :
-    Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) nd.seen
+    Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
       (attObj a) = true := by
   have hinj {a b : FG.Att (Fintype.card V)}
       (h : attObj (binding := S.vote) a = attObj b) : a = b := by
@@ -79,15 +79,15 @@ prefix, given that every engine signing of the node passes it (`hprot`). -/
 theorem poll_att_protected_of {v : V} {i p : Nat} {nd} {k : Nat}
     (hc : EngineDutyCut S rho v i p nd)
     (hprot : ∀ {j q : Nat} {a : FG.Att (Fintype.card V)}, EngineSignsAt S rho hn v j q a →
-      Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) nd.seen
+      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
         (attObj a) = true)
     (hd : (∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
-        ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)[p]? = some (.poll k)) ∨
+        ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
       ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
-        ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t)[p]? = some (.poll k))
+        ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some (.poll k))
     (hsel : rho.ownKey v ∈ rho.sel .poll) {w cs}
     (hm : (poll (nd.st.1 hn) k).2 = some (.att w, cs)) :
-    Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) nd.seen
+    Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
       (.mk (.signed (rho.ownKey v) .poll) (.data (.att w)) []) = true := by
   obtain ⟨a, j, q, rfl, hval, ha⟩ := engine_poll_att_signed S rho hn hc hd hsel hm
   have hp := hprot ha

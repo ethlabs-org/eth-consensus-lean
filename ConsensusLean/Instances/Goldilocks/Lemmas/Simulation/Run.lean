@@ -17,8 +17,8 @@ open Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload blockVotes)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-! ## `LocalRun`: groups, the cut law and the wire checks
 
@@ -106,7 +106,7 @@ private theorem recBlock_of_deliverRecs
 omit [DecidableEq V] in
 /-- The engine event of a labelled cut of an honest key is an event of an honest node. -/
 private theorem honest_of_cut {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
-    {ev : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
     (h : rho.ownKey ev.node = y) : ev.node ∉ rho.faultyAt 0 := by
   rw [key_of_ownKey S rho h]
   exact (mem_honestKeys_iff S rho y).mp hy
@@ -248,33 +248,36 @@ theorem simTrace_wire (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) 
 /-- **The simulating trace is a Goldilocks run** at the engine's digest, for the honest keys.
 Stated over the population binding `S : Setup`. -/
 theorem simTrace_goldilocksRun {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
+    (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
-    GoldilocksRun (runProposer ⟨S, stock⟩ rho hn) (digestOf ⟨S, stock⟩ rho)
-      (honestKeys ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho hn) where
+    GoldilocksRun (runProposer { S with vote := stock } rho hn)
+      (digestOf { S with vote := stock } rho)
+      (honestKeys { S with vote := stock } rho) (simTrace { S with vote := stock } rho hn) where
   vstart := fun _ => SA.voteStart_initial _
-  init := simTrace_init ⟨S, stock⟩ rho hn
-  grouped := simTrace_grouped ⟨S, stock⟩ rho hn hf hv
-  cutLaw := simTrace_cutLaw ⟨S, stock⟩ rho hn hf hv
-  wire := simTrace_wire ⟨S, stock⟩ rho hn hf hv
-  proposerCredential := simTrace_proposerCredential ⟨S, stock⟩ rho hn hv
-  time_nonneg := simTrace_time_nonneg ⟨S, stock⟩ rho hn hv
-  time_mono := simTrace_time_mono ⟨S, stock⟩ rho hn hv
-  finite := simTrace_finite ⟨S, stock⟩ rho hn hv
-  phase_order := simTrace_phase_order ⟨S, stock⟩ rho hn hv
-  tick_public := simTrace_tick_public ⟨S, stock⟩ rho hn hv
-  tick_unique := simTrace_tick_unique ⟨S, stock⟩ rho hn hv
-  tick_of_awake := simTrace_tick_of_awake ⟨S, stock⟩ rho hn hf hv
-  awake_in_horizon := simTrace_awake_in_horizon ⟨S, stock⟩ rho hn
-  awake_of_call := simTrace_awake_of_call ⟨S, stock⟩ rho hn hv
-  restart_of_sleep := simTrace_restart_of_sleep ⟨S, stock⟩ rho hn hf hv
-  restart_at_wake := simTrace_restart_at_wake ⟨S, stock⟩ rho hn hf hv
-  sleep_of_restart := simTrace_sleep_of_restart ⟨S, stock⟩ rho hn hv
-  block_unforgeable := simTrace_block_unforgeable ⟨S, stock⟩ rho hn hf hv
-  att_unforgeable := simTrace_att_unforgeable ⟨S, stock⟩ rho hn hf hv
-  msg_unforgeable := simTrace_msg_unforgeable ⟨S, stock⟩ rho hn hf hv
-  genesis_root_ok := simTrace_genesis_root_ok ⟨S, stock⟩ rho hn
-  carried_vote_unforgeable := simTrace_carried_vote_unforgeable ⟨S, stock⟩ rho hn hf hv
+  init := simTrace_init { S with vote := stock } rho hn
+  grouped := simTrace_grouped { S with vote := stock } rho hn hf hv
+  cutLaw := simTrace_cutLaw { S with vote := stock } rho hn hf hv
+  wire := simTrace_wire { S with vote := stock } rho hn hf hv
+  proposerCredential := simTrace_proposerCredential { S with vote := stock } rho hn hv
+  time_nonneg := simTrace_time_nonneg { S with vote := stock } rho hn hv
+  time_mono := simTrace_time_mono { S with vote := stock } rho hn hv
+  finite := simTrace_finite { S with vote := stock } rho hn hv
+  phase_order := simTrace_phase_order { S with vote := stock } rho hn hv
+  tick_public := simTrace_tick_public { S with vote := stock } rho hn hv
+  tick_unique := simTrace_tick_unique { S with vote := stock } rho hn hv
+  tick_of_awake := simTrace_tick_of_awake { S with vote := stock } rho hn hf hv
+  awake_in_horizon := simTrace_awake_in_horizon { S with vote := stock } rho hn
+  awake_of_call := simTrace_awake_of_call { S with vote := stock } rho hn hv
+  restart_of_sleep := simTrace_restart_of_sleep { S with vote := stock } rho hn hf hv
+  restart_at_wake := simTrace_restart_at_wake { S with vote := stock } rho hn hf hv
+  sleep_of_restart := simTrace_sleep_of_restart { S with vote := stock } rho hn hv
+  block_unforgeable := simTrace_block_unforgeable { S with vote := stock } rho hn hf hv
+  att_unforgeable := simTrace_att_unforgeable { S with vote := stock } rho hn hf hv
+  msg_unforgeable := simTrace_msg_unforgeable { S with vote := stock } rho hn hf hv
+  genesis_root_ok := simTrace_genesis_root_ok { S with vote := stock } rho hn
+  carried_vote_unforgeable :=
+    simTrace_carried_vote_unforgeable { S with vote := stock } rho hn hf hv
 
 end Consensus.Goldilocks.Simulation
 

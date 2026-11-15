@@ -25,28 +25,30 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type)
 
 /-- Healthy context carries no progress beyond the separately supplied interval. -/
 structure HealthyPreparationQuery where
-  run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run
+  run : (Sys (goldilocks { S with vote := stock }) V).Run
   constant : run.2.point.ConstantFaults
   hn : 1 ≤ Fintype.card V
   cap : Capability
   nonfinal : cap = .available ∨ cap = .stable
   index : (K S A).Idx
   gst : Time
-  valid : (Sys (goldilocksWith ⟨S, stock⟩) V).Valid run
+  valid : (Sys (goldilocks { S with vote := stock }) V).Valid run
   noCollision : ¬ run.2.HashCollision
-  healthy : (Sys (goldilocksWith ⟨S, stock⟩) V).Healthy
-      (shapeProgress (goldilocksWith ⟨S, stock⟩) V).toExternal (K S A) gst run
+  healthy : (Sys (goldilocks { S with vote := stock }) V).Healthy
+      (shapeProgress (goldilocks { S with vote := stock }) V).toExternal (K S A) gst run
 
 namespace HealthyPreparationQuery
 variable {S A V}
-abbrev params (Q : HealthyPreparationQuery S A V) := S.params (Model.pubOf Q.run.1) Q.hn
-noncomputable abbrev trace (Q : HealthyPreparationQuery S A V) := simTrace ⟨S, stock⟩ Q.run.2 Q.hn
+abbrev params (Q : HealthyPreparationQuery S A V) :=
+  ({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf Q.run.1) Q.hn
+noncomputable abbrev trace (Q : HealthyPreparationQuery S A V) :=
+  simTrace { S with vote := stock } Q.run.2 Q.hn
 noncomputable abbrev heal (Q : HealthyPreparationQuery S A V) :=
-  (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) Q.cap Q.index Q.gst Q.run
+  (Sys (goldilocks { S with vote := stock }) V).heal (K S A) Q.cap Q.index Q.gst Q.run
 noncomputable abbrev ready (Q : HealthyPreparationQuery S A V) :=
-  (Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) Q.gst Q.run
+  (Sys (goldilocks { S with vote := stock }) V).ready (K S A) Q.gst Q.run
 noncomputable abbrev cut (Q : HealthyPreparationQuery S A V) :=
-  cutMap ⟨S, stock⟩ Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.heal)
+  cutMap { S with vote := stock } Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.heal)
 end HealthyPreparationQuery
 
 /-- Global inventory obligation, exactly the initialization required by
@@ -54,9 +56,9 @@ oldHonest_inventory_preserved. OldHonest includes signed entries not yet held by
 the receiver. OldEntryCovered has an eventual whole-run origin: this predicate
 is NOT prefix-local preparation and supplies no vote-label/causal strengthening. -/
 def HealthyOldInventory (Q : HealthyPreparationQuery S A V) (s₀ i : Nat) : Prop :=
-  ∀ y ∈ honestKeys ⟨S, stock⟩ Q.run.2, ∀ E h,
-    Healing.OldHonest Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) s₀ E h →
-      Healing.OldEntryCovered Q.trace (honestKeys ⟨S, stock⟩ Q.run.2) s₀ E ∨
+  ∀ y ∈ honestKeys { S with vote := stock } Q.run.2, ∀ E h,
+    Healing.OldHonest Q.trace (honestKeys { S with vote := stock } Q.run.2) s₀ E h →
+      Healing.OldEntryCovered Q.trace (honestKeys { S with vote := stock } Q.run.2) s₀ E ∨
         h < (Q.trace.state y i).fg.hj
 
 /-- Proven preservation of an explicitly supplied old-entry inventory. Since R0 no

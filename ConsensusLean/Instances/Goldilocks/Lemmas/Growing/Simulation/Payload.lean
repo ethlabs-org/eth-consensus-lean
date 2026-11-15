@@ -16,8 +16,8 @@ open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (Vote blockVotes)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- A payload object signed by a key honest at processing has an earlier genuine release. -/
 theorem block_payload_source_at (hv : rho.ExecutionValid) {k : Nat} {y}

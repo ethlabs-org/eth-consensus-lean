@@ -15,9 +15,9 @@ the chain shape: slots, proposers, votes and a state machine, compiled to an L1 
 
 `Challenge.lean` certifies ten statements: the five review statements below and, for Goldilocks, the endpoint
 and headline below, the headline's explicit-excuse form `GoldilocksCorrectWithExcuses`, the outage row at
-every vote binding `PersistsWith` (the endpoint's `persists` claim for `goldilocksWith S`, every `S : BoundSetup`),
+every vote binding `PersistsWith` (the endpoint's `persists` claim for `goldilocks S`, every `S : Setup`),
 and the sleepy rows at every vote binding `SleepyWith` (its `sleepySafe` and `sleepyLive` claims for
-`goldilocksWith S`, every `S : BoundSetup`). The headline is `Consensus.Goldilocks.GoldilocksCorrect`, from
+`goldilocks S`, every `S : Setup`). The headline is `Consensus.Goldilocks.GoldilocksCorrect`, from
 `ConsensusLean/Instances/Goldilocks/Statements/Obligations.lean` (in namespace `Consensus.Goldilocks`), together
 with the endpoint it composes:
 
@@ -849,8 +849,9 @@ with their nodes; and the milestone proof `Proofs/<M>/Main.lean`, which `Solutio
 `ConsensusLeanTest/MilestoneAxioms.lean` (the other milestones) cites. The concrete
 obligations endpoint (`Statements/Obligations`) is proved through the refinement; the other milestones
 are proved directly over their own models (FG chains, AC states, the node and its runs). Milestone status: `docs/roadmap.md`.
-The family is `goldilocksWith S` at a vote binding (population-wide votes, or votes by a per-slot committee);
-`goldilocks S` is its population binding, the specification's protocol (`docs/decisions.md` §"Committee modelling").
+The family is `goldilocks S` at the setup's vote binding (population-wide votes, or votes by a per-slot committee);
+`goldilocks {S with vote := stock}` is its population binding, the specification's protocol
+(`docs/decisions.md` §"Committee modelling").
 
 ## Shape examples (`ConsensusLean/Examples/Shape/`): Bft, Streamlet and Tendermint
 

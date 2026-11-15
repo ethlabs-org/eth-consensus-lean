@@ -82,8 +82,8 @@ theorem finalAccountable_readPoint
 
 end Node
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The finalized engine read at a bounded cut is the chain of the trace state's finalized tip
 at the mapped cut. -/
@@ -112,58 +112,72 @@ theorem held_tree_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
 engine cut, compatibility of their finalized tips inside the blocks held while honest makes one
 finalized engine read a prefix of the other. -/
 theorem compatible_reads_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
+    (hnc : Compose.NoCollRun (digestOf { S with vote := stock } rho)
+      (simTraceAt { S with vote := stock } rho hn))
     {u v : V} {i j : Nat} (hi : i ≤ rho.events.length) (hj : j ≤ rho.events.length)
     (hu : u ∉ rho.faultyAt (rho.cutTime i)) (hv' : v ∉ rho.faultyAt (rho.cutTime j))
-    (hc : Compatible ((simTraceAt ⟨S, stock⟩ rho hn).HonestBlocksAt (honestKeysAt ⟨S, stock⟩ rho))
-      ((simTraceAt ⟨S, stock⟩ rho hn).finalizedAt (rho.ownKey u) (cutMap ⟨S, stock⟩ rho hn i))
-      ((simTraceAt ⟨S, stock⟩ rho hn).finalizedAt (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn j))) :
+    (hc : Compatible ((simTraceAt { S with vote := stock } rho hn).HonestBlocksAt
+      (honestKeysAt { S with vote := stock } rho))
+      ((simTraceAt { S with vote := stock } rho hn).finalizedAt (rho.ownKey u)
+        (cutMap { S with vote := stock } rho hn i))
+      ((simTraceAt { S with vote := stock } rho hn).finalizedAt (rho.ownKey v)
+        (cutMap { S with vote := stock } rho hn j))) :
     Consensus.Compatible ((chainTrace rho).read .finalized u i)
       ((chainTrace rho).read .finalized v j) := by
-  obtain ⟨hri, hsi⟩ := held_tree_at ⟨S, stock⟩ rho hn hv hi hu
-  obtain ⟨hrj, hsj⟩ := held_tree_at ⟨S, stock⟩ rho hn hv hj hv'
+  obtain ⟨hri, hsi⟩ := held_tree_at { S with vote := stock } rho hn hv hi hu
+  obtain ⟨hrj, hsj⟩ := held_tree_at { S with vote := stock } rho hn hv hj hv'
   have hU := Compose.Growing.honest_blocks_coherent
-      (simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv) hnc
-  rw [read_finalized_at ⟨S, stock⟩ rho hn hv u hi, read_finalized_at ⟨S, stock⟩ rho hn hv v hj]
+      (simTraceAt_goldilocksRun { S with vote := stock } rho hn hv) hnc
+  rw [read_finalized_at { S with vote := stock } rho hn hv u hi,
+    read_finalized_at { S with vote := stock } rho hn hv v hj]
   exact chainTo_compatible hri hrj hU hsi hsj (Store.cache_invariants _ _ _ _ hri).1
     (Store.cache_invariants _ _ _ _ hrj).1 hc
 
 /-- Two finalized reads of nodes each honest at its own engine cut are prefix-related, or their
 two views convict `2q − n` validators. -/
 theorem final_accountable_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
+    (hnc : Compose.NoCollRun (digestOf { S with vote := stock } rho)
+      (simTraceAt { S with vote := stock } rho hn))
     {u v : V} {i j : Nat} (hi : i ≤ rho.events.length) (hj : j ≤ rho.events.length)
     (hu : u ∉ rho.faultyAt (rho.cutTime i)) (hv' : v ∉ rho.faultyAt (rho.cutTime j)) :
     Consensus.Compatible ((chainTrace rho).read .finalized u i)
         ((chainTrace rho).read .finalized v j) ∨
-      2 * (S.params (pubOf E) hn).toParams.q - Fintype.card V ≤
+      2 * (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).toParams.q -
+        Fintype.card V ≤
         (convicted rho.Slashable (rho.ViewIdx u i ∪ rho.ViewIdx v j)).card := by
   classical
   by_cases hc : Compatible
-      ((simTraceAt ⟨S, stock⟩ rho hn).HonestBlocksAt (honestKeysAt ⟨S, stock⟩ rho))
-      ((simTraceAt ⟨S, stock⟩ rho hn).finalizedAt (rho.ownKey u) (cutMap ⟨S, stock⟩ rho hn i))
-      ((simTraceAt ⟨S, stock⟩ rho hn).finalizedAt (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn j))
+      ((simTraceAt { S with vote := stock } rho hn).HonestBlocksAt
+        (honestKeysAt { S with vote := stock } rho))
+      ((simTraceAt { S with vote := stock } rho hn).finalizedAt (rho.ownKey u)
+        (cutMap { S with vote := stock } rho hn i))
+      ((simTraceAt { S with vote := stock } rho hn).finalizedAt (rho.ownKey v)
+        (cutMap { S with vote := stock } rho hn j))
   · exact Or.inl (compatible_reads_at S rho hn hv hnc hi hj hu hv' hc)
   · right
-    obtain ⟨-, hyu, -⟩ := prefix_reader_at ⟨S, stock⟩ rho hn hv hi hu
-    obtain ⟨-, hyv, -⟩ := prefix_reader_at ⟨S, stock⟩ rho hn hv hj hv'
+    obtain ⟨-, hyu, -⟩ := prefix_reader_at { S with vote := stock } rho hn hv hi hu
+    obtain ⟨-, hyv, -⟩ := prefix_reader_at { S with vote := stock } rho hn hv hj hv'
     obtain ⟨X, _, Y, _, W, hW, hw⟩ := finalAccountable_readPoint
-      (simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv) hnc (cutTime_bounds ⟨S, stock⟩ rho hv hi).1
-      (cutMap_time_le ⟨S, stock⟩ rho hn hv hi) hyu (cutTime_bounds ⟨S, stock⟩ rho hv hj).1
-      (cutMap_time_le ⟨S, stock⟩ rho hn hv hj) hyv hc
-    have hmem : ∀ a ∈ Regimes.ChainAtts (simTraceAt ⟨S, stock⟩ rho hn) (rho.ownKey u)
-        (cutMap ⟨S, stock⟩ rho hn i) X ∪ Regimes.ChainAtts (simTraceAt ⟨S, stock⟩ rho hn)
+      (simTraceAt_goldilocksRun { S with vote := stock } rho hn hv) hnc
+      (cutTime_bounds { S with vote := stock } rho hv hi).1
+      (cutMap_time_le { S with vote := stock } rho hn hv hi) hyu
+      (cutTime_bounds { S with vote := stock } rho hv hj).1
+      (cutMap_time_le { S with vote := stock } rho hn hv hj) hyv hc
+    have hmem : ∀ a ∈ Regimes.ChainAtts (simTraceAt { S with vote := stock } rho hn) (rho.ownKey u)
+        (cutMap { S with vote := stock } rho hn i) X ∪
+          Regimes.ChainAtts (simTraceAt { S with vote := stock } rho hn)
             (rho.ownKey v)
-        (cutMap ⟨S, stock⟩ rho hn j) Y, attObj a ∈ rho.ViewIdx u i ∪ rho.ViewIdx v j := by
+        (cutMap { S with vote := stock } rho hn j) Y,
+        attObj a ∈ rho.ViewIdx u i ∪ rho.ViewIdx v j := by
       intro a ha
       rcases ha with ⟨B, hB, _, ha⟩ | ⟨B, hB, _, ha⟩
-      · exact Or.inl (held_att_in_view_at ⟨S, stock⟩ rho hn hv hi hu hB ha)
-      · exact Or.inr (held_att_in_view_at ⟨S, stock⟩ rho hn hv hj hv' hB ha)
-    refine hW.trans (convicted_count ⟨S, stock⟩ rho W ?_)
+      · exact Or.inl (held_att_in_view_at { S with vote := stock } rho hn hv hi hu hB ha)
+      · exact Or.inr (held_att_in_view_at { S with vote := stock } rho hn hv hj hv' hB ha)
+    refine hW.trans (convicted_count { S with vote := stock } rho W ?_)
     intro k hk
     obtain ⟨a, ha, b, hb, hak, hab⟩ := hw k hk
     exact ⟨a, b, hmem a ha, hmem b hb, hak, hab⟩
@@ -172,7 +186,7 @@ theorem final_accountable_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} 
 `α ≤ 1/3`: two finalized reads of nodes each honest at its own engine cut are compatible, or the
 union of their views convicts `nα` validators; the only escape is an observed hash collision. -/
 theorem engine_finalAccountable_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hv : rho.ExecutionValid)
+    (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E) (hv : rho.ExecutionValid)
     {α : ℚ} (hα : α ≤ 1 / 3) :
     (chainTrace rho).AccountablySafe rho.ViewIdx rho.Slashable α .finalized 0 ∨
       rho.HashCollision := by
@@ -181,18 +195,22 @@ theorem engine_finalAccountable_at {V : Type} [Fintype V] [DecidableEq V] {E : E
   left
   intro u v i j hi hj hu hv'
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨u⟩
-  rcases final_accountable_at S rho hn hv (noCollRun_simTraceAt ⟨S, stock⟩ rho hn hv hc)
+  rcases final_accountable_at S rho hn hv
+      (noCollRun_simTraceAt { S with vote := stock } rho hn hv hc)
       hi.1 hj.1 hu hv' with h | h
   · exact Or.inl h
   right
   have hq : Fintype.card V ≤
-      3 * (2 * (S.params (pubOf E) hn).toParams.q - Fintype.card V) := by
+      3 * (2 * (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).toParams.q -
+        Fintype.card V) := by
     simp only [Params.q]
     omega
   have hq' : (Fintype.card V : ℚ) ≤
-      3 * ((2 * (S.params (pubOf E) hn).toParams.q - Fintype.card V : Nat) : ℚ) := by
+      3 * ((2 * (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).toParams.q -
+        Fintype.card V : Nat) : ℚ) := by
     exact_mod_cast hq
-  have h' : ((2 * (S.params (pubOf E) hn).toParams.q - Fintype.card V : Nat) : ℚ) ≤
+  have h' : ((2 * (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf E) hn).toParams.q - Fintype.card V : Nat) : ℚ) ≤
       (convicted rho.Slashable (rho.ViewIdx u i ∪ rho.ViewIdx v j)).card := by
     exact_mod_cast h
   have hα' := mul_le_mul_of_nonneg_left hα (show (0 : ℚ) ≤ Fintype.card V by positivity)

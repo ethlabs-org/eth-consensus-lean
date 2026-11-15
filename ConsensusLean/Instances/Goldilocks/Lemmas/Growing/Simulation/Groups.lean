@@ -14,8 +14,8 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Every labelled cut, including one preceding a later compromise, belongs to a handler. -/
 theorem simTraceAt_grouped (hv : rho.ExecutionValid) :

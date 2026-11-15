@@ -70,8 +70,8 @@ theorem held_state {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 end Held
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The first cut of an event's group is at position `0`. -/
 private theorem groupRecs_head_pos {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
@@ -253,7 +253,7 @@ theorem engine_read_point (hv : rho.ExecutionValid) {c : Time} (hc : 0 ≤ c) {v
           (Regimes.readAfter (simTraceAt S rho hn) (rho.ownKey v)
             (cutMap S rho hn (lastOwn S rho v i))
                 (stateAt S rho hn v i).now) := by
-  have hlaws := (Model.sysOf_laws schema (compiled (goldilocksWith S)) V).trace ⟨E, rho⟩ hv
+  have hlaws := (Model.sysOf_laws schema (compiled (goldilocks S)) V).trace ⟨E, rho⟩ hv
   have hih := hlaws.cutTime_le_horizon i hi
   change rho.cutTime i ≤ rho.horizon at hih
   obtain ⟨hn0, hnT⟩ := now_bounds_cut S rho hn hv v hi

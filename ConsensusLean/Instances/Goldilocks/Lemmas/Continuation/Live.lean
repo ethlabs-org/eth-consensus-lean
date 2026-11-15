@@ -251,27 +251,32 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 after the heal point, with progress from readiness and a query at or after the heal point, is in
 the hand-over disjunct of `ConfirmedQueryAt.regime` (the regime conjuncts of `Handover`, without
 its conviction bound). -/
-theorem handover_query_regime {run : (Sys (goldilocksWith ⟨S, stock⟩) V).Run} {cap : Capability}
+theorem handover_query_regime {run : (Sys (goldilocks { S with vote := stock }) V).Run}
+    {cap : Capability}
     {index : (K S A).Idx} {gst T query : Time}
-    (h : (Sys (goldilocksWith ⟨S, stock⟩) V).Handover (K S A) gst T run)
-    (hT : (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap index gst run ≤ T)
-    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+    (h : (Sys (goldilocks { S with vote := stock }) V).Handover (K S A) gst T run)
+    (hT : (Sys (goldilocks { S with vote := stock }) V).heal (K S A) cap index gst run ≤ T)
+    (hp : (Sys (goldilocks { S with vote := stock }) V).prog
+      (shapeProgress (goldilocks { S with vote := stock }) V)
       (K S A) cap index
-      ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) run.2.horizon run)
-    (hq : (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap index gst run ≤ query) :
-    ∃ T, ((Sys (goldilocksWith ⟨S, stock⟩) V).log run).PSync
-      ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run) gst ∧
-      ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).HealthyOn (K S A).params.β gst T ∧
-      ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).env.ΔFG ≤
-        ((K S A).params.fgDelay : Time) * ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).env.ΔAC ∧
-      ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).SleepyOn (K S A).params.θ
-        ((Sys (goldilocksWith ⟨S, stock⟩) V).cDur (K S A) run)
-            ((Sys (goldilocksWith ⟨S, stock⟩) V).aheadDur (K S A) run) T
-        ((Sys (goldilocksWith ⟨S, stock⟩) V).pt run).horizon ∧
-      (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap index gst run ≤ T ∧
-      (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
-        cap index ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) gst run) run.2.horizon run ∧
-      (Sys (goldilocksWith ⟨S, stock⟩) V).heal (K S A) cap index gst run ≤ query :=
+      ((Sys (goldilocks { S with vote := stock }) V).ready (K S A) gst run) run.2.horizon run)
+    (hq : (Sys (goldilocks { S with vote := stock }) V).heal (K S A) cap index gst run ≤ query) :
+    ∃ T, ((Sys (goldilocks { S with vote := stock }) V).log run).PSync
+      ((Sys (goldilocks { S with vote := stock }) V).pt run) gst ∧
+      ((Sys (goldilocks { S with vote := stock }) V).pt run).HealthyOn (K S A).params.β gst T ∧
+      ((Sys (goldilocks { S with vote := stock }) V).pt run).env.ΔFG ≤
+        ((K S A).params.fgDelay : Time) *
+          ((Sys (goldilocks { S with vote := stock }) V).pt run).env.ΔAC ∧
+      ((Sys (goldilocks { S with vote := stock }) V).pt run).SleepyOn (K S A).params.θ
+        ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) run)
+            ((Sys (goldilocks { S with vote := stock }) V).aheadDur (K S A) run) T
+        ((Sys (goldilocks { S with vote := stock }) V).pt run).horizon ∧
+      (Sys (goldilocks { S with vote := stock }) V).heal (K S A) cap index gst run ≤ T ∧
+      (Sys (goldilocks { S with vote := stock }) V).prog
+        (shapeProgress (goldilocks { S with vote := stock }) V) (K S A)
+        cap index ((Sys (goldilocks { S with vote := stock }) V).ready (K S A) gst run)
+        run.2.horizon run ∧
+      (Sys (goldilocks { S with vote := stock }) V).heal (K S A) cap index gst run ≤ query :=
   ⟨T, h.1, h.2.1, h.2.2.1, h.2.2.2.1, hT, hp, hq⟩
 
 /-- **Proposal liveness after a hand-over**, for a nonfinal query at or after `t₁` and `t_{r+k}`,
@@ -279,30 +284,37 @@ with progress from the healthy readiness `ready ≤ query`: some proposal releas
 by a key ready then is in every ready read at the deadline. The proposal of the progress window's
 slot (`sleepy_query_producer_at`) is after the query, so of a slot `≥ r + k + 1`, and included
 at the deadline (`continued_include_at`); its payload projection is the engine obligation. -/
-theorem continued_proposal_live_at (Q : ConfirmedQueryAt ⟨S, stock⟩ A V) {ΔF T : Time}
+theorem continued_proposal_live_at
+    (Q : ConfirmedQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
+    {ΔF T : Time}
     {r σ : Nat}
     (hcv : Compose.Growing.ChainConvictedBelow Q.trace Q.keys)
-    (hseed : Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
-      (digestOf ⟨S, stock⟩ Q.run.2) Q.gst ΔF T r σ) (hTb : T ≤ Q.deadline) {t₁ : Time}
+    (hseed : Compose.Growing.HandoverSeed Q.trace Q.keys
+      (runProposer { S with vote := stock } Q.run.2 Q.hn)
+      (digestOf { S with vote := stock } Q.run.2) Q.gst ΔF T r σ) (hTb : T ≤ Q.deadline) {t₁ : Time}
     (hsvc : Healing.Growing.ResetService Q.trace Q.keys Q.gst ΔF Q.deadline)
     (hB : Compose.Growing.SleepyBoundsFrom Q.trace Q.keys r Q.deadline)
     (hinv : Compose.Growing.SeededInvariant Q.trace Q.keys Q.gst r (r + Q.params.k - 1) t₁
       Q.deadline)
-    (hprogress : (Sys (goldilocksWith ⟨S, stock⟩) V).prog
-      (shapeProgress (goldilocksWith ⟨S, stock⟩) V) (K S A)
-      Q.cap Q.index ((Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) Q.gst Q.run) Q.run.2.horizon
+    (hprogress : (Sys (goldilocks { S with vote := stock }) V).prog
+      (shapeProgress (goldilocks { S with vote := stock }) V) (K S A)
+      Q.cap Q.index ((Sys (goldilocks { S with vote := stock }) V).ready (K S A) Q.gst Q.run)
+        Q.run.2.horizon
           Q.run)
-    (hready : (Sys (goldilocksWith ⟨S, stock⟩) V).ready (K S A) Q.gst Q.run ≤ Q.query)
+    (hready : (Sys (goldilocks { S with vote := stock }) V).ready (K S A) Q.gst Q.run ≤ Q.query)
     (hdt₁ : Q.params.ts (r + Q.params.k : Nat) ≤ t₁) (ht₁ : t₁ + 8 * Q.params.Δ ≤ Q.query) :
     ∃ τ k h, Q.query < τ ∧ Q.run.2.point.Ready Q.duration (Q.run.2.key k) τ ∧
       HonestProposal Q.run.2 τ k h ∧ InBy Q.run.2 Q.duration .confirmed h Q.deadline := by
   have hrq : Q.params.ts (r + Q.params.k : Nat) ≤ Q.query := by
     linarith [Q.params.toParams.hΔ]
   have h0 : 0 ≤ Q.query := (Compose.Growing.ts_natCast_nonneg _).trans hrq
-  obtain ⟨P, hm, hh⟩ := sleepy_query_producer_at ⟨S, stock⟩ A V Q hprogress (max_le hready h0)
-  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTraceAt ⟨S, stock⟩ Q.run.2 Q.hn Q.valid Q.noCollision
-  have hd := confirmed_duration_supply_at ⟨S, stock⟩ A V Q
+  obtain ⟨P, hm, hh⟩ :=
+    sleepy_query_producer_at { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hprogress (max_le hready h0)
+  have hrun := simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid
+  have hnc := noCollRun_simTraceAt { S with vote := stock } Q.run.2 Q.hn Q.valid Q.noCollision
+  have hd := confirmed_duration_supply_at { S with vote := stock }
+    ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q
   -- the proposal's slot time is after `t_{r+k}`, so it is `≥ t_{r+k+1}`
   have hslot : Q.params.ts (r + Q.params.k + 1 : Nat) ≤ Q.trace.time P.cut := by
     have hpt := P.proposal.2.2
@@ -311,11 +323,16 @@ theorem continued_proposal_live_at (Q : ConfirmedQueryAt ⟨S, stock⟩ A V) {Δ
     rw [hpt] at hlt ⊢
     have := (SA.ts_lt_iff Q.params).1 hlt
     exact (SA.ts_le_iff Q.params).2 (by push_cast at this ⊢; omega)
-  refine confirmed_payload_projection_at ⟨S, stock⟩ A V Q h0 P fun y j hy hj => ?_
+  refine confirmed_payload_projection_at { S with vote := stock }
+    ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q h0 P fun y j hy hj => ?_
   exact Compose.Growing.continued_include_at hrun hnc hcv hseed hTb hsvc hB hinv hdt₁
-    ⟨P.block.proposer, P.cut, confirmed_ready_mono_at ⟨S, stock⟩ A V Q hd P.ready, hh, P.proposal,
+    ⟨P.block.proposer, P.cut, confirmed_ready_mono_at { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hd P.ready,
+      hh, P.proposal,
       rfl⟩
-    (ht₁.trans P.fresh.le) hslot hm le_rfl (confirmed_ready_mono_at ⟨S, stock⟩ A V Q hd hy) hj
+    (ht₁.trans P.fresh.le) hslot hm le_rfl
+    (confirmed_ready_mono_at { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hd hy) hj
 
 end Consensus.Goldilocks.Obligations.Growing
 

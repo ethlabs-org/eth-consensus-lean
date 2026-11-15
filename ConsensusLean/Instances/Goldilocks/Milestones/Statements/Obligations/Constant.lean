@@ -24,7 +24,7 @@ claims on the runs whose faults do not grow (the static adversary) and every oth
 unchanged, at the contract `goldilocksContract A (contract_coefficients S A)`. -/
 def MeetsObligationsConstant : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S),
-    ShapeObligationsOnAs .ebbAndFlow (goldilocks S)
+    ShapeObligationsOnAs .ebbAndFlow (goldilocks { S with vote := AsChainShape.stock })
       (goldilocksContract A (contract_coefficients S A)) fun _ p => p.ConstantFaults
 
 /-- **Goldilocks is correct on constant faults**: for every setup, assumption set and finite
@@ -34,8 +34,10 @@ whole growing-fault system. It composes `MeetsObligationsConstant` with
 `Review.ObligationsSufficientOn`. -/
 def GoldilocksCorrectConstant : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V],
-    CorrectProtocolOn (Model.sysOf schema (compiled (goldilocks S)) V)
-      (shapeProgress (goldilocks S) V) (goldilocksContract A (contract_coefficients S A))
+    CorrectProtocolOn
+      (Model.sysOf schema (compiled (goldilocks { S with vote := AsChainShape.stock })) V)
+      (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) V)
+      (goldilocksContract A (contract_coefficients S A))
       fun p => p.ConstantFaults
 
 end Consensus.Goldilocks

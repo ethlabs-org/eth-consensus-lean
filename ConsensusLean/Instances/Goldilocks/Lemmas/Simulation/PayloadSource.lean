@@ -17,8 +17,8 @@ open AsChainShape
 open Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- **A payload object signed by a key honest at processing has an earlier genuine release.**
 `hpre`: the objects a tick's proposal carries are in the proposer's view before the tick. -/
@@ -72,7 +72,7 @@ theorem block_payload_source_of (hv : rho.ExecutionValid)
     have htime' : (simTrace S rho hn).time k = t := htime
     rw [htime'] at hu
     have hui : u ∉ rho.faultyAt (rho.cutTime i) := by
-      have hlaws := (Model.sysOf_laws schema (compiled (goldilocksWith S)) V).trace ⟨E, rho⟩ hv
+      have hlaws := (Model.sysOf_laws schema (compiled (goldilocks S)) V).trace ⟨E, rho⟩ hv
       have ht := hlaws.cutTime_mono i (i + 1) (by omega)
         (by
           change i + 1 ≤ rho.events.length

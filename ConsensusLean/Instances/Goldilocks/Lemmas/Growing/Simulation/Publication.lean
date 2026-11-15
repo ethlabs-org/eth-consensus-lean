@@ -14,8 +14,8 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Every block and vote emitted by a public tick is released at that engine event. -/
 theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
@@ -47,9 +47,9 @@ theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
       · exact Or.inr rfl
     | _ :: _ :: _ :: _, h, _ => simp at h
   have hrelQ : ∀ q ∈ Q, rho.ownKey v ∈ rho.sel (pollRole S.vote (pubOf E).n q) →
-      Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) N4.seen
+      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) N4.seen
         (pollObj S rho v q) = true →
-      Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) N5.seen
+      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) N5.seen
         (pollObj S rho v q) = true →
       pollObj S rho v q ∈ rho.releasesAt i := by
     intro q hq hk h4 h5

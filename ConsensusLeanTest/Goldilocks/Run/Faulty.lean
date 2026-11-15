@@ -13,7 +13,8 @@ Kind (a), joint satisfiability (CONTRIBUTING "Statements"), with `f = 1`: four v
 `0` faulty and the keys `1, 2, 3` honest, engine `Δ = ΔF = 2`, horizon `40`, identity PKI,
 honest proposer `1` at every slot, everyone awake, no submissions, at every `Setup` (so every
 lock window `S.k ≥ 2`; no lock-rule value is chosen or used). The run is `Shape.coverage` of
-`goldilocks S` at that point, carried to the node level by `simTrace_goldilocksRun` and
+`goldilocks { S with vote := AsChainShape.stock }` at that point, carried to the node level by
+`simTrace_goldilocksRun` and
 `noCollRun_simTrace`.
 
 * `faulty_run`: a valid engine run whose `simTrace` is a `GoldilocksRun` with `NoCollRun`, with
@@ -68,16 +69,21 @@ variable (S : Setup)
 
 /-- Honest key `1` proposes every slot; everyone polls. -/
 def sel :
-    (Model.protoOf (compiled (goldilocks S)) point.env).Role → Finset (Fin (Fintype.card (Fin 4)))
+    (Model.protoOf (compiled (goldilocks { S with vote := AsChainShape.stock })) point.env).Role →
+      Finset (Fin (Fintype.card (Fin 4)))
   | .proposer _ => {⟨1, by decide⟩}
   | .duty _ k => k.elim
   | .poll => Finset.univ
 
-theorem sel_admits : (Model.protoOf (compiled (goldilocks S)) point.env).SelAdmits (sel S) := by
+theorem sel_admits :
+    (Model.protoOf (compiled (goldilocks { S with vote := AsChainShape.stock }))
+      point.env).SelAdmits
+      (sel S) := by
   intro r
   cases r with
   | proposer s =>
-    change ((goldilocks S (pubOf point.env)).skel.proposerSel s).Admits _
+    change ((goldilocks { S with vote := AsChainShape.stock }
+      (pubOf point.env)).skel.proposerSel s).Admits _
     rw [Test.skeleton_proposerSel S s]
     change ({(⟨1, by decide⟩ : Fin (Fintype.card (Fin 4)))} : Finset _).card =
       min 1 (Fintype.card (Fin 4))
@@ -86,37 +92,41 @@ theorem sel_admits : (Model.protoOf (compiled (goldilocks S)) point.env).SelAdmi
   | poll => rfl
 
 /-- The quorum at four validators is `q = 3`. -/
-theorem quorum_eq : (S.params (pubOf point.env) one_le_card).toParams.q = 3 := by
+theorem quorum_eq : (({ S with vote := AsChainShape.stock } : Setup).params
+    (pubOf point.env) one_le_card).toParams.q = 3 := by
   change (2 * Fintype.card (Fin 4) + 2) / 3 = 3
   simp
 
 /-- The FG safety threshold at four validators: `1 < 2q − n = 2`. -/
 theorem one_lt_threshold :
-    1 < 2 * (S.params (pubOf point.env) one_le_card).toParams.q -
-      (S.params (pubOf point.env) one_le_card).n := by
+    1 < 2 * (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf point.env) one_le_card).toParams.q -
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf point.env) one_le_card).n := by
   rw [quorum_eq]
   change 1 < 2 * 3 - Fintype.card (Fin 4)
   simp
 
-variable {S} {rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) point.env}
+variable {S} {rho : Model.Run (compiled (goldilocks { S with vote := stock })) point.env}
 
 theorem point_constant (hp : rho.point = point) : rho.point.ConstantFaults := by
   rw [hp]
   exact fun _ => rfl
 
 /-- The faulty keys of a run at `point` are one: `f = 1`. -/
-theorem faulty_ncard (hp : rho.point = point) : (honestKeys ⟨S, stock⟩ rho)ᶜ.ncard = 1 := by
-  have heq : (honestKeys ⟨S, stock⟩ rho)ᶜ = rho.key ⁻¹'
+theorem faulty_ncard (hp : rho.point = point) :
+    (honestKeys { S with vote := stock } rho)ᶜ.ncard = 1 := by
+  have heq : (honestKeys { S with vote := stock } rho)ᶜ = rho.key ⁻¹'
       (↑(rho.point.faultyAt 0) : Set (Fin 4)) := by
     ext k
-    simp [mem_honestKeys_iff ⟨S, stock⟩ rho, Model.Run.point]
+    simp [mem_honestKeys_iff { S with vote := stock } rho, Model.Run.point]
   rw [heq, Set.ncard_preimage_of_injective_subset_range rho.key.injective
     (by simp [rho.key.surjective.range_eq]), Set.ncard_coe_finset, hp, point_faulty]
   rfl
 
 /-- The honest keys of a run at `point` are three. -/
-theorem honest_ncard (hp : rho.point = point) : (honestKeys ⟨S, stock⟩ rho).ncard = 3 := by
-  have h := Set.ncard_add_ncard_compl (honestKeys ⟨S, stock⟩ rho)
+theorem honest_ncard (hp : rho.point = point) :
+    (honestKeys { S with vote := stock } rho).ncard = 3 := by
+  have h := Set.ncard_add_ncard_compl (honestKeys { S with vote := stock } rho)
   rw [faulty_ncard hp, Nat.card_eq_fintype_card] at h
   change _ + 1 = 4 at h
   omega
@@ -124,19 +134,25 @@ theorem honest_ncard (hp : rho.point = point) : (honestKeys ⟨S, stock⟩ rho).
 /-- The honest keys are awake and joined at every `t ∈ [0, 40]`: `h_t = 3`. -/
 theorem honestAwakeJoined_eq (hp : rho.point = point) (hv : rho.ExecutionValid) {t : Time}
     (ht : 0 ≤ t) (htb : t ≤ 40) :
-    (simTrace ⟨S, stock⟩ rho one_le_card).honestAwakeJoined (honestKeys ⟨S, stock⟩ rho) t = 3 := by
+    (simTrace { S with vote := stock } rho one_le_card).honestAwakeJoined
+      (honestKeys { S with vote := stock } rho) t = 3 := by
   have hhor : rho.horizon = 40 := congrArg EnvPoint.horizon hp
-  have hawake : ∀ y u, 0 ≤ u → u ≤ 40 → (simTrace ⟨S, stock⟩ rho one_le_card).awake y u := by
+  have hawake : ∀ y u, 0 ≤ u → u ≤ 40 →
+      (simTrace { S with vote := stock } rho one_le_card).awake y u := by
     intro y u h0 h1
-    rw [simTrace_awake_iff ⟨S, stock⟩ rho one_le_card, awakeAt_iff ⟨S, stock⟩ rho one_le_card]
+    rw [simTrace_awake_iff { S with vote := stock } rho one_le_card,
+      awakeAt_iff { S with vote := stock } rho one_le_card]
     exact ⟨rfl, h0, hhor ▸ h1⟩
-  have hset : {y | y ∈ honestKeys ⟨S, stock⟩ rho ∧ (simTrace ⟨S, stock⟩ rho one_le_card).awake y t ∧
-      (simTrace ⟨S, stock⟩ rho one_le_card).JoinedAt y t} = honestKeys ⟨S, stock⟩ rho := by
+  have hset : {y | y ∈ honestKeys { S with vote := stock } rho ∧
+      (simTrace { S with vote := stock } rho one_le_card).awake y t ∧
+      (simTrace { S with vote := stock } rho one_le_card).JoinedAt y t} =
+        honestKeys { S with vote := stock } rho := by
     ext y
     refine ⟨fun h => h.1, fun hy => ⟨hy, ?_⟩⟩
     exact Compose.ready_implies_joined _ _ _ _ _ _
       (simTrace_goldilocksRun S rho one_le_card (point_constant hp) hv) y hy t
-      (8 * (S.params (pubOf point.env) one_le_card).Δ) ht (Int.le_add_one le_rfl)
+      (8 * (({ S with vote := AsChainShape.stock } : Setup).params
+        (pubOf point.env) one_le_card).Δ) ht (Int.le_add_one le_rfl)
       (fun u hu hu' => hawake y u ((le_max_left _ _).trans hu) (hu'.trans htb))
   change {y | _}.ncard = 3
   rw [hset, honest_ncard hp]
@@ -144,19 +160,25 @@ theorem honestAwakeJoined_eq (hp : rho.point = point) (hv : rho.ExecutionValid) 
 /-- `f = 1 < h_t` at every `t ∈ [0, 40]`. -/
 theorem faultBound (hp : rho.point = point) (hv : rho.ExecutionValid) {t : Time}
     (ht : 0 ≤ t) (htb : t ≤ 40) :
-    (simTrace ⟨S, stock⟩ rho one_le_card).FaultBound (honestKeys ⟨S, stock⟩ rho) t := by
-  change (honestKeys ⟨S, stock⟩ rho)ᶜ.ncard < _
+    (simTrace { S with vote := stock } rho one_le_card).FaultBound
+      (honestKeys { S with vote := stock } rho) t := by
+  change (honestKeys { S with vote := stock } rho)ᶜ.ncard < _
   rw [faulty_ncard hp, honestAwakeJoined_eq hp hv ht htb]
   decide
 
 /-- The slot-point fault bound premise of `sleepy_safe_finite` through the horizon, from
 `sleepy_faultBound`: `f < h_t` at `t_s`, `t_s + Δ`, `t_s + 2Δ` whenever they are `≤ 40`. -/
 theorem slot_faultBound (hp : rho.point = point) (hv : rho.ExecutionValid) :
-    ∀ s : Nat, ∀ d ∈ ({0, (S.params (pubOf point.env) one_le_card).Δ,
-      2 * (S.params (pubOf point.env) one_le_card).Δ} : Set Time),
-      (S.params (pubOf point.env) one_le_card).ts s + d ≤ 40 →
-      (simTrace ⟨S, stock⟩ rho one_le_card).FaultBound (honestKeys ⟨S, stock⟩ rho)
-        ((S.params (pubOf point.env) one_le_card).ts s + d) := by
+    ∀ s : Nat, ∀ d ∈ ({0, (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf point.env) one_le_card).Δ,
+      2 * (({ S with vote := AsChainShape.stock } : Setup).params
+        (pubOf point.env) one_le_card).Δ} : Set Time),
+      (({ S with vote := AsChainShape.stock } : Setup).params
+        (pubOf point.env) one_le_card).ts s + d ≤ 40 →
+      (simTrace { S with vote := stock } rho one_le_card).FaultBound
+        (honestKeys { S with vote := stock } rho)
+        ((({ S with vote := AsChainShape.stock } : Setup).params
+          (pubOf point.env) one_le_card).ts s + d) := by
   have hhor : rho.horizon = 40 := congrArg EnvPoint.horizon hp
   refine sleepy_faultBound S rho one_le_card (point_constant hp) hv (W := 0) hhor.ge ?_
   rw [EnvPoint.sleepyOn_iff (point_constant hp)]
@@ -169,13 +191,13 @@ theorem slot_faultBound (hp : rho.point = point) (hv : rho.ExecutionValid) :
 /-- A key outside the honest keys makes no call in `simTrace`. -/
 theorem not_callAt_of_not_honest (hp : rho.point = point) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card (Fin 4))}
-    (hy : y ∉ honestKeys ⟨S, stock⟩ rho) (k : Nat) (ℓ) : ¬
-        (simTrace ⟨S, stock⟩ rho one_le_card).CallAt y k ℓ := by
+    (hy : y ∉ honestKeys { S with vote := stock } rho) (k : Nat) (ℓ) : ¬
+        (simTrace { S with vote := stock } rho one_le_card).CallAt y k ℓ := by
   rintro ⟨hnode, hl⟩
   obtain ⟨_, _, ev, _, he, -, -, -, hn, -⟩ :=
-    simTrace_cut ⟨S, stock⟩ rho one_le_card (hl ▸ Option.some_ne_none ℓ)
+    simTrace_cut { S with vote := stock } rho one_le_card (hl ▸ Option.some_ne_none ℓ)
   apply hy
-  rw [mem_honestKeys_iff ⟨S, stock⟩ rho]
+  rw [mem_honestKeys_iff { S with vote := stock } rho]
   rw [← hnode, hn, show rho.key (rho.ownKey ev.node) = ev.node from rho.key.apply_symm_apply _]
   have h := hv.honest_only ev (List.mem_of_getElem? he)
   simp only [rho.faultyAt_eq_zero (point_constant hp)] at h ⊢
@@ -185,36 +207,45 @@ theorem not_callAt_of_not_honest (hp : rho.point = point) (hv : rho.ExecutionVal
 it signs no attestation and emits no AC message there. -/
 theorem faulty_silent (hp : rho.point = point) (hk : rho.key = Equiv.refl _)
     (hv : rho.ExecutionValid) :
-    faultyKey ∉ honestKeys ⟨S, stock⟩ rho ∧ (∀ e ∈ rho.events, e.node ≠ rho.key faultyKey) ∧
-      (∀ k ℓ, ¬ (simTrace ⟨S, stock⟩ rho one_le_card).CallAt faultyKey k ℓ) ∧
-      (∀ k a, ¬ (simTrace ⟨S, stock⟩ rho one_le_card).SignAt faultyKey k a) ∧
-      ∀ k m, ¬ (simTrace ⟨S, stock⟩ rho one_le_card).EmitAt faultyKey k m := by
+    faultyKey ∉ honestKeys { S with vote := stock } rho ∧
+      (∀ e ∈ rho.events, e.node ≠ rho.key faultyKey) ∧
+      (∀ k ℓ, ¬ (simTrace { S with vote := stock } rho one_le_card).CallAt faultyKey k ℓ) ∧
+      (∀ k a, ¬ (simTrace { S with vote := stock } rho one_le_card).SignAt faultyKey k a) ∧
+      ∀ k m, ¬ (simTrace { S with vote := stock } rho one_le_card).EmitAt faultyKey k m := by
   have hhon : rho.faultyAt 0 = {0} := congrArg (fun p => p.faultyAt 0) hp
-  have hf : faultyKey ∉ honestKeys ⟨S, stock⟩ rho := by
-    rw [mem_honestKeys_iff ⟨S, stock⟩ rho]
+  have hf : faultyKey ∉ honestKeys { S with vote := stock } rho := by
+    rw [mem_honestKeys_iff { S with vote := stock } rho]
     rw [hk, hhon]
     decide
   have hc := not_callAt_of_not_honest hp hv hf
   refine ⟨hf, fun e he h => hf ?_, hc, fun k a ⟨_, h⟩ => hc k _ h,
     fun k m ⟨_, h, _⟩ => hc k _ h⟩
-  rw [mem_honestKeys_iff ⟨S, stock⟩ rho]
+  rw [mem_honestKeys_iff { S with vote := stock } rho]
   simpa only [rho.faultyAt_eq_zero (point_constant hp), h] using hv.honest_only e he
 
 variable (S)
 
-/-- (a) A valid engine run of `goldilocks S` at `point` whose canonical trace is a `GoldilocksRun`
+/-- (a) A valid engine run of `goldilocks { S with vote := AsChainShape.stock }` at `point` whose
+canonical trace is a `GoldilocksRun`
 with `NoCollRun`, one faulty key (`f = 1`), and `f < 2q − n`. -/
 theorem faulty_run :
-    ∃ rho : Model.Run (compiled (goldilocks S)) point.env, rho.point = point ∧
+    ∃ rho : Model.Run (compiled (goldilocks { S with vote := AsChainShape.stock })) point.env,
+      rho.point = point ∧
       rho.key = Equiv.refl _ ∧ rho.sel = sel S ∧ rho.ExecutionValid ∧
-      GoldilocksRun (runProposer ⟨S, stock⟩ rho one_le_card) (digestOf ⟨S, stock⟩ rho)
-          (honestKeys ⟨S, stock⟩ rho)
-        (simTrace ⟨S, stock⟩ rho one_le_card) ∧
-      Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho one_le_card) ∧
-      (honestKeys ⟨S, stock⟩ rho)ᶜ.ncard = 1 ∧
-      (honestKeys ⟨S, stock⟩ rho)ᶜ.ncard < 2 * (S.params (pubOf point.env) one_le_card).toParams.q -
-        (S.params (pubOf point.env) one_le_card).n := by
-  obtain ⟨rho, hp, hk, hs, hv, hc, -, -⟩ := Shape.coverage (goldilocks S) point (by decide)
+      GoldilocksRun (runProposer { S with vote := stock } rho one_le_card)
+          (digestOf { S with vote := stock } rho)
+          (honestKeys { S with vote := stock } rho)
+        (simTrace { S with vote := stock } rho one_le_card) ∧
+      Compose.NoCollRun (digestOf { S with vote := stock } rho)
+        (simTrace { S with vote := stock } rho one_le_card) ∧
+      (honestKeys { S with vote := stock } rho)ᶜ.ncard = 1 ∧
+      (honestKeys { S with vote := stock } rho)ᶜ.ncard <
+        2 * (({ S with vote := AsChainShape.stock } : Setup).params
+          (pubOf point.env) one_le_card).toParams.q -
+        (({ S with vote := AsChainShape.stock } : Setup).params
+          (pubOf point.env) one_le_card).n := by
+  obtain ⟨rho, hp, hk, hs, hv, hc, -, -⟩ := Shape.coverage
+    (goldilocks { S with vote := AsChainShape.stock }) point (by decide)
     (by exact Equiv.refl _) (sel S) (sel_admits S) 0
   refine ⟨rho, hp, hk, hs, hv, simTrace_goldilocksRun S rho one_le_card (point_constant hp) hv,
     noCollRun_simTrace S rho one_le_card (point_constant hp) hv hc, faulty_ncard hp, ?_⟩
@@ -225,15 +256,19 @@ theorem faulty_run :
 `Regimes.non_framing` apply: the finalized tips of honest nodes never conflict, and no honest
 key signs a slashable pair. -/
 theorem faulty_run_safe :
-    ∃ rho : Model.Run (compiled (goldilocks S)) point.env, rho.point = point ∧
-      rho.ExecutionValid ∧ (honestKeys ⟨S, stock⟩ rho)ᶜ.ncard = 1 ∧
-      (∀ y ∈ honestKeys ⟨S, stock⟩ rho, ∀ z ∈ honestKeys ⟨S, stock⟩ rho, ∀ i j,
-        Compatible ((simTrace ⟨S, stock⟩ rho one_le_card).HonestBlocks (honestKeys ⟨S, stock⟩ rho))
-          ((simTrace ⟨S, stock⟩ rho one_le_card).finalizedAt y i)
-          ((simTrace ⟨S, stock⟩ rho one_le_card).finalizedAt z j)) ∧
-      ∀ v ∈ honestKeys ⟨S, stock⟩ rho, ∀ k k' a b, (simTrace ⟨S, stock⟩ rho one_le_card).SignAt
+    ∃ rho : Model.Run (compiled (goldilocks { S with vote := AsChainShape.stock })) point.env,
+      rho.point = point ∧
+      rho.ExecutionValid ∧ (honestKeys { S with vote := stock } rho)ᶜ.ncard = 1 ∧
+      (∀ y ∈ honestKeys { S with vote := stock } rho,
+        ∀ z ∈ honestKeys { S with vote := stock } rho, ∀ i j,
+        Compatible ((simTrace { S with vote := stock } rho one_le_card).HonestBlocks
+          (honestKeys { S with vote := stock } rho))
+          ((simTrace { S with vote := stock } rho one_le_card).finalizedAt y i)
+          ((simTrace { S with vote := stock } rho one_le_card).finalizedAt z j)) ∧
+      ∀ v ∈ honestKeys { S with vote := stock } rho, ∀ k k' a b,
+        (simTrace { S with vote := stock } rho one_le_card).SignAt
           v k a →
-        (simTrace ⟨S, stock⟩ rho one_le_card).SignAt v k' b → ¬ FG.slashable a b := by
+        (simTrace { S with vote := stock } rho one_le_card).SignAt v k' b → ¬ FG.slashable a b := by
   obtain ⟨rho, hp, -, -, hv, hrun, hnc, hf, hlt⟩ := faulty_run S
   exact ⟨rho, hp, hv, hf, Regimes.finalized_safe _ _ _ _ _ _ hrun hnc hlt,
     Regimes.non_framing _ _ _ _ _ _ hrun⟩
@@ -242,18 +277,25 @@ theorem faulty_run_safe :
 and collision freedom, `f = 1 < 2q − n`, `f < h_t` at every `t ∈ [0, 40]` (`h_t = 3`), and a
 silent faulty key. -/
 theorem faulty_run_premises :
-    ∃ rho : Model.Run (compiled (goldilocks S)) point.env, rho.ExecutionValid ∧
-      GoldilocksRun (runProposer ⟨S, stock⟩ rho one_le_card) (digestOf ⟨S, stock⟩ rho)
-          (honestKeys ⟨S, stock⟩ rho)
-        (simTrace ⟨S, stock⟩ rho one_le_card) ∧
-      Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTrace ⟨S, stock⟩ rho one_le_card) ∧
-      (honestKeys ⟨S, stock⟩ rho)ᶜ.ncard = 1 ∧
-      (honestKeys ⟨S, stock⟩ rho)ᶜ.ncard < 2 * (S.params (pubOf point.env) one_le_card).toParams.q -
-        (S.params (pubOf point.env) one_le_card).n ∧
+    ∃ rho : Model.Run (compiled (goldilocks { S with vote := AsChainShape.stock })) point.env,
+      rho.ExecutionValid ∧
+      GoldilocksRun (runProposer { S with vote := stock } rho one_le_card)
+          (digestOf { S with vote := stock } rho)
+          (honestKeys { S with vote := stock } rho)
+        (simTrace { S with vote := stock } rho one_le_card) ∧
+      Compose.NoCollRun (digestOf { S with vote := stock } rho)
+        (simTrace { S with vote := stock } rho one_le_card) ∧
+      (honestKeys { S with vote := stock } rho)ᶜ.ncard = 1 ∧
+      (honestKeys { S with vote := stock } rho)ᶜ.ncard <
+        2 * (({ S with vote := AsChainShape.stock } : Setup).params
+          (pubOf point.env) one_le_card).toParams.q -
+        (({ S with vote := AsChainShape.stock } : Setup).params (pubOf point.env) one_le_card).n ∧
       (∀ t : Time, 0 ≤ t → t ≤ 40 →
-        (simTrace ⟨S, stock⟩ rho one_le_card).honestAwakeJoined (honestKeys ⟨S, stock⟩ rho) t = 3 ∧
-        (simTrace ⟨S, stock⟩ rho one_le_card).FaultBound (honestKeys ⟨S, stock⟩ rho) t) ∧
-      ∀ k ℓ, ¬ (simTrace ⟨S, stock⟩ rho one_le_card).CallAt faultyKey k ℓ := by
+        (simTrace { S with vote := stock } rho one_le_card).honestAwakeJoined
+          (honestKeys { S with vote := stock } rho) t = 3 ∧
+        (simTrace { S with vote := stock } rho one_le_card).FaultBound
+          (honestKeys { S with vote := stock } rho) t) ∧
+      ∀ k ℓ, ¬ (simTrace { S with vote := stock } rho one_le_card).CallAt faultyKey k ℓ := by
   obtain ⟨rho, hp, hk, -, hv, hrun, hnc, hf, hlt⟩ := faulty_run S
   exact ⟨rho, hv, hrun, hnc, hf, hlt,
     fun _ ht htb => ⟨honestAwakeJoined_eq hp hv ht htb, faultBound hp hv ht htb⟩,

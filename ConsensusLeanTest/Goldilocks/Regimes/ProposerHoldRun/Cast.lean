@@ -29,8 +29,10 @@ variable {S : Setup}
 variable (S) in
 /-- The block the twin decodes to: digest `0`, parent genesis, slot `1`, proposer `1`, empty
 payloads. -/
-def twinBlk : Blk (S.params (pubOf env) one_le_card) :=
-  blockOf (S.params (pubOf env) one_le_card) 0 hdr (key 1) [] ([], [])
+def twinBlk : Blk (({ S with vote := AsChainShape.stock } : Setup).params
+    (pubOf env) one_le_card) :=
+  blockOf (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+    0 hdr (key 1) [] ([], [])
 
 theorem twin_parts : (twin S).parts = [twin S] := by
   rw [Model.Obj.parts_eq]; rfl
@@ -43,14 +45,19 @@ theorem twin_digests : Model.digests (rhoc S).hash (twin S) = [(hdr, 0)] := by
   change [(hdr, (if hdr = hdr then 0 else enc hdr + 1 : Nat))] = _
   simp only [↓reduceIte]
 
-theorem twinBlk_header : headerOf (S.params (pubOf env) one_le_card) (twinBlk S) = hdr := by
+theorem twinBlk_header :
+    headerOf (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+      (twinBlk S) = hdr := by
   simp [twinBlk, blockOf, headerOf, hdr, parentRef, parentRoot, encodeInfo]
 
-theorem twinBlk_obj : blockObj (S.params (pubOf env) one_le_card) (twinBlk S) = twin S := by
+theorem twinBlk_obj :
+    blockObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+      (twinBlk S) = twin S := by
   rw [blockObj, twinBlk_header]; rfl
 
 theorem canon_twin :
-    canonEvent (S.params (pubOf env) one_le_card) (S.ro _)
+    canonEvent (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+      (S.ro _)
       (Model.digests (rhoc S).hash (twin S)) (twin S) = some (.block (twinBlk S)) := by
   have h := decodeBlock_blockObj (binding := stock) [(hdr, 0)] (twinBlk S)
     (by simp [twinBlk, blockOf, hdr, parentRoot])
@@ -62,17 +69,23 @@ theorem canon_twin :
   simp only [canonEvent, twin_digests, h]
 
 theorem twinBlk_parent :
-    (twinBlk S).parent = some (S.params (pubOf env) one_le_card).genesisRoot := rfl
+    (twinBlk S).parent = some
+      (({ S with vote := AsChainShape.stock } : Setup).params
+        (pubOf env) one_le_card).genesisRoot := rfl
 
 theorem twinBlk_slot : (twinBlk S).slot = 1 := rfl
 
 theorem twinBlk_root_ne :
-    (twinBlk S).root ≠ (S.params (pubOf env) one_le_card).genesisRoot :=
+    (twinBlk S).root ≠
+      (({ S with vote := AsChainShape.stock } : Setup).params
+        (pubOf env) one_le_card).genesisRoot :=
   taggedRoot_ne _ _
 
 /-- The block of the twin's object has slot `1`, proposer `1` and an empty payload. -/
-theorem of_twin {X : Blk (S.params (pubOf env) one_le_card)}
-    (h : blockObj (S.params (pubOf env) one_le_card) X = twin S) :
+theorem of_twin
+    {X : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)}
+    (h : blockObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+      X = twin S) :
     X.slot = 1 ∧ SA.blockSupport X = [] ∧ X.proposer = key 1 := by
   have ha := congrArg Model.Obj.auth h
   have hc := congrArg Model.Obj.carried h
@@ -129,16 +142,18 @@ theorem before_13 {j : Nat} (hj : (tr S).time j ≤ 13) : ∀ k < j, (tr S).time
 /-- **The node accepts a twin's block by `13`**: when it receives the twin, it holds a non-genesis
 block (one it accepted before, of the twin), or it accepts the twin's block now. -/
 theorem group_accept {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
-    (hg : (tr S).GroupAt (runProposer ⟨S, stock⟩ (rhoc S) one_le_card)
-        (digestOf ⟨S, stock⟩ (rhoc S)) y j 13
+    (hg : (tr S).GroupAt (runProposer { S with vote := stock } (rhoc S) one_le_card)
+        (digestOf { S with vote := stock } (rhoc S)) y j 13
       (.block (twinBlk S))) :
     ∃ k X, (tr S).AcceptAt y k X ∧
-      blockObj (S.params (pubOf env) one_le_card) X = twin S ∧ (tr S).time k ≤ 13 := by
+      blockObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+        X = twin S ∧ (tr S).time k ≤ 13 := by
   obtain ⟨hne, hcuts, -⟩ := hg
   have hj13 : (tr S).time j = 13 := by simpa using (hcuts 0 (List.length_pos_of_ne_nil hne)).2.1
   have hc := before_13 hj13.le
   by_cases hX : ∃ X ∈ ((tr S).state y j).fg.tree,
-      X.root ≠ (S.params (pubOf env) one_le_card).genesisRoot
+      X.root ≠
+        (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card).genesisRoot
   · obtain ⟨X, hX, hXg⟩ := hX
     rcases Compose.tree_cases rhoc_run.toLocalRun hy hX with rfl | ⟨k, hk, hacc⟩
     · exact absurd rfl hXg
@@ -165,8 +180,11 @@ theorem group_accept {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
     obtain ⟨-, htc, hgm, -⟩ := Store.accepted_tree _ _ _ _ hreach
     have hF := (Store.cache_invariants _ _ _ _ hreach).1
     let st := ((tr S).state y j).fg
-    have hFg : st.F = (S.params (pubOf env) one_le_card).toParams.genesisBlock
-        (goldilocksNode (S.params (pubOf env) one_le_card) (S.ro _)).genesisPayload :=
+    have hFg : st.F =
+        (({ S with vote := AsChainShape.stock } : Setup).params
+          (pubOf env) one_le_card).toParams.genesisBlock
+        (goldilocksNode (({ S with vote := AsChainShape.stock } : Setup).params
+          (pubOf env) one_le_card) (S.ro _)).genesisPayload :=
       htc.1 hF hgm ((hX _ hF).trans rfl)
     obtain ⟨st', hst'⟩ := onBlock_some (st := st) twinBlk_parent
       (by
@@ -179,8 +197,10 @@ theorem group_accept {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
       (by
         rw [hFg]
         exact Relation.ReflTransGen.single ⟨Set.mem_insert_of_mem _ hgm, Set.mem_insert _ _, rfl⟩)
-      (σ' := (S.params (pubOf env) one_le_card).toParams.fg.heightEvents
-        { (FG.ChainState.init (S.params (pubOf env) one_le_card).toParams.fg) with
+      (σ' := (({ S with vote := AsChainShape.stock } : Setup).params
+        (pubOf env) one_le_card).toParams.fg.heightEvents
+        { (FG.ChainState.init (({ S with vote := AsChainShape.stock } : Setup).params
+            (pubOf env) one_le_card).toParams.fg) with
             s := 1, L := (twinBlk S).root })
       (by
         rw [(Store.good hreach).σ_genesis]
@@ -243,12 +263,16 @@ theorem tryVote_ready (x : Fin sp.n) {A : SAState sp.n} (Φ : Frm sp.n FGP) {t :
 end Receipt
 
 theorem slot_int {t : Time} (ht : 0 ≤ t) :
-    ((S.params (pubOf env) one_le_card).slot t : Int) = t / 12 := by
+    ((({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf env) one_le_card).slot t : Int) =
+      t / 12 := by
   rw [SA.slot_eq _ ht]; rfl
 
 theorem slot_one {t : Time} (h12 : 12 ≤ t) (h13 : t ≤ 13) :
-    (S.params (pubOf env) one_le_card).slot t = 1 := by
-  have h : ((S.params (pubOf env) one_le_card).slot t : Int) = 1 := by
+    (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf env) one_le_card).slot t = 1 := by
+  have h : ((({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf env) one_le_card).slot t : Int) = 1 := by
     rw [slot_int (le_trans (by norm_num) h12)]
     dsimp only [Time] at *
     omega
@@ -258,8 +282,10 @@ theorem slot_one {t : Time} (h12 : 12 ≤ t) (h13 : t ≤ 13) :
 AC block call after the acceptance, it has voted in slot `1` already, or it votes now (the twin's
 block, or its `Σ.F`, is a ready proposal of slot `1`). -/
 theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
-    {X : Blk (S.params (pubOf env) one_le_card)} (hacc : (tr S).AcceptAt y k X)
-    (hX : blockObj (S.params (pubOf env) one_le_card) X = twin S) (hk : (tr S).time k ≤ 13) :
+    {X : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)}
+    (hacc : (tr S).AcceptAt y k X)
+    (hX : blockObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+      X = twin S) (hk : (tr S).time k ≤ 13) :
     ∃ j e, SA.VoteAt (tr S).projAC y j e ∧ e.msg.slot = 1 ∧ (tr S).time j ≤ 13 := by
   have hac :=
     (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
@@ -275,12 +301,14 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
   have h12 : 12 ≤ (tr S).time k := by
     have h0 := (rhoc_run (S := S)).time_nonneg k
     have := slot_int (S := S) h0
-    change X.slot ≤ (S.params (pubOf env) one_le_card).slot _ at hsl
+    change X.slot ≤ (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf env) one_le_card).slot _ at hsl
     rw [hXs] at hsl
     have h1 : (1 : Int) ≤ (tr S).time k / 12 := by rw [← this]; exact_mod_cast hsl
     dsimp only [Time] at *
     omega
-  have hs1 : (S.params (pubOf env) one_le_card).slot ((tr S).time (k + 1)) = 1 :=
+  have hs1 : (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf env) one_le_card).slot ((tr S).time (k + 1)) = 1 :=
     slot_one (by rw [ht]; exact h12) (by rw [ht]; exact hk)
   have hcAC : (tr S).projAC.CallAt y (k + 1) ℓ := Compose.projAC_callAt.mpr hcℓ
   obtain ⟨hfr, hstep, -, -⟩ := rhoc_run.cutLaw y hy (k + 1) _ hcℓ
@@ -295,12 +323,14 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
         (by rw [SA.trace_mayVote_stock hac hy (k + 1)]; decide)
     exact ⟨j, e, he, hes, ((rhoc_run (S := S)).time_mono hj.le).trans (ht ▸ hk)⟩
   -- the frame holds a ready proposal of slot `1`: the twin's block, or `Σ.F`
-  have hready : SA.voteReady (S.params (pubOf env) one_le_card)
+  have hready : SA.voteReady (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf env) one_le_card)
       (Node.frame ((tr S).state y (k + 1))) 1 := by
     obtain ⟨-, htc, hgm, hanc⟩ := Store.accepted_tree _ _ _ _ hreach1
     have hF := (Store.cache_invariants _ _ _ _ hreach1).1
     by_cases hFg :
-        ((tr S).state y (k + 1)).fg.F.root = (S.params (pubOf env) one_le_card).genesisRoot
+        ((tr S).state y (k + 1)).fg.F.root = (({ S with vote := AsChainShape.stock } : Setup).params
+          (pubOf env) one_le_card).genesisRoot
     · refine ⟨X, ⟨hXt, ?_⟩, hXs, fun x hx => (List.not_mem_nil (hX1 ▸ hx)).elim⟩
       rw [htc.1 hF hgm (hFg.trans rfl)]
       exact hanc X hXt
@@ -347,8 +377,10 @@ theorem twin_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) :
     ∃ j e, SA.VoteAt (tr S).projAC y j e ∧ e.msg.slot = 1 ∧ (tr S).time j ≤ 13 := by
   obtain ⟨i, hi⟩ := twin_event hy
   have hd := (simTrace_simulates S (rhoc S) one_le_card rhoc_const rhoc_valid).deliver _
-    ((mem_honestKeys_iff ⟨S, stock⟩ (rhoc S) y).mp hy) i _ _ hi
-  rw [ownKey_key ⟨S, stock⟩ (rhoc S), show delivered (S.params (pubOf env) one_le_card) (twin S) =
+    ((mem_honestKeys_iff { S with vote := stock } (rhoc S) y).mp hy) i _ _ hi
+  rw [ownKey_key { S with vote := stock } (rhoc S),
+    show delivered (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf env) one_le_card) (twin S) =
       [twin S] from
     twin_parts] at hd
   rcases deliverSeq_single hd with ⟨e, hce, hg⟩ | hce | ⟨e, hce, hz⟩
@@ -363,7 +395,8 @@ theorem twin_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) :
     simp only [exec, onBlock] at hz
     split_ifs at hz with hfut
     · rw [twinBlk_slot] at hfut
-      change (S.params (pubOf env) one_le_card).slot 13 < 1 at hfut
+      change (({ S with vote := AsChainShape.stock } : Setup).params
+        (pubOf env) one_le_card).slot 13 < 1 at hfut
       rw [slot_one (by norm_num) (by norm_num)] at hfut
       omega
     · split at hz <;> exact absurd hz (List.cons_ne_nil _ _)
@@ -371,13 +404,15 @@ theorem twin_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) :
 /-- **Every honest vote of a slot `≤ 1` is cast by `13`**: one of slot `0` before `12`, the one of
 slot `1` is the vote on the twin (one vote per slot). -/
 theorem vote_time {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
-    {e : SA.Em (S.params (pubOf env) one_le_card)
-      (List (FG.Att (S.params (pubOf env) one_le_card).n))}
+    {e : SA.Em (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+      (List (FG.Att (({ S with vote := AsChainShape.stock } : Setup).params
+        (pubOf env) one_le_card).n))}
     (hv : SA.VoteAt (tr S).projAC y j e) (hs : e.msg.slot ≤ 1) : (tr S).time j ≤ 13 := by
   have hac :=
     (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
   obtain ⟨ℓ, hc, he⟩ := hv
-  have hsl : e.msg.slot = (S.params (pubOf env) one_le_card).slot ((tr S).time j) :=
+  have hsl : e.msg.slot = (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf env) one_le_card).slot ((tr S).time j) :=
     (SA.castAt_spec hac hy ⟨hc, he⟩).2.1
   rcases Nat.le_one_iff_eq_zero_or_eq_one.mp hs with h0 | h1
   · have h0' := slot_int (S := S) ((rhoc_run (S := S)).time_nonneg j)
@@ -393,12 +428,15 @@ theorem vote_time {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
 /-- **Every honest vote of a slot `≤ 1` has the head genesis or the twin's block**, a block of the
 voter's tree. -/
 theorem vote_head {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
-    {e : SA.Em (S.params (pubOf env) one_le_card)
-      (List (FG.Att (S.params (pubOf env) one_le_card).n))}
+    {e : SA.Em (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+      (List (FG.Att (({ S with vote := AsChainShape.stock } : Setup).params
+        (pubOf env) one_le_card).n))}
     (hv : SA.VoteAt (tr S).projAC y j e) (hs : e.msg.slot ≤ 1) :
     ∃ Hd ∈ ((tr S).state y j).fg.tree, Hd.root = e.msg.head ∧
-      (Hd.root = (S.params (pubOf env) one_le_card).genesisRoot ∨
-        blockObj (S.params (pubOf env) one_le_card) Hd = twin S) := by
+      (Hd.root = (({ S with vote := AsChainShape.stock } : Setup).params
+        (pubOf env) one_le_card).genesisRoot ∨
+        blockObj (({ S with vote := AsChainShape.stock } : Setup).params
+          (pubOf env) one_le_card) Hd = twin S) := by
   have hac :=
     (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
   have hj := vote_time hy hv hs
@@ -406,7 +444,8 @@ theorem vote_head {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
   obtain ⟨⟨Hd, hHd, hr, -⟩, -⟩ := Compose.cast_head_fcRoot hac hy ⟨hc, he⟩
   rw [Compose.frame_of_projAC rhoc_run hy hc] at hHd
   refine ⟨Hd, hHd.1, hr, ?_⟩
-  by_cases hg : Hd.root = (S.params (pubOf env) one_le_card).genesisRoot
+  by_cases hg : Hd.root = (({ S with vote := AsChainShape.stock } : Setup).params
+    (pubOf env) one_le_card).genesisRoot
   · exact Or.inl hg
   · exact Or.inr (tree_twin hy (fun c hcj => ((rhoc_run (S := S)).time_mono hcj.le).trans hj)
       hHd.1 hg)

@@ -20,50 +20,56 @@ open Consensus.Model (pubOf)
 
 variable {binding : VoteBinding}
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Under constant faults every block a public tick of an honest node calls at a positive
 position is released at that event. -/
 private theorem tick_block_releases {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0) {j : Nat} {t : Time}
     (he : rho.events[j]? = some (.tick v t))
-    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
-    ∀ r ∈ eventCuts ⟨S, stock⟩ rho hn j, ∀ B acc, r.label = .fg (.block B acc) → r.pos ≠ 0 →
-      blockObj (S.params (pubOf E) hn) B ∈ rho.releasesAt j := by
+    (hp : (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf E) hn).toParams.IsPublic t) :
+    ∀ r ∈ eventCuts { S with vote := stock } rho hn j, ∀ B acc,
+      r.label = .fg (.block B acc) → r.pos ≠ 0 →
+      blockObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn) B ∈
+        rho.releasesAt j := by
   have hnf := Regimes.non_framing _ _ _ _ _ _ (simTrace_goldilocksRun S rho hn hf hv)
-    _ (honest_ownKey (S := ⟨S, stock⟩) hv')
-  exact fun r hr => (tick_releases ⟨S, stock⟩ rho hn hf hv hv' he hp hnf r hr).1
+    _ (honest_ownKey (S := { S with vote := stock }) hv')
+  exact fun r hr => (tick_releases { S with vote := stock } rho hn hf hv hv' he hp hnf r hr).1
 
 /-- Every called block, accepted or refused, has its canonical object in the final view
 of the honest engine node responsible for the call. -/
 theorem occurring_in_view {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {B : Blk (S.params (pubOf E) hn)}
-    (hB : (simTrace ⟨S, stock⟩ rho hn).Occurs B) :
-    B.parent ≠ none ∧ ∃ v, v ∉ rho.faultyAt 0 ∧ blockObj (S.params (pubOf E) hn) B ∈
+    {B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)}
+    (hB : (simTrace { S with vote := stock } rho hn).Occurs B) :
+    B.parent ≠ none ∧ ∃ v, v ∉ rho.faultyAt 0 ∧
+      blockObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn) B ∈
       rho.ViewIdx v rho.events.length := by
   have hhon {i : Nat} {ev} (he : rho.events[i]? = some ev) : ev.node ∉ rho.faultyAt 0 :=
     (rho.point.honestAt_iff_zero hf ev.node ev.time).mp
       (hv.honest_only ev (List.mem_of_getElem? he))
-  obtain ⟨hp, i, ev, he, hb⟩ := block_call_in_view_of_releases ⟨S, stock⟩ rho hn
+  obtain ⟨hp, i, ev, he, hb⟩ := block_call_in_view_of_releases { S with vote := stock } rho hn
     (fun he => tick_block_releases S rho hn hf hv (hhon he) he) hB
   have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
   exact ⟨hp, ev.node, hhon he, rho.viewIdx_mono (by omega) _ hb⟩
 
 /-- An accepted block is in its reader's engine view at every subsequent mapped cut. -/
 theorem accepted_in_view {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0)
-    {k i : Nat} {B : Blk (S.params (pubOf E) hn)}
-    (hacc : (simTrace ⟨S, stock⟩ rho hn).AcceptAt (rho.ownKey v) k B)
-    (hki : k < cutMap ⟨S, stock⟩ rho hn i) :
-    blockObj (S.params (pubOf E) hn) B ∈ rho.ViewIdx v i :=
-  accepted_in_view_of_releases ⟨S, stock⟩ rho hn hv (tick_block_releases S rho hn hf hv hv')
+    {k i : Nat} {B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)}
+    (hacc : (simTrace { S with vote := stock } rho hn).AcceptAt (rho.ownKey v) k B)
+    (hki : k < cutMap { S with vote := stock } rho hn i) :
+    blockObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn) B ∈
+      rho.ViewIdx v i :=
+  accepted_in_view_of_releases { S with vote := stock } rho hn hv
+      (tick_block_releases S rho hn hf hv hv')
       hacc hki
 
 /-- CLAIMS G1.5 evidence binding: canonical block objects carry their payload attestations,
@@ -79,15 +85,16 @@ under carried objects. This uses every held block, not the false restriction tha
 witness chains end at the finalized tips. The proof uses the acceptance alternative directly;
 the genesis alternative has no attestations. Status: proved. -/
 theorem held_att_in_view {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0)
-    {i : Nat} {B : Blk (S.params (pubOf E) hn)}
+    {i : Nat} {B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)}
     (hB : B ∈
-        ((simTrace ⟨S, stock⟩ rho hn).state (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn i)).fg.tree)
+        ((simTrace { S with vote := stock } rho hn).state (rho.ownKey v)
+          (cutMap { S with vote := stock } rho hn i)).fg.tree)
     {a : FG.Att (Fintype.card V)} (ha : a ∈ B.fgPayload) : attObj a ∈ rho.ViewIdx v i := by
   rcases Compose.tree_cases (simTrace_goldilocksRun S rho hn hf hv).toLocalRun
-      (honest_ownKey (S := ⟨S, stock⟩) hv') hB with hgen | ⟨k, hk, hacc⟩
+      (honest_ownKey (S := { S with vote := stock }) hv') hB with hgen | ⟨k, hk, hacc⟩
   · subst B
     simp [Params.genesisBlock] at ha
   · have hb := accepted_in_view S rho hn hf hv hv' hacc hk
@@ -107,13 +114,14 @@ If V is empty there is no reader, so no simulation with `n ≥ 1` is required. T
 `i ≤ events.length` is exactly the domain of simulation's state agreement.
 Status: proved relative to simulation. -/
 theorem evidenceInView (V : Type) [Fintype V] [DecidableEq V] (S : Setup)
-    : EvidenceInView V ⟨S, stock⟩ := by
+    : EvidenceInView V { S with vote := stock } := by
   rw [evidenceInView_iff]
   intro E rho hf hv v hv' i hi h hh atts p hd a ha
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
   have hs := simTrace_simulates S rho hn hf hv
-  have hr := Compose.fg_reachable hs.run.toLocalRun (honest_ownKey (S := ⟨S, stock⟩) hv')
-    (cutMap ⟨S, stock⟩ rho hn i)
+  have hr := Compose.fg_reachable hs.run.toLocalRun
+    (honest_ownKey (S := { S with vote := stock }) hv')
+    (cutMap { S with vote := stock } rho hn i)
   rw [read_finalized hs hv' hi] at hh
   obtain ⟨B, hB, _, _, rfl⟩ := mem_chainTo hr (Store.cache_invariants _ _ _ _ hr).1 hh
   have hd' : (B.fgPayload, B.acPayload) = (atts, p) := by

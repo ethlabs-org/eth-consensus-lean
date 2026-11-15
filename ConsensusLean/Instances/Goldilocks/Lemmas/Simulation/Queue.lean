@@ -605,8 +605,8 @@ end ShapeInventory
 
 section EngineInventory
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 private theorem cut_member (hv : rho.ExecutionValid) {v : V} {i p : Nat} {nd}
     (hc : EngineDutyCut S rho v i p nd) :
@@ -633,9 +633,9 @@ private theorem poll_duty_inventory (hprot : PollAttProtected S rho hn) (hv : rh
     {v : V} (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {nd} {k : Nat}
     (hc : EngineDutyCut S rho v i p nd)
     (hd : (∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
-        ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)[p]? = some (.poll k)) ∨
+        ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
       ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
-        ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t)[p]? = some (.poll k))
+        ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some (.poll k))
     (h : Inventory (Available nd.seen (shapeOf S hn nd)) (shapeOf S hn nd).node) :
     Inventory (Available (rho.dutyStep v nd (.poll k)).1.seen
       (shapeOf S hn (rho.dutyStep v nd (.poll k)).1))
@@ -644,7 +644,7 @@ private theorem poll_duty_inventory (hprot : PollAttProtected S rho hn) (hv : rh
   rw [dutyStep_poll S rho hn v nd k hsel]
   have hmem : ∀ b, (pollPre (shapeOf S hn nd)).outbox.head? = some b →
       rho.ownKey v ∈ rho.sel (pollRole S.vote (pubOf E).n b) →
-      Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) nd.seen
+      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
         (pollObj S rho v b) = true →
       pollObj S rho v b ∈ (rho.dutyStep v nd (.poll k)).1.seen.flatMap Model.Obj.parts := by
     intro b hb hk hp
@@ -695,14 +695,14 @@ private def PayloadCarried (o : Wire (Fintype.card V) binding) : Prop :=
 
 omit [DecidableEq V] in
 private theorem release_inventory (k : Fin (Fintype.card V))
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (cs)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (cs)
     (h : Inventory (Available nd.seen (shapeOf S hn nd)) (shapeOf S hn nd).node)
     (hp : ∀ o ∈ cs, PayloadCarried o) :
-    Inventory (Available (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E)
+    Inventory (Available (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
         rho.hash k nd cs).1.seen
-      (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E)
+      (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
         rho.hash k nd cs).1))
-      (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E)
+      (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
         rho.hash k nd cs).1).node := by
   induction cs generalizing nd with
   | nil => exact h
@@ -725,9 +725,9 @@ private theorem release_inventory (k : Fin (Fintype.card V))
 omit [DecidableEq V] in
 include hn in
 private theorem proposal_carried (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (s : Slot) (hs : 0 < s) :
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s) :
     ∀ o ∈ rho.signedCandidate v (.propose s hs)
-      ((Model.protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).2,
+      ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).2,
       PayloadCarried o := by
   intro o ho
   obtain ⟨m, cs, hm, _, _, rfl⟩ := rho.mem_signedCandidate.mp ho
@@ -749,7 +749,7 @@ private theorem proposal_carried (v : V)
 
 omit [DecidableEq V] in
 private theorem proposal_duty_inventory (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (s : Slot) (hs : 0 < s)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
     (h : Inventory (Available nd.seen (shapeOf S hn nd)) (shapeOf S hn nd).node) :
     Inventory (Available (rho.dutyStep v nd (.propose s hs)).1.seen
       (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1))
@@ -759,8 +759,8 @@ private theorem proposal_duty_inventory (v : V)
   · apply release_inventory
     · have hact := shapeOf_act_propose S hn nd.st s hs
       change Inventory (Available nd.seen
-        (((Model.protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).1.1 hn))
-        (((Model.protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).1.1 hn).node
+        (((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).1.1 hn))
+        (((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).1.1 hn).node
       rw [hact]
       have hi := inventory_proposal h (shapeOf S hn nd).now
       unfold propose
@@ -771,7 +771,7 @@ private theorem proposal_duty_inventory (v : V)
 
 omit [DecidableEq V] in
 private theorem tick_duty_inventory (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (k : Nat)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (k : Nat)
     (h : Inventory (Available nd.seen (shapeOf S hn nd)) (shapeOf S hn nd).node) :
     Inventory (Available (rho.dutyStep v nd (.pollPropose k)).1.seen
       (shapeOf S hn (rho.dutyStep v nd (.pollPropose k)).1))
@@ -783,22 +783,22 @@ private theorem tick_duty_inventory (v : V)
     exact tick_inventory _ _ h
   · unfold Model.Run.dutyStep
     simp only
-        [show (Model.protoOf (compiled (goldilocksWith S)) E).role (.pollPropose k)
+        [show (Model.protoOf (compiled (goldilocks S)) E).role (.pollPropose k)
             = .poll from rfl,
       hsel, ↓reduceIte]
     exact h
 
 private theorem prefix_inventory (hprot : PollAttProtected S rho hn) (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0) (i : Nat)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
-    (ds : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+    (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
     (hcut : ∀ p, p ≤ ds.length → EngineDutyCut S rho v i p
       (rho.runDuties v nd (ds.take p)).1)
     (hsched : ∀ (p k : Nat), ds[p]? = some (ShapeDuty.poll k) →
       (∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
-        ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)[p]? = some (.poll k)) ∨
+        ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
       ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
-        ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t)[p]? = some (.poll k))
+        ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some (.poll k))
     (h : Inventory (Available nd.seen (shapeOf S hn nd)) (shapeOf S hn nd).node) :
     ∀ p, p ≤ ds.length →
       let out := (rho.runDuties v nd (ds.take p)).1
@@ -837,11 +837,11 @@ private theorem event_inventory (hprot : PollAttProtected S rho hn) (hv : rho.Ex
       (shapeOf S hn (rho.stateBefore i v)).node at ih
     have hg : ∀ nd t, Inventory (Available nd.seen (shapeOf S hn nd))
         (shapeOf S hn nd).node →
-        Inventory (Available (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E)
+        Inventory (Available (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
           rho.hash (rho.ownKey v) nd (Model.gossipCandidates _ nd.st t)).1.seen
-          (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E)
+          (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
             rho.hash (rho.ownKey v) nd (Model.gossipCandidates _ nd.st t)).1))
-          (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E)
+          (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
             rho.hash (rho.ownKey v) nd (Model.gossipCandidates _ nd.st t)).1).node := by
       intro nd t h
       apply release_inventory S rho hn _ nd _ h
@@ -869,7 +869,7 @@ private theorem event_inventory (hprot : PollAttProtected S rho hn) (hv : rho.Ex
           · rename_i hw
             apply hg
             have hi := prefix_inventory S rho hn hprot hv hv' i
-              ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+              ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
                 (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
               (fun p hp => .tick he hw hp)
               (fun p k hk => Or.inl ⟨t, he, hw, hk⟩) ih _ (Nat.le_refl _)
@@ -892,7 +892,7 @@ private theorem event_inventory (hprot : PollAttProtected S rho hn) (hv : rho.Ex
                 ⟨o, List.mem_append_right _ (List.mem_singleton_self _), hx⟩
           rw [stateAt_eq] at hp
           have hi := prefix_inventory S rho hn hprot hv hv' i
-            ⟨(Model.protoOf (compiled (goldilocksWith S)) E).process (rho.stateBefore i v).st o
+            ⟨(Model.protoOf (compiled (goldilocks S)) E).process (rho.stateBefore i v).st o
               (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩ _
             (fun p hp => .deliver he hp)
             (fun p k hk => Or.inr ⟨t, o, he, hk⟩) hp _ (Nat.le_refl _)
@@ -911,18 +911,18 @@ theorem tick_prefix_pool_available_of_protected (hprot : PollAttProtected S rho 
     (hv : rho.ExecutionValid) {v : V}
     (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
-    (hp : p ≤ ((Model.protoOf (compiled (goldilocksWith S)) E).duties t).length)
+    (hp : p ≤ ((Model.protoOf (compiled (goldilocks S)) E).duties t).length)
     (σ : Nat) (m : Vote (Fintype.card V)) :
     let nd := (rho.runDuties v
-      ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
         (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
-      (((Model.protoOf (compiled (goldilocksWith S)) E).duties t).take p)).1
+      (((Model.protoOf (compiled (goldilocks S)) E).duties t).take p)).1
     m ∈ (shapeOf S hn nd).node.ac.pool σ →
       voteObj m ∈ Model.closure nd.seen ∨
         Body.vote (encodeVote m) ∈ (shapeOf S hn nd).outbox := by
   intro nd hm
   have hi := prefix_inventory S rho hn hprot hv hv' i
-    ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+    ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
       (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
     (fun q hq => .tick he hw hq) (fun q k hk => Or.inl ⟨t, he, hw, hk⟩)
     (by
@@ -945,7 +945,7 @@ the delivered object's closure) or queued as a canonical own vote in the ordinar
 theorem delivery_pool_available_of_protected (hprot : PollAttProtected S rho hn)
     (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0)
-    (i : Nat) (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object)
+    (i : Nat) (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
     (σ : Nat) (m : Vote (Fintype.card V))
     (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
     voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
@@ -974,7 +974,7 @@ theorem delivery_pool_available_of_protected (hprot : PollAttProtected S rho hn)
 the reachable one-vote invariant rules out a later queued vote. -/
 theorem delivery_pool_held_or_head_of_protected (hprot : PollAttProtected S rho hn)
     (hv : rho.ExecutionValid) {v : V}
-    {i : Nat} {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
+    {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) (σ : Nat) (m : Vote (Fintype.card V))
     (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
     voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
@@ -1012,7 +1012,7 @@ theorem delivery_pool_held_or_head_of_protected (hprot : PollAttProtected S rho 
 the ordinary outbox head. No queue-to-pool or readiness premise is left to the caller. -/
 theorem delivery_voteForward_held_or_head_of_protected (hprot : PollAttProtected S rho hn)
     (hv : rho.ExecutionValid) {v : V}
-    {i : Nat} {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
+    {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) (tv : Time × Vote (Fintype.card V))
     (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
     voteObj tv.2 ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
@@ -1026,7 +1026,7 @@ The proof uses engine-event inventory and the empty queue at the slot-start prop
 theorem scheduled_proposal_releasable_of_protected (hprot : PollAttProtected S rho hn)
     (hv : rho.ExecutionValid)
     {v : V} (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {t : Time} {s : Slot}
-    {nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)}
+    {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
     (hscheduled : EngineProposalAt S rho v i p t s nd)
     {par : ParentRef} {info : Info} {cs : List (Wire (Fintype.card V) S.vote)}
     (hprop : (propose (shapeOf S hn nd) s).2 = some (par, info, cs)) :
@@ -1035,7 +1035,7 @@ theorem scheduled_proposal_releasable_of_protected (hprot : PollAttProtected S r
     (engineProposalAt_iff S rho v i p t s nd).mp hscheduled
   have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
   have hi := prefix_inventory S rho hn hprot hv hv' i
-    ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+    ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
       (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
     (fun q hq => .tick he hw hq) (fun q k hk => Or.inl ⟨t, he, hw, hk⟩)
     (by
@@ -1044,9 +1044,9 @@ theorem scheduled_proposal_releasable_of_protected (hprot : PollAttProtected S r
       exact hi) p
     (Nat.le_of_lt (List.getElem?_eq_some_iff.mp hd).1)
   have hout : (shapeOf S hn (rho.runDuties v
-      ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
         (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
-      (((Model.protoOf (compiled (goldilocksWith S)) E).duties t).take p)).1).outbox = [] := by
+      (((Model.protoOf (compiled (goldilocks S)) E).duties t).take p)).1).outbox = [] := by
     rw [duties_eq S t ht] at hd ⊢
     rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.vote) t with ⟨hnone, _⟩ |
       ⟨s', hs', hone, htime⟩
@@ -1067,7 +1067,7 @@ theorem scheduled_proposal_releasable_of_protected (hprot : PollAttProtected S r
       obtain ⟨rfl, rfl⟩ := hp
       simp only [dutiesInit, hone]
       change (shapeOf S hn (rho.runDuties v
-        ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+        ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
           (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
         [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat]).1).outbox = []
       rw [← atProposal_eq]

@@ -14,7 +14,8 @@ run and for the fields of `ConfirmedQuery` (Sleepy branch). The query fixes the 
 coefficient record `C`; at `C = contract_coefficients S A` they are the query's fields, since
 `K S A` is that abbreviation.
 
-* `sleepySafety_fields`: a valid, collision-free Sleepy run of `goldilocks S` on two validators,
+* `sleepySafety_fields`: a valid, collision-free Sleepy run of
+  `goldilocks { S with vote := AsChainShape.stock }` on two validators,
   with any horizon `H ≥ 0`.
 * `sleepyQuery_fields`: the same run with Sleepy progress at `.available`, index 1, on
   `[0, H]`, query time 0, the latency deadline inside the horizon, and a ready reader at the
@@ -41,18 +42,21 @@ variable (S : Setup)
 
 /-- Validator `0` proposes every slot; everyone polls. -/
 def sel (H : Time) :
-    (Model.protoOf (compiled (goldilocks S)) (point H).env).Role →
+    (Model.protoOf (compiled (goldilocks { S with vote := AsChainShape.stock }))
+      (point H).env).Role →
         Finset (Fin (Fintype.card (Fin 2)))
   | .proposer _ => {⟨0, one_le_card⟩}
   | .duty _ k => k.elim
   | .poll => Finset.univ
 
 theorem sel_admits (H : Time) :
-    (Model.protoOf (compiled (goldilocks S)) (point H).env).SelAdmits (sel S H) := by
+    (Model.protoOf (compiled (goldilocks { S with vote := AsChainShape.stock }))
+      (point H).env).SelAdmits (sel S H) := by
   intro r
   cases r with
   | proposer s =>
-    change ((goldilocks S (pubOf (point H).env)).skel.proposerSel s).Admits _
+    change ((goldilocks { S with vote := AsChainShape.stock }
+      (pubOf (point H).env)).skel.proposerSel s).Admits _
     rw [Test.skeleton_proposerSel S s]
     change ({(⟨0, one_le_card⟩ : Fin (Fintype.card (Fin 2)))} : Finset _).card =
       min 1 (Fintype.card (Fin 2))
@@ -75,18 +79,26 @@ theorem point_faulty (H t : Time) : (point H).faultyAt t = ∅ := rfl
 `goldilocksContract A C`. -/
 theorem sleepy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : Time)
     (hH : 0 ≤ H) :
-    ∃ r : (Sys (goldilocks S) (Fin 2)).Run, r.1 = (point H).env ∧ r.2.point = point H ∧
+    ∃ r : (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Run,
+      r.1 = (point H).env ∧ r.2.point = point H ∧
       r.2.sel = sel S H ∧ r.2.key = Equiv.refl _ ∧
-      (Sys (goldilocks S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
-      (Sys (goldilocks S) (Fin 2)).Sleepy
-          (shapeProgress (goldilocks S) (Fin 2)).toExternal (goldilocksContract A C) r := by
-  obtain ⟨rho, hp, hk, hs, hv, hc, -, he⟩ := Shape.coverage (goldilocks S) (point H) hH
+      (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Valid r ∧
+        ¬ r.2.HashCollision ∧
+      (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Sleepy
+          (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).toExternal
+          (goldilocksContract A C) r := by
+  obtain ⟨rho, hp, hk, hs, hv, hc, -, he⟩ := Shape.coverage
+    (goldilocks { S with vote := AsChainShape.stock }) (point H) hH
     (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0
-  let r : (Sys (goldilocks S) (Fin 2)).Run := ⟨(point H).env, rho⟩
-  have hpop : ((Sys (goldilocks S) (Fin 2)).pt r).SleepyOn (goldilocksContract A C).params.θ
-      ((Sys (goldilocks S) (Fin 2)).cDur (goldilocksContract A C) r)
-      ((Sys (goldilocks S) (Fin 2)).aheadDur (goldilocksContract A C) r) 0
-      ((Sys (goldilocks S) (Fin 2)).pt r).horizon := by
+  let r : (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Run :=
+    ⟨(point H).env, rho⟩
+  have hpop : ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).pt r).SleepyOn
+      (goldilocksContract A C).params.θ
+      ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).cDur
+        (goldilocksContract A C) r)
+      ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).aheadDur
+        (goldilocksContract A C) r) 0
+      ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).pt r).horizon := by
     intro t _ _
     change (rho.point.retain _).ReadyAbove (1 / 2) _ t
     rw [hp]
@@ -98,9 +110,12 @@ theorem sleepy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : T
   refine ⟨r, rfl, hp, hs, hk, hv, hc,
     (Model.sysOf_delivers_iff rho _ _ _).mpr
       (he.psync le_rfl (show (1 : Time) < 2 by decide) (show (1 : Time) < 2 by decide)), hpop, ?_⟩
-  have hsel : (shapeProgress (goldilocks S) (Fin 2)).toExternal.selected
-      ((Sys (goldilocks S) (Fin 2)).pt r).env
-      ((shapeProgress (goldilocks S) (Fin 2)).toExternal.ext r) = fun _ => Finset.univ :=
+  have hsel : (shapeProgress
+      (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).toExternal.selected
+      ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).pt r).env
+      ((shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).toExternal.ext
+        r) =
+        fun _ => Finset.univ :=
     rfl
   rw [hsel]
   exact EnvPoint.EtaSleepyOn.committee_univ
@@ -111,10 +126,13 @@ theorem sleepy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : T
 every horizon `H ≥ 0`. -/
 theorem sleepySafety_fields (A : ContractAssumptions S) (C : ContractCoefficients)
     (H : Time) (hH : 0 ≤ H) :
-    ∃ r : (Sys (goldilocks S) (Fin 2)).Run, 1 ≤ Fintype.card (Fin 2) ∧ r.2.horizon = H ∧
-      (Sys (goldilocks S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
-      (Sys (goldilocks S) (Fin 2)).Sleepy
-          (shapeProgress (goldilocks S) (Fin 2)).toExternal (goldilocksContract A C) r := by
+    ∃ r : (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Run,
+      1 ≤ Fintype.card (Fin 2) ∧ r.2.horizon = H ∧
+      (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Valid r ∧
+        ¬ r.2.HashCollision ∧
+      (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Sleepy
+          (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).toExternal
+          (goldilocksContract A C) r := by
   obtain ⟨r, -, hp, -, -, hv, hc, hs⟩ := sleepy_run S A C H hH
   exact ⟨r, one_le_card, congrArg EnvPoint.horizon hp, hv, hc, hs⟩
 
@@ -123,16 +141,21 @@ satisfiable: capability `.available`, index 1, query time 0, at every horizon co
 deadline (`Δ = 2`: `2·latency ≤ H`). -/
 theorem sleepyQuery_fields (A : ContractAssumptions S) (C : ContractCoefficients)
     (H : Time) (hH : 2 * (C.latency .available 1 : Time) ≤ H) :
-    ∃ r : (Sys (goldilocks S) (Fin 2)).Run, 1 ≤ Fintype.card (Fin 2) ∧ r.2.horizon = H ∧
-      (Sys (goldilocks S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
-      ((Sys (goldilocks S) (Fin 2)).Sleepy
-          (shapeProgress (goldilocks S) (Fin 2)).toExternal (goldilocksContract A C) r ∧
-        (Sys (goldilocks S) (Fin 2)).prog (shapeProgress (goldilocks S) (Fin 2))
+    ∃ r : (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Run,
+      1 ≤ Fintype.card (Fin 2) ∧ r.2.horizon = H ∧
+      (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Valid r ∧
+        ¬ r.2.HashCollision ∧
+      ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Sleepy
+          (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).toExternal
+          (goldilocksContract A C) r ∧
+        (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).prog
+            (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 2))
             (goldilocksContract A C)
           .available (1 : ℕ+) 0 r.2.horizon r ∧ (0 : Time) ≤ 0) ∧
       (0 : Time) + ((goldilocksContract A C).params.latency .available (1 : ℕ+) : Time) * r.1.ΔAC ≤
         r.2.horizon ∧
-      ∃ v, r.2.point.Ready ((Sys (goldilocks S) (Fin 2)).cDur (goldilocksContract A C) r) v
+      ∃ v, r.2.point.Ready ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).cDur
+        (goldilocksContract A C) r) v
         ((0 : Time) + ((goldilocksContract A C).params.latency .available (1 : ℕ+) : Time) *
           r.1.ΔAC) := by
   have hH0 : 0 ≤ H := le_trans (by positivity) hH
@@ -157,14 +180,19 @@ two-validator run with horizon `H ≥ 2`, validator `0` emits a slot-0 vote by i
 deadline `t₀ + Δp = 2`, and the theorem's conclusion then gives its first released forwarding
 envelope. -/
 theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
-    ∃ rho : Model.Run (compiled (goldilocks S)) (point H).env, rho.ExecutionValid ∧
-      ∃ y ∈ honestKeys ⟨S, stock⟩ rho, ∃ (k : Nat) (m : SA.Vote (Fintype.card (Fin 2))),
-        (simTrace ⟨S, stock⟩ rho one_le_card).EmitAt y k m ∧ m.slot = 0 ∧
-        (simTrace ⟨S, stock⟩ rho one_le_card).time k ≤ 2 ∧
-        ∃ i, rho.SendsAt (rho.key y) i ((simTrace ⟨S, stock⟩ rho one_le_card).time k) ∧
-          .mk (.signed y .poll) (.data (.voteForward ((simTrace ⟨S, stock⟩ rho one_le_card).time k)
+    ∃ rho : Model.Run (compiled (goldilocks { S with vote := AsChainShape.stock })) (point H).env,
+      rho.ExecutionValid ∧
+      ∃ y ∈ honestKeys { S with vote := stock } rho, ∃ (k : Nat)
+        (m : SA.Vote (Fintype.card (Fin 2))),
+        (simTrace { S with vote := stock } rho one_le_card).EmitAt y k m ∧ m.slot = 0 ∧
+        (simTrace { S with vote := stock } rho one_le_card).time k ≤ 2 ∧
+        ∃ i, rho.SendsAt (rho.key y) i
+          ((simTrace { S with vote := stock } rho one_le_card).time k) ∧
+          .mk (.signed y .poll) (.data (.voteForward
+            ((simTrace { S with vote := stock } rho one_le_card).time k)
             (encodeVote m))) [voteObj m] ∈ rho.releasesAt i := by
-  obtain ⟨rho, hp, -, -, hv, hc, -, -⟩ := Shape.coverage (goldilocks S) (point H)
+  obtain ⟨rho, hp, -, -, hv, hc, -, -⟩ := Shape.coverage
+    (goldilocks { S with vote := AsChainShape.stock }) (point H)
     (le_trans (by decide) hH)
     (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0
   have hn := one_le_card
@@ -176,15 +204,17 @@ theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
   have hrun := simTrace_goldilocksRun S rho hn hf hv
   have hnc := noCollRun_simTrace S rho hn hf hv hc
   let y : Fin (Fintype.card (Fin 2)) := ⟨0, hn⟩
-  have hy : y ∈ honestKeys ⟨S, stock⟩ rho := by
-    rw [mem_honestKeys_iff ⟨S, stock⟩ rho]
+  have hy : y ∈ honestKeys { S with vote := stock } rho := by
+    rw [mem_honestKeys_iff { S with vote := stock } rho]
     rw [hhon]
     exact Finset.notMem_empty _
-  let sp := S.params (pubOf (point H).env) hn
+  let sp := ({ S with vote := AsChainShape.stock } : Setup).params (pubOf (point H).env) hn
   have ht : sp.ts 0 + sp.Δ = 2 := by rfl
-  have hawake : ∀ u : Time, 0 ≤ u → u ≤ 2 → (simTrace ⟨S, stock⟩ rho hn).awake y u := by
+  have hawake : ∀ u : Time, 0 ≤ u → u ≤ 2 →
+      (simTrace { S with vote := stock } rho hn).awake y u := by
     intro u h0 h2
-    rw [simTrace_awake_iff ⟨S, stock⟩ rho one_le_card, awakeAt_iff ⟨S, stock⟩ rho one_le_card]
+    rw [simTrace_awake_iff { S with vote := stock } rho one_le_card,
+      awakeAt_iff { S with vote := stock } rho one_le_card]
     exact ⟨rfl, h0, by rw [hhor]; exact h2.trans hH⟩
   have h0 : (0 : Time) ≤ sp.ts 0 + sp.Δ := by rw [ht]; decide
   have hc8 : 8 * sp.Δ ≤ 8 * sp.Δ + 1 := Int.le_add_one le_rfl
@@ -193,7 +223,7 @@ theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
       hawake u ((le_max_left _ _).trans hu) (hu'.trans ht.le))
   obtain ⟨k, e, ⟨ℓ, hcall, he⟩, hslot, htime⟩ :=
     Compose.vote_of_awake_joined hrun hnc hy (s := 0) (Compose.mayVote_stock hrun hnc hy 0) hw hj
-  have hem : (simTrace ⟨S, stock⟩ rho hn).EmitAt y k e.msg :=
+  have hem : (simTrace { S with vote := stock } rho hn).EmitAt y k e.msg :=
       ⟨ℓ, Compose.projAC_callAt.mp hcall, e, he, rfl⟩
   obtain ⟨i, -, -, hsend, hrel, -⟩ :=
     simTrace_vote_forwarded S rho hn hf hv y hy k e.msg (Or.inl hem)

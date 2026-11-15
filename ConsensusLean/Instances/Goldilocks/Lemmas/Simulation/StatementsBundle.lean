@@ -20,9 +20,9 @@ open AsChainShape
 
 /-- **The simulation statements** for every setup and validator set. -/
 theorem simulation_statements (V : Type) [Fintype V] [DecidableEq V] (S : Setup) :
-    SimulationStatements V ⟨S, stock⟩ where
+    SimulationStatements V { S with vote := stock } where
   engineSimulatesNode := engineSimulatesNode V S
-  readIsOut := readIsOut V ⟨S, stock⟩
+  readIsOut := readIsOut V { S with vote := stock }
   noCollTransport := noCollTransport V S
   conflictsIff := conflicts_iff
   evidenceInView := evidenceInView V S

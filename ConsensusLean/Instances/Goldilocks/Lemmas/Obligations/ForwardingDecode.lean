@@ -23,160 +23,193 @@ open Consensus.Model
 
 /-- A scheduled honest proposal's actual pre-record state supplies canonical child validity. -/
 theorem scheduled_proposal_child_decodes {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
+    (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (v : V) (hh : v ∉ rho.faultyAt 0) (i : Nat) (t : Time)
     (he : rho.events[i]? = some (.tick v t))
-    (hp : Node.Proposes (P := (S.params (pubOf E) hn).toParams)
-      (runProposer ⟨S, stock⟩ rho hn) (rho.ownKey v) t) :
-    let nd := atProposal ⟨S, stock⟩ rho v (rho.stateBefore i v) t
-    let r := Node.acProposal (shapeOf ⟨S, stock⟩ hn nd).node (shapeOf ⟨S, stock⟩ hn nd).now
+    (hp : Node.Proposes
+      (P := (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).toParams)
+      (runProposer { S with vote := stock } rho hn) (rho.ownKey v) t) :
+    let nd := atProposal { S with vote := stock } rho v (rho.stateBefore i v) t
+    let r := Node.acProposal (shapeOf { S with vote := stock } hn nd).node
+      (shapeOf { S with vote := stock } hn nd).now
     ∀ d p, r.2.2 = some (d, p) →
-      let B := Node.mkBlock (digestOf ⟨S, stock⟩ rho) (rho.ownKey v) r.1.fg
-        (shapeOf ⟨S, stock⟩ hn nd).now (encodeTxs nd.st.2) d.head p
-      decodeBlock (S.params (pubOf E) hn) (binding := stock) (digests rho.hash (blockObj _ B))
+      let B := Node.mkBlock (digestOf { S with vote := stock } rho) (rho.ownKey v) r.1.fg
+        (shapeOf { S with vote := stock } hn nd).now (encodeTxs nd.st.2) d.head p
+      decodeBlock (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)
+        (binding := stock) (digests rho.hash (blockObj _ B))
         (blockObj _ B) = some B := by
   have run := simTrace_goldilocksRun S rho hn hf hv
-  have hhon : rho.ownKey v ∈ honestKeys ⟨S, stock⟩ rho := by
-    rw [mem_honestKeys_iff ⟨S, stock⟩ rho]
+  have hhon : rho.ownKey v ∈ honestKeys { S with vote := stock } rho := by
+    rw [mem_honestKeys_iff { S with vote := stock } rho]
     have hk : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
     rwa [hk]
-  have hpub := (S.params (pubOf E) hn).toParams.slotTime_public
-    ((S.params (pubOf E) hn).toParams.slotOf t)
+  have hpub := (({ S with vote := AsChainShape.stock } : Setup).params
+    (pubOf E) hn).toParams.slotTime_public
+    ((({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).toParams.slotOf t)
   rw [← hp.2.1] at hpub
-  have hg := (simTrace_tick_public_group ⟨S, stock⟩ rho hn hf hv v hh i t he hpub).1
+  have hg := (simTrace_tick_public_group { S with vote := stock } rho hn hf hv v hh i t he hpub).1
   obtain ⟨cfg, hr, hst, hs⟩ := Compose.group_step run.toLocalRun hhon hg
-  have hstate := simTrace_state ⟨S, stock⟩ rho hn hf hv v hh i
+  have hstate := simTrace_state { S with vote := stock } rho hn hf hv v hh i
     (Nat.le_of_lt (List.getElem?_eq_some_iff.mp he).1)
-  exact scheduled_proposal_child_decodes_of_step ⟨S, stock⟩ rho hn hv v i t hp hr
+  exact scheduled_proposal_child_decodes_of_step { S with vote := stock } rho hn hv v i t hp hr
     (SA.voteStart_initial _) (hst.trans hstate.symm) hs run.genesis_root_ok
 
 /-- At a scheduled honest tick, the proposal duty preserves the joint invariant without
 assuming child decoding: reachable proposal execution supplies it. -/
 theorem decoded_held_scheduled_proposal {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
+    (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (v : V) (hhon : v ∉ rho.faultyAt 0) (i : Nat) (t : Time)
     (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
-    (ht : t = (S.params (pubOf E) hn).toParams.slotTime s)
+    (ht : t = (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf E) hn).toParams.slotTime s)
     (hd : WrappersDecoded (digests rho.hash)
-      (shapeOf ⟨S, stock⟩ hn (atProposal ⟨S, stock⟩ rho v (rho.stateBefore i v) t)))
+      (shapeOf { S with vote := stock } hn
+        (atProposal { S with vote := stock } rho v (rho.stateBefore i v) t)))
     (hh : WrappersHeld (digests rho.hash)
-      (shapeOf ⟨S, stock⟩ hn (atProposal ⟨S, stock⟩ rho v (rho.stateBefore i v) t))) :
-    let nd := atProposal ⟨S, stock⟩ rho v (rho.stateBefore i v) t
-    let st' := shapeOf ⟨S, stock⟩ hn (rho.dutyStep v nd (.propose s hs)).1
+      (shapeOf { S with vote := stock } hn
+        (atProposal { S with vote := stock } rho v (rho.stateBefore i v) t))) :
+    let nd := atProposal { S with vote := stock } rho v (rho.stateBefore i v) t
+    let st' := shapeOf { S with vote := stock } hn (rho.dutyStep v nd (.propose s hs)).1
     WrappersDecoded (digests rho.hash) st' ∧ WrappersHeld (digests rho.hash) st' := by
-  exact decoded_held_scheduled_proposal_of_own ⟨S, stock⟩ rho hn hv v i t he s hs ht hd hh
+  exact decoded_held_scheduled_proposal_of_own
+    { S with vote := stock } rho hn hv v i t he s hs ht hd hh
     ⟨scheduled_proposal_child_decodes S rho hn hf hv v hhon⟩
 
 /-- Every actual honest tick preserves the joint invariant, including its own proposal. -/
 theorem decoded_held_tick {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
+    (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (v : V) (hhon : v ∉ rho.faultyAt 0) (i : Nat) (t : Time)
     (he : rho.events[i]? = some (.tick v t))
-    (hd : WrappersDecoded (digests rho.hash) (stateAt ⟨S, stock⟩ rho hn v i))
-    (hh : WrappersHeld (digests rho.hash) (stateAt ⟨S, stock⟩ rho hn v i)) :
-    let st' := shapeOf ⟨S, stock⟩ hn (rho.tick (rho.stateBefore i v) v t).1
+    (hd : WrappersDecoded (digests rho.hash) (stateAt { S with vote := stock } rho hn v i))
+    (hh : WrappersHeld (digests rho.hash) (stateAt { S with vote := stock } rho hn v i)) :
+    let st' := shapeOf { S with vote := stock } hn (rho.tick (rho.stateBefore i v) v t).1
     WrappersDecoded (digests rho.hash) st' ∧ WrappersHeld (digests rho.hash) st' := by
-  exact decoded_held_tick_of_own ⟨S, stock⟩ rho hn hv v i t he hd hh
+  exact decoded_held_tick_of_own { S with vote := stock } rho hn hv v i t he hd hh
     ⟨scheduled_proposal_child_decodes S rho hn hf hv v hhon⟩
 
 /-- Every reachable honest engine state has decoded wrappers corresponding to held blocks.
 No decoder, parent-slot, payload-validity or clock premise is assumed. -/
 theorem stateAt_decoded_held {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
+    (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (v : V) (hh : v ∉ rho.faultyAt 0) (i : Nat) :
-    WrappersDecoded (digests rho.hash) (stateAt ⟨S, stock⟩ rho hn v i) ∧
-    WrappersHeld (digests rho.hash) (stateAt ⟨S, stock⟩ rho hn v i) := by
-  exact stateAt_decoded_held_of_own ⟨S, stock⟩ rho hn hv v
+    WrappersDecoded (digests rho.hash) (stateAt { S with vote := stock } rho hn v i) ∧
+    WrappersHeld (digests rho.hash) (stateAt { S with vote := stock } rho hn v i) := by
+  exact stateAt_decoded_held_of_own { S with vote := stock } rho hn hv v
     ⟨scheduled_proposal_child_decodes S rho hn hf hv v hh⟩ i
 
 /-- Receipt acceptances publish a wrapper that decodes, not merely a candidate with the
 right syntactic shape. The queue and decoder witnesses use the same processed state. -/
 theorem delivery_acceptance_decoded_publication {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
     (hn : 1 ≤ Fintype.card V) (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {v : V} (hhon : v ∉ rho.faultyAt 0)
-    {i : Nat} {o : (protoOf (compiled (goldilocksWith ⟨S, stock⟩)) E).Object} {t : Time}
+    {i : Nat} {o : (protoOf (compiled (goldilocks { S with vote := stock })) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t))
-    (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
-    (hr : r ∈ eventCuts ⟨S, stock⟩ rho hn i) (hb : r.label = .fg (.block B true))
-    (hchild : decodeBlock (S.params (pubOf E) hn) (binding := stock)
+    (r : CutRec (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn) (S.ro _))
+    (B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn))
+    (hr : r ∈ eventCuts { S with vote := stock } rho hn i) (hb : r.label = .fg (.block B true))
+    (hchild : decodeBlock (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)
+      (binding := stock)
       (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B) :
-    ∃ p q, (publisherExecution ⟨S, stock⟩ rho).actual q ∧ q.event = i ∧
+    ∃ p q, (publisherExecution { S with vote := stock } rho).actual q ∧ q.event = i ∧
       q.origin = rho.ownKey v ∧
-      q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B ∧
-      decodeForward (S.params (pubOf E) hn) (digests rho.hash q.object) q.object =
+      q.object = forwardObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)
+        (rho.ownKey v) t p B ∧
+      decodeForward (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)
+        (digests rho.hash q.object) q.object =
         some (rho.ownKey v, t, p, B) := by
-  exact delivery_acceptance_decoded_publication_of_held ⟨S, stock⟩ rho hn hv he r B hr hb hchild
+  exact delivery_acceptance_decoded_publication_of_held
+    { S with vote := stock } rho hn hv he r B hr hb hchild
     ⟨scheduled_proposal_child_decodes S rho hn hf hv v hhon⟩
 
 /-- Scheduled proposal acceptance publishes its exact decoded wrapper in the same tick. -/
 theorem tick_proposal_acceptance_decoded_publication {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
     (hn : 1 ≤ Fintype.card V) (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (v : V) (hh : v ∉ rho.faultyAt 0)
     (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
     (hone : (skeleton (pubOf E)).proposeAt t = [.propose s hs])
-    (ht : t = (S.params (pubOf E) hn).toParams.slotTime s)
-    (B : Blk (S.params (pubOf E) hn))
+    (ht : t = (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf E) hn).toParams.slotTime s)
+    (B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn))
     (ha : .fg (.block B true) ∈
-        (Node.tickStep (runProposer ⟨S, stock⟩ rho hn) (digestOf ⟨S, stock⟩ rho)
+        (Node.tickStep (runProposer { S with vote := stock } rho hn)
+          (digestOf { S with vote := stock } rho)
       (rho.ownKey v)
-          (shapeOf ⟨S, stock⟩ hn (atProposal ⟨S, stock⟩ rho v (rho.stateBefore i v) t)).node
+          (shapeOf { S with vote := stock } hn
+            (atProposal { S with vote := stock } rho v (rho.stateBefore i v) t)).node
       t (encodeTxs (mempool rho.inbox v t)) .proposal).2)
-    (hchild : decodeBlock (S.params (pubOf E) hn) (binding := stock)
+    (hchild : decodeBlock (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)
+      (binding := stock)
       (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B) :
-    ∃ p q, (publisherExecution ⟨S, stock⟩ rho).actual q ∧ q.event = i ∧
+    ∃ p q, (publisherExecution { S with vote := stock } rho).actual q ∧ q.event = i ∧
       q.origin = rho.ownKey v ∧
-      q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B ∧
-      decodeForward (S.params (pubOf E) hn) (digests rho.hash q.object) q.object =
+      q.object = forwardObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)
+        (rho.ownKey v) t p B ∧
+      decodeForward (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)
+        (digests rho.hash q.object) q.object =
         some (rho.ownKey v, t, p, B) := by
-  exact tick_proposal_acceptance_decoded_publication_of_queued ⟨S, stock⟩ rho hn hv v i t he s
+  exact tick_proposal_acceptance_decoded_publication_of_queued
+    { S with vote := stock } rho hn hv v i t he s
       hs hone
     ht B hchild ⟨scheduled_proposal_child_decodes S rho hn hf hv v hh⟩
-    (tick_proposal_acceptance_queued ⟨S, stock⟩ rho hn hf hv v hh i t he s hs hone ht B ha)
+    (tick_proposal_acceptance_queued
+      { S with vote := stock } rho hn hf hv v hh i t he s hs hone ht B ha)
 
 /-- Every accepting cut of an honest tick has a successfully decoded publication. -/
 theorem tick_acceptance_decoded_publication {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
     (hn : 1 ≤ Fintype.card V) (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (v : V) (hh : v ∉ rho.faultyAt 0)
     (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t))
-    (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
-    (hr : r ∈ eventCuts ⟨S, stock⟩ rho hn i) (hb : r.label = .fg (.block B true))
-    (hchild : decodeBlock (S.params (pubOf E) hn) (binding := stock)
+    (r : CutRec (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn) (S.ro _))
+    (B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn))
+    (hr : r ∈ eventCuts { S with vote := stock } rho hn i) (hb : r.label = .fg (.block B true))
+    (hchild : decodeBlock (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)
+      (binding := stock)
       (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B) :
-    ∃ p q, (publisherExecution ⟨S, stock⟩ rho).actual q ∧ q.event = i ∧
+    ∃ p q, (publisherExecution { S with vote := stock } rho).actual q ∧ q.event = i ∧
       q.origin = rho.ownKey v ∧
-      q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B ∧
-      decodeForward (S.params (pubOf E) hn) (digests rho.hash q.object) q.object =
+      q.object = forwardObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)
+        (rho.ownKey v) t p B ∧
+      decodeForward (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)
+        (digests rho.hash q.object) q.object =
         some (rho.ownKey v, t, p, B) := by
-  exact tick_acceptance_decoded_publication_of_queued ⟨S, stock⟩ rho hn hv v i t he r B hr hb hchild
+  exact tick_acceptance_decoded_publication_of_queued
+    { S with vote := stock } rho hn hv v i t he r B hr hb hchild
     ⟨scheduled_proposal_child_decodes S rho hn hf hv v hh⟩
-    (fun s hs hone ht => tick_proposal_acceptance_queued ⟨S, stock⟩ rho hn hf hv v hh i t he s hs
+    (fun s hs hone ht => tick_proposal_acceptance_queued
+        { S with vote := stock } rho hn hf hv v hh i t he s hs
         hone ht B)
 
 /-- Every honest acceptance has an actual, exactly decoded same-event publication.
 All decoding premises follow from execution validity and reachable state invariants. -/
 theorem forwardAtAcceptance {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
+    (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
-    ForwardAtAcceptance ⟨S, stock⟩ rho hn (simTrace ⟨S, stock⟩ rho hn) (cutMap ⟨S, stock⟩ rho hn)
-      (publisherExecution ⟨S, stock⟩ rho) := by
-  rw [forwardAtAcceptance_iff ⟨S, stock⟩ rho hn]
+    ForwardAtAcceptance { S with vote := stock } rho hn (simTrace { S with vote := stock } rho hn)
+      (cutMap { S with vote := stock } rho hn)
+      (publisherExecution { S with vote := stock } rho) := by
+  rw [forwardAtAcceptance_iff { S with vote := stock } rho hn]
   intro x hx k B ha
   have hchild := accepted_child_decodes S rho hn hf hv x hx k B ha
   have hhon (v : V) (hxv : rho.ownKey v = x) : v ∉ rho.faultyAt 0 := by
     have hi : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply _
-    rw [mem_honestKeys_iff ⟨S, stock⟩ rho] at hx
+    rw [mem_honestKeys_iff { S with vote := stock } rho] at hx
     rwa [← hxv, hi] at hx
-  exact forward_publication_of_events ⟨S, stock⟩ rho hn ha
+  exact forward_publication_of_events { S with vote := stock } rho hn ha
     (fun v i t r he hxv hr hb =>
       tick_acceptance_decoded_publication S rho hn hf hv v (hhon v hxv) i t he r B hr hb hchild)
     (fun v i o t r he hxv hr hb =>

@@ -58,10 +58,10 @@ theorem read_rho {h : Header Info}
     rw [rho_faultyAt, faulty_of_ge (by norm_num)]; decide
   apply read_hdr (S := S)
   have heq := Model.Run.retain_stateBefore_endCut (d := 41) (rho_sorted (S := S)) h2 41
-  change h ∈ (goldilocks S (pubOf env)).out .confirmed
+  change h ∈ (goldilocks { S with vote := AsChainShape.stock } (pubOf env)).out .confirmed
     ((rho S).stateBefore (Nat.findGreatest (fun i => (rho S).cutTime i ≤ 41)
       (rho S).events.length) 2).st.1 at hh
-  change h ∈ (goldilocks S (pubOf env)).out .confirmed
+  change h ∈ (goldilocks { S with vote := AsChainShape.stock } (pubOf env)).out .confirmed
     ((rhoc S).stateBefore (Nat.findGreatest (fun i => (rhoc S).cutTime i ≤ 41)
       (rhoc S).events.length) 2).st.1
   rw [heq]
@@ -73,15 +73,18 @@ compiled run without a hash collision, sleepy for the hold-`0` contract and meet
 recurrence at the available output and index `1`, `ProposalLiveReady` fails for the confirmed
 chain. -/
 theorem sleepyLive_hold_zero_false (A : ContractAssumptions S) :
-    ¬ (Sys (goldilocks S) (Fin 5)).Holds
+    ¬ (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).Holds
         (fun r =>
-          (Sys (goldilocks S) (Fin 5)).Sleepy (shapeProgress (goldilocks S) (Fin 5)).toExternal
+          (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).Sleepy
+              (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).toExternal
               (holdContract A (contract_coefficients S A) 0) r ∧
-          (Sys (goldilocks S) (Fin 5)).prog (shapeProgress (goldilocks S) (Fin 5))
+          (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).prog
+            (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 5))
             (holdContract A (contract_coefficients S A) 0) .available 1 0
-            ((Sys (goldilocks S) (Fin 5)).pt r).horizon r)
+            ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).pt r).horizon r)
         (fun r => ProposalLiveReady r.2
-          ((Sys (goldilocks S) (Fin 5)).cDur (holdContract A (contract_coefficients S A) 0) r)
+          ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).cDur
+            (holdContract A (contract_coefficients S A) 0) r)
           Out.confirmed 0
           ((holdContract A (contract_coefficients S A) 0).params.latency .available 1)) := by
   intro h
@@ -97,12 +100,13 @@ theorem sleepyLive_hold_zero_false (A : ContractAssumptions S) :
 variable (S) in
 /-- **The shape claims fail at proposer hold `0`** (kind (c)), through their `sleepyLive` field. -/
 theorem claims_hold_zero_false (A : ContractAssumptions S) :
-    ¬ ShapeClaimsAt (goldilocks S) (holdContract A (contract_coefficients S A) 0) (Fin 5) :=
+    ¬ ShapeClaimsAt (goldilocks { S with vote := AsChainShape.stock })
+      (holdContract A (contract_coefficients S A) 0) (Fin 5) :=
   fun hc => sleepyLive_hold_zero_false S A (hc.sleepyLive .available .confirmed (Or.inl rfl) rfl 1)
 
 /-- **The shape obligations fail at proposer hold `0`** (kind (c)), at `setupSmall`. -/
 theorem obligations_hold_zero_false :
-    ¬ ShapeObligationsAs .ebbAndFlow (goldilocks setupSmall)
+    ¬ ShapeObligationsAs .ebbAndFlow (goldilocks { setupSmall with vote := AsChainShape.stock })
         (holdContract assumptionsSmall (contract_coefficients setupSmall assumptionsSmall) 0) :=
   fun ⟨_, ho⟩ => claims_hold_zero_false setupSmall assumptionsSmall (ho.claims (Fin 5))
 

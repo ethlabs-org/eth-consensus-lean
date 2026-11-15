@@ -8,12 +8,14 @@ open Consensus.Model (Public)
 open Blocks Shape
 
 theorem body_carrier (S : Setup) (pub : Public) :
-    (shape S pub).Body = (AsChainShape.goldilocks S pub).Body := rfl
+    (shape S pub).Body =
+      (AsChainShape.goldilocks { S with vote := AsChainShape.stock } pub).Body := rfl
 
 theorem skeleton_carrier (S : Setup) (pub : Public) :
-    (shape S pub).skel = (AsChainShape.goldilocks S pub).skel := by
+    (shape S pub).skel =
+      (AsChainShape.goldilocks { S with vote := AsChainShape.stock } pub).skel := by
   unfold shape shapeFamily Family.skeleton family AsChainShape.goldilocks
-    AsChainShape.goldilocksWith AsChainShape.skeleton
+    AsChainShape.skeleton
   dsimp only
   congr 1
   funext k
@@ -32,7 +34,8 @@ theorem object_carrier (S : Setup) (pub : Public) :
       AsChainShape.Wire pub.n := rfl
 
 theorem reshape_events {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (AsChainShape.goldilocks S)) E) :
+    (S : Setup)
+    (rho : Model.Run (compiled (AsChainShape.goldilocks { S with vote := AsChainShape.stock })) E) :
     (reshape S rho).events = rho.events := rfl
 
 end Consensus.Goldilocks.NodeEngine.Concrete

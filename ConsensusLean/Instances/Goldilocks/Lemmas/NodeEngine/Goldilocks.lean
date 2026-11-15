@@ -14,14 +14,16 @@ open Consensus.Model (Public)
 theorem restartSilent (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) :
     RestartSilent (runtime S pub hn).operations.toAC := by
   intro self st Φ t ht
-  exact Simulation.restart_emits_nil (sp := S.params pub hn) (S.ro _) self st Φ t ht
+  exact Simulation.restart_emits_nil
+    (sp := ({ S with vote := AsChainShape.stock } : Setup).params pub hn) (S.ro _) self st Φ t ht
 
 /-- The stored-clock contract has no collision or regime premise; Goldilocks proves more. -/
 theorem storedClockTips (S : Setup) (pub : Public) (hn : 1 ≤ pub.n)
     (Reach : NodeState (runtime S pub hn).operations.toAC → Time → Prop) :
     StoredClockTips (runtime S pub hn).operations.toAC Reach := by
   intro st t _ hΦ
-  exact Regimes.sa_tips (sp := S.params pub hn) (A := st.ac) hΦ t
+  exact Regimes.sa_tips (sp := ({ S with vote := AsChainShape.stock } : Setup).params pub hn)
+    (A := st.ac) hΦ t
 
 /-- Restart execution has precisely one AC cut, retaining its actual frame. -/
 theorem restartCut (S : Setup) (pub : Public) (hn : 1 ≤ pub.n)

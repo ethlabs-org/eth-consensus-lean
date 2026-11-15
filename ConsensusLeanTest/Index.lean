@@ -904,8 +904,6 @@ example := ``Consensus.Goldilocks.AsChainShape.VoteKind
 example := ``Consensus.Goldilocks.AsChainShape.committee
 example := ``Consensus.Goldilocks.AsChainShape.VoteBinding.candidateRole
 example := ``Consensus.Goldilocks.AsChainShape.VoteBinding.installVote
-example := ``Consensus.Goldilocks.AsChainShape.BoundSetup
-example := ``Consensus.Goldilocks.AsChainShape.goldilocksWith
 example := ``Consensus.Goldilocks.SA.CommitteeDict.BindsSel
 example := ``Consensus.Goldilocks.Obligations.goldilocksContract_outage_stock_iff
 

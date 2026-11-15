@@ -78,6 +78,7 @@ noncomputable def setupSmall : Setup where
   c := 2
   two_le_c := le_rfl
   ro := replayOrder
+  vote := stock
 
 /-- A larger setup, past the catch-up switch: `k = 6`, `δt = 8`. -/
 noncomputable def setupLarge : Setup where
@@ -88,6 +89,7 @@ noncomputable def setupLarge : Setup where
   c := 2
   two_le_c := le_rfl
   ro := replayOrder
+  vote := stock
 
 /-- The assumptions at `setupSmall`, with FG gap `2`. -/
 def assumptionsSmall : ContractAssumptions setupSmall := ⟨2, le_rfl, by decide⟩
@@ -258,6 +260,7 @@ noncomputable def setupRow : Setup where
   c := 2
   two_le_c := le_rfl
   ro := replayOrder
+  vote := stock
 
 /-- (b) FG gap `2`: `6 ≤ δt`, the window `[0, 2, 4, 6]` of span `6`, final latency `4(X + 6) + 1`;
 the contract's FG delay bound is `4·2 − 6 = 2` (its healthy regime assumes `ΔFG ≤ 2·ΔAC`). -/
@@ -322,7 +325,7 @@ theorem fg_transport_fast : 6 * (5 : Time) + 1 ≤ 4 * 5 * (assumptionsSmall.fgS
 /-- (a) **The obligations endpoint is not vacuous**: there are a setup and an assumption set
 (`k = 2`, `δt = 6`, FG gap `2`), and the family meets the obligations at their contract. -/
 theorem meets_obligations_nonvacuous : ∃ (S : Setup) (A : ContractAssumptions S),
-    ShapeObligationsOnAs .ebbAndFlow (goldilocks S)
+    ShapeObligationsOnAs .ebbAndFlow (goldilocks { S with vote := AsChainShape.stock })
       (goldilocksContract A (contract_coefficients S A)) (fun _ p => p.ConstantFaults) :=
   ⟨setupSmall, assumptionsSmall, meets_obligations_constant setupSmall assumptionsSmall⟩
 
@@ -330,7 +333,7 @@ theorem meets_obligations_nonvacuous : ∃ (S : Setup) (A : ContractAssumptions 
 validators: sleepy, healthy, sleepy-stress, outage and bad-proposer runs exist
 (`Shape.regimes_realizable`, from the fields of `meets_obligations`). -/
 theorem meetsObligations_realizable_small :
-    RealizableActive (goldilocks setupSmall)
+    RealizableActive (goldilocks { setupSmall with vote := AsChainShape.stock })
       (goldilocksContract assumptionsSmall (contract_coefficients setupSmall assumptionsSmall))
       (Fin 5) :=
   have h := (meets_obligations_constant setupSmall assumptionsSmall).2
@@ -342,8 +345,9 @@ theorem meetsObligations_realizable_small :
 five validators gives the realizability branch of `CorrectProtocol`, a clean witness for every
 regime of the compiled Goldilocks system. -/
 theorem goldilocksCorrect_realizable_small :
-    Realizable (Model.sysOf schema (compiled (goldilocks setupSmall)) (Fin 5))
-      (shapeProgress (goldilocks setupSmall) (Fin 5))
+    Realizable (Model.sysOf schema
+      (compiled (goldilocks { setupSmall with vote := AsChainShape.stock })) (Fin 5))
+      (shapeProgress (goldilocks { setupSmall with vote := AsChainShape.stock }) (Fin 5))
       (goldilocksContract assumptionsSmall (contract_coefficients setupSmall assumptionsSmall)) :=
   (Consensus.Goldilocks.goldilocksCorrect setupSmall assumptionsSmall (Fin 5)).1.realizable
     (((meetsObligations_optimalFaultTolerance setupSmall assumptionsSmall).room_iff _).mpr
@@ -353,18 +357,28 @@ theorem goldilocksCorrect_realizable_small :
 active sleepy realizability witness at delays two, and check the full property
 table and all three `HoldsAlways` rows without a collision escape on that run. -/
 theorem goldilocksCorrectWithExcuses_nonvacuous :
-    ∃ r : (Model.sysOf schema (compiled (goldilocks setupSmall)) (Fin 5)).Run,
+    ∃ r : (Model.sysOf schema
+        (compiled (goldilocks { setupSmall with vote := AsChainShape.stock })) (Fin 5)).Run,
       r.2.StructuralValid ∧ ¬ r.2.BindingFailure ∧ ¬ r.2.HashCollision ∧
-      Behaviour ((Model.sysOf schema (compiled (goldilocks setupSmall)) (Fin 5)).atRun r)
-        ((shapeProgress (goldilocks setupSmall) (Fin 5)).atRun r)
+      Behaviour ((Model.sysOf schema
+        (compiled (goldilocks { setupSmall with vote := AsChainShape.stock })) (Fin 5)).atRun r)
+        ((shapeProgress (goldilocks { setupSmall with vote := AsChainShape.stock })
+          (Fin 5)).atRun r)
         (goldilocksContract assumptionsSmall
           (contract_coefficients setupSmall assumptionsSmall)) ∧
-      (Model.sysOf schema (compiled (goldilocks setupSmall)) (Fin 5)).NonFraming r ∧
+      (Model.sysOf schema
+        (compiled (goldilocks { setupSmall with vote := AsChainShape.stock }))
+        (Fin 5)).NonFraming r ∧
       (∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank → schema.output c₁ = some g₁ →
         schema.output c₂ = some g₂ →
-        ((Model.sysOf schema (compiled (goldilocks setupSmall)) (Fin 5)).trace r).Nested g₁ g₂) ∧
+        ((Model.sysOf schema
+          (compiled (goldilocks { setupSmall with vote := AsChainShape.stock }))
+          (Fin 5)).trace r).Nested
+          g₁ g₂) ∧
       (∀ g, schema.output .final = some g →
-        ((Model.sysOf schema (compiled (goldilocks setupSmall)) (Fin 5)).trace r).Monotone
+        ((Model.sysOf schema
+          (compiled (goldilocks { setupSmall with vote := AsChainShape.stock }))
+          (Fin 5)).trace r).Monotone
           g 0) := by
   obtain ⟨r, hw, _⟩ := goldilocksCorrect_realizable_small.sleepy .available 1 2 2
     (by decide) (by decide)
@@ -384,7 +398,7 @@ theorem goldilocksCorrectWithExcuses_nonvacuous :
 
 /-! ## The outage and sleepy rows at every vote binding
 
-`PersistsWith` states the `persists` claim for `goldilocksWith S` at every bound setup. At the
+`PersistsWith` states the `persists` claim for `goldilocks S` at every bound setup. At the
 population binding it is the stock field (`claims_with_persistsWith`); at a committee binding it
 reads a genuine proper subset (`goldilocksWith_committeeOne`), and its outage regime has a clean
 witness whose committee is a proper subset at every time (`committeeOne_realizable`,
@@ -395,31 +409,40 @@ capability and index, a clean witness whose committee is a proper subset at ever
 (`committeeOne_sleepy_witness`). -/
 
 /-- (a) At the population binding `PersistsWith` supplies the `persists` field of the stock claims
-verbatim: the stock claims with that field replaced by `persistsWith ⟨S, stock⟩` elaborate. -/
+verbatim: the stock claims with that field replaced by `persistsWith { S with vote := stock }`
+elaborate. -/
 theorem claims_with_persistsWith (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V]
     [DecidableEq V] :
-    ShapeClaimsAt (goldilocks S) (goldilocksContract A (contract_coefficients S A)) V :=
+    ShapeClaimsAt (goldilocks { S with vote := AsChainShape.stock })
+      (goldilocksContract A (contract_coefficients S A)) V :=
   { (Consensus.Goldilocks.meetsObligations S A).2.claims V with
-    persists := Consensus.Goldilocks.persistsWith ⟨S, stock⟩ A V }
+    persists := Consensus.Goldilocks.persistsWith { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V }
 
 /-- (a) At the population binding `SleepyWith` supplies both sleepy fields of the stock
 claims verbatim, with no additional premise. -/
 theorem claims_with_sleepyWith (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V]
     [DecidableEq V] :
-    ShapeClaimsAt (goldilocks S) (goldilocksContract A (contract_coefficients S A)) V :=
+    ShapeClaimsAt (goldilocks { S with vote := AsChainShape.stock })
+      (goldilocksContract A (contract_coefficients S A)) V :=
   { (Consensus.Goldilocks.meetsObligations S A).2.claims V with
-    sleepySafe := (Consensus.Goldilocks.sleepyWith ⟨S, stock⟩ A V).1
-    sleepyLive := (Consensus.Goldilocks.sleepyWith ⟨S, stock⟩ A V).2 }
+    sleepySafe := (Consensus.Goldilocks.sleepyWith { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V).1
+    sleepyLive := (Consensus.Goldilocks.sleepyWith { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V).2 }
 
 /-- (a) The committee case of `PersistsWith` is not the population case: at `committeeOne` the
 family signs votes in the committee role selected `.sized 1`, and the SA committee size (the vote
 threshold denominator) is `1`, a proper subset of every population of at least two validators. -/
 theorem goldilocksWith_committeeOne (S : Setup) (pub : Model.Public) (hn : 2 ≤ pub.n) :
-    (goldilocksWith ⟨S, Regression.committeeOne⟩ pub).skel.participationKind =
+    (goldilocks { S with vote := Regression.committeeOne } pub).skel.participationKind =
         some VoteKind.vote ∧
-      (goldilocksWith ⟨S, Regression.committeeOne⟩ pub).skel.kindSel VoteKind.vote = .sized 1 ∧
-      (S.params pub (by omega) Regression.committeeOne).committeeSize = 1 ∧
-      (S.params pub (by omega) Regression.committeeOne).committeeSize < pub.n := by
+      (goldilocks { S with vote := Regression.committeeOne } pub).skel.kindSel
+        VoteKind.vote = .sized 1 ∧
+      (({ S with vote := Regression.committeeOne } : Setup).params
+        pub (by omega)).committeeSize = 1 ∧
+      (({ S with vote := Regression.committeeOne } : Setup).params pub (by omega)).committeeSize <
+        pub.n := by
   have h := Regression.committeeOne_committeeSize S pub (by omega)
   exact ⟨rfl, rfl, h, by omega⟩
 
@@ -429,7 +452,7 @@ admissibility and tolerance are the stock ones; its progress fit is `rfl` at eve
 proposer selection is `.sized 1`). -/
 theorem committeeOne_realizable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V]
     [DecidableEq V] (hn : 5 ≤ Fintype.card V) :
-    RealizableActive (goldilocksWith ⟨S, Regression.committeeOne⟩) (K S A) V :=
+    RealizableActive (goldilocks { S with vote := Regression.committeeOne }) (K S A) V :=
   regimes_realizable _ _ (meetsObligations_admissible S A) (fun _ _ _ _ => rfl)
     (meetsObligations_progressTolerant S A) V
     (((meetsObligations_optimalFaultTolerance S A).room_iff _).mpr hn)
@@ -438,11 +461,13 @@ theorem committeeOne_realizable (S : Setup) (A : ContractAssumptions S) (V : Typ
 outage regime reads (`External.selected`, the slot's vote committee) is not the whole population at
 any time: the committee clause is not the population clause. -/
 theorem committeeOne_selected_ne_univ (S : Setup) (V : Type) [Fintype V] [DecidableEq V]
-    (hn : 2 ≤ Fintype.card V) (r : (Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) V).Run)
-    (hv : (Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) V).Valid r) (t : Time) :
-    (shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) V).toExternal.selected
-      ((Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) V).pt r).env
-      ((shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) V).toExternal.ext r) t ≠
+    (hn : 2 ≤ Fintype.card V)
+    (r : (Sys (goldilocks { S with vote := Regression.committeeOne }) V).Run)
+    (hv : (Sys (goldilocks { S with vote := Regression.committeeOne }) V).Valid r) (t : Time) :
+    (shapeProgress (goldilocks { S with vote := Regression.committeeOne }) V).toExternal.selected
+      ((Sys (goldilocks { S with vote := Regression.committeeOne }) V).pt r).env
+      ((shapeProgress (goldilocks { S with vote := Regression.committeeOne }) V).toExternal.ext
+        r) t ≠
       Finset.univ := by
   intro h
   have hc (s : Slot) : (r.2.sel (.duty s VoteKind.vote)).card = min 1 (Fintype.card V) :=
@@ -457,13 +482,15 @@ clean witness of the committee binding lies in the outage regime of the obligati
 and its committee is a proper subset at every time. -/
 theorem committeeOne_outage_witness (S : Setup) (A : ContractAssumptions S) :
     ∃ r T b₀ b₁,
-      (Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).WitnessAt 2 2 r ∧
-      (Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).Outage
-        (shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).toExternal
+      (Sys (goldilocks { S with vote := Regression.committeeOne }) (Fin 5)).WitnessAt 2 2 r ∧
+      (Sys (goldilocks { S with vote := Regression.committeeOne }) (Fin 5)).Outage
+        (shapeProgress (goldilocks { S with vote := Regression.committeeOne }) (Fin 5)).toExternal
         (K S A) T b₀ b₁ r ∧
-      ∀ t, (shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).toExternal.selected
-        ((Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).pt r).env
-        ((shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).toExternal.ext r)
+      ∀ t, (shapeProgress
+        (goldilocks { S with vote := Regression.committeeOne }) (Fin 5)).toExternal.selected
+        ((Sys (goldilocks { S with vote := Regression.committeeOne }) (Fin 5)).pt r).env
+        ((shapeProgress
+          (goldilocks { S with vote := Regression.committeeOne }) (Fin 5)).toExternal.ext r)
         t ≠ Finset.univ := by
   obtain ⟨r, T, b₀, b₁, hw, ho, -, -⟩ :=
     (committeeOne_realizable S A (Fin 5) (by decide)).outage 2 2 0 (by decide) (by decide)
@@ -478,16 +505,19 @@ also its safety premise (`System.Sleepy`), and its committee is a proper subset 
 theorem committeeOne_sleepy_witness (S : Setup) (A : ContractAssumptions S) (cap : Capability)
     (i : (K S A).Idx) :
     ∃ r,
-      (Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).WitnessAt 2 2 r ∧
-      ((Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).Sleepy
-          (shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).toExternal
+      (Sys (goldilocks { S with vote := Regression.committeeOne }) (Fin 5)).WitnessAt 2 2 r ∧
+      ((Sys (goldilocks { S with vote := Regression.committeeOne }) (Fin 5)).Sleepy
+          (shapeProgress (goldilocks { S with vote := Regression.committeeOne }) (Fin 5)).toExternal
           (K S A) r ∧
-        (Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).prog
-          (shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)) (K S A) cap i 0
-          ((Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).pt r).horizon r) ∧
-      ∀ t, (shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).toExternal.selected
-        ((Sys (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).pt r).env
-        ((shapeProgress (goldilocksWith ⟨S, Regression.committeeOne⟩) (Fin 5)).toExternal.ext r)
+        (Sys (goldilocks { S with vote := Regression.committeeOne }) (Fin 5)).prog
+          (shapeProgress (goldilocks { S with vote := Regression.committeeOne }) (Fin 5))
+          (K S A) cap i 0
+          ((Sys (goldilocks { S with vote := Regression.committeeOne }) (Fin 5)).pt r).horizon r) ∧
+      ∀ t, (shapeProgress
+        (goldilocks { S with vote := Regression.committeeOne }) (Fin 5)).toExternal.selected
+        ((Sys (goldilocks { S with vote := Regression.committeeOne }) (Fin 5)).pt r).env
+        ((shapeProgress
+          (goldilocks { S with vote := Regression.committeeOne }) (Fin 5)).toExternal.ext r)
         t ≠ Finset.univ := by
   obtain ⟨r, hw, ⟨hs, hp, -⟩, -⟩ :=
     (committeeOne_realizable S A (Fin 5) (by decide)).sleepy cap i 2 2 (by decide) (by decide)
@@ -510,18 +540,21 @@ theorem schema_profile :
 every setup and assumption set. -/
 theorem meetsObligations_iff_unlabelled :
     MeetsObligationsConstant ↔ ∀ (S : Setup) (A : ContractAssumptions S),
-      ShapeObligationsOn (goldilocks S) (goldilocksContract A (contract_coefficients S A))
+      ShapeObligationsOn (goldilocks { S with vote := AsChainShape.stock })
+        (goldilocksContract A (contract_coefficients S A))
         (fun _ p => p.ConstantFaults) :=
   ⟨fun h S A => (h S A).2, fun h S A => ⟨schema_profile.1, h S A⟩⟩
 
 /-- Rejection: at no setup and contract is the family a BFT protocol. -/
 theorem not_obligationsAs_bft (S : Setup) (K : Contract ProgressReq) :
-    ¬ ShapeObligationsOnAs .bft (goldilocks S) K (fun _ p => p.ConstantFaults) :=
+    ¬ ShapeObligationsOnAs .bft (goldilocks { S with vote := AsChainShape.stock }) K
+      (fun _ p => p.ConstantFaults) :=
   fun h => schema_profile.2.1 h.1
 
 /-- Rejection: at no setup and contract is the family an available protocol. -/
 theorem not_obligationsAs_available (S : Setup) (K : Contract ProgressReq) :
-    ¬ ShapeObligationsOnAs .available (goldilocks S) K (fun _ p => p.ConstantFaults) :=
+    ¬ ShapeObligationsOnAs .available (goldilocks { S with vote := AsChainShape.stock }) K
+      (fun _ p => p.ConstantFaults) :=
   fun h => schema_profile.2.2 h.1
 
 /-! ## The fixed FG gap against the former FG delay bound
@@ -655,7 +688,7 @@ every setup and every FG delay bound `r` with `3·cF r ≤ δt`. Forward: the as
 (`shapeObligations_of_fgDelay_le`). Backward: `formerContract_eq` at `r = fgDelay`. -/
 theorem meetsObligations_iff_former :
     MeetsObligationsConstant ↔ ∀ (S : Setup) (r : ℕ+) (ht : 3 * cF r ≤ S.δt),
-      ShapeObligationsOn (goldilocks S) (formerContract S r ht)
+      ShapeObligationsOn (goldilocks { S with vote := AsChainShape.stock }) (formerContract S r ht)
         (fun _ p => p.ConstantFaults) := by
   constructor
   · intro h S r ht
@@ -671,7 +704,7 @@ theorem meetsObligations_iff_former :
 /-- **The former endpoint, at every FG delay bound `r`** with `3·cF r ≤ δt`: Goldilocks meets the
 obligations at the former contract (`meetsObligations_iff_former` at `meets_obligations`). -/
 theorem meets_obligations_at_every_bound (S : Setup) (r : ℕ+) (ht : 3 * cF r ≤ S.δt) :
-    ShapeObligationsOn (goldilocks S) (formerContract S r ht)
+    ShapeObligationsOn (goldilocks { S with vote := AsChainShape.stock }) (formerContract S r ht)
       (fun _ p => p.ConstantFaults) :=
   meetsObligations_iff_former.1 meets_obligations_constant S r ht
 

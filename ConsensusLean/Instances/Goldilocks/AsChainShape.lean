@@ -763,7 +763,7 @@ noncomputable def goldilocksShape (binding : VoteBinding := stock) :
 
 /-- The parameters of the Goldilocks node not fixed by the public parameters:
 the genesis root, the FG timeout `δ_t`, the lock window `k`, the fast increment `c`, and
-the restart replay order at every parameter set. -/
+the restart replay order and vote binding at every parameter set. -/
 structure Setup where
   /-- The genesis root. -/
   genesisRoot : Nat
@@ -778,17 +778,13 @@ structure Setup where
   /-- The restart replay order depends on the validator count and fixed genesis root,
   not on a proposer schedule or timing parameters. -/
   ro : (n : Nat) → SA.ReplayOrderData n genesisRoot (List (FG.Att n))
-
-/-- A vote binding for the generic instance, without enlarging the stock setup's quantifier. -/
-structure BoundSetup extends Setup where
   /-- Historical vote authentication, permission and threshold denominator. -/
   vote : VoteBinding
 
 /-- The SA parameters use protocol delay `pub.ΔAC` and slots of four protocol delays: L0 delivers
 strictly before the bound (`CommLog.PSync`), which is the node's deadline `[τ, max(τ, w) + Δ)`.
 The run's proposer selection is independent of these runtime parameters. -/
-abbrev Setup.params (S : Setup) (pub : Public) (hn : 1 ≤ pub.n)
-    (binding : VoteBinding := stock) : SAParams where
+abbrev Setup.params (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) : SAParams where
   toParams :=
     { n := pub.n
       hn := hn
@@ -806,28 +802,28 @@ abbrev Setup.params (S : Setup) (pub : Public) (hn : 1 ≤ pub.n)
   two_le_k := S.two_le_k
   c := S.c
   two_le_c := S.two_le_c
-  committeeSize := binding.committeeSize pub
+  committeeSize := S.vote.committeeSize pub
 
 /-- The shape's state at the public parameters `pub`: a Goldilocks state at every proof that
 `pub` has a validator. The dependence on `1 ≤ n` (which `Params` needs) is thus in the state's
 *values*, never in the family's types: `(goldilocks S pub).State` is this function type, `.Body`
-is `Body`, `.skel.Kind` is `binding.Kind`, and a run's state at `hn` is `st hn : State …` without a
+is `Body`, `.skel.Kind` is `S.vote.Kind`, and a run's state at `hn` is `st hn : State …` without a
 cast. Without a validator there are no keys, no duties with an effect and no outputs. -/
-def PubState (S : Setup) (pub : Public) (binding : VoteBinding := stock) : Type :=
-  (hn : 1 ≤ pub.n) → State (S.params pub hn (binding := binding)) (S.ro _) (binding := binding)
+def PubState (S : Setup) (pub : Public) : Type :=
+  (hn : 1 ≤ pub.n) → State (S.params pub hn) (S.ro _) (binding := S.vote)
 
 /-- The Goldilocks family: `goldilocksShape` at `S.params pub hn` for every `hn`, through
 `PubState`; the steps that output something (a proposal, a poll body, the gossip, the
 output chains) output it at some proof of `1 ≤ n` and nothing without one. -/
-noncomputable def goldilocksWith (S : BoundSetup) :
+noncomputable def goldilocks (S : Setup) :
     ChainShapeFamily schema Info := fun pub =>
   let binding := S.vote
   let G := fun hn : 1 ≤ pub.n =>
-    goldilocksShape (S.toSetup.params pub hn (binding := binding)) (S.ro _) (binding := binding)
+    goldilocksShape (S.params pub hn) (S.ro _) (binding := binding)
   { skel := skeleton pub (binding := binding)
-    State := PubState S.toSetup pub (binding := binding)
+    State := PubState S pub
     Body := Body
-    Durable := PubState S.toSetup pub (binding := binding)
+    Durable := PubState S pub
     decBody := inferInstance
     candidateRole := binding.candidateRole pub.n
     init := fun k p hn => (G hn).init k p
@@ -856,10 +852,6 @@ noncomputable def goldilocksWith (S : BoundSetup) :
     out := fun g st => if hn : 1 ≤ pub.n then (G hn).out g (st hn) else []
     conflicts := conflicts (binding := binding)
     isFGAtt := isFGAtt (binding := binding) }
-
-/-- The population-wide instance is the stock vote binding. -/
-noncomputable def goldilocks (S : Setup) : ChainShapeFamily schema Info :=
-  goldilocksWith ⟨S, stock⟩
 
 end Consensus.Goldilocks.AsChainShape
 

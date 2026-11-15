@@ -28,8 +28,8 @@ namespace Consensus.Goldilocks.Simulation
 
 open AsChainShape Shape Blocks
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Events in list order have nondecreasing times. -/
 private theorem sendsAt_time_le (hv : rho.ExecutionValid) {j j' : Nat} {w w' : V} {s s' : Time}
@@ -193,24 +193,31 @@ theorem received_forward_accepted_before_of_released_at (hv : rho.ExecutionValid
 envelope its genuine release at its stamp. -/
 theorem received_forward_accepted_before_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup)
-    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E) (hn : 1 ≤ Fintype.card V)
+    (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf ⟨S, stock⟩ rho) (simTraceAt ⟨S, stock⟩ rho hn))
+    (hnc : Compose.NoCollRun (digestOf { S with vote := stock } rho)
+      (simTraceAt { S with vote := stock } rho hn))
     {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V) stock}
     {x : Fin (Fintype.card V)} {u t deadline : Time}
-    {p : Option (Wire (Fintype.card V) stock)} {B : Blk (S.params (Model.pubOf E) hn)}
+    {p : Option (Wire (Fintype.card V) stock)}
+    {B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u)) {t₀ : Time}
-    (hj₀ : ∀ k < j, (simTraceAt ⟨S, stock⟩ rho hn).time k ≤ t₀) (hy : v ∉ rho.faultyAt t₀)
+    (hj₀ : ∀ k < j, (simTraceAt { S with vote := stock } rho hn).time k ≤ t₀)
+    (hy : v ∉ rho.faultyAt t₀)
     (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt u)
-    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+    (hd : decodeForward (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn)
+      (Model.digests rho.hash o) o =
       some (x, t, p, B))
-    (hij : cutMap ⟨S, stock⟩ rho hn (i + 1) ≤ j)
-    (hFB : Anc ((simTraceAt ⟨S, stock⟩ rho hn).HonestBlocksAt (honestKeysAt ⟨S, stock⟩ rho))
-      ((simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v) j).fg.F B)
+    (hij : cutMap { S with vote := stock } rho hn (i + 1) ≤ j)
+    (hFB : Anc ((simTraceAt { S with vote := stock } rho hn).HonestBlocksAt
+      (honestKeysAt { S with vote := stock } rho))
+      ((simTraceAt { S with vote := stock } rho hn).state (rho.ownKey v) j).fg.F B)
     (hu : u < deadline) :
-    ∃ k < cutMap ⟨S, stock⟩ rho hn (i + 1), (simTraceAt ⟨S, stock⟩ rho hn).AcceptAt
+    ∃ k < cutMap { S with vote := stock } rho hn (i + 1),
+      (simTraceAt { S with vote := stock } rho hn).AcceptAt
         (rho.ownKey v) k B ∧
-      (simTraceAt ⟨S, stock⟩ rho hn).time k ≤ u ∧ (simTraceAt ⟨S, stock⟩ rho hn).time k <
+      (simTraceAt { S with vote := stock } rho hn).time k ≤ u ∧
+        (simTraceAt { S with vote := stock } rho hn).time k <
           deadline := by
   have hsign : rho.signerOf o = some (rho.key x) := by
     change o.signer?.map rho.key = some (rho.key x)
@@ -218,11 +225,14 @@ theorem received_forward_accepted_before_at {V : Type} [Fintype V] [DecidableEq 
     rfl
   obtain ⟨j', s, hj', hs, ho⟩ := hv.unforgeable i v receipt u he o hc (rho.key x) hsign hx
   have hkx : rho.ownKey (rho.key x) = x := rho.key.symm_apply_apply _
-  have hts : t = s := released_forward_stamp ⟨S, stock⟩ rho hn hv hs ho (by rw [hkx]; exact hd)
+  have hts : t = s := released_forward_stamp { S with vote := stock } rho hn hv hs ho
+    (by rw [hkx]; exact hd)
   subst hts
   have hxt : rho.key x ∉ rho.faultyAt t := fun h =>
-    hx (rho.faultyAt_mono (sendsAt_time_le ⟨S, stock⟩ rho hv hs (Or.inr ⟨receipt, he⟩) hj'.le) h)
-  exact received_forward_accepted_before_of_released_at ⟨S, stock⟩ rho hn hv hnc he hj₀ hy hc hxt
+    hx (rho.faultyAt_mono
+      (sendsAt_time_le { S with vote := stock } rho hv hs (Or.inr ⟨receipt, he⟩) hj'.le) h)
+  exact received_forward_accepted_before_of_released_at { S with vote := stock } rho hn hv hnc
+    he hj₀ hy hc hxt
     ⟨j', hs, ho⟩ hd hij hFB hu
 
 end Consensus.Goldilocks.Simulation

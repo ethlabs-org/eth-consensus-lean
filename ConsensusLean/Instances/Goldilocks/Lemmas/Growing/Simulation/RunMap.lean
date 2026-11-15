@@ -13,7 +13,7 @@ public section
 
 /-! # The Goldilocks run map
 
-`goldilocksRunMap S rho hn hv` represents a valid engine run of `goldilocksWith S` by its
+`goldilocksRunMap S rho hn hv` represents a valid engine run of `goldilocks S` by its
 canonical growing trace `simTraceAt`: keys are the run's PKI, states and the output clock are read
 at `hn`, the cut map is `cutMap`, and the output chains are `blocksTo` up to `outTip`. Its data
 fields that the run transport and the read suppliers read are characterised by the
@@ -24,8 +24,8 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Shape Blocks
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] (S : BoundSetup) {E : Env V}
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] (S : Setup) {E : Env V}
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- **The Goldilocks run map** of a valid engine run, through its canonical growing trace. -/
 noncomputable def goldilocksRunMap (hv : rho.ExecutionValid) :
@@ -126,7 +126,7 @@ variable (hv : rho.ExecutionValid)
     (goldilocksRunMap S rho hn hv).tip = outTip _ _ := by rfl
 
 /-- The run map's output clock is the engine state's stored clock. -/
-@[simp] theorem goldilocksRunMap_clock (s : (goldilocksWith S (pubOf E)).State) :
+@[simp] theorem goldilocksRunMap_clock (s : (goldilocks S (pubOf E)).State) :
     (goldilocksRunMap S rho hn hv).clock s = (s hn).now := by rfl
 
 /-- The run map's chain follows the store's parents up to the supplied tip. -/

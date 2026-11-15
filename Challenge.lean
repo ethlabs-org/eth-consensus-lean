@@ -24,11 +24,11 @@ theorem Consensus.Goldilocks.meetsObligations : Consensus.Goldilocks.MeetsObliga
 theorem Consensus.Goldilocks.goldilocksCorrect : Consensus.Goldilocks.GoldilocksCorrect := sorry
 
 /-- For every vote binding, population-wide or a per-slot committee: the outage row of the
-obligations (`persists`) for `goldilocksWith S` at the obligations contract. -/
+obligations (`persists`) for `goldilocks S` at the obligations contract. -/
 theorem Consensus.Goldilocks.persistsWith : Consensus.Goldilocks.PersistsWith := sorry
 
 /-- For every vote binding, population-wide or a per-slot committee: the sleepy safety and
-liveness rows for `goldilocksWith S` at the obligations contract. -/
+liveness rows for `goldilocks S` at the obligations contract. -/
 theorem Consensus.Goldilocks.sleepyWith : Consensus.Goldilocks.SleepyWith := sorry
 
 /-- On every structural run: the full behaviour on that single run, or a forgery,

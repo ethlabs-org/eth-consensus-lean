@@ -58,12 +58,13 @@ theorem msg_delivered {y : Fin (Fintype.card (Fin 5))} {k : Nat}
   obtain ⟨ℓ, ⟨hnode, hlab⟩, hcall⟩ := hc
   have hl : (tr S).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, i, ev, _, he, hstart, _, hidx, _, _, _, hlab'⟩ :=
-    simTrace_cut ⟨S, stock⟩ (rhoc S) one_le_card hl
+    simTrace_cut { S with vote := stock } (rhoc S) one_le_card hl
   have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
   have hmem := List.mem_of_getElem? hidx
   obtain ⟨v, o, t, rfl⟩ :=
-    eq_deliver_of_cut ⟨S, stock⟩ (rhoc S) one_le_card he hmem (Or.inr ⟨ℓ, m, hrl, hcall⟩)
-  rw [eventCuts_deliver ⟨S, stock⟩ (rhoc S) one_le_card i v o t he] at hmem
+    eq_deliver_of_cut { S with vote := stock } (rhoc S) one_le_card he hmem
+      (Or.inr ⟨ℓ, m, hrl, hcall⟩)
+  rw [eventCuts_deliver { S with vote := stock } (rhoc S) one_le_card i v o t he] at hmem
   obtain ⟨o', e, st', ho, hce, q, hq, hc, _⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
   have hcut := List.getElem_mem hq
   rw [← hc, hrl] at hcut
@@ -99,20 +100,21 @@ theorem msg_delivered {y : Fin (Fintype.card (Fin 5))} {k : Nat}
 
 /-- A block event of the retained trace processes a delivered block object. -/
 theorem wire_block {y : Fin (Fintype.card (Fin 5))} {j : Nat} {t : Time}
-    {B : Blk (S.params (pubOf env) one_le_card)}
-    (hg : (tr S).GroupAt (runProposer ⟨S, stock⟩ (rhoc S) one_le_card)
-        (digestOf ⟨S, stock⟩ (rhoc S)) y j t
+    {B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)}
+    (hg : (tr S).GroupAt (runProposer { S with vote := stock } (rhoc S) one_le_card)
+        (digestOf { S with vote := stock } (rhoc S)) y j t
       (.block B)) :
     ∃ (i : Nat) (w : Fin 5) (o : Obj S), (rhoc S).events[i]? = some (Model.Event.deliver w o t) ∧
-      Model.Obj.Contains o (blockObj (S.params (pubOf env) one_le_card) B) := by
+      Model.Obj.Contains o (blockObj (({ S with vote := AsChainShape.stock } : Setup).params
+        (pubOf env) one_le_card) B) := by
   obtain ⟨r, i, ev, he, hstart, _, hidx, hpos, _, het, hphase⟩ :=
-    groupAt_start ⟨S, stock⟩ (rhoc S) one_le_card hg
+    groupAt_start { S with vote := stock } (rhoc S) one_le_card hg
   obtain ⟨hne, hcuts, _⟩ := hg
   obtain ⟨_, _, _, _, hl⟩ := hcuts 0 (List.length_pos_of_ne_nil hne)
   rw [Nat.add_zero] at hl
-  have hr : (allCuts ⟨S, stock⟩ (rhoc S) one_le_card)[j]? = some r := by
-    have h := allCuts_getElem?_add ⟨S, stock⟩ (rhoc S) one_le_card i
-        (j - cutMap ⟨S, stock⟩ (rhoc S) one_le_card i)
+  have hr : (allCuts { S with vote := stock } (rhoc S) one_le_card)[j]? = some r := by
+    have h := allCuts_getElem?_add { S with vote := stock } (rhoc S) one_le_card i
+        (j - cutMap { S with vote := stock } (rhoc S) one_le_card i)
       (List.getElem?_eq_some_iff.mp he).1 (List.getElem?_eq_some_iff.mp hidx).1
     rw [Nat.add_sub_cancel' hstart, hidx] at h
     exact h
@@ -121,9 +123,9 @@ theorem wire_block {y : Fin (Fintype.card (Fin 5))} {j : Nat} {t : Time}
   | restart v t' => simp [Event.phase, Model.Event.phase] at hphase
   | deliver v o t' =>
     have hrmem := List.mem_of_getElem? hidx
-    rw [eventCuts_deliver ⟨S, stock⟩ (rhoc S) one_le_card i v o t' he] at hrmem
+    rw [eventCuts_deliver { S with vote := stock } (rhoc S) one_le_card i v o t' he] at hrmem
     have hrlabel : (tr S).label j = some r.label := by
-      rw [simTrace_label ⟨S, stock⟩ (rhoc S) one_le_card, hr]
+      rw [simTrace_label { S with vote := stock } (rhoc S) one_le_card, hr]
       rfl
     obtain ⟨c, cs, hcs⟩ := List.exists_cons_of_ne_nil hne
     rw [hrlabel, Option.some.injEq, List.getElem_of_eq hcs] at hl
@@ -134,8 +136,10 @@ theorem wire_block {y : Fin (Fintype.card (Fin 5))} {j : Nat} {t : Time}
       · exact ⟨false, hcs.1.symm⟩
       · exact ⟨true, hcs.1.symm⟩
     have hB := delivery_block_authorized _ _ _ _ _ _
-      (fun B => blockObj (S.params (pubOf env) one_le_card) B ∈
-        delivered (S.params (pubOf env) one_le_card) o) _ _ _
+      (fun B => blockObj (({ S with vote := AsChainShape.stock } : Setup).params
+          (pubOf env) one_le_card) B ∈
+        delivered (({ S with vote := AsChainShape.stock } : Setup).params
+          (pubOf env) one_le_card) o) _ _ _
       (fun x hx B' hxB => hxB ▸ hx) r hrmem hpos B acc (hl.trans hc)
     change t' = t at het
     subst het
@@ -144,12 +148,15 @@ theorem wire_block {y : Fin (Fintype.card (Fin 5))} {j : Nat} {t : Time}
 /-- **Where a processed block comes from**: a delivered object carrying it, or the node's own
 release of it at the call's time. -/
 theorem block_source {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
-    {B : Blk (S.params (pubOf env) one_le_card)} (hc : (tr S).BlockCallAt y k B) :
+    {B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)}
+    (hc : (tr S).BlockCallAt y k B) :
     (∃ (i : Nat) (w : Fin 5) (o : Obj S),
       (rhoc S).events[i]? = some (Model.Event.deliver w o ((tr S).time k)) ∧
-      Model.Obj.Contains o (blockObj (S.params (pubOf env) one_le_card) B)) ∨
+      Model.Obj.Contains o (blockObj (({ S with vote := AsChainShape.stock } : Setup).params
+        (pubOf env) one_le_card) B)) ∨
     (∃ i : Nat, (rhoc S).SendsAt ((rhoc S).key y) i ((tr S).time k) ∧
-      blockObj (S.params (pubOf env) one_le_card) B ∈ (rhoc S).releasesAt i) := by
+      blockObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+        B ∈ (rhoc S).releasesAt i) := by
   obtain ⟨acc, hcall⟩ := hc
   obtain ⟨j, e, k', hg, rfl, hk⟩ := Compose.call_in_group rhoc_run.toLocalRun hy hcall
   rcases Compose.exec_block _ _ _ _ _ _ hk with ⟨rfl, rfl⟩ | ⟨x, rfl, rfl, -⟩
@@ -165,10 +172,13 @@ theorem block_source {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
 
 /-- **Up to `13`, a non-genesis block of an honest tree is the twin's block.** -/
 theorem tree_twin {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {c : Nat}
-    (hc : ∀ k < c, (tr S).time k ≤ 13) {B : Blk (S.params (pubOf env) one_le_card)}
+    (hc : ∀ k < c, (tr S).time k ≤ 13)
+    {B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)}
     (hB : B ∈ ((tr S).state y c).fg.tree)
-    (hg : B.root ≠ (S.params (pubOf env) one_le_card).genesisRoot) :
-    blockObj (S.params (pubOf env) one_le_card) B = twin S := by
+    (hg : B.root ≠ (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf env) one_le_card).genesisRoot) :
+    blockObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+      B = twin S := by
   rcases Compose.tree_cases rhoc_run.toLocalRun hy hB with rfl | ⟨k, hk, hacc⟩
   · exact absurd rfl hg
   have htk := hc k hk
@@ -182,9 +192,12 @@ theorem tree_twin {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {c : Nat}
     exact hv (by rw [← hn, h1]; simp)
 
 /-- The twin's block has the forged header. -/
-theorem headerOf_of_twin {B : Blk (S.params (pubOf env) one_le_card)}
-    (h : blockObj (S.params (pubOf env) one_le_card) B = twin S) :
-    headerOf (S.params (pubOf env) one_le_card) B = hdr := by
+theorem headerOf_of_twin
+    {B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)}
+    (h : blockObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+      B = twin S) :
+    headerOf (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+      B = hdr := by
   have := congrArg Model.Obj.msg h
   simp only [blockObj, twin, Model.Obj.msg] at this
   exact Model.Msg.item.inj this
@@ -300,7 +313,7 @@ end ACStep
 /-- No restart in the retained trace: everyone is awake throughout. -/
 theorem no_restart {y : Fin (Fintype.card (Fin 5))} {k : Nat} : ¬ (tr S).RestartAt y k := by
   intro h
-  obtain ⟨i, -, -, he⟩ := simTrace_restart_event ⟨S, stock⟩ (rhoc S) one_le_card h
+  obtain ⟨i, -, -, he⟩ := simTrace_restart_event { S with vote := stock } (rhoc S) one_le_card h
   have := (rhoc_valid.restart_at_wake _ _ (List.mem_of_getElem? he)).2
   simp [Wakes, env] at this
 
@@ -311,9 +324,11 @@ theorem val_faulty {x : SA.Vote (Fintype.card (Fin 5))} (h : x.val ∉ H S) :
   · exact Or.inl (Fin.ext h0)
   · exact Or.inr (Fin.ext (by by_contra h1; exact h ⟨h0, h1⟩))
 
-theorem voteObj_mem_blockObj {B : Blk (S.params (pubOf env) one_le_card)}
+theorem voteObj_mem_blockObj
+    {B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)}
     {x : SA.Vote (Fintype.card (Fin 5))} (hx : x ∈ SA.blockVotes B) :
-    Model.Obj.Contains (blockObj (S.params (pubOf env) one_le_card) (binding := stock) B)
+    Model.Obj.Contains (blockObj (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf env) one_le_card) (binding := stock) B)
       (voteObj x) :=
   Model.Obj.Contains.step
     (List.mem_append_right _ (List.mem_map.mpr ⟨x, List.mem_append_left _ hx, rfl⟩))

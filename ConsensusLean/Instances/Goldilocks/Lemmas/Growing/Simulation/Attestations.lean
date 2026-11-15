@@ -13,21 +13,21 @@ open Consensus.Model (pubOf)
 
 variable {binding : VoteBinding}
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- A released attestation is a signing cut of the releasing tick. -/
 theorem att_released_inv_at (hv : rho.ExecutionValid)
     {j : Nat} {v : V} {t : Time} (he : rho.events[j]? = some (.tick v t))
     {b : FG.Att (Fintype.card V)}
-    (hb : (attObj b : (Model.protoOf (compiled (goldilocksWith S)) E).Object) ∈ rho.releasesAt j) :
+    (hb : (attObj b : (Model.protoOf (compiled (goldilocks S)) E).Object) ∈ rho.releasesAt j) :
     (S.params (pubOf E) hn).toParams.IsPublic t ∧ ∃ C,
       Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
         (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 := by
   have hv' : v ∉ rho.faultyAt 0 := event_honest_zero S rho hv he
   obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v j
   obtain ⟨hvote, -⟩ := (atMostOneVote_iff _).1 hamo
-  have hnotpend : ∀ seen, (attObj b : (Model.protoOf (compiled (goldilocksWith S)) E).Object) ∉
+  have hnotpend : ∀ seen, (attObj b : (Model.protoOf (compiled (goldilocks S)) E).Object) ∉
       relHead S rho v seen (stateAt S rho hn v j).outbox.head? := by
     intro seen h
     obtain ⟨q, hq, hqo⟩ := mem_relHead S rho h
@@ -40,7 +40,7 @@ theorem att_released_inv_at (hv : rho.ExecutionValid)
     rw [heq] at hb
     have hQmem : ∀ seen ob, ob ∈ [Q.head?, Q.tail.head?] →
         (attObj b : (Model.protoOf (compiled
-            (goldilocksWith S)) E).Object) ∈ relHead S rho v seen ob →
+            (goldilocks S)) E).Object) ∈ relHead S rho v seen ob →
         ∃ C, Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn)
           (digestOf S rho) (rho.ownKey v)
           (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 := by

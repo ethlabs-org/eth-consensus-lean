@@ -38,11 +38,12 @@ safety from the heal point (`healedSafe` of the healthy regime, `Handover.health
 selection). -/
 theorem continued_safe_past_horizon (hc : GoldilocksCorrect) (S : Setup)
     (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V] :
-    let Sy := Model.sysOf schema (compiled (goldilocks S)) V
+    let Sy := Model.sysOf schema (compiled (goldilocks { S with vote := AsChainShape.stock })) V
     let K := goldilocksContract A (contract_coefficients S A)
     ∀ cap g, (cap = .available ∨ cap = .stable) → Sy.schema.output cap = some g →
       ∀ i gst T r, Sy.Valid r → Sy.Handover K gst T r → (Sy.pt r).horizon ≤ T →
-        Sy.prog (shapeProgress (goldilocks S) V) K cap i (Sy.ready K gst r)
+        Sy.prog (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) V)
+          K cap i (Sy.ready K gst r)
           (Sy.heal K cap i gst r) r →
         (Sy.trace r).ReadySafe (Sy.cDur K r) g (Sy.heal K cap i gst r) ∨ Sy.Excuse r := by
   intro Sy K cap g hcap hg i gst T r hv hh hT hp
@@ -57,11 +58,12 @@ liveness from the heal point (`healthyLive` of the healthy regime, `Handover.hea
 selection). -/
 theorem continued_live_past_horizon (hc : GoldilocksCorrect) (S : Setup)
     (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V] :
-    let Sy := Model.sysOf schema (compiled (goldilocks S)) V
+    let Sy := Model.sysOf schema (compiled (goldilocks { S with vote := AsChainShape.stock })) V
     let K := goldilocksContract A (contract_coefficients S A)
     ∀ cap g, Sy.schema.output cap = some g →
       ∀ i gst T r, Sy.Valid r → Sy.Handover K gst T r → (Sy.pt r).horizon ≤ T →
-        Sy.prog (shapeProgress (goldilocks S) V) K cap i (Sy.ready K gst r) (Sy.pt r).horizon r →
+        Sy.prog (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) V)
+          K cap i (Sy.ready K gst r) (Sy.pt r).horizon r →
         (Sy.trace r).TxLive (Sy.cDur K r) g (Sy.heal K cap i gst r) (Sy.lat K cap i r) ∨
           Sy.Excuse r := by
   intro Sy K cap g hg i gst T r hv hh hT hp
@@ -79,12 +81,13 @@ full committees healthy by its fault bound, and progress restricted to `[ready, 
 (`healthyLive_prefix`). -/
 theorem continued_live_upTo_handover (hc : GoldilocksCorrect) (S : Setup)
     (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V] :
-    let Sy := Model.sysOf schema (compiled (goldilocks S)) V
+    let Sy := Model.sysOf schema (compiled (goldilocks { S with vote := AsChainShape.stock })) V
     let K := goldilocksContract A (contract_coefficients S A)
     ∀ cap g, Sy.schema.output cap = some g →
       ∀ i gst T r, Sy.Valid r → Sy.Handover K gst T r → T ≤ (Sy.pt r).horizon →
         Sy.heal K cap i gst r ≤ T →
-        Sy.prog (shapeProgress (goldilocks S) V) K cap i (Sy.ready K gst r) (Sy.pt r).horizon r →
+        Sy.prog (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) V)
+          K cap i (Sy.ready K gst r) (Sy.pt r).horizon r →
         (∀ x t t', (Sy.pt r).SubmittedToSome x t →
           max t (Sy.heal K cap i gst r) + (Sy.pt r).env.ΔAC + Sy.lat K cap i r ≤ t' → t' ≤ T →
           ∀ v, (Sy.pt r).Ready (Sy.cDur K r) v t' → x ∈ (Sy.trace r).readAt g v t') ∨
@@ -98,7 +101,7 @@ theorem continued_live_upTo_handover (hc : GoldilocksCorrect) (S : Setup)
   exact (hc S A V).1.healthyLive_prefix hg r hv i gst (h0.trans hhT) hTh
     (CommLog.Delivers.reindex (f := id) hh.1 (fun _ => le_rfl) (fun _ => rfl) (fun _ => rfl) hTh)
     hh.2.1 hh.2.2.1 (hh.2.1.committee_univ hβ)
-    ((shapeProgress (goldilocks S) V).mono le_rfl hTh hp)
+    ((shapeProgress (goldilocks { S with vote := AsChainShape.stock }) V).mono le_rfl hTh hp)
 
 end Consensus.Goldilocks
 

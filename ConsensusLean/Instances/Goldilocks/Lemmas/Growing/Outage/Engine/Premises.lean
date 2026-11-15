@@ -70,7 +70,7 @@ end Consensus.Goldilocks.Compose.Growing
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 open Blocks Shape
-variable {S : BoundSetup} {A : ContractAssumptions S.toSetup} {V : Type} [Fintype V] [DecidableEq V]
+variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
 
 open Classical in
 /-- **The adapter**: the premise package of the lock module under growing faults from an armed

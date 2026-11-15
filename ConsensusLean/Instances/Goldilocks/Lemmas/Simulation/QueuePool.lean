@@ -165,15 +165,15 @@ end ShapeInventory
 
 section EngineInventory
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 omit [DecidableEq V] in
 /-- Every duty prefix preserves the fact that queued vote envelopes name stored
 votes. In particular this applies to the polls of a tick, not only deliveries. -/
 theorem runDuties_voteForward_in_pool (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
-    (ds : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+    (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
     (h : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
       tv.2 ∈ (shapeOf S hn nd).node.ac.pool tv.2.slot) :
     ∀ tv ∈ (shapeOf S hn (rho.runDuties v nd ds).1).voteForwards,
@@ -184,8 +184,8 @@ theorem runDuties_voteForward_in_pool (v : V)
 omit [DecidableEq V] in
 /-- A single duty preserves queue backing, including its own released blocks. -/
 theorem dutyStep_voteForward_in_pool (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
-    (d : (Model.protoOf (compiled (goldilocksWith S)) E).Duty)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty)
     (h : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
       tv.2 ∈ (shapeOf S hn nd).node.ac.pool tv.2.slot) :
     ∀ tv ∈ (shapeOf S hn (rho.dutyStep v nd d).1).voteForwards,
@@ -196,8 +196,8 @@ theorem dutyStep_voteForward_in_pool (v : V)
 omit [DecidableEq V] in
 /-- A single duty retains stored votes through its own-object release callbacks. -/
 theorem dutyStep_pool_subset (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
-    (d : (Model.protoOf (compiled (goldilocksWith S)) E).Duty) (σ : Nat) :
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) (σ : Nat) :
     (shapeOf S hn nd).node.ac.pool σ ⊆
       (shapeOf S hn (rho.dutyStep v nd d).1).node.ac.pool σ := by
   intro m hm
@@ -210,8 +210,8 @@ theorem dutyStep_pool_subset (v : V)
 omit [DecidableEq V] in
 /-- Duty execution never removes a stored vote; only restart replay can do so. -/
 theorem runDuties_pool_subset (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
-    (ds : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty) (σ : Nat) :
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+    (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty) (σ : Nat) :
     (shapeOf S hn nd).node.ac.pool σ ⊆
       (shapeOf S hn (rho.runDuties v nd ds).1).node.ac.pool σ := by
   intro m hm
@@ -227,27 +227,27 @@ is `engine_poll_att_protected`; under growing faults, `engine_poll_att_protected
 def PollAttProtected : Prop :=
   ∀ (v : V), v ∉ rho.faultyAt 0 → ∀ {i p : Nat} {nd} {k : Nat}, EngineDutyCut S rho v i p nd →
     ((∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
-        ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)[p]? = some (.poll k)) ∨
+        ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
       ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
-        ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t)[p]? = some (.poll k)) →
+        ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some (.poll k)) →
     rho.ownKey v ∈ rho.sel .poll → ∀ {w cs}, (poll (nd.st.1 hn) k).2 = some (.att w, cs) →
-    Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) nd.seen
+    Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
       (.mk (.signed (rho.ownKey v) .poll) (.data (.att w)) []) = true
 
 theorem pollAttProtected_iff : PollAttProtected S rho hn ↔
     ∀ (v : V), v ∉ rho.faultyAt 0 → ∀ {i p : Nat} {nd} {k : Nat}, EngineDutyCut S rho v i p nd →
       ((∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
-          ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)[p]? = some (.poll k)) ∨
+          ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
         ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
-          ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t)[p]? = some (.poll k)) →
+          ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some (.poll k)) →
       rho.ownKey v ∈ rho.sel .poll → ∀ {w cs}, (poll (nd.st.1 hn) k).2 = some (.att w, cs) →
-      Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) nd.seen
+      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
         (.mk (.signed (rho.ownKey v) .poll) (.data (.att w)) []) = true := Iff.rfl
 
 /-- Delivery processing keeps every queued admission's vote in the final pool. The actual
 event-boundary queue is empty, and none of the delivery handlers restarts the AC. -/
 theorem delivery_voteForward_in_pool (hv : rho.ExecutionValid) (v : V) (i : Nat)
-    (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object)
+    (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
     (tv : Time × Vote (Fintype.card V))
     (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
     tv.2 ∈ (process (stateAt S rho hn v i) o

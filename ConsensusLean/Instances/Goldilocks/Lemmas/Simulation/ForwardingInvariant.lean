@@ -91,7 +91,7 @@ private theorem canonical_poll {sp : SA.SAParams}
 /-- The actual event-boundary queue always has canonical block payload shape. This
 structural invariant needs no execution-validity or publication-success premise. -/
 theorem stateAt_forwardQueueCanonical {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) : ∀ i, ForwardQueueCanonical (stateAt S rho hn v i)
   | 0 => by
     rw [forwardQueueCanonical_iff, stateAt_zero]
@@ -141,9 +141,9 @@ theorem stateAt_forwardQueueCanonical {V : Type} [Fintype V] [DecidableEq V] {E 
 
 /-- The selected poll discharges pending accounting into holdings and leaves an empty,
 therefore ready, block queue. The later vote suffix needs no success premise. -/
-theorem dutyStep_poll_inventory {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
-    (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (t : Nat)
+theorem dutyStep_poll_inventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (t : Nat)
     (hsel : rho.ownKey v ∈ rho.sel .poll) (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (ha : WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ nd.seen.flatMap Obj.parts) (shapeOf S hn nd))
@@ -167,10 +167,10 @@ theorem dutyStep_poll_inventory {V : Type} [Fintype V] {E : Env V} (S : BoundSet
     cases hi
 
 /-- The queue-shape component survives every actual duty, including failed releases. -/
-theorem dutyStep_forwardQueueCanonical {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
-    (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E))
-    (d : (protoOf (compiled (goldilocksWith S)) E).Duty)
+theorem dutyStep_forwardQueueCanonical {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
+    (d : (protoOf (compiled (goldilocks S)) E).Duty)
     (hc : ForwardQueueCanonical (shapeOf S hn nd)) :
     ForwardQueueCanonical (shapeOf S hn (rho.dutyStep v nd d).1) := by
   apply dutyStep_pres S rho hn ForwardQueueCanonical canonical_recordOwn
@@ -184,10 +184,10 @@ theorem dutyStep_forwardQueueCanonical {V : Type} [Fintype V] {E : Env V} (S : B
 
 /-- All actual duties preserve the holdings/pending invariant. Committee duties are no-ops; the
 poll-proposal step cannot enqueue block wrappers. -/
-theorem dutyStep_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
-    (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E))
-    (d : (protoOf (compiled (goldilocksWith S)) E).Duty)
+theorem dutyStep_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
+    (d : (protoOf (compiled (goldilocks S)) E).Duty)
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (ha : WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ nd.seen.flatMap Obj.parts) (shapeOf S hn nd))
@@ -207,20 +207,20 @@ theorem dutyStep_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : BoundS
     by_cases hsel : rho.ownKey v ∈ rho.sel .poll
     · exact dutyStep_poll_inventory S rho hn v nd t hsel hself ha hr hc
     · simpa only [Model.Run.dutyStep,
-        show (protoOf (compiled (goldilocksWith S)) E).role (.poll t) = .poll from rfl,
+        show (protoOf (compiled (goldilocks S)) E).role (.poll t) = .poll from rfl,
         hsel, ↓reduceIte] using And.intro ha hr
   | pollPropose t =>
-    have hempty : ((protoOf (compiled (goldilocksWith S)) E).act nd.st (.pollPropose t)).2 = []
+    have hempty : ((protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).2 = []
         := by
-      change (Option.map _ ((goldilocksWith S (pubOf E)).pollPropose nd.st.1 t).2).toList = []
-      simp only [goldilocksWith, dite_eq_left hn]
+      change (Option.map _ ((goldilocks S (pubOf E)).pollPropose nd.st.1 t).2).toList = []
+      simp only [goldilocks, dite_eq_left hn]
       rfl
     unfold Model.Run.dutyStep
     split
     · simp only [hempty, Model.Run.signedCandidate, List.filterMap_nil, ite_self, Model.releaseAll]
-      change WrappersAccounted _ (((protoOf (compiled (goldilocksWith S)) E).act nd.st
+      change WrappersAccounted _ (((protoOf (compiled (goldilocks S)) E).act nd.st
         (.pollPropose t)).1.1 hn) ∧ PendingReady _ (pendingWrappers
-          (((protoOf (compiled (goldilocksWith S)) E).act nd.st (.pollPropose t)).1.1 hn))
+          (((protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).1.1 hn))
       rw [shapeOf_act_pollPropose S hn]
       unfold nodeTick
       split
@@ -230,10 +230,10 @@ theorem dutyStep_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : BoundS
     · exact ⟨ha, hr⟩
 
 /-- Fold actual duties while threading their intermediate holdings and queue state. -/
-theorem runDuties_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
-    (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E))
-    (ds : List (protoOf (compiled (goldilocksWith S)) E).Duty)
+theorem runDuties_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
+    (ds : List (protoOf (compiled (goldilocks S)) E).Duty)
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (ha : WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ nd.seen.flatMap Obj.parts) (shapeOf S hn nd))
@@ -256,15 +256,15 @@ theorem runDuties_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Bound
       (fun st t h => (poll_self st t).trans h) v nd d hself
 
 /-- Unsigned gossip cannot record a proposer item, so it preserves both components. -/
-theorem gossip_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
-    (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (origin : Fin (Fintype.card V)) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E))
+theorem gossip_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (origin : Fin (Fintype.card V)) (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
     (t : Time)
     (ha : WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ nd.seen.flatMap Obj.parts) (shapeOf S hn nd))
     (hr : PendingReady nd.seen (pendingWrappers (shapeOf S hn nd))) :
-    let result := (Model.releaseAll (protoOf (compiled (goldilocksWith S)) E) rho.hash origin nd
-      (Model.gossipCandidates (protoOf (compiled (goldilocksWith S)) E) nd.st t)).1
+    let result := (Model.releaseAll (protoOf (compiled (goldilocks S)) E) rho.hash origin nd
+      (Model.gossipCandidates (protoOf (compiled (goldilocks S)) E) nd.st t)).1
     WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ result.seen.flatMap Obj.parts) (shapeOf S hn result) ∧
       PendingReady result.seen (pendingWrappers (shapeOf S hn result)) := by
@@ -274,9 +274,9 @@ theorem gossip_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : BoundSet
   cases he
 
 /-- Tick execution threads the same invariant through its clock, actual duties and gossip. -/
-theorem tick_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
-    (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (t : Time)
+theorem tick_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (t : Time)
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (ha : WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ nd.seen.flatMap Obj.parts) (shapeOf S hn nd))
@@ -287,8 +287,8 @@ theorem tick_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : BoundSetup
       (fun c => c ∈ result.seen.flatMap Obj.parts) (shapeOf S hn result) ∧
       PendingReady result.seen (pendingWrappers (shapeOf S hn result)) := by
   unfold Model.Run.tick
-  let start : Model.Node (protoOf (compiled (goldilocksWith S)) E) :=
-    ⟨(protoOf (compiled (goldilocksWith S)) E).clock nd.st t (mempool rho.inbox v t), nd.seen⟩
+  let start : Model.Node (protoOf (compiled (goldilocks S)) E) :=
+    ⟨(protoOf (compiled (goldilocks S)) E).clock nd.st t (mempool rho.inbox v t), nd.seen⟩
   have ha' : WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ start.seen.flatMap Obj.parts) (shapeOf S hn start) := by
     simpa only [wrappersAccounted_iff, pendingWrappers_eq, start, shapeOf,
@@ -303,10 +303,10 @@ theorem tick_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : BoundSetup
 
 /-- Receipt processing starts with the received object's full recursive closure already
 held, then the actual delivery duties and gossip preserve inventory. -/
-theorem deliver_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : BoundSetup)
-    (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E))
-    (o : (protoOf (compiled (goldilocksWith S)) E).Object) (t : Time)
+theorem deliver_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
+    (o : (protoOf (compiled (goldilocks S)) E).Object) (t : Time)
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (ha : WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ nd.seen.flatMap Obj.parts) (shapeOf S hn nd))
@@ -326,7 +326,7 @@ theorem deliver_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : BoundSe
     rw [wrappersAccounted_iff] at ha ⊢
     exact fun root c hw => (ha root c hw).imp (hmono c) id
   have hp := pendingReady_process (sp := S.params (pubOf E) hn) seen (shapeOf S hn nd)
-    (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash o) o ha'
+    (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash o) o ha'
     (pendingReady_mono hmono hr) (fun c hc =>
       List.mem_flatMap.mpr ⟨o, List.mem_append_right _ (List.mem_singleton_self o), hc⟩)
   have hcanon : ForwardQueueCanonical
@@ -343,15 +343,15 @@ theorem deliver_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : BoundSe
   apply gossip_forwardInventory S rho hn
   all_goals
     have hi := runDuties_forwardInventory S rho hn v
-      ⟨(protoOf (compiled (goldilocksWith S)) E).process nd.st o (digests rho.hash o), seen⟩
-      ((protoOf (compiled (goldilocksWith S)) E).deliverDuties t)
+      ⟨(protoOf (compiled (goldilocks S)) E).process nd.st o (digests rho.hash o), seen⟩
+      ((protoOf (compiled (goldilocks S)) E).deliverDuties t)
       ((process_self _ _ _).trans hself) hp.1 hp.2 hcanon
     first | exact hi.1 | exact hi.2
 
 /-- Reachable engine states account for each durable wrapper by an actual holding or
 an exact pending candidate, and every pending child is ready at its ordered prefix. -/
 theorem stateBefore_forwardInventory {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) : ∀ i,
     WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ (rho.stateBefore i v).seen.flatMap Obj.parts) (stateAt S rho hn v i) ∧
@@ -422,8 +422,8 @@ theorem stateBefore_forwardInventory {V : Type} [Fintype V] [DecidableEq V] {E :
 /-- The delivery poll's immutable input is ready directly from the reachable inventory.
 The received object's recursive children are held before any of its calls run. -/
 theorem delivery_pendingReady {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (i : Nat) (o : (protoOf (compiled (goldilocksWith S)) E).Object) :
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (i : Nat) (o : (protoOf (compiled (goldilocks S)) E).Object) :
     PendingReady ((rho.stateBefore i v).seen ++ [o])
       (pendingWrappers (process (stateAt S rho hn v i) o (digests rho.hash o))) := by
   obtain ⟨ha, hr⟩ := stateBefore_forwardInventory S rho hn v i
@@ -445,16 +445,16 @@ theorem delivery_pendingReady {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 /-- Every block wrapper pending after an actual receipt passes the delivery poll.
 This is release completeness for the queue, not yet completeness for acceptance cuts. -/
 theorem delivery_pending_released {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {v : V} {i : Nat}
-    {o : (protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
+    {o : (protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t))
     (c : Wire (Fintype.card V) S.vote)
     (hc : c ∈ pendingWrappers
       (process (stateAt S rho hn v i) o (digests rho.hash o))) :
     c ∈ rho.releasesAt i := by
-  let nd : Model.Node (protoOf (compiled (goldilocksWith S)) E) :=
-    ⟨(protoOf (compiled (goldilocksWith S)) E).process (rho.stateBefore i v).st o
+  let nd : Model.Node (protoOf (compiled (goldilocks S)) E) :=
+    ⟨(protoOf (compiled (goldilocks S)) E).process (rho.stateBefore i v).st o
       (digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩
   have hself : (shapeOf S hn nd).self = rho.ownKey v :=
     (process_self _ _ _).trans (by simpa only [stateAt_eq] using self_eq_ownKey S rho hn v i)
@@ -512,17 +512,17 @@ theorem releaseAll_successful_index {pub : Public} {O : Type} (P : Protocol pub 
 /-- A release from an indexed actual batch gives a concrete publication occurrence,
 including its successful candidate prefix. No abstract publication premise is needed. -/
 theorem publication_of_batch_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (v : V) (i j : Nat)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (v : V) (i j : Nat)
     (t : Time) (he : rho.SendsAt v i t)
-    (b : ReleaseBatch (protoOf (compiled (goldilocksWith S)) E))
+    (b : ReleaseBatch (protoOf (compiled (goldilocks S)) E))
     (hb : (eventBatches rho i)[j]? = some b)
-    (o : (protoOf (compiled (goldilocksWith S)) E).Object)
-    (ho : o ∈ (Model.releaseAll (protoOf (compiled (goldilocksWith S)) E)
+    (o : (protoOf (compiled (goldilocks S)) E).Object)
+    (ho : o ∈ (Model.releaseAll (protoOf (compiled (goldilocks S)) E)
       rho.hash (rho.ownKey v) b.before b.candidates).2) :
     ∃ r, (publisherExecution S rho).actual r ∧ r.event = i ∧ r.batch = j ∧
       r.origin = rho.ownKey v ∧ r.object = o := by
   obtain ⟨k, hk, hg⟩ := releaseAll_successful_index _ _ _ _ _ _ ho
-  let r : Publication (protoOf (compiled (goldilocksWith S)) E) :=
+  let r : Publication (protoOf (compiled (goldilocks S)) E) :=
     ⟨i, j, k, rho.ownKey v, b.before, b.candidates, o, hk⟩
   refine ⟨r, ?_, rfl, rfl, rfl, rfl⟩
   rw [publisherExecution_actual_iff]
@@ -536,11 +536,11 @@ theorem publication_of_batch_release {V : Type} [Fintype V] [DecidableEq V] {E :
 /-- Inverting duty releases retains the successful batch output, not just candidate
 membership, so rejected duplicate candidates cannot become publication witnesses. -/
 theorem runDuties_released_batch {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (v : V) :
-    ∀ ds (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) o,
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (v : V) :
+    ∀ ds (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) o,
     o ∈ (rho.runDuties v nd ds).2 →
     ∃ b ∈ dutyBatches rho v nd ds,
-      o ∈ (Model.releaseAll (protoOf (compiled (goldilocksWith S)) E)
+      o ∈ (Model.releaseAll (protoOf (compiled (goldilocks S)) E)
         rho.hash (rho.ownKey v) b.before b.candidates).2 := by
   intro ds
   induction ds with
@@ -566,13 +566,13 @@ theorem runDuties_released_batch {V : Type} [Fintype V] [DecidableEq V] {E : Env
 
 /-- Every event release has an actual publication occurrence in that event. -/
 theorem publication_of_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) {v : V} {i : Nat} {t : Time}
-    (he : rho.SendsAt v i t) (o : (protoOf (compiled (goldilocksWith S)) E).Object)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) {v : V} {i : Nat} {t : Time}
+    (he : rho.SendsAt v i t) (o : (protoOf (compiled (goldilocks S)) E).Object)
     (ho : o ∈ rho.releasesAt i) :
     ∃ r, (publisherExecution S rho).actual r ∧ r.event = i ∧
       r.origin = rho.ownKey v ∧ r.object = o := by
   have hb : ∃ b ∈ eventBatches rho i,
-      o ∈ (Model.releaseAll (protoOf (compiled (goldilocksWith S)) E)
+      o ∈ (Model.releaseAll (protoOf (compiled (goldilocks S)) E)
         rho.hash (rho.ownKey v) b.before b.candidates).2 := by
     rcases he with he | ⟨receipt, he⟩
     · rw [eventBatches_eq, he]
@@ -598,11 +598,11 @@ theorem publication_of_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V
 
 /-- Receipt-queued wrappers have concrete same-event publication witnesses. -/
 theorem delivery_pending_publication {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {v : V} {i : Nat}
-    {o : (protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
+    {o : (protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t))
-    (c : (protoOf (compiled (goldilocksWith S)) E).Object)
+    (c : (protoOf (compiled (goldilocks S)) E).Object)
     (hc : c ∈ pendingWrappers
       (process (stateAt S rho hn v i) o (digests rho.hash o))) :
     ∃ r, (publisherExecution S rho).actual r ∧ r.event = i ∧
@@ -747,11 +747,11 @@ theorem deliverRecs_acceptance_pending {sp : SA.SAParams}
 /-- Every intermediate duty prefix of a tick inherits the reachable forwarding inventory.
 No release-success premise is supplied by the caller. -/
 theorem tick_duty_prefix_inventory {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) (i : Nat) (t : Time)
-    (ds : List (protoOf (compiled (goldilocksWith S)) E).Duty) :
+    (ds : List (protoOf (compiled (goldilocks S)) E).Duty) :
     let nd := (rho.runDuties v
-      ⟨(protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+      ⟨(protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
         (mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ ds).1
     WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ nd.seen.flatMap Obj.parts) (shapeOf S hn nd) ∧
@@ -771,16 +771,16 @@ theorem tick_duty_prefix_inventory {V : Type} [Fintype V] [DecidableEq V] {E : E
 /-- A poll following any actual tick-duty prefix releases all its queued block wrappers.
 Neither the ordinary emission nor the later vote suffix adds a caller guard premise. -/
 theorem tick_duty_prefix_poll_released {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) (v : V) (i : Nat) (t : Time)
-    (ds : List (protoOf (compiled (goldilocksWith S)) E).Duty) :
+    (ds : List (protoOf (compiled (goldilocks S)) E).Duty) :
     let nd := (rho.runDuties v
-      ⟨(protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+      ⟨(protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
         (mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ ds).1
     ∀ c ∈ pendingWrappers (shapeOf S hn nd),
       c ∈ (rho.dutyStep v nd (.poll t.toNat)).2 := by
-  let start : Model.Node (protoOf (compiled (goldilocksWith S)) E) :=
-    ⟨(protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+  let start : Model.Node (protoOf (compiled (goldilocks S)) E) :=
+    ⟨(protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
       (mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
   have hself : (shapeOf S hn (rho.runDuties v start ds).1).self = rho.ownKey v := by
     apply runDuties_pres S rho hn (fun st => st.self = rho.ownKey v)
@@ -810,11 +810,11 @@ theorem tick_duty_prefix_poll_released {V : Type} [Fintype V] [DecidableEq V] {E
 
 /-- A release in a duty after a prefix is retained by the enclosing duty run. -/
 theorem duty_release_in_runDuties {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (v : V)
-    (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E))
-    (pre post : List (protoOf (compiled (goldilocksWith S)) E).Duty)
-    (d : (protoOf (compiled (goldilocksWith S)) E).Duty)
-    (c : (protoOf (compiled (goldilocksWith S)) E).Object)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (v : V)
+    (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
+    (pre post : List (protoOf (compiled (goldilocks S)) E).Duty)
+    (d : (protoOf (compiled (goldilocks S)) E).Duty)
+    (c : (protoOf (compiled (goldilocks S)) E).Object)
     (hc : c ∈ (rho.dutyStep v (rho.runDuties v nd pre).1 d).2) :
     c ∈ (rho.runDuties v nd (pre ++ d :: post)).2 := by
   induction pre generalizing nd with
@@ -830,14 +830,14 @@ theorem duty_release_in_runDuties {V : Type} [Fintype V] {E : Env V}
 /-- A queued wrapper at any poll position of a real tick has a same-event publication.
 This discharges publication existence once acceptance has been located before that poll. -/
 theorem tick_pending_publication {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {v : V} {i : Nat} {t : Time}
     (he : rho.events[i]? = some (.tick v t))
-    (pre post : List (protoOf (compiled (goldilocksWith S)) E).Duty)
-    (hd : (protoOf (compiled (goldilocksWith S)) E).duties t = pre ++ .poll t.toNat :: post)
-    (c : (protoOf (compiled (goldilocksWith S)) E).Object)
+    (pre post : List (protoOf (compiled (goldilocks S)) E).Duty)
+    (hd : (protoOf (compiled (goldilocks S)) E).duties t = pre ++ .poll t.toNat :: post)
+    (c : (protoOf (compiled (goldilocks S)) E).Object)
     (hc : c ∈ pendingWrappers (shapeOf S hn (rho.runDuties v
-      ⟨(protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+      ⟨(protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
         (mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ pre).1)) :
     ∃ r, (publisherExecution S rho).actual r ∧ r.event = i ∧
       r.origin = rho.ownKey v ∧ r.object = c := by
@@ -864,11 +864,11 @@ theorem releaseAll_singleton_recorded {pub : Public} {O : Type} (P : Protocol pu
 /-- Coverage is available after every tick-duty prefix, including immediately before
 the own proposal is recorded. It is derived from reachable state, not an endpoint premise. -/
 theorem tick_duty_prefix_wrappersCover {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) (i : Nat) (t : Time)
-    (ds : List (protoOf (compiled (goldilocksWith S)) E).Duty) :
+    (ds : List (protoOf (compiled (goldilocks S)) E).Duty) :
     WrappersCover (shapeOf S hn (rho.runDuties v
-      ⟨(protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+      ⟨(protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
         (mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ ds).1) := by
   apply runDuties_wrappersCover S rho hn
   simpa only [wrappersCover_iff, shapeOf, shapeOf_clock S hn, stateAt_eq] using
@@ -877,8 +877,8 @@ theorem tick_duty_prefix_wrappersCover {V : Type} [Fintype V] [DecidableEq V] {E
 /-- A successful proposal-step block cut releases its canonical block in that duty.
 The carried-object premise is the existing proposal release contract. -/
 theorem dutyStep_propose_accepted_release {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (s : Slot) (hs : 0 < s)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
     (hsel : rho.sel (.proposer s) = {runProposer S rho hn s})
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (hslot : (S.params (pubOf E) hn).toParams.slotOf (shapeOf S hn nd).now = s)
@@ -897,13 +897,13 @@ theorem dutyStep_propose_accepted_release {V : Type} [Fintype V] {E : Env V}
 /-- A proposal duty that releases a given object had exactly that singleton candidate.
 This rules out confusing its release with a rejected duplicate at another index. -/
 theorem dutyStep_propose_candidate_eq {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (v : V)
-    (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (s : Slot) (hs : 0 < s)
-    (o : (protoOf (compiled (goldilocksWith S)) E).Object)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (v : V)
+    (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
+    (o : (protoOf (compiled (goldilocks S)) E).Object)
     (ho : o ∈ (rho.dutyStep v nd (.propose s hs)).2) :
     rho.ownKey v ∈ rho.sel (.proposer s) ∧
       rho.signedCandidate v (.propose s hs)
-        ((protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).2 = [o] := by
+        ((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).2 = [o] := by
   have hl := act_candidates_length S nd.st (.propose s hs) (fun _ h => by cases h)
   unfold Model.Run.dutyStep at ho
   split at ho
@@ -911,11 +911,11 @@ theorem dutyStep_propose_candidate_eq {V : Type} [Fintype V] {E : Env V}
     refine ⟨hsel, ?_⟩
     have hm := Model.releaseAll_subset _ _ _ _ o ho
     have hlen : (rho.signedCandidate v (.propose s hs)
-        ((protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).2).length ≤ 1 := by
+        ((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).2).length ≤ 1 := by
       simp only [Model.Run.signedCandidate, hsel, ↓reduceIte]
       exact (List.length_filterMap_le _ _).trans hl
     generalize rho.signedCandidate v (.propose s hs)
-      ((protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).2 = cs at hm hlen ⊢
+      ((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).2 = cs at hm hlen ⊢
     cases cs with
     | nil => exact False.elim (List.not_mem_nil hm)
     | cons a as =>
@@ -927,8 +927,8 @@ theorem dutyStep_propose_candidate_eq {V : Type} [Fintype V] {E : Env V}
 /-- An accepting proposal cut is the own block handler run after `acProposal`.
 The proposal duty itself does not change the handler's clock or validator. -/
 theorem proposal_acceptance_recording_handler {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (s : Slot)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (s : Slot)
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (B : Blk (S.params (pubOf E) hn))
     (ha : .fg (.block B true) ∈ (Node.tickStep (runProposer S rho hn) (digestOf S rho)
@@ -962,7 +962,7 @@ theorem proposal_acceptance_recording_handler {V : Type} [Fintype V] {E : Env V}
 /-- Own recording reconstructs a non-genesis canonical block with the engine digest.
 Unlike receipt decoding, own recording has no payload-validation guard. -/
 theorem recordOwn_canonical_block {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) (B : Blk (S.params (pubOf E) hn))
     (hpar : B.parent ≠ none) (hroot : B.RootOk (digestOf S rho)) :
     recordOwn st (blockObj (S.params (pubOf E) hn) B)
@@ -984,8 +984,8 @@ theorem recordOwn_canonical_block {V : Type} [Fintype V] {E : Env V}
 /-- A released canonical proposal accepted by its actual proposal step enters the
 forward queue. Receipt-decoder validity is not a premise of this own-recording bridge. -/
 theorem dutyStep_propose_accepted_pending {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (s : Slot) (hs : 0 < s)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (B : Blk (S.params (pubOf E) hn))
     (hpar : B.parent ≠ none) (hroot : B.RootOk (digestOf S rho))
@@ -998,12 +998,12 @@ theorem dutyStep_propose_accepted_pending {V : Type} [Fintype V] {E : Env V}
       (shapeOf S hn nd).now p B ∈
         pendingWrappers (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1) := by
   obtain ⟨hsel, hcs⟩ := dutyStep_propose_candidate_eq S rho v nd s hs _ ho
-  have hrole : (protoOf (compiled (goldilocksWith S)) E).role (.propose s hs) = .proposer s := rfl
+  have hrole : (protoOf (compiled (goldilocks S)) E).role (.propose s hs) = .proposer s := rfl
   simp only [Model.Run.dutyStep, hrole, hsel, ↓reduceIte, hcs] at ho ⊢
   rw [releaseAll_singleton_recorded _ _ _ _ _ ho]
   change ∃ p, forwardObj (S.params (pubOf E) hn) (shapeOf S hn nd).self
     (shapeOf S hn nd).now p B ∈ pendingWrappers
-      (recordOwn (((protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).1.1 hn)
+      (recordOwn (((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).1.1 hn)
         (blockObj _ B) (digests rho.hash (blockObj _ B)))
   rw [shapeOf_act_propose S hn, recordOwn_canonical_block S rho hn _ B hpar hroot]
   have hh := proposal_acceptance_recording_handler S rho hn v nd s hself B ha
@@ -1036,8 +1036,8 @@ theorem proposal_acceptance_block_fields {sp : SA.SAParams}
 /-- With the existing proposal release contract, acceptance queues the exact canonical
 wrapper. Its root, parent, release, and recording acceptance are derived, not assumed. -/
 theorem dutyStep_propose_acceptance_queued {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (goldilocksWith S)) E)) (s : Slot) (hs : 0 < s)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
     (hsel : rho.sel (.proposer s) = {runProposer S rho hn s})
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (hslot : (S.params (pubOf E) hn).toParams.slotOf (shapeOf S hn nd).now = s)
@@ -1061,7 +1061,7 @@ theorem dutyStep_propose_acceptance_queued {V : Type} [Fintype V] {E : Env V}
 /-- At an honest scheduled tick, an accepting proposal cut queues its exact wrapper.
 Coverage and carried-object readiness come from the reachable engine prefix. -/
 theorem tick_proposal_acceptance_queued {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (v : V) (hh : v ∉ rho.faultyAt 0) (i : Nat) (t : Time)
     (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
@@ -1120,7 +1120,7 @@ theorem tick_acceptance_proposal {sp : SA.SAParams}
 /-- A valid non-genesis block with the engine's root decodes from its own canonical object.
 This separates the payload checks from the digest bookkeeping needed by forwarding. -/
 theorem canonical_block_decodes {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (B : Blk (S.params (pubOf E) hn)) (hpar : B.parent ≠ none)
     (hroot : B.RootOk (digestOf S rho))
     (hwf : ∀ a ∈ B.fgPayload, a.WellFormed) (hval : SA.validPayload B) :
@@ -1221,9 +1221,9 @@ theorem WrappersDecoded.enqueue {sp : SA.SAParams}
 /-- The engine digest tables let a decoded child and the selected durable parent certify
 the new wrapper. Parent slot order is explicit until supplied by the held-block invariant. -/
 theorem WrappersDecoded.engine_enqueue {V : Type} [Fintype V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
-    (h : WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash) st)
+    (h : WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
     (B : Blk (S.params (pubOf E) hn)) (root : Nat) (p : Option (Wire (Fintype.card V) S.vote))
     (hr : B.parent = some root)
     (hp : (if root = (S.params (pubOf E) hn).genesisRoot then some none else
@@ -1234,7 +1234,7 @@ theorem WrappersDecoded.engine_enqueue {V : Type} [Fintype V] {E : Env V}
     (hslot : ∀ parent pt pp A, st.wrappers root = some parent →
       decodeForward (S.params (pubOf E) hn) (digests rho.hash parent) parent =
         some (st.self, pt, pp, A) → A.slot < B.slot) :
-    WrappersDecoded (digests (P := protoOf (compiled (goldilocksWith S)) E) rho.hash)
+    WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash)
       (queueAccepted st B) := by
   apply h.enqueue B root p hr hp
   have hc : Obj.Contains (forwardObj (S.params (pubOf E) hn) st.self st.now p B)

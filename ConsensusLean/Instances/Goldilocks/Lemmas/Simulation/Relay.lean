@@ -504,20 +504,20 @@ end
 
 section
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- An engine delivery: the node after it is the engine's `deliver` (`process`, the delivery's
 poll step, the gossip; `deliver_pres`). -/
 theorem stateBefore_succ_deliver {i : Nat} {v : V}
-    {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
+    {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) :
     rho.stateBefore (i + 1) v = (rho.deliver (rho.stateBefore i v) v o t).1 := by
   simp only [rho.stateBefore_succ he, Model.Run.step, Function.update_self]
 
 /-- An engine delivery: the Goldilocks state after it is the shape of the engine's `deliver`. -/
 theorem stateAt_succ_deliver {i : Nat} {v : V}
-    {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
+    {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) :
     stateAt S rho hn v (i + 1) = (rho.deliver (rho.stateBefore i v) v o t).1.st.1 hn :=
   stateAt_deliver S rho hn v he
@@ -531,7 +531,7 @@ theorem stateAt_succ_restart {i : Nat} {v : V} {t : Time}
 
 /-- An event of another node leaves the node's engine state unchanged. -/
 theorem stateBefore_succ_of_ne {i : Nat}
-    {e : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
+    {e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
     (he : rho.events[i]? = some e) {v : V} (hne : e.node ≠ v) :
     rho.stateBefore (i + 1) v = rho.stateBefore i v := by
   rw [rho.stateBefore_succ he]
@@ -625,8 +625,8 @@ end
 
 section
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 omit [DecidableEq V] in
 /-- A property of Goldilocks states kept by the slot proposal, the node's tick and a poll step
@@ -634,29 +634,29 @@ is kept by every duty of the compiled family. -/
 theorem act_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hprop : ∀ st s, Q st → Q (propose st s).1) (hnt : ∀ st, Q st → Q (nodeTick st))
     (hpoll : ∀ st t, Q st → Q (poll st t).1)
-    (st : (Model.protoOf (compiled (goldilocksWith S)) E).State)
-    (d : (Model.protoOf (compiled (goldilocksWith S)) E).Duty) (h : Q (st.1 hn)) :
-    Q (((Model.protoOf (compiled (goldilocksWith S)) E).act st d).1.1 hn) := by
+    (st : (Model.protoOf (compiled (goldilocks S)) E).State)
+    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) (h : Q (st.1 hn)) :
+    Q (((Model.protoOf (compiled (goldilocks S)) E).act st d).1.1 hn) := by
   cases d with
   | propose s h' =>
-    simp only [Model.protoOf, compiled, compile, withMempool, goldilocksWith,
+    simp only [Model.protoOf, compiled, compile, withMempool, goldilocks,
       hn, ↓reduceDIte]
     exact hprop _ (s : Nat) h
   | act s k => exact h
   | pollPropose t =>
-    simp only [Model.protoOf, compiled, compile, withMempool, goldilocksWith,
+    simp only [Model.protoOf, compiled, compile, withMempool, goldilocks,
       hn, ↓reduceDIte]
     exact hnt _ h
   | poll t =>
-    simp only [Model.protoOf, compiled, compile, withMempool, goldilocksWith,
+    simp only [Model.protoOf, compiled, compile, withMempool, goldilocks,
       hn, ↓reduceDIte]
     exact hpoll _ (t : Time) h
 
 omit [DecidableEq V] in
 /-- The compiled `recordOwn` is the shape's. -/
-theorem recordOwn_eq (st : (Model.protoOf (compiled (goldilocksWith S)) E).State)
-    (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object) (hs) :
-    ((Model.protoOf (compiled (goldilocksWith S)) E).recordOwn st o hs).1 hn =
+theorem recordOwn_eq (st : (Model.protoOf (compiled (goldilocks S)) E).State)
+    (o : (Model.protoOf (compiled (goldilocks S)) E).Object) (hs) :
+    ((Model.protoOf (compiled (goldilocks S)) E).recordOwn st o hs).1 hn =
       recordOwn (st.1 hn) o hs :=
   rfl
 
@@ -677,8 +677,8 @@ end
 
 section
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- An engine tick of the node: the Goldilocks state after the tick. -/
 theorem stateAt_succ_tick {i : Nat} {v : V} {t : Time}
@@ -693,7 +693,7 @@ theorem tick_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Pr
     (hclock : ∀ st t, Q st → Q { st with now := t })
     (hprop : ∀ st s, Q st → Q (propose st s).1) (hnt : ∀ st, Q st → Q (nodeTick st))
     (hpoll : ∀ st t, Q st → Q (poll st t).1) (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (v : V) (t : Time)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (v : V) (t : Time)
     (h : Q (nd.st.1 hn)) : Q ((rho.tick nd v t).1.st.1 hn) :=
   rho.tick_invariant (fun s => Q (s.1 hn)) nd v t
     (fun s d _ hs => act_preserves S hn Q hprop hnt hpoll s d hs)
@@ -703,7 +703,7 @@ theorem tick_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Pr
 /-- The relay queue after a delivery's `process` is in the closure of what the node has seen with
 the delivered object, if the queue before it was. -/
 theorem process_relay_seen {i : Nat} {v : V}
-    (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object)
+    (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
     (ih : ∀ x ∈ (stateAt S rho hn v i).relayBuf, x ∈ Model.closure (rho.stateBefore i v).seen) :
     ∀ x ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).relayBuf,
       x ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) := by
@@ -785,12 +785,12 @@ end
 
 section
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E)
 
 /-- An event occurs at one index of a valid run. -/
 theorem index_eq_of_events (hv : rho.ExecutionValid) {i i' : Nat}
-    {ev : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
     (he : rho.events[i]? = some ev) (he' : rho.events[i']? = some ev) : i = i' := by
   obtain ⟨hi, h1⟩ := List.getElem?_eq_some_iff.mp he
   obtain ⟨hi', h2⟩ := List.getElem?_eq_some_iff.mp he'
@@ -799,7 +799,7 @@ theorem index_eq_of_events (hv : rho.ExecutionValid) {i i' : Nat}
 /-- At a delivery the node's last tick or restart is at the delivery's time: an awake honest
 node ticks at every time of the horizon, before the deliveries of that time. -/
 theorem lastClock_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
-    {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
+    {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) : lastClock S rho v i = t := by
   have hm := List.mem_of_getElem? he
   have hb := hv.in_horizon _ hm
@@ -852,14 +852,14 @@ end
 
 section
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 omit [DecidableEq V] in
 /-- The duties of a tick release only signed objects. -/
 theorem runDuties_signed (v : V) :
-    ∀ (ds : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty)
-      (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)),
+    ∀ (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
+      (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)),
       ∀ o ∈ (rho.runDuties v nd ds).2, ∃ k r m cs, o = Model.Obj.mk (.signed k r) m cs
   | [], nd => fun _ ho => by rw [rho.runDuties_nil] at ho; exact absurd ho List.not_mem_nil
   | d :: ds, nd => by
@@ -877,8 +877,8 @@ theorem runDuties_signed (v : V) :
 omit [DecidableEq V] in
 /-- The duties of a tick append what they release to `seen`. -/
 theorem runDuties_seen (v : V) :
-    ∀ (ds : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty)
-      (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)),
+    ∀ (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
+      (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)),
       (rho.runDuties v nd ds).1.seen = nd.seen ++ (rho.runDuties v nd ds).2
   | [], nd => by simp [rho.runDuties_nil]
   | d :: ds, nd => by
@@ -891,7 +891,7 @@ theorem runDuties_seen (v : V) :
 unsigned relay wrapper of its relay queue, which carries everything the delivery's `process`
 queued (`process_relay`), at the delivery's own time. -/
 theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled
-    (goldilocksWith S)) E).Object}
+    (goldilocks S)) E).Object}
     {t : Time} (he : rho.events[j]? = some (.deliver v o t)) {x : Wire (S.params
         (pubOf E) hn).n S.vote}
     (hx : x ∈ (process (stateAt S rho hn v j) o (Model.digests rho.hash o)).relayBuf) :
@@ -899,9 +899,9 @@ theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled
   simp only [Model.Run.releasesAt, he]
   rw [rho.deliver_eq]
   set nd := rho.stateBefore j v
-  set R := rho.runDuties v ⟨(Model.protoOf (compiled (goldilocksWith S)) E).process nd.st o
+  set R := rho.runDuties v ⟨(Model.protoOf (compiled (goldilocks S)) E).process nd.st o
     (Model.digests rho.hash o), nd.seen ++ [o]⟩
-    ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t)
+    ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)
   -- the queue after the delivery's duties keeps `x` and holds only seen objects
   have hkeep : x ∈ (R.1.st.1 hn).relayBuf :=
     rho.runDuties_invariant (fun s => x ∈ (s.1 hn).relayBuf) v _ _
@@ -937,16 +937,16 @@ theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled
     rw [runDuties_seen S rho v, Model.closure_append]
     exact List.mem_append_left _ (hQ y hy)
   generalize hcs : (R.1.st.1 hn).relayBuf = cs at hkeep hseen
-  have hgo : Model.gossipCandidates (Model.protoOf (compiled (goldilocksWith S)) E) R.1.st t =
+  have hgo : Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) R.1.st t =
       [Model.Obj.mk .none (.data .relay) cs] := by
     obtain ⟨c, cs₀, rfl⟩ := List.exists_cons_of_ne_nil (List.ne_nil_of_mem hkeep)
     have hcs' : ∀ h', (R.1.st.1 h').relayBuf = c :: cs₀ := fun _ => hcs
     simp only [Model.gossipCandidates, Model.protoOf, compiled, compile,
-      goldilocksWith, hn, ↓reduceDIte, goldilocksShape, hcs']
+      goldilocks, hn, ↓reduceDIte, goldilocksShape, hcs']
     rfl
   refine ⟨cs, hkeep, List.mem_append_right _ ?_⟩
   have hc : (Model.releasable R.1.seen (Model.Obj.mk .none (.data .relay) cs) &&
-      Model.protects (Model.protoOf (compiled (goldilocksWith S)) E) (rho.ownKey v) R.1.seen
+      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) R.1.seen
         (Model.Obj.mk .none (.data .relay) cs)) = true := by
     simp only [Model.releasable, Model.protects, Bool.and_eq_true, List.all_eq_true,
       decide_eq_true_eq]
@@ -962,7 +962,7 @@ theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled
 /-- A cut of an engine event that is an FG cut at position `0`, or an `ac_on_message` cut, is a
 cut of a delivery. -/
 theorem eq_deliver_of_cut {i : Nat}
-    {ev : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
     (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
     (hr : r ∈ eventCuts S rho hn i)
     (h : (r.pos = 0 ∧ ∃ ℓ, r.label = .fg ℓ) ∨
@@ -1266,8 +1266,8 @@ end
 
 section
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 end
 

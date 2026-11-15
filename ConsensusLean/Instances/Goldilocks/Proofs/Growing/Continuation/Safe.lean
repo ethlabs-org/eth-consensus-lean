@@ -48,12 +48,13 @@ open Blocks Shape
 run has a hash collision. -/
 theorem continued_safe_growing (hc : GoldilocksCorrect) (S : Setup) (A : ContractAssumptions S)
     (V : Type) [Fintype V] [DecidableEq V] :
-    let Sy := Model.sysOf schema (compiled (goldilocks S)) V
+    let Sy := Model.sysOf schema (compiled (goldilocks { S with vote := AsChainShape.stock })) V
     let K := goldilocksContract A (contract_coefficients S A)
     ∀ cap g, (cap = .available ∨ cap = .stable) → Sy.schema.output cap = some g →
       ∀ i gst T, Sy.Holds
         (fun r => Sy.Handover K gst T r ∧ Sy.heal K cap i gst r ≤ T ∧
-          Sy.prog (shapeProgress (goldilocks S) V) K cap i (Sy.ready K gst r)
+          Sy.prog (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) V)
+            K cap i (Sy.ready K gst r)
             (Sy.heal K cap i gst r) r)
         (fun r => (Sy.trace r).ReadySafe (Sy.cDur K r) g (Sy.heal K cap i gst r)) := by
   intro Sy K cap g hcap hg i gst T r hv ⟨hh, hhT, hp⟩
@@ -85,15 +86,15 @@ theorem continued_safe_growing (hc : GoldilocksCorrect) (S : Setup) (A : Contrac
   obtain ⟨r', σ, hseed, t₁, -, hdt, hlate, hinv⟩ :=
     Obligations.Growing.handover_invariant_at
       (Obligations.Growing.handoverQuery S A V hn hv hx hcap i hh hT) h0 hb hp'
-  have hnc := noCollRun_simTraceAt ⟨S, stock⟩ rho hn hv hx
-  have hrun := simTraceAt_goldilocksRun ⟨S, stock⟩ rho hn hv
+  have hnc := noCollRun_simTraceAt { S with vote := stock } rho hn hv hx
+  have hrun := simTraceAt_goldilocksRun { S with vote := stock } rho hn hv
   -- the reset service through the horizon, from partial synchrony
   have hsvc := Obligations.Growing.resetService_of_psync_at S rho hn hv hnc
     ((Model.sysOf_delivers_iff _ _ _ _).mp hh.1)
     (Obligations.Growing.signed_row_service_psync_at S rho hn hv)
     (Obligations.protoFGDelay_pos _)
   -- the slot counts from `r'` through the horizon, from the sleepy budget from `ready`
-  let sp := S.params (Model.pubOf E) hn
+  let sp := ({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn
   obtain ⟨hσT, hrσ, hgr⟩ : sp.ts σ + 8 * sp.Δ ≤ T ∧ r' + sp.k ≤ σ + 1 ∧
       max gst 0 + 20 * sp.Δ ≤ sp.ts r' := hseed.timing
   have hready : Sy.ready K gst ⟨E, rho⟩ = max gst 0 + 19 * E.ΔAC + 1 := by
@@ -115,8 +116,9 @@ theorem continued_safe_growing (hc : GoldilocksCorrect) (S : Setup) (A : Contrac
     change 18 * E.ΔAC ≤ Sy.cDur K ⟨E, rho⟩
     rw [hcD]
     linarith
-  have hB := Obligations.Growing.sleepy_bounds_at ⟨S, stock⟩ rho hn hv le_rfl hhalf hσr
-    (le_max_of_le_left ((hσr.trans hrT).trans hT))
+  have hB :=
+    Obligations.Growing.sleepy_bounds_at { S with vote := stock } rho hn hv le_rfl hhalf hσr
+      (le_max_of_le_left ((hσr.trans hrT).trans hT))
   -- conviction below a third on held chains
   have hcv := Obligations.Growing.chainConvictedBelow_at S A rho hn hv hh.2.2.2.2
   have hinv' := hinv rho.horizon hT hsvc hB hcv

@@ -24,7 +24,7 @@ open AsChainShape Simulation
 open Shape Blocks
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-  (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
+  (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
 
 /-- A node honest at a cut at which it sends or freshly admits a vote processes it at that same
 time. Recursive delivery processing may occur later in the event, never at a later time. -/

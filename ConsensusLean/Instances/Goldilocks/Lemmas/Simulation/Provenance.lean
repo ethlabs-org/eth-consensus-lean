@@ -31,8 +31,8 @@ open Consensus.Model (pubOf)
 
 variable {binding : VoteBinding}
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 private theorem onBlock_record {P : Params} {A : NodeAC P} (self : Fin P.n)
     (st : NodeState A) (t : Time) (B : A.Blk) :
@@ -250,9 +250,9 @@ private theorem history_poll_sign {sp : SA.SAParams}
 omit [DecidableEq V] in
 private theorem history_release (key : Fin (Fintype.card V))
     {signed : FG.Att (Fintype.card V) → Prop} :
-    ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) cs,
+    ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) cs,
       HasHistory key (nd.st.1 hn) signed →
-      HasHistory key ((Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E)
+      HasHistory key ((Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
         rho.hash key nd cs).1.st.1 hn) signed
   | nd, [], h => h
   | nd, c :: cs, h => by
@@ -263,8 +263,8 @@ private theorem history_release (key : Fin (Fintype.card V))
 
 omit [DecidableEq V] in
 private theorem history_duty {v : V} {signed : FG.Att (Fintype.card V) → Prop}
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
-    (d : (Model.protoOf (compiled (goldilocksWith S)) E).Duty)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty)
     (h : HasHistory (rho.ownKey v) (nd.st.1 hn) signed) :
     HasHistory (rho.ownKey v) ((rho.dutyStep v nd d).1.st.1 hn) signed := by
   unfold Model.Run.dutyStep
@@ -273,34 +273,34 @@ private theorem history_duty {v : V} {signed : FG.Att (Fintype.card V) → Prop}
     cases d with
     | act s k => exact h
     | propose s hs =>
-      change HasHistory _ (((goldilocksWith S (pubOf E)).propose nd.st.1 s).1 hn) signed
-      simp only [goldilocksWith, dite_eq_left hn]
+      change HasHistory _ (((goldilocks S (pubOf E)).propose nd.st.1 s).1 hn) signed
+      simp only [goldilocks, dite_eq_left hn]
       change HasHistory _ (propose (nd.st.1 hn) s).1 signed
       obtain ⟨hk, hr, ins, hi, he, hout⟩ := h
       refine ⟨(propose_self _ _).trans hk, ?_, ins, hi, ?_, hout⟩
       · unfold propose; dsimp only; split <;> exact hr
       · unfold propose; dsimp only; split <;> exact he
     | pollPropose t =>
-      change HasHistory _ (((goldilocksWith S (pubOf E)).pollPropose nd.st.1 t).1 hn) signed
-      simp only [goldilocksWith, dite_eq_left hn]
+      change HasHistory _ (((goldilocks S (pubOf E)).pollPropose nd.st.1 t).1 hn) signed
+      simp only [goldilocks, dite_eq_left hn]
       change HasHistory _ (nodeTick (nd.st.1 hn)) signed
       unfold nodeTick
       split <;> exact h
     | poll t =>
-      change HasHistory _ (((goldilocksWith S (pubOf E)).pollBatch nd.st.1 t).1 hn) signed
-      simp only [goldilocksWith, dite_eq_left hn]
+      change HasHistory _ (((goldilocks S (pubOf E)).pollBatch nd.st.1 t).1 hn) signed
+      simp only [goldilocks, dite_eq_left hn]
       change HasHistory _ (poll (nd.st.1 hn) t).1 signed
       exact history_poll h _
   · exact h
 
 omit [DecidableEq V] in
 private theorem history_duties {v : V} {signed : FG.Att (Fintype.card V) → Prop}
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) ds
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) ds
     (h : HasHistory (rho.ownKey v) (nd.st.1 hn) signed) :
     HasHistory (rho.ownKey v) ((rho.runDuties v nd ds).1.st.1 hn) signed := by
   unfold Model.Run.runDuties
-  have hfold : ∀ (r : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E) ×
-      List (Model.protoOf (compiled (goldilocksWith S)) E).Object),
+  have hfold : ∀ (r : Model.Node (Model.protoOf (compiled (goldilocks S)) E) ×
+      List (Model.protoOf (compiled (goldilocks S)) E).Object),
       HasHistory (rho.ownKey v) (r.1.st.1 hn) signed →
       HasHistory (rho.ownKey v)
         ((ds.foldl (fun r d => let s := rho.dutyStep v r.1 d;
@@ -312,7 +312,7 @@ private theorem history_duties {v : V} {signed : FG.Att (Fintype.card V) → Pro
 
 omit [DecidableEq V] in
 private theorem history_tick {v : V} {signed : FG.Att (Fintype.card V) → Prop}
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (t : Time)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time)
     (h : HasHistory (rho.ownKey v) (nd.st.1 hn) signed) :
     HasHistory (rho.ownKey v) ((rho.tick nd v t).1.st.1 hn) signed := by
   unfold Model.Run.tick
@@ -324,7 +324,7 @@ private theorem history_tick {v : V} {signed : FG.Att (Fintype.card V) → Prop}
 
 omit [DecidableEq V] in
 private theorem history_deliver {v : V} {signed : FG.Att (Fintype.card V) → Prop}
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (t : Time) (o)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time) (o)
     (h : HasHistory (rho.ownKey v) (nd.st.1 hn) signed) :
     HasHistory (rho.ownKey v) ((rho.deliver nd v o t).1.st.1 hn) signed := by
   unfold Model.Run.deliver
@@ -336,11 +336,11 @@ private theorem history_deliver {v : V} {signed : FG.Att (Fintype.card V) → Pr
 
 omit [DecidableEq V] in
 private theorem history_restore {v : V} {signed : FG.Att (Fintype.card V) → Prop}
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (t : Time)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time)
     (h : HasHistory (rho.ownKey v) (nd.st.1 hn) signed) :
     HasHistory (rho.ownKey v)
-      (((Model.protoOf (compiled (goldilocksWith S)) E).restore (rho.ownKey v)
-        ((Model.protoOf (compiled (goldilocksWith S)) E).durable nd.st) t).1 hn) signed := by
+      (((Model.protoOf (compiled (goldilocks S)) E).restore (rho.ownKey v)
+        ((Model.protoOf (compiled (goldilocks S)) E).durable nd.st) t).1 hn) signed := by
   obtain ⟨_, hr, ins, hi, he, hout⟩ := h
   exact ⟨rfl, hr, ins, hi, he, hout⟩
 
@@ -349,8 +349,8 @@ private theorem history_initial (v : V) :
     HasHistory (rho.ownKey v) ((rho.initWorld v).st.1 hn) := by
   exact ⟨rfl, .refl, [], (by intro x hx; cases hx), rfl, (by simp)⟩
 
-private theorem history_step (w : V → Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
-    (e : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object) (v : V)
+private theorem history_step (w : V → Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+    (e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object) (v : V)
     {signed : FG.Att (Fintype.card V) → Prop}
     (h : HasHistory (rho.ownKey v) ((w v).st.1 hn) signed) :
     HasHistory (rho.ownKey v) ((rho.step w e v).st.1 hn) signed := by
@@ -378,8 +378,8 @@ private theorem history_mono {sp : SA.SAParams}
   obtain ⟨hk, hr, ins, hi, he, hout⟩ := h
   exact ⟨hk, hr, ins, hi, he, fun a ha => hout a (hp a ha)⟩
 
-private def Signs (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
-    (d : (Model.protoOf (compiled (goldilocksWith S)) E).Duty) (a : FG.Att (Fintype.card V)) : Prop
+private def Signs (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) (a : FG.Att (Fintype.card V)) : Prop
         :=
   ∃ k : Nat, d = .poll k ∧ rho.ownKey v ∈ rho.sel .poll ∧
     (nd.st.1 hn).fgDue = true ∧ ∃ C Λ',
@@ -390,7 +390,7 @@ private def Signs (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocksW
 
 omit [DecidableEq V] in
 private theorem history_duty_sign {v : V} {signed : FG.Att (Fintype.card V) → Prop}
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (d)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (d)
     (h : HasHistory (rho.ownKey v) (nd.st.1 hn) signed) :
     HasHistory (rho.ownKey v) ((rho.dutyStep v nd d).1.st.1 hn)
       (fun a => signed a ∨ Signs S rho hn v nd d a) := by
@@ -401,12 +401,12 @@ private theorem history_duty_sign {v : V} {signed : FG.Att (Fintype.card V) → 
     have hall : HasHistory (rho.ownKey v)
         ((rho.dutyStep v nd (.poll k)).1.st.1 hn) (fun b => signed b ∨ b = a) := by
       unfold Model.Run.dutyStep
-      simp only [show (Model.protoOf (compiled (goldilocksWith S)) E).role (.poll k)
+      simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.poll k)
           = .poll from rfl,
         hsel, ↓reduceIte]
       apply history_release
-      change HasHistory _ (((goldilocksWith S (pubOf E)).pollBatch nd.st.1 k).1 hn) _
-      simp only [goldilocksWith, dite_eq_left hn]
+      change HasHistory _ (((goldilocks S (pubOf E)).pollBatch nd.st.1 k).1 hn) _
+      simp only [goldilocks, dite_eq_left hn]
       exact hsign
     apply history_mono hall
     intro b hb
@@ -421,7 +421,7 @@ private theorem history_duty_sign {v : V} {signed : FG.Att (Fintype.card V) → 
 
 omit [DecidableEq V] in
 private theorem duties_append (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (ds ds') :
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (ds ds') :
     (rho.runDuties v nd (ds ++ ds')).1 = (rho.runDuties v (rho.runDuties v nd ds).1 ds').1 := by
   unfold Model.Run.runDuties
   rw [List.foldl_append]
@@ -434,7 +434,7 @@ private theorem duties_append (v : V)
 
 omit [DecidableEq V] in
 private theorem history_duties_sign {v : V} {signed : FG.Att (Fintype.card V) → Prop}
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (ds)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (ds)
     (h : HasHistory (rho.ownKey v) (nd.st.1 hn) signed) :
     HasHistory (rho.ownKey v) ((rho.runDuties v nd ds).1.st.1 hn)
       (fun a => signed a ∨ ∃ q d, ds[q]? = some d ∧
@@ -473,23 +473,23 @@ effects and release guards, not an assumed node-handler replay. At `p = 0` this 
 post-clock/post-process state, NEVER the pre-event state. Restart has no duty prefix; its
 record boundary is handled separately by `engine_event_signing_history`. -/
 inductive EngineDutyCut (v : V) (i p : Nat) :
-    Model.Node (Model.protoOf (compiled (goldilocksWith S)) E) → Prop where
+    Model.Node (Model.protoOf (compiled (goldilocks S)) E) → Prop where
   | tick {t : Time} (he : rho.events[i]? = some (.tick v t))
       (hw : E.awake v t = true)
-      (hp : p ≤ ((Model.protoOf (compiled (goldilocksWith S)) E).duties t).length) :
+      (hp : p ≤ ((Model.protoOf (compiled (goldilocks S)) E).duties t).length) :
       EngineDutyCut v i p
         (rho.runDuties v
-          ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+          ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
             (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
-          (((Model.protoOf (compiled (goldilocksWith S)) E).duties t).take p)).1
-  | deliver {t : Time} {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object}
+          (((Model.protoOf (compiled (goldilocks S)) E).duties t).take p)).1
+  | deliver {t : Time} {o : (Model.protoOf (compiled (goldilocks S)) E).Object}
       (he : rho.events[i]? = some (.deliver v o t))
-      (hp : p ≤ ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t).length) :
+      (hp : p ≤ ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t).length) :
       EngineDutyCut v i p
         (rho.runDuties v
-          ⟨(Model.protoOf (compiled (goldilocksWith S)) E).process (rho.stateBefore i v).st o
+          ⟨(Model.protoOf (compiled (goldilocks S)) E).process (rho.stateBefore i v).st o
             (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩
-          (((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t).take p)).1
+          (((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t).take p)).1
 
 /-- An attestation actually generated by the FG update of a scheduled poll. The index `p`
 names that poll, not a simulated cut. The engine's poll selection must authorize this duty;
@@ -498,9 +498,9 @@ def EngineSignsAt (v : V) (i p : Nat) (a : FG.Att (Fintype.card V)) : Prop :=
   ∃ nd, EngineDutyCut S rho v i p nd ∧
     ∃ k : Nat,
       ((∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
-          ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)[p]? = some (.poll k)) ∨
+          ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
         ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
-          ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t)[p]? = some (.poll k)) ∧
+          ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some (.poll k)) ∧
       rho.ownKey v ∈ rho.sel .poll ∧
       (nd.st.1 hn).fgDue = true ∧
       ∃ C Λ', (Node.acToFG (nd.st.1 hn).node (nd.st.1 hn).now).2.2 = some C ∧
@@ -510,11 +510,11 @@ def EngineSignsAt (v : V) (i p : Nat) (a : FG.Att (Fintype.card V)) : Prop :=
 
 private theorem signs_tick {v : V} {i q : Nat} {a : FG.Att (Fintype.card V)} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) (hs : EngineSignsAt S rho hn v i q a) :
-    ∃ d, ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)[q]? = some d ∧
+    ∃ d, ((Model.protoOf (compiled (goldilocks S)) E).duties t)[q]? = some d ∧
       Signs S rho hn v (rho.runDuties v
-        ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+        ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
           (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
-        (((Model.protoOf (compiled (goldilocksWith S)) E).duties t).take q)).1 d a := by
+        (((Model.protoOf (compiled (goldilocks S)) E).duties t).take q)).1 d a := by
   obtain ⟨nd, hc, k, hk, hsel, hdue, C, Λ', hC, ha⟩ := hs
   cases hc with
   | tick he' hw hp =>
@@ -528,11 +528,11 @@ private theorem signs_tick {v : V} {i q : Nat} {a : FG.Att (Fintype.card V)} {t 
 
 private theorem signs_deliver {v : V} {i q : Nat} {a : FG.Att (Fintype.card V)} {t : Time} {o}
     (he : rho.events[i]? = some (.deliver v o t)) (hs : EngineSignsAt S rho hn v i q a) :
-    ∃ d, ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t)[q]? = some d ∧
+    ∃ d, ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[q]? = some d ∧
       Signs S rho hn v (rho.runDuties v
-        ⟨(Model.protoOf (compiled (goldilocksWith S)) E).process (rho.stateBefore i v).st o
+        ⟨(Model.protoOf (compiled (goldilocks S)) E).process (rho.stateBefore i v).st o
           (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩
-        (((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t).take q)).1 d a := by
+        (((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t).take q)).1 d a := by
   obtain ⟨nd, hc, k, hk, hsel, hdue, C, Λ', hC, ha⟩ := hs
   cases hc with
   | tick he' hw hp => cases Option.some.inj (he'.symm.trans he)
@@ -585,7 +585,7 @@ private theorem history_events (v : V) (i : Nat) :
           split
           · apply history_release
             apply history_mono (history_duties_sign S rho hn
-              ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+              ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
                 (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _ ih)
             rintro a ⟨j, q, hj, hs⟩
             by_cases hji : j < i
@@ -678,7 +678,7 @@ Induction runs over engine events and duties. The FG update appends its source's
 state, whose bounds give `EntryInputs`; all other duties, received-object processing, clocks,
 gossip and releases preserve the record. No proposal simulation or `GoldilocksRun` is assumed. -/
 theorem engine_signing_history (_hv : rho.ExecutionValid) {v : V} (_hv' : v ∉ rho.faultyAt 0)
-    {i p : Nat} {nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)}
+    {i p : Nat} {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
     (hc : EngineDutyCut S rho v i p nd) :
     ∃ inputs, FG.EntryInputs (S.params (pubOf E) hn).toParams.fg inputs ∧
       (nd.st.1 hn).node.record = (FG.Record.run (rho.ownKey v) FG.Record.empty inputs).1 ∧
@@ -689,9 +689,9 @@ theorem engine_signing_history (_hv : rho.ExecutionValid) {v : V} (_hv' : v ∉ 
   | tick he hw hp =>
     rename_i t
     have h := history_duties_sign S rho hn
-      ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
         (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
-      (((Model.protoOf (compiled (goldilocksWith S)) E).duties t).take p) hbefore
+      (((Model.protoOf (compiled (goldilocks S)) E).duties t).take p) hbefore
     obtain ⟨_, _, ins, hi, hr, hout⟩ := h
     refine ⟨ins, hi, hr, ?_⟩
     intro j q a hj hs
@@ -711,9 +711,9 @@ theorem engine_signing_history (_hv : rho.ExecutionValid) {v : V} (_hv' : v ∉ 
       exact ⟨(process_self _ _ _).trans hk, process_reachable _ _ _ hr,
         ins, hi, (process_record _ _ _).trans he', hout⟩
     have h := history_duties_sign S rho hn
-      ⟨(Model.protoOf (compiled (goldilocksWith S)) E).process (rho.stateBefore i v).st o
+      ⟨(Model.protoOf (compiled (goldilocks S)) E).process (rho.stateBefore i v).st o
         (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩
-      (((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t).take p) hprocess
+      (((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t).take p) hprocess
     obtain ⟨_, _, ins, hi, hr, hout⟩ := h
     refine ⟨ins, hi, hr, ?_⟩
     intro j q a hj hs
@@ -868,9 +868,9 @@ private theorem queued_mono {sp : SA.SAParams}
 omit [DecidableEq V] in
 private theorem queued_release (key : Fin (Fintype.card V))
     {signed : FG.Att (Fintype.card V) → Prop} :
-    ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) cs,
+    ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) cs,
       Queued (nd.st.1 hn) signed →
-      Queued ((Model.releaseAll (Model.protoOf (compiled (goldilocksWith S)) E)
+      Queued ((Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
         rho.hash key nd cs).1.st.1 hn) signed
   | nd, [], h => h
   | nd, c :: cs, h => by
@@ -884,7 +884,7 @@ private theorem queued_release (key : Fin (Fintype.card V))
 
 omit [DecidableEq V] in
 private theorem queued_duty {v : V} {signed : FG.Att (Fintype.card V) → Prop}
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (d)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (d)
     (h : Queued (nd.st.1 hn) signed) :
     Queued ((rho.dutyStep v nd d).1.st.1 hn)
       (fun a => signed a ∨ Signs S rho hn v nd d a) := by
@@ -898,20 +898,20 @@ private theorem queued_duty {v : V} {signed : FG.Att (Fintype.card V) → Prop}
       obtain ⟨a, he, hv, ha⟩ := h w hw
       exact ⟨a, he, hv, Or.inl ha⟩
     | propose s hs =>
-      change Queued (((goldilocksWith S (pubOf E)).propose nd.st.1 s).1 hn) _
-      simp only [goldilocksWith, dite_eq_left hn]
+      change Queued (((goldilocks S (pubOf E)).propose nd.st.1 s).1 hn) _
+      simp only [goldilocks, dite_eq_left hn]
       intro w hw
       obtain ⟨a, he, hv, ha⟩ := h w ((propose_att _ s _).mp hw)
       exact ⟨a, he, hv.trans (propose_self _ s).symm, Or.inl ha⟩
     | pollPropose t =>
-      change Queued (((goldilocksWith S (pubOf E)).pollPropose nd.st.1 t).1 hn) _
-      simp only [goldilocksWith, dite_eq_left hn]
+      change Queued (((goldilocks S (pubOf E)).pollPropose nd.st.1 t).1 hn) _
+      simp only [goldilocks, dite_eq_left hn]
       intro w hw
       obtain ⟨a, he, hv, ha⟩ := h w ((nodeTick_att _ _).mp hw)
       exact ⟨a, he, hv.trans (nodeTick_self _).symm, Or.inl ha⟩
     | poll t =>
-      change Queued (((goldilocksWith S (pubOf E)).pollBatch nd.st.1 t).1 hn) _
-      simp only [goldilocksWith, dite_eq_left hn]
+      change Queued (((goldilocks S (pubOf E)).pollBatch nd.st.1 t).1 hn) _
+      simp only [goldilocks, dite_eq_left hn]
       apply queued_mono (poll_queued (nd.st.1 hn) t h).1
       intro a ha
       rcases ha with ha | ⟨hd, C, Λ', hC, ha⟩
@@ -921,7 +921,7 @@ private theorem queued_duty {v : V} {signed : FG.Att (Fintype.card V) → Prop}
 
 omit [DecidableEq V] in
 private theorem queued_duties {v : V} {signed : FG.Att (Fintype.card V) → Prop}
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (ds)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (ds)
     (h : Queued (nd.st.1 hn) signed) :
     Queued ((rho.runDuties v nd ds).1.st.1 hn)
       (fun a => signed a ∨ ∃ q d, ds[q]? = some d ∧
@@ -943,11 +943,11 @@ private theorem queued_duties {v : V} {signed : FG.Att (Fintype.card V) → Prop
 
 private theorem signs_of_tick {v : V} {i q : Nat} {t : Time} {d} {a}
     (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
-    (hd : ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)[q]? = some d)
+    (hd : ((Model.protoOf (compiled (goldilocks S)) E).duties t)[q]? = some d)
     (hs : Signs S rho hn v (rho.runDuties v
-      ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
         (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
-      (((Model.protoOf (compiled (goldilocksWith S)) E).duties t).take q)).1 d a) :
+      (((Model.protoOf (compiled (goldilocks S)) E).duties t).take q)).1 d a) :
     EngineSignsAt S rho hn v i q a := by
   obtain ⟨k, rfl, hsel, hdue, C, Λ', hC, ha⟩ := hs
   exact ⟨_, .tick he hw (Nat.le_of_lt (List.getElem?_eq_some_iff.mp hd).1),
@@ -955,11 +955,11 @@ private theorem signs_of_tick {v : V} {i q : Nat} {t : Time} {d} {a}
 
 private theorem signs_of_deliver {v : V} {i q : Nat} {t : Time} {o d a}
     (he : rho.events[i]? = some (.deliver v o t))
-    (hd : ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t)[q]? = some d)
+    (hd : ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[q]? = some d)
     (hs : Signs S rho hn v (rho.runDuties v
-      ⟨(Model.protoOf (compiled (goldilocksWith S)) E).process (rho.stateBefore i v).st o
+      ⟨(Model.protoOf (compiled (goldilocks S)) E).process (rho.stateBefore i v).st o
         (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩
-      (((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t).take q)).1 d a) :
+      (((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t).take q)).1 d a) :
     EngineSignsAt S rho hn v i q a := by
   obtain ⟨k, rfl, hsel, hdue, C, Λ', hC, ha⟩ := hs
   exact ⟨_, .deliver he (Nat.le_of_lt (List.getElem?_eq_some_iff.mp hd).1),
@@ -993,7 +993,7 @@ private theorem queued_before (v : V) (i : Nat) :
           · rename_i hw
             apply queued_release
             apply queued_mono (queued_duties S rho hn
-              ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+              ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
                 (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _ ih)
             rintro a (ha | ⟨q, d, hd, hs⟩)
             · exact hold a ha
@@ -1012,7 +1012,7 @@ private theorem queued_before (v : V) (i : Nat) :
             obtain ⟨a, he, hv, ha⟩ := ih w ((process_att _ _ _ _).mp hw)
             exact ⟨a, he, hv.trans (process_self _ _ _).symm, ha⟩
           apply queued_mono (queued_duties S rho hn
-            ⟨(Model.protoOf (compiled (goldilocksWith S)) E).process (rho.stateBefore i v).st o
+            ⟨(Model.protoOf (compiled (goldilocks S)) E).process (rho.stateBefore i v).st o
               (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩ _ hprocess)
           rintro a (ha | ⟨q, d, hd, hs⟩)
           · exact hold a ha
@@ -1029,7 +1029,7 @@ private theorem queued_before (v : V) (i : Nat) :
 
 omit [DecidableEq V] in
 private theorem duty_released_att {v : V} {signed : FG.Att (Fintype.card V) → Prop}
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (d)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (d)
     (h : Queued (nd.st.1 hn) signed)
     {a : FG.Att (Fintype.card V)} (ha : attObj a ∈ (rho.dutyStep v nd d).2) :
     signed a ∨ Signs S rho hn v nd d a := by
@@ -1045,7 +1045,7 @@ private theorem duty_released_att {v : V} {signed : FG.Att (Fintype.card V) → 
 
 omit [DecidableEq V] in
 private theorem duties_released_att {v : V} {signed : FG.Att (Fintype.card V) → Prop}
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (ds)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (ds)
     (h : Queued (nd.st.1 hn) signed) {a : FG.Att (Fintype.card V)}
     (ha : attObj a ∈ (rho.runDuties v nd ds).2) :
     signed a ∨ ∃ q d, ds[q]? = some d ∧
@@ -1082,7 +1082,7 @@ private theorem released_att_signed {v : V} {i : Nat} {t : Time}
     · rename_i hw
       rcases List.mem_append.mp ha with ha | ha
       · have h := duties_released_att S rho hn
-          ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+          ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
             (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
           (queued_before S rho hn v i) ha
         rcases h with ⟨j, q, hj, hs⟩ | ⟨q, d, hd, hs⟩
@@ -1099,7 +1099,7 @@ private theorem released_att_signed {v : V} {i : Nat} {t : Time}
         obtain ⟨a, he, hv, ha⟩ := queued_before S rho hn v i w ((process_att _ _ _ _).mp hw)
         exact ⟨a, he, hv.trans (process_self _ _ _).symm, ha⟩
       have h := duties_released_att S rho hn
-        ⟨(Model.protoOf (compiled (goldilocksWith S)) E).process (rho.stateBefore i v).st o
+        ⟨(Model.protoOf (compiled (goldilocks S)) E).process (rho.stateBefore i v).st o
           (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩ _ hprocess ha
       rcases h with ⟨j, q, hj, hs⟩ | ⟨q, d, hd, hs⟩
       · exact ⟨j, q, Nat.le_of_lt hj, hs⟩
@@ -1114,7 +1114,7 @@ theorem cut_self {v : V} {i p : Nat} {nd}
   | tick he hw hp =>
     rename_i t
     exact (history_duties S rho hn
-      ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
         (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _ h).1
   | deliver he hp =>
     rename_i t o
@@ -1125,7 +1125,7 @@ theorem cut_self {v : V} {i p : Nat} {nd}
       exact ⟨(process_self _ _ _).trans hk, process_reachable _ _ _ hr,
         ins, hi, (process_record _ _ _).trans he', hout⟩
     exact (history_duties S rho hn
-      ⟨(Model.protoOf (compiled (goldilocksWith S)) E).process (rho.stateBefore i v).st o
+      ⟨(Model.protoOf (compiled (goldilocks S)) E).process (rho.stateBefore i v).st o
         (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩ _ hh).1
 
 /-- Every queued attestation at an actual duty boundary has an actual engine signing.
@@ -1139,7 +1139,7 @@ theorem engine_queued_att_signed {v : V} {i p : Nat} {nd}
   | tick he hw hp =>
     rename_i t
     obtain ⟨a, heq, hval, ha⟩ := queued_duties S rho hn
-      ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
         (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
       (queued_before S rho hn v i) w hm
     rcases ha with ⟨j, q, _, ha⟩ | ⟨q, d, hd, ha⟩
@@ -1159,7 +1159,7 @@ theorem engine_queued_att_signed {v : V} {i p : Nat} {nd}
         ((process_att _ _ _ _).mp hw)
       exact ⟨a, heq, hval.trans (process_self _ _ _).symm, ha⟩
     obtain ⟨a, heq, hval, ha⟩ := queued_duties S rho hn
-      ⟨(Model.protoOf (compiled (goldilocksWith S)) E).process (rho.stateBefore i v).st o
+      ⟨(Model.protoOf (compiled (goldilocks S)) E).process (rho.stateBefore i v).st o
         (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩ _ hproc w hm
     rcases ha with ⟨j, q, _, ha⟩ | ⟨q, d, hd, ha⟩
     · exact ⟨a, j, q, heq, hval, ha⟩
@@ -1174,9 +1174,9 @@ including an attestation created by this poll's own FG update. -/
 theorem engine_poll_att_signed {v : V} {i p : Nat} {nd} {k : Nat}
     (hc : EngineDutyCut S rho v i p nd)
     (hd : (∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
-        ((Model.protoOf (compiled (goldilocksWith S)) E).duties t)[p]? = some (.poll k)) ∨
+        ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
       ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
-        ((Model.protoOf (compiled (goldilocksWith S)) E).deliverDuties t)[p]? = some (.poll k))
+        ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some (.poll k))
     (hsel : rho.ownKey v ∈ rho.sel .poll) {w cs}
     (hm : (poll (nd.st.1 hn) k).2 = some (.att w, cs)) :
     ∃ a j q, w = encodeAtt a ∧ a.val = (nd.st.1 hn).self ∧
@@ -1202,7 +1202,7 @@ the bound uses duty-prefix order, not strict event order.
 Carried attestations use recursive containment, including unsigned wrappers. -/
 theorem engine_seen_att_signed (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) {v u : V}
     (_hv' : v ∉ rho.faultyAt 0) (hu : u ∉ rho.faultyAt 0) {i p : Nat}
-    {nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)}
+    {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
     (hc : EngineDutyCut S rho v i p nd) {a : FG.Att (Fintype.card V)}
     (ha : a.val = rho.ownKey u) (hm : attObj a ∈ Model.closure nd.seen) :
     ∃ j q, (j < i ∨ j = i ∧ u = v ∧ q < p) ∧ EngineSignsAt S rho hn u j q a := by
@@ -1225,7 +1225,7 @@ theorem engine_seen_att_signed (hf : rho.point.ConstantFaults) (hv : rho.Executi
     rcases attObj_mem_closure_runDuties S rho v _ _ a hm with hm | hm
     · exact hbefore hm
     · have hh := duties_released_att S rho hn
-        ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+        ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
           (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
         (queued_before S rho hn v i) hm
       rcases hh with ⟨j, q, hj, hs⟩ | ⟨q, d, hd, hs⟩
@@ -1263,7 +1263,7 @@ theorem engine_seen_att_signed (hf : rho.point.ConstantFaults) (hv : rho.Executi
         obtain ⟨a, he, hv, ha⟩ := queued_before S rho hn v i w ((process_att _ _ _ _).mp hw)
         exact ⟨a, he, hv.trans (process_self _ _ _).symm, ha⟩
       have hh := duties_released_att S rho hn
-        ⟨(Model.protoOf (compiled (goldilocksWith S)) E).process (rho.stateBefore i v).st o
+        ⟨(Model.protoOf (compiled (goldilocks S)) E).process (rho.stateBefore i v).st o
           (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩ _ hprocess hm
       rcases hh with ⟨j, q, hj, hs⟩ | ⟨q, d, hd, hs⟩
       · have huv : u = v := rho.key.symm.injective (ha.symm.trans (signing_val S rho hn hs))

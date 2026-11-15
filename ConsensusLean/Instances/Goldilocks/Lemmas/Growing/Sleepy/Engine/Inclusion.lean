@@ -17,8 +17,8 @@ open AsChainShape Simulation
 open Shape
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- **Finite inclusion under growing faults.** Through `b ≥ 0`, under the finite service, the
 two count shapes and the committee premises of a slot dictionary `K`, a proposal released at `τ`

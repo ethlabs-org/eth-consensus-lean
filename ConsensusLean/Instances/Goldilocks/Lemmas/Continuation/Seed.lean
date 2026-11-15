@@ -321,11 +321,14 @@ query is at most `ready + (R + 8k + 20)Δ`, and the heal margin leaves `8Δ + 1`
 start: `t₀ + 8Δ + 1 ≤ heal`. -/
 theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤ Q.heal)
     (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+    (hp : (Sys (goldilocks { S with vote := stock }) V).prog
+      (shapeProgress (goldilocks { S with vote := stock }) V)
       (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
-    ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
-        (digestOf ⟨S, stock⟩ Q.run.2) Q.gst (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ ∧
+    ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys
+        (runProposer { S with vote := stock } Q.run.2 Q.hn)
+        (digestOf { S with vote := stock } Q.run.2) Q.gst
+        (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ ∧
       ∃ t₀, t₀ ≤ Q.bound ∧ Q.params.ts (r + Q.params.k : Nat) ≤ t₀ ∧
         t₀ + 8 * Q.params.Δ + 1 ≤ Q.heal ∧
         ∀ y n t, t₀ ≤ t → t ≤ Q.bound → y ∈ Q.keys t → Regimes.ReadPoint Q.trace n t →
@@ -336,8 +339,9 @@ theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤
   obtain ⟨D, -, -, hDq⟩ := healthy_repair_schedule_of_preparation_at S A V Q W Dprep
   obtain ⟨O, hrepair⟩ := healthy_bounded_repairing_opening_at S A V Q hb hp D
   have hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
-      (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
-      (digestOf ⟨S, stock⟩ Q.run.2) Q.gst (protoFGDelay (Model.pubOf Q.run.1)) D.resetTime
+      (runProposer { S with vote := stock } Q.run.2 Q.hn)
+      (digestOf { S with vote := stock } Q.run.2) Q.gst
+        (protoFGDelay (Model.pubOf Q.run.1)) D.resetTime
           Q.bound :=
     { D.reset with sync := healthy_preparation_service_at S A V Q }
   have hΔ := Q.params.toParams.hΔ
@@ -345,7 +349,8 @@ theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤
   have hdrain : Healing.drainTime Q.params D.resetTime ≤ D.query :=
     (le_max_left _ _).trans ((le_max_right _ _).trans D.lower)
   have hres := D.reserve
-  have hkk : Q.params.k = (S.params (Model.pubOf Q.run.1) Q.hn).k := rfl
+  have hkk : Q.params.k =
+      (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf Q.run.1) Q.hn).k := rfl
   have hT0 : 0 ≤ Q.bound := h0.trans hb
   -- the drain slot `r + k` ends two slots before the slot of `T`
   have hslot : Healing.cleanLabel Q.params D.resetTime + 2 * Q.params.k + 4 ≤
@@ -379,8 +384,8 @@ theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤
     rw [Healing.drainTime_eq, Healing.cleanLabel_eq]
     congr 2
     omega
-  have hkk : ((⟨S, stock⟩ : BoundSetup).params (Model.pubOf Q.run.fst) Q.hn).k =
-      (S.params (Model.pubOf Q.run.fst) Q.hn).k := rfl
+  have hkk : (({ S with vote := stock } : Setup).params (Model.pubOf Q.run.fst) Q.hn).k =
+      (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf Q.run.fst) Q.hn).k := rfl
   refine ⟨Healing.cleanLabel Q.params D.resetTime + Q.params.k + 2, Q.params.slot Q.bound - 2,
     Compose.Growing.HandoverSeed.of_reset hreset (healthy_schedule_catch_at S A V Q D) rfl ?_
       (by omega) ⟨_, by linarith, hcov⟩,
@@ -396,11 +401,14 @@ theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤
 `0 ≤ heal ≤ T` and progress on `[ready, heal]` (`handover_seed_cover_at`). -/
 theorem handover_seed_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤ Q.heal)
     (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocksWith ⟨S, stock⟩) V).prog (shapeProgress (goldilocksWith ⟨S, stock⟩) V)
+    (hp : (Sys (goldilocks { S with vote := stock }) V).prog
+      (shapeProgress (goldilocks { S with vote := stock }) V)
       (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
-    ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer ⟨S, stock⟩ Q.run.2 Q.hn)
-      (digestOf ⟨S, stock⟩ Q.run.2) Q.gst (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ :=
+    ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys
+      (runProposer { S with vote := stock } Q.run.2 Q.hn)
+      (digestOf { S with vote := stock } Q.run.2) Q.gst
+      (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ :=
   let ⟨r, σ, h, _⟩ := handover_seed_cover_at S A V Q h0 hb hp
   ⟨r, σ, h⟩
 

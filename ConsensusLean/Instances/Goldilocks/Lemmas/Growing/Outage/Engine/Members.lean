@@ -30,7 +30,7 @@ variable {V : Type} [Fintype V] [DecidableEq V]
 
 section Run
 
-variable (S : BoundSetup) {E : Env V} (rho : Model.Run (compiled (goldilocksWith S)) E)
+variable (S : Setup) {E : Env V} (rho : Model.Run (compiled (goldilocks S)) E)
   (hn : 1 ≤ Fintype.card V)
 
 /-- **The gate**: a node honest at `0` may vote in slot `s` iff it is in the run's committee of
@@ -100,8 +100,8 @@ theorem voteK_bounds (hv : rho.ExecutionValid) {ini}
     (hc : 8 * (S.params (pubOf E) hn).Δ ≤ c + 1) (hW : 5 * (S.params (pubOf E) hn).Δ ≤ W)
     (hb : b ≤ rho.horizon)
     (hsl : rho.point.CommitteeSleepyOn
-      ((shapeProgress (goldilocksWith S) V).toExternal.selected rho.point.env
-        ((shapeProgress (goldilocksWith S) V).toExternal.ext ⟨E, rho⟩))
+      ((shapeProgress (goldilocks S) V).toExternal.selected rho.point.env
+        ((shapeProgress (goldilocks S) V).toExternal.ext ⟨E, rho⟩))
       K.params.θ η c W 0 b) :
     Compose.Growing.CommitteeBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho) (voteK S rho)
       0 b :=
@@ -116,26 +116,26 @@ end Run
 `voteK` carry the committee facts (`voteK_facts`) and the committee count shapes
 (`voteK_bounds`, from the committee clause of `Sleepy` with the contract's catch-up and
 committee look-ahead) at the contract's threshold, which is `1/2`. -/
-theorem sleepy_committee_at (S : BoundSetup) (A : ContractAssumptions S.toSetup) {V : Type}
-    [Fintype V] [DecidableEq V] (r : (Sys (goldilocksWith S) V).Run) (hn : 1 ≤ Fintype.card V)
-    (hv : (Sys (goldilocksWith S) V).Valid r) (hc : ¬ r.2.HashCollision)
-    (hs : (Sys (goldilocksWith S) V).Sleepy (shapeProgress (goldilocksWith S) V).toExternal
-      (K S.toSetup A) r)
+theorem sleepy_committee_at (S : Setup) (A : ContractAssumptions S) {V : Type}
+    [Fintype V] [DecidableEq V] (r : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
+    (hv : (Sys (goldilocks S) V).Valid r) (hc : ¬ r.2.HashCollision)
+    (hs : (Sys (goldilocks S) V).Sleepy (shapeProgress (goldilocks S) V).toExternal
+      (K S A) r)
     {b : Time} (hb : b ≤ r.2.horizon) :
     ∃ K : SA.CommitteeDict (Fintype.card V),
       Compose.Growing.CommitteeFacts (simTraceAt S r.2 hn) (honestKeysAt S r.2) K ∧
       Compose.Growing.CommitteeBoundsFrom (simTraceAt S r.2 hn) (honestKeysAt S r.2) K 0 b := by
-  have h19 : (19 : Time) ≤ (contract_catchUp S.toSetup A : Nat) := by
-    exact_mod_cast contract_catchUp_ge_sleepy S.toSetup A
+  have h19 : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
+    exact_mod_cast contract_catchUp_ge_sleepy S A
   have hd : (1 : Time) ≤ r.1.ΔAC := r.1.ΔAC_pos
   have hcd : 8 * (S.params (pubOf r.1) hn).Δ ≤
-      (Sys (goldilocksWith S) V).cDur (K S.toSetup A) r + 1 := by
+      (Sys (goldilocks S) V).cDur (K S A) r + 1 := by
     simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
-    change 8 * r.1.ΔAC ≤ (contract_catchUp S.toSetup A : Nat) * r.1.ΔAC + 1
+    change 8 * r.1.ΔAC ≤ (contract_catchUp S A : Nat) * r.1.ΔAC + 1
     nlinarith
   have hrun := simTraceAt_goldilocksRun S r.2 hn hv
   exact ⟨voteK S r.2, voteK_facts S r.2 hn hv hc hrun,
-    voteK_bounds S r.2 hn hv hrun (K S.toSetup A) le_rfl (η := 0) hcd
+    voteK_bounds S r.2 hn hv hrun (K S A) le_rfl (η := 0) hcd
       (by change 5 * r.1.ΔAC ≤ ((5 : Nat) : Int) * r.1.ΔAC; norm_num) hb
       fun t h₁ h₂ => hs.2.2 t h₁ (h₂.trans hb)⟩
 

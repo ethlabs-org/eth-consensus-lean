@@ -22,7 +22,7 @@ open AsChainShape Simulation
 open Shape Blocks
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-  (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
+  (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
 
 /-- **The cuts of an earlier event come first**: an engine event `i` strictly before the time of
 trace cut `j` has all its trace cuts before `j`. -/

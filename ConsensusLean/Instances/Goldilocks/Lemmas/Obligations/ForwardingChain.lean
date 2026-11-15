@@ -27,8 +27,8 @@ open Consensus.Model
 
 /-- Own proposals of `v` decode: at every tick of `v` with a scheduled proposal, the canonical
 child that the proposal constructs from the engine state decodes. -/
-structure OwnProposalsDecode {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-    (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V) (v : V) : Prop where
+structure OwnProposalsDecode {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V) (v : V) : Prop where
   decodes : ∀ i t, rho.events[i]? = some (.tick v t) →
     Node.Proposes (P := (S.params (pubOf E) hn).toParams)
       (runProposer S rho hn) (rho.ownKey v) t →
@@ -43,7 +43,7 @@ structure OwnProposalsDecode {V : Type} [Fintype V] [DecidableEq V] {E : Env V} 
 /-- A node step from the engine state before a scheduled tick decodes the tick's own proposal:
 the reachable node configuration supplies canonical child validity. -/
 theorem scheduled_proposal_child_decodes_of_step {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (v : V) (i : Nat) (t : Time)
     (hp : Node.Proposes (P := (S.params (pubOf E) hn).toParams)
       (runProposer S rho hn) (rho.ownKey v) t)
@@ -88,7 +88,7 @@ theorem scheduled_proposal_child_decodes_of_step {V : Type} [Fintype V] [Decidab
 /-- At a scheduled tick, the proposal duty preserves the joint invariant without assuming child
 decoding of the run: reachable proposal execution and the own-proposal premise supply it. -/
 theorem decoded_held_scheduled_proposal_of_own {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (v : V) (i : Nat) (t : Time)
     (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
@@ -110,7 +110,7 @@ theorem decoded_held_scheduled_proposal_of_own {V : Type} [Fintype V] [Decidable
   have hc : WrappersCover (propose (shapeOf S hn nd) s).1 := by
     have h := tick_duty_prefix_wrappersCover S rho hn v i t
       ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] :
-        List (protoOf (compiled (goldilocksWith S)) E).Duty)
+        List (protoOf (compiled (goldilocks S)) E).Duty)
     rw [← atProposal_eq S rho v (rho.stateBefore i v) t] at h
     unfold propose
     dsimp only
@@ -137,7 +137,7 @@ theorem decoded_held_scheduled_proposal_of_own {V : Type} [Fintype V] [Decidable
     cases hdp : (Node.acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).2.2 with
     | none =>
       have hempty :
-          ((protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).2 = [] := by
+          ((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).2 = [] := by
         rw [act_propose_snd S hn nd s hs]
         simp only [propose, hdp, Option.map_none, Option.toList_none]
         rfl
@@ -146,13 +146,13 @@ theorem decoded_held_scheduled_proposal_of_own {V : Type} [Fintype V] [Decidable
           (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1) ∧
         WrappersHeld (digests rho.hash) (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1)
       simp only [Model.Run.dutyStep,
-        show (protoOf (compiled (goldilocksWith S)) E).role (.propose s hs) = .proposer s from rfl,
+        show (protoOf (compiled (goldilocks S)) E).role (.propose s hs) = .proposer s from rfl,
         hsel, ↓reduceIte, hempty, Model.Run.signedCandidate, List.filterMap_nil,
         Model.releaseAll]
       change WrappersDecoded (digests rho.hash)
-          (((protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).1.1 hn) ∧
+          (((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).1.1 hn) ∧
         WrappersHeld (digests rho.hash)
-          (((protoOf (compiled (goldilocksWith S)) E).act nd.st (.propose s hs)).1.1 hn)
+          (((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).1.1 hn)
       rw [shapeOf_act_propose S hn]
       exact hpre
     | some result =>
@@ -167,12 +167,12 @@ theorem decoded_held_scheduled_proposal_of_own {V : Type} [Fintype V] [Decidable
         (hnow.symm ▸ (hv.in_horizon _ (List.mem_of_getElem? he)).1) hsel
         (proposal_candidate_block S rho hn v nd s hs hsel hslot d p hdp)
   · simpa only [Model.Run.dutyStep,
-      show (protoOf (compiled (goldilocksWith S)) E).role (.propose s hs) = .proposer s from rfl,
+      show (protoOf (compiled (goldilocks S)) E).role (.propose s hs) = .proposer s from rfl,
       hsel, ↓reduceIte] using And.intro hd hh
 
 /-- Every tick of `v` preserves the joint invariant, including its own proposal. -/
 theorem decoded_held_tick_of_own {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (v : V) (i : Nat) (t : Time)
     (he : rho.events[i]? = some (.tick v t))
@@ -225,14 +225,14 @@ theorem decoded_held_tick_of_own {V : Type} [Fintype V] [DecidableEq V] {E : Env
     exact unsigned mc.1 mc.2
   · -- The duty steps stated on the goal's own `ShapeDuty` lists, so plain `rw` applies (as in
     -- `tick_node_eq`); `erw [← atProposal_eq …]` tried every projection at default transparency.
-    have hpoll : ∀ (nd' : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E)) (x : Nat),
+    have hpoll : ∀ (nd' : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (x : Nat),
         shapeOf S hn (rho.runDuties v nd' [.poll x]).1 = (poll (shapeOf S hn nd') x).1 :=
       fun nd' x => dutyStep_poll S rho hn v nd' x hsel
-    have hinit : ∀ nd' : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E),
+    have hinit : ∀ nd' : Model.Node (Model.protoOf (compiled (goldilocks S)) E),
         (rho.runDuties v nd' (dutiesInit S t)).1 =
           (rho.runDuties v (rho.runDuties v (rho.runDuties v nd'
             ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] :
-              List (Model.protoOf (compiled (goldilocksWith S)) E).Duty)).1
+              List (Model.protoOf (compiled (goldilocks S)) E).Duty)).1
             ((skeleton (pubOf E) S.vote).proposeAt t)).1 [.poll t.toNat]).1 := fun nd' =>
       (runDuties_fst_append S rho v nd' _ _).trans
         (congrArg (fun x => (rho.runDuties v x [.poll t.toNat]).1)
@@ -245,7 +245,7 @@ theorem decoded_held_tick_of_own {V : Type} [Fintype V] [DecidableEq V] {E : Env
 /-- Every engine state of `v` has decoded wrappers corresponding to held blocks. No decoder,
 parent-slot, payload-validity or clock premise is assumed. -/
 theorem stateAt_decoded_held_of_own {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) (v : V)
     -- Own proposals of `v` decode.
     (hown : OwnProposalsDecode S rho hn v)
@@ -290,9 +290,9 @@ theorem stateAt_decoded_held_of_own {V : Type} [Fintype V] [DecidableEq V] {E : 
 /-- Receipt acceptances publish a wrapper that decodes, not merely a candidate with the right
 syntactic shape. The queue and decoder witnesses use the same processed state. -/
 theorem delivery_acceptance_decoded_publication_of_held {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    {v : V} {i : Nat} {o : (protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
+    {v : V} {i : Nat} {o : (protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t))
     (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
     (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true))
@@ -335,7 +335,7 @@ theorem delivery_acceptance_decoded_publication_of_held {V : Type} [Fintype V] [
 
 /-- Scheduled proposal acceptance publishes its exact decoded wrapper in the same tick. -/
 theorem tick_proposal_acceptance_decoded_publication_of_queued {V : Type} [Fintype V]
-    [DecidableEq V] {E : Env V} (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
+    [DecidableEq V] {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (v : V)
     (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
@@ -394,7 +394,7 @@ theorem tick_proposal_acceptance_decoded_publication_of_queued {V : Type} [Finty
 
 /-- Every accepting cut of a tick has a successfully decoded publication. -/
 theorem tick_acceptance_decoded_publication_of_queued {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (v : V)
     (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t))
@@ -452,7 +452,7 @@ theorem tick_acceptance_decoded_publication_of_queued {V : Type} [Fintype V] [De
 publication, once every accepting cut of a tick or a delivery of the accepting node publishes
 its decoded wrapper. A restart accepts no block. -/
 theorem forward_publication_of_events {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     {x : Fin (Fintype.card V)} {k : Nat} {B : Blk (S.params (pubOf E) hn)}
     (ha : (simTrace S rho hn).AcceptAt x k B)
     -- Tick publication: an accepting cut of a tick of the node with key `x` publishes the

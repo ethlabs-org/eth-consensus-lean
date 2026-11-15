@@ -23,8 +23,8 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- **A tick's pool insertion is queued before its trailing polls.** A vote `m` that the tick
 event `i` of `v` at `t` newly inserts into `v`'s pool is the envelope `(t, m)` of the shape after
@@ -34,7 +34,7 @@ theorem tick_pool_insertion_queued (hv : rho.ExecutionValid) {v : V} {i : Nat} {
     (hold : m ∉ (stateAt S rho hn v i).node.ac.pool m.slot)
     (hnew : m ∈ (stateAt S rho hn v (i + 1)).node.ac.pool m.slot) :
     (t, m) ∈ (shapeOf S hn (rho.runDuties v
-      ⟨(Model.protoOf (compiled (goldilocksWith S)) E).clock (rho.stateBefore i v).st t
+      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
         (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
       ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] ++
         (skeleton (pubOf E) S.vote).proposeAt t)).1).voteForwards := by
@@ -74,7 +74,7 @@ in the seen closure or at the outbox head (`delivery_voteForward_held_or_head` f
 node is honest at `0`, so it signs the outbox votes. -/
 theorem delivery_voteForward_released_of (hv : rho.ExecutionValid) {v : V}
     (hv' : v ∉ rho.faultyAt 0)
-    {i : Nat} {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
+    {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t))
     (hheld : ∀ tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards,
       voteObj tv.2 ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
@@ -85,8 +85,8 @@ theorem delivery_voteForward_released_of (hv : rho.ExecutionValid) {v : V}
     Model.Obj.mk (.signed (rho.ownKey v) .poll)
       (.data (.voteForward tv.1 (encodeVote tv.2))) [voteObj tv.2] ∈ rho.releasesAt i := by
   have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
-  let nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E) :=
-    ⟨(Model.protoOf (compiled (goldilocksWith S)) E).process (rho.stateBefore i v).st o
+  let nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E) :=
+    ⟨(Model.protoOf (compiled (goldilocks S)) E).process (rho.stateBefore i v).st o
       (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩
   have hshape : shapeOf S hn nd =
       process (stateAt S rho hn v i) o (Model.digests rho.hash o) := by
@@ -136,7 +136,7 @@ event `i` of `v` at `t` newly inserts into `v`'s pool, `v` honest at `0`, is the
 of the processed shape. -/
 theorem delivery_pool_insertion_queued (hv : rho.ExecutionValid) {v : V}
     (hv' : v ∉ rho.faultyAt 0)
-    {i : Nat} {o : (Model.protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
+    {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) (m : SA.Vote (Fintype.card V))
     (hold : m ∉ (stateAt S rho hn v i).node.ac.pool m.slot)
     (hnew : m ∈ (stateAt S rho hn v (i + 1)).node.ac.pool m.slot) :

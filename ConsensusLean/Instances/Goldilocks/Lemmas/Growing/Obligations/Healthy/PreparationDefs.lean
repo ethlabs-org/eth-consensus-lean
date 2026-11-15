@@ -26,8 +26,8 @@ structure HealthyPreparationScheduleAt (Q : HealthyPreparationQueryAt S A V)
   resetTime : Time
   deltaF : Time
   reset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
-    (runProposer ⟨S, stock⟩ Q.run.2 Q.hn) (digestOf ⟨S, stock⟩ Q.run.2) Q.gst deltaF resetTime
-        Q.bound
+    (runProposer { S with vote := stock } Q.run.2 Q.hn)
+    (digestOf { S with vote := stock } Q.run.2) Q.gst deltaF resetTime Q.bound
   seedNode : Fin Q.params.n
   seedCut : Nat
   seedLabel : Nat

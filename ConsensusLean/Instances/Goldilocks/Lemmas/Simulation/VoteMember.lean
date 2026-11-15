@@ -230,14 +230,14 @@ end MemberVotes
 
 section MemberVotesEngine
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 omit [DecidableEq V] in
 /-- Every duty run keeps `VoteMember`. -/
 theorem runDuties_voteMember {p : Nat → Bool} (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocksWith S)) E))
-    (ds : List (Model.protoOf (compiled (goldilocksWith S)) E).Duty)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+    (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
     (h : VoteMember p (shapeOf S hn nd)) :
     VoteMember p (shapeOf S hn (rho.runDuties v nd ds).1) :=
   runDuties_pres S rho hn (VoteMember p) (fun st o hs => record_voteMember st o hs)
@@ -301,7 +301,7 @@ theorem stateAt_mayVote (hv : rho.ExecutionValid) (v : V) (i : Nat) :
 selects the receiving node. -/
 theorem delivery_outbox_vote_member (hv : rho.ExecutionValid) {v : V}
     (_hv' : v ∉ rho.faultyAt 0) (i : Nat)
-    (o : (Model.protoOf (compiled (goldilocksWith S)) E).Object) (m : Vote (Fintype.card V))
+    (o : (Model.protoOf (compiled (goldilocks S)) E).Object) (m : Vote (Fintype.card V))
     (hm : Body.vote (encodeVote m) ∈
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox) :
     m.val = rho.ownKey v ∧ rho.ownKey v ∈ rho.sel (S.vote.voteRole m.slot) :=

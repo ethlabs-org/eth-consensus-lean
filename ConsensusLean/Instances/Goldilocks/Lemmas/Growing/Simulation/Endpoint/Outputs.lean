@@ -33,8 +33,8 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
-  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Every trace cut before the mapped cut `cutMap i` is at a time no later than the engine cut's
 time `rho.cutTime i`. -/
@@ -56,7 +56,7 @@ theorem cutMap_time_le (hv : rho.ExecutionValid) {i : Nat} (hi : i ≤ rho.event
 /-- Engine cut times lie in `[0, horizon]`. -/
 theorem cutTime_bounds (hv : rho.ExecutionValid) {i : Nat} (hi : i ≤ rho.events.length) :
     0 ≤ rho.cutTime i ∧ rho.cutTime i ≤ rho.horizon := by
-  have hlaws := (Model.sysOf_laws schema (compiled (goldilocksWith S)) V).trace ⟨E, rho⟩ hv
+  have hlaws := (Model.sysOf_laws schema (compiled (goldilocks S)) V).trace ⟨E, rho⟩ hv
   have h0 := hlaws.cutTime_mono 0 i (Nat.zero_le i) hi
   have hh := hlaws.cutTime_le_horizon i hi
   change rho.cutTime 0 ≤ rho.cutTime i at h0
@@ -123,34 +123,35 @@ theorem held_att_in_view_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
 is linked, has increasing positions and proposal-role provenance, by the static argument on the
 reader's prefix run. -/
 theorem engine_outputValid_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
+    (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
     (hv : rho.ExecutionValid)
     (g : Out) : OutputValid rho g := by
   intro v i hi hh
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
-  obtain ⟨hrun, hy, hs⟩ := prefix_reader_at ⟨S, stock⟩ rho hn hv hi hh
-  set T := (simTraceAt ⟨S, stock⟩ rho hn).upTo (rho.cutTime i)
-  have hr := Compose.fg_reachable hrun.toLocalRun hy (cutMap ⟨S, stock⟩ rho hn i)
-  have hvalid := reader_chains_valid ⟨S, stock⟩ rho hn (cutMap ⟨S, stock⟩ rho hn i) i hr
+  obtain ⟨hrun, hy, hs⟩ := prefix_reader_at { S with vote := stock } rho hn hv hi hh
+  set T := (simTraceAt { S with vote := stock } rho hn).upTo (rho.cutTime i)
+  have hr := Compose.fg_reachable hrun.toLocalRun hy (cutMap { S with vote := stock } rho hn i)
+  have hvalid := reader_chains_valid { S with vote := stock } rho hn
+    (cutMap { S with vote := stock } rho hn i) i hr
     (fun X hX hg => by
       obtain ⟨hroot, _, _, P, _, hpar, _⟩ :=
         (Regimes.validOutput_of_mem hrun hy hX).2 X .refl hg
       exact ⟨hroot, P, hpar⟩)
     fun X hX hg => by
       rw [hs] at hX
-      exact held_in_view_at ⟨S, stock⟩ rho hn hv hi hh hX hg
-  rw [read_eq_out ⟨S, stock⟩ rho hn]
-  simp only [outOf, ← simTraceAt_state ⟨S, stock⟩ rho hn hv hh hi, ← hs]
+      exact held_in_view_at { S with vote := stock } rho hn hv hi hh hX hg
+  rw [read_eq_out { S with vote := stock } rho hn]
+  simp only [outOf, ← simTraceAt_state { S with vote := stock } rho hn hv hh hi, ← hs]
   cases g with
   | finalized => exact hvalid _ (Store.cache_invariants _ _ _ _ hr).1
   | confirmed =>
     have hΦ := (Store.frame_realization _ _ _ _ hr).1
-    exact hvalid _ (Regimes.sa_tips hΦ (stateAt ⟨S, stock⟩ rho hn v i).now).1.1
+    exact hvalid _ (Regimes.sa_tips hΦ (stateAt { S with vote := stock } rho hn v i).now).1.1
 
 /-- **R.8 nesting under growing faults.** At every engine cut of a node honest there, its
 finalized read is a prefix of its confirmed read. -/
 theorem engine_nested_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
+    (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
     (hv : rho.ExecutionValid)
     :
     (chainTrace rho).Nested .finalized .confirmed := by
@@ -158,21 +159,23 @@ theorem engine_nested_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S :
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
   change i ≤ rho.events.length at hi
   change v ∉ rho.faultyAt (rho.cutTime i) at hh
-  obtain ⟨hrun, hy, hs⟩ := prefix_reader_at ⟨S, stock⟩ rho hn hv hi hh
-  have hr := Compose.fg_reachable hrun.toLocalRun hy (cutMap ⟨S, stock⟩ rho hn i)
+  obtain ⟨hrun, hy, hs⟩ := prefix_reader_at { S with vote := stock } rho hn hv hi hh
+  have hr := Compose.fg_reachable hrun.toLocalRun hy (cutMap { S with vote := stock } rho hn i)
   have hΦ := (Store.frame_realization _ _ _ _ hr).1
-  have hC := (Regimes.sa_tips (A := (((simTraceAt ⟨S, stock⟩ rho hn).upTo (rho.cutTime i)).state
-    (rho.ownKey v) (cutMap ⟨S, stock⟩ rho hn i)).ac) hΦ (stateAt ⟨S, stock⟩ rho hn v i).now).1
+  have hC := (Regimes.sa_tips
+    (A := (((simTraceAt { S with vote := stock } rho hn).upTo (rho.cutTime i)).state
+      (rho.ownKey v) (cutMap { S with vote := stock } rho hn i)).ac)
+    hΦ (stateAt { S with vote := stock } rho hn v i).now).1
   have ha := hΦ.rooted.2 _ hC
-  rw [read_eq_out ⟨S, stock⟩ rho hn, read_eq_out ⟨S, stock⟩ rho hn]
-  simp only [outOf, ← simTraceAt_state ⟨S, stock⟩ rho hn hv hh hi, ← hs]
+  rw [read_eq_out { S with vote := stock } rho hn, read_eq_out { S with vote := stock } rho hn]
+  simp only [outOf, ← simTraceAt_state { S with vote := stock } rho hn hv hh hi, ← hs]
   exact chainTo_prefix hr (ha.mono (fun _ h => h.1))
 
 /-- **R.8 final monotonicity under growing faults.** The finalized reads of a node at two ordered
 engine cuts at which it is honest only extend. Both cuts are read on the prefix through the later
 one. -/
 theorem engine_finalMonotone_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) E)
+    (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
     (hv : rho.ExecutionValid)
     :
     (chainTrace rho).Monotone .finalized 0 := by
@@ -181,21 +184,24 @@ theorem engine_finalMonotone_at {V : Type} [Fintype V] [DecidableEq V] {E : Env 
   have hi' : i ≤ rho.events.length := hi.1
   have hj' : j ≤ rho.events.length := hj.1
   change v ∉ rho.faultyAt (rho.cutTime j) at hh
-  obtain ⟨hrun, hy, hs⟩ := prefix_reader_at ⟨S, stock⟩ rho hn hv hj' hh
-  have hsi : ((simTraceAt ⟨S, stock⟩ rho hn).upTo (rho.cutTime j)).state (rho.ownKey v)
-      (cutMap ⟨S, stock⟩ rho hn i) = (simTraceAt ⟨S, stock⟩ rho hn).state (rho.ownKey v)
-          (cutMap ⟨S, stock⟩ rho hn i) := by
-    have hlaws := (Model.sysOf_laws schema (compiled (goldilocksWith ⟨S, stock⟩)) V).trace
+  obtain ⟨hrun, hy, hs⟩ := prefix_reader_at { S with vote := stock } rho hn hv hj' hh
+  have hsi : ((simTraceAt { S with vote := stock } rho hn).upTo (rho.cutTime j)).state
+      (rho.ownKey v)
+      (cutMap { S with vote := stock } rho hn i) =
+        (simTraceAt { S with vote := stock } rho hn).state (rho.ownKey v)
+          (cutMap { S with vote := stock } rho hn i) := by
+    have hlaws := (Model.sysOf_laws schema (compiled (goldilocks { S with vote := stock })) V).trace
         ⟨E, rho⟩ hv
     have hct : rho.cutTime i ≤ rho.cutTime j := hlaws.cutTime_mono i j hij hj'
-    exact Trace.upTo_state _ _ fun k hk => (cutMap_time_le ⟨S, stock⟩ rho hn hv hi' k hk).trans hct
-  have hri := Compose.fg_reachable hrun.toLocalRun hy (cutMap ⟨S, stock⟩ rho hn i)
-  have hrj := Compose.fg_reachable hrun.toLocalRun hy (cutMap ⟨S, stock⟩ rho hn j)
-  rw [read_eq_out ⟨S, stock⟩ rho hn, read_eq_out ⟨S, stock⟩ rho hn]
+    exact Trace.upTo_state _ _ fun k hk =>
+      (cutMap_time_le { S with vote := stock } rho hn hv hi' k hk).trans hct
+  have hri := Compose.fg_reachable hrun.toLocalRun hy (cutMap { S with vote := stock } rho hn i)
+  have hrj := Compose.fg_reachable hrun.toLocalRun hy (cutMap { S with vote := stock } rho hn j)
+  rw [read_eq_out { S with vote := stock } rho hn, read_eq_out { S with vote := stock } rho hn]
   simp only [outOf]
-  rw [simTraceAt_state_all ⟨S, stock⟩ rho hn hv v i hi',
-    simTraceAt_state_all ⟨S, stock⟩ rho hn hv v j hj', ← hsi, ← hs]
-  have hmono := cutMap_mono ⟨S, stock⟩ rho hn hij
+  rw [simTraceAt_state_all { S with vote := stock } rho hn hv v i hi',
+    simTraceAt_state_all { S with vote := stock } rho hn hv v j hj', ← hsi, ← hs]
+  have hmono := cutMap_mono { S with vote := stock } rho hn hij
   rw [chainTo_mono hri (Compose.tree_mono hrun.toLocalRun hy hmono)
     (Store.cache_invariants _ _ _ _ hri).1]
   exact chainTo_prefix hrj (Regimes.finalized_monotone _ _ _ _ _ _ hrun _ hy _ _ hmono)

@@ -29,12 +29,16 @@ variable (S : Setup)
 `goldilocksContract A C`. -/
 theorem healthy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : Time)
     (hH : 0 ≤ H) :
-    ∃ r : (Sys (goldilocks S) (Fin 2)).Run, r.1 = (point H).env ∧ r.2.point = point H ∧
+    ∃ r : (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Run,
+      r.1 = (point H).env ∧ r.2.point = point H ∧
       r.2.sel = sel S H ∧ r.2.key = Equiv.refl _ ∧
-      (Sys (goldilocks S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
-      (Sys (goldilocks S) (Fin 2)).Healthy
-          (shapeProgress (goldilocks S) (Fin 2)).toExternal (goldilocksContract A C) 0 r := by
-  obtain ⟨rho, hp, hk, hs, hv, hc, -, he⟩ := Shape.coverage (goldilocks S) (point H) hH
+      (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Valid r ∧
+        ¬ r.2.HashCollision ∧
+      (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Healthy
+          (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).toExternal
+          (goldilocksContract A C) 0 r := by
+  obtain ⟨rho, hp, hk, hs, hv, hc, -, he⟩ := Shape.coverage
+    (goldilocks { S with vote := AsChainShape.stock }) (point H) hH
     (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0
   refine ⟨⟨(point H).env, rho⟩, rfl, hp, hs, hk, hv, hc, ?_, ⟨?_, ?_⟩, ?_, ?_⟩
   · exact (Model.sysOf_delivers_iff rho _ _ _).mpr
@@ -54,18 +58,25 @@ theorem healthy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : 
 /-- (a) The final query's fields, over `goldilocksContract A C`, are jointly satisfiable: index 1,
 GST 0, query time `heal·Δ`, horizon `(heal + latency)·Δ` (engine `Δ = 2`). -/
 theorem finalQuery_fields (A : ContractAssumptions S) (C : ContractCoefficients) :
-    ∃ r : (Sys (goldilocks S) (Fin 2)).Run, ∃ query : Time, 1 ≤ Fintype.card (Fin 2) ∧
-      (Sys (goldilocks S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
-      (Sys (goldilocks S) (Fin 2)).Healthy
-          (shapeProgress (goldilocks S) (Fin 2)).toExternal (goldilocksContract A C) 0 r ∧
-      (Sys (goldilocks S) (Fin 2)).prog (shapeProgress (goldilocks S) (Fin 2))
+    ∃ r : (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Run, ∃ query : Time,
+      1 ≤ Fintype.card (Fin 2) ∧
+      (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Valid r ∧
+        ¬ r.2.HashCollision ∧
+      (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Healthy
+          (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).toExternal
+          (goldilocksContract A C) 0 r ∧
+      (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).prog
+          (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 2))
           (goldilocksContract A C)
-        .final (1 : ℕ+) ((Sys (goldilocks S) (Fin 2)).ready (goldilocksContract A C) 0 r)
+        .final (1 : ℕ+) ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).ready
+          (goldilocksContract A C) 0 r)
         r.2.horizon r ∧
-      (Sys (goldilocks S) (Fin 2)).heal (goldilocksContract A C) .final (1 : ℕ+) 0 r ≤ query ∧
+      (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).heal
+        (goldilocksContract A C) .final (1 : ℕ+) 0 r ≤ query ∧
       query + ((goldilocksContract A C).params.latency .final (1 : ℕ+) : Time) * r.1.ΔAC ≤
         r.2.horizon ∧
-      ∃ v, r.2.point.Ready ((Sys (goldilocks S) (Fin 2)).cDur (goldilocksContract A C) r) v
+      ∃ v, r.2.point.Ready ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).cDur
+        (goldilocksContract A C) r) v
         (query + ((goldilocksContract A C).params.latency .final (1 : ℕ+) : Time) * r.1.ΔAC) := by
   let H : Time := (C.heal .final 1 : Time) * 2 + (C.latency .final 1 : Time) * 2
   have hH0 : 0 ≤ H := by positivity

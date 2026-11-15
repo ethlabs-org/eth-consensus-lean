@@ -57,20 +57,20 @@ abbrev key (i : Nat) (h : i < 5 := by decide) : Fin (Fintype.card (Fin 5)) := �
 variable (S : Setup)
 
 /-- The objects of the compiled family in `env`. -/
-abbrev Obj := (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).Object
+abbrev Obj := (Model.protoOf (compiled (goldilocks { S with vote := stock })) env).Object
 
 /-- The run's event type. -/
 abbrev Ev := Model.Event (Fin 5) (Obj S)
 
 /-- Key `1` proposes slot `1`, key `2` every other slot; everyone polls. -/
-def sel : (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).Role →
+def sel : (Model.protoOf (compiled (goldilocks { S with vote := stock })) env).Role →
     Finset (Fin (Fintype.card (Fin 5)))
   | .proposer s => if s = 1 then {key 1} else {key 2}
   | .duty _ k => k.elim
   | .poll => Finset.univ
 
 theorem sel_admits :
-    (Model.protoOf (compiled (goldilocksWith ⟨S, stock⟩)) env).SelAdmits (sel S) := by
+    (Model.protoOf (compiled (goldilocks { S with vote := stock })) env).SelAdmits (sel S) := by
   intro r
   cases r with
   | proposer s =>
@@ -108,7 +108,7 @@ theorem hash_injective : Function.Injective hash := by
     exact enc_injective hab
 
 /-- The base run: the point, the PKI, the selection and the hash; no events. -/
-noncomputable def base : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) env :=
+noncomputable def base : Model.Run (compiled (goldilocks { S with vote := stock })) env :=
   ⟨faulty, faulty_mono, 41, [], Equiv.refl _, sel S, fun _ _ => [], fun _ _ => [], hash⟩
 
 /-- Key `1`'s releases at time `12` are held back by `2`. -/
@@ -118,7 +118,7 @@ def delay (e : Ev S) : Time := if e.node = 1 ∧ e.time = 12 then 2 else 0
 def inj (t : Time) (_ : Fin 5) : List (Obj S) := if t = 13 then [twin S] else []
 
 /-- **The run.** -/
-noncomputable def rho : Model.Run (compiled (goldilocksWith ⟨S, stock⟩)) env :=
+noncomputable def rho : Model.Run (compiled (goldilocks { S with vote := stock })) env :=
   (base S).injectRun (delay S) (inj S)
 
 theorem rho_faultyAt : (rho S).faultyAt = faulty := Model.Run.withEvents_faultyAt _ _
@@ -199,9 +199,10 @@ theorem holdContract_one {S : Setup} (A : ContractAssumptions S) (C : ContractCo
     holdContract A C 1 = goldilocksContract A C := rfl
 
 /-- The run as a run of the compiled system. -/
-noncomputable abbrev run : (Sys (goldilocks S) (Fin 5)).Run := ⟨env, rho S⟩
+noncomputable abbrev run : (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).Run :=
+  ⟨env, rho S⟩
 
-theorem run_pt : (Sys (goldilocks S) (Fin 5)).pt (run S) =
+theorem run_pt : (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).pt (run S) =
     ⟨env, faulty, faulty_mono, 41, fun _ _ => []⟩ := rho_point S
 
 /-- On the view retained through a time `≥ 13`, the ready validators are `2, 3, 4`. -/
@@ -222,14 +223,19 @@ retained through the look-ahead `ahead·ΔAC = 15`: three ready against two comp
 binding selects every validator, so the committee clause is the population one at the committee
 look-ahead `committeeAhead = ahead`). -/
 theorem run_sleepy (A : ContractAssumptions S) (C : ContractCoefficients) (h : Nat) :
-    (Sys (goldilocks S) (Fin 5)).Sleepy
-        (shapeProgress (goldilocks S) (Fin 5)).toExternal (holdContract A C h) (run S) := by
-  have hpop : ((Sys (goldilocks S) (Fin 5)).pt (run S)).SleepyOn (holdContract A C h).params.θ
-      ((Sys (goldilocks S) (Fin 5)).cDur (holdContract A C h) (run S))
-      ((Sys (goldilocks S) (Fin 5)).aheadDur (holdContract A C h) (run S)) 0
-      ((Sys (goldilocks S) (Fin 5)).pt (run S)).horizon := by
+    (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).Sleepy
+        (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).toExternal
+        (holdContract A C h) (run S) := by
+  have hpop : ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).pt (run S)).SleepyOn
+      (holdContract A C h).params.θ
+      ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).cDur
+        (holdContract A C h) (run S))
+      ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).aheadDur
+        (holdContract A C h) (run S)) 0
+      ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).pt (run S)).horizon := by
     intro t ht0 ht
-    rw [show (Sys (goldilocks S) (Fin 5)).aheadDur (holdContract A C h) (run S) = 15 from rfl]
+    rw [show (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).aheadDur
+      (holdContract A C h) (run S) = 15 from rfl]
     rw [run_pt] at ht ⊢
     have hd : 13 ≤ EnvPoint.lookAhead ⟨env, faulty, faulty_mono, 41, fun _ _ => []⟩ 15 t := by
       change 13 ≤ min (t + 15) 41
@@ -241,9 +247,11 @@ theorem run_sleepy (A : ContractAssumptions S) (C : ContractCoefficients) (h : N
     change (1 / 2 : ℚ) * (_ + _) < _
     norm_num [Finset.card_insert_of_notMem, Finset.mem_insert, Finset.mem_singleton]
   refine ⟨(Model.sysOf_delivers_iff (rho S) _ _ _).mpr (rho_psync S), hpop, ?_⟩
-  have hsel : (shapeProgress (goldilocks S) (Fin 5)).toExternal.selected
-      ((Sys (goldilocks S) (Fin 5)).pt (run S)).env
-      ((shapeProgress (goldilocks S) (Fin 5)).toExternal.ext (run S)) = fun _ => Finset.univ :=
+  have hsel : (shapeProgress
+      (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).toExternal.selected
+      ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).pt (run S)).env
+      ((shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).toExternal.ext
+        (run S)) = fun _ => Finset.univ :=
     rfl
   rw [hsel]
   exact EnvPoint.EtaSleepyOn.committee_univ
@@ -252,7 +260,8 @@ theorem run_sleepy (A : ContractAssumptions S) (C : ContractCoefficients) (h : N
 
 /-- The slot times of the run: slots of `4·ΔAC = 12`. -/
 theorem grid_slotTime (s : Nat) :
-    (goldilocks S (pubOf env)).skel.grid.slotTime s = (s : Time) * 12 :=
+    (goldilocks { S with vote := AsChainShape.stock } (pubOf env)).skel.grid.slotTime s =
+      (s : Time) * 12 :=
   by change (s : Time) * (4 * 3) = _; norm_num
 
 /-- The proposer of slot `s` in the run. -/
@@ -264,11 +273,14 @@ theorem rho_sel_proposer (s : Nat) :
 every window of one slot holds a slot whose proposer is ready and honest at its slot time
 (key `1` at `12`, key `2` at `24` and `36`). -/
 theorem run_prog_zero (A : ContractAssumptions S) (C : ContractCoefficients) :
-    (Sys (goldilocks S) (Fin 5)).prog (shapeProgress (goldilocks S) (Fin 5))
-      (holdContract A C 0) .available 1 0 ((Sys (goldilocks S) (Fin 5)).pt (run S)).horizon
+    (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).prog
+      (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 5))
+      (holdContract A C 0) .available 1 0
+      ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).pt (run S)).horizon
       (run S) := by
   change PatternRecurrence (rho S).point (rho S).key (fun s => (rho S).sel (.proposer s))
-    (goldilocks S (pubOf env)).skel.grid ⟨Pattern.single, 1, 0⟩ _ 0 (rho S).point.horizon
+    (goldilocks { S with vote := AsChainShape.stock } (pubOf env)).skel.grid
+      ⟨Pattern.single, 1, 0⟩ _ 0 (rho S).point.horizon
   intro t ht0 hte _
   rw [rho_point] at hte
   change 0 ≤ t at ht0
@@ -306,11 +318,13 @@ theorem run_prog_zero (A : ContractAssumptions S) (C : ContractCoefficients) :
 /-- **The run fails the hold-`1` recurrence**: the window after `0` holds only slot `1`, whose
 proposer is compromised at `t_1 + ΔAC = 15`. So the run does not refute hold `1`. -/
 theorem run_not_prog_hold_one (A : ContractAssumptions S) (C : ContractCoefficients) :
-    ¬ (Sys (goldilocks S) (Fin 5)).prog (shapeProgress (goldilocks S) (Fin 5))
+    ¬ (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).prog
+      (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 5))
       (goldilocksContract A C) .available 1 0 41 (run S) := by
   intro h
   change PatternRecurrence (rho S).point (rho S).key (fun s => (rho S).sel (.proposer s))
-    (goldilocks S (pubOf env)).skel.grid ⟨Pattern.single, 1, 1⟩ _ 0 41 at h
+    (goldilocks { S with vote := AsChainShape.stock } (pubOf env)).skel.grid
+      ⟨Pattern.single, 1, 1⟩ _ 0 41 at h
   have h0 := h 0 le_rfl (by change (0 : Time) + ((1 + 0 : Nat) : Time) * (4 * 3) ≤ 41; norm_num)
     (by rw [rho_point]; change (0 : Time) + ((1 + 0 : Nat) : Time) * (4 * 3) ≤ 41; norm_num)
   obtain ⟨s, hs1, hs2, hs⟩ := h0
