@@ -14,14 +14,13 @@ and (ii) `∀ s, (K.committee s).ncard = sp.committeeSize`. Thresholds are in
 * Count steps over `C = K.committee s` with `hN : C.ncard = N` (binding (ii)), each by a count
   over a `Finset` committee after lifting `C` to a `Finset`: `cs2_of_cs`, `not_update_update`,
   `not_update_optimistic`, `quorums_meet`, `cover_count`, `next_transfer_counts`,
-  `inter_nonempty_of_half_quorum`, `third_cover_count`.
+  `inter_nonempty_of_half_quorum`.
 * Reductions at `K = CommitteeDict.full n` with `committeeSize = n`: `committee_full`,
   `mem_full`, `ncard_full`, `size_binding_full`, `ncard_inter_full`,
   `mul_ncard_inter_full_lt_iff`, `ncard_inter_full_lt_iff`; P, T and CS at the full committee
   (`CommitteeP.full`, `CommitteeT.full`, `CommitteePAt.full`, `CommitteeTAt.full`,
-  `faultBoundK_full_iff`); the half, third and
-  three-quarter fault bounds at the full committee from the population ones (`cs2_full`,
-  `third_full`, `four_thirds_full`). -/
+  `faultBoundK_full_iff`); the half and three-quarter fault bounds at the full committee from
+  the population ones (`cs2_full`, `four_thirds_full`). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -160,21 +159,6 @@ theorem inter_nonempty_of_half_quorum [Finite V] (C : Set V) {N : Nat} {F S O : 
   have hK := Set.ncard_coe_finset K
   exact Set.nonempty_of_ncard_ne_zero (by omega)
 
-/-- **`honest_isBest_of_carry` (`h3`).** With fewer than a third of the committee faulty, the
-equivocators (faulty members) and the voters outside the honest members are fewer than the honest
-members. The committee split `|C ∩ H| + |C ∩ Hᶜ| = |C|` replaces `|H| + |Hᶜ| = n`. -/
-theorem third_cover_count [Finite V] (C : Set V) {H E W : Set V} (hW : W ⊆ C)
-    (hE : E ⊆ C ∩ Hᶜ) (h3 : 3 * (C ∩ Hᶜ).ncard < C.ncard) :
-    E.ncard + (W \ (C ∩ H)).ncard < (C ∩ H).ncard := by
-  have hfin := (Set.toFinite C).inter_of_left Hᶜ
-  have hEf := Set.ncard_le_ncard hE hfin
-  have hout : W \ (C ∩ H) ⊆ C ∩ Hᶜ := fun x hx =>
-    ⟨hW hx.1, (fun hH => hx.2 ⟨hW hx.1, hH⟩ : x ∉ H)⟩
-  have hWf := Set.ncard_le_ncard hout hfin
-  have hsplit : (C ∩ H).ncard + (C ∩ Hᶜ).ncard = C.ncard :=
-    Set.ncard_inter_add_ncard_sdiff_eq_ncard C H (Set.toFinite C)
-  omega
-
 end Counts
 
 /-! ## Reductions at the full committee, `committeeSize = n` -/
@@ -246,12 +230,6 @@ theorem faultBoundK_full_iff {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} (s : 
 /-- **CS2 at `K = full`** from the population half bound, with `committeeSize = n`. -/
 theorem cs2_full (hc : sp.committeeSize = sp.n) {F : Set (Fin sp.n)} (hf : 2 * F.ncard < sp.n)
     {s : Nat} : 2 * ((CommitteeDict.full sp.n).committee s ∩ F).ncard < sp.committeeSize := by
-  rw [ncard_inter_full, hc]
-  exact hf
-
-/-- **The third bound at `K = full`** from the population one, with `committeeSize = n`. -/
-theorem third_full (hc : sp.committeeSize = sp.n) {F : Set (Fin sp.n)} (hf : 3 * F.ncard < sp.n)
-    {s : Nat} : 3 * ((CommitteeDict.full sp.n).committee s ∩ F).ncard < sp.committeeSize := by
   rw [ncard_inter_full, hc]
   exact hf
 

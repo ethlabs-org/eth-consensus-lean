@@ -972,7 +972,7 @@ theorem optimistic_first_proposal_storedU
   exact proposal_walkU hr hx hc hslot hprop hV.2
     (proposal_locksU hr hx hc hV.1 hL (Or.inl ⟨SX, fun w hw => (hcover hw).symm, by omega⟩) hhigh)
     fun X' Cx hCx hp hCxD => isBest_of_cover hΦ (ofLists_support_subset _ _ _ _)
-      (fun _ h => h.1) hcover h3 hCx hp hCxD
+      (fun _ h => h.1) hcover (cover_sdiff_lt h3) hCx hp hCxD
 
 /-- `optimistic_first_proposal` with the unlock given. -/
 theorem optimistic_first_proposalU

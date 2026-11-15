@@ -140,14 +140,14 @@ theorem honest_vote_early_pool_before (hS : HealthyBaseUpTo tr H U proposer g b)
   rwa [hes] at hst
 
 /-- The unique early honest batch of the slot-`u` committee forces the raw result and fast
-selection, when every pool vote is a committee member's and fewer than a third of the committee
+selection, when every pool vote is a committee member's and fewer than half of the committee
 is faulty. This is a pool calculation, independent of any lock-veto premise. -/
 theorem confirmation_of_unanimous_early_pool
     {A : SAState sp.n} {Phi : Frm sp.n FGP} {u : Nat} {P : Blk sp.n FGP}
     (hPhi : FrameOK Phi) (hPt : P ∈ Phi.tree) (hPg : P.root ≠ sp.genesisRoot)
     (K : CommitteeDict sp.n) (hsize : (K.committee u).ncard = sp.committeeSize)
     (hP : ∀ v ∈ A.pool u, v.val ∈ K.committee u)
-    (hf : 3 * (K.committee u ∩ Hᶜ).ncard < sp.committeeSize)
+    (hf : 2 * (K.committee u ∩ Hᶜ).ncard < sp.committeeSize)
     (hslots : ∀ v ∈ A.pool u, v.slot = u)
     (hpool : ∀ x ∈ H, x ∈ K.committee u → ∃ v ∈ A.pool u, v.val = x ∧ v.head = P.root ∧
       resolutionTime A Phi v < ETime.of (sp.ts u + 2 * sp.Δ) ∧
@@ -186,14 +186,24 @@ theorem confirmation_of_unanimous_early_pool
       by_contra hBP
       unfold confirmationScore at hmaj
       dsimp only at hmaj
-      refine absurd hmaj (not_lt.2 (le_trans (Nat.mul_le_mul_left 2
-        (Set.ncard_le_ncard (t := K.committee u ∩ Hᶜ) ?_)) (by omega)))
-      rintro x ⟨-, v, ⟨hv, -⟩, rfl, -, R, hR, hRr, hBR⟩
-      refine ⟨hP v hv, fun hx => ?_⟩
-      obtain ⟨w, -, -, hwh, -, huniq⟩ := hpool _ hx (hP v hv)
-      obtain rfl := huniq v hv rfl
-      obtain rfl : R = P := hPhi.coherent.1 hR hPt (hRr.trans hwh)
-      exact hBP hBR
+      set SB := supporters Phi ⟨{v | v ∈ A.pool u}, {v | v ∈ A.pool u ∧
+        resolutionTime A Phi v < ETime.of (sp.ts u + 2 * sp.Δ)}⟩ u B
+      -- every supporter of `B` is a faulty committee voter, disjoint from the honest ones
+      have hSB : SB ⊆ K.committee u ∩ Hᶜ := by
+        rintro x ⟨-, v, ⟨hv, -⟩, rfl, -, R, hR, hRr, hBR⟩
+        refine ⟨hP v hv, fun hx => ?_⟩
+        obtain ⟨w, -, -, hwh, -, huniq⟩ := hpool _ hx (hP v hv)
+        obtain rfl := huniq v hv rfl
+        obtain rfl : R = P := hPhi.coherent.1 hR hPt (hRr.trans hwh)
+        exact hBP hBR
+      have hSBv : SB ⊆ voters {v | v ∈ A.pool u} := by
+        rintro x ⟨-, v, ⟨hv, -⟩, rfl, -⟩
+        exact ⟨v, hv, rfl⟩
+      have hunion := Set.ncard_le_ncard (Set.union_subset hHvot hSBv) (Set.toFinite _)
+      rw [Set.ncard_union_eq (Set.disjoint_left.2 fun x hx hx' => (hSB hx').2 hx.2)
+        (Set.toFinite _) (Set.toFinite _)] at hunion
+      have hSBf := Set.ncard_le_ncard hSB (Set.toFinite _)
+      omega
     obtain ⟨D, hD⟩ := exists_deepest hPhi (fun B hB => hB.1) ⟨P, hPS⟩
     have hDP := hall D (deepest_mem hD).1
     have hPD := anc_deepest hPhi (fun B hB => hB.1)

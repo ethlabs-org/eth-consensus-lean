@@ -25,12 +25,12 @@ variable (sp : SAParams)
 
 /-- Prior-slot honest heads force the child toward a lock anchor once their
 actual batch is carried. This is a local comparison, not current-slot unanimity. The voters
-are members of the slot-`s` committee (T), fewer than a third of whose members are faulty. -/
+are members of the slot-`s` committee (T), fewer than half of whose members are faulty. -/
 theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
     {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
     {proposer : Nat → Fin sp.n} (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
-    (hf : 3 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
+    (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) {B : Blk sp.n FGP}
     (hBt : B ∈ ℓ.frame.tree)
@@ -71,10 +71,23 @@ theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
     refine ⟨?_, fun hwH => honest_not_equivocator hrun hy hc hwH hw⟩
     obtain ⟨a, ha, -, -, -, rfl, -⟩ := hw
     exact hW ⟨a, ha, rfl⟩
-  have h3 := third_cover_count (K.committee s) hW hE (by rw [hsize s]; exact hf)
+  -- the voters outside the honest members and the equivocators are faulty members
+  have hout : voters V.votes \ (K.committee s ∩ H ∪ equivocators V.votes) ⊆
+      K.committee s ∩ Hᶜ := fun x hx =>
+    ⟨hW hx.1, fun hxH => hx.2 (Or.inl ⟨hW hx.1, hxH⟩)⟩
+  have hhon : (K.committee s ∩ H) \ equivocators V.votes = K.committee s ∩ H :=
+    sdiff_eq_left.2 (Set.disjoint_left.2 fun x hx hxE => (hE hxE).2 hx.2)
+  have hsplit : (K.committee s ∩ H).ncard + (K.committee s ∩ Hᶜ).ncard = sp.committeeSize := by
+    rw [← hsize s]
+    exact Set.ncard_inter_add_ncard_sdiff_eq_ncard _ H (Set.toFinite _)
+  have h3 := Set.ncard_le_ncard hout (Set.toFinite _)
   exact isBest_of_cover hΦ.1 (merged_support_subset hr hy hc (s + 1)) (fun _ h =>
       voteDomain_subset_tree h.1)
-    hcover h3 hC hp hCB
+    hcover (by
+      change (voters V.votes \ (K.committee s ∩ H ∪ equivocators V.votes)).ncard <
+        ((K.committee s ∩ H) \ equivocators V.votes).ncard
+      rw [hhon]
+      omega) hC hp hCB
 
 /-- A shallower voter walk reaches a lock anchor supported by all actual
 prior-slot honest votes. Only the prefix is asserted. -/
@@ -82,7 +95,7 @@ theorem honest_prefix_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
     {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
     {proposer : Nat → Fin sp.n} (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
-    (hf : 3 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
+    (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) {B : Blk sp.n FGP}

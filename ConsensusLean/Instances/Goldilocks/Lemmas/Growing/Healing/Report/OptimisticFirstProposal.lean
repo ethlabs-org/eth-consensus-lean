@@ -105,7 +105,7 @@ theorem optimistic_first_proposal_stored_at (hrun : ACRun proposer tr H U)
     · exact Or.inl h
   exact proposal_walk hr hx hc' hslot hprop' hV.2 hlocks
     fun X' Cx hCx hp hCxD => isBest_of_cover hΦ (ofLists_support_subset _ _ _ _)
-      (fun _ h => h.1) hcover h3 hCx hp hCxD
+      (fun _ h => h.1) hcover (cover_sdiff_lt h3) hCx hp hCxD
 
 end Consensus.Goldilocks.SA.Growing
 

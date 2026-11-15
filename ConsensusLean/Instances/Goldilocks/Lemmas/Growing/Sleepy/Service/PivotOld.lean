@@ -549,7 +549,7 @@ theorem proposal_best_toward_from {ini} (hrun : Growing.GoldilocksRun proposer d
     rw [hslx] at h34
     have hΦxU := (frameIn_at hrun hnc hx hpt.1).2
     refine SA.isBest_of_cover hΦ hsub (fun B hB => hB.1) (SX := SA.optimisticVoters sp Ax ℓx.frame
-      s' O) ?_ ?_ hCx hpar hCxO
+      s' O) ?_ (SA.cover_sdiff_lt ?_) hCx hpar hCxO
     · rintro u ⟨v, hvA, rfl, R, hR, hRr, hOR⟩
       obtain ⟨hvs, ⟨kx, hxkx, hsend, hk1, hk2⟩, Hv, hHv, hHvr, hOHv, hacc⟩ :=
         hW v ⟨hvA, R, hR, hRr, hOR⟩

@@ -80,15 +80,26 @@ theorem isBest_of_majority {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp.n
   simp only [goldfishScore]
   omega
 
+/-- The cover count of `isBest_of_cover` from the cruder count that charges every equivocator
+against `SX`. -/
+theorem cover_sdiff_lt {α : Type} [Finite α] {SX E W : Set α}
+    (h3 : E.ncard + (W \ SX).ncard < SX.ncard) : (W \ (SX ∪ E)).ncard < (SX \ E).ncard := by
+  have := Set.ncard_le_ncard (Set.sdiff_subset_sdiff_right (Set.subset_union_left (t := E)) :
+    W \ (SX ∪ E) ⊆ W \ SX)
+  have := Set.ncard_inter_add_ncard_sdiff_eq_ncard SX E (Set.toFinite _)
+  have := Set.ncard_le_ncard (Set.inter_subset_right : SX ∩ E ⊆ E)
+  omega
+
 /-- **The best child, from a cover.** If every member of `SX` supports `C` or equivocates, and the
-equivocators together with the voters outside `SX` are fewer than `SX`, then every child `Cx ⪯ C`
-of a block `X` is eligible and the best eligible child of `X` (Goldfish's score counts the
-equivocators for every block). -/
+voters outside `SX` that do not equivocate are fewer than the members of `SX` that do not, then
+every child `Cx ⪯ C` of a block `X` is eligible and the best eligible child of `X` (Goldfish's
+score counts the equivocators for every block). -/
 theorem isBest_of_cover {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp.n}
     (hsupp : V.support ⊆ V.votes) {σ : Int} {t : Time} {T : Set (Blk sp.n FGP)}
     (hT : T ⊆ Φ.tree) {C : Blk sp.n FGP} {SX : Set (Fin sp.n)}
     (h1 : SX ⊆ supporters Φ V σ C ∪ equivocators V.votes)
-    (h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard)
+    (h3 : (voters V.votes \ (SX ∪ equivocators V.votes)).ncard <
+      (SX \ equivocators V.votes).ncard)
     {X Cx : Blk sp.n FGP} (hCx : Cx ∈ T) (hp : Cx.parent = some X.root) (hCxC : Φ.Anc Cx C) :
     IsBest sp (goldfishScore sp Φ V σ)
       {B | B ∈ T ∧ B.parent = some X.root ∧ goldfishEligible sp Φ t V σ B} Cx := by
@@ -96,29 +107,36 @@ theorem isBest_of_cover {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp.n}
     h1.trans (Set.union_subset_union_left _ ((supporters_antitone sp) FGP Φ V σ Cx C hCxC))
   have hdisjE : ∀ B, Disjoint (supporters Φ V σ B) (equivocators V.votes) := fun B =>
     Set.disjoint_left.2 fun i hs hi => hs.1 hi
-  -- `Cx`'s score is at least `|SX|`
-  have hscore : SX.ncard ≤ goldfishScore sp Φ V σ Cx := by
-    have := Set.ncard_le_ncard hsC
-    rw [Set.ncard_union_eq (hdisjE Cx)] at this
-    simp only [goldfishScore]
+  -- the non-equivocating members of `SX` support `Cx`
+  have hscore : (SX \ equivocators V.votes).ncard ≤ (supporters Φ V σ Cx).ncard :=
+    Set.ncard_le_ncard fun i hi => (hsC hi.1).resolve_right hi.2
+  have hvoters : (voters V.votes).ncard ≤ (supporters Φ V σ Cx).ncard +
+      (equivocators V.votes).ncard + (voters V.votes \ (SX ∪ equivocators V.votes)).ncard := by
+    refine (Set.ncard_le_ncard (t := supporters Φ V σ Cx ∪ equivocators V.votes ∪
+      (voters V.votes \ (SX ∪ equivocators V.votes))) fun i hi => ?_).trans
+      ((Set.ncard_union_le _ _).trans (Nat.add_le_add_right (Set.ncard_union_le _ _) _))
+    by_cases hiE : i ∈ equivocators V.votes
+    · exact Or.inl (Or.inr hiE)
+    by_cases hiS : i ∈ SX
+    · exact Or.inl (Or.inl ((hsC hiS).resolve_right hiE))
+    · exact Or.inr ⟨hi, fun h => h.elim hiS hiE⟩
+  refine ⟨⟨hCx, hp, Or.inr (Or.inr ?_)⟩, fun D hD hne => Or.inl ?_⟩
+  · simp only [goldfishScore]
     omega
-  have hvoters : (voters V.votes).ncard ≤ SX.ncard + (voters V.votes \ SX).ncard := by
-    rw [← Set.ncard_inter_add_ncard_sdiff_eq_ncard (voters V.votes) SX]
-    have := Set.ncard_le_ncard (Set.inter_subset_right (s := voters V.votes) (t := SX))
-    omega
-  refine ⟨⟨hCx, hp, Or.inr (Or.inr (by omega))⟩, fun D hD hne => Or.inl ?_⟩
-  -- `D`'s supporters are voters outside `SX`
+  -- `D`'s supporters are non-equivocating voters outside `SX`
   have hdisj := supporters_disjoint (σ := σ) hΦ hsupp (hT hD.1) (hT hCx) hD.2.1 hp hne
-  have hDs : supporters Φ V σ D ⊆ voters V.votes \ SX := by
+  have hDs : supporters Φ V σ D ⊆ voters V.votes \ (SX ∪ equivocators V.votes) := by
     intro i hi
     refine ⟨?_, fun hiS => ?_⟩
     · obtain ⟨-, x, hx, hval, -⟩ := hi
       exact ⟨x, hsupp hx, hval⟩
-    · rcases hsC hiS with h | h
-      · exact Set.disjoint_left.1 hdisj hi h
-      · exact Set.disjoint_left.1 (hdisjE D) hi h
+    · rcases hiS with hiS | hiE
+      · rcases hsC hiS with h | h
+        · exact Set.disjoint_left.1 hdisj hi h
+        · exact Set.disjoint_left.1 (hdisjE D) hi h
+      · exact Set.disjoint_left.1 (hdisjE D) hi hiE
   have := Set.ncard_le_ncard hDs
-  simp only [goldfishScore] at hscore ⊢
+  simp only [goldfishScore]
   omega
 
 end Consensus.Goldilocks.SA

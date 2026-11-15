@@ -77,7 +77,7 @@ theorem optimistic_isBest_of_carry_at
   have h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard := by
     omega
   exact isBest_of_cover hΦ.1 (merged_support_subset hry.localRun hy hc' (s + 1))
-    (fun _ h => voteDomain_subset_tree h.1) hcover h3 hC hp hCB
+    (fun _ h => voteDomain_subset_tree h.1) hcover (cover_sdiff_lt h3) hC hp hCB
 
 /-- Explicit anchor order suffices for prefix reachability, without a prior-vote induction. -/
 theorem optimistic_prefix_of_carry_at

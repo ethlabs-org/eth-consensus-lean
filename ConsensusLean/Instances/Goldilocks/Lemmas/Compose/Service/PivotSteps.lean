@@ -352,7 +352,7 @@ theorem proposal_best_toward_old_before {ini} (hrun : GoldilocksRun proposer dg 
     rw [hslx] at h34
     have hΦxU := (SA.frameIn_of_callAt hr hx hpt.1).2
     refine SA.isBest_of_cover hΦ hsub (fun B hB => hB.1) (SX := SA.optimisticVoters sp Ax ℓx.frame
-      s' O) ?_ ?_ hCx hpar hCxO
+      s' O) ?_ (SA.cover_sdiff_lt ?_) hCx hpar hCxO
     · rintro u ⟨v, hvA, rfl, R, hR, hRr, hOR⟩
       obtain ⟨hvs, ⟨kx, hsend, hk1, hk2⟩, Hv, hHv, hHvr, hOHv, hacc⟩ :=
         hW v ⟨hvA, R, hR, hRr, hOR⟩

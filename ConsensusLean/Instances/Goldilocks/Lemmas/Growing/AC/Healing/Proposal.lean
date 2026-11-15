@@ -91,7 +91,7 @@ theorem optimistic_first_proposal_anc_at
         highLocksCompatible_iff.mp hhigh' l hl hlive (by exact_mod_cast hlσ) Y hY hYr)
       (locksWF_state hr hx i))
     fun Y Cx hCx hp hCxB => isBest_of_cover hΦ (ofLists_support_subset _ _ _ _)
-      (fun _ h => h.1) hcover h3 hCx hp hCxB
+      (fun _ h => h.1) hcover (cover_sdiff_lt h3) hCx hp hCxB
   rcases hcover hw with ⟨-, v, hv, hvw, hvs, hva⟩ | h
   · exact Or.inr ⟨v, hv, hvw, hvs, hva⟩
   · exact Or.inl h

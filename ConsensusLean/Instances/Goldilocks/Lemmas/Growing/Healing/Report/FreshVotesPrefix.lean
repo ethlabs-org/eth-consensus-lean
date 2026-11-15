@@ -140,7 +140,7 @@ theorem honest_prefix_of_finality_before_at
       rw [SA.ts_sub_one]
       change tr.time r ≤ _
       linarith)
-  have hf' : 3 * (H (tr.time i))ᶜ.ncard < sp.n := by
+  have hf' : 2 * (H (tr.time i))ᶜ.ncard < sp.n := by
     have hbound := hf _ hd (ht.trans hmb)
     have hn := sp.toParams.hn
     clear * - hbound hn
@@ -148,7 +148,7 @@ theorem honest_prefix_of_finality_before_at
     omega
   rw [← SA.viableTree_voteDomain_eq_of_viable ⟨B, hB⟩]
   exact SA.honest_prefix_of_carry sp hS.run _ SA.CommitteeT.full (SA.size_binding_full hS.stock)
-    (SA.third_full hS.stock hf') hy hcast hes hheads'
+    (SA.cs2_full hS.stock hf') hy hcast hes hheads'
     (fun x hx _ => by obtain ⟨j, ev, hv, hs, _⟩ := hex x hx; exact ⟨j, ev, hv, hs⟩)
     hcarry (SA.viableTree_voterBlockTree_subset_voteDomain hB) haB
 

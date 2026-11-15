@@ -146,7 +146,7 @@ theorem optimistic_transfer_stored
       (by omega) hf1 hearlier' hm)
     fun X' Cx hCx hp hCxC =>
       isBest_of_cover hΦ (merged_support_subset hry.localRun hy hc' (s + 1))
-        (fun B hB => voteDomain_subset_tree hB.1) hcover h3 hCx hp hCxC
+        (fun B hB => voteDomain_subset_tree hB.1) hcover (cover_sdiff_lt h3) hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : B = getHead sp e.readPoint ℓ.frame (tr.time i)
       (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1))) V (s : Int)

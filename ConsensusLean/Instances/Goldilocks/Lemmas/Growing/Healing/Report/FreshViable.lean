@@ -199,7 +199,7 @@ theorem FrameWindow.unanimous_update_selection_at
   obtain ⟨hconf, hfast⟩ := SA.confirmation_of_unanimous_early_pool
     (SA.frameIn_of_callAt hr hy hc').1 hvi.1 hPg (SA.CommitteeDict.full sp.n)
     (SA.size_binding_full hstock u) (fun _ _ => SA.mem_full _ _)
-    (SA.third_full hstock (by
+    (SA.cs2_full hstock (by
       have hk := hf (tr.time k) (hrun.time_nonneg k) hkb
       have hn := sp.toParams.hn
       change 1 ≤ sp.n at hn
