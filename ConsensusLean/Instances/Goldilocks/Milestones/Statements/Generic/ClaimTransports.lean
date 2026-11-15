@@ -74,11 +74,12 @@ structure ProposalWitnessRefinement (M : RunMap rho payload) (K : Contract Progr
       M.trace.time k + C.margin ≤ t + (K.params.latency cap idx : Time) * E.ΔAC ∧
       AdmissibleProposal M K C B k
 
-/-- OPEN exact end-of-time state/read adapter. Source: Endpoint/Outputs.prefix_reader_at
-and confirmed_payload_projection_at; consumers are inclusion and outage reads.
-Unlike EngineReadPoint this evaluates at t, not cutTime(endCut t). No clock equality
-or honesty at the next micro-cut is asserted. The state identity is a NEW UNRESOLVED
-SUFFICIENCY TARGET for an arbitrary RunMap. -/
+/-- OPEN end-of-time read adapter along `confirmed_payload_projection_at`/`confirmed_inBy_at`.
+`ready` and `boundary` are stated at the claim time `t`, not at `cutTime (endCut t)`.
+`output` reads the tip at the stored clock `M.clock` of the state at `endCut t`,
+which need not equal either time. No clock equality or honesty at the next micro-cut is asserted.
+The step from readiness at `t` to a ready read point at the stored clock is a NEW UNRESOLVED
+SUFFICIENCY TARGET; this structure does not supply it. -/
 structure EndReadTransport (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) : Prop where
   strict_cut : rho.ExecutionValid → ∀ t, 0 ≤ t → t ≤ rho.horizon →
@@ -272,8 +273,10 @@ structure StoredReadContext (M : RunMap rho payload) where
   tip : V → Nat → A.Blk
 
 /-- OPEN explicit source/current-read correspondence. NEW UNRESOLVED SUFFICIENCY
-TARGET: no generic implementation of the stored-clock context is supplied. In
-particular the equalities below do not assert equality of either pair of clocks. -/
+TARGET: no generic implementation of the stored-clock context is supplied.
+The current read is at the map stored clock `M.clock`. Neither
+`R.now v i = M.clock (rho.stateBefore i v).st.1` nor `R.cut v i = M.cut i`
+is asserted; the two equalities below only identify the tips. -/
 structure StoredReadTransport (M : RunMap rho payload) (R : StoredReadContext M) : Prop where
   source_tip : ∀ v i, R.tip v i = confirmedRead M.trace (M.validator.symm v)
     (R.cut v i) (R.now v i)

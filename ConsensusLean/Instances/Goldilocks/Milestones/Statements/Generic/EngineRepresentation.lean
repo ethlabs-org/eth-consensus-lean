@@ -40,7 +40,9 @@ structure RunMap (rho : Model.Run (compiled F) E) (payload : A.Blk → Set Nat) 
   state : (F (Model.pubOf E)).State → NodeState A
   state_eq : ∀ v i, i ≤ rho.events.length → rho.point.HonestAt v (rho.cutTime i) →
     state (rho.stateBefore i v).st.1 = trace.state (validator.symm v) (cut i)
-  /-- The simulated run freezes compromise at the observation horizon. -/
+  /-- `honest t` is the run honest set at `min t rho.horizon`: past the horizon it
+  returns the horizon set, as in `EnvPoint.lookAhead`. The mapped set is frozen,
+  not `rho.point.HonestAt`; the two agree for `t ≤ rho.horizon`. -/
   honest_eq : ∀ y t, y ∈ honest t ↔
     rho.point.HonestAt (validator y) (min t rho.horizon)
   awake_eq : ∀ y t, trace.awake y t ↔ E.awake (validator y) t = true ∧
@@ -59,7 +61,8 @@ structure RunMap (rho : Model.Run (compiled F) E) (payload : A.Blk → Set Nat) 
     (Model.protoOf (compiled F) E).conflicts (attObject a) (attObject b) = true
   tip : O.Id → NodeState A → Time → A.Blk
   chain : NodeState A → A.Blk → List A.Blk
-  /-- The protocol's stored output clock, not the engine cut's observation time. -/
+  /-- The protocol's stored output clock. Free data: no law here relates it to cut
+  or trace times. A ready read point at this clock is a separate OPEN supplier. -/
   clock : (F (Model.pubOf E)).State → Time
   output_eq : ∀ g v i, i ≤ rho.events.length →
     (F (Model.pubOf E)).out g (rho.stateBefore i v).st.1 =
