@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 
 public section
@@ -29,37 +28,8 @@ theorem reset_of_height_advance_at
     (hq : (H (max (cutZ sp.toParams g) (tr.time k)))ᶜ.ncard < sp.toParams.fg.q)
     (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time k)))
     {att : FG.Att sp.n} (hs : tr.SignAt y k att) (hh : HZ tr H g + 1 ≤ att.h) :
-    ∃ a, IsReset tr H g a ∧ a ≤ tr.time k := by
-  classical
-  have hr := hrun.upTo (hrun.time_nonneg k)
-  have hy := hrun.antitone (le_max_right _ _) hyz
-  have hex₀ : ∃ j z a, z ∈ H (max (cutZ sp.toParams g) (tr.time j)) ∧ tr.SignAt z j a ∧
-      a.h = HZ tr H g + 1 ∧ tr.time j ≤ tr.time k := by
-    rcases hh.lt_or_eq with hlt | heq
-    · have hs' := (RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs⟩
-      obtain ⟨E, hE, _, hEh⟩ := Healing.signAt_entry hr hy hs'
-      obtain ⟨Y, hYE, a, ha, haH, hah⟩ := Store.exists_honest_att_of_lt
-        (Compose.fg_reachable hr.toLocalRun hy k) hq hE (HZ tr H g + 1)
-        (by omega) (by omega)
-      have hY : Y ∈ ((tr.upTo (tr.time k)).state y k).fg.tree := by
-        by_cases he : Y = E
-        · exact he ▸ hE
-        · exact (Anc.mem hYE he).1
-      obtain ⟨src, hc⟩ := hs'
-      obtain ⟨j, hj, hjk⟩ := Healing.signed_before_attest hr.toLocalRun hy hc hY ha
-        (hrun.antitone (le_max_right _ _) haH)
-      obtain ⟨hjt, hsign⟩ := (RunTrace.upTo_signAt tr).mp hj
-      exact ⟨j, a.val, a, hrun.antitone (max_le_max le_rfl hjt) haH, hsign, hah, hjt⟩
-    · exact ⟨k, y, att, hyz, hs, heq.symm, le_rfl⟩
-  obtain ⟨j, z, att, hz, hs, hh, hjk⟩ := hex₀
-  have hex : ∃ j z att, z ∈ H (max (cutZ sp.toParams g) (tr.time j)) ∧ tr.SignAt z j att ∧
-      att.h = HZ tr H g + 1 := ⟨j, z, att, hz, hs, hh⟩
-  obtain ⟨v, c, hv, hc, hch⟩ := Nat.find_spec hex
-  have hR : IsReset tr H g (tr.time (Nat.find hex)) :=
-    ⟨⟨v, Nat.find hex, c, hv, hc, hch, rfl⟩, by
-      intro v i c hv hc hch
-      exact hrun.time_mono (Nat.find_min' hex ⟨v, c, hv, hc, hch⟩)⟩
-  exact ⟨_, hR, (hR.2 z j att hz hs hh).trans hjk⟩
+    ∃ a, IsReset tr H g a ∧ a ≤ tr.time k :=
+  Generic.reset_of_height_advance_at_from hrun.toLocalRun hq hyz hs hh
 
 /-- Before any advance by a signer honest at it and at `c_z`, an honest reader's height is at most
 HZ plus one. The quorum budget is read at `max c_z t_i`. -/

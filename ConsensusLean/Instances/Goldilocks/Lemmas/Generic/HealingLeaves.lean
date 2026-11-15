@@ -54,6 +54,10 @@ reports raise the proposal one height above the crossed block.
 Leaf 2, upper bound (`hmax_le_of_noAdvance_at_from`): before any height advance by a signer
 honest at it and at `c_z`, an honest observer's `h_max` is at most `HZ + 1`; an honest
 attestation above it would have been signed before the observation.
+
+Leaf 1 (`reset_of_height_advance_at_from`): a signing above `HZ` by a signer honest at it and at
+`c_z` gives a reset no later; an honest attestation at `HZ + 1` below it was signed first, and the
+earliest such signing is the reset.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -141,6 +145,49 @@ theorem hmax_le_of_noAdvance_at_from {P : Params} {A : NodeAC P}
   obtain ⟨hjt, hj⟩ := (RunTrace.upTo_signAt tr).mp hj
   have := hna a.val j a (hrun.antitone (max_le_max le_rfl hjt) haH) hj hjT
   omega
+
+/-! ## Leaf 1 -/
+
+/-- A high signing honest at its cut and at the snapshot gives a reset no later. -/
+theorem reset_of_height_advance_at_from {P : Params} {A : NodeAC P}
+    {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
+    {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+    {ini : Fin P.n → A.State} {g : Time} {y : Fin P.n} {k : Nat} {att : FG.Att P.n}
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hq : (H (max (Healing.cutZ P g) (tr.time k)))ᶜ.ncard < P.fg.q)
+    (hyz : y ∈ H (max (Healing.cutZ P g) (tr.time k)))
+    (hs : tr.SignAt y k att) (hh : Healing.Growing.HZ tr H g + 1 ≤ att.h) :
+    ∃ a, Healing.Growing.IsReset tr H g a ∧ a ≤ tr.time k := by
+  classical
+  have hr := hrun.upTo (hrun.time_nonneg k)
+  have hy := hrun.antitone (le_max_right _ _) hyz
+  have hex₀ : ∃ j z a, z ∈ H (max (Healing.cutZ P g) (tr.time j)) ∧ tr.SignAt z j a ∧
+      a.h = Healing.Growing.HZ tr H g + 1 ∧ tr.time j ≤ tr.time k := by
+    rcases hh.lt_or_eq with hlt | heq
+    · have hs' := (RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs⟩
+      obtain ⟨E, hE, _, hEh⟩ := Healing.signAt_entry_from hr hy hs'
+      obtain ⟨Y, hYE, a, ha, haH, hah⟩ := Healing.Store.exists_honest_att_of_lt
+        (Compose.fg_reachable hr hy k) hq hE (Healing.Growing.HZ tr H g + 1)
+        (by omega) (by omega)
+      have hY : Y ∈ ((tr.upTo (tr.time k)).state y k).fg.tree := by
+        by_cases he : Y = E
+        · exact he ▸ hE
+        · exact (Anc.mem hYE he).1
+      obtain ⟨src, hc⟩ := hs'
+      obtain ⟨j, hj, hjk⟩ := Healing.signed_before_attest hr hy hc hY ha
+        (hrun.antitone (le_max_right _ _) haH)
+      obtain ⟨hjt, hsign⟩ := (RunTrace.upTo_signAt tr).mp hj
+      exact ⟨j, a.val, a, hrun.antitone (max_le_max le_rfl hjt) haH, hsign, hah, hjt⟩
+    · exact ⟨k, y, att, hyz, hs, heq.symm, le_rfl⟩
+  obtain ⟨j, z, att, hz, hs, hh, hjk⟩ := hex₀
+  have hex : ∃ j z att, z ∈ H (max (Healing.cutZ P g) (tr.time j)) ∧ tr.SignAt z j att ∧
+      att.h = Healing.Growing.HZ tr H g + 1 := ⟨j, z, att, hz, hs, hh⟩
+  obtain ⟨v, c, hv, hc, hch⟩ := Nat.find_spec hex
+  have hR : Healing.Growing.IsReset tr H g (tr.time (Nat.find hex)) :=
+    ⟨⟨v, Nat.find hex, c, hv, hc, hch, rfl⟩, by
+      intro v i c hv hc hch
+      exact hrun.time_mono (Nat.find_min' hex ⟨v, c, hv, hc, hch⟩)⟩
+  exact ⟨_, hR, (hR.2 z j att hz hs hh).trans hjk⟩
 
 /-! ## Leaf 2, lower bound -/
 
