@@ -87,29 +87,6 @@ structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
       tr.confirmedAt y i ∈ (Node.frame (tr.state y i)).tree ∧
       (Node.frame (tr.state y i)).Anc (tr.finalizedAt y i) (tr.confirmedAt y i) ∧
       (Node.frame (tr.state y i)).Anc (tr.confirmedAt y i) (tr.headAt y i)
-  /-- L3: ready confirmed reads under growing sleepy service are compatible. -/
-  sleepyReadySafe : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
-    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
-    (tr : RunTrace A) (ΔF : Time), run.Run cm proposer dg H tr →
-    Compose.NoCollRun dg tr → tr.SleepyRunAt H ΔF look →
-    ∀ y z i j, ReadyCut tr H catchUp y i → ReadyCut tr H catchUp z j →
-      Compatible (tr.HonestBlocksAt H) (tr.confirmedAt y i) (tr.confirmedAt z j)
-  /-- L4: a serviced ready proposal is confirmed at every ready read past its deadline. -/
-  sleepyProposalSupply : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
-    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
-    (tr : RunTrace A) (ΔF : Time), run.Run cm proposer dg H tr →
-    Compose.NoCollRun dg tr → tr.SleepyRunAt H ΔF look →
-    ∀ B k y j, ReadyProposal tr H catchUp hold B k →
-      tr.time k + margin ≤ tr.time j → ReadyCut tr H catchUp y j →
-      Anc (tr.HonestBlocksAt H) B (tr.confirmedAt y j)
-  /-- L5: the same serviced proposal's projected payload is covered by that output. -/
-  sleepyInclusionCoverage : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
-    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
-    (tr : RunTrace A) (ΔF : Time), run.Run cm proposer dg H tr →
-    Compose.NoCollRun dg tr → tr.SleepyRunAt H ΔF look →
-    ∀ B k y j, ReadyProposal tr H catchUp hold B k →
-      tr.time k + margin ≤ tr.time j → ReadyCut tr H catchUp y j →
-      payload B ⊆ payload (tr.confirmedAt y j)
   /-- L8: ancestry of a proposal into either output preserves its projected payload. -/
   payloadProjection : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))

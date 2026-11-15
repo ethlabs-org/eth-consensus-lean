@@ -1,10 +1,7 @@
 # Claim reduction interfaces: complete statement row
 
-Base: combined ASSEMBLY candidate `c378aa9a3ec91a0aa17e0c42560607442b322758`,
-on main `3a20c7e0258bf40262d13e1dd41942166ff05e1c`, with the reviewed guarded
-production correction inherited from `9d668433` over interface base `ca0a119c`.
-Branch: `work/surface-recovery-guard`. This is a forward statement correction,
-not a landing, proof, freeze, or source-acceptance release.
+These are conditional statement interfaces, not completed suppliers or proofs.
+Their concrete realizations and the reduction proofs remain separate obligations.
 
 ## Fixed outage policy
 
@@ -74,11 +71,11 @@ Paths below are relative to `ConsensusLean/Instances/Goldilocks/`.
 | outputValid wrapper | `OutputValidAlways` | Growing/Obligations/Concrete/Fields:43–44 |
 | finalAccountable | `FinalAccountabilityReduction` | Fields:68–70 |
 | healthyLive | `HealthyLivenessReduction` | Fields:193–199; confirmed:167–174; Concrete/Final:325 |
-| sleepySafe | `SleepySafetyReduction` | Fields:76–79 |
-| sleepyLive | `SleepyLivenessReduction` | Fields:206–212 |
+| sleepySafe | `SleepySafetyReduction`, with `D : SleepyLayer1.Data A` | Fields:76–79 |
+| sleepyLive | `SleepyLivenessReduction`, with `D : SleepyLayer1.Data A` | Fields:206–212 |
 | healedSafe | `HealedSafetyReduction` | Fields:114–122 |
 | persists | `PersistenceReduction` | Fields:150–153 |
-| local-supplier assembly | `meetsObligations_of_local` in `CorrectnessEdges.lean` | Concrete/Endpoint:21–32 |
+| local-supplier assembly | `meetsObligations_of_local` in `CorrectnessEdges.lean`, with public-indexed `events : SleepyLayer1.Data` | Concrete/Endpoint:21–32 |
 
 The conclusion telescopes preserve the original capability tests, all progress forms,
 ready→horizon versus ready→heal intervals, ready-reader conditionality, HoldsAlways
@@ -92,6 +89,8 @@ explicit data families. No proof of the capstone is supplied.
 Each reduction fixes one public-indexed EngineBinding B and uses exactly M = B.map E hE rho hv.
 Local contracts C, outage policy D and stored-read context R are indexed by that M;
 no fresh run, changed map, replacement proposal or unrestricted Prop callback is used.
+Here the capstone's `D` denotes outage policy; the two sleepy reductions' `D`
+denotes event data, passed as `events` by the capstone.
 The capstone's AC families are indexed by public parameters with a positive population;
 `shapeClaimsAt_of_isEmpty` proves every empty-population claim directly from its quantifiers.
 The two public-restriction recovery lemmas preserve the unconditional and excused wrappers
@@ -106,6 +105,43 @@ in the engine representation remain independent and unchanged.
 
 ## New interface rows and source limitations
 
+### Sleepy event and coverage suppliers
+
+The reductions and `LocalClaimSuppliers` consume the following rows. All are OPEN
+proof obligations, not final endpoint claims. The un-windowed sleepy fields of
+`ACCorrectLocal`, `FiniteLocal` and `SleepyReadPoint` are removed: proposal and
+inclusion now take the same run, binding, service, independent count windows and
+anchored-frame premises as `Extension`.
+
+| Input | Source and remaining obligation |
+| --- | --- |
+| `SleepyLayer1.EventSafety` | Concrete `GoldilocksEventSafety` and the existing sleepy invariant; actual composed-run frames only. Instance discharge remains OPEN. |
+| `SleepyLayer1.OutputProvenance` | Actual-read output provenance; held membership plus ancestry to an event or frame floor. Held membership overlaps `LocalReadPoint.held` deliberately so the standalone generic `ReadAgreement` Prop target has a coherent genesis-root case without importing the unrelated payload fields. |
+| `SleepyLayer1.Extension` | Same-reader ancestry at ordered cuts and evaluation times; not inferred from compatibility. Concrete discharge remains OPEN. |
+| `SleepyLayer1.SourceProvenance` | Report source is an ancestor of a same-reporter confirmation event at an earlier or equal cut. The source need not equal the event block. |
+| `PopulationQuorumSupply` | Shared FG requires `2 * (H t)ᶜ.ncard < P.n`; arbitrary admissible thresholds do not supply it. This is independent of committee counts. |
+| `SleepyWindowSupply` | One mapped point supplies population and committee sleepy regimes with independent look-ahead fits. Catch-up domination comes only from `ClaimDeadlineFit.catchUp`. Threshold/look-ahead equalities also occur in outage matching, but sleepy claims do not consume outage policy; neither regime interface depends on the other. |
+| `SleepyLayer1.ProposalCoverage` | Ready serviced proposal ancestry at a bounded actual read. Source routes: `sleepy_serviced_proposal_coverage_at` with committee bounds from `sleepy_committee_at`; the generic-to-Goldilocks coverage head is not yet stated. Both windows and anchored frames are explicit; the hold must survive the horizon. Payload inclusion follows from this ancestry and `LocalReadPoint.payload`, with the ready read's honest-read projection; no separate inclusion supplier remains. |
+
+The generic FG rows (`CacheProvenance`, `RowProvenance`, `ConditionalViability`)
+and glue rows (`FramesFromSources`, `ReadAgreement`, `ReadyReadSafety`) remain
+separate proof targets. Count transport never substitutes one look-ahead for the other.
+`CommitteeTransport`, `PopulationTransport` and `FrameAcceptance` are separate
+generic adapter targets; naming their sources does not discharge them.
+
+**OPEN instance fit: slot constancy.** `GoldilocksWindowPremises` requires
+`cm (sp.ts s + sp.Δ) = cm (sp.ts s)` at every slot. Generic `EventSafety`,
+`Extension` and coverage contracts do not imply this for arbitrary committees.
+Its source must be a property of the selected-committee RunMap together with the
+concrete run interface, reviewed with the instance discharge; it is not added as
+an unconditional generic law. This instance-fit proof is deferred because this
+packet specifies conditional generic suppliers, not the concrete selection adapter.
+The separate committee-facts source is the committee-valid run interface, which
+lands separately. Bare abstract collision freedom is not its proof, and the
+canonical run transport in this tree does not yet carry that conjunct.
+
+### Engine and regime suppliers
+
 Every row is in `Milestones/Statements/Generic/ClaimTransports.lean` and remains OPEN.
 Concrete source paths below are under `Lemmas/` unless otherwise stated.
 
@@ -113,15 +149,14 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | --- | --- | --- |
 | `ClaimDeadlineFit` | Concrete/Fields sleepySafe catch-up arithmetic; ReadPoint healthy proposal/healed; Accountable population threshold | Local catch-up ≤ engine cDur, local latency ≤ publication margin, max GST 0 + margin ≤ advertised nonfinal heal, α·n ≤ 2q−n, healthy population bound < 2q−n. These are arbitrary-contract numerical targets, not consequences of CorrectLocal. Nonnegative durations already come from C.durations. |
 | `AdmissibleProposal` | confirmed_payload_projection_at; ProposalLiveReady's proposer readiness | Actual B,k must be non-genesis, nonnegative, hold through horizon and engine-cDur ready. The old ReadyProposal only gives local catch-up and honesty through hold. |
-| `ProposalWitnessRefinement` | Concrete/Fields sleepyLive and healthyLive_confirmed; existing ProposalBudgetSupply/SleepyProposalBudgetSupply | Selects a witness with the same query/progress/deadline conditions, plus AdmissibleProposal. It does not assert every old witness qualifies and does not assume InBy or ProposalLiveReady. Both original budget suppliers remain separate inputs. |
+| `ProposalWitnessRefinement` | Concrete/Fields sleepyLive and healthyLive_confirmed | Selects the same query/progress/deadline witness jointly with AdmissibleProposal on the collision-free branch. No InBy or ProposalLiveReady conclusion is assumed; the weaker budget twins are deleted. |
 | `EndReadTransport` | Growing/Simulation/Endpoint/Outputs.prefix_reader_at; confirmed_payload_projection_at; outage actual-time reads | `ready`/`boundary` are at claim time t; `output` evaluates at M.clock of the state at endCut t. No clock equality or next-micro-cut honesty is asserted. Readiness at t → a ready read point at the stored clock is a NEW UNRESOLVED target, not supplied by these fields. |
 | stored-clock read point (MISSING) | Growing/Sleepy/Engine/ReadPoint.engine_read_point; Obligations/Sleepy.ready_at_stored_now, stored_now_ge_cutTime_sub_one, now_mono | A bridge at M.clock must use a source cut such as R.cut, not re-time M.cut i. Engine readiness c+1 must yield local readiness c at that stored-clock read point, with its boundary and output correspondence. Integration statement item: strengthen ClaimDeadlineFit.catchUp to C.catchUp + 1 ≤ cDur and state this bridge for review; neither change is implemented here. Sleepy safety/liveness, healthy nonfinal liveness, persistence and cross-reader healed safety remain unclosed until their stored-clock uses are discharged. |
 | `DeadlinePremisesSupply` | Generic/Obligations.Premises; concrete final query production | Produces the exact Premises at query + final-latency·ΔAC, only under actual final progress, healthy regime, heal≤query, deadline≤horizon and a ready deadline reader. FinalWindowSupply alone does not produce this bundle. |
-| `FinalProposerTransport` | Concrete/Final final payload projection | Same W.block 0/W.cut 0; non-genesis and engine-cDur ready at actual proposal time. Local W.ready is not this. |
-| `FinalReadTransport.processed` | concrete carrier-processing supply / final payload projection | Real strict-earlier BlockCallAt via CarrierProcessed, with own processing honesty and deadline, at an actual ReadyReadPoint. Current FinalCarrierSupply instead requires ReadyCut at trace.time j. |
-| `FinalReadTransport.cache` | FinalCacheSupply's local conclusion at actual reader time | Retains Premises, same W, acceptance, ancestry, all three height steps, actual carrier processing and population threshold at t. This is local block ancestry, not a chain or liveness claim. Its actual-read realization is OPEN. |
-| `ActualReadAccountability` | Growing/Simulation/Endpoint/Accountable.finalAccountable_readPoint:53 | Keeps both own-read honesty times, bounded read points, local run/no-collision, original 2q−n population cardinality and ChainAtts witnesses. Generic.FinalAccountable reads trace.time and cannot substitute. An additional generic Requirements input remains explicit; the genesis root comes from the run (`ACRun.run_root`). |
-| `ActualResetSupply` | Growing/Obligations/Healthy/PreparationReset.healthy_preparation_reset_at:42 | Actual IsReset and healing.Run under healthy preparation, all advertised progress forms and heal≤horizon. Not inferred from ResetProgressSupply's gap/window. |
+| `FinalWindowSupply` | Concrete/Final final payload projection | Selects the same W with anchor-0 non-genesis and advertised readiness, anchor-3 honest proposal, spacing and heights. The universal FinalProposerTransport twin is deleted. |
+| `FinalReadTransport.processed` | concrete carrier-processing supply / final payload projection | Healthy service and deadline readiness produce strict-earlier BlockCallAt via CarrierProcessed, preserving own processing honesty. The cut-only carrier twin is deleted. |
+| `FinalReadTransport.cache` | actual-reader cache coverage | Retains Premises, same W, acceptance, ancestry, all three height steps, carrier processing and population threshold at t. The cut-only cache twin is deleted; actual-read realization remains OPEN. |
+| `ActualReadAccountability` | Growing/Simulation/Endpoint/Accountable.finalAccountable_readPoint | Keeps both own-read honesty times, bounded read points, local run/no-collision, original 2q−n population cardinality and ChainAtts witnesses. Requirements and genesis validity come from the actual run; no separate default-start Requirements input remains. |
 | `HighCanonicalSupply` | Generic/Obligations.HighCanonical and ACHealing.heal_after_reset source prerequisites | Same run, horizon, reset and Premises; never derived by applying heal_after_reset itself. |
 | `PreparationPremisesSupply` | Healthy/PreparationReset and Generic/Obligations.Premises | Exact nonfinal healthy-preparation progress interval and horizon. Final-only DeadlinePremisesSupply does not supply this. |
 | `ResetHealBudgetSupply` | Healthy/PreparationInitialize.healthy_preparation_initialize_late_at:30 | Selects an actual reset a with max GST 0 ≤ slotTime(slotOf a + drain), and that slot time + margin ≤ advertised heal. Does not claim every reset is early. No unbudgeted healed slot. |
@@ -142,27 +177,27 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | end-time readiness and output state/time | EndReadTransport.ready/boundary/output | ready/boundary at t, output at M.clock of state at endCut t; readiness at t → stored-clock ready read point is MISSING, with no next-cut honesty or clock equality |
 | local versus engine catch-up, latency/heal | ClaimDeadlineFit.catchUp/latency_le_margin/healthy_start | NEW OPEN numerical targets; current catchUp only states C.catchUp ≤ cDur. Stored-clock bridge requires the proposed C.catchUp + 1 ≤ cDur strengthening on the integration head |
 | nonnegative durations | ACCorrectLocal.durations | Existing local data; no extra numerical supplier |
-| proposal hold through horizon and proposer cDur | ProposalWitnessRefinement → AdmissibleProposal; FinalProposerTransport for anchor 0 | NEW OPEN targets; same actual witnesses |
-| sleepy finite service/cardinal bounds | RegimeTransport.sleepy → SleepyPrefixAt | Existing OPEN supplier; no finite⇒unbounded inference |
+| proposal hold through horizon and proposer cDur | ProposalWitnessRefinement → AdmissibleProposal; FinalWindowSupply for anchor 0 | OPEN targets; same jointly selected witnesses |
+| sleepy finite service and independent count windows | RegimeTransport.sleepy → SleepyPrefixAt; SleepyWindowSupply → CommitteeWindow and PopulationWindow | OPEN suppliers with separate population/committee look-aheads; the prefix alone supplies neither window; no finite⇒unbounded inference |
 | healthy finite service/awake/cardinal bounds | RegimeTransport.healthy plus bounded nonnegative horizon → HealthyPrefix | Existing OPEN supplier + engine bound arithmetic |
 | accountable fraction and final population threshold | ClaimDeadlineFit.accountable/final_faults | NEW OPEN numerical targets |
-| all progress forms and matching query budget | existing ProposalBudgetSupply, SleepyProposalBudgetSupply, ResetProgressSupply, FinalWindowSupply, plus explicit refinements | All OPEN, no single-pattern-only exclusion |
+| all progress forms and matching query budget | ProposalWitnessRefinement, ResetProgressSupply, FinalWindowSupply | All OPEN, no single-pattern-only exclusion |
 | final four anchors / delivery spacing / three height steps | FinalWindowSupply jointly selects SAME W, guard at E.ΔFG and pointwise FinalHeightSupply evidence | Corrected OPEN production target; no independent arbitrary-window height supplier, no constant FrameWindow manufacture |
-| actual final carrier processing | FinalReadTransport.processed, existing FinalCarrierSupply kept separately | NEW actual-read target; strict processing witness retained |
-| actual-read final cache ancestry | FinalReadTransport.cache, existing FinalCacheSupply kept separately | NEW target; not inferred from cut-clock cache supplier |
+| actual final carrier processing | FinalReadTransport.processed | OPEN actual-read target; strict processing witness retained |
+| actual-read final cache ancestry | FinalReadTransport.cache | OPEN target; no cut-clock cache twin |
 | final deadline Premises | DeadlinePremisesSupply | NEW OPEN target, not FinalWindowSupply |
 | preparation horizon Premises | PreparationPremisesSupply | NEW OPEN target; consumed before healing, not proved by healing |
-| reset / canonicality / drain-slot time | ActualResetSupply, HighCanonicalSupply, ResetHealBudgetSupply | Three separate NEW OPEN targets; heal_after_reset only consumes them |
+| reset / canonicality / drain-slot time | HighCanonicalSupply and ResetHealBudgetSupply | OPEN targets; the budget supplier selects the reset, and heal_after_reset only consumes it |
 | healed temporal ancestry | HealedReadAncestry + StoredReadTransport | NEW OPEN local ancestry and separate mapping, not compatibility⇒ancestry |
 | outage participation | OutageTransport.participation and OutagePolicy.binding/horizon | Existing OPEN suppliers; at the run's own point and selection the population and look-back committee η-sleepy clauses (outage catch-up `max cDur (η·ΔAC − 1)`) follow from `Outage` (`OutageTransport.participation_of_outage`). The destination coupling (sample coverage) is removed: unsatisfiable under growing faults |
-| fixed outage recovery floor / endpoint fit | ACCorrectLocal.recovery/recovery_nonneg; OutageRecoveryBinding.duration at SAME M/K/C | NEW OPEN exact-policy matching target; no inference from sample coverage or readiness |
-| outage pre/post service | OutageServiceSupply | NEW OPEN exact implication, concrete service mismatch recorded above |
+| fixed outage recovery floor / endpoint fit | ACCorrectLocal policy data and OutageRecoveryBinding's eight equalities at SAME M/K/C | OPEN exact-policy matching; protection lives only in OutageReadPoint, with no actual-cut twin |
+| outage pre/post service | OutageServiceSupply | OPEN exact implication; AC-owned service and node acceptance relay require instance transport |
 | resilience target tip | ResilienceTipTransport | NEW OPEN representation only |
 | RootOk at actual reads | HonestReadTransport.roots; genesis from the run (`ACRun.run_root`) | supplied for Goldilocks (`goldilocksRunMap_honestReadTransport`); OPEN for an arbitrary map; never inferred from unrelated dc names |
 | honest union coherence | explicit clean-run → Coherent hypothesis | OPEN instance supplier, never added to HoldsAlways |
 | held-store inclusion in honest union | HonestBlocksAt witnesses y=validator.symm v, cut=M.cut i, t=cutTime i, using before_time/honest_eq and nonnegative actual cutTime | DERIVED, not a new supplier |
 | chain prefix from local ancestry | ReadRepresentation.ancestor_prefix, with actual held membership/root/coherence premises; same M.chain/header | supplied for Goldilocks (`goldilocksRunMap_readRepresentation`); OPEN for an arbitrary map; no final claim assumed |
-| actual tip held / payload ancestry | OutputValidityEdge; LocalReadPoint and appropriate SleepyReadPoint/HealthyReadPoint; final cache invariants | OPEN: OutputValidityEdge needs the honest reader's output tip at M.clock of its stored state to belong to the mapped FG tree. Neither ReadRepresentation nor HonestReadTransport supplies this membership. For Goldilocks, finalized membership follows from FG reachability and confirmed membership from AC ReqOutputs, as in engine_outputValid_at. No supplier field is added here; the finite actual-time suppliers remain OPEN |
+| actual tip held / payload ancestry | OutputValidityEdge; LocalReadPoint, SleepyLayer1 coverage and HealthyReadPoint; final cache invariants | OPEN: OutputValidityEdge needs the honest reader's output tip at M.clock of its stored state to belong to the mapped FG tree. Neither ReadRepresentation nor HonestReadTransport supplies this membership. For Goldilocks, finalized membership follows from FG reachability and confirmed membership from AC ReqOutputs. |
 | engine view and conviction binding | HonestReadTransport.chain_att_view, M.att_signer/att_conflict; key/validator equivalences | supplied for Goldilocks (`goldilocksRunMap_honestReadTransport`); OPEN for an arbitrary map; source population count unchanged |
 
 ### Premises production: no silently discharged field
@@ -183,18 +218,3 @@ OPEN obligations of the instance realization:
 | slotLen | every slot's 4Δ spacing inequality |
 | snapshot | actual FirstCutAfter cutZ witness within consuming deadline |
 | nonempty | actual honest population nonempty at consuming deadline |
-
-## Verification and inherited scope
-
-Both leaves elaborate with `lean -DwarningAsError=true`, using exact pinned dependency
-sources over the existing warm cache. Generated ConsensusLean root includes both leaves.
-`python3 -I scripts/check-boundaries.py` reports zero findings. The recovery correction
-changes local record data, the two outage guards and PersistenceReduction's supplier
-telescope, not its claim conclusion or any endpoint statement. Earlier targeted packets
-for 9222b346 and 880ddab6 passed within their reported comparison scopes, but do not
-validate this correction. Fresh four-root, changed-cone, strict CSM, full dump with
-intended record/projection drift and closure results remain required against exact heads.
-The inherited E1/FINITE/READPOINT/CHAIN-REP/PROGRESS gates are not gates of this new head.
-
-Complete-row Astra review and DA read-back remain pending. Supplier proofs, nonvacuity,
-source realization and all correctness proofs remain open. No main push is authorized.

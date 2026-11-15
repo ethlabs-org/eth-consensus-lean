@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.CorrectLocal
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineRepresentation
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.FiniteRegime
 
 @[expose] public section
 
@@ -68,40 +67,6 @@ structure LocalReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Pr
         C.payload B ⊆ C.payload (confirmedRead tr y i t)) ∧
       (Anc (tr.HonestBlocksAt H) B (tr.finalizedAt y i) →
         C.payload B ⊆ C.payload (tr.finalizedAt y i))
-
-/-- L3/L4/L5 at finite explicit read times. These are independent suppliers, not
-consequences of actual-cut contracts. Source: CorrectLocal L3/L4/L5, lead
-LeadSleepyReadySafe/LeadConfirmedSupply, and Regimes/Growing.SleepySafe/IncludeSleepy.
-The same-reader extension clause retains both real event boundaries. -/
-structure SleepyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where
-  safe : ∀ cm proposer dg H (tr : RunTrace A) ΔF b,
-    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    tr.SleepyPrefixAt H ΔF C.look b → ∀ y z i j t u,
-    ReadyReadPoint tr H b C.catchUp y i t → ReadyReadPoint tr H b C.catchUp z j u →
-    ReadBoundary tr y i → ReadBoundary tr z j →
-      Compatible (tr.HonestBlocksAt H) (confirmedRead tr y i t) (confirmedRead tr z j u)
-  extension : ∀ cm proposer dg H (tr : RunTrace A) ΔF b,
-    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    tr.SleepyPrefixAt H ΔF C.look b → ∀ y i j t u,
-    ReadyReadPoint tr H b C.catchUp y i t → ReadyReadPoint tr H b C.catchUp y j u →
-    ReadBoundary tr y i → ReadBoundary tr y j → i ≤ j → t ≤ u →
-      Anc (tr.HonestBlocksAt H) (confirmedRead tr y i t) (confirmedRead tr y j u)
-  proposal : ∀ cm proposer dg H (tr : RunTrace A) ΔF b,
-    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    tr.SleepyPrefixAt H ΔF C.look b → ∀ B k y j t,
-    ReadyProposal tr H C.catchUp C.hold B k → 0 ≤ tr.time k →
-    tr.time k + C.hold ≤ b → tr.time k ≤ b → tr.time k + C.margin ≤ t →
-    ReadyReadPoint tr H b C.catchUp y j t → ReadBoundary tr y j →
-    t < tr.time j →
-      Anc (tr.HonestBlocksAt H) B (confirmedRead tr y j t)
-  inclusion : ∀ cm proposer dg H (tr : RunTrace A) ΔF b,
-    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    tr.SleepyPrefixAt H ΔF C.look b → ∀ B k y j t,
-    ReadyProposal tr H C.catchUp C.hold B k → 0 ≤ tr.time k →
-    tr.time k + C.hold ≤ b → tr.time k ≤ b → tr.time k + C.margin ≤ t →
-    ReadyReadPoint tr H b C.catchUp y j t → ReadBoundary tr y j →
-    t < tr.time j →
-      C.payload B ⊆ C.payload (confirmedRead tr y j t)
 
 /-- L6/L7 use the shared finite healthy regime, never an all-future schedule. -/
 structure HealthyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where

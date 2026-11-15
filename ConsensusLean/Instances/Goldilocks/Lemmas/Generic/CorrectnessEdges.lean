@@ -113,7 +113,7 @@ structure LocalClaimSuppliers {P : Params} {A : NodeAC P} {O : OutputSchema} {In
     {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
     (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) (K : Contract ProgressReq)
-    (D : OutagePolicy M) (R : StoredReadContext M) : Prop where
+    (D : OutagePolicy M) (R : StoredReadContext M) (events : SleepyLayer1.Data A) : Prop where
   regime : RegimeTransport M K C.look
   reads : ReadRepresentation M
   honestReads : HonestReadTransport M
@@ -122,7 +122,13 @@ structure LocalClaimSuppliers {P : Params} {A : NodeAC P} {O : OutputSchema} {In
   coherent : ¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest)
   engineRead : EngineReadPoint M
   localRead : LocalReadPoint C
-  sleepyRead : SleepyReadPoint C
+  sleepyProposal : SleepyLayer1.ProposalCoverage C events
+  eventSafety : SleepyLayer1.EventSafety C events
+  outputProvenance : SleepyLayer1.OutputProvenance C events
+  extension : SleepyLayer1.Extension C events
+  sourceProvenance : SleepyLayer1.SourceProvenance C events
+  populationQuorum : PopulationQuorumSupply M K
+  sleepyWindows : SleepyWindowSupply M K C
   healthyRead : HealthyReadPoint C
   outageRead : OutageReadPoint C
   deadlines : ClaimDeadlineFit M K C
@@ -179,6 +185,7 @@ def meetsObligations_of_local {O : OutputSchema} {Info : Type}
   ∀ (P : {pub : Model.Public // 1 ≤ pub.n} → Params) (A : ∀ pub, NodeAC (P pub))
     (sg : ∀ pub, (A pub).Msg → Fin (P pub).n)
     (C : ∀ pub, ACCorrectLocal (A pub) (sg pub))
+    (events : ∀ pub, SleepyLayer1.Data (A pub))
     (B : ∀ (V : Type) [Fintype V] [DecidableEq V] pub,
       EngineBinding (F := F) (V := V) pub.val (C pub).payload (sg pub) (C pub).run)
     (D : ∀ (V : Type) [Fintype V] [DecidableEq V] pub E hE rho hv,
@@ -188,7 +195,7 @@ def meetsObligations_of_local {O : OutputSchema} {Info : Type}
     (∀ (V : Type) [Fintype V] [DecidableEq V] pub E hE rho hv,
       LocalClaimSuppliers ((B V pub).map E hE rho hv)
         ((B V pub).signer_eq E hE rho hv ▸ C pub) K
-        (D V pub E hE rho hv) (R V pub E hE rho hv)) →
+        (D V pub E hE rho hv) (R V pub E hE rho hv) (events pub)) →
     K.params.Admissible → O.Serves → ProgressFits K F → ProgressTolerant O K →
     HealthyBetaFit K → CommitteeHalfFit K → ShapeObligations F K
 

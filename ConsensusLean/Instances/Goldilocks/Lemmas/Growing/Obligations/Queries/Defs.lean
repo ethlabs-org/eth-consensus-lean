@@ -137,7 +137,8 @@ end FinalQueryAt
 
 /-- A healed-safety query: a valid, collision-free run, healthy up to a bound within the horizon
 (partial synchrony from GST, fewer than fraction `β` compromised by the bound, full participation
-on `[max gst 0, bound]`, the FG delay within its bound), and a nonfinal capability at an index.
+on `[max gst 0, bound]`, the FG delay within its bound), committee health on that interval
+at fraction `βK`, and a nonfinal capability at an index.
 Progress is supplied separately, on `[ready, heal]`. At `bound = horizon` the health premise is
 `Healthy`. -/
 structure HealthyPreparationQueryAt where
@@ -156,6 +157,11 @@ structure HealthyPreparationQueryAt where
     ((Sys (goldilocks {S with vote := stock}) V).pt run).HealthyOn (K S A).params.β gst bound ∧
     ((Sys (goldilocks {S with vote := stock}) V).pt run).env.ΔFG ≤
       ((K S A).params.fgDelay : Time) * ((Sys (goldilocks {S with vote := stock}) V).pt run).env.ΔAC
+  committeeHealthy : ((Sys (goldilocks {S with vote := stock}) V).pt run).CommitteeHealthyOn
+    ((shapeProgress (goldilocks {S with vote := stock}) V).toExternal.selected
+      ((Sys (goldilocks {S with vote := stock}) V).pt run).env
+      ((shapeProgress (goldilocks {S with vote := stock}) V).toExternal.ext run))
+    (K S A).params.βK (max gst 0) bound
 
 namespace HealthyPreparationQueryAt
 variable {S A V}

@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ReadPoint
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ProgressBudget
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.SleepyLayer1
 
 @[expose] public section
 
@@ -20,6 +21,27 @@ variable {P : Params} {A : NodeAC P} {O : OutputSchema} {Info : Type}
   [DecidableEq Info] [Countable Info]
   {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V]
   {E : Env V} {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
+
+/-- The population quorum needed by shared FG reasoning, independently of the committee
+count. An arbitrary admissible threshold need not imply this inequality. -/
+def PopulationQuorumSupply (M : RunMap rho payload) (K : Contract ProgressReq) : Prop :=
+  rho.ExecutionValid →
+    (Sys F V).Sleepy (shapeProgress F V).toExternal K ⟨E, rho⟩ →
+    ∀ t, 0 ≤ t → t ≤ rho.horizon → 2 * (M.honest t)ᶜ.ncard < P.n
+
+/-- One point on the mapped validator indices, with independent look-ahead fits.
+The population and committee transports retain their own charge times. -/
+def SleepyWindowSupply (M : RunMap rho payload) (K : Contract ProgressReq)
+    (C : ACCorrectLocal A M.signer) : Prop :=
+  ∃ p : EnvPoint (Fin P.n), RunPointBinding M.trace M.honest p ∧
+    p.horizon = rho.horizon ∧ C.θ = K.params.θ ∧ 0 ≤ C.θ ∧ C.θ ≤ 1 ∧
+    C.look = (Sys F V).aheadDur K ⟨E, rho⟩ ∧
+    C.committeeLook = (Sys F V).committeeAheadDur K ⟨E, rho⟩ ∧
+    (rho.ExecutionValid →
+      (Sys F V).Sleepy (shapeProgress F V).toExternal K ⟨E, rho⟩ →
+      p.SleepyOn C.θ ((Sys F V).cDur K ⟨E, rho⟩) C.look 0 rho.horizon ∧
+      p.CommitteeSleepyOn M.committee C.θ 0 ((Sys F V).cDur K ⟨E, rho⟩)
+        C.committeeLook 0 rho.horizon)
 
 /-- Numerical matching from `confirmed_duration_supply_at` and the contract
 catch-up/heal/latency equations in `Lemmas/Obligations/ContractDefs`.

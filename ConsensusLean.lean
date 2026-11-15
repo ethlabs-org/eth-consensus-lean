@@ -628,6 +628,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Fami
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Healed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Layer1
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.LiftFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Provenance
@@ -1001,12 +1002,12 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.C
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineRepresentation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineTransport
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.FG
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.FiniteRegime
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Healing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ProgressBudget
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ReadPoint
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.SleepyLayer1
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.ACU

@@ -37,12 +37,15 @@ def OutputValidAlways (B : EngineBinding (F := F) (V := V) pub payload sg runs) 
 root suppliers remain explicit; none enters an unconditional claim. Source:
 Concrete/Fields.meetsObligations_sleepySafe_growing. -/
 def SleepySafetyReduction (C : ACCorrectLocal A sg)
-    (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq) : Prop :=
+    (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
+    (D : SleepyLayer1.Data A) : Prop :=
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
     RegimeTransport M K L.look ∧ EngineReadPoint M ∧
-      LocalReadPoint L ∧ SleepyReadPoint L ∧ ClaimDeadlineFit M K L ∧
+      LocalReadPoint L ∧ SleepyLayer1.EventSafety L D ∧ SleepyLayer1.OutputProvenance L D ∧
+      SleepyLayer1.Extension L D ∧ SleepyLayer1.SourceProvenance L D ∧
+      PopulationQuorumSupply M K ∧ SleepyWindowSupply M K L ∧ ClaimDeadlineFit M K L ∧
       ReadRepresentation M ∧ HonestReadTransport M ∧
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →
     ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
@@ -54,14 +57,19 @@ def SleepySafetyReduction (C : ACCorrectLocal A sg)
 reader-conditional deadline and hash-collision branch. The strengthened witness
 supplier selects advertised readiness jointly with the proposal. -/
 def SleepyLivenessReduction (C : ACCorrectLocal A sg)
-    (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq) : Prop :=
+    (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
+    (D : SleepyLayer1.Data A) : Prop :=
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
     RegimeTransport M K L.look ∧
       ProposalProgressTransport M K L.healing ∧
       ProposalWitnessRefinement M K L ∧ ClaimDeadlineFit M K L ∧
-      EndReadTransport M K L ∧ SleepyReadPoint L ∧ LocalReadPoint L ∧
+      EndReadTransport M K L ∧ SleepyLayer1.ProposalCoverage L D ∧
+      LocalReadPoint L ∧
+      SleepyLayer1.EventSafety L D ∧ SleepyLayer1.OutputProvenance L D ∧
+      SleepyLayer1.Extension L D ∧ SleepyLayer1.SourceProvenance L D ∧
+      PopulationQuorumSupply M K ∧ SleepyWindowSupply M K L ∧
       ReadRepresentation M ∧ HonestReadTransport M ∧
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →
     ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →

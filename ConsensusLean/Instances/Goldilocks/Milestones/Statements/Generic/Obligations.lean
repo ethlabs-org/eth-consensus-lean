@@ -116,10 +116,6 @@ def HealedFrom (tr : RunTrace A) (H : Time → Set (Fin P.n))
     HonestProposal tr H proposer s z k X → HonestProposal tr H proposer s' z' k' X' →
     Anc (tr.HonestBlocksAt H) X X'
 
-/-- Honesty truncated after a finite horizon. -/
-def truncH (H : Time → Set (Fin P.n)) (b : Time) : Time → Set (Fin P.n) :=
-  fun t => {y | y ∈ H t ∧ t ≤ b}
-
 /-- The AC's run predicate and committee start, shared by the assembly obligations. -/
 structure ACRun (A : NodeAC P) (sg : A.Msg → Fin P.n) where
   Run : (Time → Finset (Fin P.n)) → (Nat → Fin P.n) →

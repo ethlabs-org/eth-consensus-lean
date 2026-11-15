@@ -25,8 +25,8 @@ This leaf has an isolated concrete bridge proof closure, not a vocabulary-only c
 `Report.Row` supplies the concrete report-row declaration whose complete type is restated below.
 `RowService` supplies `ResetPremisesUpTo.high_entry_eq_at` and the retained-origin vocabulary
 `ResetPremisesUpTo` and `HighOrigin`, again used in the exact original types below.
-No generic statement or sibling edge may import this leaf. Its one importer is
-`Growing/Simulation/RunTransport`, which reads `goldilocksRunInterface` from it.
+Generic statements do not import this concrete proof closure. The run transport and
+concrete sleepy adapters read `goldilocksRunInterface` from it.
 
 No old name: `exists_reset`, `generic_healing`, `highCanonical`, the slot-form
 `exists_frameWindow`, and `sign_from_report`.

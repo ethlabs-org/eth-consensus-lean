@@ -181,7 +181,7 @@ theorem meetsObligations_healedSafe_growing : ∀ cap g, (cap = .available ∨ c
   by_cases hb : heal ≤ r.2.horizon
   · by_cases hn : 1 ≤ Fintype.card V
     · let Q : HealthyPreparationQueryAt S A V := ⟨r, hn, cap, hcap, idx, gst, r.2.horizon, hv,
-        hcollision, le_rfl, ⟨hh.1, hh.2.1, hh.2.2.1⟩⟩
+        hcollision, le_rfl, ⟨hh.1, hh.2.1, hh.2.2.1⟩, hh.2.2.2⟩
       have h0 : 0 ≤ Q.heal :=
         add_nonneg (le_max_right gst 0)
           (mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le)

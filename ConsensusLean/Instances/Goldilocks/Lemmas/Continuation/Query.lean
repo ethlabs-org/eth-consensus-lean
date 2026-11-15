@@ -41,8 +41,11 @@ abbrev handoverQuery (hn : 1 ≤ Fintype.card V)
     {cap : Capability} (hcap : cap = .available ∨ cap = .stable) (i : (K S A).Idx) {g T : Time}
     (hh : (Sys (goldilocks { S with vote := stock }) V).Handover (K S A) g T r)
     (hTh : T ≤ ((Sys (goldilocks { S with vote := stock }) V).pt r).horizon) :
-    HealthyPreparationQueryAt S A V :=
-  ⟨r, hn, cap, hcap, i, g, T, hv, hx, hTh, hh.1, hh.2.1, hh.2.2.1⟩
+    HealthyPreparationQueryAt S A V := by
+  refine ⟨r, hn, cap, hcap, i, g, T, hv, hx, hTh, ⟨hh.1, hh.2.1, hh.2.2.1⟩, ?_⟩
+  exact hh.2.1.committee_univ (by
+    change (1 / 3 : ℚ) ≤ 1 / 2
+    norm_num)
 
 variable {S A V}
 

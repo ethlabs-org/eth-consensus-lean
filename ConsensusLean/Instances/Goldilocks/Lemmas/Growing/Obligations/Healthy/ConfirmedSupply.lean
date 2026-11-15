@@ -226,7 +226,7 @@ theorem healthy_confirmed_supply_at
   classical
   let Q' : HealthyPreparationQueryAt S A V :=
     ⟨Q.run, Q.hn, Q.cap, Q.nonfinal, Q.index, Q.gst, Q.run.2.horizon, Q.valid, Q.noCollision,
-      le_rfl, ⟨hh.1, hh.2.1, hh.2.2.1⟩⟩
+      le_rfl, ⟨hh.1, hh.2.1, hh.2.2.1⟩, hh.2.2.2⟩
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   have hΔ := Q.params.toParams.hΔ
   have hrun := simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid
