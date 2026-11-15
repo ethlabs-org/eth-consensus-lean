@@ -68,6 +68,11 @@ sent content at that height, so the call signs and leaf 1 applies.
 Leaf 6 (`reset_of_high_report_at_from`): a report of height at least `HZ + 1`, by a reporter
 honest at it and at `c_z`, is followed in the same tick by its `fg_attest` call with the same
 store, so leaf 6c gives a reset no later.
+
+Leaf 7 (`sign_from_report_at_from`): an honest signing comes from the report of the `ac_to_fg`
+cut just before it, at the same time and with the same store; under the requirements of the
+node's AC start the report is held (`Healing.toFG_source_mem_from`), and its entry is the signed
+target at the signed height.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -319,6 +324,41 @@ theorem reset_of_high_report_at_from {P : Params} {A : NodeAC P}
   obtain ⟨a, ha, hat⟩ := reset_of_high_source_at_from hrun
     (ht' ▸ hyz) (ht' ▸ hq) hatt' hh'
   exact ⟨a, ha, by rwa [ht'] at hat⟩
+
+/-! ## Leaf 7 -/
+
+/-- An honest signing comes from the report of the `ac_to_fg` cut just before it, at the same
+time: the report is held, its entry is the signed target, and the signed height is its height. -/
+theorem sign_from_report_at_from {P : Params} {A : NodeAC P}
+    {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
+    {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+    {ini : Fin P.n → A.State} {y : Fin P.n} {k : Nat} {att : FG.Att P.n}
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hq : ∀ y, ({ A with initial := ini y } : NodeAC P).Requirements)
+    (hy : y ∈ H (tr.time k)) (hs : tr.SignAt y k att) :
+    ∃ i < k, ∃ R, ReportAt tr y i R ∧ tr.time i = tr.time k ∧
+      att.h ≤ ((tr.state y i).fg.σ R.root).h ∧
+      ∃ E ∈ (tr.state y i).fg.tree, (tr.state y i).fg.Anc E R ∧ E.root = att.T ∧
+        ((tr.state y i).fg.σ E.root).h = att.h ∧ ((tr.state y i).fg.σ E.root).Th = E.root := by
+  have hr := hrun.upTo (hrun.time_nonneg k)
+  obtain ⟨C, hc⟩ := hs
+  obtain ⟨i, rfl, ℓ, hci, hto, ht, hC, hfg⟩ :=
+    Compose.attest_source hr hy ((Trace.upTo_callAt tr).mpr ⟨le_rfl, hc⟩)
+  have hCt := Healing.toFG_source_mem_from hr hy (hq y) hci hto hC
+  have hreach := Compose.fg_reachable hr hy i
+  have ht' : tr.time i = tr.time (i + 1) := ht
+  have hsi := Trace.upTo_state tr (d := tr.time (i + 1)) y (i := i)
+    (fun q hq => hrun.time_mono (by omega))
+  have hsk := Trace.upTo_state tr (d := tr.time (i + 1)) y (i := i + 1)
+    (fun q hq => hrun.time_mono (by omega))
+  rw [hsi] at hC hCt hreach
+  rw [hsk, hsi] at hfg
+  obtain ⟨⟨E, hE, hEr, hEC, hEh, hETh⟩, -⟩ := Store.entry_state_of_source _ _ _ _ hreach C hCt
+  obtain ⟨hah, haT⟩ := Healing.Store.createAtt_eq (hrun.cutLaw y (i + 1) _ hc hy).1
+  rw [hfg, ← hEr] at hah haT
+  have hETh' : ((tr.state y i).fg.σ E.root).Th = E.root := by rw [hETh, hEr]
+  refine ⟨i, by omega, C, ⟨ℓ, ((Trace.upTo_callAt tr).mp hci).2, hto, hC⟩, ht',
+    by rw [hah, hEh], E, hE, hEC, by rw [haT, hETh'], hah.symm, hETh'⟩
 
 /-! ## Leaf 2, lower bound -/
 

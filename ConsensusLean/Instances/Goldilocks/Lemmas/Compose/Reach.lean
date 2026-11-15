@@ -503,6 +503,28 @@ private theorem fgUpdate_attest {st : NodeState A} {t : Time}
       exact ⟨hCC ▸ rfl, (Store.tree_grows P _ _ _ hr).2 _,
         (Store.finalized_monotone P _ _ _ hr).2 _⟩
 
+/-- **The FG update's source is held**, for the AC started at `s₀`: in a tick at `t` from a
+configuration reachable with the AC start `s₀`, the block `ac_to_fg` returns at the state the FG
+update starts from (after the AC's tick and the proposal step) is in that state's tree and extends
+its `Σ.F`, by requirement 2 of the AC started at `s₀`. -/
+theorem tick_source_held_from (hq : ({ A with initial := s₀ } : NodeAC P).Requirements)
+    {cfg : Config A} (h : Reachable proposer dg self cfg s₀) {t : Time} (ht : cfg.time ≤ t)
+    (x : Nat) {C : A.Blk}
+    (hC : (A.toFG (tickStep proposer dg self (tickStep proposer dg self cfg.st t x .acTick).1
+      t x .proposal).1.ac (frame (tickStep proposer dg self
+        (tickStep proposer dg self cfg.st t x .acTick).1 t x .proposal).1) t).2 = some C) :
+    C ∈ (tickStep proposer dg self (tickStep proposer dg self cfg.st t x .acTick).1
+        t x .proposal).1.fg.tree ∧
+      (tickStep proposer dg self (tickStep proposer dg self cfg.st t x .acTick).1
+        t x .proposal).1.fg.Anc (tickStep proposer dg self
+          (tickStep proposer dg self cfg.st t x .acTick).1 t x .proposal).1.fg.F C := by
+  have h₂ := (((nInv_of_reachable proposer dg self h).mono dg self ht).tickStep proposer dg self x
+    .acTick).tickStep proposer dg self x .proposal
+  obtain ⟨t₀, ht₀, hR⟩ := h₂.ac (payloadFrom_initial hq self)
+  obtain ⟨hCt, hFC⟩ := source_held _ hq.source self _ (Store.accepted_tree P _ _ _ h₂.fg).2.1
+    _ _ t₀ (ACInterface.reachableAtFrom_iff.1 hR) t ht₀ C hC
+  exact ⟨hCt.1, Anc.mono (fun _ h => h.1) hFC⟩
+
 /-- **C0.5 (c), the sources.** -/
 theorem sources_held : SourcesHeld proposer dg self := by
   intro hq cfg cfg' t x h hs C s hC
@@ -529,13 +551,11 @@ theorem sources_held : SourcesHeld proposer dg self := by
   · simp [Node.tickStep, acCall] at hC
   · exact absurd hC (proposal_no_attest proposer dg self _ t x C s)
   obtain ⟨hsrc, htree, hF⟩ := fgUpdate_attest proposer dg self h₂.fg hC
-  obtain ⟨t₀, ht₀, hR⟩ := h₂.ac (payloadFrom_initial hq self)
-  obtain ⟨hCt, hFC⟩ := source_held A hq.source self _ (Store.accepted_tree P _ _ _ h₂.fg).2.1
-    _ _ t₀ hR t ht₀ C hsrc
+  obtain ⟨hCt, hFC⟩ := tick_source_held_from proposer dg self hq h ht x hsrc
   dsimp only
   unfold Store.Anc
   rw [htree, hF]
-  exact ⟨hCt.1, Anc.mono (fun _ h => h.1) hFC⟩
+  exact ⟨hCt, hFC⟩
 
 /-! ### C0.3: the own block is accepted -/
 

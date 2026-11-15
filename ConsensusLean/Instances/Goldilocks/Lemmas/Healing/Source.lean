@@ -8,7 +8,9 @@ public section
 The forward half of `Compose.attest_source`: an honest node's `ac_to_fg` cut is the FG update's
 first cut (no other handler calls `ac_to_fg`), so when it returns a source `C`, the next cut is
 the update's `fg_attest(C)`, at the same time and the same FG state (an AC cut changes only `𝒜`).
-`HS.4`'s current-source arm is read through it (`historical_source_rows`). -/
+`HS.4`'s current-source arm is read through it (`historical_source_rows`). Under the
+requirements of the node's AC start, the source is held in the FG tree at its cut
+(`toFG_source_mem_from`). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -54,11 +56,14 @@ private theorem toFG_not_mem (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fi
     · simp
 
 /-- **The cut after an `ac_to_fg` cut of a handler is its `fg_attest`** of the returned source:
-the `ac_to_fg` cut is the FG update's first, at the state `st₁` its cuts start from. -/
+the `ac_to_fg` cut is the first cut of a tick's FG update, at the state `st₁` its cuts start from,
+the state after the AC's tick and the proposal step. -/
 private theorem toFG_next (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
     (st : NodeState A) (t : Time) (e : Event A) {k : Nat} {ℓ : ACLabel A}
     (hk : (exec proposer dg y st t e).2[k]? = some (.ac ℓ)) (hc : ℓ.call = .toFG) :
-    ∃ st₁, CutChain y t st ((exec proposer dg y st t e).2.take k) st₁ ∧ ℓ.frame = frame st₁ ∧
+    ∃ st₁, (∃ x, e = .tick x ∧
+        st₁ = (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal).1) ∧
+      CutChain y t st ((exec proposer dg y st t e).2.take k) st₁ ∧ ℓ.frame = frame st₁ ∧
       ∀ C, (A.toFG st₁.ac (frame st₁) t).2 = some C →
         ∃ s, (exec proposer dg y st t e).2[k + 1]? = some (.fg (.attest C s)) := by
   cases e with
@@ -121,7 +126,8 @@ private theorem toFG_next (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P
         · rcases m with _ | _ | m <;> simp_all
         · rcases m with _ | _ | _ | m <;> simp_all [onAttestation]
     subst hm
-    refine ⟨st₁, by rw [Nat.add_zero, List.take_left' rfl]; exact hch, ?_, fun C hC => ?_⟩
+    refine ⟨st₁, ⟨x, rfl, rfl⟩, by rw [Nat.add_zero, List.take_left' rfl]; exact hch, ?_,
+      fun C hC => ?_⟩
     · split at hk
       all_goals
         simp only [List.getElem?_cons_zero, Option.some.injEq, Cut.ac.injEq] at hk
@@ -142,7 +148,7 @@ theorem toFG_attest (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (h
     ∃ s, tr.CallAt y (k + 1) (.fg (.attest C s)) ∧ tr.time (k + 1) = tr.time k ∧
       (tr.state y (k + 1)).fg = (tr.state y k).fg := by
   obtain ⟨j₀, e, k', hg, rfl, hk'⟩ := Compose.call_in_group h hy hk
-  obtain ⟨st₁, hch, hfr, hnext⟩ := toFG_next proposer dg y _ _ e hk' hc
+  obtain ⟨st₁, -, hch, hfr, hnext⟩ := toFG_next proposer dg y _ _ e hk' hc
   have hlen := (List.getElem?_eq_some_iff.1 hk').1
   have hst : tr.state y (j₀ + k') = st₁ := by
     have := Compose.cutChain_run h hy hch j₀ rfl fun m hm => by
@@ -161,6 +167,29 @@ theorem toFG_attest (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (h
     rw [hl, hc']
   · rw [tr.state_succ_of_call hk]
     exact (h.cutLaw y hy _ _ hk).2.2.1
+
+/-- **An honest `ac_to_fg` source is held** at its cut, for the AC started at the node's start
+`ini y`: the cut is the FG update of a tick, whose source is held by requirement 2
+(`Compose.tick_source_held_from`). -/
+theorem toFG_source_mem_from (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
+    (hy : y ∈ H) (hq : ({ A with initial := ini y } : NodeAC P).Requirements) {k : Nat}
+    {ℓ : ACLabel A} {C : A.Blk} (hk : tr.CallAt y k (.ac ℓ)) (hc : ℓ.call = .toFG)
+    (hC : (A.toFG (tr.state y k).ac ℓ.frame (tr.time k)).2 = some C) :
+    C ∈ (tr.state y k).fg.tree := by
+  obtain ⟨j₀, e, k', hg, rfl, hk'⟩ := Compose.call_in_group h hy hk
+  obtain ⟨st₁, ⟨x, rfl, hst₁⟩, hch, hfr, -⟩ := toFG_next proposer dg y _ _ _ hk' hc
+  have hlen := (List.getElem?_eq_some_iff.1 hk').1
+  have hst : tr.state y (j₀ + k') = st₁ := by
+    have := Compose.cutChain_run h hy hch j₀ rfl fun m hm => by
+      rw [List.length_take] at hm
+      obtain ⟨hn, ht, -, -, hl⟩ := hg.2.1 m (by omega)
+      exact ⟨hn, ht, by rw [hl, List.getElem_take]⟩
+    rwa [List.length_take, min_eq_left hlen.le] at this
+  obtain ⟨cfg, hreach, hcfg, hstep⟩ := Compose.group_step h hy hg
+  rw [hst, hfr] at hC
+  rw [hst, hst₁, ← hcfg]
+  rw [hst₁, ← hcfg] at hC
+  exact (Compose.tick_source_held_from proposer dg y hq hreach hstep.1 x hC).1
 
 end Consensus.Goldilocks.Healing
 
