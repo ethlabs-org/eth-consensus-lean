@@ -86,35 +86,6 @@ def ResetProgressSupply (M : RunMap rho payload) (K : Contract ProgressReq)
       ProposalGap M.trace M.honest M.proposer W.gap W.start
         (W.start + resetSlots healing.warmup W.gap P.δt)
 
-/-- An actual nonfinal proposal with publication slack, for every progress form advertised
-by the fixed contract, including notReadyAtMost and nonsingle recurrence patterns. -/
-def ProposalBudgetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
-    (catchUp hold margin : Time) : Prop :=
-  rho.ExecutionValid → ∀ cap idx g t,
-    (cap = .available ∨ cap = .stable) →
-    (Sys F V).Healthy (shapeProgress F V).toExternal K g ⟨E, rho⟩ →
-    (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K g ⟨E, rho⟩)
-      rho.horizon ⟨E, rho⟩ →
-    (Sys F V).heal K cap idx g ⟨E, rho⟩ ≤ t →
-    t + (K.params.latency cap idx : Time) * E.ΔAC ≤ rho.horizon →
-    (∃ v, rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩) v
-      (t + (K.params.latency cap idx : Time) * E.ΔAC)) →
-    ∃ B k, t < M.trace.time k ∧ ReadyProposal M.trace M.honest catchUp hold B k ∧
-      M.trace.time k + margin ≤ t + (K.params.latency cap idx : Time) * E.ΔAC
-
-/-- Sleepy counterpart of the all-form proposal supplier, retaining reader-conditionality. -/
-def SleepyProposalBudgetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
-    (catchUp hold margin : Time) : Prop :=
-  rho.ExecutionValid → ∀ cap idx t,
-    (cap = .available ∨ cap = .stable) →
-    (Sys F V).Sleepy (shapeProgress F V).toExternal K ⟨E, rho⟩ →
-    (Sys F V).prog (shapeProgress F V) K cap idx 0 rho.horizon ⟨E, rho⟩ →
-    0 ≤ t → t + (K.params.latency cap idx : Time) * E.ΔAC ≤ rho.horizon →
-    (∃ v, rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩) v
-      (t + (K.params.latency cap idx : Time) * E.ΔAC)) →
-    ∃ B k, t < M.trace.time k ∧ ReadyProposal M.trace M.honest catchUp hold B k ∧
-      M.trace.time k + margin ≤ t + (K.params.latency cap idx : Time) * E.ΔAC
-
 /-- Four actual anchors with exact spacing and final publication slack. No constant-frame
 premise is hidden in this data. Acceptance/height/processing are separate open suppliers. -/
 structure FinalProductionWindow (M : RunMap rho payload) (catchUp hold : Time)
@@ -153,7 +124,7 @@ No spacing follows merely from the timeout, and no gap or latency is enlarged he
 def FinalWindowSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     (runs : ACRun A M.signer)
     (catchUp hold : Time) : Prop :=
-  rho.ExecutionValid → ∀ idx g t,
+  rho.ExecutionValid → ¬ rho.HashCollision → ∀ idx g t,
     (Sys F V).Healthy (shapeProgress F V).toExternal K g ⟨E, rho⟩ →
     (Sys F V).prog (shapeProgress F V) K .final idx ((Sys F V).ready K g ⟨E, rho⟩)
       rho.horizon ⟨E, rho⟩ →
@@ -163,42 +134,17 @@ def FinalWindowSupply (M : RunMap rho payload) (K : Contract ProgressReq)
       (t + (K.params.latency .final idx : Time) * E.ΔAC)) →
     ∃ W : FinalProductionWindow M catchUp hold t
         (t + (K.params.latency .final idx : Time) * E.ΔAC),
+      (W.block 0).root ≠ P.genesisRoot ∧
+      rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩)
+        (M.validator (W.block 0).proposer) (M.trace.time (W.cut 0)) ∧
+      HonestProposal M.trace M.honest M.proposer (W.block 3).slot
+        (W.block 3).proposer (W.cut 3) (W.block 3) ∧
       6 * P.Δ + E.ΔFG ≤ 4 * P.Δ * (W.gap : Time) ∧
       HealedFrom M.trace M.honest M.proposer W.start
         (t + (K.params.latency .final idx : Time) * E.ΔAC) ∧
       runs.Run M.committee M.proposer M.digest M.honest M.trace ∧
       FinalHeightSupply M catchUp hold t
         (t + (K.params.latency .final idx : Time) * E.ΔAC) W
-
-/-- The last actual anchor is processed before each consuming ready cut. The witness uses
-the existing CarrierProcessed type, including strict event order and own-event honesty. -/
-def FinalCarrierSupply (M : RunMap rho payload) (catchUp hold : Time) : Prop :=
-  ∀ query deadline (W : FinalProductionWindow M catchUp hold query deadline) y j,
-    deadline ≤ M.trace.time j → M.trace.time j ≤ rho.horizon →
-    ReadyCut M.trace M.honest catchUp y j →
-    CarrierProcessed M (W.block 3) y j (M.trace.time (W.cut 3)) deadline
-
-/-- Direct cache-production interface without an unsupported constant-frame supplier.
-Actual anchor acceptance, ancestry, heights and carrier processing stay explicit inputs. -/
-def FinalCacheSupply (M : RunMap rho payload) (runs : ACRun A M.signer)
-    (catchUp hold : Time) : Prop :=
-  ∀ (βK : ℚ) g ΔF query deadline (W : FinalProductionWindow M catchUp hold query deadline),
-    βK ≤ 1 / 2 →
-    runs.Run M.committee M.proposer M.digest M.honest M.trace →
-    Premises M.trace M.honest M.committee βK M.proposer M.digest M.signer g ΔF deadline →
-    HealedFrom M.trace M.honest M.proposer W.start deadline →
-    (∀ a, M.trace.AcceptAt (W.block a).proposer (W.cut a) (W.block a)) →
-    (∀ a b, a ≤ b → Anc (M.trace.HonestBlocksAt M.honest) (W.block a) (W.block b)) →
-    (∀ a : Fin 3, ∃ z i j, z ∈ M.honest (M.trace.time i) ∧ z ∈ M.honest (M.trace.time j) ∧
-      W.block a.castSucc ∈ (M.trace.state z i).fg.tree ∧
-      W.block a.succ ∈ (M.trace.state z j).fg.tree ∧
-      ((M.trace.state z i).fg.σ (W.block a.castSucc).root).h + 1 ≤
-        ((M.trace.state z j).fg.σ (W.block a.succ).root).h) →
-    ∀ y j, deadline ≤ M.trace.time j → M.trace.time j ≤ rho.horizon →
-      ReadyCut M.trace M.honest catchUp y j →
-      (M.honest (M.trace.time j))ᶜ.ncard < 2 * P.q - P.n →
-      CarrierProcessed M (W.block 3) y j (M.trace.time (W.cut 3)) deadline →
-      Anc (M.trace.HonestBlocksAt M.honest) (W.block 0) (M.trace.finalizedAt y j)
 
 end Consensus.Goldilocks.Generic
 

@@ -4,12 +4,12 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.P
 
 @[expose] public section
 
-/-! # Open claim-consumer transports
+/-! # Claim-consumer suppliers
 
 These are admission-free interface rows, not evidence. Every row is UNPROVED; no
-inhabitation or sufficiency theorem is claimed. In particular the witness refinements and
-deadline production below are NEW UNRESOLVED SUFFICIENCY TARGETS, not consequences of
-the existing budget contracts. One map and the actual block/cut witnesses are retained.
+inhabitation or sufficiency theorem is claimed. Named concrete sources identify the
+instance proof routes; they do not supply generic adapters automatically. One map
+and the actual block/cut witnesses are retained.
 -/
 
 set_option autoImplicit false
@@ -21,9 +21,9 @@ variable {P : Params} {A : NodeAC P} {O : OutputSchema} {Info : Type}
   {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V]
   {E : Env V} {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
 
-/-- OPEN numerical matching. Source consumers: ReadPoint.sleepy/healthy proposal and
-healed, versus Shape.ProposalLiveReady and ShapeClaimsAt.healedSafe. These inequalities
-are NEW UNRESOLVED SUFFICIENCY TARGETS for an arbitrary advertised contract. -/
+/-- Numerical matching from `confirmed_duration_supply_at` and the contract
+catch-up/heal/latency equations in `Lemmas/Obligations/ContractDefs`.
+The chosen local parameters and FG threshold arithmetic must satisfy every field. -/
 structure ClaimDeadlineFit (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) : Prop where
   catchUp : C.catchUp ≤ (Sys F V).cDur K ⟨E, rho⟩
@@ -35,8 +35,8 @@ structure ClaimDeadlineFit (M : RunMap rho payload) (K : Contract ProgressReq)
     3 * (M.honest t)ᶜ.ncard ≤ P.n - 1 →
     (M.honest t)ᶜ.ncard < 2 * P.q - P.n
 
-/-- OPEN admissibility of an actual proposal witness. Source: Concrete/Fields.lean
-sleepyLive and healthyLive_confirmed use ConfirmedQueryAt's ready serviced proposal.
+/-- Admissibility of the witness selected by `confirmed_query_slot_at` and
+`confirmed_slot_event_at`, as consumed by `confirmed_payload_projection_at`.
 ReadyProposal alone has neither the engine cDur awake interval nor a surviving hold. -/
 def AdmissibleProposal (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) (B : A.Blk) (k : Nat) : Prop :=
@@ -45,13 +45,13 @@ def AdmissibleProposal (M : RunMap rho payload) (K : Contract ProgressReq)
     rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩)
       (M.validator B.proposer) (M.trace.time k)
 
-/-- OPEN same-query witness refinement, not an arbitrary callback or a claim output.
-NEW UNRESOLVED SUFFICIENCY TARGET: selecting an admissible witness needs stronger
-production than ProposalBudgetSupply/SleepyProposalBudgetSupply currently state.
-No claim is made that every witness of either old supplier is admissible. -/
+/-- Same-query production from `sleepy_query_producer_at` and
+`healthy_confirmed_supply_at`. Advertised readiness is retained jointly with the
+selected proposal; arbitrary locally ready proposals need not be admissible.
+Collision freedom is used only in the collision-excused liveness reductions. -/
 structure ProposalWitnessRefinement (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) : Prop where
-  sleepy : rho.ExecutionValid → ∀ cap idx t,
+  sleepy : rho.ExecutionValid → ¬ rho.HashCollision → ∀ cap idx t,
     (cap = .available ∨ cap = .stable) →
     (Sys F V).Sleepy (shapeProgress F V).toExternal K ⟨E, rho⟩ →
     (Sys F V).prog (shapeProgress F V) K cap idx 0 rho.horizon ⟨E, rho⟩ →
@@ -61,7 +61,7 @@ structure ProposalWitnessRefinement (M : RunMap rho payload) (K : Contract Progr
     ∃ B k, t < M.trace.time k ∧ ReadyProposal M.trace M.honest C.catchUp C.hold B k ∧
       M.trace.time k + C.margin ≤ t + (K.params.latency cap idx : Time) * E.ΔAC ∧
       AdmissibleProposal M K C B k
-  healthy : rho.ExecutionValid → ∀ cap idx gst t,
+  healthy : rho.ExecutionValid → ¬ rho.HashCollision → ∀ cap idx gst t,
     (cap = .available ∨ cap = .stable) →
     (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
     (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K gst ⟨E, rho⟩)
@@ -99,10 +99,10 @@ structure EndReadTransport (M : RunMap rho payload) (K : Contract ProgressReq)
           (M.cut ((chainTrace rho).endCut t)))
           (M.clock (rho.stateBefore ((chainTrace rho).endCut t) v).st.1))).map M.header
 
-/-- OPEN precise deadline premises; source: concrete healthy preparation/final queries
-and Premises in Generic/Obligations. NEW UNRESOLVED SUFFICIENCY TARGET, not a consequence
-of FinalWindowSupply. Every Premises field, including service, snapshot, noRestart,
-catch-up, slot arithmetic and nonempty, must be independently discharged. -/
+/-- Deadline premises assembled from `final_reset_premises_at` and healthy
+service transport. The chosen forwarding delay and snapshot must fit this exact
+deadline. Every `Premises` field, including committee counts, remains required;
+this is not obtained from the final-window conclusion. -/
 def DeadlinePremisesSupply (M : RunMap rho payload) (K : Contract ProgressReq) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ idx gst query,
     (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
@@ -115,27 +115,25 @@ def DeadlinePremisesSupply (M : RunMap rho payload) (K : Contract ProgressReq) :
     Premises M.trace M.honest M.committee K.params.βK M.proposer M.digest M.signer gst E.ΔFG
       (query + (K.params.latency .final idx : Time) * E.ΔAC)
 
-/-- OPEN final anchor readiness; source: final payload projection's serviced proposer.
-NEW UNRESOLVED SUFFICIENCY TARGET: FinalProductionWindow.ready uses the local duration,
-not the advertised engine duration. The first anchor and its cut are not replaced. -/
-def FinalProposerTransport (M : RunMap rho payload) (K : Contract ProgressReq)
-    (C : ACCorrectLocal A M.signer) : Prop :=
-  ∀ query deadline (W : FinalProductionWindow M C.catchUp C.hold query deadline),
-    rho.ExecutionValid → 0 ≤ query → deadline ≤ rho.horizon →
-    (W.block 0).root ≠ P.genesisRoot ∧
-      rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩)
-        (M.validator (W.block 0).proposer) (M.trace.time (W.cut 0))
-
-/-- OPEN actual-read carrier/cache bridge. Source: concrete final carrier processing
-and final payload projection. NEW UNRESOLVED SUFFICIENCY TARGET: the current
-FinalCarrierSupply/FinalCacheSupply require ReadyCut at trace.time j, which cannot
-be inferred from readiness at the earlier actual read t. This contract retains the
-real processing witness and separately consumes all anchor-height inputs. -/
-structure FinalReadTransport (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) : Prop where
-  processed : rho.ExecutionValid → ∀ query deadline
-    (W : FinalProductionWindow M C.catchUp C.hold query deadline) y j t,
-    deadline ≤ t → ReadyReadPoint M.trace M.honest rho.horizon C.catchUp y j t →
-    ReadBoundary M.trace y j →
+/-- Actual-read carrier/cache bridge. The processing supplier is
+`carrier_processed_of_honest_at`: healthy service, an honest anchor and a
+deadline-ready reader. Cache ancestry uses `cacheCoverage_of_anchor_window_upTo_at`.
+The exact generic adapters remain proof obligations. -/
+structure FinalReadTransport (M : RunMap rho payload) (K : Contract ProgressReq)
+    (C : ACCorrectLocal A M.signer) : Prop where
+  processed : rho.ExecutionValid → ¬ rho.HashCollision → ∀ idx gst query deadline
+    (W : FinalProductionWindow M C.catchUp C.hold query deadline),
+    (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
+    (Sys F V).prog (shapeProgress F V) K .final idx ((Sys F V).ready K gst ⟨E, rho⟩)
+      rho.horizon ⟨E, rho⟩ →
+    (Sys F V).heal K .final idx gst ⟨E, rho⟩ ≤ query →
+    deadline = query + (K.params.latency .final idx : Time) * E.ΔAC →
+    deadline ≤ rho.horizon →
+    HonestProposal M.trace M.honest M.proposer (W.block 3).slot
+      (W.block 3).proposer (W.cut 3) (W.block 3) →
+    ∀ y j, rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩) (M.validator y) deadline →
+    ReadyReadPoint M.trace M.honest rho.horizon C.catchUp y j deadline →
+    ReadBoundary M.trace y j → deadline < M.trace.time j →
     CarrierProcessed M (W.block 3) y j (M.trace.time (W.cut 3)) deadline
   cache : ∀ (βK : ℚ) gst query deadline
     (W : FinalProductionWindow M C.catchUp C.hold query deadline),
@@ -158,11 +156,11 @@ structure FinalReadTransport (M : RunMap rho payload) (C : ACCorrectLocal A M.si
     CarrierProcessed M (W.block 3) y j (M.trace.time (W.cut 3)) deadline →
     Anc (M.trace.HonestBlocksAt M.honest) (W.block 0) (M.trace.finalizedAt y j)
 
-/-- OPEN actual-read population evidence. Source: growing Endpoint/Accountable,
-finalAccountable_readPoint (not the cut-time-only Generic.FinalAccountable).
+/-- Actual-read population evidence from `finalAccountable_readPoint`
+(not the cut-time-only `Generic.FinalAccountable`).
 The population cardinality and ChainAtts are unchanged; E1's chain_att_view,
 att_signer and att_conflict separately bind these witnesses to engine evidence.
-NEW UNRESOLVED SUFFICIENCY TARGET for an arbitrary AC. -/
+The shared FG proof supplies the route; its generic adapter remains to be proved. -/
 def ActualReadAccountability (M : RunMap rho payload) (runs : ACRun A M.signer) : Prop :=
   runs.Run M.committee M.proposer M.digest M.honest M.trace →
   Compose.NoCollRun M.digest M.trace → ∀ y z i j t u,
@@ -178,23 +176,9 @@ def ActualReadAccountability (M : RunMap rho payload) (runs : ACRun A M.signer) 
           BlockFinality.ChainAtts M.trace z j Y,
           a.val = v ∧ FG.slashable a b
 
-/-- OPEN actual reset production, independent of canonicality and the drain budget.
-Source: Healthy/PreparationReset.healthy_preparation_reset_at. NEW UNRESOLVED
-SUFFICIENCY TARGET for all advertised progress forms. -/
-def ActualResetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
-    (C : ACCorrectLocal A M.signer) : Prop :=
-  rho.ExecutionValid → ¬ rho.HashCollision → ∀ cap idx gst,
-  (cap = .available ∨ cap = .stable) →
-  (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
-  (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K gst ⟨E, rho⟩)
-    ((Sys F V).heal K cap idx gst ⟨E, rho⟩) ⟨E, rho⟩ →
-  (Sys F V).heal K cap idx gst ⟨E, rho⟩ ≤ rho.horizon →
-  ∃ a, C.run.Run M.committee M.proposer M.digest M.honest M.trace ∧
-    Healing.Growing.IsReset M.trace M.honest gst a ∧ a ≤ rho.horizon
-
-/-- OPEN source prerequisites of heal_after_reset, never obtained by applying that
-field itself. Source: Generic/Obligations.HighCanonical and concrete healthy reset
-premises. NEW UNRESOLVED SUFFICIENCY TARGET at the same full run and horizon. -/
+/-- Canonical-high assembly from `high_row_source_at`, `no_high_contest_at`
+and `high_entry_eq_at`, with reset premises at the same horizon. This supplies
+prerequisites of `heal_after_reset`, never by invoking that field itself. -/
 def HighCanonicalSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ gst a,
@@ -205,9 +189,11 @@ def HighCanonicalSupply (M : RunMap rho payload) (K : Contract ProgressReq)
   Healing.Growing.IsReset M.trace M.honest gst a → a ≤ rho.horizon →
   HighCanonical C.healing.Origin M.trace M.honest gst rho.horizon
 
-/-- OPEN healthy-preparation premises at the same consuming horizon. Source:
-Healthy/PreparationReset and Generic/Obligations.Premises. NEW UNRESOLVED
-SUFFICIENCY TARGET; final-query DeadlinePremisesSupply cannot supply this row. -/
+/-- Full-horizon preparation from `healthy_preparation_service_at`,
+`healthy_preparation_awake_at`, `healthy_preparation_faults_at`,
+`healthy_preparation_noRestart_at` and the snapshot/catch-up assembly in
+`healthy_preparation_reset_at`. Committee transport and delay fit remain required;
+the final-query deadline supplier is not this full-horizon assembly. -/
 def PreparationPremisesSupply (M : RunMap rho payload) (K : Contract ProgressReq) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ cap idx gst,
   (cap = .available ∨ cap = .stable) →
@@ -218,10 +204,10 @@ def PreparationPremisesSupply (M : RunMap rho payload) (K : Contract ProgressReq
   Premises M.trace M.honest M.committee K.params.βK M.proposer M.digest M.signer
     gst E.ΔFG rho.horizon
 
-/-- OPEN selected-reset drain/slot budget. Source: Healthy/PreparationInitialize,
-healthy_preparation_initialize_late_at. NEW UNRESOLVED SUFFICIENCY TARGET: a reset
-exists before this exact deadline, not merely before the horizon. Keeping selection
-separate from ActualResetSupply avoids asserting that every possible reset is early. -/
+/-- Selected-reset existence and drain/slot budget. Source:
+`healthy_preparation_initialize_late_at`, using `healthy_preparation_reset_at`.
+The same selected reset meets the deadline; arbitrary resets need not be early.
+The local drain/margin arithmetic remains an instance proof obligation. -/
 def ResetHealBudgetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ cap idx gst,

@@ -31,7 +31,7 @@ select W at the original query/deadline with
 `6 * P.Δ + E.ΔFG ≤ 4 * P.Δ * (W.gap : Time)`, HealedFrom, healing.Run and those heights.
 HealthyLivenessReduction therefore removes its independent FinalHeightSupply premise.
 It consumes the acceptance, ancestry and three own-reader height projections returned
-for that SAME W; FinalCacheSupply and FinalReadTransport.cache retain their exact
+for that SAME W; FinalReadTransport.cache retains its exact
 inputs, and DeadlinePremisesSupply independently produces Premises at E.ΔFG.
 No arbitrary-window height law, timeoutDelay-to-spacing inference, gap enlargement or
 latency enlargement is claimed. Joint guarded production remains OPEN; this fixes a
@@ -46,7 +46,20 @@ final-monotonicity edges are reused, not duplicated. Every new edge is an admiss
 Prop definition, not a theorem. Compilation establishes well-formedness only: it does
 not establish truth, sufficient premises, realizability, or nonvacuity.
 
-All new supplier interfaces below are **OPEN / NEW UNRESOLVED SUFFICIENCY TARGETS**.
+Supplier interfaces below remain **UNPROVED**. Named source routes do not constitute
+generic adapter proofs. Joint proposal and final-window production now take the
+collision-free branch of the consuming `Holds` reductions. No guarded supplier is
+an input of `OutputValidAlways` or the unconditional chain-representation edges.
+The selected final window carries anchor-0 advertised readiness/non-genesis and
+anchor-3 honest proposal evidence. Processing requires Healthy service and readiness
+at the deadline, not readiness at an arbitrary later time.
+
+The weak proposal-budget twins, cut-only carrier/cache twins, universal
+`FinalProposerTransport` and separate `ActualResetSupply` are removed together with
+their reduction and capstone inputs. `ProposalWitnessRefinement`, `FinalReadTransport`
+and `ResetHealBudgetSupply` own those witnesses. The older inventory below describes
+the source gaps; removed names there are historical comparisons, not live inputs.
+
 L-CORR owns these generic signatures and their premise accounting. Each instance owns
 its realization, including the lead instance downstream in dc D-INST/W10. The stored
 read-context data has no default implementation. No interface is inferred from similar

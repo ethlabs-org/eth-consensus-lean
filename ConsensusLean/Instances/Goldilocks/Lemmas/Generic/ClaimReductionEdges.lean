@@ -52,15 +52,14 @@ def SleepySafetyReduction (C : ACCorrectLocal A sg)
 
 /-- UNPROVED sleepy proposal reduction, keeping the original progress interval,
 reader-conditional deadline and hash-collision branch. The strengthened witness
-supplier is OPEN; it does not follow from the old proposal budget. -/
+supplier selects advertised readiness jointly with the proposal. -/
 def SleepyLivenessReduction (C : ACCorrectLocal A sg)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq) : Prop :=
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
     RegimeTransport M K L.look ∧
-      ProposalProgressTransport M K L.healing L.catchUp L.hold L.margin ∧
-      SleepyProposalBudgetSupply M K L.catchUp L.hold L.margin ∧
+      ProposalProgressTransport M K L.healing ∧
       ProposalWitnessRefinement M K L ∧ ClaimDeadlineFit M K L ∧
       EndReadTransport M K L ∧ SleepyReadPoint L ∧ LocalReadPoint L ∧
       ReadRepresentation M ∧ HonestReadTransport M ∧
@@ -73,8 +72,8 @@ def SleepyLivenessReduction (C : ACCorrectLocal A sg)
         fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g 0 (K.params.latency cap idx)
 
 /-- UNPROVED all-capability healthy liveness reduction. Actual final deadline premises,
-processing and actual-read cache transport remain separate OPEN suppliers. FinalWindowSupply
-jointly selects the same window, its delivery-spacing guard at E.ΔFG and pointwise heights.
+processing and actual-read cache transport are separate supplier contracts. FinalWindowSupply
+jointly selects advertised anchor readiness, delivery spacing and pointwise heights.
 No constant FrameWindow production or progress-form exclusion is assumed. -/
 def HealthyLivenessReduction (C : ACCorrectLocal A sg)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq) : Prop :=
@@ -83,12 +82,10 @@ def HealthyLivenessReduction (C : ACCorrectLocal A sg)
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
     RegimeTransport M K L.look ∧
-      ProposalProgressTransport M K L.healing L.catchUp L.hold L.margin ∧
-      ProposalBudgetSupply M K L.catchUp L.hold L.margin ∧
+      ProposalProgressTransport M K L.healing ∧
       ProposalWitnessRefinement M K L ∧ ClaimDeadlineFit M K L ∧
       DeadlinePremisesSupply M K ∧ FinalWindowSupply M K L.run L.catchUp L.hold ∧
-      FinalCarrierSupply M L.catchUp L.hold ∧ FinalCacheSupply M L.run L.catchUp L.hold ∧
-      FinalProposerTransport M K L ∧ FinalReadTransport M L ∧
+      FinalReadTransport M K L ∧
       EndReadTransport M K L ∧ HealthyReadPoint L ∧ LocalReadPoint L ∧
       ReadRepresentation M ∧ HonestReadTransport M ∧
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →
@@ -148,7 +145,7 @@ def HealedSafetyReduction (C : ACCorrectLocal A sg)
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
     RegimeTransport M K L.look ∧ EngineReadPoint M ∧
       ClaimDeadlineFit M K L ∧ PreparationPremisesSupply M K ∧
-      ResetProgressSupply M K L.healing ∧ ActualResetSupply M K L ∧
+      ResetProgressSupply M K L.healing ∧
       HighCanonicalSupply M K L ∧ ResetHealBudgetSupply M K L ∧
       HealthyReadPoint L ∧ LocalReadPoint L ∧
       StoredReadTransport M (R E hE rho hv) ∧ HealedReadAncestry M K (R E hE rho hv) ∧

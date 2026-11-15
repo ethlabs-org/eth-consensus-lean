@@ -127,16 +127,11 @@ structure LocalClaimSuppliers {P : Params} {A : NodeAC P} {O : OutputSchema} {In
   outageRead : OutageReadPoint C
   deadlines : ClaimDeadlineFit M K C
   endReads : EndReadTransport M K C
-  progress : ProposalProgressTransport M K C.healing C.catchUp C.hold C.margin
-  sleepyBudget : SleepyProposalBudgetSupply M K C.catchUp C.hold C.margin
-  healthyBudget : ProposalBudgetSupply M K C.catchUp C.hold C.margin
+  progress : ProposalProgressTransport M K C.healing
   proposalWitness : ProposalWitnessRefinement M K C
   deadlinePremises : DeadlinePremisesSupply M K
   finalWindow : FinalWindowSupply M K C.run C.catchUp C.hold
-  finalCarrier : FinalCarrierSupply M C.catchUp C.hold
-  finalCache : FinalCacheSupply M C.run C.catchUp C.hold
-  finalProposer : FinalProposerTransport M K C
-  finalReads : FinalReadTransport M C
+  finalReads : FinalReadTransport M K C
   accountability : ActualReadAccountability M C.run
   outage : OutageTransport M D K
   recovery : OutageRecoveryBinding M K C
@@ -144,7 +139,6 @@ structure LocalClaimSuppliers {P : Params} {A : NodeAC P} {O : OutputSchema} {In
   resilience : ResilienceTipTransport M
   preparation : PreparationPremisesSupply M K
   resetProgress : ResetProgressSupply M K C.healing
-  actualReset : ActualResetSupply M K C
   highCanonical : HighCanonicalSupply M K C
   resetBudget : ResetHealBudgetSupply M K C
   storedRead : StoredReadTransport M R
