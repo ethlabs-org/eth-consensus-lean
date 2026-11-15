@@ -35,7 +35,8 @@ public section
 /-! # Generic healing leaves
 
 The healing leaves proved once over any node AC: a node run under growing faults
-(`Growing.LocalRun`) from any starts `ini`. The Goldilocks originals are instances.
+(`Growing.LocalRun`) from any starts `ini`. The Goldilocks originals are instances. The leaves over
+a healing supplier (`ACHealing`) are in `HealingRounds`, which imports this module.
 
 Held attestations: an attestation on a block held at an observation honest at `t`, with a signer
 honest at `t`, was signed before the cut (`held_att_signed_at_from`); two such attestations, with

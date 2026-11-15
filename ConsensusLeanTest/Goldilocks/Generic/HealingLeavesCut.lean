@@ -1,15 +1,17 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt
 
 public section
 
 /-! # Cut guard: the generic healing leaves use no Goldilocks AC
 
-`Lemmas/Generic/HealingLeaves` imports AC-generic run modules by an exception
-(`scripts/boundaries.toml`) whose closure reaches `Lemmas.AC`, so the import boundaries do not
-keep Goldilocks content out of the leaves. This build-time check does: for every constant declared
-in the module `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves` (theorems,
+`Lemmas/Generic/HealingLeaves` and `Lemmas/Generic/HealingRounds` import AC-generic run modules by
+an exception (`scripts/boundaries.toml`) whose closure reaches `Lemmas.AC`, so the import
+boundaries do not keep Goldilocks content out of the leaves. This build-time check does: for every
+constant declared in the module `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves`,
+and separately in `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds` (theorems,
 definitions and auxiliary constants alike), it walks the constants of its type and value, and of
 the type and value of every constant reached,
 with the constructors and the inductive of every inductive, constructor and recursor reached, to a
@@ -120,9 +122,11 @@ meta def check (mod : Name) (allowed : List Name) (control : Name × Name) : Met
 run_meta do
   -- `SA.gbar g = max g 0` is in `SA` by placement only; the generic statements open it.
   let allowed := [``Consensus.Goldilocks.SA.gbar]
-  check `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves allowed
-    (`ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt,
-      ``Consensus.Goldilocks.Healing.Growing.held_atts_safe_at)
+  for mod in [`ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves,
+      `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds] do
+    check mod allowed
+      (`ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt,
+        ``Consensus.Goldilocks.Healing.Growing.held_atts_safe_at)
 
 end Consensus.Goldilocks.Generic.Test.HealingLeavesCut
 
