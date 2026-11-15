@@ -292,7 +292,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Ti
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FaultBound
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWindowExists
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSignedAt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HonestProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Crossing
@@ -446,8 +445,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.R
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupporter
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularTransfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.Row
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RowClient
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RowGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.SlowComparison
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.SlowCounted

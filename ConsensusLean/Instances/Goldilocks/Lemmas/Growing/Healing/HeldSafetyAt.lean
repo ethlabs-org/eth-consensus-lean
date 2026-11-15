@@ -8,9 +8,9 @@ public section
 
 Attestations on blocks held by two readers, each observed while honest at its own time, with a
 signer honest at a time after both observations, are not slashable (`held_atts_safe_at`). Each
-signature is recovered at its own reader's horizon (`held_att_signed_at`) and both are charged
-on the prefix up to the later time, rather than through a terminal honest cohort. This is the
-safety premise of the static store-level crossing arguments (`Healing/HeldSafety`,
+signature is recovered at its own reader's horizon (`Generic.held_att_signed_at_from`) and both
+are charged on the prefix up to the later time, rather than through a terminal honest cohort. This
+is the safety premise of the static store-level crossing arguments (`Healing/HeldSafety`,
 `Healing/M1/StoreCache`, `Healing/M1/FrameLagCore`) for the growing readers. The proof is the
 generic `Generic.held_atts_safe_at_from` (`Lemmas/Generic/HealingLeaves`) at the Goldilocks run.
 -/

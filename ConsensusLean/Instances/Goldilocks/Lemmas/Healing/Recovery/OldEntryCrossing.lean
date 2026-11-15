@@ -88,7 +88,7 @@ private theorem row_of_high_report (hp : ResetPremises tr H proposer dg g ΔF a)
     exact hp'.record_entry_eq hy ((le_max_left _ _).trans (le_max_right _ _)) hPh
       (Or.inr (Or.inr hl)) ho ((le_max_right _ _).trans (le_max_right _ _)) hEB hy hE
       (hEh.trans heq.symm) (hETh.trans hEr.symm)
-  rcases client_progress_of_lock hrun hy hatt hEnt hCh hlock with
+  rcases client_progress_of_lock hrun.toLocalRun hy hatt hEnt hCh hlock with
     ⟨att, rfl, hah, haT⟩ | ⟨k', hk', att, hs, hah, haT⟩
   · exact ⟨i + 1, att, ⟨R, hatt⟩, ht.le, hah, haT.trans hTh⟩
   · exact ⟨k', att, hs, hrun.time_mono (Nat.lt_succ_iff.mp hk'), hah, haT.trans hTh⟩

@@ -43,17 +43,16 @@ theorem honest_anc_of_store_anc_at {y : Fin sp.n} {k : Nat} {t : Time}
     Anc (tr.HonestBlocksAt H) A C :=
   Generic.honest_anc_of_store_anc_at_from ht hle hy h
 
-/-- Parent closure at a held-state observation. -/
+/-- Parent closure at a held-state observation (`Generic.mem_of_honest_anc_at_from` at the
+Goldilocks run). -/
 theorem mem_of_honest_anc_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
     {A C : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : Anc (tr.HonestBlocksAt H) A C) (hC : C ∈ (tr.state y k).fg.tree) :
-    A ∈ (tr.state y k).fg.tree := by
-  by_cases he : A = C
-  · exact he ▸ hC
-  · exact (Anc.mem (store_anc_of_honest_anc_at hrun hnc ht hle hy h hC) he).1
+    A ∈ (tr.state y k).fg.tree :=
+  Generic.mem_of_honest_anc_at_from hrun.toLocalRun hnc ht hle hy h hC
 
 /-- A held block's replay state is identical at two independently honest observations.
 This is deterministic replay and root coherence, so it needs no quorum premise. -/

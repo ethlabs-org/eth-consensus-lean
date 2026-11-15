@@ -216,14 +216,15 @@ end Store
 
 /-! ## The client over a run -/
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {proposer : Nat → Fin sp.n}
-  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF : Time}
+section AnyAC
+
+variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n}
+  {tr : RunTrace A} {ini : Fin P.n → A.State}
 
 /-- An honest node's record changes only at a cut where it signs, by `create_attestation`. -/
-private theorem record_step (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
-    (i : Nat) :
+private theorem record_step (hrun : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
+    (hy : y ∈ H) (i : Nat) :
     (tr.state y (i + 1)).record = (tr.state y i).record ∨
       ∃ C a, tr.CallAt y i (.fg (.attest C (some a))) ∧
         (tr.state y i).fg.attest (tr.state y i).record y C =
@@ -250,7 +251,8 @@ private theorem record_step (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.
 /-- **The honest client record** (the record's only writer is `record_attestation`, durable over
 restarts): it tracks its sent contents, each sent content was signed at an earlier cut, and each
 lock entry `(h, r)` is the finality pair of an attestation signed at an earlier cut. -/
-theorem record_facts (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) : ∀ i,
+theorem record_facts (hrun : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H) :
+    ∀ i,
     Client.SentOK (tr.state y i).record ∧
     (∀ b ∈ (tr.state y i).record.sent, ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b) ∧
     ∀ h r, (tr.state y i).record.lock h = some r →
@@ -292,20 +294,28 @@ theorem record_facts (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy 
 
 /-- **A finality pair `(h, X)` signed by an honest node is a justification it holds**: the node
 holds, from the signing on, a block whose state justifies `X` at `h`. -/
-theorem signed_fin_justified (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
-    {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att) {h X : Nat}
+theorem signed_fin_justified (hrun : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
+    (hy : y ∈ H)
+    {k : Nat} {att : FG.Att P.n} (hs : tr.SignAt y k att) {h X : Nat}
     (hfin : att.fin = some (h, X)) :
     ∃ B ∈ (tr.state y k).fg.tree, ((tr.state y k).fg.σ B.root).hj = h ∧
       ((tr.state y k).fg.σ B.root).J = X := by
   obtain ⟨src, hc⟩ := hs
   have hcl := (hrun.cutLaw y hy k _ hc).1
-  have hr := Compose.fg_reachable hrun.toLocalRun hy k
+  have hr := Compose.fg_reachable hrun hy k
   change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
     ((tr.state y k).fg.σ src.root).Th) = some (att, _) at hcl
   obtain ⟨-, -, -, hfp, -⟩ := Client.createAtt_some hcl
   obtain ⟨W, hW, hWσ⟩ := Store.entry_state_held hr src.root
   rw [hWσ, hfin] at hfp
   exact Store.finalityPair_justified hr hW hfp.symm
+
+end AnyAC
+
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
+  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp ro} {g ΔF : Time}
 
 /-- **No conflicting finality lock at an allowed source's height**:
 at an honest `fg_attest(C)` in the phase `(m, c)`, with `C` allowed, of state height
@@ -326,8 +336,8 @@ theorem lock_free_or_entry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
   · exact Or.inl rfl
   refine Or.inr (congrArg some ?_)
   by_contra hne
-  obtain ⟨k', hk', att, hsa, hfin⟩ := (record_facts hrun hy k).2.2 h X hl
-  obtain ⟨B, hB, hBj, hBJ⟩ := signed_fin_justified hrun hy hsa hfin
+  obtain ⟨k', hk', att, hsa, hfin⟩ := (record_facts hrun.toLocalRun hy k).2.2 h X hl
+  obtain ⟨B, hB, hBj, hBJ⟩ := signed_fin_justified hrun.toLocalRun hy hsa hfin
   have hsub := Compose.tree_mono hrun.toLocalRun hy hk'.le
   have hσB := σ_eq_honest hrun hs.noColl hy hy (hsub hB) hB
   have hB' := hsub hB
@@ -410,7 +420,7 @@ theorem client_progress (hrun : GoldilocksRun proposer dg H tr)
       · exact absurd hl h1
       · exact absurd hl h2
     simp only [he₁, he₂] at hbh hbT
-    obtain ⟨hok, hsent, -⟩ := record_facts hrun hy k
+    obtain ⟨hok, hsent, -⟩ := record_facts hrun.toLocalRun hy k
     have hbT' : b.2.1 = E.root := by
       rcases hbT with hbT | ⟨hto, htg⟩
       · exact hbT

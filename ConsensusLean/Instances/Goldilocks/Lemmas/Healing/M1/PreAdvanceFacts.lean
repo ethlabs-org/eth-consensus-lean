@@ -7,29 +7,29 @@ public section
 /-! # Honest locks before the advance
 
 `client_progress_of_lock`: `client_progress` with the lock premise as a hypothesis, in place of
-`HSShared` and `PhaseOn`. -/
+`HSShared` and `PhaseOn`, for any node AC (`Node.LocalRun` from any starts `ini`). -/
 
 namespace Consensus.Goldilocks.Healing
 
 open SA (SAParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n}
+  {tr : RunTrace A} {ini : Fin P.n → A.State}
 
 /-- **Client progress from the lock premise.** `client_progress` with the lock premise as a
 hypothesis (no `HSShared`, no phase): at an honest `fg_attest(C)` with `C` of state height `h` and
 entry `E`, if the lock at `h` is free or `E`, the client signs an attestation `(h, E)` now or signed
 one at an earlier cut. -/
-theorem client_progress_of_lock (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
-    (hy : y ∈ H) {k : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {signed : Option (FG.Att sp.n)}
-    (hc : tr.CallAt y k (.fg (.attest C signed))) {E : SA.Blk sp.n (List (FG.Att sp.n))} {h : Nat}
+theorem client_progress_of_lock (hrun : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
+    (hy : y ∈ H) {k : Nat} {C : A.Blk} {signed : Option (FG.Att P.n)}
+    (hc : tr.CallAt y k (.fg (.attest C signed))) {E : A.Blk} {h : Nat}
     (hE : EntryOf (tr.state y k).fg C E h) (hCh : ((tr.state y k).fg.σ C.root).h = h)
     (hlock : (tr.state y k).record.lock h = none ∨
       (tr.state y k).record.lock h = some E.root) :
     (∃ att, signed = some att ∧ att.h = h ∧ att.T = E.root) ∨
       ∃ k' < k, ∃ att, tr.SignAt y k' att ∧ att.h = h ∧ att.T = E.root := by
-  have hr := Compose.fg_reachable hrun.toLocalRun hy k
+  have hr := Compose.fg_reachable hrun hy k
   obtain ⟨⟨-, hETh⟩, hEh, hEC⟩ := hE
   have hCTh : ((tr.state y k).fg.σ C.root).Th = E.root := by
     rw [Th_eq_of_anc hr hEC (hCh.trans hEh.symm), hETh]

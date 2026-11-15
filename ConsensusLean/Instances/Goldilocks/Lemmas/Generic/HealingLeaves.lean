@@ -26,6 +26,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalCrosses
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RecordsCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireClient
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.PreAdvanceFacts
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -89,6 +91,13 @@ node awake on `[ḡ, b]` ticks at every public time there, and its restarts are 
 `t_{slot(ḡ)+1} ≤ c_z`, so after `c_z` the call at a public time meets the relay deadline
 (`Healing.callLag_of_awake`, `Healing.snapshotCall_of_awake` on the receiver's prefix, for any
 node AC and any slot schedule).
+
+Leaf 4 (`row_or_high_of_report_at_from`): a held report, before any height advance, either
+supplies a row of a lower block of the same height signed while honest, or is strictly higher.
+Its `fg_attest` call follows in the same tick with the same store; the lock at the height is
+free (no advance) or names the entry (the client record's provenance, `Healing.record_facts`,
+and its signed finality pairs, `Healing.signed_fin_justified`), so the client signs the row now or
+signed it before (`Healing.client_progress_of_lock`).
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -1040,5 +1049,291 @@ theorem high_entry_eq_at_from
     · exact key hB h₁ (h₂.trans hB'B)
 
 end HighEntry
+
+/-! ## Leaf 4 -/
+
+section RowOrHigh
+
+variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
+
+open Healing (cutZ EntryOf)
+open Healing.Growing (HZ)
+
+/-- Parent closure at a held-state observation, for any node run under growing faults from any
+starts `ini`. -/
+theorem mem_of_honest_anc_at_from
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hnc : Compose.NoCollRun dg tr) {y : Fin P.n} {k : Nat} {t : Time}
+    (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
+    {B C : A.Blk} (h : Anc (tr.HonestBlocksAt H) B C) (hC : C ∈ (tr.state y k).fg.tree) :
+    B ∈ (tr.state y k).fg.tree := by
+  by_cases he : B = C
+  · exact he ▸ hC
+  · exact (Anc.mem (store_anc_of_honest_anc_at_from hrun hnc ht hle hy h hC) he).1
+
+/-- The durable client record only holds signatures made before an honest read. -/
+private theorem record_facts_at_from
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    {y : Fin P.n} {i : Nat} {t : Time} (ht : 0 ≤ t)
+    (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) :
+    Healing.Client.SentOK (tr.state y i).record ∧
+    (∀ b ∈ (tr.state y i).record.sent,
+      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b) ∧
+    ∀ h r, (tr.state y i).record.lock h = some r →
+      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.fin = some (h, r) := by
+  have hs := Trace.upTo_state tr y hle
+  obtain ⟨hok, hsent, hlock⟩ := Healing.record_facts (hrun.upTo ht) hy i
+  rw [hs] at hok hsent hlock
+  exact ⟨hok, fun b hb => let ⟨k, hk, a, ha, he⟩ := hsent b hb
+    ⟨k, hk, a, ((RunTrace.upTo_signAt tr).mp ha).2, he⟩,
+    fun h r hl => let ⟨k, hk, a, ha, he⟩ := hlock h r hl
+      ⟨k, hk, a, ((RunTrace.upTo_signAt tr).mp ha).2, he⟩⟩
+
+/-- A store's finalized cache lies below a held block above its justified height. -/
+private theorem F_anc_of_hj_lt_at_from
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    {y : Fin P.n} {i : Nat} {t : Time}
+    (ht : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
+    (hf : (H t)ᶜ.ncard < 2 * P.fg.q - P.n)
+    {B : A.Blk} (hB : B ∈ (tr.state y i).fg.tree)
+    (hlt : (tr.state y i).fg.hj < ((tr.state y i).fg.σ B.root).h) :
+    (tr.state y i).fg.Anc (tr.state y i).fg.F B :=
+  have hR := fg_reachable_at_from hrun ht hle hy
+  Healing.Store.F_anc_of_hj_lt_of_safe hR hR (Store.accepted_tree _ _ _ _ hR).2.1 subset_rfl
+    subset_rfl hf (held_atts_safe_at_from hrun ht hle hy ht hle hy le_rfl le_rfl) hB hlt
+
+/-- A finality lock cannot be above the node's own justification cache. -/
+private theorem hj_ge_of_lock_at_from
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    {y : Fin P.n} {i : Nat} {t : Time}
+    (ht : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
+    (hf : (H t)ᶜ.ncard < 2 * P.fg.q - P.n) {h r : Nat}
+    (hl : (tr.state y i).record.lock h = some r) : h ≤ (tr.state y i).fg.hj := by
+  have hr := hrun.upTo ht
+  have hs := Trace.upTo_state tr y hle
+  obtain ⟨k, hk, att, hsa, hfin⟩ := (record_facts_at_from hrun ht hle hy).2.2 h r hl
+  have hsa' := (RunTrace.upTo_signAt tr).mpr ⟨hle k hk, hsa⟩
+  obtain ⟨B, hB, hBj, -⟩ := Healing.signed_fin_justified hr hy hsa' hfin
+  have hsk := Trace.upTo_state tr y (fun q hq => hle q (hq.trans hk))
+  rw [hsk] at hB hBj
+  have hmono : (tr.state y k).fg.hj ≤ (tr.state y i).fg.hj := by
+    simpa only [hs, hsk] using Healing.hj_mono hr hy hk.le
+  refine le_trans ?_ hmono
+  have hR := fg_reachable_at_from hrun ht (fun q hq => hle q (hq.trans hk)) hy
+  by_contra hlt
+  have hlt' : (tr.state y k).fg.hj < ((tr.state y k).fg.σ B.root).h := by
+    have := Healing.Store.hj_lt_h hR hB
+    omega
+  have hFB := F_anc_of_hj_lt_at_from hrun ht (fun q hq => hle q (hq.trans hk)) hy hf hB hlt'
+  obtain ⟨E, hE, hEr, hEB, -⟩ := Healing.Store.J_entry_of_reachable hR hB
+  have hEh := Healing.Store.J_height_le hR hB hE hEr
+  have hjmax := (Healing.jMax_iff _).1 (Healing.jMax_of_reachable hR) B hB E hE hEr
+  obtain ⟨-, hcoh, -, hgen⟩ := Store.accepted_tree _ _ _ _ hR
+  rcases Anc.total hcoh hFB hEB with hFE | hEF
+  · have := hjmax hFE
+    omega
+  · obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj', hBjJ, hBjhj⟩, -⟩ := Store.cache_invariants _ _ _ _ hR
+    obtain ⟨E', hE', hEr', -, hEg⟩ := Healing.Store.J_entry_of_reachable hR hBj'
+    have hEJ : E'.root = (tr.state y k).fg.J.root := hEr'.trans hBjJ
+    have hFh := Healing.h_le_of_store_anc hR hFJ
+    rcases hEg with rfl | ⟨hEh', -⟩
+    · have he := hcoh.1 hE' hJm hEJ
+      rw [← he] at hFJ
+      have hFg := Anc.antisymm hcoh hFJ (hgen _ hFm)
+      have := hjmax (hFg ▸ hgen E hE)
+      omega
+    · rw [← hEJ, hEh', hBjhj] at hFh
+      have := Healing.h_le_of_store_anc hR hEF
+      omega
+
+/-- A lock at the cache's justified height names the cache's justified root. -/
+private theorem lock_root_eq_J_at_from
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hnc : Compose.NoCollRun dg tr) {y : Fin P.n} {i : Nat} {t : Time}
+    (ht : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
+    (hf : (H t)ᶜ.ncard < 2 * P.fg.q - P.n) {h r : Nat}
+    (hl : (tr.state y i).record.lock h = some r) (hj : (tr.state y i).fg.hj = h) :
+    r = (tr.state y i).fg.J.root := by
+  have hr := hrun.upTo ht
+  have hs := Trace.upTo_state tr y hle
+  obtain ⟨k, hk, att, hsa, hfin⟩ := (record_facts_at_from hrun ht hle hy).2.2 h r hl
+  obtain ⟨B, hB, hBj, hBJ⟩ := Healing.signed_fin_justified hr hy
+    ((RunTrace.upTo_signAt tr).mpr ⟨hle k hk, hsa⟩) hfin
+  have hB' := Compose.tree_mono hr hy hk.le hB
+  have hlek : ∀ q < k, tr.time q ≤ t := fun q hq => hle q (hq.trans hk)
+  have hsk := Trace.upTo_state tr y hlek
+  rw [hsk] at hB hBj hBJ
+  rw [hs] at hB'
+  have hσ := σ_eq_honest_at_from hrun hnc ht hlek hy ht hle hy hB hB'
+  rw [hσ] at hBj hBJ
+  have hR := fg_reachable_at_from hrun ht hle hy
+  obtain ⟨-, -, -, ⟨Bj, hBjt, hBjJ, hBjhj⟩, -⟩ := Store.cache_invariants _ _ _ _ hR
+  have he := Store.J_eq_of_hj_eq_of_safe hR hR hf
+    (held_atts_safe_at_from hrun ht hle hy ht hle hy le_rfl le_rfl) hB' hBjt (by omega)
+  exact hBJ.symm.trans (he.trans hBjJ)
+
+/-- No honest advance implies no finality lock at the frontier before the deadline. -/
+private theorem lock_none_of_noAdvance_at_from
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini) {c T t : Time} {h : Nat}
+    (hna : ∀ v k att, v ∈ H (max c (tr.time k)) → tr.SignAt v k att → tr.time k < T → att.h ≤ h)
+    {y : Fin P.n} {i : Nat} (ht : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t)
+    (hyc : y ∈ H (max c t)) (htT : t < T) : (tr.state y i).record.lock h = none := by
+  have hy := hrun.antitone (le_max_right _ _) hyc
+  rcases hl : (tr.state y i).record.lock h with _ | r
+  · rfl
+  obtain ⟨k, hk, att, hs, hfin⟩ := (record_facts_at_from hrun ht hle hy).2.2 h r hl
+  have hwf := Healing.signAt_wellFormed_from (hrun.upTo ht) hy
+    ((RunTrace.upTo_signAt tr).mpr ⟨hle k hk, hs⟩)
+  have hbound := hna y k att (hrun.antitone (max_le_max le_rfl (hle k hk)) hyc) hs
+    ((hle k hk).trans_lt htT)
+  have := hwf.2 (h, r) (by simp [hfin])
+  omega
+
+/-- In kind F the source-height lock is free; in kind J it is free or the entry. -/
+private theorem lock_free_or_entry_of_frame_at_from
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hnc : Compose.NoCollRun dg tr) {y : Fin P.n} {k : Nat} {t : Time}
+    (ht : 0 ≤ t) (hle : ∀ i < k, tr.time i ≤ t) (hy : y ∈ H t)
+    (hf : (H t)ᶜ.ncard < 2 * P.fg.q - P.n)
+    {C E : A.Blk} {h : Nat}
+    (hE : EntryOf (tr.state y k).fg C E h) (hCh : ((tr.state y k).fg.σ C.root).h = h)
+    (hkind : (tr.state y k).fg.hj < h ∨
+      ((tr.state y k).fg.hj = h ∧ (tr.state y k).fg.Anc (tr.state y k).fg.J C)) :
+    (tr.state y k).record.lock h = none ∨ (tr.state y k).record.lock h = some E.root := by
+  rcases hkind with hlt | ⟨hj, hJC⟩
+  · left
+    rcases hl : (tr.state y k).record.lock h with _ | r
+    · rfl
+    · have := hj_ge_of_lock_at_from hrun ht hle hy hf hl
+      omega
+  rcases hl : (tr.state y k).record.lock h with _ | r
+  · exact Or.inl rfl
+  refine Or.inr (congrArg some ?_)
+  rw [lock_root_eq_J_at_from hrun hnc ht hle hy hf hl hj]
+  have hr := fg_reachable_at_from hrun ht hle hy
+  obtain ⟨⟨-, hETh⟩, hEh, hEC⟩ := hE
+  obtain ⟨-, hJm, -, ⟨Bj, hBj, hBjJ, hBjhj⟩, -⟩ := Store.cache_invariants _ _ _ _ hr
+  have hJh := Healing.Store.J_height_le hr hBj hJm hBjJ.symm
+  have hJCh := Healing.h_le_of_store_anc hr hJC
+  obtain ⟨E', hE', hE'r, -, hE'g⟩ := Healing.Store.J_entry_of_reachable hr hBj
+  have hE'J : E' = (tr.state y k).fg.J := by
+    have h1 : (tr.state y k).fg.blocks E'.root = some E' := hE'
+    have h2 : (tr.state y k).fg.blocks (tr.state y k).fg.J.root = some (tr.state y k).fg.J := hJm
+    rw [hE'r, hBjJ] at h1
+    exact Option.some.inj (h1.symm.trans h2)
+  subst hE'J
+  have hJTh : ((tr.state y k).fg.σ (tr.state y k).fg.J.root).Th = (tr.state y k).fg.J.root := by
+    rcases hE'g with he | ⟨-, hTh⟩
+    · have hg : (P.genesisBlock A.genesisPayload).root = P.genesisRoot := rfl
+      rw [he, hg, Healing.Store.σ_genesis hr]
+      rfl
+    · exact hTh
+  have hJeq : ((tr.state y k).fg.σ C.root).h =
+      ((tr.state y k).fg.σ (tr.state y k).fg.J.root).h := by omega
+  have h1 := Healing.Th_eq_of_anc hr hJC hJeq
+  have h2 := Healing.Th_eq_of_anc hr hEC (hCh.trans hEh.symm)
+  rw [hJTh] at h1
+  rw [hETh] at h2
+  exact h1.symm.trans h2
+
+/-- Client progress uses only its own prefix, with no global origin invariant. -/
+private theorem client_progress_of_lock_at_from
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    {y : Fin P.n} {k : Nat} {t : Time} (ht : 0 ≤ t)
+    (hle : ∀ i < k, tr.time i ≤ t) (hkt : tr.time k ≤ t) (hy : y ∈ H t)
+    {C : A.Blk} {signed : Option (FG.Att P.n)}
+    (hc : tr.CallAt y k (.fg (.attest C signed)))
+    {E : A.Blk} {h : Nat}
+    (hE : EntryOf (tr.state y k).fg C E h) (hCh : ((tr.state y k).fg.σ C.root).h = h)
+    (hlock : (tr.state y k).record.lock h = none ∨ (tr.state y k).record.lock h = some E.root) :
+    (∃ att, signed = some att ∧ att.h = h ∧ att.T = E.root) ∨
+      ∃ k' < k, ∃ att, tr.SignAt y k' att ∧ att.h = h ∧ att.T = E.root := by
+  have hs := Trace.upTo_state tr y hle
+  have hE' : EntryOf ((tr.upTo t).state y k).fg C E h := by rwa [hs]
+  have hCh' : (((tr.upTo t).state y k).fg.σ C.root).h = h := by rwa [hs]
+  have hl' : ((tr.upTo t).state y k).record.lock h = none ∨
+      ((tr.upTo t).state y k).record.lock h = some E.root := by rwa [hs]
+  rcases Healing.client_progress_of_lock (hrun.upTo ht) hy
+      ((Trace.upTo_callAt tr).mpr ⟨hkt, hc⟩) hE' hCh' hl' with hnow | ⟨j, hj, a, ha, hh, hT⟩
+  · exact Or.inl hnow
+  · exact Or.inr ⟨j, hj, a, ((RunTrace.upTo_signAt tr).mp ha).2, hh, hT⟩
+
+/-- Leaf 4: a held report by a reporter honest at it and at `c_z`, before any height advance and
+under the fault bound, either supplies a row of the lower block signed while honest, or is strictly
+higher than it. -/
+theorem row_or_high_of_report_at_from
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g T : Time}
+    (hf : ∀ t, 0 ≤ t → t < T → 3 * (H t)ᶜ.ncard ≤ P.n - 1) (hna : NoAdvance tr H g T)
+    {y : Fin P.n} {i : Nat} {R B : A.Blk} (hyz : y ∈ H (max (cutZ P g) (tr.time i)))
+    (hR : ReportAt tr y i R) (hiT : tr.time i < T) (hRm : R ∈ (tr.state y i).fg.tree)
+    (hBR : Anc (tr.HonestBlocksAt H) B R)
+    (hkind : ((tr.state y i).fg.σ R.root).h = ((tr.state y i).fg.σ B.root).h →
+      ((tr.state y i).fg.σ B.root).h = HZ tr H g ∨
+      (tr.state y i).fg.hj < ((tr.state y i).fg.σ B.root).h ∨
+      ((tr.state y i).fg.hj = ((tr.state y i).fg.σ B.root).h ∧
+        (tr.state y i).fg.Anc (tr.state y i).fg.J R)) :
+    B ∈ (tr.state y i).fg.tree ∧ R ∈ (tr.state y i).fg.tree ∧
+      ((∃ k att, y ∈ H (tr.time k) ∧ tr.SignAt y k att ∧ tr.time k ≤ tr.time i ∧
+        att.h = ((tr.state y i).fg.σ B.root).h ∧
+        att.T = ((tr.state y i).fg.σ B.root).Th) ∨
+        ((tr.state y i).fg.σ B.root).h < ((tr.state y i).fg.σ R.root).h) := by
+  have hy := hrun.antitone (le_max_right _ _) hyz
+  have ht0 := hrun.time_nonneg i
+  have hle : ∀ k < i, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono hk.le
+  have hr := hrun.upTo ht0
+  have hs := Trace.upTo_state tr y hle
+  obtain ⟨ell, hc, hto, hres⟩ := hR
+  have hc' : (tr.upTo (tr.time i)).CallAt y i (.ac ell) :=
+    (Trace.upTo_callAt tr).mpr ⟨le_rfl, hc⟩
+  have hres' : (A.toFG ((tr.upTo (tr.time i)).state y i).ac ell.frame (tr.time i)).2 =
+      some R := by rwa [hs]
+  have hBm := mem_of_honest_anc_at_from hrun hnc ht0 hle hy hBR hRm
+  have hreach := fg_reachable_at_from hrun ht0 hle hy
+  have hBRs := store_anc_of_honest_anc_at_from hrun hnc ht0 hle hy hBR hRm
+  have hheight := Healing.h_le_of_store_anc hreach hBRs
+  refine ⟨hBm, hRm, ?_⟩
+  rcases hheight.lt_or_eq with hlt | heq
+  · exact Or.inr hlt
+  left
+  have hf' : (H (tr.time i))ᶜ.ncard < 2 * P.fg.q - P.n := by
+    have hbound := hf (tr.time i) ht0 hiT
+    have hn := P.hn
+    change (H (tr.time i))ᶜ.ncard < 2 * ((2 * P.n + 2) / 3) - P.n
+    omega
+  obtain ⟨sg', hatt', ht, hfg'⟩ := Healing.toFG_attest hr hy hc' hto hres'
+  have hatt := ((Trace.upTo_callAt tr).mp hatt').2
+  have ht' : tr.time (i + 1) = tr.time i := ht
+  have hle' : ∀ k < i + 1, tr.time k ≤ tr.time i := fun k hk =>
+    hrun.time_mono (Nat.lt_succ_iff.mp hk)
+  have hs' := Trace.upTo_state tr y hle'
+  have hfg : (tr.state y (i + 1)).fg = (tr.state y i).fg := by
+    simpa only [hs, hs'] using hfg'
+  obtain ⟨⟨E, hE, hEr, hER, hEh, hETh⟩, -⟩ :=
+    Store.entry_state_of_source _ _ _ _ hreach R hRm
+  have hEnt : EntryOf (tr.state y (i + 1)).fg R E ((tr.state y i).fg.σ B.root).h := by
+    rw [hfg]
+    exact ⟨⟨hE, hETh.trans hEr.symm⟩, hEh.trans heq.symm, hER⟩
+  have hCh : ((tr.state y (i + 1)).fg.σ R.root).h = ((tr.state y i).fg.σ B.root).h := by
+    rw [hfg]
+    exact heq.symm
+  have hTh : E.root = ((tr.state y i).fg.σ B.root).Th :=
+    hEr.trans (Healing.Th_eq_of_anc hreach hBRs heq.symm)
+  have hlock : (tr.state y (i + 1)).record.lock ((tr.state y i).fg.σ B.root).h = none ∨
+      (tr.state y (i + 1)).record.lock ((tr.state y i).fg.σ B.root).h = some E.root := by
+    rcases hkind heq.symm with hHZ | hk
+    · rw [hHZ]
+      exact Or.inl (lock_none_of_noAdvance_at_from hrun hna ht0 hle' hyz hiT)
+    · apply lock_free_or_entry_of_frame_at_from hrun hnc ht0 hle' hy hf' hEnt hCh
+      rwa [hfg]
+  have hrow := client_progress_of_lock_at_from hrun ht0 hle' ht'.le hy hatt hEnt hCh hlock
+  rcases hrow with ⟨att, rfl, hah, haT⟩ | ⟨k, hk, att, hsign, hah, haT⟩
+  · exact ⟨i + 1, att, ht'.symm ▸ hy, ⟨R, hatt⟩, ht'.le, hah, haT.trans hTh⟩
+  · have hkt := hle' k hk
+    exact ⟨k, att, hrun.antitone hkt hy, hsign, hkt, hah, haT.trans hTh⟩
+
+end RowOrHigh
 
 end Consensus.Goldilocks.Generic

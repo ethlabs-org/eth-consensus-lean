@@ -97,8 +97,11 @@ theorem hj_lt_hmax {ini} (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp
     (i : Nat) : (tr.state y i).fg.hj < (tr.state y i).fg.hmax :=
   Store.hj_lt_hmax_of_reachable (Compose.fg_reachable hrun.toLocalRun hy i)
 
-/-- `h_j` of an honest store does not decrease. -/
-theorem hj_mono (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+/-- `h_j` of an honest store does not decrease, for any node AC from any starts `ini`. -/
+theorem hj_mono {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+    {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n}
+    {tr : RunTrace A} {ini : Fin P.n → A.State}
+    (hrun : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
     {i j : Nat} (hij : i ≤ j) : (tr.state y i).fg.hj ≤ (tr.state y j).fg.hj := by
   induction j, hij using Nat.le_induction with
   | base => exact le_rfl
