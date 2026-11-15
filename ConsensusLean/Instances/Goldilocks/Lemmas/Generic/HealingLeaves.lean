@@ -24,6 +24,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Deadline
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalCrosses
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RecordsCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -63,6 +64,10 @@ earliest such signing is the reset.
 Leaf 6c (`reset_of_high_source_at_from`): a high `fg_attest` source of a caller honest at it and
 at `c_z` forces a reset no later; with no earlier high signing, the client's record has no lock or
 sent content at that height, so the call signs and leaf 1 applies.
+
+Leaf 6 (`reset_of_high_report_at_from`): a report of height at least `HZ + 1`, by a reporter
+honest at it and at `c_z`, is followed in the same tick by its `fg_attest` call with the same
+store, so leaf 6c gives a reset no later.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -281,6 +286,39 @@ theorem reset_of_high_source_at_from {P : Params} {A : NodeAC P}
     dsimp only at hcl
     rw [hany τ] at hcl
     simp only [Bool.false_eq_true, ↓reduceIte, reduceCtorEq] at hcl
+
+/-! ## Leaf 6 -/
+
+/-- A high report gives a high FG source in the same tick, hence a reset no later. -/
+theorem reset_of_high_report_at_from {P : Params} {A : NodeAC P}
+    {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
+    {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+    {ini : Fin P.n → A.State} {g : Time} {y : Fin P.n} {i : Nat} {R : A.Blk}
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hyz : y ∈ H (max (Healing.cutZ P g) (tr.time i)))
+    (hq : (H (max (Healing.cutZ P g) (tr.time i)))ᶜ.ncard < P.fg.q)
+    (hR : ReportAt tr y i R)
+    (hh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
+    ∃ a, Healing.Growing.IsReset tr H g a ∧ a ≤ tr.time i := by
+  have hy := hrun.antitone (le_max_right _ _) hyz
+  have hr := hrun.upTo (hrun.time_nonneg i)
+  have hst := Trace.upTo_state tr y (i := i) (fun q hq => hrun.time_mono hq.le)
+  obtain ⟨ell, hc, hto, hres⟩ := hR
+  have hc' : (tr.upTo (tr.time i)).CallAt y i (.ac ell) :=
+    (Trace.upTo_callAt tr).mpr ⟨le_rfl, hc⟩
+  have hres' : (A.toFG ((tr.upTo (tr.time i)).state y i).ac
+      ell.frame (tr.time i)).2 = some R := by rwa [hst]
+  obtain ⟨s, hatt, ht, hfg⟩ := Healing.toFG_attest hr hy hc' hto hres'
+  have ht' : tr.time (i + 1) = tr.time i := ht
+  have hs1 := Trace.upTo_state tr (d := tr.time i) y (i := i + 1)
+    (fun q hq => hrun.time_mono (by omega))
+  have hatt' := ((Trace.upTo_callAt tr).mp hatt).2
+  rw [hs1, hst] at hfg
+  have hh' : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y (i + 1)).fg.σ R.root).h := by
+    rwa [hfg]
+  obtain ⟨a, ha, hat⟩ := reset_of_high_source_at_from hrun
+    (ht' ▸ hyz) (ht' ▸ hq) hatt' hh'
+  exact ⟨a, ha, by rwa [ht'] at hat⟩
 
 /-! ## Leaf 2, lower bound -/
 

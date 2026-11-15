@@ -138,18 +138,6 @@ theorem report_kind_of_floor_at
   have h := Healing.report_kind_of_floor hr hy (by rwa [hs]) (by rwa [hs])
   rwa [hs] at h
 
-/-- A high source of a caller honest at it and at `c_z` forces a historical reset even when the
-client suppresses signing. -/
-theorem reset_of_high_source_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {g : Time}
-    {y : Fin sp.n} {k : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time k)))
-    (hq : (H (max (cutZ sp.toParams g) (tr.time k)))ᶜ.ncard < sp.toParams.fg.q)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Option (FG.Att sp.n)}
-    (hc : tr.CallAt y k (.fg (.attest C s)))
-    (hh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ C.root).h) :
-    ∃ a, IsReset tr H g a ∧ a ≤ tr.time k :=
-  Generic.reset_of_high_source_at_from hrun.toLocalRun hyz hq hc hh
-
 /-- The adjacent client call of a high report, by a reporter honest at it and at `c_z`, supplies
 the reset, including suppression. -/
 theorem reset_of_high_report_at
@@ -164,25 +152,12 @@ theorem reset_of_high_report_at
   have hr := hrun.upTo (hrun.time_nonneg i)
   have hst := Trace.upTo_state tr y (i := i) (fun q hq => hrun.time_mono hq.le)
   obtain ⟨hc, hto, hres⟩ := hR
-  have hc' : (tr.upTo (tr.time i)).CallAt y i (.ac ell) :=
-    (Trace.upTo_callAt tr).mpr ⟨le_rfl, Compose.projAC_callAt.mp hc⟩
-  have hres' : ((goldilocksNode sp ro).toFG
-      ((tr.upTo (tr.time i)).state y i).ac ell.frame (tr.time i)).2 = some R := by
-    rw [hst]
-    have hstate := Compose.projAC_state hr.toLocalRun hy i
-    rw [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC y
-      (fun q hq => hrun.time_mono hq.le), hst] at hstate
-    rwa [hstate] at hres
-  obtain ⟨sg, hatt, ht, hfg⟩ := Healing.toFG_attest hr.toLocalRun hy hc' hto hres'
-  have ht' : tr.time (i + 1) = tr.time i := ht
-  have hs1 := Trace.upTo_state tr (d := tr.time i) y (i := i + 1)
-    (fun q hq => hrun.time_mono (by omega))
-  have hatt' := ((Trace.upTo_callAt tr).mp hatt).2
-  rw [hs1, hst] at hfg
-  have hh' : HZ tr H g + 1 ≤ ((tr.state y (i + 1)).fg.σ R.root).h := by
-    rwa [hfg]
-  obtain ⟨a, ha, hat⟩ := reset_of_high_source_at hrun (ht' ▸ hyz) (ht' ▸ hq) hatt' hh'
-  exact ⟨a, ha, by rwa [ht'] at hat⟩
+  apply Generic.reset_of_high_report_at_from hrun.toLocalRun hyz hq ?_ hh
+  refine ⟨ell, Compose.projAC_callAt.mp hc, hto, ?_⟩
+  have hstate := Compose.projAC_state hr.toLocalRun hy i
+  rw [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC y
+    (fun q hq => hrun.time_mono hq.le), hst] at hstate
+  rwa [hstate] at hres
 
 /-- A proposal's immediate acceptance is held while its proposer is honest
 (`Generic.proposal_mem_at_from` at the Goldilocks requirements from the run's starts). -/
