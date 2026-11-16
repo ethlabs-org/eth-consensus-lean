@@ -163,6 +163,46 @@ noncomputable def outageLockPremises_of_arming {ini}
         have := (SA.ts_le_iff sp).2 (show (r : Int) ≤ m by exact_mod_cast hrm)
         linarith)) x i e (hVoteAt_iff.1 hve).1 (hVoteAt_iff.1 hve).2 hes }
 
+
+section NodeProjections
+
+variable {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini} {hnc : NoCollRun dg tr}
+  {K : SA.CommitteeDict sp.n} {hKB : CommitteeFacts tr H K} {T b₀ b₁ hor a z : Time}
+  {A₀ W : Set (Fin sp.n)} {r : Nat} {hT0 : 0 ≤ T} {hlag : T + (4 * sp.k + 6) * sp.Δ ≤ b₀}
+  {hsh : b₀ ≤ hor} {hcall : ∀ x k, tr.IsCall x k → tr.time k ≤ hor}
+  {service : SleepyServiceBefore tr H sp.Δ b₀} {hpost : Generic.PostStopService tr H b₁}
+  {hB : ∀ b ≤ hor, SleepyBoundsFrom tr H 0 b} {hBK : ∀ b ≤ hor, CommitteeBoundsFrom tr H K 0 b}
+  {hnum : sp.ts (coverLabel sp b₀) + 2 * sp.Δ ≤ b₀ ∧
+      b₀ < sp.ts (coverLabel sp b₀ + 1 : Nat) + 2 * sp.Δ ∧
+      b₁ - b₀ ≤ (4 * (sp.k : Time) - 5) * sp.Δ ∧ b₀ ≤ b₁ ∧
+      b₁ ≤ sp.ts (coverLabel sp b₀ + sp.k : Nat) + sp.Δ ∧
+      sp.ts (coverLabel sp b₀ : Nat) + sp.Δ < b₁ ∧
+      ∀ t, t ≤ sp.ts (coverLabel sp b₀ + sp.k : Nat) + 6 * sp.Δ → t ≤ hor → t ≤ z}
+  {hr : b₁ ≤ sp.ts r + sp.Δ ∧ ∀ s : Nat, b₁ ≤ sp.ts s + sp.Δ → r ≤ s}
+  {ha0 : 0 ≤ a} {haj : a ≤ sp.ts ((coverLabel sp b₀ : Int) - sp.k)}
+  {hA₀ : A₀ ⊆ H z} {hW : W ⊆ H z} {hdisj : Disjoint A₀ W}
+  {hawake : ∀ x ∈ A₀, ∀ u, a ≤ u → u ≤ z → tr.awake x u}
+  {hclass : ∀ x u, a ≤ u → u ≤ z → x ∈ H z → tr.awake x u → x ∈ A₀ ∪ W}
+  {hopp : ∀ m, coverLabel sp b₀ ≤ m → m ≤ coverLabel sp b₀ + sp.k → sp.ts m ≤ hor →
+      (K.committee m ∩ ((H z)ᶜ ∪ W)).ncard < (K.committee m ∩ A₀).ncard}
+  {y : Fin sp.n} {i : Nat}
+  {ar : OutageArming tr H (coverLabel sp b₀) hor A₀ y i T}
+
+theorem outageLockPremises_of_arming_b₁ :
+    (outageLockPremises_of_arming hrun hnc hKB hT0 hlag hsh hcall service hpost hB hBK hnum hr
+      ha0 haj hA₀ hW hdisj hawake hclass hopp ar).b₁ = b₁ := by rfl
+
+theorem outageLockPremises_of_arming_P :
+    (outageLockPremises_of_arming hrun hnc hKB hT0 hlag hsh hcall service hpost hB hBK hnum hr
+      ha0 haj hA₀ hW hdisj hawake hclass hopp ar).P = ar.origin := by rfl
+
+theorem outageLockPremises_of_arming_K :
+    (outageLockPremises_of_arming hrun hnc hKB hT0 hlag hsh hcall service hpost hB hBK hnum hr
+      ha0 haj hA₀ hW hdisj hawake hclass hopp ar).K = K := by rfl
+
+end NodeProjections
+
 end Consensus.Goldilocks.Compose.Growing
 
 namespace Consensus.Goldilocks.Obligations.Growing
