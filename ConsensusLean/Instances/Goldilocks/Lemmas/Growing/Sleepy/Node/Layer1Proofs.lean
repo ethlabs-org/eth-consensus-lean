@@ -5,6 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Inclusion
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -285,6 +286,40 @@ theorem sleepy_invariant_of_windows {proposer : Nat → Fin sp.n}
     SleepyInvariantUpTo tr H b := by
   obtain ⟨hb, hservice, hB, hBK⟩ := sleepy_service_and_bounds hrun hpos hKB.hsize hw
   exact sleepy_invariant_at hrun hnc hKB hb hservice hB hBK
+
+private theorem ready_of_window {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+    {c t : Time} {y : Fin sp.n} (hc : Regimes.catchUp sp ≤ c)
+    (hy : y ∈ H t)
+    (hawake : ∀ u, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) :
+    Regimes.Growing.ReadyAt tr H (Regimes.catchUp sp) y t := by
+  refine ⟨hy, fun u hu hut => hawake u ?_ hut⟩
+  exact (max_le_max_left 0 (by linarith)).trans hu
+
+/-- Proposal ancestry from the shared windows, with positivity explicit. -/
+theorem sleepy_proposal_coverage_of_windows {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {ini}
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
+    {cm : Time → Finset (Fin sp.n)} (hpos : 0 < sp.committeeSize)
+    (hKB : CommitteeFacts tr H (dictOfTime sp cm))
+    {p : EnvPoint (Fin sp.n)} {c look committeeLook ΔF b hold margin : Time}
+    (hw : GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b)
+    (hhold : sp.Δ ≤ hold) (hmargin : 6 * sp.Δ ≤ margin)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} {k y j t}
+    (hP : ReadyProposal tr H c hold B k) (hkt : tr.time k + margin ≤ t)
+    (hy : ReadyReadPoint tr H b c y j t) (hjt : t < tr.time j) :
+    Anc (tr.HonestBlocksAt H) B (confirmedRead tr y j t) := by
+  obtain ⟨hb, hservice, hB, hBK⟩ := sleepy_service_and_bounds hrun hpos hKB.hsize hw
+  have hc := (goldilocksWindowPremises_iff.mp hw).2.2.1
+  obtain ⟨hprop, hready, hhonest⟩ := hP
+  have hp' : Regimes.Growing.ReadyProposalAt tr H (Regimes.catchUp sp)
+      (tr.time k) (Regimes.Growing.hold sp) B := by
+    refine ⟨B.proposer, k, ready_of_window hc hready.1 hready.2, ?_, hprop, rfl⟩
+    have hh : tr.time k + Regimes.Growing.hold sp ≤ tr.time k + hold := by
+      simpa only [Regimes.Growing.hold] using add_le_add_right hhold (tr.time k)
+    exact hrun.antitone hh hhonest
+  exact Regimes.Growing.include_sleepy_at hrun hnc hb hservice hB hp'
+    (by linarith) hy.1.2.2.2 (ready_of_window hc hy.1.1 hy.2) ⟨hy.1.2.1.1, hjt⟩ hKB hBK
 
 end Consensus.Goldilocks.Generic.SleepyLayer1
 
