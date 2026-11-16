@@ -171,7 +171,7 @@ private theorem deadline_eq {y : Fin P.n} {t₀ τ Δ' : Time}
     simp [max_eq_left ((hnr k' hk').trans hτ)]
 
 /-- The state of `y` does not change over cuts without a call of `y`. -/
-private theorem state_eq_of_noCall {y : Fin P.n} {j j₂ : Nat} (hle : j ≤ j₂)
+theorem state_eq_of_noCall {y : Fin P.n} {j j₂ : Nat} (hle : j ≤ j₂)
     (h : ∀ k, j ≤ k → k < j₂ → ¬ tr.IsCall y k) : tr.state y j₂ = tr.state y j := by
   induction j₂, hle using Nat.le_induction with
   | base => rfl

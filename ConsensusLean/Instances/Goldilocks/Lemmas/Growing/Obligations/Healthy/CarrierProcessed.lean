@@ -19,6 +19,9 @@ Under growing faults:
   a node ready there;
 * `held_forward_blockCall_lt_at`: a held forwarding wrapper of a
   signer honest at its stamp is processed before the holding bound;
+* `carrier_processed_of_proposesAt_at`: every node ready at the deadline processes a block
+  proposed after the query by a node honest at its proposal, strictly before the deadline, when
+  `t_k + Δ ≤ deadline`;
 * `carrier_processed_of_honest_at`, the premise `hcarrier` of
   `final_window_extract_of_gap_at`: every node ready at the deadline processes an honest proposal
   of a slot `s` by the deadline, when `query < t_s` and `t_s + Δ ≤ deadline`. -/
@@ -116,36 +119,33 @@ end Engine
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
-/-- **The carrier of an honest proposal is processed by the deadline**, under growing faults. -/
-theorem carrier_processed_of_honest_at (Q : FinalQueryAt S A V) :
-    ∀ s P, Healing.Growing.HonestProposalRun Q.trace Q.keys
-      (runProposer S Q.run.2 Q.hn) s P → Q.query < Q.params.ts s →
-      Q.params.ts s + Q.params.Δ ≤ Q.deadline →
-      ∀ y, Regimes.Growing.ReadyAt Q.trace Q.keys
+/-- **The carrier of a proposal is processed strictly before the deadline**, under growing
+faults: a block proposed at cut `k` after the query by a node honest there, with
+`t_k + Δ ≤ deadline`, is processed before the deadline by every node ready at the deadline. -/
+theorem carrier_processed_of_proposesAt_at (Q : FinalQueryAt S A V) {z : Fin Q.params.n}
+    {k : Nat} {P : Blk Q.params} (hz : z ∈ Q.keys (Q.trace.time k))
+    (hk : Q.trace.ProposesAt z k P) (hq : Q.query < Q.trace.time k)
+    (hD : Q.trace.time k + Q.params.Δ ≤ Q.deadline) :
+    ∀ y, Regimes.Growing.ReadyAt Q.trace Q.keys
         ((Sys (goldilocks S) V).cDur (K S A) Q.run) y Q.deadline →
-      ∃ j, Q.trace.BlockCallAt y j P ∧ Q.trace.time j ≤ Q.deadline := by
-  intro s P hP hq hD y hy
+      ∃ j, Q.trace.BlockCallAt y j P ∧ Q.trace.time j < Q.deadline := by
+  intro y hy
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
-  obtain ⟨k, hk⟩ := proposesAt_of_honestProposalRun_at hrun hP
-  have hmem := proposer_mem_of_proposesAt_at hrun hP hk
-  obtain ⟨hacc, -, -⟩ := accept_of_proposesAt_at hrun hnc hmem hk
-  have htk : Q.trace.time k = Q.params.ts s := by
-    rw [hk.2.2, honestProposalRun_slot_at hP, Q.params.slotTime_eq]
-    simp [SA.SAParams.ts]
+  obtain ⟨hacc, -, -⟩ := accept_of_proposesAt_at hrun hnc hz hk
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
     (forwardAtAcceptanceAt_iff S Q.run.2 Q.hn _ _ _).mp
-      (forwardAtAcceptance_at S Q.run.2 Q.hn Q.valid) _ _ _ hmem hacc
+      (forwardAtAcceptance_at S Q.run.2 Q.hn Q.valid) _ _ _ hz hacc
   have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
     (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
   have hΔ := Q.run.1.ΔAC_pos
   have hg : max Q.gst 0 ≤ Q.query :=
     (le_add_of_nonneg_right (mul_nonneg (Int.natCast_nonneg _) hΔ.le)).trans Q.mature
-  have hmax : max (max (Q.params.ts s) Q.gst) 0 = Q.params.ts s := by
+  have hmax : max (max (Q.trace.time k) Q.gst) 0 = Q.trace.time k := by
     have h1 := le_max_left Q.gst 0
     have h2 := le_max_right Q.gst 0
-    have h3 : Q.gst ≤ Q.params.ts s := by linarith
-    have h4 : (0 : Time) ≤ Q.params.ts s := by linarith
+    have h3 : Q.gst ≤ Q.trace.time k := by linarith
+    have h4 : (0 : Time) ≤ Q.trace.time k := by linarith
     rw [max_eq_left h3, max_eq_left h4]
   have hc : Q.params.Δ ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run + 1 := by
     have hc1 : (1 : Time) ≤ ((K S A).params.catchUp : Time) := by
@@ -156,15 +156,31 @@ theorem carrier_processed_of_honest_at (Q : FinalQueryAt S A V) :
     linarith [mul_le_mul_of_nonneg_right hc1 (zero_le_one.trans Q.run.1.ΔAC_pos)]
   have hkh : Q.trace.time k ≤ Q.run.2.horizon := by
     have hΔp := Q.params.toParams.hΔ
-    rw [htk]
     linarith [Q.bounded]
-  have hx : Q.run.2.key (runProposer S Q.run.2 Q.hn s) ∉
-      Q.run.2.faultyAt (Q.trace.time k) :=
-    not_faulty_of_mem_honestKeysAt S Q.run.2 hmem le_rfl hkh
+  have hx : Q.run.2.key z ∉ Q.run.2.faultyAt (Q.trace.time k) :=
+    not_faulty_of_mem_honestKeysAt S Q.run.2 hz le_rfl hkh
   obtain ⟨d, hheld, hdt⟩ := publication_held_ready_tail_at S Q.run.2 Q.hn hnet r hr
     (by rw [horg, htime]; exact hx) (not_isFGAtt_of_decodeForward hdecode) hy Q.bounded
-    (by rw [htime, htk, hmax]; exact hD) hc
-  obtain ⟨j, hj, hjt⟩ := held_forward_blockCall_lt_at S Q.run.2 Q.hn Q.valid hx hheld hdecode hdt
+    (by rw [htime, hmax]; exact hD) hc
+  exact held_forward_blockCall_lt_at S Q.run.2 Q.hn Q.valid hx hheld hdecode hdt
+
+/-- **The carrier of an honest proposal is processed by the deadline**, under growing faults
+(`carrier_processed_of_proposesAt_at` at the proposal of an honest proposal run). -/
+theorem carrier_processed_of_honest_at (Q : FinalQueryAt S A V) :
+    ∀ s P, Healing.Growing.HonestProposalRun Q.trace Q.keys
+      (runProposer S Q.run.2 Q.hn) s P → Q.query < Q.params.ts s →
+      Q.params.ts s + Q.params.Δ ≤ Q.deadline →
+      ∀ y, Regimes.Growing.ReadyAt Q.trace Q.keys
+        ((Sys (goldilocks S) V).cDur (K S A) Q.run) y Q.deadline →
+      ∃ j, Q.trace.BlockCallAt y j P ∧ Q.trace.time j ≤ Q.deadline := by
+  intro s P hP hq hD y hy
+  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
+  obtain ⟨k, hk⟩ := proposesAt_of_honestProposalRun_at hrun hP
+  have htk : Q.trace.time k = Q.params.ts s := by
+    rw [hk.2.2, honestProposalRun_slot_at hP, Q.params.slotTime_eq]
+    simp [SA.SAParams.ts]
+  obtain ⟨j, hj, hjt⟩ := carrier_processed_of_proposesAt_at S A V Q
+    (proposer_mem_of_proposesAt_at hrun hP hk) hk (htk ▸ hq) (htk ▸ hD) y hy
   exact ⟨j, hj, hjt.le⟩
 
 end Consensus.Goldilocks.Obligations.Growing

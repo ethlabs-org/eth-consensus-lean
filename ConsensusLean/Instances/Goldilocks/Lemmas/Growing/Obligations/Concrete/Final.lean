@@ -12,14 +12,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Tr
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Reads
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Outputs
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalReplay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HealedC4
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationService
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.FGProjection
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.State
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTransport
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -35,7 +31,7 @@ projection (`final_payload_projection_at`) turns that into the shape's proposal 
 
 Each store is read at an observation of a node honest there: the last anchor's proposer at its
 acceptance, a ready reader at its read time. Finalized safety between them is charged at the later
-observation (`FGLocalRun.replay_finalized_safety_upTo_at`). -/
+observation (`reader_cache_covers_at`). -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
@@ -44,24 +40,6 @@ open Blocks Shape
 open Consensus.Model (pubOf)
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
-
-private theorem final_fg_run_at (Q : FinalQueryAt S A V) :
-    Consensus.Goldilocks.Growing.FGLocalRun (goldilocksNode Q.params (S.ro _)).genesisPayload
-      Q.keys (Q.trace.HonestBlocksAt Q.keys) Q.trace.projFG := by
-  have hr := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  exact Compose.Growing.fg_projection _ _ _ _ _ _ _
-    (fun y => Compose.requirements_from _ _ (hr.vstart y)) hr.genesis_root_ok hr.toLocalRun
-        (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision)
-
-/-- The FG store of a node honest at an observation after its earlier cuts is its node state's. -/
-private theorem final_store_eq_at (Q : FinalQueryAt S A V) {y : Fin Q.params.n} {i : Nat}
-    {t : Time} (ht : 0 ≤ t) (hle : ∀ k < i, Q.trace.time k ≤ t) (hy : y ∈ Q.keys t) :
-    Q.trace.projFG.store y i = (Q.trace.state y i).fg := by
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have h := Compose.projFG_state (hrun.toLocalRun.upTo ht) hy i
-  rw [RunTrace.upTo_projFG, Trace.upTo_state Q.trace.projFG y hle,
-    Trace.upTo_state Q.trace y hle] at h
-  exact congrArg Prod.fst h
 
 /-- The validators compromised at a bounded read time number fewer than `2q − n`. -/
 private theorem final_faults_at
@@ -128,14 +106,15 @@ theorem final_anchor_coverage_at (Q : FinalQueryAt S A V) (W : FinalWindowDataAt
   have hsl : (W.block 3).slot ≤ (W.block 0).slot + Q.params.toParams.fg.δt := by
     change (W.block 3).slot ≤ (W.block 0).slot + S.δt
     omega
-  exact cacheCoverage_of_anchor_window_upTo_at hp hP hmono hR hb
-    (by intro h; simp at h; omega) (W.anchorSteps_iff.mp steps) hsl ht hle hz hB
+  have hch := window_anchors_chain_upTo_at hp hP hmono hR hb (by intro h; simp at h; omega)
+  exact cacheCoverage_of_anchor_window_upTo_at hp.run hp.noColl
+    (fun i => hch i 3 (Fin.le_last i)) (W.anchorSteps_iff.mp steps) hsl ht hle hz hB
 
 /-- **Finalized-cache coverage of the first anchor** at every ready read after the deadline. The
-last anchor's proposer holds the covering block `X` at its acceptance; finalized safety against
-the reader's cache, charged at the read time, puts `X` below the reader's cache or the cache below
-`X`. In the second case the reader accepts the last anchor before its read and caches `X` there.
--/
+last anchor's proposer holds the covering block `X` at its acceptance (`final_anchor_coverage_at`);
+the reader's cache covers it (`reader_cache_covers_at`), once a reader whose cache is below the last
+anchor accepts it before its read: the proposer's forwarding publication is held by the reader one
+delay after it, before the read. -/
 theorem final_cache_coverage_at
     (Q : FinalQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
     (W : FinalWindowDataAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q)
@@ -143,7 +122,6 @@ theorem final_cache_coverage_at
     (run : W.AnchorRun) (steps : W.AnchorSteps) : W.CacheCoverage := by
   have hrun := simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTraceAt { S with vote := stock } Q.run.2 Q.hn Q.valid Q.noCollision
-  have fg := final_fg_run_at { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q
   have hmono := hrun.time_mono
   -- the last anchor's proposer, at its acceptance
   set x := (W.block 3).proposer with hxdef
@@ -155,19 +133,6 @@ theorem final_cache_coverage_at
   obtain ⟨X, hX, hAX⟩ := final_anchor_coverage_at
       { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q W run steps
       hc0 hlc hx hBx
-  have hRx := Healing.Growing.fg_reachable_at hrun hc0 hlc hx
-  have hXR := hRx.blocks_root hX
-  have hXt : X ∈ (Q.trace.state x (c + 1)).fg.tree := by
-    change (Q.trace.state x (c + 1)).fg.blocks X.root = some X
-    rwa [hXR]
-  have hancx : (Q.trace.state x (c + 1)).fg.Anc X (W.block 3) := by
-    obtain ⟨_, ⟨X', hX', hX'r, hanc⟩, _⟩ := Store.entry_state_of_source _ _ _ _ hRx _ hBx
-    have he : X' = X := (Store.accepted_tree _ _ _ _ hRx).2.1.1 hX' hXt (hX'r.trans hXR.symm)
-    subst X'
-    exact hanc
-  have hXB : W.Extends X (W.block 3) := Healing.Growing.honest_anc_of_store_anc_at hc0 hlc hx hancx
-  have hsx := final_store_eq_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hc0 hlc hx
   -- its forwarding publication
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
     (forwardAtAcceptanceAt_iff { S with vote := stock } Q.run.2 Q.hn _ _ _).mp
@@ -198,20 +163,10 @@ theorem final_cache_coverage_at
   intro y t j hdt hth hy hj
   have ht0 : 0 ≤ t := (hc0.trans ((W.bounded 3).trans hdt))
   have hle := hj.1
-  have hct : Q.trace.time c ≤ t := (W.bounded 3).trans hdt
-  have hsy := final_store_eq_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q ht0 hle hy.1
-  have hft := final_faults_at
-    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q ht0 hth
-  have hf : (Q.keys (max (Q.trace.time c) t))ᶜ.ncard < 2 * Q.params.toParams.fg.q - Q.params.n :=
-    by rw [max_eq_right hct]; exact hft
-  have hsafe := fg.replay_finalized_safety_upTo_at hc0 hlc hx ht0 hle hy.1 hf
-    (B := W.block 3) (X := X) (by rw [hsx]; exact hBx) (by rw [hsx]; exact hXt)
-    (by rw [hsx]; exact hXR)
-  rw [hsy] at hsafe
-  rcases hsafe with hXF | hFX
-  · exact hAX.trans hXF
-  -- the reader's cache is below `X`: it accepts the last anchor before its read
+  refine reader_cache_covers_at hrun hnc hx hBx hX hAX ((W.bounded 3).trans hdt) hle hy.1
+    (final_faults_at { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q ht0 hth)
+    fun hFB => ?_
+  -- the reader accepts the last anchor before its read
   obtain ⟨d, hheld, hdt'⟩ := publication_held_ready_tail_at { S with vote := stock } Q.run.2
       Q.hn hnet r hr
     (by rw [horg, htime]; exact hxr) (not_isFGAtt_of_decodeForward hdecode) hy hth
@@ -222,60 +177,10 @@ theorem final_cache_coverage_at
   obtain ⟨k, hkj, hacc', hkt⟩ := held_forward_accepted_before_at
     { S with vote := stock } Q.run.2 Q.hn Q.valid hnc
     hle (not_faulty_of_mem_honestKeysAt { S with vote := stock } Q.run.2 hy.1 le_rfl hth)
-    hxr hrel hheld
-    hdecode hdt' hj.2.le (hFX.trans hXB)
-  have hkj' : k + 1 ≤ j := by
-    have : k ≠ j := by intro he; subst k; exact (not_lt_of_ge hj.2.le) hkt
-    omega
-  have hlk : ∀ q < k + 1, Q.trace.time q ≤ t := fun q hq => hle q (by omega)
-  have hlk' : ∀ q < k, Q.trace.time q ≤ t := fun q hq => hle q (by omega)
-  have hsk1 := final_store_eq_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q ht0 hlk hy.1
-  have hsk := final_store_eq_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q ht0 hlk' hy.1
-  -- the reader's acceptance, on the prefix through its read
-  have fgt := fg.upTo ht0
-  have hpre1 := Trace.upTo_state Q.trace.projFG y hlk
-  have hpre := Trace.upTo_state Q.trace.projFG y hlk'
-  have hac : FGTrace.AcceptAt (Q.trace.projFG.upTo t) y k (W.block 3) :=
-    (Trace.upTo_callAt Q.trace.projFG).mpr ⟨hle k (by omega), Compose.projFG_callAt.mpr hacc'⟩
-  have hpostB : W.block 3 ∈ (FGTrace.store (Q.trace.projFG.upTo t) y (k + 1)).tree := by
-    have h := Store.accept_onBlock fgt hy.1 hac
-    rw [(Store.tree_grows _ _ _ _ (Store.store_reachable fgt hy.1 k)).1 _ _ h]
-    exact Set.mem_insert _ _
-  have hpostB' : W.block 3 ∈ (Q.trace.projFG.store y (k + 1)).tree := by
-    simpa only [FGTrace.store, hpre1] using hpostB
-  have hBx' : W.block 3 ∈ (Q.trace.projFG.store x (c + 1)).tree := by rw [hsx]; exact hBx
-  have hσ := Store.Growing.σ_eq_of_held fg hc0 ht0 hx hy.1 hlc hlk hBx' hpostB'
-  have hancy := Store.Growing.anc_transfer fg hc0 ht0 hx hy.1 hlc hlk
-    (show (Q.trace.projFG.store x (c + 1)).Anc X (W.block 3) by rw [hsx]; exact hancx) hpostB'
-  have hpostX : X ∈ (Q.trace.projFG.store y (k + 1)).tree := by
-    by_cases he : X = W.block 3
-    · exact he ▸ hpostB'
-    · exact (Anc.mem hancy he).1
-  have hXr' : X.root = ((Q.trace.projFG.store y (k + 1)).σ (W.block 3).root).F := by
-    rw [← hσ, hsx]; exact hXR
-  -- the reader's cache before the acceptance is below `X`
-  have hrt := hrun.upTo ht0
-  have hgrow : ∀ {k₁ k₂}, k₁ ≤ k₂ → k₂ ≤ j →
-      Anc (Q.trace.HonestBlocksAt Q.keys) (Q.trace.state y k₁).fg.F (Q.trace.state y k₂).fg.F := by
-    intro k₁ k₂ h12 h2
-    have h := (Compose.fg_grows hrt hy.1 h12).2
-    have hl₂ : ∀ q < k₂, Q.trace.time q ≤ t := fun q hq => hle q (by omega)
-    have hl₁ : ∀ q < k₁, Q.trace.time q ≤ t := fun q hq => hle q (by omega)
-    rw [Trace.upTo_state Q.trace y hl₁, Trace.upTo_state Q.trace y hl₂] at h
-    exact h.mono (RunTrace.honestBlocks_upTo_subset hmono ht0)
-  have hFX' : Anc (Q.trace.HonestBlocksAt Q.keys)
-      (FGTrace.store (Q.trace.projFG.upTo t) y k).F X := by
-    rw [show FGTrace.store (Q.trace.projFG.upTo t) y k = Q.trace.projFG.store y k by
-      simp only [FGTrace.store, hpre], hsk]
-    exact (hgrow (Nat.le_of_lt (by omega)) (by omega)).trans hFX
-  have hcache := Healing.accepted_replay_finalized_cached fgt (by exact hft) hy.1 hac
-    (by simpa only [FGTrace.store, hpre1] using hpostX)
-    (by simpa only [FGTrace.store, hpre1] using hXr') hFX'
-  rw [show FGTrace.store (Q.trace.projFG.upTo t) y (k + 1) = Q.trace.projFG.store y (k + 1) by
-    simp only [FGTrace.store, hpre1], hsk1] at hcache
-  exact hAX.trans (hcache.trans (hgrow hkj' le_rfl))
+    hxr hrel hheld hdecode hdt' hj.2.le hFB
+  refine ⟨k, ?_, hacc'⟩
+  have : k ≠ j := by intro he; subst k; exact (not_lt_of_ge hj.2.le) hkt
+  omega
 
 /-- **The payload projection** under growing faults: final windows whose first anchor is covered
 by the finalized cache of every node ready from the deadline give the shape's final proposal
