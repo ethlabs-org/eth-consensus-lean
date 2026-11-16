@@ -96,7 +96,7 @@ theorem outage_pool_delivery_query_at (Q : OutageQueryAt S A V) :
       ∀ x i e, x ∈ Q.keys (Q.trace.time i) → SA.VoteAt Q.trace.projAC x i e → e.msg.slot = m →
         e.msg ∈ (Q.trace.state w c).ac.pool m ∨
           e.msg.val ∈ SA.equivocators {v | v ∈ (Q.trace.state w c).ac.pool m} :=
-  outage_pool_delivery_at S Q.run.2 Q.hn Q.valid
+  outage_pool_delivery_at (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid)
     (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision)
     (goldilocks_postStopService S Q.run.2 Q.hn Q.valid
       (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) (outage_psync_at Q))

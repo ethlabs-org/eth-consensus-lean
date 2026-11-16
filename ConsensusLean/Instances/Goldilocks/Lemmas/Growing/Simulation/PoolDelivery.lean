@@ -53,30 +53,26 @@ private theorem pool_evidence_at_update {sp : SAParams} {FGP : Type}
   · exact Or.inl (hm (hslot ▸ h))
   · exact Or.inr ⟨a, hm (hslot ▸ ha), b, hm (hslot ▸ hb), hab, hav, hbv⟩
 
-open AsChainShape Shape
-open Consensus.Model (pubOf)
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-
-private theorem pool_evidence_at_update_at (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
-    {w : Fin (Fintype.card V)} {c m : Nat} {ℓ}
-    (hw : w ∈ honestKeysAt S rho ((simTraceAt S rho hn).time c))
-    (hu : SA.UpdateAt (simTraceAt S rho hn).projAC w c m ℓ)
-    {k : Nat} {v : SA.Vote (Fintype.card V)} (hkc : k ≤ c)
-    (hlo : (S.params (pubOf E) hn).ts m ≤ (simTraceAt S rho hn).time k)
-    (hhi : (simTraceAt S rho hn).time k <
-      (S.params (pubOf E) hn).ts m + 2 * (S.params (pubOf E) hn).Δ)
-    (hp : (simTraceAt S rho hn).projAC.ProcessAt w k v) (hslot : v.slot = m) :
-    v ∈ ((simTraceAt S rho hn).state w c).ac.pool m ∨
-      v.val ∈ SA.equivocators {a | a ∈ ((simTraceAt S rho hn).state w c).ac.pool m} := by
-  let tr := simTraceAt S rho hn
-  have hr := simTraceAt_goldilocksRun S rho hn hv
+private theorem pool_evidence_at_update_at (hr : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr)
+    {w : Fin sp.n} {c m : Nat} {ℓ}
+    (hw : w ∈ H (tr.time c))
+    (hu : SA.UpdateAt tr.projAC w c m ℓ)
+    {k : Nat} {v : SA.Vote sp.n} (hkc : k ≤ c)
+    (hlo : sp.ts m ≤ tr.time k)
+    (hhi : tr.time k < sp.ts m + 2 * sp.Δ)
+    (hp : tr.projAC.ProcessAt w k v) (hslot : v.slot = m) :
+    v ∈ (tr.state w c).ac.pool m ∨
+      v.val ∈ SA.equivocators {a | a ∈ (tr.state w c).ac.pool m} := by
   have hprefix := hr.upTo (hr.time_nonneg c)
   have hac := Compose.ac_projection _ _ _ _ _ _ _ (Compose.requirements _ _)
     (fun y _ U _ s Φ t₀ h =>
-      SA.proposal_payload_valid_from _ (simIni_voteStart S rho hn y).pool y U s Φ t₀ h)
+      SA.proposal_payload_valid_from _ (hr.vstart y).pool y U s Φ t₀ h)
     hprefix.toLocalRun (hnc.upTo (tr.time c))
   have hs (j : Nat) (hj : j ≤ c) :
       ((tr.upTo (tr.time c)).projAC.state w j) = (tr.state w j).ac := by
@@ -102,28 +98,22 @@ private theorem pool_evidence_at_update_at (hv : rho.ExecutionValid)
   simpa only [hs c le_rfl] using he
 
 /-- A slot vote reaches a joined updater as the vote itself or as evidence that its
-validator equivocated. Honesty at the cast does not prohibit later forged votes. The only network
-input is the message service of post-stop service. -/
-theorem outage_pool_delivery_at (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {g : Time}
-    (hs : Generic.PostStopService (simTraceAt S rho hn) (honestKeysAt S rho) g) :
-    ∀ w c m ℓ, w ∈ honestKeysAt S rho ((simTraceAt S rho hn).time c) →
-      SA.UpdateAt (simTraceAt S rho hn).projAC w c m ℓ →
-      g ≤ (S.params (pubOf E) hn).ts m + (S.params (pubOf E) hn).Δ →
-      ∀ x i e, x ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i) →
-        SA.VoteAt (simTraceAt S rho hn).projAC x i e → e.msg.slot = m →
-        e.msg ∈ ((simTraceAt S rho hn).state w c).ac.pool m ∨
-          e.msg.val ∈ SA.equivocators {v | v ∈ ((simTraceAt S rho hn).state w c).ac.pool m} := by
+validator equivocated, on any Goldilocks run. Honesty at the cast does not prohibit later forged
+votes. The only network input is the message service of post-stop service. -/
+theorem outage_pool_delivery_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g : Time} (hs : Generic.PostStopService tr H g) :
+    ∀ w c m ℓ, w ∈ H (tr.time c) → SA.UpdateAt tr.projAC w c m ℓ →
+      g ≤ sp.ts m + sp.Δ →
+      ∀ x i e, x ∈ H (tr.time i) → SA.VoteAt tr.projAC x i e → e.msg.slot = m →
+        e.msg ∈ (tr.state w c).ac.pool m ∨
+          e.msg.val ∈ SA.equivocators {v | v ∈ (tr.state w c).ac.pool m} := by
   intro w c m ℓ hw hu hstop x i e hx hvote hes
-  let tr := simTraceAt S rho hn
-  let sp := S.params (pubOf E) hn
-  have hrun := simTraceAt_goldilocksRun S rho hn hv
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have htc : tr.time c = sp.ts m + 6 * sp.Δ := hu.2.2.1
   have hprefix := hrun.upTo (hrun.time_nonneg c)
   have hr := Compose.ac_projection _ _ _ _ _ _ _ (Compose.requirements _ _)
     (fun y _ U _ s Φ t₀ h =>
-      SA.proposal_payload_valid_from _ (simIni_voteStart S rho hn y).pool y U s Φ t₀ h)
+      SA.proposal_payload_valid_from _ (hrun.vstart y).pool y U s Φ t₀ h)
     hprefix.toLocalRun (hnc.upTo (tr.time c))
   have hstate : (tr.upTo (tr.time c)).projAC.state w c = tr.projAC.state w c := by
     rw [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC w
@@ -142,7 +132,7 @@ theorem outage_pool_delivery_at (hv : rho.ExecutionValid)
   have hprefixX := hrun.upTo (hrun.time_nonneg i)
   have hrx := Compose.ac_projection _ _ _ _ _ _ _ (Compose.requirements _ _)
     (fun y _ U _ s Φ t₀ h =>
-      SA.proposal_payload_valid_from _ (simIni_voteStart S rho hn y).pool y U s Φ t₀ h)
+      SA.proposal_payload_valid_from _ (hrun.vstart y).pool y U s Φ t₀ h)
     hprefixX.toLocalRun (hnc.upTo (tr.time i))
   have hv' : SA.VoteAt (tr.upTo (tr.time i)).projAC x i e := by
     obtain ⟨l, hc, he⟩ := hvote
@@ -173,7 +163,7 @@ theorem outage_pool_delivery_at (hv : rho.ExecutionValid)
     rcases hp with ⟨l, hc, hm⟩ | ⟨l, hc, hm⟩
     · exact ⟨l, Compose.projAC_callAt.mpr hc, Or.inl hm⟩
     · exact ⟨l, Compose.projAC_callAt.mpr hc, Or.inr hm⟩
-  exact pool_evidence_at_update_at S rho hn hv hnc hw hu hkc (hmτ.trans hik)
+  exact pool_evidence_at_update_at hrun hnc hw hu hkc (hmτ.trans hik)
     (hkdl.trans_le (hdl k hkc)) hpA hes
 
 end Consensus.Goldilocks.Simulation
