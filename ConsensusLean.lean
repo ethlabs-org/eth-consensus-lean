@@ -589,6 +589,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forwa
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Receipt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Tick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Groups
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealedReadAncestry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealingRows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.LocalRows

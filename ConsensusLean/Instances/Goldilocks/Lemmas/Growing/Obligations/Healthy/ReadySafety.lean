@@ -78,7 +78,9 @@ theorem healthy_ready_safety_at
     rw [hread, hread']
     exact read_prefix { S with vote := stock } Q.run.2 Q.hn Q.valid hnc
       h0' hrp.1 hra.1 h0'' hrp'.1 hra'.1
-      (healthy_cut_tips_ancestor_at S A V Q h0 hb hp v i j hi hij hj hvi hvj (hh'.trans hB))
+      (healthy_cut_tips_ancestor_at { S with vote := stock }
+        ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q h0 hb hp v i j hi hij hj hvi hvj
+          (hh'.trans hB))
 
 end Consensus.Goldilocks.Obligations.Growing
 

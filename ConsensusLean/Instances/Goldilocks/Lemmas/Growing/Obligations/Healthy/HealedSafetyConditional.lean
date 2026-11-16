@@ -195,19 +195,14 @@ theorem healthy_repair_schedule_of_preparation_at
 /-- The repair schedule of the preparation initializer: its finite preparation schedule keeps
 its reset time, service delay and query (`healthy_repair_schedule_of_preparation_at`). -/
 theorem healthy_repair_schedule_at
-    (Q : HealthyPreparationQueryAt
-    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
+    (Q : HealthyPreparationQueryAt S A V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocks { S with vote := stock }) V).prog
-      (shapeProgress (goldilocks { S with vote := stock }) V)
+    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V)
       (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
-    Nonempty (HealthyRepairScheduleAt
-        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q) := by
-  obtain ⟨W', ⟨Dprep⟩⟩ := healthy_preparation_initialize_at
-    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q h0 hb hp
-  obtain ⟨D, -⟩ := healthy_repair_schedule_of_preparation_at
-    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q W' Dprep
+    Nonempty (HealthyRepairScheduleAt S A V Q) := by
+  obtain ⟨W', ⟨Dprep⟩⟩ := healthy_preparation_initialize_at S A V Q h0 hb hp
+  obtain ⟨D, -⟩ := healthy_repair_schedule_of_preparation_at S A V Q W' Dprep
   exact ⟨D⟩
 
 section Trace

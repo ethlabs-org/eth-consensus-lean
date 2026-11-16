@@ -51,7 +51,8 @@ theorem healthy_cut_tips_comparable_at
           (stateAt { S with vote := stock } Q.run.2 Q.hn v i).now
     Anc (Q.trace.HonestBlocksAt Q.keys) (C u i) (C v j) ∨
       Anc (Q.trace.HonestBlocksAt Q.keys) (C v j) (C u i) := by
-  obtain ⟨D⟩ := healthy_repair_schedule_at S A V Q h0 hb hp
+  obtain ⟨D⟩ := healthy_repair_schedule_at { S with vote := stock }
+    ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q h0 hb hp
   obtain ⟨O⟩ := healthy_bounded_repairing_opening_at
       { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hb hp D
   obtain ⟨Cu⟩ := healthy_current_read_context_at
@@ -73,45 +74,33 @@ theorem healthy_cut_tips_comparable_at
 /-- **Temporal ancestry of the read tips** of one reader ready at two cuts from the heal point,
 the later read within the query's bound. -/
 theorem healthy_cut_tips_ancestor_at
-    (Q : HealthyPreparationQueryAt
-    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
+    (Q : HealthyPreparationQueryAt S A V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocks { S with vote := stock }) V).prog
-      (shapeProgress (goldilocks { S with vote := stock }) V)
+    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V)
       (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
     (v : V) (i j : Nat)
     (hi : (chainTrace Q.run.2).InCuts Q.heal i) (hij : i ≤ j)
     (hj : (chainTrace Q.run.2).InCuts Q.heal j)
-    (hvi : Q.run.2.point.Ready ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run) v
+    (hvi : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime i))
-    (hvj : Q.run.2.point.Ready ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run) v
+    (hvj : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime j))
-    (hjb : (stateAt { S with vote := stock } Q.run.2 Q.hn v j).now ≤ Q.bound) :
+    (hjb : (stateAt S Q.run.2 Q.hn v j).now ≤ Q.bound) :
     Anc (Q.trace.HonestBlocksAt Q.keys)
       (Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-        (cutMap { S with vote := stock } Q.run.2 Q.hn
-          (lastOwn { S with vote := stock } Q.run.2 v i))
-            (stateAt { S with vote := stock } Q.run.2 Q.hn v i).now)
+        (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i)) (stateAt S Q.run.2 Q.hn v i).now)
       (Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-        (cutMap { S with vote := stock } Q.run.2 Q.hn
-          (lastOwn { S with vote := stock } Q.run.2 v j))
-            (stateAt { S with vote := stock } Q.run.2 Q.hn v j).now) := by
+        (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v j)) (stateAt S Q.run.2 Q.hn v j).now) := by
   obtain ⟨D⟩ := healthy_repair_schedule_at S A V Q h0 hb hp
-  obtain ⟨O⟩ := healthy_bounded_repairing_opening_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hb hp D
-  have hnn := cutMap_mono { S with vote := stock } Q.run.2 Q.hn
-    (lastOwn_mono { S with vote := stock } Q.run.2 v hij)
-  have htt := now_mono { S with vote := stock } Q.run.2 Q.hn Q.valid v hij
-  obtain ⟨Ci⟩ := healthy_current_read_context_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hi hvi
+  obtain ⟨O⟩ := healthy_bounded_repairing_opening_at S A V Q hb hp D
+  have hnn := cutMap_mono S Q.run.2 Q.hn (lastOwn_mono S Q.run.2 v hij)
+  have htt := now_mono S Q.run.2 Q.hn Q.valid v hij
+  obtain ⟨Ci⟩ := healthy_current_read_context_at S A V Q D O hi hvi
       (htt.trans hjb)
-  obtain ⟨Cj⟩ := healthy_current_read_context_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hj hvj hjb
-  rw [healthy_current_record_read_at { S with vote := stock }
-      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hi hvi (htt.trans hjb),
-    healthy_current_record_read_at { S with vote := stock }
-      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hj hvj hjb]
+  obtain ⟨Cj⟩ := healthy_current_read_context_at S A V Q D O hj hvj hjb
+  rw [healthy_current_record_read_at S A V Q D O hi hvi (htt.trans hjb),
+    healthy_current_record_read_at S A V Q D O hj hvj hjb]
   exact effective_record_of_interval_at D.reset.run D.reset.noColl Cj.time_nonneg
     Cj.readPoint.1 Cj.honest hnn
     (healthy_current_record_interval_at D.toRepairSchedule O.toRepairOpening Ci.readPoint
