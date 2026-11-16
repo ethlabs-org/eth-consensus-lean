@@ -2,6 +2,8 @@ module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.CorrectLocal
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Persist
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Service
+public import ConsensusLean.Spec.Blocks.Payload
 
 @[expose] public section
 
@@ -57,18 +59,33 @@ def goldilocksACHealing (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)
     ∃ O : ACHealing (goldilocksNode sp ro) (fun v => v.val) R,
     GoldilocksHealingData sp ro O
 
-/-- INCOMPLETE intended Goldilocks local supplier, not a completed specialisation.
-Local duration, threshold, outage-policy, service and payload equations remain open.
-The margin bound fits the smallest positive recurrence index:
-`18Δ + 2 ≤ (4X + 14)Δ + 2` for every `X ≥ 1`. It supplies no margin equality.
-The healing equation below supplies neither recovery matching nor evidence for
-`OutageReadPoint.protection`. A witness alone does not fix Goldilocks data.
-The original local field equations also remain open; no supplier evidence is inferred.
-The ready-majority counterpattern is not discharged by this skeleton. -/
+/-- Exact local data equations for the intended Goldilocks local supplier, not its field evidence.
+The durations are the contract's at `ΔAC = Δ`: catch-up `18Δ`, satisfying `18Δ + 1 ≤ 19Δ`
+against the contract's `19Δ`, look-aheads `5Δ`, proposer hold `Δ`, margin and latency `6Δ`
+(a proposal at `t_s` is confirmed by `t_s + 6Δ`), outage recovery `9Δ`, look-back
+`(12k + 7)Δ`, arming lag `(4k + 6)Δ` and budget `(4k − 5)Δ`; the participation threshold is
+`1/2`. The payload is the block input's transactions. Message service is fresh processing
+before the deadline or retained timestamped pool evidence
+(`SA.FamilyFacts.MessageServedBefore` on the AC projection). -/
+def GoldilocksLocalData (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val)) : Prop :=
+  GoldilocksHealingData sp ro C.healing ∧
+    C.θ = 1 / 2 ∧ C.catchUp = 18 * sp.Δ ∧
+    C.look = 5 * sp.Δ ∧ C.committeeLook = 5 * sp.Δ ∧
+    C.hold = sp.Δ ∧ C.margin = 6 * sp.Δ ∧ C.latency = 6 * sp.Δ ∧
+    C.recovery = 9 * sp.Δ ∧ C.outageEta = ((12 * sp.k + 7 : Nat) : Time) * sp.Δ ∧
+    C.outageLag = ((4 * sp.k + 6 : Nat) : Time) * sp.Δ ∧
+    C.outageBudget = ((4 * sp.k - 5 : Nat) : Time) * sp.Δ ∧
+    C.payload = (fun B => {tx | tx ∈ Blocks.decodeTxs B.input}) ∧
+    C.served = (fun tr y j τ m => SA.FamilyFacts.MessageServedBefore tr.projAC y j τ m)
+
+/-- Intended Goldilocks local supplier with its exact data equations (`GoldilocksLocalData`).
+The existential is an unproved contract, never a definition of a supplier instance; the data
+equations supply no field evidence. The ready-majority counterpattern is not discharged by
+this skeleton. -/
 def goldilocksACCorrectLocal (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (_hδ : 3 ≤ sp.toParams.δt) : Prop :=
-  ∃ C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val),
-    GoldilocksHealingData sp ro C.healing ∧ C.margin ≤ 18 * sp.Δ + 2
+  ∃ C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val), GoldilocksLocalData sp ro C
 
 end Consensus.Goldilocks.Generic
 
