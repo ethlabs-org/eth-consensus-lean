@@ -181,13 +181,13 @@ theorem FrameWindow.older_locks_compatible_at_update_at
     (fun x hx => by
       obtain ⟨i, ev, hv, hes, hit⟩ := hvotes x (hrun.antitone hshort hx)
       exact ⟨i, ev, hv, hes, hit.trans hshort⟩) hstock
-  have hhalf : sp.n ≤ 2 * (H (tr.time j)).ncard := by
+  have hhalf : sp.committeeSize ≤ 2 * (H (tr.time j)).ncard := by
     have hn : (H (tr.time j)).ncard + (H (tr.time j))ᶜ.ncard = sp.n := by
       rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
     have hb := hf (tr.time j) (hrun.time_nonneg j) ((hrun.time_mono hjk.le).trans hkb)
-    omega
+    rw [hstock]; omega
   exact older_locks_compatible_after_unlock_at hrun hnc hy hc hs hjk hvi.1
-    (fun x hx => Or.inr (hsupp x hx).2) hhalf hstock
+    (fun x hx => Or.inr (hsupp x hx).2) hhalf
 
 end Consensus.Goldilocks.Healing.Growing
 

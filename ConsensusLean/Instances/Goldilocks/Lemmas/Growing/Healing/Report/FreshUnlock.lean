@@ -19,9 +19,10 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- A supporting half-committee clears old incompatible labels for a receiver that
-is still honest at the later observation. -/
+is still honest at the later observation, from starts up to the vote permission. -/
 theorem older_locks_compatible_after_unlock_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {j k u : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -32,7 +33,7 @@ theorem older_locks_compatible_after_unlock_at
       x ∈ SA.equivocators (SA.mergedVoteView sp e.readPoint ell.frame (u + 1)).votes ∨
         ∃ v ∈ (SA.mergedVoteView sp e.readPoint ell.frame (u + 1)).support,
           v.val = x ∧ (v.slot : Int) = u ∧ SA.AncR ell.frame P v.head)
-    (hhalf : sp.n ≤ 2 * S.ncard) (hstock : sp.committeeSize = sp.n) :
+    (hhalf : sp.committeeSize ≤ 2 * S.ncard) :
     ∀ l ∈ (tr.projAC.state y k).locks, l.slot < u →
       ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
         Compatible (tr.HonestBlocksAt H) L P := by
@@ -47,12 +48,12 @@ theorem older_locks_compatible_after_unlock_at
   intro l hl hls L hL hLr
   have hl' : l ∈ ((tr.projAC.upTo (tr.time k)).state y k).locks := by
     rwa [hstate]
-  obtain ⟨_, _, _, _, R, hR, hRr, _⟩ := SA.lock_provenance hr hy k l hl'
+  obtain ⟨_, _, _, _, R, hR, hRr, _⟩ :=
+    SA.lock_provenanceU (hr := hr.toU) hrun.vstart hy k l hl'
   have hLR : L = R := (Compose.Growing.honest_blocks_coherent hrun hnc).1
     hL (hsub hR) (hLr.trans hRr.symm)
   subst L
-  exact (SA.older_locks_compatible_after_unlock hr hy hc' hs hjk hPt hS
-    (by simpa only [hstock] using hhalf)
+  exact (SA.older_locks_compatible_after_unlock hr hy hc' hs hjk hPt hS hhalf
     l hl' hls R hR hRr).imp (Anc.mono hsub) (Anc.mono hsub)
 
 end Consensus.Goldilocks.Healing.Growing
