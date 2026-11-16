@@ -51,17 +51,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-/-- Committee facts survive truncating honesty after `b`: the sizes do not read honesty, and P,
-the frames and the gate read it only in hypotheses, where the truncation is a subset of `H`. -/
-theorem _root_.Consensus.Goldilocks.Compose.Growing.CommitteeFacts.truncH
-    {K : SA.CommitteeDict sp.n} (hK : Compose.Growing.CommitteeFacts tr H K) (b : Time) :
-    Compose.Growing.CommitteeFacts tr (truncH H b) K where
-  hsize := hK.hsize
-  hP := ⟨fun t y hy i hi s v hv => hK.hP.1 t y hy.1 i hi s v hv,
-    fun y i ℓ A hy hO s v hv => hK.hP.2 y i ℓ A hy.1 hO s v hv⟩
-  hFrame w c hw := hK.hFrame w c hw.1
-  hGate t ht x hx := hK.hGate t ht x hx.1
-
 /-- The shared Goldilocks run interface, starting each node with its committee permission. -/
 noncomputable def goldilocksRunInterface (sp : SAParams)
     (ro : ReplayOrder sp (List (FG.Att sp.n))) :

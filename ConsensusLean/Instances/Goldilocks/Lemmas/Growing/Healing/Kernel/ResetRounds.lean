@@ -52,7 +52,8 @@ private theorem faults_lt_quorums {f n : Nat} (hn : 0 < n) (hf : 3 * f ≤ n - 1
 /-- Wakefulness supplies a relay call before an independently honest receiver cut
 (`Generic.callLag_of_awake_at_from` at the Goldilocks run). -/
 theorem callLag_of_awake_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {g b lo : Time}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g b lo : Time}
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hlo : cutZ sp.toParams g ≤ lo) {z : Fin sp.n} {i m : Nat}
     (hz : z ∈ H (tr.time m)) (hi : lo ≤ tr.time i)
@@ -116,7 +117,8 @@ theorem floor_le_warm_proposal_at {ini}
 
 /-- The report's viable floor and fork-choice root determine its client-lock kind. -/
 theorem report_kind_of_floor_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hh : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ R.root).h)
@@ -132,7 +134,8 @@ theorem report_kind_of_floor_at
 /-- The adjacent client call of a high report, by a reporter honest at it and at `c_z`, supplies
 the reset, including suppression. -/
 theorem reset_of_high_report_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {g : Time}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g : Time}
     {y : Fin sp.n} {i : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     (hq : (H (max (cutZ sp.toParams g) (tr.time i)))ᶜ.ncard < sp.toParams.fg.q)
     {ell : ACLabel (goldilocksNode sp ro)} {R : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -153,7 +156,8 @@ theorem reset_of_high_report_at
 /-- A proposal's immediate acceptance is held while its proposer is honest
 (`Generic.proposal_mem_at_from` at the Goldilocks requirements from the run's starts). -/
 theorem proposal_mem_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} {k : Nat}
     (hp : p ∈ H (tr.time k)) {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : tr.ProposesAt p k P) : P ∈ (tr.state p (k + 1)).fg.tree :=
@@ -184,7 +188,8 @@ theorem report_root_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Equal-height reports above a warm proposal have the frame's client-lock kind. -/
 theorem report_kind_of_warm_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
     {J P R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H lo hi floor kindJ J)
@@ -222,7 +227,9 @@ theorem round_of_warm_at
     {g ΔF b T : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
     {J P X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -238,7 +245,7 @@ theorem round_of_warm_at
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX)) (hdx : p = proposer x)
-    (hX : tr.ProposesAt p kX X) (hXs : X.slot = x) (hstock : sp.committeeSize = sp.n) :
+    (hX : tr.ProposesAt p kX X) (hXs : X.slot = x) (hK : CommitteeHalfUpTo tr H K g b) :
     P ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
       ((tr.state p (kX + 1)).fg.σ P.root).h + 1 ≤
         ((tr.state p (kX + 1)).fg.σ X.root).h := by
@@ -298,10 +305,8 @@ theorem round_of_warm_at
       (fun q hq => (hrun.time_mono hq.le).trans (by rw [hct, htX]))] at hd
     exact hd
   have hfol := fun y (hy : y ∈ H (tr.time kX)) =>
-    proposal_report_follow_at hframe
-      (by rw [SA.committeeStart_full]; exact hrun) hnc hsvc hawake hf hcatch hnr hm hwarm huN hmb
-      hz hdes hP hPs (hrun.antitone (by linarith) hy)
-      (CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock)
+    proposal_report_follow_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm huN hmb
+      hz hdes hP hPs (hrun.antitone (by linarith) hy) hK
   obtain ⟨i₀, ell₀, R₀, _, _, _, _, hPR₀, hR₀d⟩ := hfol p hp
   refine round_cross_at hrun hnc hsvc hnr hPH
     (hPR₀.trans (hR₀d x (by omega) hxN p c ellp hpc hc' hcall hct d pay hd')) hpar hp hX
@@ -325,7 +330,9 @@ theorem reset_of_high_proposal_at
     {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -335,16 +342,14 @@ theorem reset_of_high_proposal_at
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hh : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h)
-    (hstock : sp.committeeSize = sp.n) :
+    (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ a, IsReset tr H g a ∧ a ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
   have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
   have hts : sp.ts (u + 1 : Nat) ≤ sp.ts N := (SA.ts_le_iff sp).2 (by exact_mod_cast hN)
   obtain ⟨y, hy⟩ := hH
   obtain ⟨i, ell, R, hyi, hR, htil, hti, hPR, _⟩ :=
-    proposal_report_follow_at hframe
-      (by rw [SA.committeeStart_full]; exact hrun) hnc hsvc hawake hf hcatch hnr hm hwarm hN hmb
-      hz hdes hP hPs (hrun.antitone (by linarith) hy)
-      (CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock)
+    proposal_report_follow_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm hN hmb
+      hz hdes hP hPs (hrun.antitone (by linarith) hy) hK
   have hcz : cutZ sp.toParams g ≤ tr.time i := by
     have h4 : sp.ts (s₀ + 4 : Nat) ≤ sp.ts u :=
       (SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ + 4 ≤ u by have := sp.two_le_k; omega))
@@ -377,7 +382,9 @@ theorem rise_reset_rounds_at
     {g ΔF b T : Time} {s₀ N G floor : Nat} {kindJ : Prop}
     {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -396,14 +403,14 @@ theorem rise_reset_rounds_at
     {kP : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hrise : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + r)
-    (hstock : sp.committeeSize = sp.n) :
+    (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ a, IsReset tr H g a ∧
       a ≤ sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ := by
   induction r generalizing u z kP P with
   | zero =>
     simpa only [Nat.zero_mul, Nat.add_zero] using
       reset_of_high_proposal_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm
-        (by simpa using hN) hmb hH hz hdes hP hPs (by simpa using hrise) hstock
+        (by simpa using hN) hmb hH hz hdes hP hPs (by simpa using hrise) hK
   | succ r ih =>
     let ρ := sp.toParams.fg.δt + G - 1
     have hρ : 3 ≤ ρ := by dsimp [ρ]; omega
@@ -415,7 +422,7 @@ theorem rise_reset_rounds_at
       (SA.ts_le_iff sp).2 (by exact_mod_cast h)
     by_cases hh : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h
     · obtain ⟨a, ha, hat⟩ := reset_of_high_proposal_at hframe hrun hnc hsvc hawake hf
-        hcatch hnr hm hwarm (by omega) hmb hH hz hdes hP hPs hh hstock
+        hcatch hnr hm hwarm (by omega) hmb hH hz hdes hP hPs hh hK
       exact ⟨a, ha, hat.trans (by linarith [hts (show u + 1 ≤ u + (r + 1) * ρ + 1 by omega)])⟩
     obtain ⟨x, hxl, hxr, hpx, kX, X, hX, hXs⟩ := proposalGap_iff.mp hgp
       (u + sp.toParams.fg.δt) (by omega) (by
@@ -432,7 +439,7 @@ theorem rise_reset_rounds_at
         (SA.ts_lt_iff sp).2 (by exact_mod_cast (show u + 1 < u + (r + 1) * ρ + 1 by omega))
       linarith
     obtain ⟨hPX, _, hcross⟩ := round_of_warm_at hframe hrun hnc hsvc hawake hf hcatch hnr
-      hm hwarm hδ hΔF hxl (by omega) hmb hTb hna hstrict hz hdes hP hPs hpx0 rfl hX hXs hstock
+      hm hwarm hδ hΔF hxl (by omega) hmb hTb hna hstrict hz hdes hP hPs hpx0 rfl hX hXs hK
     have htP : tr.time kP = sp.ts u := by
       simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hP.2.2
     have hz0 : z ∈ H (tr.time kP) := hrun.antitone (by rw [htP]; linarith) hz
@@ -448,7 +455,8 @@ theorem rise_reset_rounds_at
 
 /-- The merged key bounds the deficit at the proposal cut itself. -/
 theorem rounds_le_warm_proposal_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g af len : Time} {u floor v : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hwin : FrameWindow tr H af (af + len) floor kindJ J)
@@ -475,7 +483,9 @@ theorem rounds_le_warm_proposal_at
 /-- Five integer-aligned attempts fit before the frozen bound, without extending service, with no
 restart after GST at all. -/
 private theorem exists_reset_of_drain_rounds_noRestartAfter_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b r : Time} {G Ld : Nat}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hsvc : ResetService tr H g ΔF b)
@@ -490,7 +500,7 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
       sp.ts N + 2 * sp.Δ <
         Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld →
       ProposalGap tr H proposer G s₀ N)
-    (hdrain : DrainOutputs tr proposer H g G Ld b) (hstock : sp.committeeSize = sp.n) :
+    (hdrain : DrainOutputs tr proposer H g G Ld b) (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ a, IsReset tr H g a ∧
       a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld := by
   classical
@@ -556,7 +566,7 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
     dsimp [lo, d, rt, B]
     rw [Obligations.resetBoundRounds_eq, hρ]
     ring
-  obtain ⟨v, hv, hvhi, af, haf, hend, hK, floor, kindJ, J, hwin⟩ :=
+  obtain ⟨v, hv, hvhi, af, haf, hend, hkey, floor, kindJ, J, hwin⟩ :=
     exists_frameWindow_seq_of_service_proof_at hrun hnc
       (fun t ht htb => (hfq ht htb).2) hsvc hcatch
       (riseLen d rt (2 * D - 1) (HZ tr H g)) hlen (by linarith only [hD]) hlo hb hrange
@@ -609,11 +619,11 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
   have hz0 : z ∈ H (sp.ts u) := hrun.antitone (by dsimp [D] at hD; linarith) hz
   have hulo : af ≤ sp.ts u := hslo.trans (hts hu0)
   have huhi : sp.ts u ≤ af + len := by linarith [hts huN']
-  have hrise := rounds_le_warm_proposal_at hrun hnc hwin hK hv hulo huhi hz0 hdes hP hPs
+  have hrise := rounds_le_warm_proposal_at hrun hnc hwin hkey hv hulo huhi hz0 hdes hP hPs
     (hfq (by change 0 ≤ 4 * sp.Δ * (u : Time); positivity) (by linarith)).2
   obtain ⟨a, ha, hat⟩ := rise_reset_rounds_at hframe hrun hnc hsvc hawake hf hcatch hnr hm
     hδ hG hΔF hgpN hmb hH hb hna rr hwarm huN
-    (by linarith [hts huN]) hz hdes hP hPs hrise hstock
+    (by linarith [hts huN]) hz hdes hP hPs hrise hK
   exact ⟨a, ha, hat.trans (by linarith [hts huN])⟩
 
 /-! ### Truncation after `b`
@@ -657,6 +667,26 @@ theorem goldilocksRun_truncH {ini : Fin sp.n → (goldilocksNode sp ro).State}
   genesis_root_ok := hrun.genesis_root_ok
   carried_vote_unforgeable y i B hy hB v hv hs :=
     hrun.carried_vote_unforgeable y i B hy.1 hB v hv hs.1
+
+/-- Committee facts survive truncating honesty after `b`: the sizes do not read honesty, and P,
+the frames and the gate read it only in hypotheses, where the truncation is a subset of `H`. -/
+theorem _root_.Consensus.Goldilocks.Compose.Growing.CommitteeFacts.truncH
+    {K : SA.CommitteeDict sp.n} (hK : Compose.Growing.CommitteeFacts tr H K) (b : Time) :
+    Compose.Growing.CommitteeFacts tr (truncH H b) K where
+  hsize := hK.hsize
+  hP := ⟨fun t y hy i hi s v hv => hK.hP.1 t y hy.1 i hi s v hv,
+    fun y i ℓ A hy hO s v hv => hK.hP.2 y i ℓ A hy.1 hO s v hv⟩
+  hFrame w c hw := hK.hFrame w c hw.1
+  hGate t ht x hx := hK.hGate t ht x hx.1
+
+/-- The committee half bound through `b` survives truncating honesty after `b`: CS2 reads honesty
+only at times `≤ b`, where the truncation is `H` itself. -/
+theorem _root_.Consensus.Goldilocks.Healing.Growing.CommitteeHalfUpTo.truncH
+    {K : SA.CommitteeDict sp.n} {g b : Time} (hK : CommitteeHalfUpTo tr H K g b) :
+    CommitteeHalfUpTo tr (truncH H b) K g b :=
+  ⟨hK.facts.truncH b, fun s hgs hsb d hd0 hdb => by
+    rw [truncH_eq_of_le hdb]
+    exact hK.cs2 s hgs hsb d hd0 hdb⟩
 
 private theorem resetService_truncH {g ΔF b' : Time} (hs : ResetService tr H g ΔF b')
     (b : Time) : ResetService tr (truncH H b) g ΔF b' where
@@ -711,7 +741,9 @@ private theorem drainOutputs_truncH {g b : Time} {G Ld : Nat}
 the premises up to `b` are those for `H`, no restart is honest after `b`, and `H_z` and the reset
 are those for `H` (`c_z` and the reset bound are `≤ b`). -/
 theorem exists_reset_of_drain_rounds_awake_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b r : Time} {G Ld : Nat}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hsvc : ResetService tr H g ΔF b)
@@ -726,7 +758,7 @@ theorem exists_reset_of_drain_rounds_awake_at
       sp.ts N + 2 * sp.Δ <
         Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld →
       ProposalGap tr H proposer G s₀ N)
-    (hdrain : DrainOutputs tr proposer H g G Ld b) (hstock : sp.committeeSize = sp.n) :
+    (hdrain : DrainOutputs tr proposer H g G Ld b) (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ a, IsReset tr H g a ∧
       a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld := by
   have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
@@ -747,7 +779,7 @@ theorem exists_reset_of_drain_rounds_awake_at
     (fun y k hy hk => noRestartUpTo_iff.mp hnr y k hy.1 hk hy.2)
     (hH.mono fun _ hy => ⟨hy, le_rfl⟩) hδ hΔF hr hgr hG hcz hb
     (fun s₀ N hs₀ hN => proposalGap_truncH (hgp s₀ N hs₀ hN) (by linarith))
-    (drainOutputs_truncH hdrain hczb) hstock
+    (drainOutputs_truncH hdrain hczb) hK.truncH
   exact ⟨a, (isReset_truncH_iff hczb (hab.trans hb)).mp ha, hab⟩
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof

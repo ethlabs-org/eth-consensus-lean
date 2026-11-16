@@ -71,7 +71,8 @@ theorem full_frame_viable_witness_at
 /-- Public ticks supply the snapshot relay call before the receiver's actual observation
 (`Generic.snapshotCall_of_awake_at_from` at the Goldilocks run). -/
 theorem snapshotCall_of_awake_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {g b : Time}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g b : Time}
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     {z : Fin sp.n} {m : Nat} (hz : z ∈ H (tr.time m))
     (hfit : cutZ sp.toParams g + sp.Δ + 1 ≤ tr.time m) (hmb : tr.time m ≤ b) :
@@ -82,7 +83,8 @@ theorem snapshotCall_of_awake_at
 
 /-- Snapshot relay at the proposal call bounds a warm proposal's replay height. -/
 theorem warm_proposal_height_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -161,7 +163,8 @@ theorem warm_proposal_height_at
 /-- Finite service supplies the frozen drain contract. The full proposal frame suffices;
 no cast-time frame or signature-height restriction is needed for this lower bound. -/
 theorem drainOutputs_of_service_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)

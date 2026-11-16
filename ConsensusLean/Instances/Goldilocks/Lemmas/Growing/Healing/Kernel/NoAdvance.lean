@@ -23,7 +23,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 its signing. The quorum budget is read at `max c_z t_k`, so the advance's honest supporter is
 honest at `c_z` too. -/
 theorem reset_of_height_advance_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g : Time} {y : Fin sp.n} {k : Nat}
     (hq : (H (max (cutZ sp.toParams g) (tr.time k)))ᶜ.ncard < sp.toParams.fg.q)
     (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time k)))
@@ -34,7 +35,8 @@ theorem reset_of_height_advance_at
 /-- Before any advance by a signer honest at it and at `c_z`, an honest reader's height is at most
 HZ plus one. The quorum budget is read at `max c_z t_i`. -/
 theorem hmax_le_of_noAdvance_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {g T : Time}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g T : Time}
     (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
       tr.time k < T → att.h ≤ HZ tr H g)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))

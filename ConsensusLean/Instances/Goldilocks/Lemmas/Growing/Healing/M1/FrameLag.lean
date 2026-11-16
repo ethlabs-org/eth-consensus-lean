@@ -26,7 +26,8 @@ theorem ResetService.toService {g ΔF b : Time} (h : ResetService tr H g ΔF b) 
 
 /-- After its relay obligation is paid, a receiver has at least the snapshot height. -/
 theorem HZ_le_hmax_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
     (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)
     (hH : (H (cutZ sp.toParams g)).Nonempty)

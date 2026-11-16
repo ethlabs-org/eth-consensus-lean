@@ -24,7 +24,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- A floor-height source above the fork-choice root satisfies the kind alternative (kind F, or
 kind J with `Σ.J ⪯` the source), including Contest and the equal-height kind-J case. -/
 theorem report_kind_of_floor
-    (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hh : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ R.root).h)
     (hroot : (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot R) :

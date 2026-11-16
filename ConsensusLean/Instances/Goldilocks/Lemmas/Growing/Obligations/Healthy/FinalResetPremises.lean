@@ -107,7 +107,8 @@ theorem final_reset_premises_of_shared_at
     Healing.Growing.drainOutputs_of_service_at hrun hs.noColl hs.sync hs.awake hs.faults hcatch
       (by rw [healthyDrainLen_val, hk]; exact Nat.le_succ _)
   -- the reset
-  obtain ⟨a, ha, hab⟩ := Healing.Growing.exists_reset_of_drain_rounds_awake_at hrun hs.noColl
+  obtain ⟨a, ha, hab⟩ := Healing.Growing.exists_reset_of_drain_rounds_awake_at
+    (by rw [SA.committeeStart_full]; exact hrun) hs.noColl
     hs.faults hs.sync hs.awake hcatch (Healing.Growing.noRestartUpTo_iff.mpr hs.noRestart) hH
     (by rw [hδeq]; exact (Nat.le_mul_of_pos_right 3 ((by decide : 0 < 2).trans_le hc2)).trans h3c)
     (by rw [hδeq]; exact hs.timeoutDelay)
@@ -121,7 +122,7 @@ theorem final_reset_premises_of_shared_at
             (K S A) Q.gst Q.run := hr0
         rw [max_eq_left hr0']
         exact hs₀) (hgapN N hN))
-    hdrain rfl
+    hdrain (Healing.Growing.CommitteeHalfUpTo.of_full hrun hs.noColl hs.faults rfl)
   obtain ⟨j, hj, hjt⟩ := Healing.snapshot_of_awake (hrun.upTo hb0).toLocalRun
     (fun y hy t ht htb => ⟨hs.awake y t (hrun.antitone htb hy) ht htb, htb⟩) hH
     (b := Q.run.2.horizon) (by linarith only [hcz, h4B, hBh])

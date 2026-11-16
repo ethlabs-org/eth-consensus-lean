@@ -50,7 +50,8 @@ theorem exists_frameWindow_seq_of_service_at
 
 /-- Step 3: service gives warm proposals without any reset lower-bound premise. -/
 theorem drainOutputs_of_service_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -74,7 +75,9 @@ theorem rows_delivered_service_at {g ΔF b v : Time}
 restarts only up to the service bound. This asserts existence and an upper bound; the strict lower
 bound is a separate interface. -/
 theorem exists_reset_of_drain_rounds_awake_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b r : Time} {G Ld : Nat}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hsvc : ResetService tr H g ΔF b)
@@ -89,11 +92,11 @@ theorem exists_reset_of_drain_rounds_awake_at
       sp.ts N + 2 * sp.Δ <
         Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld →
       ProposalGap tr H proposer G s₀ N)
-    (hdrain : DrainOutputs tr proposer H g G Ld b) (hstock : sp.committeeSize = sp.n) :
+    (hdrain : DrainOutputs tr proposer H g G Ld b) (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ a, IsReset tr H g a ∧
       a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld := by
   exact KernelProof.exists_reset_of_drain_rounds_awake_at hrun hnc hf hsvc hawake hcatch hnr
-    hH hδ hΔF hr hgr hG hcz hb hgp hdrain hstock
+    hH hδ hΔF hr hgr hG hcz hb hgp hdrain hK
 
 /-- The stock committee bound: when every committee has `committeeSize = n` members, the
 population bound `3 f ≤ n - 1` is the committee bound at `βK = ½`. -/
