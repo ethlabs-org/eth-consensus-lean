@@ -551,6 +551,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Gate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Locks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Population
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Prot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Reader
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Record
@@ -599,8 +600,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Publi
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PublishedBlocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PublishedVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Queue
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RegimeTransport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.ReceiverService
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RegimeTransport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Release
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run

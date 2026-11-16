@@ -279,6 +279,12 @@ noncomputable def goldilocksOutagePolicy (S : Setup) {E : Env V}
     (hv : rho.ExecutionValid) : OutagePolicy (goldilocksRunMap S rho hn hv) :=
   ⟨goldilocksPoint rho, goldilocksPoint_binding hn hv, goldilocksPoint_horizon⟩
 
+/-- The canonical outage policy retains the run's own indexed point. -/
+theorem goldilocksOutagePolicy_point (S : Setup) {E : Env V}
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) :
+    (goldilocksOutagePolicy S rho hn hv).point = goldilocksPoint rho := by rfl
+
 /-- Outage participation transports to the canonical run map's own point and committee. -/
 theorem goldilocks_outageTransport (S : Setup) {E : Env V}
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)

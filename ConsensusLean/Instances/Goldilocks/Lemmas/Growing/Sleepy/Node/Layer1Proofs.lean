@@ -163,7 +163,7 @@ theorem sleepyServiceBefore_of_prefix {proposer : Nat → Fin sp.n}
   have service := sleepyServiceBefore_of_acService hrun hserved hs
   exact ⟨hb, hs.deltaF, service.message, service.acRelay, service.relay⟩
 
-private theorem retained_count {proposer : Nat → Fin sp.n}
+theorem retained_count {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
     {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {ini}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini)
