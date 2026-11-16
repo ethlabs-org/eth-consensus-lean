@@ -132,10 +132,10 @@ theorem finalWindow_data_of_honest_anchors_gap_at (Q : FinalQueryAt S A V)
     (hq : Q.query < Q.params.toParams.slotTime start)
     (hD : Q.params.toParams.slotTime (start + 3 * c) ≤ Q.deadline)
     (hready : ∀ i, Regimes.Growing.ReadyAt Q.trace Q.keys
-      ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run) (P i).proposer
+      ((Sys (goldilocks S) V).cDur (K S A) Q.run) (P i).proposer
       (Q.params.toParams.slotTime (start + ![0, c, 2 * c, 3 * c] i)))
     (hcarrier : ∀ y, Regimes.Growing.ReadyAt Q.trace Q.keys
-      ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run) y Q.deadline →
+      ((Sys (goldilocks S) V).cDur (K S A) Q.run) y Q.deadline →
       ∃ j, Q.trace.BlockCallAt y j (P 3) ∧ Q.trace.time j ≤ Q.deadline) :
     ∃ W : FinalWindowDataAt S A V Q, W.start = start ∧ W.gap = c ∧ W.block = P := by
   have hs : StrictMono fun i : Fin 4 => start + ![0, c, 2 * c, 3 * c] i := by

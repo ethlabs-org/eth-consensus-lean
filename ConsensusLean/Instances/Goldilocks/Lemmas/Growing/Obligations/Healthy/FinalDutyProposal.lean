@@ -21,7 +21,8 @@ open Blocks Shape
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
 /-- The query's catch-up duration covers the protocol catch-up `18 Δp`. -/
-theorem final_catchUp_le_cDur_at (Q : FinalQueryAt S A V) :
+theorem final_catchUp_le_cDur_at
+    (Q : FinalQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V) :
     Regimes.catchUp Q.params ≤ (Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run :=
   catchUp_le_cDur { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q.run Q.hn
 
@@ -29,7 +30,9 @@ theorem final_catchUp_le_cDur_at (Q : FinalQueryAt S A V) :
 `s > 0` with `t_s ≤ horizon` and the duty hold `Δ_AC` gives the run proposer's actual proposal `P`
 of slot `s` at a cut of time `t_s`, accepted by its proposer, ready there for the query's catch-up
 duration, and a growing `HonestProposalRun`. -/
-theorem final_duty_proposal_run_at (Q : FinalQueryAt S A V) {s : Nat} (hs : 0 < s)
+theorem final_duty_proposal_run_at
+    (Q : FinalQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
+    {s : Nat} (hs : 0 < s)
     (hth : Q.params.ts s ≤ Q.run.2.horizon)
     (hduty : HonestReadyIn Q.run.2.point Q.run.2.key (fun s => Q.run.2.sel (.proposer s)) s
       ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run)

@@ -22,7 +22,7 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 
 /-- The catch-up duration of a healed-safety query is at least one. -/
 private theorem one_le_cDur (Q : HealthyPreparationQueryAt S A V) :
-    1 ≤ (Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run := by
+    1 ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run := by
   have hc : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
     exact_mod_cast contract_catchUp_ge_sleepy S A
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
@@ -33,7 +33,9 @@ private theorem one_le_cDur (Q : HealthyPreparationQueryAt S A V) :
 /-- **Healed safety under growing faults**: on a query healthy through the horizon, with progress
 on `[ready, heal]` and the heal point within the horizon, the confirmed reads of nodes ready from
 the heal point are safe. -/
-theorem healthy_ready_safety_at (Q : HealthyPreparationQueryAt S A V)
+theorem healthy_ready_safety_at
+    (Q : HealthyPreparationQueryAt
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound) (hB : Q.run.2.horizon ≤ Q.bound)
     (hp : (Sys (goldilocks { S with vote := stock }) V).prog
       (shapeProgress (goldilocks { S with vote := stock }) V)
@@ -43,7 +45,9 @@ theorem healthy_ready_safety_at (Q : HealthyPreparationQueryAt S A V)
       ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run)
       .confirmed Q.heal := by
   have hc0 : 0 ≤ (Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run - 1 := by
-    linarith [one_le_cDur S A V Q]
+    have h1 : 1 ≤ (Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run :=
+      one_le_cDur { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q
+    linarith [h1]
   have hnc := noCollRun_simTraceAt { S with vote := stock } Q.run.2 Q.hn Q.valid Q.noCollision
   have hr : ∀ {v i}, Q.run.2.point.Ready
       ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run) v

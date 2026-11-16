@@ -40,7 +40,8 @@ private theorem last_change {f : Nat → Nat} {n : Nat} (hne : f n ≠ f 0) :
 
 /-- A changed own record identifies its actual call, selected block and, for an
 optimistic selection, the normalized lock left by that same call. -/
-theorem record_changed_writer (hrun : GoldilocksRun proposer dg H tr)
+theorem record_changed_writer {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {q : Nat}
     (hne : (tr.state y (q + 1)).ac.latestConfirmed ≠ (tr.state y q).ac.latestConfirmed) :
     ∃ ell, tr.projAC.CallAt y q ell ∧
@@ -56,7 +57,7 @@ theorem record_changed_writer (hrun : GoldilocksRun proposer dg H tr)
     · exact ⟨ell, ho.1⟩
   have hpost : tr.projAC.post q = (tr.state y (q + 1)).ac := by
     rw [← Compose.projAC_state hrun.toLocalRun hy (q + 1), tr.projAC.state_succ_of_call hcall]
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hw := Compose.call_record_writer hr hy hcall
     (by rw [hpost, Compose.projAC_state hrun.toLocalRun hy]; exact hne)
   rw [hpost] at hw
@@ -64,7 +65,8 @@ theorem record_changed_writer (hrun : GoldilocksRun proposer dg H tr)
 
 /-- A non-genesis current record has a last own writer, with unchanged record
 roots thereafter and the actual creation lock in the optimistic case. -/
-theorem last_record_writer (hrun : GoldilocksRun proposer dg H tr)
+theorem last_record_writer {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {n : Nat}
     {R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed = some R)
@@ -77,8 +79,10 @@ theorem last_record_writer (hrun : GoldilocksRun proposer dg H tr)
             (tr.state y (q + 1)).ac.locks)) := by
   obtain ⟨hRm, hRroot⟩ := SA.lookup_eq_some hR
   have hzero : (tr.state y 0).ac.latestConfirmed = sp.genesisRoot := by
-    have hinit : tr.state y 0 = Node.init _ := hrun.init y hy
-    rw [hinit]; rfl
+    have h0 : tr.state y 0 = Node.initWith _ (ini y) := hrun.init y hy
+    obtain ⟨m, hm⟩ := SA.voteStart_iff.1 (hrun.vstart y)
+    rw [h0, hm]
+    rfl
   obtain ⟨q, hqn, hchange, hrest⟩ :=
     last_change (f := fun m => (tr.state y m).ac.latestConfirmed) (n := n)
       (by rw [← hRroot, hzero]; exact hgen)

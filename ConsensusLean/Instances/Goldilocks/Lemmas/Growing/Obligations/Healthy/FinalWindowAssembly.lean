@@ -64,7 +64,9 @@ theorem final_latency_gap_at (Q : FinalQueryAt S A V) :
 /-- **Final-window extraction at a gap `c` and a forwarding delay `ΔF`** (route A), under growing
 faults. A window of four honest anchors at `start + [0, c, 2c, 3c]` (`W.gap = c`) after the query,
 the slack `t(cut 3) + Δ ≤ deadline`, its anchor run and its three anchor steps. -/
-theorem final_window_extract_of_gap_at (Q : FinalQueryAt S A V) {c : Nat} (hc2 : 2 ≤ c)
+theorem final_window_extract_of_gap_at
+    (Q : FinalQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
+    {c : Nat} (hc2 : 2 ≤ c)
     (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c])
     {ΔR a ΔF : Time}
     (hs : Healing.Growing.HSSharedUpTo Q.trace Q.keys
@@ -81,20 +83,28 @@ theorem final_window_extract_of_gap_at (Q : FinalQueryAt S A V) {c : Nat} (hc2 :
       HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s
           ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run)
-      ((finalGridAt S A V Q).slotTime s) Q.run.2.point.env.ΔAC →
+      ((finalGridAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q).slotTime
+        s) Q.run.2.point.env.ΔAC →
       ∃ P, Healing.Growing.HonestProposalRun Q.trace Q.keys
         (runProposer { S with vote := stock } Q.run.2 Q.hn) s P)
     (hplace : max (max ((Sys (goldilocks { S with vote := stock }) V).ready (K S A) Q.gst Q.run) 0)
-        ((finalGridAt S A V Q).slotTime (finalSeedMinAt S A V Q a) - 1) +
-        ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGridAt S A V Q).slotLen ≤
-      Q.query + (finalGridAt S A V Q).slotLen)
+        ((finalGridAt
+          { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q).slotTime
+          (finalSeedMinAt
+          { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q a) - 1) +
+        ((((Q.index : Nat) + S.δt : Nat) : Time)) *
+        (finalGridAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q).slotLen
+        ≤
+      Q.query + (finalGridAt
+          { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q).slotLen)
     (hcarrier : ∀ s P, Healing.Growing.HonestProposalRun Q.trace Q.keys
       (runProposer { S with vote := stock } Q.run.2 Q.hn) s P → Q.query < Q.params.ts s →
       Q.params.ts s + Q.params.Δ ≤ Q.deadline →
       ∀ y, Regimes.Growing.ReadyAt Q.trace Q.keys
         ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run) y Q.deadline →
       ∃ j, Q.trace.BlockCallAt y j P ∧ Q.trace.time j ≤ Q.deadline) :
-    ∃ W : FinalWindowDataAt S A V Q, W.gap = c ∧
+    ∃ W : FinalWindowDataAt
+        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q, W.gap = c ∧
       Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧ W.AnchorRun ∧ W.AnchorSteps := by
   classical
   let H := Q.keys
@@ -131,7 +141,8 @@ theorem final_window_extract_of_gap_at (Q : FinalQueryAt S A V) {c : Nat} (hc2 :
       · exact Finset.min'_mem _ _
       · exact absurd hr.1 ‹_›
     have hR' := (hr.2 _ hmem).1
-    rw [finalGridAt_slotTime S A V Q] at hR'
+    rw [finalGridAt_slotTime
+        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q] at hR'
     have h0 : (0 : Time) ≤ Q.params.ts (s₀ + ![0, c, 2 * c, 3 * c] i : Nat) :=
       mul_nonneg (mul_nonneg zero_le_four hΔ.le) (Int.natCast_nonneg _)
     have hnode := ready_transport_at { S with vote := stock } Q.run.2 Q.hn Q.valid h0 hti hR'
@@ -143,7 +154,9 @@ theorem final_window_extract_of_gap_at (Q : FinalQueryAt S A V) {c : Nat} (hc2 :
     exact hnode
   obtain ⟨W, hWs, hWg, hWb⟩ := finalWindow_data_of_honest_anchors_gap_at Q hreset hc2 h3c s₀
     hP hR hb3 (by rw [Q.params.slotTime_eq]; exact hs₀q)
-    (by rw [Q.params.slotTime_eq]; simp only [SA.SAParams.ts] at h3D; push_cast at h3D ⊢
+    (by rw [Q.params.slotTime_eq, show Q.deadline = Q.query +
+          ((K S A).params.latency .final Q.index : Time) * Q.run.1.ΔAC from rfl]
+        simp only [SA.SAParams.ts] at h3D; push_cast at h3D ⊢
         linarith only [h3D, hΔ])
     hready (hcarrier _ _ (hP 3) hlast h3D)
   subst hWs hWb hWg

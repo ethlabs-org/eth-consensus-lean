@@ -579,7 +579,7 @@ theorem call_reclock {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr i
 
 /-- A changed record has an actual writer in this call. An optimistic writer also
 leaves its normalized fast lock in the post-state; no read invariant is required. -/
-theorem call_record_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr)
+theorem call_record_writer {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr ini)
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (hne : (tr.post i).latestConfirmed ≠ (tr.state x i).latestConfirmed) :

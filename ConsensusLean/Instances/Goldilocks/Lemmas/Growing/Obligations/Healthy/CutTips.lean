@@ -29,7 +29,9 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 
 /-- **Comparability of the read tips** of two readers ready from the heal point, each read at
 the trace cut after its last own event at its stored clock, within the query's bound. -/
-theorem healthy_cut_tips_comparable_at (Q : HealthyPreparationQueryAt S A V)
+theorem healthy_cut_tips_comparable_at
+    (Q : HealthyPreparationQueryAt
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks { S with vote := stock }) V).prog
       (shapeProgress (goldilocks { S with vote := stock }) V)
@@ -50,22 +52,33 @@ theorem healthy_cut_tips_comparable_at (Q : HealthyPreparationQueryAt S A V)
     Anc (Q.trace.HonestBlocksAt Q.keys) (C u i) (C v j) ∨
       Anc (Q.trace.HonestBlocksAt Q.keys) (C v j) (C u i) := by
   obtain ⟨D⟩ := healthy_repair_schedule_at S A V Q h0 hb hp
-  obtain ⟨O, hr⟩ := healthy_bounded_repairing_opening_at S A V Q hb hp D
-  obtain ⟨Cu⟩ := healthy_current_read_context_at S A V Q D hi hu hub
-  obtain ⟨Cv⟩ := healthy_current_read_context_at S A V Q D hj hv hvb
+  obtain ⟨O, hr⟩ := healthy_bounded_repairing_opening_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hb hp D
+  obtain ⟨Cu⟩ := healthy_current_read_context_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D hi hu hub
+  obtain ⟨Cv⟩ := healthy_current_read_context_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D hj hv hvb
   dsimp only
   rw [healthy_current_record_read_at S A V Q hb hp D O hr hi hu hub,
     healthy_current_record_read_at S A V Q hb hp D O hr hj hv hvb]
-  exact healthy_current_sources_compatible_at S A V Q D Cu.readPoint Cu.time_bound Cu.honest
+  exact healthy_current_sources_compatible_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D Cu.readPoint
+      Cu.time_bound Cu.honest
     Cv.readPoint Cv.time_bound Cv.honest
-    (healthy_current_record_sources_before_now_at S A V Q D O hr Cu.readPoint Cu.time_bound
+    (healthy_current_record_sources_before_now_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hr
+      Cu.readPoint Cu.time_bound
       Cu.honest Cu.repaired)
-    (healthy_current_record_sources_before_now_at S A V Q D O hr Cv.readPoint Cv.time_bound
+    (healthy_current_record_sources_before_now_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hr
+      Cv.readPoint Cv.time_bound
       Cv.honest Cv.repaired)
 
 /-- **Temporal ancestry of the read tips** of one reader ready at two cuts from the heal point,
 the later read within the query's bound. -/
-theorem healthy_cut_tips_ancestor_at (Q : HealthyPreparationQueryAt S A V)
+theorem healthy_cut_tips_ancestor_at
+    (Q : HealthyPreparationQueryAt
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks { S with vote := stock }) V).prog
       (shapeProgress (goldilocks { S with vote := stock }) V)
@@ -89,12 +102,15 @@ theorem healthy_cut_tips_ancestor_at (Q : HealthyPreparationQueryAt S A V)
           (lastOwn { S with vote := stock } Q.run.2 v j))
             (stateAt { S with vote := stock } Q.run.2 Q.hn v j).now) := by
   obtain ⟨D⟩ := healthy_repair_schedule_at S A V Q h0 hb hp
-  obtain ⟨O, hr⟩ := healthy_bounded_repairing_opening_at S A V Q hb hp D
+  obtain ⟨O, hr⟩ := healthy_bounded_repairing_opening_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hb hp D
   have hnn := cutMap_mono { S with vote := stock } Q.run.2 Q.hn
     (lastOwn_mono { S with vote := stock } Q.run.2 v hij)
   have htt := now_mono { S with vote := stock } Q.run.2 Q.hn Q.valid v hij
-  obtain ⟨Ci⟩ := healthy_current_read_context_at S A V Q D hi hvi (htt.trans hjb)
-  obtain ⟨Cj⟩ := healthy_current_read_context_at S A V Q D hj hvj hjb
+  obtain ⟨Ci⟩ := healthy_current_read_context_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D hi hvi (htt.trans hjb)
+  obtain ⟨Cj⟩ := healthy_current_read_context_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D hj hvj hjb
   rw [healthy_current_record_read_at S A V Q hb hp D O hr hi hvi (htt.trans hjb),
     healthy_current_record_read_at S A V Q hb hp D O hr hj hvj hjb]
   exact effective_record_of_interval_at
@@ -103,7 +119,9 @@ theorem healthy_cut_tips_ancestor_at (Q : HealthyPreparationQueryAt S A V)
     Cj.time_nonneg
         Cj.readPoint.1
     Cj.honest hnn
-    (healthy_current_record_interval_at S A V Q hb D O hr Ci.readPoint Cj.readPoint hnn htt
+    (healthy_current_record_interval_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hb D O hr Ci.readPoint
+      Cj.readPoint hnn htt
       Cj.time_bound Cj.honest Ci.repaired) .refl
 
 end Consensus.Goldilocks.Obligations.Growing

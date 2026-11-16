@@ -80,29 +80,29 @@ read at its stored clock, past the repair reserve. -/
 private theorem healthy_engine_read_point_at {Q : HealthyPreparationQueryAt S A V}
     (D : HealthyRepairScheduleAt S A V Q) {v : V} {i : Nat}
     (hi : (chainTrace Q.run.2).InCuts Q.heal i)
-    (hv : Q.run.2.point.Ready ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run) v
+    (hv : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime i)) :
-    Regimes.ReadPoint Q.trace (cutMap { S with vote := stock } Q.run.2 Q.hn
-      (lastOwn { S with vote := stock } Q.run.2 v i))
-        (stateAt { S with vote := stock } Q.run.2 Q.hn v i).now ∧
-      0 ≤ (stateAt { S with vote := stock } Q.run.2 Q.hn v i).now ∧
-      (stateAt { S with vote := stock } Q.run.2 Q.hn v i).now ≤ Q.run.2.horizon ∧
+    Regimes.ReadPoint Q.trace (cutMap S Q.run.2 Q.hn
+      (lastOwn S Q.run.2 v i))
+        (stateAt S Q.run.2 Q.hn v i).now ∧
+      0 ≤ (stateAt S Q.run.2 Q.hn v i).now ∧
+      (stateAt S Q.run.2 Q.hn v i).now ≤ Q.run.2.horizon ∧
       Regimes.Growing.ReadyAt Q.trace Q.keys
-        ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run - 1)
-        (Q.run.2.ownKey v) (stateAt { S with vote := stock } Q.run.2 Q.hn v i).now ∧
+        ((Sys (goldilocks S) V).cDur (K S A) Q.run - 1)
+        (Q.run.2.ownKey v) (stateAt S Q.run.2 Q.hn v i).now ∧
       D.query + (4 * (Q.index : Time) + 6) * Q.params.Δ <
-          (stateAt { S with vote := stock } Q.run.2 Q.hn v i).now := by
+          (stateAt S Q.run.2 Q.hn v i).now := by
   have hΔ := Q.params.toParams.hΔ
   have hΔ1 : 1 ≤ Q.params.Δ := hΔ
-  have hc : 0 ≤ (Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run - 1 := by
+  have hc : 0 ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run - 1 := by
     linarith only [D.duration_bound, hΔ1]
   have hr : Q.run.2.point.Ready
-      (((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run - 1) + 1) v
+      (((Sys (goldilocks S) V).cDur (K S A) Q.run - 1) + 1) v
       (Q.run.2.cutTime i) := by simpa only [sub_add_cancel, chainTrace] using hv
   obtain ⟨hrp, h0, hh, hra, -⟩ := engine_read_point
-    { S with vote := stock } Q.run.2 Q.hn Q.valid hc hi.1 hr
+    S Q.run.2 Q.hn Q.valid hc hi.1 hr
   have hlag := stored_now_ge_cutTime_sub_one
-    { S with vote := stock } Q.run.2 Q.hn Q.valid hi.1 hc hr
+    S Q.run.2 Q.hn Q.valid hi.1 hc hr
   have hhi : Q.heal ≤ Q.run.2.cutTime i := hi.2
   exact ⟨hrp, h0, hh, hra, by linarith only [D.reserve, hhi, hlag]⟩
 
@@ -111,16 +111,16 @@ the query's bound. -/
 theorem healthy_current_read_context_at (Q : HealthyPreparationQueryAt S A V)
     (D : HealthyRepairScheduleAt S A V Q) {v : V} {i : Nat}
     (hi : (chainTrace Q.run.2).InCuts Q.heal i)
-    (hv : Q.run.2.point.Ready ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run) v
+    (hv : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime i))
-    (htb : (stateAt { S with vote := stock } Q.run.2 Q.hn v i).now ≤ Q.bound) :
+    (htb : (stateAt S Q.run.2 Q.hn v i).now ≤ Q.bound) :
     Nonempty (HealthyReadContextAt S A V Q D (Q.run.2.ownKey v)
-      (cutMap { S with vote := stock } Q.run.2 Q.hn (lastOwn { S with vote := stock } Q.run.2 v i))
-          (stateAt { S with vote := stock } Q.run.2 Q.hn v i).now) := by
+      (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i))
+          (stateAt S Q.run.2 Q.hn v i).now) := by
   obtain ⟨hrp, ht0, -, hra, hrep⟩ := healthy_engine_read_point_at S A V D hi hv
-  set t := (stateAt { S with vote := stock } Q.run.2 Q.hn v i).now
-  set n := cutMap { S with vote := stock } Q.run.2 Q.hn
-    (lastOwn { S with vote := stock } Q.run.2 v i)
+  set t := (stateAt S Q.run.2 Q.hn v i).now
+  set n := cutMap S Q.run.2 Q.hn
+    (lastOwn S Q.run.2 v i)
   set y := Q.run.2.ownKey v
   have hΔ := Q.params.toParams.hΔ
   have hq : D.query < t := by
@@ -128,12 +128,12 @@ theorem healthy_current_read_context_at (Q : HealthyPreparationQueryAt S A V)
   have hdrain := ((le_max_of_le_right (le_max_left _ _)).trans D.lower).trans hq.le
   obtain ⟨L, hL, haL, hLt⟩ := healthy_read_label_at S A V D (Q.trace.state y n).ac
     (Node.frame (Q.trace.state y n)) ht0 hdrain
-  have hrun := simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid
+  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
   have hc8 : 8 * Q.params.Δ ≤
-      ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run - 1) + 1 := by
+      ((Sys (goldilocks S) V).cDur (K S A) Q.run - 1) + 1 := by
     linarith only [D.duration_bound, hΔ]
-  obtain ⟨hw, hj⟩ := Compose.ready_implies_joined _ _ _ _ _ _ (hrun.upTo ht0) y hra.1 t
-    _ ht0 hc8 fun u h1 h2 => ⟨hra.2 u h1 h2, h2⟩
+  obtain ⟨hw, hj⟩ := Compose.ready_implies_joined_of (hrun.upTo ht0) hra.1 ht0 hc8 fun u h1 h2 =>
+      ⟨hra.2 u h1 h2, h2⟩
   have hca := D.reset.cutZ_lt_reset_at
   obtain ⟨hsync, hcatch⟩ :=
     D.reset.windows_at_reset_at ht0 htb
@@ -156,14 +156,20 @@ theorem healthy_current_read_context_at (Q : HealthyPreparationQueryAt S A V)
 
 /-- **The current-record read**: a ready engine reader from the heal point, read at its read
 point within the query's bound, reads its effective record. -/
-theorem healthy_current_record_read_at (Q : HealthyPreparationQueryAt S A V)
+theorem healthy_current_record_read_at
+    (Q : HealthyPreparationQueryAt
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
     (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks { S with vote := stock }) V).prog
       (shapeProgress (goldilocks { S with vote := stock }) V)
       (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
-    (D : HealthyRepairScheduleAt S A V Q) (O : HealthyRepairOpeningAt S A V Q D)
-    (hrepair : HealthyReceiverRepairAt S A V Q D O) {v : V} {i : Nat}
+    (D : HealthyRepairScheduleAt
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q)
+      (O : HealthyRepairOpeningAt
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D)
+    (hrepair : HealthyReceiverRepairAt
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O) {v : V} {i : Nat}
     (hi : (chainTrace Q.run.2).InCuts Q.heal i)
     (hv : Q.run.2.point.Ready ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime i))
@@ -181,10 +187,12 @@ theorem healthy_current_record_read_at (Q : HealthyPreparationQueryAt S A V)
         (Q.trace.state (Q.run.2.ownKey v)
           (cutMap { S with vote := stock } Q.run.2 Q.hn
             (lastOwn { S with vote := stock } Q.run.2 v i))).fg.F := by
-  obtain ⟨C⟩ := healthy_current_read_context_at S A V Q D hi hv htb
+  obtain ⟨C⟩ := healthy_current_read_context_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D hi hv htb
   have hrun := simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTraceAt { S with vote := stock } Q.run.2 Q.hn Q.valid Q.noCollision
-  have hc := healthy_schedule_catch_at S A V Q D
+  have hc := healthy_schedule_catch_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D
   have hhon : v ∉ Q.run.2.faultyAt (stateAt { S with vote := stock } Q.run.2 Q.hn v i).now :=
     fun h =>
       hv.1 (Q.run.2.faultyAt_mono
@@ -204,7 +212,9 @@ theorem healthy_current_record_read_at (Q : HealthyPreparationQueryAt S A V)
     rwa [Trace.upTo_state Q.trace _ C.readPoint.1] at h
   refine read_eq_record_of_current_votes_at hrun hnc C.time_nonneg C.honest C.readPoint C.awake
     C.joined C.sync C.catchup C.latest C.reset_le (fun R hR =>
-      ⟨healthy_current_live_candidates_at S A V Q hb hp D C hR, ?_⟩) C.label_le C.fault
+      ⟨healthy_current_live_candidates_at
+          { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hb hp D C hR, ?_⟩)
+          C.label_le C.fault
   apply read_source_of_recent_result_at D.reset C.time_bound
   by_cases hfc : (Node.frame (Q.trace.state (Q.run.2.ownKey v)
       (cutMap { S with vote := stock } Q.run.2 Q.hn
@@ -213,15 +223,23 @@ theorem healthy_current_record_read_at (Q : HealthyPreparationQueryAt S A V)
         (cutMap { S with vote := stock } Q.run.2 Q.hn
           (lastOwn { S with vote := stock } Q.run.2 v i)))).fcRoot
   · exact Or.inl (hfc.trans ((SA.anc_getAnchor hΦ
-      (healthy_current_live_chain_at S A V Q D C)).2 _ (Or.inr rfl)))
-  rcases healthy_current_mature_or_anchor_at S A V Q hb hp D O hrepair C hupd hR with
+      (healthy_current_live_chain_at
+        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D C)).2 _
+        (Or.inr rfl)))
+  rcases healthy_current_mature_or_anchor_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hb hp D O hrepair
+      C hupd hR with
     ha | ⟨x, r, s, B, CV, hx, hr, hRB, hrb, hs, hlate, hL⟩
   · exact Or.inl ha
-  exact Or.inr ⟨healthy_current_record_viable_at S A V Q hb hp D C hx hr hRB hrb hs hL hfc hR,
+  exact Or.inr ⟨healthy_current_record_viable_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hb hp D C hx hr hRB
+      hrb hs hL hfc hR,
     x, r, s, B, CV, hx, hr, hRB, hrb, hs, hL,
-    healthy_current_vote_domain_at S A V Q D hx hr hRB hrb
+    healthy_current_vote_domain_at
+        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D hx hr hRB hrb
       (clean_add_k_two_le Q.params.two_le_k hlate),
-    healthy_current_stored_locks_at S A V Q D hx hr hRB hrb hlate⟩
+    healthy_current_stored_locks_at
+        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D hx hr hRB hrb hlate⟩
 
 end Consensus.Goldilocks.Obligations.Growing
 

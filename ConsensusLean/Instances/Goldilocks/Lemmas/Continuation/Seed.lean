@@ -331,7 +331,9 @@ service at `protoFGDelay`. The lock floor is `r = cleanLabel a + k + 2` and the 
 before the query, so `t_{r+k+2} < T`, `r + k ≤ σ` and `t_{r+k} ≤ t₀`. The canonical preparation
 query is at most `ready + (R + 8k + 20)Δ`, and the heal margin leaves `8Δ + 1` after the cover
 start: `t₀ + 8Δ + 1 ≤ heal`. -/
-theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤ Q.heal)
+theorem handover_seed_cover_at
+    (Q : HealthyPreparationQueryAt
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V) (h0 : 0 ≤ Q.heal)
     (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks { S with vote := stock }) V).prog
       (shapeProgress (goldilocks { S with vote := stock }) V)
@@ -351,7 +353,8 @@ theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤
               (Q.trace.state y n).ac.latestConfirmed).getD (Q.trace.state y n).fg.F) := by
   obtain ⟨W, Dprep, hlate⟩ := healthy_preparation_initialize_late_at S A V Q h0 hb hp
   obtain ⟨D, -, -, hDq⟩ := healthy_repair_schedule_of_preparation_at S A V Q W Dprep
-  obtain ⟨O, hrepair⟩ := healthy_bounded_repairing_opening_at S A V Q hb hp D
+  obtain ⟨O, hrepair⟩ := healthy_bounded_repairing_opening_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hb hp D
   have hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
       (runProposer { S with vote := stock } Q.run.2 Q.hn)
       (digestOf { S with vote := stock } Q.run.2) Q.gst
@@ -359,7 +362,8 @@ theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤
           Q.bound
         (runCommittee { S with vote := stock } Q.run.2 Q.hn) (K S A).params.βK :=
     { D.reset with
-      sync := healthy_preparation_service_at S A V Q
+      sync := healthy_preparation_service_at
+          { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q
       timeoutDelay := fun s => by
         have h := protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2
         have hδ : (Q.params.toParams.δt : Time) = S.δt := rfl
@@ -395,7 +399,8 @@ theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤
         ((SA.lookup (Node.frame (Q.trace.state y n)) (Q.trace.state y n).ac.latestConfirmed).getD
           (Q.trace.state y n).fg.F) := by
     intro y n t ht htb hy hrp
-    have hcover := healthy_current_record_sources_before_now_at S A V Q D O hrepair hrp htb hy
+    have hcover := healthy_current_record_sources_before_now_at
+        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hrepair hrp htb hy
       (by linarith)
     rw [healthyRecordCoverAt_iff, D.cleanLabel_eq] at hcover
     rw [Compose.Growing.healedRecordCoverAt_iff]
@@ -422,7 +427,9 @@ theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤
 
 /-- **The hand-over seed of a healed-safety query** healthy up to its bound `T`, with
 `0 ≤ heal ≤ T` and progress on `[ready, heal]` (`handover_seed_cover_at`). -/
-theorem handover_seed_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤ Q.heal)
+theorem handover_seed_at
+    (Q : HealthyPreparationQueryAt
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V) (h0 : 0 ≤ Q.heal)
     (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks { S with vote := stock }) V).prog
       (shapeProgress (goldilocks { S with vote := stock }) V)

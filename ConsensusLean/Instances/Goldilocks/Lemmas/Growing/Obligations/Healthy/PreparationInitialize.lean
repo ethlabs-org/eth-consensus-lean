@@ -27,23 +27,32 @@ set_option linter.unusedVariables false in
 /-- An actual reset seed, a base slot and a repairing opening before the heal deadline, with `8Δ`
 of the heal margin to spare after the reserve: the query is at most `ready + (R + 8k + 20)Δ` and the
 heal point at least `ready + (R + 8k + 4X + 34)Δ + 2`. -/
-theorem healthy_preparation_initialize_late_at (Q : HealthyPreparationQueryAt S A V)
+theorem healthy_preparation_initialize_late_at
+    (Q : HealthyPreparationQueryAt
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks { S with vote := stock }) V).prog
       (shapeProgress (goldilocks { S with vote := stock }) V)
       (K S A) Q.cap Q.index Q.ready Q.heal Q.run) :
-    ∃ W : HealthyBaseTimingAt S A V Q, ∃ D : HealthyPreparationScheduleAt S A V Q W,
+    ∃ W : HealthyBaseTimingAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q,
+        ∃ D : HealthyPreparationScheduleAt
+        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q W,
       D.query + (4 * (Q.index : Time) + 14) * Q.params.Δ + 2 ≤ Q.heal := by
   obtain ⟨ΔF, a, hreset, ha⟩ := healthy_preparation_reset_at S A V Q hb hp
   obtain ⟨v, r, l, O, hO, hra, hla⟩ := hreset.reset_seed_at
   obtain ⟨⟨_, k, _, _, _, _, hka⟩, _⟩ := hreset.reset
   have ha0 : 0 ≤ a := hka ▸ hreset.run.time_nonneg k
   have hD0 : (0 : Time) ≤ Q.params.Δ := Q.params.toParams.hΔ.le
+  have hheal : (Sys (goldilocks { S with vote := stock }) V).heal (K S A) Q.cap Q.index Q.gst
+      Q.run = Q.heal := rfl
+  have hready : (Sys (goldilocks { S with vote := stock }) V).ready (K S A) Q.gst Q.run =
+      Q.ready := rfl
   have hB' := healthy_heal_margin S A V Q.run Q.hn Q.cap Q.index Q.gst
     (contract_heal_ge_reset_late S A Q.cap Q.index)
   push_cast at hB'
   obtain ⟨w, hw, hq⟩ := healthy_preparation_timing S A V Q.run Q.hn Q.cap Q.index Q.gst
     (by linarith only [hB', hD0])
+  simp only [hheal, hready] at hB' hq
   refine ⟨⟨w, hw.1, hw.2.1, hw.2.2.1, hw.2.2.2.1, hw.2.2.2.2⟩,
     ⟨a, ΔF, hreset, v, r, l, O, hO, hra, hla, _, le_rfl,
       by linarith only [hq a l ha0 ha hla, hB', hD0]⟩, ?_⟩
@@ -52,12 +61,16 @@ theorem healthy_preparation_initialize_late_at (Q : HealthyPreparationQueryAt S 
 
 /-- An actual reset seed, a base slot and a repairing opening before the heal deadline
 (`healthy_preparation_initialize_late_at`). -/
-theorem healthy_preparation_initialize_at (Q : HealthyPreparationQueryAt S A V)
+theorem healthy_preparation_initialize_at
+    (Q : HealthyPreparationQueryAt
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks { S with vote := stock }) V).prog
       (shapeProgress (goldilocks { S with vote := stock }) V)
       (K S A) Q.cap Q.index Q.ready Q.heal Q.run) :
-    ∃ W : HealthyBaseTimingAt S A V Q, Nonempty (HealthyPreparationScheduleAt S A V Q W) :=
+    ∃ W : HealthyBaseTimingAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q,
+        Nonempty (HealthyPreparationScheduleAt
+        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q W) :=
   let ⟨W, D, _⟩ := healthy_preparation_initialize_late_at S A V Q h0 hb hp
   ⟨W, ⟨D⟩⟩
 

@@ -106,31 +106,27 @@ end SleepySafetyQueryAt
 readiness, a query time at least the final heal point, and a ready reader at the deadline
 `query + latency·ΔAC ≤ horizon`. -/
 structure FinalQueryAt where
-  run : (Sys (goldilocks {S with vote := stock}) V).Run
+  run : (Sys (goldilocks S) V).Run
   hn : 1 ≤ Fintype.card V
   index : (K S A).Idx
   gst : Time
   query : Time
-  valid : (Sys (goldilocks {S with vote := stock}) V).Valid run
+  valid : (Sys (goldilocks S) V).Valid run
   noCollision : ¬ run.2.HashCollision
-  healthy : (Sys (goldilocks {S with vote := stock}) V).Healthy
-      (shapeProgress (goldilocks {S with vote := stock}) V).toExternal (K S A) gst run
-  progress : (Sys (goldilocks {S with vote := stock}) V).prog
-    (shapeProgress (goldilocks {S with vote := stock}) V)
-    (K S A) .final index
-    ((Sys (goldilocks {S with vote := stock}) V).ready (K S A) gst run) run.2.horizon run
-  mature : (Sys (goldilocks {S with vote := stock}) V).heal (K S A) .final index gst run ≤ query
+  healthy : (Sys (goldilocks S) V).Healthy
+      (shapeProgress (goldilocks S) V).toExternal (K S A) gst run
+  progress : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) .final index
+    ((Sys (goldilocks S) V).ready (K S A) gst run) run.2.horizon run
+  mature : (Sys (goldilocks S) V).heal (K S A) .final index gst run ≤ query
   bounded : query + ((K S A).params.latency .final index : Time) * run.1.ΔAC ≤ run.2.horizon
-  reader : ∃ v, run.2.point.Ready ((Sys (goldilocks {S with vote := stock}) V).cDur (K S A) run) v
+  reader : ∃ v, run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) run) v
     (query + ((K S A).params.latency .final index : Time) * run.1.ΔAC)
 
 namespace FinalQueryAt
 variable {S A V}
-abbrev params (Q : FinalQueryAt S A V) :=
-  ({S with vote := stock} : Setup).params (Model.pubOf Q.run.1) Q.hn
-noncomputable abbrev trace (Q : FinalQueryAt S A V) :=
-  simTraceAt {S with vote := stock} Q.run.2 Q.hn
-noncomputable abbrev keys (Q : FinalQueryAt S A V) := honestKeysAt {S with vote := stock} Q.run.2
+abbrev params (Q : FinalQueryAt S A V) := S.params (Model.pubOf Q.run.1) Q.hn
+noncomputable abbrev trace (Q : FinalQueryAt S A V) := simTraceAt S Q.run.2 Q.hn
+noncomputable abbrev keys (Q : FinalQueryAt S A V) := honestKeysAt S Q.run.2
 noncomputable abbrev deadline (Q : FinalQueryAt S A V) : Time :=
   Q.query + ((K S A).params.latency .final Q.index : Time) * Q.run.1.ΔAC
 end FinalQueryAt
@@ -142,41 +138,37 @@ at fraction `βK`, and a nonfinal capability at an index.
 Progress is supplied separately, on `[ready, heal]`. At `bound = horizon` the health premise is
 `Healthy`. -/
 structure HealthyPreparationQueryAt where
-  run : (Sys (goldilocks {S with vote := stock}) V).Run
+  run : (Sys (goldilocks S) V).Run
   hn : 1 ≤ Fintype.card V
   cap : Capability
   nonfinal : cap = .available ∨ cap = .stable
   index : (K S A).Idx
   gst : Time
   bound : Time
-  valid : (Sys (goldilocks {S with vote := stock}) V).Valid run
+  valid : (Sys (goldilocks S) V).Valid run
   noCollision : ¬ run.2.HashCollision
   bound_le : bound ≤ run.2.horizon
-  healthy : ((Sys (goldilocks {S with vote := stock}) V).log run).PSync
-    ((Sys (goldilocks {S with vote := stock}) V).pt run) gst ∧
-    ((Sys (goldilocks {S with vote := stock}) V).pt run).HealthyOn (K S A).params.β gst bound ∧
-    ((Sys (goldilocks {S with vote := stock}) V).pt run).env.ΔFG ≤
-      ((K S A).params.fgDelay : Time) * ((Sys (goldilocks {S with vote := stock}) V).pt run).env.ΔAC
-  committeeHealthy : ((Sys (goldilocks {S with vote := stock}) V).pt run).CommitteeHealthyOn
-    ((shapeProgress (goldilocks {S with vote := stock}) V).toExternal.selected
-      ((Sys (goldilocks {S with vote := stock}) V).pt run).env
-      ((shapeProgress (goldilocks {S with vote := stock}) V).toExternal.ext run))
+  healthy : ((Sys (goldilocks S) V).log run).PSync ((Sys (goldilocks S) V).pt run) gst ∧
+    ((Sys (goldilocks S) V).pt run).HealthyOn (K S A).params.β gst bound ∧
+    ((Sys (goldilocks S) V).pt run).env.ΔFG ≤
+      ((K S A).params.fgDelay : Time) * ((Sys (goldilocks S) V).pt run).env.ΔAC
+  committeeHealthy : ((Sys (goldilocks S) V).pt run).CommitteeHealthyOn
+    ((shapeProgress (goldilocks S) V).toExternal.selected
+      ((Sys (goldilocks S) V).pt run).env
+      ((shapeProgress (goldilocks S) V).toExternal.ext run))
     (K S A).params.βK (max gst 0) bound
 
 namespace HealthyPreparationQueryAt
 variable {S A V}
-abbrev params (Q : HealthyPreparationQueryAt S A V) :=
-  ({S with vote := stock} : Setup).params (Model.pubOf Q.run.1) Q.hn
-noncomputable abbrev trace (Q : HealthyPreparationQueryAt S A V) :=
-  simTraceAt {S with vote := stock} Q.run.2 Q.hn
-noncomputable abbrev keys (Q : HealthyPreparationQueryAt S A V) :=
-  honestKeysAt {S with vote := stock} Q.run.2
+abbrev params (Q : HealthyPreparationQueryAt S A V) := S.params (Model.pubOf Q.run.1) Q.hn
+noncomputable abbrev trace (Q : HealthyPreparationQueryAt S A V) := simTraceAt S Q.run.2 Q.hn
+noncomputable abbrev keys (Q : HealthyPreparationQueryAt S A V) := honestKeysAt S Q.run.2
 noncomputable abbrev heal (Q : HealthyPreparationQueryAt S A V) :=
-  (Sys (goldilocks {S with vote := stock}) V).heal (K S A) Q.cap Q.index Q.gst Q.run
+  (Sys (goldilocks S) V).heal (K S A) Q.cap Q.index Q.gst Q.run
 noncomputable abbrev ready (Q : HealthyPreparationQueryAt S A V) :=
-  (Sys (goldilocks {S with vote := stock}) V).ready (K S A) Q.gst Q.run
+  (Sys (goldilocks S) V).ready (K S A) Q.gst Q.run
 noncomputable abbrev cut (Q : HealthyPreparationQueryAt S A V) :=
-  cutMap {S with vote := stock} Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.heal)
+  cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.heal)
 end HealthyPreparationQueryAt
 
 /-- **An outage query under growing faults**: a valid collision-free run with its outage

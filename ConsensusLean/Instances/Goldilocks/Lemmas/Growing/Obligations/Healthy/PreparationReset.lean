@@ -19,7 +19,9 @@ open AsChainShape Simulation Blocks Shape
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
 /-- The parameter-only healing coefficient covers the reset envelope. -/
-theorem healthy_preparation_reset_fit_at (Q : HealthyPreparationQueryAt S A V) :
+theorem healthy_preparation_reset_fit_at
+    (Q : HealthyPreparationQueryAt
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V) :
     Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
       (healthyResetSlack S Q.index : Time) ≤ Q.heal := by
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
@@ -41,7 +43,9 @@ theorem healthy_preparation_reset_fit_at (Q : HealthyPreparationQueryAt S A V) :
     mul_nonneg hr0 (sub_nonneg.mpr hd), hd]
 
 /-- Actual proposals from progress and finite healthy service supply a bounded reset. -/
-theorem healthy_preparation_reset_at (Q : HealthyPreparationQueryAt S A V)
+theorem healthy_preparation_reset_at
+    (Q : HealthyPreparationQueryAt
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
     (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks { S with vote := stock }) V).prog
       (shapeProgress (goldilocks { S with vote := stock }) V)
@@ -57,9 +61,12 @@ theorem healthy_preparation_reset_at (Q : HealthyPreparationQueryAt S A V)
   have hδeq : Q.params.toParams.fg.δt = S.δt := rfl
   have hrun := simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTraceAt { S with vote := stock } Q.run.2 Q.hn Q.valid Q.noCollision
-  have hs := healthy_preparation_service_at S A V Q
-  have haw := healthy_preparation_awake_at S A V Q
-  have hf := healthy_preparation_faults_at S A V Q
+  have hs := healthy_preparation_service_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q
+  have haw := healthy_preparation_awake_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q
+  have hf := healthy_preparation_faults_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q
   have hfit := healthy_preparation_reset_fit_at S A V Q
   have hready : Q.ready =
       max Q.gst 0 + (Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run + 1 := rfl
@@ -100,8 +107,11 @@ theorem healthy_preparation_reset_at (Q : HealthyPreparationQueryAt S A V)
   have h4B : Q.ready + 4 * Q.params.Δ ≤ Q.heal := by
     have := mul_le_mul_of_nonneg_right hR hΔ.le
     linarith only [this, hfit, hr, hΔ]
-  have hcatch := healthy_repair_catch_at S A V Q (by linarith only [hgr, h4B, hb, hΔ])
-  have hnr := healthy_preparation_noRestart_at S A V Q
+  have hcatch := healthy_repair_catch_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q
+      (by linarith only [hgr, h4B, hb, hΔ])
+  have hnr := healthy_preparation_noRestart_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q
   have hdrain := Healing.Growing.drainOutputs_of_service_at hrun hnc hs haw hf hcatch
     (G := (Q.index : Nat)) (Ld := healthyDrainLen S Q.index)
     (by rw [healthyDrainLen_val]; change 2 * S.k + (Q.index : Nat) ≤ 2 * S.k + (Q.index : Nat) + 1

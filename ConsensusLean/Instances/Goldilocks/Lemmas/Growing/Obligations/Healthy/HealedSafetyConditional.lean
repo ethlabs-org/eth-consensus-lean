@@ -143,8 +143,8 @@ theorem tips_comparable_of_origin_witnesses_at (Q : HealthyPreparationQueryAt S 
     (hCC : Goldilocks.Compatible (Q.trace.HonestBlocksAt Q.keys) C C') :
     Goldilocks.Compatible (Q.trace.HonestBlocksAt Q.keys) R R' := by
   have hU := Compose.Growing.honest_blocks_coherent
-    (simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid)
-    (noCollRun_simTraceAt { S with vote := stock } Q.run.2 Q.hn Q.valid Q.noCollision)
+    (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid)
+    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision)
   rcases hCC with h | h
   · exact Anc.total hU (hR.trans h) hR'
   · exact Anc.total hU hR (hR'.trans h)
@@ -154,7 +154,7 @@ theorem healthy_query_call_time_le_at (Q : HealthyPreparationQueryAt S A V)
     {y : Fin Q.params.n} {j : Nat} (hj : Q.trace.IsCall y j) :
     Q.trace.time j ≤ Q.run.2.horizon := by
   obtain ⟨ell, _, hlabel⟩ := hj
-  exact simTraceAt_labelled_time_le { S with vote := stock } Q.run.2 Q.hn Q.valid
+  exact simTraceAt_labelled_time_le S Q.run.2 Q.hn Q.valid
     (by rw [hlabel]; simp)
 
 /-- The catch-up of a query with a repair schedule: its reset, after the snapshot `c_z > ḡ + 8Δ`,
@@ -169,7 +169,8 @@ theorem healthy_schedule_catch_at (Q : HealthyPreparationQueryAt S A V)
 /-- A supplied finite reset and its strict joint reserve suffice for the canonical repair
 schedule. Neither the reset nor the reserve is produced here. -/
 theorem healthy_repair_schedule_of_reset_at
-    (Q : HealthyPreparationQueryAt S A V) {ΔF a : Time}
+    (Q : HealthyPreparationQueryAt
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V) {ΔF a : Time}
     (hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
       (runProposer { S with vote := stock } Q.run.2 Q.hn)
       (digestOf { S with vote := stock } Q.run.2)
@@ -177,7 +178,8 @@ theorem healthy_repair_schedule_of_reset_at
         (runCommittee { S with vote := stock } Q.run.2 Q.hn) (K S A).params.βK)
     (hreserve : max Q.ready (Healing.drainTime Q.params a) +
       (4 * (Q.index : Time) + 6) * Q.params.Δ < Q.heal - 1) :
-    ∃ D : HealthyRepairScheduleAt S A V Q,
+    ∃ D : HealthyRepairScheduleAt
+        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q,
       D.resetTime = a ∧ D.deltaF = ΔF ∧
       D.query = max Q.ready (Healing.drainTime Q.params a) ∧
       D.oldLabel = Q.params.slot a + 2 * Q.params.k + 4 := by
@@ -198,10 +200,13 @@ theorem healthy_repair_schedule_of_reset_at
 /-- A preparation schedule for the same query supplies a repair schedule with the very same
 reset time, service delay and query, without a base-slot comparison. -/
 theorem healthy_repair_schedule_of_preparation_at
-    (Q : HealthyPreparationQueryAt S A V)
-    (W : HealthyBaseTimingAt S A V Q)
-    (Dprep : HealthyPreparationScheduleAt S A V Q W) :
-    ∃ D : HealthyRepairScheduleAt S A V Q,
+    (Q : HealthyPreparationQueryAt
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
+    (W : HealthyBaseTimingAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q)
+    (Dprep : HealthyPreparationScheduleAt
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q W) :
+    ∃ D : HealthyRepairScheduleAt
+        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q,
       D.resetTime = Dprep.resetTime ∧ D.deltaF = Dprep.deltaF ∧ D.query = Dprep.query := by
   have hlower : max Q.ready (Healing.drainTime Q.params Dprep.resetTime) ≤ Dprep.query :=
     max_le ((le_max_left _ _).trans Dprep.lower)
@@ -214,13 +219,16 @@ theorem healthy_repair_schedule_of_preparation_at
 
 /-- The repair schedule of the preparation initializer: its finite preparation schedule keeps
 its reset time, service delay and query (`healthy_repair_schedule_of_preparation_at`). -/
-theorem healthy_repair_schedule_at (Q : HealthyPreparationQueryAt S A V)
+theorem healthy_repair_schedule_at
+    (Q : HealthyPreparationQueryAt
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks { S with vote := stock }) V).prog
       (shapeProgress (goldilocks { S with vote := stock }) V)
       (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
-    Nonempty (HealthyRepairScheduleAt S A V Q) := by
+    Nonempty (HealthyRepairScheduleAt
+        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q) := by
   obtain ⟨W', ⟨Dprep⟩⟩ := healthy_preparation_initialize_at S A V Q h0 hb hp
   obtain ⟨D, -⟩ := healthy_repair_schedule_of_preparation_at S A V Q W' Dprep
   exact ⟨D⟩
@@ -268,29 +276,29 @@ theorem healthy_current_record_sources_before_now_at (Q : HealthyPreparationQuer
   have hready : Q.ready < Q.params.ts O.slot + 6 * Q.params.Δ :=
     ((le_max_left _ _).trans D.lower).trans_lt (lt_add_of_lt_of_nonneg O.fresh h6)
   have hzero : 0 ≤ Q.ready := by
-    change 0 ≤ max Q.gst 0 + (Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run + 1
+    change 0 ≤ max Q.gst 0 + (Sys (goldilocks S) V).cDur (K S A) Q.run + 1
     exact add_nonneg (add_nonneg (le_max_right _ _)
       ((mul_nonneg (by decide) hd.le).trans D.duration_bound)) zero_le_one
   have ht0 : 0 ≤ t := (hzero.trans hready.le).trans hTt.le
   -- the receiver is ready at the update time
   have hyT : y ∈ Q.keys (Q.params.ts O.slot + 6 * Q.params.Δ) :=
-    honestKeysAt_antitone { S with vote := stock } Q.run.2 hTt.le hy
+    honestKeysAt_antitone S Q.run.2 hTt.le hy
   have hr : Regimes.Growing.ReadyAt Q.trace Q.keys
-      ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run) y
+      ((Sys (goldilocks S) V).cDur (K S A) Q.run) y
       (Q.params.ts O.slot + 6 * Q.params.Δ) := by
     refine ⟨hyT, fun τ hτ hτT => ?_⟩
     have hgτ : max Q.gst 0 ≤ τ := by
-      change max Q.gst 0 + (Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run + 1 <
+      change max Q.gst 0 + (Sys (goldilocks S) V).cDur (K S A) Q.run + 1 <
         Q.params.ts O.slot + 6 * Q.params.Δ at hready
       refine (le_of_lt ?_).trans ((le_max_right _ _).trans hτ)
       rw [sub_sub, lt_sub_iff_add_lt, ← add_assoc]
       exact hready
     have hτb : τ ≤ Q.bound := hτT.trans (hTt.le.trans htb)
     have hτh : τ ≤ Q.run.2.horizon := hτb.trans Q.bound_le
-    have hyτ : y ∈ Q.keys τ := honestKeysAt_antitone { S with vote := stock } Q.run.2 hτT hyT
-    rw [mem_honestKeysAt_iff { S with vote := stock } Q.run.2, min_eq_left hτh] at hyτ
-    rw [simTraceAt_awake_iff { S with vote := stock } Q.run.2 Q.hn,
-      awakeAt_iff { S with vote := stock } Q.run.2 Q.hn]
+    have hyτ : y ∈ Q.keys τ := honestKeysAt_antitone S Q.run.2 hτT hyT
+    rw [mem_honestKeysAt_iff S Q.run.2, min_eq_left hτh] at hyτ
+    rw [simTraceAt_awake_iff S Q.run.2 Q.hn,
+      awakeAt_iff S Q.run.2 Q.hn]
     exact ⟨Q.healthy.2.1.2 _ τ hgτ hτb hyτ, (le_max_right _ _).trans hgτ, hτh⟩
   obtain ⟨a, ell, ha, hat, -, hcover⟩ := healthyReceiverRepairAt_iff.mp hrepair y hr
   have han : a < n := by
@@ -317,7 +325,7 @@ theorem healthy_current_record_sources_before_now_at (Q : HealthyPreparationQuer
       have hle0 : ∀ q < k, Q.trace.time q ≤ t := fun q hq => hrp.1 q (by omega)
       have hkt : Q.trace.time k ≤ t := hrp.1 k (by omega)
       have hyk : y ∈ Q.keys (Q.trace.time k) :=
-        honestKeysAt_antitone { S with vote := stock } Q.run.2 hkt hy
+        honestKeysAt_antitone S Q.run.2 hkt hy
       rcases record_step_origin_at hrun hyk with heq | ⟨C, hC, hCr, s, CV, hs⟩
       · obtain ⟨x, q, s, B, DV, hx, hqk, hqb, hsl, hB, hRB⟩ :=
           ih (Nat.le_of_succ_le hkn) R

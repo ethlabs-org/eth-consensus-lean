@@ -41,7 +41,8 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 /-- **The honest-proposer gap of a final query**, under growing faults: every slot window
 `[x₀, x₀ + X)` inside `[s₀, N]` has an actual designated proposal whose proposer is honest
 through its slot's hold. -/
-theorem final_query_gap_at (Q : FinalQueryAt S A V) {c : Nat}
+theorem final_query_gap_at
+    (Q : FinalQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V) {c : Nat}
     (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {s₀ N : Nat}
     (hs : max ((Sys (goldilocks { S with vote := stock }) V).ready (K S A) Q.gst Q.run) 0 +
       4 * Q.params.Δ ≤
@@ -59,7 +60,9 @@ theorem final_query_gap_at (Q : FinalQueryAt S A V) {c : Nat}
 
 /-- **The reset premises and the placement of a final query, at a forwarding delay `ΔF` and a
 gap `c`**, under growing faults. -/
-theorem final_reset_premises_of_shared_at (Q : FinalQueryAt S A V) {c : Nat} (hc2 : 2 ≤ c)
+theorem final_reset_premises_of_shared_at
+    (Q : FinalQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
+    {c : Nat} (hc2 : 2 ≤ c)
     (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {ΔF : Time}
     (hs : Healing.Growing.HSSharedUpTo Q.trace Q.keys
       (digestOf { S with vote := stock } Q.run.2) Q.gst ΔF
@@ -70,9 +73,15 @@ theorem final_reset_premises_of_shared_at (Q : FinalQueryAt S A V) {c : Nat} (hc
         (digestOf { S with vote := stock } Q.run.2) Q.gst ΔR a Q.run.2.horizon
         (runCommittee { S with vote := stock } Q.run.2 Q.hn) (K S A).params.βK ∧
       max (max ((Sys (goldilocks { S with vote := stock }) V).ready (K S A) Q.gst Q.run) 0)
-          ((finalGridAt S A V Q).slotTime (finalSeedMinAt S A V Q a) - 1) +
-          ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGridAt S A V Q).slotLen ≤
-        Q.query + (finalGridAt S A V Q).slotLen := by
+          ((finalGridAt
+            { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q).slotTime
+            (finalSeedMinAt
+            { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q a) - 1) +
+          ((((Q.index : Nat) + S.δt : Nat) : Time)) *
+          (finalGridAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V
+          Q).slotLen ≤
+        Q.query + (finalGridAt
+            { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q).slotLen := by
   classical
   have hrun := simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid
   set H := Q.keys
@@ -121,16 +130,23 @@ theorem final_reset_premises_of_shared_at (Q : FinalQueryAt S A V) {c : Nat} (hc
   exact hplace a ha0 hab
 
 /-- **The reset premises and the placement of a final query**, under growing faults. -/
-theorem final_reset_premises_at (Q : FinalQueryAt S A V) :
+theorem final_reset_premises_at
+    (Q : FinalQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V) :
     ∃ ΔR a : Time,
       Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
         (runProposer { S with vote := stock } Q.run.2 Q.hn)
         (digestOf { S with vote := stock } Q.run.2) Q.gst ΔR a Q.run.2.horizon
         (runCommittee { S with vote := stock } Q.run.2 Q.hn) (K S A).params.βK ∧
       max (max ((Sys (goldilocks { S with vote := stock }) V).ready (K S A) Q.gst Q.run) 0)
-          ((finalGridAt S A V Q).slotTime (finalSeedMinAt S A V Q a) - 1) +
-          ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGridAt S A V Q).slotLen ≤
-        Q.query + (finalGridAt S A V Q).slotLen :=
+          ((finalGridAt
+            { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q).slotTime
+            (finalSeedMinAt
+            { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q a) - 1) +
+          ((((Q.index : Nat) + S.δt : Nat) : Time)) *
+          (finalGridAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V
+          Q).slotLen ≤
+        Q.query + (finalGridAt
+            { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q).slotLen :=
   final_reset_premises_of_shared_at S A V Q A.two_le_fgSlots A.timeout (finalWindow_offsets A)
     (FinalQueryAt.hsSharedUpTo_at Q)
 

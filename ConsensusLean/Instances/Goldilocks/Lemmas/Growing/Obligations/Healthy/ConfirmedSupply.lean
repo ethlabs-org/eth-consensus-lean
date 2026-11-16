@@ -155,11 +155,11 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 /-- Engine readiness from health: a validator honest at `t ∈ [ready, horizon]` is ready at `t`
 (`HealthyOn` keeps it awake on `[max g 0, horizon]` while honest). -/
 private theorem confirmed_ready_of_healthy_at
-    (Q : ConfirmedQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
-    (hh : (Sys (goldilocks { S with vote := stock }) V).Healthy
-        (shapeProgress (goldilocks { S with vote := stock }) V).toExternal (K S A) Q.gst Q.run)
+    (Q : ConfirmedQueryAt S ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
+    (hh : (Sys (goldilocks S) V).Healthy
+        (shapeProgress (goldilocks S) V).toExternal (K S A) Q.gst Q.run)
     {v : V} {t : Time} (hv : Q.run.2.point.HonestAt v t)
-    (hr : (Sys (goldilocks { S with vote := stock }) V).ready (K S A) Q.gst Q.run ≤ t)
+    (hr : (Sys (goldilocks S) V).ready (K S A) Q.gst Q.run ≤ t)
         (htb : t ≤ Q.run.2.horizon) :
     Q.run.2.point.Ready Q.duration v t := by
   refine ⟨hv, fun τ hτ hτt => hh.2.1.2 v τ ?_ (hτt.trans htb)
@@ -171,32 +171,32 @@ private theorem confirmed_ready_of_healthy_at
 /-- The end-of-time cut of a ready validator: `CutAfter` at its trace cut, the stored clock, and
 `cutTime (endCut t) = t`. -/
 private theorem confirmed_end_cut_at
-    (Q : ConfirmedQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
+    (Q : ConfirmedQueryAt S ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
     {v : V} {t : Time}
     (ht : 0 ≤ t) (hth : t ≤ Q.run.2.horizon) (hr : Q.run.2.point.Ready Q.duration v t) :
     Regimes.CutAfter Q.trace
-      (cutMap { S with vote := stock } Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t ∧
-      (stateAt { S with vote := stock } Q.run.2 Q.hn v ((chainTrace Q.run.2).endCut t)).now = t ∧
+      (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t ∧
+      (stateAt S Q.run.2 Q.hn v ((chainTrace Q.run.2).endCut t)).now = t ∧
       (chainTrace Q.run.2).cutTime ((chainTrace Q.run.2).endCut t) = t ∧
       (chainTrace Q.run.2).endCut t ≤ Q.run.2.events.length := by
   obtain ⟨hcut, -, hnow⟩ := ready_read_cut_at
-    { S with vote := stock } Q.run.2 Q.hn Q.valid (c := Q.duration)
+    S Q.run.2 Q.hn Q.valid (c := Q.duration)
     ((mul_nonneg (by norm_num) Q.params.toParams.hΔ.le :
       (0 : Time) ≤ Regimes.catchUp Q.params).trans
-        (confirmed_duration_supply_at { S with vote := stock }
+        (confirmed_duration_supply_at S
           ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q))
     ht hth hr
   have hle : (chainTrace Q.run.2).endCut t ≤ Q.run.2.events.length := Nat.findGreatest_le _
   have hup : (chainTrace Q.run.2).cutTime ((chainTrace Q.run.2).endCut t) ≤ t :=
     Nat.findGreatest_spec (P := fun i => (chainTrace Q.run.2).cutTime i ≤ t)
       (Nat.zero_le _) ht
-  have hlo := (now_bounds_cut { S with vote := stock } Q.run.2 Q.hn Q.valid v hle).2
+  have hlo := (now_bounds_cut S Q.run.2 Q.hn Q.valid v hle).2
   rw [hnow] at hlo
   exact ⟨hcut, hnow, le_antisymm hup hlo, hle⟩
 
 /-- `CutAfter` determines its cut. -/
 private theorem confirmed_cutAfter_unique
-    (Q : ConfirmedQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
+    (Q : ConfirmedQueryAt S ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
     {i j : Nat}
     {t : Time}
     (hi : Regimes.CutAfter Q.trace i t) (hj : Regimes.CutAfter Q.trace j t) : i = j := by
@@ -227,7 +227,8 @@ theorem healthy_confirmed_supply_at
         Anc (Q.trace.HonestBlocksAt Q.keys) P.block
           (Regimes.readAfter Q.trace y j Q.deadline) := by
   classical
-  let Q' : HealthyPreparationQueryAt S A V :=
+  let Q' : HealthyPreparationQueryAt
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V :=
     ⟨Q.run, Q.hn, Q.cap, Q.nonfinal, Q.index, Q.gst, Q.run.2.horizon, Q.valid, Q.noCollision,
       le_rfl, ⟨hh.1, hh.2.1, hh.2.2.1⟩, hh.2.2.2⟩
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
@@ -280,7 +281,8 @@ theorem healthy_confirmed_supply_at
   have hR : Healing.drainTime Q.params Dprep.resetTime ≤ Q.params.ts Ws.slot := hdr.trans hq.le
   have hgu : SA.gbar Q.gst + 4 * Q.params.Δ ≤ Q.params.ts Ws.slot := hgr.trans hq.le
   have hTb : Q.params.ts Ws.slot + 6 * Q.params.Δ ≤ Q.run.2.horizon := hmargin.trans Q.bounded
-  have hc := healthy_repair_catch_at S A V Q' (by
+  have hc := healthy_repair_catch_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q' (by
     change SA.gbar Q.gst + Q.params.Δ ≤ Q.run.2.horizon
     linarith only [hgu, hTb, hΔ])
   have hlocks : ∀ y j ell, y ∈ Q.keys (Q.trace.time j) →
@@ -303,11 +305,18 @@ theorem healthy_confirmed_supply_at
     rwa [min_eq_left Q.bounded] at h
   have hhonT : Q.run.2.point.HonestAt (Q.run.2.key y) (Q.params.ts Ws.slot + 6 * Q.params.Δ) :=
     fun h => hhonD (Q.run.2.point.faultyAt_mono hmargin h)
-  have hvT := confirmed_ready_of_healthy_at S A V Q hh hhonT hrT hTb
-  have hvD := confirmed_ready_of_healthy_at S A V Q hh hhonD (hrT.trans hmargin) Q.bounded
-  obtain ⟨hcT, hnT, htT, hlT⟩ := confirmed_end_cut_at S A V Q hT0 hTb hvT
-  obtain ⟨hcD, hnD, htD, hlD⟩ := confirmed_end_cut_at S A V Q (hT0.trans hmargin) Q.bounded hvD
-  obtain rfl := confirmed_cutAfter_unique S A V Q hj hcD
+  have hvT := confirmed_ready_of_healthy_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hh hhonT hrT hTb
+  have hvD := confirmed_ready_of_healthy_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hh hhonD
+      (hrT.trans hmargin) Q.bounded
+  obtain ⟨hcT, hnT, htT, hlT⟩ := confirmed_end_cut_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hT0 hTb hvT
+  obtain ⟨hcD, hnD, htD, hlD⟩ := confirmed_end_cut_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q
+      (hT0.trans hmargin) Q.bounded hvD
+  obtain rfl := confirmed_cutAfter_unique
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hj hcD
   have hyT : y ∈ Q.keys (Q.params.ts Ws.slot + 6 * Q.params.Δ) := by
     rw [mem_honestKeysAt_iff { S with vote := stock } Q.run.2, min_eq_left hTb]
     exact hhonT

@@ -42,7 +42,8 @@ abbrev handoverQuery (hn : 1 ≤ Fintype.card V)
     {cap : Capability} (hcap : cap = .available ∨ cap = .stable) (i : (K S A).Idx) {g T : Time}
     (hh : (Sys (goldilocks { S with vote := stock }) V).Handover (K S A) g T r)
     (hTh : T ≤ ((Sys (goldilocks { S with vote := stock }) V).pt r).horizon) :
-    HealthyPreparationQueryAt S A V := by
+    HealthyPreparationQueryAt
+        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V := by
   refine ⟨r, hn, cap, hcap, i, g, T, hv, hx, hTh, ⟨hh.1, hh.2.1, hh.2.2.1⟩, ?_⟩
   exact hh.2.1.committee_univ (by
     change (1 / 3 : ℚ) ≤ 1 / 2
@@ -124,7 +125,9 @@ theorem handover_seed_of_handover_at (hn : 1 ≤ Fintype.card V)
 every `b ≥ T` with the reset service and the slot counts from `r` through `b` and conviction below a
 third. `t₁` is the later of the record cover's start and the drain `t_{r+k}`; both are at least
 `8Δ + 1` before the heal point (`handover_seed_cover_at`), and `t₁` does not depend on `b`. -/
-theorem handover_invariant_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤ Q.heal)
+theorem handover_invariant_at
+    (Q : HealthyPreparationQueryAt
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V) (h0 : 0 ≤ Q.heal)
     (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks { S with vote := stock }) V).prog
       (shapeProgress (goldilocks { S with vote := stock }) V)

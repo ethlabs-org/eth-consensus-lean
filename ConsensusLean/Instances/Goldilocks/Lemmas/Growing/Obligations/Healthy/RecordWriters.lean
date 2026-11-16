@@ -58,7 +58,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The writer shape of a cut of the prefix through `d`, read back on the run. -/
 private theorem writer_shape_of_upTo
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {d : Time}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {d : Time}
     {y : Fin sp.n} {q : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     {R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hle : ∀ k < q + 1, tr.time k ≤ d)
@@ -79,7 +80,8 @@ private theorem writer_shape_of_upTo
 /-- A changed own record identifies its actual call, selected block and, for an optimistic
 selection, the normalized lock left by that same call. -/
 theorem record_changed_writer_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {q : Nat} (hy : y ∈ H (tr.time q))
     (hne : (tr.state y (q + 1)).ac.latestConfirmed ≠ (tr.state y q).ac.latestConfirmed) :
     ∃ ell, tr.projAC.CallAt y q ell ∧
@@ -104,7 +106,8 @@ theorem record_changed_writer_at
 /-- A non-genesis current record of a reader honest at `t` has a last own writer, with unchanged
 record roots thereafter and the actual creation lock in the optimistic case. -/
 theorem last_record_writer_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {n : Nat} {t : Time} (ht0 : 0 ≤ t)
     (hnt : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t)
     {R : SA.Blk sp.n (List (FG.Att sp.n))}
