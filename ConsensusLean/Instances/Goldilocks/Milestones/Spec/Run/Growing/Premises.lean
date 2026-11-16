@@ -18,7 +18,7 @@ The premises of `Spec/Run/Premises` for a time-indexed honest set `H`:
 * **`SleepyRunAt W`**: `Sync[0, ∞)` and, at every slot point `t ∈ {t_s, t_s + Δ, t_s + 2Δ}`,
   `FaultBoundAt t (t + W)`: the look-ahead form of the L0 sleepy budget (`EnvPoint.SleepyOn` on the
   view retained through `t + W`). The Goldilocks contract's look-ahead is `ahead = 5`, `W = 5Δ` at
-  `Δp = Δe`. `SleepyPrefixAt W b` is the prefix form through `b`, the look-ahead clamped at `b`.
+  `Δp = Δe`.
 * **`HealthyRunAt`**: `GST(g)`, every validator honest at a time from `max g 0` on is awake then,
   and `3 f_t ≤ n − 1` at every `t` (by monotonicity, the bound at the latest time).
 
@@ -81,13 +81,6 @@ def SleepyRunAt (H : Time → Set (Fin P.n)) (ΔF W : Time) : Prop :=
   tr.SyncOnAt H ΔF (fun τ => 0 ≤ τ) (fun τ => 0 ≤ τ) id ∧
     ∀ s : Nat, ∀ d ∈ ({0, P.Δ, 2 * P.Δ} : Set Time),
       tr.FaultBoundAt H (P.slotTime s + d) (P.slotTime s + d + W)
-
-/-- **The sleepy premises up to `b`** with look-ahead `W` clamped at `b`: `Sync[0, b − Δ]` and the
-count at every slot point `≤ b` charged with the faults of `min (t + W) b`. -/
-def SleepyPrefixAt (H : Time → Set (Fin P.n)) (ΔF W b : Time) : Prop :=
-  0 ≤ b ∧ tr.SyncRunAt H ΔF 0 (b - P.Δ) ∧
-    ∀ s : Nat, ∀ d ∈ ({0, P.Δ, 2 * P.Δ} : Set Time), P.slotTime s + d ≤ b →
-      tr.FaultBoundAt H (P.slotTime s + d) (min (P.slotTime s + d + W) b)
 
 /-- **`Healthy(g)`** under growing faults: `GST(g)`, every validator honest at a time from
 `max g 0` on is awake then, and `3 f_t ≤ n − 1` at every time. -/

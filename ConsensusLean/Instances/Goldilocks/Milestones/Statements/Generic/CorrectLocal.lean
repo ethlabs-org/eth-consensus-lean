@@ -129,8 +129,8 @@ structure PostStopService {A : NodeAC P} (tr : RunTrace A) (H : Time → Set (Fi
 
 /-- Finite sleepy service and slot counts through `b`, without an order between the delays:
 the AC-owned message service and node acceptance relay up to recipient deadlines `≤ b`, and the
-slot-point fault counts charged at the look-ahead clamped at `b`. The service form of
-`RunTrace.SleepyPrefixAt`, which also asks `Δ ≤ ΔF`. -/
+slot-point fault counts charged at the look-ahead clamped at `b`. The service form of the
+finite sleepy premises; unlike `RunTrace.SyncRunAt` it asks no order `Δ ≤ ΔF`. -/
 def SleepyServicePrefix {A : NodeAC P} {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg)
     (tr : RunTrace A) (H : Time → Set (Fin P.n)) (ΔF look b : Time) : Prop :=
   0 ≤ b ∧ ACServiceBefore C tr H ΔF b ∧
