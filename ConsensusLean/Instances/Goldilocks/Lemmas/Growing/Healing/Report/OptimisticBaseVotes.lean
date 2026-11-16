@@ -6,6 +6,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
@@ -27,10 +29,12 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-/-- An optimistic write propagates an arbitrary viable prefix to next-slot votes. The transfer
-is for population-sized committees (`hstock`). -/
+/-- An optimistic write propagates an arbitrary viable prefix to next-slot votes, at the slot
+committees `K` of a run from `K`'s committee start. -/
 theorem optimistic_next_votes_of_early_witness_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -48,7 +52,7 @@ theorem optimistic_next_votes_of_early_witness_at
     {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocksAt H) J X)
-    (hXQ : Anc (tr.HonestBlocksAt H) X Q) (hstock : sp.committeeSize = sp.n) :
+    (hXQ : Anc (tr.HonestBlocksAt H) X Q) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
       e.msg.slot = s + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
   apply next_votes_of_early_witness_at hrun hnc hsvc hawake hf hcatch hm le_rfl hmb hframe hw
@@ -70,14 +74,14 @@ theorem optimistic_next_votes_of_early_witness_at
         Compose.Growing.optimistic_writer_votes_at hrun hnc hx hopt v hv
       refine ⟨hvs, ⟨x, k, hk, hsend, hlo, hhi'⟩, Hv, hroot, (hFX'.trans hXD).trans hanc, ?_⟩
       exact hacc.imp_right fun ⟨k', hk', hacc', htime⟩ => ⟨x, k', hk', hacc', htime⟩
-  have hhalf : 2 * (H (tr.time i))ᶜ.ncard < sp.n := by
-    have hbound := hf _ ht0 hib
-    have hn : 0 < sp.n := sp.toParams.hn
-    omega
+  have hss : sp.ts s ≤ sp.ts (s + 1 : Nat) := (SA.ts_le_iff sp).2 (by omega)
+  have hΔ := sp.toParams.hΔ
   exact SA.Growing.optimistic_transfer_stored
-    (Compose.Growing.goldilocks_ac_projection_from hrun hnc) _
-    (fun _ => SA.CommitteeP.full) (fun _ => SA.CommitteeT.full) (SA.size_binding_full hstock)
-    hx hopt hXD (SA.cs2_full hstock hhalf) (SA.cs2_full hstock hhalf) hy hcast hs hcarry
+    (Compose.Growing.goldilocks_ac_projection_from hrun hnc) K
+    (SA.CommitteePAt.upTo hmono hrun.antitone hK.facts.hP)
+    (SA.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt hrun hnc)) hK.facts.hsize
+    hx hopt hXD (hK.cs2 s hm (by linarith) _ ht0 hib)
+    (hK.cs2 (s + 1) (hm.trans hss) (by linarith) _ ht0 hib) hy hcast hs hcarry
     hviab
     (fun z k hki hz ev hv hes => ih z k ev hki hz hv hes)
 

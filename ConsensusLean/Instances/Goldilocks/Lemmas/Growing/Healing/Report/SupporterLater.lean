@@ -32,9 +32,10 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **The fork-choice root of a call is in its frame's viable tree**, for a node honest at the
 call: in kind J the justified block itself, otherwise the cache's `hmax` block, is a viable head
-above it. -/
+above it. From any vote-permitted start. -/
 theorem proposal_root_viable_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     (hf : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell) :
@@ -75,7 +76,9 @@ calls**, under growing faults. -/
 theorem optimistic_supporter_later_heads_at {s₀ s N floor : Nat}
     {kindJ : Prop} {J L D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -87,7 +90,7 @@ theorem optimistic_supporter_later_heads_at {s₀ s N floor : Nat}
     (hc : SA.CastAt tr.projAC x i ell e) (hes : e.msg.slot = s)
     (hanchor : L = SA.getAnchor sp e.readPoint ell.frame (tr.time i))
     {CV : Set (SA.Vote sp.n)} (hop : SA.OptimisticLockAt tr.projAC x a s D CV)
-    (hLD : Anc (tr.HonestBlocksAt H) L D) (hstock : sp.committeeSize = sp.n) :
+    (hLD : Anc (tr.HonestBlocksAt H) L D) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ r, s + 1 ≤ r → r ≤ N →
       (∀ y j ev, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j ev → ev.msg.slot = r →
         SA.VoteExtends (tr.HonestBlocksAt H) ev.msg L) ∧
@@ -169,7 +172,7 @@ theorem optimistic_supporter_later_heads_at {s₀ s N floor : Nat}
       fun y j hy hl hh' => hframe.kind_iff y j hy (hts.trans hl) hh',
       fun y j hy hl hh' => hframe.root_eq y j hy (hts.trans hl) hh'⟩
   exact optimistic_later_heads_of_early_witness_at hrun hnc hsvc hawake hf hcatch hnr hm hmb
-    hsub hxa hop hLD hx (by linarith only [hhi, hΔ]) hc.1 hQ hh hJ (hLQ.mono hPhiU') hstock
+    hsub hxa hop hLD hx (by linarith only [hhi, hΔ]) hc.1 hQ hh hJ (hLQ.mono hPhiU') hK
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

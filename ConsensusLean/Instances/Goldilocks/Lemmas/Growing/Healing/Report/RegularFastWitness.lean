@@ -18,7 +18,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Fast transfer discharges the common next-vote induction without retaining the writer. -/
 theorem regular_fast_next_votes_of_early_witness_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -34,7 +36,7 @@ theorem regular_fast_next_votes_of_early_witness_at
     (hat : tr.time a < sp.ts s + 2 * sp.Δ)
     {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
-    (hJ : kindJ → Anc (tr.HonestBlocksAt H) J X) (hstock : sp.committeeSize = sp.n) :
+    (hJ : kindJ → Anc (tr.HonestBlocksAt H) J X) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
   obtain ⟨ellx, C', hu, hconf, hsel, hCV⟩ := hfast
@@ -52,8 +54,8 @@ theorem regular_fast_next_votes_of_early_witness_at
     linarith only [sp.toParams.hΔ, hts]) hmb hframe hw hat hcw hQw hh hJ
       (hXD.trans (hDC.trans hCQ))
   intro y i ell e hy hc hs hhigh hFX hviab ih
-  refine first_transfer_service_at hrun hnc hsvc hawake hf hcatch hnr hm hx hy hfl hXD hc hs
-    (hhigh.trans hmb) (by rwa [frame_of_projAC_at hrun hy hc.1]) hviab ?_ hstock
+  refine first_transfer_service_at hrun hnc hsvc hawake hcatch hnr hm hx hy hfl hXD hc hs
+    (hhigh.trans hmb) (by rwa [frame_of_projAC_at hrun hy hc.1]) hviab ?_ hK
   intro z k hki hz ev hv hes
   exact ih z k ev hki hz hv hes
 

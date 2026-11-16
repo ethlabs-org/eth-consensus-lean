@@ -5,6 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CompatibleSides
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 import ConsensusLean.Lemmas.Tactic.Linarith
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 
 public section
 
@@ -31,7 +32,8 @@ private def Released (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
       tr.time k < sp.ts s + 2 * sp.Δ}
 
 private theorem released_of_fwd
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {d : Time}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {d : Time}
     (hd : 0 ≤ d) {X : Fin sp.n} (hX : X ∈ H d) {s : Nat}
     {D : SA.Blk sp.n (List (FG.Att sp.n))} {u : Fin sp.n}
     (hu : u ∈ SA.Fwd (tr.projAC.upTo d) ((tr.upTo d).HonestBlocks (H d)) X s D) :
@@ -43,7 +45,8 @@ private theorem released_of_fwd
     hrun.antitone hkd hX, hsend, h1, h2⟩
 
 private theorem result_side
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {Y : Fin sp.n} {c s : Nat}
     (hY : Y ∈ H (tr.time c)) {D : SA.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (Vote sp.n)} (hR : SA.ResultAt tr.projAC Y c s D CV) :
@@ -67,8 +70,8 @@ private theorem result_side
       ((ac_restartAt_upTo tr.projAC).2 ⟨hrun.time_mono hk, hrk⟩)
   · rintro u ⟨v, ⟨hvp, -, hres, R, hR, hRr, hDR⟩, rfl⟩
     have hvp' : v ∈ ((tr.projAC.upTo (tr.time c)).state Y c).pool s := hst.symm ▸ hvp
-    have hvs := SA.state_pool_slot sp hr.localRun hY c s v hvp'
-    obtain ⟨k, hsend, h1, h2⟩ := SA.admitted_of_held hr.localRun hY hvs hvp' le_rfl
+    have hvs := SA.state_pool_slot_from sp hr.localRun hr.vstart hY c s v hvp'
+    obtain ⟨k, hsend, h1, h2⟩ := SA.admitted_of_held_from hr.localRun hr.vstart hY hvs hvp' le_rfl
       (fun k _ hstk => by
         rw [hst] at hstk
         have hst' : (tr.projAC.state Y c).voteStamp v < SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
@@ -87,20 +90,20 @@ private theorem result_side
     exact ⟨hne, v, hvp, rfl, R, hPhiU hR, hRr, Anc.mono hPhiU hDR⟩
 
 private theorem optimistic_side
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {X : Fin sp.n} {k s : Nat}
     (hX : X ∈ H (tr.time k)) {D : SA.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (Vote sp.n)} (hop : SA.OptimisticLockAt tr.projAC X k s D CV)
-    (hstock : sp.committeeSize = sp.n) :
-    ∃ S : Set (Fin sp.n), 3 * sp.n ≤ 4 * S.ncard ∧ S ⊆ Released tr H X s D := by
+    {CV : Set (Vote sp.n)} (hop : SA.OptimisticLockAt tr.projAC X k s D CV) :
+    ∃ S : Set (Fin sp.n), 3 * sp.committeeSize ≤ 4 * S.ncard ∧ S ⊆ Released tr H X s D := by
   have hd := hrun.time_nonneg k
   obtain ⟨ell, A, -, -, h34, hfwd⟩ := SA.optimistic_side (acRun_upTo hrun hnc hd) hX
     ((sa_optimisticLockAt_upTo hrun.time_mono).2 ⟨le_rfl, hop⟩)
-  rw [hstock] at h34
   exact ⟨_, h34, fun u hu => released_of_fwd hrun hd hX (hfwd hu)⟩
 
 private theorem released_held
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     {X Y : Fin sp.n} {c s : Nat} (hm : gbar g ≤ sp.ts s)
     {ell : ACLabel (goldilocksNode sp ro)} (hY : Y ∈ H (tr.time c))
@@ -141,7 +144,8 @@ private theorem released_held
   exact h
 
 private theorem against_update
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     {X Y : Fin sp.n} {c s : Nat} (hm : gbar g ≤ sp.ts s)
     {ell : ACLabel (goldilocksNode sp ro)} (hY : Y ∈ H (tr.time c))
@@ -178,7 +182,8 @@ private theorem against_update
 
 /-- Same-slot results agree using only releases after the warm service threshold. -/
 theorem result_result_compatible_service_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     {s : Nat} (hm : gbar g ≤ sp.ts s) {x y : Fin sp.n} {c i : Nat}
     (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
@@ -194,21 +199,25 @@ theorem result_result_compatible_service_at
 
 /-- A result and an optimistic origin agree with honesty charged at their own observations. -/
 theorem result_optimistic_compatible_service_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     {s : Nat} (hm : gbar g ≤ sp.ts s) {x y : Fin sp.n} {c i : Nat}
     (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
     {C D : SA.Blk sp.n (List (FG.Att sp.n))} {CV DV : Set (Vote sp.n)}
     (hC : SA.ResultAt tr.projAC x c s C CV) (hD : SA.OptimisticLockAt tr.projAC y i s D DV)
-    (hstock : sp.committeeSize = sp.n) :
+    (hK : CommitteeHalfUpTo tr H K g b) :
     Compatible (tr.HonestBlocksAt H) C D := by
   by_contra hne
   obtain ⟨ell, S, hc, ht, hrs, hmaj, -, hS⟩ := result_side hrun hnc hx hC
-  obtain ⟨T, h34, hT⟩ := optimistic_side hrun hnc hy hD hstock
+  obtain ⟨T, h34, hT⟩ := optimistic_side hrun hnc hy hD
   have h1 := against_update hrun hnc hsvc hm hx hc ht hrs hS hT (fun h => hne h.symm)
-  have hle := Set.ncard_le_ncard
-    (Set.subset_univ (SA.voters {v | v ∈ (tr.projAC.state x c).pool s}))
-  rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hle
+  have hle := Set.ncard_le_ncard (t := K.committee s)
+    (s := SA.voters {v | v ∈ (tr.projAC.state x c).pool s}) (by
+      rintro w ⟨v, hv, rfl⟩
+      exact hK.facts.hP.1 (tr.time c) x hx c (fun _ hk => hrun.time_mono hk.le) s v hv)
+  rw [hK.facts.hsize s] at hle
   omega
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof

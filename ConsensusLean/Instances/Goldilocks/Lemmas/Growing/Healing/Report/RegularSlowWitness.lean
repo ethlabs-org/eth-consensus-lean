@@ -21,7 +21,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The slow-specific transfer discharges the common causal next-vote induction. -/
 theorem regular_slow_next_votes_of_early_witness_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -39,7 +41,7 @@ theorem regular_slow_next_votes_of_early_witness_at
     (hat : tr.time a < sp.ts s + 2 * sp.Δ)
     {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
-    (hJ : kindJ → Anc (tr.HonestBlocksAt H) J D) (hstock : sp.committeeSize = sp.n) :
+    (hJ : kindJ → Anc (tr.HonestBlocksAt H) J D) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
   obtain ⟨ellx, C', hu, hconf, hsel⟩ := hsl
@@ -55,10 +57,6 @@ theorem regular_slow_next_votes_of_early_witness_at
     have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
     linarith only [sp.toParams.hΔ, hts]) hmb hframe hw hat hcw hQw hh hJ (hDC.trans hCQ)
   intro y i ell e hy hc hs hhigh hFD hviab ih
-  have htwo : 2 * (H (tr.time i))ᶜ.ncard < sp.n := by
-    have hb := hf _ (hrun.time_nonneg i) (hhigh.trans hmb)
-    have hn : 0 < sp.n := sp.toParams.hn
-    omega
   have hFC : Anc (tr.HonestBlocksAt H) ell.frame.F C := by
     rw [frame_of_projAC_at hrun hy hc.1]
     exact hFD.trans hDC
@@ -66,7 +64,7 @@ theorem regular_slow_next_votes_of_early_witness_at
     (Compose.Growing.goldilocks_ac_projection_from hrun hnc)
     hx hres hDC hy hc hs
     (result_carry_service_at hrun hnc hsvc hcatch hm hx hy hres hc hs hFC) hviab
-    (slow_live_locks_service_at hrun hnc hsvc hx hsl hslow hy hc hs htwo ih hstock)
+    (slow_live_locks_service_at hrun hnc hsvc hx hsl hslow hy hc hs (hhigh.trans hmb) ih hK)
     (writer_merged_service_at hrun hnc hsvc hm hx hy hu hc hs)
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof

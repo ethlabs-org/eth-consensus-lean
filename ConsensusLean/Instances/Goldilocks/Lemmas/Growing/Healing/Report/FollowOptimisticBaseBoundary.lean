@@ -18,7 +18,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- An optimistic write propagates an arbitrary viable prefix to next-slot votes. -/
 theorem optimistic_next_votes_of_early_witness_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -36,15 +38,17 @@ theorem optimistic_next_votes_of_early_witness_at
     {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocksAt H) J X)
-    (hXQ : Anc (tr.HonestBlocksAt H) X Q) (hstock : sp.committeeSize = sp.n) :
+    (hXQ : Anc (tr.HonestBlocksAt H) X Q) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
       e.msg.slot = s + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
   exact KernelProof.optimistic_next_votes_of_early_witness_at hrun hnc hsvc hawake hf hcatch
-    hm hmb hframe hx hopt hXD hw hat hcw hQw hh hJ hXQ hstock
+    hm hmb hframe hx hopt hXD hw hat hcw hQw hh hJ hXQ hK
 
 /-- The first next-slot proposal follows the same prefix, before unanimity induction starts. -/
 theorem optimistic_next_proposal_of_early_witness_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -67,10 +71,10 @@ theorem optimistic_next_proposal_of_early_witness_at
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts (s + 1 : Nat))
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
-    (hstock : sp.committeeSize = sp.n) :
+    (hK : CommitteeHalfUpTo tr H K g b) :
     Anc (tr.HonestBlocksAt H) X d.head := by
   exact KernelProof.optimistic_next_proposal_of_early_witness_at hrun hnc hsvc hawake hf hcatch
-    hm hmb hframe hx hopt hXD hw hat hcw hQw hh hJ hXQ hy hc hcall hti hd hstock
+    hm hmb hframe hx hopt hXD hw hat hcw hQw hh hJ hXQ hy hc hcall hti hd hK
 
 end Consensus.Goldilocks.Healing.Growing
 

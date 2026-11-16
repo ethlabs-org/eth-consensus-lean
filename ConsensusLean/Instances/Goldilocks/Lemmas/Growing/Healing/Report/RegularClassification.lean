@@ -21,7 +21,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem vote_head_classification_of_service_at {s₀ floor : Nat} {hi : Time}
     {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) hi floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -32,7 +34,7 @@ theorem vote_head_classification_of_service_at {s₀ floor : Nat} {hi : Time}
     (hwarm : s₀ + sp.k ≤ e.msg.slot) (hpos : 0 < e.msg.slot)
     (hs₀ : s₀ ≤ e.msg.slot - 1)
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts ((e.msg.slot - 1 : Nat) : Int))
-    (hgf : gbar g < SA.freeze sp e.msg.slot) (hstock : sp.committeeSize = sp.n) :
+    (hgf : gbar g < SA.freeze sp e.msg.slot) (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ Hd ∈ ell.frame.tree, Hd.root = e.msg.head ∧
       ((Hd ∈ SA.voteDomain sp e.readPoint ell.frame e.msg.slot ∧ Hd ∈ ell.frame.viableHeads) ∨
       (kindJ ∧ Hd = J) ∨
@@ -43,7 +45,7 @@ theorem vote_head_classification_of_service_at {s₀ floor : Nat} {hi : Time}
           sp.ts e.msg.slot ≤ tr.time a ∧ tr.time a < sp.ts e.msg.slot + 2 * sp.Δ ∧
           3 * sp.committeeSize ≤ 4 * (SA.voters CV).ncard ∧ ell.frame.Anc Hd D)) := by
   have hd := hrun.time_nonneg i
-  have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch hd hib hstock
+  have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch hd hib
   have hr := hrun.upTo hd
   have hframe' : Healing.FrameWindow (tr := tr.upTo (tr.time i)) (H := H (tr.time i))
       (sp.ts s₀) (tr.time i) floor kindJ J := by
@@ -60,7 +62,7 @@ theorem vote_head_classification_of_service_at {s₀ floor : Nat} {hi : Time}
   have hc' : SA.CastAt (tr.upTo (tr.time i)).projAC y i ell e := by
     rw [RunTrace.upTo_projAC]
     exact SA.upTo_castAt.mpr ⟨le_rfl, hc⟩
-  have hS' : SA.HealthyBaseUpTo (SA.CommitteeDict.full sp.n) (tr.upTo (tr.time i)).projAC
+  have hS' : SA.HealthyBaseUpTo K (tr.upTo (tr.time i)).projAC
       (H (tr.time i))
       ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) proposer g (tr.time i) := by
     rwa [RunTrace.upTo_projAC]

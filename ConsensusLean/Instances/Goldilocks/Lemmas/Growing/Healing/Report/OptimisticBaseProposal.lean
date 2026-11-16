@@ -13,6 +13,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 
 public section
 
@@ -40,22 +41,26 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- The static AC run of the prefix through `d` of the nodes honest at `d`. -/
-private theorem acRun_prefix' (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+private theorem acRun_prefix' {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {d : Time} (hd : 0 ≤ d) :
-    SA.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) := by
+    SA.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) ini := by
   have h := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d)
   rwa [RunTrace.upTo_projAC] at h
 
 /-- **Two optimistic locks of one slot are compatible**, their writers honest at their own
-writes, with fewer than half faulty at the later write. -/
+writes, with fewer than half of the slot committee faulty at the later write, for a run from
+`K`'s committee start. -/
 theorem optimisticLock_pair_compatible_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n} {g b : Time}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {x y : Fin sp.n} {i j s : Nat}
     (hx : x ∈ H (tr.time i)) (hy : y ∈ H (tr.time j))
-    (hf : 2 * (H (max (tr.time i) (tr.time j)))ᶜ.ncard < sp.n)
+    (hf : 2 * (K.committee s ∩ (H (max (tr.time i) (tr.time j)))ᶜ).ncard < sp.committeeSize)
     {D E : SA.Blk sp.n (List (FG.Att sp.n))} {CV CW : Set (Vote sp.n)}
     (hd : SA.OptimisticLockAt tr.projAC x i s D CV)
-    (he : SA.OptimisticLockAt tr.projAC y j s E CW) (hstock : sp.committeeSize = sp.n) :
+    (he : SA.OptimisticLockAt tr.projAC y j s E CW) (hK : CommitteeHalfUpTo tr H K g b) :
     Compatible (tr.HonestBlocksAt H) D E := by
   have hmono := hrun.time_mono
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
@@ -67,18 +72,20 @@ theorem optimisticLock_pair_compatible_at
     (SA.upTo_optimisticLockAt hmono).mpr ⟨le_rfl, hd⟩
   have he' : SA.OptimisticLockAt (tr.projAC.upTo (tr.time j)) y j s E CW :=
     (SA.upTo_optimisticLockAt hmono).mpr ⟨le_rfl, he⟩
-  obtain ⟨-, hnD, ellD, A, hpD, -, hvD, hhD, -⟩ := SA.optimisticLockAt_spec hrx hx hd'
-    (SA.CommitteeDict.full sp.n) (fun _ _ _ => SA.mem_full _ _)
-  obtain ⟨-, hnE, ellE, A', hpE, -, hvE, hhE, -⟩ := SA.optimisticLockAt_spec hry hy he'
-    (SA.CommitteeDict.full sp.n) (fun _ _ _ => SA.mem_full _ _)
-  rw [hstock] at hnD hnE
+  obtain ⟨-, hnD, ellD, A, hpD, -, hvD, hhD, hKD⟩ := SA.optimisticLockAt_spec hrx hx hd' K
+    (fun σ v hv => (SA.CommitteePAt.upTo hmono hrun.antitone hK.facts.hP _).1 x hx _ σ v hv)
+  obtain ⟨-, hnE, ellE, A', hpE, -, hvE, hhE, hKE⟩ := SA.optimisticLockAt_spec hry hy he' K
+    (fun σ v hv => (SA.CommitteePAt.upTo hmono hrun.antitone hK.facts.hP _).1 y hy _ σ v hv)
   have hint := Set.ncard_inter_add_ncard_union (SA.voters CV) (SA.voters CW)
-  have hu := Set.ncard_le_ncard (Set.subset_univ (SA.voters CV ∪ SA.voters CW))
-  rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hu
+  have hu := Set.ncard_le_ncard (Set.union_subset hKD hKE)
+  rw [hK.facts.hsize s] at hu
   obtain ⟨w, ⟨⟨v, hv, hvw⟩, v', hv', hv'w⟩, hw⟩ :=
-    Set.exists_mem_notMem_of_ncard_lt_ncard (s := (H (max (tr.time i) (tr.time j)))ᶜ)
+    Set.exists_mem_notMem_of_ncard_lt_ncard
+      (s := K.committee s ∩ (H (max (tr.time i) (tr.time j)))ᶜ)
       (t := SA.voters CV ∩ SA.voters CW) (by omega)
-  have hw : w ∈ H (max (tr.time i) (tr.time j)) := not_not.mp hw
+  have hw : w ∈ H (max (tr.time i) (tr.time j)) := by
+    by_contra hn
+    exact hw ⟨hKD ⟨v, hv, hvw⟩, hn⟩
   have hwi : w ∈ H (tr.time i) := hrun.antitone (le_max_left _ _) hw
   have hwj : w ∈ H (tr.time j) := hrun.antitone (le_max_right _ _) hw
   obtain ⟨a, hai, ev, hev, hevv⟩ := hhD v hv (hvw ▸ hwi)
@@ -106,7 +113,9 @@ theorem optimisticLock_pair_compatible_at
 
 /-- The first next-slot proposal follows the same prefix, before unanimity induction starts. -/
 theorem optimistic_next_proposal_of_early_witness_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -129,7 +138,7 @@ theorem optimistic_next_proposal_of_early_witness_at
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts (s + 1 : Nat))
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
-    (hstock : sp.committeeSize = sp.n) :
+    (hK : CommitteeHalfUpTo tr H K g b) :
     Anc (tr.HonestBlocksAt H) X d.head := by
   have hmono := hrun.time_mono
   have hΔ := sp.toParams.hΔ
@@ -140,9 +149,6 @@ theorem optimistic_next_proposal_of_early_witness_at
   have hlo : sp.ts s ≤ tr.time i := by rw [hti, hts]; linarith only [hΔ]
   have hslot := SA.proposal_slot (tr := tr.projAC) hti
   have hf3 := hf _ ht0 hib
-  have hf2 : 2 * (H (tr.time i))ᶜ.ncard < sp.n := by
-    have := Fin.pos y
-    omega
   have hfq : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
     have hn := sp.toParams.hn
     have he : sp.n = sp.toParams.n := rfl
@@ -184,9 +190,9 @@ theorem optimistic_next_proposal_of_early_witness_at
       unfold SA.joined at hj ⊢
       rwa [heq]
     intro k hk hrk
-    have ht := ((SA.joined_awake sp) _ ro (H (tr.time i))
-      ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) (tr.projAC.upTo (tr.time i)) hr y hy i
-      ell hcp hpost).2 k hk hrk
+    have ht := (SA.joined_awakeU sp _ ro (H (tr.time i))
+      ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) (tr.projAC.upTo (tr.time i)) hr.toU y hy
+      i ell hcp hpost).2 k hk hrk
     have hslot' : sp.slot (tr.time i) = s + 1 := hslot
     change tr.time k ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) at ht
     change tr.time k ≤ sp.ts s
@@ -279,33 +285,32 @@ theorem optimistic_next_proposal_of_early_witness_at
       rwa [h] at hl
     have hlsb := Compose.proposal_locks_slot_of hpre (hnc.upTo _) hy
       (by rw [RunTrace.upTo_projAC]; exact hcp) hcall
-      (by rw [RunTrace.upTo_projAC]; exact hdp) hti SA.CommitteeP.full
-      (SA.cs2_full hstock hf2) l hl'
+      (by rw [RunTrace.upTo_projAC]; exact hdp) hti
+      (by rw [RunTrace.upTo_projAC]; exact SA.CommitteePAt.upTo hmono hrun.antitone hK.facts.hP _)
+      (hK.cs2 (s + 1) (hm.trans (by linarith only [hts, hΔ])) hmb _ ht0 hib) l hl'
     have heq : l.slot = s := by omega
-    obtain ⟨L', hL', hL'r, -⟩ := SA.lock_below_origin hr hy i l hl
+    obtain ⟨L', hL', hL'r, -⟩ := SA.lock_below_origin_from hr hacP.vstart hy i l hl
     obtain rfl : L = L' := hU.1 hL (subU hL') (hLr.trans hL'r.symm)
-    obtain ⟨O, hLO, a', CW, ho⟩ := SA.proposal_high_lock hr
-      (fun _ => SA.voteStart_initial _) hy hti hl hls hL' hLr
+    obtain ⟨O, hLO, a', CW, ho⟩ := SA.proposal_high_lock hr hacP.vstart hy hti hl hls hL' hLr
     rw [heq] at ho
     obtain ⟨ha't, ho⟩ := (SA.upTo_optimisticLockAt hmono).mp ho
     have hya' : y ∈ H (tr.time a') := hrun.antitone ha't hy
     have hmax : max (tr.time a') (tr.time c) ≤ tr.time i := by
       refine max_le ha't ?_
       obtain ⟨hct, -⟩ := SA.optimisticLockAt_spec (acRun_prefix' hrun hnc (hrun.time_nonneg c)) hx
-        ((SA.upTo_optimisticLockAt hmono).mpr ⟨le_rfl, hopt⟩) (SA.CommitteeDict.full sp.n)
-        (fun _ _ _ => SA.mem_full _ _)
+        ((SA.upTo_optimisticLockAt hmono).mpr ⟨le_rfl, hopt⟩) K
+        (fun σ v hv => (SA.CommitteePAt.upTo hmono hrun.antitone hK.facts.hP _).1 x hx _ σ v hv)
       change tr.time c < _ at hct
       linarith only [hct, hlo, hti, hts, hΔ]
-    have hf' : 2 * (H (max (tr.time a') (tr.time c)))ᶜ.ncard < sp.n := by
-      have := hf _ ((hrun.time_nonneg a').trans (le_max_left _ _)) (hmax.trans hib)
-      have := Fin.pos y
-      omega
+    have hf' := hK.cs2 s hm (by linarith only [hmb, hts, hΔ]) _
+      ((hrun.time_nonneg a').trans (le_max_left _ _)) (hmax.trans hib)
     have hLO' := hLO.mono subU
-    rcases optimisticLock_pair_compatible_at hrun hnc hya' hx hf' ho hopt hstock with hOD | hDO
+    rcases optimisticLock_pair_compatible_at hrun hnc hya' hx hf' ho hopt hK with hOD | hDO
     · exact SA.anc_total hU (hLO'.trans hOD) hXD
     · exact SA.anc_total hU hLO' (hXD.trans hDO)
-  exact SA.Growing.optimistic_first_proposal_stored_at hacG _ SA.CommitteePAt.full
-    (SA.size_binding_full hstock) hx hopt hXD hy (SA.cs2_full hstock hf2) hc hslot hd
+  exact SA.Growing.optimistic_first_proposal_stored_at hacG K hK.facts.hP
+    hK.facts.hsize hx hopt hXD hy (hK.cs2 s hm (by linarith only [hmb, hts, hΔ]) _ ht0 hib)
+    hc hslot hd
     ⟨hXt, Or.inl ⟨hXt, hrootX, Q, hQt', hvQ, hXQf⟩⟩ hP hhigh
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof

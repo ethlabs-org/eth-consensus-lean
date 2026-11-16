@@ -16,13 +16,15 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A live stored lock in the slow window compares with the writer's saved result of its slot. -/
 theorem slow_stored_locks_service_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     {x : Fin sp.n} {c s : Nat} (hx : x ∈ H (tr.time c))
     {D : SA.Blk sp.n (List (FG.Att sp.n))} (hsl : SA.SlowLockAt tr.projAC x c s D)
     (hm : gbar g ≤ sp.ts ((s : Int) - sp.k + 1))
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    (hi : s + 1 ≤ sp.slot (tr.time i)) (hstock : sp.committeeSize = sp.n) :
+    (hi : s + 1 ≤ sp.slot (tr.time i)) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ l ∈ (tr.projAC.state y i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
       ∀ Y ∈ tr.HonestBlocksAt H, Y.root = l.block → Compatible (tr.HonestBlocksAt H) Y D := by
   have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
@@ -36,7 +38,7 @@ theorem slow_stored_locks_service_at
   have hc : Compatible (tr.HonestBlocksAt H) O R := by
     rcases hO with hO | hO
     · exact result_result_compatible_service_at hrun hnc hsvc hj hyk hxk hO hR
-    · exact (result_optimistic_compatible_service_at hrun hnc hsvc hj hxk hyk hR hO hstock).symm
+    · exact (result_optimistic_compatible_service_at hrun hnc hsvc hj hxk hyk hR hO hK).symm
   rcases hc with hc | hc
   · exact Anc.total hU (hLO.trans hc) hDR
   · exact Anc.total hU hLO (hDR.trans hc)

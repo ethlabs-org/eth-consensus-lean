@@ -19,7 +19,9 @@ theorem later_heads_of_early_witness_at
     {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -36,7 +38,7 @@ theorem later_heads_of_early_witness_at
     (hXQ : Anc (tr.HonestBlocksAt H) X Q)
     (hbase : ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
       e.msg.slot = s + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X)
-    (hstock : sp.committeeSize = sp.n) :
+    (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ r, s + 1 ≤ r → r ≤ N →
       (∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = r →
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg X) ∧
@@ -50,10 +52,6 @@ theorem later_heads_of_early_witness_at
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hwa := (hrun.cutLaw w a (.ac ellw) (Compose.projAC_callAt.mp hcw) hw).1
   have hQ : Q ∈ (tr.state w a).fg.tree := by rw [hwa] at hQw; exact hQw.1
-  have hrunF : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot (SA.CommitteeDict.full sp.n)) := by
-    rw [SA.committeeStart_full]; exact hrun
-  have hKF := CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock
   intro r hrlo
   induction r, hrlo using Nat.le_induction with
   | base => exact fun _ => ⟨hbase, fun h => by omega⟩
@@ -82,8 +80,8 @@ theorem later_heads_of_early_witness_at
               have hmN := hts (show s + 1 ≤ N by omega)
               linarith only [hat, hsstep, hmN, hmb, hΔ]))))
         hlo hhi hQ hh (fun hk => (hJ hk).trans hXQ) hQ .refl
-    refine ⟨unanimous_next_votes_of_witness_at hrunF hnc hsvc hawake hf hcatch hnr hwarm
-      (by linarith only [ht, hmb]) hwin hw hQ hh hJ hXQ ?_ hprior hKF, ?_⟩
+    refine ⟨unanimous_next_votes_of_witness_at hrun hnc hsvc hawake hf hcatch hnr hwarm
+      (by linarith only [ht, hmb]) hwin hw hQ hh hJ hXQ ?_ hprior hK, ?_⟩
     · intro y i e hy hv hes
       obtain ⟨ell, hc⟩ := hv
       have hr := (hac.upTo (hrun.time_nonneg i)).localRun
@@ -111,8 +109,8 @@ theorem later_heads_of_early_witness_at
             linarith only [hat, hms, hsstep, hmstep, hΔ])
         (he ▸ hfinal hy hlo hhi)
       rw [he] at hQt
-      exact unanimous_next_proposal_of_witness_at hrunF hnc hsvc hawake hf hcatch hnr hwarm
-        (by linarith only [ht, hmb]) hwin hw hQ hh hJ hXQ hprior hy hc hcall hti hd hQt.1 hKF
+      exact unanimous_next_proposal_of_witness_at hrun hnc hsvc hawake hf hcatch hnr hwarm
+        (by linarith only [ht, hmb]) hwin hw hQ hh hJ hXQ hprior hy hc hcall hti hd hQt.1 hK
 
 end Consensus.Goldilocks.Healing.Growing
 

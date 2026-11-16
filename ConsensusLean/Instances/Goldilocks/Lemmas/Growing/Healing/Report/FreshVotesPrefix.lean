@@ -186,6 +186,10 @@ theorem FrameWindow.proposal_start_prefix_at {s₀ s floor : Nat}
     ell.frame.Anc d.start (SA.getHead sp e.readPoint ell.frame (tr.time i)
       (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
       (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
+  have hrunF : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot (SA.CommitteeDict.full sp.n)) := by
+    rw [SA.committeeStart_full]; exact hrun
+  have hKF := CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock
   have hr := hrun.toLocalRun
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
@@ -260,10 +264,10 @@ theorem FrameWindow.proposal_start_prefix_at {s₀ s floor : Nat}
         linarith) hmb hheads hy hc hes hSv haS hstock
   · have hFD : Anc (tr.HonestBlocksAt H) ell.frame.F D :=
       (Anc.mono hPhi.2 (hPhi.1.F_anc_fcRoot.trans hSv.2.1)).trans hSD
-    exact KernelProof.optimistic_prefix_before_at hrun hnc hsvc hawake hf hcatch
+    exact KernelProof.optimistic_prefix_before_at hrunF hnc hsvc hawake hcatch
       (by
         have ht : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by omega)
-        linarith [sp.toParams.hΔ]) hza hy hop hSD hc hes (hhi.trans hmb) hFD hSv haS hstock
+        linarith [sp.toParams.hΔ]) hza hy hop hSD hc hes (hhi.trans hmb) hFD hSv haS hKF
 
 end Consensus.Goldilocks.Healing.Growing
 

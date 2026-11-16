@@ -6,6 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.HeadLock
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 import ConsensusLean.Lemmas.Tactic.Linarith
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 
 public section
 
@@ -30,7 +31,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem FrameWindow.next_votes_of_supporter_at {s₀ s floor : Nat}
     {kindJ : Prop} {J X Q : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -51,7 +54,7 @@ theorem FrameWindow.next_votes_of_supporter_at {s₀ s floor : Nat}
       ∀ a D CV, z ∈ H (tr.time a) → SA.OptimisticLockAt tr.projAC z a s D CV →
       Anc (tr.HonestBlocksAt H) Q D →
       ∀ y i ev, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
-        SA.VoteExtends (tr.HonestBlocksAt H) ev.msg Q) (hstock : sp.committeeSize = sp.n) :
+        SA.VoteExtends (tr.HonestBlocksAt H) ev.msg Q) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ y i ev, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocksAt H) ev.msg X := by
   have hΔ := sp.toParams.hΔ
@@ -97,7 +100,7 @@ theorem FrameWindow.next_votes_of_supporter_at {s₀ s floor : Nat}
     (hes ▸ hwarm) (hes ▸ hpos) (hes ▸ hs₀) (by simpa only [hes] using hm) (by
       rw [hes]; simp only [SA.freeze]
       have hcast : ((s - 1 : Nat) : Int) = (s : Int) - 1 := by omega
-      rw [← hcast]; linarith only [hΔ, hm]) hstock
+      rw [← hcast]; linarith only [hΔ, hm]) hK
   have hPhi := Compose.Growing.frameIn_at hrun hnc hz hc.1
   have hEQ : Hd = Q := hU.1 (hPhi.2 hHd) hQU (hHdr.trans hQr.symm)
   rw [hEQ] at hHd hclass

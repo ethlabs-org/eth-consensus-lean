@@ -20,7 +20,9 @@ theorem FrameWindow.regular_later_heads_at
     {g ΔF b : Time} {s₀ s N floor : Nat} {kindJ : Prop}
     {J D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -30,7 +32,7 @@ theorem FrameWindow.regular_later_heads_at
     (hmb : sp.ts N + sp.Δ ≤ b)
     {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c))
     (horigin : (∃ CV, SA.FastUpdateAt tr.projAC x c s D CV) ∨
-      SA.SlowLockAt tr.projAC x c s D) (hstock : sp.committeeSize = sp.n) :
+      SA.SlowLockAt tr.projAC x c s D) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ r, s + 1 ≤ r → r ≤ N →
       (∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = r →
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg D) ∧
@@ -39,7 +41,7 @@ theorem FrameWindow.regular_later_heads_at
         (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
           Anc (tr.HonestBlocksAt H) D d.head) := by
   exact KernelProof.regular_later_heads_at hframe hrun hnc hsvc hawake hf hcatch hnr hwarm hpos
-    hs₀ hm hsN hmb hx horigin hstock
+    hs₀ hm hsN hmb hx horigin hK
 
 end Consensus.Goldilocks.Healing.Growing
 

@@ -22,7 +22,9 @@ theorem FrameWindow.optimistic_write_later_proposal_head_at
     {g ΔF b : Time} {s₀ j N floor : Nat} {kindJ : Prop}
     {J R A D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -42,7 +44,7 @@ theorem FrameWindow.optimistic_write_later_proposal_head_at
     (hcall : ell.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state z c) ell.frame (tr.time c)).2 =
-      some (d, pay)) (hstock : sp.committeeSize = sp.n) :
+      some (d, pay)) (hK : CommitteeHalfUpTo tr H K g b) :
     Anc (tr.HonestBlocksAt H) R d.head := by
   have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
     (SA.ts_le_iff sp).2 (by exact_mod_cast hpq)
@@ -74,7 +76,7 @@ theorem FrameWindow.optimistic_write_later_proposal_head_at
        fun x i hx hlo hhi => hframe.kind_iff x i hx ((hts hj).trans hlo) hhi,
        fun x i hx hlo hhi => hframe.root_eq x i hx ((hts hj).trans hlo) hhi⟩
     exact hRA.trans ((optimistic_later_heads_of_early_witness_at hrun hnc hsvc hawake hf
-      hcatch hnr (hm.trans (hts hj)) hmb hsub hy hopt hAD hy hat hcw hQ hh hJ hAQ hstock
+      hcatch hnr (hm.trans (hts hj)) hmb hsub hy hopt hAD hy hat hcw hQ hh hJ hAQ hK
       r hrlo hrN).2 z c ell hz hc hcall hti d pay hd)
 
 end Consensus.Goldilocks.Healing.Growing

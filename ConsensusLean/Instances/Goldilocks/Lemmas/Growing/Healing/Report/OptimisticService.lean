@@ -1,7 +1,9 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.OptimisticPrefix
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
@@ -15,12 +17,13 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-/-- A viable prefix of an optimistic write is reached at the next-slot cast. -/
-theorem optimistic_prefix_before_at
-    {g ΔF b : Time} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+/-- A viable prefix of an optimistic write is reached at the next-slot cast, at the slot
+committees `K` of a run from `K`'s committee start. -/
+theorem optimistic_prefix_before_at {K : SA.CommitteeDict sp.n}
+    {g ΔF b : Time} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hm : gbar g ≤ sp.ts s)
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
     {D B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
@@ -31,7 +34,7 @@ theorem optimistic_prefix_before_at
     (hib : tr.time i ≤ b) (hFD : Anc (tr.HonestBlocksAt H) ell.frame.F D)
     (hB : B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
     (haB : ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) B)
-    (hstock : sp.committeeSize = sp.n) :
+    (hK : CommitteeHalfUpTo tr H K g b) :
     ell.frame.Anc B (SA.getHead sp e.readPoint ell.frame (tr.time i)
       (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
       (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
@@ -41,15 +44,17 @@ theorem optimistic_prefix_before_at
         Compose.Growing.optimistic_writer_votes_at hrun hnc hx hopt v hv
       refine ⟨hvs, ⟨x, k, hk, hsend, hlo, hhi⟩, Hv, hroot, hFD.trans hanc, ?_⟩
       exact hacc.imp_right fun ⟨k', hk', hacc', htime⟩ => ⟨x, k', hk', hacc', htime⟩
-  have hhalf : 2 * (H (tr.time i))ᶜ.ncard < sp.n := by
-    have hbound := hf _ (hrun.time_nonneg i) hib
-    have hn : 0 < sp.n := sp.toParams.hn
-    omega
+  have hsb : sp.ts s ≤ b := by
+    have hslot := (Compose.Growing.castAt_spec_at hrun hnc hy hc).2.1
+    have hti : sp.ts ((s + 1 : Nat) : Int) ≤ tr.time i :=
+      (SA.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by rw [← hslot, hes])
+    have := (SA.ts_le_iff sp).2 (show (s : Int) ≤ ((s + 1 : Nat) : Int) by omega)
+    linarith
   rw [← SA.viableTree_voteDomain_eq_of_viable ⟨B, hB⟩]
   exact SA.Growing.optimistic_prefix_of_carry_at
-    (Compose.Growing.goldilocks_ac_projection_from hrun hnc) _ SA.CommitteePAt.full
-    SA.CommitteeTAt.full (SA.size_binding_full hstock)
-    hx hopt hBD (SA.cs2_full hstock hhalf) hy hc hes hcarry
+    (Compose.Growing.goldilocks_ac_projection_from hrun hnc) K hK.facts.hP
+    (hK.facts.committeeTAt hrun hnc) hK.facts.hsize
+    hx hopt hBD (hK.cs2 s hm hsb _ (hrun.time_nonneg i) hib) hy hc hes hcarry
     (SA.viableTree_voterBlockTree_subset_voteDomain hB) haB
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof

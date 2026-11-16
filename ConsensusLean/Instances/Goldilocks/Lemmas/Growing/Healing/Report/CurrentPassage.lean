@@ -46,6 +46,10 @@ theorem current_lock_passage_of_regular_base_at
         (l.slot = p ∧ ∃ a ≤ i, ∃ D CV, y ∈ H (tr.time a) ∧
           SA.OptimisticLockAt tr.projAC y a p D CV ∧ sp.ts p ≤ tr.time a ∧
           Anc (tr.HonestBlocksAt H) B D)) := by
+  have hrunF : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot (SA.CommitteeDict.full sp.n)) := by
+    rw [SA.committeeStart_full]; exact hrun
+  have hKF := CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock
   have hΔ := sp.toParams.hΔ
   have hm₀ : gbar g ≤ sp.ts s₀ := by linarith
   obtain ⟨hvP, hdomP⟩ := proposal_viable_at_cast_at hframe hrun hnc hsvc hf hnr hm₀ hsp hp0
@@ -154,8 +158,8 @@ theorem current_lock_passage_of_regular_base_at
       simp only [SAParams.ts] at ht hhigh
       push_cast at hhigh
       linarith
-    have hDP := (hframe.regular_later_heads_at hrun hnc hsvc hawake hf hcatch hnr
-      hlabel (by omega) (by omega) hm hgap hpb hya horigin hstock p (by omega) le_rfl).2
+    have hDP := (hframe.regular_later_heads_at hrunF hnc hsvc hawake hf hcatch hnr
+      hlabel (by omega) (by omega) hm hgap hpb hya horigin hKF p (by omega) le_rfl).2
       hgap z ip ellp hzip hcp₀ hcallp hip d pay hpay₀
     exact Or.inl (hBA.trans (hAD.trans (hDP.trans hHP)))
   have hts : sp.ts s₀ ≤ sp.ts l.slot := (SA.ts_le_iff sp).2 (by omega)
@@ -191,8 +195,8 @@ theorem current_lock_passage_of_regular_base_at
     ⟨fun w j hw hlo hhi => hframe.floor_eq w j hw (hts.trans hlo) hhi,
      fun w j hw hlo hhi => hframe.kind_iff w j hw (hts.trans hlo) hhi,
      fun w j hw hlo hhi => hframe.root_eq w j hw (hts.trans hlo) hhi⟩
-  have hAP := (optimistic_later_heads_of_witness_at hrun hnc hsvc hawake hf hcatch hnr
-    (hm₀.trans hts) hpb hsubframe hya hop hAD ha₀ hQ hh hJ (Anc.mono hW.2 hAQ) hstock
+  have hAP := (optimistic_later_heads_of_witness_at hrunF hnc hsvc hawake hf hcatch hnr
+    (hm₀.trans hts) hpb hsubframe hya hop hAD ha₀ hQ hh hJ (Anc.mono hW.2 hAQ) hKF
     p hold le_rfl).2 z ip ellp hzip hcp₀ hcallp hip d pay hpay₀
   exact Or.inl (hBA.trans (hAP.trans hHP))
 

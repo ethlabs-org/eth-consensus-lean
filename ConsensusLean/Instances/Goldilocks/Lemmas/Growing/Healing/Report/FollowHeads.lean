@@ -43,6 +43,10 @@ theorem FrameWindow.toFG_later_proposal_head_at
     (hd : (SA.acProposal sp (tr.projAC.state z c) ellp.frame (tr.time c)).2 =
       some (d, pay)) (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocksAt H) R d.head := by
+  have hrunF : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot (SA.CommitteeDict.full sp.n)) := by
+    rw [SA.committeeStart_full]; exact hrun
+  have hKF := CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock
   obtain ⟨a, hai, j, ellw, D, CV, hya, ha, hD, hfast, hRA⟩ :=
     toFG_fast_candidate_origin_at hrun hnc hy hto
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
@@ -95,17 +99,17 @@ theorem FrameWindow.toFG_later_proposal_head_at
     have hstep := SA.ts_succ (u + 1) (sp := sp)
     linarith only [hlo, hjtime, hatime, ht, hstep, sp.toParams.hΔ]
   rcases hfast with hreg | hopt
-  · exact hRD.trans ((hframe.regular_later_heads_at hrun hnc hsvc hawake hf hcatch hnr
+  · exact hRD.trans ((hframe.regular_later_heads_at hrunF hnc hsvc hawake hf hcatch hnr
       (by omega) (by omega) (by omega) hm (by omega) hmb hya
-      (Or.inl ⟨CV, hreg⟩) hstock r (by omega) hrN).2 (by omega) z c ellp hz hcp hcall hti d pay
+      (Or.inl ⟨CV, hreg⟩) hKF r (by omega) hrN).2 (by omega) z c ellp hz hcp hcall hti d pay
       hd)
   · have halo : sp.ts s₀ ≤ tr.time a := hs₀j.trans hjtime
     have ho := (SA.upTo_optimisticLockAt hrun.time_mono).mpr ⟨le_rfl, hopt⟩
     have hat := (SA.optimisticLockAt_spec hr hya ho (SA.CommitteeDict.full sp.n)
       (fun _ _ _ => SA.mem_full _ _)).1
-    apply hframe.optimistic_write_later_proposal_head_at hrun hnc hsvc hawake hf hcatch hnr
+    apply hframe.optimistic_write_later_proposal_head_at hrunF hnc hsvc hawake hf hcatch hnr
       (by linarith only [hm, sp.toParams.hΔ]) hmb (by omega) hya ha halo hat hopt hRA hAD
-      ?_ (by omega) hrN hz hcp hcall hti hd hstock
+      ?_ (by omega) hrN hz hcp hcall hti hd hKF
     rcases (SA.viableAncestor_spec hW.1 hD).2.1 with hbelow | hAv
     · exact Or.inl hbelow
     · obtain ⟨Q, hQ, hvQ, hAQ⟩ := hAv.2.2
