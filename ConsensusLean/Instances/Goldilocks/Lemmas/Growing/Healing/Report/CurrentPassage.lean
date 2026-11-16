@@ -73,7 +73,8 @@ theorem current_lock_passage_of_regular_base_at
   have hCE : C = B := hPhi.1.coherent.1 hC hB (hCr.trans hBr.symm)
   subst C
   obtain ⟨a, hai, ellw, D, ha, hD, ho, M, hM, hMr, hMA⟩ :=
-    SA.lock_selection_candidate_provenance hr hy i l₀ hl₀
+    SA.lock_selection_candidate_provenance hr (fun _ => SA.voteStart_initial _) hy i l₀
+      hl₀
   obtain rfl : M = B₀ := hr.coherent.1 hM
     ((SA.frameIn_of_callAt hr hy hc'.1).2 hB₀) (hMr.trans hBr₀.symm)
   rw [← hs] at ho

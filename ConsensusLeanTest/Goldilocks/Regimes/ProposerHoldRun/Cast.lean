@@ -338,7 +338,8 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
       exact ⟨_, ⟨hF, .refl⟩, hFs, fun x hx => (List.not_mem_nil (hF1 ▸ hx)).elim⟩
   have hrt : ((tr S).state y (k + 1)).ac.restartTime = ⊥ := by
     rw [← hAC]
-    rcases SA.restartTime_state hac hy (k + 1) with h | ⟨c, -, hrc, -⟩
+    rcases SA.restartTime_state hac (fun _ => SA.voteStart_initial _) hy (k + 1) with
+      h | ⟨c, -, hrc, -⟩
     · exact h
     · exact absurd (Compose.projAC_restartAt.mp hrc) no_restart
   rw [hcall] at hstep

@@ -22,7 +22,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The reset signing supplies a high origin written by the reset time. -/
 theorem ResetPremisesUpTo.reset_seed_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) :
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) :
     ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ a ∧ l ≤ sp.slot a := by
   obtain ⟨⟨y, k, att, hyz, hs, hh, hka⟩, -⟩ := hp.reset
   have hy := hp.run.antitone (le_max_right _ _) hyz
@@ -52,7 +53,8 @@ theorem ResetPremisesUpTo.reset_seed_at
 
 /-- Every post-drain slot has a reset seed strictly before its start. -/
 theorem ResetPremisesUpTo.reset_seed_before_slot_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {u : Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {u : Nat}
     (hR : drainTime sp a ≤ sp.ts u) :
     ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ b ∧ l < u ∧
       tr.time r < sp.ts u := by

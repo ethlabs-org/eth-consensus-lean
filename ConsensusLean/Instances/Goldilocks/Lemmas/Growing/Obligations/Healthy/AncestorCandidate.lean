@@ -32,7 +32,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 earlier cut at a time `≤ t`, a target held in the reader's frame above a bounded high seed and
 compatible with every earlier high origin is an ancestor candidate of the frame. -/
 theorem held_target_ancestor_candidate_at_state_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y v : Fin sp.n} {i q m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ r < i, tr.time r ≤ t)
     (hy : y ∈ H t) (htb : t ≤ b) {P S : SA.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ (Node.frame (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)

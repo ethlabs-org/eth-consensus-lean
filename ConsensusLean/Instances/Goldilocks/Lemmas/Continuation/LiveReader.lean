@@ -29,6 +29,8 @@ namespace Consensus.Goldilocks.Compose.Growing
 open SA (SAParams ReplayOrder Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+
+variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
   {T : Time} {r σ : Nat} {t₁ b : Time}
@@ -58,7 +60,8 @@ at `t ∈ [t_{r+k}, t_s + Δ]` (earlier cuts at times `≤ t`) that has called f
 whose high rows have sources below members of labels below `s` (`hlab`): `fc_root` is below a
 member of `SeededOld s`, and the head height floor is at most the height of every block of the
 tree above every member of `SeededOld s`. -/
-theorem seeded_reader_old (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b) {s : Nat}
+theorem seeded_reader_old (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+    {s : Nat}
     (hs : σ + 1 ≤ s) {y : Fin sp.n} {i : Nat} {t : Time} (hdt : sp.ts (r + sp.k : Nat) ≤ t)
     (hi : ∀ k < i, tr.time k ≤ t) (hts : t ≤ sp.ts s + sp.Δ) (htb : t ≤ b) (hy : y ∈ H t)
     (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧

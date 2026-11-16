@@ -20,7 +20,8 @@ theorem toFG_fast_candidate_origin_at
     {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
     {R : SA.Blk sp.n (List (FG.Att sp.n))} (hto : SA.ToFGAt tr.projAC y i ell R) :
@@ -28,7 +29,7 @@ theorem toFG_fast_candidate_origin_at
       tr.projAC.CallAt y a ellw ∧ D ∈ ellw.frame.tree ∧
       SA.FastLockAt tr.projAC y a j D CV ∧
       Anc (tr.HonestBlocksAt H) R (ellw.frame.viableAncestor D) := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo (hrun.time_nonneg i)).localRun
   have hc := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hto.1⟩
   have hs := Trace.upTo_state tr.projAC y (d := tr.time i) (i := i)
@@ -51,7 +52,7 @@ theorem toFG_fast_candidate_origin_at
   have hl₀' : l₀ ∈ ((tr.projAC.upTo (tr.time i)).state y i).locks := by
     rwa [hs]
   obtain ⟨a, hai, ellw, D, ha, hD, ho, L, hL, hLr, hLA⟩ :=
-    SA.lock_selection_candidate_provenance hr hy i l₀ hl₀'
+    SA.lock_selection_candidate_provenance hr hrun.vstart hy i l₀ hl₀'
   have hRB : Anc (tr.HonestBlocksAt H) R B := by
     have he : R = ell.frame.viableAncestor B := hΦ.1.coherent.1 hv.1
       (SA.viableAncestor_anc hΦ.1 hB).1 (hlr.symm.trans (congrArg SA.Lock.block heq))

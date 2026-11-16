@@ -17,7 +17,8 @@ theorem record_lookup_of_later
     {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
     {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i j : Nat} (hij : i ≤ j)
     (heq : (tr.state y j).ac.latestConfirmed = (tr.state y i).ac.latestConfirmed)
     {R : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -31,7 +32,7 @@ theorem record_lookup_of_later
   subst L
   have hFR : Anc (tr.HonestBlocks H) (tr.state y i).fg.F R :=
     (Anc.mono (Compose.fg_tree_subset_honest hy j)
-      (Regimes.finalized_monotone sp ro dg H tr proposer hrun y hy i j hij)).trans
+      (Regimes.finalized_monotone_from hrun hy hij)).trans
       (Anc.mono (Compose.fg_tree_subset_honest hy j) hRm.2)
   have hm : R ∈ (Node.frame (tr.state y i)).tree :=
     ⟨hL, Compose.honest_held_anc hrun hnc hy hFR hL⟩

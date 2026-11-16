@@ -27,7 +27,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- An old honest acceptance reaches a bounded honest call above its finalization guard. -/
 theorem reset_accept_frame_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {q j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time q)) (ha : tr.projAC.AcceptAt x q B)
     (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
@@ -39,7 +40,7 @@ theorem reset_accept_frame_at
   have hm := hp.run.time_mono
   have hj0 := hp.run.time_nonneg j
   have hrj := hp.run.upTo hj0
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hR := (hac.upTo hj0).localRun
   have hcall' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcall)
   by_cases hnew : SA.gbar g ≤ tr.time q
@@ -78,7 +79,7 @@ theorem reset_accept_frame_at
       have h := Healing.run_F_mono hrj.toLocalRun hy hfirstj
       rw [RunTrace.upTo_state_of_le hm (hm hfirstj), RunTrace.upTo_state_of_le hm le_rfl] at h
       exact h.mono (RunTrace.honestBlocks_upTo_subset hm hj0)
-    obtain ⟨k, hk, hak⟩ := hc x q' B (hqt' ▸ hx) hacc₀
+    obtain ⟨k, hk, hak⟩ := hp.catchUp x q' B (hqt' ▸ hx) hacc₀
       (by rw [hqt']; exact not_le.mp hnew) y _ (hp.run.antitone hg hy) hfirst
       (hmono.trans (hfr ▸ hF))
     have hkj : k < j := lt_of_lt_of_le hk hfirstj
@@ -92,7 +93,8 @@ theorem reset_accept_frame_at
 
 /-- A historically held frame block reaches a bounded honest recipient above its guard. -/
 theorem reset_frame_relay_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {q j : Nat} {ellx elly : ACLabel (goldilocksNode sp ro)}
     (hx : x ∈ H (tr.time q)) (hy : y ∈ H (tr.time j))
     (hcx : tr.projAC.CallAt x q ellx) (hcy : tr.projAC.CallAt y j elly)
@@ -102,7 +104,7 @@ theorem reset_frame_relay_at
     (hq : tr.time q + sp.Δ ≤ tr.time j)
     (hF : Anc (tr.HonestBlocksAt H) elly.frame.F B) : B ∈ elly.frame.tree := by
   have hm := hp.run.time_mono
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hrq := (hac.upTo (hp.run.time_nonneg q)).localRun
   have hrj := (hac.upTo (hp.run.time_nonneg j)).localRun
   have hcx' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcx)
@@ -115,7 +117,7 @@ theorem reset_frame_relay_at
     · exact he ▸ (SA.frameIn_of_callAt hrj hy hcy').1.rooted.1
     · exact absurd (hpar.2.2.symm.trans hGp) (Option.some_ne_none _)
   · obtain ⟨hkq, ha⟩ := (ACTrace.upTo_acceptAt).mp ha
-    exact hp.reset_accept_frame_at hc (hp.run.antitone hkq hx) ha hy hcy hjb hg hjoin
+    exact hp.reset_accept_frame_at (hp.run.antitone hkq hx) ha hy hcy hjb hg hjoin
       (by change tr.time k ≤ tr.time q at hkq; linarith) hF
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo

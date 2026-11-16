@@ -354,7 +354,7 @@ theorem outage_arming_at (Q : OutageQueryAt S A V)
   have hb0 : 0 ≤ min Q.start Q.run.2.horizon := le_min (hT0.trans hTs) hhor
   have hTb : Q.T ≤ min Q.start Q.run.2.horizon := le_min hTs hTh
   have hsvc := service.mono (min_le_left Q.start Q.run.2.horizon)
-  have hKB := voteK_facts S Q.run.2 Q.hn Q.valid Q.noCollision hrun
+  have hKB := voteK_facts S Q.run.2 Q.hn Q.valid hnc hrun
   have hBKh := Q.boundsK hrun le_rfl
   have hinv := Compose.Growing.sleepy_invariant_at hrun hnc hKB hb0 hsvc
     (Q.bounds (min_le_right _ _)) (hBKh.mono (min_le_right _ _))

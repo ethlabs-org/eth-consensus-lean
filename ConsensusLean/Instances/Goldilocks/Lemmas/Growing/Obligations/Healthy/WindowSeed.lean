@@ -37,8 +37,8 @@ premises through `b` (`ḡ_S ≤ t_u + 6Δ`), an honest seed proposal `Q` at slo
 `t_{s₀} ≤ b` (`2 ≤ δt`): every holder of `P₀` honest at an observation time `t` after its earlier
 cuts has `H_z + 2 ≤ σ[P₀].h`. -/
 theorem seed_height_at {g ΔR a b gS ΔF : Time}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b)
-    (hc : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
     (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
     (hδ : 2 ≤ sp.toParams.fg.δt) {u s₀ : Nat} {Q P₀ : SA.Blk sp.n (List (FG.Att sp.n))}
     (hQ : Healing.Growing.HonestProposalRun tr H proposer u Q) (hu : 0 < u)
@@ -86,13 +86,13 @@ theorem seed_height_at {g ΔR a b gS ΔF : Time}
   have hd0 : 0 ≤ sp.ts u + 6 * sp.Δ := by linarith [SA.gbar_nonneg g]
   -- Step 1: H0 at the seed
   obtain ⟨v, r, l, O, ho, -, -, hrt⟩ := hp.reset_seed_before_slot_at hR
-  have hun := hp.operational_unanimous_at hc hQ.1 rfl hkQ hQs hR (by linarith)
+  have hun := hp.operational_unanimous_at hQ.1 rfl hkQ hQs hR (by linarith)
   have hR1 : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat) :=
     hR.trans ((SA.ts_le_iff sp).2 (by push_cast; omega))
-  have hOQ := Healing.Growing.old_origin_below_unanimous_at hp hc hQH
+  have hOQ := Healing.Growing.old_origin_below_unanimous_at hp hQH
     (fun y j e hy hv hjb hs' => hun y j e hy hv hs' hjb) hgu hR1 (by linarith) ho hrt
   -- Step 2: Q ⪯ P₀, hence Q ⪯ Pr
-  have hQP := honest_proposal_below_later_upTo_at hp hc hQ hR hP₀ hus2 hb
+  have hQP := honest_proposal_below_later_upTo_at hp hQ hR hP₀ hus2 hb
   have hne : Q ≠ P₀ := by
     intro h
     rw [h] at hQs
@@ -150,7 +150,7 @@ theorem seed_height_at {g ΔR a b gS ΔF : Time}
       have := report_slot_le_time_at hrun hnc hx hto hQC
       rwa [hQs] at this
     obtain ⟨Pr', hPr'H, hpar', -, habove⟩ :=
-      crossed_parents_above_upTo_at hp hc hx hto (hR.trans htH) hlt hP₀ (by linarith) hb
+      crossed_parents_above_upTo_at hp hx hto (hR.trans htH) hlt hP₀ (by linarith) hb
     obtain rfl : Pr' = Pr :=
       hcoh.1 hPr'H hPrH (Option.some_injective _ (hpar'.symm.trans hpar))
     have := habove _ kX (tr.time kX) h0 hle0 hpH hPr
@@ -164,7 +164,7 @@ theorem seed_height_at {g ΔR a b gS ΔF : Time}
     have heq := hcoh.1 hQH ⟨_, kQ + 1, tr.time kQ, hrun.time_nonneg kQ, hleQ, hpQ, hG⟩ hg
     have hz : Q.slot = 0 := by rw [heq]; rfl
     omega
-  rcases Healing.Growing.report_cover_of_unanimous_at hp hc hQH hQs hu hPg
+  rcases Healing.Growing.report_cover_of_unanimous_at hp hQH hQs hu hPg
       (fun y j e hy hv hjb hs' => hun y j e hy hv hs' hjb) hgu hR1 hub with
     hall | ⟨x, r, e, C, hx, hto, hrt', hQC, hlt⟩
   swap
@@ -242,8 +242,8 @@ theorem seed_height_at {g ΔR a b gS ΔF : Time}
 /-- `seed_height_at` in the form of the height premise of `anchorSteps_gap_at`: the proposer of
 `P₀` holds `P₀` just after its proposal cut, honest at that cut, at height at least `H_z + 2`. -/
 theorem seed_height_held_at {g ΔR a b gS ΔF : Time}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b)
-    (hc : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
     (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
     (hδ : 2 ≤ sp.toParams.fg.δt) {u s₀ : Nat} {Q P₀ : SA.Blk sp.n (List (FG.Att sp.n))}
     (hQ : Healing.Growing.HonestProposalRun tr H proposer u Q) (hu : 0 < u)
@@ -254,7 +254,7 @@ theorem seed_height_held_at {g ΔR a b gS ΔF : Time}
     ∃ y k, y ∈ H (tr.time k) ∧ P₀ ∈ (tr.state y k).fg.tree ∧
       Healing.Growing.HZ tr H g + 2 ≤ ((tr.state y k).fg.σ P₀.root).h := by
   obtain ⟨kX, -, hm, ht, hXm⟩ := proposal_held_at hp.run hp.noColl hP₀
-  refine ⟨_, kX + 1, ht ▸ hm, hXm, seed_height_at hp hc hs hδ hQ hu hR hgu hP₀ hus hb hgS _
+  refine ⟨_, kX + 1, ht ▸ hm, hXm, seed_height_at hp hs hδ hQ hu hR hgu hP₀ hus hb hgS _
     (kX + 1) (tr.time kX) (hp.run.time_nonneg kX)
     (fun _ hq => hp.run.time_mono (by omega)) hm hXm⟩
 

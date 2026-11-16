@@ -28,6 +28,8 @@ namespace Consensus.Goldilocks.Compose.Growing
 open SA (SAParams ReplayOrder Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+
+variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
 
@@ -92,7 +94,7 @@ written by `t_σ + 6Δ ≤ T`, and every honest vote of a slot `≤ σ + 1` is c
 `t_{σ+2} = t_σ + 8Δ ≤ T`. -/
 theorem HandoverSeed.frontier_upTo (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time} :
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time} :
     HealedOriginsBelow tr H g r (r + sp.k - 1) (σ + 1) b ∧
       HealedVotesBelow tr H g r (r + sp.k - 1) (σ + 1) b := by
   have hT := hseed.timing.1
@@ -126,7 +128,8 @@ with the seed's catch-up (`sleepyServiceFrom_of_reset`, `ḡ + 2Δ ≤ t_r ≤ t
 at the votes after `σ` have labels `≥ r` (`handover_live_lock_label_at`); the frozen witness is
 `seeded_vote_frame_at`. -/
 theorem healed_frontier_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {T : Time} {r σ : Nat} (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time}
+    {T : Time} {r σ : Nat} (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK))
+      {b : Time}
     (hTb : T ≤ b) (hsvc : Healing.Growing.ResetService tr H g ΔF b)
     (hB : SleepyBoundsFrom tr H r b) (hcv : ChainConvictedBelow tr H)
     (hstock : sp.committeeSize = sp.n) :

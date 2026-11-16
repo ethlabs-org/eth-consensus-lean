@@ -101,12 +101,11 @@ private theorem finalized_safe_read (Q : HealthyPreparationQueryAt S A V)
   have hrun := simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTraceAt { S with vote := stock } Q.run.2 Q.hn Q.valid Q.noCollision
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
-  have h := SA.interface_requirements Q.params (List (FG.Att Q.params.n)) (S.ro _)
   have fg : Consensus.Goldilocks.Growing.FGLocalRun
       (goldilocksNode Q.params (S.ro _)).genesisPayload Q.keys
       (Q.trace.HonestBlocksAt Q.keys) Q.trace.projFG :=
     Compose.Growing.fg_projection _ _ _ _ _ _ _
-      ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid _ _ _⟩
+      (fun y => Compose.requirements_from _ _ (hrun.vstart y))
       hrun.genesis_root_ok hrun.toLocalRun hnc
   have store_eq : ∀ {x : Fin Q.params.n} {m : Nat} {s : Time}, 0 ≤ s →
       (∀ k < m, Q.trace.time k ≤ s) → x ∈ Q.keys s →
@@ -181,7 +180,7 @@ private theorem finalized_compatible_source (Q : HealthyPreparationQueryAt S A V
     exact Or.inl (Compose.Growing.honestAt_genesis_anc
       (simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid)
       (source_mem S A V Q hx hC)).2
-  exact D.reset.finalized_compatible_clean_source_at (healthy_schedule_catch_at S A V Q D) hx hC
+  exact D.reset.finalized_compatible_clean_source_at hx hC
     (by simpa only [D.cleanLabel_eq] using hs) hrb ht hrp.1 hy htb
 
 /-- **Two record covers compare**: the records of two readers, each honest at its read point,
@@ -205,7 +204,7 @@ theorem healthy_current_sources_compatible_at (Q : HealthyPreparationQueryAt S A
     · exact (tips_comparable_of_origin_witnesses_at S A V Q .refl hRB
         (finalized_compatible_source S A V Q D hrp' ht'b hz hx hB hs (hrt.trans htb))).symm
     · exact tips_comparable_of_origin_witnesses_at S A V Q hRB hRE
-        (D.reset.clean_sources_compatible_at (healthy_schedule_catch_at S A V Q D) hx hx' hB hE
+        (D.reset.clean_sources_compatible_at hx hx' hB hE
           (by simpa only [D.cleanLabel_eq] using hs)
           (by simpa only [D.cleanLabel_eq] using hs') (hrt.trans htb) (hqt.trans ht'b))
 
@@ -267,7 +266,7 @@ theorem healthy_current_record_interval_at (Q : HealthyPreparationQueryAt S A V)
     · rw [hF]
       exact (finalized_compatible_source S A V Q D hrp htb hyt hyq hB hs hqb)
     · exact tips_comparable_of_origin_witnesses_at S A V Q hRE .refl
-        (D.reset.clean_sources_compatible_at hc hx hyq hE hB
+        (D.reset.clean_sources_compatible_at hx hyq hE hB
           (by simpa only [D.cleanLabel_eq] using hs')
           (by simpa only [D.cleanLabel_eq] using hs) (hrt.trans htb) hqb)
   · intro q hnq hqn'
@@ -280,7 +279,7 @@ theorem healthy_current_record_interval_at (Q : HealthyPreparationQueryAt S A V)
         Trace.upTo_state Q.trace y hle1] at hmono
       exact Or.inr (hmono.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono ht'0))
     · exact tips_comparable_of_origin_witnesses_at S A V Q .refl hRE
-        (D.reset.finalized_compatible_clean_source_at hc hx hE
+        (D.reset.finalized_compatible_clean_source_at hx hE
           (by simpa only [D.cleanLabel_eq] using hs') (hrt.trans htb) ht'0 hle1 hy ht'b)
 
 end Consensus.Goldilocks.Obligations.Growing

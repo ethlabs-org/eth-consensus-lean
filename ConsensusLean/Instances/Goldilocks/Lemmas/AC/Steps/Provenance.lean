@@ -376,7 +376,7 @@ private theorem call_candidate_fromPU
 /-- A call of an honest node keeps its locks below earlier ones or writes locks of its own cut:
 by an optimistic confirmation, or by the update of their slot (fast ones by its fast test). -/
 private theorem call_candidate_fromP
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FromP U (tr.state x i).locks (tr.post i).locks
       (fun s f B => ∃ D ∈ ℓ.frame.tree, B = ℓ.frame.viableAncestor D ∧
@@ -420,7 +420,8 @@ predicate of `SlowLockAt` in `Statements/Healing/AC`, written out here to keep t
 independent of the Healing statement layer). In particular, two independent provenance
 traversals must not be used to identify the candidate. -/
 theorem lock_selection_candidate_provenance
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} (hx : x ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state x i).locks, ∃ j < i, ∃ ℓ D,
       tr.CallAt x j ℓ ∧ D ∈ ℓ.frame.tree ∧
@@ -437,7 +438,8 @@ theorem lock_selection_candidate_provenance
   | zero =>
     intro l hl
     change l ∈ (tr.init x).locks at hl
-    rw [hr.init x hx] at hl
+    obtain ⟨m, hm⟩ := hini x
+    rw [hr.init x hx, hm] at hl
     exact absurd hl (Set.notMem_empty l)
   | succ i ih =>
     intro l hl

@@ -247,7 +247,7 @@ theorem view_agree_before
 
 theorem view_agree
     {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    {proposer : Nat → Fin sp.n} (hrun : ACRun proposer tr H U)
+    {proposer : Nat → Fin sp.n} {ini} (hrun : ACRun proposer tr H U ini)
     {s : Nat} {p y : Fin sp.n} {i j : Nat}
     {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H (max (tr.time i) (tr.time j))) (hy : y ∈ H (tr.time j))

@@ -23,7 +23,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A historical acceptance before `t_s + 2Δ` reaches every later-slot honest vote's freeze. -/
 theorem relay_mem_voterBlockTree_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {w y : Fin sp.n} {kw i s : Nat} {W : SA.Blk sp.n (List (FG.Att sp.n))}
     (hw : w ∈ H (tr.time kw)) (hkw : tr.projAC.AcceptAt w kw W)
     (hg : g ≤ tr.time kw) (hkwt : tr.time kw < sp.ts s + 2 * sp.Δ)
@@ -32,7 +33,7 @@ theorem relay_mem_voterBlockTree_at
     (hs : s + 1 ≤ e.msg.slot) (hF : Anc (tr.HonestBlocksAt H) ell.frame.F W) :
     W ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
   have hm := hp.run.time_mono
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := (hac.upTo (hp.run.time_nonneg i)).localRun
   have hc' := SA.upTo_castAt.mpr (And.intro le_rfl hc)
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -51,7 +52,7 @@ theorem relay_mem_voterBlockTree_at
       rw [SA.restartTime_of_castAt hr hy hc']
       exact hyj
     intro k hk hrk
-    have := ((SA.joined_awake sp) _ ro _ _ _ hr y hy i ell hc'.1 hj').2 k hk
+    have := ((SA.joined_awakeU sp) _ ro _ _ _ hr.toU y hy i ell hc'.1 hj').2 k hk
       (ACTrace.upTo_restartAt.mpr ⟨hm hk, hrk⟩)
     change tr.time k ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) at this
     rwa [← hys] at this
@@ -78,7 +79,7 @@ theorem relay_mem_voterBlockTree_at
     linarith only [hΔ, hslot, hti]
   have hacc' := ACTrace.upTo_acceptAt.mpr (And.intro (hm hky) hacc)
   have hWt := SA.mem_tree_of_acceptAt sp hr hy hacc' hky hc'.1 hF
-  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hy hc'.1 hWt
+  have hbs := SA.blockStamp_lt_of_acceptedBefore_from sp hr hp.run.vstart hy hc'.1 hWt
     (Or.inr ⟨ky, hacc', hkyt'⟩)
     (fun k hk hrk => lt_of_le_of_lt (hrsy k hk (ACTrace.upTo_restartAt.mp hrk).2)
       (by unfold SA.freeze; linarith only [hΔ])) (Or.inl hfz)
@@ -90,8 +91,9 @@ theorem relay_mem_voterBlockTree_at
     have heq := SA.accept_unique sp hr hy hacc' ⟨ell, hc'.1, hcall⟩
     rw [heq] at hkyt'
     linarith only [hkyt', hfz]
-  rw [← SA.readPoint_blockStamp hr hy hc' hne] at hbs
-  exact ⟨hWt, Or.inl hbs⟩
+  refine ⟨hWt, Or.inl ?_⟩
+  rw [SA.readPoint_blockStampU hr.toU hy hc' hne]
+  exact hbs
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

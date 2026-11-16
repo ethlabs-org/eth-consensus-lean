@@ -11,6 +11,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
 
 public section
 
@@ -21,7 +22,8 @@ own cut:
 
 * `restart_before_unanimous_slot_at`: a restart of a node honest at it, by the horizon, precedes
   every post-drain slot;
-* `honest_votes_in_slot_at`: every node honest at the vote deadline `t_u + Δ` votes in slot `u`;
+* `honest_votes_in_slot_at`: every member of the slot-`u` committee honest at the vote deadline
+  `t_u + Δ` votes in slot `u`;
 * `old_origin_below_unanimous_at`: a high origin before a unanimous post-drain slot `u` is below
   its proposal. The witness voter is any node honest at `t_u + Δ` (the origin's writer may be
   compromised by then); retention R2 makes its slot-`u` vote extend the origin. -/
@@ -37,7 +39,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- A restart of a node honest at it, by the horizon, is by `t_{u-1}` for every slot `u` with
 `drainTime a ≤ t_{u+1}`. -/
 theorem restart_before_unanimous_slot_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {u : Nat} (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
     {y : Fin sp.n} {r : Nat} (hy : y ∈ H (tr.time r)) (hr : tr.RestartAt y r)
     (hrb : tr.time r ≤ b) : tr.time r ≤ sp.ts ((u : Int) - 1) := by
@@ -55,29 +58,32 @@ theorem restart_before_unanimous_slot_at
   push_cast at hqa hAu ⊢
   omega
 
-/-- Every node honest at the vote deadline `t_u + Δ` of a post-drain slot votes in it by then. -/
+/-- Every member of the slot-`u` committee honest at the vote deadline `t_u + Δ` of a post-drain
+slot votes in it by then. -/
 theorem honest_votes_in_slot_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {u : Nat} (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
     (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat)) (hub : sp.ts u + sp.Δ ≤ b) :
-    ∀ y, y ∈ H (sp.ts u + sp.Δ) → ∃ j e, SA.VoteAt tr.projAC y j e ∧ e.msg.slot = u ∧
-      tr.time j ≤ sp.ts u + sp.Δ := by
-  intro y hy
+    ∀ y, y ∈ H (sp.ts u + sp.Δ) → y ∈ (Generic.dictOfTime sp cm).committee u →
+      ∃ j e, SA.VoteAt tr.projAC y j e ∧ e.msg.slot = u ∧ tr.time j ≤ sp.ts u + sp.Δ := by
+  intro y hy hyK
   have hΔ := sp.toParams.hΔ
   have hd0 : 0 ≤ sp.ts u + sp.Δ := by have := SA.gbar_nonneg g; linarith
-  have hS := healthy_base_of_reset_catch_before_at hp hc hd0 hub
+  have hS := healthy_base_of_reset_catch_before_at hp hd0 hub
   obtain ⟨j, e, ⟨ℓ, hcj, hej⟩, hs, hjt⟩ := SA.honest_votes_in_slot_before hS hgu le_rfl
     (fun x hx r hr hrs => by
       obtain ⟨ℓ, hcr, hrl⟩ := hrs
       have hcr' := ((Trace.upTo_callAt _).mp hcr).2
       have hxr : x ∈ H (tr.time r) := hp.run.antitone hr hx
       exact restart_before_unanimous_slot_at hp hR hxr
-        (Compose.projAC_restartAt.mp ⟨ℓ, hcr', hrl⟩) (hr.trans hub)) y hy
+        (Compose.projAC_restartAt.mp ⟨ℓ, hcr', hrl⟩) (hr.trans hub)) y hy hyK
   exact ⟨j, e, ⟨ℓ, ((Trace.upTo_callAt _).mp hcj).2, hej⟩, hs, hjt⟩
 
 /-- A high origin before a unanimous post-drain slot `u` is below its proposal `P`. -/
-theorem old_origin_below_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+theorem old_origin_below_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ tr.HonestBlocksAt H)
     (hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
@@ -99,14 +105,9 @@ theorem old_origin_below_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g
       omega
   have hT0 : 0 ≤ sp.ts u + sp.Δ := by
     have := SA.gbar_nonneg g; linarith
-  obtain ⟨w, hw⟩ : (H (sp.ts u + sp.Δ)).Nonempty := by
-    by_contra hne
-    rw [Set.not_nonempty_iff_eq_empty] at hne
-    have hf := hp.faults _ hT0 hub
-    rw [hne, Set.compl_empty, Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hf
-    have := Fin.pos x
-    omega
-  obtain ⟨q, e, hv, hs, hq⟩ := honest_votes_in_slot_at hp hc hgu hR hub w hw
+  obtain ⟨w, hwK, hw⟩ := hp.committee_honest_nonempty_at (s := u) (by linarith)
+    (by linarith) hT0 hub
+  obtain ⟨q, e, hv, hs, hq⟩ := honest_votes_in_slot_at hp hgu hR hub w hw hwK
   have hwq : w ∈ H (tr.time q) := hp.run.antitone hq hw
   obtain ⟨ell, hcast⟩ := hv
   have hrb : tr.time r ≤ b := by linarith

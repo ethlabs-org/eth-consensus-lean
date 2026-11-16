@@ -42,7 +42,8 @@ theorem cs2_full_of_faultBound {FGP : Type} {ro : ReplayOrder sp FGP} {tr : SATr
 theorem next_transfer_of_carryU
     {uL : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-    (hrun : ACRunU wm uL proposer tr H U) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
+    {ini} (hrun : ACRunU wm uL proposer tr H U ini) (K : CommitteeDict sp.n)
+    (hP : CommitteeP K tr H)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
     {m : Nat} {y : Fin sp.n} {i : Nat}
     {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -64,7 +65,7 @@ theorem next_transfer_of_carryU
       exact h.1
   have hσ : ((m + 1 : Nat) : Int) - 1 = (m : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_ancU hr (fun _ => voteStart_initial _) hy hc
+  have hdomA := voteDomain_ancU hr hrun.vstart hy hc
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -116,9 +117,9 @@ theorem next_transfer_of_carryU
     by_cases hw : v.val ∈ H
     · obtain ⟨j, -, e', hv', he'⟩ := honest_merged_voteU hrun hy hc hv hw
       exact Or.inl ⟨hw, j, e', hv', by
-        rw [he']; exact merged_vote_slotU hr (fun _ => voteStart_initial _) hy hc v hv⟩
+        rw [he']; exact merged_vote_slotU hr hrun.vstart hy hc v hv⟩
     · have hK := hT y hy i ℓ e hc m v hv
-      rw [merged_vote_slotU hr (fun _ => voteStart_initial _) hy hc v hv] at hK
+      rw [merged_vote_slotU hr hrun.vstart hy hc v hv] at hK
       exact Or.inr ⟨hK, hw⟩
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
     (mergedVoteView sp e.readPoint ℓ.frame (m + 1)) (m : Int) (fun B hB => voteDomain_subset_tree
@@ -148,7 +149,7 @@ theorem next_transfer_of_carryU
 not by the local transfer itself. -/
 theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-    (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
+    {ini} (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
     {m : Nat} {y : Fin sp.n} {i : Nat}
     {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}

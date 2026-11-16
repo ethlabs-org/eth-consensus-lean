@@ -19,7 +19,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Two clean raw sources, each of a writer honest at its write, compare. -/
 theorem clean_sources_compatible_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {r q s t : Nat} {C D : SA.Blk sp.n (List (FG.Att sp.n))}
     {CV DV : Set (SA.Vote sp.n)} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time q))
     (hC : SA.ResultAt tr.projAC x r s C CV ∨ SA.OptimisticLockAt tr.projAC x r s C CV)
@@ -43,17 +44,17 @@ theorem clean_sources_compatible_at
           SA.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
       rcases hD with hD | hD
       · obtain ⟨z, hz, j, hjq, e, hv, _, hes, hDH⟩ :=
-          ProposalImpl.result_supporter_at hp hc hy hD .refl hqb hts
+          ProposalImpl.result_supporter_at hp hy hD .refl hqb hts
         exact ⟨z, j, hz, hjq.le, e, hv, hes, hDH⟩
-      · exact (hp.optimistic_supporter_at hy hqb hD).2
+      · exact (hp.optimistic_supporter_at hy hqb (Healing.gbar_le_of_cutZ_le sp hts) hD).2
     obtain ⟨z, j, hz, hjq, e, ⟨ell, hcast⟩, hes, Hd, hHd, he, hDH⟩ := supporter
     have hzj := hp.run.antitone (hp.run.time_mono hjq) hz
     have hjb := (hp.run.time_mono hjq).trans hqb
     have hv : SA.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
       rcases hC with hC | hC
-      · exact hp.clean_result_prefix_votes_before_at hc hx hC .refl hs hrb j hjb z hzj
+      · exact hp.clean_result_prefix_votes_before_at hx hC .refl hs hrb j hjb z hzj
           ell e hcast (by omega)
-      · exact hp.fast_source_votes_before_at hc hx (Or.inr hC) hclean hrb j hjb z hzj
+      · exact hp.fast_source_votes_before_at hx (Or.inr hC) hclean hrb j hjb z hzj
           ell e hcast (by omega)
     obtain ⟨Hd', hHd', he', hCH⟩ := hv
     obtain rfl : Hd' = Hd := hU.1 hHd' hHd (he'.trans he.symm)

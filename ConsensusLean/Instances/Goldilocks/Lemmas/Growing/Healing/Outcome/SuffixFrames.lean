@@ -37,7 +37,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Any ancestor of a viable current proposal above the voter's anchor is in the voter's viable
 tree, for a voter honest at its cast. -/
-theorem reset_winner_voter_tree_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+theorem reset_winner_voter_tree_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time j))
     (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
@@ -60,18 +61,17 @@ theorem reset_winner_voter_tree_at (hp : ResetPremisesUpTo tr H proposer dg g Δ
   have hCs : C ∈ SA.voterBlockTree sp e.readPoint ell.frame u := by
     rw [← hes] at hP ⊢
     have hd := hrun.time_nonneg j
-    have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time j))
-      (tr.upTo (tr.time j)) proposer (hrun.upTo hd) (hnc.upTo _)).localRun
+    have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)).localRun
     rw [RunTrace.upTo_projAC] at hr
     have hc' : SA.CastAt (tr.projAC.upTo (tr.time j)) y j ell e := SA.upTo_castAt.mpr ⟨le_rfl, hc⟩
-    exact SA.voterBlockTree_anc hr hy hc' P hP.1 C hCP'
+    exact SA.voterBlockTree_anc_from hr hrun.vstart hy hc' P hP.1 C hCP'
   exact ⟨hCs, hfC', W, hW, hWv, hCP'.trans hPW⟩
 
 /-- A viable competitor of the proposal at a slot-`(s+1)` voter honest at its cast, a child of a
 viable head below the proposal's parent, is in the viable tree of the proposer, honest through
 `t_{s+1} + hold`. -/
-theorem reset_competitor_reflect_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ))
+theorem reset_competitor_reflect_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H (sp.ts (s + 1 : Nat) + hold sp)) (hdesignated : p = proposer (s + 1))
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = s + 1)
@@ -87,6 +87,7 @@ theorem reset_competitor_reflect_at (hp : ResetPremisesUpTo tr H proposer dg g �
     (hXv : X ∈ ellp.frame.viableHeads) (hBX : B.parent = some X.root)
     (hB : B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1))) :
     B ∈ ellp.frame.viableTree ellp.frame.tree := by
+  have hc := hp.catchUp
   have hrun := hp.run
   have hnc := hp.noColl
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
@@ -103,15 +104,14 @@ theorem reset_competitor_reflect_at (hp : ResetPremisesUpTo tr H proposer dg g �
   have hFB := ((hPhi.rooted.2 X hXt).mono hPhiU).trans hXB
   have hBt : B ∈ ellp.frame.tree := by
     rcases hB.1.2 with hfz | ⟨P', hP't, hP's, hBP'⟩
-    · exact hp.reset_frozen_frame_at hc hpi hy hci hti hcy hib hg hjoin hB.1.1 hfz hFB
+    · exact hp.reset_frozen_frame_at hpi hy hci hti hcy hib hg hjoin hB.1.1 hfz hFB
     · have hjt : tr.time j ≤ sp.ts (s + 1 : Nat) + hold sp := by
         have hd := hrun.time_nonneg j
-        have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time j))
-          (tr.upTo (tr.time j)) proposer (hrun.upTo hd) (hnc.upTo _)).localRun
+        have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)).localRun
         rw [RunTrace.upTo_projAC] at hr
         have hc' : SA.CastAt (tr.projAC.upTo (tr.time j)) y j elly e :=
           SA.upTo_castAt.mpr ⟨le_rfl, hcy⟩
-        have h := (Compose.cast_head_fcRoot hr hy hc').2
+        have h := (Compose.cast_head_fcRoot_from hr hrun.vstart hy hc').2
         rw [hes] at h
         exact h
       have hPP : P' = P := Outcome.proposal_unique_before_hold hrun hnc hpH hdesignated hactual

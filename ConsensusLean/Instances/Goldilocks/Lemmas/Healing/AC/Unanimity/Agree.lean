@@ -276,7 +276,8 @@ private theorem vote_holdsU
     have hvs : v.slot = s := by
       have hv' := hv
       rw [payload_eqU hs] at hv'
-      exact state_pool_slotU sp hr hpH k s v ((mem_proposalView_votesU hr hpH k s ℓp.frame v).1
+      exact state_pool_slotU sp hr hpH k s v
+        ((mem_proposalView_votesU hr (fun _ => voteStart_initial _) hpH k s ℓp.frame v).1
         (ofLists_support_subset _ _ _ _ hv'))
     obtain ⟨H', hH', hH'r, -⟩ := hsup v (by rw [blockSupport, hs.acPayload]; exact hv)
       (by rw [hvs])
@@ -467,7 +468,7 @@ private theorem honest_supporterU
     intro w hw
     obtain ⟨j', e', hv, hes⟩ := honest_votes_in_slotU hS.toHealthyBaseU hσ w hw
     obtain ⟨ℓw, hcw, hew⟩ := id hv
-    exact ⟨e'.msg, (mem_proposalView_votesU hr hpH k s ℓp.frame _).2
+    exact ⟨e'.msg, (mem_proposalView_votesU hr (fun _ => voteStart_initial _) hpH k s ℓp.frame _).2
       (honest_vote_at_proposalU hS hpH hs.call hs.time hσ hw hv hes).1,
       (castAt_specU hr hw ⟨hcw, hew⟩).1⟩
   by_contra hno
@@ -518,7 +519,8 @@ private theorem supported_viableU
   obtain ⟨-, hΨU⟩ := frameIn_of_callAtU hr hpH hs.call
   obtain ⟨w, hwH, -, v, hv, hvw, hvs, R, hR, hRr, hBR⟩ := honest_supporterU hs hmaj
   rw [payload_eqU hs] at hv
-  have hvp := (mem_proposalView_votesU hr hpH k s ℓp.frame v).1 (ofLists_support_subset _ _ _ _ hv)
+  have hvp := (mem_proposalView_votesU hr (fun _ => voteStart_initial _) hpH k s ℓp.frame v).1
+    (ofLists_support_subset _ _ _ _ hv)
   obtain ⟨j', -, e', hve, rfl⟩ := hrun.honest.pool_vote _ hpH k s v hvp (hvw ▸ hwH)
   rcases trivial_viableU hS hx hc hes hσ ⟨_, hvw ▸ hwH, j', e', hve, by exact_mod_cast hvs, R,
     hΨU hR, hRr, Anc.mono hΨU hBR⟩ with h | h

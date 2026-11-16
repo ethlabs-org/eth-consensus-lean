@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.D
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.FrameWindow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainWarm
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetRounds
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
@@ -94,18 +95,43 @@ theorem exists_reset_of_drain_rounds_awake_at
   exact KernelProof.exists_reset_of_drain_rounds_awake_at hrun hnc hf hsvc hawake hcatch hnr
     hH hδ hΔF hr hgr hG hcz hb hgp hdrain hstock
 
-/-- Step 4 packaging: a bounded reset and a snapshot supply the existing finite reset record. -/
+/-- Step 4 packaging: a bounded reset and a snapshot supply the finite reset record at a
+population-sized committee. Every committee has `committeeSize = n` members, so the population
+bound `3 f ≤ n - 1` is the committee bound at `βK = ½`; the per-slot timeout delay is the scalar
+delay on the four-`Δ` slot grid. -/
 theorem resetPremisesUpTo_of_reset_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {cm : Time → Finset (Fin sp.n)}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot (Generic.dictOfTime sp cm)))
     (hnc : Compose.NoCollRun dg tr) {g ΔF a b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hreset : IsReset tr H g a) (hab : a ≤ b)
     (hsnapshot : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g) ∧ tr.time k ≤ b)
-    (hstock : sp.committeeSize = sp.n) :
-    ResetPremisesUpTo tr H proposer dg g ΔF a b := by
-  exact ⟨hrun, hnc, hsvc, hawake, hf, hreset, hab, hsnapshot, hstock⟩
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartUpTo tr H (gbar g) b)
+    (hΔF : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time)) (hH : (H b).Nonempty)
+    (hfacts : Compose.Growing.CommitteeFacts tr H (Generic.dictOfTime sp cm))
+    (hcard : ∀ t, (cm t).card = sp.committeeSize) (hstock : sp.committeeSize = sp.n) :
+    ResetPremisesUpTo tr H proposer dg g ΔF a b cm (1 / 2) := by
+  have hn : 0 < sp.n := sp.toParams.hn
+  refine ⟨by norm_num, hrun, hstock ▸ hn, hfacts, ?_, hnc, hsvc, hawake, hf, hreset, hab,
+    hsnapshot, hcatch, noRestartUpTo_iff.mp hnr, fun s => ?_, hH⟩
+  · intro t d _ _ hd0 hdb _
+    have hle := Set.ncard_le_ncard (Set.inter_subset_right (s := (↑(cm t) : Set (Fin sp.n)))
+      (t := (H d)ᶜ))
+    have h3 := hf d hd0 hdb
+    have h2 : 2 * (((↑(cm t) : Set (Fin sp.n)) ∩ (H d)ᶜ).ncard) < (cm t).card := by
+      rw [hcard t, hstock]; omega
+    have h2q : ((2 * (((↑(cm t) : Set (Fin sp.n)) ∩ (H d)ᶜ).ncard) : Nat) : ℚ) < (cm t).card :=
+      by exact_mod_cast h2
+    push_cast at h2q
+    linarith
+  · have hδ : (sp.toParams.δt : Time) = sp.toParams.fg.δt := rfl
+    rw [sp.slotTime_eq, sp.slotTime_eq]
+    push_cast
+    rw [hδ, mul_add]
+    linarith
 
 end Consensus.Goldilocks.Healing.Growing
 

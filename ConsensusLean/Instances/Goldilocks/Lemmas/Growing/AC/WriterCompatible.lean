@@ -23,8 +23,8 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
 
 /-- A release in `[t_s, t_s + 2Δ)`, at or after the start `a` of the service window, reaches an
 update of slot `s` at `t_s + 6Δ ≤ b` of a node honest at it whose restarts are by `t_s`. -/
-private theorem relayed_held_window
-    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+private theorem relayed_held_window {ini}
+    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     {a b : Time} {s : Nat} (hsvc : ServiceWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
     {X Y : Fin sp.n} {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hY : Y ∈ H (tr.time c)) (hc : tr.CallAt Y c ℓ)
@@ -45,8 +45,8 @@ private theorem relayed_held_window
 
 /-- Votes for an incompatible block released by a writer while honest occupy seats of an update
 disjoint from its result's supporters, under windowed service. -/
-private theorem relayed_against_window
-    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+private theorem relayed_against_window {ini}
+    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     {a b : Time} {s : Nat} (hsvc : ServiceWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
     {X Y : Fin sp.n} {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hY : Y ∈ H (tr.time c)) (hc : tr.CallAt Y c ℓ)
@@ -82,7 +82,7 @@ private theorem relayed_against_window
 
 /-- Same-slot results of writers honest at their writes are compatible, using only service
 through their observation cutoff. -/
-theorem result_result_compatible_window_before_at (hrun : ACRun proposer tr H U)
+theorem result_result_compatible_window_before_at {ini} (hrun : ACRun proposer tr H U ini)
     {a b : Time} {s : Nat} (hsync : ServiceWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
     {x x' : Fin sp.n} {i i' : Nat} (hx : x ∈ H (tr.time i)) (hx' : x' ∈ H (tr.time i'))
     {C C' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)}
@@ -101,23 +101,23 @@ theorem result_result_compatible_window_before_at (hrun : ACRun proposer tr H U)
 
 /-- A result and an optimistic lock of one slot, by writers honest at their writes, agree with
 windowed message service. -/
-theorem result_optimistic_compatible_window_before_at
-    (hrun : ACRun proposer tr H U)
+theorem result_optimistic_compatible_window_before_at {ini}
+    (hrun : ACRun proposer tr H U ini) {K : CommitteeDict sp.n}
     {a b : Time} {s : Nat} (hsync : ServiceWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
     {x x' : Fin sp.n} {i i' : Nat} (hx : x ∈ H (tr.time i)) (hx' : x' ∈ H (tr.time i'))
     {C O : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)}
     (hR : ResultAt tr x i s C CV) (hO : OptimisticLockAt tr x' i' s O CV')
     (hi : tr.time i ≤ b) (_hi' : tr.time i' ≤ b)
     (hreset : ∀ q ≤ i, tr.RestartAt x q → tr.time q ≤ sp.ts s)
-    (hstock : sp.committeeSize = sp.n) : Compatible U C O := by
+    (hP : ∀ v ∈ (tr.state x i).pool s, v.val ∈ K.committee s)
+    (hsize : (K.committee s).ncard = sp.committeeSize) : Compatible U C O := by
   by_contra hnc
   obtain ⟨ℓ, S, hc, ht, -, hmaj, -, hSs⟩ := result_side hrun hx hR
   obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := optimistic_seats hrun hx' hO
-  rw [hstock] at h34
   have h1 := relayed_against_window hrun.localRun hsync ha hx hc ht hi hreset hSs hT
     fun h => hnc (Or.symm h)
-  have hle := Set.ncard_le_ncard (Set.subset_univ (voters {v | v ∈ (tr.state x i).pool s}))
-  rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hle
+  have hle := Set.ncard_le_ncard (s := voters {v | v ∈ (tr.state x i).pool s})
+    (t := K.committee s) (by rintro w ⟨v, hv, rfl⟩; exact hP v hv)
   omega
 
 end Consensus.Goldilocks.SA.Growing

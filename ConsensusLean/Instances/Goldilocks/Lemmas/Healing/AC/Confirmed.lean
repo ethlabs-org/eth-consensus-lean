@@ -629,9 +629,11 @@ theorem anc_acConfirmed_of_record (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : F
   rw [hlk, Option.getD_some]
   exact hPR.mono hΦU
 
-/-- Finite stamped honest batch from actual unanimous casts. The actual-vote existence
-input is separate from agreement; no ready-proposal support clause is needed. -/
-theorem unanimous_pool_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g b)
+/-- Finite stamped honest batch of the slot committee from actual unanimous casts. The
+actual-vote existence input is separate from agreement; no ready-proposal support clause is
+needed. -/
+theorem unanimous_pool_before {K : SA.CommitteeDict sp.n}
+    {b : Time} (hS : HealthyBaseUpTo K tr H U proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
@@ -639,14 +641,15 @@ theorem unanimous_pool_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g
     (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ max t (sp.ts s) + sp.Δ)
     (hrestart : ∀ k ≤ j, tr.RestartAt y k → tr.time k < sp.ts s)
     {P : Blk sp.n FGP} (hPt : P ∈ ell.frame.tree)
-    (hvotes : ∀ x ∈ H, ∃ i e, VoteAt tr x i e ∧ e.msg.slot = s ∧ e.msg.head = P.root) :
-    ∀ x ∈ H, ∃ v ∈ (tr.state y j).pool s, v.val = x ∧ v.head = P.root ∧
+    (hvotes : ∀ x ∈ H, x ∈ K.committee s →
+      ∃ i e, VoteAt tr x i e ∧ e.msg.slot = s ∧ e.msg.head = P.root) :
+    ∀ x ∈ H, x ∈ K.committee s → ∃ v ∈ (tr.state y j).pool s, v.val = x ∧ v.head = P.root ∧
       resolutionTime (tr.state y j) ell.frame v < ETime.of (sp.ts s + 2 * sp.Δ) ∧
       ∀ v' ∈ (tr.state y j).pool s, v'.val = x → v' = v := by
   have hr := hS.run.localRun
   obtain ⟨hPhi, hPhiU⟩ := frameIn_of_callAt hr hy hc
-  intro x hx
-  obtain ⟨i, e, hv, hes, heP⟩ := hvotes x hx
+  intro x hx hxK
+  obtain ⟨i, e, hv, hes, heP⟩ := hvotes x hx hxK
   obtain ⟨B, hB, hBr, hBs, hmem, hvs, hbs⟩ :=
     late_vote_held_of_frame_before hS hy hc hs ht hjb hdeadline hrestart hx hv hes
       (fun B hBU hBr => by
@@ -658,8 +661,8 @@ theorem unanimous_pool_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g
   intro v' hv' hv'x
   obtain ⟨q, -, e', he', rfl⟩ := hS.run.honest.pool_vote y hy j s v' hv' (hv'x ▸ hx)
   rw [hv'x] at he'
-  obtain ⟨-, rfl⟩ := (one_vote_per_slot sp) FGP ro H U tr hr x hx q i e' e he' hv
-    ((state_pool_slot sp hr hy j s _ hv').trans hes.symm)
+  obtain ⟨-, rfl⟩ := one_vote_per_slotU sp FGP ro H U tr hr.toU x hx q i e' e he' hv
+    ((state_pool_slot_from sp hr hS.run.vstart hy j s _ hv').trans hes.symm)
   rfl
 
 end Consensus.Goldilocks.SA

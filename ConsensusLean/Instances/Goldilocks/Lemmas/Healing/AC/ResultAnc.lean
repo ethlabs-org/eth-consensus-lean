@@ -80,26 +80,29 @@ theorem result_transfer_anc {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin
                   (hd := hd)
 
 /-- A strict majority result has an earlier honest counted supporter when its
-participants number at least twice the faulty validators. -/
+participants number at least twice its faulty participants. -/
 theorem result_honest_supporter_of_participants {FGP : Type} {ro : ReplayOrder sp FGP}
     {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    {proposer : Nat → Fin sp.n} (hrun : ACRun proposer tr H U)
+    {proposer : Nat → Fin sp.n} {ini} (hrun : ACRun proposer tr H U ini)
     {x : Fin sp.n} (hx : x ∈ H) {i s : Nat} {B C : Blk sp.n FGP}
     {CV : Set (Vote sp.n)} (hR : ResultAt tr x i s C CV) (hBC : Anc U B C)
-    (hparticipants : 2 * Hᶜ.ncard ≤ (voters {v | v ∈ (tr.state x i).pool s}).ncard) :
+    (hparticipants : 2 * (Hᶜ ∩ voters {v | v ∈ (tr.state x i).pool s}).ncard ≤
+      (voters {v | v ∈ (tr.state x i).pool s}).ncard) :
     ∃ z ∈ H, ∃ q < i, ∃ e, VoteAt tr z q e ∧ e.msg ∈ CV ∧
       e.msg.slot = s ∧ VoteExtends U e.msg B := by
   have hmaj := result_majority hR
   obtain ⟨z, ⟨v, hv, hvz⟩, hz⟩ := Set.exists_mem_notMem_of_ncard_lt_ncard
-    (s := Hᶜ) (t := {w | ∃ v ∈ CV, v.val = w}) (by omega)
-  have hzH : z ∈ H := not_not.mp hz
+    (s := Hᶜ ∩ voters {v | v ∈ (tr.state x i).pool s}) (t := {w | ∃ v ∈ CV, v.val = w})
+    (by omega)
   obtain ⟨ℓ, hupd, _, hCV⟩ := hR
   have hv' := hv
   rw [hCV] at hv'
   obtain ⟨hvp, _, _, R, hRt, hroot, hCR⟩ := hv'
-  have hvH : v.val ∈ H := hvz.symm ▸ hzH
+  have hvH : v.val ∈ H := by
+    by_contra hvH
+    exact hz ⟨hvz ▸ hvH, v, hvp, hvz⟩
   obtain ⟨q, hq, e, he, hmsg⟩ := hrun.honest.pool_vote x hx i s v hvp hvH
-  have hslot := state_pool_slot sp hrun.localRun hx i s v hvp
+  have hslot := state_pool_slot_from sp hrun.localRun hrun.vstart hx i s v hvp
   refine ⟨v.val, hvH, q, hq, e, he, hmsg.symm ▸ hv, ?_, ?_⟩
   · simpa only [hmsg] using hslot
   · rw [hmsg]

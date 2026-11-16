@@ -22,8 +22,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
 theorem finalized_below_unanimous_at_update_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hPU : P ∈ tr.HonestBlocksAt H) (hPs : P.slot = u) (hu : 0 < u)
     (hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
@@ -40,7 +40,7 @@ theorem finalized_below_unanimous_at_update_at
   have hle : ∀ k < j, tr.time k ≤ tr.time j := fun k hk => hm hk.le
   have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
   have ht : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
-  have hFR := finalized_compatible_before_update_at hp hc hPU hPs hu hun hgu hR hTb hy ha ht.le
+  have hFR := finalized_compatible_before_update_at hp hPU hPs hu hun hgu hR hTb hy ha ht.le
   have hreach := fg_reachable_at hp.run hd hle hy
   have hFt := (Store.cache_invariants _ _ _ _ hreach).1
   have hsub : (tr.state y j).fg.tree ⊆ tr.HonestBlocksAt H :=
@@ -55,8 +55,7 @@ theorem finalized_below_unanimous_at_update_at
   have hBf : B ∈ ell.frame.tree := by
     rw [Outcome.frame_of_call hp.run hy hup.1]
     exact ⟨hBt, hFB⟩
-  have hr := (Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer
-    hp.run hp.noColl).upTo hd
+  have hr := (Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl).upTo hd
   have hc' : (tr.projAC.upTo (tr.time j)).CallAt y j ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hup.1⟩
   have hsl : sp.slot ((tr.projAC.upTo (tr.time j)).time j) = u + 1 := by

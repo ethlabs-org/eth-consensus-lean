@@ -96,7 +96,7 @@ theorem optimistic_later_heads_of_witness_at
         ell.call = .proposal → tr.time i = sp.ts r → ∀ d pay,
         (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
           Anc (tr.HonestBlocksAt H) X d.head) := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := hac.upTo (hrun.time_nonneg c)
   have ho := (SA.upTo_optimisticLockAt hrun.time_mono).mpr ⟨le_rfl, hopt⟩
   have ht := (SA.optimisticLockAt_spec hr hx ho (SA.CommitteeDict.full sp.n)

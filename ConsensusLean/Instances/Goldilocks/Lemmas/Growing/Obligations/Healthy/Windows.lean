@@ -39,7 +39,8 @@ finalized block it extends, as observed at a call in `[a + 2Δ, t]`. Before `ḡ
 catch-up (at the first cut from `ḡ + 2Δ ≤ t`); after `ḡ`, the prefix's acceptance relay, with the
 restarts no later than the reset. -/
 theorem catch_window_at_reset_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {b : Time} (hs : ResetService tr H g ΔF b) (hc : CatchRun tr H g (2 * sp.Δ))
     {t : Time} (ht0 : 0 ≤ t) (hca : cutZ sp.toParams g < a)
     (hrestart : ∀ y k, y ∈ H (tr.time k) → tr.RestartAt y k → tr.time k ≤ t →
@@ -117,7 +118,8 @@ theorem catch_window_at_reset_at
 /-- The reset's service windows on the prefix through a read time `t ≤ b`, from the finite reset
 premises. -/
 theorem ResetPremisesUpTo.windows_at_reset_at {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {t : Time} (ht0 : 0 ≤ t) (htb : t ≤ b) :
     SyncACWindowBefore (H t) ((tr.upTo t).HonestBlocks (H t)) a t (tr.projAC.upTo t) ∧
       CatchACWindowBefore (tr.projAC.upTo t) (H t) ((tr.upTo t).HonestBlocks (H t)) a
@@ -125,7 +127,7 @@ theorem ResetPremisesUpTo.windows_at_reset_at {b : Time}
   have hca := hp.cutZ_lt_reset_at
   have hga : g ≤ a := by linarith [SA.le_gbar g, lt_cutZ sp g, sp.toParams.hΔ]
   exact ⟨sync_window_at_reset_at hp.run hp.sync hga ht0,
-    catch_window_at_reset_at hp.run hp.sync hc ht0 hca
+    catch_window_at_reset_at hp.run hp.sync hp.catchUp ht0 hca
       fun y k hy hk hkt => restart_le_before_at hp hy hk (hkt.trans htb)⟩
 
 end Consensus.Goldilocks.Healing.Growing

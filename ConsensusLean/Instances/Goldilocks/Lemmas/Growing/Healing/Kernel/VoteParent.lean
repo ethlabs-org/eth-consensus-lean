@@ -21,7 +21,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A finite noncurrent voter lock lies below the actual proposal parent. -/
 theorem vote_old_live_lock_below_parent_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {u i : Nat} (hpH : p ∈ H (tr.time i))
     (hR : drainTime sp a ≤ sp.ts u) {ellp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
@@ -38,10 +39,10 @@ theorem vote_old_live_lock_below_parent_at
   refine vote_old_live_lock_below_parent_of_sources_at hp hR ?_ ?_
     hy hcy hes hjb hl hne hlive hL hLr
   · intro x r s B hx hsource hs hsu hrb
-    exact hp.clean_source_proposal_parent_before_at hc hx hpH hsource hs hsu hrb hR
+    exact hp.clean_source_proposal_parent_before_at hx hpH hsource hs hsu hrb hR
       hci hcall hd hti hib
   · intro x r s B CV hx hop hs hrb he
-    exact hp.clean_optimistic_proposal_parent_at hc hx hpH hop hs hrb (he ▸ hR)
+    exact hp.clean_optimistic_proposal_parent_at hx hpH hop hs hrb (he ▸ hR)
       hci hcall hd (he ▸ hti) hib
 
 end Consensus.Goldilocks.Healing.Growing.ProposalImpl

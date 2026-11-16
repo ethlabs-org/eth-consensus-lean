@@ -18,8 +18,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
 /-- An acceptance is relayed without requiring its sender to remain honest at the read. -/
-theorem accept_mem_frame (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ))
+theorem accept_mem_frame {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {q j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time q)) (hy : y ∈ H (tr.time j))
     (ha : tr.AcceptAt x q B) {ell : ACLabel (goldilocksNode sp ro)}
@@ -28,6 +28,7 @@ theorem accept_mem_frame (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     (hjoin : sp.ts (sp.slot (gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
     (hq : tr.time q + sp.Δ ≤ tr.time j)
     (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B) : B ∈ ell.frame.tree := by
+  have hc := hp.catchUp
   have ht := hp.run.time_nonneg j
   have htimes : ∀ k < j, tr.time k ≤ tr.time j := fun k hk => hp.run.time_mono hk.le
   have hr := (hp.run.upTo ht).toLocalRun

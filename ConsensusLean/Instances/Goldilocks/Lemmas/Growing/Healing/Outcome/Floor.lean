@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Contest
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.RowOrder
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowLabel
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -17,7 +17,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- An older fast-lock label written by the late-vote deadline was written before the slot. -/
 theorem fastLock_time_lt_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n} {r m u : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (SA.Vote sp.n)} (hfl : SA.FastLockAt tr.projAC x r m D CV)
     (hmu : m < u) (htr : tr.time r ≤ sp.ts u + sp.Δ) : tr.time r < sp.ts u := by
@@ -49,7 +50,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 ruled out by `no_high_contest_at`, whose origins are compared by
 `ResetPremisesUpTo.origins_compatible_at`. -/
 theorem reset_vote_floor_above_old_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {j u : Nat} (hy : y ∈ H (tr.time j)) (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
@@ -87,17 +89,16 @@ theorem reset_vote_floor_above_old_at
   obtain ⟨W, hW, att, ha, v, hv, d, hdj, hs, _, r, hrd, l, O, ho, hEO⟩ :=
     Outcome.left_entry_origin_at (g := g) hp.run hp.noColl ht hj hy hq hE hET
       (by omega) hEC (by omega)
-  have hlu : l < u := hes ▸ Outcome.row_origin_label_lt_at hp.run hp.noColl
-    hy hv hc hW ha hs hdj hrd ho hp.stock
+  have hlu : l < u := hes ▸ KernelProof.row_origin_label_lt_at hp hy hc hW ha
+    (hp.run.antitone (hp.run.time_mono hdj.le) hv) hs hdj hrd ho
   obtain ⟨CV, ellw, D, _, hf, _⟩ := ho.2.2.1
   have hc' : (tr.upTo (tr.time j)).projAC.CallAt y j ell := by
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc.1⟩
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time j)) _ proposer
-    (hp.run.upTo ht) (hp.noColl.upTo _)).localRun
+  have hr := (Compose.goldilocks_ac_projection_from (hp.run.upTo ht) (hp.noColl.upTo _)).localRun
   have hrt := Outcome.fastLock_time_lt_at hp.run hf hlu
     ((hp.run.time_mono (show r ≤ j by omega)).trans
-      (hes ▸ (Compose.cast_head_fcRoot hr hy ⟨hc', hc.2⟩).2))
+      (hes ▸ (Compose.cast_head_fcRoot_from hr (hp.run.upTo ht).vstart hy ⟨hc', hc.2⟩).2))
   have hEB := hEO.trans (hBold v r l O ho hrt
     ((hp.run.time_mono (show r ≤ j by omega)).trans hjb))
   have hh := Healing.h_le_of_store_anc hreach

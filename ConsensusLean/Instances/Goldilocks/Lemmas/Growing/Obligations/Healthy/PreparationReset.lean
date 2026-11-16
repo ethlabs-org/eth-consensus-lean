@@ -1,7 +1,9 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunCommittee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationGap
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ResetCoefficients
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HSSharedRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ResetOfDrainRounds
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -46,7 +48,8 @@ theorem healthy_preparation_reset_at (Q : HealthyPreparationQueryAt S A V)
       (K S A) Q.cap Q.index Q.ready Q.heal Q.run) :
     ∃ ΔF a, Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
         (runProposer { S with vote := stock } Q.run.2 Q.hn)
-        (digestOf { S with vote := stock } Q.run.2) Q.gst ΔF a Q.bound ∧
+        (digestOf { S with vote := stock } Q.run.2) Q.gst ΔF a Q.bound
+        (runCommittee { S with vote := stock } Q.run.2 Q.hn) (K S A).params.βK ∧
       a ≤ Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
         (healthyResetSlack S Q.index : Time) := by
   classical
@@ -119,8 +122,12 @@ theorem healthy_preparation_reset_at (Q : HealthyPreparationQueryAt S A V)
     exact ⟨haw y t (hrun.antitone htb hy) ht htb, htb⟩
   obtain ⟨j, hj, hjt⟩ := Healing.snapshot_of_awake (hrun.upTo hb0).toLocalRun haw' hH
     (by linarith only [hcz, h4B, hb])
-  refine ⟨_, a, Healing.Growing.resetPremisesUpTo_of_reset_at hrun hnc hs haw hf ha
-    (hab.trans (hBh.trans hb)) ⟨j, hj, hjt⟩ rfl, ?_⟩
+  refine ⟨_, a, Healing.Growing.resetPremisesUpTo_of_reset_at
+    (simIni_eq_runStart { S with vote := stock } Q.run.2 Q.hn Q.valid ▸ hrun) hnc hs haw hf ha
+    (hab.trans (hBh.trans hb)) ⟨j, hj, hjt⟩ hcatch hnr
+    (protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2) hH
+    (runCommittee_facts { S with vote := stock } Q.run.2 Q.hn Q.valid hnc)
+    (runCommittee_card { S with vote := stock } Q.run.2 Q.hn Q.valid) rfl, ?_⟩
   rw [hBeq] at hab
   linarith only [hab, hr]
 

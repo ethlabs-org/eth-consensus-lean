@@ -45,7 +45,7 @@ theorem FrameWindow.toFG_later_proposal_head_at
     Anc (tr.HonestBlocksAt H) R d.head := by
   obtain ⟨a, hai, j, ellw, D, CV, hya, ha, hD, hfast, hRA⟩ :=
     toFG_fast_candidate_origin_at hrun hnc hy hto
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := hac.upTo (hrun.time_nonneg a)
   have ha' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, ha⟩
   have hW := SA.frameIn_of_callAt hr.localRun hya ha'

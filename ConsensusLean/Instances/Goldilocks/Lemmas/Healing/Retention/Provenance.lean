@@ -203,10 +203,11 @@ private theorem StoredFrom.of_proposal (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
 /-! ## Over an SA trace -/
 
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SATrace sp FGP ro}
+  {ini : Fin sp.n → SAState sp.n}
 
 /-- A call of an honest node keeps its locks below earlier ones or writes fast locks stored on
 the viable ancestor (in the call's frame) of a fast-lock write's selection at its own cut. -/
-private theorem call_storedFrom (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+private theorem call_storedFrom (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     StoredFrom U (tr.state x i).locks (tr.post i).locks
       (fun s f O => f = true → ∃ CV ℓ' D, tr.CallAt x i ℓ' ∧ FastLockAt tr x i s D CV ∧
@@ -270,7 +271,8 @@ private theorem call_storedFrom (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
 /-- **Stored fast-lock provenance.** Every fast lock that an honest node holds before cut `i`
 sits below (inside `U`) the stored block `O = Φ.viableAncestor D` of a fast-lock write of its
 slot at an earlier cut of the node, `D` the write's selection and `Φ` the frame of its call. -/
-theorem stored_fast_lock_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+theorem stored_fast_lock_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} (hx : x ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state x i).locks, l.fast = true →
       ∃ r < i, ∃ CV ℓ D, tr.CallAt x r ℓ ∧ FastLockAt tr x r l.slot D CV ∧
@@ -279,7 +281,8 @@ theorem stored_fast_lock_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H 
   | zero =>
     intro l hl
     change l ∈ (tr.init x).locks at hl
-    rw [hr.init x hx] at hl
+    obtain ⟨m, hm⟩ := SA.voteStart_iff.1 (hini x)
+    rw [hr.init x hx, hm] at hl
     exact absurd hl (Set.notMem_empty l)
   | succ i ih =>
     intro l hl hf
@@ -300,7 +303,7 @@ theorem stored_fast_lock_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H 
 /-- **A fast-lock write is joined**: its call is not a restart, and the state before it is
 joined at its time (the update's guard; the optimistic check's guard at a substep that keeps
 `restart_time`). -/
-theorem joined_of_fastLockAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+theorem joined_of_fastLockAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {i s : Nat} {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (h : FastLockAt tr x i s D CV) :
     joined sp (tr.state x i) (tr.time i) ∧

@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.FGProjection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Safety
 
 public section
@@ -73,9 +74,8 @@ private theorem fg_run {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att 
     (hnc : Compose.NoCollRun dg tr) :
     Consensus.Goldilocks.Growing.FGLocalRun (goldilocksNode sp ro).genesisPayload H
       (tr.HonestBlocksAt H) tr.projFG :=
-  have h := SA.interface_requirements sp (List (FG.Att sp.n)) ro
   Compose.Growing.fg_projection _ _ dg H _ tr proposer
-    ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
+    (fun y => Compose.requirements_from sp ro (hrun.vstart y))
     hrun.genesis_root_ok hrun.toLocalRun hnc
 
 private theorem store_eq {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}

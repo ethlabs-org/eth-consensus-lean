@@ -75,12 +75,13 @@ theorem optimistic_first_proposal_stored_at (hrun : ACRun proposer tr H U)
     obtain ⟨hheld, R, hR, hRr, hbs⟩ := heldAtProposal_iff.mp (hP' v ⟨hv, R', hR', hR'r, hDR'⟩)
     obtain rfl : R = R' := hU.1 (hΦU hR) (hΦXU hR') (hRr.trans hR'r.symm)
     have hheld : v ∈ ((tr.upTo (tr.time i)).state x i).pool σ := hheld.resolve_right fun h =>
-      heq (equivocators_mono (fun u hu => (mem_proposalView_votes hr hx i σ ℓ.frame u).2 hu) h)
+      heq (equivocators_mono (fun u hu => (mem_proposalView_votes hr
+        (fun _ => SA.voteStart_initial _) hx i σ ℓ.frame u).2 hu) h)
     have hRs : R.slot ≤ σ := by
       have h := frame_slot_le sp hrx.localRun hX hpt'.1 R hR'
       change R.slot ≤ sp.slot (tr.time i₀) at h
       omega
-    exact proposal_supporter hr hx hc' hvs hheld hR hRr hRs
+    exact proposal_supporter hr (fun _ => SA.voteStart_initial _) hx hc' hvs hheld hR hRr hRs
       (anc_tree_of_anc_U hU hΦ hΦU hV.1 (hBD.trans (Anc.mono hΦXU hDR')) hR) hbs heq
   -- counting at the proposal: the equivocators are faulty there, the others are outside `SX`
   have hE : (equivocators V.votes).ncard ≤ (H (tr.time i))ᶜ.ncard := Set.ncard_le_ncard
@@ -98,7 +99,7 @@ theorem optimistic_first_proposal_stored_at (hrun : ACRun proposer tr H U)
     refine unlocked_compatible hr.coherent hΦ hΦU hV.1 ?_
       (fun l hl hlive hlσ X hX hXr =>
         highLocksCompatible_iff.mp hhigh' l hl hlive (by exact_mod_cast hlσ) X hX hXr)
-      (locksWF_state hr hx i)
+      (locksWF_state hr (fun _ => SA.voteStart_initial _) hx i)
     refine Or.inl ⟨SX, fun w hw => ?_, by omega⟩
     rcases hcover hw with ⟨-, v, hv, hvw, hvs, hva⟩ | h
     · exact Or.inr ⟨v, hv, hvw, hvs, hva⟩

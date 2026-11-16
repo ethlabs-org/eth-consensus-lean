@@ -54,7 +54,7 @@ theorem FrameWindow.optimistic_write_later_proposal_head_at
   have hchi : tr.time c ≤ sp.ts N + sp.Δ := by
     rw [hti]; linarith only [hts hrN, sp.toParams.hΔ]
   rcases hsource with hroot | ⟨Q, hQ, hh, hJ, hAQ⟩
-  · have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  · have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
     have hr := hac.upTo (hrun.time_nonneg a)
     have hca := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hcw⟩
     have hrootU := hroot.mono (SA.frameIn_of_callAt hr.localRun hy hca).2

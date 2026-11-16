@@ -59,7 +59,8 @@ theorem h2_carry_fastLock (hI : InclusionRun tr H U proposer g t₀) {x : Fin sp
   refine carryAt_of_writer_catch hr (hI.syncAC le_rfl (sp.ts j + 2 * sp.Δ)) (by
       linarith only [hj, hΔ, hg]) le_rfl
     hx hy hc hs fun v hv => ?_
-  obtain ⟨h₁, h₂, Hv, hHv, hHvr, hBHv, h₃⟩ := Healing.fastLock_writer hr hx hfl v hv
+  obtain ⟨h₁, h₂, Hv, hHv, hHvr, hBHv, h₃⟩ :=
+    Healing.fastLock_writer hr (fun _ => SA.voteStart_initial _) hx hfl v hv
   refine ⟨h₁, h₂, Hv, hHv, hHvr, hFB.trans hBHv, ?_⟩
   rcases h₃ with hgen | ⟨kw, hkw, hkwt⟩
   · exact Or.inl hgen
@@ -280,7 +281,8 @@ private theorem high_locks (hI : InclusionRun tr H U proposer g t₀) {x : Fin s
   have hrun := hI.run
   have hU := hrun.localRun.coherent
   refine highLocksCompatible_iff.2 fun l hl _ hlσ Y hY hYr => ?_
-  obtain ⟨O, hYO, k, CV, hopt⟩ := proposal_high_lock hrun.localRun hx ht hl hlσ hY hYr
+  obtain ⟨O, hYO, k, CV, hopt⟩ := proposal_high_lock hrun.localRun
+    (fun _ => SA.voteStart_initial _) hx ht hl hlσ hY hYr
   have hO : Compatible U O B := by
     rcases (show l.slot = σ ∨ σ < l.slot by omega) with h | h
     · rw [h] at hopt
@@ -371,10 +373,12 @@ theorem h2_proposals_continue (hI : InclusionRun tr H U proposer g t₀)
     (ht ▸ (ts_le_iff sp).2 (by push_cast; omega)) hBF
   have hlater : ∀ z ∈ H, ∀ k e, VoteAt tr z k e → m < e.msg.slot → VoteExtends U e.msg B :=
     fun z hz k e hve hs => votesExtendAfter_iff.1 hcont z hz k e hve hs
-  refine batch_proposal hrun hI.two_faulty_lt (honest_voters_half hI.toHealthyBase hm4) hv hx hc
-    (proposal_slot ht) hprop hV (fun z hz k e hve hes => ?_)
+  refine batch_proposal hrun (K := CommitteeDict.full sp.n)
+    (cs2_full hI.stock hI.two_faulty_lt)
+    (by rw [hI.stock]; exact honest_voters_half hI.toHealthyBase hm4) hv hx hc
+    (fun _ _ => mem_full _ _) (proposal_slot ht) hprop hV (fun z hz k e hve hes => ?_)
     (high_locks hI hx ht hlater fun k CV O hopt => optimisticLock_compatible hrun
-      hI.two_faulty_lt hx hopt hv hI.stock) hI.stock
+      hI.two_faulty_lt hx hopt hv hI.stock)
   obtain ⟨Hd', hHd', hHd'r, hBHd'⟩ := hv z hz k e hve hes
   obtain ⟨Hd, hHdt, hHdr, -, hh⟩ := late_vote_held_of_frame hI.toHealthyBase hx hc hm4
     (by rw [ht, hts]; linarith only [hΔ]) hz hve hes fun Hd hHd hHdr => by
@@ -454,7 +458,8 @@ theorem raw_first_proposals (hI : InclusionRun tr H U proposer g t₀) {B : Blk 
       exact Or.inr (Or.inr ⟨k', hk', hacc', by linarith only [hΔ, hg, hjt, hk't]⟩)
   have hW : ∀ {X i₀ ℓX}, X ∈ H → UpdateAt tr X i₀ j ℓX → ∀ v ∈ (tr.state x i).pool j,
       v ∈ (tr.state X i₀).pool j ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool j} :=
-    fun hX hupd => writer_pool_proposal hr hX hupd hx ht (hI.syncAC (by
+    fun hX hupd => writer_pool_proposal hr (fun _ => SA.voteStart_initial _) hX hupd hx ht
+      (hI.syncAC (by
         linarith only [hΔ, hg, hjt]) _)
       (fun k _ hrk => (hrs hX k hrk).le) (fun k _ hrk => hrs hx k hrk)
   rcases cleanOrigin_iff.1 hB with ⟨X, hX, i₀, CV, -, hfl, -⟩ | ⟨X, hX, i₀, -, hsl, hj⟩
@@ -462,7 +467,8 @@ theorem raw_first_proposals (hI : InclusionRun tr H U proposer g t₀) {B : Blk 
       fun k CV' O hopt => fastLock_fastLock_compatible hI.toHealthyBase hx (Or.inr hopt) hX hfl
         (by linarith only [hΔ, hg, hjt])
     have hPCV : ∀ v ∈ CV, HeldAtProposal (tr.state x i) ℓ.frame j v := fun v hv => by
-      obtain ⟨h₁, h₂, h₃⟩ := Healing.fastLock_writer hr hX hfl v hv
+      obtain ⟨h₁, h₂, h₃⟩ :=
+        Healing.fastLock_writer hr (fun _ => SA.voteStart_initial _) hX hfl v hv
       exact hP hX Relation.ReflTransGen.refl v h₁ h₂ h₃
     rcases hfl with hfu | hopt
     · exact update_first_proposal hrun hX hfu hx hc hslot hprop hV hPCV
@@ -481,7 +487,8 @@ theorem raw_first_proposals (hI : InclusionRun tr H U proposer g t₀) {B : Blk 
       rcases le_or_gt l.slot j with hle | hlt
       · exact slow_stored_locks hI.toHealthyBase hX hsl hwin hx (by rw [hslot]) l hl hlive hle
           Y hY hYr
-      · obtain ⟨O, hYO, k, CV', hopt⟩ := proposal_high_lock hr hx ht hl hlt.le hY hYr
+      · obtain ⟨O, hYO, k, CV', hopt⟩ := proposal_high_lock hr
+          (fun _ => SA.voteStart_initial _) hx ht hl hlt.le hY hYr
         rcases optimisticLock_compatible hrun hI.two_faulty_lt hx hopt (fun w hw j' e hv hs =>
             hlater w hw j' e hv (by omega)) hI.stock with h | h
         · exact Or.inl (hYO.trans h)
@@ -610,7 +617,8 @@ theorem result_prefix_vote_extends_of_stored (hrun : ACRun proposer tr H U)
     (hstock : sp.committeeSize = sp.n) :
     VoteExtends U e.msg B :=
   result_transfer_anc sp hrun hx hres hBC hy hc hs hcarry hviab
-    (live_locks_of_stored_before hrun hf hy hc hs hstored hE hstock) hmerged
+    (live_locks_of_stored_before hrun _ CommitteeP.full (cs2_full hstock hf) hy hc hs hstored hE)
+    hmerged
 
 /-- Later transfer needs extension only at earlier cuts, for the predecessor and
 current labels. Slot monotonicity places every predecessor vote before this cast. The `Sync`

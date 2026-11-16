@@ -21,7 +21,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The retained-vote induction, given the independent finite held-target domain. -/
 theorem high_origin_votes_of_domain_before_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     (hdomain : ∀ {x y v : Fin sp.n} {r i q m : Nat}
       {B S : SA.Blk sp.n (List (FG.Att sp.n))},
       x ∈ H (tr.time r) → y ∈ H (tr.time i) →

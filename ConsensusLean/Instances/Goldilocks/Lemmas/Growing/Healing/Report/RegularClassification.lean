@@ -41,7 +41,7 @@ theorem vote_head_classification_of_service_at {s₀ floor : Nat} {hi : Time}
         ∃ a ≤ i, ∃ D CV, y ∈ H (tr.time a) ∧
           SA.OptimisticLockAt tr.projAC y a e.msg.slot D CV ∧
           sp.ts e.msg.slot ≤ tr.time a ∧ tr.time a < sp.ts e.msg.slot + 2 * sp.Δ ∧
-          3 * sp.n ≤ 4 * (SA.voters CV).ncard ∧ ell.frame.Anc Hd D)) := by
+          3 * sp.committeeSize ≤ 4 * (SA.voters CV).ncard ∧ ell.frame.Anc Hd D)) := by
   have hd := hrun.time_nonneg i
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch hd hib hstock
   have hr := hrun.upTo hd
@@ -60,7 +60,8 @@ theorem vote_head_classification_of_service_at {s₀ floor : Nat} {hi : Time}
   have hc' : SA.CastAt (tr.upTo (tr.time i)).projAC y i ell e := by
     rw [RunTrace.upTo_projAC]
     exact SA.upTo_castAt.mpr ⟨le_rfl, hc⟩
-  have hS' : SA.HealthyBaseUpTo (tr.upTo (tr.time i)).projAC (H (tr.time i))
+  have hS' : SA.HealthyBaseUpTo (SA.CommitteeDict.full sp.n) (tr.upTo (tr.time i)).projAC
+      (H (tr.time i))
       ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) proposer g (tr.time i) := by
     rwa [RunTrace.upTo_projAC]
   have hmargin : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by

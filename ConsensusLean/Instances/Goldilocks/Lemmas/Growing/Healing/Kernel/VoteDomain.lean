@@ -25,7 +25,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The finite domain reduction once the vote-row labels are strictly earlier. -/
 theorem held_target_vote_domain_of_row_bound_before_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y v : Fin sp.n} {r i q m : Nat} {B S : SA.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     (hBx : B ∈ (tr.state x r).fg.tree) (hrb : tr.time r ≤ b)
@@ -100,7 +101,8 @@ theorem held_target_vote_domain_of_row_bound_before_at
 
 /-- Finite domain reduction with exactly the frozen earlier-comparison inputs. -/
 theorem held_target_vote_domain_before_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y v : Fin sp.n} {r i q m : Nat} {B S : SA.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     (hBx : B ∈ (tr.state x r).fg.tree) (hrb : tr.time r ≤ b)

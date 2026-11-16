@@ -38,11 +38,12 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
 /-- The static AC run of the prefix through `d` of the nodes honest at `d`. -/
-private theorem acRun_prefix (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {d : Time}
+private theorem acRun_prefix {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {d : Time}
     (hd : 0 ≤ d) :
-    SA.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) := by
-  have h := Compose.goldilocks_ac_projection sp ro dg (H d) (tr.upTo d) proposer
-    (hp.run.upTo hd) (hp.noColl.upTo d)
+    SA.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d))
+      (SA.committeeStart sp.genesisRoot (Generic.dictOfTime sp cm)) := by
+  have h := Compose.goldilocks_ac_projection_from (hp.run.upTo hd) (hp.noColl.upTo d)
   rwa [RunTrace.upTo_projAC] at h
 
 /-- A slow write is a slow write of the prefix through its cut. -/
@@ -58,7 +59,8 @@ private theorem slowLockAt_upTo (hm : Monotone tr.time) {x : Fin sp.n} {r s : Na
 
 /-- **A result and a result or optimistic source of one label are compatible**, for writers
 honest at their writes by `b`, past `c_z`. -/
-theorem result_source_compatible_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+theorem result_source_compatible_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {r q s : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time q))
     {C D : SA.Blk sp.n (List (FG.Att sp.n))} {CV DV : Set (Vote sp.n)}
     (hR : SA.ResultAt tr.projAC x r s C CV)
@@ -66,7 +68,7 @@ theorem result_source_compatible_at (hp : ResetPremisesUpTo tr H proposer dg g �
     (hrb : tr.time r ≤ b) (hqb : tr.time q ≤ b) (hts : cutZ sp.toParams g ≤ sp.ts s) :
     Compatible (tr.HonestBlocksAt H) C D := by
   have hm := hp.run.time_mono
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hsvc := hp.sync.ac_service_at hp.run (lo := g) (hi := b) le_rfl
   have hgs : g ≤ sp.ts s := by
     have := Healing.lt_cutZ sp g
@@ -86,11 +88,13 @@ theorem result_source_compatible_at (hp : ResetPremisesUpTo tr H proposer dg g �
   · exact SA.Growing.result_optimistic_compatible_window_before_at hac hsvc hgs hx hy hR hD
       hrb hqb
       (fun c hc hrest => hreset x c (hp.run.antitone (hm hc) hx) ((hm hc).trans hrb) hrest)
-      hp.stock
+      (fun v hv => hp.committeeFacts.hP.1 _ x hx r (fun _ hk => hm hk.le) s v hv)
+      (hp.committeeFacts.hsize s)
 
 /-- **Two result or optimistic sources of one label are compatible**, for writers honest at their
 writes by `b`, past `c_z`. -/
-theorem sources_same_label_compatible_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+theorem sources_same_label_compatible_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {r q s : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time q))
     {C D : SA.Blk sp.n (List (FG.Att sp.n))} {CV DV : Set (Vote sp.n)}
     (hC : SA.ResultAt tr.projAC x r s C CV ∨ SA.OptimisticLockAt tr.projAC x r s C CV)
@@ -101,11 +105,13 @@ theorem sources_same_label_compatible_at (hp : ResetPremisesUpTo tr H proposer d
   · exact hp.result_source_compatible_at hx hy hC hD hrb hqb hts
   rcases hD with hD | hD
   · exact (hp.result_source_compatible_at hy hx hD (Or.inr hC) hqb hrb hts).symm
-  · exact hp.optimistic_sources_compatible_at hx hy hrb hqb hC hD
+  · exact hp.optimistic_sources_compatible_at hx hy hrb hqb (Healing.gbar_le_of_cutZ_le sp hts)
+      hC hD
 
 /-- **A bounded slow write compares with every older live stored lock** of a later voter honest
 at its cut, within the horizon. -/
-theorem slow_stored_locks_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+theorem slow_stored_locks_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {r s i : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     {D : SA.Blk sp.n (List (FG.Att sp.n))} (hsl : SA.SlowLockAt tr.projAC x r s D)
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b) (hib : tr.time i ≤ b)
@@ -122,10 +128,12 @@ theorem slow_stored_locks_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
   have subi := RunTrace.honestBlocks_upTo_subset hm (H := H) hi0
   intro l hl hlive hle Y hY hYr
   rw [← Trace.upTo_state tr.projAC y (d := tr.time i) fun _ hq => hm hq.le] at hl
-  obtain ⟨L, hL, hLr, O, hLO, k, hki, CV, hO⟩ := SA.lock_below_origin hri hy i l hl
+  obtain ⟨L, hL, hLr, O, hLO, k, hki, CV, hO⟩ := SA.lock_below_origin_from hri
+    (acRun_prefix hp hi0).vstart hy i l hl
   obtain rfl : Y = L := hU.1 hY (subi hL) (hYr.trans hLr.symm)
   have hsl' := slowLockAt_upTo hm hsl
-  obtain ⟨q, R, RV, hR, hDR⟩ := SA.slow_window_results hrr hx hsl' l.slot (by omega) hle
+  obtain ⟨q, R, RV, hR, hDR⟩ := SA.slow_window_resultsU (hr := hrr.toU)
+    (acRun_prefix hp hr0).vstart hx hsl' l.slot (by omega) hle
   obtain ⟨hqr, hR⟩ := (SA.upTo_resultAt hm).mp hR
   have hO' : SA.ResultAt tr.projAC y k l.slot O CV ∨ SA.OptimisticLockAt tr.projAC y k l.slot O CV
     := hO.imp (fun h => ((SA.upTo_resultAt hm).mp h).2)
@@ -142,8 +150,9 @@ theorem slow_stored_locks_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
 
 /-- **A clean slow source is extended by every later vote** of a node honest at it, through the
 horizon: the latest-result induction on the source's result. -/
-theorem slow_source_votes_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
+theorem slow_source_votes_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hslow : SA.SlowLockAt tr.projAC x r s B)
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b) :
     ∀ i, tr.time i ≤ b → ∀ y, y ∈ H (tr.time i) → ∀ ell e, SA.CastAt tr.projAC y i ell e →
@@ -157,10 +166,10 @@ theorem slow_source_votes_before_at (hp : ResetPremisesUpTo tr H proposer dg g �
   have hres : SA.ResultAt tr.projAC x r s C
       (SA.fastCounted sp (tr.projAC.state x r) ellX.frame s C) :=
     ⟨ellX, hupd, hconf, rfl⟩
-  apply hp.late_result_prefix_votes_before_at hc hx hres hBC hrb
+  apply hp.late_result_prefix_votes_before_at hx hres hBC hrb
     (hp.clean_window_timing_at hs s (by have := sp.two_le_k; clear * - this; omega))
   · intro y i ell e hy hcast hib hsi hprior
-    exact ProposalImpl.result_prefix_vote_domain_before_at hp hc hx hy hres hBC hs hrb hcast hsi
+    exact ProposalImpl.result_prefix_vote_domain_before_at hp hx hy hres hBC hs hrb hcast hsi
       hib fun z q hz hqi e' hv hse => hprior z q e' hqi
         (Compose.Growing.hVoteAt_iff.mpr ⟨hz, hv⟩) hse
   · intro y i ell e hy hcast hib hfirst

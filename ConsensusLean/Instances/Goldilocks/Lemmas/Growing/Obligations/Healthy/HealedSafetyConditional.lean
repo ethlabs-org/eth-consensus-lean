@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunCommittee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.RepairDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
@@ -99,8 +100,9 @@ theorem read_source_of_recent_result_at
     {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
     {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g ΔF a b t : Time}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : Healing.Growing.CatchRun tr H g (2 * sp.Δ)) {y : Fin sp.n} {i L : Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {y : Fin sp.n} {i L : Nat}
     {R : SA.Blk sp.n (List (FG.Att sp.n))} (htb : t ≤ b)
     (hsource : (Node.frame (tr.state y i)).Anc R
         (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
@@ -127,7 +129,7 @@ theorem read_source_of_recent_result_at
   rcases hsource with h | ⟨hv, x, r, s, C, CV, hx, hres, hRC, hrb, hts, hsL, hd, hl⟩
   · exact Or.inl h
   · exact Or.inr ⟨hv,
-      hp.latest_votes_of_recent_result_at hc hx hres hRC hrb hts hd hl htb hsL⟩
+      hp.latest_votes_of_recent_result_at hx hres hRC hrb hts hd hl htb hsL⟩
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type)
   [Fintype V] [DecidableEq V]
@@ -171,7 +173,8 @@ theorem healthy_repair_schedule_of_reset_at
     (hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
       (runProposer { S with vote := stock } Q.run.2 Q.hn)
       (digestOf { S with vote := stock } Q.run.2)
-      Q.gst ΔF a Q.bound)
+      Q.gst ΔF a Q.bound
+        (runCommittee { S with vote := stock } Q.run.2 Q.hn) (K S A).params.βK)
     (hreserve : max Q.ready (Healing.drainTime Q.params a) +
       (4 * (Q.index : Time) + 6) * Q.params.Δ < Q.heal - 1) :
     ∃ D : HealthyRepairScheduleAt S A V Q,
@@ -226,8 +229,7 @@ theorem healthy_repair_schedule_at (Q : HealthyPreparationQueryAt S A V)
 faults. No current-read geometry or prior repair invariant is used. -/
 theorem healthy_receiver_repair_of_opening_at (Q : HealthyPreparationQueryAt S A V)
     (hb : Q.heal ≤ Q.bound) (D : HealthyRepairScheduleAt S A V Q)
-    (O : HealthyRepairOpeningAt S A V Q D)
-    (hc : Healing.Growing.CatchRun Q.trace Q.keys Q.gst (2 * Q.params.Δ)) :
+    (O : HealthyRepairOpeningAt S A V Q D) :
     HealthyReceiverRepairAt S A V Q D O := by
   rw [healthyReceiverRepairAt_iff]
   obtain ⟨hTb, hR, hgu, hjoin⟩ :=
@@ -239,7 +241,7 @@ theorem healthy_receiver_repair_of_opening_at (Q : HealthyPreparationQueryAt S A
   intro R hlookup
   have hyj : y ∈ Q.keys (Q.trace.time j) := ht ▸ hy.1
   obtain ⟨x, q, s, CV, hx, hqj, hqt, hs, hsource⟩ :=
-    Healing.Growing.operational_update_recent_source_at D.reset hc O.held rfl O.proposes
+    Healing.Growing.operational_update_recent_source_at D.reset O.held rfl O.proposes
       O.label hR hgu hTb hyj hu hlookup
   exact ⟨x, q, s, R, CV, hx, hqj, hqt, O.old_lt.le.trans hs, hsource, .refl⟩
 

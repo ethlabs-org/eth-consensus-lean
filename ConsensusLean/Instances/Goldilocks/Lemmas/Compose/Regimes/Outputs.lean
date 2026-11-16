@@ -57,9 +57,10 @@ theorem outputs_nested : OutputsNested := by
   obtain ⟨hC, hCH⟩ := sa_tips (A := (tr.state y i).ac) hΦ (tr.time i)
   exact ⟨Anc.mono hsub (hΦ.rooted.2 _ hC), Anc.mono hsub hCH⟩
 
-/-- **R.8, `finalMonotone`.** -/
-theorem finalized_monotone : FinalizedMonotone := by
-  intro sp ro dg H tr proposer hrun y hy i j hij
+/-- `finalized_monotone` from any start: the proof reads only the cut law and FG reachability. -/
+theorem finalized_monotone_from {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H) {i j : Nat}
+    (hij : i ≤ j) : (tr.state y j).fg.Anc (tr.finalizedAt y i) (tr.finalizedAt y j) := by
   induction j, hij using Nat.le_induction with
   | base => exact .refl
   | succ j _ ih =>
@@ -73,6 +74,10 @@ theorem finalized_monotone : FinalizedMonotone := by
     · change (tr.state y (j + 1)).fg.Anc (tr.state y i).fg.F (tr.state y (j + 1)).fg.F
       rw [tr.state_succ_of_not fun c h => hc ⟨c, h⟩]
       exact ih
+
+/-- **R.8, `finalMonotone`.** -/
+theorem finalized_monotone : FinalizedMonotone :=
+  fun _ _ _ _ _ _ hrun _ hy _ _ hij => finalized_monotone_from hrun hy hij
 
 /-- Every block of an honest node's tree is a valid output. -/
 theorem validOutput_of_mem (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}

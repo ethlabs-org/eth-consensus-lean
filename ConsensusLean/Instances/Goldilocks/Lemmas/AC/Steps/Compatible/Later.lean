@@ -20,7 +20,7 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-- **A fast lock supported by votes that extend `B` is compatible with `B`.** -/
 theorem fastLock_compatible_of_votes
-    (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
+    {ini} (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
     {x : Fin sp.n} (hx : x ∈ H)
     {j i s' : Nat} (hji : j < i) {B B' : Blk sp.n FGP} {CV' : Set (Vote sp.n)}
     (hfl : FastLockAt tr x j s' B' CV') (hf : 2 * (K.committee s' ∩ Hᶜ).ncard < sp.committeeSize)
@@ -43,7 +43,7 @@ theorem fastLock_compatible_of_votes
       exact hu ⟨hP.1 x hx j s' v hvp, h⟩
     obtain ⟨j', hj', e, hve, rfl⟩ := hrun.honest.pool_vote x hx j s' _ hvp huH
     obtain ⟨Hd, hHd, hHdr, hBHd⟩ := hvotes _ huH j' (hj'.trans hji) e hve
-      (state_pool_slot sp hr hx j s' _ hvp)
+      (state_pool_slot_from sp hr hrun.vstart hx j s' _ hvp)
     obtain rfl : R = Hd := hU.1 (hΦU hR) hHd (hRr.trans hHdr.symm)
     exact anc_total hU (Anc.mono hΦU hB'R) hBHd
   · -- an optimistic confirmation: three quarters of the committee, one of them honest

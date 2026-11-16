@@ -15,9 +15,10 @@ namespace Consensus.Goldilocks.SA.Growing
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
   {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → SAState sp.n}
 
 private theorem cast_time_le {K : Set (Fin sp.n)}
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) K U tr) {y : Fin sp.n}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) K U tr ini) {y : Fin sp.n}
     (hy : y ∈ K) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) : tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ := by
   have hv : ∀ (A : SAState sp.n) (t : Time), (tryVote sp y A ℓ.frame t).2 ≠ [] →
@@ -57,7 +58,7 @@ private theorem cast_time_le {K : Set (Fin sp.n)}
     exact absurd ((restart_state sp) FGP ro y A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1 hne
 
 private theorem update_restarts {K : Set (Fin sp.n)} {c : Nat}
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) K U tr)
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) K U tr ini)
     {Y : Fin sp.n} (hY : Y ∈ K) {s : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hu : UpdateAt tr Y c s ℓ) :
     ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s := by
@@ -75,10 +76,10 @@ private theorem update_restarts {K : Set (Fin sp.n)} {c : Nat}
       (by rw [ht]; simp only [SAParams.ts]; push_cast; linarith)
       (by rw [ht]; simp only [SAParams.ts]; push_cast; linarith)
   intro k hk hrk
-  have h := (SA.joined_awake sp FGP ro _ U tr hr Y hY c ℓ hc hpost).2 k hk hrk
+  have h := (SA.joined_awakeU sp FGP ro _ U tr hr.toU Y hY c ℓ hc hpost).2 k hk hrk
   rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at h
 
-theorem writer_pool (hrun : ACRun proposer tr H U) {X : Fin sp.n} {i₀ s : Nat}
+theorem writer_pool (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} {i₀ s : Nat}
     (hX : X ∈ H (tr.time i₀)) {ℓX : ACLabel (goldilocksSA sp FGP ro)}
     (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -106,7 +107,7 @@ theorem writer_pool (hrun : ACRun proposer tr H U) {X : Fin sp.n} {i₀ s : Nat}
       rw [restartTime_of_castAt hry.localRun hy hc']
       exact hyj
     intro j hj hjr
-    have h := (SA.joined_awake sp FGP ro _ U _ hry.localRun y hy i ℓ hc'.1 hj').2 j hj
+    have h := (SA.joined_awakeU sp FGP ro _ U _ hry.localRun.toU y hy i ℓ hc'.1 hj').2 j hj
       ((ACTrace.upTo_restartAt (A := goldilocksSA sp FGP ro)).mpr ⟨hm hj, hjr⟩)
     rwa [Trace.upTo_time, hsi, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at h
   have hrsX : ∀ j ≤ i₀, tr.RestartAt X j → tr.time j ≤ sp.ts s := by
@@ -117,8 +118,8 @@ theorem writer_pool (hrun : ACRun proposer tr H U) {X : Fin sp.n} {i₀ s : Nat}
   have hstate : (tr.upTo (tr.time i)).state y (k + 1) = tr.state y (k + 1) :=
     Trace.upTo_state tr y fun j hj => hm ((Nat.le_of_lt_succ hj).trans hk)
   have hv' := hstate.symm ▸ hv
-  have hvs := state_pool_slot sp hry.localRun hy (k + 1) s v hv'
-  rcases pool_origin hry.localRun hy (k + 1) v (hvs ▸ hv') with
+  have hvs := state_pool_slot_from sp hry.localRun hrun.vstart hy (k + 1) s v hv'
+  rcases pool_origin_from hry.localRun hrun.vstart hy (k + 1) v (hvs ▸ hv') with
     ⟨j, hj, hsend, _, hsl⟩ | ⟨j, hj, ℓj, hcj, hrj, _, B, hB, hvB⟩
   · obtain ⟨hjt, hsend⟩ := (ACTrace.upTo_sendOrAdmit hm).mp hsend
     have hsk : sp.ts s ≤ tr.time j :=
@@ -205,7 +206,7 @@ private theorem blockReceipt_held (A : SAState sp.n) {t : Time} {B : Blk sp.n FG
       · exact Or.inr ⟨a, hs ha, b, hs hb, hab, hav, hbv⟩
     · exact ih _ hv
 
-theorem writer_merged (hrun : ACRun proposer tr H U) {X : Fin sp.n} {i₀ s : Nat}
+theorem writer_merged (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} {i₀ s : Nat}
     (hX : X ∈ H (tr.time i₀)) {ℓX : ACLabel (goldilocksSA sp FGP ro)}
     (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}

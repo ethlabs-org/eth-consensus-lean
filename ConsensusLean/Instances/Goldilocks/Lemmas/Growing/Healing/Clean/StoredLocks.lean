@@ -19,8 +19,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
 /-- Protected stored locks compare when the reader is honest after all their completed cuts. -/
-theorem clean_stored_locks_compatible_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ))
+theorem clean_stored_locks_compatible_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t)
     (hy : y ∈ H t) (htb : t ≤ b)
     {l m : SA.Lock} (hl : l ∈ (tr.projAC.state y i).locks)
@@ -33,8 +33,7 @@ theorem clean_stored_locks_compatible_at (hp : ResetPremisesUpTo tr H proposer d
     Compatible (tr.HonestBlocksAt H) B C := by
   have htmono := hp.run.time_mono
   have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
-  have hac := Compose.goldilocks_ac_projection sp ro dg (H t) (tr.upTo t) proposer
-    (hp.run.upTo ht) (hp.noColl.upTo t)
+  have hac := Compose.goldilocks_ac_projection_from (hp.run.upTo ht) (hp.noColl.upTo t)
   rw [RunTrace.upTo_projAC] at hac
   have sub := RunTrace.honestBlocks_upTo_subset htmono (H := H) ht
   have state := Trace.upTo_state tr.projAC y hle
@@ -45,7 +44,7 @@ theorem clean_stored_locks_compatible_at (hp : ResetPremisesUpTo tr H proposer d
             SA.OptimisticLockAt tr.projAC y r m.slot E CV := by
     intro m hm
     obtain ⟨M, hM, hMr, E, hME, r, hri, CV, hE⟩ :=
-      SA.lock_below_origin hac.localRun hy i m (state ▸ hm)
+      SA.lock_below_origin_from hac.localRun hac.vstart hy i m (state ▸ hm)
     exact ⟨M, sub hM, hMr, E, hME.mono sub, r, hri, CV,
       hE.imp (fun h => ((SA.upTo_resultAt htmono).mp h).2)
         (fun h => ((SA.upTo_optimisticLockAt htmono).mp h).2)⟩
@@ -62,7 +61,7 @@ theorem clean_stored_locks_compatible_at (hp : ResetPremisesUpTo tr H proposer d
         ∃ L ∈ tr.HonestBlocksAt H, L.root = l.block ∧ Anc (tr.HonestBlocksAt H) L D := by
       cases hf : l.fast
       · obtain ⟨q, hqi, D, ⟨ell, R, hu, hconf, hdeep⟩, L, hL, hLr, hLD⟩ :=
-          SA.slow_lock_provenance hac.localRun hy i l (state ▸ hl) hf
+          SA.slow_lock_provenance_from hac.localRun hac.vstart hy i l (state ▸ hl) hf
         obtain ⟨hqt, hu⟩ := (SA.upTo_updateAt htmono).mp hu
         have hstate := Trace.upTo_state tr.projAC y (d := t) (i := q)
           fun _ hk => (htmono hk.le).trans hqt
@@ -72,7 +71,7 @@ theorem clean_stored_locks_compatible_at (hp : ResetPremisesUpTo tr H proposer d
           · simpa only [hstate, Trace.upTo_time] using hdeep
         exact ⟨q, hqi, D, Or.inr hslow, L, sub hL, hLr, hLD.mono sub⟩
       · obtain ⟨q, hqi, D, CV, hD, L, hL, hLr, hLD⟩ :=
-          SA.fast_lock_provenance hac.localRun hy i l (state ▸ hl) hf
+          SA.fast_lock_provenance_from hac.localRun hac.vstart hy i l (state ▸ hl) hf
         exact ⟨q, hqi, D, Or.inl ⟨CV, ((SA.upTo_fastLockAt htmono).mp hD).2⟩,
           L, sub hL, hLr, hLD.mono sub⟩
     obtain rfl : B = L := hU.1 hB hL (hBr.trans hLr.symm)
@@ -88,9 +87,9 @@ theorem clean_stored_locks_compatible_at (hp : ResetPremisesUpTo tr H proposer d
           SA.VoteExtends (tr.HonestBlocksAt H) e.msg E := by
       rcases hE with hE | hE
       · obtain ⟨z, hz, j, hjr, e, he, _, hes, hEH⟩ :=
-          ProposalImpl.result_supporter_at hp hc hyr hE .refl hrb hts
+          ProposalImpl.result_supporter_at hp hyr hE .refl hrb hts
         exact ⟨z, j, hz, hjr.le, e, he, hes, hEH⟩
-      · exact (hp.optimistic_supporter_at hyr hrb hE).2
+      · exact (hp.optimistic_supporter_at hyr hrb (Healing.gbar_le_of_cutZ_le sp hts) hE).2
     obtain ⟨z, j, hz, hjr, e, ⟨ell, he⟩, hes, Hd, hHd, heHd, hEHd⟩ := supporter
     have hzj := hp.run.antitone (htmono hjr) hz
     have hyq := hp.run.antitone (hle q hqi) hy
@@ -98,8 +97,8 @@ theorem clean_stored_locks_compatible_at (hp : ResetPremisesUpTo tr H proposer d
     have hjb := (htmono hjr).trans hrb
     have hv : SA.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
       rcases hD with ⟨CV, hD⟩ | hD
-      · exact hp.fast_source_votes_before_at hc hyq hD hls hqb j hjb z hzj ell e he (by omega)
-      · exact hp.slow_source_votes_before_at hc hyq hD hls hqb j hjb z hzj ell e he (by omega)
+      · exact hp.fast_source_votes_before_at hyq hD hls hqb j hjb z hzj ell e he (by omega)
+      · exact hp.slow_source_votes_before_at hyq hD hls hqb j hjb z hzj ell e he (by omega)
     obtain ⟨Hd', hHd', heHd', hDHd⟩ := hv
     obtain rfl : Hd' = Hd := hU.1 hHd' hHd (heHd'.trans heHd.symm)
     exact SA.anc_total hU (hLD.trans hDHd) (hME.trans hEHd)

@@ -140,7 +140,7 @@ theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hPhi := (SA.frameIn_of_callAt hr hz hc).1
   obtain ⟨l, hl, B, hB, hBr, hlive, hstart⟩ :=
-    unlocked_live_preimage hPhi (SA.locksWF_state hr hz i) hlock
+    unlocked_live_preimage hPhi (SA.locksWF_state hr (fun _ => SA.voteStart_initial _) hz i) hlock
   have hslot : sp.slot (tr.time i) = p := by
     rw [hti]
     exact SA.slot_of_mem sp p le_rfl (by
@@ -234,7 +234,7 @@ theorem live_lock_selection_origin (hrun : GoldilocksRun proposer dg H tr)
     rw [he]
     exact (SA.viableAncestor_anc hPhi.1 hE).2
   obtain ⟨a, hai, ellw, D, ha, hD, ho, M, hM, hMr, hMA⟩ :=
-    SA.lock_selection_candidate_provenance hr hx i l₀ hl₀
+    SA.lock_selection_candidate_provenance hr (fun _ => SA.voteStart_initial _) hx i l₀ hl₀
   have he : M = E := hr.coherent.1 hM (hPhi.2 hE) (hMr.trans hEr.symm)
   rw [← hs] at ho
   refine ⟨a, hai, ellw, D, ha, hD, (Anc.mono hPhi.2 hBE).trans (he ▸ hMA), ?_⟩
@@ -324,7 +324,7 @@ theorem fast_selection_slot_le (hrun : GoldilocksRun proposer dg H tr)
     change 0 < sp.n at hn
     omega
   obtain ⟨y, hy, i, e, hv, hs, W, hW, hWr, hDW⟩ :=
-    SA.fastLock_honest_vote hac hf' hx ho hstock
+    SA.fastLock_honest_vote hac _ SA.CommitteeP.full hx ho (SA.cs2_full hstock hf')
   obtain ⟨W', hW', hW'r, hWs⟩ := SA.honest_head hac hy hv
   obtain rfl : W' = W := hac.localRun.coherent.1 hW' hW (hW'r.trans hWr.symm)
   exact (Anc.slot_le hac.localRun.coherent hDW).1.trans (hWs.trans_eq hs)

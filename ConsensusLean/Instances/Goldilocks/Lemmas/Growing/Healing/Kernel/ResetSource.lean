@@ -4,6 +4,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retentio
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Unlocked
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -36,7 +38,7 @@ reset at or before `c_z` signs from its own entry of height `H_z + 1`, which it 
 snapshot cut, where its height is at most `H_z`. The growing form of `cutZ_lt_reset_of_snapshot`;
 no fault count. -/
 theorem cutZ_lt_reset_of_snapshot_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     (hsnapshot : ∃ j, FirstCutAfter tr j (cutZ sp.toParams g))
     (hR : IsReset tr H g a) : cutZ sp.toParams g < a := by
@@ -80,9 +82,25 @@ theorem cutZ_lt_reset_of_snapshot_at
 
 /-- Finite reset premises suffice; the snapshot is observed before their horizon. -/
 theorem ResetPremisesUpTo.cutZ_lt_reset_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) : cutZ sp.toParams g < a :=
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) : cutZ sp.toParams g < a :=
   let ⟨j, hj, _⟩ := hp.snapshot
   cutZ_lt_reset_of_snapshot_at hp.run hp.noColl ⟨j, hj⟩ hp.reset
+
+/-- A slot from the reset's clean label on starts after `ḡ`: the reset is after `c_z`, and the
+clean label's slot after the reset's. -/
+theorem ResetPremisesUpTo.gbar_le_ts_of_clean_at
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {s : Nat}
+    (hs : cleanLabel sp a ≤ s) : SA.gbar g ≤ sp.ts s := by
+  have hca := hp.cutZ_lt_reset_at
+  have hlc := lt_cutZ sp g
+  have hΔ := sp.toParams.hΔ
+  have ha0 : 0 ≤ a := by linarith [gbar_nonneg g]
+  rw [cleanLabel_eq] at hs
+  by_contra h
+  have hsa := (SA.ts_le_iff_le_slot sp ha0 s).mp (le_trans (not_le.mp h).le (by linarith))
+  omega
 
 end Consensus.Goldilocks.Healing.Growing
 

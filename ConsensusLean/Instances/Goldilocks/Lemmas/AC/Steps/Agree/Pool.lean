@@ -570,7 +570,7 @@ theorem held_of_deadline_service
 
 /-- `sync_forward` with the unlock given. -/
 theorem sync_forwardU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {a b : Time}
+    {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {a b : Time}
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U a b tr) {y X : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {v : Vote sp.n} (hsend : tr.SendOrAdmit y k v) (ha : a ≤ tr.time k)
     (hb : tr.time k ≤ b) (hX : X ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}

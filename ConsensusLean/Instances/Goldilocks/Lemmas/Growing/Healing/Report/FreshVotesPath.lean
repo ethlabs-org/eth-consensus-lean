@@ -57,7 +57,7 @@ theorem FrameWindow.proposal_suffix_before_at {g ΔF b : Time} {s₀ s floor : N
         B.parent = some X.root ∧ SA.goldfishEligible sp ell.frame (tr.time i)
           (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s B} C := by
   have hr := hrun.toLocalRun
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
   have hri := (hac.upTo (hr.time_nonneg i)).localRun
@@ -133,7 +133,7 @@ theorem FrameWindow.proposal_stop_before_at {g ΔF b : Time} {s₀ s floor : Nat
         B.parent = some P.root ∧ SA.goldfishEligible sp ell.frame (tr.time i)
           (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s B} C := by
   have hr := hrun.toLocalRun
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hri := hac.upTo (hr.time_nonneg i)
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
@@ -226,7 +226,7 @@ theorem FrameWindow.vote_head_eq_of_path_at {g ΔF b : Time} {s₀ s floor : Nat
       (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s))
     (hstock : sp.committeeSize = sp.n) : e.msg.head = P.root := by
   have hr := hrun.toLocalRun
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hri := (hac.upTo (hr.time_nonneg i)).localRun
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
@@ -284,7 +284,7 @@ theorem FrameWindow.vote_head_eq_of_start_prefix_at {g ΔF b : Time} {s₀ s flo
         (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s))
     (hstock : sp.committeeSize = sp.n) : e.msg.head = P.root := by
   have hr := hrun.toLocalRun
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
   have hPhi := SA.frameIn_of_callAt (hac.upTo (hr.time_nonneg i)).localRun hy hci

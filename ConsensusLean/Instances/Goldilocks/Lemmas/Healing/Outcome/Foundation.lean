@@ -165,12 +165,19 @@ theorem healthy_base_of_service_catch_before {b : Time}
     (hawake : ∀ y ∈ H, ∀ t, SA.gbar g ≤ t → t ≤ b → tr.awake y t)
     (hfaults : 3 * Hᶜ.ncard ≤ sp.n - 1)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hstock : sp.committeeSize = sp.n) :
-    SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b := by
-  refine ⟨Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc,
+    SA.HealthyBaseUpTo (SA.CommitteeDict.full sp.n) tr.projAC H (tr.HonestBlocks H) proposer g
+      b := by
+  have hf2 : 2 * Hᶜ.ncard < sp.n := by
+    have := sp.toParams.hn
+    change 0 < sp.n at this
+    omega
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  refine ⟨by rw [SA.committeeStart_full]; exact hac,
     projection_driven_of_run hrun hnc hrun.genesis_root_ok, ?_,
     ⟨fun x hx i B ha hi y hy j ell hj ht _ hF =>
       projection_catch_of_run hrun hc x hx i B ha hi y hy j ell hj ht hF⟩,
-    hawake, hfaults, hstock⟩
+    hawake, hfaults, SA.size_binding_full hstock, SA.CommitteeP.full, SA.CommitteeT.full,
+    fun _ _ _ => SA.cs2_full hstock hf2⟩
   have h := hrun.toLocalRun
   constructor
   · intro x hx i m hsa hi y hy j ℓ hcj _ hdl
@@ -214,7 +221,7 @@ past the horizon. Synchrony and Catch retain their actual deadline semantics. -/
 theorem healthy_base_of_reset_catch_before {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     (hc : CatchRun tr H g (2 * sp.Δ)) :
-    SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b :=
+    SA.HealthyBaseUpTo (SA.CommitteeDict.full sp.n) tr.projAC H (tr.HonestBlocks H) proposer g b :=
   healthy_base_of_service_catch_before hp.run hp.noColl hp.sync hp.awake hp.faults hc hp.stock
 
 /-- An actual result within the healthy horizon has an actual earlier honest supporter. -/
@@ -247,14 +254,16 @@ theorem ResetPremisesUpTo.result_supporter {b : Time}
     exact ⟨by omega, (restart_le_before hp hy hk (hkt.trans hsb)).trans
       ((SA.ts_le_iff sp).mpr (by
         exact_mod_cast (show sp.slot (SA.gbar g) + 1 ≤ s - 1 by clear * - hs3; omega)))⟩
-  have hf : 3 * Hᶜ.ncard < sp.n := by
+  have hf : 2 * Hᶜ.ncard < sp.n := by
     have := hp.faults
     have := Fin.pos x
     have hn : sp.n = sp.toParams.n := rfl
     omega
   have hparts := Compose.honest_participants_window_before hp.run hp.noColl
-    (SA.serviceWindowBefore_of_sync hS.sync) hgs hx hu hrb hready hf
-  exact SA.result_honest_supporter_of_participants sp hS.run hx ⟨ell, hu, hconf, hCV⟩
+    (K := SA.CommitteeDict.full sp.n) (SA.serviceWindowBefore_of_sync hS.sync) hgs hx hu hrb
+    hready (fun y hy _ => Compose.mayVote_stock hp.run hp.noColl hy s)
+    (fun _ _ => SA.mem_full _ _) ((SA.mul_ncard_inter_full_lt_iff 2 s _).2 hf)
+  exact SA.result_honest_supporter_of_participants sp hS.stockRun hx ⟨ell, hu, hconf, hCV⟩
     hBC hparts.le
 
 /-- Catch uses its actual source boundary `gbar g`, not the later high-origin cut. -/
@@ -403,14 +412,17 @@ private theorem clean_source_vote_domain_step
     have he : sp.ts ((s : Int) - 1) = sp.ts s - 4 * sp.Δ := SA.ts_sub_one sp s
     rw [he]; linarith only [hgs4]
   have hparts := Compose.honest_participants_window_before hp.run hp.noColl
+    (K := SA.CommitteeDict.full sp.n)
     (SA.serviceWindowBefore_of_sync (reset_raw_sync_window_before hp Q)) hgs hx hupd hrQ
     (fun z hz => ⟨hp.healthy.2.1 z hz _ (by
         change SA.gbar g ≤ sp.ts s + sp.Δ; linarith only [hΔ, hgs4]),
       (Compose.joined_projection sp ro dg H tr proposer hp.run z hz _).1.mpr
         (hS.joinedAt hz (by rw [hslot]; exact hprev))⟩)
-    (by have := hp.healthy.2.2; have := Fin.pos x
-        have hn : sp.n = sp.toParams.n := rfl
-        omega)
+    (fun y hy _ => Compose.mayVote_stock hp.run hp.noColl hy s) (fun _ _ => SA.mem_full _ _)
+    ((SA.mul_ncard_inter_full_lt_iff 2 s _).2 (by
+      have := hp.healthy.2.2; have := Fin.pos x
+      have hn : sp.n = sp.toParams.n := rfl
+      omega))
   obtain ⟨z, hz, q, _, e', hv, _, hvs, hVB⟩ :=
     SA.result_honest_supporter_of_participants sp hS.run hx hres hBC hparts.le
   have hjoined : SA.JoinedAt tr.projAC x (tr.time r) := by
@@ -517,7 +529,7 @@ theorem clean_source_votes_before
       rcases horig with ⟨CV, hfast⟩ | hslow
       · exact SA.first_transfer_stored sp hS.run _ SA.CommitteeP.full SA.CommitteeT.full
           (SA.size_binding_full hp.stock) hx hfast .refl hy hcast hfirst
-          (sync s le_rfl) (carry CV (fastLock_writer hr hx hfast))
+          (sync s le_rfl) (carry CV (fastLock_writer hr (fun _ => SA.voteStart_initial _) hx hfast))
           ((SA.faultBoundK_full_iff _ _).2 hfault) (SA.cs2_full_of_faultBound sp hp.stock hfault)
           viab earlier
       · obtain ⟨ellX, C, hupd, hconf, hdeep⟩ := id hslow
@@ -652,7 +664,7 @@ theorem ResetPremisesUpTo.result_prefix_vote_domain_before {b : Time}
     Anc (tr.HonestBlocks H) B ell.frame.fcRoot ∨
       B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   have hS := healthy_base_of_reset_catch_before hp hc
-  have hr := hS.run.localRun
+  have hr := hS.stockRun.localRun
   have hΔ := sp.toParams.hΔ
   obtain ⟨v, d, m, S, hseed, hda, hm⟩ := hp.reset_seed
   have hdb := hda.trans hp.reset_le
@@ -691,7 +703,7 @@ theorem ResetPremisesUpTo.result_prefix_vote_domain_before {b : Time}
         rcases hfl with ⟨ellD, R, huD, hR, hfast, _⟩ | hop
         · have hDR := ((SA.deepest_mem hfast).1.1.2.2).mono
             (SA.frameIn_of_callAt hr ho.1 huD.1).2
-          have hRR := SA.result_result_compatible_window_before hS.run hS.sync hgs
+          have hRR := SA.result_result_compatible_window_before hS.stockRun hS.sync hgs
             hx ho.1 ⟨ellX, hupd, hconf, rfl⟩ ⟨ellD, huD, hR, rfl⟩ hrb hcb
             (fun w hw c' hle hrest => hreset w hw c'
               ((hp.run.time_mono hle).trans (by
@@ -701,7 +713,7 @@ theorem ResetPremisesUpTo.result_prefix_vote_domain_before {b : Time}
           rcases hRR with h | h
           · exact SA.anc_total hr.coherent h hDR
           · exact Or.inr (hDR.trans h)
-        · exact SA.result_optimistic_compatible_window_before hS.run hS.sync hgs
+        · exact SA.result_optimistic_compatible_window_before hS.stockRun hS.sync hgs
             hx ho.1 ⟨ellX, hupd, hconf, rfl⟩ hop hrb hcb
             (fun c' hle hrest => hreset x hx c' ((hp.run.time_mono hle).trans hrb) hrest) hp.stock
       rcases hcomp with h | h
@@ -736,7 +748,7 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
     ∀ i, tr.time i ≤ b → ∀ y ∈ H, ∀ ell e, SA.CastAt tr.projAC y i ell e →
       s < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
   have hS := healthy_base_of_reset_catch_before hp hc
-  have hr := hS.run.localRun
+  have hr := hS.stockRun.localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hgs : SA.gbar g ≤ sp.ts s := by have := lt_cutZ sp g; linarith
   have hf : 2 * Hᶜ.ncard < sp.n := by
@@ -765,13 +777,13 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
         obtain ⟨hvs, hw, D, hD, hDr, hCD, ha⟩ := Compose.result_writer hr
           (fun _ => SA.voteStart_initial _) hx hres v hv
         exact ⟨hvs, hw, D, hD, hDr, hFB.trans (hBC.trans hCD), ha⟩
-      refine SA.result_prefix_vote_extends_of_stored hS.run hf hx hy hres hBC hcast
+      refine SA.result_prefix_vote_extends_of_stored hS.stockRun hf hx hy hres hBC hcast
         hfirst carry ?_ (hstored y hy i ell e hcast hib hfirst)
         (fun z hz q hq e' he hslot => hprior z hz q hq e' he (by clear * - hslot; omega)) ?_
         hp.stock
       · rw [← hfirst]; exact Or.inl hv
       · obtain ⟨ellX, hupd, -⟩ := hres
-        exact SA.writer_merged_window_before hS.run (SA.serviceWindowBefore_of_sync hS.sync)
+        exact SA.writer_merged_window_before hS.stockRun (SA.serviceWindowBefore_of_sync hS.sync)
           hx hgs hupd hrb hy hcast hfirst
     · obtain ⟨m, hm⟩ : ∃ m, e.msg.slot = m + 1 := ⟨e.msg.slot - 1, by omega⟩
       have hsm : s < m := by omega
@@ -818,7 +830,7 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
         ext z
         exact and_congr_right fun hz => and_congr_right fun _ =>
           (Compose.joined_projection sp ro dg H tr proposer hp.run z hz (tr.time i)).1.symm
-      refine SA.next_vote_extends_before hS.run hy hcast hm
+      refine SA.next_vote_extends_before hS.stockRun hy hcast hm
         (fun z hz q hq e' he hslot => hprior z hz q hq e' he (by
             rcases hslot with h | h <;> (clear * - hsm h; omega)))
         (hp.half_committee (hts.trans ((SA.ts_le_iff sp).mpr (by clear * - hsm; omega))) hmt)
@@ -874,7 +886,8 @@ theorem raw_writer_held_at_slot_start
     simp only [SA.SAParams.ts] at ht ⊢
     linarith
   obtain ⟨v, _, D, hD, hDr, hBD, hg | ⟨q, hq, hqt⟩⟩ :=
-    raw_writer_relay_source (by rw [hp.stock]; exact sp.toParams.hn) hr hx hwriter hBC
+    raw_writer_relay_source (by rw [hp.stock]; exact sp.toParams.hn) hr
+      (fun _ => SA.voteStart_initial _) hx hwriter hBC
   all_goals obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   · obtain ⟨G, hG, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hpH _ _ hci
     have hDG : D = G := hr.coherent.1 hD hG (hg.trans hGr.symm)

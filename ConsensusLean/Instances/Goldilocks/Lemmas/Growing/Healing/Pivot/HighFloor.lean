@@ -23,7 +23,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Specialize the retained signed floor source to an actual proposal's causal label bound. -/
 theorem high_floor_source_at_proposal_of_sources_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x p : Fin sp.n} {r l i u : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l B) (hpH : p ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)}
@@ -63,7 +64,8 @@ theorem high_floor_source_at_proposal_of_sources_at
 
 /-- The frozen proposal floor wrapper, with no extra producer premises. -/
 theorem high_floor_source_at_proposal_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x p : Fin sp.n} {r l i u : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l B) (hpH : p ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)}

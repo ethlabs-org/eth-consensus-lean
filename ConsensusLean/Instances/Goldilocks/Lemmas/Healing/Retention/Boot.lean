@@ -46,7 +46,8 @@ theorem ResetPremisesUpTo.cutZ_le_ts_of_highOrigin {b : Time}
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨ℓ, D, CV, hc, hfl, -, -, -, hBD, -⟩ := hp.highOrigin_mem ho
   obtain ⟨v, hv⟩ := fastLock_counted_nonempty (by rw [hp.stock]; exact sp.toParams.hn) hfl
-  obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHv⟩, -, hDHv, hacc⟩ := fastLock_writer hr ho.1 hfl v hv
+  obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHv⟩, -, hDHv, hacc⟩ := fastLock_writer hr
+    (fun _ => SA.voteStart_initial _) ho.1 hfl v hv
   have hBHv : Anc (tr.HonestBlocks H) B Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr ho.1 hc).2 hBD).trans hDHv
   rcases hacc with hg | ⟨k, hk, hkt⟩
@@ -414,7 +415,8 @@ theorem ResetPremisesUpTo.high_origin_held_at_vote {b : Time}
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨ellw, D, CV, hcw, hflw, -, -, -, hBD, -⟩ := hp.highOrigin_mem ho
   obtain ⟨v, hv⟩ := fastLock_counted_nonempty (by rw [hp.stock]; exact sp.toParams.hn) hflw
-  obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr ho.1 hflw v hv
+  obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr
+    (fun _ => SA.voteStart_initial _) ho.1 hflw v hv
   have hBHv : Anc (tr.HonestBlocks H) B Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr ho.1 hcw).2 hBD).trans hDHv
   rcases hacc with hg | ⟨kw, hkw, hkwt⟩
@@ -758,7 +760,8 @@ theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat
   -- a counted head of the origin, relayed to the voter before its freeze
   obtain ⟨ℓw, D, CV, hcw, hflw, -, -, -, hOD, -⟩ := highOrigin_mem hp hoO
   obtain ⟨u, hu⟩ := fastLock_counted_nonempty (by rw [hp.stock]; exact sp.toParams.hn) hflw
-  obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr hoO.1 hflw u hu
+  obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr
+    (fun _ => SA.voteStart_initial _) hoO.1 hflw u hu
   have hOHv : Anc (tr.HonestBlocks H) O Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr hoO.1 hcw).2 hOD).trans hDHv
   rcases hacc with hg | ⟨kw, hkw, hkwt⟩
@@ -797,7 +800,8 @@ theorem ResetPremisesUpTo.raw_target_frozen_witness {b : Time}
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨ellw, D, CV, hcw, hflw, -, -, -, hOD, -⟩ := hp.highOrigin_mem ho
   obtain ⟨u, hu⟩ := fastLock_counted_nonempty (by rw [hp.stock]; exact sp.toParams.hn) hflw
-  obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr ho.1 hflw u hu
+  obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr
+    (fun _ => SA.voteStart_initial _) ho.1 hflw u hu
   have hOHv : Anc (tr.HonestBlocks H) O Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr ho.1 hcw).2 hOD).trans hDHv
   rcases hacc with hg | ⟨kw, hkw, hkwt⟩
@@ -854,7 +858,8 @@ theorem vote_height_lead (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨ℓw, D, CV, hcw, hflw, -, -, -, hBD, hBx⟩ := highOrigin_mem hp ho
   obtain ⟨v, hv⟩ := fastLock_counted_nonempty (by rw [hp.stock]; exact sp.toParams.hn) hflw
-  obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr ho.1 hflw v hv
+  obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr
+    (fun _ => SA.voteStart_initial _) ho.1 hflw v hv
   have hBHv : Anc (tr.HonestBlocks H) B Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr ho.1 hcw).2 hBD).trans hDHv
   rcases hacc with hg | ⟨kw, hkw, hkwt⟩
@@ -918,7 +923,8 @@ theorem high_origin_low_J_root_before
     obtain ⟨CV, hst⟩ := ho.2.2.1
     obtain ⟨_, C, hfl, hBC⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
     obtain ⟨v, _, D, hDU, _, hBD, hacc⟩ := raw_writer_relay_source
-      (by rw [hp.stock]; exact sp.toParams.hn) hr ho.1 (Or.inr hfl) hBC
+      (by rw [hp.stock]; exact sp.toParams.hn) hr (fun _ => SA.voteStart_initial _)
+      ho.1 (Or.inr hfl) hBC
     rcases hacc with hg | ⟨q, hq, hqt⟩
     · obtain ⟨z, hz, m, hDm⟩ := hDU
       exact False.elim ((cutZ_lt_of_anc hp ho hz hDm hBD).2 hg)
@@ -1151,7 +1157,7 @@ theorem ResetPremisesUpTo.first_carry_of_finalized_anc {b : Time}
   obtain rfl : ℓw = ℓ' := Option.some.inj (hcw.2.symm.trans hc'.2)
   have hBD : Anc (tr.HonestBlocks H) (ℓw.frame.viableAncestor D) D :=
     Anc.mono (SA.frameIn_of_callAt hr ho.1 hcw).2 (SA.anc_viableAncestor _ D)
-  have hW := fastLock_writer hr ho.1 hflD
+  have hW := fastLock_writer hr (fun _ => SA.voteStart_initial _) ho.1 hflD
   have hgj : g ≤ sp.ts j := by
     have := hp.cutZ_le_ts_of_highOrigin ho
     have := lt_cutZ sp g

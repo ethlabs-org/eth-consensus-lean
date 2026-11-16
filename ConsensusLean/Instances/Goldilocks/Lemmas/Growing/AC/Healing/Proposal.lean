@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 
 public section
 
@@ -14,9 +15,11 @@ variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
   {U : Set (Blk sp.n FGP)} {T : SATrace sp FGP ro}
 
 theorem optimistic_first_proposal_anc_at
-    (hrun : Growing.ACRun proposer T H U) {i : Nat}
-    (hf : 2 * (H (T.time i))ᶜ.ncard < sp.n)
-    {X : Fin sp.n} {i₀ σ : Nat} (hX : X ∈ H (T.time i₀))
+    {ini} (hrun : Growing.ACRun proposer T H U ini) {K : CommitteeDict sp.n}
+    (hPK : CommitteePAt K T H) {i : Nat} {σ : Nat}
+    (hsize : (K.committee σ).ncard = sp.committeeSize)
+    (hf : 2 * (K.committee σ ∩ (H (T.time i))ᶜ).ncard < sp.committeeSize)
+    {X : Fin sp.n} {i₀ : Nat} (hX : X ∈ H (T.time i₀))
     {D B : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt T X i₀ σ D CV) (hBD : Anc U B D)
     {x : Fin sp.n} (hx : x ∈ H (T.time i))
@@ -27,8 +30,7 @@ theorem optimistic_first_proposal_anc_at
     (hV : B ∈ ell.frame.tree ∧
       (B ∈ ell.frame.viableTree ell.frame.tree ∨ ell.frame.Anc B ell.frame.fcRoot))
     (hP : ∀ v ∈ CV, HeldAtProposal (T.state x i) ell.frame σ v)
-    (hhigh : HighLocksCompatible U (T.state x i) (T.time i) σ B)
-    (hstock : sp.committeeSize = sp.n) :
+    (hhigh : HighLocksCompatible U (T.state x i) (T.time i) σ B) :
     Anc U B d.head := by
   have hm := hrun.localRun.time_mono
   have hU := hrun.localRun.coherent
@@ -47,13 +49,12 @@ theorem optimistic_first_proposal_anc_at
   dsimp only at hsel'
   split_ifs at hsel'
   obtain ⟨-, h34, -⟩ := (deepest_mem hsel').1
-  rw [hstock] at h34
   rw [hslX] at h34
   set V := View.ofLists (voteViewList ((T.upTo (T.time i)).state x i) ell.frame σ ⊤)
   set SX := optimisticVoters sp A ellX.frame σ D
   have hcover : SX ⊆ supporters ell.frame V σ B ∪ equivocators V.votes := by
     rintro w ⟨v, hv, rfl, R', hR', hR'r, hDR'⟩
-    have hvs := optimisticPoint_pool_slot hrX.localRun hX hpt' hv
+    have hvs := optimisticPoint_pool_slot_from hrX.localRun hrX.vstart hX hpt' hv
     by_cases heq : v.val ∈ equivocators V.votes
     · exact Or.inr heq
     left
@@ -62,25 +63,30 @@ theorem optimistic_first_proposal_anc_at
     obtain rfl : R = R' := hU.1 (hΦU hR) (hΦXU hR') (hRr.trans hR'r.symm)
     have hheld : v ∈ (T.state x i).pool σ := hheld.resolve_right fun h =>
       heq (equivocators_mono (S := {u | u ∈ (T.state x i).pool σ})
-        (fun u hu => (mem_proposalView_votes hr hx i σ ell.frame u).2
+        (fun u hu => (mem_proposalView_votesU (hr := hr.toU) hrx.vstart hx i σ ell.frame u).2
           (hs.symm ▸ hu)) h)
     have hRs : R.slot ≤ σ := by
       have := frame_slot_le sp hrX.localRun hX hpt'.1 R hR'
       change R.slot ≤ sp.slot (T.time i₀) at this
       rw [hslX] at this
       omega
-    exact proposal_supporter hr hx hc' hvs (hs.symm ▸ hheld) hR hRr hRs
+    exact proposal_supporterU (hr := hr.toU) hrx.vstart hx hc' hvs (hs.symm ▸ hheld) hR hRr hRs
       (anc_tree_of_anc_U hU hΦ hΦU hV.1
         (hBD.trans (Anc.mono hΦXU hDR')) hR) (hs.symm ▸ hbs) heq
-  have hE : (equivocators V.votes).ncard ≤ (H (T.time i))ᶜ.ncard :=
-    Set.ncard_le_ncard fun w hw hwH =>
-      honest_not_equivocator_proposal hrx hx i σ ell.frame hwH (by simpa only [V, hs] using hw)
-  have hO : (voters V.votes \ SX).ncard + SX.ncard ≤ sp.n := by
-    have := Set.ncard_le_ncard (Set.subset_univ ((voters V.votes \ SX) ∪ SX))
-    rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin,
-      Set.ncard_union_eq Set.disjoint_sdiff_left] at this
-    exact this
-  have h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard := by omega
+  -- the pool votes of both the writer's optimistic point and the proposer are of members
+  have hWK : voters V.votes ⊆ K.committee σ := by
+    rintro w ⟨v, hv, rfl⟩
+    have hv' := (mem_proposalView_votesU (hr := hr.toU) hrx.vstart hx i σ ell.frame v).1 hv
+    rw [hs] at hv'
+    exact hPK.1 _ x hx i (fun _ hk => hm hk.le) σ v hv'
+  have hSXK : SX ⊆ K.committee σ := by
+    rintro w ⟨v, hv, rfl, -⟩
+    exact hPK.2 X i₀ ellX A hX hpt σ v hv
+  have hEK : equivocators V.votes ⊆ K.committee σ ∩ (H (T.time i))ᶜ := fun w hw =>
+    ⟨hWK (by obtain ⟨v, hv, -, -, -, hvw, -⟩ := hw; exact ⟨v, hv, hvw⟩), fun hwH =>
+      honest_not_equivocator_proposal hrx hx i σ ell.frame hwH (by simpa only [V, hs] using hw)⟩
+  have h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard :=
+    cover_count (K.committee σ) hsize hSXK hWK hEK h34 (by rw [hsize]; exact hf)
   have hprop' := hprop
   rw [← hs] at hprop'
   have hhigh' := hhigh
@@ -89,7 +95,7 @@ theorem optimistic_first_proposal_anc_at
     (unlocked_compatible hU hΦ hΦU hV.1 (Or.inl ⟨SX, fun w hw => ?_, by omega⟩)
       (fun l hl hlive hlσ Y hY hYr =>
         highLocksCompatible_iff.mp hhigh' l hl hlive (by exact_mod_cast hlσ) Y hY hYr)
-      (locksWF_state hr hx i))
+      (locksWF_stateU (hr := hr.toU) hrx.vstart hx i))
     fun Y Cx hCx hp hCxB => isBest_of_cover hΦ (ofLists_support_subset _ _ _ _)
       (fun _ h => h.1) hcover (cover_sdiff_lt h3) hCx hp hCxB
   rcases hcover hw with ⟨-, v, hv, hvw, hvs, hva⟩ | h

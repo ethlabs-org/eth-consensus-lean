@@ -167,15 +167,16 @@ theorem honest_voter_at_update (hI : InclusionRun tr H U proposer g t₀) {X : F
   · exact hvot _ h hval
   · exact hvot a ha hav
 
-/-- Every honest validator participates in an actual update inside the finite
-service horizon. Only the slot and its successor's voting deadlines are used. -/
-theorem honest_voter_at_update_before {b : Time}
-    (hS : HealthyBaseUpTo tr H U proposer g b)
+/-- Every honest member of the update's slot committee and its successor's participates in an
+actual update inside the finite service horizon. Only the slot and its successor's voting
+deadlines are used. -/
+theorem honest_voter_at_update_before {K : SA.CommitteeDict sp.n} {b : Time}
+    (hS : HealthyBaseUpTo K tr H U proposer g b)
     (hnr : ∀ y ∈ H, ∀ r, tr.RestartAt y r → tr.time r ≤ gbar g)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ l : Nat}
     {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ l ℓX)
     (hl : gbar g + 4 * sp.Δ ≤ sp.ts l) (hib : tr.time i₀ ≤ b)
-    {z : Fin sp.n} (hz : z ∈ H) :
+    {z : Fin sp.n} (hz : z ∈ H) (hzK : z ∈ K.committee l) (hzK' : z ∈ K.committee (l + 1)) :
     z ∈ voters {v | v ∈ (tr.state X i₀).pool l} := by
   have hrun := hS.run
   have hr := hrun.localRun
@@ -190,11 +191,11 @@ theorem honest_voter_at_update_before {b : Time}
     linarith
   obtain ⟨k, e, ⟨ℓ, hc, he⟩, hes, htk⟩ := honest_votes_in_slot_before hS hl
     (by linarith [hupd.2.2.1]) (fun y hy r _ hrs =>
-      (hnr y hy r hrs).trans (hbefore l le_rfl)) z hz
+      (hnr y hy r hrs).trans (hbefore l le_rfl)) z hz hzK
   obtain ⟨i, e', ⟨ℓ', hc', he'⟩, hes', -⟩ := honest_votes_in_slot_before hS
     (show gbar g + 4 * sp.Δ ≤ sp.ts (l + 1 : Nat) by linarith)
     (by linarith [hupd.2.2.1]) (fun y hy r _ hrs =>
-      (hnr y hy r hrs).trans (hbefore (l + 1) (by omega))) z hz
+      (hnr y hy r hrs).trans (hbefore (l + 1) (by omega))) z hz hzK'
   obtain ⟨hval, hsl, -, -⟩ := castAt_spec hr hz ⟨hc, he⟩
   obtain ⟨-, hsl', -, -⟩ := castAt_spec hr hz ⟨hc', he'⟩
   have hti : sp.ts (l + 1 : Nat) ≤ tr.time i :=

@@ -83,7 +83,7 @@ theorem high_report_origin (hp : ResetPremises tr H proposer dg g ΔF a)
   obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := SA.toFG_candidate hC'
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
   obtain ⟨io, hio, CV, ℓw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
-    stored_fast_lock_provenance hr hz r l₀ hl₀ hlf
+    stored_fast_lock_provenance hr (fun _ => SA.voteStart_initial _) hz r l₀ hl₀ hlf
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hz hpc
   obtain ⟨hΦw, -⟩ := SA.frameIn_of_callAt hr hz hcw
   have hCt : C ∈ ℓ.frame.tree := hCv.1
@@ -120,7 +120,7 @@ theorem ResetPremisesUpTo.high_report_origin {b : Time}
   obtain ⟨hCv, l, hl, hlb, hlf, _⟩ := SA.toFG_candidate hC'
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, _, rfl⟩ := hl
   obtain ⟨io, hio, CV, ellw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
-    stored_fast_lock_provenance hr hz r l₀ hl₀ hlf
+    stored_fast_lock_provenance hr (fun _ => SA.voteStart_initial _) hz r l₀ hl₀ hlf
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hz hpc
   obtain ⟨hPhiw, hPhiwU⟩ := SA.frameIn_of_callAt hr hz hcw
   obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hPhi hB₀

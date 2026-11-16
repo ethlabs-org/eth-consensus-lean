@@ -19,7 +19,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A held origin is viable or below the actual root at its independently honest reader. -/
 theorem held_high_origin_viable_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {c : Nat} (hpH : p ∈ H (tr.time c))
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p c ell)
     (hcb : tr.time c ≤ b) {x : Fin sp.n} {i j : Nat}
@@ -30,7 +31,7 @@ theorem held_high_origin_viable_at
   have ht := hp.run.time_nonneg c
   have hle : ∀ q < c, tr.time q ≤ tr.time c := fun _ hq => hp.run.time_mono hq.le
   have hreach := fg_reachable_at hp.run ht hle hpH
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hac.localRun.upTo ht
   have hc' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hc)
   have hU := hac.localRun.coherent

@@ -34,7 +34,7 @@ theorem relayed_iff {X : Fin sp.n} {s : Nat} {D : Blk sp.n FGP} {u : Fin sp.n} :
           sp.ts s ≤ tr.time k ∧ tr.time k < sp.ts s + 2 * sp.Δ := Iff.rfl
 
 /-- Three quarters of the committee have votes released by the optimistic writer while honest. -/
-theorem optimistic_seats (hrun : ACRun proposer tr H U)
+theorem optimistic_seats {ini} (hrun : ACRun proposer tr H U ini)
     {X : Fin sp.n} {k s : Nat} (hX : X ∈ H (tr.time k))
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : OptimisticLockAt tr X k s D CV) :
     ∃ ℓ A, OptimisticPoint tr X k ℓ A ∧ ℓ.frame.tree ⊆ U ∧
@@ -73,8 +73,8 @@ private theorem deadline_eq {y : Fin sp.n} {c : Nat} {τ : Time}
   · obtain ⟨k, hk, hrk, rfl⟩ := lastWake_eq_coe hw
     simp [Option.elim, max_eq_left (h k hk hrk)]
 
-private theorem update_restarts {K : Set (Fin sp.n)} {c : Nat}
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) K U tr)
+private theorem update_restarts {K : Set (Fin sp.n)} {c : Nat} {ini}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) K U tr ini)
     {Y : Fin sp.n} (hY : Y ∈ K) {s : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hu : UpdateAt tr Y c s ℓ) :
     ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s := by
@@ -92,11 +92,11 @@ private theorem update_restarts {K : Set (Fin sp.n)} {c : Nat}
       (by rw [ht]; simp only [SAParams.ts]; push_cast; linarith)
       (by rw [ht]; simp only [SAParams.ts]; push_cast; linarith)
   intro k hk hrk
-  have h := (SA.joined_awake sp FGP ro _ U tr hr Y hY c ℓ hc hpost).2 k hk hrk
+  have h := (SA.joined_awakeU sp FGP ro _ U tr hr.toU Y hY c ℓ hc hpost).2 k hk hrk
   rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at h
 
 /-- A result's counted seats have genuine releases by its writer, even after compromise. -/
-theorem result_side (hrun : ACRun proposer tr H U)
+theorem result_side {ini} (hrun : ACRun proposer tr H U ini)
     {Y : Fin sp.n} {c s : Nat} (hY : Y ∈ H (tr.time c))
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hR : ResultAt tr Y c s D CV) :
     ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
@@ -120,9 +120,9 @@ theorem result_side (hrun : ACRun proposer tr H U)
     exact hrs k hk ((ACTrace.upTo_restartAt (A := goldilocksSA sp FGP ro)).mpr ⟨hm hk, hkr⟩)
   · rintro u ⟨v, ⟨hvp, _, hres, R, hR, hRr, hDR⟩, rfl⟩
     have hvp' : v ∈ ((tr.upTo (tr.time c)).state Y c).pool s := hs.symm ▸ hvp
-    have hvs := state_pool_slot sp hr.localRun hY c s v hvp'
+    have hvs := state_pool_slot_from sp hr.localRun hrun.vstart hY c s v hvp'
     refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, ?_⟩
-    obtain ⟨k, hsend, h1, h2⟩ := admitted_of_held hr.localRun hY hvs hvp' le_rfl
+    obtain ⟨k, hsend, h1, h2⟩ := admitted_of_held_from hr.localRun hrun.vstart hY hvs hvp' le_rfl
       (fun k _ hst => by
         rw [hs] at hst
         have hst' : (tr.state Y c).voteStamp v < ETime.of (sp.ts s + 2 * sp.Δ) := by
@@ -141,7 +141,7 @@ theorem result_side (hrun : ACRun proposer tr H U)
 
 /-- Forwarding uses the source's honesty at release and the recipient's at its reading cut. -/
 theorem sync_window_before_forward
-    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {ini} (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     {a b : Time} (hsvc : ServiceWindowBefore H U a b tr)
     {y X : Fin sp.n} {k : Nat} {v : Vote sp.n} (hy : y ∈ H (tr.time k))
     (hsend : tr.SendOrAdmit y k v) (ha : a ≤ tr.time k) (hb : tr.time k + sp.Δ ≤ b)
@@ -165,8 +165,8 @@ theorem sync_window_before_forward
       (A := goldilocksSA sp FGP ro)).mp hjr).2) hdl hslot hp'
   simpa only [hs] using h
 
-theorem sync_forward
-    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+theorem sync_forward {ini}
+    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     {a b : Time} (hsync : SyncACAt (goldilocksSA sp FGP ro) H U a b tr)
     {y X : Fin sp.n} {k : Nat} {v : Vote sp.n} (hy : y ∈ H (tr.time k))
     (hsend : tr.SendOrAdmit y k v) (ha : a ≤ tr.time k) (hb : tr.time k ≤ b)
@@ -192,7 +192,7 @@ theorem sync_forward
   simpa only [hs] using h
 
 theorem relayed_held_before
-    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {ini} (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     {s : Nat} {b : Time} (hsvc : ServiceBefore H U b tr)
     {X Y : Fin sp.n} {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hY : Y ∈ H (tr.time c)) (hc : tr.CallAt Y c ℓ)
@@ -213,7 +213,7 @@ theorem relayed_held_before
 
 /-- A release in the synchrony window reaches an update at the recipient's own cut. -/
 theorem relayed_held
-    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {ini} (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     {s : Nat} (hsync : SyncACAt (goldilocksSA sp FGP ro) H U
       (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
     {X Y : Fin sp.n} {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -238,7 +238,7 @@ theorem relayed_held
 /-- Relayed votes for an incompatible block occupy seats disjoint from the result's supporters.
 Only release deadlines through `t_s + 3Δ` are consumed. -/
 theorem relayed_against
-    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {ini} (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     {s : Nat} {b : Time} (hsvc : ServiceBefore H U b tr)
     {X Y : Fin sp.n} {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hY : Y ∈ H (tr.time c)) (hc : tr.CallAt Y c ℓ)

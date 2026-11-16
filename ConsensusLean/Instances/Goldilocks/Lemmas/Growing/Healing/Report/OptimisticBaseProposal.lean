@@ -43,8 +43,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 private theorem acRun_prefix' (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {d : Time} (hd : 0 ≤ d) :
     SA.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) := by
-  have h := Compose.goldilocks_ac_projection sp ro dg (H d) (tr.upTo d) proposer
-    (hrun.upTo hd) (hnc.upTo d)
+  have h := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d)
   rwa [RunTrace.upTo_projAC] at h
 
 /-- **Two optimistic locks of one slot are compatible**, their writers honest at their own
@@ -151,7 +150,7 @@ theorem optimistic_next_proposal_of_early_witness_at
     omega
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have subU := RunTrace.honestBlocks_upTo_subset hmono (H := H) ht0
-  have hacG := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hacG := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hacP := acRun_prefix' hrun hnc ht0
   have hr := hacP.localRun
   have hpre := hrun.upTo ht0
@@ -285,7 +284,8 @@ theorem optimistic_next_proposal_of_early_witness_at
     have heq : l.slot = s := by omega
     obtain ⟨L', hL', hL'r, -⟩ := SA.lock_below_origin hr hy i l hl
     obtain rfl : L = L' := hU.1 hL (subU hL') (hLr.trans hL'r.symm)
-    obtain ⟨O, hLO, a', CW, ho⟩ := SA.proposal_high_lock hr hy hti hl hls hL' hLr
+    obtain ⟨O, hLO, a', CW, ho⟩ := SA.proposal_high_lock hr
+      (fun _ => SA.voteStart_initial _) hy hti hl hls hL' hLr
     rw [heq] at ho
     obtain ⟨ha't, ho⟩ := (SA.upTo_optimisticLockAt hmono).mp ho
     have hya' : y ∈ H (tr.time a') := hrun.antitone ha't hy

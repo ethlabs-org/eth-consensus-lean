@@ -98,8 +98,7 @@ theorem optimistic_supporter_later_heads_at {s₀ s N floor : Nat}
   have hmono := hrun.time_mono
   have hΔ := sp.toParams.hΔ
   have ht0 := hrun.time_nonneg i
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time i)) (tr.upTo (tr.time i))
-    proposer (hrun.upTo ht0) (hnc.upTo _)).localRun
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo ht0) (hnc.upTo _)).localRun
   rw [RunTrace.upTo_projAC] at hr
   have hc' : SA.CastAt (tr.projAC.upTo (tr.time i)) x i ell e :=
     SA.upTo_castAt.mpr ⟨le_rfl, hc⟩

@@ -11,7 +11,7 @@ Every implication is UNPROVED. These types supply no theorem evidence.
 namespace Consensus.Goldilocks.Generic
 
 open SA (gbar)
-open Healing (cutZ)
+open Healing (FirstCutAfter cutZ)
 open Healing.Growing (HZ IsReset CatchRun NoRestartAfter)
 
 variable {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
@@ -46,6 +46,9 @@ def rise_reset_rounds_at (O : ACHealing A sg runs) : Prop :=
     (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
     CatchRun tr H g (2 * P.Δ) → NoRestartAfter tr H (gbar g) →
+    (∀ s, P.slotTime s + 4 * P.Δ ≤ P.slotTime (s + 1)) →
+    (∀ s, P.slotTime (s + 1) + 2 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) →
+    (∃ k, FirstCutAfter tr k (cutZ P g) ∧ tr.time k ≤ b) →
     gbar g + 4 * P.Δ ≤ P.slotTime s₀ → O.follow ≤ P.δt → 1 ≤ G →
     (∀ s, P.slotTime s + 6 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) →
     ProposalGap tr H proposer G s₀ N → P.slotTime N + 2 * P.Δ ≤ b →

@@ -88,7 +88,8 @@ theorem h2_locks_compare (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P
       obtain ⟨j, -, B, CV, hfl, L', hL', hL'r, hL'B⟩ := fast_lock_provenance hr hy i l hl hf
       obtain rfl : L' = L := hU.1 hL' hL (hL'r.trans hLr.symm)
       obtain ⟨z, hz, j', e, hve, hes, hext⟩ :=
-        fastLock_honest_vote hrun hI.two_faulty_lt hy hfl hI.stock
+        fastLock_honest_vote hrun _ SA.CommitteeP.full hy hfl
+          (SA.cs2_full hI.stock hI.two_faulty_lt)
       exact down hL'B (hcomp hz hve hext (hvotes z hz j' e hve (hes ▸ hpl)))
 
 /-! ## Helpers: the record read by `ac_confirmed`, the head from `fc_root` -/
@@ -190,7 +191,8 @@ private theorem liveLock_compat (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
   rintro L ⟨hLt, l', ⟨l, hl, B, hB, hBr, hlive, rfl⟩, hLr⟩
   have hva : Φ.Anc (Φ.viableAncestor B) B := anc_viableAncestor Φ B
   obtain rfl : L = Φ.viableAncestor B := hΦ.coherent.1 hLt (mem_of_anc hva hB) hLr.symm
-  rcases hlocks y hy i T hT l hl (hlive.trans ((locksWF_state hr hy i).cap hl)) B (hΦU hB) hBr
+  rcases hlocks y hy i T hT l hl
+    (hlive.trans ((locksWF_state hr (fun _ => SA.voteStart_initial _) hy i).cap hl)) B (hΦU hB) hBr
     with h | h
   · exact Or.inl ((hva.mono hΦU).trans h)
   · exact anc_total hr.coherent (hva.mono hΦU) h

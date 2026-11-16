@@ -18,11 +18,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
-/-- `ḡ` lies below every time at or after the high-origin cutoff. -/
-private theorem gbar_le_of_cutZ_le {t : Time} (h : cutZ sp.toParams g ≤ t) : SA.gbar g ≤ t :=
-  ((le_add_of_nonneg_right (mul_nonneg (Nat.ofNat_nonneg _) sp.toParams.hΔ.le)).trans
-    (lt_cutZ sp g).le).trans h
-
 /-- The Catch deadline `ḡ + 2Δ` from `ḡ ≤ x`. -/
 private theorem catch_time_le {x : Time} (h : SA.gbar g ≤ x) :
     SA.gbar g + 2 * sp.Δ ≤ x + 3 * sp.Δ :=
@@ -64,7 +59,7 @@ theorem ResetPremisesUpTo.result_source_compatible
     (hrb : tr.time r ≤ b) (hqb : tr.time q ≤ b) (hts : cutZ sp.toParams g ≤ sp.ts s) :
     Compatible (tr.HonestBlocks H) C D := by
   have hS := healthy_base_of_reset_catch_before hp hc
-  have hgs : SA.gbar g ≤ sp.ts s := gbar_le_of_cutZ_le hts
+  have hgs : SA.gbar g ≤ sp.ts s := gbar_le_of_cutZ_le sp hts
   have hreset : ∀ z ∈ H, ∀ c, tr.time c ≤ b → tr.projAC.RestartAt z c →
       tr.time c ≤ sp.ts s := by
     intro z hz c hcb hrest
@@ -72,13 +67,13 @@ theorem ResetPremisesUpTo.result_source_compatible
     have hh := (SA.ts_le_iff sp).mp ((cutZ_eq sp g) ▸ hts)
     exact (SA.ts_le_iff sp).mpr (by omega)
   rcases hD with hD | hD
-  · apply SA.result_result_compatible_window_before hS.run hS.sync hgs hx hy hR hD hrb hqb
+  · apply SA.result_result_compatible_window_before hS.stockRun hS.sync hgs hx hy hR hD hrb hqb
     intro z hz c hle hrest
     apply hreset z hz c ((hp.run.time_mono hle).trans ?_) hrest
     rcases le_total r q with h | h
     · simpa only [max_eq_right h] using hqb
     · simpa only [max_eq_left h] using hrb
-  · exact SA.result_optimistic_compatible_window_before hS.run hS.sync hgs hx hy hR hD
+  · exact SA.result_optimistic_compatible_window_before hS.stockRun hS.sync hgs hx hy hR hD
       hrb hqb (fun c hle hrest => hreset x hx c ((hp.run.time_mono hle).trans hrb) hrest) hp.stock
 
 /-- Two optimistic sources of one label need no service after either source cut. -/
@@ -181,7 +176,7 @@ theorem ResetPremisesUpTo.optimistic_vote_domain_before
     Anc (tr.HonestBlocks H) B ell.frame.fcRoot ∨
       B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   have hS := healthy_base_of_reset_catch_before hp hc
-  have hr := hS.run.localRun
+  have hr := hS.stockRun.localRun
   have hΔ := sp.toParams.hΔ
   obtain ⟨hBx, z, hz, q, hqr, ev, hv, hvs, hVB⟩ := hp.optimistic_supporter hx hop
   have hqb := (hp.run.time_mono hqr).trans hrb
@@ -189,7 +184,7 @@ theorem ResetPremisesUpTo.optimistic_vote_domain_before
   have hdb := hda.trans hp.reset_le
   have hms : m < s := by rw [cleanLabel_eq] at hs; omega
   have hts := hp.clean_timing hs
-  have hgs : SA.gbar g ≤ sp.ts s := gbar_le_of_cutZ_le hts
+  have hgs : SA.gbar g ≤ sp.ts s := gbar_le_of_cutZ_le sp hts
   apply hp.held_target_vote_domain_before hx hy hBx hcast ?_ hseed (by omega)
     (hp.target_compatible_older_origin hseed hdb hz hv hqb hvs hms hVB) ?_ ?_ ?_
   · intro hF
@@ -236,7 +231,8 @@ theorem ResetPremisesUpTo.slow_stored_locks
   intro l hl hlive hle Y hY hYr
   obtain ⟨L, hL, hLr, O, hLO, k, hki, CV, hO⟩ := SA.lock_below_origin hr hy i l hl
   obtain rfl : Y = L := hr.coherent.1 hY hL (hYr.trans hLr.symm)
-  obtain ⟨q, R, RV, hR, hDR⟩ := SA.slow_window_results hr hx hsl l.slot (by omega) hle
+  obtain ⟨q, R, RV, hR, hDR⟩ := SA.slow_window_results hr
+    (fun _ => SA.voteStart_initial _) hx hsl l.slot (by omega) hle
   have hqb : tr.time q ≤ b := by
     obtain ⟨_, hu, _, _⟩ := hR
     have ht : tr.time q = sp.ts l.slot + 6 * sp.Δ := hu.2.2.1
@@ -290,9 +286,9 @@ theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
     ∀ i, tr.time i ≤ b → ∀ y ∈ H, ∀ ell e, SA.CastAt tr.projAC y i ell e →
       s < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
   have hS := healthy_base_of_reset_catch_before hp hc
-  have hr := hS.run.localRun
+  have hr := hS.stockRun.localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hgs : SA.gbar g ≤ sp.ts s := gbar_le_of_cutZ_le hts
+  have hgs : SA.gbar g ≤ sp.ts s := gbar_le_of_cutZ_le sp hts
   intro i
   induction i using Nat.strong_induction_on with
   | _ i ih =>
@@ -325,9 +321,10 @@ theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
         apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hS.sync)
           hgs hS.catchUp (catch_time_le hgs) hx hy hcast hfirst hib
         intro v hv
-        obtain ⟨hvs, hw, D, hD, hDr, hBD, ha⟩ := fastLock_writer hr hx hfast v hv
+        obtain ⟨hvs, hw, D, hD, hDr, hBD, ha⟩ :=
+          fastLock_writer hr (fun _ => SA.voteStart_initial _) hx hfast v hv
         exact ⟨hvs, hw, D, hD, hDr, hFB.trans hBD, ha⟩
-      apply SA.first_transfer_stored sp hS.run _ SA.CommitteeP.full SA.CommitteeT.full
+      apply SA.first_transfer_stored sp hS.stockRun _ SA.CommitteeP.full SA.CommitteeT.full
         (SA.size_binding_full hp.stock) hx hfast .refl hy hcast hfirst
         (hp.sync.syncAC hp.run ((SA.le_gbar g).trans hgs)) carry
         ((SA.faultBoundK_full_iff _ _).2 hfault) (SA.cs2_full_of_faultBound sp hp.stock hfault)
@@ -363,7 +360,7 @@ theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
       have hmt : sp.ts m + sp.Δ ≤ b := by
         rw [hm] at htime
         simp only [SA.SAParams.ts] at htime ⊢; push_cast at htime; linarith
-      refine SA.next_vote_extends_before hS.run hy hcast hm
+      refine SA.next_vote_extends_before hS.stockRun hy hcast hm
         (fun z hz q hq e' he hsl => hprior z hz q hq e' he (by rcases hsl with h | h <;> omega))
         (hp.half_committee (hts.trans ((SA.ts_le_iff sp).mpr (by omega))) hmt)
         ⟨hr.awake_of_call y hy i ell hcast.1, (SA.castAt_spec hr hy hcast).2.2.1,

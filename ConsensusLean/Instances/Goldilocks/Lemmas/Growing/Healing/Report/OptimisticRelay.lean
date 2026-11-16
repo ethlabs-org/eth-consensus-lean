@@ -117,8 +117,7 @@ theorem relay_source_at_proposal_at
         (by linarith only [hm, hΔ, hi]) hFQ
       exact ⟨k, hki, hk, by linarith only [hm, hΔ, hkt]⟩
   -- the prefix through the proposal
-  have hac := Compose.goldilocks_ac_projection sp ro dg (H (tr.time i)) (tr.upTo (tr.time i))
-    proposer (hrun.upTo ht0) (hnc.upTo _)
+  have hac := Compose.goldilocks_ac_projection_from (hrun.upTo ht0) (hnc.upTo _)
   rw [RunTrace.upTo_projAC] at hac
   have hr := hac.localRun
   have hc' : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=

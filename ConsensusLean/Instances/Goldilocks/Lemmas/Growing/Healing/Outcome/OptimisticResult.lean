@@ -14,6 +14,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Update
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
 
 public section
 
@@ -25,9 +26,10 @@ that update, is extended by its result.
 
 The update side is static: it is read on the healthy AC base of the nodes honest at the update,
 on the prefix through it (`healthy_base_of_reset_catch_before_at`), and the honest majority is
-counted there. Every node honest at the update is honest at the slot's vote deadline, so it votes
-(`honest_votes_in_slot_at`); its vote extends the source by the source's retention
-(`fast_source_votes_before_at`), and it is received and resolved in time. -/
+counted there over the slot committee. Every member of the slot committee honest at the update is
+honest at the slot's vote deadline, so it votes (`honest_votes_in_slot_at`); its vote extends the
+source by the source's retention (`fast_source_votes_before_at`), and it is received and resolved in
+time. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
@@ -40,7 +42,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- A clean optimistic source above the next update's finalized block is extended by that
 update's result. -/
 theorem optimistic_next_result_of_floor_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {r s j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (SA.Vote sp.n)} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time j))
     (hop : SA.OptimisticLockAt tr.projAC x r s B CV)
@@ -54,7 +57,7 @@ theorem optimistic_next_result_of_floor_at
   have hd := sp.toParams.hΔ
   have hj0 := hp.run.time_nonneg j
   have htime : tr.time j = sp.ts (s + 1 : Nat) + 6 * sp.Δ := hu.2.2.1
-  have hS := healthy_base_of_reset_catch_before_at hp hc hj0 hjb
+  have hS := healthy_base_of_reset_catch_before_at hp hj0 hjb
   have hr := hS.run.localRun
   have hU := hr.coherent
   have hUc := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
@@ -77,12 +80,12 @@ theorem optimistic_next_result_of_floor_at
     rintro z hz q e hv hes
     obtain ⟨hqD, ellq, hcast⟩ := SA.upTo_voteAt.mp hv
     have hzq : z ∈ H (tr.time q) := hp.run.antitone hqD hz
-    obtain ⟨H', hH', hH'r, hBH'⟩ := hp.fast_source_votes_before_at hc hx (Or.inr hop)
+    obtain ⟨H', hH', hH'r, hBH'⟩ := hp.fast_source_votes_before_at hx (Or.inr hop)
       (by have := sp.two_le_k; clear * - hs this; omega) hrb q (hqD.trans hjb) z hzq ellq e
       hcast (by clear * - hes; omega)
     have hc' : SA.CastAt (tr.projAC.upTo (tr.time j)) z q ellq e :=
       SA.upTo_castAt.mpr ⟨hqD, hcast⟩
-    obtain ⟨⟨Hd, hHd, hHdr, _⟩, _⟩ := Compose.cast_head_fcRoot hr hz hc'
+    obtain ⟨⟨Hd, hHd, hHdr, _⟩, _⟩ := Compose.cast_head_fcRoot_from hr hS.run.vstart hz hc'
     have hHdU := (SA.frameIn_of_callAt hr hz hc'.1).2 hHd
     obtain rfl : H' = Hd := hUc.1 hH' (hsub hHdU) (hH'r.trans hHdr.symm)
     exact ⟨H', hHdU, hH'r, RunTrace.anc_upTo_of_right hp.run.toLocalRun hp.noColl hj0 hHdU hBH'⟩
@@ -111,14 +114,15 @@ theorem optimistic_next_result_of_floor_at
     intro v hv hvH
     obtain ⟨q, _, e, he, rfl⟩ := hS.run.honest.pool_vote y hy j (s + 1) v hv hvH
     rw [hst]
-    exact (receipt _ hvH q e he (SA.state_pool_slot sp hr hy j (s + 1) _ hv)).2
-  -- every node honest at the update votes in slot `s + 1`: a majority in the pool
+    exact (receipt _ hvH q e he (SA.state_pool_slot_from sp hr hS.run.vstart hy j (s + 1) _ hv)).2
+  -- every honest member of the slot-`s + 1` committee votes in it: a majority in the pool
   have hdl : sp.ts (s + 1 : Nat) + sp.Δ ≤ tr.time j := by rw [htime]; linarith
-  have hall := honest_votes_in_slot_at hp hc hgu hR (hdl.trans hjb)
-  have hH : H (tr.time j) ⊆ {v | v ∈ H (tr.time j) ∧
-      ∃ vote ∈ ((tr.projAC.upTo (tr.time j)).state y j).pool (s + 1), vote.val = v} := by
-    intro z hz
-    obtain ⟨q, e, ⟨ellq, hcast⟩, hes, hq⟩ := hall z (hp.run.antitone hdl hz)
+  have hall := honest_votes_in_slot_at hp hgu hR (hdl.trans hjb)
+  have hH : (Generic.dictOfTime sp cm).committee (s + 1) ∩ H (tr.time j) ⊆
+      {v | v ∈ H (tr.time j) ∧ ∃ vote ∈ ((tr.projAC.upTo (tr.time j)).state y j).pool
+        (s + 1), vote.val = v} := by
+    rintro z ⟨hzK, hz⟩
+    obtain ⟨q, e, ⟨ellq, hcast⟩, hes, hq⟩ := hall z (hp.run.antitone hdl hz) hzK
     have hv : SA.VoteAt (tr.projAC.upTo (tr.time j)) z q e :=
       SA.upTo_voteAt.mpr ⟨hq.trans hdl, ellq, hcast⟩
     refine ⟨hz, e.msg, ?_,
@@ -126,13 +130,14 @@ theorem optimistic_next_result_of_floor_at
     rw [hst]
     exact (receipt z hz q e hv hes).1
   have hcount := Set.ncard_le_ncard hH
-  have hsum : (H (tr.time j)).ncard + (H (tr.time j))ᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have hf := hp.faults _ hj0 hjb
-  have hn : 0 < sp.n := sp.toParams.hn
-  obtain ⟨D, hconf, hBD, _⟩ := SA.update_extends_of_resolved_votes hS.run
-    (SA.CommitteeDict.full sp.n) (fun _ _ => SA.mem_full _ _)
-    (by rw [SA.ncard_inter_full, hp.stock]; omega) hext hy hu' (by rw [hp.stock]; omega) hres
+  have hf := hp.committee_cs2_at (s := s + 1) (by linarith) (by linarith) hj0 hjb
+  have hsplit := Set.ncard_inter_add_ncard_sdiff_eq_ncard
+    ((Generic.dictOfTime sp cm).committee (s + 1)) (H (tr.time j)) (Set.toFinite _)
+  rw [hp.committeeFacts.hsize, Set.sdiff_eq_compl_inter, Set.inter_comm (H (tr.time j))ᶜ]
+    at hsplit
+  obtain ⟨D, hconf, hBD, _⟩ := SA.update_extends_of_resolved_votes hS.run _
+    (fun v hv => hS.hP.1 y hy j (s + 1) v hv) (hS.cs2 (s + 1) (by linarith) (by linarith))
+    hext hy hu' (by omega) hres
   rw [hst] at hconf
   exact ⟨D, _, ⟨ell, hu, hconf, rfl⟩, hBD.mono hsub⟩
 

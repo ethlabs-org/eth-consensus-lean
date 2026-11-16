@@ -17,7 +17,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- From the cut on, the faults at `d ∈ [t, b]` are fewer than the validators
 honest at `d` that are awake and joined at `t`. -/
-theorem fault_bound_late_before_at {b : Time} (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+theorem fault_bound_late_before_at {b : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {t d : Time} (ht : cutZ sp.toParams g ≤ t) (htd : t ≤ d) (hdb : d ≤ b) :
     tr.FaultBoundAt H t d := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ

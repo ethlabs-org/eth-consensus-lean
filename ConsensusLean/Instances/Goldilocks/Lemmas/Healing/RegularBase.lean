@@ -35,8 +35,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- Finite frame transport for head equality. The receiver's finalized-ancestor guard
 is explicit; old acceptances use Catch and newer ones use their relay deadline.
 No settled phase, shared finalized root or frame equality is required. -/
-theorem frame_relay_before
-    (hS : SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b)
+theorem frame_relay_before {K : SA.CommitteeDict sp.n}
+    (hS : SA.HealthyBaseUpTo K tr.projAC H (tr.HonestBlocks H) proposer g b)
     (hnr : NoRestartAfter tr H (gbar g))
     {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {q j : Nat}
     {ellx elly : ACLabel (goldilocksNode sp ro)}
@@ -75,9 +75,9 @@ theorem frame_relay_before
 /-- The finite view comparison at an actual cast. Pre-freeze blocks
 relay to the proposer; payload support heads are held at an early ready cast
 or relay by the deadline. The statement has no settled/phase assumption. -/
-theorem proposal_views_agree_before
+theorem proposal_views_agree_before {K : SA.CommitteeDict sp.n}
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hS : SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b)
+    (hS : SA.HealthyBaseUpTo K tr.projAC H (tr.HonestBlocks H) proposer g b)
     (hnr : NoRestartAfter tr H (gbar g)) {s : Nat}
     (hm : gbar g + 2 * sp.Δ ≤ sp.ts s)
     {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer (s + 1))
@@ -106,7 +106,7 @@ theorem proposal_views_agree_before
   have hipb : tr.time ip ≤ b := by rw [hti]; exact hjlo.trans hjb
   have hPhiY := SA.frameIn_of_callAt hr hy hc.1
   have hPhiP := SA.frameIn_of_callAt hr hz hp.1
-  apply SA.view_agree_window_before hS.run (fun _ => SA.voteStart_initial _)
+  apply SA.view_agree_window_before hS.run hS.run.vstart
     hz hy hdesignated hp hti hc
     ⟨P, hP, hPs, hpay⟩ (SA.serviceWindowBefore_of_sync hS.sync) (by linarith only [hm, hΔ]) hipb
   · intro B hB _ hstamp hFB
@@ -144,7 +144,7 @@ theorem proposal_views_agree_before
           SA.voteViewList, SA.SAState.poolAt, Int.toNat_natCast, List.filter_filter,
           List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
           Bool.and_eq_true, decide_eq_true_eq] at hv
-        rw [SA.state_pool_slot sp hr hz ip s v hv.1]
+        rw [SA.state_pool_slot_from sp hr hS.run.vstart hz ip s v hv.1]
       obtain ⟨B', hB', hBr', -⟩ := hsup v (by rw [SA.blockSupport, hpay]; exact hv) hvs
       rwa [hr.coherent.1 (hPhiP.2 hB) (hPhiY.2 hB') (hBr.trans hBr'.symm)]
     · exact frame_relay_before hS hnr hz hy hp.1 hc.1 hB

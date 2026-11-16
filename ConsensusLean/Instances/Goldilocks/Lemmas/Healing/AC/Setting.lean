@@ -47,18 +47,31 @@ structure HealthyBase (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Bl
   /-- The committee is population-sized (`committeeSize = n`). -/
   stock : sp.committeeSize = sp.n
 
-/-- Finite health with deadline-bounded service. Driven duties remain conditional
-on actual awake witnesses, so they assert no activity beyond the horizon. -/
-structure HealthyBaseUpTo (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (proposer : Nat → Fin sp.n) (g b : Time) : Prop where
-  run : ACRun proposer tr H U
+/-- Finite health with deadline-bounded service, for the slot committees `K`. Driven duties
+remain conditional on actual awake witnesses, so they assert no activity beyond the horizon. The
+run starts at `K`'s committee start (a node may vote exactly in its committees' slots), its pools
+and merged views hold committee votes (P, T), and fewer than half of each slot committee from `ḡ`
+through `b` is faulty. The stock committee is `CommitteeDict.full`. -/
+structure HealthyBaseUpTo (K : CommitteeDict sp.n) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
+    (U : Set (Blk sp.n FGP)) (proposer : Nat → Fin sp.n) (g b : Time) : Prop where
+  run : ACRun proposer tr H U (committeeStart sp.genesisRoot K)
   driven : Driven proposer tr H
   sync : SyncACWindowBefore H U (gbar g) b tr
   catchUp : CatchACWindowBefore tr H U (gbar g) (2 * sp.Δ) b
   awake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t
   faults : 3 * Hᶜ.ncard ≤ sp.n - 1
-  /-- The committee is population-sized (`committeeSize = n`). -/
-  stock : sp.committeeSize = sp.n
+  hsize : ∀ s, (K.committee s).ncard = sp.committeeSize
+  hP : CommitteeP K tr H
+  hT : CommitteeT K tr H
+  cs2 : ∀ s : Nat, gbar g ≤ sp.ts s → sp.ts s ≤ b →
+    2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize
+
+/-- The run of a stock-committee base, at the initial starts (`committeeStart_full`). -/
+theorem HealthyBaseUpTo.stockRun {b : Time}
+    (hS : HealthyBaseUpTo (CommitteeDict.full sp.n) tr H U proposer g b) :
+    ACRun proposer tr H U := by
+  have h := hS.run
+  rwa [committeeStart_full] at h
 
 /-- **H.1's premises** over an AC trace of the SA: the healthy premises (`HealthyBase`) and
 trivial frames. -/
@@ -141,7 +154,8 @@ private theorem rt_step
 
 /-- `restartTime_state` with the unlock given. -/
 theorem restartTime_stateU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     (tr.state y i).restartTime = ⊥ ∨
       ∃ k < i, tr.RestartAt y k ∧ (tr.state y i).restartTime = (tr.time k : WithBot Time) := by
@@ -149,7 +163,8 @@ theorem restartTime_stateU
   | zero =>
     left
     change (tr.init y).restartTime = ⊥
-    rw [hr.init y hy]; rfl
+    obtain ⟨m, hm⟩ := voteStart_iff.1 (hini y)
+    rw [hr.init y hy, hm]; rfl
   | succ i ih =>
     by_cases hn : tr.node i = y ∧ tr.label i ≠ none
     · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hn.2
@@ -178,11 +193,12 @@ theorem restartTime_stateU
 
 /-- **The restart time of a state**: the state of an honest node before cut `i` has
 `restart_time = −∞`, or the time of a restart of the node at an earlier cut. -/
-theorem restartTime_state (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+theorem restartTime_state {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     (tr.state y i).restartTime = ⊥ ∨
       ∃ k < i, tr.RestartAt y k ∧ (tr.state y i).restartTime = (tr.time k : WithBot Time) :=
-  restartTime_stateU (hr := hr.toU) (y := y) (hy := hy) (i := i)
+  restartTime_stateU (hr := hr.toU) hini (y := y) (hy := hy) (i := i)
 
 end RestartTime
 
@@ -300,7 +316,8 @@ theorem joined_state {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
     (ht : gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)) :
     joined sp (tr.state y i) (tr.time i) := by
   unfold joined
-  rcases restartTime_stateU hS.run.localRun hy i with h | ⟨k, -, hrk, h⟩
+  rcases restartTime_stateU hS.run.localRun (fun _ => voteStart_initial _) hy i with
+    h | ⟨k, -, hrk, h⟩
   · rw [h]; exact bot_le
   · rw [h]; exact WithBot.coe_le_coe.mpr ((hS.restart_le hy hrk).trans ht)
 

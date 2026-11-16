@@ -22,7 +22,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The current honest observation has a viable head above its fork-choice root. -/
 theorem full_frame_viable_witness_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i))
     (hf : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) :
@@ -118,8 +119,7 @@ theorem warm_proposal_height_at
     omega
   obtain ⟨Q, hQ, hv, hroot⟩ := full_frame_viable_witness_at hrun hnc hzi hfi
   rw [← hframe] at hQ hv hroot
-  have hac := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time kP)) _ proposer
-    hr (hnc.upTo _)).localRun
+  have hac := (Compose.goldilocks_ac_projection_from hr (hnc.upTo _)).localRun
   have hvd := Healing.proposal_head_viable hac hzk hc hcall
     (by rw [sp.slotTime_eq]; exact hti) hd
     ⟨(SA.frameIn_of_callAt hac hzk hc).1.fcRoot_mem, .refl, Q, hQ, hv, hroot⟩

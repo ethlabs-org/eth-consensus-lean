@@ -217,7 +217,7 @@ theorem readPoint_blockStampU
 
 /-- The read point of an honest vote has the block stamps of the state before its call, except
 for the block that an `on_block` call receives. -/
-theorem readPoint_blockStamp (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+theorem readPoint_blockStamp {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {r : Nat}
     (hrB : ∀ B, ℓ.call = .block B → r ≠ B.root) :

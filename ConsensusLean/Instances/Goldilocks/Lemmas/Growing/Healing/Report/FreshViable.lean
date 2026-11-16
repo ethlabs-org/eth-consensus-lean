@@ -93,8 +93,7 @@ theorem FrameWindow.proposal_viable_after_votes_at
   have hyq := hrun.antitone (hrun.time_mono hqk) hy
   have hPv := (KernelProof.proposal_viable_at_cast_at hshort hrun hnc hsvc hawake hf hcatch hnr hgu
     le_rfl hu0 (hshortT.trans hTb) hz hdes hP hPs hyq hcq hes hstock).1
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time k))
-    (tr.upTo (tr.time k)) proposer (hrun.upTo (hrun.time_nonneg k))
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg k))
     (hnc.upTo (tr.time k))).localRun
   rw [RunTrace.upTo_projAC] at hr
   have hcq' : SA.CastAt (tr.projAC.upTo (tr.time k)) y q ellq e :=
@@ -164,7 +163,7 @@ theorem FrameWindow.unanimous_update_selection_at
   have hshort : sp.ts u + sp.Δ ≤ tr.time k := by linarith
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
     (show 0 ≤ sp.ts u + sp.Δ by linarith [SA.gbar_nonneg g]) (hshort.trans hkb) hstock
-  have hvotes := honest_votes_of_joined_before_at hS hgu hjoin
+  have hvotes := fun x hx => honest_votes_of_joined_before_at hS hgu hjoin x hx (SA.mem_full _ _)
   obtain ⟨hvi, hva, _⟩ := hframe.proposal_viable_after_votes_at hrun hnc hsvc hawake hf hcatch
     hnr hgu hu0 hTb hz hdes hP hPs hy hu.1 hlate (by rw [hkt, hT])
     (hvotes y (hrun.antitone hshort hy)) hstock
@@ -176,8 +175,7 @@ theorem FrameWindow.unanimous_update_selection_at
     exact hdes ▸ hz
   have hpool := unanimous_early_pool_of_acceptance_at hrun hnc hsvc hawake hf hcatch hnr
     hmargin hjoin hPs hun hza ha hta hy hu.1 hlate hkb hvi.1 hstock
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time k))
-    (tr.upTo (tr.time k)) proposer (hrun.upTo (hrun.time_nonneg k))
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg k))
     (hnc.upTo (tr.time k))).localRun
   rw [RunTrace.upTo_projAC] at hr
   have hc' : (tr.projAC.upTo (tr.time k)).CallAt y k ell :=
@@ -185,8 +183,7 @@ theorem FrameWindow.unanimous_update_selection_at
   have hs := Trace.upTo_state tr.projAC y (i := k)
     (fun q hq => hrun.time_mono hq.le)
   have hPg : P.root ≠ sp.genesisRoot := by
-    have hra := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time a))
-      (tr.upTo (tr.time a)) proposer (hrun.upTo (hrun.time_nonneg a))
+    have hra := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg a))
       (hnc.upTo (tr.time a))).localRun
     rw [RunTrace.upTo_projAC] at hra
     apply SA.accept_ne_genesis sp hra hza

@@ -34,6 +34,8 @@ namespace Consensus.Goldilocks.Compose.Growing
 open SA (SAParams ReplayOrder Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+
+variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
   {T : Time} {r σ : Nat} {t₁ b : Time}
@@ -66,7 +68,7 @@ variable {p : Fin sp.n} {s i : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
 
 /-- **The high rows of the proposer of slot `s` are sourced below members of labels below `s`**
 (the row classification of `seeded_reader_old` at the proposal cut). -/
-theorem proposer_row_labels (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b)
+theorem proposer_row_labels (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
     (hp : p ∈ H (tr.time i)) (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b) :
     ∀ m < i, ∀ X, tr.AcceptAt p m X → ∀ a ∈ X.fgPayload, a.val ∈ H (tr.time i) →
@@ -97,7 +99,8 @@ theorem proposer_row_labels (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b
 
 /-- **The high rows of a voter of slot `s` are sourced below members of labels below `s`** (the
 row classification of `seeded_reader_old` at the vote cut). -/
-theorem voter_row_labels (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b) {y : Fin sp.n}
+theorem voter_row_labels (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+    {y : Fin sp.n}
     {j : Nat} (hy : y ∈ H (tr.time j)) {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) (hs0 : 0 < s) (hjb : tr.time j ≤ b) :
@@ -150,7 +153,8 @@ private theorem lockWithin_label_le (hrun : Growing.GoldilocksRun proposer dg H 
 at a proposal at `t_s ∈ [t₁, b]`: `fc_root` by `seeded_reader_old`; a live lock block is below the
 proposer's lock write of the lock's slot, of a label in `[r, s)` (`SeededRun.live_label`,
 `proposal_locks_slot_of`), so below a member of the old family (`old_cover`). -/
-theorem seeded_start_old (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b) (hs : σ + 1 ≤ s)
+theorem seeded_start_old (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+    (hs : σ + 1 ≤ s)
     (hp : p ∈ H (tr.time i)) (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) (ht₁ : t₁ ≤ tr.time i) (hb : tr.time i ≤ b) :
@@ -189,7 +193,8 @@ them are `P`: `fc_root` is below a member of the old family (`seeded_reader_old`
 another slot is below the voter's lock write of a label in `[r, s)`, below a member of the old
 family; a lock of slot `s` is below an optimistic selection, supported by an honest earlier voter
 of slot `s`, whose vote is `P`. -/
-theorem seeded_vote_anchor (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b) (hs : σ + 1 ≤ s)
+theorem seeded_vote_anchor (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+    (hs : σ + 1 ≤ s)
     {P D : SA.Blk sp.n (List (FG.Att sp.n))} (hPU : P ∈ tr.HonestBlocksAt H)
     (hDP : Anc (tr.HonestBlocksAt H) D P)
     (hDold : ∀ O, SeededOld tr H g r b s O → Anc (tr.HonestBlocksAt H) O D)
@@ -279,7 +284,8 @@ theorem seeded_vote_anchor (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b)
 /-- The voter facts of the suffix lemmas at a vote of slot `s ≥ σ + 1` at a time in `[t₁, b]`,
 when every member of the old family is below `Q`: `fc_root` is below `Q`, and the head height floor
 is at most the height of every block of the voter's tree above `Q` (`seeded_reader_old`). -/
-private theorem seeded_voter_facts (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b)
+private theorem seeded_voter_facts
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
     (hs : σ + 1 ≤ s) {Q : SA.Blk sp.n (List (FG.Att sp.n))}
     (hpass : ∀ O, SeededOld tr H g r b s O → Anc (tr.HonestBlocksAt H) O Q)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ℓy : ACLabel (goldilocksNode sp ro)}
@@ -303,7 +309,8 @@ proposal `P` of slot `s` at `t_s ≥ t₁` by a proposer honest at `t_s + Δ ≤
 of a node honest at its vote is `P` (`honest_votes_eq_proposal_of`), with the pivot over the old
 family (`pivot_of`: `seeded_walk_passes`, `seeded_start_old`, `seeded_vote_anchor`, the floor of
 `seeded_reader_old`) and the suffix lemmas under the service from `ḡ`. -/
-theorem seeded_votes_eq_proposal (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b)
+theorem seeded_votes_eq_proposal
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
     (hs : σ + 1 ≤ s) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hp : p ∈ H (sp.ts s + sp.Δ)) (hP : tr.ProposesAt p k P) (hPs : P.slot = s)
     (ht₁ : t₁ ≤ sp.ts s) (hsb : sp.ts s + sp.Δ ≤ b) :

@@ -18,7 +18,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- Actual accepted-tree rows are authentic for the cohort surviving at observation, with
 honesty read at the later of each cut and a cutoff `c`. -/
 theorem local_observations
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (c : Time) (Hz : Nat) (b : Time) :
     LocalSources.Observations (fun v i => (tr.state v i).fg) tr.time (fun t => H (max c t))
       tr.SignAt Hz b := by
@@ -57,7 +58,8 @@ theorem local_observations
 stored fast-lock event on the source's own honest prefix, not inferred from highness. Honesty is
 read at the later of each cut and `c_z`, the charge of a high origin's writer. -/
 theorem local_sources
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (g b : Time) :
     LocalSources.Sources (fun v i => (tr.state v i).fg) tr.time
       (fun t => H (max (cutZ sp.toParams g) t)) tr.SignAt
@@ -70,8 +72,7 @@ theorem local_sources
   have hler : ∀ q < r, tr.time q ≤ tr.time r := fun q hq => hrun.time_mono hq.le
   obtain ⟨CV, ell, D, hc, hfl, hO⟩ := ho.2.2.1
   have hframe := frame_of_call hrun hv hc
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time r))
-    (tr.upTo (tr.time r)) proposer (hrun.upTo hr0) (hnc.upTo _)).localRun
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hr0) (hnc.upTo _)).localRun
   have hc' : (tr.upTo (tr.time r)).projAC.CallAt v r ell := by
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩

@@ -134,7 +134,7 @@ theorem healthy_current_mature_or_anchor_at (Q : HealthyPreparationQueryAt S A V
   have hqt : Q.trace.time q ≤ t := hnt q hqn
   have hqb := hqt.trans htb
   have hyq := hkeys hqt
-  have hslotq := retained_writer_slot_after_update_at D.reset hc O.held rfl O.proposes O.label
+  have hslotq := retained_writer_slot_after_update_at D.reset O.held rfl O.proposes O.label
     hdrain hgu hTb ht0 hnt hy hup hdn hR hcall hRq hrest
   have hRqfg : R ∈ (Q.trace.state y q).fg.tree :=
     ((Compose.Growing.frame_of_projAC_at hrun hyq hcall ▸ hRq).1)
@@ -178,7 +178,7 @@ theorem healthy_current_mature_or_anchor_at (Q : HealthyPreparationQueryAt S A V
     have hsc : Healing.cleanLabel Q.params D.resetTime + 2 * Q.params.k + 1 ≤ s := by
       simpa only [D.cleanLabel_eq] using hs
     have hcand : ∀ e, q ≤ e → e ≤ n → (Node.frame (Q.trace.state y e)).AncestorCandidate R :=
-      clean_optimistic_writer_candidate_interval_at D.reset hc ht0 hnt htb hy hop hsc hqn hRm
+      clean_optimistic_writer_candidate_interval_at D.reset ht0 hnt htb hy hop hsc hqn hRm
     by_cases hyoung : t < Q.params.ts (s + 1 : Nat) + 6 * Q.params.Δ
     · left
       have hle1 : ∀ k < q + 1, Q.trace.time k ≤ t := fun k hk => hnt k (by omega)
@@ -189,7 +189,7 @@ theorem healthy_current_mature_or_anchor_at (Q : HealthyPreparationQueryAt S A V
       rw [hnorm] at hlock
       obtain ⟨e, hlock⟩ := hlock
       have he := (frame_by_read S A V Q ht0 hle1 hy).2.2.2.floor hlock
-      have hl := young_optimistic_lock_persists_at D.reset hc hyq hop hsc hqb hqn hnt htb ht0 hy
+      have hl := young_optimistic_lock_persists_at D.reset hyq hop hsc hqb hqn hnt htb ht0 hy
         hyoung he hlock (fun e hqe hen => ⟨hframe e (Nat.le_of_succ_le hqe) hen.le,
           hcand e (Nat.le_of_succ_le hqe) hen.le⟩)
       apply Obligations.record_below_anchor_of_stored_live_lock hPhi hl hRm rfl ?_ ?_ hchain
@@ -219,7 +219,7 @@ theorem healthy_current_mature_or_anchor_at (Q : HealthyPreparationQueryAt S A V
         rw [Healing.cleanLabel_eq] at hs'
         exact_mod_cast (show Q.params.slot D.resetTime + 2 * Q.params.k + 5 ≤
           s + 1 + 1 by omega)
-      rcases optimistic_result_or_finalized_at_update_at D.reset hc hyq (hkeys (hnt j hjn)) hop
+      rcases optimistic_result_or_finalized_at_update_at D.reset hyq (hkeys (hnt j hjn)) hop
           hsc hqb hu hjb hRnext with hRF | ⟨B, DV, hres, hRB⟩
       · left
         apply hfinal

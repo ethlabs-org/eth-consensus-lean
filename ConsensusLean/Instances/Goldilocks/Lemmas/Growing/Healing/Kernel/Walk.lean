@@ -3,6 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.P
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.WalkInputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 
 public section
 
@@ -24,7 +26,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Stored proposal high locks compare with every high origin in the finite horizon. -/
 theorem proposal_stored_locks_compatible_old_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i))
     (hR : drainTime sp a ≤ sp.ts u) {ell : ACLabel (goldilocksNode sp ro)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
@@ -33,12 +36,19 @@ theorem proposal_stored_locks_compatible_old_at
     (ho : HighOrigin tr H g x q j O) (hqb : tr.time q ≤ b) :
     SA.HighLocksCompatible (tr.HonestBlocksAt H) (tr.projAC.state p i)
       (tr.time i) (u - 1) O := by
-  have hU := (Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer
-    hp.run hp.noColl).localRun.coherent
+  have hU := (Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl).localRun.coherent
   rw [SA.highLocksCompatible_iff]
   intro l hl _ hlabel L hL hLr
+  -- the proposal is after the drain time, so after the reset and `ḡ`
+  have hgu : SA.gbar g ≤ sp.ts u := hp.gbar_le_ts_of_clean_at (by
+    have hsu := hR
+    rw [Healing.drainTime_eq] at hsu
+    have hsu' := (SA.ts_le_iff sp).mp hsu
+    rw [Healing.cleanLabel_eq]
+    push_cast at hsu'
+    omega)
   obtain ⟨r, D, CV, hri, hslot, hpr, hop, L', hL', hL'r, hLD⟩ :=
-    proposal_high_lock_source_at hp hpH hci hcall hti hib hl hlabel
+    proposal_high_lock_source_at hp hpH hci hcall hti hgu hib hl hlabel
   obtain rfl : L' = L := hU.1 hL' hL (hL'r.trans hLr.symm)
   have hclean : cleanLabel sp a + sp.k + 2 ≤ l.slot := by
     rw [Healing.drainTime_eq] at hR
@@ -46,7 +56,7 @@ theorem proposal_stored_locks_compatible_old_at
     have := sp.two_le_k
     rw [Healing.cleanLabel_eq]
     omega
-  rcases WalkInputs.protected_source_compatible_high_origin_at hp hc hpr
+  rcases WalkInputs.protected_source_compatible_high_origin_at hp hpr
       (Or.inl ⟨CV, Or.inr hop⟩) hclean ((hp.run.time_mono hri.le).trans hib) ho hqb with h | h
   · exact Or.inl (hLD.trans h)
   · exact Anc.total hU hLD h

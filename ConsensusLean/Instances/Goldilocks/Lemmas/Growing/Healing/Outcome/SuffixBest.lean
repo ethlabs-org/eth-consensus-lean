@@ -27,8 +27,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **A best child on the proposal-parent path stays best at the voter.** The winner is
 transported through the viable proposal, while competitors reflect through guarded relay. -/
-theorem reset_suffix_best_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {p y : Fin sp.n} {k i j s : Nat}
+theorem reset_suffix_best_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {p y : Fin sp.n} {k i j s : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts (s + 1 : Nat) + hold sp))
     (hdesignated : p = proposer (s + 1)) (hactual : tr.ProposesAt p k P)
     (hPs : P.slot = s + 1)
@@ -60,6 +61,7 @@ theorem reset_suffix_best_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
       {B | B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)) ∧
         B.parent = some X.root ∧ SA.goldfishEligible sp elly.frame (tr.time j)
           (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B} C := by
+  have hc := hp.catchUp
   have hrun := hp.run
   have hU := Compose.Growing.honest_blocks_coherent hrun hp.noColl
   have hpi : p ∈ H (tr.time i) := hrun.antitone (by
@@ -70,11 +72,11 @@ theorem reset_suffix_best_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
   have hPhiU := Outcome.frame_tree_subset hrun hpi hci
   have hPsiU := Outcome.frame_tree_subset hrun hy hcy.1
   exact suffix_best_of_views hU hPhi hPhiU hPsiU (fun _ hB => hB.1.1) hti
-    (hp.reset_views_agree_at hc hpH hdesignated hactual hPs hci hcall hd hti hpay hy hcy hes hib
+    (hp.reset_views_agree_at hpH hdesignated hactual hPs hci hcall hd hti hpay hy hcy hes hib
       hjb hPv.1.1 hg hgi hgj hjoi hjoj)
     hQt hPQ hPs hPv.1.1 hXQ hne hXv hCQ
     (fun hCP hXC => hp.reset_winner_voter_tree_at hy hcy hes hPv hCP (haX.trans hXC))
-    (fun B hB hBP hBX => hp.reset_competitor_reflect_at hc hpH hdesignated hactual hPs hci hti hy
+    (fun B hB hBP hBX => hp.reset_competitor_reflect_at hpH hdesignated hactual hPs hci hti hy
       hcy hes hib hgi hjoi hQt hPQ hXQ hBP hXv hBX hB) hC
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo

@@ -53,7 +53,7 @@ private theorem final_fg_run_at (Q : FinalQueryAt S A V) :
     Consensus.Goldilocks.Growing.FGLocalRun (goldilocksNode Q.params (S.ro _)).genesisPayload
       Q.keys (Q.trace.HonestBlocksAt Q.keys) Q.trace.projFG := by
   have hr := simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid
-  exact Compose.Growing.fg_projection _ _ _ _ _ _ _ (final_node_requirements_at S A V Q)
+  exact Compose.Growing.fg_projection _ _ _ _ _ _ _ (fun _ => final_node_requirements_at S A V Q)
     hr.genesis_root_ok hr.toLocalRun
         (noCollRun_simTraceAt { S with vote := stock } Q.run.2 Q.hn Q.valid Q.noCollision)
 
@@ -124,7 +124,7 @@ theorem final_anchor_coverage_at (Q : FinalQueryAt S A V) (W : FinalWindowDataAt
   have hsl : (W.block 3).slot ≤ (W.block 0).slot + Q.params.toParams.fg.δt := by
     change (W.block 3).slot ≤ (W.block 0).slot + S.δt
     omega
-  exact cacheCoverage_of_anchor_window_upTo_at hp hc hP hmono hR hb
+  exact cacheCoverage_of_anchor_window_upTo_at hp hP hmono hR hb
     (by intro h; simp at h; omega) (W.anchorSteps_iff.mp steps) hsl ht hle hz hB
 
 /-- **Finalized-cache coverage of the first anchor** at every ready read after the deadline. The

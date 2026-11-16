@@ -17,8 +17,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The frozen healthy-route selection contract. The proposer stays honest through its votes. -/
 theorem operational_update_selection_at {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hhold : p ∈ H (sp.ts u + sp.Δ)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
@@ -33,7 +33,7 @@ theorem operational_update_selection_at {b : Time}
       tr.projAC.post j = SA.updateConfirmation sp (tr.projAC.state y j) ell.frame (tr.time j) u ∧
       (tr.projAC.post j).latestConfirmed =
         (SA.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed := by
-  exact operational_update_selection_proof_at hp hc hhold hdesignated hactual hPs hR hgu hTb hy hup
+  exact operational_update_selection_proof_at hp hhold hdesignated hactual hPs hR hgu hTb hy hup
 
 end Consensus.Goldilocks.Healing.Growing
 

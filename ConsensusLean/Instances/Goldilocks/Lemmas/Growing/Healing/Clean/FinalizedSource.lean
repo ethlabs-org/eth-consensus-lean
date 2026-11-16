@@ -22,7 +22,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Finalization of a reader honest at `t ≤ b` compares with a clean raw source. -/
 theorem finalized_compatible_clean_source_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {r s n : Nat} {t : Time} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (SA.Vote sp.n)} (hx : x ∈ H (tr.time r))
     (hC : SA.ResultAt tr.projAC x r s C CV ∨ SA.OptimisticLockAt tr.projAC x r s C CV)
@@ -41,7 +42,7 @@ theorem finalized_compatible_clean_source_at
     · have hCx : C ∈ (tr.state x r).fg.tree := by
         rcases hC with ⟨ell, hu, hconf, _⟩ | hop
         · exact (frame_tree_subset_at hp.run hp.noColl hx hu.1).2 (SA.deepest_mem hconf).1.1
-        · exact (hp.optimistic_supporter_at hx hrb hop).1
+        · exact (hp.optimistic_supporter_at hx hrb (hp.gbar_le_ts_of_clean_at (by omega)) hop).1
       have hrx := fg_reachable_at hp.run (hp.run.time_nonneg r)
         (fun _ hq => hp.run.time_mono hq.le) hx
       have subx : (tr.state x r).fg.tree ⊆ tr.HonestBlocksAt H := fun _ h =>
@@ -55,7 +56,7 @@ theorem finalized_compatible_clean_source_at
         hp.left_entry_origin_at ht hle hy htb hJm hJT (by omega) hEW
           (by have := Store.hj_lt_h hr hW; omega)
       have hFD := (hFJ.mono hsub).trans hJD
-      have hcomp := hp.clean_source_compatible_high_origin_at hc hx hC hs hrb ho
+      have hcomp := hp.clean_source_compatible_high_origin_at hx hC hs hrb ho
         ((hle q (by omega)).trans htb)
       rcases hcomp with h | h
       · exact SA.anc_total hU hFD h
@@ -63,7 +64,7 @@ theorem finalized_compatible_clean_source_at
   · obtain ⟨v, q, u, D, ho, hqa, _⟩ := hp.reset_seed_at
     have hqb := hqa.trans hp.reset_le
     have hFD := hp.low_finalized_below_origin_at ht hle hy htb (by omega) ho hqb
-    rcases hp.clean_source_compatible_high_origin_at hc hx hC hs hrb ho hqb with h | h
+    rcases hp.clean_source_compatible_high_origin_at hx hC hs hrb ho hqb with h | h
     · exact SA.anc_total hU hFD h
     · exact Or.inl (hFD.trans h)
 

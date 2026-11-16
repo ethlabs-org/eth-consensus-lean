@@ -30,16 +30,19 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g b : Time}
   {proposer : Nat → Fin sp.n}
 
-/-- Finite service and joinedness at the actual vote deadline supply an honest vote.
-No `4Δ` warm-start margin is needed when joinedness is supplied explicitly. -/
-theorem honest_votes_of_joined_before (hS : HealthyBaseUpTo tr H U proposer g b)
+/-- Finite service and joinedness at the actual vote deadline supply a vote of every honest
+member of the slot's committee. No `4Δ` warm-start margin is needed when joinedness is supplied
+explicitly. -/
+theorem honest_votes_of_joined_before {K : SA.CommitteeDict sp.n}
+    (hS : HealthyBaseUpTo K tr H U proposer g b)
     {u : Nat} (hgu : gbar g ≤ sp.ts u) (hub : sp.ts u + sp.Δ ≤ b)
     (hjoin : ∀ x ∈ H, JoinedAt tr x (sp.ts u + sp.Δ)) :
-    ∀ x ∈ H, ∃ j e, VoteAt tr x j e ∧ e.msg.slot = u ∧ tr.time j ≤ sp.ts u + sp.Δ := by
+    ∀ x ∈ H, x ∈ K.committee u →
+      ∃ j e, VoteAt tr x j e ∧ e.msg.slot = u ∧ tr.time j ≤ sp.ts u + sp.Δ := by
   have hr := hS.run.localRun
   have hDelta := sp.toParams.hΔ
   have hg0 := gbar_nonneg g
-  intro x hx
+  intro x hx hxK
   have hslot : sp.slot (sp.ts u + sp.Δ) = u := by
     apply slot_of_mem sp u (by linarith)
     simp only [SAParams.ts]; push_cast; linarith
@@ -47,7 +50,7 @@ theorem honest_votes_of_joined_before (hS : HealthyBaseUpTo tr H U proposer g b)
     ⟨4 * u + 1, by simp only [SAParams.ts]; ring⟩ (hS.awake x hx _ (by linarith) hub)
   have hj : joined sp (tr.state x c) (tr.time c) := by
     unfold joined
-    rcases restartTime_state hr hx c with h | ⟨r, hrc, hrs, h⟩
+    rcases restartTime_state hr hS.run.vstart hx c with h | ⟨r, hrc, hrs, h⟩
     · rw [h]; exact bot_le
     · rw [h]
       apply WithBot.coe_le_coe.mpr
@@ -55,11 +58,12 @@ theorem honest_votes_of_joined_before (hS : HealthyBaseUpTo tr H U proposer g b)
       exact hjoin x hx r hrs ((hr.time_mono hrc.le).trans htc.le)
   by_cases hv : (tr.state x c).votedSlot = (sp.slot (tr.time c) : Int)
   · obtain ⟨j, hjc, e, he, hes⟩ :=
-      (cast_of_votedSlot hr (fun _ => voteStart_initial _) hx c _ hv).resolve_right
-        (by rw [trace_mayVote_stock hr hx c]; decide)
+      (cast_of_votedSlot hr hS.run.vstart hx c _ hv).resolve_right
+        (by rw [(trace_mayVote_iff hr hx c _).2 (by rw [htc, hslot]; exact hxK)]; decide)
     exact ⟨j, e, he, by rw [hes, htc, hslot], (hr.time_mono hjc.le).trans htc.le⟩
   · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
-    obtain ⟨e, hem, hes⟩ := tryVote_votes x ell.frame hj hv hT (trace_mayVote_stock hr hx c _)
+    obtain ⟨e, hem, hes⟩ := tryVote_votes x ell.frame hj hv hT
+      ((trace_mayVote_iff hr hx c _).2 (by rw [htc, hslot]; exact hxK))
     have he := hr.exec c ell hc.2 (hc.1 ▸ hx)
     rw [hc.1, hcall] at he
     have h2 : (acOnTick sp x (tr.state x c) ell.frame (tr.time c)).2 = ell.emits :=
@@ -74,7 +78,8 @@ theorem honest_votes_of_joined_before (hS : HealthyBaseUpTo tr H U proposer g b)
 
 /-- An actual honest vote emitted after GST is held with its strict early stamp.
 The restart and deadline premises concern only cuts through the receiving call. -/
-theorem honest_vote_early_pool_before (hS : HealthyBaseUpTo tr H U proposer g b)
+theorem honest_vote_early_pool_before {K : SA.CommitteeDict sp.n}
+    (hS : HealthyBaseUpTo K tr H U proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ell) {u : Nat}
     (hgu : gbar g ≤ sp.ts u) (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j)
@@ -119,15 +124,16 @@ theorem honest_vote_early_pool_before (hS : HealthyBaseUpTo tr H U proposer g b)
       rw [hes] at hv hw
       obtain ⟨iv, -, ev, hev, rfl⟩ := hS.run.honest.pool_vote y hy (q + 1) u _ hv (hvval ▸ hxH)
       obtain ⟨iw, -, ew, hew, rfl⟩ := hS.run.honest.pool_vote y hy (q + 1) u _ hw (hwval ▸ hxH)
-      have hsv := state_pool_slot sp hr hy (q + 1) u _ hv
-      have hsw := state_pool_slot sp hr hy (q + 1) u _ hw
+      have hsv := state_pool_slot_from sp hr hS.run.vstart hy (q + 1) u _ hv
+      have hsw := state_pool_slot_from sp hr hS.run.vstart hy (q + 1) u _ hw
       rw [hvval] at hev
       rw [hwval] at hew
-      obtain ⟨-, rfl⟩ := (one_vote_per_slot sp) FGP ro H U tr hr _ hxH iv iw ev ew hev hew
-        (hsv.trans hsw.symm)
+      obtain ⟨-, rfl⟩ := SA.one_vote_per_slotU sp FGP ro H U tr hr.toU _ hxH iv iw ev ew
+        hev hew (hsv.trans hsw.symm)
       exact hne rfl
   intro c hcj
-  have hst := stamp_lt_of_held_of_run hr hy (a := q + 1) (b := c) (by clear * - hqj' hcj; omega)
+  have hst := stamp_lt_of_held_of_run hr hS.run.vstart hy (a := q + 1) (b := c)
+    (by clear * - hqj' hcj; omega)
     (w := e.msg) (by rw [hes]; exact hheld) (T := sp.ts u + 2 * sp.Δ)
     (fun k hk => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hk)) hqT)
     (by rw [hes]; linarith only [hti0, hqT, hiq])

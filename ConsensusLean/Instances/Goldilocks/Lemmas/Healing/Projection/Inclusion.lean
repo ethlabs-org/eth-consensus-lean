@@ -29,8 +29,8 @@ open SA (SAParams ReplayOrder Payload gbar)
 it at that call or an earlier one. -/
 private theorem frame_root_or_accepted {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
     {H : Set (Fin sp.n)} {U : Set (SA.Blk sp.n FGP)} {tr : SA.SATrace sp FGP ro}
-    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
+    {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
     ∀ B ∈ ℓ.frame.tree, B.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k B := by
   induction i using Nat.strong_induction_on generalizing ℓ with
   | _ i ih =>
@@ -81,7 +81,8 @@ private theorem frame_F (hrun : GoldilocksRun proposer dg H tr)
 /-- **The proposal of an honest proposer's tick is its honest proposal** in the AC projection:
 the `ac_proposal` cut after the tick's `ac_on_tick` returns the payload, and the own block is
 accepted at once (C0.3), at `t_s`. -/
-private theorem honest_proposal_of_tick (hrun : GoldilocksRun proposer dg H tr)
+private theorem honest_proposal_of_tick {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg)
     {p : Fin sp.n} (hp : p ∈ H) {j : Nat} {t : Time} {x : Nat}
@@ -94,7 +95,8 @@ private theorem honest_proposal_of_tick (hrun : GoldilocksRun proposer dg H tr)
       (Node.mkBlock dg p (tr.state p j).fg t x d.head pay) := by
   have h := hrun.toLocalRun
   obtain ⟨hc1, ht1, hst1⟩ := tick_proposal_call h hp hg hP
-  obtain ⟨hacc, ht2⟩ := own_block_accepted h (Compose.requirements sp ro) hroot hnc hp hg hP hr
+  obtain ⟨hacc, ht2⟩ := own_block_accepted h (Compose.requirements_from sp ro (hrun.vstart p)) hroot
+    hnc hp hg hP hr
   obtain ⟨hacc3, ht3, -⟩ := ac_block_after h hp hacc
   have hts : t = sp.ts (sp.slot t) := hP.2.1.trans (sp.slotTime_eq _)
   refine ⟨j + 1,
@@ -107,12 +109,13 @@ private theorem honest_proposal_of_tick (hrun : GoldilocksRun proposer dg H tr)
 
 /-- The AC projection of a Goldilocks run is driven (H.2 (run): clause (a) from the FG's
 acceptance tests, clause (b) from C0.4). -/
-theorem projection_driven_of_run (hrun : GoldilocksRun proposer dg H tr)
+theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg) :
     SA.Driven proposer tr.projAC H := by
   have h := hrun.toLocalRun
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.goldilocks_ac_projection_from hrun hnc
   have hr := hac.localRun
   have blocks : ∀ y ∈ H, ∀ i B, tr.projAC.AcceptAt y i B → B.root ≠ sp.genesisRoot →
       B.proposer = proposer B.slot ∧ B.slot ≤ sp.slot (tr.projAC.time i) ∧

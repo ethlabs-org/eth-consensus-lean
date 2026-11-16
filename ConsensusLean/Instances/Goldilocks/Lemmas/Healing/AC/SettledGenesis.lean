@@ -77,7 +77,8 @@ theorem stored_lock_genesis_or_good_originU {m : WriteMode} (hw : m.width = sp.k
     rcases Nat.eq_zero_or_pos l.slot with h0 | hpos
     · left
       obtain ⟨z, hz, j', e, hv, hes, Hd, hHd, hHdr, hBHd⟩ :=
-        fastLock_honest_voteU hS.run hS.two_faulty_lt hy hfl hS.stock
+        fastLock_honest_voteU hS.run _ SA.CommitteeP.full hy hfl
+          (SA.cs2_full hS.stock hS.two_faulty_lt)
       rw [h0] at hes
       have hHdg : Hd.root = sp.genesisRoot := hHdr.trans (slot_zero_vote_headU hS hz hv hes)
       obtain ⟨ℓv, hcv, -⟩ := hv

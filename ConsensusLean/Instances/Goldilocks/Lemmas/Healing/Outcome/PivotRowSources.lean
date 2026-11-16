@@ -291,7 +291,7 @@ theorem ResetPremisesUpTo.raw_writer_held_at_slot_start {b : Time}
     (hci : tr.projAC.CallAt p i ell) (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
     (hFB : Anc (tr.HonestBlocks H) ell.frame.F B) : B ∈ ell.frame.tree := by
   have hS := healthy_base_of_reset_catch_before hp hc
-  have hr := hS.run.localRun
+  have hr := hS.stockRun.localRun
   have hΔ := sp.toParams.hΔ
   have hstep : sp.ts s + 4 * sp.Δ ≤ tr.time i := by
     rw [hti]
@@ -299,7 +299,8 @@ theorem ResetPremisesUpTo.raw_writer_held_at_slot_start {b : Time}
     simp only [SA.SAParams.ts] at ht ⊢
     linarith only [ht]
   obtain ⟨v, _, D, hD, hDr, hBD, hg | ⟨q, hq, hqt⟩⟩ :=
-    raw_writer_relay_source (by rw [hp.stock]; exact sp.toParams.hn) hr hx hwriter hBC
+    raw_writer_relay_source (by rw [hp.stock]; exact sp.toParams.hn) hr
+      (fun _ => SA.voteStart_initial _) hx hwriter hBC
   all_goals obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   · obtain ⟨G, hG, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hpH _ _ hci
     have hDG : D = G := hr.coherent.1 hD hG (hg.trans hGr.symm)
@@ -497,7 +498,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
     (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) : Anc (tr.HonestBlocks H) B d.head := by
   have hS := healthy_base_of_reset_catch_before hp hc
-  have hr := hS.run.localRun
+  have hr := hS.stockRun.localRun
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
   have hf : 2 * Hᶜ.ncard < sp.n := two_faults_lt hp.faults
@@ -546,6 +547,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
     (fun z hz q hqt hrest => hrestart z hz q (hqt.trans hσb) hrest)
   have hhalf' : sp.n ≤ 2 *
       {z | z ∈ H ∧ ∃ q e, SA.VoteAt tr.projAC z q e ∧ e.msg.slot = σ}.ncard := by
+    rw [hp.stock] at hhalf
     change sp.n ≤ 2 * {z | z ∈ H ∧ ∃ q e, SA.VoteAt tr.projAC z q e ∧
       e.msg.slot = σ ∧ tr.time q ≤ sp.ts σ + sp.Δ}.ncard at hhalf
     have hle := Set.ncard_le_ncard (s := {z | z ∈ H ∧ ∃ q e,
@@ -586,13 +588,14 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
         refine SA.origin_compatible hU hΦU (SA.CommitteeDict.full sp.n) h34
           (fun _ _ => SA.mem_full _ _) (by simpa only [SA.ncard_inter_full, hp.stock] using hf)
           fun v hv hvH => ?_
-        obtain ⟨hvs, q', _, e', hv', rfl⟩ := SA.optimisticPoint_pool_vote hS.run hpH hpt hv hvH
+        obtain ⟨hvs, q', _, e', hv', rfl⟩ := SA.optimisticPoint_pool_vote hS.stockRun hpH hpt hv hvH
         exact votes _ hvH q' e' hv' (by rw [hvs]; clear * - hlσ hle; omega)
     rcases hcomp with h | h
     · exact Or.inl (hLO.trans h)
     · exact SA.anc_total hU hLO h
-  refine SA.batch_proposal hS.run hf hhalf' votes hpH hci
-    (SA.proposal_slot hti) hd ⟨hV.1, Or.inl hV⟩ ?_ hhigh hp.stock
+  refine SA.batch_proposal hS.stockRun (K := SA.CommitteeDict.full sp.n)
+    (SA.cs2_full hp.stock hf) (by rw [hp.stock]; exact hhalf') votes hpH hci
+    (fun _ _ => SA.mem_full _ _) (SA.proposal_slot hti) hd ⟨hV.1, Or.inl hV⟩ ?_ hhigh
   intro z hz q e hv he
   obtain ⟨H', hH', hHr', hBH⟩ := votes z hz q e hv he
   obtain ⟨Hd, hHd, hHdr, _, hmem, _, hbs⟩ := SA.late_vote_held_of_frame_before hS hpH hci hσg
@@ -640,7 +643,7 @@ theorem ResetPremisesUpTo.clean_optimistic_proposal_parent {b : Time}
     (hti : tr.time i = sp.ts (s + 1 : Nat)) (hib : tr.time i ≤ b) :
     Anc (tr.HonestBlocks H) B d.head := by
   have hS := healthy_base_of_reset_catch_before hp hc
-  have hr := hS.run.localRun
+  have hr := hS.stockRun.localRun
   have hΔ := sp.toParams.hΔ
   have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos x; omega
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
@@ -695,10 +698,11 @@ theorem ResetPremisesUpTo.clean_optimistic_proposal_parent {b : Time}
       rw [hts] at hqt
       exfalso
       linarith only [hqt, ht, hle, hΔ]
-  refine optimistic_first_proposal_anc hS.run hf hx hop .refl hpH hci
+  refine optimistic_first_proposal_anc hS.stockRun hf hx hop .refl hpH hci
     (SA.proposal_slot hti) hd ⟨hV.1, Or.inl hV⟩ ?_ hhigh hp.stock
   intro v hv
-  obtain ⟨hvs, hsend, D, hD, hDr, hBD, hacc⟩ := fastLock_writer hr hx (Or.inr hop) v hv
+  obtain ⟨hvs, hsend, D, hD, hDr, hBD, hacc⟩ :=
+    fastLock_writer hr (fun _ => SA.voteStart_initial _) hx (Or.inr hop) v hv
   have hFD := hFB.trans hBD
   refine SA.heldAtProposal_of_writer hr (hp.sync.syncAC hp.run (le_gbar g))
     (by linarith only [hsg, hΔ]) le_rfl hx hpH hci hti hrs hvs hsend ⟨D, hD, hDr, hFD, ?_⟩

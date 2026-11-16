@@ -31,8 +31,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The operational proposal's view and a slot-`(s+1)` voter's merged view agree on common held
 targets, for a proposer honest through `t_{s+1} + hold` and a voter honest at its cast. -/
-theorem reset_views_agree_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ))
+theorem reset_views_agree_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H (sp.ts (s + 1 : Nat) + hold sp)) (hdesignated : p = proposer (s + 1))
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = s + 1)
@@ -56,12 +56,13 @@ theorem reset_views_agree_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
       ∀ X ∈ ellp.frame.tree, X ∈ elly.frame.tree →
         SA.supporters ellp.frame (SA.View.ofLists pay) s X =
           SA.supporters elly.frame (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s X := by
+  have hc := hp.catchUp
   have hm := hp.run.time_mono
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := (hac.upTo (hp.run.time_nonneg j)).localRun
   have hcy' := SA.upTo_castAt.mpr (And.intro le_rfl hcy)
   have htj : tr.time j ≤ sp.ts (s + 1 : Nat) + hold sp := by
-    have ht := (Compose.cast_head_fcRoot hr hy hcy').2
+    have ht := (Compose.cast_head_fcRoot_from hr hp.run.vstart hy hcy').2
     change tr.time j ≤ sp.ts e.msg.slot + sp.Δ at ht
     simpa only [hes, hold] using ht
   have hpi : p ∈ H (tr.time i) := hp.run.antitone
@@ -75,7 +76,7 @@ theorem reset_views_agree_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
   apply SA.Growing.view_agree hac hpmax hy hdesignated ⟨hci, hcall, d, hd⟩ hti hcy
     ⟨P, hPy, hPs, hpay⟩ hsync
   · intro B hB _ hstamp hF
-    exact hp.reset_frozen_frame_at hc hpi hy hci hti hcy hib hgi hjoi hB hstamp hF
+    exact hp.reset_frozen_frame_at hpi hy hci hti hcy hib hgi hjoi hB hstamp hF
   · intro v hv B hB hBr hF
     by_cases hearly : tr.time j < sp.ts (s + 1 : Nat) + sp.Δ
     · obtain ⟨Q, hQ, hQs, hsup⟩ := SA.cast_ready hr hy hcy' (by rw [hes]; exact hearly)
@@ -100,7 +101,7 @@ theorem reset_views_agree_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
         simp only [SA.voteViewList, SA.SAState.poolAt, Int.toNat_natCast, List.filter_filter,
           List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
           Bool.and_eq_true, decide_eq_true_eq] at hv
-        rw [SA.state_pool_slot sp hrp hpi i s v (hsip.symm ▸ hv.1)]
+        rw [SA.state_pool_slot_from sp hrp hp.run.vstart hpi i s v (hsip.symm ▸ hv.1)]
       obtain ⟨B', hB', hBr', _⟩ := hsup v (by rw [SA.blockSupport, hpay]; exact hv) hvs
       rwa [hac.localRun.coherent.1 ((SA.frameIn_of_callAt hrp hpi hci').2 hB)
         ((SA.frameIn_of_callAt hr hy hcy'.1).2 hB') (hBr.trans hBr'.symm)]
@@ -118,7 +119,7 @@ theorem reset_views_agree_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
           (fun q hq => hm hq.le) hy
           (by rwa [Outcome.frame_of_call hp.run hy hcy.1] at hF) hBy⟩
       · obtain ⟨hqt, hacc⟩ := (RunTrace.upTo_acceptAt tr).mp hacc
-        exact Outcome.accept_mem_frame hp hc (hp.run.antitone hqt hpi) hy hacc hcy.1 hjb
+        exact Outcome.accept_mem_frame hp (hp.run.antitone hqt hpi) hy hacc hcy.1 hjb
           hgj hjoj (by have ht := hm hqi.le; rw [hti] at ht; linarith) hF
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo

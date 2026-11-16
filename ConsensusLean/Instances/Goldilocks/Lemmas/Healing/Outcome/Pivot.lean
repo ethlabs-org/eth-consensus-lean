@@ -118,7 +118,8 @@ theorem ResetPremisesUpTo.reset_vote_anchor {b : Time}
     · exact Or.inl h
     · exact Or.inr ⟨h, haP⟩
   · have haQ := hlocks l hl hls
-      (hlive.trans ((SA.castAt_readPoint_locksWF hr hy hcy).cap hl)) B hB hBr
+      (hlive.trans ((SA.castAt_readPoint_locksWF hr (fun _ => SA.voteStart_initial _) hy hcy).cap
+        hl)) B hB hBr
     rcases Anc.total hU haQ hDQ with h | h
     · exact Or.inl h
     · exact Or.inr ⟨h, haQ.trans (.single ⟨hQU, hPU, hPQ⟩)⟩

@@ -21,11 +21,16 @@ open SA (SAParams ReplayOrder)
 def dictOfTime (sp : SAParams) (cm : Time → Finset (Fin sp.n)) : SA.CommitteeDict sp.n :=
   ⟨fun s => ↑(cm (sp.toParams.slotTime s))⟩
 
-/-- The run and start equations of the committee-indexed Goldilocks supplier. -/
+/-- The run and start equations of the committee-indexed Goldilocks supplier.
+Committee sizes are positive and match the threshold parameter. Membership facts are required
+under collision freedom, so engine execution validity alone still transports to `Run`. -/
 def GoldilocksRunData (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (R : ACRun (goldilocksNode sp ro) (fun v => v.val)) : Prop :=
   R.Run = (fun cm proposer dg H tr => Growing.GoldilocksRun proposer dg H tr
-    (SA.committeeStart sp.genesisRoot (dictOfTime sp cm))) ∧
+    (SA.committeeStart sp.genesisRoot (dictOfTime sp cm)) ∧
+    0 < sp.committeeSize ∧
+    (∀ s, ((dictOfTime sp cm).committee s).ncard = sp.committeeSize) ∧
+    (Compose.NoCollRun dg tr → Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm))) ∧
   R.start = (fun cm => SA.committeeStart sp.genesisRoot (dictOfTime sp cm))
 
 /-- Exact data equations for the intended Goldilocks supplier, not its field evidence. -/
@@ -44,21 +49,26 @@ The existential is an unproved contract, never a definition of a supplier instan
 with no upstream standalone statement; `drain` is the skeleton choice `2 * sp.k + 5`,
 not a newly proved upstream bound. `Origin` is the joined stored-fast-lock source
 used by `Growing/Healing/RowService.lean` (the new source supplier remains unproved).
-The data equations supply no healing field evidence. -/
-def goldilocksACHealing (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) : Prop :=
+The data equations supply no healing field evidence. The explicit timeout bound is needed
+for `follow = 3`; the service-delay inequality alone does not imply it. -/
+def goldilocksACHealing (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (_hδ : 3 ≤ sp.toParams.δt) : Prop :=
   ∃ R : ACRun (goldilocksNode sp ro) (fun v => v.val),
     ∃ O : ACHealing (goldilocksNode sp ro) (fun v => v.val) R,
     GoldilocksHealingData sp ro O
 
 /-- INCOMPLETE intended Goldilocks local supplier, not a completed specialisation.
 Local duration, threshold, outage-policy, service and payload equations remain open.
+The margin bound fits the smallest positive recurrence index:
+`18Δ + 2 ≤ (4X + 14)Δ + 2` for every `X ≥ 1`. It supplies no margin equality.
 The healing equation below supplies neither recovery matching nor evidence for
 `OutageReadPoint.protection`. A witness alone does not fix Goldilocks data.
 The original local field equations also remain open; no supplier evidence is inferred.
 The ready-majority counterpattern is not discharged by this skeleton. -/
-def goldilocksACCorrectLocal (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) : Prop :=
+def goldilocksACCorrectLocal (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (_hδ : 3 ≤ sp.toParams.δt) : Prop :=
   ∃ C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val),
-    GoldilocksHealingData sp ro C.healing
+    GoldilocksHealingData sp ro C.healing ∧ C.margin ≤ 18 * sp.Δ + 2
 
 end Consensus.Goldilocks.Generic
 

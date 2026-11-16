@@ -62,13 +62,12 @@ theorem joinedAt_upTo_iff {d t : Time} (htd : t ≤ d) {y : Fin sp.n} :
 /-- The frame of an AC call of a node honest at it is well formed and lies in its held tree (the
 static `frameIn_of_callAt` and `frame_tree_subset` on the prefix through the call). -/
 theorem frame_tree_subset_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ℓ) :
     FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ (tr.state y k).fg.tree := by
   have hd := hrun.time_nonneg k
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time k)) (tr.upTo (tr.time k))
-    proposer (hrun.upTo hd) (hnc.upTo _)).localRun
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)).localRun
   have hc' : (tr.upTo (tr.time k)).projAC.CallAt y k ℓ := by
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hc
@@ -78,7 +77,8 @@ theorem frame_tree_subset_at
   exact fun B hB => hB.1
 
 /-- A high origin's block is held by its writer at the write. -/
-theorem highOrigin_mem_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem highOrigin_mem_at {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
     B ∈ (tr.state x i).fg.tree := by
@@ -91,7 +91,8 @@ theorem highOrigin_mem_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun pro
 /-- A report's block is held in the reporter's tree, for a reporter honest at the report (the
 static `toFG_mem_tree` on the prefix through the report). -/
 theorem toFG_mem_tree_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n} {k : Nat}
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    {y : Fin sp.n} {k : Nat}
     (hy : y ∈ H (tr.time k)) {ℓ : ACLabel (goldilocksNode sp ro)}
     {C : SA.Blk sp.n (List (FG.Att sp.n))} (hto : SA.ToFGAt tr.projAC y k ℓ C) :
     C ∈ (tr.state y k).fg.tree := by
@@ -105,7 +106,8 @@ variable {b : Time}
 
 /-- A held descendant of a high origin has high state height, at a holder honest at an
 observation time after the held state's cuts. -/
-theorem high_of_anc_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {x : Fin sp.n}
+theorem high_of_anc_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {x : Fin sp.n}
     {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
     {z : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
     (hz : z ∈ H t) {W : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -123,7 +125,8 @@ theorem high_of_anc_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {x : 
 /-- **A high report has a stored high origin written before it**, under growing faults: the
 report's block `C` of a node honest at its report and at `c_z` is below the stored viable image
 `O` of an earlier fast-lock write of the same node, and `O` is high as `C ⪯ O` is. -/
-theorem high_report_origin_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+theorem high_report_origin_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {z : Fin sp.n} {r : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time r)))
     {ell : ACLabel (goldilocksNode sp ro)}
     {C : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -138,14 +141,13 @@ theorem high_report_origin_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b
   have hd := hrun.time_nonneg r
   have hrun' := hrun.upTo hd
   have hU' := RunTrace.honestBlocks_upTo_subset hrun.time_mono (H := H) hd
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time r)) (tr.upTo (tr.time r))
-    proposer hrun' (hnc.upTo _)).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun' (hnc.upTo _)).localRun
   have hrep' := (toFGAt_upTo_iff hrun.time_mono le_rfl).mpr hrep
   obtain ⟨hpc, _, hC'⟩ := hrep'
   obtain ⟨hCv, l, hl, hlb, hlf, _⟩ := SA.toFG_candidate hC'
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, _, rfl⟩ := hl
   obtain ⟨io, hio, CV, ellw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
-    Healing.stored_fast_lock_provenance hr hz r l₀ hl₀ hlf
+    Healing.stored_fast_lock_provenance hr hrun.vstart hz r l₀ hl₀ hlf
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hz hpc
   obtain ⟨hPhiw, hPhiwU⟩ := SA.frameIn_of_callAt hr hz hcw
   obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hPhi hB₀

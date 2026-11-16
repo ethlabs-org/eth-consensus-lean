@@ -87,14 +87,15 @@ theorem faulty_lt_q (hh : tr.HealthyRun H ΔF g) : Hᶜ.ncard < sp.toParams.fg.q
   omega
 
 /-- The height pair an honest node signs names a block it holds, of that height. -/
-theorem signAt_entry (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+theorem signAt_entry {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {att : FG.Att sp.n} (hs : tr.SignAt y k att) :
     ∃ E ∈ (tr.state y k).fg.tree, E.root = att.T ∧ ((tr.state y k).fg.σ E.root).h = att.h :=
   signAt_entry_from hrun.toLocalRun hy hs
 
 /-- An honest signed attestation comes from an actual earlier report, with its full
 entry/source witnesses. The report and signing have the same time and FG store. -/
-theorem signAt_report_entry (hrun : GoldilocksRun proposer dg H tr) {v : Fin sp.n}
+theorem signAt_report_entry {ini} (hrun : GoldilocksRun proposer dg H tr ini) {v : Fin sp.n}
     (hv : v ∈ H) {k : Nat} {a : FG.Att sp.n} (hs : tr.SignAt v k a) :
     ∃ j, k = j + 1 ∧ tr.time j = tr.time k ∧
       ∃ ℓ C E, SA.ToFGAt tr.projAC v j ℓ C ∧
@@ -130,7 +131,8 @@ theorem signAt_report_entry (hrun : GoldilocksRun proposer dg H tr) {v : Fin sp.
 
 /-- A cache strictly ahead of a held target is backed by an actual earlier
 honest report at a strictly higher height. No report at the reader is invented. -/
-theorem cache_ahead_report (hrun : GoldilocksRun proposer dg H tr)
+theorem cache_ahead_report {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < sp.toParams.fg.q)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {P X : SA.Blk sp.n (List (FG.Att sp.n))}

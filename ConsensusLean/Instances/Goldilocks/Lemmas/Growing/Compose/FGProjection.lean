@@ -8,10 +8,18 @@ public section
 namespace Consensus.Goldilocks.Compose.Growing
 
 /-- The FG projection obeys each law at the caller's own honesty horizon. -/
-theorem fg_projection : FGProjection := by
-  intro P A dg H sg tr proposer hq hg h hnc
-  have retained (i : Nat) := Compose.fg_projection P A dg (H (tr.time i)) sg
-    (tr.upTo (tr.time i)) proposer hq hg (h.upTo (h.time_nonneg i)) (hnc.upTo _)
+theorem fg_projection (P : Params) (A : NodeAC P)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
+    (sg : A.Msg → Fin P.n) (tr : RunTrace A) (proposer : Nat → Fin P.n)
+    {ini : Fin P.n → A.State}
+    (hq : ∀ y, ({ A with initial := ini y } : NodeAC P).Requirements)
+    (hg : (P.genesisBlock A.genesisPayload).RootOk dg)
+    (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hnc : NoCollRun dg tr) :
+    Consensus.Goldilocks.Growing.FGLocalRun A.genesisPayload H (tr.HonestBlocksAt H)
+      tr.projFG := by
+  have retained (i : Nat) := Compose.fg_projection_from
+    (fun y _ => hq y) hg (h.upTo (h.time_nonneg i)) (hnc.upTo _)
   have call {y i ℓ} (hc : tr.projFG.CallAt y i ℓ) :
       (tr.upTo (tr.time i)).projFG.CallAt y i ℓ := by
     rw [RunTrace.upTo_projFG]

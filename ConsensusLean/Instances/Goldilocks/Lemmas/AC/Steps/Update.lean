@@ -55,7 +55,7 @@ selects a result extending it. Source provenance and service only produce these 
 theorem update_extends_of_resolved_votes
     {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
     {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-    (hrun : ACRun proposer tr H U) {s : Nat} {z : Fin sp.n} {k : Nat}
+    {ini} (hrun : ACRun proposer tr H U ini) {s : Nat} {z : Fin sp.n} {k : Nat}
     {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (K : CommitteeDict sp.n)
     (hP : ∀ v ∈ (tr.state z k).pool (s + 1), v.val ∈ K.committee (s + 1))
     (hf : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize)
@@ -75,7 +75,7 @@ theorem update_extends_of_resolved_votes
   set A := tr.state z k
   set Φ := ℓ.frame
   set Hv := {v | v ∈ H ∧ ∃ x' ∈ A.pool (s + 1), x'.val = v}
-  have hps := state_pool_slot sp hr hz k (s + 1)
+  have hps := state_pool_slot_from sp hr hrun.vstart hz k (s + 1)
   -- an honest vote of the pool: no second vote, resolved early, its head extends `B`
   have key : ∀ v ∈ A.pool (s + 1), v.val ∈ H →
       v.val ∉ equivocators {x | x ∈ A.pool (s + 1)} ∧
@@ -88,8 +88,8 @@ theorem update_extends_of_resolved_votes
       obtain ⟨j₂, -, e₂, hv₂, rfl⟩ := hrun.honest.pool_vote z hz k _ x₂ hx₂ (h₂ ▸ hvH)
       rw [h₁] at hv₁
       rw [h₂] at hv₂
-      exact hne (congrArg Emission.msg (one_vote_per_slot sp _ _ _ _ _ hr _ hvH _ _ _ _ hv₁ hv₂
-        ((hps _ hx₁).trans (hps _ hx₂).symm)).2)
+      exact hne (congrArg Emission.msg (one_vote_per_slotU sp _ _ _ _ _ hr.toU _ hvH _ _ _ _ hv₁
+        hv₂ ((hps _ hx₁).trans (hps _ hx₂).symm)).2)
     · obtain ⟨j, -, e, hve, rfl⟩ := hrun.honest.pool_vote z hz k _ v hv hvH
       obtain ⟨Hd, hHdU, hHdr, hBHd⟩ := hext _ hvH j e hve (hps _ hv)
       obtain ⟨Hd', hHd', hr'⟩ := inTree_of_resolutionTime_ne_top (ne_top_of_lt (hres _ hv hvH))

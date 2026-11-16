@@ -35,7 +35,7 @@ theorem fastLock_writer_at
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono hd
   intro v hv
   obtain ⟨hvs, ⟨k, hk, hlo, hhi⟩, Hv, hHv, hroot, hDHv, hacc⟩ :=
-    Healing.fastLock_writer (acRun_upTo hrun hnc hd).localRun hx
+    Healing.fastLock_writer (acRun_upTo hrun hnc hd).localRun (acRun_upTo hrun hnc hd).vstart hx
       ((SA.upTo_fastLockAt hrun.time_mono).mpr ⟨le_rfl, hfl⟩) v hv
   obtain ⟨hkt, hk⟩ := (ac_sendOrAdmit_upTo hrun.time_mono).mp hk
   refine ⟨hvs, ⟨k, hrun.antitone hkt hx, hk, hlo, hhi⟩, Hv, hsub hHv, hroot,
@@ -81,7 +81,7 @@ theorem first_transfer_service_at
     (hearlier : SA.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B)
     (hstock : sp.committeeSize = sp.n) :
     SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hslot := (castAt_spec_at hrun hnc hy hc).2.1.symm.trans hs
   have hprev : gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) := by
     change sp.slot (tr.time i) = s + 1 at hslot
@@ -108,7 +108,7 @@ theorem writer_merged_service_at
       v ∈ (tr.projAC.state x c).pool s ∨
         v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state x c).pool s} := by
   exact SA.Growing.writer_merged
-    (Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc)
+    (Compose.Growing.goldilocks_ac_projection_from hrun hnc)
     hx hu hy hc hs (service_syncACAt hrun hsvc ((SA.le_gbar g).trans hm))
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof

@@ -39,7 +39,7 @@ theorem ResetPremisesUpTo.reset_proposal_viable {b : Time}
     (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
     (hPy : P ∈ elly.frame.tree) :
     P ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame u) := by
-  have hr := (healthy_base_of_reset_catch_before hp hc).run.localRun
+  have hr := (healthy_base_of_reset_catch_before hp hc).stockRun.localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   obtain ⟨hPsi, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hroot := hp.reset_vote_root_below_proposal hc hpH hactual hR hci hcall hd hti hib hPQ
@@ -185,7 +185,7 @@ theorem ResetPremisesUpTo.reset_competitor_reflect {b : Time}
     (hXv : X ∈ ellp.frame.viableHeads) (hBX : B.parent = some X.root)
     (hB : B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1))) :
     B ∈ ellp.frame.viableTree ellp.frame.tree := by
-  have hr := (healthy_base_of_reset_catch_before hp hc).run.localRun
+  have hr := (healthy_base_of_reset_catch_before hp hc).stockRun.localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   obtain ⟨_, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hXt : X ∈ ellp.frame.tree := SA.mem_of_anc hXQ hQt
@@ -286,7 +286,7 @@ theorem ResetPremisesUpTo.reset_suffix_best {b : Time}
       {B | B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)) ∧
         B.parent = some X.root ∧ SA.goldfishEligible sp elly.frame (tr.time j)
           (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B} C := by
-  have hr := (healthy_base_of_reset_catch_before hp hc).run.localRun
+  have hr := (healthy_base_of_reset_catch_before hp hc).stockRun.localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   obtain ⟨_, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   exact suffix_best_of_views hr.coherent hPhi hPhiU hPsiU (fun _ hB => hB.1.1) hti
@@ -365,7 +365,7 @@ theorem ResetPremisesUpTo.reset_old_child_ineligible {b : Time}
     (hBQ : B.parent = some d.head.root) (hBs : B.slot < s + 1) :
     ¬ SA.goldfishEligible sp elly.frame (tr.time j)
       (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B := by
-  have hr := (healthy_base_of_reset_catch_before hp hc).run.localRun
+  have hr := (healthy_base_of_reset_catch_before hp hc).stockRun.localRun
   have hPhi := (SA.frameIn_of_callAt hr hpH hci).1
   have hBP : B ≠ P := by rintro rfl; omega
   have hBv := hp.reset_competitor_reflect hc hpH hdesignated hactual hPs hci hti hy hcy

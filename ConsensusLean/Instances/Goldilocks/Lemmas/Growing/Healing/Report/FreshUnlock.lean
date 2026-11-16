@@ -37,8 +37,7 @@ theorem older_locks_compatible_after_unlock_at
       ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
         Compatible (tr.HonestBlocksAt H) L P := by
   have hd := hrun.time_nonneg k
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time k))
-    (tr.upTo (tr.time k)) proposer (hrun.upTo hd) (hnc.upTo (tr.time k))).localRun
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo (tr.time k))).localRun
   rw [RunTrace.upTo_projAC] at hr
   have hc' : SA.CastAt (tr.projAC.upTo (tr.time k)) y j ell e :=
     ⟨(Trace.upTo_callAt _).mpr ⟨hrun.time_mono hjk.le, hc.1⟩, hc.2⟩

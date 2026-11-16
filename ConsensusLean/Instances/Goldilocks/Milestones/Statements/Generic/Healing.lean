@@ -121,8 +121,9 @@ def sign_from_report (runs : ACRun A sg) : Prop :=
       ∃ E ∈ (tr.state y i).fg.tree, (tr.state y i).fg.Anc E R ∧ E.root = att.T ∧
         ((tr.state y i).fg.σ E.root).h = att.h ∧ ((tr.state y i).fg.σ E.root).Th = E.root
 
-/-- UNPROVED leaf 8: deficit at a fixed key, with slot-start proposer honesty. -/
-def rounds_le_warm_proposal_at (runs : ACRun A sg) : Prop :=
+/-- UNPROVED leaf 8: deficit at a fixed key. The Prop is parameterized by a healing supplier whose
+value does not occur in its body; its proof uses the supplier's `proposal_floor`. -/
+def rounds_le_warm_proposal_at (_O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {g af len : Time} {u floor v : Nat} {kindJ : Prop} {J B : A.Blk}
     {z : Fin P.n} {kB : Nat},
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
@@ -134,8 +135,9 @@ def rounds_le_warm_proposal_at (runs : ACRun A sg) : Prop :=
     (H (P.slotTime u))ᶜ.ncard < 2 * P.fg.q - P.n →
     HZ tr H g + 1 ≤ ((tr.state z (kB + 1)).fg.σ B.root).h + riseRounds (HZ tr H g) v
 
-/-- UNPROVED leaf 9: report kind under old window/proposer premises. -/
-def report_kind_of_warm_at (runs : ACRun A sg) : Prop :=
+/-- UNPROVED leaf 9: report kind. The Prop is parameterized by a healing supplier whose value does
+not occur in its body; its proof uses the supplier's `proposal_floor` and `report_in_frame`. -/
+def report_kind_of_warm_at (_O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {lo hi : Time} {floor u : Nat} {kindJ : Prop} {J B R : A.Blk}
     {z : Fin P.n} {kB : Nat} {y : Fin P.n} {i : Nat},
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → FrameWindow tr H lo hi floor kindJ J →
@@ -158,6 +160,9 @@ def reset_of_high_proposal_at (O : ACHealing A sg runs) : Prop :=
     Service tr H g ΔF b → (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
     CatchRun tr H g (2 * P.Δ) → NoRestartAfter tr H (gbar g) →
+    (∀ s, P.slotTime s + 4 * P.Δ ≤ P.slotTime (s + 1)) →
+    (∀ s, P.slotTime s + 6 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) →
+    (∃ k, FirstCutAfter tr k (cutZ P g) ∧ tr.time k ≤ b) →
     gbar g + 4 * P.Δ ≤ P.slotTime s₀ → s₀ ≤ u → s₀ + O.warmup ≤ u →
     u + 1 ≤ N → P.slotTime N + 2 * P.Δ ≤ b → (H b).Nonempty →
     z ∈ H (P.slotTime u + P.Δ) → z = proposer u → tr.ProposesAt z kB B → B.slot = u →
@@ -173,9 +178,12 @@ def round_of_warm_at (O : ACHealing A sg runs) : Prop :=
     Service tr H g ΔF b → (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
     CatchRun tr H g (2 * P.Δ) → NoRestartAfter tr H (gbar g) →
+    (∀ s, P.slotTime s + 4 * P.Δ ≤ P.slotTime (s + 1)) →
+    (∀ s, P.slotTime (s + 1) + 2 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) →
+    (∃ k, FirstCutAfter tr k (cutZ P g) ∧ tr.time k ≤ b) →
     gbar g + 4 * P.Δ ≤ P.slotTime s₀ → s₀ ≤ u → s₀ + O.warmup ≤ u → O.follow ≤ P.δt →
     (∀ s, P.slotTime s + 6 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) →
-    u + P.δt ≤ x → x ≤ N → P.slotTime N + 2 * P.Δ ≤ b → T ≤ b →
+    u + P.δt ≤ x → x ≤ N → P.slotTime N + 2 * P.Δ ≤ b → (H b).Nonempty → T ≤ b →
     NoAdvance tr H g T → P.slotTime (u + 1) + 2 * P.Δ < T →
     z ∈ H (P.slotTime u + P.Δ) → z = proposer u → tr.ProposesAt z kB B → B.slot = u →
     p ∈ H (tr.time kX) → p = proposer x → tr.ProposesAt p kX X → X.slot = x →
@@ -188,18 +196,24 @@ def HighOrigin (O : ACHealing A sg runs) (tr : RunTrace A) (H : Time → Set (Fi
   x ∈ H (max (cutZ P g) (tr.time i)) ∧ O.Origin tr x i j B ∧
     HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h
 
-/-- UNPROVED leaf 12: strict source cut, original entry identities and ancestry. -/
+/-- UNPROVED leaf 12: strict source cut, original entry identities and ancestry.
+The reset premises are required by the abstract origin producer `report_origin`. -/
 def high_row_source_at (O : ACHealing A sg runs) : Prop :=
-  ∀ {cm proposer dg H tr} {g : Time} {v : Fin P.n} {d : Nat} {att : FG.Att P.n},
-    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    v ∈ H (max (cutZ P g) (tr.time d)) → tr.SignAt v d att → HZ tr H g + 1 ≤ att.h →
+  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time}
+    {v : Fin P.n} {d : Nat} {att : FG.Att P.n},
+    βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
+    Premises tr H cm βK proposer dg sg g ΔF b → IsReset tr H g a → a ≤ b →
+    v ∈ H (max (cutZ P g) (tr.time d)) → tr.time d ≤ b →
+    tr.SignAt v d att → HZ tr H g + 1 ≤ att.h →
     ∃ r < d, ∃ l Og, HighOrigin A sg O tr H g v r l Og ∧
       ∃ E ∈ (tr.state v r).fg.tree, (tr.state v r).fg.Anc E Og ∧
         E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
         ((tr.state v r).fg.σ E.root).Th = E.root
 
-/-- UNPROVED leaf 13: no high contest under committee-aware reset premises. -/
-def no_high_contest_at (runs : ACRun A sg) : Prop :=
+/-- UNPROVED leaf 13: no high contest. The Prop is parameterized by a healing supplier whose value
+does not occur in its body; its proof uses the supplier's `report_origin`, `report_in_frame` and
+`origins_comparable`. -/
+def no_high_contest_at (_O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {p : Fin P.n} {i : Nat},
     βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
     Premises tr H cm βK proposer dg sg g ΔF b → IsReset tr H g a → a ≤ b →

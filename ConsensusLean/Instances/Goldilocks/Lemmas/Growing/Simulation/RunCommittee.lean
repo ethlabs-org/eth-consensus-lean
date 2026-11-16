@@ -59,6 +59,14 @@ theorem dictOfTime_runCommittee :
     exact SA.slot_of_mem _ s le_rfl ((SA.ts_lt_iff _).2 (by push_cast; omega))
   simp only [Generic.dictOfTime, runCommittee, Set.coe_toFinset, hslot]
 
+/-- **Every run committee has `committeeSize` members**, the slot committee of its time. -/
+theorem runCommittee_card (hv : rho.ExecutionValid) (t : Time) :
+    (runCommittee S rho hn t).card = (S.params (pubOf E) hn).committeeSize := by
+  classical
+  simp only [runCommittee]
+  rw [← Set.ncard_eq_toFinset_card']
+  exact Obligations.Growing.voteK_ncard S rho hn hv _
+
 end Consensus.Goldilocks.Simulation
 
 end

@@ -39,8 +39,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 private theorem acRun_prefix (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {d : Time} (hd : 0 ≤ d) :
     SA.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) := by
-  have h := Compose.goldilocks_ac_projection sp ro dg (H d) (tr.upTo d) proposer
-    (hrun.upTo hd) (hnc.upTo d)
+  have h := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d)
   rwa [RunTrace.upTo_projAC] at h
 
 /-- Fewer than a third faulty is below the replay quorum excess. -/
@@ -269,8 +268,8 @@ theorem unanimous_next_votes_of_witness_at
         rw [heq]; exact hgm) le_rfl
     rwa [RunTrace.upTo_projAC] at h
   have hext := SA.next_transfer_of_carry sp hrun' _ SA.CommitteeP.full SA.CommitteeT.full
-    (SA.size_binding_full hS.stock) hy hcast' hs hG' (by rw [hS.stock]; exact hhalf') hcarry
-    ((SA.faultBoundK_full_iff _ _).2 hfault) (SA.cs2_full_of_faultBound sp hS.stock hfault) hviab
+    (SA.size_binding_full hstock) hy hcast' hs hG' (by rw [hstock]; exact hhalf') hcarry
+    ((SA.faultBoundK_full_iff _ _).2 hfault) (SA.cs2_full_of_faultBound sp hstock hfault) hviab
     (fun x hx k hki ev hv' hsx => by
       obtain ⟨hkd, hv''⟩ := SA.upTo_voteAt.mp hv'
       exact narrow_vote hrun hnc ht0 hx hv'
@@ -318,7 +317,7 @@ theorem unanimous_next_proposal_of_witness_at
   have subU := RunTrace.honestBlocks_upTo_subset hmono (H := H) ht0
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch ht0 hib
     hstock
-  have hr := hS.run.localRun
+  have hr := hS.stockRun.localRun
   have hf3 := hf _ ht0 hib
   have hf2 : 2 * (H (tr.time i))ᶜ.ncard < sp.n := by
     have := Fin.pos y
@@ -384,8 +383,10 @@ theorem unanimous_next_proposal_of_witness_at
       (by rintro x ⟨hx, j, e', hv', hs', _⟩; exact ⟨hx, j, e', hv', hs'⟩)
     omega
   have hpre := hrun.upTo ht0
-  refine (SA.batch_proposal hS.run hf2 hhalf' hG' hy hcp (SA.proposal_slot hti) hdp
-    ⟨hXt, Or.inl ⟨hXt, hrootX, Q, hQt, hvQ, hXQf⟩⟩ ?_ ?_ hstock).mono subU
+  refine (SA.batch_proposal hS.stockRun (K := SA.CommitteeDict.full sp.n)
+    (SA.cs2_full hstock hf2) (by rw [hstock]; exact hhalf') hG' hy hcp
+    (fun _ _ => SA.mem_full _ _) (SA.proposal_slot hti) hdp
+    ⟨hXt, Or.inl ⟨hXt, hrootX, Q, hQt, hvQ, hXQf⟩⟩ ?_ ?_).mono subU
   · intro x hx k e hv hs
     obtain ⟨W, hW, hWr, -, hp, -, hb⟩ := SA.late_vote_held_of_frame_before hS hy hcp hm
       (show sp.ts m + 2 * sp.Δ ≤ tr.time i by linarith) le_rfl hdl hrs hx hv hs
@@ -403,9 +404,10 @@ theorem unanimous_next_proposal_of_witness_at
       (by rw [RunTrace.upTo_projAC]; exact hdp) hti SA.CommitteeP.full
       (SA.cs2_full hstock hf2) l hl'
     have heq : l.slot = m := by omega
-    obtain ⟨O, hLO, a, CV, hopt⟩ := SA.proposal_high_lock hr hy hti hl hlm hL hLr
+    obtain ⟨O, hLO, a, CV, hopt⟩ := SA.proposal_high_lock hr
+      (fun _ => SA.voteStart_initial _) hy hti hl hlm hL hLr
     rw [heq] at hopt
-    rcases SA.optimisticLock_compatible hS.run hf2 hy hopt hG' hstock with hOX | hXO
+    rcases SA.optimisticLock_compatible hS.stockRun hf2 hy hopt hG' hstock with hOX | hXO
     · exact Or.inl (hLO.trans hOX)
     · exact SA.anc_total hr.coherent hLO hXO
 

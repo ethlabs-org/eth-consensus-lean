@@ -8,6 +8,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Next
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -36,8 +38,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **Finite fast-source transfer**, with its vote domain supplied at each later vote of a node
 honest at it, given the earlier votes of nodes honest at them. -/
-theorem fast_source_votes_of_domain_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
+theorem fast_source_votes_of_domain_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfast : SA.FastLockAt tr.projAC x r s B CV) (hts : cutZ sp.toParams g ≤ sp.ts s)
     (hdomain : ∀ y i ell e, y ∈ H (tr.time i) → SA.CastAt tr.projAC y i ell e →
@@ -50,7 +53,12 @@ theorem fast_source_votes_of_domain_before_at (hp : ResetPremisesUpTo tr H propo
       s < e.msg.slot → SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
   have hrun := hp.run
   have hnc := hp.noColl
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
+  have hPK := hp.committeeFacts.hP
+  have hTK := hp.committeeFacts.committeeTAt hrun hnc
+  -- the slot committees from the source's label on are bounded through the horizon
+  have hgsl : ∀ {u : Nat}, s ≤ u → SA.gbar g ≤ sp.ts u := fun hu =>
+    Healing.gbar_le_of_cutZ_le sp (hts.trans ((SA.ts_le_iff sp).mpr (by exact_mod_cast hu)))
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hgs : g ≤ sp.ts s := by
     have := Healing.lt_cutZ sp g
@@ -75,18 +83,19 @@ theorem fast_source_votes_of_domain_before_at (hp : ResetPremisesUpTo tr H propo
   by_cases hfirst : e.msg.slot = s + 1
   · have hts1 : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
     rw [hfirst] at htime
-    have carry := KernelProof.carry_of_senders hp hc hts hy hcast hfirst (CV := CV)
+    have carry := KernelProof.carry_of_senders hp hts hy hcast hfirst (CV := CV)
       fun v hv' => by
         obtain ⟨hvs, ⟨k, hxk, hsend, hk1, hk2⟩, D, -, hDr, hBD, hacc⟩ :=
-          fastLock_writer_at hac.localRun hx hfast v hv'
+          fastLock_writer_at hac.localRun hac.vstart hx hfast v hv'
         exact ⟨hvs, ⟨x, k, hxk, hsend, hk1, hk2⟩, D, hDr, hFB.trans hBD,
           hacc.imp_right fun ⟨k, hk⟩ => ⟨x, k, hk⟩⟩
-    have hfb := KernelProof.fault_bound_late_at hp (t := tr.time i)
-      (hts.trans (by linarith only [htime, hts1, hΔ])) hib
-    exact SA.Growing.first_transfer_stored hac _ (fun _ => SA.CommitteeP.full)
-      (fun _ => SA.CommitteeT.full) (SA.size_binding_full hp.stock) hx hfast .refl hy hcast hfirst
-      (KernelProof.reset_syncACAt hp hgs) carry ((SA.ncard_inter_full_lt_iff _ _ _).2 hfb)
-      (SA.Growing.cs2_full_of_faultBoundAt hp.stock hfb)
+    have hsi : sp.ts s ≤ tr.time i := by linarith only [htime, hts1, hΔ]
+    exact SA.Growing.first_transfer_stored hac _
+      (fun t => SA.CommitteePAt.upTo hrun.time_mono hrun.antitone hPK t)
+      (SA.CommitteeTAt.upTo hrun.antitone hTK) hp.committeeFacts.hsize hx hfast .refl hy hcast
+      hfirst (KernelProof.reset_syncACAt hp hgs) carry
+      (KernelProof.faultBoundK_late_at hp (hgsl le_rfl) (hsi.trans hib) (hts.trans hsi) hib)
+      (hp.committee_cs2_at (hgsl (by omega)) (htime.trans hib) (hrun.time_nonneg i) hib)
       (by rw [← hfirst]; exact Or.inl hv)
       (fun z q hq hz e' he hslot => hprior z q hz hq e' he (by omega))
   · obtain ⟨m, hm⟩ : ∃ m, e.msg.slot = m + 1 := ⟨e.msg.slot - 1, by omega⟩
@@ -105,25 +114,21 @@ theorem fast_source_votes_of_domain_before_at (hp : ResetPremisesUpTo tr H propo
         have := SA.slot_mono sp hd (hrun.time_mono (Nat.le_of_not_gt hn))
         omega
       exact hprior z q hz hqi e' ⟨ell', hc'⟩ (by omega)
-    have hfb := KernelProof.fault_bound_late_at hp (t := tr.time i)
-      (hmts.trans (by linarith only [htime, hts1, hΔ])) hib
-    exact SA.Growing.next_transfer sp _ ro H _ tr.projAC proposer hac (SA.CommitteeDict.full sp.n)
-      ⟨fun _ _ _ _ _ σ _ _ => SA.mem_full σ _, fun _ _ _ _ _ _ σ _ _ => SA.mem_full σ _⟩
-      (fun _ _ _ _ _ _ _ v _ => SA.mem_full v.slot _) (SA.size_binding_full hp.stock)
-      m y i B ell e hy hcast hm hall
-      (by rw [hp.stock]
-          exact hp.half_committee_at hmts (t := tr.time i)
-            (by linarith only [htime, hts1, hΔ]) hib)
-      (KernelProof.honest_votes_carry_reset_at hp hc hy hcast hm hmts hall hFB)
-      ((SA.ncard_inter_full_lt_iff _ _ _).2 hfb)
-      (SA.Growing.cs2_full_of_faultBoundAt hp.stock hfb)
+    have hmi : sp.ts m ≤ tr.time i := by linarith only [htime, hts1, hΔ]
+    exact SA.Growing.next_transfer_from hac _ hPK hTK
+      hp.committeeFacts.hsize hy hcast hm hall
+      (hp.half_committee_at hmts (t := tr.time i) (by linarith only [htime, hts1, hΔ]) hib)
+      (KernelProof.honest_votes_carry_reset_at hp hy hcast hm hmts hall hFB)
+      (KernelProof.faultBoundK_late_at hp (hgsl (by omega)) (hmi.trans hib) (hmts.trans hmi) hib)
+      (hp.committee_cs2_at (hgsl (by omega)) (htime.trans hib) (hrun.time_nonneg i) hib)
       (by rw [← hm]; exact Or.inl hv)
       (fun z q hq hz e' he hslot => hprior z q hz hq e' he (by omega))
 
 /-- **A clean fast source is extended by every later vote** of a node honest at it, through the
 horizon. -/
-theorem fast_source_votes_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
+theorem fast_source_votes_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfast : SA.FastLockAt tr.projAC x r s B CV)
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b) :
@@ -132,15 +137,15 @@ theorem fast_source_votes_before_at (hp : ResetPremisesUpTo tr H proposer dg g �
   have hm := hp.run.time_mono
   have hxU : (tr.state x r).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨x, r, tr.time r, hp.run.time_nonneg r, fun _ hq => hm hq.le, hx, h⟩
-  apply hp.fast_source_votes_of_domain_before_at hc hx hfast
+  apply hp.fast_source_votes_of_domain_before_at hx hfast
     (hp.clean_window_timing_at hs s (by have := sp.two_le_k; clear * - this; omega))
   intro y i ell e hy hcast hib hsi hprior
   rcases hfast with ⟨ellX, C, hupd, hconf, hdeep, _⟩ | hop
   · have hBC := ((SA.deepest_mem hdeep).1.1.2.2).mono
       ((frame_tree_subset_at hp.run hp.noColl hx hupd.1).2.trans hxU)
-    exact ProposalImpl.result_prefix_vote_domain_before_at hp hc hx hy ⟨ellX, hupd, hconf, rfl⟩
+    exact ProposalImpl.result_prefix_vote_domain_before_at hp hx hy ⟨ellX, hupd, hconf, rfl⟩
       hBC hs hrb hcast hsi hib hprior
-  · exact hp.optimistic_vote_domain_before_at hc hx hy hop hs hrb hcast hsi hib hprior
+  · exact hp.optimistic_vote_domain_before_at hx hy hop hs hrb hcast hsi hib hprior
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 

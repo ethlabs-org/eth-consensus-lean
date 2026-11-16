@@ -15,7 +15,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- A client executing honestly throughout a prefix signs an attestation at most once. -/
-theorem sign_unique (hrun : GoldilocksRun proposer dg H tr)
+theorem sign_unique {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini)
     {v : Fin sp.n} (hv : v ∈ H)
     {d d' : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hs' : tr.SignAt v d' att) :
     d = d' :=

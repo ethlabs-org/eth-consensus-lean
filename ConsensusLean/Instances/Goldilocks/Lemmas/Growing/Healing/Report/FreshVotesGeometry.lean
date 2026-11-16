@@ -75,7 +75,7 @@ theorem FrameWindow.frozen_competitor_reflect_at {g ΔF b : Time} {s₀ s floor 
     (hB : B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1))) :
     B ∈ ellp.frame.viableTree ellp.frame.tree := by
   have hr := hrun.toLocalRun
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hri := (hac.upTo (hr.time_nonneg i)).localRun
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
@@ -122,8 +122,10 @@ theorem FrameWindow.frozen_competitor_reflect_at {g ΔF b : Time} {s₀ s floor 
           have ht := WithTop.coe_lt_coe.1 (WithBot.coe_lt_coe.1 hstamp)
           change tr.time q < SA.freeze sp (s + 1) at ht
           simpa only [SA.freeze, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] using ht
-        exact frame_relay_before_at hrun hnc hsvc hcatch hnr
-          (hr.antitone (hr.time_mono hqi) hy) hz' ((Trace.upTo_callAt _).mp hcq).2 hcp hWq
+        exact frame_relay_before_at hrun hnc hsvc hcatch
+          (hr.antitone (hr.time_mono hqi) hy) hz'
+          (fun r hr' hrs => hnr _ r (hrun.antitone (hrun.time_mono hr') hz') hrs)
+          ((Trace.upTo_callAt _).mp hcq).2 hcp hWq
           (by rw [hti, hts]; linarith only [hm, sp.toParams.hΔ])
           (by rw [hti, hts]; linarith only [hqt]) hFW
       have hvW' : W ∈ (Node.frame (tr.state y i)).viableHeads := by

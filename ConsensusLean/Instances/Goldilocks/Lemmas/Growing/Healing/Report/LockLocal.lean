@@ -104,8 +104,7 @@ theorem unlocked_image_below_write_root_at {lo hi : Time} {floor : Nat} {kindJ :
     (hroot : ellw.frame.Anc A ellw.frame.fcRoot) :
     Anc (tr.HonestBlocksAt H) L ell.frame.fcRoot := by
   have hd := hrun.time_nonneg i
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time i))
-    (tr.upTo (tr.time i)) proposer (hrun.upTo hd) (hnc.upTo _)).localRun
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)).localRun
   have htime := hrun.time_mono hai
   have hcw' : (tr.upTo (tr.time i)).projAC.CallAt y a ellw := by
     rw [RunTrace.upTo_projAC]

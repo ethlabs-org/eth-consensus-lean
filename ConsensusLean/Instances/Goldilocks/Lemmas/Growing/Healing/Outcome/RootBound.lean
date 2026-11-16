@@ -19,7 +19,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The post-drain cast root is genesis or below a bounded pre-slot high origin. -/
 theorem reset_vote_root_source_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -30,7 +31,7 @@ theorem reset_vote_root_source_at
   have ht := hp.run.time_nonneg j
   have hj : ∀ q < j, tr.time q ≤ tr.time j := fun _ hq => hp.run.time_mono hq.le
   have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := fg_reachable_at hp.run ht hj hy
   have hsub : (tr.state y j).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ hX => ⟨y, j, tr.time j, ht, hj, hy, hX⟩
@@ -38,7 +39,7 @@ theorem reset_vote_root_source_at
   have hc' : SA.CastAt (tr.projAC.upTo (tr.time j)) y j ell e :=
     ⟨(Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩, hc.2⟩
   have htupper : tr.time j ≤ sp.ts u + sp.Δ := by
-    have h := (Compose.cast_head_fcRoot (hac.localRun.upTo ht) hy hc').2
+    have h := (Compose.cast_head_fcRoot_from (hac.localRun.upTo ht) hac.vstart hy hc').2
     change tr.time j ≤ sp.ts e.msg.slot + sp.Δ at h
     rwa [hes] at h
   obtain ⟨hFm, hJm, hFJ, ⟨C, hCm, hCJ, hChj⟩, hmax, _⟩ :=
@@ -70,8 +71,8 @@ theorem reset_vote_root_source_at
     obtain ⟨W, hW, att, ha, v, hv, d, hdj, hs, _, r, hrd, l, O, ho, hJO⟩ :=
       Outcome.left_entry_origin_at (g := g) hp.run hp.noColl ht hj hy hq hJm hJT (by omega) hEC
         (by have := Store.hj_lt_h hr hCm; omega)
-    have hlu : l < u := hes ▸ Outcome.row_origin_label_lt_at hp.run hp.noColl
-      hy hv hc hW ha hs hdj hrd ho hp.stock
+    have hlu : l < u := hes ▸ KernelProof.row_origin_label_lt_at hp hy hc hW ha
+      (hp.run.antitone (hp.run.time_mono hdj.le) hv) hs hdj hrd ho
     obtain ⟨CV, ellw, D, _, hfl, _⟩ := ho.2.2.1
     have hrj : tr.time r ≤ tr.time j := hp.run.time_mono (by omega)
     have hrt := Outcome.fastLock_time_lt_at hp.run hfl hlu (hrj.trans htupper)
@@ -102,7 +103,8 @@ theorem reset_vote_root_source_at
 
 /-- Every bounded pre-slot high origin below a target bounds the actual cast root. -/
 theorem reset_vote_root_below_bound_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
     (hbound : ∀ x r l B, HighOrigin tr H g x r l B → tr.time r < sp.ts u → tr.time r ≤ b →
@@ -112,7 +114,7 @@ theorem reset_vote_root_below_bound_at
     (hc : SA.CastAt tr.projAC y j ell e) (hs : e.msg.slot = u) (hjb : tr.time j ≤ b) :
     Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P := by
   rcases hp.reset_vote_root_source_at hR hy hc hs hjb with hg | ⟨x, r, l, B, ho, ht, hrb, hroot⟩
-  · have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  · have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
     have hc' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hc.1)
     obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt (hac.localRun.upTo (hp.run.time_nonneg j)) hy hc'
     exact ProposalImpl.genesis_root_anc_at hp.run hp.noColl (hPhiU hPhi.fcRoot_mem) hg hP

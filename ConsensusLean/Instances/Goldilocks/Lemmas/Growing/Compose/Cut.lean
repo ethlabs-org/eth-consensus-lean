@@ -65,7 +65,7 @@ theorem cut_inv_step
   rintro y hy ⟨c, hc⟩ hk₀ hk₁
   have hlocal := hrun.toLocalRun.upTo (hrun.time_nonneg k)
   have hfg := fg_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr proposer
-    (Compose.requirements sp ro) hrun.genesis_root_ok hrun.toLocalRun hp.noColl
+    (fun _ => Compose.requirements sp ro) hrun.genesis_root_ok hrun.toLocalRun hp.noColl
   let ft : FGTrace sp.toParams (Payload sp.n) := tr.projFG.upTo (tr.time k)
   have hr := hfg.upTo (hrun.time_nonneg k)
   have hs (z : Fin sp.n) (i : Nat) (hi : i ≤ k + 1) :

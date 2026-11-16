@@ -182,11 +182,10 @@ private theorem upTo_pool_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho 
 
 /-- **The pool after an honest call holds votes of members of its slot** (`hPool`). -/
 theorem simTraceAt_pool_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.vote.voteRole)
-    (hc : ¬ rho.HashCollision) :
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) :
     ∀ w c m, w ∈ honestKeysAt S rho ((simTraceAt S rho hn).time c) →
       ∀ v ∈ ((simTraceAt S rho hn).projAC.state w (c + 1)).pool m, v.val ∈ K.committee m := by
   intro w c m hw v hvp
-  have hnc := noCollRun_simTraceAt S rho hn hv hc
   have hd := hrun.time_nonneg c
   have hst : ((simTraceAt S rho hn).projAC.upTo ((simTraceAt S rho hn).time c)).state w (c + 1) =
       (simTraceAt S rho hn).projAC.state w (c + 1) :=

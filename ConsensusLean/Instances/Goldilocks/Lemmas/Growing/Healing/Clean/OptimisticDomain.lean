@@ -37,8 +37,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **The catch-up on the AC projection**: a block that a node accepted while honest before `ḡ`
 is accepted before `ḡ + 2Δ` by a node honest at a later call, by `b`, whose `Σ.F` it extends. -/
-private theorem catch_ac (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) :
+private theorem catch_ac {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    :
     ∀ x i B, x ∈ H (tr.time i) → tr.projAC.AcceptAt x i B → tr.time i < SA.gbar g →
       ∀ y j ell, y ∈ H (tr.time j) → tr.projAC.CallAt y j ell →
         SA.gbar g + 2 * sp.Δ ≤ tr.time j → tr.time j ≤ b →
@@ -67,7 +68,7 @@ private theorem catch_ac (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     rw [RunTrace.upTo_state_of_le hm le_rfl] at hframe
     have hFeq : ell.frame.F = (tr.state p i).fg.F := congrArg Frame.F hframe
     exact (hF.mono subU).trans (by rwa [← hFeq])
-  obtain ⟨k, hkk, hak⟩ := hc x q' D (hp.run.antitone hqq hqH) haq
+  obtain ⟨k, hkk, hak⟩ := hp.catchUp x q' D (hp.run.antitone hqq hqH) haq
     (by rw [htime]; exact hg) p _
     (hp.run.antitone (hfirst.1.trans (hm hki)) hpH) hfirst hFD'
   have hk := hkk.le.trans hki
@@ -81,8 +82,9 @@ private theorem catch_ac (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
 
 /-- **A clean optimistic source has the vote domain** of every later vote of a node honest at it
 through the horizon, given the earlier votes of nodes honest at them. -/
-theorem optimistic_vote_domain_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {x y : Fin sp.n} {r s i : Nat}
+theorem optimistic_vote_domain_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {x y : Fin sp.n} {r s i : Nat}
     (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hop : SA.OptimisticLockAt tr.projAC x r s B CV)
@@ -96,8 +98,9 @@ theorem optimistic_vote_domain_before_at (hp : ResetPremisesUpTo tr H proposer d
   have hm := hp.run.time_mono
   have hΔ := sp.toParams.hΔ
   have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
-  obtain ⟨hBx, z, q, hz, hqr, ev, hv, hvs, hVB⟩ := hp.optimistic_supporter_at hx hrb hop
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
+  obtain ⟨hBx, z, q, hz, hqr, ev, hv, hvs, hVB⟩ := hp.optimistic_supporter_at hx hrb
+    (hp.gbar_le_ts_of_clean_at (by omega)) hop
   have hzq : z ∈ H (tr.time q) := hp.run.antitone (hm hqr) hz
   have hqb := (hm hqr).trans hrb
   obtain ⟨v, d, m, S, hseed, hda, hma⟩ := hp.reset_seed_at
@@ -110,9 +113,9 @@ theorem optimistic_vote_domain_before_at (hp : ResetPremisesUpTo tr H proposer d
   · intro hF
     have hle := (SA.ts_le_iff sp).mpr (show (s : Int) ≤ e.msg.slot - 1 by omega)
     exact SA.Growing.raw_writer_voterBlockTree_window_before_at
-      (by rw [hp.stock]; exact sp.toParams.hn) hac.localRun
+      hp.committee_pos hac.localRun hac.vstart
       (hp.sync.ac_service_at hp.run (lo := SA.gbar g) (hi := b) (SA.le_gbar g))
-      (catch_ac hp hc) hx hy (Or.inr (Or.inr hop)) .refl hcast (by omega) hib
+      (catch_ac hp ) hx hy (Or.inr (Or.inr hop)) .refl hcast (by omega) hib
       (by linarith only [hle, hgs, hΔ]) hF
   · intro w c n O hci ho
     have hcb := (hm hci.le).trans hib
@@ -134,7 +137,8 @@ theorem optimistic_vote_domain_before_at (hp : ResetPremisesUpTo tr H proposer d
               hcb hrb hts with h | h
           · exact Or.inr (hDR.trans h)
           · exact SA.anc_total hU h hDR
-        · exact hp.optimistic_sources_compatible_at hx hw hrb hcb hop hop'
+        · exact hp.optimistic_sources_compatible_at hx hw hrb hcb
+            (hp.gbar_le_ts_of_clean_at (by omega)) hop hop'
       rcases hcomp with h | h
       · exact SA.anc_total hU h hOD
       · exact Or.inr (hOD.trans h)

@@ -30,7 +30,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- An earlier high origin has a label before the actual proposal slot. -/
 theorem ResetPremisesUpTo.origin_label_lt_at_proposal_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
@@ -41,7 +42,8 @@ theorem ResetPremisesUpTo.origin_label_lt_at_proposal_at
 
 /-- An old origin is held at the proposal, or below its finalized cache. -/
 theorem ResetPremisesUpTo.proposal_holds_old_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
@@ -55,7 +57,8 @@ theorem ResetPremisesUpTo.proposal_holds_old_at
 
 /-- A held high origin is viable or below the frame root at the honest reader. -/
 theorem ResetPremisesUpTo.held_high_origin_viable_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {c : Nat} (hpH : p ∈ H (tr.time c))
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p c ell)
     (hcb : tr.time c ≤ b) {x : Fin sp.n} {i j : Nat}
@@ -67,7 +70,8 @@ theorem ResetPremisesUpTo.held_high_origin_viable_at
 
 /-- Post-drain live high locks are compatible with each bounded high origin. -/
 theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i))
     (hR : drainTime sp a ≤ sp.ts u) {ell : ACLabel (goldilocksNode sp ro)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
@@ -76,7 +80,7 @@ theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old_at
     (ho : HighOrigin tr H g x q j O) (hqb : tr.time q ≤ b) :
     SA.HighLocksCompatible (tr.HonestBlocksAt H) (tr.projAC.state p i)
       (tr.time i) (u - 1) O := by
-  exact ProposalImpl.proposal_stored_locks_compatible_old_at hp hc hpH hR hci hcall hti hib ho hqb
+  exact ProposalImpl.proposal_stored_locks_compatible_old_at hp hpH hR hci hcall hti hib ho hqb
 
 end Consensus.Goldilocks.Healing.Growing
 
@@ -89,9 +93,11 @@ variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
 /-- An optimistic lock with its counted votes held at the next proposal puts its
 ancestor below the proposed head; writers and readers are separately honest. -/
 theorem optimistic_first_proposal_anc_at
-    (hrun : ACRun proposer T H U) {i : Nat}
-    (hf : 2 * (H (T.time i))ᶜ.ncard < sp.n)
-    {X : Fin sp.n} {i₀ σ : Nat} (hX : X ∈ H (T.time i₀))
+    {ini} (hrun : ACRun proposer T H U ini) {K : CommitteeDict sp.n}
+    (hPK : CommitteePAt K T H) {i : Nat} {σ : Nat}
+    (hsize : (K.committee σ).ncard = sp.committeeSize)
+    (hf : 2 * (K.committee σ ∩ (H (T.time i))ᶜ).ncard < sp.committeeSize)
+    {X : Fin sp.n} {i₀ : Nat} (hX : X ∈ H (T.time i₀))
     {D B : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt T X i₀ σ D CV) (hBD : Anc U B D)
     {x : Fin sp.n} (hx : x ∈ H (T.time i))
@@ -102,11 +108,10 @@ theorem optimistic_first_proposal_anc_at
     (hV : B ∈ ell.frame.tree ∧
       (B ∈ ell.frame.viableTree ell.frame.tree ∨ ell.frame.Anc B ell.frame.fcRoot))
     (hP : ∀ v ∈ CV, HeldAtProposal (T.state x i) ell.frame σ v)
-    (hhigh : HighLocksCompatible U (T.state x i) (T.time i) σ B)
-    (hstock : sp.committeeSize = sp.n) :
+    (hhigh : HighLocksCompatible U (T.state x i) (T.time i) σ B) :
     Anc U B d.head := by
-  exact ProposalSources.optimistic_first_proposal_anc_at hrun hf hX hopt hBD hx hc
-    hslot hprop hV hP hhigh hstock
+  exact ProposalSources.optimistic_first_proposal_anc_at hrun hPK hsize hf hX hopt hBD hx hc
+    hslot hprop hV hP hhigh
 
 end Consensus.Goldilocks.SA.Growing
 

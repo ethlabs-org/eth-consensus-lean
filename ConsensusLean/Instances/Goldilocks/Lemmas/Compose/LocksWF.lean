@@ -19,10 +19,12 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
 /-- **`LocksWF` at every honest AC state** of a Goldilocks run. -/
-theorem locksWF_state (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem locksWF_state {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) : SA.LocksWF sp (tr.state y i).ac.locks := by
   rw [← projAC_state hrun.toLocalRun hy]
-  exact SA.locksWF_state (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun hy i
+  exact SA.locksWF_stateU (hr := (goldilocks_ac_projection_from hrun hnc).localRun.toU)
+    hrun.vstart hy i
 
 end Consensus.Goldilocks.Compose
 

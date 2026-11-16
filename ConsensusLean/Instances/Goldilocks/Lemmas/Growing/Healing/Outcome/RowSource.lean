@@ -33,7 +33,8 @@ private theorem fastLock_frame_mem {x : Fin sp.n} {i s : Nat}
 /-- The signed entry comes from a prior stored fast lock of the signer.
 This local extraction does not mention a reset or a snapshot height. -/
 theorem signed_entry_source
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {v : Fin sp.n} (hv : v ∈ H) {d : Nat} {att : FG.Att sp.n}
     (hs : tr.SignAt v d att) :
     ∃ r < d, ∃ l O, tr.JoinedAt v (tr.time r) ∧
@@ -42,7 +43,7 @@ theorem signed_entry_source
       ∃ E ∈ (tr.state v r).fg.tree, (tr.state v r).fg.Anc E O ∧
         E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
         ((tr.state v r).fg.σ E.root).Th = E.root := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hU := hr.coherent
   obtain ⟨C, hcall⟩ := hs
   obtain ⟨d', rfl, ell, hc', hto, -, hC, hfgeq⟩ :=
@@ -54,7 +55,7 @@ theorem signed_entry_source
   obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := SA.toFG_candidate hC'
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
   obtain ⟨r, hrd, CV, ellw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
-    Healing.stored_fast_lock_provenance hr hv d' l₀ hl₀ hlf
+    Healing.stored_fast_lock_provenance hr hrun.vstart hv d' l₀ hl₀ hlf
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hv hpc
   obtain ⟨hPhiw, -⟩ := SA.frameIn_of_callAt hr hv hcw
   have hCt : C ∈ ell.frame.tree := hCv.1
@@ -106,7 +107,8 @@ theorem signed_entry_source
 its own write and at `c_z`. The snapshot height is used only as a numerical lower bound. -/
 theorem high_row_source_at
     {H : Time → Set (Fin sp.n)}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g : Time}
     {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
     (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)

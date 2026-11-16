@@ -1,9 +1,11 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowStart
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowPools
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowLate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowSign
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.PrefixSteps
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -24,7 +26,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
 private theorem signer_eq
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
     (hv : v ∈ H (tr.time d)) (hs : tr.SignAt v d att) : att.val = v := by
   obtain ⟨C, hc⟩ := hs
@@ -41,7 +44,8 @@ private theorem signer_eq
 
 /-- A historically honest signing carried by a held row precedes that row's acceptance. -/
 private theorem sign_before_accept
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y v : Fin sp.n} {i d : Nat} {att : FG.Att sp.n}
     {W : SA.Blk sp.n (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (ha : att ∈ W.fgPayload) (hA : tr.AcceptAt y i W)
@@ -62,7 +66,8 @@ private theorem sign_before_accept
 
 /-- No row held before a slot's vote comes from a same-slot optimistic write. -/
 theorem row_origin_not_current_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ell e) {W : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -74,7 +79,7 @@ theorem row_origin_not_current_at
   have hm := hp.run.time_mono
   have hrunK := hp.run.upTo (hp.run.time_nonneg k)
   have hncK := hp.noColl.upTo (tr.time k)
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := (hac.upTo (hp.run.time_nonneg k)).localRun
   have hc' := SA.upTo_castAt.mpr (And.intro le_rfl hc)
   have hW' : W ∈ ((tr.upTo (tr.time k)).state y k).fg.tree := by
@@ -84,7 +89,8 @@ theorem row_origin_not_current_at
   have hA₀ := (RunTrace.upTo_acceptAt tr).mp hA |>.2
   have hd₀ := sign_before_accept hp (hp.run.antitone (hm hik.le) hy) ha hA₀ hv hs
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-  have hkt : tr.time k ≤ sp.ts e.msg.slot + sp.Δ := (Compose.cast_head_fcRoot hr hy hc').2
+  have hkt : tr.time k ≤ sp.ts e.msg.slot + sp.Δ :=
+    (Compose.Growing.cast_head_fcRoot_at hp.run hp.noColl hy hc).2
   have hrt : sp.ts e.msg.slot ≤ tr.time r := by
     obtain ⟨-, -, -, hsl, -⟩ := hopt
     change sp.slot (tr.time r) = e.msg.slot at hsl
@@ -109,15 +115,26 @@ theorem row_origin_not_current_at
     have hop' : SA.OptimisticLockAt (tr.upTo (tr.time d)).projAC v r e.msg.slot D CV := by
       rw [RunTrace.upTo_projAC]
       exact (SA.upTo_optimisticLockAt hm).mpr ⟨hm hrd.le, hopt⟩
-    obtain ⟨hn1, j', hj', e', hve', hes⟩ := slot_start_optimistic hsD (hp.noColl.upTo _) hv hs'
-      (by change tr.time d = _; rw [hcτ', hcc, hts]) hrd hop' hp.stock
-    obtain rfl : v = y := Fin.ext (by have := v.2; have := y.2; omega)
+    obtain ⟨hn1, j', hj', e', hve', hes⟩ := Healing.slot_start_optimistic hsD
+      (hp.noColl.upTo _) hv hs' (by change tr.time d = _; rw [hcτ', hcc, hts]) hrd hop'
+      hp.committee_pos
     have hve₀ : SA.VoteAt tr.projAC v j' e' := by
       rw [RunTrace.upTo_projAC] at hve'
       exact (SA.upTo_voteAt.mp hve').2
-    have hveK := SA.upTo_voteAt.mpr (And.intro (hm (by omega : j' ≤ k)) hve₀)
-    have := ((SA.one_vote_per_slot sp) _ ro _ _ _ hr v hy j' k e' e hveK
-      ⟨ell, hc'.1, hc'.2⟩ hes).1
+    -- the slot's committee has at most one member, and both the signer and the voter are members
+    have hmem : ∀ {x : Fin sp.n} {q : Nat} {ℓq : ACLabel (goldilocksNode sp ro)}
+        {eq : SA.Em sp (List (FG.Att sp.n))}, x ∈ H (tr.time q) → SA.CastAt tr.projAC x q ℓq eq →
+        x ∈ (Generic.dictOfTime sp cm).committee eq.msg.slot := fun hx hcq =>
+      (hp.committeeFacts.hGate _ (hp.run.time_nonneg _) _ hx _ (fun _ hk => hm hk.le) _).1
+        (Compose.Growing.mayVote_of_castAt_at hp.run hp.noColl hx hcq)
+    obtain ⟨ℓv, hcv⟩ := hve₀
+    have hvK := hmem (hp.run.antitone (hm (by omega : j' ≤ d)) hv) hcv
+    rw [hes] at hvK
+    obtain rfl : v = y := (Set.ncard_le_one (Set.toFinite _)).1
+      (by rw [hp.committeeFacts.hsize]; exact hn1) v hvK y (hmem hy hc)
+    have := (Compose.Growing.one_vote_per_slot_at hp.run hp.noColl
+      (Compose.Growing.hVoteAt_iff.2 ⟨hp.run.antitone (hm (by omega : j' ≤ d)) hv, ℓv, hcv⟩)
+      (Compose.Growing.hVoteAt_iff.2 ⟨hy, ell, hc⟩) hes).1
     omega
   · have hcK : SA.CastAt (tr.upTo (tr.time k)).projAC y k ell e := by
       rw [RunTrace.upTo_projAC]; exact hc'
@@ -128,7 +145,8 @@ theorem row_origin_not_current_at
 
 /-- The source of a held honest row has a label strictly below the vote's slot. -/
 theorem row_origin_label_lt_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ell e) {W : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -136,7 +154,7 @@ theorem row_origin_label_lt_at
     {v : Fin sp.n} {d : Nat} (hv : v ∈ H (tr.time d)) (hs : tr.SignAt v d att)
     (hdk : d < k) {r l : Nat} (hrd : r < d) {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g v r l O) : l < e.msg.slot := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := (hac.upTo (hp.run.time_nonneg k)).localRun
   have hc' := SA.upTo_castAt.mpr (And.intro le_rfl hc)
   have hk : e.msg.slot = sp.slot (tr.time k) := (SA.castAt_spec hr hy hc').2.1

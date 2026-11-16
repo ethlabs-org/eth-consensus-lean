@@ -1,6 +1,9 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.HighCarrySteps
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Next
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
@@ -25,7 +28,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Once the held-target domain is established, first or next transfer extends the origin. -/
 theorem high_vote_extends_of_domain_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B)
     (hy : y ∈ H (tr.time k))
@@ -36,7 +40,7 @@ theorem high_vote_extends_of_domain_at
     (hprior : ∀ z q e', q < k → Compose.Growing.HVoteAt tr H z q e' →
       j < e'.msg.slot → SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
     SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hx := hp.run.antitone (le_max_right _ _) ho.1
   have ⟨hPhi, hPhiU⟩ := Compose.Growing.frameIn_at hp.run hp.noColl hy hc.1
   obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, _⟩ :=
@@ -48,8 +52,15 @@ theorem high_vote_extends_of_domain_at
   have hts : sp.ts e.msg.slot ≤ tr.time k :=
     (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg k) _).mpr (by rw [hslot])
   have hcut := hp.cutZ_le_ts_of_highOrigin_at ho
-  have hf := fault_bound_late_at hp
-    (hcut.trans (((SA.ts_le_iff sp).mpr (show (j : Int) ≤ e.msg.slot by omega)).trans hts)) hkb
+  have hck : cutZ sp.toParams g ≤ tr.time k :=
+    hcut.trans (((SA.ts_le_iff sp).mpr (show (j : Int) ≤ e.msg.slot by omega)).trans hts)
+  -- the slot committees from the origin's label on are bounded at the cast
+  have hgsl : ∀ {u : Nat}, j ≤ u → SA.gbar g ≤ sp.ts u := fun hu =>
+    Healing.gbar_le_of_cutZ_le sp (hcut.trans ((SA.ts_le_iff sp).mpr (by exact_mod_cast hu)))
+  have hsb : ∀ {u : Nat}, u ≤ e.msg.slot → sp.ts u ≤ b := fun hu =>
+    (((SA.ts_le_iff sp).mpr (by exact_mod_cast hu)).trans hts).trans hkb
+  have hPK := hp.committeeFacts.hP
+  have hTK := hp.committeeFacts.committeeTAt hp.run hp.noColl
   have he : SA.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) k e.msg.slot B := by
     intro z q hq hz e' hv hs
     exact hprior z q e' hq (Compose.Growing.hVoteAt_iff.2 ⟨hz, hv⟩) (by omega)
@@ -64,19 +75,20 @@ theorem high_vote_extends_of_domain_at
       exact (SA.anc_viableAncestor ellx.frame D).mono hsub
     have hgj : g ≤ sp.ts j := by
       linarith [lt_cutZ sp g, le_gbar g, sp.toParams.hΔ]
-    exact SA.Growing.first_transfer_stored hac _ (fun _ => SA.CommitteeP.full)
-      (fun _ => SA.CommitteeT.full) (SA.size_binding_full hp.stock) hx hfl hBD' hy hc hs
+    exact SA.Growing.first_transfer_stored hac _
+      (fun t => SA.CommitteePAt.upTo hp.run.time_mono hp.run.antitone hPK t)
+      (SA.CommitteeTAt.upTo hp.run.antitone hTK) hp.committeeFacts.hsize hx hfl hBD' hy hc hs
       (reset_syncACAt hp hgj)
       (first_carry_of_finalized_anc_at hp ho ⟨ellx, D, hcx, hfl, hBD⟩ hy hc hkb hs hF)
-      ((SA.ncard_inter_full_lt_iff _ _ _).2 hf) (SA.Growing.cs2_full_of_faultBoundAt hp.stock hf)
+      (faultBoundK_late_at hp (hgsl le_rfl) (hsb (by omega)) hck hkb)
+      (hp.committee_cs2_at (hgsl (by omega)) (hsb (by omega)) (hp.run.time_nonneg k) hkb)
       (Or.inl (by simpa only [← hs] using hvi)) (by simpa only [hs] using he)
   · obtain ⟨m, hm⟩ : ∃ m, e.msg.slot = m + 1 := ⟨e.msg.slot - 1, by omega⟩
     have hjm : j < m := by omega
-    refine SA.Growing.next_transfer sp _ ro H _ tr.projAC proposer hac (SA.CommitteeDict.full sp.n)
-      ⟨fun _ _ _ _ _ σ _ _ => SA.mem_full σ _, fun _ _ _ _ _ _ σ _ _ => SA.mem_full σ _⟩
-      (fun _ _ _ _ _ _ _ v _ => SA.mem_full v.slot _) (SA.size_binding_full hp.stock)
-      m y k B ell e hy hc hm ?_ ?_ ?_ ((SA.ncard_inter_full_lt_iff _ _ _).2 hf)
-      (SA.Growing.cs2_full_of_faultBoundAt hp.stock hf)
+    refine SA.Growing.next_transfer_from hac _ hPK hTK
+      hp.committeeFacts.hsize hy hc hm ?_ ?_ ?_
+      (faultBoundK_late_at hp (hgsl (by omega)) (hsb (by omega)) hck hkb)
+      (hp.committee_cs2_at (hgsl (by omega)) (hsb (by omega)) (hp.run.time_nonneg k) hkb)
       (Or.inl (by simpa only [← hm] using hvi)) ?_
     · intro z q e' hz hv hs'
       obtain ⟨ell', hc'⟩ := hv
@@ -86,8 +98,7 @@ theorem high_vote_extends_of_domain_at
         have := SA.slot_mono sp (hp.run.time_nonneg k) (hp.run.time_mono (by omega : k ≤ q))
         omega
       exact hprior z q e' hqk (Compose.Growing.hVoteAt_iff.2 ⟨hz, ell', hc'⟩) (by omega)
-    · rw [hp.stock]
-      apply hp.half_committee_at
+    · apply hp.half_committee_at
         (hcut.trans ((SA.ts_le_iff sp).mpr (show (j : Int) ≤ m by omega)))
         (htb := hkb)
       have hn : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by

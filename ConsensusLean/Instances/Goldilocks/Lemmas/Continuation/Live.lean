@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunCommittee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.LiveAdopt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Read
@@ -35,6 +36,8 @@ namespace Consensus.Goldilocks.Compose.Growing
 open SA (SAParams ReplayOrder Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+
+variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
 
@@ -110,7 +113,8 @@ extends to the read (`seeded_effective_record_mono_at`), and the read is the eff
 (`seeded_ready_read_record_at`). -/
 theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hcv : ChainConvictedBelow tr H) {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {t₁ b : Time} (hTb : T ≤ b)
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {t₁ b : Time}
+      (hTb : T ≤ b)
     (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
     (hinv : SeededInvariant tr H g r (r + sp.k - 1) t₁ b)
     (hdt₁ : sp.ts (r + sp.k : Nat) ≤ t₁) {τ : Time}
@@ -118,10 +122,11 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hP : Regimes.Growing.ReadyProposalAt tr H (Regimes.catchUp sp) τ (Regimes.Growing.hold sp) P)
     (ht₁ : t₁ + 8 * sp.Δ ≤ τ) (hrτ : sp.ts (r + sp.k + 1 : Nat) ≤ τ) {y : Fin sp.n} {t : Time}
     {j : Nat} (hmargin : τ + 6 * sp.Δ ≤ t) (htb : t ≤ b)
-    (hy : Regimes.Growing.ReadyAt tr H (Regimes.catchUp sp) y t) (hj : Regimes.CutAfter tr j t) :
+    (hy : Regimes.Growing.ReadyAt tr H (Regimes.catchUp sp) y t) (hj : Regimes.CutAfter tr j t)
+    (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocksAt H) P (Regimes.readAfter tr y j t) := by
-  have hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b :=
-    ⟨hrun, hnc, hseed, hsvc, hB, hinv, hcv, hTb, hdt₁, hseed.reset.elim fun _ h => h.1.stock⟩
+  have hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK) :=
+    ⟨hrun, hnc, hseed, hsvc, hB, hinv, hcv, hTb, hdt₁, hstock⟩
   have hΔ := sp.toParams.hΔ
   have hk := sp.two_le_k
   obtain ⟨pp, kP, -, hph, hPa, hkP⟩ := hP
@@ -151,7 +156,7 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr)
       have hσT := hseed.timing.1
       have htσ : sp.ts p ≤ sp.ts σ := ts_le_ts hpσ
       obtain ⟨-, hconf, hnv, -⟩ := Healing.Growing.operational_update_selection_at hpr
-        hseed.catchRun hp (proposesAt_designated hrun hpk hPa) hPa rfl
+        hp (proposesAt_designated hrun hpk hPa) hPa rfl
         (by rw [hdrain]; exact hdt₁.trans ht₁p) (by linarith) (by linarith) hz hu
       rw [projAC_state_at hrun hz] at hconf hnv
       exact ⟨hconf, hnv⟩
@@ -291,7 +296,9 @@ theorem continued_proposal_live_at
     (hcv : Compose.Growing.ChainConvictedBelow Q.trace Q.keys)
     (hseed : Compose.Growing.HandoverSeed Q.trace Q.keys
       (runProposer { S with vote := stock } Q.run.2 Q.hn)
-      (digestOf { S with vote := stock } Q.run.2) Q.gst ΔF T r σ) (hTb : T ≤ Q.deadline) {t₁ : Time}
+      (digestOf { S with vote := stock } Q.run.2) Q.gst ΔF T r σ
+        (cm := runCommittee { S with vote := stock } Q.run.2 Q.hn)
+        (βK := (K S A).params.βK)) (hTb : T ≤ Q.deadline) {t₁ : Time}
     (hsvc : Healing.Growing.ResetService Q.trace Q.keys Q.gst ΔF Q.deadline)
     (hB : Compose.Growing.SleepyBoundsFrom Q.trace Q.keys r Q.deadline)
     (hinv : Compose.Growing.SeededInvariant Q.trace Q.keys Q.gst r (r + Q.params.k - 1) t₁
@@ -332,7 +339,7 @@ theorem continued_proposal_live_at
       rfl⟩
     (ht₁.trans P.fresh.le) hslot hm le_rfl
     (confirmed_ready_mono_at { S with vote := stock }
-      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hd hy) hj
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hd hy) hj rfl
 
 end Consensus.Goldilocks.Obligations.Growing
 

@@ -24,8 +24,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
 /-- A reset seed is held at a later honest read whenever it extends the finalized tip. -/
-theorem reset_seed_held_at_read_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ))
+theorem reset_seed_held_at_read_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {n u : Nat} {t : Time}
     (hrp : Regimes.ReadPoint tr n t) (htb : t ≤ b) (hy : y ∈ H t)
     (hdrain : drainTime sp a ≤ sp.ts u) (hgst : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
@@ -39,7 +39,7 @@ theorem reset_seed_held_at_read_at (hp : ResetPremisesUpTo tr H proposer dg g Δ
   have hm := hp.run.time_mono
   have hr := hp.run.upTo ht
   have hsub := RunTrace.honestBlocks_upTo_subset hm (H := H) ht
-  obtain ⟨v, r, l, S, hS, hra, hrb, hheld⟩ := hp.reset_seed_held_at_call_at hc
+  obtain ⟨v, r, l, S, hS, hra, hrb, hheld⟩ := hp.reset_seed_held_at_call_at
   have hru : tr.time r < sp.ts u := by
     have hca := hp.cutZ_lt_reset_at
     have ha0 : 0 ≤ a := by linarith [Healing.lt_cutZ sp g, SA.gbar_nonneg g]
@@ -70,10 +70,9 @@ theorem reset_seed_held_at_read_at (hp : ResetPremisesUpTo tr H proposer dg g Δ
     ((Trace.upTo_awake _ _ _).mpr ⟨hp.awake y _ (hp.run.antitone htime hy)
       (by linarith [SA.le_gbar g]) (htime.trans htb), htime⟩) (by
       intro i hi
-      have hac := (Compose.goldilocks_ac_projection sp ro dg (H t) (tr.upTo t) proposer
-        hr (hp.noColl.upTo t)).localRun
+      have hac := (Compose.goldilocks_ac_projection_from hr (hp.noColl.upTo t)).localRun
       unfold SA.joined
-      rcases SA.restartTime_state hac hy i with h | ⟨r, hri, hrs, h⟩
+      rcases SA.restartTime_state hac hp.run.vstart hy i with h | ⟨r, hri, hrs, h⟩
       · rw [h]; exact bot_le
       · rw [h]
         apply WithBot.coe_le_coe.mpr

@@ -229,7 +229,7 @@ theorem high_vote_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose
       SA.VoteExtends (tr.HonestBlocks H) e'.msg B)
     (hstock : sp.committeeSize = sp.n) :
     SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hsync0 := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr
     proposer ΔF (sp.ts j) (sp.ts e.msg.slot + sp.Δ) hrun.toLocalRun hsync
   exact high_vote_extends_of_syncAC hrun hnc hx hfl hy hc hs
@@ -406,7 +406,8 @@ theorem historical_activation_cutZ_before
     obtain ⟨CV, hst⟩ := ho.2.2.1
     obtain ⟨_, C, hfl, hBC⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
     obtain ⟨v, _, D, hDU, _, hBD, hacc⟩ := raw_writer_relay_source
-      (by rw [hp.stock]; exact sp.toParams.hn) hr ho.1 (Or.inr hfl) hBC
+      (by rw [hp.stock]; exact sp.toParams.hn) hr (fun _ => SA.voteStart_initial _)
+      ho.1 (Or.inr hfl) hBC
     rcases hacc with hg | ⟨q, hq, hqt⟩
     · obtain ⟨z, hz, m, hDm⟩ := hDU
       exact False.elim ((cutZ_lt_of_anc hp ho hz hDm hBD).2 hg)
@@ -600,7 +601,8 @@ theorem ResetPremisesUpTo.high_origin_votes_before {b : Time}
         B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
       intro hFB
       obtain ⟨v, _, D, hDU, _, hBD, hacc⟩ := raw_writer_relay_source
-        (by rw [hp.stock]; exact sp.toParams.hn) hr ho.1 (Or.inr hraw) hBC
+        (by rw [hp.stock]; exact sp.toParams.hn) hr (fun _ => SA.voteStart_initial _)
+        ho.1 (Or.inr hraw) hBC
       rcases hacc with hgen | ⟨q, hq, hqt⟩
       · obtain ⟨z, hz, d, hD⟩ := hDU
         exact False.elim ((hp.cutZ_lt_of_anc ho hz hD hBD).2 hgen)

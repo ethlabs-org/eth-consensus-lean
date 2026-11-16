@@ -25,7 +25,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
 /-- Historical sends and post-GST head acceptances suffice for a carry, without Catch. -/
-theorem carry_of_post_gst_senders_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+theorem carry_of_post_gst_senders_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {s : Nat} (hgs : g ≤ sp.ts s)
     {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
@@ -41,11 +42,11 @@ theorem carry_of_post_gst_senders_at (hp : ResetPremisesUpTo tr H proposer dg g 
     SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
   have hm := hp.run.time_mono
   have hd := hp.run.time_nonneg i
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hac.localRun.upTo hd
   have hc' := (SA.upTo_castAt).mpr ⟨le_rfl, hc⟩
   have hsync := reset_syncACAt hp (lo := g) (hi := sp.ts s + 2 * sp.Δ) le_rfl
-  have hcarry := Compose.Growing.carryAt_of_delivered hr (fun _ => SA.voteStart_initial _) hy hc'
+  have hcarry := Compose.Growing.carryAt_of_delivered hr hp.run.vstart hy hc'
       hs (CV := CV) fun v hv => by
     obtain ⟨hvs, ⟨w, k, hw, hsend, hk1, hk2⟩, Hv, hHvr, hFHv,
       w', kw, hw', hacc, hgk, hkwt⟩ := hW v hv

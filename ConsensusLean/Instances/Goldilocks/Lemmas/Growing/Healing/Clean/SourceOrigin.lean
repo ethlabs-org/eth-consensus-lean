@@ -5,6 +5,11 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Hig
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Later
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.OriginLabel
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.HighOriginSources
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 
 public section
 
@@ -20,7 +25,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A clean raw source compares with each high origin written through the horizon. -/
 theorem clean_source_compatible_high_origin_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hC : SA.ResultAt tr.projAC x r s C CV ∨ SA.OptimisticLockAt tr.projAC x r s C CV)
@@ -30,7 +36,7 @@ theorem clean_source_compatible_high_origin_at
     Compatible (tr.HonestBlocksAt H) C D := by
   have hyo := hp.run.antitone (le_max_right _ _) ho.1
   have hm := hp.run.time_mono
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hU := hac.localRun.coherent
   have hclean : cleanLabel sp a + sp.k + 2 ≤ s := by have := sp.two_le_k; omega
   have hts := hp.clean_window_timing_at hclean s (by have := sp.two_le_k; omega)
@@ -40,9 +46,9 @@ theorem clean_source_compatible_high_origin_at
           SA.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
       rcases hC with hC | hC
       · obtain ⟨z, hz, j, hjr, e, hv, _, hes, hCH⟩ :=
-          ProposalImpl.result_supporter_at hp hc hx hC .refl hrb hts
+          ProposalImpl.result_supporter_at hp hx hC .refl hrb hts
         exact ⟨z, j, hz, hjr.le, e, hv, hes, hCH⟩
-      · exact (hp.optimistic_supporter_at hx hrb hC).2
+      · exact (hp.optimistic_supporter_at hx hrb (Healing.gbar_le_of_cutZ_le sp hts) hC).2
     obtain ⟨z, j, hz, hjr, e, hv, hes, hCH⟩ := supporter
     exact hp.target_compatible_older_origin_at ho hqb (hp.run.antitone (hm hjr) hz)
       hv ((hm hjr).trans hrb) hes h hCH
@@ -78,22 +84,22 @@ theorem clean_source_compatible_high_origin_at
     have hDE : Anc (tr.HonestBlocksAt H) D E := by
       rw [hD]
       exact (SA.anc_viableAncestor ell.frame E).mono sub
-    have hf : 2 * (H (tr.time q))ᶜ.ncard < sp.n := by
-      have := hp.faults _ (hp.run.time_nonneg q) hqb
-      have := Fin.pos x
-      omega
     have hEC := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg q)) _
-      SA.CommitteeP.full hyo (Nat.lt_succ_self q) ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩)
-      (SA.cs2_full hp.stock hf) (B := C) (by
+      (SA.CommitteePAt.upTo hm hp.run.antitone hp.committeeFacts.hP _) hyo (Nat.lt_succ_self q)
+      ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩)
+      (hp.committee_cs2_at
+        (Healing.gbar_le_of_cutZ_le sp (hp.cutZ_le_ts_of_highOrigin_at ho))
+        ((ProposalImpl.ts_le_of_fastLock_at hp.run hfl).trans hqb) (hp.run.time_nonneg q) hqb)
+      (B := C) (by
         intro z hz j hj e hv hes
         obtain ⟨hjq, hv⟩ := SA.upTo_voteAt.mp hv
         have hzj := hp.run.antitone hjq hz
         obtain ⟨ell, hcast⟩ := hv
         have hjb := hjq.trans hqb
         rcases hC with hC | hC
-        · exact hp.clean_result_prefix_votes_before_at hc hx hC .refl hs hrb j hjb z hzj
+        · exact hp.clean_result_prefix_votes_before_at hx hC .refl hs hrb j hjb z hzj
             ell e hcast (by omega)
-        · exact hp.fast_source_votes_before_at hc hx (Or.inr hC) hclean hrb j hjb z hzj
+        · exact hp.fast_source_votes_before_at hx (Or.inr hC) hclean hrb j hjb z hzj
             ell e hcast (by omega))
     rcases hEC with h | h
     · exact Or.inr (hDE.trans h)

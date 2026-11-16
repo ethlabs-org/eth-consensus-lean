@@ -34,6 +34,8 @@ namespace Consensus.Goldilocks.Compose.Growing
 open SA (SAParams ReplayOrder Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+
+variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
 
@@ -45,7 +47,8 @@ reader's own result or selection, of label `≥ σ` after `T`. The service, the 
 and the drain are not read: the argument is the reader's own record steps. -/
 theorem seeded_record_cover_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)
-    {T : Time} {r σ : Nat} (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {t₁ b : Time}
+    {T : Time} {r σ : Nat} (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK))
+      {t₁ b : Time}
     (_hTb : T ≤ b) (_hsvc : Healing.Growing.ResetService tr H g ΔF b)
     (_hB : SleepyBoundsFrom tr H r b) (_hcv : ChainConvictedBelow tr H)
     (_hdt : sp.ts (r + sp.k : Nat) ≤ t₁)

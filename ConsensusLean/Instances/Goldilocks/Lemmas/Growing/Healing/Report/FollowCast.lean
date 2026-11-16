@@ -38,7 +38,7 @@ theorem proposal_viable_at_cast_at
     (hstock : sp.committeeSize = sp.n) :
     P ∈ ell.frame.viableHeads ∧
       P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame p) := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hri := hac.upTo (hrun.time_nonneg i)
   have hci := SA.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hslot : e.msg.slot = sp.slot (tr.time i) := (SA.castAt_spec hri.localRun hy hci).2.1

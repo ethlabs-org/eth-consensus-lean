@@ -25,7 +25,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- A noncurrent live voter lock is below the actual parent when the two clean
 source parent contracts hold. No source writer is assumed honest at the proposal. -/
 theorem vote_old_live_lock_below_parent_of_sources_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     (hparent : ∀ {x r s B}, x ∈ H (tr.time r) →
@@ -49,13 +50,12 @@ theorem vote_old_live_lock_below_parent_of_sources_at
   by_cases hgap : l.slot + 2 ≤ u
   · exact hparent hyr hsource hclean hgap hrb
   have he : u = l.slot + 1 := by omega
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time j))
-    (tr.upTo (tr.time j)) proposer (hp.run.upTo (hp.run.time_nonneg j))
+  have hr := (Compose.goldilocks_ac_projection_from (hp.run.upTo (hp.run.time_nonneg j))
     (hp.noColl.upTo _)).localRun
   have hcy' : SA.CastAt (tr.upTo (tr.time j)).projAC y j elly e := by
     rw [RunTrace.upTo_projAC]
     exact (SA.upTo_castAt).mpr ⟨le_rfl, hcy⟩
-  have htj := (Compose.cast_head_fcRoot hr hy hcy').2
+  have htj := (Compose.cast_head_fcRoot_from hr hp.run.vstart hy hcy').2
   change tr.time j ≤ sp.ts e.msg.slot + sp.Δ at htj
   rw [hes, he] at htj
   have hrt := hp.run.time_mono hrj.le

@@ -47,7 +47,7 @@ theorem later_heads_of_early_witness_at
   have hΔ := sp.toParams.hΔ
   have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
     (SA.ts_le_iff sp).2 (by exact_mod_cast hpq)
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hwa := (hrun.cutLaw w a (.ac ellw) (Compose.projAC_callAt.mp hcw) hw).1
   have hQ : Q ∈ (tr.state w a).fg.tree := by rw [hwa] at hQw; exact hQw.1
   intro r hrlo
@@ -100,7 +100,8 @@ theorem later_heads_of_early_witness_at
       have hlo : sp.ts s ≤ tr.time i := by rw [hti]; exact hts (by omega)
       have hhi : tr.time i ≤ sp.ts N + sp.Δ := by rw [hti]; linarith only [ht, hΔ]
       have he := (hrun.cutLaw y i (.ac ell) (Compose.projAC_callAt.mp hc) hy).1
-      have hQt := frame_relay_before_at hrun hnc hsvc hcatch hnr hw hy hcw hc hQw
+      have hQt := frame_relay_before_at hrun hnc hsvc hcatch hw hy
+        (fun r hr' hrs => hnr _ r (hrun.antitone (hrun.time_mono hr') hy) hrs) hcw hc hQw
         (by rw [hti]; have hmstep := SA.ts_succ m (sp := sp); linarith only [hwarm, hmstep, hΔ])
         (by rw [hti]; have hmstep := SA.ts_succ m (sp := sp)
             linarith only [hat, hms, hsstep, hmstep, hΔ])

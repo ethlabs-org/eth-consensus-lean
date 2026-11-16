@@ -22,7 +22,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Every fast-lock write is at or after its label's slot start. -/
 theorem ts_le_of_fastLock_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n} {r l : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (SA.Vote sp.n)} (hf : SA.FastLockAt tr.projAC x r l D CV) :
     sp.ts l ≤ tr.time r := by
@@ -36,7 +37,8 @@ theorem ts_le_of_fastLock_at
 
 /-- An origin written strictly before a proposal's slot has a strictly older label. -/
 theorem label_lt_of_old_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n} {r l u : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) (ht : tr.time r < sp.ts u) : l < u := by
   obtain ⟨_, _, ⟨CV, ell, D, _, hf, _⟩, _⟩ := ho
@@ -44,7 +46,8 @@ theorem label_lt_of_old_at
 
 /-- A high origin lies below its raw fast-lock head in the historical universe. -/
 theorem highOrigin_raw_head_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {x : Fin sp.n} {r l : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) :
@@ -64,7 +67,8 @@ variable {ΔF a b : Time}
 /-- A high descendant cannot be held before the snapshot by a holder still honest there.
 Honesty only at the earlier read would not suffice: that holder can disappear from HZ. -/
 theorem cutZ_lt_of_anc_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) {z : Fin sp.n} {k : Nat}
     (hz : z ∈ H (max (tr.time k) (cutZ sp.toParams g)))

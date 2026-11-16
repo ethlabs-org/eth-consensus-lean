@@ -29,8 +29,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A clean protected source, written by a node honest at its write, is below the frame root of
 every later proposal call of a node honest at it, or viable in its frame. -/
-theorem clean_source_proposal_domain_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {x p : Fin sp.n} {r s i u : Nat}
+theorem clean_source_proposal_domain_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {x p : Fin sp.n} {r s i u : Nat}
     (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hsource : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
@@ -76,12 +77,12 @@ theorem clean_source_proposal_domain_before_at (hp : ResetPremisesUpTo tr H prop
     clear * - this hau; omega
   refine ProposalImpl.held_target_proposal_domain_before_at hp hx hpH hBx hci hcall hd hti hib
     ?_ ?_ ?_
-  · exact ProposalImpl.raw_writer_held_at_slot_start_at hp hc hx hpH hw hBC htiming hsu hci hti hib
+  · exact ProposalImpl.raw_writer_held_at_slot_start_at hp hx hpH hw hBC htiming hsu hci hti hib
   · exact ⟨v, q, m, S, hS, hqt,
-      ProposalImpl.protected_source_compatible_high_origin_at hp hc hx hsource hs hrb hS
+      ProposalImpl.protected_source_compatible_high_origin_at hp hx hsource hs hrb hS
         (hqa.trans hp.reset_le)⟩
   · intro v q m O hqi ho
-    exact ProposalImpl.protected_source_compatible_high_origin_at hp hc hx hsource hs hrb ho
+    exact ProposalImpl.protected_source_compatible_high_origin_at hp hx hsource hs hrb ho
       ((hm hqi.le).trans hib)
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo

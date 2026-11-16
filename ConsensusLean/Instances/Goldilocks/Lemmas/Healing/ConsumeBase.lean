@@ -193,7 +193,8 @@ theorem toFG_mem_frame {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
     exact (SA.deepest_mem hC').1.1.1
 
 /-- A source of an honest node is in its FG tree. -/
-theorem toFG_mem_tree (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+theorem toFG_mem_tree {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hto : SA.ToFGAt tr.projAC y k ℓ C) : C ∈ (tr.state y k).fg.tree :=
   mem_tree_of_frame hrun hy hto.1 (toFG_mem_frame hto.2.2)

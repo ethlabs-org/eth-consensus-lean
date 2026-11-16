@@ -351,7 +351,8 @@ private theorem ac_of_fg {ini} (hrun : GoldilocksRun proposer dg H tr ini)
 
 /-- A changed record is an actual selection at this cut, not merely an
 origin somewhere in the run. Restarts and FG calls retain the record. -/
-theorem record_step_origin (hrun : GoldilocksRun proposer dg H tr)
+theorem record_step_origin {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     (tr.state y (i + 1)).ac.latestConfirmed = (tr.state y i).ac.latestConfirmed ∨
       ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y (i + 1)).ac.latestConfirmed ∧

@@ -94,7 +94,8 @@ theorem last_record_writer (hrun : GoldilocksRun proposer dg H tr)
 
 /-- Creation-time holding plus a later finalized-floor guard keeps the writer's
 block in every intervening filtered frame, not only in the archival store. -/
-theorem writer_mem_frame_between (hrun : GoldilocksRun proposer dg H tr)
+theorem writer_mem_frame_between {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {q e n : Nat}
     (hqe : q ≤ e) (hen : e ≤ n) {R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hRq : R ∈ (tr.state y q).fg.tree) (hRn : R ∈ (Node.frame (tr.state y n)).tree) :

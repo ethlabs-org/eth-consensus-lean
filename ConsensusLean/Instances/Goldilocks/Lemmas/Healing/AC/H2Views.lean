@@ -155,7 +155,8 @@ theorem h2_views_agree (hS : HealthyBase tr H U proposer g) {s k : Nat}
     have hs : ((s + 1 : Nat) : Int) - 1 = s := by push_cast; ring
     rw [hs] at hv'
     have hvs := state_pool_slot sp hr hpH k s v
-      ((mem_proposalView_votes hr hpH k s ℓp.frame v).1 (ofLists_support_subset _ _ _ _ hv'))
+      ((mem_proposalView_votes hr (fun _ => SA.voteStart_initial _) hpH k s ℓp.frame v).1
+        (ofLists_support_subset _ _ _ _ hv'))
     exact h2_support_mem hS (by clear * -; omega) hpH hP hck htk hPpay (by
         rw [hts]; linarith only [hlate, hΔ])
       hy hc hes hv (by clear * - hvs; omega) hHd hHdr hF

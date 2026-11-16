@@ -15,7 +15,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The stored block of a high origin is held at its actual honest write. -/
 theorem high_origin_mem_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
     B ∈ (tr.state x i).fg.tree := by
@@ -25,8 +26,7 @@ theorem high_origin_mem_at
   have hc' : (tr.upTo (tr.time i)).projAC.CallAt x i ell := by
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time i)) _ proposer
-    (hrun.upTo ht) (hnc.upTo _)).localRun
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo ht) (hnc.upTo _)).localRun
   have hPhi := (SA.frameIn_of_callAt hr hx hc').1
   have hD : D ∈ ell.frame.tree := by
     rcases hfl with ⟨ell', C, ⟨hc', -⟩, -, hD, -⟩ | ⟨ell', A, ⟨hc', -⟩, -, hs, -⟩
@@ -43,7 +43,8 @@ theorem high_origin_mem_at
 
 /-- A held descendant is high even when the source writer was later compromised. -/
 theorem high_of_anc_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x z : Fin sp.n} {i j k : Nat} {t : Time}
     {B W : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hz : z ∈ H t)

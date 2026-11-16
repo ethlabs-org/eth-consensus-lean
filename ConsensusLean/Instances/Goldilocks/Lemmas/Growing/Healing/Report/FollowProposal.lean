@@ -53,7 +53,7 @@ theorem proposal_frame_unique_at
     (hjt : tr.time j ≤ sp.ts u + sp.Δ)
     {Q : SA.Blk sp.n (List (FG.Att sp.n))} (hQ : Q ∈ ell.frame.tree)
     (hQu : Q.slot = u) : Q = P := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have htime : tr.time k = sp.ts u := by
     simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hactual.2.2
   have hp : p ∈ H (tr.time k) := hrun.antitone (by rw [htime]; linarith [sp.toParams.hΔ]) hpH

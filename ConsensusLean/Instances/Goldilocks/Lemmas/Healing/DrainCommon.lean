@@ -545,7 +545,8 @@ theorem clean_fast_viable (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   have hBD : Anc (tr.HonestBlocks H) (ℓw.frame.viableAncestor D) D :=
     Anc.mono (SA.frameIn_of_callAt hS.run.localRun hx hcw).2 (SA.anc_viableAncestor _ D)
   obtain ⟨z, hz, kz, e', hvz, hes, Hd, hHd, hHdr, hDHd⟩ :=
-    SA.fastLock_honest_vote hS.run hS.two_faulty_lt hx hfl hs.stock
+    SA.fastLock_honest_vote hS.run _ SA.CommitteeP.full hx hfl
+      (SA.cs2_full hs.stock hS.two_faulty_lt)
   exact viable_of_clean_vote hrun hs hc hw hz hvz hj hes ⟨Hd, hHd, hHdr, hBD.trans hDHd⟩ hy hv
     hjs hk
 
@@ -612,7 +613,8 @@ theorem clean_fast_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
     tr proposer ΔF (gbar g) (sp.ts j + 2 * sp.Δ) hrun.toLocalRun
     (syncRun_of_gst hs.healthy.1 (le_gbar g))
   refine SA.carryAt_of_writer_catch hr hsync hgj le_rfl hx hy hv he fun v hvv => ?_
-  obtain ⟨h₁, h₂, Hv, hHv, hHvr, hDHv, h₃⟩ := fastLock_writer hr hx hflD v hvv
+  obtain ⟨h₁, h₂, Hv, hHv, hHvr, hDHv, h₃⟩ :=
+    fastLock_writer hr (fun _ => SA.voteStart_initial _) hx hflD v hvv
   have hFHv := hFB.trans (hBD.trans hDHv)
   refine ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, ?_⟩
   rcases h₃ with hgen | ⟨kw, hkw, hkwt⟩

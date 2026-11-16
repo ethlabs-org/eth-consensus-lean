@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Co
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 
 public section
 
@@ -23,8 +24,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Every bounded same-label raw source is below the actual unanimous head. -/
 theorem same_slot_source_below_unanimous_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x : Fin sp.n} {r u : Nat} (hx : x ∈ H (tr.time r))
     {B P : SA.Blk sp.n (List (FG.Att sp.n))}
     (horig : (∃ CV, SA.FastLockAt tr.projAC x r u B CV) ∨ SA.SlowLockAt tr.projAC x r u B)
@@ -32,7 +33,7 @@ theorem same_slot_source_below_unanimous_at
     (hPU : P ∈ tr.HonestBlocksAt H)
     (hun : ∀ z q e, z ∈ H (tr.time q) → SA.VoteAt tr.projAC z q e → tr.time q ≤ b →
       e.msg.slot = u → e.msg.head = P.root) : Anc (tr.HonestBlocksAt H) B P := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have below : ∀ z q, z ∈ H (tr.time r) → q ≤ r → ∀ e,
       SA.VoteAt tr.projAC z q e → e.msg.slot = u →
       SA.VoteExtends (tr.HonestBlocksAt H) e.msg B → Anc (tr.HonestBlocksAt H) B P := by
@@ -44,15 +45,16 @@ theorem same_slot_source_below_unanimous_at
   rcases horig with ⟨CV, ⟨ell, C, hupd, hC, hD, _⟩ | hop⟩ | ⟨ell, C, hupd, hC, hD⟩
   · have hr := hac.localRun.upTo (hp.run.time_nonneg r)
     have hcu := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hupd.1)
-    obtain ⟨z, hz, q, hqr, e, hv, _, hes, he⟩ := ProposalImpl.result_supporter_at hp hc hx
+    obtain ⟨z, hz, q, hqr, e, hv, _, hes, he⟩ := ProposalImpl.result_supporter_at hp hx
       ⟨ell, hupd, hC, rfl⟩ ((SA.deepest_mem hD).1.1.2.2.mono
         (SA.frameIn_of_callAt hr hx hcu).2) hrb hts
     exact below z q hz hqr.le e hv hes he
-  · obtain ⟨_, z, q, hz, hqr, e, hv, hes, he⟩ := hp.optimistic_supporter_at hx hrb hop
+  · obtain ⟨_, z, q, hz, hqr, e, hv, hes, he⟩ :=
+      hp.optimistic_supporter_at hx hrb (Healing.gbar_le_of_cutZ_le sp hts) hop
     exact below z q hz hqr e hv hes he
   · have hr := hac.localRun.upTo (hp.run.time_nonneg r)
     have hcu := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hupd.1)
-    obtain ⟨z, hz, q, hqr, e, hv, _, hes, he⟩ := ProposalImpl.result_supporter_at hp hc hx
+    obtain ⟨z, hz, q, hqr, e, hv, _, hes, he⟩ := ProposalImpl.result_supporter_at hp hx
       ⟨ell, hupd, hC, rfl⟩ ((SA.deepest_mem hD).1.1.2.2.mono
         (SA.frameIn_of_callAt hr hx hcu).2) hrb hts
     exact below z q hz hqr.le e hv hes he

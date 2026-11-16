@@ -28,8 +28,7 @@ theorem no_veto_of_lock_roots_compatible_at
       ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
         Compatible (tr.HonestBlocksAt H) L P) :
     ¬ SA.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time k))
-    (tr.upTo (tr.time k)) proposer (hrun.upTo (hrun.time_nonneg k))
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg k))
     (hnc.upTo (tr.time k))).localRun
   rw [RunTrace.upTo_projAC] at hr
   have hc' : (tr.projAC.upTo (tr.time k)).CallAt y k ell :=

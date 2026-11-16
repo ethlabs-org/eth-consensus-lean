@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.RootBound
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 
@@ -19,7 +21,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- A current-slot lock has an earlier supporter honest at that vote's own cut;
 other live locks and the finalized root are bounded by the supplied historical pivot. -/
 theorem reset_vote_anchor_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {u : Nat} {P Q D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hPU : P ∈ tr.HonestBlocksAt H) (hR : drainTime sp a ≤ sp.ts u)
     (hPQ : P.parent = some Q.root) (hQU : Q ∈ tr.HonestBlocksAt H)
@@ -38,7 +41,7 @@ theorem reset_vote_anchor_at
     Anc (tr.HonestBlocksAt H) (SA.getAnchor sp e.readPoint ell.frame (tr.time j)) D ∨
       (Anc (tr.HonestBlocksAt H) D (SA.getAnchor sp e.readPoint ell.frame (tr.time j)) ∧
         Anc (tr.HonestBlocksAt H) (SA.getAnchor sp e.readPoint ell.frame (tr.time j)) P) := by
-  have hrun := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hrun := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hrun.upTo (hp.run.time_nonneg j)
   have hc' := SA.upTo_castAt.mpr (And.intro le_rfl hcy)
   have hU := hrun.localRun.coherent
@@ -58,18 +61,39 @@ theorem reset_vote_anchor_at
   have haB : Anc (tr.HonestBlocksAt H) (ell.frame.viableAncestor B) B :=
     Anc.mono hPhiU (SA.anc_viableAncestor _ B)
   by_cases hls : l.slot = u
-  · obtain ⟨Phi', A', D', _, hPhi'U, _, h34, hpool, _, L, hLU, hLr, hLD'⟩ :=
+  · obtain ⟨Phi', A', D', _, hPhi'U, _, h34, hpool, hsubA, L, hLU, hLr, hLD'⟩ :=
       SA.lock_origin_readPoint hr hy hc' l hl (by rw [hes, hls]; omega)
-    rw [hp.stock] at h34
     obtain rfl : L = B := hU.1 hLU (hPhiU hB) (hLr.trans hBr.symm)
-    have hf : 2 * (H (tr.time j))ᶜ.ncard < sp.n := by
-      have := hp.faults (tr.time j) (hp.run.time_nonneg j) hjb
-      have := Fin.pos y
-      omega
-    obtain ⟨x, ⟨v, hv, rfl, R, hRt, hRr, hDR⟩, hxH⟩ :=
-      Set.exists_mem_notMem_of_ncard_lt_ncard (s := (H (tr.time j))ᶜ)
+    obtain ⟨k, hkj, hsubk⟩ := hsubA
+    have hK : SA.optimisticVoters sp A' Phi' l.slot D' ⊆
+        (Generic.dictOfTime sp cm).committee l.slot := by
+      rintro x ⟨v, hv, rfl, -⟩
+      have hv' := hsubk hv
+      rw [Trace.upTo_state tr.projAC y (fun _ hk' => hp.run.time_mono (by omega))] at hv'
+      exact hp.committeeFacts.hP.1 _ y hy (k + 1) (fun _ hk' => hp.run.time_mono (by omega))
+        l.slot v hv'
+    have hgu : SA.gbar g ≤ sp.ts u := hp.gbar_le_ts_of_clean_at (by
+      rw [Healing.drainTime_eq] at hR
+      have := (SA.ts_le_iff sp).1 hR
+      rw [Healing.cleanLabel_eq]
+      push_cast at this
+      omega)
+    have hub : sp.ts u ≤ b := by
+      have h := (SA.castAt_spec hr.localRun hy hc').2.1
+      have hsl : sp.slot (tr.time j) = u := by rw [← hes]; exact h.symm
+      exact ((SA.ts_le_iff_le_slot sp (hp.run.time_nonneg j) u).2
+        (by exact_mod_cast hsl.ge)).trans hjb
+    have hf := hp.committee_cs2_at (s := l.slot) (hls ▸ hgu) (hls ▸ hub)
+      (hp.run.time_nonneg j) hjb
+    have hpos := hp.committee_pos
+    obtain ⟨x, hxOV, hxH⟩ :=
+      Set.exists_mem_notMem_of_ncard_lt_ncard
+        (s := (Generic.dictOfTime sp cm).committee l.slot ∩ (H (tr.time j))ᶜ)
         (t := SA.optimisticVoters sp A' Phi' l.slot D') (by omega)
-    have hvH : v.val ∈ H (tr.time j) := not_not.1 hxH
+    obtain ⟨v, hv, rfl, R, hRt, hRr, hDR⟩ := hxOV
+    have hvH : v.val ∈ H (tr.time j) := by
+      by_contra hvH
+      exact hxH ⟨hK ⟨v, hv, rfl, R, hRt, hRr, hDR⟩, hvH⟩
     obtain ⟨hvs, j', hj', e', hv', rfl⟩ := hpool v hv hvH
     have hvote := SA.upTo_voteAt.mp hv'
     have hvHon : e'.msg.val ∈ H (tr.time j') :=
@@ -82,7 +106,8 @@ theorem reset_vote_anchor_at
     · exact Or.inl h
     · exact Or.inr ⟨h, haP⟩
   · have haQ := hlocks l hl hls
-      (hlive.trans ((SA.castAt_readPoint_locksWF hr.localRun hy hc').cap hl)) B hB hBr
+      (hlive.trans ((SA.castAt_readPoint_locksWFU (hr := hr.localRun.toU) hr.vstart hy
+        hc').cap hl)) B hB hBr
     rcases Anc.total hU haQ hDQ with h | h
     · exact Or.inl h
     · exact Or.inr ⟨h, haQ.trans (.single ⟨hQU, hPU, hPQ⟩)⟩

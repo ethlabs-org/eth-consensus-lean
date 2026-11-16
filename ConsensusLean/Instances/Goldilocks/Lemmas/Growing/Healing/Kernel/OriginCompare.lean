@@ -6,6 +6,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Ha
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FaultBound
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Compatible
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Later
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
@@ -32,7 +35,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- Earlier vote extension compares two bounded origins, including an origin whose
 write is pending but whose label's votes all precede the induction cut. -/
 theorem origins_compatible_before_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {k : Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {k : Nat}
     (hvote : ∀ x i j B, HighOrigin tr H g x i j B → tr.time i ≤ b →
       ∀ z c e, c < k → z ∈ H (tr.time c) → tr.time c ≤ b →
         SA.VoteAt tr.projAC z c e → j < e.msg.slot →
@@ -42,14 +46,11 @@ theorem origins_compatible_before_at
     (hact : i < k ∨ ∀ c, tr.time c < sp.ts (j + 1 : Nat) → c < k)
     (hO : HighOrigin tr H g z r l O) (hrb : tr.time r ≤ b) (hrk : r < k) :
     Compatible (tr.HonestBlocksAt H) B O := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hac.localRun
   have hU := hr.coherent
-  have hf : 2 * (H b)ᶜ.ncard < sp.n := by
-    have := hp.faults b ((hp.run.time_nonneg i).trans hib) le_rfl
-    have := sp.toParams.hn
-    change 0 < sp.n at this
-    omega
+  have hPK := fun t => SA.CommitteePAt.upTo hp.run.time_mono hp.run.antitone hp.committeeFacts.hP t
+  have hb0 : 0 ≤ b := (hp.run.time_nonneg i).trans hib
   have hx := hp.run.antitone (le_max_right _ _) ho.1
   have hz := hp.run.antitone (le_max_right _ _) hO.1
   obtain ⟨CV, ell, D, hci, hfl, rfl⟩ := ho.2.2.1
@@ -71,12 +72,12 @@ theorem origins_compatible_before_at
   have hBD := (SA.anc_viableAncestor ell.frame D).mono hPhiU
   have hOD := (SA.anc_viableAncestor ell'.frame D').mono hPhiU'
   rcases lt_trichotomy l j with hlt | rfl | hgt
-  · have hcut := (hp.cutZ_le_ts_of_highOrigin_at ho).trans
-      (ProposalImpl.ts_le_of_fastLock_at hp.run hfl)
-    have hDO := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg i)) _
-      SA.CommitteeP.full hx (Nat.lt_succ_self i)
+  · have hDO := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg i)) _
+      (hPK _) hx (Nat.lt_succ_self i)
       ((SA.upTo_fastLockAt hp.run.time_mono).mpr ⟨le_rfl, hfl⟩)
-      (SA.Growing.cs2_full_of_faultBoundAt hp.stock (fault_bound_late_at hp hcut hib))
+      (hp.committee_cs2_at
+        (Healing.gbar_le_of_cutZ_le sp (hp.cutZ_le_ts_of_highOrigin_at ho))
+        ((ProposalImpl.ts_le_of_fastLock_at hp.run hfl).trans hib) (hp.run.time_nonneg i) hib)
       (B := ell'.frame.viableAncestor D') ?_
     · by_contra hn
       exact SA.not_compatible_of_anc hU hBD (fun h => hn h.symm) hDO.symm
@@ -102,17 +103,18 @@ theorem origins_compatible_before_at
       have := sp.toParams.hΔ
       linarith
     have hsync := reset_syncACAt hp (hi := sp.ts (l + 1 : Nat) + sp.Δ) hgj
-    rcases SA.Growing.fastLock_same_slot hac _ (fun _ => SA.CommitteeP.full)
-        (SA.size_binding_full hp.stock) hx hfl hz hfl' hsync
-        (d := b) (fun _ => hib) hrb (SA.cs2_full hp.stock hf) with h | h
+    rcases SA.Growing.fastLock_same_slot hac _ hPK hp.committeeFacts.hsize hx hfl hz hfl' hsync
+        (d := b) (fun _ => hib) hrb
+        (hp.committee_cs2_at (Healing.gbar_le_of_cutZ_le sp (hp.cutZ_le_ts_of_highOrigin_at ho))
+          ((ProposalImpl.ts_le_of_fastLock_at hp.run hfl).trans hib) hb0 le_rfl) with h | h
     · exact SA.anc_total hU (hBD.trans h) hOD
     · exact SA.anc_total hU hBD (hOD.trans h)
-  · have hcut := (hp.cutZ_le_ts_of_highOrigin_at hO).trans
-      (ProposalImpl.ts_le_of_fastLock_at hp.run hfl')
-    have hDB := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg r)) _
-      SA.CommitteeP.full hz (Nat.lt_succ_self r)
+  · have hDB := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg r)) _
+      (hPK _) hz (Nat.lt_succ_self r)
       ((SA.upTo_fastLockAt hp.run.time_mono).mpr ⟨le_rfl, hfl'⟩)
-      (SA.Growing.cs2_full_of_faultBoundAt hp.stock (fault_bound_late_at hp hcut hrb))
+      (hp.committee_cs2_at
+        (Healing.gbar_le_of_cutZ_le sp (hp.cutZ_le_ts_of_highOrigin_at hO))
+        ((ProposalImpl.ts_le_of_fastLock_at hp.run hfl').trans hrb) (hp.run.time_nonneg r) hrb)
       (B := ell.frame.viableAncestor D) ?_
     · by_contra hn
       exact SA.not_compatible_of_anc hU hOD hn hDB.symm

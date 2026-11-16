@@ -33,7 +33,7 @@ theorem frame_witness_readPoint_stamp_at
     (hFQ : Anc (tr.HonestBlocksAt H) ell.frame.F Q) :
     Q ∈ (tr.state y i).fg.tree ∧
       e.readPoint.blockStamp Q.root < SA.ETime.of (SA.freeze sp (s + 1)) := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo (hrun.time_nonneg i)).localRun
   have hc' := SA.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hs : sp.slot (tr.time i) = s + 1 := (SA.castAt_spec hr hy hc').2.1.symm.trans hes
@@ -42,7 +42,8 @@ theorem frame_witness_readPoint_stamp_at
   have hts := SA.ts_succ s (sp := sp)
   have hfz : SA.freeze sp (s + 1) = sp.ts s + 3 * sp.Δ := by
     simp only [SA.freeze, show ((s + 1 : Nat) : Int) - 1 = s by omega]
-  have hQt := frame_relay_before_at hrun hnc hsvc hcatch hnr hx hy hcx hc.1 hQ
+  have hQt := frame_relay_before_at hrun hnc hsvc hcatch hx hy
+    (fun r hr' hrs => hnr _ r (hrun.antitone (hrun.time_mono hr') hy) hrs) hcx hc.1 hQ
     (by linarith only [hm, hti, hts, sp.toParams.hΔ])
     (by linarith only [ha, hti, hts, sp.toParams.hΔ]) hFQ
   have hacc : SA.AcceptedBefore (tr.projAC.upTo (tr.time i)) y Q

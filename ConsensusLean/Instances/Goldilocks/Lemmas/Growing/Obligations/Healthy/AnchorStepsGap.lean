@@ -38,7 +38,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The facts of a post-drain honest anchor that `report_cover_of_unanimous_at` reads. -/
 private theorem anchor_facts_at {g ΔR a b : Time}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b) {s : Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK) {s : Nat}
     {A : SA.Blk sp.n (List (FG.Att sp.n))}
     (hA : Healing.Growing.HonestProposalRun tr H proposer s A)
     (hR : Healing.drainTime sp a ≤ sp.ts s) :
@@ -62,8 +63,8 @@ private theorem anchor_facts_at {g ΔR a b : Time}
 and `X` at slot `s + c`, `2 ≤ c`, after the drain and by the horizon, with `H_z + 2 ≤ σ[A].h` at
 a holder honest at its cut: `AnchorStepAt tr H A X`. -/
 theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b)
-    (hc : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
     (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
     {s c s' : Nat} (hc2 : 2 ≤ c) (hs' : s' = s + c)
     (hdel : sp.ts s + 6 * sp.Δ + ΔF ≤ sp.ts s')
@@ -92,7 +93,7 @@ theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
   have hle0 : ∀ q < kX, tr.time q ≤ tr.time kX := fun _ hq => hrun.time_mono hq.le
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hAX : Anc (tr.HonestBlocksAt H) A X :=
-    anchors_chain_upTo_at hp hc hA hR hX (by omega) hb (fun h => absurd h (by omega))
+    anchors_chain_upTo_at hp hA hR hX (by omega) hb (fun h => absurd h (by omega))
   have hne : A ≠ X := by
     intro he
     have := honestProposalRun_slot_at hX
@@ -122,7 +123,7 @@ theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
       have := report_slot_le_time_at hrun hnc hx hto hAC
       rwa [hAs] at this
     obtain ⟨Pr', hPr'H, hpar', -, habove⟩ :=
-      crossed_parents_above_upTo_at hp hc hx hto (hR.trans htr) hlt hX (by linarith) hb
+      crossed_parents_above_upTo_at hp hx hto (hR.trans htr) hlt hX (by linarith) hb
     obtain rfl : Pr' = Pr := hU.1 hPr'H hPrH (Option.some.inj (hpar'.symm.trans hpar))
     have hAx : A ∈ (tr.state x r).fg.tree :=
       Healing.Growing.mem_of_honest_anc_at hrun hnc (hrun.time_nonneg r) hleR hx hAC
@@ -133,8 +134,8 @@ theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
     omega
   have hR1 : Healing.drainTime sp a ≤ sp.ts (s + 1 : Nat) :=
     hR.trans ((SA.ts_le_iff sp).2 (by push_cast; omega))
-  have hun := hp.operational_unanimous_at hc hA.1 rfl hpropA hAs hR (by linarith)
-  rcases Healing.Growing.report_cover_of_unanimous_at hp hc hAHB hAs hu hAg
+  have hun := hp.operational_unanimous_at hA.1 rfl hpropA hAs hR (by linarith)
+  rcases Healing.Growing.report_cover_of_unanimous_at hp hAHB hAs hu hAg
       (fun y j e hy hv hjb hs' => hun y j e hy hv hs' hjb) hgu hR1 hTb with
     hall | ⟨x, r, e, C, hx, hto, ht, hAC, hlt⟩
   swap
@@ -189,8 +190,9 @@ theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
 /-- A height bound at a holder honest at its cut carries to a later honest proposal above it,
 read at its proposer just after the proposal cut. -/
 private theorem height_next_at {g ΔR a b : Time}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b)
-    (hc : Healing.Growing.CatchRun tr H g (2 * sp.Δ)) {s s' : Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
+    {s s' : Nat}
     {A X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hA : Healing.Growing.HonestProposalRun tr H proposer s A)
     (hX : Healing.Growing.HonestProposalRun tr H proposer s' X) (hss : s + 2 ≤ s')
@@ -202,7 +204,7 @@ private theorem height_next_at {g ΔR a b : Time}
   have hrun := hp.run
   have hnc := hp.noColl
   have hAX : Anc (tr.HonestBlocksAt H) A X :=
-    anchors_chain_upTo_at hp hc hA hR hX (by omega) hb (fun h => absurd h (by omega))
+    anchors_chain_upTo_at hp hA hR hX (by omega) hb (fun h => absurd h (by omega))
   obtain ⟨kX, -, hm, ht, hXm⟩ := proposal_held_at hrun hnc hX
   have hle1 : ∀ q < kX + 1, tr.time q ≤ tr.time kX := fun _ hq => hrun.time_mono (by omega)
   have h0 := hrun.time_nonneg kX
@@ -219,8 +221,8 @@ private theorem height_next_at {g ΔR a b : Time}
 premises with `6Δ + ΔF ≤ 4Δ·c` and `ḡ_S ≤ t_{s₀} + 6Δ`, and `H_z + 2 ≤ σ[P₀].h` at a holder
 honest at its cut: `AnchorStepAt tr H (P i) (P (i+1))` for `i < 3`. -/
 theorem anchorSteps_gap_at {g ΔR a b gS ΔF : Time}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b)
-    (hc : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
     (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b) {c : Nat} (hc2 : 2 ≤ c)
     (hdel : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * c) {s₀ : Nat}
     {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
@@ -241,17 +243,17 @@ theorem anchorSteps_gap_at {g ΔR a b gS ΔF : Time}
   have hmono : ∀ m n : Nat, m ≤ n → sp.ts m ≤ sp.ts n := fun m n h =>
     (SA.ts_le_iff sp).2 (by exact_mod_cast h)
   have hΔ := sp.toParams.hΔ
-  have h1 := height_next_at hp hc hP0 hP1 (by omega) hR ((hmono _ _ (by omega)).trans hb) hh₀
-  have h2 := height_next_at hp hc hP0 hP2 (by omega) hR ((hmono _ _ (by omega)).trans hb) hh₀
-  have st0 := anchorStep_gap_at hp hc hs hc2 rfl (gap_delivery hdel s₀) hP0 hP1 hR
+  have h1 := height_next_at hp hP0 hP1 (by omega) hR ((hmono _ _ (by omega)).trans hb) hh₀
+  have h2 := height_next_at hp hP0 hP2 (by omega) hR ((hmono _ _ (by omega)).trans hb) hh₀
+  have st0 := anchorStep_gap_at hp hs hc2 rfl (gap_delivery hdel s₀) hP0 hP1 hR
     ((hmono _ _ (by omega)).trans hb) hgS hh₀
-  have st1 := anchorStep_gap_at hp hc hs hc2 (by omega) (by
+  have st1 := anchorStep_gap_at hp hs hc2 (by omega) (by
       have := gap_delivery hdel (s₀ + c)
       have e : s₀ + c + c = s₀ + 2 * c := by omega
       rwa [e] at this) hP1 hP2
     (hR.trans (hmono _ _ (by omega))) ((hmono _ _ (by omega)).trans hb)
     (by linarith [hmono s₀ (s₀ + c) (by omega)]) h1
-  have st2 := anchorStep_gap_at hp hc hs hc2 (by omega) (by
+  have st2 := anchorStep_gap_at hp hs hc2 (by omega) (by
       have := gap_delivery hdel (s₀ + 2 * c)
       have e : s₀ + 2 * c + c = s₀ + 3 * c := by omega
       rwa [e] at this) hP2 hP3

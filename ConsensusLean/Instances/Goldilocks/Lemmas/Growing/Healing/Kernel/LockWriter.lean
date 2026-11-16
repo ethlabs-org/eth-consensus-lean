@@ -18,8 +18,9 @@ variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
   {T : SA.SATrace sp FGP ro} {H : Time → Set (Fin sp.n)} {U : Set (SA.Blk sp.n FGP)}
 
 /-- Counted votes were released and their heads accepted while the writer was honest. -/
-theorem fastLock_writer_at
-    (hr : Goldilocks.Growing.ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+theorem fastLock_writer_at {ini}
+    (hr : Goldilocks.Growing.ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} {i s : Nat} (hx : x ∈ H (T.time i))
     {D : SA.Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : SA.FastLockAt T x i s D CV) :
     ∀ v ∈ CV, v.slot = s ∧
@@ -33,7 +34,7 @@ theorem fastLock_writer_at
   have hf := (SA.upTo_fastLockAt hr.time_mono).mpr ⟨le_rfl, hfl⟩
   intro v hv
   obtain ⟨hvs, ⟨k, hsend, hk1, hk2⟩, B, hB, hBr, hDB, hacc⟩ :=
-    Healing.fastLock_writer hp hx hf v hv
+    Healing.fastLock_writer hp hini hx hf v hv
   obtain ⟨hki, hsend⟩ := (ACTrace.upTo_sendOrAdmit hr.time_mono).mp hsend
   refine ⟨hvs, ⟨k, hr.antitone hki hx, hsend, hk1, hk2⟩, B, hB, hBr, hDB, ?_⟩
   rcases hacc with hg | ⟨q, haq, hqt⟩

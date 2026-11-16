@@ -41,14 +41,15 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **An acceptance of a head above a high origin is after GST**, for an acceptor honest
 at the later of its acceptance and `c_z`. -/
-private theorem gst_le_acceptance (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+private theorem gst_le_acceptance {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) {w : Fin sp.n} {c : Nat}
     (hw : w ∈ H (max (tr.time c) (cutZ sp.toParams g)))
     {W : SA.Blk sp.n (List (FG.Att sp.n))} (hacc : tr.projAC.AcceptAt w c W)
     (hBW : Anc (tr.HonestBlocksAt H) B W) : g ≤ tr.time c := by
   have hwc := hp.run.antitone (le_max_left _ _) hw
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   obtain ⟨ellC, hcC, heC⟩ := hacc
   have hrC := hac.localRun.upTo (hp.run.time_nonneg c)
   have hcC' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcC)
@@ -60,7 +61,8 @@ private theorem gst_le_acceptance (hp : ResetPremisesUpTo tr H proposer dg g ΔF
 
 /-- A high origin's counted votes reach a next-slot honest cast without Catch. -/
 theorem first_carry_of_finalized_anc_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (Vote sp.n)}
     (ho : HighOrigin tr H g x i j B)
@@ -71,7 +73,7 @@ theorem first_carry_of_finalized_anc_at
     (hs : e.msg.slot = j + 1) (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y k e j CV := by
   have hm := hp.run.time_mono
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hx := hp.run.antitone (le_max_right _ _) ho.1
   have hxU : (tr.state x i).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨x, i, tr.time i, hp.run.time_nonneg i, fun _ hq => hm hq.le, hx, h⟩
@@ -84,7 +86,7 @@ theorem first_carry_of_finalized_anc_at
     linarith [Healing.lt_cutZ sp g, SA.le_gbar g, sp.toParams.hΔ]
   refine carry_of_post_gst_senders_at hp hgj hy hc hs fun v hv => ?_
   obtain ⟨hvs, ⟨k', hxk, hsend, hk1, hk2⟩, Hv, hHvU, hHvr, hDHv, hacc⟩ :=
-    fastLock_writer_at hac.localRun hx hflD v hv
+    fastLock_writer_at hac.localRun hac.vstart hx hflD v hv
   have hBHv := hBD.trans hDHv
   refine ⟨hvs, ⟨x, k', hxk, hsend, hk1, hk2⟩, Hv, hHvr, hF.trans hBHv, ?_⟩
   rcases hacc with hg | ⟨q, hxq, haq, hqt⟩
@@ -97,7 +99,8 @@ theorem first_carry_of_finalized_anc_at
 
 /-- Earlier honest votes extending a high origin reach a later cast without Catch. -/
 theorem later_carry_of_finalized_anc_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {i j k m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B)
     (hy : y ∈ H (tr.time k))
@@ -111,7 +114,7 @@ theorem later_carry_of_finalized_anc_at
       {v | ∃ z q e', Compose.Growing.HVoteAt tr H z q e' ∧ e'.msg = v ∧ v.slot = m} := by
   have hm := hp.run.time_mono
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hU := hac.localRun.coherent
   have hZj := hp.cutZ_le_ts_of_highOrigin_at ho
   have hjm' := (SA.ts_le_iff sp).mpr (show (j : Int) ≤ m by clear * - hjm; omega)
@@ -136,7 +139,7 @@ theorem later_carry_of_finalized_anc_at
     have := SA.slot_mono sp (hp.run.time_nonneg k) (hm (not_lt.mp hn))
     clear * - this hyk hzs hvs hs; omega
   obtain ⟨Hv, hHvU, hHvr, hBHv⟩ := hprior z q e' hqk hzv hvs
-  obtain ⟨⟨Hd, hHd, hHdr, -⟩, hqt⟩ := Compose.cast_head_fcRoot hrq hzq hcq'
+  obtain ⟨⟨Hd, hHd, hHdr, -⟩, hqt⟩ := Compose.cast_head_fcRoot_from hrq hp.run.vstart hzq hcq'
   have hHdU := (SA.frameIn_of_callAt hrq hzq hcq'.1).2 hHd
   obtain rfl : Hd = Hv := hU.1 hHdU hHvU (hHdr.trans hHvr.symm)
   change tr.time q ≤ sp.ts e'.msg.slot + sp.Δ at hqt

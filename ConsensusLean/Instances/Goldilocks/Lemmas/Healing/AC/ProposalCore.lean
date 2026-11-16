@@ -41,6 +41,7 @@ variable {wm : SA.WriteMode}
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → SAState sp.n}
 
 /-! ## The proposal duty -/
 
@@ -77,7 +78,7 @@ theorem acProposal_eq_acProposalWith_slot {A : SAState sp.n} {Φ : Frm sp.n FGP}
   rw [acProposal_eq_acProposalWith, hslot, show ((σ + 1 : Nat) : Int) - 1 = σ by push_cast; ring]
 
 /-- The unlock relation at an honest proposal of slot `σ + 1`. -/
-theorem ACLocalRunU.lawful_proposal {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
+theorem ACLocalRunU.lawful_proposal {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     {x : Fin sp.n} (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hc : tr.CallAt x i ℓ) (hcall : ℓ.call = .proposal) (hslot : sp.slot (tr.time i) = σ + 1) :
     UnlockRel sp (tr.state x i).locks ℓ.frame (tr.time i) σ
@@ -181,23 +182,19 @@ theorem lowLocksCompatible_iff {A : SAState sp.n} {t : Time} {σ : Nat} {B : Blk
 
 /-! ## The proposal's view -/
 
-/-- `pool_stamp_lt_top` with the unlock given. -/
+/-- A vote of an honest node's pool has a finite stamp, for any unlock. -/
 theorem pool_stamp_lt_topU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {v : Vote sp.n} (hv : v ∈ (tr.state y i).pool v.slot) :
     (tr.state y i).voteStamp v < ⊤ := by
-  rcases pool_originU hr hy i v hv with ⟨k, -, -, hst, -⟩ | ⟨k, -, -, -, -, hst, -⟩ <;>
+  rcases pool_originU_from hr hini hy i v hv with ⟨k, -, -, hst, -⟩ | ⟨k, -, -, -, -, hst, -⟩ <;>
     rw [hst] <;> exact etime_of_lt_top _
-
-/-- A vote of an honest node's pool has a finite stamp. -/
-theorem pool_stamp_lt_top (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {v : Vote sp.n} (hv : v ∈ (tr.state y i).pool v.slot) :
-    (tr.state y i).voteStamp v < ⊤ :=
-  pool_stamp_lt_topU (hr := hr.toU) (y := y) (hy := hy) (i := i) (v := v) (hv := hv)
 
 /-- `mem_proposalView_votes` with the unlock given. -/
 theorem mem_proposalView_votesU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} (hx : x ∈ H) (i σ : Nat) (Φ : Frm sp.n FGP) (v : Vote sp.n) :
     v ∈ (View.ofLists (voteViewList (tr.state x i) Φ σ ⊤)).votes ↔
       v ∈ (tr.state x i).pool σ := by
@@ -205,67 +202,57 @@ theorem mem_proposalView_votesU
   simp only [SAState.poolAt, show ¬ ((σ : Int) < 0) by omega, ite_false, Int.toNat_natCast,
     List.mem_filter, decide_eq_true_eq, and_iff_left_iff_imp]
   intro hv
-  exact pool_stamp_lt_topU hr hx (state_pool_slotU sp hr hx i σ v hv ▸ hv)
+  exact pool_stamp_lt_topU hr hini hx (state_pool_slotU_from sp hr hini hx i σ v hv ▸ hv)
 
 /-- The proposal's view holds exactly the pool's slot-`σ` votes (their stamps are finite). -/
-theorem mem_proposalView_votes (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+theorem mem_proposalView_votes (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} (hx : x ∈ H) (i σ : Nat) (Φ : Frm sp.n FGP) (v : Vote sp.n) :
     v ∈ (View.ofLists (voteViewList (tr.state x i) Φ σ ⊤)).votes ↔
       v ∈ (tr.state x i).pool σ :=
-  mem_proposalView_votesU (hr := hr.toU) (x := x) (hx := hx) (i := i) (σ := σ) (Φ := Φ) (v := v)
+  mem_proposalView_votesU (hr := hr.toU) (hini := hini)
+    (x := x) (hx := hx) (i := i) (σ := σ) (Φ := Φ) (v := v)
 
 /-- The support of a view of lists is among its votes. -/
 theorem ofLists_support_subset (A : SAState sp.n) (Φ : Frm sp.n FGP) (σ : Int) (c : ETime) :
     (View.ofLists (voteViewList A Φ σ c)).support ⊆ (View.ofLists (voteViewList A Φ σ c)).votes :=
   fun _ hv => (List.mem_filter.1 hv).1
 
-/-- `proposalView_equivocator` with the unlock given. -/
+/-- An equivocator of the proposal's view equivocates in the pool, for any unlock. -/
 theorem proposalView_equivocatorU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} (hx : x ∈ H) (i σ : Nat) (Φ : Frm sp.n FGP) {w : Fin sp.n}
     (h : w ∈ equivocators (View.ofLists (voteViewList (tr.state x i) Φ σ ⊤)).votes) :
     w ∈ equivocators {v | v ∈ (tr.state x i).pool σ} :=
-  equivocators_mono (fun v hv => (mem_proposalView_votesU hr hx i σ Φ v).1 hv) h
+  equivocators_mono (fun v hv => (mem_proposalView_votesU hr hini hx i σ Φ v).1 hv) h
 
-/-- An equivocator of the proposal's view equivocates in the pool. -/
-theorem proposalView_equivocator (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
-    {x : Fin sp.n} (hx : x ∈ H) (i σ : Nat) (Φ : Frm sp.n FGP) {w : Fin sp.n}
-    (h : w ∈ equivocators (View.ofLists (voteViewList (tr.state x i) Φ σ ⊤)).votes) :
-    w ∈ equivocators {v | v ∈ (tr.state x i).pool σ} :=
-  proposalView_equivocatorU (hr := hr.toU) (x := x) (hx := hx) (i := i) (σ := σ) (Φ := Φ) (w := w)
-      (h := h)
-
-/-- `honest_pool_not_equivocator` with the unlock given. -/
+/-- An honest validator does not equivocate in an honest node's pool (any unlock). -/
 theorem honest_pool_not_equivocatorU
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {x : Fin sp.n} (hx : x ∈ H)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini) {x : Fin sp.n} (hx : x ∈ H)
     (i σ : Nat) {w : Fin sp.n} (hw : w ∈ H) :
     w ∉ equivocators {v | v ∈ (tr.state x i).pool σ} := by
   rintro ⟨a, ha, b, hb, hab, rfl, hbw⟩
   obtain ⟨ja, -, ea, hva, rfl⟩ := hrun.honest.pool_vote x hx i σ _ ha hw
   obtain ⟨jb, -, eb, hvb, rfl⟩ := hrun.honest.pool_vote x hx i σ _ hb (hbw ▸ hw)
-  have has := state_pool_slotU sp hrun.localRun hx i σ _ ha
-  have hbs := state_pool_slotU sp hrun.localRun hx i σ _ hb
+  have has := state_pool_slotU_from sp hrun.localRun hrun.vstart hx i σ _ ha
+  have hbs := state_pool_slotU_from sp hrun.localRun hrun.vstart hx i σ _ hb
   rw [hbw] at hvb
   obtain ⟨-, rfl⟩ := (one_vote_per_slotU sp) FGP ro H U tr hrun.localRun _ hw ja jb ea eb hva hvb
     (has.trans hbs.symm)
   exact hab rfl
 
-/-- An honest validator does not equivocate in an honest node's pool. -/
-theorem honest_pool_not_equivocator (hrun : ACRun proposer tr H U) {x : Fin sp.n} (hx : x ∈ H)
-    (i σ : Nat) {w : Fin sp.n} (hw : w ∈ H) :
-    w ∉ equivocators {v | v ∈ (tr.state x i).pool σ} :=
-  honest_pool_not_equivocatorU (hrun := hrun.toU) (x := x) (hx := hx) (i := i) (σ := σ) (w := w)
-      (hw := hw)
-
 /-- `honest_not_equivocator_proposal` with the unlock given. -/
 theorem honest_not_equivocator_proposalU
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {x : Fin sp.n} (hx : x ∈ H)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini) {x : Fin sp.n} (hx : x ∈ H)
     (i σ : Nat) (Φ : Frm sp.n FGP) {w : Fin sp.n} (hw : w ∈ H) :
     w ∉ equivocators (View.ofLists (voteViewList (tr.state x i) Φ σ ⊤)).votes := fun h =>
-  honest_pool_not_equivocatorU hrun hx i σ hw (proposalView_equivocatorU hrun.localRun hx i σ Φ h)
+  honest_pool_not_equivocatorU hrun hx i σ hw (proposalView_equivocatorU hrun.localRun hrun.vstart
+    hx i σ Φ h)
 
 /-- An honest validator does not equivocate in the view of an honest proposal. -/
-theorem honest_not_equivocator_proposal (hrun : ACRun proposer tr H U) {x : Fin sp.n} (hx : x ∈ H)
+theorem honest_not_equivocator_proposal (hrun : ACRun proposer tr H U ini) {x : Fin sp.n}
+    (hx : x ∈ H)
     (i σ : Nat) (Φ : Frm sp.n FGP) {w : Fin sp.n} (hw : w ∈ H) :
     w ∉ equivocators (View.ofLists (voteViewList (tr.state x i) Φ σ ⊤)).votes :=
   honest_not_equivocator_proposalU (hrun := hrun.toU) (x := x) (hx := hx) (i := i) (σ := σ)
@@ -273,7 +260,8 @@ theorem honest_not_equivocator_proposal (hrun : ACRun proposer tr H U) {x : Fin 
 
 /-- `proposal_supporter` with the unlock given. -/
 theorem proposal_supporterU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
     (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     {v : Vote sp.n} (hvs : v.slot = σ) (hv : v ∈ (tr.state x i).pool σ) {C R : Blk sp.n FGP}
     (hR : R ∈ ℓ.frame.tree) (hRr : R.root = v.head) (hRs : R.slot ≤ σ)
@@ -281,7 +269,7 @@ theorem proposal_supporterU
     (hneq : v.val ∉ equivocators (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)).votes) :
     v.val ∈ supporters ℓ.frame (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)) σ C := by
   obtain ⟨hΦ, -⟩ := frameIn_of_callAtU hr hx hc
-  have hvst := pool_stamp_lt_topU hr hx (hvs ▸ hv)
+  have hvst := pool_stamp_lt_topU hr hini hx (hvs ▸ hv)
   have hres : resolutionTime (tr.state x i) ℓ.frame v < ⊤ := by
     unfold resolutionTime
     rw [← hRr, SA.lookup_of_mem hΦ hR]
@@ -294,14 +282,16 @@ theorem proposal_supporterU
 /-- **A held vote supports at the proposal.** A slot-`σ` vote that the proposer holds, with a
 head (of slot at most `σ`) in its tree with a finite stamp, is counted as support for every
 ancestor `C` of its head in the proposal's view, unless its validator equivocates there. -/
-theorem proposal_supporter (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+theorem proposal_supporter (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
     (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     {v : Vote sp.n} (hvs : v.slot = σ) (hv : v ∈ (tr.state x i).pool σ) {C R : Blk sp.n FGP}
     (hR : R ∈ ℓ.frame.tree) (hRr : R.root = v.head) (hRs : R.slot ≤ σ)
     (hCR : ℓ.frame.Anc C R) (hbs : (tr.state x i).blockStamp R.root < ⊤)
     (hneq : v.val ∉ equivocators (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)).votes) :
     v.val ∈ supporters ℓ.frame (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)) σ C :=
-  proposal_supporterU (hr := hr.toU) (x := x) (hx := hx) (i := i) (σ := σ) (ℓ := ℓ) (hc := hc)
+  proposal_supporterU (hr := hr.toU) (hini := hini)
+    (x := x) (hx := hx) (i := i) (σ := σ) (ℓ := ℓ) (hc := hc)
       (v := v) (hvs := hvs) (hv := hv) (C := C) (R := R) (hR := hR) (hRr := hRr) (hRs := hRs)
           (hCR := hCR) (hbs := hbs) (hneq := hneq)
 
@@ -309,7 +299,7 @@ theorem proposal_supporter (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x 
 
 /-- `proposal_walk` with the unlock given. -/
 theorem proposal_walkU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (hslot : sp.slot (tr.time i) = σ + 1) {d : DutyHead sp.n FGP (Payload sp.n)}
     {pay : Payload sp.n}
@@ -338,7 +328,7 @@ theorem proposal_walkU
 `ac_proposal` of slot `σ + 1` extends a block `B` of its tree that is viable or at or below
 `fc_root` (V), when every live lock after the unlocking is compatible with `B` and every child
 toward `B` is the best. -/
-theorem proposal_walk (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+theorem proposal_walk (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (hslot : sp.slot (tr.time i) = σ + 1) {d : DutyHead sp.n FGP (Payload sp.n)}
     {pay : Payload sp.n}
@@ -365,7 +355,7 @@ theorem proposal_walk (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin
 
 /-- `optimisticLock_compatible` with the unlock given. -/
 theorem optimisticLock_compatibleU
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini) (hf : 2 * Hᶜ.ncard < sp.n)
     {z : Fin sp.n} (hz : z ∈ H) {k s : Nat} {O : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt tr z k s O CV) {B : Blk sp.n FGP}
     (hB : ∀ w ∈ H, ∀ j e, VoteAt tr w j e → e.msg.slot = s → VoteExtends U e.msg B)
@@ -387,7 +377,7 @@ theorem optimisticLock_compatibleU
 
 /-- An honest optimistic lock is compatible with `B` when every honest vote of its slot extends
 `B` (`f < n/2`). -/
-theorem optimisticLock_compatible (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
+theorem optimisticLock_compatible (hrun : ACRun proposer tr H U ini) (hf : 2 * Hᶜ.ncard < sp.n)
     {z : Fin sp.n} (hz : z ∈ H) {k s : Nat} {O : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt tr z k s O CV) {B : Blk sp.n FGP}
     (hB : ∀ w ∈ H, ∀ j e, VoteAt tr w j e → e.msg.slot = s → VoteExtends U e.msg B)
@@ -398,12 +388,13 @@ theorem optimisticLock_compatible (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.
 
 /-- `proposal_high_lock` with the unlock given. -/
 theorem proposal_high_lockU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
     (hx : x ∈ H) {i σ : Nat} (ht : tr.time i = sp.ts (σ + 1 : Nat)) {l : Lock}
     (hl : l ∈ (tr.state x i).locks) (hlσ : σ ≤ l.slot) {X : Blk sp.n FGP} (hX : X ∈ U)
     (hXr : X.root = l.block) : ∃ O, Anc U X O ∧ ∃ k CV, OptimisticLockAt tr x k l.slot O CV := by
   obtain ⟨L, hL, hLr, O, hLO, k, hk, CV, hO⟩ := lock_below_originU hr
-    (fun _ => SA.voteStart_initial _) hx i l hl
+    hini hx i l hl
   obtain rfl : X = L := hr.coherent.1 hX hL (hXr.trans hLr.symm)
   refine ⟨O, hLO, k, CV, hO.resolve_left ?_⟩
   rintro ⟨ℓ', ⟨-, -, htk, -⟩, -⟩
@@ -417,11 +408,13 @@ theorem proposal_high_lockU
 
 /-- At a proposal of slot `σ + 1` (at `t_{σ+1}`), a stored lock of slot `≥ σ` sits below an
 optimistic lock of its slot: no update of such a slot has happened yet. -/
-theorem proposal_high_lock (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+theorem proposal_high_lock (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
     (hx : x ∈ H) {i σ : Nat} (ht : tr.time i = sp.ts (σ + 1 : Nat)) {l : Lock}
     (hl : l ∈ (tr.state x i).locks) (hlσ : σ ≤ l.slot) {X : Blk sp.n FGP} (hX : X ∈ U)
     (hXr : X.root = l.block) : ∃ O, Anc U X O ∧ ∃ k CV, OptimisticLockAt tr x k l.slot O CV :=
-  proposal_high_lockU (hr := hr.toU) (x := x) (hx := hx) (i := i) (σ := σ) (ht := ht) (l := l)
+  proposal_high_lockU (hr := hr.toU) (hini := hini)
+    (x := x) (hx := hx) (i := i) (σ := σ) (ht := ht) (l := l)
       (hl := hl) (hlσ := hlσ) (X := X) (hX := hX) (hXr := hXr)
 
 /-- The time and the slot of an honest proposal of slot `σ + 1`. -/
@@ -431,9 +424,12 @@ theorem proposal_slot {i σ : Nat} (ht : tr.time i = sp.ts (σ + 1 : Nat)) :
   rw [ht]
   exact slot_of_mem sp (σ + 1) le_rfl (by simp only [SAParams.ts]; push_cast; linarith)
 
-/-- `proposal_locks` with the unlock given. -/
+/-- The unlocked locks of an honest proposal of slot `σ + 1` are compatible with `B ∈ Φ.tree`,
+from (L-high) and either half of the committee supporting `B` (or equivocating) in its view, or
+(L-low), for any unlock. -/
 private theorem proposal_locksU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
     (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     {B : Blk sp.n FGP} {L : Set Lock} (hB : B ∈ ℓ.frame.tree)
     (hL : UnlockRel sp (tr.state x i).locks ℓ.frame (tr.time i) σ
@@ -448,7 +444,7 @@ private theorem proposal_locksU
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAtU hr hx hc
   refine unlocked_compatibleRel hr.coherent hΦ hΦU hB ?_
     (fun l hl hlive hlσ X hX hXr => hhigh l hl hlive (by exact_mod_cast hlσ) X hX hXr)
-    (locksWF_stateU hr hx i) hL
+    (locksWF_stateU hr hini hx i) hL
   rcases hlow with ⟨S, hS, hn⟩ | hlow
   · refine Or.inl ⟨S, fun w hw => ?_, hn⟩
     rcases hS w hw with h | ⟨-, v, hv, hvw, hvs, hva⟩
@@ -456,34 +452,19 @@ private theorem proposal_locksU
     · exact Or.inr ⟨v, hv, hvw, hvs, hva⟩
   · exact Or.inr fun l hl hlive hlσ X hX hXr => hlow l hl hlive (by exact_mod_cast hlσ) X hX hXr
 
-/-- The unlocked locks of an honest proposal of slot `σ + 1` are compatible with `B ∈ Φ.tree`,
-from (L-high) and either half of the committee supporting `B` (or equivocating) in its view, or
-(L-low). -/
-private theorem proposal_locks (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
-    (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
-    {B : Blk sp.n FGP} (hB : B ∈ ℓ.frame.tree)
-    (hlow : (∃ S : Set (Fin sp.n), (∀ w ∈ S,
-        w ∈ equivocators (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)).votes ∨
-          w ∈ supporters ℓ.frame (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)) σ B) ∧
-        sp.committeeSize ≤ 2 * S.ncard) ∨ LowLocksCompatible U (tr.state x i) (tr.time i) σ B)
-    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B) :
-    ∀ C ∈ liveLockBlocks sp (unlock sp (tr.state x i).locks ℓ.frame (tr.time i) σ
-      (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤))) ℓ.frame (tr.time i),
-      Compatible U C B :=
-  proposal_locksU (hr := hr.toU) (x := x) (hx := hx) (i := i) (σ := σ) (ℓ := ℓ) (hc := hc)
-      (hL := unlockRel_unlock (frameIn_of_callAt hr hx hc).1 _ _ _ _)
-      (B := B) (hB := hB) (hlow := hlow) (hhigh := hhigh)
-
 /-! ## The honest batch at a proposal (A1.3) -/
 
 /-- `batch_proposal` with the unlock given. -/
 theorem batch_proposalU
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n) {σ : Nat}
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini) {K : CommitteeDict sp.n}
+    {σ : Nat} (hf : 2 * (K.committee σ ∩ Hᶜ).ncard < sp.committeeSize)
     {B : Blk sp.n FGP}
-    (hhalf : sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = σ}.ncard)
+    (hhalf : sp.committeeSize ≤
+      2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = σ}.ncard)
     (hB : ∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = σ → VoteExtends U e.msg B)
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt x i ℓ) (hslot : sp.slot (tr.time i) = σ + 1)
+    (hc : tr.CallAt x i ℓ) (hK : ∀ v ∈ (tr.state x i).pool σ, v.val ∈ K.committee σ)
+    (hslot : sp.slot (tr.time i) = σ + 1)
     {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
     {L : Set Lock}
     (hprop : (acProposalWith sp L (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay))
@@ -493,8 +474,7 @@ theorem batch_proposalU
       (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot))
     (hP : ∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = σ →
       HeldAtProposal (tr.state x i) ℓ.frame σ e.msg)
-    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B)
-    (hstock : sp.committeeSize = sp.n) :
+    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B) :
     Anc U B d.head := by
   have hr := hrun.localRun
   have hU := hr.coherent
@@ -514,63 +494,70 @@ theorem batch_proposalU
     obtain rfl : Hd = R := hU.1 hHd (hΦU hR) (hHdr.trans hRr.symm)
     obtain rfl : Hd' = Hd := hU.1 hHd' hHd (hHd'r.trans hHdr.symm)
     rw [← hval]
-    exact proposal_supporterU hr hx hc hes hheld hR hRr (hes ▸ hHds)
+    exact proposal_supporterU hr hrun.vstart hx hc hes hheld hR hRr (hes ▸ hHds)
       (anc_tree_of_anc_U hU hΦ hΦU hV.1 hBHd hR) hbs
       (honest_not_equivocator_proposalU hrun hx i σ ℓ.frame (hval ▸ hw))
-  -- the voters are honest slot-`σ` voters or faulty
-  have hvoters : voters V.votes ⊆ SX ∪ Hᶜ := by
+  -- the voters are honest slot-`σ` voters or faulty members of the slot-`σ` committee
+  have hvoters : voters V.votes ⊆ SX ∪ (K.committee σ ∩ Hᶜ) := by
     rintro w ⟨v, hv, rfl⟩
+    have hv' := (mem_proposalView_votesU hr hrun.vstart hx i σ ℓ.frame v).1 hv
     by_cases hw : v.val ∈ H
-    · have hv' := (mem_proposalView_votesU hr hx i σ ℓ.frame v).1 hv
-      obtain ⟨j, -, e, hve, he⟩ := hrun.honest.pool_vote x hx i σ v hv' hw
-      exact Or.inl ⟨hw, j, e, hve, by rw [he]; exact state_pool_slotU sp hr hx i σ v hv'⟩
-    · exact Or.inr hw
-  have h3 : (SX ∪ Hᶜ).ncard < 2 * SX.ncard := by
-    have := Set.ncard_union_le SX Hᶜ
+    · obtain ⟨j, -, e, hve, he⟩ := hrun.honest.pool_vote x hx i σ v hv' hw
+      have hvs := state_pool_slotU_from sp hr hrun.vstart hx i σ v hv'
+      exact Or.inl ⟨hw, j, e, hve, by rw [he]; exact hvs⟩
+    · exact Or.inr ⟨hK v hv', hw⟩
+  have h3 : (SX ∪ (K.committee σ ∩ Hᶜ)).ncard < 2 * SX.ncard := by
+    have := Set.ncard_union_le SX (K.committee σ ∩ Hᶜ)
     omega
   exact proposal_walkU hr hx hc hslot hprop hV.2
-    (proposal_locksU hr hx hc hV.1 hL (Or.inl ⟨SX, fun w hw => Or.inr (hsupp hw),
-      by simpa only [hstock] using hhalf⟩) hhigh)
+    (proposal_locksU hr hrun.vstart hx hc hV.1 hL (Or.inl ⟨SX, fun w hw => Or.inr (hsupp hw),
+      hhalf⟩) hhigh)
     fun X Cx hCx hp hCxB => isBest_of_majority hΦ (ofLists_support_subset _ _ _ _)
       (fun _ h => h.1) hsupp hvoters h3 hCx hp hCxB
 
 /-- **The honest batch at a proposal** (A1.3 at the proposal duty: thereafter the honest
 batch releases older conflicting locks): when the honest voters of slot `σ` are half of the
 committee and every honest slot-`σ` vote extends `B` and reaches the proposer (P), the head of an
-honest proposal of slot `σ + 1` extends `B`, under (V) and (L-high). -/
-theorem batch_proposal (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n) {σ : Nat}
+honest proposal of slot `σ + 1` extends `B`, under (V) and (L-high). The proposer's slot-`σ` pool
+holds only votes of the slot-`σ` committee, fewer than half of which is faulty. -/
+theorem batch_proposal (hrun : ACRun proposer tr H U ini) {K : CommitteeDict sp.n} {σ : Nat}
+    (hf : 2 * (K.committee σ ∩ Hᶜ).ncard < sp.committeeSize)
     {B : Blk sp.n FGP}
-    (hhalf : sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = σ}.ncard)
+    (hhalf : sp.committeeSize ≤
+      2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = σ}.ncard)
     (hB : ∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = σ → VoteExtends U e.msg B)
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt x i ℓ) (hslot : sp.slot (tr.time i) = σ + 1)
+    (hc : tr.CallAt x i ℓ) (hK : ∀ v ∈ (tr.state x i).pool σ, v.val ∈ K.committee σ)
+    (hslot : sp.slot (tr.time i) = σ + 1)
     {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
     (hprop : (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay))
     (hV : B ∈ ℓ.frame.tree ∧
       (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot))
     (hP : ∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = σ →
       HeldAtProposal (tr.state x i) ℓ.frame σ e.msg)
-    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B)
-    (hstock : sp.committeeSize = sp.n) :
+    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B) :
     Anc U B d.head :=
   batch_proposalU (hrun := hrun.toU) (hf := hf) (σ := σ) (B := B) (hhalf := hhalf) (hB := hB)
-      (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc)
+      (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc) (hK := hK)
       (hL := unlockRel_unlock (frameIn_of_callAt hrun.localRun hx hc).1 _ _ _ _) (hslot := hslot)
           (d := d) (pay := pay)
           (hprop := by rwa [acProposal_eq_acProposalWith_slot hslot] at hprop) (hV := hV)
-              (hP := hP) (hhigh := hhigh) (hstock := hstock)
+              (hP := hP) (hhigh := hhigh)
 
 /-! ## The writer's update at the proposal -/
 
-/-- `pool_sent` with the unlock given. -/
+/-- A slot-`σ` vote of an honest node's pool, whose restarts before cut `c` are before `t_σ`, was
+sent or admitted by the node at an earlier cut, at or after `t_σ`, at its stamp (no restart
+replays it), for any unlock. -/
 theorem pool_sentU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {z : Fin sp.n} (hz : z ∈ H)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {z : Fin sp.n} (hz : z ∈ H)
     {c σ : Nat} (hrs : ∀ k < c, tr.RestartAt z k → tr.time k < sp.ts σ) {v : Vote sp.n}
     (hv : v ∈ (tr.state z c).pool σ) :
     ∃ k < c, tr.SendOrAdmit z k v ∧ sp.ts σ ≤ tr.time k ∧
       (tr.state z c).voteStamp v = ETime.of (tr.time k) := by
-  have hvs := state_pool_slotU sp hr hz c σ v hv
-  rcases pool_originU hr hz c v (hvs ▸ hv) with
+  have hvs := state_pool_slotU_from sp hr hini hz c σ v hv
+  rcases pool_originU_from hr hini hz c v (hvs ▸ hv) with
     ⟨k, hk, hsend, hst, hsl⟩ | ⟨k, hk, ℓk, hck, hrk, -, B, hB, hvB⟩
   · exact ⟨k, hk, hsend,
       (ts_le_iff_le_slot sp (hr.time_nonneg k) σ).2 (by rw [← hvs]; exact_mod_cast hsl), hst⟩
@@ -583,19 +570,10 @@ theorem pool_sentU
       linarith
     omega
 
-/-- A slot-`σ` vote of an honest node's pool, whose restarts before cut `c` are before `t_σ`, was
-sent or admitted by the node at an earlier cut, at or after `t_σ`, at its stamp (no restart
-replays it). -/
-theorem pool_sent (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {z : Fin sp.n} (hz : z ∈ H)
-    {c σ : Nat} (hrs : ∀ k < c, tr.RestartAt z k → tr.time k < sp.ts σ) {v : Vote sp.n}
-    (hv : v ∈ (tr.state z c).pool σ) :
-    ∃ k < c, tr.SendOrAdmit z k v ∧ sp.ts σ ≤ tr.time k ∧
-      (tr.state z c).voteStamp v = ETime.of (tr.time k) :=
-  pool_sentU (hr := hr.toU) (z := z) (hz := hz) (c := c) (σ := σ) (hrs := hrs) (v := v) (hv := hv)
-
 /-- `writer_pool_proposal` with the unlock given. -/
 theorem writer_pool_proposalU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {X : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {X : Fin sp.n}
     (hX : X ∈ H) {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)}
     (hupd : UpdateAt tr X i₀ σ ℓX) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     (ht : tr.time i = sp.ts (σ + 1 : Nat))
@@ -610,8 +588,8 @@ theorem writer_pool_proposalU
   have hts₂ : sp.ts (σ + 2 : Nat) = sp.ts σ + 8 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   intro v hv
-  have hvs := state_pool_slotU sp hr hx i σ v hv
-  obtain ⟨k, hk, hsend, h1, -⟩ := pool_sentU hr hx hrsx hv
+  have hvs := state_pool_slotU_from sp hr hini hx i σ v hv
+  obtain ⟨k, hk, hsend, h1, -⟩ := pool_sentU hr hini hx hrsx hv
   have hki : tr.time k ≤ sp.ts σ + 4 * sp.Δ := by rw [← hts, ← ht]; exact hr.time_mono hk.le
   have := sync_forwardU hr hsync hx hsend h1 hki hX hupd.1
     (fun k' hk' hrk => (hrsX k' hk' hrk).trans h1)
@@ -628,7 +606,8 @@ theorem writer_pool_proposalU
 writer's restarts up to its update at or before `t_σ` and the proposer's before its proposal
 before `t_σ`, a slot-`σ` vote that an honest proposer of slot `σ + 1` holds is held by an honest
 node at its update of slot `σ`, or that node holds two votes of its validator. -/
-theorem writer_pool_proposal (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {X : Fin sp.n}
+theorem writer_pool_proposal (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {X : Fin sp.n}
     (hX : X ∈ H) {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)}
     (hupd : UpdateAt tr X i₀ σ ℓX) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     (ht : tr.time i = sp.ts (σ + 1 : Nat))
@@ -637,13 +616,17 @@ theorem writer_pool_proposal (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
     (hrsx : ∀ k < i, tr.RestartAt x k → tr.time k < sp.ts σ) :
     ∀ v ∈ (tr.state x i).pool σ, v ∈ (tr.state X i₀).pool σ ∨
       v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool σ} :=
-  writer_pool_proposalU (hr := hr.toU) (X := X) (hX := hX) (i₀ := i₀) (σ := σ) (ℓX := ℓX)
+  writer_pool_proposalU (hr := hr.toU) (hini := hini)
+    (X := X) (hX := hX) (i₀ := i₀) (σ := σ) (ℓX := ℓX)
       (hupd := hupd) (x := x) (hx := hx) (i := i) (ht := ht) (hsync := hsync) (hrsX := hrsX)
           (hrsx := hrsx)
 
-/-- `counted_held` with the unlock given. -/
+/-- A counted vote of an honest update of slot `σ` that reaches the proposer (P), under (W), is
+held there without its validator equivocating in the proposal's view, and its head is a block
+of `Φ.tree` extending `E`, of slot at most `σ`, with a finite stamp, for any unlock. -/
 private theorem counted_heldU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {X : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {X : Fin sp.n}
     (hX : X ∈ H) {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hcX : tr.CallAt X i₀ ℓX)
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hc : tr.CallAt x i ℓ) {E : Blk sp.n FGP} {v : Vote sp.n}
@@ -659,7 +642,7 @@ private theorem counted_heldU
   obtain ⟨hΦX, hΦXU⟩ := frameIn_of_callAtU hr hX hcX
   obtain ⟨-, hΦU⟩ := frameIn_of_callAtU hr hx hc
   obtain ⟨hvp, hneqX, hres, R', hR', hR'r, hER'⟩ := hv
-  have hvs := state_pool_slotU sp hr hX i₀ σ v hvp
+  have hvs := state_pool_slotU_from sp hr hini hX i₀ σ v hvp
   have hR's : ¬ v.slot < R'.slot := by
     intro hlt
     unfold resolutionTime at hres
@@ -677,31 +660,16 @@ private theorem counted_heldU
       · exact ⟨a, ha', b, hb', hab, haw, hbw⟩
       · exact ⟨a', ha', b', hb', hab', ha'w.trans hbw, hb'w.trans hbw⟩
     · exact ⟨a', ha', b', hb', hab', ha'w.trans haw, hb'w.trans haw⟩
-  exact ⟨hvs, hheld.resolve_right hnoeq, fun h => hnoeq (proposalView_equivocatorU hr hx i σ _ h),
+  exact ⟨hvs, hheld.resolve_right hnoeq, fun h => hnoeq (proposalView_equivocatorU hr hini
+    hx i σ _ h),
     R, hR, hRr, by omega, Anc.mono hΦXU hER', hbs⟩
 
-/-- A counted vote of an honest update of slot `σ` that reaches the proposer (P), under (W), is
-held there without its validator equivocating in the proposal's view, and its head is a block
-of `Φ.tree` extending `E`, of slot at most `σ`, with a finite stamp. -/
-private theorem counted_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {X : Fin sp.n}
-    (hX : X ∈ H) {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hcX : tr.CallAt X i₀ ℓX)
-    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt x i ℓ) {E : Blk sp.n FGP} {v : Vote sp.n}
-    (hv : v ∈ fastCounted sp (tr.state X i₀) ℓX.frame σ E)
-    (hP : HeldAtProposal (tr.state x i) ℓ.frame σ v)
-    (hW : ∀ v ∈ (tr.state x i).pool σ, v ∈ (tr.state X i₀).pool σ ∨
-      v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool σ}) :
-    v.slot = σ ∧ v ∈ (tr.state x i).pool σ ∧
-      v.val ∉ equivocators (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)).votes ∧
-      ∃ R ∈ ℓ.frame.tree, R.root = v.head ∧ R.slot ≤ σ ∧ Anc U E R ∧
-        (tr.state x i).blockStamp R.root < ⊤ :=
-  counted_heldU (hr := hr.toU) (X := X) (hX := hX) (i₀ := i₀) (σ := σ) (ℓX := ℓX) (hcX := hcX)
-      (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc) (E := E) (v := v) (hv := hv) (hP := hP)
-          (hW := hW)
-
-/-- `counted_supporters_proposal` with the unlock given. -/
+/-- The validators that an honest update of slot `σ` counts for `E` are supporters of every
+`B ⪯ E` of the tree in the view of an honest proposal of slot `σ + 1`, under (P) for the counted
+votes and (W), for any unlock. -/
 theorem counted_supporters_proposalU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)}
     (hcX : tr.CallAt X i₀ ℓX) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) {B E : Blk sp.n FGP}
@@ -715,31 +683,17 @@ theorem counted_supporters_proposalU
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAtU hr hx hc
   rintro w ⟨v, hv, rfl⟩
   obtain ⟨hvs, hheld, hneq, R, hR, hRr, hRs, hER, hbs⟩ :=
-    counted_heldU hr hX hcX hx hc hv (hP v hv) hW
-  exact proposal_supporterU hr hx hc hvs hheld hR hRr hRs
+    counted_heldU hr hini hX hcX hx hc hv (hP v hv) hW
+  exact proposal_supporterU hr hini hx hc hvs hheld hR hRr hRs
     (anc_tree_of_anc_U hr.coherent hΦ hΦU hB (hBE.trans hER) hR) hbs hneq
 
-/-- The validators that an honest update of slot `σ` counts for `E` are supporters of every
-`B ⪯ E` of the tree in the view of an honest proposal of slot `σ + 1`, under (P) for the counted
-votes and (W). -/
-theorem counted_supporters_proposal (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
-    {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)}
-    (hcX : tr.CallAt X i₀ ℓX) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) {B E : Blk sp.n FGP}
-    (hB : B ∈ ℓ.frame.tree) (hBE : Anc U B E)
-    (hP : ∀ v ∈ fastCounted sp (tr.state X i₀) ℓX.frame σ E,
-      HeldAtProposal (tr.state x i) ℓ.frame σ v)
-    (hW : ∀ v ∈ (tr.state x i).pool σ, v ∈ (tr.state X i₀).pool σ ∨
-      v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool σ}) :
-    {w | ∃ v ∈ fastCounted sp (tr.state X i₀) ℓX.frame σ E, v.val = w} ⊆
-      supporters ℓ.frame (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)) σ B :=
-  counted_supporters_proposalU (hr := hr.toU) (X := X) (hX := hX) (i₀ := i₀) (σ := σ) (ℓX := ℓX)
-      (hcX := hcX) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc) (B := B) (E := E) (hB := hB)
-          (hBE := hBE) (hP := hP) (hW := hW)
-
-/-- `result_best_at_proposal` with the unlock given. -/
+/-- **A result's majority at the proposal** (A1.8 (b) at the proposal duty): for an honest
+result `C` of slot `σ` and a block `B ⪯ C` of the tree of an honest proposal of slot `σ + 1`,
+under (P) for the counted votes and (W), every child toward `B` is the best of its siblings, for
+any unlock. -/
 theorem result_best_at_proposalU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat} {C : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hres : ResultAt tr X i₀ σ C CV) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) {B : Blk sp.n FGP}
@@ -760,41 +714,19 @@ theorem result_best_at_proposalU
   have hvoters : voters (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)).votes ⊆
       voters {v | v ∈ (tr.state X i₀).pool σ} := by
     rintro w ⟨v, hv, rfl⟩
-    rcases hW v ((mem_proposalView_votesU hr hx i σ ℓ.frame v).1 hv) with
+    rcases hW v ((mem_proposalView_votesU hr hini hx i σ ℓ.frame v).1 hv) with
       h | ⟨a, ha, -, -, -, haw, -⟩
     · exact ⟨v, h, rfl⟩
     · exact ⟨a, ha, haw⟩
   exact fun X' Cx hCx hp hCxB => isBest_of_majority hΦ (ofLists_support_subset _ _ _ _)
-    (fun _ h => h.1) (counted_supporters_proposalU hr hX hupd.1 hx hc hB hBC hP hW) hvoters
+    (fun _ h => h.1) (counted_supporters_proposalU hr hini hX hupd.1 hx hc hB hBC hP hW) hvoters
     hmaj hCx hp hCxB
-
-/-- **A result's majority at the proposal** (A1.8 (b) at the proposal duty): for an honest
-result `C` of slot `σ` and a block `B ⪯ C` of the tree of an honest proposal of slot `σ + 1`,
-under (P) for the counted votes and (W), every child toward `B` is the best of its siblings. -/
-theorem result_best_at_proposal (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
-    {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat} {C : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    (hres : ResultAt tr X i₀ σ C CV) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) {B : Blk sp.n FGP}
-    (hB : B ∈ ℓ.frame.tree) (hBC : Anc U B C)
-    (hP : ∀ v ∈ CV, HeldAtProposal (tr.state x i) ℓ.frame σ v)
-    (hW : ∀ v ∈ (tr.state x i).pool σ, v ∈ (tr.state X i₀).pool σ ∨
-      v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool σ}) :
-    ∀ X' Cx : Blk sp.n FGP, Cx ∈ ℓ.frame.viableTree ℓ.frame.tree →
-      Cx.parent = some X'.root → ℓ.frame.Anc Cx B →
-      IsBest sp (goldfishScore sp ℓ.frame (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤))
-        σ)
-        {B' | B' ∈ ℓ.frame.viableTree ℓ.frame.tree ∧ B'.parent = some X'.root ∧
-          goldfishEligible sp ℓ.frame (tr.time i)
-            (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)) σ B'} Cx :=
-  result_best_at_proposalU (hr := hr.toU) (X := X) (hX := hX) (i₀ := i₀) (σ := σ) (C := C)
-      (CV := CV) (hres := hres) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc) (B := B)
-          (hB := hB) (hBC := hBC) (hP := hP) (hW := hW)
 
 /-! ## The first proposal after an origin -/
 
 /-- `result_first_proposal` with the unlock given. -/
 theorem result_first_proposalU
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat}
     {C D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hres : ResultAt tr X i₀ σ C CV)
     (hDC : Anc U D C) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
@@ -814,13 +746,13 @@ theorem result_first_proposalU
     (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ D) :
     Anc U D d.head :=
   proposal_walkU hrun.localRun hx hc hslot hprop hV.2
-    (proposal_locksU hrun.localRun hx hc hV.1 hL (Or.inr hlow) hhigh)
-    (result_best_at_proposalU hrun.localRun hX hres hx hc hV.1 hDC hP hW)
+    (proposal_locksU hrun.localRun hrun.vstart hx hc hV.1 hL (Or.inr hlow) hhigh)
+    (result_best_at_proposalU hrun.localRun hrun.vstart hX hres hx hc hV.1 hDC hP hW)
 
 /-- **A result transfers to the next proposal** (A1.8 for an ancestor `D ⪯ C` of an honest result
 `C` of slot `σ`, at the proposal duty): under (V) for `D`, (P) for the counted votes, (W),
 (L-high) and (L-low), the head of an honest proposal of slot `σ + 1` extends `D`. -/
-theorem result_first_proposal (hrun : ACRun proposer tr H U)
+theorem result_first_proposal (hrun : ACRun proposer tr H U ini)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat}
     {C D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hres : ResultAt tr X i₀ σ C CV)
     (hDC : Anc U D C) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
@@ -847,7 +779,7 @@ theorem result_first_proposal (hrun : ACRun proposer tr H U)
 
 /-- `update_first_proposal` with the unlock given. -/
 theorem update_first_proposalU
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfu : FastUpdateAt tr X i₀ σ D CV)
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -879,11 +811,12 @@ theorem update_first_proposalU
     refine hfast.trans (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_))
     rintro w ⟨hw, v, ⟨hv, hres⟩, hval, -, hanc⟩
     exact ⟨v, ⟨hv, hval ▸ hw, hres, hanc⟩, hval⟩
-  have hsupp := counted_supporters_proposalU hr hX hupd.1 hx hc hV.1
+  have hsupp := counted_supporters_proposalU hr hrun.vstart hX hupd.1 hx hc hV.1
     (Relation.ReflTransGen.refl (a := D)) hP hW
   exact proposal_walkU hr hx hc hslot hprop hV.2
-    (proposal_locksU hr hx hc hV.1 hL (Or.inl ⟨SX, fun w hw => Or.inr (hsupp hw), hhalf⟩) hhigh)
-    (result_best_at_proposalU hr hX ⟨ℓX, hupd, hconf, rfl⟩ hx hc hV.1 hDC'
+    (proposal_locksU hr hrun.vstart hx hc hV.1 hL (Or.inl ⟨SX, fun w hw => Or.inr (hsupp hw),
+      hhalf⟩) hhigh)
+    (result_best_at_proposalU hr hrun.vstart hX ⟨ℓX, hupd, hconf, rfl⟩ hx hc hV.1 hDC'
       (fun v hv => hP v (hCD hv)) hW)
 
 /-- **A fast update transfers to the next proposal** (A1.2 at the proposal duty): for an honest
@@ -891,7 +824,7 @@ fast lock of slot `σ` on `D` written by the fast test of an update, under (V) f
 the votes counted for `D`, (W) and (L-high), the head of an honest proposal of slot `σ + 1`
 extends `D`: the counted validators of `D` are half of the committee and support `D` (they
 release the older locks), and the result's majority leads the walk to `D`. -/
-theorem update_first_proposal (hrun : ACRun proposer tr H U)
+theorem update_first_proposal (hrun : ACRun proposer tr H U ini)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfu : FastUpdateAt tr X i₀ σ D CV)
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -954,11 +887,12 @@ theorem optimistic_first_proposal_storedU
     obtain ⟨hheld, R, hR, hRr, hbs⟩ := hP v ⟨hv, R', hR', hR'r, hDR'⟩
     obtain rfl : R = R' := hU.1 (hΦU hR) (hΦXU hR') (hRr.trans hR'r.symm)
     have hheld : v ∈ (tr.state x i).pool σ := hheld.resolve_right fun h =>
-      heq (equivocators_mono (fun u hu => (mem_proposalView_votesU hr hx i σ ℓ.frame u).2 hu) h)
+      heq (equivocators_mono (fun u hu => (mem_proposalView_votesU hr hrun.vstart
+        hx i σ ℓ.frame u).2 hu) h)
     have hRs : R.slot ≤ σ := by
       have := frame_slot_leU sp hr hX hpt.1 R hR'
       omega
-    exact proposal_supporterU hr hx hc hvs hheld hR hRr hRs
+    exact proposal_supporterU hr hrun.vstart hx hc hvs hheld hR hRr hRs
       (anc_tree_of_anc_U hU hΦ hΦU hV.1 (hBD.trans (Anc.mono hΦXU hDR')) hR) hbs heq
   -- counting: the equivocators are faulty, the other voters are outside `SX`
   have hE : (equivocators V.votes).ncard ≤ Hᶜ.ncard := Set.ncard_le_ncard fun w hw =>
@@ -970,7 +904,8 @@ theorem optimistic_first_proposal_storedU
     exact this
   have h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard := by omega
   exact proposal_walkU hr hx hc hslot hprop hV.2
-    (proposal_locksU hr hx hc hV.1 hL (Or.inl ⟨SX, fun w hw => (hcover hw).symm, by omega⟩) hhigh)
+    (proposal_locksU hr hrun.vstart hx hc hV.1 hL (Or.inl ⟨SX, fun w hw => (hcover
+      hw).symm, by omega⟩) hhigh)
     fun X' Cx hCx hp hCxD => isBest_of_cover hΦ (ofLists_support_subset _ _ _ _)
       (fun _ h => h.1) hcover (cover_sdiff_lt h3) hCx hp hCxD
 

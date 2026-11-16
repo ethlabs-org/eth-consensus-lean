@@ -140,9 +140,8 @@ theorem FrameWindow.older_locks_compatible_at_update_at
     exact (hnr x r (hrun.antitone hrt hx) (Compose.projAC_restartAt.mp hrs)).trans hgu
   obtain ⟨j, e, ⟨ellj, hc⟩, hs, hjt⟩ := honest_votes_of_joined_before_at hS
     (by have := (SA.ts_le_iff sp).2 (show (u : Int) ≤ u + 1 by omega); linarith) hjn y
-    (hrun.antitone hnext hy)
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time k))
-    (tr.upTo (tr.time k)) proposer (hrun.upTo (hrun.time_nonneg k))
+    (hrun.antitone hnext hy) (SA.mem_full _ _)
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg k))
     (hnc.upTo (tr.time k))).localRun
   rw [RunTrace.upTo_projAC] at hr
   have hjk : j < k := by
@@ -167,7 +166,7 @@ theorem FrameWindow.older_locks_compatible_at_update_at
   have hS0 := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
     (show 0 ≤ sp.ts u + sp.Δ by linarith [SA.gbar_nonneg g])
     (hshort.trans (hrun.time_mono hjk.le |>.trans hkb)) hstock
-  have hvotes := honest_votes_of_joined_before_at hS0 hgu hjoin
+  have hvotes := fun x hx => honest_votes_of_joined_before_at hS0 hgu hjoin x hx (SA.mem_full _ _)
   obtain ⟨hvi, _, _⟩ := hframe.proposal_viable_after_votes_at hrun hnc hsvc hawake hf hcatch
     hnr hgu hu0 hTb hz hdes hP hPs hyj hc.1 hjlate hjfinite
     (hvotes y (hrun.antitone hshort hyj)) hstock

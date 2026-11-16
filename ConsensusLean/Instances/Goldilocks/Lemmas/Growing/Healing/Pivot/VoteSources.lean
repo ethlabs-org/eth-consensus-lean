@@ -25,7 +25,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Non-current live read-point locks descend from an earlier clean raw write. -/
 theorem vote_old_lock_source_before_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {j u : Nat} (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
@@ -41,8 +42,7 @@ theorem vote_old_lock_source_before_at
       Anc (tr.HonestBlocksAt H) (ell.frame.viableAncestor L) D := by
   have hm := hp.run.time_mono
   have ht := hp.run.time_nonneg j
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time j))
-    (tr.upTo (tr.time j)) proposer (hp.run.upTo ht) (hp.noColl.upTo _)).localRun
+  have hr := (Compose.goldilocks_ac_projection_from (hp.run.upTo ht) (hp.noColl.upTo _)).localRun
   have hc' : SA.CastAt (tr.upTo (tr.time j)).projAC y j ell e := by
     rw [RunTrace.upTo_projAC]
     exact (SA.upTo_castAt).mpr ⟨le_rfl, hc⟩
@@ -71,10 +71,11 @@ theorem vote_old_lock_source_before_at
           X.root = l₀.block ∧ Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) X D := by
     cases hf : l₀.fast with
     | false =>
-      obtain ⟨r, hrj, D, hslow, hX⟩ := SA.slow_lock_provenance hr hy j l₀ hl₀ hf
+      obtain ⟨r, hrj, D, hslow, hX⟩ := SA.slow_lock_provenance_from hr hp.run.vstart hy j l₀ hl₀ hf
       exact ⟨r, hrj, D, Or.inr hslow, hX⟩
     | true =>
-      obtain ⟨r, hrj, D, CV, hfast, hX⟩ := SA.fast_lock_provenance hr hy j l₀ hl₀ hf
+      obtain ⟨r, hrj, D, CV, hfast, hX⟩ :=
+        SA.fast_lock_provenance_from hr hp.run.vstart hy j l₀ hl₀ hf
       exact ⟨r, hrj, D, Or.inl ⟨CV, hfast⟩, hX⟩
   obtain rfl : X = B := hr.coherent.1 hX (hPhiU hB) (hXr.trans hBr.symm)
   have hrtime := hm hrj.le

@@ -49,7 +49,7 @@ theorem FrameWindow.read_locks_below_of_earlier_heads_at
     hstock
   rcases hpass with h | ⟨hs, _⟩
   · exact h
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hri := hac.upTo (hrun.time_nonneg i)
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
@@ -95,7 +95,7 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads_at
     (hIH : ∀ x j ev, j < i → x ∈ H (tr.time j) → SA.VoteAt tr.projAC x j ev →
       ev.msg.slot = p → ev.msg.head = P.root) (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocksAt H) (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) P := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hri := hac.upTo (hrun.time_nonneg i)
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
@@ -109,7 +109,7 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads_at
       Anc (tr.HonestBlocksAt H) B P := by
     intro B hB
     obtain ⟨l, hl, B₀, hB₀, hB₀r, hlive, rfl⟩ := SA.mem_liveLockBlocks_of_wf hPhi.1
-      (SA.castAt_readPoint_locksWF hri.localRun hy hcast) hB
+      (SA.castAt_readPoint_locksWF hri.localRun (fun _ => SA.voteStart_initial _) hy hcast) hB
     have hslot := (SA.castAt_spec hri.localRun hy hcast).2.1
     have hB₀P := hframe.read_locks_below_of_earlier_heads_at hrun hnc hsvc hawake hf hcatch
       hnr hm hsp hp0 hpb hz hdes hP hPs hy hc hes hmargin hIH hl

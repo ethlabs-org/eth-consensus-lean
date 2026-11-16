@@ -3,6 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.R
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
@@ -23,7 +25,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- The update handler's post-state conclusions follow from its selected confirmation.
 This is local execution, independent of the historical source of the pool or locks. -/
 theorem update_selection_of_confirmation_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {j u : Nat}
     (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -33,8 +36,7 @@ theorem update_selection_of_confirmation_at
     tr.projAC.post j = SA.updateConfirmation sp (tr.projAC.state y j) ell.frame (tr.time j) u ∧
       (tr.projAC.post j).latestConfirmed =
         (SA.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time j))
-    (tr.upTo (tr.time j)) proposer (hrun.upTo (hrun.time_nonneg j))
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg j))
     (hnc.upTo (tr.time j))).localRun
   rw [RunTrace.upTo_projAC] at hr
   have hu' : SA.UpdateAt (tr.projAC.upTo (tr.time j)) y j u ell := by
@@ -75,22 +77,29 @@ theorem update_selection_of_confirmation_at
   unfold SA.updateLatestConfirmed
   split <;> rfl
 
-/-- Early-resolved unanimous votes and compatible live locks determine the honest update.
-Only the pool's voters at the reading cut are counted. -/
+/-- Early-resolved unanimous votes of the honest slot-`u` committee members and compatible live
+locks determine the honest update. Only the pool's voters at the reading cut are counted: they are
+committee members, fewer than half of the committee is faulty, and the members honest at the cut
+all support `P`. -/
 theorem ready_update_selection_of_pool_core_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {K : SA.CommitteeDict sp.n}
     {y : Fin sp.n} {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hy : y ∈ H (tr.time j)) (hfault : 3 * (H (tr.time j))ᶜ.ncard ≤ sp.n - 1)
+    (hy : y ∈ H (tr.time j))
+    (hP : ∀ v ∈ (tr.projAC.state y j).pool u, v.val ∈ K.committee u)
+    (hsize : (K.committee u).ncard = sp.committeeSize)
+    (hcs2 : 2 * (K.committee u ∩ (H (tr.time j))ᶜ).ncard < sp.committeeSize)
     (hu : SA.UpdateAt tr.projAC y j u ell) (hPt : P ∈ ell.frame.tree)
     (hPg : P.root ≠ sp.genesisRoot)
-    (hpool : ∀ v, v ∈ H (tr.time j) → ∃ vote ∈ (tr.projAC.state y j).pool u,
+    (hpool : ∀ v, v ∈ H (tr.time j) → v ∈ K.committee u →
+      ∃ vote ∈ (tr.projAC.state y j).pool u,
       vote.val = v ∧ vote.head = P.root ∧
       SA.resolutionTime (tr.projAC.state y j) ell.frame vote < SA.ETime.of (sp.ts u + 2 * sp.Δ) ∧
       ∀ vote' ∈ (tr.projAC.state y j).pool u, vote'.val = v → vote' = vote)
     (hlocks : ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y j).locks ell.frame (tr.time j),
-      Compatible (tr.HonestBlocksAt H) L P) (hstock : sp.committeeSize = sp.n) :
+      Compatible (tr.HonestBlocksAt H) L P) :
     SA.getConfirmation sp (tr.projAC.state y j) ell.frame u = some P ∧
       ¬ SA.conflictsWithLock sp (tr.projAC.state y j).locks ell.frame (tr.time j) P ∧
       SA.fastSelect sp (tr.projAC.state y j) ell.frame u P = some P ∧
@@ -98,8 +107,8 @@ theorem ready_update_selection_of_pool_core_at
       (tr.projAC.post j).latestConfirmed =
         (SA.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed := by
   have hd0 := hrun.time_nonneg j
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time j))
-    (tr.upTo (tr.time j)) proposer (hrun.upTo hd0) (hnc.upTo (tr.time j))).localRun
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd0)
+    (hnc.upTo (tr.time j))).localRun
   rw [RunTrace.upTo_projAC] at hr
   have hc : (tr.projAC.upTo (tr.time j)).CallAt y j ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hu.1⟩
@@ -109,28 +118,38 @@ theorem ready_update_selection_of_pool_core_at
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   let A := tr.projAC.state y j
   let Hv := H (tr.time j)
-  have hHvot : Hv ⊆ SA.voters {v | v ∈ A.pool u} := fun v hv => by
-    obtain ⟨vote, hm, he, -⟩ := hpool v hv
-    exact ⟨vote, hm, he⟩
-  have hvle : (SA.voters {v | v ∈ A.pool u}).ncard ≤ sp.n := by
-    have := Set.ncard_le_ncard (Set.subset_univ (SA.voters {v | v ∈ A.pool u}))
-    rwa [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at this
-  have hHn : Hv.ncard + Hvᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have hHle := Set.ncard_le_ncard hHvot
-  have hf : 3 * Hvᶜ.ncard ≤ sp.n - 1 := hfault
-  have hn : 0 < sp.n := sp.toParams.hn
-  have hscore : Hv.ncard ≤ SA.confirmationScore sp A ell.frame u P := by
+  have hKvot : (K.committee u ∩ Hv) ⊆ (SA.voters {v | v ∈ A.pool u}) ∩ Hv := fun v hv => by
+    obtain ⟨vote, hm, he, -⟩ := hpool v hv.2 hv.1
+    exact ⟨⟨vote, hm, he⟩, hv.2⟩
+  have hVK : (SA.voters {v | v ∈ A.pool u}) ⊆ K.committee u := by
+    rintro w ⟨v, hv, rfl⟩
+    exact hP v hv
+  have hFV : Hvᶜ ∩ (SA.voters {v | v ∈ A.pool u}) ⊆ K.committee u ∩ Hvᶜ := fun w hw =>
+    ⟨hVK hw.2, hw.1⟩
+  have hsplitK : (K.committee u ∩ Hv).ncard + (K.committee u ∩ Hvᶜ).ncard = sp.committeeSize := by
+    rw [← hsize, Set.inter_comm (K.committee u) Hvᶜ, ← Set.sdiff_eq_compl_inter]
+    exact Set.ncard_inter_add_ncard_sdiff_eq_ncard _ _ (Set.toFinite _)
+  have hsplitV : ((SA.voters {v | v ∈ A.pool u}) ∩ Hv).ncard +
+      (Hvᶜ ∩ (SA.voters {v | v ∈ A.pool u})).ncard = (SA.voters {v | v ∈ A.pool u}).ncard := by
+    rw [← Set.sdiff_eq_compl_inter]
+    exact Set.ncard_inter_add_ncard_sdiff_eq_ncard _ _ (Set.toFinite _)
+  have hKle := Set.ncard_le_ncard hKvot
+  have hcs2' : 2 * (K.committee u ∩ Hvᶜ).ncard < sp.committeeSize := hcs2
+  have hFle := Set.ncard_le_ncard hFV
+  have hVHle : ((SA.voters {v | v ∈ A.pool u}) ∩ Hv).ncard ≤ (K.committee u ∩ Hv).ncard :=
+    Set.ncard_le_ncard (fun w hw => ⟨hVK hw.1, hw.2⟩)
+  have hscore : (K.committee u ∩ Hv).ncard ≤ SA.confirmationScore sp A ell.frame u P := by
     unfold SA.confirmationScore
     apply Set.ncard_le_ncard (ht := Set.toFinite _)
     intro v hv
-    obtain ⟨vote, hm, he, hh, hres, huniq⟩ := hpool v hv
+    obtain ⟨vote, hm, he, hh, hres, huniq⟩ := hpool v hv.2 hv.1
     refine ⟨?_, vote, ⟨hm, hres⟩, he, ?_, P, hPt, hh.symm, .refl⟩
     · rintro ⟨x, hx, z, hz, hne, hxv, hzv⟩
       exact hne ((huniq x hx hxv).trans (huniq z hz hzv).symm)
     · have hm' : vote ∈ ((tr.projAC.upTo (tr.time j)).state y j).pool u := by
         simpa only [Trace.upTo_state tr.projAC y (fun _ hk => hrun.time_mono hk.le)] using hm
-      exact_mod_cast SA.state_pool_slot sp hr hy j u vote hm'
+      exact_mod_cast SA.state_pool_slot_from sp hr (fun _ => (hrun.upTo hd0).vstart _) hy j u
+        vote hm'
   have hconf : SA.getConfirmation sp A ell.frame u = some P := by
     unfold SA.getConfirmation
     have hPS : P ∈ {B | B ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.F B ∧
@@ -144,9 +163,10 @@ theorem ready_update_selection_of_pool_core_at
       unfold SA.confirmationScore at hmaj
       dsimp only at hmaj
       refine absurd hmaj (not_lt.2 (le_trans (Nat.mul_le_mul_left 2
-        (Set.ncard_le_ncard (t := Hvᶜ) ?_)) (by omega)))
-      rintro v ⟨-, x, ⟨hx, -⟩, rfl, -, R, hR, hRr, hBR⟩ hv
-      obtain ⟨vote, -, -, hh, -, huniq⟩ := hpool _ hv
+        (Set.ncard_le_ncard (t := Hvᶜ ∩ (SA.voters {v | v ∈ A.pool u})) ?_)) (by omega)))
+      rintro v ⟨-, x, ⟨hx, -⟩, rfl, -, R, hR, hRr, hBR⟩
+      refine ⟨fun hv => ?_, x, hx, rfl⟩
+      obtain ⟨vote, -, -, hh, -, huniq⟩ := hpool _ hv (hP x hx)
       obtain rfl := huniq x hx rfl
       obtain rfl : R = P := hPhi.coherent.1 hR hPt (hRr.trans hh)
       exact hBP hBR
@@ -162,19 +182,21 @@ theorem ready_update_selection_of_pool_core_at
     · exact Or.inr (SA.anc_tree_of_anc_U hU hPhi hPhiU hL.1 h hPt)
     · exact Or.inl (SA.anc_tree_of_anc_U hU hPhi hPhiU hPt h hL.1)
   have hfast : SA.fastSelect sp A ell.frame u P = some P :=
-    SA.fastSelect_eq_result hPhi hPt hPg (by unfold SA.FastTest; rw [hstock]; omega)
+    SA.fastSelect_eq_result hPhi hPt hPg (by unfold SA.FastTest; omega)
   exact ⟨hconf, hnv, hfast, update_selection_of_confirmation_at hrun hnc hy hu hconf hnv⟩
 
-/-- The finite-reset wrapper supplies execution, no collisions, the cut fault bound and the
-population-sized-committee equality `sp.committeeSize = sp.n` (`hp.stock`). -/
+/-- The finite-reset wrapper supplies execution, no collisions, and at the slot-`u` committee
+its pool membership (P), size and CS2 at the reading cut (`committee_cs2_at`). -/
 theorem ResetPremisesUpTo.ready_update_selection_of_pool_at {g ΔF a b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hy : y ∈ H (tr.time j)) (hjb : tr.time j ≤ b)
+    (hy : y ∈ H (tr.time j)) (hjb : tr.time j ≤ b) (hgu : SA.gbar g ≤ sp.ts u)
     (hu : SA.UpdateAt tr.projAC y j u ell) (hPt : P ∈ ell.frame.tree)
     (hPg : P.root ≠ sp.genesisRoot)
-    (hpool : ∀ v, v ∈ H (tr.time j) → ∃ vote ∈ (tr.projAC.state y j).pool u,
+    (hpool : ∀ v, v ∈ H (tr.time j) → v ∈ (Generic.dictOfTime sp cm).committee u →
+      ∃ vote ∈ (tr.projAC.state y j).pool u,
       vote.val = v ∧ vote.head = P.root ∧
       SA.resolutionTime (tr.projAC.state y j) ell.frame vote < SA.ETime.of (sp.ts u + 2 * sp.Δ) ∧
       ∀ vote' ∈ (tr.projAC.state y j).pool u, vote'.val = v → vote' = vote)
@@ -187,7 +209,12 @@ theorem ResetPremisesUpTo.ready_update_selection_of_pool_at {g ΔF a b : Time}
       (tr.projAC.post j).latestConfirmed =
         (SA.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed :=
   ready_update_selection_of_pool_core_at hp.run hp.noColl hy
-    (hp.faults _ (hp.run.time_nonneg j) hjb) hu hPt hPg hpool hlocks hp.stock
+    (fun v hv => hp.committeeFacts.hP.1 _ y hy j (fun _ hk => hp.run.time_mono hk.le) u v hv)
+    (hp.committeeFacts.hsize u)
+    (hp.committee_cs2_at hgu (by
+      have ht : tr.time j = sp.ts u + 6 * sp.Δ := hu.2.2.1
+      linarith [sp.toParams.hΔ])
+      (hp.run.time_nonneg j) hjb) hu hPt hPg hpool hlocks
 
 end Consensus.Goldilocks.Healing.Growing
 

@@ -18,9 +18,10 @@ variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
 
 /-- A historically honest release and head acceptance reach an honest proposal reader.
 Equivocation is retained as an alternative to membership, even if the voter is compromised. -/
-theorem heldAtProposal_of_writer_at
-    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U T)
-    {a₀ b : Time} (hsvc : ServiceWindowBefore H U a₀ b T) {s : Nat}
+theorem heldAtProposal_of_writer_at {ini}
+    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U T ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {a₀ b : Time}
+      (hsvc : ServiceWindowBefore H U a₀ b T) {s : Nat}
     (ha₀ : a₀ ≤ sp.ts s) (hb : sp.ts s + 3 * sp.Δ ≤ b)
     {w x : Fin sp.n} {i : Nat} (hx : x ∈ H (T.time i))
     {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : T.CallAt x i ell)
@@ -86,7 +87,7 @@ theorem heldAtProposal_of_writer_at
           Or.inr ⟨k, hak', hkt⟩⟩
     refine ⟨B, hBt, hBr, ?_⟩
     rw [← hs]
-    exact (blockStamp_lt_of_acceptedBefore sp hpre hx hc' hBt hAB
+    exact (blockStamp_lt_of_acceptedBefore_from sp hpre hini hx hc' hBt hAB
       (fun k hk hrk => (hrs' k hk hrk).trans (by linarith))
       (Or.inl (by change _ ≤ T.time i; rw [ht, hts]; linarith))).trans
         (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_top _))

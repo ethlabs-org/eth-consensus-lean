@@ -50,8 +50,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **The finite predecessor batch extends every clean source at least two labels earlier**,
 under growing faults. -/
-theorem clean_source_proposal_parent_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {x p : Fin sp.n} {r s i u : Nat}
+theorem clean_source_proposal_parent_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {x p : Fin sp.n} {r s i u : Nat}
     (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hsource : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
@@ -63,14 +64,12 @@ theorem clean_source_proposal_parent_before_at (hp : ResetPremisesUpTo tr H prop
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) : Anc (tr.HonestBlocksAt H) B d.head := by
   have hm := hp.run.time_mono
   have hi0 := hp.run.time_nonneg i
-  have hS := healthy_base_of_reset_catch_before_at hp hc hi0 hib
+  have hS := healthy_base_of_reset_catch_before_at hp hi0 hib
   have hr := hS.run.localRun
   have hU := hr.coherent
   have hUc := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
   have hsub := RunTrace.honestBlocks_upTo_subset hm (H := H) hi0
   have hΔ := sp.toParams.hΔ
-  have hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n := by
-    have := hp.faults _ hi0 hib; have := Fin.pos x; omega
   have hst : (tr.projAC.upTo (tr.time i)).state p i = tr.projAC.state p i :=
     Trace.upTo_state _ p fun _ hq => hm hq.le
   have hci' : (tr.projAC.upTo (tr.time i)).CallAt p i ell :=
@@ -79,7 +78,7 @@ theorem clean_source_proposal_parent_before_at (hp : ResetPremisesUpTo tr H prop
       ((tr.projAC.upTo (tr.time i)).time i)).2 = some (d, pay) := by
     rw [hst]; exact hd
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci'
-  rcases hp.clean_source_proposal_domain_before_at hc hx hpH hsource hs (by omega) hrb hR
+  rcases hp.clean_source_proposal_domain_before_at hx hpH hsource hs (by omega) hrb hR
       hci hcall hd hti hib with hBF | hV
   · obtain ⟨_, hhead⟩ := Compose.acProposal_start_anc_head hPhi hd
     obtain ⟨A₁, _, hstart, _⟩ := Compose.acProposal_walk hd
@@ -100,13 +99,13 @@ theorem clean_source_proposal_parent_before_at (hp : ResetPremisesUpTo tr H prop
     have hqb : tr.time q ≤ b := hqD.trans hib
     have hext : SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
       rcases hsource with ⟨CV, hfast⟩ | hslow
-      · exact hp.fast_source_votes_before_at hc hx hfast hs hrb q hqb z hzq ell' e hc'
+      · exact hp.fast_source_votes_before_at hx hfast hs hrb q hqb z hzq ell' e hc'
           (by clear * - hsu hslot; omega)
-      · exact hp.slow_source_votes_before_at hc hx hslow hs hrb q hqb z hzq ell' e hc'
+      · exact hp.slow_source_votes_before_at hx hslow hs hrb q hqb z hzq ell' e hc'
           (by clear * - hsu hslot; omega)
     have hc'' : SA.CastAt (tr.projAC.upTo (tr.time i)) z q ell' e :=
       SA.upTo_castAt.mpr ⟨hqD, hc'⟩
-    obtain ⟨⟨Hd, hHd, hHdr, _⟩, _⟩ := Compose.cast_head_fcRoot hr hz hc''
+    obtain ⟨⟨Hd, hHd, hHdr, _⟩, _⟩ := Compose.cast_head_fcRoot_from hr hS.run.vstart hz hc''
     have hHdU := (SA.frameIn_of_callAt hr hz hc''.1).2 hHd
     obtain ⟨H', hH', hH'r, hBH'⟩ := hext
     obtain rfl : H' = Hd := hUc.1 hH' (hsub hHdU) (hH'r.trans hHdr.symm)
@@ -130,7 +129,7 @@ theorem clean_source_proposal_parent_before_at (hp : ResetPremisesUpTo tr H prop
     exact (hrestart p hpH q hrest).trans_lt ((SA.ts_lt_iff sp).mpr (by clear * -; omega))
   have hhalf := SA.honest_voters_half_before hS hσg hσD
     (fun z hz q _ hrest => hrestart z hz q hrest)
-  have hhalf' : sp.n ≤ 2 * {z | z ∈ H (tr.time i) ∧ ∃ q e,
+  have hhalf' : sp.committeeSize ≤ 2 * {z | z ∈ H (tr.time i) ∧ ∃ q e,
       SA.VoteAt (tr.projAC.upTo (tr.time i)) z q e ∧ e.msg.slot = σ}.ncard := by
     have hle := Set.ncard_le_ncard (s := {z | z ∈ H (tr.time i) ∧ ∃ q e,
       SA.VoteAt (tr.projAC.upTo (tr.time i)) z q e ∧ e.msg.slot = σ ∧
@@ -140,12 +139,15 @@ theorem clean_source_proposal_parent_before_at (hp : ResetPremisesUpTo tr H prop
       (by rintro z ⟨hz, q, e, hv, hs, _⟩; exact ⟨hz, q, e, hv, hs⟩)
     omega
   have hpre := hp.run.upTo hi0
-  have hnoopt := Healing.proposal_no_optimistic_of_run hpre (hp.noColl.upTo _) hf hpH
-    (by rw [RunTrace.upTo_projAC]; exact hci') hcall hti hp.stock
+  have hnoopt := Compose.proposal_no_optimistic_of hpre (hp.noColl.upTo _)
+    (by rw [RunTrace.upTo_projAC]; exact hS.hP)
+    (hS.cs2 (σ + 1) (by linarith only [hσg, hσ, hΔ]) hti.ge) hpH
+    (by rw [RunTrace.upTo_projAC]; exact hci') hcall hti
   have hhigh : SA.HighLocksCompatible ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)))
       ((tr.projAC.upTo (tr.time i)).state p i) ((tr.projAC.upTo (tr.time i)).time i) σ B := by
     refine SA.highLocksCompatible_iff.2 fun l hl _ hlσ X hX hXr => ?_
-    obtain ⟨L, hL, hLr, O, hLO, q, hqi, CV, hO⟩ := SA.lock_below_origin hr hpH i l hl
+    obtain ⟨L, hL, hLr, O, hLO, q, hqi, CV, hO⟩ := SA.lock_below_origin_from hr hS.run.vstart
+      hpH i l hl
     obtain rfl : X = L := hU.1 hX hL (hXr.trans hLr.symm)
     have hcomp : Compatible ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) O B := by
       rcases hO with ⟨ell', ⟨_, _, ht, _⟩, _⟩ | ⟨ellO, A, hpt, hsl, hsel, hCV⟩
@@ -172,16 +174,20 @@ theorem clean_source_proposal_parent_before_at (hp : ResetPremisesUpTo tr H prop
         split_ifs at hsel
         have h34 := (SA.deepest_mem hsel).1.2.1
         rw [hsl] at h34
-        refine SA.origin_compatible hU hΦU (SA.CommitteeDict.full sp.n) h34
-          (fun _ _ => SA.mem_full _ _) (by simpa only [SA.ncard_inter_full, hp.stock] using hf)
+        have hgl := (SA.ts_le_iff sp).mpr (show (σ : Int) ≤ l.slot by clear * - hlσ; omega)
+        have hli := (SA.ts_le_iff sp).mpr (show (l.slot : Int) ≤ σ by clear * - hle; omega)
+        refine SA.origin_compatible hU hΦU _ h34
+          (by rintro w ⟨v, hv, rfl, -⟩; exact hS.hP.2 p hpH q ellO A hpt l.slot v hv)
+          (hS.cs2 l.slot (by linarith only [hgl, hσg, hΔ]) (by linarith only [hli, hσD, hΔ]))
           fun v hv hvH => ?_
         obtain ⟨hvs, q', _, e', hv', rfl⟩ := SA.optimisticPoint_pool_vote hS.run hpH hpt hv hvH
         exact votes _ hvH q' e' hv' (by rw [hvs]; clear * - hlσ hle; omega)
     rcases hcomp with h | h
     · exact Or.inl (hLO.trans h)
     · exact SA.anc_total hU hLO h
-  have hfin := SA.batch_proposal hS.run hf hhalf' votes hpH hci'
-    (SA.proposal_slot hti) hd' ⟨hV.1, Or.inl hV⟩ ?_ hhigh hp.stock
+  have hfin := SA.batch_proposal hS.run
+    (hS.cs2 σ (by linarith only [hσg, hΔ]) (by linarith only [hσD, hΔ])) hhalf' votes hpH hci'
+    (fun v hv => hS.hP.1 p hpH i σ v hv) (SA.proposal_slot hti) hd' ⟨hV.1, Or.inl hV⟩ ?_ hhigh
   · exact hfin.mono hsub
   intro z hz q e hv he
   obtain ⟨H', hH', hHr', hBH⟩ := votes z hz q e hv he

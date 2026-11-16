@@ -32,6 +32,8 @@ namespace Consensus.Goldilocks.Compose.Growing
 open SA (SAParams ReplayOrder Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+
+variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
 
@@ -47,10 +49,11 @@ service, the slot counts from `r`, the seeded invariant from `t₁ ≥ t_{r+k}` 
 a third. -/
 structure SeededRun (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (g ΔF T : Time) (r σ : Nat) (t₁ b : Time) : Prop where
+    (g ΔF T : Time) (r σ : Nat) (t₁ b : Time)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ} : Prop where
   run : Growing.GoldilocksRun proposer dg H tr
   noColl : NoCollRun dg tr
-  seed : HandoverSeed tr H proposer dg g ΔF T r σ
+  seed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)
   service : Healing.Growing.ResetService tr H g ΔF b
   bounds : SleepyBoundsFrom tr H r b
   inv : SeededInvariant tr H g r (r + sp.k - 1) t₁ b
@@ -63,18 +66,20 @@ structure SeededRun (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
 variable {T : Time} {r σ : Nat} {t₁ b : Time}
 
 /-- The reset service with its catch-up is the sleepy service from `ḡ`, with catch-up `2Δ`. -/
-theorem SeededRun.sync (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b) :
+theorem SeededRun.sync (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK)) :
     SleepyServiceFrom tr H ΔF (SA.gbar g) (2 * sp.Δ) b :=
   sleepyServiceFrom_of_reset hS.run hS.service hS.seed.catchRun (by linarith [sp.toParams.hΔ])
 
 /-- `ḡ + 20Δ ≤ t_l` for every label `l ≥ r`. -/
-theorem SeededRun.gbar_le (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b) {l : Nat}
+theorem SeededRun.gbar_le (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+    {l : Nat}
     (hl : r ≤ l) : SA.gbar g + 20 * sp.Δ ≤ sp.ts l :=
   hS.seed.timing.2.2.trans (ts_le_ts hl)
 
 /-- A node honest at a time `t ≥ t_{r+k}`, read at or before cut `i` with `t ≤ time i`, has an AC
 call before `i` from `t_{r−k−3}` on. -/
-theorem SeededRun.called (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b) {y : Fin sp.n}
+theorem SeededRun.called (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+    {y : Fin sp.n}
     {i : Nat} {t : Time} (hy : y ∈ H t) (ht : sp.ts (r + sp.k : Nat) ≤ t)
     (hti : t ≤ tr.time i) :
     ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
@@ -83,7 +88,8 @@ theorem SeededRun.called (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b) {
 
 /-- **A live lock of a node honest at a cut at a time `≥ t_{r+k}` has label at least `r`**: its
 expiry is at most `k` slots after its label (`LocksWF`). -/
-theorem SeededRun.live_label (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b) {y : Fin sp.n}
+theorem SeededRun.live_label
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK)) {y : Fin sp.n}
     {i : Nat} (hy : y ∈ H (tr.time i)) (hdt : sp.ts (r + sp.k : Nat) ≤ tr.time i)
     {l : SA.Lock} (hl : l ∈ (tr.state y i).ac.locks) (hlive : l.LiveAt sp (tr.time i)) :
     r ≤ l.slot := by
@@ -144,7 +150,8 @@ theorem ts_pred {s : Nat} (hs : 0 < s) : sp.ts ((s : Int) - 1) = sp.ts (s - 1 : 
 
 /-- The timing of the slot `s` of a proposal after the split slot: the catch-up from `ḡ` is over
 by `t_{s−1}`. -/
-theorem SeededRun.slot_timing (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b) {s : Nat}
+theorem SeededRun.slot_timing
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK)) {s : Nat}
     (hs : σ + 1 ≤ s) :
     0 < s ∧ r + sp.k ≤ s ∧ SA.gbar g + 2 * sp.Δ ≤ sp.ts ((s : Int) - 1) ∧
       SA.gbar g + 2 * sp.Δ ≤ max (sp.ts ((s : Int) - 1) + 3 * sp.Δ) 0 := by
@@ -160,7 +167,7 @@ variable {p : Fin sp.n} {s i : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
   {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
 
 /-- **The proposer's `Σ.F` is on the healed chain**, at a proposal at `t_s ∈ [t₁, b]`. -/
-theorem SeededRun.proposer_F (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b)
+theorem SeededRun.proposer_F (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
     (hp : p ∈ H (tr.time i)) (hc : tr.projAC.CallAt p i ℓp) (ht₁ : t₁ ≤ tr.time i)
     (hb : tr.time i ≤ b) :
     OnHealedChain tr H g r (r + sp.k - 1) ℓp.frame.F b := by
@@ -175,7 +182,8 @@ theorem SeededRun.proposer_F (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ 
 member; a member of label `≤ s − 2` is extended by every honest slot-`(s−1)` vote (S2), whose head
 reaches the proposer (`proposer_accepts_head_from`); an optimistic origin of label `s − 1` by
 `proposal_holds_old_from` at the floor `r + k − 1`. -/
-theorem seeded_proposer_holds (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b)
+theorem seeded_proposer_holds
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
     (hs : σ + 1 ≤ s) (hp : p ∈ H (tr.time i)) (hc : tr.projAC.CallAt p i ℓp)
     (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
@@ -225,7 +233,7 @@ at `t_s ∈ [t₁, b]` (`proposal_walk_passes_from`): the member is held or belo
 proposer having called from `t_{r−k−3}`), supported at slot `s − 1` (S2, or the optimistic
 origin), and compatible with every lock write of the slot of a live stored lock (a member after
 the drain, `SeededRun.live_label`). -/
-theorem seeded_walk_passes (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b)
+theorem seeded_walk_passes (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
     (hs : σ + 1 ≤ s) (hp : p ∈ H (tr.time i)) (hc : tr.projAC.CallAt p i ℓp)
     (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))

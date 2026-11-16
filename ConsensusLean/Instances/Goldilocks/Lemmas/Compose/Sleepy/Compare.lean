@@ -578,24 +578,37 @@ theorem awake_participant_before (hrun : GoldilocksRun proposer dg H tr)
   awake_participant_window_before hrun hnc ⟨hsync.message, hsync.relay⟩
     (ts_nonneg s) hX hu hib hy hmv hw hj
 
-/-- If every honest validator is awake and joined, windowed forwarding gives more than
-twice the faulty population in the actual update pool. No head resolution is needed. -/
-theorem honest_participants_window_before
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+/-- If every honest member of the slot-`s` committee is awake, joined and permitted to vote,
+windowed forwarding makes the faulty participants of the actual update pool fewer than half of
+its participants, given that every pool vote is signed by a member and fewer than half of the
+committee is faulty. No head resolution is needed. -/
+theorem honest_participants_window_before {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n}
     {a b : Time} {s : Nat}
     (hsync : SA.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
     (ha : a ≤ sp.ts s) {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
     {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX)
     (hib : tr.time i₀ ≤ b)
     (hready : ∀ y ∈ H, tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ))
-    (hf : 3 * Hᶜ.ncard < sp.n) :
-    2 * Hᶜ.ncard < (SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s}).ncard := by
-  have hsub : H ⊆ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := fun y hy =>
-    awake_participant_window_before hrun hnc hsync ha hX hu hib hy (mayVote_stock hrun hnc hy s)
-      (hready y hy).1 (hready y hy).2
+    (hmv : ∀ y ∈ H, y ∈ K.committee s → ∀ i, (tr.state y i).ac.mayVote s = true)
+    (hP : ∀ v ∈ (tr.projAC.state X i₀).pool s, v.val ∈ K.committee s)
+    (hf : 2 * (K.committee s ∩ Hᶜ).ncard < (K.committee s).ncard) :
+    2 * (Hᶜ ∩ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s}).ncard <
+      (SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s}).ncard := by
+  set V := SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s}
+  have hVK : V ⊆ K.committee s := by
+    rintro w ⟨v, hv, rfl⟩
+    exact hP v hv
+  have hsub : K.committee s ∩ H ⊆ V ∩ H := fun y hy =>
+    ⟨awake_participant_window_before hrun hnc hsync ha hX hu hib hy.2 (hmv y hy.2 hy.1)
+      (hready y hy.2).1 (hready y hy.2).2, hy.2⟩
+  have hfV : Hᶜ ∩ V ⊆ K.committee s ∩ Hᶜ := fun w hw => ⟨hVK hw.2, hw.1⟩
   have hcount := Set.ncard_le_ncard hsub
-  have htotal : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+  have hcountF := Set.ncard_le_ncard hfV
+  have hsplitK := Set.ncard_inter_add_ncard_sdiff_eq_ncard (K.committee s) H (Set.toFinite _)
+  have hsplitV := Set.ncard_inter_add_ncard_sdiff_eq_ncard V H (Set.toFinite _)
+  rw [Set.sdiff_eq_compl_inter] at hsplitK hsplitV
+  rw [Set.inter_comm Hᶜ] at hsplitK
   omega
 
 /-- **A result and an optimistic selection of one slot are compatible** (RO): the `≥ 3n/4`

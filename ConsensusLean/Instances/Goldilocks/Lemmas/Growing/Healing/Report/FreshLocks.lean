@@ -43,7 +43,7 @@ theorem FrameWindow.unanimous_update_no_veto_at
   have hkb : tr.time k ≤ b := by rw [hkt, ← hT]; exact hTb
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
     (hrun.time_nonneg k) hkb hstock
-  have hr := hS.run.localRun
+  have hr := hS.stockRun.localRun
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono (hrun.time_nonneg k)
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hslot : sp.slot (tr.time k) = u + 1 := by
@@ -115,7 +115,7 @@ theorem FrameWindow.unanimous_update_no_veto_at
       have := sp.toParams.hn
       omega
     obtain ⟨x, hx, q, e, hv, hes, D, hD, hDr, hBD⟩ :=
-      SA.fastLock_honest_vote hS.run hf2 hy hfl hstock
+      SA.fastLock_honest_vote hS.run _ SA.CommitteeP.full hy hfl (SA.cs2_full hstock hf2)
     obtain ⟨hqt, hv⟩ := SA.upTo_voteAt.mp hv
     apply down (hLB.mono hsub)
     rcases (show l.slot = u ∨ l.slot = u + 1 by omega) with hls | hls

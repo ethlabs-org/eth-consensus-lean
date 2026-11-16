@@ -32,7 +32,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 `t ≤ b`, a high origin under the reader's head-height floor yields a high origin, of a label
 below `u`, above an entry at or past the floor, signed by the origin's writer after the write. -/
 theorem high_floor_signed_source_of_row_bound_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
     (hy : y ∈ H t) (htb : t ≤ b) {u : Nat}

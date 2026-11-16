@@ -87,8 +87,7 @@ theorem toFG_time_ge_of_ancestor_slot_at
     · rw [RunTrace.upTo_projAC]
       exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hR.1⟩
     · simpa only [RunTrace.upTo_projAC, hs, Trace.upTo_time] using hR.2.2
-  have hac := Compose.goldilocks_ac_projection sp ro dg (H (tr.time i))
-    (tr.upTo (tr.time i)) proposer (hrun.upTo hd) (hnc.upTo (tr.time i))
+  have hac := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo (tr.time i))
   have hRc := (SA.toFG_candidate hR'.2.2).1.1
   have hRs : R.slot ≤ sp.slot (tr.time i) := SA.frame_slot_le sp hac.localRun hy hR'.1 R hRc
   have hPR' := RunTrace.anc_upTo_of_right hr hnc hd

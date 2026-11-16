@@ -36,7 +36,8 @@ private theorem compat_of_below (hU : Coherent U) {L O D R : Blk sp.n FGP} (hLO 
 
 /-- `slow_window_results` with the unlock given. -/
 theorem slow_window_resultsU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
     (hx : x ∈ H) {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D) :
     ∀ j : Nat, (s : Int) - sp.k < j → j ≤ s →
       ∃ k R CV, ResultAt tr x k j R CV ∧ Anc U D R := by
@@ -49,7 +50,7 @@ theorem slow_window_resultsU
   swap
   · exact ⟨i₀, C, _, ⟨ℓX, hupd, hconf, rfl⟩, Anc.mono hΦU hDC⟩
   obtain ⟨S, hS, hSr, hDS⟩ := hslow j hj (by exact_mod_cast hjs)
-  obtain ⟨k, -, R, CV, hR, hRr⟩ := saved_resultU hr (fun _ => voteStart_initial _) hx i₀ j hSr
+  obtain ⟨k, -, R, CV, hR, hRr⟩ := saved_resultU hr hini hx i₀ j hSr
   have hRU : R ∈ U := by
     obtain ⟨ℓ', hu', hR', -⟩ := hR
     exact (frameIn_of_callAtU hr hx hu'.1).2 (deepest_mem hR').1.1
@@ -58,11 +59,13 @@ theorem slow_window_resultsU
 
 /-- **The writer's results over a slow lock's window**: for an honest slow lock of slot `s` on
 `D`, the writer's update of every slot `j` with `s − k < j ≤ s` has a result extending `D`. -/
-theorem slow_window_results (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+theorem slow_window_results {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
     (hx : x ∈ H) {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D) :
     ∀ j : Nat, (s : Int) - sp.k < j → j ≤ s →
       ∃ k R CV, ResultAt tr x k j R CV ∧ Anc U D R :=
-  slow_window_resultsU (hr := hr.toU) (x := x) (hx := hx) (i₀ := i₀) (s := s) (D := D) (hsl := hsl)
+  slow_window_resultsU (hr := hr.toU) (hini := hini) (x := x) (hx := hx)
+    (i₀ := i₀) (s := s) (D := D) (hsl := hsl)
 
 /-- `lock_below_origin` with the unlock given. -/
 theorem lock_below_originU
@@ -118,7 +121,8 @@ theorem slow_stored_locksU
   obtain ⟨L, hL, hLr, O, hLO, k, -, CV, hO⟩ := lock_below_originU hr
     (fun _ => SA.voteStart_initial _) hy i l hl
   obtain rfl : Y = L := hU.1 hY hL (hYr.trans hLr.symm)
-  obtain ⟨kx, R, CVx, hR, hDR⟩ := slow_window_resultsU hr hx hsl (U := U) l.slot (by omega) hle
+  obtain ⟨kx, R, CVx, hR, hDR⟩ := slow_window_resultsU hr (fun _ => voteStart_initial _) hx hsl
+    (U := U) l.slot (by omega) hle
   have hjr : gbar g + 4 * sp.Δ ≤ sp.ts l.slot := hs.trans ((ts_le_iff sp).2 (by omega))
   have hcomp : Compatible U O R := by
     rcases hO with hO | hO
@@ -158,7 +162,7 @@ theorem slow_live_locksU
     rintro X Y hXY (h | h)
     · exact Or.inl (hXY.trans h)
     · exact anc_total hU hXY h
-  have hwin := slow_window_resultsU hr hx hsl (U := U)
+  have hwin := slow_window_resultsU hr (fun _ => voteStart_initial _) hx hsl (U := U)
   rintro L ⟨hL, l, ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive, rfl⟩, hlL⟩
   have hLe : L = ℓ.frame.viableAncestor B₀ :=
     hU.1 (hΦU hL) (hΦU (viableAncestor_anc hΦ hB₀).1) hlL.symm
@@ -170,7 +174,8 @@ theorem slow_live_locksU
       readPoint_locks_below_storedU hr hy hc (show 0 < sp.slot (tr.time i) by omega) l₀ hl₀
         (show l₀.slot ≠ sp.slot (tr.time i) by omega)
     obtain rfl : B₀' = B₀ := hΦ.coherent.1 hB₀' hB₀ (hB₀'r.trans hB₀r.symm)
-    have hlive := hlive.trans ((castAt_readPoint_locksWFU hr hy hc).cap hl₀)
+    have hlive := hlive.trans
+      ((castAt_readPoint_locksWFU hr (fun _ => voteStart_initial _) hy hc).cap hl₀)
     exact down (Anc.mono hΦU hA) (slow_stored_locksU hS hx hsl hs hy (by omega) l₁ hl₁
       (by omega) (by omega) B₁ (hΦU hB₁) hB₁r)
   · -- a lock of slot `s + 1` or later is optimistic, over earlier honest slot-`(s+1)` votes
@@ -202,16 +207,16 @@ theorem slow_live_locks
 /-- Read-point lock comparison needs only stored-lock comparisons at this cut,
 the fault bound, and earlier votes. In particular it does not require whole-run
 health or use a future writer update as an earlier state transition. -/
-theorem live_locks_of_stored_before
-    (hrun : ACRun proposer tr H U)
-    (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} {D : Blk sp.n FGP}
+theorem live_locks_of_stored_before {ini}
+    (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
+    {s : Nat} (hf : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize) {D : Blk sp.n FGP}
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hes : e.msg.slot = s + 1)
     (hstored : ∀ l ∈ (tr.state y i).locks,
       sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
       ∀ Y ∈ U, Y.root = l.block → Compatible U Y D)
-    (hE : EarlierVotesExtend tr H U i (s + 1) D) (hstock : sp.committeeSize = sp.n) :
+    (hE : EarlierVotesExtend tr H U i (s + 1) D) :
     ∀ L ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i), Compatible U L D := by
   have hr := hrun.localRun
   have hU := hr.coherent
@@ -231,14 +236,19 @@ theorem live_locks_of_stored_before
       readPoint_locks_below_stored hr hy hc (show 0 < sp.slot (tr.time i) by omega) l₀ hl₀
         (show l₀.slot ≠ sp.slot (tr.time i) by omega)
     obtain rfl : B₀' = B₀ := hΦ.coherent.1 hB₀' hB₀ (hB₀'r.trans hB₀r.symm)
-    have hlive := hlive.trans ((castAt_readPoint_locksWF hr hy hc).cap hl₀)
+    have hlive := hlive.trans ((castAt_readPoint_locksWFU hr.toU hrun.vstart hy hc).cap hl₀)
     exact down (Anc.mono hΦU hA)
       (hstored l₁ hl₁ (by omega) (by omega) B₁ (hΦU hB₁) hB₁r)
-  · obtain ⟨Φ', A, D', -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
+  · obtain ⟨Φ', A, D', -, hΦ'U, -, h34, hpool, ⟨k, -, hAk⟩, L₀, hL₀, hL₀r, hL₀D⟩ :=
       lock_origin_readPoint hrun hy hc l₀ hl₀ (by rw [hes]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
-    refine down hL₀D (origin_compatible hU hΦ'U (CommitteeDict.full sp.n) h34
-      (fun _ _ => mem_full _ _) (by simpa only [ncard_inter_full, hstock] using hf)
+    -- the read-point lock is of the vote's own slot, whose committee holds the origin's pool
+    have hl₀s : l₀.slot = s + 1 := by
+      have := readPoint_lock_slot_leU hr.toU hrun.vstart hy hc l₀ hl₀
+      omega
+    rw [hl₀s] at h34 hpool hAk
+    refine down hL₀D (origin_compatible hU hΦ'U K h34
+      (fun _ ⟨v, hv, hvu, _⟩ => hvu ▸ hP.1 y hy (k + 1) (s + 1) v (hAk hv)) hf
       fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote

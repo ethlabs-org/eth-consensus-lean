@@ -136,7 +136,7 @@ theorem healthy_current_read_context_at (Q : HealthyPreparationQueryAt S A V)
     _ ht0 hc8 fun u h1 h2 => ⟨hra.2 u h1 h2, h2⟩
   have hca := D.reset.cutZ_lt_reset_at
   obtain ⟨hsync, hcatch⟩ :=
-    D.reset.windows_at_reset_at (healthy_schedule_catch_at S A V Q D) ht0 htb
+    D.reset.windows_at_reset_at ht0 htb
   have hfault := Healing.Growing.fault_bound_late_before_at D.reset
     (by linarith only [hca, haL, hΔ]) hLt htb
   exact ⟨{ label := L
@@ -205,7 +205,7 @@ theorem healthy_current_record_read_at (Q : HealthyPreparationQueryAt S A V)
   refine read_eq_record_of_current_votes_at hrun hnc C.time_nonneg C.honest C.readPoint C.awake
     C.joined C.sync C.catchup C.latest C.reset_le (fun R hR =>
       ⟨healthy_current_live_candidates_at S A V Q hb hp D C hR, ?_⟩) C.label_le C.fault
-  apply read_source_of_recent_result_at D.reset hc C.time_bound
+  apply read_source_of_recent_result_at D.reset C.time_bound
   by_cases hfc : (Node.frame (Q.trace.state (Q.run.2.ownKey v)
       (cutMap { S with vote := stock } Q.run.2 Q.hn
         (lastOwn { S with vote := stock } Q.run.2 v i)))).Anc R
@@ -219,7 +219,7 @@ theorem healthy_current_record_read_at (Q : HealthyPreparationQueryAt S A V)
   · exact Or.inl ha
   exact Or.inr ⟨healthy_current_record_viable_at S A V Q hb hp D C hx hr hRB hrb hs hL hfc hR,
     x, r, s, B, CV, hx, hr, hRB, hrb, hs, hL,
-    healthy_current_vote_domain_at S A V Q D hc hx hr hRB hrb
+    healthy_current_vote_domain_at S A V Q D hx hr hRB hrb
       (clean_add_k_two_le Q.params.two_le_k hlate),
     healthy_current_stored_locks_at S A V Q D hx hr hRB hrb hlate⟩
 

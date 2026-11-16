@@ -170,7 +170,7 @@ theorem start_le_voter (hrun : GoldilocksRun proposer dg H tr)
 
 /-- An actual honest proposal is made by the tick's `ac_proposal` call and accepted at once.
 No global support-heldness or healing premise is needed. -/
-theorem honestProposalRun_of_proposesAt (hrun : GoldilocksRun proposer dg H tr)
+theorem honestProposalRun_of_proposesAt {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} {kP s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hp : p ∈ H) (hpp : p = proposer s) (hP : tr.ProposesAt p kP P)
@@ -182,10 +182,9 @@ theorem honestProposalRun_of_proposesAt (hrun : GoldilocksRun proposer dg H tr)
   rcases Compose.blockCall_cases h hp hc with hg |
     ⟨j, x, rfl, hg, hpr, d, pay, hdp, hB, -, -, -, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
-  have hreq : (goldilocksNode sp ro).Requirements :=
-    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
-      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
-      SA.proposal_payload_valid sp _ ro⟩
+  have hreq : ({ goldilocksNode sp ro with initial := ini (proposer s) } :
+      NodeAC sp.toParams).Requirements :=
+    Compose.requirements_from sp ro (hrun.vstart (proposer s))
   obtain ⟨hc1, ht1, hst1⟩ := tick_proposal_call h hp hg hpr
   obtain ⟨hacc, ht2⟩ := own_block_accepted h hreq hrun.genesis_root_ok hnc hp hg hpr hdp
   obtain ⟨hacc3, ht3, -⟩ := ac_block_after h hp hacc

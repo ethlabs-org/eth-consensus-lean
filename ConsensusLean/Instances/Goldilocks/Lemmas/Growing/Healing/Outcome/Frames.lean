@@ -24,7 +24,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- An AC frame is the local store frame at its own honest call. -/
 theorem frame_of_call
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hy : y ∈ H (tr.time i)) (hc : tr.projAC.CallAt y i ell) :
     ell.frame = Node.frame (tr.state y i) := by
@@ -36,7 +37,8 @@ theorem frame_of_call
 
 /-- A frame's tree lies in the historical honest-block universe. -/
 theorem frame_tree_subset
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hy : y ∈ H (tr.time i)) (hc : tr.projAC.CallAt y i ell) :
     ell.frame.tree ⊆ tr.HonestBlocksAt H := by
@@ -46,7 +48,8 @@ theorem frame_tree_subset
 
 /-- Realization is node-local even when other holders were subsequently compromised. -/
 theorem frame_realized
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hy : y ∈ H (tr.time i)) (hc : tr.projAC.CallAt y i ell) :
     FrameOK ell.frame := by
@@ -56,7 +59,8 @@ theorem frame_realized
 
 /-- Proposal uniqueness before the proposer can be compromised uses only a local prefix. -/
 theorem proposal_unique_before_hold
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {p y : Fin sp.n} {k j u : Nat} {P Q : SA.Blk sp.n (List (FG.Att sp.n))}
     (hp : p ∈ H (sp.ts u + Regimes.Growing.hold sp))
@@ -79,8 +83,7 @@ theorem proposal_unique_before_hold
       have hc' : (tr.upTo (tr.time j)).projAC.CallAt y j ell := by
         rw [RunTrace.upTo_projAC]
         exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩
-      have ha := Compose.goldilocks_ac_projection sp ro dg (H (tr.time j)) _ proposer
-        hrt (hnc.upTo _)
+      have ha := Compose.goldilocks_ac_projection_from hrt (hnc.upTo _)
       have h := SA.frame_slot_le sp ha.localRun hy hc' Q hQ
       rw [hQs] at h
       exact (SA.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).mpr (by exact_mod_cast h)
@@ -97,7 +100,8 @@ theorem proposal_unique_before_hold
 
 /-- An early cast has the actual proposal in its frame before the hold expires. -/
 theorem proposal_mem_of_early_cast
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {p y : Fin sp.n} {k j u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hp : p ∈ H (sp.ts u + Regimes.Growing.hold sp))
@@ -110,8 +114,8 @@ theorem proposal_mem_of_early_cast
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc.1⟩
   have hcast : SA.CastAt (tr.upTo (tr.time j)).projAC y j ell e := ⟨hc', hc.2⟩
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time j)) _ proposer
-    (hrun.upTo (hrun.time_nonneg j)) (hnc.upTo _)).localRun
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg j))
+    (hnc.upTo _)).localRun
   obtain ⟨Q, hQ, hQs, -⟩ := SA.cast_ready hr hy hcast (hes ▸ hj)
   have he := proposal_unique_before_hold hrun hnc hp hdesignated hactual hPs hu hy hc.1
     hj.le hQ (hQs.trans hes)

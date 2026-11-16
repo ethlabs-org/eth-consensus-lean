@@ -50,6 +50,11 @@ theorem lt_cutZ (g : Time) : gbar g + 8 * sp.Δ < cutZ sp.toParams g := by
   push_cast at h ⊢
   linarith
 
+/-- `ḡ` lies below every time at or after the high-origin cutoff `c_z`. -/
+theorem gbar_le_of_cutZ_le {g t : Time} (h : cutZ sp.toParams g ≤ t) : gbar g ≤ t :=
+  ((le_add_of_nonneg_right (mul_nonneg (Nat.ofNat_nonneg _) sp.toParams.hΔ.le)).trans
+    (lt_cutZ sp g).le).trans h
+
 /-- `C_HS = (8k + 49 + 4δ_t)Δ + Δ_F + 3G` (HR.3 (c)). -/
 theorem C_HS_eq (ΔF G : Time) :
     C_HS sp ΔF G = (8 * (sp.k : Time) + 49 + 4 * (sp.toParams.δt : Time)) * sp.Δ + ΔF + 3 * G := by

@@ -14,9 +14,24 @@ the consuming vote, and retention preserves the participation count exactly.
 
 namespace Consensus.Goldilocks.SA.Growing
 
-theorem next_transfer (sp : SAParams) : NextTransfer sp := by
-  intro FGP ro H U tr proposer hrun K hP hT hsize m y i B ℓ e hy hc hs hall hhalf hcarry hf hf1
-    hviab hearlier
+/-- `next_transfer` at any node start. -/
+theorem next_transfer_from {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
+    {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {proposer : Nat → Fin sp.n} {ini} (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n)
+    (hP : CommitteePAt K tr H) (hT : CommitteeTAt K tr H)
+    (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {m : Nat} {y : Fin sp.n} {i : Nat}
+    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H (tr.time i)) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = m + 1)
+    (hall : ∀ x j e', x ∈ H (tr.time j) → VoteAt tr x j e' → e'.msg.slot = m →
+      VoteExtends U e'.msg B)
+    (hhalf : sp.committeeSize ≤ 2 * {x | x ∈ H (tr.time i) ∧
+      ∃ j e', x ∈ H (tr.time j) ∧ VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard)
+    (hcarry : CarryAt tr U y i e m
+      {v | ∃ x j e', x ∈ H (tr.time j) ∧ VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m})
+    (hf : FaultBoundK K m tr (H (tr.time i)) (tr.time i))
+    (hf1 : 2 * (K.committee (m + 1) ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
+    (hviab : ViableAtVote ℓ e (m + 1) B) (hearlier : EarlierVotesExtendAt tr H U i (m + 1) B) :
+    VoteExtends U e.msg B := by
   have hr := hrun.localRun
   have hm := hr.time_mono
   have hry := hrun.upTo (hr.time_nonneg i)
@@ -79,6 +94,10 @@ theorem next_transfer (sp : SAParams) : NextTransfer sp := by
   · intro x hx j hji e' hv hvs
     obtain ⟨hjt, hv⟩ := upTo_voteAt.mp hv
     exact hearlier x j hji (hr.antitone hjt hx) e' hv hvs
+
+theorem next_transfer (sp : SAParams) : NextTransfer sp :=
+  fun _ _ _ _ _ _ hrun K hP hT hsize _ _ _ _ _ _ hy hc hs hall hhalf hcarry hf hf1 hviab hearlier =>
+    next_transfer_from hrun K hP hT hsize hy hc hs hall hhalf hcarry hf hf1 hviab hearlier
 
 end Consensus.Goldilocks.SA.Growing
 

@@ -28,8 +28,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- Step 6 finite result induction, consumed by the latest-votes wrapper.
 The explicit domain and stored-lock inputs are unchanged from the static boundary. -/
 theorem ResetPremisesUpTo.late_result_prefix_votes_before_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {x : Fin sp.n} {r s : Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {x : Fin sp.n} {r s : Nat}
     (hx : x ∈ H (tr.time r))
     {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocksAt H) B C)
@@ -47,12 +48,13 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before_at
     ∀ i, tr.time i ≤ b → ∀ y, y ∈ H (tr.time i) → ∀ ell e,
       SA.CastAt tr.projAC y i ell e → s < e.msg.slot →
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
-  exact KernelProof.late_result_prefix_votes_before_at hp hc hx hres hBC hrb hts hdomain hstored
+  exact KernelProof.late_result_prefix_votes_before_at hp hx hres hBC hrb hts hdomain hstored
 
 /-- R2: every later-label honest cast extends each high origin within the finite horizon.
 The origin write need not precede the cast; its writer's honesty is carried by HighOrigin. -/
 theorem ResetPremisesUpTo.high_origin_votes_before_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) :
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) :
     ∀ k, tr.time k ≤ b → ∀ x i j B, HighOrigin tr H g x i j B → tr.time i ≤ b →
       ∀ y ell e, y ∈ H (tr.time k) → SA.CastAt tr.projAC y k ell e → j < e.msg.slot →
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
@@ -61,7 +63,8 @@ theorem ResetPremisesUpTo.high_origin_votes_before_at
 
 /-- R1: high origins within the horizon are comparable, with each writer honest at its write. -/
 theorem ResetPremisesUpTo.origins_compatible_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x z : Fin sp.n} {i j r l : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
     (hO : HighOrigin tr H g z r l O) (hrb : tr.time r ≤ b) :
@@ -74,7 +77,8 @@ theorem ResetPremisesUpTo.origins_compatible_at
 
 /-- Finite domain reduction with independently honest source and cast observations. -/
 theorem ResetPremisesUpTo.held_target_vote_domain_before_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y v : Fin sp.n} {r i q m : Nat} {B S : SA.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     (hBx : B ∈ (tr.state x r).fg.tree) (hrb : tr.time r ≤ b)
@@ -98,7 +102,8 @@ theorem ResetPremisesUpTo.held_target_vote_domain_before_at
 
 /-- An actual bounded supporter compares its target with an older bounded high origin. -/
 theorem ResetPremisesUpTo.target_compatible_older_origin_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x z : Fin sp.n} {r m q l : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
     {e : SA.Em sp (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r m O) (hrb : tr.time r ≤ b)
@@ -116,7 +121,8 @@ theorem ResetPremisesUpTo.target_compatible_older_origin_at
 
 /-- Prior honest head support compares a target with a later bounded controlling origin. -/
 theorem ResetPremisesUpTo.target_compatible_later_origin_before_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x : Fin sp.n} {r m i l : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r m O) (hri : r < i) (hrb : tr.time r ≤ b) (hlm : l < m)
     (hsupport : ∀ z q e, q < i → Compose.Growing.HVoteAt tr H z q e →

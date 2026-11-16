@@ -91,8 +91,7 @@ theorem floor_le_warm_proposal_at
     (hrun.cutLaw z ip (.ac ell) (Compose.projAC_callAt.mp hc') hzi).1
   obtain ⟨Q, hQ, hv, hroot⟩ := full_frame_viable_witness_at hrun hnc hzi (hip ▸ hf)
   rw [← hfr] at hQ hv hroot
-  have hac := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time kP)) _ proposer
-    hr (hnc.upTo _)).localRun
+  have hac := (Compose.goldilocks_ac_projection_from hr (hnc.upTo _)).localRun
   have hvd := Healing.proposal_head_viable hac hzk hc hcall
     (by rw [sp.slotTime_eq]; exact hti) hd
     ⟨(SA.frameIn_of_callAt hac hzk hc).1.fcRoot_mem, .refl, Q, hQ, hv, hroot⟩
@@ -162,8 +161,8 @@ theorem proposal_mem_at
     (fun y => Compose.requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok hnc hp hP
 
 /-- The report's actual frame supplies its fork-choice-root ancestry. -/
-theorem report_root_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem report_root_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)} {R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : SA.ToFGAt tr.projAC y i ell R) :

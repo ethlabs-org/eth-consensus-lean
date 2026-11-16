@@ -27,7 +27,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A held block above every pre-slot high origin reaches the proposal reader's floor. -/
 theorem proposal_floor_above_old_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i)) (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp ro)} (hci : tr.projAC.CallAt p i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
@@ -48,7 +49,8 @@ theorem proposal_floor_above_old_at
 
 /-- The proposal suffix above all pre-slot high origins consists of viable heads. -/
 theorem reset_suffix_viable_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i)) (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
@@ -67,8 +69,9 @@ theorem reset_suffix_viable_at
 
 /-- Pivot construction with the independently supplied proposal-start support. -/
 theorem reset_pivot_of_start_supported_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {p : Fin sp.n} {k u : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + Regimes.Growing.hold sp))
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
     (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
@@ -97,7 +100,7 @@ theorem reset_pivot_of_start_supported_at
   have hpI : p ∈ H (tr.time i) := hp.run.antitone
     (by rw [hti]; exact le_add_of_nonneg_right sp.toParams.hΔ.le) hpH
   have hr :=
-    (Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+    (Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hPhi := Outcome.frame_realized hp.run hpI hci
   have hPhiU := Outcome.frame_tree_subset hp.run hpI hci
   have hkt : tr.time k = sp.ts u := by
@@ -121,7 +124,7 @@ theorem reset_pivot_of_start_supported_at
     (fun y j elly e => y ∈ H (tr.time j) ∧ SA.CastAt tr.projAC y j elly e ∧ e.msg.slot = u ∧
       tr.time j ≤ b ∧ ∀ x j' e', x ∈ H (tr.time j') → j' < j → SA.VoteAt tr.projAC x j' e' →
         e'.msg.slot = u → e'.msg.head = P.root)
-    (hp.reset_proposal_passes_at hc hpI hR hci hcall hd hti hib)
+    (hp.reset_proposal_passes_at hpI hR hci hcall hd hti hib)
     (fun D hDt hsD hDold => hp.reset_suffix_viable_at hpI hR hci hcall hd hti hib D hDt hsD
       fun x r l O ho hrt _ => hDold O ⟨x, r, l, ho, hrt⟩)
     (fun _ _ _ _ h => ⟨Outcome.frame_realized hp.run h.1 h.2.1.1,
@@ -138,7 +141,7 @@ theorem reset_pivot_of_start_supported_at
     (fun D hDU hQU hDQ hDold y j elly e ⟨hy, hcy, hes, hjb, hE⟩ =>
       hp.reset_vote_anchor_at hPU hR hPQ hQU hDQ hDU
         (fun x r l O ho hrt _ => hDold O ⟨x, r, l, ho, hrt⟩) hy hcy hes hjb hE
-        fun l hl hne hlive L hL hLr => ProposalImpl.vote_old_live_lock_below_parent_at hp hc
+        fun l hl hne hlive L hL hLr => ProposalImpl.vote_old_live_lock_below_parent_at hp
           hpI hR hci hcall hd hti hib hy hcy hes hjb hl hne hlive hL hLr)).imp
     fun D ⟨hsD, hDQ, hV, h⟩ =>
       ⟨hsD, hDQ, hV, fun y j elly e hy hcy hes hjb hE => h y j elly e ⟨hy, hcy, hes, hjb, hE⟩⟩
@@ -146,8 +149,9 @@ theorem reset_pivot_of_start_supported_at
 open Regimes.Growing (hold)
 
 /-- The deepest old-source pivot is viable and supported at every honest cast. -/
-theorem reset_pivot_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
+theorem reset_pivot_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {p : Fin sp.n} {k u : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
     (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
@@ -167,11 +171,11 @@ theorem reset_pivot_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
           elly.frame.Anc X (SA.getHead sp e.readPoint elly.frame (tr.time j)
             (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
             (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
-  refine hp.reset_pivot_of_start_supported_at hc hpH hactual hPs hR hci hcall hd hti hib hPQ ?_
+  refine hp.reset_pivot_of_start_supported_at hpH hactual hPs hR hci hcall hd hti hib hPQ ?_
   intro y j elly e hy hcy hes hjb
   have hpI : p ∈ H (tr.time i) := hp.run.antitone
     (by rw [hti]; exact le_add_of_nonneg_right sp.toParams.hΔ.le) hpH
-  exact hp.proposal_start_supported_at hc hpI hR hci hcall hd hti hib hy hcy hes hjb
+  exact hp.proposal_start_supported_at hpI hR hci hcall hd hti hib hy hcy hes hjb
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 

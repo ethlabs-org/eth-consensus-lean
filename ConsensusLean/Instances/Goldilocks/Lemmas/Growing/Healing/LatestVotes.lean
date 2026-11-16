@@ -28,8 +28,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 domain and whose next-slot casts hold no conflicting stored lock, is extended by every vote of
 label `L > s`, by `t ≤ b`, of a node honest at its vote. -/
 theorem ResetPremisesUpTo.latest_votes_of_recent_result_at {b t : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {x : Fin sp.n} {r s L : Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {x : Fin sp.n} {r s L : Nat}
     (hx : x ∈ H (tr.time r))
     {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocksAt H) B C)
@@ -49,7 +50,7 @@ theorem ResetPremisesUpTo.latest_votes_of_recent_result_at {b t : Time}
       e.msg.slot = L → SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
   intro z q e hv hqt he
   obtain ⟨hz, ell, hcast⟩ := Compose.Growing.hVoteAt_iff.mp hv
-  exact hp.late_result_prefix_votes_before_at hc hx hres hBC hrb hts hdomain hstored q
+  exact hp.late_result_prefix_votes_before_at hx hres hBC hrb hts hdomain hstored q
     (hqt.trans htb) z hz ell e hcast (he ▸ hsL)
 
 end Consensus.Goldilocks.Healing.Growing

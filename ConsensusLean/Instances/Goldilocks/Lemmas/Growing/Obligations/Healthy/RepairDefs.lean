@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunCommittee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationDefs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
 
@@ -26,6 +27,7 @@ structure HealthyRepairScheduleAt (Q : HealthyPreparationQueryAt S A V) where
     (runProposer { S with vote := stock } Q.run.2 Q.hn)
       (digestOf { S with vote := stock } Q.run.2) Q.gst deltaF resetTime
         Q.bound
+        (runCommittee { S with vote := stock } Q.run.2 Q.hn) (K S A).params.βK
   cleanLabel : Nat
   cleanLabel_eq : cleanLabel = Healing.cleanLabel Q.params resetTime
   duration_bound : 18 * Q.params.Δ ≤

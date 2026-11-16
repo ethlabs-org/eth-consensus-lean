@@ -43,13 +43,15 @@ theorem result_honest_supporter_before_at
       (fun y hy r hrs => by
         obtain ⟨hrt, hrs⟩ := (ACTrace.upTo_restartAt (tr := tr.projAC)).mp hrs
         exact hnr y r (hrun.antitone hrt hy) (Compose.projAC_restartAt.mp hrs))
-      hx hu hm le_rfl hz
+      hx hu hm le_rfl hz (SA.mem_full _ _) (SA.mem_full _ _)
   obtain ⟨z, hz, q, hqc, e, he, hmem, hes, R, hR, hroot, hCR⟩ :=
-    SA.result_honest_supporter_of_participants sp hS.run hx ⟨ell, hu, hconf, hCV⟩
+    SA.result_honest_supporter_of_participants sp hS.stockRun hx ⟨ell, hu, hconf, hCV⟩
       (B := C) .refl (by
         have hn : (H (tr.time c)).ncard + (H (tr.time c))ᶜ.ncard = sp.n := by
           rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
         have hcard := Set.ncard_le_ncard hHV
+        have hcF := Set.ncard_le_ncard (Set.inter_subset_left (s := (H (tr.time c))ᶜ)
+          (t := SA.voters {v | v ∈ ((tr.projAC.upTo (tr.time c)).state x c).pool s}))
         have hbound := hf _ (hrun.time_nonneg c) hcb
         have hnpos : 0 < sp.n := sp.toParams.hn
         omega)

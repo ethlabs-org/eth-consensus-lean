@@ -36,8 +36,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A bounded clean source, written by a node honest at its write, is below the head of an actual
 later-label cast of a node honest at it. The cast's head is supplied explicitly. -/
-theorem clean_source_below_cast_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ))
+theorem clean_source_below_cast_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {r s i : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     {B P : SA.Blk sp.n (List (FG.Att sp.n))}
     (horig : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
@@ -46,10 +46,11 @@ theorem clean_source_below_cast_at (hp : ResetPremisesUpTo tr H proposer dg g Δ
     (hcast : SA.CastAt tr.projAC y i ell e) (hib : tr.time i ≤ b)
     (hsi : s < e.msg.slot) (hPU : P ∈ tr.HonestBlocksAt H) (heP : e.msg.head = P.root) :
     Anc (tr.HonestBlocksAt H) B P := by
+  have hc := hp.catchUp
   have hext : SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
     rcases horig with ⟨CV, hf⟩ | hslo
-    · exact hp.fast_source_votes_before_at hc hx hf hs hrb i hib y hy ell e hcast hsi
-    · exact hp.slow_source_votes_before_at hc hx hslo hs hrb i hib y hy ell e hcast hsi
+    · exact hp.fast_source_votes_before_at hx hf hs hrb i hib y hy ell e hcast hsi
+    · exact hp.slow_source_votes_before_at hx hslo hs hrb i hib y hy ell e hcast hsi
   obtain ⟨D, hD, hDr, hBD⟩ := hext
   obtain rfl : D = P := (Compose.Growing.honest_blocks_coherent hp.run hp.noColl).1 hD hPU
     (hDr.trans heP)
@@ -58,8 +59,9 @@ theorem clean_source_below_cast_at (hp : ResetPremisesUpTo tr H proposer dg g Δ
 /-- **Through the update deadline, normalized live locks compare with the unanimous head**, at a
 call of a node honest at it. Older and same-label source ancestry are derived from actual bounded
 votes. -/
-theorem call_locks_compatible_of_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+theorem call_locks_compatible_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hPU : P ∈ tr.HonestBlocksAt H) (hts : cutZ sp.toParams g ≤ sp.ts u)
     (hun : ∀ z q e, z ∈ H (tr.time q) → SA.VoteAt tr.projAC z q e → tr.time q ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
@@ -72,13 +74,13 @@ theorem call_locks_compatible_of_unanimous_at (hp : ResetPremisesUpTo tr H propo
       Compatible (tr.HonestBlocksAt H) B P) :
     ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y j).locks ell.frame (tr.time j),
       Compatible (tr.HonestBlocksAt H) L P := by
+  have hc := hp.catchUp
   have hm := hp.run.time_mono
   have hmA : Monotone tr.projAC.time := hm
   have ht := hp.run.time_nonneg j
   have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hm ht
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time j))
-    (tr.upTo (tr.time j)) proposer (hp.run.upTo ht) (hp.noColl.upTo _)).localRun
+  have hr := (Compose.goldilocks_ac_projection_from (hp.run.upTo ht) (hp.noColl.upTo _)).localRun
   rw [RunTrace.upTo_projAC] at hr
   have hc' : (tr.projAC.upTo (tr.time j)).CallAt y j ell :=
     (Trace.upTo_callAt_of_le _ le_rfl).mpr hcall
@@ -99,10 +101,11 @@ theorem call_locks_compatible_of_unanimous_at (hp : ResetPremisesUpTo tr H propo
           X.root = l.block ∧ Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) X D := by
     cases hf : l.fast with
     | false =>
-      obtain ⟨r, hrj, D, hslow, hX⟩ := SA.slow_lock_provenance hr hy j l hl' hf
+      obtain ⟨r, hrj, D, hslow, hX⟩ := SA.slow_lock_provenance_from hr hp.run.vstart hy j l hl' hf
       exact ⟨r, hrj, D, Or.inr hslow, hX⟩
     | true =>
-      obtain ⟨r, hrj, D, CV, hfast, hX⟩ := SA.fast_lock_provenance hr hy j l hl' hf
+      obtain ⟨r, hrj, D, CV, hfast, hX⟩ := SA.fast_lock_provenance_from hr hp.run.vstart hy j l
+        hl' hf
       exact ⟨r, hrj, D, Or.inl ⟨CV, hfast⟩, hX⟩
   obtain rfl : B = X := (hr.coherent.1 hX (hPhiU hB) (hXr.trans hBr.symm)).symm
   have hrtime := hm hrj.le
@@ -123,14 +126,14 @@ theorem call_locks_compatible_of_unanimous_at (hp : ResetPremisesUpTo tr H propo
   have hDP : Compatible (tr.HonestBlocksAt H) D P := by
     by_cases hlu : l.slot < u
     · have hwf : SA.LocksWF sp ((tr.projAC.upTo (tr.time j)).state y j).locks :=
-        SA.locksWF_state hr hy j
+        SA.locksWF_stateU (hr := hr.toU) hp.run.vstart hy j
       rw [hst] at hwf
       have hs := drain_live_locks hwf hafter _ ⟨l, hl, B, hB, hBr, hlive, rfl⟩
       obtain ⟨z, q, ellq, e, hz, hcast, hqb, hes⟩ := hvote
-      exact Or.inl (clean_source_below_cast_at hp hc hyr hz horig hs hrb hcast hqb
+      exact Or.inl (clean_source_below_cast_at hp hyr hz horig hs hrb hcast hqb
         (hes ▸ hlu) hPU (hun z q e hz ⟨ellq, hcast⟩ hqb hes))
     by_cases heq : l.slot = u
-    · exact Or.inl (hp.same_slot_source_below_unanimous_at hc hyr (heq ▸ horig) hrb hts hPU hun)
+    · exact Or.inl (hp.same_slot_source_below_unanimous_at hyr (heq ▸ horig) hrb hts hPU hun)
     have hgt : u < l.slot := by omega
     rcases horig with ⟨CV, ⟨ellr, C, hupd, _⟩ | hop⟩ | ⟨ellr, C, hupd, _⟩
     · have htr : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1

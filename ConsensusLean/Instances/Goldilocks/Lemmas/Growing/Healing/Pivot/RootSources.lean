@@ -17,7 +17,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Compare the actual root without requiring the target's independent read to precede it. -/
 theorem held_target_proposal_root_before_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x p : Fin sp.n} {r i u : Nat} (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
     {ell : ACLabel (goldilocksNode sp ro)}
@@ -31,7 +32,7 @@ theorem held_target_proposal_root_before_at
     (hcompare : ∀ v q m O, q < i → HighOrigin tr H g v q m O →
       Compatible (tr.HonestBlocksAt H) B O) :
     Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hac.localRun.upTo (hp.run.time_nonneg i)
   have hci' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hci)
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci'

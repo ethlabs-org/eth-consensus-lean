@@ -19,7 +19,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A clean raw result retains every prefix in later honest votes through the horizon. -/
 theorem clean_result_prefix_votes_before_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
     {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocksAt H) B C)
@@ -30,15 +31,15 @@ theorem clean_result_prefix_votes_before_at
   have hclean : cleanLabel sp a + sp.k + 2 ≤ s := by
     have := sp.two_le_k
     omega
-  apply hp.late_result_prefix_votes_before_at hc hx hres hBC hrb
+  apply hp.late_result_prefix_votes_before_at hx hres hBC hrb
     (hp.clean_window_timing_at hclean s (by have := sp.two_le_k; omega))
   · intro y i ell e hy hcast hib hsi hprior
-    exact ProposalImpl.result_prefix_vote_domain_before_at hp hc hx hy hres hBC hclean hrb
+    exact ProposalImpl.result_prefix_vote_domain_before_at hp hx hy hres hBC hclean hrb
       hcast hsi hib fun z q hz hqi e' hv hse =>
         hprior z q e' hqi (Compose.Growing.hVoteAt_iff.mpr ⟨hz, hv⟩) hse
   · intro y i ell e hy hcast hib hfirst
     obtain ⟨-, -, hsl⟩ := KernelProof.castAt_facts_at hp.run hp.noColl hy hcast
-    exact hp.result_prefix_stored_locks_at hc hx hy hres hBC hs hrb hib (by
+    exact hp.result_prefix_stored_locks_at hx hy hres hBC hs hrb hib (by
       change e.msg.slot = sp.slot (tr.time i) at hsl
       rw [← hsl, hfirst])
 

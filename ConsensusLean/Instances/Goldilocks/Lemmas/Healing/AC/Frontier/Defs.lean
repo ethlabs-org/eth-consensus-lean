@@ -201,7 +201,7 @@ theorem vote_of_awake_joinedAC (hr : ACLocalRunU wm u H U tr) (htick : TickDuty 
       (by simp only [SAParams.ts]; ring)) hw
   have hjs : joined sp (tr.state y i) (tr.time i) := by
     unfold joined
-    rcases restartTime_stateU hr hy i with h | ⟨k, hk, hrk, h⟩
+    rcases restartTime_stateU hr (fun _ => voteStart_initial _) hy i with h | ⟨k, hk, hrk, h⟩
     · rw [h]; exact bot_le
     · rw [h, hti]
       exact WithBot.coe_le_coe.2 (hj k hrk (hti ▸ hr.time_mono hk.le))

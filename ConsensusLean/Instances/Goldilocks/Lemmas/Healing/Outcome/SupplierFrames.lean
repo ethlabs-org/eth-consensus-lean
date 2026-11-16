@@ -112,7 +112,8 @@ theorem ResetPremisesUpTo.call_locks_compatible_of_unanimous {b : Time}
   have hrt := (hp.run.time_mono hrj.le).trans hbefore
   have hDP : Compatible (tr.HonestBlocks H) D P := by
     by_cases hlu : l.slot < u
-    · have hs := drain_live_locks (SA.locksWF_state hr hy j) hafter _
+    · have hs := drain_live_locks
+        (SA.locksWF_state hr (fun _ => SA.voteStart_initial _) hy j) hafter _
         ⟨l, hl, B, hB, hBr, hlive, rfl⟩
       obtain ⟨z, hz, q, ellq, e, hcast, hqb, hes⟩ := hvote
       exact Or.inl (hp.clean_source_below_cast hc hy hz horig hs hrb hcast hqb
@@ -299,14 +300,14 @@ theorem ResetPremisesUpTo.ready_update_selection_of_pool {b : Time}
 /-- An honest designated actual proposal is the unique block of its positive slot
 in every honest frame, without reset or readiness premises. -/
 theorem proposal_frame_unique
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
     (hPs : P.slot = u) (hu : 0 < u)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hcall : tr.projAC.CallAt y j ell) {Q : SA.Blk sp.n (List (FG.Att sp.n))}
     (hQ : Q ∈ ell.frame.tree) (hQu : Q.slot = u) : Q = P := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.goldilocks_ac_projection_from hrun hnc
   have hr := hac.localRun
   obtain ⟨_, _, _, _, _, _, _, _, _, _, _, hPprop, _, ja, _, hacc, _⟩ :=
     honestProposalRun_of_proposesAt hrun hnc hpH hdesignated hactual hPs
@@ -359,7 +360,7 @@ theorem ResetPremisesUpTo.reset_accept_frame {b : Time}
     (hq : tr.time q + sp.Δ ≤ tr.time j)
     (hF : Anc (tr.HonestBlocks H) ell.frame.F B) : B ∈ ell.frame.tree := by
   have hS := healthy_base_of_reset_catch_before hp hc
-  have hr := hS.run.localRun
+  have hr := hS.stockRun.localRun
   by_cases hnew : SA.gbar g ≤ tr.time q
   · have hd := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := j)
       (fun k hkj hk => restart_le_before hp hy (Compose.projAC_restartAt.mp hk)
@@ -387,7 +388,7 @@ theorem ResetPremisesUpTo.reset_frame_relay {b : Time}
     (hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
     (hq : tr.time q + sp.Δ ≤ tr.time j)
     (hF : Anc (tr.HonestBlocks H) elly.frame.F B) : B ∈ elly.frame.tree := by
-  have hr := (healthy_base_of_reset_catch_before hp hc).run.localRun
+  have hr := (healthy_base_of_reset_catch_before hp hc).stockRun.localRun
   rcases Compose.frame_anc_accepted hr hx q ellx hcx B hB B .refl with hgen | ⟨k, hk, ha⟩
   · obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hy j elly hcy
     obtain rfl : B = G := hr.coherent.1 ((SA.frameIn_of_callAt hr hx hcx).2 hB)
@@ -430,7 +431,7 @@ theorem ResetPremisesUpTo.reset_proposal_frame {b : Time}
     (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
     (hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
     (hF : Anc (tr.HonestBlocks H) ell.frame.F P) : P ∈ ell.frame.tree := by
-  have hr := (healthy_base_of_reset_catch_before hp hc).run.localRun
+  have hr := (healthy_base_of_reset_catch_before hp hc).stockRun.localRun
   by_cases hearly : tr.time j < sp.ts u + sp.Δ
   · obtain ⟨Q, hQ, hQs, _⟩ := SA.cast_ready hr hy hcy (by rw [hes]; exact hearly)
     rw [hes] at hQs
@@ -566,7 +567,7 @@ theorem ResetPremisesUpTo.reset_support_frame {b : Time}
     {v : SA.Vote sp.n} (hv : v ∈ pay.2) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ ellp.frame.tree) (hBr : B.root = v.head)
     (hF : Anc (tr.HonestBlocks H) elly.frame.F B) : B ∈ elly.frame.tree := by
-  have hr := (healthy_base_of_reset_catch_before hp hc).run.localRun
+  have hr := (healthy_base_of_reset_catch_before hp hc).stockRun.localRun
   by_cases hearly : tr.time j < sp.ts (s + 1 : Nat) + sp.Δ
   · obtain ⟨Q, hQ, hQs, hsup⟩ := SA.cast_ready hr hy hcy (by rw [hes]; exact hearly)
     rw [hes] at hQs hsup
@@ -606,7 +607,7 @@ theorem ResetPremisesUpTo.reset_frozen_frame {b : Time}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ elly.frame.tree)
     (hst : e.readPoint.blockStamp B.root < SA.ETime.of (SA.freeze sp (s + 1)))
     (hF : Anc (tr.HonestBlocks H) ellp.frame.F B) : B ∈ ellp.frame.tree := by
-  have hr := (healthy_base_of_reset_catch_before hp hc).run.localRun
+  have hr := (healthy_base_of_reset_catch_before hp hc).stockRun.localRun
   rw [SA.readPoint_blockStamp_eq hr hy hcy] at hst
   rcases stamp_origin hr hy j elly hcy.1 B hB with hgen | ⟨q, _, ellq, hcq, hBq, hstamp⟩
   · obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hpH i ellp hci

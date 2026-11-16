@@ -38,7 +38,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The frame of a node honest at a cut is well formed. -/
 private theorem frameOK_state_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     {i : Nat} (hy : y ∈ H (tr.time i)) : FrameOK (Node.frame (tr.state y i)) := by
   have h := Compose.frameOK_state (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy i
   rwa [RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
@@ -68,7 +69,8 @@ private theorem fastLock_mem_updateConfirmation_floor {FGP : Type} {A : SA.SASta
 node honest at it, writes `(P, u, true, e)` for the actual designated proposal `P` of slot `u`,
 whose proposer is honest through `t_u + Δ`, with an expiry `e ≥ u + 2`. -/
 theorem operational_update_fresh_lock_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hhold : p ∈ H (sp.ts u + sp.Δ)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : drainTime sp a ≤ sp.ts u)
@@ -79,12 +81,12 @@ theorem operational_update_fresh_lock_at
   have hΔ := sp.toParams.hΔ
   have ht : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
   obtain ⟨hPt, hconf, hnv, hfast, hpost, -⟩ :=
-    operational_update_selection_at hp hc hhold hdesignated hactual hPs hR hgu hTb hy hup
+    operational_update_selection_at hp hhold hdesignated hactual hPs hR hgu hTb hy hup
   have hframe := Compose.Growing.frame_of_projAC_at hp.run hy hup.1
   have hPj : P ∈ (Node.frame (tr.state y j)).tree := hframe ▸ hPt
   have hPU : P ∈ tr.HonestBlocksAt H :=
     ⟨y, j, tr.time j, hp.run.time_nonneg j, fun q hq => hp.run.time_mono hq.le, hy, hPj.1⟩
-  have hun0 := hp.operational_unanimous_at hc hhold hdesignated hactual hPs hR
+  have hun0 := hp.operational_unanimous_at hhold hdesignated hactual hPs hR
     (show sp.ts u ≤ b by linarith only [hTb, hΔ])
   have hun : ∀ z q e, z ∈ H (tr.time q) → SA.VoteAt tr.projAC z q e → tr.time q ≤ b →
       e.msg.slot = u → e.msg.head = P.root :=
@@ -96,14 +98,14 @@ theorem operational_update_fresh_lock_at
     have := (SA.ts_le_iff sp).mp hR
     exact (Nat.succ_pos _).trans_le (by exact_mod_cast this)
   obtain ⟨v, r, m, S, hseed, hrb, -, hrt⟩ := hp.reset_seed_before_slot_at hRnext
-  have hSP := high_origins_before_next_slot_below_at hp hc hPU hun hgu hRnext
+  have hSP := high_origins_before_next_slot_below_at hp hPU hun hgu hRnext
     (by linarith only [hTb, hΔ]) hseed hrt hrb
   have hjb : tr.time j ≤ b := ht ▸ hTb
   have hva : (Node.frame (tr.state y j)).viableAncestor P = P := by
     apply SA.viableAncestor_self (frameOK_state_at hp.run hy) hPj
     exact (hp.held_target_ancestor_candidate_at_state_at (hp.run.time_nonneg j)
       (fun q hq => hp.run.time_mono hq.le) hy hjb hPj hseed hrb hSP
-      (fun x q l B hqe ho => (high_origin_compatible_before_update_at hp hc hPU hPs hu hun
+      (fun x q l B hqe ho => (high_origin_compatible_before_update_at hp hPU hPs hu hun
         hgu hRnext hTb ho ((hp.run.time_mono hqe.le).trans ht.le)).symm)).symm
   have hslot : sp.slot (tr.time j) = u + 1 := by
     rw [ht]
@@ -118,7 +120,8 @@ theorem operational_update_fresh_lock_at
 at the first cut after `t_u + 6Δ`, when every update of slot `u` by a node honest at it writes the
 fresh fast lock. -/
 theorem operational_proposal_read_after_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hhold : p ∈ H (sp.ts u + sp.Δ)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : drainTime sp a ≤ sp.ts u)
@@ -138,7 +141,7 @@ theorem operational_proposal_read_after_at
     linarith
   obtain ⟨j, ell, -, hup, -⟩ := hp.update_toFG_calls_at hy hstart hTb
   have ht : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
-  exact operational_update_read_after_at hp hc hhold hdesignated hactual hPs hR hgu hTb hy hup
+  exact operational_update_read_after_at hp hhold hdesignated hactual hPs hR hgu hTb hy hup
     (hlocks y j ell (ht ▸ hy) hup) hJ
 
 end Consensus.Goldilocks.Healing.Growing
@@ -284,9 +287,9 @@ theorem healthy_confirmed_supply_at
       SA.UpdateAt Q.trace.projAC y j Ws.slot ell →
       ∃ e, Ws.slot + 2 ≤ e ∧ (⟨B.root, Ws.slot, true, e⟩ : SA.Lock) ∈
         (Q.trace.projAC.post j).locks :=
-    fun y j ell hy hup => Healing.Growing.operational_update_fresh_lock_at Dprep.reset hc hhold
+    fun y j ell hy hup => Healing.Growing.operational_update_fresh_lock_at Dprep.reset hhold
       hBp he hPs hR hgu hTb hy hup
-  have hread := Healing.Growing.operational_proposal_read_after_at Dprep.reset hc hhold hBp he
+  have hread := Healing.Growing.operational_proposal_read_after_at Dprep.reset hhold hBp he
     hPs hR hgu hTb hlocks
   -- readiness and end-of-time cuts at `T = t_u + 6Δ` and at the deadline
   have hhT : Q'.heal ≤ Q.params.ts Ws.slot + 6 * Q.params.Δ := by

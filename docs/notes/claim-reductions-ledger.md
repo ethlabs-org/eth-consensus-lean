@@ -151,9 +151,11 @@ concrete run interface, reviewed with the instance discharge; it is not added as
 an unconditional generic law. `Simulation.GoldilocksSlotConstancy` states that
 exact canonical-map obligation; `Simulation.goldilocks_slot_constancy` proves it
 for every integer slot, including the negative-time clamp to slot zero.
-The separate committee-facts source is the committee-valid run interface, which
-lands separately. Bare abstract collision freedom is not its proof, and the
-canonical run transport in this tree does not yet carry that conjunct.
+The committee-valid run interface carries positive matching committee sizes and
+`NoCollRun`-conditional committee facts. The canonical `goldilocksRunMap_transport`
+supplies this interface from `ExecutionValid`, with the committee-facts conjunct proved
+by `runCommittee_facts`. Bare abstract collision freedom alone does not establish
+committee facts.
 
 ### Engine and regime suppliers
 
@@ -233,3 +235,28 @@ OPEN obligations of the instance realization:
 | slotLen | every slot's 4Δ spacing inequality |
 | snapshot | actual FirstCutAfter cutZ witness within consuming deadline |
 | nonempty | actual honest population nonempty at consuming deadline |
+
+### Generic healing report-delivery delay
+
+OPEN instance obligation: `round_of_warm_at`, `rise_reset_rounds_at`,
+`exists_reset` and `generic_healing` require
+`∀ s, P.slotTime (s + 1) + 2 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)`.
+The first healthy-reduction consumer must supply this inequality; the old
+`Premises.timeoutDelay` and `Premises.slotLen` do not together imply it.
+The leaves also require `slotLen`; the assemblies obtain it from `Premises`.
+Goldilocks can supply the delay from its four-Δ grid and numerical timeout
+bound, but that generic instance obligation is not discharged here.
+`round_of_warm_at` additionally requires `(H b).Nonempty`, explicit in its
+generic contract (Milestones/Statements/Generic/Healing.lean). Earlier proposer
+honesty does not supply honesty at the later horizon. The rise contract already
+has this premise.
+
+### Goldilocks high-row bridge target
+
+`high_row_source_at_goldilocks` (Lemmas/Generic/GoldilocksBridge.lean) is a
+conditional bridge with added premises. It corresponds to
+`Growing/Healing/Outcome/RowSource.high_row_source_at`, but uses the
+committee-valid run interface and additionally assumes `βK ≤ 1/2`, `Premises`,
+`IsReset` at `a ≤ b` and the signing cutoff `tr.time d ≤ b`, which the original
+concrete theorem does not. No original-premise high-row bridge is provided. The
+no-contest and historical-entry targets keep their reset-record interfaces.

@@ -40,7 +40,7 @@ theorem FrameWindow.finalized_anc_head_at_cast_at {lo hi : Time} {floor : Nat}
       (SA.getHead sp e.readPoint ell.frame (tr.time i)
         (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
         (SA.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1)) := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
   have hri := (hac.upTo (hrun.time_nonneg i)).localRun
@@ -102,7 +102,7 @@ theorem FrameWindow.fcRoot_anc_head_at_cast_at {lo hi : Time} {floor : Nat}
       (SA.getHead sp e.readPoint ell.frame (tr.time i)
         (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
         (SA.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1)) := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
   have hPhi := SA.frameIn_of_callAt (hac.upTo (hrun.time_nonneg i)).localRun hy hci

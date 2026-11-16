@@ -190,7 +190,7 @@ private theorem trivial_writer_poolU
     (ht : tr.time i = sp.ts (σ + 1 : Nat)) :
     ∀ v ∈ (tr.state x i).pool σ, v ∈ (tr.state X i₀).pool σ ∨
       v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool σ} :=
-  writer_pool_proposalU hS.run.localRun hX hupd hx ht
+  writer_pool_proposalU hS.run.localRun (fun _ => voteStart_initial _) hX hupd hx ht
     (hS.syncAC (by have := sp.toParams.hΔ; linarith) _)
     (fun _ _ hrk => (restart_beforeU hS hX hσ hrk).le) fun _ _ hrk => restart_beforeU hS hx hσ hrk
 
@@ -367,8 +367,8 @@ theorem counted_at_proposalU
   · exact absurd hres (not_lt.2 le_top)
   have hvst := lt_of_le_of_lt (le_max_left _ _) hres
   have hbs := lt_of_le_of_lt (le_max_right _ _) hres
-  obtain ⟨k, -, hsend, h1, hst⟩ := pool_sentU hr hX (fun _ _ hrk => restart_beforeU hS hX hσ hrk)
-      hvp
+  obtain ⟨k, -, hsend, h1, hst⟩ := pool_sentU hr (fun _ => voteStart_initial _) hX
+    (fun _ _ hrk => restart_beforeU hS hX hσ hrk) hvp
   rw [hst] at hvst
   have hk2 : tr.time k < sp.ts σ + 2 * sp.Δ := WithTop.coe_lt_coe.1 (WithBot.coe_lt_coe.1 hvst)
   -- the proposer's votes reach the writer's update
@@ -385,7 +385,9 @@ theorem counted_at_proposalU
     rcases proposal_forwardU hS hx hc ht hσ hX hsend hvs h1 (by linarith) with h | h
     · exact h
     · exact absurd h hnoeq
-  refine ⟨hvs, hheld, fun h => hnoeq (proposalView_equivocatorU hr hx i σ ℓ.frame h), R,
+  refine ⟨hvs, hheld, fun h => hnoeq (proposalView_equivocatorU hr (fun _ => voteStart_initial _)
+    hx i σ
+    ℓ.frame h), R,
     hΦXU hR, hRr,
     by omega, Anc.mono hΦXU hER, fun Y hYR => early_block_at_proposalU hS hx hc ht hσ (hΦXU hR)
       ?_ hYR⟩
@@ -481,7 +483,8 @@ private theorem trivial_high_locksU
     HighLocksCompatible U (tr.state x i) (tr.time i) σ B := by
   have hrun := hS.run
   refine highLocksCompatible_iff.2 fun l hl _ hlσ Y hY hYr => ?_
-  obtain ⟨O, hYO, k, CV, hopt⟩ := proposal_high_lockU hrun.localRun hx ht hl hlσ hY hYr
+  obtain ⟨O, hYO, k, CV, hopt⟩ := proposal_high_lockU hrun.localRun
+    (fun _ => voteStart_initial _) hx ht hl hlσ hY hYr
   refine compat_down hrun.localRun.coherent hYO ?_
   rcases (show l.slot = σ ∨ σ < l.slot by omega) with h | h
   · rw [h] at hopt
@@ -530,14 +533,16 @@ private theorem trivial_batch_proposalU
       (by have := hS.two_faulty_lt; omega)
     obtain ⟨Hd, hHd, hHdr, hBHd⟩ := hB w hw j e hv hes
     exact ((honest_vote_at_proposalU hS hx hc ht hσ hw hv hes).2 B Hd hHd hHdr hBHd).1
-  exact batch_proposalU hrun hS.two_faulty_lt hhalf hB hx hc (proposal_slot ht) hprop
+  exact batch_proposalU hrun (K := CommitteeDict.full sp.n)
+      (cs2_full hS.stock hS.two_faulty_lt) (by rw [hS.stock]; exact hhalf) hB
+      hx hc (fun _ _ => mem_full _ _) (proposal_slot ht) hprop
       (hS.run.localRun.lawful_proposal hx hc hcall (proposal_slot ht))
     (trivial_viable_atU hS hx hc hBt)
     (fun z hz j e hv hes =>
       let ⟨hheld, R, hR, hRr, hacc⟩ := hP z hz j e hv hes
       heldAtProposal_iff.2 ⟨Or.inl hheld, R, hR, hRr, trivial_stampU hS hx hc hcall hR hacc⟩)
     (trivial_high_locksU hS hx ht hlater fun _ _ _ hopt =>
-      optimisticLock_compatibleU hrun hS.two_faulty_lt hx hopt hB hS.stock) hS.stock
+      optimisticLock_compatibleU hrun hS.two_faulty_lt hx hopt hB hS.stock)
 
 /-- `trivial_update_first_proposal` with the unlock given. -/
 private theorem trivial_update_first_proposalU
@@ -601,7 +606,8 @@ private theorem trivial_optimistic_first_proposalU
         (by linarith)) hS.stock
   rintro v ⟨hv, R, hR, hRr, -⟩
   have hvs := optimisticPoint_pool_slotU hr (fun _ => voteStart_initial _) hX hpt hv
-  obtain ⟨k, hk, hsend, h1, -⟩ := pool_sentU hr hX (fun _ _ hrk => restart_beforeU hS hX hσ hrk)
+  obtain ⟨k, hk, hsend, h1, -⟩ := pool_sentU hr (fun _ => voteStart_initial _) hX
+    (fun _ _ hrk => restart_beforeU hS hX hσ hrk)
     (optimisticPoint_pool_postU hr hX hpt σ hv)
   have hkt : tr.time k < sp.ts σ + 3 * sp.Δ :=
     lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hk)) (by linarith)
@@ -639,7 +645,8 @@ private theorem trivial_slow_first_proposalU
     rcases le_or_gt l.slot σ with hle | hlt
     · exact slow_stored_locksU hS.toHealthyBaseU hX hsl hs hx (by rw [proposal_slot ht]) l hl hlive
         hle Y hY hYr
-    · obtain ⟨O, hYO, k, CV', hopt⟩ := proposal_high_lockU hr hx ht hl hlt.le hY hYr
+    · obtain ⟨O, hYO, k, CV', hopt⟩ := proposal_high_lockU hr
+        (fun _ => voteStart_initial _) hx ht hl hlt.le hY hYr
       exact compat_down hU hYO (optimisticLock_compatibleU hrun hS.two_faulty_lt hx hopt
         (fun w hw j e hv hs => votesExtendAfter_iff.1 hlater w hw j e hv (by omega)) hS.stock)
   exact result_first_proposalU hrun hX hres hDC' hx hc (proposal_slot ht) hprop

@@ -20,7 +20,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- Reachability at a held-state observation, not necessarily the time of cut `i`. -/
-theorem fg_reachable_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem fg_reachable_at {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) :
     (tr.state y i).fg.Reachable (goldilocksNode sp ro).genesisPayload :=
@@ -28,7 +29,7 @@ theorem fg_reachable_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propo
 
 /-- Historical ancestry descends into the reader's actual held tree. -/
 theorem store_anc_of_honest_anc_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
     {A C : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -57,7 +58,7 @@ theorem mem_of_honest_anc_at
 /-- A held block's replay state is identical at two independently honest observations.
 This is deterministic replay and root coherence, so it needs no quorum premise. -/
 theorem σ_eq_honest_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {i j : Nat} {t u : Time}
     (ht : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t) (hy : y ∈ H t)
     (hu : 0 ≤ u) (hle' : ∀ q < j, tr.time q ≤ u) (hz : z ∈ H u)

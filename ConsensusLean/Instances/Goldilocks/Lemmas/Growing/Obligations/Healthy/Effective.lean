@@ -59,7 +59,8 @@ structure EffectiveRecordIntervalAt (tr : GoldilocksTrace sp ro) (H : Time → S
 before `j` at a time `≤ t`: a record looked up at `i ≤ j` that extends `O` still extends it at
 `j` when the new floor is compatible with `O`. -/
 theorem effective_record_frame_of_run_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i j r : Nat} {t : Time} (ht0 : 0 ≤ t)
     (hjt : ∀ k < j, tr.time k ≤ t) (hy : y ∈ H t) (hij : i ≤ j)
     {O : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -101,7 +102,8 @@ before `j` at a time `≤ t`: when its results and optimistic selections at the 
 are compatible with `O`, and so are its floors after them, each step is a guarded write of those
 candidates (the static call-write decomposition on the prefix through `t`). -/
 theorem effectiveRecordInterval_of_candidates_before_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i j : Nat} {t : Time} (ht0 : 0 ≤ t)
     (hjt : ∀ k < j, tr.time k ≤ t) (hy : y ∈ H t) {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (hcandidates : ∀ q, i ≤ q → q < j → ∀ D s CV,
@@ -112,7 +114,7 @@ theorem effectiveRecordInterval_of_candidates_before_at
     EffectiveRecordIntervalAt tr H y i j O := by
   have hr := hrun.upTo ht0
   have hnc' := hnc.upTo t
-  have hac := Compose.goldilocks_ac_projection sp ro dg (H t) (tr.upTo t) proposer hr hnc'
+  have hac := Compose.goldilocks_ac_projection_from hr hnc'
   have hst := Compose.projAC_state hr.toLocalRun hy
   refine ⟨fun q hiq hqj => Or.inl ?_⟩
   have hq0 : ∀ k < q, tr.time k ≤ t := fun k hk => hjt k (by omega)
@@ -147,7 +149,8 @@ theorem effectiveRecordInterval_of_candidates_before_at
 /-- **The interval preserves the effective record**, for a node honest at `t`, every cut before
 `j` at a time `≤ t`. -/
 theorem effective_record_of_interval_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i j : Nat} {t : Time} (ht0 : 0 ≤ t)
     (hjt : ∀ k < j, tr.time k ≤ t) (hy : y ∈ H t) (hij : i ≤ j)
     {O : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -181,7 +184,8 @@ theorem effective_record_of_interval_at
 /-- **An AC call's effective post-record is the node's next effective record**, for a node
 honest at its call: AC execution changes neither FG nor its frame. -/
 theorem effective_record_after_ac_call_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y j ell) {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : Anc (tr.HonestBlocksAt H) P

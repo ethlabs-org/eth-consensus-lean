@@ -28,8 +28,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
 /-- (`Healing.ResetPremisesUpTo.reset_proposal_viable`, Outcome/SupplierViews.) -/
-theorem reset_proposal_viable_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {p y : Fin sp.n} {k i j u : Nat}
+theorem reset_proposal_viable_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {p y : Fin sp.n} {k i j u : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : drainTime sp a ≤ sp.ts u)
     {ellp elly : ACLabel (goldilocksNode sp ro)}
@@ -49,7 +50,7 @@ theorem reset_proposal_viable_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF 
   have hPhiU := Outcome.frame_tree_subset hrun hpi hci
   have hPsi := Outcome.frame_realized hrun hy hcy.1
   have hPsiU := Outcome.frame_tree_subset hrun hy hcy.1
-  have hroot := hp.reset_vote_root_below_proposal_at hc hpH hactual hPs hR hci hcall hd hti hib hPQ
+  have hroot := hp.reset_vote_root_below_proposal_at hpH hactual hPs hR hci hcall hd hti hib hPQ
     hy hcy hes hjb
   have hroot' := SA.anc_tree_of_anc_U hU hPsi hPsiU hPsi.fcRoot_mem hroot hPy
   have hPt : P ∈ SA.voterBlockTree sp e.readPoint elly.frame u :=
@@ -60,7 +61,7 @@ theorem reset_proposal_viable_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF 
     exact hPy.1
   have hfloor := hp.reset_vote_floor_above_old_at hy hR hcy hes hjb hPyStore
     (fun x r l O ho ht _ => by
-      have hOQ := hp.reset_proposal_passes_at hc hpi hR hci hcall hd hti hib O ⟨x, r, l, ho, ht⟩
+      have hOQ := hp.reset_proposal_passes_at hpi hR hci hcall hd hti hib O ⟨x, r, l, ho, ht⟩
       obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
       have hQt : d.head ∈ ellp.frame.tree := by
         rcases eq_or_ne d.start d.head with he | he

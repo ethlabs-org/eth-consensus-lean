@@ -65,6 +65,8 @@ namespace Consensus.Goldilocks.Compose.Growing
 open SA (SAParams ReplayOrder Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+
+variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
 
@@ -165,8 +167,9 @@ private theorem vote_time (hrun : Growing.GoldilocksRun proposer dg H tr)
 /-- The seed's reset, with its lock floor, the seed's call time `t_{r−k−3} = t_{slot a + 2}`
 after GST and before `T`, and the drain `t_{r+k}` before `T`. -/
 private theorem HandoverSeed.reset_timing {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) :
-    ∃ a, Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a T ∧
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) :
+    ∃ a, Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a T cm βK ∧
       r = Healing.cleanLabel sp a + sp.k + 2 ∧ r - sp.k - 3 = sp.slot a + 2 ∧
       a + sp.Δ < sp.ts (r - sp.k - 3 : Nat) ∧ SA.gbar g < a ∧
       sp.ts (r - sp.k - 3 : Nat) < sp.ts (r + sp.k : Nat) ∧ sp.ts (r + sp.k : Nat) ≤ T ∧
@@ -202,7 +205,8 @@ private theorem HandoverSeed.reset_timing {T : Time} {r σ : Nat}
 /-- **A node honest at `t_{r−k−3}` has an AC call at exactly that time**: it is awake there
 (the healthy prefix through `T`), so it ticks, and a tick's first cut is `ac_on_tick`. -/
 private theorem seed_time_call (hrun : Growing.GoldilocksRun proposer dg H tr) {T : Time}
-    {r σ : Nat} (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {y : Fin sp.n}
+    {r σ : Nat} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {y : Fin sp.n}
     (hy : y ∈ H (sp.ts (r - sp.k - 3 : Nat))) :
     ∃ c, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
       tr.time c = sp.ts (r - sp.k - 3 : Nat) := by
@@ -235,7 +239,9 @@ so at every earlier time, awake on `[ḡ, T]`; its tick at `t_{r−k−3} < t_{r
 cut before `i`. This covers a read point at `t ≥ t₁` and a vote cut of a slot after the split
 slot. -/
 theorem seeded_reader_called_at (hrun : Growing.GoldilocksRun proposer dg H tr) {T : Time}
-    {r σ : Nat} (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {y : Fin sp.n} {i : Nat}
+    {r σ : Nat} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {y : Fin sp.n}
+      {i : Nat}
     {t : Time} (hy : y ∈ H t) (ht : sp.ts (r + sp.k : Nat) ≤ t) (hti : t ≤ tr.time i) :
     ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
       sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c := by
@@ -312,7 +318,9 @@ below `S` (finality only grows, and the current `Σ.F` is below `S`), so the see
 calls puts `S` in the frame there; the tree only grows. -/
 theorem low_seed_held (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hcv : ChainConvictedBelow tr H) {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {y : Fin sp.n} {i : Nat} {t : Time}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {y : Fin sp.n}
+      {i : Nat} {t : Time}
     (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
     (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
       sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c)
@@ -322,7 +330,7 @@ theorem low_seed_held (hrun : Growing.GoldilocksRun proposer dg H tr)
       ∃ c < i, tr.time c = sp.ts (r - sp.k - 3 : Nat) ∧ S ∈ (tr.state y c).fg.tree := by
   obtain ⟨a, hp, hr, hq, hqa, hga, hqd, hdT, -⟩ := hseed.reset_timing
   have hΔ := sp.toParams.hΔ
-  obtain ⟨x, q, l, S, hS, hqa', hqT, hheld⟩ := hp.reset_seed_held_at_call_at hseed.catchRun
+  obtain ⟨x, q, l, S, hS, hqa', hqT, hheld⟩ := hp.reset_seed_held_at_call_at
   have hlr : l < r := by
     obtain ⟨CV, -, D, -, hfl, -⟩ := hS.2.2.1
     have h1 := (fastLockAt_time hrun hfl).1
@@ -391,7 +399,9 @@ stored lock sits below the signer's fast lock write of its slot at an earlier cu
 (`SA.fast_lock_provenance`), and after `t_{r+k}` a live lock has slot `≥ r` (`drain_live_locks`). -/
 private theorem signed_source_lock (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {v : Fin sp.n} {k : Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {v : Fin sp.n}
+      {k : Nat}
     {a : FG.Att sp.n} (hv : v ∈ H (tr.time k)) (hs : tr.SignAt v k a)
     (hk : sp.ts (r + sp.k : Nat) ≤ tr.time k) :
     ∃ D, D ∈ (tr.state v k).fg.tree ∧ ((tr.state v k).fg.σ D.root).Th = a.T ∧
@@ -452,7 +462,8 @@ chain of the signer's high origin); after `T` it is the signer's lock write
 (`signed_source_lock`). -/
 private theorem high_row_member (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {d : Time} (hd : 0 ≤ d)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {d : Time} (hd : 0 ≤ d)
     (hzd : Healing.cutZ sp.toParams g ≤ d) {y : Fin sp.n}
     {i : Nat} (hi : ∀ k < i, tr.time k ≤ d) (hy : y ∈ H d)
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y i).fg.tree) {a : FG.Att sp.n}
@@ -508,7 +519,8 @@ members that the classification of each high row supplies. The signers, honest a
 honest at `c_z`, which `H_z` bounds. -/
 theorem rowsAbove_of (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {d : Time} (hd : 0 ≤ d)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {d : Time} (hd : 0 ≤ d)
     (hzd : Healing.cutZ sp.toParams g ≤ d) {y : Fin sp.n}
     {i : Nat} (hi : ∀ k < i, tr.time k ≤ d) (hy : y ∈ H d)
     {Q : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
@@ -586,7 +598,9 @@ height `≥ H_z + 1`, by a signer honest at `t`, has an honest source below a me
 family within `t` held in the prefix (`RowsAbove` at height `H_z + 1`). -/
 theorem seeded_rows_above_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {y : Fin sp.n} {i : Nat} {t : Time}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {y : Fin sp.n}
+      {i : Nat} {t : Time}
     (ht0 : 0 ≤ t) (hzt : Healing.cutZ sp.toParams g ≤ t) (hi : ∀ k < i, tr.time k ≤ t)
     (hy : y ∈ H t) :
     Compose.RowsAbove (tr.upTo t) (H t)
@@ -601,7 +615,9 @@ below the held reset seed. High: `Σ.J` is the entry of an honest member of its 
 (`f_t < n/2 < q`), whose source is below a member (the high rows); `Σ.F ⪯ Σ.J`. -/
 theorem seeded_reader_on_chain_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hcv : ChainConvictedBelow tr H) {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time} (hTb : T ≤ b) {y : Fin sp.n}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
+      (hTb : T ≤ b) {y : Fin sp.n}
     {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b)
     (hy : y ∈ H t) (hf : 2 * (H t)ᶜ.ncard < sp.n)
     (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
@@ -651,7 +667,9 @@ its read: `Σ.F` is on the healed chain, and `fc_root` is compatible with every 
 frame (both are below members, which are pairwise compatible). -/
 theorem seeded_caches_of (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hcv : ChainConvictedBelow tr H) {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time} (hTb : T ≤ b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
+      (hTb : T ≤ b)
     (hP : ∀ C s C' s', HealedOrigin tr H g r (r + sp.k - 1) C s b →
       HealedOrigin tr H g r (r + sp.k - 1) C' s' b → Compatible (tr.HonestBlocksAt H) C C')
     {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t)
@@ -676,7 +694,9 @@ no contest (a contest puts the floor at `h_max = h_j + 1 ≤ H_z + 1`), and the 
 floor `h_max − 1 ≥ H_z + 1` is a high row whose entry is above the block. -/
 theorem seeded_viable_of (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hcv : ChainConvictedBelow tr H) {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time} (hTb : T ≤ b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
+      (hTb : T ≤ b)
     (hP : ∀ C s C' s', HealedOrigin tr H g r (r + sp.k - 1) C s b →
       HealedOrigin tr H g r (r + sp.k - 1) C' s' b → Compatible (tr.HonestBlocksAt H) C C')
     {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t)
@@ -935,7 +955,9 @@ written by `t_l + 6Δ ≤ T`, extended by every honest vote up to `T` of a slot 
 (the seed's `V` row), and there is such a vote of slot `σ + 1` (its slot count). -/
 private theorem member_supported (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time} (hTb : T ≤ b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
+      (hTb : T ≤ b)
     (hsync : SleepyServiceFrom tr H ΔF (SA.gbar g) (2 * sp.Δ) b) (hB : SleepyBoundsFrom tr H r b)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {l : Nat}
     (hC : HealedOrigin tr H g r (r + sp.k - 1) C l b) (hstock : sp.committeeSize = sp.n) :
@@ -1034,7 +1056,9 @@ frozen head above the crossing of the floor, which is a high row (the floor is a
 `H_z + 1`, or the low reader's held seed is viable). -/
 theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time} (hTb : T ≤ b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
+      (hTb : T ≤ b)
     (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
     (hcv : ChainConvictedBelow tr H) {s : Nat} (hs : σ + 1 ≤ s)
     (hP : HealedOriginsBelow tr H g r (r + sp.k - 1) (s + 1) b) {y : Fin sp.n} {i : Nat}

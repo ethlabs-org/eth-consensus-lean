@@ -65,7 +65,7 @@ theorem result_transfer {ini} (hrun : ACRun proposer tr H U ini)
   · exact (Anc.mem hcore he).2
 
 /-- A result also transfers any viable ancestor compatible with the reader's live locks. -/
-theorem result_transfer_anc (hrun : ACRun proposer tr H U)
+theorem result_transfer_anc {ini} (hrun : ACRun proposer tr H U ini)
     {s : Nat} {X y : Fin sp.n} {i₀ i : Nat} {C D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hX : X ∈ H (tr.time i₀)) (hres : ResultAt tr X i₀ s C CV) (hDC : Anc U D C)
@@ -83,7 +83,7 @@ theorem result_transfer_anc (hrun : ACRun proposer tr H U)
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_call hr hy hc'.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_anc hr hy hc'
+  have hdomA := voteDomain_anc_from hr hrun.vstart hy hc'
   rw [hs] at hdomA
   have hDt : D ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -98,7 +98,7 @@ theorem result_transfer_anc (hrun : ACRun proposer tr H U)
         (by
           obtain ⟨ℓX, hupd, _, rfl⟩ := hres
           exact carried_counted_supporters hrun hX hy hupd.1 hc hs hDC hcarry hviab hd)
-        (merged_voters_subset hr (fun _ => voteStart_initial _) hy hc' hd)
+        (merged_voters_subset hr hrun.vstart hy hc' hd)
         (result_majority hres) hCx hp hCxD
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : D = getHead sp e.readPoint ℓ.frame (tr.time i)
@@ -122,7 +122,7 @@ theorem cs2_full_of_faultBoundAt (hc : sp.committeeSize = sp.n) {t d : Time}
 
 /-- Transfer also holds for an ancestor of the block stored by the fast lock. -/
 theorem first_transfer_stored
-    (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n)
+    {ini} (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n)
     (hP : ∀ t, CommitteeP K (tr.upTo t) (H t)) (hT : ∀ t, CommitteeT K (tr.upTo t) (H t))
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
@@ -155,7 +155,7 @@ theorem first_transfer_stored
   have hΦxU := (frameIn_of_call hrx.localRun hx hupd'.1).2
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_anc hry.localRun hy hc'
+  have hdomA := voteDomain_anc_from hry.localRun hrun.vstart hy hc'
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -221,7 +221,7 @@ theorem first_transfer_stored
     fun X' Cx hCx hp hCxC =>
       isBest_of_majority hΦ (merged_support_subset hry.localRun hy hc' (s + 1))
         (fun B hB => voteDomain_subset_tree hB.1) hsupp
-        (merged_voters_subset hry.localRun (fun _ => voteStart_initial _) hy hc' hd) hmaj hCx hp
+        (merged_voters_subset hry.localRun hrun.vstart hy hc' hd) hmaj hCx hp
         hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : B = getHead sp e.readPoint ℓ.frame (tr.time i)

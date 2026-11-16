@@ -150,11 +150,12 @@ theorem optimistic_first_proposal_anc (hrun : ACRun proposer T H U) (hf : 2 * H�
     obtain ⟨hheld, R, hR, hRr, hbs⟩ := heldAtProposal_iff.1 (hP v ⟨hv, R', hR', hR'r, hDR'⟩)
     obtain rfl : R = R' := hU.1 (hΦU hR) (hΦXU hR') (hRr.trans hR'r.symm)
     have hheld : v ∈ (T.state x i).pool σ := hheld.resolve_right fun h =>
-      heq (equivocators_mono (fun u hu => (mem_proposalView_votes hr hx i σ ℓ.frame u).2 hu) h)
+      heq (equivocators_mono (fun u hu => (mem_proposalView_votes hr
+        (fun _ => SA.voteStart_initial _) hx i σ ℓ.frame u).2 hu) h)
     have hRs : R.slot ≤ σ := by
       have := frame_slot_le sp hr hX hpt.1 R hR'
       omega
-    exact proposal_supporter hr hx hc hvs hheld hR hRr hRs
+    exact proposal_supporter hr (fun _ => SA.voteStart_initial _) hx hc hvs hheld hR hRr hRs
       (anc_tree_of_anc_U hU hΦ hΦU hV.1 (hBD.trans (Anc.mono hΦXU hDR')) hR) hbs heq
   -- counting: the equivocators are faulty, the other voters are outside `SX`
   have hE : (equivocators V.votes).ncard ≤ Hᶜ.ncard := Set.ncard_le_ncard fun w hw =>
@@ -169,7 +170,7 @@ theorem optimistic_first_proposal_anc (hrun : ACRun proposer T H U) (hf : 2 * H�
     (unlocked_compatible hU hΦ hΦU hV.1 (Or.inl ⟨SX, fun w hw => ?_, by omega⟩)
       (fun l hl hlive hlσ X hX hXr =>
         highLocksCompatible_iff.1 hhigh l hl hlive (by exact_mod_cast hlσ) X hX hXr)
-      (locksWF_state hr hx i))
+      (locksWF_state hr (fun _ => SA.voteStart_initial _) hx i))
     fun X' Cx hCx hp hCxB => isBest_of_cover hΦ (ofLists_support_subset _ _ _ _)
       (fun _ h => h.1) hcover (cover_sdiff_lt h3) hCx hp hCxB
   rcases hcover hw with ⟨-, v, hv, hvw, hvs, hva⟩ | h
@@ -396,8 +397,10 @@ theorem proposal_head_of_batch (hrun : GoldilocksRun proposer dg H tr) (hs : HSS
     rcases hO' with h | h
     · exact Or.inl (hLO.trans h)
     · exact SA.anc_total hU hLO h
-  exact SA.batch_proposal hrun' hS.two_faulty_lt (SA.honest_voters_half hS hσg) hB hpH hcP
-    (SA.proposal_slot htP) hprop hV hPv hhigh hs.stock
+  exact SA.batch_proposal hrun' (K := SA.CommitteeDict.full sp.n)
+    (SA.cs2_full hs.stock hS.two_faulty_lt)
+    (by rw [hs.stock]; exact SA.honest_voters_half hS hσg) hB hpH hcP (fun _ _ => SA.mem_full _ _)
+    (SA.proposal_slot htP) hprop hV hPv hhigh
 
 /-- **The proposal of a slot `s ≥ j + 2` follows `B`** (for
 subsequent slots by the unanimous honest batch): under `Γ` (without `Prop⁺`), let an honest
@@ -454,7 +457,8 @@ theorem proposal_extends_of_optimistic (hrun : GoldilocksRun proposer dg H tr)
   have hw8 := gbar_add_le_of_settled hw
   have hU := hr.coherent
   obtain ⟨z, hz, kz, e', hvz, hes, Hd, hHd, hHdr, hDHd⟩ :=
-    SA.fastLock_honest_vote hS.run hS.two_faulty_lt hx (Or.inr hopt) hs.stock
+    SA.fastLock_honest_vote hS.run _ SA.CommitteeP.full hx (Or.inr hopt)
+      (SA.cs2_full hs.stock hS.two_faulty_lt)
   refine proposal_follows hrun hs hc hw hz hvz hj hes ⟨Hd, hHd, hHdr, hBD.trans hDHd⟩ hP
     (by omega) hy hv he hk fun {kP ℓp d pay} hcP hcall hprop htP hkPk hV hFB => ?_
   have hpH := hP.1
@@ -466,7 +470,8 @@ theorem proposal_extends_of_optimistic (hrun : GoldilocksRun proposer dg H tr)
   have hPv : ∀ v ∈ CV, SA.HeldAtProposal (tr.projAC.state (proposer (j + 1)) kP)
       ℓp.frame j v := by
     intro v hv'
-    obtain ⟨h₁, h₂, Hv, hHv, hHvr, hDHv, h₃⟩ := fastLock_writer hr hx (Or.inr hopt) v hv'
+    obtain ⟨h₁, h₂, Hv, hHv, hHvr, hDHv, h₃⟩ :=
+      fastLock_writer hr (fun _ => SA.voteStart_initial _) hx (Or.inr hopt) v hv'
     have hFHv := hFB.trans (hBD.trans hDHv)
     refine SA.heldAtProposal_of_writer hr (hS.syncAC le_rfl (sp.ts j + 2 * sp.Δ)) hgj le_rfl hx
       hpH hcP htP' (fun k' _ hrk => lt_of_le_of_lt (hS.restart_le hpH hrk) (by
@@ -571,7 +576,8 @@ theorem clean_fast_proposal (hrun : GoldilocksRun proposer dg H tr) (hs : HSShar
     Anc.mono (SA.frameIn_of_callAt hr hx hcw).2 (SA.anc_viableAncestor _ D)
   by_cases hjs2 : j + 2 ≤ s
   · obtain ⟨z, hz, kz, e', hvz, hes, Hd, hHd, hHdr, hDHd⟩ :=
-      SA.fastLock_honest_vote hS.run hS.two_faulty_lt hx hfl hs.stock
+      SA.fastLock_honest_vote hS.run _ SA.CommitteeP.full hx hfl
+        (SA.cs2_full hs.stock hS.two_faulty_lt)
     exact proposal_extends_of_batch hrun hs hc hw hz hvz hj hes
       ⟨Hd, hHd, hHdr, hBD.trans hDHd⟩ hP hjs2 hy hv he hk hprior
   obtain rfl : s = j + 1 := by omega

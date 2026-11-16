@@ -63,7 +63,7 @@ theorem regular_slow_next_votes_of_early_witness_at
     rw [frame_of_projAC_at hrun hy hc.1]
     exact hFD.trans hDC
   exact SA.Growing.result_transfer_anc
-    (Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc)
+    (Compose.Growing.goldilocks_ac_projection_from hrun hnc)
     hx hres hDC hy hc hs
     (result_carry_service_at hrun hnc hsvc hcatch hm hx hy hres hc hs hFC) hviab
     (slow_live_locks_service_at hrun hnc hsvc hx hsl hslow hy hc hs htwo ih hstock)

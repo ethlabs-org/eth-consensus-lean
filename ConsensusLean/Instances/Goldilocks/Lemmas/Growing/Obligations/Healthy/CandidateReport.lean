@@ -31,7 +31,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 extending it, by the call, for a node honest at the call (`report_of_compatible_candidate_of_run`
 on the prefix through the call). -/
 theorem report_of_compatible_candidate_of_run_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
     (hcall : ell.call = .toFG) (hjoin : SA.joined sp (tr.projAC.state y j) (tr.time j))
@@ -66,7 +67,8 @@ theorem report_of_compatible_candidate_of_run_at
 /-- **A cache strictly ahead of a held target is backed by an earlier report**, at a strictly
 higher height, of a validator honest at the reading cut (`cache_ahead_report` on the prefix
 through the cut). -/
-theorem cache_ahead_report_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem cache_ahead_report_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     (hf : (H (tr.time i))ᶜ.ncard < sp.toParams.fg.q)
     {P X : SA.Blk sp.n (List (FG.Att sp.n))}

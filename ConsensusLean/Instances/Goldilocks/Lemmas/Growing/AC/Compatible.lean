@@ -18,7 +18,7 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
 
 /-- The fault bound is read at the later call, not at the historical lock writer. -/
 theorem fastLock_compatible_of_votes
-    (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n)
+    {ini} (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n)
     (hP : ∀ t, CommitteeP K (tr.upTo t) (H t))
     {x : Fin sp.n} {j i s : Nat} (hx : x ∈ H (tr.time j)) (hji : j < i)
     {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr x j s D CV)
@@ -39,7 +39,7 @@ theorem fastLock_compatible_of_votes
   exact hvotes z k hki (hr.antitone hkt hz) e hv hs
 
 private theorem update_side
-    (hrun : ACRun proposer tr H U) {Y : Fin sp.n} {c s : Nat}
+    {ini} (hrun : ACRun proposer tr H U ini) {Y : Fin sp.n} {c s : Nat}
     (hY : Y ∈ H (tr.time c)) {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hfl : FastUpdateAt tr Y c s D CV) :
     ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
@@ -75,10 +75,10 @@ private theorem update_side
   refine ⟨ℓ', T, hc, ht, hrs, hfast, hmaj', ?_, ?_⟩
   · rintro u ⟨_, v, ⟨hvp, hres⟩, rfl, _, R, hR, hRr, hDR⟩
     have hvp' : v ∈ ((tr.upTo (tr.time c)).state Y c).pool s := hstate.symm ▸ hvp
-    have hvs := state_pool_slot sp hr.localRun hY c s v hvp'
+    have hvs := state_pool_slot_from sp hr.localRun hrun.vstart hY c s v hvp'
     rw [relayed_iff]
     refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, ?_⟩
-    obtain ⟨k, hsend, h1, h2⟩ := admitted_of_held hr.localRun hY hvs hvp' le_rfl
+    obtain ⟨k, hsend, h1, h2⟩ := admitted_of_held_from hr.localRun hrun.vstart hY hvs hvp' le_rfl
       (fun k _ hst => by
         rw [hstate] at hst
         have hst' : (tr.state Y c).voteStamp v < ETime.of (sp.ts s + 2 * sp.Δ) := by
@@ -96,7 +96,7 @@ private theorem update_side
     exact ⟨hne, v, hvp, rfl, R, hΦU hR, hRr, Anc.mono hΦU hDR⟩
 
 private theorem against_update
-    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr) {s : Nat}
+    {ini} (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {s : Nat}
     (hsync : SyncACAt (goldilocksSA sp FGP ro) H U
       (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
     {X Y : Fin sp.n} {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -134,7 +134,7 @@ private theorem against_update
 /-- Two historical locks are compatible even if their writers do not survive each other.
 The shared honest validator in the optimistic case is chosen at the later write cut. -/
 theorem fastLock_same_slot
-    (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n)
+    {ini} (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n)
     (hP : ∀ t, CommitteeP K (tr.upTo t) (H t))
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {w x : Fin sp.n} {i₀ j : Nat} {B D : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)}
@@ -193,8 +193,8 @@ theorem fastLock_same_slot
     have he₁' := upTo_voteAt.mpr ⟨ht₁.trans hi₀, he₁⟩
     have he₂' := upTo_voteAt.mpr ⟨ht₂.trans hj, he₂⟩
     rw [hv'u] at he₂'
-    obtain ⟨_, rfl⟩ := SA.one_vote_per_slot sp FGP ro (H d) U (tr.upTo d)
-      hrd.localRun _ huH k₁ k₂ e₁ e₂ he₁' he₂' (hvs.trans hvs'.symm)
+    obtain ⟨_, rfl⟩ := SA.one_vote_per_slotU sp FGP ro (H d) U (tr.upTo d)
+      hrd.localRun.toU _ huH k₁ k₂ e₁ e₂ he₁' he₂' (hvs.trans hvs'.symm)
     obtain rfl : R = R' := hU.1 (hΦU hR) (hΦU' hR') (hRr.trans hR'r.symm)
     exact hnc (anc_total hU (Anc.mono hΦU hBR) (Anc.mono hΦU' hDR'))
 

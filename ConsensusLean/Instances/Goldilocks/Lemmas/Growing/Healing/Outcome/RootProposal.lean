@@ -17,8 +17,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
 /-- Actual bounded proposal and cast evidence bound the voter root by the proposal. -/
-theorem reset_vote_root_below_proposal_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
+theorem reset_vote_root_below_proposal_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {p : Fin sp.n} {k u : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
     (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
@@ -34,7 +35,7 @@ theorem reset_vote_root_below_proposal_at (hp : ResetPremisesUpTo tr H proposer 
   have hpi : p ∈ H (tr.time i) := hp.run.antitone (by
     rw [hti]
     exact le_add_of_nonneg_right sp.toParams.hΔ.le) hpH
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hci' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hci⟩
   obtain ⟨hPhi, _⟩ := SA.frameIn_of_callAt (hac.localRun.upTo (hp.run.time_nonneg i)) hpi hci'
   obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
@@ -59,7 +60,7 @@ theorem reset_vote_root_below_proposal_at (hp : ResetPremisesUpTo tr H proposer 
         (fun q hq => hp.run.time_mono hq.le) hpk)).1 P _ (hp.run.cutLaw p k _ hacc hpk).2.1]
     exact Set.mem_insert _ _
   apply hp.reset_vote_root_below_bound_at hR hPU (fun x r l O ho hrt _ => ?_) hy hcy hes hjb
-  exact (hp.reset_proposal_passes_at hc hpi hR hci hcall hd hti hib O ⟨x, r, l, ho, hrt⟩).trans
+  exact (hp.reset_proposal_passes_at hpi hR hci hcall hd hti hib O ⟨x, r, l, ho, hrt⟩).trans
     (.single ⟨hQU, hPU, hPQ⟩)
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo

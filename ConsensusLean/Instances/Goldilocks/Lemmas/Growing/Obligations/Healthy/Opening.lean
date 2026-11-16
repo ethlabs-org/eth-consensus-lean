@@ -143,8 +143,7 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
   let O : HealthyRepairOpeningAt S A V Q D :=
     ⟨s, k, P, hlo, hbound, hold, hlabel, hP, proposal_accepted_at hrun hnc hpk hP, ht, hnode,
       hheld⟩
-  exact ⟨O, healthy_receiver_repair_of_opening_at S A V Q hb D O
-    (healthy_schedule_catch_at S A V Q D)⟩
+  exact ⟨O, healthy_receiver_repair_of_opening_at S A V Q hb D O⟩
 
 end Consensus.Goldilocks.Obligations.Growing
 

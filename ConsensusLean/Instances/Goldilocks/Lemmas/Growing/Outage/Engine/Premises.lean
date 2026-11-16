@@ -108,7 +108,7 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
     W := Q.opponentsAt
     hrun := hrun
     K := Q.K
-    facts := voteK_facts S Q.run.2 Q.hn Q.valid Q.noCollision hrun
+    facts := voteK_facts S Q.run.2 Q.hn Q.valid hnc hrun
     hnc := hnc
     hj₀ := ⟨hnum.1, hnum.2.1⟩
     hr := hr
@@ -138,7 +138,7 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
         · exact absurd (ho ▸ htg) hg
         · exact Or.inr (hCw.mono hTs)
     hpre := Compose.Growing.sleepy_invariant_at hrun hnc
-      (voteK_facts S Q.run.2 Q.hn Q.valid Q.noCollision hrun) (hT0.trans hTs) service
+      (voteK_facts S Q.run.2 Q.hn Q.valid hnc hrun) (hT0.trans hTs) service
       (hBb _ hsh) (Q.boundsK hrun hsh)
     hpreSvc := service
     hB := fun b ⟨_, _, _, hc, hle⟩ => hBb b (hle.trans (Q.call_le_horizon hc))

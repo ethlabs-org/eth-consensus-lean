@@ -21,7 +21,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A raw writer's ancestor is held by a later independently honest slot-start reader. -/
 theorem raw_writer_held_at_slot_start_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x p : Fin sp.n} {r s i u : Nat} (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
     {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
     (hwriter : SA.ResultAt tr.projAC x r s C CV ∨ SA.FastLockAt tr.projAC x r s C CV)
@@ -29,7 +30,7 @@ theorem raw_writer_held_at_slot_start_at
     (hsu : s < u) {ell : ACLabel (goldilocksNode sp ro)}
     (hci : tr.projAC.CallAt p i ell) (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
     (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B) : B ∈ ell.frame.tree := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hac.localRun.upTo (hp.run.time_nonneg i)
   have hci' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hci)
   have hΔ := sp.toParams.hΔ
@@ -39,8 +40,8 @@ theorem raw_writer_held_at_slot_start_at
     simp only [SAParams.ts] at ht ⊢
     linarith
   obtain ⟨v, _, D, hD, hDr, hBD, hg | ⟨q, hxq, hq, hqt⟩⟩ :=
-    raw_writer_relay_source_at (by rw [hp.stock]; exact sp.toParams.hn)
-      hac.localRun hx hwriter hBC
+    raw_writer_relay_source_at hp.committee_pos
+      hac.localRun hac.vstart hx hwriter hBC
   · obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci'
     obtain ⟨G, hG, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hpH _ _ hci'
     have hDG : D = G := hac.localRun.coherent.1 hD hG (hg.trans hGr.symm)
@@ -66,7 +67,7 @@ theorem raw_writer_held_at_slot_start_at
       simp only [SAParams.ts] at hbase hs ⊢
       push_cast at hbase hs ⊢
       linarith
-    have hDt := Outcome.accept_mem_frame hp hc hxk hpH hak₀ hci hib
+    have hDt := Outcome.accept_mem_frame hp hxk hpH hak₀ hci hib
       (by linarith) (by linarith) (by rw [hkt₀]; linarith) (hFB.trans hBD)
     obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci'
     exact SA.frame_mem_of_between sp hac.localRun.coherent hPhi hPhiU hDt hBD hFB

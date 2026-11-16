@@ -37,7 +37,7 @@ theorem honest_vote_heads_eq_at
   have hu : 0 < u := by omega
   obtain ⟨s, rfl⟩ := Nat.exists_eq_succ_of_ne_zero (Nat.ne_of_gt hu)
   have hr := hrun.toLocalRun
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hsp : s₀ ≤ s + 1 := by omega
   have hms : gbar g + 2 * sp.Δ ≤ sp.ts s := by
     have ht : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by omega)

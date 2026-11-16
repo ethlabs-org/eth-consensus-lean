@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
 
 public section
 
@@ -52,8 +53,14 @@ structure HSSharedUpTo
 
 /-- A finite reset and service, with node honesty read separately at each cut. -/
 structure ResetPremisesUpTo (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF a b : Time) : Prop where
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF a b : Time)
+    (committee : Time → Finset (Fin sp.n)) (beta : ℚ) : Prop where
+  beta_le : beta ≤ 1 / 2
   run : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+    (SA.committeeStart sp.genesisRoot (Generic.dictOfTime sp committee))
+  committee_pos : 0 < sp.committeeSize
+  committeeFacts : Compose.Growing.CommitteeFacts tr H (Generic.dictOfTime sp committee)
+  committeeFaults : Generic.CommitteeFaultsUpTo beta committee H g b
   noColl : Compose.NoCollRun dg tr
   sync : ResetService tr H g ΔF b
   awake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t
@@ -61,8 +68,12 @@ structure ResetPremisesUpTo (proposer : Nat → Fin sp.n)
   reset : IsReset tr H g a
   reset_le : a ≤ b
   snapshot : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g) ∧ tr.time k ≤ b
-  /-- The committee is population-sized (`committeeSize = n`). -/
-  stock : sp.committeeSize = sp.n
+  catchUp : CatchRun tr H g (2 * sp.Δ)
+  noRestart : ∀ y k, y ∈ H (tr.time k) → tr.RestartAt y k →
+    tr.time k ≤ b → tr.time k ≤ gbar g
+  timeoutDelay : ∀ s, sp.toParams.slotTime s + 6 * sp.Δ + ΔF ≤
+    sp.toParams.slotTime (s + sp.toParams.δt)
+  nonempty : (H b).Nonempty
 
 end Consensus.Goldilocks.Healing.Growing
 

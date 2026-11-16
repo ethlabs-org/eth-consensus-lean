@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunCommittee
 public import Mathlib.Data.Fin.VecNotation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
@@ -79,7 +80,8 @@ abbrev Extends (_W : FinalWindowDataAt S A V Q)
 def AnchorRun : Prop :=
   ∃ (proposer : Nat → Fin Q.params.n)
     (dg : Digest (List (FG.Att Q.params.n)) (SA.Payload Q.params.n)) (g ΔF a b : Time),
-    Healing.Growing.ResetPremisesUpTo Q.trace Q.keys proposer dg g ΔF a b ∧
+    Healing.Growing.ResetPremisesUpTo Q.trace Q.keys proposer dg g ΔF a b
+        (runCommittee { S with vote := stock } Q.run.2 Q.hn) (K S A).params.βK ∧
     Healing.Growing.CatchRun Q.trace Q.keys g (2 * Q.params.Δ) ∧
     (∀ i, Healing.Growing.HonestProposalRun Q.trace Q.keys proposer
       (W.start + ![0, W.gap, 2 * W.gap, 3 * W.gap] i) (W.block i)) ∧
@@ -101,7 +103,8 @@ def CacheCoverage : Prop :=
 theorem anchorRun_iff : W.AnchorRun ↔
     ∃ (proposer : Nat → Fin Q.params.n)
       (dg : Digest (List (FG.Att Q.params.n)) (SA.Payload Q.params.n)) (g ΔF a b : Time),
-      Healing.Growing.ResetPremisesUpTo Q.trace Q.keys proposer dg g ΔF a b ∧
+      Healing.Growing.ResetPremisesUpTo Q.trace Q.keys proposer dg g ΔF a b
+        (runCommittee { S with vote := stock } Q.run.2 Q.hn) (K S A).params.βK ∧
       Healing.Growing.CatchRun Q.trace Q.keys g (2 * Q.params.Δ) ∧
       (∀ i, Healing.Growing.HonestProposalRun Q.trace Q.keys proposer
         (W.start + ![0, W.gap, 2 * W.gap, 3 * W.gap] i) (W.block i)) ∧

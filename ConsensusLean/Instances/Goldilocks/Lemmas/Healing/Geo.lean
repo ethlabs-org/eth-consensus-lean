@@ -427,7 +427,8 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 /-- **Where a block stamp comes from**: after an honest call, the stamp of a block of its frame is
 genesis's, or the time of an earlier call of the node whose frame holds the block (the call that
 accepted it, or a restart's replay). -/
-theorem stamp_origin (h : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+theorem stamp_origin {ini} (h : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr ini)
+    {y : Fin sp.n}
     (hy : y ∈ H) :
     ∀ i (ℓ : ACLabel (SA.goldilocksSA sp FGP ro)), tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
       X.root = sp.genesisRoot ∨ ∃ k ≤ i, ∃ ℓk : ACLabel (SA.goldilocksSA sp FGP ro),

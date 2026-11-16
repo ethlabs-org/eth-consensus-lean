@@ -342,7 +342,8 @@ theorem view_agree_before (hrun : ACRun proposer tr H U) {s : Nat} {p y : Fin sp
 
 /-- `view_agree` with the unlock given. -/
 theorem view_agreeU
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {s : Nat} {p y : Fin sp.n} {i j : Nat}
+    {ini} {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini) {s : Nat} {p y : Fin sp.n}
+    {i j : Nat}
     {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H) (hpp : p = proposer (s + 1))
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
@@ -361,7 +362,7 @@ theorem view_agreeU
       ∀ X ∈ ℓp.frame.tree, X ∈ ℓy.frame.tree →
         supporters ℓp.frame (View.ofLists pay) s X =
           supporters ℓy.frame (mergedVoteView sp e.readPoint ℓy.frame (s + 1)) s X := by
-  refine view_agree_of_forwardU hrun (fun _ => voteStart_initial _) hp hy hpp hprop hti hc hP
+  refine view_agree_of_forwardU hrun hrun.vstart hp hy hpp hprop hti hc hP
     ?_ hyp hpy
   intro k v hsend hsk htk hvs hrs
   have hΔ := sp.toParams.hΔ
@@ -377,7 +378,7 @@ theorem view_agreeU
   simpa only [hvs] using h
 
 /-- The original source-window service also suffices for view agreement. -/
-theorem view_agree (hrun : ACRun proposer tr H U) {s : Nat} {p y : Fin sp.n} {i j : Nat}
+theorem view_agree {ini} (hrun : ACRun proposer tr H U ini) {s : Nat} {p y : Fin sp.n} {i j : Nat}
     {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H) (hpp : p = proposer (s + 1))
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))

@@ -15,8 +15,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
 /-- The actual proposal reaches a voter honest at its own cast, above its finalized root. -/
-theorem reset_proposal_frame_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {p y : Fin sp.n} {k j u : Nat}
+theorem reset_proposal_frame_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {p y : Fin sp.n} {k j u : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
     (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
     (hu : 0 < u) (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
@@ -24,6 +25,7 @@ theorem reset_proposal_frame_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a
     (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
     (hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
     (hF : Anc (tr.HonestBlocksAt H) ell.frame.F P) : P ∈ ell.frame.tree := by
+  have hc := hp.catchUp
   by_cases hearly : tr.time j < sp.ts u + sp.Δ
   · exact Outcome.proposal_mem_of_early_cast hp.run hp.noColl hpH hdesignated hactual hPs
       hu hy hcy hes hearly
@@ -46,7 +48,7 @@ theorem reset_proposal_frame_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a
   have hqt : tr.time q = sp.ts u := by
     change tr.time ja = sp.ts u at hta
     exact htime.trans hta
-  exact Outcome.accept_mem_frame hp hc (hp.run.antitone hqt.le hp₀) hy haq.2 hcy.1 hjb hg
+  exact Outcome.accept_mem_frame hp (hp.run.antitone hqt.le hp₀) hy haq.2 hcy.1 hjb hg
     hjoin (by rw [hqt]; exact not_lt.mp hearly) hF
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo

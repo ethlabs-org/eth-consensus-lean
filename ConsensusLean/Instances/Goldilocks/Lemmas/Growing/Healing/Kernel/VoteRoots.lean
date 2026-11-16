@@ -20,7 +20,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- An origin above the frame's finalized tip is held by every later-label honest voter. -/
 theorem high_origin_held_at_vote_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {r l k : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) (hrb : tr.time r ≤ b)
     (hy : y ∈ H (tr.time k))
@@ -35,7 +36,8 @@ theorem high_origin_held_at_vote_at
 
 /-- The low-root comparison specializes the shared held-seed supplier at a vote. -/
 theorem low_root_of_seed_before_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y v : Fin sp.n} {r i q m : Nat} {B S : SA.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time r)) (hBx : B ∈ (tr.state x r).fg.tree) (hrb : tr.time r ≤ b)
     (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
@@ -57,7 +59,8 @@ theorem low_root_of_seed_before_at
 
 /-- A viable frozen descendant yields the target's viable vote-domain membership. -/
 theorem vote_viable_of_root_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ell e) {B : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -67,7 +70,7 @@ theorem vote_viable_of_root_at
       Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot) :
     B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) ∨
       Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := (hac.upTo (hp.run.time_nonneg k)).localRun
   have hc' := SA.upTo_castAt.mpr (And.intro le_rfl hc)
   obtain ⟨hPhi, hPhiTree⟩ := frame_tree_subset_at hp.run hp.noColl hy hc.1
@@ -80,7 +83,7 @@ theorem vote_viable_of_root_at
       have hBt := SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hDt hBD hFB
       have hPhiBD := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hBt hBD hDt
       have hPhifB := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hfB hBt
-      refine Or.inl ⟨SA.voterBlockTree_anc hr hy hc' D hD B hPhiBD,
+      refine Or.inl ⟨SA.voterBlockTree_anc_from hr hp.run.vstart hy hc' D hD B hPhiBD,
         hPhifB, D, hD, ?_, hPhiBD⟩
       have hfD := hPhifB.trans hPhiBD
       rw [hfr] at hDt hfD ⊢

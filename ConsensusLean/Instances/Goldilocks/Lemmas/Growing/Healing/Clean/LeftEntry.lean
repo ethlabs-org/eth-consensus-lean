@@ -22,7 +22,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **Left-entry provenance**: a high entry left by a reader honest at `t ≤ b` is the target of
 a held attestation whose signer is honest at `t` and wrote a high origin above the entry before
 signing. -/
-theorem left_entry_origin_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+theorem left_entry_origin_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
     (hy : y ∈ H t) (htb : t ≤ b) {E C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hE : E ∈ (tr.state y k).fg.tree) (hET : ((tr.state y k).fg.σ E.root).Th = E.root)

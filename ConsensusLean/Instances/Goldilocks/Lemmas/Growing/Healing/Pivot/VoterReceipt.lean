@@ -27,7 +27,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- An ancestor of a raw write is available at a later honest voter's read point. -/
 theorem raw_writer_voterBlockTree_before_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {r s i : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
     (hwriter : SA.ResultAt tr.projAC x r s C CV ∨ SA.FastLockAt tr.projAC x r s C CV)
@@ -38,7 +39,7 @@ theorem raw_writer_voterBlockTree_before_at
     (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
   have hm := hp.run.time_mono
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hsvc := hp.sync.ac_service_at hp.run (lo := SA.gbar g) (hi := tr.time i) (le_gbar g)
   have hΔ := sp.toParams.hΔ
   have hcatchAC : ∀ x q D, x ∈ H (tr.time q) → tr.projAC.AcceptAt x q D →
@@ -61,7 +62,7 @@ theorem raw_writer_voterBlockTree_before_at
     have hprev := Healing.run_F_mono hrj.toLocalRun hyj hj₀j
     rw [RunTrace.upTo_state_of_le hm (hm hj₀j), RunTrace.upTo_state_of_le hm le_rfl] at hprev
     have hsub := RunTrace.honestBlocks_upTo_subset hm (H := H) (hp.run.time_nonneg j)
-    obtain ⟨k, hkj₀, hak⟩ := hcatch x q₀ D (htime₀ ▸ hxq) hacc₀ (htime₀ ▸ hqt) y j₀
+    obtain ⟨k, hkj₀, hak⟩ := hp.catchUp x q₀ D (htime₀ ▸ hxq) hacc₀ (htime₀ ▸ hqt) y j₀
       (hp.run.antitone hlate hyj) hj₀ ((hprev.mono hsub).trans hFD')
     have hkj : k < j := lt_of_lt_of_le hkj₀ hj₀j
     have hak' := (RunTrace.upTo_acceptAt tr).mpr ⟨hm hkj.le, hak⟩
@@ -72,7 +73,7 @@ theorem raw_writer_voterBlockTree_before_at
     rw [hACt]
     exact hj₀.2 k hkj₀
   apply SA.Growing.raw_writer_voterBlockTree_window_before_at
-    (by rw [hp.stock]; exact sp.toParams.hn) hac.localRun hsvc hcatchAC
+    hp.committee_pos hac.localRun hac.vstart hsvc hcatchAC
     hx hy hwriter hBC hc (by omega) le_rfl ?_ hF
   have hsm : sp.ts s ≤ sp.ts ((e.msg.slot : Int) - 1) := (SA.ts_le_iff sp).mpr (by omega)
   linarith

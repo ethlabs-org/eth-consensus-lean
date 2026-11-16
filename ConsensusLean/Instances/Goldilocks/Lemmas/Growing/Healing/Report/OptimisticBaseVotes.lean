@@ -75,7 +75,7 @@ theorem optimistic_next_votes_of_early_witness_at
     have hn : 0 < sp.n := sp.toParams.hn
     omega
   exact SA.Growing.optimistic_transfer_stored
-    (Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc) _
+    (Compose.Growing.goldilocks_ac_projection_from hrun hnc) _
     (fun _ => SA.CommitteeP.full) (fun _ => SA.CommitteeT.full) (SA.size_binding_full hstock)
     hx hopt hXD (SA.cs2_full hstock hhalf) (SA.cs2_full hstock hhalf) hy hcast hs hcarry
     hviab

@@ -22,7 +22,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- The held-target proposal domain, with the high floor source of the proposal call as an
 explicit input. -/
 theorem held_target_proposal_domain_before_of_sources_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x p : Fin sp.n} {r i u : Nat} (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
     {ell : ACLabel (goldilocksNode sp ro)}
@@ -46,7 +47,7 @@ theorem held_target_proposal_domain_before_of_sources_at
     hheld hseed hcompare
   by_cases hcovered : Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot
   · exact Or.inl hcovered
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hac.localRun.upTo (hp.run.time_nonneg i)
   have hci' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hci)
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci'
@@ -132,7 +133,8 @@ theorem held_target_proposal_domain_before_of_sources_at
 /-- The held-target proposal domain, with independently honest source holder and proposer;
 the floor source is `high_floor_source_at_proposal_at`. -/
 theorem held_target_proposal_domain_before_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x p : Fin sp.n} {r i u : Nat} (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
     {ell : ACLabel (goldilocksNode sp ro)}

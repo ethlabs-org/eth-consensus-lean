@@ -285,7 +285,8 @@ theorem proposer_stored_lock_lt
     obtain ⟨r, hrk, O, hO, -⟩ := stored_slow_lock_provenance hrun hnc hpH iP l hl hf
     obtain ⟨ℓw, D, -, ⟨ℓX, C, hupd, -⟩, -⟩ := hO
     exact hreg hrk hupd
-  obtain ⟨r, hrk, CV, ℓ', D, -, hfl, -⟩ := stored_fast_lock_provenance hr' hpH iP l hl hf
+  obtain ⟨r, hrk, CV, ℓ', D, -, hfl, -⟩ :=
+    stored_fast_lock_provenance hr' hrun'.vstart hpH iP l hl hf
   rcases hfl with ⟨ℓX, C, hupd, -⟩ | ⟨ℓo, A, hpt, hsl, hsel, -⟩
   · exact hreg hrk hupd
   -- an optimistic lock of label `≥ s` has an honest slot-`s` supporter before the proposal
@@ -380,7 +381,7 @@ theorem proposer_lock_extends
       (hclean.2 hf) j y hy ℓy e hcy (by omega) hk
     exact ⟨Hd, hHd, hHdr, hB'B₁.trans (hLO.trans hOHd)⟩
   · obtain ⟨r, -, CV, ℓ', D, hcw, hfl, L, hL, hLr, hLO⟩ :=
-      stored_fast_lock_provenance hr' hpH iP l₁ hl₁ hf
+      stored_fast_lock_provenance hr' hrun'.vstart hpH iP l₁ hl₁ hf
     obtain rfl : L = B₁ := hU.1 hL (hΦU hB₁) (hLr.trans hB₁r.symm)
     obtain ⟨Hd, hHd, hHdr, hOHd⟩ := clean_fast_extends hrun hs hS.catchUp hS.settled hpH
       (⟨ℓ', D, hcw, hfl, rfl⟩ : Compose.StoredFastLockAt tr p r l₁.slot _ CV) (hclean.1 hf)

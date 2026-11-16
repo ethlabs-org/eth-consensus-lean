@@ -11,6 +11,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
 
 public section
 
@@ -27,7 +28,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- Before the next slot, high origins have either an older label or the unanimous label.
 Older origins are tested against a surviving voter, not their possibly compromised writer. -/
 theorem high_origins_before_next_slot_below_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
     (hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
@@ -51,15 +53,9 @@ theorem high_origins_before_next_slot_below_at
   · have hT0 : 0 ≤ sp.ts u + sp.Δ := by
       have := SA.gbar_nonneg g
       linarith [sp.toParams.hΔ]
-    obtain ⟨w, hw⟩ : (H (sp.ts u + sp.Δ)).Nonempty := by
-      by_contra hne
-      rw [Set.not_nonempty_iff_eq_empty] at hne
-      have hf := hp.faults _ hT0 hub
-      rw [hne, Set.compl_empty, Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hf
-      have := sp.toParams.hn
-      change 0 < sp.n at this
-      omega
-    obtain ⟨q, e, hv, hs, hq⟩ := honest_votes_in_slot_at hp hc hgu hR hub w hw
+    obtain ⟨w, hwK, hw⟩ := hp.committee_honest_nonempty_at (s := u)
+      (by linarith [sp.toParams.hΔ]) (by linarith [sp.toParams.hΔ]) hT0 hub
+    obtain ⟨q, e, hv, hs, hq⟩ := honest_votes_in_slot_at hp hgu hR hub w hw hwK
     obtain ⟨ellv, hcast⟩ := hv
     have hwq := hp.run.antitone hq hw
     obtain ⟨Hd, hHd, he, hBH⟩ := hp.high_origin_votes_before_at q (hq.trans hub)
@@ -70,13 +66,13 @@ theorem high_origins_before_next_slot_below_at
   · obtain ⟨ell', hc', hD⟩ := Healing.fastLock_mem hfl
     have hx := hp.run.antitone (le_max_right _ _) ho.1
     obtain rfl : ell = ell' := Option.some.inj (hcall.2.symm.trans hc'.2)
-    have hac := (Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl)
+    have hac := (Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl)
     obtain ⟨hPhi, hsub⟩ : FrameOK ell.frame ∧ ell.frame.tree ⊆ tr.HonestBlocksAt H := by
       rcases hac.localRun.frameLaw x r ell hx hcall with
         ⟨_, _, _, _, h⟩ | ⟨_, _, _, _, _, h⟩ <;> exact h.1
     have hBD := (SA.anc_viableAncestor ell.frame D).mono hsub
     rw [← hB] at hBD
-    exact hBD.trans (hp.same_slot_source_below_unanimous_at hc hx
+    exact hBD.trans (hp.same_slot_source_below_unanimous_at hx
       (Or.inl ⟨CV, hfl⟩) hrb (hp.cutZ_le_ts_of_highOrigin_at ho) hP hun)
 
 end Consensus.Goldilocks.Healing.Growing

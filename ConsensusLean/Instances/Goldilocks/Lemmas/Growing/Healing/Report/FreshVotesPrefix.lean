@@ -80,7 +80,7 @@ theorem honest_prefix_of_finality_before_at
   have hd := hr.time_nonneg i
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hri := (hac.upTo hd).localRun
   have hcast : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ell e := ⟨hci, hc.2⟩
   have hslot := (SA.castAt_spec hri hy hcast).2.1.symm.trans hes
@@ -147,9 +147,9 @@ theorem honest_prefix_of_finality_before_at
     change 0 < sp.n at hn
     omega
   rw [← SA.viableTree_voteDomain_eq_of_viable ⟨B, hB⟩]
-  exact SA.honest_prefix_of_carry sp hS.run _ SA.CommitteeT.full (SA.size_binding_full hS.stock)
-    (SA.cs2_full hS.stock hf') hy hcast hes hheads'
-    (fun x hx _ => by obtain ⟨j, ev, hv, hs, _⟩ := hex x hx; exact ⟨j, ev, hv, hs⟩)
+  exact SA.honest_prefix_of_carry sp hS.stockRun _ SA.CommitteeT.full
+    (SA.size_binding_full hstock) (SA.cs2_full hstock hf') hy hcast hes hheads'
+    (fun x hx hxK => by obtain ⟨j, ev, hv, hs, _⟩ := hex x hx hxK; exact ⟨j, ev, hv, hs⟩)
     hcarry (SA.viableTree_voterBlockTree_subset_voteDomain hB) haB
 
 /-- The actual warm proposal's start is reached by every shallower honest cast. -/
@@ -183,7 +183,7 @@ theorem FrameWindow.proposal_start_prefix_at {s₀ s floor : Nat}
       (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
       (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
   have hr := hrun.toLocalRun
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
   have hri := (hac.upTo (hr.time_nonneg i)).localRun
@@ -239,7 +239,8 @@ theorem FrameWindow.proposal_start_prefix_at {s₀ s floor : Nat}
     have hl' : l ∈ SA.liveLocks sp
         ((tr.projAC.upTo (tr.time ip)).state (proposer (s + 1)) ip).locks
         ellp.frame (tr.time ip) := by rw [hs]; exact hl
-    have hcap := (SA.locksWF_state (hac.upTo (hr.time_nonneg ip)).localRun
+    have hcap :=
+      (SA.locksWF_state (hac.upTo (hr.time_nonneg ip)).localRun (fun _ => SA.voteStart_initial _)
       (hdes ▸ hz') ip).slot_le_of_live hl'
     have hsl : sp.slot (tr.time ip) = s + 1 := SA.proposal_slot (tr := tr.projAC) hti
     rw [hsl] at hcap

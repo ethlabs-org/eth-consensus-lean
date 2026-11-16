@@ -124,7 +124,8 @@ private theorem tree_subset_honest {y : Fin sp.n} (hy : y ∈ H) {k : Nat} :
 which only an `fg_attest` that signs changes): a target or timeout entry `r` at `h` was the height
 pair `(h, r)` of an attestation the node signed earlier, a lock entry `r` at `h` its finality
 pair `(h, r)`. -/
-theorem client_record_origin_of_run (hrun : GoldilocksRun proposer dg H tr)
+theorem client_record_origin_of_run {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H)
     (h r : Nat) : ∀ i,
     ((tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h →
@@ -143,7 +144,8 @@ theorem client_record_origin (hp : ResetPremises tr H proposer dg g ΔF a)
   client_record_origin_of_run hp.run hy h r i
 
 /-- An honest record changes only when the node signs, by recording the signed attestation. -/
-theorem record_step_of_run (hrun : GoldilocksRun proposer dg H tr)
+theorem record_step_of_run {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     (tr.state y (i + 1)).record = (tr.state y i).record ∨
       ∃ att, tr.SignAt y i att ∧
@@ -151,13 +153,15 @@ theorem record_step_of_run (hrun : GoldilocksRun proposer dg H tr)
   record_step_from hrun.toLocalRun hy i
 
 /-- The sent contents of an honest record were signed earlier. -/
-theorem sent_origin (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+theorem sent_origin {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H)
     {b : FG.Content} : ∀ i, b ∈ (tr.state y i).record.sent →
       ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b :=
   sent_origin_from hrun.toLocalRun hy
 
 /-- Honest signatures are well formed using the store at their own signing cut. -/
-theorem signAt_wellFormed (hrun : GoldilocksRun proposer dg H tr)
+theorem signAt_wellFormed {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n}
     (hs : tr.SignAt y k att) : att.WellFormed :=
   signAt_wellFormed_from hrun.toLocalRun hy hs
@@ -166,7 +170,7 @@ theorem signAt_wellFormed (hrun : GoldilocksRun proposer dg H tr)
 (h)): the finality pair `(h, r)` that `fg_attest` signs (the justification of the entry state at an
 entry whose previous height is justified, or one of its pending pairs) names the entry at height `h`
 of an ancestor-or-self `J` of the source's entry `E` (whose root is the signed `T`). -/
-theorem signed_fin_pair_entry_of_run (hrun : GoldilocksRun proposer dg H tr)
+theorem signed_fin_pair_entry_of_run {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att) {h r : Nat}
     (hfin : att.fin = some (h, r)) :

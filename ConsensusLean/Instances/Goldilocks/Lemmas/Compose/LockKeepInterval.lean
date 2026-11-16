@@ -29,7 +29,8 @@ unlock premise at the view of the AC call made at the cut
 
 /-- One cut of lock keeping, with the unlock premise at the view `SA.unlockView` of the AC call
 at cut `i`. -/
-theorem lock_keep_run_view (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+theorem lock_keep_run_view {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H)
     (i : Nat) {l : SA.Lock} (hl : l ∈ (tr.state y i).ac.locks)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hk : l.LiveAt sp (tr.time i))
     (hB : B ∈ (Node.frame (tr.state y i)).tree) (hBr : B.root = l.block)
@@ -67,7 +68,8 @@ theorem lock_keep_run_view (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n
 
 /-- Lock keeping over an interval of cuts, with the unlock premise at the view of the AC call
 at each cut. -/
-theorem lock_keep_interval_view (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+theorem lock_keep_interval_view {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i k : Nat} (hik : i ≤ k) {l : SA.Lock} (hl : l ∈ (tr.state y i).ac.locks)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBr : B.root = l.block)
     (hstep : ∀ j, i ≤ j → j < k → l.LiveAt sp (tr.time j) ∧

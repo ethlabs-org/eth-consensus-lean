@@ -368,7 +368,7 @@ theorem outage_reader_bridge_at (Q : OutageQueryAt S A V)
       exact ((hFc G.cut hcj.le).trans hFt).trans hTO
     obtain ⟨⟨C, CV, hR⟩, hall⟩ :=
       Compose.Growing.gate_result_extends_at hrun hnc
-        (voteK_committeeP S Q.run.2 Q.hn Q.valid Q.noCollision hrun) hŵG hS G.update
+        (voteK_committeeP S Q.run.2 Q.hn Q.valid hnc hrun) hŵG hS G.update
         G.restored hmaj hFB
     have h := Compose.Growing.record_above_from_at hinv G.update hR (by rw [hr]; exact hrs.le)
       (by rw [hP]; exact hall C CV hR) j t hcj ht0 hjt hŵ
@@ -449,7 +449,7 @@ theorem outage_reader_bridge_at (Q : OutageQueryAt S A V)
         · exact (Anc.mem hfa he).1
       exact Compose.Growing.frame_mem_of_tree_at hrun hnc ht0 hŵ hjt htt hFt
     have hL3 := Compose.Growing.read_majority_of_extending_at hrun hnc
-      (voteK_committeeP S Q.run.2 Q.hn Q.valid Q.noCollision hrun) ht0 hŵ
+      (voteK_committeeP S Q.run.2 Q.hn Q.valid hnc hrun) ht0 hŵ
       hjt G.view hmaj' hBt hdeliv
     have hanchor : Compatible (Node.frame st).tree
         (SA.getAnchor Q.params st.ac (Node.frame st) t) ar.tip :=

@@ -12,6 +12,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 import ConsensusLean.Lemmas.Tactic.Linarith
 
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 public section
 
 /-! # A counted high-origin supporter reaches a later voter without catch-up
@@ -33,7 +36,8 @@ set_option linter.unusedVariables false in
 /-- A high origin is in a later honest cast's voter tree whenever its finalized cache
 is below that origin. There is no catch-up premise or retained-vote induction dependency. -/
 theorem high_origin_held_at_vote_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
     (hy : y ∈ H (tr.time k))
@@ -42,7 +46,7 @@ theorem high_origin_held_at_vote_at
     (hj : j < e.msg.slot) (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
   have hm := hp.run.time_mono
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hac.localRun.upTo (hp.run.time_nonneg k)
   have hc' : SA.CastAt (tr.projAC.upTo (tr.time k)) y k ell e :=
     ⟨(Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩, hc.2⟩
@@ -50,20 +54,20 @@ theorem high_origin_held_at_vote_at
   obtain ⟨ellX, D, CV, hcx, hfl, hBD⟩ := highOrigin_raw_head_at hp.run hp.noColl ho
   have hr' := hac.upTo (hp.run.time_nonneg i)
   have hlab := hp.cutZ_le_ts_of_highOrigin_at ho
-  have hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n := by
-    have := hp.faults (tr.time i) (hp.run.time_nonneg i) hib
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    omega
+  have hf := hp.committee_cs2_at (s := j) (Healing.gbar_le_of_cutZ_le sp hlab)
+    ((ProposalImpl.ts_le_of_fastLock_at hp.run hfl).trans hib) (hp.run.time_nonneg i) hib
   obtain ⟨z, hz, q, ez, hv, hes, W, hW, hWr, hDW⟩ :=
-    SA.fastLock_honest_vote hr' hf (hp.run.antitone (le_max_right _ _) ho.1)
-      ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hp.stock
+    SA.fastLock_honest_vote hr' _
+      (SA.CommitteePAt.upTo hm hp.run.antitone hp.committeeFacts.hP _)
+      (hp.run.antitone (le_max_right _ _) ho.1)
+      ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hf
   obtain ⟨hqi, hv₀⟩ := (SA.upTo_voteAt).mp hv
   have hzq := hp.run.antitone hqi hz
   obtain ⟨ellZ, hcz, he⟩ := hv₀
   have hrq := hac.localRun.upTo (hp.run.time_nonneg q)
   have hcz' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcz)
-  obtain ⟨⟨W', hW't, hW'r, _⟩, hqt⟩ := Compose.cast_head_fcRoot hrq hzq ⟨hcz', he⟩
+  obtain ⟨⟨W', hW't, hW'r, _⟩, hqt⟩ :=
+    Compose.cast_head_fcRoot_from hrq hp.run.vstart hzq ⟨hcz', he⟩
   have hWW : W' = W := hac.localRun.coherent.1
     ((SA.frameIn_of_callAt hrq hzq hcz').2 hW't) hW (hW'r.trans hWr.symm)
   subst W'
@@ -112,8 +116,8 @@ theorem high_origin_held_at_vote_at
       exact hyj
     intro r hrk hrr
     have hrr' := (ACTrace.upTo_restartAt).mpr ⟨hm hrk, hrr⟩
-    have hh := ((SA.joined_awake sp) (List (FG.Att sp.n)) ro (H (tr.time k))
-      (tr.HonestBlocksAt H) _ hr y hy k ell hc'.1 hj').2 r hrk hrr'
+    have hh := (SA.joined_awakeU sp (List (FG.Att sp.n)) ro (H (tr.time k))
+      (tr.HonestBlocksAt H) _ hr.toU y hy k ell hc'.1 hj').2 r hrk hrr'
     change tr.time r ≤ sp.ts ((sp.slot (tr.time k) : Int) - 1) at hh
     rwa [← hys] at hh
   have hdl : ∀ r ≤ k, tr.projAC.deadline y r (tr.time c) <
@@ -137,7 +141,8 @@ theorem high_origin_held_at_vote_at
   have hfz : SA.freeze sp e.msg.slot ≤ tr.time k := by
     unfold SA.freeze
     linarith
-  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hy hc'.1 hWt (Or.inr ⟨r, har', hrt'⟩)
+  have hbs := SA.blockStamp_lt_of_acceptedBefore_from sp hr hp.run.vstart hy hc'.1 hWt
+    (Or.inr ⟨r, har', hrt'⟩)
     (fun r hrk hrr => lt_of_le_of_lt (hrsy r hrk ((ACTrace.upTo_restartAt).mp hrr).2)
       (by unfold SA.freeze; linarith)) (Or.inl hfz)
   have hne : ∀ X, ell.call = .block X → W.root ≠ X.root := by
@@ -159,7 +164,7 @@ theorem high_origin_held_at_vote_at
     rw [Outcome.frame_of_call hp.run hy hc.1]
     exact ⟨hBt, store_anc_of_honest_anc_at hp.run hp.noColl
       (hp.run.time_nonneg k) (fun _ hq => hm hq.le) hy hF' hBt⟩
-  exact SA.voterBlockTree_anc hr hy hc' W hWtree B
+  exact SA.voterBlockTree_anc_from hr hp.run.vstart hy hc' W hWtree B
     (SA.anc_tree_of_anc_U hac.localRun.coherent hPhi hPhiU hBf hBW hWt)
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo

@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
@@ -22,8 +23,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A bounded result has a supporter still honest when the result is read. -/
 theorem result_supporter_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {x : Fin sp.n} {r s : Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {x : Fin sp.n} {r s : Nat}
     (hx : x ∈ H (tr.time r))
     {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocksAt H) B C)
@@ -33,7 +35,7 @@ theorem result_supporter_at
   have ht0 := hp.run.time_nonneg r
   have hm := hp.run.time_mono
   have hpre := hp.run.upTo ht0
-  have hS := healthy_base_of_reset_catch_before_at hp hc ht0 hrb
+  have hS := healthy_base_of_reset_catch_before_at hp ht0 hrb
   have hΔ := sp.toParams.hΔ
   obtain ⟨ell, hu, hconf, hCV⟩ := hres
   have ht : tr.time r = sp.ts s + 6 * sp.Δ := hu.2.2.1
@@ -61,17 +63,22 @@ theorem result_supporter_at
     exact ⟨by omega, (hp.restart_le_before_at hyt hk₀
       ((hkt.trans hsb).trans hrb)).trans ((SA.ts_le_iff sp).mpr (by
         exact_mod_cast (show sp.slot (SA.gbar g) + 1 ≤ s - 1 by omega)))⟩
-  have hf : 3 * (H (tr.time r))ᶜ.ncard < sp.n := by
-    have := hp.faults (tr.time r) ht0 hrb
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    omega
   have hu' := (SA.upTo_updateAt hm).mpr (And.intro le_rfl hu)
   have hparts := Compose.honest_participants_window_before hpre (hp.noColl.upTo _)
+    (K := Generic.dictOfTime sp cm)
     (by rw [RunTrace.upTo_projAC]; exact SA.serviceWindowBefore_of_sync hS.sync)
-    hgs hx (by rwa [RunTrace.upTo_projAC]) le_rfl hready hf
+    hgs hx (by rwa [RunTrace.upTo_projAC]) le_rfl hready
+    (fun y hy hyK i => by
+      rw [← Compose.projAC_state hpre.toLocalRun hy i]
+      exact (SA.trace_mayVote_iff (Compose.goldilocks_ac_projection_from hpre
+        (hp.noColl.upTo _)).localRun hy i s).2 hyK)
+    (fun v hv => hp.committeeFacts.hP.1 _ x hx r (fun _ hk => hm hk.le) s v (by
+      rwa [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC x (fun _ hk => hm hk.le)] at hv))
+    (by
+      rw [hp.committeeFacts.hsize s]
+      exact hp.committee_cs2_at hgs (by linarith) (hp.run.time_nonneg r) hrb)
   rw [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC x (fun _ hk => hm hk.le)] at hparts
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hres' := (SA.upTo_resultAt hm).mpr (And.intro le_rfl
     (show SA.ResultAt tr.projAC x r s C CV from ⟨ell, hu, hconf, hCV⟩))
   obtain ⟨z, hz, q, hqr, e, hv, hev, hes, hVB⟩ :=

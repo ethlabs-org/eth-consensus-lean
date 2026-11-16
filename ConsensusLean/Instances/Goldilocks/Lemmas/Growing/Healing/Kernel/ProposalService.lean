@@ -22,7 +22,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Reset service projected with source honesty at release and reader honesty at its call. -/
 theorem ResetService.ac_service_at (hs : ResetService tr H g ΔF b)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hg : g ≤ lo) :
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hg : g ≤ lo) :
     SA.Growing.ServiceWindowBefore H (tr.HonestBlocksAt H) lo hi tr.projAC := by
   have hm := hrun.time_mono
   constructor

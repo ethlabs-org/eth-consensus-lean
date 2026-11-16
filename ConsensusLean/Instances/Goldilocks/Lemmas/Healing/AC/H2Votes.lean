@@ -91,7 +91,7 @@ theorem h2_duty_anchor (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P :
       obtain rfl : B' = B₀ := hΦ.coherent.1 hB' hB₀ (hB'r.trans hB₀r.symm)
       have hle := stored_lock_slot_le hr hx i hl₀
       replace hlive : sp.slot (tr.time i) ≤ l.slot + sp.k :=
-        hlive.trans ((castAt_readPoint_locksWF hr hx hce).cap hl)
+        hlive.trans ((castAt_readPoint_locksWF hr (fun _ => SA.voteStart_initial _) hx hce).cap hl)
       rw [hsl] at hle hlive
       obtain ⟨-, hprops⟩ := locksSettled_iff.1 hset x hx i (by linarith only [hΔ, hti]) l₀ hl₀
         (by rw [hsl]; (clear * - hsl₀ hlive; omega)) B (hΦU hB) hBr

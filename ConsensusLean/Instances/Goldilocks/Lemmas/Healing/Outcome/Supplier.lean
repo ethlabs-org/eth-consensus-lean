@@ -143,8 +143,8 @@ theorem ResetPremisesUpTo.operational_unanimous {b : Time}
 
 /-- Every honest node executes the joined update and immediately following joined to-FG call
 at the coverage deadline. This supplies calls, not a nonempty returned report. -/
-theorem update_toFG_calls_of_awake
-    (hrun : GoldilocksRun proposer dg H tr)
+theorem update_toFG_calls_of_awake {ini}
+    (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {u : Nat}
     (hawake : tr.awake y (sp.ts u + 6 * sp.Δ))
     (hjoin : ∀ i, tr.time i = sp.ts u + 6 * sp.Δ →
@@ -215,7 +215,7 @@ theorem ResetPremisesUpTo.update_toFG_calls {b : Time}
   intro i hi
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   unfold SA.joined
-  rcases SA.restartTime_state hr hy i with h | ⟨r, hri, hrs, h⟩
+  rcases SA.restartTime_state hr hp.run.vstart hy i with h | ⟨r, hri, hrs, h⟩
   · rw [h]; exact bot_le
   · rw [h]
     apply WithBot.coe_le_coe.mpr
@@ -231,7 +231,8 @@ theorem ResetPremisesUpTo.update_toFG_calls {b : Time}
 /-- A deepest candidate extending a non-genesis block gives an actual report by this call's
 time, including the historical report that suppresses a new return. -/
 theorem report_of_deepest_candidate_of_run
-    (hrun : GoldilocksRun proposer dg H tr) (hnoColl : Compose.NoCollRun dg tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) (hnoColl : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y j ell) (hcall : ell.call = .toFG)
     (hjoin : SA.joined sp (tr.projAC.state y j) (tr.time j))
@@ -241,12 +242,12 @@ theorem report_of_deepest_candidate_of_run
       ell.frame (tr.time j)) = some C) (hPC : ell.frame.Anc P C) :
     ∃ r ell' R, SA.ToFGAt tr.projAC y r ell' R ∧ tr.time r ≤ tr.time j ∧
       Anc (tr.HonestBlocks H) P R := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnoColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnoColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc
   by_cases hrep : SA.AncR ell.frame C (tr.projAC.state y j).fgReported
   · obtain ⟨R, hRt, hRr, hCR⟩ := hrep
     have hPR : ell.frame.Anc P R := hPC.trans hCR
-    rcases fgReported_origin hr hy j with hgen | ⟨r, hrj, ell', R', hto, hR'r⟩
+    rcases fgReported_origin hr hrun.vstart hy j with hgen | ⟨r, hrj, ell', R', hto, hR'r⟩
     · have hG := Store.genesis_mem (Compose.fg_reachable hrun.toLocalRun hy j)
       have he := hr.coherent.1 (hPhiU hRt) ⟨y, hy, j, hG⟩ (hRr.trans hgen)
       rw [he] at hPR
@@ -265,7 +266,8 @@ theorem report_of_deepest_candidate_of_run
 /-- A live report candidate compatible with every other candidate supplies an actual report
 extending it. An earlier report suppressing this call is included in the conclusion. -/
 theorem report_of_compatible_candidate_of_run
-    (hrun : GoldilocksRun proposer dg H tr) (hnoColl : Compose.NoCollRun dg tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) (hnoColl : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y j ell) (hcall : ell.call = .toFG)
     (hjoin : SA.joined sp (tr.projAC.state y j) (tr.time j))
@@ -275,7 +277,7 @@ theorem report_of_compatible_candidate_of_run
       Compatible (tr.HonestBlocks H) C P) :
     ∃ r ell' R, SA.ToFGAt tr.projAC y r ell' R ∧ tr.time r ≤ tr.time j ∧
       Anc (tr.HonestBlocks H) P R := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnoColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnoColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc
   have hsub : SA.toFGCandidates sp (tr.projAC.state y j) ell.frame (tr.time j) ⊆
       ell.frame.tree := fun _ h => h.1.1
@@ -347,7 +349,8 @@ theorem same_slot_source_below_ready
     exact he ▸ hBH
   rcases horig with ⟨CV, hf⟩ | ⟨ell, C, hupd, hC, hD⟩
   · obtain ⟨z, hz, j, e, hv, hes, hB⟩ :=
-      SA.fastLock_honest_vote hS.run hS.two_faulty_lt hx hf hp.stock
+      SA.fastLock_honest_vote hS.run _ SA.CommitteeP.full hx hf
+        (SA.cs2_full hp.stock hS.two_faulty_lt)
     exact below z hz j e hv hes hB
   · obtain ⟨z, hz, j, e, hv, hes, Hd, hHd, hHdr, hCH⟩ := SA.result_extended hS hgu hx
       hupd.1 (by rw [hupd.2.2.1]; linarith [sp.toParams.hΔ]) hC
@@ -410,7 +413,9 @@ theorem ready_call_locks_compatible
   rw [he]
   by_cases hlu : l.slot < u
   · exact Or.inl (ready_old_lock_below hp hc hP hR hgu hy hcall
-      hafter hl hlu (le_trans hlive ((SA.locksWF_state hr hy j).cap hl)) hB hBr)
+      hafter hl hlu
+        (le_trans hlive ((SA.locksWF_state hr (fun _ => SA.voteStart_initial _) hy j).cap hl)) hB
+          hBr)
   obtain ⟨r, hrj, D, horig, X, hX, hXr, hXD⟩ : ∃ r < j, ∃ D,
       ((∃ CV, SA.FastLockAt tr.projAC y r l.slot D CV) ∨ SA.SlowLockAt tr.projAC y r l.slot D) ∧
       ∃ X ∈ tr.HonestBlocks H, X.root = l.block ∧ Anc (tr.HonestBlocks H) X D := by

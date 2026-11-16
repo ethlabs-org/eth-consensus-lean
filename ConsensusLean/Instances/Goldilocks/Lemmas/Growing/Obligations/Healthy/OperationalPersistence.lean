@@ -32,8 +32,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **A post-drain operational proposal is below every bounded honest proposal parent at least
 two slots later**, under growing faults. -/
 theorem UpTo.operational_proposal_below_later_parent_at
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H (sp.ts u + Regimes.Growing.hold sp)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
@@ -87,11 +87,11 @@ theorem UpTo.operational_proposal_below_later_parent_at
     omega
   have hun : ∀ z j e, z ∈ H (tr.time j) → SA.VoteAt tr.projAC z j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root := fun z j e hz hv hjb hs =>
-    hp.operational_unanimous_at hc hpH hdesignated hactual hPs hR (by linarith)
+    hp.operational_unanimous_at hpH hdesignated hactual hPs hR (by linarith)
       z j e hz hv hs hjb
   have hRnext := hR.trans ((SA.ts_le_iff sp).2 (show (u : Int) ≤ (u + 1 : Nat) by omega))
   obtain ⟨x, q, m, S, ho, _, _, hqt⟩ := hp.reset_seed_before_slot_at hR
-  have hSP := Healing.Growing.old_origin_below_unanimous_at hp hc hPU hun hgu hRnext
+  have hSP := Healing.Growing.old_origin_below_unanimous_at hp hPU hun hgu hRnext
     (show sp.ts u + sp.Δ ≤ b by linarith) ho hqt
   have hT0 : 0 ≤ sp.ts u + 6 * sp.Δ := by
     have := hrun.time_nonneg k; rw [htk] at this; linarith
@@ -105,7 +105,7 @@ theorem UpTo.operational_proposal_below_later_parent_at
       ∃ z r ellr C, z ∈ H (max (Healing.cutZ sp.toParams g) (tr.time r)) ∧
         SA.ToFGAt tr.projAC z r ellr C ∧
         tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P C := by
-    rcases Healing.Growing.report_cover_of_unanimous_at hp hc hPU hPs hu hPg hun hgu hRnext hTb
+    rcases Healing.Growing.report_cover_of_unanimous_at hp hPU hPs hu hPg hun hgu hRnext hTb
       with hall | hsome
     · obtain ⟨w, hw⟩ : (H (sp.ts u + 6 * sp.Δ)).Nonempty := by
         by_contra hne
@@ -131,13 +131,14 @@ theorem UpTo.operational_proposal_below_later_parent_at
     push_cast at hle
     linarith
   have hRv := hR.trans ((SA.ts_le_iff sp).2 (show (u : Int) ≤ v by omega))
-  exact hPC.trans (hCO.trans (hp.reset_proposal_passes_at hc hy hRv hci hcall hd hti hib O
+  exact hPC.trans (hCO.trans (hp.reset_proposal_passes_at hy hRv hci hcall hd hti hib O
     ⟨z, io, jo, hO, ((hrun.time_mono hior.le).trans hrt).trans_lt hTv⟩))
 
 /-- **No reorg two slots on, through the horizon**, under growing faults. -/
 theorem honest_proposal_below_later_upTo_at
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : Healing.Growing.CatchRun tr H g (2 * sp.Δ)) {s s' : Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {s s' : Nat}
     {P P' : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : Healing.Growing.HonestProposalRun tr H proposer s P)
     (hR : Healing.drainTime sp a ≤ sp.ts s)
@@ -153,14 +154,15 @@ theorem honest_proposal_below_later_upTo_at
   have hy' : proposer s' ∈ H (sp.ts s') := hp.run.antitone
     (le_add_of_nonneg_right hΔ.le) hP'.1
   exact honest_proposal_child_at hp hP' fun hci hcall hd hti =>
-    UpTo.operational_proposal_below_later_parent_at hp hc hP.1 rfl hk hPs hR hTb
+    UpTo.operational_proposal_below_later_parent_at hp hP.1 rfl hk hPs hR hTb
       (hti ▸ hy') hss hci hcall hd hti (hti ▸ hb)
 
 /-- **No reorg one slot on, through the horizon**, under growing faults, with the service reserve
 `t_s + 6Δ ≤ b`. -/
 theorem honest_proposal_below_next_upTo_at
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : Healing.Growing.CatchRun tr H g (2 * sp.Δ)) {s : Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {s : Nat}
     {P P' : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : Healing.Growing.HonestProposalRun tr H proposer s P)
     (hR : Healing.drainTime sp a ≤ sp.ts s)
@@ -171,7 +173,7 @@ theorem honest_proposal_below_next_upTo_at
   have hy' : proposer (s + 1) ∈ H (sp.ts (s + 1 : Nat)) := hp.run.antitone
     (le_add_of_nonneg_right sp.toParams.hΔ.le) hP'.1
   exact honest_proposal_child_at hp hP' fun hci hcall hd hti =>
-    UpTo.operational_proposal_below_next_parent_at hp hc hP.1 rfl hk hPs hR hTb
+    UpTo.operational_proposal_below_next_parent_at hp hP.1 rfl hk hPs hR hTb
       (hti ▸ hy') hci hcall hd hti
 
 end Consensus.Goldilocks.Obligations.Growing

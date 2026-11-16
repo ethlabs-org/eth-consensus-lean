@@ -39,7 +39,8 @@ theorem slow_window_results_at
     · rwa [hs]
     · simpa only [hs, Trace.upTo_time] using hdeep
   intro j hj hjs
-  obtain ⟨k, R, CV, hR, hDR⟩ := SA.slow_window_results hr hx hsl' j hj hjs
+  obtain ⟨k, R, CV, hR, hDR⟩ := SA.slow_window_results hr
+    (fun _ => SA.voteStart_initial _) hx hsl' j hj hjs
   obtain ⟨hkc, hR⟩ := (sa_resultAt_upTo hrun.time_mono).mp hR
   exact ⟨k, R, CV, hrun.antitone hkc hx, hR,
     hDR.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono hd)⟩

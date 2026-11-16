@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunCommittee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Seed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Invariant
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Continuation
@@ -112,7 +113,8 @@ theorem handover_seed_of_handover_at (hn : 1 ≤ Fintype.card V)
         (honestKeysAt { S with vote := stock } r.2)
       (runProposer { S with vote := stock } r.2 hn) (digestOf { S with vote := stock } r.2)
         g (protoFGDelay (Model.pubOf r.1)) T
-          rL σ :=
+          rL σ (cm := runCommittee { S with vote := stock } r.2 hn)
+          (βK := (K S A).params.βK) :=
   let h := handover_query_at hn hv hx hcap hh hTh hT hp
   handover_seed_at S A V (handoverQuery S A V hn hv hx hcap i hh hTh) h.1 h.2.1 h.2.2
 
@@ -131,7 +133,9 @@ theorem handover_invariant_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤ 
     ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys
         (runProposer { S with vote := stock } Q.run.2 Q.hn)
         (digestOf { S with vote := stock } Q.run.2) Q.gst
-        (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ ∧
+        (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ
+        (cm := runCommittee { S with vote := stock } Q.run.2 Q.hn)
+        (βK := (K S A).params.βK) ∧
       ∃ t₁, t₁ ≤ Q.bound ∧ Q.params.ts (r + Q.params.k : Nat) ≤ t₁ ∧
         t₁ + 8 * Q.params.Δ + 1 ≤ Q.heal ∧
         ∀ b, Q.bound ≤ b →
@@ -144,8 +148,9 @@ theorem handover_invariant_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤ 
   have hΔ := Q.params.toParams.hΔ
   refine ⟨r, σ, hseed, max t₀ (Q.params.ts (r + Q.params.k : Nat)), max_le ht₀T (hdt₀.trans ht₀T),
     le_max_right _ _, ?_, fun b hTb hsvc hB hcv =>
-      Compose.Growing.seeded_invariant_of_cover_at hpr.run hpr.noColl hseed hTb hsvc hB hcv hcov
-        rfl⟩
+      Compose.Growing.seeded_invariant_of_cover_at
+        (simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid) hpr.noColl hseed
+        hTb hsvc hB hcv hcov rfl⟩
   rw [max_eq_left hdt₀]
   exact hlate
 

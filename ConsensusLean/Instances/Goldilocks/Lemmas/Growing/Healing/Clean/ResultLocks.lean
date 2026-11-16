@@ -22,7 +22,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Every older live stored lock compares with a clean raw-result prefix. -/
 theorem result_prefix_stored_locks_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {r s i : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocksAt H) B C)
@@ -33,8 +34,8 @@ theorem result_prefix_stored_locks_at
       ∀ Y ∈ tr.HonestBlocksAt H, Y.root = l.block → Compatible (tr.HonestBlocksAt H) Y B := by
   have hm := hp.run.time_mono
   have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
-  have hac := Compose.goldilocks_ac_projection sp ro dg (H (tr.time i))
-    (tr.upTo (tr.time i)) proposer (hp.run.upTo (hp.run.time_nonneg i)) (hp.noColl.upTo _)
+  have hac := Compose.goldilocks_ac_projection_from (hp.run.upTo (hp.run.time_nonneg i))
+    (hp.noColl.upTo _)
   rw [RunTrace.upTo_projAC] at hac
   have sub := RunTrace.honestBlocks_upTo_subset hm (H := H) (hp.run.time_nonneg i)
   have hclean : cleanLabel sp a + sp.k + 2 ≤ s := by
@@ -58,21 +59,21 @@ theorem result_prefix_stored_locks_at
           SA.SlowLockAt tr.projAC y q l.slot D) → Compatible (tr.HonestBlocksAt H) C D := by
       intro q D hyq hqb hsource
       obtain ⟨z, hz, j, hjr, e, ⟨ell, hcast⟩, _, hes, Hd, hHd, he, hCH⟩ :=
-        ProposalImpl.result_supporter_at hp hc hx hres .refl hrb hts
+        ProposalImpl.result_supporter_at hp hx hres .refl hrb hts
       have hzj := hp.run.antitone (hm hjr.le) hz
       have hjb := (hm hjr.le).trans hrb
       have hv : SA.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
         rcases hsource with ⟨CV', hfast⟩ | hslow
-        · exact hp.fast_source_votes_before_at hc hyq hfast hclean hqb j hjb z hzj ell e
+        · exact hp.fast_source_votes_before_at hyq hfast hclean hqb j hjb z hzj ell e
             hcast (by omega)
-        · exact hp.slow_source_votes_before_at hc hyq hslow hclean hqb j hjb z hzj ell e
+        · exact hp.slow_source_votes_before_at hyq hslow hclean hqb j hjb z hzj ell e
             hcast (by omega)
       obtain ⟨Hd', hHd', he', hDH⟩ := hv
       obtain rfl : Hd' = Hd := hU.1 hHd' hHd (he'.trans he.symm)
       exact SA.anc_total hU hCH hDH
     cases hf : l.fast
     · obtain ⟨q, hqi, D, hsl, L, hL, hLr, hLD⟩ :=
-        SA.slow_lock_provenance hac.localRun hy i l hl hf
+        SA.slow_lock_provenance_from hac.localRun hp.run.vstart hy i l hl hf
       obtain rfl : Y = L := hU.1 hY (sub hL) (hYr.trans hLr.symm)
       obtain ⟨ell, R, hu, hconf, hdeep⟩ := hsl
       obtain ⟨hqd, hu⟩ := (SA.upTo_updateAt hm).mp hu
@@ -85,12 +86,12 @@ theorem result_prefix_stored_locks_at
       exact down (hLD.mono sub) (compare (hp.run.antitone (hm hqi.le) hy)
         ((hm hqi.le).trans hib) (Or.inr hsl'))
     · obtain ⟨q, hqi, D, CV', hfl, L, hL, hLr, hLD⟩ :=
-        SA.fast_lock_provenance hac.localRun hy i l hl hf
+        SA.fast_lock_provenance_from hac.localRun hp.run.vstart hy i l hl hf
       obtain rfl : Y = L := hU.1 hY (sub hL) (hYr.trans hLr.symm)
       exact down (hLD.mono sub) (compare (hp.run.antitone (hm hqi.le) hy)
         ((hm hqi.le).trans hib) (Or.inl ⟨CV', ((SA.upTo_fastLockAt hm).mp hfl).2⟩))
   · obtain ⟨L, hL, hLr, D, hLD, q, hqi, CV', hD⟩ :=
-      SA.lock_below_origin hac.localRun hy i l hl
+      SA.lock_below_origin_from hac.localRun hp.run.vstart hy i l hl
     obtain rfl : Y = L := hU.1 hY (sub hL) (hYr.trans hLr.symm)
     rw [hls] at hD
     have hD' := hD.imp (fun h => ((SA.upTo_resultAt hm).mp h).2)

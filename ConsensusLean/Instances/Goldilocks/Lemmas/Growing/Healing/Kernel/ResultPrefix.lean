@@ -51,8 +51,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 `ResetPremisesUpTo.late_result_prefix_votes_before_at` with the same statement: by strong
 induction on the cast's cut. -/
 theorem late_result_prefix_votes_before_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {x : Fin sp.n} {r s : Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {x : Fin sp.n} {r s : Nat}
     (hx : x ∈ H (tr.time r))
     {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocksAt H) B C)
@@ -72,7 +73,7 @@ theorem late_result_prefix_votes_before_at
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
   have hrun := hp.run
   have hnc := hp.noColl
-  have hrun' := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hrun' := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   intro i
   induction i using Nat.strong_induction_on with
@@ -89,19 +90,21 @@ theorem late_result_prefix_votes_before_at
   · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := hhead
     exact ⟨Hd, hΦU hHd, hHdr, hBF.trans (hfHd.mono hΦU)⟩
   have hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B := (hΦ.rooted.2 B hv.1.1).mono hΦU
-  have hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n := by
-    have h3 := hp.faults (tr.time i) hd hib
-    have := Fin.pos x
-    have hn : sp.n = sp.toParams.n := rfl
-    omega
+  have hPK := hp.committeeFacts.hP
+  have hTK := hp.committeeFacts.committeeTAt hrun hnc
+  -- the slot committees from the result's label on are bounded through the horizon
+  have hgsl : ∀ {u : Nat}, s ≤ u → SA.gbar g ≤ sp.ts u := fun hu =>
+    Healing.gbar_le_of_cutZ_le sp (hts.trans ((SA.ts_le_iff sp).mpr (by exact_mod_cast hu)))
   by_cases hfirst : e.msg.slot = s + 1
   · exact SA.Growing.result_transfer_anc hrun' hx hres hBC hy hcast hfirst
-      (result_carry_reset_at hp hc hx hres hts hy hcast hfirst (hFB.trans hBC))
+      (result_carry_reset_at hp hx hres hts hy hcast hfirst (hFB.trans hBC))
       (by rw [← hfirst]; exact Or.inl hv)
-      (live_locks_of_stored_at hrun hnc hf hy hcast hfirst hv.1.1
-        (hstored y i ell e hy hcast hib hfirst)
+      (live_locks_of_stored_at hrun hnc _ hPK
+        (hp.committee_cs2_at (hgsl (by omega))
+          (((SA.ts_le_iff_le_slot sp hd _).mpr (by rw [← hsl, hfirst])).trans hib) hd hib)
+        hy hcast hfirst hv.1.1 (hstored y i ell e hy hcast hib hfirst)
         (fun z q hq hz e' he hslot => hprior z q e' hq
-          (Compose.Growing.hVoteAt_iff.2 ⟨hz, he⟩) (by omega)) hp.stock)
+          (Compose.Growing.hVoteAt_iff.2 ⟨hz, he⟩) (by omega)))
       (writer_merged_reset_at hp hx hres hts hy hcast hfirst)
   · obtain ⟨m, hm⟩ : ∃ m, e.msg.slot = m + 1 := ⟨e.msg.slot - 1, by omega⟩
     have hsm : s < m := by omega
@@ -121,19 +124,13 @@ theorem late_result_prefix_votes_before_at
         have := SA.slot_mono sp hd (hrun.time_mono (Nat.le_of_not_gt hn))
         omega
       exact hprior z q e' hqi (Compose.Growing.hVoteAt_iff.2 ⟨hz, ell', hc'⟩) (by omega)
-    have hfb := fault_bound_late_at hp (t := tr.time i)
-      (hmts.trans (by linarith only [htime, hts1, hΔ])) hib
-    exact SA.Growing.next_transfer sp _ ro H _ tr.projAC proposer hrun'
-      (SA.CommitteeDict.full sp.n)
-      ⟨fun _ _ _ _ _ s _ _ => SA.mem_full s _, fun _ _ _ _ _ _ s _ _ => SA.mem_full s _⟩
-      (fun _ _ _ _ _ _ _ v _ => SA.mem_full v.slot _) (SA.size_binding_full hp.stock)
-      m y i B ell e hy hcast hm hall
-      (by
-        rw [hp.stock]
-        exact hp.half_committee_at hmts (t := tr.time i) (by linarith only [htime, hts1, hΔ]) hib)
-      (honest_votes_carry_reset_at hp hc hy hcast hm hmts hall hFB)
-      ((SA.ncard_inter_full_lt_iff _ _ _).2 hfb)
-      (SA.Growing.cs2_full_of_faultBoundAt hp.stock hfb)
+    have hmi : sp.ts m ≤ tr.time i := by linarith only [htime, hts1, hΔ]
+    exact SA.Growing.next_transfer_from hrun' _ hPK hTK
+      hp.committeeFacts.hsize hy hcast hm hall
+      (hp.half_committee_at hmts (t := tr.time i) (by linarith only [htime, hts1, hΔ]) hib)
+      (honest_votes_carry_reset_at hp hy hcast hm hmts hall hFB)
+      (faultBoundK_late_at hp (hgsl hsm.le) (hmi.trans hib) (hmts.trans hmi) hib)
+      (hp.committee_cs2_at (hgsl (by omega)) (htime.trans hib) hd hib)
       (by rw [← hm]; exact Or.inl hv)
       (fun z q hq hz e' he hslot => hprior z q e' hq
         (Compose.Growing.hVoteAt_iff.2 ⟨hz, he⟩) (by omega))

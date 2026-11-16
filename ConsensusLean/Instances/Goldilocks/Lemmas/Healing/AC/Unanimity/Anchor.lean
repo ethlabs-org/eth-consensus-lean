@@ -168,7 +168,8 @@ theorem vote_anchor_cases_coreU
     obtain rfl : B' = a := hΦ.coherent.1 hB' haT (hB'r.trans hlr.symm)
     have hle := stored_lock_slot_leU hr hx j hl₀
     rw [hsl] at hle
-    have hlive := hlive.trans ((castAt_readPoint_locksWFU hr hx hc).cap hl)
+    have hlive :=
+      hlive.trans ((castAt_readPoint_locksWFU hr (fun _ => voteStart_initial _) hx hc).cap hl)
     obtain ⟨hvotes, hprops⟩ :=
       locksSettledFromU_iff.1 hs.settled x hx j (by linarith) l₀ hl₀ (by omega) B (hΦU hB) hBr
     have haB := hB'B.mono hΦU
@@ -256,7 +257,8 @@ theorem proposal_anchor_cases_coreU
     left
     obtain ⟨hvotes, -⟩ :=
       locksSettledFromU_iff.1 hs.settled _ hq k (by rw [hs.time]; linarith) l₂ hl₂
-        (hlive.trans ((locksWF_stateU hr hq k).cap hl₂)) B (hΦU hB₂) hB₂r
+        (hlive.trans ((locksWF_stateU hr (fun _ => voteStart_initial _) hq k).cap hl₂)) B
+        (hΦU hB₂) hB₂r
     intro z hz j e hv hes
     obtain ⟨Hd, hHd, hHdr, hBHd⟩ := votesExtendFrom_iff.1 hvotes z hz j e hv (by omega) hes.ge
     exact ⟨Hd, hHd, hHdr, haB.trans hBHd⟩
@@ -267,7 +269,8 @@ theorem proposal_anchor_cases_coreU
     obtain rfl : L = B := hU.1 hL (hΦU hB₂) (hLr.trans hB₂r.symm)
     rcases horig with ⟨CV, hopt⟩ | ⟨ℓ', hupd⟩
     · obtain ⟨z, hz, j', e', hv, hes, Hd, hHd, hHdr, hB'Hd⟩ :=
-        fastLock_honest_voteU hrun hS.two_faulty_lt hq (Or.inr hopt) hS.stock
+        fastLock_honest_voteU hrun _ SA.CommitteeP.full hq (Or.inr hopt)
+          (SA.cs2_full hS.stock hS.two_faulty_lt)
       exact ⟨z, hz, j', e', hv, hes.trans heq, Hd, hHd, hHdr, haB.trans (hLB'.trans hB'Hd)⟩
     · exfalso
       have h1 := hupd.2.2.1

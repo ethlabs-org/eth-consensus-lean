@@ -32,12 +32,13 @@ theorem slow_live_locks_service_at
     (hstock : sp.committeeSize = sp.n) :
     ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i),
       Compatible (tr.HonestBlocksAt H) L D := by
-  have hg := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hg := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := hg.upTo (hrun.time_nonneg i)
   have hc' := SA.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hslot : sp.slot (tr.time i) = s + 1 :=
     ((SA.castAt_spec hr.localRun hy hc').2.1).symm.trans hs
-  apply SA.live_locks_of_stored_before hr hf hy hc' hs ?_ ?_ hstock
+  apply SA.live_locks_of_stored_before hr _ SA.CommitteeP.full (SA.cs2_full hstock hf) hy hc' hs
+    ?_ ?_
   · intro l hl hlive hle Y hY hYr
     rw [projAC_upTo_state hrun le_rfl] at hl
     exact slow_stored_locks_service_at hrun hnc hsvc hx hsl hm hy

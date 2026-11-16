@@ -37,8 +37,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 proposal: the looked-up record has a source of a node honest at its own cut, no later than the
 update and with a label at least the update's. -/
 theorem operational_update_recent_source_at {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hhold : p ∈ H (sp.ts u + sp.Δ)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P)
@@ -52,7 +52,7 @@ theorem operational_update_recent_source_at {b : Time}
     ∃ x q s CV, x ∈ H (tr.time q) ∧ q ≤ j ∧ tr.time q ≤ tr.time j ∧ u ≤ s ∧
       (SA.ResultAt tr.projAC x q s R CV ∨ SA.OptimisticLockAt tr.projAC x q s R CV) := by
   obtain ⟨hPt, hconf, _, _, _, hrecord⟩ :=
-    operational_update_selection_at hp hc hhold hdesignated hactual hPs hR hgu hTb hy hup
+    operational_update_selection_at hp hhold hdesignated hactual hPs hR hgu hTb hy hup
   have hrun := hp.run
   have hc' := Compose.projAC_callAt.mp hup.1
   have hlaw := hrun.cutLaw y j _ hc' hy

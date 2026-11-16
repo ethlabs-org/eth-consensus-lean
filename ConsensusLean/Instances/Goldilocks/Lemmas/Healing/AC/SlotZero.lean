@@ -55,7 +55,8 @@ private theorem joined_of_sync_start {u : Nat → Set Lock} (hS : HealthyBaseU m
     (hg : g ≤ 0) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) (t : Time) :
     joined sp (tr.state y i) t := by
   unfold joined
-  rcases restartTime_stateU hS.run.localRun hy i with h | ⟨k, -, hk, -⟩
+  rcases restartTime_stateU hS.run.localRun (fun _ => voteStart_initial _) hy i with
+    h | ⟨k, -, hk, -⟩
   · rw [h]; exact bot_le
   · exact absurd hk (no_restart_of_sync_startU hS hg hy k)
 

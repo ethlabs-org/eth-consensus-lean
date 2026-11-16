@@ -18,7 +18,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {proposer : Nat → Fin sp.n}
 
 /-- An honest signing is at a public time, using honesty only at the signing cut. -/
-theorem sign_public (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem sign_public {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
     (hc : tr.CallAt y j (.fg (.attest C (some a)))) :

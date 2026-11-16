@@ -17,8 +17,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Older origins lie below the proposal; only next-slot optimistic writes can be later. -/
 theorem high_origin_compatible_before_update_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {u : Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {u : Nat}
     {P B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ tr.HonestBlocksAt H) (hslot : P.slot = u) (hu : 0 < u)
     (hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
@@ -30,12 +31,12 @@ theorem high_origin_compatible_before_update_at
   have hub : sp.ts u + sp.Δ ≤ b := by linarith [sp.toParams.hΔ]
   have hrb := ht.trans hTb
   by_cases ht' : tr.time r < sp.ts (u + 1 : Nat)
-  · exact Or.inl (high_origins_before_next_slot_below_at hp hc hP hun hgu hR hub ho ht' hrb)
+  · exact Or.inl (high_origins_before_next_slot_below_at hp hP hun hgu hR hub ho ht' hrb)
   obtain ⟨CV, ell, D, hcall, hfl, hB⟩ := ho.2.2.1
   have hx := hp.run.antitone (le_max_right _ _) ho.1
   obtain ⟨ell', hc', hD⟩ := Healing.fastLock_mem hfl
   obtain rfl : ell = ell' := Option.some.inj (hcall.2.symm.trans hc'.2)
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   obtain ⟨hPhi, hsub⟩ : FrameOK ell.frame ∧ ell.frame.tree ⊆ tr.HonestBlocksAt H := by
     rcases hac.localRun.frameLaw x r ell hx hcall with
       ⟨_, _, _, _, h⟩ | ⟨_, _, _, _, _, h⟩ <;> exact h.1
@@ -50,7 +51,7 @@ theorem high_origin_compatible_before_update_at
         omega
       by_cases heq : m = u
       · subst m
-        exact Or.inl (hp.same_slot_source_below_unanimous_at hc hx
+        exact Or.inl (hp.same_slot_source_below_unanimous_at hx
           (Or.inl ⟨CV, Or.inl ⟨ellr, C, hupd, by assumption⟩⟩) hrb
           (hp.cutZ_le_ts_of_highOrigin_at ho) hP hun)
       have hm : m < u := by omega
@@ -73,7 +74,7 @@ theorem high_origin_compatible_before_update_at
           ((u + 1 : Nat) : Int)).1 (not_lt.mp ht')
         omega
       have heq : m = u + 1 := by omega
-      exact unanimous_next_optimistic_compatible_at hp hc hP hslot hu hun hgu hR hub
+      exact unanimous_next_optimistic_compatible_at hp hP hslot hu hun hgu hR hub
         hx (heq ▸ hop) hrb
   rcases hDP with h | h
   · exact Or.inl (hBD.trans h)
@@ -81,8 +82,9 @@ theorem high_origin_compatible_before_update_at
 
 /-- A finalized cache after the reset is below a bounded origin compatible with the proposal. -/
 theorem finalized_compatible_before_update_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ tr.HonestBlocksAt H) (hslot : P.slot = u) (hu : 0 < u)
     (hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
@@ -93,7 +95,7 @@ theorem finalized_compatible_before_update_at
     Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F P := by
   obtain ⟨x, r, m, B, ho, hrk, _, hFB⟩ :=
     ProposalImpl.finalized_below_high_origin_at hp hy ha (ht.trans hTb)
-  rcases high_origin_compatible_before_update_at hp hc hP hslot hu hun hgu hR hTb ho
+  rcases high_origin_compatible_before_update_at hp hP hslot hu hun hgu hR hTb ho
       (hrk.trans ht) with h | h
   · exact Or.inl (hFB.trans h)
   · exact SA.anc_total (Compose.Growing.honest_blocks_coherent hp.run hp.noColl) hFB h

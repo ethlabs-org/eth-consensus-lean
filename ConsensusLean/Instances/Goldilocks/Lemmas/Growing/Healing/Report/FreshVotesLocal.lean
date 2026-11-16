@@ -56,8 +56,7 @@ theorem frozen_viable_of_anchor_path_at
     refine ⟨?_, hc.2⟩
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
-  have hac := Compose.goldilocks_ac_projection sp ro dg (H (tr.time i))
-    (tr.upTo (tr.time i)) proposer (hrun.upTo hd) (hnc.upTo (tr.time i))
+  have hac := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo (tr.time i))
   have hPh := SA.frameIn_of_callAt hac.localRun hy hc'.1
   have hP' := hPh.2 hP.1.1
   have hXP' := RunTrace.anc_upTo_of_right hr hnc hd hP' hXP

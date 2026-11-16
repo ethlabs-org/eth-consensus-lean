@@ -41,8 +41,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Every vote of slot `u` by a node honest at its cut, by `b`, is for the post-drain operational
 proposal `P` of slot `u`, whose proposer is honest through `t_u + hold`. -/
-theorem operational_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ))
+theorem operational_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H (sp.ts u + hold sp)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : drainTime sp a ≤ sp.ts u)
@@ -58,11 +58,10 @@ theorem operational_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF 
   change (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay) at hd
   have hib : tr.time i ≤ b := hti ▸ hub
   obtain ⟨D, hsD, hDQ, hviab, hvot⟩ :=
-    hp.reset_pivot_at hc hpH hactual hPs hR hci hcall hd hti hib hPQ
+    hp.reset_pivot_at hpH hactual hPs hR hci hcall hd hti hib hPQ
   have hi0 := hp.run.time_nonneg i
   have hpi : p ∈ H (tr.time i) := hp.run.antitone (by rw [hti, hold]; linarith) hpH
-  have hrp := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time i)) (tr.upTo (tr.time i))
-    proposer (hp.run.upTo hi0) (hp.noColl.upTo _)).localRun
+  have hrp := (Compose.goldilocks_ac_projection_from (hp.run.upTo hi0) (hp.noColl.upTo _)).localRun
   have hci' : (tr.upTo (tr.time i)).projAC.CallAt p i ellp := by
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hci
@@ -87,8 +86,8 @@ theorem operational_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF 
       fun x j' e' hx hj' hv' hs' => ih j' hj' x e' hx hv' hs'
         ((hp.run.time_mono hj'.le).trans hjb)
     have hj0 := hp.run.time_nonneg j
-    have hry := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time j))
-      (tr.upTo (tr.time j)) proposer (hp.run.upTo hj0) (hp.noColl.upTo _)).localRun
+    have hry :=
+      (Compose.goldilocks_ac_projection_from (hp.run.upTo hj0) (hp.noColl.upTo _)).localRun
     have hcy' : SA.CastAt (tr.upTo (tr.time j)).projAC y j elly e := by
       rw [RunTrace.upTo_projAC]
       exact SA.upTo_castAt.mpr ⟨le_rfl, hcy⟩
@@ -101,20 +100,20 @@ theorem operational_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF 
       rw [hes] at this
       exact_mod_cast this.le
     have hgj := hgu.trans hjt
-    have hroot := hp.reset_vote_root_below_proposal_at hc hpH hactual hPs hR hci hcall hd hti hib
+    have hroot := hp.reset_vote_root_below_proposal_at hpH hactual hPs hR hci hcall hd hti hib
       hPQ hy hcy hes hjb
-    have hPy := hp.reset_proposal_frame_at hc hpH hdesignated hactual hPs (by omega) hy hcy hes
+    have hPy := hp.reset_proposal_frame_at hpH hdesignated hactual hPs (by omega) hy hcy hes
       hjb hgj (hjoin.trans hjt) ((hPsi.F_anc_fcRoot.mono hPsiU).trans hroot)
-    have hPv := hp.reset_proposal_viable_at hc hpH hactual hPs hR hci hcall hd hti hib hPQ
+    have hPv := hp.reset_proposal_viable_at hpH hactual hPs hR hci hcall hd hti hib hPQ
       hy hcy hes hjb hPy
-    obtain ⟨hstep, hP₀⟩ := hp.reset_stop_at_parent_at hc hpH hdesignated hactual hPs hR
+    obtain ⟨hstep, hP₀⟩ := hp.reset_stop_at_parent_at hpH hdesignated hactual hPs hR
       hci hcall hd hti hpay hPQ hy hcy hes hib hjb hPv hg (hti ▸ hgu) hgj
       (hti ▸ hjoin) (hjoin.trans hjt) hQt (hviab _ hDQ .refl)
     obtain ⟨X, hXc, haX, hXend⟩ := hvot y j elly e hy hcy hes hjb hE
     have hspec := SA.castAt_head_of_viable hry hy hcy' (hes ▸ ⟨P, hPv⟩)
     rw [hes] at hspec
     exact hspec.trans (congrArg (·.root) (voter_head_eq_proposal hPhi hPsi hd hslot hsD hXc haX
-      hXend hPv hstep hP₀ fun B C hXB hDB hBQ hne hCQ hC => hp.reset_suffix_best_at hc hpH
+      hXend hPv hstep hP₀ fun B C hXB hDB hBQ hne hCQ hC => hp.reset_suffix_best_at hpH
         hdesignated hactual hPs hci hcall hd hti hpay hPQ hy hcy hes hib hjb hPv hg (hti ▸ hgu)
         hgj (hti ▸ hjoin) (hjoin.trans hjt) hQt hBQ hne (hviab _ hDB hBQ) hCQ
         ((haX.mono hPsiU).trans (hXB.mono hPhiU)) hC))

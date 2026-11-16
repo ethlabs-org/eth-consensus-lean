@@ -2,7 +2,11 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.OriginLabel
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -23,13 +27,15 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
 theorem origin_label_lt_at_proposal_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
     {v : Fin sp.n} {r l : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (hri : r < i) (ho : HighOrigin tr H g v r l O) : l < u := by
+  have hcut := hp.cutZ_le_ts_of_highOrigin_at ho
   obtain ⟨hv, -, ⟨CV, ell', D, -, hfl, -⟩, -⟩ := ho
   have hrt : tr.time r ≤ sp.ts u := hti ▸ hp.run.time_mono hri.le
   have hΔ := sp.toParams.hΔ
@@ -45,15 +51,11 @@ theorem origin_label_lt_at_proposal_at
       exact_mod_cast (SA.ts_le_iff sp).mp (hts.trans hrt)
     have hne : l ≠ u := by
       intro he
-      rw [he] at hop hts
+      rw [he] at hop hts hcut
       have htime : tr.time r = tr.time i := hti.symm ▸ le_antisymm hrt hts
       have hd := hp.run.time_nonneg i
-      have hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n := by
-        have hf₃ := hp.faults _ hd hib
-        have hn := sp.toParams.hn
-        change 3 * (H (tr.time i))ᶜ.ncard ≤ sp.n - 1 at hf₃
-        change 0 < sp.n at hn
-        omega
+      have hf := hp.committee_cs2_at (s := u) (by have := lt_cutZ sp g; linarith)
+        (hti ▸ hib) hd hib
       have hc' : (tr.upTo (tr.time i)).projAC.CallAt p i ell := by
         rw [RunTrace.upTo_projAC]
         exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hci⟩
@@ -61,8 +63,10 @@ theorem origin_label_lt_at_proposal_at
         rw [RunTrace.upTo_projAC]
         exact (SA.upTo_optimisticLockAt hp.run.time_mono).mpr
           ⟨htime.le, hop⟩
-      exact proposal_no_optimistic_of_run (hp.run.upTo hd) (hp.noColl.upTo _) hf hpH
-        hc' hcall hti hp.stock v (htime ▸ hp.run.antitone (le_max_right _ _) hv) r hri D CV hop'
+      exact Compose.proposal_no_optimistic_of (hp.run.upTo hd) (hp.noColl.upTo _)
+        (by rw [RunTrace.upTo_projAC]
+            exact SA.CommitteePAt.upTo hp.run.time_mono hp.run.antitone hp.committeeFacts.hP _)
+        hf hpH hc' hcall hti v (htime ▸ hp.run.antitone (le_max_right _ _) hv) r hri D CV hop'
     omega
 
 end Consensus.Goldilocks.Healing.Growing.ProposalSources

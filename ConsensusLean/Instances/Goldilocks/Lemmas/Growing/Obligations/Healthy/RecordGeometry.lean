@@ -28,7 +28,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 every cut before `j` at a time `≤ t`, a record looked up before `j` and unchanged since `i ≤ j` is
 already looked up before `i` (advancing finalization cannot bring it back into the frame). -/
 theorem record_lookup_of_later_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i j : Nat} {t : Time} (ht : 0 ≤ t)
     (hjt : ∀ k < j, tr.time k ≤ t) (hy : y ∈ H t) (hij : i ≤ j)
     (heq : (tr.state y j).ac.latestConfirmed = (tr.state y i).ac.latestConfirmed)
@@ -44,7 +45,8 @@ theorem record_lookup_of_later_at
 /-- **One step of a node's record**, for a node honest at the step: the record is unchanged, or
 it names a block of its tree with a result or optimistic-lock source of its own at the step. -/
 theorem record_step_origin_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) :
     (tr.state y (i + 1)).ac.latestConfirmed = (tr.state y i).ac.latestConfirmed ∨
       ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y (i + 1)).ac.latestConfirmed ∧
@@ -67,7 +69,8 @@ theorem record_step_origin_at
     · exact Or.inr ((Compose.Growing.sa_optimisticLockAt_upTo hrun.time_mono).mp hs).2
 
 /-- A node's tree only grows over a step at which it is honest. -/
-theorem tree_succ_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem tree_succ_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) :
     (tr.state y i).fg.tree ⊆ (tr.state y (i + 1)).fg.tree := by
   have hle : ∀ k < i + 1, tr.time k ≤ tr.time i :=
@@ -82,8 +85,8 @@ update of label `u`, the record of a node honest at `t` before a later cut `n`, 
 `n` at a time `≤ t`, names a block of its tree with an origin of label at least `u` before `n`,
 even if advancing finalization has removed it from the filtered frame. -/
 theorem archival_record_source_after_operational_update_at {g ΔF a b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hhold : p ∈ H (sp.ts u + sp.Δ)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P)
@@ -108,7 +111,7 @@ theorem archival_record_source_after_operational_update_at {g ΔF a b : Time}
     | base =>
       intro _
       obtain ⟨hPt, _, _, _, _, hrecord⟩ :=
-        operational_update_selection_at hp hc hhold hdesignated hactual hPs hR hgu hTb hy hup
+        operational_update_selection_at hp hhold hdesignated hactual hPs hR hgu hTb hy hup
       have hc' := Compose.projAC_callAt.mp hup.1
       have hlaw := hrun.cutLaw y j _ hc' hy
       have hframe : Node.frame (tr.state y (j + 1)) = ell.frame := by
@@ -135,7 +138,7 @@ theorem archival_record_source_after_operational_update_at {g ΔF a b : Time}
             hB hC (hBr.trans hCr.symm))
       rw [← hframe, hstate] at hlookup
       obtain ⟨x, q, s, CV, hx, hqj, -, hs, hsource⟩ :=
-        operational_update_recent_source_at hp hc hhold hdesignated hactual hPs hR hgu hTb hy
+        operational_update_recent_source_at hp hhold hdesignated hactual hPs hR hgu hTb hy
           hup hlookup
       refine ⟨C, ?_, hCr.trans (congrArg SA.SAState.latestConfirmed hstate), s, hs,
         Compose.Growing.originBefore_iff.2 ⟨x, q, CV, by omega, hx, hsource⟩⟩
@@ -172,8 +175,8 @@ label `u`, a record looked up by a node honest at `t` before a later cut `n`, ev
 at a time `≤ t`, has a raw or optimistic source of label at least `u` before `n`, of a node honest
 at its own cut. -/
 theorem record_source_after_operational_update_at {g ΔF a b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hhold : p ∈ H (sp.ts u + sp.Δ)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P)
@@ -188,7 +191,7 @@ theorem record_source_after_operational_update_at {g ΔF a b : Time}
     ∃ x q s CV, x ∈ H (tr.time q) ∧ q < n ∧ u ≤ s ∧
       (SA.ResultAt tr.projAC x q s R CV ∨ SA.OptimisticLockAt tr.projAC x q s R CV) := by
   obtain ⟨C, hC, hCr, s, hs, hsource⟩ :=
-    archival_record_source_after_operational_update_at hp hc hhold hdesignated hactual hPs
+    archival_record_source_after_operational_update_at hp hhold hdesignated hactual hPs
       hR hgu hTb hup hjn hnt hyt
   obtain ⟨hR, hRr⟩ := SA.lookup_eq_some hlookup
   have hsub := Compose.Growing.tree_subset_at (tr := tr) (H := H) ht0 hnt hyt

@@ -106,16 +106,18 @@ variable {ro : SA.ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (SA.Blk sp.n
 /-- **The origin of the report record**: the report record of an honest node names genesis (the
 initial record, and a restart's), or the block of an earlier `ac_to_fg` return of the node (its
 only writer). -/
-theorem fgReported_origin (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+theorem fgReported_origin {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) : ∀ i, (tr.state y i).fgReported = sp.genesisRoot ∨
       ∃ k < i, ∃ ℓ C, SA.ToFGAt tr y k ℓ C ∧ C.root = (tr.state y i).fgReported
   | 0 => by
     left
     change (tr.init y).fgReported = _
-    rw [hr.init y hy]
+    obtain ⟨m, hm⟩ := hini y
+    rw [hr.init y hy, hm]
     rfl
   | i + 1 => by
-    have ih := fgReported_origin hr hy i
+    have ih := fgReported_origin hr hini hy i
     have old : (tr.state y (i + 1)).fgReported = (tr.state y i).fgReported →
         (tr.state y (i + 1)).fgReported = sp.genesisRoot ∨
           ∃ k < i + 1, ∃ ℓ C, SA.ToFGAt tr y k ℓ C ∧
@@ -387,7 +389,7 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
   obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hΦ hB₀
   obtain rfl : L = ℓ.frame.viableAncestor B₀ := hU.1 (hΦU hLt) (hΦU hvat) hLr.symm
   have hclean' := live_lock_clean (hr.trans (by
-      rw [htk]; linarith only [hΔ])) (SA.locksWF_state hr' hy k)
+      rw [htk]; linarith only [hΔ])) (SA.locksWF_state hr' (fun _ => SA.voteStart_initial _) hy k)
     ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive, rfl⟩
   dsimp only at hclean'
   -- the image is below the stored block `O` of an origin that compares with `Y`
@@ -410,7 +412,8 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
       have h := (hslow y hy r l₀.slot _ hO (hclean'.2 hf) y hy iv ℓv ev hcastv
         (hevs ▸ hjs) hvph).1
       exact down _ hLO (Or.inl (below _ fun _ => h.1))
-    · obtain ⟨r, hrk, CV, ℓw, D, hcw, hfl, hLO⟩ := stored_fast_lock_provenance hr' hy k l₀ hl₀ hf
+    · obtain ⟨r, hrk, CV, ℓw, D, hcw, hfl, hLO⟩ :=
+        stored_fast_lock_provenance hr' (fun _ => SA.voteStart_initial _) hy k l₀ hl₀ hf
       have hO : Compose.StoredFastLockAt tr y r l₀.slot (ℓw.frame.viableAncestor D) CV :=
         ⟨ℓw, D, hcw, hfl, rfl⟩
       have h := (hfast y hy r l₀.slot _ CV hO (hclean'.1 hf) y hy iv ℓv ev
@@ -439,7 +442,8 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
     exact down _ hLO (Or.inl ((Anc.mono hΦwU ((SA.anc_viableAncestor ℓw.frame D).trans hDC)).trans
       hCHd))
   · -- a fast origin of a label `≥ s`: an honest counted vote of its label, `s` or `s + 1`
-    obtain ⟨r, hrk, CV, ℓw, D, hcw, hfl, hLO⟩ := stored_fast_lock_provenance hr' hy k l₀ hl₀ hf
+    obtain ⟨r, hrk, CV, ℓw, D, hcw, hfl, hLO⟩ :=
+      stored_fast_lock_provenance hr' (fun _ => SA.voteStart_initial _) hy k l₀ hl₀ hf
     have hΦwU := (SA.frameIn_of_callAt hr' hy hcw).2
     have hwt : sp.ts l₀.slot ≤ tr.time r := by
       rcases hfl with ⟨ℓ₁, C, ⟨-, -, ht₁, -⟩, -⟩ | ⟨ℓ₁, A, -, hsl₁, -⟩
@@ -454,7 +458,8 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
       have := (SA.ts_lt_iff sp).1 h'
       omega
     obtain ⟨z, hz, j', e, ⟨ℓe, hce, hee⟩, hes, Hd, hHd, hHdr, hDHd⟩ :=
-      SA.fastLock_honest_vote hS.run hS.two_faulty_lt hy hfl hs.stock
+      SA.fastLock_honest_vote hS.run _ SA.CommitteeP.full hy hfl
+        (SA.cs2_full hs.stock hS.two_faulty_lt)
     have hcz : SA.CastAt tr.projAC z j' ℓe e := ⟨hce, hee⟩
     have hDY : Compatible (tr.HonestBlocks H) D Y := by
       rcases Nat.lt_or_ge l₀.slot (s + 1) with h | h
@@ -667,7 +672,8 @@ theorem protected_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   by_cases hrep : SA.AncR ℓ.frame C (tr.projAC.state y (j + 1)).fgReported
   · obtain ⟨R, hRt, hRr, hCR⟩ := hrep
     have hYR : Anc (tr.HonestBlocks H) Y R := hYCU.trans (hCR.mono hΦU)
-    rcases fgReported_origin hr' hy (j + 1) with hgen | ⟨k', hk', ℓ'', R', hto, hR'r⟩
+    rcases fgReported_origin hr' (fun _ => SA.voteStart_initial _) hy (j + 1) with hgen | ⟨k',
+      hk', ℓ'', R', hto, hR'r⟩
     · have hG := Store.genesis_mem (Compose.fg_reachable hl hy j)
       have hRG := hU.1 (hΦU hRt) ⟨y, hy, j, hG⟩ (hRr.trans hgen)
       subst hRG

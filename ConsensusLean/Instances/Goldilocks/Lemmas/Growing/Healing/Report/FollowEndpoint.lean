@@ -68,13 +68,13 @@ theorem proposal_report_follow_at
       (hT.trans hmb) hshort hz hdes hP hPs hun hy hstock
   have hyc : y ∈ H (tr.time (k + 1)) := ht ▸ hy
   have hPc := Healing.fresh_lock_toFG_candidate hv hva hl he ht
-  have hr := (Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).upTo
+  have hr := (Compose.Growing.goldilocks_ac_projection_from hrun hnc).upTo
     (hrun.time_nonneg (k + 1))
   have hj : SA.joined sp (tr.projAC.state y (k + 1)) (tr.time (k + 1)) := by
     have hs := Trace.upTo_state tr.projAC y (d := tr.time (k + 1)) (i := k + 1)
       (fun q hq => hrun.time_mono hq.le)
     unfold SA.joined
-    rcases SA.restartTime_state hr.localRun hyc (k + 1) with h | ⟨q, _, hq, h⟩
+    rcases SA.restartTime_state hr.localRun hrun.vstart hyc (k + 1) with h | ⟨q, _, hq, h⟩
     · rw [hs] at h
       rw [h]; exact bot_le
     · rw [hs] at h
@@ -102,8 +102,8 @@ theorem proposal_report_follow_at
       (hnc.upTo _) hzk hdes hP' hPs
   rw [← hdes] at hacc
   have hPg := SA.accept_ne_genesis sp
-    (Compose.goldilocks_ac_projection sp ro dg (H (tr.time kP)) (tr.upTo (tr.time kP))
-      proposer (hrun.upTo (hrun.time_nonneg kP)) (hnc.upTo _)).localRun hzk hacc
+    (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg kP))
+      (hnc.upTo _)).localRun hzk hacc
   obtain ⟨i, ellr, R, hR, htime, hPR⟩ := report_of_compatible_candidate_of_run_at
     hrun hnc hyc hc hto hj hPg hPc
     (toFG_candidates_compatible_at_call_at hrun hnc hyc hc hPc)

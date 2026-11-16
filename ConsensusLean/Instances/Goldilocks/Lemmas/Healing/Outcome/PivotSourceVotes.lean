@@ -79,7 +79,8 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
     rintro B ⟨W, hW, hWr, hBW⟩
     obtain rfl := hr.coherent.1 hW (hPsiU hhead) (hWr.trans hheadr)
     exact hBW
-  rcases proposal_start_root_or_clean_lock hPhi (SA.locksWF_state hr hpH i) hR hti hd with
+  rcases proposal_start_root_or_clean_lock hPhi
+    (SA.locksWF_state hr (fun _ => SA.voteStart_initial _) hpH i) hR hti hd with
     hroot | ⟨l₁, hl₁, hlo, B₁, hB₁, hB₁r, hsB₁⟩
   · rw [hroot]
     rcases hp.reset_proposal_root_source hpH hR hci hcall hd hti hib with

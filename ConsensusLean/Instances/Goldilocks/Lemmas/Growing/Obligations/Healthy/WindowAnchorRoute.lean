@@ -29,7 +29,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 `σ[P₀].h + 3 ≤ σ[P₃].h` at every store holding the four anchors of a node honest at an
 observation time `t` after the store's cuts. -/
 theorem anchor_window_advance_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
     {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
@@ -59,8 +60,9 @@ honest anchors `P i` at strictly increasing slots `s i` (guards of
 holder `y` of `P 3` at cut `k`, honest at an observation time `t` after its earlier cuts, the
 block `F` of root `σ[P₃].F` is held by `y` and `P₀ ⪯ F` in the honest blocks. -/
 theorem cacheCoverage_of_anchor_window_upTo_at {g ΔF a b : Time}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : Healing.Growing.CatchRun tr H g (2 * sp.Δ)) {s : Fin 4 → Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {s : Fin 4 → Nat}
     {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer (s i) (P i)) (hs : StrictMono s)
     (hR : Healing.drainTime sp a ≤ sp.ts (s 0)) (hb : sp.ts (s 3) ≤ b)
@@ -71,7 +73,7 @@ theorem cacheCoverage_of_anchor_window_upTo_at {g ΔF a b : Time}
     (hB₃ : P 3 ∈ (tr.state y k).fg.tree) :
     ∃ F, (tr.state y k).fg.blocks ((tr.state y k).fg.σ (P 3).root).F = some F ∧
       Anc (tr.HonestBlocksAt H) (P 0) F := by
-  have hch := window_anchors_chain_upTo_at hp hc hP hs hR hb hadj
+  have hch := window_anchors_chain_upTo_at hp hP hs hR hb hadj
   have hmem : ∀ i, P i ∈ (tr.state y k).fg.tree := fun i =>
     Healing.Growing.mem_of_honest_anc_at hp.run hp.noColl ht hle hy (hch i 3 (Fin.le_last i)) hB₃
   obtain ⟨F, hF, hAF⟩ := Store.coverage_of_anchor_window

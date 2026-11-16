@@ -33,7 +33,7 @@ private theorem anchored_of_chain {tr : GoldilocksTrace sp ro}
 theorem goldilocks_output_provenance : GoldilocksOutputProvenance (sp := sp) (ro := ro) := by
   rw [goldilocksOutputProvenance_iff]
   intro cm proposer dg H tr b hrun hnc y i t hread _
-  rw [goldilocksRunInterface_run_iff] at hrun
+  obtain ⟨hrun, -⟩ := (goldilocksRunInterface_run_iff cm).1 hrun
   obtain ⟨hy, ⟨hi, -⟩, ht0, htb⟩ := hread
   have hr := hrun.upTo ht0
   have hs := Trace.upTo_state tr y hi
@@ -88,7 +88,7 @@ theorem goldilocks_output_provenance : GoldilocksOutputProvenance (sp := sp) (ro
 theorem goldilocks_source_provenance : GoldilocksSourceProvenance (sp := sp) (ro := ro) := by
   rw [goldilocksSourceProvenance_iff]
   intro cm proposer dg H tr b hrun hnc y i B hy hib hreport
-  rw [goldilocksRunInterface_run_iff] at hrun
+  obtain ⟨hrun, -⟩ := (goldilocksRunInterface_run_iff cm).1 hrun
   obtain ⟨ℓ, hc, hto, hB⟩ := hreport
   have hd := hrun.time_nonneg i
   have hr := acRun_upTo hrun hnc hd

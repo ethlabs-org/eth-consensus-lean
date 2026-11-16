@@ -45,7 +45,8 @@ theorem voteK_gate (hv : rho.ExecutionValid) :
 members of their slots. The start's pools are empty (`simIni_voteStart`); a later pool is the
 post-state of an honest call (`simTraceAt_pool_member`), and an optimistic-check pool is in the
 call's post-state pool (`SA.optimisticPoint_pool_post`). -/
-theorem voteK_committeeP (hv : rho.ExecutionValid) (hnc : ¬ rho.HashCollision) {ini}
+theorem voteK_committeeP (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {ini}
     (hrun : Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho) (honestKeysAt S rho)
       (simTraceAt S rho hn) ini) :
     SA.CommitteePAt (voteK S rho) (simTraceAt S rho hn).projAC (honestKeysAt S rho) := by
@@ -61,8 +62,7 @@ theorem voteK_committeeP (hv : rho.ExecutionValid) (hnc : ¬ rho.HashCollision) 
       exact absurd hm List.not_mem_nil
     | succ i => exact hpool y i s (hrun.antitone (hi i (Nat.lt_succ_self i)) hy) v hm
   · have hm' := hrun.time_mono
-    have hacr := Compose.Growing.acRun_upTo hrun
-      (noCollRun_simTraceAt S rho hn hv hnc) (hrun.time_nonneg i)
+    have hacr := Compose.Growing.acRun_upTo hrun hnc (hrun.time_nonneg i)
     have hsub := SA.optimisticPoint_pool_post hacr.localRun hy
       ((SA.upTo_optimisticPoint hm').mpr ⟨le_rfl, hpt⟩) s hm
     rw [Trace.upTo_state (simTraceAt S rho hn).projAC y
@@ -80,7 +80,8 @@ theorem voteK_frame_member (hv : rho.ExecutionValid) {ini}
 
 /-- **The committee facts of a run**: size, P, frames, and the gate read at every read time
 `t ≥ 0` (a node honest at `t` is honest at `0`). -/
-theorem voteK_facts (hv : rho.ExecutionValid) (hnc : ¬ rho.HashCollision) {ini}
+theorem voteK_facts (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {ini}
     (hrun : Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho) (honestKeysAt S rho)
       (simTraceAt S rho hn) ini) :
     Compose.Growing.CommitteeFacts (simTraceAt S rho hn) (honestKeysAt S rho) (voteK S rho) where
@@ -134,7 +135,7 @@ theorem sleepy_committee_at (S : Setup) (A : ContractAssumptions S) {V : Type}
     change 8 * r.1.ΔAC ≤ (contract_catchUp S A : Nat) * r.1.ΔAC + 1
     nlinarith
   have hrun := simTraceAt_goldilocksRun S r.2 hn hv
-  exact ⟨voteK S r.2, voteK_facts S r.2 hn hv hc hrun,
+  exact ⟨voteK S r.2, voteK_facts S r.2 hn hv (noCollRun_simTraceAt S r.2 hn hv hc) hrun,
     voteK_bounds S r.2 hn hv hrun (K S A) le_rfl (η := 0) hcd
       (by change 5 * r.1.ΔAC ≤ ((5 : Nat) : Int) * r.1.ΔAC; norm_num) hb
       fun t h₁ h₂ => hs.2.2 t h₁ (h₂.trans hb)⟩

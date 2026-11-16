@@ -48,7 +48,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- OPEN. **The read after an actual update** of the operational proposal `P` of slot `u`, by a
 node honest at the end of the update time, at the first cut after it. -/
 theorem operational_update_read_after_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hhold : p ∈ H (sp.ts u + sp.Δ)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
@@ -97,12 +98,12 @@ theorem operational_update_read_after_at
     have h := Compose.projAC_state hrT.toLocalRun hy e
     rwa [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC y (hle e he), hst e he] at h
   obtain ⟨hPt, hconf, -, -, -, hrecordEq⟩ :=
-    operational_update_selection_at hp hc hhold hdesignated hactual hPs hR hgu hTb hyj hup
+    operational_update_selection_at hp hhold hdesignated hactual hPs hR hgu hTb hyj hup
   have hRaw : SA.ResultAt tr.projAC y j u P
       (SA.fastCounted sp (tr.projAC.state y j) ell.frame u P) :=
     ⟨ell, hup, hconf, rfl⟩
   have hframes : ∀ e ≤ J, Compatible (tr.HonestBlocksAt H) (tr.state y e).fg.F P :=
-    fun e he => hp.finalized_compatible_clean_source_at hc hyj (Or.inl hRaw) hclean
+    fun e he => hp.finalized_compatible_clean_source_at hyj (Or.inl hRaw) hclean
       (ht ▸ hTb) hT0 (hle e he) hy hTb
   -- the effective record after the update
   obtain ⟨hΦj, hΦjU⟩ := Compose.Growing.frameIn_at hrun hnc hyj hup.1
@@ -124,7 +125,7 @@ theorem operational_update_read_after_at
           have := (SA.ts_le_iff sp).mp (show sp.ts u ≤ sp.ts s by linarith)
           omega
         subst s
-        have hP := (operational_update_selection_at hp hc hhold hdesignated hactual hPs
+        have hP := (operational_update_selection_at hp hhold hdesignated hactual hPs
           hR hgu hTb hyq hu').2.1
         have : D = P := Option.some.inj (hD.symm.trans hP)
         subst D
@@ -170,7 +171,7 @@ theorem operational_update_read_after_at
           (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hT0 hPeU (hF e heJ))
           (by rw [hst e heJ]; exact hheld)
         rwa [hst e heJ] at h
-      have hun0 := hp.operational_unanimous_at hc hhold hdesignated hactual hPs hR
+      have hun0 := hp.operational_unanimous_at hhold hdesignated hactual hPs hR
         (show sp.ts u ≤ b by linarith only [hTb, hΔ])
       have hun : ∀ z q e, z ∈ H (tr.time q) → SA.VoteAt tr.projAC z q e → tr.time q ≤ b →
           e.msg.slot = u → e.msg.head = P.root :=
@@ -182,7 +183,7 @@ theorem operational_update_read_after_at
         have := (SA.ts_le_iff sp).mp hR
         exact (Nat.succ_pos _).trans_le (by exact_mod_cast this)
       obtain ⟨v, r, m, S, hseed, hrb, -, hrt⟩ := hp.reset_seed_before_slot_at hRnext
-      have hSP := high_origins_before_next_slot_below_at hp hc hPU hun hgu hRnext
+      have hSP := high_origins_before_next_slot_below_at hp hPU hun hgu hRnext
         (by linarith only [hTb, hΔ]) hseed hrt hrb
       have hva : ∀ e, j ≤ e → e ≤ J →
           (Node.frame (tr.state y e)).viableAncestor P = P := by
@@ -193,7 +194,7 @@ theorem operational_update_read_after_at
         apply SA.viableAncestor_self hΦe (hPe e hje heJ)
         exact (hp.held_target_ancestor_candidate_at_state_at hT0 (hle e heJ) hy hTb
           (hPe e hje heJ) hseed hrb hSP (fun x q l B hqe ho =>
-            (high_origin_compatible_before_update_at hp hc hPU hPs hu hun hgu hRnext hTb ho
+            (high_origin_compatible_before_update_at hp hPU hPs hu hun hgu hRnext hTb ho
               (hle e heJ q hqe)).symm)).symm
       have hlock' : (⟨P.root, u, true, ex⟩ : SA.Lock) ∈ (tr.state y (j + 1)).ac.locks := by
         rw [← hstAC (j + 1) (by omega), tr.projAC.state_succ_of_call hup.1]
@@ -223,7 +224,7 @@ theorem operational_update_read_after_at
       apply SA.anc_getHead_of_compat hΦ (Or.inl hlive) ?_ (fun _ h => h.1) _ _ .refl
       intro L hL
       obtain ⟨l, hl, B, hB, hBr, hlive, hLB⟩ := SA.mem_liveLockBlocks_of_wf hΦ hwf hL
-      have hPB := hp.clean_source_stored_lock_compatible_at hc hyj hT0 hleJ hy hTb
+      have hPB := hp.clean_source_stored_lock_compatible_at hyj hT0 hleJ hy hTb
         (Or.inl hRaw) hclean (ht ▸ hTb)
         (by rw [hstAC J le_rfl]; exact hl)
         (drain_stored_lock_label (hR.trans (by linarith)) hlive) (hΦU hB) hBr

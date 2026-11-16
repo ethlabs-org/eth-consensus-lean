@@ -30,8 +30,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **Window fields from four honest anchors**: proposal cuts with the proposals, the proposer's
 acceptances, the post-store as the proposer's next state, and the chain. -/
 theorem finalWindow_fields_of_honest_anchors_at
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : Healing.Growing.CatchRun tr H g (2 * sp.Δ)) {s : Fin 4 → Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {s : Fin 4 → Nat}
     {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer (s i) (P i)) (hs : StrictMono s)
     (hR : Healing.drainTime sp a ≤ sp.ts (s 0)) (hb : sp.ts (s 3) ≤ b)
@@ -49,7 +50,7 @@ theorem finalWindow_fields_of_honest_anchors_at
   have hcut' : ∀ i, tr.ProposesAt (P i).proposer (cut i) (P i) := fun i => (hcut i).2.1 ▸ hcut i
   have hacc := fun i => accept_of_proposesAt_at hp.run hp.noColl (hmem i) (hcut' i)
   refine ⟨cut, hcut', fun i => (hacc i).1, fun i => ?_, fun i => (hacc i).2.2,
-    window_anchors_chain_upTo_at hp hc hP hs hR hb hadj⟩
+    window_anchors_chain_upTo_at hp hP hs hR hb hadj⟩
   rw [(hacc i).2.2]
   exact (hacc i).2.1
 
@@ -61,7 +62,8 @@ theorem window_slots_of_honest_anchors_at {ι : Type*} {start : Nat} {off : ι �
 
 /-- **`ordered`**: proposal cuts of blocks of strictly increasing slots strictly increase. -/
 theorem strictMono_cut_of_proposesAt_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {cut : Fin 4 → Nat} {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
     (hcut : ∀ i, tr.ProposesAt (P i).proposer (cut i) (P i))
     (hs : StrictMono fun i => (P i).slot) : StrictMono cut := by
@@ -74,8 +76,9 @@ theorem strictMono_cut_of_proposesAt_at
 /-- **Window cut fields from four honest anchors**, with the cut times, `ordered`, `fresh` (from
 `hq`) and `bounded` (from `hD`). -/
 theorem finalWindow_cuts_of_honest_anchors_at
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : Healing.Growing.CatchRun tr H g (2 * sp.Δ)) {s : Fin 4 → Nat}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {s : Fin 4 → Nat}
     {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer (s i) (P i)) (hs : StrictMono s)
     (hR : Healing.drainTime sp a ≤ sp.ts (s 0)) (hb : sp.ts (s 3) ≤ b)
@@ -89,7 +92,7 @@ theorem finalWindow_cuts_of_honest_anchors_at
       (∀ i, tr.time (cut i) = sp.toParams.slotTime (s i)) ∧
       StrictMono cut ∧ q < tr.time (cut 0) ∧ ∀ i, tr.time (cut i) ≤ D := by
   obtain ⟨cut, hcut, hacc, htree, hpost, hch⟩ :=
-    finalWindow_fields_of_honest_anchors_at hp hc hP hs hR hb hadj
+    finalWindow_fields_of_honest_anchors_at hp hP hs hR hb hadj
   have hsl : ∀ i, (P i).slot = s i := fun i => honestProposalRun_slot_at (hP i)
   have ht : ∀ i, tr.time (cut i) = sp.toParams.slotTime (s i) := fun i => by
     rw [(hcut i).2.2, hsl i]
@@ -117,8 +120,9 @@ variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [Decidab
 theorem finalWindow_data_of_honest_anchors_gap_at (Q : FinalQueryAt S A V)
     {proposer : Nat → Fin Q.params.n}
     {dg : Digest (List (FG.Att Q.params.n)) (Payload Q.params.n)} {g ΔF a b : Time}
-    (hp : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys proposer dg g ΔF a b)
-    (hc : Healing.Growing.CatchRun Q.trace Q.keys g (2 * Q.params.Δ)) {c : Nat}
+    {cm : Time → Finset (Fin Q.params.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys proposer dg g ΔF a b cm βK)
+    {c : Nat}
     (hc2 : 2 ≤ c) (h3c : 3 * c ≤ S.δt) (start : Nat)
     {P : Fin 4 → SA.Blk Q.params.n (List (FG.Att Q.params.n))}
     (hP : ∀ i, Healing.Growing.HonestProposalRun Q.trace Q.keys proposer
@@ -141,7 +145,7 @@ theorem finalWindow_data_of_honest_anchors_gap_at (Q : FinalQueryAt S A V)
     · change start + c < start + 2 * c; omega
     · change start + 2 * c < start + 3 * c; omega
   obtain ⟨cut, hcut, hacc, -, -, hch, ht, hord, hfr, hbd⟩ :=
-    finalWindow_cuts_of_honest_anchors_at hp hc hP hs hR hb
+    finalWindow_cuts_of_honest_anchors_at hp hP hs hR hb
       (fun h => by change start + 3 * c = start + 2 * c + 1 at h; omega) hq hD
   refine ⟨⟨start, c, hc2, h3c, P, cut, window_slots_of_honest_anchors_at hP, hcut, hacc,
     fun i => ?_, hfr, hord, hbd, hch, hcarrier⟩, rfl, rfl, rfl⟩

@@ -63,7 +63,7 @@ theorem run_F_mono (h : Node.LocalRun proposer dg H sg tr ini)
 
 /-- **An FG acceptance is followed by its `ac_on_block`** at the next cut, at the same time;
 that cut is not a restart. -/
-theorem ac_block_after (h : Node.LocalRun proposer dg H sg tr)
+theorem ac_block_after (h : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) {k : Nat}
     {B : A.Blk} (ha : tr.AcceptAt y k B) :
     tr.projAC.AcceptAt y (k + 1) B ∧ tr.time (k + 1) = tr.time k ∧
@@ -77,7 +77,7 @@ theorem ac_block_after (h : Node.LocalRun proposer dg H sg tr)
   cases hr
 
 /-- **An `ac_on_block` follows its FG acceptance** at the previous cut, at the same time. -/
-theorem fg_accept_before (h : Node.LocalRun proposer dg H sg tr)
+theorem fg_accept_before (h : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {B : A.Blk} (ha : tr.projAC.AcceptAt y i B) :
     ∃ k, i = k + 1 ∧ tr.AcceptAt y k B ∧ tr.time k = tr.time i := by
@@ -278,7 +278,7 @@ theorem proposal_cuts_some {y : Fin P.n} {st : NodeState A} {t : Time} {x : Nat}
 
 /-- The cut after a tick's `ac_on_tick`, for a proposer: `ac_proposal`, from the AC state the
 tick left. -/
-theorem tick_proposal_call (h : Node.LocalRun proposer dg H sg tr)
+theorem tick_proposal_call (h : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) {j : Nat}
     {t : Time} {x : Nat} (hg : tr.GroupAt proposer dg y j t (.tick x))
     (hP : Proposes proposer y t) :

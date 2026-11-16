@@ -17,6 +17,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 
 public section
 
@@ -36,7 +39,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The proposal root is genesis or below a bounded pre-slot historical origin. -/
 theorem reset_proposal_root_source_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {u i : Nat} (hpH : p ∈ H (tr.time i))
     (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp ro)}
@@ -68,7 +72,8 @@ theorem reset_proposal_root_source_at
 
 /-- Actual bounded casts extend the start of a drained operational proposal. -/
 theorem proposal_start_supported_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {u i : Nat} (hpH : p ∈ H (tr.time i)) (hR : drainTime sp a ≤ sp.ts u)
     {ellp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
@@ -82,7 +87,7 @@ theorem proposal_start_supported_at
       (SA.getHead sp e.readPoint elly.frame (tr.time j)
         (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
         (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
-  have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hac.localRun.upTo (hp.run.time_nonneg i)
   have hrj := hac.localRun.upTo (hp.run.time_nonneg j)
   have hPhi := Outcome.frame_realized hp.run hpH hci
@@ -106,7 +111,8 @@ theorem proposal_start_supported_at
     rintro B ⟨W, hW, hWr, hBW⟩
     obtain rfl := hU.1 hW (hPsiU hhead) (hWr.trans hheadr)
     exact hBW
-  rcases proposal_start_root_or_clean_lock hPhi (hstate ▸ SA.locksWF_state hr hpH i) hR hti hd
+  rcases proposal_start_root_or_clean_lock hPhi
+      (hstate ▸ SA.locksWF_stateU (hr := hr.toU) hac.vstart hpH i) hR hti hd
     with hroot | ⟨l₁, hl₁, hlo, B₁, hB₁, hB₁r, hsB₁⟩
   · rw [hroot]
     rcases hp.reset_proposal_root_source_at hpH hR hci hcall hd hti hib with
@@ -125,7 +131,8 @@ theorem proposal_start_supported_at
         ∃ L ∈ tr.HonestBlocksAt H, L.root = l₁.block ∧ Anc (tr.HonestBlocksAt H) L D := by
     cases hf : l₁.fast with
     | false =>
-      obtain ⟨r, hri, D, hsl, hL⟩ := SA.slow_lock_provenance hr hpH i l₁ (hstate ▸ hl₁) hf
+      obtain ⟨r, hri, D, hsl, hL⟩ := SA.slow_lock_provenance_from hr hac.vstart hpH i l₁
+        (hstate ▸ hl₁) hf
       obtain ⟨ell, C, hu, hconf, hdeep⟩ := hsl
       have hs₀ := Trace.upTo_state tr.projAC p (fun _ hq =>
         (hp.run.time_mono hq.le).trans (hp.run.time_mono hri.le))
@@ -133,7 +140,8 @@ theorem proposal_start_supported_at
       exact ⟨r, hri, D, Or.inr ⟨ell, C,
         ((SA.upTo_updateAt hp.run.time_mono).mp hu).2, hconf, hdeep⟩, hL⟩
     | true =>
-      obtain ⟨r, hri, D, CV, hfl, hL⟩ := SA.fast_lock_provenance hr hpH i l₁ (hstate ▸ hl₁) hf
+      obtain ⟨r, hri, D, CV, hfl, hL⟩ := SA.fast_lock_provenance_from hr hac.vstart hpH i l₁
+        (hstate ▸ hl₁) hf
       exact ⟨r, hri, D, Or.inl ⟨CV, ((SA.upTo_fastLockAt hp.run.time_mono).mp hfl).2⟩, hL⟩
   obtain rfl : L = B₁ := hU.1 hLU (hPhiU hB₁) (hLr.trans hB₁r.symm)
   have hlt : l₁.slot < u := by
@@ -142,18 +150,22 @@ theorem proposal_start_supported_at
       rw [RunTrace.upTo_projAC]; exact hstate
     refine Compose.proposal_locks_slot_of hret (hp.noColl.upTo _) hpH
       (by rw [RunTrace.upTo_projAC]; exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hci⟩) hcall
-      (by rw [hs]; exact hd) hti SA.CommitteeP.full (SA.cs2_full hp.stock ?_) l₁
+      (by rw [hs]; exact hd) hti
+      (by rw [RunTrace.upTo_projAC]
+          exact SA.CommitteePAt.upTo hp.run.time_mono hp.run.antitone hp.committeeFacts.hP _)
+      (hp.committee_cs2_at (hp.gbar_le_ts_of_clean_at (by
+          rw [Healing.drainTime_eq] at hR
+          have := (SA.ts_le_iff sp).1 hR
+          rw [Healing.cleanLabel_eq]
+          push_cast at this
+          omega)) (hti ▸ hib) (hp.run.time_nonneg i) hib) l₁
       (by rw [← Compose.projAC_state hret.toLocalRun hpH i, hs]; exact hl₁)
-    have h3 := hp.faults _ (hp.run.time_nonneg i) hib
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    omega
   apply (Anc.mono hPhiU hsB₁).trans (hLD.trans (extend D ?_))
   have hpr := hp.run.antitone (hp.run.time_mono hri.le) hpH
   rcases horig with ⟨CV, hf⟩ | hslow
-  · exact hp.fast_source_votes_before_at hc hpr hf hlo ((hp.run.time_mono hri.le).trans hib)
+  · exact hp.fast_source_votes_before_at hpr hf hlo ((hp.run.time_mono hri.le).trans hib)
       j hjb y hy elly e hcy (by omega)
-  · exact hp.slow_source_votes_before_at hc hpr hslow hlo ((hp.run.time_mono hri.le).trans hib)
+  · exact hp.slow_source_votes_before_at hpr hslow hlo ((hp.run.time_mono hri.le).trans hib)
       j hjb y hy elly e hcy (by omega)
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo

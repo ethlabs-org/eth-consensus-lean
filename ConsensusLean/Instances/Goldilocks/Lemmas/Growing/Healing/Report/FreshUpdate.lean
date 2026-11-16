@@ -23,23 +23,23 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Explicit joinedness, rather than a stronger GST margin, supplies actual votes
 by the slot deadline from the healthy base on that deadline's prefix. -/
-theorem honest_votes_of_joined_before_at
+theorem honest_votes_of_joined_before_at {K : SA.CommitteeDict sp.n}
     {g : Time} {u : Nat}
-    (hS : SA.HealthyBaseUpTo (tr.projAC.upTo (sp.ts u + sp.Δ))
+    (hS : SA.HealthyBaseUpTo K (tr.projAC.upTo (sp.ts u + sp.Δ))
       (H (sp.ts u + sp.Δ)) ((tr.upTo (sp.ts u + sp.Δ)).HonestBlocks (H (sp.ts u + sp.Δ)))
       proposer g (sp.ts u + sp.Δ))
     (hgu : gbar g ≤ sp.ts u)
     (hjoin : ∀ x, x ∈ H (sp.ts u + sp.Δ) →
       SA.JoinedAt tr.projAC x (sp.ts u + sp.Δ)) :
-    ∀ x, x ∈ H (sp.ts u + sp.Δ) →
+    ∀ x, x ∈ H (sp.ts u + sp.Δ) → x ∈ K.committee u →
       ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = u ∧
         tr.time j ≤ sp.ts u + sp.Δ := by
-  intro x hx
+  intro x hx hxK
   obtain ⟨j, e, hv, hs, ht⟩ := SA.honest_votes_of_joined_before hS hgu le_rfl
     (fun x hx r hrs hrt => by
       obtain ⟨ell, hc, hrestart⟩ := hrs
       exact hjoin x hx r
-        ⟨ell, ((Trace.upTo_callAt _).mp hc).2, hrestart⟩ hrt) x hx
+        ⟨ell, ((Trace.upTo_callAt _).mp hc).2, hrestart⟩ hrt) x hx hxK
   obtain ⟨ell, hc, he⟩ := hv
   exact ⟨j, e, ⟨ell, ((Trace.upTo_callAt _).mp hc).2, he⟩, hs, ht⟩
 
@@ -99,8 +99,7 @@ theorem blockStamp_early_of_historical_acceptance_at
     (hc : tr.projAC.CallAt y j ell) (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j)
     (hPt : P ∈ ell.frame.tree) :
     (tr.projAC.state y j).blockStamp P.root < SA.ETime.of (sp.ts u + 2 * sp.Δ) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time j))
-    (tr.upTo (tr.time j)) proposer (hrun.upTo (hrun.time_nonneg j))
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg j))
     (hnc.upTo (tr.time j))).localRun
   rw [RunTrace.upTo_projAC] at hr
   have hc' : (tr.projAC.upTo (tr.time j)).CallAt y j ell :=
@@ -178,8 +177,8 @@ theorem unanimous_early_pool_of_blockStamp_at
     rwa [hs]
   obtain ⟨q, _, e', he', rfl⟩ := hS.run.honest.pool_vote y hy j u v' hm'' (hv'x ▸ hx)
   rw [hv'x] at he'
-  obtain ⟨_, rfl⟩ := (SA.one_vote_per_slot sp) _ _ _ _ _ hr x hx q i e' e he' hv'
-    ((SA.state_pool_slot sp hr hy j u _ hm'').trans hes.symm)
+  obtain ⟨_, rfl⟩ := SA.one_vote_per_slotU sp _ _ _ _ _ hr.toU x hx q i e' e he' hv'
+    ((SA.state_pool_slot_from sp hr hS.run.vstart hy j u _ hm'').trans hes.symm)
   rfl
 
 /-- The warm route assembles the early unanimous pool using only joinedness at
@@ -212,7 +211,7 @@ theorem unanimous_early_pool_of_acceptance_at
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
     (show 0 ≤ sp.ts u + sp.Δ by
       linarith [SA.gbar_nonneg g, sp.toParams.hΔ]) (hshort.trans hjb) hstock
-  have hvotes := honest_votes_of_joined_before_at hS hgu hjoin
+  have hvotes := fun x hx => honest_votes_of_joined_before_at hS hgu hjoin x hx (SA.mem_full _ _)
   exact unanimous_early_pool_of_blockStamp_at hrun hnc hsvc hawake hf hcatch hnr
     hmargin hPs hun hy hc ht hjb hPt
     (blockStamp_early_of_historical_acceptance_at hrun hnc hsvc hnr hgu hz ha hta hy hc ht hPt)
@@ -253,9 +252,8 @@ theorem update_toFG_calls_of_awake_at
       SA.joined sp ((tr.upTo T).projAC.state y i) ((tr.upTo T).time i) := by
     intro i hi
     unfold SA.joined
-    have hac := (Compose.goldilocks_ac_projection sp ro dg (H T) (tr.upTo T)
-      proposer hr (hnc.upTo T)).localRun
-    rcases SA.restartTime_state hac hy i with h | ⟨r, _, hrs, h⟩
+    have hac := (Compose.goldilocks_ac_projection_from hr (hnc.upTo T)).localRun
+    rcases SA.restartTime_state hac hrun.vstart hy i with h | ⟨r, _, hrs, h⟩
     · rw [h]; exact bot_le
     · rw [h]
       apply WithBot.coe_le_coe.mpr
@@ -297,8 +295,7 @@ theorem fresh_fast_lock_of_selection_at
     (hva : ell.frame.viableAncestor P = P) :
     ∃ e, u + 2 ≤ e ∧
       (⟨P.root, u, true, e⟩ : SA.Lock) ∈ (tr.projAC.post k).locks := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time k))
-    (tr.upTo (tr.time k)) proposer (hrun.upTo (hrun.time_nonneg k))
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg k))
     (hnc.upTo (tr.time k))).localRun
   rw [RunTrace.upTo_projAC] at hr
   have hc : (tr.projAC.upTo (tr.time k)).CallAt y k ell :=
