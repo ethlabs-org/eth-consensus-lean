@@ -23,6 +23,9 @@ structure PrefixTransport (M : RunMap rho payload) (runs : ACRun A M.signer) : P
   no_collision : ∀ d, Compose.NoCollRun M.digest M.trace →
     Compose.NoCollRun M.digest (M.trace.upTo d)
 
+/-- Regime transport to the run map. The healthy leg supplies the generic `Service` consumed by
+`Premises.sync` (message, block and relay service from GST, signed-row service through the
+horizon), with no order between `ΔAC` and `ΔFG`. -/
 structure RegimeTransport (M : RunMap rho payload) (K : Contract ProgressReq)
     (look : Time) : Prop where
   sleepy : rho.ExecutionValid → ¬ rho.HashCollision →
@@ -30,7 +33,7 @@ structure RegimeTransport (M : RunMap rho payload) (K : Contract ProgressReq)
     M.trace.SleepyPrefixAt M.honest E.ΔFG look rho.horizon
   healthy : rho.ExecutionValid → ¬ rho.HashCollision → ∀ g,
     (Sys F V).Healthy (shapeProgress F V).toExternal K g ⟨E, rho⟩ →
-    M.trace.GSTRunAt M.honest E.ΔFG g ∧
+    Service M.trace M.honest g E.ΔFG rho.horizon ∧
     (∀ y t, max g 0 ≤ t → t ≤ rho.horizon → y ∈ M.honest t → M.trace.awake y t) ∧
     (∀ d, 0 ≤ d → d ≤ rho.horizon → ((M.honest d)ᶜ.ncard : ℚ) < K.params.β * P.n) ∧
     (∀ t d, max g 0 ≤ t → t ≤ rho.horizon → 0 ≤ d → d ≤ rho.horizon →
