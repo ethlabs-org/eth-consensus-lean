@@ -4,9 +4,9 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.G
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.ReadPoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Regimes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Gate
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Gate
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Reader
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Record
@@ -50,132 +50,31 @@ open Blocks Shape
 
 variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
 
-/-- **E0–E4 under growing faults**: the latest gate of a reader ready at `t` from the recovery
-point, read at the trace cut of the end of `t`. -/
-structure OutageReaderGateAt (Q : OutageQueryAt S A V) (w : V) (t : Time) where
-  slot : Nat
-  restored : Q.stop ≤ Q.params.ts slot + Q.params.Δ
-  gate_le : Q.params.ts slot + 6 * Q.params.Δ ≤ t
-  lt_next : t < Q.params.ts slot + 10 * Q.params.Δ
-  cut : Nat
-  label : ACLabel (SA.goldilocksSA Q.params (List (FG.Att Q.params.n)) (S.ro Q.params.n))
-  update : SA.UpdateAt Q.trace.projAC (Q.run.2.ownKey w) cut slot label
-  cut_lt : cut < cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)
-  restarts : ∀ k, Q.trace.projAC.RestartAt (Q.run.2.ownKey w) k → Q.trace.time k ≤ t →
-    Q.trace.time k ≤ Q.params.ts slot
-  read : Regimes.CutAfter Q.trace (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t
-  view : (SA.latestView Q.params
-      (Q.trace.state (Q.run.2.ownKey w) (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t))).ac
-      (Node.frame (Q.trace.state (Q.run.2.ownKey w)
-        (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)))) t).2 = ((slot + 1 : Nat) : Int)
-
 /-- The query's catch-up duration is not negative. -/
 private theorem duration_nonneg (Q : OutageQueryAt S A V) : 0 ≤ Q.duration :=
   ((by unfold Regimes.catchUp; have := Q.params.toParams.hΔ; positivity :
     (0 : Time) ≤ Regimes.catchUp Q.params)).trans (outage_duration_supply_at Q)
-
-/-- A node honest at `t ≥ 0` and awake through a catch-up window `c` before `t`, with
-`8Δ ≤ c + 1`, is joined at `t` (the static `ready_implies_joined` on the prefix through `t`). -/
-private theorem joined_of_ready (Q : OutageQueryAt S A V)
-    {y : Fin Q.params.n} {t c : Time}
-    (hy : y ∈ Q.keys t) (ht : 0 ≤ t) (hc : 8 * Q.params.Δ ≤ c + 1)
-    (hawake : ∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → Q.trace.awake y u) :
-    Q.trace.JoinedAt y t := by
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  obtain ⟨-, hj⟩ := Compose.ready_implies_joined_of (hrun.upTo ht) hy ht hc
-    fun u h1 h2 => ⟨hawake u h1 h2, h2⟩
-  exact fun k hk hkt => hj k ((RunTrace.upTo_restartAt Q.trace).2 ⟨hkt, hk⟩) hkt
-
-/-- The restarts of a node joined at `t ≥ 0` and honest then, up to `t`, are at or before
-`t_{slot t − 1}` (the static `joined_projection` on the prefix through `t`). -/
-private theorem restarts_of_joined (Q : OutageQueryAt S A V)
-    {y : Fin Q.params.n} {t : Time}
-    (hy : y ∈ Q.keys t) (ht : 0 ≤ t) (hJ : Q.trace.JoinedAt y t) :
-    ∀ k, Q.trace.projAC.RestartAt y k → Q.trace.time k ≤ t →
-      Q.trace.time k ≤ Q.params.ts ((Q.params.slot t : Int) - 1) := by
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have h := ((Compose.joined_projection_from (hrun.upTo ht) hy t).1).mp
-    (Compose.Growing.joinedAt_upTo hJ)
-  intro k hk hkt
-  rw [RunTrace.upTo_projAC] at h
-  exact h k ((Compose.Growing.ac_restartAt_upTo Q.trace.projAC).2 ⟨hkt, hk⟩) hkt
 
 /-- **E0–E4 under growing faults**: the latest gate of a reader ready at `t` from the recovery
 point `b₁ + 9Δ`. Only readiness, joining, the gate tick and the read cut are used. -/
 theorem outage_reader_gate_at (Q : OutageQueryAt S A V)
     {t : Time} (ht : (Sys (goldilocks S) V).recoveryAt (K S A) Q.stop Q.run ≤ t)
     (hth : t ≤ Q.run.2.horizon) {w : V} (hw : Q.run.2.point.Ready Q.duration w t) :
-    Nonempty (OutageReaderGateAt Q w t) := by
-  set sp := Q.params
-  set tr := Q.trace
-  set y := Q.run.2.ownKey w
-  set j := cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)
-  have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
-  have hΔ : sp.Δ = Q.run.1.ΔAC := rfl
+    Nonempty (Compose.Growing.OutageReaderGate Q.trace Q.keys Q.stop (Q.run.2.ownKey w)
+      (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t) := by
   have hrec : Q.stop + 9 * Q.run.1.ΔAC ≤ t := by
     change Q.stop + ((9 : Nat) : Time) * Q.run.1.ΔAC ≤ t at ht
     push_cast at ht
     exact ht
-  clear ht
   have hb₁ := outage_stop_nonneg Q.outage
-  have hdur := outage_duration_supply_at Q
-  have hcu : Regimes.catchUp sp = 18 * sp.Δ := rfl
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have ht0 : 0 ≤ t := by linarith
-  -- E0: the reader is ready on the node trace, honest at `t`
+  have ht0 : 0 ≤ t := by have := Q.run.1.ΔAC_pos; linarith
   have hR := ready_transport_at S Q.run.2 Q.hn Q.valid ht0 hth hw
-  have hy : y ∈ Q.keys t := hR.1
-  -- E1: the latest gate `s = slot(t − 6Δ)`
-  obtain ⟨s, hrestored, hgate, hnext⟩ := outage_latest_gate sp hb₁ hrec
-  obtain ⟨hslu, hle⟩ := outage_gate_restarts sp hgate hnext
-  -- E2: the gate tick at `u = t_s + 6Δ ≤ t`, an update of slot `s` by the reader honest then
-  set u := sp.ts s + 6 * sp.Δ with hu_def
-  have hu : u = 4 * sp.Δ * s + 6 * sp.Δ := rfl
-  have hu0 : 0 ≤ u := by linarith
-  have hut : u ≤ t := by linarith
-  have hyu : y ∈ Q.keys u := hrun.antitone hut hy
-  have hpub : sp.toParams.IsPublic u := ⟨4 * s + 6, by rw [hu]; ring⟩
-  have hwin : ∀ v, max 0 (u - (14 * sp.Δ - 1) - 1) ≤ v → v ≤ u → tr.awake y v := by
-    intro v h₁ h₂
-    exact hR.2 v (le_trans (max_le_max le_rfl (by rw [hcu] at hdur; linarith)) h₁)
-      (by linarith)
-  have hyuw := hwin u (max_le hu0 (by linarith)) le_rfl
-  obtain ⟨c₁, x, hg⟩ := hrun.tick_of_awake y u hyu hu0 hpub hyuw
-  obtain ⟨hc₁, ht₁⟩ := Healing.tick_first_cut hg
-  have hJu := joined_of_ready Q hyu hu0 (by linarith) hwin
-  have hj₁ : SA.joined sp (tr.state y c₁).ac u := by
-    have hst : (tr.upTo u).state y c₁ = tr.state y c₁ :=
-      RunTrace.upTo_state_of_le hrun.time_mono ht₁.le
-    have h := ((Compose.joined_projection_from (hrun.upTo hu0) hyu u).2.1 c₁
-      ((RunTrace.upTo_isCall _).mpr ⟨ht₁.le, _, hc₁⟩)
-      (fun hr => by
-        obtain ⟨-, ℓ, hc', hr⟩ := (RunTrace.upTo_restartAt tr).1 hr
-        have := Option.some.inj (hc₁.2.symm.trans hc'.2)
-        simp only [Node.acCall, Cut.ac.injEq] at this
-        rw [← this] at hr
-        cases hr) ht₁).1 (Compose.Growing.joinedAt_upTo hJu)
-    rwa [hst] at h
-  obtain ⟨ℓ₁, hupd⟩ : ∃ ℓ₁, SA.UpdateAt tr.projAC y c₁ s ℓ₁ := by
-    refine ⟨_, Compose.projAC_callAt.2 hc₁, rfl, ht₁.trans hu_def, ?_⟩
-    change SA.joined sp (tr.projAC.state y c₁) (tr.time c₁)
-    rw [Compose.Growing.projAC_state_at hrun (ht₁ ▸ hyu), ht₁]
-    exact hj₁
-  -- E4: the read cut is after the gate
-  obtain ⟨hread, -, -⟩ := ready_read_cut_at S Q.run.2 Q.hn Q.valid (duration_nonneg Q) ht0 hth hw
-  have hc₁j : c₁ < j := by
-    by_contra hh
-    have := hrun.time_mono (show j ≤ c₁ by omega)
-    linarith [hread.2]
-  -- E3: no restart after `t_s` up to `t`, by joining at `t` and at `u`
-  have hJt := joined_of_ready Q hy ht0 (by rw [hcu] at hdur; linarith) hR.2
-  have hJt' := restarts_of_joined Q hy ht0 hJt
-  have hJu' := restarts_of_joined Q hyu hu0 hJu
-  have hrestarts : ∀ k, tr.projAC.RestartAt y k → tr.time k ≤ t → tr.time k ≤ sp.ts s :=
-    fun k hk hkt => (hJu' k hk ((hJt' k hk hkt).trans hle)).trans_eq hslu
-  -- E4: the latest view at `t` has label `s + 1`
-  have hview :=
-    latestView_label_of_gate sp (tr.state y j).ac (Node.frame (tr.state y j)) hgate hnext
-  exact ⟨⟨s, hrestored, hgate, hnext, c₁, ℓ₁, hupd, hc₁j, hrestarts, hread, hview⟩⟩
+  obtain ⟨hread, -, -⟩ := ready_read_cut_at S Q.run.2 Q.hn Q.valid
+    (duration_nonneg Q) ht0 hth hw
+  exact Compose.Growing.outage_reader_gate_at hrun
+    hb₁ (outage_duration_supply_at Q) hrec
+    ⟨⟨hR.1, ⟨hread.1, hread.2.le⟩, ht0, hth⟩, hR.2⟩ hread.2
 
 /-- The engine cut at the end of `t ≥ 0` is at a time `≤ t`. -/
 private theorem cutTime_endCut_le (Q : OutageQueryAt S A V) {t : Time} (ht : 0 ≤ t) :
@@ -303,7 +202,7 @@ theorem outage_reader_bridge_at (Q : OutageQueryAt S A V)
   set U := Q.trace.HonestBlocksAt Q.keys
   set j := cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)
   set st := Q.trace.state ŵ j
-  have hjt : ∀ k < j, Q.trace.time k ≤ t := G.read.1
+  have hjt : ∀ k < j, Q.trace.time k ≤ t := G.read.1.1
   have hΦ : FrameOK (Node.frame st) := Compose.Growing.frameOK_at hrun ht0 hŵ hjt
   have hΦU : (Node.frame st).tree ⊆ U := fun X hX => Compose.Growing.tree_held_at ht0 hŵ hjt hX.1
   have hTO : Anc U ar.tip ar.origin := ar.tip_anc
@@ -393,7 +292,7 @@ theorem outage_reader_bridge_at (Q : OutageQueryAt S A V)
       rw [hts1]; linarith
     have hnr : ∀ k, G.cut ≤ k → k < j → ¬ Q.trace.projAC.RestartAt ŵ k := by
       intro k hk hkj hrk
-      have h1 := G.restarts k hrk (G.read.1 k hkj)
+      have h1 := G.restarts k hrk (G.read.1.1 k hkj)
       have h2 := hrun.time_mono hk
       linarith
     -- the reader's AC states up to the read cut, in the prefix through `t`

@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Service
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Honest
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
@@ -9,6 +10,11 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageGateSlot
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -18,6 +24,8 @@ public section
 The outage gate count and read majority under growing faults, with the receiver service after GST
 (`ReceiverServiceAfterAt`):
 
+* `OutageReaderGate` and `outage_reader_gate_at` (E0–E4): the latest gate and update before
+  an explicit strict read, with restart exclusion and the reader's latest view;
 * `vote_held_before_early_at` (L1): a slot-`q` vote of a node honest at its cast and still honest
   at the receiver call, whose head extends the receiver's `Σ.F`, is pooled, its head framed and the
   vote resolved before `t_q + 2Δ`, at every call from `t_q + 2Δ` of a receiver honest then with no
@@ -39,6 +47,105 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+
+/-- The latest restored gate before an explicit strict read. -/
+structure OutageReaderGate (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+    (b₁ : Time) (y : Fin sp.n) (j : Nat) (t : Time) where
+  slot : Nat
+  restored : b₁ ≤ sp.ts slot + sp.Δ
+  gate_le : sp.ts slot + 6 * sp.Δ ≤ t
+  lt_next : t < sp.ts slot + 10 * sp.Δ
+  cut : Nat
+  label : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)
+  update : SA.UpdateAt tr.projAC y cut slot label
+  cut_lt : cut < j
+  restarts : ∀ k, tr.projAC.RestartAt y k → tr.time k ≤ t → tr.time k ≤ sp.ts slot
+  read : Consensus.Goldilocks.Generic.ReadPointAt tr j t ∧ t < tr.time j
+  view : (SA.latestView sp (tr.state y j).ac (Node.frame (tr.state y j)) t).2 =
+    ((slot + 1 : Nat) : Int)
+
+/-- Readiness over a joining window gives joining on the prefix through the read time. -/
+private theorem joined_of_ready
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    {y : Fin sp.n} {t c : Time} (hy : y ∈ H t) (ht : 0 ≤ t)
+    (hc : 8 * sp.Δ ≤ c + 1)
+    (hawake : ∀ u, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) :
+    tr.JoinedAt y t := by
+  obtain ⟨-, hj⟩ := Compose.ready_implies_joined_of (hrun.upTo ht) hy ht hc
+    fun u h1 h2 => ⟨hawake u h1 h2, h2⟩
+  exact fun k hk hkt => hj k ((RunTrace.upTo_restartAt tr).2 ⟨hkt, hk⟩) hkt
+
+/-- Joining bounds projected restarts on the prefix through the read time. -/
+private theorem restarts_of_joined
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    {y : Fin sp.n} {t : Time} (hy : y ∈ H t) (ht : 0 ≤ t) (hJ : tr.JoinedAt y t) :
+    ∀ k, tr.projAC.RestartAt y k → tr.time k ≤ t →
+      tr.time k ≤ sp.ts ((sp.slot t : Int) - 1) := by
+  have h := ((Compose.joined_projection_from (hrun.upTo ht) hy t).1).mp
+    (joinedAt_upTo hJ)
+  intro k hk hkt
+  rw [RunTrace.upTo_projAC] at h
+  exact h k ((ac_restartAt_upTo tr.projAC).2 ⟨hkt, hk⟩) hkt
+
+/-- E0–E4 at an actual strict read, independently of the engine representation. -/
+theorem outage_reader_gate_at
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    {b₁ : Time}
+    (hb₁ : 0 ≤ b₁) {b c t : Time} (hc : Regimes.catchUp sp ≤ c)
+    (hrec : b₁ + 9 * sp.Δ ≤ t) {y : Fin sp.n} {j : Nat}
+    (hR : Consensus.Goldilocks.Generic.ReadyReadPoint tr H b c y j t)
+    (hstrict : t < tr.time j) : Nonempty (OutageReaderGate tr H b₁ y j t) := by
+  have hΔ := sp.toParams.hΔ
+  have ht0 : 0 ≤ t := hR.1.2.2.1
+  have hy : y ∈ H t := hR.1.1
+  have hcu : Regimes.catchUp sp = 18 * sp.Δ := rfl
+  obtain ⟨s, hrestored, hgate, hnext⟩ := Obligations.outage_latest_gate sp hb₁ hrec
+  obtain ⟨hslu, hle⟩ := Obligations.outage_gate_restarts sp hgate hnext
+  set u := sp.ts s + 6 * sp.Δ with hu_def
+  have hu : u = 4 * sp.Δ * s + 6 * sp.Δ := rfl
+  have hu0 : 0 ≤ u := by linarith
+  have hut : u ≤ t := by linarith
+  have hyu : y ∈ H u := hrun.antitone hut hy
+  have hpub : sp.toParams.IsPublic u := ⟨4 * s + 6, by rw [hu]; ring⟩
+  have hwin : ∀ v, max 0 (u - (14 * sp.Δ - 1) - 1) ≤ v → v ≤ u → tr.awake y v := by
+    intro v h₁ h₂
+    exact hR.2 v (le_trans (max_le_max le_rfl (by rw [hcu] at hc; linarith)) h₁)
+      (by linarith)
+  have hyuw := hwin u (max_le hu0 (by linarith)) le_rfl
+  obtain ⟨c₁, x, hg⟩ := hrun.tick_of_awake y u hyu hu0 hpub hyuw
+  obtain ⟨hc₁, ht₁⟩ := Healing.tick_first_cut hg
+  have hJu := joined_of_ready hrun hyu hu0 (by linarith) hwin
+  have hj₁ : SA.joined sp (tr.state y c₁).ac u := by
+    have hst : (tr.upTo u).state y c₁ = tr.state y c₁ :=
+      RunTrace.upTo_state_of_le hrun.time_mono ht₁.le
+    have h := ((Compose.joined_projection_from (hrun.upTo hu0) hyu u).2.1 c₁
+      ((RunTrace.upTo_isCall _).mpr ⟨ht₁.le, _, hc₁⟩)
+      (fun hr => by
+        obtain ⟨-, ℓ, hc', hr⟩ := (RunTrace.upTo_restartAt tr).1 hr
+        have := Option.some.inj (hc₁.2.symm.trans hc'.2)
+        simp only [Node.acCall, Cut.ac.injEq] at this
+        rw [← this] at hr
+        cases hr) ht₁).1 (joinedAt_upTo hJu)
+    rwa [hst] at h
+  obtain ⟨ℓ₁, hupd⟩ : ∃ ℓ₁, SA.UpdateAt tr.projAC y c₁ s ℓ₁ := by
+    refine ⟨_, Compose.projAC_callAt.2 hc₁, rfl, ht₁.trans hu_def, ?_⟩
+    change SA.joined sp (tr.projAC.state y c₁) (tr.time c₁)
+    rw [projAC_state_at hrun (ht₁ ▸ hyu), ht₁]
+    exact hj₁
+  have hc₁j : c₁ < j := by
+    by_contra hh
+    have := hrun.time_mono (show j ≤ c₁ by omega)
+    linarith
+  have hJt := joined_of_ready hrun hy ht0 (by rw [hcu] at hc; linarith) hR.2
+  have hJt' := restarts_of_joined hrun hy ht0 hJt
+  have hJu' := restarts_of_joined hrun hyu hu0 hJu
+  have hrestarts : ∀ k, tr.projAC.RestartAt y k → tr.time k ≤ t → tr.time k ≤ sp.ts s :=
+    fun k hk hkt => (hJu' k hk ((hJt' k hk hkt).trans hle)).trans_eq hslu
+  have hview :=
+    Obligations.latestView_label_of_gate sp (tr.state y j).ac
+      (Node.frame (tr.state y j)) hgate hnext
+  exact ⟨⟨s, hrestored, hgate, hnext, c₁, ℓ₁, hupd, hc₁j, hrestarts,
+    ⟨hR.1.2.1, hstrict⟩, hview⟩⟩
 
 /-- A block between `Σ.F` and a block of a well-formed frame is in the frame. -/
 private theorem mem_tree_between {n : Nat} {FGP : Type} {U : Set (SA.Blk n FGP)}
