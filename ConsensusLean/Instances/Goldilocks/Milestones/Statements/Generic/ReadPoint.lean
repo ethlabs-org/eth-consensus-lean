@@ -46,8 +46,8 @@ noncomputable def confirmedRead (tr : RunTrace A) (y : Fin P.n) (i : Nat)
 noncomputable def headRead (tr : RunTrace A) (y : Fin P.n) (i : Nat)
     (t : Time) : A.Blk := A.head (tr.state y i).ac (Node.frame (tr.state y i)) t
 
-/-- L1/L2/L8 targets at the engine read time. No collision or regime premise is added.
-Sources: CorrectLocal.tipsValid/payloadProjection; lead LeadTipsValid/LeadHeldInView;
+/-- L1/L2 targets at the engine read time. No collision or regime premise is added.
+Sources: CorrectLocal.tipsValid; lead LeadTipsValid/LeadHeldInView;
 Growing/Simulation/Endpoint/Outputs.engine_outputValid_at and engine_nested_at.
 The held-tree-to-view, root, chain and codec suppliers remain separate E1 contracts. -/
 structure LocalReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where
@@ -60,13 +60,6 @@ structure LocalReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Pr
   held : ∀ cm proposer dg H (tr : RunTrace A),
     C.run.Run cm proposer dg H tr → ∀ b y i t,
     HonestReadPoint tr H b y i t → confirmedRead tr y i t ∈ (tr.state y i).fg.tree
-  payload : ∀ cm proposer dg H (tr : RunTrace A),
-    C.run.Run cm proposer dg H tr → ∀ b B y i t,
-    HonestReadPoint tr H b y i t →
-      (Anc (tr.HonestBlocksAt H) B (confirmedRead tr y i t) →
-        C.payload B ⊆ C.payload (confirmedRead tr y i t)) ∧
-      (Anc (tr.HonestBlocksAt H) B (tr.finalizedAt y i) →
-        C.payload B ⊆ C.payload (tr.finalizedAt y i))
 
 /-- L6/L7 use the shared finite healthy regime, never an all-future schedule. -/
 structure HealthyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where

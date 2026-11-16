@@ -87,15 +87,6 @@ structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
       tr.confirmedAt y i ∈ (Node.frame (tr.state y i)).tree ∧
       (Node.frame (tr.state y i)).Anc (tr.finalizedAt y i) (tr.confirmedAt y i) ∧
       (Node.frame (tr.state y i)).Anc (tr.confirmedAt y i) (tr.headAt y i)
-  /-- L8: ancestry of a proposal into either output preserves its projected payload. -/
-  payloadProjection : ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
-    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
-    (tr : RunTrace A), run.Run cm proposer dg H tr →
-    ∀ B y j, y ∈ H (tr.time j) →
-      (Anc (tr.HonestBlocksAt H) B (tr.confirmedAt y j) →
-        payload B ⊆ payload (tr.confirmedAt y j)) ∧
-      (Anc (tr.HonestBlocksAt H) B (tr.finalizedAt y j) →
-        payload B ⊆ payload (tr.finalizedAt y j))
 
 /-- A run interface transported along signer equality has the same runs. -/
 theorem ACRun.cast_run {A : NodeAC P} {sg sg' : A.Msg → Fin P.n} (h : sg = sg') (R : ACRun A sg) :
