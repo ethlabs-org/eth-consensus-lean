@@ -362,8 +362,8 @@ theorem handover_seed_cover_at
           Q.bound
         (runCommittee { S with vote := stock } Q.run.2 Q.hn) (K S A).params.βK :=
     { D.reset with
-      sync := healthy_preparation_service_at
-          { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q
+      sync := healthy_preparation_service_at Q.run Q.hn Q.valid Q.noCollision Q.bound_le
+        Q.healthy.1
       timeoutDelay := fun s => by
         have h := protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2
         have hδ : (Q.params.toParams.δt : Time) = S.δt := rfl
