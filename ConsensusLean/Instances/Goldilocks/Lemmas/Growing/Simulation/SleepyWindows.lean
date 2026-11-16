@@ -348,15 +348,18 @@ theorem goldilocks_outageTransport (S : Setup) {E : Env V}
         simpa only [p, goldilocksPoint, EnvPoint.lookAhead, min_assoc, min_self,
           EnvPoint.retain, Model.Run.point] using h
 
-/-- Transporting a local supplier along a signer equality keeps its outage data. -/
-private theorem outage_data_cast {P : Params} {A : NodeAC P} {sg sg' : A.Msg → Fin P.n}
+/-- Signer transport preserves the local service, durations and outage policy. -/
+theorem local_data_cast {P : Params} {A : NodeAC P} {sg sg' : A.Msg → Fin P.n}
     (h : sg = sg') (C : ACCorrectLocal A sg) :
-    (h ▸ C).recovery = C.recovery ∧ (h ▸ C).θ = C.θ ∧ (h ▸ C).catchUp = C.catchUp ∧
-      (h ▸ C).look = C.look ∧ (h ▸ C).committeeLook = C.committeeLook ∧
+    (h ▸ C).served = C.served ∧ (h ▸ C).look = C.look ∧
+      (h ▸ C).catchUp = C.catchUp ∧ (h ▸ C).latency = C.latency ∧
+      (h ▸ C).margin = C.margin ∧ (h ▸ C).hold = C.hold ∧
+      (h ▸ C).run.Run = C.run.Run ∧ (h ▸ C).committeeLook = C.committeeLook ∧
+      (h ▸ C).θ = C.θ ∧ (h ▸ C).recovery = C.recovery ∧
       (h ▸ C).outageEta = C.outageEta ∧ (h ▸ C).outageLag = C.outageLag ∧
       (h ▸ C).outageBudget = C.outageBudget := by
   subst h
-  exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 /-- At the local data equations, the fixed local outage policy matches the endpoint contract:
 catch-up `18Δ + 1 ≤ 19Δ`, and equal recovery, threshold, look-aheads, look-back, arming lag and
@@ -370,7 +373,7 @@ theorem goldilocks_outageRecoveryBinding (S : Setup) (A : ContractAssumptions S)
     (hsg : (fun v => v.val) = M.signer) :
     OutageRecoveryBinding M (goldilocksContract A (contract_coefficients S A)) (hsg ▸ C) := by
   obtain ⟨-, hθ, hc, hl, hcl, -, -, -, hr, hη, hlag, hb, -, -⟩ := hC
-  obtain ⟨er, eθ, ec, el, ecl, eη, elag, eb⟩ := outage_data_cast hsg C
+  obtain ⟨-, el, ec, -, -, -, -, ecl, eθ, er, eη, elag, eb⟩ := local_data_cast hsg C
   have hΔ : (S.params (pubOf E) hn).Δ = E.ΔAC := rfl
   have h1 : (1 : Time) ≤ E.ΔAC := E.ΔAC_pos
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
@@ -443,15 +446,6 @@ private theorem canonical_window_premises
   · simpa only [CommitteeWindow, hθ] using hK
   · simpa only [PopulationWindow, hθ] using hpop
 
-private theorem cast_local_fields {P : Params} {A : NodeAC P}
-    {sg sg' : A.Msg → Fin P.n} (h : sg = sg') (C : ACCorrectLocal A sg) :
-    (h ▸ C).run.Run = C.run.Run ∧ (h ▸ C).look = C.look ∧
-    (h ▸ C).catchUp = C.catchUp ∧ (h ▸ C).committeeLook = C.committeeLook ∧
-    (h ▸ C).θ = C.θ ∧ (h ▸ C).hold = C.hold ∧ (h ▸ C).margin = C.margin ∧
-    (h ▸ C).served = C.served := by
-  cases h
-  exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-
 /-- The fixed concrete event proof supplies the generic map-bound event-safety row. -/
 theorem goldilocksRunMap_event_safety
     (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
@@ -461,8 +455,8 @@ theorem goldilocksRunMap_event_safety
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
       (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
   intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes B B' hB hB'
-  obtain ⟨hr, hl, hc, hcl, hθ, _, _, hsv⟩ :=
-    cast_local_fields (goldilocksRunMap_signer S rho hn hv).symm C
+  obtain ⟨hsv, hl, hc, -, -, -, hr, hcl, hθ, -⟩ :=
+    Simulation.local_data_cast (goldilocksRunMap_signer S rho hn hv).symm C
   rw [hr] at hrun
   rw [hl] at hpre
   simp only [CommitteeWindow, PopulationWindow, hl, hc, hcl, hθ] at hK hpop
@@ -488,8 +482,8 @@ theorem goldilocksRunMap_extension
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
       (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
   intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes y i j t u hi hj hbi hbj hij htu
-  obtain ⟨hr, hl, hc, hcl, hθ, _, _, hsv⟩ :=
-    cast_local_fields (goldilocksRunMap_signer S rho hn hv).symm C
+  obtain ⟨hsv, hl, hc, -, -, -, hr, hcl, hθ, -⟩ :=
+    Simulation.local_data_cast (goldilocksRunMap_signer S rho hn hv).symm C
   rw [hr, hdata.1.1.1] at hrun
   rw [hl] at hpre
   rw [hc] at hi hj
@@ -511,8 +505,8 @@ theorem goldilocksRunMap_proposal_coverage
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
       (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
   intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes B k y j t hP hk hhold hkb hkt hy hread hjt
-  obtain ⟨hr, hl, hc, hcl, hθ, hh, hm, hsv⟩ :=
-    cast_local_fields (goldilocksRunMap_signer S rho hn hv).symm C
+  obtain ⟨hsv, hl, hc, -, hm, hh, hr, hcl, hθ, -⟩ :=
+    Simulation.local_data_cast (goldilocksRunMap_signer S rho hn hv).symm C
   rw [hr, hdata.1.1.1] at hrun
   rw [hl] at hpre
   rw [hc, hh] at hP

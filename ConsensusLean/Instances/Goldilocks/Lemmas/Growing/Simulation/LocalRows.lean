@@ -20,19 +20,6 @@ open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V]
 
-private theorem deadline_data_cast {P : Params} {N : NodeAC P}
-    {sg sg' : N.Msg → Fin P.n} (h : sg = sg') (C : ACCorrectLocal N sg) :
-    (h ▸ C).catchUp = C.catchUp ∧ (h ▸ C).latency = C.latency ∧
-      (h ▸ C).margin = C.margin := by
-  subst h
-  exact ⟨rfl, rfl, rfl⟩
-
-private theorem hold_data_cast {P : Params} {N : NodeAC P}
-    {sg sg' : N.Msg → Fin P.n} (h : sg = sg') (C : ACCorrectLocal N sg) :
-    (h ▸ C).hold = C.hold := by
-  subst h
-  rfl
-
 /-- The outage regime supplies pre-outage recipient service and post-stop service. -/
 theorem goldilocks_outageServiceSupply (S : Setup) (A : ContractAssumptions S) {E : Env V}
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
@@ -42,7 +29,7 @@ theorem goldilocks_outageServiceSupply (S : Setup) (A : ContractAssumptions S) {
     (hsg : (fun v => v.val) = (goldilocksRunMap S rho hn hv).signer) :
     OutageServiceSupply (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C) := by
   classical
-  obtain ⟨es, -⟩ := service_data_cast hsg C
+  obtain ⟨es, -⟩ := local_data_cast hsg C
   obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, -, hserved⟩ := hC
   intro hv' hc T b₀ b₁ hout
   let Q : Growing.OutageQueryAt S A V :=
@@ -73,7 +60,7 @@ theorem goldilocks_claimDeadlineFit (S : Setup) (A : ContractAssumptions S) {E :
     ClaimDeadlineFit (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C) := by
   have hdata : (hsg ▸ C).catchUp = 18 * E.ΔAC ∧ (hsg ▸ C).latency = 6 * E.ΔAC ∧
       (hsg ▸ C).margin = 6 * E.ΔAC := by
-    obtain ⟨hc, hl, hm⟩ := deadline_data_cast hsg C
+    obtain ⟨-, -, hc, hl, hm, -⟩ := local_data_cast hsg C
     exact ⟨hc.trans hC.2.2.1, hl.trans hC.2.2.2.2.2.2.2.1,
       hm.trans hC.2.2.2.2.2.2.1⟩
   refine ⟨?_, by rw [hdata.2.1, hdata.2.2], ?_, ?_, ?_⟩
@@ -139,9 +126,9 @@ theorem goldilocks_proposalWitnessRefinement (S : Setup) (A : ContractAssumption
     (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C)
     (hsg : (fun v => v.val) = (goldilocksRunMap S rho hn hv).signer) :
     ProposalWitnessRefinement (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C) := by
-  obtain ⟨hcatch, -, hmargin⟩ := deadline_data_cast hsg C
+  obtain ⟨-, -, hcatch, -, hmargin, hhold, -⟩ := local_data_cast hsg C
   have hc := hcatch.trans hC.2.2.1
-  have hh := (hold_data_cast hsg C).trans hC.2.2.2.2.2.1
+  have hh := hhold.trans hC.2.2.2.2.2.1
   have hm := hmargin.trans hC.2.2.2.2.2.2.1
   constructor
   · intro hv' hnc cap idx t hcap hs hp ht hb hr

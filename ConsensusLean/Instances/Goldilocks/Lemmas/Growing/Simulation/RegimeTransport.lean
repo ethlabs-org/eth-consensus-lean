@@ -39,13 +39,6 @@ open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V]
 
-/-- Transporting a local supplier along a signer equality keeps its service and look-ahead. -/
-theorem service_data_cast {P : Params} {A : NodeAC P} {sg sg' : A.Msg → Fin P.n}
-    (h : sg = sg') (C : ACCorrectLocal A sg) :
-    (h ▸ C).served = C.served ∧ (h ▸ C).look = C.look := by
-  subst h
-  exact ⟨rfl, rfl⟩
-
 /-- The regime rows of the canonical run map at the local data equations and `K S A`. -/
 theorem goldilocks_regimeTransport (S : Setup) (A : ContractAssumptions S) {E : Env V}
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
@@ -55,7 +48,7 @@ theorem goldilocks_regimeTransport (S : Setup) (A : ContractAssumptions S) {E : 
     (hsg : (fun v => v.val) = (goldilocksRunMap S rho hn hv).signer) :
     RegimeTransport (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C) := by
   classical
-  obtain ⟨es, el⟩ := service_data_cast hsg C
+  obtain ⟨es, el, -⟩ := local_data_cast hsg C
   obtain ⟨-, -, -, hl, -, -, -, -, -, -, -, -, -, hserved⟩ := hC
   have hrun := simTraceAt_goldilocksRun S rho hn hv
   have hΔ := (S.params (pubOf E) hn).toParams.hΔ
