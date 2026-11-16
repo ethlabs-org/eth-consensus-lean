@@ -6,26 +6,22 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Outage engine part under growing faults: the premise package of the lock module
+/-! # Outage under growing faults: the premise package of the lock module
 
-`outageLockPremises_of_arming_at` builds the trace-level premise package
-`Compose.Growing.OutageLockPremises` of the lock module from an outage query, its pre-start
-service and an armed ready source, with `P` its origin, `A₀ = holdersAt`, `W = opponentsAt`,
-`j₀` the cover label and `r` the restored label.
+`Compose.Growing.outageLockPremises_of_arming` builds the premise package
+`OutageLockPremises` of the lock module on a node trace from an armed source
+(`OutageArming`), with `P` its origin, `A₀` the holders, `W` their opponents, `j₀` the cover
+label and `r` the first restored label. Its inputs are node facts: the run interface, collision
+freedom and the committee facts, the call bound `hor`, the pre-start sleepy service and post-stop
+service, both count shapes through `hor`, the window numbers, and the holder and opponent facts
+on `[a, z]`. Every count reached by an honest call is within `hor`; `hA₀join` comes from the run
+law (`restart_le_of_awake_at`), pool delivery from post-stop service (`outage_pool_delivery_at`),
+and the Sleepy invariant up to the start from the service and the counts
+(`sleepy_invariant_at`).
 
-* The holder and opponent premises come from the outage's η-sleepy counts at the window end
-  `z`, on the view retained through `z`: `A₀` (ready at `z` with the outage catch-up) and `W`
-  (the other validators awake in the look-back) are honest at `z`; a validator honest at `z`
-  awake in `[a, z]` is in `A₀ ∪ W`, since the look-back covers `[a, z]`; `A₀` is awake throughout
-  `[a, z]`, since the outage catch-up covers it; inside each band committee `K m`,
-  `|K m ∩ ((H z)ᶜ ∪ W)| < |K m ∩ A₀|` (`opponents_lt_K`, from the look-back committee clause).
-* The slot committees are the query's `Q.K`, with their facts `voteK_facts` (size, P, frames,
-  gate) and their count shapes `Q.boundsK` (from the committee η-sleepy premise).
-* The two count shapes through every horizon come from the η-sleepy premise (η-sleepy implies
-  sleepy at half readiness, `sleepy_bounds_at`); the Sleepy invariant up to the start from the
-  pre-start service and those counts (`sleepy_invariant_at`).
-* `hzc` from the window numbers (`query_numbers_at`): every time up to `t_{j₀+k} + 6Δ` within
-  the horizon is at or before `z`; `hA₀join` from the run law (`restart_le_of_awake_at`). -/
+`outageLockPremises_of_arming_at` is the package at an outage query's data: the holders and
+opponents read on the view retained through the window end, the slot committees `Q.K` with their
+facts `voteK_facts`, and the query's numbers and counts. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -65,59 +61,60 @@ theorem restart_le_of_awake_at
   have hpu := hcalls j hjk hcall
   exact hnaw (haw u (by linarith) (by linarith))
 
-end Consensus.Goldilocks.Compose.Growing
-
-namespace Consensus.Goldilocks.Obligations.Growing
-open AsChainShape Simulation
-open Blocks Shape
-variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
-
 open Classical in
-/-- **The adapter**: the premise package of the lock module under growing faults from an armed
-ready source, with `P` its origin, `A₀` the holders, `W` its opponents awake in the look-back,
-`j₀` the cover label and `r` the restored label. -/
-noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
-    (service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start)
-    {v : V} (hsh : Q.start ≤ Q.run.2.horizon)
-    (ar : OutageArmingAt Q v) :
-    Compose.Growing.OutageLockPremises Q.trace Q.keys (runProposer S Q.run.2 Q.hn)
-      (digestOf S Q.run.2) (simIni S Q.run.2 Q.hn) :=
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
-  have hnum := query_numbers_at Q
-  have hr := restoredLabel_spec Q
-  have hΔ := Q.params.toParams.hΔ
-  have hk2 := Q.params.two_le_k
-  have hT0 : 0 ≤ Q.T := Q.outage.times.1
-  have hlag := outage_node_lag_at Q
-  have hTs : Q.T ≤ Q.start := by
-    have : (0 : Time) ≤ (4 * Q.params.k + 6) * Q.params.Δ := by positivity
+/-- **The lock module's premise package from an armed source** on a node trace, with `P` its
+origin, `A₀` the holders, `W` their opponents, `j₀` the cover label of `b₀` and `r` the first
+restored label of `b₁`. Every count reached by an honest call is within the call bound `hor`;
+pool delivery is post-stop service (`outage_pool_delivery_at`). -/
+noncomputable def outageLockPremises_of_arming {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    {T b₀ b₁ hor a z : Time} {A₀ W : Set (Fin sp.n)} {r : Nat}
+    (hT0 : 0 ≤ T) (hlag : T + (4 * sp.k + 6) * sp.Δ ≤ b₀) (hsh : b₀ ≤ hor)
+    (hcall : ∀ x k, tr.IsCall x k → tr.time k ≤ hor)
+    (service : SleepyServiceBefore tr H sp.Δ b₀) (hpost : Generic.PostStopService tr H b₁)
+    (hB : ∀ b ≤ hor, SleepyBoundsFrom tr H 0 b) (hBK : ∀ b ≤ hor, CommitteeBoundsFrom tr H K 0 b)
+    (hnum : sp.ts (coverLabel sp b₀) + 2 * sp.Δ ≤ b₀ ∧
+      b₀ < sp.ts (coverLabel sp b₀ + 1 : Nat) + 2 * sp.Δ ∧
+      b₁ - b₀ ≤ (4 * (sp.k : Time) - 5) * sp.Δ ∧ b₀ ≤ b₁ ∧
+      b₁ ≤ sp.ts (coverLabel sp b₀ + sp.k : Nat) + sp.Δ ∧
+      sp.ts (coverLabel sp b₀ : Nat) + sp.Δ < b₁ ∧
+      ∀ t, t ≤ sp.ts (coverLabel sp b₀ + sp.k : Nat) + 6 * sp.Δ → t ≤ hor → t ≤ z)
+    (hr : b₁ ≤ sp.ts r + sp.Δ ∧ ∀ s : Nat, b₁ ≤ sp.ts s + sp.Δ → r ≤ s)
+    (ha0 : 0 ≤ a) (haj : a ≤ sp.ts ((coverLabel sp b₀ : Int) - sp.k))
+    (hA₀ : A₀ ⊆ H z) (hW : W ⊆ H z) (hdisj : Disjoint A₀ W)
+    (hawake : ∀ x ∈ A₀, ∀ u, a ≤ u → u ≤ z → tr.awake x u)
+    (hclass : ∀ x u, a ≤ u → u ≤ z → x ∈ H z → tr.awake x u → x ∈ A₀ ∪ W)
+    (hopp : ∀ m, coverLabel sp b₀ ≤ m → m ≤ coverLabel sp b₀ + sp.k → sp.ts m ≤ hor →
+      (K.committee m ∩ ((H z)ᶜ ∪ W)).ncard < (K.committee m ∩ A₀).ncard)
+    {y : Fin sp.n} {i : Nat} (ar : OutageArming tr H (coverLabel sp b₀) hor A₀ y i T) :
+    OutageLockPremises tr H proposer dg ini :=
+  have hΔ := sp.toParams.hΔ
+  have hk2 := sp.two_le_k
+  have hTs : T ≤ b₀ := by
+    have : (0 : Time) ≤ (4 * sp.k + 6) * sp.Δ := by positivity
     linarith
-  have hBb : ∀ b, b ≤ Q.run.2.horizon → Compose.Growing.SleepyBoundsFrom Q.trace Q.keys 0 b :=
-    fun b hb => Q.bounds hb
-  have hwin := outage_window_cover_at Q
-  { b₀ := Q.start
-    b₁ := Q.stop
-    a := Q.winStart
-    z := Q.winEnd
+  have hkj : sp.k < coverLabel sp b₀ :=
+    (Compose.armed_label_lt (σ := 0) hT0 hlag (by simp only [SA.SAParams.ts]; simpa using hT0)).2
+  { b₀ := b₀
+    b₁ := b₁
+    a := a
+    z := z
     P := ar.origin
-    σ := if ar.origin.root = Q.params.genesisRoot then 0 else ar.σ
-    j₀ := Compose.coverLabel Q.params Q.start
-    r := Q.restoredLabel
-    A₀ := Q.holdersAt
-    W := Q.opponentsAt
+    σ := if ar.origin.root = sp.genesisRoot then 0 else ar.σ
+    j₀ := coverLabel sp b₀
+    r := r
+    A₀ := A₀
+    W := W
     hrun := hrun
-    K := Q.K
-    facts := voteK_facts S Q.run.2 Q.hn Q.valid hnc hrun
+    K := K
+    facts := hKB
     hnc := hnc
     hj₀ := ⟨hnum.1, hnum.2.1⟩
     hr := hr
     hσ := by
       split_ifs with hg
-      · have := (Compose.armed_label_lt (σ := 0) hT0 hlag
-          (by simp only [SA.SAParams.ts]; simpa using hT0)).2
-        change 0 + Q.params.k < _
-        omega
+      · omega
       · rcases ar.armed with ⟨htg, ho⟩ | ⟨-, hσk⟩
         · exact absurd (ho ▸ htg) hg
         · exact hσk
@@ -125,8 +122,8 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
       obtain ⟨-, -, -, -, hK, hjs, -⟩ := hnum
       refine ⟨?_, hr.2 _ hK⟩
       by_contra h
-      have := (SA.ts_le_iff Q.params).2
-        (show (Q.restoredLabel : Int) ≤ (Compose.coverLabel Q.params Q.start : Nat) by omega)
+      have := (SA.ts_le_iff sp).2
+        (show (r : Int) ≤ (coverLabel sp b₀ : Nat) by omega)
       linarith [hr.1]
     hgap := hnum.2.2.1
     hb₀ := hnum.2.2.2.1
@@ -137,42 +134,62 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
       · rcases ar.armed with ⟨htg, ho⟩ | ⟨hCw, -⟩
         · exact absurd (ho ▸ htg) hg
         · exact Or.inr (hCw.mono hTs)
-    hpre := Compose.Growing.sleepy_invariant_at hrun hnc
-      (voteK_facts S Q.run.2 Q.hn Q.valid hnc hrun) (hT0.trans hTs) service
-      (hBb _ hsh) (Q.boundsK hrun hsh)
+    hpre := sleepy_invariant_at hrun hnc hKB (hT0.trans hTs) service (hB _ hsh) (hBK _ hsh)
     hpreSvc := service
-    hB := fun b ⟨_, _, _, hc, hle⟩ => hBb b (hle.trans (Q.call_le_horizon hc))
-    hBK := fun b ⟨_, _, _, hc, hle⟩ => Q.boundsK hrun (hle.trans (Q.call_le_horizon hc))
-    hA₀ := Q.holdersAt_subset
-    hW := ⟨Q.opponentsAt_subset, Q.holdersAt_disjoint⟩
-    hopponentsK := fun m h₁ h₂ ⟨_, _, _, hc, hle⟩ =>
-      Q.opponents_lt_K h₁ h₂ (hle.trans (Q.call_le_horizon hc)) hsh
-    hawake := fun x t hat htz hxz haw => Q.classify hat htz hxz haw
-    hA₀awake := fun x hx t hat htz => Q.holder_awake hx hat htz
+    hB := fun b ⟨_, _, _, hc, hle⟩ => hB b (hle.trans (hcall _ _ hc))
+    hBK := fun b ⟨_, _, _, hc, hle⟩ => hBK b (hle.trans (hcall _ _ hc))
+    hA₀ := hA₀
+    hW := ⟨hW, hdisj⟩
+    hopponentsK := fun m h₁ h₂ ⟨_, _, _, hc, hle⟩ => hopp m h₁ h₂ (hle.trans (hcall _ _ hc))
+    hawake := hclass
+    hA₀awake := hawake
     hA₀join := fun x hx k hk hkz =>
-      Compose.Growing.restart_le_of_awake_at hrun (Q.holdersAt_subset hx) hwin.1
-        (fun u hau huz => Q.holder_awake hx hau huz) hk hkz
+      restart_le_of_awake_at hrun (hA₀ hx) ha0 (fun u hau huz => hawake x hx u hau huz) hk hkz
     ha := by
-      have h := hwin.2.1
-      have hj : (Q.params.k : Int) < Compose.coverLabel Q.params Q.start :=
-        by exact_mod_cast (Compose.armed_label_lt (σ := 0) hT0 hlag
-          (by simp only [SA.SAParams.ts]; simpa using hT0)).2
+      have h := haj
+      have hj : (sp.k : Int) < coverLabel sp b₀ := by exact_mod_cast hkj
       simp only [SA.SAParams.ts] at h ⊢
-      have : (0 : Time) ≤ (Q.params.k : Int) - 1 := by linarith
-      linarith [mul_nonneg this Q.params.toParams.hΔ.le]
-    hzc := fun t ht ⟨_, _, _, hc, hle⟩ => hnum.2.2.2.2.2.2 t ht (hle.trans (Q.call_le_horizon hc))
+      have : (0 : Time) ≤ (sp.k : Int) - 1 := by linarith
+      linarith [mul_nonneg this hΔ.le]
+    hzc := fun t ht ⟨_, _, _, hc, hle⟩ => hnum.2.2.2.2.2.2 t ht (hle.trans (hcall _ _ hc))
     lockPrev := fun x hx hg ⟨_, _, _, hc, hle⟩ => by
-      obtain ⟨c, ℓ, hu, hb⟩ := ar.lockPrev x hx hg (hle.trans (Q.call_le_horizon hc))
-      exact ⟨c, ℓ, hu, Compose.Growing.prevBaseAt_iff.2 hb⟩
+      obtain ⟨c, ℓ, hu, hb⟩ := ar.lockPrev x hx hg (hle.trans (hcall _ _ hc))
+      exact ⟨c, ℓ, hu, prevBaseAt_iff.2 hb⟩
     lockCover := fun x hx hg ⟨_, _, _, hc, hle⟩ => by
-      obtain ⟨c, ℓ, hu, hfirst, hcond⟩ := ar.lockCover x hx hg (hle.trans (Q.call_le_horizon hc))
-      exact ⟨c, ℓ, hu, hfirst, fun hF hVA hN =>
-        Compose.Growing.coverBaseAt_iff.2 (hcond hF hVA hN)⟩
+      obtain ⟨c, ℓ, hu, hfirst, hcond⟩ := ar.lockCover x hx hg (hle.trans (hcall _ _ hc))
+      exact ⟨c, ℓ, hu, hfirst, fun hF hVA hN => coverBaseAt_iff.2 (hcond hF hVA hN)⟩
     PG := fun w c m ℓ hw hu hrm x i e hve hes =>
-      outage_pool_delivery_query_at Q w c m ℓ hw hu (hr.1.trans (by
-        have := (SA.ts_le_iff Q.params).2 (show (Q.restoredLabel : Int) ≤ m by exact_mod_cast hrm)
-        linarith)) x i e (Compose.Growing.hVoteAt_iff.1 hve).1
-        (Compose.Growing.hVoteAt_iff.1 hve).2 hes }
+      Simulation.outage_pool_delivery_at hrun hnc hpost w c m ℓ hw hu (hr.1.trans (by
+        have := (SA.ts_le_iff sp).2 (show (r : Int) ≤ m by exact_mod_cast hrm)
+        linarith)) x i e (hVoteAt_iff.1 hve).1 (hVoteAt_iff.1 hve).2 hes }
+
+end Consensus.Goldilocks.Compose.Growing
+
+namespace Consensus.Goldilocks.Obligations.Growing
+open AsChainShape Simulation
+open Blocks Shape
+variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
+
+/-- **The adapter**: the premise package of the lock module under growing faults from an armed
+ready source, with `P` its origin, `A₀` the holders, `W` its opponents awake in the look-back,
+`j₀` the cover label and `r` the restored label: the node package at the query's data. -/
+noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
+    (service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start)
+    {v : V} (hsh : Q.start ≤ Q.run.2.horizon)
+    (ar : OutageArmingAt Q v) :
+    Compose.Growing.OutageLockPremises Q.trace Q.keys (runProposer S Q.run.2 Q.hn)
+      (digestOf S Q.run.2) (simIni S Q.run.2 Q.hn) :=
+  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hnum := query_numbers_at Q
+  have hwin := outage_window_cover_at Q
+  Compose.Growing.outageLockPremises_of_arming hrun hnc
+    (voteK_facts S Q.run.2 Q.hn Q.valid hnc hrun) Q.outage.times.1 (outage_node_lag_at Q) hsh
+    (fun _ _ h => Q.call_le_horizon h) service (outage_postStopService_at Q)
+    (fun _ hb => Q.bounds hb) (fun _ hb => Q.boundsK hrun hb) hnum (restoredLabel_spec Q)
+    hwin.1 hwin.2.1 Q.holdersAt_subset Q.opponentsAt_subset Q.holdersAt_disjoint
+    (fun _ hx _ h₁ h₂ => Q.holder_awake hx h₁ h₂) (fun _ _ h₁ h₂ hx haw => Q.classify h₁ h₂ hx haw)
+    (fun _ h₁ h₂ hq => Q.opponents_lt_K h₁ h₂ hq hsh) ar.toOutageArming
 
 section Projections
 
@@ -182,10 +199,6 @@ variable {Q : OutageQueryAt S A V}
 
 theorem outageLockPremises_of_arming_at_P :
     (outageLockPremises_of_arming_at Q service hsh ar).P = ar.origin := by rfl
-
-theorem outageLockPremises_of_arming_at_j₀ :
-    (outageLockPremises_of_arming_at Q service hsh ar).j₀ =
-      Compose.coverLabel Q.params Q.start := by rfl
 
 theorem outageLockPremises_of_arming_at_b₁ :
     (outageLockPremises_of_arming_at Q service hsh ar).b₁ = Q.stop := by rfl

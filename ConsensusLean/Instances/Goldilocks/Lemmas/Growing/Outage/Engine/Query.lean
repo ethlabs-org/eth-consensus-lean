@@ -30,8 +30,6 @@ is `honestKeysAt` (the keys uncompromised at each time).
   the engine horizon;
 * `outage_psync_at`: the engine's partial synchrony from the outage stop;
 * `outage_receiver_service_at`: every receiver gets the receiver service after the stop;
-* `outage_pool_delivery_query_at`: an update of a restored label, by a node honest at it, holds
-  every vote of that slot by a node honest at its cast;
 * the numbers of the query (`outage_node_lag_at`, `outage_window_cover_at`, `query_numbers_at`,
   the restored label) on the proof window `[a, z]` (`winStart`, `winEnd`: the outage widened by
   `(4k + 6)Δ` on both sides, clamped to `[0, horizon]`), whose length is at most the look-back
@@ -92,19 +90,6 @@ theorem outage_receiver_service_at (Q : OutageQueryAt S A V)
       Q.trace.projAC :=
   receiverServiceAfterAt_of_psync S Q.run.2 Q.hn Q.valid
     (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) (outage_psync_at Q) y
-
-/-- **Post-stop pool delivery**: an update of a slot `m` with `b₁ ≤ t_m + Δ`, by a node honest at
-it, holds every slot-`m` vote of a node honest at its cast, or two other slot-`m` votes of its
-validator (equivocation evidence: the voter may be compromised after its cast). -/
-theorem outage_pool_delivery_query_at (Q : OutageQueryAt S A V) :
-    ∀ w c m ℓ, w ∈ Q.keys (Q.trace.time c) → SA.UpdateAt Q.trace.projAC w c m ℓ →
-      Q.stop ≤ Q.params.ts m + Q.params.Δ →
-      ∀ x i e, x ∈ Q.keys (Q.trace.time i) → SA.VoteAt Q.trace.projAC x i e → e.msg.slot = m →
-        e.msg ∈ (Q.trace.state w c).ac.pool m ∨
-          e.msg.val ∈ SA.equivocators {v | v ∈ (Q.trace.state w c).ac.pool m} :=
-  outage_pool_delivery_at (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid)
-    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision)
-    (outage_postStopService_at Q)
 
 /-- The catch-up duration of an outage query covers the node catch-up `18Δ`. -/
 theorem outage_duration_supply_at (Q : OutageQueryAt S A V) :
