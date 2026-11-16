@@ -466,6 +466,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Selectio
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionProof
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedRows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Supply.Fields
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UnanimousPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.WitnessUnanimity
