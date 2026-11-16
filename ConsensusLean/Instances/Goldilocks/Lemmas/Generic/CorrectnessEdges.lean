@@ -147,7 +147,6 @@ structure LocalClaimSuppliers {P : Params} {A : NodeAC P} {O : OutputSchema} {In
   outageService : OutageServiceSupply M K C
   resilience : ResilienceTipTransport M
   preparation : PreparationPremisesSupply M K
-  resetProgress : ResetProgressSupply M K C.healing
   highCanonical : HighCanonicalSupply M K C
   resetBudget : ResetHealBudgetSupply M K C
   storedRead : StoredReadTransport M R

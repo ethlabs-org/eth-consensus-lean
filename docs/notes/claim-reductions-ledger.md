@@ -44,7 +44,8 @@ missing source prerequisite, not a valid-run counterexample, and supplies no pro
 
 All regime reductions, final accountability, the output-validity HoldsAlways wrapper and the
 local-supplier capstone `meetsObligations_of_local` are PROVED, conditional on their explicit
-suppliers.
+suppliers. The reset-window progress supplier `ResetProgressSupply` is deleted: the healed-safety
+reduction takes its reset and opening from `ResetHealBudgetSupply`, and no proof consumed it.
 Existing CHAIN-REP nesting and
 final-monotonicity edges are reused, not duplicated. The remaining statement interfaces are
 admission-free Prop definitions, not proofs. Their compilation establishes well-formedness only,
@@ -230,7 +231,7 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | sleepy finite service and independent count windows | RegimeTransport.sleepy → SleepyPrefixAt; SleepyWindowSupply → CommitteeWindow and PopulationWindow | SleepyWindowSupply supplied for Goldilocks; OPEN for an arbitrary map; RegimeTransport.sleepy stays OPEN; separate population/committee look-aheads; the prefix alone supplies neither window; no finite⇒unbounded inference |
 | healthy finite service/awake/cardinal bounds | RegimeTransport.healthy plus bounded nonnegative horizon → HealthyPrefix | Existing OPEN supplier + engine bound arithmetic |
 | accountable fraction and final population threshold | ClaimDeadlineFit.accountable/final_faults | NEW OPEN numerical targets |
-| all progress forms and matching query budget | ProposalWitnessRefinement, ResetProgressSupply, FinalWindowSupply | All OPEN, no single-pattern-only exclusion |
+| all progress forms and matching query budget | ProposalWitnessRefinement, FinalWindowSupply | All OPEN, no single-pattern-only exclusion |
 | final four anchors / delivery spacing / three height steps | FinalWindowSupply jointly selects SAME W, guard at E.ΔFG and pointwise FinalHeightSupply evidence | Corrected OPEN production target; no independent arbitrary-window height supplier, no constant FrameWindow manufacture |
 | actual final carrier processing | FinalReadTransport.processed | OPEN actual-read target; strict processing witness retained |
 | actual-read final cache ancestry | FinalReadTransport.cache | OPEN target; no cut-clock cache twin |

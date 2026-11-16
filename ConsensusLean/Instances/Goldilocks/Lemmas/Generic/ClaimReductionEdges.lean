@@ -223,7 +223,6 @@ def HealedSafetyReduction (C : ACCorrectLocal A sg)
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
     RegimeTransport M K L.look ∧ EngineReadPoint M ∧
       ClaimDeadlineFit M K L ∧ PreparationPremisesSupply M K ∧
-      ResetProgressSupply M K L.healing ∧
       HighCanonicalSupply M K L ∧ ResetHealBudgetSupply M K L ∧
       HealthyReadPoint L ∧ LocalReadPoint L ∧
       StoredReadTransport M (R E hE rho hv) ∧ HealedReadAncestry M K (R E hE rho hv) ∧
@@ -441,7 +440,7 @@ theorem healedSafetyReduction (C : ACCorrectLocal A sg)
   by_cases hc : rho.HashCollision
   · exact Or.inr hc
   refine Or.inl ?_
-  obtain ⟨-, heng, hfit, hprep, -, hhc, hbud, hHR, hLR, hSR, hanc, hrep, hhr, hcoh⟩ :=
+  obtain ⟨-, heng, hfit, hprep, hhc, hbud, hHR, hLR, hSR, hanc, hrep, hhr, hcoh⟩ :=
     h E hpub rho hv
   set M := B.map E hpub rho hv
   set L : ACCorrectLocal A M.signer := B.signer_eq E hpub rho hv ▸ C
@@ -935,7 +934,7 @@ theorem meetsObligations_of_local_proof {O : OutputSchema} {Info : Type} [Decida
         healedSafetyReduction (C ⟨pub, hn⟩) (B V ⟨pub, hn⟩) K (R V ⟨pub, hn⟩) hadm hβ hcf
           (fun E hE rho hv =>
           let L := hL V ⟨pub, hn⟩ E hE rho hv
-          ⟨L.regime, L.engineRead, L.deadlines, L.preparation, L.resetProgress,
+          ⟨L.regime, L.engineRead, L.deadlines, L.preparation,
             L.highCanonical, L.resetBudget, L.healthyRead, L.localRead, L.storedRead,
             L.healedAncestry, L.reads, L.honestReads, L.coherent⟩) cap g hcap hg idx gst)
         fun h => (hE h).healedSafe cap g hcap hg idx gst

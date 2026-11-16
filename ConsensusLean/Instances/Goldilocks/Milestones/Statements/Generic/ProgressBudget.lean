@@ -71,21 +71,6 @@ def ContractResetFit (M : RunMap rho payload) (K : Contract ProgressReq)
     ∃ G, ResetCoefficientFit healing g ((Sys F V).ready K g ⟨E, rho⟩)
       (K.params.heal cap idx) G
 
-/-- All-form reset production: no recurrence shape or not-ready form is silently dropped.
-This is an open supplier obligation, not evidence that arbitrary contracts meet its budget. -/
-def ResetProgressSupply (M : RunMap rho payload) (K : Contract ProgressReq)
-    {runs : ACRun A M.signer} (healing : ACHealing A M.signer runs) : Prop :=
-  rho.ExecutionValid → ∀ cap idx g,
-    (cap = .available ∨ cap = .stable) →
-    (Sys F V).Healthy (shapeProgress F V).toExternal K g ⟨E, rho⟩ →
-    (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K g ⟨E, rho⟩)
-      ((Sys F V).heal K cap idx g ⟨E, rho⟩) ⟨E, rho⟩ →
-    (Sys F V).heal K cap idx g ⟨E, rho⟩ ≤ rho.horizon →
-    ∃ W : ResetBudgetWindow healing g ((Sys F V).ready K g ⟨E, rho⟩)
-        ((Sys F V).heal K cap idx g ⟨E, rho⟩),
-      ProposalGap M.trace M.honest M.proposer W.gap W.start
-        (W.start + resetSlots healing.warmup W.gap P.δt)
-
 /-- Four actual anchors with exact spacing and final publication slack. No constant-frame
 premise is hidden in this data. Acceptance/height/processing are separate open suppliers. -/
 structure FinalProductionWindow (M : RunMap rho payload) (catchUp hold : Time)
