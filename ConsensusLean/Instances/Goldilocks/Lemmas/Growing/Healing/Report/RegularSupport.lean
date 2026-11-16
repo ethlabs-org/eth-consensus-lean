@@ -84,6 +84,33 @@ theorem faultBound_of_service_at
   change (H t)ᶜ.ncard < {y | y ∈ H t ∧ tr.projAC.awake y t ∧ SA.JoinedAt tr.projAC y t}.ncard
   omega
 
+/-- **CS at a slot committee from the service**: at a healthy observation `t ≤ b` whose previous
+slot starts from `ḡ`, the faulty members of a slot committee from `ḡ` by `b` are fewer than its
+members honest, awake and joined at `t`. Every validator honest at `t` is awake and joined then,
+and the committee half bound leaves more than half of the committee honest at `t`. -/
+theorem faultBoundK_of_service_at {K : SA.CommitteeDict sp.n} {g b : Time}
+    (hK : CommitteeHalfUpTo tr H K g b) {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hnr : NoRestartAfter tr H (gbar g)) {s : Nat} (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b)
+    {t : Time} (ht0 : 0 ≤ t) (hprev : gbar g ≤ sp.ts ((sp.slot t : Int) - 1)) (htb : t ≤ b) :
+    SA.FaultBoundK K s tr.projAC (H t) t := by
+  have hts : sp.ts ((sp.slot t : Int) - 1) ≤ t :=
+    (SA.ts_le_iff_le_slot sp ht0 _).mpr (by omega)
+  have hsub : K.committee s ∩ H t ⊆ K.committee s ∩
+      {y | y ∈ H t ∧ tr.projAC.awake y t ∧ SA.JoinedAt tr.projAC y t} := by
+    rintro y ⟨hyK, hy⟩
+    refine ⟨hyK, hy, hawake y t hy (hprev.trans hts) htb, ?_⟩
+    intro k hk hkt
+    exact (hnr y k (hrun.antitone hkt hy) (Compose.projAC_restartAt.mp hk)).trans hprev
+  have hf := hK.cs2 s hgs hsb t ht0 htb
+  have hsplit : (K.committee s ∩ H t).ncard + (K.committee s ∩ (H t)ᶜ).ncard =
+      sp.committeeSize := by
+    rw [← hK.facts.hsize s]
+    exact Set.ncard_inter_add_ncard_sdiff_eq_ncard _ _ (Set.toFinite _)
+  unfold SA.FaultBoundK
+  exact lt_of_lt_of_le (by omega) (Set.ncard_le_ncard hsub)
+
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
 end
