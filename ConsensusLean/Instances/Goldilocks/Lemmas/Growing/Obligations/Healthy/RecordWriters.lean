@@ -476,31 +476,27 @@ section Engine
 open Healing.Growing Shape
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E) (hn : 1 ≤ Fintype.card V)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- A healthy update no later than the stored clock has actually completed, before the read point
 after the node's last own event. The equality case uses the engine tick's position, not trace-time
 comparison. Honesty is at the stored clock only, which is within the reset premises' bound. -/
 theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b : Time}
     {cm : Time → Finset (Fin (Fintype.card V))} {βK : ℚ}
-    (hp : ResetPremisesUpTo (simTraceAt { S with vote := stock } rho hn)
-      (honestKeysAt { S with vote := stock } rho)
-      (runProposer { S with vote := stock } rho hn)
-      (digestOf { S with vote := stock } rho) g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo (simTraceAt S rho hn)
+      (honestKeysAt S rho) (runProposer S rho hn) (digestOf S rho) g ΔF a b cm βK)
     (hbh : b ≤ rho.horizon)
-    {v : V} {i u : Nat} (hv : v ∉ rho.faultyAt (stateAt { S with vote := stock } rho hn v i).now)
-    (hslot : (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).ts
-      ((({ S with vote := AsChainShape.stock } : Setup).params
-        (Model.pubOf E) hn).slot (SA.gbar g) + 1 : Nat) ≤
-        (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).ts u)
-    (ht : (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).ts u +
-      6 * (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).Δ ≤
-      (stateAt { S with vote := stock } rho hn v i).now)
-    (htb : (stateAt { S with vote := stock } rho hn v i).now ≤ b) :
-    ∃ j ell, SA.UpdateAt (simTraceAt { S with vote := stock } rho hn).projAC
+    {v : V} {i u : Nat} (hv : v ∉ rho.faultyAt (stateAt S rho hn v i).now)
+    (hslot : (S.params (Model.pubOf E) hn).ts
+      ((S.params (Model.pubOf E) hn).slot (SA.gbar g) + 1 : Nat) ≤
+        (S.params (Model.pubOf E) hn).ts u)
+    (ht : (S.params (Model.pubOf E) hn).ts u +
+      6 * (S.params (Model.pubOf E) hn).Δ ≤ (stateAt S rho hn v i).now)
+    (htb : (stateAt S rho hn v i).now ≤ b) :
+    ∃ j ell, SA.UpdateAt (simTraceAt S rho hn).projAC
       (rho.ownKey v) j u ell ∧
-      j < cutMap { S with vote := stock } rho hn (lastOwn { S with vote := stock } rho v i) := by
-  let sp := ({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn
+      j < cutMap S rho hn (lastOwn S rho v i) := by
+  let sp := S.params (Model.pubOf E) hn
   let T := sp.ts u + 6 * sp.Δ
   have hDelta := sp.toParams.hΔ
   have hT0 : 0 < T := by
@@ -516,92 +512,79 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b :
   have hvT : v ∉ rho.faultyAt T := fun h => hv (rho.faultyAt_mono ht h)
   have hpub : sp.toParams.IsPublic T :=
     ⟨4 * (u : Int) + 6, by dsimp [T, SA.SAParams.ts]; ring⟩
-  have hy : rho.ownKey v ∈ honestKeysAt { S with vote := stock } rho T :=
-    honest_ownKey_at { S with vote := stock } rho hvT hTh
+  have hy : rho.ownKey v ∈ honestKeysAt S rho T := honest_ownKey_at S rho hvT hTh
   have hawake := hp.awake _ T hy (by dsimp [T]; linarith) hTb
   have hawake' : E.awake v T = true := by
     simpa only [Model.Run.ownKey, Equiv.apply_symm_apply] using
-      ((simTraceAt_awake_bounds { S with vote := stock } rho hn _ T).mp hawake).1
+      ((simTraceAt_awake_bounds S rho hn _ T).mp hawake).1
   obtain ⟨p, he⟩ := List.mem_iff_getElem?.mp (hvalid.tick_total v T hT0.le hTh hvT hawake')
   have hm := hp.run.time_mono
   have hnr : ∀ q < i, rho.events[q]? ≠ some (.restart v T) := by
     intro q _ hrestart
     obtain ⟨_, rec, hrec, hnode, htime, ell, hlabel, hcall⟩ :=
-      restart_getElem? { S with vote := stock } rho hn hrestart
-    have hrs : (simTraceAt { S with vote := stock } rho hn).RestartAt (rho.ownKey v)
-        (cutMap { S with vote := stock } rho hn q) := by
+      restart_getElem? S rho hn hrestart
+    have hrs : (simTraceAt S rho hn).RestartAt (rho.ownKey v) (cutMap S rho hn q) := by
       refine ⟨ell, ⟨?_, ?_⟩, hcall⟩
-      · rw [simTraceAt_eq { S with vote := stock } rho hn,
-          simTrace_node { S with vote := stock } rho hn, hrec]; exact hnode
-      · rw [simTraceAt_eq { S with vote := stock } rho hn,
-          simTrace_label { S with vote := stock } rho hn, hrec,
+      · rw [simTraceAt_eq S rho hn, simTrace_node S rho hn, hrec]; exact hnode
+      · rw [simTraceAt_eq S rho hn, simTrace_label S rho hn, hrec,
           Option.map_some, hlabel]
-    have htime' : (simTraceAt { S with vote := stock } rho hn).time
-        (cutMap { S with vote := stock } rho hn q) = T := by
-      rw [simTraceAt_eq { S with vote := stock } rho hn,
-        simTrace_time { S with vote := stock } rho hn, hrec]; exact htime
+    have htime' : (simTraceAt S rho hn).time (cutMap S rho hn q) = T := by
+      rw [simTraceAt_eq S rho hn, simTrace_time S rho hn, hrec]; exact htime
     have hbound := hp.restart_le_before_at (htime' ▸ hy) hrs (htime' ▸ hTb)
     rw [htime'] at hbound
     have hbound' : sp.ts u + 6 * sp.Δ ≤ sp.ts (sp.slot (SA.gbar g) + 1 : Nat) := hbound
     linarith
-  have hpi := tick_before_stored_clock { S with vote := stock } rho hn hvalid he hT0 ht hnr
-  have hpl : p + 1 ≤ lastOwn { S with vote := stock } rho v i := by
+  have hpi := tick_before_stored_clock S rho hn hvalid he hT0 ht hnr
+  have hpl : p + 1 ≤ lastOwn S rho v i := by
     rw [lastOwn_eq]
     exact Nat.le_findGreatest (by omega) (Or.inr ⟨_, by simpa using he, rfl⟩)
   obtain ⟨hgroup, hlen⟩ := simTraceAt_tick_public_group
-    { S with vote := stock } rho hn hvalid he hpub
+    S rho hn hvalid he hpub
   have hlen0 := List.length_pos_iff.mpr hgroup.1
   obtain ⟨hnode, htime, -, -, hlabel⟩ := hgroup.2.1 0 hlen0
-  have hcall : (simTraceAt { S with vote := stock } rho hn).CallAt (rho.ownKey v)
-      (cutMap { S with vote := stock } rho hn p)
-      (Node.acCall (rho.ownKey v) ((simTraceAt { S with vote := stock } rho hn).state (rho.ownKey v)
-        (cutMap { S with vote := stock } rho hn p)) T .tick).2 := by
+  have hcall : (simTraceAt S rho hn).CallAt (rho.ownKey v) (cutMap S rho hn p)
+      (Node.acCall (rho.ownKey v) ((simTraceAt S rho hn).state (rho.ownKey v)
+        (cutMap S rho hn p)) T .tick).2 := by
     exact ⟨hnode, hlabel⟩
-  have htime : (simTraceAt { S with vote := stock } rho hn).time
-      (cutMap { S with vote := stock } rho hn p) = T := by
+  have htime : (simTraceAt S rho hn).time (cutMap S rho hn p) = T := by
     simpa only [Nat.add_zero] using htime
   obtain ⟨ell, hcallA, hcalltick⟩ : ∃ ell,
-      (simTraceAt { S with vote := stock } rho hn).projAC.CallAt (rho.ownKey v)
-        (cutMap { S with vote := stock } rho hn p) ell ∧
+      (simTraceAt S rho hn).projAC.CallAt (rho.ownKey v) (cutMap S rho hn p) ell ∧
         ell.call = .tick := ⟨_, Compose.projAC_callAt.2 hcall, rfl⟩
-  refine ⟨cutMap { S with vote := stock } rho hn p, ell, ⟨hcallA, hcalltick, htime, ?_⟩, ?_⟩
+  refine ⟨cutMap S rho hn p, ell, ⟨hcallA, hcalltick, htime, ?_⟩, ?_⟩
   · have hr := hp.run.upTo hT0.le
     have hac := (Compose.goldilocks_ac_projection_from hr (hp.noColl.upTo T)).localRun
-    have hj : SA.joined sp (((simTraceAt { S with vote := stock } rho hn).upTo T).projAC.state
-        (rho.ownKey v)
-        (cutMap { S with vote := stock } rho hn p))
-            ((simTraceAt { S with vote := stock } rho hn).time
-              (cutMap { S with vote := stock } rho hn p)) := by
+    have hj : SA.joined sp (((simTraceAt S rho hn).upTo T).projAC.state
+        (rho.ownKey v) (cutMap S rho hn p))
+            ((simTraceAt S rho hn).time (cutMap S rho hn p)) := by
       unfold SA.joined
       rcases SA.restartTime_state hac hp.run.vstart
-        hy (cutMap { S with vote := stock } rho hn p) with
+        hy (cutMap S rho hn p) with
         h | ⟨r, hri, hrs, h⟩
       · rw [h]; exact bot_le
       · rw [h]
         apply WithBot.coe_le_coe.mpr
-        have hrs' : (simTraceAt { S with vote := stock } rho hn).RestartAt (rho.ownKey v) r :=
+        have hrs' : (simTraceAt S rho hn).RestartAt (rho.ownKey v) r :=
           ((RunTrace.upTo_restartAt _).mp (Compose.projAC_restartAt.mp hrs)).2
-        have hrd : (simTraceAt { S with vote := stock } rho hn).time r ≤ T :=
+        have hrd : (simTraceAt S rho hn).time r ≤ T :=
           (hm hri.le).trans htime.le
         have hrestart := hp.restart_le_before_at (hp.run.antitone hrd hy) hrs' (hrd.trans hTb)
         have hsl : sp.slot T = u + 1 :=
           SA.slot_of_mem sp (u + 1)
             (by dsimp [T]; simp only [SA.SAParams.ts]; linarith)
             (by dsimp [T]; simp only [SA.SAParams.ts]; linarith)
-        change (simTraceAt { S with vote := stock } rho hn).time r ≤
-          sp.ts ((sp.slot ((simTraceAt { S with vote := stock } rho hn).time
-            (cutMap { S with vote := stock } rho hn p)) :
+        change (simTraceAt S rho hn).time r ≤
+          sp.ts ((sp.slot ((simTraceAt S rho hn).time (cutMap S rho hn p)) :
               Int) - 1)
         rw [htime, hsl]
         simpa using hrestart.trans hslot'
-    have hstate : ((simTraceAt { S with vote := stock } rho hn).projAC.upTo T).state (rho.ownKey v)
-        (cutMap { S with vote := stock } rho hn p) =
-        (simTraceAt { S with vote := stock } rho hn).projAC.state (rho.ownKey v)
-          (cutMap { S with vote := stock } rho hn p) :=
+    have hstate : ((simTraceAt S rho hn).projAC.upTo T).state (rho.ownKey v)
+        (cutMap S rho hn p) = (simTraceAt S rho hn).projAC.state (rho.ownKey v)
+          (cutMap S rho hn p) :=
       Trace.upTo_state _ _ (fun q hq => (hm hq.le).trans htime.le)
     rw [RunTrace.upTo_projAC, hstate] at hj
     exact hj
-  · have hmono := cutMap_mono { S with vote := stock } rho hn hpl
+  · have hmono := cutMap_mono S rho hn hpl
     omega
 
 end Engine

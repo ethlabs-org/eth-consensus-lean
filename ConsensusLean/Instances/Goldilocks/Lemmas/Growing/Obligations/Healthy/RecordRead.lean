@@ -215,35 +215,27 @@ theorem healthy_current_read_context_at (Q : HealthyPreparationQueryAt S A V)
 point within the query's bound, reads its effective record; its updates are due by its stored
 clock (`update_before_stored_clock_at`). -/
 theorem healthy_current_record_read_at
-    (Q : HealthyPreparationQueryAt
-    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
-    (D : HealthyRepairScheduleAt
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q)
-    (O : HealthyRepairOpeningAt
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D) {v : V} {i : Nat}
+    (Q : HealthyPreparationQueryAt S A V)
+    (D : HealthyRepairScheduleAt S A V Q)
+    (O : HealthyRepairOpeningAt S A V Q D) {v : V} {i : Nat}
     (hi : (chainTrace Q.run.2).InCuts Q.heal i)
-    (hv : Q.run.2.point.Ready ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run) v
+    (hv : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime i))
-    (htb : (stateAt { S with vote := stock } Q.run.2 Q.hn v i).now ≤ Q.bound) :
+    (htb : (stateAt S Q.run.2 Q.hn v i).now ≤ Q.bound) :
     Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-        (cutMap { S with vote := stock } Q.run.2 Q.hn
-          (lastOwn { S with vote := stock } Q.run.2 v i))
-        (stateAt { S with vote := stock } Q.run.2 Q.hn v i).now =
+        (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i))
+        (stateAt S Q.run.2 Q.hn v i).now =
       (SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v)
-          (cutMap { S with vote := stock } Q.run.2 Q.hn
-            (lastOwn { S with vote := stock } Q.run.2 v i))))
+          (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i))))
         (Q.trace.state (Q.run.2.ownKey v)
-          (cutMap { S with vote := stock } Q.run.2 Q.hn
-            (lastOwn { S with vote := stock } Q.run.2 v i))).ac.latestConfirmed).getD
+          (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i))).ac.latestConfirmed).getD
         (Q.trace.state (Q.run.2.ownKey v)
-          (cutMap { S with vote := stock } Q.run.2 Q.hn
-            (lastOwn { S with vote := stock } Q.run.2 v i))).fg.F := by
-  obtain ⟨C⟩ := healthy_current_read_context_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hi hv htb
-  have hhon : v ∉ Q.run.2.faultyAt (stateAt { S with vote := stock } Q.run.2 Q.hn v i).now :=
+          (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i))).fg.F := by
+  obtain ⟨C⟩ := healthy_current_read_context_at S A V Q D O hi hv htb
+  have hhon : v ∉ Q.run.2.faultyAt (stateAt S Q.run.2 Q.hn v i).now :=
     fun h =>
       hv.1 (Q.run.2.faultyAt_mono
-        (now_bounds_cut { S with vote := stock } Q.run.2 Q.hn Q.valid v hi.1).2 h)
+        (now_bounds_cut S Q.run.2 Q.hn Q.valid v hi.1).2 h)
   exact current_record_read_of_context_at D.toRepairSchedule C fun u hslot ht _ =>
     update_before_stored_clock_at S Q.run.2 Q.hn Q.valid D.reset Q.bound_le hhon hslot ht
       C.time_bound

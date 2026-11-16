@@ -59,8 +59,10 @@ theorem healthy_cut_tips_comparable_at
   obtain ⟨Cv⟩ := healthy_current_read_context_at
       { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hj hv hvb
   dsimp only
-  rw [healthy_current_record_read_at S A V Q D O hi hu hub,
-    healthy_current_record_read_at S A V Q D O hj hv hvb]
+  rw [healthy_current_record_read_at { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hi hu hub,
+    healthy_current_record_read_at { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hj hv hvb]
   exact healthy_current_sources_compatible_at D.toRepairSchedule Cu.time_nonneg Cu.readPoint
     Cu.time_bound Cu.honest Cv.time_nonneg Cv.readPoint Cv.time_bound Cv.honest
     (record_sources_before_now_at D.toRepairSchedule O.toRepairOpening Cu.readPoint
@@ -106,8 +108,10 @@ theorem healthy_cut_tips_ancestor_at
       (htt.trans hjb)
   obtain ⟨Cj⟩ := healthy_current_read_context_at
       { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hj hvj hjb
-  rw [healthy_current_record_read_at S A V Q D O hi hvi (htt.trans hjb),
-    healthy_current_record_read_at S A V Q D O hj hvj hjb]
+  rw [healthy_current_record_read_at { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hi hvi (htt.trans hjb),
+    healthy_current_record_read_at { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hj hvj hjb]
   exact effective_record_of_interval_at D.reset.run D.reset.noColl Cj.time_nonneg
     Cj.readPoint.1 Cj.honest hnn
     (healthy_current_record_interval_at D.toRepairSchedule O.toRepairOpening Ci.readPoint
