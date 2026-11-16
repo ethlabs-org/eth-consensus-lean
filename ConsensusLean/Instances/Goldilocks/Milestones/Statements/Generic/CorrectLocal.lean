@@ -111,9 +111,10 @@ structure ACServiceBefore {A : NodeAC P} {sg : A.Msg → Fin P.n}
       Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B → tr.BlockAcceptedBy y j (tr.time i) B
 
 /-- Service after an outage stop `g`, as the outage recovery consumes it: message processing
-with the original lower send bound and acceptance relay, both before the effective deadline
-`max send g`. The relay has no `g ≤ send` guard: acceptances before the stop are relayed after
-it. Senders are honest at their send or acceptance, receivers at the reading call. -/
+with the original lower send bound and acceptance relay, both before the recipient deadline
+computed from the effective send time `max send g`. The relay has no `g ≤ send` guard:
+acceptances before the stop are relayed after it. Senders are honest at their send or
+acceptance, receivers at the reading call. -/
 structure PostStopService {A : NodeAC P} (tr : RunTrace A) (H : Time → Set (Fin P.n))
     (g : Time) : Prop where
   message : ∀ x i m, x ∈ H (tr.time i) → tr.SendOrAdmitAt x i m →

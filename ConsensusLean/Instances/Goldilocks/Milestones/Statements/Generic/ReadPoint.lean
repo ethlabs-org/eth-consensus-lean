@@ -94,7 +94,8 @@ structure HealthyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : 
     Anc (tr.HonestBlocksAt H) B (confirmedRead tr y j t)
 
 /-- L9 preserves the actual source and destination reads under the fixed outage policy.
-Population and committee look-aheads are independent. Reads remain non-strict.
+Population and committee look-aheads are independent. Reads remain non-strict. After the stop
+it reads only `PostStopService`; `ΔF` is the pre-stop service bound.
 Certificate: cert obligation open: OC-K. -/
 structure OutageReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where
   protection : ∀ cm proposer dg H (tr : RunTrace A) (p : EnvPoint (Fin P.n))
@@ -103,7 +104,7 @@ structure OutageReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : P
     RunPointBinding tr H p → 0 ≤ T → T + C.outageLag ≤ b₀ →
     b₀ ≤ b₁ → b₁ ≤ b₀ + C.outageBudget → b₁ ≤ recoveryTime →
     b₁ + C.recovery ≤ recoveryTime →
-    ACServiceBefore C tr H ΔF b₀ → tr.GSTRunAt H ΔF b₁ →
+    ACServiceBefore C tr H ΔF b₀ → PostStopService tr H b₁ →
     p.EtaSleepyOn C.θ C.outageEta (max C.catchUp (C.outageEta - 1)) C.look 0 p.horizon →
     (∀ δ, 0 ≤ δ → δ ≤ C.outageEta →
       p.CommitteeSleepyOn (fun t => cm (max 0 (t - δ))) C.θ C.outageEta

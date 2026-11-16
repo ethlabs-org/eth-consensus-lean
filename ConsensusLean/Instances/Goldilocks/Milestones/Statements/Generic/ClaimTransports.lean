@@ -247,14 +247,15 @@ structure OutageRecoveryBinding (M : RunMap rho payload) (K : Contract ProgressR
   lag : C.outageLag = (K.params.lag : Time) * E.ΔAC
   budget : C.outageBudget = (K.params.budget : Time) * E.ΔAC
 
-/-- Pre-outage recipient-deadline service and post-outage synchrony.
-The concrete supplier is `outage_pre_service_at`; its message interpretation permits
-fresh processing or retained evidence. Instance transport remains an obligation. -/
+/-- Pre-outage recipient-deadline service and post-stop service (`PostStopService`: message
+service and the unguarded acceptance relay the recovery consumes). Concrete suppliers:
+`outage_pre_service_at`, whose message interpretation permits fresh processing or retained
+evidence, and `goldilocks_postStopService`. Instance transport remains an obligation. -/
 def OutageServiceSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ T b₀ b₁,
   (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ ⟨E, rho⟩ →
-  ACServiceBefore C M.trace M.honest E.ΔFG b₀ ∧ M.trace.GSTRunAt M.honest E.ΔFG b₁
+  ACServiceBefore C M.trace M.honest E.ΔFG b₀ ∧ PostStopService M.trace M.honest b₁
 
 /-- OPEN schema representation, not protection. Source: Concrete/Fields.persists
 and Outage/Engine/Repair.outage_protected_at use the confirmed alias for both
