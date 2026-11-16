@@ -52,6 +52,7 @@ public import ConsensusLeanTest.Goldilocks.Frame.Seq
 public import ConsensusLeanTest.Goldilocks.Frame.Statements
 public import ConsensusLeanTest.Goldilocks.Generic.HealingLeavesCut
 public import ConsensusLeanTest.Goldilocks.Generic.OutageTransport
+public import ConsensusLeanTest.Goldilocks.Generic.SleepyCut
 public import ConsensusLeanTest.Goldilocks.Growing.Compose
 public import ConsensusLeanTest.Goldilocks.Growing.FG
 public import ConsensusLeanTest.Goldilocks.HalfCommittee.Control

@@ -116,6 +116,28 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements",
 about = "unproved generic surface edges; endpoint and acceptance closures remain isolated"
 
 [[exception]]
+from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyFG"]
+to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameSourceGeometry",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance"]
+reason = """AC-generic frame geometry, FG projection and cache provenance over arbitrary NodeAC.
+The imported modules also reach concrete AC facts; ConsensusLeanTest.Goldilocks.Generic.SleepyCut
+checks every declared constant's type and proof closure, including private and auxiliary constants,
+using HealingLeavesCut's traversal and controls. Exact source edges only"""
+
+[[exception]]
+from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyGlue"]
+to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameGeometry"]
+reason = """AC-generic tree coherence and genesis ancestry for conditional sleepy read agreement.
+ConsensusLeanTest.Goldilocks.Generic.SleepyCut checks the complete constant closure using the
+HealingLeavesCut traversal and controls. Exact source edges only"""
+
+[[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves"]
 to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run",
