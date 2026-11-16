@@ -79,8 +79,9 @@ theorem finalized_monotone_from {ini : Fin sp.n → (goldilocksNode sp ro).State
 theorem finalized_monotone : FinalizedMonotone :=
   fun _ _ _ _ _ _ hrun _ hy _ _ hij => finalized_monotone_from hrun hy hij
 
-/-- Every block of an honest node's tree is a valid output. -/
-theorem validOutput_of_mem (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+/-- Every block of an honest node's tree is a valid output, from any start. -/
+theorem validOutput_of_mem {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat}
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y i).fg.tree) :
     ValidOutput tr proposer dg y i X := by

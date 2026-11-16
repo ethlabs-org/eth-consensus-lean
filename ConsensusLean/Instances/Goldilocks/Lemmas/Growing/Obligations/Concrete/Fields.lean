@@ -121,7 +121,7 @@ theorem meetsObligations_outputValid_growing :
     (Sys (goldilocks { S with vote := stock }) V).HoldsAlways fun r =>
     ∀ c g, schema.output c = some g → OutputValid r.2 g := by
   intro r hv c g _
-  exact engine_outputValid_at S r.2 hv g
+  exact engine_outputValid_at { S with vote := stock } r.2 hv g
 
 theorem meetsObligations_nested_growing : ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank →
     schema.output c₁ = some g₁ → schema.output c₂ = some g₂ →
@@ -134,8 +134,8 @@ theorem meetsObligations_nested_growing : ∀ c₁ c₂ g₁ g₂, c₁.rank < c
   all_goals cases he₁; cases he₂
   · intro v _ i _
     exact ⟨[], by simp⟩
-  · exact engine_nested_at S r.2 hv
-  · exact engine_nested_at S r.2 hv
+  · exact engine_nested_at { S with vote := stock } r.2 hv
+  · exact engine_nested_at { S with vote := stock } r.2 hv
 
 theorem meetsObligations_finalMonotone_growing : ∀ g, schema.output .final = some g →
     (Sys (goldilocks { S with vote := stock }) V).HoldsAlways fun r =>
@@ -143,7 +143,7 @@ theorem meetsObligations_finalMonotone_growing : ∀ g, schema.output .final = s
   intro g hg r hv
   have hg' : g = .finalized := (Option.some.inj hg).symm
   subst g
-  exact engine_finalMonotone_at S r.2 hv
+  exact engine_finalMonotone_at { S with vote := stock } r.2 hv
 
 theorem meetsObligations_finalAccountable_growing : ∀ g, schema.output .final = some g →
     (Sys (goldilocks { S with vote := stock }) V).Holds (fun _ => True) fun r =>
@@ -151,7 +151,7 @@ theorem meetsObligations_finalAccountable_growing : ∀ g, schema.output .final 
   intro g hg r hv _
   have hg' : g = .finalized := (Option.some.inj hg).symm
   subst g
-  exact engine_finalAccountable_at S r.2 hv (by norm_num [Params.standard])
+  exact engine_finalAccountable_at { S with vote := stock } r.2 hv (by norm_num [Params.standard])
 
 theorem meetsObligations_healedSafe_growing : ∀ cap g, (cap = .available ∨ cap = .stable) →
     schema.output cap = some g → ∀ (i : (K S A).Idx) (gst : Time),
