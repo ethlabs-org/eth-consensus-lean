@@ -4,14 +4,15 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.EngineEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ChainRepresentationEdges
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.OutageSupply
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Lemmas.Model.Laws
 
 public section
 
 /-! # Conditional claim reduction rows
 
 Intended theorem types; output validity, final accountability (section "Output-validity and
-accountability proofs") and persistence (section "Persistence proof") are proved, the other
-regime reductions remain UNPROVED. No
+accountability proofs"), persistence (section "Persistence proof") and healed safety (section
+"Healed safety proof") are proved, the other regime reductions remain UNPROVED. No
 evidence, instance, admission or correctness claim is supplied. All suppliers below refer to
 the binding's same map. Every regime reduction reads outputs through the one stored-read
 context and its transport: engine-cut reads at the stored read, claim-time reads at `endCut t`.
@@ -196,9 +197,10 @@ def PersistenceReduction (C : ACCorrectLocal A sg)
         (chainTrace r.2).ProtectedReadyFrom ((Sys F V).cDur K r) g
           (resilienceTarget O g) T ((Sys F V).recoveryAt K b₁ r)
 
-/-- UNPROVED healed-safety reduction. Reset, canonicality and the selected drain
+/-- Healed-safety reduction. Reset, canonicality and the selected drain
 budget are independent inputs to healing. Same-reader ancestry uses its own actual
-stored-read context and transport; representation still supplies the chain-prefix step. -/
+stored-read context and transport; representation still supplies the chain-prefix step.
+Proved by `healedSafetyReduction`. -/
 def HealedSafetyReduction (C : ACCorrectLocal A sg)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
     (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) : Prop :=
@@ -403,6 +405,127 @@ theorem persistenceReduction (C : ACCorrectLocal A sg)
     (hLR.held _ _ _ _ _ hrun _ _ _ _ hpw.1) hanc
 
 end PersistenceProof
+
+section HealedSafetyProof
+
+/-- Healed safety of a nonfinal output at fixed public parameters. A hash collision is the
+claim's excuse, and without validators past the horizon no cut is from the heal point. Every
+read at an engine cut is the chain of the reader's stored read tip (`stored_output_eq`), held in
+its store (`LocalReadPoint.held` at the stored read point of `StoredReadTransport.ready_point`).
+- Monotonicity: the same reader's tips are ancestors (`HealedReadAncestry`).
+- Agreement: the selected reset and its opening (`ResetHealBudgetSupply`) with the premises
+  (`PreparationPremisesSupply`), canonicality (`HighCanonicalSupply`) and the healing bound
+  (`ACHealing.heal_after_reset`) give compatible tips at the opening's margin
+  (`HealthyReadPoint.healed`): the stored reads are at `R.now ≥ cutTime − 1 ≥ heal − 1`.
+Honest ancestry of two held tips is a chain prefix (`ReadRepresentation.ancestor_prefix`). -/
+theorem healedSafetyReduction (C : ACCorrectLocal A sg)
+    (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
+    (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) :
+    HealedSafetyReduction C B K R := by
+  intro _ hβ hcf h cap g hcap hg idx gst r hv hpre
+  obtain ⟨E, rho⟩ := r
+  obtain ⟨hpub, hH, hprog⟩ := hpre
+  by_cases hc : rho.HashCollision
+  · exact Or.inr hc
+  refine Or.inl ?_
+  obtain ⟨-, heng, hfit, hprep, -, hhc, hbud, hHR, hLR, hSR, hanc, hrep, hhr, hcoh⟩ :=
+    h E hpub rho hv
+  set M := B.map E hpub rho hv
+  set L : ACCorrectLocal A M.signer := B.signer_eq E hpub rho hv ▸ C
+  have hT := B.run_transport E hpub rho hv
+  have hrun : L.run.Run M.committee M.proposer M.digest M.honest M.trace := by
+    rw [cast_local_run]
+    have := hT.run hv
+    rwa [ACRun.cast_run] at this
+  have hcoh := hcoh hc
+  set heal := (Sys F V).heal K cap idx gst ⟨E, rho⟩
+  have hlaws := (Model.sysOf_laws O (compiled F) V).trace ⟨E, rho⟩ hv
+  by_cases hb : heal ≤ rho.horizon
+  swap
+  · have hnone : ∀ k, ¬ (chainTrace rho).InCuts heal k := fun k hk =>
+      hb (hk.2.trans (hlaws.cutTime_le_horizon k hk.1))
+    exact ⟨fun _ _ i _ hi => (hnone i hi).elim, fun _ i _ hi => (hnone i hi).elim⟩
+  have hΔ : 0 < E.ΔAC := by rw [← M.delta_eq]; exact P.hΔ
+  have hheal0 : 0 ≤ heal := by
+    change 0 ≤ max gst 0 + (K.params.heal cap idx : Time) * E.ΔAC
+    have := le_max_right gst 0
+    positivity
+  set c := (Sys F V).cDur K ⟨E, rho⟩
+  have hcu0 := L.durations.2.1
+  have hcu := hfit.catchUp
+  have hc0 : 0 ≤ c - 1 := by linarith
+  have hgtip : ∀ st t, M.tip g st t = A.confirmed st.ac (Node.frame st) t := by
+    rcases hcap with rfl | rfl
+    · exact M.available_tip g hg
+    · exact hrep.confirmed_tip g hg
+  -- the stored read of a reader ready at an engine cut, and its tip held at the mapped cut
+  have hread : ∀ v i, (chainTrace rho).InCuts heal i → rho.point.Ready c v (rho.cutTime i) →
+      ReadyReadPoint M.trace M.honest rho.horizon (c - 1) (M.validator.symm v)
+        ((R E hpub rho hv).cut v i) ((R E hpub rho hv).now v i) ∧
+      ReadBoundary M.trace (M.validator.symm v) ((R E hpub rho hv).cut v i) ∧
+      rho.cutTime i - 1 ≤ (R E hpub rho hv).now v i ∧
+      (chainTrace rho).read g v i =
+        (M.chain (M.trace.state (M.validator.symm v) (M.cut i)) ((R E hpub rho hv).tip v i)).map
+          M.header ∧
+      (R E hpub rho hv).tip v i ∈ (M.trace.state (M.validator.symm v) (M.cut i)).fg.tree := by
+    intro v i hi hr
+    obtain ⟨hp, hbd, hnow⟩ := hSR.ready_point hv (c - 1) hc0 v i hi.1 (by rwa [sub_add_cancel])
+    have hheld := hLR.held _ _ _ _ _ hrun _ _ _ _ hp.1
+    rw [← hSR.source_tip, hSR.source_state hv v i hi.1] at hheld
+    refine ⟨hp, hbd, hnow, ?_, hheld⟩
+    rw [stored_output_eq hSR hv hgtip hi.1 hr.1, hSR.source_state hv v i hi.1]
+  have hsub : ∀ v i, i ≤ rho.events.length → rho.point.HonestAt v (rho.cutTime i) →
+      (M.trace.state (M.validator.symm v) (M.cut i)).fg.tree ⊆ M.trace.HonestBlocksAt M.honest := by
+    intro v i hi hh X hX
+    obtain ⟨hy, hle, ht0, -⟩ := heng.honest hv v i hi hh
+    exact ⟨_, _, _, ht0, hle.1, hy, hX⟩
+  have hpre : ∀ u v i j, (chainTrace rho).InCuts heal i → (chainTrace rho).InCuts heal j →
+      rho.point.HonestAt u (rho.cutTime i) → rho.point.HonestAt v (rho.cutTime j) →
+      ∀ {X Y}, X ∈ (M.trace.state (M.validator.symm u) (M.cut i)).fg.tree →
+      Y ∈ (M.trace.state (M.validator.symm v) (M.cut j)).fg.tree →
+      Anc (M.trace.HonestBlocksAt M.honest) X Y →
+      List.IsPrefix ((M.chain (M.trace.state (M.validator.symm u) (M.cut i)) X).map M.header)
+        ((M.chain (M.trace.state (M.validator.symm v) (M.cut j)) Y).map M.header) :=
+    fun u v i j hi hj hu hv' _ _ hX hY hXY =>
+      hrep.ancestor_prefix u v i j hi.1 hj.1 hu hv' (hhr.reachable hv u i hi.1 hu)
+        (hhr.reachable hv v j hj.1 hv') (hhr.roots hv u i hi.1 hu) (hhr.roots hv v j hj.1 hv')
+        hcoh (hsub u i hi.1 hu) (hsub v j hj.1 hv') _ _ hX hY hXY
+  refine ⟨fun u v i j hi hj hu hv' => ?_, fun v i j hi hij hj hvi hvj => ?_⟩
+  · obtain ⟨hpu, hbu, hnu, hru, hmu⟩ := hread u i hi hu
+    obtain ⟨hpv, hbv, hnv, hrv, hmv⟩ := hread v j hj hv'
+    rw [hru, hrv]
+    have hP := hprep hβ hv hc cap idx gst hcap hH hprog hb
+    obtain ⟨a, ha, hab, -, -, s₁, z, k, X, hs₁, hgs₁, h6, hms₁, hX⟩ :=
+      hbud hv hc cap idx gst hcap hH hprog hb
+    have hcan := hhc hcf hv hc gst a hH hrun hP ha hab
+    have hheal := L.healing.heal_after_reset hcf hrun hP ha hab hcan
+    have hheal₁ : HealedFrom M.trace M.honest M.proposer s₁ rho.horizon :=
+      fun s s' z z' k k' X X' hs => hheal s s' z z' k k' X X' (hs₁.trans hs)
+    have hmono : ∀ {y i t}, ReadyReadPoint M.trace M.honest rho.horizon (c - 1) y i t →
+        ReadyReadPoint M.trace M.honest rho.horizon L.catchUp y i t :=
+      fun hr => ⟨hr.1, fun w hw hwt => hr.2 w ((max_le_max le_rfl (by linarith)).trans hw) hwt⟩
+    have hg0 : max gst 0 ≤ P.slotTime s₁ := by
+      change SA.gbar gst + 4 * P.Δ ≤ P.slotTime s₁ at hgs₁
+      have := P.hΔ
+      unfold SA.gbar at hgs₁
+      linarith
+    have hcomp := ((hHR.healed _ _ _ _ _ _ _ _ _ _ _ hcf hrun hP ha hab hs₁ hheal₁ hg0).1
+      ⟨z, k, X, hX⟩ h6 hgs₁ _ _ _ _ _ _
+      (by have := hi.2; change heal ≤ rho.cutTime i at this; linarith)
+      (by have := hj.2; change heal ≤ rho.cutTime j at this; linarith)
+      (hmono hpu) (hmono hpv) hbu hbv)
+    rw [← hSR.source_tip, ← hSR.source_tip] at hcomp
+    rcases hcomp with hXY | hXY
+    · exact Or.inl (hpre u v i j hi hj hu.1 hv'.1 hmu hmv hXY)
+    · exact Or.inr (hpre v u j i hj hi hv'.1 hu.1 hmv hmu hXY)
+  · obtain ⟨-, -, -, hri, hmi⟩ := hread v i hi hvi
+    obtain ⟨-, -, -, hrj, hmj⟩ := hread v j hj hvj
+    rw [hri, hrj]
+    exact hpre v v i j hi hj hvi.1 hvj.1 hmi hmj
+      (hanc hv hc cap idx gst hcap hH hprog hheal0 hb v i j hi hij hj hvi hvj
+        (hSR.now_bound hv v j hj.1 hvj.1))
+
+end HealedSafetyProof
 
 end Consensus.Goldilocks.Generic
 
