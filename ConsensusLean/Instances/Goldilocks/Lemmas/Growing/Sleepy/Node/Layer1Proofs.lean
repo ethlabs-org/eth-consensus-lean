@@ -272,6 +272,20 @@ private theorem sleepy_service_and_bounds {proposer : Nat → Fin sp.n}
       omega
   exact ⟨hb, service_of_sync hrun hsync, hB, hBK⟩
 
+/-- The existing sleepy induction, with committee positivity explicit rather than
+obtained from a particular supplier's run interface. -/
+theorem sleepy_invariant_of_windows {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {ini}
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
+    {cm : Time → Finset (Fin sp.n)} (hpos : 0 < sp.committeeSize)
+    (hKB : CommitteeFacts tr H (dictOfTime sp cm))
+    {p : EnvPoint (Fin sp.n)} {c look committeeLook ΔF b : Time}
+    (hw : GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b) :
+    SleepyInvariantUpTo tr H b := by
+  obtain ⟨hb, hservice, hB, hBK⟩ := sleepy_service_and_bounds hrun hpos hKB.hsize hw
+  exact sleepy_invariant_at hrun hnc hKB hb hservice hB hBK
+
 end Consensus.Goldilocks.Generic.SleepyLayer1
 
 end
