@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Query
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Members
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Population
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.SleepyWindows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Schedule
@@ -266,91 +267,219 @@ theorem holder_awake (Q : OutageQueryAt S A V) {x : Fin (Fintype.card V)} (hx : 
     (ready_window_le_winStart Q) hx hat htz
 
 end OutageQueryAt
+end Consensus.Goldilocks.Obligations.Growing
 
-/-- **An armed ready source** of an outage query under growing faults. -/
-structure OutageArmingAt (Q : OutageQueryAt S A V) (v : V) where
-  /-- `P`: the confirmed read's tip at the end-of-`T` cut. -/
-  tip : SA.Blk Q.params.n (List (FG.Att Q.params.n))
-  origin : SA.Blk Q.params.n (List (FG.Att Q.params.n))
+namespace Consensus.Goldilocks.Compose.Growing
+open SA (SAParams ReplayOrder Payload)
+open Blocks Shape
+
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+
+/-- **An armed ready source** on a node trace: the confirmed read `tip` of `y` at cut `i` and
+clock `T`, a held origin above it (genesis, or an origin within `T` of a label `σ` more than `k`
+labels before `j₀`), S-vote, and O1 at `j₀ − 1` and `j₀` for the holders `A₀`, when the gate is
+within `hor`. -/
+structure OutageArming (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (j₀ : Nat)
+    (hor : Time) (A₀ : Set (Fin sp.n)) (y : Fin sp.n) (i : Nat) (T : Time) where
+  tip : SA.Blk sp.n (List (FG.Att sp.n))
+  origin : SA.Blk sp.n (List (FG.Att sp.n))
   σ : Nat
+  /-- `tip` is the confirmed read of `y` at cut `i`, at clock `T`. -/
+  tip_eq : tip = Regimes.readAfter tr y i T
+  /-- The tip and the origin are held while honest, the tip below the origin. -/
+  tip_held : tip ∈ tr.HonestBlocksAt H
+  origin_held : origin ∈ tr.HonestBlocksAt H
+  tip_anc : Anc (tr.HonestBlocksAt H) tip origin
+  /-- Genesis tip (`origin := tip`), or an origin within `T`. -/
+  armed : (tip.root = sp.genesisRoot ∧ origin = tip) ∨
+    (OriginWithin tr H origin σ T ∧ σ + sp.k < j₀)
+  /-- S-vote. -/
+  votes : ∀ x k e, HVoteAt tr H x k e → σ < e.msg.slot → e.msg.slot ≤ j₀ →
+    SA.VoteExtends (tr.HonestBlocksAt H) e.msg origin
+  /-- O1 at `j₀ − 1`. -/
+  lockPrev : ∀ w ∈ A₀, origin.root ≠ sp.genesisRoot → sp.ts j₀ + 2 * sp.Δ ≤ hor →
+    ∃ c ℓ, SA.UpdateAt tr.projAC w c (j₀ - 1) ℓ ∧
+      (Anc (tr.HonestBlocksAt H) origin (tr.state w c).fg.F ∨
+       ∃ L f, L ∈ ℓ.frame.tree ∧ ℓ.frame.Anc origin L ∧
+         (⟨L.root, j₀ - 1, f, j₀ - 1 + sp.k⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks)
+  /-- O1 at `j₀`, given (F), (VA) outside root cover and (N) at the first `j₀` update. -/
+  lockCover : ∀ w ∈ A₀, origin.root ≠ sp.genesisRoot → sp.ts j₀ + 6 * sp.Δ ≤ hor →
+    ∃ c ℓ, SA.UpdateAt tr.projAC w c j₀ ℓ ∧
+      (∀ k < c, ∀ ℓ', ¬ SA.UpdateAt tr.projAC w k j₀ ℓ') ∧
+      (Compatible (tr.HonestBlocksAt H) (tr.state w c).fg.F origin →
+       (Anc (tr.HonestBlocksAt H) (tr.state w c).fg.F origin →
+         ℓ.frame.AncestorCandidate origin) →
+       (∀ x ∈ A₀, ∀ j e, HVoteAt tr H x j e → e.msg.slot = j₀ + 1 → j < c →
+          SA.VoteExtends (tr.HonestBlocksAt H) e.msg origin) →
+       Anc (tr.HonestBlocksAt H) origin (tr.state w c).fg.F ∨
+       (∃ L f, ℓ.frame.Anc origin L ∧
+          (⟨L.root, j₀, f, j₀ + sp.k⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks))
+
+/-- **Arming on a node trace**: a source honest at its read `(i, T)` within the call bound `hor`
+is armed, from the pre-start service, the two count shapes through `hor`, the proof window
+`[a, z]` and the holders `A₀` (awake throughout the window, retained at `z`, the rest of the
+validators honest at `z` and awake in the window being the opponents `W`, outnumbered inside the
+band committees). The Sleepy invariant up to `min b₀ hor` gives the tip on the chain of the
+origins within `T`, S-vote, and O1 at `j₀ − 1` (`armed_lock_formed_at`) and at `j₀`
+(`armed_lock_cover_at`, with the opponents `(H z)ᶜ ∪ W`). -/
+theorem outage_arming_at {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    {T b₀ hor a z : Time} {A₀ W : Set (Fin sp.n)}
+    (hlag : T + (4 * sp.k + 6) * sp.Δ ≤ b₀)
+    (hcall : ∀ x k, tr.IsCall x k → tr.time k ≤ hor)
+    (service : SleepyServiceBefore tr H sp.Δ b₀)
+    (hB : ∀ b ≤ hor, SleepyBoundsFrom tr H 0 b) (hBK : ∀ b ≤ hor, CommitteeBoundsFrom tr H K 0 b)
+    (haj : a ≤ sp.ts ((coverLabel sp b₀ : Int) - sp.k))
+    (hzj : ∀ d ≤ 6 * sp.Δ, sp.ts (coverLabel sp b₀) + d ≤ hor → sp.ts (coverLabel sp b₀) + d ≤ z)
+    (hz : z ≤ hor) (hA₀ : A₀ ⊆ H z)
+    (hawake : ∀ x ∈ A₀, ∀ u, a ≤ u → u ≤ z → tr.awake x u)
+    (hclass : ∀ x u, a ≤ u → u ≤ z → x ∈ H z → tr.awake x u → x ∈ A₀ ∪ W)
+    (hopp : ∀ m, coverLabel sp b₀ ≤ m → m ≤ coverLabel sp b₀ + sp.k → sp.ts m ≤ hor → b₀ ≤ hor →
+      2 * (K.committee m ∩ ((H z)ᶜ ∪ W)).ncard < sp.committeeSize)
+    {y : Fin sp.n} {i : Nat} (hR : Consensus.Goldilocks.Generic.HonestReadPoint tr H hor y i T) :
+    Nonempty (OutageArming tr H (coverLabel sp b₀) hor A₀ y i T) := by
+  classical
+  obtain ⟨hy, ⟨hi, -⟩, hT0, hTh⟩ := hR
+  have hU := honestBlocksAt_coherent hrun hnc
+  have hΔ := sp.toParams.hΔ
+  have hk2 := sp.two_le_k
+  have hhor : 0 ≤ hor := hT0.trans hTh
+  have hTs : T ≤ b₀ := by
+    have : (0 : Time) ≤ (4 * sp.k + 6) * sp.Δ := by positivity
+    linarith
+  have hb0 : 0 ≤ min b₀ hor := le_min (hT0.trans hTs) hhor
+  have hTb : T ≤ min b₀ hor := le_min hTs hTh
+  have hsvc := service.mono (min_le_left b₀ hor)
+  have hBKh := hBK hor le_rfl
+  have hinv := sleepy_invariant_at hrun hnc hKB hb0 hsvc
+    (hB _ (min_le_right _ _)) (hBKh.mono (min_le_right _ _))
+  have hinvT := sleepy_invariant_at hrun hnc hKB hT0 (service.mono hTs)
+    (hB T hTh) (hBKh.mono hTh)
+  obtain ⟨htipU, hchain⟩ : Regimes.readAfter tr y i T ∈ tr.HonestBlocksAt H ∧
+      OnOriginChainWithin tr H (Regimes.readAfter tr y i T) T :=
+    confirmed_read_on_chain_at hinvT hrun hnc hT0 hi le_rfl hy T
+  by_cases htg : (Regimes.readAfter tr y i T).root = sp.genesisRoot
+  · -- a genesis tip: every vote of a node honest at its cast extends it
+    refine ⟨⟨_, _, 0, rfl, htipU, htipU, .refl, Or.inl ⟨htg, rfl⟩,
+      fun x k e hve _ _ => ?_, fun w _ hg => absurd htg hg, fun w _ hg => absurd htg hg⟩⟩
+    obtain ⟨Hd, hHdU, hHdr⟩ := hve.head_mem hrun hnc
+    refine ⟨Hd, hHdU, hHdr, ?_⟩
+    rw [honestAt_eq_genesis hrun hU htipU htg]
+    exact (honestAt_genesis_anc hrun hHdU).2
+  obtain ⟨C, σ, hCw, htC⟩ := (onOriginChainWithin_iff.1 hchain).resolve_left htg
+  have hCU : C ∈ tr.HonestBlocksAt H := by
+    by_cases he : Regimes.readAfter tr y i T = C
+    · exact he ▸ htipU
+    · exact (htC.mem he).2
+  have hσT : sp.ts σ ≤ T := by
+    obtain ⟨x, k, CV, -, hkT, ⟨ℓ, hu, -⟩ | ⟨ℓ, A', -, hs, -⟩⟩ := originWithin_iff.1 hCw
+    · have ht : tr.time k = sp.ts σ + 6 * sp.Δ := hu.2.2.1
+      linarith
+    · exact ((SA.ts_le_iff_le_slot sp (hrun.time_nonneg k) σ).2 (by
+        have hs' : sp.slot (tr.time k) = σ := hs
+        rw [hs'])).trans hkT
+  obtain ⟨hσk, hkj⟩ := Compose.armed_label_lt hT0 hlag hσT
+  have hCb := hCw.mono hTb
+  obtain ⟨hg₁, hg₂⟩ := Compose.coverLabel_gates (sp := sp) (b₀ := b₀) (by
+    have : (0 : Time) ≤ (4 * sp.k + 4) * sp.Δ := by positivity
+    linarith)
+  have hts1 : sp.ts ((coverLabel sp b₀ : Int) - sp.k) ≤
+      sp.ts ((coverLabel sp b₀ : Int) - sp.k + 1) :=
+    (SA.ts_le_iff _).2 (by omega)
+  have hjI : ((coverLabel sp b₀ - 1 : Nat) : Int) = (coverLabel sp b₀ : Int) - 1 := by omega
+  have hjk : sp.ts ((coverLabel sp b₀ : Int) - sp.k) ≤ sp.ts (coverLabel sp b₀) :=
+    (SA.ts_le_iff _).2 (by omega)
+  refine ⟨⟨_, C, σ, rfl, htipU, hCU, htC, Or.inr ⟨hCw, hσk⟩,
+    fun x k e hve hσe hej => ?_, fun w hw hCg hhz => ?_, fun w hw hCg hhz => ?_⟩⟩
+  · -- S-vote
+    obtain ⟨hx, ℓx, hcx, hex⟩ := hVoteAt_iff.1 hve
+    have hvt := (cast_head_fcRoot_at hrun hnc hx ⟨hcx, hex⟩).2
+    have hts := (SA.ts_le_iff sp).2 (show (e.msg.slot : Int) ≤ coverLabel sp b₀ by
+      exact_mod_cast hej)
+    have hkh : tr.time k ≤ hor := hcall x k ⟨_, Compose.projAC_callAt.1 hcx⟩
+    exact hinv.vote_extends C σ hCb x k e hve
+      (le_min (by change tr.time k ≤ _ at hvt; linarith) hkh) hσe
+  · -- O1 at `j₀ − 1`
+    have hsz := hzj (2 * sp.Δ) (by linarith) hhz
+    have hsz' : sp.ts ((coverLabel sp b₀ - 1 : Nat) : Int) + 6 * sp.Δ =
+        sp.ts (coverLabel sp b₀) + 2 * sp.Δ := by
+      rw [hjI]; simp only [SA.SAParams.ts]; ring
+    have h1 : sp.k ≤ coverLabel sp b₀ - 1 := by omega
+    have h2 : σ + sp.k ≤ coverLabel sp b₀ - 1 := by omega
+    have h3 : a ≤ sp.ts (((coverLabel sp b₀ - 1 : Nat) : Int) - sp.k + 1) := by
+      rw [hjI, show (coverLabel sp b₀ : Int) - 1 - sp.k + 1 = (coverLabel sp b₀ : Int) - sp.k by
+        ring]
+      exact haj
+    exact armed_lock_formed_at hrun hnc hKB hinv hsvc hBKh hCb hCU hCg
+      (hA₀ hw) hz (fun u hu₁ hu₂ => hawake w hw u hu₁ hu₂)
+      (s := coverLabel sp b₀ - 1) h1 h2 h3 (hsz' ▸ hsz) (hsz' ▸ le_min hg₁ hhz)
+  · -- O1 at `j₀`
+    have hsz := hzj (6 * sp.Δ) le_rfl hhz
+    have h1 : sp.k ≤ coverLabel sp b₀ := by omega
+    have h2 : σ + sp.k ≤ coverLabel sp b₀ := by omega
+    have hF : (H (sp.ts (coverLabel sp b₀) + 6 * sp.Δ))ᶜ ⊆ (H z)ᶜ ∪ W :=
+      fun x hx => Or.inl fun hxz => hx (hrun.antitone hsz hxz)
+    have hsh : b₀ ≤ hor := by linarith
+    have hq1 : sp.ts ((coverLabel sp b₀ + 1 : Nat) : Int) ≤ hor := by
+      have h := hhz
+      simp only [SA.SAParams.ts] at h ⊢; push_cast; linarith
+    exact armed_lock_cover_at hrun hnc hKB hinv hsvc hBKh hCb hCg
+      (hA₀ hw) hz (fun u hu₁ hu₂ => hawake w hw u hu₁ hu₂)
+      (s := coverLabel sp b₀) h1 h2 (haj.trans hts1) hsz
+      (le_min hg₁ (by linarith)) A₀ _ hF
+      (hopp _ (by omega) (by omega) hq1 hsh)
+      fun x j e hve hx hes hjt => by
+        by_cases hxz : x ∈ H z
+        · obtain ⟨hxj, ℓx, hcx, hex⟩ := hVoteAt_iff.1 hve
+          have hxs := (castAt_spec_at hrun hnc hxj ⟨hcx, hex⟩).2.1
+          have hjs : sp.ts ((coverLabel sp b₀ + 1 : Nat) : Int) ≤ tr.time j :=
+            (SA.ts_le_iff_le_slot _ (hrun.time_nonneg j) _).2 (by
+              rw [← hes]; exact_mod_cast hxs.le)
+          have hjk' : sp.ts ((coverLabel sp b₀ : Int) - sp.k) ≤
+              sp.ts ((coverLabel sp b₀ + 1 : Nat) : Int) :=
+            (SA.ts_le_iff _).2 (by omega)
+          have haw := hrun.awake_of_call x j hxj ⟨_, Compose.projAC_callAt.1 hcx⟩
+          rcases hclass x _ (by linarith) (hjt.trans hsz) hxz haw with h | h
+          · exact Or.inl h
+          · exact Or.inr (Or.inr h)
+        · exact Or.inr (Or.inl hxz)
+
+end Consensus.Goldilocks.Compose.Growing
+
+namespace Consensus.Goldilocks.Obligations.Growing
+open AsChainShape Simulation
+open Blocks Shape
+variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
+
+/-- **An armed ready source** of an outage query under growing faults: the node arming of its
+read at the end-of-`T` cut, whose confirmed read prefixes the engine read. -/
+structure OutageArmingAt (Q : OutageQueryAt S A V) (v : V) extends
+    Compose.Growing.OutageArming Q.trace Q.keys (Compose.coverLabel Q.params Q.start)
+      Q.run.2.horizon Q.holdersAt (Q.run.2.ownKey v)
+      (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T)) Q.T where
   read : (chainTrace Q.run.2).readAt .confirmed v Q.T <+:
     chainTo (Q.trace.state (Q.run.2.ownKey v)
       (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T))).fg.blocks
       (tip.slot + 1) tip
-  /-- `tip` is the `readAfter` read tip of `v` at the end-of-`T` cut, at clock `T`. -/
-  tip_eq : tip = Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-    (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T)) Q.T
-  /-- The tip and the origin are held while honest, the tip below the origin. -/
-  tip_held : tip ∈ Q.trace.HonestBlocksAt Q.keys
-  origin_held : origin ∈ Q.trace.HonestBlocksAt Q.keys
-  tip_anc : Anc (Q.trace.HonestBlocksAt Q.keys) tip origin
-  /-- Genesis tip (`origin := tip`), or an origin within `T`. -/
-  armed : (tip.root = Q.params.genesisRoot ∧ origin = tip) ∨
-    (Compose.Growing.OriginWithin Q.trace Q.keys origin σ Q.T ∧
-      σ + Q.params.k < Compose.coverLabel Q.params Q.start)
-  /-- S-vote. -/
-  votes : ∀ x i e, Compose.Growing.HVoteAt Q.trace Q.keys x i e → σ < e.msg.slot →
-    e.msg.slot ≤ Compose.coverLabel Q.params Q.start →
-    SA.VoteExtends (Q.trace.HonestBlocksAt Q.keys) e.msg origin
-  /-- O1 at `j₀ − 1`. -/
-  lockPrev : ∀ w ∈ Q.holdersAt, origin.root ≠ Q.params.genesisRoot →
-    Q.params.ts (Compose.coverLabel Q.params Q.start) + 2 * Q.params.Δ ≤ Q.run.2.horizon →
-    ∃ c ℓ, SA.UpdateAt Q.trace.projAC w c (Compose.coverLabel Q.params Q.start - 1) ℓ ∧
-      (Anc (Q.trace.HonestBlocksAt Q.keys) origin (Q.trace.state w c).fg.F ∨
-       ∃ L f, L ∈ ℓ.frame.tree ∧ ℓ.frame.Anc origin L ∧
-         (⟨L.root, Compose.coverLabel Q.params Q.start - 1, f,
-           Compose.coverLabel Q.params Q.start - 1 + Q.params.k⟩ : SA.Lock) ∈
-           (Q.trace.state w (c + 1)).ac.locks)
-  /-- O1 at `j₀`, given (F), (VA) outside root cover and (N) at the first `j₀` update. -/
-  lockCover : ∀ w ∈ Q.holdersAt, origin.root ≠ Q.params.genesisRoot →
-    Q.params.ts (Compose.coverLabel Q.params Q.start) + 6 * Q.params.Δ ≤ Q.run.2.horizon →
-    ∃ c ℓ, SA.UpdateAt Q.trace.projAC w c (Compose.coverLabel Q.params Q.start) ℓ ∧
-      (∀ k < c, ∀ ℓ', ¬ SA.UpdateAt Q.trace.projAC w k (Compose.coverLabel Q.params Q.start) ℓ') ∧
-      (Compatible (Q.trace.HonestBlocksAt Q.keys) (Q.trace.state w c).fg.F origin →
-       (Anc (Q.trace.HonestBlocksAt Q.keys) (Q.trace.state w c).fg.F origin →
-         ℓ.frame.AncestorCandidate origin) →
-       (∀ x ∈ Q.holdersAt, ∀ j e, Compose.Growing.HVoteAt Q.trace Q.keys x j e →
-          e.msg.slot = Compose.coverLabel Q.params Q.start + 1 → j < c →
-          SA.VoteExtends (Q.trace.HonestBlocksAt Q.keys) e.msg origin) →
-       Anc (Q.trace.HonestBlocksAt Q.keys) origin (Q.trace.state w c).fg.F ∨
-       (∃ L f, ℓ.frame.Anc origin L ∧
-          (⟨L.root, Compose.coverLabel Q.params Q.start, f,
-            Compose.coverLabel Q.params Q.start + Q.params.k⟩ : SA.Lock) ∈
-            (Q.trace.state w (c + 1)).ac.locks))
 
 /-- **Arming under growing faults**: every source ready at `T ≤ horizon` is armed. -/
 theorem outage_arming_at (Q : OutageQueryAt S A V)
     (service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start)
     (v : V) (hv : Q.run.2.point.Ready Q.duration v Q.T) (hTh : Q.T ≤ Q.run.2.horizon) :
     Nonempty (OutageArmingAt Q v) := by
-  classical
-  obtain ⟨hT0, -, hb01, -⟩ := Q.outage.times
+  obtain ⟨hT0, -, -, -⟩ := Q.outage.times
+  have hΔ := Q.params.toParams.hΔ
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
-  have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
-  have hΔ := Q.params.toParams.hΔ
-  have hk2 := Q.params.two_le_k
-  have hlag := outage_node_lag_at Q
-  have hhor : 0 ≤ Q.run.2.horizon := Q.valid.horizon_nonneg
-  obtain ⟨ha0, haj, hzj⟩ := outage_window_cover_at Q
-  have hTs : Q.T ≤ Q.start := by
-    have : (0 : Time) ≤ (4 * Q.params.k + 6) * Q.params.Δ := by positivity
-    linarith
-  have hb0 : 0 ≤ min Q.start Q.run.2.horizon := le_min (hT0.trans hTs) hhor
-  have hTb : Q.T ≤ min Q.start Q.run.2.horizon := le_min hTs hTh
-  have hsvc := service.mono (min_le_left Q.start Q.run.2.horizon)
-  have hKB := voteK_facts S Q.run.2 Q.hn Q.valid hnc hrun
-  have hBKh := Q.boundsK hrun le_rfl
-  have hinv := Compose.Growing.sleepy_invariant_at hrun hnc hKB hb0 hsvc
-    (Q.bounds (min_le_right _ _)) (hBKh.mono (min_le_right _ _))
-  have hinvT := Compose.Growing.sleepy_invariant_at hrun hnc hKB hT0 (service.mono hTs)
-    (Q.bounds hTh) (hBKh.mono hTh)
-  -- the tip at the end-of-`T` cut
-  have hi : (chainTrace Q.run.2).endCut Q.T ≤ Q.run.2.events.length := Nat.findGreatest_le _
+  obtain ⟨-, haj, hzj⟩ := outage_window_cover_at Q
   obtain ⟨hcut, -, hnow⟩ := ready_read_cut_at S Q.run.2 Q.hn Q.valid (c := Q.duration)
     ((by unfold Regimes.catchUp; positivity : (0 : Time) ≤ Regimes.catchUp Q.params).trans
       (outage_duration_supply_at Q)) hT0 hTh hv
   have hŵ : Q.run.2.ownKey v ∈ Q.keys Q.T := honest_ownKey_at S Q.run.2 hv.1 hTh
+  have hi : (chainTrace Q.run.2).endCut Q.T ≤ Q.run.2.events.length := Nat.findGreatest_le _
   have hh : v ∉ Q.run.2.faultyAt (Q.run.2.cutTime ((chainTrace Q.run.2).endCut Q.T)) := fun h =>
     hv.1 (Q.run.2.faultyAt_mono (Nat.findGreatest_spec (P := fun i => Q.run.2.cutTime i ≤ Q.T)
       (Nat.zero_le _) (by simpa [Model.Run.cutTime] using hT0)) h)
@@ -366,113 +495,14 @@ theorem outage_arming_at (Q : OutageQueryAt S A V)
     dsimp only
     rw [hnow]
     exact List.prefix_refl _
-  obtain ⟨htipU, hchain⟩ : Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-        (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T)) Q.T ∈
-          Q.trace.HonestBlocksAt Q.keys ∧
-      Compose.Growing.OnOriginChainWithin Q.trace Q.keys
-        (Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-          (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T)) Q.T) Q.T :=
-    Compose.Growing.confirmed_read_on_chain_at hinvT hrun hnc hT0 hcut.1 le_rfl hŵ Q.T
-  by_cases htg : (Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-      (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T)) Q.T).root = Q.params.genesisRoot
-  · -- a genesis tip: every vote of a node honest at its cast extends it
-    refine ⟨⟨_, _, 0, hread, rfl, htipU, htipU, .refl, Or.inl ⟨htg, rfl⟩,
-      fun x i e hve _ _ => ?_, fun w _ hg => absurd htg hg, fun w _ hg => absurd htg hg⟩⟩
-    obtain ⟨Hd, hHdU, hHdr⟩ := hve.head_mem hrun hnc
-    refine ⟨Hd, hHdU, hHdr, ?_⟩
-    rw [Compose.Growing.honestAt_eq_genesis hrun hU htipU htg]
-    exact (Compose.Growing.honestAt_genesis_anc hrun hHdU).2
-  obtain ⟨C, σ, hCw, htC⟩ :=
-    (Compose.Growing.onOriginChainWithin_iff.1 hchain).resolve_left htg
-  have hCU : C ∈ Q.trace.HonestBlocksAt Q.keys := by
-    by_cases he : Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-        (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T)) Q.T = C
-    · exact he ▸ htipU
-    · exact (htC.mem he).2
-  have hσT : Q.params.ts σ ≤ Q.T := by
-    obtain ⟨x, i, CV, -, hiT, ⟨ℓ, hu, -⟩ | ⟨ℓ, A', -, hs, -⟩⟩ :=
-      Compose.Growing.originWithin_iff.1 hCw
-    · have ht : Q.trace.time i = Q.params.ts σ + 6 * Q.params.Δ := hu.2.2.1
-      linarith
-    · exact ((SA.ts_le_iff_le_slot Q.params (hrun.time_nonneg i) σ).2 (by
-        have hs' : Q.params.slot (Q.trace.time i) = σ := hs
-        rw [hs'])).trans hiT
-  obtain ⟨hσk, hkj⟩ := Compose.armed_label_lt hT0 hlag hσT
-  have hCb := hCw.mono hTb
-  obtain ⟨hg₁, hg₂⟩ := Compose.coverLabel_gates (sp := Q.params) (b₀ := Q.start) (by
-    have : (0 : Time) ≤ (4 * Q.params.k + 4) * Q.params.Δ := by positivity
-    linarith)
-  have hts1 : Q.params.ts ((Compose.coverLabel Q.params Q.start : Int) - Q.params.k) ≤
-      Q.params.ts ((Compose.coverLabel Q.params Q.start : Int) - Q.params.k + 1) :=
-    (SA.ts_le_iff _).2 (by omega)
-  have hjI : ((Compose.coverLabel Q.params Q.start - 1 : Nat) : Int) =
-      (Compose.coverLabel Q.params Q.start : Int) - 1 := by omega
-  have hjk : Q.params.ts ((Compose.coverLabel Q.params Q.start : Int) - Q.params.k) ≤
-      Q.params.ts (Compose.coverLabel Q.params Q.start) := (SA.ts_le_iff _).2 (by omega)
-  refine ⟨⟨_, C, σ, hread, rfl, htipU, hCU, htC, Or.inr ⟨hCw, hσk⟩,
-    fun x i e hve hσe hej => ?_, fun w hw hCg hhz => ?_, fun w hw hCg hhz => ?_⟩⟩
-  · -- S-vote
-    obtain ⟨hx, ℓx, hcx, hex⟩ := Compose.Growing.hVoteAt_iff.1 hve
-    have hvt := (Compose.Growing.cast_head_fcRoot_at hrun hnc hx ⟨hcx, hex⟩).2
-    have hts := (SA.ts_le_iff Q.params).2 (show (e.msg.slot : Int) ≤ Compose.coverLabel Q.params
-      Q.start by exact_mod_cast hej)
-    have hih : Q.trace.time i ≤ Q.run.2.horizon :=
-      Q.call_le_horizon ⟨_, Compose.projAC_callAt.1 hcx⟩
-    exact hinv.vote_extends C σ hCb x i e hve
-      (le_min (by change Q.trace.time i ≤ _ at hvt; linarith) hih) hσe
-  · -- O1 at `j₀ − 1`
-    have hsz := hzj (2 * Q.params.Δ) (by linarith) hhz
-    have hsz' : Q.params.ts ((Compose.coverLabel Q.params Q.start - 1 : Nat) : Int) +
-        6 * Q.params.Δ = Q.params.ts (Compose.coverLabel Q.params Q.start) + 2 * Q.params.Δ := by
-      rw [hjI]; simp only [SA.SAParams.ts]; ring
-    have h1 : Q.params.k ≤ Compose.coverLabel Q.params Q.start - 1 := by omega
-    have h2 : σ + Q.params.k ≤ Compose.coverLabel Q.params Q.start - 1 := by omega
-    have h3 : Q.winStart ≤
-        Q.params.ts (((Compose.coverLabel Q.params Q.start - 1 : Nat) : Int) - Q.params.k + 1) := by
-      rw [hjI, show (Compose.coverLabel Q.params Q.start : Int) - 1 - Q.params.k + 1 =
-        (Compose.coverLabel Q.params Q.start : Int) - Q.params.k by ring]
-      exact haj
-    exact Compose.Growing.armed_lock_formed_at hrun hnc hKB hinv hsvc hBKh hCb hCU hCg
-      (Q.holdersAt_subset hw) Q.end_le_horizon (fun u hu₁ hu₂ => Q.holder_awake hw hu₁ hu₂)
-      (s := Compose.coverLabel Q.params Q.start - 1) h1 h2 h3 (hsz' ▸ hsz)
-      (hsz' ▸ le_min hg₁ hhz)
-  · -- O1 at `j₀`
-    have hsz := hzj (6 * Q.params.Δ) le_rfl hhz
-    have h1 : Q.params.k ≤ Compose.coverLabel Q.params Q.start := by omega
-    have h2 : σ + Q.params.k ≤ Compose.coverLabel Q.params Q.start := by omega
-    have hF : (Q.keys (Q.params.ts (Compose.coverLabel Q.params Q.start) + 6 * Q.params.Δ))ᶜ ⊆
-        (Q.keys Q.winEnd)ᶜ ∪
-          Q.opponentsAt :=
-      fun x hx => Or.inl fun hxz => hx (honestKeysAt_antitone S Q.run.2 hsz hxz)
-    have hsh : Q.start ≤ Q.run.2.horizon := by linarith
-    have hq1 : Q.params.ts ((Compose.coverLabel Q.params Q.start + 1 : Nat) : Int) ≤
-        Q.run.2.horizon := by
-      have h := hhz
-      simp only [SA.SAParams.ts] at h ⊢; push_cast; linarith
-    exact Compose.Growing.armed_lock_cover_at hrun hnc hKB hinv hsvc hBKh hCb hCg
-      (Q.holdersAt_subset hw) Q.end_le_horizon (fun u hu₁ hu₂ => Q.holder_awake hw hu₁ hu₂)
-      (s := Compose.coverLabel Q.params Q.start) h1 h2 (haj.trans hts1) hsz
-      (le_min hg₁ (by linarith)) Q.holdersAt _ hF
-      (Q.two_mul_opp_lt (by omega) (by omega) hq1 hsh)
-      fun x j e hve hx hes hjt => by
-        by_cases hxz :
-            x ∈ Q.keys Q.winEnd
-        · obtain ⟨hxj, ℓx, hcx, hex⟩ := Compose.Growing.hVoteAt_iff.1 hve
-          have hxs := (Compose.Growing.castAt_spec_at hrun hnc hxj ⟨hcx, hex⟩).2.1
-          have hjs : Q.params.ts ((Compose.coverLabel Q.params Q.start + 1 : Nat) : Int) ≤
-              Q.trace.time j :=
-            (SA.ts_le_iff_le_slot _ (hrun.time_nonneg j) _).2 (by
-              change ((Compose.coverLabel Q.params Q.start + 1 : Nat) : Int) ≤
-                (Q.params.slot (Q.trace.time j) : Int)
-              rw [← hes]; exact_mod_cast hxs.le)
-          have hjk' : Q.params.ts ((Compose.coverLabel Q.params Q.start : Int) - Q.params.k) ≤
-              Q.params.ts ((Compose.coverLabel Q.params Q.start + 1 : Nat) : Int) :=
-            (SA.ts_le_iff _).2 (by omega)
-          have haw := hrun.awake_of_call x j hxj ⟨_, Compose.projAC_callAt.1 hcx⟩
-          rcases Q.classify (by linarith) (hjt.trans hsz) hxz haw with h | h
-          · exact Or.inl h
-          · exact Or.inr (Or.inr h)
-        · exact Or.inr (Or.inl hxz)
+  obtain ⟨N⟩ := Compose.Growing.outage_arming_at hrun hnc
+    (voteK_facts S Q.run.2 Q.hn Q.valid hnc hrun) (outage_node_lag_at Q)
+    (fun _ _ h => Q.call_le_horizon h) service (fun _ hb => Q.bounds hb)
+    (fun _ hb => Q.boundsK hrun hb) haj hzj Q.end_le_horizon Q.holdersAt_subset
+    (fun _ hw _ h₁ h₂ => Q.holder_awake hw h₁ h₂) (fun _ _ h₁ h₂ hx haw => Q.classify h₁ h₂ hx haw)
+    (fun _ h₁ h₂ hq hsh => Q.two_mul_opp_lt h₁ h₂ hq hsh)
+    ⟨hŵ, ⟨hcut.1, hcut.2.le⟩, hT0, hTh⟩
+  exact ⟨{ N with read := by rw [N.tip_eq]; exact hread }⟩
 
 end Consensus.Goldilocks.Obligations.Growing
 
