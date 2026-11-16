@@ -97,31 +97,6 @@ structure ProposalWitnessRefinement (M : RunMap rho payload) (K : Contract Progr
       M.trace.time k + C.margin ≤ t + (K.params.latency cap idx : Time) * E.ΔAC ∧
       AdmissibleProposal M K C B k
 
-/-- OPEN end-of-time read adapter along `confirmed_payload_projection_at`/`confirmed_inBy_at`.
-`ready` and `boundary` are stated at the claim time `t`, not at `cutTime (endCut t)`.
-`output` reads the tip at the stored clock `M.clock` of the state at `endCut t`,
-which need not equal either time. No clock equality or honesty at the next micro-cut is asserted.
-The step from readiness at `t` to a ready read point at the stored clock is a NEW UNRESOLVED
-SUFFICIENCY TARGET; this structure does not supply it. -/
-structure EndReadTransport (M : RunMap rho payload) (K : Contract ProgressReq)
-    (C : ACCorrectLocal A M.signer) : Prop where
-  strict_cut : rho.ExecutionValid → ∀ t, 0 ≤ t → t ≤ rho.horizon →
-    t < M.trace.time (M.cut ((chainTrace rho).endCut t))
-  ready : rho.ExecutionValid → ∀ v t, 0 ≤ t → t ≤ rho.horizon →
-    rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩) v t →
-    ReadyReadPoint M.trace M.honest rho.horizon C.catchUp (M.validator.symm v)
-      (M.cut ((chainTrace rho).endCut t)) t
-  boundary : rho.ExecutionValid → ∀ v t, 0 ≤ t → t ≤ rho.horizon →
-    rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩) v t →
-    ReadBoundary M.trace (M.validator.symm v) (M.cut ((chainTrace rho).endCut t))
-  output : rho.ExecutionValid → ∀ v t, 0 ≤ t → t ≤ rho.horizon →
-    rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩) v t → ∀ g,
-    (chainTrace rho).readAt g v t =
-      (M.chain (M.trace.state (M.validator.symm v) (M.cut ((chainTrace rho).endCut t)))
-        (M.tip g (M.trace.state (M.validator.symm v)
-          (M.cut ((chainTrace rho).endCut t)))
-          (M.clock (rho.stateBefore ((chainTrace rho).endCut t) v).st.1))).map M.header
-
 /-- Deadline premises assembled from `final_reset_premises_at` and healthy
 service transport. The chosen forwarding delay and snapshot must fit this exact
 deadline. Every `Premises` field, including committee counts, remains required;
@@ -230,6 +205,8 @@ def PreparationPremisesSupply (M : RunMap rho payload) (K : Contract ProgressReq
 /-- Selected-reset existence and drain/slot budget. Source:
 `healthy_preparation_initialize_late_at`, using `healthy_preparation_reset_at`.
 The same selected reset meets the deadline; arbitrary resets need not be early.
+The `+ 1` absorbs the stored clock's lag: a healed read at the stored clock is at
+`R.now ≥ cutTime i − 1 ≥ heal − 1` (`StoredReadTransport.ready_point`).
 The local drain/margin arithmetic remains an instance proof obligation. -/
 def ResetHealBudgetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) : Prop :=
@@ -241,7 +218,7 @@ def ResetHealBudgetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
   (Sys F V).heal K cap idx gst ⟨E, rho⟩ ≤ rho.horizon →
   ∃ a, Healing.Growing.IsReset M.trace M.honest gst a ∧ a ≤ rho.horizon ∧
     max gst 0 ≤ P.slotTime (P.slotOf a + C.healing.drain) ∧
-    P.slotTime (P.slotOf a + C.healing.drain) + C.margin ≤
+    P.slotTime (P.slotOf a + C.healing.drain) + C.margin + 1 ≤
       (Sys F V).heal K cap idx gst ⟨E, rho⟩
 
 /-- Matching of the fixed local outage policy to the advertised contract.
@@ -276,19 +253,25 @@ def ResilienceTipTransport (M : RunMap rho payload) : Prop :=
   ∀ g, O.output .stable = some g → ∀ st t,
     M.tip (resilienceTarget O g) st t = A.confirmed st.ac (Node.frame st) t
 
-/-- OPEN source read context: concrete realization must use lastOwn/cutMap and
-stateAt.now/readAfter from Healthy/CutTips.healthy_cut_tips_ancestor_at, not simply
-the current mapped cut. This data supplies no correspondence by itself. -/
+/-- The reader's own read behind each engine cut: the trace cut after its last own event, its
+stored clock, and the confirmed tip read there. Data only; `StoredReadTransport` supplies the laws.
+Goldilocks: `goldilocksStoredReadContext` (`cutMap (lastOwn …)`, `stateAt.now`). -/
 structure StoredReadContext (M : RunMap rho payload) where
   cut : V → Nat → Nat
   now : V → Nat → Time
   tip : V → Nat → A.Blk
 
-/-- OPEN explicit source/current-read correspondence. NEW UNRESOLVED SUFFICIENCY
-TARGET: no generic implementation of the stored-clock context is supplied.
-The current read is at the map stored clock `M.clock`. Neither
-`R.now v i = M.clock (rho.stateBefore i v).st.1` nor `R.cut v i = M.cut i`
-is asserted; the two equalities below only identify the tips. -/
+/-- The single read binding of engine outputs, at engine cuts and at claim times.
+At an engine cut `i` the output is read at the stored read `(R.cut v i, R.now v i)`: `source_tip`
+and `current_tip` identify its tip with the mapped tip at the stored clock `M.clock`, and
+`source_state` identifies the reader's whole local state at the two cuts, so held trees and chains
+transfer, not only the tip. Under engine readiness with catch-up `c + 1` the stored read is a ready
+read point with catch-up `c` and a read boundary, at most one unit before the cut time; stored reads
+of one reader are ordered in both cut and time. At a claim time `t` read through `endCut t`, a
+reader ready at `t` has stored clock exactly `t`, read strictly before the mapped cut.
+No global clock equality: neither `R.now v i = rho.cutTime i` nor `R.cut v i = M.cut i` is
+asserted. Goldilocks sources: `readAfter_lastOwn`, `stateAt_lastOwn`, `now_mono`, `lastOwn_mono`,
+`engine_read_point`, `stored_now_ge_cutTime_sub_one`, `ready_read_cut_at`. -/
 structure StoredReadTransport (M : RunMap rho payload) (R : StoredReadContext M) : Prop where
   source_tip : ∀ v i, R.tip v i = confirmedRead M.trace (M.validator.symm v)
     (R.cut v i) (R.now v i)
@@ -296,14 +279,31 @@ structure StoredReadTransport (M : RunMap rho payload) (R : StoredReadContext M)
     rho.point.HonestAt v (rho.cutTime i) →
     R.tip v i = confirmedRead M.trace (M.validator.symm v) (M.cut i)
       (M.clock (rho.stateBefore i v).st.1)
+  source_state : rho.ExecutionValid → ∀ v i, i ≤ rho.events.length →
+    M.trace.state (M.validator.symm v) (R.cut v i) =
+      M.trace.state (M.validator.symm v) (M.cut i)
   now_bound : rho.ExecutionValid → ∀ v i, i ≤ rho.events.length →
     rho.point.HonestAt v (rho.cutTime i) → R.now v i ≤ rho.horizon
+  now_mono : rho.ExecutionValid → ∀ v, Monotone (R.now v)
+  cut_mono : ∀ v, Monotone (R.cut v)
+  ready_point : rho.ExecutionValid → ∀ c, 0 ≤ c → ∀ v i, i ≤ rho.events.length →
+    rho.point.Ready (c + 1) v (rho.cutTime i) →
+    ReadyReadPoint M.trace M.honest rho.horizon c (M.validator.symm v) (R.cut v i)
+        (R.now v i) ∧
+      ReadBoundary M.trace (M.validator.symm v) (R.cut v i) ∧ rho.cutTime i - 1 ≤ R.now v i
+  end_read : rho.ExecutionValid → ∀ c, 0 ≤ c → ∀ v t, 0 ≤ t → t ≤ rho.horizon →
+    rho.point.Ready c v t →
+    R.now v ((chainTrace rho).endCut t) = t ∧
+      t < M.trace.time (M.cut ((chainTrace rho).endCut t)) ∧
+      ReadyReadPoint M.trace M.honest rho.horizon c (M.validator.symm v)
+        (M.cut ((chainTrace rho).endCut t)) t ∧
+      ReadBoundary M.trace (M.validator.symm v) (M.cut ((chainTrace rho).endCut t))
 
 /-- OPEN local block ancestry at two actual reads. Source shape is
 Healthy/CutTips.healthy_cut_tips_ancestor_at at E1; its concrete query, actual
 ready→heal progress, both ready reads, ordered cuts and later stored-now bound
 are retained below. NEW UNRESOLVED SUFFICIENCY TARGET for arbitrary M/R;
-StoredReadTransport is a separate missing realization, not that concrete theorem.
+StoredReadTransport binds the tips to the outputs, not this ancestry.
 No ReadySafe or chain-prefix conclusion is hidden in this interface. -/
 def HealedReadAncestry (M : RunMap rho payload) (K : Contract ProgressReq)
     (R : StoredReadContext M) : Prop :=

@@ -135,7 +135,6 @@ structure LocalClaimSuppliers {P : Params} {A : NodeAC P} {O : OutputSchema} {In
   healthyRead : HealthyReadPoint C
   outageRead : OutageReadPoint C
   deadlines : ClaimDeadlineFit M K C
-  endReads : EndReadTransport M K C
   progress : ProposalProgressTransport M K C.healing
   proposalWitness : ProposalWitnessRefinement M K C
   deadlinePremises : DeadlinePremisesSupply M K

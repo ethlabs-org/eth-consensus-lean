@@ -8,9 +8,10 @@ public section
 /-! # Conditional claim reduction rows
 
 UNPROVED intended theorem types only. No evidence, instance, admission or correctness
-claim is supplied. All suppliers below refer to the binding's same map. Healed safety
-uses a separate stored-clock context and explicit transport, never an inference from
-compatibility to temporal ancestry. The realization of that context remains OPEN.
+claim is supplied. All suppliers below refer to the binding's same map. Every regime
+reduction reads outputs through the one stored-read context and its transport: engine-cut
+reads at the stored read, claim-time reads at `endCut t`. Healed safety's same-reader
+ancestry is never inferred from compatibility.
 -/
 
 set_option autoImplicit false
@@ -23,6 +24,49 @@ variable {P : Params} {A : NodeAC P} {O : OutputSchema} {Info : Type}
   {payload : A.Blk → Set Nat}
   {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
   {pub : Model.Public}
+
+section StoredReads
+
+variable {E : Env V} {rho : Model.Run (compiled F) E}
+
+/-- The engine cut at the end of `t ≥ 0` is at a time `≤ t`. -/
+theorem cutTime_endCut_le (rho : Model.Run (compiled F) E) {t : Time} (ht : 0 ≤ t) :
+    rho.cutTime ((chainTrace rho).endCut t) ≤ t :=
+  Nat.findGreatest_spec (P := fun i => rho.cutTime i ≤ t) (Nat.zero_le _)
+    (by simpa [Model.Run.cutTime] using ht)
+
+/-- A confirmed-tip output of a node honest at its engine cut is the chain of its stored read tip
+in its store at the stored read's cut. -/
+theorem stored_output_eq {M : RunMap rho payload} {R : StoredReadContext M}
+    (hR : StoredReadTransport M R) (hv : rho.ExecutionValid) {g : O.Id}
+    (hg : ∀ st t, M.tip g st t = A.confirmed st.ac (Node.frame st) t) {v : V} {i : Nat}
+    (hi : i ≤ rho.events.length) (hh : rho.point.HonestAt v (rho.cutTime i)) :
+    (chainTrace rho).read g v i =
+      (M.chain (M.trace.state (M.validator.symm v) (R.cut v i)) (R.tip v i)).map M.header := by
+  change (F (Model.pubOf E)).out g (rho.stateBefore i v).st.1 = _
+  rw [M.output_eq g v i hi, M.state_eq v i hi hh, hg, hR.source_state hv v i hi,
+    hR.current_tip hv v i hi hh]
+  rfl
+
+/-- A confirmed-tip output read at the end of a time `t` at which its reader is ready is the chain
+of the confirmed read at `t` in its store at the mapped cut of `endCut t`. -/
+theorem end_read_output_eq {M : RunMap rho payload} {R : StoredReadContext M}
+    (hR : StoredReadTransport M R) (hv : rho.ExecutionValid) {g : O.Id}
+    (hg : ∀ st t, M.tip g st t = A.confirmed st.ac (Node.frame st) t) {c : Time} (hc : 0 ≤ c)
+    {v : V} {t : Time} (ht : 0 ≤ t) (hth : t ≤ rho.horizon) (hr : rho.point.Ready c v t) :
+    (chainTrace rho).readAt g v t =
+      (M.chain (M.trace.state (M.validator.symm v) (M.cut ((chainTrace rho).endCut t)))
+        (confirmedRead M.trace (M.validator.symm v) (M.cut ((chainTrace rho).endCut t))
+          t)).map M.header := by
+  have hi : (chainTrace rho).endCut t ≤ rho.events.length := Nat.findGreatest_le _
+  have hh : rho.point.HonestAt v (rho.cutTime ((chainTrace rho).endCut t)) := fun h =>
+    hr.1 (rho.faultyAt_mono (cutTime_endCut_le rho ht) h)
+  change (chainTrace rho).read g v ((chainTrace rho).endCut t) = _
+  rw [stored_output_eq hR hv hg hi hh, hR.source_tip, (hR.end_read hv c hc v t ht hth hr).1]
+  unfold confirmedRead
+  rw [hR.source_state hv v _ hi]
+
+end StoredReads
 
 /-- UNPROVED exact output-validity wrapper. OutputValidityEdge, not held_view alone,
 is the reduction input. HoldsAlways remains excuse-free at the fixed public parameters. -/
@@ -38,11 +82,12 @@ root suppliers remain explicit; none enters an unconditional claim. Source:
 Concrete/Fields.meetsObligations_sleepySafe_growing. -/
 def SleepySafetyReduction (C : ACCorrectLocal A sg)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
-    (D : SleepyLayer1.Data A) : Prop :=
+    (D : SleepyLayer1.Data A)
+    (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) : Prop :=
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
-    RegimeTransport M K L.look ∧ EngineReadPoint M ∧
+    RegimeTransport M K L.look ∧ EngineReadPoint M ∧ StoredReadTransport M (R E hE rho hv) ∧
       LocalReadPoint L ∧ SleepyLayer1.EventSafety M L D ∧ SleepyLayer1.OutputProvenance L D ∧
       SleepyLayer1.Extension M L D ∧ SleepyLayer1.SourceProvenance L D ∧
       PopulationQuorumSupply M K ∧ SleepyWindowSupply M K L ∧ ClaimDeadlineFit M K L ∧
@@ -58,14 +103,15 @@ reader-conditional deadline and hash-collision branch. The strengthened witness
 supplier selects advertised readiness jointly with the proposal. -/
 def SleepyLivenessReduction (C : ACCorrectLocal A sg)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
-    (D : SleepyLayer1.Data A) : Prop :=
+    (D : SleepyLayer1.Data A)
+    (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) : Prop :=
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
     RegimeTransport M K L.look ∧
       ProposalProgressTransport M K L.healing ∧
       ProposalWitnessRefinement M K L ∧ ClaimDeadlineFit M K L ∧
-      EndReadTransport M K L ∧ SleepyLayer1.ProposalCoverage M L D ∧
+      StoredReadTransport M (R E hE rho hv) ∧ SleepyLayer1.ProposalCoverage M L D ∧
       LocalReadPoint L ∧
       SleepyLayer1.EventSafety M L D ∧ SleepyLayer1.OutputProvenance L D ∧
       SleepyLayer1.Extension M L D ∧ SleepyLayer1.SourceProvenance L D ∧
@@ -84,7 +130,8 @@ processing and actual-read cache transport are separate supplier contracts. Fina
 jointly selects advertised anchor readiness, delivery spacing and pointwise heights.
 No constant FrameWindow production or progress-form exclusion is assumed. -/
 def HealthyLivenessReduction (C : ACCorrectLocal A sg)
-    (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq) : Prop :=
+    (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
+    (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) : Prop :=
   K.params.Admissible → HealthyBetaFit K → CommitteeHalfFit K →
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
@@ -94,7 +141,7 @@ def HealthyLivenessReduction (C : ACCorrectLocal A sg)
       ProposalWitnessRefinement M K L ∧ ClaimDeadlineFit M K L ∧
       DeadlinePremisesSupply M K ∧ FinalWindowSupply M K L.run L.catchUp L.hold ∧
       FinalReadTransport M K L ∧
-      EndReadTransport M K L ∧ HealthyReadPoint L ∧ LocalReadPoint L ∧
+      StoredReadTransport M (R E hE rho hv) ∧ HealthyReadPoint L ∧ LocalReadPoint L ∧
       ReadRepresentation M ∧ HonestReadTransport M ∧
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →
     ∀ cap g, O.output cap = some g → ∀ (idx : K.Idx) (gst : Time), (Sys F V).Holds
@@ -125,14 +172,15 @@ recipient-deadline service permits AC-owned retained evidence. OC-K and the inst
 transports remain obligations, not consequences of these numerical fits. -/
 def PersistenceReduction (C : ACCorrectLocal A sg)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
-    (D : ∀ E hE rho (hv : rho.ExecutionValid), OutagePolicy (B.map E hE rho hv)) : Prop :=
+    (D : ∀ E hE rho (hv : rho.ExecutionValid), OutagePolicy (B.map E hE rho hv))
+    (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) : Prop :=
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
     OutageTransport M (D E hE rho hv) K ∧
       OutageRecoveryBinding M K L ∧ OutageServiceSupply M K L ∧
       ResilienceTipTransport M ∧ OutageReadPoint L ∧
-      EndReadTransport M K L ∧ LocalReadPoint L ∧
+      StoredReadTransport M (R E hE rho hv) ∧ LocalReadPoint L ∧
       ReadRepresentation M ∧ HonestReadTransport M ∧
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →
     ∀ g, O.output .stable = some g → ∀ T b₀ b₁,

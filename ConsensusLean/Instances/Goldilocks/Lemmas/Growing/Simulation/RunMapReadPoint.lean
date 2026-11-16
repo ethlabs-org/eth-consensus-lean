@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMa
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ClaimTransports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Outputs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Reads
 
 public section
 
@@ -11,15 +12,12 @@ public section
 `goldilocksRunMap_engineReadPoint` stays at the engine cut time `rho.cutTime i` and the mapped
 cut `M.cut i`. `goldilocksStoredReadContext` is the read the protocol makes: its source cut is the
 trace cut after the reader's last own event (`lastOwn`), its time the reader's stored clock.
-`goldilocksRunMap_storedReadTransport` only identifies the two tips. It asserts neither
-`R.cut = M.cut` nor `R.now = rho.cutTime i`, and no readiness, read point or boundary at the
-source cut.
-
-OPEN, not supplied here: the ready read point at the stored clock. Engine readiness with catch-up
-`c + 1` at `rho.cutTime i` gives local readiness with catch-up `c` at `(R.cut v i, R.now v i)`
-(`Obligations.Growing.engine_read_point`, `ready_at_stored_now`). `ClaimDeadlineFit.catchUp`
-supplies the numerical slack; the generic stored-read transport still needs the read-point law
-(ledger row "stored-clock read point").
+`goldilocksRunMap_storedReadTransport` binds every engine output to that read: the tips and the
+reader's states at the two cuts coincide, and under engine readiness with catch-up `c + 1` the
+source cut is a ready read point with catch-up `c` at the stored clock, at most one unit before the
+cut time (`engine_read_point`). At a claim time `t`, a reader ready at `t` has stored clock `t` at
+`endCut t`, read strictly before the mapped cut (`ready_read_cut_at`). Neither `R.cut = M.cut` nor
+`R.now = rho.cutTime i` is asserted.
 -/
 
 namespace Consensus.Goldilocks.Simulation
@@ -73,22 +71,44 @@ theorem goldilocksRunMap_engineReadPoint :
     exact Obligations.Growing.cutMap_boundary S rho hn (rho.ownKey v) i
   ready _ _ _ _ h := ⟨⟨h.1, ⟨h.2.1, h.2.2.1⟩, h.2.2.2.1, h.2.2.2.2.1⟩, h.2.2.2.2.2⟩
 
-/-- The last-own-event read equals the current mapped confirmed tip at the stored clock. -/
+/-- The last-own-event read is the read behind every engine output of the reader. -/
 theorem goldilocksRunMap_storedReadTransport :
     StoredReadTransport (goldilocksRunMap S rho hn hv)
-      (goldilocksStoredReadContext S rho hn hv) := by
-  constructor
-  · intro v i
+      (goldilocksStoredReadContext S rho hn hv) where
+  source_tip v i := by
     rw [goldilocksStoredReadContext_tip, goldilocksStoredReadContext_cut,
       goldilocksStoredReadContext_now, goldilocksRunMap_trace, goldilocksRunMap_validator]
     rfl
-  · intro hv' v i hi _
+  current_tip hv' v i hi _ := by
     rw [goldilocksStoredReadContext_tip, goldilocksRunMap_trace, goldilocksRunMap_validator,
       goldilocksRunMap_cut, goldilocksRunMap_clock, ← stateAt_eq]
     exact Obligations.Growing.readAfter_lastOwn S rho hn hv' v hi _
-  · intro hv' v i hi _
+  source_state hv' v i hi := by
+    have h₁ := simTraceAt_state_all S rho hn hv' v _
+      ((Obligations.Growing.lastOwn_spec S rho v i).1.trans hi)
+    rw [← Obligations.Growing.stateAt_lastOwn] at h₁
+    rw [goldilocksStoredReadContext_cut, goldilocksRunMap_trace, goldilocksRunMap_validator,
+      goldilocksRunMap_cut]
+    exact h₁.symm.trans (simTraceAt_state_all S rho hn hv' v i hi)
+  now_bound hv' v i hi _ := by
     rw [goldilocksStoredReadContext_now]
     exact (Obligations.now_bounds_cut S rho hn hv' v hi).2.trans (cutTime_bounds S rho hv' hi).2
+  now_mono hv' v := Obligations.now_mono S rho hn hv' v
+  cut_mono v _ _ h := cutMap_mono S rho hn (Obligations.Growing.lastOwn_mono S rho v h)
+  ready_point hv' c hc v i hi hr := by
+    obtain ⟨hrp, hn0, hnh, hready, -⟩ :=
+      Obligations.Growing.engine_read_point S rho hn hv' hc hi hr
+    simp only [goldilocksRunMap_trace, goldilocksRunMap_honest, goldilocksRunMap_validator,
+      goldilocksStoredReadContext_cut, goldilocksStoredReadContext_now]
+    exact ⟨⟨⟨hready.1, hrp, hn0, hnh⟩, hready.2⟩,
+      Obligations.Growing.cutMap_boundary S rho hn (rho.ownKey v) _,
+      Obligations.stored_now_ge_cutTime_sub_one S rho hn hv' hi hc hr⟩
+  end_read hv' c hc v t ht hth hr := by
+    obtain ⟨hca, hb, hnow⟩ := Obligations.Growing.ready_read_cut_at S rho hn hv' hc ht hth hr
+    have hrd := Obligations.Growing.ready_transport_at S rho hn hv' ht hth hr
+    simp only [goldilocksRunMap_trace, goldilocksRunMap_cut, goldilocksRunMap_honest,
+      goldilocksRunMap_validator, goldilocksStoredReadContext_now]
+    exact ⟨hnow, hca.2, ⟨⟨hrd.1, ⟨hca.1, hca.2.le⟩, ht, hth⟩, hrd.2⟩, hb⟩
 
 /-- The stored context of a public-indexed binding map: the fields of
 `goldilocksStoredReadContext`, which do not depend on the map. -/
@@ -109,7 +129,7 @@ theorem goldilocksEngineBinding_engineReadPoint (pub : Model.Public) (hn : 1 ≤
   rw [goldilocksEngineBinding_map]
   exact goldilocksRunMap_engineReadPoint S rho hn hv
 
-/-- The public-indexed binding supplies the actual stored-read correspondence. -/
+/-- The public-indexed binding supplies the stored-read binding. -/
 theorem goldilocksEngineBinding_storedReadTransport (pub : Model.Public) (hn : 1 ≤ pub.n)
     (E : Env V) (hE : pubOf E = pub)
     (rho : Model.Run (compiled (goldilocks S)) E) (hv : rho.ExecutionValid) :
