@@ -220,50 +220,57 @@ theorem confirmation_of_unanimous_early_pool
   exact ⟨hconf, fastSelect_eq_result hPhi hPt hPg (by
       unfold FastTest; (clear * - hf hsplit hsize hscore; omega))⟩
 
-/-- A half-committee supporting a block at an actual next-slot unlock makes all
-older lock labels compatible at every later cut. Provenance excludes intervening
-writes of those old labels; equal-time calls are ordered by their actual cuts. -/
-theorem older_locks_compatible_after_unlock {ini : Fin sp.n → SAState sp.n}
+/-- **A half-committee supporting a block at an actual next-slot unlock makes all older lock
+labels compatible at every later cut**, the unlock being the vote branch of slot `u + 1` of the
+node, whether or not it may vote in that slot (the read point's locks are the unlock's, and the
+branch leaves the read point or the receipt of the node's own vote). Provenance excludes
+intervening writes of those old labels; equal-time calls are ordered by their actual cuts. -/
+theorem older_locks_compatible_after_unlock_branch {ini : Fin sp.n → SAState sp.n}
     (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {j k u : Nat}
-    {ell : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y j ell e) (hs : e.msg.slot = u + 1) (hjk : j < k)
+    {ell : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n}
+    (hb : VoteBranchAt tr y j ell R) (hs : sp.slot (tr.time j) = u + 1) (hjk : j < k)
     {P : Blk sp.n FGP} (hPt : P ∈ ell.frame.tree) {S : Set (Fin sp.n)}
-    (hS : ∀ x ∈ S, x ∈ equivocators (mergedVoteView sp e.readPoint ell.frame (u + 1)).votes ∨
-      ∃ v ∈ (mergedVoteView sp e.readPoint ell.frame (u + 1)).support,
+    (hS : ∀ x ∈ S, x ∈ equivocators (mergedVoteView sp R ell.frame (u + 1)).votes ∨
+      ∃ v ∈ (mergedVoteView sp R ell.frame (u + 1)).support,
         v.val = x ∧ (v.slot : Int) = u ∧ AncR ell.frame P v.head)
     (hhalf : sp.committeeSize ≤ 2 * S.ncard) :
     ∀ l ∈ (tr.state y k).locks, l.slot < u →
       ∀ L ∈ U, L.root = l.block → Compatible U L P := by
-  obtain ⟨hPhi, hPhiU⟩ := frameIn_of_callAt hr hy hc.1
+  obtain ⟨hPhi, hPhiU⟩ := frameIn_of_callAt hr hy hb.callAt
   have hU := hr.coherent
   have hDelta := sp.toParams.hΔ
-  have hslot := (castAt_spec hr hy hc).2.1
+  have hslot := hs
   have htj : sp.ts (u + 1 : Nat) ≤ tr.time j :=
-    (ts_le_iff_le_slot sp (hr.time_nonneg j) _).2 (by rw [← hslot, hs])
+    (ts_le_iff_le_slot sp (hr.time_nonneg j) _).2 (by rw [hs])
   have down : ∀ {X Y}, Anc U X Y → Compatible U Y P → Compatible U X P := by
     rintro X Y hXY (h | h)
     · exact Or.inl (hXY.trans h)
     · exact anc_total hU hXY h
-  obtain ⟨L₀, hL₀⟩ := readPoint_locks hr hy hc (by clear * - hs; omega)
+  obtain ⟨L₀, hL₀⟩ := readPoint_locks_branch hr hy hb (by rw [hs]; clear * -; omega)
   have hsig : ((u + 1 : Nat) : Int) - 1 = u := by clear * -; omega
-  have hA : ∀ l ∈ e.readPoint.locks, l.slot < u →
+  have hA : ∀ l ∈ R.locks, l.slot < u →
       ∀ X ∈ ell.frame.tree, X.root = l.block → Compatible U X P := by
     intro l hl hls X hX hXr
     rw [hL₀, hs, hsig] at hl
     exact (unlock_compatible hPhi hPt hS hhalf L₀ (tr.time j) l hl
       (by exact_mod_cast hls) X hX hXr).imp (Anc.mono hPhiU) (Anc.mono hPhiU)
+  have hrb : ∀ l ∈ R.locks, ∃ Y ∈ ell.frame.tree, Y.root = l.block := by
+    intro l hl
+    rw [hL₀] at hl
+    obtain ⟨_, _, _, _, _, _, _, _, Y, hY, hYr, _⟩ :=
+      ((locks_move_back sp) FGP ell.frame L₀ (tr.time j) hPhi).2.2 _ _ l hl
+    exact ⟨Y, hY, hYr⟩
   have hpost : ∀ l ∈ (tr.state y (j + 1)).locks, l.slot < u →
       ∃ Y ∈ ell.frame.tree, Y.root = l.block ∧ Compatible U Y P := by
-    rw [show tr.state y (j + 1) = tr.post j by simp [Trace.state, hc.1.1, hc.1.2],
-      post_of_castAt hr hy hc]
-    have hrb : ∀ l ∈ e.readPoint.locks, ∃ Y ∈ ell.frame.tree, Y.root = l.block := by
-      intro l hl
-      rw [hL₀] at hl
-      obtain ⟨_, _, _, _, _, _, _, _, Y, hY, hYr, _⟩ :=
-        ((locks_move_back sp) FGP ell.frame L₀ (tr.time j) hPhi).2.2 _ _ l hl
-      exact ⟨Y, hY, hYr⟩
+    rw [show tr.state y (j + 1) = tr.post j by
+      simp [Trace.state, hb.callAt.1, hb.callAt.2]]
     intro l hl hls
+    rcases post_of_voteBranchAt hr hy hb with ⟨-, -, hp⟩ | ⟨-, e, -, -, -, -, hp⟩
+    · rw [hp] at hl
+      obtain ⟨Y, hY, hYr⟩ := hrb l hl
+      exact ⟨Y, hY, hYr, hA l hl hls Y hY hYr⟩
+    rw [hp] at hl
     unfold optimisticConfirmation at hl
     split at hl
     · rw [admitVote_locks_eq] at hl
@@ -301,6 +308,24 @@ theorem older_locks_compatible_after_unlock {ini : Fin sp.n → SAState sp.n}
       push_cast at htj
       have h4 : (0 : Time) ≤ 4 * sp.Δ := by linarith [sp.toParams.hΔ]
       linarith [mul_le_mul_of_nonneg_left hls' h4]
+
+/-- A half-committee supporting a block at an actual next-slot unlock makes all
+older lock labels compatible at every later cut: `older_locks_compatible_after_unlock_branch`
+at the cast's vote branch. -/
+theorem older_locks_compatible_after_unlock {ini : Fin sp.n → SAState sp.n}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {j k u : Nat}
+    {ell : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y j ell e) (hs : e.msg.slot = u + 1) (hjk : j < k)
+    {P : Blk sp.n FGP} (hPt : P ∈ ell.frame.tree) {S : Set (Fin sp.n)}
+    (hS : ∀ x ∈ S, x ∈ equivocators (mergedVoteView sp e.readPoint ell.frame (u + 1)).votes ∨
+      ∃ v ∈ (mergedVoteView sp e.readPoint ell.frame (u + 1)).support,
+        v.val = x ∧ (v.slot : Int) = u ∧ AncR ell.frame P v.head)
+    (hhalf : sp.committeeSize ≤ 2 * S.ncard) :
+    ∀ l ∈ (tr.state y k).locks, l.slot < u →
+      ∀ L ∈ U, L.root = l.block → Compatible U L P :=
+  older_locks_compatible_after_unlock_branch hr hy (voteBranchAt_of_castAt hr hy hc)
+    ((castAt_spec hr hy hc).2.1.symm.trans hs) hjk hPt hS hhalf
 
 end Consensus.Goldilocks.SA
 
