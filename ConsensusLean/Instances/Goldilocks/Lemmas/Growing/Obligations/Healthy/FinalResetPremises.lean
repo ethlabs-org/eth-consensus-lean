@@ -130,7 +130,9 @@ theorem final_reset_premises_of_shared_at
     hs.awake hs.faults ha (hab.trans hBh) ⟨j, hj, hjt⟩ hcatch
     (Healing.Growing.noRestartUpTo_iff.mpr hs.noRestart) (by rw [hδeq]; exact hs.timeoutDelay) hH
     (runCommittee_facts { S with vote := stock } Q.run.2 Q.hn Q.valid hs.noColl)
-    (runCommittee_card { S with vote := stock } Q.run.2 Q.hn Q.valid) rfl, ?_⟩
+    le_rfl Q.params.toParams.hn
+    (Healing.Growing.committeeFaultsUpTo_half_of_stock hs.faults
+      (runCommittee_card { S with vote := stock } Q.run.2 Q.hn Q.valid) rfl), ?_⟩
   -- the placement (H3)
   have ha0 : 0 ≤ a := by
     obtain ⟨⟨_, k, _, _, _, _, hka⟩, _⟩ := ha

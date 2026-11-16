@@ -138,7 +138,9 @@ theorem healthy_preparation_reset_at
     (hab.trans (hBh.trans hb)) ⟨j, hj, hjt⟩ hcatch hnr
     (protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2) hH
     (runCommittee_facts { S with vote := stock } Q.run.2 Q.hn Q.valid hnc)
-    (runCommittee_card { S with vote := stock } Q.run.2 Q.hn Q.valid) rfl, ?_⟩
+    le_rfl Q.params.toParams.hn
+    (Healing.Growing.committeeFaultsUpTo_half_of_stock hf
+      (runCommittee_card { S with vote := stock } Q.run.2 Q.hn Q.valid) rfl), ?_⟩
   rw [hBeq] at hab
   linarith only [hab, hr]
 
