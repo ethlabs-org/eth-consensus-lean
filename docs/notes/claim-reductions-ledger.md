@@ -13,7 +13,7 @@ uses the same catch-up inequality. Local readiness and the population and commit
 counts at `max C.catchUp (C.outageEta - 1)` require monotone transport from the advertised
 catch-up, not equality rewriting. `RunMap.delta_eq` fixes `P.Δ = E.ΔAC` in every covered environment.
 The participation catch-up is derived as `max cDur (η·ΔAC − 1)`.
-Reads remain non-strict. Certificate: cert obligation open: OC-K.
+Both reads are strict (T < time i, t < time j), as the end-of-time reads of `StoredReadTransport.end_read` are. Certificate: cert obligation open: OC-K.
 
 `ACServiceBefore` uses recipient-deadline cutoffs and the AC-owned `served` predicate.
 Fresh delivery implies `served`; Goldilocks interprets it as fresh processing or

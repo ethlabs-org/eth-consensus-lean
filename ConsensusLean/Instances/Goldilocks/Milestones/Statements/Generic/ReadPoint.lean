@@ -94,7 +94,9 @@ structure HealthyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : 
     Anc (tr.HonestBlocksAt H) B (confirmedRead tr y j t)
 
 /-- L9 preserves the actual source and destination reads under the fixed outage policy.
-Population and committee look-aheads are independent. Reads remain non-strict. After the stop
+Population and committee look-aheads are independent. Both reads are strict: every event at the
+read time precedes the read cut (as at the end-of-time cuts of `StoredReadTransport.end_read`),
+so a reader's last gate update is in its state. After the stop
 it reads only `PostStopService`; `ΔF` is the pre-stop service bound.
 Certificate: cert obligation open: OC-K. -/
 structure OutageReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where
@@ -109,9 +111,9 @@ structure OutageReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : P
     (∀ δ, 0 ≤ δ → δ ≤ C.outageEta →
       p.CommitteeSleepyOn (fun t => cm (max 0 (t - δ))) C.θ C.outageEta
         (max C.catchUp (C.outageEta - 1)) C.committeeLook 0 p.horizon) → ∀ x i y j t,
-    ReadyReadPoint tr H p.horizon C.catchUp x i T → ReadBoundary tr x i →
+    ReadyReadPoint tr H p.horizon C.catchUp x i T → ReadBoundary tr x i → T < tr.time i →
     recoveryTime ≤ t → ReadyReadPoint tr H p.horizon C.catchUp y j t →
-    ReadBoundary tr y j →
+    ReadBoundary tr y j → t < tr.time j →
       Anc (tr.HonestBlocksAt H) (confirmedRead tr x i T) (confirmedRead tr y j t)
 
 section Engine

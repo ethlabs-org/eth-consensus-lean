@@ -391,8 +391,8 @@ theorem persistenceReduction (C : ACCorrectLocal A sg)
   have hTt : T ≤ t := by linarith
   have hTh : T ≤ rho.horizon := hTt.trans ht
   have ht0 : 0 ≤ t := hT0.trans hTt
-  obtain ⟨-, -, hpv, hbv⟩ := hSR.end_read hv _ hcDur v T hT0 hTh hvT
-  obtain ⟨-, -, hpw, hbw⟩ := hSR.end_read hv _ hcDur w t ht0 ht hwt
+  obtain ⟨-, hsv, hpv, hbv⟩ := hSR.end_read hv _ hcDur v T hT0 hTh hvT
+  obtain ⟨-, hsw, hpw, hbw⟩ := hSR.end_read hv _ hcDur w t ht0 ht hwt
   rw [end_read_output_eq hSR hv (hrep.confirmed_tip g hg) hcDur hT0 hTh hvT,
     end_read_output_eq hSR hv (hRT g hg) hcDur ht0 ht hwt]
   have hanc := hOP.protection _ _ _ _ _ (D E hpub rho hv).point E.ΔFG T b₀ b₁
@@ -400,8 +400,8 @@ theorem persistenceReduction (C : ACCorrectLocal A sg)
     hT0 (by rw [hOR.lag]; exact hlag) hb01 (by rw [hOR.budget]; exact hbud)
     (by change b₁ ≤ b₁ + (K.params.recovery : Time) * E.ΔAC; linarith)
     (by rw [hOR.duration]; exact le_rfl) hsvc hgst hpop hcom
-    _ _ _ _ _ (by rw [(D E hpub rho hv).horizon]; exact hmono hpv) hbv ht₀
-    (by rw [(D E hpub rho hv).horizon]; exact hmono hpw) hbw
+    _ _ _ _ _ (by rw [(D E hpub rho hv).horizon]; exact hmono hpv) hbv hsv ht₀
+    (by rw [(D E hpub rho hv).horizon]; exact hmono hpw) hbw hsw
   have hi : (chainTrace rho).endCut T ≤ rho.events.length := Nat.findGreatest_le _
   have hj : (chainTrace rho).endCut t ≤ rho.events.length := Nat.findGreatest_le _
   have hhv : rho.point.HonestAt v (rho.cutTime ((chainTrace rho).endCut T)) := fun hf =>
