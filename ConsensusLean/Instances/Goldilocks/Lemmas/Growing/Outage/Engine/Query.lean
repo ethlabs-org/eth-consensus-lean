@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Recei
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PoolDelivery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Service
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
@@ -104,6 +105,15 @@ theorem outage_node_lag_at (Q : OutageQueryAt S A V) :
   push_cast at hlag
   linarith
 
+private theorem outage_budget_at (Q : OutageQueryAt S A V) :
+    Q.stop ≤ Q.start + (4 * (Q.params.k : Time) - 5) * Q.params.Δ := by
+  have hbud := Q.outage.times.2.2.2
+  have hk2 : (2 : Int) ≤ S.k := by exact_mod_cast S.two_le_k
+  have hbcast : ((4 * S.k - 5 : Nat) : Int) = 4 * (S.k : Int) - 5 := by omega
+  change Q.stop ≤ Q.start + ((4 * S.k - 5 : Nat) : Int) * Q.run.1.ΔAC at hbud
+  change Q.stop ≤ Q.start + (4 * (S.k : Int) - 5) * Q.run.1.ΔAC
+  rwa [hbcast] at hbud
+
 /-- The start `a` of the proof window: `b₀ − (4k + 6)Δ`, clamped to `[0, horizon]`. -/
 abbrev OutageQueryAt.winStart (Q : OutageQueryAt S A V) : Time :=
   min (max 0 (Q.start - ((4 * S.k + 6 : Nat) : Int) * Q.run.1.ΔAC)) Q.run.2.horizon
@@ -124,26 +134,12 @@ noncomputable abbrev OutageQueryAt.outCatch (Q : OutageQueryAt S A V) : Time :=
 since `z − a ≤ (budget + 2(4k + 6))Δ = (12k + 7)Δ` away from the clamps. -/
 theorem look_back_le_winStart (Q : OutageQueryAt S A V) :
     max 0 (Q.winEnd - Q.lookBack) ≤ Q.winStart := by
-  obtain ⟨-, -, -, hbud⟩ := Q.outage.times
-  have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
-  have hk2 : (2 : Int) ≤ S.k := by exact_mod_cast S.two_le_k
-  have hhor : 0 ≤ Q.run.2.horizon := Q.valid.horizon_nonneg
-  have hbcast : ((4 * S.k - 5 : Nat) : Int) = 4 * (S.k : Int) - 5 := by omega
-  change Q.stop ≤ Q.start + ((4 * S.k - 5 : Nat) : Int) * Q.run.1.ΔAC at hbud
-  have hη : ((K S A).params.η : Time) = 12 * (S.k : Int) + 7 := by
-    change ((12 * S.k + 7 : Nat) : Int) = _; push_cast; ring
-  have hL : ((4 * S.k + 6 : Nat) : Int) = 4 * (S.k : Int) + 6 := by push_cast; ring
-  rw [hbcast] at hbud
-  have hl0 : (0 : Time) ≤ Q.lookBack := mul_nonneg (by positivity) (zero_le_one.trans hd)
-  have hz : Q.winEnd ≤ Q.run.2.horizon := min_le_right _ _
-  have hz' : Q.winEnd ≤ Q.stop + (4 * (S.k : Int) + 6) * Q.run.1.ΔAC := by
-    rw [← hL]; exact min_le_left _ _
-  refine le_min (max_le (le_max_left _ _) (le_trans ?_ (le_max_right _ _)))
-    (max_le hhor (by linarith))
-  change Q.winEnd - ((K S A).params.η : Time) * Q.run.1.ΔAC ≤
-    Q.start - ((4 * S.k + 6 : Nat) : Int) * Q.run.1.ΔAC
-  rw [hη, hL]
-  linarith
+  have h := (Compose.Growing.outage_window_numbers Q.outage.times.1
+    (outage_node_lag_at Q) Q.outage.times.2.2.1 (outage_budget_at Q)
+    Q.valid.horizon_nonneg).2.2
+  simpa [Compose.Growing.outageWinStart_eq, Compose.Growing.outageWinEnd_eq,
+    OutageQueryAt.winStart, OutageQueryAt.winEnd, OutageQueryAt.lookBack,
+    OutageQueryAt.params, Params.standard, K, Nat.cast_add, Nat.cast_mul] using h
 
 /-- **Readiness at `z` covers the proof window**: the outage catch-up `η·Δ − 1` reaches back to
 `max 0 (z − η·Δ) ≤ a`. -/
@@ -160,41 +156,12 @@ theorem outage_window_cover_at (Q : OutageQueryAt S A V) :
       ∀ d ≤ 6 * Q.params.Δ, Q.params.ts (Compose.coverLabel Q.params Q.start) + d ≤
           Q.run.2.horizon →
         Q.params.ts (Compose.coverLabel Q.params Q.start) + d ≤ Q.winEnd := by
-  obtain ⟨hT, -, hb01, -⟩ := Q.outage.times
-  have hlag := outage_node_lag_at Q
-  have hΔ := Q.params.toParams.hΔ
-  have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
-  have hk : (0 : Time) ≤ S.k := by positivity
-  have hkj := (Compose.armed_label_lt (σ := 0) hT hlag (by simp [SA.SAParams.ts]; exact hT)).2
-  obtain ⟨hg₁, hg₂⟩ := Compose.coverLabel_gates (sp := Q.params) (b₀ := Q.start) (by
-    have : (0 : Time) ≤ (4 * Q.params.k + 4) * Q.params.Δ := by positivity
-    linarith)
-  have hhor : 0 ≤ Q.run.2.horizon := Q.valid.horizon_nonneg
-  have hC : ((4 * S.k + 6 : Nat) : Int) = 4 * (S.k : Int) + 6 := by push_cast; ring
-  set j₀ := Compose.coverLabel Q.params Q.start
-  have hkj' : ((S.k : Nat) : Int) < j₀ := by exact_mod_cast hkj
-  change 0 ≤ min (max 0 (Q.start - ((4 * S.k + 6 : Nat) : Int) * Q.run.1.ΔAC))
-      Q.run.2.horizon ∧
-    min (max 0 (Q.start - ((4 * S.k + 6 : Nat) : Int) * Q.run.1.ΔAC)) Q.run.2.horizon ≤
-      4 * Q.run.1.ΔAC * ((j₀ : Int) - S.k) ∧
-    ∀ d ≤ 6 * Q.run.1.ΔAC, 4 * Q.run.1.ΔAC * (j₀ : Int) + d ≤ Q.run.2.horizon →
-      4 * Q.run.1.ΔAC * (j₀ : Int) + d ≤
-        min (Q.stop + ((4 * S.k + 6 : Nat) : Int) * Q.run.1.ΔAC) Q.run.2.horizon
-  change 4 * Q.run.1.ΔAC * (j₀ : Int) + 2 * Q.run.1.ΔAC ≤ Q.start at hg₁
-  change Q.start < 4 * Q.run.1.ΔAC * (j₀ : Int) + 6 * Q.run.1.ΔAC at hg₂
-  refine ⟨le_min (le_max_left _ _) hhor, (min_le_left _ _).trans (max_le ?_ ?_),
-    fun d hd6 hdh => le_min ?_ hdh⟩
-  · have : (0 : Time) ≤ (j₀ : Int) - S.k := by linarith
-    positivity
-  · rw [hC]
-    linarith
-  · rw [hC]
-    linarith [mul_nonneg hk (zero_le_one.trans hd)]
-
-/-- The first restored label: the least `r` with `b₁ ≤ t_r + Δ`. -/
-noncomputable def OutageQueryAt.restoredLabel (Q : OutageQueryAt S A V) : Nat := by
-  classical
-  exact if h : ∃ s : Nat, Q.stop ≤ Q.params.ts s + Q.params.Δ then Nat.find h else 0
+  have h := (Compose.Growing.outage_window_numbers Q.outage.times.1
+    (outage_node_lag_at Q) Q.outage.times.2.2.1 (outage_budget_at Q)
+    Q.valid.horizon_nonneg).2.1
+  simpa [Compose.Growing.outageWinStart_eq, Compose.Growing.outageWinEnd_eq,
+    OutageQueryAt.winStart, OutageQueryAt.winEnd, OutageQueryAt.params,
+    Params.standard, Nat.cast_add, Nat.cast_mul] using h
 
 /-- The numbers of an outage query in node units: the gates of the cover label, the restored
 label in `(j₀, j₀ + k]`, the budget and the proof window, whose end covers every time up to
@@ -208,44 +175,19 @@ theorem query_numbers_at (Q : OutageQueryAt S A V) :
       Q.params.ts (j₀ : Nat) + Q.params.Δ < Q.stop ∧
       (∀ t, t ≤ Q.params.ts (j₀ + Q.params.k : Nat) + 6 * Q.params.Δ → t ≤ Q.run.2.horizon →
         t ≤ Q.winEnd) := by
-  intro j₀
-  obtain ⟨hT, -, hb01, hbud⟩ := Q.outage.times
-  have hlag := outage_node_lag_at Q
-  have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
-  have hk2 : (2 : Int) ≤ S.k := by exact_mod_cast S.two_le_k
-  obtain ⟨hg₁, hg₂⟩ := Compose.coverLabel_gates (sp := Q.params) (b₀ := Q.start) (by
-    have : (0 : Time) ≤ (4 * Q.params.k + 4) * Q.params.Δ := by positivity
-    have hΔ := Q.params.toParams.hΔ
-    linarith)
-  have hbcast : ((4 * S.k - 5 : Nat) : Int) = 4 * (S.k : Int) - 5 := by omega
-  have hb : ((4 * S.k - 5 : Nat) : Int) ≤ 4 * (S.k : Int) - 5 := hbcast.le
-  change Q.stop ≤ Q.start + ((4 * S.k - 5 : Nat) : Int) * Q.run.1.ΔAC at hbud
-  have hmul := mul_le_mul_of_nonneg_right hb (le_of_lt Q.run.1.ΔAC_pos)
-  change 4 * Q.run.1.ΔAC * (j₀ : Int) + 2 * Q.run.1.ΔAC ≤ Q.start at hg₁
-  change Q.start < 4 * Q.run.1.ΔAC * (j₀ : Int) + 6 * Q.run.1.ΔAC at hg₂
-  change 4 * Q.run.1.ΔAC * (j₀ : Int) + 2 * Q.run.1.ΔAC ≤ Q.start ∧
-    Q.start < 4 * Q.run.1.ΔAC * ((j₀ + 1 : Nat) : Int) + 2 * Q.run.1.ΔAC ∧
-    Q.stop - Q.start ≤ (4 * (S.k : Time) - 5) * Q.run.1.ΔAC ∧ Q.start ≤ Q.stop ∧
-    Q.stop ≤ 4 * Q.run.1.ΔAC * ((j₀ + S.k : Nat) : Int) + Q.run.1.ΔAC ∧
-    4 * Q.run.1.ΔAC * ((j₀ : Nat) : Int) + Q.run.1.ΔAC < Q.stop ∧
-    ∀ t, t ≤ 4 * Q.run.1.ΔAC * ((j₀ + S.k : Nat) : Int) + 6 * Q.run.1.ΔAC →
-      t ≤ Q.run.2.horizon →
-      t ≤ min (Q.stop + ((4 * S.k + 6 : Nat) : Int) * Q.run.1.ΔAC) Q.run.2.horizon
-  push_cast
-  refine ⟨hg₁, by linarith, by linarith, hb01, by linarith, by linarith,
-    fun t ht hth => le_min ?_ hth⟩
-  linarith
+  have h := (Compose.Growing.outage_window_numbers Q.outage.times.1
+    (outage_node_lag_at Q) Q.outage.times.2.2.1 (outage_budget_at Q)
+    Q.valid.horizon_nonneg).1
+  simpa [Compose.Growing.outageWinEnd_eq, OutageQueryAt.winEnd,
+    OutageQueryAt.params, Params.standard, Nat.cast_add, Nat.cast_mul] using h
 
 /-- The restored label is the least `r` with `b₁ ≤ t_r + Δ`. -/
 theorem restoredLabel_spec (Q : OutageQueryAt S A V) :
-    Q.stop ≤ Q.params.ts Q.restoredLabel + Q.params.Δ ∧
-      ∀ s : Nat, Q.stop ≤ Q.params.ts s + Q.params.Δ → Q.restoredLabel ≤ s := by
-  classical
-  obtain ⟨-, -, -, -, hK, -, -⟩ := query_numbers_at Q
-  have h : ∃ s : Nat, Q.stop ≤ Q.params.ts s + Q.params.Δ := ⟨_, hK⟩
-  unfold OutageQueryAt.restoredLabel
-  simp only [h, ↓reduceDIte]
-  exact ⟨Nat.find_spec h, fun s hs => Nat.find_min' h hs⟩
+    Q.stop ≤ Q.params.ts (Compose.Growing.outageRestoredLabel Q.params Q.stop) + Q.params.Δ ∧
+      ∀ s : Nat, Q.stop ≤ Q.params.ts s + Q.params.Δ →
+        Compose.Growing.outageRestoredLabel Q.params Q.stop ≤ s := by
+  exact Compose.Growing.outageRestoredLabel_spec Q.outage.times.1
+    (outage_node_lag_at Q) Q.outage.times.2.2.1 (outage_budget_at Q)
 
 /-- The holders: the validators ready at the window end with the outage catch-up, as keys (read on
 the view retained through the window end). -/

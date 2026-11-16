@@ -564,6 +564,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Step
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Sources
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.FamilyIdentity
