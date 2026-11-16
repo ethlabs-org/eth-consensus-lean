@@ -6,13 +6,13 @@ public section
 
 /-! # The read context of a healthy reader under growing faults (definitions)
 
-The read point of a reader strictly after a repair opening's update (`RepairReadContext`), with
-the finite service it reads under: the read context of healed safety, indexed by the read point
-`(n, t)` itself (the reader's state before trace cut `n`, read at its stored clock `t`). The
-reader is honest, awake and joined at `t`; the service windows are the static ones of the
-validators honest at `t` on the prefix through `t`; the latest view's slot committee's fault bound
-is charged at `t` against its members awake and joined at the latest view's voting time.
-Definitions only. -/
+The read point of a reader after a repair opening's update (`RepairReadContext`): read at or after
+the update, with its read cut after the update's time, and the finite service it reads under: the
+read context of healed safety, indexed by the read point `(n, t)` itself (the reader's state
+before trace cut `n`, read at its stored clock `t`). The reader is honest, awake and joined at
+`t`; the service windows are the static ones of the validators honest at `t` on the prefix through
+`t`; the latest view's slot committee's fault bound is charged at `t` against its members awake
+and joined at the latest view's voting time. Definitions only. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
@@ -25,14 +25,15 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g b : Time}
   {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
-/-- The read context of `y` at the read point `(n, t)` strictly after the update of the opening
-`O` of the repair schedule `D`. -/
+/-- The read context of `y` at the read point `(n, t)` after the update of the opening `O` of the
+repair schedule `D`: `t` is at or after the update time and cut `n` strictly after it. -/
 structure RepairReadContext (D : RepairSchedule tr H proposer dg g b cm βK) (O : RepairOpening D)
     (y : Fin sp.n) (n : Nat) (t : Time) where
   label : Nat
   time_nonneg : 0 ≤ t
   time_bound : t ≤ b
-  repaired : sp.ts O.slot + 6 * sp.Δ < t
+  repaired : sp.ts O.slot + 6 * sp.Δ ≤ t
+  repairedCut : sp.ts O.slot + 6 * sp.Δ < tr.time n
   readPoint : Regimes.ReadPoint tr n t
   honest : y ∈ H t
   awake : tr.awake y t

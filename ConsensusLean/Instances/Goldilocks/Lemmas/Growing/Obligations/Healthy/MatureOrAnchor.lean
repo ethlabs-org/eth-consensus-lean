@@ -21,8 +21,8 @@ public section
 The mature-or-anchor dichotomy under growing faults: at a read point after the
 repair window, the reader's looked-up record is below its anchor or below a mature result of a
 node honest at its own cut. The reader is honest at its read time; its earlier updates at labels
-past the join, due strictly before its read time, are a premise (`hupd`), which an engine read
-discharges from the stored clock. -/
+past the join, due by its read time and strictly before its read cut, are a premise (`hupd`),
+which an engine read discharges from the stored clock. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
@@ -56,9 +56,9 @@ private theorem opening_before_read (D : RepairSchedule tr H proposer dg g b cm 
     {O : RepairOpening D} {y : Fin sp.n} {n : Nat} {t : Time} (C : RepairReadContext D O y n t) :
     Healing.drainTime sp D.resetTime ≤ sp.ts O.slot ∧
       SA.gbar g + 4 * sp.Δ ≤ sp.ts O.slot ∧
-      sp.ts O.slot + 6 * sp.Δ < t ∧
+      sp.ts O.slot + 6 * sp.Δ ≤ t ∧ sp.ts O.slot + 6 * sp.Δ < tr.time n ∧
       sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts O.slot := by
-  exact ⟨O.drain, O.late, C.repaired, repair_opening_join D O⟩
+  exact ⟨O.drain, O.late, C.repaired, C.repairedCut, repair_opening_join D O⟩
 
 /-- **Actual anchor coverage or a mature raw witness**, at a read point after the repair window.
 Young optimistic writers retain their normalized lock until the next-result deadline; older ones
@@ -66,7 +66,8 @@ reach the next result or finalization at the reader's update of the next label. 
 theorem healthy_current_mature_or_anchor_at (D : RepairSchedule tr H proposer dg g b cm βK)
     {O : RepairOpening D} {y : Fin sp.n} {n : Nat} {t : Time} (C : RepairReadContext D O y n t)
     (hupd : ∀ u : Nat, sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts u →
-      sp.ts u + 6 * sp.Δ < t → ∃ j ell, SA.UpdateAt tr.projAC y j u ell ∧ j < n)
+      sp.ts u + 6 * sp.Δ ≤ t → sp.ts u + 6 * sp.Δ < tr.time n →
+      ∃ j ell, SA.UpdateAt tr.projAC y j u ell ∧ j < n)
     {R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed =
       some R) :
@@ -89,7 +90,7 @@ theorem healthy_current_mature_or_anchor_at (D : RepairSchedule tr H proposer dg
   have hkeys : ∀ {r : Nat}, tr.time r ≤ t → y ∈ H (tr.time r) :=
     fun hr => hrun.antitone hr hy
   obtain ⟨hPhi, hsub, hsubfg, -⟩ := frame_by_read D ht0 hnt hy
-  obtain ⟨hdrain, hgu, hTt, hjoin⟩ := opening_before_read D C
+  obtain ⟨hdrain, hgu, hTt, hTn, hjoin⟩ := opening_before_read D C
   obtain ⟨hRm, -⟩ := SA.lookup_eq_some hR
   have hchain := healthy_current_live_chain_at D C
   have hfc := (SA.anc_getAnchor hPhi hchain).2 _ (Or.inr rfl)
@@ -107,8 +108,8 @@ theorem healthy_current_mature_or_anchor_at (D : RepairSchedule tr H proposer dg
       htree.2.1.1 hRm.1 htree.2.2.1 hgen
     rw [heq]
     exact (htree.2.2.2 _ hPhi.rooted.1.1).mono hsubfg
-  have hTb := hTt.le.trans htb
-  obtain ⟨d, ellD, hup, hdn⟩ := hupd O.slot hjoin hTt
+  have hTb := hTt.trans htb
+  obtain ⟨d, ellD, hup, hdn⟩ := hupd O.slot hjoin hTt hTn
   obtain ⟨q, hqn, ell, hcall, hRq, hrest, hwriter⟩ :=
     last_record_writer_at hrun hnc ht0 hnt hy hR hgen
   have hqt : tr.time q ≤ t := hnt q hqn
@@ -189,7 +190,7 @@ theorem healthy_current_mature_or_anchor_at (D : RepairSchedule tr H proposer dg
       have hjoinNext : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤
           sp.ts (s + 1 : Nat) :=
         hjoin.trans ((SA.ts_le_iff sp).2 (by exact_mod_cast hslotq.trans (Nat.le_succ _)))
-      obtain ⟨j, ellJ, hu, hjn⟩ := hupd (s + 1) hjoinNext hnext
+      obtain ⟨j, ellJ, hu, hjn⟩ := hupd (s + 1) hjoinNext hnext.le (hnext.trans_le C.readPoint.2)
       have hjt : tr.time j = sp.ts (s + 1 : Nat) + 6 * sp.Δ := hu.2.2.1
       have hjb := hjt ▸ hnext.le.trans htb
       have hRnext : Healing.drainTime sp D.resetTime ≤ sp.ts (s + 1 + 1 : Nat) := by

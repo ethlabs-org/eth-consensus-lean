@@ -156,7 +156,7 @@ theorem healthy_current_record_interval_at (D : RepairSchedule tr H proposer dg 
     (O : RepairOpening D) {y : Fin sp.n} {n n' : Nat} {t t' : Time}
     (hrp : Regimes.ReadPoint tr n t) (hrp' : Regimes.ReadPoint tr n' t')
     (htt : t ≤ t') (ht'b : t' ≤ b) (hy : y ∈ H t')
-    (hrep : sp.ts O.slot + 6 * sp.Δ < t) :
+    (hrep : sp.ts O.slot + 6 * sp.Δ ≤ t) (hcut : sp.ts O.slot + 6 * sp.Δ < tr.time n) :
     EffectiveRecordIntervalAt tr H y n n'
       ((SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
         (tr.state y n).fg.F) := by
@@ -172,7 +172,7 @@ theorem healthy_current_record_interval_at (D : RepairSchedule tr H proposer dg 
   have ht0 : 0 ≤ t := by
     linarith only [Compose.Growing.ts_natCast_nonneg (sp := sp) O.slot, h6, hrep]
   have ht'0 : 0 ≤ t' := ht0.trans htt
-  have hcover := record_sources_before_now_at D O hrp hyt hrep
+  have hcover := record_sources_before_now_at D O hrp hyt hrep hcut
   rw [recordCover_iff] at hcover
   apply effectiveRecordInterval_of_candidates_before_at hrun hnc ht'0 hrp'.1 hy
   · intro q hnq hqn' B s CV hB
@@ -181,7 +181,7 @@ theorem healthy_current_record_interval_at (D : RepairSchedule tr H proposer dg 
     have hyq : y ∈ H (tr.time q) := hrun.antitone hqt' hy
     have htq : t ≤ tr.time q := hrp.2.trans (hrun.time_mono hnq)
     have hbudget : sp.ts D.oldLabel + 6 * sp.Δ < tr.time q := by
-      linarith only [hlo, hrep, htq]
+      linarith only [hlo, hcut, hrun.time_mono hnq]
     have hs : D.cleanLabel + 2 * sp.k + 1 ≤ s := by
       apply D.old_bound.trans
       rcases hB with ⟨ell, hu, _⟩ | ⟨ell, A, ho, hslot, _⟩

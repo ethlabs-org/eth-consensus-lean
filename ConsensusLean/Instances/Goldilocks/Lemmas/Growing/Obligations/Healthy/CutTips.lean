@@ -64,9 +64,9 @@ theorem healthy_cut_tips_comparable_at
   exact healthy_current_sources_compatible_at D.toRepairSchedule Cu.time_nonneg Cu.readPoint
     Cu.time_bound Cu.honest Cv.time_nonneg Cv.readPoint Cv.time_bound Cv.honest
     (record_sources_before_now_at D.toRepairSchedule O.toRepairOpening Cu.readPoint
-      Cu.honest Cu.repaired)
+      Cu.honest Cu.repaired Cu.repairedCut)
     (record_sources_before_now_at D.toRepairSchedule O.toRepairOpening Cv.readPoint
-      Cv.honest Cv.repaired)
+      Cv.honest Cv.repaired Cv.repairedCut)
 
 /-- **Temporal ancestry of the read tips** of one reader ready at two cuts from the heal point,
 the later read within the query's bound. -/
@@ -111,7 +111,7 @@ theorem healthy_cut_tips_ancestor_at
   exact effective_record_of_interval_at D.reset.run D.reset.noColl Cj.time_nonneg
     Cj.readPoint.1 Cj.honest hnn
     (healthy_current_record_interval_at D.toRepairSchedule O.toRepairOpening Ci.readPoint
-      Cj.readPoint htt Cj.time_bound Cj.honest Ci.repaired) .refl
+      Cj.readPoint htt Cj.time_bound Cj.honest Ci.repaired Ci.repairedCut) .refl
 
 end Consensus.Goldilocks.Obligations.Growing
 

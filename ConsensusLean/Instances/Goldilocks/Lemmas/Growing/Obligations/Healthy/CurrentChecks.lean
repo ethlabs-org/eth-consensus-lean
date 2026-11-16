@@ -112,11 +112,11 @@ private theorem read_opening (D : RepairSchedule tr H proposer dg g b cm βK)
     {O : RepairOpening D} {y : Fin sp.n} {n : Nat} {t : Time} (C : RepairReadContext D O y n t) :
     Healing.drainTime sp D.resetTime ≤ sp.ts O.slot ∧
       SA.gbar g + 4 * sp.Δ ≤ sp.ts O.slot ∧
-      sp.ts O.slot + 6 * sp.Δ < t ∧
+      sp.ts O.slot + 6 * sp.Δ ≤ t ∧ sp.ts O.slot + 6 * sp.Δ < tr.time n ∧
       Healing.drainTime sp D.resetTime ≤ t := by
   have hΔ := sp.toParams.hΔ
   have hT := C.repaired
-  refine ⟨O.drain, O.late, hT, ?_⟩
+  refine ⟨O.drain, O.late, hT, C.repairedCut, ?_⟩
   linarith only [O.drain, hT, hΔ]
 
 /-- **Current anchor candidates are compatible with the current looked-up record**: the reader's
@@ -133,9 +133,10 @@ theorem healthy_current_live_candidates_at (D : RepairSchedule tr H proposer dg 
   have hnc := D.reset.noColl
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   obtain ⟨hPhi, hsub, hst, hwf⟩ := read_frame D C
-  obtain ⟨hdrain, hgu, hbefore, hdrainNow⟩ := read_opening D C
+  obtain ⟨hdrain, hgu, hbefore, hcut, hdrainNow⟩ := read_opening D C
   have hRm := (SA.lookup_eq_some hR).1
   have hcover := record_sources_before_now_at D O C.readPoint C.honest C.repaired
+    C.repairedCut
   rw [hR, Option.getD_some, recordCover_iff] at hcover
   rcases hcover with hF | ⟨x, q, s, B, CV, hx, -, hqt, hs, hsrc, hRB⟩
   · -- the record is the finalized block, below every block of the frame
@@ -164,7 +165,7 @@ theorem healthy_current_live_candidates_at (D : RepairSchedule tr H proposer dg 
     · exact Or.inr (SA.anc_tree_of_anc_U hU hPhi hsub hRm h hX.1)
   · obtain rfl := Set.mem_singleton_iff.mp hX
     obtain ⟨z, r, l, S₀, hseed, hrb, -, -, hhold⟩ :=
-      D.reset.reset_seed_held_at_read_at C.readPoint C.time_bound C.honest hdrain hgu hbefore
+      D.reset.reset_seed_held_at_read_at C.readPoint C.time_bound C.honest hdrain hgu hbefore hcut
     have hcmp : ∀ z r l B₀, tr.time r ≤ b →
         Healing.Growing.HighOrigin tr H g z r l B₀ →
         Goldilocks.Compatible (tr.HonestBlocksAt H) R B₀ := fun z r l B₀ hrb' ho =>
@@ -192,9 +193,10 @@ theorem healthy_current_record_viable_at (D : RepairSchedule tr H proposer dg g 
     R ∈ (Node.frame (tr.state y n)).viableTree (Node.frame (tr.state y n)).tree := by
   have hU := Compose.Growing.honest_blocks_coherent D.reset.run D.reset.noColl
   obtain ⟨hPhi, -, -, -⟩ := read_frame D C
-  obtain ⟨hdrain, hgu, hbefore, -⟩ := read_opening D C
+  obtain ⟨hdrain, hgu, hbefore, hcut, -⟩ := read_opening D C
   have hRm := (SA.lookup_eq_some hR).1
   have hcover := record_sources_before_now_at D O C.readPoint C.honest C.repaired
+    C.repairedCut
   rw [hR, Option.getD_some, recordCover_iff] at hcover
   rcases hcover with hF | ⟨z, q, l, E, DV, hz, -, hqt, hl, hsrc, hRE⟩
   · exact absurd (hF ▸ hPhi.F_anc_fcRoot) hfc
@@ -202,7 +204,7 @@ theorem healthy_current_record_viable_at (D : RepairSchedule tr H proposer dg g 
   have hl' : Healing.cleanLabel sp D.resetTime + 2 * sp.k + 1 ≤ l := by
     rw [← D.cleanLabel_eq]; exact hl
   obtain ⟨zS, qS, lS, S₀, hseed, hqSb, -, -, hhold⟩ :=
-    D.reset.reset_seed_held_at_read_at C.readPoint C.time_bound C.honest hdrain hgu hbefore
+    D.reset.reset_seed_held_at_read_at C.readPoint C.time_bound C.honest hdrain hgu hbefore hcut
   have hcmp : ∀ z r l B₀, tr.time r ≤ b →
       Healing.Growing.HighOrigin tr H g z r l B₀ →
       Goldilocks.Compatible (tr.HonestBlocksAt H) R B₀ := fun z r l B₀ hrb' ho =>

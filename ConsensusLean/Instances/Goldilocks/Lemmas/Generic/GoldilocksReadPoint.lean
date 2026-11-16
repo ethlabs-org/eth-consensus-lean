@@ -105,23 +105,24 @@ theorem goldilocks_healed_compatible
             (tr.state x m).fg.F := by
     intro x m τ hx hτ
     obtain ⟨⟨hxτ, hrp, hτ0, hτb⟩, hawake⟩ := hx
-    obtain ⟨Cx⟩ := repair_read_context_at D O hrp hτ0 hτb hxτ (by linarith only [hΔ]) hawake hτ
-    refine ⟨⟨Cx⟩, current_record_read_of_context_at D Cx fun v hv hvτ => ?_⟩
-    obtain ⟨c, ell, -, hup, -⟩ := hq.update_toFG_calls_at (hq.run.antitone hvτ.le hxτ) hv
+    obtain ⟨Cx⟩ := repair_read_context_at D O hrp hτ0 hτb hxτ (by linarith only [hΔ]) hawake hτ.le
+      (hτ.trans_le hrp.2)
+    refine ⟨⟨Cx⟩, current_record_read_of_context_at D Cx fun v hv hvτ hvn => ?_⟩
+    obtain ⟨c, ell, -, hup, -⟩ := hq.update_toFG_calls_at (hq.run.antitone hvτ hxτ) hv
       (by linarith only [hvτ, hτb])
     refine ⟨c, ell, hup, ?_⟩
     by_contra hc
     have := hq.run.time_mono (Nat.le_of_not_lt hc)
     have hct : tr.time c = sp.ts v + 6 * sp.Δ := hup.2.2.1
-    linarith only [this, hct, hvτ, hrp.2]
+    linarith only [this, hct, hvn]
   obtain ⟨⟨Cy⟩, hRy⟩ := hread hy ht
   obtain ⟨⟨Cz⟩, hRz⟩ := hread hz hu
   change Compatible (tr.HonestBlocksAt H) (Regimes.readAfter tr y i t) (Regimes.readAfter tr z j u)
   rw [hRy, hRz]
   exact healthy_current_sources_compatible_at D Cy.time_nonneg Cy.readPoint Cy.time_bound
     Cy.honest Cz.time_nonneg Cz.readPoint Cz.time_bound Cz.honest
-    (record_sources_before_now_at D O Cy.readPoint Cy.honest Cy.repaired)
-    (record_sources_before_now_at D O Cz.readPoint Cz.honest Cz.repaired)
+    (record_sources_before_now_at D O Cy.readPoint Cy.honest Cy.repaired Cy.repairedCut)
+    (record_sources_before_now_at D O Cz.readPoint Cz.honest Cz.repaired Cz.repairedCut)
 
 end Consensus.Goldilocks.Generic
 

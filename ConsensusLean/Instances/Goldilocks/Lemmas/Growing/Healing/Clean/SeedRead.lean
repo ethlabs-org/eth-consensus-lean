@@ -23,13 +23,15 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
-/-- A reset seed is held at a later honest read whenever it extends the finalized tip. -/
+/-- A reset seed is held at a later honest read whenever it extends the finalized tip: the read is
+at or after the update of a slot `u` after the drain, and that update's cut is before the read
+cut. -/
 theorem reset_seed_held_at_read_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {n u : Nat} {t : Time}
     (hrp : Regimes.ReadPoint tr n t) (htb : t ≤ b) (hy : y ∈ H t)
     (hdrain : drainTime sp a ≤ sp.ts u) (hgst : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
-    (hbefore : sp.ts u + 6 * sp.Δ < t) :
+    (htime : sp.ts u + 6 * sp.Δ ≤ t) (hcut : sp.ts u + 6 * sp.Δ < tr.time n) :
     ∃ v r l S, HighOrigin tr H g v r l S ∧ tr.time r ≤ b ∧ l < u ∧
       tr.time r < sp.ts u ∧
       (Anc (tr.HonestBlocksAt H) (tr.state y n).fg.F S → S ∈ (tr.state y n).fg.tree) := by
@@ -65,7 +67,6 @@ theorem reset_seed_held_at_read_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     simp only [SAParams.ts] at hslot hgst ⊢
     push_cast
     linarith
-  have htime : sp.ts u + 6 * sp.Δ ≤ t := hbefore.le
   obtain ⟨j, ell, ell', hup, rest⟩ := Healing.update_toFG_calls_of_awake hr hy
     ((Trace.upTo_awake _ _ _).mpr ⟨hp.awake y _ (hp.run.antitone htime hy)
       (by linarith [SA.le_gbar g]) (htime.trans htb), htime⟩) (by
@@ -91,7 +92,7 @@ theorem reset_seed_held_at_read_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hjt : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
   have hjn : j ≤ n := by
     by_contra h
-    have := hrp.2.trans (hm (show n ≤ j by omega))
+    have := hm (show n ≤ j by omega)
     linarith
   have hstatej := RunTrace.upTo_state_of_le (y := y) hm (hjt ▸ htime)
   have hstaten := Trace.upTo_state tr y hrp.1

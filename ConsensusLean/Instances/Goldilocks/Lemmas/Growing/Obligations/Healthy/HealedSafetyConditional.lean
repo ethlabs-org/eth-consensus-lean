@@ -256,14 +256,15 @@ theorem receiver_repair_of_opening_at (D : RepairSchedule tr H proposer dg g b c
   exact ⟨x, q, s, R, CV, hx, hqj, hqt, O.old_lt.le.trans hs, hsource, .refl⟩
 
 /-- **Repair cover at a read point**, under growing faults. For a reader honest at its read time
-`t`, strictly after the opening's update, the record before cut `n` (read at
-`t`) is its finalized block or below a result or optimistic lock of a node honest at its own
-cut, before `n` and by `t`. The reader is honest at the update, so the opening repaired it
-(`receiver_repair_of_opening_at`). -/
+`t`, at or after the opening's update, whose read cut `n` is after the update, the record before
+cut `n` (read at `t`) is its finalized block or below a result or optimistic lock of a node honest
+at its own cut, before `n` and by `t`. The reader is honest at the update, so the opening repaired
+it (`receiver_repair_of_opening_at`); its update cut, at time `t_slot + 6Δ < tr.time n`, is before
+`n`. -/
 theorem record_sources_before_now_at (D : RepairSchedule tr H proposer dg g b cm βK)
     (O : RepairOpening D) {y : Fin sp.n} {n : Nat} {t : Time}
     (hrp : Regimes.ReadPoint tr n t) (hy : y ∈ H t)
-    (hTt : sp.ts O.slot + 6 * sp.Δ < t) :
+    (hTt : sp.ts O.slot + 6 * sp.Δ ≤ t) (hTn : sp.ts O.slot + 6 * sp.Δ < tr.time n) :
     RecordCover tr H D.cleanLabel y n t
       ((SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
         (tr.state y n).fg.F) := by
@@ -273,11 +274,11 @@ theorem record_sources_before_now_at (D : RepairSchedule tr H proposer dg g b cm
   have h6 : (0 : Time) ≤ 6 * sp.Δ := mul_nonneg (by decide) sp.toParams.hΔ.le
   have ht0 : 0 ≤ t := by linarith [Compose.Growing.ts_natCast_nonneg (sp := sp) O.slot]
   obtain ⟨a, ell, ha, hat, -, hcover⟩ := receiverRepair_iff.mp (receiver_repair_of_opening_at D O)
-    y (hrun.antitone hTt.le hy)
+    y (hrun.antitone hTt hy)
   have han : a < n := by
     by_contra h
     have := hrun.time_mono (Nat.le_of_not_lt h)
-    linarith [hrp.2]
+    linarith
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hind : ∀ k, a + 1 ≤ k → k ≤ n → ∀ R,
       SA.lookup (Node.frame (tr.state y k)) (tr.state y k).ac.latestConfirmed =
@@ -291,7 +292,7 @@ theorem record_sources_before_now_at (D : RepairSchedule tr H proposer dg g b cm
     | base =>
       intro _ R hR
       obtain ⟨x, q, s, C, CV, hx, hqa, hqt, hs, hC, hRC⟩ := hcover R hR
-      exact ⟨x, q, s, C, CV, hx, Nat.lt_succ_of_le hqa, hqt.trans (hat ▸ hTt.le), hs, hC, hRC⟩
+      exact ⟨x, q, s, C, CV, hx, Nat.lt_succ_of_le hqa, hqt.trans (hat ▸ hTt), hs, hC, hRC⟩
     | succ k hak ih =>
       intro hkn R hR
       have hle1 : ∀ q < k + 1, tr.time q ≤ t := fun q hq => hrp.1 q (by omega)

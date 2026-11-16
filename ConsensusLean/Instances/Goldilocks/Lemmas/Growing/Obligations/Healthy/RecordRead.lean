@@ -90,7 +90,8 @@ source through `read_eq_record_of_current_votes_at`. -/
 theorem current_record_read_of_context_at (D : RepairSchedule tr H proposer dg g b cm βK)
     {O : RepairOpening D} {y : Fin sp.n} {n : Nat} {t : Time} (C : RepairReadContext D O y n t)
     (hupd : ∀ u : Nat, sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts u →
-      sp.ts u + 6 * sp.Δ < t → ∃ j ell, SA.UpdateAt tr.projAC y j u ell ∧ j < n) :
+      sp.ts u + 6 * sp.Δ ≤ t → sp.ts u + 6 * sp.Δ < tr.time n →
+      ∃ j ell, SA.UpdateAt tr.projAC y j u ell ∧ j < n) :
     Regimes.readAfter tr y n t =
       (SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
         (tr.state y n).fg.F := by
@@ -116,15 +117,16 @@ theorem current_record_read_of_context_at (D : RepairSchedule tr H proposer dg g
     healthy_current_stored_locks_at D hx hr hRB hrb hlate⟩
 
 /-- **The read context** at a read point `(n, t)` by the horizon of a reader honest at `t` and
-awake over its catch-up window `[t − c − 1, t]` (`c + 1 ≥ 8Δ`), strictly after the opening's
-update: the latest view is a label after the reset voted on by `t`, the reader is awake and joined
-at `t`, the reset's windows serve the prefix through `t`, and the latest label's committee fault
-bound is charged at `t`. -/
+awake over its catch-up window `[t − c − 1, t]` (`c + 1 ≥ 8Δ`), at or after the opening's
+update, whose read cut is after the update: the latest view is a label after the reset voted on
+by `t`, the reader is awake and joined at `t`, the reset's windows serve the prefix through `t`,
+and the latest label's committee fault bound is charged at `t`. -/
 theorem repair_read_context_at (D : RepairSchedule tr H proposer dg g b cm βK)
     (O : RepairOpening D) {y : Fin sp.n} {n : Nat} {t c : Time}
     (hrp : Regimes.ReadPoint tr n t) (ht0 : 0 ≤ t) (htb : t ≤ b) (hy : y ∈ H t)
     (hc : 8 * sp.Δ ≤ c + 1) (hawake : ∀ u, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u)
-    (hrep : sp.ts O.slot + 6 * sp.Δ < t) : Nonempty (RepairReadContext D O y n t) := by
+    (hrep : sp.ts O.slot + 6 * sp.Δ ≤ t) (hcut : sp.ts O.slot + 6 * sp.Δ < tr.time n) :
+    Nonempty (RepairReadContext D O y n t) := by
   have hΔ := sp.toParams.hΔ
   have hdrain : Healing.drainTime sp D.resetTime ≤ t := by linarith only [O.drain, hrep, hΔ]
   obtain ⟨L, hL, haL, hLt⟩ := healthy_read_label_at D (tr.state y n).ac
@@ -141,6 +143,7 @@ theorem repair_read_context_at (D : RepairSchedule tr H proposer dg g b cm βK)
            time_nonneg := ht0
            time_bound := htb
            repaired := hrep
+           repairedCut := hcut
            readPoint := hrp
            honest := hy
            awake := hw
@@ -200,11 +203,13 @@ theorem healthy_current_read_context_at (Q : HealthyPreparationQueryAt S A V)
           (stateAt S Q.run.2 Q.hn v i).now) := by
   obtain ⟨hrp, ht0, -, hra, hrep⟩ := healthy_engine_read_point_at S A V D hi hv
   have hΔ := Q.params.toParams.hΔ
+  have hT : Q.params.ts O.slot + 6 * Q.params.Δ < (stateAt S Q.run.2 Q.hn v i).now := by
+    have hb := O.bounded
+    rw [add_mul, ← add_assoc] at hrep
+    linarith only [hb, hrep]
   refine repair_read_context_at D.toRepairSchedule O.toRepairOpening hrp ht0 htb hra.1
-    (by linarith only [(healthy_repair_lower S A V Q.run Q.hn Q.gst D.resetTime).1, hΔ]) hra.2 ?_
-  have hb := O.bounded
-  rw [add_mul, ← add_assoc] at hrep
-  linarith only [hb, hrep]
+    (by linarith only [(healthy_repair_lower S A V Q.run Q.hn Q.gst D.resetTime).1, hΔ]) hra.2
+    hT.le (hT.trans_le hrp.2)
 
 /-- **The current-record read**: a ready engine reader from the heal point, read at its read
 point within the query's bound, reads its effective record; its updates are due by its stored
@@ -239,8 +244,8 @@ theorem healthy_current_record_read_at
     fun h =>
       hv.1 (Q.run.2.faultyAt_mono
         (now_bounds_cut { S with vote := stock } Q.run.2 Q.hn Q.valid v hi.1).2 h)
-  exact current_record_read_of_context_at D.toRepairSchedule C fun u hslot ht =>
-    update_before_stored_clock_at S Q.run.2 Q.hn Q.valid D.reset Q.bound_le hhon hslot ht.le
+  exact current_record_read_of_context_at D.toRepairSchedule C fun u hslot ht _ =>
+    update_before_stored_clock_at S Q.run.2 Q.hn Q.valid D.reset Q.bound_le hhon hslot ht
       C.time_bound
 
 end Consensus.Goldilocks.Obligations.Growing
