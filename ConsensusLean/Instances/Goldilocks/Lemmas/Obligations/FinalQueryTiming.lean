@@ -216,7 +216,10 @@ theorem final_window_slots (run : (Sys (goldilocks { S with vote := stock }) V).
     rw [Healing.drainTime_eq]
     exact (SA.ts_le_iff sp).2 (by exact_mod_cast humin)
   have hgu : gbar gst + 4 * sp.Δ ≤ sp.ts u := by
-    have hc := catchUp_le_cDur S A V run hn
+    have hc := catchUp_le_cDur { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V run hn
+    change Regimes.catchUp sp ≤
+      (Sys (goldilocks { S with vote := stock }) V).cDur (K S A) run at hc
     have hready :
         gbar gst + 4 * sp.Δ <
           (Sys (goldilocks { S with vote := stock }) V).ready (K S A) gst run := by

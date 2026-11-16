@@ -112,7 +112,9 @@ theorem healthy_preparation_reset_at (Q : HealthyPreparationQueryAt S A V)
     hr0 hgr Q.index.pos hcz (hBh.trans hb) (fun s₀ N hs₀ hN => by
       apply Healing.Growing.proposalGap_iff.mpr
       intro c hc hcN
-      obtain ⟨x, hxl, hxr, k, P, hx, hP, _, hPs⟩ := healthy_preparation_gap_at S A V Q
+      obtain ⟨x, hxl, hxr, k, P, hx, hP, _, hPs⟩ := healthy_preparation_gap_at
+        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V
+        Q.run Q.hn Q.valid Q.noCollision Q.nonfinal
         (hb.trans Q.bound_le) hp
         (by rw [max_eq_left hr0]; exact hs₀) (by linarith only [hN, hBh, hΔ]) c hc hcN
       exact ⟨x, hxl, hxr, hx, k, P, hP, hPs⟩) hdrain rfl

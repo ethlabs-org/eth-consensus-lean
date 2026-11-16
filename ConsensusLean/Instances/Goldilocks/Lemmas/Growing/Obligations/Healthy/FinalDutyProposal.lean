@@ -23,7 +23,7 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 /-- The query's catch-up duration covers the protocol catch-up `18 Δp`. -/
 theorem final_catchUp_le_cDur_at (Q : FinalQueryAt S A V) :
     Regimes.catchUp Q.params ≤ (Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run :=
-  catchUp_le_cDur S A V Q.run Q.hn
+  catchUp_le_cDur { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q.run Q.hn
 
 /-- **Duty to actual proposal** under growing faults. An honest-ready proposer duty at a slot
 `s > 0` with `t_s ≤ horizon` and the duty hold `Δ_AC` gives the run proposer's actual proposal `P`

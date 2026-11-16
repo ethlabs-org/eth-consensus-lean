@@ -77,11 +77,10 @@ end Gap
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
 /-- The run catch-up duration covers the protocol catch-up `18 Δp`. -/
-theorem catchUp_le_cDur (run : (Sys (goldilocks { S with vote := stock }) V).Run)
+theorem catchUp_le_cDur (run : (Sys (goldilocks S) V).Run)
     (hn : 1 ≤ Fintype.card V) :
-    Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params
-      (Model.pubOf run.1) hn) ≤
-        (Sys (goldilocks { S with vote := stock }) V).cDur (K S A) run := by
+    Regimes.catchUp (S.params (Model.pubOf run.1) hn) ≤
+        (Sys (goldilocks S) V).cDur (K S A) run := by
   have hd : (1 : Time) ≤ run.1.ΔAC := run.1.ΔAC_pos
   have hc : (19 : Time) ≤ ((K S A).params.catchUp : Time) := by
     rw [goldilocksContract_params_eq]
