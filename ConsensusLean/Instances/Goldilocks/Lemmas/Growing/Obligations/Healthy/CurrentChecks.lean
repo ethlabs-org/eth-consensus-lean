@@ -114,13 +114,10 @@ private theorem read_opening (D : RepairSchedule tr H proposer dg g b cm βK)
       SA.gbar g + 4 * sp.Δ ≤ sp.ts O.slot ∧
       sp.ts O.slot + 6 * sp.Δ < t ∧
       Healing.drainTime sp D.resetTime ≤ t := by
-  have hlow := D.lower
-  simp only [max_le_iff] at hlow
-  obtain ⟨-, hdr, -, hgr, -⟩ := hlow
   have hΔ := sp.toParams.hΔ
   have hT := C.repaired
-  refine ⟨hdr.trans O.fresh.le, hgr.trans O.fresh.le, hT, ?_⟩
-  linarith only [hdr.trans O.fresh.le, hT, hΔ]
+  refine ⟨O.drain, O.late, hT, ?_⟩
+  linarith only [O.drain, hT, hΔ]
 
 /-- **Current anchor candidates are compatible with the current looked-up record**: the reader's
 live lock blocks and its fork-choice root, at a read point after the repair window. -/
@@ -138,8 +135,7 @@ theorem healthy_current_live_candidates_at (D : RepairSchedule tr H proposer dg 
   obtain ⟨hPhi, hsub, hst, hwf⟩ := read_frame D C
   obtain ⟨hdrain, hgu, hbefore, hdrainNow⟩ := read_opening D C
   have hRm := (SA.lookup_eq_some hR).1
-  have hcover := record_sources_before_now_at D O C.readPoint C.time_bound C.honest
-    C.repaired
+  have hcover := record_sources_before_now_at D O C.readPoint C.honest C.repaired
   rw [hR, Option.getD_some, recordCover_iff] at hcover
   rcases hcover with hF | ⟨x, q, s, B, CV, hx, -, hqt, hs, hsrc, hRB⟩
   · -- the record is the finalized block, below every block of the frame
@@ -198,8 +194,7 @@ theorem healthy_current_record_viable_at (D : RepairSchedule tr H proposer dg g 
   obtain ⟨hPhi, -, -, -⟩ := read_frame D C
   obtain ⟨hdrain, hgu, hbefore, -⟩ := read_opening D C
   have hRm := (SA.lookup_eq_some hR).1
-  have hcover := record_sources_before_now_at D O C.readPoint C.time_bound C.honest
-    C.repaired
+  have hcover := record_sources_before_now_at D O C.readPoint C.honest C.repaired
   rw [hR, Option.getD_some, recordCover_iff] at hcover
   rcases hcover with hF | ⟨z, q, l, E, DV, hz, -, hqt, hl, hsrc, hRE⟩
   · exact absurd (hF ▸ hPhi.F_anc_fcRoot) hfc
@@ -281,13 +276,9 @@ theorem healthy_current_live_chain_at (D : RepairSchedule tr H proposer dg g b c
   have hnc := D.reset.noColl
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   obtain ⟨hPhi, hsub, hst, hwf⟩ := read_frame D C
-  have hlow := D.lower
-  simp only [max_le_iff] at hlow
-  obtain ⟨-, hdr, -⟩ := hlow
-  have hq0 : D.query ≤ t := by
+  have hdrain : Healing.drainTime sp D.resetTime ≤ t := by
     have h6 : (0 : Time) ≤ 6 * sp.Δ := mul_nonneg (by norm_num) sp.toParams.hΔ.le
-    linarith only [O.fresh, C.repaired, h6]
-  have hdrain := hdr.trans hq0
+    linarith only [O.drain, C.repaired, h6]
   intro X hX Y hY
   obtain ⟨l, hl, B, hB, hBr, hlive, rfl⟩ := SA.mem_liveLockBlocks_of_wf hPhi hwf hX
   obtain ⟨m, hm, E, hE, hEr, hmive, rfl⟩ := SA.mem_liveLockBlocks_of_wf hPhi hwf hY

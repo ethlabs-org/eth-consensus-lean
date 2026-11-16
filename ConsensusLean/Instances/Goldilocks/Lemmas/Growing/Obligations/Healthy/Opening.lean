@@ -15,6 +15,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Lemmas.Model.SysLog
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRepairTiming
 
 public section
 
@@ -68,7 +69,7 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
       Model.sysExternal, System.cDur, System.pt, Sys, Model.sysOf, Model.Run.point] using hp
   have hq0 : 0 ≤ D.query := (le_max_right _ _).trans ((le_max_right _ _).trans
     ((le_max_right _ _).trans ((le_max_right _ _).trans D.lower)))
-  have hq : max Q.ready 0 ≤ D.query := max_le D.ready_le hq0
+  have hq : max Q.ready 0 ≤ D.query := max_le ((le_max_left _ _).trans D.lower) hq0
   have hd := Q.params.toParams.hΔ
   have hwin : D.query + (Q.index : Time) * (4 * Q.params.Δ) ≤ Q.heal := by
     linarith only [D.reserve, hd]
@@ -122,7 +123,8 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
     apply max_le_max_left
     have : Regimes.catchUp Q.params ≤
         (Sys (goldilocks S) V).cDur (K S A) Q.run := by
-      simpa only [Regimes.catchUp, D.catchUp_eq] using D.duration_bound
+      simpa only [Regimes.catchUp] using
+        (healthy_repair_lower S A V Q.run Q.hn Q.gst D.resetTime).1
     linarith only [this]
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
@@ -138,9 +140,8 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
     exact_mod_cast he
   have hpk : runProposer S Q.run.2 Q.hn s ∈ Q.keys (Q.trace.time k) := by
     rw [ht]; exact hnode.1
-  have hservice : Q.params.ts s + 6 * Q.params.Δ ≤ Q.bound := by
-    linarith only [hbound, D.reserve, hb]
-  exact ⟨{ toRepairOpening := ⟨s, k, P, hlo, hservice, hold, hlabel, hP,
+  obtain ⟨hservice, hdrain, hlate, -⟩ := healthy_opening_timing D.lower hlo hbound D.reserve hb
+  exact ⟨{ toRepairOpening := ⟨s, k, P, hdrain, hlate, hservice, hold, hlabel, hP,
              proposal_accepted_at hrun hnc hpk hP, ht, hheld⟩
            bounded := hbound }⟩
 

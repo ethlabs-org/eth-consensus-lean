@@ -11,6 +11,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.ResetSuppliers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRepairTiming
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -88,7 +89,7 @@ source through `read_eq_record_of_current_votes_at`. -/
 theorem current_record_read_of_context_at (D : RepairSchedule tr H proposer dg g b cm βK)
     {O : RepairOpening D} {y : Fin sp.n} {n : Nat} {t : Time} (C : RepairReadContext D O y n t)
     (hupd : ∀ u : Nat, sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts u →
-      sp.ts u + 6 * sp.Δ ≤ t → ∃ j ell, SA.UpdateAt tr.projAC y j u ell ∧ j < n) :
+      sp.ts u + 6 * sp.Δ < t → ∃ j ell, SA.UpdateAt tr.projAC y j u ell ∧ j < n) :
     Regimes.readAfter tr y n t =
       (SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
         (tr.state y n).fg.F := by
@@ -137,7 +138,7 @@ private theorem healthy_engine_read_point_at {Q : HealthyPreparationQueryAt S A 
   have hΔ := Q.params.toParams.hΔ
   have hΔ1 : 1 ≤ Q.params.Δ := hΔ
   have hc : 0 ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run - 1 := by
-    linarith only [D.catchUp_eq ▸ D.duration_bound, hΔ1]
+    linarith only [(healthy_repair_lower S A V Q.run Q.hn Q.gst D.resetTime).1, hΔ1]
   have hr : Q.run.2.point.Ready
       (((Sys (goldilocks S) V).cDur (K S A) Q.run - 1) + 1) v
       (Q.run.2.cutTime i) := by simpa only [sub_add_cancel, chainTrace] using hv
@@ -173,7 +174,7 @@ theorem healthy_current_read_context_at (Q : HealthyPreparationQueryAt S A V)
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
   have hc8 : 8 * Q.params.Δ ≤
       ((Sys (goldilocks S) V).cDur (K S A) Q.run - 1) + 1 := by
-    linarith only [D.catchUp_eq ▸ D.duration_bound, hΔ]
+    linarith only [(healthy_repair_lower S A V Q.run Q.hn Q.gst D.resetTime).1, hΔ]
   obtain ⟨hw, hj⟩ := Compose.ready_implies_joined_of (hrun.upTo ht0) hra.1 ht0 hc8 fun u h1 h2 =>
       ⟨hra.2 u h1 h2, h2⟩
   have hca := D.reset.cutZ_lt_reset_at
@@ -236,7 +237,7 @@ theorem healthy_current_record_read_at
       hv.1 (Q.run.2.faultyAt_mono
         (now_bounds_cut { S with vote := stock } Q.run.2 Q.hn Q.valid v hi.1).2 h)
   exact current_record_read_of_context_at D.toRepairSchedule C fun u hslot ht =>
-    update_before_stored_clock_at S Q.run.2 Q.hn Q.valid D.reset Q.bound_le hhon hslot ht
+    update_before_stored_clock_at S Q.run.2 Q.hn Q.valid D.reset Q.bound_le hhon hslot ht.le
       C.time_bound
 
 end Consensus.Goldilocks.Obligations.Growing

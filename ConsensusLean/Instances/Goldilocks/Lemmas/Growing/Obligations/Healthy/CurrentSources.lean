@@ -11,6 +11,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.FGProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -165,13 +166,13 @@ theorem healthy_current_record_interval_at (D : RepairSchedule tr H proposer dg 
   have hΔ := sp.toParams.hΔ
   have htb : t ≤ b := htt.trans ht'b
   have hyt : y ∈ H t := hrun.antitone htt hy
-  have hlow := D.lower
-  simp only [max_le_iff] at hlow
-  obtain ⟨-, -, hlo, -, hq0⟩ := hlow
+  have hlo : sp.ts D.oldLabel ≤ sp.ts O.slot :=
+    (SA.ts_le_iff sp).mpr (by exact_mod_cast O.old_lt.le)
   have h6 : (0 : Time) ≤ 6 * sp.Δ := mul_nonneg (by norm_num) hΔ.le
-  have ht0 : 0 ≤ t := by linarith only [hq0, O.fresh, h6, hrep]
+  have ht0 : 0 ≤ t := by
+    linarith only [Compose.Growing.ts_natCast_nonneg (sp := sp) O.slot, h6, hrep]
   have ht'0 : 0 ≤ t' := ht0.trans htt
-  have hcover := record_sources_before_now_at D O hrp htb hyt hrep
+  have hcover := record_sources_before_now_at D O hrp hyt hrep
   rw [recordCover_iff] at hcover
   apply effectiveRecordInterval_of_candidates_before_at hrun hnc ht'0 hrp'.1 hy
   · intro q hnq hqn' B s CV hB
@@ -180,7 +181,7 @@ theorem healthy_current_record_interval_at (D : RepairSchedule tr H proposer dg 
     have hyq : y ∈ H (tr.time q) := hrun.antitone hqt' hy
     have htq : t ≤ tr.time q := hrp.2.trans (hrun.time_mono hnq)
     have hbudget : sp.ts D.oldLabel + 6 * sp.Δ < tr.time q := by
-      linarith only [hlo, O.fresh, hrep, htq]
+      linarith only [hlo, hrep, htq]
     have hs : D.cleanLabel + 2 * sp.k + 1 ≤ s := by
       apply D.old_bound.trans
       rcases hB with ⟨ell, hu, _⟩ | ⟨ell, A, ho, hslot, _⟩

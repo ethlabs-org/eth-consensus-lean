@@ -401,7 +401,7 @@ theorem handover_seed_cover_at
         ((SA.lookup (Node.frame (Q.trace.state y n)) (Q.trace.state y n).ac.latestConfirmed).getD
           (Q.trace.state y n).fg.F) := by
     intro y n t ht htb hy hrp
-    have hcover := record_sources_before_now_at D.toRepairSchedule O.toRepairOpening hrp htb hy
+    have hcover := record_sources_before_now_at D.toRepairSchedule O.toRepairOpening hrp hy
       (by linarith [O.bounded])
     rw [recordCover_iff, D.cleanLabel_eq] at hcover
     rw [Compose.Growing.healedRecordCoverAt_iff]

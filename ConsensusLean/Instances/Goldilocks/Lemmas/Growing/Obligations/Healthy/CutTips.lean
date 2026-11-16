@@ -63,9 +63,9 @@ theorem healthy_cut_tips_comparable_at
     healthy_current_record_read_at S A V Q D O hj hv hvb]
   exact healthy_current_sources_compatible_at D.toRepairSchedule Cu.time_nonneg Cu.readPoint
     Cu.time_bound Cu.honest Cv.time_nonneg Cv.readPoint Cv.time_bound Cv.honest
-    (record_sources_before_now_at D.toRepairSchedule O.toRepairOpening Cu.readPoint Cu.time_bound
+    (record_sources_before_now_at D.toRepairSchedule O.toRepairOpening Cu.readPoint
       Cu.honest Cu.repaired)
-    (record_sources_before_now_at D.toRepairSchedule O.toRepairOpening Cv.readPoint Cv.time_bound
+    (record_sources_before_now_at D.toRepairSchedule O.toRepairOpening Cv.readPoint
       Cv.honest Cv.repaired)
 
 /-- **Temporal ancestry of the read tips** of one reader ready at two cuts from the heal point,

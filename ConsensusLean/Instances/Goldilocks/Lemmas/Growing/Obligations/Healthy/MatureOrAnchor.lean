@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReadContextDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.RecordWriters
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HealedSafetyConditional
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CurrentChecks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
@@ -20,7 +21,8 @@ public section
 The mature-or-anchor dichotomy under growing faults: at a read point after the
 repair window, the reader's looked-up record is below its anchor or below a mature result of a
 node honest at its own cut. The reader is honest at its read time; its earlier updates at labels
-past the join are a premise (`hupd`), which an engine read discharges from the stored clock. -/
+past the join, due strictly before its read time, are a premise (`hupd`), which an engine read
+discharges from the stored clock. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
@@ -56,17 +58,7 @@ private theorem opening_before_read (D : RepairSchedule tr H proposer dg g b cm 
       SA.gbar g + 4 * sp.Δ ≤ sp.ts O.slot ∧
       sp.ts O.slot + 6 * sp.Δ < t ∧
       sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts O.slot := by
-  have hlow := D.lower
-  simp only [max_le_iff] at hlow
-  obtain ⟨-, hdr, -, hgr, -⟩ := hlow
-  have hT := C.repaired
-  have hgu := hgr.trans O.fresh.le
-  refine ⟨hdr.trans O.fresh.le, hgu, hT, ?_⟩
-  have hbase := (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g)
-    (sp.slot (SA.gbar g))).mpr le_rfl
-  simp only [SA.SAParams.ts] at hbase hgu ⊢
-  push_cast at hbase hgu ⊢
-  linarith only [hbase, hgu]
+  exact ⟨O.drain, O.late, C.repaired, repair_opening_join D O⟩
 
 /-- **Actual anchor coverage or a mature raw witness**, at a read point after the repair window.
 Young optimistic writers retain their normalized lock until the next-result deadline; older ones
@@ -74,7 +66,7 @@ reach the next result or finalization at the reader's update of the next label. 
 theorem healthy_current_mature_or_anchor_at (D : RepairSchedule tr H proposer dg g b cm βK)
     {O : RepairOpening D} {y : Fin sp.n} {n : Nat} {t : Time} (C : RepairReadContext D O y n t)
     (hupd : ∀ u : Nat, sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts u →
-      sp.ts u + 6 * sp.Δ ≤ t → ∃ j ell, SA.UpdateAt tr.projAC y j u ell ∧ j < n)
+      sp.ts u + 6 * sp.Δ < t → ∃ j ell, SA.UpdateAt tr.projAC y j u ell ∧ j < n)
     {R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed =
       some R) :
@@ -116,7 +108,7 @@ theorem healthy_current_mature_or_anchor_at (D : RepairSchedule tr H proposer dg
     rw [heq]
     exact (htree.2.2.2 _ hPhi.rooted.1.1).mono hsubfg
   have hTb := hTt.le.trans htb
-  obtain ⟨d, ellD, hup, hdn⟩ := hupd O.slot hjoin hTt.le
+  obtain ⟨d, ellD, hup, hdn⟩ := hupd O.slot hjoin hTt
   obtain ⟨q, hqn, ell, hcall, hRq, hrest, hwriter⟩ :=
     last_record_writer_at hrun hnc ht0 hnt hy hR hgen
   have hqt : tr.time q ≤ t := hnt q hqn
@@ -167,7 +159,7 @@ theorem healthy_current_mature_or_anchor_at (D : RepairSchedule tr H proposer dg
       simpa only [D.cleanLabel_eq] using hs
     have hcand : ∀ e, q ≤ e → e ≤ n → (Node.frame (tr.state y e)).AncestorCandidate R :=
       clean_optimistic_writer_candidate_interval_at D.reset ht0 hnt htb hy hop hsc hqn hRm
-    by_cases hyoung : t < sp.ts (s + 1 : Nat) + 6 * sp.Δ
+    by_cases hyoung : t ≤ sp.ts (s + 1 : Nat) + 6 * sp.Δ
     · left
       have hle1 : ∀ k < q + 1, tr.time k ≤ t := fun k hk => hnt k (by omega)
       have hnorm : ell.frame.viableAncestor R = R := by
@@ -193,13 +185,13 @@ theorem healthy_current_mature_or_anchor_at (D : RepairSchedule tr H proposer dg
           (by linarith only [hΔ] : (0 : Time) ≤ 4 * sp.Δ), hfloor, hyoung, hΔ]
       · rw [SA.viableAncestor_self hPhi hRm (hcand n hqn.le le_rfl).symm]
         exact .refl
-    · have hnext : sp.ts (s + 1 : Nat) + 6 * sp.Δ ≤ t := le_of_not_gt hyoung
+    · have hnext : sp.ts (s + 1 : Nat) + 6 * sp.Δ < t := lt_of_not_ge hyoung
       have hjoinNext : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤
           sp.ts (s + 1 : Nat) :=
         hjoin.trans ((SA.ts_le_iff sp).2 (by exact_mod_cast hslotq.trans (Nat.le_succ _)))
       obtain ⟨j, ellJ, hu, hjn⟩ := hupd (s + 1) hjoinNext hnext
       have hjt : tr.time j = sp.ts (s + 1 : Nat) + 6 * sp.Δ := hu.2.2.1
-      have hjb := hjt ▸ hnext.trans htb
+      have hjb := hjt ▸ hnext.le.trans htb
       have hRnext : Healing.drainTime sp D.resetTime ≤ sp.ts (s + 1 + 1 : Nat) := by
         rw [Healing.drainTime_eq]
         apply (SA.ts_le_iff sp).2
@@ -216,7 +208,7 @@ theorem healthy_current_mature_or_anchor_at (D : RepairSchedule tr H proposer dg
           Trace.upTo_state tr y hnt] at hFN
         exact hRF.trans (hFN.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono ht0))
       · right
-        exact hraw y j (s + 1) B DV (hkeys (hnt j hjn)) hres hRB (hjt ▸ hnext)
+        exact hraw y j (s + 1) B DV (hkeys (hnt j hjn)) hres hRB (hjt ▸ hnext.le)
           (hs.trans (Nat.le_succ s))
 
 end Consensus.Goldilocks.Obligations.Growing

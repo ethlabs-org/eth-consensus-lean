@@ -404,7 +404,7 @@ theorem young_optimistic_lock_persists_at
     (hx : x ∈ H (tr.time q)) (hop : SA.OptimisticLockAt tr.projAC x q s R CV)
     (hs : Healing.cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hqb : tr.time q ≤ b)
     (hin : i ≤ n) (hread : ∀ j < n, tr.time j ≤ t) (htb : t ≤ b) (ht0 : 0 ≤ t)
-    (hy : y ∈ H t) (hyoung : t < sp.ts (s + 1 : Nat) + 6 * sp.Δ)
+    (hy : y ∈ H t) (hyoung : t ≤ sp.ts (s + 1 : Nat) + 6 * sp.Δ)
     (he : s + 2 ≤ e) (hl : (⟨R.root, s, true, e⟩ : SA.Lock) ∈ (tr.state y i).ac.locks)
     (hframe : ∀ j, i ≤ j → j < n → R ∈ (Node.frame (tr.state y j)).tree ∧
       (Node.frame (tr.state y j)).AncestorCandidate R) :

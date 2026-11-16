@@ -12,6 +12,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoCol
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.ServedHead
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalSource
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.LatestVotes
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.RecordGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Trace
@@ -39,8 +40,8 @@ honest (`HonestBlocksAt`). The pure SA lemmas `result_label_lt_latest_of_time` a
 * `healthy_query_call_time_le_at`;
 * `healthy_repair_schedule_of_reset_at`, `healthy_repair_schedule_of_preparation_at`,
   `healthy_repair_schedule_at`: the finite repair schedule of a query;
-* on any trace with a repair schedule: `repair_opening_timing`, `receiver_repair_of_opening_at`
-  (every opening repairs the receivers ready at its update) and `record_sources_before_now_at`
+* on any trace with a repair schedule: `repair_opening_join`, `receiver_repair_of_opening_at`
+  (every opening repairs the receivers honest at its update) and `record_sources_before_now_at`
   (the record cover at a read point after the opening's update). -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
@@ -159,15 +160,13 @@ theorem healthy_repair_schedule_of_reset_at
       D.resetTime = a ∧ D.deltaF = ΔF ∧
       D.query = max Q.ready (Healing.drainTime Q.params a) ∧
       D.oldLabel = Q.params.slot a + 2 * Q.params.k + 4 := by
-  obtain ⟨hdur, hlower⟩ := healthy_repair_lower S A V Q.run Q.hn Q.gst a
+  obtain ⟨-, hlower⟩ := healthy_repair_lower S A V Q.run Q.hn Q.gst a
   exact ⟨{
     resetTime := a
     deltaF := ΔF
     reset := hreset
     cleanLabel := Healing.cleanLabel Q.params a
     cleanLabel_eq := rfl
-    catchUp := (Sys (goldilocks S) V).cDur (K S A) Q.run
-    duration_bound := hdur
     oldLabel := Q.params.slot a + 2 * Q.params.k + 4
     old_bound := by
       change Healing.cleanLabel Q.params a + 2 * Q.params.k + 1 ≤
@@ -175,7 +174,6 @@ theorem healthy_repair_schedule_of_reset_at
       rw [Healing.cleanLabel_eq]; omega
     query := max Q.ready (Healing.drainTime Q.params a)
     lower := hlower
-    catchUp_eq := rfl
     reserve := hreserve }, rfl, rfl, rfl, rfl⟩
 
 /-- A preparation schedule for the same query supplies a repair schedule with the very same
@@ -231,17 +229,10 @@ theorem tips_comparable_of_origin_witnesses_at (hU : Coherent (tr.HonestBlocksAt
   · exact Anc.total hU (hR.trans h) hR'
   · exact Anc.total hU hR (hR'.trans h)
 
-/-- An opening after a schedule's query is after the reset's drain, two delays past `ḡ` and the
-joining slot `slot ḡ + 1`. -/
-theorem repair_opening_timing (D : RepairSchedule tr H proposer dg g b cm βK)
-    (O : RepairOpening D) :
-    Healing.drainTime sp D.resetTime ≤ sp.ts O.slot ∧ SA.gbar g + 4 * sp.Δ ≤ sp.ts O.slot ∧
-      sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts O.slot := by
-  have hlow := D.lower
-  simp only [max_le_iff] at hlow
-  obtain ⟨-, hdr, -, hgr, -⟩ := hlow
-  have hgu := hgr.trans O.fresh.le
-  refine ⟨hdr.trans O.fresh.le, hgu, ?_⟩
+/-- An opening is after the joining slot `slot ḡ + 1`. -/
+theorem repair_opening_join (D : RepairSchedule tr H proposer dg g b cm βK)
+    (O : RepairOpening D) : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts O.slot := by
+  have hgu := O.late
   have hbase := (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g) (sp.slot (SA.gbar g))).mpr le_rfl
   simp only [SA.SAParams.ts] at hbase hgu ⊢
   push_cast at hbase hgu ⊢
@@ -252,28 +243,26 @@ current-read geometry or prior repair invariant is used. -/
 theorem receiver_repair_of_opening_at (D : RepairSchedule tr H proposer dg g b cm βK)
     (O : RepairOpening D) : ReceiverRepair D O := by
   rw [receiverRepair_iff]
-  obtain ⟨hR, hgu, hjoin⟩ := repair_opening_timing D O
   have hTb := O.service
   intro y hy
-  obtain ⟨j, ell, _, hu, _⟩ := D.reset.update_toFG_calls_at hy.1 hjoin hTb
+  obtain ⟨j, ell, _, hu, _⟩ := D.reset.update_toFG_calls_at hy (repair_opening_join D O) hTb
   have ht : tr.time j = sp.ts O.slot + 6 * sp.Δ := hu.2.2.1
   refine ⟨j, ell, hu, ht, ht ▸ hTb, ?_⟩
   intro R hlookup
-  have hyj : y ∈ H (tr.time j) := ht ▸ hy.1
+  have hyj : y ∈ H (tr.time j) := ht ▸ hy
   obtain ⟨x, q, s, CV, hx, hqj, hqt, hs, hsource⟩ :=
     Healing.Growing.operational_update_recent_source_at D.reset O.held rfl O.proposes
-      O.label hR hgu hTb hyj hu hlookup
+      O.label O.drain O.late hTb hyj hu hlookup
   exact ⟨x, q, s, R, CV, hx, hqj, hqt, O.old_lt.le.trans hs, hsource, .refl⟩
 
 /-- **Repair cover at a read point**, under growing faults. For a reader honest at its read time
-`t`, strictly after the opening's update and by the horizon, the record before cut `n` (read at
+`t`, strictly after the opening's update, the record before cut `n` (read at
 `t`) is its finalized block or below a result or optimistic lock of a node honest at its own
-cut, before `n` and by `t`. The reader is ready at the update: it is honest then, and awake from
-`ḡ` on (`ResetPremisesUpTo.awake`), which the schedule's query places one catch-up before the
-opening. -/
+cut, before `n` and by `t`. The reader is honest at the update, so the opening repaired it
+(`receiver_repair_of_opening_at`). -/
 theorem record_sources_before_now_at (D : RepairSchedule tr H proposer dg g b cm βK)
     (O : RepairOpening D) {y : Fin sp.n} {n : Nat} {t : Time}
-    (hrp : Regimes.ReadPoint tr n t) (htb : t ≤ b) (hy : y ∈ H t)
+    (hrp : Regimes.ReadPoint tr n t) (hy : y ∈ H t)
     (hTt : sp.ts O.slot + 6 * sp.Δ < t) :
     RecordCover tr H D.cleanLabel y n t
       ((SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
@@ -281,26 +270,10 @@ theorem record_sources_before_now_at (D : RepairSchedule tr H proposer dg g b cm
   rw [recordCover_iff]
   have hrun := D.reset.run
   have hnc := D.reset.noColl
-  have hd := sp.toParams.hΔ
-  have h6 : (0 : Time) ≤ 6 * sp.Δ := mul_nonneg (by decide) hd.le
-  have hlow := D.lower
-  simp only [max_le_iff] at hlow
-  obtain ⟨hready, -, -, -, hzero⟩ := hlow
-  have hcu := D.duration_bound
-  have hready' : max g 0 + D.catchUp + 1 < sp.ts O.slot + 6 * sp.Δ :=
-    hready.trans_lt (lt_add_of_lt_of_nonneg O.fresh h6)
-  have ht0 : 0 ≤ t := by linarith [le_max_right g 0]
-  -- the receiver is ready at the update time
-  have hyT : y ∈ H (sp.ts O.slot + 6 * sp.Δ) := hrun.antitone hTt.le hy
-  have hr : Regimes.Growing.ReadyAt tr H D.catchUp y (sp.ts O.slot + 6 * sp.Δ) := by
-    refine ⟨hyT, fun τ hτ hτT => ?_⟩
-    have hgτ : SA.gbar g ≤ τ := by
-      unfold SA.gbar
-      have := le_max_right 0 (sp.ts O.slot + 6 * sp.Δ - D.catchUp - 1)
-      linarith
-    exact D.reset.awake y τ (hrun.antitone hτT hyT) hgτ (hτT.trans (hTt.le.trans htb))
-  obtain ⟨a, ell, ha, hat, -, hcover⟩ :=
-    receiverRepair_iff.mp (receiver_repair_of_opening_at D O) y hr
+  have h6 : (0 : Time) ≤ 6 * sp.Δ := mul_nonneg (by decide) sp.toParams.hΔ.le
+  have ht0 : 0 ≤ t := by linarith [Compose.Growing.ts_natCast_nonneg (sp := sp) O.slot]
+  obtain ⟨a, ell, ha, hat, -, hcover⟩ := receiverRepair_iff.mp (receiver_repair_of_opening_at D O)
+    y (hrun.antitone hTt.le hy)
   have han : a < n := by
     by_contra h
     have := hrun.time_mono (Nat.le_of_not_lt h)
