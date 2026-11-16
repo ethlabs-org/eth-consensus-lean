@@ -189,7 +189,7 @@ private theorem frozen_core
         hBe hpH le_rfl le_rfl hBm
     exact ⟨hΦ₀.fcRoot_mem, .refl, Bm, hΦ₀.viableHeads_subset hBv, hBv,
       hΦ₀.fcRoot_anc_viableHeads Bm hBv⟩
-  have hPrv : d.head ∈ ℓp.frame.viableHeads := proposal_head_viable hr hpH hS.call
+  have hPrv : d.head ∈ ℓp.frame.viableHeads := proposal_head_viable hr hrun.vstart hpH hS.call
     hS.call_proposal (σ := s) (by rw [sp.slotTime_eq]; exact hS.time) hS.payload hfc₀
   have hQv := hPrv
   rw [hfr₀] at hPrv

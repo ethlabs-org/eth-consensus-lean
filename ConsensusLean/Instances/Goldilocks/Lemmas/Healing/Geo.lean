@@ -500,8 +500,10 @@ theorem getAnchor_viable {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) (A : SA.SASta
     · exact absurd (Set.mem_singleton_iff.1 hDf) he
 
 /-- **The parent of an honest proposal is a viable head** of the proposer's frame when `fc_root`
-has a viable head above it (requirement 1: the walk starts at the anchor, in the viable tree). -/
-theorem proposal_head_viable (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr)
+has a viable head above it (requirement 1: the walk starts at the anchor, in the viable tree), for
+starts up to the vote permission. -/
+theorem proposal_head_viable {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
     (hc : tr.CallAt y k ℓ) (hcall : ℓ.call = .proposal) {σ : Nat}
     (hk : tr.time k = sp.toParams.slotTime σ) {d : DutyHead sp.n FGP (Payload sp.n)}
@@ -514,8 +516,9 @@ theorem proposal_head_viable (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr
     rw [hcall] at this
     exact this
   have hΦ : FrameOK ℓ.frame := hok.1.1
-  have hOK := ((SA.interface_requirements sp FGP ro).1 y U hr.coherent _ _ _ hreach).1 σ
-    (hk ▸ htp) d pay (by rw [← hk, ← hΦp]; exact hp)
+  have hOK := ((SA.interface_requirements_from sp FGP ro (hini y)).1 y U hr.coherent _ _ _
+    (ACInterface.reachableAtFrom_iff.1 hreach)).1 σ (hk ▸ htp) d pay
+    (by rw [← hk, ← hΦp]; exact hp)
   rw [← hΦp] at hOK
   refine hOK.2 ?_
   unfold SA.acProposal at hp
@@ -536,7 +539,7 @@ variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
 
 /-- **An `ac_proposal` cut is the second cut of a tick** (C0.4): no other handler makes one, and
 in a tick it follows `ac_on_tick` at once. -/
-theorem proposal_call_tick (h : Node.LocalRun proposer dg H sg tr)
+theorem proposal_call_tick {ini} (h : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel A} (hc : tr.CallAt y i (.ac ℓ)) (hp : ℓ.call = .proposal) :
     ∃ j, i = j + 1 ∧ tr.TickAt proposer dg y j (tr.time i) := by
@@ -719,8 +722,8 @@ theorem geo_of_settled (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr
         (hHS k hi₀k _ hpH Bm hBe _ hpH k le_rfl hkK) hBm, hBe⟩
     exact ⟨hΦ₀.fcRoot_mem, .refl, Bm, hΦ₀.viableHeads_subset hBv, hBv,
       hΦ₀.fcRoot_anc_viableHeads Bm hBv⟩
-  have hPrv : d.head ∈ ℓ₀.frame.viableHeads := proposal_head_viable hr hpH hc₀ hcall₀ (σ := p)
-    (by rw [sp.slotTime_eq, ht₀]; rfl) hprop₀ hfc₀
+  have hPrv : d.head ∈ ℓ₀.frame.viableHeads := proposal_head_viable hr hrun.vstart hpH hc₀ hcall₀
+    (σ := p) (by rw [sp.slotTime_eq, ht₀]; rfl) hprop₀ hfc₀
   rw [hfr₀] at hPrv
   have hPrt : d.head ∈ (tr.state (proposer p) k).fg.tree := hPrv.1
   obtain ⟨-, hPrE⟩ := (hVH _ hpH k hi₀k hkK d.head hPrt).1 hPrv

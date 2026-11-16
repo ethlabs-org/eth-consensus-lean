@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowReportOrigin
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetRounds
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 
@@ -15,6 +16,7 @@ Proofs of `ACHealing` fields at the committee-start Goldilocks run interface
 
 * `reportAt_iff_toFGAt`: an actual report of a node honest at it is an SA `ac_to_fg` call of the
   AC projection;
+* `goldilocks_proposal_floor`: the `proposal_floor` field;
 * `goldilocks_report_origin`: the `report_origin` field, with `Origin` the joined stored fast
   lock of the Goldilocks data.
 -/
@@ -38,6 +40,25 @@ theorem reportAt_iff_toFGAt {ini}
   refine exists_congr fun ℓ => ?_
   rw [Compose.projAC_callAt]
   rfl
+
+/-- **The `proposal_floor` field** at the Goldilocks run interface: an honest designated proposal
+inside a frame window, under the FG fault bound at its slot, has height at least the window's
+floor at its proposer right after the proposal. -/
+theorem goldilocks_proposal_floor {cm : Time → Finset (Fin sp.n)} {lo hi : Time}
+    {floor u : Nat} {kindJ : Prop} {J B : SA.Blk sp.n (List (FG.Att sp.n))} {z : Fin sp.n}
+    {kB : Nat} (hrun : (goldilocksRunInterface sp ro).Run cm proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hframe : FrameWindow tr H lo hi floor kindJ J)
+    (hz : z ∈ H (sp.toParams.slotTime u)) (hdes : z = proposer u) (hP : tr.ProposesAt z kB B)
+    (hBs : B.slot = u) (hlo : lo ≤ sp.toParams.slotTime u) (hhi : sp.toParams.slotTime u ≤ hi)
+    (hf : (H (sp.toParams.slotTime u))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) :
+    floor ≤ ((tr.state z (kB + 1)).fg.σ B.root).h := by
+  have hts : sp.toParams.slotTime u = sp.ts u := by
+    rw [sp.slotTime_eq]
+    rfl
+  rw [hts] at hz hlo hhi hf
+  exact Healing.Growing.KernelProof.floor_le_warm_proposal_at
+    ((goldilocksRunInterface_run_iff cm).mp hrun).1 hnc
+    ⟨hframe.floor_eq, hframe.kind_iff, hframe.root_eq⟩ hz hdes hP hBs hlo hhi hf
 
 /-- **The `report_origin` field** at the Goldilocks run interface: a high report of a node honest
 at it extends the stored block of an earlier joined fast-lock write of the same node, held by it

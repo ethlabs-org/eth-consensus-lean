@@ -198,7 +198,7 @@ theorem proposal_parent_viable_full_frame
   have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   obtain ⟨Q, hQ, hv, hroot⟩ := full_frame_viable_witness hrun hnc hf hy i
   rw [← Compose.frame_of_projAC hrun hy hc] at hQ hv hroot
-  exact proposal_head_viable hac.localRun hy hc hcall hti hp
+  exact proposal_head_viable hac.localRun hrun.vstart hy hc hcall hti hp
     ⟨(SA.frameIn_of_callAt hac.localRun hy hc).1.fcRoot_mem,
       Relation.ReflTransGen.refl, Q, hQ, hv, hroot⟩
 

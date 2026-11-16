@@ -120,7 +120,7 @@ theorem warm_proposal_height_at
   obtain ⟨Q, hQ, hv, hroot⟩ := full_frame_viable_witness_at hrun hnc hzi hfi
   rw [← hframe] at hQ hv hroot
   have hac := (Compose.goldilocks_ac_projection_from hr (hnc.upTo _)).localRun
-  have hvd := Healing.proposal_head_viable hac hzk hc hcall
+  have hvd := Healing.proposal_head_viable hac hr.vstart hzk hc hcall
     (by rw [sp.slotTime_eq]; exact hti) hd
     ⟨(SA.frameIn_of_callAt hac hzk hc).1.fcRoot_mem, .refl, Q, hQ, hv, hroot⟩
   rw [hframe] at hvd

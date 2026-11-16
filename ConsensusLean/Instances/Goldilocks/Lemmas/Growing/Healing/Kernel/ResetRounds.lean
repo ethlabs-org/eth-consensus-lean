@@ -62,8 +62,8 @@ theorem callLag_of_awake_at
   Generic.callLag_of_awake_at_from hrun.toLocalRun hawake hlo hz hi him hmb
 
 /-- The proposal's own full frame already bounds its parent by the common floor. -/
-theorem floor_le_warm_proposal_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem floor_le_warm_proposal_at {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H lo hi floor kindJ J)
@@ -92,7 +92,7 @@ theorem floor_le_warm_proposal_at
   obtain ⟨Q, hQ, hv, hroot⟩ := full_frame_viable_witness_at hrun hnc hzi (hip ▸ hf)
   rw [← hfr] at hQ hv hroot
   have hac := (Compose.goldilocks_ac_projection_from hr (hnc.upTo _)).localRun
-  have hvd := Healing.proposal_head_viable hac hzk hc hcall
+  have hvd := Healing.proposal_head_viable hac hr.vstart hzk hc hcall
     (by rw [sp.slotTime_eq]; exact hti) hd
     ⟨(SA.frameIn_of_callAt hac hzk hc).1.fcRoot_mem, .refl, Q, hQ, hv, hroot⟩
   rw [hfr] at hvd

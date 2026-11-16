@@ -77,8 +77,8 @@ theorem h2_compare_reader (hS : HealthyBase tr H U proposer g) {p k : Nat} (hp :
     omega)
   have hHdP : Hd = P := by
     by_cases hfc : ℓp.frame.fcRoot ∈ ℓp.frame.viableTree ℓp.frame.tree
-    · have hQhead := Healing.proposal_head_viable hr hpH hck hcall (σ := p)
-        (by rw [sp.slotTime_eq, htk]; rfl) hpay hfc
+    · have hQhead := Healing.proposal_head_viable hr (fun _ => voteStart_initial _) hpH hck hcall
+        (σ := p) (by rw [sp.slotTime_eq, htk]; rfl) hpay hfc
       have hQv : d.head ∈ ℓp.frame.viableTree ℓp.frame.tree :=
         ⟨hQt, (hfs.trans (hwp.anc (fun _ h => h.1) hst)),
           d.head, hQt, hQhead, .refl⟩

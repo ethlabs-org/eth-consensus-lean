@@ -295,8 +295,8 @@ theorem proposal_allowed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
     exact ⟨hΦ₀.fcRoot_mem, .refl, Bm, hΦ₀.viableHeads_subset hBv, hBv,
       hΦ₀.fcRoot_anc_viableHeads Bm hBv⟩
   -- the parent is a viable head of the proposer, so allowed; `P` extends it
-  have hPrv : d.head ∈ ℓp.frame.viableHeads := proposal_head_viable hr hpH hcP hcall (σ := s)
-    (by rw [sp.slotTime_eq]; exact ht) hd hfc₀
+  have hPrv : d.head ∈ ℓp.frame.viableHeads := proposal_head_viable hr hrun.vstart hpH hcP hcall
+    (σ := s) (by rw [sp.slotTime_eq]; exact ht) hd hfc₀
   rw [hfr₀] at hPrv
   have hPrt : d.head ∈ (tr.state p iP).fg.tree := hPrv.1
   obtain ⟨-, hPrE⟩ := (viableHeads_iff hrun hs hc hpH hphP hev hPrt).1 hPrv
