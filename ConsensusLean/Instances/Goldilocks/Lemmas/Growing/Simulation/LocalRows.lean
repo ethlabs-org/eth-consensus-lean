@@ -173,6 +173,26 @@ theorem goldilocks_proposalWitnessRefinement (S : Setup) (A : ContractAssumption
       AdmissibleProposal, goldilocksRunMap_validator, hc, hh, hm] using
       query_proposal_witness S A Q hp (max_le (hready.trans ht) ht0)
 
+/-- An honest node proposal is the same honest proposal in the engine run. -/
+theorem goldilocks_proposalProgressTransport (S : Setup) {E : Env V}
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) :
+    ProposalProgressTransport (goldilocksRunMap S rho hn hv) := by
+  constructor
+  intro B k hB hh
+  simp only [goldilocksRunMap_trace, goldilocksRunMap_honest] at hB hh ⊢
+  have htime : (simTraceAt S rho hn).time k ≤ rho.horizon := by
+    obtain ⟨acc, hc⟩ := hB.1.1
+    exact simTraceAt_labelled_time_le S rho hn hv (by rw [hc.2]; simp)
+  obtain ⟨r, cs, hr, he⟩ := (goldilocksRunMap S rho hn hv).proposal_role B
+  refine ⟨?_, r, cs, hr, ?_⟩
+  · rw [(goldilocksRunMap S rho hn hv).key_eq, goldilocksRunMap_validator]
+    have h := (mem_honestKeysAt_iff S rho _ B.proposer).mp hh
+    rwa [min_eq_left htime] at h
+  · rw [← he, goldilocksRunMap_proposalObject,
+      (goldilocksRunMap S rho hn hv).key_eq, goldilocksRunMap_validator]
+    exact simTraceAt_block_released S rho hn hv B.proposer k B hh hB.1
+
 end Consensus.Goldilocks.Simulation
 
 end
