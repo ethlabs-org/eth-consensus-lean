@@ -118,7 +118,8 @@ theorem healthy_preparation_reset_at
   obtain ⟨a, ha, hab⟩ := Healing.Growing.exists_reset_of_drain_rounds_awake_at
     (by rw [SA.committeeStart_full]; exact hrun) hnc hf hs
     haw hcatch hnr hH (by rw [hδeq]; have := A.six_le_δt; omega)
-    (protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2)
+    (protoFGDelay_timeout_of_fgDelay { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q.run Q.hn Q.healthy.2.2)
     hr0 hgr Q.index.pos hcz (hBh.trans hb) (fun s₀ N hs₀ hN => by
       apply Healing.Growing.proposalGap_iff.mpr
       intro c hc hcN
@@ -138,7 +139,8 @@ theorem healthy_preparation_reset_at
   refine ⟨_, a, Healing.Growing.resetPremisesUpTo_of_reset_at
     (simIni_eq_runStart { S with vote := stock } Q.run.2 Q.hn Q.valid ▸ hrun) hnc hs haw hf ha
     (hab.trans (hBh.trans hb)) ⟨j, hj, hjt⟩ hcatch hnr
-    (protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2) hH
+    (protoFGDelay_timeout_of_fgDelay { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q.run Q.hn Q.healthy.2.2) hH
     (runCommittee_facts { S with vote := stock } Q.run.2 Q.hn Q.valid hnc)
     le_rfl Q.params.toParams.hn
     (Healing.Growing.committeeFaultsUpTo_half_of_stock hf

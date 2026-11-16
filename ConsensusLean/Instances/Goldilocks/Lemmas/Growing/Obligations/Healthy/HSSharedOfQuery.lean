@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.PSync
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HSSharedRun
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationService
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunBlocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSchedule
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Cuts
@@ -86,27 +87,7 @@ theorem hsSharedUpTo_of_rows_at (run : (Sys (goldilocks S) V).Run)
   refine ⟨hnc, simTrace_genesis_root_ok S run.2 hn,
     resetService_of_psync_at S run.2 hn valid hnc hnet hrow hΔF, hawake,
     ?_, ?_, htd⟩
-  · intro t _ htb
-    have hpop := healthy.2.1.1
-    change ((run.2.faultyAt run.2.horizon).card : ℚ) <
-      K.params.β * Fintype.card V at hpop
-    have hpop : ((run.2.faultyAt run.2.horizon).card : ℚ) < 1 / 3 * Fintype.card V :=
-      hpop.trans_le (mul_le_mul_of_nonneg_right hβ (Nat.cast_nonneg _))
-    have hfault : (honestKeysAt S run.2 t)ᶜ.ncard =
-        (run.2.faultyAt t).card := by
-      have heq : (honestKeysAt S run.2 t)ᶜ = run.2.key ⁻¹'
-          (↑(run.2.faultyAt t) : Set V) := by
-        ext k; simp [mem_honestKeysAt_iff S run.2, min_eq_left htb]
-      rw [heq, Set.ncard_preimage_of_injective_subset_range run.2.key.injective
-        (by simp [run.2.key.surjective.range_eq]), Set.ncard_coe_finset]
-    change 3 * (honestKeysAt S run.2 t)ᶜ.ncard ≤ Fintype.card V - 1
-    rw [hfault]
-    have hle : (run.2.faultyAt t).card ≤ (run.2.faultyAt run.2.horizon).card :=
-      Finset.card_le_card (run.2.faultyAt_mono htb)
-    have hn3 : 3 * (run.2.faultyAt run.2.horizon).card < Fintype.card V := by
-      exact_mod_cast
-        (show (3 : ℚ) * (run.2.faultyAt run.2.horizon).card < Fintype.card V by linarith)
-    omega
+  · exact healthy_preparation_faults_at run hn hβ le_rfl healthy.2.1
   · intro y k hy hk hkb
     by_contra hlt
     rw [not_le] at hlt
@@ -125,17 +106,17 @@ variable {S A V}
 service there (`signed_row_service_psync_at`), the rise timeout
 `protoFGDelay_timeout_of_fgDelay`, and the digest of the run. -/
 theorem hsSharedUpTo_at
-    (Q : FinalQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V) :
-    Healing.Growing.HSSharedUpTo Q.trace Q.keys (digestOf { S with vote := stock } Q.run.2) Q.gst
+    (Q : FinalQueryAt S A V) :
+    Healing.Growing.HSSharedUpTo Q.trace Q.keys (digestOf S Q.run.2) Q.gst
       (protoFGDelay (Model.pubOf Q.run.1)) Q.run.2.horizon :=
-  hsSharedUpTo_of_rows_at { S with vote := stock } V Q.run Q.hn Q.valid Q.noCollision (K S A)
+  hsSharedUpTo_of_rows_at S V Q.run Q.hn Q.valid Q.noCollision (K S A)
     (by rw [goldilocksContract_params_eq]; norm_num [Params.standard]) Q.healthy
-    (signed_row_service_psync_at { S with vote := stock } Q.run.2 Q.hn Q.valid) (protoFGDelay_pos _)
+    (signed_row_service_psync_at S Q.run.2 Q.hn Q.valid) (protoFGDelay_pos _)
     (protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2.1)
 
 /-- **The FG transport of a final query** at its FG gap: `6Δ + Δ_F,p ≤ 4Δ·fgSlots`. -/
 theorem protoFGDelay_delivery_at
-    (Q : FinalQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V) :
+    (Q : FinalQueryAt S A V) :
     6 * Q.params.Δ + protoFGDelay (Model.pubOf Q.run.1) ≤ 4 * Q.params.Δ * (A.fgSlots : Time) :=
   protoFGDelay_delivery_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2.1
 

@@ -366,7 +366,8 @@ theorem handover_seed_cover_at
       sync := healthy_preparation_service_at Q.run Q.hn Q.valid Q.noCollision Q.bound_le
         Q.healthy.1
       timeoutDelay := fun s => by
-        have h := protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2
+        have h := protoFGDelay_timeout_of_fgDelay { S with vote := stock }
+          ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q.run Q.hn Q.healthy.2.2
         have hδ : (Q.params.toParams.δt : Time) = S.δt := rfl
         rw [Q.params.slotTime_eq, Q.params.slotTime_eq]
         push_cast

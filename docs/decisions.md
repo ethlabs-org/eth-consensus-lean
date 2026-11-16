@@ -505,12 +505,8 @@ detail in `TRUST.md`.
   The test `ConsensusLeanTest/Goldilocks/VoteBinding.lean` checks that the population binding equals the
   population-only shape (`stock_legacy`), and exercises a proper-subset binding of one key per slot. Which
   certified statement holds at which binding is in §"Trusted surface and Challenge scope".
-  The stock-only proofs are stated at `goldilocks {S with vote := stock}`, the form of the binding-generic simulation
-  lemmas they rewrite with: the static queries (`OutageQuery`, `ConfirmedQuery`, `HealthyPreparationQuery`), the
-  growing queries (`SleepySafetyQueryAt`, `FinalQueryAt`, `HealthyPreparationQueryAt`) and `FinalWindowDataAt`,
-  the lemmas over them and the fields of the growing endpoint other than `sleepySafe`, `sleepyLive` and
-  `persists`. Those three fields and the growing confirmed query `ConfirmedQueryAt` take every
-  `S : Setup`; their stock users pass `{S with vote := stock}`. The stock trusted statements and
+  Stock-only consumers specialize binding-generic queries explicitly at `goldilocks {S with vote := stock}`. The growing queries `FinalQueryAt`, `HealthyPreparationQueryAt` and `ConfirmedQueryAt`, and the final-window extraction, take every `S : Setup`; this does not by itself generalize every supplier or the endpoint. Their stock users pass `{S with vote := stock}`. The static queries (`OutageQuery`, `ConfirmedQuery`, `HealthyPreparationQuery`) and `SleepySafetyQueryAt` are stated at `goldilocks {S with vote := stock}`.
+  The stock trusted statements and
   `meetsObligations_growing` explicitly use `goldilocks {S with vote := stock}`. Source contract assumptions
   and coefficients retain their original setup index; stock query consumers reconstruct the same assumption
   fields locally when the query requires the updated setup index.
