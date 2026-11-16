@@ -584,6 +584,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Engin
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Events
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.FinalReads
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.FinalWindowSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Accepted
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.AtAcceptance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Held

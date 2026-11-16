@@ -19,7 +19,9 @@ The route-A final window on the canonical growing trace:
   the span `3c ≤ δt`, the final pattern `[0, c, 2c, 3c]`, the latency budget of a span-`3c`
   window, the finite reset premises through the horizon, duty to proposal (`hpropose`), the
   two-query placement (`hplace`) and the carrier of the last anchor (`hcarrier`): a final window
-  at gap `c` with its slack `t(cut 3) + Δ ≤ deadline`, its anchor run and its three anchor steps.
+  at gap `c` with its slack `t(cut 3) + Δ ≤ deadline`, its anchor run and its three anchor steps;
+  retains the gap equality, the given reset's drain-before-start bound and each anchor's
+  canonical-proposer equation.
 
 The slots of the window and their time glue are the static `final_window_slots`. The catch-up
 `CatchRun 2Δ` is `catchRun_of_psync_at`; readiness of the anchor proposers is
@@ -63,7 +65,8 @@ theorem final_latency_gap_at (Q : FinalQueryAt S A V) :
 
 /-- **Final-window extraction at a gap `c` and a forwarding delay `ΔF`** (route A), under growing
 faults. A window of four honest anchors at `start + [0, c, 2c, 3c]` (`W.gap = c`) after the query,
-the slack `t(cut 3) + Δ ≤ deadline`, its anchor run and its three anchor steps. -/
+the slack `t(cut 3) + Δ ≤ deadline`, its anchor run and its three anchor steps. Retains the
+given reset's drain-before-start bound and each anchor's canonical-proposer equation. -/
 theorem final_window_extract_of_gap_at
     (Q : FinalQueryAt S A V)
     {c : Nat} (hc2 : 2 ≤ c)
@@ -105,7 +108,9 @@ theorem final_window_extract_of_gap_at
       ∃ j, Q.trace.BlockCallAt y j P ∧ Q.trace.time j ≤ Q.deadline) :
     ∃ W : FinalWindowDataAt
         S A V Q, W.gap = c ∧
-      Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧ W.AnchorRun ∧ W.AnchorSteps := by
+      Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧ W.AnchorRun ∧ W.AnchorSteps ∧
+      Healing.drainTime Q.params a ≤ Q.params.ts W.start ∧
+      ∀ i, (W.block i).proposer = runProposer S Q.run.2 Q.hn (W.block i).slot := by
   classical
   let H := Q.keys
   have hΔ : (0 : Time) < Q.params.Δ := Q.params.toParams.hΔ
@@ -162,7 +167,13 @@ theorem final_window_extract_of_gap_at
   subst hWs hWb hWg
   refine ⟨W, rfl, ?_, W.anchorRun_iff.mpr
       ⟨runProposer S Q.run.2 Q.hn, digestOf S Q.run.2,
-    Q.gst, ΔR, a, Q.run.2.horizon, hreset, hc, hP, hR, hb3⟩, W.anchorSteps_iff.mpr hsteps⟩
+    Q.gst, ΔR, a, Q.run.2.horizon, hreset, hc, hP, hR, hb3⟩,
+      W.anchorSteps_iff.mpr hsteps, ?_, ?_⟩
+  rotate_left
+  · simpa using hR
+  · intro i
+    obtain ⟨-, -, -, -, -, -, -, -, -, -, hs, hpr, -⟩ := hP i
+    rw [hs, hpr]
   have ht3 : Q.trace.time (W.cut 3) = Q.params.ts (W.start + 3 * W.gap : Nat) := by
     rw [(W.proposals 3).2.2, W.slots 3, Q.params.slotTime_eq]
     rfl
