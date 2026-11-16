@@ -6,6 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Inclusion
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Regimes
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -320,6 +321,25 @@ theorem sleepy_proposal_coverage_of_windows {proposer : Nat → Fin sp.n}
     exact hrun.antitone hh hhonest
   exact Regimes.Growing.include_sleepy_at hrun hnc hb hservice hB hp'
     (by linarith) hy.1.2.2.2 (ready_of_window hc hy.1.1 hy.2) ⟨hy.1.2.1.1, hjt⟩ hKB hBK
+
+/-- Same-reader extension from the shared windows, with positivity explicit. -/
+theorem sleepy_extension_of_windows {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {ini}
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
+    {cm : Time → Finset (Fin sp.n)} (hpos : 0 < sp.committeeSize)
+    (hKB : CommitteeFacts tr H (dictOfTime sp cm))
+    {p : EnvPoint (Fin sp.n)} {c look committeeLook ΔF b : Time}
+    (hw : GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b)
+    {y i j t u} (hi : ReadyReadPoint tr H b c y i t)
+    (hj : ReadyReadPoint tr H b c y j u) (hbi : ReadBoundary tr y i)
+    (hbj : ReadBoundary tr y j) (hij : i ≤ j) (htu : t ≤ u) :
+    Anc (tr.HonestBlocksAt H) (confirmedRead tr y i t) (confirmedRead tr y j u) := by
+  obtain ⟨hb, hservice, hB, hBK⟩ := sleepy_service_and_bounds hrun hpos hKB.hsize hw
+  have hc := (goldilocksWindowPremises_iff.mp hw).2.2.1
+  exact (Regimes.Growing.sleepy_safe_at hrun hnc hb hservice hB hKB hBK).mono
+    y i j t u hi.1.2.1 hj.1.2.1 hbi hbj hij htu hi.1.2.2.1 hj.1.2.2.2
+    (ready_of_window hc hi.1.1 hi.2) (ready_of_window hc hj.1.1 hj.2)
 
 end Consensus.Goldilocks.Generic.SleepyLayer1
 
