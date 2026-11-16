@@ -251,15 +251,16 @@ private theorem vs_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
   rw [tryVote_eq_tryVoteWith, ← tryVoteWithM_parent]
   exact vs_tryVoteWith x A Φ t hp
 
-/-- `tryVote_votes` with the unlock given. -/
+/-- `tryVote_votes` with the unlock given: the vote branch of `tryVoteWithM_branch` emits when
+the node may vote in the slot. -/
 theorem tryVote_votesWith
     {L : Set Lock} (x : Fin sp.n) {A : SAState sp.n} (Φ : Frm sp.n FGP) {t : Time}
     (hj : joined sp A t) (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ)
     (hp : A.mayVote (sp.slot t) = true) :
     ∃ e ∈ (tryVoteWithM sp wm x L A Φ t).2, e.msg.slot = sp.slot t := by
-  have hlate : ¬ sp.ts (sp.slot t) + sp.Δ < t := not_lt.mpr ht.le
-  have hearly : ¬ t < sp.ts (sp.slot t) + sp.Δ := not_lt.mpr ht.ge
-  simp [tryVoteWithM, hj, hv, hlate, hearly, hp]
+  obtain ⟨e, he, -, -, hsl⟩ := (tryVoteWithM_branch (wm := wm) (L := L) x Φ hj hv ht.le
+    fun h => absurd ht (ne_of_lt h.1)).1 hp
+  exact ⟨e, by rw [he]; exact List.mem_singleton_self _, hsl⟩
 
 /-- `try_vote` at `t_s + Δ` of a joined node that has not voted in slot `s = slot(t)` casts a
 vote of slot `s`. -/

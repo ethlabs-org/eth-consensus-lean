@@ -71,6 +71,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.UnlockViewOpponents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.UpdateTime
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.VoteBranch
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WriteMode

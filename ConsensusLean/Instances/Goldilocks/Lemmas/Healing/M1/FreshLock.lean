@@ -14,8 +14,9 @@ public section
 
 /-! # Honest votes, early pools and older-lock compatibility under finite service
 
-* `honest_votes_of_joined_before`: finite service and joinedness at the actual vote deadline
-  supply an honest vote, with no `4Δ` warm-start margin.
+* `honest_vote_branches_of_joined_before`: finite service and joinedness at the actual vote
+  deadline take every honest node, a committee member or not, through the vote branch of the slot;
+  `honest_votes_of_joined_before`: the members' branches are votes. No `4Δ` warm-start margin.
 * `honest_vote_early_pool_before`: an actual honest vote emitted after GST is held with its strict
   early stamp.
 * `confirmation_of_unanimous_early_pool`: the unique early honest batch of the slot-`u` committee
@@ -30,19 +31,19 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g b : Time}
   {proposer : Nat → Fin sp.n}
 
-/-- Finite service and joinedness at the actual vote deadline supply a vote of every honest
-member of the slot's committee. No `4Δ` warm-start margin is needed when joinedness is supplied
-explicitly. -/
-theorem honest_votes_of_joined_before {K : SA.CommitteeDict sp.n}
+/-- Finite service and joinedness at the actual vote deadline take every honest node through the
+vote branch of the slot by its deadline, whether or not it may vote in the slot. No `4Δ`
+warm-start margin is needed when joinedness is supplied explicitly. -/
+theorem honest_vote_branches_of_joined_before {K : SA.CommitteeDict sp.n}
     (hS : HealthyBaseUpTo K tr H U proposer g b)
     {u : Nat} (hgu : gbar g ≤ sp.ts u) (hub : sp.ts u + sp.Δ ≤ b)
     (hjoin : ∀ x ∈ H, JoinedAt tr x (sp.ts u + sp.Δ)) :
-    ∀ x ∈ H, x ∈ K.committee u →
-      ∃ j e, VoteAt tr x j e ∧ e.msg.slot = u ∧ tr.time j ≤ sp.ts u + sp.Δ := by
+    ∀ x ∈ H, ∃ j ell R, VoteBranchAt tr x j ell R ∧ sp.slot (tr.time j) = u ∧
+      tr.time j ≤ sp.ts u + sp.Δ := by
   have hr := hS.run.localRun
   have hDelta := sp.toParams.hΔ
   have hg0 := gbar_nonneg g
-  intro x hx hxK
+  intro x hx
   have hslot : sp.slot (sp.ts u + sp.Δ) = u := by
     apply slot_of_mem sp u (by linarith)
     simp only [SAParams.ts]; push_cast; linarith
@@ -57,24 +58,25 @@ theorem honest_votes_of_joined_before {K : SA.CommitteeDict sp.n}
       rw [htc]
       exact hjoin x hx r hrs ((hr.time_mono hrc.le).trans htc.le)
   by_cases hv : (tr.state x c).votedSlot = (sp.slot (tr.time c) : Int)
-  · obtain ⟨j, hjc, e, he, hes⟩ :=
-      (cast_of_votedSlot hr hS.run.vstart hx c _ hv).resolve_right
-        (by rw [(trace_mayVote_iff hr hx c _).2 (by rw [htc, hslot]; exact hxK)]; decide)
-    exact ⟨j, e, he, by rw [hes, htc, hslot], (hr.time_mono hjc.le).trans htc.le⟩
-  · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
-    obtain ⟨e, hem, hes⟩ := tryVote_votes x ell.frame hj hv hT
-      ((trace_mayVote_iff hr hx c _).2 (by rw [htc, hslot]; exact hxK))
-    have he := hr.exec c ell hc.2 (hc.1 ▸ hx)
-    rw [hc.1, hcall] at he
-    have h2 : (acOnTick sp x (tr.state x c) ell.frame (tr.time c)).2 = ell.emits :=
-      congrArg Prod.snd he
-    have h3 : (acOnTick sp x (tr.state x c) ell.frame (tr.time c)).2 =
-        (tryVote sp x (tr.state x c) ell.frame (tr.time c)).2 := by
-      unfold acOnTick
-      dsimp only
-      split_ifs
-      all_goals first | rfl | exact absurd hj ‹_›
-    exact ⟨c, e, ⟨ell, hc, h2 ▸ h3 ▸ hem⟩, by rw [hes, htc, hslot], htc.le⟩
+  · obtain ⟨j, hjc, ell', R, hb, hs⟩ := voteBranchAt_of_votedSlotU hr.toU hS.run.vstart hx c _ hv
+    exact ⟨j, ell', R, hb, by rw [hs, htc, hslot], (hr.time_mono hjc.le).trans htc.le⟩
+  · obtain ⟨R, hb⟩ := voteBranchAt_of_tickU hr.toU hx hc hcall (by rw [htc, hslot]) hj hv
+    exact ⟨c, ell, R, hb, by rw [htc, hslot], htc.le⟩
+
+/-- Finite service and joinedness at the actual vote deadline supply a vote of every honest
+member of the slot's committee: its vote branch (`honest_vote_branches_of_joined_before`) is a
+cast. -/
+theorem honest_votes_of_joined_before {K : SA.CommitteeDict sp.n}
+    (hS : HealthyBaseUpTo K tr H U proposer g b)
+    {u : Nat} (hgu : gbar g ≤ sp.ts u) (hub : sp.ts u + sp.Δ ≤ b)
+    (hjoin : ∀ x ∈ H, JoinedAt tr x (sp.ts u + sp.Δ)) :
+    ∀ x ∈ H, x ∈ K.committee u →
+      ∃ j e, VoteAt tr x j e ∧ e.msg.slot = u ∧ tr.time j ≤ sp.ts u + sp.Δ := by
+  intro x hx hxK
+  obtain ⟨j, ell, R, hb, hs, ht⟩ := honest_vote_branches_of_joined_before hS hgu hub hjoin x hx
+  obtain ⟨e, hc, -, -, hes⟩ := castAt_of_voteBranchAtU hS.run.localRun.toU hx hb
+    (by rw [hs]; exact (trace_mayVote_iff hS.run.localRun hx j u).2 hxK)
+  exact ⟨j, e, ⟨ell, hc⟩, hes.trans hs, ht⟩
 
 /-- An actual honest vote emitted after GST is held with its strict early stamp.
 The restart and deadline premises concern only cuts through the receiving call. -/

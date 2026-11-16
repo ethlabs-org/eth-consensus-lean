@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.RelTrace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.VoteBranch
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 
 public section
@@ -1130,123 +1131,47 @@ private theorem restartTime_geU
     rw [tr.state_of_lastCall hc' hj' hnb]
     exact ih j' hj' ℓ' hc' j hjj' hj
 
-/-! ### Where `voted_slot` comes from -/
+/-! ### Where `voted_slot` comes from (`Lemmas/AC/VoteBranch`) -/
 
-/-- A call keeps `voted_slot`; or it emits a vote of `slot(t)` and sets `voted_slot` to it; or it
-sets `voted_slot` to `slot(t)` without a vote, at a slot whose `mayVote` is false. -/
-private def VotedStep (A A' : SAState sp.n) (es : List (Em sp FGP)) (t : Time) : Prop :=
-  A'.votedSlot = A.votedSlot ∨
-    (∃ e ∈ es, e.msg.slot = sp.slot t ∧ A'.votedSlot = sp.slot t) ∨
-    (A'.votedSlot = sp.slot t ∧ A.mayVote (sp.slot t) = false)
-
-private theorem tryVote_votedStep {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) :
-    VotedStep A (tryVoteWithM sp wm self L A Φ t).1 (tryVoteWithM sp wm self L A Φ t).2 t := by
-  unfold tryVoteWithM
-  dsimp only
-  split_ifs <;> first
-    | exact Or.inl rfl
-    | exact Or.inr (Or.inl ⟨_, List.mem_singleton_self _, rfl,
-        (optimisticM_keeps _ _ _ _).1.trans (admitVote_keeps _ _ _).1⟩)
-    | exact Or.inr (Or.inr ⟨rfl, Bool.eq_false_iff.2 ‹_›⟩)
-
-private theorem VotedStep.pre {A B A' : SAState sp.n} {es : List (Em sp FGP)} {t : Time}
-    (h : VotedStep B A' es t) (hv : B.votedSlot = A.votedSlot) (hm : B.mayVote = A.mayVote) :
-    VotedStep A A' es t :=
-  h.imp (·.trans hv) (Or.imp_right fun ⟨h₁, h₂⟩ => ⟨h₁, (congrFun hm _).symm.trans h₂⟩)
-
-private theorem step_votedStep {L : Set Lock} {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A A' :
-    SAState sp.n}
-    {Φ : Frm sp.n FGP} {t : Time} (hΦ : FrameOK Φ) (ht : 0 ≤ t)
-    (c : (goldilocksSA sp FGP ro).Call) {es : List (Em sp FGP)}
-    (hs : stepWithM sp ro wm self L A Φ t c = (A', es)) :
-    A'.votedSlot = -1 ∨ VotedStep A A' es t := by
-  have h₁ := congrArg Prod.fst hs
-  have h₂ := congrArg Prod.snd hs
-  dsimp only at h₁ h₂
-  subst h₁ h₂
-  cases c with
-  | tick =>
-    right
-    change VotedStep A (acOnTickWithM sp wm self L A Φ t).1 (acOnTickWithM sp wm self L A Φ t).2 t
-    unfold acOnTickWithM
-    dsimp only
-    have hr : VotedStep A
-        (if t = sp.ts (sp.slot t) + sp.Δ then tryVoteWithM sp wm self L A Φ t else (A, [])).1
-        (if t = sp.ts (sp.slot t) + sp.Δ then tryVoteWithM sp wm self L A Φ t
-          else (A, [])).2 t := by
-      split_ifs
-      · exact tryVote_votedStep _ _ _ _
-      · exact Or.inl rfl
-    generalize (if t = sp.ts (sp.slot t) + sp.Δ then tryVoteWithM sp wm self L A Φ t
-      else (A, [])) = r at hr ⊢
-    split_ifs
-    · rcases hr with h | ⟨e, he, h₁, h₂⟩ | ⟨h₁, h₂⟩
-      · exact Or.inl ((updateConfirmationM_keeps _ _ _ _ _).1.trans h)
-      · exact Or.inr (Or.inl ⟨e, he, h₁, (updateConfirmationM_keeps _ _ _ _ _).1.trans h₂⟩)
-      · exact Or.inr (Or.inr ⟨(updateConfirmationM_keeps _ _ _ _ _).1.trans h₁, h₂⟩)
-    · exact hr
-    · exact Or.inl rfl
-  | proposal => exact Or.inr (Or.inl (acProposalWith_keeps L _ _ _).1)
-  | toFG => exact Or.inr (Or.inl (acToFG_keeps _ _ _).1)
-  | message m =>
-    exact Or.inr ((tryVote_votedStep _ _ _ _).pre
-      ((optimisticM_keeps _ _ _ _).1.trans (admitVote_keeps _ _ _).1)
-      ((optimisticM_mayVote _ _ _ _).trans (admitVote_mayVote _ _ _)))
-  | block B =>
-    exact Or.inr ((tryVote_votedStep _ _ _ _).pre
-      ((optimisticM_keeps _ _ _ _).1.trans (blockReceipt_keeps _ _ _).1)
-      ((optimisticM_mayVote _ _ _ _).trans (blockReceipt_mayVote _ _ _)))
-  | restart =>
-    left
-    exact (restart_state sp FGP ro self A Φ t hΦ ht).2.2.2.2.2.1
-
-/-- `cast_of_votedSlot` with the unlock given, from starts up to the vote permission. -/
-theorem cast_of_votedSlotU
-    {u : Nat → Set Lock} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
-    {tr : SATrace sp FGP ro} (h : ACLocalRunU wm u H U tr ini)
-    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
-    (hy : y ∈ H) (i σ : Nat) (hv : (tr.state y i).votedSlot = σ) :
-    (∃ j < i, ∃ e, VoteAt tr y j e ∧ e.msg.slot = σ) ∨ (tr.state y i).mayVote σ = false := by
+/-- An honest node keeps its starting vote permission at every cut. -/
+private theorem state_mayVoteU {u : Nat → Set Lock} (h : ACLocalRunU wm u H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) : (tr.state y i).mayVote = (ini y).mayVote := by
   induction i with
-  | zero =>
-    exfalso
-    change (tr.init y).votedSlot = σ at hv
-    obtain ⟨m, hm⟩ := voteStart_iff.1 (hini y)
-    rw [h.init y hy, hm] at hv
-    change (-1 : Int) = σ at hv
-    omega
+  | zero => change (tr.init y).mayVote = _; rw [h.init y hy]
   | succ i ih =>
     by_cases hc : ∃ ℓ, tr.CallAt y i ℓ
     · obtain ⟨ℓ, hc⟩ := hc
-      have hst : tr.state y (i + 1) = tr.post i := by
-        simp [Trace.state, hc.1, hc.2]
-      rw [hst] at hv ⊢
-      have hexec := h.exec i ℓ hc.2 (hc.1 ▸ hy)
-      rw [hc.1] at hexec
-      have hm := stepWithM_mayVote ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call
-      rw [hexec] at hm
-      have hΦ : FrameOK ℓ.frame := by
-        rcases h.frameLaw y hy i ℓ hc with ⟨-, _, -, -, hok⟩ | ⟨_, _, -, -, -, hok⟩ <;>
-          exact hok.1.1
-      rcases step_votedStep y hΦ (h.time_nonneg i) ℓ.call hexec with
-        h₁ | h₁ | ⟨e, he, h₁, h₂⟩ | ⟨h₁, h₂⟩
-      · omega
-      · rcases ih (h₁ ▸ hv) with ⟨j, hj, e, hve, hs⟩ | hmf
-        · exact Or.inl ⟨j, by omega, e, hve, hs⟩
-        · exact Or.inr ((congrFun hm σ).trans hmf)
-      · exact Or.inl ⟨i, by omega, e, ⟨ℓ, hc, he⟩, by omega⟩
-      · have hσ : sp.slot (tr.time i) = σ := by omega
-        rw [← hσ]
-        exact Or.inr ((congrFun hm _).trans h₂)
-    · have hst : tr.state y (i + 1) = tr.state y i := by
+      have he := h.exec i ℓ hc.2 (hc.1 ▸ hy)
+      rw [hc.1] at he
+      have hp := stepWithM_mayVote ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call
+      rw [he] at hp
+      rw [show tr.state y (i + 1) = tr.post i by simp [Trace.state, hc.1, hc.2]]
+      exact hp.trans ih
+    · have hs : tr.state y (i + 1) = tr.state y i := by
         rw [Trace.state]
         split_ifs with h'
         · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 h'.2
           exact absurd ⟨ℓ, h'.1, hℓ⟩ hc
         · rfl
-      rw [hst] at hv ⊢
-      exact (ih hv).imp (fun ⟨j, hj, e, hve, hs⟩ => ⟨j, by omega, e, hve, hs⟩) id
+      rw [hs]
+      exact ih
+
+/-- `cast_of_votedSlot` with the unlock given, from starts up to the vote permission: the vote
+branch of `voteBranchAt_of_votedSlotU` is a cast when the node may vote in its slot. -/
+theorem cast_of_votedSlotU
+    {u : Nat → Set Lock} (h : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
+    (hy : y ∈ H) (i σ : Nat) (hv : (tr.state y i).votedSlot = σ) :
+    (∃ j < i, ∃ e, VoteAt tr y j e ∧ e.msg.slot = σ) ∨ (tr.state y i).mayVote σ = false := by
+  obtain ⟨j, hj, ℓ, R, hb, rfl⟩ := voteBranchAt_of_votedSlotU h hini hy i σ hv
+  cases hm : (tr.state y j).mayVote (sp.slot (tr.time j)) with
+  | true =>
+    obtain ⟨e, hc, -, -, hsl⟩ := castAt_of_voteBranchAtU h hy hb hm
+    exact Or.inl ⟨j, hj, e, ⟨ℓ, hc⟩, hsl⟩
+  | false =>
+    right
+    rw [state_mayVoteU h hy i, ← state_mayVoteU h hy j]
+    exact hm
 
 /-- **`voted_slot` names a cast vote.** When an honest node's state before cut `i` has
 `voted_slot = σ ≥ 0`, the node cast a vote of slot `σ` at an earlier cut, or `σ` is a slot the
