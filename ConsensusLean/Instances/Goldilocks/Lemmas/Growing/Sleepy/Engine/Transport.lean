@@ -6,7 +6,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Lemmas.Problem.Facts.Regimes
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -38,64 +37,6 @@ namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 open Shape
 open Consensus.Model (pubOf)
-
-section Lift
-
-open SA (SAParams ReplayOrder Payload)
-
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-
-/-- A node honest at `t ≥ 0` and awake through the catch-up window before `t` is awake and joined
-at `t` (the static `ready_implies_joined` on the prefix through `t`). -/
-private theorem ready_implies_joined_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
-    {t c : Time} (hy : y ∈ H t) (ht : 0 ≤ t) (hc : 8 * sp.Δ ≤ c + 1)
-    (hawake : ∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) :
-    tr.awake y t ∧ tr.JoinedAt y t := by
-  obtain ⟨hw, hj⟩ := Compose.ready_implies_joined_of (hrun.upTo ht) hy ht hc
-    fun u h1 h2 => ⟨hawake u h1 h2, h2⟩
-  exact ⟨hw.1, fun k hk hkt => hj k ((RunTrace.upTo_restartAt tr).2 ⟨hkt, hk⟩) hkt⟩
-
-/-- `2 f_d < n` from the count at `d`, with `h_t ≤ |H d|`. -/
-private theorem two_faults_lt_of_faultBoundAt {t d : Time} (h : tr.FaultBoundAt H t d) :
-    2 * (H d)ᶜ.ncard < sp.n := by
-  have hle : {y | y ∈ H d ∧ tr.awake y t ∧ tr.JoinedAt y t}.ncard ≤ (H d).ncard :=
-    Set.ncard_le_ncard fun x hx => hx.1
-  have hn : (H d).ncard + (H d)ᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have : (H d)ᶜ.ncard < {y | y ∈ H d ∧ tr.awake y t ∧ tr.JoinedAt y t}.ncard := h
-  omega
-
-/-- **The count shapes from the counts after a start `a`** (the look-ahead budget clamped at
-`b`), for the slots `s ≥ σ₀` whose slot point `t_s + Δ` is at or after `a`: `2 f_d < n` at
-`d ∈ [a, b]` from the count at `d` charged at `min (d + 5Δ) b ≥ d`, and at `d ∈ [0, a)` from the
-count at `a` (faults only grow; `a ≤ b` unless `a ≤ 0`); the slot count at
-`d ∈ [t_s + Δ, t_s + 6Δ]` from the count at `t_s + Δ` charged at `min (t_s + 6Δ) b ≥ d`, and the
-late count likewise from `t_s + 2Δ`. -/
-private theorem sleepyBoundsFrom_of_faultBoundAt (hanti : Antitone H) {a b : Time} {σ₀ : Nat}
-    (hσ : a ≤ sp.ts σ₀ + sp.Δ) (hab : a ≤ max b 0)
-    (hfb : ∀ t, 0 ≤ t → a ≤ t → t ≤ b → tr.FaultBoundAt H t (min (t + 5 * sp.Δ) b)) :
-    Compose.Growing.SleepyBoundsFrom tr H σ₀ b := by
-  have hΔ := sp.toParams.hΔ
-  refine ⟨fun d h0 hdb => ?_, fun s d hs h1 hdb h6 => ?_, fun s d hs h1 hdb h7 => ?_⟩
-  · rcases le_or_gt a d with had | hda
-    · exact two_faults_lt_of_faultBoundAt
-        (RunTrace.FaultBoundAt.mono_right hanti (le_min (by linarith) hdb) (hfb d h0 had hdb))
-    · have hab' : a ≤ b := (le_max_iff.mp hab).resolve_right (by linarith)
-      exact two_faults_lt_of_faultBoundAt (RunTrace.FaultBoundAt.mono_right hanti
-        (le_min (by linarith) hdb) (hfb a (by linarith) le_rfl hab'))
-  · have hts := Compose.ts_le_ts (sp := sp) hs
-    have h0 := Compose.Growing.ts_natCast_nonneg (sp := sp) s
-    have h := hfb (sp.ts s + sp.Δ) (by linarith) (by linarith) (h1.trans hdb)
-    exact RunTrace.FaultBoundAt.mono_right hanti (le_min (by linarith) hdb) h
-  · have hts := Compose.ts_le_ts (sp := sp) hs
-    have h0 := Compose.Growing.ts_natCast_nonneg (sp := sp) s
-    have h := hfb (sp.ts s + 2 * sp.Δ) (by linarith) (by linarith) (h1.trans hdb)
-    exact RunTrace.FaultBoundAt.mono_right hanti (le_min (by linarith) hdb) h
-
-end Lift
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
