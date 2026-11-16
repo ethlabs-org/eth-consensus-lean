@@ -15,12 +15,14 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- Old labels use the receiver's unlock; new fast labels use an honest vote
-at the counting cut, and slow labels use the raw unanimous confirmation. -/
-theorem FrameWindow.unanimous_update_no_veto_at
+at the counting cut, and slow labels use the raw unanimous confirmation. At the slot committees
+`K` of a run from `K`'s committee start. -/
+theorem FrameWindow.unanimous_update_no_veto_at {K : SA.CommitteeDict sp.n}
     {g ΔF b : Time} {u floor : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -34,16 +36,16 @@ theorem FrameWindow.unanimous_update_no_veto_at
       e.msg.slot = u → e.msg.head = P.root)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k u ell)
-    (hstock : sp.committeeSize = sp.n) :
+    (hK : CommitteeHalfUpTo tr H K g b) :
     ¬ SA.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P := by
   have hΔ := sp.toParams.hΔ
+  have hgu : gbar g ≤ sp.ts u := by linarith
   have hkt : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
   have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ = sp.ts u + 6 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   have hkb : tr.time k ≤ b := by rw [hkt, ← hT]; exact hTb
-  have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
-    (hrun.time_nonneg k) hkb hstock
-  have hr := hS.stockRun.localRun
+  have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch (hrun.time_nonneg k) hkb
+  have hr := hS.run.localRun
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono (hrun.time_nonneg k)
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hslot : sp.slot (tr.time k) = u + 1 := by
@@ -55,16 +57,12 @@ theorem FrameWindow.unanimous_update_no_veto_at
   have hc' : (tr.projAC.upTo (tr.time k)).CallAt y k ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hu.1⟩
   have hPhi := SA.frameIn_of_callAt hr hy hc'
-  have hrunF : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot (SA.CommitteeDict.full sp.n)) := by
-    rw [SA.committeeStart_full]; exact hrun
-  have hKF := CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock
-  obtain ⟨hvi, _, _, _⟩ := hframe.unanimous_update_selection_at hrunF hnc hsvc hawake hf hcatch
-    hnr hmargin hjoin hTb hz hdes hP hPs hun hy hu hKF
-  have hnext := hframe.unanimous_next_votes_at hrunF hnc hsvc hawake hf hcatch hnr
-    hmargin hjoin hTb hz hdes hP hPs hun hKF
+  obtain ⟨hvi, _, _, _⟩ := hframe.unanimous_update_selection_at hrun hnc hsvc hawake hf hcatch
+    hnr hmargin hjoin hTb hz hdes hP hPs hun hy hu hK
+  have hnext := hframe.unanimous_next_votes_at hrun hnc hsvc hawake hf hcatch hnr
+    hmargin hjoin hTb hz hdes hP hPs hun hK
   have hold := hframe.older_locks_compatible_at_update_at hrun hnc hsvc hawake hf hcatch hnr
-    hmargin hjoin hTb hz hdes hP hPs hun hy hu hstock
+    hmargin hjoin hTb hz hdes hP hPs hun hy hu hK
   have down : ∀ {X Y}, Anc (tr.HonestBlocksAt H) X Y →
       Compatible (tr.HonestBlocksAt H) Y P → Compatible (tr.HonestBlocksAt H) X P := by
     rintro X Y hXY (h | h)
@@ -76,7 +74,7 @@ theorem FrameWindow.unanimous_update_no_veto_at
   · exact hold l hl hlt L hL hLr
   have hl' : l ∈ ((tr.projAC.upTo (tr.time k)).state y k).locks := by rwa [hs]
   have hle : l.slot ≤ u + 1 := by
-    obtain ⟨r, hrk, B, horig, _⟩ := SA.lock_provenance hr hy k l hl'
+    obtain ⟨r, hrk, B, horig, _⟩ := SA.lock_provenanceU (hr := hr.toU) hrun.vstart hy k l hl'
     have hm := SA.slot_mono sp (hr.time_nonneg r) (hr.time_mono hrk.le)
     change sp.slot (tr.time r) ≤ sp.slot (tr.time k) at hm
     rw [hslot] at hm
@@ -89,7 +87,7 @@ theorem FrameWindow.unanimous_update_no_veto_at
       omega
   cases hfast : l.fast
   · obtain ⟨r, hrk, B, ⟨ellr, C, hup, hC, hB⟩, L₁, hL₁, hL₁r, hLB⟩ :=
-      SA.slow_lock_provenance hr hy k l hl' hfast
+      SA.slow_lock_provenance_from hr hrun.vstart hy k l hl' hfast
     have hm := hrun.time_mono hrk.le
     have hrt : tr.time r = sp.ts l.slot + 6 * sp.Δ := hup.2.2.1
     have hls : l.slot = u := by
@@ -98,8 +96,8 @@ theorem FrameWindow.unanimous_update_no_veto_at
     rw [hls] at hup hC
     have hup' := (SA.upTo_updateAt hrun.time_mono).mp hup |>.2
     have hCP : C = P := by
-      have hconf := (hframe.unanimous_update_selection_at hrunF hnc hsvc hawake hf hcatch hnr
-        hmargin hjoin hTb hz hdes hP hPs hun (hrun.antitone hm hy) hup' hKF).2.1
+      have hconf := (hframe.unanimous_update_selection_at hrun hnc hsvc hawake hf hcatch hnr
+        hmargin hjoin hTb hz hdes hP hPs hun (hrun.antitone hm hy) hup' hK).2.1
       have hsr := Trace.upTo_state tr.projAC y (i := r)
         (fun q hq => (hrun.time_mono hq.le).trans hm)
       rw [hsr] at hC
@@ -111,15 +109,15 @@ theorem FrameWindow.unanimous_update_no_veto_at
     exact Or.inl ((hLB.mono hsub).trans
       (hBP.mono (fun Q hQ => hsub ((SA.frameIn_of_callAt hr hy hup.1).2 hQ))))
   · obtain ⟨r, hrk, B, CV, hfl, L₁, hL₁, hL₁r, hLB⟩ :=
-      SA.fast_lock_provenance hr hy k l hl' hfast
+      SA.fast_lock_provenance_from hr hrun.vstart hy k l hl' hfast
     have hLL₁ : L = L₁ := hU.1 hL (hsub hL₁) (hLr.trans hL₁r.symm)
     rw [← hLL₁] at hLB
-    have hf2 : 2 * (H (tr.time k))ᶜ.ncard < sp.n := by
-      have hb := hf (tr.time k) (hrun.time_nonneg k) hkb
-      have := sp.toParams.hn
-      omega
+    have hgl : gbar g ≤ sp.ts l.slot := hgu.trans ((SA.ts_le_iff sp).2 (by omega))
+    have hlk : sp.ts l.slot ≤ tr.time k := by
+      have := (SA.ts_le_iff sp).2 (show (l.slot : Int) ≤ (u + 1 : Nat) by omega)
+      linarith
     obtain ⟨x, hx, q, e, hv, hes, D, hD, hDr, hBD⟩ :=
-      SA.fastLock_honest_vote hS.run _ SA.CommitteeP.full hy hfl (SA.cs2_full hstock hf2)
+      SA.fastLock_honest_vote hS.run K hS.hP hy hfl (hS.cs2 l.slot hgl hlk)
     obtain ⟨hqt, hv⟩ := SA.upTo_voteAt.mp hv
     apply down (hLB.mono hsub)
     rcases (show l.slot = u ∨ l.slot = u + 1 by omega) with hls | hls

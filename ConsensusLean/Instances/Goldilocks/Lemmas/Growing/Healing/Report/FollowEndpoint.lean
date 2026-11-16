@@ -64,8 +64,9 @@ theorem proposal_report_follow_at
     have := hts (show s₀ ≤ u by omega)
     linarith only [hm, this, hΔ]
   obtain ⟨k, ell, ell', hu, hc, hto, ht, _, _, _, _, hva, hv, e, he, _, hl⟩ :=
-    fresh_fast_lock_update_toFG_at hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin
-      (hT.trans hmb) hshort hz hdes hP hPs hun hy hstock
+    fresh_fast_lock_update_toFG_at (by rw [SA.committeeStart_full]; exact hrun) hnc hsvc hawake hf
+      hcatch hnr hmargin hjoin (hT.trans hmb) hshort hz hdes hP hPs hun hy
+      (CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock)
   have hyc : y ∈ H (tr.time (k + 1)) := ht ▸ hy
   have hPc := Healing.fresh_lock_toFG_candidate hv hva hl he ht
   have hr := (Compose.Growing.goldilocks_ac_projection_from hrun hnc).upTo

@@ -43,6 +43,27 @@ theorem honest_votes_of_joined_before_at {K : SA.CommitteeDict sp.n}
   obtain ⟨ell, hc, he⟩ := hv
   exact ⟨j, e, ⟨ell, ((Trace.upTo_callAt _).mp hc).2, he⟩, hs, ht⟩
 
+/-- Explicit joinedness gives every honest node, committee member or not, a vote branch of the
+slot by its deadline, from the healthy base on that deadline's prefix. -/
+theorem honest_vote_branches_of_joined_before_at {K : SA.CommitteeDict sp.n}
+    {g : Time} {u : Nat}
+    (hS : SA.HealthyBaseUpTo K (tr.projAC.upTo (sp.ts u + sp.Δ))
+      (H (sp.ts u + sp.Δ)) ((tr.upTo (sp.ts u + sp.Δ)).HonestBlocks (H (sp.ts u + sp.Δ)))
+      proposer g (sp.ts u + sp.Δ))
+    (hgu : gbar g ≤ sp.ts u)
+    (hjoin : ∀ x, x ∈ H (sp.ts u + sp.Δ) →
+      SA.JoinedAt tr.projAC x (sp.ts u + sp.Δ)) :
+    ∀ x, x ∈ H (sp.ts u + sp.Δ) →
+      ∃ j ell R, SA.VoteBranchAt tr.projAC x j ell R ∧ sp.slot (tr.time j) = u ∧
+        tr.time j ≤ sp.ts u + sp.Δ := by
+  intro x hx
+  obtain ⟨j, ell, R, hb, hs, ht⟩ := SA.honest_vote_branches_of_joined_before hS hgu le_rfl
+    (fun x hx r hrs hrt => by
+      obtain ⟨ell, hc, hrestart⟩ := hrs
+      exact hjoin x hx r
+        ⟨ell, ((Trace.upTo_callAt _).mp hc).2, hrestart⟩ hrt) x hx
+  exact ⟨j, ell, R, ((voteBranchAt_upTo_iff hS.run.localRun.time_mono).1 hb).2, hs, ht⟩
+
 /-- A vote by a validator still honest at the read has its strict early message
 stamp in the receiver's pool, at the slot committees `K` of a run from `K`'s committee start.
 Only the receiving prefix is used. -/
@@ -224,9 +245,11 @@ theorem unanimous_early_pool_of_acceptance_at {K : SA.CommitteeDict sp.n}
       obtain ⟨i, e, hv, hes, hit⟩ := hvotes x (hrun.antitone hshort hx) hxK
       exact ⟨i, e, hv, hes, hit.trans hshort⟩) hK
 
-/-- Wakefulness and the receiver's restart cutoff produce the actual adjacent calls. -/
+/-- Wakefulness and the receiver's restart cutoff produce the actual adjacent calls, from any
+vote-permitted start. -/
 theorem update_toFG_calls_of_awake_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {g b : Time}
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -286,9 +309,10 @@ theorem update_toFG_calls_of_awake_at
   simpa only [hs, Trace.upTo_time] using hu.2.2.2
 
 /-- Once selection and no-veto are known, local execution inserts the fresh fast lock.
-The conclusion keeps its two-slot lifetime independently of the service proof. -/
+The conclusion keeps its two-slot lifetime independently of the service proof. From any start. -/
 theorem fresh_fast_lock_of_selection_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {k u : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)}

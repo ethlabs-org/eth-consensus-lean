@@ -4,10 +4,11 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Honest support at the receiver's next-slot cast
+/-! # Honest support at the receiver's next-slot vote branch
 
 The supporting committee is honest at this read. Proposal acceptance is instead
 charged to its historical sender, so that sender need not belong to the committee.
+The receiver's branch need not emit a vote, so the receiver need not be a committee member.
 -/
 
 namespace Consensus.Goldilocks.Healing.Growing
@@ -19,7 +20,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- Every member of the slot committee `K u` still honest at the next-slot read supports the
-unanimous proposal in that read's merged view, for a run from `K`'s committee start. -/
+unanimous proposal in the merged view of the receiver's next-slot vote branch, for a run from
+`K`'s committee start. -/
 theorem unanimous_next_cast_supporters_at {K : SA.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (SA.committeeStart sp.genesisRoot K))
@@ -35,26 +37,26 @@ theorem unanimous_next_cast_supporters_at {K : SA.CommitteeDict sp.n}
     {z : Fin sp.n} {a : Nat} (hz : z ∈ H (tr.time a))
     (ha : tr.projAC.AcceptAt z a P) (hta : tr.time a = sp.ts u)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u + 1)
+    {ell : ACLabel (goldilocksNode sp ro)} {R : SA.SAState sp.n}
+    (hb : SA.VoteBranchAt tr.projAC y j ell R) (hjs : sp.slot (tr.time j) = u + 1)
     (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
     (hPt : P ∈ ell.frame.tree)
     (hvotes : ∀ x, x ∈ H (tr.time j) → x ∈ K.committee u → ∃ i ev,
       SA.VoteAt tr.projAC x i ev ∧ ev.msg.slot = u ∧ tr.time i ≤ tr.time j)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ x, x ∈ H (tr.time j) → x ∈ K.committee u →
-      x ∈ SA.supporters ell.frame (SA.mergedVoteView sp e.readPoint ell.frame (u + 1)) u P := by
+      x ∈ SA.supporters ell.frame (SA.mergedVoteView sp R ell.frame (u + 1)) u P := by
   have hΔ := sp.toParams.hΔ
   have hgu : gbar g ≤ sp.ts u := by linarith
   have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch (hrun.time_nonneg j) hjb
   have hr := hS.run.localRun
-  have hc' : SA.CastAt (tr.projAC.upTo (tr.time j)) y j ell e :=
-    ⟨(Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩, hc.2⟩
-  have hPhi := SA.frameIn_of_callAt hr hy hc'.1
+  have hb' : SA.VoteBranchAt (tr.projAC.upTo (tr.time j)) y j ell R :=
+    (voteBranchAt_upTo_iff hrun.time_mono).2 ⟨le_rfl, hb⟩
+  have hPhi := SA.frameIn_of_callAt hr hy hb'.callAt
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono
     (hrun.time_nonneg j)
   obtain ⟨q, hqj, haq, hqt⟩ := accepted_relay_before_at hrun hsvc hnr hz ha
-    (hta ▸ hgu) hy hc.1 (by rw [hta]; linarith)
+    (hta ▸ hgu) hy hb.callAt (by rw [hta]; linarith)
     ((hPhi.1.rooted.2 P hPt).mono (fun Q hQ => hsub (hPhi.2 hQ)))
   have haq' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time j)) y q P := by
     obtain ⟨ellq, hcq, heq⟩ := haq
@@ -73,27 +75,32 @@ theorem unanimous_next_cast_supporters_at {K : SA.CommitteeDict sp.n}
     exact ⟨ellx, (Trace.upTo_callAt _).mpr ⟨hit, hcx⟩, he⟩
   have hval := (SA.castAt_spec hr hx ⟨hv'.choose_spec.1, hv'.choose_spec.2⟩).1
   have heP := hun x i ev (hrun.antitone hit hx) hv hs
-  have hheld : SA.HeldBefore e.readPoint ev.msg (sp.ts u + 2 * sp.Δ) := by
-    apply SA.heldBefore_readPoint hr hy hc' (by omega)
-    simpa only [hs] using SA.honest_vote_early_pool_before hS hy hc'.1 hgu ht le_rfl
+  have hheld : SA.HeldBefore R ev.msg (sp.ts u + 2 * sp.Δ) := by
+    apply SA.heldBefore_readPoint_branch hr hy hb' (fun h => by
+      have h' : ev.msg.slot = u + 1 := h.symm.trans hjs
+      omega)
+    simpa only [hs] using SA.honest_vote_early_pool_before hS hy hb'.callAt hgu ht le_rfl
       (fun k hkj t _ => Compose.ac_deadline_le_of_restarts
         (fun r hr hrs => (hrst r (hr.trans hkj) hrs).le) t)
       hrst hx hv' hs (j + 1) (Or.inr rfl)
-  have hsupp := SA.carried_supporter hS.run hy hc' hes hPt hs
+  have hsupp := SA.carried_supporter_branch hS.run hy hb' hjs hPt hs
     ⟨hheld.1, lt_trans hheld.2
       (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (by linarith)))⟩
     ⟨P, hPhi.2 hPt, heP.symm, hPs.le, .refl,
       Or.inr ⟨q, haq', by change tr.time q < _; rw [hta] at hqt; linarith⟩⟩
-    (SA.honest_not_equivocator hS.run hy hc' (hval ▸ hx))
+    (SA.honest_not_equivocator_branch hS.run hy hb' (hval ▸ hx))
   rwa [hval] at hsupp
 
-/-- The receiver's actual next-slot cast clears every older incompatible lock
-before the update, including labels surviving an intervening update. -/
-theorem FrameWindow.older_locks_compatible_at_update_at
+/-- The receiver's next-slot vote branch clears every older incompatible lock before the update,
+including labels surviving an intervening update, at the slot committees `K` of a run from `K`'s
+committee start. The honest members of `K u` support the proposal at the branch's unlock and are
+more than half of `K u`. The receiver need not vote in either slot. -/
+theorem FrameWindow.older_locks_compatible_at_update_at {K : SA.CommitteeDict sp.n}
     {g ΔF b : Time} {u floor : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -107,7 +114,7 @@ theorem FrameWindow.older_locks_compatible_at_update_at
       e.msg.slot = u → e.msg.head = P.root)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k u ell)
-    (hstock : sp.committeeSize = sp.n) :
+    (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ l ∈ (tr.projAC.state y k).locks, l.slot < u →
       ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
         Compatible (tr.HonestBlocksAt H) L P := by
@@ -119,10 +126,10 @@ theorem FrameWindow.older_locks_compatible_at_update_at
   have hnext : sp.ts (u + 1 : Nat) + sp.Δ ≤ tr.time k := by
     rw [hkt]; simp only [SAParams.ts]; push_cast; linarith
   have hkb : tr.time k ≤ b := by rw [hkt, ← hT]; exact hTb
-  have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
+  have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch
     (show 0 ≤ sp.ts (u + 1 : Nat) + sp.Δ by
       have ht : sp.ts u ≤ sp.ts (u + 1 : Nat) := (SA.ts_le_iff sp).2 (by omega)
-      linarith [SA.gbar_nonneg g]) (hnext.trans hkb) hstock
+      linarith [SA.gbar_nonneg g]) (hnext.trans hkb)
   have hslot : sp.slot (sp.ts (u + 1 : Nat) + sp.Δ) = u + 1 := by
     apply SA.slot_of_mem sp (u + 1)
     all_goals simp only [SAParams.ts]; push_cast; linarith
@@ -132,12 +139,10 @@ theorem FrameWindow.older_locks_compatible_at_update_at
     change tr.time r ≤ sp.ts ((sp.slot (sp.ts (u + 1 : Nat) + sp.Δ) : Int) - 1)
     rw [hslot, show ((u + 1 : Nat) : Int) - 1 = u by omega]
     exact (hnr x r (hrun.antitone hrt hx) (Compose.projAC_restartAt.mp hrs)).trans hgu
-  obtain ⟨j, e, ⟨ellj, hc⟩, hs, hjt⟩ := honest_votes_of_joined_before_at hS
+  obtain ⟨j, ellj, R, hb, hjs, hjt⟩ := honest_vote_branches_of_joined_before_at hS
     (by have := (SA.ts_le_iff sp).2 (show (u : Int) ≤ u + 1 by omega); linarith) hjn y
-    (hrun.antitone hnext hy) (SA.mem_full _ _)
-  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg k))
-    (hnc.upTo (tr.time k))).localRun
-  rw [RunTrace.upTo_projAC] at hr
+    (hrun.antitone hnext hy)
+  replace hjs : sp.slot (tr.time j) = u + 1 := by omega
   have hjk : j < k := by
     by_contra hn
     have hm := hrun.time_mono (show k ≤ j by omega)
@@ -146,45 +151,40 @@ theorem FrameWindow.older_locks_compatible_at_update_at
     push_cast at hjt
     simp only [SAParams.ts] at hm
     linarith
-  have hc' : SA.CastAt (tr.projAC.upTo (tr.time k)) y j ellj e :=
-    ⟨(Trace.upTo_callAt _).mpr ⟨hrun.time_mono hjk.le, hc.1⟩, hc.2⟩
-  have hjslot := (SA.castAt_spec hr hy hc').2.1
-  change e.msg.slot = sp.slot (tr.time j) at hjslot
   have hjlo : sp.ts (u + 1 : Nat) ≤ tr.time j :=
-    (SA.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).2 (by rw [← hjslot, hs])
+    (SA.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).2 (by omega)
   have hjlate : sp.ts u + 2 * sp.Δ ≤ tr.time j := by
     simp only [SAParams.ts] at hjlo ⊢; push_cast at hjlo; linarith
   have hjfinite : tr.time j ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by linarith
   have hyj := hrun.antitone (hrun.time_mono hjk.le) hy
   have hshort : sp.ts u + sp.Δ ≤ tr.time j := by linarith
-  have hS0 := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
+  have hS0 := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch
     (show 0 ≤ sp.ts u + sp.Δ by linarith [SA.gbar_nonneg g])
-    (hshort.trans (hrun.time_mono hjk.le |>.trans hkb)) hstock
-  have hvotes := fun x hx => honest_votes_of_joined_before_at hS0 hgu hjoin x hx (SA.mem_full _ _)
+    (hshort.trans (hrun.time_mono hjk.le |>.trans hkb))
+  have hvotes := honest_votes_of_joined_before_at hS0 hgu hjoin
   obtain ⟨hvi, _, _⟩ := hframe.proposal_viable_after_votes_at hrun hnc hsvc hf hnr hgu hTb hz hdes
-    hP hPs hyj hc.1 hjlate hjfinite
+    hP hPs hyj hb.callAt hjlate hjfinite
   obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, a, _, ha, hta⟩ :=
     honestProposalRun_of_proposesAt_at hrun hnc hz hdes hP hPs
   change tr.time a = sp.ts u at hta
   have hza : proposer u ∈ H (tr.time a) :=
     hrun.antitone (by rw [hta]; linarith) (hdes ▸ hz)
-  have hrunF : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot (SA.CommitteeDict.full sp.n)) := by
-    rw [SA.committeeStart_full]; exact hrun
-  have hsupp := unanimous_next_cast_supporters_at hrunF hnc hsvc hawake hf hcatch hnr
-    hmargin hPs hun hza ha hta hyj hc hs hjlate
-    ((hrun.time_mono hjk.le).trans hkb) hvi.1
-    (fun x hx _ => by
-      obtain ⟨i, ev, hv, hes, hit⟩ := hvotes x (hrun.antitone hshort hx)
-      exact ⟨i, ev, hv, hes, hit.trans hshort⟩)
-    (CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock)
-  have hhalf : sp.committeeSize ≤ 2 * (H (tr.time j)).ncard := by
-    have hn : (H (tr.time j)).ncard + (H (tr.time j))ᶜ.ncard = sp.n := by
-      rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-    have hb := hf (tr.time j) (hrun.time_nonneg j) ((hrun.time_mono hjk.le).trans hkb)
-    rw [hstock]; omega
-  exact older_locks_compatible_after_unlock_at hrun hnc hy hc hs hjk hvi.1
-    (fun x hx => Or.inr (hsupp x hx (SA.mem_full _ _)).2) hhalf
+  have hjb := (hrun.time_mono hjk.le).trans hkb
+  have hsupp := unanimous_next_cast_supporters_at hrun hnc hsvc hawake hf hcatch hnr
+    hmargin hPs hun hza ha hta hyj hb hjs hjlate hjb hvi.1
+    (fun x hx hxK => by
+      obtain ⟨i, ev, hv, hes, hit⟩ := hvotes x (hrun.antitone hshort hx) hxK
+      exact ⟨i, ev, hv, hes, hit.trans hshort⟩) hK
+  have hhalf : sp.committeeSize ≤ 2 * (K.committee u ∩ H (tr.time j)).ncard := by
+    have hsplit : (K.committee u ∩ H (tr.time j)).ncard +
+        (K.committee u ∩ (H (tr.time j))ᶜ).ncard = sp.committeeSize := by
+      rw [← hK.facts.hsize u, Set.inter_comm (K.committee u) (H (tr.time j))ᶜ,
+        ← Set.sdiff_eq_compl_inter]
+      exact Set.ncard_inter_add_ncard_sdiff_eq_ncard _ _ (Set.toFinite _)
+    have hcs := hK.cs2 u hgu (by linarith) (tr.time j) (hrun.time_nonneg j) hjb
+    omega
+  exact older_locks_compatible_after_unlock_at hrun hnc hy hb hjs hjk hvi.1
+    (fun x hx => Or.inr (hsupp x hx.2 hx.1).2) hhalf
 
 end Consensus.Goldilocks.Healing.Growing
 
