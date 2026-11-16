@@ -14,6 +14,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.In
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Outputs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalReplay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HealedC4
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationService
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.FGProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.State
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
@@ -62,28 +63,16 @@ private theorem final_store_eq_at (Q : FinalQueryAt S A V) {y : Fin Q.params.n} 
     Trace.upTo_state Q.trace y hle] at h
   exact congrArg Prod.fst h
 
-/-- The validators compromised at any time number fewer than `2q − n`. -/
+/-- The validators compromised at a bounded read time number fewer than `2q − n`. -/
 private theorem final_faults_at
     (Q : FinalQueryAt S A V)
-    {t : Time}
+    {t : Time} (ht : 0 ≤ t)
     (hth : t ≤ Q.run.2.horizon) :
     (Q.keys t)ᶜ.ncard < 2 * Q.params.toParams.fg.q - Q.params.n := by
-  have heq : (Q.keys t)ᶜ = Q.run.2.key ⁻¹' (↑(Q.run.2.faultyAt t) : Set V) := by
-    ext y
-    simp [mem_honestKeysAt_iff S Q.run.2, min_eq_left hth]
-  have hcard : (Q.keys t)ᶜ.ncard = (Q.run.2.faultyAt t).card := by
-    rw [heq, Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
-      (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset]
-  have hpop := Q.healthy.2.1.1
-  change ((Q.run.2.faultyAt Q.run.2.horizon).card : ℚ) <
-    (K S A).params.β * Fintype.card V at hpop
-  rw [goldilocksContract_params_eq] at hpop
-  have h : 3 * (Q.run.2.faultyAt Q.run.2.horizon).card < Fintype.card V := by
-    exact_mod_cast (show (3 : ℚ) * (Q.run.2.faultyAt Q.run.2.horizon).card <
-      Fintype.card V by norm_num [Params.standard] at hpop; linarith only [hpop])
-  have hle := Finset.card_le_card (Q.run.2.faultyAt_mono hth)
+  have hf := healthy_preparation_faults_at Q.run Q.hn
+    (by rw [goldilocksContract_params_eq]; exact le_rfl) le_rfl Q.healthy.2.1 t ht hth
+  change 3 * (Q.keys t)ᶜ.ncard ≤ Fintype.card V - 1 at hf
   change (Q.keys t)ᶜ.ncard < 2 * ((2 * Fintype.card V + 2) / 3) - Fintype.card V
-  rw [hcard]
   have := Q.hn
   omega
 
@@ -217,7 +206,7 @@ theorem final_cache_coverage_at
   have hsy := final_store_eq_at
       { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q ht0 hle hy.1
   have hft := final_faults_at
-    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hth
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q ht0 hth
   have hf : (Q.keys (max (Q.trace.time c) t))ᶜ.ncard < 2 * Q.params.toParams.fg.q - Q.params.n :=
     by rw [max_eq_right hct]; exact hft
   have hsafe := fg.replay_finalized_safety_upTo_at hc0 hlc hx ht0 hle hy.1 hf
