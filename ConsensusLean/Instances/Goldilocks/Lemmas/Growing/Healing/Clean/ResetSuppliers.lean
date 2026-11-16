@@ -6,7 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.G
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transport
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FaultBound
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
@@ -49,9 +49,8 @@ cut.
   comparisons, the fault bound at the voter's cut and the earlier votes (the static argument on
   the prefix through the vote).
 
-The node-layer and seed-layer facts are the proved `carryAt_of_delivered`, `result_writer_at`
-(`Growing/Sleepy/Node/Transport`) and `fault_bound_late_before_at` (`Growing/Healing/FaultBound`).
-The per-cut node facts
+The node-layer and seed-layer facts are the proved `carryAt_of_delivered` and `result_writer_at`
+(`Growing/Sleepy/Node/Transport`). The per-cut node facts
 (`projAC_state_at`, `run_F_mono_at`, `acBlock_prev_at`, `accept_next_at`) are the static ones on
 the prefix through the cut. -/
 
@@ -64,13 +63,15 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
 /-- **CS at a slot committee on the AC projection**: from the reset's cut on, at `t ≤ b`, the
-faulty members of a slot committee from `ḡ` are fewer than its members honest, awake and joined
-at `t` (every validator honest at `t` is awake and joined then, and `committee_cs2_at`). -/
+faulty members at `d ∈ [t, b]` of a slot committee from `ḡ` are fewer than its members honest at
+`d` and awake and joined at `t` (every validator honest at `d` is honest, awake and joined at `t`,
+and `committee_cs2_at`). -/
 theorem faultBoundK_late_at {b : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {s : Nat}
     (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b)
-    {t : Time} (ht : cutZ sp.toParams g ≤ t) (htb : t ≤ b) :
-    SA.FaultBoundK (Generic.dictOfTime sp cm) s tr.projAC (H t) t := by
+    {t d : Time} (ht : cutZ sp.toParams g ≤ t) (htd : t ≤ d) (hdb : d ≤ b) :
+    SA.FaultBoundK (Generic.dictOfTime sp cm) s tr.projAC (H d) t := by
+  have htb := htd.trans hdb
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hgt : gbar g ≤ t := by have := lt_cutZ sp g; linarith
   have ht0 : 0 ≤ t := (gbar_nonneg g).trans hgt
@@ -78,11 +79,12 @@ theorem faultBoundK_late_at {b : Time} {cm : Time → Finset (Fin sp.n)} {βK : 
     have h := (SA.ts_le_iff_le_slot sp ht0 ((sp.slot (gbar g) + 3 : Nat) : Int)).mp
       ((cutZ_eq sp g) ▸ ht)
     exact_mod_cast h
-  have hsub : (Generic.dictOfTime sp cm).committee s ∩ H t ⊆
+  have hsub : (Generic.dictOfTime sp cm).committee s ∩ H d ⊆
       (Generic.dictOfTime sp cm).committee s ∩
-        {y | y ∈ H t ∧ tr.projAC.awake y t ∧ SA.JoinedAt tr.projAC y t} := by
-    rintro z ⟨hzK, hz⟩
-    refine ⟨hzK, hz, hp.awake z t hz hgt htb, ?_⟩
+        {y | y ∈ H d ∧ tr.projAC.awake y t ∧ SA.JoinedAt tr.projAC y t} := by
+    rintro z ⟨hzK, hzd⟩
+    have hz := hp.run.antitone htd hzd
+    refine ⟨hzK, hzd, hp.awake z t hz hgt htb, ?_⟩
     have hj : tr.JoinedAt z t := fun k hk hkt => by
       change 0 < sp.slot t ∧ tr.time k ≤ sp.toParams.slotTime (sp.slot t - 1)
       have he : sp.toParams.slotTime (sp.slot t - 1) = sp.ts ((sp.slot t - 1 : Nat) : Int) :=
@@ -99,9 +101,9 @@ theorem faultBoundK_late_at {b : Time} {cm : Time → Finset (Fin sp.n)} {βK : 
     refine hjp.mp hjpre k ?_ hkt
     rw [RunTrace.upTo_projAC]
     exact ⟨ℓ, (Trace.upTo_callAt _).mpr ⟨hkt, hc⟩, hr⟩
-  have hf := hp.committee_cs2_at hgs hsb ht0 htb
-  have hsplit : ((Generic.dictOfTime sp cm).committee s ∩ H t).ncard +
-      ((Generic.dictOfTime sp cm).committee s ∩ (H t)ᶜ).ncard = sp.committeeSize := by
+  have hf := hp.committee_cs2_at hgs hsb (ht0.trans htd) hdb
+  have hsplit : ((Generic.dictOfTime sp cm).committee s ∩ H d).ncard +
+      ((Generic.dictOfTime sp cm).committee s ∩ (H d)ᶜ).ncard = sp.committeeSize := by
     rw [← hp.committeeFacts.hsize s]
     exact Set.ncard_inter_add_ncard_sdiff_eq_ncard _ _ (Set.toFinite _)
   unfold SA.FaultBoundK

@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FaultBound
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
@@ -22,8 +21,7 @@ The AC catch-up window at the reset on the prefix through a read time
 The finite reset service on the prefix (`ResetService.upTo_at`), the synchrony and catch windows
 it gives (`sync_window_at_reset_at`, `catch_window_at_gbar_at`) and the healthy AC base
 (`healthy_base_of_reset_catch_before_at`) are proved in `Healthy/PrefixBase`, re-exported here.
-The restart bound and the late fault bound read each node's honesty at its own time
-(`restart_le_before_at`, `fault_bound_late_before_at`). -/
+The restart bound reads each node's honesty at its own time (`restart_le_before_at`). -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 

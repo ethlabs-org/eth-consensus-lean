@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.ResetSuppliers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FaultBound
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Agree
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC

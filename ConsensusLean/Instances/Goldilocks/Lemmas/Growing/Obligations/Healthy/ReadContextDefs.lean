@@ -6,39 +6,45 @@ public section
 
 /-! # The read context of a healthy reader under growing faults (definitions)
 
-The read point of a reader after the repair window, with the finite service it reads under: the
-read context of healed safety, indexed by the read point `(n, t)` itself (the
-reader's state before trace cut `n`, read at its stored clock `t`). The reader is honest, awake
-and joined at `t`; the service windows are the static ones of the validators honest at `t` on the
-prefix through `t`; the fault bound is charged at `t` against the validators awake and joined at
-the latest view's voting time. Definitions only. -/
+The read point of a reader strictly after a repair opening's update (`RepairReadContext`), with
+the finite service it reads under: the read context of healed safety, indexed by the read point
+`(n, t)` itself (the reader's state before trace cut `n`, read at its stored clock `t`). The
+reader is honest, awake and joined at `t`; the service windows are the static ones of the
+validators honest at `t` on the prefix through `t`; the latest view's slot committee's fault bound
+is charged at `t` against its members awake and joined at the latest view's voting time.
+Definitions only. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
 open AsChainShape Simulation Blocks Shape
 
-variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
+open SA (SAParams ReplayOrder Payload)
 
-/-- The read context of `y` at the read point `(n, t)` after the repair window of `D`. -/
-structure HealthyReadContextAt (Q : HealthyPreparationQueryAt S A V)
-    (D : HealthyRepairScheduleAt S A V Q) (y : Fin Q.params.n) (n : Nat) (t : Time) where
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g b : Time}
+  {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+
+/-- The read context of `y` at the read point `(n, t)` strictly after the update of the opening
+`O` of the repair schedule `D`. -/
+structure RepairReadContext (D : RepairSchedule tr H proposer dg g b cm βK) (O : RepairOpening D)
+    (y : Fin sp.n) (n : Nat) (t : Time) where
   label : Nat
   time_nonneg : 0 ≤ t
-  time_bound : t ≤ Q.bound
-  repaired : D.query + (4 * (Q.index : Time) + 6) * Q.params.Δ < t
-  readPoint : Regimes.ReadPoint Q.trace n t
-  honest : y ∈ Q.keys t
-  awake : Q.trace.awake y t
-  joined : Q.trace.JoinedAt y t
-  latest : (label : Int) = (SA.latestView Q.params (Q.trace.state y n).ac
-    (Node.frame (Q.trace.state y n)) t).2
-  reset_le : D.resetTime ≤ Q.params.ts label
-  label_le : Q.params.ts label + Q.params.Δ ≤ t
-  sync : SyncACWindowBefore (Q.keys t) ((Q.trace.upTo t).HonestBlocks (Q.keys t)) D.resetTime t
-    (Q.trace.projAC.upTo t)
-  catchup : CatchACWindowBefore (Q.trace.projAC.upTo t) (Q.keys t)
-    ((Q.trace.upTo t).HonestBlocks (Q.keys t)) D.resetTime (2 * Q.params.Δ) t
-  fault : Q.trace.FaultBoundAt Q.keys (Q.params.ts label + Q.params.Δ) t
+  time_bound : t ≤ b
+  repaired : sp.ts O.slot + 6 * sp.Δ < t
+  readPoint : Regimes.ReadPoint tr n t
+  honest : y ∈ H t
+  awake : tr.awake y t
+  joined : tr.JoinedAt y t
+  latest : (label : Int) = (SA.latestView sp (tr.state y n).ac (Node.frame (tr.state y n)) t).2
+  reset_le : D.resetTime ≤ sp.ts label
+  label_le : sp.ts label + sp.Δ ≤ t
+  sync : SyncACWindowBefore (H t) ((tr.upTo t).HonestBlocks (H t)) D.resetTime t
+    (tr.projAC.upTo t)
+  catchup : CatchACWindowBefore (tr.projAC.upTo t) (H t) ((tr.upTo t).HonestBlocks (H t))
+    D.resetTime (2 * sp.Δ) t
+  fault : SA.FaultBoundK (Generic.dictOfTime sp cm) label tr.projAC (H t) (sp.ts label + sp.Δ)
 
 end Consensus.Goldilocks.Obligations.Growing
 

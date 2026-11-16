@@ -80,14 +80,14 @@ theorem high_vote_extends_of_domain_at
       (SA.CommitteeTAt.upTo hp.run.antitone hTK) hp.committeeFacts.hsize hx hfl hBD' hy hc hs
       (reset_syncACAt hp hgj)
       (first_carry_of_finalized_anc_at hp ho ⟨ellx, D, hcx, hfl, hBD⟩ hy hc hkb hs hF)
-      (faultBoundK_late_at hp (hgsl le_rfl) (hsb (by omega)) hck hkb)
+      (faultBoundK_late_at hp (hgsl le_rfl) (hsb (by omega)) hck le_rfl hkb)
       (hp.committee_cs2_at (hgsl (by omega)) (hsb (by omega)) (hp.run.time_nonneg k) hkb)
       (Or.inl (by simpa only [← hs] using hvi)) (by simpa only [hs] using he)
   · obtain ⟨m, hm⟩ : ∃ m, e.msg.slot = m + 1 := ⟨e.msg.slot - 1, by omega⟩
     have hjm : j < m := by omega
     refine SA.Growing.next_transfer_from hac _ hPK hTK
       hp.committeeFacts.hsize hy hc hm ?_ ?_ ?_
-      (faultBoundK_late_at hp (hgsl (by omega)) (hsb (by omega)) hck hkb)
+      (faultBoundK_late_at hp (hgsl (by omega)) (hsb (by omega)) hck le_rfl hkb)
       (hp.committee_cs2_at (hgsl (by omega)) (hsb (by omega)) (hp.run.time_nonneg k) hkb)
       (Or.inl (by simpa only [← hm] using hvi)) ?_
     · intro z q e' hz hv hs'

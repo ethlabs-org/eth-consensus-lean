@@ -240,7 +240,8 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr)
       rw [show r + sp.k - 1 + 1 = r + sp.k by omega]; exact hdt₁.trans ht₁u)
     hrp₁ hrp hj₁j (by rw [hk₁]; exact hut) le_rfl htb hyk₁ hy.1
     (let ⟨c, hc, h⟩ := hcall₁; ⟨c, by omega, h⟩)
-  rw [seeded_ready_read_record_at hrun hnc hseed hsvc hB hinv hrp hdt₁ (by linarith) htb hy]
+  rw [seeded_ready_read_record_at hrun hnc hseed hsvc hB hS.stock hinv hrp hdt₁ (by linarith) htb
+    hy]
   exact hPeff.trans hmono
 
 end Consensus.Goldilocks.Compose.Growing

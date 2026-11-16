@@ -352,8 +352,9 @@ theorem handover_seed_cover_at
             ((SA.lookup (Node.frame (Q.trace.state y n))
               (Q.trace.state y n).ac.latestConfirmed).getD (Q.trace.state y n).fg.F) := by
   obtain ⟨W, Dprep, hlate⟩ := healthy_preparation_initialize_late_at S A V Q h0 hb hp
-  obtain ⟨D, -, -, hDq⟩ := healthy_repair_schedule_of_preparation_at S A V Q W Dprep
-  obtain ⟨O, hrepair⟩ := healthy_bounded_repairing_opening_at
+  obtain ⟨D, -, -, hDq⟩ := healthy_repair_schedule_of_preparation_at
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q W Dprep
+  obtain ⟨O⟩ := healthy_bounded_repairing_opening_at
       { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hb hp D
   have hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
       (runProposer { S with vote := stock } Q.run.2 Q.hn)
@@ -399,14 +400,14 @@ theorem handover_seed_cover_at
         ((SA.lookup (Node.frame (Q.trace.state y n)) (Q.trace.state y n).ac.latestConfirmed).getD
           (Q.trace.state y n).fg.F) := by
     intro y n t ht htb hy hrp
-    have hcover := healthy_current_record_sources_before_now_at
-        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hrepair hrp htb hy
-      (by linarith)
-    rw [healthyRecordCoverAt_iff, D.cleanLabel_eq] at hcover
+    have hcover := record_sources_before_now_at D.toRepairSchedule O.toRepairOpening hrp htb hy
+      (by linarith [O.bounded])
+    rw [recordCover_iff, D.cleanLabel_eq] at hcover
     rw [Compose.Growing.healedRecordCoverAt_iff]
     rcases hcover with h | ⟨x, q, s, C, CV, hx, hqn, hqt, hs, hC, hRC⟩
     · exact Or.inl h
-    · exact Or.inr ⟨x, q, s, C, CV, hx, hqn, hqt, by omega, hC, hRC⟩
+    · have hs' : Healing.cleanLabel Q.params D.resetTime + 2 * Q.params.k + 1 ≤ s := hs
+      exact Or.inr ⟨x, q, s, C, CV, hx, hqn, hqt, by omega, hC, hRC⟩
   have hdr : Q.params.ts (Healing.cleanLabel Q.params D.resetTime + Q.params.k + 2 +
       Q.params.k : Nat) = Healing.drainTime Q.params D.resetTime := by
     rw [Healing.drainTime_eq, Healing.cleanLabel_eq]

@@ -94,7 +94,8 @@ theorem fast_source_votes_of_domain_before_at {cm : Time → Finset (Fin sp.n)} 
       (fun t => SA.CommitteePAt.upTo hrun.time_mono hrun.antitone hPK t)
       (SA.CommitteeTAt.upTo hrun.antitone hTK) hp.committeeFacts.hsize hx hfast .refl hy hcast
       hfirst (KernelProof.reset_syncACAt hp hgs) carry
-      (KernelProof.faultBoundK_late_at hp (hgsl le_rfl) (hsi.trans hib) (hts.trans hsi) hib)
+      (KernelProof.faultBoundK_late_at hp (hgsl le_rfl) (hsi.trans hib) (hts.trans hsi) le_rfl
+        hib)
       (hp.committee_cs2_at (hgsl (by omega)) (htime.trans hib) (hrun.time_nonneg i) hib)
       (by rw [← hfirst]; exact Or.inl hv)
       (fun z q hq hz e' he hslot => hprior z q hz hq e' he (by omega))
@@ -119,7 +120,8 @@ theorem fast_source_votes_of_domain_before_at {cm : Time → Finset (Fin sp.n)} 
       hp.committeeFacts.hsize hy hcast hm hall
       (hp.half_committee_at hmts (t := tr.time i) (by linarith only [htime, hts1, hΔ]) hib)
       (KernelProof.honest_votes_carry_reset_at hp hy hcast hm hmts hall hFB)
-      (KernelProof.faultBoundK_late_at hp (hgsl (by omega)) (hmi.trans hib) (hmts.trans hmi) hib)
+      (KernelProof.faultBoundK_late_at hp (hgsl (by omega)) (hmi.trans hib) (hmts.trans hmi)
+        le_rfl hib)
       (hp.committee_cs2_at (hgsl (by omega)) (htime.trans hib) (hrun.time_nonneg i) hib)
       (by rw [← hm]; exact Or.inl hv)
       (fun z q hq hz e' he hslot => hprior z q hz hq e' he (by omega))

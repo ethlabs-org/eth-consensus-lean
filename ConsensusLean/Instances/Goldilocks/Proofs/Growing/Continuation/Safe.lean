@@ -127,7 +127,7 @@ theorem continued_safe_growing (hc : GoldilocksCorrect) (S : Setup) (A : Contrac
     change 18 * E.ΔAC ≤ _
     rw [hcD]
     linarith
-  have hsafe := Compose.Growing.continued_safe_on_at hrun hnc hseed hsvc hB hinv' hdt
+  have hsafe := Compose.Growing.continued_safe_on_at hrun hnc hseed hsvc hB rfl hinv' hdt
     (t₀ := Sy.heal K cap i gst ⟨E, rho⟩ - 1) (by linarith) hc1
   have heng := Obligations.Growing.continued_safe_engine_at S rho hn hv hnc
     (by rw [hcD]; linarith) hsafe

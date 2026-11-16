@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.D
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.ResetSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FaultBound
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
@@ -129,7 +129,7 @@ theorem late_result_prefix_votes_before_at
       hp.committeeFacts.hsize hy hcast hm hall
       (hp.half_committee_at hmts (t := tr.time i) (by linarith only [htime, hts1, hΔ]) hib)
       (honest_votes_carry_reset_at hp hy hcast hm hmts hall hFB)
-      (faultBoundK_late_at hp (hgsl hsm.le) (hmi.trans hib) (hmts.trans hmi) hib)
+      (faultBoundK_late_at hp (hgsl hsm.le) (hmi.trans hib) (hmts.trans hmi) le_rfl hib)
       (hp.committee_cs2_at (hgsl (by omega)) (htime.trans hib) hd hib)
       (by rw [← hm]; exact Or.inl hv)
       (fun z q hq hz e' he hslot => hprior z q e' hq

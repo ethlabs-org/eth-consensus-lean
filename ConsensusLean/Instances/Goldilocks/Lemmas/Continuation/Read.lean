@@ -355,7 +355,8 @@ theorem seeded_stale_record_votes_at (hrun : Growing.GoldilocksRun proposer dg H
 by the record when the frame holds it, else `Σ.F`.
 
 The latest view at `t` is a label `L ≥ r + k − 1` with `t_L + Δ ≤ t < t_L + 6Δ`; the reset's
-windows from `ḡ` and the slot fault bound give the head certificate
+windows from `ḡ` and the slot fault bound of the full committee (`hstock`) give the head
+certificate
 (`read_eq_record_of_current_votes_at`). The live lock blocks and the record's block are on the
 healed chain (`SeededInvariant.locks`, `effective_record_on_healed_chain_at`), so the live locks
 form a chain and every live candidate is compatible with the record. The record's block `R`, not
@@ -372,7 +373,7 @@ theorem seeded_ready_read_record_at (hrun : Growing.GoldilocksRun proposer dg H 
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {t₁ b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
-    (hinv : SeededInvariant tr H g r (r + sp.k - 1) t₁ b)
+    (hstock : sp.committeeSize = sp.n) (hinv : SeededInvariant tr H g r (r + sp.k - 1) t₁ b)
     {y : Fin sp.n} {j : Nat} {t : Time} (hrp : Regimes.ReadPoint tr j t)
     (hdt₁ : sp.ts (r + sp.k : Nat) ≤ t₁) (ht₁₈ : t₁ + 8 * sp.Δ ≤ t) (htb : t ≤ b)
     (hready : Regimes.Growing.ReadyAt tr H (Regimes.catchUp sp) y t) :
@@ -407,7 +408,7 @@ theorem seeded_ready_read_record_at (hrun : Growing.GoldilocksRun proposer dg H 
     exact ⟨hw.1, fun k hk hkt => hj k ((RunTrace.upTo_restartAt tr).2 ⟨hkt, hk⟩) hkt⟩
   have hsync := Healing.Growing.sync_window_at_reset_at hrun hsvc (SA.le_gbar g) ht0
   have hcatch := Healing.Growing.catch_window_at_gbar_at hrun hseed.catchRun ht0
-  have hfault := hB.slot L t hrL hLt htb hL6.le
+  have hfault := (CommitteeBoundsFrom.of_full hrun hB).slotK L t hrL hLt htb hL6.le
   have hU := honestBlocksAt_coherent hrun hnc
   have hrd : ∀ m ≤ j, ∀ k < m, tr.time k ≤ t := fun m hm k hk => hrp.1 k (by omega)
   have hst : ∀ m ≤ j, (tr.upTo t).state y m = tr.state y m :=
@@ -432,7 +433,7 @@ theorem seeded_ready_read_record_at (hrun : Growing.GoldilocksRun proposer dg H 
     hcompΦ X Y hX.1 hY.1 (hlocks X hX) (hlocks Y hY)
   have hanc := SA.anc_getAnchor hΦ hlive
   refine Obligations.Growing.read_eq_record_of_current_votes_at hrun hnc ht0 hy hrp hw hj hsync
-    hcatch hL hga (fun R hR => ?_) hLt hfault
+    hcatch hL hga (fun R hR => ?_) (CommitteeFacts.of_full hrun hnc hstock) hLt hfault
   obtain ⟨hRm, -⟩ := SA.lookup_eq_some hR
   have hRc : OnHealedChain tr H g r (r + sp.k - 1) R b := by
     have h := effective_record_on_healed_chain_at hinv ht₁ htb hy hrp hcallj
@@ -563,7 +564,7 @@ theorem continued_safe_on_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {t₁ t₀ b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
-    (hinv : SeededInvariant tr H g r (r + sp.k - 1) t₁ b)
+    (hstock : sp.committeeSize = sp.n) (hinv : SeededInvariant tr H g r (r + sp.k - 1) t₁ b)
     (hdt₁ : sp.ts (r + sp.k : Nat) ≤ t₁) (ht₁₈ : t₁ + 8 * sp.Δ ≤ t₀) {c : Time}
     (hc : Regimes.catchUp sp ≤ c) :
     Regimes.Growing.ReadySafeOn tr H c t₀ b := by
@@ -576,7 +577,7 @@ theorem continued_safe_on_at (hrun : Growing.GoldilocksRun proposer dg H tr)
       Regimes.Growing.ReadyAt tr H c y t → Regimes.readAfter tr y j t =
         (SA.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed).getD
           (tr.state y j).fg.F := fun hrp ht htb hready =>
-    seeded_ready_read_record_at hrun hnc hseed hsvc hB hinv hrp hdt₁ (ht₁₈.trans ht) htb
+    seeded_ready_read_record_at hrun hnc hseed hsvc hB hstock hinv hrp hdt₁ (ht₁₈.trans ht) htb
       (readyAt_of_le hc hready)
   refine ⟨fun y z i j t t' hi hj _ _ ht htb ht' htb' hy hz => ?_,
     fun y i j t t' hi hj _ _ hij htt ht htb hy hy' => ?_⟩

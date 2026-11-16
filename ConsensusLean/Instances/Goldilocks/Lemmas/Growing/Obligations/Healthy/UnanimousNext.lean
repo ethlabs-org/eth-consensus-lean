@@ -169,7 +169,7 @@ private theorem next_fault_bound {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     have := (SA.ts_le_iff sp).1 hR
     push_cast at this
     omega
-  exact KernelProof.faultBoundK_late_at hp (by linarith) (by linarith) (by linarith) hib
+  exact KernelProof.faultBoundK_late_at hp (by linarith) (by linarith) (by linarith) le_rfl hib
 
 /-- The reset premises put `P` in every slot-`(u+1)` frozen viable tree. -/
 theorem unanimous_next_vote_viable_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}

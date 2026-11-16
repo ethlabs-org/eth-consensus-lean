@@ -20,12 +20,10 @@ public section
 
 /-! # The repairing opening of a healed-safety query under growing faults
 
-* `healthy_schedule_catch_at` (proved in `Healthy/HealedSafetyConditional`): the query's catch-up
-  from its partial synchrony and awake honest nodes up to its bound;
-* `healthy_bounded_repairing_opening_at`: the progress recurrence on `[ready, heal]` supplies an
-  opening, a proposal of a proposer ready at its slot start and still honest `Δ` later, within the
-  repair window; every receiver ready at its update is then repaired
-  (`healthy_receiver_repair_of_opening_at`). -/
+`healthy_bounded_repairing_opening_at`: the progress recurrence on `[ready, heal]` supplies an
+opening, a proposal of a proposer ready at its slot start and still honest `Δ` later, within the
+repair window. Every receiver ready at its update is then repaired
+(`receiver_repair_of_opening_at`). -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
@@ -48,8 +46,8 @@ private theorem proposal_accepted_at {sp : SA.SAParams}
   exact ((RunTrace.upTo_acceptAt tr).1 h).2
 
 /-- **The repairing opening**: the progress recurrence on `[ready, heal]` supplies an actual
-opening of a proposer ready at its slot start and still honest `Δ` later; finite catch and the
-operational selection then repair every receiver ready at its update. -/
+opening of a proposer ready at its slot start and still honest `Δ` later, within the progress
+window after the schedule's query. -/
 theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A V)
     (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog
@@ -57,7 +55,7 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
       (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
     (D : HealthyRepairScheduleAt S A V Q) :
-    ∃ O : HealthyRepairOpeningAt S A V Q D, HealthyReceiverRepairAt S A V Q D O := by
+    Nonempty (HealthyRepairOpeningAt S A V Q D) := by
   classical
   have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
   have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
@@ -70,7 +68,7 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
       Model.sysExternal, System.cDur, System.pt, Sys, Model.sysOf, Model.Run.point] using hp
   have hq0 : 0 ≤ D.query := (le_max_right _ _).trans ((le_max_right _ _).trans
     ((le_max_right _ _).trans ((le_max_right _ _).trans D.lower)))
-  have hq : max Q.ready 0 ≤ D.query := max_le ((le_max_left _ _).trans D.lower) hq0
+  have hq : max Q.ready 0 ≤ D.query := max_le D.ready_le hq0
   have hd := Q.params.toParams.hΔ
   have hwin : D.query + (Q.index : Time) * (4 * Q.params.Δ) ≤ Q.heal := by
     linarith only [D.reserve, hd]
@@ -124,7 +122,7 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
     apply max_le_max_left
     have : Regimes.catchUp Q.params ≤
         (Sys (goldilocks S) V).cDur (K S A) Q.run := by
-      simpa only [Regimes.catchUp] using D.duration_bound
+      simpa only [Regimes.catchUp, D.catchUp_eq] using D.duration_bound
     linarith only [this]
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
@@ -140,10 +138,11 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
     exact_mod_cast he
   have hpk : runProposer S Q.run.2 Q.hn s ∈ Q.keys (Q.trace.time k) := by
     rw [ht]; exact hnode.1
-  let O : HealthyRepairOpeningAt S A V Q D :=
-    ⟨s, k, P, hlo, hbound, hold, hlabel, hP, proposal_accepted_at hrun hnc hpk hP, ht, hnode,
-      hheld⟩
-  exact ⟨O, healthy_receiver_repair_of_opening_at S A V Q hb D O⟩
+  have hservice : Q.params.ts s + 6 * Q.params.Δ ≤ Q.bound := by
+    linarith only [hbound, D.reserve, hb]
+  exact ⟨{ toRepairOpening := ⟨s, k, P, hlo, hservice, hold, hlabel, hP,
+             proposal_accepted_at hrun hnc hpk hP, ht, hheld⟩
+           bounded := hbound }⟩
 
 end Consensus.Goldilocks.Obligations.Growing
 

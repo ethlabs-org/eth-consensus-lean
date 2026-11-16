@@ -52,26 +52,20 @@ theorem healthy_cut_tips_comparable_at
     Anc (Q.trace.HonestBlocksAt Q.keys) (C u i) (C v j) ∨
       Anc (Q.trace.HonestBlocksAt Q.keys) (C v j) (C u i) := by
   obtain ⟨D⟩ := healthy_repair_schedule_at S A V Q h0 hb hp
-  obtain ⟨O, hr⟩ := healthy_bounded_repairing_opening_at
+  obtain ⟨O⟩ := healthy_bounded_repairing_opening_at
       { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hb hp D
   obtain ⟨Cu⟩ := healthy_current_read_context_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D hi hu hub
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hi hu hub
   obtain ⟨Cv⟩ := healthy_current_read_context_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D hj hv hvb
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hj hv hvb
   dsimp only
-  rw [healthy_current_record_read_at S A V Q hb hp D O hr hi hu hub,
-    healthy_current_record_read_at S A V Q hb hp D O hr hj hv hvb]
-  exact healthy_current_sources_compatible_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D Cu.readPoint
-      Cu.time_bound Cu.honest
-    Cv.readPoint Cv.time_bound Cv.honest
-    (healthy_current_record_sources_before_now_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hr
-      Cu.readPoint Cu.time_bound
+  rw [healthy_current_record_read_at S A V Q D O hi hu hub,
+    healthy_current_record_read_at S A V Q D O hj hv hvb]
+  exact healthy_current_sources_compatible_at D.toRepairSchedule Cu.time_nonneg Cu.readPoint
+    Cu.time_bound Cu.honest Cv.time_nonneg Cv.readPoint Cv.time_bound Cv.honest
+    (record_sources_before_now_at D.toRepairSchedule O.toRepairOpening Cu.readPoint Cu.time_bound
       Cu.honest Cu.repaired)
-    (healthy_current_record_sources_before_now_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hr
-      Cv.readPoint Cv.time_bound
+    (record_sources_before_now_at D.toRepairSchedule O.toRepairOpening Cv.readPoint Cv.time_bound
       Cv.honest Cv.repaired)
 
 /-- **Temporal ancestry of the read tips** of one reader ready at two cuts from the heal point,
@@ -102,27 +96,22 @@ theorem healthy_cut_tips_ancestor_at
           (lastOwn { S with vote := stock } Q.run.2 v j))
             (stateAt { S with vote := stock } Q.run.2 Q.hn v j).now) := by
   obtain ⟨D⟩ := healthy_repair_schedule_at S A V Q h0 hb hp
-  obtain ⟨O, hr⟩ := healthy_bounded_repairing_opening_at
+  obtain ⟨O⟩ := healthy_bounded_repairing_opening_at
       { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hb hp D
   have hnn := cutMap_mono { S with vote := stock } Q.run.2 Q.hn
     (lastOwn_mono { S with vote := stock } Q.run.2 v hij)
   have htt := now_mono { S with vote := stock } Q.run.2 Q.hn Q.valid v hij
   obtain ⟨Ci⟩ := healthy_current_read_context_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D hi hvi (htt.trans hjb)
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hi hvi
+      (htt.trans hjb)
   obtain ⟨Cj⟩ := healthy_current_read_context_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D hj hvj hjb
-  rw [healthy_current_record_read_at S A V Q hb hp D O hr hi hvi (htt.trans hjb),
-    healthy_current_record_read_at S A V Q hb hp D O hr hj hvj hjb]
-  exact effective_record_of_interval_at
-    (simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid)
-    (noCollRun_simTraceAt { S with vote := stock } Q.run.2 Q.hn Q.valid Q.noCollision)
-    Cj.time_nonneg
-        Cj.readPoint.1
-    Cj.honest hnn
-    (healthy_current_record_interval_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hb D O hr Ci.readPoint
-      Cj.readPoint hnn htt
-      Cj.time_bound Cj.honest Ci.repaired) .refl
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hj hvj hjb
+  rw [healthy_current_record_read_at S A V Q D O hi hvi (htt.trans hjb),
+    healthy_current_record_read_at S A V Q D O hj hvj hjb]
+  exact effective_record_of_interval_at D.reset.run D.reset.noColl Cj.time_nonneg
+    Cj.readPoint.1 Cj.honest hnn
+    (healthy_current_record_interval_at D.toRepairSchedule O.toRepairOpening Ci.readPoint
+      Cj.readPoint htt Cj.time_bound Cj.honest Ci.repaired) .refl
 
 end Consensus.Goldilocks.Obligations.Growing
 

@@ -36,12 +36,12 @@ honest (`HonestBlocksAt`). The pure SA lemmas `result_label_lt_latest_of_time` a
 * `read_eq_record_of_current_votes_at`, `read_source_of_recent_result_at`: whole-record read
   equality at a read point, and the recent-result source arm it consumes;
 * `tips_comparable_of_origin_witnesses_at`;
-* `healthy_query_call_time_le_at`; `healthy_schedule_catch_at`: the catch-up of a scheduled query;
+* `healthy_query_call_time_le_at`;
 * `healthy_repair_schedule_of_reset_at`, `healthy_repair_schedule_of_preparation_at`,
-  `healthy_repair_schedule_at`: the finite repair schedule;
-* `healthy_receiver_repair_of_opening_at`: the receiver repair at an operational opening;
-* `healthy_current_record_sources_before_now_at`: the record cover at a read point after the
-  repair. -/
+  `healthy_repair_schedule_at`: the finite repair schedule of a query;
+* on any trace with a repair schedule: `repair_opening_timing`, `receiver_repair_of_opening_at`
+  (every opening repairs the receivers ready at its update) and `record_sources_before_now_at`
+  (the record cover at a read point after the opening's update). -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
@@ -50,13 +50,14 @@ open Blocks Shape
 /-- **Whole-record equality at a read point**, under growing faults. A reader honest, awake and
 joined at its read time `t`, with the prefix service through `t`, a record whose live-candidate
 compatibility holds and whose source is the anchor or a viable block extended by every vote of
-label `L` by `t` of a node honest at its vote, and the fault bound at `t_L + Δ ≤ t`: the read is
-the record. -/
+label `L` by `t` of a node honest at its vote, and the slot-`L` committee's fault bound charged
+at `t`, with awake and joined members at `t_L + Δ ≤ t`: the read is the record. -/
 theorem read_eq_record_of_current_votes_at
     {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
     {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {a : Time}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hy : y ∈ H t)
     (hrp : Regimes.ReadPoint tr i t) (hw : tr.awake y t) (hj : tr.JoinedAt y t)
@@ -76,7 +77,8 @@ theorem read_eq_record_of_current_votes_at
         (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
           ∀ z q e, Compose.Growing.HVoteAt tr H z q e → tr.time q ≤ t → e.msg.slot = L →
             SA.VoteExtends (tr.HonestBlocksAt H) e.msg R)))
-    (hLt : sp.ts L + sp.Δ ≤ t) (hfault : tr.FaultBoundAt H (sp.ts L + sp.Δ) t) :
+    {K : SA.CommitteeDict sp.n} (hKB : Compose.Growing.CommitteeFacts tr H K)
+    (hLt : sp.ts L + sp.Δ ≤ t) (hfb : SA.FaultBoundK K L tr.projAC (H t) (sp.ts L + sp.Δ)) :
     Regimes.readAfter tr y i t =
       (SA.lookup (Node.frame (tr.state y i))
         (tr.state y i).ac.latestConfirmed).getD (tr.state y i).fg.F := by
@@ -90,7 +92,7 @@ theorem read_eq_record_of_current_votes_at
     obtain ⟨hcomp, hsource⟩ := hrecord R hl
     have hanchor := Compose.anchor_compatible_of_live_candidates hΦ hcomp
     obtain ⟨hc, hs⟩ := Compose.Growing.read_head_support_of_target_votes_at hrun hnc ht0 hy
-      hrp.1 hrp.2 hw hj hsync hcatch hL ha hR hanchor hsource hLt hfault
+      hrp.1 hrp.2 hw hj hsync hcatch hL ha hR hanchor hsource hKB hLt hfb
     exact SA.acConfirmed_eq hΦ hR hRr (SA.anc_acHead hΦ hR hc hs)
 
 /-- The source arm consumed by `read_eq_record_of_current_votes_at`: either actual anchor
@@ -134,21 +136,6 @@ theorem read_source_of_recent_result_at
 variable (S : Setup) (A : ContractAssumptions S) (V : Type)
   [Fintype V] [DecidableEq V]
 
-/-- Actual tips below compatible origin witnesses are comparable, in the blocks held while
-honest. -/
-theorem tips_comparable_of_origin_witnesses_at (Q : HealthyPreparationQueryAt S A V)
-    {R R' C C' : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
-    (hR : Anc (Q.trace.HonestBlocksAt Q.keys) R C)
-    (hR' : Anc (Q.trace.HonestBlocksAt Q.keys) R' C')
-    (hCC : Goldilocks.Compatible (Q.trace.HonestBlocksAt Q.keys) C C') :
-    Goldilocks.Compatible (Q.trace.HonestBlocksAt Q.keys) R R' := by
-  have hU := Compose.Growing.honest_blocks_coherent
-    (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid)
-    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision)
-  rcases hCC with h | h
-  · exact Anc.total hU (hR.trans h) hR'
-  · exact Anc.total hU hR (hR'.trans h)
-
 /-- Every call of the canonical trace of a query is within the engine horizon. -/
 theorem healthy_query_call_time_le_at (Q : HealthyPreparationQueryAt S A V)
     {y : Fin Q.params.n} {j : Nat} (hj : Q.trace.IsCall y j) :
@@ -157,29 +144,18 @@ theorem healthy_query_call_time_le_at (Q : HealthyPreparationQueryAt S A V)
   exact simTraceAt_labelled_time_le S Q.run.2 Q.hn Q.valid
     (by rw [hlabel]; simp)
 
-/-- The catch-up of a query with a repair schedule: its reset, after the snapshot `c_z > ḡ + 8Δ`,
-is within the query's bound. -/
-theorem healthy_schedule_catch_at (Q : HealthyPreparationQueryAt S A V)
-    (D : HealthyRepairScheduleAt S A V Q) :
-    Healing.Growing.CatchRun Q.trace Q.keys Q.gst (2 * Q.params.Δ) :=
-  healthy_repair_catch_at S A V Q (by
-    linarith [D.reset.cutZ_lt_reset_at, D.reset.reset_le, Healing.lt_cutZ Q.params Q.gst,
-      Q.params.toParams.hΔ])
-
 /-- A supplied finite reset and its strict joint reserve suffice for the canonical repair
 schedule. Neither the reset nor the reserve is produced here. -/
 theorem healthy_repair_schedule_of_reset_at
-    (Q : HealthyPreparationQueryAt
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V) {ΔF a : Time}
+    (Q : HealthyPreparationQueryAt S A V) {ΔF a : Time}
     (hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
-      (runProposer { S with vote := stock } Q.run.2 Q.hn)
-      (digestOf { S with vote := stock } Q.run.2)
+      (runProposer S Q.run.2 Q.hn)
+      (digestOf S Q.run.2)
       Q.gst ΔF a Q.bound
-        (runCommittee { S with vote := stock } Q.run.2 Q.hn) (K S A).params.βK)
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK)
     (hreserve : max Q.ready (Healing.drainTime Q.params a) +
       (4 * (Q.index : Time) + 6) * Q.params.Δ < Q.heal - 1) :
-    ∃ D : HealthyRepairScheduleAt
-        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q,
+    ∃ D : HealthyRepairScheduleAt S A V Q,
       D.resetTime = a ∧ D.deltaF = ΔF ∧
       D.query = max Q.ready (Healing.drainTime Q.params a) ∧
       D.oldLabel = Q.params.slot a + 2 * Q.params.k + 4 := by
@@ -190,23 +166,24 @@ theorem healthy_repair_schedule_of_reset_at
     reset := hreset
     cleanLabel := Healing.cleanLabel Q.params a
     cleanLabel_eq := rfl
+    catchUp := (Sys (goldilocks S) V).cDur (K S A) Q.run
     duration_bound := hdur
     oldLabel := Q.params.slot a + 2 * Q.params.k + 4
-    old_bound := by rw [Healing.cleanLabel_eq]; omega
+    old_bound := by
+      change Healing.cleanLabel Q.params a + 2 * Q.params.k + 1 ≤
+        Q.params.slot a + 2 * Q.params.k + 4
+      rw [Healing.cleanLabel_eq]; omega
     query := max Q.ready (Healing.drainTime Q.params a)
     lower := hlower
+    catchUp_eq := rfl
     reserve := hreserve }, rfl, rfl, rfl, rfl⟩
 
 /-- A preparation schedule for the same query supplies a repair schedule with the very same
 reset time, service delay and query, without a base-slot comparison. -/
 theorem healthy_repair_schedule_of_preparation_at
-    (Q : HealthyPreparationQueryAt
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
-    (W : HealthyBaseTimingAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q)
-    (Dprep : HealthyPreparationScheduleAt
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q W) :
-    ∃ D : HealthyRepairScheduleAt
-        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q,
+    (Q : HealthyPreparationQueryAt S A V)
+    (W : HealthyBaseTimingAt S A V Q) (Dprep : HealthyPreparationScheduleAt S A V Q W) :
+    ∃ D : HealthyRepairScheduleAt S A V Q,
       D.resetTime = Dprep.resetTime ∧ D.deltaF = Dprep.deltaF ∧ D.query = Dprep.query := by
   have hlower : max Q.ready (Healing.drainTime Q.params Dprep.resetTime) ≤ Dprep.query :=
     max_le ((le_max_left _ _).trans Dprep.lower)
@@ -230,89 +207,112 @@ theorem healthy_repair_schedule_at
     Nonempty (HealthyRepairScheduleAt
         { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q) := by
   obtain ⟨W', ⟨Dprep⟩⟩ := healthy_preparation_initialize_at S A V Q h0 hb hp
-  obtain ⟨D, -⟩ := healthy_repair_schedule_of_preparation_at S A V Q W' Dprep
+  obtain ⟨D, -⟩ := healthy_repair_schedule_of_preparation_at
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q W' Dprep
   exact ⟨D⟩
 
-/-- **Any bounded operational opening repairs the post-update source cover**, under growing
-faults. No current-read geometry or prior repair invariant is used. -/
-theorem healthy_receiver_repair_of_opening_at (Q : HealthyPreparationQueryAt S A V)
-    (hb : Q.heal ≤ Q.bound) (D : HealthyRepairScheduleAt S A V Q)
-    (O : HealthyRepairOpeningAt S A V Q D) :
-    HealthyReceiverRepairAt S A V Q D O := by
-  rw [healthyReceiverRepairAt_iff]
-  obtain ⟨hTb, hR, hgu, hjoin⟩ :=
-    healthy_opening_timing D.lower O.fresh O.bounded D.reserve hb
+section Trace
+
+open SA (SAParams ReplayOrder Payload)
+
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+  {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g b : Time}
+  {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+
+/-- Actual tips below compatible origin witnesses are comparable, in the blocks held while
+honest. -/
+theorem tips_comparable_of_origin_witnesses_at (hU : Coherent (tr.HonestBlocksAt H))
+    {R R' C C' : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hR : Anc (tr.HonestBlocksAt H) R C) (hR' : Anc (tr.HonestBlocksAt H) R' C')
+    (hCC : Goldilocks.Compatible (tr.HonestBlocksAt H) C C') :
+    Goldilocks.Compatible (tr.HonestBlocksAt H) R R' := by
+  rcases hCC with h | h
+  · exact Anc.total hU (hR.trans h) hR'
+  · exact Anc.total hU hR (hR'.trans h)
+
+/-- An opening after a schedule's query is after the reset's drain, two delays past `ḡ` and the
+joining slot `slot ḡ + 1`. -/
+theorem repair_opening_timing (D : RepairSchedule tr H proposer dg g b cm βK)
+    (O : RepairOpening D) :
+    Healing.drainTime sp D.resetTime ≤ sp.ts O.slot ∧ SA.gbar g + 4 * sp.Δ ≤ sp.ts O.slot ∧
+      sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts O.slot := by
+  have hlow := D.lower
+  simp only [max_le_iff] at hlow
+  obtain ⟨-, hdr, -, hgr, -⟩ := hlow
+  have hgu := hgr.trans O.fresh.le
+  refine ⟨hdr.trans O.fresh.le, hgu, ?_⟩
+  have hbase := (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g) (sp.slot (SA.gbar g))).mpr le_rfl
+  simp only [SA.SAParams.ts] at hbase hgu ⊢
+  push_cast at hbase hgu ⊢
+  linarith
+
+/-- **Any operational opening repairs the post-update source cover**, under growing faults. No
+current-read geometry or prior repair invariant is used. -/
+theorem receiver_repair_of_opening_at (D : RepairSchedule tr H proposer dg g b cm βK)
+    (O : RepairOpening D) : ReceiverRepair D O := by
+  rw [receiverRepair_iff]
+  obtain ⟨hR, hgu, hjoin⟩ := repair_opening_timing D O
+  have hTb := O.service
   intro y hy
   obtain ⟨j, ell, _, hu, _⟩ := D.reset.update_toFG_calls_at hy.1 hjoin hTb
-  have ht : Q.trace.time j = Q.params.ts O.slot + 6 * Q.params.Δ := hu.2.2.1
+  have ht : tr.time j = sp.ts O.slot + 6 * sp.Δ := hu.2.2.1
   refine ⟨j, ell, hu, ht, ht ▸ hTb, ?_⟩
   intro R hlookup
-  have hyj : y ∈ Q.keys (Q.trace.time j) := ht ▸ hy.1
+  have hyj : y ∈ H (tr.time j) := ht ▸ hy.1
   obtain ⟨x, q, s, CV, hx, hqj, hqt, hs, hsource⟩ :=
     Healing.Growing.operational_update_recent_source_at D.reset O.held rfl O.proposes
       O.label hR hgu hTb hyj hu hlookup
   exact ⟨x, q, s, R, CV, hx, hqj, hqt, O.old_lt.le.trans hs, hsource, .refl⟩
 
 /-- **Repair cover at a read point**, under growing faults. For a reader honest at its read time
-`t` after the repair window, the record before cut `n` (read at `t`) is its finalized block or
-below a result or optimistic lock of a node honest at its own cut, before `n` and by `t`. -/
-theorem healthy_current_record_sources_before_now_at (Q : HealthyPreparationQueryAt S A V)
-    (D : HealthyRepairScheduleAt S A V Q) (O : HealthyRepairOpeningAt S A V Q D)
-    (hrepair : HealthyReceiverRepairAt S A V Q D O) {y : Fin Q.params.n} {n : Nat} {t : Time}
-    (hrp : Regimes.ReadPoint Q.trace n t) (htb : t ≤ Q.bound) (hy : y ∈ Q.keys t)
-    (hrep : D.query + (4 * (Q.index : Time) + 6) * Q.params.Δ < t) :
-    HealthyRecordCoverAt S A V Q D.cleanLabel y n t
-      ((SA.lookup (Node.frame (Q.trace.state y n)) (Q.trace.state y n).ac.latestConfirmed).getD
-        (Q.trace.state y n).fg.F) := by
-  rw [healthyRecordCoverAt_iff]
+`t`, strictly after the opening's update and by the horizon, the record before cut `n` (read at
+`t`) is its finalized block or below a result or optimistic lock of a node honest at its own
+cut, before `n` and by `t`. The reader is ready at the update: it is honest then, and awake from
+`ḡ` on (`ResetPremisesUpTo.awake`), which the schedule's query places one catch-up before the
+opening. -/
+theorem record_sources_before_now_at (D : RepairSchedule tr H proposer dg g b cm βK)
+    (O : RepairOpening D) {y : Fin sp.n} {n : Nat} {t : Time}
+    (hrp : Regimes.ReadPoint tr n t) (htb : t ≤ b) (hy : y ∈ H t)
+    (hTt : sp.ts O.slot + 6 * sp.Δ < t) :
+    RecordCover tr H D.cleanLabel y n t
+      ((SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
+        (tr.state y n).fg.F) := by
+  rw [recordCover_iff]
   have hrun := D.reset.run
   have hnc := D.reset.noColl
-  have hd := Q.params.toParams.hΔ
-  have h6 : (0 : Time) ≤ 6 * Q.params.Δ := mul_nonneg (by decide) hd.le
-  have hTt : Q.params.ts O.slot + 6 * Q.params.Δ < t := by
-    refine lt_of_le_of_lt ?_ hrep
-    rw [add_mul, ← add_assoc]
-    exact add_le_add O.bounded le_rfl
-  have hready : Q.ready < Q.params.ts O.slot + 6 * Q.params.Δ :=
-    ((le_max_left _ _).trans D.lower).trans_lt (lt_add_of_lt_of_nonneg O.fresh h6)
-  have hzero : 0 ≤ Q.ready := by
-    change 0 ≤ max Q.gst 0 + (Sys (goldilocks S) V).cDur (K S A) Q.run + 1
-    exact add_nonneg (add_nonneg (le_max_right _ _)
-      ((mul_nonneg (by decide) hd.le).trans D.duration_bound)) zero_le_one
-  have ht0 : 0 ≤ t := (hzero.trans hready.le).trans hTt.le
+  have hd := sp.toParams.hΔ
+  have h6 : (0 : Time) ≤ 6 * sp.Δ := mul_nonneg (by decide) hd.le
+  have hlow := D.lower
+  simp only [max_le_iff] at hlow
+  obtain ⟨hready, -, -, -, hzero⟩ := hlow
+  have hcu := D.duration_bound
+  have hready' : max g 0 + D.catchUp + 1 < sp.ts O.slot + 6 * sp.Δ :=
+    hready.trans_lt (lt_add_of_lt_of_nonneg O.fresh h6)
+  have ht0 : 0 ≤ t := by linarith [le_max_right g 0]
   -- the receiver is ready at the update time
-  have hyT : y ∈ Q.keys (Q.params.ts O.slot + 6 * Q.params.Δ) :=
-    honestKeysAt_antitone S Q.run.2 hTt.le hy
-  have hr : Regimes.Growing.ReadyAt Q.trace Q.keys
-      ((Sys (goldilocks S) V).cDur (K S A) Q.run) y
-      (Q.params.ts O.slot + 6 * Q.params.Δ) := by
+  have hyT : y ∈ H (sp.ts O.slot + 6 * sp.Δ) := hrun.antitone hTt.le hy
+  have hr : Regimes.Growing.ReadyAt tr H D.catchUp y (sp.ts O.slot + 6 * sp.Δ) := by
     refine ⟨hyT, fun τ hτ hτT => ?_⟩
-    have hgτ : max Q.gst 0 ≤ τ := by
-      change max Q.gst 0 + (Sys (goldilocks S) V).cDur (K S A) Q.run + 1 <
-        Q.params.ts O.slot + 6 * Q.params.Δ at hready
-      refine (le_of_lt ?_).trans ((le_max_right _ _).trans hτ)
-      rw [sub_sub, lt_sub_iff_add_lt, ← add_assoc]
-      exact hready
-    have hτb : τ ≤ Q.bound := hτT.trans (hTt.le.trans htb)
-    have hτh : τ ≤ Q.run.2.horizon := hτb.trans Q.bound_le
-    have hyτ : y ∈ Q.keys τ := honestKeysAt_antitone S Q.run.2 hτT hyT
-    rw [mem_honestKeysAt_iff S Q.run.2, min_eq_left hτh] at hyτ
-    rw [simTraceAt_awake_iff S Q.run.2 Q.hn,
-      awakeAt_iff S Q.run.2 Q.hn]
-    exact ⟨Q.healthy.2.1.2 _ τ hgτ hτb hyτ, (le_max_right _ _).trans hgτ, hτh⟩
-  obtain ⟨a, ell, ha, hat, -, hcover⟩ := healthyReceiverRepairAt_iff.mp hrepair y hr
+    have hgτ : SA.gbar g ≤ τ := by
+      unfold SA.gbar
+      have := le_max_right 0 (sp.ts O.slot + 6 * sp.Δ - D.catchUp - 1)
+      linarith
+    exact D.reset.awake y τ (hrun.antitone hτT hyT) hgτ (hτT.trans (hTt.le.trans htb))
+  obtain ⟨a, ell, ha, hat, -, hcover⟩ :=
+    receiverRepair_iff.mp (receiver_repair_of_opening_at D O) y hr
   have han : a < n := by
     by_contra h
     have := hrun.time_mono (Nat.le_of_not_lt h)
     linarith [hrp.2]
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hind : ∀ k, a + 1 ≤ k → k ≤ n → ∀ R,
-      SA.lookup (Node.frame (Q.trace.state y k)) (Q.trace.state y k).ac.latestConfirmed =
+      SA.lookup (Node.frame (tr.state y k)) (tr.state y k).ac.latestConfirmed =
         some R →
-      ∃ x q s C CV, x ∈ Q.keys (Q.trace.time q) ∧ q < k ∧ Q.trace.time q ≤ t ∧
+      ∃ x q s C CV, x ∈ H (tr.time q) ∧ q < k ∧ tr.time q ≤ t ∧
         D.oldLabel ≤ s ∧
-        (SA.ResultAt Q.trace.projAC x q s C CV ∨ SA.OptimisticLockAt Q.trace.projAC x q s C CV) ∧
-        Anc (Q.trace.HonestBlocksAt Q.keys) R C := by
+        (SA.ResultAt tr.projAC x q s C CV ∨ SA.OptimisticLockAt tr.projAC x q s C CV) ∧
+        Anc (tr.HonestBlocksAt H) R C := by
     intro k hk
     induction k, hk using Nat.le_induction with
     | base =>
@@ -321,11 +321,11 @@ theorem healthy_current_record_sources_before_now_at (Q : HealthyPreparationQuer
       exact ⟨x, q, s, C, CV, hx, Nat.lt_succ_of_le hqa, hqt.trans (hat ▸ hTt.le), hs, hC, hRC⟩
     | succ k hak ih =>
       intro hkn R hR
-      have hle1 : ∀ q < k + 1, Q.trace.time q ≤ t := fun q hq => hrp.1 q (by omega)
-      have hle0 : ∀ q < k, Q.trace.time q ≤ t := fun q hq => hrp.1 q (by omega)
-      have hkt : Q.trace.time k ≤ t := hrp.1 k (by omega)
-      have hyk : y ∈ Q.keys (Q.trace.time k) :=
-        honestKeysAt_antitone S Q.run.2 hkt hy
+      have hle1 : ∀ q < k + 1, tr.time q ≤ t := fun q hq => hrp.1 q (by omega)
+      have hle0 : ∀ q < k, tr.time q ≤ t := fun q hq => hrp.1 q (by omega)
+      have hkt : tr.time k ≤ t := hrp.1 k (by omega)
+      have hyk : y ∈ H (tr.time k) :=
+        hrun.antitone hkt hy
       rcases record_step_origin_at hrun hyk with heq | ⟨C, hC, hCr, s, CV, hs⟩
       · obtain ⟨x, q, s, B, DV, hx, hqk, hqb, hsl, hB, hRB⟩ :=
           ih (Nat.le_of_succ_le hkn) R
@@ -334,28 +334,31 @@ theorem healthy_current_record_sources_before_now_at (Q : HealthyPreparationQuer
       · obtain ⟨hRm, hRr⟩ := SA.lookup_eq_some hR
         have hRC : R = C := hU.1 ⟨y, k + 1, t, ht0, hle1, hy, hRm.1⟩
           ⟨y, k, t, ht0, hle0, hy, hC⟩ (hRr.trans hCr.symm)
-        have htk : Q.params.ts O.slot + 6 * Q.params.Δ ≤ Q.trace.time k := by
+        have htk : sp.ts O.slot + 6 * sp.Δ ≤ tr.time k := by
           rw [← hat]
           exact hrun.time_mono (Nat.le_of_succ_le hak)
         have hsl : D.oldLabel ≤ s := by
           have hus : O.slot ≤ s := by
             rcases hs with ⟨ell, hu, _⟩ | ⟨ell, A, ho, hslot, _⟩
-            · have ht : Q.trace.time k = Q.params.ts s + 6 * Q.params.Δ := hu.2.2.1
-              have hh := (SA.ts_le_iff Q.params).mp
+            · have ht : tr.time k = sp.ts s + 6 * sp.Δ := hu.2.2.1
+              have hh := (SA.ts_le_iff sp).mp
                 (le_of_add_le_add_right (htk.trans_eq ht))
               omega
-            · have hh := (SA.ts_le_iff_le_slot Q.params (hrun.time_nonneg k) O.slot).mp
+            · have hh := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg k) O.slot).mp
                 ((le_add_of_nonneg_right h6).trans htk)
-              change Q.params.slot (Q.trace.time k) = s at hslot
+              change sp.slot (tr.time k) = s at hslot
               omega
           exact O.old_lt.le.trans hus
         exact ⟨y, k, s, C, CV, hyk, Nat.lt_succ_self _, hkt, hsl, hs, by rw [hRC]; exact .refl⟩
-  cases hl : SA.lookup (Node.frame (Q.trace.state y n)) (Q.trace.state y n).ac.latestConfirmed with
+  cases hl : SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed with
   | none => exact Or.inl (by simp only [Option.getD_none])
   | some R =>
     obtain ⟨x, q, s, C, CV, hx, hqn, hqb, hs, hC, hRC⟩ := hind n han le_rfl R hl
     exact Or.inr ⟨x, q, s, C, CV, hx, hqn, hqb, D.old_bound.trans hs, hC,
       by simpa only [hl, Option.getD_some] using hRC⟩
+
+
+end Trace
 
 end Consensus.Goldilocks.Obligations.Growing
 
