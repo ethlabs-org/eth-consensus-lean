@@ -16,10 +16,11 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- A cast whose anchor is the slot's proposal cannot walk to a later-slot child. -/
 theorem vote_head_eq_of_anchor_eq_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -40,7 +41,7 @@ theorem vote_head_eq_of_anchor_eq_at
 /-- A point on the anchor-to-proposal path is in the voter's frozen viable domain.
 Historical ancestry is pulled into this reader's prefix, not a shared honest cohort. -/
 theorem frozen_viable_of_anchor_path_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -69,7 +70,7 @@ theorem frozen_viable_of_anchor_path_at
 
 /-- The actual proposal walk is finite and ends at the emitted duty head. -/
 theorem proposal_walk_end_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {z : Fin sp.n} {ip : Nat}
     (hz : z ∈ H (tr.time ip))
     {ellp : ACLabel (goldilocksNode sp ro)} (hcp : tr.projAC.CallAt z ip ellp)

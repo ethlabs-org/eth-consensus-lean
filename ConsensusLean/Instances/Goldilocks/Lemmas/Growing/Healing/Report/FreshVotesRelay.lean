@@ -20,6 +20,7 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- A block in an honest frame has a genuine earlier honest FG acceptance, or is genesis. -/
 theorem frame_block_acceptance_at {ini}
@@ -43,7 +44,7 @@ theorem frame_block_acceptance_at {ini}
 
 /-- Post-GST AC acceptance relays with its deadline, even after sender compromise. -/
 theorem accepted_relay_before_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b) (hnr : NoRestartAfter tr H (gbar g))
     {x y : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}

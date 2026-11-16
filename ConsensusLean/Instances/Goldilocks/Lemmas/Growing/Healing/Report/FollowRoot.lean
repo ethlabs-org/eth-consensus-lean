@@ -15,10 +15,11 @@ theorem FrameWindow.fcRoot_anc_proposal_head_at
     {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
     {lo hi : Time} {floor : Nat} {kindJ : Prop}
     {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H lo hi floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y z : Fin sp.n} {i c s : Nat}
     (hy : y ∈ H (tr.time i)) (hz : z ∈ H (tr.time c))

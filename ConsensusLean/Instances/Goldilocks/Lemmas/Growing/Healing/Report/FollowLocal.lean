@@ -19,10 +19,11 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- A warm node is joined at the vote deadline, even if it is compromised afterwards. -/
 theorem joined_voteTime_of_warm_frame_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g : Time} {s₀ u : Nat} (hnr : NoRestartAfter tr H (gbar g))
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hs : s₀ + 1 ≤ u)
     {y : Fin sp.n} (hy : y ∈ H (sp.ts u + sp.Δ)) :
@@ -41,7 +42,7 @@ theorem joined_voteTime_of_warm_frame_at
 
 /-- Candidates at one honest call are compatible in the historical block universe. -/
 theorem toFG_candidates_compatible_at_call_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y i ell) {P : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -71,7 +72,7 @@ theorem toFG_candidates_compatible_at_call_at
 the reporter's frame, whose blocks are of slots at most the call's. Only the reporter's honesty
 at the report cut is used. -/
 theorem toFG_time_ge_of_ancestor_slot_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i u : Nat}
     (hy : y ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)} {P R : SA.Blk sp.n (List (FG.Att sp.n))}

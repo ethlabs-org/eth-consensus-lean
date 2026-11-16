@@ -17,10 +17,11 @@ open Compose.Growing
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- The lock-specific transfer consumes only earlier honestly signed votes. -/
 theorem next_votes_of_early_witness_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -104,7 +105,7 @@ theorem next_votes_of_early_witness_at
       have hFW := hFW.mono hPhiU
       exact ⟨W, hPhiU hW, hWr, hXF.trans hFW⟩
     have hviab : SA.ViableAtVote ell e (s + 1) X := by
-      have hdomA := SA.voterBlockTree_anc hr hy hcast'
+      have hdomA := SA.voterBlockTree_anc_from hr hrun.vstart hy hcast'
       rw [hs] at hdomA
       exact Or.inl ⟨hdomA Q hdom X hXQf, hroot, Q, hdom, hvQ, hXQf⟩
     exact htransfer y i ell e hy hcast hs hhi hFX hviab

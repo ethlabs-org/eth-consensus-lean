@@ -34,11 +34,13 @@ open SA (SAParams ReplayOrder Payload gbar Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- The static AC run of the prefix through `d` of the nodes honest at `d`. -/
-private theorem acRun_prefix (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+private theorem acRun_prefix
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {d : Time} (hd : 0 ≤ d) :
-    SA.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) := by
+    SA.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) ini := by
   have h := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d)
   rwa [RunTrace.upTo_projAC] at h
 
@@ -52,7 +54,7 @@ private theorem quorum_excess {t : Time} (h : 3 * (H t)ᶜ.ncard ≤ sp.n - 1) :
 
 /-- A vote of the prefix through `d` by a node honest at `d` extends `B` in the prefix's honest
 blocks when it does in the run's. -/
-private theorem narrow_vote (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+private theorem narrow_vote (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {d : Time} (hd : 0 ≤ d) {x : Fin sp.n} (hx : x ∈ H d)
     {k : Nat} {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.VoteAt (tr.projAC.upTo d) x k e)
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -62,7 +64,7 @@ private theorem narrow_vote (hrun : Consensus.Goldilocks.Growing.GoldilocksRun p
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have subU := RunTrace.honestBlocks_upTo_subset hrun.time_mono (H := H) hd
   obtain ⟨ell, hc⟩ := hv
-  obtain ⟨⟨Hd, hHd, hHdr, -⟩, -⟩ := Compose.cast_head_fcRoot hr hx hc
+  obtain ⟨⟨Hd, hHd, hHdr, -⟩, -⟩ := Compose.cast_head_fcRoot_from hr hrun.vstart hx hc
   have hHdU := (SA.frameIn_of_callAt hr hx hc.1).2 hHd
   obtain ⟨W, hW, hWr, hBW⟩ := hext
   obtain rfl : W = Hd := hU.1 hW (subU hHdU) (hWr.trans hHdr.symm)
@@ -72,7 +74,7 @@ private theorem narrow_vote (hrun : Consensus.Goldilocks.Growing.GoldilocksRun p
 in the `FrameWindow`, holding a floor-viable descendant `Q` of `X`, either `X` is below its
 finalized tip, or `X` and `Q` are on its frame's viable path above the fork-choice root and its
 finalized tip is below `X`. -/
-theorem witness_frame_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem witness_frame_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor : Nat} {kindJ : Prop}
     {J : SA.Blk sp.n (List (FG.Att sp.n))} (hframe : FrameWindow tr H lo hi floor kindJ J)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
@@ -128,7 +130,8 @@ theorem witness_frame_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun prop
     exact he ▸ hFX
 
 /-- The witness's replay height, seen by an independently honest source, is the reader's. -/
-private theorem witness_height (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+private theorem witness_height
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {z y : Fin sp.n} {c i : Nat} (hz : z ∈ H (tr.time c))
     (hy : y ∈ H (tr.time i)) {Q : SA.Blk sp.n (List (FG.Att sp.n))} {floor : Nat}
     (hQ : Q ∈ (tr.state z c).fg.tree) (hh : floor ≤ ((tr.state z c).fg.σ Q.root).h)

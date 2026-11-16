@@ -14,12 +14,13 @@ open Compose.Growing
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- The common root constrains every later head without retaining the origin writer. -/
 theorem later_heads_of_common_root_at {s₀ s N floor : Nat} {kindJ : Prop}
     {J D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hs₀ : s₀ ≤ s) (hk : kindJ)
     (hDJ : Anc (tr.HonestBlocksAt H) D J) :
     ∀ r, s + 1 ≤ r → r ≤ N →

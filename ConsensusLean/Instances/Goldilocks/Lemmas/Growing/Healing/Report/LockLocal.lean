@@ -18,12 +18,13 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- A common frame kind makes the local root monotone through an honest reader cut. -/
 theorem fcRoot_mono_at {lo hi : Time} {floor : Nat} {kindJ : Prop}
     {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H lo hi floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {a i : Nat} (hy : y ∈ H (tr.time i))
     (hai : a ≤ i) (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi) :
     Anc (tr.HonestBlocksAt H) (tr.state y a).fg.fcRoot (tr.state y i).fg.fcRoot := by
@@ -53,7 +54,7 @@ theorem fcRoot_mono_at {lo hi : Time} {floor : Nat} {kindJ : Prop}
 
 /-- A live lock records a write made before this same reader's compromise. -/
 theorem live_lock_selection_origin_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {i : Nat}
     (hx : x ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt x i ell) {l : SA.Lock}
@@ -93,7 +94,7 @@ theorem live_lock_selection_origin_at
 theorem unlocked_image_below_write_root_at {lo hi : Time} {floor : Nat} {kindJ : Prop}
     {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H lo hi floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {a i : Nat}
     (hy : y ∈ H (tr.time i)) (hai : a ≤ i)
     {ellw ell : ACLabel (goldilocksNode sp ro)}

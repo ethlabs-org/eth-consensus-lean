@@ -18,7 +18,8 @@ theorem frame_witness_readPoint_stamp_at
     {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g (2 * sp.Δ))
     (hnr : NoRestartAfter tr H (gbar g))

@@ -16,13 +16,14 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- A separately honest finalized observation lies below the cast head when it lies above
 the cast anchor. The quorum bound is at the later of the two observations. -/
 theorem FrameWindow.finalized_anc_head_at_cast_at {lo hi : Time} {floor : Nat}
     {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H lo hi floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {z y : Fin sp.n} {c i : Nat}
     (hz : z ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
@@ -75,7 +76,7 @@ theorem FrameWindow.finalized_anc_head_at_cast_at {lo hi : Time} {floor : Nat}
     · exact (Anc.mem (SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i)) he).2
   have hcast : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ell e := ⟨hci, hc.2⟩
   exact Anc.mono hPhi.2 (SA.finalized_floor_anc_getHead hPhi.1 (fun _ h => h.1)
-    (SA.voterBlockTree_anc hri hy hcast) hfloor hY hvY (hfloor Y hvY)
+    (SA.voterBlockTree_anc_from hri hrun.vstart hy hcast) hfloor hY hvY (hfloor Y hvY)
     e.readPoint (tr.time i) _ _ (SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i))
     (SA.anc_tree_of_anc_U hac.localRun.coherent hPhi.1 hPhi.2 hat haF hFt))
 
@@ -84,7 +85,7 @@ uses the separately observed finalized prefix. -/
 theorem FrameWindow.fcRoot_anc_head_at_cast_at {lo hi : Time} {floor : Nat}
     {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H lo hi floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {z y : Fin sp.n} {c i : Nat}
     (hz : z ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))

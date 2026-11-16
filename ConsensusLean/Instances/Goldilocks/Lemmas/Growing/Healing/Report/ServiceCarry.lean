@@ -20,9 +20,10 @@ open Compose.Growing
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 private theorem acBlock_prev_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)} {B : (goldilocksNode sp ro).Blk}
     (hc : tr.CallAt y i (.ac ell)) (hb : ell.call = .block B) :
@@ -33,7 +34,7 @@ private theorem acBlock_prev_at
   exact ⟨j, rfl, ((Trace.upTo_callAt _).mp hc').2, ht⟩
 
 private theorem accept_next_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {B : (goldilocksNode sp ro).Blk} (hc : tr.CallAt y i (.fg (.block B true))) :
     ∃ ell : ACLabel (goldilocksNode sp ro), tr.CallAt y (i + 1) (.ac ell) ∧
@@ -45,7 +46,7 @@ private theorem accept_next_at
 
 /-- The post-GST portion of finite service, projected to AC. -/
 theorem service_syncACAt
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g ΔF b lo hi : Time} (hsvc : ResetService tr H g ΔF b) (hg : g ≤ lo) :
     SyncACAt (goldilocksNode sp ro) H (tr.HonestBlocksAt H) lo hi tr.projAC := by
   refine ⟨?_, ?_⟩
@@ -96,7 +97,7 @@ theorem service_syncACAt
 
 /-- Catch transfers a historically honest acceptance to an independently honest reader. -/
 theorem service_catch_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g : Time} (hcatch : CatchRun tr H g (2 * sp.Δ)) {w : Fin sp.n} {kw : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hw : w ∈ H (tr.time kw))
     (ha : tr.projAC.AcceptAt w kw B) (hkw : tr.time kw < gbar g) {y : Fin sp.n} {i : Nat}
@@ -128,7 +129,7 @@ theorem service_catch_at
 
 /-- Historical sends after `ḡ` and historical accepted heads reach the next-slot cast. -/
 theorem carry_of_service_senders
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hts : gbar g ≤ sp.ts s)
     {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
@@ -156,7 +157,7 @@ theorem carry_of_service_senders
     simp only [SAParams.ts] at h ⊢
     push_cast at h
     linarith only [h]
-  have hcarry := carryAt_of_delivered hr (fun _ => SA.voteStart_initial _) hy hc' hs (CV := CV)
+  have hcarry := carryAt_of_delivered hr hrun.vstart hy hc' hs (CV := CV)
       fun v hv => by
     obtain ⟨hvs, ⟨w, k, hwk, hsend, hk1, hk2⟩, Hv, hHvr, hFHv, hacc⟩ := hW v hv
     refine ⟨hvs, ⟨tr.time k, hk1, hk2, fun hdl => ?_⟩, Hv, hHvr, ?_⟩
@@ -186,7 +187,7 @@ theorem carry_of_service_senders
 
 /-- A regular result's counted votes reach the next-slot cast even after its writer's compromise. -/
 theorem result_carry_service_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hts : gbar g ≤ sp.ts s)
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))

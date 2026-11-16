@@ -15,7 +15,8 @@ theorem floor_le_of_honest_ancestor_at
     {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x z : Fin sp.n} {i c : Nat}
     (hx : x ∈ H (tr.time i)) (hz : z ∈ H (tr.time c))
     {X W : SA.Blk sp.n (List (FG.Att sp.n))} {floor : Nat}
@@ -36,7 +37,8 @@ theorem floor_ancestor_mem_frame_at
     {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {j c : Nat}
     (hy : y ∈ H (tr.time j)) (hz : z ∈ H (tr.time c))
     (hf : (H (tr.time j))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)

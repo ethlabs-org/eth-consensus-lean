@@ -20,10 +20,11 @@ open Compose.Growing
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Every saved slot used by a slow selection has an actual result written while honest. -/
 theorem slow_window_results_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {c s : Nat}
     (hx : x ∈ H (tr.time c)) {D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hsl : SA.SlowLockAt tr.projAC x c s D) :
@@ -40,14 +41,14 @@ theorem slow_window_results_at
     · simpa only [hs, Trace.upTo_time] using hdeep
   intro j hj hjs
   obtain ⟨k, R, CV, hR, hDR⟩ := SA.slow_window_results hr
-    (fun _ => SA.voteStart_initial _) hx hsl' j hj hjs
+    hrun.vstart hx hsl' j hj hjs
   obtain ⟨hkc, hR⟩ := (sa_resultAt_upTo hrun.time_mono).mp hR
   exact ⟨k, R, CV, hrun.antitone hkc hx, hR,
     hDR.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono hd)⟩
 
 /-- A stored lock has an actual earlier result or optimistic origin at the same node. -/
 theorem stored_lock_below_origin_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i)) :
     ∀ l ∈ (tr.projAC.state y i).locks,
@@ -62,7 +63,7 @@ theorem stored_lock_below_origin_at
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono hd
   intro l hl
   obtain ⟨L, hL, hLr, O, hLO, k, hki, CV, ho⟩ :=
-    SA.lock_below_origin hr hy i l (by rwa [hs])
+    SA.lock_below_origin_from hr hrun.vstart hy i l (by rwa [hs])
   refine ⟨L, hsub hL, hLr, O, hLO.mono hsub, k, hki, CV,
     hrun.antitone (hrun.time_mono hki.le) hy, ?_⟩
   rcases ho with ho | ho
