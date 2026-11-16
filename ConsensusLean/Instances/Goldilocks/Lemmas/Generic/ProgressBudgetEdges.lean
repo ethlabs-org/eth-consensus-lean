@@ -1,12 +1,15 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ProgressBudget
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.CorrectnessEdges
+import ConsensusLean.Instances.Goldilocks.Lemmas.Common.StatementsBundle
+import Mathlib.Tactic.Linarith
 
 public section
 
-/-! # Open progress-budget consumer edges
+/-! # Progress-budget arithmetic and open consumer edges
 
-These implication definitions supply no evidence. The existing constant-frame final-cache
+The coefficient-fit theorem supplies a reset budget window, not a progress witness.
+The remaining implication definitions supply no evidence. The constant-frame final-cache
 edge is usable only when an independent FrameWindow witness is explicitly supplied.
 -/
 
@@ -20,6 +23,52 @@ variable {P : Params} {A : NodeAC P} {O : OutputSchema} {Info : Type}
   [DecidableEq Info] [Countable Info]
   {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V]
   {E : Env V} {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
+
+/-- The coefficient reserve covers alignment to the next slot, the reset report,
+and the drain from every time at or before the reset endpoint. -/
+theorem reset_window_of_coefficients_proof {sg : A.Msg → Fin P.n}
+    {runs : ACRun A sg} (healing : ACHealing A sg runs) :
+    reset_window_of_coefficients healing := by
+  intro g ready healCoeff G hfit
+  rcases hfit with ⟨hgrid, hG, hbudget⟩
+  let m := max ready (max (SA.gbar g) (Healing.cutZ P g))
+  have hm : 0 ≤ m := le_trans (le_max_right g 0)
+    ((le_max_left (SA.gbar g) (Healing.cutZ P g)).trans (le_max_right ready _))
+  obtain ⟨hmlo, hmhi⟩ := slotOfSpec_iff.mp slotOf_spec P m hm
+  let start := P.slotOf m + 1
+  have hstart : m ≤ P.slotTime start := hmhi.le
+  have halign : P.slotTime start ≤ m + 4 * P.Δ := by
+    dsimp [start]
+    rw [hgrid] at hmlo ⊢
+    push_cast
+    nlinarith only [hmlo]
+  let r := resetSlots healing.warmup G P.δt
+  have hD := P.hΔ
+  have hdeadline : P.slotTime (start + r) + 2 * P.Δ ≤
+      SA.gbar g + (healCoeff : Time) * P.Δ := by
+    rw [hgrid] at halign ⊢
+    dsimp [r] at *
+    nlinarith only [halign, hbudget, hD, (Nat.cast_nonneg healing.drain : (0 : Time) ≤ _)]
+  refine ⟨{ start := start
+            gap := G
+            gap_pos := hG
+            ready_le := (le_max_left ready _).trans hstart
+            gst_le := ((le_max_left _ _).trans (le_max_right ready _)).trans hstart
+            snapshot_le := ((le_max_right _ _).trans (le_max_right ready _)).trans hstart
+            deadline_le := hdeadline
+            drain_le := ?_ }, rfl⟩
+  intro a ha
+  have hslot : P.slotOf a ≤ start + r := by
+    by_cases ha0 : 0 ≤ a
+    · have hlo := (slotOfSpec_iff.mp slotOf_spec P a ha0).1
+      exact P.slotTime_strictMono.le_iff_le.mp (hlo.trans ha)
+    · have haZ : a ≤ 0 := (lt_of_not_ge ha0).le
+      simp [Params.slotOf, Int.toNat_of_nonpos haZ]
+  have hslotTime := P.slotTime_strictMono.monotone (Nat.add_le_add_right hslot healing.drain)
+  apply hslotTime.trans
+  rw [hgrid] at halign ⊢
+  dsimp [r] at *
+  nlinarith only [halign, hbudget, hD]
 
 /-- UNPROVED specialization of the healing-gap law at the advertised recurrence.
 Only the consuming interval's ready and report-deadline bounds are required. -/
