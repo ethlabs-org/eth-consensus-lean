@@ -2,13 +2,16 @@ module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ClaimTransports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.EngineEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ChainRepresentationEdges
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.OutageSupply
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
 /-! # Conditional claim reduction rows
 
-Intended theorem types; output validity and final accountability are proved (section
-"Output-validity and accountability proofs"), the regime reductions remain UNPROVED. No
+Intended theorem types; output validity, final accountability (section "Output-validity and
+accountability proofs") and persistence (section "Persistence proof") are proved, the other
+regime reductions remain UNPROVED. No
 evidence, instance, admission or correctness claim is supplied. All suppliers below refer to
 the binding's same map. Every regime reduction reads outputs through the one stored-read
 context and its transport: engine-cut reads at the stored read, claim-time reads at `endCut t`.
@@ -169,10 +172,11 @@ def FinalAccountabilityReduction (C : ACCorrectLocal A sg)
     ∀ g, O.output .final = some g → (Sys F V).Holds (fun r => Model.pubOf r.1 = pub ∧ True)
       fun r => (chainTrace r.2).AccountablySafe r.2.ViewIdx r.2.Slashable K.params.α g 0
 
-/-- UNPROVED outage reduction with the original source/destination, recovery time
+/-- Outage reduction with the original source/destination, recovery time
 and collision alternative. The fixed local policy matches the contract by equality;
 recipient-deadline service permits AC-owned retained evidence. OC-K and the instance
-transports remain obligations, not consequences of these numerical fits. -/
+transports remain obligations, not consequences of these numerical fits.
+Proved by `persistenceReduction`. -/
 def PersistenceReduction (C : ACCorrectLocal A sg)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
     (D : ∀ E hE rho (hv : rho.ExecutionValid), OutagePolicy (B.map E hE rho hv))
@@ -317,6 +321,88 @@ theorem finalAccountabilityReduction (C : ACCorrectLocal A sg)
       _ ≤ _ := by exact_mod_cast hcard
 
 end OutputAccountabilityProofs
+
+section PersistenceProof
+
+/-- Persistence of the stable output at fixed public parameters. A hash collision is the claim's
+excuse. Otherwise both reads are confirmed reads at the readers' end cuts
+(`end_read_output_eq`, with `confirmed_tip` and `ResilienceTipTransport`). The outage
+policy's protection (`OutageReadPoint.protection`) relates them in the honest universe from the
+recovery point on: the outage times and service come from `Outage` (`OutageServiceSupply`), its
+participation at the local catch-up from `OutageTransport.participation_local`, the policy
+durations from `OutageRecoveryBinding`, and both ready read points from
+`StoredReadTransport.end_read` at the local catch-up `C.catchUp ≤ cDur`. Their honest ancestry
+gives a chain prefix (`ReadRepresentation.ancestor_prefix`), with both tips held
+(`LocalReadPoint.held`). -/
+theorem persistenceReduction (C : ACCorrectLocal A sg)
+    (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
+    (D : ∀ E hE rho (hv : rho.ExecutionValid), OutagePolicy (B.map E hE rho hv))
+    (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) :
+    PersistenceReduction C B K D R := by
+  intro h g hg T b₀ b₁ r hv hpre
+  obtain ⟨E, rho⟩ := r
+  obtain ⟨hpub, hout⟩ := hpre
+  by_cases hc : rho.HashCollision
+  · exact Or.inr hc
+  refine Or.inl ?_
+  obtain ⟨hOT, hOR, hOS, hRT, hOP, hSR, hLR, hrep, hhr, hcoh⟩ := h E hpub rho hv
+  set M := B.map E hpub rho hv
+  have hT := B.run_transport E hpub rho hv
+  have hrun : (B.signer_eq E hpub rho hv ▸ C).run.Run M.committee M.proposer M.digest M.honest
+      M.trace := by
+    rw [cast_local_run]
+    have := hT.run hv
+    rwa [ACRun.cast_run] at this
+  have hcoh := hcoh hc
+  obtain ⟨hsvc, hgst⟩ := hOS hv hc T b₀ b₁ hout
+  obtain ⟨hpop, hcom⟩ := hOT.participation_local hOR hv hout
+  obtain ⟨htimes, -⟩ := hout
+  change 0 ≤ T ∧ T + (K.params.lag : Time) * E.ΔAC ≤ b₀ ∧ b₀ ≤ b₁ ∧
+    b₁ ≤ b₀ + (K.params.budget : Time) * E.ΔAC at htimes
+  obtain ⟨hT0, hlag, hb01, hbud⟩ := htimes
+  have hΔ : 0 < E.ΔAC := by rw [← M.delta_eq]; exact P.hΔ
+  have hcDur : 0 ≤ (Sys F V).cDur K ⟨E, rho⟩ := by
+    change 0 ≤ (K.params.catchUp : Time) * E.ΔAC
+    positivity
+  have hcu : (B.signer_eq E hpub rho hv ▸ C).catchUp ≤ (Sys F V).cDur K ⟨E, rho⟩ := by
+    linarith [hOR.catchUp]
+  have hlag0 : (0 : Time) ≤ (K.params.lag : Time) * E.ΔAC := by positivity
+  have hrec0 : (0 : Time) ≤ (K.params.recovery : Time) * E.ΔAC := by positivity
+  have hmono : ∀ {y i t}, ReadyReadPoint M.trace M.honest rho.horizon
+      ((Sys F V).cDur K ⟨E, rho⟩) y i t →
+      ReadyReadPoint M.trace M.honest rho.horizon (B.signer_eq E hpub rho hv ▸ C).catchUp y i t :=
+    fun hr => ⟨hr.1, fun u hu hut => hr.2 u ((max_le_max le_rfl (by linarith)).trans hu) hut⟩
+  intro v hvT t ht₀ ht w hwt
+  change b₁ + (K.params.recovery : Time) * E.ΔAC ≤ t at ht₀
+  have hTt : T ≤ t := by linarith
+  have hTh : T ≤ rho.horizon := hTt.trans ht
+  have ht0 : 0 ≤ t := hT0.trans hTt
+  obtain ⟨-, -, hpv, hbv⟩ := hSR.end_read hv _ hcDur v T hT0 hTh hvT
+  obtain ⟨-, -, hpw, hbw⟩ := hSR.end_read hv _ hcDur w t ht0 ht hwt
+  rw [end_read_output_eq hSR hv (hrep.confirmed_tip g hg) hcDur hT0 hTh hvT,
+    end_read_output_eq hSR hv (hRT g hg) hcDur ht0 ht hwt]
+  have hanc := hOP.protection _ _ _ _ _ (D E hpub rho hv).point E.ΔFG T b₀ b₁
+    ((Sys F V).recoveryAt K b₁ ⟨E, rho⟩) hrun (hT.no_collision hv hc) (D E hpub rho hv).binding
+    hT0 (by rw [hOR.lag]; exact hlag) hb01 (by rw [hOR.budget]; exact hbud)
+    (by change b₁ ≤ b₁ + (K.params.recovery : Time) * E.ΔAC; linarith)
+    (by rw [hOR.duration]; exact le_rfl) hsvc hgst hpop hcom
+    _ _ _ _ _ (by rw [(D E hpub rho hv).horizon]; exact hmono hpv) hbv ht₀
+    (by rw [(D E hpub rho hv).horizon]; exact hmono hpw) hbw
+  have hi : (chainTrace rho).endCut T ≤ rho.events.length := Nat.findGreatest_le _
+  have hj : (chainTrace rho).endCut t ≤ rho.events.length := Nat.findGreatest_le _
+  have hhv : rho.point.HonestAt v (rho.cutTime ((chainTrace rho).endCut T)) := fun hf =>
+    hvT.1 (rho.faultyAt_mono (cutTime_endCut_le rho hT0) hf)
+  have hhw : rho.point.HonestAt w (rho.cutTime ((chainTrace rho).endCut t)) := fun hf =>
+    hwt.1 (rho.faultyAt_mono (cutTime_endCut_le rho ht0) hf)
+  have hsub : ∀ {y i u}, HonestReadPoint M.trace M.honest rho.horizon y i u →
+      (M.trace.state y i).fg.tree ⊆ M.trace.HonestBlocksAt M.honest :=
+    fun hr X hX => ⟨_, _, _, hr.2.2.1, hr.2.1.1, hr.1, hX⟩
+  exact hrep.ancestor_prefix v w _ _ hi hj hhv hhw (hhr.reachable hv v _ hi hhv)
+    (hhr.reachable hv w _ hj hhw) (hhr.roots hv v _ hi hhv) (hhr.roots hv w _ hj hhw) hcoh
+    (hsub hpv.1) (hsub hpw.1) _ _ (hLR.held _ _ _ _ _ hrun _ _ _ _ hpv.1)
+    (hLR.held _ _ _ _ _ hrun _ _ _ _ hpw.1) hanc
+
+end PersistenceProof
 
 end Consensus.Goldilocks.Generic
 
