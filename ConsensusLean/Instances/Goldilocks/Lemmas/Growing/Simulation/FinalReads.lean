@@ -1,14 +1,10 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMap
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ClaimTransports
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CarrierProcessed
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.WindowAnchorRoute
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HealedC4
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Deadline
-import ConsensusLean.Instances.Goldilocks.Lemmas.Common.StatementsBundle
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -17,22 +13,15 @@ public section
 
 /-! # Final reads at the Goldilocks run map
 
-`goldilocks_finalReadTransport`: both fields of `FinalReadTransport` at the canonical run map, the
-endpoint contract `K S A` and any local supplier.
-
-* **processed**: the final query of the row's premises, the window's last anchor proposed after
-  the query by its honest proposer with one delay of publication slack, and a reader ready at the
-  deadline give a processing cut strictly before the deadline
-  (`carrier_processed_of_proposesAt_at`); it is not before the anchor's slot, since the block
-  handler makes no cut for a future-slot block (`Compose.blockCall_slot_le`).
-* **cache**: the last anchor's proposer covers the first anchor at its acceptance
-  (`cacheCoverage_of_anchor_window_upTo_at`, from the supplied ancestry and height steps), and the
-  reader's finalized cache covers that block (`reader_cache_covers_at`) once a reader whose cache
-  is below the last anchor accepts it before its read. That acceptance is read on the deadline
-  premises, which hold on the honest sets truncated after the deadline: relay to the reader's
-  first call one delay after the anchor, or catch-up when the anchor precedes GST. Every reader
-  fact after the deadline (honesty, the read point, the threshold and the growth of its cache) is
-  on the run's own honest sets. -/
+`goldilocks_finalReadTransport`: `FinalReadTransport` (its cache field) at the canonical run map
+and any local supplier. The last anchor's proposer covers the first anchor at its acceptance
+(`cacheCoverage_of_anchor_window_upTo_at`, from the supplied ancestry and height steps), and the
+reader's finalized cache covers that block (`reader_cache_covers_at`) once a reader whose cache is
+below the last anchor accepts it before its read. That acceptance is read on the deadline
+premises, which hold on the honest sets truncated after the deadline: relay to the reader's first
+call one delay after the anchor, or catch-up when the anchor precedes GST. Every reader fact after
+the deadline (honesty, the read point, the threshold and the growth of its cache) is on the run's
+own honest sets. -/
 
 namespace Consensus.Goldilocks.Simulation
 
@@ -41,59 +30,21 @@ open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V]
 
-/-- **The final read transport of the canonical run map**, at `K S A` and any local supplier. -/
-theorem goldilocks_finalReadTransport (S : Setup) (A : ContractAssumptions S) {E : Env V}
+/-- **The final read transport of the canonical run map**, at any local supplier. -/
+theorem goldilocks_finalReadTransport (S : Setup) {E : Env V}
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
       (goldilocksRunMap S rho hn hv).signer) :
-    FinalReadTransport (goldilocksRunMap S rho hn hv) (Obligations.K S A) C := by
+    FinalReadTransport (goldilocksRunMap S rho hn hv) C := by
   classical
   let sp := S.params (pubOf E) hn
   have hrun := simTraceAt_goldilocksRun S rho hn hv
   have hmono := hrun.time_mono
   have hΔ := sp.toParams.hΔ
   constructor
-  · -- processed
-    intro hv' hnc idx gst query D W hH hprog hq hD hDh hhp y j hready hrr _ hDj
-    subst hD
-    let Q : Obligations.Growing.FinalQueryAt S A V :=
-      { run := ⟨E, rho⟩, hn := hn, index := idx, gst := gst, query := query, valid := hv',
-        noCollision := hnc, healthy := hH, progress := hprog, mature := hq, bounded := hDh,
-        reader := ⟨_, hready⟩ }
-    have hk3 := hhp.proposes
-    have hh3 := hhp.honest
-    have hfr := W.fresh
-    have hpub := W.publication
-    simp only [goldilocksRunMap_trace, goldilocksRunMap_honest, goldilocksRunMap_validator]
-      at hk3 hh3 hfr hpub hrr hDj hready
-    simp only [CarrierProcessed, goldilocksRunMap_trace, goldilocksRunMap_honest]
-    have hz : (W.block 3).proposer ∈ honestKeysAt S rho ((simTraceAt S rho hn).time (W.cut 3)) :=
-      hrun.antitone (by rw [hk3.2.2]; linarith) hh3
-    have hq3 : query < (simTraceAt S rho hn).time (W.cut 3) :=
-      hfr.trans_le (hmono (W.ordered.monotone (Fin.zero_le 3)))
-    have hready' : Regimes.Growing.ReadyAt Q.trace Q.keys
-        ((Sys (goldilocks S) V).cDur (Obligations.K S A) Q.run) y Q.deadline := by
-      refine ⟨hrr.1.1, fun τ h1 h2 => ?_⟩
-      rw [simTraceAt_awake_iff S rho hn, awakeAt_iff S rho hn]
-      exact ⟨hready.2 τ h1 h2, (le_max_left _ _).trans h1, h2.trans hDh⟩
-    obtain ⟨k, hk, hkt⟩ := Obligations.Growing.carrier_processed_of_proposesAt_at S A V Q hz hk3
-      hq3 hpub y hready'
-    have hk0 := hrun.time_nonneg k
-    have hyk : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time k) :=
-      hrun.antitone hkt.le hrr.1.1
-    obtain ⟨acc, hcall⟩ := hk
-    have hslot := Compose.blockCall_slot_le (hrun.upTo hk0).toLocalRun hyk
-      ((Trace.upTo_callAt _).mpr ⟨le_rfl, hcall⟩)
-    refine ⟨k, ?_, hyk, ?_, hkt.le, acc, hcall⟩
-    · by_contra hkj
-      have := hmono (not_lt.mp hkj)
-      linarith
-    · rw [hk3.2.2]
-      exact (sp.toParams.slotTime_strictMono.monotone hslot).trans
-        ((slotOfSpec_iff.mp slotOf_spec) sp.toParams _ hk0).1
   · -- cache
-    intro βK gst query D W _ _ hP _ hacc hanc hheights y j t hDt hrr _ hft _
+    intro βK gst query D W _ _ hP hacc hanc hheights y j t hDt hrr _ hft
     have hx := (W.ready 3).1
     have hcD := W.bounded 3
     have hp3 := W.proposals 3

@@ -141,9 +141,9 @@ def SleepyLivenessReduction (C : ACCorrectLocal A sg)
           ((Sys F V).pt r).horizon r)
         fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g 0 (K.params.latency cap idx)
 
-/-- All-capability healthy liveness reduction. Actual final deadline premises,
-processing and actual-read cache transport are separate supplier contracts. FinalWindowSupply
-jointly selects advertised anchor readiness, delivery spacing and pointwise heights.
+/-- All-capability healthy liveness reduction. Actual final deadline premises and actual-read
+cache transport are separate supplier contracts. FinalWindowSupply jointly selects advertised
+anchor readiness and pointwise acceptance, chaining and heights.
 No constant FrameWindow production or progress-form exclusion is assumed. The nonfinal
 inclusion reads at L7 (`HealthyReadPoint.proposal`), whose premises and selected reset come from
 the healthy preparation (`PreparationPremisesSupply`) and reset budget (`ResetHealBudgetSupply`)
@@ -158,8 +158,8 @@ def HealthyLivenessReduction (C : ACCorrectLocal A sg)
     RegimeTransport M K L ∧
       ProposalProgressTransport M ∧
       ProposalWitnessRefinement M K L ∧ ClaimDeadlineFit M K L ∧
-      DeadlinePremisesSupply M K ∧ FinalWindowSupply M K L.run L.catchUp L.hold ∧
-      FinalReadTransport M K L ∧ PreparationPremisesSupply M K ∧ ResetHealBudgetSupply M K L ∧
+      DeadlinePremisesSupply M K ∧ FinalWindowSupply M K L.catchUp L.hold ∧
+      FinalReadTransport M L ∧ PreparationPremisesSupply M K ∧ ResetHealBudgetSupply M K L ∧
       StoredReadTransport M (R E hE rho hv) ∧ HealthyReadPoint L ∧ LocalReadPoint L ∧
       ReadRepresentation M ∧ HonestReadTransport M ∧
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →
@@ -617,25 +617,21 @@ theorem healthyLivenessReduction (C : ACCorrectLocal A sg)
   have htD' : t ≤ D := le_add_of_nonneg_right (by positivity)
   by_cases hfin : cap = .final
   · subst hfin
-    obtain ⟨W, hroot, hready0, hhp3, -, hhealed, -, hacc, hanc, hheights⟩ :=
+    obtain ⟨W, hroot, hready0, hacc, hanc, hheights⟩ :=
       hfw hv hc idx gst t hH hprog ht htD hex
     have hP := hdp hv hc idx gst t hH hprog ht htD hex
     have hy0 := (W.ready 0).1
     refine ⟨M.trace.time (W.cut 0), M.keyIndex (W.block 0).proposer, M.header (W.block 0),
       W.fresh, by rw [M.key_eq]; exact hready0,
       hpp.proposal _ _ (W.proposals 0) hy0, fun w hwr => ?_⟩
-    obtain ⟨-, hlt, hp, hbd⟩ := hSR.end_read hv c hc0 w D hD0 htD hwr
+    obtain ⟨-, -, hp, hbd⟩ := hSR.end_read hv c hc0 w D hD0 htD hwr
     have hi : (chainTrace rho).endCut D ≤ rho.events.length := Nat.findGreatest_le _
     have hh : rho.point.HonestAt w (rho.cutTime ((chainTrace rho).endCut D)) := fun hf =>
       hwr.1 (rho.faultyAt_mono (cutTime_endCut_le rho hD0) hf)
-    have hwr' : rho.point.Ready c (M.validator (M.validator.symm w)) D := by
-      rw [Equiv.apply_symm_apply]; exact hwr
-    have hpr := hfr.processed hv hc idx gst t D W hH hprog ht rfl htD hhp3 _ _ hwr'
-      (hmono hp) hbd hlt
     have hfD := hP.faults D hD0 le_rfl
     rw [truncH_eq_of_le le_rfl] at hfD
-    have hF := hfr.cache _ gst t D W hcf hrun hP hhealed hacc hanc hheights _ _ D le_rfl
-      (hmono hp) hbd (hfit.final_faults D hD0 htD hfD) hpr
+    have hF := hfr.cache _ gst t D W hcf hrun hP hacc hanc hheights _ _ D le_rfl
+      (hmono hp) hbd (hfit.final_faults D hD0 htD hfD)
     have hFt : (M.trace.state (M.validator.symm w)
         (M.cut ((chainTrace rho).endCut D))).fg.F ∈ (M.trace.state (M.validator.symm w)
         (M.cut ((chainTrace rho).endCut D))).fg.tree :=

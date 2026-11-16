@@ -139,8 +139,8 @@ structure LocalClaimSuppliers {P : Params} {A : NodeAC P} {O : OutputSchema} {In
   progress : ProposalProgressTransport M
   proposalWitness : ProposalWitnessRefinement M K C
   deadlinePremises : DeadlinePremisesSupply M K
-  finalWindow : FinalWindowSupply M K C.run C.catchUp C.hold
-  finalReads : FinalReadTransport M K C
+  finalWindow : FinalWindowSupply M K C.catchUp C.hold
+  finalReads : FinalReadTransport M C
   accountability : ActualReadAccountability M C.run
   outage : OutageTransport M D K
   recovery : OutageRecoveryBinding M K C

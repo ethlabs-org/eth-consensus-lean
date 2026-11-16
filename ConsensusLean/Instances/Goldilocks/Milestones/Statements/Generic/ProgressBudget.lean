@@ -104,10 +104,9 @@ def FinalHeightSupply (M : RunMap rho payload) (catchUp hold query deadline : Ti
       ((M.trace.state z j).fg.σ (W.block a.succ).root).h
 
 /-- All-form joint final production at the advertised query/deadline and actual FG delay.
-The same selected window must have delivery spacing, healing and actual height evidence.
-No spacing follows merely from the timeout, and no gap or latency is enlarged here. -/
+The same selected window has a non-genesis first anchor whose proposer is ready at its cut, and
+actual acceptance, chaining and height evidence. No gap or latency is enlarged here. -/
 def FinalWindowSupply (M : RunMap rho payload) (K : Contract ProgressReq)
-    (runs : ACRun A M.signer)
     (catchUp hold : Time) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ idx g t,
     (Sys F V).Healthy (shapeProgress F V).toExternal K g ⟨E, rho⟩ →
@@ -122,12 +121,6 @@ def FinalWindowSupply (M : RunMap rho payload) (K : Contract ProgressReq)
       (W.block 0).root ≠ P.genesisRoot ∧
       rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩)
         (M.validator (W.block 0).proposer) (M.trace.time (W.cut 0)) ∧
-      HonestProposal M.trace M.honest M.proposer (W.block 3).slot
-        (W.block 3).proposer (W.cut 3) (W.block 3) ∧
-      6 * P.Δ + E.ΔFG ≤ 4 * P.Δ * (W.gap : Time) ∧
-      HealedFrom M.trace M.honest M.proposer W.start
-        (t + (K.params.latency .final idx : Time) * E.ΔAC) ∧
-      runs.Run M.committee M.proposer M.digest M.honest M.trace ∧
       FinalHeightSupply M catchUp hold t
         (t + (K.params.latency .final idx : Time) * E.ΔAC) W
 

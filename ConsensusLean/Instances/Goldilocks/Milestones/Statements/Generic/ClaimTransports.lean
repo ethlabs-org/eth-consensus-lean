@@ -117,39 +117,22 @@ def DeadlinePremisesSupply (M : RunMap rho payload) (K : Contract ProgressReq) :
       M.committee K.params.βK M.proposer M.digest M.signer gst E.ΔFG
       (query + (K.params.latency .final idx : Time) * E.ΔAC)
 
-/-- Actual-read carrier/cache bridge. The processing supplier is
-`carrier_processed_of_honest_at`: healthy service, an honest anchor and a
-deadline-ready reader. Cache ancestry uses `cacheCoverage_of_anchor_window_upTo_at`.
+/-- Actual-read cache bridge: the first anchor of a selected final window, with its acceptance,
+chaining and height evidence, is below the finalized block of every ready reader from the
+deadline on. Cache ancestry uses `cacheCoverage_of_anchor_window_upTo_at`.
 The cache's `Premises` are on the honest sets truncated after `deadline`, as
 `DeadlinePremisesSupply` returns them. Nobody is honest on that truncation after the
 deadline, since `truncH H b t = H t ∩ {t ≤ b}`, so a reader at `deadline ≤ t` keeps its
 honesty, its run and the population threshold at `t` on `M.honest`, and the window ancestry
 and the conclusion stay over `M.honest`'s honest blocks; ancestry over the truncated honest
-blocks is ancestry over `M.honest`'s, as `honestBlocksAt_truncH_subset` gives. The exact
-generic adapters remain proof obligations. -/
-structure FinalReadTransport (M : RunMap rho payload) (K : Contract ProgressReq)
-    (C : ACCorrectLocal A M.signer) : Prop where
-  processed : rho.ExecutionValid → ¬ rho.HashCollision → ∀ idx gst query deadline
-    (W : FinalProductionWindow M C.catchUp C.hold query deadline),
-    (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
-    (Sys F V).prog (shapeProgress F V) K .final idx ((Sys F V).ready K gst ⟨E, rho⟩)
-      rho.horizon ⟨E, rho⟩ →
-    (Sys F V).heal K .final idx gst ⟨E, rho⟩ ≤ query →
-    deadline = query + (K.params.latency .final idx : Time) * E.ΔAC →
-    deadline ≤ rho.horizon →
-    HonestProposal M.trace M.honest M.proposer (W.block 3).slot
-      (W.block 3).proposer (W.cut 3) (W.block 3) →
-    ∀ y j, rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩) (M.validator y) deadline →
-    ReadyReadPoint M.trace M.honest rho.horizon C.catchUp y j deadline →
-    ReadBoundary M.trace y j → deadline < M.trace.time j →
-    CarrierProcessed M (W.block 3) y j (M.trace.time (W.cut 3)) deadline
+blocks is ancestry over `M.honest`'s, as `honestBlocksAt_truncH_subset` gives. -/
+structure FinalReadTransport (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) : Prop where
   cache : ∀ (βK : ℚ) gst query deadline
     (W : FinalProductionWindow M C.catchUp C.hold query deadline),
     βK ≤ 1 / 2 →
     C.run.Run M.committee M.proposer M.digest M.honest M.trace →
     Premises M.trace (truncH M.honest deadline) M.committee βK M.proposer M.digest M.signer gst
       E.ΔFG deadline →
-    HealedFrom M.trace M.honest M.proposer W.start deadline →
     (∀ a, M.trace.AcceptAt (W.block a).proposer (W.cut a) (W.block a)) →
     (∀ a b, a ≤ b → Anc (M.trace.HonestBlocksAt M.honest) (W.block a) (W.block b)) →
     (∀ a : Fin 3, ∃ z i j, z ∈ M.honest (M.trace.time i) ∧
@@ -162,7 +145,6 @@ structure FinalReadTransport (M : RunMap rho payload) (K : Contract ProgressReq)
     ReadyReadPoint M.trace M.honest rho.horizon C.catchUp y j t →
     ReadBoundary M.trace y j →
     (M.honest t)ᶜ.ncard < 2 * P.q - P.n →
-    CarrierProcessed M (W.block 3) y j (M.trace.time (W.cut 3)) deadline →
     Anc (M.trace.HonestBlocksAt M.honest) (W.block 0) (M.trace.finalizedAt y j)
 
 /-- Actual-read population evidence from `finalAccountable_readPoint`

@@ -71,27 +71,20 @@ theorem final_duty_proposal_at
   exact ⟨P, hP⟩
 
 /-- **Final-window extraction** (route A) under growing faults: a window of four honest anchors
-at the FG gap `c = fgSlots`, with its slack, its anchor run and its three anchor steps.
-Retains the gap equality, the selected reset premises, their drain-before-start bound and
-each anchor's canonical-proposer equation. -/
+at the FG gap `c = fgSlots`, with its slack, its anchor run and its three anchor steps. -/
 theorem final_window_extract_at
     (Q : FinalQueryAt S A V) :
     ∃ W : FinalWindowDataAt S A V Q,
         Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧
-      W.AnchorRun ∧ W.AnchorSteps ∧ W.gap = A.fgSlots ∧
-      ∃ ΔR a, Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
-        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon
-        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK ∧
-        Healing.drainTime Q.params a ≤ Q.params.ts W.start ∧
-        ∀ i, (W.block i).proposer = runProposer S Q.run.2 Q.hn (W.block i).slot := by
+      W.AnchorRun ∧ W.AnchorSteps := by
   obtain ⟨ΔR, a, hreset, hplace⟩ := final_reset_premises_at S A V Q
-  obtain ⟨W, hgap, hslack, hrun, hsteps, hdrain, hprop⟩ :=
+  obtain ⟨W, -, hslack, hrun, hsteps⟩ :=
     final_window_extract_of_gap_at S A V Q A.two_le_fgSlots A.timeout (finalWindow_offsets A)
       (FinalQueryAt.hsSharedUpTo_at Q) (FinalQueryAt.protoFGDelay_delivery_at Q)
       (final_latency_gap_at S A V Q)
       hreset (final_duty_proposal_at S A V Q) hplace
       (carrier_processed_of_honest_at S A V Q)
-  exact ⟨W, hslack, hrun, hsteps, hgap, ΔR, a, hreset, hdrain, hprop⟩
+  exact ⟨W, hslack, hrun, hsteps⟩
 
 /-- **Window coverage at a holder of the last anchor.** The run premises and the three anchor
 steps give, at a holder of `P₃` honest at an observation after its cuts, the block `F` of root
@@ -272,7 +265,7 @@ theorem meetsObligations_healthyLive_final_growing : ∀ g, schema.output .final
         ((K S A).params.latency .final i) :=
   final_payload_projection_at
       { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V fun Q => by
-    obtain ⟨W, hslack, run, steps, -⟩ := final_window_extract_at
+    obtain ⟨W, hslack, run, steps⟩ := final_window_extract_at
       { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q
     exact ⟨W, hslack, final_cache_coverage_at S A V Q W hslack run steps⟩
 

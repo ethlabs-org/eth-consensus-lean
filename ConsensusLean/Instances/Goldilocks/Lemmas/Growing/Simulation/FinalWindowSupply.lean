@@ -1,7 +1,8 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunTransport
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMap
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ClaimTransports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Final
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -11,7 +12,6 @@ public section
 namespace Consensus.Goldilocks.Simulation
 
 open AsChainShape Shape Blocks Generic Obligations
-open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V]
 
@@ -19,21 +19,16 @@ variable {V : Type} [Fintype V] [DecidableEq V]
 theorem goldilocks_finalWindowSupply (S : Setup) (A : ContractAssumptions S) {E : Env V}
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) :
-    FinalWindowSupply (goldilocksRunMap S rho hn hv) (K S A)
-      ((goldilocksRunMap_signer S rho hn hv).symm ▸
-        goldilocksRunInterface (S.params (pubOf E) hn) (S.ro _))
-      (18 * E.ΔAC) E.ΔAC := by
+    FinalWindowSupply (goldilocksRunMap S rho hn hv) (K S A) (18 * E.ΔAC) E.ΔAC := by
   classical
   intro hv' hc idx gst t hhealthy hp hm hb hr
   let Q : Growing.FinalQueryAt S A V :=
     { run := ⟨E, rho⟩, hn := hn, index := idx, gst := gst, query := t,
       valid := hv', noCollision := hc, healthy := hhealthy, progress := hp,
       mature := hm, bounded := hb, reader := hr }
-  obtain ⟨W, hslack, hrunW, hsteps, hgap, ΔR, a, hreset, hdrain, hdesign⟩ :=
+  obtain ⟨W, hslack, hrunW, hsteps⟩ :=
     Growing.final_window_extract_at S A V Q
   have hrun := simTraceAt_goldilocksRun S rho hn hv'
-  have hnc := noCollRun_simTraceAt S rho hn hv' hc
-  have hΔ := Q.params.toParams.hΔ
   have htime (i : Fin 4) : Q.trace.time (W.cut i) = Q.params.ts (W.block i).slot := by
     rw [(W.proposals i).2.2, Q.params.slotTime_eq]
     rfl
@@ -78,39 +73,8 @@ theorem goldilocks_finalWindowSupply (S : Setup) (A : ContractAssumptions S) {E 
       simpa only [EnvPoint.HonestAt, Model.Run.point] using hh
     · have hh := (W.ready 0).2 τ hlo hhi
       exact ((simTraceAt_awake_bounds S rho hn _ τ).mp hh).1
-  refine ⟨W', hroot, ?_, ?_, ?_, ?_, (goldilocksRunMap_transport S rho hn hv).run hv', ?_⟩
+  refine ⟨W', hroot, ?_, ?_⟩
   · simpa only [goldilocksRunMap_validator, goldilocksRunMap_trace] using hengine
-  · simp only [goldilocksRunMap_trace, goldilocksRunMap_honest, goldilocksRunMap_proposer]
-    refine ⟨?_, ?_, W.proposals 3, rfl⟩
-    · change (W.block 3).proposer ∈ Q.keys (Q.params.toParams.slotTime (W.block 3).slot + E.ΔAC)
-      have hh := hhold 3
-      rw [htime] at hh
-      simpa only [Q.params.slotTime_eq, SA.SAParams.ts] using hh
-    · exact hdesign 3
-  · have hd := Growing.FinalQueryAt.protoFGDelay_delivery_at Q
-    change 6 * E.ΔAC + E.ΔFG ≤ 4 * E.ΔAC * (W.gap : Time)
-    rw [hgap]
-    rw [protoFGDelay_eq] at hd
-    change 6 * E.ΔAC + E.ΔFG ≤ _ at hd
-    linarith
-  · simp only [goldilocksRunMap_trace, goldilocksRunMap_honest, goldilocksRunMap_proposer]
-    intro s s' z z' k k' X X' hs hss hsb hX hX'
-    have hpr {s z k X} (h : HonestProposal Q.trace Q.keys (runProposer S rho hn) s z k X) :
-        Healing.Growing.HonestProposalRun Q.trace Q.keys (runProposer S rho hn) s X :=
-      Healing.Growing.honestProposalRun_of_proposesAt_at hrun hnc h.honest
-        h.designated h.proposes h.slot
-    have hdr : Healing.drainTime Q.params a ≤ Q.params.ts s :=
-      hdrain.trans ((SA.ts_le_iff Q.params).mpr (by exact_mod_cast hs))
-    rcases Nat.lt_or_ge (s + 1) s' with h | h
-    · exact Growing.honest_proposal_below_later_upTo_at hreset (hpr hX) hdr (hpr hX')
-        (by omega) (by
-          change 4 * E.ΔAC * (s' : Time) ≤ rho.horizon
-          change 4 * E.ΔAC * (s' : Time) + 6 * E.ΔAC ≤ _ at hsb
-          linarith)
-    · obtain rfl : s' = s + 1 := by omega
-      exact Growing.honest_proposal_below_next_upTo_at hreset (hpr hX) hdr (hpr hX')
-        (by rw [Q.params.slotTime_eq] at hsb; simp only [SA.SAParams.ts] at hsb ⊢
-            push_cast at hsb; linarith)
   · simp only [FinalHeightSupply, goldilocksRunMap_trace, goldilocksRunMap_honest]
     exact ⟨W.accepted, W.chain,
       fun i => Growing.anchorStepAt_iff.mp (W.anchorSteps_iff.mp hsteps i)⟩

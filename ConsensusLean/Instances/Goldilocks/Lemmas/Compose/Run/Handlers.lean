@@ -654,17 +654,6 @@ theorem blockCall_cases (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n
   rw [show j + 2 = j + 1 + 1 by omega, tr.state_succ_of_call c₁, (h.cutLaw y hy _ _ c₁).2.2.1,
     tr.state_succ_of_call c₀, (h.cutLaw y hy _ _ c₀).2.2.1]
 
-/-- **A block call is not of a future slot**: the delivery handler makes no cut for a block of a
-later slot, and an own proposal is of the current slot. -/
-theorem blockCall_slot_le (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
-    {i : Nat} {B : A.Blk} {acc : Bool} (hc : tr.CallAt y i (.fg (.block B acc))) :
-    B.slot ≤ P.slotOf (tr.time i) := by
-  rcases blockCall_cases h hy hc with hg | ⟨j, x, -, -, -, d, p, -, hB, -⟩
-  · by_contra hlt
-    exact hg.1 (by simp [exec, onBlock, not_le.mp hlt])
-  · rw [hB]
-    exact le_rfl
-
 /-- **An AC message call is in the delivery of that message.** -/
 theorem msgCall_group (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel A} {m : A.Msg} (hc : tr.CallAt y i (.ac ℓ))

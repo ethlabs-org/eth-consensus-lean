@@ -67,9 +67,4 @@ structure OutageTransport (M : RunMap rho payload) (D : OutagePolicy M)
         (max ((Sys F V).cDur K ⟨E, rho⟩) ((K.params.η : Time) * E.ΔAC - 1))
         ((Sys F V).committeeAheadDur K ⟨E, rho⟩) 0 D.point.horizon
 
-def CarrierProcessed (M : RunMap rho payload) (B : A.Blk) (y : Fin P.n)
-    (j : Nat) (sent deadline : Time) : Prop :=
-  ∃ k < j, y ∈ M.honest (M.trace.time k) ∧ sent ≤ M.trace.time k ∧
-    M.trace.time k ≤ deadline ∧ M.trace.BlockCallAt y k B
-
 end Consensus.Goldilocks.Generic
