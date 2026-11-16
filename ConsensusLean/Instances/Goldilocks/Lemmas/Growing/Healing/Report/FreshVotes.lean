@@ -80,8 +80,8 @@ theorem honest_vote_heads_eq_at
     change sp.slot (tr.time i) = s + 1 at hslot
     change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at hhigh
     rw [hslot] at hhigh
-    obtain ⟨hvP, hPv⟩ := proposal_viable_at_cast_at hframe hrun hnc hsvc hawake hf hcatch hnr
-      (by linarith [sp.toParams.hΔ]) hsp (by omega) hmb hz hdes hP hPs hy hcast hes hstock
+    obtain ⟨hvP, hPv⟩ := proposal_viable_at_cast_at hframe hrun hnc hsvc hf hnr
+      (by linarith [sp.toParams.hΔ]) hsp (by omega) hmb hz hdes hP hPs hy hcast hes
     have haP := hframe.vote_anchor_below_of_earlier_heads_at hrun hnc hsvc hawake hf hcatch
       hnr hm hsp (by omega) hmb hz hdes hP hPs hy hcast hes hwarm
       (fun x j ev hji hx hv hs => ih j hji x ev hx hv hs) hstock

@@ -101,8 +101,8 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads_at
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
   have hcast : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ell e := ⟨hci, hc.2⟩
   have hPhi := SA.frameIn_of_callAt hri.localRun hy hci
-  have hPv := (KernelProof.proposal_viable_at_cast_at hframe hrun hnc hsvc hawake hf hcatch
-    hnr (by linarith [sp.toParams.hΔ]) hsp hp0 hpb hz hdes hP hPs hy hc hes hstock).1
+  have hPv := (KernelProof.proposal_viable_at_cast_at hframe hrun hnc hsvc hf hnr
+    (by linarith [sp.toParams.hΔ]) hsp hp0 hpb hz hdes hP hPs hy hc hes).1
   have hfP : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P :=
     Anc.mono hPhi.2 (hPhi.1.fcRoot_anc_viableHeads P hPv)
   have hlk : ∀ B ∈ SA.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i),

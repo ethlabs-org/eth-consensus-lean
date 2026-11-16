@@ -53,8 +53,12 @@ theorem fresh_fast_lock_update_toFG_at
     rw [hk]
     simp only [SAParams.ts]; push_cast; ring
   have hyk : y ∈ H (tr.time k) := hkt ▸ hy
-  obtain ⟨hvi, hconf, hfast, hva⟩ := hframe.unanimous_update_selection_at hrun hnc hsvc hawake
-    hf hcatch hnr hmargin hjoin hTb hz hdes hP hPs hun hyk hu hstock
+  have hrunF : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot (SA.CommitteeDict.full sp.n)) := by
+    rw [SA.committeeStart_full]; exact hrun
+  obtain ⟨hvi, hconf, hfast, hva⟩ := hframe.unanimous_update_selection_at hrunF hnc hsvc hawake
+    hf hcatch hnr hmargin hjoin hTb hz hdes hP hPs hun hyk hu
+    (CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock)
   have hnv := hframe.unanimous_update_no_veto_at hrun hnc hsvc hawake hf hcatch hnr hmargin
     hjoin hTb hz hdes hP hPs hun hyk hu hstock
   obtain ⟨e, he, hlock⟩ := fresh_fast_lock_of_selection_at hrun hnc hyk hu hvi.1

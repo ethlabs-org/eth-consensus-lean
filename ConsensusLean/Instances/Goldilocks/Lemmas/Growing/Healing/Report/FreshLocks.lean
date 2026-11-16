@@ -55,10 +55,14 @@ theorem FrameWindow.unanimous_update_no_veto_at
   have hc' : (tr.projAC.upTo (tr.time k)).CallAt y k ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hu.1⟩
   have hPhi := SA.frameIn_of_callAt hr hy hc'
-  obtain ⟨hvi, _, _, _⟩ := hframe.unanimous_update_selection_at hrun hnc hsvc hawake hf hcatch
-    hnr hmargin hjoin hTb hz hdes hP hPs hun hy hu hstock
-  have hnext := hframe.unanimous_next_votes_at hrun hnc hsvc hawake hf hcatch hnr
-    hmargin hjoin hTb hz hdes hP hPs hun hstock
+  have hrunF : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot (SA.CommitteeDict.full sp.n)) := by
+    rw [SA.committeeStart_full]; exact hrun
+  have hKF := CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock
+  obtain ⟨hvi, _, _, _⟩ := hframe.unanimous_update_selection_at hrunF hnc hsvc hawake hf hcatch
+    hnr hmargin hjoin hTb hz hdes hP hPs hun hy hu hKF
+  have hnext := hframe.unanimous_next_votes_at hrunF hnc hsvc hawake hf hcatch hnr
+    hmargin hjoin hTb hz hdes hP hPs hun hKF
   have hold := hframe.older_locks_compatible_at_update_at hrun hnc hsvc hawake hf hcatch hnr
     hmargin hjoin hTb hz hdes hP hPs hun hy hu hstock
   have down : ∀ {X Y}, Anc (tr.HonestBlocksAt H) X Y →
@@ -94,8 +98,8 @@ theorem FrameWindow.unanimous_update_no_veto_at
     rw [hls] at hup hC
     have hup' := (SA.upTo_updateAt hrun.time_mono).mp hup |>.2
     have hCP : C = P := by
-      have hconf := (hframe.unanimous_update_selection_at hrun hnc hsvc hawake hf hcatch hnr
-        hmargin hjoin hTb hz hdes hP hPs hun (hrun.antitone hm hy) hup' hstock).2.1
+      have hconf := (hframe.unanimous_update_selection_at hrunF hnc hsvc hawake hf hcatch hnr
+        hmargin hjoin hTb hz hdes hP hPs hun (hrun.antitone hm hy) hup' hKF).2.1
       have hsr := Trace.upTo_state tr.projAC y (i := r)
         (fun q hq => (hrun.time_mono hq.le).trans hm)
       rw [hsr] at hC

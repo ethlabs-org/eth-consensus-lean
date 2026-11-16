@@ -18,10 +18,11 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-/-- Every validator still honest at the next-slot read supports the unanimous
-proposal in that read's merged view. -/
-theorem unanimous_next_cast_supporters_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+/-- Every member of the slot committee `K u` still honest at the next-slot read supports the
+unanimous proposal in that read's merged view, for a run from `K`'s committee start. -/
+theorem unanimous_next_cast_supporters_at {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -38,15 +39,14 @@ theorem unanimous_next_cast_supporters_at
     (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u + 1)
     (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
     (hPt : P ∈ ell.frame.tree)
-    (hvotes : ∀ x, x ∈ H (tr.time j) → ∃ i ev,
+    (hvotes : ∀ x, x ∈ H (tr.time j) → x ∈ K.committee u → ∃ i ev,
       SA.VoteAt tr.projAC x i ev ∧ ev.msg.slot = u ∧ tr.time i ≤ tr.time j)
-    (hstock : sp.committeeSize = sp.n) :
-    ∀ x, x ∈ H (tr.time j) →
+    (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ x, x ∈ H (tr.time j) → x ∈ K.committee u →
       x ∈ SA.supporters ell.frame (SA.mergedVoteView sp e.readPoint ell.frame (u + 1)) u P := by
   have hΔ := sp.toParams.hΔ
   have hgu : gbar g ≤ sp.ts u := by linarith
-  have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
-    (hrun.time_nonneg j) hjb hstock
+  have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch (hrun.time_nonneg j) hjb
   have hr := hS.run.localRun
   have hc' : SA.CastAt (tr.projAC.upTo (tr.time j)) y j ell e :=
     ⟨(Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩, hc.2⟩
@@ -66,8 +66,8 @@ theorem unanimous_next_cast_supporters_at
     have hb := hnr y k (hrun.antitone hkt hy)
       (Compose.projAC_restartAt.mp ⟨ellk, ((Trace.upTo_callAt _).mp hck).2, hk⟩)
     linarith
-  intro x hx
-  obtain ⟨i, ev, hv, hs, hit⟩ := hvotes x hx
+  intro x hx hxK
+  obtain ⟨i, ev, hv, hs, hit⟩ := hvotes x hx hxK
   have hv' : SA.VoteAt (tr.projAC.upTo (tr.time j)) x i ev := by
     obtain ⟨ellx, hcx, he⟩ := hv
     exact ⟨ellx, (Trace.upTo_callAt _).mpr ⟨hit, hcx⟩, he⟩
@@ -113,12 +113,6 @@ theorem FrameWindow.older_locks_compatible_at_update_at
         Compatible (tr.HonestBlocksAt H) L P := by
   have hΔ := sp.toParams.hΔ
   have hgu : gbar g ≤ sp.ts u := by linarith
-  have hu0 : 0 < u := by
-    by_contra hn
-    have he : u = 0 := by omega
-    rw [he] at hmargin
-    simp only [SAParams.ts, Nat.cast_zero, mul_zero] at hmargin
-    linarith [SA.gbar_nonneg g]
   have hkt : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
   have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ = sp.ts u + 6 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
@@ -167,27 +161,30 @@ theorem FrameWindow.older_locks_compatible_at_update_at
     (show 0 ≤ sp.ts u + sp.Δ by linarith [SA.gbar_nonneg g])
     (hshort.trans (hrun.time_mono hjk.le |>.trans hkb)) hstock
   have hvotes := fun x hx => honest_votes_of_joined_before_at hS0 hgu hjoin x hx (SA.mem_full _ _)
-  obtain ⟨hvi, _, _⟩ := hframe.proposal_viable_after_votes_at hrun hnc hsvc hawake hf hcatch
-    hnr hgu hu0 hTb hz hdes hP hPs hyj hc.1 hjlate hjfinite
-    (hvotes y (hrun.antitone hshort hyj)) hstock
+  obtain ⟨hvi, _, _⟩ := hframe.proposal_viable_after_votes_at hrun hnc hsvc hf hnr hgu hTb hz hdes
+    hP hPs hyj hc.1 hjlate hjfinite
   obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, a, _, ha, hta⟩ :=
     honestProposalRun_of_proposesAt_at hrun hnc hz hdes hP hPs
   change tr.time a = sp.ts u at hta
   have hza : proposer u ∈ H (tr.time a) :=
     hrun.antitone (by rw [hta]; linarith) (hdes ▸ hz)
-  have hsupp := unanimous_next_cast_supporters_at hrun hnc hsvc hawake hf hcatch hnr
+  have hrunF : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot (SA.CommitteeDict.full sp.n)) := by
+    rw [SA.committeeStart_full]; exact hrun
+  have hsupp := unanimous_next_cast_supporters_at hrunF hnc hsvc hawake hf hcatch hnr
     hmargin hPs hun hza ha hta hyj hc hs hjlate
     ((hrun.time_mono hjk.le).trans hkb) hvi.1
-    (fun x hx => by
+    (fun x hx _ => by
       obtain ⟨i, ev, hv, hes, hit⟩ := hvotes x (hrun.antitone hshort hx)
-      exact ⟨i, ev, hv, hes, hit.trans hshort⟩) hstock
+      exact ⟨i, ev, hv, hes, hit.trans hshort⟩)
+    (CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock)
   have hhalf : sp.committeeSize ≤ 2 * (H (tr.time j)).ncard := by
     have hn : (H (tr.time j)).ncard + (H (tr.time j))ᶜ.ncard = sp.n := by
       rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
     have hb := hf (tr.time j) (hrun.time_nonneg j) ((hrun.time_mono hjk.le).trans hkb)
     rw [hstock]; omega
   exact older_locks_compatible_after_unlock_at hrun hnc hy hc hs hjk hvi.1
-    (fun x hx => Or.inr (hsupp x hx).2) hhalf
+    (fun x hx => Or.inr (hsupp x hx (SA.mem_full _ _)).2) hhalf
 
 end Consensus.Goldilocks.Healing.Growing
 

@@ -48,8 +48,8 @@ theorem current_lock_passage_of_regular_base_at
           Anc (tr.HonestBlocksAt H) B D)) := by
   have hΔ := sp.toParams.hΔ
   have hm₀ : gbar g ≤ sp.ts s₀ := by linarith
-  obtain ⟨hvP, hdomP⟩ := proposal_viable_at_cast_at hframe hrun hnc hsvc hawake hf hcatch
-    hnr hm₀ hsp hp0 hpb hz hdes hP hPs hy hc hes hstock
+  obtain ⟨hvP, hdomP⟩ := proposal_viable_at_cast_at hframe hrun hnc hsvc hf hnr hm₀ hsp hp0
+    hpb hz hdes hP hPs hy hc hes
   refine ⟨hvP, hdomP, ?_⟩
   have hlabel : s₀ + sp.k ≤ l.slot := by omega
   have hd := hrun.time_nonneg i
