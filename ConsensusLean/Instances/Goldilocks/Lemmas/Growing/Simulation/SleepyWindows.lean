@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMap
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Layer1Proofs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ClaimTransports
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkFacts
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -217,5 +218,129 @@ theorem goldilocks_sleepy_window_supply : GoldilocksSleepyWindowSupply (V := V) 
       EnvPoint.retain, Model.Run.point] using h
 
 end Consensus.Goldilocks.Simulation
+
+namespace Consensus.Goldilocks.Generic.SleepyLayer1
+
+open AsChainShape Simulation Shape
+open Consensus.Model (pubOf)
+
+variable {V : Type} [Fintype V] [DecidableEq V] (S : Setup) {E : Env V}
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+  (hv : rho.ExecutionValid)
+
+/-- The canonical map supplies the slot-constant committee and the horizon binding;
+the local data equations supply the numerical fits, not an existential supplier. -/
+private theorem canonical_window_premises
+    (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      (fun v => v.val))
+    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C)
+    {p : EnvPoint (Fin (Fintype.card V))} {ΔF b : Time}
+    (hb : b ≤ rho.horizon)
+    (hbind : RunPointBinding (goldilocksRunMap S rho hn hv).trace
+      (goldilocksRunMap S rho hn hv).honest p)
+    (hpre : (goldilocksRunMap S rho hn hv).trace.SleepyPrefixAt
+      (goldilocksRunMap S rho hn hv).honest ΔF C.look b)
+    (hK : CommitteeWindow C p (goldilocksRunMap S rho hn hv).committee b)
+    (hpop : PopulationWindow C p b) :
+    GoldilocksWindowPremises (goldilocksRunMap S rho hn hv).trace
+      (goldilocksRunMap S rho hn hv).honest p
+      (goldilocksRunMap S rho hn hv).committee
+      C.catchUp C.look C.committeeLook ΔF b := by
+  obtain ⟨_, hθ, hc, hl, hcl, _⟩ := hdata
+  rw [goldilocksWindowPremises_iff]
+  refine ⟨hbind, ?_, ?_, hl.ge, hcl.ge, ?_, hpre, ?_, ?_⟩
+  · exact (hbind.2.2.2 b).mp ((goldilocksRunMap S rho hn hv).horizon_eq b |>.mpr hb)
+  · rw [hc]
+    rfl
+  · intro s
+    rw [goldilocksRunMap_committee]
+    exact goldilocks_slot_constancy S E rho hn s
+  · simpa only [CommitteeWindow, hθ] using hK
+  · simpa only [PopulationWindow, hθ] using hpop
+
+private theorem cast_local_fields {P : Params} {A : NodeAC P}
+    {sg sg' : A.Msg → Fin P.n} (h : sg = sg') (C : ACCorrectLocal A sg) :
+    (h ▸ C).run.Run = C.run.Run ∧ (h ▸ C).look = C.look ∧
+    (h ▸ C).catchUp = C.catchUp ∧ (h ▸ C).committeeLook = C.committeeLook ∧
+    (h ▸ C).θ = C.θ ∧ (h ▸ C).hold = C.hold ∧ (h ▸ C).margin = C.margin := by
+  cases h
+  exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- The fixed concrete event proof supplies the generic map-bound event-safety row. -/
+theorem goldilocksRunMap_event_safety
+    (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      (fun v => v.val))
+    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C) :
+    EventSafety (goldilocksRunMap S rho hn hv)
+      ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
+      (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
+  intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes B B' hB hB'
+  obtain ⟨hr, hl, hc, hcl, hθ, _, _⟩ :=
+    cast_local_fields (goldilocksRunMap_signer S rho hn hv).symm C
+  rw [hr] at hrun
+  rw [hl] at hpre
+  simp only [CommitteeWindow, PopulationWindow, hl, hc, hcl, hθ] at hK hpop
+  have hrun' : (goldilocksRunInterface (S.params (pubOf E) hn) (S.ro _)).Run
+      (goldilocksRunMap S rho hn hv).committee (goldilocksRunMap S rho hn hv).proposer
+      (goldilocksRunMap S rho hn hv).digest (goldilocksRunMap S rho hn hv).honest
+      (goldilocksRunMap S rho hn hv).trace := by
+    rw [hdata.1.1.1] at hrun
+    exact (goldilocksRunInterface_run_iff _).mpr hrun
+  exact (goldilocksEventSafety_iff.mp goldilocks_event_safety)
+    _ _ _ _ _ p C.catchUp C.look C.committeeLook ΔF b hrun' hnc
+    (((goldilocksRunInterface_run_iff _).mp hrun').2.2.2 hnc)
+    (canonical_window_premises S rho hn hv C hdata hb hbind hpre hK hpop)
+    hframes B B' hB hB'
+
+/-- The concrete extension proof keeps the canonical map's two read boundaries. -/
+theorem goldilocksRunMap_extension
+    (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      (fun v => v.val))
+    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C) :
+    Extension (goldilocksRunMap S rho hn hv)
+      ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
+      (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
+  intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes y i j t u hi hj hbi hbj hij htu
+  obtain ⟨hr, hl, hc, hcl, hθ, _, _⟩ :=
+    cast_local_fields (goldilocksRunMap_signer S rho hn hv).symm C
+  rw [hr, hdata.1.1.1] at hrun
+  rw [hl] at hpre
+  rw [hc] at hi hj
+  simp only [CommitteeWindow, PopulationWindow, hl, hc, hcl, hθ] at hK hpop
+  have hr' := (goldilocksRunInterface_run_iff _).mpr hrun
+  exact (goldilocksExtension_iff.mp goldilocks_extension)
+    _ _ _ _ _ p C.catchUp C.look C.committeeLook ΔF b hr' hnc
+    (hrun.2.2.2 hnc)
+    (canonical_window_premises S rho hn hv C hdata hb hbind hpre hK hpop)
+    hframes y i j t u hi hj hbi hbj hij htu
+
+/-- The proposal adapter retains the local hold and margin equations. -/
+theorem goldilocksRunMap_proposal_coverage
+    (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      (fun v => v.val))
+    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C) :
+    ProposalCoverage (goldilocksRunMap S rho hn hv)
+      ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
+      (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
+  intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes B k y j t hP hk hhold hkb hkt hy hread hjt
+  obtain ⟨hr, hl, hc, hcl, hθ, hh, hm⟩ :=
+    cast_local_fields (goldilocksRunMap_signer S rho hn hv).symm C
+  rw [hr, hdata.1.1.1] at hrun
+  rw [hl] at hpre
+  rw [hc, hh] at hP
+  rw [hc] at hy
+  rw [hh] at hhold
+  rw [hm] at hkt
+  simp only [CommitteeWindow, PopulationWindow, hl, hc, hcl, hθ] at hK hpop
+  have hr' := (goldilocksRunInterface_run_iff _).mpr hrun
+  exact (goldilocksProposalCoverage_iff.mp goldilocks_proposal_coverage)
+    _ _ _ _ _ p C.catchUp C.look C.committeeLook ΔF b C.hold C.margin hr' hnc
+    (hrun.2.2.2 hnc)
+    (canonical_window_premises S rho hn hv C hdata hb hbind hpre hK hpop)
+    (by rw [hdata.2.2.2.2.2.1])
+    (by rw [hdata.2.2.2.2.2.2.1])
+    hframes B k y j t hP hk hhold hkb hkt hy hread hjt
+
+end Consensus.Goldilocks.Generic.SleepyLayer1
 
 end

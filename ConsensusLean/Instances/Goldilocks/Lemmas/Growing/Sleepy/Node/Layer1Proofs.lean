@@ -378,6 +378,27 @@ theorem goldilocks_extension : GoldilocksExtension (sp := sp) (ro := ro) := by
   obtain ⟨hrun, hpos, -⟩ := (goldilocksRunInterface_run_iff cm).mp hrun
   exact sleepy_extension_of_windows hrun hnc hpos hKB hw hi hj hbi hbj hij htu
 
+/-- Output provenance remains quantified over every run of the supplied local interface. -/
+theorem goldilocksLocal_output_provenance
+    (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
+    (hdata : GoldilocksLocalData sp ro C) :
+    OutputProvenance C (goldilocksEvents sp ro) := by
+  intro cm proposer dg H tr b hrun hnc
+  rw [hdata.1.1.1] at hrun
+  exact (goldilocksOutputProvenance_iff.mp goldilocks_output_provenance)
+    cm proposer dg H tr b ((goldilocksRunInterface_run_iff cm).mpr hrun) hnc
+
+/-- Source provenance retains the same-reporter event and its ancestry witness. -/
+theorem goldilocksLocal_source_provenance
+    (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
+    (hdata : GoldilocksLocalData sp ro C) :
+    SourceProvenance C (goldilocksEvents sp ro) := by
+  intro cm proposer dg H tr b hrun hnc
+  rw [hdata.1.1.1] at hrun
+  exact (goldilocksSourceProvenance_iff.mp goldilocks_source_provenance)
+    cm proposer dg H tr b ((goldilocksRunInterface_run_iff cm).mpr hrun) hnc
+
+
 end Consensus.Goldilocks.Generic.SleepyLayer1
 
 end
