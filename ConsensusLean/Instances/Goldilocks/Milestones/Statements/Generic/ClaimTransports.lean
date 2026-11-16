@@ -209,7 +209,8 @@ The `+ 1` absorbs the stored clock's lag: a healed read at the stored clock is a
 `R.now ≥ cutTime i − 1 ≥ heal − 1` (`StoredReadTransport.ready_point`).
 The same selection supplies the healed reads' opening: an honest proposal of a slot `s₁` at or
 after the drain and at least four delays past `ḡ`, with its service reserve `t_{s₁} + 6Δ`
-inside the horizon and `t_{s₁} + margin + 1 ≤ heal` (source:
+inside the horizon and `t_{s₁} + margin + 2 ≤ heal`, so that healed reads at the stored clock are
+strictly after the opening's margin (source:
 `healthy_bounded_repairing_opening_at` within the heal reserve). This is the opening that
 `HealthyReadPoint.healed` requires.
 The local drain/margin arithmetic remains an instance proof obligation. -/
@@ -227,7 +228,7 @@ def ResetHealBudgetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
       (Sys F V).heal K cap idx gst ⟨E, rho⟩ ∧
     ∃ s₁ z k X, P.slotOf a + C.healing.drain ≤ s₁ ∧ SA.gbar gst + 4 * P.Δ ≤ P.slotTime s₁ ∧
       P.slotTime s₁ + 6 * P.Δ ≤ rho.horizon ∧
-      P.slotTime s₁ + C.margin + 1 ≤ (Sys F V).heal K cap idx gst ⟨E, rho⟩ ∧
+      P.slotTime s₁ + C.margin + 2 ≤ (Sys F V).heal K cap idx gst ⟨E, rho⟩ ∧
       HonestProposal M.trace M.honest M.proposer s₁ z k X
 
 /-- Matching of the fixed local outage policy to the advertised contract.

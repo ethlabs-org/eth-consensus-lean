@@ -72,8 +72,8 @@ structure HealthyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : 
     max g 0 ≤ P.slotTime s₁ →
     ((∃ z k X, HonestProposal tr H proposer s₁ z k X) →
       P.slotTime s₁ + 6 * P.Δ ≤ b → gbar g + 4 * P.Δ ≤ P.slotTime s₁ →
-      ∀ y z i j t u, P.slotTime s₁ + C.margin ≤ t →
-      P.slotTime s₁ + C.margin ≤ u →
+      ∀ y z i j t u, P.slotTime s₁ + C.margin < t →
+      P.slotTime s₁ + C.margin < u →
       ReadyReadPoint tr H b C.catchUp y i t → ReadyReadPoint tr H b C.catchUp z j u →
       ReadBoundary tr y i → ReadBoundary tr z j →
       Compatible (tr.HonestBlocksAt H) (confirmedRead tr y i t) (confirmedRead tr z j u)) ∧
