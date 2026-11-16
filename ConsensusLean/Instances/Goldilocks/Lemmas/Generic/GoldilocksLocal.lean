@@ -14,7 +14,9 @@ equations (`GoldilocksLocalData`), over the shared run interface `goldilocksRunI
 * `served_of_delivered`: `goldilocks_served_of_delivered`, fresh delivery is the first disjunct
   of the retained-evidence service `SA.FamilyFacts.MessageServedBefore` on the AC projection;
 * `tipsValid`: `goldilocks_tips_at` at the reader's own cut time. It holds at every read of a
-  reader honest at some time `t ≥ 0` after its earlier cuts, at every evaluation time.
+  reader honest at some time `t ≥ 0` after its earlier cuts, at every evaluation time;
+* `goldilocks_localReadPoint`: the `LocalReadPoint` row, `goldilocks_tips_at` at an honest read
+  point for every supplier whose runs are those of `goldilocksRunInterface`.
 
 The durations, the recovery bound and the payload are the data equations themselves. The
 healing field is the committee-indexed healing supplier (`goldilocksACHealing`).
@@ -56,6 +58,19 @@ theorem goldilocks_tips_at {cm : Time → Finset (Fin sp.n)} {proposer : Nat →
   have hΦ := (Store.frame_realization _ _ _ _ hr).1
   obtain ⟨hC, hCH⟩ := Regimes.sa_tips (A := (tr.state y i).ac) hΦ s
   exact ⟨hC, hΦ.rooted.2 _ hC, hCH⟩
+
+/-- The local read-point row: at an honest read point, the confirmed read is held in the frame
+between the finalized root and the head (`goldilocks_tips_at`), hence in the FG tree. -/
+theorem goldilocks_localReadPoint (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
+    (hrun : GoldilocksRunData sp ro C.run) : LocalReadPoint C where
+  tips cm proposer dg H tr h b y i t hr := by
+    rw [hrun.1] at h
+    exact goldilocks_tips_at (cm := cm) ((goldilocksRunInterface_run_iff cm).mpr h) hr.2.2.1
+      hr.2.1.1 hr.1 t
+  held cm proposer dg H tr h b y i t hr := by
+    rw [hrun.1] at h
+    exact (goldilocks_tips_at (cm := cm) ((goldilocksRunInterface_run_iff cm).mpr h) hr.2.2.1
+      hr.2.1.1 hr.1 t).1.1
 
 end Consensus.Goldilocks.Generic
 
