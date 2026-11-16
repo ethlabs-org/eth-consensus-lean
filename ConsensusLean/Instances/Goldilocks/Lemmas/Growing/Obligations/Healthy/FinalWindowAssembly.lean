@@ -65,46 +65,46 @@ theorem final_latency_gap_at (Q : FinalQueryAt S A V) :
 faults. A window of four honest anchors at `start + [0, c, 2c, 3c]` (`W.gap = c`) after the query,
 the slack `t(cut 3) + Δ ≤ deadline`, its anchor run and its three anchor steps. -/
 theorem final_window_extract_of_gap_at
-    (Q : FinalQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
+    (Q : FinalQueryAt S A V)
     {c : Nat} (hc2 : 2 ≤ c)
     (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c])
     {ΔR a ΔF : Time}
     (hs : Healing.Growing.HSSharedUpTo Q.trace Q.keys
-      (digestOf { S with vote := stock } Q.run.2) Q.gst ΔF
+      (digestOf S Q.run.2) Q.gst ΔF
       Q.run.2.horizon)
     (hdel : 6 * Q.params.Δ + ΔF ≤ 4 * Q.params.Δ * (c : Nat))
     (hlat : Q.query + 4 * ((Q.index : Nat) + 3 * c) * Q.params.Δ + Q.params.Δ ≤ Q.deadline)
     (hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
-      (runProposer { S with vote := stock } Q.run.2 Q.hn)
-        (digestOf { S with vote := stock } Q.run.2) Q.gst ΔR a
+      (runProposer S Q.run.2 Q.hn)
+        (digestOf S Q.run.2) Q.gst ΔR a
           Q.run.2.horizon
-        (runCommittee { S with vote := stock } Q.run.2 Q.hn) (K S A).params.βK)
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK)
     (hpropose : ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
       HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s
-          ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run)
-      ((finalGridAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q).slotTime
+          ((Sys (goldilocks S) V).cDur (K S A) Q.run)
+      ((finalGridAt S A V Q).slotTime
         s) Q.run.2.point.env.ΔAC →
       ∃ P, Healing.Growing.HonestProposalRun Q.trace Q.keys
-        (runProposer { S with vote := stock } Q.run.2 Q.hn) s P)
-    (hplace : max (max ((Sys (goldilocks { S with vote := stock }) V).ready (K S A) Q.gst Q.run) 0)
+        (runProposer S Q.run.2 Q.hn) s P)
+    (hplace : max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
         ((finalGridAt
-          { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q).slotTime
+          S A V Q).slotTime
           (finalSeedMinAt
-          { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q a) - 1) +
+          S A V Q a) - 1) +
         ((((Q.index : Nat) + S.δt : Nat) : Time)) *
-        (finalGridAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q).slotLen
+        (finalGridAt S A V Q).slotLen
         ≤
       Q.query + (finalGridAt
-          { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q).slotLen)
+          S A V Q).slotLen)
     (hcarrier : ∀ s P, Healing.Growing.HonestProposalRun Q.trace Q.keys
-      (runProposer { S with vote := stock } Q.run.2 Q.hn) s P → Q.query < Q.params.ts s →
+      (runProposer S Q.run.2 Q.hn) s P → Q.query < Q.params.ts s →
       Q.params.ts s + Q.params.Δ ≤ Q.deadline →
       ∀ y, Regimes.Growing.ReadyAt Q.trace Q.keys
-        ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run) y Q.deadline →
+        ((Sys (goldilocks S) V).cDur (K S A) Q.run) y Q.deadline →
       ∃ j, Q.trace.BlockCallAt y j P ∧ Q.trace.time j ≤ Q.deadline) :
     ∃ W : FinalWindowDataAt
-        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q, W.gap = c ∧
+        S A V Q, W.gap = c ∧
       Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧ W.AnchorRun ∧ W.AnchorSteps := by
   classical
   let H := Q.keys
@@ -117,8 +117,8 @@ theorem final_window_extract_of_gap_at
   have hc : Healing.Growing.CatchRun Q.trace H Q.gst (2 * Q.params.Δ) := by
     have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
       (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
-    exact catchRun_of_psync_at { S with vote := stock } Q.run.2 Q.hn Q.valid
-      (noCollRun_simTraceAt { S with vote := stock } Q.run.2 Q.hn Q.valid Q.noCollision) hnet
+    exact catchRun_of_psync_at S Q.run.2 Q.hn Q.valid
+      (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) hnet
       (fun v t ht hb _ hv => Q.healthy.2.1.2 v t ht hb hv)
   -- the seed and the anchors
   obtain ⟨Ps, hPs⟩ := hpropose u hu0 huh hdu
@@ -130,24 +130,24 @@ theorem final_window_extract_of_gap_at
     hR hb3 hgS₀ hh₀
   -- the window fields
   have hready : ∀ i, Regimes.Growing.ReadyAt Q.trace H
-      ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run)
+      ((Sys (goldilocks S) V).cDur (K S A) Q.run)
       (P i).proposer (Q.params.toParams.slotTime (s₀ + ![0, c, 2 * c, 3 * c] i)) := by
     intro i
     obtain ⟨-, hti, hr⟩ := hanc i
-    have hmem : runProposer { S with vote := stock } Q.run.2 Q.hn (s₀ + ![0, c, 2 * c, 3 * c] i) ∈
+    have hmem : runProposer S Q.run.2 Q.hn (s₀ + ![0, c, 2 * c, 3 * c] i) ∈
         Q.run.2.sel (.proposer (s₀ + ![0, c, 2 * c, 3 * c] i)) := by
-      rw [runProposer_eq { S with vote := stock } Q.run.2 Q.hn]
+      rw [runProposer_eq S Q.run.2 Q.hn]
       split
       · exact Finset.min'_mem _ _
       · exact absurd hr.1 ‹_›
     have hR' := (hr.2 _ hmem).1
     rw [finalGridAt_slotTime
-        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q] at hR'
+        S A V Q] at hR'
     have h0 : (0 : Time) ≤ Q.params.ts (s₀ + ![0, c, 2 * c, 3 * c] i : Nat) :=
       mul_nonneg (mul_nonneg zero_le_four hΔ.le) (Int.natCast_nonneg _)
-    have hnode := ready_transport_at { S with vote := stock } Q.run.2 Q.hn Q.valid h0 hti hR'
-    rw [show Q.run.2.ownKey (Q.run.2.key (runProposer { S with vote := stock } Q.run.2 Q.hn _)) =
-      runProposer { S with vote := stock } Q.run.2 Q.hn _ from
+    have hnode := ready_transport_at S Q.run.2 Q.hn Q.valid h0 hti hR'
+    rw [show Q.run.2.ownKey (Q.run.2.key (runProposer S Q.run.2 Q.hn _)) =
+      runProposer S Q.run.2 Q.hn _ from
         Q.run.2.key.symm_apply_apply _] at hnode
     obtain ⟨-, -, -, -, -, -, -, -, -, -, -, hpr, -⟩ := hP i
     rw [hpr, Q.params.slotTime_eq]
@@ -161,7 +161,7 @@ theorem final_window_extract_of_gap_at
     hready (hcarrier _ _ (hP 3) hlast h3D)
   subst hWs hWb hWg
   refine ⟨W, rfl, ?_, W.anchorRun_iff.mpr
-      ⟨runProposer { S with vote := stock } Q.run.2 Q.hn, digestOf { S with vote := stock } Q.run.2,
+      ⟨runProposer S Q.run.2 Q.hn, digestOf S Q.run.2,
     Q.gst, ΔR, a, Q.run.2.horizon, hreset, hc, hP, hR, hb3⟩, W.anchorSteps_iff.mpr hsteps⟩
   have ht3 : Q.trace.time (W.cut 3) = Q.params.ts (W.start + 3 * W.gap : Nat) := by
     rw [(W.proposals 3).2.2, W.slots 3, Q.params.slotTime_eq]

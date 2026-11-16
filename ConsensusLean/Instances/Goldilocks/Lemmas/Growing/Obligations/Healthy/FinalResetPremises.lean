@@ -42,15 +42,15 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 `[x₀, x₀ + X)` inside `[s₀, N]` has an actual designated proposal whose proposer is honest
 through its slot's hold. -/
 theorem final_query_gap_at
-    (Q : FinalQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V) {c : Nat}
+    (Q : FinalQueryAt S A V) {c : Nat}
     (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {s₀ N : Nat}
-    (hs : max ((Sys (goldilocks { S with vote := stock }) V).ready (K S A) Q.gst Q.run) 0 +
+    (hs : max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0 +
       4 * Q.params.Δ ≤
       Q.params.ts s₀)
     (hN : Q.params.ts (N + 3 * c : Nat) ≤ Q.run.2.horizon) :
     ∀ x₀, s₀ ≤ x₀ → x₀ + (Q.index : Nat) ≤ N + 1 → ∃ x, x₀ ≤ x ∧ x < x₀ + (Q.index : Nat) ∧
-      runProposer { S with vote := stock } Q.run.2 Q.hn x ∈ Q.keys (Q.params.ts x + Q.params.Δ) ∧
-      ∃ k P, Q.trace.ProposesAt (runProposer { S with vote := stock } Q.run.2 Q.hn x) k P ∧
+      runProposer S Q.run.2 Q.hn x ∈ Q.keys (Q.params.ts x + Q.params.Δ) ∧
+      ∃ k P, Q.trace.ProposesAt (runProposer S Q.run.2 Q.hn x) k P ∧
         P.slot = x := by
   intro x₀ hx₀ hxN
   obtain ⟨x, hxl, hxr, hx0, hxh, hx⟩ :=
@@ -111,8 +111,13 @@ theorem final_reset_premises_of_shared_at
     (by rw [hδeq]; exact (Nat.le_mul_of_pos_right 3 ((by decide : 0 < 2).trans_le hc2)).trans h3c)
     (by rw [hδeq]; exact hs.timeoutDelay)
     hr0 hgr Q.index.pos hcz hBh
-    (fun s₀ N hs₀ hN => Healing.Growing.proposalGap_iff.mpr <| final_query_gap_at S A V Q hpat
-      (by rw [max_eq_left hr0]; exact hs₀) (hgapN N hN))
+    (fun s₀ N hs₀ hN => Healing.Growing.proposalGap_iff.mpr <| final_query_gap_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hpat
+      (by
+        change max ((Sys (goldilocks { S with vote := stock }) V).ready (K S A) Q.gst Q.run)
+          0 + 4 * Q.params.Δ ≤ Q.params.ts s₀
+        rw [max_eq_left hr0]
+        exact hs₀) (hgapN N hN))
     hdrain rfl
   obtain ⟨j, hj, hjt⟩ := Healing.snapshot_of_awake (hrun.upTo hb0).toLocalRun
     (fun y hy t ht htb => ⟨hs.awake y t (hrun.antitone htb hy) ht htb, htb⟩) hH

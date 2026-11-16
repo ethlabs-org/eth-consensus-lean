@@ -64,27 +64,40 @@ private theorem final_store_eq_at (Q : FinalQueryAt S A V) {y : Fin Q.params.n} 
 
 /-- The validators compromised at any time number fewer than `2q − n`. -/
 private theorem final_faults_at
-    (Q : FinalQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
-    {t : Time} (ht : 0 ≤ t)
+    (Q : FinalQueryAt S A V)
+    {t : Time}
     (hth : t ≤ Q.run.2.horizon) :
     (Q.keys t)ᶜ.ncard < 2 * Q.params.toParams.fg.q - Q.params.n := by
-  have h := (FinalQueryAt.hsSharedUpTo_at Q).faults t ht hth
+  have heq : (Q.keys t)ᶜ = Q.run.2.key ⁻¹' (↑(Q.run.2.faultyAt t) : Set V) := by
+    ext y
+    simp [mem_honestKeysAt_iff S Q.run.2, min_eq_left hth]
+  have hcard : (Q.keys t)ᶜ.ncard = (Q.run.2.faultyAt t).card := by
+    rw [heq, Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
+      (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset]
+  have hpop := Q.healthy.2.1.1
+  change ((Q.run.2.faultyAt Q.run.2.horizon).card : ℚ) <
+    (K S A).params.β * Fintype.card V at hpop
+  rw [goldilocksContract_params_eq] at hpop
+  have h : 3 * (Q.run.2.faultyAt Q.run.2.horizon).card < Fintype.card V := by
+    exact_mod_cast (show (3 : ℚ) * (Q.run.2.faultyAt Q.run.2.horizon).card <
+      Fintype.card V by norm_num [Params.standard] at hpop; linarith only [hpop])
+  have hle := Finset.card_le_card (Q.run.2.faultyAt_mono hth)
   change (Q.keys t)ᶜ.ncard < 2 * ((2 * Fintype.card V + 2) / 3) - Fintype.card V
-  change 3 * (Q.keys t)ᶜ.ncard ≤ Fintype.card V - 1 at h
+  rw [hcard]
   have := Q.hn
   omega
 
 /-- (H2) of the final window, route A: the duty → proposal adapter under growing faults. -/
 theorem final_duty_proposal_at
-    (Q : FinalQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V) :
+    (Q : FinalQueryAt S A V) :
     ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
       HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s
-          ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run)
-      ((finalGridAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q).slotTime
+          ((Sys (goldilocks S) V).cDur (K S A) Q.run)
+      ((finalGridAt S A V Q).slotTime
         s) Q.run.2.point.env.ΔAC →
       ∃ P, Healing.Growing.HonestProposalRun Q.trace Q.keys
-        (runProposer { S with vote := stock } Q.run.2 Q.hn) s
+        (runProposer S Q.run.2 Q.hn) s
           P := by
   intro s hs hth hduty
   obtain ⟨_, P, hP, -⟩ := final_duty_proposal_run_at S A V Q hs hth hduty
@@ -99,10 +112,13 @@ theorem final_window_extract_at
       W.AnchorRun ∧ W.AnchorSteps := by
   obtain ⟨ΔR, a, hreset, hplace⟩ := final_reset_premises_at S A V Q
   obtain ⟨W, -, hslack, hrun, hsteps⟩ :=
-    final_window_extract_of_gap_at S A V Q A.two_le_fgSlots A.timeout (finalWindow_offsets A)
+    final_window_extract_of_gap_at
+      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q
+      A.two_le_fgSlots A.timeout (finalWindow_offsets A)
       (FinalQueryAt.hsSharedUpTo_at Q) (FinalQueryAt.protoFGDelay_delivery_at Q)
       (final_latency_gap_at { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q)
-      hreset (final_duty_proposal_at S A V Q) hplace
+      hreset (final_duty_proposal_at
+        { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q) hplace
       (carrier_processed_of_honest_at
         { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q)
   exact ⟨W, hslack, hrun, hsteps⟩
@@ -200,7 +216,8 @@ theorem final_cache_coverage_at
   have hct : Q.trace.time c ≤ t := (W.bounded 3).trans hdt
   have hsy := final_store_eq_at
       { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q ht0 hle hy.1
-  have hft := final_faults_at S A V Q ht0 hth
+  have hft := final_faults_at
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hth
   have hf : (Q.keys (max (Q.trace.time c) t))ᶜ.ncard < 2 * Q.params.toParams.fg.q - Q.params.n :=
     by rw [max_eq_right hct]; exact hft
   have hsafe := fg.replay_finalized_safety_upTo_at hc0 hlc hx ht0 hle hy.1 hf
