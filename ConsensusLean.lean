@@ -588,6 +588,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoCol
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Payload
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PoolCap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PoolDelivery
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PreparationPremises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Publication
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PublishedAttestations

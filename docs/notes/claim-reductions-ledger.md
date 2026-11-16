@@ -208,7 +208,7 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | `FinalReadTransport.cache` | actual-reader cache coverage | Retains Premises, same W, acceptance, ancestry, all three height steps, carrier processing and population threshold at t. The cut-only cache twin is deleted; actual-read realization remains OPEN. |
 | `ActualReadAccountability` | Growing/Simulation/Endpoint/Accountable.finalAccountable_readPoint | Keeps both own-read honesty times, bounded read points, local run/no-collision, original 2q−n population cardinality and ChainAtts witnesses. Requirements and genesis validity come from the actual run; no separate default-start Requirements input remains. |
 | `HighCanonicalSupply` | Generic/Obligations.HighCanonical and ACHealing.heal_after_reset source prerequisites | Same run, horizon, reset and Premises; never derived by applying heal_after_reset itself. |
-| `PreparationPremisesSupply` | Healthy/PreparationReset and Generic/Obligations.Premises | Exact nonfinal healthy-preparation progress interval and horizon. Final-only DeadlinePremisesSupply does not supply this. |
+| `PreparationPremisesSupply` | Healthy/PreparationReset and Generic/Obligations.Premises | Supplied for Goldilocks by `Simulation.goldilocks_preparation_premises_supply` (Growing/Simulation/PreparationPremises) at `b = horizon`, `ΔF = E.ΔFG`, under the fits `fgDelay + 6 ≤ 4·δt` and `13 ≤ heal` (nonfinal); OPEN for an arbitrary map. Exact nonfinal healthy-preparation progress interval and horizon. Final-only DeadlinePremisesSupply does not supply this. |
 | `ResetHealBudgetSupply` | Healthy/PreparationInitialize.healthy_preparation_initialize_late_at:30 | Selects an actual reset a with max GST 0 ≤ slotTime(slotOf a + drain), and that slot time + margin + 1 ≤ advertised heal (the + 1 absorbs the stored clock lag, cutTime − 1 ≤ R.now). The same selection supplies an opening: an honest proposal of a slot s₁ ≥ slotOf a + drain with ḡ + 4Δ ≤ t_{s₁}, t_{s₁} + 6Δ ≤ horizon and t_{s₁} + margin + 2 ≤ heal, the opening HealthyReadPoint.healed requires (its compatibility reads are strictly after t_{s₁} + margin, and a stored read is at R.now ≥ heal − 1) (source: Healthy/Opening.healthy_bounded_repairing_opening_at within RepairDefs.reserve). Does not claim every reset is early. No unbudgeted healed slot. |
 | `OutageServiceSupply` | Outage/Engine/Query.outage_pre_service_at, outage_psync_at | Supplies `ACServiceBefore` through b₀ and post-outage GST. AC-owned message service includes fresh and retained evidence; node acceptance relay remains explicit. Instance transport is pending. |
 | `ResilienceTipTransport` | Concrete/Fields.persists; Outage/Engine/Repair.outage_protected_at:29 | Schema/capability target tip is confirmed at actual t. This is representation, not protected-read ancestry. |
@@ -236,7 +236,7 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | actual final carrier processing | FinalReadTransport.processed | OPEN actual-read target; strict processing witness retained |
 | actual-read final cache ancestry | FinalReadTransport.cache | OPEN target; no cut-clock cache twin |
 | final deadline Premises | DeadlinePremisesSupply | NEW OPEN target, not FinalWindowSupply |
-| preparation horizon Premises | PreparationPremisesSupply | NEW OPEN target; consumed before healing, not proved by healing |
+| preparation horizon Premises | PreparationPremisesSupply | supplied for Goldilocks (`goldilocks_preparation_premises_supply`, two coefficient fits); OPEN for an arbitrary map; consumed before healing, not proved by healing |
 | reset / canonicality / drain-slot time | HighCanonicalSupply and ResetHealBudgetSupply | OPEN on this head; the budget supplier selects the reset, and heal_after_reset only consumes it. The separate E4 packet supplies canonicality. |
 | healed temporal ancestry | HealedReadAncestry + StoredReadTransport | NEW OPEN local ancestry and separate mapping, not compatibility⇒ancestry |
 | outage participation | OutageTransport.participation and OutagePolicy.binding/horizon | Existing OPEN suppliers; at the run's own point and selection the population and look-back committee η-sleepy clauses (outage catch-up `max cDur (η·ΔAC − 1)`) follow from `Outage` (`OutageTransport.participation_of_outage`). The destination coupling (sample coverage) is removed: unsatisfiable under growing faults |
@@ -278,6 +278,9 @@ truncation (`HZ_truncH`, `isReset_truncH_iff` in Lemmas/Generic/HealingLeaves.le
 `ACRun.run_truncH` is an instance obligation; Goldilocks supplies it in
 `goldilocksRunInterface` (Lemmas/Generic/GoldilocksBridge.lean), from
 `KernelProof.goldilocksRun_truncH` and `CommitteeFacts.truncH`.
+At the Goldilocks map with `b = rho.horizon` it does: every call cut is at or before the
+horizon (`isCall_time_le_horizon`), so `NoRestartUpTo … horizon` is `NoRestartAfter`
+(`goldilocks_preparation_premises_supply`).
 
 ### Generic healing report-delivery delay
 
