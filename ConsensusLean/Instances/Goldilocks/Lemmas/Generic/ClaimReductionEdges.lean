@@ -3,6 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.C
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.EngineEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ChainRepresentationEdges
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.OutageSupply
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Lemmas.Model.Laws
 
@@ -11,8 +13,9 @@ public section
 /-! # Conditional claim reduction rows
 
 Intended theorem types; output validity, final accountability (section "Output-validity and
-accountability proofs"), persistence (section "Persistence proof") and healed safety (section
-"Healed safety proof") are proved, the other regime reductions remain UNPROVED. No
+accountability proofs"), persistence (section "Persistence proof"), healed safety (section
+"Healed safety proof") and healthy liveness (section "Healthy liveness proof") are proved; the
+sleepy safety and liveness reductions remain UNPROVED. No
 evidence, instance, admission or correctness claim is supplied. All suppliers below refer to
 the binding's same map. Every regime reduction reads outputs through the one stored-read
 context and its transport: engine-cut reads at the stored read, claim-time reads at `endCut t`.
@@ -131,13 +134,13 @@ def SleepyLivenessReduction (C : ACCorrectLocal A sg)
           ((Sys F V).pt r).horizon r)
         fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g 0 (K.params.latency cap idx)
 
-/-- UNPROVED all-capability healthy liveness reduction. Actual final deadline premises,
+/-- All-capability healthy liveness reduction. Actual final deadline premises,
 processing and actual-read cache transport are separate supplier contracts. FinalWindowSupply
 jointly selects advertised anchor readiness, delivery spacing and pointwise heights.
 No constant FrameWindow production or progress-form exclusion is assumed. The nonfinal
 inclusion reads at L7 (`HealthyReadPoint.proposal`), whose premises and selected reset come from
 the healthy preparation (`PreparationPremisesSupply`) and reset budget (`ResetHealBudgetSupply`)
-suppliers. -/
+suppliers. Proved by `healthyLivenessReduction`. -/
 def HealthyLivenessReduction (C : ACCorrectLocal A sg)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
     (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) : Prop :=
@@ -529,6 +532,145 @@ theorem healedSafetyReduction (C : ACCorrectLocal A sg)
         (hSR.now_bound hv v j hj.1 hvj.1))
 
 end HealedSafetyProof
+
+section HealthyLivenessProof
+
+/-- Healthy liveness at fixed public parameters. A hash collision is the claim's excuse. For a
+query `t` from the heal point with a ready reader at the deadline `D = t + latency·ΔAC`, the
+proposal witness is released after `t` by a proposer ready then, as an honest engine proposal
+(`ProposalProgressTransport.proposal`). Every reader ready at `D` reads, at the end cut of `D`
+(`StoredReadTransport.end_read`), a chain whose tip has the proposal as an honest ancestor:
+- nonfinal outputs: `ProposalWitnessRefinement.healthy` selects the proposal, and
+  `HealthyReadPoint.proposal` (L7) includes it in the confirmed read, with the premises
+  (`PreparationPremisesSupply`) and the reset and its opening (`ResetHealBudgetSupply`) on
+  `[ready, heal]`;
+- the final output: `FinalWindowSupply` selects the four-anchor window, and
+  `FinalReadTransport` includes its first anchor in the finalized read, with the deadline
+  premises (`DeadlinePremisesSupply`).
+The ancestor is held in the reader's store (`mem_of_honest_anc_at_from`), so its header is in
+the read (`ReadRepresentation.tip_in_chain` and `ancestor_prefix`). -/
+theorem healthyLivenessReduction (C : ACCorrectLocal A sg)
+    (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
+    (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) :
+    HealthyLivenessReduction C B K R := by
+  intro _ hβ hcf h cap g hg idx gst r hv hpre
+  obtain ⟨E, rho⟩ := r
+  obtain ⟨hpub, hH, hprog⟩ := hpre
+  by_cases hc : rho.HashCollision
+  · exact Or.inr hc
+  refine Or.inl ?_
+  obtain ⟨-, hpp, hpw, hfit, hdp, hfw, hfr, hprep, hbud, hSR, hHR, hLR, hrep, hhr, hcoh⟩ :=
+    h E hpub rho hv
+  set M := B.map E hpub rho hv
+  set L : ACCorrectLocal A M.signer := B.signer_eq E hpub rho hv ▸ C
+  have hT := B.run_transport E hpub rho hv
+  have hrun : L.run.Run M.committee M.proposer M.digest M.honest M.trace := by
+    rw [cast_local_run]
+    have := hT.run hv
+    rwa [ACRun.cast_run] at this
+  have hnc := hT.no_collision hv hc
+  have hcoh := hcoh hc
+  have hloc := L.run.run_local hrun
+  set heal := (Sys F V).heal K cap idx gst ⟨E, rho⟩
+  set c := (Sys F V).cDur K ⟨E, rho⟩
+  have hΔ : 0 < E.ΔAC := by rw [← M.delta_eq]; exact P.hΔ
+  have hcu0 := L.durations.2.1
+  have hm0 := L.durations.2.2.1
+  have hcu := hfit.catchUp
+  have hc0 : 0 ≤ c := by linarith
+  have hheal0 : 0 ≤ heal := by
+    change 0 ≤ max gst 0 + (K.params.heal cap idx : Time) * E.ΔAC
+    have := le_max_right gst 0
+    positivity
+  have hmono : ∀ {y i u}, ReadyReadPoint M.trace M.honest rho.horizon c y i u →
+      ReadyReadPoint M.trace M.honest rho.horizon L.catchUp y i u :=
+    fun hr => ⟨hr.1, fun w hw hwt => hr.2 w ((max_le_max le_rfl (by linarith)).trans hw) hwt⟩
+  -- an honest ancestor of a held read tip is in the read
+  have hincl : ∀ {w : V} {D : Time} {X Y : A.Blk}, 0 ≤ D → D ≤ rho.horizon →
+      rho.point.Ready c w D →
+      Y ∈ (M.trace.state (M.validator.symm w) (M.cut ((chainTrace rho).endCut D))).fg.tree →
+      Anc (M.trace.HonestBlocksAt M.honest) X Y → X.root ≠ P.genesisRoot →
+      M.header X ∈ (M.chain (M.trace.state (M.validator.symm w)
+        (M.cut ((chainTrace rho).endCut D))) Y).map M.header := by
+    intro w D X Y hD0 hDh hwr hY hXY hX
+    obtain ⟨-, -, hp, -⟩ := hSR.end_read hv c hc0 w D hD0 hDh hwr
+    have hi : (chainTrace rho).endCut D ≤ rho.events.length := Nat.findGreatest_le _
+    have hh : rho.point.HonestAt w (rho.cutTime ((chainTrace rho).endCut D)) := fun hf =>
+      hwr.1 (rho.faultyAt_mono (cutTime_endCut_le rho hD0) hf)
+    have hXt := mem_of_honest_anc_at_from hloc hnc hp.1.2.2.1 hp.1.2.1.1 hp.1.1 hXY hY
+    have hsub : (M.trace.state (M.validator.symm w) (M.cut ((chainTrace rho).endCut D))).fg.tree
+        ⊆ M.trace.HonestBlocksAt M.honest :=
+      fun Z hZ => ⟨_, _, _, hp.1.2.2.1, hp.1.2.1.1, hp.1.1, hZ⟩
+    exact (hrep.ancestor_prefix w w _ _ hi hi hh hh (hhr.reachable hv w _ hi hh)
+      (hhr.reachable hv w _ hi hh) (hhr.roots hv w _ hi hh) (hhr.roots hv w _ hi hh) hcoh
+      hsub hsub _ _ hXt hY hXY).subset (hrep.tip_in_chain _ _ hXt hX)
+  intro t ht htD hex
+  set D := t + (K.params.latency cap idx : Time) * E.ΔAC
+  have ht0 : 0 ≤ t := hheal0.trans ht
+  have hD0 : 0 ≤ D := by positivity
+  have htD' : t ≤ D := le_add_of_nonneg_right (by positivity)
+  by_cases hfin : cap = .final
+  · subst hfin
+    obtain ⟨W, hroot, hready0, hhp3, -, hhealed, -, hacc, hanc, hheights⟩ :=
+      hfw hv hc idx gst t hH hprog ht htD hex
+    have hP := hdp hv hc idx gst t hH hprog ht htD hex
+    have hy0 := (W.ready 0).1
+    refine ⟨M.trace.time (W.cut 0), M.keyIndex (W.block 0).proposer, M.header (W.block 0),
+      W.fresh, by rw [M.key_eq]; exact hready0,
+      hpp.proposal _ _ (W.proposals 0) hy0, fun w hwr => ?_⟩
+    obtain ⟨-, hlt, hp, hbd⟩ := hSR.end_read hv c hc0 w D hD0 htD hwr
+    have hi : (chainTrace rho).endCut D ≤ rho.events.length := Nat.findGreatest_le _
+    have hh : rho.point.HonestAt w (rho.cutTime ((chainTrace rho).endCut D)) := fun hf =>
+      hwr.1 (rho.faultyAt_mono (cutTime_endCut_le rho hD0) hf)
+    have hwr' : rho.point.Ready c (M.validator (M.validator.symm w)) D := by
+      rw [Equiv.apply_symm_apply]; exact hwr
+    have hpr := hfr.processed hv hc idx gst t D W hH hprog ht rfl htD hhp3 _ _ hwr'
+      (hmono hp) hbd hlt
+    have hF := hfr.cache _ gst t D W hcf hrun hP hhealed hacc hanc hheights _ _ D le_rfl
+      (hmono hp) hbd (hfit.final_faults D hD0 htD (hP.faults D hD0 le_rfl)) hpr
+    have hFt : (M.trace.state (M.validator.symm w)
+        (M.cut ((chainTrace rho).endCut D))).fg.F ∈ (M.trace.state (M.validator.symm w)
+        (M.cut ((chainTrace rho).endCut D))).fg.tree :=
+      (Store.cache_invariants _ _ _ _ (hhr.reachable hv w _ hi hh)).1
+    change M.header (W.block 0) ∈ (chainTrace rho).read g w ((chainTrace rho).endCut D)
+    change M.header (W.block 0) ∈
+      (F (Model.pubOf E)).out g (rho.stateBefore ((chainTrace rho).endCut D) w).st.1
+    rw [M.output_eq g w _ hi, M.state_eq w _ hi hh, hrep.finalized_tip g hg]
+    exact hincl hD0 htD hwr hFt hF hroot
+  have hcap : cap = .available ∨ cap = .stable := by
+    cases cap
+    · exact Or.inl rfl
+    · exact Or.inr rfl
+    · exact absurd rfl hfin
+  have hheal : heal ≤ rho.horizon := ht.trans (htD'.trans htD)
+  have hprog' := (shapeProgress F V).mono le_rfl hheal hprog
+  have hP := hprep hβ hv hc _ idx gst hcap hH hprog' hheal
+  obtain ⟨a, ha, hab, -, hdrain, s₁, -, -, -, -, hgs₁, -, hms₁, -⟩ :=
+    hbud hv hc _ idx gst hcap hH hprog' hheal
+  obtain ⟨X, k, htk, hXr, hkm, hroot, hk0, hkh, hkr⟩ :=
+    hpw.healthy hv hc _ idx gst t hcap hH hprog ht htD hex
+  have hgtip : ∀ st u, M.tip g st u = A.confirmed st.ac (Node.frame st) u := by
+    rcases hcap with rfl | rfl
+    · exact M.available_tip g hg
+    · exact hrep.confirmed_tip g hg
+  have hslot : M.trace.time k = P.slotTime X.slot := hXr.1.2.2
+  have hdX : P.slotOf a + L.healing.drain ≤ X.slot := by
+    by_contra hlt
+    have := P.slotTime_strictMono.monotone (not_le.1 hlt).le
+    linarith
+  refine ⟨M.trace.time k, M.keyIndex X.proposer, M.header X, htk,
+    by rw [M.key_eq]; exact hkr, hpp.proposal _ _ hXr.1 hXr.2.1.1, fun w hwr => ?_⟩
+  obtain ⟨-, hlt, hp, hbd⟩ := hSR.end_read hv c hc0 w D hD0 htD hwr
+  have hanc := hHR.proposal _ _ _ _ _ _ _ _ _ _ heal hcf hrun hP ha hab
+    (hfit.healthy_start _ idx gst hcap) X k _ _ D hXr hdX
+    (by change SA.gbar gst + 4 * P.Δ ≤ P.slotTime s₁ at hgs₁; linarith) hk0
+    (by linarith [hkh, L.durations.2.2.2.2]) hkh (by linarith)
+    (by linarith [hfit.latency_le_margin]) (hmono hp) hbd hlt
+  have hCt := hLR.held _ _ _ _ _ hrun _ _ _ _ hp.1
+  rw [end_read_output_eq hSR hv hgtip hc0 hD0 htD hwr]
+  exact hincl hD0 htD hwr hCt hanc hroot
+
+end HealthyLivenessProof
 
 end Consensus.Goldilocks.Generic
 

@@ -140,6 +140,7 @@ from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge",
+        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ClaimReductionEdges",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksHealing",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksLocal"]
 to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
@@ -186,7 +187,8 @@ generic assembly edges, imports HealingLeaves and HealingRounds, and the same cu
 constants. GoldilocksBridge, the concrete bridge leaf, imports HealingLeaves, HealingRounds and HealingEdges for
 the truncation transport and leaves 12 to 14 in its proved bridges; it is a Goldilocks module, outside the cut guard.
 GoldilocksHealing and GoldilocksLocal, the concrete healing and local supplier fields, reach them only through
-GoldilocksBridge, also outside the cut guard. Leaf paths only"""
+GoldilocksBridge, also outside the cut guard. ClaimReductionEdges, the generic claim reductions, imports HealingLeaves for
+parent closure of honest stores (healthy liveness), and the same cut guard checks its constants. Leaf paths only"""
 
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge",

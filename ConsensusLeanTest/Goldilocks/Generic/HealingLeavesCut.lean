@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ClaimReductionEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
@@ -13,8 +14,9 @@ reach AC-generic run modules under an exception (`scripts/boundaries.toml`) whos
 `Lemmas.AC`, so the import boundaries do not keep Goldilocks content out of the leaves and edges.
 This build-time check does: for every constant declared in the module
 `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves`, and separately in
-`ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds` and
-`ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges` (theorems,
+`ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds`,
+`ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges` and
+`ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ClaimReductionEdges` (theorems,
 definitions and auxiliary constants alike), it walks the constants of its type and value, and of
 the type and value of every constant reached,
 with the constructors and the inductive of every inductive, constructor and recursor reached, to a
@@ -127,7 +129,8 @@ run_meta do
   let allowed := [``Consensus.Goldilocks.SA.gbar]
   for mod in [`ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves,
       `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds,
-      `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges] do
+      `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges,
+      `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ClaimReductionEdges] do
     check mod allowed
       (`ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt,
         ``Consensus.Goldilocks.Healing.Growing.held_atts_safe_at)

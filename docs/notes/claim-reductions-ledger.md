@@ -65,12 +65,12 @@ the source gaps; removed names there are historical comparisons, not live inputs
 
 Proved over any AC: the output-validity wrapper (`outputValidAlways`), the final
 accountability reduction (`finalAccountabilityReduction`), the persistence reduction
-(`persistenceReduction`) and the healed-safety reduction (`healedSafetyReduction`, in
-`ClaimReductionEdges`), and the
+(`persistenceReduction`), the healed-safety reduction (`healedSafetyReduction`) and the
+healthy-liveness reduction (`healthyLivenessReduction`, in `ClaimReductionEdges`), and the
 nesting and final-monotonicity edges with their system-level assemblies (`nestedChainEdge`,
 `finalMonotoneChainEdge`, `nestedChainsAlways`, `finalChainsAlways`, in
-`ChainRepresentationEdges`). Each is proved from the suppliers its definition takes; the three
-other regime reductions and the capstone remain unproved. Healed safety takes its cross-reader
+`ChainRepresentationEdges`). Each is proved from the suppliers its definition takes; the two
+sleepy reductions and the capstone remain unproved. Healed safety takes its cross-reader
 agreement from `HealthyReadPoint.healed` at the opening that `ResetHealBudgetSupply` selects
 with its reset. The persistence proof transports the
 advertised outage participation to the local catch-up with
