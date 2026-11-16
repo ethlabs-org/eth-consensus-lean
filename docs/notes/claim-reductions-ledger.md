@@ -1,6 +1,6 @@
 # Claim reduction interfaces: complete statement row
 
-These are conditional statement interfaces, with proofs of all regime reductions.
+These are conditional statement interfaces, with proofs of all reductions and the capstone.
 Their concrete supplier realizations remain separate obligations.
 
 ## Fixed outage policy
@@ -42,9 +42,9 @@ missing source prerequisite, not a valid-run counterexample, and supplies no pro
 
 ## Verdict and ownership
 
-All regime reductions, final accountability and the output-validity HoldsAlways wrapper are
-PROVED, conditional on their explicit suppliers. The local-supplier capstone
-`meetsObligations_of_local` remains STATED in this tree.
+All regime reductions, final accountability, the output-validity HoldsAlways wrapper and the
+local-supplier capstone `meetsObligations_of_local` are PROVED, conditional on their explicit
+suppliers.
 Existing CHAIN-REP nesting and
 final-monotonicity edges are reused, not duplicated. The remaining statement interfaces are
 admission-free Prop definitions, not proofs. Their compilation establishes well-formedness only,
@@ -70,9 +70,12 @@ accountability reduction (`finalAccountabilityReduction`), the persistence reduc
 healthy-liveness reduction (`healthyLivenessReduction`, in `ClaimReductionEdges`), and the
 nesting and final-monotonicity edges with their system-level assemblies (`nestedChainEdge`,
 `finalMonotoneChainEdge`, `nestedChainsAlways`, `finalChainsAlways`, in
-`ChainRepresentationEdges`). Each is proved from the suppliers its definition takes; the two
-sleepy reductions are proved too (`sleepy_safety_reduction`, `sleepy_liveness_reduction`), and the
-capstone remains unproved. Healed safety takes its cross-reader
+`ChainRepresentationEdges`). Each is proved from the suppliers its definition takes. The sleepy
+safety and liveness reductions are proved too (`sleepy_safety_reduction`,
+`sleepy_liveness_reduction`), and so is the capstone (`meetsObligations_of_local_proof`, in
+`ClaimReductionEdges`), which forwards the fields of one `LocalClaimSuppliers` record per mapped
+valid run to the reductions. The local supplier records themselves remain instance obligations.
+Healed safety takes its cross-reader
 agreement from `HealthyReadPoint.healed` at the opening that `ResetHealBudgetSupply` selects
 with its reset. The persistence proof transports the
 advertised outage participation to the local catch-up with
@@ -103,10 +106,10 @@ The conclusion telescopes preserve the original capability tests, all progress f
 ready→horizon versus ready→heal intervals, ready-reader conditionality, HoldsAlways
 versus Holds, and the original hash-collision excuse. No NoColl or constant-fault
 premise is added to an unconditional claim. The capstone consumes one `LocalClaimSuppliers`
-record per mapped valid run, not endpoint claims or reduction propositions. Its intended proof
-composes the reductions. Admissibility, service, progress-fit, progress-tolerance and
+record per mapped valid run, not endpoint claims or reduction propositions. Its proof composes
+the reductions. Admissibility, service, progress-fit, progress-tolerance and
 `HealthyBetaFit` and `CommitteeHalfFit` remain separate inputs. The stored-read context and outage policy remain
-explicit data families. No proof of the capstone is supplied.
+explicit data families. The capstone is proved (`meetsObligations_of_local_proof`).
 
 The windowed `SleepyLayer1.EventSafety`, `Extension` and `ProposalCoverage` suppliers
 range over the consuming `RunMap`'s trace, honest sets, committee, proposer and digest,

@@ -11,9 +11,10 @@ public section
 
 /-! # Open correctness assembly edges
 
-All edges are admission-free proposition definitions, not proofs. Nothing here is supplied as
-evidence to a definition, instance, type witness or compiled endpoint. Reductions remain open rows
-until the concrete morphism and missing local interfaces have been specified.
+All edges are admission-free proposition definitions. Nothing here is supplied as evidence to a
+definition, instance, type witness or compiled endpoint. The capstone `meetsObligations_of_local`
+is proved from the claim reductions in `ClaimReductionEdges` (`meetsObligations_of_local_proof`);
+its local supplier record remains to be supplied per instance.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -172,8 +173,9 @@ theorem shapeClaimsAt_of_isEmpty {O : OutputSchema} {Info : Type}
     Or.inl ⟨fun u => (h.false u).elim, fun v => (h.false v).elim⟩
   persists := fun _ _ _ _ _ _ _ _ => Or.inl (fun v => (h.false v).elim)
 
-/-- UNPROVED assembly from local correctness and its engine suppliers.
-The intended proof uses OutputValidAlways (with OutputValidityEdge), NestedChainsAlways,
+/-- Assembly from local correctness and its engine suppliers, proved by
+`meetsObligations_of_local_proof` (`Lemmas/Generic/ClaimReductionEdges`).
+The proof uses OutputValidAlways (with OutputValidityEdge), NestedChainsAlways,
 FinalChainsAlways and the six regime/accountability reductions in ClaimReductionEdges,
 then holds_of_forall_public and holdsAlways_of_forall_public. Those reductions are the
 proof route, not premises. Requirements and genesis roots come from the binding's
@@ -200,6 +202,30 @@ def meetsObligations_of_local {O : OutputSchema} {Info : Type}
         (D V pub E hE rho hv) (R V pub E hE rho hv) (events pub)) →
     K.params.Admissible → O.Serves → ProgressFits K F → ProgressTolerant O K →
     HealthyBetaFit K → CommitteeHalfFit K → ShapeObligations F K
+
+
+/-- The capstone contract, read through its suppliers and fits. -/
+theorem meetsObligations_of_local_iff {O : OutputSchema} {Info : Type}
+    [DecidableEq Info] [Countable Info] (F : ChainShapeFamily O Info)
+    (K : Contract ProgressReq) :
+    meetsObligations_of_local F K ↔
+    ∀ (P : {pub : Model.Public // 1 ≤ pub.n} → Params) (A : ∀ pub, NodeAC (P pub))
+      (sg : ∀ pub, (A pub).Msg → Fin (P pub).n)
+      (C : ∀ pub, ACCorrectLocal (A pub) (sg pub))
+      (events : ∀ pub, SleepyLayer1.Data (A pub))
+      (B : ∀ (V : Type) [Fintype V] [DecidableEq V] pub,
+        EngineBinding (F := F) (V := V) pub.val (C pub).payload (sg pub) (C pub).run)
+      (D : ∀ (V : Type) [Fintype V] [DecidableEq V] pub E hE rho hv,
+        OutagePolicy ((B V pub).map E hE rho hv))
+      (R : ∀ (V : Type) [Fintype V] [DecidableEq V] pub E hE rho hv,
+        StoredReadContext ((B V pub).map E hE rho hv)),
+      (∀ (V : Type) [Fintype V] [DecidableEq V] pub E hE rho hv,
+        LocalClaimSuppliers ((B V pub).map E hE rho hv)
+          ((B V pub).signer_eq E hE rho hv ▸ C pub) K
+          (D V pub E hE rho hv) (R V pub E hE rho hv) (events pub)) →
+      K.params.Admissible → O.Serves → ProgressFits K F → ProgressTolerant O K →
+      HealthyBetaFit K → CommitteeHalfFit K → ShapeObligations F K :=
+  by exact Iff.rfl
 
 end Consensus.Goldilocks.Generic
 

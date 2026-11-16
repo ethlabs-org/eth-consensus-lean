@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ClaimTransports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.EngineEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ChainRepresentationEdges
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.CorrectnessEdges
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.OutageSupply
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyFG
@@ -869,6 +870,85 @@ theorem sleepy_liveness_reduction (C : ACCorrectLocal A sg)
     exact hchain.subset (hrep.tip_in_chain _ X hX hnonroot)
 
 end SleepyReductions
+
+section Capstone
+
+/-- **The capstone assembly** (`meetsObligations_of_local`). Every claim at a positive population
+reduces, at the run's public parameters, to the reduction proved above at the binding's map of
+each valid run, whose suppliers are fields of `LocalClaimSuppliers`
+(`holds_of_forall_public`, `holdsAlways_of_forall_public`). Without validators every claim is
+vacuous (`shapeClaimsAt_of_isEmpty`). The four non-claim obligations are the inputs themselves. -/
+theorem meetsObligations_of_local_proof {O : OutputSchema} {Info : Type} [DecidableEq Info]
+    [Countable Info]
+    (F : ChainShapeFamily O Info) (K : Contract ProgressReq) :
+    meetsObligations_of_local F K := by
+  rw [meetsObligations_of_local_iff]
+  intro P A sg C events B D R hL hadm hserv hfit htol hβ hcf
+  refine ⟨fun V _ _ => ?_, hadm, hserv, hfit, htol⟩
+  have hE := shapeClaimsAt_of_isEmpty F K V
+  refine
+    { outputValid := holdsAlways_of_forall_public (fun pub hn =>
+        outputValidAlways (B V ⟨pub, hn⟩) fun E hE rho hv =>
+          let L := hL V ⟨pub, hn⟩ E hE rho hv
+          ⟨L.outputValidity, L.reads, L.honestReads⟩) fun h => (hE h).outputValid
+      nested := fun c₁ c₂ g₁ g₂ hc h₁ h₂ => holdsAlways_of_forall_public (fun pub hn =>
+        (nestedChainsAlways_iff _).1 (nestedChainsAlways (B V ⟨pub, hn⟩)) (fun E hE rho hv =>
+          let L := hL V ⟨pub, hn⟩ E hE rho hv
+          ⟨L.chains, L.honestChains⟩) c₁ c₂ g₁ g₂ hc h₁ h₂)
+        fun h => (hE h).nested c₁ c₂ g₁ g₂ hc h₁ h₂
+      finalMonotone := fun g hg => holdsAlways_of_forall_public (fun pub hn =>
+        (finalChainsAlways_iff _).1 (finalChainsAlways (B V ⟨pub, hn⟩)) (fun E hE rho hv =>
+          let L := hL V ⟨pub, hn⟩ E hE rho hv
+          ⟨L.chains, L.honestChains⟩) g hg) fun h => (hE h).finalMonotone g hg
+      finalAccountable := fun g hg => holds_of_forall_public (fun pub hn =>
+        finalAccountabilityReduction (C ⟨pub, hn⟩) (B V ⟨pub, hn⟩) K (fun E hE rho hv =>
+          let L := hL V ⟨pub, hn⟩ E hE rho hv
+          ⟨L.engineRead, L.accountability, L.deadlines, L.reads, L.honestReads,
+            L.honestChains, L.coherent⟩) g hg) fun h => (hE h).finalAccountable g hg
+      healthyLive := fun cap g hg idx gst => holds_of_forall_public (fun pub hn =>
+        healthyLivenessReduction (C ⟨pub, hn⟩) (B V ⟨pub, hn⟩) K (R V ⟨pub, hn⟩) hadm hβ hcf
+          (fun E hE rho hv =>
+          let L := hL V ⟨pub, hn⟩ E hE rho hv
+          ⟨L.regime, L.progress, L.proposalWitness, L.deadlines, L.deadlinePremises,
+            L.finalWindow, L.finalReads, L.preparation, L.resetBudget,
+            L.storedRead, L.healthyRead, L.localRead, L.reads,
+            L.honestReads, L.coherent⟩) cap g hg idx gst)
+        fun h => (hE h).healthyLive cap g hg idx gst
+      sleepySafe := fun cap g hcap hg => holds_of_forall_public (fun pub hn =>
+        sleepy_safety_reduction (C ⟨pub, hn⟩) (B V ⟨pub, hn⟩) K (events ⟨pub, hn⟩) (R V ⟨pub, hn⟩)
+          (fun E hE rho hv =>
+          let L := hL V ⟨pub, hn⟩ E hE rho hv
+          ⟨L.regime, L.engineRead, L.storedRead, L.localRead, L.eventSafety,
+            L.outputProvenance, L.extension, L.sourceProvenance, L.populationQuorum,
+            L.sleepyWindows, L.deadlines, L.reads, L.honestReads, L.coherent⟩) cap g hcap hg)
+        fun h => (hE h).sleepySafe cap g hcap hg
+      sleepyLive := fun cap g hcap hg idx => holds_of_forall_public (fun pub hn =>
+        sleepy_liveness_reduction (C ⟨pub, hn⟩) (B V ⟨pub, hn⟩) K (events ⟨pub, hn⟩) (R V ⟨pub, hn⟩)
+          (fun E hE rho hv =>
+          let L := hL V ⟨pub, hn⟩ E hE rho hv
+          ⟨L.regime, L.progress, L.proposalWitness, L.deadlines, L.storedRead,
+            L.sleepyProposal, L.localRead, L.eventSafety, L.outputProvenance, L.extension,
+            L.sourceProvenance, L.populationQuorum, L.sleepyWindows, L.reads, L.honestReads,
+            L.coherent⟩) cap g hcap hg idx)
+        fun h => (hE h).sleepyLive cap g hcap hg idx
+      healedSafe := fun cap g hcap hg idx gst => holds_of_forall_public (fun pub hn =>
+        healedSafetyReduction (C ⟨pub, hn⟩) (B V ⟨pub, hn⟩) K (R V ⟨pub, hn⟩) hadm hβ hcf
+          (fun E hE rho hv =>
+          let L := hL V ⟨pub, hn⟩ E hE rho hv
+          ⟨L.regime, L.engineRead, L.deadlines, L.preparation, L.resetProgress,
+            L.highCanonical, L.resetBudget, L.healthyRead, L.localRead, L.storedRead,
+            L.healedAncestry, L.reads, L.honestReads, L.coherent⟩) cap g hcap hg idx gst)
+        fun h => (hE h).healedSafe cap g hcap hg idx gst
+      persists := fun g hg T b₀ b₁ => holds_of_forall_public (fun pub hn =>
+        persistenceReduction (C ⟨pub, hn⟩) (B V ⟨pub, hn⟩) K (D V ⟨pub, hn⟩) (R V ⟨pub, hn⟩)
+          (fun E hE rho hv =>
+          let L := hL V ⟨pub, hn⟩ E hE rho hv
+          ⟨L.outage, L.recovery, L.outageService, L.resilience, L.outageRead, L.storedRead,
+            L.localRead, L.reads, L.honestReads, L.coherent⟩) g hg T b₀ b₁)
+        fun h => (hE h).persists g hg T b₀ b₁ }
+
+
+end Capstone
 
 end Consensus.Goldilocks.Generic
 

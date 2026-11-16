@@ -115,6 +115,26 @@ def FinalChainsAlways {pub : Model.Public}
     ∀ g, O.output .final = some g →
       (Sys F V).HoldsAlways fun r => Model.pubOf r.1 = pub → (chainTrace r.2).Monotone g 0
 
+/-- The system-level nesting assembly, read through its suppliers. -/
+theorem nestedChainsAlways_iff {pub : Model.Public}
+    (B : EngineBinding (F := F) (V := V) pub payload sg runs) :
+    NestedChainsAlways B ↔ ((∀ E hE rho (hv : rho.ExecutionValid),
+      ChainRepresentation A (B.map E hE rho hv).chain (B.map E hE rho hv).header ∧
+        HonestChainReads (B.map E hE rho hv)) →
+      ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank → O.output c₁ = some g₁ → O.output c₂ = some g₂ →
+        (Sys F V).HoldsAlways fun r => Model.pubOf r.1 = pub → (chainTrace r.2).Nested g₁ g₂) :=
+  by exact Iff.rfl
+
+/-- The system-level final monotonicity assembly, read through its suppliers. -/
+theorem finalChainsAlways_iff {pub : Model.Public}
+    (B : EngineBinding (F := F) (V := V) pub payload sg runs) :
+    FinalChainsAlways B ↔ ((∀ E hE rho (hv : rho.ExecutionValid),
+      ChainRepresentation A (B.map E hE rho hv).chain (B.map E hE rho hv).header ∧
+        HonestChainReads (B.map E hE rho hv)) →
+      ∀ g, O.output .final = some g →
+        (Sys F V).HoldsAlways fun r => Model.pubOf r.1 = pub → (chainTrace r.2).Monotone g 0) :=
+  by exact Iff.rfl
+
 section ChainEdgeProofs
 
 /-- Nesting at every honest read: both reads are chains in the reader's mapped store
