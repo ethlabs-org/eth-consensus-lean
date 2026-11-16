@@ -102,7 +102,7 @@ def SleepySafetyReduction (C : ACCorrectLocal A sg)
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
-    RegimeTransport M K L.look ∧ EngineReadPoint M ∧ StoredReadTransport M (R E hE rho hv) ∧
+    RegimeTransport M K L ∧ EngineReadPoint M ∧ StoredReadTransport M (R E hE rho hv) ∧
       LocalReadPoint L ∧ SleepyLayer1.EventSafety M L D ∧ SleepyLayer1.OutputProvenance L D ∧
       SleepyLayer1.Extension M L D ∧ SleepyLayer1.SourceProvenance L D ∧
       PopulationQuorumSupply M K ∧ SleepyWindowSupply M K L ∧ ClaimDeadlineFit M K L ∧
@@ -124,7 +124,7 @@ def SleepyLivenessReduction (C : ACCorrectLocal A sg)
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
-    RegimeTransport M K L.look ∧
+    RegimeTransport M K L ∧
       ProposalProgressTransport M ∧
       ProposalWitnessRefinement M K L ∧ ClaimDeadlineFit M K L ∧
       StoredReadTransport M (R E hE rho hv) ∧ SleepyLayer1.ProposalCoverage M L D ∧
@@ -155,7 +155,7 @@ def HealthyLivenessReduction (C : ACCorrectLocal A sg)
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
-    RegimeTransport M K L.look ∧
+    RegimeTransport M K L ∧
       ProposalProgressTransport M ∧
       ProposalWitnessRefinement M K L ∧ ClaimDeadlineFit M K L ∧
       DeadlinePremisesSupply M K ∧ FinalWindowSupply M K L.run L.catchUp L.hold ∧
@@ -221,7 +221,7 @@ def HealedSafetyReduction (C : ACCorrectLocal A sg)
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
-    RegimeTransport M K L.look ∧ EngineReadPoint M ∧
+    RegimeTransport M K L ∧ EngineReadPoint M ∧
       ClaimDeadlineFit M K L ∧ PreparationPremisesSupply M K ∧
       HighCanonicalSupply M K L ∧ ResetHealBudgetSupply M K L ∧
       HealthyReadPoint L ∧ LocalReadPoint L ∧

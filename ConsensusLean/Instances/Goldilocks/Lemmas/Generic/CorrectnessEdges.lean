@@ -116,7 +116,7 @@ structure LocalClaimSuppliers {P : Params} {A : NodeAC P} {O : OutputSchema} {In
     {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
     (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) (K : Contract ProgressReq)
     (D : OutagePolicy M) (R : StoredReadContext M) (events : SleepyLayer1.Data A) : Prop where
-  regime : RegimeTransport M K C.look
+  regime : RegimeTransport M K C
   /-- Output validity on valid executions, without a readiness or regime premise. -/
   outputValidity : OutputValidityEdge M
   reads : ReadRepresentation M

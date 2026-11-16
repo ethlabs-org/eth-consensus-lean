@@ -5,6 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Family.ServiceEquivalence
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Regimes
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -123,44 +124,44 @@ theorem goldilocks_source_provenance : GoldilocksSourceProvenance (sp := sp) (ro
   exact ((SA.viableAncestor_anc hΦ hB₀).2.mono hΦU).trans
     ((hLD.mono (upTo_subset hrun hd)).trans hDE)
 
-private theorem service_of_sync {proposer : Nat → Fin sp.n}
+/-- The finite sleepy service at `Δ` from the generic AC service at the Goldilocks
+retained-evidence `served`: the AC message service is fresh processing
+(`messageServedBefore_iff_old`), and the AC relay is derived from the node relay with the run
+(`sleepyServiceBefore_of_message_relay_at`). -/
+theorem sleepyServiceBefore_of_acService {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
     {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {ini ΔF b}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hs : tr.SyncRunAt H ΔF 0 (b - sp.Δ)) : SleepyServiceBefore tr H ΔF b := by
-  have source_bound : ∀ y j τ, tr.deadline y j τ sp.Δ ≤ b → τ ≤ b - sp.Δ := by
-    intro y j τ hb
-    unfold RunTrace.deadline at hb
-    cases hw : tr.lastWake y j with
-    | bot =>
-      rw [hw] at hb
-      change τ + sp.Δ ≤ b at hb
-      linarith
-    | coe w =>
-      rw [hw] at hb
-      change max τ w + sp.Δ ≤ b at hb
-      linarith [le_max_left τ w]
-  have service := Obligations.Growing.sleepyServiceBefore_of_message_relay_at hrun
-    (b := b) (fun x i v hx hv h0 y j ℓ hy hj hb hd => by
-      apply (SA.messageServedBefore_iff ..).mpr
-      left
+    {sg : (goldilocksNode sp ro).Msg → Fin sp.n} {C : ACCorrectLocal (goldilocksNode sp ro) sg}
+    (hserved : C.served = fun tr y j τ m => SA.FamilyFacts.MessageServedBefore tr.projAC y j τ m)
+    (hs : ACServiceBefore C tr H ΔF b) : SleepyServiceBefore tr H sp.Δ b :=
+  Obligations.Growing.sleepyServiceBefore_of_message_relay_at hrun
+    (fun x i v hx hv h0 y j ℓ hy hj hb' hd => by
       have hsrc : tr.SendOrAdmitAt x i v := by
         obtain ⟨ℓ₀, hc, hm⟩ := hv
         refine ⟨ℓ₀, Compose.projAC_callAt.mp hc, ?_⟩
         rw [projAC_state_at hrun hx] at hm
         exact hm
-      obtain ⟨k, hkj, htk, hp, hlt⟩ := hs.message x i v hx hsrc
-        ⟨h0, source_bound y j _ (by rwa [Compose.projAC_deadline] at hb)⟩
-        y j hy ⟨_, Compose.projAC_callAt.mp hj⟩
-        (by rwa [Compose.projAC_deadline] at hd)
-      refine ⟨k, hkj, htk, ?_, ?_⟩
-      · rcases hp with ⟨ℓ', hc, hm⟩ | ⟨ℓ', hc, hm⟩
-        · exact ⟨ℓ', Compose.projAC_callAt.mpr hc, Or.inl hm⟩
-        · exact ⟨ℓ', Compose.projAC_callAt.mpr hc, Or.inr hm⟩
-      · rwa [Compose.projAC_deadline])
-    (fun x i B hx hi h0 y j hy hj hb hd hanc =>
-      hs.relay x i B hx hi ⟨h0, source_bound y j _ hb⟩ y j hy hj hd hanc)
-  exact ⟨hs.deltaF, service.message, service.acRelay, service.relay⟩
+      have h := hs.message x i v hx hsrc h0 y j ℓ hy (Compose.projAC_callAt.mp hj)
+        (by rwa [Compose.projAC_deadline] at hb') (by rwa [Compose.projAC_deadline] at hd)
+      rw [hserved] at h
+      exact (SA.FamilyFacts.messageServedBefore_iff_old ..).mp h)
+    (fun x i B hx hi h0 y j hy hj hb' hd hanc => hs.relay x i B hx hi h0 y j hy hj hb' hd hanc)
+
+/-- The concrete bridge from the generic sleepy service: at the Goldilocks retained-evidence
+service, `SleepyServicePrefix` gives the finite sleepy service
+(`sleepyServiceBefore_of_acService`) at the prefix's own `ΔF`. -/
+theorem sleepyServiceBefore_of_prefix {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {ini ΔF look b}
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {sg : (goldilocksNode sp ro).Msg → Fin sp.n} {C : ACCorrectLocal (goldilocksNode sp ro) sg}
+    (hserved : C.served = fun tr y j τ m => SA.FamilyFacts.MessageServedBefore tr.projAC y j τ m)
+    (h : SleepyServicePrefix C tr H ΔF look b) :
+    0 ≤ b ∧ SleepyServiceBefore tr H ΔF b := by
+  obtain ⟨hb, hs, -⟩ := h
+  have service := sleepyServiceBefore_of_acService hrun hserved hs
+  exact ⟨hb, hs.deltaF, service.message, service.acRelay, service.relay⟩
 
 private theorem retained_count {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
@@ -214,9 +215,8 @@ private theorem sleepy_service_and_bounds {proposer : Nat → Fin sp.n}
     0 ≤ b ∧ SleepyServiceBefore tr H ΔF b ∧ SleepyBoundsFrom tr H 0 b ∧
       CommitteeBoundsFrom tr H (dictOfTime sp cm) 0 b := by
   classical
-  obtain ⟨hbind, hbh, hc, hlook, hclook, hcm, hsleep, hcommittee, hpop⟩ :=
+  obtain ⟨hbind, hbh, hc, hlook, hclook, hcm, hb, hsync, hcommittee, hpop⟩ :=
     goldilocksWindowPremises_iff.mp hw
-  obtain ⟨hb, hsync, _⟩ := hsleep
   have hΔ := sp.toParams.hΔ
   have hpopulation : ∀ t d, 0 ≤ t → t ≤ d → d ≤ b → d ≤ t + look →
       tr.FaultBoundAt H t d := by
@@ -272,7 +272,7 @@ private theorem sleepy_service_and_bounds {proposer : Nat → Fin sp.n}
       simp only [dictOfTime, sp.slotTime_eq]
       simp only [SA.SAParams.ts, SA.SAParams.Δ] at h hle hn ⊢
       omega
-  exact ⟨hb, service_of_sync hrun hsync, hB, hBK⟩
+  exact ⟨hb, hsync, hB, hBK⟩
 
 /-- The existing sleepy induction, with committee positivity explicit rather than
 obtained from a particular supplier's run interface. -/

@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.C
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
 public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -408,7 +409,10 @@ private theorem canonical_window_premises
     (hb : b ≤ rho.horizon)
     (hbind : RunPointBinding (goldilocksRunMap S rho hn hv).trace
       (goldilocksRunMap S rho hn hv).honest p)
-    (hpre : (goldilocksRunMap S rho hn hv).trace.SleepyPrefixAt
+    {C' : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      (goldilocksRunMap S rho hn hv).signer}
+    (hserved : C'.served = fun tr y j τ m => SA.FamilyFacts.MessageServedBefore tr.projAC y j τ m)
+    (hpre : SleepyServicePrefix C' (goldilocksRunMap S rho hn hv).trace
       (goldilocksRunMap S rho hn hv).honest ΔF C.look b)
     (hK : CommitteeWindow C p (goldilocksRunMap S rho hn hv).committee b)
     (hpop : PopulationWindow C p b) :
@@ -418,13 +422,18 @@ private theorem canonical_window_premises
       C.catchUp C.look C.committeeLook ΔF b := by
   obtain ⟨_, hθ, hc, hl, hcl, _⟩ := hdata
   rw [goldilocksWindowPremises_iff]
-  refine ⟨hbind, ?_, ?_, hl.ge, hcl.ge, ?_, hpre, ?_, ?_⟩
+  rw [goldilocksRunMap_trace, goldilocksRunMap_honest] at hpre
+  obtain ⟨hb0, hsvc⟩ := sleepyServiceBefore_of_prefix
+    (Simulation.simTraceAt_goldilocksRun S rho hn hv) hserved hpre
+  refine ⟨hbind, ?_, ?_, hl.ge, hcl.ge, ?_, hb0, ?_, ?_, ?_⟩
   · exact (hbind.2.2.2 b).mp ((goldilocksRunMap S rho hn hv).horizon_eq b |>.mpr hb)
   · rw [hc]
     rfl
   · intro s
     rw [goldilocksRunMap_committee]
     exact goldilocks_slot_constancy S E rho hn s
+  · rw [goldilocksRunMap_trace, goldilocksRunMap_honest]
+    exact hsvc
   · simpa only [CommitteeWindow, hθ] using hK
   · simpa only [PopulationWindow, hθ] using hpop
 
@@ -432,9 +441,10 @@ private theorem cast_local_fields {P : Params} {A : NodeAC P}
     {sg sg' : A.Msg → Fin P.n} (h : sg = sg') (C : ACCorrectLocal A sg) :
     (h ▸ C).run.Run = C.run.Run ∧ (h ▸ C).look = C.look ∧
     (h ▸ C).catchUp = C.catchUp ∧ (h ▸ C).committeeLook = C.committeeLook ∧
-    (h ▸ C).θ = C.θ ∧ (h ▸ C).hold = C.hold ∧ (h ▸ C).margin = C.margin := by
+    (h ▸ C).θ = C.θ ∧ (h ▸ C).hold = C.hold ∧ (h ▸ C).margin = C.margin ∧
+    (h ▸ C).served = C.served := by
   cases h
-  exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 /-- The fixed concrete event proof supplies the generic map-bound event-safety row. -/
 theorem goldilocksRunMap_event_safety
@@ -445,7 +455,7 @@ theorem goldilocksRunMap_event_safety
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
       (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
   intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes B B' hB hB'
-  obtain ⟨hr, hl, hc, hcl, hθ, _, _⟩ :=
+  obtain ⟨hr, hl, hc, hcl, hθ, _, _, hsv⟩ :=
     cast_local_fields (goldilocksRunMap_signer S rho hn hv).symm C
   rw [hr] at hrun
   rw [hl] at hpre
@@ -459,7 +469,8 @@ theorem goldilocksRunMap_event_safety
   exact (goldilocksEventSafety_iff.mp goldilocks_event_safety)
     _ _ _ _ _ p C.catchUp C.look C.committeeLook ΔF b hrun' hnc
     (((goldilocksRunInterface_run_iff _).mp hrun').2.2.2 hnc)
-    (canonical_window_premises S rho hn hv C hdata hb hbind hpre hK hpop)
+    (canonical_window_premises S rho hn hv C hdata hb hbind
+      (hsv.trans hdata.2.2.2.2.2.2.2.2.2.2.2.2.2) hpre hK hpop)
     hframes B B' hB hB'
 
 /-- The concrete extension proof keeps the canonical map's two read boundaries. -/
@@ -471,7 +482,7 @@ theorem goldilocksRunMap_extension
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
       (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
   intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes y i j t u hi hj hbi hbj hij htu
-  obtain ⟨hr, hl, hc, hcl, hθ, _, _⟩ :=
+  obtain ⟨hr, hl, hc, hcl, hθ, _, _, hsv⟩ :=
     cast_local_fields (goldilocksRunMap_signer S rho hn hv).symm C
   rw [hr, hdata.1.1.1] at hrun
   rw [hl] at hpre
@@ -481,7 +492,8 @@ theorem goldilocksRunMap_extension
   exact (goldilocksExtension_iff.mp goldilocks_extension)
     _ _ _ _ _ p C.catchUp C.look C.committeeLook ΔF b hr' hnc
     (hrun.2.2.2 hnc)
-    (canonical_window_premises S rho hn hv C hdata hb hbind hpre hK hpop)
+    (canonical_window_premises S rho hn hv C hdata hb hbind
+      (hsv.trans hdata.2.2.2.2.2.2.2.2.2.2.2.2.2) hpre hK hpop)
     hframes y i j t u hi hj hbi hbj hij htu
 
 /-- The proposal adapter retains the local hold and margin equations. -/
@@ -493,7 +505,7 @@ theorem goldilocksRunMap_proposal_coverage
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
       (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
   intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes B k y j t hP hk hhold hkb hkt hy hread hjt
-  obtain ⟨hr, hl, hc, hcl, hθ, hh, hm⟩ :=
+  obtain ⟨hr, hl, hc, hcl, hθ, hh, hm, hsv⟩ :=
     cast_local_fields (goldilocksRunMap_signer S rho hn hv).symm C
   rw [hr, hdata.1.1.1] at hrun
   rw [hl] at hpre
@@ -506,7 +518,8 @@ theorem goldilocksRunMap_proposal_coverage
   exact (goldilocksProposalCoverage_iff.mp goldilocks_proposal_coverage)
     _ _ _ _ _ p C.catchUp C.look C.committeeLook ΔF b C.hold C.margin hr' hnc
     (hrun.2.2.2 hnc)
-    (canonical_window_premises S rho hn hv C hdata hb hbind hpre hK hpop)
+    (canonical_window_premises S rho hn hv C hdata hb hbind
+      (hsv.trans hdata.2.2.2.2.2.2.2.2.2.2.2.2.2) hpre hK hpop)
     (by rw [hdata.2.2.2.2.2.1])
     (by rw [hdata.2.2.2.2.2.2.1])
     hframes B k y j t hP hk hhold hkb hkt hy hread hjt

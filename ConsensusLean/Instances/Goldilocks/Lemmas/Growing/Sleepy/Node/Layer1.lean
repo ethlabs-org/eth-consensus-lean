@@ -69,14 +69,16 @@ theorem goldilocksSourceProvenance_iff :
             Anc (tr.HonestBlocksAt H) B B' := by
   rfl
 
-/-- Numerical data only; no local correctness supplier is assumed by these adapters. -/
+/-- Numerical data and the concrete finite sleepy service; no local correctness supplier is
+assumed by these adapters. The generic `SleepyServicePrefix` reaches the service through
+`sleepyServiceBefore_of_prefix`. -/
 def GoldilocksWindowPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
     (p : EnvPoint (Fin sp.n)) (cm : Time → Finset (Fin sp.n))
     (c look committeeLook ΔF b : Time) : Prop :=
   RunPointBinding tr H p ∧ b ≤ p.horizon ∧
   Regimes.catchUp sp ≤ c ∧ 5 * sp.Δ ≤ look ∧ 5 * sp.Δ ≤ committeeLook ∧
   (∀ s, cm (sp.ts s + sp.Δ) = cm (sp.ts s)) ∧
-  tr.SleepyPrefixAt H ΔF look b ∧
+  0 ≤ b ∧ Compose.Growing.SleepyServiceBefore tr H ΔF b ∧
   (∀ t d, 0 ≤ t → t ≤ d → d ≤ min b (p.lookAhead committeeLook t) →
     (cm t).Nonempty →
     let q := p.retain d
@@ -93,7 +95,7 @@ theorem goldilocksWindowPremises_iff {tr : GoldilocksTrace sp ro}
       RunPointBinding tr H p ∧ b ≤ p.horizon ∧
       Regimes.catchUp sp ≤ c ∧ 5 * sp.Δ ≤ look ∧ 5 * sp.Δ ≤ committeeLook ∧
       (∀ s, cm (sp.ts s + sp.Δ) = cm (sp.ts s)) ∧
-      tr.SleepyPrefixAt H ΔF look b ∧
+      0 ≤ b ∧ Compose.Growing.SleepyServiceBefore tr H ΔF b ∧
       (∀ t d, 0 ≤ t → t ≤ d → d ≤ min b (p.lookAhead committeeLook t) →
         (cm t).Nonempty →
         let q := p.retain d

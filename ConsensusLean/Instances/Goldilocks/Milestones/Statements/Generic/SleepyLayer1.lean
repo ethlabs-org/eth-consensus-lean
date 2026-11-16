@@ -75,7 +75,7 @@ def EventSafety (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) (D : Da
   ∀ ΔF b p, b ≤ rho.horizon →
     C.run.Run M.committee M.proposer M.digest M.honest M.trace →
     Compose.NoCollRun M.digest M.trace → RunPointBinding M.trace M.honest p →
-    M.trace.SleepyPrefixAt M.honest ΔF C.look b →
+    SleepyServicePrefix C M.trace M.honest ΔF C.look b →
     CommitteeWindow C p M.committee b → PopulationWindow C p b →
     AnchoredFrames D M.trace M.honest b →
     ∀ B B', EventWithin D M.trace M.honest b b B → EventWithin D M.trace M.honest b b B' →
@@ -98,7 +98,7 @@ def Extension (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) (D : Data
   ∀ ΔF b p, b ≤ rho.horizon →
     C.run.Run M.committee M.proposer M.digest M.honest M.trace →
     Compose.NoCollRun M.digest M.trace → RunPointBinding M.trace M.honest p →
-    M.trace.SleepyPrefixAt M.honest ΔF C.look b →
+    SleepyServicePrefix C M.trace M.honest ΔF C.look b →
     CommitteeWindow C p M.committee b → PopulationWindow C p b →
     AnchoredFrames D M.trace M.honest b →
     ∀ y i j t u, ReadyReadPoint M.trace M.honest b C.catchUp y i t →
@@ -115,7 +115,7 @@ def ProposalCoverage (M : RunMap rho payload) (C : ACCorrectLocal A M.signer)
   ∀ ΔF b p, b ≤ rho.horizon →
     C.run.Run M.committee M.proposer M.digest M.honest M.trace →
     Compose.NoCollRun M.digest M.trace → RunPointBinding M.trace M.honest p →
-    M.trace.SleepyPrefixAt M.honest ΔF C.look b →
+    SleepyServicePrefix C M.trace M.honest ΔF C.look b →
     CommitteeWindow C p M.committee b → PopulationWindow C p b →
     AnchoredFrames D M.trace M.honest b →
     ∀ B k y j t, ReadyProposal M.trace M.honest C.catchUp C.hold B k → 0 ≤ M.trace.time k →
@@ -189,7 +189,7 @@ def ReadAgreement (M : RunMap rho payload) (C : ACCorrectLocal A M.signer)
   ∀ ΔF b p, b ≤ rho.horizon →
     C.run.Run M.committee M.proposer M.digest M.honest M.trace →
     Compose.NoCollRun M.digest M.trace → RunPointBinding M.trace M.honest p →
-    M.trace.SleepyPrefixAt M.honest ΔF C.look b →
+    SleepyServicePrefix C M.trace M.honest ΔF C.look b →
     CommitteeWindow C p M.committee b → PopulationWindow C p b →
     AnchoredFrames D M.trace M.honest b →
     ∀ y z i j t u, ReadyReadPoint M.trace M.honest b C.catchUp y i t →
@@ -232,7 +232,7 @@ def ReadyReadSafety (M : RunMap rho payload) (C : ACCorrectLocal A M.signer)
   ∀ ΔF b p, b ≤ rho.horizon →
     C.run.Run M.committee M.proposer M.digest M.honest M.trace →
     Compose.NoCollRun M.digest M.trace → RunPointBinding M.trace M.honest p →
-    M.trace.SleepyPrefixAt M.honest ΔF C.look b →
+    SleepyServicePrefix C M.trace M.honest ΔF C.look b →
     CommitteeWindow C p M.committee b → PopulationWindow C p b →
     AnchoredFrames D M.trace M.honest b →
     (∀ y z i j t u, ReadyReadPoint M.trace M.honest b C.catchUp y i t →

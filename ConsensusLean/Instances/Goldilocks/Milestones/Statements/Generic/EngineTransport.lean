@@ -25,12 +25,13 @@ structure PrefixTransport (M : RunMap rho payload) (runs : ACRun A M.signer) : P
 
 /-- Regime transport to the run map. The healthy leg supplies the generic `Service` consumed by
 `Premises.sync` (message, block and relay service from GST, signed-row service through the
-horizon), with no order between `ΔAC` and `ΔFG`. -/
+horizon), and the sleepy leg the service form `SleepyServicePrefix` at the local look-ahead;
+neither asks an order between `ΔAC` and `ΔFG`. -/
 structure RegimeTransport (M : RunMap rho payload) (K : Contract ProgressReq)
-    (look : Time) : Prop where
+    (C : ACCorrectLocal A M.signer) : Prop where
   sleepy : rho.ExecutionValid → ¬ rho.HashCollision →
     (Sys F V).Sleepy (shapeProgress F V).toExternal K ⟨E, rho⟩ →
-    M.trace.SleepyPrefixAt M.honest E.ΔFG look rho.horizon
+    SleepyServicePrefix C M.trace M.honest E.ΔFG C.look rho.horizon
   healthy : rho.ExecutionValid → ¬ rho.HashCollision → ∀ g,
     (Sys F V).Healthy (shapeProgress F V).toExternal K g ⟨E, rho⟩ →
     Service M.trace M.honest g E.ΔFG rho.horizon ∧
