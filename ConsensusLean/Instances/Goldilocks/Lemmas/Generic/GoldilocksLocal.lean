@@ -16,7 +16,9 @@ equations (`GoldilocksLocalData`), over the shared run interface `goldilocksRunI
 * `tipsValid`: `goldilocks_tips_at` at the reader's own cut time. It holds at every read of a
   reader honest at some time `t ≥ 0` after its earlier cuts, at every evaluation time;
 * `goldilocks_localReadPoint`: the `LocalReadPoint` row, `goldilocks_tips_at` at an honest read
-  point for every supplier whose runs are those of `goldilocksRunInterface`.
+  point for every supplier whose runs are those of `goldilocksRunInterface`;
+* `goldilocksACCorrectLocal_of_healing`: the local supplier from a healing supplier at its data
+  equations.
 
 The durations, the recovery bound and the payload are the data equations themselves. The
 healing field is the committee-indexed healing supplier (`goldilocksACHealing`).
@@ -71,6 +73,41 @@ theorem goldilocks_localReadPoint (C : ACCorrectLocal (goldilocksNode sp ro) (fu
     rw [hrun.1] at h
     exact (goldilocks_tips_at (cm := cm) ((goldilocksRunInterface_run_iff cm).mpr h) hr.2.2.1
       hr.2.1.1 hr.1 t).1.1
+
+/-- **The Goldilocks local supplier from its healing supplier**: a healing supplier at the
+healing data equations gives the local supplier at the local data equations, with the same run
+interface. `served` is retained-evidence service (`goldilocks_served_of_delivered`), `tipsValid`
+is `goldilocks_tips_at` at the reader's own cut time, and the durations are the data
+equations'. -/
+theorem goldilocksACCorrectLocal_of_healing {hδ : 3 ≤ sp.toParams.δt}
+    (h : goldilocksACHealing sp ro hδ) : goldilocksACCorrectLocal sp ro hδ := by
+  obtain ⟨R, O, hO⟩ := h
+  have hΔ := sp.toParams.hΔ
+  refine ⟨{
+      look := 5 * sp.Δ
+      catchUp := 18 * sp.Δ
+      margin := 6 * sp.Δ
+      latency := 6 * sp.Δ
+      hold := sp.Δ
+      recovery := 9 * sp.Δ
+      θ := 1 / 2
+      outageEta := ((12 * sp.k + 7 : Nat) : Time) * sp.Δ
+      outageLag := ((4 * sp.k + 6 : Nat) : Time) * sp.Δ
+      outageBudget := ((4 * sp.k - 5 : Nat) : Time) * sp.Δ
+      committeeLook := 5 * sp.Δ
+      recovery_nonneg := by positivity
+      run := R
+      served := fun tr y j τ m => SA.FamilyFacts.MessageServedBefore tr.projAC y j τ m
+      served_of_delivered := fun _ h => goldilocks_served_of_delivered h
+      healing := O
+      payload := fun B => {tx | tx ∈ Blocks.decodeTxs B.input}
+      durations := ⟨by positivity, by positivity, by positivity, by positivity, hΔ.le⟩
+      tipsValid := fun cm proposer dg H tr hr y i hy => by
+        rw [hO.1.1] at hr
+        have hg := hr.1
+        exact goldilocks_tips_at (cm := cm) ((goldilocksRunInterface_run_iff cm).mpr hr)
+          (hg.time_nonneg i) (fun k hk => hg.time_mono hk.le) hy (tr.time i) },
+    hO, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 end Consensus.Goldilocks.Generic
 
