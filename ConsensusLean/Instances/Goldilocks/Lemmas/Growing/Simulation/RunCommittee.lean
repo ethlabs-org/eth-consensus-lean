@@ -26,6 +26,15 @@ noncomputable def runCommittee : Time → Finset (Fin (Fintype.card V)) := by
   classical
   exact fun t => ((voteK S rho).committee ((S.params (pubOf E) hn).slot t)).toFinset
 
+omit [DecidableEq V] in
+/-- Times in the same slot select the same committee. -/
+theorem runCommittee_eq_of_slot_eq {t u : Time}
+    (h : (S.params (pubOf E) hn).slot t = (S.params (pubOf E) hn).slot u) :
+    runCommittee S rho hn t = runCommittee S rho hn u := by
+  classical
+  change ((voteK S rho).committee _).toFinset = ((voteK S rho).committee _).toFinset
+  exact congrArg (fun s => ((voteK S rho).committee s).toFinset) h
+
 /-- **The committee at `t ≥ 0` is the selection the participation premises read at `t`.** -/
 theorem runCommittee_eq (hv : rho.ExecutionValid) :
     ∀ y t, 0 ≤ t → (y ∈ runCommittee S rho hn t ↔ rho.key y ∈

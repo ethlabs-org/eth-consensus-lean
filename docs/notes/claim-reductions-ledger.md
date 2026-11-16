@@ -143,13 +143,14 @@ by constructing a generic adapter. Count transport never substitutes one
 look-ahead for the other. The `SleepyCut` test guards all three modules' complete
 constant closures, allowing only the existing placement-only `SA.gbar` dependency.
 
-**OPEN instance fit: slot constancy.** `GoldilocksWindowPremises` requires
+**PROVED canonical instance fit: slot constancy.** `GoldilocksWindowPremises` requires
 `cm (sp.ts s + sp.Δ) = cm (sp.ts s)` at every slot. Generic `EventSafety`,
 `Extension` and coverage contracts do not imply this for arbitrary committees.
 Its source must be a property of the selected-committee RunMap together with the
 concrete run interface, reviewed with the instance discharge; it is not added as
 an unconditional generic law. `Simulation.GoldilocksSlotConstancy` states that
-exact canonical-map obligation; its proof remains OPEN.
+exact canonical-map obligation; `Simulation.goldilocks_slot_constancy` proves it
+for every integer slot, including the negative-time clamp to slot zero.
 The separate committee-facts source is the committee-valid run interface, which
 lands separately. Bare abstract collision freedom is not its proof, and the
 canonical run transport in this tree does not yet carry that conjunct.
