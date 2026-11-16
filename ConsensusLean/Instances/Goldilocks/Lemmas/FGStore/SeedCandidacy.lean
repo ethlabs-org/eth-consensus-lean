@@ -23,7 +23,7 @@ variable {p : Params} {ACP : Type} {acp₀ : ACP} {st : Store p ACP}
 
 /-- Ancestry in a coherent universe containing the tree of a reachable store, down to a held
 block, is ancestry in the tree (the tree extends genesis). -/
-private theorem anc_of_anc_universe (hreach : st.Reachable acp₀) {U : Set (NodeBlock p ACP)}
+theorem anc_of_anc_universe (hreach : st.Reachable acp₀) {U : Set (NodeBlock p ACP)}
     (hU : Coherent U) (hsub : st.tree ⊆ U) {A C : NodeBlock p ACP} (h : Goldilocks.Anc U A C)
     (hC : C ∈ st.tree) : st.Anc A C := by
   induction h with

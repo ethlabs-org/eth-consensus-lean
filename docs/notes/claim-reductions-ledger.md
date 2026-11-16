@@ -1,7 +1,7 @@
 # Claim reduction interfaces: complete statement row
 
-These are conditional statement interfaces, not completed suppliers or proofs.
-Their concrete realizations and the reduction proofs remain separate obligations.
+These are conditional statement interfaces, with proofs of all regime reductions.
+Their concrete supplier realizations remain separate obligations.
 
 ## Fixed outage policy
 
@@ -42,12 +42,13 @@ missing source prerequisite, not a valid-run counterexample, and supplies no pro
 
 ## Verdict and ownership
 
-The conditional reductions and the local-supplier capstone are STATED: six regime reductions,
-the output-validity HoldsAlways wrapper, and `meetsObligations_of_local`.
+All regime reductions, final accountability and the output-validity HoldsAlways wrapper are
+PROVED, conditional on their explicit suppliers. The local-supplier capstone
+`meetsObligations_of_local` remains STATED in this tree.
 Existing CHAIN-REP nesting and
-final-monotonicity edges are reused, not duplicated. Every new edge is an admission-free
-Prop definition, not a theorem. Compilation establishes well-formedness only: it does
-not establish truth, sufficient premises, realizability, or nonvacuity.
+final-monotonicity edges are reused, not duplicated. The remaining statement interfaces are
+admission-free Prop definitions, not proofs. Their compilation establishes well-formedness only,
+not truth, sufficient premises, realizability, or nonvacuity.
 
 Supplier interfaces below remain **UNPROVED**. Named source routes do not constitute
 generic adapter proofs. Joint proposal and final-window production now take the
@@ -70,7 +71,8 @@ healthy-liveness reduction (`healthyLivenessReduction`, in `ClaimReductionEdges`
 nesting and final-monotonicity edges with their system-level assemblies (`nestedChainEdge`,
 `finalMonotoneChainEdge`, `nestedChainsAlways`, `finalChainsAlways`, in
 `ChainRepresentationEdges`). Each is proved from the suppliers its definition takes; the two
-sleepy reductions and the capstone remain unproved. Healed safety takes its cross-reader
+sleepy reductions are proved too (`sleepy_safety_reduction`, `sleepy_liveness_reduction`), and the
+capstone remains unproved. Healed safety takes its cross-reader
 agreement from `HealthyReadPoint.healed` at the opening that `ResetHealBudgetSupply` selects
 with its reset. The persistence proof transports the
 advertised outage participation to the local catch-up with
@@ -91,8 +93,8 @@ Paths below are relative to `ConsensusLean/Instances/Goldilocks/`.
 | outputValid wrapper | `OutputValidAlways` | Growing/Obligations/Concrete/Fields:43–44 |
 | finalAccountable | `FinalAccountabilityReduction` | Fields:68–70 |
 | healthyLive | `HealthyLivenessReduction` | Fields:193–199; confirmed:167–174; Concrete/Final:325 |
-| sleepySafe | `SleepySafetyReduction`, with `D : SleepyLayer1.Data A` | Fields:76–79 |
-| sleepyLive | `SleepyLivenessReduction`, with `D : SleepyLayer1.Data A` | Fields:206–212 |
+| sleepySafe | `SleepySafetyReduction`, proved by `sleepy_safety_reduction`, with `D : SleepyLayer1.Data A` | Fields:76–79 |
+| sleepyLive | `SleepyLivenessReduction`, proved by `sleepy_liveness_reduction`, with `D : SleepyLayer1.Data A` | Fields:206–212 |
 | healedSafe | `HealedSafetyReduction` | Fields:114–122 |
 | persists | `PersistenceReduction` | Fields:150–153 |
 | local-supplier assembly | `meetsObligations_of_local` in `CorrectnessEdges.lean`, with public-indexed `events : SleepyLayer1.Data` | Concrete/Endpoint:21–32 |
@@ -168,8 +170,9 @@ All nine generic adapter targets are PROVED in `Generic.SleepyLayer1`:
 These proofs retain their explicit supplier premises: source provenance, event
 safety, output provenance, extension and the population quorum are not supplied
 by constructing a generic adapter. Count transport never substitutes one
-look-ahead for the other. The `SleepyCut` test guards all three modules' complete
-constant closures, allowing only the existing placement-only `SA.gbar` dependency.
+look-ahead for the other. The `SleepyCut` test guards the complete constant closures of
+`SleepyFG`, `SleepyGlue`, `SleepyTransport` and `ClaimReductionEdges`, allowing only the existing
+placement-only `SA.gbar` dependency.
 
 **PROVED canonical instance fit: slot constancy.** `GoldilocksWindowPremises` requires
 `cm (sp.ts s + sp.Δ) = cm (sp.ts s)` at every slot. Generic `EventSafety`,

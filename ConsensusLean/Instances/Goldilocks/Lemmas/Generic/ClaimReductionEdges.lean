@@ -4,7 +4,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.EngineEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ChainRepresentationEdges
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.OutageSupply
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyFG
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyGlue
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.SeedCandidacy
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Lemmas.Model.Laws
 
@@ -12,14 +16,14 @@ public section
 
 /-! # Conditional claim reduction rows
 
-Intended theorem types; output validity, final accountability (section "Output-validity and
-accountability proofs"), persistence (section "Persistence proof"), healed safety (section
-"Healed safety proof") and healthy liveness (section "Healthy liveness proof") are proved; the
-sleepy safety and liveness reductions remain UNPROVED. No
-evidence, instance, admission or correctness claim is supplied. All suppliers below refer to
-the binding's same map. Every regime reduction reads outputs through the one stored-read
-context and its transport: engine-cut reads at the stored read, claim-time reads at `endCut t`.
-Healed safety's same-reader ancestry is never inferred from compatibility.
+Conditional theorem contracts, all proved: output validity and final accountability (section
+"Output-validity and accountability proofs"), persistence (section "Persistence proof"), healed
+safety (section "Healed safety proof"), healthy liveness (section "Healthy liveness proof"), and
+sleepy safety and liveness (section `SleepyReductions`). No supplier instance or unconditional
+correctness claim is supplied. All suppliers below refer to the binding's same map. Every regime
+reduction reads outputs through the one stored-read context and its transport: engine-cut reads
+at the stored read, claim-time reads at `endCut t`. Healed safety's same-reader ancestry is never
+inferred from compatibility.
 -/
 
 set_option autoImplicit false
@@ -86,7 +90,8 @@ def OutputValidAlways (B : EngineBinding (F := F) (V := V) pub payload sg runs) 
     (Sys F V).HoldsAlways fun r => Model.pubOf r.1 = pub →
       ∀ c g, O.output c = some g → OutputValid r.2 g
 
-/-- UNPROVED bounded explicit-read sleepy safety reduction. Coherent union and
+/-- Bounded explicit-read sleepy safety reduction, proved by `sleepy_safety_reduction`.
+Coherent union and
 root suppliers remain explicit; none enters an unconditional claim. Source:
 Concrete/Fields.meetsObligations_sleepySafe_growing. -/
 def SleepySafetyReduction (C : ACCorrectLocal A sg)
@@ -107,7 +112,8 @@ def SleepySafetyReduction (C : ACCorrectLocal A sg)
         (Sys F V).Sleepy (shapeProgress F V).toExternal K r) fun r =>
         (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g 0
 
-/-- UNPROVED sleepy proposal reduction, keeping the original progress interval,
+/-- Sleepy proposal reduction, proved by `sleepy_liveness_reduction`, keeping the original
+progress interval,
 reader-conditional deadline and hash-collision branch. The strengthened witness
 supplier selects advertised readiness jointly with the proposal. -/
 def SleepyLivenessReduction (C : ACCorrectLocal A sg)
@@ -671,6 +677,198 @@ theorem healthyLivenessReduction (C : ACCorrectLocal A sg)
   exact hincl hD0 htD hwr hCt hanc hroot
 
 end HealthyLivenessProof
+
+section SleepyReductions
+
+variable {E : Env V} {rho : Model.Run (compiled F) E}
+
+private theorem local_cast_run {sg' : A.Msg → Fin P.n} (h : sg = sg')
+    (C : ACCorrectLocal A sg) : (h ▸ C).run.Run = (h ▸ C.run).Run := by
+  cases h
+  rfl
+
+private theorem sleepy_windows {M : RunMap rho payload} {K : Contract ProgressReq}
+    {C : ACCorrectLocal A M.signer} (hw : SleepyWindowSupply M K C)
+    (hf : ClaimDeadlineFit M K C) (hv : rho.ExecutionValid)
+    (hs : (Sys F V).Sleepy (shapeProgress F V).toExternal K ⟨E, rho⟩) :
+    ∃ p, RunPointBinding M.trace M.honest p ∧
+      SleepyLayer1.CommitteeWindow C p M.committee rho.horizon ∧
+      SleepyLayer1.PopulationWindow C p rho.horizon := by
+  obtain ⟨p, hp, hb, hθ, h0, h1, hl, hcl, hw⟩ := hw
+  obtain ⟨hpop, hK⟩ := hw hv hs
+  have hc : C.catchUp ≤ (Sys F V).cDur K ⟨E, rho⟩ :=
+    (le_add_of_nonneg_right zero_le_one).trans hf.catchUp
+  exact ⟨p, hp,
+    SleepyLayer1.committee_transport M C p rho.horizon _ _ hb.ge hc rfl h0 h1 hK,
+    SleepyLayer1.population_transport M C p rho.horizon _ _ hb.ge hc rfl h0 h1 hpop⟩
+
+private theorem sleepy_frames {M : RunMap rho payload} {K : Contract ProgressReq}
+    {C : ACCorrectLocal A M.signer} {D : SleepyLayer1.Data A}
+    (hsource : SleepyLayer1.SourceProvenance C D)
+    (hq : PopulationQuorumSupply M K) (hv : rho.ExecutionValid)
+    (hs : (Sys F V).Sleepy (shapeProgress F V).toExternal K ⟨E, rho⟩)
+    (hrun : C.run.Run M.committee M.proposer M.digest M.honest M.trace)
+    (hnc : Compose.NoCollRun M.digest M.trace) :
+    SleepyLayer1.AnchoredFrames D M.trace M.honest rho.horizon := by
+  exact SleepyLayer1.frames_from_sources C D
+    (SleepyLayer1.cache_provenance C D) (SleepyLayer1.row_provenance C D)
+    (SleepyLayer1.conditional_viability C D) hsource _ _ _ _ _ _ hrun hnc
+    (fun _ _ t hr => hq hv hs t hr.2.2.1 hr.2.2.2)
+
+/-- Bounded explicit-read sleepy safety, preserving the original collision excuse. -/
+theorem sleepy_safety_reduction (C : ACCorrectLocal A sg)
+    (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
+    (D : SleepyLayer1.Data A)
+    (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) :
+    SleepySafetyReduction C B K D R := by
+  intro supply cap g hcap hg r hv ⟨hpub, hs⟩
+  by_cases hcollision : r.2.HashCollision
+  · exact Or.inr hcollision
+  left
+  let M := B.map r.1 hpub r.2 hv
+  let L : ACCorrectLocal A M.signer := B.signer_eq r.1 hpub r.2 hv ▸ C
+  obtain ⟨hreg, _, hstored, hlocal, hevents, houtputs, hext, hsource,
+    hquorum, hwindow, hfit, hrep, hread, hcoh⟩ := supply r.1 hpub r.2 hv
+  have hrun : L.run.Run M.committee M.proposer M.digest M.honest M.trace := by
+    rw [local_cast_run]
+    exact (B.run_transport r.1 hpub r.2 hv).run hv
+  have hnc := (B.run_transport r.1 hpub r.2 hv).no_collision hv hcollision
+  obtain ⟨p, hp, hK, hpop⟩ := sleepy_windows hwindow hfit hv hs
+  have hframes := sleepy_frames hsource hquorum hv hs hrun hnc
+  have hsafe := SleepyLayer1.ready_read_safety M L D
+    (SleepyLayer1.read_agreement M L D) hevents houtputs hext
+    r.1.ΔFG r.2.horizon p le_rfl hrun hnc hp (hreg.sleepy hv hcollision hs)
+    hK hpop hframes
+  have htip : ∀ st t, M.tip g st t = A.confirmed st.ac (Node.frame st) t := by
+    rcases hcap with rfl | rfl
+    · exact M.available_tip g hg
+    · exact hrep.confirmed_tip g hg
+  have ready {v i} (hi : i ≤ r.2.events.length)
+      (hr : r.2.point.Ready ((Sys F V).cDur K r) v (r.2.cutTime i)) :
+      ReadyReadPoint M.trace M.honest r.2.horizon L.catchUp
+        (M.validator.symm v) ((R r.1 hpub r.2 hv).cut v i)
+        ((R r.1 hpub r.2 hv).now v i) ∧
+      ReadBoundary M.trace (M.validator.symm v) ((R r.1 hpub r.2 hv).cut v i) ∧
+      r.2.cutTime i - 1 ≤ (R r.1 hpub r.2 hv).now v i := by
+    apply hstored.ready_point hv L.catchUp L.durations.2.1 v i hi
+    refine ⟨hr.1, fun u hu hut => hr.2 u ?_ hut⟩
+    apply le_trans (max_le_max_left 0 ?_) hu
+    have hc := hfit.catchUp
+    change L.catchUp + 1 ≤ (Sys F V).cDur K r at hc
+    linarith
+  have chainPrefix {u v i j} (hi : i ≤ r.2.events.length) (hj : j ≤ r.2.events.length)
+      (hu : r.2.point.Ready ((Sys F V).cDur K r) u (r.2.cutTime i))
+      (hv' : r.2.point.Ready ((Sys F V).cDur K r) v (r.2.cutTime j))
+      (ha : Anc (M.trace.HonestBlocksAt M.honest)
+        ((R r.1 hpub r.2 hv).tip u i) ((R r.1 hpub r.2 hv).tip v j)) :
+      (chainTrace r.2).read g u i <+: (chainTrace r.2).read g v j := by
+    obtain ⟨hui, hub, _⟩ := ready hi hu
+    obtain ⟨hvj, hvb, _⟩ := ready hj hv'
+    have heldU := hlocal.held _ _ _ _ _ hrun _ _ _ _ hui.1
+    have heldV := hlocal.held _ _ _ _ _ hrun _ _ _ _ hvj.1
+    rw [← hstored.source_tip] at heldU heldV
+    rw [hstored.source_state hv u i hi] at heldU
+    rw [hstored.source_state hv v j hj] at heldV
+    rw [stored_output_eq hstored hv htip hi hu.1,
+      stored_output_eq hstored hv htip hj hv'.1,
+      hstored.source_state hv u i hi, hstored.source_state hv v j hj]
+    exact hrep.ancestor_prefix u v i j hi hj hu.1 hv'.1
+      (hread.reachable hv u i hi hu.1) (hread.reachable hv v j hj hv'.1)
+      (hread.roots hv u i hi hu.1) (hread.roots hv v j hj hv'.1) (hcoh hcollision)
+      (fun X hX => ⟨_, _, _, hui.1.2.2.1, hui.1.2.1.1, hui.1.1,
+        (hstored.source_state hv u i hi).symm ▸ hX⟩)
+      (fun X hX => ⟨_, _, _, hvj.1.2.2.1, hvj.1.2.1.1, hvj.1.1,
+        (hstored.source_state hv v j hj).symm ▸ hX⟩)
+      _ _ heldU heldV ha
+  constructor
+  · intro u v i j hi hj hu hv'
+    obtain ⟨hui, hub, _⟩ := ready hi.1 hu
+    obtain ⟨hvj, hvb, _⟩ := ready hj.1 hv'
+    have ha := hsafe.1 _ _ _ _ _ _ hui hvj hub hvb
+    rw [← hstored.source_tip, ← hstored.source_tip] at ha
+    exact ha.elim (fun h => Or.inl (chainPrefix hi.1 hj.1 hu hv' h))
+      (fun h => Or.inr (chainPrefix hj.1 hi.1 hv' hu h))
+  · intro v i j hi hij hj hvi hvj
+    obtain ⟨hri, hbi, _⟩ := ready hi.1 hvi
+    obtain ⟨hrj, hbj, _⟩ := ready hj.1 hvj
+    have ha := hsafe.2 _ _ _ _ _ hri hrj hbi hbj
+      (hstored.cut_mono v hij) (hstored.now_mono hv v hij)
+    rw [← hstored.source_tip, ← hstored.source_tip] at ha
+    exact chainPrefix hi.1 hj.1 hvi hvj ha
+
+private theorem ancestor_held {st : Store P A.Payload} {U : Set A.Blk}
+    (hr : st.Reachable A.genesisPayload) (hU : Coherent U) (hsub : st.tree ⊆ U)
+    {X Y : A.Blk} (ha : Anc U X Y) (hy : Y ∈ st.tree) : X ∈ st.tree := by
+  by_cases he : X = Y
+  · exact he ▸ hy
+  · exact (Anc.mem (Store.anc_of_anc_universe hr hU hsub ha hy) he).1
+
+/-- Reader-conditional proposal liveness from the jointly admissible witness. -/
+theorem sleepy_liveness_reduction (C : ACCorrectLocal A sg)
+    (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
+    (D : SleepyLayer1.Data A)
+    (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) :
+    SleepyLivenessReduction C B K D R := by
+  intro supply cap g hcap hg idx r hv ⟨hpub, hs, hprog⟩
+  by_cases hcollision : r.2.HashCollision
+  · exact Or.inr hcollision
+  left
+  let M := B.map r.1 hpub r.2 hv
+  let L : ACCorrectLocal A M.signer := B.signer_eq r.1 hpub r.2 hv ▸ C
+  obtain ⟨hreg, hprogress, hwitness, hfit, hstored, hcoverage, hlocal,
+    _, _, _, hsource, hquorum, hwindow, hrep, hread, hcoh⟩ := supply r.1 hpub r.2 hv
+  have hrun : L.run.Run M.committee M.proposer M.digest M.honest M.trace := by
+    rw [local_cast_run]
+    exact (B.run_transport r.1 hpub r.2 hv).run hv
+  have hnc := (B.run_transport r.1 hpub r.2 hv).no_collision hv hcollision
+  obtain ⟨p, hp, hK, hpop⟩ := sleepy_windows hwindow hfit hv hs
+  have hframes := sleepy_frames hsource hquorum hv hs hrun hnc
+  have htip : ∀ st t, M.tip g st t = A.confirmed st.ac (Node.frame st) t := by
+    rcases hcap with rfl | rfl
+    · exact M.available_tip g hg
+    · exact hrep.confirmed_tip g hg
+  intro t ht hb hr
+  obtain ⟨X, k, htk, hP, hmargin, hnonroot, hk, hhold, hready⟩ :=
+    hwitness.sleepy hv hcollision cap idx t hcap hs hprog ht hb hr
+  refine ⟨M.trace.time k, M.keyIndex X.proposer, M.header X, htk, ?_,
+    hprogress.proposal X k hP.1 hP.2.1.1, ?_⟩
+  · rw [M.key_eq]
+    exact hready
+  · intro v hvready
+    let d := t + (K.params.latency cap idx : Time) * r.1.ΔAC
+    have hd : 0 ≤ d := ht.trans (le_add_of_nonneg_right
+      (mul_nonneg (Nat.cast_nonneg _) (by have := r.1.ΔAC_pos; linarith)))
+    have hvlocal : r.2.point.Ready L.catchUp v d := by
+      refine ⟨hvready.1, fun u hu hut => hvready.2 u ?_ hut⟩
+      apply le_trans (max_le_max_left 0 ?_) hu
+      have hc := hfit.catchUp
+      change L.catchUp + 1 ≤ (Sys F V).cDur K r at hc
+      linarith
+    obtain ⟨_, hstrict, hreader, hboundary⟩ :=
+      hstored.end_read hv L.catchUp L.durations.2.1 v d hd hb hvlocal
+    have hkb : M.trace.time k ≤ r.2.horizon :=
+      (le_add_of_nonneg_right L.durations.2.2.2.2).trans hhold
+    have hanc := hcoverage r.1.ΔFG r.2.horizon p le_rfl hrun hnc hp
+      (hreg.sleepy hv hcollision hs) hK hpop hframes X k _ _ d
+      hP hk hhold hkb hmargin hreader hboundary hstrict
+    have hheld := hlocal.held _ _ _ _ _ hrun _ _ _ _ hreader.1
+    have hsub : (M.trace.state (M.validator.symm v)
+        (M.cut ((chainTrace r.2).endCut d))).fg.tree ⊆ M.trace.HonestBlocksAt M.honest :=
+      fun Y hY => ⟨_, _, _, hreader.1.2.2.1, hreader.1.2.1.1, hreader.1.1, hY⟩
+    have hi : (chainTrace r.2).endCut d ≤ r.2.events.length := Nat.findGreatest_le _
+    have hhonest : r.2.point.HonestAt v (r.2.cutTime ((chainTrace r.2).endCut d)) :=
+      fun hf => hvready.1 (r.2.faultyAt_mono (cutTime_endCut_le r.2 hd) hf)
+    rw [end_read_output_eq hstored hv htip L.durations.2.1 hd hb hvlocal]
+    have hX := ancestor_held (hread.reachable hv v _ hi hhonest)
+      (hcoh hcollision) hsub hanc hheld
+    have hchain := (hrep.ancestor_prefix v v _ _ hi hi hhonest hhonest
+      (hread.reachable hv v _ hi hhonest) (hread.reachable hv v _ hi hhonest)
+      (hread.roots hv v _ hi hhonest) (hread.roots hv v _ hi hhonest)
+      (hcoh hcollision) hsub hsub X _
+      hX hheld hanc)
+    exact hchain.subset (hrep.tip_in_chain _ X hX hnonroot)
+
+end SleepyReductions
 
 end Consensus.Goldilocks.Generic
 

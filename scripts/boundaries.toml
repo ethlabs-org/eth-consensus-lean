@@ -136,6 +136,20 @@ ConsensusLeanTest.Goldilocks.Generic.SleepyCut checks the complete constant clos
 HealingLeavesCut traversal and controls. Exact source edges only"""
 
 [[exception]]
+from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ClaimReductionEdges"]
+to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameViability",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameGeometry"]
+reason = """Conditional sleepy reductions consume the AC-generic SleepyFG and SleepyGlue proofs.
+The same seven transitive edges are already allowed at those source modules.
+ConsensusLeanTest.Goldilocks.Generic.SleepyCut checks every ClaimReductionEdges constant's
+complete type and proof closure with the existing negative and proof-body controls"""
+
+[[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges",
