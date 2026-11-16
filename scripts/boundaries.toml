@@ -140,7 +140,8 @@ from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksHealing"]
+        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksHealing",
+        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksLocal"]
 to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention",
@@ -184,12 +185,13 @@ over a healing supplier, imports HealingLeaves, and the same cut guard checks it
 generic assembly edges, imports HealingLeaves and HealingRounds, and the same cut guard checks its
 constants. GoldilocksBridge, the concrete bridge leaf, imports HealingLeaves, HealingRounds and HealingEdges for
 the truncation transport and leaves 12 to 14 in its proved bridges; it is a Goldilocks module, outside the cut guard.
-GoldilocksHealing, the concrete healing supplier fields, reaches them only through GoldilocksBridge, also outside the
-cut guard. Leaf paths only"""
+GoldilocksHealing and GoldilocksLocal, the concrete healing and local supplier fields, reach them only through
+GoldilocksBridge, also outside the cut guard. Leaf paths only"""
 
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksHealing"]
+        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksHealing",
+        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksLocal"]
 to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.Row",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowService",
@@ -208,6 +210,13 @@ to = ["ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalPersistence"]
 reason = "concrete Goldilocks healing supplier fields over the shared run interface, from the committee-generic reset kernel and proposal persistence; leaf paths only"
+
+[[exception]]
+from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksLocal"]
+to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read"]
+reason = "concrete Goldilocks local supplier fields over the shared run interface: AC-projection service and frame tips of reachable stores; leaf paths only"
 
 [[layer]]
 name = "Instances.Goldilocks.NodeEngine"
