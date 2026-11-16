@@ -89,7 +89,8 @@ theorem final_reset_premises_of_shared_at
   have hδeq : Q.params.toParams.fg.δt = S.δt := rfl
   have hk : Q.params.k = S.k := rfl
   obtain ⟨hr0, hgr, hcz, h4B, hBh, hgapN, hplace⟩ :=
-    final_reset_bounds S A V Q.run Q.hn Q.index Q.gst Q.query Q.mature Q.bounded hc2 h3c
+    final_reset_bounds { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V
+      Q.run Q.hn Q.index Q.gst Q.query Q.mature Q.bounded hc2 h3c
   have hb0 : (0 : Time) ≤ Q.run.2.horizon := by linarith only [hr0, h4B, hBh, hD]
   have hH : (H Q.run.2.horizon).Nonempty :=
     nonempty_of_fault_bound (hs.faults Q.run.2.horizon hb0 le_rfl) Q.params.toParams.hn
@@ -116,7 +117,9 @@ theorem final_reset_premises_of_shared_at
       (by
         change max ((Sys (goldilocks { S with vote := stock }) V).ready (K S A) Q.gst Q.run)
           0 + 4 * Q.params.Δ ≤ Q.params.ts s₀
-        rw [max_eq_left hr0]
+        have hr0' : 0 ≤ (Sys (goldilocks { S with vote := stock }) V).ready
+            (K S A) Q.gst Q.run := hr0
+        rw [max_eq_left hr0']
         exact hs₀) (hgapN N hN))
     hdrain rfl
   obtain ⟨j, hj, hjt⟩ := Healing.snapshot_of_awake (hrun.upTo hb0).toLocalRun

@@ -263,19 +263,19 @@ theorem final_window_slots (run : (Sys (goldilocks S) V).Run)
 horizon`; every gap window that the reset frame reads, `t_N + 2Δ < B`, ends within the horizon,
 `t_{N + 3c} ≤ horizon`; and every reset `0 ≤ a ≤ B` has the placement (H3) of the two queries at
 `u_min = slot a + 2k + 5`. -/
-theorem final_reset_bounds (run : (Sys (goldilocks { S with vote := stock }) V).Run)
+theorem final_reset_bounds (run : (Sys (goldilocks S) V).Run)
     (hn : 1 ≤ Fintype.card V)
     (index : (K S A).Idx) (gst query : Time)
     (hmature :
-      (Sys (goldilocks { S with vote := stock }) V).heal (K S A) .final index gst run ≤ query)
+      (Sys (goldilocks S) V).heal (K S A) .final index gst run ≤ query)
     (hbounded : query + ((K S A).params.latency .final index : Time) * run.1.ΔAC ≤
       run.2.horizon)
     {c : Nat} (hc2 : 2 ≤ c) (h3c : 3 * c ≤ S.δt) :
-    let sp := ({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf run.1) hn
-    let ready := (Sys (goldilocks { S with vote := stock }) V).ready (K S A) gst run
+    let sp := S.params (Model.pubOf run.1) hn
+    let ready := (Sys (goldilocks S) V).ready (K S A) gst run
     let B := resetBoundRounds ready sp.Δ (2 * sp.Δ) sp.toParams.fg.δt (index : Nat)
       (healthyDrainLen S index)
-    let G := (goldilocks { S with vote := stock } (Model.pubOf run.1)).skel.grid
+    let G := (goldilocks S (Model.pubOf run.1)).skel.grid
     0 ≤ ready ∧ gbar gst ≤ ready ∧ Healing.cutZ sp.toParams gst + sp.Δ + 1 ≤ ready + 4 * sp.Δ ∧
       ready + 4 * sp.Δ ≤ B ∧ B ≤ run.2.horizon ∧
       (∀ N : Nat, sp.ts N + 2 * sp.Δ < B → sp.ts (N + 3 * c : Nat) ≤ run.2.horizon) ∧
@@ -301,8 +301,12 @@ theorem final_reset_bounds (run : (Sys (goldilocks { S with vote := stock }) V).
   have hgr : gbar gst ≤ ready := by
     change max gst 0 ≤ ready
     rw [hready]; linarith only [hcd]
-  have hcz := cutZ_fit_of_catchUp A V (contract_coefficients S A)
-    (by rw [contract_coefficients_catchUp]; exact contract_catchUp_ge_sleepy S A) run hn gst
+  have hc := catchUp_le_cDur S A V run hn
+  have hcz := Healing.cutZ_add_lt_ready_add sp gst ((Sys (goldilocks S) V).cDur (K S A) run)
+    (by
+      simp only [Regimes.catchUp] at hc
+      change 9 * D ≤ (Sys (goldilocks S) V).cDur (K S A) run
+      linarith only [hc, hD])
   change Healing.cutZ sp.toParams gst + D + 1 ≤ max ready 0 + 4 * D at hcz
   rw [max_eq_left hr0] at hcz
   -- heal and the coefficient budget, in node delays `D = Δe`
@@ -352,11 +356,11 @@ theorem final_reset_bounds (run : (Sys (goldilocks { S with vote := stock }) V).
   have hsa : sp.ts (sp.slot a : Int) ≤ a := (SA.ts_le_iff_le_slot sp ha0 _).2 le_rfl
   have hseed : G.slotTime (sp.slot a + 2 * sp.k + 5) ≤ a + 4 * D * (2 * S.k + 5) := by
     rw [show sp.slot a + 2 * sp.k + 5 = sp.slot a + 2 * S.k + 5 from rfl,
-      grid_slotTime { S with vote := stock } V run hn]
+      grid_slotTime S V run hn]
     simp only [SA.SAParams.ts] at hsa ⊢
     rw [← hDdef] at hsa ⊢
     push_cast; linarith only [hsa]
-  rw [grid_slotLen { S with vote := stock } V run hn, max_eq_left hr0]
+  rw [grid_slotLen S V run hn, max_eq_left hr0]
   push_cast
   apply add_le_of_le_sub_right
   apply max_le
