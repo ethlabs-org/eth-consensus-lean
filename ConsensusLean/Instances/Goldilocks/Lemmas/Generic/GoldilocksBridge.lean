@@ -81,6 +81,11 @@ theorem goldilocksRunInterface_run_iff (cm : Time → Finset (Fin sp.n)) :
       (∀ s, ((dictOfTime sp cm).committee s).ncard = sp.committeeSize) ∧
       (Compose.NoCollRun dg tr → Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm)) := by rfl
 
+/-- The shared run interface has the exact Goldilocks run and start equations. -/
+theorem goldilocksRunInterface_data :
+    GoldilocksRunData sp ro (goldilocksRunInterface sp ro) := by
+  exact ⟨rfl, rfl⟩
+
 /-- Conditional high-row bridge corresponding to
 `Growing/Healing/Outcome/RowSource.high_row_source_at`. The earlier-origin conclusion and historical
 honesty charge are retained, but this target uses the committee-valid run interface and additionally

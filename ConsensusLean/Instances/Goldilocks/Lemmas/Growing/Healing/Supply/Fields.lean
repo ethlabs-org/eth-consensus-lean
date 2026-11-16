@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge
+import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksHealing
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.CommitteeFaults
@@ -23,7 +24,9 @@ Proofs of `ACHealing` fields at the committee-start Goldilocks run interface
 * `committeeHalf_of_committeeFaults`: the committee half bound at the run's slot committees, from
   the committee fault bound with `βK ≤ 1/2` and collision freedom;
 * `goldilocks_report_follow`: the `report_follow` field, with `warmup = 2 * sp.k` and
-  `follow = 3`.
+  `follow = 3`;
+* `goldilocks_ac_healing`: the assembled canonical committee-start healing witness,
+  assuming `3 ≤ sp.toParams.δt`; this supplies healing, not `ACCorrectLocal` or the endpoint.
 -/
 
 namespace Consensus.Goldilocks.Generic
@@ -144,6 +147,28 @@ theorem goldilocks_report_follow {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {
   intro x hx hxN w c d hw ⟨ℓ, pay, hc, hcall, hd⟩ htc
   exact hheads x hx hxN w c ℓ hw (Compose.projAC_callAt.mpr hc) hcall (htc.trans (hts x)) d pay
     (by rw [Compose.Growing.projAC_state_at hr hw]; exact hd)
+
+/-- The Goldilocks healing witness, with the committee-start run interface and the exact
+warmup, follow, drain and joined stored-fast-lock origin equations. -/
+theorem goldilocks_ac_healing (hδ : 3 ≤ sp.toParams.δt) :
+    goldilocksACHealing sp ro hδ := by
+  let O : ACHealing (goldilocksNode sp ro) (fun v => v.val)
+      (goldilocksRunInterface sp ro) :=
+    { warmup := 2 * sp.k
+      follow := 3
+      drain := 2 * sp.k + 5
+      Origin := fun tr x i j B => tr.JoinedAt x (tr.time i) ∧
+        ∃ CV, Compose.StoredFastLockAt tr x i j B CV
+      follow_le := fun _ _ => hδ
+      report_in_frame := goldilocks_report_in_frame
+      proposal_floor := goldilocks_proposal_floor
+      report_follow := goldilocks_report_follow
+      report_origin := goldilocks_report_origin
+      origins_comparable := goldilocks_origins_comparable
+      heal_after_reset := fun hβ hr hp hres hab _ =>
+        goldilocks_heal_after_reset hβ hr hp hres hab }
+  exact ⟨goldilocksRunInterface sp ro, O, goldilocksRunInterface_data,
+    rfl, rfl, rfl, rfl⟩
 
 end Consensus.Goldilocks.Generic
 

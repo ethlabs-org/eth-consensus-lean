@@ -304,6 +304,17 @@ generic contract (Milestones/Statements/Generic/Healing.lean). Earlier proposer
 honesty does not supply honesty at the later horizon. The rise contract already
 has this premise.
 
+### Goldilocks healing witness
+
+Goldilocks: PROVED by `Generic.goldilocks_ac_healing` in
+`Lemmas/Growing/Healing/Supply/Fields.lean`, assuming `3 ≤ sp.toParams.δt`.
+It supplies `goldilocksACHealing` with warmup `2k`, follow `3`, drain `2k + 5`
+and the joined stored-fast-lock origin. The final high-canonical argument of
+the fixed `heal_after_reset` field is unused: `goldilocks_heal_after_reset`
+already supplies that conclusion from the other premises. This supplies the
+healing field only, not the assembled `ACCorrectLocal` witness or a generic
+claim endpoint.
+
 ### Goldilocks high-row bridge target
 
 `high_row_source_at_goldilocks` (Lemmas/Generic/GoldilocksBridge.lean) is a
