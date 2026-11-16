@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameSourceGeometry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameSourceGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
@@ -163,6 +163,13 @@ theorem rowsAbove_iff {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} {y : Fin s
         (∃ E ∈ (tr.state y i).fg.tree, E.root = a.T) →
         h₀ ≤ ((tr.state y i).fg.σ a.T).h → ∃ D, G D ∧ IsHonestSource tr H D a.T :=
   Iff.rfl
+
+/-- Concrete source rows supply the AC-independent frame geometry. -/
+theorem RowsAbove.toFrameGeometry {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    {y : Fin sp.n} {i h₀ : Nat} (h : RowsAbove tr H G y i h₀) :
+    FrameGeometry.RowsAbove tr H G y i h₀ := by
+  simpa only [rowsAbove_iff, FrameGeometry.rowsAbove_iff,
+    isHonestSource_iff, FrameGeometry.isHonestSource_iff] using h
 
 theorem HonestRowsSourced.above {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
     {y : Fin sp.n} {i : Nat} (h : HonestRowsSourced tr H G y i) (h₀ : Nat) :

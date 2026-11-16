@@ -8,6 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameViability
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -39,32 +40,8 @@ private theorem held_viable_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
     (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
       B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree := by
-  have hU := (projFG_localRun hrun hnc).coherent
-  -- the frame
-  have hΦ : FrameOK (Node.frame (tr.state y i)) :=
-    (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
-  have hΦU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX.1⟩
-  have hΦs : (Node.frame (tr.state y i)).tree ⊆ (tr.state y i).fg.tree := fun X hX => hX.1
-  have hsU := fg_tree_subset_honest (tr := tr) hy i
-  -- `fc_root` (`Σ.J` or `Σ.F`) is compatible with `B`
-  have hfc : Compatible (tr.HonestBlocks H) (Node.frame (tr.state y i)).fcRoot B := by
-    change Compatible _ (tr.state y i).fg.fcRoot B
-    unfold Store.fcRoot
-    split_ifs
-    · exact J_compatible hrun hnc hf hy hsrc hGB (hsU hBt.1)
-    · exact Or.inl (hBt.2.mono hsU)
-  rcases hfc with hfB | hBf
-  swap
-  · exact Or.inl (SA.anc_tree_of_anc_U hU hΦ hΦU hBt hBf hΦ.fcRoot_mem)
-  have hΦfB := SA.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
-  right
-  rcases floor_or_crossing_of hrun hnc hf hy hsrc hGG hGB hBt.1 with hle | ⟨-, E, X, -, -, -, hBE,
-    -, hX, hEX, hXv⟩
-  · exact ⟨hBt, hΦfB, B, hBt, ⟨hBt.1, hBt.2, Anc.mono hΦs hΦfB, hle⟩, .refl⟩
-  · have hBX := hBE.trans hEX
-    have hXΦ : X ∈ (Node.frame (tr.state y i)).tree := ⟨hX, hBt.2.trans hBX⟩
-    exact ⟨hBt, hΦfB, X, hXΦ, ⟨hX, hXΦ.2, (Anc.mono hΦs hΦfB).trans hBX, hXv⟩,
-      SA.anc_tree_of_anc_U hU hΦ hΦU hBt (Anc.mono hsU hBX) hXΦ⟩
+  exact FrameGeometry.held_viable_of hrun.toLocalRun (projFG_localRun hrun hnc)
+    hf hy hsrc.toFrameGeometry hGG hGB hBt
 
 /-- `held_origin_viable` with `f < n/2` and the origins whose event precedes the cut pairwise
 compatible. -/

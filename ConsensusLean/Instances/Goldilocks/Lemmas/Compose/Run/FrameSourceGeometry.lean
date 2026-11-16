@@ -254,25 +254,6 @@ theorem frame_crossing_source_before {ini} (hr : Node.LocalRun proposer dg H sg 
       ∃ D, G D ∧ IsHonestSource tr H D E.root :=
   frame_crossing_source_of hr hf hbound hy (hsrc.above 0) hW (Nat.zero_le _) hj1 hj2
 
-/-- Compatibility with all sources implies compatibility with the justification. -/
-theorem J_compatible_before {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
-    (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
-    (hbound : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {G : A.Blk → Prop} (hsrc : HonestRowsSourced tr H G y i) {B : A.Blk}
-    (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B) (hB : B ∈ tr.HonestBlocks H) :
-    Compatible (tr.HonestBlocks H) (tr.state y i).fg.J B := by
-  by_cases h0 : (tr.state y i).fg.hj = 0
-  · rw [justified_genesis hr h0 hy]
-    exact Or.inl (honest_genesis_anc hr hB).2
-  obtain ⟨-, -, D, hD, hDs⟩ := justified_honest_source_before hr hf hbound hy hsrc (by omega)
-  have hJ := (Store.cache_invariants _ _ _ _ (fg_reachable hr hy i)).2.1
-  obtain ⟨x, hx, k, -, -, hJD, -, -⟩ := honest_source_entry hr hf hDs ⟨y, hy, i, hJ⟩ rfl
-  have hJDU : Anc (tr.HonestBlocks H) (tr.state y i).fg.J D :=
-    hJD.mono fun _ hX => ⟨x, hx, k, hX⟩
-  rcases hGB D hD with h | h
-  · exact Or.inl (hJDU.trans h)
-  · exact Anc.total hf.coherent hJDU h
-
 end Consensus.Goldilocks.Compose.FrameGeometry
 
 end

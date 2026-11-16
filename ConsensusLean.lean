@@ -112,6 +112,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FamilyPackag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameCandidate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameSourceGeometry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameViability
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers

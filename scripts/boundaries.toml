@@ -117,9 +117,7 @@ about = "unproved generic surface edges; endpoint and acceptance closures remain
 
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyFG"]
-to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameSourceGeometry",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees",
+to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameViability",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry",

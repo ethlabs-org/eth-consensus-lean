@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameSourceGeometry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameViability
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 import ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry
 
@@ -42,7 +42,7 @@ theorem held_candidate_of_rows {ini} (hr : Node.LocalRun proposer dg H sg tr ini
   have hΦU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX.1⟩
   have hΦs : (Node.frame (tr.state y i)).tree ⊆ (tr.state y i).fg.tree := fun X hX => hX.1
   have hsU : (tr.state y i).fg.tree ⊆ tr.HonestBlocks H := fg_tree_subset_honest hy i
-  have hJB := J_compatible_before hr hfg hf hy hsrc hGB (hsU hBt.1)
+  have hJB := J_compatible hr hfg hf hy (hsrc.above _) hGB (hsU hBt.1)
   have hfc : Compatible (tr.HonestBlocks H) (Node.frame (tr.state y i)).fcRoot B := by
     change Compatible _ (tr.state y i).fg.fcRoot B
     unfold Store.fcRoot

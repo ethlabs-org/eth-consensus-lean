@@ -3,8 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameGeometry
-import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameSources
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameViability
 
 public section
 
@@ -46,15 +46,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
-private theorem held_σ_eq {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {y z : Fin sp.n}
-    (hy : y ∈ H) (hz : z ∈ H) {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hBy : B ∈ (tr.state y i).fg.tree) (hBz : B ∈ (tr.state z j).fg.tree) :
-    (tr.state y i).fg.σ B.root = (tr.state z j).fg.σ B.root := by
-  rw [← store_eq hrun hy i] at hBy ⊢
-  rw [← store_eq hrun hz j] at hBz ⊢
-  exact Store.σ_eq_of_held (projFG_localRun hrun hnc) hy hz hBy hBz
-
 /-! ### The store of an honest node whose honest attestations have compatible sources -/
 
 section Geometry
@@ -64,52 +55,6 @@ variable {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   (hf : 2 * Hᶜ.ncard < sp.n)
   {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
 
-include hrun hnc hy in
-/-- **Comparable sources of one height name one entry.** -/
-private theorem source_entry_eq {D D' E E' : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hDD' : Compatible (tr.HonestBlocks H) D D') (hD : IsHonestSource tr H D E.root)
-    (hD' : IsHonestSource tr H D' E'.root) (hE : E ∈ (tr.state y i).fg.tree)
-    (hE' : E' ∈ (tr.state y i).fg.tree)
-    (hh : ((tr.state y i).fg.σ E.root).h = ((tr.state y i).fg.σ E'.root).h) : E = E' := by
-  have key : ∀ {D D' E E' : SA.Blk sp.n (List (FG.Att sp.n))}, Anc (tr.HonestBlocks H) D D' →
-      IsHonestSource tr H D E.root → IsHonestSource tr H D' E'.root → E ∈ (tr.state y i).fg.tree →
-      E' ∈ (tr.state y i).fg.tree →
-      ((tr.state y i).fg.σ E.root).h = ((tr.state y i).fg.σ E'.root).h → E = E' := by
-    intro D D' E E' hDD hD hD' hE hE' hh
-    obtain ⟨x, hx, k, -, hEt, hED, hEh, hET⟩ := honest_source_entry hrun hnc hD ⟨y, hy, i, hE⟩ rfl
-    obtain ⟨x', hx', k', hD't, hE't, hE'D', hE'h, hE'T⟩ :=
-      honest_source_entry hrun hnc hD' ⟨y, hy, i, hE'⟩ rfl
-    have hED' : (tr.state x' k').fg.Anc E D' :=
-      honest_held_anc hrun hnc hx' ((hED.mono (fg_tree_subset_honest hx k)).trans hDD) hD't
-    have hEt' := anc_mem hED' hD't
-    refine held_entry_unique hrun hnc hx' hD't hED' hE'D' ?_ ?_ hE'T
-    · rw [held_σ_eq hrun hnc hx' hy hEt' hE, held_σ_eq hrun hnc hx' hy hE't hE']
-      exact hh
-    · rw [held_σ_eq hrun hnc hx' hx hEt' hEt]
-      exact hET
-  rcases hDD' with h | h
-  · exact key h hD hD' hE hE' hh
-  · exact (key h hD' hD hE' hE hh.symm).symm
-
-include hrun hnc hy in
-/-- A block held below a source's entry height is below the entry. -/
-private theorem below_entry {B D E : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hB : B ∈ (tr.state y i).fg.tree) (hE : E ∈ (tr.state y i).fg.tree)
-    (hD : IsHonestSource tr H D E.root) (hDB : Compatible (tr.HonestBlocks H) D B)
-    (hlt : ((tr.state y i).fg.σ B.root).h < ((tr.state y i).fg.σ E.root).h) :
-    (tr.state y i).fg.Anc B E := by
-  have hU := (projFG_localRun hrun hnc).coherent
-  obtain ⟨x, hx, k, -, -, hED, -, -⟩ := honest_source_entry hrun hnc hD ⟨y, hy, i, hE⟩ rfl
-  have hEDU : Anc (tr.HonestBlocks H) E D := hED.mono (fg_tree_subset_honest hx k)
-  have no : ¬ Anc (tr.HonestBlocks H) E B := fun h => by
-    have := (honest_held_height hrun hnc hy (honest_held_anc hrun hnc hy h hB)).1
-    omega
-  rcases hDB with h | h
-  · exact absurd (hEDU.trans h) no
-  · rcases Anc.total hU h hEDU with h' | h'
-    · exact honest_held_anc hrun hnc hy h' hE
-    · exact absurd h' no
-
 include hrun in
 /-- With `h_j = 0`, `Σ.J` is genesis. -/
 theorem justified_genesis (h0 : (tr.state y i).fg.hj = 0) (hy : y ∈ H) :
@@ -117,42 +62,13 @@ theorem justified_genesis (h0 : (tr.state y i).fg.hj = 0) (hy : y ∈ H) :
   FrameGeometry.justified_genesis hrun.toLocalRun h0 hy
 
 include hrun hnc hf hy in
-/-- **No contest from genesis.** -/
-private theorem frame_no_contest_of (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
-    (hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D') :
-    ¬ (tr.state y i).fg.Contest := by
-  rintro ⟨hm, X, hX, -, hXh, hJX⟩
-  have hR := fg_reachable hrun.toLocalRun hy i
-  by_cases h0 : (tr.state y i).fg.hj = 0
-  · rw [justified_genesis hrun h0 hy] at hJX
-    exact hJX ((Store.accepted_tree _ _ _ _ hR).2.2.2 X hX)
-  obtain ⟨hJh, hJT, D, hD, hDs⟩ := justified_honest_source_of hrun hnc hf hy hsrc (by omega)
-  obtain ⟨E, hE, hEX, hEh, hET, D', hD', hD's⟩ :=
-    frame_crossing_source_of hrun hnc hf hy hsrc hX (j := (tr.state y i).fg.hj) le_rfl (by omega)
-      (by omega)
-  have hJ := (Store.cache_invariants _ _ _ _ hR).2.1
-  rw [source_entry_eq hrun hnc hy (hGG D D' hD hD') hDs hD's hJ hE (hJh.trans hEh.symm)] at hJX
-  exact hJX hEX
-
-include hrun hnc hf hy in
 /-- **`Σ.J` is compatible with a block compatible with every source satisfying `G`.** -/
 theorem J_compatible (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B) (hB : B ∈ tr.HonestBlocks H) :
     Compatible (tr.HonestBlocks H) (tr.state y i).fg.J B := by
-  have hU := (projFG_localRun hrun hnc).coherent
-  by_cases h0 : (tr.state y i).fg.hj = 0
-  · rw [justified_genesis hrun h0 hy]
-    obtain ⟨z, hz, j, hBt⟩ := hB
-    exact Or.inl (((Store.accepted_tree _ _ _ _ (fg_reachable hrun.toLocalRun hz j)).2.2.2 B
-      hBt).mono (fg_tree_subset_honest hz j))
-  obtain ⟨-, -, D, hD, hDs⟩ := justified_honest_source_of hrun hnc hf hy hsrc (by omega)
-  have hJ := (Store.cache_invariants _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).2.1
-  obtain ⟨x, hx, k, -, -, hJD, -, -⟩ := honest_source_entry hrun hnc hDs ⟨y, hy, i, hJ⟩ rfl
-  have hJDU : Anc (tr.HonestBlocks H) (tr.state y i).fg.J D := hJD.mono (fg_tree_subset_honest hx k)
-  rcases hGB D hD with h | h
-  · exact Or.inl (hJDU.trans h)
-  · exact Anc.total hU hJDU h
+  exact FrameGeometry.J_compatible hrun.toLocalRun (projFG_localRun hrun hnc)
+    hf hy hsrc.toFrameGeometry hGB hB
 
 include hrun hnc hf hy in
 /-- **The floor, or a crossing source above the block**: with no contest the floor is
@@ -167,26 +83,12 @@ theorem floor_or_crossing_of (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
         (tr.state y i).fg.Anc B E ∧
         ((tr.state y i).fg.σ E.root).h = (tr.state y i).fg.headHeightFloor ∧
         X ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc E X ∧ (tr.state y i).fg.IsViable X := by
-  have hfl : (tr.state y i).fg.headHeightFloor = (tr.state y i).fg.hmax - 1 := by
-    unfold Store.headHeightFloor
-    split_ifs with h
-    · exact absurd h (frame_no_contest_of hrun hnc hf hy hsrc hGG)
-    · rfl
-  by_cases hle : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ B.root).h
-  · exact Or.inl hle
-  right
-  obtain ⟨-, -, -, ⟨Z, hZ, -, hZj⟩, hZm, ⟨X, hX, hXh⟩, -⟩ :=
-    Store.cache_invariants _ _ _ _ (fg_reachable hrun.toLocalRun hy i)
-  have hB1 := (honest_held_chain hrun hy hB).1
-  have hZ1 := (honest_held_chain hrun hy hZ).2.1
-  have hZ2 := hZm Z hZ
-  obtain ⟨E, hE, hEX, hEh, -, D, hD, hDs⟩ :=
-    frame_crossing_source_of hrun hnc hf hy hsrc hX (j := (tr.state y i).fg.hmax - 1) (by omega)
-      (by omega) (by omega)
-  refine ⟨D, E, X, hD, hDs, hE, below_entry hrun hnc hy hB hE hDs (hGB D hD) (by omega),
-    hEh.trans hfl.symm, hX, hEX, ?_⟩
-  change (tr.state y i).fg.headHeightFloor ≤ _
-  omega
+  obtain h | ⟨D, E, X, hD, hDs, hrest⟩ :=
+    FrameGeometry.floor_or_crossing_of hrun.toLocalRun (projFG_localRun hrun hnc)
+      hf hy hsrc.toFrameGeometry hGG hGB hB
+  · exact Or.inl h
+  · exact Or.inr ⟨D, E, X, hD,
+      isHonestSource_iff.mpr (FrameGeometry.isHonestSource_iff.mp hDs), hrest⟩
 
 end Geometry
 

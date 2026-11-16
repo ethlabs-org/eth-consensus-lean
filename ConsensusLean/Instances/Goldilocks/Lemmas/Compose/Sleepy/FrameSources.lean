@@ -34,10 +34,7 @@ theorem frame_crossing_source_of {h₀ : Nat} (hsrc : RowsAbove tr H G y i h₀)
     ∃ E ∈ (tr.state y i).fg.tree, (tr.state y i).fg.Anc E W ∧
       ((tr.state y i).fg.σ E.root).h = j ∧ ((tr.state y i).fg.σ E.root).Th = E.root ∧
       ∃ D, G D ∧ IsHonestSource tr H D E.root := by
-  have hs : FrameGeometry.RowsAbove tr H G y i h₀ := FrameGeometry.rowsAbove_iff.2
-    fun X hX a ha hav hE hh => by
-      obtain ⟨D, hD, hDs⟩ := rowsAbove_iff.1 hsrc X hX a ha hav hE hh
-      exact ⟨D, hD, FrameGeometry.isHonestSource_iff.2 (isHonestSource_iff.1 hDs)⟩
+  have hs := hsrc.toFrameGeometry
   obtain ⟨E, hE, hEW, hEh, hET, D, hD, hDs⟩ :=
     FrameGeometry.frame_crossing_source_of hrun.toLocalRun (projFG_localRun hrun hnc)
       hf hy hs hW hj0 hj1 hj2
@@ -51,10 +48,7 @@ theorem justified_honest_source_of (hsrc : RowsAbove tr H G y i (tr.state y i).f
     ((tr.state y i).fg.σ (tr.state y i).fg.J.root).h = (tr.state y i).fg.hj ∧
       ((tr.state y i).fg.σ (tr.state y i).fg.J.root).Th = (tr.state y i).fg.J.root ∧
       ∃ D, G D ∧ IsHonestSource tr H D (tr.state y i).fg.J.root := by
-  have hs : FrameGeometry.RowsAbove tr H G y i (tr.state y i).fg.hj := FrameGeometry.rowsAbove_iff.2
-    fun X hX a ha hav hE hh => by
-      obtain ⟨D, hD, hDs⟩ := rowsAbove_iff.1 hsrc X hX a ha hav hE hh
-      exact ⟨D, hD, FrameGeometry.isHonestSource_iff.2 (isHonestSource_iff.1 hDs)⟩
+  have hs := hsrc.toFrameGeometry
   obtain ⟨hh, hT, D, hD, hDs⟩ := FrameGeometry.justified_honest_source_of
     hrun.toLocalRun (projFG_localRun hrun hnc) hf hy hs hj
   exact ⟨hh, hT, D, hD, isHonestSource_iff.2 (FrameGeometry.isHonestSource_iff.1 hDs)⟩

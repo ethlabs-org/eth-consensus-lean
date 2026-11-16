@@ -107,8 +107,8 @@ in the engine representation remain independent and unchanged.
 
 ### Sleepy event and coverage suppliers
 
-The reductions and `LocalClaimSuppliers` consume the following rows. All are OPEN
-proof obligations, not final endpoint claims. The un-windowed sleepy fields of
+The reductions and `LocalClaimSuppliers` consume the following rows. Proven rows
+are recorded below; the remaining obligations are OPEN, not final endpoint claims. The un-windowed sleepy fields of
 `ACCorrectLocal`, `FiniteLocal` and `SleepyReadPoint` are removed: proposal and
 inclusion now take the same run, binding, service, independent count windows and
 anchored-frame premises as `Extension`.
@@ -116,18 +116,32 @@ anchored-frame premises as `Extension`.
 | Input | Source and remaining obligation |
 | --- | --- |
 | `SleepyLayer1.EventSafety` | Concrete `GoldilocksEventSafety` and the existing sleepy invariant; actual composed-run frames only. Instance discharge remains OPEN. |
-| `SleepyLayer1.OutputProvenance` | Actual-read output provenance; held membership plus ancestry to an event or frame floor. Held membership overlaps `LocalReadPoint.held` deliberately so the standalone generic `ReadAgreement` Prop target has a coherent genesis-root case without importing the unrelated payload fields. |
+| `SleepyLayer1.OutputProvenance` | PROVED for Goldilocks by `Generic.SleepyLayer1.goldilocks_output_provenance` in `Growing/Sleepy/Node/Layer1Proofs`. Actual-read held membership plus ancestry to an event or frame floor; no event-comparability premise. Held membership overlaps `LocalReadPoint.held` deliberately so the standalone generic `ReadAgreement` Prop target has a coherent genesis-root case without importing unrelated payload fields. |
 | `SleepyLayer1.Extension` | Same-reader ancestry at ordered cuts and evaluation times; not inferred from compatibility. Concrete discharge remains OPEN. |
-| `SleepyLayer1.SourceProvenance` | Report source is an ancestor of a same-reporter confirmation event at an earlier or equal cut. The source need not equal the event block. |
+| `SleepyLayer1.SourceProvenance` | PROVED for Goldilocks by `Generic.SleepyLayer1.goldilocks_source_provenance` in `Growing/Sleepy/Node/Layer1Proofs`. Report source is an ancestor of a same-reporter confirmation event at an earlier or equal cut. The source need not equal the event block. |
 | `PopulationQuorumSupply` | Shared FG requires `2 * (H t)ᶜ.ncard < P.n`; arbitrary admissible thresholds do not supply it. `Simulation.GoldilocksPopulationQuorumSupply` states the canonical-map discharge with explicit `1/2 ≤ K.params.θ`. It uses the population clause, independently of committee counts; proof OPEN. |
 | `SleepyWindowSupply` | `Simulation.GoldilocksSleepyWindowSupply` states the canonical-map discharge with explicit threshold and two independent look-ahead equalities. One mapped point supplies both regimes; proof OPEN. Catch-up domination comes only from `ClaimDeadlineFit.catchUp`. Sleepy claims do not consume outage policy; neither regime interface depends on the other. |
 | `SleepyLayer1.ProposalCoverage` | `GoldilocksProposalCoverage` states the concrete conditional head. Source routes: `sleepy_serviced_proposal_coverage_at` / `include_sleepy_at`, with committee facts and bounds supplied on the engine route by `sleepy_committee_at`. Both windows and anchored frames are explicit, hold is at least Δ and margin at least 6Δ; the hold must survive the horizon. Proof and local-data matching remain OPEN. Payload inclusion follows from this ancestry and `LocalReadPoint.payload`, with the ready read's honest-read projection; no separate inclusion supplier remains. |
 
-The generic FG rows (`CacheProvenance`, `RowProvenance`, `ConditionalViability`)
-and glue rows (`FramesFromSources`, `ReadAgreement`, `ReadyReadSafety`) remain
-separate proof targets. Count transport never substitutes one look-ahead for the other.
-`CommitteeTransport`, `PopulationTransport` and `FrameAcceptance` are separate
-generic adapter targets; naming their sources does not discharge them.
+All nine generic adapter targets are PROVED in `Generic.SleepyLayer1`:
+
+| Target | Proof | Module under `Lemmas/Generic` |
+| --- | --- | --- |
+| `FrameAcceptance` | `frame_acceptance` | `SleepyFG` |
+| `CacheProvenance` | `cache_provenance` | `SleepyFG` |
+| `RowProvenance` | `row_provenance` | `SleepyFG` |
+| `ConditionalViability` | `conditional_viability` | `SleepyFG` |
+| `FramesFromSources` | `frames_from_sources` | `SleepyGlue` |
+| `ReadAgreement` | `read_agreement` | `SleepyGlue` |
+| `ReadyReadSafety` | `ready_read_safety` | `SleepyGlue` |
+| `CommitteeTransport` | `committee_transport` | `SleepyTransport` |
+| `PopulationTransport` | `population_transport` | `SleepyTransport` |
+
+These proofs retain their explicit supplier premises: source provenance, event
+safety, output provenance, extension and the population quorum are not supplied
+by constructing a generic adapter. Count transport never substitutes one
+look-ahead for the other. The `SleepyCut` test guards all three modules' complete
+constant closures, allowing only the existing placement-only `SA.gbar` dependency.
 
 **OPEN instance fit: slot constancy.** `GoldilocksWindowPremises` requires
 `cm (sp.ts s + sp.Δ) = cm (sp.ts s)` at every slot. Generic `EventSafety`,

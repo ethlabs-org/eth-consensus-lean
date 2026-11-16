@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.SleepyLayer1
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameGeometry
-import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 
 public section
 
