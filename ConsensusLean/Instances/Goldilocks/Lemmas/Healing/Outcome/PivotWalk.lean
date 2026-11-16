@@ -58,7 +58,8 @@ theorem optimistic_prefix_compatible_old
   have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hDO : Compatible (tr.HonestBlocks H) D O := by
     rcases hj.lt_or_eq with hj | rfl
-    · apply SA.optimisticLock_compatible hrun (faulty_lt_half hp p) hpH hop ?_ hp.stock
+    · apply SA.optimisticLock_compatible hrun _ SA.CommitteeP.full hpH hop
+        (SA.cs2_full hp.stock (faulty_lt_half hp p))
       intro z hz q e hv hs
       obtain ⟨ell, hc, he⟩ := hv
       have hvotes := (historical_activation_before hp (tr.time q) q le_rfl).2

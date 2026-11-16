@@ -49,8 +49,12 @@ theorem actual_proposal_start_live_origin_at
   have hpay' : (SA.acProposal sp ((tr.upTo (tr.time i)).projAC.state (proposer p) i)
       ell.frame (tr.time i)).2 = some (d, pay) := by
     simpa only [RunTrace.upTo_projAC, hs] using hpay
+  have hf2 : 2 * (H (tr.time i))ᶜ.ncard < sp.n := by
+    have hn := sp.toParams.hn
+    change 0 < sp.n at hn
+    omega
   have h := Healing.actual_proposal_start_live_origin (hrun.upTo (hrun.time_nonneg i))
-    (hnc.upTo _) hf hp hmargin hz hc' hcall hti hpay' hstock
+    (hnc.upTo _) SA.CommitteeP.full hp (SA.cs2_full hstock hf2) hmargin hz hc' hcall hti hpay'
   simpa only [RunTrace.upTo_projAC, hs, Trace.upTo_time] using h
 
 /-- Prior-slot heads from validators honest at their own casts force the receiving walk.

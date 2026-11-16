@@ -81,9 +81,13 @@ theorem FrameWindow.toFG_later_proposal_head_at
       · have hs' : sp.slot (tr.time a) = j := hs
         omega
     exact hts (by omega)
+  have hf2 : 2 * (H (tr.time a))ᶜ.ncard < sp.n := by
+    have := hf _ (hrun.time_nonneg a) (hatime.trans (hihi.trans hmb))
+    have hn := sp.toParams.hn
+    change 0 < sp.n at hn
+    omega
   have hDj := Healing.fast_selection_slot_le (hrun.upTo (hrun.time_nonneg a))
-    (hnc.upTo _) (hf _ (hrun.time_nonneg a) (hatime.trans (hihi.trans hmb))) hya hfast''
-    hstock
+    (hnc.upTo _) SA.CommitteeP.full hya hfast'' (SA.cs2_full hstock hf2)
   have hjlo : u ≤ j := by omega
   have hjhi : j ≤ u + 1 := by
     by_contra hn

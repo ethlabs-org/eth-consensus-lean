@@ -489,8 +489,9 @@ private theorem trivial_high_locksU
   rcases (show l.slot = σ ∨ σ < l.slot by omega) with h | h
   · rw [h] at hopt
     exact hsame k CV O hopt
-  · exact optimisticLock_compatibleU hrun hS.two_faulty_lt hx hopt (fun w hw j e hv hs =>
-      votesExtendAfter_iff.1 hlater w hw j e hv (by omega)) hS.stock
+  · exact optimisticLock_compatibleU hrun _ CommitteeP.full hx hopt
+      (cs2_full hS.stock hS.two_faulty_lt) (fun w hw j e hv hs =>
+      votesExtendAfter_iff.1 hlater w hw j e hv (by omega))
 
 /-- (L-high) under `StandaloneRun`: a stored lock of slot `> σ` is optimistic over votes that
 extend `B`, and one of slot `σ` is compatible with `B` by `hsame`. -/
@@ -542,7 +543,8 @@ private theorem trivial_batch_proposalU
       let ⟨hheld, R, hR, hRr, hacc⟩ := hP z hz j e hv hes
       heldAtProposal_iff.2 ⟨Or.inl hheld, R, hR, hRr, trivial_stampU hS hx hc hcall hR hacc⟩)
     (trivial_high_locksU hS hx ht hlater fun _ _ _ hopt =>
-      optimisticLock_compatibleU hrun hS.two_faulty_lt hx hopt hB hS.stock)
+      optimisticLock_compatibleU hrun _ CommitteeP.full hx hopt
+        (cs2_full hS.stock hS.two_faulty_lt) hB)
 
 /-- `trivial_update_first_proposal` with the unlock given. -/
 private theorem trivial_update_first_proposalU
@@ -647,8 +649,9 @@ private theorem trivial_slow_first_proposalU
         hle Y hY hYr
     · obtain ⟨O, hYO, k, CV', hopt⟩ := proposal_high_lockU hr
         (fun _ => voteStart_initial _) hx ht hl hlt.le hY hYr
-      exact compat_down hU hYO (optimisticLock_compatibleU hrun hS.two_faulty_lt hx hopt
-        (fun w hw j e hv hs => votesExtendAfter_iff.1 hlater w hw j e hv (by omega)) hS.stock)
+      exact compat_down hU hYO (optimisticLock_compatibleU hrun _ CommitteeP.full hx hopt
+        (cs2_full hS.stock hS.two_faulty_lt)
+        (fun w hw j e hv hs => votesExtendAfter_iff.1 hlater w hw j e hv (by omega)))
   exact result_first_proposalU hrun hX hres hDC' hx hc (proposal_slot ht) hprop
       (hS.run.localRun.lawful_proposal hx hc hcall (proposal_slot ht))
     (trivial_viable_atU hS hx hc hDt) (trivial_counted_heldU hS hX hupd hσ hx hc hcall ht)

@@ -287,8 +287,8 @@ private theorem high_locks (hI : InclusionRun tr H U proposer g t₀) {x : Fin s
     rcases (show l.slot = σ ∨ σ < l.slot by omega) with h | h
     · rw [h] at hopt
       exact hsame k CV O hopt
-    · exact optimisticLock_compatible hrun hI.two_faulty_lt hx hopt (fun w hw j e hv hs =>
-        hlater w hw j e hv (by omega)) hI.stock
+    · exact optimisticLock_compatible hrun _ CommitteeP.full hx hopt
+        (cs2_full hI.stock hI.two_faulty_lt) (fun w hw j e hv hs => hlater w hw j e hv (by omega))
   rcases hO with h | h
   · exact Or.inl (hYO.trans h)
   · exact anc_total hU hYO h
@@ -378,7 +378,7 @@ theorem h2_proposals_continue (hI : InclusionRun tr H U proposer g t₀)
     (by rw [hI.stock]; exact honest_voters_half hI.toHealthyBase hm4) hv hx hc
     (fun _ _ => mem_full _ _) (proposal_slot ht) hprop hV (fun z hz k e hve hes => ?_)
     (high_locks hI hx ht hlater fun k CV O hopt => optimisticLock_compatible hrun
-      hI.two_faulty_lt hx hopt hv hI.stock)
+      _ CommitteeP.full hx hopt (cs2_full hI.stock hI.two_faulty_lt) hv)
   obtain ⟨Hd', hHd', hHd'r, hBHd'⟩ := hv z hz k e hve hes
   obtain ⟨Hd, hHdt, hHdr, -, hh⟩ := late_vote_held_of_frame hI.toHealthyBase hx hc hm4
     (by rw [ht, hts]; linarith only [hΔ]) hz hve hes fun Hd hHd hHdr => by
@@ -489,8 +489,9 @@ theorem raw_first_proposals (hI : InclusionRun tr H U proposer g t₀) {B : Blk 
           Y hY hYr
       · obtain ⟨O, hYO, k, CV', hopt⟩ := proposal_high_lock hr
           (fun _ => SA.voteStart_initial _) hx ht hl hlt.le hY hYr
-        rcases optimisticLock_compatible hrun hI.two_faulty_lt hx hopt (fun w hw j' e hv hs =>
-            hlater w hw j' e hv (by omega)) hI.stock with h | h
+        rcases optimisticLock_compatible hrun _ CommitteeP.full hx hopt
+            (cs2_full hI.stock hI.two_faulty_lt) (fun w hw j' e hv hs =>
+            hlater w hw j' e hv (by omega)) with h | h
         · exact Or.inl (hYO.trans h)
         · exact anc_total hU hYO h
     exact result_first_proposal hrun hX hres hBC hx hc hslot hprop hV

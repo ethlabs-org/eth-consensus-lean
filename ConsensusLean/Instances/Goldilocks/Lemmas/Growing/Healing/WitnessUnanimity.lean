@@ -410,7 +410,8 @@ theorem unanimous_next_proposal_of_witness_at
     obtain ⟨O, hLO, a, CV, hopt⟩ := SA.proposal_high_lock hr
       (fun _ => SA.voteStart_initial _) hy hti hl hlm hL hLr
     rw [heq] at hopt
-    rcases SA.optimisticLock_compatible hS.stockRun hf2 hy hopt hG' hstock with hOX | hXO
+    rcases SA.optimisticLock_compatible hS.stockRun _ SA.CommitteeP.full hy hopt
+        (SA.cs2_full hstock hf2) hG' with hOX | hXO
     · exact Or.inl (hLO.trans hOX)
     · exact SA.anc_total hr.coherent hLO hXO
 

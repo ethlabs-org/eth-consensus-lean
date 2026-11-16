@@ -47,9 +47,10 @@ theorem optimistic_prefix_before_at
     omega
   rw [← SA.viableTree_voteDomain_eq_of_viable ⟨B, hB⟩]
   exact SA.Growing.optimistic_prefix_of_carry_at
-    (Compose.Growing.goldilocks_ac_projection_from hrun hnc)
-    hx hopt hBD hhalf hy hc hes hcarry
-    (SA.viableTree_voterBlockTree_subset_voteDomain hB) haB hstock
+    (Compose.Growing.goldilocks_ac_projection_from hrun hnc) _ SA.CommitteePAt.full
+    SA.CommitteeTAt.full (SA.size_binding_full hstock)
+    hx hopt hBD (SA.cs2_full hstock hhalf) hy hc hes hcarry
+    (SA.viableTree_voterBlockTree_subset_voteDomain hB) haB
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

@@ -22,14 +22,16 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The actual proposer's stored locks are older than its proposal slot.
 An optimistic write would require an honest vote before the proposal cut;
-a regular write is later even in time. -/
+a regular write is later even in time. The counted voters are members of the slot-`s` committee
+(P), fewer than half of whose members are faulty. -/
 theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
-    {s i : Nat} (hs1 : 1 ≤ s) {ell : ACLabel (goldilocksNode sp ro)}
+    (hnc : Compose.NoCollRun dg tr) {K : SA.CommitteeDict sp.n}
+    (hPK : SA.CommitteeP K tr.projAC H)
+    {s i : Nat} (hs1 : 1 ≤ s) (hcs2 : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize)
+    {ell : ACLabel (goldilocksNode sp ro)}
     (hz : proposer s ∈ H) (hc : tr.projAC.CallAt (proposer s) i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts s)
-    {l : SA.Lock} (hl : l ∈ (tr.projAC.state (proposer s) i).locks)
-    (hstock : sp.committeeSize = sp.n) : l.slot < s := by
+    {l : SA.Lock} (hl : l ∈ (tr.projAC.state (proposer s) i).locks) : l.slot < s := by
   have hac := Compose.goldilocks_ac_projection_from hrun hnc
   have hr := hac.localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -50,26 +52,24 @@ theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun proposer dg H tr ini)
   dsimp only at hsel
   split_ifs at hsel
   have h34 := (SA.deepest_mem hsel).1.2.1
-  rw [hstock] at h34
-  change 3 * sp.n ≤
-    4 * (SA.optimisticVoters sp A ello.frame (sp.slot (tr.time r)) D).ncard at h34
   change sp.slot (tr.time r) = _ at hsl
-  obtain ⟨x, ⟨v, hv, rfl, -⟩, hxH⟩ :
-      ∃ x ∈ SA.optimisticVoters sp A ello.frame (sp.slot (tr.time r)) D, x ∈ H := by
-    by_contra hno
-    push Not at hno
-    have hle : (SA.optimisticVoters sp A ello.frame (sp.slot (tr.time r)) D).ncard ≤
-        Hᶜ.ncard := Set.ncard_le_ncard fun x hx => hno x hx
-    have hn : 0 < sp.n := sp.toParams.hn
-    omega
-  obtain ⟨hvs, j, hj, e, hvote, rfl⟩ := SA.optimisticPoint_pool_vote hac hz hpt hv hxH
   have hrs : sp.slot (tr.time r) ≤ s := by
     have ht := SA.slot_mono sp (hr.time_nonneg r) ((hrun.time_mono hri.le).trans hti.le)
     rwa [SA.slot_of_mem sp s le_rfl (by
       simp only [SAParams.ts]; push_cast; linarith only [hΔ])] at ht
+  have hrs' : sp.slot (tr.time r) = s := by omega
+  replace h34 : 3 * sp.committeeSize ≤ 4 * (SA.optimisticVoters sp A ello.frame s D).ncard := by
+    rw [← hrs']; exact h34
+  obtain ⟨x, ⟨v, hv, rfl, -⟩, hxH⟩ :
+      ∃ x ∈ SA.optimisticVoters sp A ello.frame s D, x ∈ H := by
+    obtain ⟨x, hx, hxK⟩ := Set.exists_mem_notMem_of_ncard_lt_ncard
+      (s := K.committee s ∩ Hᶜ) (t := SA.optimisticVoters sp A ello.frame s D) (by omega)
+    refine ⟨x, hx, not_not.1 fun h => hxK ⟨?_, h⟩⟩
+    obtain ⟨v, hv, rfl, -⟩ := hx
+    exact hPK.2 _ hz r ello A hpt s v hv
+  obtain ⟨hvs, j, hj, e, hvote, rfl⟩ := SA.optimisticPoint_pool_vote hac hz hpt hv hxH
   obtain ⟨ellv, hcv, hev⟩ := hvote
-  have hcut := proposal_cut_lt hrun hnc hz hc hcall hti hs1 hxH ⟨hcv, hev⟩
-    (by rw [hvs]; omega)
+  have hcut := proposal_cut_lt hrun hnc hz hc hcall hti hs1 hxH ⟨hcv, hev⟩ hvs
   clear * - hri hj hcut; omega
 
 /-- The actual proposal start is the current root or a live image of its
@@ -123,14 +123,16 @@ theorem unlocked_live_preimage {Phi : SA.Frm sp.n (List (FG.Att sp.n))}
 non-root anchor in the warm older-label range. The returned lock is the
 pre-unlock live lock. -/
 theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
-    {s₀ p i : Nat} (hp : 1 ≤ p) (hmargin : s₀ + sp.k ≤ p)
+    (hnc : Compose.NoCollRun dg tr) {K : SA.CommitteeDict sp.n}
+    (hPK : SA.CommitteeP K tr.projAC H)
+    {s₀ p i : Nat} (hp : 1 ≤ p) (hcs2 : 2 * (K.committee p ∩ Hᶜ).ncard < sp.committeeSize)
+    (hmargin : s₀ + sp.k ≤ p)
     {ell : ACLabel (goldilocksNode sp ro)} (hz : proposer p ∈ H)
     (hc : tr.projAC.CallAt (proposer p) i ell) (hcall : ell.call = .proposal)
     (hti : tr.time i = sp.ts p)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state (proposer p) i) ell.frame (tr.time i)).2 =
-      some (d, pay)) (hstock : sp.committeeSize = sp.n) :
+      some (d, pay)) :
     d.start = ell.frame.fcRoot ∨
       ∃ l ∈ SA.liveLocks sp (tr.projAC.state (proposer p) i).locks ell.frame (tr.time i),
         s₀ ≤ l.slot ∧ l.slot < p ∧ ∃ B ∈ ell.frame.tree,
@@ -147,7 +149,7 @@ theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr
       simp only [SAParams.ts]; push_cast; linarith only [sp.toParams.hΔ])
   rw [hslot] at hlive
   obtain ⟨l₀, hl₀, hs, -⟩ := (SA.liveLocks_movesBack sp hPhi _ _ ) l hl
-  have hold := stored_lock_lt_at_proposal hrun hnc hf hp hz hc hcall hti hl₀ hstock
+  have hold := stored_lock_lt_at_proposal hrun hnc hPK hp hcs2 hz hc hcall hti hl₀
   exact Or.inr ⟨l, hl, by clear * - hmargin hlive; omega, by clear * - hs hold; omega, B, hB,
     hBr, hstart⟩
 
@@ -312,19 +314,18 @@ theorem toFG_fast_origin (hrun : GoldilocksRun proposer dg H tr ini)
     exact SA.slot_mono sp (hr.time_nonneg a) ht
 
 /-- The raw fast selection's block is no newer than its lock label. An
-honest counted head supplies the bound even when the selection is optimistic. -/
+honest counted head supplies the bound even when the selection is optimistic. The counted voters
+are members of the slot-`j` committee (P), fewer than half of whose members are faulty. -/
 theorem fast_selection_slot_le (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
+    (hnc : Compose.NoCollRun dg tr) {K : SA.CommitteeDict sp.n}
+    (hPK : SA.CommitteeP K tr.projAC H)
     {x : Fin sp.n} (hx : x ∈ H) {a j : Nat}
     {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    (ho : SA.FastLockAt tr.projAC x a j D CV) (hstock : sp.committeeSize = sp.n) : D.slot ≤ j := by
+    (ho : SA.FastLockAt tr.projAC x a j D CV)
+    (hcs2 : 2 * (K.committee j ∩ Hᶜ).ncard < sp.committeeSize) : D.slot ≤ j := by
   have hac := Compose.goldilocks_ac_projection_from hrun hnc
-  have hf' : 2 * Hᶜ.ncard < sp.n := by
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    omega
   obtain ⟨y, hy, i, e, hv, hs, W, hW, hWr, hDW⟩ :=
-    SA.fastLock_honest_vote hac _ SA.CommitteeP.full hx ho (SA.cs2_full hstock hf')
+    SA.fastLock_honest_vote hac K hPK hx ho hcs2
   obtain ⟨W', hW', hW'r, hWs⟩ := SA.honest_head hac hy hv
   obtain rfl : W' = W := hac.localRun.coherent.1 hW' hW (hW'r.trans hWr.symm)
   exact (Anc.slot_le hac.localRun.coherent hDW).1.trans (hWs.trans_eq hs)

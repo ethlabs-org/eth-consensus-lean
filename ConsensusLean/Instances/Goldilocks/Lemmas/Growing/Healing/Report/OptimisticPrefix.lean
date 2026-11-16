@@ -18,18 +18,21 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
   {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
-/-- Counted optimistic votes dominate each child towards the historical anchor. -/
-theorem optimistic_isBest_of_carry_at
-    (hrun : ACRun proposer tr H U) {s : Nat}
-    {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
+/-- Counted optimistic votes dominate each child towards the historical anchor. The counted and
+merged voters are members of the slot-`s` committee (P, T), fewer than half of whose members are
+faulty at the receiving cast. -/
+theorem optimistic_isBest_of_carry_at {ini : Fin sp.n → SAState sp.n}
+    (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n) (hPK : CommitteePAt K tr H)
+    (hTK : CommitteeTAt K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
+    {s : Nat} {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hx : x ∈ H (tr.time i₀)) (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D)
-    (hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n) (hy : y ∈ H (tr.time i))
-    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
+    (hf : 2 * (K.committee s ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
+    (hy : y ∈ H (tr.time i)) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
     (hcarry : CarryAt tr U y i e s CV) (hBt : B ∈ ℓ.frame.tree)
     {X C : Blk sp.n FGP}
     (hC : C ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
-    (hp : C.parent = some X.root) (hCB : ℓ.frame.Anc C B) (hstock : sp.committeeSize = sp.n) :
+    (hp : C.parent = some X.root) (hCB : ℓ.frame.Anc C B) :
     IsBest sp (goldfishScore sp ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s)
       {Q | Q ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)) ∧
         Q.parent = some X.root ∧
@@ -44,12 +47,15 @@ theorem optimistic_isBest_of_carry_at
   have hpt' := (upTo_optimisticPoint hr.time_mono).mpr ⟨le_rfl, hpt⟩
   have hΦxU := (frameIn_of_callAt hrx.localRun hx hpt'.1).2
   let SX := optimisticVoters sp A ℓx.frame s D
-  have h34 : 3 * sp.n ≤ 4 * SX.ncard := by
+  have h34 : 3 * sp.committeeSize ≤ 4 * SX.ncard := by
     unfold optimisticSelect at hsel
     dsimp only at hsel
     split_ifs at hsel
     have h := (deepest_mem hsel).1.2.1
-    rwa [hslx, hstock] at h
+    rwa [hslx] at h
+  have hSXK : SX ⊆ K.committee s := by
+    rintro w ⟨v, hv, rfl, -⟩
+    exact hPK.2 x i₀ ℓx A hx hpt s v hv
   have hfreeze : sp.ts s + 3 * sp.Δ ≤ tr.time i := by
     have hsv := (castAt_spec hry.localRun hy hc').2.1
     change e.msg.slot = sp.slot (tr.time i) at hsv
@@ -65,32 +71,41 @@ theorem optimistic_isBest_of_carry_at
     rintro w ⟨v, hv, rfl, R, hR, hRr, hDR⟩
     exact carried_cover hry hy hc' hs hBt hcarry'
       ⟨hv, R, hR, hRr, hDR⟩
-      (optimisticPoint_pool_slot hrx.localRun hx hpt' hv)
+      (optimisticPoint_pool_slot_from hrx.localRun hrx.vstart hx hpt' hv)
       ⟨R, hΦxU hR, hRr, (frame_slot_le sp hrx.localRun hx hpt'.1 R hR).trans hslx.le,
         hBD.trans (Anc.mono hΦxU hDR)⟩
-  have hE : (equivocators V.votes).ncard ≤ (H (tr.time i))ᶜ.ncard :=
-    Set.ncard_le_ncard fun w hw hwH => honest_not_equivocator hry hy hc' hwH hw
-  have hcompl : SX.ncard + SXᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have hout : (voters V.votes \ SX).ncard ≤ SXᶜ.ncard :=
-    Set.ncard_le_ncard fun _ h => h.2
+  have hVK : voters V.votes ⊆ K.committee s := by
+    rintro w ⟨v, hv, rfl⟩
+    have hK := hTK y i ℓ e hy hc s v hv
+    rwa [merged_vote_slot hry.localRun hry.vstart hy hc' v hv] at hK
+  have hE : (equivocators V.votes).ncard ≤ (K.committee s ∩ (H (tr.time i))ᶜ).ncard :=
+    Set.ncard_le_ncard fun w hw => by
+      refine ⟨?_, fun hwH => honest_not_equivocator hry hy hc' hwH hw⟩
+      obtain ⟨a, ha, -, -, -, rfl, -⟩ := hw
+      exact hVK ⟨a, ha, rfl⟩
+  have hsplit : SX.ncard + (K.committee s \ SX).ncard = sp.committeeSize := by
+    rw [← hsize s, Set.ncard_sdiff hSXK]
+    have := Set.ncard_le_ncard hSXK
+    omega
+  have hout : (voters V.votes \ SX).ncard ≤ (K.committee s \ SX).ncard :=
+    Set.ncard_le_ncard fun _ h => ⟨hVK h.1, h.2⟩
   have h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard := by
     omega
   exact isBest_of_cover hΦ.1 (merged_support_subset hry.localRun hy hc' (s + 1))
     (fun _ h => voteDomain_subset_tree h.1) hcover (cover_sdiff_lt h3) hC hp hCB
 
 /-- Explicit anchor order suffices for prefix reachability, without a prior-vote induction. -/
-theorem optimistic_prefix_of_carry_at
-    (hrun : ACRun proposer tr H U) {s : Nat}
-    {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
+theorem optimistic_prefix_of_carry_at {ini : Fin sp.n → SAState sp.n}
+    (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n) (hPK : CommitteePAt K tr H)
+    (hTK : CommitteeTAt K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
+    {s : Nat} {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hx : x ∈ H (tr.time i₀)) (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D)
-    (hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n) (hy : y ∈ H (tr.time i))
-    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
+    (hf : 2 * (K.committee s ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
+    (hy : y ∈ H (tr.time i)) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
     (hcarry : CarryAt tr U y i e s CV)
     (hB : B ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
-    (haB : ℓ.frame.Anc (getAnchor sp e.readPoint ℓ.frame (tr.time i)) B)
-    (hstock : sp.committeeSize = sp.n) :
+    (haB : ℓ.frame.Anc (getAnchor sp e.readPoint ℓ.frame (tr.time i)) B) :
     ℓ.frame.Anc B (getHead sp e.readPoint ℓ.frame (tr.time i)
       (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
       (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s) := by
@@ -100,7 +115,7 @@ theorem optimistic_prefix_of_carry_at
   have hT : ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)) ⊆ ℓ.frame.tree :=
     fun _ h => voteDomain_subset_tree h.1
   have hBt := hT hB
-  have hdomA := voteDomain_anc hry.localRun hy hc'
+  have hdomA := voteDomain_anc_from hry.localRun hry.vstart hy hc'
   rw [hs] at hdomA
   unfold getHead
   refine anc_ghost_of_best hΦ.1.coherent hT (hΦ.1.finite.subset hT) hBt _ haB
@@ -113,8 +128,8 @@ theorem optimistic_prefix_of_carry_at
     ⟨hdomA Y hY C (hCB.trans hBY),
       ((fcRoot_anc_getAnchor hΦ.1 e.readPoint (tr.time i)).trans haX).tail eC,
       Y, hY, hvY, hCB.trans hBY⟩
-  exact ⟨C, optimistic_isBest_of_carry_at hrun hx hopt hBD hf hy hc hs hcarry
-    hBt hCv eC.2.2 hCB hstock, hCB⟩
+  exact ⟨C, optimistic_isBest_of_carry_at hrun K hPK hTK hsize hx hopt hBD hf hy hc hs hcarry
+    hBt hCv eC.2.2 hCB, hCB⟩
 
 end Consensus.Goldilocks.SA.Growing
 

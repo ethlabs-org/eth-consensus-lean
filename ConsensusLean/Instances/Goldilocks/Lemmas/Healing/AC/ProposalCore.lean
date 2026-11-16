@@ -355,11 +355,11 @@ theorem proposal_walk (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {x :
 
 /-- `optimisticLock_compatible` with the unlock given. -/
 theorem optimisticLock_compatibleU
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini) (hf : 2 * Hᶜ.ncard < sp.n)
-    {z : Fin sp.n} (hz : z ∈ H) {k s : Nat} {O : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    (hopt : OptimisticLockAt tr z k s O CV) {B : Blk sp.n FGP}
-    (hB : ∀ w ∈ H, ∀ j e, VoteAt tr w j e → e.msg.slot = s → VoteExtends U e.msg B)
-    (hstock : sp.committeeSize = sp.n) :
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini) (K : CommitteeDict sp.n)
+    (hPK : CommitteeP K tr H) {z : Fin sp.n} (hz : z ∈ H) {k s : Nat} {O : Blk sp.n FGP}
+    {CV : Set (Vote sp.n)} (hopt : OptimisticLockAt tr z k s O CV)
+    (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) {B : Blk sp.n FGP}
+    (hB : ∀ w ∈ H, ∀ j e, VoteAt tr w j e → e.msg.slot = s → VoteExtends U e.msg B) :
     Compatible U O B := by
   have hr := hrun.localRun
   obtain ⟨ℓ, A, hpt, hsl, hsel, -⟩ := hopt
@@ -369,22 +369,21 @@ theorem optimisticLock_compatibleU
   split_ifs at hsel
   have h34 := (deepest_mem hsel).1.2.1
   rw [hsl] at h34
-  refine origin_compatible hr.coherent hΦU (CommitteeDict.full sp.n) h34
-    (fun _ _ => mem_full _ _) (by simpa only [ncard_inter_full, hstock] using hf)
-    fun v hv hvH => ?_
+  refine origin_compatible hr.coherent hΦU K h34
+    (fun _ ⟨v, hv, hvx, _⟩ => hvx ▸ hPK.2 z hz k ℓ A hpt s v hv) hf fun v hv hvH => ?_
   obtain ⟨hvs, j, -, e, hve, rfl⟩ := optimisticPoint_pool_voteU hrun hz hpt hv hvH
   exact hB _ hvH j e hve hvs
 
 /-- An honest optimistic lock is compatible with `B` when every honest vote of its slot extends
-`B` (`f < n/2`). -/
-theorem optimisticLock_compatible (hrun : ACRun proposer tr H U ini) (hf : 2 * Hᶜ.ncard < sp.n)
-    {z : Fin sp.n} (hz : z ∈ H) {k s : Nat} {O : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    (hopt : OptimisticLockAt tr z k s O CV) {B : Blk sp.n FGP}
-    (hB : ∀ w ∈ H, ∀ j e, VoteAt tr w j e → e.msg.slot = s → VoteExtends U e.msg B)
-    (hstock : sp.committeeSize = sp.n) :
+`B`, for slot committees `K` whose members hold the counted pools (P) and fewer than half of
+whose slot-`s` members are faulty. -/
+theorem optimisticLock_compatible (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n)
+    (hPK : CommitteeP K tr H) {z : Fin sp.n} (hz : z ∈ H) {k s : Nat} {O : Blk sp.n FGP}
+    {CV : Set (Vote sp.n)} (hopt : OptimisticLockAt tr z k s O CV)
+    (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) {B : Blk sp.n FGP}
+    (hB : ∀ w ∈ H, ∀ j e, VoteAt tr w j e → e.msg.slot = s → VoteExtends U e.msg B) :
     Compatible U O B :=
-  optimisticLock_compatibleU (hrun := hrun.toU) (hf := hf) (z := z) (hz := hz) (k := k) (s := s)
-      (O := O) (CV := CV) (hopt := hopt) (B := B) (hB := hB) (hstock := hstock)
+  optimisticLock_compatibleU (hrun := hrun.toU) K hPK hz hopt hf hB
 
 /-- `proposal_high_lock` with the unlock given. -/
 theorem proposal_high_lockU

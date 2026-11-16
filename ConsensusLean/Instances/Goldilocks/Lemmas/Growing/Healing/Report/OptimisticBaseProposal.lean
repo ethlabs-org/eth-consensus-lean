@@ -304,8 +304,9 @@ theorem optimistic_next_proposal_of_early_witness_at
     rcases optimisticLock_pair_compatible_at hrun hnc hya' hx hf' ho hopt hstock with hOD | hDO
     · exact SA.anc_total hU (hLO'.trans hOD) hXD
     · exact SA.anc_total hU hLO' (hXD.trans hDO)
-  exact SA.Growing.optimistic_first_proposal_stored_at hacG hx hopt hXD hy hf2 hc hslot hd
-    ⟨hXt, Or.inl ⟨hXt, hrootX, Q, hQt', hvQ, hXQf⟩⟩ hP hhigh hstock
+  exact SA.Growing.optimistic_first_proposal_stored_at hacG _ SA.CommitteePAt.full
+    (SA.size_binding_full hstock) hx hopt hXD hy (SA.cs2_full hstock hf2) hc hslot hd
+    ⟨hXt, Or.inl ⟨hXt, hrootX, Q, hQt', hvQ, hXQf⟩⟩ hP hhigh
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
