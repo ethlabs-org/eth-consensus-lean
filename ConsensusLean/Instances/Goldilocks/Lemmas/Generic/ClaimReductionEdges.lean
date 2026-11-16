@@ -632,8 +632,10 @@ theorem healthyLivenessReduction (C : ACCorrectLocal A sg)
       rw [Equiv.apply_symm_apply]; exact hwr
     have hpr := hfr.processed hv hc idx gst t D W hH hprog ht rfl htD hhp3 _ _ hwr'
       (hmono hp) hbd hlt
+    have hfD := hP.faults D hD0 le_rfl
+    rw [truncH_eq_of_le le_rfl] at hfD
     have hF := hfr.cache _ gst t D W hcf hrun hP hhealed hacc hanc hheights _ _ D le_rfl
-      (hmono hp) hbd (hfit.final_faults D hD0 htD (hP.faults D hD0 le_rfl)) hpr
+      (hmono hp) hbd (hfit.final_faults D hD0 htD hfD) hpr
     have hFt : (M.trace.state (M.validator.symm w)
         (M.cut ((chainTrace rho).endCut D))).fg.F ∈ (M.trace.state (M.validator.symm w)
         (M.cut ((chainTrace rho).endCut D))).fg.tree :=

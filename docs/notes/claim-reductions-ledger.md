@@ -35,7 +35,8 @@ select W at the original query/deadline with
 HealthyLivenessReduction therefore removes its independent FinalHeightSupply premise.
 It consumes the acceptance, ancestry and three own-reader height projections returned
 for that SAME W; FinalReadTransport.cache retains its exact
-inputs, and DeadlinePremisesSupply independently produces Premises at E.ΔFG.
+inputs, and DeadlinePremisesSupply independently produces Premises at E.ΔFG
+on the honest sets truncated after the exact deadline.
 Its nonfinal branch reads inclusion at L7 (`HealthyReadPoint.proposal`), so it also takes
 PreparationPremisesSupply and ResetHealBudgetSupply, the capstone's existing `preparation` and
 `resetBudget` rows, for L7's Premises, selected reset and post-drain bound.
@@ -206,10 +207,10 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | `ClaimDeadlineFit` | Concrete/Fields sleepySafe catch-up arithmetic; ReadPoint healthy proposal/healed; Accountable population threshold | Goldilocks: PROVED by `goldilocks_claimDeadlineFit`. Local catch-up + 1 ≤ engine cDur, local latency ≤ publication margin, max GST 0 + margin ≤ advertised nonfinal heal, α·n ≤ 2q−n, healthy population bound < 2q−n. Open for arbitrary contracts, not consequences of CorrectLocal. Nonnegative durations come from C.durations. |
 | `AdmissibleProposal` | confirmed_payload_projection_at; ProposalLiveReady's proposer readiness | Actual B,k must be non-genesis, nonnegative, hold through horizon and engine-cDur ready. The old ReadyProposal only gives local catch-up and honesty through hold. |
 | `ProposalWitnessRefinement` | Concrete/Fields sleepyLive and healthyLive_confirmed | Goldilocks: PROVED by `goldilocks_proposalWitnessRefinement`. Selects the same query/progress/deadline witness jointly with AdmissibleProposal on the collision-free branch. No InBy or ProposalLiveReady conclusion is assumed; the weaker budget twins are deleted. |
-| `DeadlinePremisesSupply` | Generic/Obligations.Premises; concrete final query production | Produces the exact Premises at query + final-latency·ΔAC, only under actual final progress, healthy regime, heal≤query, deadline≤horizon and a ready deadline reader. FinalWindowSupply alone does not produce this bundle. |
+| `DeadlinePremisesSupply` | Generic/Obligations.Premises; concrete final query production; `premises_truncH` | Produces the exact Premises at query + final-latency·ΔAC on `truncH M.honest` at that deadline (restarts bounded only through it; no whole-run `NoRestartAfter`), only under actual final progress, healthy regime, heal≤query, deadline≤horizon and a ready deadline reader. Truncation discharges neither the E.ΔFG delay fit nor the snapshot. FinalWindowSupply alone does not produce this bundle. |
 | `FinalWindowSupply` | Concrete/Final final payload projection | Selects the same W with anchor-0 non-genesis and advertised readiness, anchor-3 honest proposal, spacing and heights. The universal FinalProposerTransport twin is deleted. |
 | `FinalReadTransport.processed` | concrete carrier-processing supply / final payload projection | Healthy service and deadline readiness produce strict-earlier BlockCallAt via CarrierProcessed, preserving own processing honesty. The cut-only carrier twin is deleted. |
-| `FinalReadTransport.cache` | actual-reader cache coverage | Retains Premises, same W, acceptance, ancestry, all three height steps, carrier processing and population threshold at t. The cut-only cache twin is deleted; actual-read realization remains OPEN. |
+| `FinalReadTransport.cache` | actual-reader cache coverage | Retains Premises (on `truncH M.honest deadline`, as supplied), same W, acceptance, ancestry, all three height steps, carrier processing and population threshold at t. A reader at `deadline ≤ t` keeps honesty, run and threshold on `M.honest` (nobody is honest on the truncation after the deadline, since `truncH H b t = H t ∩ {t ≤ b}`); ancestry and conclusion stay over `M.honest` (ancestry over the truncated honest blocks is ancestry over `M.honest`'s, as `honestBlocksAt_truncH_subset` gives). The cut-only cache twin is deleted; actual-read realization remains OPEN. |
 | `ActualReadAccountability` | Growing/Simulation/Endpoint/Accountable.finalAccountable_readPoint | Keeps both own-read honesty times, bounded read points, local run/no-collision, original 2q−n population cardinality and ChainAtts witnesses. Requirements and genesis validity come from the actual run; no separate default-start Requirements input remains. Goldilocks: PROVED by `goldilocks_actualReadAccountability` for every run supplier whose runs are Goldilocks runs from some start. |
 | `HighCanonicalSupply` | Generic/Obligations.HighCanonical and ACHealing.heal_after_reset source prerequisites | Supplied for Goldilocks by `Simulation.goldilocks_highCanonicalSupply`. Same run, horizon, reset and Premises; never derived by applying heal_after_reset itself. |
 | `PreparationPremisesSupply` | Healthy/PreparationReset and Generic/Obligations.Premises | Supplied for Goldilocks by `Simulation.goldilocks_preparation_premises_supply` (Growing/Simulation/PreparationPremises) at `b = horizon`, `ΔF = E.ΔFG`, under the fits `fgDelay + 6 ≤ 4·δt` and `13 ≤ heal` (nonfinal); OPEN for an arbitrary map. Exact nonfinal healthy-preparation progress interval and horizon. Final-only DeadlinePremisesSupply does not supply this. |
@@ -239,7 +240,7 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | final four anchors / delivery spacing / three height steps | FinalWindowSupply jointly selects SAME W, guard at E.ΔFG and pointwise FinalHeightSupply evidence | Corrected OPEN production target; no independent arbitrary-window height supplier, no constant FrameWindow manufacture |
 | actual final carrier processing | FinalReadTransport.processed | OPEN actual-read target; strict processing witness retained |
 | actual-read final cache ancestry | FinalReadTransport.cache | OPEN target; no cut-clock cache twin |
-| final deadline Premises | DeadlinePremisesSupply | NEW OPEN target, not FinalWindowSupply |
+| final deadline Premises | DeadlinePremisesSupply | NEW OPEN target on `truncH M.honest deadline`, not FinalWindowSupply |
 | preparation horizon Premises | PreparationPremisesSupply | supplied for Goldilocks (`goldilocks_preparation_premises_supply`, two coefficient fits); OPEN for an arbitrary map; consumed before healing, not proved by healing |
 | reset / canonicality / drain-slot time | HighCanonicalSupply and ResetHealBudgetSupply | Goldilocks canonicality: PROVED by `Simulation.goldilocks_highCanonicalSupply`, directly from the healing leaves. Goldilocks reset budget: PROVED by `Simulation.goldilocks_resetHealBudgetSupply`, from the query's healthy preparation and its repair opening. The budget supplier selects the reset, and heal_after_reset only consumes it. |
 | healed temporal ancestry | HealedReadAncestry + StoredReadTransport | Goldilocks: PROVED by `Simulation.goldilocks_healedReadAncestry` at arbitrary vote binding and the actual stored-read context. Uses the temporal record-extension proof, not compatibility⇒ancestry. |
@@ -267,7 +268,7 @@ OPEN obligations of the instance realization:
 | awake | finite healthy awake bound at the same deadline/horizon |
 | faults | finite healthy cardinal bound at the same deadline/horizon |
 | catchUp | actual CatchRun at 2Δ, not just a duration inequality |
-| noRestart | NoRestartAfter at max GST 0 |
+| noRestart | NoRestartAfter at max GST 0; on `truncH H b` the restart field reads only restarts through `b`, exactly `NoRestartUpTo` through `b` |
 | timeoutDelay | 3≤δt and every slot's 6Δ+ΔFG timeout inequality |
 | slotLen | every slot's 4Δ spacing inequality |
 | snapshot | actual FirstCutAfter cutZ witness within consuming deadline |
@@ -285,6 +286,10 @@ truncation (`HZ_truncH`, `isReset_truncH_iff` in Lemmas/Generic/HealingLeaves.le
 At the Goldilocks map with `b = rho.horizon` it does: every call cut is at or before the
 horizon (`isCall_time_le_horizon`), so `NoRestartUpTo … horizon` is `NoRestartAfter`
 (`goldilocks_preparation_premises_supply`).
+DeadlinePremisesSupply returns, and FinalReadTransport.cache consumes, the truncated
+record at the exact deadline, which can be before the horizon. PreparationPremisesSupply
+returns `Premises` on `M.honest` at the horizon, with whole-run `noRestart`; at the
+Goldilocks map that is the horizon case just described.
 
 ### Generic healing report-delivery delay
 
