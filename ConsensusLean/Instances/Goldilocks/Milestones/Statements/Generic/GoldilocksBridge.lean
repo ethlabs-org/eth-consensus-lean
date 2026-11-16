@@ -44,15 +44,12 @@ def GoldilocksHealingData (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.
     O.Origin = (fun tr x i j B => tr.JoinedAt x (tr.time i) ∧
       ∃ CV, Compose.StoredFastLockAt tr x i j B CV)
 
-/-- Intended committee-indexed Goldilocks healing supplier, with arithmetic warmth.
-The existential is an unproved contract, never a definition of a supplier instance.
-`Run` uses the canonical committee start. `warmup` comes from the warmth premise in
-`Growing/Healing/Kernel/ResetRounds.lean:328`; `follow = 3` is the skeleton choice,
-with no upstream standalone statement; `drain` is the skeleton choice `2 * sp.k + 5`,
-not a newly proved upstream bound. `Origin` is the joined stored-fast-lock source
-used by `Growing/Healing/RowService.lean` (the new source supplier remains unproved).
-The data equations supply no healing field evidence. The explicit timeout bound is needed
-for `follow = 3`; the service-delay inequality alone does not imply it. -/
+/-- Committee-indexed Goldilocks healing supplier, proved for the canonical committee-start
+interface by `goldilocks_ac_healing` in `Lemmas/Growing/Healing/Supply/Fields.lean`.
+Its witness has `warmup = 2 * sp.k`, `follow = 3`, `drain = 2 * sp.k + 5` and the
+joined stored-fast-lock origin. This supplies healing only, not `ACCorrectLocal` or
+the endpoint. The explicit timeout bound is needed for `follow = 3`; the service-delay
+inequality alone does not imply it. -/
 def goldilocksACHealing (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (_hδ : 3 ≤ sp.toParams.δt) : Prop :=
   ∃ R : ACRun (goldilocksNode sp ro) (fun v => v.val),
