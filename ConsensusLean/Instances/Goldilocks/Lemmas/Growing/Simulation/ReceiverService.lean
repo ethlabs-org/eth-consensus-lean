@@ -1,52 +1,53 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.PSync
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Service
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.CorrectLocal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 
 public section
 
-/-! # Receiver-scoped service from partial synchrony under growing faults -/
+/-! # Receiver-scoped service from post-stop service under growing faults
+
+* `goldilocks_postStopService`: partial synchrony with GST `g` gives the node-level post-stop
+  service of the canonical trace (`PostStopService`). Each recipient call is within the horizon
+  (`isCall_time_le_horizon`), so the engine's horizon-bounded services apply unchanged.
+* `receiverServiceAfterAt_of_postStop`: on any Goldilocks run, post-stop service gives the
+  receiver-scoped service of the AC projection; its AC acceptance relay is derived from the node
+  relay (`acBlock_prev`, `accept_next`).
+* `receiverServiceAfterAt_of_psync`: their composition. -/
 
 namespace Consensus.Goldilocks.Simulation
 
-open AsChainShape Shape Blocks
+open AsChainShape Shape Blocks Generic
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+section Run
 
-/-- Partial synchrony supplies strict processing and acceptance relay to a receiver
-honest at its call. Senders need be honest only at their source cuts. -/
-theorem receiverServiceAfterAt_of_psync (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {g : Time}
-    (hnet : rho.log.PSync rho.point g) (y : Fin (Fintype.card V)) :
-    Compose.Growing.ReceiverServiceAfterAt (honestKeysAt S rho)
-      ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho)) g y
-      (simTraceAt S rho hn).projAC := by
-  let tr := simTraceAt S rho hn
-  have h := simTraceAt_goldilocksRun S rho hn hv
-  have bound {j : Nat} {ℓ} (hc : tr.CallAt y j ℓ) : tr.time j ≤ rho.horizon := by
-    change (simTraceAt S rho hn).time j ≤ rho.horizon
-    rw [simTraceAt_eq]
-    exact simTrace_labelled_time_le S rho hn hv (by rw [← simTraceAt_eq, hc.2]; simp)
-  have state {x : Fin (Fintype.card V)} {i : Nat}
-      (hx : x ∈ honestKeysAt S rho (tr.time i)) : tr.projAC.state x i = (tr.state x i).ac := by
-    have hp := h.upTo (h.time_nonneg i)
-    have hs := Compose.projAC_state hp.toLocalRun hx i
-    rw [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC x (fun q hq => h.time_mono hq.le),
-      Trace.upTo_state tr x (fun q hq => h.time_mono hq.le)] at hs
-    exact hs
+open SA (SAParams ReplayOrder)
+
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+
+/-- Post-stop service on a Goldilocks run gives every receiver honest at its call strict
+processing and acceptance relay on the AC projection. Senders need be honest only at their
+source cuts. -/
+theorem receiverServiceAfterAt_of_postStop {ini}
+    (h : Growing.GoldilocksRun proposer dg H tr ini) {g : Time}
+    (hs : PostStopService tr H g) (y : Fin sp.n) :
+    Compose.Growing.ReceiverServiceAfterAt H (tr.HonestBlocksAt H) g y tr.projAC := by
   refine ⟨fun x i m hx hsa j ℓ hy hc hdl => ?_,
     fun x i B hx hacc j ℓ hy hc hdl hanc => ?_⟩
   · obtain ⟨ℓ₀, hc₀, hm⟩ := hsa
     have hsa' : tr.SendOrAdmitAt x i m := ⟨ℓ₀, Compose.projAC_callAt.mp hc₀, by
-      rw [state hx] at hm
+      rw [Compose.Growing.projAC_state_at h hx] at hm
       exact hm⟩
     have hc := Compose.projAC_callAt.mp hc
-    obtain ⟨k, hkj, htk, hp, hlt⟩ := Obligations.Growing.message_service_psync_at S rho hn hv
-      hnet hx hsa' hy ⟨_, hc⟩ (bound hc) (by rw [← Compose.projAC_deadline]; exact hdl)
+    obtain ⟨k, hkj, htk, hp, hlt⟩ := hs.message x i m hx hsa' y j hy ⟨_, hc⟩
+      (by rw [← Compose.projAC_deadline]; exact hdl)
     refine ⟨k, hkj, htk, ?_, by rw [Compose.projAC_deadline]; exact hlt⟩
     rcases hp with ⟨ℓ', hc', hm'⟩ | ⟨ℓ', hc', hm'⟩
     · exact ⟨ℓ', Compose.projAC_callAt.mpr hc', Or.inl hm'⟩
@@ -62,8 +63,7 @@ theorem receiverServiceAfterAt_of_psync (hv : rho.ExecutionValid)
     have hfr : ℓ.frame.F = (tr.state y j).fg.F := by
       rw [(h.toLocalRun.cutLaw y j _ hc hy).1]
       rfl
-    obtain ⟨k, hkj, hk, hlt⟩ := Obligations.Growing.acceptance_relay_psync_any_at S rho hn hv
-      hnc hnet hx' hi hy ⟨_, hc⟩ (bound hc)
+    obtain ⟨k, hkj, hk, hlt⟩ := hs.relay x i' B hx' hi y j hy ⟨_, hc⟩
       (by rw [hti, ← Compose.projAC_deadline]; exact hdl) (hfr ▸ hanc)
     have hpj := h.upTo (h.time_nonneg j)
     obtain ⟨ℓ', hc', hb', htk⟩ := Compose.accept_next hpj.toLocalRun hy
@@ -84,4 +84,36 @@ theorem receiverServiceAfterAt_of_psync (hv : rho.ExecutionValid)
     simp only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] at hlt ⊢
     exact hlt
 
+end Run
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+
+/-- Partial synchrony with GST `g` gives post-stop service on the canonical trace: the engine's
+message service and acceptance relay (including pre-GST acceptances) at every recipient call,
+each of which lies within the horizon. -/
+theorem goldilocks_postStopService (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {g : Time}
+    (hnet : rho.log.PSync rho.point g) :
+    PostStopService (simTraceAt S rho hn) (honestKeysAt S rho) g where
+  message _ _ _ hx hi _ _ hy hj hd :=
+    Obligations.Growing.message_service_psync_at S rho hn hv hnet hx hi hy hj
+      (Obligations.Growing.isCall_time_le_horizon S rho hn hv hj) hd
+  relay _ _ _ hx hi _ _ hy hj hd hF :=
+    Obligations.Growing.acceptance_relay_psync_any_at S rho hn hv hnc hnet hx hi hy hj
+      (Obligations.Growing.isCall_time_le_horizon S rho hn hv hj) hd hF
+
+/-- Partial synchrony supplies strict processing and acceptance relay to a receiver
+honest at its call. Senders need be honest only at their source cuts. -/
+theorem receiverServiceAfterAt_of_psync (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {g : Time}
+    (hnet : rho.log.PSync rho.point g) (y : Fin (Fintype.card V)) :
+    Compose.Growing.ReceiverServiceAfterAt (honestKeysAt S rho)
+      ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho)) g y
+      (simTraceAt S rho hn).projAC :=
+  receiverServiceAfterAt_of_postStop (simTraceAt_goldilocksRun S rho hn hv)
+    (goldilocks_postStopService S rho hn hv hnc hnet) y
+
 end Consensus.Goldilocks.Simulation
+
+end

@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.PSync
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.CorrectLocal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
@@ -101,10 +102,11 @@ private theorem pool_evidence_at_update_at (hv : rho.ExecutionValid)
   simpa only [hs c le_rfl] using he
 
 /-- A slot vote reaches a joined updater as the vote itself or as evidence that its
-validator equivocated. Honesty at the cast does not prohibit later forged votes. -/
+validator equivocated. Honesty at the cast does not prohibit later forged votes. The only network
+input is the message service of post-stop service. -/
 theorem outage_pool_delivery_at (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {g : Time}
-    (hnet : rho.log.PSync rho.point g) :
+    (hs : Generic.PostStopService (simTraceAt S rho hn) (honestKeysAt S rho) g) :
     ∀ w c m ℓ, w ∈ honestKeysAt S rho ((simTraceAt S rho hn).time c) →
       SA.UpdateAt (simTraceAt S rho hn).projAC w c m ℓ →
       g ≤ (S.params (pubOf E) hn).ts m + (S.params (pubOf E) hn).Δ →
@@ -162,16 +164,11 @@ theorem outage_pool_delivery_at (hv : rho.ExecutionValid)
       max_le (max_le hτ hstop) (by linarith)
     linarith
   have hj : tr.IsCall w c := ⟨_, Compose.projAC_callAt.mp hu.1⟩
-  have hb : tr.time c ≤ rho.horizon := by
-    obtain ⟨l, hl⟩ := hj
-    change (simTraceAt S rho hn).time c ≤ rho.horizon
-    rw [simTraceAt_eq]
-    exact simTrace_labelled_time_le S rho hn hv (by rw [← simTraceAt_eq, hl.2]; simp)
   have hi : tr.SendOrAdmitAt x i e.msg := by
     obtain ⟨l, hc, he⟩ := hvote
     exact ⟨l, Compose.projAC_callAt.mp hc, Or.inl ⟨e, he, rfl⟩⟩
-  obtain ⟨k, hkc, hik, hp, hkdl⟩ := Obligations.Growing.message_service_psync_at S rho hn hv
-    hnet hx hi hw hj hb (by linarith [hdl c le_rfl])
+  obtain ⟨k, hkc, hik, hp, hkdl⟩ := hs.message x i e.msg hx hi w c hw hj
+    (by linarith [hdl c le_rfl])
   have hpA : tr.projAC.ProcessAt w k e.msg := by
     rcases hp with ⟨l, hc, hm⟩ | ⟨l, hc, hm⟩
     · exact ⟨l, Compose.projAC_callAt.mpr hc, Or.inl hm⟩

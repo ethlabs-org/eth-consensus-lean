@@ -110,6 +110,22 @@ structure ACServiceBefore {A : NodeAC P} {sg : A.Msg → Fin P.n}
       tr.deadline y j (tr.time i) P.Δ ≤ tr.time j →
       Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B → tr.BlockAcceptedBy y j (tr.time i) B
 
+/-- Service after an outage stop `g`, as the outage recovery consumes it: message processing
+with the original lower send bound and acceptance relay, both before the effective deadline
+`max send g`. The relay has no `g ≤ send` guard: acceptances before the stop are relayed after
+it. Senders are honest at their send or acceptance, receivers at the reading call. -/
+structure PostStopService {A : NodeAC P} (tr : RunTrace A) (H : Time → Set (Fin P.n))
+    (g : Time) : Prop where
+  message : ∀ x i m, x ∈ H (tr.time i) → tr.SendOrAdmitAt x i m →
+    ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j →
+      tr.deadline y j (max (tr.time i) g) P.Δ ≤ tr.time j →
+      tr.MsgDeliveredBy y j (tr.time i) (max (tr.time i) g) m
+  relay : ∀ x i B, x ∈ H (tr.time i) → tr.AcceptAt x i B →
+    ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j →
+      tr.deadline y j (max (tr.time i) g) P.Δ ≤ tr.time j →
+      Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B →
+      tr.BlockAcceptedBy y j (max (tr.time i) g) B
+
 /-- Finite sleepy service and slot counts through `b`, without an order between the delays:
 the AC-owned message service and node acceptance relay up to recipient deadlines `≤ b`, and the
 slot-point fault counts charged at the look-ahead clamped at `b`. The service form of
