@@ -40,7 +40,7 @@ open Consensus.Model (pubOf)
 variable {V : Type} [Fintype V] [DecidableEq V]
 
 /-- Transporting a local supplier along a signer equality keeps its service and look-ahead. -/
-private theorem service_data_cast {P : Params} {A : NodeAC P} {sg sg' : A.Msg → Fin P.n}
+theorem service_data_cast {P : Params} {A : NodeAC P} {sg sg' : A.Msg → Fin P.n}
     (h : sg = sg') (C : ACCorrectLocal A sg) :
     (h ▸ C).served = C.served ∧ (h ▸ C).look = C.look := by
   subst h

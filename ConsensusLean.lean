@@ -590,6 +590,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forwa
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Groups
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealingRows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Interface
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.LocalRows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Payload
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PoolCap
