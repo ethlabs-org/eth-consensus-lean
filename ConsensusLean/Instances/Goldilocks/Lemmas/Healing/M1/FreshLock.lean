@@ -221,8 +221,8 @@ theorem confirmation_of_unanimous_early_pool
 /-- A half-committee supporting a block at an actual next-slot unlock makes all
 older lock labels compatible at every later cut. Provenance excludes intervening
 writes of those old labels; equal-time calls are ordered by their actual cuts. -/
-theorem older_locks_compatible_after_unlock
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+theorem older_locks_compatible_after_unlock {ini : Fin sp.n → SAState sp.n}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {j k u : Nat}
     {ell : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y j ell e) (hs : e.msg.slot = u + 1) (hjk : j < k)

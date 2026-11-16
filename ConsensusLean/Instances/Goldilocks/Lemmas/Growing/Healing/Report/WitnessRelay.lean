@@ -110,7 +110,7 @@ theorem witness_voterBlockTree_at
       have hQp := (SA.frameIn_of_callAt hr hy hca).2 ((SA.accept_new sp hr hy hk).1 _ hca)
       exact SA.mem_tree_of_acceptAt sp hr hy hk hki hc'.1
         (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 hQp hFQ)
-  have hstamp := SA.readPoint_blockStamp_lt_of_acceptedBefore hr hy hc' hQt
+  have hstamp := SA.readPoint_blockStamp_lt_of_acceptedBefore hr hrun.vstart hy hc' hQt
     (by simpa only [hs] using ha)
     (fun k hk hrk => by
       have h := hrs k hk (ACTrace.upTo_restartAt.mp hrk).2

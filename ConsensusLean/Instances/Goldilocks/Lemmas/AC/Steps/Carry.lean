@@ -227,10 +227,11 @@ theorem readPoint_blockStamp {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U
 
 /-- An early accepted block retained in the frame has a strictly early stamp at the
 emission read point, including through restart replay. Unique acceptance excludes a
-late `block` call overwriting that stamp. -/
+late `block` call overwriting that stamp. From starts up to the vote permission. -/
 theorem readPoint_blockStamp_lt_of_acceptedBefore
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksSA sp FGP ro)}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ell e) {B : Blk sp.n FGP}
     (hB : B ∈ ell.frame.tree) (hacc : AcceptedBefore tr y B (freeze sp e.msg.slot))
     (hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < freeze sp e.msg.slot)
@@ -239,7 +240,7 @@ theorem readPoint_blockStamp_lt_of_acceptedBefore
   have hPhiU : ell.frame.tree ⊆ U := by
     rcases hr.frameLaw y hy i ell hc.1 with ⟨-, _, -, -, h⟩ | ⟨_, _, -, -, -, h⟩ <;>
       exact h.1.2
-  have hstamp := blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hB hacc hrs (Or.inl ht)
+  have hstamp := blockStamp_lt_of_acceptedBefore_from sp hr hini hy hc.1 hB hacc hrs (Or.inl ht)
   rw [readPoint_blockStamp hr hy hc ?_]
   · exact hstamp
   intro C hcall hroot

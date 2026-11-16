@@ -35,6 +35,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF w : Time} {i₀ m : Nat}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-! ### The proposal precedes the votes of its slot -/
@@ -43,7 +44,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 holder accepted the block after its proposer's own block call (unforgeable blocks), which is the
 cut after the `ac_proposal` cut (one tick per node and time). HS.3's private
 `proposal_before_holder` (`AgreeFrozen`), over the proposal's data. -/
-private theorem proposal_before_holder (hrun : GoldilocksRun proposer dg H tr) {p : Fin sp.n}
+private theorem proposal_before_holder (hrun : GoldilocksRun proposer dg H tr ini) {p : Fin sp.n}
     (hpH : p ∈ H) {kP s : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
     (hcP : tr.projAC.CallAt p kP ℓp) (hcall : ℓp.call = .proposal)
     (htP : tr.time kP = sp.ts s) (hs1 : 1 ≤ s) {P : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -70,7 +71,8 @@ private theorem proposal_before_holder (hrun : GoldilocksRun proposer dg H tr) {
 /-- **The proposal's cut precedes every honest vote of its slot**: a vote after `t_s` is at a
 later cut; an early vote holds a slot-`s` block (`cast_ready`), of the slot's proposer
 (`HonestObjects.proposer`), so it is after the proposal (`proposal_before_holder`). -/
-theorem proposal_cut_lt (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem proposal_cut_lt (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr)
     {kP s : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
     (hpH : proposer s ∈ H) (hcP : tr.projAC.CallAt (proposer s) kP ℓp)
     (hcall : ℓp.call = .proposal) (htP : tr.time kP = sp.ts s) (hs1 : 1 ≤ s) {y : Fin sp.n}
@@ -78,7 +80,7 @@ theorem proposal_cut_lt (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.N
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC y k ℓ e)
     (he : e.msg.slot = s) : kP < k := by
   have hl := hrun.toLocalRun
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.goldilocks_ac_projection_from hrun hnc
   have hr := hac.localRun
   have hU := Compose.honest_blocks_coherent hl hnc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ

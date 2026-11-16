@@ -18,19 +18,19 @@ open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- The actual proposer's stored locks are older than its proposal slot.
 An optimistic write would require an honest vote before the proposal cut;
 a regular write is later even in time. -/
-theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun proposer dg H tr)
+theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
     {s i : Nat} (hs1 : 1 ≤ s) {ell : ACLabel (goldilocksNode sp ro)}
     (hz : proposer s ∈ H) (hc : tr.projAC.CallAt (proposer s) i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts s)
     {l : SA.Lock} (hl : l ∈ (tr.projAC.state (proposer s) i).locks)
     (hstock : sp.committeeSize = sp.n) : l.slot < s := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.goldilocks_ac_projection_from hrun hnc
   have hr := hac.localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   by_contra hls
@@ -42,7 +42,7 @@ theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun proposer dg H tr)
     have h3 : sp.ts s ≤ sp.ts l.slot := (SA.ts_le_iff sp).2
       (by exact_mod_cast not_lt.1 hls)
     linarith only [hti, hΔ, h1, h2, h3]
-  obtain ⟨r, hri, D, horigin, -⟩ := SA.lock_provenance hr hz i l hl
+  obtain ⟨r, hri, D, horigin, -⟩ := SA.lock_provenanceU (hr := hr.toU) hrun.vstart hz i l hl
   rcases horigin with ⟨CV, ello, A, hpt, hsl, hsel, -⟩ | ⟨ellX, hu⟩
   swap
   · exact hreg hri hu
@@ -122,7 +122,7 @@ theorem unlocked_live_preimage {Phi : SA.Frm sp.n (List (FG.Att sp.n))}
 /-- At the actual proposal start, expiry and proposal causality put every
 non-root anchor in the warm older-label range. The returned lock is the
 pre-unlock live lock. -/
-theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr)
+theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
     {s₀ p i : Nat} (hp : 1 ≤ p) (hmargin : s₀ + sp.k ≤ p)
     {ell : ACLabel (goldilocksNode sp ro)} (hz : proposer p ∈ H)
@@ -137,10 +137,10 @@ theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr
           B.root = l.block ∧ ell.frame.Anc d.start B := by
   rcases actual_proposal_start_cases hd with hroot | hlock
   · exact Or.inl hroot
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hPhi := (SA.frameIn_of_callAt hr hz hc).1
   obtain ⟨l, hl, B, hB, hBr, hlive, hstart⟩ :=
-    unlocked_live_preimage hPhi (SA.locksWF_state hr (fun _ => SA.voteStart_initial _) hz i) hlock
+    unlocked_live_preimage hPhi (SA.locksWF_state hr hrun.vstart hz i) hlock
   have hslot : sp.slot (tr.time i) = p := by
     rw [hti]
     exact SA.slot_of_mem sp p le_rfl (by
@@ -153,7 +153,7 @@ theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr
 
 /-- If the strict-cut induction already places the vote anchor at P, the
 walk cannot move further: every frame child would have a later slot. -/
-theorem vote_head_eq_of_anchor_eq (hrun : GoldilocksRun proposer dg H tr)
+theorem vote_head_eq_of_anchor_eq (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y i ell e)
@@ -161,7 +161,7 @@ theorem vote_head_eq_of_anchor_eq (hrun : GoldilocksRun proposer dg H tr)
     (hPt : P ∈ ell.frame.tree)
     (haP : SA.getAnchor sp e.readPoint ell.frame (tr.time i) = P) :
     e.msg.head = P.root := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hPhi := (SA.frameIn_of_callAt hr hy hc.1).1
   have hslot := SA.frame_slot_le sp hr hy hc.1
   have hs := (SA.castAt_spec hr hy hc).2.1
@@ -188,7 +188,7 @@ theorem vote_head_eq_of_anchor_eq (hrun : GoldilocksRun proposer dg H tr)
 /-- Any point between the actual voter anchor and a frozen viable block is
 itself frozen-viable. In head equality the upper block is P, not a transported
 lock witness. -/
-theorem frozen_viable_of_anchor_path (hrun : GoldilocksRun proposer dg H tr)
+theorem frozen_viable_of_anchor_path (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y i ell e)
@@ -197,7 +197,7 @@ theorem frozen_viable_of_anchor_path (hrun : GoldilocksRun proposer dg H tr)
     (haX : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) X)
     (hXP : Anc (tr.HonestBlocks H) X P) :
     X ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hPhi := SA.frameIn_of_callAt hr hy hc.1
   have hrootX := (Anc.mono hPhi.2
     (SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i))).trans haX
@@ -207,12 +207,12 @@ theorem frozen_viable_of_anchor_path (hrun : GoldilocksRun proposer dg H tr)
   have hrootXf := SA.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2
     hPhi.1.fcRoot_mem hrootX hXt
   obtain ⟨Y, hY, hvY, hPY⟩ := hP.2.2
-  exact ⟨SA.voterBlockTree_anc hr hy hc P hP.1 X hXPf, hrootXf,
+  exact ⟨SA.voterBlockTree_anc_from hr hrun.vstart hy hc P hP.1 X hXPf, hrootXf,
     Y, hY, hvY, hXPf.trans hPY⟩
 
 /-- Actual pre-unlock live locks have genuine selection origins. Retain
 the selected candidate, rather than an update-call-only residue. -/
-theorem live_lock_selection_origin (hrun : GoldilocksRun proposer dg H tr)
+theorem live_lock_selection_origin (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt x i ell)
     {l : SA.Lock}
@@ -224,7 +224,7 @@ theorem live_lock_selection_origin (hrun : GoldilocksRun proposer dg H tr)
       ((∃ CV, SA.FastUpdateAt tr.projAC x a l.slot D CV) ∨
         SA.SlowLockAt tr.projAC x a l.slot D ∨
         ∃ CV, SA.OptimisticLockAt tr.projAC x a l.slot D CV) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hPhi := SA.frameIn_of_callAt hr hx hc
   obtain ⟨l₀, hl₀, E, hE, hEr, -, heq⟩ := hl
   have hs : l.slot = l₀.slot := by rw [heq]
@@ -234,7 +234,7 @@ theorem live_lock_selection_origin (hrun : GoldilocksRun proposer dg H tr)
     rw [he]
     exact (SA.viableAncestor_anc hPhi.1 hE).2
   obtain ⟨a, hai, ellw, D, ha, hD, ho, M, hM, hMr, hMA⟩ :=
-    SA.lock_selection_candidate_provenance hr (fun _ => SA.voteStart_initial _) hx i l₀ hl₀
+    SA.lock_selection_candidate_provenance hr hrun.vstart hx i l₀ hl₀
   have he : M = E := hr.coherent.1 hM (hPhi.2 hE) (hMr.trans hEr.symm)
   rw [← hs] at ho
   refine ⟨a, hai, ellw, D, ha, hD, (Anc.mono hPhi.2 hBE).trans (he ▸ hMA), ?_⟩
@@ -245,17 +245,17 @@ theorem live_lock_selection_origin (hrun : GoldilocksRun proposer dg H tr)
 
 /-- At an actual honest call, every ToFG candidate is compatible with any
 other candidate of that same read. Candidacy itself is not inferred here. -/
-theorem toFG_candidates_compatible_at_call (hrun : GoldilocksRun proposer dg H tr)
+theorem toFG_candidates_compatible_at_call (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ SA.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i)) :
     ∀ C ∈ SA.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i),
       Compatible (tr.HonestBlocks H) C P := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hPhi := SA.frameIn_of_callAt hr hy hc
   obtain ⟨Phi, t, hreach, _, hok⟩ := Compose.pre_reachable hr hy hc
-  obtain ⟨hin, _, hinv⟩ := SA.lockInv_of_reachable hr.coherent hreach
+  obtain ⟨hin, _, hinv⟩ := SA.lockInv_of_reachable_from hr.coherent (hrun.vstart y) hreach
   have hinv' := hinv.callOK hr.coherent hin hok
   have hlock {B : SA.Blk sp.n (List (FG.Att sp.n))}
       (hB : B ∈ SA.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i)) :
@@ -268,13 +268,13 @@ theorem toFG_candidates_compatible_at_call (hrun : GoldilocksRun proposer dg H t
 
 /-- An actual report comes from an earlier fast selection of a label no
 later than the report's slot, retaining ancestry through lock remapping. -/
-theorem toFG_fast_origin (hrun : GoldilocksRun proposer dg H tr)
+theorem toFG_fast_origin (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} {R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hto : SA.ToFGAt tr.projAC y i ell R) :
     ∃ a < i, ∃ j D CV, SA.FastLockAt tr.projAC y a j D CV ∧
       Anc (tr.HonestBlocks H) R D ∧ j ≤ sp.slot (tr.time i) := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.goldilocks_ac_projection_from hrun hnc
   have hr := hac.localRun
   have hPhi := SA.frameIn_of_callAt hr hy hto.1
   have hRc : R ∈ SA.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i) := by
@@ -292,7 +292,7 @@ theorem toFG_fast_origin (hrun : GoldilocksRun proposer dg H tr)
   obtain ⟨l₀, hl₀, B, hB, hBr, _, heq⟩ := hl
   have hf₀ : l₀.fast = true := by rw [heq] at hlf; exact hlf
   obtain ⟨a, hai, D, CV, ho, L, hL, hLr, hLD⟩ :=
-    SA.fast_lock_provenance hr hy i l₀ hl₀ hf₀
+    SA.fast_lock_provenance_from hr hrun.vstart hy i l₀ hl₀ hf₀
   have hRB : Anc (tr.HonestBlocks H) R B := by
     have he : R = ell.frame.viableAncestor B := hPhi.1.coherent.1 hv.1
       (SA.viableAncestor_anc hPhi.1 hB).1 (hlr.symm.trans (congrArg SA.Lock.block heq))
@@ -313,12 +313,12 @@ theorem toFG_fast_origin (hrun : GoldilocksRun proposer dg H tr)
 
 /-- The raw fast selection's block is no newer than its lock label. An
 honest counted head supplies the bound even when the selection is optimistic. -/
-theorem fast_selection_slot_le (hrun : GoldilocksRun proposer dg H tr)
+theorem fast_selection_slot_le (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
     {x : Fin sp.n} (hx : x ∈ H) {a j : Nat}
     {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
     (ho : SA.FastLockAt tr.projAC x a j D CV) (hstock : sp.committeeSize = sp.n) : D.slot ≤ j := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.goldilocks_ac_projection_from hrun hnc
   have hf' : 2 * Hᶜ.ncard < sp.n := by
     have hn := sp.toParams.hn
     change 0 < sp.n at hn

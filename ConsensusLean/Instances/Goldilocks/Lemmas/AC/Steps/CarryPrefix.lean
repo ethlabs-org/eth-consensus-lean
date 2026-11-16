@@ -28,7 +28,8 @@ actual batch is carried. This is a local comparison, not current-slot unanimity.
 are members of the slot-`s` committee (T), fewer than half of whose members are faulty. -/
 theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
     {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    {proposer : Nat → Fin sp.n} (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n)
+    {proposer : Nat → Fin sp.n} {ini : Fin sp.n → SAState sp.n} (hrun : ACRun proposer tr H U ini)
+    (K : CommitteeDict sp.n)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -65,7 +66,7 @@ theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
   have hW : voters V.votes ⊆ K.committee s := by
     rintro u ⟨v, hv, rfl⟩
     have hK := hT y hy i ℓ e hc s v hv
-    rwa [merged_vote_slot hr (fun _ => voteStart_initial _) hy hc v hv] at hK
+    rwa [merged_vote_slot hr hrun.vstart hy hc v hv] at hK
   have hE : equivocators V.votes ⊆ K.committee s ∩ Hᶜ := by
     intro w hw
     refine ⟨?_, fun hwH => honest_not_equivocator hrun hy hc hwH hw⟩
@@ -93,7 +94,8 @@ theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
 prior-slot honest votes. Only the prefix is asserted. -/
 theorem honest_prefix_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
     {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    {proposer : Nat → Fin sp.n} (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n)
+    {proposer : Nat → Fin sp.n} {ini : Fin sp.n → SAState sp.n} (hrun : ACRun proposer tr H U ini)
+    (K : CommitteeDict sp.n)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat}
@@ -112,7 +114,7 @@ theorem honest_prefix_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
   have hVT : ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)) ⊆ ℓ.frame.tree :=
     fun _ h => voteDomain_subset_tree h.1
   have hBt := hVT hB
-  have hdomA := voteDomain_anc hrun.localRun hy hc
+  have hdomA := voteDomain_anc_from hrun.localRun hrun.vstart hy hc
   rw [hs] at hdomA
   unfold getHead
   refine anc_ghost_of_best hΦ.1.coherent hVT (hΦ.1.finite.subset hVT) hBt _ haB

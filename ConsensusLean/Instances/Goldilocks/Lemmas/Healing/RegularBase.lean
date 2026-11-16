@@ -31,6 +31,7 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF b : Time}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Finite frame transport for head equality. The receiver's finalized-ancestor guard
 is explicit; old acceptances use Catch and newer ones use their relay deadline.
@@ -76,7 +77,7 @@ theorem frame_relay_before {K : SA.CommitteeDict sp.n}
 relay to the proposer; payload support heads are held at an early ready cast
 or relay by the deadline. The statement has no settled/phase assumption. -/
 theorem proposal_views_agree_before {K : SA.CommitteeDict sp.n}
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     (hS : SA.HealthyBaseUpTo K tr.projAC H (tr.HonestBlocks H) proposer g b)
     (hnr : NoRestartAfter tr H (gbar g)) {s : Nat}
     (hm : gbar g + 2 * sp.Δ ≤ sp.ts s)
@@ -153,7 +154,7 @@ theorem proposal_views_agree_before {K : SA.CommitteeDict sp.n}
 /-- The full current frame has a viable head above its fork-choice root.
 Kind J uses the justification cache; the other cases use the hmax cache.
 Unlike a frozen voter domain, the proposal domain cannot lose this witness. -/
-theorem full_frame_viable_witness (hrun : GoldilocksRun proposer dg H tr)
+theorem full_frame_viable_witness (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
@@ -187,7 +188,7 @@ theorem full_frame_viable_witness (hrun : GoldilocksRun proposer dg H tr)
 settled-phase supplier is unnecessary: the cache witness and current-frame
 AncestorCandidate anchor suffice, including label-(p−1) optimistic locks. -/
 theorem proposal_parent_viable_full_frame
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y : Fin sp.n} (hy : y ∈ H) {i s : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
@@ -195,7 +196,7 @@ theorem proposal_parent_viable_full_frame
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hp : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 =
       some (d, pay)) : d.head ∈ ell.frame.viableHeads := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.goldilocks_ac_projection_from hrun hnc
   obtain ⟨Q, hQ, hv, hroot⟩ := full_frame_viable_witness hrun hnc hf hy i
   rw [← Compose.frame_of_projAC hrun hy hc] at hQ hv hroot
   exact proposal_head_viable hac.localRun hrun.vstart hy hc hcall hti hp
@@ -204,7 +205,7 @@ theorem proposal_parent_viable_full_frame
 
 /-- The actual full-frame proposal walk stops at its duty head. This is the
 finite walk supplied by acProposal, without any settled-phase interface. -/
-theorem proposal_walk_end (hrun : GoldilocksRun proposer dg H tr)
+theorem proposal_walk_end (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {z : Fin sp.n} (hz : z ∈ H) {ip : Nat}
     {ellp : ACLabel (goldilocksNode sp ro)} (hcp : tr.projAC.CallAt z ip ellp)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
@@ -216,7 +217,7 @@ theorem proposal_walk_end (hrun : GoldilocksRun proposer dg H tr)
         (SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) ((sp.slot (tr.time ip) : Int) - 1))
         (SA.goldfishEligible sp ellp.frame (tr.time ip) (SA.View.ofLists pay)
           ((sp.slot (tr.time ip) : Int) - 1)) d.start d.head := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hPhi := (SA.frameIn_of_callAt hr hz hcp).1
   have key (A : SA.SAState sp.n) (V : SA.View sp.n) (σ : Int) :
       SA.getAnchor sp A ellp.frame (tr.time ip) ∈ ellp.frame.tree ∧

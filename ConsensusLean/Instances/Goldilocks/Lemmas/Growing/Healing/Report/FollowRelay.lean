@@ -101,7 +101,7 @@ theorem frame_witness_readPoint_stamp_at
   refine ⟨?_, ?_⟩
   · rw [(hrun.cutLaw y i (.ac ell) (Compose.projAC_callAt.mp hc.1) hy).1] at hQt
     exact hQt.1
-  · have h := SA.readPoint_blockStamp_lt_of_acceptedBefore hr hy hc' hQt
+  · have h := SA.readPoint_blockStamp_lt_of_acceptedBefore hr hrun.vstart hy hc' hQt
       (by simpa only [hes] using hacc)
       (fun k hki hrs => by
         have h := hnr y k (hrun.antitone (hrun.time_mono hki) hy)

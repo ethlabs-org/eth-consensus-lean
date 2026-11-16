@@ -42,6 +42,7 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-! ### Cross-node facts at two independently honest observations -/
 
@@ -49,7 +50,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 at `u`) is below a block `W` held by `x` (observed while honest at `t`) whose state height exceeds
 the finalized height of `X`. Certificate intersection is charged at `max u t`. -/
 theorem finalized_anc_obs
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y x : Fin sp.n} {m i : Nat} {u t : Time}
     (hu : 0 ≤ u) (hytime : ∀ k < m, tr.time k ≤ u) (hy : y ∈ H u)
     (ht : 0 ≤ t) (hxtime : ∀ k < i, tr.time k ≤ t) (hx : x ∈ H t)
@@ -79,7 +80,7 @@ theorem FrameWindow.of_generic {lo hi : Time} {floor : Nat} {kindJ : Prop}
 calls produce a frame window, by the sequential pigeonhole over the cuts of nodes honest at them
 with the merged-key lag between independently honest observations. -/
 theorem exists_frameWindow_seq_of_service_proof_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
     (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)

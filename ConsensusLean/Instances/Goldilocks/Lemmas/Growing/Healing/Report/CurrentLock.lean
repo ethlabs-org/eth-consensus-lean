@@ -32,7 +32,7 @@ theorem current_lock_write_readPoint_at
   have hd := hrun.time_nonneg i
   have hc' := sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
   obtain ⟨hslot, a, hai, D, CV, ho, ht, L, hL, hLr, hLD⟩ :=
-    SA.current_lock_write_readPoint (acRun_upTo hrun hnc hd).localRun hy hc' hpos hl hs
+    SA.current_lock_write_readPoint (acRun_upTo hrun hnc hd).localRun hrun.vstart hy hc' hpos hl hs
   obtain ⟨hat, ho⟩ := (SA.upTo_optimisticLockAt hrun.time_mono).mp ho
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono hd
   exact ⟨hslot, a, hai, D, CV, hrun.antitone hat hy, ho, ht, L, hsub hL, hLr, hLD.mono hsub⟩

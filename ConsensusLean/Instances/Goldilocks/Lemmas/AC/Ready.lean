@@ -35,9 +35,11 @@ theorem readPoint_blockStamp_eq {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) 
   readPoint_blockStamp_eqU (hr := hr.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc)
 
 /-- A block already held in an earlier frame has an early read-point stamp. The
-stamp cases include restart replay; unique acceptance forbids a later overwrite. -/
-theorem readPoint_blockStamp_lt_of_earlier_frame
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H)
+stamp cases include restart replay; unique acceptance forbids a later overwrite. From starts up
+to the vote permission. -/
+theorem readPoint_blockStamp_lt_of_earlier_frame {ini}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H)
     {a i : Nat} {ell₀ ell : ACLabel (goldilocksSA sp FGP ro)}
     (ha : tr.CallAt y a ell₀) {e : Em sp FGP} (hc : CastAt tr y i ell e)
     {Q : Blk sp.n FGP} (hQa : Q ∈ ell₀.frame.tree) (hQi : Q ∈ ell.frame.tree)
@@ -45,7 +47,8 @@ theorem readPoint_blockStamp_lt_of_earlier_frame
     (hrs : ∀ r ≤ i, tr.RestartAt y r → tr.time r < freeze sp e.msg.slot) :
     e.readPoint.blockStamp Q.root < ETime.of (freeze sp e.msg.slot) := by
   rw [readPoint_blockStamp_eq hr hy hc]
-  rcases stamp_cases sp hr hy i ell hc.1 Q hQi with h | ⟨k, -, hk, h⟩ | ⟨r, hri, hrst, h⟩
+  rcases stamp_casesU sp (wm := WriteMode.parent sp) hr.toU hini hy i ell hc.1 Q hQi with
+    h | ⟨k, -, hk, h⟩ | ⟨r, hri, hrst, h⟩
   · rw [h]; exact WithBot.bot_lt_coe _
   · have hka : k ≤ a := by
       by_contra hn

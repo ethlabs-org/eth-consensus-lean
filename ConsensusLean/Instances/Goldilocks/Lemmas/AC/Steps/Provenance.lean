@@ -461,9 +461,10 @@ theorem lock_selection_candidate_provenance
 
 /-- A stored lock lies below the actual candidate stored at its write, not merely
 below the raw selected block. Labels and the optimistic/update origin are retained;
-`liveLocks`, `unlock`, and restart calls are covered by the same step invariant. -/
-theorem lock_candidate_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
-    {x : Fin sp.n} (hx : x ∈ H) (i : Nat) :
+`liveLocks`, `unlock`, and restart calls are covered by the same step invariant. From starts up
+to the vote permission. -/
+theorem lock_candidate_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n} (hx : x ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state x i).locks, ∃ j < i, ∃ ℓ D,
       tr.CallAt x j ℓ ∧ D ∈ ℓ.frame.tree ∧
       ((∃ CV, OptimisticLockAt tr x j l.slot D CV) ∨ ∃ ℓ', UpdateAt tr x j l.slot ℓ') ∧
@@ -472,7 +473,8 @@ theorem lock_candidate_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U 
   | zero =>
     intro l hl
     change l ∈ (tr.init x).locks at hl
-    rw [hr.init x hx] at hl
+    obtain ⟨m, hm⟩ := hini x
+    rw [hr.init x hx, hm] at hl
     exact absurd hl (Set.notMem_empty l)
   | succ i ih =>
     intro l hl
@@ -490,8 +492,10 @@ theorem lock_candidate_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U 
 
 /-- The write-time alternative for a stored lock. The current lock is below a candidate at a genuine
 write cut, and that candidate is either below the write root or has a viable witness
-in the write frame. No viability of the raw selected block is assumed. -/
-theorem lock_write_witness (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+in the write frame. No viability of the raw selected block is assumed. From starts up to the vote
+permission. -/
+theorem lock_write_witness (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {l : Lock} (hl : l ∈ (tr.state x i).locks) :
     ∃ j < i, ∃ ℓ D A,
       tr.CallAt x j ℓ ∧ D ∈ ℓ.frame.tree ∧ A = ℓ.frame.viableAncestor D ∧
@@ -499,7 +503,7 @@ theorem lock_write_witness (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
       (∃ L ∈ U, L.root = l.block ∧ Anc U L A) ∧
       (ℓ.frame.Anc A ℓ.frame.fcRoot ∨
         ∃ Q ∈ ℓ.frame.tree, Q ∈ ℓ.frame.viableHeads ∧ ℓ.frame.Anc A Q) := by
-  obtain ⟨j, hj, ℓ, D, hc, hD, ho, hA⟩ := lock_candidate_provenance hr hx i l hl
+  obtain ⟨j, hj, ℓ, D, hc, hD, ho, hA⟩ := lock_candidate_provenance hr hini hx i l hl
   refine ⟨j, hj, ℓ, D, ℓ.frame.viableAncestor D, hc, hD, rfl, ho, hA, ?_⟩
   rcases (viableAncestor_spec (frameIn_of_callAt hr hx hc).1 hD).2.1 with h | h
   · exact Or.inl h
@@ -561,7 +565,7 @@ private theorem provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
 /-- Between cuts `a ≤ b`, the locks of an honest node sit below locks of cut `a` or below locks
 that the node wrote in `[a, b)`. -/
 private theorem fromP_betweenU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {a b : Nat} (hab : a ≤ b) :
     FromP U (tr.state x a).locks (tr.state x b).locks fun s _ B => ∃ j, a ≤ j ∧ j < b ∧
       ((∃ CV, OptimisticLockAt tr x j s B CV) ∨ ∃ ℓ, UpdateAt tr x j s ℓ) := by
@@ -579,7 +583,7 @@ private theorem fromP_betweenU
 
 /-- `lock_provenance_from` with the unlock given. -/
 theorem lock_provenance_fromU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {a b : Nat} (hab : a ≤ b) :
     ∀ l ∈ (tr.state x b).locks,
       (∃ l' ∈ (tr.state x a).locks, l'.slot = l.slot ∧
@@ -596,8 +600,8 @@ theorem lock_provenance_fromU
 /-- **Lock provenance from a cut.** Every lock that an honest node holds at cut `b` sits below a
 lock of its slot that it held at cut `a ≤ b`, or below the block of a lock of its slot that the
 node wrote at a cut in `[a, b)`. -/
-theorem lock_provenance_from (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
-    (hx : x ∈ H) {a b : Nat} (hab : a ≤ b) :
+theorem lock_provenance_from (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    {x : Fin sp.n} (hx : x ∈ H) {a b : Nat} (hab : a ≤ b) :
     ∀ l ∈ (tr.state x b).locks,
       (∃ l' ∈ (tr.state x a).locks, l'.slot = l.slot ∧
         (l' = l ∨ ∃ L ∈ U, L.root = l.block ∧ ∃ L' ∈ U, L'.root = l'.block ∧ Anc U L L')) ∨

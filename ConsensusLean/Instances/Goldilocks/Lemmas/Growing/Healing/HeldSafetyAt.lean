@@ -22,13 +22,14 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- **Held attestations at independently honest observations are not slashable.** Attestations
 on blocks held by `y` (observed while honest at `u`) and by `x` (observed while honest at `t`),
 with a signer honest at a time `d` after both observations, were signed by that signer's client
 run on the prefix up to `d`, which client safety (G0.5) keeps free of slashable pairs. -/
 theorem held_atts_safe_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y x : Fin sp.n} {m i : Nat} {u t d : Time}
     (hu : 0 ≤ u) (hytime : ∀ k < m, tr.time k ≤ u) (hy : y ∈ H u)
     (ht : 0 ≤ t) (hxtime : ∀ k < i, tr.time k ≤ t) (hx : x ∈ H t) (hud : u ≤ d) (htd : t ≤ d)

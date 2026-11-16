@@ -135,9 +135,9 @@ private theorem emits_tryVoteU
 
 /-- The input of the `try_vote` that emits an honest vote: the state before the call (a tick),
 or the optimistic check after the receipt of a message or a block, which keeps the locks. -/
-private theorem emits_tryVote (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y i ℓ e) :
+private theorem emits_tryVote (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     ∃ P, e ∈ (tryVote sp y P ℓ.frame (tr.time i)).2 ∧ (P = tr.state y i ∨
       ∃ A, ((∃ m, ℓ.call = .message m ∧ A = admitVote sp (tr.state y i) (tr.time i) m) ∨
           ∃ B, ℓ.call = .block B ∧ A = blockReceipt sp (tr.state y i) (tr.time i) B) ∧
@@ -195,7 +195,7 @@ theorem readPoint_locksU
 
 /-- The locks at the read point of a vote of slot `s > 0` are an `unlock` against the merged
 view, of slot `s − 1`. -/
-theorem readPoint_locks (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+theorem readPoint_locks (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : 0 < e.msg.slot) :
     ∃ L, e.readPoint.locks = unlock sp L ℓ.frame (tr.time i) ((e.msg.slot : Int) - 1)
@@ -332,9 +332,10 @@ theorem receipt_pool_vote (hrun : ACRun proposer tr H U ini)
 
 /-- Every read-point lock has a genuine optimistic or update write, including an
 optimistic receipt in the vote's own call. Unlock and live remaps preserve its label
-and move its block only to ancestors of the selected block. -/
-theorem lock_write_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+and move its block only to ancestors of the selected block. From starts up to the vote
+permission. -/
+theorem lock_write_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ell : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ell e) (hpos : 0 < e.msg.slot)
     {l : Lock} (hl : l ∈ e.readPoint.locks) :
@@ -360,7 +361,7 @@ theorem lock_write_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
       ((∃ CV, OptimisticLockAt tr y a l.slot D CV) ∨ ∃ ell', UpdateAt tr y a l.slot ell') ∧
       ∃ L ∈ U, L.root = l.block ∧ Anc U L D := by
     intro l hl
-    obtain ⟨a, hai, D, ho, hb⟩ := lock_provenance hr hy i l hl
+    obtain ⟨a, hai, D, ho, hb⟩ := lock_provenanceU (hr := hr.toU) hini hy i l hl
     exact ⟨a, hai.le, D, ho, hb⟩
   have hinput : ∀ l ∈ P.locks, ∃ a ≤ i, ∃ D,
       ((∃ CV, OptimisticLockAt tr y a l.slot D CV) ∨ ∃ ell', UpdateAt tr y a l.slot ell') ∧
@@ -387,9 +388,10 @@ theorem lock_write_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     hinput l hl
 
 /-- A read-point lock not older than the vote is current-slot optimistic. Its
-write may be the receipt before the vote in the very same call. -/
-theorem current_lock_write_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+write may be the receipt before the vote in the very same call. From starts up to the vote
+permission. -/
+theorem current_lock_write_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ell : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ell e) (hpos : 0 < e.msg.slot)
     {l : Lock} (hl : l ∈ e.readPoint.locks) (hs : e.msg.slot ≤ l.slot) :
@@ -397,7 +399,7 @@ theorem current_lock_write_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H
       OptimisticLockAt tr y a e.msg.slot D CV ∧
       sp.ts e.msg.slot ≤ tr.time a ∧
       (∃ L ∈ U, L.root = l.block ∧ Anc U L D) := by
-  obtain ⟨a, hai, D, ho, hb⟩ := lock_write_readPoint hr hy hc hpos hl
+  obtain ⟨a, hai, D, ho, hb⟩ := lock_write_readPoint hr hini hy hc hpos hl
   have hslot := (castAt_spec hr hy hc).2.1
   have ht := vote_time_le hr hy ⟨ell, hc⟩
   have htime := hr.time_mono hai
@@ -634,7 +636,7 @@ theorem readPoint_lock_slot_leU
 honest casts. The strict cut comes from the read point, not from an arbitrary
 optimistic write (which may include its own post-cast admission). This is the
 local causal step; it does not assume future unanimity or close the induction. -/
-theorem current_read_lock_below_of_earlier_heads (hrun : ACRun proposer tr H U)
+theorem current_read_lock_below_of_earlier_heads (hrun : ACRun proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ell : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ell e) {l : Lock} (hl : l ∈ e.readPoint.locks)
