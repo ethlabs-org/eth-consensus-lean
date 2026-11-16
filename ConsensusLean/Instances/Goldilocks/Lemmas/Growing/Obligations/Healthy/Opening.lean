@@ -16,6 +16,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Lemmas.Model.SysLog
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRepairTiming
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Confirmed
 
 public section
 
@@ -31,20 +32,6 @@ namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation Blocks Shape
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
-
-/-- An honest proposal is accepted by its proposer, honest at the proposal. -/
-private theorem proposal_accepted_at {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
-    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hp : p ∈ H (tr.time k))
-    (hP : tr.ProposesAt p k P) : tr.AcceptAt p k P := by
-  have hd := hrun.time_nonneg k
-  have h := Compose.proposal_accepted (hrun.upTo hd) (hnc.upTo _) hp
-    ⟨(RunTrace.upTo_ownBlockAt tr).2 ⟨le_rfl, hP.1⟩, hP.2.1, hP.2.2⟩
-  exact ((RunTrace.upTo_acceptAt tr).1 h).2
 
 /-- **The repairing opening**: the progress recurrence on `[ready, heal]` supplies an actual
 opening of a proposer ready at its slot start and still honest `Δ` later, within the progress

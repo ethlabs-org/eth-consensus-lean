@@ -12,6 +12,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.ResetSuppliers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRepairTiming
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -114,6 +115,43 @@ theorem current_record_read_of_context_at (D : RepairSchedule tr H proposer dg g
     healthy_current_vote_domain_at D hx hr hRB hrb (clean_add_k_two_le sp.two_le_k hlate),
     healthy_current_stored_locks_at D hx hr hRB hrb hlate⟩
 
+/-- **The read context** at a read point `(n, t)` by the horizon of a reader honest at `t` and
+awake over its catch-up window `[t − c − 1, t]` (`c + 1 ≥ 8Δ`), strictly after the opening's
+update: the latest view is a label after the reset voted on by `t`, the reader is awake and joined
+at `t`, the reset's windows serve the prefix through `t`, and the latest label's committee fault
+bound is charged at `t`. -/
+theorem repair_read_context_at (D : RepairSchedule tr H proposer dg g b cm βK)
+    (O : RepairOpening D) {y : Fin sp.n} {n : Nat} {t c : Time}
+    (hrp : Regimes.ReadPoint tr n t) (ht0 : 0 ≤ t) (htb : t ≤ b) (hy : y ∈ H t)
+    (hc : 8 * sp.Δ ≤ c + 1) (hawake : ∀ u, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u)
+    (hrep : sp.ts O.slot + 6 * sp.Δ < t) : Nonempty (RepairReadContext D O y n t) := by
+  have hΔ := sp.toParams.hΔ
+  have hdrain : Healing.drainTime sp D.resetTime ≤ t := by linarith only [O.drain, hrep, hΔ]
+  obtain ⟨L, hL, haL, hLt⟩ := healthy_read_label_at D (tr.state y n).ac
+    (Node.frame (tr.state y n)) ht0 hdrain
+  obtain ⟨hw, hj⟩ := ready_implies_joined_at D.reset.run hy ht0 hc hawake
+  have hca := D.reset.cutZ_lt_reset_at
+  obtain ⟨hsync, hcatch⟩ := D.reset.windows_at_reset_at ht0 htb
+  have hgL : SA.gbar g ≤ sp.ts L := by
+    have := Healing.lt_cutZ sp g
+    linarith only [this, hca, haL, hΔ]
+  have hfault := Healing.Growing.KernelProof.faultBoundK_late_at D.reset hgL
+    (by linarith only [hLt, htb, hΔ]) (by linarith only [hca, haL, hΔ]) hLt htb
+  exact ⟨{ label := L
+           time_nonneg := ht0
+           time_bound := htb
+           repaired := hrep
+           readPoint := hrp
+           honest := hy
+           awake := hw
+           joined := hj
+           latest := hL
+           reset_le := haL
+           label_le := hLt
+           sync := hsync
+           catchup := hcatch
+           fault := hfault }⟩
+
 end Trace
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
@@ -161,47 +199,12 @@ theorem healthy_current_read_context_at (Q : HealthyPreparationQueryAt S A V)
       (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i))
           (stateAt S Q.run.2 Q.hn v i).now) := by
   obtain ⟨hrp, ht0, -, hra, hrep⟩ := healthy_engine_read_point_at S A V D hi hv
-  set t := (stateAt S Q.run.2 Q.hn v i).now
-  set n := cutMap S Q.run.2 Q.hn
-    (lastOwn S Q.run.2 v i)
-  set y := Q.run.2.ownKey v
   have hΔ := Q.params.toParams.hΔ
-  have hq : D.query < t := by
-    linarith only [hrep, mul_nonneg (by positivity : (0 : Time) ≤ 4 * (Q.index : Time) + 6) hΔ.le]
-  have hdrain := ((le_max_of_le_right (le_max_left _ _)).trans D.lower).trans hq.le
-  obtain ⟨L, hL, haL, hLt⟩ := healthy_read_label_at D.toRepairSchedule (Q.trace.state y n).ac
-    (Node.frame (Q.trace.state y n)) ht0 hdrain
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hc8 : 8 * Q.params.Δ ≤
-      ((Sys (goldilocks S) V).cDur (K S A) Q.run - 1) + 1 := by
-    linarith only [(healthy_repair_lower S A V Q.run Q.hn Q.gst D.resetTime).1, hΔ]
-  obtain ⟨hw, hj⟩ := Compose.ready_implies_joined_of (hrun.upTo ht0) hra.1 ht0 hc8 fun u h1 h2 =>
-      ⟨hra.2 u h1 h2, h2⟩
-  have hca := D.reset.cutZ_lt_reset_at
-  obtain ⟨hsync, hcatch⟩ :=
-    D.reset.windows_at_reset_at ht0 htb
-  have hgL : SA.gbar Q.gst ≤ Q.params.ts L := by
-    have := Healing.lt_cutZ Q.params Q.gst
-    linarith only [this, hca, haL, hΔ]
-  have hfault := Healing.Growing.KernelProof.faultBoundK_late_at D.reset hgL
-    (by linarith only [hLt, htb, hΔ]) (by linarith only [hca, haL, hΔ]) hLt htb
-  exact ⟨{ label := L
-           time_nonneg := ht0
-           time_bound := htb
-           repaired := by
-             have hb := O.bounded
-             rw [add_mul, ← add_assoc] at hrep
-             linarith only [hb, hrep]
-           readPoint := hrp
-           honest := hra.1
-           awake := hw.1
-           joined := fun k hk hkt => hj k ((RunTrace.upTo_restartAt Q.trace).2 ⟨hkt, hk⟩) hkt
-           latest := hL
-           reset_le := haL
-           label_le := hLt
-           sync := hsync
-           catchup := hcatch
-           fault := hfault }⟩
+  refine repair_read_context_at D.toRepairSchedule O.toRepairOpening hrp ht0 htb hra.1
+    (by linarith only [(healthy_repair_lower S A V Q.run Q.hn Q.gst D.resetTime).1, hΔ]) hra.2 ?_
+  have hb := O.bounded
+  rw [add_mul, ← add_assoc] at hrep
+  linarith only [hb, hrep]
 
 /-- **The current-record read**: a ready engine reader from the heal point, read at its read
 point within the query's bound, reads its effective record; its updates are due by its stored
