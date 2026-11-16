@@ -341,6 +341,43 @@ theorem sleepy_extension_of_windows {proposer : Nat → Fin sp.n}
     y i j t u hi.1.2.1 hj.1.2.1 hbi hbj hij htu hi.1.2.2.1 hj.1.2.2.2
     (ready_of_window hc hi.1.1 hi.2) (ready_of_window hc hj.1.1 hj.2)
 
+/-- The committee-indexed run supplies the positivity needed by the invariant core. -/
+theorem goldilocks_invariant_adapter : GoldilocksInvariantAdapter (sp := sp) (ro := ro) := by
+  rw [goldilocksInvariantAdapter_iff]
+  intro cm proposer dg H tr p c look committeeLook ΔF b hrun hnc hKB hw
+  obtain ⟨hrun, hpos, -⟩ := (goldilocksRunInterface_run_iff cm).mp hrun
+  exact sleepy_invariant_of_windows hrun hnc hpos hKB hw
+
+/-- Actual confirmation events are the origins compared by the sleepy invariant. -/
+theorem goldilocks_event_safety : GoldilocksEventSafety (sp := sp) (ro := ro) := by
+  rw [goldilocksEventSafety_iff]
+  intro cm proposer dg H tr p c look committeeLook ΔF b hrun hnc hKB hw _ B B' hB hB'
+  have hinv := (goldilocksInvariantAdapter_iff.mp goldilocks_invariant_adapter)
+    cm proposer dg H tr p c look committeeLook ΔF b hrun hnc hKB hw
+  obtain ⟨x, i, s, hx, _, hib, he⟩ := hB
+  obtain ⟨x', i', s', hx', _, hi'b, he'⟩ := hB'
+  obtain ⟨CV, he⟩ := goldilocksEvents_confirmedEvent_iff.mp he
+  obtain ⟨CV', he'⟩ := goldilocksEvents_confirmedEvent_iff.mp he'
+  exact hinv.origins_compatible B s B' s'
+    (originWithin_iff.mpr ⟨x, i, CV, hx, hib, he⟩)
+    (originWithin_iff.mpr ⟨x', i', CV', hx', hi'b, he'⟩)
+
+/-- Proposal coverage uses the same committee and retained-count windows. -/
+theorem goldilocks_proposal_coverage : GoldilocksProposalCoverage (sp := sp) (ro := ro) := by
+  rw [goldilocksProposalCoverage_iff]
+  intro cm proposer dg H tr p c look committeeLook ΔF b hold margin
+    hrun hnc hKB hw hhold hmargin _ B k y j t hP _ _ _ hkt hy _ hjt
+  obtain ⟨hrun, hpos, -⟩ := (goldilocksRunInterface_run_iff cm).mp hrun
+  exact sleepy_proposal_coverage_of_windows hrun hnc hpos hKB hw hhold hmargin hP hkt hy hjt
+
+/-- Extension keeps both read boundaries and both orderings from the fixed head. -/
+theorem goldilocks_extension : GoldilocksExtension (sp := sp) (ro := ro) := by
+  rw [goldilocksExtension_iff]
+  intro cm proposer dg H tr p c look committeeLook ΔF b hrun hnc hKB hw _
+    y i j t u hi hj hbi hbj hij htu
+  obtain ⟨hrun, hpos, -⟩ := (goldilocksRunInterface_run_iff cm).mp hrun
+  exact sleepy_extension_of_windows hrun hnc hpos hKB hw hi hj hbi hbj hij htu
+
 end Consensus.Goldilocks.Generic.SleepyLayer1
 
 end
