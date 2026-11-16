@@ -193,6 +193,9 @@ theorem outageLockPremises_of_arming_at_b₁ :
 theorem outageLockPremises_of_arming_at_r :
     (outageLockPremises_of_arming_at Q service hsh ar).r = Q.restoredLabel := by rfl
 
+theorem outageLockPremises_of_arming_at_K :
+    (outageLockPremises_of_arming_at Q service hsh ar).K = Q.K := by rfl
+
 end Projections
 
 end Consensus.Goldilocks.Obligations.Growing

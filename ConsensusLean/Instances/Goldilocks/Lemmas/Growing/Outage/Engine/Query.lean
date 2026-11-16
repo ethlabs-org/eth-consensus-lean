@@ -79,6 +79,12 @@ theorem outage_pre_service_at (Q : OutageQueryAt S A V) :
 theorem outage_psync_at (Q : OutageQueryAt S A V) : Q.run.2.log.PSync Q.run.2.point Q.stop :=
   (Model.sysOf_delivers_iff _ _ _ _).mp Q.outage.net.2
 
+/-- Post-stop service on the query's canonical node trace. -/
+theorem outage_postStopService_at (Q : OutageQueryAt S A V) :
+    Generic.PostStopService Q.trace Q.keys Q.stop :=
+  goldilocks_postStopService S Q.run.2 Q.hn Q.valid
+    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) (outage_psync_at Q)
+
 /-- **The receiver service after the stop**, for every receiver. -/
 theorem outage_receiver_service_at (Q : OutageQueryAt S A V)
     (y : Fin (Fintype.card V)) :
@@ -98,8 +104,7 @@ theorem outage_pool_delivery_query_at (Q : OutageQueryAt S A V) :
           e.msg.val ∈ SA.equivocators {v | v ∈ (Q.trace.state w c).ac.pool m} :=
   outage_pool_delivery_at (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid)
     (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision)
-    (goldilocks_postStopService S Q.run.2 Q.hn Q.valid
-      (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) (outage_psync_at Q))
+    (outage_postStopService_at Q)
 
 /-- The catch-up duration of an outage query covers the node catch-up `18Δ`. -/
 theorem outage_duration_supply_at (Q : OutageQueryAt S A V) :
