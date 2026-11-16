@@ -43,8 +43,8 @@ def SleepySafetyReduction (C : ACCorrectLocal A sg)
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
     RegimeTransport M K L.look ∧ EngineReadPoint M ∧
-      LocalReadPoint L ∧ SleepyLayer1.EventSafety L D ∧ SleepyLayer1.OutputProvenance L D ∧
-      SleepyLayer1.Extension L D ∧ SleepyLayer1.SourceProvenance L D ∧
+      LocalReadPoint L ∧ SleepyLayer1.EventSafety M L D ∧ SleepyLayer1.OutputProvenance L D ∧
+      SleepyLayer1.Extension M L D ∧ SleepyLayer1.SourceProvenance L D ∧
       PopulationQuorumSupply M K ∧ SleepyWindowSupply M K L ∧ ClaimDeadlineFit M K L ∧
       ReadRepresentation M ∧ HonestReadTransport M ∧
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →
@@ -65,10 +65,10 @@ def SleepyLivenessReduction (C : ACCorrectLocal A sg)
     RegimeTransport M K L.look ∧
       ProposalProgressTransport M K L.healing ∧
       ProposalWitnessRefinement M K L ∧ ClaimDeadlineFit M K L ∧
-      EndReadTransport M K L ∧ SleepyLayer1.ProposalCoverage L D ∧
+      EndReadTransport M K L ∧ SleepyLayer1.ProposalCoverage M L D ∧
       LocalReadPoint L ∧
-      SleepyLayer1.EventSafety L D ∧ SleepyLayer1.OutputProvenance L D ∧
-      SleepyLayer1.Extension L D ∧ SleepyLayer1.SourceProvenance L D ∧
+      SleepyLayer1.EventSafety M L D ∧ SleepyLayer1.OutputProvenance L D ∧
+      SleepyLayer1.Extension M L D ∧ SleepyLayer1.SourceProvenance L D ∧
       PopulationQuorumSupply M K ∧ SleepyWindowSupply M K L ∧
       ReadRepresentation M ∧ HonestReadTransport M ∧
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →

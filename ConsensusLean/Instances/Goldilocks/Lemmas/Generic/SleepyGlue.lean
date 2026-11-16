@@ -31,10 +31,18 @@ theorem frames_from_sources (C : ACCorrectLocal A sg) (D : Data A) :
   unfold Store.fcRoot
   split <;> assumption
 
-theorem read_agreement (C : ACCorrectLocal A sg) (D : Data A) :
-    ReadAgreement C D := by
-  intro hevents houtputs cm proposer dg H tr ΔF b p hrun hnc hbind hpre hK hpop hframes
+open Shape Blocks
+
+variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
+  {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V]
+  {E : Env V} {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
+
+theorem read_agreement (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) (D : Data A) :
+    ReadAgreement M C D := by
+  intro hevents houtputs ΔF b p hb hrun hnc hbind hpre hK hpop hframes
     y z i j t u hy hz hby hbz
+  let tr := M.trace
+  let H := M.honest
   have hl := C.run.run_local hrun
   have hcoh := Compose.Growing.honest_blocks_coherent_local hl hnc
   have genesis {B : A.Blk} (hB : B ∈ tr.HonestBlocksAt H) :
@@ -64,7 +72,8 @@ theorem read_agreement (C : ACCorrectLocal A sg) (D : Data A) :
   have reader {v k d} (hr : HonestReadPoint tr H b v k d) (hb : ReadBoundary tr v k) :
       confirmedRead tr v k d ∈ tr.HonestBlocksAt H ∧
         Anchored D tr H b b (confirmedRead tr v k d) := by
-    obtain ⟨hheld, ha⟩ := houtputs cm proposer dg H tr b hrun hnc v k d hr hb
+    obtain ⟨hheld, ha⟩ :=
+      houtputs M.committee M.proposer M.digest H tr b hrun hnc v k d hr hb
     have hsub : (tr.state v k).fg.tree ⊆ tr.HonestBlocksAt H :=
       fun _ h => ⟨v, k, d, hr.2.2.1, hr.2.1.1, hr.1, h⟩
     refine ⟨hsub hheld, ?_⟩
@@ -85,16 +94,16 @@ theorem read_agreement (C : ACCorrectLocal A sg) (D : Data A) :
   · have heq := hcoh.1 hZ (genesis hZ).1 hg
     rw [heq]
     exact Or.inr (genesis hY).2
-  rcases hevents cm proposer dg H tr ΔF b p hrun hnc hbind hpre hK hpop hframes
+  rcases hevents ΔF b p hb hrun hnc hbind hpre hK hpop hframes
       E E' hE hE' with he | he
   · exact Anc.total hcoh (ha.trans he) ha'
   · exact Anc.total hcoh ha (ha'.trans he)
 
-theorem ready_read_safety (C : ACCorrectLocal A sg) (D : Data A) :
-    ReadyReadSafety C D := by
-  intro hagree hevents houtputs hext cm proposer dg H tr ΔF b p hrun hnc hbind hpre hK hpop hf
-  exact ⟨hagree hevents houtputs cm proposer dg H tr ΔF b p hrun hnc hbind hpre hK hpop hf,
-    hext cm proposer dg H tr ΔF b p hrun hnc hbind hpre hK hpop hf⟩
+theorem ready_read_safety (M : RunMap rho payload) (C : ACCorrectLocal A M.signer)
+    (D : Data A) : ReadyReadSafety M C D := by
+  intro hagree hevents houtputs hext ΔF b p hb hrun hnc hbind hpre hK hpop hf
+  exact ⟨hagree hevents houtputs ΔF b p hb hrun hnc hbind hpre hK hpop hf,
+    hext ΔF b p hb hrun hnc hbind hpre hK hpop hf⟩
 
 end Consensus.Goldilocks.Generic.SleepyLayer1
 

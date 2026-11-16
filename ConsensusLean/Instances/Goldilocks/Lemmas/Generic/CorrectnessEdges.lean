@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Spec.Shape.Obligations
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ClaimTransports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ChainRepresentationEdges
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.EngineEdges
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.CorrectLocal
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.FG
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.SyncUntil
@@ -115,6 +116,8 @@ structure LocalClaimSuppliers {P : Params} {A : NodeAC P} {O : OutputSchema} {In
     (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) (K : Contract ProgressReq)
     (D : OutagePolicy M) (R : StoredReadContext M) (events : SleepyLayer1.Data A) : Prop where
   regime : RegimeTransport M K C.look
+  /-- Output validity on valid executions, without a readiness or regime premise. -/
+  outputValidity : OutputValidityEdge M
   reads : ReadRepresentation M
   honestReads : HonestReadTransport M
   chains : ChainRepresentation A M.chain M.header
@@ -122,10 +125,10 @@ structure LocalClaimSuppliers {P : Params} {A : NodeAC P} {O : OutputSchema} {In
   coherent : ¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest)
   engineRead : EngineReadPoint M
   localRead : LocalReadPoint C
-  sleepyProposal : SleepyLayer1.ProposalCoverage C events
-  eventSafety : SleepyLayer1.EventSafety C events
+  sleepyProposal : SleepyLayer1.ProposalCoverage M C events
+  eventSafety : SleepyLayer1.EventSafety M C events
   outputProvenance : SleepyLayer1.OutputProvenance C events
-  extension : SleepyLayer1.Extension C events
+  extension : SleepyLayer1.Extension M C events
   sourceProvenance : SleepyLayer1.SourceProvenance C events
   populationQuorum : PopulationQuorumSupply M K
   sleepyWindows : SleepyWindowSupply M K C

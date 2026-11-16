@@ -32,9 +32,16 @@ private theorem ready_subset {V : Type} [Fintype V]
   refine ⟨fun hf => hv.1 (p.faultyAt_mono hd hf), fun u hu hut => hv.2 u ?_ hut⟩
   exact le_trans (max_le_max_left 0 (by linarith)) hu
 
-theorem committee_transport {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n}
-    (C : ACCorrectLocal A sg) : CommitteeTransport C := by
-  intro p cm b c W _ hc hW h0 h1 h t d ht htd hdb hne
+open Shape Blocks
+
+variable {P : Params} {A : NodeAC P}
+  {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
+  {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V]
+  {E : Env V} {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
+
+theorem committee_transport (M : RunMap rho payload)
+    (C : ACCorrectLocal A M.signer) : CommitteeTransport M C := by
+  intro p b c W _ hc hW h0 h1 h t d ht htd hdb hne
   have hcount := h t ht (htd.trans (hdb.trans (min_le_left _ _))) hne
   simp only [le_refl, ↓reduceIte] at hcount
   apply count_mono hcount
@@ -44,8 +51,8 @@ theorem committee_transport {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n}
     (Finset.inter_subset_inter (p.faultyAt_mono (by rw [← hW]; exact hdb.trans (min_le_right _ _)))
       (Finset.Subset.refl _)) h0 h1
 
-theorem population_transport {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n}
-    (C : ACCorrectLocal A sg) : PopulationTransport C := by
+theorem population_transport (M : RunMap rho payload)
+    (C : ACCorrectLocal A M.signer) : PopulationTransport M C := by
   intro p b c W _ hc hW h0 h1 h t d ht htd hdb
   have hcount := h t ht (htd.trans (hdb.trans (min_le_left _ _)))
   have he : d ≤ p.lookAhead W t := by rw [← hW]; exact hdb.trans (min_le_right _ _)

@@ -14,6 +14,12 @@ namespace Consensus.Goldilocks.Generic.SleepyLayer1
 
 variable {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n}
 
+open Shape Blocks
+
+variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
+  {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V]
+  {E : Env V} {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
+
 /-- AC-owned update results (vetoed or not) and optimistic confirmation events.
 This is not a retained-output change or a healing origin. -/
 structure Data (A : NodeAC P) where
@@ -63,15 +69,17 @@ def PopulationWindow (C : ACCorrectLocal A sg) (p : EnvPoint (Fin P.n))
   ∀ t d, 0 ≤ t → t ≤ d → d ≤ min b (p.lookAhead C.look t) →
     (p.retain d).ReadyAbove C.θ C.catchUp t
 
-/-- Safety on actual composed runs; internal induction and gadget facts stay in
-the instance proof. This does not assert safety for arbitrary frame sequences. -/
-def EventSafety (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
-  ∀ cm proposer dg H tr ΔF b p,
-    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    RunPointBinding tr H p → tr.SleepyPrefixAt H ΔF C.look b →
-    CommitteeWindow C p cm b → PopulationWindow C p b → AnchoredFrames D tr H b →
-    ∀ B B', EventWithin D tr H b b B → EventWithin D tr H b b B' →
-      Compatible (tr.HonestBlocksAt H) B B'
+/-- Safety on the mapped run up to its horizon. Internal induction and gadget facts stay in
+the instance proof; no claim is made about other traces or committee functions. -/
+def EventSafety (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) (D : Data A) : Prop :=
+  ∀ ΔF b p, b ≤ rho.horizon →
+    C.run.Run M.committee M.proposer M.digest M.honest M.trace →
+    Compose.NoCollRun M.digest M.trace → RunPointBinding M.trace M.honest p →
+    M.trace.SleepyPrefixAt M.honest ΔF C.look b →
+    CommitteeWindow C p M.committee b → PopulationWindow C p b →
+    AnchoredFrames D M.trace M.honest b →
+    ∀ B B', EventWithin D M.trace M.honest b b B → EventWithin D M.trace M.honest b b B' →
+      Compatible (M.trace.HonestBlocksAt M.honest) B B'
 
 /-- At a read boundary, the output is held at the explicit evaluation time.
 Its ancestry uses the effective record or the frame floor. Held membership
@@ -86,27 +94,35 @@ def OutputProvenance (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
 
 /-- Required separately for ReadySafe; event compatibility alone does not give
 same-reader extension. Certificate discharge remains an instance obligation. -/
-def Extension (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
-  ∀ cm proposer dg H tr ΔF b p,
-    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    RunPointBinding tr H p → tr.SleepyPrefixAt H ΔF C.look b →
-    CommitteeWindow C p cm b → PopulationWindow C p b → AnchoredFrames D tr H b →
-    ∀ y i j t u, ReadyReadPoint tr H b C.catchUp y i t →
-    ReadyReadPoint tr H b C.catchUp y j u → ReadBoundary tr y i → ReadBoundary tr y j →
+def Extension (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) (D : Data A) : Prop :=
+  ∀ ΔF b p, b ≤ rho.horizon →
+    C.run.Run M.committee M.proposer M.digest M.honest M.trace →
+    Compose.NoCollRun M.digest M.trace → RunPointBinding M.trace M.honest p →
+    M.trace.SleepyPrefixAt M.honest ΔF C.look b →
+    CommitteeWindow C p M.committee b → PopulationWindow C p b →
+    AnchoredFrames D M.trace M.honest b →
+    ∀ y i j t u, ReadyReadPoint M.trace M.honest b C.catchUp y i t →
+    ReadyReadPoint M.trace M.honest b C.catchUp y j u →
+    ReadBoundary M.trace y i → ReadBoundary M.trace y j →
     i ≤ j → t ≤ u →
-      Anc (tr.HonestBlocksAt H) (confirmedRead tr y i t) (confirmedRead tr y j u)
+      Anc (M.trace.HonestBlocksAt M.honest)
+        (confirmedRead M.trace y i t) (confirmedRead M.trace y j u)
 
 /-- Proposal coverage at an actual read, with both retention windows and anchored frames.
 Coverage does not produce the proposal witness. -/
-def ProposalCoverage (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
-  ∀ cm proposer dg H tr ΔF b p,
-    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    RunPointBinding tr H p → tr.SleepyPrefixAt H ΔF C.look b →
-    CommitteeWindow C p cm b → PopulationWindow C p b → AnchoredFrames D tr H b →
-    ∀ B k y j t, ReadyProposal tr H C.catchUp C.hold B k → 0 ≤ tr.time k →
-    tr.time k + C.hold ≤ b → tr.time k ≤ b → tr.time k + C.margin ≤ t →
-    ReadyReadPoint tr H b C.catchUp y j t → ReadBoundary tr y j → t < tr.time j →
-      Anc (tr.HonestBlocksAt H) B (confirmedRead tr y j t)
+def ProposalCoverage (M : RunMap rho payload) (C : ACCorrectLocal A M.signer)
+    (D : Data A) : Prop :=
+  ∀ ΔF b p, b ≤ rho.horizon →
+    C.run.Run M.committee M.proposer M.digest M.honest M.trace →
+    Compose.NoCollRun M.digest M.trace → RunPointBinding M.trace M.honest p →
+    M.trace.SleepyPrefixAt M.honest ΔF C.look b →
+    CommitteeWindow C p M.committee b → PopulationWindow C p b →
+    AnchoredFrames D M.trace M.honest b →
+    ∀ B k y j t, ReadyProposal M.trace M.honest C.catchUp C.hold B k → 0 ≤ M.trace.time k →
+    M.trace.time k + C.hold ≤ b → M.trace.time k ≤ b → M.trace.time k + C.margin ≤ t →
+    ReadyReadPoint M.trace M.honest b C.catchUp y j t →
+    ReadBoundary M.trace y j → t < M.trace.time j →
+      Anc (M.trace.HonestBlocksAt M.honest) B (confirmedRead M.trace y j t)
 
 /-- Route-1 source provenance without an invariant. The source is an ancestor
 of a same-reporter event, possibly at the same cut, not necessarily that event's block. -/
@@ -167,27 +183,31 @@ def FramesFromSources (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
 
 /-- G2 target. Agreement follows from event safety, output ancestry and anchored
 frames. Extension is deliberately separate, for the ReadySafe assembly. -/
-def ReadAgreement (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
-  EventSafety C D → OutputProvenance C D →
-  ∀ cm proposer dg H tr ΔF b p,
-    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    RunPointBinding tr H p → tr.SleepyPrefixAt H ΔF C.look b →
-    CommitteeWindow C p cm b → PopulationWindow C p b → AnchoredFrames D tr H b →
-    ∀ y z i j t u, ReadyReadPoint tr H b C.catchUp y i t →
-      ReadyReadPoint tr H b C.catchUp z j u →
-      ReadBoundary tr y i → ReadBoundary tr z j →
-      Compatible (tr.HonestBlocksAt H) (confirmedRead tr y i t) (confirmedRead tr z j u)
+def ReadAgreement (M : RunMap rho payload) (C : ACCorrectLocal A M.signer)
+    (D : Data A) : Prop :=
+  EventSafety M C D → OutputProvenance C D →
+  ∀ ΔF b p, b ≤ rho.horizon →
+    C.run.Run M.committee M.proposer M.digest M.honest M.trace →
+    Compose.NoCollRun M.digest M.trace → RunPointBinding M.trace M.honest p →
+    M.trace.SleepyPrefixAt M.honest ΔF C.look b →
+    CommitteeWindow C p M.committee b → PopulationWindow C p b →
+    AnchoredFrames D M.trace M.honest b →
+    ∀ y z i j t u, ReadyReadPoint M.trace M.honest b C.catchUp y i t →
+      ReadyReadPoint M.trace M.honest b C.catchUp z j u →
+      ReadBoundary M.trace y i → ReadBoundary M.trace z j →
+      Compatible (M.trace.HonestBlocksAt M.honest)
+        (confirmedRead M.trace y i t) (confirmedRead M.trace z j u)
 
 /-- The committee count transports to every earlier retention charge. Its
 look-ahead is independent of the population look-ahead. -/
-def CommitteeTransport (C : ACCorrectLocal A sg) : Prop :=
-  ∀ (p : EnvPoint (Fin P.n)) cm b c W,
+def CommitteeTransport (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) : Prop :=
+  ∀ (p : EnvPoint (Fin P.n)) b c W,
     b ≤ p.horizon → C.catchUp ≤ c → C.committeeLook = W →
     0 ≤ C.θ → C.θ ≤ 1 →
-    p.CommitteeSleepyOn cm C.θ 0 c W 0 b → CommitteeWindow C p cm b
+    p.CommitteeSleepyOn M.committee C.θ 0 c W 0 b → CommitteeWindow C p M.committee b
 
 /-- Population counts transport independently to every earlier retention charge. -/
-def PopulationTransport (C : ACCorrectLocal A sg) : Prop :=
+def PopulationTransport (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) : Prop :=
   ∀ (p : EnvPoint (Fin P.n)) b c W,
     b ≤ p.horizon → C.catchUp ≤ c → C.look = W →
     0 ≤ C.θ → C.θ ≤ 1 →
@@ -206,20 +226,26 @@ def FrameAcceptance : Prop :=
 
 /-- Ready-read safety assembly: G2 supplies cross-reader agreement and the
 separate extension row supplies monotonicity. No proposal or inclusion row is used. -/
-def ReadyReadSafety (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
-  ReadAgreement C D → EventSafety C D → OutputProvenance C D → Extension C D →
-  ∀ cm proposer dg H tr ΔF b p,
-    C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    RunPointBinding tr H p → tr.SleepyPrefixAt H ΔF C.look b →
-    CommitteeWindow C p cm b → PopulationWindow C p b → AnchoredFrames D tr H b →
-    (∀ y z i j t u, ReadyReadPoint tr H b C.catchUp y i t →
-      ReadyReadPoint tr H b C.catchUp z j u →
-      ReadBoundary tr y i → ReadBoundary tr z j →
-      Compatible (tr.HonestBlocksAt H) (confirmedRead tr y i t) (confirmedRead tr z j u)) ∧
-    (∀ y i j t u, ReadyReadPoint tr H b C.catchUp y i t →
-      ReadyReadPoint tr H b C.catchUp y j u → ReadBoundary tr y i → ReadBoundary tr y j →
+def ReadyReadSafety (M : RunMap rho payload) (C : ACCorrectLocal A M.signer)
+    (D : Data A) : Prop :=
+  ReadAgreement M C D → EventSafety M C D → OutputProvenance C D → Extension M C D →
+  ∀ ΔF b p, b ≤ rho.horizon →
+    C.run.Run M.committee M.proposer M.digest M.honest M.trace →
+    Compose.NoCollRun M.digest M.trace → RunPointBinding M.trace M.honest p →
+    M.trace.SleepyPrefixAt M.honest ΔF C.look b →
+    CommitteeWindow C p M.committee b → PopulationWindow C p b →
+    AnchoredFrames D M.trace M.honest b →
+    (∀ y z i j t u, ReadyReadPoint M.trace M.honest b C.catchUp y i t →
+      ReadyReadPoint M.trace M.honest b C.catchUp z j u →
+      ReadBoundary M.trace y i → ReadBoundary M.trace z j →
+      Compatible (M.trace.HonestBlocksAt M.honest)
+        (confirmedRead M.trace y i t) (confirmedRead M.trace z j u)) ∧
+    (∀ y i j t u, ReadyReadPoint M.trace M.honest b C.catchUp y i t →
+      ReadyReadPoint M.trace M.honest b C.catchUp y j u →
+      ReadBoundary M.trace y i → ReadBoundary M.trace y j →
       i ≤ j → t ≤ u →
-      Anc (tr.HonestBlocksAt H) (confirmedRead tr y i t) (confirmedRead tr y j u))
+      Anc (M.trace.HonestBlocksAt M.honest)
+        (confirmedRead M.trace y i t) (confirmedRead M.trace y j u))
 
 end Consensus.Goldilocks.Generic.SleepyLayer1
 

@@ -48,7 +48,8 @@ catch-up/heal/latency equations in `Lemmas/Obligations/ContractDefs`.
 The chosen local parameters and FG threshold arithmetic must satisfy every field. -/
 structure ClaimDeadlineFit (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) : Prop where
-  catchUp : C.catchUp ≤ (Sys F V).cDur K ⟨E, rho⟩
+  /-- One unit of readiness slack permits the local read at the stored clock. -/
+  catchUp : C.catchUp + 1 ≤ (Sys F V).cDur K ⟨E, rho⟩
   latency_le_margin : C.latency ≤ C.margin
   healthy_start : ∀ cap idx gst, (cap = .available ∨ cap = .stable) →
     max gst 0 + C.margin ≤ (Sys F V).heal K cap idx gst ⟨E, rho⟩
@@ -243,15 +244,16 @@ def ResetHealBudgetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     P.slotTime (P.slotOf a + C.healing.drain) + C.margin ≤
       (Sys F V).heal K cap idx gst ⟨E, rho⟩
 
-/-- Exact matching of the fixed local outage policy to the advertised contract.
-These equations supply numerical rewriting, not the protection obligation OC-K.
+/-- Matching of the fixed local outage policy to the advertised contract.
+Catch-up has one unit of slack; readiness and sleepy counts transport monotonically.
+The remaining equations supply numerical rewriting, not the protection obligation OC-K.
 `RunMap.delta_eq` fixes the delay across all environments covered by one local record. -/
 structure OutageRecoveryBinding (M : RunMap rho payload) (K : Contract ProgressReq)
     (C : ACCorrectLocal A M.signer) : Prop where
   /-- One fixed local duration matches the same run's advertised recovery duration. -/
   duration : C.recovery = (K.params.recovery : Time) * E.ΔAC
   threshold : C.θ = K.params.θ
-  catchUp : C.catchUp = (Sys F V).cDur K ⟨E, rho⟩
+  catchUp : C.catchUp + 1 ≤ (Sys F V).cDur K ⟨E, rho⟩
   look : C.look = (Sys F V).aheadDur K ⟨E, rho⟩
   committeeLook : C.committeeLook = (Sys F V).committeeAheadDur K ⟨E, rho⟩
   eta : C.outageEta = (K.params.η : Time) * E.ΔAC

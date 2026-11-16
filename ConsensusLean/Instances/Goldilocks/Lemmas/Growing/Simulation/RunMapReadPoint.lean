@@ -17,8 +17,9 @@ source cut.
 
 OPEN, not supplied here: the ready read point at the stored clock. Engine readiness with catch-up
 `c + 1` at `rho.cutTime i` gives local readiness with catch-up `c` at `(R.cut v i, R.now v i)`
-(`Obligations.Growing.engine_read_point`, `ready_at_stored_now`). No generic contract states it,
-and `ClaimDeadlineFit.catchUp` is one unit short for it (ledger row "stored-clock read point").
+(`Obligations.Growing.engine_read_point`, `ready_at_stored_now`). `ClaimDeadlineFit.catchUp`
+supplies the numerical slack; the generic stored-read transport still needs the read-point law
+(ledger row "stored-clock read point").
 -/
 
 namespace Consensus.Goldilocks.Simulation

@@ -7,8 +7,11 @@ Their concrete realizations and the reduction proofs remain separate obligations
 
 L9 now lives only in `OutageReadPoint.protection`. The actual-cut twin is deleted.
 The local data fix threshold, catch-up, recovery, both independent look-aheads,
-η, arming lag and budget. `OutageRecoveryBinding` matches all eight to the contract
-by equality. `RunMap.delta_eq` fixes `P.Δ = E.ΔAC` in every covered environment.
+η, arming lag and budget. `OutageRecoveryBinding` matches catch-up by
+`C.catchUp + 1 ≤ cDur`, and the other seven values by equality. `ClaimDeadlineFit`
+uses the same catch-up inequality. Local readiness and the population and committee
+counts at `max C.catchUp (C.outageEta - 1)` require monotone transport from the advertised
+catch-up, not equality rewriting. `RunMap.delta_eq` fixes `P.Δ = E.ΔAC` in every covered environment.
 The participation catch-up is derived as `max cDur (η·ΔAC − 1)`.
 Reads remain non-strict. Certificate: cert obligation open: OC-K.
 
@@ -85,6 +88,14 @@ record per mapped valid run, not endpoint claims or reduction propositions. Its 
 composes the reductions. Admissibility, service, progress-fit, progress-tolerance and
 `HealthyBetaFit` and `CommitteeHalfFit` remain separate inputs. The stored-read context and outage policy remain
 explicit data families. No proof of the capstone is supplied.
+
+The windowed `SleepyLayer1.EventSafety`, `Extension` and `ProposalCoverage` suppliers
+range over the consuming `RunMap`'s trace, honest sets, committee, proposer and digest,
+with window endpoint `b ≤ rho.horizon`. This restricts supplier quantification compared
+with a law for arbitrary traces and selections; it does not strengthen `Run` or change
+the headline claims. `ReadAgreement` and `ReadyReadSafety` use the same map and bound.
+`LocalClaimSuppliers.outputValidity` separately supplies `OutputValidityEdge M` without
+readiness, regime or collision premises.
 
 Each reduction fixes one public-indexed EngineBinding B and uses exactly M = B.map E hE rho hv.
 Local contracts C, outage policy D and stored-read context R are indexed by that M;
@@ -164,11 +175,11 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 
 | Interface | Source / exact consumer | Unresolved scope |
 | --- | --- | --- |
-| `ClaimDeadlineFit` | Concrete/Fields sleepySafe catch-up arithmetic; ReadPoint healthy proposal/healed; Accountable population threshold | Local catch-up ≤ engine cDur, local latency ≤ publication margin, max GST 0 + margin ≤ advertised nonfinal heal, α·n ≤ 2q−n, healthy population bound < 2q−n. These are arbitrary-contract numerical targets, not consequences of CorrectLocal. Nonnegative durations already come from C.durations. |
+| `ClaimDeadlineFit` | Concrete/Fields sleepySafe catch-up arithmetic; ReadPoint healthy proposal/healed; Accountable population threshold | Local catch-up + 1 ≤ engine cDur, local latency ≤ publication margin, max GST 0 + margin ≤ advertised nonfinal heal, α·n ≤ 2q−n, healthy population bound < 2q−n. These are arbitrary-contract numerical targets, not consequences of CorrectLocal. Nonnegative durations already come from C.durations. |
 | `AdmissibleProposal` | confirmed_payload_projection_at; ProposalLiveReady's proposer readiness | Actual B,k must be non-genesis, nonnegative, hold through horizon and engine-cDur ready. The old ReadyProposal only gives local catch-up and honesty through hold. |
 | `ProposalWitnessRefinement` | Concrete/Fields sleepyLive and healthyLive_confirmed | Selects the same query/progress/deadline witness jointly with AdmissibleProposal on the collision-free branch. No InBy or ProposalLiveReady conclusion is assumed; the weaker budget twins are deleted. |
 | `EndReadTransport` | Growing/Simulation/Endpoint/Outputs.prefix_reader_at; confirmed_payload_projection_at; outage actual-time reads | `ready`/`boundary` are at claim time t; `output` evaluates at M.clock of the state at endCut t. No clock equality or next-micro-cut honesty is asserted. Readiness at t → a ready read point at the stored clock is a NEW UNRESOLVED target, not supplied by these fields. |
-| stored-clock read point (MISSING) | Growing/Sleepy/Engine/ReadPoint.engine_read_point; Obligations/Sleepy.ready_at_stored_now, stored_now_ge_cutTime_sub_one, now_mono | A bridge at M.clock must use a source cut such as R.cut, not re-time M.cut i. Engine readiness c+1 must yield local readiness c at that stored-clock read point, with its boundary and output correspondence. Integration statement item: strengthen ClaimDeadlineFit.catchUp to C.catchUp + 1 ≤ cDur and state this bridge for review; neither change is implemented here. Sleepy safety/liveness, healthy nonfinal liveness, persistence and cross-reader healed safety remain unclosed until their stored-clock uses are discharged. |
+| stored-clock read point (MISSING) | Growing/Sleepy/Engine/ReadPoint.engine_read_point; Obligations/Sleepy.ready_at_stored_now, stored_now_ge_cutTime_sub_one, now_mono | A bridge at M.clock must use a source cut such as R.cut, not re-time M.cut i. Engine readiness c+1 must yield local readiness c at that stored-clock read point, with its boundary and output correspondence. ClaimDeadlineFit.catchUp supplies C.catchUp + 1 ≤ cDur; the generic bridge remains OPEN. Sleepy safety/liveness, healthy nonfinal liveness, persistence and cross-reader healed safety remain unclosed until their stored-clock uses are discharged. |
 | `DeadlinePremisesSupply` | Generic/Obligations.Premises; concrete final query production | Produces the exact Premises at query + final-latency·ΔAC, only under actual final progress, healthy regime, heal≤query, deadline≤horizon and a ready deadline reader. FinalWindowSupply alone does not produce this bundle. |
 | `FinalWindowSupply` | Concrete/Final final payload projection | Selects the same W with anchor-0 non-genesis and advertised readiness, anchor-3 honest proposal, spacing and heights. The universal FinalProposerTransport twin is deleted. |
 | `FinalReadTransport.processed` | concrete carrier-processing supply / final payload projection | Healthy service and deadline readiness produce strict-earlier BlockCallAt via CarrierProcessed, preserving own processing honesty. The cut-only carrier twin is deleted. |
@@ -192,7 +203,7 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | engine/local Δ identity | M.delta_eq | Map data, realization OPEN |
 | bounded own-read honesty, read boundary | EngineReadPoint.honest/boundary, RegimeTransport.ready + EngineReadPoint.ready | EngineReadPoint supplied for Goldilocks (`goldilocksRunMap_engineReadPoint`); OPEN for an arbitrary map; RegimeTransport.ready stays OPEN; actual engine cutTime retained |
 | end-time readiness and output state/time | EndReadTransport.ready/boundary/output | ready/boundary at t, output at M.clock of state at endCut t; readiness at t → stored-clock ready read point is MISSING, with no next-cut honesty or clock equality |
-| local versus engine catch-up, latency/heal | ClaimDeadlineFit.catchUp/latency_le_margin/healthy_start | NEW OPEN numerical targets; current catchUp only states C.catchUp ≤ cDur. Stored-clock bridge requires the proposed C.catchUp + 1 ≤ cDur strengthening on the integration head |
+| local versus engine catch-up, latency/heal | ClaimDeadlineFit.catchUp/latency_le_margin/healthy_start | OPEN numerical targets; catchUp states C.catchUp + 1 ≤ cDur, supplying the stored-clock bridge's numerical slack without the bridge itself |
 | nonnegative durations | ACCorrectLocal.durations | Existing local data; no extra numerical supplier |
 | proposal hold through horizon and proposer cDur | ProposalWitnessRefinement → AdmissibleProposal; FinalWindowSupply for anchor 0 | OPEN targets; same jointly selected witnesses |
 | sleepy finite service and independent count windows | RegimeTransport.sleepy → SleepyPrefixAt; SleepyWindowSupply → CommitteeWindow and PopulationWindow | SleepyWindowSupply supplied for Goldilocks; OPEN for an arbitrary map; RegimeTransport.sleepy stays OPEN; separate population/committee look-aheads; the prefix alone supplies neither window; no finite⇒unbounded inference |
@@ -207,7 +218,7 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | reset / canonicality / drain-slot time | HighCanonicalSupply and ResetHealBudgetSupply | OPEN targets; the budget supplier selects the reset, and heal_after_reset only consumes it |
 | healed temporal ancestry | HealedReadAncestry + StoredReadTransport | NEW OPEN local ancestry and separate mapping, not compatibility⇒ancestry |
 | outage participation | OutageTransport.participation and OutagePolicy.binding/horizon | Existing OPEN suppliers; at the run's own point and selection the population and look-back committee η-sleepy clauses (outage catch-up `max cDur (η·ΔAC − 1)`) follow from `Outage` (`OutageTransport.participation_of_outage`). The destination coupling (sample coverage) is removed: unsatisfiable under growing faults |
-| fixed outage recovery floor / endpoint fit | ACCorrectLocal policy data and OutageRecoveryBinding's eight equalities at SAME M/K/C | OPEN exact-policy matching; protection lives only in OutageReadPoint, with no actual-cut twin |
+| fixed outage recovery floor / endpoint fit | ACCorrectLocal policy data and OutageRecoveryBinding's seven equalities plus C.catchUp + 1 ≤ cDur at SAME M/K/C | OPEN policy matching and monotone readiness/count transport; protection lives only in OutageReadPoint, with no actual-cut twin |
 | outage pre/post service | OutageServiceSupply | OPEN exact implication; AC-owned service and node acceptance relay require instance transport |
 | resilience target tip | ResilienceTipTransport | NEW OPEN representation only |
 | RootOk at actual reads | HonestReadTransport.roots; genesis from the run (`ACRun.run_root`) | supplied for Goldilocks (`goldilocksRunMap_honestReadTransport`); OPEN for an arbitrary map; never inferred from unrelated dc names |
