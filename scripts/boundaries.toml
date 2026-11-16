@@ -242,8 +242,9 @@ from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksReadPoint"]
 to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.RecordRead",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CurrentSources",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Confirmed",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls"]
-reason = "concrete Goldilocks read-point supplier fields over the shared run interface, from the trace-level healthy repair kernel (read context, effective-record read, record covers) and the reset's update calls; leaf paths only"
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ConfirmedSupply"]
+reason = "concrete Goldilocks read-point supplier fields over the shared run interface, from the trace-level healthy repair kernel (read context, effective-record read, record covers, the operational proposal's fresh lock and read) and the reset's update calls; leaf paths only"
 
 [[layer]]
 name = "Instances.Goldilocks.NodeEngine"

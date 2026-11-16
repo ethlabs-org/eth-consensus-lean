@@ -41,21 +41,6 @@ variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
 
-/-- **A node honest at its proposal is the designated proposer of its slot.** -/
-private theorem proposesAt_designated (hrun : Growing.GoldilocksRun proposer dg H tr)
-    {p : Fin sp.n} {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hp : p ∈ H (tr.time k))
-    (hP : tr.ProposesAt p k P) : p = proposer P.slot := by
-  have hk0 := hrun.time_nonneg k
-  obtain ⟨⟨⟨acc, hcB⟩, hpos⟩, hpp, -⟩ := hP
-  rcases blockCall_cases (hrun.upTo hk0).toLocalRun hp
-      ((Trace.upTo_callAt_of_le _ le_rfl).mpr hcB) with
-    hg | ⟨j, x, rfl, -, hPr, d', pay', -, hB, -⟩
-  · have h := (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1
-    simp only [Nat.add_zero] at h
-    exact absurd h hpos
-  rw [← hpp, hB]
-  exact hPr.2.2.symm
-
 /-- **The effective record after an update extends `P`** when the updater's `Σ.F` extends `P`, or
 the record names a block of the update's frame extending `P`: the AC update leaves the FG store,
 so the frame, unchanged, and the effective record is the frame block of the record, above `Σ.F`,
@@ -156,7 +141,7 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr)
       have hσT := hseed.timing.1
       have htσ : sp.ts p ≤ sp.ts σ := ts_le_ts hpσ
       obtain ⟨-, hconf, hnv, -⟩ := Healing.Growing.operational_update_selection_at hpr
-        hp (proposesAt_designated hrun hpk hPa) hPa rfl
+        hp (Obligations.Growing.proposesAt_designated_at hrun hpk hPa) hPa rfl
         (by rw [hdrain]; exact hdt₁.trans ht₁p) (by linarith) (by linarith) hz hu
       rw [projAC_state_at hrun hz] at hconf hnv
       exact ⟨hconf, hnv⟩

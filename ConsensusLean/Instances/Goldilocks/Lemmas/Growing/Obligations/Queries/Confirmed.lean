@@ -11,6 +11,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSupp
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.QuerySlot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -23,8 +24,8 @@ The confirmed-chain suppliers for a `ConfirmedQueryAt`, on the canonical growing
 * `ConfirmedProducerSlotAt`, `confirmed_query_slot_at`: the recurrence selects a slot whose
   proposer is ready at the slot time and still honest `hold = Δ` later (`HonestReadyIn` reads it
   at `lookAhead Δ`, which `honestKeysAt` also clamps at the horizon);
-* `confirmed_slot_event_at`, `proposal_accepted_at`: the slot's actual proposal and its own
-  acceptance;
+* `confirmed_slot_event_at`, `proposal_accepted_at`, `proposesAt_designated_at`: the slot's
+  actual proposal, its own acceptance, and its proposer's designation;
 * `confirmed_payload_projection_at`: coverage of a confirmed proposal at every ready read at the
   deadline is the engine payload obligation. -/
 
@@ -49,6 +50,21 @@ theorem proposal_accepted_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
     ⟨(RunTrace.upTo_ownBlockAt tr).2 ⟨le_rfl, hP.1⟩, hP.2.1, hP.2.2⟩
   exact ((RunTrace.upTo_acceptAt tr).1
     (Compose.proposal_accepted (hrun.upTo (hrun.time_nonneg k)) (hnc.upTo _) hp hP')).2
+
+/-- **A node honest at its proposal is the designated proposer of its slot.** -/
+theorem proposesAt_designated_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {p : Fin sp.n} {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hp : p ∈ H (tr.time k))
+    (hP : tr.ProposesAt p k P) : p = proposer P.slot := by
+  have hk0 := hrun.time_nonneg k
+  obtain ⟨⟨⟨acc, hcB⟩, hpos⟩, hpp, -⟩ := hP
+  rcases Compose.blockCall_cases (hrun.upTo hk0).toLocalRun hp
+      ((Trace.upTo_callAt_of_le _ le_rfl).mpr hcB) with
+    hg | ⟨j, x, rfl, -, hPr, d', pay', -, hB, -⟩
+  · have h := (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1
+    simp only [Nat.add_zero] at h
+    exact absurd h hpos
+  rw [← hpp, hB]
+  exact hPr.2.2.symm
 
 end Node
 
