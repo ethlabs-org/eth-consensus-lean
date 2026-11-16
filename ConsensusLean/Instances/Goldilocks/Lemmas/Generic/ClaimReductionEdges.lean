@@ -134,7 +134,10 @@ def SleepyLivenessReduction (C : ACCorrectLocal A sg)
 /-- UNPROVED all-capability healthy liveness reduction. Actual final deadline premises,
 processing and actual-read cache transport are separate supplier contracts. FinalWindowSupply
 jointly selects advertised anchor readiness, delivery spacing and pointwise heights.
-No constant FrameWindow production or progress-form exclusion is assumed. -/
+No constant FrameWindow production or progress-form exclusion is assumed. The nonfinal
+inclusion reads at L7 (`HealthyReadPoint.proposal`), whose premises and selected reset come from
+the healthy preparation (`PreparationPremisesSupply`) and reset budget (`ResetHealBudgetSupply`)
+suppliers. -/
 def HealthyLivenessReduction (C : ACCorrectLocal A sg)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
     (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) : Prop :=
@@ -146,7 +149,7 @@ def HealthyLivenessReduction (C : ACCorrectLocal A sg)
       ProposalProgressTransport M K L.healing ∧
       ProposalWitnessRefinement M K L ∧ ClaimDeadlineFit M K L ∧
       DeadlinePremisesSupply M K ∧ FinalWindowSupply M K L.run L.catchUp L.hold ∧
-      FinalReadTransport M K L ∧
+      FinalReadTransport M K L ∧ PreparationPremisesSupply M K ∧ ResetHealBudgetSupply M K L ∧
       StoredReadTransport M (R E hE rho hv) ∧ HealthyReadPoint L ∧ LocalReadPoint L ∧
       ReadRepresentation M ∧ HonestReadTransport M ∧
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →

@@ -33,6 +33,9 @@ HealthyLivenessReduction therefore removes its independent FinalHeightSupply pre
 It consumes the acceptance, ancestry and three own-reader height projections returned
 for that SAME W; FinalReadTransport.cache retains its exact
 inputs, and DeadlinePremisesSupply independently produces Premises at E.ΔFG.
+Its nonfinal branch reads inclusion at L7 (`HealthyReadPoint.proposal`), so it also takes
+PreparationPremisesSupply and ResetHealBudgetSupply, the capstone's existing `preparation` and
+`resetBudget` rows, for L7's Premises, selected reset and post-drain bound.
 No arbitrary-window height law, timeoutDelay-to-spacing inference, gap enlargement or
 latency enlargement is claimed. Joint guarded production remains OPEN; this fixes a
 missing source prerequisite, not a valid-run counterexample, and supplies no proof.
