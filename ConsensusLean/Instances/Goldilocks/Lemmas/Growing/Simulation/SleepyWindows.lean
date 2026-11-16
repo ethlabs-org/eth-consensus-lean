@@ -75,6 +75,44 @@ theorem goldilocks_slot_constancy : GoldilocksSlotConstancy (V := V) := by
       rw [SA.slot_of_neg ht, SA.slot_of_neg (by linarith : sp.ts s < 0)]
   exact runCommittee_eq_of_slot_eq S rho hn hs
 
+/-- The population sleepy budget at threshold at least one half gives an FG majority. -/
+theorem goldilocks_population_quorum_supply : GoldilocksPopulationQuorumSupply (V := V) := by
+  intro S E rho hn hv K hθ _ hs t ht htb
+  classical
+  have h := hs.2.1 t ht htb
+  change (rho.point.retain (rho.point.lookAhead _ t)).ReadyAbove K.params.θ _ t at h
+  let q := rho.point.retain (rho.point.lookAhead ((Sys (goldilocks S) V).aheadDur K ⟨E, rho⟩) t)
+  let c := (Sys (goldilocks S) V).cDur K ⟨E, rho⟩
+  change K.params.θ * ((q.readyAt c t).card + q.faultCount t : ℚ) < (q.readyAt c t).card at h
+  have hhalf := lt_of_le_of_lt (mul_le_mul_of_nonneg_right hθ
+    (show (0 : ℚ) ≤ (q.readyAt c t).card + q.faultCount t by positivity)) h
+  have hlt : (q.faultyAt t).card < (q.readyAt c t).card := by
+    unfold EnvPoint.faultCount at hhalf
+    exact_mod_cast (show ((q.faultyAt t).card : ℚ) < (q.readyAt c t).card by linarith)
+  have hdis : Disjoint (q.readyAt c t) (q.faultyAt t) := by
+    apply Finset.disjoint_left.mpr
+    intro v hv hf
+    exact (Finset.mem_filter.mp hv).2.1 hf
+  have hcard := Finset.card_le_univ (s := q.readyAt c t ∪ q.faultyAt t)
+  rw [Finset.card_union_of_disjoint hdis] at hcard
+  have htime : t ≤ rho.point.lookAhead ((Sys (goldilocks S) V).aheadDur K ⟨E, rho⟩) t := by
+    apply le_min _ htb
+    have : 0 ≤ (Sys (goldilocks S) V).aheadDur K ⟨E, rho⟩ := by
+      change 0 ≤ (K.params.ahead : Time) * E.ΔAC
+      exact mul_nonneg (Int.natCast_nonneg _) E.ΔAC_pos.le
+    linarith
+  have hfc : (rho.faultyAt t).card ≤ (q.faultyAt t).card :=
+    Finset.card_le_card (rho.faultyAt_mono htime)
+  have hf : (honestKeysAt S rho t)ᶜ.ncard = (rho.faultyAt t).card := by
+    have heq : (honestKeysAt S rho t)ᶜ = rho.key ⁻¹' (↑(rho.faultyAt t) : Set V) := by
+      ext k
+      simp [mem_honestKeysAt_iff, min_eq_left htb]
+    rw [heq, Set.ncard_preimage_of_injective_subset_range rho.key.injective
+      (by simp [rho.key.surjective.range_eq]), Set.ncard_coe_finset]
+  rw [goldilocksRunMap_honest, hf]
+  change 2 * (rho.faultyAt t).card < Fintype.card V
+  omega
+
 end Consensus.Goldilocks.Simulation
 
 end
