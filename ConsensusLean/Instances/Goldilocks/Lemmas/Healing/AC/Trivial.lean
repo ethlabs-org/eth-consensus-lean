@@ -335,18 +335,45 @@ private theorem optimistic_pool_stamp (A : SAState sp.n) (Φ : Frm sp.n FGP) (t 
   · exact ⟨rfl, rfl⟩
   · split_ifs <;> exact ⟨rfl, rfl⟩
 
-/-- `heldBefore_readPoint` with the unlock given. -/
+/-- `heldBefore_readPoint_branch` with the unlock given. -/
+theorem heldBefore_readPoint_branchU
+    {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {R : SAState sp.n} (hb : VoteBranchAt tr y i ℓ R) {w : Vote sp.n}
+    (hne : sp.slot (tr.time i) ≠ w.slot) {T : Time}
+    (h : w ∈ (tr.state y (i + 1)).pool w.slot ∧ (tr.state y (i + 1)).voteStamp w < ETime.of T) :
+    HeldBefore R w T := by
+  have hst : tr.state y (i + 1) = tr.post i := by
+    simp [Trace.state, hb.callAt.1, hb.callAt.2]
+  rw [hst] at h
+  rcases post_of_voteBranchAtU hr hy hb with ⟨-, -, hpost⟩ | ⟨-, e, -, -, -, hsl, hpost⟩
+  · rw [hpost] at h
+    exact h
+  · rw [← hsl] at hne
+    rw [hpost, (optimistic_pool_stamp _ _ _).1, (optimistic_pool_stamp _ _ _).2,
+      admitVote_pool_ne hne, admitVote_stamp_ne fun h' => hne (by rw [h'])] at h
+    exact h
+
+/-- `heldBefore_readPoint` with the unlock given (`heldBefore_readPoint_branchU` at the cast's
+vote branch). -/
 theorem heldBefore_readPointU
     {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {w : Vote sp.n} (hne : e.msg.slot ≠ w.slot) {T : Time}
     (h : w ∈ (tr.state y (i + 1)).pool w.slot ∧ (tr.state y (i + 1)).voteStamp w < ETime.of T) :
-    HeldBefore e.readPoint w T := by
-  have hst : tr.state y (i + 1) = tr.post i := by simp [Trace.state, hc.1.1, hc.1.2]
-  rw [hst, post_of_castAtU hr hy hc, (optimistic_pool_stamp _ _ _).1,
-    (optimistic_pool_stamp _ _ _).2, admitVote_pool_ne hne,
-    admitVote_stamp_ne fun h' => hne (by rw [h'])] at h
-  exact h
+    HeldBefore e.readPoint w T :=
+  heldBefore_readPoint_branchU hr hy (voteBranchAt_of_castAtU hr hy hc)
+    ((castAt_specU hr hy hc).2.1 ▸ hne) h
+
+/-- **A vote of another slot that the state after a vote branch holds, the branch's read point
+held**, with its stamp, whether or not the node may vote in the slot. -/
+theorem heldBefore_readPoint_branch {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {R : SAState sp.n} (hb : VoteBranchAt tr y i ℓ R) {w : Vote sp.n}
+    (hne : sp.slot (tr.time i) ≠ w.slot) {T : Time}
+    (h : w ∈ (tr.state y (i + 1)).pool w.slot ∧ (tr.state y (i + 1)).voteStamp w < ETime.of T) :
+    HeldBefore R w T :=
+  heldBefore_readPoint_branchU hr.toU hy hb hne h
 
 /-- A vote of another slot that the state after an honest cast holds, it held at the read
 point, with its stamp. -/
@@ -355,8 +382,7 @@ theorem heldBefore_readPoint {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U
     (hc : CastAt tr y i ℓ e) {w : Vote sp.n} (hne : e.msg.slot ≠ w.slot) {T : Time}
     (h : w ∈ (tr.state y (i + 1)).pool w.slot ∧ (tr.state y (i + 1)).voteStamp w < ETime.of T) :
     HeldBefore e.readPoint w T :=
-  heldBefore_readPointU (hr := hr.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc)
-      (w := w) (hne := hne) (T := T) (h := h)
+  heldBefore_readPointU hr.toU hy hc hne h
 
 /-- `carry_of_sent` with the unlock given. -/
 theorem carry_of_sentU

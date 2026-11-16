@@ -36,26 +36,38 @@ theorem getHead_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n FG
   · exact h ▸ ha
   · exact (Anc.mem (C := getHead sp A Φ t T V σ) (anc_ghost hT _ ha) h).2
 
-/-- `honest_merged_vote` with the unlock given. -/
+/-- `honest_merged_vote` at a vote branch, with the unlock given: a vote of an honest validator
+in the read point's merged view was emitted by its node at a cut no later than the branch's
+call. -/
+theorem honest_merged_vote_branchU
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n} (hb : VoteBranchAt tr y i ℓ R)
+    {σ : Nat} {v : Vote sp.n} (hv : v ∈ (mergedVoteView sp R ℓ.frame σ).votes)
+    (hvH : v.val ∈ H) : ∃ j ≤ i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v := by
+  rcases hv with hv | ⟨B, hB, -, hv⟩
+  · have hv : v ∈ R.poolAt ((σ : Int) - 1) := (List.mem_filter.1 hv).1
+    simp only [SAState.poolAt] at hv
+    split_ifs at hv
+    · simp at hv
+    have hpost : v ∈ (tr.state y (i + 1)).pool ((σ : Int) - 1).toNat := by
+      rw [show tr.state y (i + 1) = tr.post i by
+        simp [Trace.state, hb.callAt.1, hb.callAt.2]]
+      exact pool_post_of_voteBranchAtU hrun.localRun hy hb hv
+    obtain ⟨j, hj, h⟩ := hrun.honest.pool_vote y hy _ _ v hpost hvH
+    exact ⟨j, Nat.lt_succ_iff.1 hj, h⟩
+  · obtain ⟨j, hj, h⟩ := hrun.honest.carried_vote y hy i ℓ hb.callAt B hB v hv hvH
+    exact ⟨j, hj.le, h⟩
+
+/-- `honest_merged_vote` with the unlock given (`honest_merged_vote_branchU` at the cast's vote
+branch). -/
 theorem honest_merged_voteU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
     {v : Vote sp.n} (hv : v ∈ (mergedVoteView sp e.readPoint ℓ.frame σ).votes)
-    (hvH : v.val ∈ H) : ∃ j ≤ i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v := by
-  rcases hv with hv | ⟨B, hB, -, hv⟩
-  · have hv : v ∈ e.readPoint.poolAt ((σ : Int) - 1) := (List.mem_filter.1 hv).1
-    simp only [SAState.poolAt] at hv
-    split_ifs at hv
-    · simp at hv
-    have hpost : v ∈ (tr.state y (i + 1)).pool ((σ : Int) - 1).toNat := by
-      rw [show tr.state y (i + 1) = tr.post i by simp [Trace.state, hc.1.1, hc.1.2],
-        post_of_castAtU hrun.localRun hy hc, optimisticConfirmationM_keep _ optimistic_pool]
-      exact mem_admitVote_pool hv
-    obtain ⟨j, hj, h⟩ := hrun.honest.pool_vote y hy _ _ v hpost hvH
-    exact ⟨j, Nat.lt_succ_iff.1 hj, h⟩
-  · obtain ⟨j, hj, h⟩ := hrun.honest.carried_vote y hy i ℓ hc.1 B hB v hv hvH
-    exact ⟨j, hj.le, h⟩
+    (hvH : v.val ∈ H) : ∃ j ≤ i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v :=
+  honest_merged_vote_branchU hrun hy (voteBranchAt_of_castAtU hrun.localRun hy hc) hv hvH
 
 /-- A vote of an honest validator in an honest voter's merged view was emitted by its node at
 a cut no later than the voter's call. -/
@@ -66,26 +78,45 @@ theorem honest_merged_vote (hrun : ACRun proposer tr H U ini) {y : Fin sp.n} (hy
   honest_merged_voteU (hrun := hrun.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc)
       (σ := σ) (v := v) (hv := hv) (hvH := hvH)
 
-/-- `honest_not_equivocator` with the unlock given. -/
-theorem honest_not_equivocatorU
+/-- `honest_not_equivocator_branch` with the unlock given. -/
+theorem honest_not_equivocator_branchU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
-    {w : Fin sp.n} (hw : w ∈ H) :
-    w ∉ equivocators (mergedVoteView sp e.readPoint ℓ.frame σ).votes := by
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n} (hb : VoteBranchAt tr y i ℓ R)
+    {σ : Nat} {w : Fin sp.n} (hw : w ∈ H) :
+    w ∉ equivocators (mergedVoteView sp R ℓ.frame σ).votes := by
   have hr := hrun.localRun
   rintro ⟨x, hx, x', hx', hne, rfl, hxx⟩
   obtain _ | s := σ
   · rcases hx with hx | ⟨B, hB, hBs, hv⟩
     · simpa [SAState.poolAt] using (List.mem_filter.1 hx).1
-    · have := (frame_validPayloadU sp hr hy hc.1 B hB).1 x hv
+    · have := (frame_validPayloadU sp hr hy hb.callAt B hB).1 x hv
       omega
-  obtain ⟨j, -, e₁, hv₁, rfl⟩ := honest_merged_voteU hrun hy hc hx hw
-  obtain ⟨j', -, e₂, hv₂, rfl⟩ := honest_merged_voteU hrun hy hc hx' (hxx ▸ hw)
+  obtain ⟨j, -, e₁, hv₁, rfl⟩ := honest_merged_vote_branchU hrun hy hb hx hw
+  obtain ⟨j', -, e₂, hv₂, rfl⟩ := honest_merged_vote_branchU hrun hy hb hx' (hxx ▸ hw)
   rw [hxx] at hv₂
   exact hne (congrArg Emission.msg (one_vote_per_slotU sp _ _ _ _ _ hr _ (hxx ▸ hw) _ _ _ _ hv₁
-    hv₂ ((merged_vote_slotU hr hrun.vstart hy hc _ hx).trans
-      (merged_vote_slotU hr hrun.vstart hy hc _ hx').symm)).2)
+    hv₂ ((merged_vote_slot_branchU hr hrun.vstart hy hb _ hx).trans
+      (merged_vote_slot_branchU hr hrun.vstart hy hb _ hx').symm)).2)
+
+/-- `honest_not_equivocator` with the unlock given (`honest_not_equivocator_branchU` at the cast's
+vote branch). -/
+theorem honest_not_equivocatorU
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
+    {w : Fin sp.n} (hw : w ∈ H) :
+    w ∉ equivocators (mergedVoteView sp e.readPoint ℓ.frame σ).votes :=
+  honest_not_equivocator_branchU hrun hy (voteBranchAt_of_castAtU hrun.localRun hy hc) hw
+
+/-- **An honest validator is not an equivocator in the merged view of a vote branch's read
+point**, whether or not the node may vote in the slot. From starts up to the vote permission. -/
+theorem honest_not_equivocator_branch (hrun : ACRun proposer tr H U ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n} (hb : VoteBranchAt tr y i ℓ R)
+    {σ : Nat} {w : Fin sp.n} (hw : w ∈ H) :
+    w ∉ equivocators (mergedVoteView sp R ℓ.frame σ).votes :=
+  honest_not_equivocator_branchU hrun.toU hy hb hw
 
 /-- An honest validator is not an equivocator in an honest voter's merged view.
 From starts up to the vote permission. -/

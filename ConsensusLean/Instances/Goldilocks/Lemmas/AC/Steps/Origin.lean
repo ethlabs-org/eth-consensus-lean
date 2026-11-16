@@ -9,8 +9,9 @@ public section
 
 /-! # Goldilocks SA: the locks at a vote's read point
 
-The read point of an honest slot-`s` vote is the state after `try_vote`'s unlocking against the
-merged view (`readPoint_locks`). A lock there of slot `s − 1` or later sits below (inside `U`) a
+The read point of a vote branch of slot `s > 0`, and so of an honest slot-`s` vote, is the state
+after `try_vote`'s unlocking against the merged view (`readPoint_locks_branch`,
+`readPoint_locks`). A lock there of slot `s − 1` or later sits below (inside `U`) a
 block that an optimistic confirmation of the voter selected, at a cut no later than the vote's,
 with three quarters of the committee as optimistic voters, every honest one of which voted at an
 earlier cut (`lock_origin_readPoint`): locks only move back (A0.4 (c)), a restart keeps them
@@ -86,7 +87,23 @@ private theorem tryVote_em
 
 /-! ## Over an SA trace -/
 
-/-- `emits_tryVote` with the unlock given. -/
+/-- **The unlock input of a call** is the state itself, or the optimistic check after the receipt
+of a message or a block, which keeps the state's locks. -/
+theorem callInputM_cases (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    (c : (goldilocksSA sp FGP ro).Call) :
+    callInputM sp wm A Φ t c = A ∨
+      ∃ A', ((∃ m, c = .message m ∧ A' = admitVote sp A t m) ∨
+          ∃ B, c = .block B ∧ A' = blockReceipt sp A t B) ∧
+        callInputM sp wm A Φ t c = optimisticConfirmationM sp wm A' Φ t ∧ A'.locks = A.locks := by
+  cases c with
+  | message m => exact Or.inr ⟨_, Or.inl ⟨m, rfl, rfl⟩, rfl, admitVote_locks_eq _ _ _⟩
+  | block B => exact Or.inr ⟨_, Or.inr ⟨B, rfl, rfl⟩, rfl, blockReceipt_locks _ _ _⟩
+  | tick => exact Or.inl rfl
+  | proposal => exact Or.inl rfl
+  | toFG => exact Or.inl rfl
+  | restart => exact Or.inl rfl
+
+/-- `emits_tryVote` with the unlock given: the cast's vote branch (`voteBranchAt_inputU`). -/
 private theorem emits_tryVoteU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -99,39 +116,8 @@ private theorem emits_tryVoteU
           ∃ B, ℓ.call = .block B ∧ A = blockReceipt sp (tr.state y i) (tr.time i) B) ∧
         P = optimisticConfirmationM sp wm A ℓ.frame (tr.time i) ∧
           A.locks = (tr.state y i).locks) := by
-  obtain ⟨hc, he⟩ := hc
-  have hΦ := (frameIn_of_callAtU hr hy hc).1
-  have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
-  rw [hc.1] at hx
-  have he' : e ∈ (stepWithM sp ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i)
-      ℓ.call).2 := by
-    rw [hx]
-    exact he
-  clear hx he
-  cases hcall : ℓ.call with
-  | tick =>
-    rw [hcall] at he'
-    change e ∈ (acOnTickWithM sp wm y (u i) _ ℓ.frame _).2 at he'
-    unfold acOnTickWithM at he'
-    dsimp only at he'
-    split_ifs at he' <;> first | exact ⟨_, he', rfl, rfl, Or.inl rfl⟩ | simp at he'
-  | proposal =>
-    rw [hcall] at he'
-    simp at he'
-  | toFG =>
-    rw [hcall] at he'
-    simp at he'
-  | message m =>
-    rw [hcall] at he'
-    exact ⟨_, he', rfl, rfl, Or.inr ⟨_, Or.inl ⟨m, rfl, rfl⟩, rfl, admitVote_locks_eq _ _ _⟩⟩
-  | block B =>
-    rw [hcall] at he'
-    exact ⟨_, he', rfl, rfl, Or.inr ⟨_, Or.inr ⟨B, rfl, rfl⟩, rfl, blockReceipt_locks _ _ _⟩⟩
-  | restart =>
-    rw [hcall] at he'
-    change e ∈ (acRestart sp ro y _ ℓ.frame (tr.time i)).2 at he'
-    rw [((restart_state sp) FGP ro y _ ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he'
-    simp at he'
+  obtain ⟨hV, -, htv⟩ := voteBranchAt_inputU hr hy (voteBranchAt_of_castAtU hr hy hc)
+  exact ⟨_, by rw [htv]; exact hc.2, rfl, hV, callInputM_cases _ _ _ _⟩
 
 /-- The input of the `try_vote` that emits an honest vote: the state before the call (a tick),
 or the optimistic check after the receipt of a message or a block, which keeps the locks. -/
@@ -142,70 +128,57 @@ private theorem emits_tryVote (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr i
       ∃ A, ((∃ m, ℓ.call = .message m ∧ A = admitVote sp (tr.state y i) (tr.time i) m) ∨
           ∃ B, ℓ.call = .block B ∧ A = blockReceipt sp (tr.state y i) (tr.time i) B) ∧
         P = optimisticConfirmation sp A ℓ.frame (tr.time i) ∧ A.locks = (tr.state y i).locks) := by
-  obtain ⟨hc, he⟩ := hc
-  have hΦ := (frameIn_of_callAt hr hy hc).1
-  have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
-  rw [hc.1] at hx
-  have he' : e ∈ ((goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i)
-      ℓ.call).2 := by
-    rw [hx]
-    exact he
-  clear hx he
-  cases hcall : ℓ.call with
-  | tick =>
-    rw [hcall] at he'
-    change e ∈ (acOnTick sp y _ ℓ.frame _).2 at he'
-    unfold acOnTick at he'
-    dsimp only at he'
-    split_ifs at he' <;> first | exact ⟨_, he', Or.inl rfl⟩ | simp at he'
-  | proposal =>
-    rw [hcall] at he'
-    simp [ACInterface.step] at he'
-  | toFG =>
-    rw [hcall] at he'
-    simp [ACInterface.step] at he'
-  | message m =>
-    rw [hcall] at he'
-    exact ⟨_, he', Or.inr ⟨_, Or.inl ⟨m, rfl, rfl⟩, rfl, admitVote_locks_eq _ _ _⟩⟩
-  | block B =>
-    rw [hcall] at he'
-    exact ⟨_, he', Or.inr ⟨_, Or.inr ⟨B, rfl, rfl⟩, rfl, blockReceipt_locks _ _ _⟩⟩
-  | restart =>
-    rw [hcall] at he'
-    change e ∈ (acRestart sp ro y _ ℓ.frame (tr.time i)).2 at he'
-    rw [((restart_state sp) FGP ro y _ ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he'
-    simp at he'
+  obtain ⟨-, htv⟩ := voteBranchAt_input hr hy (voteBranchAt_of_castAt hr hy hc)
+  exact ⟨callInput sp (tr.state y i) ℓ.frame (tr.time i) ℓ.call, by rw [htv]; exact hc.2,
+    callInputM_cases (wm := WriteMode.parent sp) _ _ _ _⟩
+
+/-- **The locks at the read point of a vote branch of slot `s > 0`, with the unlock given**: the
+unlock relation of slot `s − 1` against the merged view ties them to the locks of the branch's
+unlock input. -/
+theorem readPoint_locks_branchU
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n}
+    (hb : VoteBranchAt tr y i ℓ R) (hs : 0 < sp.slot (tr.time i)) :
+    ∃ L, UnlockRel sp L ℓ.frame (tr.time i) ((sp.slot (tr.time i) : Int) - 1)
+      (mergedVoteView sp R ℓ.frame (sp.slot (tr.time i))) R.locks := by
+  obtain ⟨hV, rfl, -⟩ := voteBranchAt_inputU hr hy hb
+  have hlaw := hr.lawfulAt hy hb.callAt (frameIn_of_callAtU hr hy hb.callAt).1
+  rw [hV] at hlaw
+  simp only [hs, ↓reduceIte]
+  exact ⟨_, hlaw⟩
 
 /-- **The locks at the read point of a vote of slot `s > 0`, with the unlock given**: the
 unlock relation of slot `s − 1` against the merged view ties them to the locks of the input of
-the vote's `try_vote`. -/
+the vote's `try_vote` (`readPoint_locks_branchU`). -/
 theorem readPoint_locksU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : 0 < e.msg.slot) :
     ∃ L, UnlockRel sp L ℓ.frame (tr.time i) ((e.msg.slot : Int) - 1)
       (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) e.readPoint.locks := by
-  obtain ⟨P, he, hP, hV, -⟩ := emits_tryVoteU hr hy hc
-  obtain ⟨hes, -, hlocks, hview⟩ := tryVote_em (L := u i) he
-  have hlaw := hr.lawfulAt hy hc.1 (frameIn_of_callAtU hr hy hc.1).1
-  rw [← hP, hV] at hlaw
-  rw [hes] at hs ⊢
-  rw [hlocks, hview, ite_eq_left hs]
-  exact ⟨P.locks, hlaw⟩
+  rw [(castAt_specU hr hy hc).2.1] at hs ⊢
+  exact readPoint_locks_branchU hr hy (voteBranchAt_of_castAtU hr hy hc) hs
+
+/-- **The locks at the read point of a vote branch of slot `s > 0`** are an `unlock` against the
+read point's merged view, of slot `s − 1`. -/
+theorem readPoint_locks_branch (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {R : SAState sp.n} (hb : VoteBranchAt tr y i ℓ R) (hs : 0 < sp.slot (tr.time i)) :
+    ∃ L, R.locks = unlock sp L ℓ.frame (tr.time i) ((sp.slot (tr.time i) : Int) - 1)
+      (mergedVoteView sp R ℓ.frame (sp.slot (tr.time i))) := by
+  obtain ⟨rfl, -⟩ := voteBranchAt_input hr hy hb
+  simp only [hs, ↓reduceIte]
+  exact ⟨_, rfl⟩
 
 /-- The locks at the read point of a vote of slot `s > 0` are an `unlock` against the merged
-view, of slot `s − 1`. -/
+view, of slot `s − 1` (`readPoint_locks_branch`). -/
 theorem readPoint_locks (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : 0 < e.msg.slot) :
     ∃ L, e.readPoint.locks = unlock sp L ℓ.frame (tr.time i) ((e.msg.slot : Int) - 1)
       (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) := by
-  obtain ⟨P, he, -⟩ := emits_tryVote hr hy hc
-  obtain ⟨hes, -, hlocks, hview⟩ := tryVote_em (wm := WriteMode.parent sp) he
-  rw [hes] at hs ⊢
-  rw [hlocks, hview]
-  split_ifs
-  exact ⟨_, rfl⟩
+  rw [(castAt_spec hr hy hc).2.1] at hs ⊢
+  exact readPoint_locks_branch hr hy (voteBranchAt_of_castAt hr hy hc) hs
 
 /-- Every vote of an honest validator in the pools of `A` has its pool's slot and was emitted
 before cut `i`. -/

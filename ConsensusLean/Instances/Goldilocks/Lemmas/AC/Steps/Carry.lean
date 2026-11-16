@@ -38,28 +38,51 @@ theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ :
     · subst he; exact List.mem_append_left _ h
     · exact h
 
-/-- `merged_vote_slot` with the unlock given, from starts up to the vote permission. -/
+/-- **A vote branch's call keeps its read point's pools**: it leaves the read point, or the read
+point with the own vote admitted and the optimistic check run. -/
+theorem pool_post_of_voteBranchAtU
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n}
+    (hb : VoteBranchAt tr y i ℓ R) {σ : Nat} {v : Vote sp.n} (hv : v ∈ R.pool σ) :
+    v ∈ (tr.post i).pool σ := by
+  rcases post_of_voteBranchAtU hr hy hb with ⟨-, -, hpost⟩ | ⟨-, e, -, -, -, -, hpost⟩
+  · rw [hpost]
+    exact hv
+  · rw [hpost, optimisticConfirmationM_keep _ optimistic_pool]
+    exact mem_admitVote_pool hv
+
+/-- `merged_vote_slot` at a vote branch, with the unlock given, from starts up to the vote
+permission: every vote of the read point's merged view of slot `s + 1` has slot `s`. -/
+theorem merged_vote_slot_branchU
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n}
+    (hb : VoteBranchAt tr y i ℓ R) {s : Nat} :
+    ∀ v ∈ (mergedVoteView sp R ℓ.frame (s + 1)).votes, v.slot = s := by
+  rintro v (hv | ⟨B, hB, hBs, hv⟩)
+  · have hv : v ∈ R.poolAt ((s + 1 : Nat) - 1 : Int) := (List.mem_filter.1 hv).1
+    simp only [SAState.poolAt] at hv
+    split_ifs at hv with hneg
+    · simp at hv
+    have hpost : v ∈ (tr.post i).pool s :=
+      pool_post_of_voteBranchAtU hr hy hb (by simpa using hv)
+    refine state_pool_slotU_from sp hr hini hy (i + 1) s v ?_
+    rw [Trace.state]
+    split_ifs with h
+    · exact hpost
+    · exact absurd ⟨hb.callAt.1, by simp [hb.callAt.2]⟩ h
+  · have := (frame_validPayloadU sp hr hy hb.callAt B hB).1 v hv
+    exact Nat.succ_injective (this.trans hBs)
+
+/-- `merged_vote_slot` with the unlock given, from starts up to the vote permission
+(`merged_vote_slot_branchU` at the cast's vote branch). -/
 theorem merged_vote_slotU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {s : Nat} :
-    ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s := by
-  rintro v (hv | ⟨B, hB, hBs, hv⟩)
-  · have hv : v ∈ e.readPoint.poolAt ((s + 1 : Nat) - 1 : Int) := (List.mem_filter.1 hv).1
-    simp only [SAState.poolAt] at hv
-    split_ifs at hv with hneg
-    · simp at hv
-    have hpost : v ∈ (tr.post i).pool s := by
-      rw [post_of_castAtU hr hy hc, optimisticConfirmationM_keep _ optimistic_pool]
-      exact mem_admitVote_pool (by simpa using hv)
-    refine state_pool_slotU_from sp hr hini hy (i + 1) s v ?_
-    rw [Trace.state]
-    split_ifs with h
-    · exact hpost
-    · exact absurd ⟨hc.1.1, by simp [hc.1.2]⟩ h
-  · have := (frame_validPayloadU sp hr hy hc.1 B hB).1 v hv
-    exact Nat.succ_injective (this.trans hBs)
+    ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s :=
+  merged_vote_slot_branchU hr hini hy (voteBranchAt_of_castAtU hr hy hc)
 
 /-- Every vote of an honest voter's merged view of slot `s + 1` has slot `s`, from starts up to
 the vote permission. -/
@@ -162,58 +185,44 @@ private theorem blockReceipt_blockStamp (A : SAState sp.n) (t : Time) (B : Blk s
   | nil => exact fun _ => rfl
   | cons v l ih => exact fun A' => (ih _).trans (admitVote_fields _ _ _).1
 
-private theorem tryVote_readPoint
-    {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) : ∀ e ∈ (tryVoteWithM sp wm x L A Φ t).2, e.readPoint.blockStamp = A.blockStamp := by
-  unfold tryVoteWithM
-  dsimp only
-  split_ifs <;> simp
+/-- **The read point of a vote branch has the block stamps of the state before its call**,
+except for the block that an `on_block` call receives, with the unlock given. -/
+theorem readPoint_blockStamp_branchU
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {R : SAState sp.n} (hb : VoteBranchAt tr y i ℓ R) {r : Nat}
+    (hrB : ∀ B, ℓ.call = .block B → r ≠ B.root) :
+    R.blockStamp r = (tr.state y i).blockStamp r := by
+  obtain ⟨-, rfl, -⟩ := voteBranchAt_inputU hr hy hb
+  have hR : ∀ (P : SAState sp.n) (L : Set Lock),
+      ({ (if 0 < sp.slot (tr.time i) then { P with locks := L } else P) with
+        votedSlot := (sp.slot (tr.time i) : Int) } : SAState sp.n).blockStamp = P.blockStamp := by
+    intro P L
+    split_ifs <;> rfl
+  rw [hR]
+  generalize tr.state y i = A
+  revert hrB
+  cases ℓ.call with
+  | message m =>
+    intro _
+    rw [(optimistic_fields _ _ _).1, (admitVote_fields _ _ _).1]
+  | block B =>
+    intro hrB
+    rw [(optimistic_fields _ _ _).1, blockReceipt_blockStamp, Function.update_of_ne (hrB B rfl)]
+  | tick => exact fun _ => rfl
+  | proposal => exact fun _ => rfl
+  | toFG => exact fun _ => rfl
+  | restart => exact fun _ => rfl
 
-private theorem onTick_readPoint
-    {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) :
-    ∀ e ∈ (acOnTickWithM sp wm x L A Φ t).2, e.readPoint.blockStamp = A.blockStamp := by
-  unfold acOnTickWithM
-  dsimp only
-  split_ifs
-  all_goals first | exact tryVote_readPoint x A Φ t | simp
-
-/-- `readPoint_blockStamp` with the unlock given. -/
+/-- `readPoint_blockStamp` with the unlock given (`readPoint_blockStamp_branchU` at the cast's
+vote branch). -/
 theorem readPoint_blockStampU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {r : Nat}
     (hrB : ∀ B, ℓ.call = .block B → r ≠ B.root) :
-    e.readPoint.blockStamp r = (tr.state y i).blockStamp r := by
-  obtain ⟨hc, he⟩ := hc
-  have hΦ : FrameOK ℓ.frame := by
-    rcases hr.frameLaw y hy i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.1
-  have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
-  rw [hc.1] at hx
-  have he' : e ∈ (stepWithM sp ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i)
-      ℓ.call).2 := by
-    rw [hx]; exact he
-  clear hx he
-  generalize tr.state y i = A at he' ⊢
-  revert hrB he'
-  cases ℓ.call with
-  | tick => exact fun _ he' => by rw [onTick_readPoint (L := u i) y A _ _ e he']
-  | proposal => intro _ he'; simp at he'
-  | toFG => intro _ he'; simp at he'
-  | message m =>
-    intro _ he'
-    rw [tryVote_readPoint (L := u i) y _ _ _ e he', (optimistic_fields _ _ _).1, (admitVote_fields
-        _ _ _).1]
-  | block B =>
-    intro hrB he'
-    rw [tryVote_readPoint (L := u i) y _ _ _ e he', (optimistic_fields _ _ _).1,
-        blockReceipt_blockStamp,
-      Function.update_of_ne (hrB B rfl)]
-  | restart =>
-    intro _ he'
-    change e ∈ (acRestart sp ro y A ℓ.frame (tr.time i)).2 at he'
-    rw [((restart_state sp) FGP ro y A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he'
-    simp at he'
+    e.readPoint.blockStamp r = (tr.state y i).blockStamp r :=
+  readPoint_blockStamp_branchU hr hy (voteBranchAt_of_castAtU hr hy hc) hrB
 
 /-- The read point of an honest vote has the block stamps of the state before its call, except
 for the block that an `on_block` call receives. -/
@@ -222,8 +231,7 @@ theorem readPoint_blockStamp {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {r : Nat}
     (hrB : ∀ B, ℓ.call = .block B → r ≠ B.root) :
     e.readPoint.blockStamp r = (tr.state y i).blockStamp r :=
-  readPoint_blockStampU (hr := hr.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc)
-      (r := r) (hrB := hrB)
+  readPoint_blockStampU hr.toU hy hc hrB
 
 /-- An early accepted block retained in the frame has a strictly early stamp at the
 emission read point, including through restart replay. Unique acceptance excludes a
@@ -252,24 +260,25 @@ theorem readPoint_blockStamp_lt_of_acceptedBefore
   · obtain rfl := accept_unique sp hr hy hk ⟨ell, hc.1, hcall⟩
     exact (not_lt_of_ge ht) hkt
 
-/-- `carried_supporter` with the unlock given, from starts up to the vote permission. -/
-theorem carried_supporterU
+/-- `carried_supporter_branch` with the unlock given, from starts up to the vote permission. -/
+theorem carried_supporter_branchU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
-    (hs : e.msg.slot = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree) {v : Vote sp.n}
-    (hvs : v.slot = s) (hheld : HeldBefore e.readPoint v (sp.ts s + 3 * sp.Δ))
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n} (hb : VoteBranchAt tr y i ℓ R)
+    {s : Nat} (hs : sp.slot (tr.time i) = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree)
+    {v : Vote sp.n} (hvs : v.slot = s) (hheld : HeldBefore R v (sp.ts s + 3 * sp.Δ))
     (hhead : ∃ Hv ∈ U, Hv.root = v.head ∧ Hv.slot ≤ s ∧ Anc U C Hv ∧
       AcceptedBefore tr y Hv (sp.ts s + 3 * sp.Δ))
-    (hneq : v.val ∉ equivocators (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes) :
-    v.val ∈ supporters ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s C := by
+    (hneq : v.val ∉ equivocators (mergedVoteView sp R ℓ.frame (s + 1)).votes) :
+    v.val ∈ supporters ℓ.frame (mergedVoteView sp R ℓ.frame (s + 1)) s C := by
   have hr := hrun.localRun
   have hU := hr.coherent
+  have hc := hb.callAt
   obtain ⟨Hv, hHvU, hHvr, hHvs, hCHv, hacc⟩ := hhead
   obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
-    rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
-  obtain ⟨-, hslot, hjoin, -⟩ := castAt_specU hr hy hc
-  have hti : sp.slot (tr.time i) = s + 1 := hslot ▸ hs
+    rcases hr.frameLaw y hy i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
+  obtain ⟨-, hjoin, -⟩ := voteBranchAt_specU hr hy hb
+  have hti : sp.slot (tr.time i) = s + 1 := hs
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   -- the vote is cast after the freeze `t_s + 3Δ`
   have hT : sp.ts s + 3 * sp.Δ < tr.time i := by
@@ -277,7 +286,7 @@ theorem carried_supporterU
       (by rw [hti]; push_cast; rfl)
     simp only [SAParams.ts] at h ⊢
     linarith
-  obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_callU sp hr hy _ _ hc.1
+  obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_callU sp hr hy _ _ hc
   -- the head is in the voter's tree
   have hF : Anc U ℓ.frame.F Hv := ((hΦ.rooted.2 C hC).mono hΦU).trans hCHv
   have hHvt : Hv ∈ ℓ.frame.tree := by
@@ -290,15 +299,16 @@ theorem carried_supporterU
         by_contra h
         have := hr.time_mono (le_of_not_ge h)
         exact lt_irrefl _ (lt_trans (hT.trans_le this) hkt)
-      exact mem_tree_of_acceptAtU sp hr hy hk hki hc.1 hF
+      exact mem_tree_of_acceptAtU sp hr hy hk hki hc hF
   -- the voter's restarts were before `t_s`
   have hjp : joined sp (tr.post i) (tr.time i) := by
-    rw [post_of_castAtU hr hy hc]
     unfold joined at hjoin ⊢
-    rwa [(optimistic_fields _ _ _).2, (admitVote_fields _ _ _).2]
+    rcases post_of_voteBranchAtU hr hy hb with ⟨-, -, hpost⟩ | ⟨-, e, -, -, -, -, hpost⟩
+    · rwa [hpost]
+    · rwa [hpost, (optimistic_fields _ _ _).2, (admitVote_fields _ _ _).2]
   have hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < sp.ts s + 3 * sp.Δ := by
     intro k hk hrk
-    have h := (joined_awakeU sp FGP ro H U tr hr y hy i ℓ hc.1 hjp).2 k hk hrk
+    have h := (joined_awakeU sp FGP ro H U tr hr y hy i ℓ hc hjp).2 k hk hrk
     rw [hti] at h
     have : sp.ts (((s + 1 : Nat) : Int) - 1) = sp.ts s := by congr 1; push_cast; ring
     exact (h.trans_eq this).trans_lt (lt_add_of_pos_right _ (mul_pos (by decide) hΔ))
@@ -314,7 +324,7 @@ theorem carried_supporterU
       hU.1 (hΦU (hst.tree_eq ▸ ⟨Set.mem_insert _ _, hst.F'_anc_B⟩)) hHvU
         (hB.symm.trans hHvr.symm)
     rcases hacc with hg | ⟨k, hk, hkt⟩
-    · rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, hok⟩ | ⟨j, ℓ', -, -, -, hok⟩ <;>
+    · rcases hr.frameLaw y hy i ℓ hc with ⟨-, Φ₀, -, -, hok⟩ | ⟨j, ℓ', -, -, -, hok⟩ <;>
       · have hst := key _ hok
         obtain rfl := hB₀ _ hst
         obtain rfl : B₀ = G := hU.1 hHvU hGU (hg.trans hGr.symm)
@@ -325,7 +335,7 @@ theorem carried_supporterU
         have := hr.time_mono (not_lt.1 h)
         exact lt_irrefl _ (lt_trans (hT.trans_le this) hkt)
       obtain ⟨ℓk, hck, hkB⟩ := hk
-      rcases hr.frameLaw y hy i ℓ hc.1 with ⟨hnc, -⟩ | ⟨j, ℓ', hj, hc', hnc, hok⟩
+      rcases hr.frameLaw y hy i ℓ hc with ⟨hnc, -⟩ | ⟨j, ℓ', hj, hc', hnc, hok⟩
       · exact hnc k (Nat.zero_le _) hki ℓk hck
       have hkj : k ≤ j := by
         by_contra h
@@ -339,11 +349,11 @@ theorem carried_supporterU
         Anc.mono (Set.insert_subset_iff.2 ⟨hHvU, hΦ'U⟩) (hst.F_anc_F'.trans hst.F'_anc_B)
       exact hst.new (mem_tree_of_acceptAtU sp hr hy ⟨ℓk, hck, hkB⟩ hkj hc' hanc)
   -- the vote is resolved before the freeze
-  have hbs := blockStamp_lt_of_acceptedBeforeU_from sp hr hrun.vstart hy hc.1 hHvt hacc hrs
+  have hbs := blockStamp_lt_of_acceptedBeforeU_from sp hr hrun.vstart hy hc hHvt hacc hrs
     (Or.inl hT.le)
-  rw [hHvr, ← readPoint_blockStampU hr hy hc hne] at hbs
+  rw [hHvr, ← readPoint_blockStamp_branchU hr hy hb hne] at hbs
   have hfz : freeze sp (s + 1) = sp.ts s + 3 * sp.Δ := by simp [freeze]
-  have hres : resolutionTime e.readPoint ℓ.frame v < ETime.of (freeze sp (s + 1)) := by
+  have hres : resolutionTime R ℓ.frame v < ETime.of (freeze sp (s + 1)) := by
     unfold resolutionTime
     rw [← hHvr, lookup_of_mem hΦ hHvt]
     simp only [not_lt.2 (hHvs.trans_eq hvs.symm), ite_false, hfz]
@@ -356,12 +366,44 @@ theorem carried_supporterU
     simpa [hvs] using hheld.1
   · simpa [hfz] using hheld.2
 
+/-- `carried_supporter` with the unlock given, from starts up to the vote permission
+(`carried_supporter_branchU` at the cast's vote branch). -/
+theorem carried_supporterU
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
+    (hs : e.msg.slot = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree) {v : Vote sp.n}
+    (hvs : v.slot = s) (hheld : HeldBefore e.readPoint v (sp.ts s + 3 * sp.Δ))
+    (hhead : ∃ Hv ∈ U, Hv.root = v.head ∧ Hv.slot ≤ s ∧ Anc U C Hv ∧
+      AcceptedBefore tr y Hv (sp.ts s + 3 * sp.Δ))
+    (hneq : v.val ∉ equivocators (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes) :
+    v.val ∈ supporters ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s C :=
+  carried_supporter_branchU hrun hy (voteBranchAt_of_castAtU hrun.localRun hy hc)
+    ((castAt_specU hrun.localRun hy hc).2.1.symm.trans hs) hC hvs hheld hhead hneq
+
+/-- **A carried vote is a supporter at a vote branch.** A slot-`s` vote that an honest node
+taking the vote branch of slot `s + 1` holds at the branch's read point `R`, received before the
+vote freeze `t_s + 3Δ`, whose head (of slot at most `s`) extends a block `C` of the node's tree
+and was accepted by the node before the freeze, and whose validator does not equivocate in `R`'s
+merged view, makes that validator a supporter of `C` there (the head is still in the node's tree,
+and the vote is resolved before the freeze: the node is joined, so its restarts were before
+`t_s`). The node need not be able to vote in the slot. From starts up to the vote permission. -/
+theorem carried_supporter_branch (hrun : ACRun proposer tr H U ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n} (hb : VoteBranchAt tr y i ℓ R)
+    {s : Nat} (hs : sp.slot (tr.time i) = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree)
+    {v : Vote sp.n} (hvs : v.slot = s) (hheld : HeldBefore R v (sp.ts s + 3 * sp.Δ))
+    (hhead : ∃ Hv ∈ U, Hv.root = v.head ∧ Hv.slot ≤ s ∧ Anc U C Hv ∧
+      AcceptedBefore tr y Hv (sp.ts s + 3 * sp.Δ))
+    (hneq : v.val ∉ equivocators (mergedVoteView sp R ℓ.frame (s + 1)).votes) :
+    v.val ∈ supporters ℓ.frame (mergedVoteView sp R ℓ.frame (s + 1)) s C :=
+  carried_supporter_branchU hrun.toU hy hb hs hC hvs hheld hhead hneq
+
 /-- **A carried vote is a supporter.** A slot-`s` vote that an honest voter of slot `s + 1`
 holds, received before the vote freeze `t_s + 3Δ`, whose head (of slot at most `s`) extends a
 block `C` of the voter's tree and was accepted by the voter before the freeze, and whose
 validator does not equivocate in the voter's merged view, makes that validator a supporter of
-`C` there (the head is still in the voter's tree, and the vote is resolved before the freeze:
-the voter is joined, so its restarts were before `t_s`). From starts up to the vote
+`C` there (`carried_supporter_branch` at the cast's vote branch). From starts up to the vote
 permission. -/
 theorem carried_supporter (hrun : ACRun proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}

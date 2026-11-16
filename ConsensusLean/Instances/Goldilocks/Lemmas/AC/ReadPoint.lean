@@ -58,7 +58,7 @@ theorem tryVote_readPoint_locks_eq {x : Fin sp.n} {A : SAState sp.n}
     rfl
 
 /-- `vote_tryVote_input` with the unlock given, the receipt's optimistic check at the writes of
-`wm`. -/
+`wm`: the cast's vote branch (`voteBranchAt_inputU`). -/
 theorem vote_tryVote_inputU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -69,39 +69,12 @@ theorem vote_tryVote_inputU
         mergedVoteView sp P ℓ.frame (sp.slot (tr.time i)) ∧ (P = tr.state y i ∨
       ∃ A : SAState sp.n, P = optimisticConfirmationM sp wm A ℓ.frame (tr.time i) ∧
         A.locks = (tr.state y i).locks) := by
-  obtain ⟨hc, he⟩ := hc
-  have hΦ := (frameIn_of_callAtU hr hy hc).1
-  have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
-  rw [hc.1] at hx
-  have he' : e ∈ (stepWithM sp ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i)
-      ℓ.call).2 := by
-    rw [hx]
-    exact he
-  clear hx he
-  cases hcall : ℓ.call with
-  | tick =>
-    rw [hcall] at he'
-    change e ∈ (acOnTickWithM sp wm y (u i) _ ℓ.frame _).2 at he'
-    unfold acOnTickWithM at he'
-    dsimp only at he'
-    split_ifs at he' <;> first | exact ⟨_, he', rfl, rfl, Or.inl rfl⟩ | simp at he'
-  | proposal =>
-    rw [hcall] at he'
-    simp at he'
-  | toFG =>
-    rw [hcall] at he'
-    simp at he'
-  | message m =>
-    rw [hcall] at he'
-    exact ⟨_, he', rfl, rfl, Or.inr ⟨_, rfl, admitVote_locks_eq _ _ _⟩⟩
-  | block B =>
-    rw [hcall] at he'
-    exact ⟨_, he', rfl, rfl, Or.inr ⟨_, rfl, blockReceipt_locks _ _ _⟩⟩
-  | restart =>
-    rw [hcall] at he'
-    change e ∈ (acRestart sp ro y _ ℓ.frame (tr.time i)).2 at he'
-    rw [((restart_state sp) FGP ro y _ ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he'
-    simp at he'
+  obtain ⟨hV, -, htv⟩ := voteBranchAt_inputU hr hy (voteBranchAt_of_castAtU hr hy hc)
+  refine ⟨_, by rw [htv]; exact hc.2, rfl, hV, ?_⟩
+  rcases callInputM_cases (wm := wm) (tr.state y i) ℓ.frame (tr.time i) ℓ.call with
+    h | ⟨A, -, h, hl⟩
+  · exact Or.inl h
+  · exact Or.inr ⟨A, h, hl⟩
 
 /-- The input of the `try_vote` that emits an honest vote: the state before the call, or the
 optimistic check after the receipt of a message or a block, which keeps the locks. -/
@@ -111,39 +84,12 @@ theorem vote_tryVote_input (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y 
     ∃ P, e ∈ (tryVote sp y P ℓ.frame (tr.time i)).2 ∧ (P = tr.state y i ∨
       ∃ A : SAState sp.n, P = optimisticConfirmation sp A ℓ.frame (tr.time i) ∧
         A.locks = (tr.state y i).locks) := by
-  obtain ⟨hc, he⟩ := hc
-  have hΦ := (frameIn_of_callAt hr hy hc).1
-  have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
-  rw [hc.1] at hx
-  have he' : e ∈ ((goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i)
-      ℓ.call).2 := by
-    rw [hx]
-    exact he
-  clear hx he
-  cases hcall : ℓ.call with
-  | tick =>
-    rw [hcall] at he'
-    change e ∈ (acOnTick sp y _ ℓ.frame _).2 at he'
-    unfold acOnTick at he'
-    dsimp only at he'
-    split_ifs at he' <;> first | exact ⟨_, he', Or.inl rfl⟩ | simp at he'
-  | proposal =>
-    rw [hcall] at he'
-    simp [ACInterface.step] at he'
-  | toFG =>
-    rw [hcall] at he'
-    simp [ACInterface.step] at he'
-  | message m =>
-    rw [hcall] at he'
-    exact ⟨_, he', Or.inr ⟨_, rfl, admitVote_locks_eq _ _ _⟩⟩
-  | block B =>
-    rw [hcall] at he'
-    exact ⟨_, he', Or.inr ⟨_, rfl, blockReceipt_locks _ _ _⟩⟩
-  | restart =>
-    rw [hcall] at he'
-    change e ∈ (acRestart sp ro y _ ℓ.frame (tr.time i)).2 at he'
-    rw [((restart_state sp) FGP ro y _ ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he'
-    simp at he'
+  obtain ⟨-, htv⟩ := voteBranchAt_input hr hy (voteBranchAt_of_castAt hr hy hc)
+  refine ⟨callInput sp (tr.state y i) ℓ.frame (tr.time i) ℓ.call, by rw [htv]; exact hc.2, ?_⟩
+  rcases callInputM_cases (wm := WriteMode.parent sp) (tr.state y i) ℓ.frame (tr.time i)
+    ℓ.call with h | ⟨A, -, h, hl⟩
+  · exact Or.inl h
+  · exact Or.inr ⟨A, h, hl⟩
 
 /-- `readPoint_locks_below_stored` with the unlock given. -/
 theorem readPoint_locks_below_storedU
@@ -203,41 +149,12 @@ private theorem vote_tryVote_input_point (hr : ACLocalRun (goldilocksSA sp FGP r
         A.locks = (tr.state y i).locks ∧ OptimisticPoint tr y i ℓ A ∧
         ((∃ m, ℓ.call = .message m ∧ A = admitVote sp (tr.state y i) (tr.time i) m) ∨
           ∃ B, ℓ.call = .block B ∧ A = blockReceipt sp (tr.state y i) (tr.time i) B)) := by
-  obtain ⟨hc, he⟩ := hc
-  have hΦ := (frameIn_of_callAt hr hy hc).1
-  have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
-  rw [hc.1] at hx
-  have he' : e ∈ ((goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i)
-      ℓ.call).2 := by
-    rw [hx]
-    exact he
-  clear hx he
-  cases hcall : ℓ.call with
-  | tick =>
-    rw [hcall] at he'
-    change e ∈ (acOnTick sp y _ ℓ.frame _).2 at he'
-    unfold acOnTick at he'
-    dsimp only at he'
-    split_ifs at he' <;> first | exact ⟨_, he', Or.inl rfl⟩ | simp at he'
-  | proposal =>
-    rw [hcall] at he'
-    simp [ACInterface.step] at he'
-  | toFG =>
-    rw [hcall] at he'
-    simp [ACInterface.step] at he'
-  | message m =>
-    rw [hcall] at he'
-    exact ⟨_, he', Or.inr ⟨_, rfl, admitVote_locks_eq _ _ _, ⟨hc, Or.inl ⟨m, hcall, rfl⟩⟩,
-      Or.inl ⟨m, rfl, rfl⟩⟩⟩
-  | block B =>
-    rw [hcall] at he'
-    exact ⟨_, he', Or.inr ⟨_, rfl, blockReceipt_locks _ _ _, ⟨hc, Or.inr (Or.inl ⟨B, hcall, rfl⟩)⟩,
-      Or.inr ⟨B, rfl, rfl⟩⟩⟩
-  | restart =>
-    rw [hcall] at he'
-    change e ∈ (acRestart sp ro y _ ℓ.frame (tr.time i)).2 at he'
-    rw [((restart_state sp) FGP ro y _ ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he'
-    simp at he'
+  obtain ⟨-, htv⟩ := voteBranchAt_input hr hy (voteBranchAt_of_castAt hr hy hc)
+  refine ⟨callInput sp (tr.state y i) ℓ.frame (tr.time i) ℓ.call, by rw [htv]; exact hc.2, ?_⟩
+  rcases callInputM_cases (wm := WriteMode.parent sp) (tr.state y i) ℓ.frame (tr.time i)
+    ℓ.call with h | ⟨A, hA, h, hl⟩
+  · exact Or.inl h
+  · exact Or.inr ⟨A, h, hl, ⟨hc.1, hA.imp_right Or.inl⟩, hA⟩
 
 /-- The provenance of a read-point lock, with the cut bound of the optimistic arm: the read point's
 optimistic lock is written by the receipt's check (`on_message`/`on_block`, before the own vote of
