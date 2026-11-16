@@ -29,7 +29,7 @@ is `honestKeysAt` (the keys uncompromised at each time).
 * `outage_pre_service_at`: the finite Sleepy service through the outage start, saturating at
   the engine horizon;
 * `outage_psync_at`: the engine's partial synchrony from the outage stop;
-* `outage_receiver_service_at`: every receiver gets the receiver service after the stop;
+* `outage_postStopService_at`: post-stop service on the canonical trace;
 * the numbers of the query (`outage_node_lag_at`, `outage_window_cover_at`, `query_numbers_at`,
   the restored label) on the proof window `[a, z]` (`winStart`, `winEnd`: the outage widened by
   `(4k + 6)Δ` on both sides, clamped to `[0, horizon]`), whose length is at most the look-back
@@ -82,14 +82,6 @@ theorem outage_postStopService_at (Q : OutageQueryAt S A V) :
     Generic.PostStopService Q.trace Q.keys Q.stop :=
   goldilocks_postStopService S Q.run.2 Q.hn Q.valid
     (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) (outage_psync_at Q)
-
-/-- **The receiver service after the stop**, for every receiver. -/
-theorem outage_receiver_service_at (Q : OutageQueryAt S A V)
-    (y : Fin (Fintype.card V)) :
-    Compose.Growing.ReceiverServiceAfterAt Q.keys (Q.trace.HonestBlocksAt Q.keys) Q.stop y
-      Q.trace.projAC :=
-  receiverServiceAfterAt_of_psync S Q.run.2 Q.hn Q.valid
-    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) (outage_psync_at Q) y
 
 /-- The catch-up duration of an outage query covers the node catch-up `18Δ`. -/
 theorem outage_duration_supply_at (Q : OutageQueryAt S A V) :

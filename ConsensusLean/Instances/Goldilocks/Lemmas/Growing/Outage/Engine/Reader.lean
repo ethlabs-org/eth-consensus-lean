@@ -13,7 +13,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Induction
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Step
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageGateSlot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
@@ -25,15 +24,14 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Node outage reader majority and bridge, with engine corollaries
+/-! # Node outage reader majority and bridge, and the engine reader
 
 A reader `w` ready at `t` from the recovery point is honest at
 `t`; it is read at the trace cut `j` of the end of `t`, every cut before `j` at a time `≤ t`
 (`ready_read_cut_at`), so every reader fact is read at the time `t` (the `_by` lemmas):
 
-* `outage_reader_gate_at` (E0–E4): the reader's latest gate `s = slot(t − 6Δ)`: `b₁ ≤ t_s + Δ`,
-  the update of slot `s` at `t_s + 6Δ ≤ t < t_s + 10Δ` before the read cut, no restart after `t_s`
-  up to `t`, and the latest view at `t` of label `s + 1`;
+* `outage_readyReadPoint_at`: an engine reader ready at `t` is a ready read point strictly
+  before its read cut, the input of the node gate (`Compose.Growing.outage_reader_gate_at`);
 * `outage_reader_prefix_at`: ancestry of two read tips is the prefix of the engine reads;
 * `extending_majority_after_r_at`: the extending majority for the origin at every label past the
   first restored one, charged at every `d ∈ [t_q + Δ, t_q + 6Δ]` within the horizon (every vote
@@ -55,26 +53,17 @@ private theorem duration_nonneg (Q : OutageQueryAt S A V) : 0 ≤ Q.duration :=
   ((by unfold Regimes.catchUp; have := Q.params.toParams.hΔ; positivity :
     (0 : Time) ≤ Regimes.catchUp Q.params)).trans (outage_duration_supply_at Q)
 
-/-- **E0–E4 under growing faults**: the latest gate of a reader ready at `t` from the recovery
-point `b₁ + 9Δ`. Only readiness, joining, the gate tick and the read cut are used. -/
-theorem outage_reader_gate_at (Q : OutageQueryAt S A V)
-    {t : Time} (ht : (Sys (goldilocks S) V).recoveryAt (K S A) Q.stop Q.run ≤ t)
-    (hth : t ≤ Q.run.2.horizon) {w : V} (hw : Q.run.2.point.Ready Q.duration w t) :
-    Nonempty (Compose.Growing.OutageReaderGate Q.trace Q.keys Q.stop (Q.run.2.ownKey w)
-      (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t) := by
-  have hrec : Q.stop + 9 * Q.run.1.ΔAC ≤ t := by
-    change Q.stop + ((9 : Nat) : Time) * Q.run.1.ΔAC ≤ t at ht
-    push_cast at ht
-    exact ht
-  have hb₁ := outage_stop_nonneg Q.outage
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have ht0 : 0 ≤ t := by have := Q.run.1.ΔAC_pos; linarith
+/-- **A reader ready at `t` from the recovery point** is a ready read point of the canonical
+trace at the trace cut of the end of `t`, strictly before that cut, with the node catch-up. -/
+theorem outage_readyReadPoint_at (Q : OutageQueryAt S A V) {t : Time}
+    (ht0 : 0 ≤ t) (hth : t ≤ Q.run.2.horizon) {w : V} (hw : Q.run.2.point.Ready Q.duration w t) :
+    Consensus.Goldilocks.Generic.ReadyReadPoint Q.trace Q.keys Q.run.2.horizon Q.duration
+        (Q.run.2.ownKey w) (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t ∧
+      t < Q.trace.time (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) := by
   have hR := ready_transport_at S Q.run.2 Q.hn Q.valid ht0 hth hw
   obtain ⟨hread, -, -⟩ := ready_read_cut_at S Q.run.2 Q.hn Q.valid
     (duration_nonneg Q) ht0 hth hw
-  exact Compose.Growing.outage_reader_gate_at hrun
-    hb₁ (outage_duration_supply_at Q) hrec
-    ⟨⟨hR.1, ⟨hread.1, hread.2.le⟩, ht0, hth⟩, hR.2⟩ hread.2
+  exact ⟨⟨⟨hR.1, ⟨hread.1, hread.2.le⟩, ht0, hth⟩, hR.2⟩, hread.2⟩
 
 /-- The engine cut at the end of `t ≥ 0` is at a time `≤ t`. -/
 private theorem cutTime_endCut_le (Q : OutageQueryAt S A V) {t : Time} (ht : 0 ≤ t) :
@@ -348,59 +337,5 @@ theorem outage_reader_bridge_at (D : OutageLockPremises tr H proposer dg ini)
       (Or.inr ⟨hBtree, hanchor, (hviab hBtree).imp_right fun h => ⟨h, hL3⟩⟩)
 
 end Consensus.Goldilocks.Compose.Growing
-
-namespace Consensus.Goldilocks.Obligations.Growing
-
-open AsChainShape Simulation
-open Blocks Shape
-
-variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
-
-/-- The node extending majority specialized to the armed engine query. -/
-theorem extending_majority_after_r_at (Q : OutageQueryAt S A V)
-    (service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start)
-    {v : V} (hsh : Q.start ≤ Q.run.2.horizon) (ar : OutageArmingAt Q v)
-    (hinv : ∀ i, Compose.Growing.OutageLockInv (outageLockPremises_of_arming_at Q service hsh ar) i)
-    {q : Nat} (hrq : Q.restoredLabel < q) {d : Time} (hd₁ : Q.params.ts q + Q.params.Δ ≤ d)
-    (hd₂ : d ≤ Q.params.ts q + 6 * Q.params.Δ) (hdh : d ≤ Q.run.2.horizon) :
-    Compose.Growing.ExtendingMajorityAt Q.trace Q.keys Q.K ar.origin q d := by
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have h := Compose.Growing.extending_majority_after_r_at
-    (outageLockPremises_of_arming_at Q service hsh ar)
-    (by rw [outageLockPremises_of_arming_at_b₁]
-        exact outage_postStopService_at Q)
-    hinv (by simpa only [outageLockPremises_of_arming_at_r] using hrq)
-    hd₁ hd₂ (by simpa only [outageLockPremises_of_arming_at_K] using Q.boundsK hrun hdh)
-  simpa only [outageLockPremises_of_arming_at_K, outageLockPremises_of_arming_at_P] using h
-
-/-- The node reader bridge specialized to the armed engine query. -/
-theorem outage_reader_bridge_at (Q : OutageQueryAt S A V)
-    (service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start)
-    {v : V} (hsh : Q.start ≤ Q.run.2.horizon) (ar : OutageArmingAt Q v)
-    (hinv : ∀ i, Compose.Growing.OutageLockInv (outageLockPremises_of_arming_at Q service hsh ar) i)
-    {t : Time} (ht : (Sys (goldilocks S) V).recoveryAt (K S A) Q.stop Q.run ≤ t)
-    (hth : t ≤ Q.run.2.horizon) {w : V} (hw : Q.run.2.point.Ready Q.duration w t) :
-    Anc (Q.trace.HonestBlocksAt Q.keys) ar.tip
-      (Regimes.readAfter Q.trace (Q.run.2.ownKey w)
-        (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t) := by
-  obtain ⟨G⟩ := outage_reader_gate_at Q ht hth hw
-  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have ht0 : 0 ≤ t := by
-    have := outage_stop_nonneg Q.outage
-    have := Q.run.1.ΔAC_pos
-    change Q.stop + ((9 : Nat) : Time) * Q.run.1.ΔAC ≤ t at ht
-    push_cast at ht
-    linarith
-  exact Compose.Growing.outage_reader_bridge_at
-    (outageLockPremises_of_arming_at Q service hsh ar)
-    (by rw [outageLockPremises_of_arming_at_b₁]
-        exact outage_postStopService_at Q)
-    hinv (by simpa only [outageLockPremises_of_arming_at_P] using ar.tip_anc)
-    (honest_ownKey_at S Q.run.2 hw.1 hth) ht0
-    (by simpa only [outageLockPremises_of_arming_at_b₁] using G)
-    (Q.bounds hth) (fun d hd => by
-      simpa only [outageLockPremises_of_arming_at_K] using Q.boundsK hrun (hd.trans hth))
-
-end Consensus.Goldilocks.Obligations.Growing
 
 end

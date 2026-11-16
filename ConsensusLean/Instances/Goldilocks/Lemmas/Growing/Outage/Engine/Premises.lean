@@ -203,9 +203,6 @@ theorem outageLockPremises_of_arming_at_P :
 theorem outageLockPremises_of_arming_at_b₁ :
     (outageLockPremises_of_arming_at Q service hsh ar).b₁ = Q.stop := by rfl
 
-theorem outageLockPremises_of_arming_at_r :
-    (outageLockPremises_of_arming_at Q service hsh ar).r = Q.restoredLabel := by rfl
-
 theorem outageLockPremises_of_arming_at_K :
     (outageLockPremises_of_arming_at Q service hsh ar).K = Q.K := by rfl
 

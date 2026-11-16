@@ -16,8 +16,7 @@ public section
   (`isCall_time_le_horizon`), so the engine's horizon-bounded services apply unchanged.
 * `receiverServiceAfterAt_of_postStop`: on any Goldilocks run, post-stop service gives the
   receiver-scoped service of the AC projection; its AC acceptance relay is derived from the node
-  relay (`acBlock_prev`, `accept_next`).
-* `receiverServiceAfterAt_of_psync`: their composition. -/
+  relay (`acBlock_prev`, `accept_next`). -/
 
 namespace Consensus.Goldilocks.Simulation
 
@@ -102,17 +101,6 @@ theorem goldilocks_postStopService (hv : rho.ExecutionValid)
   relay _ _ _ hx hi _ _ hy hj hd hF :=
     Obligations.Growing.acceptance_relay_psync_any_at S rho hn hv hnc hnet hx hi hy hj
       (Obligations.Growing.isCall_time_le_horizon S rho hn hv hj) hd hF
-
-/-- Partial synchrony supplies strict processing and acceptance relay to a receiver
-honest at its call. Senders need be honest only at their source cuts. -/
-theorem receiverServiceAfterAt_of_psync (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {g : Time}
-    (hnet : rho.log.PSync rho.point g) (y : Fin (Fintype.card V)) :
-    Compose.Growing.ReceiverServiceAfterAt (honestKeysAt S rho)
-      ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho)) g y
-      (simTraceAt S rho hn).projAC :=
-  receiverServiceAfterAt_of_postStop (simTraceAt_goldilocksRun S rho hn hv)
-    (goldilocks_postStopService S rho hn hv hnc hnet) y
 
 end Consensus.Goldilocks.Simulation
 
