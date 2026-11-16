@@ -24,9 +24,8 @@ the validators honest at `d` (`ResetService.upTo_at`: every sender and recipient
 honest at its own cut). From it, the static AC synchrony window on that prefix
 (`sync_window_at_reset_at`), the catch-up window from `ḡ` (`catch_window_at_gbar_at`), and the
 static healthy AC base of the validators honest at `d` at the slot committees of a committee
-half bound (`CommitteeHalfUpTo`, `CommitteeHalfUpTo.healthy_base_before_at`), at the stock
-committee (`healthy_base_of_service_catch_before_at`) and from finite reset premises
-(`healthy_base_of_reset_catch_before_at`). No reset is used. -/
+half bound (`CommitteeHalfUpTo`, `CommitteeHalfUpTo.healthy_base_before_at`) and from finite
+reset premises (`healthy_base_of_reset_catch_before_at`). No reset is used. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
@@ -217,20 +216,6 @@ theorem CommitteeHalfUpTo.healthy_base_before_at {K : SA.CommitteeDict sp.n} {b 
   intro y hy t hgt htd
   exact (Trace.upTo_awake _ y t).mpr
     ⟨hawake y t (hrun.antitone htd hy) hgt (htd.trans hdb), htd⟩
-
-/-- **The healthy AC premises on a read prefix, from the service alone**, at the stock committee:
-`CommitteeHalfUpTo.healthy_base_before_at` at `K = full` (`CommitteeHalfUpTo.of_full`). -/
-theorem healthy_base_of_service_catch_before_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {b : Time} (hs : ResetService tr H g ΔF b)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hfaults : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b)
-    (hstock : sp.committeeSize = sp.n) :
-    SA.HealthyBaseUpTo (SA.CommitteeDict.full sp.n) (tr.projAC.upTo d) (H d)
-      ((tr.upTo d).HonestBlocks (H d)) proposer g d :=
-  (CommitteeHalfUpTo.of_full hrun hnc hfaults hstock).healthy_base_before_at
-    (by rw [SA.committeeStart_full]; exact hrun) hnc hs hawake hfaults hc hd0 hdb
 
 /-- **The healthy AC premises on a read prefix**: finite reset health and catch-up give the
 static healthy AC base of the validators honest at a read time `d ∈ [0, b]`, on the prefix

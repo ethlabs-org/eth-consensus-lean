@@ -22,7 +22,9 @@ theorem proposal_lock_prefix_cases_at
     {g ΔF b : Time} {s₀ s floor : Nat} {kindJ : Prop}
     {J X B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -36,16 +38,12 @@ theorem proposal_lock_prefix_cases_at
     (hwarm : s₀ + sp.k ≤ l.slot) (hpos : 0 < l.slot)
     (hpred : s₀ ≤ l.slot - 1) (hold : l.slot < s + 1)
     (hB : B ∈ ell.frame.tree) (hBr : B.root = l.block) (hXB : ell.frame.Anc X B)
-    (hstock : sp.committeeSize = sp.n) :
+    (hK : CommitteeHalfUpTo tr H K g b) :
     Anc (tr.HonestBlocksAt H) X ell.frame.fcRoot ∨
       (∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → e.msg.slot = s →
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg X) ∨
       ∃ a < i, ∃ D CV, z ∈ H (tr.time a) ∧ SA.OptimisticLockAt tr.projAC z a s D CV ∧
         Anc (tr.HonestBlocksAt H) X D := by
-  have hrunF : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot (SA.CommitteeDict.full sp.n)) := by
-    rw [SA.committeeStart_full]; exact hrun
-  have hKF := CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock
   have hPhi := frameIn_at hrun hnc hz hc
   have hΔ := sp.toParams.hΔ
   have hi : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ := by rw [hti]; linarith only [hΔ]
@@ -73,8 +71,8 @@ theorem proposal_lock_prefix_cases_at
       simp only [SAParams.ts] at ht htime
       push_cast at htime
       linarith only [hΔ, ht, htime]
-    have hall := (hframe.regular_later_heads_at hrunF hnc hsvc hawake hf hcatch hnr
-      hwarm hpos hpred hm hgap hmb hza ho hKF s (by omega) (by omega)).1
+    have hall := (hframe.regular_later_heads_at hrun hnc hsvc hawake hf hcatch hnr
+      hwarm hpos hpred hm hgap hmb hza ho hK s (by omega) (by omega)).1
     intro y j e hy hv hs
     obtain ⟨R, hR, hRr, hDR⟩ := hall y j e hy hv hs
     exact ⟨R, hR, hRr, (hXA.trans hAD).trans hDR⟩
@@ -112,8 +110,8 @@ theorem proposal_lock_prefix_cases_at
     ⟨fun y j hy hlo hhi => hframe.floor_eq y j hy (hts.trans hlo) hhi,
      fun y j hy hlo hhi => hframe.kind_iff y j hy (hts.trans hlo) hhi,
      fun y j hy hlo hhi => hframe.root_eq y j hy (hts.trans hlo) hhi⟩
-  have hall := (optimistic_later_heads_of_witness_at hrunF hnc hsvc hawake hf hcatch hnr
-    (by linarith only [hm, hts, hΔ]) hmb hsub hza hop hAD ha hQ hh hJ (Anc.mono hW.2 hAQ) hKF
+  have hall := (optimistic_later_heads_of_witness_at hrun hnc hsvc hawake hf hcatch hnr
+    (by linarith only [hm, hts, hΔ]) hmb hsub hza hop hAD ha hQ hh hJ (Anc.mono hW.2 hAQ) hK
     s (by omega) (by omega)).1
   refine Or.inr (Or.inl ?_)
   intro y j e hy hv hes

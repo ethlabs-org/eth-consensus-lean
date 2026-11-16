@@ -23,7 +23,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem FrameWindow.proposal_suffix_before_at {g ΔF b : Time} {s₀ s floor : Nat}
     {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -50,7 +52,7 @@ theorem FrameWindow.proposal_suffix_before_at {g ΔF b : Time} {s₀ s floor : N
     (hC : SA.IsBest sp (SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
       {B | B ∈ ellp.frame.viableTree ellp.frame.tree ∧ B.parent = some X.root ∧
         SA.goldfishEligible sp ellp.frame (tr.time ip) (SA.View.ofLists pay) s B} C)
-    (hstock : sp.committeeSize = sp.n) :
+    (hK : CommitteeHalfUpTo tr H K g b) :
     SA.IsBest sp (SA.goldfishScore sp ell.frame
       (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s)
       {B | B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)) ∧
@@ -88,7 +90,7 @@ theorem FrameWindow.proposal_suffix_before_at {g ΔF b : Time} {s₀ s floor : N
     (SA.proposal_slot (tr := tr.projAC) hti) (proposal_walk_end_at hrun hnc hz' hcp hpay) hPs
     hparent hPv
     (proposal_views_agree_before_at hrun hnc hsvc hawake hf hcatch hnr hm hz
-      hdesignated hactual hPs ⟨hcp, hcall, d, hpay⟩ hti hpayload hy hc hes hPv.1.1 hib hstock)
+      hdesignated hactual hPs ⟨hcp, hcall, d, hpay⟩ hti hpayload hy hc hes hPv.1.1 hib hK)
     (fun X B hXt hrootX hBX hne hB => hframe.frozen_competitor_reflect_at hrun hnc hsvc hcatch
       hnr hf hm hs₀ hz hdesignated hactual hPs hcp hcall hti hpay hparent hy hc hes hhigh hipb
       hXt hrootX hBX hne hB)
@@ -98,7 +100,9 @@ theorem FrameWindow.proposal_suffix_before_at {g ΔF b : Time} {s₀ s floor : N
 theorem FrameWindow.proposal_stop_before_at {g ΔF b : Time} {s₀ s floor : Nat}
     {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -120,7 +124,7 @@ theorem FrameWindow.proposal_stop_before_at {g ΔF b : Time} {s₀ s floor : Nat
     (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hib : tr.time i ≤ b)
     (hPv : P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
     (hrootQ : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot d.head)
-    (hstock : sp.committeeSize = sp.n) :
+    (hK : CommitteeHalfUpTo tr H K g b) :
     (P ∈ {B | B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)) ∧
         B.parent = some d.head.root ∧ SA.goldfishEligible sp ell.frame (tr.time i)
           (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s B} ∧
@@ -178,7 +182,7 @@ theorem FrameWindow.proposal_stop_before_at {g ΔF b : Time} {s₀ s floor : Nat
     have he := hac.localRun.coherent.1 (hPhi.2 hB) hG (hg.trans hGr.symm)
     exact hpar (he ▸ hGp)
   have hv := proposal_views_agree_before_at hrun hnc hsvc hawake hf hcatch hnr hm hz
-    hdesignated hactual hPs ⟨hcp, hcall, d, hpay⟩ hti hpayload hy hc hes hPv.1.1 hib hstock
+    hdesignated hactual hPs ⟨hcp, hcall, d, hpay⟩ hti hpayload hy hc hes hPv.1.1 hib hK
   have hpH : P.proposer ∈ H (tr.time i) := hactual.2.1 ▸ hr.antitone hhigh hz
   have hcore := SA.stop_core hri hy ⟨hci, hc.2⟩ hes hPs hparent hpH hng hPv
   change _ at hcore
@@ -197,7 +201,9 @@ theorem FrameWindow.proposal_stop_before_at {g ΔF b : Time} {s₀ s floor : Nat
 theorem FrameWindow.vote_head_eq_of_path_at {g ΔF b : Time} {s₀ s floor : Nat}
     {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -224,7 +230,7 @@ theorem FrameWindow.vote_head_eq_of_path_at {g ΔF b : Time} {s₀ s floor : Nat
     (hXE : ell.frame.Anc X (SA.getHead sp e.readPoint ell.frame (tr.time i)
       (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
       (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s))
-    (hstock : sp.committeeSize = sp.n) : e.msg.head = P.root := by
+    (hK : CommitteeHalfUpTo tr H K g b) : e.msg.head = P.root := by
   have hr := hrun.toLocalRun
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hri := (hac.upTo (hr.time_nonneg i)).localRun
@@ -240,12 +246,12 @@ theorem FrameWindow.vote_head_eq_of_path_at {g ΔF b : Time} {s₀ s floor : Nat
       (hXQ.mono hPhip.2)
   obtain ⟨hstepP, hstopP⟩ := hframe.proposal_stop_before_at hrun hnc hsvc hawake hf hcatch
     hnr hm hs₀ hz hdesignated hactual hPs hcp hcall hti hpay hpayload hparent
-    hy hc hes hhigh hib hPv hrootQ hstock
+    hy hc hes hhigh hib hPv hrootQ hK
   have heq := getHead_eq_of_proposal_path hPhip.1 hPhip.2 hPhi.1 hPhi.2
     (SA.proposal_slot (tr := tr.projAC) hti) (proposal_walk_end_at hrun hnc hz' hcp hpay)
     (fun _ _ hSX hXQ' hne haX' hC => hframe.proposal_suffix_before_at hrun hnc hsvc hawake hf
       hcatch hnr hm hs₀ hz hdesignated hactual hPs hcp hcall hti hpay hpayload hparent hy hc
-      hes hhigh hib hPv hSX hXQ' hne haX' hC hstock)
+      hes hhigh hib hPv hSX hXQ' hne haX' hC hK)
     hstepP hstopP hstartX hXQ haX hXE
   have hspec := SA.castAt_head_of_viable hri hy ⟨hci, hc.2⟩ (hes ▸ ⟨P, hPv⟩)
   change e.msg.head = _ at hspec
@@ -256,7 +262,9 @@ theorem FrameWindow.vote_head_eq_of_path_at {g ΔF b : Time} {s₀ s floor : Nat
 theorem FrameWindow.vote_head_eq_of_start_prefix_at {g ΔF b : Time} {s₀ s floor : Nat}
     {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -282,7 +290,7 @@ theorem FrameWindow.vote_head_eq_of_start_prefix_at {g ΔF b : Time} {s₀ s flo
       ell.frame.Anc d.start (SA.getHead sp e.readPoint ell.frame (tr.time i)
         (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
         (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s))
-    (hstock : sp.committeeSize = sp.n) : e.msg.head = P.root := by
+    (hK : CommitteeHalfUpTo tr H K g b) : e.msg.head = P.root := by
   have hr := hrun.toLocalRun
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
@@ -298,7 +306,7 @@ theorem FrameWindow.vote_head_eq_of_start_prefix_at {g ΔF b : Time} {s₀ s flo
   · exact vote_head_eq_of_anchor_eq_at hrun hnc hy hc (hPs.trans hes.symm) hPv.1.1 he
   · exact hframe.vote_head_eq_of_path_at hrun hnc hsvc hawake hf hcatch hnr hm hs₀ hz
       hdesignated hactual hPs hcp hcall hti hpay hpayload hparent hy hc hes hhigh hib hPv
-      hSX hXQ haX hXE hstock
+      hSX hXQ haX hXE hK
 
 end Consensus.Goldilocks.Healing.Growing
 

@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.F
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowCast
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.CurrentPassage
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
@@ -25,7 +26,9 @@ theorem FrameWindow.read_locks_below_of_earlier_heads_at
     {g ΔF b : Time} {s₀ p floor : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts p + sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -42,11 +45,11 @@ theorem FrameWindow.read_locks_below_of_earlier_heads_at
       ev.msg.slot = p → ev.msg.head = P.root)
     {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hlive : p ≤ l.slot + sp.k)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ell.frame.tree)
-    (hBr : B.root = l.block) (hstock : sp.committeeSize = sp.n) :
+    (hBr : B.root = l.block) (hK : CommitteeHalfUpTo tr H K g b) :
     Anc (tr.HonestBlocksAt H) B P := by
   obtain ⟨_, hdom, hpass⟩ := KernelProof.current_lock_passage_of_regular_base_at hframe hrun
     hnc hsvc hawake hf hcatch hnr hm hsp hp0 hpb hz hdes hP hPs hy hc hes hmargin hl hlive hB hBr
-    hstock
+    hK
   rcases hpass with h | ⟨hs, _⟩
   · exact h
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
@@ -60,13 +63,14 @@ theorem FrameWindow.read_locks_below_of_earlier_heads_at
   change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at ht
   change sp.slot (tr.time i) = p at hslot
   rw [hslot] at ht
+  have hcs := hK.cs2 p
+    (by
+      have ht : sp.ts s₀ ≤ sp.ts p := (SA.ts_le_iff sp).2 (by exact_mod_cast hsp)
+      linarith [sp.toParams.hΔ])
+    (by linarith [sp.toParams.hΔ]) (tr.time i) (hrun.time_nonneg i) (ht.trans hpb)
   exact SA.current_read_lock_below_of_earlier_heads hri hy hcast hl (hs.trans hes.symm)
-    (SA.CommitteeDict.full sp.n) SA.CommitteeP.full
-    (SA.four_thirds_full hstock (by
-      have hbound := hf _ (hrun.time_nonneg i) (ht.trans hpb)
-      have hn := sp.toParams.hn
-      change 1 ≤ sp.n at hn
-      omega))
+    K (SA.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP _)
+    (by rw [hes]; omega)
     (hPhi.2 hdom.1.1)
     (fun x hx j hji ev hv hs' => by
       obtain ⟨ellx, hcx, hex⟩ := hv
@@ -79,7 +83,9 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads_at
     {g ΔF b : Time} {s₀ p floor : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts p + sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -93,7 +99,7 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads_at
     (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p)
     (hmargin : s₀ + 2 * sp.k ≤ p)
     (hIH : ∀ x j ev, j < i → x ∈ H (tr.time j) → SA.VoteAt tr.projAC x j ev →
-      ev.msg.slot = p → ev.msg.head = P.root) (hstock : sp.committeeSize = sp.n) :
+      ev.msg.slot = p → ev.msg.head = P.root) (hK : CommitteeHalfUpTo tr H K g b) :
     Anc (tr.HonestBlocksAt H) (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) P := by
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hri := hac.upTo (hrun.time_nonneg i)
@@ -109,11 +115,11 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads_at
       Anc (tr.HonestBlocksAt H) B P := by
     intro B hB
     obtain ⟨l, hl, B₀, hB₀, hB₀r, hlive, rfl⟩ := SA.mem_liveLockBlocks_of_wf hPhi.1
-      (SA.castAt_readPoint_locksWF hri.localRun (fun _ => SA.voteStart_initial _) hy hcast) hB
+      (SA.castAt_readPoint_locksWF hri.localRun hrun.vstart hy hcast) hB
     have hslot := (SA.castAt_spec hri.localRun hy hcast).2.1
     have hB₀P := hframe.read_locks_below_of_earlier_heads_at hrun hnc hsvc hawake hf hcatch
       hnr hm hsp hp0 hpb hz hdes hP hPs hy hc hes hmargin hIH hl
-      (by rw [← hes, hslot]; exact hlive) hB₀ hB₀r hstock
+      (by rw [← hes, hslot]; exact hlive) hB₀ hB₀r hK
     exact (Anc.mono hPhi.2 (SA.viableAncestor_anc hPhi.1 hB₀).2).trans hB₀P
   unfold SA.getAnchor
   rcases hD : SA.deepest ell.frame

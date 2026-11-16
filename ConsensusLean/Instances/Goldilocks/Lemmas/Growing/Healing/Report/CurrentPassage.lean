@@ -24,7 +24,9 @@ theorem current_lock_passage_of_regular_base_at
     {g ΔF b : Time} {s₀ p floor : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts p + sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -39,17 +41,13 @@ theorem current_lock_passage_of_regular_base_at
     (hmargin : s₀ + 2 * sp.k ≤ p)
     {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hlive : p ≤ l.slot + sp.k)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ell.frame.tree)
-    (hBr : B.root = l.block) (hstock : sp.committeeSize = sp.n) :
+    (hBr : B.root = l.block) (hK : CommitteeHalfUpTo tr H K g b) :
     P ∈ ell.frame.viableHeads ∧
       P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame p) ∧
       (Anc (tr.HonestBlocksAt H) B P ∨
         (l.slot = p ∧ ∃ a ≤ i, ∃ D CV, y ∈ H (tr.time a) ∧
           SA.OptimisticLockAt tr.projAC y a p D CV ∧ sp.ts p ≤ tr.time a ∧
           Anc (tr.HonestBlocksAt H) B D)) := by
-  have hrunF : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot (SA.CommitteeDict.full sp.n)) := by
-    rw [SA.committeeStart_full]; exact hrun
-  have hKF := CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock
   have hΔ := sp.toParams.hΔ
   have hm₀ : gbar g ≤ sp.ts s₀ := by linarith
   obtain ⟨hvP, hdomP⟩ := proposal_viable_at_cast_at hframe hrun hnc hsvc hf hnr hm₀ hsp hp0
@@ -77,7 +75,7 @@ theorem current_lock_passage_of_regular_base_at
   have hCE : C = B := hPhi.1.coherent.1 hC hB (hCr.trans hBr.symm)
   subst C
   obtain ⟨a, hai, ellw, D, ha, hD, ho, M, hM, hMr, hMA⟩ :=
-    SA.lock_selection_candidate_provenance hr (fun _ => SA.voteStart_initial _) hy i l₀
+    SA.lock_selection_candidate_provenance hr hrun.vstart hy i l₀
       hl₀
   obtain rfl : M = B₀ := hr.coherent.1 hM
     ((SA.frameIn_of_callAt hr hy hc'.1).2 hB₀) (hMr.trans hBr₀.symm)
@@ -158,8 +156,8 @@ theorem current_lock_passage_of_regular_base_at
       simp only [SAParams.ts] at ht hhigh
       push_cast at hhigh
       linarith
-    have hDP := (hframe.regular_later_heads_at hrunF hnc hsvc hawake hf hcatch hnr
-      hlabel (by omega) (by omega) hm hgap hpb hya horigin hKF p (by omega) le_rfl).2
+    have hDP := (hframe.regular_later_heads_at hrun hnc hsvc hawake hf hcatch hnr
+      hlabel (by omega) (by omega) hm hgap hpb hya horigin hK p (by omega) le_rfl).2
       hgap z ip ellp hzip hcp₀ hcallp hip d pay hpay₀
     exact Or.inl (hBA.trans (hAD.trans (hDP.trans hHP)))
   have hts : sp.ts s₀ ≤ sp.ts l.slot := (SA.ts_le_iff sp).2 (by omega)
@@ -195,8 +193,8 @@ theorem current_lock_passage_of_regular_base_at
     ⟨fun w j hw hlo hhi => hframe.floor_eq w j hw (hts.trans hlo) hhi,
      fun w j hw hlo hhi => hframe.kind_iff w j hw (hts.trans hlo) hhi,
      fun w j hw hlo hhi => hframe.root_eq w j hw (hts.trans hlo) hhi⟩
-  have hAP := (optimistic_later_heads_of_witness_at hrunF hnc hsvc hawake hf hcatch hnr
-    (hm₀.trans hts) hpb hsubframe hya hop hAD ha₀ hQ hh hJ (Anc.mono hW.2 hAQ) hKF
+  have hAP := (optimistic_later_heads_of_witness_at hrun hnc hsvc hawake hf hcatch hnr
+    (hm₀.trans hts) hpb hsubframe hya hop hAD ha₀ hQ hh hJ (Anc.mono hW.2 hAQ) hK
     p hold le_rfl).2 z ip ellp hzip hcp₀ hcallp hip d pay hpay₀
   exact Or.inl (hBA.trans (hAP.trans hHP))
 

@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.F
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowWrite
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowRegularBoundary
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
@@ -23,7 +24,9 @@ theorem FrameWindow.toFG_later_proposal_head_at
     {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop}
     {J P R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -41,12 +44,8 @@ theorem FrameWindow.toFG_later_proposal_head_at
     (hcall : ellp.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state z c) ellp.frame (tr.time c)).2 =
-      some (d, pay)) (hstock : sp.committeeSize = sp.n) :
+      some (d, pay)) (hK : CommitteeHalfUpTo tr H K g b) :
     Anc (tr.HonestBlocksAt H) R d.head := by
-  have hrunF : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot (SA.CommitteeDict.full sp.n)) := by
-    rw [SA.committeeStart_full]; exact hrun
-  have hKF := CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock
   obtain ⟨a, hai, j, ellw, D, CV, hya, ha, hD, hfast, hRA⟩ :=
     toFG_fast_candidate_origin_at hrun hnc hy hto
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
@@ -85,13 +84,13 @@ theorem FrameWindow.toFG_later_proposal_head_at
       · have hs' : sp.slot (tr.time a) = j := hs
         omega
     exact hts (by omega)
-  have hf2 : 2 * (H (tr.time a))ᶜ.ncard < sp.n := by
-    have := hf _ (hrun.time_nonneg a) (hatime.trans (hihi.trans hmb))
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    omega
-  have hDj := Healing.fast_selection_slot_le (hrun.upTo (hrun.time_nonneg a))
-    (hnc.upTo _) SA.CommitteeP.full hya hfast'' (SA.cs2_full hstock hf2)
+  have hDj := Healing.fast_selection_slot_le (hrun.upTo (hrun.time_nonneg a)) (hnc.upTo _)
+    (by
+      rw [RunTrace.upTo_projAC]
+      exact SA.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP _)
+    hya hfast'' (hK.cs2 j (by linarith only [hm, hs₀j, sp.toParams.hΔ])
+      (hjtime.trans (hatime.trans (hihi.trans hmb)))
+      (tr.time a) (hrun.time_nonneg a) (hatime.trans (hihi.trans hmb)))
   have hjlo : u ≤ j := by omega
   have hjhi : j ≤ u + 1 := by
     by_contra hn
@@ -99,17 +98,17 @@ theorem FrameWindow.toFG_later_proposal_head_at
     have hstep := SA.ts_succ (u + 1) (sp := sp)
     linarith only [hlo, hjtime, hatime, ht, hstep, sp.toParams.hΔ]
   rcases hfast with hreg | hopt
-  · exact hRD.trans ((hframe.regular_later_heads_at hrunF hnc hsvc hawake hf hcatch hnr
+  · exact hRD.trans ((hframe.regular_later_heads_at hrun hnc hsvc hawake hf hcatch hnr
       (by omega) (by omega) (by omega) hm (by omega) hmb hya
-      (Or.inl ⟨CV, hreg⟩) hKF r (by omega) hrN).2 (by omega) z c ellp hz hcp hcall hti d pay
+      (Or.inl ⟨CV, hreg⟩) hK r (by omega) hrN).2 (by omega) z c ellp hz hcp hcall hti d pay
       hd)
   · have halo : sp.ts s₀ ≤ tr.time a := hs₀j.trans hjtime
     have ho := (SA.upTo_optimisticLockAt hrun.time_mono).mpr ⟨le_rfl, hopt⟩
     have hat := (SA.optimisticLockAt_spec hr hya ho (SA.CommitteeDict.full sp.n)
       (fun _ _ _ => SA.mem_full _ _)).1
-    apply hframe.optimistic_write_later_proposal_head_at hrunF hnc hsvc hawake hf hcatch hnr
+    apply hframe.optimistic_write_later_proposal_head_at hrun hnc hsvc hawake hf hcatch hnr
       (by linarith only [hm, sp.toParams.hΔ]) hmb (by omega) hya ha halo hat hopt hRA hAD
-      ?_ (by omega) hrN hz hcp hcall hti hd hKF
+      ?_ (by omega) hrN hz hcp hcall hti hd hK
     rcases (SA.viableAncestor_spec hW.1 hD).2.1 with hbelow | hAv
     · exact Or.inl hbelow
     · obtain ⟨Q, hQ, hvQ, hAQ⟩ := hAv.2.2

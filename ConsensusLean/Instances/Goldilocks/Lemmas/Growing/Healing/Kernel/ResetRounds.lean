@@ -298,8 +298,10 @@ theorem round_of_warm_at
       (fun q hq => (hrun.time_mono hq.le).trans (by rw [hct, htX]))] at hd
     exact hd
   have hfol := fun y (hy : y ∈ H (tr.time kX)) =>
-    proposal_report_follow_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm huN hmb
-      hz hdes hP hPs (hrun.antitone (by linarith) hy) hstock
+    proposal_report_follow_at hframe
+      (by rw [SA.committeeStart_full]; exact hrun) hnc hsvc hawake hf hcatch hnr hm hwarm huN hmb
+      hz hdes hP hPs (hrun.antitone (by linarith) hy)
+      (CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock)
   obtain ⟨i₀, ell₀, R₀, _, _, _, _, hPR₀, hR₀d⟩ := hfol p hp
   refine round_cross_at hrun hnc hsvc hnr hPH
     (hPR₀.trans (hR₀d x (by omega) hxN p c ellp hpc hc' hcall hct d pay hd')) hpar hp hX
@@ -339,8 +341,10 @@ theorem reset_of_high_proposal_at
   have hts : sp.ts (u + 1 : Nat) ≤ sp.ts N := (SA.ts_le_iff sp).2 (by exact_mod_cast hN)
   obtain ⟨y, hy⟩ := hH
   obtain ⟨i, ell, R, hyi, hR, htil, hti, hPR, _⟩ :=
-    proposal_report_follow_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm hN hmb
-      hz hdes hP hPs (hrun.antitone (by linarith) hy) hstock
+    proposal_report_follow_at hframe
+      (by rw [SA.committeeStart_full]; exact hrun) hnc hsvc hawake hf hcatch hnr hm hwarm hN hmb
+      hz hdes hP hPs (hrun.antitone (by linarith) hy)
+      (CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock)
   have hcz : cutZ sp.toParams g ≤ tr.time i := by
     have h4 : sp.ts (s₀ + 4 : Nat) ≤ sp.ts u :=
       (SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ + 4 ≤ u by have := sp.two_le_k; omega))

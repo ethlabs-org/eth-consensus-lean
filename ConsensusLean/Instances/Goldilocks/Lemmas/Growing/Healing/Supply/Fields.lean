@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.CommitteeFaults
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowReportOrigin
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetRounds
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
@@ -18,12 +19,16 @@ Proofs of `ACHealing` fields at the committee-start Goldilocks run interface
   AC projection;
 * `goldilocks_proposal_floor`: the `proposal_floor` field;
 * `goldilocks_report_origin`: the `report_origin` field, with `Origin` the joined stored fast
-  lock of the Goldilocks data.
+  lock of the Goldilocks data;
+* `committeeHalf_of_committeeFaults`: the committee half bound at the run's slot committees, from
+  the committee fault bound with `βK ≤ 1/2` and collision freedom;
+* `goldilocks_report_follow`: the `report_follow` field, with `warmup = 2 * sp.k` and
+  `follow = 3`.
 -/
 
 namespace Consensus.Goldilocks.Generic
 
-open SA (SAParams ReplayOrder Payload)
+open SA (SAParams ReplayOrder Payload gbar)
 open Healing.Growing (HZ IsReset)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
@@ -84,6 +89,61 @@ theorem goldilocks_report_origin {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {
   obtain ⟨hok, hsub⟩ := Healing.Growing.frame_tree_subset_at hr hnc hyr hcw
   exact ⟨r, hri.le, j, ellw.frame.viableAncestor D, hyr, ⟨hj, CV, ellw, D, hcw, hfl, rfl⟩,
     hsub (SA.viableAncestor_anc hok hD).1, hRB⟩
+
+/-- **The committee half bound from the committee fault bound** at the run's slot committees:
+with `βK ≤ 1/2`, the committee fault bound leaves fewer than half of each slot committee from `ḡ`
+by `b` faulty at every read time in `[0, b]` (`CommitteeFaultsUpTo.committee_cs2_at`). The
+committee facts, sizes and positivity are the run's, under collision freedom. No reset and no
+other premise is read. -/
+theorem committeeHalf_of_committeeFaults {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {g b : Time}
+    (hβ : βK ≤ 1 / 2) (hrun : (goldilocksRunInterface sp ro).Run cm proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hcf : CommitteeFaultsUpTo (P := sp.toParams) βK cm H g b) :
+    Healing.Growing.CommitteeHalfUpTo tr H (dictOfTime sp cm) g b := by
+  obtain ⟨-, hpos, hsize, hfacts⟩ := (goldilocksRunInterface_run_iff cm).mp hrun
+  exact ⟨hfacts hnc, fun s hgs hsb _ hd0 hdb =>
+    hcf.committee_cs2_at hβ hpos (hsize s) hgs hsb hd0 hdb⟩
+
+/-- **The `report_follow` field** at the Goldilocks run interface, with `warmup = 2 * sp.k` and
+`follow = 3`: after warmup an honest proposal is reported by every node honest at the next slot's
+report time, within one slot plus two delays, and later honest proposal heads extend the report.
+The proof is `KernelProof.proposal_report_follow_at` at the run's slot committees, with the
+committee half bound of the premises' committee fault bound (`committeeHalf_of_committeeFaults`). -/
+theorem goldilocks_report_follow {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {g ΔF b : Time}
+    {s₀ N u floor : Nat} {kindJ : Prop} {J B : SA.Blk sp.n (List (FG.Att sp.n))} {z : Fin sp.n}
+    {kB : Nat} (hβ : βK ≤ 1 / 2) (hrun : (goldilocksRunInterface sp ro).Run cm proposer dg H tr)
+    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b)
+    (hframe : FrameWindow tr H (sp.toParams.slotTime s₀)
+      (sp.toParams.slotTime N + 2 * sp.toParams.Δ) floor kindJ J)
+    (hm : gbar g + 4 * sp.toParams.Δ ≤ sp.toParams.slotTime s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
+    (hN : u + 1 ≤ N) (hmb : sp.toParams.slotTime N + 2 * sp.toParams.Δ ≤ b)
+    (hB : HonestProposal tr H proposer u z kB B) :
+    ∀ y, y ∈ H (sp.toParams.slotTime (u + 1) + 2 * sp.toParams.Δ) →
+      ∃ i R, y ∈ H (tr.time i) ∧ ReportAt tr y i R ∧ sp.toParams.slotTime u ≤ tr.time i ∧
+        tr.time i ≤ sp.toParams.slotTime (u + 1) + 2 * sp.toParams.Δ ∧
+        Anc (tr.HonestBlocksAt H) B R ∧
+        ∀ x, u + 3 ≤ x → x ≤ N → ∀ w c d, w ∈ H (tr.time c) →
+          ProposalHeadAt tr w c d → tr.time c = sp.toParams.slotTime x →
+          Anc (tr.HonestBlocksAt H) R d.head := by
+  intro y hy
+  have hr := ((goldilocksRunInterface_run_iff cm).mp hrun).1
+  have hts (s : Nat) : sp.toParams.slotTime s = sp.ts s := by
+    rw [sp.slotTime_eq]
+    rfl
+  obtain ⟨hz, hdes, hP, hPs⟩ := hB
+  rw [hts] at hz hm hy
+  rw [hts, hts] at hframe
+  rw [hts] at hmb
+  obtain ⟨i, ell, R, hyi, hto, hlo, hhi, hPR, hheads⟩ :=
+    Healing.Growing.KernelProof.proposal_report_follow_at
+      ⟨hframe.floor_eq, hframe.kind_iff, hframe.root_eq⟩ hr hp.noColl
+      ⟨hp.sync.deltaF, hp.sync.message, hp.sync.block, hp.sync.relay, hp.sync.signedRow⟩
+      hp.awake hp.faults hp.catchUp hp.noRestart hm hwarm hN hmb hz hdes hP hPs hy
+      (committeeHalf_of_committeeFaults hβ hrun hp.noColl hp.committee)
+  refine ⟨i, R, hyi, (reportAt_iff_toFGAt hr hyi).mpr ⟨ell, hto⟩, (hts u).symm ▸ hlo,
+    (hts (u + 1)).symm ▸ hhi, hPR, ?_⟩
+  intro x hx hxN w c d hw ⟨ℓ, pay, hc, hcall, hd⟩ htc
+  exact hheads x hx hxN w c ℓ hw (Compose.projAC_callAt.mpr hc) hcall (htc.trans (hts x)) d pay
+    (by rw [Compose.Growing.projAC_state_at hr hw]; exact hd)
 
 end Consensus.Goldilocks.Generic
 

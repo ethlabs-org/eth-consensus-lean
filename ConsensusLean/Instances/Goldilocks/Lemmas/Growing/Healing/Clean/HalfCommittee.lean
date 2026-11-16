@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.CommitteeFaults
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
@@ -11,7 +12,8 @@ public section
 /-! # Half of the committee votes after the reset's cut, under growing faults
 
 `ResetPremisesUpTo.committee_cs2_at`: the committee fault bound `βK ≤ 1/2` gives
-`2 |K s ∩ (H d)ᶜ| < committeeSize` for a slot from `ḡ` on, at every `d ∈ [0, b]`.
+`2 |K s ∩ (H d)ᶜ| < committeeSize` for a slot from `ḡ` on, at every `d ∈ [0, b]`
+(`Generic.CommitteeFaultsUpTo.committee_cs2_at` at the record's fields).
 
 `ResetPremisesUpTo.half_committee_at`: after the reset's cut, the validators honest at
 `t ≥ t_m + Δ` that voted in slot `m` while honest are at least half of the committee size. Each
@@ -32,24 +34,9 @@ committee is faulty at any `d ∈ [0, b]`, for a slot starting from `ḡ` by `b`
 theorem ResetPremisesUpTo.committee_cs2_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {s : Nat}
     (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b) {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
-    2 * ((Generic.dictOfTime sp cm).committee s ∩ (H d)ᶜ).ncard < sp.committeeSize := by
-  have hcard : (cm (sp.toParams.slotTime s)).card = sp.committeeSize := by
-    have h := hp.committeeFacts.hsize s
-    rwa [Generic.dictOfTime, SA.CommitteeDict.committee, Set.ncard_coe_finset] at h
-  have hne : (cm (sp.toParams.slotTime s)).Nonempty :=
-    Finset.card_pos.1 (hcard ▸ hp.committee_pos)
-  have hts : sp.toParams.slotTime s = sp.ts s := sp.slotTime_eq s
-  have h := hp.committeeFaults (sp.toParams.slotTime s) d (by rw [hts]; exact hgs)
-    (by rw [hts]; exact hsb) hd0 hdb hne
-  have hβ := hp.beta_le
-  have hc : (0 : ℚ) ≤ (cm (sp.toParams.slotTime s)).card := Nat.cast_nonneg _
-  have h2 : ((2 * ((Generic.dictOfTime sp cm).committee s ∩ (H d)ᶜ).ncard : Nat) : ℚ) <
-      (cm (sp.toParams.slotTime s)).card := by
-    push_cast
-    change 2 * (((↑(cm (sp.toParams.slotTime s)) : Set (Fin sp.n)) ∩ (H d)ᶜ).ncard : ℚ) < _
-    nlinarith
-  rw [← hcard]
-  exact_mod_cast h2
+    2 * ((Generic.dictOfTime sp cm).committee s ∩ (H d)ᶜ).ncard < sp.committeeSize :=
+  hp.committeeFaults.committee_cs2_at hp.beta_le hp.committee_pos (hp.committeeFacts.hsize s)
+    hgs hsb hd0 hdb
 
 /-- A slot committee from `ḡ` by `b` has a member honest at any `d ∈ [0, b]` (CS2). -/
 theorem ResetPremisesUpTo.committee_honest_nonempty_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}

@@ -19,7 +19,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Finite proposal/vote view agreement, with honesty at the two observation cuts. -/
 theorem proposal_views_agree_before_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -36,7 +38,7 @@ theorem proposal_views_agree_before_at
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {elly : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = s + 1)
-    (hP : P ∈ elly.frame.tree) (hjb : tr.time j ≤ b) (hstock : sp.committeeSize = sp.n) :
+    (hP : P ∈ elly.frame.tree) (hjb : tr.time j ≤ b) (hK : CommitteeHalfUpTo tr H K g b) :
     SA.equivocators (SA.View.ofLists pay).votes =
         SA.equivocators (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)).votes ∧
       SA.voters (SA.View.ofLists pay).votes =
@@ -46,7 +48,7 @@ theorem proposal_views_agree_before_at
           SA.supporters elly.frame (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s X := by
   have hr := hrun.toLocalRun
   have hd := hr.time_nonneg j
-  have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch hd hjb hstock
+  have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch hd hjb
   have hc' : SA.CastAt (tr.upTo (tr.time j)).projAC y j elly e := by
     refine ⟨?_, hc.2⟩
     rw [RunTrace.upTo_projAC]

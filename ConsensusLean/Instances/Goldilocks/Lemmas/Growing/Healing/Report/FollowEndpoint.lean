@@ -22,7 +22,9 @@ theorem proposal_report_follow_at
     {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -32,7 +34,7 @@ theorem proposal_report_follow_at
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {y : Fin sp.n} (hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ))
-    (hstock : sp.committeeSize = sp.n) :
+    (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ i ell R, y ∈ H (tr.time i) ∧ SA.ToFGAt tr.projAC y i ell R ∧
       sp.ts u ≤ tr.time i ∧ tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ ∧
       Anc (tr.HonestBlocksAt H) P R ∧
@@ -56,7 +58,7 @@ theorem proposal_report_follow_at
       have := hts (show u ≤ N by omega); linarith only [this, hΔ]))
     hrun hnc hsvc hawake hf hcatch hnr hm hwarm
     (by have := hts (show u ≤ N by omega); linarith only [this, hΔ, hmb])
-    hz hdes hP hPs hstock
+    hz hdes hP hPs hK
   have hshort := hsub (hts (by omega : s₀ ≤ u)) hT
   have hjoin := fun w hw => joined_voteTime_of_warm_frame_at hrun hnr hm
     (by omega : s₀ + 1 ≤ u) (y := w) hw
@@ -64,9 +66,8 @@ theorem proposal_report_follow_at
     have := hts (show s₀ ≤ u by omega)
     linarith only [hm, this, hΔ]
   obtain ⟨k, ell, ell', hu, hc, hto, ht, _, _, _, _, hva, hv, e, he, _, hl⟩ :=
-    fresh_fast_lock_update_toFG_at (by rw [SA.committeeStart_full]; exact hrun) hnc hsvc hawake hf
-      hcatch hnr hmargin hjoin (hT.trans hmb) hshort hz hdes hP hPs hun hy
-      (CommitteeHalfUpTo.of_full (g := g) hrun hnc hf hstock)
+    fresh_fast_lock_update_toFG_at hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin
+      (hT.trans hmb) hshort hz hdes hP hPs hun hy hK
   have hyc : y ∈ H (tr.time (k + 1)) := ht ▸ hy
   have hPc := Healing.fresh_lock_toFG_candidate hv hva hl he ht
   have hr := (Compose.Growing.goldilocks_ac_projection_from hrun hnc).upTo
@@ -121,7 +122,7 @@ theorem proposal_report_follow_at
     linarith only [hit, htx, hstep, hΔ]
   exact (hsub le_rfl (by linarith only [hΔ])).toFG_later_proposal_head_at
     hrun hnc hsvc hawake hf hcatch hnr hm hwarm (by linarith only [hmb, hΔ])
-    hyi hR hPs hPR hbound hit hx hNx hw hcp hcall htc hd hstock
+    hyi hR hPs hPR hbound hit hx hNx hw hcp hcall htc hd hK
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

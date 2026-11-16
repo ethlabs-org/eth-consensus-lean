@@ -21,7 +21,9 @@ theorem honest_vote_heads_eq_at
     {g ΔF b : Time} {s₀ u floor : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts u + sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -30,7 +32,7 @@ theorem honest_vote_heads_eq_at
     (hmb : sp.ts u + sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hstock : sp.committeeSize = sp.n) :
+    (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = u →
       e.msg.head = P.root := by
   have hk := sp.two_le_k
@@ -84,13 +86,13 @@ theorem honest_vote_heads_eq_at
       (by linarith [sp.toParams.hΔ]) hsp (by omega) hmb hz hdes hP hPs hy hcast hes
     have haP := hframe.vote_anchor_below_of_earlier_heads_at hrun hnc hsvc hawake hf hcatch
       hnr hm hsp (by omega) hmb hz hdes hP hPs hy hcast hes hwarm
-      (fun x j ev hji hx hv hs => ih j hji x ev hx hv hs) hstock
+      (fun x j ev hji hx hv hs => ih j hji x ev hx hv hs) hK
     apply hframe.vote_head_eq_of_start_prefix_at hrun hnc hsvc hawake hf hcatch hnr hms hsp
       hz hdes hP hPs hcp0 hcall hip hpay0 hpayload hparent hy hcast hes hhigh
-      (hhigh.trans hmb) hPv haP ?_ hstock
+      (hhigh.trans hmb) hPv haP ?_ hK
     exact fun haS => hframe.proposal_start_prefix_at hrun hnc hsvc hawake hf hcatch hnr
       hm (by omega) hwarm hmb hz hdes hcp0 hcall hip hpay0 hparent hy hcast hes hPv hvP haS
-      hstock
+      hK
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
