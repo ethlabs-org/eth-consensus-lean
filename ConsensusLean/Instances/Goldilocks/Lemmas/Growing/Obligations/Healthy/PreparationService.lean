@@ -54,10 +54,10 @@ rows are consumed up to the query's bound. -/
 theorem healthy_preparation_service_at (Q : HealthyPreparationQueryAt S A V) :
     Healing.Growing.ResetService Q.trace Q.keys Q.gst
       (protoFGDelay (Model.pubOf Q.run.1)) Q.bound := by
-  have hs := resetService_of_psync_at S Q.run.2 Q.hn Q.valid
+  have hs := resetService_of_psync_at { S with vote := stock } Q.run.2 Q.hn Q.valid
     (noCollRun_simTraceAt { S with vote := stock } Q.run.2 Q.hn Q.valid Q.noCollision)
     ((Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1)
-    (signed_row_service_psync_at S Q.run.2 Q.hn Q.valid) (protoFGDelay_pos _)
+    (signed_row_service_psync_at { S with vote := stock } Q.run.2 Q.hn Q.valid) (protoFGDelay_pos _)
   exact ⟨hs.deltaF, hs.message, hs.block, hs.relay,
     fun x i att hx hsg y j hy hj hjb =>
       hs.signedRow x i att hx hsg y j hy hj (hjb.trans Q.bound_le)⟩

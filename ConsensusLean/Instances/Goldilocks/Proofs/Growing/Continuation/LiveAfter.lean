@@ -83,9 +83,9 @@ theorem continued_live_after_handover (S : Setup) (A : ContractAssumptions S) (V
       (Obligations.Growing.handoverQuery S A V hn hv hx hcap i hh hTh) h0 hb hp'
   have hnc := noCollRun_simTraceAt { S with vote := stock } rho hn hv hx
   -- the reset service through the horizon, from partial synchrony
-  have hsvc := Obligations.Growing.resetService_of_psync_at S rho hn hv hnc
+  have hsvc := Obligations.Growing.resetService_of_psync_at { S with vote := stock } rho hn hv hnc
     ((Model.sysOf_delivers_iff _ _ _ _).mp hh.1)
-    (Obligations.Growing.signed_row_service_psync_at S rho hn hv)
+    (Obligations.Growing.signed_row_service_psync_at { S with vote := stock } rho hn hv)
     (Obligations.protoFGDelay_pos _)
   -- the slot counts from `r'` through the horizon, from the sleepy budget from `ready`
   let sp := ({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn

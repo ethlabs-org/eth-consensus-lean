@@ -88,7 +88,7 @@ theorem final_reset_premises_of_shared_at (Q : FinalQueryAt S A V) {c : Nat} (hc
   have hcatch : Healing.Growing.CatchRun Q.trace H Q.gst (2 * Q.params.Δ) := by
     have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
       (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
-    exact catchRun_of_psync_at S Q.run.2 Q.hn Q.valid hs.noColl hnet
+    exact catchRun_of_psync_at { S with vote := stock } Q.run.2 Q.hn Q.valid hs.noColl hnet
       (fun v t ht hb _ hv => Q.healthy.2.1.2 v t ht hb hv)
   -- the drain
   have hdrain : Healing.Growing.DrainOutputs Q.trace
