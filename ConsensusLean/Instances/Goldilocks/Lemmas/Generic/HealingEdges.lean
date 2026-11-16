@@ -585,6 +585,17 @@ theorem premises_truncH {cm : Time → Finset (Fin P.n)} {βK : ℚ} {proposer :
   snapshot := hsnap
   nonempty := hH.mono fun _ hy => ⟨hy, le_rfl⟩
 
+/-- The premises at `b` restrict to the honest sets truncated after `b` (`premises_truncH`): every
+field reads the truncation where it reads `H` up to `b`, and its restarts are bounded by the
+whole-run bound. -/
+theorem premises_restrict_truncH {cm : Time → Finset (Fin P.n)} {βK : ℚ}
+    {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload} {tr : RunTrace A}
+    {H : Time → Set (Fin P.n)} {g ΔF b : Time}
+    (h : Premises tr H cm βK proposer dg sg g ΔF b) :
+    Premises tr (truncH H b) cm βK proposer dg sg g ΔF b :=
+  premises_truncH h.committee h.noColl h.sync h.awake h.faults h.catchUp
+    (fun y k hy hk _ => h.noRestart y k hy hk) h.timeoutDelay h.slotLen h.snapshot h.nonempty
+
 /-- The finite-horizon endpoint over the supplier `O`: the whole-run endpoint
 (`exists_reset_of_drain_rounds_noRestartAfter_at_of`) on the honest sets truncated after `b`,
 which are a run (`ACRun.run_truncH`). Committee faults, faults, service, wakefulness, catch-up,
