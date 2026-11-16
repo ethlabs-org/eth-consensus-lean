@@ -16,6 +16,12 @@ def OutputValidityEdge (M : RunMap rho payload) : Prop :=
   ReadRepresentation M → HonestReadTransport M → rho.ExecutionValid →
     ∀ g, OutputValid rho g
 
+/-- The output-validity edge, read through its premises. -/
+theorem outputValidityEdge_iff (M : RunMap rho payload) :
+    OutputValidityEdge M ↔ (ReadRepresentation M → HonestReadTransport M → rho.ExecutionValid →
+      ∀ g, OutputValid rho g) := by
+  exact Iff.rfl
+
 /-- Public-indexed reductions recover the original regime and its existing excuse. -/
 theorem holds_of_forall_public {assumption claim : (Sys F V).Run → Prop}
     (h : ∀ pub : Model.Public, 1 ≤ pub.n → (Sys F V).Holds

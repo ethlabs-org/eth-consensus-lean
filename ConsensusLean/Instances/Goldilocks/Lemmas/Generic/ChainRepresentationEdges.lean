@@ -6,8 +6,10 @@ public section
 
 /-! # Unconditional honest-read chain edges
 
-All rows are UNPROVED proposition contracts, not evidence. The same E1 map is reused for
-the actual engine run. No cross-reader union, collision excuse or constant-fault condition
+The actual-read suppliers are UNPROVED proposition contracts, not evidence. The nesting and
+final-monotonicity edges and their system-level assemblies are proved from them and the
+representation laws (section "Chain edge proofs"). The same E1 map is reused for the actual
+engine run. No cross-reader union, collision excuse or constant-fault condition
 is available to these edges. They do not use `ReadRepresentation.ancestor_prefix`.
 -/
 
@@ -76,22 +78,24 @@ structure HonestChainReads (M : RunMap (A := A) rho payload) : Prop where
     (mappedReadState M v j).fg.Anc
       (mappedReadState M v i).fg.F (mappedReadState M v j).fg.F
 
-/-- UNPROVED nesting edge, at every bounded honest read, without a regime or excuse.
-Consumer: `ShapeClaimsAt.nested` (`Spec/Shape/Claims.lean:50`). -/
+/-- Nesting edge, at every bounded honest read, without a regime or excuse.
+Consumer: `ShapeClaimsAt.nested` (`Spec/Shape/Claims.lean:50`). Proved by `nestedChainEdge`. -/
 def NestedChainEdge (M : RunMap (A := A) rho payload) : Prop :=
   ChainRepresentation A M.chain M.header → HonestChainReads M → rho.ExecutionValid →
     ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank → O.output c₁ = some g₁ → O.output c₂ = some g₂ →
       (chainTrace rho).Nested g₁ g₂
 
-/-- UNPROVED monotonicity edge. The E1 final-tip identity identifies the cache;
+/-- Monotonicity edge. The E1 final-tip identity identifies the cache;
 growth preserves the old cache chain, then same-store ancestry gives the prefix.
-Consumer: `ShapeClaimsAt.finalMonotone` (`Spec/Shape/Claims.lean:53`). -/
+Consumer: `ShapeClaimsAt.finalMonotone` (`Spec/Shape/Claims.lean:53`).
+Proved by `finalMonotoneChainEdge`. -/
 def FinalMonotoneChainEdge (M : RunMap (A := A) rho payload) : Prop :=
   ChainRepresentation A M.chain M.header → HonestChainReads M →
     rho.ExecutionValid → ∀ g, O.output .final = some g → (chainTrace rho).Monotone g 0
 
-/-- UNPROVED system-level nesting assembly at fixed public parameters, without an excuse.
-One binding supplies one map per valid run, reused for every output and read. -/
+/-- System-level nesting assembly at fixed public parameters, without an excuse.
+One binding supplies one map per valid run, reused for every output and read.
+Proved by `nestedChainsAlways`. -/
 def NestedChainsAlways {pub : Model.Public}
     (B : EngineBinding (F := F) (V := V) pub payload sg runs) : Prop :=
   (∀ E hE rho (hv : rho.ExecutionValid),
@@ -100,8 +104,9 @@ def NestedChainsAlways {pub : Model.Public}
     ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank → O.output c₁ = some g₁ → O.output c₂ = some g₂ →
       (Sys F V).HoldsAlways fun r => Model.pubOf r.1 = pub → (chainTrace r.2).Nested g₁ g₂
 
-/-- UNPROVED system-level final monotonicity assembly. The wrapper has no collision
-escape or constant-fault restriction; the binding fixes only public parameters. -/
+/-- System-level final monotonicity assembly. The wrapper has no collision
+escape or constant-fault restriction; the binding fixes only public parameters.
+Proved by `finalChainsAlways`. -/
 def FinalChainsAlways {pub : Model.Public}
     (B : EngineBinding (F := F) (V := V) pub payload sg runs) : Prop :=
   (∀ E hE rho (hv : rho.ExecutionValid),
@@ -109,6 +114,51 @@ def FinalChainsAlways {pub : Model.Public}
       HonestChainReads (B.map E hE rho hv)) →
     ∀ g, O.output .final = some g →
       (Sys F V).HoldsAlways fun r => Model.pubOf r.1 = pub → (chainTrace r.2).Monotone g 0
+
+section ChainEdgeProofs
+
+/-- Nesting at every honest read: both reads are chains in the reader's mapped store
+(`HonestChainReads.output_read`), whose tips are ordered by local ancestry (`nested_tips`) in a
+reachable store, so the lower-rank chain is a prefix (`ChainRepresentation.same_store_prefix`). -/
+theorem nestedChainEdge (M : RunMap (A := A) rho payload) : NestedChainEdge M := by
+  intro hrep hreads hv c₁ c₂ g₁ g₂ hc h₁ h₂ v i hi hh
+  rw [hreads.output_read v i hi hh g₁, hreads.output_read v i hi hh g₂]
+  exact hrep.same_store_prefix _ (hreads.reachable hv v i hi hh) _ _
+    (hreads.nested_tips hv v i hi hh c₁ c₂ g₁ g₂ hc h₁ h₂)
+
+/-- Final monotonicity: a final read is the chain of the store's finalized cache
+(`finalized_tip`). The later store holds the earlier one's blocks (`tree_growth`), so the earlier
+cache keeps its chain (`store_growth`), and it is a local ancestor of the later cache
+(`finalized_ancestry`), so its chain is a prefix (`same_store_prefix`). -/
+theorem finalMonotoneChainEdge (M : RunMap (A := A) rho payload) :
+    FinalMonotoneChainEdge M := by
+  intro hrep hreads hv g hg v i j hi hij hj hhi hhj
+  rw [hreads.output_read v i hi.1 hhi g, hreads.output_read v j hj.1 hhj g,
+    hreads.finalized_tip g hg, hreads.finalized_tip g hg,
+    hrep.store_growth _ _ (hreads.reachable hv v i hi.1 hhi)
+      (hreads.tree_growth hv v i j hij hj.1 hhj) _ (hreads.finalized_held hv v i hi.1 hhi)]
+  exact hrep.same_store_prefix _ (hreads.reachable hv v j hj.1 hhj) _ _
+    (hreads.finalized_ancestry hv v i j hij hj.1 hhj)
+
+/-- System-level nesting at fixed public parameters, from `nestedChainEdge` on the binding's
+map of each valid run. -/
+theorem nestedChainsAlways {pub : Model.Public}
+    (B : EngineBinding (F := F) (V := V) pub payload sg runs) : NestedChainsAlways B := by
+  intro h c₁ c₂ g₁ g₂ hc h₁ h₂ r hv hpub
+  obtain ⟨E, rho⟩ := r
+  exact nestedChainEdge (B.map E hpub rho hv) (h E hpub rho hv).1 (h E hpub rho hv).2 hv
+    c₁ c₂ g₁ g₂ hc h₁ h₂
+
+/-- System-level final monotonicity at fixed public parameters, from
+`finalMonotoneChainEdge` on the binding's map of each valid run. -/
+theorem finalChainsAlways {pub : Model.Public}
+    (B : EngineBinding (F := F) (V := V) pub payload sg runs) : FinalChainsAlways B := by
+  intro h g hg r hv hpub
+  obtain ⟨E, rho⟩ := r
+  exact finalMonotoneChainEdge (B.map E hpub rho hv) (h E hpub rho hv).1 (h E hpub rho hv).2
+    hv g hg
+
+end ChainEdgeProofs
 
 end Consensus.Goldilocks.Generic
 

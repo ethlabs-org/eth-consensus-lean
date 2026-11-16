@@ -7,11 +7,12 @@ public section
 
 /-! # Conditional claim reduction rows
 
-UNPROVED intended theorem types only. No evidence, instance, admission or correctness
-claim is supplied. All suppliers below refer to the binding's same map. Every regime
-reduction reads outputs through the one stored-read context and its transport: engine-cut
-reads at the stored read, claim-time reads at `endCut t`. Healed safety's same-reader
-ancestry is never inferred from compatibility.
+Intended theorem types; output validity and final accountability are proved (section
+"Output-validity and accountability proofs"), the regime reductions remain UNPROVED. No
+evidence, instance, admission or correctness claim is supplied. All suppliers below refer to
+the binding's same map. Every regime reduction reads outputs through the one stored-read
+context and its transport: engine-cut reads at the stored read, claim-time reads at `endCut t`.
+Healed safety's same-reader ancestry is never inferred from compatibility.
 -/
 
 set_option autoImplicit false
@@ -68,8 +69,9 @@ theorem end_read_output_eq {M : RunMap rho payload} {R : StoredReadContext M}
 
 end StoredReads
 
-/-- UNPROVED exact output-validity wrapper. OutputValidityEdge, not held_view alone,
-is the reduction input. HoldsAlways remains excuse-free at the fixed public parameters. -/
+/-- Exact output-validity wrapper. OutputValidityEdge, not held_view alone,
+is the reduction input. HoldsAlways remains excuse-free at the fixed public parameters.
+Proved by `outputValidAlways`. -/
 def OutputValidAlways (B : EngineBinding (F := F) (V := V) pub payload sg runs) : Prop :=
   (∀ E hE rho (hv : rho.ExecutionValid),
     OutputValidityEdge (B.map E hE rho hv) ∧ ReadRepresentation (B.map E hE rho hv) ∧
@@ -151,9 +153,10 @@ def HealthyLivenessReduction (C : ACCorrectLocal A sg)
       fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g ((Sys F V).heal K cap idx gst r)
         (K.params.latency cap idx)
 
-/-- UNPROVED actual-read accountability reduction. The population supplier retains
+/-- Actual-read accountability reduction. The population supplier retains
 both readers' own observation times and the attestation evidence; the map and honest
-view contracts bind the same evidence to the engine conviction rule. -/
+view contracts bind the same evidence to the engine conviction rule.
+Proved by `finalAccountabilityReduction`. -/
 def FinalAccountabilityReduction (C : ACCorrectLocal A sg)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq) : Prop :=
   (∀ E hE rho (hv : rho.ExecutionValid),
@@ -214,6 +217,106 @@ def HealedSafetyReduction (C : ACCorrectLocal A sg)
           ((Sys F V).ready K gst r) ((Sys F V).heal K cap idx gst r) r)
         fun r => (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g
           ((Sys F V).heal K cap idx gst r)
+
+section OutputAccountabilityProofs
+
+/-- Output validity at fixed public parameters: the binding's map of each valid run supplies
+`OutputValidityEdge` together with its representation premises. -/
+theorem outputValidAlways (B : EngineBinding (F := F) (V := V) pub payload sg runs) :
+    OutputValidAlways B := by
+  intro h r hv hpub _ g _
+  obtain ⟨E, rho⟩ := r
+  obtain ⟨hov, hrep, hhr⟩ := h E hpub rho hv
+  exact (outputValidityEdge_iff _).1 hov hrep hhr hv g
+
+/-- A local record transported along signer equality has the same runs. -/
+private theorem cast_local_run {sg' : A.Msg → Fin P.n} (h : sg = sg') (C : ACCorrectLocal A sg) :
+    (h ▸ C).run.Run = C.run.Run := by
+  subst h
+  rfl
+
+/-- Accountable safety of the final output at fixed public parameters. A hash collision is the
+claim's excuse. Otherwise two final reads at honest engine cuts are the chains of the readers'
+finalized caches (`HonestChainReads`). Compatible caches give a chain prefix
+(`ReadRepresentation.ancestor_prefix` in the coherent honest universe). Incompatible caches give
+`2q − n` validators with slashable attestation pairs on the two finality chains
+(`ActualReadAccountability`), which the readers' views hold (`chain_att_view`), and
+`α·n ≤ 2q − n` (`ClaimDeadlineFit.accountable`). -/
+theorem finalAccountabilityReduction (C : ACCorrectLocal A sg)
+    (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq) :
+    FinalAccountabilityReduction C B K := by
+  intro h g hg r hv hpub
+  obtain ⟨E, rho⟩ := r
+  obtain ⟨hpub, -⟩ := hpub
+  by_cases hc : rho.HashCollision
+  · exact Or.inr hc
+  refine Or.inl ?_
+  obtain ⟨heng, hacc, hfit, hrep, hhr, hcr, hcoh⟩ := h E hpub rho hv
+  set M := B.map E hpub rho hv
+  have hT := B.run_transport E hpub rho hv
+  have hrun : (B.signer_eq E hpub rho hv ▸ C).run.Run M.committee M.proposer M.digest M.honest
+      M.trace := by
+    rw [cast_local_run]
+    have := hT.run hv
+    rwa [ACRun.cast_run] at this
+  have hcoh := hcoh hc
+  have hread : ∀ v i, i ≤ rho.events.length → rho.point.HonestAt v (rho.cutTime i) →
+      (chainTrace rho).read g v i =
+        (M.chain (mappedReadState M v i) (mappedReadState M v i).fg.F).map M.header := by
+    intro v i hi hh
+    rw [hcr.output_read v i hi hh g, hcr.finalized_tip g hg]
+  have hsub : ∀ v i, i ≤ rho.events.length → rho.point.HonestAt v (rho.cutTime i) →
+      (mappedReadState M v i).fg.tree ⊆ M.trace.HonestBlocksAt M.honest := by
+    intro v i hi hh X hX
+    obtain ⟨hy, hle, ht0, -⟩ := heng.honest hv v i hi hh
+    exact ⟨_, _, _, ht0, hle.1, hy, hX⟩
+  intro u v i j hi hj hu hv'
+  rw [hread u i hi.1 hu, hread v j hj.1 hv']
+  by_cases hcomp : Compatible (M.trace.HonestBlocksAt M.honest)
+      (M.trace.finalizedAt (M.validator.symm u) (M.cut i))
+      (M.trace.finalizedAt (M.validator.symm v) (M.cut j))
+  · left
+    rcases hcomp with hanc | hanc
+    · exact Or.inl (hrep.ancestor_prefix u v i j hi.1 hj.1 hu hv' (hhr.reachable hv u i hi.1 hu)
+        (hhr.reachable hv v j hj.1 hv') (hhr.roots hv u i hi.1 hu) (hhr.roots hv v j hj.1 hv')
+        hcoh (hsub u i hi.1 hu) (hsub v j hj.1 hv') _ _ (hcr.finalized_held hv u i hi.1 hu)
+        (hcr.finalized_held hv v j hj.1 hv') hanc)
+    · exact Or.inr (hrep.ancestor_prefix v u j i hj.1 hi.1 hv' hu (hhr.reachable hv v j hj.1 hv')
+        (hhr.reachable hv u i hi.1 hu) (hhr.roots hv v j hj.1 hv') (hhr.roots hv u i hi.1 hu)
+        hcoh (hsub v j hj.1 hv') (hsub u i hi.1 hu) _ _ (hcr.finalized_held hv v j hj.1 hv')
+        (hcr.finalized_held hv u i hi.1 hu) hanc)
+  · right
+    obtain ⟨X, -, Y, -, W, hW, hWatt⟩ := hacc hrun (hT.no_collision hv hc) _ _ _ _ _ _
+      (heng.honest hv u i hi.1 hu) (heng.honest hv v j hj.1 hv') hcomp
+    have hview : ∀ a ∈ BlockFinality.ChainAtts M.trace (M.validator.symm u) (M.cut i) X ∪
+        BlockFinality.ChainAtts M.trace (M.validator.symm v) (M.cut j) Y,
+        M.attObject a ∈ rho.ViewIdx u i ∪ rho.ViewIdx v j := by
+      intro a ha
+      rcases ha with ha | ha
+      · exact Or.inl (hhr.chain_att_view hv u i hi.1 hu X a ha)
+      · exact Or.inr (hhr.chain_att_view hv v j hj.1 hv' Y a ha)
+    have hconv : W.map M.validator.toEmbedding ⊆
+        Consensus.convicted rho.Slashable (rho.ViewIdx u i ∪ rho.ViewIdx v j) := by
+      intro x hx
+      obtain ⟨w, hw, rfl⟩ := Finset.mem_map.1 hx
+      obtain ⟨a, ha, b, hb, haw, hab⟩ := hWatt w hw
+      classical
+      simp only [Consensus.convicted, Finset.mem_filter, Finset.mem_univ, true_and]
+      refine ⟨M.attObject a, hview a ha, M.attObject b, hview b hb, ?_, ?_, M.att_conflict a b hab⟩
+      · rw [M.att_signer, haw]; rfl
+      · rw [M.att_signer, ← hab.1, haw]; rfl
+    have hcard := Finset.card_le_card hconv
+    rw [Finset.card_map] at hcard
+    have hV : Fintype.card V = P.n := by
+      simpa using (Fintype.card_congr M.validator).symm
+    have hacc' := hfit.accountable
+    rw [hV]
+    calc (P.n : ℚ) * K.params.α = K.params.α * P.n := mul_comm _ _
+      _ ≤ ((2 * P.q - P.n : Nat) : ℚ) := hacc'
+      _ ≤ W.card := by exact_mod_cast hW
+      _ ≤ _ := by exact_mod_cast hcard
+
+end OutputAccountabilityProofs
 
 end Consensus.Goldilocks.Generic
 

@@ -60,6 +60,13 @@ their reduction and capstone inputs. `ProposalWitnessRefinement`, `FinalReadTran
 and `ResetHealBudgetSupply` own those witnesses. The older inventory below describes
 the source gaps; removed names there are historical comparisons, not live inputs.
 
+Proved over any AC: the output-validity wrapper (`outputValidAlways`), the final
+accountability reduction (`finalAccountabilityReduction`, in `ClaimReductionEdges`), and the
+nesting and final-monotonicity edges with their system-level assemblies (`nestedChainEdge`,
+`finalMonotoneChainEdge`, `nestedChainsAlways`, `finalChainsAlways`, in
+`ChainRepresentationEdges`). Each is proved from the suppliers its definition takes; the five
+regime reductions and the capstone remain unproved.
+
 L-CORR owns these generic signatures and their premise accounting. Each instance owns
 its realization, including the lead instance downstream in dc D-INST/W10. The stored
 read-context data has no default implementation. No interface is inferred from similar
