@@ -113,6 +113,109 @@ theorem goldilocks_population_quorum_supply : GoldilocksPopulationQuorumSupply (
   change 2 * (rho.faultyAt t).card < Fintype.card V
   omega
 
+/-- One canonical indexed environment transports both independent sleepy windows. -/
+theorem goldilocks_sleepy_window_supply : GoldilocksSleepyWindowSupply (V := V) := by
+  intro S E rho hn hv K C hθ h0 h1 hlook hcommitteeLook
+  classical
+  let p : EnvPoint (Fin (Fintype.card V)) := {
+    env := {
+      ΔAC := E.ΔAC
+      ΔAC_pos := E.ΔAC_pos
+      ΔFG := E.ΔFG
+      ΔFG_pos := E.ΔFG_pos
+      awake := fun y t => decide (E.awake (rho.key y) t = true ∧ 0 ≤ t ∧ t ≤ rho.horizon) }
+    faultyAt := fun t => (rho.faultyAt (min t rho.horizon)).preimage rho.key rho.key.injective.injOn
+    faultyAt_mono := fun t u htu y hy => by
+      simp only [Finset.mem_preimage] at hy ⊢
+      exact rho.faultyAt_mono (min_le_min_right _ htu) hy
+    horizon := rho.horizon
+    submit := fun y t => rho.point.submit (rho.key y) t }
+  have hbind : RunPointBinding (goldilocksRunMap S rho hn hv).trace
+      (goldilocksRunMap S rho hn hv).honest p := by
+    refine ⟨rfl, ?_, ?_, ?_⟩
+    · intro y t
+      simp only [goldilocksRunMap_honest, mem_honestKeysAt_iff, EnvPoint.HonestAt,
+        p, Finset.mem_preimage]
+    · intro y t
+      simpa only [p, decide_eq_true_eq, goldilocksRunMap_validator] using
+        (goldilocksRunMap S rho hn hv).awake_eq y t
+    · exact (goldilocksRunMap S rho hn hv).horizon_eq
+  refine ⟨p, hbind, rfl, hθ, h0, h1, hlook, hcommitteeLook, ?_⟩
+  intro _ hs
+  have ready (c t d : Time) (ht : 0 ≤ t) (htb : t ≤ rho.horizon) :
+      ((p.retain d).readyAt c t).map rho.key.toEmbedding =
+        (rho.point.retain (min d rho.horizon)).readyAt c t := by
+    ext v
+    simp only [Finset.mem_map, Equiv.toEmbedding_apply]
+    constructor
+    · rintro ⟨y, hy, rfl⟩
+      obtain ⟨hyh, hyw⟩ := (Finset.mem_filter.mp hy).2
+      apply Finset.mem_filter.mpr
+      refine ⟨Finset.mem_univ _, ?_, ?_⟩
+      · simpa only [EnvPoint.HonestAt, EnvPoint.retain, p, Model.Run.point,
+          Finset.mem_preimage] using hyh
+      · intro u hu hut
+        have := hyw u hu hut
+        exact (of_decide_eq_true this).1
+    · intro hv
+      refine ⟨rho.key.symm v, ?_, rho.key.apply_symm_apply v⟩
+      obtain ⟨hvh, hvw⟩ := (Finset.mem_filter.mp hv).2
+      apply Finset.mem_filter.mpr
+      refine ⟨Finset.mem_univ _, ?_, ?_⟩
+      · simpa only [EnvPoint.HonestAt, EnvPoint.retain, p, Model.Run.point, Finset.mem_preimage,
+          Equiv.apply_symm_apply] using hvh
+      · intro u hu hut
+        apply decide_eq_true_eq.mpr
+        refine ⟨?_, (le_max_left _ _).trans hu, hut.trans htb⟩
+        simpa only [EnvPoint.retain, Model.Run.point, Equiv.apply_symm_apply] using hvw u hu hut
+  have faults (d t : Time) :
+      ((p.retain d).faultyAt t).map rho.key.toEmbedding = rho.faultyAt (min d rho.horizon) := by
+    ext v
+    simp only [Finset.mem_map, Equiv.toEmbedding_apply, EnvPoint.retain, p, Finset.mem_preimage]
+    exact ⟨fun ⟨y, hy, he⟩ => he ▸ hy,
+      fun hv => ⟨rho.key.symm v, by simpa using hv, rho.key.apply_symm_apply v⟩⟩
+  have committee (t : Time) (ht : 0 ≤ t) :
+      ((goldilocksRunMap S rho hn hv).committee t).map rho.key.toEmbedding =
+        (Model.sysExternal _ (compiled (goldilocks S)) V).selected E (rho.key, rho.sel) t := by
+    ext v
+    simp only [Finset.mem_map, Equiv.toEmbedding_apply]
+    have hc := (goldilocksRunMap S rho hn hv).committee_eq
+    simp only [goldilocksRunMap_validator] at hc
+    exact ⟨fun ⟨y, hy, he⟩ => he ▸ (hc y t ht).mp hy,
+      fun hmem => ⟨rho.key.symm v,
+        (hc _ t ht).mpr (by simpa using hmem),
+        rho.key.apply_symm_apply v⟩⟩
+  constructor
+  · intro t ht htb
+    have h := hs.2.1 t ht htb
+    change (rho.point.retain (rho.point.lookAhead _ t)).ReadyAbove K.params.θ _ t at h
+    change C.θ * (((p.retain (p.lookAhead C.look t)).readyAt _ t).card +
+      ((p.retain (p.lookAhead C.look t)).faultyAt t).card : ℚ) <
+      ((p.retain (p.lookAhead C.look t)).readyAt _ t).card
+    rw [← Finset.card_map rho.key.toEmbedding, ready _ _ _ ht htb,
+      ← Finset.card_map (s := (p.retain _).faultyAt t) rho.key.toEmbedding, faults]
+    simpa only [p, EnvPoint.lookAhead, min_assoc, min_self, hθ, hlook,
+      EnvPoint.ReadyAbove, EnvPoint.faultCount, EnvPoint.retain, Model.Run.point] using h
+  · intro t ht htb hne
+    have hne' := hne.map (f := rho.key.toEmbedding)
+    rw [committee t ht] at hne'
+    have h := hs.2.2 t ht htb hne'
+    change K.params.θ * (((rho.point.retain (rho.point.lookAhead _ t)).readyAt _ t ∩
+      (Model.sysExternal _ (compiled (goldilocks S)) V).selected E (rho.key, rho.sel) t).card +
+      ((rho.point.retain (rho.point.lookAhead _ t)).faultyAt t ∩
+      (Model.sysExternal _ (compiled (goldilocks S)) V).selected
+        E (rho.key, rho.sel) t).card : Nat) <
+      (((rho.point.retain (rho.point.lookAhead _ t)).readyAt _ t ∩
+      (Model.sysExternal _ (compiled (goldilocks S)) V).selected
+        E (rho.key, rho.sel) t).card : ℚ) at h
+    simp only [show (0 : Time) ≤ 0 from le_refl _, ite_true]
+    rw [← Finset.card_map rho.key.toEmbedding, Finset.map_inter,
+      ready _ _ _ ht htb, committee t ht,
+      ← Finset.card_map (s := (p.retain _).faultyAt t ∩ _) rho.key.toEmbedding,
+      Finset.map_inter, faults, committee t ht]
+    simpa only [p, EnvPoint.lookAhead, min_assoc, min_self, hθ, hcommitteeLook,
+      EnvPoint.retain, Model.Run.point] using h
+
 end Consensus.Goldilocks.Simulation
 
 end
