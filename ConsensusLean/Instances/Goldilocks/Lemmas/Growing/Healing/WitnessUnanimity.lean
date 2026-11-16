@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowFinality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
@@ -24,8 +25,8 @@ observations), so the replay quorum is charged only at the reader's cut, never a
 
 The frame geometry is read at the reader's cut (`witness_frame_at`). The vote and proposal steps
 are the static ones on the prefix through the reader's cut, over the validators honest there
-(`healthy_base_of_service_catch_before_at`): the batch carry and the next transfer for a vote,
-the batch proposal for a proposal. -/
+(`CommitteeHalfUpTo.healthy_base_before_at`), at the run's slot committees: the batch carry and
+the next transfer for a vote, the batch proposal for a proposal. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
@@ -140,9 +141,10 @@ private theorem witness_height
     (hrun.time_nonneg i) (fun _ hq => hrun.time_mono hq.le) hy hQ hQy]
 
 /-- **Prior votes extending an arbitrary prefix propagate through a frozen viable witness**,
-under growing faults. -/
-theorem unanimous_next_votes_of_witness_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+under growing faults, at the slot committees `K` of a run from `K`'s committee start. -/
+theorem unanimous_next_votes_of_witness_at {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -162,7 +164,7 @@ theorem unanimous_next_votes_of_witness_at
         e.readPoint.blockStamp Q.root < SA.ETime.of (SA.freeze sp (m + 1)))
     (hG : ∀ x i e, x ∈ H (tr.time i) → SA.VoteAt tr.projAC x i e →
       e.msg.slot = m → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X)
-    (hstock : sp.committeeSize = sp.n) :
+    (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
       e.msg.slot = m + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
   have hmono := hrun.time_mono
@@ -196,8 +198,7 @@ theorem unanimous_next_votes_of_witness_at
   have hlo : sp.ts m ≤ tr.time i := by linarith
   obtain ⟨hQy, hstamp⟩ := hheld y i e hy ⟨ell, hcast⟩ hs
   have hhy := witness_height hrun hnc hz hy hQ hh hQy
-  have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch ht0 hib
-    hstock
+  have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch ht0 hib
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcast'.1
   rcases witness_frame_at hrun hnc hframe hy hcast.1 hlo hhi
       (quorum_excess (hf _ ht0 hib)) hQy hhy hJ hXQ with hXF | ⟨hFX, hXt, hrootX, hQt, hvQ, hXQf⟩
@@ -207,7 +208,7 @@ theorem unanimous_next_votes_of_witness_at
     exact ⟨W, subU (hPhiU hW), hWr, hXF.trans ((hFW.mono hPhiU).mono subU)⟩
   -- the voter's vote domain holds `Q`, hence `X`, viable above its fork-choice root
   have hQdom : Q ∈ SA.voterBlockTree sp e.readPoint ell.frame (m + 1) := ⟨hQt, Or.inl hstamp⟩
-  have hdomA := SA.voterBlockTree_anc hr hy hcast'
+  have hdomA := SA.voterBlockTree_anc_from hr hrun'.vstart hy hcast'
   rw [hs] at hdomA
   have hviab : SA.ViableAtVote ell e (m + 1) X :=
     Or.inl ⟨hdomA Q hQdom X hXQf, hrootX, Q, hQdom, hvQ, hXQf⟩
@@ -247,7 +248,7 @@ theorem unanimous_next_votes_of_witness_at
       rw [SA.ts_sub_one]
       exact (hnr x r (hrun.antitone hrd hx) (Compose.projAC_restartAt.mp hrest)).trans
         (by linarith))
-  have hhalf' : sp.n ≤ 2 * {x | x ∈ H (tr.time i) ∧ ∃ j e',
+  have hhalf' : sp.committeeSize ≤ 2 * {x | x ∈ H (tr.time i) ∧ ∃ j e',
       SA.VoteAt (tr.projAC.upTo (tr.time i)) x j e' ∧ e'.msg.slot = m}.ncard := by
     have hle := Set.ncard_le_ncard (s := {x | x ∈ H (tr.time i) ∧ ∃ j e',
       SA.VoteAt (tr.projAC.upTo (tr.time i)) x j e' ∧ e'.msg.slot = m ∧
@@ -256,23 +257,14 @@ theorem unanimous_next_votes_of_witness_at
         SA.VoteAt (tr.projAC.upTo (tr.time i)) x j e' ∧ e'.msg.slot = m})
       (by rintro x ⟨hx, j, e', hv', hs', _⟩; exact ⟨hx, j, e', hv', hs'⟩)
     omega
-  have hfault : SA.FaultBound (tr.projAC.upTo (tr.time i)) (H (tr.time i)) (tr.time i) := by
-    have h := Healing.faultBound_of_service (tr := tr.upTo (tr.time i)) (H := H (tr.time i))
-      (b := tr.time i)
-      (fun y' hy' t hgt htd => (Trace.upTo_awake _ y' t).mpr
-        ⟨hawake y' t (hrun.antitone htd hy') hgt (htd.trans hib), htd⟩)
-      (hf _ ht0 hib)
-      (fun y' hy' k hk => by
-        obtain ⟨hkd, hk⟩ := (RunTrace.upTo_restartAt tr).mp hk
-        exact hnr y' k (hrun.antitone hkd hy') hk)
-      ht0 (by
+  have hfault : SA.FaultBoundK K m (tr.projAC.upTo (tr.time i)) (H (tr.time i)) (tr.time i) :=
+    faultBoundK_upTo le_rfl (faultBoundK_of_service_at hK hrun hawake hnr hgm
+      (by linarith) ht0 (by
         rw [hslot]
         have heq : ((m + 1 : Nat) : Int) - 1 = m := by omega
-        rw [heq]; exact hgm) le_rfl
-    rwa [RunTrace.upTo_projAC] at h
-  have hext := SA.next_transfer_of_carry sp hrun' _ SA.CommitteeP.full SA.CommitteeT.full
-    (SA.size_binding_full hstock) hy hcast' hs hG' (by rw [hstock]; exact hhalf') hcarry
-    ((SA.faultBoundK_full_iff _ _).2 hfault) (SA.cs2_full_of_faultBound sp hstock hfault) hviab
+        rw [heq]; exact hgm) hib)
+  have hext := SA.next_transfer_of_carry sp hrun' K hS.hP hS.hT hS.hsize hy hcast' hs hG' hhalf'
+    hcarry hfault (hS.cs2 (m + 1) (by linarith) hlo1) hviab
     (fun x hx k hki ev hv' hsx => by
       obtain ⟨hkd, hv''⟩ := SA.upTo_voteAt.mp hv'
       exact narrow_vote hrun hnc ht0 hx hv'
@@ -281,9 +273,10 @@ theorem unanimous_next_votes_of_witness_at
   exact ⟨W, subU hW, hWr, hXW.mono subU⟩
 
 /-- **The same arbitrary prefix reaches an actual next-slot proposal head**, under growing
-faults. -/
-theorem unanimous_next_proposal_of_witness_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+faults, at the slot committees `K` of a run from `K`'s committee start. -/
+theorem unanimous_next_proposal_of_witness_at {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -305,7 +298,7 @@ theorem unanimous_next_proposal_of_witness_at
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts (m + 1 : Nat))
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
-    (hQy : Q ∈ (tr.state y i).fg.tree) (hstock : sp.committeeSize = sp.n) :
+    (hQy : Q ∈ (tr.state y i).fg.tree) (hK : CommitteeHalfUpTo tr H K g b) :
     Anc (tr.HonestBlocksAt H) X d.head := by
   have hmono := hrun.time_mono
   have hΔ := sp.toParams.hΔ
@@ -318,13 +311,9 @@ theorem unanimous_next_proposal_of_witness_at
   have hhi : tr.time i ≤ sp.ts (m + 1 : Nat) + sp.Δ := by linarith
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have subU := RunTrace.honestBlocks_upTo_subset hmono (H := H) ht0
-  have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch ht0 hib
-    hstock
-  have hr := hS.stockRun.localRun
+  have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch ht0 hib
+  have hr := hS.run.localRun
   have hf3 := hf _ ht0 hib
-  have hf2 : 2 * (H (tr.time i))ᶜ.ncard < sp.n := by
-    have := Fin.pos y
-    omega
   have hcp : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩
   have hst : (tr.projAC.upTo (tr.time i)).state y i = tr.projAC.state y i :=
@@ -376,7 +365,7 @@ theorem unanimous_next_proposal_of_witness_at
       rw [SA.ts_sub_one]
       exact (hnr x r (hrun.antitone hrd hx) (Compose.projAC_restartAt.mp hrest)).trans
         (by linarith))
-  have hhalf' : sp.n ≤ 2 * {x | x ∈ H (tr.time i) ∧ ∃ j e',
+  have hhalf' : sp.committeeSize ≤ 2 * {x | x ∈ H (tr.time i) ∧ ∃ j e',
       SA.VoteAt (tr.projAC.upTo (tr.time i)) x j e' ∧ e'.msg.slot = m}.ncard := by
     have hle := Set.ncard_le_ncard (s := {x | x ∈ H (tr.time i) ∧ ∃ j e',
       SA.VoteAt (tr.projAC.upTo (tr.time i)) x j e' ∧ e'.msg.slot = m ∧
@@ -386,9 +375,8 @@ theorem unanimous_next_proposal_of_witness_at
       (by rintro x ⟨hx, j, e', hv', hs', _⟩; exact ⟨hx, j, e', hv', hs'⟩)
     omega
   have hpre := hrun.upTo ht0
-  refine (SA.batch_proposal hS.stockRun (K := SA.CommitteeDict.full sp.n)
-    (SA.cs2_full hstock hf2) (by rw [hstock]; exact hhalf') hG' hy hcp
-    (fun _ _ => SA.mem_full _ _) (SA.proposal_slot hti) hdp
+  refine (SA.batch_proposal hS.run (K := K) (hS.cs2 m hgm (by linarith)) hhalf' hG' hy hcp
+    (fun v hv => hS.hP.1 y hy i m v hv) (SA.proposal_slot hti) hdp
     ⟨hXt, Or.inl ⟨hXt, hrootX, Q, hQt, hvQ, hXQf⟩⟩ ?_ ?_).mono subU
   · intro x hx k e hv hs
     obtain ⟨W, hW, hWr, -, hp, -, hb⟩ := SA.late_vote_held_of_frame_before hS hy hcp hm
@@ -404,14 +392,13 @@ theorem unanimous_next_proposal_of_witness_at
       rwa [h] at hl
     have hls := Compose.proposal_locks_slot_of hpre (hnc.upTo _) hy
       (by rw [RunTrace.upTo_projAC]; exact hcp) hcall
-      (by rw [RunTrace.upTo_projAC]; exact hdp) hti SA.CommitteeP.full
-      (SA.cs2_full hstock hf2) l hl'
+      (by rw [RunTrace.upTo_projAC]; exact hdp) hti (by rw [RunTrace.upTo_projAC]; exact hS.hP)
+      (hS.cs2 (m + 1) (by linarith) (by linarith)) l hl'
     have heq : l.slot = m := by omega
-    obtain ⟨O, hLO, a, CV, hopt⟩ := SA.proposal_high_lock hr
-      (fun _ => SA.voteStart_initial _) hy hti hl hlm hL hLr
+    obtain ⟨O, hLO, a, CV, hopt⟩ := SA.proposal_high_lock hr hS.run.vstart hy hti hl hlm hL hLr
     rw [heq] at hopt
-    rcases SA.optimisticLock_compatible hS.stockRun _ SA.CommitteeP.full hy hopt
-        (SA.cs2_full hstock hf2) hG' with hOX | hXO
+    rcases SA.optimisticLock_compatible hS.run K hS.hP hy hopt (hS.cs2 m hgm (by linarith))
+        hG' with hOX | hXO
     · exact Or.inl (hLO.trans hOX)
     · exact SA.anc_total hr.coherent hLO hXO
 

@@ -20,9 +20,11 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-/-- Prior votes extending an arbitrary prefix propagate through a frozen viable witness. -/
-theorem unanimous_next_votes_of_witness_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+/-- Prior votes extending an arbitrary prefix propagate through a frozen viable witness, at the
+slot committees `K` of a run from `K`'s committee start. -/
+theorem unanimous_next_votes_of_witness_at {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -42,15 +44,17 @@ theorem unanimous_next_votes_of_witness_at
         e.readPoint.blockStamp Q.root < SA.ETime.of (SA.freeze sp (m + 1)))
     (hG : ∀ x i e, x ∈ H (tr.time i) → SA.VoteAt tr.projAC x i e →
       e.msg.slot = m → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X)
-    (hstock : sp.committeeSize = sp.n) :
+    (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
       e.msg.slot = m + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
   exact KernelProof.unanimous_next_votes_of_witness_at hrun hnc hsvc hawake hf hcatch
-    hnr hm hmb hframe hz hQ hh hJ hXQ hheld hG hstock
+    hnr hm hmb hframe hz hQ hh hJ hXQ hheld hG hK
 
-/-- The same arbitrary prefix reaches an actual next-slot proposal head. -/
-theorem unanimous_next_proposal_of_witness_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+/-- The same arbitrary prefix reaches an actual next-slot proposal head, at the slot committees
+`K` of a run from `K`'s committee start. -/
+theorem unanimous_next_proposal_of_witness_at {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -72,10 +76,10 @@ theorem unanimous_next_proposal_of_witness_at
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts (m + 1 : Nat))
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
-    (hQy : Q ∈ (tr.state y i).fg.tree) (hstock : sp.committeeSize = sp.n) :
+    (hQy : Q ∈ (tr.state y i).fg.tree) (hK : CommitteeHalfUpTo tr H K g b) :
     Anc (tr.HonestBlocksAt H) X d.head := by
   exact KernelProof.unanimous_next_proposal_of_witness_at hrun hnc hsvc hawake hf hcatch
-    hnr hm hmb hframe hz hQ hh hJ hXQ hG hy hc hcall hti hd hQy hstock
+    hnr hm hmb hframe hz hQ hh hJ hXQ hG hy hc hcall hti hd hQy hK
 
 end Consensus.Goldilocks.Healing.Growing
 

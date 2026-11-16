@@ -111,6 +111,17 @@ theorem faultBoundK_of_service_at {K : SA.CommitteeDict sp.n} {g b : Time}
   unfold SA.FaultBoundK
   exact lt_of_lt_of_le (by omega) (Set.ncard_le_ncard hsub)
 
+/-- The committee fault bound at `t` holds on every prefix through `d ≥ t`: the awake and joined
+nodes at `t` read the same calls there. -/
+theorem faultBoundK_upTo {K : SA.CommitteeDict sp.n} {s : Nat} {H' : Set (Fin sp.n)}
+    {t d : Time} (htd : t ≤ d) (h : SA.FaultBoundK K s tr.projAC H' t) :
+    SA.FaultBoundK K s (tr.projAC.upTo d) H' t := by
+  unfold SA.FaultBoundK at h ⊢
+  refine lt_of_lt_of_le h (Set.ncard_le_ncard ?_)
+  rintro y ⟨hyK, hy, hw, hj⟩
+  exact ⟨hyK, hy, (Trace.upTo_awake _ y t).mpr ⟨hw, htd⟩,
+    fun k hk hkt => hj k ((ACTrace.upTo_restartAt (A := SA.goldilocksSA sp _ ro)).mp hk).2 hkt⟩
+
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
 end
