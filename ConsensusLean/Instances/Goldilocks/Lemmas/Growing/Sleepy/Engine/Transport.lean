@@ -141,7 +141,7 @@ theorem committee_faultBoundAt (hv : rho.ExecutionValid) {ini}
 on `[a, b]` (`b ≤ horizon`), at every `t ∈ [max a 0, b]` the keys compromised by
 `min (t + 5Δ) b` are fewer than the keys honest then, awake and joined at `t`: the full-selection
 (`Sel = univ`, `η = 0`) instance of `committee_faultBoundAt`. -/
-private theorem sleepy_faultBoundAt (hv : rho.ExecutionValid)
+theorem sleepy_faultBoundAt (hv : rho.ExecutionValid)
     {a b : Time} (hb : b ≤ rho.horizon)
     (hhalf : rho.point.SleepyOn (1 / 2) (Regimes.catchUp (S.params (pubOf E) hn))
       (5 * (S.params (pubOf E) hn).Δ) a b)
