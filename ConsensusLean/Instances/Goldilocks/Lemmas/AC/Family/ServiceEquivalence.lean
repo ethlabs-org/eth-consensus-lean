@@ -23,22 +23,6 @@ theorem messageServedBefore_iff_old (o : SATrace sp FGP ro) (y : Fin sp.n) (j : 
     MessageServedBefore o y j τ v ↔ SA.MessageServedBefore o y j τ v := by
   simp only [MessageServedBefore, SA.messageServedBefore_iff, retainedBefore_iff_old]
 
-theorem serviceWindowBefore_iff_old (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (a b : Time) (o : SATrace sp FGP ro) :
-    ServiceWindowBefore H U a b o ↔ SA.ServiceWindowBefore H U a b o := by
-  constructor
-  · intro h
-    exact ⟨fun x hx i v hi ha y hy j ℓ hc hb ht =>
-      (messageServedBefore_iff_old ..).mp (h.message x hx i v hi ha y hy j ℓ hc hb ht), h.relay⟩
-  · intro h
-    exact ⟨fun x hx i v hi ha y hy j ℓ hc hb ht =>
-      (messageServedBefore_iff_old ..).mpr (h.message x hx i v hi ha y hy j ℓ hc hb ht), h.relay⟩
-
-theorem serviceBefore_iff_old (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (b : Time) (o : SATrace sp FGP ro) :
-    ServiceBefore H U b o ↔ SA.ServiceBefore H U b o :=
-  serviceWindowBefore_iff_old H U 0 b o
-
 end Consensus.Goldilocks.SA.FamilyFacts
 
 end
