@@ -690,15 +690,6 @@ theorem row_on_chain_upTo {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   exact ⟨E, hsub hE, haT.symm,
     OnOriginChainWithin.of_anc hrun hnc (hsub hE) (hEsrc.mono hsub) hch⟩
 
-/-- **Every honest attestation names a block on the origin chain**: an honest attestation's height
-pair names the entry of its source's state, an ancestor of the source. -/
-theorem row_on_chain (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) {x : Fin sp.n}
-    (hx : x ∈ H) {k : Nat} {a : FG.Att sp.n} (h : tr.SignAt x k a) :
-    ∃ E ∈ tr.HonestBlocks H, E.root = a.T ∧ OnOriginChain tr H E :=
-  have ⟨_, _, hk⟩ := exists_horizon hrun k
-  have ⟨E, hE, hEr, hEc⟩ := row_on_chain_upTo hrun hnc hx h hk
-  ⟨E, hE, hEr, hEc.onOriginChain⟩
-
 /-- **Every honest `Σ.F` and `Σ.J` at a cut within `b` is on the chain of the origins within
 `b`**, with `f < h_t` at some `t` (`f < n/2 < q`: a target quorum has an honest attestation). -/
 theorem caches_on_chain_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)

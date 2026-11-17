@@ -68,18 +68,6 @@ theorem honest_vote_at_update_before (hrun : SA.ACRun proposer T H U) {b : Time}
   have ht : T.time k₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
   exact honest_vote_at_update_early hrun hsync (by linarith) hy hu hPU hFP hx hv hes hhead
 
-/-- Whole-run service specializes the same updater argument. -/
-theorem honest_vote_at_update (hrun : SA.ACRun proposer T H U) {a₀ : Time} {k₀ : Nat}
-    (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U a₀ (T.time k₀) T) {y : Fin sp.n} (hy : y ∈ H)
-    {s : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hu : SA.UpdateAt T y k₀ s ℓ)
-    (ha₀ : a₀ ≤ sp.ts s) {P : SA.Blk sp.n FGP} (hPU : P ∈ U) (hFP : Anc U ℓ.frame.F P)
-    {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {e : SA.Em sp FGP} (hv : SA.VoteAt T x j e)
-    (hes : e.msg.slot = s) (hhead : e.msg.head = P.root)
-    (hPa : ∀ kx, T.AcceptAt x kx P → a₀ ≤ T.time kx) :
-    P ∈ ℓ.frame.tree ∧ e.msg ∈ (T.state y k₀).pool s ∧
-      SA.resolutionTime (T.state y k₀) ℓ.frame e.msg < SA.ETime.of (sp.ts s + 2 * sp.Δ) :=
-  honest_vote_at_update_of_sync hrun (Or.inl ⟨hsync, hPa⟩) hy hu ha₀ hPU hFP hx hv hes hhead
-
 end Node
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}

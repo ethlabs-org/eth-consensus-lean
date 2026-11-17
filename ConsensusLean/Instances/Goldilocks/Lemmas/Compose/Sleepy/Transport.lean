@@ -337,7 +337,8 @@ private theorem window_sync {b : Time} {s₀ : Nat} (hrun : GoldilocksRun propos
       attestation := fun x hx i a h hw => hs.attestation x hx i a h ⟨ha.trans hw.1, hw.2.trans hb⟩ }
 
 /-- **A block that an honest writer accepted before `t_{s₀}` reaches `y` before `T`**, at the AC
-level, from the run-level form of `SleepyBase.old_blocks`. -/
+level, from its run-level form (`hold`: every head an honest node accepted before `t_{s₀}` reaches
+`y` before `T`). -/
 theorem acceptedBefore_of_old (hrun : GoldilocksRun proposer dg H tr) {s₀ : Nat} {y : Fin sp.n}
     {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {T : Time}
     (hold : ∀ x ∈ H, ∀ m B, tr.AcceptAt x m B → tr.time m < sp.ts s₀ →
@@ -367,7 +368,7 @@ variable {s₀ : Nat}
 
 /-- **A result's counted votes reach the next voters, on a window** (`Carry_y`): under the
 window premises from slot `s₀ ≤ s` to `b`, at a vote at a time `≤ b`, with the heads accepted
-before `t_{s₀}` caught up (`hold`, `SleepyBase.old_blocks`), when the voter's `Σ.F` is at or below
+before `t_{s₀}` caught up (`hold`), when the voter's `Σ.F` is at or below
 the result. -/
 theorem result_carry_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hwin : SleepyWindow tr H ΔF s₀ b) {X : Fin sp.n} (hX : X ∈ H)
