@@ -12,7 +12,7 @@ variable {sp : SAParams} {FGP S M : Type} {ro : ReplayOrder sp FGP}
   (H : Set (Fin sp.n))
 
 /-- Dominance at explicitly supplied domain members, indexed by the entire cast
-observation and by its exact cut time. -/
+observation and by its exact cut time. Kept for a downstream consumer. -/
 structure ScopedDominance
     (domain : Fin sp.n → Nat → ACLabel (goldilocksSA sp FGP ro) → Em sp FGP →
       Blk sp.n FGP → Blk sp.n FGP → Time → Prop) : Prop where

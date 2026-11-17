@@ -229,7 +229,7 @@ parent's start (`parentWalkStartFn`, `get_anchor`) is one instance. -/
 abbrev WalkStartFn := SAState sp.n → Frm sp.n FGP → Time → View sp.n → Int → Blk sp.n FGP
 
 variable (sp) in
-/-- The parent's start: `get_anchor`, for every view and label. -/
+/-- The parent's start: `get_anchor`, for every view and label. Kept for a downstream consumer. -/
 noncomputable abbrev parentWalkStartFn : WalkStartFn sp FGP := fun A Φ t _ _ => getAnchor sp A Φ t
 
 variable (sp) in

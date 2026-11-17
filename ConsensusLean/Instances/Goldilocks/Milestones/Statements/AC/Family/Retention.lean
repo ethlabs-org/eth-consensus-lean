@@ -19,7 +19,8 @@ variable {A : SAOperations sp FGP S M} (F : SAFamily A ro) (tr : ACTrace A.toAC)
   (H : Set (Fin sp.n))
 
 /-- Conditional floor preservation and read-point consequences. Sufficient conditions
-for K are supplied separately; no parent-target or intermediate-release field is assumed. -/
+for K are supplied separately; no parent-target or intermediate-release field is assumed.
+Kept for a downstream consumer. -/
 structure Retention
     (K : Fin sp.n → Nat → ACLabel (goldilocksSA sp FGP ro) → Blk sp.n FGP → Prop) : Prop where
   step : ∀ x ∈ H, ∀ i ℓ B j m, (F.proj tr).CallAt x i ℓ →

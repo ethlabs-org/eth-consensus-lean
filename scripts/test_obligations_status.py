@@ -3,6 +3,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -61,6 +62,7 @@ class StatusTests(unittest.TestCase):
                 ledger.write_text(json.dumps({'rows': prior_rows}))
                 with patch.object(status, 'run', side_effect=run), \
                         patch.object(status.subprocess, 'run'), \
+                        patch.object(status, 'source_tree', return_value='fixture-tree'), \
                         patch('sys.argv', ['obligations-status.py']):
                     status.main()
                 result = json.loads(ledger.read_text())
@@ -131,6 +133,39 @@ class StatusTests(unittest.TestCase):
         self.assertIn(status.ROOT, ledger['fields'])
         self.assertIn(self.PREFIX + field, ledger['fields'])
         self.assertNotIn(self.PREFIX + 'Obligations.Growing.outage_helper', ledger['fields'])
+        self.assertEqual(ledger['audit_source_tree'], 'fixture-tree')
+        self.assertNotIn('audit_commit', ledger)
+
+    def test_source_tree_is_the_checked_out_lean_source(self):
+        # the recorded tree includes uncommitted edits and equals <commit>:ConsensusLean once they are
+        # committed, whatever the commit message; files outside ConsensusLean/ do not change it
+        cwd = os.getcwd()
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                os.chdir(directory)
+                git = lambda *a: subprocess.check_output(('git', '-c', 'user.name=t', '-c', 'user.email=t@t',
+                                                          *a), text=True).strip()
+                git('init', '-q')
+                Path('ConsensusLean').mkdir()
+                Path('ConsensusLean/A.lean').write_text('a\n')
+                Path('notes.md').write_text('n\n')
+                git('add', '-A')
+                git('commit', '-qm', 'first')
+                self.assertEqual(status.source_tree(), git('rev-parse', 'HEAD:ConsensusLean'))
+                Path('ConsensusLean/A.lean').write_text('b\n')
+                Path('ConsensusLean/B.lean').write_text('new\n')
+                Path('notes.md').write_text('changed\n')
+                edited = status.source_tree()
+                self.assertNotEqual(edited, git('rev-parse', 'HEAD:ConsensusLean'))
+                self.assertEqual(git('status', '--porcelain', '--', 'ConsensusLean'),
+                                 'M ConsensusLean/A.lean\n?? ConsensusLean/B.lean')
+                git('add', '-A')
+                git('commit', '-qm', 'second')
+                self.assertEqual(edited, git('rev-parse', 'HEAD:ConsensusLean'))
+                git('commit', '-q', '--amend', '-m', 'second, reworded')
+                self.assertEqual(edited, git('rev-parse', 'HEAD:ConsensusLean'))
+            finally:
+                os.chdir(cwd)
 
     def test_proved_rows_refresh_ratings_and_skip_unproved_overrides(self):
         # every row was reviewed before (it has a status), with stale prose evidence
@@ -258,6 +293,7 @@ class StatusTests(unittest.TestCase):
                 ledger.write_text(json.dumps({'rows': []}))
                 with patch.object(status, 'run', side_effect=run), \
                         patch.object(status.subprocess, 'run'), \
+                        patch.object(status, 'source_tree', return_value='fixture-tree'), \
                         patch('sys.argv', ['obligations-status.py']):
                     status.main()
                 rows = {r['name']: r for r in json.loads(ledger.read_text())['rows']}

@@ -18,11 +18,10 @@ public section
 /-! # Forwarding at acceptance under growing faults
 
 `forwardAtAcceptance_at`: every acceptance of the canonical growing trace by a node honest at its
-cut has an actual, exactly decoded same-event forwarding publication (the growing form of
-`Obligations/ForwardingDecode.forwardAtAcceptance`). The decoder invariant of a node's engine
-state (`stateAt_decoded_held_of_own` with `scheduled_proposal_child_decodes_at`) needs no honesty
-premise: every engine event's node is honest at the event (`ExecutionValid.honest_only`), and the
-node-local run facts of an event are read on the prefix through its time. -/
+cut has an actual, exactly decoded same-event forwarding publication. The decoder invariant of a
+node's engine state (`stateAt_decoded_held_of_own` with `scheduled_proposal_child_decodes_at`) needs
+no honesty premise: every engine event's node is honest at the event (`ExecutionValid.honest_only`),
+and the node-local run facts of an event are read on the prefix through its time. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation Obligations

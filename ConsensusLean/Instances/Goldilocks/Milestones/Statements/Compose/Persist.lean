@@ -146,7 +146,7 @@ structure CutScopeAt (y : Fin sp.n) (B : SA.Blk sp.n (List (FG.Att sp.n))) (s : 
 /-- **The conclusion of C1.1** for the slot `s' ∈ (s, m]`: (iii) the cut at `T = t_{s'} + Δ`
 for the blocks accepted in `[t_s, t_{s'} + 2Δ)` at every honest node, and for every honest vote
 of slot `s'`: (i) at that vote `B` is in the voter's viable voter block tree or at or below its
-`fc_root`, (ii) the vote extends `B`. -/
+`fc_root`, (ii) the vote extends `B`. Kept for a downstream consumer. -/
 structure PersistAt (B : SA.Blk sp.n (List (FG.Att sp.n))) (s s' : Nat) : Prop where
   /-- (iii) G1.10 at the scope of C1.1 with `T = t_{s'} + Δ`, at every honest node. -/
   cut : ∀ y ∈ H, CutScopeAt tr H y B s (sp.ts s' + sp.Δ)

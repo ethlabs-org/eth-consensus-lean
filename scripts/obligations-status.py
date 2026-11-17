@@ -4,9 +4,16 @@ proof); paper classifications are preserved, never inferred.
 
 Run after building ConsensusLean and spec-surface. Historical source scans select
 former sorry declarations; compiled dependency edges determine their current status.
+
+The ledger records `audit_source_tree`, the Git tree hash of `ConsensusLean/` as checked out when the
+audit ran, uncommitted edits included. It equals `git rev-parse <commit>:ConsensusLean` for every commit
+with that Lean source, so it survives rebases and message-only successors, which a commit hash does not.
+The commit SHA in a proved row's audit evidence is the generator's pre-landing HEAD and may not resolve
+after message-only successors.
 """
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -51,6 +58,16 @@ RATINGS = {
 
 def run(*args):
     return subprocess.check_output(args, text=True)
+
+
+def source_tree():
+    """The tree hash of `ConsensusLean/` in the working tree, through a throwaway index."""
+    with tempfile.TemporaryDirectory() as directory:
+        env = {**os.environ, 'GIT_INDEX_FILE': str(Path(directory) / 'index')}
+        subprocess.run(['git', 'read-tree', 'HEAD'], env=env, check=True)
+        subprocess.run(['git', 'add', '-A', '--', 'ConsensusLean'], env=env, check=True)
+        tree = subprocess.check_output(['git', 'write-tree'], env=env, text=True).strip()
+    return run('git', 'rev-parse', tree + ':ConsensusLean').strip()
 
 
 def declarations(text):
@@ -142,8 +159,8 @@ FIELD_PREFIXES = ('Consensus.Goldilocks.contract_', 'Consensus.Goldilocks.Obliga
                   'Consensus.Goldilocks.Obligations.accepted_', 'Consensus.Goldilocks.Obligations.meetsObligations_',
                   'Consensus.Goldilocks.Obligations.Growing.meetsObligations_',
                   'Consensus.Goldilocks.Simulation.accepted_')
-# (The field theorems are now `meetsObligations_*`; `Obligations.accepted_*` keeps the block-acceptance
-# lemmas `accepted_child_decodes` and `accepted_slotTime_le`; the audited root is `ROOT` below.)
+# (The field theorems are now `meetsObligations_*`; the `Obligations.accepted_*` prefix still matches any
+# block-acceptance lemma of that namespace; the audited root is `ROOT` below.)
 
 
 def renamed(name, current):
@@ -346,7 +363,7 @@ def main : IO Unit := do
                 and row.get('evidence') == RATINGS[short][1])):
             row.pop('evidence')
         rows.append(row)
-    result = {'schema_version': 2, 'audit_commit': head, 'baseline_commit': baseline,
+    result = {'schema_version': 3, 'audit_source_tree': source_tree(), 'baseline_commit': baseline,
               'notes': ['blocked-by contains transitive compiled sorry owners, not speculative paper joins.',
                         'lean-proved means the full dependency closure is sorry-free.',
                         'Historical removed declarations are listed separately, not counted as proved.',
@@ -354,7 +371,9 @@ def main : IO Unit := do
                         'Zero compiled sorry owners is not zero outstanding statements: a statement can be stated '
                         'without a proof (docs/roadmap.md lists the stated, unproved ones).',
                         'Commit SHAs in evidence texts that are not in this repository\'s history (before its root '
-                        '79cdddc8) do not resolve here.'],
+                        '79cdddc8) do not resolve here.',
+                        'audit_source_tree is the Git tree hash of ConsensusLean/ that the audit read: '
+                        'git rev-parse <commit>:ConsensusLean gives it for every commit with that source.'],
               'historical_removed': sorted(historical - current.keys()),
               'fields': {n: sorted(closure([n], edges) & owners) for n in sorted(accepted)
                          if n == root or n.startswith(FIELD_PREFIXES)},

@@ -7,9 +7,10 @@ public section
 
 /-! # Proposal acceptance at a tick under growing faults
 
-The growing-fault form of `tick_proposal_acceptance_queued`, without a constant-fault or
-honesty premise: the tick is an actual event, hence an honest one, and the carried objects of
-its proposal are available from the dynamic inventory (`proposal_releasable_at`). -/
+`tick_proposal_acceptance_queued_at`: a node's own proposal accepted at an engine tick is queued for
+forwarding in that tick, without a constant-fault or honesty premise: the tick is an actual event,
+hence an honest one, and the carried objects of its proposal are available from the dynamic
+inventory (`proposal_releasable_at`). -/
 
 namespace Consensus.Goldilocks.Simulation
 

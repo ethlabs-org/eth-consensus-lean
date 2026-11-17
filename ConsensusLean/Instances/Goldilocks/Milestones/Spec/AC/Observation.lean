@@ -7,7 +7,8 @@ namespace Consensus.Goldilocks
 
 variable {P : Params} {FGP : Type}
 
-/-- Structural AC run laws, independently of the component's execution equation. -/
+/-- Structural AC run laws, independently of the component's execution equation.
+Kept for a downstream consumer. -/
 structure ACObsRun (A : ACInterface P FGP) (H : Set (Fin P.n)) (U : Set A.Blk)
     (tr : ACTrace A) (ini : Fin P.n → A.State := fun _ => A.initial) : Prop where
   coherent : Coherent U

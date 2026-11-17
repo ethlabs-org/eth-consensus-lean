@@ -17,7 +17,7 @@ namespace Growing
 variable {A : NodeAC P} {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
   {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
-/-- The run model with a constant honest set is `Node.LocalRun`. -/
+/-- The run model with a constant honest set is `Node.LocalRun`. Kept for a downstream consumer. -/
 theorem LocalRun.const_iff :
     Growing.LocalRun proposer dg (fun _ => H) sg tr ini ↔
       Node.LocalRun proposer dg H sg tr ini := by

@@ -27,14 +27,16 @@ def FastWriteEvent (m : WriteMode) (o : SATrace sp FGP ro)
 variable {A : SAOperations sp FGP S M} (F : SAFamily A ro) (tr : ACTrace A.toAC)
   (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
 
-/-- Every stored lock descends from a result or enabled optimistic origin. -/
+/-- Every stored lock descends from a result or enabled optimistic origin.
+Kept for a downstream consumer. -/
 def LockOrigin : Prop :=
   ∀ y ∈ H, ∀ i l, l ∈ ((F.proj tr).state y i).locks →
     ∃ L ∈ U, L.root = l.block ∧ ∃ z ∈ H, ∃ j < i, ∃ C CV,
       (SA.ResultAt (F.proj tr) z j l.slot C CV ∨
         OptimisticEvent F.mode (F.proj tr) z j l.slot C CV) ∧ Anc U L C
 
-/-- Execution suppliers must separately justify enabled witnesses and counted objects. -/
+/-- Execution suppliers must separately justify enabled witnesses and counted objects.
+Kept for a downstream consumer. -/
 structure LockWrites : Prop where
   fastOrigin : ∀ y ∈ H, ∀ i l, l ∈ ((F.proj tr).state y i).locks → l.fast = true →
     ∃ j < i, ∃ B CV, FastWriteEvent F.mode (F.proj tr) y j l.slot B CV ∧
@@ -46,7 +48,8 @@ structure LockWrites : Prop where
   authentic : ∀ y ∈ H, ∀ i s B CV, FastWriteEvent F.mode (F.proj tr) y i s B CV →
     ∀ v ∈ CV, v.val ∈ H → ∃ j ≤ i, ∃ e, SA.VoteAt (F.proj tr) v.val j e ∧ e.msg = v
 
-/-- Slow compatibility uses the actual shared-policy saved-window width. -/
+/-- Slow compatibility uses the actual shared-policy saved-window width.
+Kept for a downstream consumer. -/
 def SlowCompatibility : Prop :=
   ∀ y ∈ H, ∀ i l, l ∈ ((F.proj tr).state y i).locks → l.fast = false →
     ∀ B : Blk sp.n FGP,

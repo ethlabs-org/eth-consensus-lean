@@ -36,7 +36,7 @@ theorem proposal_releasable_at (hv : rho.ExecutionValid)
   proposal_releasable_of_protected S rho hn (GrowingInventory.pollAttProtected S rho hn hv) hv v
     (event_honest_zero S rho hv he) i t he s par info cs hs hone hselected hprop
 
-/-- **`Simulates.tick`'s node step at a public time.** An engine tick of an honest node at a public
+/-- **`SimulatesAt.tick_public`'s node step.** An engine tick of an honest node at a public
 time runs the node's tick with the encoded mempool on the node state before it. -/
 theorem node_of_tick_public_at (hv : rho.ExecutionValid)
     (v : V) (i : Nat)

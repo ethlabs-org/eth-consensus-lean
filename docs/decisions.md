@@ -303,9 +303,7 @@ detail in `TRUST.md`.
   - committee look-ahead `5` (`committeeAhead`): a slot committee's support at `t_s + ΔAC` is charged with the
     faults up to the slot's confirmation update at `t_s + 6ΔAC`, as for the sleepy look-ahead. The outage
     clause uses this same look-ahead relative to the observation time, not the earlier selection time.
-    Each look-ahead is set from its own consumer, with no general rule between them. At the Goldilocks numbers
-    the committee look-ahead is at most the population one (`5 ≤ 5`), so at the population binding, which selects
-    every validator, the committee clause is redundant and the stock reduction holds.
+    Each look-ahead is set from its own consumer, with no general rule between them.
 - **Catch-up is a guarantee coefficient, but its effect is mixed.** A smaller catch-up makes more validators ready
   (shorter `cDur`), which weakens the sleepy and outage participation premises, but it also starts the healthy
   progress window (`healthyLive`, `healedSafe`, `prog [ready, …]`) earlier, so a catch-up change can make those
@@ -568,7 +566,17 @@ detail in `TRUST.md`.
   `Goldilocks.Obligations`). The field theorems of the obligations proof
   (`Lemmas/Growing/Obligations/Concrete`) follow `MeetsObligations`: `meetsObligations_*_growing`, with the
   endpoint `Growing.meetsObligations_growing`; there is no separate constant-fault assembly.
-  Block-acceptance names (`accepted_tree`, `accepted_in_view_at`, `accepted_child_decodes`, …) are a different concept.
+  Block-acceptance names (`accepted_tree`, `accepted_in_view_at`, `accepted_child_decodes_at`, …) are a different concept.
+- **`Generic` names the interface family.** The namespace `Consensus.Goldilocks.Generic` holds the interface
+  contracts `ACRun`, `ACHealing` and `ACCorrectLocal` (`Milestones/Statements/Generic`) and their suppliers. The
+  name does not claim that every declaration in the namespace is protocol-independent. Concrete Goldilocks members
+  include the adapters in `Lemmas/Growing/Simulation` (`GoldilocksBridge`, `GoldilocksClaimSuppliers`,
+  `GoldilocksHealing`, `GoldilocksLocal`, `GoldilocksReadPoint`, `SleepyWindows`),
+  `Lemmas/Growing/Healing/Supply/Fields`, `Lemmas/Growing/Healing/CommitteeFaults`,
+  `Lemmas/Growing/Outage/ReadPoint`, the `Generic.SleepyLayer1` statements with their proofs in
+  `Lemmas/Growing/Sleepy/Node/{Layer1,Layer1Proofs}`, and the contract
+  `Milestones/Statements/Compose/GoldilocksBridge`. Placement and the checked imports (`scripts/boundaries.toml`)
+  enforce the statement/proof separation, not the namespace.
 - **The Baseline sheet and its tests were removed.** The earlier pinned properties sheet was never approved and
   was off every live path: nothing in the closure of `Challenge`, `Solution` or the obligations endpoint imported
   it. The positive controls keep their own copy of its schema and skeleton (`Tests.Controls.ctrlSchema`,
@@ -611,17 +619,17 @@ detail in `TRUST.md`.
   - The milestones stay gated: `ConsensusLeanTest/MilestoneAxioms.lean` states and axiom-pins each, and check.sh
     step 3b audits the closure of the `proved_milestone_modules` like the solution's. Their mapping rows read
     "proved (lemma)".
-- **The certified pair is the growing-fault pair; the constant-fault pair was removed.** The swap
-  moved the growing-fault statements `MeetsObligations` and `GoldilocksCorrect` from `Statements/Growing`
-  (deleted) into `Statements/Obligations`, with unchanged bodies, and renamed the Challenge, Solution and
-  comparator roots from `meetsObligationsConstant` and `goldilocksCorrectConstant` to `meetsObligations` and
-  `goldilocksCorrect`. The constant-fault pair, `MeetsObligationsConstant` and `GoldilocksCorrectConstant` (the
-  stock family on the runs whose faults do not grow), then remained an untrusted milestone statement, a corollary
-  of the certified pair. No root, proof or retained test needed it, so it was removed with its corollary wrapper
-  `Proofs/Obligations`, the corollary theorem in `Proofs/Growing/Obligations/Main` and its implication test. The
-  endpoint's realizability witness reads the certified endpoint directly.
+- **The certified pair is the growing-fault pair.** `MeetsObligations` and `GoldilocksCorrect` in
+  `Statements/Obligations` are the Challenge, Solution and comparator roots `meetsObligations` and
+  `goldilocksCorrect`; no constant-fault form of them is stated, and the endpoint's realizability witness reads the
+  certified endpoint directly.
   `Review.ObligationsSufficientOn` stays a root; it states correctness on a class of runs, which the
   constant-fault rejection tests use.
+- **`AsChainShape` keeps its `stock` defaults.** The trusted `AsChainShape` API defaults its vote binding to
+  `stock` (`Wire`, `skeleton`, `State` and `goldilocksShape`). The Challenge and Solution roots state their binding
+  explicitly (`goldilocks S`, for every `S : Setup`), so the reviewed roots carry the arbitrary-binding result; the
+  explicit binding protects those roots, not an arbitrary caller that omits the binding. No change to the defaults
+  is planned: removing them is a separate trusted API migration that needs maintainer approval.
 - **The headline statement `GoldilocksCorrect`** is certified next to `MeetsObligations`: for every setup,
   assumption set and finite validator type, the Goldilocks family in the general execution model is an L0
   `CorrectProtocol` at `goldilocksContract A (contract_coefficients S A)`, conjoined with that contract's
@@ -637,8 +645,7 @@ detail in `TRUST.md`.
   complete outage and sleepy claims, so the separate comparator roots and their forwarding proofs
   are removed. This is subsumption, not equivalence of those rows to the full endpoint.
   The committee-native regimes retain population and selected-committee participation; sleepy
-  liveness retains whole-run proposer progress. At the stock binding the outage committee clause
-  follows from the population clause (look-ahead `5 ≤ 5`). The proper-subset binding
+  liveness retains whole-run proposer progress. The proper-subset binding
   `AsChainShape.Regression.committeeOne` and its clean outage and sleepy witnesses remain
   (`Obligations.Test.Contract.goldilocks_committeeOne`, `committeeOne_outage_witness`,
   `committeeOne_sleepy_witness`): no wrapper deletion weakens their nonvacuity coverage.
@@ -699,6 +706,11 @@ detail in `TRUST.md`.
   push and in `scripts/push-main.sh` before the push, and a failure names the commit and field, never the address.
   Reason: no private address is ever written to the repository or a log. CI detects an upload after the fact;
   push-main stops a landing before it.
+- **Declarations a pinned downstream consumer names are kept.** A declaration that a pinned downstream consumer
+  names directly carries the docstring note "Kept for a downstream consumer.", whether or not this repository
+  also uses it. Its transitive dependencies stay protected through the consumer's elaborated closure without a
+  note: a deletion sweep checks that closure before it removes a declaration that is unused here. The protection
+  is the elaborated closure, not the presence or absence of a note.
 - **Trusted-surface changes are recorded, not gated.** Every non-merge commit that touches a path of
   `trusted_paths` carries a line `Trusted-surface: <what changes and why>`, checked by `scripts/review-boundary.sh`.
   Reason: there are no review gates; the line keeps every trusted change visible and is machine-checked.

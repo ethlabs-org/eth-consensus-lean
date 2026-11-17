@@ -17,18 +17,20 @@ def LockInvariant (U : Set (Blk sp.n FGP)) (st : SAState sp.n) (Φ : Frm sp.n FG
 variable {A : SAOperations sp FGP S M} (F : SAFamily A ro) (tr : ACTrace A.toAC)
   (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
 
-/-- Independently supplied observed call-frame invariant. -/
+/-- Independently supplied observed call-frame invariant. Kept for a downstream consumer. -/
 def CallFrameInvariant : Prop :=
   ∀ y ∈ H, ∀ i ℓ, (F.proj tr).CallAt y i ℓ →
     LockInvariant U ((F.proj tr).state y i) ℓ.frame
 
-/-- At an update the record has a frame representative above each live lock block. -/
+/-- At an update the record has a frame representative above each live lock block.
+Kept for a downstream consumer. -/
 def RecordAboveLive : Prop :=
   ∀ y ∈ H, ∀ i s ℓ, SA.UpdateAt (F.proj tr) y i s ℓ →
     ∀ L ∈ SA.liveLockBlocks sp ((F.proj tr).state y i).locks ℓ.frame ((F.proj tr).time i),
     ∃ E ∈ ℓ.frame.tree, E.root = ((F.proj tr).state y i).latestConfirmed ∧ ℓ.frame.Anc L E
 
-/-- Receipt-origin witnesses precede this call's own cast strictly. -/
+/-- Receipt-origin witnesses precede this call's own cast strictly.
+Kept for a downstream consumer. -/
 def ReadPointOrigin : Prop :=
   ∀ y ∈ H, ∀ i ℓ e, SA.CastAt (F.proj tr) y i ℓ e →
     0 < sp.slot ((F.proj tr).time i) → ∀ l' ∈ e.readPoint.locks,

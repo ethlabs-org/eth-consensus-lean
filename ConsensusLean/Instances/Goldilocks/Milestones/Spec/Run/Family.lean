@@ -10,7 +10,8 @@ variable {sp : SA.SAParams} {S M : Type}
   {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
   {A : SA.SAOperations sp (List (FG.Att sp.n)) S M}
 
-/-- An actual node run with independent SA observation and vote provenance. -/
+/-- An actual node run with independent SA observation and vote provenance.
+Kept for a downstream consumer. -/
 structure FamilyRun (F : SA.SAFamily A ro)
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))

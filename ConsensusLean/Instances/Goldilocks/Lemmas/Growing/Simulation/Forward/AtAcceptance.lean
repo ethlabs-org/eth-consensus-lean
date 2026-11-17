@@ -6,8 +6,8 @@ public section
 
 /-! # Acceptance completeness of forwarding under growing faults
 
-The growing-fault form of `ForwardAtAcceptance`: every acceptance by a key honest at the
-acceptance cut's time queues and drains its wrapper in the same engine event. -/
+`ForwardAtAcceptanceAt`: every acceptance by a key honest at the acceptance cut's time queues
+and drains its wrapper in the same engine event. -/
 
 namespace Consensus.Goldilocks.Simulation
 

@@ -28,7 +28,7 @@ def RecordAt (y : Fin sp.n) (i : Nat) (R : SA.Blk sp.n (List (FG.Att sp.n))) : P
   R ∈ (Node.frame (tr.state y i)).tree ∧ R.root = (tr.state y i).ac.latestConfirmed
 
 /-- `y` has run the update of slot `s` before cut `i` with no restart since: the update ran at a
-cut `k < i` and no cut in `(k, i)` is a restart of `y`. -/
+cut `k < i` and no cut in `(k, i)` is a restart of `y`. Kept for a downstream consumer. -/
 def UpdatedNoRestart (y : Fin sp.n) (i s : Nat) : Prop :=
   ∃ k < i, ∃ ℓ, SA.UpdateAt tr.projAC y k s ℓ ∧ ∀ k', k < k' → k' < i → ¬ tr.RestartAt y k'
 

@@ -83,7 +83,8 @@ end SAFamily
 
 variable {A : SAOperations sp FGP S M}
 
-/-- Honest state commutation and honest erased-call stuttering, not handler equality. -/
+/-- Honest state commutation and honest erased-call stuttering, not handler equality.
+Kept for a downstream consumer. -/
 structure ObservationAgreement (F : SAFamily A ro)
     (H : Set (Fin sp.n)) (tr : ACTrace A.toAC) : Prop where
   state : ∀ y ∈ H, ∀ i, (F.proj tr).state y i = F.stateView (tr.state y i)
@@ -93,7 +94,8 @@ structure ObservationAgreement (F : SAFamily A ro)
   erased_emissions : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
     F.projCall ℓ.call = none → ℓ.emits.filterMap F.projEm = []
 
-/-- Structural correspondence to actual candidate outputs, not semantic correctness. -/
+/-- Structural correspondence to actual candidate outputs, not semantic correctness.
+Kept for a downstream consumer. -/
 structure OutputAgreement (F : SAFamily A ro) (H : Set (Fin sp.n))
     (tr : ACTrace A.toAC) : Prop where
   toFG : ∀ x ∈ H, ∀ i ℓ C, ACToFGAt tr x i ℓ C →

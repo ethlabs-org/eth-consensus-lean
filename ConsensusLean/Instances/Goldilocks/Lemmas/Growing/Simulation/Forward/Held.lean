@@ -9,12 +9,11 @@ public section
 
 /-! # Parent-first receipt traversal under growing faults
 
-The growing-fault form of `forward_receipt_held`. A receiver honest at `d ≥ 0` through its
-reading cut `j` (every cut before `j` at a time `≤ d`) holds every block of a received forwarding
-chain below its finalized tip, when every wrapper of the chain was accepted by its signer at a cut
-at which the signer was honest. Signer and receiver need not be honest at a common time: each is
-read on its own prefix run, and the blocks held while honest are their common coherent universe
-(`fgRun_upTo`). -/
+`forward_receipt_held_at`: a receiver honest at `d ≥ 0` through its reading cut `j` (every cut
+before `j` at a time `≤ d`) holds every block of a received forwarding chain below its finalized
+tip, when every wrapper of the chain was accepted by its signer at a cut at which the signer was
+honest. Signer and receiver need not be honest at a common time: each is read on its own prefix run,
+and the blocks held while honest are their common coherent universe (`fgRun_upTo`). -/
 
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape

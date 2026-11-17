@@ -240,8 +240,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 /-- **The finite sleepy service under growing faults** from raw synchrony through its deadline
 bound `b ≤ horizon`: senders honest at their sends, recipients honest at their reading calls
-(the growing-fault `sleepyServiceBefore_of_syncUntil`). Self-service uses fresh processing at the
-source time. -/
+(`Compose.Growing.SleepyServiceBefore`). Self-service uses fresh processing at the source time. -/
 theorem sleepyServiceBefore_of_syncUntil_at (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b) :

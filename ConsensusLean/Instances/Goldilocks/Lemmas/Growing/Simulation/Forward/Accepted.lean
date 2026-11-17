@@ -12,11 +12,12 @@ public section
 
 /-! # Acceptance of a received forwarding chain under growing faults
 
-The growing-fault forms of `received_forward_accepted_before`, without a constant-fault premise.
-The recipient is honest at a time `t₀` no earlier than every cut before its reading cut `j` (it
-may be compromised by the time of cut `j` itself); ancestry is read inside the blocks held while
-honest. The signer is honest at its stamp, with the envelope its genuine release there
-(`received_forward_accepted_before_of_released_at`).
+`received_forward_accepted_before_of_released_at`: a receipt, before a deadline, of a forwarding
+envelope that its signer released while honest gives the recipient's acceptance of the forwarded
+block before that deadline, without a constant-fault premise. The recipient is honest at a time `t₀`
+no earlier than every cut before its reading cut `j` (it may be compromised by the time of cut `j`
+itself); ancestry is read inside the blocks held while honest. The signer is honest at its stamp,
+with the envelope its genuine release there.
 
 Every wrapper nested in a genuine release is in the signer's view after it, hence was itself
 released, and accepted, by the signer while honest (`released_forward_source_acceptance_at`).
