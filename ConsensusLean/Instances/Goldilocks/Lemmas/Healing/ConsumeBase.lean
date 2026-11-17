@@ -205,8 +205,8 @@ theorem cast_time_le_slot (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC y k ℓ e) :
     tr.time k ≤ sp.ts e.msg.slot + sp.Δ :=
-  (Compose.cast_head_fcRoot
-    (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun hy hv).2
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  (Compose.cast_head_fcRoot hac.localRun hac.vstart hy hv).2
 
 end Consensus.Goldilocks.Healing
 

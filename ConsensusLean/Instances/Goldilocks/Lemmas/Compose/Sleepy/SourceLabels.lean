@@ -37,7 +37,7 @@ theorem no_optimistic_before_held_row_of {ini} (hrun : GoldilocksRun proposer dg
   obtain ⟨-, -, -, hslc, -⟩ := id hO
   rcases held_row_sign_time hrun hav hsg (hr.time_nonneg c) hslc (hmono hck.le)
       ((hmono hkm.le).trans ((hmono hmi.le).trans
-        (by rw [← hs]; exact (cast_head_fcRoot_from hr hrun.vstart hy hc).2))) with ⟨hT0, -⟩ | hT
+        (by rw [← hs]; exact (cast_head_fcRoot hr hrun.vstart hy hc).2))) with ⟨hT0, -⟩ | hT
   · -- at `t_{s+1}`: a one-member committee, and the voter has a second slot-`(s+1)` vote by
     -- the check
     obtain ⟨u, hu, hall, j', hj', e', hv', hs'⟩ :=
@@ -75,7 +75,7 @@ theorem vote_row_source {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   -- the vote is cast by `t_{s+1} + Δ`, after the origin's event
   have hti : tr.time i ≤ sp.ts s + 5 * sp.Δ := by
     have h : tr.time i ≤ sp.ts (e.msg.slot : Int) + sp.Δ :=
-      (cast_head_fcRoot_from hr hrun.vstart hy hc).2
+      (cast_head_fcRoot hr hrun.vstart hy hc).2
     rw [hs] at h
     simp only [SAParams.ts] at h ⊢
     push_cast at h

@@ -596,7 +596,8 @@ theorem voter_passes_proposer_root
   have hPv := proposal_frozen_viable hS hy hcy hes
   have hfP : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P := hPv.2.1.mono hΦU
   rcases SA.anc_total hU hRP hfP with hRf | hfR
-  · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := Compose.cast_head_fcRoot hr hy hcy
+  · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := Compose.cast_head_fcRoot hr
+      (fun _ => SA.voteStart_initial _) hy hcy
     exact ⟨Hd, hΦU hHd, hHdr, hRf.trans (Anc.mono hΦU hfHd)⟩
   -- `R` is in the viable voter block tree
   have hPt : P ∈ ℓy.frame.tree := hPv.1.1

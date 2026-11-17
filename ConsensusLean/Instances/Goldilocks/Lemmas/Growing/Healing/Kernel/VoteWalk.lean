@@ -55,7 +55,7 @@ theorem vote_old_live_lock_below_parent_of_sources_at
   have hcy' : SA.CastAt (tr.upTo (tr.time j)).projAC y j elly e := by
     rw [RunTrace.upTo_projAC]
     exact (SA.upTo_castAt).mpr ⟨le_rfl, hcy⟩
-  have htj := (Compose.cast_head_fcRoot_from hr hp.run.vstart hy hcy').2
+  have htj := (Compose.cast_head_fcRoot hr hp.run.vstart hy hcy').2
   change tr.time j ≤ sp.ts e.msg.slot + sp.Δ at htj
   rw [hes, he] at htj
   have hrt := hp.run.time_mono hrj.le

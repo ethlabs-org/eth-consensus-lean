@@ -111,7 +111,7 @@ theorem update_adopts_origin_before {dg : Digest (List (FG.Att sp.n)) (Payload s
   have hvb : ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s' →
       tr.time j ≤ b := by
     rintro x hx j e ⟨ℓx, hc, he⟩ hs
-    have ht := (cast_head_fcRoot hr hx ⟨hc, he⟩).2
+    have ht := (cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hx ⟨hc, he⟩).2
     rw [hs] at ht
     have hu' : tr.time k₀ = sp.ts s' + 6 * sp.Δ := hu.2.2.1
     change tr.time j ≤ _ at ht

@@ -48,7 +48,8 @@ theorem vote_step (hrun : GoldilocksRun proposer dg H tr)
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hp.noColl).localRun
   obtain ⟨-, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocks H := by
     rcases hr.frameLaw y hy k ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
-  have hle : tr.time k ≤ sp.ts e.msg.slot + sp.Δ := (cast_head_fcRoot hr hy hc).2
+  have hle : tr.time k ≤ sp.ts e.msg.slot + sp.Δ :=
+    (cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hy hc).2
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hts : sp.ts e.msg.slot ≤ tr.time k :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr

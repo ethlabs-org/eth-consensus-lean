@@ -39,7 +39,7 @@ theorem ResetPremisesUpTo.cast_entry_below_old {b : Time}
   obtain ⟨_, D, CV, _, hfl, _⟩ := hp.highOrigin_mem ho
   have hrt := hp.fastLock_time_lt hfl hlu
     ((hp.run.time_mono (by clear * - hdj hrd; omega : r ≤ j)).trans
-      (hes ▸ (Compose.cast_head_fcRoot hrun hy hc).2))
+      (hes ▸ (Compose.cast_head_fcRoot hrun (fun _ => SA.voteStart_initial _) hy hc).2))
   exact ⟨O, ⟨v, r, l, ho, hrt, (hp.run.time_mono (by clear * - hdj hrd; omega)).trans hjb⟩, hEO⟩
 
 end Consensus.Goldilocks.Healing

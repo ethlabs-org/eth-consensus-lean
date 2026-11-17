@@ -55,7 +55,7 @@ theorem faulty_lt_half (hrun : GoldilocksRun proposer dg H tr)
     omega
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hp.noColl).localRun
   obtain ⟨ℓz, hcz, hez⟩ := hv
-  have hle := (cast_head_fcRoot hr hz ⟨hcz, hez⟩).2
+  have hle := (cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hz ⟨hcz, hez⟩).2
   have hts : sp.ts ez.msg.slot ≤ tr.time jz :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg jz) _).mpr
       (by rw [(SA.castAt_spec hr hz ⟨hcz, hez⟩).2.1])

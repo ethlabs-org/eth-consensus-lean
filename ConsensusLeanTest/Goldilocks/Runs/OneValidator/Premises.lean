@@ -517,8 +517,8 @@ theorem tickRun_readyProposal (s : Nat) (hs : 1 ≤ s) :
     have hcAC : (tickRun N1 dg1).projAC.CallAt v0 jx ℓ := Compose.projAC_callAt.2 hcall
     have hrAC := (Compose.goldilocks_ac_projection sp1 ro1 dg1 Set.univ
       (tickRun N1 dg1) (fun _ => v0) hrun hnc).localRun
-    obtain ⟨⟨Hd, hHdt, hHdr, -⟩, hjxt⟩ := Compose.cast_head_fcRoot hrAC (Set.mem_univ v0)
-      ⟨hcAC, he⟩
+    obtain ⟨⟨Hd, hHdt, hHdr, -⟩, hjxt⟩ := Compose.cast_head_fcRoot hrAC
+        (fun _ => SA.voteStart_initial _) (Set.mem_univ v0) ⟨hcAC, he⟩
     rw [Compose.frame_of_projAC hrun (Set.mem_univ v0) hcAC] at hHdt
     rw [hem] at hHdr hjxt
     have hslotHd := tree_slot_le hHdt.1

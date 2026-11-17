@@ -497,7 +497,7 @@ theorem result_writer_pool_win {b : Time} (hrun : GoldilocksRun proposer dg H tr
   have ht₀ : tr.time i₀ = sp.ts s + 6 * sp.Δ := hupd.2.2.1
   have hti : tr.time i ≤ sp.ts s + 5 * sp.Δ := by
     have h : tr.time i ≤ sp.ts (e.msg.slot : Int) + sp.Δ :=
-      (cast_head_fcRoot hrun'.localRun hy hc).2
+      (cast_head_fcRoot hrun'.localRun hrun'.vstart hy hc).2
     rw [hs] at h
     simp only [SAParams.ts] at h ⊢
     push_cast at h

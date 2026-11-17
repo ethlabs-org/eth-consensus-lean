@@ -75,7 +75,7 @@ theorem honest_vote_at_update_of_sync {ini} (hrun : SA.ACRun proposer T H U ini)
   obtain ⟨Hd₂, hHd₂, hHd₂r, hHd₂s⟩ := SA.honest_head hrun hx hv
   obtain ⟨ℓv, hcv, hev⟩ := hv
   obtain ⟨hxv, hxs, -, -⟩ := SA.castAt_spec hr hx ⟨hcv, hev⟩
-  obtain ⟨⟨Hd, hHd, hHdr, -⟩, htj⟩ := cast_head_fcRoot_from hr hrun.vstart hx ⟨hcv, hev⟩
+  obtain ⟨⟨Hd, hHd, hHdr, -⟩, htj⟩ := cast_head_fcRoot hr hrun.vstart hx ⟨hcv, hev⟩
   rw [hes] at htj
   have hsj : sp.ts s ≤ T.time j := (SA.ts_le_iff_le_slot sp (hr.time_nonneg j) s).2 (by omega)
   -- the vote is processed by the updater before `t_s + 2Δ`
@@ -131,7 +131,7 @@ theorem honest_vote_at_update_of_sync {ini} (hrun : SA.ACRun proposer T H U ini)
       by_cases hk₁k' : k₁ ≤ k'
       · exact lt_of_le_of_lt (hr.time_mono hk₁k') hk'lt
       · obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, he₁m⟩ | ⟨-, hn₁, -⟩⟩ := hsend₁
-        · have h := (cast_head_fcRoot_from hr hrun.vstart hy ⟨hc₁, he₁⟩).2
+        · have h := (cast_head_fcRoot hr hrun.vstart hy ⟨hc₁, he₁⟩).2
           rw [he₁m, hes] at h
           linarith only [h, hΔ]
         · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)

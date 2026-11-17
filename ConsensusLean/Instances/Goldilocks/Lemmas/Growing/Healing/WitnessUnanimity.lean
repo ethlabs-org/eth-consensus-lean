@@ -65,7 +65,7 @@ private theorem narrow_vote (hrun : Consensus.Goldilocks.Growing.GoldilocksRun p
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have subU := RunTrace.honestBlocks_upTo_subset hrun.time_mono (H := H) hd
   obtain ⟨ell, hc⟩ := hv
-  obtain ⟨⟨Hd, hHd, hHdr, -⟩, -⟩ := Compose.cast_head_fcRoot_from hr hrun.vstart hx hc
+  obtain ⟨⟨Hd, hHd, hHdr, -⟩, -⟩ := Compose.cast_head_fcRoot hr hrun.vstart hx hc
   have hHdU := (SA.frameIn_of_callAt hr hx hc.1).2 hHd
   obtain ⟨W, hW, hWr, hBW⟩ := hext
   obtain rfl : W = Hd := hU.1 hW (subU hHdU) (hWr.trans hHdr.symm)

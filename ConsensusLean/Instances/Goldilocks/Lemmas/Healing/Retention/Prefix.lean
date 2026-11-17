@@ -231,7 +231,8 @@ theorem ResetPremisesUpTo.row_origin_not_current {b : Time}
   rw [hav] at hs₀
   obtain rfl := sign_unique hp.run hv hs₀ hs
   -- `t_m ≤ time r ≤ time d ≤ time i ≤ time k ≤ t_m + Δ`, and the signing is at a public time
-  have hkt : tr.time k ≤ sp.ts e.msg.slot + sp.Δ := (Compose.cast_head_fcRoot hr hy hc).2
+  have hkt : tr.time k ≤ sp.ts e.msg.slot + sp.Δ :=
+    (Compose.cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hy hc).2
   have hrt : sp.ts e.msg.slot ≤ tr.time r := by
     obtain ⟨-, -, -, hsl, -⟩ := hopt
     exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) _).2 (by rw [hsl])

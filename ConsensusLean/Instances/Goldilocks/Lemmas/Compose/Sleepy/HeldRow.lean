@@ -142,7 +142,7 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   obtain ⟨hrs, hti⟩ := honest_vote_restarts hrun hnc hy hc hs
   have hti' : tr.time i ≤ sp.ts s + 5 * sp.Δ :=
-    le_ts_add_five (by rw [← hs]; exact (cast_head_fcRoot_from hr hrun.vstart hy hc).2)
+    le_ts_add_five (by rw [← hs]; exact (cast_head_fcRoot hr hrun.vstart hy hc).2)
   have hsi : sp.slot (tr.time i) = s + 1 := ((SA.castAt_spec hr hy hc).2.1.symm.trans hs)
   have hvi : SA.VoteAt tr.projAC y i e := ⟨ℓ, hc.1, hc.2⟩
   have hkm' := hrun.time_mono hkm.le

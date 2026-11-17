@@ -144,7 +144,8 @@ theorem unanimous_carry_votes {b : Time}
     have := (SA.castAt_spec hr hz hc').2.1
     have := (SA.castAt_spec hr hy hcast).2.1
     omega
-  obtain ⟨⟨Hd, hHd, hHdr, _⟩, hqt⟩ := Compose.cast_head_fcRoot hr hz hc'
+  obtain ⟨⟨Hd, hHd, hHdr, _⟩, hqt⟩ := Compose.cast_head_fcRoot hr
+      (fun _ => SA.voteStart_initial _) hz hc'
   have hHdP : Hd = P := hr.coherent.1 ((SA.frameIn_of_callAt hr hz hc'.1).2 hHd) hP
     (hHdr.trans (hun z hz q e' ⟨ell', hc'⟩ ((hp.run.time_mono hqi.le).trans hib) hsl))
   subst Hd
@@ -222,7 +223,8 @@ theorem unanimous_next_vote_viable {b : Time}
   have hroot := hp.reset_vote_root_below_bound hR hP hbound hy hcast hs hjb
   have hFP := (hPhi.F_anc_fcRoot.mono hPhiU).trans hroot
   obtain ⟨q, v, ⟨ellv, hv⟩, hvs, hq⟩ := honest_votes_in_slot hp hc hgu hR hub y hy
-  obtain ⟨⟨Hd, hHd, he, _⟩, _⟩ := Compose.cast_head_fcRoot hS.stockRun.localRun hy hv
+  obtain ⟨⟨Hd, hHd, he, _⟩, _⟩ := Compose.cast_head_fcRoot hS.stockRun.localRun
+      hS.stockRun.vstart hy hv
   have heq : Hd = P := hS.stockRun.localRun.coherent.1
     ((SA.frameIn_of_callAt hS.stockRun.localRun hy hv.1).2 hHd) hP
     (he.trans (hun y hy q v ⟨ellv, hv⟩ (hq.trans hub) hvs))
@@ -633,7 +635,8 @@ theorem unanimous_head_held_at_call {b : Time}
   have hr := (Healing.healthy_base_of_reset_catch_before hp hc).stockRun.localRun
   have hub : sp.ts u + sp.Δ ≤ b := ht.le.trans hjb
   obtain ⟨q, e, ⟨ellv, hv⟩, hs, hq⟩ := honest_votes_in_slot hp hc hgu hR hub y hy
-  obtain ⟨⟨Hd, hHd, he, _⟩, _⟩ := Compose.cast_head_fcRoot hr hy hv
+  obtain ⟨⟨Hd, hHd, he, _⟩, _⟩ := Compose.cast_head_fcRoot hr
+      (fun _ => SA.voteStart_initial _) hy hv
   obtain rfl : Hd = P := hr.coherent.1 ((SA.frameIn_of_callAt hr hy hv.1).2 hHd) hP
     (he.trans (hun y hy q e ⟨ellv, hv⟩ (hq.trans hub) hs))
   have hqj : q ≤ j := by

@@ -39,7 +39,7 @@ theorem reset_vote_root_source_at
   have hc' : SA.CastAt (tr.projAC.upTo (tr.time j)) y j ell e :=
     ⟨(Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩, hc.2⟩
   have htupper : tr.time j ≤ sp.ts u + sp.Δ := by
-    have h := (Compose.cast_head_fcRoot_from (hac.localRun.upTo ht) hac.vstart hy hc').2
+    have h := (Compose.cast_head_fcRoot (hac.localRun.upTo ht) hac.vstart hy hc').2
     change tr.time j ≤ sp.ts e.msg.slot + sp.Δ at h
     rwa [hes] at h
   obtain ⟨hFm, hJm, hFJ, ⟨C, hCm, hCJ, hChj⟩, hmax, _⟩ :=

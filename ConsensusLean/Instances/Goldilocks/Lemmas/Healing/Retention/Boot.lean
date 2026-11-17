@@ -1196,7 +1196,8 @@ theorem ResetPremisesUpTo.later_carry_of_finalized_anc {b : Time}
       change e'.msg.slot = m' at hvs
       clear * - hm' hk' h₁ h₂ hvs; omega
     obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hprior z hz k' hk'k e' ⟨ℓk, hck, he'⟩ hvs
-    obtain ⟨⟨Hd, hHd, hHdr, -⟩, hkt⟩ := Compose.cast_head_fcRoot hr hz ⟨hck, he'⟩
+    obtain ⟨⟨Hd, hHd, hHdr, -⟩, hkt⟩ := Compose.cast_head_fcRoot hr
+        (fun _ => SA.voteStart_initial _) hz ⟨hck, he'⟩
     obtain rfl : Hd = Hv :=
       hU.1 ((SA.frameIn_of_callAt hr hz hck).2 hHd) hHv (hHdr.trans hHvr.symm)
     have hkt' : tr.projAC.time k' < sp.ts m' + 2 * sp.Δ := by

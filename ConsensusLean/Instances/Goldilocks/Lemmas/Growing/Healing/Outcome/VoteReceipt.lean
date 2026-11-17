@@ -67,7 +67,7 @@ theorem high_origin_held_at_vote_at
   have hrq := hac.localRun.upTo (hp.run.time_nonneg q)
   have hcz' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcz)
   obtain ⟨⟨W', hW't, hW'r, _⟩, hqt⟩ :=
-    Compose.cast_head_fcRoot_from hrq hp.run.vstart hzq ⟨hcz', he⟩
+    Compose.cast_head_fcRoot hrq hp.run.vstart hzq ⟨hcz', he⟩
   have hWW : W' = W := hac.localRun.coherent.1
     ((SA.frameIn_of_callAt hrq hzq hcz').2 hW't) hW (hW'r.trans hWr.symm)
   subst W'

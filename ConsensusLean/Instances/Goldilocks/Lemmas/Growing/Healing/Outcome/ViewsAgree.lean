@@ -62,7 +62,7 @@ theorem reset_views_agree_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hr := (hac.upTo (hp.run.time_nonneg j)).localRun
   have hcy' := SA.upTo_castAt.mpr (And.intro le_rfl hcy)
   have htj : tr.time j ≤ sp.ts (s + 1 : Nat) + hold sp := by
-    have ht := (Compose.cast_head_fcRoot_from hr hp.run.vstart hy hcy').2
+    have ht := (Compose.cast_head_fcRoot hr hp.run.vstart hy hcy').2
     change tr.time j ≤ sp.ts e.msg.slot + sp.Δ at ht
     simpa only [hes, hold] using ht
   have hpi : p ∈ H (tr.time i) := hp.run.antitone

@@ -306,7 +306,7 @@ theorem honest_head_in_frame_at_read {ini} (hrun : GoldilocksRun proposer dg H t
   have hjct : ∀ r ≤ jc, tr.projAC.time r ≤ t := fun r h =>
     (hr.time_mono h).trans (htj.trans_le hTt)
   obtain ⟨ℓ', hcall, hem⟩ := hv
-  obtain ⟨⟨Hd', hHd'Φ, hHd'r, -⟩, htj'⟩ := cast_head_fcRoot_from hr hrun.vstart hx ⟨hcall, hem⟩
+  obtain ⟨⟨Hd', hHd'Φ, hHd'r, -⟩, htj'⟩ := cast_head_fcRoot hr hrun.vstart hx ⟨hcall, hem⟩
   obtain rfl : Hd' = Hd :=
     hU.1 ((SA.frameIn_of_callAt hr hx hcall).2 hHd'Φ) hHd (hHd'r.trans hHdr.symm)
   rw [hes] at htj'
@@ -442,7 +442,7 @@ theorem latest_vote_delivered {ini} (hrun : GoldilocksRun proposer dg H tr ini)
       (by rw [he', has])
     exact he'.symm
   have hk : tr.projAC.time k ≤ sp.ts L + sp.Δ := by
-    have h := (cast_head_fcRoot_from hr hrun.vstart hx ⟨hck, he⟩).2
+    have h := (cast_head_fcRoot hr hrun.vstart hx ⟨hck, he⟩).2
     rwa [hes] at h
   rw [← projAC_state hrun.toLocalRun hy i]
   have hk0 : sp.ts L ≤ tr.projAC.time k :=

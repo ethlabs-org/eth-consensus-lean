@@ -84,7 +84,7 @@ theorem pre_reachable {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini
 
 /-- **An honest vote's head extends `fc_root`** (requirement 1, A0.6), and the vote is cast no
 later than `Δ` after the start of its slot. -/
-theorem cast_head_fcRoot_from {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem cast_head_fcRoot {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
     (hc : SA.CastAt tr y i ℓ e) :
@@ -109,14 +109,6 @@ theorem cast_head_fcRoot_from {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H 
   by_cases hne : ℓ.frame.fcRoot = d.head
   · exact hne ▸ hok.1.1.fcRoot_mem
   · exact (Anc.mem hok' hne).2
-
-/-- `cast_head_fcRoot_from` at the initial starts. -/
-theorem cast_head_fcRoot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
-    (hc : SA.CastAt tr y i ℓ e) :
-    (∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.fcRoot Hd) ∧
-      tr.time i ≤ sp.ts e.msg.slot + sp.Δ :=
-  cast_head_fcRoot_from hr (fun _ => SA.voteStart_initial _) hy hc
 
 end SA
 
@@ -199,7 +191,7 @@ theorem vote_extends (hrun : GoldilocksRun proposer dg H tr)
     SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hp.noColl
   have hr := hrun'.localRun
-  obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, hle⟩ := cast_head_fcRoot hr hy hc
+  obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, hle⟩ := cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hy hc
   obtain ⟨-, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocks H := by
     rcases hr.frameLaw y hy k ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
   rcases hviab with hv | hBf

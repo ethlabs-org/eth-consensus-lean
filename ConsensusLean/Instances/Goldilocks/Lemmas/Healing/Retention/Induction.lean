@@ -166,7 +166,8 @@ theorem high_vote_extends_of_syncAC
     SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
   have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
-  obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, hle⟩ := Compose.cast_head_fcRoot hr hy hc
+  obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, hle⟩ := Compose.cast_head_fcRoot hr
+      (fun _ => SA.voteStart_initial _) hy hc
   obtain ⟨-, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocks H := by
     rcases hr.frameLaw y hy k ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
   by_cases hBf : Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot
@@ -234,7 +235,8 @@ theorem high_vote_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose
   have hsync0 := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr
     proposer ΔF (sp.ts j) (sp.ts e.msg.slot + sp.Δ) hrun.toLocalRun hsync
   exact high_vote_extends_of_syncAC hrun hnc hx hfl hy hc hs
-    (Compose.syncAC_mono hsync0 le_rfl (Compose.cast_head_fcRoot hr hy hc).2)
+    (Compose.syncAC_mono hsync0 le_rfl (Compose.cast_head_fcRoot hr
+        (fun _ => SA.voteStart_initial _) hy hc).2)
     hcarry hcarryLater hhalf hfault hviab hprior hstock
 
 /-- **The vote step** (of the first-violating-event induction; also for the votes through the
@@ -345,7 +347,8 @@ theorem raw_vote_activation_before_core (hp : ResetPremises tr H proposer dg g �
     have hroot' := hroot k hcomp B j hP y hy ℓ e hc hj htime
     obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
     by_cases hcovered : Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot
-    · obtain ⟨⟨Hd, hHd, hHdr, hpath⟩, _⟩ := Compose.cast_head_fcRoot hr hy hc
+    · obtain ⟨⟨Hd, hHd, hHdr, hpath⟩, _⟩ := Compose.cast_head_fcRoot hr
+        (fun _ => SA.voteStart_initial _) hy hc
       exact ⟨⟨Hd, hΦU hHd, hHdr, hcovered.trans (Anc.mono hΦU hpath)⟩, Or.inr hcovered⟩
     have hfcB := hroot'.resolve_right hcovered
     have hFB := (Anc.mono hΦU hΦ.F_anc_fcRoot).trans hfcB

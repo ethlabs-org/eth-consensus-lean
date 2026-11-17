@@ -348,7 +348,7 @@ theorem proposal_head_of_batch (hrun : GoldilocksRun proposer dg H tr) (hs : HSS
     intro x hx j' e'' hv'' hs''
     refine hprior x hx j' ?_ e'' hv'' hs''.ge
     obtain ⟨ℓ'', hc'', he''⟩ := hv''
-    have h1 := (Compose.cast_head_fcRoot hr hx ⟨hc'', he''⟩).2
+    have h1 := (Compose.cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hx ⟨hc'', he''⟩).2
     rw [hs''] at h1
     change tr.time j' ≤ _ at h1
     by_contra hn
@@ -507,7 +507,7 @@ private theorem two_le_of_update (hrun : GoldilocksRun proposer dg H tr)
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have h1 := hr.time_mono hik.le
-  have h2 := (Compose.cast_head_fcRoot hr hy hv).2
+  have h2 := (Compose.cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hy hv).2
   have h3 : tr.time i = sp.ts j + 6 * sp.Δ := hupd.2.2.1
   change tr.time i ≤ tr.time k at h1
   change tr.time k ≤ _ at h2

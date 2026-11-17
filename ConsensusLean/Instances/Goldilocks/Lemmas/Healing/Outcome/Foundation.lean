@@ -492,7 +492,8 @@ theorem clean_source_votes_before
     have hvi := vote_viable_of_root hp.run hp.noColl hy hcast hroot hkeep
     obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcast.1
     by_cases hBF : Anc (tr.HonestBlocks H) B ell.frame.fcRoot
-    · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := Compose.cast_head_fcRoot hr hy hcast
+    · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := Compose.cast_head_fcRoot hr
+        (fun _ => SA.voteStart_initial _) hy hcast
       exact ⟨Hd, hΦU hHd, hHdr, hBF.trans (hfHd.mono hΦU)⟩
     have hv := hvi.resolve_right hBF
     have hFB := (hΦ.rooted.2 B hv.1.1).mono hΦU
@@ -562,7 +563,8 @@ theorem clean_source_votes_before
           omega
         obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hprior z hz q hqi e' ⟨ell', hc'⟩ (by
             clear * - hsm hslot; omega)
-        obtain ⟨⟨Hd, hHd, hHdr, -⟩, hqt⟩ := Compose.cast_head_fcRoot hr hz hc'
+        obtain ⟨⟨Hd, hHd, hHdr, -⟩, hqt⟩ := Compose.cast_head_fcRoot hr
+            (fun _ => SA.voteStart_initial _) hz hc'
         obtain rfl : Hd = Hv := hr.coherent.1 ((SA.frameIn_of_callAt hr hz hc'.1).2 hHd)
           hHv (hHdr.trans hHvr.symm)
         have hgm := hgs.trans ((SA.ts_le_iff sp).mpr (show (s : Int) ≤ m by clear * - hsm; omega))
@@ -705,7 +707,8 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
       exact ih q hqi ((hp.run.time_mono hqi.le).trans hib) z hz ell' e' hc' hse
     obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcast.1
     rcases hdomain y hy i ell e hcast hib hsi hprior with hBF | hv
-    · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := Compose.cast_head_fcRoot hr hy hcast
+    · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := Compose.cast_head_fcRoot hr
+        (fun _ => SA.voteStart_initial _) hy hcast
       exact ⟨Hd, hΦU hHd, hHdr, hBF.trans (hfHd.mono hΦU)⟩
     have hFB := (hΦ.rooted.2 B hv.1.1).mono hΦU
     by_cases hfirst : e.msg.slot = s + 1
@@ -737,7 +740,8 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
           omega
         obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hprior z hz q hqi e' ⟨ell', hc'⟩ (by
             clear * - hsm hslot; omega)
-        obtain ⟨⟨Hd, hHd, hHdr, -⟩, hqt⟩ := Compose.cast_head_fcRoot hr hz hc'
+        obtain ⟨⟨Hd, hHd, hHdr, -⟩, hqt⟩ := Compose.cast_head_fcRoot hr
+            (fun _ => SA.voteStart_initial _) hz hc'
         obtain rfl : Hd = Hv := hr.coherent.1 ((SA.frameIn_of_callAt hr hz hc'.1).2 hHd)
           hHv (hHdr.trans hHvr.symm)
         have hgm := hgs.trans ((SA.ts_le_iff sp).mpr (show (s : Int) ≤ m by clear * - hsm; omega))

@@ -59,7 +59,7 @@ theorem high_origin_frozen_head_at
   have hrj := (hac.upTo (hp.run.time_nonneg j)).localRun
   have hcz' := Trace.upTo_callAt tr.projAC |>.mpr (And.intro le_rfl hcz)
   obtain ⟨⟨W', hW't, hW'r, _⟩, hjt⟩ :=
-    Compose.cast_head_fcRoot_from hrj hp.run.vstart hzj ⟨hcz', he⟩
+    Compose.cast_head_fcRoot hrj hp.run.vstart hzj ⟨hcz', he⟩
   have heq : W' = W := hac.localRun.coherent.1
     ((SA.frameIn_of_callAt hrj hzj hcz').2 hW't) hW (hW'r.trans hWr.symm)
   subst W'

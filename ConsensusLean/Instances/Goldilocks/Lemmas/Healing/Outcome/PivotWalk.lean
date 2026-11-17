@@ -216,7 +216,7 @@ theorem ResetPremisesUpTo.vote_old_live_lock_below_parent {b : Time}
       hci hcall hd hti hib
   have he : u = l.slot + 1 := by clear * - hlu hgap; omega
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  have htj := (Compose.cast_head_fcRoot hr hy hcy).2
+  have htj := (Compose.cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hy hcy).2
   rw [hes, he] at htj
   have hrt := hp.run.time_mono hrj.le
   have hts : sp.ts (l.slot + 1 : Nat) = sp.ts l.slot + 4 * sp.Δ := by

@@ -114,7 +114,7 @@ theorem unanimous_head_held_at_call_at {cm : Time → Finset (Fin sp.n)} {βK : 
     rw [RunTrace.upTo_projAC]
     exact ⟨(Trace.upTo_callAt_of_le _ le_rfl).mpr hv.1, hv.2⟩
   obtain ⟨⟨Hd, hHd, he, _⟩, _⟩ :=
-    Compose.cast_head_fcRoot_from hr (hrun.upTo hd).vstart hwq hv'
+    Compose.cast_head_fcRoot hr (hrun.upTo hd).vstart hwq hv'
   obtain rfl : Hd = P := hU.1 (frame_subset_at hrun hp.noColl hwq hv.1 hHd) hP
     (he.trans (hun w q e hwq ⟨ellv, hv⟩ (hq.trans hub) hs))
   -- the voter's frame relays `P` to the caller

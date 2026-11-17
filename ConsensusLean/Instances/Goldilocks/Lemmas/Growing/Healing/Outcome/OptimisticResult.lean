@@ -85,7 +85,7 @@ theorem optimistic_next_result_of_floor_at
       hcast (by clear * - hes; omega)
     have hc' : SA.CastAt (tr.projAC.upTo (tr.time j)) z q ellq e :=
       SA.upTo_castAt.mpr ⟨hqD, hcast⟩
-    obtain ⟨⟨Hd, hHd, hHdr, _⟩, _⟩ := Compose.cast_head_fcRoot_from hr hS.run.vstart hz hc'
+    obtain ⟨⟨Hd, hHd, hHdr, _⟩, _⟩ := Compose.cast_head_fcRoot hr hS.run.vstart hz hc'
     have hHdU := (SA.frameIn_of_callAt hr hz hc'.1).2 hHd
     obtain rfl : H' = Hd := hUc.1 hH' (hsub hHdU) (hH'r.trans hHdr.symm)
     exact ⟨H', hHdU, hH'r, RunTrace.anc_upTo_of_right hp.run.toLocalRun hp.noColl hj0 hHdU hBH'⟩

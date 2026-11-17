@@ -200,7 +200,8 @@ theorem origin_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr
       SA.VoteExtends (tr.HonestBlocks H) e'.msg B :=
     fun z hz k' hk' e' ⟨ℓ', hc', he'⟩ hs' =>
       ih k' hk' z hz ℓ' e' ⟨hc', he'⟩ hs' (hk.mono_right hk'.le)
-  obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, hle⟩ := Compose.cast_head_fcRoot hr hy hv
+  obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, hle⟩ := Compose.cast_head_fcRoot hr
+      (fun _ => SA.voteStart_initial _) hy hv
   have hΦU := (SA.frameIn_of_callAt hr hy hv.1).2
   by_cases hBf : Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot
   · exact ⟨Hd, hΦU hHd, hHdr, hBf.trans (Anc.mono hΦU hfHd)⟩
@@ -257,7 +258,7 @@ theorem clean_fast_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
   refine origin_extends hrun hs hc hw hj (fun y hy k ℓ e hv h1 hk hBf hprior => ?_)
     (fun _ hy _ _ _ hv hjs hk => clean_fast_viable hrun hs hc hw hx ho hj hy hv (by omega) hk)
   have hviab := (clean_fast_viable hrun hs hc hw hx ho hj hy hv (by omega) hk).resolve_right hBf
-  obtain ⟨-, hle⟩ := Compose.cast_head_fcRoot hr hy hv
+  obtain ⟨-, hle⟩ := Compose.cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hy hv
   have h0 := hr.time_nonneg k
   have htk : sp.ts e.msg.slot ≤ tr.time k :=
     (SA.ts_le_iff_le_slot sp h0 _).2 (by rw [(SA.castAt_spec hr hy hv).2.1])

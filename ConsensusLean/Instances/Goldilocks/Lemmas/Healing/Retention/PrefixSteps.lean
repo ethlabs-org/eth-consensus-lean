@@ -358,7 +358,7 @@ theorem vote_before_late_delivery
   set u := sp.ts e.msg.slot + sp.Δ with hu
   have hm0 : 0 ≤ sp.ts e.msg.slot := by simp only [SAParams.ts]; positivity
   have htk : tr.time k = u :=
-    le_antisymm (Compose.cast_head_fcRoot_from hr hrun.vstart hy hc).2 (ht ▸ hrun.time_mono hik.le)
+    le_antisymm (Compose.cast_head_fcRoot hr hrun.vstart hy hc).2 (ht ▸ hrun.time_mono hik.le)
   have hslot : sp.slot u = e.msg.slot := SA.slot_of_mem sp _ (by linarith)
     (by simp only [hu, SAParams.ts]; push_cast; linarith)
   have hpub : sp.toParams.IsPublic u :=

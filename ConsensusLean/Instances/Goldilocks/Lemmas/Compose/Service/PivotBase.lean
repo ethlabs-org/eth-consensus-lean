@@ -440,7 +440,7 @@ theorem vote_fcRoot_old_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hn
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hΔ := sp.toParams.hΔ
   have htj : tr.time j ≤ sp.ts ((s' + 1 : Nat) : Int) + sp.Δ :=
-    hes ▸ (cast_head_fcRoot_from hr hrun.vstart hy hc).2
+    hes ▸ (cast_head_fcRoot hr hrun.vstart hy hc).2
   have hsj : sp.slot (tr.projAC.time j) = s' + 1 := (SA.castAt_spec hr hy hc).2.1.symm.trans hes
   rw [frame_of_projAC hrun hy hc.1]
   refine fcRoot_of_rows_of hrun hnc hf hy (j := j)

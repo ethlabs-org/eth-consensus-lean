@@ -203,7 +203,7 @@ theorem castAt_facts_at {ini}
     ⟨projAC_callAt_upTo le_rfl hcast.1, hcast.2⟩
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcT.1
   exact ⟨⟨hΦ, hΦU.trans (RunTrace.honestBlocks_upTo_subset hrun.time_mono hd)⟩,
-    Compose.cast_head_fcRoot_from hr hrun.vstart hy hcT, (SA.castAt_spec hr hy hcT).2.1⟩
+    Compose.cast_head_fcRoot hr hrun.vstart hy hcT, (SA.castAt_spec hr hy hcT).2.1⟩
 
 /-! ### The reset service on the AC projection -/
 
@@ -485,7 +485,7 @@ theorem live_locks_of_stored_at {ini}
       obtain ⟨hjd, hcj⟩ := projAC_callAt_of_upTo hc''.1
       obtain ⟨Hv, hHv, hHvr, hBHv⟩ :=
         hE x j hj (hrun.antitone hjd hx) e' ⟨ℓ', hcj, hc''.2⟩ hslot
-      obtain ⟨⟨Hd, hHd, hHdr, -⟩, -⟩ := Compose.cast_head_fcRoot_from hr hrun.vstart hx hc''
+      obtain ⟨⟨Hd, hHd, hHdr, -⟩, -⟩ := Compose.cast_head_fcRoot hr hrun.vstart hx hc''
       have hHdU := (SA.frameIn_of_callAt hr hx hc''.1).2 hHd
       obtain rfl : Hd = Hv :=
         (Compose.Growing.honest_blocks_coherent hrun hnc).1 (hsub hHdU) hHv (hHdr.trans hHvr.symm)

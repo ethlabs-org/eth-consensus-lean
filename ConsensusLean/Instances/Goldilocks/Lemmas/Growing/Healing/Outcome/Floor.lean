@@ -98,7 +98,7 @@ theorem reset_vote_floor_above_old_at
   have hr := (Compose.goldilocks_ac_projection_from (hp.run.upTo ht) (hp.noColl.upTo _)).localRun
   have hrt := Outcome.fastLock_time_lt_at hp.run hf hlu
     ((hp.run.time_mono (show r ≤ j by omega)).trans
-      (hes ▸ (Compose.cast_head_fcRoot_from hr (hp.run.upTo ht).vstart hy ⟨hc', hc.2⟩).2))
+      (hes ▸ (Compose.cast_head_fcRoot hr (hp.run.upTo ht).vstart hy ⟨hc', hc.2⟩).2))
   have hEB := hEO.trans (hBold v r l O ho hrt
     ((hp.run.time_mono (show r ≤ j by omega)).trans hjb))
   have hh := Healing.h_le_of_store_anc hreach

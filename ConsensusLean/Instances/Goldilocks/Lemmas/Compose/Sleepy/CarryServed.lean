@@ -169,7 +169,7 @@ theorem carryAt_of_served {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U
         · exact lt_of_le_of_lt (hr.time_mono hk₁k') hk'lt
         · obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, rfl⟩ | ⟨-, hn₁, -⟩⟩ := hsend₁
           · -- `y`'s own slot-`s` vote, cast at most `Δ` after `t_s`
-            have h := (cast_head_fcRoot_from hr hini hy ⟨hc₁, he₁⟩).2
+            have h := (cast_head_fcRoot hr hini hy ⟨hc₁, he₁⟩).2
             rw [hus] at h
             linarith only [h, hΔ]
           · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)

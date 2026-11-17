@@ -205,7 +205,7 @@ theorem unanimous_carry_votes_core_at
     have hslq := (SA.castAt_spec hrq hz hcz').2.1
     change e'.msg.slot = sp.slot (tr.time q) at hslq
     have hqts : sp.ts u ≤ tr.time q := (SA.ts_le_iff_le_slot sp hdq _).2 (by omega)
-    obtain ⟨⟨Hd, hHd, hHdr, _⟩, hqt⟩ := Compose.cast_head_fcRoot_from hrq (acRun_prefix hrun
+    obtain ⟨⟨Hd, hHd, hHdr, _⟩, hqt⟩ := Compose.cast_head_fcRoot hrq (acRun_prefix hrun
       hnc q).vstart hz hcz'
     rw [hsl] at hqt
     change tr.time q ≤ _ at hqt
@@ -289,7 +289,7 @@ theorem unanimous_next_vote_viable_core_at
   have hqj : tr.time q ≤ tr.time j := by linarith
   have hrq := acRun_prefix hrun hnc q
   have hvq := castAt_prefix le_rfl hv
-  obtain ⟨⟨Hd, hHd, he, _⟩, _⟩ := Compose.cast_head_fcRoot_from hrq.localRun hrq.vstart hwq hvq
+  obtain ⟨⟨Hd, hHd, he, _⟩, _⟩ := Compose.cast_head_fcRoot hrq.localRun hrq.vstart hwq hvq
   have hHdq := (SA.frameIn_of_callAt hrq.localRun hwq hvq.1).2 hHd
   obtain rfl : Hd = P := hU.1 (RunTrace.honestBlocks_upTo_subset (H := H) hm
     (hrun.time_nonneg q) hHdq) hP (he.trans (hun w q e' hwq ⟨ellv, hv⟩ (hqj.trans hjb) hvs))
@@ -358,7 +358,7 @@ private theorem cast_time {ini : Fin sp.n → (goldilocksNode sp ro).State}
   have h := (SA.castAt_spec hr hy hc').2.1
   change e.msg.slot = sp.slot (tr.time j) at h
   refine ⟨(SA.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).2 (by omega), ?_⟩
-  exact (Compose.cast_head_fcRoot_from hr (acRun_prefix hrun hnc j).vstart hy hc').2
+  exact (Compose.cast_head_fcRoot hr (acRun_prefix hrun hnc j).vstart hy hc').2
 
 /-- **Every slot-`(u+1)` vote of a node honest at it extends the unanimous proposal `P`**, by
 strong induction on the vote's cut. The batch is counted at the voter's cut among the slot-`u`

@@ -377,7 +377,8 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
       SA.VoteExtends (tr.HonestBlocks H) ev.msg B) → Anc (tr.HonestBlocks H) B Y := by
     intro B hB
     by_cases hBf : Anc (tr.HonestBlocks H) B ℓv.frame.fcRoot
-    · obtain ⟨⟨Hd, hHd, hHdr, hfH⟩, -⟩ := Compose.cast_head_fcRoot hr' hy hcastv
+    · obtain ⟨⟨Hd, hHd, hHdr, hfH⟩, -⟩ := Compose.cast_head_fcRoot hr'
+        (fun _ => SA.voteStart_initial _) hy hcastv
       obtain rfl : Hd = Y := hU.1 (hΦvU hHd) hYU (hHdr.trans hhead)
       exact hBf.trans (Anc.mono hΦvU hfH)
     · obtain ⟨Hd, hHd, hHdr, hBH⟩ := hB hBf

@@ -442,7 +442,8 @@ theorem vote_head {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
     (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
   have hj := vote_time hy hv hs
   obtain ⟨ℓ, hc, he⟩ := hv
-  obtain ⟨⟨Hd, hHd, hr, -⟩, -⟩ := Compose.cast_head_fcRoot hac hy ⟨hc, he⟩
+  obtain ⟨⟨Hd, hHd, hr, -⟩, -⟩ := Compose.cast_head_fcRoot hac
+      (fun _ => SA.voteStart_initial _) hy ⟨hc, he⟩
   rw [Compose.frame_of_projAC rhoc_run hy hc] at hHd
   refine ⟨Hd, hHd.1, hr, ?_⟩
   by_cases hg : Hd.root = (({ S with vote := AsChainShape.stock } : Setup).params

@@ -75,7 +75,7 @@ theorem proposal_holds_old_at
     obtain ⟨ellZ, hcz, he⟩ := hv₀
     have hrj := hac.localRun.upTo (hp.run.time_nonneg j)
     have hcz' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcz)
-    obtain ⟨⟨B', hB't, hB'r, _⟩, hjt⟩ := Compose.cast_head_fcRoot_from hrj hp.run.vstart hzj
+    obtain ⟨⟨B', hB't, hB'r, _⟩, hjt⟩ := Compose.cast_head_fcRoot hrj hp.run.vstart hzj
       ⟨hcz', he⟩
     have hBB : B' = B := hac.localRun.coherent.1
       ((SA.frameIn_of_callAt hrj hzj hcz').2 hB't) hB (hB'r.trans hBr.symm)

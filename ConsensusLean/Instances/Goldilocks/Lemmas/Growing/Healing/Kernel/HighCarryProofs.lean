@@ -139,7 +139,7 @@ theorem later_carry_of_finalized_anc_at
     have := SA.slot_mono sp (hp.run.time_nonneg k) (hm (not_lt.mp hn))
     clear * - this hyk hzs hvs hs; omega
   obtain ⟨Hv, hHvU, hHvr, hBHv⟩ := hprior z q e' hqk hzv hvs
-  obtain ⟨⟨Hd, hHd, hHdr, -⟩, hqt⟩ := Compose.cast_head_fcRoot_from hrq hp.run.vstart hzq hcq'
+  obtain ⟨⟨Hd, hHd, hHdr, -⟩, hqt⟩ := Compose.cast_head_fcRoot hrq hp.run.vstart hzq hcq'
   have hHdU := (SA.frameIn_of_callAt hrq hzq hcq'.1).2 hHd
   obtain rfl : Hd = Hv := hU.1 hHdU hHvU (hHdr.trans hHvr.symm)
   change tr.time q ≤ sp.ts e'.msg.slot + sp.Δ at hqt

@@ -188,7 +188,8 @@ private theorem vote_time_le (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
     tr.time k ≤ sp.ts s + sp.Δ := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   obtain ⟨ℓ, hc, he⟩ := hv
-  have h : tr.time k ≤ sp.ts (e.msg.slot : Int) + sp.Δ := (cast_head_fcRoot hr hx ⟨hc, he⟩).2
+  have h : tr.time k ≤ sp.ts (e.msg.slot : Int) + sp.Δ :=
+    (cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hx ⟨hc, he⟩).2
   have h2 : sp.ts (e.msg.slot : Int) ≤ sp.ts (s : Int) := by
     unfold SAParams.ts
     exact mul_le_mul_of_nonneg_left (by exact_mod_cast hs)
@@ -248,7 +249,8 @@ private theorem honest_batch_carry_win (hrun : GoldilocksRun proposer dg H tr)
       SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s {v} := by
     rintro v ⟨x, hx, k, e', ⟨ℓk, hck, he'⟩, rfl, hvs⟩
     have hk := (SA.castAt_spec hr hx ⟨hck, he'⟩).2.1
-    obtain ⟨⟨Hd, hHd, hHdr, -⟩, hkt⟩ := cast_head_fcRoot hr hx ⟨hck, he'⟩
+    obtain ⟨⟨Hd, hHd, hHdr, -⟩, hkt⟩ := cast_head_fcRoot hr
+        (fun _ => SA.voteStart_initial _) hx ⟨hck, he'⟩
     obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hall x hx k e' ⟨ℓk, hck, he'⟩ hvs
     obtain rfl : Hd = Hv :=
       hU.1 ((SA.frameIn_of_callAt hr hx hck).2 hHd) hHv (hHdr.trans hHvr.symm)
@@ -286,7 +288,8 @@ theorem honest_batch_carry_before (hrun : GoldilocksRun proposer dg H tr)
       SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s {v} := by
     rintro v ⟨x, hx, k, e', ⟨ℓk, hck, he'⟩, rfl, hvs⟩
     have hk := (SA.castAt_spec hr hx ⟨hck, he'⟩).2.1
-    obtain ⟨⟨Hd, hHd, hHdr, -⟩, hkt⟩ := cast_head_fcRoot hr hx ⟨hck, he'⟩
+    obtain ⟨⟨Hd, hHd, hHdr, -⟩, hkt⟩ := cast_head_fcRoot hr
+        (fun _ => SA.voteStart_initial _) hx ⟨hck, he'⟩
     obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hall x hx k e' ⟨ℓk, hck, he'⟩ hvs
     obtain rfl : Hd = Hv :=
       hU.1 ((SA.frameIn_of_callAt hr hx hck).2 hHd) hHv (hHdr.trans hHvr.symm)
@@ -411,7 +414,7 @@ private theorem first_transfer_win
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
   rcases hvf with hv | hCf
   swap
-  · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := cast_head_fcRoot hr hy hc
+  · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hy hc
     exact ⟨Hd, hΦU hHd, hHdr, hCf.trans (Anc.mono hΦU hfHd)⟩
   have hF : Anc (tr.HonestBlocks H) ℓ.frame.F C := Anc.mono hΦU (hΦ.rooted.2 C hv.1.1)
   obtain ⟨x, hx, i₀, CV, hi₀, hR | hO⟩ := originWithin_iff.1 hC
@@ -485,7 +488,7 @@ theorem first_transfer_step_before
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
   rcases hvf with hv | hCf
   swap
-  · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := cast_head_fcRoot hr hy hc
+  · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hy hc
     exact ⟨Hd, hΦU hHd, hHdr, hCf.trans (Anc.mono hΦU hfHd)⟩
   have hF : Anc (tr.HonestBlocks H) ℓ.frame.F C := Anc.mono hΦU (hΦ.rooted.2 C hv.1.1)
   obtain ⟨x, hx, i₀, CV, hi₀, hR | hO⟩ := originWithin_iff.1 hC
@@ -524,7 +527,7 @@ private theorem later_transfer_win (hrun : GoldilocksRun proposer dg H tr) (hnc 
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
   rcases hvf with hvB | hBf
   swap
-  · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := cast_head_fcRoot hr hy hc
+  · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hy hc
     exact ⟨Hd, hΦU hHd, hHdr, hBf.trans (Anc.mono hΦU hfHd)⟩
   exact vote_extends_of_batch hrun' hy hc hs (Or.inl hvB) hall
     (faults_lt_honest_voters_win hrun hnc hwin hs₀ ((add_le_add le_rfl
@@ -608,7 +611,7 @@ theorem later_transfer_step_before
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
   rcases hvf with hvB | hBf
   swap
-  · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := cast_head_fcRoot hr hy hc
+  · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hy hc
     exact ⟨Hd, hΦU hHd, hHdr, hBf.trans (Anc.mono hΦU hfHd)⟩
   exact vote_extends_of_batch hrun' hy hc hs (Or.inl hvB) hall hcount
     (honest_batch_carry_before hrun hnc hsync hy hc hs hib hall

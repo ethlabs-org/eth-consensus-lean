@@ -208,7 +208,8 @@ theorem ResetPremisesUpTo.proposal_holds_old {b : Time}
       SA.fastLock_honest_vote hrun _ SA.CommitteeP.full ho.1 hfl (SA.cs2_full hp.stock hf)
     have hOB := (hOD.mono (SA.frameIn_of_callAt hr ho.1 hcx).2).trans hDB
     obtain ⟨ellZ, hcz, he⟩ := hv
-    obtain ⟨⟨B', hB't, hB'r, _⟩, hjt⟩ := Compose.cast_head_fcRoot hr hz ⟨hcz, he⟩
+    obtain ⟨⟨B', hB't, hB'r, _⟩, hjt⟩ := Compose.cast_head_fcRoot hr
+        (fun _ => SA.voteStart_initial _) hz ⟨hcz, he⟩
     have hEq : B' = B := hr.coherent.1 ((SA.frameIn_of_callAt hr hz hcz).2 hB't) hB
       (hB'r.trans hBr.symm)
     rw [hEq] at hB't

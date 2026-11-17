@@ -435,7 +435,7 @@ theorem cast_head_fcRoot_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr
     (∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.fcRoot Hd) ∧
       tr.time i ≤ sp.ts e.msg.slot + sp.Δ :=
   have ha := acRun_upTo hrun hnc (hrun.time_nonneg i)
-  cast_head_fcRoot_from ha.localRun ha.vstart hy (sa_castAt_upTo.mpr ⟨le_rfl, hc⟩)
+  cast_head_fcRoot ha.localRun ha.vstart hy (sa_castAt_upTo.mpr ⟨le_rfl, hc⟩)
 
 theorem frame_of_projAC_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}

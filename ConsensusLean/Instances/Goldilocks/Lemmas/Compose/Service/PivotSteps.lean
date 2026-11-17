@@ -133,7 +133,7 @@ theorem proposer_accepts_head_before {ini} (hrun : GoldilocksRun proposer dg H t
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   have hΔ := sp.toParams.hΔ
   obtain ⟨ℓx, hcx, hex⟩ := hv
-  obtain ⟨⟨Hd', hHd't, hHd'r, -⟩, hjt⟩ := cast_head_fcRoot_from hr hrun.vstart hx ⟨hcx, hex⟩
+  obtain ⟨⟨Hd', hHd't, hHd'r, -⟩, hjt⟩ := cast_head_fcRoot hr hrun.vstart hx ⟨hcx, hex⟩
   have hHdeq : Hd' = Hd :=
     hU.1 ((SA.frameIn_of_callAt hr hx hcx).2 hHd't) hHd (hHd'r.trans hHdr.symm)
   rw [hHdeq] at hHd't
@@ -308,7 +308,7 @@ theorem proposal_best_toward_old_before {ini} (hrun : GoldilocksRun proposer dg 
     · rintro w ⟨hw, j, e, hv, hes⟩
       have hjb : tr.time j ≤ b := by
         obtain ⟨ℓ, hc, he⟩ := hv
-        have ht := (cast_head_fcRoot_from hr hrun.vstart hw ⟨hc, he⟩).2
+        have ht := (cast_head_fcRoot hr hrun.vstart hw ⟨hc, he⟩).2
         rw [hes] at ht
         change tr.time j ≤ sp.ts s' + sp.Δ at ht
         rw [hti, hts] at hb
@@ -318,7 +318,7 @@ theorem proposal_best_toward_old_before {ini} (hrun : GoldilocksRun proposer dg 
         hw hv (by omega) hHd hHdr (hFO.trans hOHd)
       obtain ⟨ℓw, hcw, hew⟩ := hv
       have hvw : e.msg.val = w := (SA.castAt_spec hr hw ⟨hcw, hew⟩).1
-      have hjt := (cast_head_fcRoot_from hr hrun.vstart hw ⟨hcw, hew⟩).2
+      have hjt := (cast_head_fcRoot hr hrun.vstart hw ⟨hcw, hew⟩).2
       have hj1 : sp.ts (s' : Int) ≤ tr.projAC.time j := by
         rw [← hes, (SA.castAt_spec hr hw ⟨hcw, hew⟩).2.1]
         exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2 le_rfl
@@ -523,7 +523,7 @@ theorem vote_anchor_cases_of_old {ini} (hrun : GoldilocksRun proposer dg H tr in
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hslj : e.msg.slot = sp.slot (tr.time j) := (SA.castAt_spec hr hy hcy).2.1
-  have htj : tr.time j ≤ sp.ts s + sp.Δ := hes ▸ (cast_head_fcRoot_from hr hrun.vstart hy hcy).2
+  have htj : tr.time j ≤ sp.ts s + sp.Δ := hes ▸ (cast_head_fcRoot hr hrun.vstart hy hcy).2
   have hat := anchor_tree hΦ e.readPoint (tr.time j)
   have haS := anchor_mem ℓy.frame e.readPoint (tr.time j)
   generalize SA.getAnchor sp e.readPoint ℓy.frame (tr.time j) = a at hat haS ⊢

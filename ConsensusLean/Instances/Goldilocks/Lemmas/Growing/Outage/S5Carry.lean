@@ -184,7 +184,7 @@ theorem carryAt_after_at
         by_cases hk₁k' : k₁ ≤ k'
         · exact lt_of_le_of_lt (hr.time_mono hk₁k') hk'lt
         · obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, rfl⟩ | ⟨-, hn₁, -⟩⟩ := hsend₁
-          · have h := (cast_head_fcRoot_from hr hrun.vstart hy ⟨hc₁, he₁⟩).2
+          · have h := (cast_head_fcRoot hr hrun.vstart hy ⟨hc₁, he₁⟩).2
             rw [hus] at h
             linarith only [h, hΔ]
           · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)

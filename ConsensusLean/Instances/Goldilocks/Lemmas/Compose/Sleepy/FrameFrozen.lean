@@ -81,7 +81,8 @@ private theorem honest_head_accepted (hrun : GoldilocksRun proposer dg H tr) (hn
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨ℓ', hcx, hex⟩ := hv
   -- the head is in its voter's tree, and the vote is cast by `t_m + Δ ≤ t_s + Δ`
-  obtain ⟨⟨Hd', hHd't, hHd'r, -⟩, hkt⟩ := cast_head_fcRoot hr hx ⟨hcx, hex⟩
+  obtain ⟨⟨Hd', hHd't, hHd'r, -⟩, hkt⟩ := cast_head_fcRoot hr
+      (fun _ => SA.voteStart_initial _) hx ⟨hcx, hex⟩
   rw [frame_of_projAC hrun hx hcx] at hHd't
   obtain rfl : Hd = Hd' :=
     ((projFG_localRun hrun hnc).coherent.1 ⟨x, hx, k, hHd't.1⟩ hHd (hHd'r.trans hHdr.symm)).symm

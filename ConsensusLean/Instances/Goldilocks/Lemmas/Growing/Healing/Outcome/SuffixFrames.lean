@@ -111,7 +111,7 @@ theorem reset_competitor_reflect_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ
         rw [RunTrace.upTo_projAC] at hr
         have hc' : SA.CastAt (tr.projAC.upTo (tr.time j)) y j elly e :=
           SA.upTo_castAt.mpr ⟨le_rfl, hcy⟩
-        have h := (Compose.cast_head_fcRoot_from hr hrun.vstart hy hc').2
+        have h := (Compose.cast_head_fcRoot hr hrun.vstart hy hc').2
         rw [hes] at h
         exact h
       have hPP : P' = P := Outcome.proposal_unique_before_hold hrun hnc hpH hdesignated hactual

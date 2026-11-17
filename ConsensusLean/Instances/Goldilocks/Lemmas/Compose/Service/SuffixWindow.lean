@@ -130,7 +130,7 @@ private theorem vote_rows_old {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hΔ := sp.toParams.hΔ
   have htj : tr.time j ≤ sp.ts ((s' + 1 : Nat) : Int) + sp.Δ :=
-    hes ▸ (cast_head_fcRoot_from hr hrun.vstart hy hc).2
+    hes ▸ (cast_head_fcRoot hr hrun.vstart hy hc).2
   refine honestRowsSourced_iff.2 fun X hX a ha hav => ?_
   obtain ⟨m, hmj, hm, k, hkm, hsg⟩ := honest_row_signed_before hrun hnc hy hX ha hav
   obtain ⟨D, -, hDs, C, l, hC, hDC⟩ := attestation_source hrun hnc hav hsg

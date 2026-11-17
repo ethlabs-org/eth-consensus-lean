@@ -388,7 +388,7 @@ theorem clean_vote_witness (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
   have htz : sp.ts j ≤ tr.time kz :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg kz) _).2 (by rw [← hes, hsz])
   have htz' : tr.time kz ≤ sp.ts j + sp.Δ := by
-    have := (Compose.cast_head_fcRoot hr hz hvz).2
+    have := (Compose.cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hz hvz).2
     rw [hes] at this
     exact this
   have hkzk : kz < k := by
@@ -713,7 +713,8 @@ theorem honest_batch_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
     change e'.msg.slot = m' at hvs
     have hk' := (SA.castAt_spec hr hz ⟨hck, he'⟩).2.1
     obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hall z hz k' e' ⟨ℓk, hck, he'⟩ hvs
-    obtain ⟨⟨Hd, hHd, hHdr, -⟩, hkt⟩ := Compose.cast_head_fcRoot hr hz ⟨hck, he'⟩
+    obtain ⟨⟨Hd, hHd, hHdr, -⟩, hkt⟩ := Compose.cast_head_fcRoot hr
+        (fun _ => SA.voteStart_initial _) hz ⟨hck, he'⟩
     obtain rfl : Hd = Hv :=
       hU.1 ((SA.frameIn_of_callAt hr hz hck).2 hHd) hHv (hHdr.trans hHvr.symm)
     rw [hvs] at hkt

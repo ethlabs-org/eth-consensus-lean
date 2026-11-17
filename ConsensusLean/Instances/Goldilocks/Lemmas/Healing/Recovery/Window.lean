@@ -42,7 +42,7 @@ theorem ready_proposal_accepted_everywhere (hp : ResetPremises tr H proposer dg 
   obtain ⟨j, e, hv, hes⟩ := SA.honest_votes_in_slot hb hg y hy
   have hhead := ready_unanimous hp hcatch hW hR y hy j e hv hes
   obtain ⟨ell, hcall, hem⟩ := hv
-  obtain ⟨⟨D, hD, hDr, _⟩, ht⟩ := Compose.cast_head_fcRoot hac.localRun hy ⟨hcall, hem⟩
+  obtain ⟨⟨D, hD, hDr, _⟩, ht⟩ := Compose.cast_head_fcRoot hac.localRun hac.vstart hy ⟨hcall, hem⟩
   have hDW : D = W := hac.localRun.coherent.1
     ((SA.frameIn_of_callAt hac.localRun hy hcall).2 hD) hWU (hDr.trans hhead)
   rw [hDW] at hD

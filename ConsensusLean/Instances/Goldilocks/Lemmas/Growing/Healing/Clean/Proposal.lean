@@ -105,7 +105,7 @@ theorem clean_source_proposal_parent_before_at {cm : Time → Finset (Fin sp.n)}
           (by clear * - hsu hslot; omega)
     have hc'' : SA.CastAt (tr.projAC.upTo (tr.time i)) z q ell' e :=
       SA.upTo_castAt.mpr ⟨hqD, hc'⟩
-    obtain ⟨⟨Hd, hHd, hHdr, _⟩, _⟩ := Compose.cast_head_fcRoot_from hr hS.run.vstart hz hc''
+    obtain ⟨⟨Hd, hHd, hHdr, _⟩, _⟩ := Compose.cast_head_fcRoot hr hS.run.vstart hz hc''
     have hHdU := (SA.frameIn_of_callAt hr hz hc''.1).2 hHd
     obtain ⟨H', hH', hH'r, hBH'⟩ := hext
     obtain rfl : H' = Hd := hUc.1 hH' (hsub hHdU) (hH'r.trans hHdr.symm)
