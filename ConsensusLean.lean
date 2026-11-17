@@ -213,7 +213,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.OutageSupply
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ProgressBudgetEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyFG
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyGlue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyTransport

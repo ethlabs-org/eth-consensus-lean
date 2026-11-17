@@ -492,28 +492,6 @@ theorem FrameWindow.vote_head_classification_of_service {K : SA.CommitteeDict sp
     ht, htop, hcount, hHL.trans (SA.anc_tree_of_anc_U hAC.localRun.coherent
       hPhi.1 hPhi.2 hLt hLD hD)⟩)⟩
 
-/-- Finite awake service and no late restarts give the actual-run fault bound at a
-next-slot action. No post-reset premise is used. -/
-theorem faultBound_of_service
-    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hnr : NoRestartAfter tr H (gbar g))
-    {t : Time} (ht0 : 0 ≤ t) (hprev : gbar g ≤ sp.ts ((sp.slot t : Int) - 1)) (htb : t ≤ b) :
-    SA.FaultBound tr.projAC H t := by
-  have hts : sp.ts ((sp.slot t : Int) - 1) ≤ t :=
-    (SA.ts_le_iff_le_slot sp ht0 _).mpr (by omega)
-  have hsub : H ⊆ {y | y ∈ H ∧ tr.projAC.awake y t ∧ SA.JoinedAt tr.projAC y t} := by
-    intro y hy
-    refine ⟨hy, hawake y hy t (hprev.trans hts) htb, ?_⟩
-    intro k hk _
-    exact (hnr y hy k (Compose.projAC_restartAt.mp hk)).trans hprev
-  have hle := Set.ncard_le_ncard hsub
-  have hn : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have := sp.toParams.hn
-  change Hᶜ.ncard < {y | y ∈ H ∧ tr.projAC.awake y t ∧ SA.JoinedAt tr.projAC y t}.ncard
-  change 0 < sp.n at this
-  omega
-
 end Consensus.Goldilocks.Healing
 
 end

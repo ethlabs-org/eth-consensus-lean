@@ -21,35 +21,6 @@ namespace Consensus.Goldilocks.Generic
 
 open Shape Blocks
 
-/-- Intended cache-coverage edge from an explicit four-anchor chain and three height steps.
-Population safety and actual processing of the carrier remain explicit inputs. -/
-def final_cache_coverage_at {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
-    (C : ACCorrectLocal A sg) : Prop :=
-  ∀ (cm : Time → Finset (Fin P.n)) (βK : ℚ) (tr : RunTrace A)
-    (H : Time → Set (Fin P.n)) (proposer : Nat → Fin P.n)
-    (dg : Digest (List (FG.Att P.n)) A.Payload) (g ΔF deadline : Time)
-    (start gap floor : Nat) (kindJ : Prop) (J : A.Blk)
-    (block : Fin 4 → A.Blk) (cut : Fin 4 → Nat),
-    βK ≤ 1 / 2 →
-    C.run.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF deadline →
-    FrameWindow tr H (P.slotTime start) deadline floor kindJ J →
-    HealedFrom tr H proposer start deadline → 2 ≤ gap → 3 * gap ≤ P.δt →
-    StrictMono cut →
-    (∀ a, (block a).slot = start + a.val * gap ∧
-      tr.ProposesAt (block a).proposer (cut a) (block a) ∧
-      tr.AcceptAt (block a).proposer (cut a) (block a) ∧
-      ReadyCut tr H C.catchUp (block a).proposer (cut a)) →
-    (∀ a b, a ≤ b → Anc (tr.HonestBlocksAt H) (block a) (block b)) →
-    (∀ a : Fin 3, ∃ z i j, z ∈ H (tr.time i) ∧ z ∈ H (tr.time j) ∧
-      block a.castSucc ∈ (tr.state z i).fg.tree ∧ block a.succ ∈ (tr.state z j).fg.tree ∧
-      ((tr.state z i).fg.σ (block a.castSucc).root).h + 1 ≤
-        ((tr.state z j).fg.σ (block a.succ).root).h) →
-    tr.time (cut 3) + P.Δ ≤ deadline →
-    ∀ y j, deadline ≤ tr.time j → ReadyCut tr H C.catchUp y j →
-      (H (tr.time j))ᶜ.ncard < 2 * P.q - P.n →
-      (∃ k < j, tr.BlockCallAt y k (block 3)) →
-      Anc (tr.HonestBlocksAt H) (block 0) (tr.finalizedAt y j)
-
 /-- The independent suppliers consumed by the claim reductions, each named once.
 The read-point records are separate local obligations, not fields of `ACCorrectLocal`.
 Outage policy and stored-read context are data parameters, never hidden Prop fields.

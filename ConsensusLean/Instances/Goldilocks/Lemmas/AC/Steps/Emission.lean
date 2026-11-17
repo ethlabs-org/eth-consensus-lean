@@ -12,7 +12,7 @@ the call's time, cast while joined, and its head is the walk from the anchor ove
 of the vote domain (the voter block tree, or the whole tree when the voter block tree has no viable
 block) with the merged view against the previous slot, all read at the emission's read point (the
 unlocking and `voted_slot` change nothing the walk reads but the locks). The branch's read point
-and the state it leaves (`voteBranchAt_spec`, `post_of_voteBranchAt`) hold for a node that may
+and the state it leaves (`voteBranchAt_specU`, `post_of_voteBranchAt`) hold for a node that may
 not vote in the slot too. -/
 
 namespace Consensus.Goldilocks.SA
@@ -91,15 +91,6 @@ theorem castAt_spec (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : F
         (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)).root := by
   apply castAt_specU (wm := WriteMode.parent sp) <;>
     first | assumption | exact ACLocalRun.toU ‹_›
-
-/-- **The read point of a vote branch** (`voteBranchAt_specU`): `voted_slot` is the slot of the
-call's time, the node is joined there, and the call is by the slot's vote deadline. -/
-theorem voteBranchAt_spec (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n}
-    (hb : VoteBranchAt tr y j ℓ R) :
-    R.votedSlot = sp.slot (tr.time j) ∧ joined sp R (tr.time j) ∧
-      tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ :=
-  voteBranchAt_specU hr.toU hy hb
 
 /-- `post_of_castAt` with the unlock given, the optimistic check at the writes of `wm`: the cast
 is the emitting arm of `post_of_voteBranchAtU`. -/

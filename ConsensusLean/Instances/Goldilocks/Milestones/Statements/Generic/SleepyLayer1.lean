@@ -213,17 +213,6 @@ def PopulationTransport (M : RunMap rho payload) (C : ACCorrectLocal A M.signer)
     0 ≤ C.θ → C.θ ≤ 1 →
     p.SleepyOn C.θ c W 0 b → PopulationWindow C p b
 
-/-- F5 target. A duplicate is already held; a fresh delivery needs all FG guards.
-The source transition supplies transition success at the receiver only when
-the parent states agree. The F-extension premise is supplied before this row is used. -/
-def FrameAcceptance : Prop :=
-  ∀ (src src' dst : Store P A.Payload) (B : A.Blk) (pr : Nat),
-    src.onBlock B = some src' → B.parent = some pr →
-    (dst.blocks B.root = some B ∨
-      (dst.blocks B.root = none ∧ (dst.blocks pr).isSome ∧
-        dst.σ pr = src.σ pr ∧ Anc (insert B dst.tree) dst.F B)) →
-    B ∈ (dst.onBlock B |>.getD dst).tree
-
 /-- Ready-read safety assembly: G2 supplies cross-reader agreement and the
 separate extension row supplies monotonicity. No proposal or inclusion row is used. -/
 def ReadyReadSafety (M : RunMap rho payload) (C : ACCorrectLocal A M.signer)

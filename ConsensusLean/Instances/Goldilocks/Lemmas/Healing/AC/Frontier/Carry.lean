@@ -318,8 +318,8 @@ theorem optimistic_carryAC (hr : ACLocalRunU wm u H U tr)
 
 /-! ### The writer-pool condition -/
 
-/-- The writer's pool covers the voter's pool (`SA.writer_pool_window_before` with the unlock
-given): every slot-`s` vote that an honest slot-`(s+1)` voter holds at a cut up to its vote is in
+/-- The writer's pool covers the voter's pool from the service window, with the unlock
+given: every slot-`s` vote that an honest slot-`(s+1)` voter holds at a cut up to its vote is in
 the pool of an honest update of slot `s` within `b`, or makes its validator an equivocator
 there. -/
 theorem writer_poolAC (hr : ACLocalRunU wm u H U tr) (hsv : ServiceWindowBefore H U 0 b tr)

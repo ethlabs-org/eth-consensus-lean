@@ -18,19 +18,6 @@ remains conditional on compatibility of the supplied confirmation events.
 
 namespace Consensus.Goldilocks.Generic.SleepyLayer1
 
-theorem frame_acceptance {P : Params} {A : NodeAC P} : FrameAcceptance (A := A) := by
-  intro src src' dst B pr hs hp hg
-  rcases hg with hdup | ⟨hnew, hheld, hstate, hanc⟩
-  · have hnone : dst.onBlock B = none := by
-      unfold Store.onBlock
-      rw [hp]
-      simp [hdup]
-    simpa only [hnone, Option.getD_none, Store.tree, Set.mem_ofPred_eq] using hdup
-  · obtain ⟨dst', hd⟩ := Store.onBlock_transfer hs hp hnew hheld hstate hanc
-    obtain ⟨-, -, -, -, -, -, hb, -⟩ := Store.onBlock_fields hd
-    change (dst.onBlock B |>.getD dst).blocks B.root = some B
-    rw [hd, Option.getD_some, hb, Function.update_self]
-
 theorem cache_provenance {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n}
     (C : ACCorrectLocal A sg) (D : Data A) : CacheProvenance C D := by
   intro cm proposer dg H tr b hrun hnc y i t hread hf hrows

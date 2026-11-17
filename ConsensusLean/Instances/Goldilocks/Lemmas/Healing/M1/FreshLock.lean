@@ -21,7 +21,7 @@ public section
   early stamp.
 * `confirmation_of_unanimous_early_pool`: the unique early honest batch of the slot-`u` committee
   forces the raw result and fast selection.
-* `older_locks_compatible_after_unlock`: a half-committee supporting a block at an actual
+* `older_locks_compatible_after_unlock_branch`: a half-committee supporting a block at an actual
   next-slot unlock makes all older lock labels compatible at every later cut.
 -/
 
@@ -308,24 +308,6 @@ theorem older_locks_compatible_after_unlock_branch {ini : Fin sp.n → SAState s
       push_cast at htj
       have h4 : (0 : Time) ≤ 4 * sp.Δ := by linarith [sp.toParams.hΔ]
       linarith [mul_le_mul_of_nonneg_left hls' h4]
-
-/-- A half-committee supporting a block at an actual next-slot unlock makes all
-older lock labels compatible at every later cut: `older_locks_compatible_after_unlock_branch`
-at the cast's vote branch. -/
-theorem older_locks_compatible_after_unlock {ini : Fin sp.n → SAState sp.n}
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {j k u : Nat}
-    {ell : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y j ell e) (hs : e.msg.slot = u + 1) (hjk : j < k)
-    {P : Blk sp.n FGP} (hPt : P ∈ ell.frame.tree) {S : Set (Fin sp.n)}
-    (hS : ∀ x ∈ S, x ∈ equivocators (mergedVoteView sp e.readPoint ell.frame (u + 1)).votes ∨
-      ∃ v ∈ (mergedVoteView sp e.readPoint ell.frame (u + 1)).support,
-        v.val = x ∧ (v.slot : Int) = u ∧ AncR ell.frame P v.head)
-    (hhalf : sp.committeeSize ≤ 2 * S.ncard) :
-    ∀ l ∈ (tr.state y k).locks, l.slot < u →
-      ∀ L ∈ U, L.root = l.block → Compatible U L P :=
-  older_locks_compatible_after_unlock_branch hr hy (voteBranchAt_of_castAt hr hy hc)
-    ((castAt_spec hr hy hc).2.1.symm.trans hs) hjk hPt hS hhalf
 
 end Consensus.Goldilocks.SA
 

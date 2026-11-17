@@ -19,8 +19,8 @@ and (ii) `∀ s, (K.committee s).ncard = sp.committeeSize`. Thresholds are in
   `mem_full`, `ncard_full`, `size_binding_full`, `ncard_inter_full`,
   `mul_ncard_inter_full_lt_iff`, `ncard_inter_full_lt_iff`; P, T and CS at the full committee
   (`CommitteeP.full`, `CommitteeT.full`, `CommitteePAt.full`, `CommitteeTAt.full`,
-  `faultBoundK_full_iff`); the half and three-quarter fault bounds at the full committee from
-  the population ones (`cs2_full`, `four_thirds_full`). -/
+  `faultBoundK_full_iff`); the half fault bound at the full committee from the population one
+  (`cs2_full`). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -225,14 +225,6 @@ theorem faultBoundK_full_iff {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} (s : 
 /-- **CS2 at `K = full`** from the population half bound, with `committeeSize = n`. -/
 theorem cs2_full (hc : sp.committeeSize = sp.n) {F : Set (Fin sp.n)} (hf : 2 * F.ncard < sp.n)
     {s : Nat} : 2 * ((CommitteeDict.full sp.n).committee s ∩ F).ncard < sp.committeeSize := by
-  rw [ncard_inter_full, hc]
-  exact hf
-
-/-- **The four-thirds bound at `K = full`** from the population one, with
-`committeeSize = n`. -/
-theorem four_thirds_full (hc : sp.committeeSize = sp.n) {F : Set (Fin sp.n)}
-    (hf : 4 * F.ncard < 3 * sp.n) {s : Nat} :
-    4 * ((CommitteeDict.full sp.n).committee s ∩ F).ncard < 3 * sp.committeeSize := by
   rw [ncard_inter_full, hc]
   exact hf
 

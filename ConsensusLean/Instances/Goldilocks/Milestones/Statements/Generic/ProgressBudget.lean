@@ -23,21 +23,6 @@ variable {P : Params} {A : NodeAC P} {O : OutputSchema} {Info : Type}
   {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V]
   {E : Env V} {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
 
-/-- A real reset-consuming slot window, including its report deadline and post-reset drain.
-The gap is positive and the entire budget is inside the advertised healing time. -/
-structure ResetBudgetWindow {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
-    (healing : ACHealing A sg runs)
-    (g ready healed : Time) where
-  start : Nat
-  gap : Nat
-  gap_pos : 1 ≤ gap
-  ready_le : ready ≤ P.slotTime start
-  gst_le : gbar g ≤ P.slotTime start
-  snapshot_le : cutZ P g ≤ P.slotTime start
-  deadline_le : P.slotTime (start + resetSlots healing.warmup gap P.δt) + 2 * P.Δ ≤ healed
-  drain_le : ∀ a, a ≤ P.slotTime (start + resetSlots healing.warmup gap P.δt) →
-    P.slotTime (P.slotOf a + healing.drain) ≤ healed
-
 /-- The explicit four-delay grid and sufficient coefficient budget. This definition supplies
 no slot alignment or budget witness. The ready/snapshot reserve remains visible. -/
 def ResetCoefficientFit {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
@@ -47,13 +32,6 @@ def ResetCoefficientFit {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
     max ready (max (gbar g) (cutZ P g)) +
       (4 * (resetSlots healing.warmup G P.δt + healing.drain + 2) + 2 : Nat) * P.Δ ≤
       gbar g + (healCoeff : Time) * P.Δ
-
-/-- UNPROVED arithmetic interface from grid/coefficient fit to a real consuming window.
-No progress or protocol witness is assumed by the numerical premise. -/
-def reset_window_of_coefficients {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
-    (healing : ACHealing A sg runs) : Prop :=
-  ∀ g ready healCoeff G, ResetCoefficientFit healing g ready healCoeff G →
-    ∃ W : ResetBudgetWindow healing g ready (gbar g + (healCoeff : Time) * P.Δ), W.gap = G
 
 /-- The population FG needs a fault fraction at most a third; committee counts
 use the separate contract fraction `βK`. -/

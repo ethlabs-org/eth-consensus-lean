@@ -167,11 +167,10 @@ anchored-frame premises as `Extension`.
 | `SleepyWindowSupply` | `Simulation.goldilocks_sleepy_window_supply` proves `Simulation.GoldilocksSleepyWindowSupply` with explicit threshold and two independent look-ahead equalities. One mapped point supplies both regimes, preserving horizon-clamped honesty and awake bounds. Catch-up domination comes only from `ClaimDeadlineFit.catchUp`. Sleepy claims do not consume outage policy; neither regime interface depends on the other. |
 | `SleepyLayer1.ProposalCoverage` | PROVED for Goldilocks by `Generic.SleepyLayer1.goldilocks_proposal_coverage` in `Growing/Sleepy/Node/Layer1Proofs`; `Generic.SleepyLayer1.goldilocksRunMap_proposal_coverage` in `Growing/Simulation/SleepyWindows` matches the canonical row under `GoldilocksLocalData`, without constructing the local supplier. Both windows and anchored frames are explicit, hold is at least Δ and margin at least 6Δ; the hold must survive the horizon. |
 
-All nine generic adapter targets are PROVED in `Generic.SleepyLayer1`:
+All eight generic adapter targets are PROVED in `Generic.SleepyLayer1`:
 
 | Target | Proof | Module under `Lemmas/Generic` |
 | --- | --- | --- |
-| `FrameAcceptance` | `frame_acceptance` | `SleepyFG` |
 | `CacheProvenance` | `cache_provenance` | `SleepyFG` |
 | `RowProvenance` | `row_provenance` | `SleepyFG` |
 | `ConditionalViability` | `conditional_viability` | `SleepyFG` |

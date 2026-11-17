@@ -129,7 +129,8 @@ private theorem cast_time_leU
     exact absurd ((restart_state sp) FGP ro y A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1
       hne
 
-/-- `writer_pool_of_sync` with the unlock given. -/
+/-- The writer's pool covers the voter's pool from `Sync[t_s, τ]` or from the service window up
+to the update, with the unlock given. -/
 private theorem writer_pool_of_syncU
     {u : Nat → Set Lock} {ini} (hrun : ACRunU wm u proposer tr H U ini) {X : Fin sp.n}
     (hX : X ∈ H) {i₀ s : Nat}
@@ -203,20 +204,6 @@ private theorem writer_pool_of_syncU
       rw [hts] at this; linarith only [this, htk, hΔ]
     clear * - this hBv hBs hvs
     omega
-
-private theorem writer_pool_of_sync {ini} (hrun : ACRun proposer tr H U ini) {X : Fin sp.n}
-    (hX : X ∈ H) {i₀ s : Nat}
-    {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr ∨
-      ServiceWindowBefore H U (sp.ts s) (tr.time i₀) tr) {k : Nat}
-    (hk : k ≤ i) :
-    ∀ v ∈ (tr.state y (k + 1)).pool s, v ∈ (tr.state X i₀).pool s ∨
-      v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} :=
-  writer_pool_of_syncU (hrun := hrun.toU) (X := X) (hX := hX) (i₀ := i₀) (s := s) (ℓX := ℓX)
-      (hupd := hupd) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc) (hs := hs)
-          (hsync := hsync) (k := k) (hk := hk)
 
 /-- `writer_merged_of_sync` with the unlock given. -/
 private theorem writer_merged_of_syncU
@@ -320,22 +307,6 @@ theorem writer_merged {ini} (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} (h
   writer_mergedU (hrun := hrun.toU) (X := X) (hX := hX) (i₀ := i₀) (s := s) (ℓX := ℓX)
       (hupd := hupd) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc) (hs := hs)
           (hsync := hsync)
-
-/-- Writer-pool comparison uses only sources at or after the result slot's start. -/
-theorem writer_pool_window_before {ini} (hrun : ACRun proposer tr H U ini) {a b : Time}
-    (hsync : ServiceWindowBefore H U a b tr) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
-    (ha : a ≤ sp.ts s)
-    {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX)
-    (hi₀ : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) {k : Nat} (hk : k ≤ i) :
-    ∀ v ∈ (tr.state y (k + 1)).pool s, v ∈ (tr.state X i₀).pool s ∨
-      v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} := by
-  exact writer_pool_of_sync hrun hX hupd hy hc hs (Or.inr {
-    message := fun x hx k m hm h0 z hz j ℓ hc hd ht =>
-      hsync.message x hx k m hm (ha.trans h0) z hz j ℓ hc (hd.trans hi₀) ht
-    relay := fun x hx k B hB h0 z hz j ℓ hc hd ht hanc =>
-      hsync.relay x hx k B hB (ha.trans h0) z hz j ℓ hc (hd.trans hi₀) ht hanc }) hk
 
 /-- A1.8 (d) with an inclusive source window and the writer's update cutoff. -/
 theorem writer_merged_window_before {ini} (hrun : ACRun proposer tr H U ini) {a b : Time}
