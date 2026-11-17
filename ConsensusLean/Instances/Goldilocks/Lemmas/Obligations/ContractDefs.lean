@@ -116,42 +116,6 @@ theorem goldilocksContract_params_eq {S : Setup} (A : ContractAssumptions S)
         η := 12 * S.k + 7, recovery := 9,
         fgDelay := A.fgDelay, ahead := 5, committeeAhead := 5 } := by rfl
 
-/-- **The contract's outage at the population binding** is the population outage: the stock
-binding selects every validator at every time, so each look-back committee clause is the population
-clause read on full committees, and the committee look-ahead `5` is the population look-ahead
-`ahead = 5` (`EtaSleepyOn.committee_univ`). The committee clause is redundant there, not vacuous. -/
-theorem goldilocksContract_outage_stock_iff {S : Setup} (A : ContractAssumptions S)
-    (C : ContractCoefficients) {V : Type} [Fintype V] [DecidableEq V] {T b₀ b₁ : Time}
-    {r : (Sys (goldilocks { S with vote := stock }) V).Run} :
-    (Sys (goldilocks { S with vote := stock }) V).Outage
-        (shapeProgress (goldilocks { S with vote := stock }) V).toExternal
-        (goldilocksContract A C) T b₀ b₁ r ↔
-      OutageTimes (goldilocksContract A C).params
-          ((Sys (goldilocks { S with vote := stock }) V).pt r).env.ΔAC
-          T b₀ b₁ ∧
-        ((Sys (goldilocks { S with vote := stock }) V).log r).OutageNet
-            ((Sys (goldilocks { S with vote := stock }) V).pt r) b₀ b₁ ∧
-        ((Sys (goldilocks { S with vote := stock }) V).pt r).EtaSleepyOn
-          (goldilocksContract A C).params.θ
-          (((goldilocksContract A C).params.η : Time) *
-              ((Sys (goldilocks { S with vote := stock }) V).pt r).env.ΔAC)
-          (max ((Sys (goldilocks { S with vote := stock }) V).cDur (goldilocksContract A C) r)
-            (((goldilocksContract A C).params.η : Time) *
-              ((Sys (goldilocks { S with vote := stock }) V).pt r).env.ΔAC - 1))
-          ((Sys (goldilocks { S with vote := stock }) V).aheadDur (goldilocksContract A C) r) 0
-          ((Sys (goldilocks { S with vote := stock }) V).pt r).horizon := by
-  have hsel : (shapeProgress (goldilocks { S with vote := stock }) V).toExternal.selected
-      ((Sys (goldilocks { S with vote := stock }) V).pt r).env
-          ((shapeProgress (goldilocks { S with vote := stock }) V).toExternal.ext r) =
-      fun _ => Finset.univ := rfl
-  constructor
-  · exact fun ⟨ht, hn, hs, _⟩ => ⟨ht, hn, hs⟩
-  · rintro ⟨ht, hn, hs⟩
-    refine ⟨ht, hn, hs, fun δ _ _ => ?_⟩
-    rw [hsel]
-    exact hs.committee_univ le_rfl (by change (1 / 2 : ℚ) ≤ 1; norm_num)
-      (by change (0 : ℚ) ≤ 1 / 2; norm_num)
-
 theorem contract_coefficients_catchUp (S : Setup) (A : ContractAssumptions S) :
     (contract_coefficients S A).catchUp = contract_catchUp S A := by rfl
 

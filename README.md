@@ -24,7 +24,7 @@ follow those fractions. Optimality is a conjunct of the Goldilocks headline, not
 | healthy | synchronous after a GST, and `ΔFG` is at most (4·`fgSlots` − 6)·`ΔAC` | fewer than *n*/3 faulty, and fewer than half of each committee selected after the GST, charged at the horizon; every honest validator awake after the GST |
 | outage | one bounded period of asynchrony | at every run time, η-sleepy participation (θ = ½) in the population and every nonempty committee selected in the look-back: validators ready with catch-up `max (19ΔAC) (η·ΔAC − 1)` outnumber faulty validators plus the other honest validators awake anywhere in the look-back, with faults charged at `min (t + 5ΔAC) horizon`; Goldilocks sets `η = 12k + 7`, and selection times are clamped at zero. Validators may fall asleep; readers retain catch-up `19ΔAC` |
 
-**The guarantees.** For Goldilocks, certified against a growing adversary (faults that only grow over a run); the constant-fault statements follow from these.
+**The guarantees.** For Goldilocks, certified against a growing adversary (faults that only grow over a run), which includes constant faults.
 
 - **Always, in any network:** honest validators are never convicted by the evidence honest nodes see; the finalized chain never rolls back and is a prefix of the confirmed chain; and if two honest validators ever read conflicting finalized chains, the evidence in their views convicts at least *n*/3 validators (*accountable safety*).
 - **Sleepy regime:** the confirmed chain is *safe* (ready honest readers agree; the chains they read are prefixes of one another) and *live* (every transaction submitted to an awake honest validator appears in every ready reader's confirmed chain within a bounded latency).
@@ -89,7 +89,7 @@ CI runs the fast checks on every pull request and push to `main`, and the full c
 
 ## Scope
 
-The generic definition covers growing faults, and Goldilocks is certified under them (`MeetsObligations`, `GoldilocksCorrect`); its constant-fault endpoint and headline are corollaries.
+The generic definition covers growing faults, and Goldilocks is certified under them (`MeetsObligations`, `GoldilocksCorrect`); constant faults are the special case where nothing grows.
 
 Not modelled: a corruption delay or forward-secure keys, recovery from compromise, a probabilistic or computational model of adaptive corruption, validators with different weights, probabilistic protocols, proof of work, readers that are not validators, responsiveness, and transaction validity, fees or capacity. Each run has at most one GST and one outage. The full list, with the reasons, is in [`docs/definition.md`](docs/definition.md#scope).
 

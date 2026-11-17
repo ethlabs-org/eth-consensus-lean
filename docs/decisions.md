@@ -222,10 +222,9 @@ detail in `TRUST.md`.
   `Review.ObligationsSufficientOn` state the obligations and correctness on a class of runs. At constant faults
   they are the static statements, so negative tests are also stated there. The growing-fault statements are
   additional. Challenge certifies the Goldilocks endpoint and headline under growing faults (`MeetsObligations`,
-  `GoldilocksCorrect`, `Statements/Obligations`), proved by `Instances/Goldilocks/Proofs/Growing/Obligations`; the
-  constant-fault pair (`MeetsObligationsConstant`, `GoldilocksCorrectConstant`, `Milestones/Statements/Obligations/Constant`) is an
-  untrusted corollary. Each growing-fault milestone is a milestone of its own,
-  `Instances/Goldilocks/Proofs/Growing/<M>`, entered through its `Main`.
+  `GoldilocksCorrect`, `Statements/Obligations`), proved by `Instances/Goldilocks/Proofs/Growing/Obligations`.
+  Each growing-fault milestone is a milestone of its own, `Instances/Goldilocks/Proofs/Growing/<M>`, entered
+  through its `Main`.
 - **Continuation is not part of correctness.** A hand-over after healing is a separate side property:
   `Continues` (`Instances/Goldilocks/Milestones/Spec/Continuation`, generic over `System`), stated for Goldilocks
   as `GoldilocksContinues` (`Instances/Goldilocks/Milestones/Statements/Continuation`). A run healthy from GST up
@@ -499,7 +498,7 @@ detail in `TRUST.md`.
   `goldilocks {S with vote := stock}` selects it explicitly. At `stock` every committee definition reduces to the
   specification's: votes are signed in the poll role, `mayVote` holds at every slot, `committeeSize = n`, and the
   committee clause of `System.Outage` at the Goldilocks contract (committee look-ahead `5 ≤ 5`, the population
-  one) follows from the population clause (`goldilocksContract_outage_stock_iff`).
+  one) reads full committees, where `EtaSleepyOn.committee_univ` derives it from the population clause.
   The test `ConsensusLeanTest/Goldilocks/VoteBinding.lean` exercises a proper-subset binding of one key per
   slot. Which certified statement holds at which binding is in §"Trusted surface and Challenge scope".
   Stock-only consumers specialize binding-generic queries explicitly at `goldilocks {S with vote := stock}`. The growing queries `FinalQueryAt`, `HealthyPreparationQueryAt` and `ConfirmedQueryAt`, and the final-window extraction, take every `S : Setup`; this does not by itself generalize every supplier or the endpoint. Their stock users pass `{S with vote := stock}`. The static queries (`OutageQuery`, `ConfirmedQuery`, `HealthyPreparationQuery`) and `SleepySafetyQueryAt` are stated at `goldilocks {S with vote := stock}`.
@@ -564,11 +563,10 @@ detail in `TRUST.md`.
 
 - **Simulation and obligations are separate closures.** The proofs split by import closure into
   `Lemmas/Simulation` (the simulation statements, namespace `Goldilocks.Simulation`, `SimulationStatements`), which
-  never imports the obligations, and `Lemmas/Obligations` with `Proofs/Obligations` (namespace
+  never imports the obligations, and `Lemmas/Obligations` (namespace
   `Goldilocks.Obligations`). The field theorems of the obligations proof
   (`Lemmas/Growing/Obligations/Concrete`) follow `MeetsObligations`: `meetsObligations_*_growing`, with the
-  endpoint `Growing.meetsObligations_growing`. The constant-fault endpoint `meets_obligations_constant` is its
-  corollary (`meetsObligationsConstant_of_growing`); there is no separate constant-fault assembly.
+  endpoint `Growing.meetsObligations_growing`; there is no separate constant-fault assembly.
   Block-acceptance names (`accepted_tree`, `accepted_in_view`, `accepted_child_decodes`, …) are a different concept.
 - **The Baseline sheet and its tests were removed.** The earlier pinned properties sheet was never approved and
   was off every live path: nothing in the closure of `Challenge`, `Solution` or the obligations endpoint imported
@@ -612,21 +610,17 @@ detail in `TRUST.md`.
   - The milestones stay gated: `ConsensusLeanTest/MilestoneAxioms.lean` states and axiom-pins each, and check.sh
     step 3b audits the closure of the `proved_milestone_modules` like the solution's. Their mapping rows read
     "proved (lemma)".
-- **The certified pair is the growing-fault pair; the constant-fault pair is a milestone statement.** The swap
+- **The certified pair is the growing-fault pair; the constant-fault pair was removed.** The swap
   moved the growing-fault statements `MeetsObligations` and `GoldilocksCorrect` from `Statements/Growing`
   (deleted) into `Statements/Obligations`, with unchanged bodies, and renamed the Challenge, Solution and
   comparator roots from `meetsObligationsConstant` and `goldilocksCorrectConstant` to `meetsObligations` and
-  `goldilocksCorrect`. The constant-fault pair, `MeetsObligationsConstant` and `GoldilocksCorrectConstant`,
-  unchanged in name and body, moved from `Statements/Obligations` to the leaf
-  `Milestones/Statements/Obligations/Constant`, outside the trusted surface, in the untrusted, exposed
-  `Milestones.Statements.Obligations` layer.
-  Reason: it is a statement no root reaches, which is what the Milestones family holds (exposed bodies, no iff
-  lemmas for its proofs and tests). The layer has no declaring `Milestones/Statements/Obligations.lean`, so no
-  module with descendants owns a constant (noconst). `Review.ObligationsSufficientOn` stays a root; it states
-  correctness on a class of runs, which the constant-fault rejection tests use. The certified pair implies the
-  constant-fault pair: `Growing.meetsObligationsConstant_of_growing` (`Proofs/Growing/Obligations/Main`) and the
-  test theorem `Obligations.Test.Constant.goldilocksCorrectConstant_of_growing`
-  (`ConsensusLeanTest/Goldilocks/Refinement/Constant`).
+  `goldilocksCorrect`. The constant-fault pair, `MeetsObligationsConstant` and `GoldilocksCorrectConstant` (the
+  stock family on the runs whose faults do not grow), then remained an untrusted milestone statement, a corollary
+  of the certified pair. No root, proof or retained test needed it, so it was removed with its corollary wrapper
+  `Proofs/Obligations`, the corollary theorem in `Proofs/Growing/Obligations/Main` and its implication test. The
+  endpoint's realizability witness reads the certified endpoint directly.
+  `Review.ObligationsSufficientOn` stays a root; it states correctness on a class of runs, which the
+  constant-fault rejection tests use.
 - **The headline statement `GoldilocksCorrect`** is certified next to `MeetsObligations`: for every setup,
   assumption set and finite validator type, the Goldilocks family in the general execution model is an L0
   `CorrectProtocol` at `goldilocksContract A (contract_coefficients S A)`, conjoined with that contract's

@@ -4,7 +4,6 @@ public import ConsensusLeanTest.Fixtures.Common
 public import ConsensusLeanTest.Shape.Controls
 public import ConsensusLeanTest.Gaps
 public import ConsensusLeanTest.Goldilocks.Refinement.Obligations
-public import ConsensusLeanTest.Goldilocks.Refinement.Constant
 public import ConsensusLeanTest.Goldilocks.Refinement.Simulation
 public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHold
 public import ConsensusLeanTest.Problem.Continuation
@@ -820,22 +819,15 @@ example := ``Consensus.Goldilocks.AsChainShape.goldilocks
 example := ``Consensus.Goldilocks.ContractAssumptions
 example := ``Consensus.Goldilocks.ContractCoefficients
 example := ``Consensus.Goldilocks.MeetsObligations
-example := ``Consensus.Goldilocks.MeetsObligationsConstant
 example := ``Consensus.Goldilocks.goldilocksContract
 example := ``Consensus.Goldilocks.meetsObligations
 example := ``Consensus.Goldilocks.GoldilocksCorrect
-example := ``Consensus.Goldilocks.GoldilocksCorrectConstant
 example := ``Consensus.Goldilocks.goldilocksCorrect
 example := ``Consensus.Goldilocks.contract_coefficients
-example := ``Consensus.Goldilocks.Obligations.meets_obligations_constant
-example := ``Consensus.Goldilocks.Obligations.goldilocks_correct_constant
-example := ``Consensus.Goldilocks.Obligations.Test.Constant.goldilocksCorrectConstant_of_growing
 example := ``Consensus.Goldilocks.Growing.meets_obligations
 example := ``Consensus.Goldilocks.Growing.goldilocks_correct
-example := ``Consensus.Goldilocks.Obligations.Test.Contract.meets_obligations_nonvacuous
 example := ``Consensus.Goldilocks.Obligations.Test.Contract.meetsObligations_realizable_small
 example := ``Consensus.Goldilocks.Obligations.schema_matches_ebbAndFlow
-example := ``Consensus.Goldilocks.Obligations.Test.Contract.meetsObligations_iff_unlabelled
 example := ``Consensus.Goldilocks.Obligations.Test.Contract.not_obligationsAs_bft
 example := ``Consensus.Goldilocks.Obligations.Test.Contract.not_obligationsAs_available
 example := ``Consensus.Goldilocks.finalWindow
@@ -871,7 +863,6 @@ example := ``Consensus.Goldilocks.AsChainShape.committee
 example := ``Consensus.Goldilocks.AsChainShape.VoteBinding.candidateRole
 example := ``Consensus.Goldilocks.AsChainShape.VoteBinding.installVote
 example := ``Consensus.Goldilocks.SA.CommitteeDict.BindsSel
-example := ``Consensus.Goldilocks.Obligations.goldilocksContract_outage_stock_iff
 
 /-! ## Continuation (untrusted side property) -/
 

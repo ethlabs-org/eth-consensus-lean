@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
-public import ConsensusLean.Instances.Goldilocks.Proofs.Obligations.Main
 public import ConsensusLean.Proofs.RegimesRealizable.Main
 public import Solution
 public import ConsensusLeanTest.Goldilocks.VoteBinding
@@ -33,11 +32,10 @@ Labelled by kind (CONTRIBUTING "Statements"):
 `contract_heal` (`catchUp + healMargin`, `contract_heal_val`) is pinned by `heal_drop`.
 
 * (a) The headline `GoldilocksCorrect` is not vacuous: `goldilocksCorrect_realizable_small`.
-* (a) The endpoint is not vacuous: `meets_obligations_nonvacuous` instantiates
-  `MeetsObligations` (`meets_obligations`) at `setupSmall`, `assumptionsSmall`, and
-  `meetsObligations_realizable_small` gives its contract's active witnesses on five validators
-  (`Shape.regimes_realizable` from `ShapeObligations`'s admissibility, progress-fit and tolerance
-  fields).
+* (a) The endpoint is not vacuous: `meetsObligations_realizable_small` instantiates
+  `MeetsObligations` (`meets_obligations`) at `setupSmall`, `assumptionsSmall` and gives its
+  contract's active witnesses on five validators (`Shape.regimes_realizable` from
+  `ShapeObligations`'s admissibility, progress-fit and tolerance fields).
 * (a) The endpoint's outage and sleepy rows cover every vote binding:
   `goldilocks_committeeOne` (a committee binding with a proper-subset
   committee, `Regression.committeeOne`), and its outage and sleepy regimes are not vacuous:
@@ -45,10 +43,9 @@ Labelled by kind (CONTRIBUTING "Statements"):
   `committeeOne_outage_witness` (a clean outage witness whose committee is never the population)
   and `committeeOne_sleepy_witness` (at every output capability and index, a clean witness of
   the endpoint's sleepy premises whose committee is never the population).
-* The profile label is a restatement: `schema_profile` (the schema is Ebb-and-Flow, not BFT or
-  available, decided on the schema alone), `meetsObligations_iff_unlabelled` (the endpoint is
-  equivalent to the unlabelled obligations), and the rejections `not_obligationsAs_bft` and
-  `not_obligationsAs_available` (no contract makes the family a BFT or an available protocol). -/
+* The profile label: `schema_profile` (the schema is Ebb-and-Flow, not BFT or available, decided
+  on the schema alone) and the rejections `not_obligationsAs_bft` and `not_obligationsAs_available`
+  (no contract makes the family a BFT or an available protocol). -/
 
 namespace Consensus.Goldilocks.Obligations.Test.Contract
 open AsChainShape Simulation
@@ -279,13 +276,6 @@ theorem fg_transport_slow : 6 * (1 : Time) + 34 ≤ 4 * 1 * (assumptionsGapTen.f
 theorem fg_transport_fast : 6 * (5 : Time) + 1 ≤ 4 * 5 * (assumptionsSmall.fgSlots : Time) :=
   (fgDelay_bound_iff assumptionsSmall 5 1).1 (by decide)
 
-/-- (a) **The obligations endpoint is not vacuous**: there are a setup and an assumption set
-(`k = 2`, `δt = 6`, FG gap `2`), and the family meets the obligations at their contract. -/
-theorem meets_obligations_nonvacuous : ∃ (S : Setup) (A : ContractAssumptions S),
-    ShapeObligationsOnAs .ebbAndFlow (goldilocks { S with vote := AsChainShape.stock })
-      (goldilocksContract A (contract_coefficients S A)) (fun _ p => p.ConstantFaults) :=
-  ⟨setupSmall, assumptionsSmall, meets_obligations_constant setupSmall assumptionsSmall⟩
-
 /-- (a) The active witnesses of the endpoint's contract at `setupSmall`, `assumptionsSmall` on five
 validators: sleepy, healthy, sleepy-stress, outage and bad-proposer runs exist
 (`Shape.regimes_realizable`, from the fields of `meets_obligations`). -/
@@ -293,7 +283,7 @@ theorem meetsObligations_realizable_small :
     RealizableActive (goldilocks { setupSmall with vote := AsChainShape.stock })
       (goldilocksContract assumptionsSmall (contract_coefficients setupSmall assumptionsSmall))
       (Fin 5) :=
-  have h := (meets_obligations_constant setupSmall assumptionsSmall).2
+  have h := (Growing.meets_obligations setupSmall assumptionsSmall).2
   regimes_realizable _ _ h.admissible h.progressFits h.progressTolerant (Fin 5)
     (((meetsObligations_optimalFaultTolerance setupSmall assumptionsSmall).room_iff _).mpr
       (by decide))
@@ -458,7 +448,7 @@ theorem committeeOne_sleepy_witness (S : Setup) (A : ContractAssumptions S) (cap
 /-! ## The profile label
 
 `MeetsObligations` labels the endpoint `ShapeObligationsAs .ebbAndFlow`. The label is decided by
-the schema alone, so the labelled endpoint is the unlabelled one. -/
+the schema alone. -/
 
 /-- The schema is Ebb-and-Flow (final, stable and available, with available and stable aliased to
 `confirmed`), and neither BFT nor available: decided on the schema, not taken from the endpoint. -/
@@ -467,15 +457,6 @@ theorem schema_profile :
       ¬ Profile.available.Matches schema :=
   ⟨fun cap => by cases cap <;> rfl, fun h => absurd (h .stable) (by decide),
     fun h => absurd (h .final) (by decide)⟩
-
-/-- **The label is a restatement**: the endpoint is equivalent to the unlabelled obligations at
-every setup and assumption set. -/
-theorem meetsObligations_iff_unlabelled :
-    MeetsObligationsConstant ↔ ∀ (S : Setup) (A : ContractAssumptions S),
-      ShapeObligationsOn (goldilocks { S with vote := AsChainShape.stock })
-        (goldilocksContract A (contract_coefficients S A))
-        (fun _ p => p.ConstantFaults) :=
-  ⟨fun h S A => (h S A).2, fun h S A => ⟨schema_profile.1, h S A⟩⟩
 
 /-- Rejection: at no setup and contract is the family a BFT protocol. -/
 theorem not_obligationsAs_bft (S : Setup) (K : Contract ProgressReq) :

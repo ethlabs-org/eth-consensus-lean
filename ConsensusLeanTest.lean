@@ -56,7 +56,6 @@ public import ConsensusLeanTest.Goldilocks.Healing.Statements
 public import ConsensusLeanTest.Goldilocks.Healing.SupportCounting
 public import ConsensusLeanTest.Goldilocks.Healing.TickRun
 public import ConsensusLeanTest.Goldilocks.Persist.Premises
-public import ConsensusLeanTest.Goldilocks.Refinement.Constant
 public import ConsensusLeanTest.Goldilocks.Refinement.Final
 public import ConsensusLeanTest.Goldilocks.Refinement.NonfinalQuery
 public import ConsensusLeanTest.Goldilocks.Refinement.Obligations
