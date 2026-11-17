@@ -9,7 +9,8 @@ public section
 
 A healthy preparation query's ready and heal points are scalars of its run, GST, capability and
 index only. The timing facts below are stated on these, so the preparation of constant faults and
-that of growing faults use them alike:
+that of growing faults use them alike. The heal margin holds at any vote binding `S'` of the run,
+since it reads only the contract `K S A` and the run's `ΔAC`:
 
 * `healthy_heal_margin`: a heal coefficient `H ≥ C + M + 3` over the catch-up `C` gives
   `ready + M·Δ + 2 ≤ heal`;
@@ -27,23 +28,23 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 /-- **The heal margin over readiness.** With engine delay `d ≥ 1`, `Δ = d`,
 `ready = g₀ + C·d + 1` and `heal = g₀ + H·d`, a heal coefficient `H ≥ C + M + 3` gives
 `heal − ready − M·Δ ≥ 2d ≥ 2`. -/
-theorem healthy_heal_margin (run : (Sys (goldilocks { S with vote := stock }) V).Run)
+theorem healthy_heal_margin {S' : Setup} (run : (Sys (goldilocks S') V).Run)
     (hn : 1 ≤ Fintype.card V)
     (cap : Capability) (index : (K S A).Idx) (gst : Time) {M : Nat}
     (hM : (contract_catchUp S A : Nat) + M + 3 ≤ contract_heal S A cap index) :
-    (Sys (goldilocks { S with vote := stock }) V).ready (K S A) gst run +
+    (Sys (goldilocks S') V).ready (K S A) gst run +
         (M : Time) *
-          (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf run.1) hn).Δ + 2 ≤
-      (Sys (goldilocks { S with vote := stock }) V).heal (K S A) cap index gst run := by
+          (S'.params (Model.pubOf run.1) hn).Δ + 2 ≤
+      (Sys (goldilocks S') V).heal (K S A) cap index gst run := by
   have hd : (1 : Time) ≤ run.1.ΔAC := run.1.ΔAC_pos
   have hΔ :
-      (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf run.1) hn).Δ =
+      (S'.params (Model.pubOf run.1) hn).Δ =
         run.1.ΔAC := rfl
-  have hready : (Sys (goldilocks { S with vote := stock }) V).ready (K S A) gst run =
+  have hready : (Sys (goldilocks S') V).ready (K S A) gst run =
       max gst 0 + ((contract_catchUp S A : Nat) : Time) * run.1.ΔAC + 1 := by
     change max gst 0 + (((contract_coefficients S A).catchUp : Nat) : Time) * run.1.ΔAC + 1 = _
     rw [contract_coefficients_catchUp]
-  have hheal : (Sys (goldilocks { S with vote := stock }) V).heal (K S A) cap index gst run =
+  have hheal : (Sys (goldilocks S') V).heal (K S A) cap index gst run =
       max gst 0 + (contract_heal S A cap index : Time) * run.1.ΔAC := by
     change max gst 0 + ((contract_coefficients S A).heal cap index : Time) * run.1.ΔAC = _
     rw [contract_coefficients_heal]
@@ -58,16 +59,16 @@ theorem healthy_heal_margin (run : (Sys (goldilocks { S with vote := stock }) V)
 and `t_{w+2} + 6Δ ≤ heal`; and every reset `0 ≤ a ≤ ready + R·Δ + r` (`r = healthyResetSlack`)
 with a seed label `l ≤ slot a` has
 `max(ready, drainTime a, t_w, ḡ + 4Δ, 0, t_{l+1}) ≤ ready + (R + 8k + 20)·Δ`. -/
-theorem healthy_preparation_timing (run : (Sys (goldilocks { S with vote := stock }) V).Run)
+theorem healthy_preparation_timing (run : (Sys (goldilocks S) V).Run)
     (hn : 1 ≤ Fintype.card V)
     (cap : Capability) (index : (K S A).Idx) (gst : Time)
-    (hB : (Sys (goldilocks { S with vote := stock }) V).ready (K S A) gst run +
+    (hB : (Sys (goldilocks S) V).ready (K S A) gst run +
         ((healthyResetCoeff S index : Time) + 8 * (S.k : Time) + 4 * ((index : Nat) : Time) + 26) *
-          (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf run.1) hn).Δ + 2 ≤
-      (Sys (goldilocks { S with vote := stock }) V).heal (K S A) cap index gst run) :
-    let sp := ({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf run.1) hn
-    let ready := (Sys (goldilocks { S with vote := stock }) V).ready (K S A) gst run
-    let heal := (Sys (goldilocks { S with vote := stock }) V).heal (K S A) cap index gst run
+          (S.params (Model.pubOf run.1) hn).Δ + 2 ≤
+      (Sys (goldilocks S) V).heal (K S A) cap index gst run) :
+    let sp := S.params (Model.pubOf run.1) hn
+    let ready := (Sys (goldilocks S) V).ready (K S A) gst run
+    let heal := (Sys (goldilocks S) V).heal (K S A) cap index gst run
     ∃ w : Nat, (ready ≤ sp.ts w ∧ sp.ts w + 6 * sp.Δ ≤ heal ∧ sp.ts (w + 2 : Nat) ≤ heal ∧
         sp.ts (w + sp.k : Nat) ≤ heal ∧ sp.ts (w + 2 : Nat) + 6 * sp.Δ ≤ heal) ∧
       ∀ (a : Time) (l : Nat), 0 ≤ a →

@@ -98,24 +98,6 @@ theorem exists_reset_of_drain_rounds_awake_at
   exact KernelProof.exists_reset_of_drain_rounds_awake_at hrun hnc hf hsvc hawake hcatch hnr
     hH hδ hΔF hr hgr hG hcz hb hgp hdrain hK
 
-/-- The stock committee bound: when every committee has `committeeSize = n` members, the
-population bound `3 f ≤ n - 1` is the committee bound at `βK = ½`. -/
-theorem committeeFaultsUpTo_half_of_stock {cm : Time → Finset (Fin sp.n)} {g b : Time}
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcard : ∀ t, (cm t).card = sp.committeeSize) (hstock : sp.committeeSize = sp.n) :
-    Generic.CommitteeFaultsUpTo (1 / 2) cm H g b := by
-  have hn : 0 < sp.n := sp.toParams.hn
-  intro t d _ _ hd0 hdb _
-  have hle := Set.ncard_le_ncard (Set.inter_subset_right (s := (↑(cm t) : Set (Fin sp.n)))
-    (t := (H d)ᶜ))
-  have h3 := hf d hd0 hdb
-  have h2 : 2 * (((↑(cm t) : Set (Fin sp.n)) ∩ (H d)ᶜ).ncard) < (cm t).card := by
-    rw [hcard t, hstock]; omega
-  have h2q : ((2 * (((↑(cm t) : Set (Fin sp.n)) ∩ (H d)ᶜ).ncard) : Nat) : ℚ) < (cm t).card :=
-    by exact_mod_cast h2
-  push_cast at h2q
-  linarith
-
 /-- Step 4 packaging: a bounded reset and a snapshot supply the finite reset record at a
 committee `cm` whose faults obey the fraction `βK ≤ ½`; the per-slot timeout delay is the scalar
 delay on the four-`Δ` slot grid. -/

@@ -247,7 +247,8 @@ theorem healthy_confirmed_supply_at
       (K S A) Q'.cap Q'.index
       Q'.ready Q'.heal Q'.run :=
     (shapeProgress (goldilocks { S with vote := stock }) V).mono le_rfl hb hp
-  obtain ⟨W, ⟨Dprep⟩⟩ := healthy_preparation_initialize_at S A V Q' h0 hb hp'
+  obtain ⟨W, ⟨Dprep⟩⟩ := healthy_preparation_initialize_at
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q' h0 hb hp'
   have hrh : Q'.ready ≤ Q'.heal := by
     linarith only [W.ready_le, W.records, hΔ]
   -- the selected proposal at the query's own readiness

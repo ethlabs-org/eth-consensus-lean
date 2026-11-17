@@ -99,17 +99,7 @@ theorem final_reset_premises_of_shared_at
   have hβ : (K S A).params.βK ≤ 1 / 2 := by
     rw [goldilocksContract_params_eq]; exact le_rfl
   have hcf := committeeFaultsUpTo_of_healthyOn S Q.run.2 Q.hn Q.valid Q.healthy.2.2.2
-  have hinterface : (Generic.goldilocksRunInterface Q.params (S.ro _)).Run
-      (runCommittee S Q.run.2 Q.hn) (runProposer S Q.run.2 Q.hn)
-      (digestOf S Q.run.2) H Q.trace := by
-    have h := (goldilocksRunMap_transport S Q.run.2 Q.hn Q.valid).run Q.valid
-    rw [Generic.ACRun.cast_run,
-      goldilocksRunMap_committee S Q.run.2 Q.hn Q.valid,
-      goldilocksRunMap_proposer S Q.run.2 Q.hn Q.valid,
-      goldilocksRunMap_digest S Q.run.2 Q.hn Q.valid,
-      goldilocksRunMap_honest S Q.run.2 Q.hn Q.valid,
-      goldilocksRunMap_trace S Q.run.2 Q.hn Q.valid] at h
-    exact h
+  have hinterface := goldilocksRunInterface_run_at S Q.run.2 Q.hn Q.valid
   have hhalf := Generic.committeeHalf_of_committeeFaults hβ hinterface hs.noColl hcf
   -- Catch with `κ = 2Δ`
   have hcatch : Healing.Growing.CatchRun Q.trace H Q.gst (2 * Q.params.Δ) := by

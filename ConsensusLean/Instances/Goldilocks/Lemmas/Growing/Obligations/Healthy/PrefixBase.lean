@@ -159,26 +159,13 @@ theorem catch_window_at_gbar_at
 
 /-- **The committee half bound through `b`** for the slot dictionary `K`: the run's committee
 facts at `K`, and fewer than half of each slot committee from `ḡ` by `b` faulty at every read time
-`d ∈ [0, b]`. The stock committee is `K = full` (`CommitteeHalfUpTo.of_full`). Finite reset premises
-give their slot committees (`ResetPremisesUpTo.committeeHalf`). -/
+`d ∈ [0, b]`. Finite reset premises give their slot committees
+(`ResetPremisesUpTo.committeeHalf`). -/
 structure CommitteeHalfUpTo (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
     (K : SA.CommitteeDict sp.n) (g b : Time) : Prop where
   facts : Compose.Growing.CommitteeFacts tr H K
   cs2 : ∀ s : Nat, gbar g ≤ sp.ts s → sp.ts s ≤ b → ∀ d, 0 ≤ d → d ≤ b →
     2 * (K.committee s ∩ (H d)ᶜ).ncard < sp.committeeSize
-
-/-- **The stock committee half bound**: at `K = full` with `committeeSize = n`, the stock committee
-facts (`CommitteeFacts.of_full`) and CS2 from the per-time fault bound `3 f ≤ n − 1`. -/
-theorem CommitteeHalfUpTo.of_full
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {b : Time}
-    (hfaults : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hstock : sp.committeeSize = sp.n) :
-    CommitteeHalfUpTo tr H (SA.CommitteeDict.full sp.n) g b := by
-  refine ⟨Compose.Growing.CommitteeFacts.of_full hrun hnc hstock, fun _ _ _ d hd0 hdb => ?_⟩
-  have hf := hfaults d hd0 hdb
-  have hn : 0 < sp.n := sp.toParams.hn
-  exact SA.cs2_full hstock (by omega)
 
 /-- **The committee half bound of finite reset premises**, at their slot committees
 (`committee_cs2_at`). -/

@@ -199,9 +199,9 @@ any coefficient record `C`, so that it also serves the witnesses over `goldilock
 At `K S A` the premise is `contract_catchUp_ge_sleepy`. -/
 theorem cDur_ge_of_catchUp {S : Setup} (A : ContractAssumptions S) (V : Type) [Fintype V]
     [DecidableEq V] (C : ContractCoefficients) (hC : 19 ≤ (C.catchUp : Nat))
-    (r : (Sys (goldilocks { S with vote := stock }) V).Run) :
+    (r : (Sys (goldilocks S) V).Run) :
     18 * r.1.ΔAC + 1 ≤
-      (Sys (goldilocks { S with vote := stock }) V).cDur (goldilocksContract A C) r := by
+      (Sys (goldilocks S) V).cDur (goldilocksContract A C) r := by
   have hd : (1 : Time) ≤ r.1.ΔAC := r.1.ΔAC_pos
   have hc : (19 : Time) ≤ (C.catchUp : Nat) := by exact_mod_cast hC
   change 18 * r.1.ΔAC + 1 ≤ ((C.catchUp : Nat) : Time) * r.1.ΔAC
@@ -213,15 +213,15 @@ base `max ready 0 + 4Δp`. Generic in `C` as `cDur_ge_of_catchUp`; its instance 
 `C := contract_coefficients S A`, `hC := contract_catchUp_ge_sleepy S A`. -/
 theorem cutZ_fit_of_catchUp {S : Setup} (A : ContractAssumptions S) (V : Type) [Fintype V]
     [DecidableEq V] (C : ContractCoefficients) (hC : 19 ≤ (C.catchUp : Nat))
-    (r : (Sys (goldilocks { S with vote := stock }) V).Run) (hn : 1 ≤ Fintype.card V) (g : Time) :
+    (r : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V) (g : Time) :
     Healing.cutZ
-        (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf r.1) hn).toParams g +
-        (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf r.1) hn).Δ + 1 ≤
-      max ((Sys (goldilocks { S with vote := stock }) V).ready (goldilocksContract A C) g r) 0 +
-        4 * (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf r.1) hn).Δ := by
+        (S.params (Model.pubOf r.1) hn).toParams g +
+        (S.params (Model.pubOf r.1) hn).Δ + 1 ≤
+      max ((Sys (goldilocks S) V).ready (goldilocksContract A C) g r) 0 +
+        4 * (S.params (Model.pubOf r.1) hn).Δ := by
   have h := cDur_ge_of_catchUp A V C hC r
   have hΔ :
-      (({ S with vote := AsChainShape.stock } : Setup).params
+      (S.params
         (Model.pubOf r.1) hn).Δ = r.1.ΔAC := rfl
   exact Healing.cutZ_add_lt_ready_add _ g _ (by have := r.1.ΔAC_pos; rw [hΔ]; linarith)
 

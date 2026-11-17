@@ -204,7 +204,8 @@ theorem healthy_repair_schedule_at
       Q.ready Q.heal Q.run) :
     Nonempty (HealthyRepairScheduleAt
         { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q) := by
-  obtain ⟨W', ⟨Dprep⟩⟩ := healthy_preparation_initialize_at S A V Q h0 hb hp
+  obtain ⟨W', ⟨Dprep⟩⟩ := healthy_preparation_initialize_at
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q h0 hb hp
   obtain ⟨D, -⟩ := healthy_repair_schedule_of_preparation_at
     { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q W' Dprep
   exact ⟨D⟩

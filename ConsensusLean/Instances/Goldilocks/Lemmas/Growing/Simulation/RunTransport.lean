@@ -42,10 +42,23 @@ theorem runCommittee_facts (hv : rho.ExecutionValid)
   rw [dictOfTime_runCommittee]
   exact Obligations.Growing.voteK_facts S rho hn hv hnc (simTraceAt_goldilocksRun S rho hn hv)
 
+/-- **The canonical trace is a run of the shared run interface** at the run committee, from
+`ExecutionValid` alone: the run's committee start, positive slot committees of `committeeSize`
+members, and their facts under collision freedom. -/
+theorem goldilocksRunInterface_run_at (hv : rho.ExecutionValid) :
+    (Generic.goldilocksRunInterface (S.params (pubOf E) hn) (S.ro _)).Run (runCommittee S rho hn)
+      (runProposer S rho hn) (digestOf S rho) (honestKeysAt S rho) (simTraceAt S rho hn) := by
+  apply (Generic.goldilocksRunInterface_run_iff _).2
+  refine ⟨simIni_eq_runStart S rho hn hv ▸ simTraceAt_goldilocksRun S rho hn hv,
+    S.committeeSize_pos (pubOf E) hn, ?_, ?_⟩
+  · rw [dictOfTime_runCommittee]
+    exact Obligations.Growing.voteK_ncard S rho hn hv
+  · exact runCommittee_facts S rho hn hv
+
 /-- **The run map transports the engine run to the shared run interface**: its trace is a run of
 `goldilocksRunInterface`, read at the run map's signer (`goldilocksRunMap_signer`), at its
-committee, from `ExecutionValid` alone, and collision-free when the engine run has no hash
-collision. -/
+committee, from `ExecutionValid` alone (`goldilocksRunInterface_run_at`), and collision-free when
+the engine run has no hash collision. -/
 theorem goldilocksRunMap_transport (hv : rho.ExecutionValid) :
     Generic.GrowingRunTransport (goldilocksRunMap S rho hn hv)
       ((goldilocksRunMap_signer S rho hn hv).symm ▸
@@ -53,12 +66,7 @@ theorem goldilocksRunMap_transport (hv : rho.ExecutionValid) :
   run hv' := by
     rw [Generic.ACRun.cast_run, goldilocksRunMap_committee, goldilocksRunMap_proposer,
       goldilocksRunMap_digest, goldilocksRunMap_honest, goldilocksRunMap_trace]
-    apply (Generic.goldilocksRunInterface_run_iff _).2
-    refine ⟨simIni_eq_runStart S rho hn hv' ▸ simTraceAt_goldilocksRun S rho hn hv',
-      S.committeeSize_pos (pubOf E) hn, ?_, ?_⟩
-    · rw [dictOfTime_runCommittee]
-      exact Obligations.Growing.voteK_ncard S rho hn hv'
-    · exact runCommittee_facts S rho hn hv'
+    exact goldilocksRunInterface_run_at S rho hn hv'
   no_collision hv' hc := by
     rw [goldilocksRunMap_digest, goldilocksRunMap_trace]
     exact noCollRun_simTraceAt S rho hn hv' hc

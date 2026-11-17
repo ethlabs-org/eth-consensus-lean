@@ -351,7 +351,8 @@ theorem handover_seed_cover_at
           Compose.Growing.HealedRecordCoverAt Q.trace Q.keys (r + Q.params.k - 1) y n t
             ((SA.lookup (Node.frame (Q.trace.state y n))
               (Q.trace.state y n).ac.latestConfirmed).getD (Q.trace.state y n).fg.F) := by
-  obtain ⟨W, Dprep, hlate⟩ := healthy_preparation_initialize_late_at S A V Q h0 hb hp
+  obtain ⟨W, Dprep, hlate⟩ := healthy_preparation_initialize_late_at
+    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q h0 hb hp
   obtain ⟨D, -, -, hDq⟩ := healthy_repair_schedule_of_preparation_at
     { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q W Dprep
   obtain ⟨O⟩ := healthy_bounded_repairing_opening_at
