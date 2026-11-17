@@ -910,6 +910,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Frame
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Reachable
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Family
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.GenericPremises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Family
@@ -932,7 +933,10 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes.Writes
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Dominance
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Locks
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Records
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Retention
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Service
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Source
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Unlock

@@ -17,7 +17,7 @@ The vocabulary of the lock-rule interface's traces, which the H.1 settings with 
 * **the unlock relation** (`UnlockRel`) and the parent's unlock oracle of a trace
   (`parentOracle`);
 * the same handlers with the head walk from a given **start** in place of `get_anchor`
-  (`WalkStartFn`, `getHeadFrom`, `tryVoteWithMS` … `stepWithMS`);
+  (`WalkStartFn`, `parentWalkStartFn`, `getHeadFrom`, `tryVoteWithMS` … `stepWithMS`);
 * **the trace law over a step family** (`ACLocalRunStep m u step`): the AC trace contract with
   each honest call `i` executing `step i` at the locks `u i`, related to the call's unlock input by
   `UnlockRel`; its parent instance (`ACLocalRunU m u`, each call executing `stepWithM m`) and its
@@ -225,8 +225,12 @@ noncomputable abbrev parentOracle {ro : ReplayOrder sp FGP} (tr : SATrace sp FGP
 variable (sp) (FGP) in
 /-- A **start function**: the block a head walk starts from, given the state after the unlock, the
 frame, the time, the walk's view and its label. Generic: it carries no rule of its own, and the
-parent's start (`get_anchor`, `getAnchor`) is one instance. -/
+parent's start (`parentWalkStartFn`, `get_anchor`) is one instance. -/
 abbrev WalkStartFn := SAState sp.n → Frm sp.n FGP → Time → View sp.n → Int → Blk sp.n FGP
+
+variable (sp) in
+/-- The parent's start: `get_anchor`, for every view and label. -/
+noncomputable abbrev parentWalkStartFn : WalkStartFn sp FGP := fun A Φ t _ _ => getAnchor sp A Φ t
 
 variable (sp) in
 /-- The head walk of `getHead` from the start `a` in place of `get_anchor`. -/
