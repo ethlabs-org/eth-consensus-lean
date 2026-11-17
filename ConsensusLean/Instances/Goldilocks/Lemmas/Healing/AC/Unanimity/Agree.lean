@@ -403,7 +403,7 @@ private theorem honest_supporterU
   · exact hno ⟨w, hwH, hw⟩
 
 /-- A child with a strict majority in the proposal's view is in the voter's viable voter block
-tree: its honest supporter's slot-`s` vote extends it (`trivial_viable`), with the unlock given. -/
+tree: its honest supporter's slot-`s` vote extends it (`trivial_viableU`), with the unlock given. -/
 private theorem supported_viableU
     {u : Nat → Set Lock} {s : Nat}
     (hs : UnanimitySettingCoreU wm u tr H U schedule g (s + 1) P k ℓp d pay) {x : Fin sp.n}
