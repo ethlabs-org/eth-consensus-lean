@@ -66,8 +66,8 @@ theorem contract_heal_val (S : Setup) (A : ContractAssumptions S) (cap : Capabil
     contract_heal S A cap X = (contract_catchUp S A : Nat) + healMargin S X := by rfl
 
 /-- **The coefficient inequality (★)** of the nonfinal reset envelope, at every capability: the
-heal budget of `healthy_reset_fit` (`HealthyResetEnvelope`) at the named `R = healthyResetCoeff` and
-`r = healthyResetSlack`. -/
+heal budget of `healthy_preparation_reset_fit_at` (`Growing/Obligations/Healthy/PreparationReset`)
+at the named `R = healthyResetCoeff` and `r = healthyResetSlack`. -/
 theorem contract_heal_ge_reset (S : Setup) (A : ContractAssumptions S) (cap : Capability)
     (X : ℕ+) :
     (contract_catchUp S A : Nat) + (healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 26) +

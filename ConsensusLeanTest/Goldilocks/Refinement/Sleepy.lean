@@ -1,7 +1,6 @@
 module
 public import ConsensusLeanTest.Goldilocks.Refinement.Simulation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSuppliers
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthySuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
@@ -9,10 +8,10 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 /-! # Witnesses: the Sleepy leaves' and vote forwarding's hypotheses are satisfiable
 
 Kind (a), joint satisfiability (CONTRIBUTING "Statements"), for a valid, collision-free Sleepy
-run and for the fields of `ConfirmedQuery` (Sleepy branch). The query fixes the contract to
-`K S A`. The theorems below state the same fields over `goldilocksContract A C` for every
-coefficient record `C`; at `C = contract_coefficients S A` they are the query's fields, since
-`K S A` is that abbreviation.
+run and for the fields of `Growing.ConfirmedQueryAt` (Sleepy branch). The query fixes the
+contract to `K S A`. The theorems below state the same fields over `goldilocksContract A C` for
+every coefficient record `C`; at `C = contract_coefficients S A` they are the query's fields,
+since `K S A` is that abbreviation.
 
 * `sleepySafety_fields`: a valid, collision-free Sleepy run of
   `goldilocks { S with vote := AsChainShape.stock }` on two validators,
@@ -136,9 +135,9 @@ theorem sleepySafety_fields (A : ContractAssumptions S) (C : ContractCoefficient
   obtain ⟨r, -, hp, -, -, hv, hc, hs⟩ := sleepy_run S A C H hH
   exact ⟨r, one_le_card, congrArg EnvPoint.horizon hp, hv, hc, hs⟩
 
-/-- (a) The `ConfirmedQuery` fields on the Sleepy branch, over `goldilocksContract A C`, are jointly
-satisfiable: capability `.available`, index 1, query time 0, at every horizon covering the latency
-deadline (`Δ = 2`: `2·latency ≤ H`). -/
+/-- (a) The `Growing.ConfirmedQueryAt` fields on the Sleepy branch, over `goldilocksContract A C`,
+are jointly satisfiable: capability `.available`, index 1, query time 0, at every horizon covering
+the latency deadline (`Δ = 2`: `2·latency ≤ H`). -/
 theorem sleepyQuery_fields (A : ContractAssumptions S) (C : ContractCoefficients)
     (H : Time) (hH : 2 * (C.latency .available 1 : Time) ≤ H) :
     ∃ r : (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Run,

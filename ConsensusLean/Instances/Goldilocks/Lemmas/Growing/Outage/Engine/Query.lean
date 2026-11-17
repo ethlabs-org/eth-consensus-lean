@@ -13,7 +13,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.S
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Reads
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Defs
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageSuppliers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageArmingSteps
 import ConsensusLean.Lemmas.Model.SysLog
 import ConsensusLean.Lemmas.Tactic.Linarith

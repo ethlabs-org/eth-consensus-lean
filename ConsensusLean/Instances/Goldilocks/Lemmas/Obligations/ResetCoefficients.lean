@@ -6,10 +6,11 @@ public section
 /-! # Goldilocks Obligations: the named coefficients of the nonfinal reset envelope
 
 Characterising lemmas of parameter-only coefficients, functions of the setup `S` and the index `X`
-alone, shared by the reset envelope (`HealthyResetEnvelope`) and the heal coefficient, all
-fixed before any run, GST or reset is chosen. `healthyDrainLen` and `healMargin` are defined in the
-statement module `Statements/Obligations` (the heal coefficient reads them); the envelope's
-`healthyResetCoeff` and `healthyResetSlack`, which no statement reads, are defined here.
+alone, shared by the reset envelope (`Growing/Obligations/Healthy/PreparationReset`) and the heal
+coefficient, all fixed before any run, GST or reset is chosen. `healthyDrainLen` and `healMargin`
+are defined in the statement module `Statements/Obligations` (the heal coefficient reads them);
+the envelope's `healthyResetCoeff` and `healthyResetSlack`, which no statement reads, are defined
+here.
 
 * `healthyDrainLen S X = 2k + X`: the drain length `L_drain`. It pays the producer guard
   `2k + G ≤ L_drain + 1` at the gap `G = X`.

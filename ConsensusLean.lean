@@ -822,15 +822,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyPrepa
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRecordGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRecordWriters
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRepairTiming
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyResetEnvelope
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthySuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HonestNonempty
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTransport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageArmingSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageGateSlot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageRead
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnProposalPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnReleaseProcessing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ProposerGap

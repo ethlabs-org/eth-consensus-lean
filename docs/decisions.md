@@ -502,7 +502,7 @@ detail in `TRUST.md`.
   one) reads full committees, where `EtaSleepyOn.committee_univ` derives it from the population clause.
   The test `ConsensusLeanTest/Goldilocks/VoteBinding.lean` exercises a proper-subset binding of one key per
   slot. Which certified statement holds at which binding is in §"Trusted surface and Challenge scope".
-  Stock-only consumers specialize binding-generic queries explicitly at `goldilocks {S with vote := stock}`. The growing queries `FinalQueryAt`, `HealthyPreparationQueryAt` and `ConfirmedQueryAt`, and the final-window extraction, take every `S : Setup`; this does not by itself generalize every supplier or the endpoint. Their stock users pass `{S with vote := stock}`. The static queries (`OutageQuery`, `ConfirmedQuery`, `HealthyPreparationQuery`) and `SleepySafetyQueryAt` are stated at `goldilocks {S with vote := stock}`.
+  Stock-only consumers specialize binding-generic queries explicitly at `goldilocks {S with vote := stock}`. The growing queries `FinalQueryAt`, `HealthyPreparationQueryAt` and `ConfirmedQueryAt`, and the final-window extraction, take every `S : Setup`; this does not by itself generalize every supplier or the endpoint. Their stock users pass `{S with vote := stock}`. `SleepySafetyQueryAt` is stated at `goldilocks {S with vote := stock}`.
   The trusted statements and `meetsObligations_growing` hold at every vote binding
   (`goldilocks S`, for every `S : Setup`). Source contract assumptions
   and coefficients retain their original setup index; stock query consumers reconstruct the same assumption

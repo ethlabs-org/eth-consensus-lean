@@ -1,5 +1,8 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthySuppliers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSuppliers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRecordGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRecordWriters

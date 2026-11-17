@@ -14,8 +14,9 @@ public section
 /-! # Finite sleepy service and confirmed proposals
 
 `vote_message_service_other` handles another recipient's first-release vote envelope;
-`sleepyServiceBefore_of_syncUntil` packages service at bounded labelled cuts. `ConfirmedQuery`
-retains the query budget. Source self-service is separate from network holdings. -/
+`sleepyServiceBefore_of_syncUntil` packages service at bounded labelled cuts;
+`sleepy_raw_syncUntil` and `half_ready_of_duration` serve the growing queries. Source self-service
+is separate from network holdings. -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
@@ -161,50 +162,7 @@ theorem sleepy_raw_syncUntil (S : Setup) (A : ContractAssumptions S) (V : Type)
   · exact (hv.in_horizon _ (List.mem_of_getElem? he)).1
   · exact (hv.in_horizon _ (List.mem_of_getElem? he)).1
 
-variable (S : Setup) (A : ContractAssumptions S) (V : Type)
-  [Fintype V] [DecidableEq V]
-
-/-- Draft: the two non-final liveness routes keep their distinct capability budgets.
-The endpoint readiness duration is unchanged; this is not protocol catchUp. -/
-structure ConfirmedQuery where
-  run : (Sys (goldilocks { S with vote := stock }) V).Run
-  constant : run.2.point.ConstantFaults
-  hn : 1 ≤ Fintype.card V
-  cap : Capability
-  nonfinal : cap = .available ∨ cap = .stable
-  index : (K S A).Idx
-  gst : Time
-  query : Time
-  valid : (Sys (goldilocks { S with vote := stock }) V).Valid run
-  noCollision : ¬ run.2.HashCollision
-  regime :
-    ((Sys (goldilocks { S with vote := stock }) V).Sleepy
-        (shapeProgress (goldilocks { S with vote := stock }) V).toExternal (K S A) run ∧
-      (Sys (goldilocks { S with vote := stock }) V).prog
-        (shapeProgress (goldilocks { S with vote := stock }) V) (K S A)
-        cap index 0 run.2.horizon run ∧ 0 ≤ query) ∨
-    ((Sys (goldilocks { S with vote := stock }) V).Healthy
-        (shapeProgress (goldilocks { S with vote := stock }) V).toExternal (K S A) gst run ∧
-      (Sys (goldilocks { S with vote := stock }) V).prog
-        (shapeProgress (goldilocks { S with vote := stock }) V) (K S A)
-        cap index ((Sys (goldilocks { S with vote := stock }) V).ready (K S A) gst run)
-        run.2.horizon run ∧
-      (Sys (goldilocks { S with vote := stock }) V).heal (K S A) cap index gst run ≤ query)
-  bounded : query + ((K S A).params.latency cap index : Time) * run.1.ΔAC ≤ run.2.horizon
-  reader : ∃ v, run.2.point.Ready ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) run) v
-    (query + ((K S A).params.latency cap index : Time) * run.1.ΔAC)
-
-namespace ConfirmedQuery
-variable {S A V}
-abbrev params (Q : ConfirmedQuery S A V) :=
-  ({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf Q.run.1) Q.hn
-noncomputable abbrev trace (Q : ConfirmedQuery S A V) :=
-  simTrace { S with vote := stock } Q.run.2 Q.hn
-noncomputable abbrev duration (Q : ConfirmedQuery S A V) :=
-  (Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run
-noncomputable abbrev deadline (Q : ConfirmedQuery S A V) : Time :=
-  Q.query + ((K S A).params.latency Q.cap Q.index : Time) * Q.run.1.ΔAC
-end ConfirmedQuery
+variable (V : Type) [Fintype V] [DecidableEq V]
 
 omit [DecidableEq V] in
 /-- Shortening the readiness duration preserves a strict half-ready population. -/
@@ -221,32 +179,6 @@ theorem half_ready_of_duration (p : EnvPoint V) {c d t : Time} (hd : c ≤ d)
   unfold EnvPoint.ReadyAbove at hh ⊢
   have hc' : ((p.readyAt d t).card : ℚ) ≤ (p.readyAt c t).card := by exact_mod_cast hc
   linarith
-
-/-- The recurrence/grid supplier selects readiness at exact endpoint cDur directly.
-Readiness merely at 18Δp cannot be upgraded to this field by monotonicity. -/
-structure ConfirmedProducerSlot (Q : ConfirmedQuery S A V) where
-  slot : Nat
-  positive : 1 ≤ slot
-  fresh : Q.query < Q.params.ts slot
-  margin : Q.params.ts slot + 6 * Q.params.Δ ≤ Q.deadline
-  ready : Regimes.ReadyAt Q.trace (honestKeys { S with vote := stock } Q.run.2) Q.duration
-    (runProposer { S with vote := stock } Q.run.2 Q.hn slot) (Q.params.ts slot)
-
-/-- Recurrence/grid selection after an explicit readiness start, at exact cDur.
-No healthy or sleepy run premise is needed; the joint latency lower bound remains a dependency. -/
-theorem healthy_query_slot (Q : ConfirmedQuery S A V) {ready : Time}
-    (hprogress : (Sys (goldilocks { S with vote := stock }) V).prog
-      (shapeProgress (goldilocks { S with vote := stock }) V) (K S A)
-      Q.cap Q.index ready Q.run.2.horizon Q.run)
-    (hquery : max ready 0 ≤ Q.query) : Nonempty (ConfirmedProducerSlot S A V Q) := by
-  obtain ⟨s, hs1, hlo, hmargin, hts0, htsh, hR, -⟩ := nonfinal_query_slot { S with vote := stock }
-    ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q.run Q.hn
-    Q.nonfinal Q.index Q.bounded hprogress hquery
-  have hnode := ready_transport S Q.run.2 Q.hn Q.valid hts0 htsh hR
-  rw [show Q.run.2.ownKey (Q.run.2.key (runProposer { S with vote := stock } Q.run.2 Q.hn s)) =
-    runProposer { S with vote := stock } Q.run.2 Q.hn s from
-      Q.run.2.key.symm_apply_apply _] at hnode
-  exact ⟨⟨s, hs1, hlo, hmargin, hnode⟩⟩
 
 end Consensus.Goldilocks.Obligations
 end
