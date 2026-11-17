@@ -642,11 +642,7 @@ example := ``Consensus.Goldilocks.Compose.Growing.PersistPremises
 
 /-! ## Goldilocks Service (a milestone PR appends here only) -/
 
-example := ``Consensus.Goldilocks.Compose.UpdatedNoRestart
-example := ``Consensus.Goldilocks.Compose.ServedAt
 example := ``Consensus.Goldilocks.Compose.RecordAt
-example := ``Consensus.Goldilocks.Compose.HeadExtendsRecord
-example := ``Consensus.Goldilocks.Compose.Inclusion
 example := ``Consensus.Goldilocks.Compose.RunEntry
 example := ``Consensus.Goldilocks.Compose.EarlyOutcome
 example := ``Consensus.Goldilocks.Compose.OutcomeService

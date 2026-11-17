@@ -123,7 +123,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.BatchWin
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Confirmation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Held
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Later
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
@@ -975,7 +974,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GenericRun
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Persist
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Service
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Interface
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Node
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Persist
@@ -1039,7 +1037,6 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Obligations.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Persist.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
-public import ConsensusLean.Instances.Goldilocks.Proofs.Service.Main
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Interface
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Spec.Common.Block

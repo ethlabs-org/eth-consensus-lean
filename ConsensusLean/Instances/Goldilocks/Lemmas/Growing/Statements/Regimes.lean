@@ -1,13 +1,13 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Service
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
 
 public section
 
-/-! # The growing-fault regime and service rows imply the static rows
+/-! # The growing-fault regime rows imply the static rows
 
-At `H := fun _ => H₀` every statement of `Statements/Regimes/Growing` and
-`Statements/Compose/Growing/Service` is at least its static counterpart: the run, the blocks held
+At `H := fun _ => H₀` every statement of `Statements/Regimes/Growing` is at least its static
+counterpart: the run, the blocks held
 while honest and `SleepyRunAt` (at every look-ahead) are the static ones
 (`Lemmas/Growing/Run/Const`), and every honesty test at a time is `· ∈ H₀`. So the growing-fault
 statements weaken no static statement. -/
@@ -108,25 +108,6 @@ theorem finalizedSafe_of_growing (h : Regimes.Growing.FinalizedSafe) : Finalized
   rwa [RunTrace.honestBlocksAt_const] at hg
 
 namespace Compose
-
-/-- The growing-fault A1.6 implies the static one. -/
-theorem headExtendsRecord_of_growing (h : Compose.Growing.HeadExtendsRecord) :
-    HeadExtendsRecord := by
-  intro sp ro proposer dg H tr ΔF hstock hrun hnc hsl y hy i hs R hR
-  obtain ⟨h1, h2⟩ := h sp ro proposer dg (fun _ => H) tr ΔF hstock
-    (Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) hnc
-    ((RunTrace.sleepyRunAt_const tr _).mpr hsl) y i hy hs R hR
-  refine ⟨h1, fun i' hi' hk R' hR' => ?_⟩
-  have hg := h2 i' hi' hy hk R' hR'
-  rwa [RunTrace.honestBlocksAt_const] at hg
-
-/-- The growing-fault A1.7 implies the static one. -/
-theorem inclusion_of_growing (h : Compose.Growing.Inclusion) : Inclusion := by
-  intro sp ro proposer dg H tr ΔF hstock hrun hnc hsl p hp k P s hP hs hj y hy i hc hjy hr hu
-  have hg := h sp ro proposer dg (fun _ => H) tr ΔF hstock
-    (Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) hnc
-    ((RunTrace.sleepyRunAt_const tr _).mpr hsl) p k P s hp hP hs hj y i hy hc hjy hr hu
-  rwa [RunTrace.honestBlocksAt_const] at hg
 
 end Compose
 

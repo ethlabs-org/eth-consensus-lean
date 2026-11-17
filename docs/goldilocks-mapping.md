@@ -34,7 +34,6 @@ are unchanged. The latter also owns the frame-sequence vocabulary, not needed by
 | `Consensus.Goldilocks.Compose.ComposeNodeStatements` | `Milestones/Statements/Compose/Node` | C0.1–C0.5 at the node | Compose/AnyAC | proved (lemma) |
 | `Consensus.Goldilocks.Compose.EventOrder`, `Consensus.Goldilocks.Compose.ReadyImpliesJoined` and the six other run statements (the projections) | `Milestones/Statements/Compose/Run` | F.5 (run), F.4, C0.5 | Persist | proved (lemma) |
 | `Consensus.Goldilocks.Compose.HonestFastConfirmationsPersist`, `Consensus.Goldilocks.Compose.RecentSourceNextVote` | `Milestones/Statements/Compose/Persist` | C1.1 and its corollary | Persist | proved (lemma) |
-| `Consensus.Goldilocks.Compose.HeadExtendsRecord`, `Consensus.Goldilocks.Compose.Inclusion` | `Milestones/Statements/Compose/Service` | A1.6, A1.7 | Service | proved (lemma) |
 | the six rows of `Milestones/Statements/Regimes/Always` | `Milestones/Statements/Regimes/Always` | R.7, R.8 | Regimes | proved (lemma) |
 | `Consensus.Goldilocks.Regimes.SleepySafe`, `Consensus.Goldilocks.Regimes.IncludeSleepy`, `Consensus.Goldilocks.Regimes.GrowSleepy` | `Milestones/Statements/Regimes/Sleepy` | R.1, R.2 | Regimes | proved (lemma) |
 | `Consensus.Goldilocks.MeetsObligations` (Ebb-and-Flow obligations) | `Statements/Obligations` | CLAIMS §"The obligations endpoint" | Obligations | proved in Solution |
@@ -275,7 +274,7 @@ not a milestone statement) as `CaseOneA13`: the premises of `NextTransfer`, over
 Milestone `ACSteps` covers the AC module's L1 step lemmas over AC traces of the SA:
 A1.1, A1.2, A1.3, A1.4, A1.5 and A1.8. A1.2–A1.4 and A1.8 are per vote. A1.9 (per `ac_to_fg` call) is a lemma in its
 stored-block form, not a field of the milestone. A1.6 and
-A1.7 are run-level (Service).
+A1.7 are run-level (Service, retired as milestone statements).
 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|
@@ -482,27 +481,16 @@ satisfiable together with the awake clamp). The regime witness is over an AC tha
 
 ## Service
 
-CLAIMS §"Available chain, after C1.1", with the premises as restated in this repository. Over the
-Goldilocks run under `Sleepy` and `NoColl`, as A1.6 and A1.7 state (A1.7's `GenRoot` is supplied by the run's `genesis_root_ok`). C1.2 is
+CLAIMS §"Available chain, after C1.1". A1.6 and A1.7 are no longer milestone statements: the obligations endpoint
+reads its own service facts. C1.2 is
 stated in `Milestones/Statements/Healing/Outcome` (milestone Healing, its premises are the healing regime); C1.3 is in
 `Milestones/Statements/Healing/Recovery`.
 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|
-| A1.6 | CLAIMS A1.6 | the update of a slot ran with no restart since; A1.6's condition at a cut (a call, joined, updated for `slot(t) − 2`; awake follows from the call, `awake_of_call`, so `ServedAt` has no awake conjunct, which makes `HeadExtendsRecord`'s premises weaker in form); the record `𝒜.latest_confirmed` as a block of the frame's tree; **head extends the record**: the head extends the record in the frame, `ac_confirmed` is the record, and across served cuts the record extends; stated for population-sized committees (premise `sp.committeeSize = sp.n`) | Service | `Consensus.Goldilocks.Compose.UpdatedNoRestart`, `Consensus.Goldilocks.Compose.ServedAt`, `Consensus.Goldilocks.Compose.RecordAt`, `Consensus.Goldilocks.Compose.HeadExtendsRecord` |
-| A1.7 | CLAIMS A1.7 | **inclusion**: an honest proposal of slot `s` by a joined proposer is in the confirmed tip of every honest node joined at `t`, with no restart in `(t_s + 6Δ, t]` (written `t < time k'` for every restart `k'` after `t_s + 6Δ`), that has run the update of slot `s` before the cut with no restart since (`UpdatedNoRestart`: the claims' "at `t_s + 6Δ` itself, after its tick"; the Lean also admits the cuts of that tick after the update); under `Sleepy` and `NoColl`. **Stronger than CLAIMS**: no `t ≥ t_s + 6Δ` (the update clause places the cut after the update), no awake at `t_s + 6Δ`, and no separate `GenRoot` (the Goldilocks run's `genesis_root_ok` supplies it); also no awake at `t` (`awake_of_call` at the cut) and no joined at `t_s + 6Δ` (the update's `SA.UpdateAt` is a joined tick there, `joined_projection`); each follows from the update clause (its cut is at `t_s + 6Δ`, so `time_mono` and `awake_of_call`), the call and the run, so the change is one of form; stated for population-sized committees (premise `sp.committeeSize = sp.n`) | Service | `Consensus.Goldilocks.Compose.Inclusion` |
+| A1.6 | CLAIMS A1.6 | **retired** as a milestone statement (head extends the record under synchrony); the vocabulary the endpoint proofs read stays: the record `𝒜.latest_confirmed` as a block of the frame's tree | Service | `Consensus.Goldilocks.Compose.RecordAt` |
+| A1.7 | CLAIMS A1.7 | **retired** as a milestone statement (inclusion after the update of the proposal's slot); the ready-reader form is R.2 (`Healing/Regimes/Inclusion`) | Service | — |
 | C1.2 | CLAIMS C1.2 | **AC outcome service**: under the healing regime after the reset (`HSShared`, `Catch(2Δ)`, `a_z`), an entry whose block is an honest ready proposal from `R_z`, high (and with a high predecessor when its previous height is justified), with retained ready inclusion, with `𝓕 ≥ ⌈(6Δ + Δ_F)/(4Δ)⌉` and `δ_t ≥ 𝓕 + k_F`, gets by the end of its window a literal good window (`Store.GoodWindow` on the FG projection) or an accepted early justification (finalizing the predecessor when its previous height is justified), its carrier relayed within `Δ` in both branches; an entry whose previous height is not justified is justified by then (stated in `Milestones/Statements/Healing/Outcome`, since its premises are the healing regime). **Stronger than CLAIMS**: no `Prop⁺(G_p)` and `𝓕` only bounded below, not fixed at the ceiling | Healing | `Consensus.Goldilocks.Compose.RunEntry`, `Consensus.Goldilocks.Compose.EarlyOutcome`, `Consensus.Goldilocks.Compose.OutcomeService` |
-
-Modelling choices:
-
-- **"At `t`" is at a cut of the node at time `t`**, with the state before the cut (`ac_head`/`ac_confirmed` take
-  that cut's time). A1.6's "while both conditions hold" is "at every cut of the node from `i` to `i'`"; the record
-  monotonicity is stated inside the honest blocks of the run, with the later record read as a block of the frame's
-  tree (`RecordAt`), as the head clause.
-- **A1.7's "has not restarted since `t_s + 6Δ`"** is "no restart cut in `(t_s + 6Δ, t]`" (a restart at `t_s + 6Δ`
-  itself is excluded by `JoinedAt y (t_s + 6Δ)`, whose restarts are at or before `t_s`), together with `UpdatedNoRestart tr y i s`: the
-  update of slot `s` (the AC tick at `t_s + 6Δ`) ran at a cut before `i` with no restart since. Without it the
-  statement fails at `t = t_s + 6Δ`, at the cuts of that tick before the update.
 
 ## Healing
 

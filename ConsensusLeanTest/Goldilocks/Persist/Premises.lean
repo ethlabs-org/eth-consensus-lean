@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 @[expose] public section
 
-/-! # The one-validator tick run meets the premises of C1.1 and of the Service statements
+/-! # The one-validator tick run meets the premises of C1.1 and `Sleepy`
 
 Kind (a), joint satisfiability (CONTRIBUTING "Statements"), on the one-validator tick run of
 `Goldilocks/Runs/OneValidator/Premises` (`n = 1`, `Δ = 1`, `t_s = 4s`, a tick at every time, no
@@ -25,9 +25,7 @@ restart):
     admitted `cv s`, and that cut is before the tick of `t_s + 2Δ`, whose pool already holds
     `cv s` (`readPoint_stamp`).
 * `tickRun_sleepy`: `SleepyRun` (`Sync[0, ∞)` and `f < h_t` at every `t_s, t_s + Δ,
-  t_s + 2Δ`), and `servedAt_tickRun`: A1.6's `ServedAt` at the tick of time `8` (slot `2`),
-  after the update of slot `0` at `t_0 + 6Δ = 6`. `tickRun_service_premises` bundles them with
-  `GoldilocksRun` and `NoColl`: the premises of `HeadExtendsRecord` are jointly satisfiable.
+  t_s + 2Δ`).
 
 With `n = 1` and `f = 0` this shows the premises consistent, not met with faults. -/
 
@@ -279,7 +277,7 @@ theorem tickRun_persist_premises :
       Compose.PersistPremises (tickRun N1 dg1) Set.univ dg1 1 v0 35 1 2 (blk 1) {cv 1} :=
   ⟨tickRun_goldilocksRun, persistPremises_tickRun⟩
 
-/-! ## The premises of the Service statements -/
+/-! ## `Sleepy` on the tick run -/
 
 /-- (a) **`Sleepy` holds on the tick run** (with `Δ_F = 1`): `Sync[0, ∞)` and `f < h_t` at every
 `t_s`, `t_s + Δ` and `t_s + 2Δ`. -/
@@ -289,30 +287,6 @@ theorem tickRun_sleepy : (tickRun N1 dg1).SleepyRun Set.univ 1 := by
   · change (0 : Int) ≤ 4 * (s : Int); positivity
   · change (0 : Int) ≤ 4 * (s : Int) + 1; positivity
   · change (0 : Int) ≤ 4 * (s : Int) + 2 * 1; positivity
-
-/-- A1.6's `ServedAt` at the tick of time `8` (cut `64`, slot `2`): a call of the validator, which
-is joined and ran the update of slot `0` at the tick of `t_0 + 6Δ = 6` (cut `48`), with no restart
-since. -/
-theorem servedAt_tickRun : Compose.ServedAt (tickRun N1 dg1) v0 64 := by
-  have hl : ∀ t : Nat, (tickRun N1 dg1).label (8 * t) =
-      some (acCall v0 (tickState N1 dg1 t) (t : Int) .tick).2 := by
-    intro t
-    rw [tickRun_label, show 8 * t / 8 = t by omega, show 8 * t % 8 = 0 by omega]
-    exact tickCuts_head N1 dg1 t
-  refine ⟨⟨_, rfl, hl 8⟩, fun k hk => absurd hk (tickRun_no_restart _ k), 0,
-    by rw [time_run, slot_nat], 48, by decide, _,
-    ⟨Compose.projAC_callAt.2 ⟨rfl, hl 6⟩, rfl, ?_, ?_⟩, fun k' _ _ => tickRun_no_restart _ k'⟩
-  · rw [time_eq, ts_nat]; rfl
-  · rw [projAC_state']
-    exact joined_of_bot (tickRun_restartTime 48) _
-
-/-- **The premises of the Service statements are jointly satisfiable** (`HeadExtendsRecord`,
-A1.6): a Goldilocks run with `NoColl` and `Sleepy`, and a cut where `ServedAt` holds. -/
-theorem tickRun_service_premises :
-    GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
-      Compose.NoCollRun dg1 (tickRun N1 dg1) ∧ (tickRun N1 dg1).SleepyRun Set.univ 1 ∧
-      Compose.ServedAt (tickRun N1 dg1) v0 64 :=
-  ⟨tickRun_goldilocksRun, dg1_noColl _, tickRun_sleepy, servedAt_tickRun⟩
 
 end Consensus.Goldilocks.Witness.One
 

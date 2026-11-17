@@ -15,11 +15,11 @@ public section
 
 /-! # Goldilocks under `Sleepy`: an honest proposal is adopted by the update of its slot
 
-A1.7's supplier over the Sleepy invariant: every honest slot-`s` vote is the honest proposal `P` of
+Over the Sleepy invariant: every honest slot-`s` vote is the honest proposal `P` of
 slot `s`; at an honest node's joined update of slot `s`, the result is exactly `P` and not vetoed
 (`adopt_result_before`: the S1P–S3P bootstrap with the Sleepy step lemmas for a protected block,
 `vote_frame`, `later_transfer_step_before`, `vote_locks_compatible_upTo`, `held_origin_viable`). The
-update then moves the record to `P`, or keeps an already deeper one (`update_adopts`). -/
+update then moves the record to `P`, or keeps an already deeper one. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -322,28 +322,6 @@ theorem update_adopts_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {
   · obtain ⟨R, hR, hRr, hPR⟩ := hA
     exact ⟨R, hHB R hR, hRr.trans hrec.symm, hPR.mono hHB⟩
   · exact ⟨P, hHB P hPt, hrec.symm, Relation.ReflTransGen.refl⟩
-
-/-- Whole-run adoption is finite adoption at the update horizon. -/
-theorem update_adopts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
-    (hy : y ∈ H) {k₀ : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hstock : sp.committeeSize = sp.n) :
-    ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
-      Anc (tr.HonestBlocks H) P E := by
-  have hs : tr.SyncBefore H ΔF (tr.time k₀) :=
-    ⟨hsl.1.deltaF, hsl.1.delta_le, fun x hx i m hm h0 y hy j hc _ hd =>
-      hsl.1.message x hx i m hm h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
-      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact update_adopts_before hrun hnc (hrun.time_nonneg k₀)
-    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
-    (sleepyPrefix_iff.1 (hsl.prefix (hrun.time_nonneg k₀))).2.2
-    (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀)) hstock) hp hP hPs hpj hy hu
-    le_rfl hstock
 
 end Consensus.Goldilocks.Compose
 

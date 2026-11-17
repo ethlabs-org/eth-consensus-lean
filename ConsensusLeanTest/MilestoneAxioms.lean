@@ -6,7 +6,6 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Persist.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
-public import ConsensusLean.Instances.Goldilocks.Proofs.Service.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Main
@@ -156,17 +155,6 @@ theorem Consensus.Goldilocks.Regimes.includeSleepy : Consensus.Goldilocks.Regime
 /-- Goldilocks Regimes: `GrowSleepy`. -/
 theorem Consensus.Goldilocks.Regimes.growSleepy : Consensus.Goldilocks.Regimes.GrowSleepy :=
   Consensus.Goldilocks.Regimes.grow_sleepy
-
-/-! Goldilocks Service: the available chain after C1.1 (A1.6, A1.7; `Compose/Service`). -/
-
-/-- Goldilocks Service: `HeadExtendsRecord`. -/
-theorem Consensus.Goldilocks.Compose.headExtendsRecord :
-    Consensus.Goldilocks.Compose.HeadExtendsRecord :=
-  Consensus.Goldilocks.Compose.head_extends_record
-
-/-- Goldilocks Service: `Inclusion`. -/
-theorem Consensus.Goldilocks.Compose.inclusion : Consensus.Goldilocks.Compose.Inclusion :=
-  Consensus.Goldilocks.Compose.inclusion_sleepy
 
 /-! Goldilocks Healing: the AC healing statements (H.1, its corollary, H.2; `Healing/AC`), the run
 statements (HR.1–HR.4, H.2 on the run, H.3, H.4; `Healing/Run`) and the phase service (HS.1–HS.4;
@@ -356,12 +344,6 @@ theorem Consensus.Goldilocks.Healing.finalizingCoverage :
 
 /-- info: 'Consensus.Goldilocks.Regimes.growSleepy' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Regimes.growSleepy
-
-/-- info: 'Consensus.Goldilocks.Compose.headExtendsRecord' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.headExtendsRecord
-
-/-- info: 'Consensus.Goldilocks.Compose.inclusion' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.inclusion
 
 /-- info: 'Consensus.Goldilocks.SA.aCHealingStandaloneAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.SA.aCHealingStandaloneAll

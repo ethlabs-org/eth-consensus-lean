@@ -25,14 +25,13 @@ public section
 
 /-! # Goldilocks under `Sleepy`: the served head (S4) and the record step (G3)
 
-The facts the Service milestone reads (`ServedFacts`, in
-`Lemmas/Compose/Service/Sleepy`), from `SleepyInvariant`:
+From the Sleepy invariant (whole-run or up to `b`):
 
-* **The record step** (`record_step`, G3, at every honest cut): a record write takes an origin
+* **The record step** (`record_step_upTo`, G3, at every honest cut): a record write takes an origin
   `C` of the frame, compatible with the old record (genesis or an origin, in the node's tree);
   it keeps the record when `C` is below it in the frame, and otherwise the old record is below
   `C` (below `Σ.F ⪯ C` when it left the frame). Restarts keep the record.
-* **The served head** (`served_head_support`, G1, G2, at a cut after the update of slot
+* **The served head** (G1, G2, at a cut after the update of slot
   `slot(t) − 2` or `slot(t) − 1` with no restart since, awake and joined): the anchor (the
   deepest of the live lock blocks and `fc_root`, all on the origin chain) is compatible with the
   record `R`. If `R` was
@@ -69,21 +68,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
-/-- **G3, the record step**: at every cut of an honest node, the record moves to a descendant
-(inside the honest blocks). -/
-theorem record_step (hinv : SleepyInvariant tr H) (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
-    ∀ E ∈ tr.HonestBlocks H, E.root = (tr.state y i).ac.latestConfirmed →
-      ∃ E' ∈ tr.HonestBlocks H, E'.root = (tr.state y (i + 1)).ac.latestConfirmed ∧
-        Anc (tr.HonestBlocks H) E E' :=
-  have ⟨C, hC, hCr, hgo⟩ := hinv.record y hy i
-  record_step_of hrun hnc hy i
-    (fun _ _ hX hY hXc hYc =>
-      OnOriginChain.compatible hrun hnc hinv.origins_compatible hX hY hXc hYc)
-    ⟨C, hC, hCr, onOriginChain_iff.2 (hgo.imp_right fun ⟨s, hs⟩ => ⟨C, s, hs, .refl⟩)⟩
-    (hinv.caches y hy i).1 fun C s _ hO => onOriginChain_iff.2 (Or.inr
-      ⟨C, s, hO.elim (Origin.of_result hy) (Origin.of_optimistic hy), .refl⟩)
-
 /-- **G3 up to `b`, the record step**: at every cut of an honest node at a time `≤ b` (with the
 earlier ones), the record moves to a descendant (inside the honest blocks). -/
 theorem record_step_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
@@ -101,14 +85,6 @@ theorem record_step_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     ⟨C, hC, hCr, onOriginChainWithin_iff.2 (hgo.imp_right fun ⟨s, hs⟩ => ⟨C, s, hs, .refl⟩)⟩
     (hinv.caches y hy i hi').1 fun C s CV hO => onOriginChainWithin_iff.2 (Or.inr
       ⟨C, s, originWithin_iff.2 ⟨y, hy, i, CV, hi i le_rfl, hO⟩, .refl⟩)
-
-/-- A cut of an honest node awake and joined at its time is read at its time. -/
-private theorem readAt_self (hrun : GoldilocksRun proposer dg H tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    (hc : tr.IsCall y i) (hw : tr.awake y (tr.time i)) (hj : tr.JoinedAt y (tr.time i)) :
-    ReadAtCut proposer dg tr y i (tr.time i) :=
-  ⟨hrun.time_nonneg i, fun _ hk => hrun.time_mono hk.le, le_rfl,
-    fun _ hk => not_lt.1 fun hik => not_before_tick hrun hy hc hj hk hik, hw, hj⟩
 
 private abbrev ReadInv (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop)
@@ -234,35 +210,6 @@ theorem read_head_support_before {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     fun _ hm _ hrd hRm _ hO hjl => latest_majority hrun hnc hy
       (ReadInvWith.of_before hinv hrun hnc hsync hy (fun k hk => (hm k hk).trans htb) htb)
       (fun s h _ => hfb s h) hrd hRm.1 hO hjl
-
-/-- **G1, G2 at a served cut**: at a cut of an honest node awake and joined at its time that has
-run the update of slot `slot(t) − 2` or `slot(t) − 1` with no restart since (A1.6's condition,
-and A1.7's in the slot after the proposal's), the record's block has `HeadSupport`. -/
-theorem served_head_support (hinv : SleepyInvariant tr H) (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    (hc : tr.IsCall y i) (hw : tr.awake y (tr.time i)) (hj : tr.JoinedAt y (tr.time i))
-    {s' : Nat} (_hs' : sp.slot (tr.time i) ≤ s' + 2) (_hu : UpdatedNoRestart tr y i s')
-    {R : SA.Blk sp.n (List (FG.Att sp.n))} (hR : RecordAt tr y i R) :
-    HeadSupport tr y i R :=
-  -- the update clause is not needed here: joining at `t` already excludes the restarts after the
-  -- latest view's slot started, which would clear the pools
-  have hI := (ReadInv.of_full hinv hrun hnc hsl hy i (tr.time i)).service
-  have h := head_support_at hrun hnc hy hI (fun _ hk => hrun.time_mono hk.le) hR
-    fun _ _ hO hjl => latest_majority hrun hnc hy hI (fun s _ _ => faults_lt_awake_joined hsl s)
-      (readAt_self hrun hy hc hw hj) hR.1 hO hjl
-  ⟨h.1, h.2⟩
-
-/-- **The served-cut facts under `Sleepy`** (`ServedFacts`, the target of the Service
-milestone's served-cut facts). -/
-theorem sleepy_served_facts (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {i : Nat} (hs : ServedAt tr y i)
-    (hstock : sp.committeeSize = sp.n) :
-    ServedFacts tr H y i :=
-  have hinv := sleepy_invariant hrun hnc hsl hstock
-  have ⟨hc, hj, _, hs', hu⟩ := hs
-  have hw := hrun.awake_of_call y hy i hc
-  ⟨fun _ hR => served_head_support hinv hrun hnc hsl hy hc hw hj hs'.ge hu hR,
-    record_step hinv hrun hnc hy i⟩
 
 end Consensus.Goldilocks.Compose
 

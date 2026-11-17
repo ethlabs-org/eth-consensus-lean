@@ -14,7 +14,7 @@ conclusion is about one honest vote and the hypotheses about that vote and stric
 them. The origin of a lock
 or a result (a fast lock write, an update's result) is a fixed datum, as in the claims, and can be
 later than the vote (an update of slot `s` runs at `t_s + 6Δ`, after the slot-`(s+1)` votes). A1.6
-and A1.7 are run-level (milestone Service).
+and A1.7 are run-level claims, not stated here.
 
 Every statement is over an AC trace of the Goldilocks SA with its contract and the honest-object
 facts (`ACRun`, for the honest validators `H` inside the coherent set `U` of all frame blocks;

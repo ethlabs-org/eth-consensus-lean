@@ -9,8 +9,6 @@ public import ConsensusLeanTest.Goldilocks.AC.FastUpdate
 public import ConsensusLeanTest.Goldilocks.AC.GradedLocks
 public import ConsensusLeanTest.Goldilocks.AC.GradedVeto
 public import ConsensusLeanTest.Goldilocks.AC.HeadsImplied
-public import ConsensusLeanTest.Goldilocks.AC.Inclusion
-public import ConsensusLeanTest.Goldilocks.AC.InclusionUpdateRejection
 public import ConsensusLeanTest.Goldilocks.AC.JoinedRestart
 public import ConsensusLeanTest.Goldilocks.AC.LockRule
 public import ConsensusLeanTest.Goldilocks.AC.LockStore
@@ -97,8 +95,6 @@ public import ConsensusLeanTest.Goldilocks.Run.Conflict
 public import ConsensusLeanTest.Goldilocks.Run.Faulty
 public import ConsensusLeanTest.Goldilocks.Run.Statements
 public import ConsensusLeanTest.Goldilocks.Run.TickOnce
-public import ConsensusLeanTest.Goldilocks.Runs.Asleep.Run
-public import ConsensusLeanTest.Goldilocks.Runs.Asleep.Sleepy
 public import ConsensusLeanTest.Goldilocks.Runs.Data.Five
 public import ConsensusLeanTest.Goldilocks.Runs.Data.Premises
 public import ConsensusLeanTest.Goldilocks.Runs.Data.Run

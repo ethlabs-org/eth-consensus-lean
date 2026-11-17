@@ -3,20 +3,15 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.S
 
 public section
 
-/-! # Goldilocks runs under `Sleepy`: the facts the Service milestone reads (interface)
+/-! # Goldilocks runs under `Sleepy`: the head support at a cut (interface)
 
 The Sleepy safety induction from time `0` (claims A1.6, its "own induction from time 0"; the same
-induction is R.1, `sleepySafe`; `Lemmas/Compose/Sleepy`). This file holds what A1.6
-and A1.7 read of it, node-local at one cut of `y`:
+induction is R.1, `sleepySafe`; `Lemmas/Compose/Sleepy`). This file holds what the reads of
+it use, node-local at one cut of `y`:
 
 * `HeadSupport R` (G1, G2): the anchor is compatible with `R`, and `R` is at or below the anchor,
   or `R` is in the viable tree with a strict majority of the latest view's voters as supporters
-  (with `SA.anc_acHead`, the head extends `R`, and `ac_confirmed` is the record's block);
-* `ServedFacts` at a cut where `y` is served (`ServedAt`): `HeadSupport` of the record's block,
-  and the record step (G3: across the cut the record moves to a descendant); supplied by
-  `sleepy_served_facts` (`Lemmas/Compose/Sleepy/Served`, which imports this file);
-* `HeadSupport` is also what A1.7 reads (`served_head_support` after the update of `slot(t) − 2` or
-  `slot(t) − 1`). -/
+  (with `SA.anc_acHead`, the head extends `R`, and `ac_confirmed` is the record's block). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -41,17 +36,6 @@ structure HeadSupport (tr : GoldilocksTrace sp ro) (y : Fin sp.n) (i : Nat)
           (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) (tr.time i)).1
           (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) (tr.time i)).2
           R).ncard)
-
-/-- **The served-cut facts** of `y` at cut `i`: G1/G2 for the record's block, and the record
-step (G3). -/
-structure ServedFacts (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (y : Fin sp.n) (i : Nat) :
-    Prop where
-  /-- G1, G2 for the record's block. -/
-  head : ∀ R, RecordAt tr y i R → HeadSupport tr y i R
-  /-- G3: across the cut, the record moves to a descendant (inside the honest blocks). -/
-  record_step : ∀ E ∈ tr.HonestBlocks H, E.root = (tr.state y i).ac.latestConfirmed →
-    ∃ E' ∈ tr.HonestBlocks H, E'.root = (tr.state y (i + 1)).ac.latestConfirmed ∧
-      Anc (tr.HonestBlocks H) E E'
 
 end Consensus.Goldilocks.Compose
 

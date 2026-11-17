@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Inclusion
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Later
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Read
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
@@ -14,13 +14,13 @@ public section
 
 `IncludeSleepy` and `GrowSleepy` (`Statements/Regimes/Sleepy`) over the run, from
 
-* `later_update_adopts_before` (`Service/Later`, a generalisation of `update_adopts`): after an
+* `later_update_adopts_before` (`Service/Later`): after an
   honest update of any slot `≥ s`, the record or `Σ.F` extends an honest proposal `P` of slot `s` by
   a joined proposer;
 * `ready_read_record` (`Sleepy/Read`, A1.6 at a ready read point): the read of a ready node between
   its events is the record's block, or `Σ.F` when the record is not in the frame.
 
-A1.7 (`Compose.inclusion`) is not enough by itself: its reader was awake and joined at
+The claims' A1.7 is not enough by itself: its reader was awake and joined at
 `t_s + 6Δ`, while a ready reader at a later `t` may have slept then and missed the update of slot
 `s`. Proved here: a ready reader at `t ≥ τ + 6Δ` ran the update of the slot `slot(t − 6Δ) ≥ s` (its
 tick at that public time, joined by F.4), so its record after all events at `t` extends `P`
@@ -28,7 +28,7 @@ tick at that public time, joined by F.4), so its record after all events at `t` 
 (`ready_proposer_proposes`: its tick's `ac_proposal` returns a proposal since it is joined, and
 C0.3 accepts the own block); the point after all events at `t` is between two events of every
 node (`cutAfter_boundary`). Then `include_sleepy` (the read is the record or `Σ.F`, and both
-extend `P`, as in A1.7's proof) and `grow_sleepy` (a ready proposer of the window `(t, t + 4kΔ]`
+extend `P`) and `grow_sleepy` (a ready proposer of the window `(t, t + 4kΔ]`
 proposes `P`, which every ready read at `t + (4k + 6)Δ` includes; `P` is newer than every block of
 a read at `t`, and the agreement half of R.1 orders the reads).
 
