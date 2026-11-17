@@ -127,6 +127,9 @@
     "Consensus.Goldilocks.RunTrace.anc_upTo_iff",
     "Consensus.Goldilocks.SA.Growing.optimistic_transfer_stored_stub",
     "Consensus.Goldilocks.SA.Growing.result_transfer_stub",
+    "Consensus.Goldilocks.SA.LocksWF.step",
+    "Consensus.Goldilocks.SA.LocksWF.tryVote",
+    "Consensus.Goldilocks.SA.LocksWF.updateConfirmation",
     "Consensus.Goldilocks.SA.call_fromP",
     "Consensus.Goldilocks.SA.fastLock_mem_updateConfirmation",
     "Consensus.Goldilocks.SA.first_transfer_stored_of_pool",
@@ -136,6 +139,7 @@
     "Consensus.Goldilocks.SA.trivial_update_first_proposal",
     "Consensus.Goldilocks.SA.updateConfirmation_slow_lock",
     "Consensus.Goldilocks.SA.updateConfirmation_veto_keep",
+    "Consensus.Goldilocks.SA.update_side",
     "Consensus.Goldilocks.Simulation.received_forward_accepted_before_at"
   ],
   "fields": {
@@ -1007,41 +1011,11 @@
       "evidence": "Proved; no direct owner in compiled audit at 065683b3."
     },
     {
-      "name": "Consensus.Goldilocks.SA.LocksWF.step",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:231",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
-      "name": "Consensus.Goldilocks.SA.LocksWF.tryVote",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:162",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
       "name": "Consensus.Goldilocks.SA.LocksWF.unlock",
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:68",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
-      "name": "Consensus.Goldilocks.SA.LocksWF.updateConfirmation",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:106",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
       "direct_sorry": false,
       "lean-status": "proved",
       "evidence": "Proved; no direct owner in compiled audit at 065683b3."
@@ -1469,16 +1443,6 @@
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts.0.Consensus.Goldilocks.SA.updateConfirmation_vs",
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/PoolFacts.lean:341",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
-      "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Same.0.Consensus.Goldilocks.SA.update_side",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/Compatible/Same.lean:101",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,

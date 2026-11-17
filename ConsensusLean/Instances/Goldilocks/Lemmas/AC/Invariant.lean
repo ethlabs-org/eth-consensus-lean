@@ -500,15 +500,6 @@ theorem tree_blockStamp_le {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp
     ∀ X ∈ Φ.tree, A.blockStamp X.root ≤ ETime.of t₀ :=
   (inv_of_reachableU sp hU (voteStart_initial _) h.toU).stamp_le
 
-/-- `tree_blockStamp_le` at the states reachable with the unlock given from a start up to the
-vote permission. -/
-theorem tree_blockStamp_leU {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp.n}
-    {U : Set (Blk sp.n FGP)} (hU : Coherent U) {s₀ A : SAState sp.n} {Φ : Frm sp.n FGP}
-    {t₀ : Time} (h₀ : VoteStart sp.genesisRoot s₀)
-    (h : ReachableAtUFrom (ro := ro) wm s₀ self U A Φ t₀) :
-    ∀ X ∈ Φ.tree, A.blockStamp X.root ≤ ETime.of t₀ :=
-  (inv_of_reachableU sp hU h₀ h).stamp_le
-
 /-- **A0.1, stamps along parent edges.** -/
 theorem stamp_parent : StampParent sp :=
   fun _ _ _ _ hU _ _ _ h => (inv_of_reachableU sp hU (voteStart_initial _) h.toU).stamp_parent

@@ -86,12 +86,6 @@ theorem blockReceipt_keeps_locks (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP
     { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) }
   ⟨h.2.2.1, h.2.2.2⟩
 
-theorem acProposal_keeps (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (acProposal sp A Φ t).1.votedSlot = A.votedSlot ∧
-      (acProposal sp A Φ t).1.restartTime = A.restartTime := by
-  unfold acProposal
-  split_ifs <;> exact ⟨rfl, rfl⟩
-
 theorem acToFG_keeps (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (acToFG sp A Φ t).1.votedSlot = A.votedSlot ∧
       (acToFG sp A Φ t).1.restartTime = A.restartTime := by

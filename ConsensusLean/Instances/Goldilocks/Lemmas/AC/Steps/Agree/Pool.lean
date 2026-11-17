@@ -372,7 +372,8 @@ theorem heldBefore_mono (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y
   heldBefore_monoU (hr := hr.toU) (y := y) (hy := hy) (a := a) (b := b) (hab := hab) (hnr := hnr)
       (v := v) (T := T) (hv := hv)
 
-/-- `poolEvidenceBefore_mono` with the unlock given. -/
+/-- Actual retained evidence survives a restart-free interval with its original stamps, with the
+unlock given. -/
 theorem poolEvidenceBefore_monoU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
@@ -384,15 +385,6 @@ theorem poolEvidenceBefore_monoU
   · exact Or.inl (heldBefore_monoU hr hy hab hnr hv)
   · exact Or.inr ⟨u, w, huw, huv, hwv, hus, hws,
       heldBefore_monoU hr hy hab hnr hu, heldBefore_monoU hr hy hab hnr hw⟩
-
-/-- Actual retained evidence survives a restart-free interval with its original stamps. -/
-theorem poolEvidenceBefore_mono (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
-    {y : Fin sp.n} (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
-    (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) {v : Vote sp.n} {T : Time}
-    (hv : PoolEvidenceBefore (tr.state y a) v T) :
-    PoolEvidenceBefore (tr.state y b) v T :=
-  poolEvidenceBefore_monoU (hr := hr.toU) (y := y) (hy := hy) (a := a) (b := b) (hab := hab)
-      (hnr := hnr) (v := v) (T := T) (hv := hv)
 
 /-- An explicit deadline-to-freeze bound transports both witness timestamps. -/
 theorem PoolEvidenceBefore.weaken {A : SAState sp.n} {v : Vote sp.n} {T F : Time}

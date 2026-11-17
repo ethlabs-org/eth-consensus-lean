@@ -37,7 +37,7 @@ private theorem optimistic_restartTime (A : SAState sp.n) (Φ : Frm sp.n FGP) (t
   · rfl
   · split_ifs <;> rfl
 
-/-- `tryVote_restartTime` with the unlock given. -/
+/-- `try_vote` with the unlock given keeps the restart time. -/
 theorem tryVote_restartTimeWith
     {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : (tryVoteWithM sp wm x L A Φ t).1.restartTime = A.restartTime := by
@@ -46,10 +46,6 @@ theorem tryVote_restartTimeWith
   split_ifs <;>
     simp only [optimisticConfirmationM_keep _ optimistic_restartTime,
       admitVote_restartTime]
-
-theorem tryVote_restartTime (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) : (tryVote sp x A Φ t).1.restartTime = A.restartTime :=
-  tryVote_restartTimeWith (wm := WriteMode.parent sp) (x := x) (A := A) (Φ := Φ) (t := t)
 
 theorem updateConfirmation_restartTime (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (s : Nat) : (updateConfirmation sp A Φ t s).restartTime = A.restartTime := by
@@ -87,7 +83,8 @@ theorem optimistic_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
 
 /-! ## Over an SA trace -/
 
-/-- `cast_time_le` with the unlock given. -/
+/-- An honest vote is cast at most `Δ` after the start of its slot (`try_vote`'s guard), with the
+unlock given. -/
 private theorem cast_time_leU
     {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -131,13 +128,6 @@ private theorem cast_time_leU
     change (acRestart sp ro y A ℓ.frame (tr.time i)).2 ≠ [] at hne
     exact absurd ((restart_state sp) FGP ro y A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1
       hne
-
-/-- An honest vote is cast at most `Δ` after the start of its slot (`try_vote`'s guard). -/
-private theorem cast_time_le {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
-    {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y i ℓ e) : tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ :=
-  cast_time_leU (hr := hr.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc)
 
 /-- `writer_pool_of_sync` with the unlock given. -/
 private theorem writer_pool_of_syncU

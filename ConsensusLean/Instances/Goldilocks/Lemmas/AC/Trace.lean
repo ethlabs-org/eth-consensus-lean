@@ -244,7 +244,9 @@ theorem callOK_retains {ro : ReplayOrder sp FGP} {U : Set (Blk sp.n FGP)} (hU : 
   | toFG => subst hc; exact ⟨.refl, fun X hX _ => hX⟩
   | restart => subst hc; exact ⟨.refl, fun X hX _ => hX⟩
 
-/-- `retain_between` with the unlock given. -/
+/-- **Retention between two calls of one node**, with the unlock given. For calls of an honest
+node at `j ≤ i`, the finalized tip moves forward, and a block of the frame at `j` that extends the
+tip at `i` is in the frame at `i`. -/
 theorem retain_betweenU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
@@ -272,18 +274,6 @@ theorem retain_betweenU
       · exact hok'.1
     obtain ⟨hF, hX⟩ := callOK_retains sp h.coherent hin hok
     exact ⟨ihF.trans hF, fun X hXj hFX => hX X (ihX X hXj (hF.trans hFX)) hFX⟩
-
-/-- **Retention between two calls of one node.** For calls of an honest node at `j ≤ i`, the
-finalized tip moves forward, and a block of the frame at `j` that extends the tip at `i` is in the
-frame at `i`. -/
-theorem retain_between {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓj : ACLabel (goldilocksSA sp FGP ro)} (hcj : tr.CallAt y j ℓj) :
-    ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y i ℓ → j ≤ i →
-      Anc U ℓj.frame.F ℓ.frame.F ∧ ∀ X ∈ ℓj.frame.tree, Anc U ℓ.frame.F X → X ∈ ℓ.frame.tree := by
-  apply retain_betweenU (wm := WriteMode.parent sp) <;>
-    first | assumption | exact ACLocalRun.toU ‹_›
 
 /-- `mem_tree_of_acceptAt` with the unlock given. -/
 theorem mem_tree_of_acceptAtU

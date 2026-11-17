@@ -306,7 +306,7 @@ noncomputable abbrev acOnBlockWithMS (m : WriteMode) (st : WalkStartFn sp FGP) (
 
 variable (sp) in
 /-- `stepWithM` with the head walk from the start `st`; at `parentWalkStartFn` it is `stepWithM`
-(`stepWithMS_parentWalkStartFn`). -/
+(by `rfl`). -/
 noncomputable abbrev stepWithMS (ro : ReplayOrder sp FGP) (m : WriteMode) (st : WalkStartFn sp FGP)
     (self : Fin sp.n) (L₁ : Set Lock) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (goldilocksSA sp FGP ro).Call → SAState sp.n × List (Em sp FGP)
@@ -372,8 +372,7 @@ abbrev ACLocalRunU {ro : ReplayOrder sp FGP} (m : WriteMode) (u : Nat → Set Lo
   ACLocalRunStep m u (fun _ => stepWithM sp ro m) H U tr ini
 
 /-- **The AC trace contract from the starts `st`**: each honest call `i` executes `stepWithMS m`
-with its head walks from `st i`; at `parentWalkStartFn` it is `ACLocalRunU`
-(`acLocalRunUS_parentWalkStartFn`). -/
+with its head walks from `st i`; at `parentWalkStartFn` it is `ACLocalRunU` (by `rfl`). -/
 abbrev ACLocalRunUS {ro : ReplayOrder sp FGP} (m : WriteMode) (u : Nat → Set Lock)
     (st : Nat → WalkStartFn sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) : Prop :=

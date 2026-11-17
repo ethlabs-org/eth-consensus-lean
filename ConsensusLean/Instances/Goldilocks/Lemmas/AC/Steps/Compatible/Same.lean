@@ -33,7 +33,10 @@ theorem rt_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
   · rfl
   · split_ifs <;> rfl
 
-/-- `update_side` with the unlock given. -/
+/-- **The update side**, with the unlock given. At an honest update of slot `s` whose fast test
+selects `D`: the node's restarts were at or before `t_s`; its supporters `S` of `D` are at least
+half of the committee and more than half of its voters; each has a vote in its pool, extending
+`D`, and does not equivocate there, and that vote was admitted in `[t_s, t_s + 2Δ)`. -/
 private theorem update_sideU
     {uL : Nat → Set Lock} (hrun : ACRunU wm uL proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H)
     {c s : Nat}
@@ -93,24 +96,6 @@ private theorem update_sideU
     exact WithTop.coe_lt_coe.1 (WithBot.coe_lt_coe.1 hst')
   · rintro u ⟨hneq, v, ⟨hvp, -⟩, rfl, -, R, hR, hRr, hDR⟩
     exact ⟨hneq, v, hvp, rfl, R, hΦU hR, hRr, Anc.mono hΦU hDR⟩
-
-/-- **The update side.** At an honest update of slot `s` whose fast test selects `D`: the
-node's restarts were at or before `t_s`; its supporters `S` of `D` are at least half of the
-committee and more than half of its voters; each has a vote in its pool, extending `D`, and
-does not equivocate there, and that vote was admitted in `[t_s, t_s + 2Δ)`. -/
-private theorem update_side
-    (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H) {c s : Nat}
-    {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastUpdateAt tr Y c s D CV) :
-    ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
-      tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
-      (∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) ∧
-      sp.committeeSize ≤ 2 * S.ncard ∧
-        (voters {v | v ∈ (tr.state Y c).pool s}).ncard < 2 * S.ncard ∧
-      S ⊆ Fwd tr U Y s D ∧
-      ∀ u ∈ S, u ∉ equivocators {v | v ∈ (tr.state Y c).pool s} ∧
-        ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U D R :=
-  update_sideU (hrun := hrun.toU) (Y := Y) (hY := hY) (c := c) (s := s) (D := D) (CV := CV)
-      (hfl := hfl)
 
 /-- `fastLock_same_slot` with the unlock given. -/
 theorem fastLock_same_slotU

@@ -137,7 +137,9 @@ theorem fwd_heldU
       rw [CompatibleSides.slot_of_lt (s := s) (h1.trans ht₁) (by linarith), hvs]; omega
   rwa [hvs] at this
 
-/-- `against_update` with the unlock given. -/
+/-- **Against an update**, with the unlock given. At an honest update of slot `s` on `DY`, the
+validators `T` with forwardable votes for a block `D` that conflicts with `DY` are voters there
+and none is a supporter `S` of `DY`. -/
 theorem against_updateU
     {uL : Nat → Set Lock} (hr : ACLocalRunU wm uL H U tr) {s : Nat}
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
@@ -169,23 +171,6 @@ theorem against_updateU
     · exact ⟨a, ha, hav⟩
   · obtain ⟨-, v, hv, rfl, -⟩ := hS u hu
     exact ⟨v, hv, rfl⟩
-
-/-- **Against an update.** At an honest update of slot `s` on `DY`, the validators `T` with
-forwardable votes for a block `D` that conflicts with `DY` are voters there and none is a
-supporter `S` of `DY`. -/
-theorem against_update (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {s : Nat}
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
-    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
-    (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) {D DY : Blk sp.n FGP}
-    {S T : Set (Fin sp.n)}
-    (hS : ∀ u ∈ S, u ∉ equivocators {v | v ∈ (tr.state Y c).pool s} ∧
-      ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U DY R)
-    (hT : T ⊆ Fwd tr U X s D) (hnc : ¬ Compatible U D DY) :
-    T.ncard + S.ncard ≤ (voters {v | v ∈ (tr.state Y c).pool s}).ncard :=
-  against_updateU (hr := hr.toU) (s := s) (hsync := hsync) (X := X) (Y := Y) (hX := hX) (hY := hY)
-      (c := c) (ℓ := ℓ) (hc := hc) (ht := ht) (hrs := hrs) (D := D) (DY := DY) (S := S) (T := T)
-          (hS := hS) (hT := hT) (hnc := hnc)
 
 end Consensus.Goldilocks.SA
 

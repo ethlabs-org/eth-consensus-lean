@@ -39,10 +39,6 @@ theorem LocksWF.cap {L : Set Lock} (h : LocksWF sp L) {l : Lock} (hl : l ∈ L) 
     l.expiry ≤ l.slot + sp.k :=
   (h l hl).2
 
-/-- A subset of a well-formed set is well formed. -/
-theorem LocksWF.mono {L L' : Set Lock} (h : LocksWF sp L) (hL : L' ⊆ L) : LocksWF sp L' :=
-  fun l hl => h l (hL hl)
-
 /-- `live_locks` keeps `LocksWF`: a live lock keeps its source's slot and expiry. -/
 theorem LocksWF.liveLocks {L : Set Lock} (h : LocksWF sp L) (Φ : Frm sp.n FGP) (t : Time) :
     LocksWF sp (SA.liveLocks sp L Φ t) := by
@@ -101,30 +97,14 @@ theorem LocksWF.optimisticConfirmation {A : SAState sp.n} (h : LocksWF sp A.lock
     subst hp
     exact ⟨le_fastExpiry sp _ Φ t _, fastExpiry_le sp _ Φ t _⟩
 
-/-- The confirmation update keeps `LocksWF`: its fast lock on `D` has expiry `s + k` when
-the path has a slow-test block (B′) and `fastExpiry` otherwise, its slow lock `s + k`. -/
-theorem LocksWF.updateConfirmation {A : SAState sp.n} (h : LocksWF sp A.locks)
-    (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
-    LocksWF sp (SA.updateConfirmation sp A Φ t s).locks := by
-  have hk := sp.two_le_k
-  unfold SA.updateConfirmation
-  dsimp only
-  split
-  · exact h
-  · split_ifs
-    all_goals
-      refine LocksWF.addLocks ?_ Φ t s fun p hp => ?_
-      · first | exact h | (rw [updateLatestConfirmed_keeps_locks]; exact h)
-      · rcases hp with ⟨B, -, rfl⟩ | ⟨B, -, rfl⟩
-        · exact ⟨le_fastExpiry sp _ Φ t s, fastExpiry_le sp _ Φ t s⟩
-        · dsimp only; omega
-
 /-- `LocksWF.optimisticConfirmation` at the write mode `wm`. -/
 theorem LocksWF.optimisticConfirmationM {A : SAState sp.n} (h : LocksWF sp A.locks)
     (Φ : Frm sp.n FGP) (t : Time) : LocksWF sp (SA.optimisticConfirmationM sp wm A Φ t).locks :=
   optimisticConfirmationM_of (P := fun X => LocksWF sp X.locks) (h.optimisticConfirmation Φ t) h
 
-/-- `LocksWF.updateConfirmation` at the write mode `wm`. -/
+/-- The confirmation update at the write mode `wm` keeps `LocksWF`: its fast lock on `D` has
+expiry `s + k` when the path has a slow-test block (B′) and `fastExpiry` otherwise, its slow
+lock `s + k`. -/
 theorem LocksWF.updateConfirmationM {A : SAState sp.n} (h : LocksWF sp A.locks)
     (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
     LocksWF sp (SA.updateConfirmationM sp wm A Φ t s).locks := by
@@ -138,7 +118,8 @@ theorem LocksWF.updateConfirmationM {A : SAState sp.n} (h : LocksWF sp A.locks)
     · exact ⟨le_fastExpiry sp _ Φ t s, fastExpiry_le sp _ Φ t s⟩
     · dsimp only; omega
 
-/-- `LocksWF.tryVote` with the unlock given. -/
+/-- `try_vote` with the unlock given keeps `LocksWF`, in its post-state and in its emissions' read
+points. -/
 theorem LocksWF.tryVoteWith
     {L : Set Lock} {A : SAState sp.n} (h : LocksWF sp A.locks) (x : Fin sp.n)
     (Φ : Frm sp.n FGP) (t : Time)
@@ -158,27 +139,8 @@ theorem LocksWF.tryVoteWith
     | (apply LocksWF.optimisticConfirmationM; rw [admitVote_locks_eq]; exact h.unlockRel hL)
     | (apply LocksWF.optimisticConfirmationM; rw [admitVote_locks_eq]; exact h)
 
-/-- `try_vote` keeps `LocksWF`, in its post-state and in its emissions' read points. -/
-theorem LocksWF.tryVote {A : SAState sp.n} (h : LocksWF sp A.locks) (x : Fin sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) :
-    LocksWF sp (SA.tryVote sp x A Φ t).1.locks ∧
-      ∀ e ∈ (SA.tryVote sp x A Φ t).2, LocksWF sp e.readPoint.locks := by
-  have hu : LocksWF sp (if 0 < sp.slot t then
-      SA.unlock sp A.locks Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp A Φ (sp.slot t))
-      else A.locks) := by
-    split_ifs
-    · exact h.unlock Φ t _ _
-    · exact h
-  refine ⟨?_, fun e he => by rw [tryVote_readPoint_locks_eq he]; exact hu⟩
-  unfold SA.tryVote
-  dsimp only
-  split_ifs <;> first
-    | exact h
-    | exact h.unlock Φ t _ _
-    | (apply LocksWF.optimisticConfirmation; rw [admitVote_locks_eq]; exact h.unlock Φ t _ _)
-    | (apply LocksWF.optimisticConfirmation; rw [admitVote_locks_eq]; exact h)
-
-/-- `LocksWF.step` with the unlock given. -/
+/-- **One SA call with the unlock given keeps `LocksWF`**, in its post-state and in every
+emission's read point (a well-formed frame and `t ≥ 0` for the restart). -/
 theorem LocksWF.stepWith
     {L : Set Lock} {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : LocksWF sp A.locks)
     (x : Fin sp.n) {Φ : Frm sp.n FGP} {t : Time} (hΦ : FrameOK Φ) (ht : 0 ≤ t)
@@ -225,16 +187,6 @@ theorem LocksWF.stepWith
     refine ⟨?_, fun e he' => ?_⟩
     · rw [hl]; exact h
     · rw [he] at he'; simp at he'
-
-/-- **One SA call keeps `LocksWF`**, in its post-state and in every emission's read point
-(a well-formed frame and `t ≥ 0` for the restart). -/
-theorem LocksWF.step {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : LocksWF sp A.locks)
-    (x : Fin sp.n) {Φ : Frm sp.n FGP} {t : Time} (hΦ : FrameOK Φ) (ht : 0 ≤ t)
-    (c : (goldilocksSA sp FGP ro).Call) :
-    LocksWF sp ((goldilocksSA sp FGP ro).step x A Φ t c).1.locks ∧
-      ∀ e ∈ ((goldilocksSA sp FGP ro).step x A Φ t c).2, LocksWF sp e.readPoint.locks := by
-  rw [step_eq_stepWith, ← stepWithM_parent]
-  exact h.stepWith x hΦ ht c (unlockRel_unlock hΦ _ _ _ _)
 
 /-! ## Over an SA trace -/
 

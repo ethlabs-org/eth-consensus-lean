@@ -186,7 +186,8 @@ private def PoolOK (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (A : SAState sp
     Prop :=
   ∀ σ, ∀ v ∈ A.pool σ, v.val ∈ H → v.slot = σ ∧ ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v
 
-/-- `point_post` with the unlock given. -/
+/-- The state the call leaves after an own vote's optimistic check holds that check's pools, with
+the unlock given. -/
 private theorem point_postU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x j ℓ)
@@ -194,13 +195,6 @@ private theorem point_postU
     (tr.state x (j + 1)).pool = (admitVote sp e.readPoint (tr.time j) e.msg).pool := by
   rw [show tr.state x (j + 1) = tr.post j by simp [Trace.state, hc.1, hc.2],
     post_of_castAtU hr hx ⟨hc, he⟩, optimisticConfirmationM_keep _ optimistic_pool]
-
-/-- The state the call leaves after an own vote's optimistic check holds that check's pools. -/
-private theorem point_post (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
-    (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x j ℓ)
-    {e : Em sp FGP} (he : e ∈ ℓ.emits) :
-    (tr.state x (j + 1)).pool = (admitVote sp e.readPoint (tr.time j) e.msg).pool :=
-  point_postU (hr := hr.toU) (x := x) (hx := hx) (j := j) (ℓ := ℓ) (hc := hc) (e := e) (he := he)
 
 /-- `optimisticPoint_pool_slot` with the unlock given. From starts up to the vote permission. -/
 theorem optimisticPoint_pool_slotU

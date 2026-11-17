@@ -8,7 +8,7 @@ public section
 
 `FromP U L L' New`: every lock of `L'` sits below (inside `U`) a lock of `L` with its slot and
 fast bit, or below a block `B` with `New l'.slot l'.fast B`. The SA functions that only move
-locks back keep `FromP` (`FromP.of_movesBack`, `FromP.of_proposal`, `toFG_locks`), and it
+locks back keep `FromP` (`FromP.of_movesBack`, `FromP.of_proposalWith`, `toFG_locks`), and it
 composes (`FromP.trans`). Shared by the fast-lock provenance (`AC/Steps/Provenance`) and the slow
 and stored slow-lock provenance (`Healing/AC/SlowLock`, `Healing/DrainProvenance`), which add
 their own `New` for the writing functions. -/
@@ -88,7 +88,7 @@ theorem FromP.of_movesBack {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
 
 variable {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
 
-/-- `FromP.of_proposal` with the unlock given. -/
+/-- The proposal with the unlock given keeps `FromP`: it only moves locks back. -/
 theorem FromP.of_proposalWith
     {L : Set Lock} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (A : SAState sp.n)
     (t : Time) {New : Nat → Bool → Blk sp.n FGP → Prop}
@@ -100,11 +100,6 @@ theorem FromP.of_proposalWith
   split_ifs
   · exact FromP.of_movesBack hΦU (hL.movesBack hΦ)
   · exact FromP.of_eq rfl
-
-theorem FromP.of_proposal (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (A : SAState sp.n)
-    (t : Time) {New : Nat → Bool → Blk sp.n FGP → Prop} :
-    FromP U A.locks (acProposal sp A Φ t).1.locks New :=
-  FromP.of_proposalWith hΦ hΦU A t (unlockRel_unlock hΦ _ _ _ _)
 
 theorem toFG_locks (A : SAState sp.n) (t : Time) :
     (acToFG sp A Φ t).1.locks = A.locks := by
