@@ -60,15 +60,6 @@ def FinalizedSafe : Prop :=
       (H (max (tr.time i) (tr.time j)))ᶜ.ncard < 2 * P.q - P.n →
       Compatible (tr.HonestBlocksAt H) (tr.finalizedAt y i) (tr.finalizedAt z j)
 
-/-- The finalized cache is monotone at ordered cuts of a node still honest at the later cut. -/
-def FinalMonotone : Prop :=
-  ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
-    (dg : Digest (List (FG.Att P.n)) A.Payload)
-    (H : Time → Set (Fin P.n)) (tr : RunTrace A),
-    runs.Run cm proposer dg H tr →
-    ∀ y i j, i ≤ j → y ∈ H (tr.time j) →
-      (tr.state y j).fg.Anc (tr.finalizedAt y i) (tr.finalizedAt y j)
-
 end Consensus.Goldilocks.Generic
 
 end

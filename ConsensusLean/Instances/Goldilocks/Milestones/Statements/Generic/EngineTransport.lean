@@ -14,15 +14,6 @@ variable {P : Params} {A : NodeAC P} {O : OutputSchema} {Info : Type}
 
 variable {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
 
-structure PrefixTransport (M : RunMap rho payload) (runs : ACRun A M.signer) : Prop where
-  reader : rho.ExecutionValid → ∀ i, i ≤ rho.events.length →
-    Node.LocalRun M.proposer M.digest (M.honest (rho.cutTime i)) M.signer
-      (M.trace.upTo (rho.cutTime i)) (runs.start M.committee)
-  state : ∀ i, i ≤ rho.events.length → ∀ y,
-    (M.trace.upTo (rho.cutTime i)).state y (M.cut i) = M.trace.state y (M.cut i)
-  no_collision : ∀ d, Compose.NoCollRun M.digest M.trace →
-    Compose.NoCollRun M.digest (M.trace.upTo d)
-
 /-- Regime transport to the run map. The healthy leg supplies the generic `Service` consumed by
 `Premises.sync` (message, block and relay service from GST, signed-row service through the
 horizon), and the sleepy leg the service form `SleepyServicePrefix` at the local look-ahead;

@@ -71,8 +71,8 @@ structure HonestChainReads (M : RunMap (A := A) rho payload) : Prop where
     rho.point.HonestAt v (rho.cutTime j) →
     (mappedReadState M v i).fg.tree ⊆ (mappedReadState M v j).fg.tree
   /-- Finalized cache ancestry is inside the later store; no union coherence is needed.
-  Source: growing endpoint `Outputs.lean:189`; generic FG `FinalMonotone` is node-clock
-  indexed, so its actual-read/prefix adapter remains an explicit supplier obligation. -/
+  Source: growing endpoint `Outputs.lean:189`; its actual-read/prefix adapter remains an
+  explicit supplier obligation. -/
   finalized_ancestry : rho.ExecutionValid → ∀ v i j, i ≤ j → j ≤ rho.events.length →
     rho.point.HonestAt v (rho.cutTime j) →
     (mappedReadState M v j).fg.Anc

@@ -23,16 +23,6 @@ variable {P : Params} {A : NodeAC P} {O : OutputSchema} {Info : Type}
   {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V]
   {E : Env V} {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
 
-/-- The explicit four-delay grid and sufficient coefficient budget. This definition supplies
-no slot alignment or budget witness. The ready/snapshot reserve remains visible. -/
-def ResetCoefficientFit {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
-    (healing : ACHealing A sg runs)
-    (g ready : Time) (healCoeff G : Nat) : Prop :=
-  (∀ s, P.slotTime s = (s : Time) * (4 * P.Δ)) ∧ 1 ≤ G ∧
-    max ready (max (gbar g) (cutZ P g)) +
-      (4 * (resetSlots healing.warmup G P.δt + healing.drain + 2) + 2 : Nat) * P.Δ ≤
-      gbar g + (healCoeff : Time) * P.Δ
-
 /-- The population FG needs a fault fraction at most a third; committee counts
 use the separate contract fraction `βK`. -/
 def HealthyBetaFit (K : Contract ProgressReq) : Prop := K.params.β ≤ 1 / 3
@@ -40,14 +30,6 @@ def HealthyBetaFit (K : Contract ProgressReq) : Prop := K.params.β ≤ 1 / 3
 /-- The committee reduction uses a fault fraction at most a half. This is an
 instance fit, not a restriction on admissible correctness contracts. -/
 def CommitteeHalfFit (K : Contract ProgressReq) : Prop := K.params.βK ≤ 1 / 2
-
-/-- UNPROVED advertised-coefficient fit, for all nonfinal indices and progress forms.
-The chosen gap is data in the conclusion, not an unsupported progress-form exclusion. -/
-def ContractResetFit (M : RunMap rho payload) (K : Contract ProgressReq)
-    {runs : ACRun A M.signer} (healing : ACHealing A M.signer runs) : Prop :=
-  ∀ cap idx g, (cap = .available ∨ cap = .stable) →
-    ∃ G, ResetCoefficientFit healing g ((Sys F V).ready K g ⟨E, rho⟩)
-      (K.params.heal cap idx) G
 
 /-- Four actual anchors with exact spacing and final publication slack. No constant-frame
 premise is hidden in this data. Acceptance/height/processing are separate open suppliers. -/

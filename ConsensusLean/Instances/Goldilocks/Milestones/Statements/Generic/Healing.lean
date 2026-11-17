@@ -113,28 +113,6 @@ def reset_of_high_report_at (runs : ACRun A sg) : Prop :=
     HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h →
     ∃ a, IsReset tr H g a ∧ a ≤ tr.time i
 
-/-- FG-call companion of leaf 6 (leaf 6c), with the same charge at `c_z`. Proved for any run
-predicate by `reset_of_high_source_at_from` (Lemmas/Generic/HealingLeaves), through
-`ACRun.run_local`. -/
-def reset_of_high_source_at (runs : ACRun A sg) : Prop :=
-  ∀ {cm proposer dg H tr} {g : Time} {y : Fin P.n} {k : Nat} {C : A.Blk}
-    {s : Option (FG.Att P.n)},
-    runs.Run cm proposer dg H tr → y ∈ H (max (cutZ P g) (tr.time k)) →
-    (H (max (cutZ P g) (tr.time k)))ᶜ.ncard < P.fg.q → tr.CallAt y k (.fg (.attest C s)) →
-    HZ tr H g + 1 ≤ ((tr.state y k).fg.σ C.root).h →
-    ∃ a, IsReset tr H g a ∧ a ≤ tr.time k
-
-/-- New leaf 7: signing provenance, without a stronger horizon bundle. Proved for any run predicate
-by `sign_from_report_at_from` (Lemmas/Generic/HealingLeaves), through `ACRun.run_local` and
-`ACRun.run_requirements`. -/
-def sign_from_report (runs : ACRun A sg) : Prop :=
-  ∀ {cm proposer dg H tr} {y : Fin P.n} {k : Nat} {att : FG.Att P.n},
-    runs.Run cm proposer dg H tr → y ∈ H (tr.time k) → tr.SignAt y k att →
-    ∃ i < k, ∃ R, ReportAt tr y i R ∧ tr.time i = tr.time k ∧
-      att.h ≤ ((tr.state y i).fg.σ R.root).h ∧
-      ∃ E ∈ (tr.state y i).fg.tree, (tr.state y i).fg.Anc E R ∧ E.root = att.T ∧
-        ((tr.state y i).fg.σ E.root).h = att.h ∧ ((tr.state y i).fg.σ E.root).Th = E.root
-
 /-- Leaf 8: deficit at a fixed key. The Prop is parameterized by a healing supplier whose value does
 not occur in its body; its proof uses the supplier's `proposal_floor`. Proved over any supplier by
 `rounds_le_warm_proposal_at_of_healing` (Lemmas/Generic/HealingRounds). -/
