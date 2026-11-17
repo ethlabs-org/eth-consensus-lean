@@ -81,6 +81,8 @@ jobs:
           for tree in "$base" "$GITHUB_WORKSPACE"; do
             (
               cd "$tree"
+              # A removed directory matches nothing (nullglob), so the loop also runs on trees without it.
+              shopt -s nullglob
               for f in ConsensusLeanTest/Goldilocks/{Mirror,HalfCommittee,InitialCarry}/*.lean; do
                 m="${f%.lean}"; lake build --wfail --iofail "${m//\//.}"
               done

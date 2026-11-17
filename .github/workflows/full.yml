@@ -118,6 +118,8 @@ jobs:
         if: matrix.part == 'main'
         run: |
           set -euo pipefail
+          # A removed directory matches nothing (nullglob), so the loop also runs on trees without it.
+          shopt -s nullglob
           for f in ConsensusLeanTest/Goldilocks/{Mirror,HalfCommittee,InitialCarry}/*.lean; do
             m="${f%.lean}"; m="${m//\//.}"
             echo "::group::lake build $m"; lake build --wfail --iofail "$m"; echo "::endgroup::"
