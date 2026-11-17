@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWindowExists
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainRows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.FrameWindow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainWarm
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetRounds
@@ -11,11 +11,11 @@ public section
 
 /-! # The growing drain kernel's steps
 
-The frame window, the warm proposals and the owed rows, each forwarded to its proof
+The frame window and the warm proposals, each forwarded to its proof
 (`exists_frameWindow_seq_of_service_proof_at` in `Kernel/FrameWindow`, and the `KernelProof`
-forms in `Kernel/DrainWarm` and `Kernel/DrainRows`), and the finite reset record they give with
-the reset bound `exists_reset_of_drain_rounds_awake_at` of `Kernel/ResetRounds`. The finite reset
-lower bound is proved in `Kernel/ResetSource`. No deadline is lengthened here.
+form in `Kernel/DrainWarm`), and the finite reset record they give with the reset bound
+`exists_reset_of_drain_rounds_awake_at` of `Kernel/ResetRounds`. The finite reset lower bound is
+proved in `Kernel/ResetSource`. No deadline is lengthened here.
 -/
 
 namespace Consensus.Goldilocks.Healing.Growing
@@ -59,17 +59,6 @@ theorem drainOutputs_of_service_at
     {G Ld : Nat} (hLd : 2 * sp.k + G ≤ Ld + 1) :
     DrainOutputs tr proposer H g G Ld b := by
   exact KernelProof.drainOutputs_of_service_at hrun hnc hsvc hawake hf hcatch hLd
-
-/-- Step 3: an honestly signed row remains owed after its signer is compromised. -/
-theorem rows_delivered_service_at {g ΔF b v : Time}
-    (hsvc : ResetService tr H g ΔF b) (hnr : NoRestartAfter tr H (gbar g))
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hv : gbar g ≤ v) {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
-    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : tr.ProposesAt p kX X)
-    (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b) {y : Fin sp.n} {k : Nat}
-    (hy : y ∈ H (tr.time k)) {att : FG.Att sp.n} (hsig : tr.SignAt y k att)
-    (hk : tr.time k ≤ v) : ∃ k' < kX, tr.ProcessAttAt p k' att := by
-  exact KernelProof.rows_delivered_service_at hsvc hnr hrun hv hp hX hvx hkb hy hsig hk
 
 /-- Step 4 packaging: a bounded reset and a snapshot supply the finite reset record at a
 committee `cm` whose faults obey the fraction `βK ≤ ½`; the per-slot timeout delay is the scalar

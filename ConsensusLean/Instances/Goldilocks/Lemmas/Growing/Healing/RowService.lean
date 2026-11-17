@@ -157,7 +157,7 @@ private theorem sent_origin_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
     {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t)
     (hy : y ∈ H t) {b : FG.Content} (hb : b ∈ (tr.state y i).record.sent) :
     ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b := by
-  obtain ⟨k, hk, att, hs, he⟩ := Healing.sent_origin (hrun.upTo ht0) hy i
+  obtain ⟨k, hk, att, hs, he⟩ := Healing.sent_origin_from (hrun.upTo ht0).toLocalRun hy i
     (by rw [Trace.upTo_state tr y hle]; exact hb)
   exact ⟨k, hk, att, ((RunTrace.upTo_signAt _).mp hs).2, he⟩
 

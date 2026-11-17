@@ -152,13 +152,6 @@ theorem record_step_of_run {ini : Fin sp.n → (goldilocksNode sp ro).State}
         (tr.state y (i + 1)).record = (tr.state y i).record.recordAtt att :=
   record_step_from hrun.toLocalRun hy i
 
-/-- The sent contents of an honest record were signed earlier. -/
-theorem sent_origin {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H)
-    {b : FG.Content} : ∀ i, b ∈ (tr.state y i).record.sent →
-      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b :=
-  sent_origin_from hrun.toLocalRun hy
-
 /-- **The finality pair of an honest attestation names an entry of its source's chain** (G0.2
 (h)): the finality pair `(h, r)` that `fg_attest` signs (the justification of the entry state at an
 entry whose previous height is justified, or one of its pending pairs) names the entry at height `h`

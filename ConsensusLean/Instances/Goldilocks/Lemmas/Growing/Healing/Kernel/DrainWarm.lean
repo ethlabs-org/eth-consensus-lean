@@ -55,7 +55,7 @@ theorem full_frame_viable_witness_at
     · rw [he]; exact .refl
     · change Anc (Node.frame (tr.state y i)).tree (tr.state y i).fg.fcRoot _
       rw [he]; exact .refl
-  · have hFQ := F_anc_of_hmax_le_at hrun hnc ht hle hy ht hle hy
+  · have hFQ := Generic.F_anc_of_hmax_le_at_from hrun.toLocalRun hnc ht hle hy ht hle hy
       (by simpa only [max_self] using hf) hQ hQh.ge
     have hFQs := store_anc_of_honest_anc_at hrun hnc ht hle hy hFQ hQ
     have he : (tr.state y i).fg.fcRoot = (tr.state y i).fg.F := ite_eq_right hk
@@ -67,19 +67,6 @@ theorem full_frame_viable_witness_at
         ((Store.accepted_tree _ _ _ _ hr).2.1) hframe hsub hframe.fcRoot_mem
         (by change (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot Q
             rw [he]; exact hFQs) hQt
-
-/-- Public ticks supply the snapshot relay call before the receiver's actual observation
-(`Generic.snapshotCall_of_awake_at_from` at the Goldilocks run). -/
-theorem snapshotCall_of_awake_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g b : Time}
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    {z : Fin sp.n} {m : Nat} (hz : z ∈ H (tr.time m))
-    (hfit : cutZ sp.toParams g + sp.Δ + 1 ≤ tr.time m) (hmb : tr.time m ≤ b) :
-    (∃ j, FirstCutAfter tr j (cutZ sp.toParams g)) ∧
-      ∃ j < m, tr.IsCall z j ∧
-        tr.deadline z j (max (cutZ sp.toParams g) g) sp.Δ ≤ tr.time j :=
-  Generic.snapshotCall_of_awake_at_from hrun.toLocalRun hawake hz hfit hmb
 
 /-- Snapshot relay at the proposal call bounds a warm proposal's replay height. -/
 theorem warm_proposal_height_at
@@ -135,9 +122,10 @@ theorem warm_proposal_height_at
     rw [he] at h4
     rw [hip]
     linarith [cutZ_le sp g]
-  obtain ⟨hsnap, hcallZ⟩ := snapshotCall_of_awake_at hrun hawake hzi hfit (hip ▸ hub)
+  obtain ⟨hsnap, hcallZ⟩ :=
+    Generic.snapshotCall_of_awake_at_from hrun.toLocalRun hawake hzi hfit (hip ▸ hub)
   have hcz : cutZ sp.toParams g ≤ tr.time ip := by linarith
-  have hZ := HZ_le_hmax_at hrun hnc hsvc hcatch
+  have hZ := Generic.HZ_le_hmax_at_from hrun.toLocalRun hnc hsvc.toService hcatch
     ⟨z, hrun.antitone hcz hzi⟩ hsnap hzi (by simpa only [max_eq_right hcz] using hfi)
     hcallZ (by
       have hsu : sp.ts s₀ ≤ sp.ts u := (SA.ts_le_iff sp).2 (by exact_mod_cast (by omega : s₀ ≤ u))

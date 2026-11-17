@@ -1,13 +1,13 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.B2
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 
 public section
 
-/-! # Relay from independently honest held-state observations
+/-! # The reset service as the generic service
 
-The source is observed at a time bounding its preceding events; it need not remain honest
-at the receiver's observation. Relay debts survive compromise of the sender.
+A Goldilocks run's `ResetService` is `Generic.Service`, field for field (`ResetService.toService`).
 -/
 
 namespace Consensus.Goldilocks.Healing.Growing
@@ -23,22 +23,6 @@ field. -/
 theorem ResetService.toService {g ΔF b : Time} (h : ResetService tr H g ΔF b) :
     Generic.Service tr H g ΔF b :=
   ⟨h.deltaF, h.message, h.block, h.relay, h.signedRow⟩
-
-/-- After its relay obligation is paid, a receiver has at least the snapshot height. -/
-theorem HZ_le_hmax_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
-    (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)
-    (hH : (H (cutZ sp.toParams g)).Nonempty)
-    (hsnap : ∃ j, FirstCutAfter tr j (cutZ sp.toParams g))
-    {z : Fin sp.n} {m : Nat} (hz : z ∈ H (tr.time m))
-    (hf : (H (max (cutZ sp.toParams g) (tr.time m)))ᶜ.ncard <
-      2 * sp.toParams.fg.q - sp.n)
-    (hcall : ∃ j < m, tr.IsCall z j ∧
-      tr.deadline z j (max (cutZ sp.toParams g) g) sp.Δ ≤ tr.time j)
-    (hcm : gbar g + κ ≤ tr.time m) : HZ tr H g ≤ (tr.state z m).fg.hmax :=
-  Generic.HZ_le_hmax_at_from hrun.toLocalRun hnc hsvc.toService hcatch hH hsnap hz hf hcall hcm
 
 end Consensus.Goldilocks.Healing.Growing
 

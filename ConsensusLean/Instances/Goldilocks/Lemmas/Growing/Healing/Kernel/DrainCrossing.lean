@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainRows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 

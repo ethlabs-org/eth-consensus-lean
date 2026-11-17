@@ -254,7 +254,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.State
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Agreement
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.B2
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Compatibility
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Domain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.FastVotes
@@ -288,7 +287,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.B
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Crossing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainCrossing
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainRows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainWarm
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.FrameWindow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.HighCarry
@@ -298,7 +296,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.H
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.HighOriginSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.HighVote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.LockWriter
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.NoAdvance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.OriginCompare
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.OriginLabel
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalDelivery

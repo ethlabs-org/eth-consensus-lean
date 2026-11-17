@@ -1,7 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainWarm
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.FrameWindow
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.NoAdvance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowEndpoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.Row
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
@@ -48,19 +49,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 private theorem faults_lt_quorums {f n : Nat} (hn : 0 < n) (hf : 3 * f ≤ n - 1) :
     f < (2 * n + 2) / 3 ∧ f < 2 * ((2 * n + 2) / 3) - n := by
   omega
-
-/-- Wakefulness supplies a relay call before an independently honest receiver cut
-(`Generic.callLag_of_awake_at_from` at the Goldilocks run). -/
-theorem callLag_of_awake_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g b lo : Time}
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hlo : cutZ sp.toParams g ≤ lo) {z : Fin sp.n} {i m : Nat}
-    (hz : z ∈ H (tr.time m)) (hi : lo ≤ tr.time i)
-    (him : tr.time i + 2 * sp.Δ ≤ tr.time m) (hmb : tr.time m ≤ b) :
-    ∃ j < m, tr.IsCall z j ∧
-      tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j :=
-  Generic.callLag_of_awake_at_from hrun.toLocalRun hawake hlo hz hi him hmb
 
 /-- The proposal's own full frame already bounds its parent by the common floor. -/
 theorem floor_le_warm_proposal_at {ini}
@@ -530,7 +518,7 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
   by_cases hadv : ∃ y k att, y ∈ H (max (cutZ sp.toParams g) (tr.time k)) ∧
       tr.SignAt y k att ∧ tr.time k ≤ B ∧ HZ tr H g + 1 ≤ att.h
   · obtain ⟨y, k, att, hy, hs, hk, hh⟩ := hadv
-    obtain ⟨a, ha, hat⟩ := reset_of_height_advance_at hrun
+    obtain ⟨a, ha, hat⟩ := Generic.reset_of_height_advance_at_from hrun.toLocalRun
       (hfq ((hrun.time_nonneg k).trans (le_max_right _ _)) (max_le hczb (hk.trans hb))).1 hy hs hh
     exact ⟨a, ha, hat.trans hk⟩
   have hna : ∀ y k att, y ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt y k att →
@@ -544,17 +532,17 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
         (tr.state y i).fg.hmax ≤ HZ tr H g + 1 := by
     intro y i hy hi hiB
     have hib : tr.time i ≤ b := hiB.le.trans hb
-    obtain ⟨hsnap, hcall⟩ := snapshotCall_of_awake_at hrun hawake hy
+    obtain ⟨hsnap, hcall⟩ := Generic.snapshotCall_of_awake_at_from hrun.toLocalRun hawake hy
       (hcz.trans hi) hib
     have hczle : cutZ sp.toParams g ≤ tr.time i := by
       have hDpos : 0 < D := lt_of_lt_of_le (by decide) hD
       dsimp [lo, D] at hi
       linarith
     have hmax : max (cutZ sp.toParams g) (tr.time i) = tr.time i := max_eq_right hczle
-    refine ⟨HZ_le_hmax_at hrun hnc hsvc hcatch
+    refine ⟨Generic.HZ_le_hmax_at_from hrun.toLocalRun hnc hsvc.toService hcatch
       (hH.mono (hrun.antitone (hczle.trans hib))) hsnap hy ?_ hcall (hlo.trans hi),
-      hmax_le_of_noAdvance_at hrun hna hy (by rw [hmax]; exact (hfq (hrun.time_nonneg i) hib).1)
-        hiB⟩
+      Generic.hmax_le_of_noAdvance_at_from hrun.toLocalRun hna hy
+        (by rw [hmax]; exact (hfq (hrun.time_nonneg i) hib).1) hiB⟩
     rw [hmax]
     exact (hfq (hrun.time_nonneg i) hib).2
   have hd : 0 ≤ d := by dsimp [d]; positivity
@@ -570,7 +558,7 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
     exists_frameWindow_seq_of_service_proof_at hrun hnc
       (fun t ht htb => (hfq ht htb).2) hsvc hcatch
       (riseLen d rt (2 * D - 1) (HZ tr H g)) hlen (by linarith only [hD]) hlo hb hrange
-      (fun z i m hz hi him hm => callLag_of_awake_at hrun hawake
+      (fun z i m hz hi him hm => Generic.callLag_of_awake_at_from hrun.toLocalRun hawake
         (by dsimp [lo, D]; linarith) hz hi him (hm.le.trans hb))
       (by rw [hsum]; exact sub_lt_self B (by decide))
   let len := riseLen d rt (2 * D - 1) (HZ tr H g) v

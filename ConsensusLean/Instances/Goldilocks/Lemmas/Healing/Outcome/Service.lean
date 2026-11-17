@@ -374,7 +374,7 @@ theorem ResetPremisesUpTo.sign_of_report {b : Time}
       have := hp.record_entry_eq hz (hts.le.trans hrb) hhT (Or.inr (Or.inr hr'))
         ho hiob hTB hy hT rfl hTe
       exact absurd (by rw [hr', this, hTe]) hl'
-    · obtain ⟨k, hk, att, hsk, rfl⟩ := sent_origin hp.run hz (r + 1) hc
+    · obtain ⟨k, hk, att, hsk, rfl⟩ := sent_origin_from hp.run.toLocalRun hz (r + 1) hc
       exact ⟨k, att, hsk, (hp.run.time_mono hk.le).trans hts.le, by assumption⟩
 
 /-- A bounded same-height report supplies the exact entry attestation, with historical
