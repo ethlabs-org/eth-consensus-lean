@@ -24,36 +24,6 @@ open SA (SAParams ReplayOrder goldilocksSA Vote Payload)
 
 variable {P : Params} {A : NodeAC P}
 
-/-- The order facts of F.5 (run) under growing faults: the static `RunOrder` with every node
-honest at the time of its cut or group. -/
-structure RunOrder (proposer : Nat → Fin P.n)
-    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
-    (sg : A.Msg → Fin P.n) (tr : RunTrace A) : Prop where
-  /-- (a) The cut index respects time. -/
-  time_of_lt : ∀ i j, i ≤ j → tr.time i ≤ tr.time j
-  /-- (b) At one time, the groups of the nodes honest then are in phase order. -/
-  phase : ∀ y y' j j' t e e', y ∈ H t → y' ∈ H t →
-    tr.GroupAt proposer dg y j t e → tr.GroupAt proposer dg y' j' t e' →
-    j < j' → e.phase ≤ e'.phase
-  /-- (c) The cuts of a tick of a node honest at its time are `on_tick`'s cuts, in order. -/
-  tick_steps : ∀ y j t x, y ∈ H t → tr.GroupAt proposer dg y j t (.tick x) →
-    ∀ k, (hk : k < (Node.onTick proposer dg y (tr.state y j) t x).2.length) →
-      tr.label (j + k) = some (Node.onTick proposer dg y (tr.state y j) t x).2[k]
-  /-- (d) A block whose proposer is honest at the processing cut, processed by a node honest then,
-  was processed by its proposer at or before, inside a tick. -/
-  block_before : ∀ y i B, y ∈ H (tr.time i) → tr.BlockCallAt y i B →
-    B.proposer ∈ H (tr.time i) → ∃ j ≤ i, tr.OwnBlockAt B.proposer j B
-  /-- (d) An attestation whose signer is honest at the processing cut, processed by a node honest
-  then, was signed at an earlier cut. -/
-  att_before : ∀ y i a, y ∈ H (tr.time i) → tr.ProcessAttAt y i a → a.val ∈ H (tr.time i) →
-    ∃ j < i, tr.SignAt a.val j a
-  /-- (d) An AC message whose signer is honest at the receipt, received by a node honest then, was
-  emitted at an earlier cut. -/
-  msg_before : ∀ y i m, y ∈ H (tr.time i) → tr.MsgCallAt y i m → sg m ∈ H (tr.time i) →
-    ∃ j < i, tr.EmitAt (sg m) j m
-  /-- (e) Finitely many labelled cuts in every bounded interval. -/
-  finite : ∀ T : Time, {i | tr.label i ≠ none ∧ tr.time i ≤ T}.Finite
-
 /-- **F.4 under growing faults, ready implies joined**, for a validator honest at `t`. -/
 def ReadyImpliesJoined : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))

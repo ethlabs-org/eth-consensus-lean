@@ -59,9 +59,9 @@ def AnchoredFrames (D : Data A) (tr : RunTrace A) (H : Time → Set (Fin P.n))
     Anchored D tr H b t (Node.frame (tr.state y i)).fcRoot ∧
     ViableAt D tr H b y i t
 
-/-- Committee counts at every time, using the committee look-ahead: in each nonempty committee
-`cm t`, the ready members exceed fraction `θ` of the ready and faulty members, counted on the
-view retained through each `d` from `t` to the committee look-ahead, clamped to `b`. -/
+/-- Committee counts at every time `t ≥ 0`, using the committee look-ahead: in each nonempty
+committee `cm t`, the ready members exceed fraction `θ` of the ready and faulty members, counted
+on the view retained through each `d` with `t ≤ d ≤ min b (p.lookAhead C.committeeLook t)`. -/
 def CommitteeWindow (C : ACCorrectLocal A sg) (p : EnvPoint (Fin P.n))
     (cm : Time → Finset (Fin P.n)) (b : Time) : Prop :=
   ∀ t d, 0 ≤ t → t ≤ d → d ≤ min b (p.lookAhead C.committeeLook t) →
@@ -71,7 +71,8 @@ def CommitteeWindow (C : ACCorrectLocal A sg) (p : EnvPoint (Fin P.n))
       (q.faultyAt t ∩ cm t).card : Nat) : ℚ) <
       ((q.readyAt C.catchUp t ∩ cm t).card : ℚ)
 
-/-- Population counts at every time, using the population look-ahead. -/
+/-- Population counts at every time `t ≥ 0`, using the population look-ahead: the view retained
+through each `d` with `t ≤ d ≤ min b (p.lookAhead C.look t)` is ready above fraction `θ` at `t`. -/
 def PopulationWindow (C : ACCorrectLocal A sg) (p : EnvPoint (Fin P.n))
     (b : Time) : Prop :=
   ∀ t d, 0 ≤ t → t ≤ d → d ≤ min b (p.lookAhead C.look t) →

@@ -34,10 +34,6 @@ def windowSlots (W G δt j : Nat) : Nat := W + G + riseRounds 0 j * (δt + G - 1
 /-- Slot-based assembly budget for five merged keys. -/
 def resetSlots (W G δt : Nat) : Nat := ∑ j ∈ Finset.range 5, (windowSlots W G δt j + 2)
 
-/-- Real-time bound of the grid-instantiated endpoint. -/
-def resetBoundRounds (r D lam δt X Ld : ℤ) : ℤ :=
-  r + (20 * Ld + 24 * (δt + X - 1) + 54) * D + 5 * lam
-
 /-- Grid alignment contract, not a chosen alignment witness. Proved by `exists_slot_align_of_grid`
 (Lemmas/Generic/HealingLeaves). -/
 def exists_slot_align : Prop :=

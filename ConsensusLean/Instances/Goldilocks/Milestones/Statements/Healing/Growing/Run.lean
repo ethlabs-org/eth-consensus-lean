@@ -8,9 +8,9 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.G
 /-! # Goldilocks milestone Healing under growing faults: the run-level statements (statements)
 
 The run-level healing vocabulary and HR.2 (`Statements/Healing/Run`) for a time-indexed honest
-set `H` (antitone), over `Growing.GoldilocksRun` (and, for HR.2, `Growing.FGLocalRun`). HR.4's
-clauses (`RetentionAt`) and the vocabulary of H.2 (run) stay as definitions; HR.1, HR.3, H.3, H.4
-and the HR.4 and H.2 (run) statements under growing faults are retired with the run bundle:
+set `H` (antitone), over `Growing.GoldilocksRun` (and, for HR.2, `Growing.FGLocalRun`): the
+definitions the growing healing proofs read. HR.1, HR.3, HR.4, H.2 (run), H.3 and H.4 are not
+stated under growing faults. The definitions read the honest set as follows:
 
 * **who is honest where**: a node at a cut is honest at the time of the cut; a signer at its
   signing cut; "the state at `t`" and "after all events at `t`" are read over the validators
@@ -21,12 +21,9 @@ and the HR.4 and H.2 (run) statements under growing faults are retired with the 
   at every `t`), and the (K1) clause of HR.1 (c) holds for the namers at every consumption
   horizon `d ≥ a_z − Δ` (`Store.Growing.namers`);
 * **the effective phase** is read over a cohort: HR.2's monotonicity and count over the
-  validators honest at a horizon `d`, at cuts up to `d`; HR.3's steps, settledness and the
-  settled phase of H.3's bridge for every cohort horizon `d`: a phase change is read at both cuts
-  over the cohort `H d` of one fixed `d` at or after the later state's time, and each other
-  honesty read at time `t` is at `max d t` (the fixed cohort `H d` up to `d`); so the steps of the
-  reset count do not cross a change of cohort (a compromise, which removes a node's blocks from
-  the honest reads, is not a phase change), and nothing moves `d` with an endpoint;
+  validators honest at a horizon `d`, at cuts up to `d`; a phase change is read at both cuts over
+  the cohort `H d` of one fixed `d`, so the steps of the count do not cross a change of cohort (a
+  compromise, which removes a node's blocks from the honest reads, is not a phase change);
 * **the reset bound** of HR.3 (c) is indexed by the lag `L` of the
   counting cohort `H D` behind `H_z` at `c_z` (`LagWithin`): the window is
   `c_z + 6(Δ + A_HS) + LΔ`; at a constant honest set `L = 0`;
@@ -34,7 +31,7 @@ and the HR.4 and H.2 (run) statements under growing faults are retired with the 
   (`Regimes.Growing.hold`).
 
 The vocabulary that binds no honest set (`FirstCutAfter`, `cutZ`, the constants, the phase case,
-`HoldsEvidence`, `T_heal`) is the static one; the phase predicates `FrontierAt`, `JustifiedAt`,
+`T_heal`) is the static one; the phase predicates `FrontierAt`, `JustifiedAt`,
 `ContestAt`, `PhaseAt` and `PhaseChanged` are the static ones applied to `H t`.
 
 Statements only: no proofs here. -/
@@ -74,22 +71,6 @@ def CatchRun (g κ : Time) : Prop :=
 /-- No restart after `t` of a node honest at its restart. -/
 def NoRestartAfter (t : Time) : Prop :=
   ∀ y k, y ∈ H (tr.time k) → tr.RestartAt y k → tr.time k ≤ t
-
-/-- **Settled at `w`** under growing faults, for the cohort of horizon `d`: over the validators
-honest at `max d w` (the cohort `H d` when `w ≤ d`). -/
-structure SettledAt (d g κ w : Time) : Prop where
-  /-- `w ≥ max(ḡ + κ, ḡ + 8Δ)`. -/
-  late : max (gbar g + κ) (gbar g + 8 * P.Δ) ≤ w
-  /-- Every validator honest at `max d w` is joined at `w`. -/
-  joined : ∀ y, y ∈ H (max d w) → tr.JoinedAt y w
-  /-- At `w`, every validator honest at `max d w` holds the evidence of the effective phase read
-  over the validators honest at `max d w`. -/
-  evidence : ∀ j, tr.FirstCutFrom j w → ∀ m c, PhaseAt tr.projFG (H (max d w)) j m c →
-    ∀ y, y ∈ H (max d w) → HoldsEvidence (tr.projFG.store y j) m c
-  /-- The pre-GST acceptance catch-up is complete at `w`. -/
-  catchUp : ∀ x i B, x ∈ H (tr.time i) → tr.AcceptAt x i B → tr.time i < gbar g →
-    ∀ y j, y ∈ H (max d w) → tr.FirstCutFrom j w →
-      Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B → ∃ k < j, tr.AcceptAt y k B
 
 end Vocabulary
 
@@ -137,39 +118,6 @@ def HighOrigin (g : Time) (x : Fin sp.n) (i j : Nat) (B : SA.Blk sp.n (List (FG.
     (∃ CV, Compose.StoredFastLockAt tr x i j B CV) ∧
     HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h
 
-/-- **(R1)–(R4) of HR.4** under growing faults, for the reset `a`. -/
-structure RetentionAt (g a : Time) : Prop where
-  /-- (R1) The blocks of any two high origins are comparable. -/
-  comparable : ∀ x i j B x' i' j' B', HighOrigin tr H g x i j B → HighOrigin tr H g x' i' j' B' →
-    Compatible (tr.HonestBlocksAt H) B B'
-  /-- (R1) Every attestation signed at or after `a`, by a signer honest at its signing, whose
-  height pair has height `h ≥ H_z + 1` names the entry at `h` of a high origin's chain. -/
-  fgAtts : ∀ y k att, y ∈ H (tr.time k) → tr.SignAt y k att → a ≤ tr.time k →
-    HZ tr H g + 1 ≤ att.h →
-    ∃ x i j B, HighOrigin tr H g x i j B ∧ ∃ E ∈ (tr.state x i).fg.tree,
-      (tr.state x i).fg.Anc E B ∧ E.root = att.T ∧ ((tr.state x i).fg.σ E.root).h = att.h ∧
-      ((tr.state x i).fg.σ E.root).Th = E.root
-  /-- (R2) After every cut at a time `≥ a` of a node honest at the cut, its `Σ.F`, and its `Σ.J`
-  when `Σ.h_j ≥ H_z + 1`, are compatible with every high origin written at that cut or earlier. -/
-  caches : ∀ y k, y ∈ H (tr.time k) → tr.IsCall y k → a ≤ tr.time k →
-    ∀ x i j B, HighOrigin tr H g x i j B → i ≤ k →
-      Compatible (tr.HonestBlocksAt H) (tr.post k).fg.F B ∧
-      (HZ tr H g + 1 ≤ (tr.post k).fg.hj → Compatible (tr.HonestBlocksAt H) (tr.post k).fg.J B)
-  /-- (R3) For a high origin `(B, j)`, every vote of a slot `> j` by a node honest at its vote
-  extends `B`, with `B` in the viable voter block tree or at or below `fc_root`. -/
-  votes : ∀ x i j B, HighOrigin tr H g x i j B → ∀ y k ℓ e, y ∈ H (tr.time k) →
-    SA.CastAt tr.projAC y k ℓ e → j < e.msg.slot →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg B ∧
-      (B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
-        Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot)
-  /-- (R4) For every `h ≥ H_z + 1`, the nonempty target, timeout and lock entries at `h` of the
-  client records of nodes at cuts at which they are honest, and honest at `c_z`, name at most
-  one block. -/
-  records : ∀ h, HZ tr H g + 1 ≤ h →
-    {r | ∃ y i, y ∈ H (max (cutZ sp.toParams g) (tr.time i)) ∧
-      ((tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h ∨
-        (tr.state y i).record.lock h = some r)}.Subsingleton
-
 end Goldilocks
 
 /-- **HR.2 under growing faults, phase count** (an FG store node over FG traces). (a) is read at
@@ -204,30 +152,10 @@ section Top
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
 
-/-- The votes of slot `p` of the nodes honest at their votes are all `P`. -/
-def Unanimous (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
-  ∀ x j e, x ∈ H (tr.time j) → SA.VoteAt tr.projAC x j e → e.msg.slot = p → e.msg.head = P.root
-
 /-- `P` is the honest proposal of slot `p`, by a proposer honest through `t_p + hold`. -/
 def HonestProposalRun (proposer : Nat → Fin sp.n)
     (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   proposer p ∈ H (sp.ts p + hold sp) ∧ SA.HonestProposal tr.projAC (proposer p) p P
-
-/-- `P` is in the AC confirmed tip at every call at a time `≥ t₁` of a node honest at the call. -/
-def IncludedFrom (t₁ : Time) (P : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
-  ∀ y j ℓ, y ∈ H (tr.time j) → tr.projAC.CallAt y j ℓ → t₁ ≤ tr.time j →
-    (tr.time j = t₁ → ∃ k ≤ j, ∃ ℓ', tr.projAC.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧
-      tr.time k = tr.time j) →
-    Anc (tr.HonestBlocksAt H) P (SA.acConfirmed sp (tr.post j).ac ℓ.frame (tr.time j))
-
-/-- The proposal of slot `p` and the slot-`p` votes of the cohort of horizon `d` lie in one
-settled effective phase, read at each cut `i` over the validators honest at `max d (time i)`. -/
-def InSettledPhase (d g : Time) (p : Nat) : Prop :=
-  ∃ w m c, SettledAt tr H d g (2 * sp.Δ) w ∧ w ≤ sp.ts p ∧
-    ∀ i, w ≤ tr.time i →
-      (tr.time i ≤ sp.ts p ∨ ∃ y i' e, i ≤ i' ∧ y ∈ H (max d (tr.time i')) ∧
-        SA.VoteAt tr.projAC y i' e ∧ e.msg.slot = p) →
-      PhaseAt tr.projFG (H (max d (tr.time i))) i m c
 
 end Top
 
