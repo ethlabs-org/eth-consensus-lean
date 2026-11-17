@@ -102,7 +102,6 @@ public import ConsensusLeanTest.MilestoneAxioms
 public import ConsensusLeanTest.Model.Basic
 public import ConsensusLeanTest.Model.Growth
 public import ConsensusLeanTest.Model.Lift
-public import ConsensusLeanTest.Problem.CommitteeRegimes
 public import ConsensusLeanTest.Problem.Continuation
 public import ConsensusLeanTest.Problem.CorrectProtocol
 public import ConsensusLeanTest.Problem.Growth
