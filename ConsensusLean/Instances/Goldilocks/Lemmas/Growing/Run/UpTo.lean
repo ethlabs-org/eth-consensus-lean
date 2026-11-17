@@ -372,6 +372,17 @@ theorem GoldilocksRun.upTo {ini : Fin sp.n → (goldilocksNode sp ro).State}
     obtain ⟨j, hji, hj⟩ := h.carried_vote_unforgeable y i B (anti hid hy) hB v hv (anti hid hvH)
     exact ⟨j, hji, (RunTrace.upTo_emitAt _).mpr ⟨(hm hji.le).trans hid, hj⟩⟩
 
+/-- **Reachability at a held-state observation**, not necessarily the time of cut `i`: the FG state
+of a reader honest at `t ≥ 0`, before a cut whose earlier cuts are at or before `t`, is reachable.
+It is the static reachability on the prefix through `t`. -/
+theorem _root_.Consensus.Goldilocks.Healing.Growing.fg_reachable_at
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} {i : Nat} {t : Time}
+    (ht : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) :
+    (tr.state y i).fg.Reachable (goldilocksNode sp ro).genesisPayload := by
+  have h := Compose.fg_reachable (hrun.upTo ht).toLocalRun hy i
+  rwa [Trace.upTo_state tr y hle] at h
+
 end Growing
 
 end Consensus.Goldilocks

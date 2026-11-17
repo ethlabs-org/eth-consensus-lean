@@ -19,14 +19,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-/-- Reachability at a held-state observation, not necessarily the time of cut `i`. -/
-theorem fg_reachable_at {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {i : Nat} {t : Time} (ht : 0 ≤ t)
-    (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) :
-    (tr.state y i).fg.Reachable (goldilocksNode sp ro).genesisPayload :=
-  Generic.fg_reachable_at_from hrun.toLocalRun ht hle hy
-
 /-- Historical ancestry descends into the reader's actual held tree. -/
 theorem store_anc_of_honest_anc_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)

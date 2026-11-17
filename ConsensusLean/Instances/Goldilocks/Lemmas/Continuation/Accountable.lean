@@ -92,8 +92,8 @@ theorem J_eq_of_hj_eq_conv (hrun : Growing.GoldilocksRun proposer dg H tr)
     (he : ((tr.state y i).fg.σ B.root).hj = ((tr.state z j).fg.σ B'.root).hj) :
     ((tr.state y i).fg.σ B.root).J = ((tr.state z j).fg.σ B'.root).J := by
   by_contra hne
-  obtain ⟨W, hW, hw⟩ := Store.justified_crossing (fg_reachable_at hrun ht hi hy)
-    (fg_reachable_at hrun ht' hj hz) hB hB' he hne
+  obtain ⟨W, hW, hw⟩ := Store.justified_crossing (Healing.Growing.fg_reachable_at hrun ht hi hy)
+    (Healing.Growing.fg_reachable_at hrun ht' hj hz) hB hB' he hne
   have h3 := hcv y z i j t t' ht hi hy ht' hj hz B hB B' hB' W fun v hv => by
     obtain ⟨a, ha, b, hb, hav, hab⟩ := hw v hv
     exact ⟨a, Or.inl ha, b, Or.inr hb, hav, hab⟩
@@ -132,8 +132,8 @@ theorem finalized_anc_of_lt_conv (hrun : GoldilocksRun proposer dg H tr)
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hsub₁ : (tr.state y k).fg.tree ⊆ tr.HonestBlocksAt H := fun _ h => ⟨y, k, t, ht, hk, hy, h⟩
   have hsub₂ : (tr.state z m).fg.tree ⊆ tr.HonestBlocksAt H := fun _ h => ⟨z, m, u, hu, hm, hz, h⟩
-  obtain ⟨S, hS, hw⟩ := Store.finalized_crossing (Compose.Growing.fg_reachable_at hrun ht hk hy)
-    (Compose.Growing.fg_reachable_at hrun hu hm hz) hX hFr hW hlt fun Y hY hYW hYF => by
+  obtain ⟨S, hS, hw⟩ := Store.finalized_crossing (Healing.Growing.fg_reachable_at hrun ht hk hy)
+    (Healing.Growing.fg_reachable_at hrun hu hm hz) hX hFr hW hlt fun Y hY hYW hYF => by
       obtain rfl : Y = F := hU.1 (hsub₂ hY) (hsub₁ hF) hYF
       exact hn (Anc.mono hsub₂ hYW)
   have h3 := hcv y z k m t u ht hk hy hu hm hz X hX W hW S fun v hv => by

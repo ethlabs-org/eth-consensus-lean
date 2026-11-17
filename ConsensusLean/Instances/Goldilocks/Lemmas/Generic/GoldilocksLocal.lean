@@ -55,7 +55,7 @@ theorem goldilocks_tips_at {cm : Time → Finset (Fin sp.n)} {proposer : Nat →
       (Node.frame (tr.state y i)).Anc
         ((goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) s)
         ((goldilocksNode sp ro).head (tr.state y i).ac (Node.frame (tr.state y i)) s) := by
-  have hr := Compose.Growing.fg_reachable_at ((goldilocksRunInterface_run_iff cm).mp hrun).1
+  have hr := Healing.Growing.fg_reachable_at ((goldilocksRunInterface_run_iff cm).mp hrun).1
     ht0 hle hy
   have hΦ := (Store.frame_realization _ _ _ _ hr).1
   obtain ⟨hC, hCH⟩ := Regimes.sa_tips (A := (tr.state y i).ac) hΦ s

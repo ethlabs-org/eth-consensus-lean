@@ -74,7 +74,7 @@ theorem effective_record_frame_of_run_at
   have hsti := Trace.upTo_state tr y hit
   have hstj := Trace.upTo_state tr y hjt
   have hr := hrun.upTo ht0
-  have hreach := Compose.Growing.fg_reachable_at hrun ht0 hjt hy
+  have hreach := Healing.Growing.fg_reachable_at hrun ht0 hjt hy
   have hΨ := (Store.frame_realization _ _ _ _ hreach).1
   have hFF : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F (tr.state y j).fg.F := by
     have h := Healing.run_F_mono hr.toLocalRun hy hij
