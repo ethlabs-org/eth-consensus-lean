@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Recovery
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Service
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Outcome
 
 @[expose] public section

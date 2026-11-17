@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Locks
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Family
 
 /-! # Independent actual-output source packages and supplier-named evidence -/
 
@@ -14,9 +14,6 @@ the actual meaning of eligible; successful outputs alone are not the full candid
 structure SourceData (A : SAOperations sp FGP S M) where
   evidence : Fin sp.n → Nat → Blk sp.n FGP → Prop
   eligible : Fin sp.n → Nat → ACLabel A.toAC → Set (Blk sp.n FGP)
-
-variable {A : SAOperations sp FGP S M} (F : SAFamily A ro) (tr : ACTrace A.toAC)
-  (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
 
 end Consensus.Goldilocks.SA.FamilyFacts
 

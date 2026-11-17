@@ -4,11 +4,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 
 public section
 
-/-! # Goldilocks Persist, part 2: the invariant of C1.1's induction
+/-! # Goldilocks Persist, part 2: the step predicates of C1.1's (retired) induction
 
 `VoteInv k`, C1.1 (i) and (ii) at the honest votes of cut `k`, and `CutInv k`, G1.10 at the scope
-of C1.1 at the honest call of cut `k`; and the caches of a node's state, read off its last call
-or (K0) (`state_caches`). -/
+of C1.1 at the honest call of cut `k`. -/
 
 namespace Consensus.Goldilocks.Compose
 

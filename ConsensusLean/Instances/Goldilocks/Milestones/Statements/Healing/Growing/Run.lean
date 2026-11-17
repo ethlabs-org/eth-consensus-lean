@@ -1,15 +1,16 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.AC
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Persist
 
 @[expose] public section
 
 /-! # Goldilocks milestone Healing under growing faults: the run-level statements (statements)
 
-The run-level healing vocabulary and HR.2, HR.4 and H.2 (run) (`Statements/Healing/Run`) for a
-time-indexed honest set `H` (antitone), over `Growing.GoldilocksRun` (and, for HR.2,
-`Growing.FGLocalRun`); HR.1, HR.3, H.3 and H.4 under growing faults are retired with the run bundle:
+The run-level healing vocabulary and HR.2 (`Statements/Healing/Run`) for a time-indexed honest
+set `H` (antitone), over `Growing.GoldilocksRun` (and, for HR.2, `Growing.FGLocalRun`). HR.4's
+clauses (`RetentionAt`) and the vocabulary of H.2 (run) stay as definitions; HR.1, HR.3, H.3, H.4
+and the HR.4 and H.2 (run) statements under growing faults are retired with the run bundle:
 
 * **who is honest where**: a node at a cut is honest at the time of the cut; a signer at its
   signing cut; "the state at `t`" and "after all events at `t`" are read over the validators
@@ -61,11 +62,6 @@ def IsReset (g a : Time) : Prop :=
       att.h = HZ tr H g + 1 ∧ tr.time k = a) ∧
     ∀ y k att, y ∈ H (max (cutZ P g) (tr.time k)) → tr.SignAt y k att →
       att.h = HZ tr H g + 1 → a ≤ tr.time k
-
-/-- The entries of heights `≥ H_z + 1` of the chains accepted by nodes honest at their cuts. -/
-def HighEntries (Hz : Nat) : Set (NodeBlock P A.Payload) :=
-  {E | ∃ y i, y ∈ H (tr.time i) ∧ E ∈ (tr.state y i).fg.tree ∧ ∃ B ∈ (tr.state y i).fg.tree,
-    Hz + 1 ≤ ((tr.state y i).fg.σ B.root).h ∧ ((tr.state y i).fg.σ B.root).Th = E.root}
 
 /-- **`Catch(κ)` over a run** under growing faults: a block accepted at a time `< ḡ` by a node
 honest at its acceptance is accepted before `ḡ + κ` by every validator `y` honest at `ḡ + κ` whose
@@ -193,9 +189,6 @@ def PhaseCount (P : Params) (ACP : Type) : Prop :=
       ∀ m, {i | tr.time (i + 1) ≤ d ∧ ∃ c c', PhaseAt tr (H d) i m c ∧
         PhaseAt tr (H d) (i + 1) m c' ∧ c ≠ c'}.encard ≤ 2
 
-/-- **HR.2 under growing faults** at every parameter and AC payload type. -/
-def PhaseCountAll : Prop := ∀ (P : Params) (ACP : Type), PhaseCount P ACP
-
 /-- The reset window of HR.3 at lag `L`: `c_z + 6(Δ + A_HS) + LΔ`. -/
 def resetWindow (sp : SAParams) (g ΔF Gp : Time) (L : Nat) : Time :=
   cutZ sp.toParams g + 6 * (sp.Δ + A_HS sp ΔF Gp) + (L : Time) * sp.Δ
@@ -205,16 +198,6 @@ greatest `Σ.h_max` at `c_z` of the validators honest at `D`. -/
 def LagWithin {P : Params} {A : NodeAC P} (tr : RunTrace A) (H : Time → Set (Fin P.n))
     (g D : Time) (L : Nat) : Prop :=
   HZ tr H g ≤ HZ tr (fun _ => H D) g + L
-
-/-- **HR.4 under growing faults, height-scoped retention**, for population-sized committees. -/
-def HeightScopedRetention : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF : Time),
-    sp.committeeSize = sp.n →
-    Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → tr.HealthyRunAt H ΔF g →
-    Compose.NoCollRun dg tr → ∀ a, IsReset tr H g a → RetentionAt tr H g a
 
 section Top
 
@@ -246,34 +229,7 @@ def InSettledPhase (d g : Time) (p : Nat) : Prop :=
         SA.VoteAt tr.projAC y i' e ∧ e.msg.slot = p) →
       PhaseAt tr.projFG (H (max d (tr.time i))) i m c
 
-/-- **The bridge of H.3 (c)** under growing faults: `Geo(P)` for the cohort of every horizon
-`d` (its voters honest at `max d` of their vote times) whose settled phase holds the slot. -/
-def BridgeAt (proposer : Nat → Fin sp.n) (g a Tb : Time) : Prop :=
-  SA.Growing.Inv proposer tr.projAC H (tr.HonestBlocksAt H) (a + Tb) ∧
-    ∀ d (p : Nat) P, HonestProposalRun tr H proposer p P →
-      a + Tb + 2 * SA.Θ sp + 8 * sp.Δ ≤ sp.ts p →
-      InSettledPhase tr H d g p → SA.Growing.Geo proposer tr.projAC (fun t => H (max d t)) p P
-
 end Top
-
-/-- **H.2 (run) under growing faults, AC inclusion in runs**, for population-sized committees. -/
-def RunInclusion : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF : Time),
-    sp.committeeSize = sp.n →
-    Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
-    (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg →
-    tr.HealthyRunAt H ΔF g → CatchRun tr H g (2 * sp.Δ) →
-    (SA.Growing.Driven proposer tr.projAC H ∧
-      SA.Growing.HealthyAC tr.projAC H (tr.HonestBlocksAt H) g ∧
-      SA.Growing.CatchAC tr.projAC H (tr.HonestBlocksAt H) g (2 * sp.Δ)) ∧
-    ∀ t₀, gbar g ≤ t₀ → SA.Growing.Inv proposer tr.projAC H (tr.HonestBlocksAt H) t₀ →
-      ∀ (p : Nat) P, HonestProposalRun tr H proposer p P →
-        t₀ + 2 * SA.Θ sp + 8 * sp.Δ ≤ sp.ts p →
-        (SA.Growing.Geo proposer tr.projAC H p P → Unanimous tr H p P) ∧
-        (Unanimous tr H p P → IncludedFrom tr H (sp.ts p + 6 * sp.Δ) P)
 
 end Consensus.Goldilocks.Healing.Growing
 

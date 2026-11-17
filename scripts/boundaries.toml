@@ -1227,11 +1227,6 @@ about = "tests, review pins (ReviewAxioms, ReviewGuard) and the cited-name index
 # trusted layer, and every `from` and `to` entry must be used (a fixed deviation must be removed).
 
 [[exception]]
-from = ["ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.VotesK"]
-to = ["ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.UpTo"]
-reason = "Growing committee participation uses the existing polymorphic trace prefix definition; no run model or engine dependency"
-
-[[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Proofs.Obligations.Main"]
 to = ["ConsensusLean.Instances.Goldilocks.Proofs.Growing.Obligations.Main"]
 reason = "the constant-fault endpoint is the corollary of the growing-fault endpoint (meetsObligationsConstant_of_growing); no separate constant-fault assembly"

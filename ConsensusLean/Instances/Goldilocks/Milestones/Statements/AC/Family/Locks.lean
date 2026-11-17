@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Family
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes.Writes
 
 /-! # Enabled shared-policy write events and lock provenance packages -/
 
@@ -18,14 +19,6 @@ def UpdateFastEvent (m : WriteMode) (o : SATrace sp FGP ro)
 def OptimisticEvent (m : WriteMode) (o : SATrace sp FGP ro)
     (x : Fin sp.n) (i s : Nat) (B : Blk sp.n FGP) (CV : Set (Vote sp.n)) : Prop :=
   m.optimistic = true ∧ SA.OptimisticLockAt o x i s B CV
-
-/-- Either enabled fast-write formula; disabled arms cannot witness it. -/
-def FastWriteEvent (m : WriteMode) (o : SATrace sp FGP ro)
-    (x : Fin sp.n) (i s : Nat) (B : Blk sp.n FGP) (CV : Set (Vote sp.n)) : Prop :=
-  UpdateFastEvent m o x i s B CV ∨ OptimisticEvent m o x i s B CV
-
-variable {A : SAOperations sp FGP S M} (F : SAFamily A ro) (tr : ACTrace A.toAC)
-  (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
 
 end Consensus.Goldilocks.SA.FamilyFacts
 

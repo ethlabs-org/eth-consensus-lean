@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Observation
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes.Writes
 
 @[expose] public section

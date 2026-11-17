@@ -54,13 +54,6 @@ structure RunOrder (proposer : Nat → Fin P.n)
   /-- (e) Finitely many labelled cuts in every bounded interval. -/
   finite : ∀ T : Time, {i | tr.label i ≠ none ∧ tr.time i ≤ T}.Finite
 
-/-- **F.5 (run) under growing faults, event order.** -/
-def EventOrder : Prop :=
-  ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload)
-    (H : Time → Set (Fin P.n)) (sg : A.Msg → Fin P.n) (tr : RunTrace A)
-    (proposer : Nat → Fin P.n),
-    Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr → RunOrder proposer dg H sg tr
-
 /-- **F.4 under growing faults, ready implies joined**, for a validator honest at `t`. -/
 def ReadyImpliesJoined : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
@@ -102,19 +95,6 @@ def GoldilocksACProjection : Prop :=
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → NoCollRun dg tr →
       SA.Growing.ACRun proposer tr.projAC H (tr.HonestBlocksAt H)
-
-/-- **The states of a node honest at a group are reachable configurations.** -/
-def GroupStatesReachable : Prop :=
-  ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload)
-    (H : Time → Set (Fin P.n)) (sg : A.Msg → Fin P.n) (tr : RunTrace A)
-    (proposer : Nat → Fin P.n),
-    Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr →
-    ∀ y j t e, y ∈ H t → tr.GroupAt proposer dg y j t e →
-      (∃ cfg : Node.Config A,
-        Node.Reachable proposer dg y cfg ∧ cfg.st = tr.state y j ∧ cfg.time ≤ t) ∧
-      ∃ cfg' : Node.Config A, Node.Reachable proposer dg y cfg' ∧
-        cfg'.st = tr.post (j + (Node.exec proposer dg y (tr.state y j) t e).2.length - 1) ∧
-        cfg'.time = t
 
 /-- **`Sync` projects under growing faults.** -/
 def SyncProjection : Prop :=

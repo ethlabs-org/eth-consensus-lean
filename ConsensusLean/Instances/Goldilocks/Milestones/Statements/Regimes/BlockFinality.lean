@@ -1,6 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GenericRun
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Params
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Model
 
 @[expose] public section
 

@@ -9,7 +9,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Growing
 The SA premises and honest-object facts (`Spec/SA/Trace`, `Spec/SA/Events`) for a time-indexed
 honest set `H`:
 
-* `FaultBoundAt tr H t d`: `f_d < h_t`, the count at `t` charged with the faults of `d`;
 * `HonestFrameBlockAt`, `EarlierVotesExtendAt`, `Growing.Carry`: the frame blocks, votes and
   `Carry` premise of nodes honest at the cut read;
 * `Growing.HonestObjects`: votes whose signer is honest at the reading cut were emitted by it;
@@ -21,11 +20,6 @@ honest set `H`:
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
-
-/-- `f_d < h_t`: the validators compromised by `d` are fewer than those honest at `d`, awake and
-joined at `t`. -/
-def FaultBoundAt (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n)) (t d : Time) : Prop :=
-  (H d)ᶜ.ncard < {y | y ∈ H d ∧ tr.awake y t ∧ JoinedAt tr y t}.ncard
 
 /-- The blocks of the frames of the calls of nodes honest at the call. -/
 def HonestFrameBlockAt (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n)) (B : Blk sp.n FGP) :

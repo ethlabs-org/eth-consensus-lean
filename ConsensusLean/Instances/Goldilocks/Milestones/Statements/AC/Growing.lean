@@ -13,12 +13,11 @@ honest set `H` (antitone), over `Growing.ACLocalRun` / `SA.Growing.ACRun`:
 * a node named at a cut is honest at that cut's time; a vote or a lock write is by a node honest
   at its own cut (an event fact, kept after a later compromise); A1.1 reads the proposer at the
   later of its proposal and the vote it is compared with;
-* every count is charged at the cut that performs it: `SA.FaultBoundAt tr H t t` at a vote
-  (`f_t < h_t`), `2 f_t < n` at the voter's cut for the optimistic transfer, at the update's cut
-  for the next update; the honest voters of
-  the next transfer are those honest at the voter's cut that voted in the slot while honest (a
-  vote emitted after its voter's compromise is not an honest vote, whatever the voter's honesty
-  at another time);
+* every count is charged at the cut that performs it: the committee bound `FaultBoundK` over the
+  validators honest at a vote's cut, `2 f_t < n` at the voter's cut for the optimistic transfer,
+  at the update's cut for the next update; the honest voters of the next transfer are those honest
+  at the voter's cut that voted in the slot while honest (a vote emitted after its voter's
+  compromise is not an honest vote, whatever the voter's honesty at another time);
 * the network premise is `SyncACAt`.
 
 The statements without an honest set (the pure SA facts of ACBase) are unchanged and are not
