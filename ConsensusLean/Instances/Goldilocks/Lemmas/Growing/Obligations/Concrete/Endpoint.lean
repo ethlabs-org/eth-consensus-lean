@@ -42,7 +42,8 @@ theorem meetsObligations_growing :
   { claims := meetsObligations_claims_growing S A
     admissible := meetsObligations_admissible S A
     serves := by simp [OutputSchema.Serves, schema]
-    progressFits := meetsObligations_progressFits S A
+    progressFits := meetsObligations_progressFits { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩
     progressTolerant := meetsObligations_progressTolerant S A }
 
 end Consensus.Goldilocks.Obligations.Growing

@@ -244,7 +244,9 @@ theorem outageQuery_witness : ∃ Q : OutageQuery S A (Fin 5), 0 ≤ Q.T := by
   obtain ⟨r, T, b₀, b₁, ⟨⟨hv, hc, hf, -, -⟩, -, -⟩, ho, -, -⟩ :=
     (Shape.regimes_realizable (goldilocks { S with vote := AsChainShape.stock }) (K S A)
       (meetsObligations_admissible S A)
-      (meetsObligations_progressFits S A) (meetsObligations_progressTolerant S A) (Fin 5)
+      (meetsObligations_progressFits { S with vote := AsChainShape.stock }
+        ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩)
+      (meetsObligations_progressTolerant S A) (Fin 5)
       (((meetsObligations_optimalFaultTolerance S A).room_iff _).mpr (by decide))).outage
       2 2 0 (by decide) (by decide)
   obtain ⟨Q, -, hT, -, -⟩ := outageQuery_applies S A r (by decide) T b₀ b₁ hf hv hc ho

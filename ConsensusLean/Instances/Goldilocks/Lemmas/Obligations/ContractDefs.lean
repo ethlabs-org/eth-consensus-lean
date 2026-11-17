@@ -164,9 +164,9 @@ theorem contract_coefficients_latency (S : Setup) (A : ContractAssumptions S) :
 noncomputable abbrev K (S : Setup) (A : ContractAssumptions S) :=
   goldilocksContract A (contract_coefficients S A)
 
-/-- Selection-aware singleton duties make every recurrence fit. -/
+/-- Every vote binding selects one proposer per slot, so every recurrence fits. -/
 theorem meetsObligations_progressFits (S : Setup) (A : ContractAssumptions S) :
-    ProgressFits (K S A) (goldilocks { S with vote := stock }) := by
+    ProgressFits (K S A) (goldilocks S) := by
   intro cap i pub s
   rfl
 
