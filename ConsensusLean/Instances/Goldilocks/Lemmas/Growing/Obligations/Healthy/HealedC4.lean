@@ -252,7 +252,7 @@ theorem UpTo.operational_proposal_below_next_parent_at
   have hhigh : SA.HighLocksCompatible ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)))
       ((tr.projAC.upTo (tr.time i)).state y i) (tr.time i) u P := by
     refine SA.highLocksCompatible_iff.2 fun l hl _ hlσ X hX hXr => ?_
-    obtain ⟨L, hL, hLr, O, hLO, q, hqi, CV, hO⟩ := SA.lock_below_origin_from hr hS.run.vstart hy i
+    obtain ⟨L, hL, hLr, O, hLO, q, hqi, CV, hO⟩ := SA.lock_below_origin hr hS.run.vstart hy i
       l hl
     obtain rfl : X = L := hU.1 hX hL (hXr.trans hLr.symm)
     have hcomp : Compatible ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) O P := by

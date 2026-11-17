@@ -63,7 +63,7 @@ theorem stored_lock_below_origin_at
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono hd
   intro l hl
   obtain ⟨L, hL, hLr, O, hLO, k, hki, CV, ho⟩ :=
-    SA.lock_below_origin_from hr hrun.vstart hy i l (by rwa [hs])
+    SA.lock_below_origin hr hrun.vstart hy i l (by rwa [hs])
   refine ⟨L, hsub hL, hLr, O, hLO.mono hsub, k, hki, CV,
     hrun.antitone (hrun.time_mono hki.le) hy, ?_⟩
   rcases ho with ho | ho

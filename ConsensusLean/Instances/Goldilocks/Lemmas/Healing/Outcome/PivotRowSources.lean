@@ -526,7 +526,8 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
   have hhigh : SA.HighLocksCompatible (tr.HonestBlocks H) (tr.projAC.state p i)
       (tr.time i) σ B := by
     refine SA.highLocksCompatible_iff.2 fun l hl _ hlσ X hX hXr => ?_
-    obtain ⟨L, hL, hLr, O, hLO, q, hqi, CV, hO⟩ := SA.lock_below_origin hr hpH i l hl
+    obtain ⟨L, hL, hLr, O, hLO, q, hqi, CV, hO⟩ := SA.lock_below_origin hr
+        (fun _ => SA.voteStart_initial _) hpH i l hl
     obtain rfl : X = L := hU.1 hX hL (hXr.trans hLr.symm)
     have hcomp : Compatible (tr.HonestBlocks H) O B := by
       rcases hO with ⟨ell', ⟨_, _, ht, _⟩, _⟩ | ⟨ellO, A, hpt, hsl, hsel, hCV⟩

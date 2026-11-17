@@ -773,7 +773,7 @@ theorem lock_write_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
       ∃ L' ∈ (tr.upTo t).HonestBlocks (H t), L'.root = l.block ∧
         Anc ((tr.upTo t).HonestBlocks (H t)) L' B := by
     cases hf : l.fast
-    · obtain ⟨j, hj, B, h, hB⟩ := SA.slow_lock_provenance_from hr hrun.vstart hy i l hl' hf
+    · obtain ⟨j, hj, B, h, hB⟩ := SA.slow_lock_provenance hr hrun.vstart hy i l hl' hf
       exact ⟨j, hj, B, Or.inr h, hB⟩
     · obtain ⟨j, hj, B, CV, h, hB⟩ := SA.fast_lock_provenance hr hrun.vstart hy i l hl' hf
       exact ⟨j, hj, B, Or.inl ⟨CV, h⟩, hB⟩

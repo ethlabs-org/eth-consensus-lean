@@ -128,7 +128,7 @@ theorem slow_stored_locks_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have subi := RunTrace.honestBlocks_upTo_subset hm (H := H) hi0
   intro l hl hlive hle Y hY hYr
   rw [← Trace.upTo_state tr.projAC y (d := tr.time i) fun _ hq => hm hq.le] at hl
-  obtain ⟨L, hL, hLr, O, hLO, k, hki, CV, hO⟩ := SA.lock_below_origin_from hri
+  obtain ⟨L, hL, hLr, O, hLO, k, hki, CV, hO⟩ := SA.lock_below_origin hri
     (acRun_prefix hp hi0).vstart hy i l hl
   obtain rfl : Y = L := hU.1 hY (subi hL) (hYr.trans hLr.symm)
   have hsl' := slowLockAt_upTo hm hsl

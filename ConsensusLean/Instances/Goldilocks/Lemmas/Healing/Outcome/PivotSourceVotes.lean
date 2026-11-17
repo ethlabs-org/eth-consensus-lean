@@ -100,7 +100,8 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
         ∃ L ∈ tr.HonestBlocks H, L.root = l₁.block ∧ Anc (tr.HonestBlocks H) L D := by
     cases hf : l₁.fast with
     | false =>
-      obtain ⟨r, hri, D, hsl, hL⟩ := SA.slow_lock_provenance hr hpH i l₁ hl₁ hf
+      obtain ⟨r, hri, D, hsl, hL⟩ := SA.slow_lock_provenance hr
+          (fun _ => SA.voteStart_initial _) hpH i l₁ hl₁ hf
       exact ⟨r, hri, D, Or.inr hsl, hL⟩
     | true =>
       obtain ⟨r, hri, D, CV, hfl, hL⟩ := SA.fast_lock_provenance hr

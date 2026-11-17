@@ -101,7 +101,7 @@ theorem call_locks_compatible_of_unanimous_at {cm : Time → Finset (Fin sp.n)} 
           X.root = l.block ∧ Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) X D := by
     cases hf : l.fast with
     | false =>
-      obtain ⟨r, hrj, D, hslow, hX⟩ := SA.slow_lock_provenance_from hr hp.run.vstart hy j l hl' hf
+      obtain ⟨r, hrj, D, hslow, hX⟩ := SA.slow_lock_provenance hr hp.run.vstart hy j l hl' hf
       exact ⟨r, hrj, D, Or.inr hslow, hX⟩
     | true =>
       obtain ⟨r, hrj, D, CV, hfast, hX⟩ := SA.fast_lock_provenance hr hp.run.vstart hy j l

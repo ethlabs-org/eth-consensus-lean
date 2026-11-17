@@ -38,7 +38,7 @@ theorem clean_source_stored_lock_compatible_at
   rw [← Trace.upTo_state tr.projAC y hle] at hl
   by_cases hsl : s ≤ l.slot
   · obtain ⟨L, hL, hLr, D, hLD, q, hqi, DV, hD⟩ :=
-      SA.lock_below_origin_from hac.localRun hac.vstart hy i l hl
+      SA.lock_below_origin hac.localRun hac.vstart hy i l hl
     obtain rfl : C = L := hU.1 hC (sub hL) (hCr.trans hLr.symm)
     have hD' := hD.imp (fun h => ((SA.upTo_resultAt hm).mp h).2)
       (fun h => ((SA.upTo_optimisticLockAt hm).mp h).2)
@@ -76,7 +76,7 @@ theorem clean_source_stored_lock_compatible_at
       exact SA.anc_total hU hBHd hDHd
     cases hf : l.fast
     · obtain ⟨q, hqi, D, hD, L, hL, hLr, hLD⟩ :=
-        SA.slow_lock_provenance_from hac.localRun hac.vstart hy i l hl hf
+        SA.slow_lock_provenance hac.localRun hac.vstart hy i l hl hf
       obtain rfl : C = L := hU.1 hC (sub hL) (hCr.trans hLr.symm)
       obtain ⟨ell, R, hu, hconf, hdeep⟩ := hD
       obtain ⟨hqt, hu⟩ := (SA.upTo_updateAt hm).mp hu

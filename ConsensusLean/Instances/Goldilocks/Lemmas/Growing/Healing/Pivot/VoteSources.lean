@@ -71,7 +71,7 @@ theorem vote_old_lock_source_before_at
           X.root = l₀.block ∧ Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) X D := by
     cases hf : l₀.fast with
     | false =>
-      obtain ⟨r, hrj, D, hslow, hX⟩ := SA.slow_lock_provenance_from hr hp.run.vstart hy j l₀ hl₀ hf
+      obtain ⟨r, hrj, D, hslow, hX⟩ := SA.slow_lock_provenance hr hp.run.vstart hy j l₀ hl₀ hf
       exact ⟨r, hrj, D, Or.inr hslow, hX⟩
     | true =>
       obtain ⟨r, hrj, D, CV, hfast, hX⟩ :=

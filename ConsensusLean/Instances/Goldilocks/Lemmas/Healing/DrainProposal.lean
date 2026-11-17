@@ -203,7 +203,8 @@ private theorem proposer_high_locks
   have hσ : sp.ts (σ + 1 : Nat) = sp.ts σ + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   refine SA.highLocksCompatible_iff.2 fun l hl _ hlσ X hX hXr => ?_
-  obtain ⟨L, hL, hLr, O, hLO, k', hk', CV, hO⟩ := SA.lock_below_origin hr hpH kP l hl
+  obtain ⟨L, hL, hLr, O, hLO, k', hk', CV, hO⟩ := SA.lock_below_origin hr
+      (fun _ => SA.voteStart_initial _) hpH kP l hl
   obtain rfl : X = L := hU.1 hX hL (hXr.trans hLr.symm)
   have hO' : Compatible (tr.HonestBlocks H) O B := by
     rcases hO with ⟨ℓ', ⟨-, -, htk', -⟩, -⟩ | hopt
@@ -373,7 +374,8 @@ theorem proposal_head_of_batch (hrun : GoldilocksRun proposer dg H tr) (hs : HSS
   have hhigh : SA.HighLocksCompatible (tr.HonestBlocks H) (tr.projAC.state p kP) (tr.time kP)
       σ B := by
     refine SA.highLocksCompatible_iff.2 fun l hl _ hlσ X hX hXr => ?_
-    obtain ⟨L, hL, hLr, O, hLO, k', hk', CV, hO⟩ := SA.lock_below_origin hr hpH kP l hl
+    obtain ⟨L, hL, hLr, O, hLO, k', hk', CV, hO⟩ := SA.lock_below_origin hr
+        (fun _ => SA.voteStart_initial _) hpH kP l hl
     obtain rfl : X = L := hU.1 hX hL (hXr.trans hLr.symm)
     have hO' : Compatible (tr.HonestBlocks H) O B := by
       rcases hO with ⟨ℓ', ⟨-, -, htk', -⟩, -⟩ | ⟨ℓo, A, hpt, hsl, hsel, -⟩

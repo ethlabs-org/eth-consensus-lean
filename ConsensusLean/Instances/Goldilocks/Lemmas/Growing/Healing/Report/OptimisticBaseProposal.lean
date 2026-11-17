@@ -289,7 +289,7 @@ theorem optimistic_next_proposal_of_early_witness_at
       (by rw [RunTrace.upTo_projAC]; exact SA.CommitteePAt.upTo hmono hrun.antitone hK.facts.hP _)
       (hK.cs2 (s + 1) (hm.trans (by linarith only [hts, hΔ])) hmb _ ht0 hib) l hl'
     have heq : l.slot = s := by omega
-    obtain ⟨L', hL', hL'r, -⟩ := SA.lock_below_origin_from hr hacP.vstart hy i l hl
+    obtain ⟨L', hL', hL'r, -⟩ := SA.lock_below_origin hr hacP.vstart hy i l hl
     obtain rfl : L = L' := hU.1 hL (subU hL') (hLr.trans hL'r.symm)
     obtain ⟨O, hLO, a', CW, ho⟩ := SA.proposal_high_lock hr hacP.vstart hy hti hl hls hL' hLr
     rw [heq] at ho

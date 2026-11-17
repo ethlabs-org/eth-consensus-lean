@@ -131,7 +131,7 @@ theorem proposal_start_supported_at
         ∃ L ∈ tr.HonestBlocksAt H, L.root = l₁.block ∧ Anc (tr.HonestBlocksAt H) L D := by
     cases hf : l₁.fast with
     | false =>
-      obtain ⟨r, hri, D, hsl, hL⟩ := SA.slow_lock_provenance_from hr hac.vstart hpH i l₁
+      obtain ⟨r, hri, D, hsl, hL⟩ := SA.slow_lock_provenance hr hac.vstart hpH i l₁
         (hstate ▸ hl₁) hf
       obtain ⟨ell, C, hu, hconf, hdeep⟩ := hsl
       have hs₀ := Trace.upTo_state tr.projAC p (fun _ hq =>

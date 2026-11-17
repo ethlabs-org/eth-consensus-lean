@@ -87,7 +87,7 @@ theorem FrameWindow.unanimous_update_no_veto_at {K : SA.CommitteeDict sp.n}
       omega
   cases hfast : l.fast
   · obtain ⟨r, hrk, B, ⟨ellr, C, hup, hC, hB⟩, L₁, hL₁, hL₁r, hLB⟩ :=
-      SA.slow_lock_provenance_from hr hrun.vstart hy k l hl' hfast
+      SA.slow_lock_provenance hr hrun.vstart hy k l hl' hfast
     have hm := hrun.time_mono hrk.le
     have hrt : tr.time r = sp.ts l.slot + 6 * sp.Δ := hup.2.2.1
     have hls : l.slot = u := by

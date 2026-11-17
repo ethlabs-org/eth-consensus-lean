@@ -93,19 +93,12 @@ theorem lock_below_originU
 
 /-- Every stored lock of an honest node sits below an origin of its slot, written at an earlier
 cut: a result or an optimistic confirmation of the node. -/
-theorem lock_below_origin_from {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem lock_below_origin {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state y i).locks, ∃ L ∈ U, L.root = l.block ∧ ∃ O, Anc U L O ∧
       ∃ k < i, ∃ CV, ResultAt tr y k l.slot O CV ∨ OptimisticLockAt tr y k l.slot O CV :=
   lock_below_originU (hr := hr.toU) (hini := hini) (y := y) (hy := hy) (i := i)
-
-/-- `lock_below_origin_from` at the initial starts. -/
-theorem lock_below_origin (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) (i : Nat) :
-    ∀ l ∈ (tr.state y i).locks, ∃ L ∈ U, L.root = l.block ∧ ∃ O, Anc U L O ∧
-      ∃ k < i, ∃ CV, ResultAt tr y k l.slot O CV ∨ OptimisticLockAt tr y k l.slot O CV :=
-  lock_below_origin_from hr (fun _ => SA.voteStart_initial _) hy i
 
 /-- `slow_stored_locks` with the unlock given. -/
 theorem slow_stored_locksU

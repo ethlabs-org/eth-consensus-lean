@@ -559,7 +559,8 @@ theorem h2_drain (hI : InclusionRun tr H U proposer g t₀) {y : Fin sp.n} (hy :
     simp only [SAParams.ts]; push_cast; ring
   have hkΔ : 0 ≤ 4 * sp.Δ * (sp.k : Int) := by positivity
   cases hf : l.fast
-  · obtain ⟨j, -, B, hsl, hLB⟩ := slow_lock_provenance hr hy i l hl hf
+  · obtain ⟨j, -, B, hsl, hLB⟩ := slow_lock_provenance hr
+      (fun _ => voteStart_initial _) hy i l hl hf
     have hw : sp.ts ((l.slot : Int) - sp.k + 1) = sp.ts l.slot - 4 * sp.Δ * (sp.k - 1) := by
       simp only [SAParams.ts]; ring
     have hwin : t₀ + 4 * sp.Δ ≤ sp.ts ((l.slot : Int) - sp.k + 1) := by

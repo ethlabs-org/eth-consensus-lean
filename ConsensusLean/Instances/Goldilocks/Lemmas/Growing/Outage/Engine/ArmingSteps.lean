@@ -364,7 +364,7 @@ theorem cover_gate_veto_above_at
     · exact Or.inr (hVB'.trans (hBO.trans h))
     · exact SA.anc_total hU h (hVB'.trans hBO)
   obtain ⟨L, hL, hLr, O, hLO, k', hk', CV, hO'⟩ :=
-    SA.lock_below_origin_from hacr.localRun hacr.vstart hy c l
+    SA.lock_below_origin hacr.localRun hacr.vstart hy c l
       (by rw [projAC_upTo_state hrun le_rfl, projAC_state_at hrun hy]; exact hl)
   obtain rfl : B₀ = L := (hU.1 (hsub hL) (hHB hB₀) (hLr.trans hB₀r.symm)).symm
   have hLO' := hLO.mono hsub

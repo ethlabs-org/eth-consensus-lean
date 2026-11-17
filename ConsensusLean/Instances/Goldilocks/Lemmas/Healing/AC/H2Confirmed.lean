@@ -76,7 +76,8 @@ theorem h2_locks_compare (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P
       (show gbar g + 4 * sp.Δ ≤ sp.ts p by linarith).trans ((ts_le_iff sp).2 (by omega))
     cases hf : l.fast
     · -- a slow lock: below the result of its update, which has an honest supporter
-      obtain ⟨j, -, D, hsl, L', hL', hL'r, hL'D⟩ := slow_lock_provenance hr hy i l hl hf
+      obtain ⟨j, -, D, hsl, L', hL', hL'r, hL'D⟩ := slow_lock_provenance hr
+          (fun _ => voteStart_initial _) hy i l hl hf
       obtain rfl : L' = L := hU.1 hL' hL (hL'r.trans hLr.symm)
       obtain ⟨ℓX, C, hupd, hconf, hdeep⟩ := hsl
       have hΦXU := (frameIn_of_callAt hr hy hupd.1).2

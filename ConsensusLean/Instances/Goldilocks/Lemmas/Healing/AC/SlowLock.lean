@@ -60,18 +60,11 @@ theorem slow_lock_provenanceU
 every lock that is not fast and that an honest node holds before cut `i` sits below (inside `U`)
 the block of a slow lock of its slot that the node wrote at an earlier cut. From starts up to the
 vote permission. -/
-theorem slow_lock_provenance_from {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem slow_lock_provenance {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n} (hx : x ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state x i).locks, l.fast = false →
       ∃ j < i, ∃ B, SlowLockAt tr x j l.slot B ∧ ∃ L ∈ U, L.root = l.block ∧ Anc U L B :=
   slow_lock_provenanceU (hr := hr.toU) hini rfl (x := x) (hx := hx) (i := i)
-
-/-- `slow_lock_provenance_from` at the initial starts. -/
-theorem slow_lock_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
-    (hx : x ∈ H) (i : Nat) :
-    ∀ l ∈ (tr.state x i).locks, l.fast = false →
-      ∃ j < i, ∃ B, SlowLockAt tr x j l.slot B ∧ ∃ L ∈ U, L.root = l.block ∧ Anc U L B :=
-  slow_lock_provenance_from hr (fun _ => voteStart_initial _) hx i
 
 end Consensus.Goldilocks.SA
 

@@ -100,7 +100,8 @@ theorem ResetPremisesUpTo.call_locks_compatible_of_unanimous {b : Time}
       ∃ X ∈ tr.HonestBlocks H, X.root = l.block ∧ Anc (tr.HonestBlocks H) X D := by
     cases hf : l.fast with
     | false =>
-      obtain ⟨r, hrj, D, hs, hX⟩ := SA.slow_lock_provenance hr hy j l hl hf
+      obtain ⟨r, hrj, D, hs, hX⟩ := SA.slow_lock_provenance hr
+          (fun _ => SA.voteStart_initial _) hy j l hl hf
       exact ⟨r, hrj, D, Or.inr hs, hX⟩
     | true =>
       obtain ⟨r, hrj, D, CV, hf, hX⟩ := SA.fast_lock_provenance hr

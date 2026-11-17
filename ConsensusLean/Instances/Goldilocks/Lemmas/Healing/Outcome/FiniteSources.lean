@@ -229,7 +229,8 @@ theorem ResetPremisesUpTo.slow_stored_locks
       ∀ Y ∈ tr.HonestBlocks H, Y.root = l.block → Compatible (tr.HonestBlocks H) Y D := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   intro l hl hlive hle Y hY hYr
-  obtain ⟨L, hL, hLr, O, hLO, k, hki, CV, hO⟩ := SA.lock_below_origin hr hy i l hl
+  obtain ⟨L, hL, hLr, O, hLO, k, hki, CV, hO⟩ := SA.lock_below_origin hr
+      (fun _ => SA.voteStart_initial _) hy i l hl
   obtain rfl : Y = L := hr.coherent.1 hY hL (hYr.trans hLr.symm)
   obtain ⟨q, R, RV, hR, hDR⟩ := SA.slow_window_results hr
     (fun _ => SA.voteStart_initial _) hx hsl l.slot (by omega) hle

@@ -44,7 +44,7 @@ theorem clean_stored_locks_compatible_at {cm : Time → Finset (Fin sp.n)} {βK 
             SA.OptimisticLockAt tr.projAC y r m.slot E CV := by
     intro m hm
     obtain ⟨M, hM, hMr, E, hME, r, hri, CV, hE⟩ :=
-      SA.lock_below_origin_from hac.localRun hac.vstart hy i m (state ▸ hm)
+      SA.lock_below_origin hac.localRun hac.vstart hy i m (state ▸ hm)
     exact ⟨M, sub hM, hMr, E, hME.mono sub, r, hri, CV,
       hE.imp (fun h => ((SA.upTo_resultAt htmono).mp h).2)
         (fun h => ((SA.upTo_optimisticLockAt htmono).mp h).2)⟩
@@ -61,7 +61,7 @@ theorem clean_stored_locks_compatible_at {cm : Time → Finset (Fin sp.n)} {βK 
         ∃ L ∈ tr.HonestBlocksAt H, L.root = l.block ∧ Anc (tr.HonestBlocksAt H) L D := by
       cases hf : l.fast
       · obtain ⟨q, hqi, D, ⟨ell, R, hu, hconf, hdeep⟩, L, hL, hLr, hLD⟩ :=
-          SA.slow_lock_provenance_from hac.localRun hac.vstart hy i l (state ▸ hl) hf
+          SA.slow_lock_provenance hac.localRun hac.vstart hy i l (state ▸ hl) hf
         obtain ⟨hqt, hu⟩ := (SA.upTo_updateAt htmono).mp hu
         have hstate := Trace.upTo_state tr.projAC y (d := t) (i := q)
           fun _ hk => (htmono hk.le).trans hqt
