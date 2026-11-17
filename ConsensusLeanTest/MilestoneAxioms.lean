@@ -131,16 +131,7 @@ theorem Consensus.Goldilocks.Regimes.nonFraming : Consensus.Goldilocks.Regimes.N
 theorem Consensus.Goldilocks.Regimes.finalizedSafe : Consensus.Goldilocks.Regimes.FinalizedSafe :=
   Consensus.Goldilocks.Regimes.finalized_safe
 
-/-! Goldilocks Regimes: the sleepy rows (R.1, R.2; `Statements/Regimes/Sleepy`). -/
-
-/-- Goldilocks Regimes: `SleepySafe`. -/
-theorem Consensus.Goldilocks.Regimes.sleepySafe : Consensus.Goldilocks.Regimes.SleepySafe :=
-  Consensus.Goldilocks.Regimes.sleepy_safe
-
-
-/-- Goldilocks Regimes: `IncludeSleepy`. -/
-theorem Consensus.Goldilocks.Regimes.includeSleepy : Consensus.Goldilocks.Regimes.IncludeSleepy :=
-  Consensus.Goldilocks.Regimes.include_sleepy
+/-! Goldilocks Regimes: sleepy strict growth (R.2; `Statements/Regimes/Sleepy`). -/
 
 /-- Goldilocks Regimes: `GrowSleepy`. -/
 theorem Consensus.Goldilocks.Regimes.growSleepy : Consensus.Goldilocks.Regimes.GrowSleepy :=
@@ -266,12 +257,6 @@ theorem Consensus.Goldilocks.Healing.finalizingCoverage :
 
 /-- info: 'Consensus.Goldilocks.Regimes.finalizedSafe' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Regimes.finalizedSafe
-
-/-- info: 'Consensus.Goldilocks.Regimes.sleepySafe' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.sleepySafe
-
-/-- info: 'Consensus.Goldilocks.Regimes.includeSleepy' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.includeSleepy
 
 /-- info: 'Consensus.Goldilocks.Regimes.growSleepy' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Regimes.growSleepy

@@ -10,10 +10,8 @@ Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"L2: regime theo
 Goldilocks run (`GoldilocksRun`, `Compose.NoCollRun`) under `Sleepy` (`SleepyRun`: `Sync[0, ∞)` and
 `f < h_t` at the slot points):
 
-* **R.1** (`sleepySafe`, `confirmed_safe_sleepy`; uses A1.2–A1.4, A1.6, C1.1, F.4): safety of
-  the confirmed output: the confirmed reads of two honest nodes, at any cuts and times, are
-  compatible (the claims ask this of ready readers only), and a node's confirmed reads at two
-  read points between its events where it is ready only extend (`SleepySafe`). The prefix form
+* **R.1** (`sleepySafe`, `confirmed_safe_sleepy`): retired as a milestone statement; the
+  obligations proof reads its finite form (`Regimes.sleepy_safe_before`). The prefix form
   `confirmed_safe_sleepy_prefix` has no node-level row: it is the generic prefix result of a good
   protocol, which the family gets through its acceptance.
 * **R.2** (`sleepyLive`, `includeSleepy`, `growSleepy`, `confirmed_txLive_sleepy`; uses A1.7,
@@ -86,22 +84,6 @@ def ProposerRecurrence (proposer : Nat → Fin sp.n) (c : Time) (k : Nat) (a b :
     ∃ s, s₀ ≤ s ∧ s < s₀ + k ∧ ReadyAt tr H c (proposer s) (sp.ts s)
 
 end Defs
-
-/-- **R.1, `sleepySafe` / `confirmed_safe_sleepy`.** Under `Sleepy`, with the full committee
-(`committeeSize = n`), safety of the confirmed output: agreement, any two confirmed reads of honest
-nodes (at any cuts and times) are compatible; and monotonicity, a node's reads at two read points
-between its events (`Boundary`), in cut order, where it is ready (catch-up `18Δ`), only extend. -/
-def SleepySafe : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time),
-    sp.committeeSize = sp.n →
-    GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr → tr.SleepyRun H ΔF →
-    (∀ y ∈ H, ∀ z ∈ H, ∀ i j t t',
-      Compatible (tr.HonestBlocks H) (readAfter tr y i t) (readAfter tr z j t')) ∧
-    ∀ y i j t t', ReadPoint tr i t → ReadPoint tr j t' → Boundary tr y i → Boundary tr y j →
-      i ≤ j → ReadyAt tr H (catchUp sp) y t → ReadyAt tr H (catchUp sp) y t' →
-      Anc (tr.HonestBlocks H) (readAfter tr y i t) (readAfter tr y j t')
 
 /-- **R.2, `includeSleepy`.** Under `Sleepy`, with the full committee (`committeeSize = n`), every
 honest proposal released at `τ` by a proposer ready at `τ` is in the confirmed read of every node

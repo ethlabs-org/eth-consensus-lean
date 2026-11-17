@@ -15,23 +15,22 @@ public section
 
 /-! # Goldilocks under `Sleepy`: the ready read and the effective record (R.1)
 
-The two node-local facts R.1 (`Regimes.SleepySafe`) reads of the Sleepy invariant:
+Two node-local facts of the Sleepy invariant up to a horizon `b`, which R.1's finite form and
+R.2 read:
 
-* **The ready read is the effective record** (`ready_read_record`): at a read point `(j, t)` of an
-  honest node ready at `t` (awake on `[t − 18Δ − 1, t]`, hence joined at `t`, F.4), the confirmed
-  read `ac_confirmed` at `t` is the record's block when the frame holds it, and `Σ.F` otherwise.
-  When the frame holds the record's block `R`, the head at `t` extends `R` (`read_head_support`,
-  the served head of `Served` read at `t` instead of at a cut's own time, then `SA.anc_acHead`),
-  so the deepest common ancestor of `R` and the head is `R` (`SA.acConfirmed_eq`); otherwise the
-  lookup fails and it is `Σ.F` (`SA.acConfirmed_eq_F`).
-* **The effective record only extends** (`effective_record_mono`): the effective record (the
-  record's block if the frame holds it, else `Σ.F`) is the later of the record's block and `Σ.F`,
-  which are compatible (both on the origin chain), since a record's block at or above `Σ.F` is in
-  the frame; both move to descendants at every cut (`record_step`, `fg_grows`).
+* **The ready read is the effective record** (`ready_read_record_before`): at a read point `(j, t)`
+  of an honest node ready at `t` (awake on `[t − 18Δ − 1, t]`, hence joined at `t`, F.4), the
+  confirmed read `ac_confirmed` at `t` is the record's block when the frame holds it, and `Σ.F`
+  otherwise. When the frame holds the record's block `R`, the head at `t` extends `R`
+  (`read_head_support_before`, the served head of `Served` read at `t` instead of at a cut's own
+  time, then `SA.anc_acHead`), so the deepest common ancestor of `R` and the head is `R`
+  (`SA.acConfirmed_eq`); otherwise the lookup fails and it is `Σ.F` (`SA.acConfirmed_eq_F`).
+* **The effective record only extends** (`effective_record_mono_of_invariant`): the effective record
+  (the record's block if the frame holds it, else `Σ.F`) is the later of the record's block and
+  `Σ.F`, which are compatible (both on the origin chain), since a record's block at or above `Σ.F`
+  is in the frame; both move to descendants at every cut (`record_step_upTo`, `fg_grows`).
 
-Both hold up to a horizon `b` under the send-window prefix premises `SleepyPrefix`
-(`ready_read_record_upTo`, `effective_record_mono_upTo`), for read points at times `≤ b` and cuts
-within `b`, from `SleepyInvariantUpTo`. -/
+Both are for read points at times `≤ b` and cuts within `b`, from `SleepyInvariantUpTo`. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -40,33 +39,6 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
-
-/-- **The ready read is the effective record.** At a read point `(j, t)` between two events of an
-honest node `y` ready at `t`: when the frame holds the block `R` named by the record,
-`readAfter y j t = R`; otherwise it is `Σ.F`. (The proof does not use the boundary: the served
-head holds at every cut, also inside an event.) -/
-theorem ready_read_record (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} {j : Nat} {t : Time}
-    (hrp : Regimes.ReadPoint tr j t) (_hb : Regimes.Boundary tr y j)
-    (hready : Regimes.ReadyAt tr H (Regimes.catchUp sp) y t) (hstock : sp.committeeSize = sp.n) :
-    (∃ R ∈ (Node.frame (tr.state y j)).tree,
-        R.root = (tr.state y j).ac.latestConfirmed ∧ Regimes.readAfter tr y j t = R) ∨
-      ((¬ ∃ R ∈ (Node.frame (tr.state y j)).tree,
-          R.root = (tr.state y j).ac.latestConfirmed) ∧
-        Regimes.readAfter tr y j t = (tr.state y j).fg.F) := by
-  have hy : y ∈ H := hready.1
-  have hΦ : FrameOK (Node.frame (tr.state y j)) :=
-    (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy j)).1
-  by_cases hin : ∃ R ∈ (Node.frame (tr.state y j)).tree,
-      R.root = (tr.state y j).ac.latestConfirmed
-  · obtain ⟨R, hR, hRr⟩ := hin
-    have hwj : 0 ≤ t → tr.awake y t ∧ tr.JoinedAt y t := fun ht0 =>
-      ready_implies_joined sp ro dg H tr proposer hrun y hy t (Regimes.catchUp sp) ht0
-        (by simp only [Regimes.catchUp]; linarith [sp.toParams.hΔ]) hready.2
-    obtain ⟨hc, hs⟩ := read_head_support (sleepy_invariant hrun hnc hsl hstock) hrun hnc hsl hy
-      hrp.1 hrp.2 hwj ⟨hR, hRr⟩
-    exact Or.inl ⟨R, hR, hRr, SA.acConfirmed_eq hΦ hR hRr (SA.anc_acHead hΦ hR hc hs)⟩
-  · exact Or.inr ⟨hin, SA.acConfirmed_eq_F hΦ fun ⟨R, hR, hr⟩ => hin ⟨R, hR, hr⟩⟩
 
 /-- **The ready read up to `b` is the effective record.** Under the prefix premises up to `b`, at
 a read point `(j, t)` with `t ≤ b` of an honest node `y` ready at `t`: when the frame holds the
@@ -166,32 +138,6 @@ theorem effective_record_mono_of_invariant {b : Time} (hrun : GoldilocksRun prop
     · exact hCE.trans hCF
     · exact hF.trans hFC
     · exact hF
-
-/-- The sender-window specialization of effective-record monotonicity. -/
-theorem effective_record_mono_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hpre : SleepyPrefix tr H ΔF b) {y : Fin sp.n} (hy : y ∈ H)
-    {i j : Nat} (hij : i ≤ j) (hj : ∀ k < j, tr.time k ≤ b) (hstock : sp.committeeSize = sp.n) :
-    Anc (tr.HonestBlocks H)
-      ((SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
-        (Node.frame (tr.state y i)).F)
-      ((SA.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed).getD
-        (Node.frame (tr.state y j)).F) :=
-  effective_record_mono_of_invariant hrun hnc (sleepy_invariant_upTo hrun hnc hpre hstock) hy
-    hij hj
-
-/-- **The effective record only extends**: the effective record of an honest node (the block of
-its record when its frame holds it, else its `Σ.F`) at a later cut extends the one at an earlier
-cut (inside the honest blocks). -/
-theorem effective_record_mono (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {i j : Nat} (hij : i ≤ j)
-    (hstock : sp.committeeSize = sp.n) :
-    Anc (tr.HonestBlocks H)
-      ((SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
-        (Node.frame (tr.state y i)).F)
-      ((SA.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed).getD
-        (Node.frame (tr.state y j)).F) :=
-  have ⟨_, hb, hj⟩ := exists_horizon hrun j
-  effective_record_mono_upTo hrun hnc (hsl.prefix hb) hy hij hj hstock
 
 end Consensus.Goldilocks.Compose
 

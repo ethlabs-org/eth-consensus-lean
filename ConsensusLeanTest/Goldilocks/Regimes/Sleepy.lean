@@ -3,22 +3,20 @@ public import ConsensusLeanTest.Goldilocks.Persist.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 @[expose] public section
 
-/-! # The one-validator tick run meets the premises of the sleepy rows R.1 and R.2
+/-! # The one-validator tick run meets the premises of the sleepy row R.2
 
 On the one-validator tick run of `Goldilocks/Runs/OneValidator/Premises` (`n = 1`, `Δ = 1`,
 `t_s = 4s`, a tick at every time `t ≥ 0`, cut `i` at time `⌊i/8⌋`, no restart), with `Δ_F = 1` and
 catch-up `c = 18Δ`:
 
-* (a) `tickRun_readyAt`, `tickRun_readPoint`, `tickRun_cutAfter`, `tickRun_readyProposalAt`: the
-  validator is ready at every time; `(8t, t)` is a read point between its events and `8(t + 1)`
-  is the first cut after `t`, for every `t ∈ ℕ`; the own block `blk s` of slot `s ≥ 1` is a ready
-  proposal released at `t_s` (cut `8·t_s + 2`).
-* (a) `sleepySafe_premises`, `includeSleepy_premises`, `growSleepy_premises`: the premises of
-  `SleepySafe`, `IncludeSleepy` and `GrowSleepy` (at `k = 1`, `ProposerRecurrence … 1 0 (t + 10Δ)`)
-  hold together, with ready readers at these read points and cuts.
-* (b) `tickRun_sleepySafe`: `sleepy_safe` at the reads `(8t, t)` and `(8t', t')`: compatible, and
-  the earlier one an ancestor of the later one.
-  `tickRun_includeSleepy`: `include_sleepy` puts `blk s` in the read after every `t ≥ t_s + 6Δ`.
+* (a) `tickRun_readyAt`, `tickRun_cutAfter`, `tickRun_readyProposalAt`: the validator is ready
+  at every time; `8(t + 1)` is the first cut after `t`, for every `t ∈ ℕ`; the own block `blk s`
+  of slot `s ≥ 1` is a ready proposal released at `t_s` (cut `8·t_s + 2`).
+* (a) `includeSleepy_premises`, `growSleepy_premises`: the premises of `IncludeSleepy` and
+  `GrowSleepy` (at `k = 1`, `ProposerRecurrence … 1 0 (t + 10Δ)`) hold together, with ready
+  readers at these cuts.
+* (b) `tickRun_includeSleepy`: `include_sleepy` puts `blk s` in the read after every
+  `t ≥ t_s + 6Δ`.
   `tickRun_growSleepy`: `grow_sleepy` at `k = 1` yields a ready proposal `P` released after `t`
   that is in the read after `t + 10Δ` (cut `8(t + 11)`) and not in the read after `t` (cut
   `8(t + 1)`), the earlier read an ancestor of the later one.
@@ -35,15 +33,6 @@ open SA Node ChainFrame
 theorem tickRun_readyAt (c t : Time) (y : Fin sp1.n) :
     Regimes.ReadyAt (tickRun N1 dg1) Set.univ c y t :=
   ⟨Set.mem_univ _, fun _ h _ => (le_max_left _ _).trans h⟩
-
-/-- `(8t, t)` is a read point (the state before the tick of `t`) between the validator's events. -/
-theorem tickRun_readPoint (t : Nat) :
-    Regimes.ReadPoint (tickRun N1 dg1) (8 * t) (t : Time) ∧
-      Regimes.Boundary (tickRun N1 dg1) v0 (8 * t) := by
-  refine ⟨⟨fun k hk => ?_, ?_⟩, fun _ => ?_⟩
-  · change ((k / 8 : Nat) : Int) ≤ (t : Int); omega
-  · change (t : Int) ≤ ((8 * t / 8 : Nat) : Int); omega
-  · change 8 * t % 8 = 0; omega
 
 /-- Cut `8(t + 1)` is the first cut after the time `t`. -/
 theorem tickRun_cutAfter (t : Nat) : Regimes.CutAfter (tickRun N1 dg1) (8 * (t + 1)) (t : Time) :=
@@ -64,21 +53,6 @@ theorem tickRun_readyProposalAt (c : Time) (s : Nat) (hs : 1 ≤ s) :
   omega
 
 /-! ## The premise bundles -/
-
-/-- (a) **The premises of `SleepySafe`**: a Goldilocks run with `NoColl` and `Sleepy`, and the
-validator ready at the read points `(8t, t)`, `(8t', t')` between its events. -/
-theorem sleepySafe_premises (t t' : Nat) :
-    GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
-      Compose.NoCollRun dg1 (tickRun N1 dg1) ∧ (tickRun N1 dg1).SleepyRun Set.univ 1 ∧
-      Regimes.ReadPoint (tickRun N1 dg1) (8 * t) (t : Time) ∧
-      Regimes.ReadPoint (tickRun N1 dg1) (8 * t') (t' : Time) ∧
-      Regimes.Boundary (tickRun N1 dg1) v0 (8 * t) ∧
-      Regimes.Boundary (tickRun N1 dg1) v0 (8 * t') ∧
-      Regimes.ReadyAt (tickRun N1 dg1) Set.univ (Regimes.catchUp sp1) v0 t ∧
-      Regimes.ReadyAt (tickRun N1 dg1) Set.univ (Regimes.catchUp sp1) v0 t' :=
-  ⟨tickRun_goldilocksRun, dg1_noColl _, tickRun_sleepy, (tickRun_readPoint t).1,
-    (tickRun_readPoint t').1, (tickRun_readPoint t).2, (tickRun_readPoint t').2,
-    tickRun_readyAt _ _ _, tickRun_readyAt _ _ _⟩
 
 /-- (a) **The premises of `IncludeSleepy`**: a Goldilocks run with `NoColl` and `Sleepy`, the ready
 proposal `blk s` released at `t_s` (`s ≥ 1`), and for `t ≥ t_s + 6Δ` the validator ready at `t`
@@ -121,21 +95,6 @@ theorem growSleepy_premises (t : Nat) :
     at h
 
 /-! ## The sleepy rows applied -/
-
-/-- (b) **R.1 on the tick run** (`sleepy_safe`): the validator's reads at the read points
-`(8t, t)` and `(8t', t')` are compatible, and the earlier one is an ancestor of the later one. -/
-theorem tickRun_sleepySafe (t t' : Nat) :
-    Compatible ((tickRun N1 dg1).HonestBlocks Set.univ)
-        (Regimes.readAfter (tickRun N1 dg1) v0 (8 * t) t)
-        (Regimes.readAfter (tickRun N1 dg1) v0 (8 * t') t') ∧
-      (t ≤ t' → Anc ((tickRun N1 dg1).HonestBlocks Set.univ)
-        (Regimes.readAfter (tickRun N1 dg1) v0 (8 * t) t)
-        (Regimes.readAfter (tickRun N1 dg1) v0 (8 * t') t')) := by
-  obtain ⟨hrun, hnc, hsl, hi, hj, hbi, hbj, hy, hy'⟩ := sleepySafe_premises t t'
-  have h := Regimes.sleepy_safe sp1 ro1 dg1 Set.univ (tickRun N1 dg1) (fun _ => v0) 1 rfl hrun
-    hnc hsl
-  refine ⟨h.1 v0 (Set.mem_univ _) v0 (Set.mem_univ _) _ _ _ _, fun htt => ?_⟩
-  exact h.2 v0 _ _ _ _ hi hj hbi hbj (by omega) hy hy'
 
 /-- (b) **R.2 inclusion on the tick run** (`include_sleepy`): the own block of slot `s ≥ 1` is in
 the validator's read after every time `t ≥ t_s + 6Δ`. -/

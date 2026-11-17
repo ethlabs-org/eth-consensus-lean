@@ -64,22 +64,6 @@ def ProposerRecurrence (proposer : Nat → Fin sp.n) (c : Time) (k : Nat) (h a b
 
 end Defs
 
-/-- **R.1 under growing faults.** Under `Sleepy` with look-ahead `ahead`: any two confirmed reads
-of nodes honest at their reads are compatible; and a node's reads at two read points between its
-events, in cut order, where it is ready, only extend. -/
-def SleepySafe : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time),
-    sp.committeeSize = sp.n →
-    Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
-    tr.SleepyRunAt H ΔF (ahead sp) →
-    (∀ y z i j t t', y ∈ H (max t (tr.time i)) → z ∈ H (max t' (tr.time j)) →
-      Compatible (tr.HonestBlocksAt H) (readAfter tr y i t) (readAfter tr z j t')) ∧
-    ∀ y i j t t', ReadPoint tr i t → ReadPoint tr j t' → Boundary tr y i → Boundary tr y j →
-      i ≤ j → ReadyAt tr H (catchUp sp) y t → ReadyAt tr H (catchUp sp) y t' →
-      Anc (tr.HonestBlocksAt H) (readAfter tr y i t) (readAfter tr y j t')
-
 /-- **R.2, inclusion, under growing faults.** Under `Sleepy` with look-ahead `ahead`, every honest
 proposal released at `τ` by a proposer ready at `τ` and still honest at `τ + hold` is in the
 confirmed read of every node ready at `t`, for every `t ≥ τ + 6Δ`. -/

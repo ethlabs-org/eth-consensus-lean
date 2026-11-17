@@ -299,28 +299,6 @@ theorem two_faults_lt_of_sleepy (hsl : tr.SleepyRun H ΔF) : 2 * Hᶜ.ncard < sp
   unfold RunTrace.FaultBound at h
   omega
 
-/-- Under `Sleepy`, more than `f` honest validators are awake and joined at `t_s + Δ`. -/
-theorem faults_lt_awake_joined (hsl : tr.SleepyRun H ΔF) (s : Nat) :
-    Hᶜ.ncard <
-      {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)}.ncard := by
-  have h := (hsl.2 s).2.1
-  have hT : sp.toParams.slotTime s + sp.toParams.Δ = sp.ts s + sp.Δ := by
-    rw [sp.slotTime_eq]; simp only [SAParams.ts]
-  unfold RunTrace.FaultBound RunTrace.honestAwakeJoined at h
-  rwa [hT] at h
-
-/-- Under `Sleepy`, `Sync` from any `a ≥ 0` holds of the AC projection. -/
-theorem syncAC_of_sleepy (hrun : GoldilocksRun proposer dg H tr) (hsl : tr.SleepyRun H ΔF)
-    {a b : Time} (ha : 0 ≤ a) :
-    SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) a b tr.projAC :=
-  sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr proposer ΔF a b
-    hrun.toLocalRun (show tr.SyncOn H ΔF (fun τ => a ≤ τ ∧ τ ≤ b) (fun τ => a ≤ τ ∧ τ ≤ b) id from
-      ⟨hsl.1.deltaF, hsl.1.delta_le,
-        fun x hx i m hm hw => hsl.1.message x hx i m hm (ha.trans hw.1),
-        fun x hx i B hB hw => hsl.1.block x hx i B hB (ha.trans hw.1),
-        fun x hx i B hB hw => hsl.1.relay x hx i B hB (ha.trans hw.1),
-        fun x hx i a' h hw => hsl.1.attestation x hx i a' h (ha.trans hw.1)⟩)
-
 variable {b : Time} {s₀ : Nat}
 
 /-- On the window from slot `s₀` to `b`, `f < n/2` (`f < h_{t_{s₀}}`). -/

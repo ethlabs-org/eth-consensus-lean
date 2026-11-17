@@ -48,14 +48,6 @@ end Regimes
 
 open Regimes
 
-/-- The growing-fault R.1 implies the static R.1. -/
-theorem sleepySafe_of_growing (h : Regimes.Growing.SleepySafe) : SleepySafe := by
-  intro sp ro dg H tr proposer ΔF hstock hrun hnc hsl
-  have hg := h sp ro dg (fun _ => H) tr proposer ΔF hstock
-    (Growing.GoldilocksRun.const_iff.mpr hrun) hnc ((RunTrace.sleepyRunAt_const tr _).mpr hsl)
-  rw [RunTrace.honestBlocksAt_const] at hg
-  exact ⟨fun y hy z hz i j t t' => hg.1 y z i j t t' hy hz, hg.2⟩
-
 /-- The growing-fault R.2 inclusion implies the static one. -/
 theorem includeSleepy_of_growing (h : Regimes.Growing.IncludeSleepy) : IncludeSleepy := by
   intro sp ro dg H tr proposer ΔF hstock hrun hnc hsl τ P hP y t j ht hy hj

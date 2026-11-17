@@ -5,19 +5,20 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Read
 
 public section
 
-/-! # Goldilocks milestone Regimes: R.1 under `Sleepy`
+/-! # Goldilocks Regimes: R.1's reads under `Sleepy`
 
 Under `Sleepy` (and `NoColl`), every confirmed read of an honest node, at the state before any cut
 and at any time, is an honest block on the origin chain (`confirmed_read_on_chain` with the
 Sleepy invariant), and blocks on the origin chain are compatible. So any two honest confirmed
-reads are compatible (`sleepy_reads_compatible`), the agreement half of `SleepySafe`. At a ready
-read point the read is the effective record (the record's block, or `Σ.F` when the record is not
-in the frame; `ready_read_record`), which only moves to descendants (`effective_record_mono`): the
-monotone half (`sleepy_ready_mono`). Together, `sleepy_safe : SleepySafe`.
+reads are compatible (`sleepy_reads_compatible`), R.1's agreement half; R.2's growth reads it.
+The R.1 milestone statement is retired.
 
-Up to a horizon `b`, `sleepy_safe_before` gives the two halves for ready readers at read points
-of times in `[0, b]` (`ReadySafeOn`) under `SleepyServiceBefore b` (the route of the finite
-obligations form `sleepy_safe_finite`). There is no node-level prefix
+Up to a horizon `b`, `sleepy_safe_before` gives agreement and monotonicity for ready readers at
+read points of times in `[0, b]` (`ReadySafeOn`) under `SleepyServiceBefore b` (the route of the
+finite obligations form `sleepy_safe_finite`): at a ready read point the read is the effective
+record (the record's block, or `Σ.F` when the record is not in the frame;
+`ready_read_record_before`), which only moves to descendants
+(`effective_record_mono_of_invariant`). There is no node-level prefix
 row: the prefix claim is the generic `CorrectProtocol.sleepySafe_prefix`. -/
 
 namespace Consensus.Goldilocks.Regimes
@@ -75,7 +76,7 @@ private theorem lookup_getD_of_not {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {r : 
     exact absurd ⟨R', hR', hr'⟩ hn
 
 /-- The confirmed read is the effective record (the record's block when it is in the frame, else
-`Σ.F`) when it is one of the two (`ready_read_record`'s conclusion). -/
+`Σ.F`) when it is one of the two (`ready_read_record_before`'s conclusion). -/
 private theorem read_effective_of (hrun : GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {t : Time}
     (h : (∃ R ∈ (Node.frame (tr.state y j)).tree,
@@ -91,31 +92,6 @@ private theorem read_effective_of (hrun : GoldilocksRun proposer dg H tr)
   · rw [h, lookup_getD_of_mem hΦ hR hRr]
   · rw [h, lookup_getD_of_not hn]
     rfl
-
-/-- At a ready read point (between the reader's events), the confirmed read is the effective
-record: the record's block when it is in the frame, else `Σ.F`. -/
-theorem ready_read_effective (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} {j : Nat} {t : Time} (hrp : ReadPoint tr j t)
-    (hb : Boundary tr y j) (hready : ReadyAt tr H (catchUp sp) y t)
-    (hstock : sp.committeeSize = sp.n) :
-    readAfter tr y j t = (SA.lookup (Node.frame (tr.state y j))
-      (tr.state y j).ac.latestConfirmed).getD (Node.frame (tr.state y j)).F :=
-  read_effective_of hrun hready.1 (ready_read_record hrun hnc hsl hrp hb hready hstock)
-
-/-- **R.1, the monotone half of `SleepySafe`** under `Sleepy`, catch-up `18Δ`. -/
-theorem sleepy_ready_mono (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) (hstock : sp.committeeSize = sp.n) :
-    ∀ y i j t t', ReadPoint tr i t → ReadPoint tr j t' → Boundary tr y i → Boundary tr y j →
-      i ≤ j → ReadyAt tr H (catchUp sp) y t → ReadyAt tr H (catchUp sp) y t' →
-      Anc (tr.HonestBlocks H) (readAfter tr y i t) (readAfter tr y j t') := by
-  intro y i j t t' hi hj hbi hbj hij hy hy'
-  rw [ready_read_effective hrun hnc hsl hi hbi hy hstock,
-    ready_read_effective hrun hnc hsl hj hbj hy' hstock]
-  exact effective_record_mono hrun hnc hsl hy.1 hij hstock
-
-/-- **R.1, `sleepySafe` / `confirmed_safe_sleepy`.** -/
-theorem sleepy_safe : SleepySafe := fun _ _ _ _ _ _ _ hstock hrun hnc hsl =>
-  ⟨sleepy_reads_compatible hrun hnc hsl hstock, sleepy_ready_mono hrun hnc hsl hstock⟩
 
 /-- R.1 localized to recipient deadlines within the observation horizon. -/
 theorem sleepy_safe_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)

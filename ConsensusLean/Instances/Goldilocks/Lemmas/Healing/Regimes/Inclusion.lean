@@ -17,8 +17,8 @@ public section
 * `later_update_adopts_before` (`Service/Later`): after an
   honest update of any slot `≥ s`, the record or `Σ.F` extends an honest proposal `P` of slot `s` by
   a joined proposer;
-* `ready_read_record` (`Sleepy/Read`, A1.6 at a ready read point): the read of a ready node between
-  its events is the record's block, or `Σ.F` when the record is not in the frame.
+* `ready_read_record_before` (`Sleepy/Read`, A1.6 at a ready read point): the read of a ready node
+  between its events is the record's block, or `Σ.F` when the record is not in the frame.
 
 The claims' A1.7 is not enough by itself: its reader was awake and joined at
 `t_s + 6Δ`, while a ready reader at a later `t` may have slept then and missed the update of slot

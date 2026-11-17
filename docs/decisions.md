@@ -541,12 +541,11 @@ detail in `TRUST.md`.
   `GoldilocksRun`, `Growing.GoldilocksRun`, `SA.ACRun`, `SA.ACRunU`, `SA.ACRunUS` and `SA.Growing.ACRun` state the
   run and trace laws only, for every vote binding, and carry no committee size. A milestone statement proved or
   stated for population-sized committees takes `sp.committeeSize = sp.n` as a premise: the proved
-  `Regimes.SleepySafe`,
   `Regimes.IncludeSleepy`, `Regimes.GrowSleepy`, `Healing.HeightScopedRetention`, `Healing.RunInclusion`,
   `Healing.Growing.HeightScopedRetention` and `Healing.Growing.RunInclusion`; the open growing-fault statements
   over `Growing.GoldilocksRun` (`Compose.Growing.ReadyImpliesJoined`, `Compose.Growing.OutcomeService`,
   `Healing.Growing.PatternRecovery`, `FinalizingCoverage`, `CacheAcceptanceAfterReset`, and
-  `Regimes.Growing.SleepySafe`, `IncludeSleepy`, `GrowSleepy`); the open `SA.Growing.ACHealingStandalone`,
+  `Regimes.Growing.IncludeSleepy`, `GrowSleepy`); the open `SA.Growing.ACHealingStandalone`,
   `SA.Growing.ACHealingStandaloneCorollary` and `SA.Growing.ACInclusion` over `SA.Growing.ACRun`; and the five
   `SA.*All` healing statements. The premise bundle `PersistPremises` and the premise
   bundles of the healing statements (`HealthyBaseU` in `Milestones/Statements/Healing/ACU` and `HSShared` in

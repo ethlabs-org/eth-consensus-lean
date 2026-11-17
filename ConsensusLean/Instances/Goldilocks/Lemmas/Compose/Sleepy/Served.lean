@@ -46,14 +46,14 @@ From the Sleepy invariant (whole-run or up to `b`):
   how the record was last written (`record_writer`: genesis, a result, or an optimistic
   selection whose fast lock every later call keeps while `R` stays viable and the slot at most
   one later).
-* **The head at a read** (`read_head_support`, for R.1): the same, for the state before a cut `i`
+* **The head at a read** (for R.1): the same, for the state before a cut `i`
   read at a time `t` with every earlier cut at or before `t` and cut `i` at or after it, the node
   awake and joined at `t`. The votes and heads the latest view at `t` needs arrive before
   `t_l + 2Δ ≤ t`, so at cuts before `i`; when the node's tick at `t` is at a cut `≥ i`, the node
   makes no call before it at `t`, and the read is the one before the tick's cut.
 
-The record step and the head at a read hold up to a horizon `b` too (`record_step_upTo`,
-`read_head_support_upTo`), from `SleepyInvariantUpTo` under the prefix premises up to `b`: a read
+The record step and the head at a read hold up to a horizon `b` (`record_step_upTo`,
+`read_head_support_before`), from `SleepyInvariantUpTo` under the prefix premises up to `b`: a read
 at `t ≤ b` needs `Sync` for the sends up to `t − Δ` and `f < h_t` at `t_l + Δ ≤ t`.
 
 The chain-generic steps are in `Compose/Sleepy/ServedSteps`, imported privately, which the
@@ -85,33 +85,6 @@ theorem record_step_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     ⟨C, hC, hCr, onOriginChainWithin_iff.2 (hgo.imp_right fun ⟨s, hs⟩ => ⟨C, s, hs, .refl⟩)⟩
     (hinv.caches y hy i hi').1 fun C s CV hO => onOriginChainWithin_iff.2 (Or.inr
       ⟨C, s, originWithin_iff.2 ⟨y, hy, i, CV, hi i le_rfl, hO⟩, .refl⟩)
-
-private abbrev ReadInv (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
-    (Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop)
-    (O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop) (y : Fin sp.n) (i : Nat) (t : Time) :=
-  ReadInvWith tr H Ch O y i t
-    (SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) 0 (t - sp.Δ) tr.projAC)
-
-private theorem ReadInv.service {Ch O y i t} (h : ReadInv tr H Ch O y i t) :
-    ReadInvWith tr H Ch O y i t (ReadSyncOrService tr H t) :=
-  { h with sync := Or.inl h.sync }
-
-/-- `ReadInv` from the full invariant under `Sleepy`. -/
-private theorem ReadInv.of_full (hinv : SleepyInvariant tr H)
-    (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
-    (t : Time) : ReadInv tr H (OnOriginChain tr H) (Origin tr H) y i t :=
-  have ⟨C, hC, hCr, hgo⟩ := hinv.record y hy i
-  { compat := fun _ _ hX hY hXc hYc =>
-      OnOriginChain.compatible hrun hnc hinv.origins_compatible hX hY hXc hYc
-    anc := fun _ _ hA hAB h => OnOriginChain.of_anc hrun hnc hA hAB h
-    record := ⟨C, hC, hCr, onOriginChain_iff.2 (hgo.imp_right fun ⟨s, hs⟩ => ⟨C, s, hs, .refl⟩)⟩
-    locks := hinv.locks y hy i
-    caches := hinv.caches y hy i
-    origin := fun _ _ h => h.origin
-    viable := fun m _ C s hO hC => hinv.viable y hy m C s hO hC
-    vote_extends := fun C s hO x hx k _ e hv hs => hinv.vote_extends C s hO x hx k e hv hs
-    sync := syncAC_of_sleepy hrun hsl le_rfl }
 
 private theorem ReadInvWith.of_before {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
@@ -154,34 +127,6 @@ theorem anchor_compatible_of_live_candidates
   have ha : SA.getAnchor sp A Φ t = D := by simp only [SA.getAnchor, hD, Option.getD_some]
   rw [ha]
   exact hcomp D (SA.deepest_mem hD).1
-
-/-- **G1, G2 at a read** (for R.1): the state of an honest node before cut `i`, read at a time
-`t` at or after every cut before `i` and at or before cut `i`, the node awake and joined at `t`
-(when `t ≥ 0`): the anchor at `t` is compatible with the record's block `R`, and `R` is at or
-below it, or viable with a strict majority of the latest view's voters at `t` as supporters. When
-the node's tick at `t` is at a cut `≥ i`, it makes no call in between (the tick is its first event
-at `t`), so the read is the one before the tick's cut. -/
-theorem read_head_support (hinv : SleepyInvariant tr H) (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {t : Time} (hle : ∀ k < i, tr.time k ≤ t) (hti : t ≤ tr.time i)
-    (hwj : 0 ≤ t → tr.awake y t ∧ tr.JoinedAt y t) {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hR : RecordAt tr y i R) :
-    Compatible (Node.frame (tr.state y i)).tree
-        (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R ∧
-      ((Node.frame (tr.state y i)).Anc R
-          (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
-        (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
-          (SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
-              t).1.votes).ncard <
-            2 * (SA.supporters (Node.frame (tr.state y i))
-              (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
-              (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
-              R).ncard)) :=
-  read_head_support_of hrun hnc hy
-    (fun m _ _ => (ReadInv.of_full hinv hrun hnc hsl hy m t).service) hle hti hwj hR
-    fun m _ _ hrd hRm _ hO hjl => latest_majority hrun hnc hy
-      (ReadInv.of_full hinv hrun hnc hsl hy m t).service
-      (fun s _ _ => faults_lt_awake_joined hsl s) hrd hRm.1 hO hjl
 
 /-- G1, G2 with recipient service bounded by the read time, not the next cut's time.
 Only the fault bounds at `t_s + Δ ≤ t` are needed for the latest-view majority. -/
