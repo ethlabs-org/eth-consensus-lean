@@ -453,26 +453,4 @@ theorem publisherExecution_eventTime_eq (i : Nat) :
       ((rho.events[i]?).map Model.Event.time).getD 0 := by
   rfl
 
-/-- OPEN: acceptance queues and drains a wrapper in the same event, including own proposals.
-The installed producer still needs missing-parent exclusion and successful release proofs. -/
-def ForwardAtAcceptance : Prop :=
-  ∀ x ∈ honestKeys S rho, ∀ k B, tr.AcceptAt x k B →
-    ∃ r p, pubExec.actual r ∧ r.origin = x ∧
-      cutMap r.event ≤ k ∧ k < cutMap (r.event + 1) ∧
-      pubExec.eventTime r.event = tr.time k ∧
-      r.object = forwardObj (S.params (pubOf E) hn) x (tr.time k) p B ∧
-      decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =
-        some (x, tr.time k, p, B)
-
-/-- Characterize acceptance completeness without exposing its definition body. -/
-theorem forwardAtAcceptance_iff : ForwardAtAcceptance S rho hn tr cutMap pubExec ↔
-    ∀ x ∈ honestKeys S rho, ∀ k B, tr.AcceptAt x k B →
-      ∃ r p, pubExec.actual r ∧ r.origin = x ∧
-        cutMap r.event ≤ k ∧ k < cutMap (r.event + 1) ∧
-        pubExec.eventTime r.event = tr.time k ∧
-        r.object = forwardObj (S.params (pubOf E) hn) x (tr.time k) p B ∧
-        decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =
-          some (x, tr.time k, p, B) := by
-  rfl
-
 end Consensus.Goldilocks.Simulation

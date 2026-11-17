@@ -1058,44 +1058,6 @@ theorem dutyStep_propose_acceptance_queued {V : Type} [Fintype V] {E : Env V}
     (dutyStep_propose_accepted_release S rho hn v nd s hs hsel hself hslot hst hrel B ha)
     hc ha
 
-/-- At an honest scheduled tick, an accepting proposal cut queues its exact wrapper.
-Coverage and carried-object readiness come from the reachable engine prefix. -/
-theorem tick_proposal_acceptance_queued {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (v : V) (hh : v ∉ rho.faultyAt 0) (i : Nat) (t : Time)
-    (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
-    (hone : (skeleton (pubOf E) S.vote).proposeAt t = [.propose s hs])
-    (ht : t = (S.params (pubOf E) hn).toParams.slotTime s)
-    (B : Blk (S.params (pubOf E) hn))
-    (ha : .fg (.block B true) ∈ (Node.tickStep (runProposer S rho hn) (digestOf S rho)
-      (rho.ownKey v) (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node
-      t (encodeTxs (mempool rho.inbox v t)) .proposal).2) :
-    ∃ p, forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B ∈
-      pendingWrappers (shapeOf S hn
-        (rho.dutyStep v (atProposal S rho v (rho.stateBefore i v) t) (.propose s hs)).1) := by
-  have hsel := poll_selected S rho hv v
-  have hself : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).self =
-      rho.ownKey v := by
-    rw [atProposal_self S rho hn v _ t hsel]
-    simpa only [stateAt_eq] using self_eq_ownKey S rho hn v i
-  have hnow := atProposal_now S rho hn v (rho.stateBefore i v) t hsel
-  have hcover : WrappersCover
-      (propose (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)) s).1 := by
-    have hc : WrappersCover (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)) := by
-      rw [atProposal_eq]
-      exact tick_duty_prefix_wrappersCover S rho hn v i t _
-    unfold propose
-    dsimp only
-    split <;> simpa only [wrappersCover_iff, Node.acProposal] using hc
-  obtain ⟨p, hp⟩ := dutyStep_propose_acceptance_queued S rho hn v _ s hs
-    (selValid_proposer S rho hn hv.selValid s) hself
-    (by rw [hnow, ht]; exact slotOf_slotTime _ s) (hnow.trans ht)
-    (fun hselected par info cs hprop =>
-      proposal_releasable S rho hn hf hv v hh i t he s par info cs hs hone hselected hprop)
-    hcover B (by simpa only [hnow, atProposal_mempool] using ha)
-  exact ⟨p, by simpa only [hself, hnow] using hp⟩
-
 /-- A block acceptance in a tick belongs to the proposal step, not the AC tick or FG update. -/
 theorem tick_acceptance_proposal {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}

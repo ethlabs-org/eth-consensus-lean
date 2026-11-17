@@ -170,10 +170,10 @@ detail in `TRUST.md`.
 - **Finite observation coverage is separate from labelled action coverage.** `Trace.observationHorizon` defaults to
   `none` (the action-only horizon); `InHorizon` also admits a cut reaching a time covered by explicit finite
   metadata. Canonical traces set the engine horizon, clamp wakefulness to `[0, horizon]`, and stutter unlabelled at
-  `horizon + 1`. Reason: action-only coverage could never supply the strictly later cut that `sleepy_read_cut`
+  `horizon + 1`. Reason: action-only coverage could never supply the strictly later cut that `ready_read_cut_at`
   requires (a valid one-validator, `Δ = 2`, horizon-1 witness shows it). No engine premise, readiness condition,
   handler call, signing or duty is added; canonical labelled cuts stay bounded by the engine horizon,
-  `Simulates.covered` still covers actions only, and both component projections preserve observation metadata.
+  `SimulatesAt.covered` still covers actions only, and both component projections preserve observation metadata.
   Unlabelled padding alone is not a readiness repair.
 - **Pre-outage synchrony cuts off recipient deadlines, not send times.** `SyncBefore` requires service only when
   the recipient's protocol deadline, including its latest wake, is at most `b₀`. Pre-outage synchrony uses it
@@ -380,7 +380,7 @@ detail in `TRUST.md`.
   tick's vote and attestation.
 - **State.** The family's state is a Goldilocks state at every proof of `1 ≤ n` (`PubState`; a `dite`/cast family
   was rejected).
-- **Simulation.** `Simulates` maps engine cuts to node cuts with a monotone `ι` and relates ticks, deliveries
+- **Simulation.** `SimulatesAt` maps engine cuts to node cuts with a monotone `ι` and relates ticks, deliveries
   (`DeliverSeq`, one group per canonical object), restarts and releases; releases and relays are related at the
   delivery time (`ReleasedFrom`, `RelayedFrom`). The proposer is the run's selection (`runProposer`), and
   `selValid_proposer` (`ConsensusLeanTest/Goldilocks/Refinement/Simulation.lean`) derives the proposer equation

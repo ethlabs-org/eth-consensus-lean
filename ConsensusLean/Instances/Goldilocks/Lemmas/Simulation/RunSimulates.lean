@@ -10,8 +10,8 @@ public section
 /-! # Goldilocks Simulation: the engine agrees with the simulating trace
 
 The engine's events are the trace's groups, its node states agree with the trace's states,
-and it releases and relays what the trace signs, emits and admits. `simTrace_simulates`
-(`Simulation/Core`) assembles these correspondence facts into `Simulates`. -/
+and it releases and relays what the trace signs, emits and admits. The growing-fault simulation
+`simTraceAt_simulates` (`Growing/Simulation/Simulates`) reads these correspondence facts. -/
 
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape
@@ -23,7 +23,7 @@ open SA (SAParams ReplayOrder Vote Payload blockVotes)
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-! ## `Simulates`: the engine agrees with the trace -/
+/-! ## The engine agrees with the trace -/
 
 /-- Every labelled node cut lies in the range of some engine event. -/
 theorem simTrace_covered :
@@ -108,25 +108,6 @@ theorem simTrace_restart (hf : rho.point.ConstantFaults) (hv : rho.ExecutionVali
   have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
   exact restart_group_of_state S rho hn he (simTrace_state S rho hn hf hv v hv' i hi.le)
 
-/-- An honest node awake in the trace is awake in the environment, within `[0, horizon]`,
-by the canonical observation clamp; unlabelled filler lies beyond that interval. -/
-theorem simTrace_awake_of (_hv : rho.ExecutionValid) :
-    ∀ y ∈ honestKeys S rho, ∀ t, (simTrace S rho hn).awake y t →
-      E.awake (rho.key y) t = true ∧ 0 ≤ t ∧ t ≤ rho.horizon := by
-  intro y _ t hw
-  exact (awake_iff' S rho hn y t).mp hw
-
-/-- An honest node's signings in the simulating trace are pairwise not slashable (`non_framing`
-over the trace, a Goldilocks run). -/
-private theorem simTrace_nonFraming
-    (hrun : GoldilocksRun (runProposer S rho hn)
-      (digestOf S rho) (honestKeys S rho) (simTrace S rho hn))
-    {v : V} (hv' : v ∉ rho.faultyAt 0) :
-    ∀ k k' a b, (simTrace S rho hn).SignAt (rho.ownKey v) k a →
-      (simTrace S rho hn).SignAt (rho.ownKey v) k' b → ¬ FG.slashable a b :=
-  Regimes.non_framing _ _ _ _ _ _ hrun (rho.ownKey v)
-    (by rw [mem_honestKeys_iff, ownKey_key']; exact hv')
-
 /-- The engine's Goldilocks state at a delivery: at the delivery's time, with the own key. -/
 private theorem deliver_state (hv : rho.ExecutionValid) {i : Nat} {v : V}
     {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
@@ -169,111 +150,6 @@ theorem relays_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : 
     · exact h3 a ha
   obtain ⟨cs, hxcs, hrel⟩ := deliver_relays S rho hn he hq
   exact ⟨cs, hxcs, i, Or.inr ⟨o, he⟩, hrel⟩
-
-/-- The engine releases an honest node's own block at the tick that proposes it (the proposal
-duty's candidate is `blockObj` of the block, `releasable` by `proposal_releasable`). -/
-theorem simTrace_block_released (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (hrun : GoldilocksRun (runProposer S rho hn)
-      (digestOf S rho) (honestKeys S rho) (simTrace S rho hn)) :
-    ∀ y ∈ honestKeys S rho, ∀ k B, (simTrace S rho hn).OwnBlockAt y k B →
-      rho.releases (rho.key y) (blockObj (S.params (pubOf E) hn) B)
-        ((simTrace S rho hn).time k) := by
-  rintro y _ k B hB
-  refine own_block_released_of S rho hn (fun {i v t} he hp r hr => ?_) hB
-  have hh : v ∉ rho.faultyAt 0 := by
-    simpa only [Model.Event.node, Model.Event.time, rho.faultyAt_eq_zero hf] using
-      hv.honest_only _ (List.mem_of_getElem? he)
-  exact (tick_releases S rho hn hf hv hh he hp (simTrace_nonFraming S rho hn hrun hh) r hr).1
-
-/-- The engine releases an honest node's vote at its emission time: the tick's trailing polls
-or the delivery's poll. A restart at its own time emits no vote. -/
-theorem simTrace_vote_released (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (hrun : GoldilocksRun (runProposer S rho hn)
-      (digestOf S rho) (honestKeys S rho) (simTrace S rho hn)) :
-    ∀ y ∈ honestKeys S rho, ∀ k m, (simTrace S rho hn).EmitAt y k m →
-      ReleasedFrom S rho (rho.key y) (voteObj m) ((simTrace S rho hn).time k) := by
-  intro y _ k m hc
-  refine emit_released_of S rho hn hv (fun {i v t} he hp r hr => ?_) hc
-  have hh : v ∉ rho.faultyAt 0 := by
-    simpa only [Model.Event.node, Model.Event.time, rho.faultyAt_eq_zero hf] using
-      hv.honest_only _ (List.mem_of_getElem? he)
-  exact (tick_releases S rho hn hf hv hh he hp (simTrace_nonFraming S rho hn hrun hh) r hr).2.1
-
-/-- The engine releases an honest node's attestation at its signing time (queued by `fgUpdate`,
-released by the tick's last poll steps; `tick_releases`, `Release`). -/
-theorem simTrace_att_released (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (hrun : GoldilocksRun (runProposer S rho hn)
-      (digestOf S rho) (honestKeys S rho) (simTrace S rho hn)) :
-    ∀ y ∈ honestKeys S rho, ∀ k a, (simTrace S rho hn).SignAt y k a →
-      ReleasedFrom S rho (rho.key y) (attObj a) ((simTrace S rho hn).time k) := by
-  rintro y _ k a ⟨src, hnode, hlab⟩
-  erw [releasedFrom_iff]
-  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, i, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ := simTrace_cut S rho hn hl
-  have hrl : r.label = .fg (.attest src (some a)) := Option.some.inj (hlab'.symm.trans hlab)
-  have hmem := List.mem_of_getElem? hidx
-  have hkey : ev.node = rho.key y := key_of_ownKey S rho (hn'.symm.trans hnode)
-  rw [ht, ← hkey]
-  cases ev with
-  | tick v t =>
-    have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
-      by_contra hp
-      rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
-      simp at hmem
-    have hh : v ∉ rho.faultyAt 0 := by
-      simpa only [Model.Event.node, Model.Event.time, rho.faultyAt_eq_zero hf] using
-        hv.honest_only _ (List.mem_of_getElem? he)
-    exact ⟨i, Or.inl he, (tick_releases S rho hn hf hv hh he hp
-      (simTrace_nonFraming S rho hn hrun hh)
-      r hmem).2.2 src a hrl⟩
-  | deliver v o t =>
-    exfalso
-    rw [eventCuts_deliver S rho hn i v o t he] at hmem
-    obtain ⟨o', e, st', _, hce, kk, hk, hlabk, -⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
-    have hcut := List.getElem_mem hk
-    rw [← hlabk, hrl] at hcut
-    obtain ⟨x, rfl⟩ := Compose.signed_only_in_ticks _ _ _ st' t e src a hcut
-    exact canonEvent_ne_tick hce x rfl
-  | restart v t =>
-    exfalso
-    rw [eventCuts_restart S rho hn i v t he] at hmem
-    obtain ⟨kk, hk, rfl⟩ := List.getElem_of_mem hmem
-    obtain ⟨-, -, -, -, hlabk⟩ := getElem_groupRecs _ _ _ _ _ _ _ kk hk
-    have hk' := lt_of_lt_of_eq hk (length_groupRecs _ _ _ _ _ _ _)
-    have hcut := List.getElem_mem hk'
-    rw [← hlabk, hrl] at hcut
-    obtain ⟨x, hx⟩ := Compose.signed_only_in_ticks _ _ _ _ t .restart src a hcut
-    cases hx
-
-/-- An honest node relays a block it accepts from the wire, at the delivery's own time
-(`relays_of_cut`). -/
-theorem simTrace_block_relayed (hv : rho.ExecutionValid) :
-    ∀ y ∈ honestKeys S rho, ∀ k B, (simTrace S rho hn).AcceptAt y k B →
-      (simTrace S rho hn).pos k = 0 →
-        RelayedFrom S rho (rho.key y) (blockObj (S.params (pubOf E) hn) B)
-          ((simTrace S rho hn).time k) := by
-  rintro y _ k B ⟨hnode, hlab⟩ hpos
-  erw [relayedFrom_iff]
-  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, hrl, -, hrel⟩ := relays_of_cut S rho hn hv hnode hl fun r hr => Or.inl
-    ⟨by rw [simTrace_pos, hr] at hpos; exact hpos, _,
-      Option.some.inj ((by rw [simTrace_label, hr]; rfl : _ = some r.label).symm.trans hlab)⟩
-  obtain ⟨cs, hx, hcs⟩ := hrel _ (Or.inl ⟨B, Option.some.inj (hrl.symm.trans hlab), rfl⟩)
-  exact ⟨cs, hx, hcs⟩
-
-/-- An honest node relays an attestation it receives from the wire. -/
-theorem simTrace_att_relayed (hv : rho.ExecutionValid) :
-    ∀ y ∈ honestKeys S rho, ∀ k a, (simTrace S rho hn).AttCallAt y k a →
-      (simTrace S rho hn).pos k = 0 →
-        RelayedFrom S rho (rho.key y) (attObj a) ((simTrace S rho hn).time k) := by
-  rintro y _ k a ⟨hnode, hlab⟩ hpos
-  erw [relayedFrom_iff]
-  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, hrl, -, hrel⟩ := relays_of_cut S rho hn hv hnode hl fun r hr => Or.inl
-    ⟨by rw [simTrace_pos, hr] at hpos; exact hpos, _,
-      Option.some.inj ((by rw [simTrace_label, hr]; rfl : _ = some r.label).symm.trans hlab)⟩
-  obtain ⟨cs, hx, hcs⟩ := hrel _ (Or.inr ⟨a, Option.some.inj (hrl.symm.trans hlab), rfl⟩)
-  exact ⟨cs, hx, hcs⟩
 
 end Consensus.Goldilocks.Simulation
 

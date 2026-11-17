@@ -392,23 +392,6 @@ theorem result_carry_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
       exact ⟨h₁, h₂, Hv, hHv, hHvr, hF.trans hCHv, h₃⟩)
     (acceptedBefore_of_old hrun hold hX)
 
-/-- A result's counted votes reach a next-slot voter using only deadlines within `b`. -/
-theorem result_carry_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsync : SleepyServiceBefore tr H ΔF b) {X : Fin sp.n} (hX : X ∈ H)
-    {i₀ s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hR : SA.ResultAt tr.projAC X i₀ s C CV) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
-    (hF : Anc (tr.HonestBlocks H) ℓ.frame.F C) :
-    SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  refine carryAt_of_writer_before hr hsync.ac
-    hX hy hc hs hib ?_
-  intro v hv
-  obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := result_writer hr
-    (fun _ => SA.voteStart_initial _) hX hR v hv
-  exact ⟨h₁, h₂, Hv, hHv, hHvr, hF.trans hCHv, h₃⟩
-
 /-- **An optimistic selection's counted votes reach the next voters, on a window** (`Carry_y`), as
 `result_carry_win`. -/
 theorem optimistic_carry_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
@@ -432,54 +415,6 @@ theorem optimistic_carry_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
       obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := hW v hv
       exact ⟨h₁, h₂, Hv, hHv, hHvr, hF.trans hCHv, h₃⟩)
     (acceptedBefore_of_old hrun hold hx)
-
-/-- An optimistic writer's votes reach a next-slot voter within the recipient horizon. -/
-theorem optimistic_carry_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsync : SleepyServiceBefore tr H ΔF b) {x : Fin sp.n} (hx : x ∈ H)
-    {i₀ s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hO : SA.OptimisticLockAt tr.projAC x i₀ s C CV) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
-    (hF : Anc (tr.HonestBlocks H) ℓ.frame.F C) :
-    SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  refine carryAt_of_writer_before hr hsync.ac
-    hx hy hc hs hib ?_
-  intro v hv
-  obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := optimistic_writer_votes hr
-    (fun _ => SA.voteStart_initial _) hx hO v hv
-  exact ⟨h₁, h₂, Hv, hHv, hHvr, hF.trans hCHv, h₃⟩
-
-/-- A result's writer pool needs only sources since the result slot's start. -/
-theorem result_writer_pool_window_before {a b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsync : SA.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
-    {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat} (ha : a ≤ sp.ts s)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hR : SA.ResultAt tr.projAC X i₀ s C CV) (hi₀ : tr.time i₀ ≤ b)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) :
-    ∀ v ∈ (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
-      v ∈ (tr.projAC.state X i₀).pool s ∨
-        v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state X i₀).pool s} := by
-  obtain ⟨ℓX, hupd, -, -⟩ := hR
-  exact SA.writer_merged_window_before (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc)
-    hsync hX ha hupd hi₀ hy hc hs
-
-/-- A1.8 (d) uses AC recipient service only through the result's writer update. -/
-theorem result_writer_pool_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
-    {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hR : SA.ResultAt tr.projAC X i₀ s C CV) (hi₀ : tr.time i₀ ≤ b)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) :
-    ∀ v ∈ (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
-      v ∈ (tr.projAC.state X i₀).pool s ∨
-        v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state X i₀).pool s} :=
-  result_writer_pool_window_before hrun hnc hsync
-    hX (by have := sp.toParams.hΔ; simp only [SAParams.ts]; positivity) hR hi₀ hy hc hs
 
 /-- **A1.8 (d) on the window from slot `s₀ ≤ s` to `b`**, for a result within `b`. -/
 theorem result_writer_pool_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)

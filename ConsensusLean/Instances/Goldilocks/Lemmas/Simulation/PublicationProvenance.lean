@@ -241,36 +241,6 @@ theorem tick_released_forward_acceptance (hv : rho.ExecutionValid) {i : Nat} {v 
     (List.getElem?_eq_some_iff.mp he).1 hr (hf.2.2.2.2.trans hcm)
   exact ⟨k, hk, hf.1 ▸ ha, htime.trans (hf.2.1.trans ht.symm)⟩
 
-/-- Every authenticated wrapper in an actual receipt has a successful source cut
-before that receipt's event boundary, with the exact decoded block and stamp. -/
-theorem received_forward_source_acceptance (hf : rho.point.ConstantFaults)
-    (hv : rho.ExecutionValid) {i : Nat} {v : V}
-    {receipt o : Wire (Fintype.card V) S.vote} {x : Fin (Fintype.card V)} {t u : Time}
-    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
-    (he : rho.events[i]? = some (.deliver v receipt u))
-    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt 0)
-    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
-      some (x, t, p, B)) :
-    ∃ k < cutMap S rho hn i, (simTrace S rho hn).AcceptAt x k B ∧
-      (simTrace S rho hn).time k = t := by
-  have hsign : rho.signerOf o = some (rho.key x) := by
-    change o.signer?.map rho.key = some (rho.key x)
-    rw [decodeForward_signer hd]
-    rfl
-  obtain ⟨j, s, hj, hs, ho⟩ := hv.unforgeable i v receipt u he o hc (rho.key x) hsign
-    (by simpa only [rho.faultyAt_eq_zero hf] using hx)
-  have hkx : rho.ownKey (rho.key x) = x := rho.key.symm_apply_apply _
-  have hd' := hd
-  rw [← hkx] at hd'
-  have hacc : ∃ k < cutMap S rho hn (j + 1),
-      (simTrace S rho hn).AcceptAt (rho.ownKey (rho.key x)) k B ∧
-      (simTrace S rho hn).time k = t := by
-    rcases hs with hs | ⟨receipt', hs⟩
-    · exact tick_released_forward_acceptance S rho hn hv hs ho hd'
-    · exact delivery_released_forward_acceptance S rho hn hv hs ho hd'
-  obtain ⟨k, hk, ha, ht⟩ := hacc
-  exact ⟨k, hk.trans_le (cutMap_mono S rho hn (Nat.succ_le_of_lt hj)), hkx ▸ ha, ht⟩
-
 omit [DecidableEq V] in
 /-- A nested forwarding parse uses the same digest-backed roots whether decoded
 under its enclosing receipt's digests or its own recursively collected digests. -/
@@ -289,96 +259,6 @@ theorem decodeForward_receipt_iff {receipt o : Wire (Fintype.card V) S.vote}
       rootOf_digests_of_mem S rho receipt _ (List.mem_filterMap.mpr ⟨_, hc.trans hC, rfl⟩)]
   exact ⟨fun hd => decodeForward_transport B o x t p hd roots,
     fun hd => decodeForward_transport B o x t p hd (fun C hC => (roots C hC).symm)⟩
-
-/-- An actual honest receiver's historical receipt gives acceptance before the
-observation whenever the observation's finalized tip is below the received block.
-This uses the actual parent-first traversal and source provenance, not a historical
-possibly refused `BlockCallAt`. Previously accepted blocks persist across restart. -/
-theorem received_forward_accepted (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (hrun : GoldilocksRun (runProposer S rho hn) (digestOf S rho)
-      (honestKeys S rho) (simTrace S rho hn))
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
-    {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V) S.vote}
-    {x : Fin (Fintype.card V)} {u t : Time} {p : Option (Wire (Fintype.card V) S.vote)}
-    {B : Blk (S.params (Model.pubOf E) hn)}
-    (he : rho.events[i]? = some (.deliver v receipt u)) (hy : v ∉ rho.faultyAt 0)
-    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt 0)
-    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
-      some (x, t, p, B))
-    (hij : cutMap S rho hn (i + 1) ≤ j)
-    (hFB : Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho))
-      ((simTrace S rho hn).state (rho.ownKey v) j).fg.F B) :
-    ∃ k < j, (simTrace S rho hn).AcceptAt (rho.ownKey v) k B := by
-  have hy' : rho.ownKey v ∈ honestKeys S rho := by
-    rw [mem_honestKeys_iff]
-    simpa only [Model.Run.ownKey, Equiv.apply_symm_apply] using hy
-  have hseq := simTrace_deliver S rho hn hf hv v hy i receipt u he
-  obtain ⟨pre, post, hparts⟩ := contained_parts_infix hc
-  change DeliverSeq (sp := S.params (Model.pubOf E) hn) (ro := S.ro _)
-    _ _ _ _ _ _ receipt.parts _ _ at hseq
-  rw [hparts, List.append_assoc] at hseq
-  obtain ⟨r, _, htail⟩ := deliverSeq_append_split _ _ hseq
-  obtain ⟨e, hsub, hpost⟩ := deliverSeq_append_split _ _ htail
-  have hej := (deliverSeq_cover hpost).1.trans hij
-  have hd' := (decodeForward_receipt_iff S rho hn hc).mpr hd
-  have hsource : ∀ q tq pq C, Model.Obj.Contains o q →
-      decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash receipt) q =
-        some (x, tq, pq, C) → ∃ k, (simTrace S rho hn).AcceptAt x k C := by
-    intro q tq pq C hq hdec
-    obtain ⟨k, _, ha, _⟩ := received_forward_source_acceptance S rho hn hf hv he (hc.trans hq) hx
-      ((decodeForward_receipt_iff S rho hn (hc.trans hq)).mp hdec)
-    exact ⟨k, ha⟩
-  have hheld := forward_receipt_held hrun hnc ((mem_honestKeys_iff S rho x).mpr hx)
-    hy' hFB B o t p r e hd' hsub hej
-    (received_forward_stamp_le S rho hn hf hv he hc hx hd) .refl hsource
-  rcases Compose.tree_cases hrun.toLocalRun hy' hheld with hgen | ⟨k, hk, ha⟩
-  · have hp := (decodeBlock_wire (decodeForward_child hd).1).2.1
-    exact False.elim (hp (hgen ▸ rfl))
-  · exact ⟨k, hk.trans_le hej, ha⟩
-
-/-- A historical receipt before a strict deadline gives an acceptance before that
-deadline. The acceptance is bounded by its actual source event, never by the time
-of the next cut (which may belong to a later event or terminal filler). -/
-theorem received_forward_accepted_before (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (hrun : GoldilocksRun (runProposer S rho hn) (digestOf S rho)
-      (honestKeys S rho) (simTrace S rho hn))
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
-    {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V) S.vote}
-    {x : Fin (Fintype.card V)} {u t deadline : Time}
-    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
-    (he : rho.events[i]? = some (.deliver v receipt u)) (hy : v ∉ rho.faultyAt 0)
-    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt 0)
-    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
-      some (x, t, p, B))
-    (hij : cutMap S rho hn (i + 1) ≤ j)
-    (hFB : Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho))
-      ((simTrace S rho hn).state (rho.ownKey v) j).fg.F B)
-    (hu : u < deadline) :
-    ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).AcceptAt (rho.ownKey v) k B ∧
-      (simTrace S rho hn).time k ≤ u ∧ (simTrace S rho hn).time k < deadline := by
-  have hy' : rho.ownKey v ∈ honestKeys S rho := by
-    rw [mem_honestKeys_iff]
-    simpa only [Model.Run.ownKey, Equiv.apply_symm_apply] using hy
-  have hFB' := (Healing.run_F_mono hrun.toLocalRun hy' hij).trans hFB
-  obtain ⟨k, hk, ha⟩ := received_forward_accepted S rho hn hf hv hrun hnc
-    he hy hc hx hd le_rfl hFB'
-  obtain ⟨r, q, ev, _, hq, hstart, _, _, _, ht, _⟩ :=
-    simTrace_cut S rho hn (by rw [ha.2]; simp)
-  have hqi : q ≤ i := by
-    by_contra h
-    have hm : cutMap S rho hn (i + 1) ≤ cutMap S rho hn q :=
-      cutMap_mono S rho hn (by omega)
-    exact (not_lt_of_ge (hm.trans hstart)) hk
-  have htime : (simTrace S rho hn).time k ≤ u := by
-    rw [ht]
-    rcases hqi.lt_or_eq with hlt | rfl
-    · rcases keyLe_of_lt S rho hv hq he hlt with h | h
-      · exact h.le
-      · exact h.1.le
-    · rw [he] at hq
-      cases hq
-      exact le_rfl
-  exact ⟨k, hk, ha, htime, htime.trans_lt hu⟩
 
 /-- A top-level signed vote envelope can only be released by its signer. Other nodes may
 carry it in unsigned gossip, but cannot account for an earlier top-level release of it. -/

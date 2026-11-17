@@ -15,21 +15,20 @@ kept)** and **G1.5, evidence binding**, over the Goldilocks shape of `AsChainSha
 (`goldilocks S`) run by the generic engine (`Spec/Model/Run`) and the spec's own run model
 (`Spec/Run`, `GoldilocksRun`).
 
-* **Simulation** (`Simulates`). A run of the spec's node simulates an engine run of the
-  family. The skeleton selects one proposer per slot; `runProposer` supplies that run-selected
-  schedule to the node's execution laws, independently of its runtime state types: a
-  `GoldilocksRun` at the engine's digest (`digestOf`) for the honest keys, with a monotone cut map
+* **Simulation** (`SimulatesAt`, `Growing/Simulation/Interface`). A run of the spec's node simulates
+  an engine run of the family. The skeleton selects one proposer per slot; `runProposer` supplies
+  that run-selected schedule to the node's execution laws, independently of its runtime state types:
+  a `GoldilocksRun` at the engine's digest (`digestOf`) for the honest keys, with a monotone cut map
   `ι` from engine cuts to node cuts. The node state inside the shape's state agrees with the trace
-  at every engine cut; each engine event is one
-  group of the node (C0.4 kept: a tick at a public time is the node's tick with the engine's
-  input, a delivery is the groups of the canonical objects it carries, a restart is a restart
-  group) or no cut (a tick at a non-public time, a dropped object); every labelled node cut
-  belongs to an engine event; awake agrees up to the spec's horizon clamp. The engine releases
-  what the node sends: an own block at its proposal time, a vote or an attestation at its
-  emission or signing time (`ReleasedFrom`), an accepted block or a received attestation in a
-  relay wrapper at the admission time (`RelayedFrom`), and an admitted or own vote in a signed,
-  admission-stamped `.voteForward` envelope in that event (`vote_forwarded`). These obligations
-  include the horizon and do not depend on a future awake time.
+  at every engine cut; each engine event is one group of the node (C0.4 kept: a tick at a public
+  time is the node's tick with the engine's input, a delivery is the groups of the canonical objects
+  it carries, a restart is a restart group) or no cut (a tick at a non-public time, a dropped
+  object); every labelled node cut belongs to an engine event; awake agrees up to the spec's horizon
+  clamp. The engine releases what the node sends: an own block at its proposal time, a vote or an
+  attestation at its emission or signing time (`ReleasedFrom`), an accepted block or a received
+  attestation in a relay wrapper at the admission time (`RelayedFrom`), and an admitted or own vote
+  in a signed, admission-stamped `.voteForward` envelope in that event (`vote_forwarded`). These
+  obligations include the horizon and do not depend on a future awake time.
 * **Reads** (`ReadIsOut`): the chain trace reads the shape's outputs of the node state at the
   shape's clock, which is the time of the node's last tick or restart (`lastClock`).
 * **Genesis freshness** (`GenesisFresh`): tagged roots exclude genesis from every observed item,
@@ -122,83 +121,6 @@ relay wrapper, at that same time `τ`, including an admission at the horizon. -/
 def RelayedFrom (v : V) (o : (Model.protoOf (compiled (goldilocks S)) E).Object) (τ : Time) :
     Prop :=
   ∃ cs, o ∈ cs ∧ rho.releases v (.mk .none (.data .relay) cs) τ
-
-/-- **The node run `tr` with the cut map `ι` simulates the engine run `rho`** (claims
-§"Refinement": "the engine simulates the node (C0.4 kept)"). -/
-structure Simulates (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _)) (ι : Nat → Nat) :
-    Prop where
-  /-- The trace is a run of the Goldilocks protocol at the engine's digest, for the honest keys. -/
-  run : GoldilocksRun (runProposer S rho hn) (digestOf S rho) (honestKeys S rho) tr
-  /-- The cut map starts at `0`. -/
-  ι_zero : ι 0 = 0
-  /-- The cut map is monotone. -/
-  ι_mono : Monotone ι
-  /-- Every labelled node cut lies in the range of some engine event. -/
-  covered : ∀ k, tr.label k ≠ none → ∃ i < rho.events.length, ι i ≤ k ∧ k < ι (i + 1)
-  /-- The node state inside the shape's state is the trace's state at the mapped cut. -/
-  state : ∀ v, v ∉ rho.faultyAt 0 → ∀ i ≤ rho.events.length,
-    (stateAt S rho hn v i).node = tr.state (rho.ownKey v) (ι i)
-  /-- The shape's clock is the time of the node's last tick or restart. -/
-  now : ∀ v i, (stateAt S rho hn v i).now = lastClock S rho v i
-  /-- An engine tick of an honest node at a public time is the node's tick with the engine's
-  input (the encoded mempool), one group. -/
-  tick_public : ∀ v, v ∉ rho.faultyAt 0 → ∀ i t, rho.events[i]? = some (.tick v t) →
-    (S.params (pubOf E) hn).toParams.IsPublic t →
-      tr.GroupAt (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (ι i) t
-          (.tick (encodeTxs (Model.mempool rho.inbox v t))) ∧
-        ι (i + 1) = ι i + (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-          (tr.state (rho.ownKey v) (ι i)) t
-          (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2.length
-  /-- An engine tick at a non-public time has no cut. -/
-  tick_other : ∀ v, v ∉ rho.faultyAt 0 → ∀ i t, rho.events[i]? = some (.tick v t) →
-    ¬ (S.params (pubOf E) hn).toParams.IsPublic t → ι (i + 1) = ι i
-  /-- An engine delivery to an honest node is the groups of the canonical objects it delivers,
-  in order, with the digests the engine passes. -/
-  deliver : ∀ v, v ∉ rho.faultyAt 0 → ∀ i o t, rho.events[i]? = some (.deliver v o t) →
-    DeliverSeq (runProposer S rho hn) tr (digestOf S rho)
-      (Model.digests rho.hash o) (rho.ownKey v) t
-      (delivered (S.params (pubOf E) hn) o) (ι i) (ι (i + 1))
-  /-- An engine restart of an honest node is the node's restart group. -/
-  restart : ∀ v, v ∉ rho.faultyAt 0 → ∀ i t, rho.events[i]? = some (.restart v t) →
-    tr.GroupAt (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (ι i) t .restart ∧
-      ι (i + 1) = ι i + (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-        (tr.state (rho.ownKey v) (ι i)) t .restart).2.length
-  /-- An honest node awake in the trace is awake in the environment, within `[0, horizon]`. -/
-  awake_of : ∀ y ∈ honestKeys S rho, ∀ t, tr.awake y t →
-    E.awake (rho.key y) t = true ∧ 0 ≤ t ∧ t ≤ rho.horizon
-  /-- An honest node awake in the environment at a time from `0` within the trace's horizon is
-  awake in the trace (the spec's horizon clamp). -/
-  awake_to : ∀ y ∈ honestKeys S rho, ∀ t, E.awake (rho.key y) t = true → 0 ≤ t →
-    tr.InHorizon t → tr.awake y t
-  /-- The engine releases an honest node's own block, as its canonical object, at the tick that
-  proposes it. -/
-  block_released : ∀ y ∈ honestKeys S rho, ∀ k B, tr.OwnBlockAt y k B →
-    rho.releases (rho.key y) (blockObj (S.params (pubOf E) hn) B) (tr.time k)
-  /-- The engine releases an honest node's vote at its emission time. -/
-  vote_released : ∀ y ∈ honestKeys S rho, ∀ k m, tr.EmitAt y k m →
-    ReleasedFrom S rho (rho.key y) (voteObj m) (tr.time k)
-  /-- The engine releases an honest node's attestation at its signing time. -/
-  att_released : ∀ y ∈ honestKeys S rho, ∀ k a, tr.SignAt y k a →
-    ReleasedFrom S rho (rho.key y) (attObj a) (tr.time k)
-  /-- An honest node relays a block it accepts from the wire (a delivery, position `0`). -/
-  block_relayed : ∀ y ∈ honestKeys S rho, ∀ k B, tr.AcceptAt y k B → tr.pos k = 0 →
-    RelayedFrom S rho (rho.key y) (blockObj (S.params (pubOf E) hn) B) (tr.time k)
-  /-- Fresh wire/payload admissions and own emissions publish a signed admission-stamped
-  envelope in their actual engine event, including the horizon. Restart replay is not an
-  admission. The exact envelope has no earlier engine release. -/
-  vote_forwarded : ∀ y ∈ honestKeys S rho, ∀ k (m : Vote (Fintype.card V)),
-    (tr.EmitAt y k m ∨
-      ((tr.MsgCallAt y k m ∨ ∃ ℓ B, tr.CallAt y k (.ac ℓ) ∧ ℓ.call = .block B ∧
-          m ∈ SA.blockVotes B) ∧
-        m ∉ (tr.state y k).ac.pool m.slot ∧ m ∈ (tr.post k).ac.pool m.slot)) →
-    let envelope : (Model.protoOf (compiled (goldilocks S)) E).Object :=
-      .mk (.signed y .poll) (.data (.voteForward (tr.time k) (encodeVote m))) [voteObj m]
-    ∃ i, ι i ≤ k ∧ k < ι (i + 1) ∧ rho.SendsAt (rho.key y) i (tr.time k) ∧
-      envelope ∈ rho.releasesAt i ∧ ∀ j < i, envelope ∉ rho.releasesAt j
-  /-- An honest node relays an attestation it receives from the wire (an `fg_on_attestation`
-  call at a delivery). -/
-  att_relayed : ∀ y ∈ honestKeys S rho, ∀ k a, tr.AttCallAt y k a → tr.pos k = 0 →
-    RelayedFrom S rho (rho.key y) (attObj a) (tr.time k)
 
 variable (V) in
 /-- **Reads are the shape's outputs.** The chain trace of a run reads, at every cut, the output

@@ -121,7 +121,7 @@ theorem foldl_processOne_node (proposer : Nat → Fin sp.n)
     rcases canonEvent_cases (ro := ro) hs o with h | ⟨B, h⟩ | ⟨v, h⟩ | ⟨a, h⟩ <;>
       simp only [deliverState, h]
 
-/-- **`Simulates.deliver`'s node step.** An engine delivery to an honest node runs the handlers of
+/-- **`SimulatesAt.deliver`'s node step.** An engine delivery to an honest node runs the handlers of
 the delivered canonical objects in order on the node state before it, with the digests the engine
 passes. -/
 theorem node_of_deliver (hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.faultyAt 0) (i : Nat)
@@ -145,8 +145,8 @@ theorem node_of_deliver (hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.faul
   refine (foldl_processOne_node (runProposer S rho hn) (digestOf S rho) _ _ _).trans ?_
   rw [self_eq_ownKey, now_eq_lastClock S rho hn hv, lastClock_of_deliver S rho hv v he]
 
-/-- **`Simulates.restart`'s node step.** An engine restart of an honest node runs the node's restart
-on the node state before it. -/
+/-- **`SimulatesAt.restart`'s node step.** An engine restart of an honest node runs the node's
+restart on the node state before it. -/
 theorem node_of_restart (_hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.faultyAt 0) (i : Nat)
     (t : Time) (he : rho.events[i]? = some (.restart v t)) :
     (stateAt S rho hn v (i + 1)).node =
@@ -659,7 +659,7 @@ theorem tick_node_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (goldiloc
     hinit, hpoll]
   rfl
 
-/-- **`Simulates.tick`'s node step at a non-public time.** An engine tick at a non-public time
+/-- **`SimulatesAt.tick_other`'s node step.** An engine tick at a non-public time
 leaves the node state unchanged: no slot starts, so no proposal, and the FG update is not due. -/
 theorem node_of_tick_other (hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.faultyAt 0)
     (i : Nat)

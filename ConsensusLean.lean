@@ -812,7 +812,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalHealHor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalQueryTiming
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalWindowBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ForwardingChain
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ForwardingDecode
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ForwardingDecodeBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HSSharedRun
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Healed

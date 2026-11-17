@@ -11,140 +11,14 @@ import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
-/-! # Finite sleepy service and confirmed proposals
+/-! # Finite sleepy service facts for the growing queries
 
-`vote_message_service_other` handles another recipient's first-release vote envelope;
-`sleepyServiceBefore_of_syncUntil` packages service at bounded labelled cuts;
-`sleepy_raw_syncUntil` and `half_ready_of_duration` serve the growing queries. Source self-service
-is separate from network holdings. -/
+`sleepy_raw_syncUntil` (bounded synchrony of a sleepy run) and `half_ready_of_duration` (a shorter
+readiness duration keeps a half-ready population) serve the growing queries. -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
 open Blocks Shape
-
-/-- A different honest recipient processes a first-release vote envelope before its
-processing-cut deadline. Network holdings alone do not cover source self-service. -/
-theorem vote_message_service_other {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
-    (hn : 1 ≤ Fintype.card V)
-    (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid) {b : Time} (hbh : b ≤ rho.horizon)
-    (hnet : rho.log.SyncUntil rho.point b)
-    {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : SA.Vote (Fintype.card V)}
-    (hx : x ∈ honestKeys { S with vote := stock } rho)
-    (hy : y ∈ honestKeys { S with vote := stock } rho) (hne : y ≠ x)
-    (hτ : 0 ≤ τ) (hs : rho.SendsAt (rho.key x) source τ)
-    (hrel : Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∈
-      rho.releasesAt source)
-    (hfirst : ∀ i < source,
-      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉
-        rho.releasesAt i)
-    {j : Nat} (hj : (simTrace { S with vote := stock } rho hn).IsCall y j)
-    (hb : (simTrace { S with vote := stock } rho hn).projAC.deadline y j τ ≤ b)
-    (hd : (simTrace { S with vote := stock } rho hn).projAC.deadline y j τ ≤
-        (simTrace { S with vote := stock } rho hn).time j) :
-    ∃ k ≤ j, τ ≤ (simTrace { S with vote := stock } rho hn).time k ∧
-      (simTrace { S with vote := stock } rho hn).projAC.ProcessAt y k m ∧
-      (simTrace { S with vote := stock } rho hn).time k <
-        (simTrace { S with vote := stock } rho hn).projAC.deadline y k τ := by
-  induction j using Nat.strong_induction_on with
-  | h j ih =>
-    obtain ⟨a, ha, heq, hw⟩ := deadline_awake_interval S rho hn hconst hv hy hj hτ
-    have heq' : (simTrace { S with vote := stock } rho hn).projAC.deadline y j τ =
-        a + (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).Δ := by
-      rw [Compose.projAC_deadline]
-      exact heq
-    have hslack : a + E.ΔAC - 1 <
-        a + (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).Δ := by
-      change a + E.ΔAC - 1 < a + E.ΔAC
-      linarith
-    have hbound : a + E.ΔAC - 1 ≤ b := hslack.le.trans (heq' ▸ hb)
-    have hheld := hnet.msgs (rho.key x) _ τ ⟨source, hs, hrel⟩
-      ((rho.point.honestAt_iff_zero hconst _ _).mpr
-        ((mem_honestKeys_iff { S with vote := stock } rho x).mp hx))
-      (by rw [log_fgAtt_iff]; simp [isFGAtt, IsAttObj]) (rho.key y)
-      a ha hbound (hbound.trans hbh)
-      ((rho.point.honestAt_iff_zero hconst _ _).mpr
-        ((mem_honestKeys_iff { S with vote := stock } rho y).mp hy))
-      (fun u hau hud => hw u hau (hud.trans (hslack.le.trans (heq' ▸ hd))))
-    rcases held_voteForward_source_or_process { S with vote := stock } rho hn hconst hv
-      ((mem_honestKeys_iff { S with vote := stock } rho x).mp hx) hs hfirst hheld with
-      h | ⟨k, hp, hlo, hhi⟩
-    · exact False.elim (hne h)
-    have htime : (simTrace { S with vote := stock } rho hn).time k <
-        (simTrace { S with vote := stock } rho hn).projAC.deadline
-        y j τ := by
-      rw [heq']
-      exact hhi.trans_lt hslack
-    have hkj : k < j := by
-      by_contra h
-      have := simTrace_time_mono { S with vote := stock } rho hn hv (Nat.le_of_not_gt h)
-      linarith
-    by_cases hk : (simTrace { S with vote := stock } rho hn).time k <
-        (simTrace { S with vote := stock } rho hn).projAC.deadline y k τ
-    · exact ⟨k, hkj.le, hlo, hp, hk⟩
-    · have hm : (simTrace { S with vote := stock } rho hn).projAC.deadline y k τ ≤
-          (simTrace { S with vote := stock } rho hn).projAC.deadline y j τ := by
-        rw [Compose.projAC_deadline, Compose.projAC_deadline]
-        exact deadline_mono_cut S rho hn hconst hv y τ
-          (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).Δ hkj.le
-      obtain ⟨l, hl, hlo', hp', hlt⟩ := ih k hkj ⟨_, Compose.projAC_callAt.mp hp.choose_spec.1⟩
-        (hm.trans hb) (le_of_not_gt hk)
-      exact ⟨l, hl.trans hkj.le, hlo', hp', hlt⟩
-
-/-- Finite canonical service needs only raw synchrony through its deadline bound.
-Self-service uses fresh processing at the source time, never retention across a restart. -/
-theorem sleepyServiceBefore_of_syncUntil {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
-    (hn : 1 ≤ Fintype.card V)
-    (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf { S with vote := stock } rho)
-      (simTrace { S with vote := stock } rho hn))
-    {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b) :
-    Compose.SleepyServiceBefore (simTrace { S with vote := stock } rho hn)
-      (honestKeys { S with vote := stock } rho)
-      (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).Δ b := by
-  have hr := simTrace_goldilocksRun S rho hn hconst hv
-  apply Compose.sleepyServiceBefore_of_message_relay hr.toLocalRun
-  · intro x hx i m hsrc h0 y hy j ℓ hj hb hd
-    rw [SA.messageServedBefore_iff]
-    apply Or.inl
-    by_cases hxy : y = x
-    · subst y
-      have hsource : (simTrace { S with vote := stock } rho hn).SendOrAdmitAt x i m := by
-        obtain ⟨l, hl, hm⟩ := hsrc
-        refine ⟨l, Compose.projAC_callAt.mp hl, ?_⟩
-        rw [Compose.projAC_state hr.toLocalRun hx] at hm
-        exact hm
-      obtain ⟨k, hp, ht⟩ := sendOrAdmit_process_same_time S rho hn hconst hv hx hsource
-      have hlt : ∀ q, (simTrace { S with vote := stock } rho hn).time i <
-          (simTrace { S with vote := stock } rho hn).projAC.deadline x q
-              ((simTrace { S with vote := stock } rho hn).time i) := by
-        intro q
-        unfold ACTrace.deadline
-        cases (simTrace { S with vote := stock } rho hn).projAC.lastWake x q with
-        | bot =>
-          exact lt_add_of_pos_right _
-            (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn).toParams.hΔ
-        | coe w =>
-          exact lt_of_le_of_lt (le_max_left _ _)
-            (lt_add_of_pos_right _
-              (({ S with vote := AsChainShape.stock } : Setup).params
-                (Model.pubOf E) hn).toParams.hΔ)
-      refine ⟨k, ?_, ht.ge, hp, ?_⟩
-      · by_contra h
-        have hm := simTrace_time_mono { S with vote := stock } rho hn hv
-          (Nat.le_of_lt (Nat.lt_of_not_ge h))
-        have := hlt j
-        linarith
-      · change (simTrace { S with vote := stock } rho hn).time k < _
-        rw [ht]
-        exact hlt k
-    · obtain ⟨r, -, -, hs, hrel, hf⟩ := simTrace_vote_forwarded S rho hn hconst hv x hx i m
-        (Compose.sendOrAdmit_forward_source hr hx hsrc)
-      exact vote_message_service_other S rho hn hconst hv hbh hnet hx hy hxy h0 hs hrel hf
-        ⟨_, Compose.projAC_callAt.mp hj⟩ hb hd
-  · intro x hx i B hi h0 y hy j hj hb hd hF
-    exact acceptance_relay_syncUntil S rho hn hconst hv hnc hbh hnet hx hi h0 hy hj hb hd hF
 
 /-- Sleepy network service survives removal of the system's environment tags.
 Validity supplies nonnegative send times before converting PSync at zero. -/

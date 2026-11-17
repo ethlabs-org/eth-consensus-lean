@@ -10,7 +10,7 @@ public section
 /-! # The pre-`b` frontier over AC traces (vocabulary and first facts)
 
 The frontier of the Sleepy record invariant up to a horizon `b`
-(`Compose.SleepyInvariantUpTo`, `Compose.sleepy_invariant_before`) has an AC content: the
+(`Compose.SleepyInvariantUpTo`) has an AC content: the
 origins within `b` compare, the honest votes at times `≤ b` extend the origins of earlier labels,
 and the records and stored locks at the cuts within `b` name genesis or blocks below those
 origins. This module states that content over an AC trace of the SA with the unlock given at a

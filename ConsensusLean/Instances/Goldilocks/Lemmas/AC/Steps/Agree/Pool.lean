@@ -614,21 +614,6 @@ theorem sync_window_before_forward (hr : ACLocalRun (goldilocksSA sp FGP ro) H U
       (hy := hy) (k := k) (v := v) (hsend := hsend) (ha := ha) (hb := hb) (hX := hX) (i := i)
           (ℓ := ℓ) (hc := hc) (hrs := hrs) (hdl := hdl) (hslot := hslot)
 
-/-- Finite service from time zero specializes windowed forwarding. -/
-theorem sync_before_forward (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {b : Time}
-    (hsync : ServiceBefore H U b tr) {y X : Fin sp.n} (hy : y ∈ H)
-    {k : Nat} {v : Vote sp.n} (hsend : tr.SendOrAdmit y k v)
-    (hb : tr.time k + sp.Δ ≤ b) (hX : X ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt X i ℓ)
-    (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
-    (hdl : tr.time k + sp.Δ ≤ tr.time i)
-    (hslot : ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
-      (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t) :
-    v ∈ (tr.state X i).pool v.slot ∨
-      v.val ∈ equivocators {w | w ∈ (tr.state X i).pool v.slot} :=
-  sync_window_before_forward hr ⟨hsync.message, hsync.relay⟩ hy hsend
-    (hr.time_nonneg k) hb hX hc hrs hdl hslot
-
 /-- `readPoint_pool` with the unlock given. -/
 theorem readPoint_poolU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}

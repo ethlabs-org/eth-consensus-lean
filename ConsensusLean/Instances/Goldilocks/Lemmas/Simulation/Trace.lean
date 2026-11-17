@@ -107,13 +107,6 @@ theorem simTrace_awake_in_horizon :
   rw [simTrace_awake_iff, awakeAt_iff] at h
   exact simTrace_inHorizon_of_le S rho hn h.2.2
 
-/-- An honest node awake in the environment within the horizon is awake in the trace. -/
-theorem simTrace_awake_before_horizon :
-    ∀ y ∈ honestKeys S rho, ∀ t, E.awake (rho.key y) t = true → 0 ≤ t →
-      t ≤ rho.horizon → (simTrace S rho hn).awake y t := by
-  intro y _ t hw h0 hh
-  exact (simTrace_awake_iff S rho hn y t).mpr ((awakeAt_iff S rho hn y t).mpr ⟨hw, h0, hh⟩)
-
 /-- The cut map is monotone. -/
 theorem cutMap_mono : Monotone (cutMap S rho hn) :=
   monotone_nat_of_le_succ fun i => by

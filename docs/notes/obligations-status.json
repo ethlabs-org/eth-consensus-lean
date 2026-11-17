@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "audit_commit": "653dd9e0c5b22644cb45fae6e71a09245bd5e35f",
+  "audit_commit": "bcebb6a2cadb728003eb6a4b9269ecb3e22036ae",
   "baseline_commit": "eed6d0b55614dde64a82b1ef17099e3533e0515f",
   "notes": [
     "blocked-by contains transitive compiled sorry owners, not speculative paper joins.",
@@ -117,10 +117,12 @@
     "Consensus.Goldilocks.Refinement.outage_reader_gate",
     "Consensus.Goldilocks.Refinement.outage_repair",
     "Consensus.Goldilocks.Refinement.outage_window_cover",
+    "Consensus.Goldilocks.Refinement.publication_held_before_deadline",
     "Consensus.Goldilocks.Refinement.publication_held_before_deadline_psync",
     "Consensus.Goldilocks.Refinement.publication_held_before_gst_deadline",
     "Consensus.Goldilocks.Refinement.publication_held_psync",
     "Consensus.Goldilocks.Refinement.publication_held_ready_tail",
+    "Consensus.Goldilocks.Refinement.publication_held_syncUntil",
     "Consensus.Goldilocks.Refinement.query_numbers",
     "Consensus.Goldilocks.Refinement.row_endpoint_slack",
     "Consensus.Goldilocks.Refinement.signed_row_service_psync",
@@ -131,6 +133,7 @@
     "Consensus.Goldilocks.Refinement.sleepy_safe_engine",
     "Consensus.Goldilocks.Refinement.sleepy_safety_inputs",
     "Consensus.Goldilocks.Refinement.updateConfirmation_keeps",
+    "Consensus.Goldilocks.Refinement.vote_message_service_other",
     "Consensus.Goldilocks.Refinement.vote_message_service_psync_other",
     "Consensus.Goldilocks.Regimes.Growing.final_accountable_readPoint",
     "Consensus.Goldilocks.Regimes.grow_healed_until",
@@ -782,26 +785,6 @@
       "evidence": "Proved; no direct owner in compiled audit at c85c6b7e."
     },
     {
-      "name": "Consensus.Goldilocks.Obligations.publication_held_before_deadline",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/NetworkTransport.lean:142",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at c85c6b7e."
-    },
-    {
-      "name": "Consensus.Goldilocks.Obligations.publication_held_syncUntil",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/NetworkTransport.lean:89",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at c85c6b7e."
-    },
-    {
       "name": "Consensus.Goldilocks.Obligations.record_below_anchor_of_stored_live_lock",
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/HealedSafetyConditional.lean:60",
       "status": "lean-proved",
@@ -810,16 +793,6 @@
       "direct_sorry": false,
       "lean-status": "proved",
       "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
-      "name": "Consensus.Goldilocks.Obligations.vote_message_service_other",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/NonfinalSuppliers.lean:27",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at c85c6b7e."
     },
     {
       "name": "Consensus.Goldilocks.RunTrace.anc_upTo_of_right",
@@ -1213,7 +1186,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Simulation.simTrace_vote_forwarded",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Simulation/Core.lean:481",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Simulation/Core.lean:413",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,

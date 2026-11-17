@@ -6,14 +6,14 @@ public section
 
 /-! # The pre-`b` frontier over AC traces of a lock rule
 
-**The frontier** (`frontier_beforeAC`) is the AC content of the composite
-`Compose.sleepy_invariant_before` under trivial frames: over an AC trace of the SA whose honest
+**The frontier** (`frontier_beforeAC`) is the AC content of the composite Sleepy record invariant up
+to `b` (`Compose.SleepyInvariantUpTo`) under trivial frames: over an AC trace of the SA whose honest
 calls execute the handlers at a write mode `m` with the locks after the unlock given by an oracle
 `u` (`ACRunU m u`), lawful in the trace law's sense (`ACLocalRunU.lawful`, the unlock relation),
 with trivial frames, the tick duty, the deadline-cut service before `b` and `f < h_t` at `t_0` and
 at the slot points `t_s + Δ ≤ b`: the origins within `b` compare, the honest votes at times `≤ b`
-extend the origins of earlier labels, and the records and stored locks at the cuts within `b`
-name genesis or blocks on the chain of the origins within `b` (`FrontierAC`).
+extend the origins of earlier labels, and the records and stored locks at the cuts within `b` name
+genesis or blocks on the chain of the origins within `b` (`FrontierAC`).
 
 The theorem is generic in the oracle: no step reads the parent's unlock, only the unlock relation
 (through the read-point locks, `readPoint_locks_below_storedU` and `lock_origin_readPointU`), so
@@ -60,9 +60,9 @@ theorem frontier_inductionAC {wm : WriteMode} (hrun : ACRunU wm u proposer tr H 
     have hP := origins_below_succAC hrun htick hsync.service hf hJ ih.1 ih.2 hstock
     exact ⟨hP, votes_below_succAC hrun htriv htick hsync hf hJ hP ih.2 hstock⟩
 
-/-- **The pre-`b` frontier over AC traces of a lock rule**: the AC content of
-`Compose.sleepy_invariant_before` under trivial frames, for any lawful unlock oracle `u` at any
-write mode `m`. -/
+/-- **The pre-`b` frontier over AC traces of a lock rule**: the AC content of the composite Sleepy
+record invariant up to `b` under trivial frames, for any lawful unlock oracle `u` at any write mode
+`m`. -/
 theorem frontier_beforeAC {m : WriteMode} (hrun : ACRunU m u proposer tr H U)
     (htriv : TrivialFrames tr H) (htick : TickDuty tr H) (hb : 0 ≤ b)
     (hsync : SyncUntilAC (goldilocksSA sp FGP ro) H U b tr)

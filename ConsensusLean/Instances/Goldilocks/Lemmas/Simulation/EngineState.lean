@@ -464,8 +464,8 @@ theorem lastClock_succ_other (v : V) {i : Nat}
     lastClock S rho v (i + 1) = lastClock S rho v i := by
   cases e <;> simp only [Model.Event.node] at hne <;> simp [lastClock_succ, he, hne]
 
-/-- **`Simulates.now`.** The shape's clock before an engine cut is the time of the node's last tick
-or restart before it. -/
+/-- **`SimulatesAt.now`.** The shape's clock before an engine cut is the time of the node's last
+tick or restart before it. -/
 theorem now_eq_lastClock (_hv : rho.ExecutionValid) (v : V) :
     ∀ i, (stateAt S rho hn v i).now = lastClock S rho v i
   | 0 => by rw [stateAt_zero, lastClock_zero]; rfl

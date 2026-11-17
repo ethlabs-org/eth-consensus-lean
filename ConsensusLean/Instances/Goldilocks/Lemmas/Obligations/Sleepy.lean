@@ -14,13 +14,12 @@ public section
 
 /-! # Finite sleepy engine bridges
 
-The constant-fault engine-to-node bridges of the Sleepy regime at the population binding:
-readiness (`ready_transport`, `sleepy_ready`), the slot-point quorum (`sleepy_faultBound`) and the
-ready read cut (`ready_read_cut`, `sleepy_read_cut`), and binding-generic facts of the stored
-clock and of event cuts (`event_before_endCut`, `readPoint_after_event`, `now_*`,
-`ready_at_stored_now`). No whole-run `SleepyRun` or `HealthyRun` is inferred from a finite
-engine horizon. The growing-fault forms are in `Lemmas/Growing/Sleepy/Engine`.
--/
+The constant-fault engine-to-node bridges of the Sleepy regime at the population binding: readiness
+(`ready_transport`, `sleepy_ready`) and the slot-point quorum (`sleepy_faultBound`), and
+binding-generic facts of the stored clock and of event cuts (`event_before_endCut`,
+`readPoint_after_event`, `now_*`, `ready_at_stored_now`). No whole-run `SleepyRun` or `HealthyRun`
+is inferred from a finite engine horizon. The growing-fault forms are in
+`Lemmas/Growing/Sleepy/Engine`. -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
@@ -164,103 +163,6 @@ theorem event_before_endCut {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
       Nat.le_findGreatest (by omega)
       (by simpa [Model.Run.cutTime, he] using het)
     exact hle
-
-/-- End-of-time cut bridge. The canonical cut map covers every
-engine event at `t` before advancing to a later node time, including the terminal filler
-cut. A ready node has a tick at `t`, so its last clock is `t`, not the next node cut's time.
-This supplies the exact state/clock read needed by finite R.2. No paper proof of encoding. -/
-theorem ready_read_cut (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {c : Time} (hc : 0 ≤ c) {v : V} {t : Time}
-    (ht : 0 ≤ t) (hth : t ≤ rho.horizon)
-    (hr : rho.point.Ready c v t) :
-    Regimes.CutAfter (simTrace { S with vote := stock } rho hn)
-        (cutMap { S with vote := stock } rho hn ((chainTrace rho).endCut t)) t ∧
-      Regimes.Boundary (simTrace { S with vote := stock } rho hn) (rho.ownKey v)
-        (cutMap { S with vote := stock } rho hn ((chainTrace rho).endCut t)) ∧
-      (stateAt { S with vote := stock } rho hn v ((chainTrace rho).endCut t)).now = t := by
-  classical
-  let n := (chainTrace rho).endCut t
-  let j := cutMap { S with vote := stock } rho hn n
-  have hnle : n ≤ rho.events.length := Nat.findGreatest_le _
-  have hprev : ∀ k < j, (simTrace { S with vote := stock } rho hn).time k ≤ t := by
-    intro k hk
-    have hlen : k < (allCuts { S with vote := stock } rho hn).length := by
-      rw [length_allCuts { S with vote := stock } rho hn]
-      exact hk.trans_le (cutMap_mono { S with vote := stock } rho hn hnle)
-    have hl : (simTrace { S with vote := stock } rho hn).label k ≠ none := by
-      rw [simTrace_label { S with vote := stock } rho hn, List.getElem?_eq_getElem hlen]
-      simp
-    obtain ⟨_, i, e, _, he, hi, _, _, _, htime, _⟩ :=
-      simTrace_cut { S with vote := stock } rho hn hl
-    have hin : i < n := by
-      by_contra h
-      have := cutMap_mono { S with vote := stock } rho hn (Nat.le_of_not_gt h)
-      omega
-    rw [htime]
-    exact (event_before_endCut { S with vote := stock } rho hv ht he).mp hin
-  have hnext : t < (simTrace { S with vote := stock } rho hn).time j := by
-    cases hrj : (allCuts { S with vote := stock } rho hn)[j]? with
-    | none =>
-      rw [(simTrace_of_getElem?_none { S with vote := stock } rho hn hrj).2]
-      linarith
-    | some r =>
-      have hl : (simTrace { S with vote := stock } rho hn).label j ≠ none := by
-        rw [simTrace_label { S with vote := stock } rho hn, hrj]; simp
-      obtain ⟨_, i, e, _, he, _, hi, _, _, htime, _⟩ :=
-        simTrace_cut { S with vote := stock } rho hn hl
-      have hni : n ≤ i := by
-        by_contra h
-        have := cutMap_mono { S with vote := stock } rho hn (show i + 1 ≤ n by omega)
-        omega
-      rw [htime]
-      exact lt_of_not_ge fun het => by
-        have : i < n := (event_before_endCut { S with vote := stock } rho hv ht he).mpr het
-        omega
-  refine ⟨⟨hprev, hnext⟩, ?_, ?_⟩
-  · rintro ⟨c, hc⟩
-    have hy : rho.ownKey v ∈ honestKeys { S with vote := stock } rho := by
-      rw [mem_honestKeys_iff { S with vote := stock } rho]
-      rw [show rho.key (rho.ownKey v) = v from rho.key.apply_symm_apply v]
-      exact fun h => hr.1 (rho.faultyAt_mono ht h)
-    obtain ⟨j0, e, hg, hle, hlt⟩ := simTrace_grouped
-      { S with vote := stock } rho hn hconst hv _ hy j c hc
-    have heq : j0 = j := by
-      by_contra h
-      have h0 := (hg.2.1 0 (by omega)).2.1
-      simp only [Nat.add_zero] at h0
-      have := hprev j0 (lt_of_le_of_ne hle h)
-      rw [h0] at this
-      exact (not_lt_of_ge this) hnext
-    subst j0
-    simpa using (hg.2.1 0 (by omega)).2.2.2.1
-  · have hw : E.awake v t = true := hr.2 t (by
-      apply max_le ht
-      linarith) le_rfl
-    obtain ⟨i, hi⟩ := List.mem_iff_getElem?.mp (hv.tick_total v t ht hth hr.1 hw)
-    have hin : i < n := (event_before_endCut { S with vote := stock } rho hv ht hi).mpr le_rfl
-    rw [now_eq_lastClock { S with vote := stock } rho hn hv]
-    apply lastClock_of_between { S with vote := stock } rho v t i (Or.inl hi) n hin
-    intro k hik hkn e he
-    have hlo := keyLe_of_lt { S with vote := stock } rho hv hi he hik
-    have hhi := (event_before_endCut { S with vote := stock } rho hv ht he).mp hkn
-    rcases hlo with hlo | ⟨hlo, _⟩
-    · exact le_antisymm hhi hlo.le
-    · exact hlo.symm
-
-theorem sleepy_read_cut (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {v : V} {t : Time}
-    (ht : 0 ≤ t) (hth : t ≤ rho.horizon)
-    (hr : rho.point.Ready (Regimes.catchUp
-      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) v t) :
-    Regimes.CutAfter (simTrace { S with vote := stock } rho hn)
-        (cutMap { S with vote := stock } rho hn ((chainTrace rho).endCut t)) t ∧
-      Regimes.Boundary (simTrace { S with vote := stock } rho hn) (rho.ownKey v)
-        (cutMap { S with vote := stock } rho hn ((chainTrace rho).endCut t)) ∧
-      (stateAt { S with vote := stock } rho hn v ((chainTrace rho).endCut t)).now = t :=
-  ready_read_cut S rho hn hconst hv (by
-    unfold Regimes.catchUp
-    have := (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).toParams.hΔ
-    linarith) ht hth hr
 
 /-- The mapped post-event cut is a nonstrict read point at the event time.
 Other nodes may still have events at the same time. -/

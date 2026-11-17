@@ -14,7 +14,7 @@ public section
 /-! # Goldilocks Simulation: the engine's Goldilocks state and the relay obligations
 
 The engine runs the Goldilocks shape (`AsChainShape`) on its own state; this file relates that
-state to the simulating trace's cuts where the relay obligations of `Simulates` need it.
+state to the simulating trace's cuts where the relay obligations of `SimulatesAt` need it.
 
 * **Canonical objects.** An object a delivery's canonical event stands for is that event's
   canonical object (`canonEvent_eq_some`: `blockObj`, `voteObj`, `attObj`).

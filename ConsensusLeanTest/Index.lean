@@ -837,7 +837,6 @@ example := ``Consensus.Goldilocks.Simulation.lastClock
 example := ``Consensus.Goldilocks.Simulation.ReleasedFrom
 example := ``Consensus.Goldilocks.Simulation.RelayedFrom
 example := ``Consensus.Goldilocks.Simulation.DeliverSeq
-example := ``Consensus.Goldilocks.Simulation.Simulates
 example := ``Consensus.Goldilocks.Simulation.simTrace
 example := ``Consensus.Goldilocks.Simulation.cutMap
 example := ``Consensus.Goldilocks.Simulation.ReadIsOut

@@ -617,37 +617,6 @@ theorem received_forward_blockCall {i : Nat} {v : V}
   rw [cutMap_succ]
   omega
 
-/-- Authentication and event order bound an honest forwarding envelope's stamp by
-its receipt time, even when the envelope is nested inside the delivered object. -/
-theorem received_forward_stamp_le (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {i : Nat} {v : V}
-    {receipt o : Wire (Fintype.card V) S.vote} {x : Fin (Fintype.card V)} {t u : Time}
-    {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
-    (he : rho.events[i]? = some (.deliver v receipt u))
-    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt 0)
-    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
-      some (x, t, p, B)) : t ≤ u := by
-  have hsign : rho.signerOf o = some (rho.key x) := by
-    change o.signer?.map rho.key = some (rho.key x)
-    rw [decodeForward_signer hd]
-    rfl
-  obtain ⟨j, s, hj, hs, ho⟩ := hv.unforgeable i v receipt u he o hc (rho.key x) hsign
-    (by simpa only [rho.faultyAt_eq_zero hf] using hx)
-  have hd' : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
-      some (rho.ownKey (rho.key x), t, p, B) := by
-    simpa only [Model.Run.ownKey, Equiv.symm_apply_apply] using hd
-  have ht := released_forward_stamp S rho hn hv hs ho hd'
-  rw [ht]
-  obtain ⟨hi, hei⟩ := List.getElem?_eq_some_iff.mp he
-  rcases hs with hs | ⟨receipt', hs⟩
-  all_goals
-    obtain ⟨hj', hej⟩ := List.getElem?_eq_some_iff.mp hs
-    have horder := List.pairwise_iff_getElem.mp hv.sorted j i hj' hi hj
-    rw [hej, hei] at horder
-    rcases horder with hlt | ⟨heq, _⟩
-    · exact le_of_lt hlt
-    · exact le_of_eq heq
-
 private theorem dutyBatches_signer (v : V) :
     ∀ ds (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) b,
     b ∈ dutyBatches rho v nd ds → ∀ o ∈ b.candidates,

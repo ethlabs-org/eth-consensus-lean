@@ -85,23 +85,6 @@ theorem frontier_upTo
     have hP := origins_below_succ_upTo hrun hnc hpre ih.1 ih.2 hstock
     exact ⟨hP, votes_below_succ_upTo hrun hnc hpre hP ih.2 hstock⟩
 
-/-- Both frontiers at a finite horizon, with recipient-bounded rather than whole-run service. -/
-theorem frontier_before
-    {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
-      tr.FaultBound H (sp.ts s + d)) (hstock : sp.committeeSize = sp.n) :
-    ∀ s, OriginsBelowUpTo tr H s b ∧ VotesBelowUpTo tr H s b := by
-  intro s
-  induction s with
-  | zero =>
-    refine ⟨originsBelowUpTo_iff.2 fun _ _ _ _ h => absurd h (Nat.not_lt_zero _),
-      votesBelowUpTo_iff.2 fun _ _ _ _ _ _ _ _ _ h₁ h₂ => ?_⟩
-    omega
-  | succ s ih =>
-    have hP := origins_below_succ_before hrun hnc hb hsync hfb ih.1 ih.2 hstock
-    exact ⟨hP, votes_below_succ_before hrun hnc hb hsync hfb hP ih.2 hstock⟩
-
 /-- **The Sleepy record invariant up to `b`** (S1–S3 for the origins within `b`, the honest votes
 at times `≤ b` and the cuts within `b`) holds of every Goldilocks run with population-sized
 committees (`sp.committeeSize = sp.n`) under `NoColl` and the send-window prefix premises
@@ -123,37 +106,6 @@ theorem sleepy_invariant_upTo
     fun y hy i hi => caches_on_chain_upTo hrun hnc hfb hy hi, fun y hy i hi l hl => ?_,
     fun y hy i hi ℓ C h => source_on_chain_upTo hrun hnc hy hi h,
     fun y hy i hi C s hC hCt => held_origin_viable_upTo hrun hnc hpre (fun s => (hF s).1) hy i hi
-      (fun C' s' hC' => hcomp C s C' s' hC (hC'.within hi)) hCt⟩
-  · exact votesBelowUpTo_iff.1 (hF e.msg.slot).2 C s hC y hy i e he hib hs le_rfl
-  · obtain ⟨L, hL, hLr, C, hC, hLC⟩ := lock_origin hrun hnc hy i l hl
-    exact ⟨L, hL, hLr, onOriginChainWithin_iff.2 (Or.inr ⟨C, l.slot, hC.within hi, hLC⟩)⟩
-
-/-- The complete finite record invariant under recipient-bounded service. -/
-theorem sleepy_invariant_before
-    {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
-      tr.FaultBound H (sp.ts s + d)) (hstock : sp.committeeSize = sp.n) :
-    SleepyInvariantUpTo tr H b := by
-  have hF := frontier_before hrun hnc hb hsync hfb hstock
-  have hcomp : ∀ C s C' s', OriginWithin tr H C s b → OriginWithin tr H C' s' b →
-      Compatible (tr.HonestBlocks H) C C' := fun C s C' s' h h' =>
-    originsBelowUpTo_iff.1 (hF (max s s' + 1)).1 C s C' s' (by omega) (by omega) h h'
-  have hzero := hfb 0 0 (Or.inl rfl)
-    (by simpa only [SAParams.ts, Nat.cast_zero, mul_zero, add_zero] using hb)
-  have hf : 2 * Hᶜ.ncard < sp.n := by
-    have h := hzero
-    change Hᶜ.ncard < tr.honestAwakeJoined H (sp.ts 0 + 0) at h
-    have hle : tr.honestAwakeJoined H (sp.ts 0 + 0) ≤ H.ncard :=
-      Set.ncard_le_ncard fun x hx => hx.1
-    have hn : H.ncard + Hᶜ.ncard = sp.n := by
-      rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-    omega
-  refine ⟨hcomp, fun C s hC y hy i e he hib hs => ?_,
-    fun y hy i hi => record_origin_upTo hrun hnc hy hi,
-    fun y hy i hi => caches_on_chain_upTo hrun hnc hzero hy hi, fun y hy i hi l hl => ?_,
-    fun y hy i hi ℓ C h => source_on_chain_upTo hrun hnc hy hi h,
-    fun y hy i hi C s hC hCt => held_origin_viable_before hrun hnc hf (fun s => (hF s).1) hy i hi
       (fun C' s' hC' => hcomp C s C' s' hC (hC'.within hi)) hCt⟩
   · exact votesBelowUpTo_iff.1 (hF e.msg.slot).2 C s hC y hy i e he hib hs le_rfl
   · obtain ⟨L, hL, hLr, C, hC, hLC⟩ := lock_origin hrun hnc hy i l hl

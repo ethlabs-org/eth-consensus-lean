@@ -101,14 +101,6 @@ theorem simTrace_inHorizon_le (hv : rho.ExecutionValid) {t : Time}
     exact ht'.trans (simTrace_labelled_time_le S rho hn hv hl)
   · exact hk
 
-/-- Environment wakefulness transports throughout the canonical observation horizon. -/
-theorem simTrace_awake_to (hv : rho.ExecutionValid) :
-    ∀ y ∈ honestKeys S rho, ∀ t, E.awake (rho.key y) t = true → 0 ≤ t →
-      (simTrace S rho hn).InHorizon t → (simTrace S rho hn).awake y t := by
-  intro y hy t hw ht hh
-  exact simTrace_awake_before_horizon S rho hn y hy t hw ht
-    (simTrace_inHorizon_le S rho hn hv hh)
-
 /-- The first cut of a group: a cut at position `0` of an engine event at the group's node and
 time, whose phase is the group's event's. -/
 private theorem groupAt_start {y : Fin (Fintype.card V)} {j : Nat} {t : Time}

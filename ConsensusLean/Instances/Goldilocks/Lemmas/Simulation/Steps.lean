@@ -50,7 +50,7 @@ theorem proposal_releasable_of_protected (hprot : PollAttProtected S rho hn)
     simp only [dutiesInit, hone]
     rfl
 
-/-- **`Simulates.tick`'s node step at a public time.** An engine tick of an honest node at a public
+/-- **`SimulatesAt.tick_public`'s node step.** An engine tick of an honest node at a public
 time runs the node's tick with the encoded mempool on the node state before it. -/
 theorem node_of_tick_public_of_protected (hprot : PollAttProtected S rho hn)
     (hv : rho.ExecutionValid)
@@ -179,7 +179,7 @@ theorem proposal_releasable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionV
   proposal_releasable_of_protected S rho hn (pollAttProtected_of_constant S rho hn hf hv) hv v hv' i
     t he s par info cs hs hone hselected hprop
 
-/-- **`Simulates.tick`'s node step at a public time.** An engine tick of an honest node at a public
+/-- **`SimulatesAt.tick_public`'s node step.** An engine tick of an honest node at a public
 time runs the node's tick with the encoded mempool on the node state before it. -/
 theorem node_of_tick_public (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (v : V) (hv' : v ∉ rho.faultyAt 0) (i : Nat)

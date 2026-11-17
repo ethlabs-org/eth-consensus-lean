@@ -8,8 +8,7 @@ public section
 
 Groups, the cut law and the wire checks complete `simTrace_goldilocksRun`, using the schedule
 and credentials of `RunSchedule`, the cut blocks of `RunBlocks` and the engine/trace
-correspondence of `RunSimulates`. `simTrace_simulates` (`Simulation/Core`) assembles the full
-`Simulates`. -/
+correspondence of `RunSimulates`. -/
 
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape

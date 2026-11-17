@@ -13,10 +13,10 @@ public section
 
 /-! # Goldilocks Simulation: the engine simulates the node
 
-`Simulates` (`Simulation/Interface`) assembled from its steps: the trace `simTrace`
-with the cut map `cutMap` (`Trace`), a Goldilocks run by `simTrace_goldilocksRun` and agreeing
-with the engine by the `Simulates` steps (`Run`). Signed fresh-admission publication follows
-from event-local pool insertion and global first-release provenance. -/
+The constant-fault steps of the simulation: the trace `simTrace` with the cut map `cutMap`
+(`Trace`) is a Goldilocks run by `simTrace_goldilocksRun`, and the engine's vote forwarding follows
+from event-local pool insertion and global first-release provenance (`simTrace_vote_forwarded`).
+The growing-fault simulation is `simTraceAt_simulates` (`Growing/Simulation/Simulates`). -/
 
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape
@@ -408,74 +408,6 @@ theorem delivery_block_payload_processAt {i : Nat} {v : V}
   exact received_vote_processAt S rho hn he
     ((contains_of_mem_delivered ho).trans (Model.Obj.Contains.step hp (.refl _)))
 
-/-- An authenticated vote envelope received after its globally first release yields
-processing no earlier than that release. The first-release premise is essential:
-the wire timestamp alone does not authenticate a fresh source occurrence. -/
-theorem received_voteForward_processAt (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {source i : Nat} {x : Fin (Fintype.card V)} {v : V} {τ u : Time}
-    {receipt : Wire (Fintype.card V) S.vote} {m : SA.Vote (Fintype.card V)}
-    (hx : rho.key x ∉ rho.faultyAt 0) (hs : rho.SendsAt (rho.key x) source τ)
-    (hfirst : ∀ j < source,
-      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉
-        rho.releasesAt j)
-    (he : rho.events[i]? = some (.deliver v receipt u))
-    (hc : Model.Obj.Contains receipt
-      (.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m])) :
-    ∃ k, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
-      (simTrace S rho hn).projAC.ProcessAt (rho.ownKey v) k m ∧
-      (simTrace S rho hn).time k = u ∧ τ ≤ u := by
-  obtain ⟨j, s, hji, hsend, hrel⟩ := hv.unforgeable i v receipt u he _ hc
-    (rho.key x) rfl (by simpa only [rho.faultyAt_eq_zero hconst] using hx)
-  have hsj : source ≤ j := by
-    by_contra h
-    exact hfirst j (Nat.lt_of_not_ge h) hrel
-  have hsi : source < i := hsj.trans_lt hji
-  have htime : τ ≤ u := by
-    rcases hs with hs | ⟨o, hs⟩ <;>
-      rcases keyLe_of_lt S rho hv hs he hsi with h | ⟨h, _⟩
-    · exact h.le
-    · exact h.le
-    · exact h.le
-    · exact h.le
-  obtain ⟨k, hlo, hhi, hp, ht⟩ := received_vote_processAt S rho hn he
-    (hc.trans (Model.Obj.Contains.step (List.mem_singleton_self _) (.refl _)))
-  exact ⟨k, hlo, hhi, hp, ht, htime⟩
-
-/-- Holdings of a first-release vote envelope either belong to its source or give
-an actual recipient processing cut between source time and the holding time.
-The source alternative is not itself a fresh-processing claim. -/
-theorem held_voteForward_source_or_process (hconst : rho.point.ConstantFaults)
-    (hv : rho.ExecutionValid)
-    {source : Nat} {x y : Fin (Fintype.card V)} {τ d : Time}
-    {m : SA.Vote (Fintype.card V)}
-    (hx : rho.key x ∉ rho.faultyAt 0) (hs : rho.SendsAt (rho.key x) source τ)
-    (hfirst : ∀ j < source,
-      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉
-        rho.releasesAt j)
-    (hh : rho.log.Held rho.point (rho.key y)
-      (.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m]) d) :
-    y = x ∨ ∃ k, (simTrace S rho hn).projAC.ProcessAt y k m ∧
-      τ ≤ (simTrace S rho hn).time k ∧ (simTrace S rho hn).time k ≤ d := by
-  obtain ⟨u, hud, hsend | hrecv, _⟩ := hh
-  · obtain ⟨i, hi, hrel⟩ := hsend
-    have hxy : x = rho.ownKey (rho.key y) := by
-      rcases hi with he | ⟨o, he⟩
-      · simp only [Model.Run.releasesAt, he] at hrel
-        rcases rho.tick_auth _ _ _ hrel with h | ⟨r, h, _⟩
-        · cases h
-        · exact (Model.Auth.signed.inj h).1
-      · simp only [Model.Run.releasesAt, he] at hrel
-        rcases rho.deliver_auth _ _ _ _ hrel with h | ⟨r, h, _⟩
-        · cases h
-        · exact (Model.Auth.signed.inj h).1
-    exact Or.inl (hxy.trans (rho.key.symm_apply_apply y)).symm
-  · obtain ⟨i, hi⟩ := hrecv
-    obtain ⟨k, _, _, hp, ht, hτ⟩ := received_voteForward_processAt S rho hn hconst hv hx hs
-      hfirst hi (.refl _)
-    have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
-    rw [hkey] at hp
-    exact Or.inr ⟨k, hp, ht ▸ hτ, ht ▸ hud⟩
-
 /-- Option C's publication supplier: actual same-event release and first release,
 not merely candidate construction or pool membership. -/
 theorem simTrace_vote_forwarded {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
@@ -544,35 +476,6 @@ theorem simTrace_vote_forwarded {V : Type} [Fintype V] [DecidableEq V] {E : Env 
       he m hold hnew
     simp only [Model.Run.ownKey, Equiv.symm_apply_apply] at hr
     exact hr
-
-/-- The simulating trace and cut map of a valid engine run simulate it. -/
-theorem simTrace_simulates {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E) (hn : 1 ≤ Fintype.card V)
-    (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    :
-    Simulates { S with vote := stock } rho hn (simTrace { S with vote := stock } rho hn)
-      (cutMap { S with vote := stock } rho hn) where
-  run := simTrace_goldilocksRun S rho hn hf hv
-  ι_zero := cutMap_zero { S with vote := stock } rho hn
-  ι_mono := cutMap_mono { S with vote := stock } rho hn
-  covered := simTrace_covered { S with vote := stock } rho hn
-  state := simTrace_state { S with vote := stock } rho hn hf hv
-  now := now_eq_lastClock { S with vote := stock } rho hn hv
-  tick_public := simTrace_tick_public_group { S with vote := stock } rho hn hf hv
-  tick_other := simTrace_tick_other { S with vote := stock } rho hn hv
-  deliver := simTrace_deliver { S with vote := stock } rho hn hf hv
-  restart := simTrace_restart { S with vote := stock } rho hn hf hv
-  awake_of := simTrace_awake_of { S with vote := stock } rho hn hv
-  awake_to := simTrace_awake_to { S with vote := stock } rho hn hv
-  block_released := simTrace_block_released { S with vote := stock } rho hn hf hv
-      (simTrace_goldilocksRun S rho hn hf hv)
-  vote_released := simTrace_vote_released { S with vote := stock } rho hn hf hv
-      (simTrace_goldilocksRun S rho hn hf hv)
-  att_released := simTrace_att_released { S with vote := stock } rho hn hf hv
-      (simTrace_goldilocksRun S rho hn hf hv)
-  block_relayed := simTrace_block_relayed { S with vote := stock } rho hn hv
-  vote_forwarded := simTrace_vote_forwarded S rho hn hf hv
-  att_relayed := simTrace_att_relayed { S with vote := stock } rho hn hv
 
 end Consensus.Goldilocks.Simulation
 

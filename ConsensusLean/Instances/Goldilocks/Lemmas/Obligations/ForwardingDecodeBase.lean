@@ -245,34 +245,6 @@ theorem own_proposal_decodes {V : Type} [Fintype V] {E : Env V}
       reduceCtorEq, not_false_eq_true]) h.2.2.2.2.2.1
     (fun a ha => (h.2.2.2.1 a ha).1) h.2.2.2.2.1
 
-/-- Every honest acceptance in the simulating trace has a valid canonical child wire.
-Receipt validity and own-proposal validity are proved by their respective run laws. -/
-theorem accepted_child_decodes {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
-    (hn : 1 ≤ Fintype.card V)
-    (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (y : Fin (Fintype.card V)) (hy : y ∈ honestKeys { S with vote := stock } rho)
-    (i : Nat) (B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn))
-    (hc : (simTrace { S with vote := stock } rho hn).CallAt y i (.fg (.block B true))) :
-    decodeBlock (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)
-      (binding := stock) (digests rho.hash (blockObj _ B))
-      (blockObj _ B) = some B := by
-  have run := simTrace_goldilocksRun S rho hn hf hv
-  rcases Compose.blockCall_cases run.toLocalRun hy hc with hg |
-    ⟨j, x, _, hg, hp, d, p, hdp, hB, _, _, _, _⟩
-  · have hw := run.wire y hy i _ _ hg
-    have ha := (run.cutLaw y hy i _ hc).2.1
-    obtain ⟨root, _, hr, _, _, _, _, _⟩ := Store.onBlock_eq_some ha
-    exact canonical_block_decodes { S with vote := stock } rho hn B
-      (by rw [hr]; simp) hw.1 hw.2.1 hw.2.2
-  · obtain ⟨cfg, hr, hst, hs⟩ := Compose.group_step run.toLocalRun hy hg
-    have hd := own_proposal_decodes { S with vote := stock } rho hn
-      (runProposer { S with vote := stock } rho hn) y cfg _ _ x
-      run.genesis_root_ok hr (SA.voteStart_initial _) hs hp d p (by rw [hst]; exact hdp)
-    subst hB
-    simp only [hst, Node.acProposal, Node.tickStep, Node.acCall] at hd
-    exact hd
-
 /-- Acceptance preserves both decoder inventory and held-block correspondence together. -/
 theorem decoded_held_accept {V : Type} [Fintype V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
