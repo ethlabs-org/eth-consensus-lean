@@ -503,9 +503,8 @@ detail in `TRUST.md`.
   specification's: votes are signed in the poll role, `mayVote` holds at every slot, `committeeSize = n`, and the
   committee clause of `System.Outage` at the Goldilocks contract (committee look-ahead `5 ≤ 5`, the population
   one) follows from the population clause (`goldilocksContract_outage_stock_iff`).
-  The test `ConsensusLeanTest/Goldilocks/VoteBinding.lean` checks that the population binding equals the
-  population-only shape (`stock_legacy`), and exercises a proper-subset binding of one key per slot. Which
-  certified statement holds at which binding is in §"Trusted surface and Challenge scope".
+  The test `ConsensusLeanTest/Goldilocks/VoteBinding.lean` exercises a proper-subset binding of one key per
+  slot. Which certified statement holds at which binding is in §"Trusted surface and Challenge scope".
   Stock-only consumers specialize binding-generic queries explicitly at `goldilocks {S with vote := stock}`. The growing queries `FinalQueryAt`, `HealthyPreparationQueryAt` and `ConfirmedQueryAt`, and the final-window extraction, take every `S : Setup`; this does not by itself generalize every supplier or the endpoint. Their stock users pass `{S with vote := stock}`. The static queries (`OutageQuery`, `ConfirmedQuery`, `HealthyPreparationQuery`) and `SleepySafetyQueryAt` are stated at `goldilocks {S with vote := stock}`.
   The stock trusted statements and
   `meetsObligations_growing` explicitly use `goldilocks {S with vote := stock}`. Source contract assumptions
