@@ -24,6 +24,15 @@ open Consensus.Model (pubOf)
 
 variable (S : Setup) (A : ContractAssumptions S)
 
+/-- Run interfaces with the same run predicate and committee start are equal. -/
+private theorem acRun_ext {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n} {R R' : ACRun A sg}
+    (hrun : R.Run = R'.Run) (hstart : R.start = R'.start) : R = R' := by
+  cases R
+  cases R'
+  cases hrun
+  cases hstart
+  rfl
+
 /-- At each public parameter, a local supplier at the data equations has an engine binding with
 its payload and run interface, an outage policy and a stored read context, and the local claim
 suppliers at every valid run. -/
@@ -40,49 +49,25 @@ private theorem local_binding (V : Type) [Fintype V] [DecidableEq V]
     rw [hC.payload]
     funext B
     exact payloadOf_eq S B
-  have hR : goldilocksRunInterface (S.params pub hn) (S.ro _) = C.run := by
-    obtain ⟨⟨hrun, hstart⟩, -⟩ := hC.healing
-    obtain ⟨hrun', hstart'⟩ :=
-      goldilocksRunInterface_data (sp := S.params pub hn) (ro := S.ro _)
-    revert hrun hstart hrun' hstart'
-    generalize C.run = R
-    generalize goldilocksRunInterface (S.params pub hn) (S.ro _) = R'
-    rcases R with ⟨Run, start⟩
-    rcases R' with ⟨Run', start'⟩
-    intro hrun hstart hrun' hstart'
-    dsimp only at hrun hstart hrun' hstart'
-    subst hrun hstart hrun' hstart'
-    rfl
-  have key : ∀ (pl : (goldilocksNode (S.params pub hn) (S.ro _)).Blk → Set Nat)
-      (R' : ACRun (goldilocksNode (S.params pub hn) (S.ro _)) (fun v => v.val)),
-      payloadOf S = pl → goldilocksRunInterface _ _ = R' →
-      ∃ B : EngineBinding (F := goldilocks S) (V := V) pub pl (fun v => v.val) R',
-      ∃ D : ∀ E hE rho hv, OutagePolicy (B.map E hE rho hv),
-      ∃ R : ∀ E hE rho hv, StoredReadContext (B.map E hE rho hv),
-        ∀ E hE rho hv, LocalClaimSuppliers (B.map E hE rho hv) (B.signer_eq E hE rho hv ▸ C)
-          (K S A) (D E hE rho hv) (R E hE rho hv) (SleepyLayer1.goldilocksEvents _ _) := by
-    rintro pl R' rfl rfl
-    refine ⟨goldilocksEngineBinding S pub hn,
-      fun E hE rho hv => by
-        subst hE
-        exact (goldilocksEngineBinding_map S E hn rho hv).symm ▸ goldilocksOutagePolicy S rho hn hv,
-      fun E hE rho hv => by
-        subst hE
-        exact (goldilocksEngineBinding_map S E hn rho hv).symm ▸
-          goldilocksStoredReadContext S rho hn hv,
-      fun E hE rho hv => ?_⟩
-    subst hE
-    have aux : ∀ (M : RunMap (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) rho
-          (payloadOf S)) (hM : M = goldilocksRunMap S rho hn hv)
-        (hsg : (fun v : (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).Msg => v.val) =
-          M.signer),
-        LocalClaimSuppliers M (hsg ▸ C) (K S A) (hM.symm ▸ goldilocksOutagePolicy S rho hn hv)
-          (hM.symm ▸ goldilocksStoredReadContext S rho hn hv)
-          (SleepyLayer1.goldilocksEvents _ _) := by
-      rintro M rfl hsg
-      exact goldilocks_localClaimSuppliers S A rho hn hv C hC
-    exact aux _ (goldilocksEngineBinding_map S E hn rho hv) _
-  exact key _ _ hpl hR
+  have hd := goldilocksRunInterface_data (sp := S.params pub hn) (ro := S.ro _)
+  rw [← hpl, ← acRun_ext (hd.1.trans hC.healing.1.1.symm) (hd.2.trans hC.healing.1.2.symm)]
+  refine ⟨goldilocksEngineBinding S pub hn,
+    fun E hE rho hv => by
+      subst hE
+      exact (goldilocksEngineBinding_map S E hn rho hv).symm ▸ goldilocksOutagePolicy S rho hn hv,
+    fun E hE rho hv => by
+      subst hE
+      exact (goldilocksEngineBinding_map S E hn rho hv).symm ▸
+        goldilocksStoredReadContext S rho hn hv,
+    fun E hE rho hv => ?_⟩
+  subst hE
+  have aux : ∀ M (hM : M = goldilocksRunMap S rho hn hv) (hsg : _ = M.signer),
+      LocalClaimSuppliers M (hsg ▸ C) (K S A) (hM.symm ▸ goldilocksOutagePolicy S rho hn hv)
+        (hM.symm ▸ goldilocksStoredReadContext S rho hn hv)
+        (SleepyLayer1.goldilocksEvents _ _) := by
+    rintro M rfl hsg
+    exact goldilocks_localClaimSuppliers S A rho hn hv C hC
+  exact aux _ (goldilocksEngineBinding_map S E hn rho hv) _
 
 /-- **The growing-fault endpoint** of `goldilocks S` at the coefficients `contract_coefficients
 S A`, at every vote binding. -/
