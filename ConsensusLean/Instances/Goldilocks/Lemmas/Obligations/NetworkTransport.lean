@@ -58,8 +58,6 @@ theorem protoFGDelay_eq (pub : Model.Public) : protoFGDelay pub = pub.ΔFG := by
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
-  {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (ΔF : Time)
 
 /-- The engine log's message class is the Goldilocks attestation class (`isFGAtt`). -/
 theorem log_fgAtt_iff {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)

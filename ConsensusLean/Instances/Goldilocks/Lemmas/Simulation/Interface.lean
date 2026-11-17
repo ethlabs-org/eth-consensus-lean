@@ -46,10 +46,10 @@ Not stated: the transport of the engine's network premises (`CommLog.PSync`, `Sy
 spec's `Sync`/`GST` (`Spec/Run/Premises`). The engine's `Delivers` holds a receipt by
 `max(a, g) + Δ − 1`, strictly before `max(a, g) + Δ`, as the spec requires processing strictly
 before `max(τ, w_y) + Δ'` (half-open delivery); the engine relays an admission at
-the admitting delivery's own time, as the spec's instantaneous send. The
-open transport suppliers are in `Lemmas/Obligations/NetworkTransport`; they are not premises of
-`MeetsObligations`. `docs/goldilocks-mapping.md` §"AsChainShape, Simulation and Obligations" maps
-each statement.
+the admitting delivery's own time, as the spec's instantaneous send. The obligations proof does
+not need the whole-run transport: the per-service suppliers of `Lemmas/Growing/Obligations/Network`
+give it directly, at every vote binding. `docs/goldilocks-mapping.md` §"AsChainShape, Simulation
+and Obligations" maps each statement.
 
 Not in `Challenge`: this module is outside the challenge's import closure, the comparator and
 `milestone_statements_modules`. Its statements are proved in `Lemmas/Simulation`

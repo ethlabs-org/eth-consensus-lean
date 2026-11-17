@@ -569,7 +569,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Inter
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.LocalRows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Payload
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PoolCap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PoolDelivery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PreparationPremises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Provenance
@@ -816,7 +815,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ForwardingCh
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ForwardingDecode
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ForwardingDecodeBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HSSharedRun
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealBoundRounds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Healed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealedSafetyConditional
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective

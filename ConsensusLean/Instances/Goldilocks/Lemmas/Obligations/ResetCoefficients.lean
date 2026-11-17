@@ -19,8 +19,9 @@ statement module `Statements/Obligations` (the heal coefficient reads them); the
 * `healthyResetSlack S X = 0`: `r`.
 * `healMargin S X = 20 L_drain + 8k + 28δ_t + 28X + 56`: the margin `M_f` of the heal coefficient
   `contract_heal = catchUp + M_f`, the final route's heal-bound margin on the key-dependent
-  rise-round route at `λ = 2Δ` (`healBoundCoeffRounds_at_two`). It covers the nonfinal reset
-  reserve `R + 8k + 4X + 29 + r` when `δ_t ≥ 6` (`healMargin_ge_reset`, slack `4δ_t − 13`). -/
+  rise-round route at `λ = 2Δ` (the test `Obligations.Test.Contract.heal_val`). It covers
+  the nonfinal reset reserve `R + 8k + 4X + 29 + r` when `δ_t ≥ 6` (`healMargin_ge_reset`, slack
+  `4δ_t − 13`). -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape

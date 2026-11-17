@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "audit_commit": "3f493ae1e02b2c2503fc30f2f3439bf240585be4",
+  "audit_commit": "f45a89b5456852dbdf5bdcfe8ea4402a7d18f929",
   "baseline_commit": "eed6d0b55614dde64a82b1ef17099e3533e0515f",
   "notes": [
     "blocked-by contains transitive compiled sorry owners, not speculative paper joins.",
@@ -800,7 +800,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Obligations.publication_held_before_deadline",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/NetworkTransport.lean:144",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/NetworkTransport.lean:142",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -810,7 +810,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Obligations.publication_held_syncUntil",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/NetworkTransport.lean:91",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/NetworkTransport.lean:89",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,

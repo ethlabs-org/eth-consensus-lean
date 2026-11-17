@@ -786,9 +786,10 @@ Modelling choices (`docs/decisions.md` §"Goldilocks model choices", the entries
   spec's tick runs only awake (`tick_of_awake`), so it is the poll proposal step at the public times. The release
   of queued bodies is the shape's own, through poll steps; the two leading polls make a proposal carry only
   released objects (the spec has no release step).
-- **Stated, open: the network premises' transport.** The engine reads an admission as an instantaneous send
-  (`SendOrAdmitAt`); the deadlines, the services the obligations proof uses and the open transport suppliers (not
-  premises of `MeetsObligations`) are in the Regimes section's note "Network model vs the spec's premises".
+- **The network premises' transport.** The engine reads an admission as an instantaneous send
+  (`SendOrAdmitAt`); the deadlines and the services the obligations proof uses (the direct committee-aware route;
+  the whole-run transports were retired unproved) are in the Regimes section's note "Network model vs the spec's
+  premises".
 - **The proposer selection is the run's.** The generic skeleton's proposer selection is per slot
   (`proposerSel : Slot → SelSpec n`); the Goldilocks skeleton sets it to `.sized 1` at every
   slot (the runtime has no proposer schedule), so a valid run selects one proposer

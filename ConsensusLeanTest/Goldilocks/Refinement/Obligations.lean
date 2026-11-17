@@ -18,7 +18,7 @@ Labelled by kind (CONTRIBUTING "Statements"):
   `12k + 7` is the proof window `budget + 2·lag` and covers catch-up + 1 at every `k`
   (`eta_covers_window`, `eta_k_two_five`); lag `4k + 6`, recovery `9`, budget `4k − 5`
   (`outage_lag_recovery_budget`); heal `catchUp + M_f` on the rise-round route, `387` at
-  `k = 2, δt = 6, X = 1` (`heal_drop`).
+  `k = 2, δt = 6, X = 1` (`heal_val`).
   `contract_latency` takes its documented value (`4X + 6`, `4(X + 3c) + 1`) at each capability,
   and both Sleepy margins hold there.
 
@@ -29,7 +29,8 @@ Labelled by kind (CONTRIBUTING "Statements"):
   `δt = 29`; `fg_transport_slow` and `fg_transport_fast` instantiate `fgDelay_bound_iff` at
   `ΔFG > ΔAC` and `ΔFG < ΔAC`.
 
-`contract_heal` (`catchUp + healMargin`, `contract_heal_val`) is pinned by `heal_drop`.
+`contract_heal` (`catchUp + healMargin`, `contract_heal_val`) is pinned by `heal_val`, which also
+checks `healMargin` as the rise-round route's heal bound at `λ = 2Δ`.
 
 * (a) The headline `GoldilocksCorrect` is not vacuous: `goldilocksCorrect_realizable_small`.
 * (a) The endpoint is not vacuous: `meetsObligations_realizable_small` instantiates
@@ -150,11 +151,21 @@ theorem outage_lag_recovery_budget :
       (K setupSmall assumptionsSmall).params.budget = 3 := ⟨rfl, rfl, rfl⟩
 
 /-- (b) The heal coefficient is `catchUp + M_f` at every capability, `387` at `k = 2`, `δt = 6`,
-`X = 1` (`M_f = 368`, rise-round route). -/
-theorem heal_drop (S : Setup) (A : ContractAssumptions S) (cap : Capability) (X : ℕ+) :
+`X = 1` (`M_f = 368`, rise-round route). `M_f = healMargin` is the rise-round route's heal bound at
+`λ = 2Δ`: the route's coefficient `20L + 8k + 28δ_t + 28X + 46` (`L = healthyDrainLen`, without its
+`5λ − 2` term), with the lag `5λ = 10Δ` added, is `healMargin·Δ − 2`. -/
+theorem heal_val (S : Setup) (A : ContractAssumptions S) (cap : Capability) (X : ℕ+) :
     contract_heal S A cap X = 19 + healMargin S X ∧
-      contract_heal setupSmall assumptionsSmall cap 1 = 387 :=
-  ⟨by rw [contract_heal_val, contract_catchUp_val], by rw [contract_heal_val]; rfl⟩
+      contract_heal setupSmall assumptionsSmall cap 1 = 387 ∧
+      ∀ D : ℤ,
+        ((20 * healthyDrainLen S X + 8 * S.k + 28 * S.δt + 28 * (X : Nat) + 46 : Nat) : ℤ) * D +
+            5 * (2 * D) - 2 =
+          (healMargin S X : ℤ) * D - 2 := by
+  refine ⟨by rw [contract_heal_val, contract_catchUp_val], by rw [contract_heal_val]; rfl,
+    fun D => ?_⟩
+  rw [healMargin_val]
+  push_cast
+  ring
 
 /-- Both setups' assumptions have FG gap `2`. -/
 theorem gap_two {S : Setup} {A : ContractAssumptions S} (h : A.fgSlots = 2 := by rfl) :
@@ -471,3 +482,11 @@ theorem not_obligationsAs_available (S : Setup) (K : Contract ProgressReq) :
   fun h => schema_profile.2.2 h.1
 
 end Consensus.Goldilocks.Obligations.Test.Contract
+
+-- `#guard_msgs in #print axioms` puts the command off column 0; the pinned message is longer
+-- than 100 columns.
+set_option linter.style.whitespace false
+set_option linter.style.longLine false
+
+/-- info: 'Consensus.Goldilocks.Obligations.Test.Contract.heal_val' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Obligations.Test.Contract.heal_val

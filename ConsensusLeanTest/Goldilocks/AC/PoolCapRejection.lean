@@ -1,18 +1,16 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.Views
 
-public section
+@[expose] public section
 
 /-! # A late honest vote can be rejected after its signer is compromised
 
-This local admission witness isolates the obstruction to exact pool membership: two
-distinct votes forged after compromise can fill the same-validator cap before the genuine
-vote arrives. It is not a complete engine-run counterexample.
--/
+Kind (r), a rejection test (CONTRIBUTING "Statements"), of exact pool membership under the pool
+cap (`SA.PoolCap`): `third_vote_rejected` is a local admission witness in which two distinct votes
+forged after compromise fill the same-validator cap before the genuine vote arrives. It is not a
+complete engine-run counterexample. -/
 
-namespace Consensus.Goldilocks.Simulation
-
-open SA
+namespace Consensus.Goldilocks.SA.Test
 
 /-- Two earlier distinct votes of the same validator prevent admission of a third vote,
 even in its current slot. The third vote can have been honestly cast before compromise. -/
@@ -26,4 +24,14 @@ theorem third_vote_rejected (sp : SAParams) (x : Fin sp.n) :
   have hs : sp.slot 0 = 0 := by simp [SAParams.slot, Params.slotOf]
   simp [admitVote, hs, SAState.initial]
 
-end Consensus.Goldilocks.Simulation
+end Consensus.Goldilocks.SA.Test
+
+-- `#guard_msgs in #print axioms` puts the command off column 0; the pinned message is longer
+-- than 100 columns.
+set_option linter.style.whitespace false
+set_option linter.style.longLine false
+
+/-- info: 'Consensus.Goldilocks.SA.Test.third_vote_rejected' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.SA.Test.third_vote_rejected
+
+end

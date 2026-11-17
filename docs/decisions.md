@@ -273,8 +273,9 @@ detail in `TRUST.md`.
   - heal `catchUp + M_f` (`contract_heal`), with `M_f = healMargin = 20 L_drain + 8k + 28δ_t + 28X + 56` and
     `L_drain = 2k + X` (expanded `48k + 28δ_t + 48X + 56`; heal `387` at `k = 2, X = 1, δ_t = 6`). It is the final
     route's heal bound on the key-dependent rise-round route at `λ = 2Δ` (`exists_reset_of_drain_rounds_awake_at`,
-    `resetBoundRounds`, `healBoundCoeffRounds_at_two`), which gives a lower heal than the earlier five-window frame
-    route; the untrusted reset coefficient `healthyResetCoeff = 20 L_drain + 24(δ_t + X) + 40` moves with it, and
+    `resetBoundRounds`; the test `Obligations.Test.Contract.heal_val` checks the coefficient identity),
+    which gives a lower heal than the earlier five-window frame route; the untrusted reset coefficient
+    `healthyResetCoeff = 20 L_drain + 24(δ_t + X) + 40` moves with it, and
     `M_f` also covers the nonfinal reset envelope for `δ_t ≥ 6` (`healMargin_ge_reset`, slack `4δ_t − 13`). A
     smaller heal makes `healthyLive` and `healedSafe` hold from earlier and shortens `healedSafe`'s progress window,
     so both get stronger; `Admissible` does not bound the heal, and the generic realizability witnesses give
