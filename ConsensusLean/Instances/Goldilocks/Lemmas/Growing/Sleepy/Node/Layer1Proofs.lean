@@ -384,7 +384,7 @@ theorem goldilocksLocal_output_provenance
     (hdata : GoldilocksLocalData sp ro C) :
     OutputProvenance C (goldilocksEvents sp ro) := by
   intro cm proposer dg H tr b hrun hnc
-  rw [hdata.1.1.1] at hrun
+  rw [hdata.healing.1.1] at hrun
   exact (goldilocksOutputProvenance_iff.mp goldilocks_output_provenance)
     cm proposer dg H tr b ((goldilocksRunInterface_run_iff cm).mpr hrun) hnc
 
@@ -394,7 +394,7 @@ theorem goldilocksLocal_source_provenance
     (hdata : GoldilocksLocalData sp ro C) :
     SourceProvenance C (goldilocksEvents sp ro) := by
   intro cm proposer dg H tr b hrun hnc
-  rw [hdata.1.1.1] at hrun
+  rw [hdata.healing.1.1] at hrun
   exact (goldilocksSourceProvenance_iff.mp goldilocks_source_provenance)
     cm proposer dg H tr b ((goldilocksRunInterface_run_iff cm).mpr hrun) hnc
 

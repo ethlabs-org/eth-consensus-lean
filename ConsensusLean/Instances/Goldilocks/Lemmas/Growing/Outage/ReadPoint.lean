@@ -37,10 +37,10 @@ theorem goldilocks_outageReadPoint (C : ACCorrectLocal (goldilocksNode sp ro) (f
     rw [hbudg] at hbud
     rw [hrecov] at hrec
     obtain ⟨⟨ini, hgr⟩, hKB, hcall, service⟩ := outage_inputs_of_local hC hrun hnc hb hs
-    have hθ : C.θ = 1 / 2 := hC.2.1
+    have hθ : C.θ = 1 / 2 := hC.θ
     have hpos : 0 < sp.committeeSize := by
       have h := hrun
-      rw [hC.1.1.1] at h
+      rw [hC.healing.1.1] at h
       exact h.2.1
     have hth : t ≤ p.horizon := hRy.1.2.2.2
     have hhor : 0 ≤ p.horizon := hRy.1.2.2.1.trans hth
@@ -78,7 +78,7 @@ theorem goldilocks_outageReadPoint (C : ACCorrectLocal (goldilocksNode sp ro) (f
           C.committeeLook 0 p.horizon := by
       simpa only [hθ] using hK
     have hcl : 0 ≤ C.committeeLook := by
-      rw [hC.2.2.2.2.1]; positivity
+      rw [hC.committeeLook]; positivity
     have hη0 : 0 < C.outageEta := by
       rw [hη]; positivity
     have hopp : ∀ m, j₀ ≤ m → m ≤ j₀ + sp.k → sp.ts m ≤ p.horizon →

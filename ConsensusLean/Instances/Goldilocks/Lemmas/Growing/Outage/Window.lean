@@ -110,12 +110,12 @@ theorem outage_durations_of_local (hC : GoldilocksLocalData sp ro C) :
       C.outageBudget = (4 * (sp.k : Time) - 5) * sp.Δ ∧ C.recovery = 9 * sp.Δ := by
   have hk2 : (2 : Int) ≤ sp.k := by exact_mod_cast sp.two_le_k
   have hbcast : ((4 * sp.k - 5 : Nat) : Int) = 4 * (sp.k : Int) - 5 := by omega
-  refine ⟨hC.2.2.1, ?_, ?_, ?_, hC.2.2.2.2.2.2.2.2.1⟩
+  refine ⟨hC.catchUp, ?_, ?_, ?_, hC.recovery⟩
   · simpa only [Nat.cast_add, Nat.cast_mul, Nat.cast_ofNat] using
-      hC.2.2.2.2.2.2.2.2.2.1
+      hC.outageEta
   · simpa only [Nat.cast_add, Nat.cast_mul, Nat.cast_ofNat] using
-      hC.2.2.2.2.2.2.2.2.2.2.1
-  · simpa only [hbcast] using hC.2.2.2.2.2.2.2.2.2.2.2.1
+      hC.outageLag
+  · simpa only [hbcast] using hC.outageBudget
 
 /-- The L9 local run supplies its canonical committee start and membership facts. -/
 theorem outage_inputs_of_local (hC : GoldilocksLocalData sp ro C)
@@ -126,14 +126,14 @@ theorem outage_inputs_of_local (hC : GoldilocksLocalData sp ro C)
       CommitteeFacts tr H (dictOfTime sp cm) ∧
       (∀ x k, tr.IsCall x k → tr.time k ≤ p.horizon) ∧
       SleepyServiceBefore tr H sp.Δ b₀ := by
-  rw [hC.1.1.1] at hrun
+  rw [hC.healing.1.1] at hrun
   obtain ⟨hrun, -, -, hfacts⟩ := hrun
   refine ⟨⟨_, hrun⟩, hfacts hnc, ?_, ?_⟩
   · intro x k hk
     obtain ⟨ℓ, _, hl⟩ := hk
     exact (hb.2.2.2 _).1 ⟨k, Or.inl (by rw [hl]; simp), le_rfl⟩
   · exact SleepyLayer1.sleepyServiceBefore_of_acService hrun
-      hC.2.2.2.2.2.2.2.2.2.2.2.2.2 hs
+      hC.served hs
 
 end Consensus.Goldilocks.Compose.Growing
 

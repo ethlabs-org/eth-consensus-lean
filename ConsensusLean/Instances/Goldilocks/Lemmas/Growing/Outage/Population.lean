@@ -246,22 +246,22 @@ theorem outage_bounds_of_local
         (max C.catchUp (C.outageEta - 1)) C.committeeLook 0 p.horizon)
     {b : Time} (hbh : b ≤ p.horizon) :
     SleepyBoundsFrom tr H 0 b ∧ CommitteeBoundsFrom tr H (dictOfTime sp cm) 0 b := by
-  have hdata := hC.1.1.1
+  have hdata := hC.healing.1.1
   rw [hdata] at hrun
   obtain ⟨hrun, hpos, hsize, -⟩ := hrun
   have hη : sp.Δ ≤ C.outageEta := by
-    rw [hC.2.2.2.2.2.2.2.2.2.1]
+    rw [hC.outageEta]
     have hcoeff : (1 : Time) ≤ ((12 * sp.k + 7 : Nat) : Time) := by
       have : 1 ≤ 12 * sp.k + 7 := by omega
       exact_mod_cast this
     linarith [mul_le_mul_of_nonneg_right hcoeff sp.toParams.hΔ.le]
   have hcatch : Regimes.catchUp sp ≤ C.catchUp := by
-    rw [hC.2.2.1]
+    rw [hC.catchUp]
     exact le_refl _
   apply outage_bounds hrun hb hpos hsize hη
     (hcatch.trans (le_max_left _ _))
-    (by simpa only [hC.2.1, hC.2.2.2.1] using hp)
-    (by simpa only [hC.2.1, hC.2.2.2.2.1] using hK) hbh
+    (by simpa only [hC.θ, hC.look] using hp)
+    (by simpa only [hC.θ, hC.committeeLook] using hK) hbh
 
 end Consensus.Goldilocks.Compose.Growing
 

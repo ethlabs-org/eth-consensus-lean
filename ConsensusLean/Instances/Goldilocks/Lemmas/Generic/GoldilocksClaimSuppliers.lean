@@ -60,8 +60,8 @@ theorem goldilocks_localClaimSuppliers (S : Setup) (A : ContractAssumptions S) {
   have hΔ : (S.params (pubOf E) hn).Δ = E.ΔAC := rfl
   have hfields := hcast (fun _ C => C.θ = 1 / 2 ∧ C.look = 5 * E.ΔAC ∧
       C.committeeLook = 5 * E.ΔAC ∧ C.catchUp = 18 * E.ΔAC ∧ C.hold = E.ΔAC)
-    ⟨hdata.2.1, hΔ ▸ hdata.2.2.2.1, hΔ ▸ hdata.2.2.2.2.1, hΔ ▸ hdata.2.2.1,
-      hΔ ▸ hdata.2.2.2.2.2.1⟩
+    ⟨hdata.θ, hΔ ▸ hdata.look, hΔ ▸ hdata.committeeLook, hΔ ▸ hdata.catchUp,
+      hΔ ▸ hdata.hold⟩
   have hfg : (K S A).params.fgDelay + 6 ≤ 4 * S.δt := by
     have h1 := A.fgDelay_val
     have h2 := A.timeout
@@ -75,7 +75,7 @@ theorem goldilocks_localClaimSuppliers (S : Setup) (A : ContractAssumptions S) {
   have hruns := hcast (fun _ C => ∀ cm proposer dg H tr, C.run.Run cm proposer dg H tr →
       ∃ ini, Growing.GoldilocksRun proposer dg H tr ini)
     (fun cm proposer dg H tr h => by
-      rw [hdata.1.1.1] at h
+      rw [hdata.healing.1.1] at h
       exact ⟨_, h.1⟩)
   exact
   { regime := goldilocks_regimeTransport S A rho hn hv C hdata hsg
@@ -90,7 +90,7 @@ theorem goldilocks_localClaimSuppliers (S : Setup) (A : ContractAssumptions S) {
     honestChains := goldilocksRunMap_honestChainReads S rho hn hv
     coherent := goldilocksRunMap_coherent S rho hn hv
     engineRead := goldilocksRunMap_engineReadPoint S rho hn hv
-    localRead := hcast (fun _ C => LocalReadPoint C) (goldilocks_localReadPoint C hdata.1.1)
+    localRead := hcast (fun _ C => LocalReadPoint C) (goldilocks_localReadPoint C hdata.healing.1)
     sleepyProposal := goldilocksRunMap_proposal_coverage S rho hn hv C hdata
     eventSafety := goldilocksRunMap_event_safety S rho hn hv C hdata
     outputProvenance := hcast (fun _ C => SleepyLayer1.OutputProvenance C _)

@@ -486,13 +486,13 @@ theorem goldilocksRunMap_event_safety
       (goldilocksRunMap S rho hn hv).committee (goldilocksRunMap S rho hn hv).proposer
       (goldilocksRunMap S rho hn hv).digest (goldilocksRunMap S rho hn hv).honest
       (goldilocksRunMap S rho hn hv).trace := by
-    rw [hdata.1.1.1] at hrun
+    rw [hdata.healing.1.1] at hrun
     exact (goldilocksRunInterface_run_iff _).mpr hrun
   exact (goldilocksEventSafety_iff.mp goldilocks_event_safety)
     _ _ _ _ _ p C.catchUp C.look C.committeeLook ΔF b hrun' hnc
     (((goldilocksRunInterface_run_iff _).mp hrun').2.2.2 hnc)
     (canonical_window_premises S rho hn hv C hdata hb hbind
-      (hsv.trans hdata.2.2.2.2.2.2.2.2.2.2.2.2.2) hpre hK hpop)
+      (hsv.trans hdata.served) hpre hK hpop)
     hframes B B' hB hB'
 
 /-- The concrete extension proof keeps the canonical map's two read boundaries. -/
@@ -506,7 +506,7 @@ theorem goldilocksRunMap_extension
   intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes y i j t u hi hj hbi hbj hij htu
   obtain ⟨hsv, hl, hc, -, -, -, hr, hcl, hθ, -⟩ :=
     Simulation.local_data_cast (goldilocksRunMap_signer S rho hn hv).symm C
-  rw [hr, hdata.1.1.1] at hrun
+  rw [hr, hdata.healing.1.1] at hrun
   rw [hl] at hpre
   rw [hc] at hi hj
   simp only [CommitteeWindow, PopulationWindow, hl, hc, hcl, hθ] at hK hpop
@@ -515,7 +515,7 @@ theorem goldilocksRunMap_extension
     _ _ _ _ _ p C.catchUp C.look C.committeeLook ΔF b hr' hnc
     (hrun.2.2.2 hnc)
     (canonical_window_premises S rho hn hv C hdata hb hbind
-      (hsv.trans hdata.2.2.2.2.2.2.2.2.2.2.2.2.2) hpre hK hpop)
+      (hsv.trans hdata.served) hpre hK hpop)
     hframes y i j t u hi hj hbi hbj hij htu
 
 /-- The proposal adapter retains the local hold and margin equations. -/
@@ -529,7 +529,7 @@ theorem goldilocksRunMap_proposal_coverage
   intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes B k y j t hP hk hhold hkb hkt hy hread hjt
   obtain ⟨hsv, hl, hc, -, hm, hh, hr, hcl, hθ, -⟩ :=
     Simulation.local_data_cast (goldilocksRunMap_signer S rho hn hv).symm C
-  rw [hr, hdata.1.1.1] at hrun
+  rw [hr, hdata.healing.1.1] at hrun
   rw [hl] at hpre
   rw [hc, hh] at hP
   rw [hc] at hy
@@ -541,9 +541,9 @@ theorem goldilocksRunMap_proposal_coverage
     _ _ _ _ _ p C.catchUp C.look C.committeeLook ΔF b C.hold C.margin hr' hnc
     (hrun.2.2.2 hnc)
     (canonical_window_premises S rho hn hv C hdata hb hbind
-      (hsv.trans hdata.2.2.2.2.2.2.2.2.2.2.2.2.2) hpre hK hpop)
-    (by rw [hdata.2.2.2.2.2.1])
-    (by rw [hdata.2.2.2.2.2.2.1])
+      (hsv.trans hdata.served) hpre hK hpop)
+    (by rw [hdata.hold])
+    (by rw [hdata.margin])
     hframes B k y j t hP hk hhold hkb hkt hy hread hjt
 
 end Consensus.Goldilocks.Generic.SleepyLayer1

@@ -37,11 +37,11 @@ private theorem local_binding (V : Type) [Fintype V] [DecidableEq V]
         ∀ E hE rho hv, LocalClaimSuppliers (B.map E hE rho hv) (B.signer_eq E hE rho hv ▸ C)
           (K S A) (D E hE rho hv) (R E hE rho hv) (SleepyLayer1.goldilocksEvents _ _) := by
   have hpl : payloadOf S = C.payload := by
-    rw [hC.2.2.2.2.2.2.2.2.2.2.2.2.1]
+    rw [hC.payload]
     funext B
     exact payloadOf_eq S B
   have hR : goldilocksRunInterface (S.params pub hn) (S.ro _) = C.run := by
-    obtain ⟨⟨hrun, hstart⟩, -⟩ := hC.1
+    obtain ⟨⟨hrun, hstart⟩, -⟩ := hC.healing
     obtain ⟨hrun', hstart'⟩ :=
       goldilocksRunInterface_data (sp := S.params pub hn) (ro := S.ro _)
     revert hrun hstart hrun' hstart'

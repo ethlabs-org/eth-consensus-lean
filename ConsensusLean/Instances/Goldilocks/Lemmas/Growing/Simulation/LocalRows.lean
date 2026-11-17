@@ -61,8 +61,8 @@ theorem goldilocks_claimDeadlineFit (S : Setup) (A : ContractAssumptions S) {E :
   have hdata : (hsg ▸ C).catchUp = 18 * E.ΔAC ∧ (hsg ▸ C).latency = 6 * E.ΔAC ∧
       (hsg ▸ C).margin = 6 * E.ΔAC := by
     obtain ⟨-, -, hc, hl, hm, -⟩ := local_data_cast hsg C
-    exact ⟨hc.trans hC.2.2.1, hl.trans hC.2.2.2.2.2.2.2.1,
-      hm.trans hC.2.2.2.2.2.2.1⟩
+    exact ⟨hc.trans hC.catchUp, hl.trans hC.latency,
+      hm.trans hC.margin⟩
   refine ⟨?_, by rw [hdata.2.1, hdata.2.2], ?_, ?_, ?_⟩
   · exact (goldilocks_outageRecoveryBinding S A hn
       (goldilocksRunMap S rho hn hv) C hC hsg).catchUp
@@ -127,9 +127,9 @@ theorem goldilocks_proposalWitnessRefinement (S : Setup) (A : ContractAssumption
     (hsg : (fun v => v.val) = (goldilocksRunMap S rho hn hv).signer) :
     ProposalWitnessRefinement (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C) := by
   obtain ⟨-, -, hcatch, -, hmargin, hhold, -⟩ := local_data_cast hsg C
-  have hc := hcatch.trans hC.2.2.1
-  have hh := hhold.trans hC.2.2.2.2.2.1
-  have hm := hmargin.trans hC.2.2.2.2.2.2.1
+  have hc := hcatch.trans hC.catchUp
+  have hh := hhold.trans hC.hold
+  have hm := hmargin.trans hC.margin
   constructor
   · intro hv' hnc cap idx t hcap hs hp ht hb hr
     let Q : Growing.ConfirmedQueryAt S A V :=

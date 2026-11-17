@@ -64,17 +64,22 @@ against the contract's `19Δ`, look-aheads `5Δ`, proposer hold `Δ`, margin and
 `1/2`. The payload is the block input's transactions. Message service is fresh processing
 before the deadline or retained timestamped pool evidence
 (`SA.FamilyFacts.MessageServedBefore` on the AC projection). -/
-def GoldilocksLocalData (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val)) : Prop :=
-  GoldilocksHealingData sp ro C.healing ∧
-    C.θ = 1 / 2 ∧ C.catchUp = 18 * sp.Δ ∧
-    C.look = 5 * sp.Δ ∧ C.committeeLook = 5 * sp.Δ ∧
-    C.hold = sp.Δ ∧ C.margin = 6 * sp.Δ ∧ C.latency = 6 * sp.Δ ∧
-    C.recovery = 9 * sp.Δ ∧ C.outageEta = ((12 * sp.k + 7 : Nat) : Time) * sp.Δ ∧
-    C.outageLag = ((4 * sp.k + 6 : Nat) : Time) * sp.Δ ∧
-    C.outageBudget = ((4 * sp.k - 5 : Nat) : Time) * sp.Δ ∧
-    C.payload = (fun B => {tx | tx ∈ Blocks.decodeTxs B.input}) ∧
-    C.served = (fun tr y j τ m => SA.FamilyFacts.MessageServedBefore tr.projAC y j τ m)
+structure GoldilocksLocalData (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val)) : Prop where
+  healing : GoldilocksHealingData sp ro C.healing
+  θ : C.θ = 1 / 2
+  catchUp : C.catchUp = 18 * sp.Δ
+  look : C.look = 5 * sp.Δ
+  committeeLook : C.committeeLook = 5 * sp.Δ
+  hold : C.hold = sp.Δ
+  margin : C.margin = 6 * sp.Δ
+  latency : C.latency = 6 * sp.Δ
+  recovery : C.recovery = 9 * sp.Δ
+  outageEta : C.outageEta = ((12 * sp.k + 7 : Nat) : Time) * sp.Δ
+  outageLag : C.outageLag = ((4 * sp.k + 6 : Nat) : Time) * sp.Δ
+  outageBudget : C.outageBudget = ((4 * sp.k - 5 : Nat) : Time) * sp.Δ
+  payload : C.payload = (fun B => {tx | tx ∈ Blocks.decodeTxs B.input})
+  served : C.served = (fun tr y j τ m => SA.FamilyFacts.MessageServedBefore tr.projAC y j τ m)
 
 /-- Intended Goldilocks local supplier with its exact data equations (`GoldilocksLocalData`).
 The existential is an unproved contract, never a definition of a supplier instance; the data
