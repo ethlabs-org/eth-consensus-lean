@@ -262,10 +262,7 @@ detail in `TRUST.md`.
   `fgSlots` and `X`. The outage lag, budget, look-back and recovery delay are fixed numbers, not guarantees.
 - **No ratio on the review surface.** `ContractAssumptions` takes the FG delay in slots, `fgSlots ≥ 2`, with the
   timeout `3·fgSlots ≤ δ_t`; the contract sets `fgDelay := 4·fgSlots − 6`, so healthy runs have
-  `6·ΔAC + ΔFG ≤ 4·fgSlots·ΔAC` (the paper's `c_F ≤ fgSlots`). Nothing is lost against the earlier ratio
-  form (`r ≥ 1`, gap `cF r = ⌈(r + 6)/4⌉`): each contract is the ratio contract at `r = 4·fgSlots − 6`, and the
-  ratio endpoint at every `r` follows by monotonicity in `fgDelay` (the test `meets_obligations_at_every_bound`,
-  where `cF` now lives, off the trusted surface).
+  `6·ΔAC + ΔFG ≤ 4·fgSlots·ΔAC` (the paper's `c_F ≤ fgSlots`).
 - **All time numbers are `ΔAC`-coefficients**, the node and the engine delay alike (`Δ_p = Δ_e` under half-open
   delivery). Current values:
   - catch-up `19` (`contract_catchUp`): it covers the Sleepy margin, `18ΔAC + 1 ≤ 19ΔAC` for every `ΔAC ≥ 1`. It is
@@ -668,7 +665,7 @@ detail in `TRUST.md`.
   `Blocks.Pattern.range` and the `Recurrence.BadSlotSlack` decidability instance stay in `Spec/Blocks/Progress`,
   since `Lemmas/Blocks/Facts` and the tests use them too.
 - **As much as possible stays off the trusted surface**: a definition that no Challenge statement needs moves to an
-  untrusted layer, keeping its name and body. `cF` (the ratio gap) is an example: it lives in a test.
+  untrusted layer, keeping its name and body.
 
 ## Repository, toolchain and trust checks
 
