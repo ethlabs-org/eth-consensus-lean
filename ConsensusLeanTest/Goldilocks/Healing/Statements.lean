@@ -37,9 +37,9 @@ honest validator awake from `ḡ` on, and a run's awake function is clamped to i
 (`Node.LocalRun.awake_in_horizon`), so every run satisfying `Healthy(g)` is infinite, as the
 periodic run above and the tick run are.
 
-**Not provided** (a follow-up): a non-vacuous run witness (kind (b)) for HR.1, HR.3, HR.4, H.2
-(run), H.3 and H.4, which would apply those premise witnesses together, and premise witnesses over
-driven SA traces for H.1 and H.2. -/
+**Not provided** (a follow-up): a non-vacuous run witness (kind (b)) for HR.1, HR.3, HR.4 and H.2
+(run), which would apply those premise witnesses together, and premise witnesses over driven SA
+traces for H.1 and H.2. -/
 
 namespace Consensus.Goldilocks.Healing.Test
 

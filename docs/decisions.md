@@ -543,8 +543,8 @@ detail in `TRUST.md`.
   `Regimes.SleepySafe`,
   `Regimes.IncludeSleepy`, `Regimes.GrowSleepy`, `Healing.HeightScopedRetention`, `Healing.RunInclusion`,
   `Healing.Growing.HeightScopedRetention` and `Healing.Growing.RunInclusion`; the open growing-fault statements
-  over `Growing.GoldilocksRun` (`Compose.Growing.ReadyImpliesJoined`, `Compose.Growing.OutcomeService`, `Healing.Growing.CutAndReset`, `ResetExistence`,
-  `NonInterference`, `AvailableHealing`, `ViableWitnessRetention`, `CleanLockDrain`, `FrozenTreeAgreement`,
+  over `Growing.GoldilocksRun` (`Compose.Growing.ReadyImpliesJoined`, `Compose.Growing.OutcomeService`,
+  `Healing.Growing.ViableWitnessRetention`, `CleanLockDrain`, `FrozenTreeAgreement`,
   `CommonPathAcquisition`, `PatternRecovery`, `FinalizingCoverage`, `CacheAcceptanceAfterReset`, and
   `Regimes.Growing.SleepySafe`, `IncludeSleepy`, `GrowSleepy`); the open `SA.Growing.ACHealingStandalone`,
   `SA.Growing.ACHealingStandaloneCorollary` and `SA.Growing.ACInclusion` over `SA.Growing.ACRun`; and the five

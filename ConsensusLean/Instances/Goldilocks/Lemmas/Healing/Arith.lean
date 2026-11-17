@@ -9,7 +9,7 @@ public section
 
 The time arithmetic of the healing statements: the reset cut `c_z = t_{slot(ḡ)+3}` lies in
 `(ḡ + 8Δ, ḡ + 12Δ]` (HR.1, HR.3 (a)), the reset bound `c_z + 6(Δ + A) ≤ ḡ + 24Δ + 12C` and its
-closed form (HR.3 (c)), and the closed form of `T_heal` (H.4). -/
+closed form (HR.3 (c)). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -74,14 +74,6 @@ theorem reset_bound_eq (g ΔF G : Time) :
       gbar g + (96 * (sp.k : Time) + 612 + 48 * (sp.toParams.δt : Time)) * sp.Δ + 12 * ΔF +
         36 * G := by
   rw [C_HS_eq]
-  ring
-
-/-- The closed form of `T_heal` (H.4). -/
-theorem T_heal_eq (g ΔF G Tb : Time) :
-    T_heal sp g ΔF G Tb =
-      gbar g + (104 * (sp.k : Time) + 628 + 48 * (sp.toParams.δt : Time)) * sp.Δ + 12 * ΔF +
-        36 * G + Tb := by
-  simp only [T_heal, SA.Θ, C_HS_eq]
   ring
 
 end Consensus.Goldilocks.Healing

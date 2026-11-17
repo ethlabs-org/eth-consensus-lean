@@ -971,17 +971,6 @@ theorem ResetPremisesUpTo.low_root_of_held_seed_at_call {b : Time}
   exact hp.low_root_of_held_seed_at_state hx hBx hy hS hSy hlow hBS
     (fun h => (hheld h).1)
 
-/-- Whole-run specialization of the call-level low-root comparison. -/
-theorem low_root_of_held_seed_at_call (hp : ResetPremises tr H proposer dg g ΔF a)
-    {x y v : Fin sp.n} {r i q m : Nat} {B S : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hx : x ∈ H) (hBx : B ∈ (tr.state x r).fg.tree) (hy : y ∈ H)
-    (hS : HighOrigin tr H g v q m S) {ell : ACLabel (goldilocksNode sp ro)}
-    (hc : tr.projAC.CallAt y i ell) (hSy : S ∈ (tr.state y i).fg.tree)
-    (hlow : (tr.state y i).fg.hj ≤ HZ tr H g) (hBS : Compatible (tr.HonestBlocks H) B S)
-    (hheld : Anc (tr.HonestBlocks H) ell.frame.F B → B ∈ ell.frame.tree) :
-    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B :=
-  (hp.toUpTo tr H (le_refl a)).low_root_of_held_seed_at_call hx hBx hy hS hc hSy hlow hBS hheld
-
 /-- Vote specialization supplying the seed by counted-head relay. -/
 theorem ResetPremisesUpTo.low_root_of_seed_before {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)

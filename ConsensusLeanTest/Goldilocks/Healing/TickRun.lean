@@ -1,6 +1,7 @@
 module
 public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Run
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Assembly
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 @[expose] public section
@@ -10,14 +11,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 On the one-validator tick run of `Goldilocks/Runs/OneValidator/Premises` (`n = 1`, `f = 0`, `Δ = 1`,
 `k = δ_t = 2`, `t_s = 4s`, a tick at every time `t ≥ 0`, cut `i` at time `⌊i/8⌋`, no restart), with
 `g = 0`, `Δ_F = 1`, `κ = 2Δ`, `G_p = 4` and `T_b = 0`, the proved run-level healing statements HR.1
-(`CutAndReset`), HR.3 (`ResetExistence`), HR.4 (`HeightScopedRetention`), H.2 (run) part (ii)
-(`RunInclusion`) and H.4 (`AvailableHealing`) are applied to the run, their premises met outright.
+(`CutAndReset`), HR.3 (`ResetExistence`), HR.4 (`HeightScopedRetention`) and H.2 (run) part (ii)
+(`RunInclusion`) are applied to the run, their premises met outright.
 
 * **The parameters** (computed from the definitions): `ḡ = 0` (`gbar_zero`), `c_z = 12`
   (`cutZ_zero`), `H_z = 3` (`hz_zero`), `a_z = 16` (`aZ_zero`), `Θ = 12` (`theta_sp1`),
-  `C_HS = 86` (`C_HS_sp1`), `A_HS = 173` (`A_HS_sp1`), `T_heal = 1088` (`T_heal_sp1`); the slot
-  `p = 272` has `t_p = 1088 = T_heal` (`ts_272`), and the reading time `t_p + 6Δ = 1094` is the
-  time of cut `8752 = 8 · 1094` (`time_8752`).
+  `C_HS = 86` (`C_HS_sp1`), `A_HS = 173` (`A_HS_sp1`).
 * (a) `healing_premises`: `GoldilocksRun`, `HSShared` (with `Healthy(0)` and `NoColl`),
   `Catch(2Δ)` and `Prop⁺(4)`. `reset_bundle`: `16` is the reset `a_z` (`IsReset`) and H.3 (c)'s
   bridge `BridgeAt` holds at `a_z + T_b = 16`. `projection_bundle`: the AC projection is a driven
@@ -27,14 +26,12 @@ On the one-validator tick run of `Goldilocks/Runs/OneValidator/Premises` (`n = 1
   (`Unanimous`, `n = 1`: the validator's only vote of slot `p` is `cv p`).
 * (b) `tickRun_cutAndReset` (HR.1), `tickRun_resetExistence` (HR.3, `a_z ≤ 1056`),
   `tickRun_retention` (HR.4 at `a_z = 16`), `tickRun_runInclusion` (H.2 (ii) from `t₀ = 16`):
-  the conclusions read at these parameters. `tickRun_availableHealing` (H.4 (i)): through
-  unanimity, `T_heal = 1088 ≤ t_272`, so `blk 272` is in every honest AC confirmed tip from
-  `t_272 + 6Δ = 1094` on; `blk272_confirmed`: read at the `ac_on_tick` of cut `8752`, `blk 272`
-  is an ancestor of the validator's AC confirmed tip there.
+  the conclusions read at these parameters; through unanimity, `blk 272` is in every honest AC
+  confirmed tip from `t_272 + 6Δ = 1094` on.
 
-**Limitation: `Geo` is vacuous here.** H.4 takes H.3 (c)'s bridge `BridgeAt` as a premise, whose
-`Geo` part (`Geo(P)` for an honest proposal whose proposal and votes lie in one settled
-effective phase) holds vacuously on the tick run (`tickRun_bridgeAt`, `not_inSettledPhase`): the
+**Limitation: `Geo` is vacuous here.** The `Geo` part of H.3 (c)'s bridge `BridgeAt`, in
+`reset_bundle` (`Geo(P)` for an honest proposal whose proposal and votes lie in one settled
+effective phase), holds vacuously on the tick run (`tickRun_bridgeAt`, `not_inSettledPhase`): the
 own block, accepted at `t_p` between `ac_proposal` and the vote, raises the frontier `h_max`, so
 no proposal of a slot `p ≥ 2` and its votes lie in one settled effective phase. So this witness
 does not exercise `Geo`, nor H.2 (i) (`Geo` gives a unanimous slot): the unanimity of slot `272`
@@ -78,19 +75,9 @@ theorem C_HS_sp1 : Healing.C_HS sp1 1 4 = 86 := by decide
 /-- `A_HS = 2C_HS + Δ = 173` at `Δ_F = 1`, `G_p = 4`. -/
 theorem A_HS_sp1 : Healing.A_HS sp1 1 4 = 173 := by decide
 
-/-- `T_heal = ḡ + 24Δ + 12C_HS + T_b + 2Θ + 8Δ = 1088` at `g = 0`, `Δ_F = 1`, `G_p = 4`,
-`T_b = 0`. -/
-theorem T_heal_sp1 : Healing.T_heal sp1 0 1 4 0 = 1088 := by decide
-
-/-- `t_272 = 1088`. -/
-theorem ts_272 : sp1.ts ((272 : Nat) : Int) = 1088 := by decide
-
-/-- Cut `8752` is at time `1094 = t_272 + 6Δ`. -/
-theorem time_8752 : (tickRun N1 dg1).time 8752 = 1094 := rfl
-
 /-! ## The premise bundles -/
 
-/-- (a) **The premises of HR.3 and H.4** at `g = 0`, `Δ_F = 1`, `κ = 2Δ`, `G_p = 4`: a Goldilocks
+/-- (a) **The premises of HR.3** at `g = 0`, `Δ_F = 1`, `κ = 2Δ`, `G_p = 4`: a Goldilocks
 run with the HS shared premises (`Healthy(0)`, `NoColl`, genesis root, no restart, the timeout
 bound), `Catch(2Δ)` and `Prop⁺(4)`. -/
 theorem healing_premises :
@@ -220,46 +207,6 @@ theorem tickRun_runInclusion :
     (tickRun_catch 0 _ (by decide))).2 16 (by decide) (tickRun_inv 16) 272 (blk 272)
     blk272_honestProposal (by decide)).2 (unanimous_blk 272)
   rwa [show sp1.ts ((272 : Nat) : Int) + 6 * sp1.Δ = 1094 by decide] at h
-
-/-- (b) **H.4 (i) on the tick run** at `g = 0`, `Δ_F = 1`, `G_p = 4`, `a_z = 16`, `T_b = 0`:
-`T_heal = 1088` (also by H.4's closed form), `blk 272` is the honest proposal of slot `272` with
-`T_heal ≤ t_272 = 1088`, slot `272` is unanimous, so `blk 272` is in every honest AC confirmed tip
-from `t_272 + 6Δ = 1094` on. -/
-theorem tickRun_availableHealing :
-    Healing.T_heal sp1 0 1 4 0 = 1088 ∧
-      Healing.HonestProposalRun (tickRun N1 dg1) Set.univ (fun _ => v0) 272 (blk 272) ∧
-      Healing.T_heal sp1 0 1 4 0 ≤ sp1.ts ((272 : Nat) : Int) ∧
-      Healing.Unanimous (tickRun N1 dg1) Set.univ 272 (blk 272) ∧
-      Healing.IncludedFrom (tickRun N1 dg1) Set.univ 1094 (blk 272) := by
-  obtain ⟨hp, hs, hc, hpp⟩ := healing_premises
-  have hT := Healing.T_heal_eq sp1 0 1 4 0
-  have hi := Healing.available_healing sp1 ro1 (fun _ => v0) dg1 Set.univ
-    (tickRun N1 dg1) 0 1 4 hp hs hc hpp 16 0 reset_bundle.1 le_rfl reset_bundle.2
-  have hle : Healing.T_heal sp1 0 1 4 0 ≤ sp1.ts ((272 : Nat) : Int) := by
-    rw [T_heal_sp1, ts_272]
-  have h := hi 272 (blk 272) blk272_honestProposal hle (unanimous_blk 272)
-  rw [show sp1.ts ((272 : Nat) : Int) + 6 * sp1.Δ = 1094 by decide] at h
-  exact ⟨hT.trans (by decide), blk272_honestProposal, hle, unanimous_blk 272, h⟩
-
-/-- The label of cut `8752`: the `ac_on_tick` of the tick of `1094`. -/
-theorem label_8752 :
-    (tickRun N1 dg1).label 8752 =
-      some (.ac ⟨.tick, Node.frame (tickState N1 dg1 1094), []⟩) := by
-  rw [tickRun_label, show 8752 / 8 = 1094 by rfl, show 8752 % 8 = 0 by rfl,
-    tickCuts_other (by decide) (by decide)]
-  rfl
-
-/-- (b) **H.4 read at `t = 1094`, cut `8752`**: after the validator's `ac_on_tick` at
-`t_272 + 6Δ = 1094`, `blk 272` is an ancestor of its AC confirmed tip. -/
-theorem blk272_confirmed :
-    Anc ((tickRun N1 dg1).HonestBlocks Set.univ) (blk 272)
-      (SA.acConfirmed sp1 ((tickRun N1 dg1).post 8752).ac (Node.frame (tickState N1 dg1 1094))
-        1094) := by
-  have hc : (tickRun N1 dg1).projAC.CallAt v0 8752
-      ⟨.tick, Node.frame (tickState N1 dg1 1094), []⟩ :=
-    Compose.projAC_callAt.2 ⟨rfl, label_8752⟩
-  exact tickRun_availableHealing.2.2.2.2 v0 (Set.mem_univ _) 8752 _ hc time_8752.ge
-    fun _ => ⟨8752, le_rfl, _, hc, rfl, rfl⟩
 
 end Consensus.Goldilocks.Witness.One
 

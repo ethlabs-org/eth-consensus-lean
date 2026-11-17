@@ -745,13 +745,6 @@ theorem ResetPremisesUpTo.no_high_contest {b : Time}
   obtain rfl : EC = (tr.state p i).fg.J := hU.1 (hsub hEC) (hsub hJm) he
   exact hJC hECC
 
-/-- Global high-origin comparability excludes contests at high justification heights. -/
-theorem no_high_contest (hp : ResetPremises tr H proposer dg g ΔF a)
-    {p : Fin sp.n} (hpH : p ∈ H) (i : Nat) :
-    ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax) :=
-  (hp.toUpTo tr H (le_max_left a (tr.time i))).no_high_contest hpH i
-    (fun _ hq => (hp.run.time_mono hq.le).trans (le_max_right _ _))
-
 /-- A bounded held high origin lies below the root or in the actual viable tree. -/
 theorem ResetPremisesUpTo.held_high_origin_viable {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)

@@ -8,9 +8,11 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.A
 /-! # Goldilocks milestone Healing: the run-level healing statements (statements)
 
 Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"Healing: top-level
-statements" (HR.1–HR.4, H.2 (run), H.3, H.4) and §"Healing: phase service" (the HS shared
-premises, the settled predicate and the constants `D`, `C`, `A`), over the Goldilocks run
-(`Spec/Run`, `GoldilocksRun`) and, for HR.2, over FG traces (`FGLocalRun`).
+statements" (HR.1–HR.4, H.2 (run), H.3's bridge and `T_heal`) and §"Healing: phase service" (the
+HS shared premises, the settled predicate and the constants `D`, `C`, `A`), over the Goldilocks run
+(`Spec/Run`, `GoldilocksRun`) and, for HR.2, over FG traces (`FGLocalRun`). The run bundle, H.3's
+FG non-interference and H.4 are retired as milestone statements; the statements here are the types
+of the lemmas the recovery proofs read.
 
 **Vocabulary.**
 
@@ -467,46 +469,10 @@ def RunInclusion : Prop :=
         (SA.Geo proposer tr.projAC H p P → Unanimous tr H p P) ∧
         (Unanimous tr H p P → IncludedFrom tr H (sp.ts p + 6 * sp.Δ) P)
 
-/-- **H.3, FG non-interference after the reset.** Under the premises of HR.3 and HR.4
-(`HSShared`, `Catch(2Δ)`, `Prop⁺(G_p)`): (a) the reset `a_z` exists, and
-`a_z ≤ ḡ + 24Δ + 12C_HS`; (b) from `a_z` on, (R1)–(R4) hold; (c) the bridge: there is
-`T_b ≥ 0`, a function of the parameters only (`n`, `Δ`, `Δ_F`, `k`, `δ_t`; `K_W = 2` is fixed,
-`k_F` and `x` are not model parameters; not of `G_p` or the proposer schedule), such that the AC
-projection satisfies `Inv(a_z + T_b)` and `Geo(P)` holds for every honest proposal `P` of a slot
-`p ≥ s_AC(a_z + T_b)` whose proposal and slot-`p` votes lie in one settled effective phase
-(`BridgeAt`). (Candidate, not claimed: `T_b = 8Δ`.) -/
-def NonInterference : Prop :=
-  ∃ Tb : Nat → Time → Time → Nat → Nat → Time, (∀ n Δ ΔF k δt, 0 ≤ Tb n Δ ΔF k δt) ∧
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time),
-    GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
-    PropPlus tr H proposer g Gp →
-    ∃ a, IsReset tr H g a ∧ a ≤ gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF Gp ∧
-      RetentionAt tr H g a ∧ BridgeAt tr H proposer g a (Tb sp.n sp.Δ ΔF sp.k sp.toParams.δt)
-
 /-- `T_heal = ḡ + 24Δ + 12C_HS + T_b + 2Θ + 8Δ` (claims H.4), that is
-`ḡ + (104k + 628 + 48δ_t)Δ + 12Δ_F + 36G_p + T_b` (`Healing.T_heal_eq`). -/
+`ḡ + (104k + 628 + 48δ_t)Δ + 12Δ_F + 36G_p + T_b`. -/
 def T_heal (sp : SAParams) (g ΔF Gp Tb : Time) : Time :=
   gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF Gp + Tb + 2 * SA.Θ sp + 8 * sp.Δ
-
-/-- **H.4, healing of the available chain, assembled** (a conditional assembly; claims H.4 (i)).
-Under the premises of H.3, for the reset `a_z` and a `T_b ≥ 0` for which H.3 (c)'s bridge holds
-(`BridgeAt`): an honest proposal `P` with `t_p ≥ T_heal` whose honest slot-`p` votes are all `P`
-is in every honest confirmed tip at every `t ≥ t_p + 6Δ`. (The claims' (ii), under `(U_B)`, and
-(iii), under `(U_all)`, follow from (i) by `Healing.available_healing_windows` and
-`Healing.available_healing_all`.) -/
-def AvailableHealing : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time),
-    GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
-    PropPlus tr H proposer g Gp →
-    ∀ a Tb, IsReset tr H g a → 0 ≤ Tb → BridgeAt tr H proposer g a Tb →
-      ∀ (p : Nat) P, HonestProposalRun tr H proposer p P → T_heal sp g ΔF Gp Tb ≤ sp.ts p →
-        Unanimous tr H p P → IncludedFrom tr H (sp.ts p + 6 * sp.Δ) P
 
 end Consensus.Goldilocks.Healing
 

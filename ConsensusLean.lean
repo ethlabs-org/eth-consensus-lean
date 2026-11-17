@@ -715,8 +715,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeViews
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AnchorPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Assembly
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Bridge
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeContinue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeCrossing
@@ -796,10 +794,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.RegularBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ResetInv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.AtCall
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.ClientSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Crossing
@@ -812,7 +808,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Prefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.PrefixSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RawAtCall
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RecordsCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay

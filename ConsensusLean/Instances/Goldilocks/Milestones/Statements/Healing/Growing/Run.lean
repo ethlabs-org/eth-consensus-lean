@@ -7,8 +7,9 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.G
 
 /-! # Goldilocks milestone Healing under growing faults: the run-level statements (statements)
 
-HR.1–HR.4, H.2 (run), H.3 and H.4 (`Statements/Healing/Run`) for a time-indexed honest set `H`
-(antitone), over `Growing.GoldilocksRun` (and, for HR.2, `Growing.FGLocalRun`):
+The run-level healing vocabulary and HR.2, HR.4 and H.2 (run) (`Statements/Healing/Run`) for a
+time-indexed honest set `H` (antitone), over `Growing.GoldilocksRun` (and, for HR.2,
+`Growing.FGLocalRun`); HR.1, HR.3, H.3 and H.4 under growing faults are retired with the run bundle:
 
 * **who is honest where**: a node at a cut is honest at the time of the cut; a signer at its
   signing cut; "the state at `t`" and "after all events at `t`" are read over the validators
@@ -25,7 +26,7 @@ HR.1–HR.4, H.2 (run), H.3 and H.4 (`Statements/Healing/Run`) for a time-indexe
   honesty read at time `t` is at `max d t` (the fixed cohort `H d` up to `d`); so the steps of the
   reset count do not cross a change of cohort (a compromise, which removes a node's blocks from
   the honest reads, is not a phase change), and nothing moves `d` with an endpoint;
-* **the reset bound** of HR.3 (c), and with it H.3's and H.4's, is indexed by the lag `L` of the
+* **the reset bound** of HR.3 (c) is indexed by the lag `L` of the
   counting cohort `H D` behind `H_z` at `c_z` (`LagWithin`): the window is
   `c_z + 6(Δ + A_HS) + LΔ`; at a constant honest set `L = 0`;
 * **the proposer** of a healed or ready slot `s` is honest through `t_s + hold`
@@ -176,45 +177,6 @@ structure RetentionAt (g a : Time) : Prop where
 
 end Goldilocks
 
-/-- **HR.1 under growing faults, cut and reset.** The attestations signed by `c_z` that `H_z`
-bounds are those of validators honest at `c_z`; the attestation on a high chain is by a validator
-honest at the holding cut; the (K1) clause holds for the namers charged at every horizon
-`d ≥ a_z − Δ`. -/
-def CutAndReset : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF : Time),
-    sp.committeeSize = sp.n →
-    Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → tr.HealthyRunAt H ΔF g →
-    Compose.NoCollRun dg tr →
-    cutZ sp.toParams g ≤ gbar g + 12 * sp.Δ ∧
-    (∀ y k att, y ∈ H (cutZ sp.toParams g) → tr.SignAt y k att →
-      tr.time k ≤ cutZ sp.toParams g → att.h ≤ HZ tr H g) ∧
-    (∀ x i ℓ C, x ∈ H (tr.time i) → SA.ToFGAt tr.projAC x i ℓ C →
-      cutZ sp.toParams g ≤ tr.time i →
-      ∃ l ∈ SA.liveLocks sp (tr.state x i).ac.locks ℓ.frame (tr.time i),
-        l.fast = true ∧ l.block = C.root ∧
-        ∃ i' < i, ∃ B CV, SA.FastLockAt tr.projAC x i' l.slot B CV ∧ gbar g < tr.time i' ∧
-          Anc (tr.HonestBlocksAt H) C B) ∧
-    (∀ y i, y ∈ H (tr.time i) → ∀ X ∈ (tr.state y i).fg.tree,
-      HZ tr H g + 2 ≤ ((tr.state y i).fg.σ X.root).h →
-      ∃ Y, (tr.state y i).fg.Anc Y X ∧ ∃ att ∈ Y.fgPayload, att.val ∈ H (tr.time i) ∧
-        att.h = HZ tr H g + 1) ∧
-    ∀ a, IsReset tr H g a →
-      cutZ sp.toParams g < a ∧
-      (∀ y k att, y ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt y k att →
-        HZ tr H g + 1 ≤ att.h → a ≤ tr.time k) ∧
-      (∀ y k src signed, y ∈ H (tr.time k) → tr.CallAt y k (.fg (.attest src signed)) →
-        tr.time k = a → (tr.state y k).fg.hmax ≤ HZ tr H g + 1) ∧
-      (∀ y k att, y ∈ H (tr.time k) → tr.SignAt y k att → tr.time k = a →
-        att.h ≤ HZ tr H g + 1) ∧
-      (∀ d, a - sp.Δ ≤ d → ∀ 𝓔 ⊆ HighEntries tr H (HZ tr H g), ∀ E ∈ 𝓔,
-        (Store.Growing.namers sp.toParams (Payload sp.n) H tr.projFG (a - sp.Δ) d E).ncard <
-          sp.toParams.fg.q) ∧
-      ∀ T, a ≤ T → ∀ y k att, y ∈ H (tr.time k) → tr.SignAt y k att → tr.time k = a →
-        a - sp.Δ < tr.time k ∧ tr.time k ≤ T
-
 /-- **HR.2 under growing faults, phase count** (an FG store node over FG traces). (a) is read at
 the two nodes' cuts, with `f < 2q − n` at the later one. (b) and (c) read the phase over the
 validators honest at a horizon `d`, at cuts up to `d`, with `f_d < 2q − n`. -/
@@ -244,44 +206,6 @@ greatest `Σ.h_max` at `c_z` of the validators honest at `D`. -/
 def LagWithin {P : Params} {A : NodeAC P} (tr : RunTrace A) (H : Time → Set (Fin P.n))
     (g D : Time) (L : Nat) : Prop :=
   HZ tr H g ≤ HZ tr (fun _ => H D) g + L
-
-/-- **HR.3 under growing faults, reset existence.** (a) and (b) hold for every fixed cohort
-horizon `d` at or after the step's later time (`u + Δ`, resp. `w + A_HS`): the phase change from
-the state after all events at `u` (or at a settled `w`) to the state at `u + Δ` (after all events
-at `w + A_HS`), and the settledness, are read over the cohort `H d`, both cuts at the same `d`
-(every event either state covers is at a time `≤ d`). So the steps of the reset count are read
-over one cohort, with no change of `d` between them.
-
-(c) is **indexed by the lag** `L` of the counting cohort: the reset exists and is at most
-`c_z + 6(Δ + A_HS) + LΔ` for every horizon `D` at or after that window whose cohort lags `H_z` by
-at most `L` at `c_z` (`LagWithin`). The count runs over the cohort `H D`, whose frontier at `c_z`
-can be below `H_z` when the holders of the top are compromised by `D`; the relay of the top block
-stays owed after their compromise, so the cohort catches up within `Δ` in total, not per unit of
-lag; the lag is at most one. `L` is fixed by the run through `LagWithin`; the strongest instance is
-the actual lag, and at a constant honest set it is `0`. -/
-def ResetExistence : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time),
-    sp.committeeSize = sp.n →
-    Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF →
-    CatchRun tr H g (2 * sp.Δ) → PropPlus tr H proposer g Gp →
-    (gbar g + 8 * sp.Δ < cutZ sp.toParams g ∧
-      ∀ d u, cutZ sp.toParams g ≤ u → u + sp.Δ ≤ d → ∀ j j', FirstCutAfter tr j u →
-        tr.FirstCutFrom j' (u + sp.Δ) →
-        PhaseChanged tr.projFG (H d) j j' ∨ SettledAt tr H d g (2 * sp.Δ) (u + sp.Δ)) ∧
-    (∀ d w, w + A_HS sp ΔF Gp ≤ d → SettledAt tr H d g (2 * sp.Δ) w → ∀ j j',
-      tr.FirstCutFrom j w → FirstCutAfter tr j' (w + A_HS sp ΔF Gp) →
-      PhaseChanged tr.projFG (H d) j j') ∧
-    (∀ L D, resetWindow sp g ΔF Gp L ≤ D → LagWithin tr H g D L →
-      ∃ a, IsReset tr H g a ∧ a ≤ resetWindow sp g ΔF Gp L) ∧
-    cutZ sp.toParams g + 6 * (sp.Δ + A_HS sp ΔF Gp) ≤
-      gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF Gp ∧
-    gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF Gp =
-      gbar g + (96 * (sp.k : Time) + 612 + 48 * (sp.toParams.δt : Time)) * sp.Δ + 12 * ΔF +
-        36 * Gp ∧
-    C_HS sp ΔF Gp = (8 * (sp.k : Time) + 49 + 4 * (sp.toParams.δt : Time)) * sp.Δ + ΔF + 3 * Gp
 
 /-- **HR.4 under growing faults, height-scoped retention**, for population-sized committees. -/
 def HeightScopedRetention : Prop :=
@@ -351,38 +275,6 @@ def RunInclusion : Prop :=
         t₀ + 2 * SA.Θ sp + 8 * sp.Δ ≤ sp.ts p →
         (SA.Growing.Geo proposer tr.projAC H p P → Unanimous tr H p P) ∧
         (Unanimous tr H p P → IncludedFrom tr H (sp.ts p + 6 * sp.Δ) P)
-
-/-- **H.3 under growing faults, FG non-interference after the reset**, at the lag `L` of a
-counting cohort (as HR.3 (c)): the reset is at most `ḡ + 24Δ + 12C_HS + LΔ`. -/
-def NonInterference : Prop :=
-  ∃ Tb : Nat → Time → Time → Nat → Nat → Time, (∀ n Δ ΔF k δt, 0 ≤ Tb n Δ ΔF k δt) ∧
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time),
-    sp.committeeSize = sp.n →
-    Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF →
-    CatchRun tr H g (2 * sp.Δ) → PropPlus tr H proposer g Gp →
-    ∀ L D, resetWindow sp g ΔF Gp L ≤ D → LagWithin tr H g D L →
-    ∃ a, IsReset tr H g a ∧
-      a ≤ gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF Gp + (L : Time) * sp.Δ ∧
-      RetentionAt tr H g a ∧ BridgeAt tr H proposer g a (Tb sp.n sp.Δ ΔF sp.k sp.toParams.δt)
-
-/-- **H.4 under growing faults, healing of the available chain, assembled**, at the lag `L` of a
-counting cohort (as HR.3 (c)): the healed slot is from `T_heal + LΔ` on. -/
-def AvailableHealing : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time),
-    sp.committeeSize = sp.n →
-    Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF →
-    CatchRun tr H g (2 * sp.Δ) → PropPlus tr H proposer g Gp →
-    ∀ L D, resetWindow sp g ΔF Gp L ≤ D → LagWithin tr H g D L →
-    ∀ a Tb, IsReset tr H g a → 0 ≤ Tb → BridgeAt tr H proposer g a Tb →
-      ∀ (p : Nat) P, HonestProposalRun tr H proposer p P →
-        T_heal sp g ΔF Gp Tb + (L : Time) * sp.Δ ≤ sp.ts p →
-        Unanimous tr H p P → IncludedFrom tr H (sp.ts p + 6 * sp.Δ) P
 
 end Consensus.Goldilocks.Healing.Growing
 

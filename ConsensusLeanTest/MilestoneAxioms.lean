@@ -146,9 +146,9 @@ theorem Consensus.Goldilocks.Regimes.includeSleepy : Consensus.Goldilocks.Regime
 theorem Consensus.Goldilocks.Regimes.growSleepy : Consensus.Goldilocks.Regimes.GrowSleepy :=
   Consensus.Goldilocks.Regimes.grow_sleepy
 
-/-! Goldilocks Healing: the AC healing statements (H.1, its corollary, H.2; `Healing/AC`), the run
-statements (HR.1–HR.4, H.2 on the run, H.3, H.4; `Healing/Run`) and the phase service (HS.1–HS.4;
-`Healing/Service`), each a field of its proved bundle in `Proofs/Healing/Main`. -/
+/-! Goldilocks Healing: the AC healing statements (H.1, its corollary, H.2; `Healing/AC`) and the
+phase service (HS.1–HS.4; `Healing/Service`), each a field of its proved bundle in
+`Proofs/Healing/Main`. -/
 
 /-- Goldilocks Healing: `ACHealingStandaloneAll` (H.1). -/
 theorem Consensus.Goldilocks.SA.aCHealingStandaloneAll :
@@ -174,38 +174,6 @@ theorem Consensus.Goldilocks.SA.aCHealingStandaloneTightCorollaryAll :
 /-- Goldilocks Healing: `ACInclusionAll` (H.2). -/
 theorem Consensus.Goldilocks.SA.aCInclusionAll : Consensus.Goldilocks.SA.ACInclusionAll :=
   fun sp h => Consensus.Goldilocks.Healing.healing_ac_statements.inclusion sp h
-
-/-- Goldilocks Healing: `CutAndReset` (HR.1). -/
-theorem Consensus.Goldilocks.Healing.cutAndReset : Consensus.Goldilocks.Healing.CutAndReset :=
-  Consensus.Goldilocks.Healing.healing_run_statements.cutAndReset
-
-/-- Goldilocks Healing: `PhaseCountAll` (HR.2). -/
-theorem Consensus.Goldilocks.Healing.phaseCountAll : Consensus.Goldilocks.Healing.PhaseCountAll :=
-  Consensus.Goldilocks.Healing.healing_run_statements.phaseCount
-
-/-- Goldilocks Healing: `ResetExistence` (HR.3). -/
-theorem Consensus.Goldilocks.Healing.resetExistence :
-    Consensus.Goldilocks.Healing.ResetExistence :=
-  Consensus.Goldilocks.Healing.healing_run_statements.resetExistence
-
-/-- Goldilocks Healing: `HeightScopedRetention` (HR.4). -/
-theorem Consensus.Goldilocks.Healing.heightScopedRetention :
-    Consensus.Goldilocks.Healing.HeightScopedRetention :=
-  Consensus.Goldilocks.Healing.healing_run_statements.heightScopedRetention
-
-/-- Goldilocks Healing: `RunInclusion` (H.2 on the run). -/
-theorem Consensus.Goldilocks.Healing.runInclusion : Consensus.Goldilocks.Healing.RunInclusion :=
-  Consensus.Goldilocks.Healing.healing_run_statements.runInclusion
-
-/-- Goldilocks Healing: `NonInterference` (H.3). -/
-theorem Consensus.Goldilocks.Healing.nonInterference :
-    Consensus.Goldilocks.Healing.NonInterference :=
-  Consensus.Goldilocks.Healing.healing_run_statements.nonInterference
-
-/-- Goldilocks Healing: `AvailableHealing` (H.4). -/
-theorem Consensus.Goldilocks.Healing.availableHealing :
-    Consensus.Goldilocks.Healing.AvailableHealing :=
-  Consensus.Goldilocks.Healing.healing_run_statements.availableHealing
 
 /-- Goldilocks Healing: `ViableWitnessRetention` (HS.1). -/
 theorem Consensus.Goldilocks.Healing.viableWitnessRetention :
@@ -347,27 +315,6 @@ info: 'Consensus.Goldilocks.SA.aCHealingStandaloneTightCorollaryAll' depends on 
 
 /-- info: 'Consensus.Goldilocks.SA.aCInclusionAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.SA.aCInclusionAll
-
-/-- info: 'Consensus.Goldilocks.Healing.cutAndReset' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.cutAndReset
-
-/-- info: 'Consensus.Goldilocks.Healing.phaseCountAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.phaseCountAll
-
-/-- info: 'Consensus.Goldilocks.Healing.resetExistence' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.resetExistence
-
-/-- info: 'Consensus.Goldilocks.Healing.heightScopedRetention' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.heightScopedRetention
-
-/-- info: 'Consensus.Goldilocks.Healing.runInclusion' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.runInclusion
-
-/-- info: 'Consensus.Goldilocks.Healing.nonInterference' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.nonInterference
-
-/-- info: 'Consensus.Goldilocks.Healing.availableHealing' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.availableHealing
 
 /-- info: 'Consensus.Goldilocks.Healing.viableWitnessRetention' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Healing.viableWitnessRetention

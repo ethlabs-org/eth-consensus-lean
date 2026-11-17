@@ -589,68 +589,6 @@ theorem clean_source_votes_before
       rw [← hm]
       exact Or.inl hv
 
-/-- A raw result prefix has a prospective frozen vote domain. Only support at strictly
-earlier receiving cuts is assumed; the result writer need not precede the cast. -/
-theorem result_prefix_vote_domain_before
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
-    (Q : Time) {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {r s i : Nat}
-    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocks H) B C)
-    (hs : cleanLabel sp a + sp.k + 2 ≤ s)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hcast : SA.CastAt tr.projAC y i ell e) (hsi : s < e.msg.slot) (hiQ : tr.time i ≤ Q)
-    (hprior : ∀ z ∈ H, ∀ q < i, ∀ e', SA.VoteAt tr.projAC z q e' →
-      s < e'.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
-    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B ∧
-      ((∃ W ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
-        Anc (tr.HonestBlocks H) B W ∧ (tr.state y i).fg.IsViable W) ∨
-        Anc (tr.HonestBlocks H) B ell.frame.fcRoot) := by
-  have hS := healthy_base_of_reset_catch hp hc
-  have hr := hS.run.localRun
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hgs4 : SA.gbar g + 4 * sp.Δ ≤ sp.ts s := by
-    have := (clean_source_timing hp hs).2
-    exact this.trans ((SA.ts_le_iff sp).mpr (by have := sp.two_le_k; (clear * - this; omega)))
-  obtain ⟨ellX, hupd, hconf, -⟩ := id hres
-  have hCx := frame_tree_subset hp hx hupd.1 (SA.deepest_mem hconf).1.1
-  have hBx := mem_tree_of_anc hp hx hBC hCx
-  obtain ⟨z, hz, q, e', hv, hvs, D, hD, hDr, hCD⟩ :=
-    SA.result_extended hS hgs4 hx hupd.1
-      (by rw [hupd.2.2.1]; linarith only [hΔ]) hconf
-  have hVB : SA.VoteExtends (tr.HonestBlocks H) e'.msg B :=
-    ⟨D, hD, hDr, hBC.trans hCD⟩
-  refine held_target_vote_domain_before hp hx hy hBx hcast ?_ ?_ ?_
-  · intro hF
-    exact raw_writer_voterBlockTree_window_before (by rw [hp.stock]; exact sp.toParams.hn)
-      hr (reset_raw_sync_window_before hp Q)
-      (catch_window_of_reset_catch hp hc Q) hx hy (Or.inl hres) hBC hcast (by
-          clear * - hsi; omega) hiQ
-      (by
-        have := (SA.ts_le_iff sp).mpr (show (s : Int) ≤ e.msg.slot - 1 by clear * - hsi; omega)
-        linarith only [hΔ, hgs4, this]) hF
-  · obtain ⟨v, r₀, m, S, hseed, hm⟩ := reset_seed hp
-    have hms : m < s := by rw [cleanLabel_eq] at hs; (clear * - hs hm; omega)
-    exact ⟨v, r₀, m, S, hseed, by clear * - hsi hms; omega,
-      target_compatible_older_origin hp hseed hz hv hvs hms hVB⟩
-  · intro v r₀ m O hri ho
-    rcases lt_trichotomy m s with hm | rfl | hm
-    · exact target_compatible_older_origin hp ho hz hv hvs hm hVB
-    · obtain ⟨CV', hst⟩ := ho.2.2.1
-      obtain ⟨_, D, hfl, hOD⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
-      have hcomp : Compatible (tr.HonestBlocks H) C D := by
-        rcases hfl with ⟨ellD, R, huD, hR, hfast, _⟩ | hop
-        · have hDR := ((SA.deepest_mem hfast).1.1.2.2).mono
-            (SA.frameIn_of_callAt hr ho.1 huD.1).2
-          rcases SA.result_result_compatible hS hx hres ho.1 ⟨ellD, huD, hR, rfl⟩ hgs4
-            with h | h
-          · exact SA.anc_total hr.coherent h hDR
-          · exact Or.inr (hDR.trans h)
-        · exact SA.result_optimistic_compatible hS hx hres ho.1 hop hgs4
-      rcases hcomp with h | h
-      · exact SA.anc_total hr.coherent (hBC.trans h) hOD
-      · exact SA.anc_total hr.coherent hBC (hOD.trans h)
-    · exact target_compatible_later_origin_before hp ho hri hm hprior
-
 /-- Finite raw-prefix domain from actual bounded source and cast witnesses. -/
 theorem ResetPremisesUpTo.result_prefix_vote_domain_before {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
