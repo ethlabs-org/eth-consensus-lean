@@ -672,59 +672,6 @@ theorem engine_event_signing_history (_hv : rho.ExecutionValid) {v : V}
   obtain ⟨_, _, ins, hi, hr, hout⟩ := history_events S rho hn v i
   exact ⟨ins, hi, hr, fun j q a hj hs => hout a ⟨j, q, hj, hs⟩⟩
 
-/-- **Implementation refinement.** Each actual prefix carries one client
-record from the empty record over valid entry inputs, containing all earlier actual signings.
-Induction runs over engine events and duties. The FG update appends its source's entry
-state, whose bounds give `EntryInputs`; all other duties, received-object processing, clocks,
-gossip and releases preserve the record. No proposal simulation or `GoldilocksRun` is assumed. -/
-theorem engine_signing_history (_hv : rho.ExecutionValid) {v : V} (_hv' : v ∉ rho.faultyAt 0)
-    {i p : Nat} {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
-    (hc : EngineDutyCut S rho v i p nd) :
-    ∃ inputs, FG.EntryInputs (S.params (pubOf E) hn).toParams.fg inputs ∧
-      (nd.st.1 hn).node.record = (FG.Record.run (rho.ownKey v) FG.Record.empty inputs).1 ∧
-      ∀ j q a, (j < i ∨ j = i ∧ q < p) → EngineSignsAt S rho hn v j q a →
-        a ∈ (FG.Record.run (rho.ownKey v) FG.Record.empty inputs).2 := by
-  have hbefore := history_events S rho hn v i
-  cases hc with
-  | tick he hw hp =>
-    rename_i t
-    have h := history_duties_sign S rho hn
-      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
-        (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
-      (((Model.protoOf (compiled (goldilocks S)) E).duties t).take p) hbefore
-    obtain ⟨_, _, ins, hi, hr, hout⟩ := h
-    refine ⟨ins, hi, hr, ?_⟩
-    intro j q a hj hs
-    apply hout
-    rcases hj with hj | ⟨rfl, hq⟩
-    · exact Or.inl ⟨j, q, hj, hs⟩
-    · obtain ⟨d, hd, hsign⟩ := signs_tick S rho hn he hs
-      refine Or.inr ⟨q, d, ?_, ?_⟩
-      · simpa [List.getElem?_take, hq] using hd
-      · simpa only [List.take_take, Nat.min_eq_left (Nat.le_of_lt hq)] using hsign
-  | deliver he hp =>
-    rename_i t o
-    have hprocess : HasHistory (rho.ownKey v)
-        (process ((rho.stateBefore i v).st.1 hn) o (Model.digests rho.hash o))
-        (fun a => ∃ j q, j < i ∧ EngineSignsAt S rho hn v j q a) := by
-      obtain ⟨hk, hr, ins, hi, he', hout⟩ := hbefore
-      exact ⟨(process_self _ _ _).trans hk, process_reachable _ _ _ hr,
-        ins, hi, (process_record _ _ _).trans he', hout⟩
-    have h := history_duties_sign S rho hn
-      ⟨(Model.protoOf (compiled (goldilocks S)) E).process (rho.stateBefore i v).st o
-        (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩
-      (((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t).take p) hprocess
-    obtain ⟨_, _, ins, hi, hr, hout⟩ := h
-    refine ⟨ins, hi, hr, ?_⟩
-    intro j q a hj hs
-    apply hout
-    rcases hj with hj | ⟨rfl, hq⟩
-    · exact Or.inl ⟨j, q, hj, hs⟩
-    · obtain ⟨d, hd, hsign⟩ := signs_deliver S rho hn he hs
-      refine Or.inr ⟨q, d, ?_, ?_⟩
-      · simpa [List.getElem?_take, hq] using hd
-      · simpa only [List.take_take, Nat.min_eq_left (Nat.le_of_lt hq)] using hsign
-
 private theorem emitted_no_att {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
     (cs : List (Cut (goldilocksNode sp ro))) (a : WireAtt) :

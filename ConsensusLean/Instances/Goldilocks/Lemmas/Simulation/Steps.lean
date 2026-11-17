@@ -153,31 +153,6 @@ theorem tick_prefix_pool_available (hf : rho.point.ConstantFaults) (hv : rho.Exe
   tick_prefix_pool_available_of_protected S rho hn
     (pollAttProtected_of_constant S rho hn hf hv) hv hv' he hw hp σ m
 
-/-- After processing a delivery, every stored vote is either actually held (including in
-the delivered object's closure) or queued as a canonical own vote in the ordinary outbox. -/
-theorem delivery_pool_available (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {v : V} (hv' : v ∉ rho.faultyAt 0)
-    (i : Nat) (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
-    (σ : Nat) (m : Vote (Fintype.card V))
-    (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
-    voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
-      Body.vote (encodeVote m) ∈
-        (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox :=
-  delivery_pool_available_of_protected S rho hn
-    (pollAttProtected_of_constant S rho hn hf hv) hv hv' i o σ m hm
-
-/-- At an actual delivery, the only not-yet-held stored vote is the ordinary outbox head:
-the reachable one-vote invariant rules out a later queued vote. -/
-theorem delivery_pool_held_or_head (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {v : V} {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
-    (he : rho.events[i]? = some (.deliver v o t)) (σ : Nat) (m : Vote (Fintype.card V))
-    (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
-    voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
-      (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.head? =
-        some (.vote (encodeVote m)) :=
-  delivery_pool_held_or_head_of_protected S rho hn
-    (pollAttProtected_of_constant S rho hn hf hv) hv he σ m hm
-
 /-- Every envelope queued by an actual delivery has its canonical dependency held or at
 the ordinary outbox head. No queue-to-pool or readiness premise is left to the caller. -/
 theorem delivery_voteForward_held_or_head (hf : rho.point.ConstantFaults)
@@ -190,18 +165,6 @@ theorem delivery_voteForward_held_or_head (hf : rho.point.ConstantFaults)
         some (.vote (encodeVote tv.2)) :=
   delivery_voteForward_held_or_head_of_protected S rho hn
     (pollAttProtected_of_constant S rho hn hf hv) hv he tv htv
-
-/-- Proposal payloads of actual scheduled honest duties were already released or received.
-The proof uses engine-event inventory and the empty queue at the slot-start proposal. -/
-theorem scheduled_proposal_releasable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {v : V} (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {t : Time} {s : Slot}
-    {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
-    (hscheduled : EngineProposalAt S rho v i p t s nd)
-    {par : ParentRef} {info : Info} {cs : List (Wire (Fintype.card V) S.vote)}
-    (hprop : (propose (shapeOf S hn nd) s).2 = some (par, info, cs)) :
-    ∀ o ∈ cs, o ∈ Model.closure nd.seen :=
-  scheduled_proposal_releasable_of_protected S rho hn
-    (pollAttProtected_of_constant S rho hn hf hv) hv hv' hscheduled hprop
 
 /-- The release guarantee applies to the selected proposal at its scheduled slot start. -/
 theorem proposal_releasable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)

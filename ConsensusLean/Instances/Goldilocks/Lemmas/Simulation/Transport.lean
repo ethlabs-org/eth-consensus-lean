@@ -37,12 +37,6 @@ variable {binding : VoteBinding}
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- Tagged node roots exclude genesis even when the raw hash equals it. -/
-theorem genesisFresh : GenesisFresh S rho := by
-  rw [genesisFresh_iff]
-  intro x _
-  exact taggedRoot_ne _ _
-
 /-- CLAIMS F.3/§Premises, SPEC §Blocks: each occurring block's header is observed; equal
 non-genesis digests reduce to equal observed headers and the encoding is injective. Genesis
 is handled separately.
@@ -63,7 +57,8 @@ membership in the delivered list, including refused calls. The received object's
 then places the canonical block object in the final engine view without acceptance or relay.
 The target no longer quantifies arbitrary simulation witnesses, whose laws do not supply
 this provenance.
-Tagged freshness is proved by `genesisFresh`; it does not by itself prove occurrence coverage. -/
+Tagged freshness holds because tagged roots differ from genesis (`taggedRoot_ne`); it does not by
+itself prove occurrence coverage. -/
 theorem noCollRun_simTrace {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
     (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)

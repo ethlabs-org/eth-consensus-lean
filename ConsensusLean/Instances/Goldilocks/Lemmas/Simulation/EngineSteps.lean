@@ -284,11 +284,6 @@ theorem not_proposes (proposer : Nat → Fin (Fintype.card V))
 /-! ## The selection of a valid run -/
 
 omit [DecidableEq V] in
-/-- The skeleton lets the run select one proposer per slot. -/
-theorem skeleton_proposerSel (s : Nat) :
-    (goldilocks S (pubOf E)).skel.proposerSel s = .sized 1 := rfl
-
-omit [DecidableEq V] in
 /-- In an admitted run, the proposer role selects exactly `runProposer`. -/
 theorem selValid_proposer (hsel : rho.SelValid) (s : Nat) :
     rho.sel (.proposer s) = {runProposer S rho hn s} := by

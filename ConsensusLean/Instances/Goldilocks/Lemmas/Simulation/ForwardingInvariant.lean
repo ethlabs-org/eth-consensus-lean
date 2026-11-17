@@ -1278,15 +1278,4 @@ theorem WrappersDecoded.drain {sp : SA.SAParams}
     obtain ⟨t, p, B, hd, htime⟩ := h.pending o (hqueue ho)
     exact ⟨t, p, B, hself ▸ hd, htime.trans ht⟩
 
-/-- The AC proposal transition leaves both wrapper inventories and their clock unchanged.
-Recording its released block is handled separately by `engine_enqueue`. -/
-theorem WrappersDecoded.propose {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
-    {tables : Wire sp.n binding → List (Header Info × Nat)}
-    {st : State sp ro binding} (h : WrappersDecoded tables st) (s : Slot) :
-    WrappersDecoded tables (AsChainShape.propose st s).1 := by
-  unfold AsChainShape.propose
-  dsimp only
-  split <;> exact h.mono rfl rfl rfl le_rfl
-
 end Consensus.Goldilocks.Simulation

@@ -14,7 +14,7 @@ public section
 
 `Pools` proves preservation under node operations; `Inventory` relates queued material to
 those pools; `ShapeInventory` lifts the facts to shape handlers; `EngineInventory` follows
-duties and deliveries. `scheduled_proposal_releasable` is the proposal-facing endpoint:
+duties and deliveries. `scheduled_proposal_releasable_of_protected` is the proposal-facing endpoint:
 the selected proposal's payload objects are already in the engine's seen closure.
 `Steps` uses this inventory to relate engine events to node steps.
 `QueuePool` keeps the vote-forward envelopes in the pool and states `PollAttProtected`.

@@ -317,10 +317,6 @@ theorem readIsOut_iff : ReadIsOut V S ↔
         (chainTrace rho).read g v i =
           outOf (stateAt S rho hn v i).node (stateAt S rho hn v i).now g := by rfl
 
-/-- Observed tagged roots differ from genesis. -/
-theorem genesisFresh_iff : GenesisFresh S rho ↔
-    ∀ x, rho.ObservedItem x → taggedRoot S.genesisRoot (rho.hash x) ≠ S.genesisRoot := by rfl
-
 variable (V) in
 /-- Collision transport targets the canonical trace, not an arbitrary simulation. -/
 theorem noCollTransport_iff : NoCollTransport V S ↔

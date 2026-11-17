@@ -15,8 +15,8 @@ public section
 OPEN implementation arguments, not paper proofs. The paper's forwarding rule motivates these
 interfaces but does not prove engine candidate ordering or signed-object provenance. In
 particular installing the signed publisher does not prove these contracts. The obligations
-assembly must construct an implementation and discharge every field, never assume this bundle
-as an additional regime premise. Parameters remain explicit until run-selected simulation lands.
+assembly must construct an implementation and discharge each contract, never assume one as an
+additional regime premise. Parameters remain explicit until run-selected simulation lands.
 -/
 
 namespace Consensus.Goldilocks.Simulation
@@ -38,12 +38,6 @@ structure Publication {pub : Public} {O : Type} (P : Protocol pub O) where
   candidates : List P.Object
   object : P.Object
   candidate : candidates[index]? = some object
-
-/-- Lexicographic release order; equal timestamps need not imply equal occurrences. -/
-def Publication.Before {pub : Public} {O : Type} {P : Protocol pub O}
-    (a b : Publication P) : Prop :=
-  a.event < b.event ∨ a.event = b.event ∧
-    (a.batch < b.batch ∨ a.batch = b.batch ∧ a.index < b.index)
 
 /-- The publisher's linkage to actual execution. `actual` must be implemented from executed
 duty/release batches, not chosen to make publication claims vacuous. `publisherExecution`
@@ -460,26 +454,6 @@ theorem publisherExecution_eventTime_eq (i : Nat) :
       ((rho.events[i]?).map Model.Event.time).getD 0 := by
   rfl
 
-/-- OPEN: honest signed publication must originate in actual acceptance at the stamp.
-Argument: only the acceptance handler queues these candidates; authentication rules out
-other honest origins. The engine digest identifies the root omitted by the wire header;
-wire equality alone does not identify B. This remains a producer obligation. -/
-def ForwardOrigin : Prop :=
-  ∀ r, pubExec.actual r → rho.key r.origin ∉ rho.faultyAt 0 → ∀ t p B,
-    decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =
-      some (r.origin, t, p, B) →
-    ∃ k, tr.AcceptAt r.origin k B ∧ tr.time k = t ∧
-      k < cutMap (r.event + 1) ∧ t = pubExec.eventTime r.event
-
-/-- Characterize the origin obligation without exposing its definition body. -/
-theorem forwardOrigin_iff : ForwardOrigin S rho hn tr cutMap pubExec ↔
-    ∀ r, pubExec.actual r → rho.key r.origin ∉ rho.faultyAt 0 → ∀ t p B,
-      decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =
-        some (r.origin, t, p, B) →
-      ∃ k, tr.AcceptAt r.origin k B ∧ tr.time k = t ∧
-        k < cutMap (r.event + 1) ∧ t = pubExec.eventTime r.event := by
-  rfl
-
 /-- OPEN: acceptance queues and drains a wrapper in the same event, including own proposals.
 The installed producer still needs missing-parent exclusion and successful release proofs. -/
 def ForwardAtAcceptance : Prop :=
@@ -501,84 +475,5 @@ theorem forwardAtAcceptance_iff : ForwardAtAcceptance S rho hn tr cutMap pubExec
         decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =
           some (x, tr.time k, p, B) := by
   rfl
-
-/-- OPEN: parent references are taken from the origin's previously released wrappers;
-same-event publication order is candidate order, not strict timestamp order. -/
-def ForwardParentEarlier : Prop :=
-  ∀ r, pubExec.actual r → rho.key r.origin ∉ rho.faultyAt 0 → ∀ t p B,
-    decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =
-      some (r.origin, t, some p, B) →
-    ∃ q A pt pp ka kb, pubExec.actual q ∧ Publication.Before q r ∧ q.origin = r.origin ∧
-      q.object = p ∧ p = forwardObj (S.params (pubOf E) hn) r.origin pt pp A ∧
-      decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash p) p =
-        some (r.origin, pt, pp, A) ∧
-      B.parent = some A.root ∧ tr.AcceptAt r.origin ka A ∧ tr.AcceptAt r.origin kb B ∧
-      ka < kb ∧ tr.time ka = pt ∧ tr.time kb = t
-
-/-- OPEN: recursive receipt processing turns prior authenticated holdings into prior calls;
-own publications instead use actual acceptance. Refused calls do not establish acceptance. -/
-def ForwardHeldProcessed : Prop :=
-  ∀ y ∈ honestKeys S rho, ∀ i x t p B o,
-    x ∈ honestKeys S rho →
-    o ∈ Model.closure (rho.stateBefore i (rho.key y)).seen →
-    decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash o) o =
-      some (x, t, p, B) →
-    ∃ k < cutMap i, t ≤ tr.time k ∧
-      (tr.BlockCallAt y k B ∨ y = x ∧ tr.AcceptAt y k B)
-
-/-- Characterize prior processing without exposing its definition body. -/
-theorem forwardHeldProcessed_iff : ForwardHeldProcessed S rho hn tr cutMap ↔
-    ∀ y ∈ honestKeys S rho, ∀ i x t p B o,
-      x ∈ honestKeys S rho →
-      o ∈ Model.closure (rho.stateBefore i (rho.key y)).seen →
-      decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash o) o =
-        some (x, t, p, B) →
-      ∃ k < cutMap i, t ≤ tr.time k ∧
-        (tr.BlockCallAt y k B ∨ y = x ∧ tr.AcceptAt y k B) := by
-  rfl
-
-/-- OPEN: accepted canonical objects and exact parent wrappers are in the publisher's seen
-closure at the actual candidate prefix; signing and dependency guards do not suppress it. -/
-def AcceptedObjectsSeen : Prop :=
-  ∀ r, pubExec.actual r → rho.key r.origin ∉ rho.faultyAt 0 →
-    let nd := (Model.releaseAll (protoOf (compiled (goldilocks S)) E) rho.hash r.origin
-      r.before (r.candidates.take r.index)).1
-    ∀ o ∈ r.object.carried, o ∈ Model.closure nd.seen
-
-/-- Carried objects of successful publications were held at the actual candidate prefix.
-Paper argument: this is precisely the engine's `releasable` guard, supplied by
-`actual_success`. It does not establish that every acceptance produces a successful release;
-that independent completeness obligation belongs to `ForwardAtAcceptance`. -/
-theorem accepted_objects_seen : AcceptedObjectsSeen S rho pubExec := by
-  intro r hr _
-  have h := (pubExec.actual_success r hr).1
-  simpa only [Model.releasable, List.all_eq_true, decide_eq_true_eq] using h
-
-/-- The installed publisher's concrete successful occurrences satisfy the carried-object
-contract. No validity, network, collision, or acceptance assumption is required for this
-guard fact; existence of a successful occurrence for each acceptance remains separate. -/
-theorem publisherExecution_objects_seen :
-    AcceptedObjectsSeen S rho (publisherExecution S rho) :=
-  accepted_objects_seen S rho (publisherExecution S rho)
-
-/-- The five obligations the concrete revised publisher must discharge. OPEN: no complete
-instance is supplied, and this is not a new obligations assumption. -/
-structure ForwardingContracts : Prop where
-  executed : ∀ r, pubExec.actual r → ExecutedPublication S rho r
-  /-- Completeness prevents selecting only convenient successful publications. Every actual
-  executed candidate passing all three guards belongs to the publication relation. -/
-  complete : ∀ r, ExecutedPublication S rho r →
-    let nd := (Model.releaseAll (protoOf (compiled (goldilocks S)) E) rho.hash r.origin
-      r.before (r.candidates.take r.index)).1
-    Model.releasable nd.seen r.object = true →
-    Model.protects (protoOf (compiled (goldilocks S)) E) r.origin nd.seen r.object = true →
-    (protoOf (compiled (goldilocks S)) E).dependencies.ready (Model.closure nd.seen) r.object =
-        true →
-    pubExec.actual r
-  origin : ForwardOrigin S rho hn tr cutMap pubExec
-  atAcceptance : ForwardAtAcceptance S rho hn tr cutMap pubExec
-  parentEarlier : ForwardParentEarlier S rho hn tr pubExec
-  heldProcessed : ForwardHeldProcessed S rho hn tr cutMap
-  objectsSeen : AcceptedObjectsSeen S rho pubExec
 
 end Consensus.Goldilocks.Simulation

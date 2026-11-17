@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Interface
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGSafety
-import ConsensusLean.Lemmas.Model.Objects
 import ConsensusLean.Lemmas.Model.Protection
 import ConsensusLean.Lemmas.Model.Constant
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
@@ -15,8 +14,7 @@ public section
 /-! # Engine signings: client safety and the own-object guard
 
 Consequences of the engine signing history (`Provenance`): the actual engine input of a selected
-proposal duty (`EngineProposalAt`), the signing record across a restart
-(`engine_restart_record`), pairwise non-slashable engine signings by the paper's G0.5
+proposal duty (`EngineProposalAt`), pairwise non-slashable engine signings by the paper's G0.5
 (`engine_signings_nonFraming`), and the own-object guard admitting a freshly generated attestation
 (`engine_att_protected`, `engine_poll_att_protected`). The guard has NO PAPER PROOF: it is G0.5
 plus implementation provenance. -/
@@ -58,15 +56,6 @@ theorem engineProposalAt_iff (v : V) (i p : Nat) (t : Time) (s : Slot)
             ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
               (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
             (((Model.protoOf (compiled (goldilocks S)) E).duties t).take p)).1 := by rfl
-
-/-- Restart retains the signing record, including at a wake boundary after a sleeping
-interval. This follows directly from the engine's durable/restore operations and the node's
-restart, independently of execution validity. -/
-theorem engine_restart_record (_hv : rho.ExecutionValid) {v : V} {i : Nat} {t : Time}
-    (he : rho.events[i]? = some (.restart v t)) :
-    (stateAt S rho hn v (i + 1)).node.record = (stateAt S rho hn v i).node.record := by
-  simp only [stateAt_eq, rho.stateBefore_succ he, Model.Run.step, Function.update_self]
-  rfl
 
 /-- **Paper G0.5 (`FG.client_safety`) after the implementation history lemma.** Put both
 signings in the history before an event after both signings, then apply client safety to its

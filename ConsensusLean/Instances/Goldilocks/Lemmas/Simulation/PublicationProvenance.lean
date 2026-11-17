@@ -241,26 +241,6 @@ theorem tick_released_forward_acceptance (hv : rho.ExecutionValid) {i : Nat} {v 
     (List.getElem?_eq_some_iff.mp he).1 hr (hf.2.2.2.2.trans hcm)
   exact ⟨k, hk, hf.1 ▸ ha, htime.trans (hf.2.1.trans ht.symm)⟩
 
-/-- Every actual publication has a successful source acceptance at its stamped time. -/
-theorem simTrace_forwardOrigin (hv : rho.ExecutionValid) :
-    ForwardOrigin S rho hn (simTrace S rho hn) (cutMap S rho hn)
-      (publisherExecution S rho) := by
-  apply (forwardOrigin_iff S rho hn _ _ _).mpr
-  intro r hr _ t p B hd
-  have hk : rho.ownKey (rho.key r.origin) = r.origin := rho.key.symm_apply_apply _
-  have hd' := hd
-  rw [← hk] at hd'
-  have he := (publisherExecution S rho).actual_event r hr
-  have ho := (publisherExecution S rho).actual_release r hr
-  have hacc : ∃ k < cutMap S rho hn (r.event + 1),
-      (simTrace S rho hn).AcceptAt (rho.ownKey (rho.key r.origin)) k B ∧
-      (simTrace S rho hn).time k = t := by
-    rcases he with he | ⟨receipt, he⟩
-    · exact tick_released_forward_acceptance S rho hn hv he ho hd'
-    · exact delivery_released_forward_acceptance S rho hn hv he ho hd'
-  obtain ⟨k, hbound, ha, ht⟩ := hacc
-  exact ⟨k, hk ▸ ha, ht, hbound, publication_forward_stamp S rho hn hv r hr hd⟩
-
 /-- Every authenticated wrapper in an actual receipt has a successful source cut
 before that receipt's event boundary, with the exact decoded block and stamp. -/
 theorem received_forward_source_acceptance (hf : rho.point.ConstantFaults)
@@ -399,41 +379,6 @@ theorem received_forward_accepted_before (hf : rho.point.ConstantFaults) (hv : r
       cases hq
       exact le_rfl
   exact ⟨k, hk, ha, htime, htime.trans_lt hu⟩
-
-/-- Prior authenticated holdings give a prior receipt call or an own acceptance.
-The receipt alternative deliberately retains refusal as a possibility. -/
-theorem simTrace_forwardHeldProcessed (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
-    ForwardHeldProcessed S rho hn (simTrace S rho hn) (cutMap S rho hn) := by
-  apply (forwardHeldProcessed_iff S rho hn _ _).mpr
-  intro y _ i x t p B o hx ho hd
-  have hy : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply _
-  rcases held_forward_tick_or_processed S rho hn hf hv ho
-    ((mem_honestKeys_iff S rho x).mp hx) hd with
-    ⟨hxy, j, hj, u, he, hr⟩ | ⟨k, hk, ht, hc⟩
-  · rw [hxy] at hd
-    obtain ⟨k, hk, ha, ht⟩ := tick_released_forward_acceptance S rho hn hv he hr hd
-    refine ⟨k, hk.trans_le (cutMap_mono S rho hn (Nat.succ_le_of_lt hj)),
-      le_of_eq ht.symm, Or.inr ⟨(hxy.trans hy).symm, hy ▸ ha⟩⟩
-  · refine ⟨k, hk, ht, ?_⟩
-    rcases hc with hc | ⟨hxy, ha⟩
-    · exact Or.inl (hy ▸ hc)
-    · exact Or.inr ⟨(hxy.trans hy).symm, hy ▸ ha⟩
-
-/-- Every vote envelope queued by an actual delivery bears that delivery's time.
-The event-boundary queue is empty even following restart; processing every nested
-object preserves the clock. No first-release premise is used. -/
-theorem delivery_voteForward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V}
-    {receipt : Wire (Fintype.card V) S.vote} {u t : Time} {m : SA.Vote (Fintype.card V)}
-    (he : rho.events[i]? = some (.deliver v receipt u))
-    (hq : (t, m) ∈ (process (stateAt S rho hn v i) receipt
-      (Model.digests rho.hash receipt)).voteForwards) : t = u := by
-  unfold process at hq
-  rcases foldl_processOne_voteForward_stamp (Model.digests rho.hash receipt)
-      (delivered (S.params (Model.pubOf E) hn) receipt) (stateAt S rho hn v i) t m hq with h | h
-  · rw [voteForwards_empty S rho hn hv v i] at h
-    exact False.elim (List.not_mem_nil h)
-  · exact h.trans ((now_eq_lastClock S rho hn hv v i).trans
-      (lastClock_deliver S rho hv he))
 
 /-- A top-level signed vote envelope can only be released by its signer. Other nodes may
 carry it in unsigned gossip, but cannot account for an earlier top-level release of it. -/
