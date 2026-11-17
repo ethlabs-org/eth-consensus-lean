@@ -1,7 +1,8 @@
 module
 public import ConsensusLeanTest.Goldilocks.Refinement.Simulation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSuppliers
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.VoteForward
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
@@ -20,7 +21,7 @@ since `K S A` is that abbreviation.
   `[0, H]`, query time 0, the latency deadline inside the horizon, and a ready reader at the
   deadline, for every `H ≥ 2·latency` (engine `Δ = 2`).
 * `vote_emitted_forwarded`: on that run (horizon `H ≥ 2`), validator `0` emits a slot-0 vote
-  (`EmitAt` on `simTrace`), the premise of `simTrace_vote_forwarded`, which then yields a
+  (`EmitAt` on `simTrace`), the premise of `simTraceAt_vote_forwarded`, which then yields a
   released forwarding envelope. -/
 
 namespace Consensus.Goldilocks.Obligations.Test.SleepyWitness
@@ -174,7 +175,7 @@ theorem sleepyQuery_fields (A : ContractAssumptions S) (C : ContractCoefficients
   · rw [hp]
     exact point_ready H _ _ _
 
-/-- (b) The premise of `simTrace_vote_forwarded` is satisfiable on an engine run: on the
+/-- (b) The premise of `simTraceAt_vote_forwarded` is satisfiable on an engine run: on the
 two-validator run with horizon `H ≥ 2`, validator `0` emits a slot-0 vote by its first vote
 deadline `t₀ + Δp = 2`, and the theorem's conclusion then gives its first released forwarding
 envelope. -/
@@ -200,8 +201,10 @@ theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
     change rho.faultyAt t = rho.faultyAt 0
     rw [hhon, hhon]
   have hhor : rho.horizon = H := congrArg EnvPoint.horizon hp
-  have hrun := simTrace_goldilocksRun S rho hn hf hv
-  have hnc := noCollRun_simTrace S rho hn hf hv hc
+  have hrun := Test.goldilocksRun_of_at S rho hn hf hv
+  have hnc : Compose.NoCollRun (digestOf { S with vote := stock } rho)
+      (simTrace { S with vote := stock } rho hn) := by
+    rw [← simTraceAt_eq]; exact noCollRun_simTraceAt _ rho hn hv hc
   let y : Fin (Fintype.card (Fin 2)) := ⟨0, hn⟩
   have hy : y ∈ honestKeys { S with vote := stock } rho := by
     rw [mem_honestKeys_iff { S with vote := stock } rho]
@@ -224,8 +227,9 @@ theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
     Compose.vote_of_awake_joined hrun hnc hy (s := 0) (Compose.mayVote_stock hrun hnc hy 0) hw hj
   have hem : (simTrace { S with vote := stock } rho hn).EmitAt y k e.msg :=
       ⟨ℓ, Compose.projAC_callAt.mp hcall, e, he, rfl⟩
-  obtain ⟨i, -, -, hsend, hrel, -⟩ :=
-    simTrace_vote_forwarded S rho hn hf hv y hy k e.msg (Or.inl hem)
+  have hfw := simTraceAt_vote_forwarded { S with vote := stock } rho hn hv
+  rw [simTraceAt_eq, Test.honestKeysAt_const S rho hf] at hfw
+  obtain ⟨i, -, -, hsend, hrel, -⟩ := hfw y k e.msg hy (Or.inl hem)
   exact ⟨rho, hv, y, hy, k, e.msg, hem, hslot, htime.trans ht.le, i, hsend, hrel⟩
 
 end Consensus.Goldilocks.Obligations.Test.SleepyWitness

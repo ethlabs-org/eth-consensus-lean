@@ -6,6 +6,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 import all ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Proofs.RegimesRealizable.Main
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -64,6 +66,30 @@ theorem selValid_exists :
   | poll => rfl
 
 variable [DecidableEq V]
+
+omit [DecidableEq V] in
+/-- Under constant faults the time-indexed honest keys are the honest keys at every time. -/
+theorem honestKeysAt_const (hf : rho.point.ConstantFaults) :
+    honestKeysAt { S with vote := stock } rho = fun _ => honestKeys { S with vote := stock } rho :=
+  funext fun t => Set.ext fun y => by
+    rw [mem_honestKeysAt_iff, mem_honestKeys_iff,
+      show rho.faultyAt (min t rho.horizon) = rho.faultyAt 0 from hf _]
+
+/-- Under constant faults the canonical trace is a static `GoldilocksRun` for the honest keys:
+the growing-fault run (`simTraceAt_goldilocksRun`) at the constant honest set, read through
+`Growing.LocalRun.const_iff`. -/
+theorem goldilocksRun_of_at (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
+    GoldilocksRun (runProposer { S with vote := stock } rho hn)
+      (digestOf { S with vote := stock } rho)
+      (honestKeys { S with vote := stock } rho) (simTrace { S with vote := stock } rho hn) := by
+  have h := simTraceAt_goldilocksRun { S with vote := stock } rho hn hv
+  rw [honestKeysAt_const S rho hf, simTraceAt_eq] at h
+  exact
+    { toLocalRun := Growing.LocalRun.const_iff.1 h.toLocalRun
+      genesis_root_ok := h.genesis_root_ok
+      carried_vote_unforgeable := fun y hy i B hB v hv' hvH =>
+        h.carried_vote_unforgeable y i B hy hB v hv' hvH
+      vstart := h.vstart }
 
 /-- Exact-time release cannot be satisfied solely by a later send, even at the horizon. -/
 theorem released_requires_same_time (v : V)

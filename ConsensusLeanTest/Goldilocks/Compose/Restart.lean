@@ -92,7 +92,7 @@ theorem restart_at_one :
     change rho.faultyAt t = rho.faultyAt 0
     rw [hhon, hhon]
   have hhor : rho.horizon = 64 := congrArg EnvPoint.horizon hp
-  have hrun := simTrace_goldilocksRun S rho hn hf hv
+  have hrun := Test.goldilocksRun_of_at S rho hn hf hv
   let y : Fin (Fintype.card (Fin 2)) := ⟨0, hn⟩
   have hky : rho.key y = 0 := by rw [hk]; rfl
   have hy : y ∈ honestKeys { S with vote := stock } rho := by

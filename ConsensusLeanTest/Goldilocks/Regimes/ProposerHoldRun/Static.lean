@@ -96,10 +96,11 @@ noncomputable abbrev tr : GoldilocksTrace
 theorem rhoc_run : GoldilocksRun (runProposer { S with vote := stock } (rhoc S) one_le_card)
     (digestOf { S with vote := stock } (rhoc S)) (H S)
     (tr S) :=
-  simTrace_goldilocksRun S (rhoc S) one_le_card rhoc_const rhoc_valid
+  Simulation.Test.goldilocksRun_of_at S (rhoc S) one_le_card rhoc_const rhoc_valid
 
-theorem rhoc_noColl : Compose.NoCollRun (digestOf { S with vote := stock } (rhoc S)) (tr S) :=
-  noCollRun_simTrace S (rhoc S) one_le_card rhoc_const rhoc_valid rhoc_not_hashCollision
+theorem rhoc_noColl : Compose.NoCollRun (digestOf { S with vote := stock } (rhoc S)) (tr S) := by
+  rw [tr, ← simTraceAt_eq]
+  exact noCollRun_simTraceAt _ (rhoc S) one_le_card rhoc_valid rhoc_not_hashCollision
 
 variable (S) in
 /-- The time-indexed honest keys of the retained run: the keys `2, 3, 4` at every time. -/

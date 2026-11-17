@@ -3,7 +3,8 @@ public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSchedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
+public import ConsensusLeanTest.Goldilocks.Refinement.Simulation
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
@@ -282,9 +283,12 @@ theorem key1_vote_slot {i : Nat} {e : Ev S} (he : (rho S).events[i]? = some e) (
   obtain ⟨k, -, ℓ, hc, em, hem, rfl⟩ :=
     Simulation.released_vote_cut { S with vote := stock } (rho12 S) one_le_card hconst
       rho12_valid hs hv' hv
-  have hrun := Simulation.simTrace_goldilocksRun S (rho12 S) one_le_card hconst rho12_valid
-  have hnc := Simulation.noCollRun_simTrace S (rho12 S) one_le_card hconst rho12_valid
-    rho12_not_hashCollision
+  have hrun := Simulation.Test.goldilocksRun_of_at S (rho12 S) one_le_card hconst rho12_valid
+  have hnc : Compose.NoCollRun (Simulation.digestOf { S with vote := stock } (rho12 S))
+      (Simulation.simTrace { S with vote := stock } (rho12 S) one_le_card) := by
+    rw [← Simulation.simTraceAt_eq]
+    exact Simulation.noCollRun_simTraceAt _ (rho12 S) one_le_card rho12_valid
+      rho12_not_hashCollision
   have hac := (Compose.goldilocks_ac_projection _ _ _ _ _ _ hrun hnc).localRun
   have hy : (rho12 S).ownKey 1 ∈ Simulation.honestKeys { S with vote := stock } (rho12 S) := by
     rw [Simulation.mem_honestKeys_iff]

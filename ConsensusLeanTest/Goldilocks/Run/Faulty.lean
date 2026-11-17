@@ -1,8 +1,7 @@
 module
 public import ConsensusLeanTest.Goldilocks.Refinement.Simulation
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 public import ConsensusLean.Lemmas.Model.Constant
 @[expose] public section
@@ -14,16 +13,15 @@ Kind (a), joint satisfiability (CONTRIBUTING "Statements"), with `f = 1`: four v
 honest proposer `1` at every slot, everyone awake, no submissions, at every `Setup` (so every
 lock window `S.k ≥ 2`; no lock-rule value is chosen or used). The run is `Shape.coverage` of
 `goldilocks { S with vote := AsChainShape.stock }` at that point, carried to the node level by
-`simTrace_goldilocksRun` and
-`noCollRun_simTrace`.
+the growing-fault simulation at its constant honest keys (`Test.goldilocksRun_of_at`) and
+`noCollRun_simTraceAt`.
 
 * `faulty_run`: a valid engine run whose `simTrace` is a `GoldilocksRun` with `NoCollRun`, with
   `f = (honestKeys S rho)ᶜ.ncard = 1`, `q = 3` and `f < 2q − n` (`1 < 2`).
 * `faulty_run_safe`: on that run the proved R.7 rows apply: `Regimes.finalized_safe` (finalized
   tips of honest nodes never conflict) and `Regimes.non_framing` (no honest slashable pair).
 * `honestAwakeJoined_eq`, `faultBound`, `slot_faultBound`: `h_t = 3` at every `t ∈ [0, 40]`,
-  so `f = 1 < h_t`; in particular at `t_s`, `t_s + Δ`, `t_s + 2Δ` up to `40` (through
-  `sleepy_faultBound`).
+  so `f = 1 < h_t`; in particular at `t_s`, `t_s + Δ`, `t_s + 2Δ` up to `40`.
 * `faulty_silent`: the faulty key has no engine event and makes no call in `simTrace` (so it
   signs and emits nothing there).
 
@@ -53,17 +51,6 @@ theorem one_le_card : 1 ≤ Fintype.card (Fin 4) := by decide
 def faultyKey : Fin (Fintype.card (Fin 4)) := ⟨0, one_le_card⟩
 
 theorem point_faulty (t : Time) : point.faultyAt t = {0} := rfl
-
-theorem point_ready (c t : Time) (v : Fin 4) (hv : point.HonestAt v t) : point.Ready c v t :=
-  ⟨hv, fun _ _ _ => rfl⟩
-
-theorem point_readyAt (c t : Time) : point.readyAt c t = point.honestAt t := by
-  ext v
-  simp only [EnvPoint.readyAt, Finset.mem_filter, Finset.mem_univ, true_and,
-    EnvPoint.honestAt, Finset.mem_sdiff, Finset.mem_univ, true_and]
-  constructor
-  · exact fun h => h.1
-  exact point_ready c t v
 
 variable (S : Setup)
 
@@ -150,7 +137,7 @@ theorem honestAwakeJoined_eq (hp : rho.point = point) (hv : rho.ExecutionValid) 
     ext y
     refine ⟨fun h => h.1, fun hy => ⟨hy, ?_⟩⟩
     exact Compose.ready_implies_joined _ _ _ _ _ _
-      (simTrace_goldilocksRun S rho one_le_card (point_constant hp) hv) y hy t
+      (Test.goldilocksRun_of_at S rho one_le_card (point_constant hp) hv) y hy t
       (8 * (({ S with vote := AsChainShape.stock } : Setup).params
         (pubOf point.env) one_le_card).Δ) ht (Int.le_add_one le_rfl)
       (fun u hu hu' => hawake y u ((le_max_left _ _).trans hu) (hu'.trans htb))
@@ -166,7 +153,7 @@ theorem faultBound (hp : rho.point = point) (hv : rho.ExecutionValid) {t : Time}
   rw [faulty_ncard hp, honestAwakeJoined_eq hp hv ht htb]
   decide
 
-/-- The slot-point fault bound through the horizon, from `sleepy_faultBound`: `f < h_t` at
+/-- The slot-point fault bound through the horizon, from `faultBound`: `f < h_t` at
 `t_s`, `t_s + Δ`, `t_s + 2Δ` whenever they are `≤ 40`. -/
 theorem slot_faultBound (hp : rho.point = point) (hv : rho.ExecutionValid) :
     ∀ s : Nat, ∀ d ∈ ({0, (({ S with vote := AsChainShape.stock } : Setup).params
@@ -179,14 +166,20 @@ theorem slot_faultBound (hp : rho.point = point) (hv : rho.ExecutionValid) :
         (honestKeys { S with vote := stock } rho)
         ((({ S with vote := AsChainShape.stock } : Setup).params
           (pubOf point.env) one_le_card).ts s + d) := by
-  have hhor : rho.horizon = 40 := congrArg EnvPoint.horizon hp
-  refine sleepy_faultBound S rho one_le_card (point_constant hp) hv (W := 0) hhor.ge ?_
-  rw [EnvPoint.sleepyOn_iff (point_constant hp)]
-  intro t _ _
-  unfold EnvPoint.ReadyAbove
-  rw [hp, point_readyAt]
-  norm_num [point, EnvPoint.honestAt, EnvPoint.faultCount,
-    show (Finset.univ \ {0} : Finset (Fin 4)).card = 3 from by decide]
+  intro s d hd hle
+  have hΔ : 0 < (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf point.env) one_le_card).Δ := (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf point.env) one_le_card).toParams.hΔ
+  have hts : (0 : Time) ≤ (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf point.env) one_le_card).ts s := by
+    simp only [SA.SAParams.ts]
+    exact mul_nonneg (mul_nonneg (by norm_num) hΔ.le) (Int.natCast_nonneg s)
+  have hd0 : (0 : Time) ≤ d := by
+    rcases hd with rfl | rfl | rfl
+    · exact le_rfl
+    · exact hΔ.le
+    · exact mul_nonneg (by norm_num) hΔ.le
+  exact faultBound hp hv (add_nonneg hts hd0) hle
 
 /-- A key outside the honest keys makes no call in `simTrace`. -/
 theorem not_callAt_of_not_honest (hp : rho.point = point) (hv : rho.ExecutionValid)
@@ -247,8 +240,9 @@ theorem faulty_run :
   obtain ⟨rho, hp, hk, hs, hv, hc, -, -⟩ := Shape.coverage
     (goldilocks { S with vote := AsChainShape.stock }) point (by decide)
     (by exact Equiv.refl _) (sel S) (sel_admits S) 0
-  refine ⟨rho, hp, hk, hs, hv, simTrace_goldilocksRun S rho one_le_card (point_constant hp) hv,
-    noCollRun_simTrace S rho one_le_card (point_constant hp) hv hc, faulty_ncard hp, ?_⟩
+  refine ⟨rho, hp, hk, hs, hv, Test.goldilocksRun_of_at S rho one_le_card (point_constant hp) hv,
+    by rw [← simTraceAt_eq]; exact noCollRun_simTraceAt _ rho one_le_card hv hc,
+    faulty_ncard hp, ?_⟩
   rw [faulty_ncard hp]
   exact one_lt_threshold S
 
