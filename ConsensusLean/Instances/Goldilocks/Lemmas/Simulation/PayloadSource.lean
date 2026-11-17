@@ -5,9 +5,8 @@ public section
 
 /-! # Sources of the payload objects of a called block
 
-The payload provenance shared by the constant-fault `block_payload_source`
-(`Simulation/RunBlocks`) and the growing-fault `block_payload_source_at`
-(`Growing/Simulation/Payload`). A payload object of a block called at a public tick was in the
+The payload provenance behind `block_payload_source_at` (`Growing/Simulation/Payload`). A payload
+object of a block called at a public tick was in the
 proposer's view before the tick; one of a delivered block was carried by the delivery. Only the
 proposal closure at a tick (`hpre`) depends on the fault model; each supplies it. -/
 

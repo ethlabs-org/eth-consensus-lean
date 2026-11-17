@@ -23,7 +23,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 /-- An attestation that a node processes at cut `k`, while its signer is honest at the cut's
 time, was signed by the signer at an earlier cut. Premise `hrel`: a release of the attestation
 at an engine event of the signer comes from an own signing cut of that event
-(`released_att_cut` for constant faults, `released_att_cut_at` for growing faults). -/
+(`released_att_cut_at`). -/
 theorem attCall_sign_of_released (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)}
     {k : Nat} {a : FG.Att (Fintype.card V)} (hc : (simTrace S rho hn).AttCallAt y k a)
     (hhon : rho.key a.val ∉ rho.faultyAt ((simTrace S rho hn).time k))

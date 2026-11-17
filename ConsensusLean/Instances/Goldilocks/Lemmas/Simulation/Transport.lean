@@ -1,5 +1,7 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Evidence
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Trace
 public import ConsensusLean.Spec.Shape.Claims
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.BlockView
@@ -17,10 +19,9 @@ structural chains, observed objects, evidence binding and validator counts.
 The cited paper establishes the node-level source theorems. The docstrings below supply
 separate mathematical arguments for the engine bridges, not quotations.
 
-Collision transport (`noCollRun_simTrace`) targets the canonical trace. `GenesisFresh` is
-proved by tagged roots, not assumed. Canonical occurrence coverage includes refused deliveries;
-tagging and observed-header injectivity discharge collision transport. The validator count of
-G1.5 (`convicted_count`) needs no run premise. -/
+Collision transport to the canonical trace is `noCollRun_simTraceAt`
+(Growing/Simulation/NoColl). `GenesisFresh` is proved by tagged roots, not assumed. The
+validator count of G1.5 (`convicted_count`) needs no run premise. -/
 
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape
@@ -32,39 +33,6 @@ variable {binding : VoteBinding}
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-
-/-- CLAIMS F.3/§Premises, SPEC §Blocks: each occurring block's header is observed; equal
-non-genesis digests reduce to equal observed headers and the encoding is injective. Genesis
-is handled separately.
-
-Paper argument: `occurring_in_view` proves that EVERY block in the canonical trace's `Occurs`
-has an observed canonical header and a nonempty parent (including REFUSED block calls,
-not just held blocks).
-For two such blocks, equal `dgOf` values are equal header hashes; absence of `HashCollision`
-gives equal headers. Apply `parentRoot_parentRef` to the nonempty parents and decode the
-equal `encodeInfo` values to recover all five fields required by `NoCollOn`. Proposer identity
-is irrelevant: that conclusion does not compare proposers. For genesis versus a non-genesis
-block, `GenesisFresh` excludes equal digests; two genesis entries are immediate.
-`Occurs` has no honesty guard, but `simTrace_cut` identifies its engine event;
-`ExecutionValid.honest_only` then proves that its node is honest. No separate non-honest
-canonical call case remains in a valid run. Tick provenance uses `tick_releases` for
-either acceptance flag. For deliveries, `mem_deliverRecs_exec` retains decoded-object
-membership in the delivered list, including refused calls. The received object's containment
-then places the canonical block object in the final engine view without acceptance or relay.
-The target no longer quantifies arbitrary simulation witnesses, whose laws do not supply
-this provenance.
-Tagged freshness holds because tagged roots differ from genesis (`taggedRoot_ne`); it does not by
-itself prove occurrence coverage. -/
-theorem noCollRun_simTrace {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-    (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E) (hn : 1 ≤ Fintype.card V)
-    (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (hnc : ¬ rho.HashCollision) :
-    Compose.NoCollRun (digestOf { S with vote := stock } rho)
-      (simTrace { S with vote := stock } rho hn) := by
-  refine noCollRun_of_observed { S with vote := stock } rho hn hnc fun B hB => ?_
-  obtain ⟨hp, v, hv', hb⟩ := occurring_in_view S rho hn hf hv hB
-  exact ⟨hp, blockObj _ B, ⟨v, rho.events.length, le_rfl,
-    (rho.point.honestAt_iff_zero hf v _).mpr hv', hb⟩, rfl⟩
 
 omit [DecidableEq V] in
 /-- CLAIMS G1.5's validator-count step:

@@ -1,10 +1,11 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSimulates
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
-import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outputs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
+import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Sleepy
 public import ConsensusLean.Spec.Shape.Run
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -14,12 +15,10 @@ public section
 
 /-! # Finite sleepy engine bridges
 
-The constant-fault engine-to-node bridges of the Sleepy regime at the population binding: readiness
-(`ready_transport`, `sleepy_ready`) and the slot-point quorum (`sleepy_faultBound`), and
-binding-generic facts of the stored clock and of event cuts (`event_before_endCut`,
+Binding-generic facts of the stored clock and of event cuts (`event_before_endCut`,
 `readPoint_after_event`, `now_*`, `ready_at_stored_now`). No whole-run `SleepyRun` or `HealthyRun`
-is inferred from a finite engine horizon. The growing-fault forms are in
-`Lemmas/Growing/Sleepy/Engine`. -/
+is inferred from a finite engine horizon. The growing-fault engine-to-node bridges of the Sleepy
+regime are in `Lemmas/Growing/Sleepy/Engine`. -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
@@ -29,102 +28,6 @@ open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E) (hn : 1 ≤ Fintype.card V)
-
-/-- Engine readiness bridge. Map honesty by the key equivalence
-and awake intervals by canonical simulation. Both ends are inside the finite horizon; the
-catch-up is the NODE duration, not silently `18 * E.ΔAC`. R.1 defines the same closed interval,
-but supplies no engine proof. -/
-theorem ready_transport (_hv : rho.ExecutionValid) {c : Time} {v : V} {t : Time}
-    (_ht : 0 ≤ t) (hth : t ≤ rho.horizon)
-    (hr : rho.point.Ready c v t) :
-    Regimes.ReadyAt (simTrace { S with vote := stock } rho hn)
-      (honestKeys { S with vote := stock } rho)
-      c (rho.ownKey v) t := by
-  have hkey : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
-  constructor
-  · rw [mem_honestKeys_iff { S with vote := stock } rho]
-    rw [hkey]
-    exact fun h => hr.1 (rho.faultyAt_mono _ht h)
-  · intro τ hτ hτt
-    rw [simTrace_awake_iff { S with vote := stock } rho hn,
-      awakeAt_iff { S with vote := stock } rho hn, hkey]
-    exact ⟨hr.2 τ hτ hτt, (le_max_left _ _).trans hτ, hτt.trans hth⟩
-
-theorem sleepy_ready (hv : rho.ExecutionValid) {v : V} {t : Time}
-    (ht : 0 ≤ t) (hth : t ≤ rho.horizon)
-    (hr : rho.point.Ready (Regimes.catchUp
-      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) v t) :
-    Regimes.ReadyAt (simTrace { S with vote := stock } rho hn)
-      (honestKeys { S with vote := stock } rho)
-      (Regimes.catchUp (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn))
-        (rho.ownKey v) t :=
-  ready_transport S rho hn hv ht hth hr
-
-/-- Quorum bridge. Half-ready means faulty < ready; transport
-counts through the key equivalence and use ready-implies-joined at each slot point.
-Only points through `b` are claimed, including slot zero. Depends on `sleepy_ready` and
-the node readiness/join lemma, not on synchrony or whole-run participation. -/
-theorem sleepy_faultBound (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {b : Time} {W : Time}
-    (hb : b ≤ rho.horizon)
-    (hhalf : rho.point.SleepyOn (1 / 2) (Regimes.catchUp
-      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) W 0 b) :
-    ∀ s : Nat, ∀ d ∈ ({0, (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ,
-      2 * (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).Δ} : Set Time),
-        (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).ts s + d ≤ b →
-      (simTrace { S with vote := stock } rho hn).FaultBound
-        (honestKeys { S with vote := stock } rho)
-          ((({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).ts s + d) := by
-  classical
-  intro s d hd htb
-  let t := (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).ts s + d
-  have hΔ := (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn).toParams.hΔ
-  have ht : 0 ≤ t := by
-    simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hd
-    rcases hd with rfl | rfl | rfl <;>
-      dsimp [t, SA.SAParams.ts] <;> positivity
-  have hh := (rho.point.sleepyOn_iff hconst _ _ _ _ _).mp hhalf t ht htb
-  have hlt : (rho.faultyAt 0).card <
-      (rho.point.readyAt (Regimes.catchUp
-        (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) t).card := by
-    unfold EnvPoint.ReadyAbove at hh
-    have hq : ((rho.faultyAt 0).card : ℚ) <
-        (rho.point.readyAt (Regimes.catchUp
-          (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) t).card := by
-      simp only [EnvPoint.faultCount, Model.Run.point, rho.faultyAt_eq_zero hconst] at hh
-      change (1 / 2 : ℚ) *
-        ((rho.point.readyAt (Regimes.catchUp
-          (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) t).card +
-          (rho.faultyAt 0).card) <
-        (rho.point.readyAt (Regimes.catchUp
-          (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) t).card at hh
-      linarith
-    exact_mod_cast hq
-  have hf : (honestKeys { S with vote := stock } rho)ᶜ.ncard = (rho.faultyAt 0).card := by
-    have heq : (honestKeys { S with vote := stock } rho)ᶜ =
-        rho.key ⁻¹' (↑(rho.faultyAt 0) : Set V) := by
-      ext k
-      simp [mem_honestKeys_iff { S with vote := stock } rho]
-    rw [heq, Set.ncard_preimage_of_injective_subset_range rho.key.injective
-      (by simp [rho.key.surjective.range_eq]), Set.ncard_coe_finset]
-  have hcount : (rho.point.readyAt (Regimes.catchUp
-      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) t).card ≤
-      (simTrace { S with vote := stock } rho hn).honestAwakeJoined
-        (honestKeys { S with vote := stock } rho) t := by
-    rw [← Set.ncard_coe_finset]
-    apply Set.ncard_le_ncard_of_injOn rho.ownKey
-    · intro v hv'
-      have hr : rho.point.Ready (Regimes.catchUp
-          (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)) v t :=
-        (Finset.mem_filter.mp hv').2
-      have hready := sleepy_ready S rho hn hv ht (htb.trans hb) hr
-      refine ⟨hready.1, ?_⟩
-      exact Compose.ready_implies_joined _ _ _ _ _ _ (simTrace_goldilocksRun S rho hn hconst hv)
-        _ hready.1 t _ ht (by unfold Regimes.catchUp; linarith) hready.2
-    · exact rho.key.symm.injective.injOn
-  change (honestKeys { S with vote := stock } rho)ᶜ.ncard < _
-  rw [hf]
-  exact hlt.trans_le hcount
 
 theorem event_before_endCut {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)

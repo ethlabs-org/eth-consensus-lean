@@ -5,7 +5,7 @@ import all ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 import all ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSimulates
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy

@@ -2,7 +2,7 @@ module
 public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSchedule
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSimulates
 public import ConsensusLeanTest.Goldilocks.Refinement.Simulation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC

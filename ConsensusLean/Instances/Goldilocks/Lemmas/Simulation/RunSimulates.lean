@@ -9,8 +9,8 @@ public section
 
 /-! # Goldilocks Simulation: the engine agrees with the simulating trace
 
-The engine's events are the trace's groups, its node states agree with the trace's states,
-and it releases and relays what the trace signs, emits and admits. The growing-fault simulation
+Every labelled cut lies in an engine event's range, the engine's node states agree with the
+trace's states, and a delivery relays what the trace admits. The growing-fault simulation
 `simTraceAt_simulates` (`Growing/Simulation/Simulates`) reads these correspondence facts. -/
 
 namespace Consensus.Goldilocks.Simulation
@@ -47,66 +47,6 @@ theorem simTrace_state (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
   intro v hv'
   exact simTrace_state_of S rho hn hv (fun _ _ => hv')
     (fun he hp => node_of_tick_public S rho hn hf hv v hv' _ _ he hp)
-
-/-- An engine tick of an honest node at a public time is the node's tick with the engine's input,
-one group. -/
-theorem simTrace_tick_public_group (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
-    ∀ v, v ∉ rho.faultyAt 0 → ∀ i t, rho.events[i]? = some (.tick v t) →
-      (S.params (pubOf E) hn).toParams.IsPublic t →
-        (simTrace S rho hn).GroupAt (runProposer S rho hn) (digestOf S rho)
-            (rho.ownKey v) (cutMap S rho hn i) t
-            (.tick (encodeTxs (Model.mempool rho.inbox v t))) ∧
-          cutMap S rho hn (i + 1) = cutMap S rho hn i +
-            (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-            ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) t
-            (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2.length := by
-  intro v hv' i t he hp
-  have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
-  exact tick_public_group_of_state S rho hn he hp (simTrace_state S rho hn hf hv v hv' i hi.le)
-
-/-- An honest node awake at a public time (from `0` on) ticks there. -/
-theorem simTrace_tick_of_awake (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
-    ∀ y ∈ honestKeys S rho, ∀ t, 0 ≤ t → (S.params (pubOf E) hn).toParams.IsPublic t →
-      (simTrace S rho hn).awake y t →
-      ∃ j, (simTrace S rho hn).TickAt (runProposer S rho hn) (digestOf S rho) y j t := by
-  intro y hy t ht0 hp hw
-  rw [mem_honestKeys_iff] at hy
-  obtain ⟨hwE, -, hth⟩ := (awake_iff' S rho hn y t).mp hw
-  obtain ⟨i, he⟩ := List.mem_iff_getElem?.mp (hv.tick_total _ t ht0 hth
-    (by simpa only [rho.faultyAt_eq_zero hf] using hy) hwE)
-  obtain ⟨hg, -⟩ := simTrace_tick_public_group S rho hn hf hv _ hy i t he hp
-  rw [ownKey_key] at hg
-  exact ⟨_, _, hg⟩
-
-/-- An engine tick at a non-public time has no cut. -/
-theorem simTrace_tick_other (_hv : rho.ExecutionValid) :
-    ∀ v, v ∉ rho.faultyAt 0 → ∀ i t, rho.events[i]? = some (.tick v t) →
-      ¬ (S.params (pubOf E) hn).toParams.IsPublic t →
-        cutMap S rho hn (i + 1) = cutMap S rho hn i := by
-  intro v _ i t he hp
-  rw [cutMap_succ, eventCuts_tick_other S rho hn i v t he hp, List.length_nil, Nat.add_zero]
-
-/-- An engine delivery to an honest node is the groups of the canonical objects it delivers. -/
-theorem simTrace_deliver (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
-    ∀ v, v ∉ rho.faultyAt 0 → ∀ i o t, rho.events[i]? = some (.deliver v o t) →
-      DeliverSeq (runProposer S rho hn) (simTrace S rho hn) (digestOf S rho)
-        (Model.digests rho.hash o) (rho.ownKey v) t
-        (delivered (S.params (pubOf E) hn) o) (cutMap S rho hn i) (cutMap S rho hn (i + 1)) := by
-  intro v hv' i o t he
-  have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
-  exact deliver_seq_of_state S rho hn he (simTrace_state S rho hn hf hv v hv' i hi.le)
-
-/-- An engine restart of an honest node is the node's restart group. -/
-theorem simTrace_restart (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
-    ∀ v, v ∉ rho.faultyAt 0 → ∀ i t, rho.events[i]? = some (.restart v t) →
-      (simTrace S rho hn).GroupAt (runProposer S rho hn) (digestOf S rho)
-        (rho.ownKey v) (cutMap S rho hn i) t .restart ∧
-        cutMap S rho hn (i + 1) = cutMap S rho hn i +
-          (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-          ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) t .restart).2.length := by
-  intro v hv' i t he
-  have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
-  exact restart_group_of_state S rho hn he (simTrace_state S rho hn hf hv v hv' i hi.le)
 
 /-- The engine's Goldilocks state at a delivery: at the delivery's time, with the own key. -/
 private theorem deliver_state (hv : rho.ExecutionValid) {i : Nat} {v : V}

@@ -69,8 +69,8 @@ theorem tick_pool_insertion_queued (hv : rho.ExecutionValid) {v : V} {i : Nat} {
   exact hq
 
 /-- **A delivery releases every envelope it queues.** Premises: `hheld`, each queued vote is held
-in the seen closure or at the outbox head (`delivery_voteForward_held_or_head` for constant faults,
-`GrowingInventory.delivery_voteForward_held_or_head` for growing faults); `hv'`, the delivering
+in the seen closure or at the outbox head (`GrowingInventory.delivery_voteForward_held_or_head`);
+`hv'`, the delivering
 node is honest at `0`, so it signs the outbox votes. -/
 theorem delivery_voteForward_released_of (hv : rho.ExecutionValid) {v : V}
     (hv' : v ∉ rho.faultyAt 0)

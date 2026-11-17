@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outputs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 

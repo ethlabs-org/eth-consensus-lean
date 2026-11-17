@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "audit_commit": "bcebb6a2cadb728003eb6a4b9269ecb3e22036ae",
+  "audit_commit": "eb4f6897c886fa4fa37b083a7a0aae1aa075a5e7",
   "baseline_commit": "eed6d0b55614dde64a82b1ef17099e3533e0515f",
   "notes": [
     "blocked-by contains transitive compiled sorry owners, not speculative paper joins.",
@@ -126,6 +126,7 @@
     "Consensus.Goldilocks.Refinement.query_numbers",
     "Consensus.Goldilocks.Refinement.row_endpoint_slack",
     "Consensus.Goldilocks.Refinement.signed_row_service_psync",
+    "Consensus.Goldilocks.Refinement.simTrace_vote_forwarded",
     "Consensus.Goldilocks.Refinement.sleepy_include_finite",
     "Consensus.Goldilocks.Refinement.sleepy_query_population",
     "Consensus.Goldilocks.Refinement.sleepy_query_slot",
@@ -786,7 +787,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Obligations.record_below_anchor_of_stored_live_lock",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/HealedSafetyConditional.lean:60",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/HealedSafetyConditional.lean:61",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1146,7 +1147,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Simulation.noCollRun_simTraceAt",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Growing/Simulation/NoColl.lean:46",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Growing/Simulation/NoColl.lean:48",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1183,16 +1184,6 @@
       "direct_sorry": false,
       "lean-status": "proved",
       "evidence": "Proved; no direct owner in compiled audit at 0ef742e3."
-    },
-    {
-      "name": "Consensus.Goldilocks.Simulation.simTrace_vote_forwarded",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Simulation/Core.lean:413",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
     },
     {
       "name": "Consensus.Goldilocks.Simulation.tick_proposal_acceptance_queued_at",

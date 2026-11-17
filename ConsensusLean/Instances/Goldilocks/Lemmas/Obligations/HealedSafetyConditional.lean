@@ -3,7 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSupp
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outputs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRecordGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRecordWriters
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy

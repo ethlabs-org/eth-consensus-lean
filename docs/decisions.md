@@ -402,7 +402,7 @@ detail in `TRUST.md`.
   fixed validator index, not the slot-zero proposer. Reason: no repeated state transports and no arbitrary schedule
   hidden in runtime data. The engine's `dutyStep` gates both state mutation and release on selection.
   Delivered-block proposer correspondence is an explicit `LocalRun.proposerCredential` obligation, including
-  faulty signers, proved for the canonical simulation by `simTrace_proposerCredential` (`Lemmas/Simulation/Run`).
+  faulty signers, proved for the canonical simulation by `simTrace_proposerCredential` (`Lemmas/Simulation/RunSchedule`).
 - **Restart replay order is proposer-independent.** It depends only on the validator count and the genesis root:
   its data enumerates a frame's non-genesis blocks in parent order, with no proposer or timing dependence. Indexing
   it by these two values, supplied from `Setup` by validator count, keeps the actual sibling order when the

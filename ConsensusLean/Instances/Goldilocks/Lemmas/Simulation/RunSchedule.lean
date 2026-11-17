@@ -267,78 +267,6 @@ theorem simTrace_awake_of_call (hv : rho.ExecutionValid) :
   rw [ht, ← hkey]
   exact event_awake S rho hv he
 
-/-- The first call of an honest node after it was asleep is a restart. -/
-theorem simTrace_restart_of_sleep (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
-    ∀ y ∈ honestKeys S rho, ∀ i (u : Time), (simTrace S rho hn).IsCall y i → 0 ≤ u →
-      u < (simTrace S rho hn).time i → ¬ (simTrace S rho hn).awake y u →
-      (∀ j < i, (simTrace S rho hn).IsCall y j → (simTrace S rho hn).time j < u) →
-        (simTrace S rho hn).RestartAt y i := by
-  rintro y hy i u ⟨c, hnode, hlab⟩ hu0 hut hsleep hprev
-  have hl : (simTrace S rho hn).label i ≠ none := by rw [hlab]; simp
-  obtain ⟨-, i₀, ev, -, he, h1, h2, -, hn', ht, -⟩ := simTrace_cut S rho hn hl
-  have hkey : ev.node = rho.key y := key_of_ownKey S rho (hn'.symm.trans hnode)
-  have hwt : E.awake (rho.key y) ev.time = true := hkey ▸ event_awake S rho hv he
-  have hwu : E.awake (rho.key y) u = false := by
-    by_contra h
-    exact hsleep ((awake_iff' S rho hn y u).mpr
-      ⟨by simpa using h, hu0, hut.le.trans (simTrace_labelled_time_le S rho hn hv hl)⟩)
-  obtain ⟨w, huw, hwt', hw1, hw2⟩ :=
-    exists_wake (E.awake (rho.key y)) hwu hwt (by rw [← ht]; exact hut.le)
-  have hth := (hv.in_horizon ev (List.mem_of_getElem? he)).2
-  obtain ⟨ir, hir⟩ :=
-    List.mem_iff_getElem?.mp
-      (hv.wake_restart _ w
-        (by linarith only [hu0, huw]) (by linarith only [hwt', hth])
-        (by simpa only [rho.faultyAt_eq_zero hf] using (mem_honestKeys_iff S rho y).mp hy)
-        ⟨hw1, hw2⟩)
-  obtain ⟨hR, hRt, hsucc⟩ := restart_at S rho hn hir
-  rw [ownKey_key] at hR
-  have hge : i ≤ cutMap S rho hn ir := by
-    by_contra h
-    have := hprev _ (by omega) ⟨_, hR.choose_spec.1⟩
-    rw [hRt] at this
-    linarith only [this, huw]
-  have hir₀ : ir = i₀ := by
-    rcases lt_trichotomy ir i₀ with h | h | h
-    · have := cutMap_mono S rho hn (show ir + 1 ≤ i₀ from h)
-      omega
-    · exact h
-    · rcases keyLe_of_lt S rho hv he hir h with h' | ⟨h', h''⟩
-      · exact absurd hwt' (not_le.mpr h')
-      · cases ev with
-        | restart v s =>
-          simp only [Model.Event.node, Model.Event.time] at hkey h'
-          subst hkey h'
-          exact absurd (index_eq_of_events S rho hv he hir) (by omega)
-        | tick => simp [Model.Event.phase] at h''
-        | deliver => simp [Model.Event.phase] at h''
-  subst hir₀
-  have : i = cutMap S rho hn ir := by omega
-  subst this
-  exact hR
-
-/-- A wake is a restart. -/
-theorem simTrace_restart_at_wake (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
-    ∀ y ∈ honestKeys S rho, ∀ u v : Time, 0 ≤ u → u < v → ¬ (simTrace S rho hn).awake y u →
-      (simTrace S rho hn).awake y v →
-        ∃ k, (simTrace S rho hn).RestartAt y k ∧ u < (simTrace S rho hn).time k ∧
-          (simTrace S rho hn).time k ≤ v := by
-  intro y hy u v hu0 huv hsu hav
-  obtain ⟨hwv, -, hvh⟩ := (awake_iff' S rho hn y v).mp hav
-  have hwu : E.awake (rho.key y) u = false := by
-    by_contra h
-    exact hsu ((awake_iff' S rho hn y u).mpr ⟨by simpa using h, hu0, huv.le.trans hvh⟩)
-  obtain ⟨w, huw, hwv', hw1, hw2⟩ := exists_wake _ hwu hwv huv.le
-  obtain ⟨ir, hir⟩ :=
-    List.mem_iff_getElem?.mp
-      (hv.wake_restart _ w
-        (by linarith only [hu0, huw]) (by linarith only [hwv', hvh])
-        (by simpa only [rho.faultyAt_eq_zero hf] using (mem_honestKeys_iff S rho y).mp hy)
-        ⟨hw1, hw2⟩)
-  obtain ⟨hR, ht, -⟩ := restart_at S rho hn hir
-  rw [ownKey_key] at hR
-  exact ⟨_, hR, by rw [ht]; exact huw, by rw [ht]; exact hwv'⟩
-
 /-- A restart is a wake. -/
 theorem simTrace_sleep_of_restart (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ i, (simTrace S rho hn).RestartAt y i →
@@ -437,20 +365,6 @@ theorem blockObj_fields {B C : Blk (S.params (pubOf E) hn)}
   cases B; cases C
   simp_all
 
-/-- A block of an honest proposer that an honest node processes is the proposer's own block,
-processed by the proposer at or before (the engine's `Credentials`: a delivered block object
-signed by an honest key was released by that key's node). -/
-theorem simTrace_block_unforgeable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
-    ∀ y ∈ honestKeys S rho, ∀ i B, (simTrace S rho hn).BlockCallAt y i B →
-      B.proposer ∈ honestKeys S rho → ∃ j ≤ i, (simTrace S rho hn).OwnBlockAt B.proposer j B := by
-  rintro y _ k B hc hhon
-  rw [mem_honestKeys_iff] at hhon
-  refine blockCall_ownBlock_of_released S rho hn hv hc (by rwa [rho.faultyAt_eq_zero hf])
-    fun hs hpar hroot hb => ?_
-  exact released_block_cut_of S rho hn hv hs (fun _ => hhon)
-    (preNode_releasable S rho hn hf hv hhon)
-    (fun C hpC hrC h => blockObj_fields S rho hn hpar hpC hroot hrC h) hb
-
 private theorem delivery_block_authorized {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
@@ -539,17 +453,6 @@ theorem released_vote_cut (hf : rho.point.ConstantFaults) (hv : rho.ExecutionVal
     (hb : voteObj m ∈ rho.releasesAt i) :
     ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).EmitAt (rho.ownKey v) k m :=
   released_vote_cut_of S rho hn hv hs (fun _ => hv') (preNode_releasable S rho hn hf hv hv') hb
-
-/-- An AC message of an honest signer that an honest node receives was emitted by that signer's
-node at an earlier cut. -/
-theorem simTrace_msg_unforgeable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
-    ∀ y ∈ honestKeys S rho, ∀ i (m : Vote (Fintype.card V)),
-      (simTrace S rho hn).MsgCallAt y i m → m.val ∈ honestKeys S rho →
-        ∃ j < i, (simTrace S rho hn).EmitAt m.val j m := by
-  rintro y _ k m hc hhon
-  rw [mem_honestKeys_iff] at hhon
-  exact msgCall_emit_of_released S rho hn hv hc (by rwa [rho.faultyAt_eq_zero hf])
-    fun hs hb => by simpa only [ownKey_key] using released_vote_cut S rho hn hf hv hs hhon hb
 
 end Consensus.Goldilocks.Simulation
 

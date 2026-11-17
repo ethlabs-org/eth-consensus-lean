@@ -10,8 +10,7 @@ The forms of `Simulation/Steps` under growing faults, with the poll-attestation 
 `GrowingInventory.pollAttProtected` and the event's node honest at time zero
 (`event_honest_zero`): proposal releasability and the node transition inside honest engine
 ticks. Public-time ticks execute the node duty; non-public ticks leave the node unchanged. These
-event-local facts support the simulating trace's run laws and cut-map assembly in
-`Simulation/Run`. -/
+event-local facts support the simulating trace's run laws and cut-map assembly. -/
 
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape

@@ -20,8 +20,8 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- A vote emitted at cut `k` by `y` is released by `y`'s engine node at the cut's time.
-Premise `htick`: a public tick releases the votes its cuts emit (`tick_releases` for constant
-faults, `tick_block_vote_releases_at` for growing faults). -/
+Premise `htick`: a public tick releases the votes its cuts emit
+(`tick_block_vote_releases_at`). -/
 theorem emit_released_of (hv : rho.ExecutionValid)
     (htick : ∀ {i v t}, rho.events[i]? = some (.tick v t) →
       (S.params (pubOf E) hn).toParams.IsPublic t → ∀ r ∈ eventCuts S rho hn i,

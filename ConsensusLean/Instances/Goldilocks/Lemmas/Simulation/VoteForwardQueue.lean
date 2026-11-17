@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSimulates
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Forwarding
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationQueue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationProvenance
@@ -15,9 +15,7 @@ The engine's vote-forward queue: a fresh vote-pool insertion of a handler queues
 the current clock (`onBlock_pool_insertion_queued`, `nodeTick_pool_insertion_queued`), a released
 envelope carries its release time and a pooled vote (`released_voteForward_stamp`,
 `released_voteForward_pool`), and the poll steps and the tick's leading and trailing polls release
-the queued envelopes (`dutyStep_poll_voteForward`, `tick_prefix_voteForward_poll`,
-`tick_trailing_voteForward_poll`, `proposal_pool_insertion_queued`). `Core` derives the releases at
-a tick or a delivery from them. -/
+the queued envelopes (`dutyStep_poll_voteForward`, `proposal_pool_insertion_queued`). -/
 
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape
@@ -578,71 +576,6 @@ theorem dutyStep_poll_voteForward_of_available (hv : rho.ExecutionValid) {v : V}
     · rw [hlist, List.mem_singleton] at h
       have hd := congrArg (decodeVote (Fintype.card V)) (Body.vote.inj h)
       exact Or.inl (by simpa only [decodeVote_encodeVote, Option.some.injEq] using hd)
-
-/-- At an actual tick prefix with at most one pending ordinary body, a poll
-releases every queued vote envelope. Holdings are supplied by reachable inventory. -/
-theorem tick_prefix_voteForward_poll (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {v : V} (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {t : Time}
-    (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
-    (hp : p ≤ ((Model.protoOf (compiled (goldilocks S)) E).duties t).length) :
-    let nd := (rho.runDuties v
-      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
-        (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
-      (((Model.protoOf (compiled (goldilocks S)) E).duties t).take p)).1
-    (shapeOf S hn nd).outbox.length ≤ 1 →
-    ∀ q ∈ (shapeOf S hn nd).voteForwards,
-      Model.Obj.mk (.signed (rho.ownKey v) .poll)
-        (.data (.voteForward q.1 (encodeVote q.2))) [voteObj q.2] ∈
-          (rho.dutyStep v nd (.poll t.toNat)).2 := by
-  intro nd hlen
-  apply dutyStep_poll_voteForward_of_available S rho hn hv hv' (.tick he hw hp) t.toNat hlen
-  intro q hq
-  apply tick_prefix_pool_available S rho hn hconst hv hv' he hw hp q.2.slot q.2
-  apply runDuties_voteForward_in_pool S rho hn v _ _ ?_ q hq
-  intro r hr
-  change r ∈ ((rho.stateBefore i v).st.1 hn).voteForwards at hr
-  rw [← stateAt_eq S rho hn v i] at hr
-  rw [voteForwards_empty S rho hn hv v i] at hr
-  cases hr
-
-/-- The tick's first trailing poll has the required one-body bound and releases
-all vote envelopes queued by the node tick and the optional own proposal. -/
-theorem tick_trailing_voteForward_poll (hconst : rho.point.ConstantFaults)
-    (hv : rho.ExecutionValid) {v : V} (hv' : v ∉ rho.faultyAt 0) {i : Nat} {t : Time}
-    (he : rho.events[i]? = some (.tick v t)) :
-    let pre : List (Model.protoOf (compiled (goldilocks S)) E).Duty :=
-      [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] ++ (skeleton
-          (pubOf E) S.vote).proposeAt t
-    let nd := (rho.runDuties v
-      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
-        (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ pre).1
-    ∀ q ∈ (shapeOf S hn nd).voteForwards,
-      Model.Obj.mk (.signed (rho.ownKey v) .poll)
-        (.data (.voteForward q.1 (encodeVote q.2))) [voteObj q.2] ∈
-          (rho.dutyStep v nd (.poll t.toNat)).2 := by
-  intro pre nd
-  have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
-  have hw := hv.tick_awake v t (List.mem_of_getElem? he)
-  have hd : (Model.protoOf (compiled (goldilocks S)) E).duties t =
-      pre ++ [.poll t.toNat, .poll t.toNat] := by
-    rw [duties_eq S t ht]
-    exact List.append_assoc _ _ _
-  have htake : ((Model.protoOf (compiled (goldilocks S)) E).duties t).take pre.length = pre
-      := by
-    rw [hd, List.take_left]
-  have hlen : pre.length ≤ ((Model.protoOf (compiled (goldilocks S)) E).duties t).length := by
-    rw [hd, List.length_append]
-    omega
-  have h := tick_prefix_voteForward_poll S rho hn hconst hv hv' he hw hlen
-  rw [htake] at h
-  apply h
-  dsimp only [nd, pre]
-  erw [runDuties_fst_append]
-  apply outbox_after_pre S rho hn v (stateAt S rho hn v i) t ht
-    (fgDue_eq_false S rho hn v i)
-  · rw [outbox_empty S rho hn hv v i]; simp
-  · rw [stateAt_eq]
-    exact pre_shape S rho hn v (rho.stateBefore i v) t (poll_selected S rho hv v)
 
 omit [DecidableEq V] in
 /-- Through the optional proposal, every newly pooled vote is queued at the unchanged clock. -/

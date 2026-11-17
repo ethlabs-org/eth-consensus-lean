@@ -11,16 +11,7 @@ public section
 The engine's tick of an honest node against the node's `on_tick`, release by release
 (`tick_public_analysis`): at a public time it releases the queued body, the canonical objects of
 the blocks of the tick's cuts, and the votes and the attestation the tick's cuts emit and sign
-(`Q`, at most two bodies, drained by the two trailing polls), then unsigned gossip. From it:
-
-* `att_released_inv`: an honest node releases an attestation object only at a public tick, and
-  only one that a cut of that tick signs;
-* `tick_releases`: the own block, the tick's votes and its attestation are released at the tick.
-  The attestation passes the own-object guard: every own attestation the node has seen, or
-  released earlier in the tick, is one it signed in the simulating trace (`signAt_of_tick_cut`),
-  and its signings there are pairwise not slashable (the hypothesis `hnf`, `non_framing` over the
-  trace in `Run`);
-* `atProposal_outbox_nil`: at the proposal duty of a slot start nothing is queued. -/
+(`Q`, at most two bodies, drained by the two trailing polls), then unsigned gossip. -/
 
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape
@@ -748,67 +739,6 @@ theorem tick_other_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Tim
   · exact Or.inl ho
   · exact Or.inr (gossip_unsigned S rho _ _ _ o ho)
 
-/-- **Which attestations a tick releases.** An honest node releases an attestation object only
-at a tick at a public time, and only the attestation one of its tick's cuts signs. -/
-theorem att_released_inv (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {j : Nat} {v : V} {t : Time}
-    (hv' : v ∉ rho.faultyAt 0) (he : rho.events[j]? = some (.tick v t))
-    {b : FG.Att (Fintype.card V)}
-    (hb : (attObj b : (Model.protoOf (compiled (goldilocks S)) E).Object) ∈ rho.releasesAt j) :
-    (S.params (pubOf E) hn).toParams.IsPublic t ∧ ∃ C,
-      Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-        (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 := by
-  obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v j
-  obtain ⟨hvote, -⟩ := (atMostOneVote_iff _).1 hamo
-  have hnotpend : ∀ seen, (attObj b : (Model.protoOf (compiled (goldilocks S)) E).Object) ∉
-      relHead S rho v seen (stateAt S rho hn v j).outbox.head? := by
-    intro seen h
-    obtain ⟨q, hq, hqo⟩ := mem_relHead S rho h
-    obtain ⟨w, rfl⟩ := hvote q (List.mem_of_mem_head? hq)
-    exact absurd (attObj_eq_pollObj S rho hqo).1 (by simp)
-  by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
-  · refine ⟨hp, ?_⟩
-    obtain ⟨N4, N5, Q, R4, F, G, heq, -, -, hF, hG, -, hQ, hR4, -⟩ :=
-      tick_public_analysis S rho hn hv hv' he hp (preNode_releasable S rho hn hf hv hv' he)
-    rw [heq] at hb
-    have hQmem : ∀ seen ob, ob ∈ [Q.head?, Q.tail.head?] →
-        (attObj b : (Model.protoOf (compiled
-            (goldilocks S)) E).Object) ∈ relHead S rho v seen ob →
-        ∃ C, Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn)
-          (digestOf S rho) (rho.ownKey v)
-          (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 := by
-      intro seen ob hob h
-      obtain ⟨q, rfl, hqo⟩ := mem_relHead S rho h
-      obtain ⟨hq, -⟩ := attObj_eq_pollObj S rho hqo
-      have hqQ : q ∈ Q := by
-        rcases List.mem_pair.mp hob with h' | h'
-        · exact List.mem_of_mem_head? h'.symm
-        · exact List.mem_of_mem_tail (List.mem_of_mem_head? h'.symm)
-      rw [hQ, hq] at hqQ
-      obtain ⟨C, a, hc, hw⟩ := att_mem_bodies S hn hqQ
-      have hab := encodeAtt_inj hw
-      subst hab
-      exact ⟨C, hc⟩
-    rcases List.mem_append.mp hb with hb | h
-    swap
-    · exact absurd (hG _ h) (by simp [attObj, Model.Obj.auth])
-    rcases List.mem_append.mp hb with hb | h
-    swap
-    · exact hQmem _ _ (by simp) h
-    rcases List.mem_append.mp hb with hb | h
-    swap
-    · rcases List.mem_append.mp h with h | h
-      · exact hQmem _ _ (by simp) h
-      · rcases hF _ h with ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
-        all_goals have hm := congrArg Model.Obj.msg heq; cases hm
-    rcases List.mem_append.mp hb with h | h
-    · exact absurd h (hnotpend _)
-    · rw [hR4] at h; exact absurd h (attObj_not_mem_blockObjs S hn b _)
-  · exfalso
-    rcases tick_other_releases S rho hn hv hv' he hp _ hb with h | h
-    · exact hnotpend _ h
-    · exact absurd h (by simp [attObj, Model.Obj.auth])
-
 end Inventory2
 
 /-! ## The releases of a tick -/
@@ -894,16 +824,6 @@ theorem signAt_before_tick_end {j : Nat} {v : V} {t : Time}
       (stateAt S rho hn v j).node t (Nat.pair j 0)
       (.tick (encodeTxs (Model.mempool rho.inbox v t))))[m] from by simp only [hEC], hlab, hcm]
 
-/-- A signing cut of a public tick is a signing of the simulating trace. -/
-theorem signAt_of_tick_cut {j : Nat} {v : V} {t : Time}
-    (he : rho.events[j]? = some (.tick v t))
-    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) {C} {b : FG.Att (Fintype.card V)}
-    (hc : Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-      (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2) :
-    ∃ k, (simTrace S rho hn).SignAt (rho.ownKey v) k b := by
-  obtain ⟨k, _, hk⟩ := signAt_before_tick_end S rho hn he hp hc
-  exact ⟨k, hk⟩
-
 /-- The canonical attestation object is injective. -/
 theorem attObj_inj {n : Nat} {a b : FG.Att n} (h : (attObj a : Wire n binding) = attObj b) : a = b
     := by
@@ -911,44 +831,6 @@ theorem attObj_inj {n : Nat} {a b : FG.Att n} (h : (attObj a : Wire n binding) =
   injection h2 with h4
   injection h4 with h5
   exact encodeAtt_inj h5
-
-omit [DecidableEq V] in
-/-- A release batch cannot introduce a nested object that was neither already held nor a
-top-level candidate: the carried-object guard checks the preceding holdings. -/
-private theorem releaseAll_closure_source
-    (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (cs : List (Model.protoOf (compiled (goldilocks S)) E).Object) :
-    ∀ o ∈ Model.closure (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
-      rho.hash (rho.ownKey v) nd cs).1.seen, o ∈ Model.closure nd.seen ∨
-        o ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
-          rho.hash (rho.ownKey v) nd cs).2 := by
-  induction cs generalizing nd with
-  | nil => intro o ho; exact Or.inl ho
-  | cons c cs ih =>
-    unfold Model.releaseAll
-    split
-    next hg =>
-      intro o ho
-      rcases ih _ o ho with ho | ho
-      · change o ∈ Model.closure (nd.seen ++ [c]) at ho
-        rw [Model.closure_append] at ho
-        rcases List.mem_append.mp ho with ho | ho
-        · exact Or.inl ho
-        · obtain ⟨c', hc', hcon⟩ := (Model.mem_closure_iff _ _).mp ho
-          have he : c' = c := List.mem_singleton.mp hc'
-          subst c'
-          rcases hcon.cases with rfl | ⟨x, hx, hxo⟩
-          · exact Or.inr List.mem_cons_self
-          · have hr := (Bool.and_eq_true_iff.mp (Bool.and_eq_true_iff.mp hg).1).1
-            have hxheld : x ∈ Model.closure nd.seen :=
-              of_decide_eq_true (List.all_eq_true.mp hr x hx)
-            exact Or.inl (mem_closure_of_contains S hxheld hxo)
-      · exact Or.inr (List.mem_cons_of_mem _ ho)
-    next hg =>
-      intro o ho
-      rcases ih nd o ho with ho | ho
-      · exact Or.inl ho
-      · exact Or.inr ho
 
 /-- A vote emitted by a cut of `v`'s handler run from its engine state is of a slot whose vote
 role selects `v` (the emission gate at the state's installed permission). -/
@@ -961,193 +843,6 @@ theorem exec_emit_selected (hv : rho.ExecutionValid) {v : V} {i : Nat} {t : Time
   have h := emits_mayVote_of_mem_exec _ _ _ _ _ _ hℓ m hm
   rw [stateAt_mayVote S rho hn hv v i] at h
   exact of_decide_eq_true h
-
-/-- **The releases of a tick.** At an honest node's tick at a public time the engine releases
-the canonical object of the block of every block cut of the tick, the vote of every emission of
-the tick's AC cuts and the attestation of every signing cut. The attestation passes the own-object
-guard: every own attestation the node has seen, or released earlier in the tick, is one it signed
-in the simulating trace, and its signings there are pairwise not slashable (`hnf`). -/
-theorem tick_releases (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {i : Nat} {v : V} {t : Time}
-    (hv' : v ∉ rho.faultyAt 0) (he : rho.events[i]? = some (.tick v t))
-    (hp : (S.params (pubOf E) hn).toParams.IsPublic t)
-    (hnf : ∀ k k' a b, (simTrace S rho hn).SignAt (rho.ownKey v) k a →
-      (simTrace S rho hn).SignAt (rho.ownKey v) k' b → ¬ FG.slashable a b) :
-    ∀ r ∈ eventCuts S rho hn i,
-      (∀ B acc, r.label = .fg (.block B acc) → r.pos ≠ 0 →
-        blockObj (S.params (pubOf E) hn) B ∈ rho.releasesAt i) ∧
-      (∀ ℓ, r.label = .ac ℓ → ∀ m ∈ ℓ.emits, voteObj m.msg ∈ rho.releasesAt i) ∧
-      (∀ C a, r.label = .fg (.attest C (some a)) → attObj a ∈ rho.releasesAt i) := by
-  intro r hr
-  have hEC := eventCuts_tick_public S rho hn i v t he hp
-  have hlab : r.label ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-      (stateAt S rho hn v i).node t
-      (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 := by
-    rw [hEC] at hr
-    obtain ⟨m, hm, rfl⟩ := List.getElem_of_mem hr
-    obtain ⟨-, -, -, -, hl⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm
-    rw [hl]; exact List.getElem_mem _
-  obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v i
-  obtain ⟨hvote, -⟩ := (atMostOneVote_iff _).1 hamo
-  obtain ⟨N4, N5, Q, R4, F, G, heq, hseen4, hseen5, hF, -, hQlen, hQ, hR4, hcar, hN5⟩ :=
-    tick_public_analysis S rho hn hv hv' he hp (preNode_releasable S rho hn hf hv hv' he)
-  set nd := rho.stateBefore i v
-  set R1 := relHead S rho v nd.seen (stateAt S rho hn v i).outbox.head?
-  have hpos : ∀ q ∈ Q, Q.head? = some q ∨ Q.tail.head? = some q := by
-    intro q hq
-    match Q, hQlen, hq with
-    | [a], _, hq => rw [List.mem_singleton] at hq; subst hq; exact Or.inl rfl
-    | [a, b], _, hq =>
-      rcases List.mem_pair.mp hq with rfl | rfl
-      · exact Or.inl rfl
-      · exact Or.inr rfl
-    | _ :: _ :: _ :: _, h, _ => simp at h
-  have hsigner : ∀ b' : FG.Att (Fintype.card V), b'.val = rho.ownKey v →
-      rho.signerOf (attObj b') = some v := by
-    intro b' hb'
-    simp [Model.Run.signerOf, Model.Obj.signer?, attObj, Model.Obj.auth, hb', Model.Run.ownKey]
-  -- own attestations seen before the tick, or released in it before the attestation
-  have hbase : ∀ b' : FG.Att (Fintype.card V), b'.val = rho.ownKey v →
-      (attObj b' : (Model.protoOf (compiled (goldilocks S)) E).Object) ∈
-          Model.closure (nd.seen ++ R1) →
-      ∃ k, (simTrace S rho hn).SignAt (rho.ownKey v) k b' := by
-    intro b' hb' ho
-    rw [Model.closure_append] at ho
-    rcases List.mem_append.mp ho with ho | ho
-    · obtain ⟨j, -, t', hej, hrj⟩ := rho.signed_seen_released hv
-        (Nat.le_of_lt (List.getElem?_eq_some_iff.mp he).1) ho
-        (by simpa only [rho.faultyAt_eq_zero hf] using hv') (hsigner b' hb')
-      rcases hej with hej | ⟨o, hej⟩
-      · obtain ⟨hp', C, hc⟩ := att_released_inv S rho hn hf hv hv' hej hrj
-        exact signAt_of_tick_cut S rho hn hej hp' hc
-      · exact absurd hrj (deliver_not_att S rho hn hv hej b')
-    · exfalso
-      obtain ⟨x, hx, hc⟩ := (Model.mem_closure_iff _ _).mp ho
-      obtain ⟨q, hq, rfl⟩ := mem_relHead S rho hx
-      obtain ⟨w, rfl⟩ := hvote q (List.mem_of_mem_head? hq)
-      have := contains_atomic S hc
-      exact absurd (attObj_eq_pollObj S rho this).1 (by simp)
-  have hsig4 : ∀ b' : FG.Att (Fintype.card V), b'.val = rho.ownKey v →
-      (attObj b' : (Model.protoOf (compiled (goldilocks S)) E).Object) ∈ Model.closure N4.seen →
-      ∃ k, (simTrace S rho hn).SignAt (rho.ownKey v) k b' := by
-    intro b' hb' ho
-    rw [hseen4, Model.closure_append] at ho
-    rcases List.mem_append.mp ho with ho | ho
-    · exact hbase b' hb' ho
-    · obtain ⟨c, hc, hcon⟩ := (Model.mem_closure_iff _ _).mp ho
-      rcases hcon.cases with h | ⟨x, hx, hcx⟩
-      · rw [← h, hR4] at hc
-        exact absurd hc (attObj_not_mem_blockObjs S hn b' _)
-      · exact hbase b' hb' (mem_closure_of_contains S (hcar c hc x hx) hcx)
-  have hsig5 : ∀ b' : FG.Att (Fintype.card V), b'.val = rho.ownKey v →
-      (attObj b' : (Model.protoOf (compiled (goldilocks S)) E).Object) ∈ Model.closure N5.seen →
-      ∃ k, (simTrace S rho hn).SignAt (rho.ownKey v) k b' := by
-    intro b' hb' ho
-    have hsource : (attObj b' : (Model.protoOf (compiled (goldilocks S)) E).Object) ∈
-        Model.closure N4.seen ∨ attObj b' ∈ (rho.dutyStep v N4 (.poll t.toNat)).2 := by
-      rw [hN5] at ho
-      unfold Model.Run.dutyStep at ho ⊢
-      split at ho
-      · rename_i hsel
-        rw [ite_eq_left hsel]
-        exact releaseAll_closure_source S rho v _ _ _ ho
-      · exact Or.inl ho
-    rcases hsource with ho | ho
-    · exact hsig4 b' hb' ho
-    · have hrel : (rho.dutyStep v N4 (.poll t.toNat)).2 = relHead S rho v N4.seen Q.head? ++ F := by
-        have hs := dutyStep_seen S rho v N4 (.poll t.toNat)
-        rw [← hN5, hseen5] at hs
-        exact List.append_cancel_left hs.symm
-      rw [hrel] at ho
-      rcases List.mem_append.mp ho with hx | hx
-      swap
-      · rcases hF _ hx with ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
-        all_goals have hm := congrArg Model.Obj.msg heq; cases hm
-      obtain ⟨q, hq, hobj⟩ := mem_relHead S rho hx
-      have hq' := (attObj_eq_pollObj S rho hobj).1
-      have hqQ : q ∈ Q := List.mem_of_mem_head? hq
-      rw [hQ, hq'] at hqQ
-      obtain ⟨C, a, hca, hw⟩ := att_mem_bodies S hn hqQ
-      have hab := encodeAtt_inj hw
-      subst hab
-      exact signAt_of_tick_cut S rho hn he hp hca
-  -- the own-object guard for an attestation signed at this tick
-  have hprot : ∀ (a : FG.Att (Fintype.card V))
-      (seen : List (Model.protoOf (compiled (goldilocks S)) E).Object),
-      (∃ k, (simTrace S rho hn).SignAt (rho.ownKey v) k a) →
-      (∀ b' : FG.Att (Fintype.card V), b'.val = rho.ownKey v →
-        (attObj b' : (Model.protoOf (compiled (goldilocks S)) E).Object) ∈ Model.closure seen →
-        ∃ k, (simTrace S rho hn).SignAt (rho.ownKey v) k b') →
-      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) seen
-        (attObj a) = true := by
-    intro a seen ⟨ka, hka⟩ hs
-    refine Model.protects_iff.mpr ?_
-    intro _
-    refine ⟨Bool.eq_false_iff.mpr fun h => ?_, fun o ho hos => ⟨Bool.eq_false_iff.mpr fun h => ?_,
-      Bool.eq_false_iff.mpr fun h => ?_⟩⟩
-    · obtain ⟨a1, b1, h1, h2, hsl⟩ :=
-        (conflictsIff_iff.mp conflicts_iff S.vote (Fintype.card V) (attObj a) (attObj a)).mp h
-      rw [← attObj_inj h1, ← attObj_inj h2] at hsl
-      exact hnf ka ka a a hka hka hsl
-    · obtain ⟨a1, b1, h1, rfl, hsl⟩ :=
-        (conflictsIff_iff.mp conflicts_iff S.vote (Fintype.card V) (attObj a) o).mp h
-      rw [← attObj_inj h1] at hsl
-      have hb1 : b1.val = rho.ownKey v := by
-        simpa [Model.Obj.signer?, attObj, Model.Obj.auth] using hos
-      obtain ⟨kb, hkb⟩ := hs b1 hb1 ho
-      exact hnf ka kb a b1 hka hkb hsl
-    · obtain ⟨a1, b1, rfl, h2, hsl⟩ :=
-        (conflictsIff_iff.mp conflicts_iff S.vote (Fintype.card V) o (attObj a)).mp h
-      rw [← attObj_inj h2] at hsl
-      have ha1 : a1.val = rho.ownKey v := by
-        simpa [Model.Obj.signer?, attObj, Model.Obj.auth] using hos
-      obtain ⟨kb, hkb⟩ := hs a1 ha1 ho
-      exact hnf kb ka a1 a hkb hka hsl
-  -- a body of `Q` whose guard passes is released
-  have hrelQ : ∀ q ∈ Q, rho.ownKey v ∈ rho.sel (pollRole S.vote (pubOf E).n q) →
-      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) N4.seen
-        (pollObj S rho v q) = true →
-      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) N5.seen
-        (pollObj S rho v q) = true →
-      pollObj S rho v q ∈ rho.releasesAt i := by
-    intro q hq hk h4 h5
-    rw [heq]
-    rcases hpos q hq with h | h
-    · refine List.mem_append_left _ (List.mem_append_left _ (List.mem_append_right _ ?_))
-      apply List.mem_append_left
-      rw [h]; simp [relHead, hk, h4]
-    · refine List.mem_append_left _ (List.mem_append_right _ ?_)
-      rw [h]; simp [relHead, hk, h5]
-  refine ⟨fun B acc hB _ => ?_, fun ℓ hℓ m hm => ?_, fun C a ha => ?_⟩
-  · rw [heq]
-    refine List.mem_append_left _ (List.mem_append_left _ (List.mem_append_left _
-      (List.mem_append_right _ ?_)))
-    rw [hR4, blockObjs_eq]
-    exact List.mem_flatMap.mpr ⟨_, hB ▸ hlab, List.mem_singleton_self _⟩
-  · have hval := emits_val_of_mem_exec _ _ _ _ _ _ (hℓ ▸ hlab) m hm
-    have hq : Body.vote (encodeVote m.msg) ∈ Q := by
-      rw [hQ]
-      exact List.mem_append_left _ (List.mem_flatMap.mpr ⟨_, hℓ ▸ hlab,
-        List.mem_map.mpr ⟨m, hm, rfl⟩⟩)
-    have hobj := voteObj_eq_pollObj S rho (show m.msg.val = rho.ownKey v from hval)
-    have hk := exec_emit_selected S rho hn hv (hℓ ▸ hlab) m hm
-    exact (congrArg (· ∈ rho.releasesAt i) hobj).mpr (hrelQ _ hq
-      (by rw [pollRole_vote]; exact hk)
-      (protects_pollObj_vote S rho v _ _ _) (protects_pollObj_vote S rho v _ _ _))
-  · have hval := attest_val_of_mem_exec _ _ _ _ _ _ (ha ▸ hlab)
-    have hq : Body.att (encodeAtt a) ∈ Q := by
-      rw [hQ, attBodies_eq]
-      exact List.mem_append_right _ (List.mem_flatMap.mpr ⟨_, ha ▸ hlab,
-        List.mem_singleton_self _⟩)
-    have hobj : (attObj a : (Model.protoOf (compiled (goldilocks S)) E).Object) =
-        pollObj S rho v (.att (encodeAtt a)) := attObj_eq_pollObj_of_val S rho hval
-    have hsa := signAt_of_tick_cut S rho hn he hp (ha ▸ hlab)
-    have h4 := hprot a N4.seen hsa hsig4
-    have h5 := hprot a N5.seen hsa hsig5
-    rw [hobj] at h4 h5
-    exact (congrArg (· ∈ rho.releasesAt i) hobj).mpr (hrelQ _ hq
-      (pollRole_selected_of_not_vote S rho (poll_selected S rho hv v) (fun w h => by cases h))
-      h4 h5)
 
 end TickReleases
 

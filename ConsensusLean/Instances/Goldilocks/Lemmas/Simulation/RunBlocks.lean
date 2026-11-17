@@ -36,65 +36,6 @@ theorem simTrace_genesis_root_ok :
   simp only [Block.RootOk, digestOf_eq, Params.genesisBlock]
   erw [dgOf_eq]
 
-/-- An honest-signed payload object of any called block was released before its engine event. -/
-private theorem block_payload_source (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {k : Nat} {y}
-    {B : Blk (S.params (pubOf E) hn)} (hc : (simTrace S rho hn).BlockCallAt y k B)
-    {o : Wire (Fintype.card V) S.vote} (ho : o ∈ payloadObjs B.fgPayload B.acPayload)
-    {u : V} (hu : u ∉ rho.faultyAt 0) (hsign : rho.signerOf o = some u) :
-    ∃ i t, cutMap S rho hn (i + 1) ≤ k ∧ rho.SendsAt u i t ∧ o ∈ rho.releasesAt i :=
-  block_payload_source_of S rho hn hv (fun {i v t} he => preNode_releasable S rho hn hf hv
-    (by
-      have hh := hv.honest_only _ (List.mem_of_getElem? he)
-      change v ∉ rho.faultyAt t at hh
-      simpa only [rho.faultyAt_eq_zero hf] using hh) he)
-    hc ho (by simpa only [rho.faultyAt_eq_zero hf] using hu) hsign
-
-/-- Honest carried votes originate in earlier canonical emission cuts. -/
-theorem simTrace_carried_vote_unforgeable (hf : rho.point.ConstantFaults)
-    (hv : rho.ExecutionValid) :
-    ∀ y ∈ honestKeys S rho, ∀ i B, (simTrace S rho hn).BlockCallAt y i B →
-      ∀ v ∈ blockVotes B, v.val ∈ honestKeys S rho →
-        ∃ j < i, (simTrace S rho hn).EmitAt v.val j v := by
-  intro y _ k B hc m hm hh
-  rw [mem_honestKeys_iff] at hh
-  have hmem : voteObj (binding := S.vote) m ∈ payloadObjs B.fgPayload B.acPayload :=
-    List.mem_append_right _ (List.mem_map.mpr ⟨m, List.mem_append_left _ hm, rfl⟩)
-  obtain ⟨i, t, hik, hs, hr⟩ := block_payload_source S rho hn hf hv hc hmem hh
-    (show rho.signerOf (voteObj m) = some (rho.key m.val) from rfl)
-  obtain ⟨q, hq, he⟩ := released_vote_cut S rho hn hf hv hs hh hr
-  exact ⟨q, hq.trans_le hik, by simpa only [ownKey_key] using he⟩
-
-private theorem released_att_cut (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {i : Nat} {v : V} {t : Time}
-    (hs : rho.SendsAt v i t) (hv' : v ∉ rho.faultyAt 0) {a : FG.Att (Fintype.card V)}
-    (hb : attObj a ∈ rho.releasesAt i) :
-    ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).SignAt (rho.ownKey v) k a := by
-  rcases hs with hs | ⟨o, hs⟩
-  · obtain ⟨hp, C, hc⟩ := att_released_inv S rho hn hf hv hv' hs hb
-    exact signAt_before_tick_end S rho hn hs hp hc
-  · exact absurd hb (deliver_not_att S rho hn hv hs a)
-
-/-- An attestation of an honest signer that an honest node processes was signed by that signer
-at an earlier cut, including own processing and refused block payloads. -/
-theorem simTrace_att_unforgeable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
-    ∀ y ∈ honestKeys S rho, ∀ i a,
-      ((simTrace S rho hn).AttCallAt y i a ∨
-        ∃ B, (simTrace S rho hn).BlockCallAt y i B ∧ a ∈ B.fgPayload) →
-      a.val ∈ honestKeys S rho → ∃ j < i, (simTrace S rho hn).SignAt a.val j a := by
-  intro y _ k a hc hh
-  rw [mem_honestKeys_iff] at hh
-  rcases hc with hc | ⟨B, hc, ha⟩
-  swap
-  · have hmem : attObj (binding := S.vote) a ∈ payloadObjs B.fgPayload B.acPayload :=
-      List.mem_append_left _ (List.mem_map.mpr ⟨a, ha, rfl⟩)
-    obtain ⟨i, t, hik, hs, hr⟩ := block_payload_source S rho hn hf hv hc hmem hh
-      (show rho.signerOf (attObj a) = some (rho.key a.val) from rfl)
-    obtain ⟨q, hq, he⟩ := released_att_cut S rho hn hf hv hs hh hr
-    exact ⟨q, hq.trans_le hik, by simpa only [ownKey_key] using he⟩
-  exact attCall_sign_of_released S rho hn hv hc (by rwa [rho.faultyAt_eq_zero hf])
-    fun hs hb => by simpa only [ownKey_key] using released_att_cut S rho hn hf hv hs hh hb
-
 /-! ## Blocks of cuts
 
 The trace's state across a block of cuts: unchanged across other nodes' cuts, the handler's

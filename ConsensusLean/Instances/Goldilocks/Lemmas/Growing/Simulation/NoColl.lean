@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PublishedBlocks
-import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Evidence
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
+import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.BlockView
 
 public section

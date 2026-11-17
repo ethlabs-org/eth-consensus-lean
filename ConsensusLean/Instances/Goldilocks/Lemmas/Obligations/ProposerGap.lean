@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSimulates
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 import ConsensusLean.Lemmas.Tactic.Linarith

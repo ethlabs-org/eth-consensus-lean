@@ -851,13 +851,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EmitRelease
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineState
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EventGroups
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Evidence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingInvariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingWrappers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outbox
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PayloadSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PoolInsertionRelease
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Provenance
@@ -873,7 +871,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Release
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RoleBinding
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunBlocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSchedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSimulates

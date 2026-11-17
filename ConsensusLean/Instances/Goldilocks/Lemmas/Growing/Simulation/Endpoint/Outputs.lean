@@ -6,7 +6,8 @@ public import ConsensusLean.Spec.Shape.Claims
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Publication
-import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Evidence
+import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.BlockView
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReadTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core

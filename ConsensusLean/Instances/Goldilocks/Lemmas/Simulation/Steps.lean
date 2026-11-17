@@ -8,7 +8,7 @@ public section
 Uses `Queue`'s inventories to prove proposal releasability and identify the node transition
 inside honest engine ticks, deliveries and restarts. Public-time ticks execute the node duty;
 non-public ticks leave the node unchanged. These event-local facts support the simulating
-trace's run laws and cut-map assembly in `Simulation/Run`.
+trace's run laws and cut-map assembly.
 
 The `*_of_protected` forms take the poll-attestation protection (`PollAttProtected`) as a premise;
 the constant-fault forms here, of these and of `Queue`'s inventories, supply it from
@@ -135,36 +135,6 @@ private theorem pollAttProtected_of_constant (hf : rho.point.ConstantFaults)
     (hv : rho.ExecutionValid) : PollAttProtected S rho hn :=
   (pollAttProtected_iff S rho hn).2 fun _ hv' _ _ _ _ hc hd hsel _ _ hm =>
     engine_poll_att_protected S rho hn hf hv hv' hc hd hsel hm
-
-/-- At a tick duty prefix, every pooled vote is already held or pending in the
-ordinary outbox. This retains the actual prefix state needed by release guards. -/
-theorem tick_prefix_pool_available (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {v : V} (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {t : Time}
-    (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
-    (hp : p ≤ ((Model.protoOf (compiled (goldilocks S)) E).duties t).length)
-    (σ : Nat) (m : Vote (Fintype.card V)) :
-    let nd := (rho.runDuties v
-      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
-        (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
-      (((Model.protoOf (compiled (goldilocks S)) E).duties t).take p)).1
-    m ∈ (shapeOf S hn nd).node.ac.pool σ →
-      voteObj m ∈ Model.closure nd.seen ∨
-        Body.vote (encodeVote m) ∈ (shapeOf S hn nd).outbox :=
-  tick_prefix_pool_available_of_protected S rho hn
-    (pollAttProtected_of_constant S rho hn hf hv) hv hv' he hw hp σ m
-
-/-- Every envelope queued by an actual delivery has its canonical dependency held or at
-the ordinary outbox head. No queue-to-pool or readiness premise is left to the caller. -/
-theorem delivery_voteForward_held_or_head (hf : rho.point.ConstantFaults)
-    (hv : rho.ExecutionValid) {v : V}
-    {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
-    (he : rho.events[i]? = some (.deliver v o t)) (tv : Time × Vote (Fintype.card V))
-    (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
-    voteObj tv.2 ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
-      (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.head? =
-        some (.vote (encodeVote tv.2)) :=
-  delivery_voteForward_held_or_head_of_protected S rho hn
-    (pollAttProtected_of_constant S rho hn hf hv) hv he tv htv
 
 /-- The release guarantee applies to the selected proposal at its scheduled slot start. -/
 theorem proposal_releasable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
