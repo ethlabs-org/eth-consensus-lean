@@ -222,16 +222,17 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
   -- the proposal's votes are the proposer's slot-`s` pool
   have hpool : ∀ w ∈ (tr.state p i).pool s, (tr.state p i).voteStamp w < ⊤ := by
     intro w hw
-    have hws := state_pool_slot sp hr hp i s w hw
-    rcases pool_origin hr hp i w (hws ▸ hw) with ⟨k, -, -, h, -⟩ | ⟨k, -, ℓ, -, -, h, -⟩ <;>
+    have hws := state_pool_slot sp hr (fun _ => voteStart_initial _) hp i s w hw
+    rcases pool_origin hr (fun _ => voteStart_initial _) hp i w (hws ▸ hw) with
+      ⟨k, -, -, h, -⟩ | ⟨k, -, ℓ, -, -, h, -⟩ <;>
       exact h ▸ etime_of_lt_top _
   -- **every early vote of the voter reaches the proposer**
   have hstar : ∀ x ∈ e.readPoint.pool s, e.readPoint.voteStamp x < ETime.of (sp.ts s + 3 * sp.Δ) →
       x ∈ (tr.state p i).pool s ∨ x.val ∈ equivocators {w | w ∈ (tr.state p i).pool s} := by
     intro x hx hxt
     obtain ⟨hx1, hx2⟩ := readPoint_pool hr hy hc hx
-    have hxs : x.slot = s := state_pool_slot sp hr hy (j + 1) s x hx1
-    rcases pool_origin hr hy (j + 1) x (hxs ▸ hx1) with
+    have hxs : x.slot = s := state_pool_slot sp hr (fun _ => voteStart_initial _) hy (j + 1) s x hx1
+    rcases pool_origin hr (fun _ => voteStart_initial _) hy (j + 1) x (hxs ▸ hx1) with
       ⟨k, -, hsend, hst, hsl⟩ | ⟨k, -, ℓk, hck, -, -, X, hX, hxX⟩
     · rw [hx2 hxs] at hst
       have htk : tr.time k < sp.ts s + 3 * sp.Δ := etime_of_lt_of.1 (hst ▸ hxt)
@@ -248,7 +249,8 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
       exact Or.inl (mem_voteViewList_fst.1 (hPv ▸ hxX)).1
   -- the proposer has stamped the blocks of its tree
   have hbs : ∀ Hd ∈ ℓp.frame.tree, (tr.state p i).blockStamp Hd.root ≠ ⊤ := fun Hd hHd =>
-    (blockStamp_lt_of_acceptedBefore sp hr hp hcp hHd (T := tr.time i + 1)
+    (blockStamp_lt_of_acceptedBefore sp hr (fun _ => voteStart_initial _) hp hcp hHd
+      (T := tr.time i + 1)
       (by
         rcases frame_accepted hr hp i hcp Hd hHd with h | ⟨k, hk, h⟩
         · exact Or.inl h

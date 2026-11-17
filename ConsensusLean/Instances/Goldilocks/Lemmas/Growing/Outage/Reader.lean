@@ -54,7 +54,7 @@ theorem lockInv_state {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   · obtain ⟨_, hs⟩ := SA.voteStart_iff.1 (hrun.vstart y)
     rw [h0, hs] at hl
     exact absurd hl (Set.notMem_empty l)
-  · obtain ⟨-, -, hli⟩ := SA.lockInv_of_reachable_from hU (hrun.vstart y) hreach
+  · obtain ⟨-, -, hli⟩ := SA.lockInv_of_reachable hU (hrun.vstart y) hreach
     obtain ⟨E', hE'U, hE'r, -, hlE⟩ := SA.lockInv_iff.1 hli
     obtain rfl : E' = E := hU.1 hE'U hEU (hE'r.trans (by rw [hst]; exact hEr.symm))
     exact hlE l hl X hX hXr

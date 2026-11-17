@@ -95,7 +95,8 @@ that sent or accepted it into the pool, before the tick of `t_s + 2Δ`, whose po
 theorem voteStamp_lt {s i : Nat} (hx : cv s ∈ ((tickRun N1 dg1).projAC.state v0 i).pool s) :
     ((tickRun N1 dg1).projAC.state v0 i).voteStamp (cv s) <
       ETime.of (sp1.ts s + 2 * sp1.Δ) := by
-  rcases SA.pool_origin acRun.localRun (Set.mem_univ v0) i (cv s) hx with
+  rcases SA.pool_origin acRun.localRun (fun _ => SA.voteStart_initial _)
+    (Set.mem_univ v0) i (cv s) hx with
     ⟨k, -, ⟨ℓ', hc', hk⟩, hstk, -⟩ | ⟨k, -, ℓ', hc', hrs, -⟩
   · rw [hstk]
     apply etime_of_lt
@@ -127,7 +128,8 @@ theorem blockStamp_lt {s : Nat} (hs : 1 ≤ s) :
   obtain ⟨f, hfs, hf⟩ := update_frame s
   obtain ⟨k, rfl⟩ : ∃ k, s = k + 1 := ⟨s - 1, by omega⟩
   obtain ⟨fg', e, hl, -⟩ := vote_label k
-  refine blockStamp_lt_of_acceptedBefore sp1 acRun.localRun (Set.mem_univ v0) (update_callAt _)
+  refine blockStamp_lt_of_acceptedBefore sp1 acRun.localRun (fun _ => voteStart_initial _)
+    (Set.mem_univ v0) (update_callAt _)
     (hf.mem hfs (by omega)) (Or.inr ⟨8 * (4 * (k + 1)) + 3,
       ⟨_, Compose.projAC_callAt.2 ⟨rfl, hl⟩, rfl⟩, ?_⟩)
     (fun j _ ⟨ℓ, hc, hr⟩ => absurd ⟨ℓ, Compose.projAC_callAt.1 hc, hr⟩ (tickRun_no_restart v0 j))

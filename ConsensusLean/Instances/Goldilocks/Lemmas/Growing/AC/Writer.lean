@@ -118,8 +118,8 @@ theorem writer_pool (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} {i₀ s : 
   have hstate : (tr.upTo (tr.time i)).state y (k + 1) = tr.state y (k + 1) :=
     Trace.upTo_state tr y fun j hj => hm ((Nat.le_of_lt_succ hj).trans hk)
   have hv' := hstate.symm ▸ hv
-  have hvs := state_pool_slot_from sp hry.localRun hrun.vstart hy (k + 1) s v hv'
-  rcases pool_origin_from hry.localRun hrun.vstart hy (k + 1) v (hvs ▸ hv') with
+  have hvs := state_pool_slot sp hry.localRun hrun.vstart hy (k + 1) s v hv'
+  rcases pool_origin hry.localRun hrun.vstart hy (k + 1) v (hvs ▸ hv') with
     ⟨j, hj, hsend, _, hsl⟩ | ⟨j, hj, ℓj, hcj, hrj, _, B, hB, hvB⟩
   · obtain ⟨hjt, hsend⟩ := (ACTrace.upTo_sendOrAdmit hm).mp hsend
     have hsk : sp.ts s ≤ tr.time j :=

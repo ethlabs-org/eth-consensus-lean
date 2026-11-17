@@ -188,7 +188,7 @@ theorem pool_stamp_lt_topU
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {v : Vote sp.n} (hv : v ∈ (tr.state y i).pool v.slot) :
     (tr.state y i).voteStamp v < ⊤ := by
-  rcases pool_originU_from hr hini hy i v hv with ⟨k, -, -, hst, -⟩ | ⟨k, -, -, -, -, hst, -⟩ <;>
+  rcases pool_originU hr hini hy i v hv with ⟨k, -, -, hst, -⟩ | ⟨k, -, -, -, -, hst, -⟩ <;>
     rw [hst] <;> exact etime_of_lt_top _
 
 /-- `mem_proposalView_votes` with the unlock given. -/
@@ -202,7 +202,7 @@ theorem mem_proposalView_votesU
   simp only [SAState.poolAt, show ¬ ((σ : Int) < 0) by omega, ite_false, Int.toNat_natCast,
     List.mem_filter, decide_eq_true_eq, and_iff_left_iff_imp]
   intro hv
-  exact pool_stamp_lt_topU hr hini hx (state_pool_slotU_from sp hr hini hx i σ v hv ▸ hv)
+  exact pool_stamp_lt_topU hr hini hx (state_pool_slotU sp hr hini hx i σ v hv ▸ hv)
 
 /-- The proposal's view holds exactly the pool's slot-`σ` votes (their stamps are finite). -/
 theorem mem_proposalView_votes (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
@@ -235,8 +235,8 @@ theorem honest_pool_not_equivocatorU
   rintro ⟨a, ha, b, hb, hab, rfl, hbw⟩
   obtain ⟨ja, -, ea, hva, rfl⟩ := hrun.honest.pool_vote x hx i σ _ ha hw
   obtain ⟨jb, -, eb, hvb, rfl⟩ := hrun.honest.pool_vote x hx i σ _ hb (hbw ▸ hw)
-  have has := state_pool_slotU_from sp hrun.localRun hrun.vstart hx i σ _ ha
-  have hbs := state_pool_slotU_from sp hrun.localRun hrun.vstart hx i σ _ hb
+  have has := state_pool_slotU sp hrun.localRun hrun.vstart hx i σ _ ha
+  have hbs := state_pool_slotU sp hrun.localRun hrun.vstart hx i σ _ hb
   rw [hbw] at hvb
   obtain ⟨-, rfl⟩ := (one_vote_per_slotU sp) FGP ro H U tr hrun.localRun _ hw ja jb ea eb hva hvb
     (has.trans hbs.symm)
@@ -502,7 +502,7 @@ theorem batch_proposalU
     have hv' := (mem_proposalView_votesU hr hrun.vstart hx i σ ℓ.frame v).1 hv
     by_cases hw : v.val ∈ H
     · obtain ⟨j, -, e, hve, he⟩ := hrun.honest.pool_vote x hx i σ v hv' hw
-      have hvs := state_pool_slotU_from sp hr hrun.vstart hx i σ v hv'
+      have hvs := state_pool_slotU sp hr hrun.vstart hx i σ v hv'
       exact Or.inl ⟨hw, j, e, hve, by rw [he]; exact hvs⟩
     · exact Or.inr ⟨hK v hv', hw⟩
   have h3 : (SX ∪ (K.committee σ ∩ Hᶜ)).ncard < 2 * SX.ncard := by
@@ -555,8 +555,8 @@ theorem pool_sentU
     (hv : v ∈ (tr.state z c).pool σ) :
     ∃ k < c, tr.SendOrAdmit z k v ∧ sp.ts σ ≤ tr.time k ∧
       (tr.state z c).voteStamp v = ETime.of (tr.time k) := by
-  have hvs := state_pool_slotU_from sp hr hini hz c σ v hv
-  rcases pool_originU_from hr hini hz c v (hvs ▸ hv) with
+  have hvs := state_pool_slotU sp hr hini hz c σ v hv
+  rcases pool_originU hr hini hz c v (hvs ▸ hv) with
     ⟨k, hk, hsend, hst, hsl⟩ | ⟨k, hk, ℓk, hck, hrk, -, B, hB, hvB⟩
   · exact ⟨k, hk, hsend,
       (ts_le_iff_le_slot sp (hr.time_nonneg k) σ).2 (by rw [← hvs]; exact_mod_cast hsl), hst⟩
@@ -587,7 +587,7 @@ theorem writer_pool_proposalU
   have hts₂ : sp.ts (σ + 2 : Nat) = sp.ts σ + 8 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   intro v hv
-  have hvs := state_pool_slotU_from sp hr hini hx i σ v hv
+  have hvs := state_pool_slotU sp hr hini hx i σ v hv
   obtain ⟨k, hk, hsend, h1, -⟩ := pool_sentU hr hini hx hrsx hv
   have hki : tr.time k ≤ sp.ts σ + 4 * sp.Δ := by rw [← hts, ← ht]; exact hr.time_mono hk.le
   have := sync_forwardU hr hsync hx hsend h1 hki hX hupd.1
@@ -641,7 +641,7 @@ private theorem counted_heldU
   obtain ⟨hΦX, hΦXU⟩ := frameIn_of_callAtU hr hX hcX
   obtain ⟨-, hΦU⟩ := frameIn_of_callAtU hr hx hc
   obtain ⟨hvp, hneqX, hres, R', hR', hR'r, hER'⟩ := hv
-  have hvs := state_pool_slotU_from sp hr hini hX i₀ σ v hvp
+  have hvs := state_pool_slotU sp hr hini hX i₀ σ v hvp
   have hR's : ¬ v.slot < R'.slot := by
     intro hlt
     unfold resolutionTime at hres

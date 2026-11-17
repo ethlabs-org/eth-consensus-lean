@@ -109,7 +109,7 @@ theorem goldilocks_source_provenance : GoldilocksSourceProvenance (sp := sp) (ro
     hΦ.coherent.1 hCv.1 (SA.viableAncestor_anc hΦ hB₀).1 hlC.symm
   have hstate := projAC_upTo_state hrun (y := y) (le_refl (tr.time i))
   obtain ⟨k, hki, D, CV, hlock, L, hL, hLr, hLD⟩ :=
-    SA.fast_lock_provenance_from hr.localRun hr.vstart hy i l₀
+    SA.fast_lock_provenance hr.localRun hr.vstart hy i l₀
       (hstate.symm ▸ hl₀) hfast
   obtain ⟨hkt, hlock⟩ := (SA.upTo_fastLockAt hrun.time_mono).1 hlock
   have hyk := hrun.antitone hkt hy

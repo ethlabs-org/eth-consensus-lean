@@ -762,7 +762,7 @@ theorem joined_keeps_votes : JoinedKeepsVotes sp := by
     change x ∈ (SAState.initial sp.genesisRoot : SAState sp.n).pool σ at hx
     simp [SAState.initial] at hx
   · rw [tr.state_of_lastCall hc' hj' hnb] at hx
-    have hreach := localRun_reachable _ _ _ _ _ tr h y hy j' ℓ' hc'
+    have hreach := localRun_reachable h y hy j' ℓ' hc'
     have hxs := (pool_slot_le sp hreach).2 σ x hx
     have hlt : tr.time j' < sp.ts ((sp.slot (tr.time i) : Int) - 1) :=
       lt_of_lt_of_le ((hbefore j' hj' ℓ' hc').trans hu) hle

@@ -148,7 +148,7 @@ theorem ready_update_selection_of_pool_core_at
       exact hne ((huniq x hx hxv).trans (huniq z hz hzv).symm)
     · have hm' : vote ∈ ((tr.projAC.upTo (tr.time j)).state y j).pool u := by
         simpa only [Trace.upTo_state tr.projAC y (fun _ hk => hrun.time_mono hk.le)] using hm
-      exact_mod_cast SA.state_pool_slot_from sp hr (fun _ => (hrun.upTo hd0).vstart _) hy j u
+      exact_mod_cast SA.state_pool_slot sp hr (fun _ => (hrun.upTo hd0).vstart _) hy j u
         vote hm'
   have hconf : SA.getConfirmation sp A ell.frame u = some P := by
     unfold SA.getConfirmation

@@ -44,7 +44,7 @@ theorem fastLock_countedU
       rintro x ⟨hx, y, ⟨hy, hres⟩, hval, -, hanc⟩
       exact ⟨y, ⟨hy, hval ▸ hx, hres, hanc⟩, hval⟩
     · rintro v ⟨hvp, -, hres, R, hR, hRr, hBR⟩
-      have hvs := state_pool_slotU sp hr hw i₀ s v hvp
+      have hvs := state_pool_slotU sp hr (fun _ => voteStart_initial _) hw i₀ s v hvp
       refine ⟨hvs, R, hΦU hR, hRr, ?_, Anc.mono hΦU hBR⟩
       unfold resolutionTime at hres
       split at hres

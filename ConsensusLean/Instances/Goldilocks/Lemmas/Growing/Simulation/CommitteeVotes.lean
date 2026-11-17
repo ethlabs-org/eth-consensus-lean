@@ -193,7 +193,7 @@ theorem simTraceAt_pool_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.
   rw [← hst] at hvp
   have hm := upTo_pool_member S hrun hv hK hnc hd hw (c + 1) m v hvp
   have hacr := Compose.Growing.acRun_upTo hrun hnc hd
-  rwa [SA.state_pool_slot_from _ hacr.localRun hacr.vstart hw (c + 1) m v hvp] at hm
+  rwa [SA.state_pool_slot _ hacr.localRun hacr.vstart hw (c + 1) m v hvp] at hm
 
 end Consensus.Goldilocks.Simulation
 

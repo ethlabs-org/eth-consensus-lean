@@ -126,7 +126,7 @@ private theorem vote_viable_at
       have hBt := SA.frame_mem_of_between sp hU hΦ hΦU hDt hBD hFB
       have hΦBD := SA.anc_tree_of_anc_U hU hΦ hΦU hBt hBD hDt
       have hΦfB := SA.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
-      refine Or.inl ⟨SA.voterBlockTree_anc_from hr hrun.vstart hy hcT D hD B
+      refine Or.inl ⟨SA.voterBlockTree_anc hr hrun.vstart hy hcT D hD B
           hΦBD, hΦfB, D, hD, ?_, hΦBD⟩
       have hfD := hΦfB.trans hΦBD
       rw [hfr] at hDt hfD ⊢

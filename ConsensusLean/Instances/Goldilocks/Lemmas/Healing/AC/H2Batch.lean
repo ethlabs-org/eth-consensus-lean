@@ -255,7 +255,8 @@ theorem result_honest_supporter (hI : InclusionRun tr H U proposer g t₀) {X : 
   obtain ⟨hvp, -, -, R, hR, hRr, hCR⟩ := hv
   obtain ⟨j, -, e, hve, rfl⟩ := hrun.honest.pool_vote X hX i₀ l _ hvp hwH
   obtain ⟨-, hΦU⟩ := frameIn_of_callAt hr hX hu.1
-  exact ⟨_, hwH, j, e, hve, state_pool_slot sp hr hX i₀ l _ hvp, R, hΦU hR, hRr,
+  exact ⟨_, hwH, j, e, hve, state_pool_slot sp hr (fun _ => voteStart_initial _) hX i₀ l _ hvp,
+    R, hΦU hR, hRr,
     Anc.mono hΦU hCR⟩
 
 end Consensus.Goldilocks.SA

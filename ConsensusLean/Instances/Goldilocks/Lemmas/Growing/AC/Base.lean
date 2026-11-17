@@ -54,8 +54,7 @@ theorem localRun_reachable : LocalRunReachable := by
   intro P FGP A H U tr hr y i ℓ hy hc
   have hpost : (tr.upTo (tr.time i)).post i = tr.post i := by
     rw [Trace.upTo_post]
-  have h := Goldilocks.localRun_reachable P FGP A (H (tr.time i)) U
-    (tr.upTo (tr.time i)) (hr.upTo (hr.time_nonneg i)) y hy i ℓ
+  have h := Goldilocks.localRun_reachable (hr.upTo (hr.time_nonneg i)) y hy i ℓ
     ((Trace.upTo_callAt tr).mpr ⟨le_rfl, hc⟩)
   simpa only [hpost, Trace.upTo_time] using h
 

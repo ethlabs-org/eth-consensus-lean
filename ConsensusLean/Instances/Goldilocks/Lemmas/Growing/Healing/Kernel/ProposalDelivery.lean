@@ -87,7 +87,7 @@ theorem heldAtProposal_of_writer_at {ini}
           Or.inr ⟨k, hak', hkt⟩⟩
     refine ⟨B, hBt, hBr, ?_⟩
     rw [← hs]
-    exact (blockStamp_lt_of_acceptedBefore_from sp hpre hini hx hc' hBt hAB
+    exact (blockStamp_lt_of_acceptedBefore sp hpre hini hx hc' hBt hAB
       (fun k hk hrk => (hrs' k hk hrk).trans (by linarith))
       (Or.inl (by change _ ≤ T.time i; rw [ht, hts]; linarith))).trans
         (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_top _))

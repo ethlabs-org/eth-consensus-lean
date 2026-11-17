@@ -45,7 +45,7 @@ theorem optimistic_transfer_stored
   obtain ⟨_, hΦxU⟩ := frameIn_of_call hrx.localRun hx hpt'.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_anc_from hry.localRun hry.vstart hy hc'
+  have hdomA := voteDomain_anc hry.localRun hry.vstart hy hc'
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -93,7 +93,7 @@ theorem optimistic_transfer_stored
     rintro w ⟨v, hv, rfl, R, hR, hRr, hDR⟩
     exact carried_cover hry hy hc' hs hBt hcarry'
       ⟨hv, R, hR, hRr, hDR⟩
-      (optimisticPoint_pool_slot_from hrx.localRun hrx.vstart hx hpt' hv) ⟨R, hΦxU hR, hRr,
+      (optimisticPoint_pool_slot hrx.localRun hrx.vstart hx hpt' hv) ⟨R, hΦxU hR, hRr,
         (frame_slot_le sp hrx.localRun hx hpt'.1 R hR).trans hslx.le,
         hBD.trans (Anc.mono hΦxU hDR)⟩
   have hW : voters V.votes ⊆ K.committee s := by
@@ -127,7 +127,7 @@ theorem optimistic_transfer_stored
     obtain ⟨_, rfl⟩ := SA.one_vote_per_slotU sp FGP ro (H (tr.time i)) U
       (tr.upTo (tr.time i)) hry.localRun.toU _ hwH j₁ j₂ e₁ e₂ hvote₁''
       (hv₂w ▸ hvote₂)
-      (by rw [optimisticPoint_pool_slot_from hrx.localRun hrx.vstart hx hpt' hv₁, hs₂])
+      (by rw [optimisticPoint_pool_slot hrx.localRun hrx.vstart hx hpt' hv₁, hs₂])
     obtain rfl : R₂ = R₁ := hU.1 (hΦ'U hR₂) (hΦxU hR₁) (hR₂r.trans hR₁r.symm)
     exact anc_total hU (Anc.mono hΦ'U hDR₂) (hBD.trans (Anc.mono hΦxU hBR₁))
   have hearlier' : EarlierVotesExtend (tr.upTo (tr.time i)) (H (tr.time i)) U i (s + 1) B := by

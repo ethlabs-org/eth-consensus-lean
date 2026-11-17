@@ -142,8 +142,8 @@ theorem vote_pool_of_sync_startU {u : Nat → Set Lock} (hS : HealthyBaseU m u t
       rw [hes] at ha hb
       obtain ⟨ja, -, ea, hva, rfl⟩ := hS.run.honest.pool_vote y hy (k' + 1) s _ ha (hav ▸ hxH)
       obtain ⟨jb, -, eb, hvb, rfl⟩ := hS.run.honest.pool_vote y hy (k' + 1) s _ hb (hbv ▸ hxH)
-      have hsa := state_pool_slotU sp hr hy (k' + 1) s _ ha
-      have hsb := state_pool_slotU sp hr hy (k' + 1) s _ hb
+      have hsa := state_pool_slotU sp hr (fun _ => voteStart_initial _) hy (k' + 1) s _ ha
+      have hsb := state_pool_slotU sp hr (fun _ => voteStart_initial _) hy (k' + 1) s _ hb
       rw [hav] at hva
       rw [hbv] at hvb
       obtain ⟨-, rfl⟩ := (one_vote_per_slotU sp) FGP ro H U tr hr _ hxH ja jb ea eb hva hvb
@@ -233,7 +233,8 @@ theorem slot_zero_result_genesisU {u : Nat → Set Lock} (hS : StandaloneRunU m 
       resolutionTime (tr.state x c) ℓ.frame v < ETime.of (sp.ts 0 + 2 * sp.Δ)}⟩ 0 C)
     (fun u ⟨_, x, hx, hxu, _⟩ => ⟨x, hx.1, hxu⟩) hmaj hf
   obtain ⟨j', -, e', hve, rfl⟩ := hS.run.honest.pool_vote x hx c 0 _ hvp hwH
-  have hhead := slot_zero_vote_headU hS hwH hve (state_pool_slotU sp hr hx c 0 _ hvp)
+  have hhead := slot_zero_vote_headU hS hwH hve
+    (state_pool_slotU sp hr (fun _ => voteStart_initial _) hx c 0 _ hvp)
   rw [hhead] at hRr
   rw [eq_of_anc_genesisU hr hx hc (hΦU hR) hRr (Anc.mono hΦU hCR)]
   exact hRr

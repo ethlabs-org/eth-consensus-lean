@@ -31,7 +31,7 @@ theorem goldilocksVoteObservation (hr : ACRun proposer o H U) :
   constructor
   · simp only [proj_goldilocks]
     intro y hy i s
-    exact state_pool_slot sp hr.localRun hy i s
+    exact state_pool_slot sp hr.localRun (fun _ => voteStart_initial _) hy i s
   · simpa only [proj_goldilocks] using hr.honest.pool_vote
   · simp only [proj_goldilocks]
     intro x hx i e he
@@ -49,10 +49,11 @@ private theorem call_lockInv (hr : ACLocalRun (goldilocksSA sp FGP ro) H U o)
   rcases hr.frameLaw y hy i ℓ hc with
     ⟨hn, Φ, hi, hf, hok⟩ | ⟨j, ℓ', hj, hc', hn, hok⟩
   · rw [o.state_of_noCall hn, hr.init y hy]
-    exact (lockInv_of_reachable (x := y) hr.coherent (.init Φ hi hf)).2.2.callOK hr.coherent hf hok
+    exact (lockInv_of_reachable (x := y) hr.coherent (voteStart_initial _)
+      (.init Φ hi hf)).2.2.callOK hr.coherent hf hok
   · rw [o.state_of_lastCall hc' hj hn]
-    obtain ⟨hf, _, hv⟩ := lockInv_of_reachable hr.coherent
-      (localRun_reachable _ _ _ _ _ o hr y hy j ℓ' hc')
+    obtain ⟨hf, _, hv⟩ := lockInv_of_reachable hr.coherent (voteStart_initial _)
+      (localRun_reachable hr y hy j ℓ' hc')
     exact hv.callOK hr.coherent hf hok
 
 theorem goldilocksCallFrameInvariant (hr : ACLocalRun (goldilocksSA sp FGP ro) H U o) :
@@ -181,7 +182,8 @@ theorem goldilocksLockWrites (hr : ACRun proposer o H U) (hstock : sp.committeeS
   constructor
   · simp only [proj_goldilocks]
     intro y hy i l hl hf
-    obtain ⟨j, hj, B, CV, he, hL⟩ := fast_lock_provenance hr.localRun hy i l hl hf
+    obtain ⟨j, hj, B, CV, he, hL⟩ := fast_lock_provenance hr.localRun
+      (fun _ => voteStart_initial _) hy i l hl hf
     exact ⟨j, hj, B, CV, he.elim (fun h => Or.inl ⟨rfl, h⟩) (fun h => Or.inr ⟨rfl, h⟩), hL⟩
   · simp only [proj_goldilocks]
     intro y hy i s B CV he

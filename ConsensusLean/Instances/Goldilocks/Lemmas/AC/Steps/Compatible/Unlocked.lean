@@ -51,9 +51,9 @@ theorem fastLock_counted (hrun : ACRun proposer tr H U ini)
       rintro u ⟨hu, x, ⟨hx, hres⟩, hval, -, hanc⟩
       exact ⟨x, ⟨hx, hval ▸ hu, hres, hanc⟩, hval⟩
     · rintro v ⟨hvp, -, hres, R, hR, hRr, hBR⟩
-      refine ⟨state_pool_slot_from sp hr hrun.vstart hw i₀ s v hvp, R, hΦU hR, hRr, ?_,
+      refine ⟨state_pool_slot sp hr hrun.vstart hw i₀ s v hvp, R, hΦU hR, hRr, ?_,
         Anc.mono hΦU hBR⟩
-      have hvs := state_pool_slot_from sp hr hrun.vstart hw i₀ s v hvp
+      have hvs := state_pool_slot sp hr hrun.vstart hw i₀ s v hvp
       unfold resolutionTime at hres
       split at hres
       · exact absurd hres (by simp [ETime.of])
@@ -76,7 +76,7 @@ theorem fastLock_counted (hrun : ACRun proposer tr H U ini)
       have := Set.ncard_le_ncard hsub
       omega
     · rintro v ⟨hv, R, hR, hRr, hBR⟩
-      refine ⟨optimisticPoint_pool_slot_from hr hrun.vstart hw hpt hv, R, hΦU hR, hRr, ?_,
+      refine ⟨optimisticPoint_pool_slot hr hrun.vstart hw hpt hv, R, hΦU hR, hRr, ?_,
         Anc.mono hΦU hBR⟩
       have := frame_slot_le sp hr hw hpt.1 R hR
       omega

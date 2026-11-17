@@ -36,7 +36,7 @@ theorem counted_honest_in_rowSupport : CountedHonestInRowSupport := by
   intro sp FGP ro H U tr proposer m u hr hobj y hy i ℓ hc κ j X _ x ⟨hxc, hxH⟩
   obtain ⟨v, hv, rfl, R, hR, hRr, hXR⟩ := counted_pool hxc
   obtain ⟨k, -, e, he, hev⟩ := hobj.pool_vote y hy i j v hv hxH
-  have hslot := state_pool_slotU sp hr hy i j v hv
+  have hslot := state_pool_slotU sp hr (fun _ => voteStart_initial _) hy i j v hv
   have hU := (frameIn_of_callAtU hr hy hc).2
   exact ⟨hxH, k, e, he, by rw [hev]; exact hslot, R, hU hR, by rw [hev]; exact hRr,
     hXR.mono hU⟩
@@ -80,9 +80,10 @@ theorem no_conflicting_half_origins : NoConflictingHalfOrigins := by
 theorem counted_faulty_admitted : CountedFaultyAdmitted := by
   intro sp FGP ro H U tr m u hr y hy i ℓ hc κ j X _ x hx
   obtain ⟨v, hv, rfl, -⟩ := counted_pool hx.1
-  have hslot := state_pool_slotU sp hr hy i j v hv
+  have hslot := state_pool_slotU sp hr (fun _ => voteStart_initial _) hy i j v hv
   refine ⟨v, rfl, hslot, y, hy, ?_⟩
-  rcases pool_originU hr hy i v (by rw [hslot]; exact hv) with ⟨k, hk, hsa, -⟩ |
+  rcases pool_originU hr (fun _ => voteStart_initial _) hy i v (by rw [hslot]; exact hv) with
+    ⟨k, hk, hsa, -⟩ |
     ⟨k, hk, ℓ', hc', hrs, -, B, hB, hvB⟩
   · exact ⟨k, hk, Or.inl hsa⟩
   · exact ⟨k, hk, Or.inr ⟨ℓ', hc', hrs, B, hB, hvB⟩⟩

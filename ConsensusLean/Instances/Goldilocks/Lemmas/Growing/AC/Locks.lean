@@ -27,7 +27,7 @@ theorem fast_lock_provenance (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA s
   have hs : (tr.upTo (tr.time n)).state y n = tr.state y n :=
     Trace.upTo_state tr y fun _ hk => hm hk.le
   obtain ⟨c, hc, B, CV, hfl, hL⟩ := SA.fast_lock_provenance (hr.upTo (hr.time_nonneg n))
-    hy n l (hs ▸ hl) hf
+    (fun _ => SA.voteStart_initial _) hy n l (hs ▸ hl) hf
   exact ⟨c, hc, B, CV, (upTo_fastLockAt hm).mp hfl |>.2,
     hr.antitone (hm hc.le) hy, hL⟩
 

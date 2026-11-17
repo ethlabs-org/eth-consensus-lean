@@ -145,7 +145,7 @@ theorem proposal_views_agree_before {K : SA.CommitteeDict sp.n}
           SA.voteViewList, SA.SAState.poolAt, Int.toNat_natCast, List.filter_filter,
           List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
           Bool.and_eq_true, decide_eq_true_eq] at hv
-        rw [SA.state_pool_slot_from sp hr hS.run.vstart hz ip s v hv.1]
+        rw [SA.state_pool_slot sp hr hS.run.vstart hz ip s v hv.1]
       obtain ⟨B', hB', hBr', -⟩ := hsup v (by rw [SA.blockSupport, hpay]; exact hv) hvs
       rwa [hr.coherent.1 (hPhiP.2 hB) (hPhiY.2 hB') (hBr.trans hBr'.symm)]
     · exact frame_relay_before hS hnr hz hy hp.1 hc.1 hB

@@ -121,7 +121,7 @@ theorem fastLock_provenance_at
   have hl' : l ∈ ((tr.projAC.upTo t).state y n).locks := by
     rw [projAC_state_by hrun ht0 ht hy]; exact hl
   obtain ⟨c, hc, B, CV, hfl, L, hL, hLr, hLB⟩ :=
-    SA.fast_lock_provenance_from (acRun_upTo hrun hnc ht0).localRun hrun.vstart hy n l hl' hf
+    SA.fast_lock_provenance (acRun_upTo hrun hnc ht0).localRun hrun.vstart hy n l hl' hf
   obtain ⟨hcd, hfl⟩ := (sa_fastLockAt_upTo hrun.time_mono).mp hfl
   exact ⟨c, hc, B, CV, hfl, hrun.antitone hcd hy, L, upTo_subset hrun ht0 hL, hLr,
     hLB.mono (upTo_subset hrun ht0)⟩

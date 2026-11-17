@@ -49,7 +49,7 @@ theorem Consensus.Goldilocks.SA.aCBase : Consensus.Goldilocks.SA.ACBase :=
 
 /-- Goldilocks ACBase: the AC trace contract gives reachable states. -/
 theorem Consensus.Goldilocks.localRunReachable : Consensus.Goldilocks.LocalRunReachable :=
-  Consensus.Goldilocks.localRun_reachable
+  fun _ _ _ _ _ _ h => Consensus.Goldilocks.localRun_reachable h
 
 /-- Goldilocks FGStore, part 3: the FG service lemmas (G1.6–G1.8, G1.9 (a)). -/
 theorem Consensus.Goldilocks.Store.fGStoreService : Consensus.Goldilocks.Store.FGStoreService :=

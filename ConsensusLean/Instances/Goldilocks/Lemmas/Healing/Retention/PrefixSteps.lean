@@ -268,11 +268,11 @@ theorem slot_start_optimistic {ini}
     · rw [restart_emits hr hv hpt.1 hcl] at he₀; cases he₀
   have hQ : ∀ c ≤ d, ∀ w ∈ (tr.projAC.state v c).pool m, w.val = v := by
     intro c hc w hw
-    have hws : w.slot = m := SA.state_pool_slot_from sp hr hrun.vstart hv c m w hw
+    have hws : w.slot = m := SA.state_pool_slot sp hr hrun.vstart hv c m w hw
     have hle : ∀ k₁, k₁ < c → sp.slot (tr.projAC.time k₁) ≤ m := fun k₁ hk₁ => by
       rw [← hslm, ← hdt]
       exact SA.slot_mono sp (hr.time_nonneg k₁) (hrun.time_mono (by omega))
-    rcases SA.pool_origin_from hr hrun.vstart hv c w (by rw [hws]; exact hw) with
+    rcases SA.pool_origin hr hrun.vstart hv c w (by rw [hws]; exact hw) with
       ⟨k₁, hk₁, hsend, -, hsl₁⟩ | ⟨k₁, hk₁, ell₁, hc₁, -, -, B, hB, hwB⟩
     · have hsk : sp.slot (tr.projAC.time k₁) = m := le_antisymm (hle k₁ hk₁) (by omega)
       have htk : tr.time k₁ = sp.ts m := le_antisymm (hdt ▸ hrun.time_mono (by omega))
@@ -306,7 +306,7 @@ theorem slot_start_optimistic {ini}
       omega
   have hP : ∀ w ∈ A.pool m, w.val = v := by
     intro w hw
-    have hws := SA.optimisticPoint_pool_slot_from hr hrun.vstart hv hpt hw
+    have hws := SA.optimisticPoint_pool_slot hr hrun.vstart hv hpt hw
     obtain ⟨hcv, hcase⟩ := hpt
     rcases hcase with ⟨mm, hmm, -⟩ | ⟨B, hB, rfl⟩ | ⟨e₀, he₀, rfl⟩
     · exact absurd hmm (hnomsg r hjr hrd.le ellv hcv mm)

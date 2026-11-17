@@ -244,7 +244,7 @@ theorem toFG_fastLock (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoC
   refine ⟨l, hl, hlf, hlb, ?_⟩
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
   obtain ⟨j, hj, B', CV', hfl, L, hL, hLr, hLB'⟩ :=
-    SA.fast_lock_provenance hacr.localRun hx i l₀ (hst ▸ hl₀) hlf
+    SA.fast_lock_provenance hacr.localRun (fun _ => SA.voteStart_initial _) hx i l₀ (hst ▸ hl₀) hlf
   have hU := hacr.localRun.coherent
   obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocks H := by
     rcases hacr.localRun.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>

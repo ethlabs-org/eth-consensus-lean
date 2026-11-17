@@ -115,7 +115,7 @@ theorem result_writerU (hr : ACLocalRunU wm u H U tr) {X : Fin sp.n} (hX : X ∈
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hΦXU : ℓX.frame.tree ⊆ U := (frameIn_of_callAtU hr hX hcX).2
   rintro v ⟨hvp, -, hvres, R, hR, hRr, hCR⟩
-  have hvs : v.slot = s := state_pool_slotU sp hr hX i₀ s v hvp
+  have hvs : v.slot = s := state_pool_slotU sp hr (fun _ => voteStart_initial _) hX i₀ s v hvp
   obtain ⟨hvst, hbst⟩ : (tr.state X i₀).voteStamp v < ETime.of (sp.ts s + 2 * sp.Δ) ∧
       (tr.state X i₀).blockStamp v.head < ETime.of (sp.ts s + 2 * sp.Δ) := by
     unfold resolutionTime at hvres
@@ -125,7 +125,7 @@ theorem result_writerU (hr : ACLocalRunU wm u H U tr) {X : Fin sp.n} (hX : X ∈
       · exact absurd hvres (by simp [ETime.of])
       · exact max_lt_iff.1 hvres
   refine ⟨hvs, ?_, R, hΦXU hR, hRr, Anc.mono hΦXU hCR, ?_⟩
-  · rcases pool_originU hr hX i₀ v (by rw [hvs]; exact hvp) with
+  · rcases pool_originU hr (fun _ => voteStart_initial _) hX i₀ v (by rw [hvs]; exact hvp) with
       ⟨k, -, hsend, hst, hsl⟩ | ⟨k, -, ℓk, hck, -, hst, B, hB, hvB⟩
     · rw [hst, etime_of_lt_of] at hvst
       exact ⟨k, hsend, (ts_le_iff_le_slot sp (hr.time_nonneg k) s).2
@@ -174,9 +174,10 @@ theorem optimistic_writer_votesU (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n} (
   have hΦU : ℓx.frame.tree ⊆ U := (frameIn_of_callAtU hr hx hc).2
   rintro v ⟨hvA, R, hR, hRr, hCR⟩
   have hv1 := optimisticPoint_pool_postU hr hx hp s hvA
-  have hvs : v.slot = s := state_pool_slotU sp hr hx (i₀ + 1) s v hv1
+  have hvs : v.slot = s := state_pool_slotU sp hr (fun _ => voteStart_initial _) hx (i₀ + 1) s v hv1
   refine ⟨hvs, ?_, R, hΦU hR, hRr, Anc.mono hΦU hCR, ?_⟩
-  · rcases pool_originU hr hx (i₀ + 1) v (by rw [hvs]; exact hv1) with
+  · rcases pool_originU hr (fun _ => voteStart_initial _) hx (i₀ + 1) v
+      (by rw [hvs]; exact hv1) with
       ⟨k, hk, hsend, -, hsl'⟩ | ⟨k, hk, ℓk, hck, -, -, B, hB, hvB⟩
     · exact ⟨k, hsend, (ts_le_iff_le_slot sp (hr.time_nonneg k) s).2
         (by rw [← hvs]; exact_mod_cast hsl'), lt_of_le_of_lt (hr.time_mono (by omega)) hti⟩
@@ -255,10 +256,12 @@ theorem carryAt_of_writerAC (hr : ACLocalRunU wm u H U tr)
     have hheld : ∀ u' ∈ (tr.state y (k' + 1)).pool s,
         HeldBefore e.readPoint u' (sp.ts s + 3 * sp.Δ) := by
       intro u' hu
-      have hus : u'.slot = s := state_pool_slotU sp hr hy (k' + 1) s u' hu
+      have hus : u'.slot = s :=
+        state_pool_slotU sp hr (fun _ => voteStart_initial _) hy (k' + 1) s u' hu
       have hu' := pool_monoU hr hy (show k' + 1 ≤ i + 1 by omega) hnr s hu
       refine heldBefore_readPointU hr hy hc (by omega) ⟨by rw [hus]; exact hu', ?_⟩
-      rcases pool_originU hr hy (i + 1) u' (by rw [hus]; exact hu') with
+      rcases pool_originU hr (fun _ => voteStart_initial _) hy (i + 1) u'
+        (by rw [hus]; exact hu') with
         ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
       · rw [hst₁, etime_of_lt_of]
         by_cases hk₁k' : k₁ ≤ k'
@@ -280,8 +283,10 @@ theorem carryAt_of_writerAC (hr : ACLocalRunU wm u H U tr)
         exact absurd h hv'
       · have ha' : a ∈ (tr.state y (k' + 1)).pool s := by rw [← hvs]; exact ha
         have hc' : c ∈ (tr.state y (k' + 1)).pool s := by rw [← hvs]; exact hc''
-        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv, state_pool_slotU sp hr hy _ s a ha',
-          state_pool_slotU sp hr hy _ s c hc', hheld a ha', hheld c hc'⟩
+        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv,
+          state_pool_slotU sp hr (fun _ => voteStart_initial _) hy _ s a ha',
+          state_pool_slotU sp hr (fun _ => voteStart_initial _) hy _ s c hc',
+          hheld a ha', hheld c hc'⟩
         · rintro rfl; exact hv' ha'
         · rintro rfl; exact hv' hc'
 
@@ -331,8 +336,8 @@ theorem writer_poolAC (hr : ACLocalRunU wm u H U tr) (hsv : ServiceWindowBefore 
     have := cast_time_leAC hr hy hc
     rw [hs, ts_succ] at this; linarith only [this]
   intro v hv
-  have hvs : v.slot = s := state_pool_slotU sp hr hy (k + 1) s v hv
-  rcases pool_originU hr hy (k + 1) v (hvs ▸ hv) with
+  have hvs : v.slot = s := state_pool_slotU sp hr (fun _ => voteStart_initial _) hy (k + 1) s v hv
+  rcases pool_originU hr (fun _ => voteStart_initial _) hy (k + 1) v (hvs ▸ hv) with
     ⟨k', hk', hsend, -, hsl⟩ | ⟨k', hk', ℓk, hck, hrk, -, B, hB, hvB⟩
   · have hsk : sp.ts s ≤ tr.time k' :=
       (ts_le_iff_le_slot sp (hr.time_nonneg k') s).2 (by rw [← hvs]; exact_mod_cast hsl)

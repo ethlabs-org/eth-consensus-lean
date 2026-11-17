@@ -525,7 +525,7 @@ theorem source_age : SourceAge sp := by
   obtain ⟨hCv, l, hl, hlb, hlf, hls⟩ := mem_toFGCandidates sp hC
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
   obtain ⟨j, hj, B', CV', hfl, L, hL, hLr, hLB'⟩ :=
-    fast_lock_provenance hrun hx i l₀ hl₀ hlf
+    fast_lock_provenance hrun (fun _ => voteStart_initial _) hx i l₀ hl₀ hlf
   have hU := hrun.coherent
   obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
     rcases hrun.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
@@ -568,7 +568,7 @@ theorem result_transfer : ResultTransfer sp := by
       exact h.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_anc hrun.localRun hy hc
+  have hdomA := voteDomain_anc hrun.localRun (fun _ => voteStart_initial _) hy hc
   rw [hs] at hdomA
   have hCt : C ∈ ℓ.frame.tree := by
     rcases hviab with h | h

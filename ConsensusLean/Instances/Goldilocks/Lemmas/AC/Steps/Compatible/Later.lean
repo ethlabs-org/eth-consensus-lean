@@ -43,7 +43,7 @@ theorem fastLock_compatible_of_votes
       exact hu ⟨hP.1 x hx j s' v hvp, h⟩
     obtain ⟨j', hj', e, hve, rfl⟩ := hrun.honest.pool_vote x hx j s' _ hvp huH
     obtain ⟨Hd, hHd, hHdr, hBHd⟩ := hvotes _ huH j' (hj'.trans hji) e hve
-      (state_pool_slot_from sp hr hrun.vstart hx j s' _ hvp)
+      (state_pool_slot sp hr hrun.vstart hx j s' _ hvp)
     obtain rfl : R = Hd := hU.1 (hΦU hR) hHd (hRr.trans hHdr.symm)
     exact anc_total hU (Anc.mono hΦU hB'R) hBHd
   · -- an optimistic confirmation: three quarters of the committee, one of them honest

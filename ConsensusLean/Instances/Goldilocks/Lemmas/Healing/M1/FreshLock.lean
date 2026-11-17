@@ -126,8 +126,8 @@ theorem honest_vote_early_pool_before {K : SA.CommitteeDict sp.n}
       rw [hes] at hv hw
       obtain ⟨iv, -, ev, hev, rfl⟩ := hS.run.honest.pool_vote y hy (q + 1) u _ hv (hvval ▸ hxH)
       obtain ⟨iw, -, ew, hew, rfl⟩ := hS.run.honest.pool_vote y hy (q + 1) u _ hw (hwval ▸ hxH)
-      have hsv := state_pool_slot_from sp hr hS.run.vstart hy (q + 1) u _ hv
-      have hsw := state_pool_slot_from sp hr hS.run.vstart hy (q + 1) u _ hw
+      have hsv := state_pool_slot sp hr hS.run.vstart hy (q + 1) u _ hv
+      have hsw := state_pool_slot sp hr hS.run.vstart hy (q + 1) u _ hw
       rw [hvval] at hev
       rw [hwval] at hew
       obtain ⟨-, rfl⟩ := SA.one_vote_per_slotU sp FGP ro H U tr hr.toU _ hxH iv iw ev ew

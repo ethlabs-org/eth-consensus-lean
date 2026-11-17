@@ -314,7 +314,7 @@ theorem frozen_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer dg H 
       hPv.1
     have hes' := hes
     rw [← hes'] at hPv ⊢
-    exact ⟨SA.voterBlockTree_anc hr hy hcy P hPv X hXP',
+    exact ⟨SA.voterBlockTree_anc hr (fun _ => SA.voteStart_initial _) hy hcy P hPv X hXP',
       SA.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem h hXt, W, by rw [hes']; exact hW, hWv,
       hXP'.trans hPW⟩
 

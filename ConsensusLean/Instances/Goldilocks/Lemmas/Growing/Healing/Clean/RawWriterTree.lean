@@ -77,7 +77,7 @@ theorem raw_writer_voterBlockTree_window_before_at
       have hfz' : freeze sp e.msg.slot < tr.time i := by
         unfold freeze SAParams.ts at hti ⊢
         linarith only [hΔ, hti]
-      have hbs := blockStamp_lt_of_acceptedBefore_from sp hri hini hy hc'.1 hDt (Or.inl hGr)
+      have hbs := blockStamp_lt_of_acceptedBefore sp hri hini hy hc'.1 hDt (Or.inl hGr)
         (fun k hk hrk => lt_of_le_of_lt (hrsy k hk hrk) (by unfold freeze; linarith only [hΔ]))
         (Or.inl hfz'.le)
       have hne : ∀ X, ℓ.call = .block X → D.root ≠ X.root := by
@@ -118,7 +118,7 @@ theorem raw_writer_voterBlockTree_window_before_at
         ACTrace.AcceptAt (A := goldilocksSA sp FGP ro) (tr.upTo (tr.time i)) y ky D :=
       (ACTrace.upTo_acceptAt).mpr ⟨hm hky, hacc⟩
     have hWt := mem_tree_of_acceptAt sp hri hy hacc' hky hc'.1 hFD
-    have hbs := blockStamp_lt_of_acceptedBefore_from sp hri hini hy hc'.1 hWt
+    have hbs := blockStamp_lt_of_acceptedBefore sp hri hini hy hc'.1 hWt
       (Or.inr ⟨ky, hacc', hkyt⟩)
       (fun k hk hrk => lt_of_le_of_lt (hrsy k hk hrk) (by unfold freeze; linarith only [hΔ]))
       (Or.inl hfz)
@@ -132,7 +132,7 @@ theorem raw_writer_voterBlockTree_window_before_at
     rw [← readPoint_blockStamp hri hy hc' hne] at hbs
     exact ⟨hWt, hbs⟩
   have hBt := frame_mem_of_between sp hU hΦ hΦU hDt.1 hBD hF
-  exact voterBlockTree_anc_from hri hini hy hc' D ⟨hDt.1, Or.inl hDt.2⟩ B
+  exact voterBlockTree_anc hri hini hy hc' D ⟨hDt.1, Or.inl hDt.2⟩ B
     (anc_tree_of_anc_U hU hΦ hΦU hBt hBD hDt.1)
 
 end Consensus.Goldilocks.SA.Growing

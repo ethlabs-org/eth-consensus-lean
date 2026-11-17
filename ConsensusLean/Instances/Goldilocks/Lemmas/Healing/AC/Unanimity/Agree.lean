@@ -276,7 +276,7 @@ private theorem vote_holdsU
     have hvs : v.slot = s := by
       have hv' := hv
       rw [payload_eqU hs] at hv'
-      exact state_pool_slotU sp hr hpH k s v
+      exact state_pool_slotU sp hr (fun _ => voteStart_initial _) hpH k s v
         ((mem_proposalView_votesU hr (fun _ => voteStart_initial _) hpH k s ℓp.frame v).1
         (ofLists_support_subset _ _ _ _ hv'))
     obtain ⟨H', hH', hH'r, -⟩ := hsup v (by rw [blockSupport, hs.acPayload]; exact hv)

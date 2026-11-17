@@ -182,7 +182,7 @@ theorem optimisticSelect_compatibleU
   obtain ⟨u, ⟨x, hx, rfl, R, hR, hRr, hBR⟩, hu⟩ := Set.exists_mem_notMem_of_ncard_lt_ncard hlt
   have hx' := hA _ x hx
   obtain ⟨j', -, e', hve, rfl⟩ := hS.run.honest.pool_vote y hy (c + 1) _ _ hx' (not_not.1 hu)
-  have hes := state_pool_slotU sp hr hy (c + 1) _ _ hx'
+  have hes := state_pool_slotU sp hr (fun _ => voteStart_initial _) hy (c + 1) _ _ hx'
   have hcomp := compatible_of_vote hU hvotes (not_not.1 hu) hve (by omega)
     ⟨R, hΦU hR, hRr, hBR.mono hΦU⟩
   rcases hcomp with h | h
@@ -662,7 +662,7 @@ theorem unanimous_pool_before {K : SA.CommitteeDict sp.n}
   obtain ⟨q, -, e', he', rfl⟩ := hS.run.honest.pool_vote y hy j s v' hv' (hv'x ▸ hx)
   rw [hv'x] at he'
   obtain ⟨-, rfl⟩ := one_vote_per_slotU sp FGP ro H U tr hr.toU x hx q i e' e he' hv
-    ((state_pool_slot_from sp hr hS.run.vstart hy j s _ hv').trans hes.symm)
+    ((state_pool_slot sp hr hS.run.vstart hy j s _ hv').trans hes.symm)
   rfl
 
 end Consensus.Goldilocks.SA

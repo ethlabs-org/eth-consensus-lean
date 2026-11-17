@@ -478,7 +478,7 @@ theorem state_pool_slot_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr 
     (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) (σ : Nat) :
     ∀ v ∈ (tr.projAC.state y i).pool σ, v.slot = σ := by
-  have h := SA.state_pool_slot_from sp (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun
+  have h := SA.state_pool_slot sp (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun
       hrun.vstart hy i σ
   rwa [projAC_upTo_state hrun le_rfl] at h
 
@@ -575,7 +575,7 @@ theorem CommitteeFacts.committeeTAt {K : SA.CommitteeDict sp.n} (hKB : Committee
       decide_eq_true_eq] at hvb
     have hp := (SA.readPoint_pool hacr.localRun hy (sa_castAt_upTo.mpr ⟨le_rfl, hc⟩)
       (SA.SAState.mem_poolAt.mp hvb.1).2).1
-    rw [SA.state_pool_slot_from _ hacr.localRun hacr.vstart hy (i + 1) _ v hp]
+    rw [SA.state_pool_slot _ hacr.localRun hacr.vstart hy (i + 1) _ v hp]
     rw [Trace.upTo_state tr.projAC y hb] at hp
     exact hKB.hP.1 (tr.time i) y hy (i + 1) hb _ v hp
   · rw [frame_of_projAC_at hrun hy hc.1] at hC
@@ -682,7 +682,7 @@ theorem pool_stamp_lt_top_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
     {v : Vote sp.n} (hv : v ∈ (tr.projAC.state y i).pool σ) :
     (tr.projAC.state y i).voteStamp v < ⊤ := by
   have hvs := state_pool_slot_at hrun hnc hy σ v hv
-  have h := SA.pool_origin_from (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun
+  have h := SA.pool_origin (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun
     hrun.vstart hy i v
     (by rw [projAC_upTo_state hrun le_rfl, hvs]; exact hv)
   rw [projAC_upTo_state hrun le_rfl] at h
@@ -699,7 +699,7 @@ theorem blockStamp_lt_of_acceptedBefore_at {ini} (hrun : Growing.GoldilocksRun p
     (hrs : ∀ k ≤ i, tr.projAC.RestartAt y k → tr.time k < T) (hT : T ≤ tr.time i) :
     (tr.projAC.state y i).blockStamp B.root < SA.ETime.of T := by
   have hm := hrun.time_mono
-  have h := SA.blockStamp_lt_of_acceptedBefore_from sp
+  have h := SA.blockStamp_lt_of_acceptedBefore sp
     (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hrun.vstart hy
     ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc) hB
     (hacc.imp_right fun ⟨k, hk, hkT⟩ => ⟨k, (ac_acceptAt_upTo _).mpr ⟨(hkT.le.trans hT), hk⟩, hkT⟩)
@@ -808,7 +808,7 @@ theorem lock_write_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     cases hf : l.fast
     · obtain ⟨j, hj, B, h, hB⟩ := SA.slow_lock_provenance_from hr hrun.vstart hy i l hl' hf
       exact ⟨j, hj, B, Or.inr h, hB⟩
-    · obtain ⟨j, hj, B, CV, h, hB⟩ := SA.fast_lock_provenance_from hr hrun.vstart hy i l hl' hf
+    · obtain ⟨j, hj, B, CV, h, hB⟩ := SA.fast_lock_provenance hr hrun.vstart hy i l hl' hf
       exact ⟨j, hj, B, Or.inl ⟨CV, h⟩, hB⟩
   obtain ⟨j, -, B, h, L', hL', hL'r, hL'B⟩ := hw
   obtain rfl : L' = L := hU.1 hL' hLU (hL'r.trans hLr.symm)

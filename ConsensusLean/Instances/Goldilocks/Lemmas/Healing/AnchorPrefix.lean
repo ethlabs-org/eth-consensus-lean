@@ -209,7 +209,7 @@ theorem frozen_viable_of_anchor_path (hrun : GoldilocksRun proposer dg H tr ini)
   have hrootXf := SA.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2
     hPhi.1.fcRoot_mem hrootX hXt
   obtain ⟨Y, hY, hvY, hPY⟩ := hP.2.2
-  exact ⟨SA.voterBlockTree_anc_from hr hrun.vstart hy hc P hP.1 X hXPf, hrootXf,
+  exact ⟨SA.voterBlockTree_anc hr hrun.vstart hy hc P hP.1 X hXPf, hrootXf,
     Y, hY, hvY, hXPf.trans hPY⟩
 
 /-- Actual pre-unlock live locks have genuine selection origins. Retain
@@ -257,7 +257,7 @@ theorem toFG_candidates_compatible_at_call (hrun : GoldilocksRun proposer dg H t
   have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hPhi := SA.frameIn_of_callAt hr hy hc
   obtain ⟨Phi, t, hreach, _, hok⟩ := Compose.pre_reachable hr hy hc
-  obtain ⟨hin, _, hinv⟩ := SA.lockInv_of_reachable_from hr.coherent (hrun.vstart y) hreach
+  obtain ⟨hin, _, hinv⟩ := SA.lockInv_of_reachable hr.coherent (hrun.vstart y) hreach
   have hinv' := hinv.callOK hr.coherent hin hok
   have hlock {B : SA.Blk sp.n (List (FG.Att sp.n))}
       (hB : B ∈ SA.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i)) :
@@ -294,7 +294,7 @@ theorem toFG_fast_origin (hrun : GoldilocksRun proposer dg H tr ini)
   obtain ⟨l₀, hl₀, B, hB, hBr, _, heq⟩ := hl
   have hf₀ : l₀.fast = true := by rw [heq] at hlf; exact hlf
   obtain ⟨a, hai, D, CV, ho, L, hL, hLr, hLD⟩ :=
-    SA.fast_lock_provenance_from hr hrun.vstart hy i l₀ hl₀ hf₀
+    SA.fast_lock_provenance hr hrun.vstart hy i l₀ hl₀ hf₀
   have hRB : Anc (tr.HonestBlocks H) R B := by
     have he : R = ell.frame.viableAncestor B := hPhi.1.coherent.1 hv.1
       (SA.viableAncestor_anc hPhi.1 hB).1 (hlr.symm.trans (congrArg SA.Lock.block heq))

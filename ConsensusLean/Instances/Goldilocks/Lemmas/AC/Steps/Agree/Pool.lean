@@ -200,7 +200,7 @@ private theorem grow_callU
   rwa [he] at h
 
 /-- `pool_origin` with the unlock given, from starts up to the vote permission. -/
-theorem pool_originU_from
+theorem pool_originU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) (c : Nat) (x : Vote sp.n) (hx : x ∈ (tr.state y c).pool x.slot) :
@@ -240,37 +240,18 @@ theorem pool_originU_from
       · exact Or.inl ⟨k, hk.trans (Nat.lt_succ_self c), h⟩
       · exact Or.inr ⟨k, hk.trans (Nat.lt_succ_self c), h⟩
 
-/-- `pool_origin` with the unlock given: `pool_originU_from` at the initial starts. -/
-theorem pool_originU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) (c : Nat) (x : Vote sp.n) (hx : x ∈ (tr.state y c).pool x.slot) :
-    (∃ k < c, tr.SendOrAdmit y k x ∧ (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧
-      x.slot ≤ sp.slot (tr.time k)) ∨
-    ∃ k < c, ∃ ℓ, tr.CallAt y k ℓ ∧ ℓ.call = .restart ∧
-      (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧ ∃ B ∈ ℓ.frame.tree, x ∈ blockVotes B :=
-  pool_originU_from hr (fun _ => voteStart_initial _) hy c x hx
-
 /-- **Where a held vote comes from.** A vote that an honest node holds before cut `c` (in the
 pool of its slot) was admitted by it at an earlier cut, at a time of slot at least the vote's,
 which is its stamp; or a restart at an earlier cut put it there, from a block of the restart's
 frame. From starts up to the vote permission. -/
-theorem pool_origin_from (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem pool_origin (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) (c : Nat) (x : Vote sp.n) (hx : x ∈ (tr.state y c).pool x.slot) :
     (∃ k < c, tr.SendOrAdmit y k x ∧ (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧
       x.slot ≤ sp.slot (tr.time k)) ∨
     ∃ k < c, ∃ ℓ, tr.CallAt y k ℓ ∧ ℓ.call = .restart ∧
       (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧ ∃ B ∈ ℓ.frame.tree, x ∈ blockVotes B :=
-  pool_originU_from (hr := hr.toU) hini (y := y) (hy := hy) (c := c) (x := x) (hx := hx)
-
-/-- **Where a held vote comes from**: `pool_origin_from` at the initial starts. -/
-theorem pool_origin (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) (c : Nat) (x : Vote sp.n) (hx : x ∈ (tr.state y c).pool x.slot) :
-    (∃ k < c, tr.SendOrAdmit y k x ∧ (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧
-      x.slot ≤ sp.slot (tr.time k)) ∨
-    ∃ k < c, ∃ ℓ, tr.CallAt y k ℓ ∧ ℓ.call = .restart ∧
-      (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧ ∃ B ∈ ℓ.frame.tree, x ∈ blockVotes B :=
-  pool_origin_from hr (fun _ => voteStart_initial _) hy c x hx
+  pool_originU (hr := hr.toU) hini (y := y) (hy := hy) (c := c) (x := x) (hx := hx)
 
 /-- `pool_mono` with the unlock given. -/
 theorem pool_monoU

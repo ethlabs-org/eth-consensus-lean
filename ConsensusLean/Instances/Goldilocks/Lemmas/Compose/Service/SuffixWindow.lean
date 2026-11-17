@@ -628,7 +628,7 @@ private theorem views_agree_before {a₀ κ b : Time}
         simp only [SA.voteViewList, SA.SAState.poolAt, Int.toNat_natCast, List.filter_filter,
           List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
           Bool.and_eq_true, decide_eq_true_eq] at hx
-        rw [SA.state_pool_slot_from sp hr hrun.vstart hp i s' x hx.1]
+        rw [SA.state_pool_slot sp hr hrun.vstart hp i s' x hx.1]
       obtain ⟨H', hH't, hH'r, -⟩ := hsup x (by rw [SA.blockSupport, hpay]; exact hx) hxs
       rwa [hU.1 (hΦpU hHd) (hΦyU hH't) (hHdr.trans hH'r.symm)]
     · refine relay_mem_window_before hrun hnc hsync.window hsync.caught hp hy (hΦpU hHd) hcy.1 hjb

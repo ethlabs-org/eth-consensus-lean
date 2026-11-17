@@ -263,7 +263,7 @@ theorem stamp_lt_of_held_of_runU
     w ∈ (tr.state y b).pool w.slot ∧ (tr.state y b).voteStamp w < ETime.of T := by
   have hmem := pool_monoU hr hy hab hnr w.slot hw
   refine ⟨hmem, ?_⟩
-  rcases pool_originU_from hr hini hy b w hmem with
+  rcases pool_originU hr hini hy b w hmem with
     ⟨k, hk, hsend, hst, -⟩ | ⟨k, hk, ℓ, hc, hcall, hst, -⟩
   · rw [hst, etime_of_lt_of]
     by_cases hka : k < a
@@ -459,8 +459,8 @@ theorem carry_of_sentU
     · exact Or.inl (hT v hvs hv0)
     · rcases hheld with h | ⟨a, ha, b, hb, hab, hav, hbv⟩
       · exact absurd h hv0
-      · have has := state_pool_slotU sp hr hy (k' + 1) s a ha
-        have hbs := state_pool_slotU sp hr hy (k' + 1) s b hb
+      · have has := state_pool_slotU sp hr (fun _ => voteStart_initial _) hy (k' + 1) s a ha
+        have hbs := state_pool_slotU sp hr (fun _ => voteStart_initial _) hy (k' + 1) s b hb
         exact Or.inr ⟨a, b, hab, fun h => hv0 (h ▸ ha), fun h => hv0 (h ▸ hb), hav, hbv, has,
           hbs, hT a has ha, hT b hbs hb⟩
 
@@ -507,7 +507,8 @@ theorem viable_of_acceptedU
     linarith only [hΔ, hti, hlt, this]
   have hBy : B ∈ ℓ.frame.tree := by
     rw [htreey]; exact Set.mem_insert_of_mem _ ⟨k', hk'i, hacc'⟩
-  have hst := blockStamp_lt_of_acceptedBeforeU sp hr hy hc.1 hBy (Or.inr ⟨k', hacc', hlt⟩)
+  have hst := blockStamp_lt_of_acceptedBeforeU sp hr (fun _ => voteStart_initial _)
+    hy hc.1 hBy (Or.inr ⟨k', hacc', hlt⟩)
     (fun k'' _ hr'' => lt_of_le_of_lt (hS.restart_le hy hr'') (by linarith only [hσ, hΔ]))
     (Or.inl (by linarith only [hΔ, hti]))
   -- the read point's stamps are those after the call, which keeps `B`'s
@@ -663,8 +664,9 @@ private theorem admitted_of_poolU
   have hΔ := sp.toParams.hΔ
   have hg0 := gbar_nonneg g
   intro c v hv
-  have hvs := state_pool_slotU sp hr hx c s v hv
-  rcases pool_originU hr hx c v (hvs ▸ hv) with ⟨k, hk, hsend, hst, hsl⟩ |
+  have hvs := state_pool_slotU sp hr (fun _ => voteStart_initial _) hx c s v hv
+  rcases pool_originU hr (fun _ => voteStart_initial _) hx c v (hvs ▸ hv) with
+    ⟨k, hk, hsend, hst, hsl⟩ |
     ⟨k, -, ℓk, hck, hcall, -, B', hB', hvB'⟩
   · exact ⟨k, hk, hsend,
       (ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 (by rw [← hvs]; exact_mod_cast hsl), hst⟩
@@ -698,7 +700,7 @@ theorem trivial_carry_updateU
   obtain ⟨-, hΦU⟩ := frameIn_of_callAtU hr hx hupd.1
   refine carry_of_sentU hS hs fun v hv => ?_
   obtain ⟨hvp, -, hres, -⟩ := hv
-  have hvs := state_pool_slotU sp hr hx i₀ s v hvp
+  have hvs := state_pool_slotU sp hr (fun _ => voteStart_initial _) hx i₀ s v hvp
   unfold resolutionTime at hres
   split at hres
   · exact absurd hres (by simp [ETime.of])
@@ -962,7 +964,7 @@ theorem fastLock_honest_voteU
       by_contra h
       exact hu ⟨hP.1 x hx i₀ s v hvp, h⟩
     obtain ⟨j, -, e, hve, rfl⟩ := hrun.honest.pool_vote x hx i₀ s _ hvp hvH
-    exact ⟨_, hvH, j, e, hve, state_pool_slotU_from sp hr hrun.vstart hx i₀ s _ hvp, R, hΦU hR, hRr,
+    exact ⟨_, hvH, j, e, hve, state_pool_slotU sp hr hrun.vstart hx i₀ s _ hvp, R, hΦU hR, hRr,
       Anc.mono hΦU hBR⟩
   · obtain ⟨-, hΦU⟩ := frameIn_of_callAtU hr hx hpt.1
     unfold optimisticSelect at hsel

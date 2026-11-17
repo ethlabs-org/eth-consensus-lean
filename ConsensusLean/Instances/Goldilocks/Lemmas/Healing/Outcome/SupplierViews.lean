@@ -150,7 +150,7 @@ theorem ResetPremisesUpTo.reset_winner_voter_tree {b : Time}
   obtain ⟨W, hW, hWv, hPW⟩ := hP.2.2
   have hCs : C ∈ SA.voterBlockTree sp e.readPoint ell.frame u := by
     rw [← hes] at hP ⊢
-    exact SA.voterBlockTree_anc hr hy hc P hP.1 C hCP'
+    exact SA.voterBlockTree_anc hr (fun _ => SA.voteStart_initial _) hy hc P hP.1 C hCP'
   exact ⟨hCs, hfC', W, hW, hWv, hCP'.trans hPW⟩
 
 /-- Any ancestor of a viable current proposal above the voter's anchor is in its viable tree.

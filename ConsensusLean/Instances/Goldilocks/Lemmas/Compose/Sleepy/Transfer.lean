@@ -67,7 +67,7 @@ theorem vote_extends_of_counted_batch {ini} (hrun : SA.ACRun proposer tr H U ini
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := SA.voteDomain_anc_from hr hrun.vstart hy hc
+  have hdomA := SA.voteDomain_anc hr hrun.vstart hy hc
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h

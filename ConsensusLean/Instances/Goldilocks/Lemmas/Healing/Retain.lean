@@ -258,7 +258,7 @@ theorem viable_witness_retention_of (hrun : GoldilocksRun proposer dg H tr)
     · exact Or.inr (hfr ▸ h)
     · have hXv := SA.voterBlockTree_anc
         (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-        hz hce W hWv X (hfr ▸ hXW)
+        (fun _ => SA.voteStart_initial _) hz hce W hWv X (hfr ▸ hXW)
       rw [hfr] at hXv hWv ⊢
       exact Or.inl ⟨hXv, hfX, W, hWv, hv, hXW⟩
 

@@ -105,7 +105,7 @@ theorem next_votes_of_early_witness_at
       have hFW := hFW.mono hPhiU
       exact ⟨W, hPhiU hW, hWr, hXF.trans hFW⟩
     have hviab : SA.ViableAtVote ell e (s + 1) X := by
-      have hdomA := SA.voterBlockTree_anc_from hr hrun.vstart hy hcast'
+      have hdomA := SA.voterBlockTree_anc hr hrun.vstart hy hcast'
       rw [hs] at hdomA
       exact Or.inl ⟨hdomA Q hdom X hXQf, hroot, Q, hdom, hvQ, hXQf⟩
     exact htransfer y i ell e hy hcast hs hhi hFX hviab

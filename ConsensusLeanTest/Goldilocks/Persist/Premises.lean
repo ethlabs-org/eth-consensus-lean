@@ -87,7 +87,8 @@ theorem readPoint_stamp {s i : Nat} {ℓ : ACLabel N1} {e : N1.Em}
   have hr := acRun.localRun
   obtain ⟨hpool, hst⟩ := SA.readPoint_pool hr (Set.mem_univ v0) hc hx
   rw [← hst rfl]
-  rcases SA.pool_origin hr (Set.mem_univ v0) (i + 1) (cv s) hpool with
+  rcases SA.pool_origin hr (fun _ => SA.voteStart_initial _) (Set.mem_univ v0) (i + 1)
+    (cv s) hpool with
     ⟨k, -, ⟨ℓ', hc', hk⟩, hstk, -⟩ | ⟨k, -, ℓ', hc', hrs, -⟩
   · rw [hstk]
     apply etime_of_lt

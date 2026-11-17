@@ -162,22 +162,13 @@ theorem voterBlockTree_ancU
 /-- The voter block tree of an honest vote is closed under ancestors in the frame (block stamps
 grow along parent edges, A0.1, at the state the call leaves, whose stamps are the read
 point's), from starts up to the vote permission. -/
-theorem voterBlockTree_anc_from (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem voterBlockTree_anc (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     ∀ B ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
       X ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot :=
   voterBlockTree_ancU (wm := WriteMode.parent sp) hr.toU hini hy hc
-
-/-- The voter block tree of an honest vote is closed under ancestors in the frame:
-`voterBlockTree_anc_from` at the initial starts. -/
-theorem voterBlockTree_anc (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y i ℓ e) :
-    ∀ B ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
-      X ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot :=
-  voterBlockTree_anc_from hr (fun _ => voteStart_initial _) hy hc
 
 /-- `castAt_head_of_viable` with the unlock given. -/
 theorem castAt_head_of_viableU
@@ -223,22 +214,13 @@ theorem voteDomain_ancU
 
 /-- The vote domain of an honest vote is closed under ancestors in the frame, from starts up to
 the vote permission. -/
-theorem voteDomain_anc_from (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem voteDomain_anc (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     ∀ B ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
       X ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot :=
   voteDomain_ancU (wm := WriteMode.parent sp) hr.toU hini hy hc
-
-/-- The vote domain of an honest vote is closed under ancestors in the frame:
-`voteDomain_anc_from` at the initial starts. -/
-theorem voteDomain_anc (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y i ℓ e) :
-    ∀ B ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
-      X ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot :=
-  voteDomain_anc_from hr (fun _ => voteStart_initial _) hy hc
 
 /-- `vote_time_le` with the unlock given: the deadline of the vote branch
 (`voteBranchAt_specU`). -/

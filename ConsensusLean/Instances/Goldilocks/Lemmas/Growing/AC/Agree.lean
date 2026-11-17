@@ -106,16 +106,16 @@ theorem proposer_voters_agree_of_honest_max
   have hpool : ∀ w ∈ (tr.state p i).pool s, (tr.state p i).voteStamp w < ⊤ := by
     intro w hw
     have hw' : w ∈ ((tr.upTo (tr.time i)).state p i).pool s := statep.symm ▸ hw
-    have hws := state_pool_slot sp hpr.localRun hp i s w hw'
-    rcases pool_origin hpr.localRun hp i w (hws ▸ hw') with
+    have hws := state_pool_slot sp hpr.localRun (fun _ => voteStart_initial _) hp i s w hw'
+    rcases pool_origin hpr.localRun (fun _ => voteStart_initial _) hp i w (hws ▸ hw') with
       ⟨k, _, _, h, _⟩ | ⟨k, _, ℓ, _, _, h, _⟩ <;>
       rw [statep] at h <;> exact h ▸ etime_of_lt_top _
   have hstar : ∀ x ∈ e.readPoint.pool s, e.readPoint.voteStamp x < ETime.of (sp.ts s + 3 * sp.Δ) →
       x ∈ (tr.state p i).pool s ∨ x.val ∈ equivocators {w | w ∈ (tr.state p i).pool s} := by
     intro x hx hxt
     obtain ⟨hx1, hx2⟩ := readPoint_pool hyr.localRun hy hc' hx
-    have hxs := state_pool_slot sp hyr.localRun hy (j + 1) s x hx1
-    rcases pool_origin hyr.localRun hy (j + 1) x (hxs ▸ hx1) with
+    have hxs := state_pool_slot sp hyr.localRun (fun _ => voteStart_initial _) hy (j + 1) s x hx1
+    rcases pool_origin hyr.localRun (fun _ => voteStart_initial _) hy (j + 1) x (hxs ▸ hx1) with
       ⟨k, hk, hsend, hst, hsl⟩ | ⟨k, hk, ℓk, hck, _, _, X, hX, hxX⟩
     · rw [hx2 hxs] at hst
       have htk : tr.time k < sp.ts s + 3 * sp.Δ := etime_of_lt_of.1 (hst ▸ hxt)
@@ -135,7 +135,8 @@ theorem proposer_voters_agree_of_honest_max
   -- the proposer has stamped the blocks of its tree
   have hbs : ∀ Hd ∈ ℓp.frame.tree, (tr.state p i).blockStamp Hd.root ≠ ⊤ := by
     intro Hd hHd
-    have hh := blockStamp_lt_of_acceptedBefore sp hpr.localRun hp hcp' hHd
+    have hh := blockStamp_lt_of_acceptedBefore sp hpr.localRun
+      (fun _ => voteStart_initial _) hp hcp' hHd
       (T := tr.time i + 1) (by
         rcases frame_accepted hpr.localRun hp i hcp' Hd hHd with h | ⟨k, hk, h⟩
         · exact Or.inl h

@@ -141,7 +141,7 @@ theorem high_origin_held_at_vote_at
   have hfz : SA.freeze sp e.msg.slot ≤ tr.time k := by
     unfold SA.freeze
     linarith
-  have hbs := SA.blockStamp_lt_of_acceptedBefore_from sp hr hp.run.vstart hy hc'.1 hWt
+  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hp.run.vstart hy hc'.1 hWt
     (Or.inr ⟨r, har', hrt'⟩)
     (fun r hrk hrr => lt_of_le_of_lt (hrsy r hrk ((ACTrace.upTo_restartAt).mp hrr).2)
       (by unfold SA.freeze; linarith)) (Or.inl hfz)
@@ -164,7 +164,7 @@ theorem high_origin_held_at_vote_at
     rw [Outcome.frame_of_call hp.run hy hc.1]
     exact ⟨hBt, store_anc_of_honest_anc_at hp.run hp.noColl
       (hp.run.time_nonneg k) (fun _ hq => hm hq.le) hy hF' hBt⟩
-  exact SA.voterBlockTree_anc_from hr hp.run.vstart hy hc' W hWtree B
+  exact SA.voterBlockTree_anc hr hp.run.vstart hy hc' W hWtree B
     (SA.anc_tree_of_anc_U hac.localRun.coherent hPhi hPhiU hBf hBW hWt)
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo

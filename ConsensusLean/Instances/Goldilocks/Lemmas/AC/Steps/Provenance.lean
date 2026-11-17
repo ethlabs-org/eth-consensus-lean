@@ -625,19 +625,12 @@ theorem fast_lock_provenanceU
 /-- **Fast-lock provenance.** Every fast lock that an honest node holds before cut `i` sits below
 the block of a fast lock of its slot that the node wrote at an earlier cut; from starts up to
 the vote permission. -/
-theorem fast_lock_provenance_from (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem fast_lock_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
     (hx : x ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state x i).locks, l.fast = true →
       ∃ j < i, ∃ B CV, FastLockAt tr x j l.slot B CV ∧ ∃ L ∈ U, L.root = l.block ∧ Anc U L B :=
   fast_lock_provenanceU (hr := hr.toU) hini (x := x) (hx := hx) (i := i)
-
-/-- **Fast-lock provenance**: `fast_lock_provenance_from` at the initial starts. -/
-theorem fast_lock_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
-    (hx : x ∈ H) (i : Nat) :
-    ∀ l ∈ (tr.state x i).locks, l.fast = true →
-      ∃ j < i, ∃ B CV, FastLockAt tr x j l.slot B CV ∧ ∃ L ∈ U, L.root = l.block ∧ Anc U L B :=
-  fast_lock_provenance_from hr (fun _ => voteStart_initial _) hx i
 
 /-- `lock_provenance` with the unlock given, from starts up to the vote permission. -/
 theorem lock_provenanceU

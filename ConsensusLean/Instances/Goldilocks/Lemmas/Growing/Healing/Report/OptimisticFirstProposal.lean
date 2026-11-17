@@ -71,7 +71,7 @@ theorem optimistic_first_proposal_stored_at {ini : Fin sp.n → SAState sp.n}
   -- every optimistic voter supports `B` at the proposal, or equivocates there
   have hcover : SX ⊆ supporters ℓ.frame V σ B ∪ equivocators V.votes := by
     rintro w ⟨v, hv, rfl, R', hR', hR'r, hDR'⟩
-    have hvs := optimisticPoint_pool_slot_from hrx.localRun hrx.vstart hX hpt' hv
+    have hvs := optimisticPoint_pool_slot hrx.localRun hrx.vstart hX hpt' hv
     by_cases heq : v.val ∈ equivocators V.votes
     · exact Or.inr heq
     left

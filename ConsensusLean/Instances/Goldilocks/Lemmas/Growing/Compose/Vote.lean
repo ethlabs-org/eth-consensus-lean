@@ -54,7 +54,7 @@ theorem vote_viable (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer 
       have hp := hr.upTo (hr.time_nonneg k)
       have hc' := SA.upTo_castAt.mpr (show tr.projAC.time k ≤ tr.time k ∧
         SA.CastAt tr.projAC y k ℓ e from ⟨le_rfl, hc⟩)
-      refine Or.inl ⟨SA.voterBlockTree_anc hp hy hc' D hD B hΦBD,
+      refine Or.inl ⟨SA.voterBlockTree_anc hp (fun _ => SA.voteStart_initial _) hy hc' D hD B hΦBD,
         hΦfB, D, hD, ?_, hΦBD⟩
       have hfD := hΦfB.trans hΦBD
       rw [hfr] at hDt hfD ⊢

@@ -52,7 +52,7 @@ theorem admitted_of_heldU
     (hlt : ∀ k < c, (tr.state X c).voteStamp v = ETime.of (tr.time k) → tr.time k < T) :
     ∃ k, tr.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧ tr.time k < T := by
   have hΔ := sp.toParams.hΔ
-  rcases pool_originU_from hr hini hX c v (hvs ▸ hv) with ⟨k, hk, hsend, hst, hsl⟩ |
+  rcases pool_originU hr hini hX c v (hvs ▸ hv) with ⟨k, hk, hsend, hst, hsl⟩ |
     ⟨k, hk, ℓ, hck, -, hst, B, hB, hvB⟩
   · refine ⟨k, hsend, ?_, hlt k hk hst⟩
     exact ((ts_le_iff_le_slot sp (hr.time_nonneg k)) _).2 (by rw [← hvs]; exact_mod_cast hsl)
@@ -70,21 +70,13 @@ theorem admitted_of_heldU
 /-- A vote that an honest node holds before cut `c`, of slot `s`, admitted before a time of slot
 `s`, was admitted by the node at a time in `[t_s, T)` (a restart puts in the pools only votes of
 frame blocks, whose slots are at most the restart's). From starts up to the vote permission. -/
-theorem admitted_of_held_from (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem admitted_of_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {X : Fin sp.n}
     (hX : X ∈ H) {c s : Nat} {v : Vote sp.n} (hvs : v.slot = s) (hv : v ∈ (tr.state X c).pool s)
     {T : Time} (hT : T ≤ sp.ts s + 2 * sp.Δ)
     (hlt : ∀ k < c, (tr.state X c).voteStamp v = ETime.of (tr.time k) → tr.time k < T) :
     ∃ k, tr.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧ tr.time k < T :=
   admitted_of_heldU hr.toU hini hX hvs hv hT hlt
-
-/-- `admitted_of_held_from` at the initial starts. -/
-theorem admitted_of_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {X : Fin sp.n}
-    (hX : X ∈ H) {c s : Nat} {v : Vote sp.n} (hvs : v.slot = s) (hv : v ∈ (tr.state X c).pool s)
-    {T : Time} (hT : T ≤ sp.ts s + 2 * sp.Δ)
-    (hlt : ∀ k < c, (tr.state X c).voteStamp v = ETime.of (tr.time k) → tr.time k < T) :
-    ∃ k, tr.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧ tr.time k < T :=
-  admitted_of_held_from hr (fun _ => voteStart_initial _) hX hvs hv hT hlt
 
 /-- `optimistic_side` with the unlock given. From starts up to the vote permission. -/
 theorem optimistic_sideU

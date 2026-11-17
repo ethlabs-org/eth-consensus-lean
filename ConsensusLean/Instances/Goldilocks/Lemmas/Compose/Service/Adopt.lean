@@ -146,7 +146,7 @@ theorem proposal_majority_at_update_before {dg : Digest (List (FG.Att sp.n)) (Pa
       ∀ v ∈ A.pool s, v.val = x → v = e.msg := by
     intro x hx j e hv hs v hvp hvx
     obtain ⟨j', -, e', hv', rfl⟩ := hrun'.honest.pool_vote y hy k₀ s v hvp (hvx ▸ hx)
-    have hs' := SA.state_pool_slot sp hr hy k₀ s _ hvp
+    have hs' := SA.state_pool_slot sp hr (fun _ => SA.voteStart_initial _) hy k₀ s _ hvp
     rw [hvx] at hv'
     exact congrArg (fun e : SA.Em sp (List (FG.Att sp.n)) => e.msg)
       (SA.one_vote_per_slot sp _ ro H _ _ hr x hx j' j e' e hv' hv (hs'.trans hs.symm)).2
@@ -165,7 +165,8 @@ theorem proposal_majority_at_update_before {dg : Digest (List (FG.Att sp.n)) (Pa
     rintro w ⟨v, hv, rfl⟩
     by_cases hw : v.val ∈ H
     · obtain ⟨j, -, e, he, rfl⟩ := hrun'.honest.pool_vote y hy k₀ s _ hv hw
-      exact Or.inl ⟨hw, j, e, he, SA.state_pool_slot sp hr hy k₀ s _ hv⟩
+      exact Or.inl ⟨hw, j, e, he,
+        SA.state_pool_slot sp hr (fun _ => SA.voteStart_initial _) hy k₀ s _ hv⟩
     · exact Or.inr hw
   have h1 := Set.ncard_le_ncard hvot (Set.toFinite _)
   have h2 := Set.ncard_union_le Hv Hᶜ

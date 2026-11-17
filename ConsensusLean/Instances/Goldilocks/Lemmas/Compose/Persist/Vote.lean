@@ -80,7 +80,7 @@ theorem pre_reachable {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini
     exact .init Φ₀ hi hf
   · refine ⟨ℓ'.frame, tr.time j, ?_, hr.time_mono hj.le, hok⟩
     rw [tr.state_of_lastCall hc' hj hnb]
-    exact localRun_reachable_from hr y hy j ℓ' hc'
+    exact localRun_reachable hr y hy j ℓ' hc'
 
 /-- **An honest vote's head extends `fc_root`** (requirement 1, A0.6), and the vote is cast no
 later than `Δ` after the start of its slot. -/
@@ -174,7 +174,7 @@ theorem vote_viable {ini} (hrun : GoldilocksRun proposer dg H tr ini)
       have hBt := SA.frame_mem_of_between sp hU hΦ hΦU hDt hBD hFB
       have hΦBD := SA.anc_tree_of_anc_U hU hΦ hΦU hBt hBD hDt
       have hΦfB := SA.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
-      refine Or.inl ⟨SA.voterBlockTree_anc_from hr hrun.vstart hy hc D hD B hΦBD,
+      refine Or.inl ⟨SA.voterBlockTree_anc hr hrun.vstart hy hc D hD B hΦBD,
         hΦfB, D, hD, ?_, hΦBD⟩
       have hfD := hΦfB.trans hΦBD
       rw [hfr] at hDt hfD ⊢

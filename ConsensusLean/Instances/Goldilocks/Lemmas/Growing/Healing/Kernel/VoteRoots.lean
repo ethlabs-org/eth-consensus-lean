@@ -83,7 +83,7 @@ theorem vote_viable_of_root_at
       have hBt := SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hDt hBD hFB
       have hPhiBD := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hBt hBD hDt
       have hPhifB := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hfB hBt
-      refine Or.inl ⟨SA.voterBlockTree_anc_from hr hp.run.vstart hy hc' D hD B hPhiBD,
+      refine Or.inl ⟨SA.voterBlockTree_anc hr hp.run.vstart hy hc' D hD B hPhiBD,
         hPhifB, D, hD, ?_, hPhiBD⟩
       have hfD := hPhifB.trans hPhiBD
       rw [hfr] at hDt hfD ⊢

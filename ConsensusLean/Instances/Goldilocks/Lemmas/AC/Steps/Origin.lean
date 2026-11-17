@@ -211,29 +211,22 @@ theorem optimisticPoint_pool_slotU
     (hv : v ∈ A.pool σ) : v.slot = σ := by
   obtain ⟨hc, ⟨m, -, rfl⟩ | ⟨B, -, rfl⟩ | ⟨e, he, rfl⟩⟩ := hp
   · rcases admit_pool_mem hv with hv | ⟨rfl, hs⟩
-    · exact state_pool_slotU_from sp hr hini hx j σ v hv
+    · exact state_pool_slotU sp hr hini hx j σ v hv
     · exact hs
   · rcases receipt_pool_mem hv with hv | ⟨-, hs⟩
-    · exact state_pool_slotU_from sp hr hini hx j σ v hv
+    · exact state_pool_slotU sp hr hini hx j σ v hv
     · exact hs
   · rw [← point_postU hr hx hc he] at hv
-    exact state_pool_slotU_from sp hr hini hx _ σ v hv
+    exact state_pool_slotU sp hr hini hx _ σ v hv
 
 /-- **The slots at an optimistic point.** The slot-`σ` pool of a state at which an honest node
 runs the optimistic check holds only slot-`σ` votes. From starts up to the vote permission. -/
-theorem optimisticPoint_pool_slot_from (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem optimisticPoint_pool_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {A : SAState sp.n} (hp : OptimisticPoint tr x j ℓ A) {σ : Nat} {v : Vote sp.n}
     (hv : v ∈ A.pool σ) : v.slot = σ :=
   optimisticPoint_pool_slotU hr.toU hini hx hp hv
-
-/-- `optimisticPoint_pool_slot_from` at the initial starts. -/
-theorem optimisticPoint_pool_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
-    {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    {A : SAState sp.n} (hp : OptimisticPoint tr x j ℓ A) {σ : Nat} {v : Vote sp.n}
-    (hv : v ∈ A.pool σ) : v.slot = σ :=
-  optimisticPoint_pool_slot_from hr (fun _ => voteStart_initial _) hx hp hv
 
 /-- `receipt_poolOK` with the unlock given. -/
 private theorem receipt_poolOKU
@@ -419,7 +412,7 @@ theorem optimisticLockAt_spec (hrun : ACRun proposer tr H U ini)
   · exact lt_of_not_ge (fun ht => hn (Or.inr (Or.inr (hs ▸ ht))))
   · rw [hv]; exact hs ▸ hcount
   · intro v hv
-    exact ⟨hv.1, (optimisticPoint_pool_slot_from hrun.localRun hrun.vstart hy hp hv.1), hv.2⟩
+    exact ⟨hv.1, (optimisticPoint_pool_slot hrun.localRun hrun.vstart hy hp hv.1), hv.2⟩
   · intro v hv hh
     exact (optimisticPoint_pool_vote hrun hy hp hv.1 hh).2
   · rintro x ⟨v, hv, rfl⟩

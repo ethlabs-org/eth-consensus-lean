@@ -75,10 +75,10 @@ private theorem update_side
   refine ⟨ℓ', T, hc, ht, hrs, hfast, hmaj', ?_, ?_⟩
   · rintro u ⟨_, v, ⟨hvp, hres⟩, rfl, _, R, hR, hRr, hDR⟩
     have hvp' : v ∈ ((tr.upTo (tr.time c)).state Y c).pool s := hstate.symm ▸ hvp
-    have hvs := state_pool_slot_from sp hr.localRun hrun.vstart hY c s v hvp'
+    have hvs := state_pool_slot sp hr.localRun hrun.vstart hY c s v hvp'
     rw [relayed_iff]
     refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, ?_⟩
-    obtain ⟨k, hsend, h1, h2⟩ := admitted_of_held_from hr.localRun hrun.vstart hY hvs hvp' le_rfl
+    obtain ⟨k, hsend, h1, h2⟩ := admitted_of_held hr.localRun hrun.vstart hY hvs hvp' le_rfl
       (fun k _ hst => by
         rw [hstate] at hst
         have hst' : (tr.state Y c).voteStamp v < ETime.of (sp.ts s + 2 * sp.Δ) := by

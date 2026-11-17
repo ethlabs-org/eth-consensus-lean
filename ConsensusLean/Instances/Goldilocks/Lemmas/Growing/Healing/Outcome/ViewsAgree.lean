@@ -101,7 +101,7 @@ theorem reset_views_agree_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
         simp only [SA.voteViewList, SA.SAState.poolAt, Int.toNat_natCast, List.filter_filter,
           List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
           Bool.and_eq_true, decide_eq_true_eq] at hv
-        rw [SA.state_pool_slot_from sp hrp hp.run.vstart hpi i s v (hsip.symm ▸ hv.1)]
+        rw [SA.state_pool_slot sp hrp hp.run.vstart hpi i s v (hsip.symm ▸ hv.1)]
       obtain ⟨B', hB', hBr', _⟩ := hsup v (by rw [SA.blockSupport, hpay]; exact hv) hvs
       rwa [hac.localRun.coherent.1 ((SA.frameIn_of_callAt hrp hpi hci').2 hB)
         ((SA.frameIn_of_callAt hr hy hcy'.1).2 hB') (hBr.trans hBr'.symm)]

@@ -103,7 +103,8 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
       obtain ⟨r, hri, D, hsl, hL⟩ := SA.slow_lock_provenance hr hpH i l₁ hl₁ hf
       exact ⟨r, hri, D, Or.inr hsl, hL⟩
     | true =>
-      obtain ⟨r, hri, D, CV, hfl, hL⟩ := SA.fast_lock_provenance hr hpH i l₁ hl₁ hf
+      obtain ⟨r, hri, D, CV, hfl, hL⟩ := SA.fast_lock_provenance hr
+        (fun _ => SA.voteStart_initial _) hpH i l₁ hl₁ hf
       exact ⟨r, hri, D, Or.inl ⟨CV, hfl⟩, hL⟩
   obtain rfl : L = B₁ := hr.coherent.1 hLU (hPhiU hB₁) (hLr.trans hB₁r.symm)
   have hlt : l₁.slot < u := Compose.proposal_locks_slot_of hp.run hp.noColl

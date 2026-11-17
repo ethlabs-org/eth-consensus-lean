@@ -114,7 +114,7 @@ theorem honest_prefix_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
   have hVT : ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)) ⊆ ℓ.frame.tree :=
     fun _ h => voteDomain_subset_tree h.1
   have hBt := hVT hB
-  have hdomA := voteDomain_anc_from hrun.localRun hrun.vstart hy hc
+  have hdomA := voteDomain_anc hrun.localRun hrun.vstart hy hc
   rw [hs] at hdomA
   unfold getHead
   refine anc_ghost_of_best hΦ.1.coherent hVT (hΦ.1.finite.subset hVT) hBt _ haB

@@ -61,7 +61,7 @@ theorem carried_counted_supporters {ini} (hrun : ACRun proposer tr H U ini)
   have hst := Trace.upTo_state tr X (d := tr.time i₀) (i := i₀)
     (fun _ hk => hrun.localRun.time_mono hk.le)
   have hvp' : v ∈ ((tr.upTo (tr.time i₀)).state X i₀).pool s := hst.symm ▸ hvp
-  have hvs := state_pool_slot_from sp hrX hrun.vstart hX i₀ s v hvp'
+  have hvs := state_pool_slot sp hrX hrun.vstart hX i₀ s v hvp'
   obtain ⟨Hd, hHd, hHdr, hHds⟩ : ∃ Hd ∈ ℓX.frame.tree, Hd.root = v.head ∧ Hd.slot ≤ v.slot := by
     unfold resolutionTime at hvres
     split at hvres

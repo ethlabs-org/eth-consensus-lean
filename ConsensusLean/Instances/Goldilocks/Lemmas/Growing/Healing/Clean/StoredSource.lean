@@ -90,7 +90,7 @@ theorem clean_source_stored_lock_compatible_at
       · exact SA.anc_total hU h (hLD.mono sub)
       · exact Or.inr ((hLD.mono sub).trans h)
     · obtain ⟨q, hqi, D, DV, hD, L, hL, hLr, hLD⟩ :=
-        SA.fast_lock_provenance_from hac.localRun hac.vstart hy i l hl hf
+        SA.fast_lock_provenance hac.localRun hac.vstart hy i l hl hf
       obtain rfl : C = L := hU.1 hC (sub hL) (hCr.trans hLr.symm)
       rcases compare hqi (Or.inl ⟨DV, ((SA.upTo_fastLockAt hm).mp hD).2⟩) with h | h
       · exact SA.anc_total hU h (hLD.mono sub)

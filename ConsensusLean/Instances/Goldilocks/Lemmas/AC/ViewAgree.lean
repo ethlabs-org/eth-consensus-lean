@@ -140,8 +140,8 @@ private theorem view_agree_of_forwardU
   -- the proposal's votes are the proposer's slot-`s` pool
   have hpool : ∀ w ∈ (tr.state p i).pool s, (tr.state p i).voteStamp w < ⊤ := by
     intro w hw
-    have hws := state_pool_slotU_from sp hr hini hp i s w hw
-    rcases pool_originU_from hr hini hp i w (hws ▸ hw) with
+    have hws := state_pool_slotU sp hr hini hp i s w hw
+    rcases pool_originU hr hini hp i w (hws ▸ hw) with
       ⟨k, -, -, h, -⟩ | ⟨k, -, ℓ, -, -, h, -⟩ <;>
       exact h ▸ etime_of_lt_top _
   have hset : {w | w ∈ (voteViewList (tr.state p i) ℓp.frame (s : Int) ⊤).1} =
@@ -152,8 +152,8 @@ private theorem view_agree_of_forwardU
       x ∈ (tr.state p i).pool s ∨ x.val ∈ equivocators {w | w ∈ (tr.state p i).pool s} := by
     intro x hx hxt
     obtain ⟨hx1, hx2⟩ := readPoint_poolU hr hy hc hx
-    have hxs : x.slot = s := state_pool_slotU_from sp hr hini hy (j + 1) s x hx1
-    rcases pool_originU_from hr hini hy (j + 1) x (hxs ▸ hx1) with
+    have hxs : x.slot = s := state_pool_slotU sp hr hini hy (j + 1) s x hx1
+    rcases pool_originU hr hini hy (j + 1) x (hxs ▸ hx1) with
       ⟨k, -, hsend, hst, hsl⟩ | ⟨k, -, ℓk, hck, -, -, X, hX, hxX⟩
     · rw [hx2 hxs] at hst
       have htk : tr.time k < sp.ts s + 3 * sp.Δ := etime_of_lt_of.1 (hst ▸ hxt)
@@ -229,7 +229,7 @@ private theorem view_agree_of_forwardU
       rcases hstar x hxp (by simpa [freeze, hcast] using hxt) with hxP | hxP
       · -- the proposer holds it, resolved
         have hbs : (tr.state p i).blockStamp x.head ≠ ⊤ := by
-          refine hRr ▸ (blockStamp_lt_of_acceptedBeforeU_from sp hr hini hp hcp hRp
+          refine hRr ▸ (blockStamp_lt_of_acceptedBeforeU sp hr hini hp hcp hRp
             (T := tr.time i + 1) ?_ (fun k hk hrk => ?_)
             (Or.inr (by rw [hcall]; simp))).trans (etime_of_lt_top _) |>.ne
           · rcases frame_acceptedU hr hp i hcp R hRp with h | ⟨k, hk, h⟩

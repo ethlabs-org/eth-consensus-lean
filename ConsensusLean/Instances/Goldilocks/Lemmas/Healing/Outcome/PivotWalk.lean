@@ -188,7 +188,8 @@ theorem ResetPremisesUpTo.vote_old_lock_source_before {b : Time}
       obtain ⟨r, hrj, D, hslow, hX⟩ := SA.slow_lock_provenance hr hy j l₀ hl₀ hf
       exact ⟨r, hrj, D, Or.inr hslow, hX⟩
     | true =>
-      obtain ⟨r, hrj, D, CV, hfast, hX⟩ := SA.fast_lock_provenance hr hy j l₀ hl₀ hf
+      obtain ⟨r, hrj, D, CV, hfast, hX⟩ := SA.fast_lock_provenance hr
+        (fun _ => SA.voteStart_initial _) hy j l₀ hl₀ hf
       exact ⟨r, hrj, D, Or.inl ⟨CV, hfast⟩, hX⟩
   obtain rfl : X = B := hr.coherent.1 hX (hPhiU hB) (hXr.trans hBr.symm)
   have hle : l₀.slot ≤ u := by

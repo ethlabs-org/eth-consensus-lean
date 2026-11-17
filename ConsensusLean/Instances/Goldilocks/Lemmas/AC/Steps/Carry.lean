@@ -66,7 +66,7 @@ theorem merged_vote_slot_branchU
     · simp at hv
     have hpost : v ∈ (tr.post i).pool s :=
       pool_post_of_voteBranchAtU hr hy hb (by simpa using hv)
-    refine state_pool_slotU_from sp hr hini hy (i + 1) s v ?_
+    refine state_pool_slotU sp hr hini hy (i + 1) s v ?_
     rw [Trace.state]
     split_ifs with h
     · exact hpost
@@ -248,7 +248,7 @@ theorem readPoint_blockStamp_lt_of_acceptedBefore
   have hPhiU : ell.frame.tree ⊆ U := by
     rcases hr.frameLaw y hy i ell hc.1 with ⟨-, _, -, -, h⟩ | ⟨_, _, -, -, -, h⟩ <;>
       exact h.1.2
-  have hstamp := blockStamp_lt_of_acceptedBefore_from sp hr hini hy hc.1 hB hacc hrs (Or.inl ht)
+  have hstamp := blockStamp_lt_of_acceptedBefore sp hr hini hy hc.1 hB hacc hrs (Or.inl ht)
   rw [readPoint_blockStamp hr hy hc ?_]
   · exact hstamp
   intro C hcall hroot
@@ -349,7 +349,7 @@ theorem carried_supporter_branchU
         Anc.mono (Set.insert_subset_iff.2 ⟨hHvU, hΦ'U⟩) (hst.F_anc_F'.trans hst.F'_anc_B)
       exact hst.new (mem_tree_of_acceptAtU sp hr hy ⟨ℓk, hck, hkB⟩ hkj hc' hanc)
   -- the vote is resolved before the freeze
-  have hbs := blockStamp_lt_of_acceptedBeforeU_from sp hr hrun.vstart hy hc hHvt hacc hrs
+  have hbs := blockStamp_lt_of_acceptedBeforeU sp hr hrun.vstart hy hc hHvt hacc hrs
     (Or.inl hT.le)
   rw [hHvr, ← readPoint_blockStamp_branchU hr hy hb hne] at hbs
   have hfz : freeze sp (s + 1) = sp.ts s + 3 * sp.Δ := by simp [freeze]
@@ -498,7 +498,7 @@ theorem counted_supportersU
       · exact hw (hv₂ ▸ h₂')
     · exact hw (hv₁ ▸ h₁')
   rintro w ⟨v, ⟨hvp, hvw, hvres, hvanc⟩, rfl⟩
-  have hvs : v.slot = s := state_pool_slotU sp hr hX i₀ s v hvp
+  have hvs : v.slot = s := state_pool_slotU sp hr (fun _ => voteStart_initial _) hX i₀ s v hvp
   -- the head is the block of `X`'s tree that the vote resolves on, of slot at most `s`
   obtain ⟨Hd, hHd, hHdr, hHds⟩ : ∃ Hd ∈ ℓX.frame.tree, Hd.root = v.head ∧ Hd.slot ≤ v.slot := by
     unfold resolutionTime at hvres

@@ -98,7 +98,7 @@ theorem accepted_held_before_earlyAC (hr : ACLocalRunU wm u H U tr)
       exact ⟨Or.inr ⟨ky, hay, hkyt.trans_le (hdl ky hky _ hkt)⟩,
         mem_tree_of_acceptAtU sp hr hy hay hky hc hF⟩
   obtain ⟨hab, hBt⟩ := hab
-  exact ⟨hBt, blockStamp_lt_of_acceptedBeforeU sp hr hy hc hBt hab
+  exact ⟨hBt, blockStamp_lt_of_acceptedBeforeU sp hr (fun _ => voteStart_initial _) hy hc hBt hab
     (fun k hk hrk => by linarith [hres k hk hrk]) (Or.inl hct)⟩
 
 /-- **D2** (L1, message half; `Compose.vote_pooled_before_early` with the unlock given). An honest
@@ -152,13 +152,13 @@ theorem vote_pooled_before_earlyAC (hrun : ACRunU wm u proposer tr H U)
       rw [hav, hxv] at hea
       rw [hbv, hxv] at heb
       obtain ⟨-, rfl⟩ := one_vote_per_slotU sp FGP ro H U tr hr x hx ja jb ea eb hea heb
-        (by rw [hea', heb', state_pool_slotU sp hr hy _ q a ha,
-          state_pool_slotU sp hr hy _ q b hb])
+        (by rw [hea', heb', state_pool_slotU sp hr (fun _ => voteStart_initial _) hy _ q a ha,
+          state_pool_slotU sp hr (fun _ => voteStart_initial _) hy _ q b hb])
       exact absurd (hea'.symm.trans heb') hab
   have hpool : e.msg ∈ (tr.state y c).pool q :=
     pool_monoU hr hy (show k' + 1 ≤ c by omega) (fun r h₁ h₂ => hnr r h₁ (by omega)) q hpk'
   refine ⟨hpool, ?_⟩
-  rcases pool_originU hr hy c e.msg (by rw [hes]; exact hpool) with
+  rcases pool_originU hr (fun _ => voteStart_initial _) hy c e.msg (by rw [hes]; exact hpool) with
     ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
   · rw [hst₁, etime_of_lt_of]
     by_cases hk₁k' : k₁ ≤ k'
@@ -315,10 +315,12 @@ theorem carryAt_afterAC (hr : ACLocalRunU wm u H U tr)
     have hheld : ∀ u' ∈ (tr.state y (k' + 1)).pool s,
         HeldBefore e.readPoint u' (sp.ts s + 3 * sp.Δ) := by
       intro u' hu
-      have hus : u'.slot = s := state_pool_slotU sp hr hy (k' + 1) s u' hu
+      have hus : u'.slot = s :=
+        state_pool_slotU sp hr (fun _ => voteStart_initial _) hy (k' + 1) s u' hu
       have hu' := pool_monoU hr hy (show k' + 1 ≤ i + 1 by omega) hnr s hu
       refine heldBefore_readPointU hr hy hc (by omega) ⟨by rw [hus]; exact hu', ?_⟩
-      rcases pool_originU hr hy (i + 1) u' (by rw [hus]; exact hu') with
+      rcases pool_originU hr (fun _ => voteStart_initial _) hy (i + 1) u'
+        (by rw [hus]; exact hu') with
         ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
       · rw [hst₁, etime_of_lt_of]
         by_cases hk₁k' : k₁ ≤ k'
@@ -340,8 +342,10 @@ theorem carryAt_afterAC (hr : ACLocalRunU wm u H U tr)
         exact absurd h hv'
       · have ha' : a ∈ (tr.state y (k' + 1)).pool s := by rw [← hvs]; exact ha
         have hc' : c ∈ (tr.state y (k' + 1)).pool s := by rw [← hvs]; exact hc''
-        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv, state_pool_slotU sp hr hy _ s a ha',
-          state_pool_slotU sp hr hy _ s c hc', hheld a ha', hheld c hc'⟩
+        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv,
+          state_pool_slotU sp hr (fun _ => voteStart_initial _) hy _ s a ha',
+          state_pool_slotU sp hr (fun _ => voteStart_initial _) hy _ s c hc',
+          hheld a ha', hheld c hc'⟩
         · rintro rfl; exact hv' ha'
         · rintro rfl; exact hv' hc'
 

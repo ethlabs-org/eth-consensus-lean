@@ -38,8 +38,8 @@ theorem castAt_readPoint_lockInv (hr : ACLocalRun (goldilocksSA sp FGP ro) H U t
       exact .init Φ₀ hi hf
     · refine ⟨ℓ'.frame, tr.time j, ?_, hok⟩
       rw [tr.state_of_lastCall hc' hj hnb]
-      exact localRun_reachable_from hr y hy j ℓ' hc'
-  obtain ⟨hin, -, hinv⟩ := lockInv_of_reachable_from hU (hini y) hR
+      exact localRun_reachable hr y hy j ℓ' hc'
+  obtain ⟨hin, -, hinv⟩ := lockInv_of_reachable hU (hini y) hR
   have hx := hr.exec i ℓ hcall.2 (hcall.1 ▸ hy)
   rw [hcall.1] at hx
   have he' : e ∈ ((goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i)

@@ -71,8 +71,8 @@ theorem late_vote_pool_before {K : SA.CommitteeDict sp.n}
       rw [hes] at hv hw
       obtain ⟨iv, -, ev, hev, rfl⟩ := hS.run.honest.pool_vote y hy (q + 1) s _ hv (hvval ▸ hxH)
       obtain ⟨iw, -, ew, hew, rfl⟩ := hS.run.honest.pool_vote y hy (q + 1) s _ hw (hwval ▸ hxH)
-      have hsv := state_pool_slot_from sp hr hS.run.vstart hy (q + 1) s _ hv
-      have hsw := state_pool_slot_from sp hr hS.run.vstart hy (q + 1) s _ hw
+      have hsv := state_pool_slot sp hr hS.run.vstart hy (q + 1) s _ hv
+      have hsw := state_pool_slot sp hr hS.run.vstart hy (q + 1) s _ hw
       rw [hvval] at hev
       rw [hwval] at hew
       obtain ⟨-, rfl⟩ := one_vote_per_slotU sp FGP ro H U tr hr.toU _ hxH iv iw ev ew hev hew
@@ -186,7 +186,7 @@ theorem late_vote_accepted_of_frame_before {K : SA.CommitteeDict sp.n}
           y hy j ell hc (by linarith only [hs, ht, hDelta]) hjb hFB
         exact ⟨r, hrj, har, by linarith only [hs, hDelta, hrt]⟩
     exact ⟨mem_tree_of_acceptAt sp hr hy har hrj hc hFB, Or.inr ⟨r, har, hrt⟩⟩
-  have hstamp := blockStamp_lt_of_acceptedBefore_from sp hr hS.run.vstart hy hc hBy hAB
+  have hstamp := blockStamp_lt_of_acceptedBefore sp hr hS.run.vstart hy hc hBy hAB
     (fun k hk hrs => lt_trans (hrestart k (by omega) hrs) (by linarith only [hDelta])) (Or.inl ht)
   exact ⟨B, hBy, hBr, hBs, hpool.1, hpool.2, hBr ▸ hstamp, hAB⟩
 
@@ -285,8 +285,8 @@ theorem late_vote_poolU
       rw [hes] at ha hb
       obtain ⟨ja, -, ea, hva, rfl⟩ := hS.run.honest.pool_vote y hy (k' + 1) s _ ha (hav ▸ hxH)
       obtain ⟨jb, -, eb, hvb, rfl⟩ := hS.run.honest.pool_vote y hy (k' + 1) s _ hb (hbv ▸ hxH)
-      have hsa := state_pool_slotU sp hr hy (k' + 1) s _ ha
-      have hsb := state_pool_slotU sp hr hy (k' + 1) s _ hb
+      have hsa := state_pool_slotU sp hr (fun _ => voteStart_initial _) hy (k' + 1) s _ ha
+      have hsb := state_pool_slotU sp hr (fun _ => voteStart_initial _) hy (k' + 1) s _ hb
       rw [hav] at hva
       rw [hbv] at hvb
       obtain ⟨-, rfl⟩ := (one_vote_per_slotU sp) FGP ro H U tr hr _ hxH ja jb ea eb hva hvb
@@ -371,7 +371,7 @@ theorem late_vote_held_of_frameU
           (lt_of_lt_of_le (not_le.1 hgk) (le_gbar g)) y hy j ℓ hc (by linarith only [hs, ht, hΔ]) hF
         exact ⟨ka, hkaj, hacc', by linarith only [hs, hΔ, hlt]⟩
     exact ⟨mem_tree_of_acceptAtU sp hr hy hacc' hkaj hc hF, Or.inr ⟨ka, hacc', hlt⟩⟩
-  have hbs := blockStamp_lt_of_acceptedBeforeU sp hr hy hc hHt hAB
+  have hbs := blockStamp_lt_of_acceptedBeforeU sp hr (fun _ => voteStart_initial _) hy hc hHt hAB
     (fun k _ hrk => lt_of_le_of_lt (hS.restart_le hy hrk) (by linarith only [hs, hΔ])) (Or.inl ht)
   have hpost : (tr.state y (j + 1)).blockStamp Hx.root = (tr.state y j).blockStamp Hx.root := by
     have hst : tr.state y (j + 1) = tr.post j := by simp [Trace.state, hc.1, hc.2]
@@ -494,7 +494,8 @@ theorem honest_not_equivocator_poolU
   obtain ⟨jb, -, eb, hvb, rfl⟩ := hS.run.honest.pool_vote y hy c s _ hb (hbv ▸ hu)
   rw [hbv] at hvb
   obtain ⟨-, rfl⟩ := (one_vote_per_slotU sp) FGP ro H U tr hr _ hu ja jb ea eb hva hvb
-    ((state_pool_slotU sp hr hy c s _ ha).trans (state_pool_slotU sp hr hy c s _ hb).symm)
+    ((state_pool_slotU sp hr (fun _ => voteStart_initial _) hy c s _ ha).trans
+      (state_pool_slotU sp hr (fun _ => voteStart_initial _) hy c s _ hb).symm)
   exact hab rfl
 
 /-- An honest validator is not an equivocator in an honest node's pool of a slot. -/
@@ -572,7 +573,8 @@ theorem result_extendedU
       resolutionTime (tr.state x c) ℓ.frame v < ETime.of (sp.ts s + 2 * sp.Δ)}⟩ s C)
     (fun u ⟨_, x, hx, hxu, _⟩ => ⟨x, hx.1, hxu⟩) hmaj hf
   obtain ⟨j', -, e', hve, rfl⟩ := hS.run.honest.pool_vote x hx c s _ hvp huH
-  exact ⟨_, huH, j', e', hve, state_pool_slotU sp hr hx c s _ hvp, R, hΦU hR, hRr,
+  exact ⟨_, huH, j', e', hve, state_pool_slotU sp hr (fun _ => voteStart_initial _) hx c s _ hvp,
+    R, hΦU hR, hRr,
     Anc.mono hΦU hCR⟩
 
 /-- **A late result has an honest supporter**: the result `C` of an honest update of a slot
@@ -883,7 +885,7 @@ theorem first_update_postU
     obtain ⟨j', -, e', hve', rfl⟩ := hS.run.honest.pool_vote y hy k p v' hv' (hv'u ▸ hu)
     rw [hv'u] at hve'
     obtain ⟨-, rfl⟩ := (one_vote_per_slotU sp) FGP ro H U tr hr _ hu j' i e' e hve' hv
-      ((state_pool_slotU sp hr hy k p _ hv').trans hes.symm)
+      ((state_pool_slotU sp hr (fun _ => voteStart_initial _) hy k p _ hv').trans hes.symm)
     rfl
   have hHvot : H ⊆ voters {v | v ∈ A.pool p} := fun u hu => by
     obtain ⟨v, hv, hvu, -⟩ := hhon u hu
@@ -905,7 +907,7 @@ theorem first_update_postU
       obtain ⟨v, hv, hvu, hvh, hres, -⟩ := hhon u hu
       refine ⟨honest_not_equivocator_poolU hS hy k p hu, v, ⟨hv, hres⟩, hvu, ?_,
         P, hPt, hvh.symm, Relation.ReflTransGen.refl⟩
-      exact_mod_cast state_pool_slotU sp hr hy k p v hv
+      exact_mod_cast state_pool_slotU sp hr (fun _ => voteStart_initial _) hy k p v hv
     exact Set.ncard_le_ncard hsub
   -- the slot-`p` result is `P`
   have hconf : getConfirmation sp A ℓ.frame p = some P := by

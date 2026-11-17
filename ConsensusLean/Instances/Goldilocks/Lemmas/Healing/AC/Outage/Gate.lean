@@ -112,7 +112,7 @@ private theorem pool_vote_eq (hrun : ACRunU wm u proposer tr H U) {y : Fin sp.n}
     v = e.msg := by
   have hr := hrun.localRun
   obtain ⟨j', -, e', hv', rfl⟩ := hrun.honest.pool_vote y hy c s v hvp (hvx ▸ hx)
-  have hs' := state_pool_slotU sp hr hy c s _ hvp
+  have hs' := state_pool_slotU sp hr (fun _ => voteStart_initial _) hy c s _ hvp
   rw [hvx] at hv'
   exact congrArg (fun e : Em sp FGP => e.msg)
     (one_vote_per_slotU sp FGP ro H U tr hr x hx j' j e' e hv' hv (hs'.trans hs.symm)).2
@@ -124,7 +124,7 @@ private theorem pool_voters_sub (hrun : ACRunU wm u proposer tr H U) {y : Fin sp
   rintro w ⟨v, hv, rfl⟩
   by_cases hw : v.val ∈ H
   · obtain ⟨j, -, e, he, rfl⟩ := hrun.honest.pool_vote y hy c s _ (hS v hv) hw
-    have hs := state_pool_slotU sp hrun.localRun hy c s _ (hS _ hv)
+    have hs := state_pool_slotU sp hrun.localRun (fun _ => voteStart_initial _) hy c s _ (hS _ hv)
     by_cases hext : VoteExtends U e.msg B
     · exact Or.inl (extendingCastersAC_iff.2 ⟨hw, j, e, he, hs, hext⟩)
     · exact Or.inr (opponentsAC_iff.2 (Or.inr ⟨hw, j, e, he, hs, hext⟩))
@@ -278,7 +278,8 @@ theorem read_majority_of_extendingAC (hrun : ACRunU wm u proposer tr H U) {w : F
     -- the vote has a finite stamp, so it is a vote of the latest view
     have hvst : A.voteStamp e.msg < ⊤ := by
       have hus : e.msg.slot = s := hes
-      rcases pool_originU hr hw (j + 1) e.msg (by rw [hus]; exact hvp') with
+      rcases pool_originU hr (fun _ => voteStart_initial _) hw (j + 1) e.msg
+        (by rw [hus]; exact hvp') with
         ⟨k, -, -, h, -⟩ | ⟨k, -, -, -, -, h, -⟩ <;>
         rw [← hst, h] <;> exact WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _)
     have hres : resolutionTime A Φ e.msg < ⊤ := by

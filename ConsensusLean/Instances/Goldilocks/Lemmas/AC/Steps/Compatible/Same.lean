@@ -77,7 +77,7 @@ private theorem update_sideU
     exact lt_of_lt_of_le hmaj (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard
       ((supporters_antitone sp) FGP ℓ.frame _ s D C (deepest_mem hD).1.1.2.2)))
   · rintro u ⟨-, v, ⟨hvp, hres⟩, rfl, -, R, hR, hRr, hDR⟩
-    have hvs := state_pool_slotU sp hr hY c s v hvp
+    have hvs := state_pool_slotU sp hr (fun _ => voteStart_initial _) hY c s v hvp
     rw [fwd_iff]
     refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩,
       admitted_of_heldU hr (fun _ => voteStart_initial _) hY hvs hvp le_rfl

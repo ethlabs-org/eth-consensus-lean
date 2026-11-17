@@ -383,7 +383,8 @@ theorem ready_old_lock_below
       obtain ⟨r, hrj, B, hslow, hX⟩ := SA.slow_lock_provenance hr hy j l hl hf
       exact ⟨r, hrj, B, Or.inr hslow, hX⟩
     | true =>
-      obtain ⟨r, hrj, B, CV, hfast, hX⟩ := SA.fast_lock_provenance hr hy j l hl hf
+      obtain ⟨r, hrj, B, CV, hfast, hX⟩ := SA.fast_lock_provenance hr
+        (fun _ => SA.voteStart_initial _) hy j l hl hf
       exact ⟨r, hrj, B, Or.inl ⟨CV, hfast⟩, hX⟩
   have hXL : X = L := hr.coherent.1 hX (hPhiU hL) (hXr.trans hLr.symm)
   rw [hXL] at hXB
@@ -424,7 +425,8 @@ theorem ready_call_locks_compatible
       obtain ⟨r, hrj, D, hs, hX⟩ := SA.slow_lock_provenance hr hy j l hl hf
       exact ⟨r, hrj, D, Or.inr hs, hX⟩
     | true =>
-      obtain ⟨r, hrj, D, CV, hf, hX⟩ := SA.fast_lock_provenance hr hy j l hl hf
+      obtain ⟨r, hrj, D, CV, hf, hX⟩ := SA.fast_lock_provenance hr
+        (fun _ => SA.voteStart_initial _) hy j l hl hf
       exact ⟨r, hrj, D, Or.inl ⟨CV, hf⟩, hX⟩
   have hXB : X = B := hr.coherent.1 hX (hPhiU hB) (hXr.trans hBr.symm)
   rw [hXB] at hXD

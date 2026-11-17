@@ -145,7 +145,7 @@ theorem optimistic_first_proposal_anc (hrun : ACRun proposer T H U) (hf : 2 * H�
   -- every optimistic voter of `D` supports `B` at the proposal, or equivocates there
   have hcover : SX ⊆ supporters ℓ.frame V σ B ∪ equivocators V.votes := by
     rintro w ⟨v, hv, rfl, R', hR', hR'r, hDR'⟩
-    have hvs := optimisticPoint_pool_slot hr hX hpt hv
+    have hvs := optimisticPoint_pool_slot hr (fun _ => voteStart_initial _) hX hpt hv
     by_cases heq : v.val ∈ equivocators V.votes
     · exact Or.inr heq
     left

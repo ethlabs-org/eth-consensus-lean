@@ -48,7 +48,7 @@ theorem ACRun.upTo {ini} (h : ACRun proposer tr H U ini) {d : Time} (hd : 0 ≤ 
         have hslot : v.slot = σ := by
           have hv' := hv
           rw [← state_succ_of_call hc] at hv'
-          exact state_pool_slot_from sp hr h.vstart hy (i + 1) σ v hv'
+          exact state_pool_slot sp hr h.vstart hy (i + 1) σ v hv'
         by_cases hrs : ℓ.call = .restart
         · have hR := restart_state sp FGP ro y ((tr.upTo d).state y i) ℓ.frame
             ((tr.upTo d).time i) hΦ (hr.time_nonneg i)

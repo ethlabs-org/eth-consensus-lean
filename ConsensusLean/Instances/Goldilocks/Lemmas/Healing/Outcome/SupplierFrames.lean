@@ -103,7 +103,8 @@ theorem ResetPremisesUpTo.call_locks_compatible_of_unanimous {b : Time}
       obtain ⟨r, hrj, D, hs, hX⟩ := SA.slow_lock_provenance hr hy j l hl hf
       exact ⟨r, hrj, D, Or.inr hs, hX⟩
     | true =>
-      obtain ⟨r, hrj, D, CV, hf, hX⟩ := SA.fast_lock_provenance hr hy j l hl hf
+      obtain ⟨r, hrj, D, CV, hf, hX⟩ := SA.fast_lock_provenance hr
+        (fun _ => SA.voteStart_initial _) hy j l hl hf
       exact ⟨r, hrj, D, Or.inl ⟨CV, hf⟩, hX⟩
   have hXB : X = B := hr.coherent.1 hX (hPhiU hB) (hXr.trans hBr.symm)
   rw [hXB] at hXD
@@ -234,7 +235,7 @@ theorem ResetPremisesUpTo.ready_update_selection_of_pool {b : Time}
     refine ⟨?_, vote, ⟨hm, hres⟩, he, ?_, P, hPt, hh.symm, .refl⟩
     · rintro ⟨x, hx, z, hz, hne, hxv, hzv⟩
       exact hne ((huniq x hx hxv).trans (huniq z hz hzv).symm)
-    · exact_mod_cast SA.state_pool_slot sp hr hy j u vote hm
+    · exact_mod_cast SA.state_pool_slot sp hr (fun _ => SA.voteStart_initial _) hy j u vote hm
   have hconf : SA.getConfirmation sp A ell.frame u = some P := by
     unfold SA.getConfirmation
     have hPS : P ∈ {B | B ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.F B ∧
@@ -479,7 +480,7 @@ theorem reset_support_frame
       simp only [SA.voteViewList, SA.SAState.poolAt, Int.toNat_natCast, List.filter_filter,
         List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
         Bool.and_eq_true, decide_eq_true_eq] at hv
-      rw [SA.state_pool_slot sp hr hP.1 i s v hv.1]
+      rw [SA.state_pool_slot sp hr (fun _ => SA.voteStart_initial _) hP.1 i s v hv.1]
     obtain ⟨B', hB', hBr', -⟩ := hsup v (by rw [SA.blockSupport, hpay]; exact hv) hvs
     rwa [hr.coherent.1 ((SA.frameIn_of_callAt hr hP.1 hci).2 hB)
       ((SA.frameIn_of_callAt hr hy hcy.1).2 hB') (hBr.trans hBr'.symm)]
@@ -588,7 +589,7 @@ theorem ResetPremisesUpTo.reset_support_frame {b : Time}
       simp only [SA.voteViewList, SA.SAState.poolAt, Int.toNat_natCast, List.filter_filter,
         List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
         Bool.and_eq_true, decide_eq_true_eq] at hv
-      rw [SA.state_pool_slot sp hr hpH i s v hv.1]
+      rw [SA.state_pool_slot sp hr (fun _ => SA.voteStart_initial _) hpH i s v hv.1]
     obtain ⟨B', hB', hBr', _⟩ := hsup v (by rw [SA.blockSupport, hpay]; exact hv) hvs
     rwa [hr.coherent.1 ((SA.frameIn_of_callAt hr hpH hci).2 hB)
       ((SA.frameIn_of_callAt hr hy hcy.1).2 hB') (hBr.trans hBr'.symm)]

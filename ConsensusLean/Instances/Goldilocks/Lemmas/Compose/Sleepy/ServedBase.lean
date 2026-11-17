@@ -45,9 +45,9 @@ theorem mem_latest_votes {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {u : Vote sp.n} (hu : u ∈ (tr.projAC.state y i).pool L) :
     u ∈ (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1.votes := by
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
-  have hus : u.slot = L := SA.state_pool_slot_from sp hr hrun.vstart hy i L u hu
+  have hus : u.slot = L := SA.state_pool_slot sp hr hrun.vstart hy i L u hu
   have hst : (tr.projAC.state y i).voteStamp u < ⊤ := by
-    rcases SA.pool_origin_from hr hrun.vstart hy i u (hus ▸ hu) with
+    rcases SA.pool_origin hr hrun.vstart hy i u (hus ▸ hu) with
       ⟨k, -, -, h, -⟩ | ⟨k, -, -, -, -, h, -⟩ <;>
       rw [h] <;> exact WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _)
   rw [projAC_state hrun.toLocalRun hy] at hu hst
@@ -118,7 +118,7 @@ theorem latest_honest_supporter_of_target_votes (hrun : GoldilocksRun proposer d
       t).1.votes, u ∈ (tr.projAC.state y i).pool L ∧ u.slot = L := fun u hu => by
     have h := ((latestView_mem hL u).1.1 hu).1
     rw [← hst] at h
-    exact ⟨h, SA.state_pool_slot sp hr hy i L u h⟩
+    exact ⟨h, SA.state_pool_slot sp hr (fun _ => SA.voteStart_initial _) hy i L u h⟩
   obtain ⟨hvp, hvs⟩ := hpool v hvV
   -- the vote is `v.val`'s own, of slot `L`, and extends `R` (S2)
   obtain ⟨j', hj', e, hve, hev⟩ := hrun'.honest.pool_vote y hy i L v hvp hwH

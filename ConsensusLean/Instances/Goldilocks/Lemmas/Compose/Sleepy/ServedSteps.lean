@@ -374,7 +374,7 @@ theorem honest_head_in_frame_at_read {ini} (hrun : GoldilocksRun proposer dg H t
   have hHdjc : Hd' ∈ (Node.frame (tr.state y jc)).tree :=
     ⟨hinj, anc_of_anc_superset hU (fun X hX => ⟨y, hy, jc, hX⟩) (by simp [Params.genesisBlock])
       (hanc jc) (hgr.2.trans hF) hinj⟩
-  have hst := SA.blockStamp_lt_of_acceptedBefore_from sp hr hrun.vstart hy hcj
+  have hst := SA.blockStamp_lt_of_acceptedBefore sp hr hrun.vstart hy hcj
     (by rw [hframe]; exact hHdjc) hacc
     (fun k hk hrk => by
       change tr.time k < _
@@ -521,9 +521,9 @@ theorem latest_vote_delivered {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     exact hpm h
   · rw [hes] at ha ha'
     have h1 := huniq _ _ a ha hav
-      (by simpa [hes] using SA.state_pool_slot_from sp hr hrun.vstart hy _ L a ha)
+      (by simpa [hes] using SA.state_pool_slot sp hr hrun.vstart hy _ L a ha)
     have h2 := huniq _ _ a' ha' hav'
-      (by simpa [hes] using SA.state_pool_slot_from sp hr hrun.vstart hy _ L a' ha')
+      (by simpa [hes] using SA.state_pool_slot sp hr hrun.vstart hy _ L a' ha')
     exact absurd (h1.trans h2.symm) hne
 
 /-- **The awake validators vote in the latest view** (Sync): at a read at `t`, an honest

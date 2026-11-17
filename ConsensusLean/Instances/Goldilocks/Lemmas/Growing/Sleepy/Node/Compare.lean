@@ -83,8 +83,8 @@ private theorem result_side_at {ini} (hrun : Growing.GoldilocksRun proposer dg H
       ((ac_restartAt_upTo tr.projAC).2 ⟨hrun.time_mono hk, hrk⟩)
   · rintro u ⟨v, ⟨hvp, -, hres, R, hR, hRr, hDR⟩, rfl⟩
     have hvp' : v ∈ ((tr.projAC.upTo (tr.time c)).state Y c).pool s := hst.symm ▸ hvp
-    have hvs := SA.state_pool_slot_from sp hr.localRun hr.vstart hY c s v hvp'
-    obtain ⟨k, hsend, h1, h2⟩ := SA.admitted_of_held_from hr.localRun hr.vstart hY hvs hvp' le_rfl
+    have hvs := SA.state_pool_slot sp hr.localRun hr.vstart hY c s v hvp'
+    obtain ⟨k, hsend, h1, h2⟩ := SA.admitted_of_held hr.localRun hr.vstart hY hvs hvp' le_rfl
       (fun k _ hstk => by
         rw [hst] at hstk
         have hst' : (tr.projAC.state Y c).voteStamp v < SA.ETime.of (sp.ts s + 2 * sp.Δ) := by

@@ -76,7 +76,7 @@ theorem FrameWindow.finalized_anc_head_at_cast_at {lo hi : Time} {floor : Nat}
     · exact (Anc.mem (SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i)) he).2
   have hcast : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ell e := ⟨hci, hc.2⟩
   exact Anc.mono hPhi.2 (SA.finalized_floor_anc_getHead hPhi.1 (fun _ h => h.1)
-    (SA.voterBlockTree_anc_from hri hrun.vstart hy hcast) hfloor hY hvY (hfloor Y hvY)
+    (SA.voterBlockTree_anc hri hrun.vstart hy hcast) hfloor hY hvY (hfloor Y hvY)
     e.readPoint (tr.time i) _ _ (SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i))
     (SA.anc_tree_of_anc_U hac.localRun.coherent hPhi.1 hPhi.2 hat haF hFt))
 

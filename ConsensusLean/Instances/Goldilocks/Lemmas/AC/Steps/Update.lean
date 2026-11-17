@@ -75,7 +75,7 @@ theorem update_extends_of_resolved_votes
   set A := tr.state z k
   set Φ := ℓ.frame
   set Hv := {v | v ∈ H ∧ ∃ x' ∈ A.pool (s + 1), x'.val = v}
-  have hps := state_pool_slot_from sp hr hrun.vstart hz k (s + 1)
+  have hps := state_pool_slot sp hr hrun.vstart hz k (s + 1)
   -- an honest vote of the pool: no second vote, resolved early, its head extends `B`
   have key : ∀ v ∈ A.pool (s + 1), v.val ∈ H →
       v.val ∉ equivocators {x | x ∈ A.pool (s + 1)} ∧

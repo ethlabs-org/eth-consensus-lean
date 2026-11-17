@@ -104,7 +104,7 @@ theorem call_locks_compatible_of_unanimous_at {cm : Time → Finset (Fin sp.n)} 
       obtain ⟨r, hrj, D, hslow, hX⟩ := SA.slow_lock_provenance_from hr hp.run.vstart hy j l hl' hf
       exact ⟨r, hrj, D, Or.inr hslow, hX⟩
     | true =>
-      obtain ⟨r, hrj, D, CV, hfast, hX⟩ := SA.fast_lock_provenance_from hr hp.run.vstart hy j l
+      obtain ⟨r, hrj, D, CV, hfast, hX⟩ := SA.fast_lock_provenance hr hp.run.vstart hy j l
         hl' hf
       exact ⟨r, hrj, D, Or.inl ⟨CV, hfast⟩, hX⟩
   obtain rfl : B = X := (hr.coherent.1 hX (hPhiU hB) (hXr.trans hBr.symm)).symm

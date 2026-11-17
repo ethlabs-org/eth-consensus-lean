@@ -90,7 +90,7 @@ theorem unlockKeeps_of_voteCompat {ini} (hrun : GoldilocksRun proposer dg H tr i
     rw [tr.state_succ_of_call hcall, hst]
   have hpool : ∀ m τ, ∀ v ∈ (tr.state y m).ac.pool τ, v.slot = τ := fun m τ v hv => by
     rw [← projAC_state hrun.toLocalRun hy] at hv
-    exact SA.state_pool_slot_from sp hr hrun.vstart hy m τ v hv
+    exact SA.state_pool_slot sp hr hrun.vstart hy m τ v hv
   have hpay : ∀ C ∈ (Node.frame (tr.state y j)).tree, SA.validPayload C := by
     rw [← hfr]
     exact SA.frame_validPayload sp hr hy (projAC_callAt.2 hcall)

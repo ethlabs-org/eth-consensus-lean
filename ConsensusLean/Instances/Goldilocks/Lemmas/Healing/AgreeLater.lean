@@ -608,7 +608,7 @@ theorem voter_passes_proposer_root
   have hRv : ℓp.frame.fcRoot ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) :=
     ⟨⟨hRt, Or.inr ⟨P, hPt, hPs, hRPy⟩⟩,
       SA.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfR hRt, W, hW, hWv, hRPy.trans hPW⟩
-  have hdomA := SA.voterBlockTree_anc hr hy hcy
+  have hdomA := SA.voterBlockTree_anc hr (fun _ => SA.voteStart_initial _) hy hcy
   rw [hes] at hdomA
   have hkey := fun W hW hWv => root_below_voterHeads hS hRP hy hcy hes (W := W) hW hWv
   have hlk := readPoint_lockBlocks_below hS hlock hy hcy hes hIH

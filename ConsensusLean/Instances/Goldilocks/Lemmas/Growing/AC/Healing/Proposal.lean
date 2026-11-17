@@ -54,7 +54,7 @@ theorem optimistic_first_proposal_anc_at
   set SX := optimisticVoters sp A ellX.frame σ D
   have hcover : SX ⊆ supporters ell.frame V σ B ∪ equivocators V.votes := by
     rintro w ⟨v, hv, rfl, R', hR', hR'r, hDR'⟩
-    have hvs := optimisticPoint_pool_slot_from hrX.localRun hrX.vstart hX hpt' hv
+    have hvs := optimisticPoint_pool_slot hrX.localRun hrX.vstart hX hpt' hv
     by_cases heq : v.val ∈ equivocators V.votes
     · exact Or.inr heq
     left

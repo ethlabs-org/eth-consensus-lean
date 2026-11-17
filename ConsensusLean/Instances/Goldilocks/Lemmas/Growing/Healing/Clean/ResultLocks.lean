@@ -86,7 +86,7 @@ theorem result_prefix_stored_locks_at
       exact down (hLD.mono sub) (compare (hp.run.antitone (hm hqi.le) hy)
         ((hm hqi.le).trans hib) (Or.inr hsl'))
     · obtain ⟨q, hqi, D, CV', hfl, L, hL, hLr, hLD⟩ :=
-        SA.fast_lock_provenance_from hac.localRun hp.run.vstart hy i l hl hf
+        SA.fast_lock_provenance hac.localRun hp.run.vstart hy i l hl hf
       obtain rfl : Y = L := hU.1 hY (sub hL) (hYr.trans hLr.symm)
       exact down (hLD.mono sub) (compare (hp.run.antitone (hm hqi.le) hy)
         ((hm hqi.le).trans hib) (Or.inl ⟨CV', ((SA.upTo_fastLockAt hm).mp hfl).2⟩))

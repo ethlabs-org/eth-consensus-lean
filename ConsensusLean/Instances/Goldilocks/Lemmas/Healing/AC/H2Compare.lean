@@ -111,7 +111,7 @@ theorem h2_compare_reader (hS : HealthyBase tr H U proposer g) {p k : Nat} (hp :
             ((hgeo k ℓp hck hcall htk y hy i ℓ e hc hes).2 W hW he |>.1 hWv))
       have hPvt : P ∈ Ty := ⟨⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩,
         hΦ.fcRoot_anc_viableHeads P hPv, P, ⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩, hPv, .refl⟩
-      have hclosed := voterBlockTree_anc hr hy hc
+      have hclosed := voterBlockTree_anc hr (fun _ => voteStart_initial _) hy hc
       rw [hes] at hclosed
       have hPHd : Anc U P Hd := Anc.mono hΦU
         (h2_walk_reaches_root hΦ (fun _ h => h.1)

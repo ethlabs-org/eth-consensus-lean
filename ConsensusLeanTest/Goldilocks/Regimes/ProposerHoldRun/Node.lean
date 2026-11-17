@@ -342,7 +342,8 @@ theorem pool_vote_slot {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) (c : Na
   have hac :=
     (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
   rw [← Compose.projAC_state rhoc_run.toLocalRun hy] at hx
-  rcases SA.pool_origin hac hy c x hx with ⟨k, -, ⟨ℓ, hc, hsa⟩, -, -⟩ | ⟨k, -, ℓ, hc, hrs, -⟩
+  rcases SA.pool_origin hac (fun _ => SA.voteStart_initial _) hy c x hx with
+    ⟨k, -, ⟨ℓ, hc, hsa⟩, -, -⟩ | ⟨k, -, ℓ, hc, hrs, -⟩
   · rcases hsa with ⟨e, he, rfl⟩ | ⟨hnr, hpre, hpost⟩
     · exact absurd ((SA.castAt_spec hac hy ⟨hc, he⟩).1 ▸ hy) hxH
     · have hex := hac.exec k ℓ hc.2 (hc.1 ▸ hy)

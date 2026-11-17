@@ -62,7 +62,8 @@ theorem viable_of_acceptedAC (hr : ACLocalRunU wm u H U tr) (htriv : TrivialFram
     linarith only [hΔ, hti, hlt, this]
   have hBy : B ∈ ℓ.frame.tree := by
     rw [htreey]; exact Set.mem_insert_of_mem _ ⟨k', hk'i, hacc'⟩
-  have hst := blockStamp_lt_of_acceptedBeforeU sp hr hy hc.1 hBy (Or.inr ⟨k', hacc', hlt⟩)
+  have hst := blockStamp_lt_of_acceptedBeforeU sp hr (fun _ => voteStart_initial _)
+    hy hc.1 hBy (Or.inr ⟨k', hacc', hlt⟩)
     (fun k'' hk'' hr'' => lt_of_le_of_lt (hrsy k'' hk'' hr'') (by linarith only [hΔ]))
     (Or.inl (by linarith only [hΔ, hti]))
   have hrp : e.readPoint.blockStamp B.root = (tr.state y i).blockStamp B.root := by

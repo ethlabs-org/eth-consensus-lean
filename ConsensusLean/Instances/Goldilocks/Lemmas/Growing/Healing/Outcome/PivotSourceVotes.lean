@@ -140,7 +140,7 @@ theorem proposal_start_supported_at
       exact ⟨r, hri, D, Or.inr ⟨ell, C,
         ((SA.upTo_updateAt hp.run.time_mono).mp hu).2, hconf, hdeep⟩, hL⟩
     | true =>
-      obtain ⟨r, hri, D, CV, hfl, hL⟩ := SA.fast_lock_provenance_from hr hac.vstart hpH i l₁
+      obtain ⟨r, hri, D, CV, hfl, hL⟩ := SA.fast_lock_provenance hr hac.vstart hpH i l₁
         (hstate ▸ hl₁) hf
       exact ⟨r, hri, D, Or.inl ⟨CV, ((SA.upTo_fastLockAt hp.run.time_mono).mp hfl).2⟩, hL⟩
   obtain rfl : L = B₁ := hU.1 hLU (hPhiU hB₁) (hLr.trans hB₁r.symm)

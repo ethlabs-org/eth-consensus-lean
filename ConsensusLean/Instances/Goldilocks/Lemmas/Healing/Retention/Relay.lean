@@ -170,7 +170,8 @@ theorem relay_mem_voterBlockTree (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
     linarith only [hkyt, this]
   have hfz : SA.freeze sp e.msg.slot ≤ T.time i := by unfold SA.freeze; linarith only [hΔ, hm, hti]
   have hWt := SA.mem_tree_of_acceptAt sp hr hy hacc hky hc.1 hF
-  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hWt (Or.inr ⟨ky, hacc, hkyt'⟩)
+  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr (fun _ => SA.voteStart_initial _)
+    hy hc.1 hWt (Or.inr ⟨ky, hacc, hkyt'⟩)
     (fun k hk hrk => lt_of_le_of_lt (hrsy k hk hrk) (by unfold SA.freeze; linarith only [hΔ]))
     (Or.inl hfz)
   have hne : ∀ B, ℓ.call = .block B → W.root ≠ B.root := by
@@ -234,7 +235,8 @@ private theorem relay_mem_voterBlockTree_window_aux
   obtain ⟨ky, hky, hacc, hkyt⟩ := haccepted
   have hfz : SA.freeze sp e.msg.slot ≤ T.time i := by unfold SA.freeze; linarith only [hΔ, hm, hti]
   have hWt := SA.mem_tree_of_acceptAt sp hr hy hacc hky hc.1 hF
-  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hWt (Or.inr ⟨ky, hacc, hkyt⟩)
+  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr (fun _ => SA.voteStart_initial _)
+    hy hc.1 hWt (Or.inr ⟨ky, hacc, hkyt⟩)
     (fun k hk hrk => lt_of_le_of_lt (hrsy k hk hrk) (by unfold SA.freeze; linarith only [hΔ]))
     (Or.inl hfz)
   have hne : ∀ B, ℓ.call = .block B → W.root ≠ B.root := by
@@ -319,7 +321,7 @@ theorem fastLock_writer {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T
   rcases hfl with ⟨ℓX, C, ⟨hcX, htick, -, -⟩, -, -, -, rfl⟩ | ⟨ℓx, A, hp, hsl, hsel, rfl⟩
   · have hΦXU : ℓX.frame.tree ⊆ U := (SA.frameIn_of_callAt hr hx hcX).2
     rintro v ⟨hvp, -, hvres, R, hR, hRr, hCR⟩
-    have hvs : v.slot = s := SA.state_pool_slot_from sp hr hini hx i₀ s v hvp
+    have hvs : v.slot = s := SA.state_pool_slot sp hr hini hx i₀ s v hvp
     obtain ⟨hvst, hbst⟩ : (T.state x i₀).voteStamp v < SA.ETime.of (sp.ts s + 2 * sp.Δ) ∧
         (T.state x i₀).blockStamp v.head < SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
       unfold SA.resolutionTime at hvres
@@ -329,7 +331,7 @@ theorem fastLock_writer {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T
         · exact absurd hvres (by simp [SA.ETime.of])
         · exact max_lt_iff.1 hvres
     refine ⟨hvs, ?_, R, hΦXU hR, hRr, Anc.mono hΦXU hCR, ?_⟩
-    · rcases SA.pool_origin_from hr hini hx i₀ v (by rw [hvs]; exact hvp) with
+    · rcases SA.pool_origin hr hini hx i₀ v (by rw [hvs]; exact hvp) with
         ⟨k, -, hsend, hst, hsl⟩ | ⟨k, -, ℓk, hck, -, hst, B, hB, hvB⟩
       · rw [hst, SA.etime_of_lt_of] at hvst
         exact ⟨k, hsend, (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2
@@ -369,9 +371,9 @@ theorem fastLock_writer {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T
     have hΦU : ℓx.frame.tree ⊆ U := (SA.frameIn_of_callAt hr hx hc).2
     rintro v ⟨hvA, R, hR, hRr, hCR⟩
     have hv1 := SA.optimisticPoint_pool_post hr hx hp s hvA
-    have hvs : v.slot = s := SA.state_pool_slot_from sp hr hini hx (i₀ + 1) s v hv1
+    have hvs : v.slot = s := SA.state_pool_slot sp hr hini hx (i₀ + 1) s v hv1
     refine ⟨hvs, ?_, R, hΦU hR, hRr, Anc.mono hΦU hCR, ?_⟩
-    · rcases SA.pool_origin_from hr hini hx (i₀ + 1) v (by rw [hvs]; exact hv1) with
+    · rcases SA.pool_origin hr hini hx (i₀ + 1) v (by rw [hvs]; exact hv1) with
         ⟨k, hk, hsend, -, hsl'⟩ | ⟨k, hk, ℓk, hck, -, -, B, hB, hvB⟩
       · exact ⟨k, hsend, (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2
           (by rw [← hvs]; exact_mod_cast hsl'), lt_of_le_of_lt (hr.time_mono (by omega)) hti⟩
@@ -472,19 +474,20 @@ theorem voterBlockTree_of_relay_source
       rw [← hys] at ht
       unfold SA.freeze
       linarith only [hΔ, ht]
-    have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hDt (Or.inl hGr)
+    have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr (fun _ => SA.voteStart_initial _)
+      hy hc.1 hDt (Or.inl hGr)
       hrs (Or.inl hfz.le)
     have hne : ∀ X, ℓ.call = .block X → G.root ≠ X.root := by
       intro X hcall heq
       exact SA.accept_ne_genesis sp hr hy ⟨ℓ, hc.1, hcall⟩ (heq.symm.trans hGr)
     rw [← SA.readPoint_blockStamp hr hy hc hne] at hbs
     have hBt := SA.frame_mem_of_between sp hr.coherent hΦ hΦU hDt hBD hF
-    exact SA.voterBlockTree_anc hr hy hc G ⟨hDt, Or.inl hbs⟩ B
+    exact SA.voterBlockTree_anc hr (fun _ => SA.voteStart_initial _) hy hc G ⟨hDt, Or.inl hbs⟩ B
       (SA.anc_tree_of_anc_U hr.coherent hΦ hΦU hBt hBD hDt)
   · have hDt := relay_mem_voterBlockTree_window_before hr hsync hcatch hx hy hq hqt
       hc hs hi hcatchTime (hF.trans hBD)
     have hBt := SA.frame_mem_of_between sp hr.coherent hΦ hΦU hDt.1 hBD hF
-    exact SA.voterBlockTree_anc hr hy hc D hDt B
+    exact SA.voterBlockTree_anc hr (fun _ => SA.voteStart_initial _) hy hc D hDt B
       (SA.anc_tree_of_anc_U hr.coherent hΦ hΦU hBt hBD hDt.1)
 
 /-- A raw writer's ancestor is available in a later voter's frozen block tree. -/

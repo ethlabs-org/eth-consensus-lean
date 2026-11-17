@@ -325,7 +325,8 @@ private theorem mem_voterBlockTree_of_accept {FGP : Type} {ro' : ReplayOrder sp 
     rw [← hys] at this
     unfold SA.freeze
     linarith only [hΔ, this]
-  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hWt (Or.inr ⟨k', hacc, hkt⟩)
+  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr (fun _ => SA.voteStart_initial _)
+    hy hc.1 hWt (Or.inr ⟨k', hacc, hkt⟩)
     hrsy (Or.inl hfz)
   -- the vote's call does not accept `W`
   have hne : ∀ B, ℓ.call = .block B → W.root ≠ B.root := by

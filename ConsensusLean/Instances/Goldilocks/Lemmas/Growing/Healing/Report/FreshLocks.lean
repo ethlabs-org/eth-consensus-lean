@@ -109,7 +109,7 @@ theorem FrameWindow.unanimous_update_no_veto_at {K : SA.CommitteeDict sp.n}
     exact Or.inl ((hLB.mono hsub).trans
       (hBP.mono (fun Q hQ => hsub ((SA.frameIn_of_callAt hr hy hup.1).2 hQ))))
   · obtain ⟨r, hrk, B, CV, hfl, L₁, hL₁, hL₁r, hLB⟩ :=
-      SA.fast_lock_provenance_from hr hrun.vstart hy k l hl' hfast
+      SA.fast_lock_provenance hr hrun.vstart hy k l hl' hfast
     have hLL₁ : L = L₁ := hU.1 hL (hsub hL₁) (hLr.trans hL₁r.symm)
     rw [← hLL₁] at hLB
     have hgl : gbar g ≤ sp.ts l.slot := hgu.trans ((SA.ts_le_iff sp).2 (by omega))

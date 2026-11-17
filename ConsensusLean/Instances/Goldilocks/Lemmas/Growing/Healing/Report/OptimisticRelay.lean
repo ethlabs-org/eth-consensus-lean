@@ -144,7 +144,7 @@ theorem relay_source_at_proposal_at
     rcases ha with hg | ⟨k, hki, hk, hkt⟩
     · exact Or.inl hg
     · exact Or.inr ⟨k, ACTrace.upTo_acceptAt.mpr ⟨hmono hki, hk⟩, hkt⟩
-  have hbs := SA.blockStamp_lt_of_acceptedBefore_from sp hr hrun.vstart hy hc' hQt hacc
+  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hrun.vstart hy hc' hQt hacc
     (fun k hk hrk => by
       obtain ⟨-, hrk⟩ := ACTrace.upTo_restartAt.mp hrk
       change tr.time k < _

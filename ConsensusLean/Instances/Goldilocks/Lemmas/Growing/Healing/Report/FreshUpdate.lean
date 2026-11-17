@@ -136,7 +136,7 @@ theorem blockStamp_early_of_historical_acceptance_at
   have haq' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time j)) y q P := by
     obtain ⟨ellq, hcq, heq⟩ := haq
     exact ⟨ellq, (Trace.upTo_callAt _).mpr ⟨hrun.time_mono hqj, hcq⟩, heq⟩
-  have hp := SA.blockStamp_lt_of_acceptedBefore_from sp hr hrun.vstart hy hc' hPt
+  have hp := SA.blockStamp_lt_of_acceptedBefore sp hr hrun.vstart hy hc' hPt
     (Or.inr ⟨q, haq', by change tr.time q < _; rw [hti] at hqt; linarith [sp.toParams.hΔ]⟩)
     (fun k _ hrs => by
       have hck := hrs.choose_spec.1
@@ -202,7 +202,7 @@ theorem unanimous_early_pool_of_blockStamp_at {K : SA.CommitteeDict sp.n}
   obtain ⟨q, _, e', he', rfl⟩ := hS.run.honest.pool_vote y hy j u v' hm'' (hv'x ▸ hx)
   rw [hv'x] at he'
   obtain ⟨_, rfl⟩ := SA.one_vote_per_slotU sp _ _ _ _ _ hr.toU x hx q i e' e he' hv'
-    ((SA.state_pool_slot_from sp hr hS.run.vstart hy j u _ hm'').trans hes.symm)
+    ((SA.state_pool_slot sp hr hS.run.vstart hy j u _ hm'').trans hes.symm)
   rfl
 
 /-- The warm route assembles the early unanimous pool using only joinedness at

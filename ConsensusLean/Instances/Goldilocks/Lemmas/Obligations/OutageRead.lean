@@ -51,7 +51,7 @@ theorem late_reader_record_cover
       have hBL := cover_of_veto hr.coherent hBC (hlocksB L (by simpa only [hst] using hL))
         hconflict
       obtain ⟨Φp, tp, hreach, -, hok⟩ := Compose.pre_reachable hr hy hu.1
-      obtain ⟨hin, -, hinv⟩ := SA.lockInv_of_reachable_from hr.coherent (hrun.vstart _) hreach
+      obtain ⟨hin, -, hinv⟩ := SA.lockInv_of_reachable hr.coherent (hrun.vstart _) hreach
       have hinv' := hinv.callOK hr.coherent hin hok
       obtain ⟨E, hE, hEr, hLE⟩ := hinv'.liveBlock_anc hr.coherent hΦ hΦU hL
       have hlookup : SA.lookup ell.frame (tr.projAC.state y c).latestConfirmed = some E := by

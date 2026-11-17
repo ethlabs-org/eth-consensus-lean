@@ -50,7 +50,7 @@ private theorem result_sideU
     unfold confirmationScore at hmaj
     exact hmaj
   · rintro u ⟨-, v, ⟨hvp, hres⟩, rfl, -, R, hR, hRr, hDR⟩
-    have hvs := state_pool_slotU sp hr hY c s v hvp
+    have hvs := state_pool_slotU sp hr (fun _ => voteStart_initial _) hY c s v hvp
     rw [fwd_iff]
     refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩,
       admitted_of_heldU hr (fun _ => voteStart_initial _) hY hvs hvp le_rfl

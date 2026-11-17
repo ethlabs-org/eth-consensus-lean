@@ -233,7 +233,7 @@ theorem interface_requirements_from (FGP : Type) (ro : ReplayOrder sp FGP) {s₀
   · -- requirement 1: the heads of the duties
     intro x U hU A Φ t₀ hr
     replace hr := ACInterface.reachableAtFrom_iff.2 hr
-    obtain ⟨⟨hΦ, hΦU⟩, ht₀, h⟩ := lockInv_of_reachable_from hU h₀ hr
+    obtain ⟨⟨hΦ, hΦU⟩, ht₀, h⟩ := lockInv_of_reachable hU h₀ hr
     refine ⟨fun σ _ d p hp => ?_, fun t c Φ' ht hok e he d hd => ?_⟩
     · change (acProposal sp A Φ _).2 = _ at hp
       unfold acProposal at hp
@@ -259,7 +259,7 @@ theorem interface_requirements_from (FGP : Type) (ro : ReplayOrder sp FGP) {s₀
   · -- requirement 3: the head and the confirmed tip
     intro x U hU A Φ t₀ hr t _
     obtain ⟨⟨hΦ, hΦU⟩, -, h⟩ :=
-      lockInv_of_reachable_from hU h₀ (ACInterface.reachableAtFrom_iff.2 hr)
+      lockInv_of_reachable hU h₀ (ACInterface.reachableAtFrom_iff.2 hr)
     change Φ.Anc Φ.fcRoot (acHead sp A Φ t) ∧ Φ.Anc Φ.F (acConfirmed sp A Φ t) ∧
       Φ.Anc (acConfirmed sp A Φ t) (acHead sp A Φ t)
     obtain ⟨ha, -⟩ := anc_getAnchor hΦ (h.liveBlocks_chain hU hΦ hΦU (t := t))

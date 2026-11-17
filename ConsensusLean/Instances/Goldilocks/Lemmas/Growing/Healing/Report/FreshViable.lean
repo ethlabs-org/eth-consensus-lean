@@ -116,7 +116,7 @@ theorem FrameWindow.unanimous_update_selection_at {K : SA.CommitteeDict sp.n}
     exact ⟨ella, (Trace.upTo_callAt _).mpr ⟨le_rfl, hca⟩, hea⟩
   have hslots : ∀ v ∈ (tr.projAC.state y k).pool u, v.slot = u := by
     intro v hv
-    apply SA.state_pool_slot_from sp hr hrun.vstart hy k u v
+    apply SA.state_pool_slot sp hr hrun.vstart hy k u v
     rwa [hs]
   obtain ⟨hconf, hfast⟩ := SA.confirmation_of_unanimous_early_pool
     (SA.frameIn_of_callAt hr hy hc').1 hvi.1 hPg K (hK.facts.hsize u)

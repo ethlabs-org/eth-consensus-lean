@@ -213,7 +213,7 @@ private theorem trivial_stampU
     (hacc : R.root = sp.genesisRoot ∨ ∃ k < i, tr.AcceptAt x k R) :
     (tr.state x i).blockStamp R.root < ⊤ := by
   have hr := hS.run.localRun
-  exact lt_trans (blockStamp_lt_of_acceptedBeforeU sp hr hx hc hR
+  exact lt_trans (blockStamp_lt_of_acceptedBeforeU sp hr (fun _ => voteStart_initial _) hx hc hR
     (hacc.imp id fun ⟨k, hk, hacc⟩ =>
       ⟨k, hacc, lt_of_le_of_lt (hr.time_mono hk.le) (lt_add_one _)⟩)
     (fun k hk _ => lt_of_le_of_lt (hr.time_mono hk) (lt_add_one _))
@@ -359,7 +359,7 @@ theorem counted_at_proposalU
   have hΔ := sp.toParams.hΔ
   obtain ⟨hΦX, hΦXU⟩ := frameIn_of_callAtU hr hX hupd.1
   obtain ⟨hvp, hneqX, hres, R, hR, hRr, hER⟩ := hv
-  have hvs := state_pool_slotU sp hr hX i₀ σ v hvp
+  have hvs := state_pool_slotU sp hr (fun _ => voteStart_initial _) hX i₀ σ v hvp
   unfold resolutionTime at hres
   rw [← hRr, SA.lookup_of_mem hΦX hR] at hres
   dsimp only at hres

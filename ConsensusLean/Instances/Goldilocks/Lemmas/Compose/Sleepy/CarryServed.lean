@@ -157,12 +157,12 @@ theorem carryAt_of_served {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U
     have hheld : ∀ u ∈ (T.state y (k' + 1)).pool s,
         SA.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
       intro u hu
-      have hus : u.slot = s := SA.state_pool_slot_from sp hr hini hy (k' + 1) s u hu
+      have hus : u.slot = s := SA.state_pool_slot sp hr hini hy (k' + 1) s u hu
       obtain ⟨hpool, hstamp⟩ := readPoint_slot hr hy hc (σ := s) (by omega)
       have hu' := SA.pool_mono hr hy (show k' + 1 ≤ i + 1 by omega) hnr s hu
       refine ⟨by rw [hus, ← hpool]; exact hu', ?_⟩
       rw [← hstamp u hus]
-      rcases SA.pool_origin_from hr hini hy (i + 1) u (by rw [hus]; exact hu') with
+      rcases SA.pool_origin hr hini hy (i + 1) u (by rw [hus]; exact hu') with
         ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
       · rw [hst₁, SA.etime_of_lt_of]
         by_cases hk₁k' : k₁ ≤ k'
@@ -185,8 +185,8 @@ theorem carryAt_of_served {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U
         exact absurd h hv'
       · have ha' : a ∈ (T.state y (k' + 1)).pool s := by rw [← hvs]; exact ha
         have hc' : c ∈ (T.state y (k' + 1)).pool s := by rw [← hvs]; exact hc''
-        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv, SA.state_pool_slot_from sp hr hini hy _ s a ha',
-          SA.state_pool_slot_from sp hr hini hy _ s c hc', hheld a ha', hheld c hc'⟩
+        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv, SA.state_pool_slot sp hr hini hy _ s a ha',
+          SA.state_pool_slot sp hr hini hy _ s c hc', hheld a ha', hheld c hc'⟩
         · rintro rfl; exact hv' ha'
         · rintro rfl; exact hv' hc'
 

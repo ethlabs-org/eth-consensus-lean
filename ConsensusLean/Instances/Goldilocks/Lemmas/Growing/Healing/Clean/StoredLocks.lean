@@ -71,7 +71,7 @@ theorem clean_stored_locks_compatible_at {cm : Time → Finset (Fin sp.n)} {βK 
           · simpa only [hstate, Trace.upTo_time] using hdeep
         exact ⟨q, hqi, D, Or.inr hslow, L, sub hL, hLr, hLD.mono sub⟩
       · obtain ⟨q, hqi, D, CV, hD, L, hL, hLr, hLD⟩ :=
-          SA.fast_lock_provenance_from hac.localRun hac.vstart hy i l (state ▸ hl) hf
+          SA.fast_lock_provenance hac.localRun hac.vstart hy i l (state ▸ hl) hf
         exact ⟨q, hqi, D, Or.inl ⟨CV, ((SA.upTo_fastLockAt htmono).mp hD).2⟩,
           L, sub hL, hLr, hLD.mono sub⟩
     obtain rfl : B = L := hU.1 hB hL (hBr.trans hLr.symm)

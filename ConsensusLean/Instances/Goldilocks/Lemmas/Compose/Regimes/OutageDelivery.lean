@@ -98,13 +98,13 @@ theorem vote_pooled_before_early {ini} (hrun : SA.ACRun proposer T H U ini)
       rw [hav, hxv] at hea
       rw [hbv, hxv] at heb
       obtain ⟨-, rfl⟩ := SA.one_vote_per_slotU sp FGP ro H U T hr.toU x hx ja jb ea eb hea heb
-        (by rw [hea', heb', SA.state_pool_slot_from sp hr hrun.vstart hy _ q a ha,
-          SA.state_pool_slot_from sp hr hrun.vstart hy _ q b hb])
+        (by rw [hea', heb', SA.state_pool_slot sp hr hrun.vstart hy _ q a ha,
+          SA.state_pool_slot sp hr hrun.vstart hy _ q b hb])
       exact absurd (hea'.symm.trans heb') hab
   have hpool : e.msg ∈ (T.state y c).pool q :=
     SA.pool_mono hr hy (show k' + 1 ≤ c by omega) (fun r h₁ h₂ => hnr r h₁ (by omega)) q hpk'
   refine ⟨hpool, ?_⟩
-  rcases SA.pool_origin_from hr hrun.vstart hy c e.msg (by rw [hes]; exact hpool) with
+  rcases SA.pool_origin hr hrun.vstart hy c e.msg (by rw [hes]; exact hpool) with
     ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
   · rw [hst₁, SA.etime_of_lt_of]
     by_cases hk₁k' : k₁ ≤ k'

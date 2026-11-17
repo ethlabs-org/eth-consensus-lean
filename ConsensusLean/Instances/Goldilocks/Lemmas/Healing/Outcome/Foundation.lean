@@ -354,7 +354,8 @@ private theorem clean_source_vote_domain_step
         obtain ⟨z, ⟨-, v, ⟨hvp, -⟩, rfl, -, R, hR, hRr, hBR⟩, hz⟩ :=
           Set.exists_mem_notMem_of_ncard_lt_ncard hlt
         obtain ⟨q, _, e', hv, rfl⟩ := hS.run.honest.pool_vote x hx r s _ hvp (not_not.mp hz)
-        exact ⟨_, not_not.mp hz, q, e', hv, SA.state_pool_slot sp hr hx r s _ hvp,
+        exact ⟨_, not_not.mp hz, q, e', hv,
+          SA.state_pool_slot sp hr (fun _ => SA.voteStart_initial _) hx r s _ hvp,
           R, hΦU hR, hRr, hBR.mono hΦU⟩
       · have hΦU := (SA.frameIn_of_callAt hr hx hpt.1).2
         unfold SA.optimisticSelect at hsel

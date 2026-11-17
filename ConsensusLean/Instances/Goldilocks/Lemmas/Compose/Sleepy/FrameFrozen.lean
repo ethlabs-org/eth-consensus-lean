@@ -194,7 +194,7 @@ theorem accepted_voter_tree {ini} (hrun : GoldilocksRun proposer dg H tr ini)
         exact lt_irrefl _ (hT.trans (this.trans_lt hkt))
       exact SA.mem_tree_of_acceptAt sp hr hy hk hki hc.1 hFX
   -- its stamp before the call is below the freeze
-  have hbs := SA.blockStamp_lt_of_acceptedBefore_from sp hr hrun.vstart hy hc.1 hXt hacc
+  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hrun.vstart hy hc.1 hXt hacc
     (fun k hk hrk => lt_of_le_of_lt (hrs k hk hrk)
       (lt_add_of_pos_right _ (mul_pos (by norm_num) hΔ))) (Or.inl hT.le)
   -- the call does not receive `X`, so the read point keeps that stamp

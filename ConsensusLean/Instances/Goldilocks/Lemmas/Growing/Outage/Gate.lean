@@ -321,7 +321,7 @@ private theorem pool_vote_read
   have hv' : v ∈ ((tr.projAC.upTo d).state w i).pool σ := by rw [hst]; exact hv
   obtain ⟨j, hj, e, hve, hev⟩ := hr.honest.pool_vote w hw i σ v hv' hvH
   obtain ⟨hjd, hve⟩ := sa_voteAt_upTo.mp hve
-  exact ⟨SA.state_pool_slot_from sp hr.localRun hr.vstart hw i σ v hv', j, hj, e,
+  exact ⟨SA.state_pool_slot sp hr.localRun hr.vstart hw i σ v hv', j, hj, e,
     hVoteAt_iff.2 ⟨hrun.antitone hjd hvH, hve⟩, hev⟩
 
 /-- **L3** under growing faults: at a read by a node honest at the read time `d` (every cut

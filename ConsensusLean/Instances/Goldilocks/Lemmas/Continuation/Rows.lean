@@ -435,7 +435,8 @@ private theorem signed_source_lock (hrun : Growing.GoldilocksRun proposer dg H t
   have hsA : (tr.projAC.upTo (tr.time j)).state v j = (tr.state v j).ac := by
     rw [← RunTrace.upTo_projAC, projAC_state (hrun.upTo hd).toLocalRun hvj j, hst]
   obtain ⟨c, hcj', B', CV, hfl, L', hL', hL'r, hL'B'⟩ :=
-    SA.fast_lock_provenance hrA hvj j l₀ (by rw [hsA]; exact hl₀) hlf
+    SA.fast_lock_provenance hrA (fun _ => SA.voteStart_initial _) hvj j l₀
+      (by rw [hsA]; exact hl₀) hlf
   have hBU : B ∈ (tr.upTo (tr.time j)).HonestBlocks (H (tr.time j)) :=
     ⟨v, hvj, j, by rw [hst]; exact hB.1⟩
   obtain rfl : L' = B := hrA.coherent.1 hL' hBU (hL'r.trans hBr.symm)

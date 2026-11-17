@@ -184,8 +184,8 @@ private theorem writer_pool_of_syncU
     have := ((joined_awakeU sp) FGP ro H U tr hr X hX i₀ ℓX hcX hj').2 k hk hrk
     rwa [hsl, hcast] at this
   intro v hv
-  have hvs : v.slot = s := state_pool_slotU_from sp hr hrun.vstart hy (k + 1) s v hv
-  rcases pool_originU_from hr hrun.vstart hy (k + 1) v (hvs ▸ hv) with
+  have hvs : v.slot = s := state_pool_slotU sp hr hrun.vstart hy (k + 1) s v hv
+  rcases pool_originU hr hrun.vstart hy (k + 1) v (hvs ▸ hv) with
     ⟨k', hk', hsend, -, hsl⟩ | ⟨k', hk', ℓk, hck, hrk, -, B, hB, hvB⟩
   · have hsk : sp.ts s ≤ tr.time k' :=
       (ts_le_iff_le_slot sp (hr.time_nonneg k') s).2 (by rw [← hvs]; exact_mod_cast hsl)

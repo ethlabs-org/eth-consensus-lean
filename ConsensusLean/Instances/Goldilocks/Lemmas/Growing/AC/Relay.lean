@@ -120,9 +120,9 @@ theorem result_side {ini} (hrun : ACRun proposer tr H U ini)
     exact hrs k hk ((ACTrace.upTo_restartAt (A := goldilocksSA sp FGP ro)).mpr ⟨hm hk, hkr⟩)
   · rintro u ⟨v, ⟨hvp, _, hres, R, hR, hRr, hDR⟩, rfl⟩
     have hvp' : v ∈ ((tr.upTo (tr.time c)).state Y c).pool s := hs.symm ▸ hvp
-    have hvs := state_pool_slot_from sp hr.localRun hrun.vstart hY c s v hvp'
+    have hvs := state_pool_slot sp hr.localRun hrun.vstart hY c s v hvp'
     refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, ?_⟩
-    obtain ⟨k, hsend, h1, h2⟩ := admitted_of_held_from hr.localRun hrun.vstart hY hvs hvp' le_rfl
+    obtain ⟨k, hsend, h1, h2⟩ := admitted_of_held hr.localRun hrun.vstart hY hvs hvp' le_rfl
       (fun k _ hst => by
         rw [hs] at hst
         have hst' : (tr.state Y c).voteStamp v < ETime.of (sp.ts s + 2 * sp.Δ) := by

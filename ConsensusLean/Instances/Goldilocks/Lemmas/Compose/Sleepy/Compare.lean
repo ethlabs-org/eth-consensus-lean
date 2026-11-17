@@ -122,8 +122,9 @@ private theorem result_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : 
   obtain ⟨-, hΦU⟩ := frameIn_of_callAt hr hY hu.1
   refine ⟨ℓ, _, hu.1, hu.2.2.1, update_restarts hr hY hu, hmaj, ?_, ?_⟩
   · rintro u ⟨v, ⟨hvp, -, hres, R, hR, hRr, hDR⟩, rfl⟩
-    have hvs := state_pool_slot sp hr hY c s v hvp
-    refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, admitted_of_held hr hY hvs hvp le_rfl
+    have hvs := state_pool_slot sp hr (fun _ => voteStart_initial _) hY c s v hvp
+    refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩,
+      admitted_of_held hr (fun _ => voteStart_initial _) hY hvs hvp le_rfl
       fun k _ hst => ?_⟩
     have hst' : (tr.state Y c).voteStamp v < ETime.of (sp.ts s + 2 * sp.Δ) := by
       unfold resolutionTime at hres
@@ -159,10 +160,11 @@ private theorem optimistic_seats
   rw [hstock] at h34
   refine ⟨ℓ, A, hpt, hΦU, h34, ?_⟩
   rintro u ⟨v, hv, rfl, R, hR, hRr, hDR⟩
-  have hvs := optimisticPoint_pool_slot hr hX hpt hv
+  have hvs := optimisticPoint_pool_slot hr (fun _ => voteStart_initial _) hX hpt hv
   have htk : tr.time k < sp.ts s + 2 * sp.Δ := not_le.1 (not_or.1 (not_or.1 hcond).2).2
   refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, ?_⟩
-  exact admitted_of_held hr hX hvs (optimisticPoint_pool_post hr hX hpt s hv) le_rfl
+  exact admitted_of_held hr (fun _ => voteStart_initial _) hX hvs
+    (optimisticPoint_pool_post hr hX hpt s hv) le_rfl
     fun k' hk' _ => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hk')) htk
 
 /-- A `Relayed` vote reaches an honest node's update of slot `s` (its restarts at or before `t_s`)
@@ -693,7 +695,8 @@ private theorem honest_supporter_win
     obtain ⟨j, hj, e, hve, rfl⟩ := hrun'.honest.pool_vote X hX i₀ s _ hvp hwH
     obtain ⟨-, hΦU⟩ := SA.frameIn_of_callAt hr hX hu.1
     exact ⟨_, hwH, j, e, hve, (hrun.time_mono hj.le).trans hi₀,
-      SA.state_pool_slot sp hr hX i₀ s _ hvp, R, hΦU hR, hRr, Anc.mono hΦU hCR⟩
+      SA.state_pool_slot sp hr (fun _ => SA.voteStart_initial _) hX i₀ s _ hvp,
+      R, hΦU hR, hRr, Anc.mono hΦU hCR⟩
   · -- an optimistic selection: `3n/4 > f` voters
     obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO hstock
     have hf := two_faults_lt_of_window hwin
@@ -751,7 +754,8 @@ theorem honest_supporter_before
     obtain ⟨j, hj, e, hve, rfl⟩ := hrun'.honest.pool_vote X hX i₀ s _ hvp hwH
     obtain ⟨-, hΦU⟩ := SA.frameIn_of_callAt hr hX hu.1
     exact ⟨_, hwH, j, e, hve, (hrun.time_mono hj.le).trans hi₀,
-      SA.state_pool_slot sp hr hX i₀ s _ hvp, R, hΦU hR, hRr, Anc.mono hΦU hCR⟩
+      SA.state_pool_slot sp hr (fun _ => SA.voteStart_initial _) hX i₀ s _ hvp,
+      R, hΦU hR, hRr, Anc.mono hΦU hCR⟩
   · obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO hstock
     have hf : 2 * Hᶜ.ncard < sp.n := by
       have h := hfb 0 0 (by simp) (by simpa [SAParams.ts] using hb)

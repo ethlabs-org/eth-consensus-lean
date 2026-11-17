@@ -71,7 +71,7 @@ theorem optimistic_isBest_of_carry_at {ini : Fin sp.n → SAState sp.n}
     rintro w ⟨v, hv, rfl, R, hR, hRr, hDR⟩
     exact carried_cover hry hy hc' hs hBt hcarry'
       ⟨hv, R, hR, hRr, hDR⟩
-      (optimisticPoint_pool_slot_from hrx.localRun hrx.vstart hx hpt' hv)
+      (optimisticPoint_pool_slot hrx.localRun hrx.vstart hx hpt' hv)
       ⟨R, hΦxU hR, hRr, (frame_slot_le sp hrx.localRun hx hpt'.1 R hR).trans hslx.le,
         hBD.trans (Anc.mono hΦxU hDR)⟩
   have hVK : voters V.votes ⊆ K.committee s := by
@@ -115,7 +115,7 @@ theorem optimistic_prefix_of_carry_at {ini : Fin sp.n → SAState sp.n}
   have hT : ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)) ⊆ ℓ.frame.tree :=
     fun _ h => voteDomain_subset_tree h.1
   have hBt := hT hB
-  have hdomA := voteDomain_anc_from hry.localRun hry.vstart hy hc'
+  have hdomA := voteDomain_anc hry.localRun hry.vstart hy hc'
   rw [hs] at hdomA
   unfold getHead
   refine anc_ghost_of_best hΦ.1.coherent hT (hΦ.1.finite.subset hT) hBt _ haB

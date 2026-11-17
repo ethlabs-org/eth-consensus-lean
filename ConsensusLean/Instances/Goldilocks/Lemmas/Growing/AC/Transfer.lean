@@ -40,7 +40,7 @@ theorem result_transfer {ini} (hrun : ACRun proposer tr H U ini)
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_call hr hy hc'.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_anc_from hr hry.vstart hy hc'
+  have hdomA := voteDomain_anc hr hry.vstart hy hc'
   rw [hs] at hdomA
   have hCt : C ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -83,7 +83,7 @@ theorem result_transfer_anc {ini} (hrun : ACRun proposer tr H U ini)
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_call hr hy hc'.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_anc_from hr hrun.vstart hy hc'
+  have hdomA := voteDomain_anc hr hrun.vstart hy hc'
   rw [hs] at hdomA
   have hDt : D ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -155,7 +155,7 @@ theorem first_transfer_stored
   have hΦxU := (frameIn_of_call hrx.localRun hx hupd'.1).2
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_anc_from hry.localRun hrun.vstart hy hc'
+  have hdomA := voteDomain_anc hry.localRun hrun.vstart hy hc'
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h

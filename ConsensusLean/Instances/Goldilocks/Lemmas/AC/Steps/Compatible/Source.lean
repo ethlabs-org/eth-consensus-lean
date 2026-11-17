@@ -93,7 +93,8 @@ theorem source_compatible_stored :
     push_cast at this
     linarith
   -- the lock's origin: a fast lock of its slot that `x` wrote before the call
-  obtain ⟨j, hj, B', CV', hfl', L, hL, hLr, hLB'⟩ := fast_lock_provenance hr hx i l₀ hl₀ hlf
+  obtain ⟨j, hj, B', CV', hfl', L, hL, hLr, hLB'⟩ :=
+    fast_lock_provenance hr (fun _ => voteStart_initial _) hx i l₀ hl₀ hlf
   obtain rfl : B₀ = L := hU.1 (hΦU hB₀) hL (hB₀r.trans hLr.symm)
   have hs'σ : l₀.slot ≤ sp.slot (tr.time i) := by
     have hmono := slot_mono sp (hr.time_nonneg j) (hr.time_mono hj.le)

@@ -129,7 +129,8 @@ theorem vote_viable_of_root (hrun : GoldilocksRun proposer dg H tr) (hnc : Compo
       have hBt := SA.frame_mem_of_between sp hU hΦ hΦU hDt hBD hFB
       have hΦBD := SA.anc_tree_of_anc_U hU hΦ hΦU hBt hBD hDt
       have hΦfB := SA.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
-      refine Or.inl ⟨SA.voterBlockTree_anc hr hy hc D hD B hΦBD, hΦfB, D, hD, ?_, hΦBD⟩
+      refine Or.inl ⟨SA.voterBlockTree_anc hr (fun _ => SA.voteStart_initial _) hy hc D hD B hΦBD,
+        hΦfB, D, hD, ?_, hΦBD⟩
       have hfD := hΦfB.trans hΦBD
       rw [hfr] at hDt hfD ⊢
       exact ⟨hDt.1, hDt.2, Anc.mono (fun X hX => hX.1) hfD, hvD⟩
@@ -416,7 +417,7 @@ theorem historical_activation_cutZ_before
         (by omega) hk (hF.trans hBD)
       obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
       have hBt := SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hD.1 hBD hF
-      exact SA.voterBlockTree_anc hr hy hc D hD B
+      exact SA.voterBlockTree_anc hr (fun _ => SA.voteStart_initial _) hy hc D hD B
         (SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hBt hBD hD.1)
   · intro k hv hcomp B j hB y hy ell e hc hj hk hF hf
     obtain ⟨x, i, ho⟩ := (historicalTargets_iff B j).mp hB
@@ -617,7 +618,7 @@ theorem ResetPremisesUpTo.high_origin_votes_before {b : Time}
           ho.1 hq hqg hqt le_rfl hy hc hj (hFB.trans hBD)
         obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
         have hBt := SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hDt.1 hBD hFB
-        exact SA.voterBlockTree_anc hr hy hc D hDt B
+        exact SA.voterBlockTree_anc hr (fun _ => SA.voteStart_initial _) hy hc D hDt B
           (SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hBt hBD hDt.1)
     have hvi := hp.held_target_vote_domain_before ho.1 hy hBx hc held ho hj
       (Or.inl .refl) compare compare pair

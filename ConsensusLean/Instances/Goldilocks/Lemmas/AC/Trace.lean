@@ -120,7 +120,7 @@ theorem noCall_or_lastCall (y : Fin P.n) (i : Nat) :
 end ACTrace
 
 /-- The AC trace contract from the starts `ini` gives the states reachable from each start. -/
-theorem localRun_reachable_from {P : Params} {FGP : Type} {A : ACInterface P FGP}
+theorem localRun_reachable {P : Params} {FGP : Type} {A : ACInterface P FGP}
     {H : Set (Fin P.n)} {U : Set A.Blk} {tr : ACTrace A} {ini : Fin P.n → A.State}
     (h : ACLocalRun A H U tr ini) :
     ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ → A.ReachableAtFrom (ini y) y U (tr.post i) ℓ.frame
@@ -138,11 +138,6 @@ theorem localRun_reachable_from {P : Params} {FGP : Type} {A : ACInterface P FGP
       exact .step ℓ.call (.init Φ₀ hinit hin) (h.time_nonneg i) hok
     · rw [hpost, tr.state_of_lastCall hc' hj hnb]
       exact .step ℓ.call (ih j hj ℓ' hc') (h.time_mono (Nat.le_of_lt hj)) hok
-
-/-- The AC trace contract gives reachable states: `localRun_reachable_from` at the initial
-starts. -/
-theorem localRun_reachable : LocalRunReachable :=
-  fun _ _ _ _ _ _ h => localRun_reachable_from h
 
 end Consensus.Goldilocks
 
@@ -569,7 +564,7 @@ theorem stamp_cases {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
 
 /-- `blockStamp_lt_of_acceptedBefore` with the unlock given, from starts up to the vote
 permission. -/
-theorem blockStamp_lt_of_acceptedBeforeU_from
+theorem blockStamp_lt_of_acceptedBeforeU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP}
     {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
     (h : ACLocalRunU wm u H U tr ini) (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
@@ -651,26 +646,13 @@ theorem blockStamp_lt_of_acceptedBeforeU_from
       · rw [accept_uniqueU sp h hy hk hk']; exact hlt _ hkT
     · rw [h1]; exact hlt _ (hrs r (hr.trans hj.le) hrr)
 
-/-- `blockStamp_lt_of_acceptedBefore` with the unlock given:
-`blockStamp_lt_of_acceptedBeforeU_from` at the initial starts. -/
-theorem blockStamp_lt_of_acceptedBeforeU
-    {u : Nat → Set Lock} {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRunU wm u H U tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) {B : Blk sp.n FGP}
-    (hB : B ∈ ℓ.frame.tree) {T : Time} (hacc : AcceptedBefore tr y B T)
-    (hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < T)
-    (hi : T ≤ tr.time i ∨ ℓ.call ≠ .block B) :
-    (tr.state y i).blockStamp B.root < ETime.of T :=
-  blockStamp_lt_of_acceptedBeforeU_from sp h (fun _ => voteStart_initial _) hy hc hB hacc hrs hi
-
 /-- **Stamps of accepted blocks.** At an honest node's call, a block of the call's frame that the
 node accepted before `T` (or genesis) has a stamp below `T` in the state before the call, when
 every restart of the node up to the call was before `T` and the call does not itself accept the
 block (it is at or after `T`, or not `on_block(B)`): the stamp of a block is written only when
 the node accepts it (once) and by a restart's replay (A0.7). From starts up to the vote
 permission. -/
-theorem blockStamp_lt_of_acceptedBefore_from {ro : ReplayOrder sp FGP}
+theorem blockStamp_lt_of_acceptedBefore {ro : ReplayOrder sp FGP}
     {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
     (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -679,19 +661,8 @@ theorem blockStamp_lt_of_acceptedBefore_from {ro : ReplayOrder sp FGP}
     (hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < T)
     (hi : T ≤ tr.time i ∨ ℓ.call ≠ .block B) :
     (tr.state y i).blockStamp B.root < ETime.of T := by
-  apply blockStamp_lt_of_acceptedBeforeU_from (wm := WriteMode.parent sp) <;>
+  apply blockStamp_lt_of_acceptedBeforeU (wm := WriteMode.parent sp) <;>
     first | assumption | exact ACLocalRun.toU ‹_›
-
-/-- `blockStamp_lt_of_acceptedBefore_from` at the initial starts. -/
-theorem blockStamp_lt_of_acceptedBefore {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) {B : Blk sp.n FGP}
-    (hB : B ∈ ℓ.frame.tree) {T : Time} (hacc : AcceptedBefore tr y B T)
-    (hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < T)
-    (hi : T ≤ tr.time i ∨ ℓ.call ≠ .block B) :
-    (tr.state y i).blockStamp B.root < ETime.of T :=
-  blockStamp_lt_of_acceptedBefore_from sp h (fun _ => voteStart_initial _) hy hc hB hacc hrs hi
 
 /-- The AC trace contract with the unlock given, from the starts `ini`, gives the states reachable
 with the unlock given from each start. -/
@@ -750,11 +721,11 @@ theorem state_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.
   rcases tr.noCall_or_lastCall y i with hnone | ⟨j, hj, ℓ, hc, hnb⟩
   · exact Or.inl ((tr.state_of_noCall hnone).trans (h.init y hy))
   · rw [tr.state_of_lastCall hc hj hnb]
-    exact Or.inr ⟨ℓ.frame, tr.time j, localRun_reachable_from h y hy j ℓ hc,
+    exact Or.inr ⟨ℓ.frame, tr.time j, localRun_reachable h y hy j ℓ hc,
       h.time_mono (Nat.le_of_lt hj)⟩
 
 /-- `state_pool_slot` with the unlock given, from starts up to the vote permission. -/
-theorem state_pool_slotU_from
+theorem state_pool_slotU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
     (h : ACLocalRunU wm u H U tr ini) (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
@@ -764,30 +735,14 @@ theorem state_pool_slotU_from
   · rw [h0, (hini y).pool]; intro v hv; simp at hv
   · exact (pool_capU sp FGP ro y U h.coherent (hini y) _ Φ t hr σ).1
 
-/-- `state_pool_slot` with the unlock given: `state_pool_slotU_from` at the initial starts. -/
-theorem state_pool_slotU
-    {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRunU wm u H U tr) {y : Fin sp.n} (hy : y ∈ H) (i σ : Nat) :
-    ∀ v ∈ (tr.state y i).pool σ, v.slot = σ :=
-  state_pool_slotU_from sp h (fun _ => voteStart_initial _) hy i σ
-
 /-- The slot-`σ` pool of an honest node's state before any cut holds only slot-`σ` votes, from
 starts up to the vote permission. -/
-theorem state_pool_slot_from {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+theorem state_pool_slot {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
     (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H) (i σ : Nat) :
     ∀ v ∈ (tr.state y i).pool σ, v.slot = σ :=
-  state_pool_slotU_from (wm := WriteMode.parent sp) sp h.toU hini hy i σ
-
-/-- The slot-`σ` pool of an honest node's state before any cut holds only slot-`σ` votes:
-`state_pool_slot_from` at the initial starts. -/
-theorem state_pool_slot {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) (i σ : Nat) :
-    ∀ v ∈ (tr.state y i).pool σ, v.slot = σ :=
-  state_pool_slot_from sp h (fun _ => voteStart_initial _) hy i σ
+  state_pool_slotU (wm := WriteMode.parent sp) sp h.toU hini hy i σ
 
 /-- `frame_slot_le` with the unlock given. -/
 theorem frame_slot_leU

@@ -79,7 +79,7 @@ theorem relay_mem_voterBlockTree_at
     linarith only [hΔ, hslot, hti]
   have hacc' := ACTrace.upTo_acceptAt.mpr (And.intro (hm hky) hacc)
   have hWt := SA.mem_tree_of_acceptAt sp hr hy hacc' hky hc'.1 hF
-  have hbs := SA.blockStamp_lt_of_acceptedBefore_from sp hr hp.run.vstart hy hc'.1 hWt
+  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hp.run.vstart hy hc'.1 hWt
     (Or.inr ⟨ky, hacc', hkyt'⟩)
     (fun k hk hrk => lt_of_le_of_lt (hrsy k hk (ACTrace.upTo_restartAt.mp hrk).2)
       (by unfold SA.freeze; linarith only [hΔ])) (Or.inl hfz)

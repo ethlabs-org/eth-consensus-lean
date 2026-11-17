@@ -231,7 +231,7 @@ theorem result_writer {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T i
   have hΦXU : ℓX.frame.tree ⊆ U := by
     rcases hr.frameLaw X hX i₀ ℓX hcX with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.2
   rintro v ⟨hvp, -, hvres, R, hR, hRr, hCR⟩
-  have hvs : v.slot = s := SA.state_pool_slot_from sp hr hini hX i₀ s v hvp
+  have hvs : v.slot = s := SA.state_pool_slot sp hr hini hX i₀ s v hvp
   -- the stamps of the vote and of its head are before `t_s + 2Δ`
   obtain ⟨hvst, hbst⟩ : (T.state X i₀).voteStamp v < SA.ETime.of (sp.ts s + 2 * sp.Δ) ∧
       (T.state X i₀).blockStamp v.head < SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
@@ -242,7 +242,7 @@ theorem result_writer {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T i
       · exact absurd hvres (by simp [SA.ETime.of])
       · exact max_lt_iff.1 hvres
   refine ⟨hvs, ?_, R, hΦXU hR, hRr, Anc.mono hΦXU hCR, ?_⟩
-  · rcases SA.pool_origin_from hr hini hX i₀ v (by rw [hvs]; exact hvp) with
+  · rcases SA.pool_origin hr hini hX i₀ v (by rw [hvs]; exact hvp) with
       ⟨k, -, hsend, hst, hsl⟩ | ⟨k, -, ℓk, hck, -, hst, B, hB, hvB⟩
     · rw [hst, SA.etime_of_lt_of] at hvst
       exact ⟨k, hsend, (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2
@@ -299,9 +299,9 @@ theorem optimistic_writer_votes {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP r
     rcases hr.frameLaw x hx i₀ ℓx hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.2
   rintro v ⟨hvA, R, hR, hRr, hCR⟩
   have hv1 := SA.optimisticPoint_pool_post hr hx hp s hvA
-  have hvs : v.slot = s := SA.state_pool_slot_from sp hr hini hx (i₀ + 1) s v hv1
+  have hvs : v.slot = s := SA.state_pool_slot sp hr hini hx (i₀ + 1) s v hv1
   refine ⟨hvs, ?_, R, hΦU hR, hRr, Anc.mono hΦU hCR, ?_⟩
-  · rcases SA.pool_origin_from hr hini hx (i₀ + 1) v (by rw [hvs]; exact hv1) with
+  · rcases SA.pool_origin hr hini hx (i₀ + 1) v (by rw [hvs]; exact hv1) with
       ⟨k, hk, hsend, -, hsl'⟩ | ⟨k, hk, ℓk, hck, -, -, B, hB, hvB⟩
     · exact ⟨k, hsend, (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2
         (by rw [← hvs]; exact_mod_cast hsl'), lt_of_le_of_lt (hr.time_mono (by omega)) hti⟩

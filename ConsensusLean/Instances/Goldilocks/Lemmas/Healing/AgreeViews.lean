@@ -143,7 +143,7 @@ theorem proposal_views_agree
         simp only [SA.voteViewList, SA.SAState.poolAt, Int.toNat_natCast, List.filter_filter,
           List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
           Bool.and_eq_true, decide_eq_true_eq] at hx
-        rw [SA.state_pool_slot sp hr hpH iP s' x hx.1]
+        rw [SA.state_pool_slot sp hr (fun _ => SA.voteStart_initial _) hpH iP s' x hx.1]
       obtain ⟨H', hH't, hH'r, -⟩ := hsup x (by rw [SA.blockSupport, hpay]; exact hx) hxs
       rwa [hU.1 (hΦpU hHd) (hΦyU hH't) (hHdr.trans hH'r.symm)]
     · exact mem_frame_of_relay hS hpH hy (mem_tree_of_frame hrun hpH hS.call hHd)

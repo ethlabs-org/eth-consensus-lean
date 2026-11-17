@@ -211,8 +211,8 @@ theorem proposal_best_toward_old_before {ini} (hrun : GoldilocksRun proposer dg 
   -- the pool's votes have finite stamps
   have hstamp : ∀ v ∈ A.pool s', A.voteStamp v < ⊤ := by
     intro v hv
-    have hvs : v.slot = s' := SA.state_pool_slot_from sp hr hrun.vstart hp i s' v hv
-    rcases SA.pool_origin_from hr hrun.vstart hp i v (by rw [hvs]; exact hv) with
+    have hvs : v.slot = s' := SA.state_pool_slot sp hr hrun.vstart hp i s' v hv
+    rcases SA.pool_origin hr hrun.vstart hp i v (by rw [hvs]; exact hv) with
       ⟨k, -, -, hst, -⟩ | ⟨k, -, -, -, -, hst, -⟩ <;>
     · rw [hst]; exact WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _)
   have hvotes' : ∀ v, v ∈ (SA.View.ofLists pay).votes ↔ v ∈ A.pool s' := fun v =>
@@ -225,8 +225,8 @@ theorem proposal_best_toward_old_before {ini} (hrun : GoldilocksRun proposer dg 
     rintro w hw ⟨v₁, hv₁, v₂, hv₂, hne, rfl, h2⟩
     obtain ⟨j₁, -, e₁, hve₁, rfl⟩ := hrun'.honest.pool_vote p hp i s' v₁ hv₁ hw
     obtain ⟨j₂, -, e₂, hve₂, rfl⟩ := hrun'.honest.pool_vote p hp i s' v₂ hv₂ (h2 ▸ hw)
-    have hs₁ := SA.state_pool_slot_from sp hr hrun.vstart hp i s' _ hv₁
-    have hs₂ := SA.state_pool_slot_from sp hr hrun.vstart hp i s' _ hv₂
+    have hs₁ := SA.state_pool_slot sp hr hrun.vstart hp i s' _ hv₁
+    have hs₂ := SA.state_pool_slot sp hr hrun.vstart hp i s' _ hv₂
     obtain ⟨-, rfl⟩ := (SA.one_vote_per_slotU sp) _ ro H _ tr.projAC hr.toU _ hw j₁ j₂ e₁ e₂ hve₁
       (h2 ▸ hve₂) (hs₁.trans hs₂.symm)
     exact hne rfl
@@ -258,7 +258,7 @@ theorem proposal_best_toward_old_before {ini} (hrun : GoldilocksRun proposer dg 
       v ∈ (SA.View.ofLists pay).support := by
     intro v hv Hv hHv hHvr hHvs hacc
     refine (hsupv v).2 ⟨⟨hv, hstamp v hv⟩, ?_⟩
-    have hbs := SA.blockStamp_lt_of_acceptedBefore_from sp hr hrun.vstart hp hc hHv hacc
+    have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hrun.vstart hp hc hHv hacc
       (fun k hk hrk => lt_of_le_of_lt (hrs k hk hrk) (lt_add_of_pos_right _ (mul_pos three_pos hΔ)))
       (Or.inl (by
         rw [hii, hti, hts]
@@ -336,7 +336,7 @@ theorem proposal_best_toward_old_before {ini} (hrun : GoldilocksRun proposer dg 
       by_cases hw : v.val ∈ H
       · obtain ⟨j, -, e, hve, rfl⟩ := hrun'.honest.pool_vote p hp i s' v ((hvotes' v).1 hv) hw
         exact Or.inl ⟨hw, j, e, hve,
-          SA.state_pool_slot_from sp hr hrun.vstart hp i s' _ ((hvotes' _).1 hv)⟩
+          SA.state_pool_slot sp hr hrun.vstart hp i s' _ ((hvotes' _).1 hv)⟩
       · exact Or.inr ⟨hvotersK ⟨v, hv, rfl⟩, hw⟩
     · have := Set.ncard_union_le {w | w ∈ H ∧ ∃ j e, SA.VoteAt tr.projAC w j e ∧ e.msg.slot = s'}
         (K.committee s' ∩ Hᶜ)

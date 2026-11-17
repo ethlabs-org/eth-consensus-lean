@@ -248,7 +248,7 @@ theorem heldAtProposal_of_writer (hr : ACLocalRun (goldilocksSA sp FGP ro) H U t
           Or.inr ⟨ky, hacc, hkyt.trans (hdl ky hky _ hkwt)⟩⟩
       · exact ⟨mem_tree_of_acceptAt sp hr hx hacc hky hc hFHv, Or.inr ⟨ky, hacc, hkyt⟩⟩
     refine ⟨Hv, hHt, hHvr, ?_⟩
-    exact (blockStamp_lt_of_acceptedBefore sp hr hx hc hHt hAB
+    exact (blockStamp_lt_of_acceptedBefore sp hr (fun _ => voteStart_initial _) hx hc hHt hAB
       (fun k hk hrk => (hrs k hk hrk).trans (by linarith only [hΔ]))
       (Or.inl (by
           rw [ht, hts]; linarith only [hΔ]))).trans (WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _))
@@ -570,7 +570,8 @@ theorem h2_drain (hI : InclusionRun tr H U proposer g t₀) {y : Fin sp.n} (hy :
     exact ⟨B, hLB, cleanOrigin_iff.2 (Or.inr ⟨y, hy, j,
       joined_of_ge hI hy (hr.time_nonneg j) htj (by
           linarith only [hT, hg, hσ', hlk, hkΔ, hw, hwin]), hsl, hwin⟩)⟩
-  · obtain ⟨j, -, B, CV, hfl, hLB⟩ := fast_lock_provenance hr hy i l hl hf
+  · obtain ⟨j, -, B, CV, hfl, hLB⟩ :=
+      fast_lock_provenance hr (fun _ => voteStart_initial _) hy i l hl hf
     have hj : t₀ + 4 * sp.Δ ≤ sp.ts l.slot := by linarith only [hT, hΔ, hσ', hlk, hkΔ]
     exact ⟨B, hLB, cleanOrigin_iff.2 (Or.inl ⟨y, hy, j, CV,
       joined_of_ge hI hy (hr.time_nonneg j) (fastLock_time hI hfl) (by

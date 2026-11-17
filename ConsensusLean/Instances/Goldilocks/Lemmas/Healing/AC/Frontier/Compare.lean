@@ -72,7 +72,7 @@ theorem result_sideAC (hrun : ACRunU wm u proposer tr H U) {Y : Fin sp.n} (hY : 
   obtain ⟨-, hΦU⟩ := frameIn_of_callAtU hr hY hu.1
   refine ⟨ℓ, _, hu.1, hu.2.2.1, update_restartsAC hr hY hu, hmaj, ?_, ?_⟩
   · rintro w ⟨v, ⟨hvp, -, hres, R, hR, hRr, hDR⟩, rfl⟩
-    have hvs := state_pool_slotU sp hr hY c s v hvp
+    have hvs := state_pool_slotU sp hr (fun _ => voteStart_initial _) hY c s v hvp
     refine fwd_iff.2 ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩,
       admitted_of_heldU hr (fun _ => voteStart_initial _) hY hvs hvp le_rfl
       fun k _ hst => ?_⟩
@@ -191,7 +191,8 @@ theorem honest_supporterAC
     obtain ⟨j, hj, e, hve, rfl⟩ := hrun.honest.pool_vote X hX i₀ s _ hvp hwH
     obtain ⟨-, hΦU⟩ := frameIn_of_callAtU hr hX hu.1
     exact ⟨_, hwH, j, e, hve, (hr.time_mono hj.le).trans hi₀,
-      state_pool_slotU sp hr hX i₀ s _ hvp, R, hΦU hR, hRr, Anc.mono hΦU hCR⟩
+      state_pool_slotU sp hr (fun _ => voteStart_initial _) hX i₀ s _ hvp,
+      R, hΦU hR, hRr, Anc.mono hΦU hCR⟩
   · obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := optimistic_sideU hrun hX hO
     rw [hstock] at h34
     obtain ⟨w, ⟨v, hv, rfl, R, hR, hRr, hCR⟩, huH⟩ :=
