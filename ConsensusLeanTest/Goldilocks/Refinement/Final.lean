@@ -6,7 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Conc
 /-! # Witness: the final liveness query's hypotheses are jointly satisfiable
 
 Kind (a), joint satisfiability (CONTRIBUTING "Statements"), for the fields of the final liveness
-query, the hypotheses of `Growing.meetsObligations_healthyLive_final_growing`, stated over
+query, the hypotheses of the final window (`Growing.final_window_extract_at`), stated over
 `goldilocksContract A C` for every coefficient record `C` (at `C = contract_coefficients S A`,
 the contract `K S A`).
 

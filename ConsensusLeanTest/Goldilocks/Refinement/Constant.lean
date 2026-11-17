@@ -7,20 +7,23 @@ public section
 /-! # The constant-fault headline from the certified one
 
 (a) `goldilocksCorrectConstant_of_growing`: the certified headline `GoldilocksCorrect` (correctness
-on every run, growing faults included) gives the former headline `GoldilocksCorrectConstant`
-(correctness on the runs whose faults do not grow), with neither statement changed. Restricting the
-valid runs only strengthens the premise of each property of the table, and adequacy and
-realizability are those of the whole system in both. It pairs with
+at every vote binding on every run, growing faults included) gives the former stock headline
+`GoldilocksCorrectConstant` (correctness of the stock family on the runs whose faults do not grow):
+`GoldilocksCorrect` is instantiated at the stock setup, then restricted to the constant-fault runs.
+Restricting the valid runs only strengthens the premise of each property of the table; adequacy and
+realizability are those of the whole stock system. It pairs with
 `Growing.meetsObligationsConstant_of_growing` for the endpoints. -/
 
 namespace Consensus.Goldilocks.Obligations.Test.Constant
 
-/-- **The certified headline gives the constant-fault headline**: `GoldilocksCorrect` implies
-`GoldilocksCorrectConstant`, both unchanged. -/
+/-- **The certified headline gives the stock constant-fault headline**: `GoldilocksCorrect` at the
+stock setup, restricted to the constant-fault runs, is `GoldilocksCorrectConstant`, keeping stock
+adequacy and realizability. -/
 theorem goldilocksCorrectConstant_of_growing (h : GoldilocksCorrect) :
     GoldilocksCorrectConstant := by
   intro S A V _ _
-  obtain ⟨hb, ha, hr⟩ := (h S A V).1
+  obtain ⟨hb, ha, hr⟩ :=
+    (h { S with vote := AsChainShape.stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V).1
   refine ⟨?_, ha, hr⟩
   dsimp only [System.restrict, Progress.restrict]
   exact

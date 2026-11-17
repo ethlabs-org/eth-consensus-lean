@@ -20,9 +20,8 @@ trace with the time-indexed honest keys:
   state before the first trace cut after `t`, with its stored clock at `t`;
 * `ready_proposal_at`: an honest proposal of the trace by a proposer ready at `τ` is an engine
   proposal released at `τ` by a key ready at `τ`;
-* `finalized_inBy_at`, `confirmed_inBy_at`: node ancestry of a proposal in the final cache or
-  the confirmed read of every ready reader at `t` is engine membership in the corresponding
-  output at the end of `t`.
+* `confirmed_inBy_at`: node ancestry of a proposal in the confirmed read of every ready reader at
+  `t` is engine membership in the confirmed output at the end of `t`.
 
 Each is the static bridge of `Obligations/Sleepy` without a constant-fault premise: readers and
 proposers are honest at their own read or release time. -/
@@ -141,43 +140,6 @@ theorem ready_proposal_at (hv : rho.ExecutionValid) {c τ h : Time} (hτh : τ �
       (by rw [htime]; exact hr.1) hP.1
     rw [htime] at hrel
     exact hrel
-
-/-- **Final-cache ancestry is engine finalized output** under growing faults: if a non-genesis
-block is an ancestor of the final cache of every node ready at `t ∈ [0, horizon]` after all
-events at `t`, its header is in the finalized read of every engine node ready at `t`. -/
-theorem finalized_inBy_at (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
-    {c t : Time} (hc : 0 ≤ c) (ht : 0 ≤ t) (hth : t ≤ rho.horizon)
-    {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
-    (hroot : P.root ≠ (S.params (pubOf E) hn).genesisRoot)
-    (hinc : ∀ y j, Regimes.Growing.ReadyAt (simTraceAt S rho hn)
-        (honestKeysAt S rho) c y t →
-      Regimes.CutAfter (simTraceAt S rho hn) j t →
-      Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho)) P
-        ((simTraceAt S rho hn).state y j).fg.F) :
-    InBy rho c .finalized (headerOf (S.params (pubOf E) hn) P) t := by
-  intro v hr
-  let i := (chainTrace rho).endCut t
-  let j := cutMap S rho hn i
-  have hrun := simTraceAt_goldilocksRun S rho hn hv
-  have hi : i ≤ rho.events.length := Nat.findGreatest_le _
-  have hcut := ready_read_cut_at S rho hn hv hc ht hth hr
-  have hready := ready_transport_at S rho hn hv ht hth hr
-  obtain ⟨hreach, -, hsub⟩ := held_state hrun ht hcut.1.1 hready.1
-  have htip := (Store.cache_invariants _ _ _ _ hreach).1
-  have ha := hinc _ j hready hcut.1
-  have hanc := anc_in_store hreach (Compose.Growing.honest_blocks_coherent hrun hnc) hsub ha htip
-  have hprefix := chainTo_prefix hreach hanc
-  have hmem : headerOf (S.params (pubOf E) hn) P ∈
-      chainTo ((simTraceAt S rho hn).state (rho.ownKey v) j).fg.blocks (P.slot + 1) P := by
-    simp only [chainTo, ite_eq_right hroot]
-    split <;> simp
-  have hout := hprefix.subset hmem
-  have hh : v ∉ rho.faultyAt (rho.cutTime i) := fun h =>
-    hr.1 (rho.faultyAt_mono (cutTime_endCut_le S rho ht) h)
-  change headerOf (S.params (pubOf E) hn) P ∈ (chainTrace rho).read .finalized v i
-  rw [read_eq_out S rho hn, outOf, ← simTraceAt_state S rho hn hv hh hi]
-  exact hout
 
 /-- **Inclusion is engine confirmed output** under growing faults: if a proposal released at
 `τ ∈ [0, t]` by a proposer ready at `τ` (with any hold) is an ancestor of the confirmed read of

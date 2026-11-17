@@ -50,7 +50,8 @@ theorem continued_safe_past_horizon (hc : GoldilocksCorrect) (S : Setup)
   have hβ : K.params.β ≤ K.params.βK := by
     change (1 / 3 : ℚ) ≤ 1 / 2
     norm_num
-  exact (hc S A V).1.behaviour.healedSafe cap g hcap hg i gst r hv
+  exact (hc { S with vote := AsChainShape.stock }
+    ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V).1.behaviour.healedSafe cap g hcap hg i gst r hv
     ⟨(System.healthy_iff_of_full_selection _ K r (fun _ => rfl) hβ gst).mpr (hh.healthy hT), hp⟩
 
 /-- **`continuedLive` past the horizon**: on a hand-over run with `horizon ≤ T`, transaction
@@ -70,7 +71,8 @@ theorem continued_live_past_horizon (hc : GoldilocksCorrect) (S : Setup)
   have hβ : K.params.β ≤ K.params.βK := by
     change (1 / 3 : ℚ) ≤ 1 / 2
     norm_num
-  exact (hc S A V).1.behaviour.healthyLive cap g hg i gst r hv
+  exact (hc { S with vote := AsChainShape.stock }
+    ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V).1.behaviour.healthyLive cap g hg i gst r hv
     ⟨(System.healthy_iff_of_full_selection _ K r (fun _ => rfl) hβ gst).mpr (hh.healthy hT), hp⟩
 
 /-- **`TxLive` for the deadlines up to the hand-over**: on a hand-over run with `heal ≤ T ≤
@@ -98,7 +100,9 @@ theorem continued_live_upTo_handover (hc : GoldilocksCorrect) (S : Setup)
   have hβ : K.params.β ≤ K.params.βK := by
     change (1 / 3 : ℚ) ≤ 1 / 2
     norm_num
-  exact (hc S A V).1.healthyLive_prefix hg r hv i gst (h0.trans hhT) hTh
+  exact (hc { S with vote := AsChainShape.stock }
+    ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V).1.healthyLive_prefix hg r hv i gst (h0.trans hhT)
+    hTh
     (CommLog.Delivers.reindex (f := id) hh.1 (fun _ => le_rfl) (fun _ => rfl) (fun _ => rfl) hTh)
     hh.2.1 hh.2.2.1 (hh.2.1.committee_univ hβ)
     ((shapeProgress (goldilocks { S with vote := AsChainShape.stock }) V).mono le_rfl hTh hp)

@@ -6,23 +6,22 @@ public import ConsensusLean.Instances.Goldilocks.AsChainShape
 
 /-! # Goldilocks meets the shape obligations (statement)
 
-The concrete obligations endpoint of the population-wide family
-(`goldilocks {S with vote := stock}`, the node of
-`AsChainShape` as a chain shape): for every setup `S` and every assumption set `A`, the family
-meets the shape obligations (shape claims, admissible numbers, a served ledger, progress that fits
-the skeleton and tolerates validators not ready and bad proposer slots) on every run, faults
-growing over it, as an Ebb-and-Flow protocol (`ShapeObligationsAs .ebbAndFlow`: the schema provides
-all three capabilities, available and stable aliased to `confirmed`, final served by `finalized`),
-at the contract `goldilocksContract A (contract_coefficients S A)`, whose every number is a closed
-formula in the protocol parameters `k`, `δ_t`, the FG delay in slots `fgSlots` and the outer
-gap `X`.
+The concrete obligations endpoint of the Goldilocks family at the setup's vote binding
+(`goldilocks S`, the node of `AsChainShape` as a chain shape): for every setup `S` and every
+assumption set `A`, the family meets the shape obligations (shape claims, admissible numbers, a
+served ledger, progress that fits the skeleton and tolerates validators not ready and bad proposer
+slots) on every run, faults growing over it, as an Ebb-and-Flow protocol
+(`ShapeObligationsAs .ebbAndFlow`: the schema provides all three capabilities, available and
+stable aliased to `confirmed`, final served by `finalized`), at the contract
+`goldilocksContract A (contract_coefficients S A)`, whose every number is a closed formula in the
+protocol parameters `k`, `δ_t`, the FG delay in slots `fgSlots` and the outer gap `X`.
 
 * **Assumptions** (`ContractAssumptions`): the FG delay in slots `fgSlots ≥ 2` and the timeout
   `3·fgSlots ≤ δ_t`. Healthy runs have `6·ΔAC + ΔFG ≤ 4·fgSlots·ΔAC` (the contract's FG delay
   bound is `fgDelay = 4·fgSlots − 6`): the FG attestations of a round reach every node within
   `fgSlots` slots, the paper's `c_F = ⌈(6Δ + Δ_F)/(4Δ)⌉ ≤ fgSlots`. `Setup` fixes the genesis root,
   `δ_t`, the lock window `k ≥ 2`, the fast increment `c ≥ 2` (read by no coefficient) and the
-  restart replay order and vote binding. The endpoint and headlines explicitly select `stock`.
+  restart replay order and vote binding. The endpoint and headlines hold at every vote binding.
 * **Contract** (`goldilocksContract`): the standard thresholds, the FG delay bound, the outage
   numbers, and the progress patterns (`finalWindow A` for the final output, one honest ready
   proposer for the others, in every window of the outer gap).
@@ -163,21 +162,21 @@ abbrev goldilocksContract {S : Setup} (A : ContractAssumptions S)
 
 /-- **Goldilocks meets the obligations**, the concrete endpoint: for every setup and every
 assumption set (the FG delay in slots `fgSlots ≥ 2` and the timeout `3·fgSlots ≤ δ_t`), the
-population-wide Goldilocks family meets the obligations as an Ebb-and-Flow protocol
-(its schema provides exactly
+Goldilocks family at the setup's vote binding meets the obligations as an Ebb-and-Flow protocol,
+for every finite validator type, including the empty type (its schema provides exactly
 the final, stable and available capabilities; available and stable are both the `confirmed`
 output) at the contract `goldilocksContract A (contract_coefficients S A)`, every number of which
 is fixed above. -/
 def MeetsObligations : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S),
-    ShapeObligationsAs .ebbAndFlow (goldilocks {S with vote := stock})
+    ShapeObligationsAs .ebbAndFlow (goldilocks S)
       (goldilocksContract A (contract_coefficients S A))
 
 /-- **Goldilocks is correct and optimally fault tolerant**, the headline statement:
 for every setup `S`, every assumption set
 `A` (the FG delay in slots `fgSlots ≥ 2` and the timeout `3·fgSlots ≤ δ_t`) and every finite
-validator type `V`, the population-wide family, compiled and run by the general execution model
-(`sysOf schema (compiled (goldilocks {S with vote := stock})) V`, with progress read by
+validator type `V`, including the empty type, the family at `S`'s vote binding, compiled and run
+by the general execution model (`sysOf schema (compiled (goldilocks S)) V`, with progress read by
 `shapeProgress`), is an L0
 `CorrectProtocol` at the contract `goldilocksContract A (contract_coefficients S A)`,
 whose fractions satisfy `Params.OptimalFaultTolerance`. Correctness composes
@@ -185,13 +184,14 @@ whose fractions satisfy `Params.OptimalFaultTolerance`. Correctness composes
 pins the contract's fractions. Neither conjunct adds a hypothesis. -/
 def GoldilocksCorrect : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V],
-    CorrectProtocol (Model.sysOf schema (compiled (goldilocks {S with vote := stock})) V)
-      (shapeProgress (goldilocks {S with vote := stock}) V)
+    CorrectProtocol (Model.sysOf schema (compiled (goldilocks S)) V)
+      (shapeProgress (goldilocks S) V)
       (goldilocksContract A (contract_coefficients S A)) ∧
       (goldilocksContract A (contract_coefficients S A)).params.OptimalFaultTolerance
 
 /-- **Goldilocks is correct or a binding fails.** For every setup, timing
-assumption set and finite validator type, on every structurally valid population-wide run the
+assumption set and finite validator type, including the empty type, on every structurally valid
+run of the family at the setup's vote binding the
 entire correctness property table holds on the single run `r` (validity means
 "is `r`"), or a signature forgery, credential failure or inadmissible selection
 holds. Collisions excuse only `Holds` rows, never `HoldsAlways` rows. The laws
@@ -203,8 +203,8 @@ remain the premises of their respective rows. Adequacy and realizability retain
 their original valid, binding-sound, collision-free witnesses. -/
 def GoldilocksCorrectWithExcuses : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V],
-    CorrectProtocolWithExcuses (Model.sysOf schema (compiled (goldilocks {S with vote := stock})) V)
-      (shapeProgress (goldilocks {S with vote := stock}) V)
+    CorrectProtocolWithExcuses (Model.sysOf schema (compiled (goldilocks S)) V)
+      (shapeProgress (goldilocks S) V)
       (goldilocksContract A (contract_coefficients S A))
       (fun r => r.2.StructuralValid) (fun r => r.2.BindingFailure)
 
@@ -221,8 +221,8 @@ premise is `System.Outage` at this contract: its population clause does not depe
 binding, and its look-back committee clause reads the binding's selection. At the population
 binding every validator is selected and the committee look-ahead is at most the population one
 (`5 ≤ 5`), so the committee clause is implied by the population clause, and the statement is
-the `persists` field of `MeetsObligations`. This row and `SleepyWith` are stated per binding;
-`MeetsObligations` and `GoldilocksCorrect` stay at the population binding. -/
+the population instance of the `persists` field of `MeetsObligations`. This row and `SleepyWith`,
+like `MeetsObligations` and both headline forms, quantify over every vote binding. -/
 def PersistsWith : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V],
     ∀ g, schema.output .stable = some g → ∀ T b₀ b₁,

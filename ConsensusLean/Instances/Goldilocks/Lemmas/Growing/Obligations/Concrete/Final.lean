@@ -21,17 +21,11 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Final healthy liveness under growing faults (route A)
+/-! # The final window under growing faults (route A)
 
-The final branch of the obligations proof (`meetsObligations_healthyLive_final_growing`): a
-final query has a window of four honest anchors with its
-run premises and anchor steps (`final_window_extract_at`), whose first anchor is covered by the
-finalized cache of every node ready from the deadline (`final_cache_coverage_at`); the payload
-projection (`final_payload_projection_at`) turns that into the shape's proposal liveness.
-
-Each store is read at an observation of a node honest there: the last anchor's proposer at its
-acceptance, a ready reader at its read time. Finalized safety between them is charged at the later
-observation (`reader_cache_covers_at`). -/
+A final query has a window of four honest anchors with its run premises and anchor steps
+(`final_window_extract_at`), from the final reset premises and the duty → proposal adapter
+(`final_duty_proposal_at`). `Simulation.goldilocks_finalWindowSupply` reads it at the run map. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
@@ -40,19 +34,6 @@ open Blocks Shape
 open Consensus.Model (pubOf)
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
-
-/-- The validators compromised at a bounded read time number fewer than `2q − n`. -/
-private theorem final_faults_at
-    (Q : FinalQueryAt S A V)
-    {t : Time} (ht : 0 ≤ t)
-    (hth : t ≤ Q.run.2.horizon) :
-    (Q.keys t)ᶜ.ncard < 2 * Q.params.toParams.fg.q - Q.params.n := by
-  have hf := healthy_preparation_faults_at Q.run Q.hn
-    (by rw [goldilocksContract_params_eq]; exact le_rfl) le_rfl Q.healthy.2.1 t ht hth
-  change 3 * (Q.keys t)ᶜ.ncard ≤ Fintype.card V - 1 at hf
-  change (Q.keys t)ᶜ.ncard < 2 * ((2 * Fintype.card V + 2) / 3) - Fintype.card V
-  have := Q.hn
-  omega
 
 /-- (H2) of the final window, route A: the duty → proposal adapter under growing faults. -/
 theorem final_duty_proposal_at
@@ -85,189 +66,6 @@ theorem final_window_extract_at
       hreset (final_duty_proposal_at S A V Q) hplace
       (carrier_processed_of_honest_at S A V Q)
   exact ⟨W, hslack, hrun, hsteps⟩
-
-/-- **Window coverage at a holder of the last anchor.** The run premises and the three anchor
-steps give, at a holder of `P₃` honest at an observation after its cuts, the block `F` of root
-`σ[P₃].F` with `P₀ ⪯ F`. -/
-theorem final_anchor_coverage_at (Q : FinalQueryAt S A V) (W : FinalWindowDataAt S A V Q)
-    (run : W.AnchorRun) (steps : W.AnchorSteps) {z : Fin Q.params.n} {k : Nat} {t : Time}
-    (ht : 0 ≤ t) (hle : ∀ q < k, Q.trace.time q ≤ t) (hz : z ∈ Q.keys t)
-    (hB : W.block 3 ∈ (Q.trace.state z k).fg.tree) :
-    ∃ F, (Q.trace.state z k).fg.blocks ((Q.trace.state z k).fg.σ (W.block 3).root).F = some F ∧
-      W.Extends (W.block 0) F := by
-  obtain ⟨proposer, dg, g, ΔF, a, b, hp, hc, hP, hR, hb⟩ := W.anchorRun_iff.mp run
-  have hg2 := W.gap_two
-  have hg3 : 3 * W.gap ≤ S.δt := W.gap_span
-  have hs0 : (W.block 0).slot = W.start := W.slots 0
-  have hs3 : (W.block 3).slot = W.start + 3 * W.gap := W.slots 3
-  have hmono : StrictMono fun i : Fin 4 => W.start + ![0, W.gap, 2 * W.gap, 3 * W.gap] i := by
-    refine Fin.strictMono_iff_lt_succ.mpr fun i => ?_
-    fin_cases i <;> dsimp <;> omega
-  have hsl : (W.block 3).slot ≤ (W.block 0).slot + Q.params.toParams.fg.δt := by
-    change (W.block 3).slot ≤ (W.block 0).slot + S.δt
-    omega
-  have hch := window_anchors_chain_upTo_at hp hP hmono hR hb (by intro h; simp at h; omega)
-  exact cacheCoverage_of_anchor_window_upTo_at hp.run hp.noColl
-    (fun i => hch i 3 (Fin.le_last i)) (W.anchorSteps_iff.mp steps) hsl ht hle hz hB
-
-/-- **Finalized-cache coverage of the first anchor** at every ready read after the deadline. The
-last anchor's proposer holds the covering block `X` at its acceptance (`final_anchor_coverage_at`);
-the reader's cache covers it (`reader_cache_covers_at`), once a reader whose cache is below the last
-anchor accepts it before its read: the proposer's forwarding publication is held by the reader one
-delay after it, before the read. -/
-theorem final_cache_coverage_at
-    (Q : FinalQueryAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
-    (W : FinalWindowDataAt { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q)
-    (hslack : Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline)
-    (run : W.AnchorRun) (steps : W.AnchorSteps) : W.CacheCoverage := by
-  have hrun := simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTraceAt { S with vote := stock } Q.run.2 Q.hn Q.valid Q.noCollision
-  have hmono := hrun.time_mono
-  -- the last anchor's proposer, at its acceptance
-  set x := (W.block 3).proposer with hxdef
-  set c := W.cut 3 with hcdef
-  have hx : x ∈ Q.keys (Q.trace.time c) := (W.ready 3).1
-  have hc0 := hrun.time_nonneg c
-  have hlc : ∀ q < c + 1, Q.trace.time q ≤ Q.trace.time c := fun q hq => hmono (by omega)
-  obtain ⟨hacc, hBx, -⟩ := accept_of_proposesAt_at hrun hnc hx (W.proposals 3)
-  obtain ⟨X, hX, hAX⟩ := final_anchor_coverage_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q W run steps
-      hc0 hlc hx hBx
-  -- its forwarding publication
-  obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
-    (forwardAtAcceptanceAt_iff { S with vote := stock } Q.run.2 Q.hn _ _ _).mp
-      (forwardAtAcceptance_at { S with vote := stock } Q.run.2 Q.hn Q.valid) _ _ _ hx hacc
-  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
-    (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
-  have hd := Q.run.1.ΔAC_pos
-  have hq : max Q.gst 0 ≤ Q.query :=
-    (le_add_of_nonneg_right (mul_nonneg (Int.natCast_nonneg _) hd.le)).trans Q.mature
-  have hcq : max Q.gst 0 ≤ Q.trace.time c :=
-    (hq.trans W.fresh.le).trans (hmono (W.ordered.monotone (by decide)))
-  have hch : Q.trace.time c ≤ Q.run.2.horizon := (W.bounded 3).trans
-    (by linarith [Q.bounded, show Q.deadline = Q.query + _ from rfl])
-  have hxr : Q.run.2.key x ∉ Q.run.2.faultyAt (Q.trace.time c) :=
-    not_faulty_of_mem_honestKeysAt { S with vote := stock } Q.run.2 hx le_rfl hch
-  have hrel : Q.run.2.releases (Q.run.2.key x) r.object (Q.trace.time c) := by
-    rw [← horg, ← htime]
-    exact ⟨r.event, (publisherExecution { S with vote := stock } Q.run.2).actual_event r hr,
-      (publisherExecution { S with vote := stock } Q.run.2).actual_release r hr⟩
-  have hcd : Q.params.Δ ≤ (Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run + 1 := by
-    have hc1 : (1 : Time) ≤ ((K S A).params.catchUp : Time) := by
-      rw [goldilocksContract_params_eq]
-      change (1 : Time) ≤ ((contract_coefficients S A).catchUp : Nat)
-      exact_mod_cast (contract_coefficients S A).catchUp.pos
-    change Q.run.1.ΔAC ≤ ((K S A).params.catchUp : Time) * Q.run.1.ΔAC + 1
-    linarith only [mul_le_mul_of_nonneg_right hc1 hd.le]
-  refine W.cacheCoverage_iff.mpr ?_
-  intro y t j hdt hth hy hj
-  have ht0 : 0 ≤ t := (hc0.trans ((W.bounded 3).trans hdt))
-  have hle := hj.1
-  refine reader_cache_covers_at hrun hnc hx hBx hX hAX ((W.bounded 3).trans hdt) hle hy.1
-    (final_faults_at { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q ht0 hth)
-    fun hFB => ?_
-  -- the reader accepts the last anchor before its read
-  obtain ⟨d, hheld, hdt'⟩ := publication_held_ready_tail_at { S with vote := stock } Q.run.2
-      Q.hn hnet r hr
-    (by rw [horg, htime]; exact hxr) (not_isFGAtt_of_decodeForward hdecode) hy hth
-    (by
-      rw [htime, max_eq_left (show Q.gst ≤ Q.trace.time c from (le_max_left _ _).trans hcq),
-        max_eq_left hc0]
-      exact hslack.trans hdt) hcd
-  obtain ⟨k, hkj, hacc', hkt⟩ := held_forward_accepted_before_at
-    { S with vote := stock } Q.run.2 Q.hn Q.valid hnc
-    hle (not_faulty_of_mem_honestKeysAt { S with vote := stock } Q.run.2 hy.1 le_rfl hth)
-    hxr hrel hheld hdecode hdt' hj.2.le hFB
-  refine ⟨k, ?_, hacc'⟩
-  have : k ≠ j := by intro he; subst k; exact (not_lt_of_ge hj.2.le) hkt
-  omega
-
-/-- **The payload projection** under growing faults: final windows whose first anchor is covered
-by the finalized cache of every node ready from the deadline give the shape's final proposal
-liveness. -/
-theorem final_payload_projection_at
-    (windows : ∀ Q : FinalQueryAt S A V,
-      ∃ W : FinalWindowDataAt S A V Q, Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧
-        W.CacheCoverage) :
-    ∀ g, schema.output .final = some g →
-    ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks S) V).Holds
-      (fun r => (Sys (goldilocks S) V).Healthy
-          (shapeProgress (goldilocks S) V).toExternal (K S A) gst r ∧
-        (Sys (goldilocks S) V).prog
-          (shapeProgress (goldilocks S) V)
-          (K S A) .final i
-          ((Sys (goldilocks S) V).ready (K S A) gst r)
-              ((Sys (goldilocks S) V).pt r).horizon r)
-      fun r => ProposalLiveReady r.2 ((Sys (goldilocks S) V).cDur (K S A) r)
-        g ((Sys (goldilocks S) V).heal (K S A) .final i gst r)
-        ((K S A).params.latency .final i) := by
-  intro g hg i gst r hv ⟨hhealthy, hprog⟩
-  have hg' : g = Out.finalized := Option.some.inj hg.symm
-  subst g
-  by_cases hcollision : r.2.HashCollision
-  · exact Or.inr hcollision
-  left
-  intro t hm hb hr
-  obtain ⟨v, hvr⟩ := hr
-  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
-  let Q : FinalQueryAt S A V := ⟨r, hn, i, gst, t, hv, hcollision, hhealthy,
-    hprog, hm, hb, v, hvr⟩
-  obtain ⟨W, hslack, hcover⟩ := windows Q
-  have ht : 0 ≤ t := by
-    have hd := r.1.ΔAC_pos
-    have hg0 : (0 : Time) ≤ max gst 0 := le_max_right _ _
-    have hp : 0 ≤ ((K S A).params.heal .final i : Time) * r.1.ΔAC :=
-      mul_nonneg (Int.natCast_nonneg _) hd.le
-    exact (add_nonneg hg0 hp).trans hm
-  have hτh : Q.trace.time (W.cut 0) ≤ r.2.horizon := (W.bounded 0).trans hb
-  have hproposal : Regimes.Growing.ReadyProposalAt Q.trace Q.keys
-      ((Sys (goldilocks S) V).cDur (K S A) r)
-      (Q.trace.time (W.cut 0)) 0 (W.block 0) :=
-    ⟨_, W.cut 0, W.ready 0, by rw [add_zero]; exact (W.ready 0).1, W.proposals 0, rfl⟩
-  obtain ⟨k, hk, hrel⟩ := ready_proposal_at S r.2 hn hv hτh hproposal
-  refine ⟨Q.trace.time (W.cut 0), k, headerOf Q.params (W.block 0), W.fresh, hk, hrel, ?_⟩
-  have hc : 0 ≤ (Sys (goldilocks S) V).cDur (K S A) r := by
-    exact mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le
-  have hdeadline : 0 ≤ Q.deadline := ht.trans (by
-    change t ≤ t + _
-    exact le_add_of_nonneg_right (mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le))
-  have hroot : (W.block 0).root ≠ Q.params.genesisRoot := by
-    have run := simTraceAt_goldilocksRun S r.2 hn hv
-    have h0 := run.time_nonneg (W.cut 0)
-    have hc0 : (Q.trace.upTo (Q.trace.time (W.cut 0))).CallAt (W.block 0).proposer (W.cut 0)
-        (.fg (.block (W.block 0) true)) :=
-      (Trace.upTo_callAt_of_le _ le_rfl).mpr (W.accepted 0)
-    rcases Compose.blockCall_cases (run.upTo h0).toLocalRun (W.ready 0).1 hc0 with hg | hg
-    · have hz : Q.trace.pos (W.cut 0) = 0 := (hg.2.1 0 (List.length_pos_iff.mpr hg.1)).2.2.2.1
-      exact False.elim ((W.proposals 0).1.2 (by simpa using hz))
-    · obtain ⟨j, x, _, _, _, d, p, _, hB, _⟩ := hg
-      rw [hB, digestOf_eq S r.2]
-      simp only [Node.mkBlock]
-      erw [dgOf_eq]
-      exact taggedRoot_ne _ _
-  exact finalized_inBy_at S r.2 hn hv
-    (noCollRun_simTraceAt S r.2 hn hv hcollision) hc hdeadline hb hroot
-    (fun y j hy hj => W.cacheCoverage_iff.mp hcover y Q.deadline j le_rfl hb hy hj)
-
-/-- **Final healthy liveness under growing faults**: the `healthyLive` field of the shape claims
-at the final capability. -/
-theorem meetsObligations_healthyLive_final_growing : ∀ g, schema.output .final = some g →
-    ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks { S with vote := stock }) V).Holds
-      (fun r => (Sys (goldilocks { S with vote := stock }) V).Healthy
-          (shapeProgress (goldilocks { S with vote := stock }) V).toExternal (K S A) gst r ∧
-        (Sys (goldilocks { S with vote := stock }) V).prog
-          (shapeProgress (goldilocks { S with vote := stock }) V)
-          (K S A) .final i
-          ((Sys (goldilocks { S with vote := stock }) V).ready (K S A) gst r)
-              ((Sys (goldilocks { S with vote := stock }) V).pt r).horizon r)
-      fun r => ProposalLiveReady r.2 ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) r)
-        g ((Sys (goldilocks { S with vote := stock }) V).heal (K S A) .final i gst r)
-        ((K S A).params.latency .final i) :=
-  final_payload_projection_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V fun Q => by
-    obtain ⟨W, hslack, run, steps⟩ := final_window_extract_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q
-    exact ⟨W, hslack, final_cache_coverage_at S A V Q W hslack run steps⟩
 
 end Consensus.Goldilocks.Obligations.Growing
 

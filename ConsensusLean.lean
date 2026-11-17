@@ -475,7 +475,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Unanimou
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.WitnessUnanimity
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Endpoint
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Fields
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Final
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ACWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.AncestorCandidate
@@ -554,8 +553,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Locks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Population
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Prot
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Reader
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.ReadPoint
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Reader
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Carry

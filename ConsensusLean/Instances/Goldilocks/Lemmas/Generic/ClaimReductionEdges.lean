@@ -93,8 +93,8 @@ def OutputValidAlways (B : EngineBinding (F := F) (V := V) pub payload sg runs) 
 
 /-- Bounded explicit-read sleepy safety reduction, proved by `sleepy_safety_reduction`.
 Coherent union and
-root suppliers remain explicit; none enters an unconditional claim. Source:
-Concrete/Fields.meetsObligations_sleepySafe_growing. -/
+root suppliers remain explicit; none enters an unconditional claim. Goldilocks instance:
+`Simulation.goldilocks_regimeTransport` and the sleepy rows of `goldilocks_localClaimSuppliers`. -/
 def SleepySafetyReduction (C : ACCorrectLocal A sg)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
     (D : SleepyLayer1.Data A)

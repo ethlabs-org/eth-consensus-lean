@@ -250,9 +250,9 @@ def OutageServiceSupply (M : RunMap rho payload) (K : Contract ProgressReq)
   (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ ⟨E, rho⟩ →
   ACServiceBefore C M.trace M.honest E.ΔFG b₀ ∧ PostStopService M.trace M.honest b₁
 
-/-- OPEN schema representation, not protection. Source: Concrete/Fields.persists
-and Outage/Engine/Repair.outage_protected_at use the confirmed alias for both
-provided nonfinal capabilities. NEW UNRESOLVED SUFFICIENCY TARGET for arbitrary F. -/
+/-- OPEN schema representation, not protection. Source: Outage/Engine/Repair.outage_protected_at
+and the Goldilocks run map (`goldilocksRunMap_resilienceTipTransport`) use the confirmed alias
+for both provided nonfinal capabilities. NEW UNRESOLVED SUFFICIENCY TARGET for arbitrary F. -/
 def ResilienceTipTransport (M : RunMap rho payload) : Prop :=
   ∀ g, O.output .stable = some g → ∀ st t,
     M.tip (resilienceTarget O g) st t = A.confirmed st.ac (Node.frame st) t

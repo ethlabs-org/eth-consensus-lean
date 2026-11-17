@@ -9,13 +9,13 @@ public section
 
 /-! # The growing-fault obligations endpoint
 
-`MeetsObligations` (`Statements/Obligations`) from the nine claims assembled in
-`Lemmas/Growing/Obligations/Concrete/Endpoint` (`meetsObligations_growing`) and the profile label
-(`schema_matches_ebbAndFlow`); the headline `GoldilocksCorrect` by `ShapeObligations.correct`;
-`PersistsWith` and `SleepyWith` by the binding-generic `meetsObligations_persists_growing`,
-`meetsObligations_sleepySafe_growing` and `meetsObligations_sleepyLive_growing`. The
-constant-fault endpoint follows (`meetsObligationsConstant_of_growing`). This module is the
-Goldilocks entry of the comparator solution. The compiled proposer hold-zero counterexample
+`MeetsObligations` (`Statements/Obligations`) at every vote binding from the shape obligations of
+`Lemmas/Growing/Obligations/Concrete/Endpoint` (`meetsObligations_growing`, the capstone at the
+Goldilocks engine binding) and the profile label (`schema_matches_ebbAndFlow`); the headline
+`GoldilocksCorrect` by `ShapeObligations.correct`; `PersistsWith` and `SleepyWith` by the
+`persists`, `sleepySafe` and `sleepyLive` claims of that endpoint. The stock constant-fault endpoint
+follows from the endpoint at the stock setup (`meetsObligationsConstant_of_growing`). This module is
+the Goldilocks entry of the comparator solution. The compiled proposer hold-zero counterexample
 (`ConsensusLeanTest/Goldilocks/Regimes/ProposerHold.lean`) shows the hold `1` of the contract is
 needed. -/
 
@@ -38,21 +38,22 @@ theorem goldilocks_correct : GoldilocksCorrect := fun S A V =>
   ⟨Consensus.Shape.ShapeObligations.correct (meets_obligations S A).2 V,
     Obligations.meetsObligations_optimalFaultTolerance S A⟩
 
-/-- **Goldilocks survives outages at every vote binding**: the binding-generic outage claim
-`meetsObligations_persists_growing` at every bound setup. -/
-theorem persists_with : PersistsWith := fun S A V =>
-  Obligations.Growing.meetsObligations_persists_growing S A V
-
-/-- **Goldilocks is sleepy-safe and sleepy-live at every vote binding**: the binding-generic
-sleepy claims `meetsObligations_sleepySafe_growing` and `meetsObligations_sleepyLive_growing` at
+/-- **Goldilocks survives outages at every vote binding**: the `persists` claim of the endpoint at
 every bound setup. -/
-theorem sleepy_with : SleepyWith := fun S A V =>
-  ⟨Obligations.Growing.meetsObligations_sleepySafe_growing S A V,
-    Obligations.Growing.meetsObligations_sleepyLive_growing S A V⟩
+theorem persists_with : PersistsWith := fun S A V =>
+  ((meets_obligations S A).2.claims V).persists
 
-/-- The constant-fault endpoint follows from the growing-fault one. -/
+/-- **Goldilocks is sleepy-safe and sleepy-live at every vote binding**: the `sleepySafe` and
+`sleepyLive` claims of the endpoint at every bound setup. -/
+theorem sleepy_with : SleepyWith := fun S A V =>
+  ⟨((meets_obligations S A).2.claims V).sleepySafe,
+    ((meets_obligations S A).2.claims V).sleepyLive⟩
+
+/-- The stock constant-fault endpoint follows from the growing-fault one at the stock setup,
+restricted to the runs whose faults do not grow. -/
 theorem meetsObligationsConstant_of_growing (h : MeetsObligations) : MeetsObligationsConstant :=
-  fun S A => (h S A).toOnAs _
+  fun S A =>
+    (h { S with vote := AsChainShape.stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩).toOnAs _
 
 end Consensus.Goldilocks.Growing
 end

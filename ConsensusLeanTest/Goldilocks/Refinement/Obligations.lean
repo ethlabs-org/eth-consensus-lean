@@ -415,7 +415,8 @@ theorem claims_with_persistsWith (S : Setup) (A : ContractAssumptions S) (V : Ty
     [DecidableEq V] :
     ShapeClaimsAt (goldilocks { S with vote := AsChainShape.stock })
       (goldilocksContract A (contract_coefficients S A)) V :=
-  { (Consensus.Goldilocks.meetsObligations S A).2.claims V with
+  { (Consensus.Goldilocks.meetsObligations { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩).2.claims V with
     persists := Consensus.Goldilocks.persistsWith { S with vote := stock }
       ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V }
 
@@ -425,7 +426,8 @@ theorem claims_with_sleepyWith (S : Setup) (A : ContractAssumptions S) (V : Type
     [DecidableEq V] :
     ShapeClaimsAt (goldilocks { S with vote := AsChainShape.stock })
       (goldilocksContract A (contract_coefficients S A)) V :=
-  { (Consensus.Goldilocks.meetsObligations S A).2.claims V with
+  { (Consensus.Goldilocks.meetsObligations { S with vote := stock }
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩).2.claims V with
     sleepySafe := (Consensus.Goldilocks.sleepyWith { S with vote := stock }
       ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V).1
     sleepyLive := (Consensus.Goldilocks.sleepyWith { S with vote := stock }
