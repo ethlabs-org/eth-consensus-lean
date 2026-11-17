@@ -11,9 +11,7 @@ public section
 `held_candidate_of_rows_by`, that lemma at a cut `i` of a node honest
 at a time `t` after every cut before `i`, lifted to the prefix through `t`: the attestations of the
 node's tree by validators honest at `t` are sourced (`HonestRowsSourcedBy`: by a block held while
-honest at `t`, `IsHonestSourceAt`), and the count is `2 f_t < n`. `held_candidate_of_rows_at` is the
-case `t = t_i`, from the rows sourced at the reading cut (`HonestRowsSourcedAt`,
-`Sleepy/Node/Frame`). -/
+honest at `t`, `IsHonestSourceAt`), and the count is `2 f_t < n`. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -110,20 +108,6 @@ theorem held_candidate_of_rows_by
     (fun D ⟨hD, hDU⟩ => compatible_upTo hrun hnc ht0 hDU hBU (hGB D hD))
     (by rw [hst]; exact hBt)
   rwa [hst] at h
-
-/-- **A held block compatible with every source stays a candidate**, at a cut `i` of a node
-honest then, with `2 f_{t_i} < n`. -/
-theorem held_candidate_of_rows_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) (hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n)
-    {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourcedAt tr H G y i)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hGB : ∀ D, G D → Compatible (tr.HonestBlocksAt H) D B)
-    (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
-    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
-      B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree :=
-  held_candidate_of_rows_by hrun hnc (hrun.time_nonneg i) (fun _ hk => hrun.time_mono hk.le) hy
-    hf (hsrc.by_ hrun) hGB hBt
 
 end Consensus.Goldilocks.Compose.Growing
 

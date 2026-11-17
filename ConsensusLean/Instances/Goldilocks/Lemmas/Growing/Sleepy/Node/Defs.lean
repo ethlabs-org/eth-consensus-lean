@@ -180,26 +180,6 @@ structure SleepyInvariantUpTo (b : Time) : Prop where
 
 variable {tr H}
 
-theorem sleepyServiceBefore_iff {ΔF b : Time} :
-    SleepyServiceBefore tr H ΔF b ↔ 0 < ΔF ∧
-      (∀ x i v, x ∈ H (tr.time i) → tr.projAC.SendOrAdmit x i v → 0 ≤ tr.time i →
-        ∀ y j ℓ, y ∈ H (tr.time j) → tr.projAC.CallAt y j ℓ →
-          tr.projAC.deadline y j (tr.time i) ≤ b →
-          tr.projAC.deadline y j (tr.time i) ≤ tr.time j →
-          SA.MessageServedBefore tr.projAC y j (tr.time i) v) ∧
-      (∀ x i B, x ∈ H (tr.time i) → tr.projAC.AcceptAt x i B → 0 ≤ tr.time i →
-        ∀ y j ℓ, y ∈ H (tr.time j) → tr.projAC.CallAt y j ℓ →
-          tr.projAC.deadline y j (tr.time i) ≤ b →
-          tr.projAC.deadline y j (tr.time i) ≤ tr.time j →
-          Anc (tr.HonestBlocksAt H) ℓ.frame.F B →
-          ∃ k ≤ j, tr.projAC.AcceptAt y k B ∧ tr.time k < tr.projAC.deadline y k (tr.time i)) ∧
-      (∀ x i B, x ∈ H (tr.time i) → tr.AcceptAt x i B → 0 ≤ tr.time i →
-        ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j → tr.deadline y j (tr.time i) sp.Δ ≤ b →
-          tr.deadline y j (tr.time i) sp.Δ ≤ tr.time j →
-          Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B →
-          tr.BlockAcceptedBy y j (tr.time i) B) :=
-  ⟨fun h => ⟨h.1, h.2, h.3, h.4⟩, fun h => ⟨h.1, h.2.1, h.2.2.1, h.2.2.2⟩⟩
-
 theorem hVoteAt_iff {y : Fin sp.n} {i : Nat} {e : SA.Em sp (List (FG.Att sp.n))} :
     HVoteAt tr H y i e ↔ y ∈ H (tr.time i) ∧ SA.VoteAt tr.projAC y i e :=
   Iff.rfl

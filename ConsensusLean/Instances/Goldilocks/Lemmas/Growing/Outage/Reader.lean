@@ -21,7 +21,7 @@ at the cut's own time (`_at`):
   the node's frame, are compatible with every block `B ⪯ P`;
 * `lockInv_state_by`, `liveBlocks_chain_by`: the stored lock invariant in the node's frame, and the
   live lock blocks on one chain (the static facts on the prefix through `t`);
-* `reader_frame_by`, `reader_frame_at`: `fc_root` is compatible with every `B ⪯ P`, and `B`, when
+* `reader_frame_by`: `fc_root` is compatible with every `B ⪯ P`, and `B`, when
   in the frame, is below the anchor or in the full viable tree. The candidate count is
   `2 f_t < n` at the read time.
 
@@ -148,17 +148,6 @@ theorem reader_frame_by (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} {m : Na
   · exact Or.inl (h.trans ((SA.anc_getAnchor hΦ
       (liveBlocks_chain_by D.hrun D.hnc ht0 hm hy τ)).2 _ (Or.inr rfl)))
   · exact Or.inr h
-
-/-- **The reader frame at a cut**: `reader_frame_by` read at the cut's own time. -/
-theorem reader_frame_at (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} {m : Nat}
-    (hy : y ∈ H (tr.time m)) (hf : 2 * (H (tr.time m))ᶜ.ncard < sp.n) (τ : Time)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBP : Anc (tr.HonestBlocksAt H) B D.P) :
-    Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y m)).fcRoot B ∧
-      (B ∈ (Node.frame (tr.state y m)).tree →
-        (Node.frame (tr.state y m)).Anc B
-            (SA.getAnchor sp (tr.state y m).ac (Node.frame (tr.state y m)) τ) ∨
-          B ∈ (Node.frame (tr.state y m)).viableTree (Node.frame (tr.state y m)).tree) :=
-  reader_frame_by hinv (D.hrun.time_nonneg m) (fun _ hk => D.hrun.time_mono hk.le) hy hf τ hBP
 
 end Consensus.Goldilocks.Compose.Growing
 

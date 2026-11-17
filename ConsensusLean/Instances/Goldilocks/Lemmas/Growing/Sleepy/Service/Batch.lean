@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.BatchWindow
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -18,8 +17,7 @@ voters `VotersAt s (t_s + 6Δ)` of the update's count):
 * `honest_batch_at_update_from`, `honest_vote_at_update_from`: when every honest slot-`s` vote
   names a block `P` of the update's frame, each such vote is in the updater's pool, resolved before
   `t_s + 2Δ`, under the service from `a ≤ t_s` with its catch-up before `a + κ ≤ t_s + 2Δ`
-  (`SleepyServiceFrom`, the static windowed forms on the prefix through the update);
-  `honest_batch_at_update_at`, `honest_vote_at_update_at` are their forms from `a = κ = 0`. -/
+  (`SleepyServiceFrom`, the static windowed forms on the prefix through the update). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -101,24 +99,6 @@ theorem honest_batch_at_update_from {ini} (hrun : Growing.GoldilocksRun proposer
     ha hκ (le_min (by linarith) (by linarith)) le_rfl hPt hall' x hxd j e hv' hes
   rwa [RunTrace.upTo_projAC, projAC_upTo_state hrun le_rfl] at h
 
-/-- **The honest batch at an update**: at the update of slot `s` of a node honest then, through
-`b`, when every slot-`s` vote of a node honest at its vote names `P ∈ Φ`, every such vote of a
-validator still honest at the update is in the updater's pool, resolved before `t_s + 2Δ` (the
-form from `a = κ = 0`). -/
-theorem honest_batch_at_update_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) {y : Fin sp.n}
-    {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀))
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPt : P ∈ ℓ.frame.tree)
-    (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root) :
-    ∀ x j e, HVoteAt tr H x j e → x ∈ H (tr.time k₀) → e.msg.slot = s →
-      e.msg ∈ (tr.projAC.state y k₀).pool s ∧
-        SA.resolutionTime (tr.projAC.state y k₀) ℓ.frame e.msg <
-          SA.ETime.of (sp.ts s + 2 * sp.Δ) :=
-  honest_batch_at_update_from hrun hnc (hsync.toFrom hrun) hy hu hb
-    (ts_natCast_nonneg s)
-    (by have := sp.toParams.hΔ; have := ts_natCast_nonneg (sp := sp) s; linarith) hPt hall
-
 /-- **An honest vote at an update, under service from `a`** (`SleepyServiceFrom`, with
 `a ≤ t_s` and `a + κ ≤ t_s + 2Δ`): at the update of slot `s` of a node honest then, through `b`,
 a slot-`s` vote of a node honest at its vote and still honest at the update, whose head `Q` (a
@@ -161,27 +141,6 @@ theorem honest_vote_at_update_from {ini} (hrun : Growing.GoldilocksRun proposer 
     ((sa_updateAt_upTo hrun.time_mono).2 ⟨le_rfl, hu⟩) hQU' hFQ' hxd
     (sa_voteAt_upTo.2 ⟨hjt, ℓx, hcx, hex⟩) hes hhead
   rwa [projAC_upTo_state hrun le_rfl] at h
-
-/-- **An honest vote at an update**: at the update of slot `s` of a node honest then, through `b`,
-a slot-`s` vote of a node honest at its vote and still honest at the update, whose head `Q` (a
-block held while honest) is above the update's `Σ.F`, is in the pool, resolved before
-`t_s + 2Δ`, with `Q` in the frame (the static `honest_vote_at_update_before` on the prefix through
-the update; the form from `a = κ = 0`). -/
-theorem honest_vote_at_update_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) {y : Fin sp.n}
-    {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀))
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
-    {Q : SA.Blk sp.n (List (FG.Att sp.n))} (hQU : Q ∈ tr.HonestBlocksAt H)
-    (hFQ : Anc (tr.HonestBlocksAt H) ℓ.frame.F Q) {x : Fin sp.n} {j : Nat}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x j e) (hxd : x ∈ H (tr.time k₀))
-    (hes : e.msg.slot = s) (hhead : e.msg.head = Q.root) :
-    Q ∈ ℓ.frame.tree ∧ e.msg ∈ (tr.projAC.state y k₀).pool s ∧
-      SA.resolutionTime (tr.projAC.state y k₀) ℓ.frame e.msg <
-        SA.ETime.of (sp.ts s + 2 * sp.Δ) :=
-  honest_vote_at_update_from hrun hnc (hsync.toFrom hrun) hy hu hb
-    (ts_natCast_nonneg s)
-    (by have := sp.toParams.hΔ; have := ts_natCast_nonneg (sp := sp) s; linarith) hQU hFQ hv hxd
-    hes hhead
 
 end Consensus.Goldilocks.Compose.Growing
 

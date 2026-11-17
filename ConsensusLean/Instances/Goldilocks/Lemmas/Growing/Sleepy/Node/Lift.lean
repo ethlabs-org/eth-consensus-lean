@@ -32,8 +32,7 @@ The tools that apply a static fact to the prefix `tr.upTo d` with the honest set
 * the AC trace of the prefix (`tr.projAC.upTo d`) at cuts at times `≤ d`: restarts, acceptances,
   processing, sends, wakes and deadlines, the SA events (votes, results, optimistic selections) and
   the retained and fresh message service;
-* the transport of the finite service (`SleepyServiceBefore.upTo`) and of the slot count
-  (`faultBound_upTo`);
+* the transport of the finite service (`SleepyServiceBefore.upTo`);
 * the origin chain (`OnOriginChainWithin.compatible`, `OnOriginChainWithin.of_anc`), the σ-copies
   of `Compose/Sleepy/Chain`;
 * node-local AC facts at a cut, lifted at the cut's time; the stored locks below the holder's own
@@ -322,13 +321,6 @@ theorem OnOriginChainWithin.of_anc {ini} (hrun : Growing.GoldilocksRun proposer 
 theorem joinedAt_upTo {y : Fin sp.n} {t : Time} (h : tr.JoinedAt y t) :
     (tr.upTo d).JoinedAt y t :=
   fun k hk hkt => h k ((RunTrace.upTo_restartAt tr).mp hk).2 hkt
-
-/-- **The slot count in the prefix**: `f_d < h_τ` (charged at `d`) is the static count `f < h_τ`
-of the prefix through `d` for the validators honest at `d`, when `τ ≤ d`. -/
-theorem faultBound_upTo {τ : Time} (hτ : τ ≤ d) (h : tr.FaultBoundAt H τ d) :
-    (tr.upTo d).FaultBound (H d) τ :=
-  lt_of_lt_of_le h (Set.ncard_le_ncard (fun _ hx => ⟨hx.1, ⟨hx.2.1, hτ⟩, joinedAt_upTo hx.2.2⟩)
-    (Set.toFinite _))
 
 /-- **Transport of the finite service** to the prefix through `d ≥ 0`, for the validators
 honest at `d`, with the deadline bound `min b d`. -/
@@ -704,31 +696,6 @@ theorem blockStamp_lt_of_acceptedBefore_at {ini} (hrun : Growing.GoldilocksRun p
     ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc) hB
     (hacc.imp_right fun ⟨k, hk, hkT⟩ => ⟨k, (ac_acceptAt_upTo _).mpr ⟨(hkT.le.trans hT), hk⟩, hkT⟩)
     (fun k hk hrk => hrs k hk ((ac_restartAt_upTo _).mp hrk).2) (Or.inl hT)
-  rwa [projAC_upTo_state hrun le_rfl] at h
-
-/-- **Forwarding under the finite service**: a vote sent or admitted at cut `k` by a node honest
-then reaches a node honest at its call `i` (not restarted since `t_k`, `t_k + Δ ≤ t_i`): it is in
-the receiver's pool, or its validator is an equivocator there. -/
-theorem sync_before_forward_at (hrun : Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {ΔF b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
-    {y X : Fin sp.n} {k : Nat} {v : Vote sp.n} (hy : y ∈ H (tr.time k))
-    (hsend : tr.projAC.SendOrAdmit y k v) (hb : tr.time k + sp.Δ ≤ b) {i : Nat}
-    (hX : X ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt X i ℓ)
-    (hrs : ∀ k' ≤ i, tr.projAC.RestartAt X k' → tr.time k' ≤ tr.time k)
-    (hdl : tr.time k + sp.Δ ≤ tr.time i)
-    (hslot : ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
-      (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t) :
-    v ∈ (tr.projAC.state X i).pool v.slot ∨
-      v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state X i).pool v.slot} := by
-  have hm := hrun.time_mono
-  have hd := hrun.time_nonneg i
-  have hdl' : tr.projAC.deadline X i (tr.time k) ≤ tr.time k + sp.Δ :=
-    (ac_deadline_le_of_restarts hrs _).trans (by rw [max_self])
-  have hserv := hsync.message y k v hy hsend (hrun.time_nonneg k) X i ℓ hX hc
-    (hdl'.trans hb) (hdl'.trans hdl)
-  have h := SA.held_of_deadline_service (acRun_upTo hrun hnc hd).localRun (k := k) hX
-    (fun k' hk' hrk => hrs k' hk' ((ac_restartAt_upTo _).mp hrk).2) hdl hslot
-    (sa_messageServedBefore_upTo hm le_rfl hserv)
   rwa [projAC_upTo_state hrun le_rfl] at h
 
 /-! ### Origins and stored locks -/

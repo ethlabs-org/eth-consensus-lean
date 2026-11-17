@@ -196,19 +196,6 @@ theorem proposal_live_lock_below_at {ini} (hrun : Growing.GoldilocksRun proposer
   rw [← he]
   exact hlive
 
-/-- A live lock block of the proposal's anchor sits below the proposer's own lock write of the
-slot of a stored lock, written up to the proposal (`lock_write_at`; unlocking and `live_locks`
-only move locks back). -/
-theorem proposal_lock_below_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {p : Fin sp.n} {i : Nat} (hp : p ∈ H (tr.time i))
-    {Φ : SA.Frm sp.n (List (FG.Att sp.n))} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ tr.HonestBlocksAt H)
-    {t : Time} {σ : Int} {V : SA.View sp.n} {A₁ : SA.SAState sp.n}
-    (hA₁ : A₁.locks = SA.unlock sp (tr.projAC.state p i).locks Φ t σ V) :
-    ∀ L ∈ SA.liveLockBlocks sp A₁.locks Φ t, ∃ l ∈ (tr.state p i).ac.locks, ∃ D,
-      LockWithin tr H D l.slot (tr.time i) ∧ Anc (tr.HonestBlocksAt H) L D := fun L hL =>
-  let ⟨l, hl, _, h⟩ := proposal_live_lock_below_at hrun hnc hp hΦ hΦU hA₁ L hL
-  ⟨l, hl, h⟩
-
 /-- **The proposal walk passes a supported held block**, under the service from `a ≤ t_{s−1}`
 with its catch-up before `a + κ ≤ max (t_{s−1} + 3Δ) 0` and the counts from `σ₀ ≤ s − 1`: a block
 `O` held by the proposer or below its `Σ.F`, at or below `fc_root` or in the full viable tree when
@@ -261,7 +248,7 @@ theorem proposal_walk_passes_from {ini} (hrun : Growing.GoldilocksRun proposer d
 /-- **The proposal walk passes every old origin**: the origin is held by the proposer (or below
 its `Σ.F`, below the walk's start), so viable or at or below `fc_root` (`held_origin_viable_at`,
 `2 f_d < n` at `d = t_s`); the proposer's live locks sit below origins, compatible with it (S1);
-and the children towards it win (`proposal_best_toward_old_at`, `SA.anc_getHead`). -/
+and the children towards it win (`proposal_best_toward_from`, `SA.anc_getHead`). -/
 theorem proposal_walk_passes_old_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {s i : Nat}

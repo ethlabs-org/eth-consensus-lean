@@ -14,8 +14,7 @@ public section
 
 An update of the first restored label
 `r` by a node honest at it makes its effective record a block above `P` at every later cut read
-at a time at which the node is honest (`record_above_of_update_r_by`; at the cut's own time,
-`record_above_of_update_r_at`):
+at a time at which the node is honest (`record_above_of_update_r_by`):
 
 * when `P ⪯ Σ.F` at the update, the effective record is a block of the later frame, so it extends
   that frame's `Σ.F`, which extends the update's;
@@ -72,19 +71,6 @@ theorem record_above_of_update_r_by (D : OutageLockPremises tr H proposer dg ini
   obtain ⟨⟨C, CV, hR⟩, hall⟩ := gate_result_extends_at D.hrun D.hnc D.facts.hP hw (hS w) hu D.hr.1
     (restored_majority_at_r_at D hinv (honestCall_mono hcallc (by linarith)) _ hcz) hFP
   exact record_above_from_at hinv hu hR le_rfl (hall C CV hR) c' t hcc' hd hcut hwt
-
-/-- **The early record**: an update at label `r` by a node honest at it makes its effective
-record `⪰ P` at every later cut at which it is honest. -/
-theorem record_above_of_update_r_at (D : OutageLockPremises tr H proposer dg ini)
-    (hS : ∀ y, ReceiverServiceAfterAt H (tr.HonestBlocksAt H) D.b₁ y tr.projAC)
-    (hinv : ∀ i, OutageLockInv D i) {w : Fin sp.n} {c : Nat} (hw : w ∈ H (tr.time c))
-    {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
-    (hu : SA.UpdateAt tr.projAC w c D.r ℓ) :
-    ∀ c', c < c' → w ∈ H (tr.time c') → Anc (tr.HonestBlocksAt H) D.P
-      ((SA.lookup (Node.frame (tr.state w c')) (tr.state w c').ac.latestConfirmed).getD
-        (Node.frame (tr.state w c')).F) := fun c' hcc' hwc' =>
-  record_above_of_update_r_by D hS hinv hw hu c' (tr.time c') hcc' (D.hrun.time_nonneg c')
-    (fun _ hk => D.hrun.time_mono hk.le) hwc'
 
 end Consensus.Goldilocks.Compose.Growing
 

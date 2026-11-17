@@ -12,18 +12,15 @@ public section
 
 * `source_compatible_at` (SRC): an FG source of a node honest at its call is the viable ancestor
   of a stored live lock block, so it is compatible with `B` when the stored locks are.
-* `rows_sourced_at`: the attestations of the tree of a node honest at cut `n`, by validators
-  honest at `t_n`, are sourced (`HonestRowsSourcedAt`) by blocks compatible with `B` when the
-  sources at the earlier cuts of nodes honest then are. The attester signed at an earlier cut
-  while honest, from its own source (Lemma G at the reading cut), so each attester is read on the
-  prefix through `t_n`.
-* `rows_sourced_by`: the same at a read time `t` after every cut before `n` (signers and sources
-  classified at `t`, `HonestRowsSourcedBy`);
-* `J_compatible_by`, `caches_compatible_by` (OB-F) at a read time `t`, and their cut forms
-  `J_compatible_at`, `caches_compatible_at`: with `2 f_t < n` and the rows sourced by blocks
-  compatible with a block `B` held while honest (not necessarily in the prefix through `t`),
-  `Σ.J` is compatible with `B` (its quorum has a member honest at `t`, whose source is above
-  `Σ.J`), and `Σ.F ⪯ Σ.J`. -/
+* `rows_sourced_by`: the attestations of the tree at cut `n` of a node honest at a time `t` after
+  every cut before `n`, by validators honest at `t`, are sourced (`HonestRowsSourcedBy`) by blocks
+  compatible with `B` when the sources at the earlier cuts of nodes honest then are. The attester
+  signed at an earlier cut while honest, from its own source (Lemma G at the read time), so each
+  attester is read on the prefix through `t`.
+* `J_compatible_by`, `caches_compatible_by` (OB-F) at a read time `t`: with `2 f_t < n` and the
+  rows sourced by blocks compatible with a block `B` held while honest (not necessarily in the
+  prefix through `t`), `Σ.J` is compatible with `B` (its quorum has a member honest at `t`, whose
+  source is above `Σ.J`), and `Σ.F ⪯ Σ.J`. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -53,47 +50,6 @@ theorem source_compatible_at {ini}
   obtain ⟨L, hL, hLr, hLB⟩ := hlocks l₀ hl₀
   obtain rfl : B₀ = L := hU.1 (hΦU hB₀) (mem_honestBlocksAt hrun hy hL) (hB₀r.trans hLr.symm)
   exact compatible_of_head_anc hU (hva.mono hΦU) hLB
-
-/-- **The rows are sourced by compatible blocks**: with every FG source, at a cut before `n` of a
-node honest then, compatible with `B`, every attestation of the tree of a node honest at cut `n`
-by a validator honest at `t_n` has a source compatible with `B`, held by that validator at its
-signing cut. -/
-theorem rows_sourced_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {B : SA.Blk sp.n (List (FG.Att sp.n))} {n : Nat}
-    (hsrc : ∀ x k, k < n → x ∈ H (tr.time k) → ∀ ℓ C, SA.ToFGAt tr.projAC x k ℓ C →
-      Compatible (tr.HonestBlocksAt H) C B)
-    {y : Fin sp.n} (hy : y ∈ H (tr.time n)) :
-    HonestRowsSourcedAt tr H (fun D => Compatible (tr.HonestBlocksAt H) D B) y n := by
-  have hd := hrun.time_nonneg n
-  have hm := hrun.time_mono
-  have hst : ∀ x k, k ≤ n → (tr.upTo (tr.time n)).state x k = tr.state x k :=
-    fun x k hk => RunTrace.upTo_state_of_le hm (hm hk)
-  have hr := hrun.upTo hd
-  refine honestRowsSourcedAt_iff.2 fun X hX a ha hav => ?_
-  obtain ⟨m, hmn, -, k, hkm, src, hcall⟩ :=
-    honest_row_signed_before hr (hnc.upTo _) hy (by rw [hst y n le_rfl]; exact hX) ha hav
-  obtain ⟨j, rfl, ℓ, hcj, hcl, -, hC, hfg⟩ := attest_source hr.toLocalRun hav hcall
-  have hj1 : j + 1 ≤ n := by omega
-  obtain ⟨hjd, hcj⟩ := (Trace.upTo_callAt _).mp hcj
-  obtain ⟨-, hcall⟩ := (Trace.upTo_callAt _).mp hcall
-  rw [hst a.val j (by omega)] at hC
-  rw [hst a.val (j + 1) hj1, hst a.val j (by omega)] at hfg
-  have hav' : a.val ∈ H (tr.time j) := hrun.antitone hjd hav
-  have hav1 : a.val ∈ H (tr.time (j + 1)) := hrun.antitone (hm hj1) hav
-  have hfr := (hrun.cutLaw a.val j _ hcj hav').1
-  have hto : SA.ToFGAt tr.projAC a.val j ℓ src :=
-    ⟨projAC_callAt.2 hcj, hcl, by rw [projAC_state_at hrun hav']; exact hC⟩
-  have hst' : src ∈ (tr.state a.val (j + 1)).fg.tree := by
-    have h' := (toFG_candidate hC).1.1
-    rw [hfr] at h'
-    rw [hfg]
-    exact h'.1
-  have hR := fg_reachable hr.toLocalRun hav (j + 1)
-  rw [hst a.val (j + 1) hj1] at hR
-  obtain ⟨⟨E, -, hEr, -, -, hET⟩, -⟩ := Store.entry_state_of_source _ _ _ _ hR _ hst'
-  have hT := createAtt_T (hrun.cutLaw a.val (j + 1) _ hcall hav1).1
-  rw [← hEr, hET] at hT
-  exact ⟨src, hsrc a.val j (by omega) hav' ℓ src hto, a.val, j + 1, hav, hj1, hst', hT.symm⟩
 
 /-- **The rows are sourced by compatible blocks, at a read time**: with every FG source, at a cut
 before `n` of a node honest then, compatible with `B`, every attestation of the tree at cut `n` of
@@ -173,17 +129,6 @@ theorem J_compatible_by {ini}
   · exact Or.inl (hJDU.trans h)
   · exact Anc.total hU hJDU h
 
-/-- **`Σ.J` is compatible with a block compatible with every source**, at a cut `i` of a node
-honest then, with `2 f_{t_i} < n`. -/
-theorem J_compatible_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    (hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n) {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    (hsrc : HonestRowsSourcedAt tr H G y i) {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hGB : ∀ D, G D → Compatible (tr.HonestBlocksAt H) D B) (hB : B ∈ tr.HonestBlocksAt H) :
-    Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.J B :=
-  J_compatible_by hrun hnc (hrun.time_nonneg i) (fun _ hk => hrun.time_mono hk.le) hy hf
-    (hsrc.by_ hrun) hGB hB
-
 /-- **OB-F at a read time**: at a cut `n` of a node honest at a time `t ≥ 0` after every cut
 before `n`, with `2 f_t < n` and the rows sourced by blocks compatible with a block `B` held while
 honest, `Σ.F` and `Σ.J` are compatible with `B`. -/
@@ -204,18 +149,6 @@ theorem caches_compatible_by {ini}
   have hsub : (tr.state y n).fg.tree ⊆ tr.HonestBlocksAt H := fun X hX =>
     upTo_subset hrun ht0 ⟨y, hy, n, by rw [hst]; exact hX⟩
   exact ⟨compatible_of_head_anc hU (hFJ.mono hsub) hJ, hJ⟩
-
-/-- **OB-F**: at a cut `n` of a node honest then, with `2 f_{t_n} < n` and the rows sourced by
-blocks compatible with a block `B` held while honest, `Σ.F` and `Σ.J` are compatible with `B`. -/
-theorem caches_compatible_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {y : Fin sp.n} {n : Nat} (hy : y ∈ H (tr.time n))
-    (hf : 2 * (H (tr.time n))ᶜ.ncard < sp.n) {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hBU : B ∈ tr.HonestBlocksAt H)
-    (hsrc : HonestRowsSourcedAt tr H (fun D => Compatible (tr.HonestBlocksAt H) D B) y n) :
-    Compatible (tr.HonestBlocksAt H) (tr.state y n).fg.F B ∧
-      Compatible (tr.HonestBlocksAt H) (tr.state y n).fg.J B :=
-  caches_compatible_by hrun hnc (hrun.time_nonneg n) (fun _ hk => hrun.time_mono hk.le) hy hf
-    hBU (hsrc.by_ hrun)
 
 end Consensus.Goldilocks.Compose.Growing
 

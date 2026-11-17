@@ -220,20 +220,6 @@ theorem read_head_support_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)
         (by omega) hq.symm hrd hRm.1)
   rwa [hst] at h
 
-/-- **G1, G2 at a served cut under growing faults**: at a cut `i ≤ b` of a node honest then,
-joined at its time, the record's block has `HeadSupport` (the read at `t = tr.time i`). -/
-theorem served_head_support_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
-    (hsync : SleepyServiceBefore tr H ΔF b) {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
-    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
-    (hBK : CommitteeBoundsFrom tr H K 0 b)
-    (hc : tr.IsCall y i) (hj : tr.JoinedAt y (tr.time i)) {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hR : RecordAt tr y i R) : HeadSupport tr y i R :=
-  have h := read_head_support_at hinv hrun hnc hsync hy (hrun.time_nonneg i) hib hKB hBK
-    (fun _ hk => hrun.time_mono hk.le) le_rfl ⟨hrun.awake_of_call y i hy hc, hj⟩ hR
-  ⟨h.1, h.2⟩
-
 /-- **G3 under growing faults, the record step**: at a cut of a node honest then, with every cut up
 to it at a time `≤ b`, the record moves to a descendant (inside the blocks held while honest). -/
 theorem record_step_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)

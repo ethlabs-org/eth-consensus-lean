@@ -16,8 +16,6 @@ static lemma on the prefix through one time:
   node's tree that is genesis or an origin within `b ≥ t`;
 * `source_on_chain_at` (the node honest at its cut): every FG source is on the chain of the
   origins within `b`;
-* `row_on_chain_at` (the signer honest at its signing): an honest attestation names a block on
-  the chain of the origins within `b`;
 * `caches_on_chain_at` (state read at `t`, the node honest at `t`, `2 f_t < n`): `Σ.F` and `Σ.J`
   are on the chain of the origins within `b ≥ t`. The quorum count is charged at the reading time
   `t`: a target quorum has a member honest at `t` (`f_t < n/2 < q`), whose attestation, signed
@@ -130,17 +128,6 @@ theorem source_on_chain_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr 
       rw [projAC_upTo_state hrun le_rfl]; exact hC⟩
   exact onOriginChainWithin_of_upTo hrun hd
     (Compose.source_on_chain_upTo (hrun.upTo hd) (hnc.upTo _) hy hi h')
-
-/-- **Every honest attestation names a block on the chain of the origins within `b`**, for a signer
-honest at its signing, whose earlier cuts are at times `≤ b`. -/
-theorem row_on_chain_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {x : Fin sp.n} {k : Nat} {a : FG.Att sp.n} (hx : x ∈ H (tr.time k)) (h : tr.SignAt x k a)
-    {b : Time} (hk : ∀ k' < k, tr.time k' ≤ b) :
-    ∃ E ∈ tr.HonestBlocksAt H, E.root = a.T ∧ OnOriginChainWithin tr H E b := by
-  have hd := hrun.time_nonneg k
-  obtain ⟨E, hE, hEr, hEc⟩ := Compose.row_on_chain_upTo (hrun.upTo hd) (hnc.upTo _) hx
-    ((RunTrace.upTo_signAt tr).2 ⟨le_rfl, h⟩) hk
-  exact ⟨E, upTo_subset hrun hd hE, hEr, onOriginChainWithin_of_upTo hrun hd hEc⟩
 
 /-- **`Σ.F` and `Σ.J` are on the chain of the origins within `b`**: the state of `y` before cut
 `i`, read at `t ∈ [0, b]` at or after every earlier cut, with `y` honest at `t` and `2 f_t < n`

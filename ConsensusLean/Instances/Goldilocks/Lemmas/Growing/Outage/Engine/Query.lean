@@ -213,12 +213,6 @@ theorem OutageQueryAt.mem_opponentsAt {Q : OutageQueryAt S A V} {x : Fin (Fintyp
         (Q.run.2.point.retain Q.winEnd).readyAt Q.outCatch Q.winEnd :=
   Iff.rfl
 
-/-- The sleepy look-ahead of the contract is `5Δ`. -/
-theorem OutageQueryAt.aheadDur_eq (Q : OutageQueryAt S A V) :
-    (Sys (goldilocks S) V).aheadDur (K S A) Q.run = 5 * Q.params.Δ := by
-  change ((5 : Nat) : Int) * Q.run.1.ΔAC = 5 * Q.run.1.ΔAC
-  norm_num
-
 end Consensus.Goldilocks.Obligations.Growing
 
 end
