@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingWrappers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Interface
 public import ConsensusLean.Lemmas.Model.Candidates
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingState
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay

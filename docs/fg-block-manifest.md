@@ -12,7 +12,7 @@ Ordinary downward imports of generic foundational types remain allowed.
 | Store vocabulary/statements | Milestones/Spec/FG/Store, Milestones/Statements/FGStore | untrusted definitions/statements |
 | Chain/store results | Lemmas/FGChain, Lemmas/FGStore, Proofs/FGSafety, Proofs/FGStore | untrusted proofs |
 | Growing FG results | Lemmas/Growing/FG, Proofs/Growing/FGStore and their milestone statements | untrusted proofs/statements, classified individually |
-| Block finality rows | Milestones/Statements/Regimes/BlockFinality; Lemmas/Compose/Regimes/BlockFinality | untrusted statements/proofs; concrete specialisations remain instance-side |
+| Block finality rows | Milestones/Statements/Regimes/BlockFinality | untrusted statements; concrete specialisations remain instance-side |
 | Node integration | ACInterface.toFG, Frame, NodeAC, Node handlers, Node.LocalRun, Requirements, run/AC/FG/Sync projections | mixed protected definitions, untrusted vocabulary/statements/proofs; classify per declaration |
 | Planned persist interface | future block-level persist cut invariant/step/induction | provisional until its signature/proof freeze; no physical move authorised here |
 
