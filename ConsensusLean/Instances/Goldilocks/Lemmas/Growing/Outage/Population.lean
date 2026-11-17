@@ -254,7 +254,7 @@ theorem outage_bounds_of_local
     have hcoeff : (1 : Time) ≤ ((12 * sp.k + 7 : Nat) : Time) := by
       have : 1 ≤ 12 * sp.k + 7 := by omega
       exact_mod_cast this
-    nlinarith [sp.toParams.hΔ]
+    linarith [mul_le_mul_of_nonneg_right hcoeff sp.toParams.hΔ.le]
   have hcatch : Regimes.catchUp sp ≤ C.catchUp := by
     rw [hC.2.2.1]
     exact le_refl _

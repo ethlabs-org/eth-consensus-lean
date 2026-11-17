@@ -40,7 +40,7 @@ theorem CommitteeFaultsUpTo.committee_cs2_at {cm : Time → Finset (Fin sp.n)} {
       (cm (sp.toParams.slotTime s)).card := by
     push_cast
     change 2 * (((↑(cm (sp.toParams.slotTime s)) : Set (Fin sp.n)) ∩ (H d)ᶜ).ncard : ℚ) < _
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_right hβ hc]
   rw [← hcard]
   exact_mod_cast h2
 

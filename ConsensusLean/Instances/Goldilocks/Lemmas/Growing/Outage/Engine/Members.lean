@@ -133,7 +133,7 @@ theorem sleepy_committee_at (S : Setup) (A : ContractAssumptions S) {V : Type}
       (Sys (goldilocks S) V).cDur (K S A) r + 1 := by
     simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
     change 8 * r.1.ΔAC ≤ (contract_catchUp S A : Nat) * r.1.ΔAC + 1
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_right h19 (zero_le_one.trans hd)]
   have hrun := simTraceAt_goldilocksRun S r.2 hn hv
   exact ⟨voteK S r.2, voteK_facts S r.2 hn hv (noCollRun_simTraceAt S r.2 hn hv hc) hrun,
     voteK_bounds S r.2 hn hv hrun (K S A) le_rfl (η := 0) hcd

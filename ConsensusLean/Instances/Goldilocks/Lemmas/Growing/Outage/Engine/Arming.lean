@@ -101,7 +101,7 @@ private theorem bounds_pair (Q : OutageQueryAt S A V) {ini}
     have hcoeff : (1 : Time) ≤ ((12 * S.k + 7 : Nat) : Time) := by
       have : 1 ≤ 12 * S.k + 7 := by omega
       exact_mod_cast this
-    nlinarith [Q.run.1.ΔAC_pos]
+    linarith [mul_le_mul_of_nonneg_right hcoeff (le_of_lt Q.run.1.ΔAC_pos)]
   have hsize : ∀ s,
       ((Generic.dictOfTime Q.params (runCommittee S Q.run.2 Q.hn)).committee s).ncard =
         Q.params.committeeSize := by

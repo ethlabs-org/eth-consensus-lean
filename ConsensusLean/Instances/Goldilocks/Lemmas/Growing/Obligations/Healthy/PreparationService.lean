@@ -44,7 +44,8 @@ theorem healthy_preparation_faults_at (run : (Sys (goldilocks S) V).Run)
   have hcard := Finset.card_le_card (run.2.faultyAt_mono ht)
   have hV : (0 : ℚ) ≤ Fintype.card V := Nat.cast_nonneg _
   have hnat : 3 * (run.2.faultyAt b).card < Fintype.card V := by
-    exact_mod_cast (show (3 : ℚ) * (run.2.faultyAt b).card < Fintype.card V by nlinarith)
+    exact_mod_cast (show (3 : ℚ) * (run.2.faultyAt b).card < Fintype.card V by
+      linarith [mul_le_mul_of_nonneg_right hβ hV])
   change 3 * (run.2.faultyAt t).card ≤ Fintype.card V - 1
   omega
 

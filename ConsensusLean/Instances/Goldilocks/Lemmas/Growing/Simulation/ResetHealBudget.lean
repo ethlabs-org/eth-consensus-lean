@@ -103,13 +103,13 @@ theorem goldilocks_resetHealBudgetSupply (S : Setup) (A : ContractAssumptions S)
     unfold SA.gbar at hgz
     linarith
   · rw [hdt, hmΔ]
-    nlinarith
+    linarith [mul_nonneg (zero_le_one.trans hX) hΔ.le]
   · rw [hdrainC, hdrain, hslot]
     exact hs₁
   · rw [hts]; exact O.late
   · rw [hts]; exact O.service
   · rw [hts, hmΔ]
-    nlinarith
+    linarith [mul_nonneg (zero_le_one.trans hX) hΔ.le]
 
 end Consensus.Goldilocks.Simulation
 

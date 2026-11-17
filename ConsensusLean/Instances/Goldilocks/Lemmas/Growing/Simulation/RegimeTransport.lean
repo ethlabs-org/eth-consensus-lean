@@ -62,7 +62,7 @@ theorem goldilocks_regimeTransport (S : Setup) (A : ContractAssumptions S) {E : 
       have hd1 : (1 : Time) ≤ E.ΔAC := E.ΔAC_pos
       simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
       change 18 * E.ΔAC ≤ (contract_catchUp S A : Nat) * E.ΔAC
-      nlinarith
+      linarith [mul_le_mul_of_nonneg_right hc19 (zero_le_one.trans hd1)]
     have hnc := noCollRun_simTraceAt S rho hn hv' hc
     have hsync := sleepyServiceBefore_of_syncUntil_at S rho hn hv' hnc le_rfl
       (sleepy_raw_syncUntil S A V ⟨E, rho⟩ hv' hs rho.horizon)

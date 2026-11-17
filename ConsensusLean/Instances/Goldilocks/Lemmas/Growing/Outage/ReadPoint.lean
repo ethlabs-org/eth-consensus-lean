@@ -100,9 +100,9 @@ theorem goldilocks_outageReadPoint (C : ACCorrectLocal (goldilocksNode sp ro) (f
       refine outage_opponents_lt_committee hb hη0 hcl hz0 hzh hKθ (hne m) ?_ ?_
       · refine max_le (ts_natCast_nonneg m) ?_
         rw [hη]
-        nlinarith
+        linarith [mul_nonneg (show (0 : Time) ≤ sp.k by linarith) hΔ.le]
       · rw [hzdef]
-        exact le_min (by nlinarith) hq
+        exact le_min (by linarith) hq
     have hopp2 : ∀ m, j₀ ≤ m → m ≤ j₀ + sp.k →
         sp.ts m ≤ p.horizon → b₀ ≤ p.horizon →
         2 * ((dictOfTime sp cm).committee m ∩

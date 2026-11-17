@@ -62,7 +62,7 @@ theorem outage_window_numbers (hT : 0 ≤ T) (hlag : T + (4 * sp.k + 6) * sp.Δ 
   intro j₀
   have hΔ := sp.toParams.hΔ
   have hk : (0 : Time) ≤ sp.k := by positivity
-  have hb0 : 2 * sp.Δ ≤ b₀ := by nlinarith
+  have hb0 : 2 * sp.Δ ≤ b₀ := by linarith [mul_nonneg hk hΔ.le]
   obtain ⟨hg₁, hg₂⟩ := coverLabel_gates (sp := sp) hb0
   have hkj := (armed_label_lt (σ := 0) hT hlag
     (by simpa [SA.SAParams.ts] using hT)).2
@@ -77,7 +77,7 @@ theorem outage_window_numbers (hT : 0 ≤ T) (hlag : T + (4 * sp.k + 6) * sp.Δ 
   refine ⟨⟨hg₁, by linarith, by linarith, hb, by linarith, by linarith,
     fun t ht hth => le_min (by linarith) hth⟩,
     ⟨le_min (le_max_left _ _) hhor, (min_le_left _ _).trans (max_le ?_ ?_),
-      fun d hd hdh => le_min (by nlinarith) hdh⟩, ?_⟩
+      fun d hd hdh => le_min (by linarith [mul_nonneg hk hΔ.le]) hdh⟩, ?_⟩
   · exact mul_nonneg (by positivity) hjnonneg
   · linarith
   · have hz := min_le_left (b₁ + (4 * sp.k + 6) * sp.Δ) hor
