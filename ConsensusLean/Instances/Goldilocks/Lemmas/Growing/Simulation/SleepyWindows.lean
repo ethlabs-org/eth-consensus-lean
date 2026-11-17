@@ -28,49 +28,6 @@ open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V]
 
-/-- Transport both sleepy regime clauses through the canonical validator map.
-The same point witnesses both windows; their look-aheads remain independent.
-Catch-up domination belongs to `ClaimDeadlineFit`, not to this head. -/
-def GoldilocksSleepyWindowSupply : Prop :=
-  ∀ (S : Setup) (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E)
-    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (K : Contract ProgressReq)
-    (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
-      (goldilocksRunMap S rho hn hv).signer),
-    C.θ = K.params.θ → 0 ≤ C.θ → C.θ ≤ 1 →
-    C.look = (Sys (goldilocks S) V).aheadDur K ⟨E, rho⟩ →
-    C.committeeLook = (Sys (goldilocks S) V).committeeAheadDur K ⟨E, rho⟩ →
-    SleepyWindowSupply (goldilocksRunMap S rho hn hv) K C
-
-/-- The population clause at threshold at least one half supplies the shared FG
-quorum at each bounded time. Committee participation alone does not suffice. -/
-def GoldilocksPopulationQuorumSupply : Prop :=
-  ∀ (S : Setup) (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E)
-    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (K : Contract ProgressReq),
-    (1 / 2 : ℚ) ≤ K.params.θ →
-    PopulationQuorumSupply (goldilocksRunMap S rho hn hv) K
-
-/-- The sleepy window supply, without exposing the definition's body. -/
-theorem goldilocksSleepyWindowSupply_iff :
-    GoldilocksSleepyWindowSupply (V := V) ↔
-      ∀ (S : Setup) (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E)
-        (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (K : Contract ProgressReq)
-        (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
-          (goldilocksRunMap S rho hn hv).signer),
-        C.θ = K.params.θ → 0 ≤ C.θ → C.θ ≤ 1 →
-        C.look = (Sys (goldilocks S) V).aheadDur K ⟨E, rho⟩ →
-        C.committeeLook = (Sys (goldilocks S) V).committeeAheadDur K ⟨E, rho⟩ →
-        SleepyWindowSupply (goldilocksRunMap S rho hn hv) K C := by
-  exact Iff.rfl
-
-/-- The population quorum supply, without exposing the definition's body. -/
-theorem goldilocksPopulationQuorumSupply_iff :
-    GoldilocksPopulationQuorumSupply (V := V) ↔
-      ∀ (S : Setup) (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E)
-        (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (K : Contract ProgressReq),
-        (1 / 2 : ℚ) ≤ K.params.θ →
-        PopulationQuorumSupply (goldilocksRunMap S rho hn hv) K := by
-  exact Iff.rfl
-
 /-- The canonical run committee is constant from a slot start to its vote time.
 This is an instance obligation, not a law of arbitrary committee functions. -/
 def GoldilocksSlotConstancy : Prop :=
@@ -104,8 +61,13 @@ theorem goldilocks_slot_constancy : GoldilocksSlotConstancy (V := V) := by
       rw [SA.slot_of_neg ht, SA.slot_of_neg (by linarith : sp.ts s < 0)]
   exact runCommittee_eq_of_slot_eq S rho hn hs
 
-/-- The population sleepy budget at threshold at least one half gives an FG majority. -/
-theorem goldilocks_population_quorum_supply : GoldilocksPopulationQuorumSupply (V := V) := by
+/-- The population clause at threshold at least one half supplies the shared FG
+quorum at each bounded time. Committee participation alone does not suffice. -/
+theorem goldilocks_population_quorum_supply :
+    ∀ (S : Setup) (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E)
+      (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (K : Contract ProgressReq),
+      (1 / 2 : ℚ) ≤ K.params.θ →
+      PopulationQuorumSupply (goldilocksRunMap S rho hn hv) K := by
   intro S E rho hn hv K hθ _ hs t ht htb
   classical
   have h := hs.2.1 t ht htb
@@ -256,8 +218,18 @@ theorem goldilocksPoint_committee (hn : 1 ≤ Fintype.card V) (hv : rho.Executio
 
 end Point
 
-/-- One canonical indexed environment transports both independent sleepy windows. -/
-theorem goldilocks_sleepy_window_supply : GoldilocksSleepyWindowSupply (V := V) := by
+/-- Transport both sleepy regime clauses through the canonical validator map.
+The same point witnesses both windows; their look-aheads remain independent.
+Catch-up domination belongs to `ClaimDeadlineFit`, not to this head. -/
+theorem goldilocks_sleepy_window_supply :
+    ∀ (S : Setup) (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E)
+      (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (K : Contract ProgressReq)
+      (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+        (goldilocksRunMap S rho hn hv).signer),
+      C.θ = K.params.θ → 0 ≤ C.θ → C.θ ≤ 1 →
+      C.look = (Sys (goldilocks S) V).aheadDur K ⟨E, rho⟩ →
+      C.committeeLook = (Sys (goldilocks S) V).committeeAheadDur K ⟨E, rho⟩ →
+      SleepyWindowSupply (goldilocksRunMap S rho hn hv) K C := by
   intro S E rho hn hv K C hθ h0 h1 hlook hcommitteeLook
   classical
   let p := goldilocksPoint rho

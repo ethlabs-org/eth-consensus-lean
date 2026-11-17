@@ -91,9 +91,8 @@ theorem goldilocks_localClaimSuppliers (S : Setup) (A : ContractAssumptions S) {
     extension := goldilocksRunMap_extension S rho hn hv C hdata
     sourceProvenance := hcast (fun _ C => SleepyLayer1.SourceProvenance C _)
       (goldilocksLocal_source_provenance C hdata)
-    populationQuorum := goldilocksPopulationQuorumSupply_iff.mp
-      goldilocks_population_quorum_supply S E rho hn hv (K S A) hθK.ge
-    sleepyWindows := goldilocksSleepyWindowSupply_iff.mp goldilocks_sleepy_window_supply
+    populationQuorum := goldilocks_population_quorum_supply S E rho hn hv (K S A) hθK.ge
+    sleepyWindows := goldilocks_sleepy_window_supply
       S E rho hn hv (K S A) _
       (hfields.1.trans hθK.symm) (by rw [hfields.1]; norm_num) (by rw [hfields.1]; norm_num)
       (by rw [hfields.2.1]; change _ = ((5 : Nat) : Time) * E.ΔAC; norm_num)
