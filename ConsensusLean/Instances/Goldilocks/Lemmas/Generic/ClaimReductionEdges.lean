@@ -125,7 +125,7 @@ def SleepyLivenessReduction (C : ACCorrectLocal A sg)
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
     RegimeTransport M K L.look ∧
-      ProposalProgressTransport M K L.healing ∧
+      ProposalProgressTransport M ∧
       ProposalWitnessRefinement M K L ∧ ClaimDeadlineFit M K L ∧
       StoredReadTransport M (R E hE rho hv) ∧ SleepyLayer1.ProposalCoverage M L D ∧
       LocalReadPoint L ∧
@@ -156,7 +156,7 @@ def HealthyLivenessReduction (C : ACCorrectLocal A sg)
     let M := B.map E hE rho hv
     let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
     RegimeTransport M K L.look ∧
-      ProposalProgressTransport M K L.healing ∧
+      ProposalProgressTransport M ∧
       ProposalWitnessRefinement M K L ∧ ClaimDeadlineFit M K L ∧
       DeadlinePremisesSupply M K ∧ FinalWindowSupply M K L.run L.catchUp L.hold ∧
       FinalReadTransport M K L ∧ PreparationPremisesSupply M K ∧ ResetHealBudgetSupply M K L ∧

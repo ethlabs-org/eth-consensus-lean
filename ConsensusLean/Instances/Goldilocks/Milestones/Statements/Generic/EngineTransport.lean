@@ -40,18 +40,7 @@ structure RegimeTransport (M : RunMap rho payload) (K : Contract ProgressReq)
   ready : ∀ c v i, i ≤ rho.events.length → rho.point.Ready c v (rho.cutTime i) →
     ReadyRead M c (M.validator.symm v) (M.cut i) (rho.cutTime i)
 
-structure ProposalProgressTransport (M : RunMap rho payload) (K : Contract ProgressReq)
-    {runs : ACRun A M.signer} (healing : ACHealing A M.signer runs) : Prop where
-  healing_gap : rho.ExecutionValid → ∀ cap idx gst (recurrence : Recurrence),
-    (cap = .available ∨ cap = .stable) →
-    (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
-    K.progress cap idx = .recur recurrence → recurrence.pattern = Pattern.single →
-    (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K gst ⟨E, rho⟩)
-      ((Sys F V).heal K cap idx gst ⟨E, rho⟩) ⟨E, rho⟩ →
-    ∀ a b, (Sys F V).ready K gst ⟨E, rho⟩ ≤ P.slotTime a →
-    a + resetSlots healing.warmup (recurrence.gap : Nat) P.δt ≤ b + 1 →
-    P.slotTime b + 2 * P.Δ ≤ (Sys F V).heal K cap idx gst ⟨E, rho⟩ →
-    ProposalGap M.trace M.honest M.proposer (recurrence.gap : Nat) a b
+structure ProposalProgressTransport (M : RunMap rho payload) : Prop where
   proposal : ∀ B k, M.trace.ProposesAt B.proposer k B →
     B.proposer ∈ M.honest (M.trace.time k) →
     Shape.HonestProposal rho (M.trace.time k) (M.keyIndex B.proposer) (M.header B)
