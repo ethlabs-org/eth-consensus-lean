@@ -183,8 +183,7 @@ earlier flat names to these).
 - `Model/Lift`, `Fixtures/{Support,Common}`: injective-hash lifting and fixtures; the example contract values are in `ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean`.
 - `Tactic/LinarithFrontEnd`: regressions for the `linarith` front end.
 - `Goldilocks/`: one folder per component (`FG`, `FGStore`, `Frame`, `AC`, `Compose`, `Run`, `Regimes`, `Persist`,
-  `Healing`, `Refinement`), with the concrete executions they share in `Runs/` and `Mirror/` (a computable mirror of
-  the node).
+  `Healing`, `Refinement`), with the concrete executions they share in `Runs/`.
 
 ### Gap dispositions
 
