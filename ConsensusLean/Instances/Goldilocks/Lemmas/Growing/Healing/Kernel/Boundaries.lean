@@ -11,11 +11,11 @@ public section
 
 /-! # The growing drain kernel's steps
 
-The frame window, the warm proposals, the owed rows and the reset bound, each forwarded to its
-proof (`exists_frameWindow_seq_of_service_proof_at` in `Kernel/FrameWindow`, and the
-`KernelProof` forms in `Kernel/DrainWarm`, `Kernel/DrainRows` and `Kernel/ResetRounds`), and the
-finite reset record they give. The finite reset lower bound is proved in `Kernel/ResetSource`.
-No deadline is lengthened here.
+The frame window, the warm proposals and the owed rows, each forwarded to its proof
+(`exists_frameWindow_seq_of_service_proof_at` in `Kernel/FrameWindow`, and the `KernelProof`
+forms in `Kernel/DrainWarm` and `Kernel/DrainRows`), and the finite reset record they give with
+the reset bound `exists_reset_of_drain_rounds_awake_at` of `Kernel/ResetRounds`. The finite reset
+lower bound is proved in `Kernel/ResetSource`. No deadline is lengthened here.
 -/
 
 namespace Consensus.Goldilocks.Healing.Growing
@@ -70,33 +70,6 @@ theorem rows_delivered_service_at {g ΔF b v : Time}
     (hy : y ∈ H (tr.time k)) {att : FG.Att sp.n} (hsig : tr.SignAt y k att)
     (hk : tr.time k ≤ v) : ∃ k' < kX, tr.ProcessAttAt p k' att := by
   exact KernelProof.rows_delivered_service_at hsvc hnr hrun hv hp hX hvx hkb hy hsig hk
-
-/-- Step 4: the reset bound from finite service, a bounded-gap proposer stream and drain, reading
-restarts only up to the service bound. This asserts existence and an upper bound; the strict lower
-bound is a separate interface. -/
-theorem exists_reset_of_drain_rounds_awake_at
-    {K : SA.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b r : Time} {G Ld : Nat}
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hsvc : ResetService tr H g ΔF b)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartUpTo tr H (gbar g) b)
-    (hH : (H b).Nonempty) (hδ : 3 ≤ sp.toParams.fg.δt)
-    (hΔF : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
-    (hr : 0 ≤ r) (hgr : gbar g ≤ r) (hG : 1 ≤ G)
-    (hcz : cutZ sp.toParams g + sp.Δ + 1 ≤ r + 4 * sp.Δ)
-    (hb : Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld ≤ b)
-    (hgp : ∀ s₀ N : Nat, r + 4 * sp.Δ ≤ sp.ts s₀ →
-      sp.ts N + 2 * sp.Δ <
-        Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld →
-      ProposalGap tr H proposer G s₀ N)
-    (hdrain : DrainOutputs tr proposer H g G Ld b) (hK : CommitteeHalfUpTo tr H K g b) :
-    ∃ a, IsReset tr H g a ∧
-      a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld := by
-  exact KernelProof.exists_reset_of_drain_rounds_awake_at hrun hnc hf hsvc hawake hcatch hnr
-    hH hδ hΔF hr hgr hG hcz hb hgp hdrain hK
 
 /-- Step 4 packaging: a bounded reset and a snapshot supply the finite reset record at a
 committee `cm` whose faults obey the fraction `βK ≤ ½`; the per-slot timeout delay is the scalar

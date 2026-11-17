@@ -740,7 +740,7 @@ private theorem drainOutputs_truncH {g b : Time} {G Ld : Nat}
 `exists_reset_of_drain_rounds_noRestartAfter_at` run on the honest sets truncated after `b`, where
 the premises up to `b` are those for `H`, no restart is honest after `b`, and `H_z` and the reset
 are those for `H` (`c_z` and the reset bound are `≤ b`). -/
-theorem exists_reset_of_drain_rounds_awake_at
+theorem _root_.Consensus.Goldilocks.Healing.Growing.exists_reset_of_drain_rounds_awake_at
     {K : SA.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (SA.committeeStart sp.genesisRoot K))
