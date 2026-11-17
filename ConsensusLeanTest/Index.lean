@@ -944,7 +944,6 @@ example := ``Consensus.Shape.Tests.Leaks.refuted_of_empty
 example := ``Consensus.Shape.Tests.Leaks.releaseAll_mono
 example := ``Consensus.Shape.Tests.Leaks.releaseAll_record
 example := ``Consensus.Shape.Tests.Leaks.familyC_tick_state
-example := ``Consensus.Shape.Tests.Leaks.schema_daCore
 example := ``Consensus.Shape.Tests.Leaks.silent
 example := ``Consensus.Shape.Tests.Leaks.testK_progressTolerant
 example := ``Consensus.Shape.Tests.Leaks.testSel_admits

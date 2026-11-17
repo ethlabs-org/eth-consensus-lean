@@ -17,7 +17,7 @@ public import ConsensusLeanTest.Fixtures.Support
 `ShapeClaims` must not be satisfiable by protocols that do nothing, propose
 without outputting, fabricate outputs, or are silenced by their own slashing
 rule. The test contract `testK` serves only the available capability
-(`DACore` schema, below), with standard thresholds, catch-up 1, heal `1`, and per
+(`schema`, below), with standard thresholds, catch-up 1, heal `1`, and per
 index `k : ℕ+` one honest proposer in every window of `k` slots and latency
 `k + 2`. Each refutation runs the canonical valid (synchronous) run of one
 always-awake honest validator (`Δ = 1`, injective hash; horizon 3, and 0 for
@@ -77,13 +77,6 @@ open Consensus.Model (Public Key Obj pubOf protoOf sysOf)
 abbrev schema : OutputSchema := ⟨Unit, fun c => match c with
   | .available => some ()
   | _ => none⟩
-
-/-- The former L0 `OutputSchema.DACore` (an available output and no final
-output), kept here so that `schema_daCore` keeps its statement. -/
-def DACore (O : OutputSchema) : Prop :=
-  (O.output .available).isSome ∧ O.output .final = none
-
-theorem schema_daCore : DACore schema := ⟨rfl, rfl⟩
 
 /-- The test contract: available capability only, standard thresholds,
 catch-up 1, heal 1, outage numbers unused; per index `k` one honest proposer
