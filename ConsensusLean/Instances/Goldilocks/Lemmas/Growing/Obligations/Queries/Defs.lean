@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Defs
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageSuppliers
 
 public section
 
@@ -17,8 +16,7 @@ Each is its constant-fault counterpart of `Lemmas/Obligations` without the const
 * `FinalQueryAt`: a final liveness query in the healthy regime;
 * `HealthyPreparationQueryAt`: a run healthy up to a bound with a nonfinal capability, for healed
   safety;
-* `OutageQueryAt`: an outage run, for persistence (`OutageQuery.toAt` forgets the constant-fault
-  field of a static query).
+* `OutageQueryAt`: an outage run, for persistence.
 
 Each query reads the engine run on the canonical trace `simTraceAt` with the time-indexed honest
 keys `honestKeysAt` (accessors `trace`, `keys`). Definitions only. -/
@@ -186,11 +184,6 @@ structure OutageQueryAt (S : Setup) (A : ContractAssumptions S) (V : Type)
     (shapeProgress (goldilocks S) V).toExternal (K S A) T start stop run
 
 variable {S A V}
-
-/-- A static outage query, with its constant-fault field forgotten. -/
-def _root_.Consensus.Goldilocks.Obligations.OutageQuery.toAt (Q : OutageQuery S A V) :
-    OutageQueryAt {S with vote := stock} ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V :=
-  ⟨Q.run, Q.hn, Q.T, Q.start, Q.stop, Q.valid, Q.noCollision, Q.outage⟩
 
 namespace OutageQueryAt
 variable {S : Setup} {A : ContractAssumptions S}

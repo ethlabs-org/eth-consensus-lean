@@ -6,8 +6,7 @@ public section
 /-! # The outage query
 
 `OutageQuery` packages a valid collision-free engine run with constant faults and its outage
-premise, with its engine parameters (`OutageQuery.params`). `OutageQuery.toAt`
-(`Lemmas/Growing/Obligations/Queries/Defs`) reads it as a growing-fault query. -/
+premise, with its engine parameters (`OutageQuery.params`). -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation

@@ -816,7 +816,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Obligations.Growing.forwardAtAcceptance_at",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Growing/Obligations/Network/Forwarding.lean:224",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Growing/Obligations/Network/Forwarding.lean:154",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,

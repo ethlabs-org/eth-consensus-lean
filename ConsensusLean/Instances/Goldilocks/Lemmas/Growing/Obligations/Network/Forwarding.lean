@@ -10,7 +10,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forwa
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Accepted
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Tick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.AtAcceptance
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ForwardingDecode
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ForwardingChain
 
@@ -21,9 +20,9 @@ public section
 `forwardAtAcceptance_at`: every acceptance of the canonical growing trace by a node honest at its
 cut has an actual, exactly decoded same-event forwarding publication (the growing form of
 `Obligations/ForwardingDecode.forwardAtAcceptance`). The decoder invariant of a node's engine
-state (`stateAt_decoded_held_at`) needs no honesty premise: every engine event's node is honest at
-the event (`ExecutionValid.honest_only`), and the node-local run facts of an event are read on the
-prefix through its time. -/
+state (`stateAt_decoded_held_of_own` with `scheduled_proposal_child_decodes_at`) needs no honesty
+premise: every engine event's node is honest at the event (`ExecutionValid.honest_only`), and the
+node-local run facts of an event are read on the prefix through its time. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation Obligations
@@ -109,55 +108,6 @@ theorem scheduled_proposal_child_decodes_at {V : Type} [Fintype V] [DecidableEq 
   exact scheduled_proposal_child_decodes_of_step S rho hn hv v i t hp hr
     (simIni_voteStart S rho hn _) (hst.trans hstate.symm) hs run.genesis_root_ok
 
-/-- At a scheduled honest tick, the proposal duty preserves the joint invariant without
-assuming child decoding: reachable proposal execution supplies it. -/
-theorem decoded_held_scheduled_proposal_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
-    (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid)
-    (v : V) (i : Nat) (t : Time)
-    (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
-    (ht : t = (({ S with vote := AsChainShape.stock } : Setup).params
-      (pubOf E) hn).toParams.slotTime s)
-    (hd : WrappersDecoded (digests rho.hash)
-      (shapeOf { S with vote := stock } hn
-        (atProposal { S with vote := stock } rho v (rho.stateBefore i v) t)))
-    (hh : WrappersHeld (digests rho.hash)
-      (shapeOf { S with vote := stock } hn
-        (atProposal { S with vote := stock } rho v (rho.stateBefore i v) t))) :
-    let nd := atProposal { S with vote := stock } rho v (rho.stateBefore i v) t
-    let st' := shapeOf { S with vote := stock } hn (rho.dutyStep v nd (.propose s hs)).1
-    WrappersDecoded (digests rho.hash) st' ∧ WrappersHeld (digests rho.hash) st' := by
-  exact decoded_held_scheduled_proposal_of_own
-    { S with vote := stock } rho hn hv v i t he s hs ht hd hh
-    ⟨scheduled_proposal_child_decodes_at { S with vote := stock } rho hn hv v⟩
-
-/-- Every actual honest tick preserves the joint invariant, including its own proposal. -/
-theorem decoded_held_tick_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
-    (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid)
-    (v : V) (i : Nat) (t : Time)
-    (he : rho.events[i]? = some (.tick v t))
-    (hd : WrappersDecoded (digests rho.hash) (stateAt { S with vote := stock } rho hn v i))
-    (hh : WrappersHeld (digests rho.hash) (stateAt { S with vote := stock } rho hn v i)) :
-    let st' := shapeOf { S with vote := stock } hn (rho.tick (rho.stateBefore i v) v t).1
-    WrappersDecoded (digests rho.hash) st' ∧ WrappersHeld (digests rho.hash) st' := by
-  exact decoded_held_tick_of_own { S with vote := stock } rho hn hv v i t he hd hh
-    ⟨scheduled_proposal_child_decodes_at { S with vote := stock } rho hn hv v⟩
-
-/-- Every reachable honest engine state has decoded wrappers corresponding to held blocks.
-No decoder, parent-slot, payload-validity or clock premise is assumed. -/
-theorem stateAt_decoded_held_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
-    (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid)
-    (v : V) (i : Nat) :
-    WrappersDecoded (digests rho.hash) (stateAt { S with vote := stock } rho hn v i) ∧
-    WrappersHeld (digests rho.hash) (stateAt { S with vote := stock } rho hn v i) := by
-  exact stateAt_decoded_held_of_own { S with vote := stock } rho hn hv v
-    ⟨scheduled_proposal_child_decodes_at { S with vote := stock } rho hn hv v⟩ i
-
 /-- Receipt acceptances publish a wrapper that decodes, not merely a candidate with the
 right syntactic shape. The queue and decoder witnesses use the same processed state. -/
 theorem delivery_acceptance_decoded_publication_at {V : Type} [Fintype V] [DecidableEq V]
@@ -178,41 +128,6 @@ theorem delivery_acceptance_decoded_publication_at {V : Type} [Fintype V] [Decid
         some (rho.ownKey v, t, p, B) := by
   exact delivery_acceptance_decoded_publication_of_held S rho hn hv he r B hr hb hchild
     ⟨scheduled_proposal_child_decodes_at S rho hn hv v⟩
-
-/-- Scheduled proposal acceptance publishes its exact decoded wrapper in the same tick. -/
-theorem tick_proposal_acceptance_decoded_publication_at {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
-    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    (v : V)
-    (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
-    (hone : (skeleton (pubOf E)).proposeAt t = [.propose s hs])
-    (ht : t = (({ S with vote := AsChainShape.stock } : Setup).params
-      (pubOf E) hn).toParams.slotTime s)
-    (B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn))
-    (ha : .fg (.block B true) ∈
-        (Node.tickStep (runProposer { S with vote := stock } rho hn)
-          (digestOf { S with vote := stock } rho)
-      (rho.ownKey v)
-          (shapeOf { S with vote := stock } hn
-            (atProposal { S with vote := stock } rho v (rho.stateBefore i v) t)).node
-      t (encodeTxs (mempool rho.inbox v t)) .proposal).2)
-    (hchild : decodeBlock (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)
-      (binding := stock)
-      (digests rho.hash (blockObj _ B))
-      (blockObj _ B) = some B) :
-    ∃ p q, (publisherExecution { S with vote := stock } rho).actual q ∧ q.event = i ∧
-      q.origin = rho.ownKey v ∧
-      q.object = forwardObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)
-        (rho.ownKey v) t p B ∧
-      decodeForward (({ S with vote := AsChainShape.stock } : Setup).params (pubOf E) hn)
-        (digests rho.hash q.object) q.object =
-        some (rho.ownKey v, t, p, B) := by
-  exact tick_proposal_acceptance_decoded_publication_of_queued
-    { S with vote := stock } rho hn hv v i t he s
-      hs hone
-    ht B hchild ⟨scheduled_proposal_child_decodes_at { S with vote := stock } rho hn hv v⟩
-    (tick_proposal_acceptance_queued_at
-      { S with vote := stock } rho hn hv v i t he s hs hone ht B ha)
 
 /-- Every accepting cut of an honest tick has a successfully decoded publication. -/
 theorem tick_acceptance_decoded_publication_at {V : Type} [Fintype V] [DecidableEq V]

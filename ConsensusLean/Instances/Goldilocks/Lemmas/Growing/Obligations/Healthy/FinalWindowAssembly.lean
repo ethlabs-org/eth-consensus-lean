@@ -39,14 +39,6 @@ theorem finalGridAt_slotTime (Q : FinalQueryAt S A V) (s : Nat) :
   change (s : Time) * (4 * Q.run.1.ΔAC) = 4 * Q.run.1.ΔAC * s
   ring
 
-/-- **Seed glue.** A slot `u ≥ finalSeedMinAt Q a` is after the drain of `a`. -/
-theorem finalSeedMinAt_spec (Q : FinalQueryAt S A V) {a : Time} {u : Nat}
-    (hu : finalSeedMinAt S A V Q a ≤ u) :
-    Healing.drainTime Q.params a ≤ Q.params.ts u := by
-  have hu' : Q.params.slot a + 2 * Q.params.k + 5 ≤ u := hu
-  rw [Healing.drainTime_eq]
-  exact (SA.ts_le_iff Q.params).2 (by exact_mod_cast hu')
-
 /-- **The final latency budget at the FG gap `c = fgSlots`**: `contract_latency .final =
 8(X + 3c) + 2` engine delays cover the window of span `3c` and one node delay. -/
 theorem final_latency_gap_at (Q : FinalQueryAt S A V) :

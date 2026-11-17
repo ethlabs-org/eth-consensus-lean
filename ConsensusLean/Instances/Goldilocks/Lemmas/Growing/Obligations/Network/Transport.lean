@@ -50,13 +50,6 @@ theorem not_faulty_of_mem_honestKeysAt {y : Fin (Fintype.card V)} {t a : Time}
   rw [mem_honestKeysAt_iff] at hy
   exact fun h => hy (rho.faultyAt_mono (le_min hat hah) h)
 
-omit [DecidableEq V] in
-/-- An engine node uncompromised at `t` has its key honest at `t`. -/
-theorem mem_honestKeysAt_of_not_faulty {y : Fin (Fintype.card V)} {t : Time}
-    (hy : rho.key y ∉ rho.faultyAt t) : y ∈ honestKeysAt S rho t := by
-  rw [mem_honestKeysAt_iff]
-  exact fun h => hy (rho.faultyAt_mono (min_le_left _ _) h)
-
 /-- A recipient is awake from its effective send/wake start through its call. The recipient is
 honest at the call. -/
 theorem deadline_awake_interval_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)

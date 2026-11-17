@@ -37,7 +37,6 @@ honest (`HonestBlocksAt`). The pure SA lemmas `result_label_lt_latest_of_time` a
 * `read_eq_record_of_current_votes_at`, `read_source_of_recent_result_at`: whole-record read
   equality at a read point, and the recent-result source arm it consumes;
 * `tips_comparable_of_origin_witnesses_at`;
-* `healthy_query_call_time_le_at`;
 * `healthy_repair_schedule_of_reset_at`, `healthy_repair_schedule_of_preparation_at`,
   `healthy_repair_schedule_at`: the finite repair schedule of a query;
 * on any trace with a repair schedule: `repair_opening_join`, `receiver_repair_of_opening_at`
@@ -136,14 +135,6 @@ theorem read_source_of_recent_result_at
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type)
   [Fintype V] [DecidableEq V]
-
-/-- Every call of the canonical trace of a query is within the engine horizon. -/
-theorem healthy_query_call_time_le_at (Q : HealthyPreparationQueryAt S A V)
-    {y : Fin Q.params.n} {j : Nat} (hj : Q.trace.IsCall y j) :
-    Q.trace.time j ≤ Q.run.2.horizon := by
-  obtain ⟨ell, _, hlabel⟩ := hj
-  exact simTraceAt_labelled_time_le S Q.run.2 Q.hn Q.valid
-    (by rw [hlabel]; simp)
 
 /-- A supplied finite reset and its strict joint reserve suffice for the canonical repair
 schedule. Neither the reset nor the reserve is produced here. -/

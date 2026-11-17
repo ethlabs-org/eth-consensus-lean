@@ -77,32 +77,6 @@ private theorem writer_shape_of_upTo
   · exact Or.inl ⟨s, CV, ((Compose.Growing.sa_resultAt_upTo hm).mp hR).2⟩
   · exact Or.inr ⟨⟨CV, ((Compose.Growing.sa_optimisticLockAt_upTo hm).mp hO).2⟩, e, hl⟩
 
-/-- A changed own record identifies its actual call, selected block and, for an optimistic
-selection, the normalized lock left by that same call. -/
-theorem record_changed_writer_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {q : Nat} (hy : y ∈ H (tr.time q))
-    (hne : (tr.state y (q + 1)).ac.latestConfirmed ≠ (tr.state y q).ac.latestConfirmed) :
-    ∃ ell, tr.projAC.CallAt y q ell ∧
-      ∃ R ∈ ell.frame.tree, (tr.state y (q + 1)).ac.latestConfirmed = R.root ∧
-        ((∃ s CV, SA.ResultAt tr.projAC y q s R CV) ∨
-          ((∃ CV, SA.OptimisticLockAt tr.projAC y q (sp.slot (tr.time q)) R CV) ∧
-            ∃ e, (⟨(ell.frame.viableAncestor R).root, sp.slot (tr.time q), true, e⟩ : SA.Lock) ∈
-              (tr.state y (q + 1)).ac.locks)) := by
-  have hm := hrun.time_mono
-  have hd := hrun.time_nonneg q
-  have hle : ∀ k < q + 1, tr.time k ≤ tr.time q := fun k hk => hm (Nat.le_of_lt_succ hk)
-  have hle' : ∀ k < q, tr.time k ≤ tr.time q := fun k hk => hm hk.le
-  obtain ⟨ell, hcall, R, hR, hroot, hshape⟩ := Obligations.record_changed_writer
-    (hrun.upTo hd) (hnc.upTo _) hy (q := q)
-    (by rw [Trace.upTo_state tr y hle, Trace.upTo_state tr y hle']; exact hne)
-  rw [Trace.upTo_state tr y hle] at hroot
-  have hcall' : tr.projAC.CallAt y q ell := by
-    rw [RunTrace.upTo_projAC] at hcall
-    exact ((Trace.upTo_callAt _).mp hcall).2
-  exact ⟨ell, hcall', R, hR, hroot, writer_shape_of_upTo hrun hle hshape⟩
-
 /-- A non-genesis current record of a reader honest at `t` has a last own writer, with unchanged
 record roots thereafter and the actual creation lock in the optimistic case. -/
 theorem last_record_writer_at
