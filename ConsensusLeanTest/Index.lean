@@ -755,7 +755,6 @@ example := ``Consensus.Goldilocks.Regimes.ReadyAt
 example := ``Consensus.Goldilocks.Regimes.readAfter
 example := ``Consensus.Goldilocks.Regimes.ReadyProposalAt
 example := ``Consensus.Goldilocks.Regimes.ProposerRecurrence
-example := ``Consensus.Goldilocks.Regimes.ReadySafeOn
 example := ``Consensus.Goldilocks.Regimes.IncludeSleepy
 example := ``Consensus.Goldilocks.Regimes.GrowSleepy
 example := ``Consensus.Goldilocks.RunTrace.SyncBefore

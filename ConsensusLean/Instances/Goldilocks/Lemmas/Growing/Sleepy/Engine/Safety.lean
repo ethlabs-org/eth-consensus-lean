@@ -18,7 +18,7 @@ public section
 
 * `sleepy_safe_finite_at`: ready-reader safety of the canonical growing trace through `b`, from
   the finite service, the two count shapes and the committee premises of a slot dictionary
-  through `b` (the static `sleepy_safe_finite` without a constant-fault premise).
+  through `b`.
 * `sleepy_safe_engine_at`: the engine's confirmed output is `ReadySafe` with catch-up
   `catchUp + 1` under the L0 sleepy budget with look-ahead `5Δ` and the committee premises
   through the horizon.

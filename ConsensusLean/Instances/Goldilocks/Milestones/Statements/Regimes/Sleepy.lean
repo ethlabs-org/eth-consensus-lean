@@ -10,8 +10,8 @@ Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"L2: regime theo
 Goldilocks run (`GoldilocksRun`, `Compose.NoCollRun`) under `Sleepy` (`SleepyRun`: `Sync[0, ∞)` and
 `f < h_t` at the slot points):
 
-* **R.1** (`sleepySafe`, `confirmed_safe_sleepy`): retired as a milestone statement; the
-  obligations proof reads its finite form (`Regimes.sleepy_safe_before`). The prefix form
+* **R.1** (`sleepySafe`, `confirmed_safe_sleepy`): retired as a milestone statement; its finite
+  form for ready readers up to a horizon is `Regimes.Growing.sleepy_safe_at`. The prefix form
   `confirmed_safe_sleepy_prefix` has no node-level row: it is the generic prefix result of a good
   protocol, which the family gets through its acceptance.
 * **R.2** (`sleepyLive`, `includeSleepy`, `growSleepy`, `confirmed_txLive_sleepy`; uses A1.7,

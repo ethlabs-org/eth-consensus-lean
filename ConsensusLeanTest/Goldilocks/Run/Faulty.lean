@@ -22,8 +22,8 @@ lock window `S.k ≥ 2`; no lock-rule value is chosen or used). The run is `Shap
 * `faulty_run_safe`: on that run the proved R.7 rows apply: `Regimes.finalized_safe` (finalized
   tips of honest nodes never conflict) and `Regimes.non_framing` (no honest slashable pair).
 * `honestAwakeJoined_eq`, `faultBound`, `slot_faultBound`: `h_t = 3` at every `t ∈ [0, 40]`,
-  so `f = 1 < h_t`; in particular at `t_s`, `t_s + Δ`, `t_s + 2Δ` up to `40` (the premise of
-  `sleepy_safe_finite`, through `sleepy_faultBound`).
+  so `f = 1 < h_t`; in particular at `t_s`, `t_s + Δ`, `t_s + 2Δ` up to `40` (through
+  `sleepy_faultBound`).
 * `faulty_silent`: the faulty key has no engine event and makes no call in `simTrace` (so it
   signs and emits nothing there).
 
@@ -166,8 +166,8 @@ theorem faultBound (hp : rho.point = point) (hv : rho.ExecutionValid) {t : Time}
   rw [faulty_ncard hp, honestAwakeJoined_eq hp hv ht htb]
   decide
 
-/-- The slot-point fault bound premise of `sleepy_safe_finite` through the horizon, from
-`sleepy_faultBound`: `f < h_t` at `t_s`, `t_s + Δ`, `t_s + 2Δ` whenever they are `≤ 40`. -/
+/-- The slot-point fault bound through the horizon, from `sleepy_faultBound`: `f < h_t` at
+`t_s`, `t_s + Δ`, `t_s + 2Δ` whenever they are `≤ 40`. -/
 theorem slot_faultBound (hp : rho.point = point) (hv : rho.ExecutionValid) :
     ∀ s : Nat, ∀ d ∈ ({0, (({ S with vote := AsChainShape.stock } : Setup).params
       (pubOf point.env) one_le_card).Δ,

@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "audit_commit": "4afd2e7a2da57c9ca793300f63d039b80dd32625",
+  "audit_commit": "653dd9e0c5b22644cb45fae6e71a09245bd5e35f",
   "baseline_commit": "eed6d0b55614dde64a82b1ef17099e3533e0515f",
   "notes": [
     "blocked-by contains transitive compiled sorry owners, not speculative paper joins.",
@@ -124,6 +124,7 @@
     "Consensus.Goldilocks.Refinement.query_numbers",
     "Consensus.Goldilocks.Refinement.row_endpoint_slack",
     "Consensus.Goldilocks.Refinement.signed_row_service_psync",
+    "Consensus.Goldilocks.Refinement.sleepy_include_finite",
     "Consensus.Goldilocks.Refinement.sleepy_query_population",
     "Consensus.Goldilocks.Refinement.sleepy_query_slot",
     "Consensus.Goldilocks.Refinement.sleepy_query_sync",
@@ -809,16 +810,6 @@
       "direct_sorry": false,
       "lean-status": "proved",
       "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
-      "name": "Consensus.Goldilocks.Obligations.sleepy_include_finite",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/Sleepy.lean:320",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
     },
     {
       "name": "Consensus.Goldilocks.Obligations.vote_message_service_other",

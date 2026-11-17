@@ -194,34 +194,6 @@ theorem confirmed_read_on_chain (hinv : SleepyInvariant tr H)
     ⟨C, hC, hCr, onOriginChain_iff.2 (hgo.imp_right fun ⟨s, hs⟩ => ⟨C, s, hs, .refl⟩)⟩
     (hinv.caches y hy i).1
 
-/-- **An honest confirmed read at a cut within `b`**, at any time, is an honest block on the
-chain of the origins within `b`. -/
-theorem confirmed_read_on_chain_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    (hi : ∀ k < i, tr.time k ≤ b) (t : Time) :
-    (goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) t ∈
-        tr.HonestBlocks H ∧
-      OnOriginChainWithin tr H
-        ((goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) t) b :=
-  have ⟨C, hC, hCr, hgo⟩ := hinv.record y hy i hi
-  confirmed_read_of hrun hnc (fun hA hAB h => OnOriginChainWithin.of_anc hrun hnc hA hAB h) hy
-    i t ⟨C, hC, hCr, onOriginChainWithin_iff.2 (hgo.imp_right fun ⟨s, hs⟩ => ⟨C, s, hs, .refl⟩)⟩
-    (hinv.caches y hy i hi).1
-
-/-- **R.1 up to `b` from the invariant**: the confirmed reads of honest nodes at any two cuts
-within `b`, at any times, are compatible (inside the honest blocks). -/
-theorem SleepyInvariantUpTo.read_compatible {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) {y y' : Fin sp.n} (hy : y ∈ H)
-    (hy' : y' ∈ H) {i i' : Nat} (hi : ∀ k < i, tr.time k ≤ b) (hi' : ∀ k < i', tr.time k ≤ b)
-    (t t' : Time) :
-    Compatible (tr.HonestBlocks H)
-      ((goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) t)
-      ((goldilocksNode sp ro).confirmed (tr.state y' i').ac (Node.frame (tr.state y' i')) t') :=
-  have ⟨hB, hc⟩ := confirmed_read_on_chain_upTo hinv hrun hnc hy hi t
-  have ⟨hB', hc'⟩ := confirmed_read_on_chain_upTo hinv hrun hnc hy' hi' t'
-  OnOriginChainWithin.compatible hrun hnc hinv.origins_compatible hB hB' hc hc'
-
 end Consensus.Goldilocks.Compose
 
 end
