@@ -15,9 +15,8 @@ public section
 The growing-fault forms of `received_forward_accepted_before`, without a constant-fault premise.
 The recipient is honest at a time `t₀` no earlier than every cut before its reading cut `j` (it
 may be compromised by the time of cut `j` itself); ancestry is read inside the blocks held while
-honest. The signer is honest either at its stamp, with the envelope its genuine release there
-(`received_forward_accepted_before_of_released_at`), or at the delivery
-(`received_forward_accepted_before_at`, which reduces to the first by unforgeability).
+honest. The signer is honest at its stamp, with the envelope its genuine release there
+(`received_forward_accepted_before_of_released_at`).
 
 Every wrapper nested in a genuine release is in the signer's view after it, hence was itself
 released, and accepted, by the signer while honest (`released_forward_source_acceptance_at`).
@@ -188,52 +187,6 @@ theorem received_forward_accepted_before_of_released_at (hv : rho.ExecutionValid
       cases hq
       exact le_rfl
   exact ⟨k, hk, ha, htime, htime.trans_lt hu⟩
-
-/-- The same acceptance when the signer is honest at the delivery: unforgeability then makes the
-envelope its genuine release at its stamp. -/
-theorem received_forward_accepted_before_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup)
-    (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf { S with vote := stock } rho)
-      (simTraceAt { S with vote := stock } rho hn))
-    {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V) stock}
-    {x : Fin (Fintype.card V)} {u t deadline : Time}
-    {p : Option (Wire (Fintype.card V) stock)}
-    {B : Blk (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn)}
-    (he : rho.events[i]? = some (.deliver v receipt u)) {t₀ : Time}
-    (hj₀ : ∀ k < j, (simTraceAt { S with vote := stock } rho hn).time k ≤ t₀)
-    (hy : v ∉ rho.faultyAt t₀)
-    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt u)
-    (hd : decodeForward (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn)
-      (Model.digests rho.hash o) o =
-      some (x, t, p, B))
-    (hij : cutMap { S with vote := stock } rho hn (i + 1) ≤ j)
-    (hFB : Anc ((simTraceAt { S with vote := stock } rho hn).HonestBlocksAt
-      (honestKeysAt { S with vote := stock } rho))
-      ((simTraceAt { S with vote := stock } rho hn).state (rho.ownKey v) j).fg.F B)
-    (hu : u < deadline) :
-    ∃ k < cutMap { S with vote := stock } rho hn (i + 1),
-      (simTraceAt { S with vote := stock } rho hn).AcceptAt
-        (rho.ownKey v) k B ∧
-      (simTraceAt { S with vote := stock } rho hn).time k ≤ u ∧
-        (simTraceAt { S with vote := stock } rho hn).time k <
-          deadline := by
-  have hsign : rho.signerOf o = some (rho.key x) := by
-    change o.signer?.map rho.key = some (rho.key x)
-    rw [decodeForward_signer hd]
-    rfl
-  obtain ⟨j', s, hj', hs, ho⟩ := hv.unforgeable i v receipt u he o hc (rho.key x) hsign hx
-  have hkx : rho.ownKey (rho.key x) = x := rho.key.symm_apply_apply _
-  have hts : t = s := released_forward_stamp { S with vote := stock } rho hn hv hs ho
-    (by rw [hkx]; exact hd)
-  subst hts
-  have hxt : rho.key x ∉ rho.faultyAt t := fun h =>
-    hx (rho.faultyAt_mono
-      (sendsAt_time_le { S with vote := stock } rho hv hs (Or.inr ⟨receipt, he⟩) hj'.le) h)
-  exact received_forward_accepted_before_of_released_at { S with vote := stock } rho hn hv hnc
-    he hj₀ hy hc hxt
-    ⟨j', hs, ho⟩ hd hij hFB hu
 
 end Consensus.Goldilocks.Simulation
 

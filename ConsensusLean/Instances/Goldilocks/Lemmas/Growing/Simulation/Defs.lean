@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.TraceDefs
-import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -30,32 +29,11 @@ theorem mem_honestKeysAt_iff (t : Time) (y : Fin (Fintype.card V)) :
   rfl
 
 omit [DecidableEq V] in
-/-- The honesty map used by `SimulatesAt.run` clamps exactly as the L0 regimes do. -/
-theorem honestKeysAt_clamp (t : Time) :
-    honestKeysAt S rho (min t rho.horizon) = honestKeysAt S rho t := by
-  ext y
-  simp only [mem_honestKeysAt_iff, min_assoc, min_self]
-
-omit [DecidableEq V] in
-/-- Beyond the observation horizon the trace's honest set stays frozen. -/
-theorem honestKeysAt_after_horizon {t : Time} (ht : rho.horizon ≤ t) :
-    honestKeysAt S rho t = honestKeysAt S rho rho.horizon := by
-  ext y
-  simp only [mem_honestKeysAt_iff, min_eq_right ht, min_self]
-
-omit [DecidableEq V] in
 /-- Permanent compromise makes the time-indexed honest keys antitone. -/
 theorem honestKeysAt_antitone : Antitone (honestKeysAt S rho) := by
   intro s t hst y hy
   rw [mem_honestKeysAt_iff] at hy ⊢
   exact fun hf => hy (rho.faultyAt_mono (min_le_min_right _ hst) hf)
-
-omit [DecidableEq V] in
-/-- In constant-fault runs the time-local set is exactly the static honest-key set. -/
-theorem honestKeysAt_of_constant (hc : rho.point.ConstantFaults) (t : Time) :
-    honestKeysAt S rho t = honestKeys S rho := by
-  ext y
-  rw [mem_honestKeysAt_iff, mem_honestKeys_iff, rho.faultyAt_eq_zero hc]
 
 omit [DecidableEq V] in
 /-- An engine node honest at an in-horizon time has an honest trace key then. -/

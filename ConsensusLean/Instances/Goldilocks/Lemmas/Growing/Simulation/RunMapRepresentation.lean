@@ -209,17 +209,6 @@ theorem goldilocks_actualReadAccountability {sp : SA.SAParams}
   obtain ⟨ini, hg⟩ := hruns _ _ _ _ _ hrun
   exact finalAccountable_readPoint hg hnc hy.2.2.1 hy.2.1.1 hy.1 hz.2.2.1 hz.2.1.1 hz.1 hne
 
-/-- The public-indexed binding supplies both chain representation contracts. -/
-theorem goldilocksEngineBinding_readTransport (pub : Model.Public) (hn : 1 ≤ pub.n)
-    (E : Env V) (hE : pubOf E = pub)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hv : rho.ExecutionValid) :
-    let M := (goldilocksEngineBinding S pub hn).map E hE rho hv
-    Generic.ReadRepresentation M ∧ Generic.HonestReadTransport M := by
-  subst pub
-  rw [goldilocksEngineBinding_map]
-  exact ⟨goldilocksRunMap_readRepresentation S rho hn hv,
-    goldilocksRunMap_honestReadTransport S rho hn hv⟩
-
 end Consensus.Goldilocks.Simulation
 
 end

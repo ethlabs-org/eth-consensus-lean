@@ -30,18 +30,6 @@ structure ServiceWindowBefore (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n F
 abbrev ServiceBefore (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (b : Time) (tr : SATrace sp FGP ro) : Prop := ServiceWindowBefore H U 0 b tr
 
-/-- With constant faults the service contract is exactly the static one. -/
-theorem serviceWindowBefore_const {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
-    {a b : Time} {tr : SATrace sp FGP ro} :
-    ServiceWindowBefore (fun _ => H) U a b tr ↔ SA.ServiceWindowBefore H U a b tr := by
-  constructor
-  · intro h
-    exact ⟨fun x hx i v hi hai y hy j ℓ => h.message x i v hx hi hai y j ℓ hy,
-      fun x hx i B hi hai y hy j ℓ => h.relay x i B hx hi hai y j ℓ hy⟩
-  · intro h
-    exact ⟨fun x i v hx hi hai y j ℓ hy => h.message x hx i v hi hai y hy j ℓ,
-      fun x i B hx hi hai y j ℓ hy => h.relay x hx i B hi hai y hy j ℓ⟩
-
 /-- A proposer honest through `T` has only one block per slot in frames read by `T`.
 The two readers need only be honest at their own cuts. -/
 theorem HonestObjects.one_block_before {proposer : Nat → Fin sp.n}

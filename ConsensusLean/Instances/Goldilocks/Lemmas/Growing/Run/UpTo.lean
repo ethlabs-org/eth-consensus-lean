@@ -372,12 +372,6 @@ theorem GoldilocksRun.upTo {ini : Fin sp.n → (goldilocksNode sp ro).State}
     obtain ⟨j, hji, hj⟩ := h.carried_vote_unforgeable y i B (anti hid hy) hB v hv (anti hid hvH)
     exact ⟨j, hji, (RunTrace.upTo_emitAt _).mpr ⟨(hm hji.le).trans hid, hj⟩⟩
 
-/-- A node honest at the time of a cut was honest at every earlier cut. -/
-theorem GoldilocksRun.honest_of_event (h : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n}
-    {i : Nat} {c : Cut (goldilocksNode sp ro)} (_hc : tr.CallAt y i c) (hy : y ∈ H (tr.time i)) :
-    ∀ k ≤ i, y ∈ H (tr.time k) :=
-  fun _ hk => h.antitone (h.time_mono hk) hy
-
 end Growing
 
 end Consensus.Goldilocks

@@ -110,43 +110,6 @@ theorem goldilocksRunMap_storedReadTransport :
       goldilocksRunMap_validator, goldilocksStoredReadContext_now]
     exact ⟨hnow, hca.2, ⟨⟨hrd.1, ⟨hca.1, hca.2.le⟩, ht, hth⟩, hrd.2⟩, hb⟩
 
-/-- The stored context of a public-indexed binding map: the fields of
-`goldilocksStoredReadContext`, which do not depend on the map. -/
-noncomputable def goldilocksEngineStoredReadContext (pub : Model.Public) (hn : 1 ≤ pub.n)
-    (E : Env V) (hE : pubOf E = pub)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hv : rho.ExecutionValid) :
-    StoredReadContext ((goldilocksEngineBinding S pub hn).map E hE rho hv) := by
-  subst pub
-  exact ⟨(goldilocksStoredReadContext S rho hn hv).cut,
-    (goldilocksStoredReadContext S rho hn hv).now, (goldilocksStoredReadContext S rho hn hv).tip⟩
-
-/-- The public-indexed binding supplies engine cut-time read points. -/
-theorem goldilocksEngineBinding_engineReadPoint (pub : Model.Public) (hn : 1 ≤ pub.n)
-    (E : Env V) (hE : pubOf E = pub)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hv : rho.ExecutionValid) :
-    EngineReadPoint ((goldilocksEngineBinding S pub hn).map E hE rho hv) := by
-  subst pub
-  rw [goldilocksEngineBinding_map]
-  exact goldilocksRunMap_engineReadPoint S rho hn hv
-
-/-- The public-indexed binding supplies the stored-read binding. -/
-theorem goldilocksEngineBinding_storedReadTransport (pub : Model.Public) (hn : 1 ≤ pub.n)
-    (E : Env V) (hE : pubOf E = pub)
-    (rho : Model.Run (compiled (goldilocks S)) E) (hv : rho.ExecutionValid) :
-    StoredReadTransport ((goldilocksEngineBinding S pub hn).map E hE rho hv)
-      (goldilocksEngineStoredReadContext S pub hn E hE rho hv) := by
-  subst pub
-  have key : ∀ (M : Generic.RunMap (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) rho
-      (payloadOf S)) (_ : M = goldilocksRunMap S rho hn hv),
-      StoredReadTransport M
-        ⟨(goldilocksStoredReadContext S rho hn hv).cut,
-          (goldilocksStoredReadContext S rho hn hv).now,
-          (goldilocksStoredReadContext S rho hn hv).tip⟩ := by
-    intro M h
-    subst h
-    exact goldilocksRunMap_storedReadTransport S rho hn hv
-  exact key _ (goldilocksEngineBinding_map S E hn rho hv)
-
 end Consensus.Goldilocks.Simulation
 
 end

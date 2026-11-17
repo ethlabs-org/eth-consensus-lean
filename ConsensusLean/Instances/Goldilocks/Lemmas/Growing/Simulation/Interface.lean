@@ -79,30 +79,4 @@ structure SimulatesAt (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _))
     tr.AttCallAt y k a → tr.pos k = 0 →
       RelayedFrom S rho (rho.key y) (attObj a) (tr.time k)
 
-variable (V) in
-/-- Every valid growing-fault engine run has a simulating node trace. -/
-def EngineSimulatesNodeAt : Prop :=
-  ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
-    rho.ExecutionValid → ∃ tr ι, SimulatesAt S rho hn tr ι
-
-variable (V) in
-/-- Collision freedom transports to the canonical growing trace. -/
-def NoCollTransportAt : Prop :=
-  ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
-    rho.ExecutionValid → ¬ rho.HashCollision →
-      Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)
-
-variable (V) in
-/-- The quantified engine-simulation contract. -/
-theorem engineSimulatesNodeAt_iff : EngineSimulatesNodeAt V S ↔
-    ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
-      rho.ExecutionValid → ∃ tr ι, SimulatesAt S rho hn tr ι := by rfl
-
-variable (V) in
-/-- The quantified collision-transport contract. -/
-theorem noCollTransportAt_iff : NoCollTransportAt V S ↔
-    ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
-      rho.ExecutionValid → ¬ rho.HashCollision →
-        Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn) := by rfl
-
 end Consensus.Goldilocks.Simulation

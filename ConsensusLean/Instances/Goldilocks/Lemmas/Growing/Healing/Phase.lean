@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PhaseMono
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 
@@ -155,23 +154,6 @@ theorem phase_count_at (hr : Consensus.Goldilocks.Growing.FGLocalRun acp₀ H U 
         exact ⟨fun hi => (hd ((hr.time_nonneg (i + 1)).trans hi.1)).elim, False.elim⟩
       rw [he, Set.encard_empty]
       exact zero_le
-
-/-- A phase change persists within one fixed later-horizon cohort. This is the static
-potential argument on the retained run, not transport to a different cohort. -/
-theorem phaseChanged_mono (hr : Consensus.Goldilocks.Growing.FGLocalRun acp₀ H U tr)
-    {d : Time} (hd : 0 ≤ d) (hf : (H d)ᶜ.ncard < 2 * P.fg.q - P.n)
-    {i j₁ j₂ : Nat} (hij : i ≤ j₁) (hj : j₁ ≤ j₂) (hjd : tr.time j₂ ≤ d)
-    (hc : PhaseChanged tr (H d) i j₁) : PhaseChanged tr (H d) i j₂ := by
-  have hb : ∀ {k}, k ≤ j₂ → ∀ l < k, tr.time l ≤ d :=
-    fun hk l hl => (hr.time_mono (hl.le.trans hk)).trans hjd
-  have hc' : PhaseChanged (tr.upTo d) (H d) i j₁ := by
-    intro m c hi hj₁
-    exact hc m c ((phaseAt_upTo_iff (hb (hij.trans hj))).mp hi)
-      ((phaseAt_upTo_iff (hb hj)).mp hj₁)
-  have h := Healing.PhaseChanged.mono (hr.upTo hd) hf hij hj hc'
-  intro m c hi hj₂
-  exact h m c ((phaseAt_upTo_iff (hb (hij.trans hj))).mpr hi)
-    ((phaseAt_upTo_iff (hb le_rfl)).mpr hj₂)
 
 end Consensus.Goldilocks.Healing.Growing
 
