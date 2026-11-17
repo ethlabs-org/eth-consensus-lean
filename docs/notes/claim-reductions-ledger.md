@@ -3,6 +3,10 @@
 These are conditional statement interfaces, with proofs of all reductions and the capstone.
 Their concrete supplier realizations remain separate obligations.
 
+The binding-generic endpoint includes `persists`, `sleepySafe` and `sleepyLive` as
+shape-claim fields. Removing their separate comparator wrappers changes neither
+these reduction rows nor the suppliers required for an arbitrary map.
+
 ## Fixed outage policy
 
 L9 now lives only in `OutageReadPoint.protection`. The actual-cut twin is deleted.

@@ -45,14 +45,13 @@ Labelled by kind (CONTRIBUTING "Statements"):
   `meetsObligations_realizable_small` gives its contract's active witnesses on five validators
   (`Shape.regimes_realizable` from `ShapeObligations`'s admissibility, progress-fit and tolerance
   fields).
-* (a) The outage and sleepy rows at every vote binding: `claims_with_persistsWith` and
-  `claims_with_sleepyWith` (at the population binding `PersistsWith` and `SleepyWith` are the
-  stock fields), `goldilocksWith_committeeOne` (a committee binding with a proper-subset
+* (a) The endpoint's outage and sleepy rows cover every vote binding:
+  `goldilocksWith_committeeOne` (a committee binding with a proper-subset
   committee, `Regression.committeeOne`), and its outage and sleepy regimes are not vacuous:
   `committeeOne_realizable` (its regimes on five validators), `committeeOne_selected_ne_univ`,
   `committeeOne_outage_witness` (a clean outage witness whose committee is never the population)
   and `committeeOne_sleepy_witness` (at every output capability and index, a clean witness of
-  `SleepyWith`'s sleepy premises whose committee is never the population).
+  the endpoint's sleepy premises whose committee is never the population).
 * The profile label is a restatement: `schema_profile` (the schema is Ebb-and-Flow, not BFT or
   available, decided on the schema alone), `meetsObligations_iff_unlabelled` (the endpoint is
   equivalent to the unlabelled obligations), and the rejections `not_obligationsAs_bft` and
@@ -398,42 +397,15 @@ theorem goldilocksCorrectWithExcuses_nonvacuous :
 
 /-! ## The outage and sleepy rows at every vote binding
 
-`PersistsWith` states the `persists` claim for `goldilocks S` at every bound setup. At the
-population binding it is the stock field (`claims_with_persistsWith`); at a committee binding it
-reads a genuine proper subset (`goldilocksWith_committeeOne`), and its outage regime has a clean
-witness whose committee is a proper subset at every time (`committeeOne_realizable`,
-`committeeOne_selected_ne_univ`, `committeeOne_outage_witness`). `SleepyWith` states both sleepy
-claims at every bound setup; at the population binding they are the stock fields
-(`claims_with_sleepyWith`), and at the committee binding its sleepy regime has, at every output
+The endpoint's `persists` claim holds for `goldilocks S` at every bound setup. At a committee
+binding it reads a genuine proper subset (`goldilocksWith_committeeOne`), and its outage regime
+has a clean witness whose committee is a proper subset at every time (`committeeOne_realizable`,
+`committeeOne_selected_ne_univ`, `committeeOne_outage_witness`). The endpoint includes both sleepy
+claims at every bound setup; at the committee binding its sleepy regime has, at every output
 capability and index, a clean witness whose committee is a proper subset at every time
 (`committeeOne_sleepy_witness`). -/
 
-/-- (a) At the population binding `PersistsWith` supplies the `persists` field of the stock claims
-verbatim: the stock claims with that field replaced by `persistsWith { S with vote := stock }`
-elaborate. -/
-theorem claims_with_persistsWith (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V]
-    [DecidableEq V] :
-    ShapeClaimsAt (goldilocks { S with vote := AsChainShape.stock })
-      (goldilocksContract A (contract_coefficients S A)) V :=
-  { (Consensus.Goldilocks.meetsObligations { S with vote := stock }
-      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩).2.claims V with
-    persists := Consensus.Goldilocks.persistsWith { S with vote := stock }
-      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V }
-
-/-- (a) At the population binding `SleepyWith` supplies both sleepy fields of the stock
-claims verbatim, with no additional premise. -/
-theorem claims_with_sleepyWith (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V]
-    [DecidableEq V] :
-    ShapeClaimsAt (goldilocks { S with vote := AsChainShape.stock })
-      (goldilocksContract A (contract_coefficients S A)) V :=
-  { (Consensus.Goldilocks.meetsObligations { S with vote := stock }
-      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩).2.claims V with
-    sleepySafe := (Consensus.Goldilocks.sleepyWith { S with vote := stock }
-      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V).1
-    sleepyLive := (Consensus.Goldilocks.sleepyWith { S with vote := stock }
-      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V).2 }
-
-/-- (a) The committee case of `PersistsWith` is not the population case: at `committeeOne` the
+/-- (a) The committee instance is not the population case: at `committeeOne` the
 family signs votes in the committee role selected `.sized 1`, and the SA committee size (the vote
 threshold denominator) is `1`, a proper subset of every population of at least two validators. -/
 theorem goldilocksWith_committeeOne (S : Setup) (pub : Model.Public) (hn : 2 ≤ pub.n) :
@@ -501,7 +473,7 @@ theorem committeeOne_outage_witness (S : Setup) (A : ContractAssumptions S) :
 
 /-- (a) **The committee sleepy regime is not vacuous**: on five validators, at `Δ = ΔF = 2`, for
 every output capability `cap` and index `i`, a clean witness of the committee binding satisfies
-`SleepyWith`'s liveness premise at `cap, i` (`System.Sleepy` at the obligations contract and the
+the endpoint's liveness premise at `cap, i` (`System.Sleepy` at the obligations contract and the
 contract's proposer progress over the whole run, the first two conjuncts of `SleepyLive`), hence
 also its safety premise (`System.Sleepy`), and its committee is a proper subset at every time. -/
 theorem committeeOne_sleepy_witness (S : Setup) (A : ContractAssumptions S) (cap : Capability)

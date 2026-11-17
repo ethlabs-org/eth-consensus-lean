@@ -27,7 +27,7 @@ suppliers close the bounded high-coverage construction, then the recovery adapte
 all three unchanged public statements.
 
 These bundles package proved milestone lemmas, not separate `Challenge` roots. Their fields
-are pinned by `ConsensusLeanTest/MilestoneAxioms.lean`; `Challenge` certifies ten statements: the
+are pinned by `ConsensusLeanTest/MilestoneAxioms.lean`; `Challenge` certifies eight statements: the
 five generic review statements and the Goldilocks statements of `Statements/Obligations`.
 See `docs/decisions.md`, "Trusted surface and Challenge scope". -/
 

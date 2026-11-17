@@ -599,22 +599,20 @@ detail in `TRUST.md`.
 
 ## Trusted surface and Challenge scope
 
-- **Challenge declares ten statements**: the five generic review statements
+- **Challenge declares eight statements**: the five generic review statements
   (`Review.ObligationsSufficient`, `ObligationsSufficientOn`, `RegimesRealizable`, `LogFaithful`,
   `HeldIffServed`), and the Goldilocks endpoint and headline, `MeetsObligations` and `GoldilocksCorrect`
-  (§"Adversary growth"), the headline's explicit-excuse form `GoldilocksCorrectWithExcuses`, and the
-  outage row at every vote binding, `PersistsWith`, and the interim sleepy safety and liveness pair,
-  `SleepyWith`. The latter must land with its Solution proof and comparator entry.
+  (§"Adversary growth") and the headline's explicit-excuse form `GoldilocksCorrectWithExcuses`.
   Reason: keep the trusted surface to the generic definition
   of a correct protocol plus the one instance endpoint and its headline forms. The other Goldilocks milestones (M₁, FGStore, ACBase, ACSteps, Compose, Persist, Regimes,
   Service, Healing) are means to the endpoint, not claims a reviewer must read.
   - They stay proved and built as ordinary lemmas, but are not comparator roots and not trusted: their statement
     modules, and every declaration of the instance Spec that only they reach (a compiled walk of the statement
-    closure of the ten roots, types and definition bodies, not proofs), live with unchanged names and bodies in
+    closure of the eight roots, types and definition bodies, not proofs), live with unchanged names and bodies in
     the untrusted `Instances/Goldilocks/Milestones/` layer family. It mirrors the Spec/Statements sub-layers, so the
     allow matrix carries over; it allows `@[expose]` (the statements are unfolded by their proofs and tests) and no
     `sorry`, which is why it is not `Lemmas`.
-  - What the ten roots reach stays in `Spec/`, `Statements/Obligations` and `AsChainShape.lean`, protected; a
+  - What the eight roots reach stays in `Spec/`, `Statements/Obligations` and `AsChainShape.lean`, protected; a
     `protected` layer may import only trusted and protected layers (check-boundaries.py), so that closure cannot
     reach Milestones.
   - The milestones stay gated: `ConsensusLeanTest/MilestoneAxioms.lean` states and axiom-pins each, and check.sh
@@ -644,33 +642,17 @@ detail in `TRUST.md`.
   `Params.OptimalFaultTolerance` to the trusted reach without adding a Challenge root. It states correctness
   and optimality in one
   place, so a reader need not compose the two statements.
-- **The outage row is certified at every vote binding; the other rows stay at the population binding.**
-  `PersistsWith` states the `persists` claim of `ShapeClaimsAt`, verbatim, for the binding-generic family
-  `goldilocks S` at every `S : Setup` (population-wide votes or a per-slot committee), at the same
-  contract `goldilocksContract A (contract_coefficients S A)`. `MeetsObligations` and `GoldilocksCorrect`
-  quantify over `Setup` and read the population binding. Reason: the look-back committee clause of the
-  outage regime reads the binding's selection and is its only binding-dependent premise, and the outage proof is
-  binding-generic; the healthy and static rows are proved at the population binding only; the sleepy rows at
-  every binding (`SleepyWith`, below). At the
-  population binding the committee clause follows from the population clause at this contract (committee
-  look-ahead `5 ≤ 5`; §"Committee modelling"), so the
-  statement is the stock `persists` field
-  (`Obligations.Test.Contract.claims_with_persistsWith`). A proper-subset committee binding,
-  `AsChainShape.Regression.committeeOne`, is `Obligations.Test.Contract.goldilocksWith_committeeOne`; its
-  outage regime has a clean witness whose committee is never the population
-  (`Obligations.Test.Contract.committeeOne_outage_witness`).
-  It adds no constant to the trusted reach (`MeetsObligations` already reaches every constant it mentions),
-  but it makes the committee branches of `goldilocks` (vote
-  roles, own-role permission, threshold denominator) part of what a reviewer reads.
-- **The sleepy pair is stated at every vote binding.** `SleepyWith` repeats the `sleepySafe` and
-  `sleepyLive` rows of `ShapeClaimsAt` for `goldilocks S` at every `Setup`, at the same
-  obligations contract. The committee-native `System.Sleepy` supplies population and committee
-  participation; liveness retains whole-run proposer progress. No additional premise is introduced.
-  The population fidelity witness is `Obligations.Test.Contract.claims_with_sleepyWith`. At the committee binding
-  `AsChainShape.Regression.committeeOne`, the sleepy regime has, at every capability and index, a clean witness of
-  both sleepy premises whose committee is never the population
-  (`Obligations.Test.Contract.committeeOne_sleepy_witness`).
-  This interim root, like `PersistsWith`, is removed when the full binding-generic endpoint subsumes it.
+- **The full endpoint subsumes the interim outage and sleepy roots.** `MeetsObligations` and both
+  headline forms cover `goldilocks S` at every `Setup`, at the same obligations contract, with no
+  added hypotheses. Its `ShapeClaimsAt` fields `persists`, `sleepySafe` and `sleepyLive` retain the
+  complete outage and sleepy claims, so the separate comparator roots and their forwarding proofs
+  are removed. This is subsumption, not equivalence of those rows to the full endpoint.
+  The committee-native regimes retain population and selected-committee participation; sleepy
+  liveness retains whole-run proposer progress. At the stock binding the outage committee clause
+  follows from the population clause (look-ahead `5 ≤ 5`). The proper-subset binding
+  `AsChainShape.Regression.committeeOne` and its clean outage and sleepy witnesses remain
+  (`Obligations.Test.Contract.goldilocksWith_committeeOne`, `committeeOne_outage_witness`,
+  `committeeOne_sleepy_witness`): no wrapper deletion weakens their nonvacuity coverage.
 - **The simulation interface and canonical trace are proof-side.** The Refinement simulation interface and the
   canonical trace construction are in the non-exposed `Lemmas/Simulation/{Interface,TraceDefs}`, with
   characterising lemmas for proof consumers; the digest adapter `dgOf` and the delivery relation `DeliverSeq` sit

@@ -13,11 +13,10 @@ the chain shape: slots, proposers, votes and a state machine, compiled to an L1 
 
 ## The headline statement
 
-`Challenge.lean` certifies ten statements: the five review statements below and, for Goldilocks, the endpoint
-and headline below, the headline's explicit-excuse form `GoldilocksCorrectWithExcuses`, the outage row at
-every vote binding `PersistsWith` (the endpoint's `persists` claim for `goldilocks S`, every `S : Setup`),
-and the sleepy rows at every vote binding `SleepyWith` (its `sleepySafe` and `sleepyLive` claims for
-`goldilocks S`, every `S : Setup`). The headline is `Consensus.Goldilocks.GoldilocksCorrect`, from
+`Challenge.lean` certifies eight statements: the five review statements below and, for Goldilocks, the endpoint
+and headline below and the headline's explicit-excuse form `GoldilocksCorrectWithExcuses`.
+All three Goldilocks statements cover `goldilocks S` at every `S : Setup`; the endpoint includes
+the `persists`, `sleepySafe` and `sleepyLive` shape claims. The headline is `Consensus.Goldilocks.GoldilocksCorrect`, from
 `ConsensusLean/Instances/Goldilocks/Statements/Obligations.lean` (in namespace `Consensus.Goldilocks`), together
 with the endpoint it composes:
 

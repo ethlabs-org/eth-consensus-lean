@@ -68,12 +68,6 @@ run_meta do
 /-- info: 'Consensus.Goldilocks.goldilocksCorrectWithExcuses' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.goldilocksCorrectWithExcuses
 
-/-- info: 'Consensus.Goldilocks.persistsWith' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.persistsWith
-
-/-- info: 'Consensus.Goldilocks.sleepyWith' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.sleepyWith
-
 /-! ## Axiom pins: the source theorems -/
 
 /-- info: 'Consensus.Shape.ShapeObligations.correct' depends on axioms: [propext, Classical.choice, Quot.sound] -/

@@ -7,8 +7,8 @@ public section
 
 `PersistStatements` (C1.1 and its corollary) from `Lemmas/Compose/Persist/`. The bundle is proof
 packaging for milestone lemmas, pinned by `ConsensusLeanTest/MilestoneAxioms.lean`, not separate
-`Challenge` roots. `Challenge` certifies ten statements: the five generic review statements and the
-Goldilocks statements of `Statements/Obligations`; see `docs/decisions.md`,
+`Challenge` roots. `Challenge` certifies eight statements: five generic review statements and
+three Goldilocks statements of `Statements/Obligations`; see `docs/decisions.md`,
 "Trusted surface and Challenge scope". -/
 
 namespace Consensus.Goldilocks.Compose

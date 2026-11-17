@@ -6,9 +6,9 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 
 /-! # Comparator challenge (non-default library; never built by `lake build`)
 
-The review statements of `ConsensusLean/Statements/Review.lean` and the Goldilocks statements, the
-obligations endpoint, the headline and the outage and sleepy rows at every vote binding (`MeetsObligations`,
-`GoldilocksCorrect`, `GoldilocksCorrectWithExcuses`, `PersistsWith`, `SleepyWith`;
+The five review statements of `ConsensusLean/Statements/Review.lean` and the three Goldilocks
+statements, the obligations endpoint and its headline forms (`MeetsObligations`,
+`GoldilocksCorrect`, `GoldilocksCorrectWithExcuses`;
 `milestone_statements_modules` in `scripts/boundaries.toml`), with `sorry` proofs.
 `lake comparator` (`comparator.json`, CI only) checks that the solution module `Solution` proves
 exactly these statements, built from Spec alone, under `propext`, `Quot.sound` and
@@ -22,14 +22,6 @@ theorem Consensus.Review.heldIffServed : Consensus.Review.HeldIffServed := sorry
 theorem Consensus.Review.obligationsSufficientOn : Consensus.Review.ObligationsSufficientOn := sorry
 theorem Consensus.Goldilocks.meetsObligations : Consensus.Goldilocks.MeetsObligations := sorry
 theorem Consensus.Goldilocks.goldilocksCorrect : Consensus.Goldilocks.GoldilocksCorrect := sorry
-
-/-- For every vote binding, population-wide or a per-slot committee: the outage row of the
-obligations (`persists`) for `goldilocks S` at the obligations contract. -/
-theorem Consensus.Goldilocks.persistsWith : Consensus.Goldilocks.PersistsWith := sorry
-
-/-- For every vote binding, population-wide or a per-slot committee: the sleepy safety and
-liveness rows for `goldilocks S` at the obligations contract. -/
-theorem Consensus.Goldilocks.sleepyWith : Consensus.Goldilocks.SleepyWith := sorry
 
 /-- On every structural run: the full behaviour on that single run, or a forgery,
 credential failure or inadmissible selection. Collisions excuse only `Holds`
