@@ -33,13 +33,6 @@ namespace Consensus.Goldilocks.Generic
 open AsChainShape Shape Blocks Simulation Obligations SleepyLayer1
 open Consensus.Model (pubOf)
 
-/-- A property of local suppliers over every signer survives the signer transport. -/
-private theorem cast_local {P : Params} {A : NodeAC P} {sg sg' : A.Msg → Fin P.n}
-    (h : sg = sg') (C : ACCorrectLocal A sg) (Q : ∀ s, ACCorrectLocal A s → Prop)
-    (hC : Q sg C) : Q sg' (h ▸ C) := by
-  subst h
-  exact hC
-
 variable {V : Type} [Fintype V] [DecidableEq V]
 
 /-- **The local claim suppliers of the canonical Goldilocks run map**, for any local supplier at
@@ -55,7 +48,7 @@ theorem goldilocks_localClaimSuppliers (S : Setup) (A : ContractAssumptions S) {
       (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
   have hsg := (goldilocksRunMap_signer S rho hn hv).symm
   have hcast := fun (Q : ∀ s, ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
-      s → Prop) (h : Q _ C) => cast_local hsg C Q h
+      s → Prop) (h : Q _ C) => ACCorrectLocal.cast_signer hsg C Q h
   have hθK : (K S A).params.θ = 1 / 2 := by norm_num [Params.standard]
   have hΔ : (S.params (pubOf E) hn).Δ = E.ΔAC := rfl
   have hfields := hcast (fun _ C => C.θ = 1 / 2 ∧ C.look = 5 * E.ΔAC ∧

@@ -141,6 +141,15 @@ theorem meetsObligations_of_local_iff {O : OutputSchema} {Info : Type}
       HealthyBetaFit K → CommitteeHalfFit K → ShapeObligations F K :=
   by exact Iff.rfl
 
+/-- A property of local suppliers over every signer survives transporting a supplier along a
+signer equality. In particular, every field whose type does not mention the signer is unchanged:
+take `Q s C' := C'.f = C.f`. -/
+theorem ACCorrectLocal.cast_signer {P : Params} {A : NodeAC P} {sg sg' : A.Msg → Fin P.n}
+    (h : sg = sg') (C : ACCorrectLocal A sg) (Q : ∀ s, ACCorrectLocal A s → Prop)
+    (hC : Q sg C) : Q sg' (h ▸ C) := by
+  subst h
+  exact hC
+
 end Consensus.Goldilocks.Generic
 
 end

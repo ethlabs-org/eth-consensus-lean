@@ -48,7 +48,8 @@ theorem goldilocks_regimeTransport (S : Setup) (A : ContractAssumptions S) {E : 
     (hsg : (fun v => v.val) = (goldilocksRunMap S rho hn hv).signer) :
     RegimeTransport (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C) := by
   classical
-  obtain ⟨es, el, -⟩ := local_data_cast hsg C
+  obtain ⟨es, el⟩ := Generic.ACCorrectLocal.cast_signer hsg C
+    (fun _ C' => C'.served = C.served ∧ C'.look = C.look) ⟨rfl, rfl⟩
   obtain ⟨-, -, -, hl, -, -, -, -, -, -, -, -, -, hserved⟩ := hC
   have hrun := simTraceAt_goldilocksRun S rho hn hv
   have hΔ := (S.params (pubOf E) hn).toParams.hΔ

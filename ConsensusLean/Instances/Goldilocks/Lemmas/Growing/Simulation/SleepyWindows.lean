@@ -370,19 +370,6 @@ theorem goldilocks_outageTransport (S : Setup) {E : Env V}
         simpa only [p, goldilocksPoint, EnvPoint.lookAhead, min_assoc, min_self,
           EnvPoint.retain, Model.Run.point] using h
 
-/-- Signer transport preserves the local service, durations, outage policy and healing drain. -/
-theorem local_data_cast {P : Params} {A : NodeAC P} {sg sg' : A.Msg → Fin P.n}
-    (h : sg = sg') (C : ACCorrectLocal A sg) :
-    (h ▸ C).served = C.served ∧ (h ▸ C).look = C.look ∧
-      (h ▸ C).catchUp = C.catchUp ∧ (h ▸ C).latency = C.latency ∧
-      (h ▸ C).margin = C.margin ∧ (h ▸ C).hold = C.hold ∧
-      (h ▸ C).run.Run = C.run.Run ∧ (h ▸ C).committeeLook = C.committeeLook ∧
-      (h ▸ C).θ = C.θ ∧ (h ▸ C).recovery = C.recovery ∧
-      (h ▸ C).outageEta = C.outageEta ∧ (h ▸ C).outageLag = C.outageLag ∧
-      (h ▸ C).outageBudget = C.outageBudget ∧ (h ▸ C).healing.drain = C.healing.drain := by
-  subst h
-  exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-
 /-- At the local data equations, the fixed local outage policy matches the endpoint contract:
 catch-up `18Δ + 1 ≤ 19Δ`, and equal recovery, threshold, look-aheads, look-back, arming lag and
 budget, for every run map of the binding's parameters. -/
@@ -395,7 +382,11 @@ theorem goldilocks_outageRecoveryBinding (S : Setup) (A : ContractAssumptions S)
     (hsg : (fun v => v.val) = M.signer) :
     OutageRecoveryBinding M (goldilocksContract A (contract_coefficients S A)) (hsg ▸ C) := by
   obtain ⟨-, hθ, hc, hl, hcl, -, -, -, hr, hη, hlag, hb, -, -⟩ := hC
-  obtain ⟨-, el, ec, -, -, -, -, ecl, eθ, er, eη, elag, eb, -⟩ := local_data_cast hsg C
+  obtain ⟨el, ec, ecl, eθ, er, eη, elag, eb⟩ := Generic.ACCorrectLocal.cast_signer hsg C
+    (fun _ C' => C'.look = C.look ∧ C'.catchUp = C.catchUp ∧
+      C'.committeeLook = C.committeeLook ∧ C'.θ = C.θ ∧ C'.recovery = C.recovery ∧
+      C'.outageEta = C.outageEta ∧ C'.outageLag = C.outageLag ∧
+      C'.outageBudget = C.outageBudget) ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   have hΔ : (S.params (pubOf E) hn).Δ = E.ΔAC := rfl
   have h1 : (1 : Time) ≤ E.ΔAC := E.ΔAC_pos
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
@@ -477,8 +468,11 @@ theorem goldilocksRunMap_event_safety
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
       (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
   intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes B B' hB hB'
-  obtain ⟨hsv, hl, hc, -, -, -, hr, hcl, hθ, -⟩ :=
-    Simulation.local_data_cast (goldilocksRunMap_signer S rho hn hv).symm C
+  obtain ⟨hsv, hl, hc, hr, hcl, hθ⟩ :=
+    Generic.ACCorrectLocal.cast_signer (goldilocksRunMap_signer S rho hn hv).symm C
+      (fun _ C' => C'.served = C.served ∧ C'.look = C.look ∧ C'.catchUp = C.catchUp ∧
+        C'.run.Run = C.run.Run ∧ C'.committeeLook = C.committeeLook ∧ C'.θ = C.θ)
+      ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
   rw [hr] at hrun
   rw [hl] at hpre
   simp only [CommitteeWindow, PopulationWindow, hl, hc, hcl, hθ] at hK hpop
@@ -504,8 +498,11 @@ theorem goldilocksRunMap_extension
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
       (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
   intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes y i j t u hi hj hbi hbj hij htu
-  obtain ⟨hsv, hl, hc, -, -, -, hr, hcl, hθ, -⟩ :=
-    Simulation.local_data_cast (goldilocksRunMap_signer S rho hn hv).symm C
+  obtain ⟨hsv, hl, hc, hr, hcl, hθ⟩ :=
+    Generic.ACCorrectLocal.cast_signer (goldilocksRunMap_signer S rho hn hv).symm C
+      (fun _ C' => C'.served = C.served ∧ C'.look = C.look ∧ C'.catchUp = C.catchUp ∧
+        C'.run.Run = C.run.Run ∧ C'.committeeLook = C.committeeLook ∧ C'.θ = C.θ)
+      ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
   rw [hr, hdata.healing.1.1] at hrun
   rw [hl] at hpre
   rw [hc] at hi hj
@@ -527,8 +524,12 @@ theorem goldilocksRunMap_proposal_coverage
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
       (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
   intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes B k y j t hP hk hhold hkb hkt hy hread hjt
-  obtain ⟨hsv, hl, hc, -, hm, hh, hr, hcl, hθ, -⟩ :=
-    Simulation.local_data_cast (goldilocksRunMap_signer S rho hn hv).symm C
+  obtain ⟨hsv, hl, hc, hm, hh, hr, hcl, hθ⟩ :=
+    Generic.ACCorrectLocal.cast_signer (goldilocksRunMap_signer S rho hn hv).symm C
+      (fun _ C' => C'.served = C.served ∧ C'.look = C.look ∧ C'.catchUp = C.catchUp ∧
+        C'.margin = C.margin ∧ C'.hold = C.hold ∧ C'.run.Run = C.run.Run ∧
+        C'.committeeLook = C.committeeLook ∧ C'.θ = C.θ)
+      ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   rw [hr, hdata.healing.1.1] at hrun
   rw [hl] at hpre
   rw [hc, hh] at hP

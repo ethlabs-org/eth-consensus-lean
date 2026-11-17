@@ -39,7 +39,8 @@ theorem goldilocks_resetHealBudgetSupply (S : Setup) (A : ContractAssumptions S)
     (hsg : (fun v => v.val) = (goldilocksRunMap S rho hn hv).signer) :
     ResetHealBudgetSupply (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C) := by
   classical
-  obtain ⟨-, -, -, -, hmargin, -, -, -, -, -, -, -, -, hdrainC⟩ := local_data_cast hsg C
+  obtain ⟨hmargin, hdrainC⟩ := Generic.ACCorrectLocal.cast_signer hsg C
+    (fun _ C' => C'.margin = C.margin ∧ C'.healing.drain = C.healing.drain) ⟨rfl, rfl⟩
   obtain ⟨⟨-, -, -, hdrain, -⟩, -, -, -, -, -, hm, -⟩ := hC
   intro hv' hnc cap idx gst hcap hH hp hhb
   rw [goldilocksRunMap_trace, goldilocksRunMap_honest, goldilocksRunMap_proposer]

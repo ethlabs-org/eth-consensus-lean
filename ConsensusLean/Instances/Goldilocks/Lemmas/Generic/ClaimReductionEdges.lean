@@ -247,12 +247,6 @@ theorem outputValidAlways (B : EngineBinding (F := F) (V := V) pub payload sg ru
   obtain ⟨hov, hrep, hhr⟩ := h E hpub rho hv
   exact (outputValidityEdge_iff _).1 hov hrep hhr hv g
 
-/-- A local record transported along signer equality has the same runs. -/
-private theorem cast_local_run {sg' : A.Msg → Fin P.n} (h : sg = sg') (C : ACCorrectLocal A sg) :
-    (h ▸ C).run.Run = C.run.Run := by
-  subst h
-  rfl
-
 /-- Accountable safety of the final output at fixed public parameters. A hash collision is the
 claim's excuse. Otherwise two final reads at honest engine cuts are the chains of the readers'
 finalized caches (`HonestChainReads`). Compatible caches give a chain prefix
@@ -274,7 +268,8 @@ theorem finalAccountabilityReduction (C : ACCorrectLocal A sg)
   have hT := B.run_transport E hpub rho hv
   have hrun : (B.signer_eq E hpub rho hv ▸ C).run.Run M.committee M.proposer M.digest M.honest
       M.trace := by
-    rw [cast_local_run]
+    rw [ACCorrectLocal.cast_signer (B.signer_eq E hpub rho hv) C
+      (fun _ C' => C'.run.Run = C.run.Run) rfl]
     have := hT.run hv
     rwa [ACRun.cast_run] at this
   have hcoh := hcoh hc
@@ -364,7 +359,8 @@ theorem persistenceReduction (C : ACCorrectLocal A sg)
   have hT := B.run_transport E hpub rho hv
   have hrun : (B.signer_eq E hpub rho hv ▸ C).run.Run M.committee M.proposer M.digest M.honest
       M.trace := by
-    rw [cast_local_run]
+    rw [ACCorrectLocal.cast_signer (B.signer_eq E hpub rho hv) C
+      (fun _ C' => C'.run.Run = C.run.Run) rfl]
     have := hT.run hv
     rwa [ACRun.cast_run] at this
   have hcoh := hcoh hc
@@ -446,7 +442,8 @@ theorem healedSafetyReduction (C : ACCorrectLocal A sg)
   set L : ACCorrectLocal A M.signer := B.signer_eq E hpub rho hv ▸ C
   have hT := B.run_transport E hpub rho hv
   have hrun : L.run.Run M.committee M.proposer M.digest M.honest M.trace := by
-    rw [cast_local_run]
+    rw [ACCorrectLocal.cast_signer (B.signer_eq E hpub rho hv) C
+      (fun _ C' => C'.run.Run = C.run.Run) rfl]
     have := hT.run hv
     rwa [ACRun.cast_run] at this
   have hcoh := hcoh hc
@@ -571,7 +568,8 @@ theorem healthyLivenessReduction (C : ACCorrectLocal A sg)
   set L : ACCorrectLocal A M.signer := B.signer_eq E hpub rho hv ▸ C
   have hT := B.run_transport E hpub rho hv
   have hrun : L.run.Run M.committee M.proposer M.digest M.honest M.trace := by
-    rw [cast_local_run]
+    rw [ACCorrectLocal.cast_signer (B.signer_eq E hpub rho hv) C
+      (fun _ C' => C'.run.Run = C.run.Run) rfl]
     have := hT.run hv
     rwa [ACRun.cast_run] at this
   have hnc := hT.no_collision hv hc
@@ -680,11 +678,6 @@ section SleepyReductions
 
 variable {E : Env V} {rho : Model.Run (compiled F) E}
 
-private theorem local_cast_run {sg' : A.Msg → Fin P.n} (h : sg = sg')
-    (C : ACCorrectLocal A sg) : (h ▸ C).run.Run = (h ▸ C.run).Run := by
-  cases h
-  rfl
-
 private theorem sleepy_windows {M : RunMap rho payload} {K : Contract ProgressReq}
     {C : ACCorrectLocal A M.signer} (hw : SleepyWindowSupply M K C)
     (hf : ClaimDeadlineFit M K C) (hv : rho.ExecutionValid)
@@ -728,8 +721,10 @@ theorem sleepy_safety_reduction (C : ACCorrectLocal A sg)
   obtain ⟨hreg, _, hstored, hlocal, hevents, houtputs, hext, hsource,
     hquorum, hwindow, hfit, hrep, hread, hcoh⟩ := supply r.1 hpub r.2 hv
   have hrun : L.run.Run M.committee M.proposer M.digest M.honest M.trace := by
-    rw [local_cast_run]
-    exact (B.run_transport r.1 hpub r.2 hv).run hv
+    rw [ACCorrectLocal.cast_signer (B.signer_eq r.1 hpub r.2 hv) C
+      (fun _ C' => C'.run.Run = C.run.Run) rfl]
+    have := (B.run_transport r.1 hpub r.2 hv).run hv
+    rwa [ACRun.cast_run] at this
   have hnc := (B.run_transport r.1 hpub r.2 hv).no_collision hv hcollision
   obtain ⟨p, hp, hK, hpop⟩ := sleepy_windows hwindow hfit hv hs
   have hframes := sleepy_frames hsource hquorum hv hs hrun hnc
@@ -816,8 +811,10 @@ theorem sleepy_liveness_reduction (C : ACCorrectLocal A sg)
   obtain ⟨hreg, hprogress, hwitness, hfit, hstored, hcoverage, hlocal,
     _, _, _, hsource, hquorum, hwindow, hrep, hread, hcoh⟩ := supply r.1 hpub r.2 hv
   have hrun : L.run.Run M.committee M.proposer M.digest M.honest M.trace := by
-    rw [local_cast_run]
-    exact (B.run_transport r.1 hpub r.2 hv).run hv
+    rw [ACCorrectLocal.cast_signer (B.signer_eq r.1 hpub r.2 hv) C
+      (fun _ C' => C'.run.Run = C.run.Run) rfl]
+    have := (B.run_transport r.1 hpub r.2 hv).run hv
+    rwa [ACRun.cast_run] at this
   have hnc := (B.run_transport r.1 hpub r.2 hv).no_collision hv hcollision
   obtain ⟨p, hp, hK, hpop⟩ := sleepy_windows hwindow hfit hv hs
   have hframes := sleepy_frames hsource hquorum hv hs hrun hnc
