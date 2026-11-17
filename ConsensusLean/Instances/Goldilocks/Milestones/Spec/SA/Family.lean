@@ -93,16 +93,6 @@ structure ObservationAgreement (F : SAFamily A ro)
   erased_emissions : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
     F.projCall ℓ.call = none → ℓ.emits.filterMap F.projEm = []
 
-/-- Structural correspondence to actual candidate outputs, not semantic correctness. -/
-structure OutputAgreement (F : SAFamily A ro) (H : Set (Fin sp.n))
-    (tr : ACTrace A.toAC) : Prop where
-  toFG : ∀ x ∈ H, ∀ i ℓ C, ACToFGAt tr x i ℓ C →
-    ∃ q : S, F.stateView q = (F.proj tr).state x i ∧
-      q = tr.state x i ∧ (A.toFG q ℓ.frame (tr.time i)).2 = some C
-  proposal : ∀ x ∈ H, ∀ i ℓ d p, ACProposalAt tr x i ℓ d p →
-    ∃ q : S, F.stateView q = (F.proj tr).state x i ∧
-      q = tr.state x i ∧ (A.proposal q ℓ.frame (tr.time i)).2 = some (d, p)
-
 namespace Growing
 
 /-- Growing honesty is checked at the actual cut, including for erased calls. -/

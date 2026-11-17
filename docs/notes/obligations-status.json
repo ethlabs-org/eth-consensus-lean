@@ -32,6 +32,8 @@
     "Consensus.Goldilocks.Healing.FrameWindow.unanimous_update_no_veto",
     "Consensus.Goldilocks.Healing.ResetPremisesUpTo.clean_source_compatible_high_origin",
     "Consensus.Goldilocks.Healing.clean_result_next_votes",
+    "Consensus.Goldilocks.Healing.clean_source_vote_domain_step",
+    "Consensus.Goldilocks.Healing.clean_source_votes_before",
     "Consensus.Goldilocks.Healing.fresh_fast_lock_update_toFG",
     "Consensus.Goldilocks.Healing.higher_report_window_origin",
     "Consensus.Goldilocks.Healing.protected_vote_extends",
@@ -40,6 +42,7 @@
     "Consensus.Goldilocks.Healing.regular_slow_next_votes_of_early_witness",
     "Consensus.Goldilocks.Healing.report_cover",
     "Consensus.Goldilocks.Healing.reset_vote_anchor",
+    "Consensus.Goldilocks.Healing.slow_target_vote_domain_before",
     "Consensus.Goldilocks.Healing.update_window_kept",
     "Consensus.Goldilocks.Healing.voter_unlock_keeps_lock",
     "Consensus.Goldilocks.Refinement.UpTo.young_optimistic_lock_persists",
@@ -541,16 +544,6 @@
       "evidence": "Proved; no direct owner in compiled audit at 065683b3."
     },
     {
-      "name": "Consensus.Goldilocks.Healing.clean_source_votes_before",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Foundation.lean:454",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
       "name": "Consensus.Goldilocks.Healing.drain_live_locks",
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Foundation.lean:66",
       "status": "lean-proved",
@@ -763,16 +756,6 @@
     {
       "name": "Consensus.Goldilocks.Healing.same_slot_source_below_ready",
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Supplier.lean:327",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
-      "name": "Consensus.Goldilocks.Healing.slow_target_vote_domain_before",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Retention/Induction.lean:802",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -1629,16 +1612,6 @@
       "direct_sorry": false,
       "lean-status": "proved",
       "evidence": "Proved; no direct owner in compiled audit at 65b7054b."
-    },
-    {
-      "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation.0.Consensus.Goldilocks.Healing.clean_source_vote_domain_step",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Foundation.lean:309",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Provenance.0.Consensus.Goldilocks.Healing.StoredFrom.of_addLocks",

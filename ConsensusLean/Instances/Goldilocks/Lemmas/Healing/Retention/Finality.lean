@@ -14,8 +14,8 @@ G1.2 at strict height (for a low finalized height `d ≤ H`): the cut
 step's conclusion for `Σ.F` when `Σ.J` is low. The finalized pair of a state names the entry of
 its height (`fin_pair_entry`: a pending pair is a past justification, whose block is the entry of
 the justified height), so a store's `Σ.F ⪯ Σ.J` is finalized at a height `≤ Σ.h_j`
-(`low_finalized_below_origin`); G1.2 over the run (`finalized_anc_of_height_lt_of_run`) puts it
-below every honest block of greater state height. -/
+(`ResetPremisesUpTo.low_finalized_below_origin`); G1.2 over the run
+(`finalized_anc_of_height_lt_of_run`) puts it below every honest block of greater state height. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -431,13 +431,6 @@ theorem ResetPremisesUpTo.low_finalized_below_origin {b : Time}
   obtain ⟨CV, hst⟩ := ho.2.2.1
   exact low_finalized_below_high_block_of_run hp.run hp.noColl hp.faults hy ho.1
     (storedFastLock_mem hp.run hp.noColl ho.1 hst).1 ho.2.2.2 hlow
-
-/-- Whole-run specialization of low finalization below a high origin. -/
-theorem low_finalized_below_origin (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n}
-    (hy : y ∈ H) (m : Nat) (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) {x : Fin sp.n}
-    {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
-    Anc (tr.HonestBlocks H) (tr.state y m).fg.F B :=
-  (hp.toUpTo tr H (le_refl a)).low_finalized_below_origin hy m hlow ho
 
 end Consensus.Goldilocks.Healing
 

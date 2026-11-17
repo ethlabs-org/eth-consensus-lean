@@ -250,19 +250,6 @@ private theorem relay_mem_voterBlockTree_window_aux
   rw [← SA.readPoint_blockStamp hr hy hc hne] at hbs
   exact ⟨hWt, hbs⟩
 
-/-- Post-start acceptance relay needs no catch-up premise. -/
-theorem relay_mem_voterBlockTree_window_after
-    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b : Time}
-    (hsync : SyncACWindowBefore H U a b T)
-    {w y : Fin sp.n} (hw : w ∈ H) (hy : y ∈ H) {kw i s : Nat} {W : SA.Blk sp.n FGP}
-    (hkw : T.AcceptAt w kw W) (ha : a ≤ T.time kw) (ht : T.time kw < sp.ts s + 2 * sp.Δ)
-    {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
-    (hc : SA.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
-    (hF : Anc U ℓ.frame.F W) : W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
-  obtain ⟨hW, hstamp⟩ := relay_mem_voterBlockTree_window_aux hr hsync hw hy hkw ht hc hs hi
-    (fun h => False.elim (not_lt_of_ge ha h)) hF
-  exact ⟨hW, Or.inl hstamp⟩
-
 /-- Old acceptances use catch-up; post-start acceptances use window relay.
 The strict stamp is at the actual emission read point, suitable for iterating the unanimity
 propagation. -/

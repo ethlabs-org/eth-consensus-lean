@@ -358,10 +358,10 @@ structure SleepyInvariantUpTo (b : Time) : Prop where
 
 /-! ### The invariant from a start label `s₀`
 
-The step lemmas for an induction started at a label `s₀` (after a heal, R.6) read the origins
-of labels `≥ s₀` (`OriginFrom`, whole-run) and run on a window `[t_{s₀}, b]` (`SleepyWindow`),
-which the prefix premises give at `s₀ = 0`. The premises from `t_{s₀}` on, the base facts that
-replace the pre-`s₀` history, and the invariant from `s₀` are not stated. -/
+The step lemmas for an induction started at a label `s₀` (after a heal, R.6) run on a window
+`[t_{s₀}, b]` (`SleepyWindow`), which the prefix premises give at `s₀ = 0`. The premises from
+`t_{s₀}` on, the base facts that replace the pre-`s₀` history, and the invariant from `s₀` are not
+stated. -/
 
 /-- **The Sleepy premises on the window from slot `s₀` to `b`**: `Sync[t_{s₀}, b − Δ]` and
 `f < h_t` at every `t ∈ {t_s, t_s + Δ, t_s + 2Δ}` with `s ≥ s₀` and `t ≤ b`. -/
@@ -369,16 +369,6 @@ def SleepyWindow (ΔF : Time) (s₀ : Nat) (b : Time) : Prop :=
   sp.ts s₀ ≤ b ∧ tr.SyncRun H ΔF (sp.ts s₀) (b - sp.Δ) ∧
     ∀ s : Nat, s₀ ≤ s → ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d)
-
-/-- An origin of label `s ≥ s₀` (whole-run, as `Origin`). -/
-def OriginFrom (C : SA.Blk sp.n (List (FG.Att sp.n))) (s s₀ : Nat) : Prop :=
-  Origin tr H C s ∧ s₀ ≤ s
-
-/-- `B` is on the ancestor closure of the origins of labels `≥ s₀`: genesis (an ancestor of every
-honest block, so compatible with all of them), or an ancestor (inside the honest blocks) of an
-origin of label `≥ s₀`. -/
-def OnOriginChainFrom (B : SA.Blk sp.n (List (FG.Att sp.n))) (s₀ : Nat) : Prop :=
-  B.root = sp.genesisRoot ∨ ∃ C s, OriginFrom tr H C s s₀ ∧ Anc (tr.HonestBlocks H) B C
 
 variable {tr H}
 

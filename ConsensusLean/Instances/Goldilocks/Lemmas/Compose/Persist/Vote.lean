@@ -3,7 +3,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.P
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
-import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
@@ -12,8 +11,8 @@ public section
 At an honest vote of a slot `σ ∈ (s, m]` (a cut of the run's AC projection), with the caches of
 the voter compatible with `B`: (i) `B` is in the viable voter block tree or at or below `fc_root`
 (`vote_viable`: the voter's `fc_root` is its `Σ.J` or `Σ.F`, then (K2)), and (ii) the vote
-extends `B` (`vote_extends`: below `fc_root` by requirement 1, otherwise by A1.2 for
-`σ = s + 1` and A1.3 after). -/
+extends `B` (below `fc_root` by requirement 1, otherwise by A1.2 for `σ = s + 1` and A1.3
+after). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -173,83 +172,6 @@ theorem vote_viable {ini} (hrun : GoldilocksRun proposer dg H tr ini)
       exact ⟨hDt.1, hDt.2, Anc.mono (fun X hX => hX.1) hfD, hvD⟩
     · exact Or.inr hBf
   · exact Or.inr h
-
-/-- **C1.1 (ii) at a vote**: when (i) holds at an honest vote of a slot `σ ∈ (s, m]` and every
-honest vote of a slot in `(s, m]` at an earlier cut extends `B`, the vote extends `B`: below
-`fc_root` by requirement 1, otherwise by A1.2 for `σ = s + 1` (its stored-block form) and by
-A1.3 after (every slot-`(σ − 1)` vote is at an earlier cut). -/
-theorem vote_extends (hrun : GoldilocksRun proposer dg H tr)
-    {ΔF : Time} {x : Fin sp.n} {i₀ s m : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hp : PersistPremises tr H dg ΔF x i₀ s m B CV) {y : Fin sp.n}
-    (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ℓ e) (hs : s < e.msg.slot) (hsm : e.msg.slot ≤ m)
-    (hviab : B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
-      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot)
-    (hprior : ∀ z ∈ H, ∀ j < k, ∀ e', SA.VoteAt tr.projAC z j e' → s < e'.msg.slot →
-      e'.msg.slot ≤ m → SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
-    SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hp.noColl
-  have hr := hrun'.localRun
-  obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, hle⟩ := cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hy hc
-  obtain ⟨-, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocks H := by
-    rcases hr.frameLaw y hy k ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
-  rcases hviab with hv | hBf
-  swap
-  · exact ⟨Hd, hΦU hHd, hHdr, hBf.trans (Anc.mono hΦU hfHd)⟩
-  have hspec := SA.castAt_spec hr hy hc
-  have h0 := hr.time_nonneg k
-  have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-  have hts : sp.ts e.msg.slot ≤ tr.time k :=
-    (SA.ts_le_iff_le_slot sp h0 _).mpr (by rw [hspec.2.1])
-  have htm : tr.time k ≤ sp.ts m + sp.Δ := by
-    have := (SA.ts_le_iff sp).mpr (Int.ofNat_le.mpr hsm)
-    have hle' : tr.time k ≤ sp.ts e.msg.slot + sp.Δ := hle
-    linarith
-  have hsk : sp.ts s < tr.time k := by
-    have := (SA.ts_lt_iff sp).mpr (Int.ofNat_lt.mpr hs)
-    linarith
-  have hsync0 := sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
-    tr proposer ΔF
-    (sp.ts s) (sp.ts m + sp.Δ) hrun.toLocalRun hp.sync
-  have hfault : SA.FaultBound tr.projAC H (tr.time k) := by
-    have h := hp.faultBound y hy k e ⟨ℓ, hc.1, hc.2⟩ hsk htm
-    unfold SA.FaultBound
-    rw [← (joined_projection sp ro dg H tr proposer hrun y hy (tr.time k)).2.2]
-    exact h
-  have hearlier : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) k e.msg.slot B :=
-    fun z hz j hj e' hv hsl => hprior z hz j hj e' hv (hsl ▸ hs) (hsl ▸ hsm)
-  by_cases h1 : e.msg.slot = s + 1
-  · obtain ⟨ℓw, D, hcw, hflD, hBD⟩ := hp.fastLock
-    have hΦwU : ℓw.frame.tree ⊆ tr.HonestBlocks H := by
-      rcases hr.frameLaw x hp.writer_honest i₀ ℓw hcw with
-        ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.2
-    refine SA.first_transfer_stored sp hrun' _ SA.CommitteeP.full SA.CommitteeT.full
-      (SA.size_binding_full hp.stock) hp.writer_honest hflD
-      (hBD ▸ Anc.mono hΦwU (SA.anc_viableAncestor ℓw.frame D)) hy hc h1
-      (syncAC_mono hsync0 le_rfl htm) (hp.carry y hy k e ⟨ℓ, hc.1, hc.2⟩ h1)
-      ((SA.faultBoundK_full_iff _ _).2 hfault) (SA.cs2_full_of_faultBound sp hp.stock hfault)
-      ?_ ?_
-    · rw [← h1]; exact Or.inl hv
-    · rw [← h1]; exact hearlier
-  · obtain ⟨m', hm'⟩ : ∃ m', e.msg.slot = m' + 1 := ⟨e.msg.slot - 1, by omega⟩
-    have hsm' : s < m' := by omega
-    refine SA.next_transfer sp _ ro H _ tr.projAC proposer hrun' _ SA.CommitteeP.full
-      SA.CommitteeT.full (SA.size_binding_full hp.stock) m' y k B ℓ e hy hc hm' ?_
-      (by rw [hp.stock]; exact hp.halfCommittee m' hsm' (by omega))
-      (hp.carryLater m' hsm' (by omega) y hy k e ⟨ℓ, hc.1, hc.2⟩ hm')
-      ((SA.faultBoundK_full_iff _ _).2 hfault) (SA.cs2_full_of_faultBound sp hp.stock hfault)
-      ?_ ?_
-    · intro z hz j e' hv hsl
-      have hjk : j < k := by
-        by_contra hjk
-        obtain ⟨ℓ', hc', he'⟩ := hv
-        have h₁ := (SA.castAt_spec hr hz ⟨hc', he'⟩).2.1
-        have h₂ := SA.slot_mono sp h0 (hr.time_mono (not_lt.mp hjk))
-        omega
-      exact hprior z hz j hjk e' hv (by omega) (by omega)
-    · rw [← hm']; exact Or.inl hv
-    · rw [← hm']; exact hearlier
 
 end Consensus.Goldilocks.Compose
 

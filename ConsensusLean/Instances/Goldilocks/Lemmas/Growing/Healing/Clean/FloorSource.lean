@@ -10,12 +10,12 @@ public section
 
 /-! # A high floor has a signed source below a bounded row label, under growing faults
 
-The growing form of `high_floor_signed_source_of_row_bound` (`Healing/Retention/Boot`): the
-reader is honest at an observation `t ≤ b` after its state's cuts, and every origin is honest at
-its own write. Pairwise comparison of the earlier origins rules out a high contest at the reader:
-the two entries that a contest leaves at `h_j` are each below an earlier origin
-(`left_entry_origin_at`), the two origins are below a block held by one of their writers, and two
-entries of one height below a held block are one. So the floor is `h_max − 1`; the entry at the
+The growing form of `ResetPremisesUpTo.high_floor_signed_source_of_row_bound`
+(`Healing/Retention/Boot`): the reader is honest at an observation `t ≤ b` after its state's cuts,
+and every origin is honest at its own write. Pairwise comparison of the earlier origins rules out a
+high contest at the reader: the two entries that a contest leaves at `h_j` are each below an earlier
+origin (`left_entry_origin_at`), the two origins are below a block held by one of their writers, and
+two entries of one height below a held block are one. So the floor is `h_max − 1`; the entry at the
 floor below the reader's highest block is left by a signer honest at `t`, from an earlier origin
 `O` (`left_entry_origin_at`), and comparison with `B` orients `B ⪯ O`, since `O ⪯ B` would put the
 floor entry below `B`, at a height `≤ h(B)` below the floor. -/

@@ -145,116 +145,6 @@ private theorem g_le_ts (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin s
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   linarith
 
-/-- Vote extension for origins and votes strictly before a cut, without cache invariants. -/
-def HistoricalVoteExtensionBefore (k : Nat) : Prop :=
-  ∀ x i j B, HighOrigin tr H g x i j B → i < k →
-    ∀ z ∈ H, ∀ q < k, ∀ e, SA.VoteAt tr.projAC z q e →
-      j < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B
-
-/-- Public characterization for constructing and applying historical vote extension. -/
-theorem historicalVoteExtensionBefore_iff (k : Nat) :
-    HistoricalVoteExtensionBefore (tr := tr) (H := H) (g := g) k ↔
-      ∀ x i j B, HighOrigin tr H g x i j B → i < k →
-        ∀ z ∈ H, ∀ q < k, ∀ e, SA.VoteAt tr.projAC z q e →
-          j < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  rfl
-
-/-- Two written historical origins are compatible using only historical vote extension.
-The label split is the vote-extension fragment of `origins_compatible_before`. -/
-theorem historical_origins_compatible_before
-    (hp : ResetPremises tr H proposer dg g ΔF a) {k : Nat}
-    (hv : HistoricalVoteExtensionBefore (tr := tr) (H := H) (g := g) k)
-    {x x' : Fin sp.n} {i j r l : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hB : HighOrigin tr H g x i j B) (hi : i < k)
-    (hO : HighOrigin tr H g x' r l O) (hr : r < k) :
-    Compatible (tr.HonestBlocks H) B O := by
-  rw [historicalVoteExtensionBefore_iff] at hv
-  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
-  have hU := hrun.localRun.coherent
-  have hf : 2 * Hᶜ.ncard < sp.n := by
-    have := hp.healthy.2.2
-    have := Fin.pos x
-    have hn : sp.n = sp.toParams.n := rfl
-    omega
-  obtain ⟨CV, hst⟩ := hB.2.2.1
-  obtain ⟨CV', hst'⟩ := hO.2.2.1
-  obtain ⟨-, D, hfl, hBD⟩ := storedFastLock_mem hp.run hp.noColl hB.1 hst
-  obtain ⟨-, D', hfl', hOD'⟩ := storedFastLock_mem hp.run hp.noColl hO.1 hst'
-  rcases lt_trichotomy l j with hlt | rfl | hgt
-  · have hDO : Compatible (tr.HonestBlocks H) D O :=
-      SA.fastLock_compatible_of_votes hrun _ SA.CommitteeP.full hB.1 (Nat.lt_succ_self i) hfl
-        (SA.cs2_full hp.stock hf)
-        fun z hz q hq e he hs => hv x' r l O hO hr z hz q (by clear * - hi hq; omega) e he (by
-            clear * - hlt hs; omega)
-    by_contra hn
-    exact SA.not_compatible_of_anc hU hBD (fun h => hn h.symm) hDO.symm
-  · have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H
-      (fun v => v.val) tr proposer ΔF (sp.ts l) (sp.ts (l + 1 : Nat) + sp.Δ) hp.run.toLocalRun
-      (syncRun_of_gst hp.healthy.1 (g_le_ts hp hB le_rfl))
-    rcases SA.fastLock_same_slot hrun _ SA.CommitteeP.full (SA.size_binding_full hp.stock) hB.1
-      hfl hO.1 hfl' hsync (SA.cs2_full hp.stock hf) with h | h
-    · exact SA.anc_total hU (hBD.trans h) hOD'
-    · exact SA.anc_total hU hBD (hOD'.trans h)
-  · have hDB : Compatible (tr.HonestBlocks H) D' B :=
-      SA.fastLock_compatible_of_votes hrun _ SA.CommitteeP.full hO.1 (Nat.lt_succ_self r) hfl'
-        (SA.cs2_full hp.stock hf)
-        fun z hz q hq e he hs => hv x i j B hB hi z hz q (by clear * - hr hq; omega) e he (by
-            clear * - hgt hs; omega)
-    by_contra hn
-    exact SA.not_compatible_of_anc hU hOD' hn hDB.symm
-
-/-- An activated origin, including a pending write, is compatible with historical origins
-from vote extension alone. Slot timing puts its counted votes before the observation cut. -/
-theorem activated_origin_compatible_before
-    (hp : ResetPremises tr H proposer dg g ΔF a) {k : Nat}
-    (hv : ∀ x i j B, HighOrigin tr H g x i j B →
-      ∀ z ∈ H, ∀ q < k, ∀ e, SA.VoteAt tr.projAC z q e →
-        j < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B)
-    {x x' : Fin sp.n} {i j r l : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hB : HighOrigin tr H g x i j B) (hact : sp.ts (j + 1 : Nat) ≤ tr.time k)
-    (hO : HighOrigin tr H g x' r l O) (hr : r < k) :
-    Compatible (tr.HonestBlocks H) B O := by
-  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
-  have hU := hrun.localRun.coherent
-  have hf : 2 * Hᶜ.ncard < sp.n := by
-    have := hp.healthy.2.2
-    have := Fin.pos x
-    have hn : sp.n = sp.toParams.n := rfl
-    omega
-  obtain ⟨CV, hst⟩ := hB.2.2.1
-  obtain ⟨CV', hst'⟩ := hO.2.2.1
-  obtain ⟨-, D, hfl, hBD⟩ := storedFastLock_mem hp.run hp.noColl hB.1 hst
-  obtain ⟨-, D', hfl', hOD'⟩ := storedFastLock_mem hp.run hp.noColl hO.1 hst'
-  rcases lt_trichotomy l j with hlt | rfl | hgt
-  · have hcut : ∀ z ∈ H, ∀ q, ∀ e, SA.VoteAt tr.projAC z q e → e.msg.slot = j → q < k := by
-      intro z hz q e ⟨ell, hc, he⟩ hs
-      by_contra hq
-      have htime := hact.trans (hp.run.time_mono (Nat.le_of_not_gt hq))
-      have hslot := (SA.ts_le_iff_le_slot sp (hrun.localRun.time_nonneg q)
-        ((j + 1 : Nat) : Int)).mp htime
-      have hcast := (SA.castAt_spec hrun.localRun hz ⟨hc, he⟩).2.1
-      clear * - hs hslot hcast; omega
-    have hDO : Compatible (tr.HonestBlocks H) D O :=
-      SA.fastLock_compatible_of_votes hrun _ SA.CommitteeP.full hB.1 (Nat.lt_succ_self i) hfl
-        (SA.cs2_full hp.stock hf)
-        fun z hz q _ e he hs => hv x' r l O hO z hz q (hcut z hz q e he hs) e he (by omega)
-    by_contra hn
-    exact SA.not_compatible_of_anc hU hBD (fun h => hn h.symm) hDO.symm
-  · have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H
-      (fun v => v.val) tr proposer ΔF (sp.ts l) (sp.ts (l + 1 : Nat) + sp.Δ) hp.run.toLocalRun
-      (syncRun_of_gst hp.healthy.1 (g_le_ts hp hB le_rfl))
-    rcases SA.fastLock_same_slot hrun _ SA.CommitteeP.full (SA.size_binding_full hp.stock) hB.1
-      hfl hO.1 hfl' hsync (SA.cs2_full hp.stock hf) with h | h
-    · exact SA.anc_total hU (hBD.trans h) hOD'
-    · exact SA.anc_total hU hBD (hOD'.trans h)
-  · have hDB : Compatible (tr.HonestBlocks H) D' B :=
-      SA.fastLock_compatible_of_votes hrun _ SA.CommitteeP.full hO.1 (Nat.lt_succ_self r) hfl'
-        (SA.cs2_full hp.stock hf)
-        fun z hz q hq e he hs => hv x i j B hB z hz q (by clear * - hr hq; omega) e he (by
-            clear * - hgt hs; omega)
-    by_contra hn
-    exact SA.not_compatible_of_anc hU hOD' hn hDB.symm
-
 /-- **Activation of a high origin** (through earlier labels, not the origin's own transfer; also the
 pending boundary case). At the state at `t_{j+1}` after the reset (immediately before the
 first-transfer votes of the origin's label `j`, even when its write is later), every honest `Σ.F`,
@@ -432,27 +322,6 @@ theorem ResetPremisesUpTo.high_origin_held_at_vote {b : Time}
     hkwt le_rfl hy hc hj (hF.trans hBHv)
   exact hp.mem_tree_of_anc hy hBHv (hp.frame_tree_subset hy hc.1 hHvT.1)
 
-/-- Whole-run specialization of counted-head heldness. -/
-theorem high_origin_held_at_vote (hp : ResetPremises tr H proposer dg g ΔF a)
-    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ell e) (hj : j < e.msg.slot)
-    (hF : Anc (tr.HonestBlocks H) ell.frame.F B) : B ∈ (tr.state y k).fg.tree :=
-  (hp.toUpTo tr H (le_refl a)).high_origin_held_at_vote ho hy hc hj hF
-
-/-- Receiver and source heights agree after the counted-head relay, not merely because
-the receiver's finalization is below the high origin. -/
-theorem high_origin_height_at_vote (hp : ResetPremises tr H proposer dg g ΔF a)
-    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ell e) (hj : j < e.msg.slot)
-    (hF : Anc (tr.HonestBlocks H) ell.frame.F B) :
-    ((tr.state x i).fg.σ B.root).h = ((tr.state y k).fg.σ B.root).h := by
-  obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := highOrigin_mem hp ho
-  rw [σ_eq_run hp ho.1 hy hBx (high_origin_held_at_vote hp ho hy hc hj hF)]
-
 /-- The floor crossing supplies an earlier high origin above `B` and a held entry at the
 receiver's floor. Heights of `B` are read at its source, where it is held. Pairwise comparison
 of earlier origins rules out a high contest; comparison with `B` orients the crossing.
@@ -551,27 +420,6 @@ theorem ResetPremisesUpTo.high_floor_signed_source_of_row_bound {b : Time}
     hrow W hW att ha v hv d₁ hsd hd₁ r l O hrd hoO, hE, hEO, hBO, by clear * - hfl hEh; omega,
     d₁, att, hrd, hd₁, hsd, haT⟩
 
-/-- Whole-run specialization of the signed floor-crossing source. -/
-theorem high_floor_signed_source_of_row_bound
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H) {u : Nat}
-    (hrow : ∀ W ∈ (tr.state y k).fg.tree, ∀ att ∈ W.fgPayload,
-      ∀ v ∈ H, ∀ d, tr.SignAt v d att → d < k → ∀ r l O,
-        r < d → HighOrigin tr H g v r l O → l < u)
-    (hpair : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
-      ∀ v' r' l' O', r' < k → HighOrigin tr H g v' r' l' O' →
-      Compatible (tr.HonestBlocks H) O O')
-    (hcomp : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
-      Compatible (tr.HonestBlocks H) B O)
-    (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor) :
-    ∃ v r l O E, r < k ∧ HighOrigin tr H g v r l O ∧ l < u ∧
-      E ∈ (tr.state y k).fg.tree ∧ Anc (tr.HonestBlocks H) E O ∧
-      Anc (tr.HonestBlocks H) B O ∧
-      (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h ∧
-      ∃ d att, r < d ∧ d < k ∧ tr.SignAt v d att ∧ att.T = E.root :=
-  (hp.toUpTo tr H (le_refl a)).high_floor_signed_source_of_row_bound ho hy hrow hpair hcomp hfloor
-
 /-- Vote specialization of the duty-independent floor crossing. -/
 theorem ResetPremisesUpTo.high_floor_source_core {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
@@ -594,46 +442,6 @@ theorem ResetPremisesUpTo.high_floor_source_core {b : Time}
       (fun W hW att ha v hv d hs hdk r l O hrd hO =>
         hp.row_origin_label_lt hy hc hW ha hv hs hdk hrd hO) hpair hcomp hfloor
   exact ⟨v, r, l, O, E, hr, hO, hl, hE, hEO, hBO, hf⟩
-
-/-- Whole-run specialization of the vote-time floor crossing. -/
-theorem high_floor_source_core
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ell e) (hj : j < e.msg.slot)
-    (hpair : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
-      ∀ v' r' l' O', r' < k → HighOrigin tr H g v' r' l' O' →
-      Compatible (tr.HonestBlocks H) O O')
-    (hcomp : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
-      Compatible (tr.HonestBlocks H) B O)
-    (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor) :
-    ∃ v r l O E, r < k ∧ HighOrigin tr H g v r l O ∧ l < e.msg.slot ∧
-      E ∈ (tr.state y k).fg.tree ∧ Anc (tr.HonestBlocks H) E O ∧
-      Anc (tr.HonestBlocks H) B O ∧
-      (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h :=
-  (hp.toUpTo tr H (le_refl a)).high_floor_source_core ho hy hc hj hpair hcomp hfloor
-
-/-- Compatibility interface retaining the receiver-finalization argument. The crossing
-itself does not need that argument, as exposed by `high_floor_source_core`. -/
-theorem high_floor_source_before
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ell e) (hj : j < e.msg.slot)
-    (hpair : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
-      ∀ v' r' l' O', r' < k → HighOrigin tr H g v' r' l' O' →
-      Compatible (tr.HonestBlocks H) O O')
-    (hcomp : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
-      Compatible (tr.HonestBlocks H) B O)
-    (_hF : Anc (tr.HonestBlocks H) ell.frame.F B)
-    (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor) :
-    ∃ v r l O E, r < k ∧ HighOrigin tr H g v r l O ∧ l < e.msg.slot ∧
-      E ∈ (tr.state y k).fg.tree ∧ Anc (tr.HonestBlocks H) E O ∧
-      Anc (tr.HonestBlocks H) B O ∧
-      (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h :=
-  high_floor_source_core hp ho hy hc hj hpair hcomp hfloor
 
 /-- **R5 above the floor**: the crossing origin's counted honest
 head is relayed before the voter's freeze and supplies a viable witness above `B`. -/
@@ -797,20 +605,6 @@ theorem ResetPremisesUpTo.raw_target_frozen_witness {b : Time}
     (hp.anc_tree_of_anc hy (hEO.trans hOHv) hHvy)
   exact ⟨Hv, hHvT, hBO.trans hOHv, hfloor.trans hh⟩
 
-/-- Whole-run specialization of the frozen viable witness. -/
-theorem raw_target_frozen_witness (hp : ResetPremises tr H proposer dg g ΔF a)
-    {x y : Fin sp.n} {r l k : Nat} {B O E : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x r l O) (hy : y ∈ H)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ell e) (hl : l < e.msg.slot)
-    (hFB : Anc (tr.HonestBlocks H) ell.frame.F B)
-    (hBO : Anc (tr.HonestBlocks H) B O) (hE : E ∈ (tr.state y k).fg.tree)
-    (hEO : Anc (tr.HonestBlocks H) E O)
-    (hfloor : (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h) :
-    ∃ D ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
-      Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D :=
-  (hp.toUpTo tr H (le_refl a)).raw_target_frozen_witness ho hy hc hl hFB hBO hE hEO hfloor
-
 /-- **(K2) at a vote, R5** (Lemma R5; also for the votes through the ticks at `a_z`). At an honest
 vote of a slot `> j`, the voter block tree holds a viable descendant of the origin's block `B`, or
 `B ⪯ fc_root`: in the low-frontier regime `B` itself (height `H_z + 1`, relayed before the freeze);
@@ -878,39 +672,6 @@ theorem low_root_compatible (hp : ResetPremises tr H proposer dg g ΔF a) {x : F
     by_contra hn
     exact hroot.2 ⟨hroot.1, D, hD'.1, hD'.2, by clear * - hroot hlow hDh hDle; omega, hn⟩
   exact SA.anc_total (honest_coherent hp) (Anc.mono (fun X hX => ⟨y, hy, k, hX⟩) hJD) hBD
-
-/-- Low justification gives complete root compatibility using only post-cut relay. -/
-theorem high_origin_low_J_root_before
-    (hp : ResetPremises tr H proposer dg g ΔF a) {Q : Time}
-    (hsync : SyncACWindowBefore H (tr.HonestBlocks H) (cutZ sp.toParams g) Q tr.projAC)
-    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ell e) (hj : j < e.msg.slot) (hk : tr.time k ≤ Q)
-    (hlow : (tr.state y k).fg.hj ≤ HZ tr H g) :
-    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
-  have hF := low_finalized_below_origin hp hy k hlow ho
-  have hframe := Compose.frame_of_projAC hp.run hy hc.1
-  have hFF : ell.frame.F = (tr.state y k).fg.F := by rw [hframe]; rfl
-  have hroot : ell.frame.fcRoot = (tr.state y k).fg.fcRoot := by rw [hframe]; rfl
-  rw [hroot]
-  unfold Store.fcRoot
-  split_ifs with hJ
-  · have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-    obtain ⟨CV, hst⟩ := ho.2.2.1
-    obtain ⟨_, C, hfl, hBC⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
-    obtain ⟨v, _, D, hDU, _, hBD, hacc⟩ := raw_writer_relay_source
-      (by rw [hp.stock]; exact sp.toParams.hn) hr (fun _ => SA.voteStart_initial _)
-      ho.1 (Or.inr hfl) hBC
-    rcases hacc with hg | ⟨q, hq, hqt⟩
-    · obtain ⟨z, hz, m, hDm⟩ := hDU
-      exact False.elim ((cutZ_lt_of_anc hp ho hz hDm hBD).2 hg)
-    · have hD := acceptAt_mem hp ho.1 hq
-      have hstart := (cutZ_lt_of_anc hp ho ho.1 hD hBD).1.le
-      have htree := relay_mem_voterBlockTree_window_after hr hsync ho.1 hy hq hstart hqt hc
-        (by clear * - hj; omega) hk (by rw [hFF]; exact hF.trans hBD)
-      exact low_root_compatible hp ho hy hc hj hJ hlow htree hBD
-  · exact Or.inl hF
 
 /-- A low root compares with any held target comparable with a high seed. The target's
 transport is needed only in the seed-below-target branch, after finalization is oriented. -/
@@ -991,19 +752,6 @@ theorem ResetPremisesUpTo.low_root_of_seed_before {b : Time}
   exact hp.low_root_of_held_seed_at_call hx hBx hy hS hc.1 hSy hlow hBS
     (fun hFB => (hheld hFB).1)
 
-/-- Whole-run specialization of the vote-time low-root comparison. -/
-theorem low_root_of_seed_before (hp : ResetPremises tr H proposer dg g ΔF a)
-    {x y v : Fin sp.n} {r i q m : Nat} {B S : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hx : x ∈ H) (hBx : B ∈ (tr.state x r).fg.tree) (hy : y ∈ H)
-    (hS : HighOrigin tr H g v q m S)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ell e) (hm : m < e.msg.slot)
-    (hlow : (tr.state y i).fg.hj ≤ HZ tr H g) (hBS : Compatible (tr.HonestBlocks H) B S)
-    (hheld : Anc (tr.HonestBlocks H) ell.frame.F B →
-      B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) :
-    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B :=
-  (hp.toUpTo tr H (le_refl a)).low_root_of_seed_before hx hBx hy hS hc hm hlow hBS hheld
-
 /-- All held honest attestations justify root compatibility from bounded origin comparisons. -/
 theorem ResetPremisesUpTo.high_J_root_of_held_at_state_before {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
@@ -1064,45 +812,6 @@ theorem ResetPremisesUpTo.high_J_root_of_held_at_call_before {b : Time}
     Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
   rw [Compose.frame_of_projAC hp.run hy hc]
   exact hp.high_J_root_of_held_at_state_before hx hBx hy hhigh hcompare
-
-/-- Whole-run specialization of held-target high-root compatibility. -/
-theorem high_J_root_of_held_at_call_before
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {x y : Fin sp.n} {i k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hx : x ∈ H) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H)
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ell)
-    (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
-    (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
-      Compatible (tr.HonestBlocks H) B O) :
-    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B :=
-  (hp.toUpTo tr H (le_refl a)).high_J_root_of_held_at_call_before hx hBx hy hc hhigh hcompare
-
-/-- Vote specialization of the call-level root comparison. -/
-theorem high_J_root_of_held_before
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {x y : Fin sp.n} {i k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hx : x ∈ H) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ell e)
-    (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
-    (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
-      Compatible (tr.HonestBlocks H) B O) :
-    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B :=
-  high_J_root_of_held_at_call_before hp hx hBx hy hc.1 hhigh hcompare
-
-/-- High-origin specialization of the arbitrary held-target root comparison. -/
-theorem high_J_root_of_origins_before
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ell e)
-    (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
-    (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
-      Compatible (tr.HonestBlocks H) B O) :
-    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
-  obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := highOrigin_mem hp ho
-  exact high_J_root_of_held_before hp ho.1 hBx hy hc hhigh hcompare
 
 /-- **`Carry` at a first-transfer vote.** At an honest vote of slot `j + 1` at which `B` is not
 below `fc_root` (so `Σ.F ⪯ B`), the voter holds the counted votes of the origin and has accepted

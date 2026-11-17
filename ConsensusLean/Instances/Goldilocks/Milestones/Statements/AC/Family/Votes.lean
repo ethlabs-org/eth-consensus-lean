@@ -12,17 +12,6 @@ variable {sp : SAParams} {FGP S M : Type} {ro : ReplayOrder sp FGP}
   {A : SAOperations sp FGP S M} (F : SAFamily A ro) (tr : ACTrace A.toAC)
   (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
 
-/-- Independently supplied slot, provenance, timing and head facts about observed votes. -/
-structure VoteObservation : Prop where
-  pool_slot : ∀ y ∈ H, ∀ i s, ∀ v ∈ ((F.proj tr).state y i).pool s, v.slot = s
-  authentic : ∀ y ∈ H, ∀ i s, ∀ v ∈ ((F.proj tr).state y i).pool s, v.val ∈ H →
-    ∃ j < i, ∃ e, VoteAt (F.proj tr) v.val j e ∧ e.msg = v
-  timing : ∀ x ∈ H, ∀ i e, VoteAt (F.proj tr) x i e →
-    sp.ts e.msg.slot ≤ (F.proj tr).time i ∧
-      (F.proj tr).time i ≤ sp.ts e.msg.slot + sp.Δ
-  head : ∀ x ∈ H, ∀ i ℓ e, CastAt (F.proj tr) x i ℓ e →
-    ∃ B ∈ ℓ.frame.tree, B.root = e.msg.head
-
 /-- Participation and service consequences, independent of structural observation. -/
 structure Participants : Prop where
   vote : ∀ x ∈ H, ∀ s : Nat, (F.proj tr).awake x (sp.ts s + sp.Δ) →

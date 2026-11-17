@@ -16,17 +16,6 @@ namespace Consensus.Goldilocks.SA
 variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP} {tr : SATrace sp FGP ro}
   {K : CommitteeDict sp.n}
 
-/-- P at a constant honest set is P under growing faults. -/
-theorem CommitteeP.at {H : Set (Fin sp.n)} (hP : CommitteeP K tr H) :
-    CommitteePAt K tr (fun _ => H) :=
-  ⟨fun _ y hy i _ s v hv => hP.1 y hy i s v hv,
-    fun y i ℓ A hy hpt s v hv => hP.2 y hy i ℓ A hpt s v hv⟩
-
-/-- T at a constant honest set is T under growing faults. -/
-theorem CommitteeT.at {H : Set (Fin sp.n)} (hT : CommitteeT K tr H) :
-    CommitteeTAt K tr (fun _ => H) :=
-  fun y i ℓ e hy hc => hT y hy i ℓ e hc
-
 /-- P under growing faults is P on the prefix through each time `t`, with honest set `H t`, in a
 run whose cuts are in time order and whose honest set is antitone. -/
 theorem CommitteePAt.upTo {H : Time → Set (Fin sp.n)} (hm : Monotone tr.time)

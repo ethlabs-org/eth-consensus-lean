@@ -3,9 +3,12 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.A
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.RelSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.RelSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 import ConsensusLean.Lemmas.Tactic.Linarith
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Same
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Later
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Unlocked
 
 public section
 

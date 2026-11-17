@@ -17,7 +17,7 @@ The vocabulary of the lock-rule interface's traces, which the H.1 settings with 
 * **the unlock relation** (`UnlockRel`) and the parent's unlock oracle of a trace
   (`parentOracle`);
 * the same handlers with the head walk from a given **start** in place of `get_anchor`
-  (`WalkStartFn`, `parentWalkStartFn`, `getHeadFrom`, `tryVoteWithMS` … `stepWithMS`);
+  (`WalkStartFn`, `getHeadFrom`, `tryVoteWithMS` … `stepWithMS`);
 * **the trace law over a step family** (`ACLocalRunStep m u step`): the AC trace contract with
   each honest call `i` executing `step i` at the locks `u i`, related to the call's unlock input by
   `UnlockRel`; its parent instance (`ACLocalRunU m u`, each call executing `stepWithM m`) and its
@@ -225,12 +225,8 @@ noncomputable abbrev parentOracle {ro : ReplayOrder sp FGP} (tr : SATrace sp FGP
 variable (sp) (FGP) in
 /-- A **start function**: the block a head walk starts from, given the state after the unlock, the
 frame, the time, the walk's view and its label. Generic: it carries no rule of its own, and the
-parent's start (`parentWalkStartFn`, `get_anchor`) is one instance. -/
+parent's start (`get_anchor`, `getAnchor`) is one instance. -/
 abbrev WalkStartFn := SAState sp.n → Frm sp.n FGP → Time → View sp.n → Int → Blk sp.n FGP
-
-variable (sp) in
-/-- The parent's start: `get_anchor`, for every view and label. -/
-noncomputable abbrev parentWalkStartFn : WalkStartFn sp FGP := fun A Φ t _ _ => getAnchor sp A Φ t
 
 variable (sp) in
 /-- The head walk of `getHead` from the start `a` in place of `get_anchor`. -/
@@ -305,8 +301,8 @@ noncomputable abbrev acOnBlockWithMS (m : WriteMode) (st : WalkStartFn sp FGP) (
   tryVoteWithMS sp m st self L₁ (optimisticConfirmationM sp m (blockReceipt sp A t B) Φ t) Φ t
 
 variable (sp) in
-/-- `stepWithM` with the head walk from the start `st`; at `parentWalkStartFn` it is `stepWithM`
-(by `rfl`). -/
+/-- `stepWithM` with the head walk from the start `st`; at the parent's start (`getAnchor`) it is
+`stepWithM` (by `rfl`). -/
 noncomputable abbrev stepWithMS (ro : ReplayOrder sp FGP) (m : WriteMode) (st : WalkStartFn sp FGP)
     (self : Fin sp.n) (L₁ : Set Lock) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (goldilocksSA sp FGP ro).Call → SAState sp.n × List (Em sp FGP)
@@ -372,7 +368,8 @@ abbrev ACLocalRunU {ro : ReplayOrder sp FGP} (m : WriteMode) (u : Nat → Set Lo
   ACLocalRunStep m u (fun _ => stepWithM sp ro m) H U tr ini
 
 /-- **The AC trace contract from the starts `st`**: each honest call `i` executes `stepWithMS m`
-with its head walks from `st i`; at `parentWalkStartFn` it is `ACLocalRunU` (by `rfl`). -/
+with its head walks from `st i`; at the parent's start (`getAnchor`) it is `ACLocalRunU` (by
+`rfl`). -/
 abbrev ACLocalRunUS {ro : ReplayOrder sp FGP} (m : WriteMode) (u : Nat → Set Lock)
     (st : Nat → WalkStartFn sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) : Prop :=

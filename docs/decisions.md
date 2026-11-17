@@ -556,9 +556,8 @@ detail in `TRUST.md`.
 - **No bridge from a growing-fault milestone statement to its static counterpart is kept** (the `*_of_growing`
   theorems at `H := fun _ => H₀`, for AC, Compose, FGStore, Healing and Regimes, with the `*_const` vocabulary
   lemmas only they used), since none has a caller: a retained result is stated and proved in its growing or committee
-  form, and agreement with the static form is not a check. The constant-set lemmas kept are
-  `Growing.LocalRun.const_iff` and `Growing.GoldilocksRun.const_iff` (`Lemmas/Growing/Run/Const`), which the
-  constant-fault simulation reduction (`Lemmas/Growing/Simulation/Const`) uses. For the same reason,
+  form, and agreement with the static form is not a check. The one constant-set lemma kept is
+  `Growing.LocalRun.const_iff` (`Lemmas/Growing/Run/Const`), which downstream code uses. For the same reason,
   `Healing.Growing.ResetExistence.exists_reset` is not kept either.
 
 ### Layout of the instance proofs

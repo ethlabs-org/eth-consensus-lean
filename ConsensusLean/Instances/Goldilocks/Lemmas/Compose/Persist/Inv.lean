@@ -86,27 +86,6 @@ theorem state_of_le {y : Fin sp.n} {j k : Nat} (h : j ≤ k) :
     · rw [Trace.state_succ_of_not _ fun c hc' => hc ⟨c, hc'⟩]
       exact ih.imp_right fun ⟨j', h₁, h₂, h₃, h₄⟩ => ⟨j', h₁, h₂.trans k.lt_succ_self, h₃, h₄⟩
 
-/-- **The caches of a state**: at a cut `k` at or after `t_s` whose earlier cuts are in the
-window, the caches of an honest node's state are those after its last call (`CutInv`) or, when
-that call is before `t_s`, those at `t_s` ((K0)). -/
-theorem state_caches (hrun : GoldilocksRun proposer dg H tr)
-    (hp : PersistPremises tr H dg ΔF x i₀ s m B CV) (k : Nat)
-    (hcut : ∀ j < k, CutInv tr H s m B j) (y : Fin sp.n) (hy : y ∈ H) (hk : sp.ts s ≤ tr.time k)
-    (hle : ∀ j < k, tr.time j < sp.ts m + 2 * sp.Δ) :
-    Compatible (tr.HonestBlocks H) (tr.state y k).fg.F B ∧
-      Compatible (tr.HonestBlocks H) (tr.state y k).fg.J B := by
-  classical
-  have hex : ∃ j, sp.ts s ≤ tr.time j := ⟨k, hk⟩
-  have hj₀k : Nat.find hex ≤ k := Nat.find_min' hex hk
-  have hfirst : tr.FirstCutFrom (Nat.find hex) (sp.ts s) :=
-    ⟨Nat.find_spec hex, fun j hj => not_le.mp (Nat.find_min hex hj)⟩
-  rcases state_of_le (tr := tr) (y := y) hj₀k with h | ⟨j', hj', hj'k, hc, h⟩
-  · rw [h]
-    exact hp.clean.caches y hy _ hfirst
-  · rw [h]
-    exact (hcut j' hj'k y hy hc
-      ((Nat.find_spec hex).trans (hrun.time_mono hj')) (hle j' hj'k)).1
-
 end Consensus.Goldilocks.Compose
 
 end

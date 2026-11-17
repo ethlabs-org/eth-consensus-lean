@@ -41,10 +41,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CarryPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Later
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Same
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Source
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Unlocked
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CompatibleSides
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
@@ -130,7 +128,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.ProposalTick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Restarts
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.SuffixBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.SuffixWindow
@@ -919,7 +916,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Frame
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Reachable
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Family
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.GenericPremises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Family
@@ -942,7 +938,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes.Writes
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Dominance
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Locks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Records
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Retention

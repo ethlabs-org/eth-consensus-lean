@@ -10,14 +10,13 @@ public section
 /-! # Goldilocks SA: the locks at a vote's read point
 
 The read point of a vote branch of slot `s > 0`, and so of an honest slot-`s` vote, is the state
-after `try_vote`'s unlocking against the merged view (`readPoint_locks_branch`,
-`readPoint_locks`). A lock there of slot `s − 1` or later sits below (inside `U`) a
-block that an optimistic confirmation of the voter selected, at a cut no later than the vote's,
-with three quarters of the committee as optimistic voters, every honest one of which voted at an
-earlier cut (`lock_origin_readPoint`): locks only move back (A0.4 (c)), a restart keeps them
-(A0.7), the updates that write locks of slot `s − 1` or later run after the vote
-(`t_s + 2Δ`), and the pool's honest votes were emitted before (the honest-object facts). A1.3's
-lock analysis reads both. -/
+after `try_vote`'s unlocking against the merged view (`readPoint_locks_branch`). A lock there of
+slot `s − 1` or later sits below (inside `U`) a block that an optimistic confirmation of the voter
+selected, at a cut no later than the vote's, with three quarters of the committee as optimistic
+voters, every honest one of which voted at an earlier cut (`lock_origin_readPoint`): locks only
+move back (A0.4 (c)), a restart keeps them (A0.7), the updates that write locks of slot `s − 1` or
+later run after the vote (`t_s + 2Δ`), and the pool's honest votes were emitted before (the
+honest-object facts). A1.3's lock analysis reads both.-/
 
 namespace Consensus.Goldilocks.SA
 
@@ -169,16 +168,6 @@ theorem readPoint_locks_branch (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr 
   obtain ⟨rfl, -⟩ := voteBranchAt_input hr hy hb
   simp only [hs, ↓reduceIte]
   exact ⟨_, rfl⟩
-
-/-- The locks at the read point of a vote of slot `s > 0` are an `unlock` against the merged
-view, of slot `s − 1` (`readPoint_locks_branch`). -/
-theorem readPoint_locks (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y i ℓ e) (hs : 0 < e.msg.slot) :
-    ∃ L, e.readPoint.locks = unlock sp L ℓ.frame (tr.time i) ((e.msg.slot : Int) - 1)
-      (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) := by
-  rw [(castAt_spec hr hy hc).2.1] at hs ⊢
-  exact readPoint_locks_branch hr hy (voteBranchAt_of_castAt hr hy hc) hs
 
 /-- Every vote of an honest validator in the pools of `A` has its pool's slot and was emitted
 before cut `i`. -/

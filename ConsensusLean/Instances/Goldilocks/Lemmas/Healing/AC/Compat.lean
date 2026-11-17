@@ -11,7 +11,7 @@ Over a `StandaloneRun` (H.1's premises), for a slot `s` with `t_s ≥ ḡ + 4Δ`
 * two fast origins (fast test or optimistic, any combination) are compatible
   (`fastLock_fastLock_compatible`: A1.9's `fastLock_same_slot`);
 * two results of `get_confirmation` (fast, slow, vetoed or not) at honest nodes are compatible
-  (`result_result_compatible`): their supporter sets are disjoint, since a common supporter's two
+  (`result_result_compatibleU`): their supporter sets are disjoint, since a common supporter's two
   votes both reach both readers before their updates (`Sync`), and each reader counts both sets
   as participants, against the two strict majorities;
 * a result and an optimistic confirmation are compatible (`result_optimistic_compatible`): the
@@ -104,7 +104,7 @@ theorem fastLock_fastLock_compatible
       (B := B) (B' := B') (CV := CV) (CV' := CV') (hx := hx) (hfl := hfl) (hx' := hx')
           (hfl' := hfl') (hs := hs)
 
-/-- `result_result_compatible` with the unlock given. -/
+/-- Two results of `get_confirmation` at honest nodes are compatible, with the unlock given. -/
 theorem result_result_compatibleU
     {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {s : Nat} {x x' : Fin sp.n}
     {i i' : Nat} {C C' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
@@ -122,16 +122,6 @@ theorem result_result_compatibleU
     fun h => hnc (Or.symm h)
   have h2 := against_updateU hr hsync hx hx' hc' ht' (fun k _ => hrs x' hx' k) hSs' hSF hnc
   omega
-
-/-- **Regular/regular**: two results (`get_confirmation`, vetoed or not) of one slot
-`s ≥ r` at honest nodes are compatible. -/
-theorem result_result_compatible (hS : HealthyBase tr H U proposer g) {s : Nat} {x x' : Fin sp.n}
-    {i i' : Nat} {C C' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
-    (hR : ResultAt tr x i s C CV) (hx' : x' ∈ H) (hR' : ResultAt tr x' i' s C' CV')
-    (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) : Compatible U C C' :=
-  result_result_compatibleU (hS := hS.toU) (s := s) (x := x) (x' := x') (i := i) (i' := i')
-      (C := C) (C' := C') (CV := CV) (CV' := CV') (hx := hx) (hR := hR) (hx' := hx') (hR' := hR')
-          (hs := hs)
 
 /-- `result_optimistic_compatible` with the unlock given. -/
 theorem result_optimistic_compatibleU
@@ -152,18 +142,6 @@ theorem result_optimistic_compatibleU
   have hle := Set.ncard_le_ncard (Set.subset_univ (voters {v | v ∈ (tr.state x i).pool s}))
   rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hle
   omega
-
-/-- **Regular/optimistic**: a result of slot `s ≥ r` at an honest node is compatible
-with an honest optimistic confirmation of slot `s`. -/
-theorem result_optimistic_compatible
-    (hS : HealthyBase tr H U proposer g)
-    {s : Nat} {x x' : Fin sp.n}
-    {i i' : Nat} {C B : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
-    (hR : ResultAt tr x i s C CV) (hx' : x' ∈ H) (hO : OptimisticLockAt tr x' i' s B CV')
-    (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) : Compatible U C B :=
-  result_optimistic_compatibleU (hS := hS.toU) (s := s) (x := x) (x' := x') (i := i) (i' := i')
-      (C := C) (B := B) (CV := CV) (CV' := CV') (hx := hx) (hR := hR) (hx' := hx') (hO := hO)
-          (hs := hs)
 
 private theorem fwd_reaches_update_window_before
     (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {a b : Time} {s : Nat}

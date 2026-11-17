@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Induction
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Sleepy
 import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
@@ -17,6 +16,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Lemmas.Tactic.Linarith
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Service
 
 public section
 

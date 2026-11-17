@@ -11,7 +11,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeRun
 `Growing.GoldilocksRun proposer dg H tr`: `GoldilocksRun` (`Spec/Run/Goldilocks`) for a
 time-indexed honest set `H` (`Spec/Run/Growing/Model`). Carried-vote unforgeability reads the
 signer's honesty at the processing time. At `H := fun _ => H₀` it is `GoldilocksRun proposer dg H₀
-tr` (`Growing.GoldilocksRun.const_iff`, `Lemmas/Growing/Run`). -/
+tr`. -/
 
 namespace Consensus.Goldilocks.Growing
 

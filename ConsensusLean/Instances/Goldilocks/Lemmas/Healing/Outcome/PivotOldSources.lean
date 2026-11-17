@@ -236,19 +236,6 @@ theorem ResetPremisesUpTo.proposal_holds_old {b : Time}
     exact Compose.mem_between hr.coherent hΦ hΦU hΦ.rooted.1 hBt hFO hOB
   · exact Or.inr hOF
 
-/-- An old source is held by the proposer, or below its finalized cache. Relay starts at an
-honest supporting vote head, not at the possibly later write of the origin. -/
-theorem proposal_holds_old (hp : ResetPremises tr H proposer dg g ΔF a)
-    {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat} (hai : a ≤ tr.time i)
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts u) {O : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hO : OldSrc tr H g u O) :
-    O ∈ ℓp.frame.tree ∨ Anc (tr.HonestBlocks H) O ℓp.frame.F := by
-  obtain ⟨x, r, l, ho, hrt⟩ := hO
-  exact (hp.toUpTo tr H hai).proposal_holds_old hpH hci hcall hd hti le_rfl ho hrt
-
 /-- Bounded root comparison uses only an actual proposal and earlier source comparisons. -/
 theorem ResetPremisesUpTo.held_target_proposal_root_before {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)

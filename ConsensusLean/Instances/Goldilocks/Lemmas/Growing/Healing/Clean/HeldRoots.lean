@@ -14,11 +14,11 @@ public section
 
 /-! # The finalized-chain root at a call compares with held blocks, under growing faults
 
-The growing forms of `high_J_root_of_held_at_call_before` and `low_root_of_held_seed_at_call`
-(`Healing/Retention/Boot`). The caller is honest at its call `≤ b`, and every other node is read
-at its own cut. A high justified height places the call after `c_z` (`cutZ_le_of_high_hj_at`),
-and the high-root law reads honesty at the later of each cut and `c_z`, the charge of a high
-origin's writer.
+The growing forms of `ResetPremisesUpTo.high_J_root_of_held_at_call_before` and
+`low_root_of_held_seed_at_call` (`Healing/Retention/Boot`). The caller is honest at its call `≤ b`,
+and every other node is read at its own cut. A high justified height places the call after `c_z`
+(`cutZ_le_of_high_hj_at`), and the high-root law reads honesty at the later of each cut and `c_z`,
+the charge of a high origin's writer.
 
 * `high_J_root_of_held_at_call_before_at`: with a high justified height, `Σ.J` (hence `Σ.F` and
   `fc_root`) is compatible with a held block `B` compatible with every earlier high origin. A row

@@ -11,11 +11,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Next
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalReports
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
@@ -63,21 +61,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
 /-! ### Cast timing -/
-
-/-- The static AC run of the prefix through `tr.time i`, for the validators honest then. -/
-private theorem acRun_prefix {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) (i : Nat) :
-    SA.ACRun proposer (tr.upTo (tr.time i)).projAC (H (tr.time i))
-      ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) ini :=
-  Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg i)) (hnc.upTo _)
-
-/-- A cast at a cut at or before `d` is one of the prefix through `d`. -/
-private theorem castAt_prefix {d : Time} {y : Fin sp.n} {j : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))} (hjd : tr.time j ≤ d)
-    (hc : SA.CastAt tr.projAC y j ell e) : SA.CastAt (tr.upTo d).projAC y j ell e := by
-  rw [RunTrace.upTo_projAC]
-  exact ⟨(Trace.upTo_callAt_of_le tr.projAC hjd).mpr hc.1, hc.2⟩
 
 /-! ### Under the reset premises -/
 

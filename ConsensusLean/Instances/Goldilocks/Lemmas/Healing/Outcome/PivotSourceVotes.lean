@@ -213,20 +213,6 @@ theorem ResetPremisesUpTo.reset_vote_root_source {b : Time}
   have hOt := hp.high_origin_held_at_vote ho hy hc (by clear * - hes hlu; omega) (hF O hFO)
   exact ⟨O, ⟨v, r, l, ho, hrt, hrb⟩, hFO, Or.inl ⟨hOt, hp.anc_tree_of_anc hy hFO hOt⟩⟩
 
-/-- The vote root is genesis or below an old source (hence satisfies the original disjunction).
-An actual crossing attestation's origin label is strictly below the vote's label
-(`row_origin_label_lt`); the low-`J` case relays the reset seed. -/
-private theorem reset_vote_root_source (hp : ResetPremises tr H proposer dg g ΔF a)
-    {u : Nat} (hR : drainTime sp a ≤ sp.ts u)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
-    (hes : e.msg.slot = u) :
-    ℓy.frame.fcRoot.root = sp.genesisRoot ∨
-      (∃ O, OldSrc tr H g u O ∧ Anc (tr.HonestBlocks H) ℓy.frame.fcRoot O) := by
-  rcases (hp.toUpTo tr H (le_max_left a (tr.time j))).reset_vote_root_source hR hy hcy hes
-    (le_max_right _ _) with hg | ⟨v, r, l, O, ho, hrt, -, hroot⟩
-  exacts [Or.inl hg, Or.inr ⟨O, oldSrc_iff.2 ⟨v, r, l, ho, hrt⟩, hroot⟩]
-
 /-- A bound on bounded pre-slot origins bounds the actual post-drain voter root. -/
 theorem ResetPremisesUpTo.reset_vote_root_below_bound {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)

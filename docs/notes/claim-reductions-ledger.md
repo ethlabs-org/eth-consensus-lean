@@ -332,6 +332,7 @@ claim endpoint.
 
 ### Goldilocks high-row bridge target
 
-No Goldilocks-side high-row, no-contest or historical-entry bridge target is
-stated: the generic leaves are not instantiated at the Goldilocks run interface,
-and no original-premise high-row bridge is provided.
+No Goldilocks-side bridge from the generic high-row, no-contest or
+historical-entry leaves is stated (the conditional `high_row_source_at_goldilocks`
+is deleted as unused); the concrete reset kernel proves its own high-row source
+(`Healing/Retention/Rows.high_row_source`).

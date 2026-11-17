@@ -23,7 +23,8 @@ The cut step (`retention_cut_step`, G1.10 at the height-scoped scope) and (R1)'s
   signed before `k`, so (attestations, prefix comparison) none names a high entry that conflicts
   with `B`; the prefix-local core (`Store.entry_kept`) keeps such an entry unjustified, so a high
   `Σ.J` is compatible with `B` (`Store.J_compatible_of_rows`); `Σ.F ⪯ Σ.J` follows it, and a low
-  one is below `B` by G1.2 at strict height (`low_finalized_below_origin`). No (K0) is used. -/
+  one is below `B` by G1.2 at strict height (`ResetPremisesUpTo.low_finalized_below_origin`). No
+  (K0) is used. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -98,10 +99,10 @@ was signed before `k` (unforgeability), so it names no entry of `𝓔_B` (`row_c
 is below a high origin written before the signing, comparable with `B` by the votes through `k`); so
 the counted attestations naming an entry of `𝓔_B` are faulty, fewer than `q`, and no entry of `𝓔_B`
 is justified on the store (`Store.J_compatible_of_rows`): a high `Σ.J` is compatible with `B`, and
-so is `Σ.F ⪯ Σ.J`; when `Σ.J` is low, `Σ.F` is below `B` by G1.2 (`low_finalized_below_origin`). No
-(K0) is used: `Store.cut_scope` (C1.1's scope) does not apply, since it assumes (K0) for `Σ.J` and
-(K1) for every conflicting entry above an honest `Σ.F` at `Ts`, low ones included, which fail at
-`a_z`. -/
+so is `Σ.F ⪯ Σ.J`; when `Σ.J` is low, `Σ.F` is below `B` by G1.2
+(`ResetPremisesUpTo.low_finalized_below_origin`). No (K0) is used: `Store.cut_scope` (C1.1's scope)
+does not apply, since it assumes (K0) for `Σ.J` and (K1) for every conflicting entry above an honest
+`Σ.F` at `Ts`, low ones included, which fail at `a_z`. -/
 theorem ResetPremisesUpTo.retention_cut_step {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {k : Nat}
     (hvote : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : SA.Blk sp.n (List (FG.Att sp.n))},

@@ -30,14 +30,6 @@ private theorem ts_add_six_lt {m u : Int} (h : m + 2 ≤ u) : sp.ts m + 6 * sp.�
 
 /-! ### Run facts -/
 
-/-- `f < n/2` under `Healthy(g)`. -/
-theorem faulty_lt_half (hp : ResetPremises tr H proposer dg g ΔF a) (x : Fin sp.n) :
-    2 * Hᶜ.ncard < sp.n := by
-  have := hp.healthy.2.2
-  have := Fin.pos x
-  have hn : sp.n = sp.toParams.n := rfl
-  omega
-
 /-- A fast lock of label `s` is written at or after `t_s`. -/
 theorem ts_le_of_fastLock (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n}
     {i s : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
@@ -65,14 +57,6 @@ theorem ResetPremisesUpTo.fastLock_time_lt {b : Time}
     by_contra h
     have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) u).mp (not_lt.mp h)
     omega
-
-/-- A fast lock of a label `m < u` written by `t_u + Δ` is written before `t_u` (an update of
-`m` runs at `t_m + 6Δ`, so `m ≤ u − 2`; an optimistic check of `m` runs in slot `m`). -/
-theorem fastLock_time_lt (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n}
-    {r m u : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hfl : SA.FastLockAt tr.projAC x r m D CV) (hmu : m < u)
-    (htr : tr.time r ≤ sp.ts u + sp.Δ) : tr.time r < sp.ts u :=
-  (hp.toUpTo tr H le_rfl).fastLock_time_lt hfl hmu htr
 
 /-- The reset seed precedes every post-drain slot and is bounded by the horizon. -/
 theorem ResetPremisesUpTo.reset_seed_before_slot {b : Time}

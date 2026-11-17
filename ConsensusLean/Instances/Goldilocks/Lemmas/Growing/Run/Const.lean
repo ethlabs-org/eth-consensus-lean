@@ -6,8 +6,7 @@ public section
 /-! # The constant honest set is the static run model
 
 At `H := fun _ => H₀` the growing-fault run model is the static one: `Growing.LocalRun` is
-`Node.LocalRun` and `Growing.GoldilocksRun` is `GoldilocksRun`. The constant-fault reduction of
-the growing simulation (`Lemmas/Growing/Simulation/Const`) rewrites with them. -/
+`Node.LocalRun` (`Growing.LocalRun.const_iff`). -/
 
 namespace Consensus.Goldilocks
 
@@ -78,26 +77,6 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro}
-
-/-- A Goldilocks run with a constant honest set is `GoldilocksRun`. -/
-theorem GoldilocksRun.const_iff :
-    Growing.GoldilocksRun proposer dg (fun _ => H) tr ↔
-      Consensus.Goldilocks.GoldilocksRun proposer dg H tr := by
-  constructor
-  · intro h
-    exact
-      { toLocalRun := LocalRun.const_iff.mp h.toLocalRun
-        vstart := h.vstart
-        genesis_root_ok := h.genesis_root_ok
-        carried_vote_unforgeable := fun y hy i B hB v hv hvH =>
-          h.carried_vote_unforgeable y i B hy hB v hv hvH }
-  · intro h
-    exact
-      { toLocalRun := LocalRun.const_iff.mpr h.toLocalRun
-        vstart := h.vstart
-        genesis_root_ok := h.genesis_root_ok
-        carried_vote_unforgeable := fun y i B hy hB v hv hvH =>
-          h.carried_vote_unforgeable y hy i B hB v hv hvH }
 
 end Growing
 

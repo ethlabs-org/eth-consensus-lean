@@ -36,16 +36,17 @@ vote extends by S2, `SleepyInvariantUpTo.vote_extends`), or on `P`'s chain above
 the anchor).
 
 The proposal walk passes every old origin (`proposal_walk_passes_old_before`, `SA.anc_getHead`): the
-proposer holds it or has it below `Σ.F` (`proposal_holds_old`: an honest supporting head is
-relayed to the proposer, `proposer_relay_before`), and the children towards it win the walk
-(`proposal_best_toward_old_before`, the counts: the honest slot-`(s−1)` batch, or the `3n/4`
-votes of an optimistic origin of label `s − 1`, relayed into the proposer's pool and resolved).
-Its anchor is below one (`proposal_anchor_old_of`): no honest optimistic check of slot `s` precedes
-the proposal (`proposal_no_optimistic_of`, so the proposer's stored locks are of slots below `s`),
-and `fc_root` is below an old origin at the proposal and at a vote (`proposal_fcRoot_old_of`,
-`vote_fcRoot_old_of`: the source labels of the honest attestations held before `t_s`). The path
-from `D` to `Q` is through viable heads of the proposal's frame (`proposal_suffix_viable_of`:
-the head height floor is at most the height of `D`, and `fc_root` is below `D`).
+proposer holds it or has it below `Σ.F` (`ResetPremisesUpTo.proposal_holds_old`: an honest
+supporting head is relayed to the proposer, `proposer_relay_before`), and the children towards it
+win the walk (`proposal_best_toward_old_before`, the counts: the honest slot-`(s−1)` batch, or the
+`3n/4` votes of an optimistic origin of label `s − 1`, relayed into the proposer's pool and
+resolved). Its anchor is below one (`proposal_anchor_old_of`): no honest optimistic check of slot
+`s` precedes the proposal (`proposal_no_optimistic_of`, so the proposer's stored locks are of slots
+below `s`), and `fc_root` is below an old origin at the proposal and at a vote
+(`proposal_fcRoot_old_of`, `vote_fcRoot_old_of`: the source labels of the honest attestations held
+before `t_s`). The path from `D` to `Q` is through viable heads of the proposal's frame
+(`proposal_suffix_viable_of`: the head height floor is at most the height of `D`, and `fc_root` is
+below `D`).
 
 The steps are in `Compose/Service/PivotSteps`, imported privately, which the growing-fault pivot
 shares; the old origins and the facts below them are in `Compose/Service/PivotBase`, imported

@@ -1,8 +1,11 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Update
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Same
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Later
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Unlocked
 
 public section
 

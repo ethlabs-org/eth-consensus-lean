@@ -287,7 +287,7 @@ A1.7 are run-level (Service, retired as milestone statements).
 | A1.4 | CLAIMS A1.4 (a), (b) | optimistic is fast: the transfer (per vote), the next update. **Stronger than CLAIMS**: (a) has no `Sync` premise; (b) assumes neither the optimistic confirmation nor `Sync`: in their place only `2·\|K(s+1) ∖ H\| < committeeSize` (`f < n/2` at the population binding) and that every honest slot-`(s+1)` vote extends `B` (the premises about the updating node `z` are kept) | `ACSteps` | `Consensus.Goldilocks.SA.OptimisticTransfer`, `Consensus.Goldilocks.SA.OptimisticNextUpdate` |
 | A1.5 | CLAIMS A1.5 | source age. **Stronger than CLAIMS** in form: over every AC trace with the local contract `ACLocalRun` (the earlier form was an `ACRun`, whose honest-object facts, signature provenance and slot proposer, the proof never used) | `ACSteps` | `Consensus.Goldilocks.SA.SourceAge` |
 | A1.8 | CLAIMS A1.8 | result transfer, per vote | `ACSteps` | `Consensus.Goldilocks.SA.ResultTransfer` |
-| A1.9 | CLAIMS A1.9 | **retired** as a milestone statement: source compatibility after the cut is no field of `ACSteps`. Its stored-block form, for population-sized committees, is the lemma `source_compatible_stored` (`Lemmas/AC/Steps/Compatible/Source`), which C1.1 reads | `ACSteps` | — |
+| A1.9 | CLAIMS A1.9 | **retired** as a milestone statement: source compatibility after the cut is no field of `ACSteps`. Its source cases remain lemmas (`Lemmas/AC/Steps/Compatible/{Same,Later,Unlocked}`); the joined stored-block form is not stated | `ACSteps` | — |
 | — | the milestone | all of the above, at one and at every SA parameter set | `ACSteps` | `Consensus.Goldilocks.SA.ACStepsAt`, `Consensus.Goldilocks.SA.ACSteps` |
 
 Modelling choices:
@@ -307,7 +307,7 @@ Modelling choices:
   selects it. The stored lock can be moved back, as the claims note.
 - **Scope of the fast-lock statements** (graded fast locks, `docs/decisions.md` §"Goldilocks model choices"): since a veto stops only
   the record, `FastUpdateAt` and `FastLockAt` also cover the fast locks that vetoed updates write. A1.2
-  (`FirstTransfer`), A1.5 (`SourceAge`), A1.9 (`source_compatible_stored`) and C1.1's premises (`PersistPremises`)
+  (`FirstTransfer`), A1.5 (`SourceAge`), A1.9 and C1.1's premises (`PersistPremises`)
   keep their text and now also cover those locks; their arguments read the counted votes
   and `Carry`, not the record. A1.4 (b) (`OptimisticNextUpdate`) still names the raw `fastSelect` (the test).
 - **The A1.5 conclusion** "is the block of a fast lock written after `τ`" reads: at or below the block of a fast
