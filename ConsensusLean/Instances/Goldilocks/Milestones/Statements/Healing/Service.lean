@@ -4,12 +4,14 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.S
 
 @[expose] public section
 
-/-! # Goldilocks milestone Healing: the phase-service statements HS.1–HS.4 (statements)
+/-! # Goldilocks Healing: the phase-service statements HS.1, HS.2 and HS.4 (statements)
 
-Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"Healing: phase service",
-over the Goldilocks run (`GoldilocksRun`) under the HS shared premises (`HSShared`, `Catch(2Δ)`,
-a settled time `w` for HS.2–HS.4, and `Prop⁺(G_p)` for HS.4). HS.0 (`Settle(Δ)`) and HS.5's
-`Producer(A)` are stated as HR.3 (a), (b) (`Statements/Healing/Run`, `ResetExistence`).
+The phase-service bundle and HS.3's statement are retired; HS.1, HS.2 and HS.4 stay as the types of
+the lemmas the recovery proofs read. Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`
+§"Healing: phase service", over the Goldilocks run (`GoldilocksRun`) under the HS shared premises
+(`HSShared`, `Catch(2Δ)`, a settled time `w` for HS.2–HS.4, and `Prop⁺(G_p)` for HS.4). HS.0
+(`Settle(Δ)`) and HS.5's `Producer(A)` are stated as HR.3 (a), (b) (`Statements/Healing/Run`,
+`ResetExistence`).
 
 **Vocabulary.**
 
@@ -149,7 +151,7 @@ slow lock with `j − k + 1 ≥ a`): the possibly unclean locks have expired bef
 honest proposal `P` of a slot `s` with `t_s ≥ r`, the proposal walk follows every effective live
 lock of an earlier label that can affect the slot-`s` voters: at each honest slot-`s` vote, every
 live lock of a label `< s` of the voter has its block below `P` or at or below the voter's
-`fc_root` (the voter lock premise of the first part of claims HS.3; HS.3 is proved from HS.2).
+`fc_root` (the voter lock premise of the first part of claims HS.3; HS.3 (b) is proved from HS.2).
 All conclusions hold through lower advances of `Σ.F`, with the original `a` and `r` (the phase
 does not read `Σ.F`). (The claims also assume `Prop⁺(G_p)`, that the lock is written in the phase,
 that (3)'s call is in the phase, and, for the later slots, that `B` is not at or below the voter's
@@ -187,56 +189,6 @@ def CleanLockDrain : Prop :=
         ∀ l ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k), l.slot < s →
           ∀ L ∈ ℓ.frame.tree, L.root = l.block →
             Anc (tr.HonestBlocks H) L P ∨ Anc (tr.HonestBlocks H) L ℓ.frame.fcRoot
-
-/-- **HS.3, honest-proposal frozen-tree agreement after `r`.** Under the HS shared premises with
-`Catch(2Δ)` (the claims also assume `Prop⁺(G_p)`, which is not needed), settled at `w` in the
-effective phase `(m, c)` (cut `i₀`; claims: "HS.2–HS.5 assume that the run is settled at w"): let
-`P` be the honest joined ready proposal of slot `s` (`ReadyProposal`, made at cut `kP`) with
-`t_s ≥ r`, in the effective phase `(m, c)` from a cut `i` with `i₀ ≤ i ≤ kP` at or before the
-previous freeze `t_{s−1} + 3Δ` through every honest slot-`s` vote (a stable effective phase geometry
-on the compared events, which include the voters' pre-freeze trees), with acceptance relay from the
-previous freeze `t_{s−1} + 3Δ` (`t_{s−1} + 3Δ ≥ ḡ`). Then every honest slot-`s` vote is exactly `P`;
-at it `P` is a viable head of the voter's frame and in its viable voter block tree, or at or below
-its `fc_root`; every ancestor of `P` is in that viable voter block tree or at or below `fc_root`
-(the unlocked parent path is retained); every honest vote of a slot `> s` until the phase end
-extends `P`; and every honest proposal of a slot `> s` until the phase end has a parent that extends
-`P` (if `P`'s entry is crossed its ancestry is still retained; no claim that the entry stays
-current). HS.2 supplies both lock premises of the claims' first part (the voter lock premise and the
-proposer-anchor premise) for every such proposal, so neither is a premise here.
-
-This is the claims' after-`r` part only. The first part (every slot-`s` vote is `P`, viable at it
-with its parent path retained, under the explicit lock premise and the proposer-anchor premise,
-without `Prop⁺` or `t_s ≥ r`) is not stated: its proof is open, and nothing consumes it
-(`docs/decisions.md` §"Goldilocks model choices"). -/
-def FrozenTreeAgreement : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF w : Time) (i₀ i m : Nat)
-    (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))),
-    GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
-    SettledIn tr H g w i₀ m c → i₀ ≤ i →
-    ∀ (p : Fin sp.n) (kP s : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))),
-      ReadyProposal tr H proposer p kP s P → i ≤ kP →
-      tr.time i ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ →
-      gbar g ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ →
-      (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
-        PhaseOn tr.projFG H i k m c) →
-      rTime sp w ≤ sp.ts s →
-      (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
-        e.msg.head = P.root ∧
-        ((P ∈ ℓ.frame.viableHeads ∧
-            P ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s)) ∨
-          Anc (tr.HonestBlocks H) P ℓ.frame.fcRoot) ∧
-        ∀ X, Anc (tr.HonestBlocks H) X P →
-          X ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s) ∨
-          Anc (tr.HonestBlocks H) X ℓ.frame.fcRoot) ∧
-      (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
-        PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg P) ∧
-      ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' → P'.slot = s' →
-        tr.ProposesAt (proposer s') k' P' → proposer s' ∈ H →
-        PhaseOn tr.projFG H i₀ k' m c →
-        ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr
 
 /-- **HS.4, bounded common path and actual-report acquisition.** Under the HS shared premises with
 `Catch(2Δ)` and `Prop⁺(G_p)`, settled at `w` in the effective phase `(m, c)` (cut `i₀`), with `D =

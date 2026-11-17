@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Standalone
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Service
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Recovery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Assembly
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Coverage
@@ -11,11 +11,8 @@ public section
 /-! # Goldilocks milestone Healing
 
 `HealingACStatements` (H.1, H.2; H.1's corollary is `ac_healing_standalone_corollary`) from
-`Lemmas/Healing/`. The run-level bundle (HR.1–HR.4, H.2 (run), H.3, H.4) is retired; the lemmas
-the recovery proofs read stay in `Lemmas/Healing/`.
-
-`PhaseServiceStatements` (HS.1–HS.4) is proved too (`phase_service_statements`; HS.3 is the
-claims' after-`r` part, `frozen_tree_agreement`).
+`Lemmas/Healing/`. The run-level bundle (HR.1–HR.4, H.2 (run), H.3, H.4) and the phase-service
+bundle (HS.1–HS.4) are retired; the lemmas the recovery proofs read stay in `Lemmas/Healing/`.
 
 `RecoveryStatements` (HR.5, O.1 and C1.3) is `recovery_statements`: the actual-report and outcome
 suppliers close the bounded high-coverage construction, then the recovery adapter discharges
@@ -44,22 +41,6 @@ open SA (SAParams ReplayOrder Payload gbar)
 theorem healing_ac_statements : SA.HealingACStatements where
   standalone := SA.ac_healing_standalone
   inclusion := SA.ac_inclusion
-
-/-! ## The phase-service bundle -/
-
-/-- The phase-service statements of milestone Healing (HS.1–HS.4). -/
-structure PhaseServiceStatements : Prop where
-  viableWitnessRetention : ViableWitnessRetention
-  cleanLockDrain : CleanLockDrain
-  frozenTreeAgreement : FrozenTreeAgreement
-  commonPathAcquisition : CommonPathAcquisition
-
-/-- **The phase-service statements** HS.1–HS.4. -/
-theorem phase_service_statements : PhaseServiceStatements where
-  viableWitnessRetention := viable_witness_retention
-  cleanLockDrain := clean_lock_drain
-  frozenTreeAgreement := frozen_tree_agreement
-  commonPathAcquisition := common_path_acquisition
 
 /-- **Healing Recovery**: HR.5 cache acceptance, O.1 pattern recovery and C1.3 finalizing
 coverage, with the actual-report and outcome suppliers discharged. -/

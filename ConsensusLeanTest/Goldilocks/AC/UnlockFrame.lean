@@ -289,7 +289,7 @@ not transfer to the voter by the view comparison alone.
 **What it does not show.** This is a configuration of the lock code, not a trace. It does not
 show that the configuration is reachable under `AgreeSetting` (a Goldilocks run with the HS
 shared premises, settled, with a ready proposal), nor that `voter_unlock_keeps_lock` or HS.3 (a)
-(`FrozenTreeAgreement`) is false. In particular it does not construct the run's FG histories with
+is false. In particular it does not construct the run's FG histories with
 the voter's `Σ.F` below the proposer's, the honest locks that HS.3 (a)'s start premise requires,
 or a vote that differs from the proposal. -/
 theorem unlockTarget_frame_dependent :

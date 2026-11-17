@@ -471,8 +471,8 @@ detail in `TRUST.md`.
   has no such conjunct. No consumer of either fact existed, so they were dropped rather than restated on `ac_head`.
   The node and the family behave as before (only an unread return value went), and the LaTeX (SPEC requirements 1
   and 2, claims A0.6) agrees.
-- **HS.3 is stated as its after-`r` part only.** `FrozenTreeAgreement` (`Milestones/Statements/Healing/Service`)
-  states the second part of claims HS.3: with `Prop⁺(G_p)` and `t_s ≥ r`, every honest slot-`s` vote is `P` with
+- **HS.3 is proved as its after-`r` part only.** `frozen_tree_agreement_clean` (`Lemmas/Healing/AgreeVotes`)
+  proves the second part of claims HS.3: with `Prop⁺(G_p)` and `t_s ≥ r`, every honest slot-`s` vote is `P` with
   its ancestry retained, and later honest votes and proposal parents extend `P`. It omits the first part (every
   honest slot-`s` vote is `P` under the explicit voter lock premise and the proposer-anchor premise, without
   `Prop⁺` or `t_s ≥ r`). This deviates from claims HS.3, which states both parts. Reasons:
@@ -486,9 +486,10 @@ detail in `TRUST.md`.
     proposer-anchor premise would have to bound the slot-`(s − 1)` votes.
   - Nothing consumes the first part. HS.4, HS.5, HR.3 and H.4 use only the second (`frozen_tree_agreement_clean`,
     from HS.2): `ready_protected`, `consume_continue_of`, `acquired_or_changed`.
-  - With the restatement HS.3 is proved (`frozen_tree_agreement`, from HS.2), and so is `PhaseServiceStatements`
-    (`phase_service_statements`). Restating the proposer-anchor premise over the voter's read-point locks was
-    rejected: that premise is the voter's state after its own `unlock`, nearly the step being claimed.
+  - Restating the proposer-anchor premise over the voter's read-point locks was rejected: that premise is the
+    voter's state after its own `unlock`, nearly the step being claimed. The HS.3 milestone statement and the
+    phase-service bundle (HS.1–HS.4) are retired; HS.1, HS.2 and HS.4 stay as the types of the lemmas the
+    recovery proofs read.
 
 ### Committee modelling
 
@@ -544,8 +545,7 @@ detail in `TRUST.md`.
   `Regimes.IncludeSleepy`, `Regimes.GrowSleepy`, `Healing.HeightScopedRetention`, `Healing.RunInclusion`,
   `Healing.Growing.HeightScopedRetention` and `Healing.Growing.RunInclusion`; the open growing-fault statements
   over `Growing.GoldilocksRun` (`Compose.Growing.ReadyImpliesJoined`, `Compose.Growing.OutcomeService`,
-  `Healing.Growing.ViableWitnessRetention`, `CleanLockDrain`, `FrozenTreeAgreement`,
-  `CommonPathAcquisition`, `PatternRecovery`, `FinalizingCoverage`, `CacheAcceptanceAfterReset`, and
+  `Healing.Growing.PatternRecovery`, `FinalizingCoverage`, `CacheAcceptanceAfterReset`, and
   `Regimes.Growing.SleepySafe`, `IncludeSleepy`, `GrowSleepy`); the open `SA.Growing.ACHealingStandalone`,
   `SA.Growing.ACHealingStandaloneCorollary` and `SA.Growing.ACInclusion` over `SA.Growing.ACRun`; and the five
   `SA.*All` healing statements. The premise bundle `PersistPremises` and the premise

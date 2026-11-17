@@ -465,9 +465,9 @@ theorem frozen_votes_clean
     (e := e) hy hv hes
   exact ⟨hall, later_extend hS hr hdrain hall⟩
 
-/-- **HS.3 (b)**, the claims' after-`r` part, which is `FrozenTreeAgreement` as stated, from
-HS.2: the setting from the common premises (`agreeSetting_of`), then `frozen_votes_clean`. It
-needs neither the first part's lock premises nor the reset. -/
+/-- **HS.3 (b)**, the claims' after-`r` part, from HS.2: the setting from the common premises
+(`agreeSetting_of`), then `frozen_votes_clean`. It needs neither the first part's lock premises
+nor the reset. -/
 theorem frozen_tree_agreement_clean (hdrain : CleanLockDrain) :
     ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
       (proposer : Nat → Fin sp.n)

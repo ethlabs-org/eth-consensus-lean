@@ -29,10 +29,9 @@ service"), and the interface through which HS.5
   progress consumption (`mature_progress_of`, `ConsumeMature`) (over `ProtectedBranch`,
   `ReportsBy`, `RowsBy` and `PathAt`, the pieces of `AcquiredPath`).
 
-HS.1, HS.2 and HS.4 are proved (`Retain`, `Drain`, `Acquire`), and so is HS.3
-(`FrozenTreeAgreement`, the claims' after-`r` part (b)), from HS.2: `frozen_tree_agreement`, from
-`frozen_tree_agreement_clean` in `AgreeVotes`. This is the paper's proposed contract, not yet
-certified.
+HS.1, HS.2 and HS.4 are proved (`Retain`, `Drain`, `Acquire`), and so is HS.3's after-`r` part
+(b), from HS.2: `frozen_tree_agreement_clean` in `AgreeVotes`. This is the paper's proposed
+contract, not yet certified.
 `consume_continue` and its two steps are assembled in `ConsumeContinue`, `ConsumeUpper`
 (`fixed_upper_rows_of`) and `ConsumeMature` (`mature_progress_of`) (with
 `ConsumeCrossing`, the sources in `AcquireSources`), over HS.1 and
@@ -61,11 +60,6 @@ theorem clean_lock_drain : CleanLockDrain := by
     fun _ hy k _ _ hr _ hl => live_lock_clean hr (Compose.locksWF_state hrun hs.noColl hy k) hl,
     fun _ _ hP hr _ hy _ _ _ hv he hk _ hl hls _ hL hLr =>
       live_lock_below_proposal hrun hs hc hw hP hr hy hv he hk hl hls hL hLr⟩
-
-/-- **HS.3, honest-proposal frozen-tree agreement after `r`**, from HS.2
-(`frozen_tree_agreement_clean`). -/
-theorem frozen_tree_agreement : FrozenTreeAgreement :=
-  frozen_tree_agreement_clean clean_lock_drain
 
 /-- **HS.4, bounded common path and actual-report acquisition** (first
 proposal, actual reports, and the one extra wait). -/

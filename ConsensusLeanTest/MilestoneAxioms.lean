@@ -146,9 +146,8 @@ theorem Consensus.Goldilocks.Regimes.includeSleepy : Consensus.Goldilocks.Regime
 theorem Consensus.Goldilocks.Regimes.growSleepy : Consensus.Goldilocks.Regimes.GrowSleepy :=
   Consensus.Goldilocks.Regimes.grow_sleepy
 
-/-! Goldilocks Healing: the AC healing statements (H.1, its corollary, H.2; `Healing/AC`) and the
-phase service (HS.1–HS.4; `Healing/Service`), each a field of its proved bundle in
-`Proofs/Healing/Main`. -/
+/-! Goldilocks Healing: the AC healing statements (H.1, its corollary, H.2; `Healing/AC`), each a
+field of its proved bundle in `Proofs/Healing/Main`. -/
 
 /-- Goldilocks Healing: `ACHealingStandaloneAll` (H.1). -/
 theorem Consensus.Goldilocks.SA.aCHealingStandaloneAll :
@@ -174,26 +173,6 @@ theorem Consensus.Goldilocks.SA.aCHealingStandaloneTightCorollaryAll :
 /-- Goldilocks Healing: `ACInclusionAll` (H.2). -/
 theorem Consensus.Goldilocks.SA.aCInclusionAll : Consensus.Goldilocks.SA.ACInclusionAll :=
   fun sp h => Consensus.Goldilocks.Healing.healing_ac_statements.inclusion sp h
-
-/-- Goldilocks Healing: `ViableWitnessRetention` (HS.1). -/
-theorem Consensus.Goldilocks.Healing.viableWitnessRetention :
-    Consensus.Goldilocks.Healing.ViableWitnessRetention :=
-  Consensus.Goldilocks.Healing.phase_service_statements.viableWitnessRetention
-
-/-- Goldilocks Healing: `CleanLockDrain` (HS.2). -/
-theorem Consensus.Goldilocks.Healing.cleanLockDrain :
-    Consensus.Goldilocks.Healing.CleanLockDrain :=
-  Consensus.Goldilocks.Healing.phase_service_statements.cleanLockDrain
-
-/-- Goldilocks Healing: `FrozenTreeAgreement` (HS.3). -/
-theorem Consensus.Goldilocks.Healing.frozenTreeAgreement :
-    Consensus.Goldilocks.Healing.FrozenTreeAgreement :=
-  Consensus.Goldilocks.Healing.phase_service_statements.frozenTreeAgreement
-
-/-- Goldilocks Healing: `CommonPathAcquisition` (HS.4). -/
-theorem Consensus.Goldilocks.Healing.commonPathAcquisition :
-    Consensus.Goldilocks.Healing.CommonPathAcquisition :=
-  Consensus.Goldilocks.Healing.phase_service_statements.commonPathAcquisition
 
 /-! Goldilocks Healing: C1.2, the AC outcome service (`Healing/Outcome`), and recovery (HR.5,
 node O.1, C1.3; `Healing/Recovery`). -/
@@ -315,18 +294,6 @@ info: 'Consensus.Goldilocks.SA.aCHealingStandaloneTightCorollaryAll' depends on 
 
 /-- info: 'Consensus.Goldilocks.SA.aCInclusionAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.SA.aCInclusionAll
-
-/-- info: 'Consensus.Goldilocks.Healing.viableWitnessRetention' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.viableWitnessRetention
-
-/-- info: 'Consensus.Goldilocks.Healing.cleanLockDrain' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.cleanLockDrain
-
-/-- info: 'Consensus.Goldilocks.Healing.frozenTreeAgreement' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.frozenTreeAgreement
-
-/-- info: 'Consensus.Goldilocks.Healing.commonPathAcquisition' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.commonPathAcquisition
 
 /-- info: 'Consensus.Goldilocks.Compose.outcomeService' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Compose.outcomeService
