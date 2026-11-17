@@ -67,7 +67,7 @@ private theorem gbar_lt_of_drain (hq : Healing.Growing.ResetPremisesUpTo tr H pr
     have : (8 : Time) ≤ 2 * (sp.k : Time) + 4 := by
       have : (2 : Time) ≤ sp.k := by exact_mod_cast hk
       linarith
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_right this hΔ.le]
   linarith
 
 /-- **An honest proposal after the drain is a repair opening**: a proposal of the designated
