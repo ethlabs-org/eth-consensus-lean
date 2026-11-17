@@ -15,17 +15,17 @@ The helpers of `proposal_confirmed_core_fromU` (up to the first update in `Confi
 * `late_vote_held`: at an honest call from `t_s + 2Δ` on (`s ≥ r`), every honest slot-`s`
   vote is held, with its head in the call's frame, both resolved before `t_s + 2Δ`, before and
   after the call;
-* `proposal_mem_tree`: `P` is in every honest frame from `t_p + Δ` on;
-* `lock_compatible`, `liveLock_compatible`: every lock live at an honest call from
-  `t_p + 6Δ` on, before or after it, compares with `P` (labels `< p` by `LocksSettled` and the
-  exact slot-`p` votes, labels `≥ p` by their origin's honest supporter,
-  `origin_compatible_proposal`);
+* `proposal_mem_treeU`: `P` is in every honest frame from `t_p + Δ` on;
+* `lock_compatible_core_fromU`, `liveLock_compatible_core_fromU`: every lock live at an honest
+  call from `t_p + 6Δ` on, before or after it, compares with `P` (labels `< p` by
+  `LocksSettled` and the exact slot-`p` votes, labels `≥ p` by their origin's honest supporter,
+  `origin_compatible_proposalU`);
 * `first_update_post`, `first_update_record`: the slot-`p` update at `t_p + 6Δ` has result
   `P`, not vetoed, with `P` passing the fast test, so its own fast selection
   (`fastSelect_eq_result`);
 * `record_step`, `record_extends`: from that update on the record extends `P` (a candidate
   compares with `P`, and an ancestor candidate is refused);
-* `head_extends`: the head extends `P` (the latest view is of a slot `≥ p + 1` whose honest
+* `head_extendsU`: the head extends `P` (the latest view is of a slot `≥ p + 1` whose honest
   batch is held and resolved);
 * `anc_acConfirmed_of_frame` (frame-only, shared with H.2): then the confirmed tip extends
   `P`. -/
@@ -152,7 +152,10 @@ private theorem RecP.ofUpdate {Φ : Frm sp.n FGP} {P : Blk sp.n FGP} {A : SAStat
       exact RecP.ulc (A := { A with saved := Function.update A.saved s (some C.root) }) hR
         (deepest_mem hC).1.1 (hres C hC)
 
-/-- `optimisticSelect_compatible` with the unlock given. -/
+/-- **An optimistic selection compares with `P`**: at an honest call at `t ≥ t_p + 6Δ`,
+from a state whose pools the call keeps, the block an optimistic check selects has three
+quarters of the committee as voters, one of them honest, whose vote (of a slot `> p`) extends
+`P`, with the unlock given. -/
 theorem optimisticSelect_compatibleU
     {uL : Nat → Set Lock} (hS : HealthyBaseU wm uL tr H U proposer g)
     {p : Nat} {P : Blk sp.n FGP}
@@ -188,22 +191,6 @@ theorem optimisticSelect_compatibleU
   rcases hcomp with h | h
   · exact Or.inl (anc_tree_of_anc_U hU hΦ hΦU hBt h hPt)
   · exact Or.inr (anc_tree_of_anc_U hU hΦ hΦU hPt h hBt)
-
-/-- **An optimistic selection compares with `P`**: at an honest call at `t ≥ t_p + 6Δ`,
-from a state whose pools the call keeps, the block an optimistic check selects has three
-quarters of the committee as voters, one of them honest, whose vote (of a slot `> p`) extends
-`P`. -/
-theorem optimisticSelect_compatible (hS : HealthyBase tr H U proposer g)
-    {p : Nat} {P : Blk sp.n FGP}
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    {y : Fin sp.n} (hy : y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt y c ℓ) (htc : sp.ts p + 6 * sp.Δ ≤ tr.time c) (hPt : P ∈ ℓ.frame.tree)
-    {A : SAState sp.n} (hA : ∀ σ, ∀ v ∈ A.pool σ, v ∈ (tr.state y (c + 1)).pool σ)
-    {B : Blk sp.n FGP} (hsel : optimisticSelect sp A ℓ.frame (tr.time c) = some B) :
-    Compatible ℓ.frame.tree B P :=
-  optimisticSelect_compatibleU (hS := hS.toU) (p := p) (P := P) (hvotes := hvotes) (y := y)
-      (hy := hy) (c := c) (ℓ := ℓ) (hc := hc) (htc := htc) (hPt := hPt) (A := A) (hA := hA)
-          (B := B) (hsel := hsel)
 
 /-- `record_step` with the unlock given. -/
 theorem record_stepU
@@ -326,7 +313,7 @@ theorem record_step (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n
   record_stepU (hS := hS.toU) (p := p) (P := P) (hp := hp) (hvotes := hvotes) (y := y) (hy := hy)
       (c := c) (ℓ := ℓ) (hc := hc) (htc := htc) (hPt := hPt) (hR := hR)
 
-/-- `trivial_tree_mono` with the unlock given. -/
+/-- Under trivial frames the tree of an honest node only grows, with the unlock given. -/
 theorem trivial_tree_monoU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
     {c c' : Nat} {ℓ ℓ' : ACLabel (goldilocksSA sp FGP ro)} (hc' : tr.CallAt y c' ℓ')
@@ -338,13 +325,6 @@ theorem trivial_tree_monoU
   · rw [← trivial_F_eqU hS hy hy hc hc']
     exact Set.mem_insert _ _
   · exact Set.mem_insert_of_mem _ ⟨k, hk.trans hcc, hacc⟩
-
-/-- Under trivial frames the tree of an honest node only grows. -/
-theorem trivial_tree_mono (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
-    {c c' : Nat} {ℓ ℓ' : ACLabel (goldilocksSA sp FGP ro)} (hc' : tr.CallAt y c' ℓ')
-    (hc : tr.CallAt y c ℓ) (hcc : c' ≤ c) : ℓ'.frame.tree ⊆ ℓ.frame.tree :=
-  trivial_tree_monoU (hS := hS.toU) (y := y) (hy := hy) (c := c) (c' := c') (ℓ := ℓ) (ℓ' := ℓ')
-      (hc' := hc') (hc := hc) (hcc := hcc)
 
 /-- `record_extends_coreU` with the locks settled above the floor `p` only (at a mode of width
 `k`). -/
@@ -552,7 +532,8 @@ theorem head_extends_of_frame (hS : HealthyBase tr H U proposer g) {p : Nat} {P 
   head_extends_of_frameU (hS := hS.toU) (p := p) (P := P) (hp := hp) (hvotes := hvotes) (y := y)
       (hy := hy) (j := j) (ℓ := ℓ) (hc := hc) (htj := htj) (hPv := hPv) (hlocks := hlocks)
 
-/-- `head_extends` with the unlock given. -/
+/-- `head_extends_of_frame` under trivial frames, where every tree block is viable, with the unlock
+given. -/
 theorem head_extendsU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp : gbar g + 4 * sp.Δ ≤ sp.ts p)
@@ -567,18 +548,6 @@ theorem head_extendsU
   exact head_extends_of_frameU hS.toHealthyBaseU hp hvotes hy hc htj
     ⟨hPt, by rw [hfc]; exact hΦ.rooted.2 P hPt, P, hPt, by rw [hvh]; exact hPt,
       Relation.ReflTransGen.refl⟩ hlocks
-
-/-- `head_extends_of_frame` under trivial frames, where every tree block is viable. -/
-theorem head_extends (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
-    (hp : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt y j ℓ) (htj : sp.ts p + 6 * sp.Δ ≤ tr.time j) (hPt : P ∈ ℓ.frame.tree)
-    (hlocks : ∀ L ∈ liveLockBlocks sp (tr.post j).locks ℓ.frame (tr.time j),
-      Compatible U L P) :
-    ℓ.frame.Anc P (acHead sp (tr.post j) ℓ.frame (tr.time j)) :=
-  head_extendsU (hS := hS.toU) (p := p) (P := P) (hp := hp) (hvotes := hvotes) (y := y) (hy := hy)
-      (j := j) (ℓ := ℓ) (hc := hc) (htj := htj) (hPt := hPt) (hlocks := hlocks)
 
 /-- **The confirmed tip from the frame** (also for H.2 (ii)): in a well-formed frame inside a
 coherent `U`, a block `P` below both the effective record (`latest_confirmed` if in the tree, else

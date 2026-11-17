@@ -7,15 +7,15 @@ public section
 
 /-! # Goldilocks Healing: H.1 (i), unanimity of the honest slot-`p` votes
 
-Every honest walk of slot `p` is the canonical walk from its anchor (`vote_children_eq`), so
+Every honest walk of slot `p` is the canonical walk from its anchor (`vote_children_eq_coreU`), so
 the head of an honest slot-`p` vote is where the canonical walk from its anchor ends. Take the
 earliest honest slot-`p` vote, with anchor `a₀` and head `E₀`: its anchor is not extended by an
 earlier honest slot-`p` vote, so every honest slot-`p` vote and the proposal head extend `a₀`
-(`vote_anchor_cases`). By induction on cuts, every honest slot-`p` vote has head `E₀`: its
+(`vote_anchor_cases_coreU`). By induction on cuts, every honest slot-`p` vote has head `E₀`: its
 walk passes `a₀` when its anchor is below `a₀`; otherwise its anchor is between `a₀` and `E₀`
 (extended by the vote of `a₀`, or by an earlier vote, of head `E₀`), so its walk is the rest
 of the walk from `a₀`. The same argument places the proposal's anchor `d.start` on the walk
-from `a₀` or below `a₀` (`proposal_anchor_cases`), and the canonical walk from `d.start` ends
+from `a₀` or below `a₀` (`proposal_anchor_cases_coreU`), and the canonical walk from `d.start` ends
 at `P` (`proposal_walkEnd`): so `E₀ = P`. -/
 
 namespace Consensus.Goldilocks.SA
@@ -27,7 +27,8 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
   {k : Nat} {ℓp : ACLabel (goldilocksSA sp FGP ro)} {d : DutyHead sp.n FGP (Payload sp.n)}
   {pay : Payload sp.n} {schedule : Nat → Fin sp.n}
 
-/-- `vote_walkEnd` with the unlock given. -/
+/-- **The head of an honest slot-`p` vote ends the canonical walk from its anchor**, with the
+unlock given. -/
 private theorem vote_walkEndU
     {u : Nat → Set Lock}
     (hs : UnanimitySettingCoreU wm u tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
@@ -67,20 +68,7 @@ private theorem vote_walkEndU
   refine walkEnd_self fun ⟨C, hC⟩ => hstop ⟨C, ?_⟩
   exact (IsBest.congr (hag Hd).1 (hag Hd).2).2 hC
 
-/-- **The head of an honest slot-`p` vote ends the canonical walk from its anchor.** -/
-private theorem vote_walkEnd
-    (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
-    (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = p) :
-    ∃ Hd ∈ U, Hd.root = e.msg.head ∧
-      WalkEnd (insert P (ℓp.frame.viableTree ℓp.frame.tree))
-        (goldfishScore sp ℓp.frame (View.ofLists pay) ((p : Int) - 1))
-        (goldfishEligible sp ℓp.frame (sp.ts p) (View.ofLists pay) ((p : Int) - 1))
-        (getAnchor sp e.readPoint ℓ.frame (tr.time j)) Hd :=
-  vote_walkEndU (hs := hs.toU) (x := x) (hx := hx) (j := j) (ℓ := ℓ) (e := e) (hc := hc)
-      (hes := hes)
-
-/-- `proposal_votes_of_setting_core` with the unlock given. -/
+/-- **Unanimity** (H.1 (i)), in its setting, with the unlock given. -/
 theorem proposal_votes_of_setting_coreU
     {u : Nat → Set Lock}
     (hs : UnanimitySettingCoreU wm u tr H U schedule g p P k ℓp d pay) :
@@ -151,19 +139,6 @@ theorem proposal_votes_of_setting_coreU
   obtain ⟨ℓ₁, hc₁, he₁⟩ := hv₁
   obtain ⟨H₁, hH₁, hH₁r, -⟩ := honest_headU hs.standalone.run hx₁ ⟨ℓ₁, hc₁, he₁⟩
   rw [← hH₁r, hA j₁ x₁ hx₁ ℓ₁ e₁ ⟨hc₁, he₁⟩ hes₁ H₁ hH₁ hH₁r, hB]
-
-/-- **Unanimity** (H.1 (i)), in its setting. -/
-theorem proposal_votes_of_setting_core
-    (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) :
-    ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root :=
-  proposal_votes_of_setting_coreU (hs := hs.toU)
-
-/-! ## In the setting of unanimity -/
-
-/-- `proposal_votes_of_setting_core` in `UnanimitySetting`, whose lateness gives the weak one. -/
-theorem proposal_votes_of_setting (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) :
-    ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root :=
-  proposal_votes_of_setting_core hs.toCore
 
 end Consensus.Goldilocks.SA
 

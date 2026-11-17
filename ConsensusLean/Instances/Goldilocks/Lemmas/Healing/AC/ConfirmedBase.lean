@@ -14,9 +14,9 @@ public section
 /-! # Goldilocks Healing: the confirmed tip after an honest proposal, the first update
 
 The first part of the helpers of `proposal_confirmed_core_fromU` (`Confirmed`): the late honest
-votes held at a call, `proposal_mem_tree`, the comparison of honest votes and locks with `P`
-(`lock_compatible`, `liveLock_compatible`) and the first update at `t_p + 6Δ`
-(`first_update_post`, `first_update_record`). -/
+votes held at a call, `proposal_mem_treeU`, the comparison of honest votes and locks with `P`
+(`lock_compatible_core_fromU`, `liveLock_compatible_core_fromU`) and the first update at
+`t_p + 6Δ` (`first_update_post`, `first_update_record`). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -243,7 +243,9 @@ theorem honest_batch_carry_before {K : SA.CommitteeDict sp.n}
     exact Or.inl ⟨hp, lt_trans hst
       (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (by linarith only [hDelta])))⟩
 
-/-- `late_vote_pool` with the unlock given. -/
+/-- **A late honest vote is held**: for a slot `s ≥ r` and an honest call at a time
+`≥ t_s + 2Δ`, every honest slot-`s` vote is held, with a stamp before `t_s + 2Δ`, before and after
+the call, with the unlock given. -/
 theorem late_vote_poolU
     {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
         {j : Nat}
@@ -302,18 +304,6 @@ theorem late_vote_poolU
       have := hr.time_mono (show k' ≤ k by omega)
       linarith
   rwa [hes] at hst
-
-/-- **A late honest vote is held**: for a slot `s ≥ r` and an honest call at a time
-`≥ t_s + 2Δ`, every honest slot-`s` vote is held, with a stamp before `t_s + 2Δ`, before and after
-the call. -/
-theorem late_vote_pool (hS : HealthyBase tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ℓ) {s : Nat}
-    (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j) {x : Fin sp.n}
-    (hx : x ∈ H) {i : Nat} {e : Em sp FGP} (hv : VoteAt tr x i e) (hes : e.msg.slot = s) :
-    ∀ c, (c = j ∨ c = j + 1) → e.msg ∈ (tr.state y c).pool s ∧
-      (tr.state y c).voteStamp e.msg < ETime.of (sp.ts s + 2 * sp.Δ) :=
-  late_vote_poolU (hS := hS.toU) (y := y) (hy := hy) (j := j) (ℓ := ℓ) (hc := hc) (s := s)
-      (hs := hs) (ht := ht) (x := x) (hx := hx) (i := i) (e := e) (hv := hv) (hes := hes)
 
 /-- `late_vote_held_of_frame` with the unlock given. -/
 theorem late_vote_held_of_frameU
@@ -442,7 +432,8 @@ theorem resolutionTime_lt_of {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : Frame
   · omega
   · exact max_lt h1 h2
 
-/-- `proposal_mem_tree` with the unlock given. -/
+/-- **The proposal is relayed**: an honest proposal `P` of slot `p` (with `ḡ ≤ t_p`) is in the
+frame of every honest call from `t_p + Δ` on, accepted before `t_p + Δ`, with the unlock given. -/
 theorem proposal_mem_treeU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hpH : proposer p ∈ H) (hP : HonestProposalU u tr (proposer p) p P)
@@ -469,20 +460,10 @@ theorem proposal_mem_treeU
   rw [(hS.trivial y hy j ℓ hc).2.2.2]
   exact Set.mem_insert_of_mem _ ⟨ka, hkaj, hacc⟩
 
-/-- **The proposal is relayed**: an honest proposal `P` of slot `p` (with `ḡ ≤ t_p`) is in the
-frame of every honest call from `t_p + Δ` on, accepted before `t_p + Δ`. -/
-theorem proposal_mem_tree (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
-    (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
-    (hpg : gbar g ≤ sp.ts p) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ℓ)
-    (ht : sp.ts p + sp.Δ ≤ tr.time j) :
-    P ∈ ℓ.frame.tree ∧ ∃ ka ≤ j, tr.AcceptAt y ka P ∧ tr.time ka < sp.ts p + sp.Δ :=
-  proposal_mem_treeU (hS := hS.toU) (p := p) (P := P) (hpH := hpH) (hP := hP.toU) (hpg := hpg)
-      (y := y) (hy := hy) (j := j) (ℓ := ℓ) (hc := hc) (ht := ht)
-
 /-! ## Honest votes and comparison with `P` -/
 
-/-- `honest_not_equivocator_pool` with the unlock given. -/
+/-- An honest validator is not an equivocator in an honest node's pool of a slot, with the unlock
+given. -/
 theorem honest_not_equivocator_poolU
     {uL : Nat → Set Lock} (hS : HealthyBaseU wm uL tr H U proposer g)
     {y : Fin sp.n} (hy : y ∈ H)
@@ -497,14 +478,6 @@ theorem honest_not_equivocator_poolU
     ((state_pool_slotU sp hr (fun _ => voteStart_initial _) hy c s _ ha).trans
       (state_pool_slotU sp hr (fun _ => voteStart_initial _) hy c s _ hb).symm)
   exact hab rfl
-
-/-- An honest validator is not an equivocator in an honest node's pool of a slot. -/
-theorem honest_not_equivocator_pool (hS : HealthyBase tr H U proposer g)
-    {y : Fin sp.n} (hy : y ∈ H)
-    (c s : Nat) {u : Fin sp.n} (hu : u ∈ H) :
-    u ∉ equivocators {v | v ∈ (tr.state y c).pool s} :=
-  honest_not_equivocator_poolU (hS := hS.toU) (y := y) (hy := hy) (c := c) (s := s) (u := u)
-      (hu := hu)
 
 /-- **A majority over a superset of `H` meets `H`**: a set `T` inside a vote set `W` that contains
 every validator of `H`, with `|W| < 2|T|`, has a member of `H` once at most `|H|` validators are
@@ -531,19 +504,6 @@ theorem compatible_of_vote {p : Nat} {P : Blk sp.n FGP} (hU : Coherent U)
 
 set_option linter.unusedVariables false in
 -- `HealthyBaseU` bounds the faults by `f < n/2` only; the bound `3f ≤ n − 1` is given.
-/-- `two_faulty_lt_honest` with the unlock given, at `3f ≤ n − 1`. -/
-theorem two_faulty_lt_honestU
-    {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g)
-    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) : 2 * Hᶜ.ncard < H.ncard := by
-  have hn : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have := sp.toParams.hn
-  change 1 ≤ sp.n at this
-  omega
-
-/-- The honest validators are more than twice the faulty ones. -/
-theorem two_faulty_lt_honest (hS : HealthyBase tr H U proposer g) : 2 * Hᶜ.ncard < H.ncard :=
-  two_faulty_lt_honestU (hS := hS.toU) hS.healthy.2.2.2
 
 /-- `result_extended` with the unlock given. -/
 theorem result_extendedU
@@ -589,7 +549,9 @@ theorem result_extended (hS : HealthyBase tr H U proposer g) {s : Nat}
   result_extendedU (hS := hS.toU) (s := s) (hs := hs) (x := x) (hx := hx) (c := c) (ℓ := ℓ)
       (hc := hc) (ht := ht) (C := C) (hC := hC)
 
-/-- `origin_compatible_proposal` with the unlock given. -/
+/-- **A lock origin of a slot `≥ p` compares with `P`** (`l ≥ p`): an honest fast lock
+through an honest counted vote; an honest slow lock through an honest supporter of its update's
+result (not its fast test), with the unlock given. -/
 theorem origin_compatible_proposalU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {p : Nat} {P : Blk sp.n FGP}
@@ -613,26 +575,16 @@ theorem origin_compatible_proposalU
     exact compatible_of_vote hU hvotes hz hv (hes ▸ hps)
       ⟨Hd, hHd, hHdr, (Anc.mono hΦU hBC).trans hCHd⟩
 
-/-- **A lock origin of a slot `≥ p` compares with `P`** (`l ≥ p`): an honest fast lock
-through an honest counted vote; an honest slow lock through an honest supporter of its update's
-result (not its fast test). -/
-theorem origin_compatible_proposal
-    (hS : StandaloneRun tr H U proposer g)
-    {p : Nat} {P : Blk sp.n FGP}
-    (hp : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    {x : Fin sp.n} (hx : x ∈ H) {j s : Nat} {B : Blk sp.n FGP} (hps : p ≤ s)
-    (horig : (∃ CV, FastLockAt tr x j s B CV) ∨ SlowLockAt tr x j s B) : Compatible U B P :=
-  origin_compatible_proposalU (hS := hS.toU) (p := p) (P := P) (hp := hp) (hvotes := hvotes)
-      (x := x) (hx := hx) (j := j) (s := s) (B := B) (hps := hps) (horig := horig)
-
 private theorem compatible_down {B L P : Blk sp.n FGP} (hU : Coherent U) (hLB : Anc U L B)
     (h : Compatible U B P) : Compatible U L P := by
   rcases h with h | h
   · exact Or.inl (hLB.trans h)
   · exact anc_total hU hLB h
 
-/-- `lock_compatible_coreU` with the locks settled above the floor `p` only (at a mode of width
+/-- **Every stored lock compares with `P`**, at the state before an honest call at a
+time `t ≥ t_{p−1}` (`hset`, above the floor `p`) and, for a call at `t ≥ t_p + 6Δ`, also after
+it, for the locks live at `t`: of a label `< p` by `hset` and the exact slot-`p` votes (a lock
+written by the call has a label `≥ p`); of a label `≥ p` by its origin (at a mode of width
 `k`). -/
 theorem lock_compatible_core_fromU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) (hw : wm.width = sp.k)
@@ -705,56 +657,9 @@ theorem lock_compatible_core_fromU
         linarith only [this]
       linarith only [htj, hu, h1]
 
-/-- `lock_compatible_core` with the unlock given, at a mode of width `k`. -/
-theorem lock_compatible_coreU
-    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) (hw : wm.width = sp.k)
-    {p : Nat} {P : Blk sp.n FGP}
-    (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettledU u tr H U (sp.ts p - 4 * sp.Δ))
-    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    (hPU : P ∈ U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat} (htj : sp.ts p + 6 * sp.Δ ≤ tr.time j)
-    {c : Nat} (hcj : c = j ∨ c = j + 1) {l : Lock} (hl : l ∈ (tr.state y c).locks)
-    (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k) {L : Blk sp.n FGP} (hL : L ∈ U)
-    (hLr : L.root = l.block) : Compatible U L P :=
-  lock_compatible_core_fromU hS hw hp4 (hset.toFrom p) hexact hvotes hPU hy htj hcj hl hlive hL hLr
-
-/-- **Every stored lock compares with `P`**, at the state before an honest call at a
-time `t ≥ t_{p−1}` (`hset`) and, for a call at `t ≥ t_p + 6Δ`, also after it, for the locks live
-at `t`: of a label `< p` by `hset` and the exact slot-`p` votes (a lock written by the call has a
-label `≥ p`); of a label `≥ p` by its origin. -/
-theorem lock_compatible_core
-    (hS : StandaloneRun tr H U proposer g) {p : Nat}
-    {P : Blk sp.n FGP}
-    (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
-    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    (hPU : P ∈ U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat} (htj : sp.ts p + 6 * sp.Δ ≤ tr.time j)
-    {c : Nat} (hcj : c = j ∨ c = j + 1) {l : Lock} (hl : l ∈ (tr.state y c).locks)
-    (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k) {L : Blk sp.n FGP} (hL : L ∈ U)
-    (hLr : L.root = l.block) : Compatible U L P :=
-  lock_compatible_coreU (hS := hS.toU) (hw := rfl) (p := p) (P := P) (hp4 := hp4) (hset := hset.toU)
-      (hexact := hexact) (hvotes := hvotes) (hPU := hPU) (y := y) (hy := hy) (j := j) (htj := htj)
-          (c := c) (hcj := hcj) (l := l) (hl := hl) (hlive := hlive) (L := L) (hL := hL)
-              (hLr := hLr)
-
-/-- `lock_compatible_core` from `t_p ≥ ḡ + 2Θ + 8Δ`. -/
-theorem lock_compatible
-    (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
-    (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
-    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    (hPU : P ∈ U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat} (htj : sp.ts p + 6 * sp.Δ ≤ tr.time j)
-    {c : Nat} (hcj : c = j ∨ c = j + 1) {l : Lock} (hl : l ∈ (tr.state y c).locks)
-    (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k) {L : Blk sp.n FGP} (hL : L ∈ U)
-    (hLr : L.root = l.block) : Compatible U L P :=
-  lock_compatible_core hS (by linarith only [hp, sp.toParams.hΔ, Θ_nonneg sp])
-    hset hexact hvotes hPU hy htj hcj hl hlive hL hLr
-
-/-- `liveLock_compatible_coreU` with the locks settled above the floor `p` only (at a mode of
-width `k`). -/
+/-- **Every live lock block compares with `P`** at the state before (for a call at
+`t ≥ t_{p−1}`) or after (for a call at `t ≥ t_p + 6Δ`) an honest call, read at that call's frame
+and time, with the locks settled above the floor `p` (at a mode of width `k`). -/
 theorem liveLock_compatible_core_fromU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) (hw : wm.width = sp.k)
     {p : Nat} {P : Blk sp.n FGP}
@@ -777,52 +682,6 @@ theorem liveLock_compatible_core_fromU
     (lock_compatible_core_fromU hS hw hp4 hset hexact hvotes hPU hy htj hcj hl
       (le_trans hlive ((locksWF_stateU hr (fun _ => voteStart_initial _) hy c).cap hl)) (L := B)
       (hΦU hB) hBr)
-
-/-- `liveLock_compatible_core` with the unlock given, at a mode of width `k`. -/
-theorem liveLock_compatible_coreU
-    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) (hw : wm.width = sp.k)
-    {p : Nat} {P : Blk sp.n FGP}
-    (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettledU u tr H U (sp.ts p - 4 * sp.Δ))
-    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    (hPU : P ∈ U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt y j ℓ) (htj : sp.ts p + 6 * sp.Δ ≤ tr.time j) {c : Nat}
-    (hcj : c = j ∨ c = j + 1) :
-    ∀ L ∈ liveLockBlocks sp (tr.state y c).locks ℓ.frame (tr.time j), Compatible U L P :=
-  liveLock_compatible_core_fromU hS hw hp4 (hset.toFrom p) hexact hvotes hPU hy hc htj hcj
-
-/-- **Every live lock block compares with `P`** at the state before (for a call at `t ≥ t_{p−1}`)
-or after (for a call at `t ≥ t_p + 6Δ`) an honest call, read at that call's frame and time. -/
-theorem liveLock_compatible_core
-    (hS : StandaloneRun tr H U proposer g) {p : Nat}
-    {P : Blk sp.n FGP}
-    (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
-    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    (hPU : P ∈ U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt y j ℓ) (htj : sp.ts p + 6 * sp.Δ ≤ tr.time j) {c : Nat}
-    (hcj : c = j ∨ c = j + 1) :
-    ∀ L ∈ liveLockBlocks sp (tr.state y c).locks ℓ.frame (tr.time j), Compatible U L P :=
-  liveLock_compatible_coreU (hS := hS.toU) (hw := rfl) (p := p) (P := P) (hp4 := hp4)
-      (hset := hset.toU)
-      (hexact := hexact) (hvotes := hvotes) (hPU := hPU) (y := y) (hy := hy) (j := j) (ℓ := ℓ)
-          (hc := hc) (htj := htj) (c := c) (hcj := hcj)
-
-/-- `liveLock_compatible_core` from `t_p ≥ ḡ + 2Θ + 8Δ`. -/
-theorem liveLock_compatible
-    (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
-    (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
-    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    (hPU : P ∈ U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt y j ℓ) (htj : sp.ts p + 6 * sp.Δ ≤ tr.time j) {c : Nat}
-    (hcj : c = j ∨ c = j + 1) :
-    ∀ L ∈ liveLockBlocks sp (tr.state y c).locks ℓ.frame (tr.time j), Compatible U L P :=
-  liveLock_compatible_core hS (by linarith only [hp, sp.toParams.hΔ, Θ_nonneg sp])
-    hset hexact hvotes hPU hy hc htj hcj
 
 /-! ## The first update at `t_p + 6Δ` -/
 

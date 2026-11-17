@@ -18,7 +18,7 @@ public section
 
 /-! # Goldilocks under `Sleepy`: comparing origins (extending `P_s` to `P_{s+1}`)
 
-* **An honest supporter** (`honest_supporter`): an origin of label `s` has an honest slot-`s`
+* **An honest supporter** (`honest_supporterU`): an origin of label `s` has an honest slot-`s`
   vote whose head extends it. For a result: the honest validators awake and joined at `t_s + Δ`
   (more than `f`, by `Sleepy`) vote in slot `s` and reach the joined writer before `t_s + 2Δ`, so
   they are among its participants; if every counted supporter were faulty, the participants would

@@ -63,7 +63,7 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- **The proposer holds every old origin, or it is below its `Σ.F`**: an
-old origin has an honest supporting vote of a slot before `s` (`honest_supporter`), whose head
+old origin has an honest supporting vote of a slot before `s` (`honest_supporterU`), whose head
 reaches the proposer when `Σ.F` is below the origin (`proposer_accepts_head_before`); otherwise
 `Σ.F`, on the origin chain, is compatible with it (S1) and above it. -/
 theorem proposal_holds_old_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
