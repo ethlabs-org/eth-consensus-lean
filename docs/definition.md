@@ -403,8 +403,6 @@ for every nonempty committee selected at `t ∈ [max g 0, horizon]`,
 Population conditions below remain unchanged. At full selection the population
 bound implies the committee bound under the explicit premise β ≤ βK of
 `healthy_iff_of_full_selection`; the standard values ⅓ and ½ satisfy it.
-At full selection, Sleepy reduces to its population form when `committeeAhead ≤ ahead`
-and `0 ≤ θ ≤ 1`.
 
 | Regime | Definition |
 |---|---|
@@ -458,7 +456,6 @@ There is no ordering between `β` and `βK` in admissibility: full-selection hea
 takes `β ≤ βK` explicitly, which standard and Goldilocks fractions satisfy.
 The healthy generic reductions require the instance fits `HealthyBetaFit` (`β ≤ ⅓`)
 and `CommitteeHalfFit` (`βK ≤ ½`); these do not restrict the definition of correctness.
-The unused `cover` number is absent.
 
 `Params.Room P n` is `θ·n < n − 2 ∧ 1 < β·(n − 1) ∧ 1 < βK·(n − 1)`, over rationals.
 Admissibility permits some such `n`. At the optimal fractions this is exactly `5 ≤ n`,
@@ -501,8 +498,9 @@ population size:
 `sysExternal` exports the PKI and the complete role selection, fixed before
 execution; `External.selected` is the selection of `participationRole t`
 (every validator for `none`). A later fault charge reads the committee
-selected for the observation slot; it does not select again. `System.Outage`
-reads the selection in its look-back committee clause: η-sleepy participation
+selected for the observation slot; it does not select again. `System.Sleepy` and
+`System.Healthy` read the selection at the observation time (§"The regimes, as
+formulas"). `System.Outage` also reads it in its look-back committee clause: η-sleepy participation
 inside each nonempty committee selected in the look-back, with its own
 look-ahead; it is vacuous at empty selections, and the population clause stays
 a separate premise. Honest code learns only its own

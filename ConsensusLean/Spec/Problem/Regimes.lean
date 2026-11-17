@@ -48,9 +48,9 @@ delay `ΔFG > 0` (whether sleepy needs a bound on `ΔFG` is an open audit questi
 
 The three regimes (`System.Sleepy`, `System.Healthy`, `System.Outage`) and
 the run quantities they use (`System.cDur`, `heal`, `ready`, `lat`) are read
-off a run's environment point and communication log; Outage also reads the
-external selection through `External.selected` at every nonnegative selection time
-in the look-back. The GST is a parameter
+off a run's environment point and communication log. Sleepy and Healthy also read the
+external selection through `External.selected` at the observation time, and Outage also at
+every nonnegative selection time in its look-back. The GST is a parameter
 of the regimes, not of the environment; an outage run is partially
 synchronous with GST `b₁`, so the after-GST entries apply with `g = b₁` when their
 other premises hold: `Outage` supplies only the `PSync b₁` part of `Healthy`,
@@ -263,8 +263,7 @@ variable [Fintype V] [DecidableEq V]
 ready at `t` and still honest at `t + ahead·ΔAC` (clamped to the horizon) exceed
 fraction `θ` of them and the validators compromised by then (look-ahead `aheadDur`).
 The same bound holds inside every nonempty selected committee, with look-ahead
-`committeeAheadDur`, no look-back, and the same reader catch-up. At full selection,
-`committeeAhead ≤ ahead` makes the committee clause follow from the population clause. -/
+`committeeAheadDur`, no look-back, and the same reader catch-up. -/
 def Sleepy (X : External S) (K : Contract Prog) (r : S.Run) : Prop :=
   (S.log r).PSync (S.pt r) 0 ∧
     (S.pt r).SleepyOn K.params.θ (S.cDur K r) (S.aheadDur K r) 0 (S.pt r).horizon ∧
@@ -276,8 +275,7 @@ def Sleepy (X : External S) (K : Contract Prog) (r : S.Run) : Prop :=
 validator honest at a time of `[max g 0, horizon]` is awake then (awake, not
 ready: readiness restricts readers and progress only); and the FG delay is within its bound,
 `ΔFG ≤ fgDelay·ΔAC`. Each nonempty committee selected in `[max g 0, horizon]`
-has fewer than fraction `βK` compromised members, charged at the horizon.
-Full-selection fidelity holds when `β ≤ βK`. -/
+has fewer than fraction `βK` compromised members, charged at the horizon. -/
 def Healthy (X : External S) (K : Contract Prog) (g : Time) (r : S.Run) : Prop :=
   (S.log r).PSync (S.pt r) g ∧ (S.pt r).HealthyOn K.params.β g (S.pt r).horizon ∧
     (S.pt r).env.ΔFG ≤ (K.params.fgDelay : Time) * (S.pt r).env.ΔAC ∧

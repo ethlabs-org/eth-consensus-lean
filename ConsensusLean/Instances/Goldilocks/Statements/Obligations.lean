@@ -138,9 +138,7 @@ The growing-fault windows (`docs/decisions.md` §"Adversary growth"):
 * committee look-ahead `5`: the same fault charge as the population clause. At every run time,
   the bound holds for every nonempty committee selected in the preceding `η·ΔAC`, restricted
   to nonnegative selection times. This includes the proof's committees at one common observation
-  time. Each look-ahead is set from its own consumer; at these numbers the committee look-ahead
-  is at most `ahead` (`5 ≤ 5`), so at the population binding the committee clause is redundant
-  and the stock reduction holds.
+  time. Each look-ahead is set from its own consumer.
 These numbers are not claimed minimal. -/
 abbrev goldilocksContract {S : Setup} (A : ContractAssumptions S)
     (C : ContractCoefficients) : Contract ProgressReq where
