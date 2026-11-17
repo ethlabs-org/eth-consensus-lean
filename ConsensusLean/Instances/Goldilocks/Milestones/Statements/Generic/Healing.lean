@@ -45,44 +45,6 @@ def exists_slot_align : Prop :=
     ∀ af : Time, 0 ≤ af → ∃ s₀ : Nat,
       af ≤ P.slotTime s₀ ∧ 4 * P.Δ * (s₀ : ℤ) < af + 4 * P.Δ
 
-/-- Leaf 1: a high signing by a signer honest at it and at `c_z` gives a reset no later. Proved for
-any run predicate by `reset_of_height_advance_at_from` (Lemmas/Generic/HealingLeaves), through
-`ACRun.run_local`. -/
-def reset_of_height_advance_at (runs : ACRun A sg) : Prop :=
-  ∀ {cm proposer dg H tr} {g : Time} {y : Fin P.n} {k : Nat} {att : FG.Att P.n},
-    runs.Run cm proposer dg H tr →
-    (H (max (cutZ P g) (tr.time k)))ᶜ.ncard < P.fg.q → y ∈ H (max (cutZ P g) (tr.time k)) →
-    tr.SignAt y k att → HZ tr H g + 1 ≤ att.h →
-    ∃ a, IsReset tr H g a ∧ a ≤ tr.time k
-
-/-- Leaf 2 upper bound, under strictly no advance. Proved for any run predicate by
-`hmax_le_of_noAdvance_at_from` (Lemmas/Generic/HealingLeaves), through `ACRun.run_local`. -/
-def hmax_le_of_noAdvance_at (runs : ACRun A sg) : Prop :=
-  ∀ {cm proposer dg H tr} {g T : Time} {y : Fin P.n} {i : Nat},
-    runs.Run cm proposer dg H tr → NoAdvance tr H g T →
-    y ∈ H (tr.time i) → (H (max (cutZ P g) (tr.time i)))ᶜ.ncard < P.fg.q → tr.time i < T →
-    (tr.state y i).fg.hmax ≤ HZ tr H g + 1
-
-/-- Snapshot and call supply for the lower-bound leaf. Proved for any run predicate by
-`snapshotCall_of_awake_at_from` (Lemmas/Generic/HealingLeaves), through `ACRun.run_local`. -/
-def snapshotCall_of_awake_at (runs : ACRun A sg) : Prop :=
-  ∀ {cm proposer dg H tr} {g b : Time} {z : Fin P.n} {m : Nat},
-    runs.Run cm proposer dg H tr →
-    (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
-    z ∈ H (tr.time m) → cutZ P g + P.Δ + 1 ≤ tr.time m → tr.time m ≤ b →
-    (∃ j, FirstCutAfter tr j (cutZ P g)) ∧
-      ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (cutZ P g) g) P.Δ ≤ tr.time j
-
-/-- Relay-call supply at the two-delay lag. Proved for any run predicate by
-`callLag_of_awake_at_from` (Lemmas/Generic/HealingLeaves), through `ACRun.run_local`. -/
-def callLag_of_awake_at (runs : ACRun A sg) : Prop :=
-  ∀ {cm proposer dg H tr} {g b lo : Time} {z : Fin P.n} {i m : Nat},
-    runs.Run cm proposer dg H tr →
-    (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
-    cutZ P g ≤ lo → z ∈ H (tr.time m) → lo ≤ tr.time i →
-    tr.time i + 2 * P.Δ ≤ tr.time m → tr.time m ≤ b →
-    ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) P.Δ ≤ tr.time j
-
 /-- Leaf 4: explicit report-tree membership avoids an AC-specific inference. Proved for any run
 predicate by `row_or_high_of_report_at_from` (Lemmas/Generic/HealingLeaves), through
 `ACRun.run_local`. -/
