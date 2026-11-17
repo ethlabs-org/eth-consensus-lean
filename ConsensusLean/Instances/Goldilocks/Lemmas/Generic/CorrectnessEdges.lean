@@ -21,33 +21,6 @@ namespace Consensus.Goldilocks.Generic
 
 open Shape Blocks
 
-/-- Intended window extraction edge. FrameWindow retains its constant-frame meaning;
-the four anchors and their height steps are explicit data, not a second window record.
-The designated proposals are a progress premise, not an output guarantee. -/
-def final_window_extract_at {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
-    (C : ACCorrectLocal A sg) : Prop :=
-  ∀ (cm : Time → Finset (Fin P.n)) (βK : ℚ) (tr : RunTrace A)
-    (H : Time → Set (Fin P.n)) (proposer : Nat → Fin P.n)
-    (dg : Digest (List (FG.Att P.n)) A.Payload) (g ΔF deadline : Time)
-    (start gap floor : Nat) (kindJ : Prop) (J : A.Blk)
-    (block : Fin 4 → A.Blk) (cut : Fin 4 → Nat),
-    βK ≤ 1 / 2 →
-    C.run.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF deadline →
-    FrameWindow tr H (P.slotTime start) deadline floor kindJ J →
-    HealedFrom tr H proposer start deadline → 2 ≤ gap → 3 * gap ≤ P.δt →
-    StrictMono cut →
-    (∀ a, (block a).slot = start + a.val * gap ∧
-      tr.ProposesAt (block a).proposer (cut a) (block a) ∧
-      ReadyCut tr H C.catchUp (block a).proposer (cut a) ∧
-      (block a).proposer ∈ H (tr.time (cut a) + C.hold)) →
-    tr.time (cut 3) + P.Δ ≤ deadline →
-    (∀ a, tr.AcceptAt (block a).proposer (cut a) (block a)) ∧
-      (∀ a b, a ≤ b → Anc (tr.HonestBlocksAt H) (block a) (block b)) ∧
-      ∀ a : Fin 3, ∃ z i j, z ∈ H (tr.time i) ∧ z ∈ H (tr.time j) ∧
-        block a.castSucc ∈ (tr.state z i).fg.tree ∧ block a.succ ∈ (tr.state z j).fg.tree ∧
-        ((tr.state z i).fg.σ (block a.castSucc).root).h + 1 ≤
-          ((tr.state z j).fg.σ (block a.succ).root).h
-
 /-- Intended cache-coverage edge from an explicit four-anchor chain and three height steps.
 Population safety and actual processing of the carrier remain explicit inputs. -/
 def final_cache_coverage_at {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
@@ -76,35 +49,6 @@ def final_cache_coverage_at {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
       (H (tr.time j))ᶜ.ncard < 2 * P.q - P.n →
       (∃ k < j, tr.BlockCallAt y k (block 3)) →
       Anc (tr.HonestBlocksAt H) (block 0) (tr.finalizedAt y j)
-
-/-- Prefix-reader bridge on generic runs: freeze honesty at the observation, retain the
-prefix run and recover the original state at every cut no later than the observation. -/
-def prefix_reader_edge {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
-    (runs : ACRun A sg) : Prop :=
-  ∀ (cm : Time → Finset (Fin P.n)) (proposer : Nat → Fin P.n)
-    (dg : Digest (List (FG.Att P.n)) A.Payload)
-    (H : Time → Set (Fin P.n)) (tr : RunTrace A),
-    runs.Run cm proposer dg H tr →
-    ∀ d, 0 ≤ d → Node.LocalRun proposer dg (H d) sg (tr.upTo d) (runs.start cm) ∧
-      ∀ y i, (∀ k < i, tr.time k ≤ d) → (tr.upTo d).state y i = tr.state y i
-
-/-- Collision freedom transports to a prefix; this is not supplied evidence. -/
-def noColl_transport_edge {P : Params} (A : NodeAC P) : Prop :=
-  ∀ (dg : Digest (List (FG.Att P.n)) A.Payload) (tr : RunTrace A) (d : Time),
-    Compose.NoCollRun dg tr → Compose.NoCollRun dg (tr.upTo d)
-
-/-- Deadline service of the generic AC projection supplies actual processing witnesses.
-This is the run-level deadline bridge, not an assertion of an unspecified engine morphism. -/
-def syncUntil_service_edge {P : Params} (A : NodeAC P) : Prop :=
-  ∀ (tr : RunTrace A) (H : Time → Set (Fin P.n)) (b d : Time),
-    SyncUntilAC A (H d) (tr.HonestBlocksAt H) b tr.projAC →
-    ∀ x, x ∈ H d → ∀ i m, tr.projAC.SendOrAdmit x i m →
-      ∀ y, y ∈ H d → ∀ j ℓ, tr.projAC.CallAt y j ℓ →
-        tr.projAC.deadline y j (tr.projAC.time i) ≤ tr.projAC.time j →
-        tr.projAC.deadline y j (tr.projAC.time i) ≤ b + 1 →
-        ∃ k ≤ j, tr.projAC.time i ≤ tr.projAC.time k ∧ tr.projAC.ProcessAt y k m ∧
-          tr.projAC.time k < tr.projAC.deadline y k (tr.projAC.time i) ∧
-          ∀ r, k < r → r ≤ j → ¬ tr.projAC.RestartAt y r
 
 /-- The independent suppliers consumed by the claim reductions, each named once.
 The read-point records are separate local obligations, not fields of `ACCorrectLocal`.

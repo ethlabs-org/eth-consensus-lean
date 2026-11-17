@@ -7,8 +7,8 @@ public section
 
 In any Goldilocks run, the votes in the payload of an honest node's own proposal were in its pool
 before its AC block cut: `own_proposal_payload_pooled_run`. It reads the node's tick, proposal
-and block cuts and their cut laws only. Constant faults use it on the simulating trace
-(`own_proposal_payload_pooled`), growing faults on the prefix through the proposal. -/
+and block cuts and their cut laws only. Growing faults use it on the prefix through the
+proposal. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 

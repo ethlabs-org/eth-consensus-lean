@@ -111,9 +111,9 @@ detail in `TRUST.md`.
     `Δ`. So the node statements built on them (`SyncRun`, `GSTRun`, `SleepyRun`, `HealthyRun`, `HSShared`, the
     Persist, Run, Service and healing rows) cover only `Δ ≤ Δ_F`, the paper's range. No proof reads `delta_le`; the
     consumers of the clause read signings only.
-  - The generic L0 two-bound network stays unordered. The open transports (`PSyncTransport`, `SyncUntilTransport`,
-    `SyncRunTransport`) take `Δ ≤ Δ_F` as a hypothesis; with the lower bound gone they owe no signer provenance for
-    attestations.
+  - The generic L0 two-bound network stays unordered. The full network transports (`PSync ⇒ GSTRun`,
+    `SyncUntil ⇒ SyncBefore`, `PSync 0 ⇒ SyncRun`) are not stated; each would take `Δ ≤ Δ_F` as a hypothesis, and
+    with the lower bound gone it would owe no signer provenance for attestations.
   - `MeetsObligations` needs no `Δ ≤ Δ_F`: its closure mentions `SyncOn`/`SyncRun` only through the uninstantiated
     `SleepyWindow` disjunct of `vote_frame_of`'s service hypothesis (`Compose/Sleepy/FrameLabels`, discharged with
     the `SleepyServiceBefore` disjunct), and never constructs or reads them.

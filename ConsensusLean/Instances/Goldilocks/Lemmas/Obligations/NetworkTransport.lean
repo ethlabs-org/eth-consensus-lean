@@ -8,7 +8,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.R
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.DeadlineWake
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnProposalPool
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnReleaseProcessing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 public import ConsensusLean.Lemmas.Model.SysLog
@@ -16,10 +15,10 @@ import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
-/-! # Open network transport suppliers
+/-! # Network transport for the concrete publisher/simulation adapter
 
-These are goals for the concrete publisher/simulation adapter, not extra premises of
-`MeetsObligations`.
+The full transports of the engine network to the node service premises are not stated here and
+are not premises of `MeetsObligations`.
 The trace parameters remain independent here. `Setup.params` gives protocol delay Δp = Δe: the
 engine holds an object strictly before `a + Δe` (by `a + Δe − 1`), which is the node's strict
 deadline `a + Δp`. FG attestation service has its own delay `Δ_F`: the engine serves
@@ -27,7 +26,7 @@ standalone attestations (`isFGAtt`) strictly before its FG delay `ΔF` (the `fgA
 `PSync`), at the protocol FG delay `Δ_F,p = protoFGDelay (pubOf E) = ΔF`.
 Every other object (blocks, votes, forwarding and vote-forwarding wrappers) is served strictly
 before the bound `Δ`; no statement here claims a block before `ΔF`.
-All three suppliers include message, block, acceptance-relay and attestation service. Receipt
+A full transport would include message, block, acceptance-relay and attestation service. Receipt
 alone proves none of the acceptance-relay fields. The finite services up to a synchronous horizon
 (`publication_held_syncUntil`, `acceptance_relay_syncUntil`) are proved here; full GST remains
 separate.
@@ -61,33 +60,6 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
   {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (ΔF : Time)
-
-/-- OPEN supplier: PSync supplies GST at the node level. Paper route: actual same-time
-publication gives network service by max(send, GST, latest wake)+Δe; authenticated provenance
-gives the lower bound, recursive processing gives a call, and the engine's strict deadline gives
-the node's strict endpoint.
-Acceptance relay additionally requires the parent-first induction, NoColl and chain-state
-agreement. Vote admissions need their own source/time provenance; attestations have no lower
-bound (`AttDeliveredBy`), so they need none. The adapter
-must identify H, node keys, flattened cuts, horizon and awake intervals with the engine run.
-It assumes `Δ ≤ Δ_F` (`SyncOn.delta_le`): an attestation admitted from a block leaves in the
-block's relay wrapper, which the network serves within `Δ`, not `Δ_F`. -/
-def PSyncTransport : Prop :=
-  sp.Δ ≤ ΔF → ∀ g, rho.log.PSync rho.point g → tr.GSTRun H ΔF g
-
-/-- OPEN supplier: SyncUntil supplies only recipient-deadline-cut SyncBefore, not SyncRun
-with a send-time cutoff. Paper route: a node deadline ≤ b puts its engine service endpoint
-strictly below b. Wakes are included in that deadline. All four service fields need
-the same publication/processing joins as PSyncTransport. No post-outage service is inferred.
-It assumes `Δ ≤ Δ_F` as `PSyncTransport` does, also for the cutoff `deadline … Δ_F ≤ b`. -/
-def SyncUntilTransport : Prop :=
-  sp.Δ ≤ ΔF → ∀ b, rho.log.SyncUntil rho.point b → tr.SyncBefore H ΔF b
-
-/-- OPEN supplier: global synchrony gives SyncRun on nonnegative send windows. In particular
-this does not derive a send-window SyncRun from SyncUntil: a late wake can put its deadline
-after the latter's cutoff. The concrete adapter must discharge the same four service leaves. -/
-def SyncRunTransport : Prop :=
-  sp.Δ ≤ ΔF → rho.log.PSync rho.point 0 → ∀ a b, 0 ≤ a → tr.SyncRun H ΔF a b
 
 /-- The engine log's message class is the Goldilocks attestation class (`isFGAtt`). -/
 theorem log_fgAtt_iff {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
@@ -400,28 +372,6 @@ theorem received_att_processAt
   · simp only [simTrace_node S rho hn, hk, Option.elim_some, hn']
   · simp only [simTrace_label S rho hn, hk, Option.map_some, hl]
   · simp only [simTrace_time S rho hn, hk, Option.elim_some, ht]
-
-/-- Votes in an actual own-proposal payload were already pooled before its AC block cut. -/
-theorem own_proposal_payload_pooled (hn : 1 ≤ Fintype.card V)
-    (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys { S with vote := stock } rho)
-    {j : Nat} {t : Time} {x : Nat}
-    (hg : (simTrace { S with vote := stock } rho hn).GroupAt
-      (runProposer { S with vote := stock } rho hn)
-        (digestOf { S with vote := stock } rho) y j t (.tick x))
-    {d : DutyHead (Fintype.card V) (List (FG.Att (Fintype.card V)))
-      (SA.Payload (Fintype.card V))} {p : SA.Payload (Fintype.card V)}
-    (hd : (Node.acProposal
-      (Node.tickStep (runProposer { S with vote := stock } rho hn)
-        (digestOf { S with vote := stock } rho) y
-        ((simTrace { S with vote := stock } rho hn).state y j) t x .acTick).1 t).2.2 = some (d, p))
-    (hprop : ∃ ℓp, (simTrace { S with vote := stock } rho hn).CallAt y (j + 1) (.ac ℓp) ∧
-      ℓp.call = .proposal)
-    (hfg : ∃ B, (simTrace { S with vote := stock } rho hn).CallAt y (j + 2) (.fg (.block B true)))
-    {m : SA.Vote (Fintype.card V)} (hm : m ∈ p.1) :
-    m ∈ ((simTrace { S with vote := stock } rho hn).state y (j + 3)).ac.pool m.slot :=
-  Growing.own_proposal_payload_pooled_run (simTrace_goldilocksRun S rho hn hconst hv) hy hg hd
-    hprop hfg hm
 
 /-- A sending or freshly admitting source processes its vote at that same time.
 Recursive delivery processing may occur later in the event, never at a later time. -/

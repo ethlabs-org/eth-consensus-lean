@@ -153,12 +153,7 @@ complete type and proof closure with the existing negative and proof-body contro
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ClaimReductionEdges",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksHealing",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksLocal",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksReadPoint",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksClaimSuppliers"]
+        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ClaimReductionEdges"]
 to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention",
@@ -200,10 +195,7 @@ Healing.M1.RiseWindow holds the store-level floor and rise-round bound, for leaf
 the store-level entry at a height and the honest attestation on a left entry, for leaf 13. HealingRounds, the leaves
 over a healing supplier, imports HealingLeaves, and the same cut guard checks its constants. HealingEdges, the
 generic assembly edges, imports HealingLeaves and HealingRounds, and the same cut guard checks its
-constants. GoldilocksBridge, the concrete bridge leaf, imports HealingLeaves, HealingRounds and HealingEdges for
-the truncation transport and leaves 12 to 14 in its proved bridges; it is a Goldilocks module, outside the cut guard.
-GoldilocksHealing, GoldilocksLocal and GoldilocksReadPoint, the concrete healing, local and read-point supplier
-fields, reach them only through GoldilocksBridge, also outside the cut guard. ClaimReductionEdges, the generic claim reductions, imports HealingLeaves for
+constants. ClaimReductionEdges, the generic claim reductions, imports HealingLeaves for
 parent closure of honest stores (healthy liveness), and the same cut guard checks its constants. Leaf paths only"""
 
 [[exception]]

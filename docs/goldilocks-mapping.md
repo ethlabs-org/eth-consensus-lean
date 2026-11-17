@@ -720,9 +720,8 @@ Modelling choices:
   relay slack is not the chosen repair. `SyncAC` stays unchanged, and `SyncOn` except for its attestation clause and `delta_le` (below). At `Δ_p = Δ_e` the engine
   `PSync` supplies the node services the obligations proof uses (`message_service_psync_at`,
   `block_service_psync_at`, `signed_row_service_psync_at`, `catchRun_of_psync_at`, `resetService_of_psync_at`); the full
-  transport stays open: `PSync ⇒ GSTRun` (`PSyncTransport`), `SyncUntil ⇒ SyncBefore`
-  (`SyncUntilTransport`) and `PSync 0 ⇒ SyncRun` (`SyncRunTransport`), in `Lemmas/Obligations/NetworkTransport`,
-  each under `Δ ≤ Δ_F`; they are goals for the concrete adapter, not premises of `MeetsObligations`.
+  transports `PSync ⇒ GSTRun`, `SyncUntil ⇒ SyncBefore` and `PSync 0 ⇒ SyncRun` (each under `Δ ≤ Δ_F`) are not
+  stated; they are goals for the concrete adapter, not premises of `MeetsObligations`.
   **Attestations** (`docs/decisions.md` §"Network and delivery"): `SyncOn.attestation` and
   `SyncBefore.attestation` keep "signs or admits" and the deadline at `Δ_F`, but have no lower bound
   (`AttDeliveredBy`: a processing before the signing or admission counts), and both premises carry

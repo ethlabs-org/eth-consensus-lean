@@ -332,10 +332,6 @@ claim endpoint.
 
 ### Goldilocks high-row bridge target
 
-`high_row_source_at_goldilocks` (Lemmas/Generic/GoldilocksBridge.lean) is a
-conditional bridge with added premises. It corresponds to
-`Growing/Healing/Outcome/RowSource.high_row_source_at`, but uses the
-committee-valid run interface and additionally assumes `βK ≤ 1/2`, `Premises`,
-`IsReset` at `a ≤ b` and the signing cutoff `tr.time d ≤ b`, which the original
-concrete theorem does not. No original-premise high-row bridge is provided. The
-no-contest and historical-entry targets keep their reset-record interfaces.
+No Goldilocks-side high-row, no-contest or historical-entry bridge target is
+stated: the generic leaves are not instantiated at the Goldilocks run interface,
+and no original-premise high-row bridge is provided.
