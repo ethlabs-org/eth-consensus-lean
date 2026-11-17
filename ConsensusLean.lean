@@ -829,7 +829,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
-public import ConsensusLean.Instances.Goldilocks.Lemmas.NodeEngine.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.AnchorStepsGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.CoefficientAdapters
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
@@ -939,12 +938,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Frame
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Reachable
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.NodeEngine.Engine
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.NodeEngine.Family
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.NodeEngine.Goldilocks
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.NodeEngine.Stages
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.NodeEngine.Trace
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.NodeEngine.Wire
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Family
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.GenericPremises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
@@ -1022,10 +1015,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.R
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.SupportCounting
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.TickDuty
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.NodeEngine.Regression
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.NodeEngine.Representation
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.NodeEngine.Simulation
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.NodeEngine.Wire
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Obligations.Constant
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Always
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.BlockFinality
