@@ -115,7 +115,9 @@ theorem optimistic_side (hrun : ACRun proposer tr H U ini)
       optimisticVoters sp A ℓ.frame s D ⊆ Fwd tr U X s D :=
   optimistic_sideU hrun.toU hX hfl
 
-/-- `fwd_held` with the unlock given. -/
+/-- A vote of `Fwd` reaches an honest node's update of slot `s` (its restarts at or before
+`t_s`) under `Sync`: the node holds it, or two other votes of its validator, with the unlock
+given. -/
 theorem fwd_heldU
     {uL : Nat → Set Lock} (hr : ACLocalRunU wm uL H U tr) {s : Nat}
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
@@ -134,19 +136,6 @@ theorem fwd_heldU
     fun t ht₁ ht₂ => by
       rw [CompatibleSides.slot_of_lt (s := s) (h1.trans ht₁) (by linarith), hvs]; omega
   rwa [hvs] at this
-
-/-- A vote of `Fwd` reaches an honest node's update of slot `s` (its restarts at or before
-`t_s`) under `Sync`: the node holds it, or two other votes of its validator. -/
-theorem fwd_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {s : Nat}
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
-    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
-    (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) {D : Blk sp.n FGP} {u : Fin sp.n}
-    (hu : u ∈ Fwd tr U X s D) :
-    ∃ v : Vote sp.n, v.val = u ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
-      (v ∈ (tr.state Y c).pool s ∨ u ∈ equivocators {w | w ∈ (tr.state Y c).pool s}) :=
-  fwd_heldU (hr := hr.toU) (s := s) (hsync := hsync) (X := X) (Y := Y) (hX := hX) (hY := hY)
-      (c := c) (ℓ := ℓ) (hc := hc) (ht := ht) (hrs := hrs) (D := D) (u := u) (hu := hu)
 
 /-- `against_update` with the unlock given. -/
 theorem against_updateU

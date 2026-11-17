@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
-import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
@@ -12,10 +11,7 @@ slow lock of slot `s` reads the saved results of the previous `w − 1` slots):
 * `SlowLockAtW w`: `SlowLockAt` with the `w − 1` previous saved results (`SlowLockAt` at `w = k`,
   `slowLockAtW_k`);
 * `GoodOriginW w`: `GoodOrigin` with the slow window `[j − w + 1, j]` (`GoodOrigin` at `w = k`,
-  `goodOriginW_k`);
-* `exists_unpolluted_labelW`: an asynchrony of length at most `(4w − 5)Δ` leaves a slot start
-  outside its pollution window among every `w` consecutive labels (the arithmetic of the outage
-  route's `exists_unpolluted_label`, at `w`).
+  `goodOriginW_k`).
 
 This is vocabulary only: H.1 at a width below `k` is not stated here (its transfer step needs the
 old slow locks of the formation window to be compatible, which is not proved). -/
@@ -68,26 +64,6 @@ theorem goodOriginW_k {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} {g : Time}
     {B : Blk sp.n FGP} {j : Nat} : GoodOriginW sp.k tr H g B j ↔ GoodOrigin tr H g B j := by
   rw [goodOriginW_iff, goodOrigin_iff]
   rfl
-
-/-- **An unpolluted label among every `w` consecutive ones**: when the asynchrony `[start, stop)`
-lasts at most `(4w − 5)Δ`, among the labels `s − w + 1, …, s` there is one whose slot start
-`t_m` has its vote window before `start` (`t_m + 2Δ ≤ start`) or after `stop` (`stop ≤ t_m + Δ`):
-the polluted slot starts lie in the open interval `(start − 2Δ, stop − Δ)`, of length at most
-`(4w − 4)Δ`, so at most `w − 1` of them. -/
-theorem exists_unpolluted_labelW (sp : SAParams) {w : Nat} (hw : 2 ≤ w) {start stop : Time}
-    (hgap : stop - start ≤ (4 * (w : Time) - 5) * sp.Δ) (s : Int) :
-    ∃ m : Int, s - (w : Int) < m ∧ m ≤ s ∧
-      (sp.ts m + 2 * sp.Δ ≤ start ∨ stop ≤ sp.ts m + sp.Δ) := by
-  have hw' : (2 : Int) ≤ w := by exact_mod_cast hw
-  by_contra hn
-  have hfirst : start < sp.ts (s - w + 1) + 2 * sp.Δ := by
-    by_contra h
-    exact hn ⟨s - w + 1, by omega, by omega, Or.inl (le_of_not_gt h)⟩
-  have hlast : sp.ts s + sp.Δ < stop := by
-    by_contra h
-    exact hn ⟨s, by omega, le_rfl, Or.inr (le_of_not_gt h)⟩
-  simp only [SAParams.ts] at hfirst hlast
-  linarith
 
 end Consensus.Goldilocks.SA
 

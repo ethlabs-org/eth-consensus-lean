@@ -18,14 +18,6 @@ namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
 
-theorem honestProposalU_iff (u : Nat → Set Lock) (tr : SATrace sp FGP ro) (p : Fin sp.n)
-    (s : Nat) (P : Blk sp.n FGP) :
-    HonestProposalU u tr p s P ↔ ∃ k ℓ d pay, tr.CallAt p k ℓ ∧ ℓ.call = .proposal ∧
-      (acProposalWith sp (u k) (tr.state p k) ℓ.frame (tr.time k)).2 = some (d, pay) ∧
-      tr.time k = sp.ts s ∧ P.parent = some d.head.root ∧ P.slot = s ∧ P.proposer = p ∧
-      P.acPayload = pay ∧ ∃ j, k < j ∧ tr.AcceptAt p j P ∧ tr.time j = sp.ts s :=
-  Iff.rfl
-
 /-- At the parent's oracle, `HonestProposalU` is `HonestProposal`. -/
 theorem honestProposalU_parent_iff (tr : SATrace sp FGP ro) (p : Fin sp.n) (s : Nat)
     (P : Blk sp.n FGP) : HonestProposalU (parentOracle sp tr) tr p s P ↔ HonestProposal tr p s

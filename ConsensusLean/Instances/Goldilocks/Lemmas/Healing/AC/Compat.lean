@@ -81,20 +81,6 @@ private theorem result_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : 
   result_sideU (hrun := hrun.toU) (Y := Y) (hY := hY) (c := c) (s := s) (C := C) (CV := CV)
       (hR := hR)
 
-/-- A forwardable slot-`s` vote (`Fwd`: sent or admitted by an honest `X` in `[t_s, t_s + 2Δ)`)
-reaches an honest node's update of slot `s` (its restarts at or before `t_s`) under `Sync`: the
-node holds it, or two other votes of its validator. -/
-theorem fwd_reaches_update (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {s : Nat}
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
-    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
-    (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) {D : Blk sp.n FGP} {u : Fin sp.n}
-    (hu : ∃ v : Vote sp.n, v.val = u ∧ v.slot = s ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
-      ∃ k, tr.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧ tr.time k < sp.ts s + 2 * sp.Δ) :
-    ∃ v : Vote sp.n, v.val = u ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
-      (v ∈ (tr.state Y c).pool s ∨ u ∈ equivocators {w | w ∈ (tr.state Y c).pool s}) := by
-  exact fwd_held hr hsync hX hY hc ht hrs (fwd_iff.2 hu)
-
 /-- `fastLock_fastLock_compatible` with the unlock given. -/
 theorem fastLock_fastLock_compatibleU
     {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g)

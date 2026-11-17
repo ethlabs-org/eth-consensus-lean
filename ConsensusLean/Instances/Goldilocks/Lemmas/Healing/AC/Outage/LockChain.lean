@@ -19,11 +19,8 @@ invariant holds at every mode, with no width condition:
 
 * `lockInv_of_reachableU`: `SA.lockInv_of_reachable` at the states reachable with the unlock
   given;
-* `lockInv_postAC`: the invariant after an honest call, in the call's frame;
 * `lockInv_stateAC`: the invariant of the state before an honest call, in the call's frame
-  (the composite `lockInv_state`, the node's frame read as the call's frame);
-* `liveBlocks_chain_atAC`: the live lock blocks of the state before an honest call lie on one
-  chain of the call's frame, at every time. -/
+  (the composite `lockInv_state`, the node's frame read as the call's frame). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -278,12 +275,6 @@ theorem lockInv_of_reachableU {ro : ReplayOrder sp FGP} {x : Fin sp.n} (hU : Coh
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SATrace sp FGP ro}
   {u : Nat → Set Lock}
 
-/-- **The lock invariant after an honest call**, in the call's frame. -/
-theorem lockInv_postAC (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
-    LockInv U (tr.post i) ℓ.frame :=
-  (lockInv_of_reachableU hr.coherent (localRun_reachableU sp hr hy i ℓ hc)).2.2
-
 /-- **The lock invariant before an honest call**, in the call's frame: the initial state with the
 initial frame, or the state after the node's last call, passed to the call's frame by the call
 law (`LockInv.callOK`). -/
@@ -298,15 +289,6 @@ theorem lockInv_stateAC (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n} (hy : y �
   · rw [tr.state_of_lastCall hc' hj hnb]
     have hreach := lockInv_of_reachableU hU (localRun_reachableU sp hr hy j ℓ' hc')
     exact LockInv.callOK hU hreach.1 hok hreach.2.2
-
-/-- **The live lock blocks before an honest call lie on one chain** of the call's frame, at every
-time (`lockInv_stateAC`). -/
-theorem liveBlocks_chain_atAC (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) (τ : Time) :
-    ∀ X ∈ liveLockBlocks sp (tr.state y i).locks ℓ.frame τ,
-      ∀ Y ∈ liveLockBlocks sp (tr.state y i).locks ℓ.frame τ, Compatible ℓ.frame.tree X Y := by
-  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAtU hr hy hc
-  exact (lockInv_stateAC hr hy hc).liveBlocks_chain hr.coherent hΦ hΦU
 
 end Consensus.Goldilocks.SA
 

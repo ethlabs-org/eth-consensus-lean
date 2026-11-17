@@ -19,10 +19,6 @@ namespace Consensus.Goldilocks.SA
 
 variable {sp : SAParams} {FGP : Type}
 
-/-- The rfl link: `confirmationScore` counts `scoreSupporters`. -/
-theorem confirmationScore_eq_ncard (A : SAState sp.n) (Φ : Frm sp.n FGP) (j : Nat)
-    (B : Blk sp.n FGP) : confirmationScore sp A Φ j B = (scoreSupporters A Φ j B).ncard := rfl
-
 /-- Two subsets of `D`, each a strict majority of `D`, intersect. -/
 theorem inter_nonempty_of_majority {D S S' : Set (Fin sp.n)} (hS : S ⊆ D) (hS' : S' ⊆ D)
     (h : D.ncard < 2 * S.ncard) (h' : D.ncard < 2 * S'.ncard) : (S ∩ S').Nonempty := by

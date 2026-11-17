@@ -7,8 +7,8 @@ public section
 
 `LocksSettledU` with a slot floor `σ₀`: the floor restricts only which later honest votes and
 proposal heads must extend a live lock's block (those of slots `≥ σ₀`). Lock liveness, the label
-quantifier and the start time are unchanged. At floor `0` it is `LocksSettledU`
-(`locksSettledFromU_zero_iff`). The H.1 consumers read settledness only at the proposal's slot,
+quantifier and the start time are unchanged. `LocksSettledU` gives it at every floor
+(`LocksSettledU.toFrom`). The H.1 consumers read settledness only at the proposal's slot,
 so they take the floor-`p` form. -/
 
 namespace Consensus.Goldilocks.SA
@@ -57,20 +57,6 @@ theorem locksSettledFromU_iff {u : Nat → Set Lock} {σ₀ : Nat} {T : Time} :
         sp.slot (tr.time i) ≤ l.slot + sp.k → ∀ L ∈ U, L.root = l.block →
           VotesExtendFrom tr H U σ₀ l.slot L ∧ ProposalsExtendFromU u tr H U σ₀ l.slot L :=
   Iff.rfl
-
-/-- At floor `0`, the floored settledness is `LocksSettledU`. -/
-theorem locksSettledFromU_zero_iff {u : Nat → Set Lock} {T : Time} :
-    LocksSettledFromU u tr H U 0 T ↔ LocksSettledU u tr H U T := by
-  rw [locksSettledFromU_iff, locksSettledU_iff]
-  refine forall₂_congr fun y _ => forall₂_congr fun i _ => forall₂_congr fun l _ =>
-    forall_congr' fun _ => forall₂_congr fun L _ => forall_congr' fun _ => and_congr ?_ ?_
-  · rw [votesExtendFrom_iff, votesExtendAfter_iff]
-    exact forall₂_congr fun x _ => forall₂_congr fun i e => forall₂_congr fun _ _ =>
-      ⟨fun h => h (Nat.zero_le _), fun h _ => h⟩
-  · rw [proposalsExtendFromU_iff, proposalsExtendAfterU_iff]
-    refine forall₂_congr fun x _ => forall₂_congr fun i ℓ => forall₂_congr fun m d =>
-      forall_congr' fun pay => forall₂_congr fun _ _ => forall₂_congr fun _ _ => ?_
-    exact ⟨fun h => h (Nat.zero_le _), fun h _ => h⟩
 
 /-- Settled locks are settled above every floor. -/
 theorem LocksSettledU.toFrom {u : Nat → Set Lock} {T : Time} (h : LocksSettledU u tr H U T)
