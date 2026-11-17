@@ -17,7 +17,6 @@ public import ConsensusLeanTest.Goldilocks.AC.LockStore
 public import ConsensusLeanTest.Goldilocks.AC.Optimistic
 public import ConsensusLeanTest.Goldilocks.AC.ProposerVoters
 public import ConsensusLeanTest.Goldilocks.AC.ResultTransfer
-public import ConsensusLeanTest.Goldilocks.AC.SourceCompatible
 public import ConsensusLeanTest.Goldilocks.AC.Transfer
 public import ConsensusLeanTest.Goldilocks.AC.UnlockFrame
 public import ConsensusLeanTest.Goldilocks.AC.WalkFacts

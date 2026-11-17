@@ -29,7 +29,7 @@ are unchanged. The latter also owns the frame-sequence vocabulary, not needed by
 | `Consensus.Goldilocks.Store.FGStoreTrace` | `Milestones/Statements/FGStore/Trace` | G1.4, G1.10 (core) | FGStore | proved (lemma) |
 | `Consensus.Goldilocks.Store.FGStoreService` | `Milestones/Statements/FGStore/Service` | G1.6, G1.7, G1.8, G1.9 (a) | FGStore | proved (lemma) |
 | `Consensus.Goldilocks.SA.ACBase`, `Consensus.Goldilocks.LocalRunReachable` | `Milestones/Statements/AC/Base` | F.1, A0.1–A0.9 (the trace contract is not a node) | ACBase | proved (lemma) |
-| `Consensus.Goldilocks.SA.ACSteps` | `Milestones/Statements/AC/Steps` | A1.1–A1.5, A1.8, A1.9 | ACSteps | proved (lemma) |
+| `Consensus.Goldilocks.SA.ACSteps` | `Milestones/Statements/AC/Steps` | A1.1–A1.5, A1.8 | ACSteps | proved (lemma) |
 | `Consensus.Goldilocks.Compose.ComposeInterfaceStatements` | `Milestones/Statements/Compose/Interface` | C0.1 at the AC; A0.6, A0.9 consequences; C0.5 (c) | Compose/AnyAC | proved (lemma) |
 | `Consensus.Goldilocks.Compose.ComposeNodeStatements` | `Milestones/Statements/Compose/Node` | C0.1–C0.5 at the node | Compose/AnyAC | proved (lemma) |
 | `Consensus.Goldilocks.Compose.EventOrder`, `Consensus.Goldilocks.Compose.ReadyImpliesJoined` and the six other run statements (the projections) | `Milestones/Statements/Compose/Run` | F.5 (run), F.4, C0.5 | Persist | proved (lemma) |
@@ -273,7 +273,8 @@ not a milestone statement) as `CaseOneA13`: the premises of `NextTransfer`, over
 ## ACSteps
 
 Milestone `ACSteps` covers the AC module's L1 step lemmas over AC traces of the SA:
-A1.1, A1.2, A1.3, A1.4, A1.5, A1.8 and A1.9. A1.2–A1.4 and A1.8 are per vote; A1.9 is per `ac_to_fg` call. A1.6 and
+A1.1, A1.2, A1.3, A1.4, A1.5 and A1.8. A1.2–A1.4 and A1.8 are per vote. A1.9 (per `ac_to_fg` call) is a lemma in its
+stored-block form, not a field of the milestone. A1.6 and
 A1.7 are run-level (Service).
 
 | Node | Reference | Definition | Milestone | Lean name |
@@ -288,7 +289,7 @@ A1.7 are run-level (Service).
 | A1.4 | CLAIMS A1.4 (a), (b) | optimistic is fast: the transfer (per vote), the next update. **Stronger than CLAIMS**: (a) has no `Sync` premise; (b) assumes neither the optimistic confirmation nor `Sync`: in their place only `2·\|K(s+1) ∖ H\| < committeeSize` (`f < n/2` at the population binding) and that every honest slot-`(s+1)` vote extends `B` (the premises about the updating node `z` are kept) | `ACSteps` | `Consensus.Goldilocks.SA.OptimisticTransfer`, `Consensus.Goldilocks.SA.OptimisticNextUpdate` |
 | A1.5 | CLAIMS A1.5 | source age. **Stronger than CLAIMS** in form: over every AC trace with the local contract `ACLocalRun` (the earlier form was an `ACRun`, whose honest-object facts, signature provenance and slot proposer, the proof never used) | `ACSteps` | `Consensus.Goldilocks.SA.SourceAge` |
 | A1.8 | CLAIMS A1.8 | result transfer, per vote | `ACSteps` | `Consensus.Goldilocks.SA.ResultTransfer` |
-| A1.9 | CLAIMS A1.9 | source compatibility after the cut, per call. **Stronger than CLAIMS**: no public-time premise, no compatibility of `Φ.F` or `fc_root` with `B` at the call, and branch (i) needs only `Φ.F` (not `fc_root`) compatible at the vote's call. Stated for population-sized committees (premise `committeeSize = n`) | `ACSteps` | `Consensus.Goldilocks.SA.SourceCompatible` |
+| A1.9 | CLAIMS A1.9 | **retired** as a milestone statement: source compatibility after the cut is no field of `ACSteps`. Its stored-block form, for population-sized committees, is the lemma `source_compatible_stored` (`Lemmas/AC/Steps/Compatible/Source`), which C1.1 reads | `ACSteps` | — |
 | — | the milestone | all of the above, at one and at every SA parameter set | `ACSteps` | `Consensus.Goldilocks.SA.ACStepsAt`, `Consensus.Goldilocks.SA.ACSteps` |
 
 Modelling choices:
@@ -299,7 +300,7 @@ Modelling choices:
 - **Committees.** A1.2–A1.4 count over a slot dictionary `K` of `committeeSize` members per slot whose
   members sign the votes the honest nodes hold (`CommitteeP`, `CommitteeT`), with the fault bounds charged to the
   slot committees (`FaultBoundK`, `2·|K s ∖ H| < committeeSize`). At the full dictionary with `committeeSize = n`
-  these are the population facts (`FaultBound`, `2f < n`). A1.9 is stated at `committeeSize = n` only.
+  these are the population facts (`FaultBound`, `2f < n`).
 - **Events inside a call** are named through the SA's own functions:
   - the update's fast selection, with the votes it counts, at the tick of `t_s + 6Δ`;
   - the optimistic check at its receipt states and after each own vote's admission (`OptimisticPoint`).
@@ -308,7 +309,7 @@ Modelling choices:
   selects it. The stored lock can be moved back, as the claims note.
 - **Scope of the fast-lock statements** (graded fast locks, `docs/decisions.md` §"Goldilocks model choices"): since a veto stops only
   the record, `FastUpdateAt` and `FastLockAt` also cover the fast locks that vetoed updates write. A1.2
-  (`FirstTransfer`), A1.5 (`SourceAge`), A1.9 (`SourceCompatible`) and C1.1 (`HonestFastConfirmationsPersist`,
+  (`FirstTransfer`), A1.5 (`SourceAge`), A1.9 (`source_compatible_stored`) and C1.1 (`HonestFastConfirmationsPersist`,
   with `RecentSourceNextVote`) keep their text and now also cover those locks; their arguments read the counted votes
   and `Carry`, not the record. A1.4 (b) (`OptimisticNextUpdate`) still names the raw `fastSelect` (the test).
 - **The A1.5 conclusion** "is the block of a fast lock written after `τ`" reads: at or below the block of a fast

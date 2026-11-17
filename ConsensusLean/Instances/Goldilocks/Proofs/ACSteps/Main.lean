@@ -21,7 +21,6 @@ theorem acStepsAt (sp : SAParams) : ACStepsAt sp where
   optimisticNextUpdate := optimistic_next_update sp
   sourceAge := source_age sp
   resultTransfer := result_transfer sp
-  sourceCompatible := source_compatible sp
 
 /-- **ACSteps.** -/
 theorem acSteps : ACSteps := acStepsAt

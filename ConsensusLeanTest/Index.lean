@@ -488,7 +488,6 @@ example := ``Consensus.Goldilocks.SA.ProposerVotersAgree
 example := ``Consensus.Goldilocks.SA.ResultAt
 example := ``Consensus.Goldilocks.SA.ResultTransfer
 example := ``Consensus.Goldilocks.SA.SourceAge
-example := ``Consensus.Goldilocks.SA.SourceCompatible
 example := ``Consensus.Goldilocks.SA.ToFGAt
 example := ``Consensus.Goldilocks.SA.UpdateAt
 example := ``Consensus.Goldilocks.SA.ViableAtVote
@@ -505,7 +504,6 @@ example := ``Consensus.Goldilocks.SA.CommitteeT
 example := ``Consensus.Goldilocks.SA.FaultBoundK
 example := ``Consensus.Goldilocks.SA.CommitteePAt
 example := ``Consensus.Goldilocks.SA.CommitteeTAt
-example := ``Consensus.Goldilocks.SA.Growing.SourceCompatible
 
 /-! ## Goldilocks Compose/AnyAC (a milestone PR appends here only) -/
 

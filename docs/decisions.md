@@ -539,8 +539,8 @@ detail in `TRUST.md`.
 - **Statements at population-sized committees take the size equation as a premise.** The run records
   `GoldilocksRun`, `Growing.GoldilocksRun`, `SA.ACRun`, `SA.ACRunU`, `SA.ACRunUS` and `SA.Growing.ACRun` state the
   run and trace laws only, for every vote binding, and carry no committee size. A milestone statement proved or
-  stated for population-sized committees takes `sp.committeeSize = sp.n` as a premise: A1.9 `SourceCompatible`
-  and its growing-fault form; the proved `Compose.HeadExtendsRecord`, `Compose.Inclusion`, `Regimes.SleepySafe`,
+  stated for population-sized committees takes `sp.committeeSize = sp.n` as a premise: the proved
+  `Compose.HeadExtendsRecord`, `Compose.Inclusion`, `Regimes.SleepySafe`,
   `Regimes.IncludeSleepy`, `Regimes.GrowSleepy`, `Healing.HeightScopedRetention`, `Healing.RunInclusion`,
   `Healing.Growing.HeightScopedRetention` and `Healing.Growing.RunInclusion`; the open growing-fault statements
   over `Growing.GoldilocksRun` (`Compose.Growing.ReadyImpliesJoined`, `Compose.Growing.HeadExtendsRecord`,

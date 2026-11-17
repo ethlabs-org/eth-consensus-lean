@@ -8,10 +8,10 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeRun
 Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`, the
 L1 nodes of the AC module: A1.1 (proposer and
 voters agree on unlocking), A1.2 (first transfer), A1.3 (next transfer), A1.4 (optimistic is fast),
-A1.5 (source age), A1.8 (result transfer) and A1.9 (source compatibility after the cut). A1.2–A1.4
-and A1.8 are stated **per vote**: the conclusion is about one honest vote and the hypotheses about
-that vote and strictly earlier events (claims §"L1: components / Available chain"), so that C1.1's
-induction over events can discharge them; A1.9 is stated per `ac_to_fg` call. The origin of a lock
+A1.5 (source age) and A1.8 (result transfer). A1.2–A1.4 and A1.8 are stated **per vote**: the
+conclusion is about one honest vote and the hypotheses about that vote and strictly earlier events
+(claims §"L1: components / Available chain"), so that C1.1's induction over events can discharge
+them. The origin of a lock
 or a result (a fast lock write, an update's result) is a fixed datum, as in the claims, and can be
 later than the vote (an update of slot `s` runs at `t_s + 6Δ`, after the slot-`(s+1)` votes). A1.6
 and A1.7 are run-level (milestone Service).
@@ -194,34 +194,6 @@ def ResultTransfer : Prop :=
       v ∈ (tr.state X i₀).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s}) →
     VoteExtends U e.msg C
 
-/-- **A1.9, source compatibility after the cut (per call).** Let an honest node write a fast
-lock of slot `s` on `B` with counted votes `CV`. Assume `Sync[t_s, t_{s+1} + Δ]`,
-`Carry(s, S, B)` and `f < n/2`; let `x`'s `ac_to_fg` call at cut `i` be at a time
-`t ∈ (t_{s+1} + Δ, t_m + Δ]`; assume every honest vote of a slot in `(s, m]` at an earlier cut
-extends `B`, and either (i) `x` cast its slot-`(s+1)` vote at an earlier cut, and at the unlocking
-before that vote (the vote's call) `Φ.F` is compatible with `B`, or (ii) `x` restarted after
-`t_s`, at an earlier cut (not vacuous when `x`
-makes no unlocking in slot `s + 1`). Then the block `fg_confirmed ≠ ⊥` that
-the call returns is compatible with `B`. (The claims also assume a public time, compatibility of
-`Φ.F` and `fc_root` with `B` at the call, and of `fc_root` at the vote's call; none is
-needed.) -/
-def SourceCompatible : Prop :=
-  ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
-    sp.committeeSize = sp.n →
-    ACRun proposer tr H U → ∀ (s m : Nat) (w x : Fin sp.n) (i₀ i : Nat) (B : Blk sp.n FGP)
-      (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (C : Blk sp.n FGP),
-    w ∈ H → FastLockAt tr w i₀ s B CV →
-    SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr →
-    Carry tr H U s CV → 2 * Hᶜ.ncard < sp.n →
-    x ∈ H → ToFGAt tr x i ℓ C →
-    sp.ts (s + 1 : Nat) + sp.Δ < tr.time i → tr.time i ≤ sp.ts m + sp.Δ →
-    (∀ z ∈ H, ∀ j < i, ∀ e, VoteAt tr z j e → s < e.msg.slot → e.msg.slot ≤ m →
-      VoteExtends U e.msg B) →
-    ((∃ j < i, ∃ ℓ' e, CastAt tr x j ℓ' e ∧ e.msg.slot = s + 1 ∧ Compatible U ℓ'.frame.F B) ∨
-      (∃ k < i, tr.RestartAt x k ∧ sp.ts s < tr.time k)) →
-    Compatible U C B
-
 /-- The ACSteps statements, for the SA parameters `sp`. -/
 structure ACStepsAt : Prop where
   proposerVotersAgree : ProposerVotersAgree sp
@@ -231,7 +203,6 @@ structure ACStepsAt : Prop where
   optimisticNextUpdate : OptimisticNextUpdate sp
   sourceAge : SourceAge sp
   resultTransfer : ResultTransfer sp
-  sourceCompatible : SourceCompatible sp
 
 /-- **Milestone ACSteps**: the ACSteps statements for population-sized committees. -/
 def ACSteps : Prop := ∀ sp : SAParams, ACStepsAt sp

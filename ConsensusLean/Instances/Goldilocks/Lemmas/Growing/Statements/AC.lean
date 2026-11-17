@@ -85,13 +85,6 @@ theorem resultTransfer_of_growing (h : Growing.ResultTransfer sp) : ResultTransf
     h FGP ro (fun _ => H) U tr proposer (acRun_const.mpr hrun) s X y i₀ i C CV ℓ e hX hr hy hc hs
       hcarry hv hl hw
 
-theorem sourceCompatible_of_growing (h : Growing.SourceCompatible sp) : SourceCompatible sp :=
-  fun FGP ro H U tr proposer hstock hrun s m w x i₀ i B CV ℓ C hw hl hsync hcarry hf hx ht h1 h2
-      hall hcase =>
-    h FGP ro (fun _ => H) U tr proposer hstock (acRun_const.mpr hrun) s m w x i₀ i B CV ℓ C hw hl
-      (syncACAt_const.mpr hsync) ((carry_const _ _).mpr hcarry) hf hx ht h1 h2
-      (fun z j hj hz e hv hs1 hs2 => hall z hz j hj e hv hs1 hs2) hcase
-
 /-- The growing-fault ACSteps milestone implies the static one. -/
 theorem acSteps_of_growing (h : Growing.ACSteps) : ACSteps := fun sp =>
   { proposerVotersAgree := proposerVotersAgree_of_growing (h sp).proposerVotersAgree
@@ -100,8 +93,7 @@ theorem acSteps_of_growing (h : Growing.ACSteps) : ACSteps := fun sp =>
     optimisticTransfer := optimisticTransfer_of_growing (h sp).optimisticTransfer
     optimisticNextUpdate := optimisticNextUpdate_of_growing (h sp).optimisticNextUpdate
     sourceAge := sourceAge_of_growing (h sp).sourceAge
-    resultTransfer := resultTransfer_of_growing (h sp).resultTransfer
-    sourceCompatible := sourceCompatible_of_growing (h sp).sourceCompatible }
+    resultTransfer := resultTransfer_of_growing (h sp).resultTransfer }
 
 end Consensus.Goldilocks.SA
 

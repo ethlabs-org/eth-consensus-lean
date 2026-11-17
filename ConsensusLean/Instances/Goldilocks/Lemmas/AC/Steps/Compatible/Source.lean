@@ -41,8 +41,8 @@ private theorem toFG_some {FGP : Type} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t
     cases h
     exact ⟨(deepest_mem hC').1, hj, rfl⟩
 
-/-- **A1.9 for the stored block**: `SourceCompatible` for a fast lock on `D`, with every
-hypothesis and the conclusion about a block `B ⪯ D` (the block the lock stores,
+/-- **A1.9 for the stored block**: source compatibility after the cut for a fast lock on `D`,
+with every hypothesis and the conclusion about a block `B ⪯ D` (the block the lock stores,
 `Φ.viableAncestor D`). Only for population-sized committees (`committeeSize = n`). -/
 theorem source_compatible_stored :
     ∀ (FGP : Type) (ro : ReplayOrder sp FGP)
@@ -137,12 +137,6 @@ theorem source_compatible_stored :
       have hc' : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
       rw [hc'] at this
       linarith
-
-/-- **A1.9.** -/
-theorem source_compatible : SourceCompatible sp :=
-  fun FGP ro H U tr proposer hstk hrun s m w x i₀ i B CV ℓ C hw hfl =>
-    source_compatible_stored sp FGP ro proposer H U tr hstk hrun s m w x i₀ i B B CV ℓ C hw hfl
-      Relation.ReflTransGen.refl
 
 end Consensus.Goldilocks.SA
 

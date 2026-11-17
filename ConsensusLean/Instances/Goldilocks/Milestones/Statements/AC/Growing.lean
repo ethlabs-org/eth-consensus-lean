@@ -15,7 +15,7 @@ honest set `H` (antitone), over `Growing.ACLocalRun` / `SA.Growing.ACRun`:
   later of its proposal and the vote it is compared with;
 * every count is charged at the cut that performs it: `SA.FaultBoundAt tr H t t` at a vote
   (`f_t < h_t`), `2 f_t < n` at the voter's cut for the optimistic transfer, at the update's cut
-  for the next update, and at the `ac_to_fg` call for source compatibility; the honest voters of
+  for the next update; the honest voters of
   the next transfer are those honest at the voter's cut that voted in the slot while honest (a
   vote emitted after its voter's compromise is not an honest vote, whatever the voter's honesty
   at another time);
@@ -191,26 +191,6 @@ def ResultTransfer : Prop :=
       v ∈ (tr.state X i₀).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s}) →
     VoteExtends U e.msg C
 
-/-- **A1.9 under growing faults, source compatibility after the cut (per call).** The writer is
-honest at its write; `2f < n` is charged at the `ac_to_fg` call; the votes of slots in `(s, m]`
-are those of nodes honest at their votes. -/
-def SourceCompatible : Prop :=
-  ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
-    sp.committeeSize = sp.n →
-    ACRun proposer tr H U → ∀ (s m : Nat) (w x : Fin sp.n) (i₀ i : Nat) (B : Blk sp.n FGP)
-      (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (C : Blk sp.n FGP),
-    w ∈ H (tr.time i₀) → FastLockAt tr w i₀ s B CV →
-    SyncACAt (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr →
-    Carry tr H U s CV → 2 * (H (tr.time i))ᶜ.ncard < sp.n →
-    x ∈ H (tr.time i) → ToFGAt tr x i ℓ C →
-    sp.ts (s + 1 : Nat) + sp.Δ < tr.time i → tr.time i ≤ sp.ts m + sp.Δ →
-    (∀ z j, j < i → z ∈ H (tr.time j) → ∀ e, VoteAt tr z j e → s < e.msg.slot →
-      e.msg.slot ≤ m → VoteExtends U e.msg B) →
-    ((∃ j < i, ∃ ℓ' e, CastAt tr x j ℓ' e ∧ e.msg.slot = s + 1 ∧ Compatible U ℓ'.frame.F B) ∨
-      (∃ k < i, tr.RestartAt x k ∧ sp.ts s < tr.time k)) →
-    Compatible U C B
-
 /-- The ACSteps statements under growing faults, for the SA parameters `sp`. -/
 structure ACStepsAt : Prop where
   proposerVotersAgree : ProposerVotersAgree sp
@@ -220,7 +200,6 @@ structure ACStepsAt : Prop where
   optimisticNextUpdate : OptimisticNextUpdate sp
   sourceAge : SourceAge sp
   resultTransfer : ResultTransfer sp
-  sourceCompatible : SourceCompatible sp
 
 /-- **Milestone ACSteps under growing faults**, for population-sized committees. -/
 def ACSteps : Prop := ∀ sp : SAParams, ACStepsAt sp

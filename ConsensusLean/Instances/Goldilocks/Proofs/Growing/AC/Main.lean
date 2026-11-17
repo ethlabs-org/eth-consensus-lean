@@ -33,7 +33,6 @@ theorem acStepsAt (sp : SAParams) : ACStepsAt sp where
   resultTransfer := by
     intro FGP ro H U tr proposer hr s X y i₀ i C CV ℓ e hX hres hy hc hs hcarry hv hl hd
     exact result_transfer hr hX hres hy hc hs hcarry hv hl hd
-  sourceCompatible := source_compatible sp
 
 /-- The growing-fault ACSteps milestone. -/
 theorem acSteps : ACSteps := acStepsAt

@@ -142,11 +142,6 @@ theorem source_compatible_stored (sp : SAParams)
       rw [hcσ] at hh
       linarith
 
-theorem source_compatible (sp : SAParams) : SourceCompatible sp := by
-  intro FGP ro H U tr proposer hstk hrun s m w x i₀ i B CV ℓ C hw hfl
-  exact source_compatible_stored sp FGP ro proposer H U tr hstk hrun s m w x i₀ i B B CV ℓ C
-    hw hfl .refl
-
 end Consensus.Goldilocks.SA.Growing
 
 end
