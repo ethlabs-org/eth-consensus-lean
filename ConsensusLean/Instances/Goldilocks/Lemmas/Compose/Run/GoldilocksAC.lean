@@ -81,17 +81,18 @@ private theorem adds_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FG
 private theorem adds_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Adds A (tryVote sp x A Φ t).1 (fun v => ∃ e ∈ (tryVote sp x A Φ t).2, e.msg = v) := by
   unfold tryVote
-  dsimp only
-  split_ifs
+  lift_lets
+  extract_lets s V A₁ dom H A₂ vote A₃
+  have hA₂ : A₂.pool = A.pool := by simp only [A₂, A₁]; split <;> rfl
+  split_ifs with h₁ h₂ h₃
   · exact Adds.of_eq rfl
   · exact Adds.of_eq rfl
-  all_goals try exact Adds.of_eq rfl
-  all_goals
-    intro σ v hv
-    rw [SA.optimistic_pool_eq] at hv
+  · intro σ v hv
+    simp only [A₃, h₃, ↓reduceIte, SA.optimistic_pool_eq] at hv
     rcases adds_admitVote _ _ _ σ v hv with h | h
-    · exact Or.inl h
+    · exact Or.inl (hA₂ ▸ h)
     · exact Or.inr ⟨_, List.mem_singleton_self _, h.symm⟩
+  · exact Adds.of_eq (by simpa only [A₃, h₃, Bool.false_eq_true, ↓reduceIte] using hA₂)
 
 /-- An emitted own vote enters its pool when no vote of its signer was present
 at the `tryVote` input. In particular, the two-vote cap cannot reject it. -/
@@ -100,12 +101,16 @@ theorem tryVote_emission_mem_pool (x : Fin sp.n) (A : SAState sp.n)
     (he : e ∈ (tryVote sp x A Φ t).2)
     (hf : ∀ m ∈ A.pool e.msg.slot, m.val ≠ x) :
     e.msg ∈ (tryVote sp x A Φ t).1.pool e.msg.slot := by
-  unfold tryVote at he ⊢
-  dsimp only at he ⊢
-  split_ifs at he ⊢ <;> simp only [List.not_mem_nil, List.mem_singleton] at he
+  revert he
+  unfold tryVote
+  lift_lets
+  extract_lets s V A₁ dom H A₂ vote A₃
+  split_ifs with h₁ h₂ h₃ <;> intro he <;>
+    simp only [List.not_mem_nil, List.mem_singleton] at he
+  subst e
+  simp only [A₃, h₃, ↓reduceIte, SA.optimistic_pool_eq, A₂, A₁, vote, s]
+  split
   all_goals
-    subst e
-    rw [SA.optimistic_pool_eq]
     have hfilter : (A.pool (sp.slot t)).filter (fun m => m.val = x) = [] := by
       apply List.filter_eq_nil_iff.mpr
       intro m hm

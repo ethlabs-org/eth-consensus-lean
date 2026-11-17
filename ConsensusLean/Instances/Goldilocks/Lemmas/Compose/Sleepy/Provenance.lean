@@ -119,24 +119,21 @@ private theorem good_tryVote (hΦ : FrameOK Φ) (hD : Down Φ G) (x : Fin sp.n)
     Good R G (SA.tryVote sp x A Φ t).1 := by
   revert hnew
   unfold SA.tryVote
-  dsimp only
-  by_cases hp : A.mayVote (sp.slot t) = true
-  swap
-  · simp only [hp]
-    split_ifs <;> intro hnew <;> first
-      | contradiction
-      | exact h
-      | exact ⟨h.1, good_movesBack hD ((SA.locks_move_back sp FGP Φ A.locks t hΦ).2.2 _ _) h.2⟩
-  simp only [hp, ↓reduceIte]
-  split_ifs <;> intro hnew
+  lift_lets
+  extract_lets s V A₁ dom H A₂ vote A₃
+  have hA₁ : Good R G A₁ := by
+    simp only [A₁]
+    split
+    · exact ⟨h.1, good_movesBack hD ((SA.locks_move_back sp FGP Φ A.locks t hΦ).2.2 _ _) h.2⟩
+    · exact h
+  have hA₂ : Good R G A₂ := hA₁
+  split_ifs with h₁ h₂ h₃ <;> intro hnew
   · exact h
   · exact h
-  all_goals
-    simp only [List.mem_singleton, forall_eq] at hnew
-    refine good_optimistic hΦ hD (good_admitVote ?_ _ _) hnew
-    first
-      | exact h
-      | exact ⟨h.1, good_movesBack hD ((SA.locks_move_back sp FGP Φ A.locks t hΦ).2.2 _ _) h.2⟩
+  · simp only [List.mem_singleton, forall_eq] at hnew
+    simp only [A₃, h₃, ↓reduceIte]
+    exact good_optimistic hΦ hD (good_admitVote hA₂ _ _) hnew
+  · simpa only [A₃, h₃, Bool.false_eq_true, ↓reduceIte] using hA₂
 
 private theorem good_updateConfirmation (hΦ : FrameOK Φ) (hD : Down Φ G) {A : SA.SAState sp.n}
     (h : Good R G A) {t : Time} {s : Nat}

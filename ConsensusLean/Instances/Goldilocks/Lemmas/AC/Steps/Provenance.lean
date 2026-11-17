@@ -116,14 +116,18 @@ private theorem FromP.of_tryVote
         ∃ e ∈ (tryVoteWithM sp wm x L A Φ t).2, f = true ∧ s = sp.slot t ∧
           optimisticSelect sp (admitVote sp e.readPoint t e.msg) Φ t = some D) := by
   unfold tryVoteWithM
-  dsimp only
   by_cases hp : A.mayVote (sp.slot t) = true
   swap
-  · simp only [hp]
-    split_ifs <;> first
-      | contradiction
-      | exact FromP.of_eq rfl
-      | exact FromP.of_movesBack hΦU (hL.movesBack hΦ)
+  · lift_lets
+    extract_lets s V A₁ dom H A₂ vote A₃
+    split_ifs
+    · exact FromP.of_eq rfl
+    · exact FromP.of_eq rfl
+    simp only [A₃, A₂, A₁, s, hp, Bool.false_eq_true, ↓reduceIte]
+    split
+    · exact FromP.of_movesBack hΦU (hL.movesBack hΦ)
+    · exact FromP.of_eq rfl
+  dsimp only
   simp only [hp, ↓reduceIte]
   by_cases h1 : ¬ joined sp A t ∨ A.votedSlot = sp.slot t ∨ sp.ts (sp.slot t) + sp.Δ < t
   · rw [ite_eq_left h1]
