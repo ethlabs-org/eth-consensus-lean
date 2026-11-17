@@ -8,8 +8,10 @@ former sorry declarations; compiled dependency edges determine their current sta
 The ledger records `audit_source_tree`, the Git tree hash of `ConsensusLean/` as checked out when the
 audit ran, uncommitted edits included. It equals `git rev-parse <commit>:ConsensusLean` for every commit
 with that Lean source, so it survives rebases and message-only successors, which a commit hash does not.
-The commit SHA in a proved row's audit evidence is the generator's pre-landing HEAD and may not resolve
-after message-only successors.
+A proved row outside REFRESH has the evidence "compiled audit at <sha>", naming the generator's HEAD
+at the audit that first found it proved; such a SHA may be pre-landing or older than this repository's
+root, and need not resolve. When the checked-out `ConsensusLean/` differs from `HEAD:ConsensusLean`,
+the run says so on stderr.
 """
 import argparse
 import json
@@ -363,7 +365,11 @@ def main : IO Unit := do
                 and row.get('evidence') == RATINGS[short][1])):
             row.pop('evidence')
         rows.append(row)
-    result = {'schema_version': 3, 'audit_source_tree': source_tree(), 'baseline_commit': baseline,
+    tree = source_tree()
+    if tree != run('git', 'rev-parse', 'HEAD:ConsensusLean').strip():
+        print('note: ConsensusLean/ has uncommitted changes; audit_source_tree matches no commit until they '
+              'are committed', file=sys.stderr)
+    result = {'schema_version': 3, 'audit_source_tree': tree, 'baseline_commit': baseline,
               'notes': ['blocked-by contains transitive compiled sorry owners, not speculative paper joins.',
                         'lean-proved means the full dependency closure is sorry-free.',
                         'Historical removed declarations are listed separately, not counted as proved.',

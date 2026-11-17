@@ -1,5 +1,7 @@
 """Regression tests for status selection (the dependency audit remains authoritative)."""
+import contextlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -20,11 +22,12 @@ class StatusTests(unittest.TestCase):
     PREFIX = 'Consensus.Goldilocks.'
 
     def regenerate(self, names, sorry, dependencies, prior, head='fixture-pin', prior_rows=None,
-                   historical=None, document=False):
+                   historical=None, document=False, tree=None):
         """Run `main` on a one-file fixture: every name was a historical sorry, `sorry` are the
         current ones, `dependencies` the compiled edges, `prior` the previous rows (or
         `prior_rows`, whole rows with their own names); return rows (or, with `document`, the
-        ledger). `historical` replaces the fixture as the historical blob."""
+        ledger). `historical` replaces the fixture as the historical blob; `tree` is the audited
+        source tree, by default `HEAD:ConsensusLean` (`fixture-tree`, distinct from `head`)."""
         prefix = self.PREFIX
         source = 'namespace ' + prefix[:-1] + '\n' + '\n'.join(
             'theorem ' + n + ' : True := by ' + ('sorry' if n in sorry else 'trivial')
@@ -36,6 +39,8 @@ class StatusTests(unittest.TestCase):
                      [prefix + d for d in dependencies.get(n, [])]} for n in names]
 
         def run(*args):
+            if args == ('git', 'rev-parse', 'HEAD:ConsensusLean'):
+                return 'fixture-tree\n'
             if args[:2] == ('git', 'rev-parse'):
                 return head + '\n'
             if args[:2] == ('git', 'ls-tree'):
@@ -62,7 +67,7 @@ class StatusTests(unittest.TestCase):
                 ledger.write_text(json.dumps({'rows': prior_rows}))
                 with patch.object(status, 'run', side_effect=run), \
                         patch.object(status.subprocess, 'run'), \
-                        patch.object(status, 'source_tree', return_value='fixture-tree'), \
+                        patch.object(status, 'source_tree', return_value=tree or 'fixture-tree'), \
                         patch('sys.argv', ['obligations-status.py']):
                     status.main()
                 result = json.loads(ledger.read_text())
@@ -136,15 +141,28 @@ class StatusTests(unittest.TestCase):
         self.assertEqual(ledger['audit_source_tree'], 'fixture-tree')
         self.assertNotIn('audit_commit', ledger)
 
+    def test_notice_when_the_audited_source_is_not_committed(self):
+        # a recorded tree that differs from HEAD:ConsensusLean (uncommitted edits) is reported once
+        # the comparison is with HEAD:ConsensusLean, not with the commit `head` (`fixture-pin`)
+        for tree, noticed in (('fixture-tree', False), ('fixture-pin', True), ('fixture-dirty', True)):
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                ledger = self.regenerate(['a'], set(), {}, lambda n: {}, tree=tree, document=True)
+            self.assertEqual(ledger['audit_source_tree'], tree)
+            self.assertEqual('matches no commit' in err.getvalue(), noticed)
+
     def test_source_tree_is_the_checked_out_lean_source(self):
         # the recorded tree includes uncommitted edits and equals <commit>:ConsensusLean once they are
         # committed, whatever the commit message; files outside ConsensusLean/ do not change it
+        # isolated from the user's and the system's Git configuration (signing, hooks, untracked display)
         cwd = os.getcwd()
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.dict(os.environ, {'GIT_CONFIG_GLOBAL': '/dev/null', 'GIT_CONFIG_NOSYSTEM': '1'}):
             try:
                 os.chdir(directory)
-                git = lambda *a: subprocess.check_output(('git', '-c', 'user.name=t', '-c', 'user.email=t@t',
-                                                          *a), text=True).strip()
+                git = lambda *a: subprocess.check_output(
+                    ('git', '-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', *a),
+                    text=True).strip()
                 git('init', '-q')
                 Path('ConsensusLean').mkdir()
                 Path('ConsensusLean/A.lean').write_text('a\n')
@@ -157,7 +175,7 @@ class StatusTests(unittest.TestCase):
                 Path('notes.md').write_text('changed\n')
                 edited = status.source_tree()
                 self.assertNotEqual(edited, git('rev-parse', 'HEAD:ConsensusLean'))
-                self.assertEqual(git('status', '--porcelain', '--', 'ConsensusLean'),
+                self.assertEqual(git('status', '--porcelain', '-uall', '--', 'ConsensusLean'),
                                  'M ConsensusLean/A.lean\n?? ConsensusLean/B.lean')
                 git('add', '-A')
                 git('commit', '-qm', 'second')
@@ -265,6 +283,8 @@ class StatusTests(unittest.TestCase):
         records += [{'declaration': p, 'dependencies': []} for p in privates.values()]
 
         def run(*args):
+            if args == ('git', 'rev-parse', 'HEAD:ConsensusLean'):
+                return 'fixture-tree\n'
             if args[:2] == ('git', 'rev-parse'):
                 return 'fixture-pin\n'
             if args[:2] == ('git', 'ls-tree'):
