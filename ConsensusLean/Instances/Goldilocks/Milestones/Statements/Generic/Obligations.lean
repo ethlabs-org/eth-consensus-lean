@@ -125,7 +125,6 @@ structure ACRun (A : NodeAC P) (sg : A.Msg → Fin P.n) where
   Run : (Time → Finset (Fin P.n)) → (Nat → Fin P.n) →
     Digest (List (FG.Att P.n)) A.Payload → (Time → Set (Fin P.n)) → RunTrace A → Prop
   start : (Time → Finset (Fin P.n)) → Fin P.n → A.State
-  start_univ : start (fun _ => Finset.univ) = fun _ => A.initial
   run_local : ∀ {cm proposer dg H tr}, Run cm proposer dg H tr →
     Growing.LocalRun proposer dg H sg tr (start cm)
   /-- Requirements hold at every node's actual committee start. -/

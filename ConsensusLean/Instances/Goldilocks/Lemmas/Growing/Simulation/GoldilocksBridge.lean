@@ -37,11 +37,6 @@ noncomputable def goldilocksRunInterface (sp : SAParams)
     (∀ s, ((dictOfTime sp cm).committee s).ncard = sp.committeeSize) ∧
     (Compose.NoCollRun dg tr → Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm))
   start cm := SA.committeeStart sp.genesisRoot (dictOfTime sp cm)
-  start_univ := by
-    have h : dictOfTime sp (fun _ => Finset.univ) = SA.CommitteeDict.full sp.n := by
-      simp [dictOfTime, SA.CommitteeDict.full]
-    rw [h]
-    exact SA.committeeStart_full _
   run_local h := h.1.toLocalRun
   run_requirements h y := Compose.requirements_from sp ro (h.1.vstart y)
   run_root h := h.1.genesis_root_ok
