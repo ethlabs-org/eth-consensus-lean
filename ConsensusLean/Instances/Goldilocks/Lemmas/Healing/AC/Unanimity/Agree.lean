@@ -19,7 +19,7 @@ is the only slot-`p` block of the honest frames (`one_block`). A child of slot b
 voter block tree was accepted before the vote freeze, so it reached the proposer by `t_p`; an
 eligible child of slot below `p` of the proposer's tree has a strict majority of the voters,
 all honest validators among them (`Healthy`), so an honest supporter, and reached the voter
-before the freeze (`trivial_viable`); the scores and eligibility agree by `view_agree`. `P` has
+before the freeze (`trivial_viableU`); the scores and eligibility agree by `view_agree`. `P` has
 no supporters in either view. -/
 
 namespace Consensus.Goldilocks.SA
@@ -536,7 +536,7 @@ private theorem supported_viableU
       exact absurd this (by simp)
 
 /-- A child with a strict majority in the proposal's view is in the voter's viable voter block
-tree: its honest supporter's slot-`s` vote extends it (`trivial_viable`). -/
+tree: its honest supporter's slot-`s` vote extends it (`trivial_viableU`). -/
 private theorem supported_viable {s : Nat}
     (hs : UnanimitySettingCore tr H U schedule g (s + 1) P k ℓp d pay) {x : Fin sp.n} (hx : x ∈ H)
     {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr x j ℓ e)

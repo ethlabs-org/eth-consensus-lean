@@ -13,8 +13,8 @@ public section
 
 /-! # Goldilocks Healing: the confirmed tip after an honest proposal, the first update
 
-The first part of the helpers of `proposal_confirmed` (`Confirmed`): the late honest votes held
-at a call, `proposal_mem_tree`, the comparison of honest votes and locks with `P`
+The first part of the helpers of `proposal_confirmed_core_fromU` (`Confirmed`): the late honest
+votes held at a call, `proposal_mem_tree`, the comparison of honest votes and locks with `P`
 (`lock_compatible`, `liveLock_compatible`) and the first update at `t_p + 6Δ`
 (`first_update_post`, `first_update_record`). -/
 

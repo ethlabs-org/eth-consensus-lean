@@ -13,15 +13,15 @@ The same argument applies at a proposal, over a `StandaloneRun`: the arguments a
 supplies their premises under trivial frames:
 
 * (V) a block an honest node accepted before `t_σ + 3Δ` is accepted by the proposer by relay
-  (`proposal_accept`), so it is in its tree, which is all viable (`TrivialFrames`);
-* (P) the honest slot-`σ` votes (`honest_vote_at_proposal`) and the counted votes of an update
-  (`counted_at_proposal`) are held by the proposer, with heads in its tree accepted before it;
+  (`proposal_acceptU`), so it is in its tree, which is all viable (`TrivialFrames`);
+* (P) the honest slot-`σ` votes (`honest_vote_at_proposalU`) and the counted votes of an update
+  (`counted_at_proposalU`) are held by the proposer, with heads in its tree accepted before it;
 * (W) from `Sync` after `ḡ` (`writer_pool_proposal`);
 * (L) the stored locks of slot `≥ σ` are optimistic (`proposal_high_lock`), compatible by the
   votes after the origin and same-slot compatibility for slot `σ`; for a slow origin, the older
   live locks by same-slot compatibility against the writer's saved results.
 
-`proposals_extend_of_origin` assembles them for H.1's `origin_transfer_proposals`, given that the
+`proposals_extend_of_originU` assembles them for H.1's `origin_transfer_proposalsU`, given that the
 votes after the origin extend `B`. -/
 
 namespace Consensus.Goldilocks.SA
@@ -35,7 +35,8 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 `x` makes the proposal at cut `i`, at `t_{σ+1}`, with `ḡ + 4Δ ≤ t_σ`. -/
 
-/-- `proposal_forward` with the unlock given. -/
+/-- A vote that an honest node sent or admitted in `[t_σ, t_σ + 3Δ)` reaches the proposer:
+it holds it, or two other votes of its validator, with the unlock given. -/
 theorem proposal_forwardU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {x : Fin sp.n} (hx : x ∈ H) {i σ : Nat}
@@ -54,20 +55,8 @@ theorem proposal_forwardU
       rw [slot_of_mem sp σ (h₁.trans ht₁) (by rw [hts]; linarith), hvs]; omega
   rwa [hvs] at this
 
-/-- A vote that an honest node sent or admitted in `[t_σ, t_σ + 3Δ)` reaches the proposer:
-it holds it, or two other votes of its validator. -/
-theorem proposal_forward (hS : StandaloneRun tr H U proposer g)
-    {x : Fin sp.n} (hx : x ∈ H) {i σ : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
-    (ht : tr.time i = sp.ts (σ + 1 : Nat)) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {z : Fin sp.n}
-    (hz : z ∈ H) {k : Nat} {v : Vote sp.n} (hsend : tr.SendOrAdmit z k v) (hvs : v.slot = σ)
-    (h₁ : sp.ts σ ≤ tr.time k) (h₂ : tr.time k < sp.ts σ + 3 * sp.Δ) :
-    v ∈ (tr.state x i).pool σ ∨ v.val ∈ equivocators {w | w ∈ (tr.state x i).pool σ} :=
-  proposal_forwardU (hS := hS.toU) (x := x) (hx := hx) (i := i) (σ := σ) (ℓ := ℓ) (hc := hc)
-      (ht := ht) (hσ := hσ) (z := z) (hz := hz) (k := k) (v := v) (hsend := hsend) (hvs := hvs)
-          (h₁ := h₁) (h₂ := h₂)
-
-/-- `proposal_accept` with the unlock given. -/
+/-- A block (extending `Φ.F`) that an honest node accepted before `t_σ + 3Δ` is accepted by the
+proposer before its proposal, so it is in its tree, with the unlock given. -/
 theorem proposal_acceptU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {x : Fin sp.n} (hx : x ∈ H) {i σ : Nat}
@@ -83,20 +72,8 @@ theorem proposal_acceptU
     (by rw [ht, hts]; linarith) hF
   exact ⟨k', lt_of_le_of_ne hk'i (by rintro rfl; rw [ht, hts] at hlt; linarith), hacc'⟩
 
-/-- A block (extending `Φ.F`) that an honest node accepted before `t_σ + 3Δ` is accepted by the
-proposer before its proposal, so it is in its tree. -/
-theorem proposal_accept (hS : StandaloneRun tr H U proposer g)
-    {x : Fin sp.n} (hx : x ∈ H) {i σ : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
-    (ht : tr.time i = sp.ts (σ + 1 : Nat)) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {z : Fin sp.n}
-    (hz : z ∈ H) {k : Nat} {X : Blk sp.n FGP} (hacc : tr.AcceptAt z k X)
-    (hk : tr.time k < sp.ts σ + 3 * sp.Δ) (hF : Anc U ℓ.frame.F X) :
-    ∃ k' < i, tr.AcceptAt x k' X :=
-  proposal_acceptU (hS := hS.toU) (x := x) (hx := hx) (i := i) (σ := σ) (ℓ := ℓ) (hc := hc)
-      (ht := ht) (hσ := hσ) (z := z) (hz := hz) (k := k) (X := X) (hacc := hacc) (hk := hk)
-          (hF := hF)
-
-/-- `trivial_mem_tree` with the unlock given. -/
+/-- Under trivial frames, a block of `U` is in an honest node's tree when it is genesis or
+accepted by the node by then, with the unlock given. -/
 theorem trivial_mem_treeU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -110,16 +87,8 @@ theorem trivial_mem_treeU
     exact hΦ.rooted.1
   · rw [htree]; exact Set.mem_insert_of_mem _ h
 
-/-- Under trivial frames, a block of `U` is in an honest node's tree when it is genesis or
-accepted by the node by then. -/
-theorem trivial_mem_tree (hS : StandaloneRun tr H U proposer g)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) {X : Blk sp.n FGP} (hX : X ∈ U)
-    (h : X.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k X) : X ∈ ℓ.frame.tree :=
-  trivial_mem_treeU (hS := hS.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (hc := hc) (X := X)
-      (hX := hX) (h := h)
-
-/-- `vote_head_accepted` with the unlock given. -/
+/-- An honest vote's head, and every ancestor `X` of it, extends `Φ.F` (at every honest call)
+and is genesis or a block the voter accepted by its vote, with the unlock given. -/
 theorem vote_head_acceptedU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {z : Fin sp.n} (hz : z ∈ H) {j : Nat}
@@ -148,18 +117,6 @@ theorem vote_head_acceptedU
   rw [trivial_F_eqU hS hy hz hc' hc]
   exact (hΦ.rooted.2 X (trivial_mem_treeU hS hz hc hXU hacc)).mono hΦU
 
-/-- An honest vote's head, and every ancestor `X` of it, extends `Φ.F` (at every honest call)
-and is genesis or a block the voter accepted by its vote. -/
-theorem vote_head_accepted (hS : StandaloneRun tr H U proposer g)
-    {z : Fin sp.n} (hz : z ∈ H) {j : Nat}
-    {e : Em sp FGP} (hv : VoteAt tr z j e) {X Hd : Blk sp.n FGP} (hHd : Hd ∈ U)
-    (hHdr : Hd.root = e.msg.head) (hX : Anc U X Hd) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ' : ACLabel (goldilocksSA sp FGP ro)} (hc' : tr.CallAt y i ℓ') :
-    Anc U ℓ'.frame.F X ∧ (X.root = sp.genesisRoot ∨ ∃ k ≤ j, tr.AcceptAt z k X) :=
-  vote_head_acceptedU (hS := hS.toU) (z := z) (hz := hz) (j := j) (e := e) (hv := hv) (X := X)
-      (Hd := Hd) (hHd := hHd) (hHdr := hHdr) (hX := hX) (y := y) (hy := hy) (i := i) (ℓ' := ℓ')
-          (hc' := hc')
-
 /-! ## The premises of `ProposalCore` under trivial frames -/
 
 private theorem compat_down (hU : Coherent U) {B X Y : Blk sp.n FGP} (hXY : Anc U X Y)
@@ -168,20 +125,16 @@ private theorem compat_down (hU : Coherent U) {B X Y : Blk sp.n FGP} (hXY : Anc 
   · exact Or.inl (hXY.trans h)
   · exact anc_total hU hXY h
 
-/-- `restart_before` with the unlock given. -/
+/-- The restarts of an honest node are at or before `ḡ`, so before `t_σ` for `σ ≥ r`, with the
+unlock given. -/
 private theorem restart_beforeU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {z : Fin sp.n} (hz : z ∈ H)
     {σ : Nat} (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {k : Nat} (hrk : tr.RestartAt z k) :
     tr.time k < sp.ts σ :=
   lt_of_le_of_lt (hS.restart_le hz hrk) (by have := sp.toParams.hΔ; linarith)
 
-/-- The restarts of an honest node are at or before `ḡ`, so before `t_σ` for `σ ≥ r`. -/
-private theorem restart_before (hS : StandaloneRun tr H U proposer g) {z : Fin sp.n} (hz : z ∈ H)
-    {σ : Nat} (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {k : Nat} (hrk : tr.RestartAt z k) :
-    tr.time k < sp.ts σ :=
-  restart_beforeU (hS := hS.toU) (z := z) (hz := hz) (σ := σ) (hσ := hσ) (k := k) (hrk := hrk)
-
-/-- `trivial_writer_pool` with the unlock given. -/
+/-- (W) under `StandaloneRun`: `Sync` from `ḡ` and restarts at or before `ḡ`, with the unlock
+given. -/
 private theorem trivial_writer_poolU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {X : Fin sp.n} (hX : X ∈ H)
@@ -194,18 +147,8 @@ private theorem trivial_writer_poolU
     (hS.syncAC (by have := sp.toParams.hΔ; linarith) _)
     (fun _ _ hrk => (restart_beforeU hS hX hσ hrk).le) fun _ _ hrk => restart_beforeU hS hx hσ hrk
 
-/-- (W) under `StandaloneRun`: `Sync` from `ḡ` and restarts at or before `ḡ`. -/
-private theorem trivial_writer_pool (hS : StandaloneRun tr H U proposer g)
-    {X : Fin sp.n} (hX : X ∈ H)
-    {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ σ ℓX)
-    (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
-    (ht : tr.time i = sp.ts (σ + 1 : Nat)) :
-    ∀ v ∈ (tr.state x i).pool σ, v ∈ (tr.state X i₀).pool σ ∨
-      v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool σ} :=
-  trivial_writer_poolU (hS := hS.toU) (X := X) (hX := hX) (i₀ := i₀) (σ := σ) (ℓX := ℓX)
-      (hupd := hupd) (hσ := hσ) (x := x) (hx := hx) (i := i) (ht := ht)
-
-/-- `trivial_stamp` with the unlock given. -/
+/-- A block of an honest proposer's tree that is genesis or accepted before the proposal has a
+finite stamp there, with the unlock given. -/
 private theorem trivial_stampU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
@@ -219,17 +162,7 @@ private theorem trivial_stampU
     (fun k hk _ => lt_of_le_of_lt (hr.time_mono hk) (lt_add_one _))
     (Or.inr (by rw [hcall]; exact fun h => by cases h))) (etime_of_lt_top _)
 
-/-- A block of an honest proposer's tree that is genesis or accepted before the proposal has a
-finite stamp there. -/
-private theorem trivial_stamp (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
-    {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
-    (hcall : ℓ.call = .proposal) {R : Blk sp.n FGP} (hR : R ∈ ℓ.frame.tree)
-    (hacc : R.root = sp.genesisRoot ∨ ∃ k < i, tr.AcceptAt x k R) :
-    (tr.state x i).blockStamp R.root < ⊤ :=
-  trivial_stampU (hS := hS.toU) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc) (hcall := hcall)
-      (R := R) (hR := hR) (hacc := hacc)
-
-/-- `trivial_viable_at` with the unlock given. -/
+/-- (V) under trivial frames: every block of the tree is viable, with the unlock given. -/
 private theorem trivial_viable_atU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) {B : Blk sp.n FGP}
@@ -240,15 +173,9 @@ private theorem trivial_viable_atU
   exact ⟨hB, Or.inl ⟨hB, by rw [hfc]; exact hΦ.rooted.2 B hB, B, hB, by rw [hvh]; exact hB,
     Relation.ReflTransGen.refl⟩⟩
 
-/-- (V) under trivial frames: every block of the tree is viable. -/
-private theorem trivial_viable_at (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
-    {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) {B : Blk sp.n FGP}
-    (hB : B ∈ ℓ.frame.tree) :
-    B ∈ ℓ.frame.tree ∧ (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot) :=
-  trivial_viable_atU (hS := hS.toU) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc) (B := B)
-      (hB := hB)
-
-/-- `honest_vote_at_proposal` with the unlock given. -/
+/-- An honest slot-`σ` vote (`σ ≥ r`) reaches an honest proposal of slot `σ + 1`, and its head
+and every ancestor of it in `U` are in the proposer's tree, accepted before the proposal, with the
+unlock given. -/
 theorem honest_vote_at_proposalU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
@@ -281,18 +208,9 @@ theorem honest_vote_at_proposalU
       (lt_of_le_of_lt (hr.time_mono hkj) (by linarith)) hF
   exact ⟨trivial_mem_treeU hS hx hc hXU (hacc'.imp id fun ⟨k, hk, h⟩ => ⟨k, hk.le, h⟩), hacc'⟩
 
-/-- An honest slot-`σ` vote (`σ ≥ r`) reaches an honest proposal of slot `σ + 1`, and its head
-and every ancestor of it in `U` are in the proposer's tree, accepted before the proposal. -/
-theorem honest_vote_at_proposal (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
-    {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
-    (ht : tr.time i = sp.ts (σ + 1 : Nat)) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {w : Fin sp.n}
-    (hw : w ∈ H) {j : Nat} {e : Em sp FGP} (hv : VoteAt tr w j e) (hes : e.msg.slot = σ) :
-    e.msg ∈ (tr.state x i).pool σ ∧ ∀ X Hd : Blk sp.n FGP, Hd ∈ U → Hd.root = e.msg.head →
-      Anc U X Hd → X ∈ ℓ.frame.tree ∧ (X.root = sp.genesisRoot ∨ ∃ k < i, tr.AcceptAt x k X) :=
-  honest_vote_at_proposalU (hS := hS.toU) (x := x) (hx := hx) (i := i) (σ := σ) (ℓ := ℓ)
-      (hc := hc) (ht := ht) (hσ := hσ) (w := w) (hw := hw) (j := j) (e := e) (hv := hv) (hes := hes)
-
-/-- `early_block_at_proposal` with the unlock given. -/
+/-- A block that an honest node had in its tree at a call before `t_σ + 3Δ` (or genesis), and
+every ancestor of it, is in the tree of an honest proposal of slot `σ + 1`, genesis or accepted
+before it, with the unlock given. -/
 theorem early_block_at_proposalU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
@@ -329,20 +247,10 @@ theorem early_block_at_proposalU
         (lt_of_le_of_lt (hr.time_mono hk') ht₁) hF
       exact ⟨trivial_mem_treeU hS hx hc hYU (Or.inr ⟨k, hk.le, hacc'⟩), Or.inr ⟨k, hk, hacc'⟩⟩
 
-/-- A block that an honest node had in its tree at a call before `t_σ + 3Δ` (or genesis), and
-every ancestor of it, is in the tree of an honest proposal of slot `σ + 1`, genesis or accepted
-before it. -/
-theorem early_block_at_proposal (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
-    {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
-    (ht : tr.time i = sp.ts (σ + 1 : Nat)) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {R : Blk sp.n FGP}
-    (hR : R ∈ U) (hRe : R.root = sp.genesisRoot ∨ ∃ z ∈ H, ∃ k₁ ℓ₁, tr.CallAt z k₁ ℓ₁ ∧
-      tr.time k₁ < sp.ts σ + 3 * sp.Δ ∧ R ∈ ℓ₁.frame.tree) {Y : Blk sp.n FGP}
-    (hYR : Anc U Y R) :
-    Y ∈ ℓ.frame.tree ∧ (Y.root = sp.genesisRoot ∨ ∃ k < i, tr.AcceptAt x k Y) :=
-  early_block_at_proposalU (hS := hS.toU) (x := x) (hx := hx) (i := i) (σ := σ) (ℓ := ℓ)
-      (hc := hc) (ht := ht) (hσ := hσ) (R := R) (hR := hR) (hRe := hRe) (Y := Y) (hYR := hYR)
-
-/-- `counted_at_proposal` with the unlock given. -/
+/-- **A counted vote at the proposal** (A1.8 (c) at the proposal duty): a vote that an honest
+update of slot `σ` counts for a block `E` (`fastCounted`, resolved before `t_σ + 2Δ`) is held by
+an honest proposer of slot `σ + 1`, whose view does not show its validator equivocating; its
+head extends `E` and is, with its ancestors, in the proposer's tree, with the unlock given. -/
 theorem counted_at_proposalU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {X : Fin sp.n} (hX : X ∈ H)
     {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ σ ℓX)
@@ -400,25 +308,8 @@ theorem counted_at_proposalU
       hU.1 ((frameIn_of_callAtU hr hX hc₁).2 hR'₁) (hΦXU hR) hR'r
     exact Or.inr ⟨X, hX, k₁, ℓ₁, hc₁, by linarith, hR'₁⟩
 
-/-- **A counted vote at the proposal** (A1.8 (c) at the proposal duty): a vote that an honest
-update of slot `σ` counts for a block `E` (`fastCounted`, resolved before `t_σ + 2Δ`) is held by
-an honest proposer of slot `σ + 1`, whose view does not show its validator equivocating; its
-head extends `E` and is, with its ancestors, in the proposer's tree. -/
-theorem counted_at_proposal (hS : StandaloneRun tr H U proposer g) {X : Fin sp.n} (hX : X ∈ H)
-    {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ σ ℓX)
-    (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
-    (ht : tr.time i = sp.ts (σ + 1 : Nat)) {E : Blk sp.n FGP} {v : Vote sp.n}
-    (hv : v ∈ fastCounted sp (tr.state X i₀) ℓX.frame σ E) :
-    v.slot = σ ∧ v ∈ (tr.state x i).pool σ ∧
-      v.val ∉ equivocators (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)).votes ∧
-      ∃ R ∈ U, R.root = v.head ∧ R.slot ≤ σ ∧ Anc U E R ∧ ∀ Y, Anc U Y R →
-        Y ∈ ℓ.frame.tree ∧ (Y.root = sp.genesisRoot ∨ ∃ k < i, tr.AcceptAt x k Y) :=
-  counted_at_proposalU (hS := hS.toU) (X := X) (hX := hX) (i₀ := i₀) (σ := σ) (ℓX := ℓX)
-      (hupd := hupd) (hσ := hσ) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc) (ht := ht)
-          (E := E) (v := v) (hv := hv)
-
-/-- `result_block_at_proposal` with the unlock given. -/
+/-- An ancestor of an honest result of slot `σ` is in the tree of an honest proposal of slot
+`σ + 1` (below the head of a counted vote), with the unlock given. -/
 theorem result_block_at_proposalU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {X : Fin sp.n} (hX : X ∈ H)
     {i₀ σ : Nat} {C : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hres : ResultAt tr X i₀ σ C CV)
@@ -433,19 +324,8 @@ theorem result_block_at_proposalU
   obtain ⟨-, -, -, R, -, -, -, hCR, hacc⟩ := counted_at_proposalU hS hX hupd hσ hx hc ht hv
   exact (hacc B (hBC.trans hCR)).1
 
-/-- An ancestor of an honest result of slot `σ` is in the tree of an honest proposal of slot
-`σ + 1` (below the head of a counted vote). -/
-theorem result_block_at_proposal (hS : StandaloneRun tr H U proposer g) {X : Fin sp.n} (hX : X ∈ H)
-    {i₀ σ : Nat} {C : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hres : ResultAt tr X i₀ σ C CV)
-    (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
-    (ht : tr.time i = sp.ts (σ + 1 : Nat)) {B : Blk sp.n FGP} (hBC : Anc U B C) :
-    B ∈ ℓ.frame.tree :=
-  result_block_at_proposalU (hS := hS.toU) (X := X) (hX := hX) (i₀ := i₀) (σ := σ) (C := C)
-      (CV := CV) (hres := hres) (hσ := hσ) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc)
-          (ht := ht) (B := B) (hBC := hBC)
-
-/-- `trivial_counted_held` with the unlock given. -/
+/-- (P) for the counted votes of an honest update of slot `σ ≥ r` under trivial frames, with the
+unlock given. -/
 private theorem trivial_counted_heldU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {X : Fin sp.n} (hX : X ∈ H)
@@ -460,20 +340,8 @@ private theorem trivial_counted_heldU
   obtain ⟨hRt, hRacc⟩ := hacc R Relation.ReflTransGen.refl
   exact heldAtProposal_iff.2 ⟨Or.inl hheld, R, hRt, hRr, trivial_stampU hS hx hc hcall hRt hRacc⟩
 
-/-- (P) for the counted votes of an honest update of slot `σ ≥ r` under trivial frames. -/
-private theorem trivial_counted_held (hS : StandaloneRun tr H U proposer g)
-    {X : Fin sp.n} (hX : X ∈ H)
-    {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ σ ℓX)
-    (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) (hcall : ℓ.call = .proposal)
-    (ht : tr.time i = sp.ts (σ + 1 : Nat)) {E : Blk sp.n FGP} :
-    ∀ v ∈ fastCounted sp (tr.state X i₀) ℓX.frame σ E,
-      HeldAtProposal (tr.state x i) ℓ.frame σ v :=
-  trivial_counted_heldU (hS := hS.toU) (X := X) (hX := hX) (i₀ := i₀) (σ := σ) (ℓX := ℓX)
-      (hupd := hupd) (hσ := hσ) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc) (hcall := hcall)
-          (ht := ht) (E := E)
-
-/-- `trivial_high_locks` with the unlock given. -/
+/-- (L-high) under `StandaloneRun`: a stored lock of slot `> σ` is optimistic over votes that
+extend `B`, and one of slot `σ` is compatible with `B` by `hsame`, with the unlock given. -/
 private theorem trivial_high_locksU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {x : Fin sp.n} (hx : x ∈ H)
@@ -492,17 +360,6 @@ private theorem trivial_high_locksU
   · exact optimisticLock_compatibleU hrun _ CommitteeP.full hx hopt
       (cs2_full hS.stock hS.two_faulty_lt) (fun w hw j e hv hs =>
       votesExtendAfter_iff.1 hlater w hw j e hv (by omega))
-
-/-- (L-high) under `StandaloneRun`: a stored lock of slot `> σ` is optimistic over votes that
-extend `B`, and one of slot `σ` is compatible with `B` by `hsame`. -/
-private theorem trivial_high_locks (hS : StandaloneRun tr H U proposer g)
-    {x : Fin sp.n} (hx : x ∈ H)
-    {i σ : Nat} (ht : tr.time i = sp.ts (σ + 1 : Nat)) {B : Blk sp.n FGP}
-    (hlater : VotesExtendAfter tr H U σ B)
-    (hsame : ∀ k CV O, OptimisticLockAt tr x k σ O CV → Compatible U O B) :
-    HighLocksCompatible U (tr.state x i) (tr.time i) σ B :=
-  trivial_high_locksU (hS := hS.toU) (x := x) (hx := hx) (i := i) (σ := σ) (ht := ht) (B := B)
-      (hlater := hlater) (hsame := hsame)
 
 /-! ## The first and later proposals after a good origin under trivial frames -/
 
@@ -661,7 +518,10 @@ private theorem trivial_slow_first_proposalU
 
 /-! ## Assembly -/
 
-/-- `proposals_extend_of_origin` with the unlock given. -/
+/-- **A good origin transfers to the proposals** (the transfer at the proposal duty): if every
+honest vote of a slot after the label `j` of a good origin on `B` extends `B`, the head of every
+honest proposal of a slot after `j` extends `B`: the first one by the origin's argument, the
+later ones by the honest batch, with the unlock given. -/
 theorem proposals_extend_of_originU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {B : Blk sp.n FGP} {j : Nat}
@@ -685,16 +545,6 @@ theorem proposals_extend_of_originU
       votesExtendAfter_iff.1 hvotes z hz j' e hv (by omega))
       (votesExtendAfter_iff.2 fun z hz j' e hv hs =>
         votesExtendAfter_iff.1 hvotes z hz j' e hv (by omega)) hx hc hcall ht hprop
-
-/-- **A good origin transfers to the proposals** (the transfer at the proposal duty): if every
-honest vote of a slot after the label `j` of a good origin on `B` extends `B`, the head of every
-honest proposal of a slot after `j` extends `B`: the first one by the origin's argument, the
-later ones by the honest batch. -/
-theorem proposals_extend_of_origin (hS : StandaloneRun tr H U proposer g)
-    {B : Blk sp.n FGP} {j : Nat}
-    (hB : GoodOrigin tr H g B j) (hvotes : VotesExtendAfter tr H U j B) :
-    ProposalsExtendAfter tr H U j B :=
-  proposalsExtendAfterU_parent_iff.1 (proposals_extend_of_originU hS.toU hB hvotes)
 
 end Consensus.Goldilocks.SA
 

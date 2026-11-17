@@ -7,11 +7,12 @@ public section
 
 /-! # Goldilocks Healing: the setting of unanimity (H.1 (i))
 
-`proposal_votes`'s premises with the honest proposal unfolded: a `StandaloneRun`, the honest
-proposer `q` of slot `p` and its `ac_proposal` call at cut `k` at `t_p` (label `ℓp`, duty head
-`d`, payload `pay`), the block `P` it makes on `d.head`, `t_p ≥ ḡ + 2Θ + 8Δ`, and the locks
-settled from `t_{p−1}`. The canonical walk is the proposer's walk (`ℓp.frame`'s scores
-and eligibility at `t_p` against `View.ofLists pay`) on its tree with `P` added. -/
+The premises of unanimity (`proposal_votes_core_fromU`) with the honest proposal unfolded: a
+`StandaloneRun`, the honest proposer `q` of slot `p` and its `ac_proposal` call at cut `k` at
+`t_p` (label `ℓp`, duty head `d`, payload `pay`), the block `P` it makes on `d.head`,
+`t_p ≥ ḡ + 2Θ + 8Δ`, and the locks settled from `t_{p−1}`. The canonical walk is the proposer's
+walk (`ℓp.frame`'s scores and eligibility at `t_p` against `View.ofLists pay`) on its tree with
+`P` added. -/
 
 namespace Consensus.Goldilocks.SA
 

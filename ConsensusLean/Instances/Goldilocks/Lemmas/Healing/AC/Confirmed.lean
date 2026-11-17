@@ -9,7 +9,7 @@ public section
 
 /-! # Goldilocks Healing: the confirmed tip after an honest proposal (H.1 (ii))
 
-The helpers of `proposal_confirmed` (up to the first update in `ConfirmedBase`), over a
+The helpers of `proposal_confirmed_core_fromU` (up to the first update in `ConfirmedBase`), over a
 `StandaloneRun` (H.1's premises) and an honest proposal `P` of slot `p`:
 
 * `late_vote_held`: at an honest call from `t_s + 2Δ` on (`s ≥ r`), every honest slot-`s`
