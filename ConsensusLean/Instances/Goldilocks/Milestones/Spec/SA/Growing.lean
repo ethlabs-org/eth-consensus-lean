@@ -41,11 +41,6 @@ def EarlierVotesExtendAt (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n))
 
 namespace Growing
 
-/-- **`Carry(s, S, B)`** at every slot-`(s + 1)` vote of a node honest at its cast. -/
-def Carry (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (s : Nat)
-    (CV : Set (Vote sp.n)) : Prop :=
-  ∀ y i e, y ∈ H (tr.time i) → VoteAt tr y i e → e.msg.slot = s + 1 → CarryAt tr U y i e s CV
-
 /-- **Honest objects under growing faults**: the run facts about signers honest at the reading
 cut. -/
 structure HonestObjects (selectedProposer : Nat → Fin sp.n)

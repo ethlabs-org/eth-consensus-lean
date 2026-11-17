@@ -10,7 +10,7 @@ the height-scoped scope (`𝓔_B` the entries of height `≥ H_z + 1` that confl
 `T₀ = a_z − Δ`, every attestation signed at `a_z` covered by HR.1 (c)). It is not an instance of
 C1.1: (K0) and (K1) need not hold at `a_z`.
 
-**The induction** (JointRet, over the cut index of the fixed run, as C1.1's `persist_inv`).
+**The induction** (JointRet, over the cut index of the fixed run, as C1.1's).
 The invariant at cut `k` has two parts:
 
 * `VoteInv k`: (R3) at the honest votes cast at cut `k`, for **every** high origin of the run

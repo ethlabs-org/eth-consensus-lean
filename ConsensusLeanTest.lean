@@ -18,10 +18,6 @@ public import ConsensusLeanTest.Goldilocks.AC.ResultTransfer
 public import ConsensusLeanTest.Goldilocks.AC.Transfer
 public import ConsensusLeanTest.Goldilocks.AC.UnlockFrame
 public import ConsensusLeanTest.Goldilocks.AC.WalkFacts
-public import ConsensusLeanTest.Goldilocks.CarryLater.Control
-public import ConsensusLeanTest.Goldilocks.CarryLater.Premises
-public import ConsensusLeanTest.Goldilocks.CarryLater.Reject
-public import ConsensusLeanTest.Goldilocks.CarryLater.Run
 public import ConsensusLeanTest.Goldilocks.Compose.ImpliedFields
 public import ConsensusLeanTest.Goldilocks.Compose.ProjectionRejection
 public import ConsensusLeanTest.Goldilocks.Compose.Restart
@@ -52,9 +48,6 @@ public import ConsensusLeanTest.Goldilocks.Generic.OutageTransport
 public import ConsensusLeanTest.Goldilocks.Generic.SleepyCut
 public import ConsensusLeanTest.Goldilocks.Growing.Compose
 public import ConsensusLeanTest.Goldilocks.Growing.FG
-public import ConsensusLeanTest.Goldilocks.HalfCommittee.Control
-public import ConsensusLeanTest.Goldilocks.HalfCommittee.Premises
-public import ConsensusLeanTest.Goldilocks.HalfCommittee.Run
 public import ConsensusLeanTest.Goldilocks.Healing.PhaseCount
 public import ConsensusLeanTest.Goldilocks.Healing.Recovery
 public import ConsensusLeanTest.Goldilocks.Healing.SA
@@ -62,10 +55,6 @@ public import ConsensusLeanTest.Goldilocks.Healing.Settled
 public import ConsensusLeanTest.Goldilocks.Healing.Statements
 public import ConsensusLeanTest.Goldilocks.Healing.SupportCounting
 public import ConsensusLeanTest.Goldilocks.Healing.TickRun
-public import ConsensusLeanTest.Goldilocks.InitialCarry.Control
-public import ConsensusLeanTest.Goldilocks.InitialCarry.Premises
-public import ConsensusLeanTest.Goldilocks.InitialCarry.Reject
-public import ConsensusLeanTest.Goldilocks.InitialCarry.Run
 public import ConsensusLeanTest.Goldilocks.Mirror.ACData
 public import ConsensusLeanTest.Goldilocks.Mirror.ACLocks
 public import ConsensusLeanTest.Goldilocks.Mirror.ACStep
@@ -74,7 +63,6 @@ public import ConsensusLeanTest.Goldilocks.Mirror.FG
 public import ConsensusLeanTest.Goldilocks.Mirror.Node
 public import ConsensusLeanTest.Goldilocks.Mirror.Setup
 public import ConsensusLeanTest.Goldilocks.Persist.Premises
-public import ConsensusLeanTest.Goldilocks.Persist.RecentSource
 public import ConsensusLeanTest.Goldilocks.Refinement.Constant
 public import ConsensusLeanTest.Goldilocks.Refinement.Final
 public import ConsensusLeanTest.Goldilocks.Refinement.NonfinalQuery
@@ -96,7 +84,6 @@ public import ConsensusLeanTest.Goldilocks.Run.Faulty
 public import ConsensusLeanTest.Goldilocks.Run.Statements
 public import ConsensusLeanTest.Goldilocks.Run.TickOnce
 public import ConsensusLeanTest.Goldilocks.Runs.Data.Five
-public import ConsensusLeanTest.Goldilocks.Runs.Data.Premises
 public import ConsensusLeanTest.Goldilocks.Runs.Data.Run
 public import ConsensusLeanTest.Goldilocks.Runs.Data.Sync
 public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Chain

@@ -46,7 +46,7 @@ overlap); `allow` lists the layers it may import, written out in full:
 | `Examples` (Shape examples, untrusted) | Init, ToMathlib, Core, Spec |
 | `Instances.Goldilocks.*` (one layer per component and level: `Spec.{Common,FG,Frame,Trace,FGStore,AC,SA,Node,Run}`, `AsChainShape`, `Statements.*`, `Lemmas.*`, `Proofs.<M>`, `Main`) | its row in `scripts/boundaries.toml`: no FG layer imports an AC or SA layer and no AC or SA layer an FG layer; `Statements.FG` reaches only the chain-level FG |
 | `Instances.Goldilocks.Lemmas.{Simulation,Obligations}` | its row above, including `Lemmas.Healing` for finite regime consumers and healing/final adapters; Healing cannot import either, and Simulation cannot import Obligations |
-| `Solution` | every generic layer and the closure of each finished instance milestone (today `Instances.Goldilocks.Proofs.FGSafety`, `Instances.Goldilocks.Proofs.ACBase`, `Instances.Goldilocks.Proofs.ACSteps`, `Instances.Goldilocks.Proofs.FGStore`, `Instances.Goldilocks.Proofs.ComposeAnyAC`, `Instances.Goldilocks.Proofs.Persist`, `Instances.Goldilocks.Proofs.Regimes`, `Instances.Goldilocks.Proofs.Obligations` and `Instances.Goldilocks.Proofs.Healing`, with `Instances.Goldilocks.Lemmas.Healing`) |
+| `Solution` | every generic layer and the closure of each finished instance milestone (today `Instances.Goldilocks.Proofs.FGSafety`, `Instances.Goldilocks.Proofs.ACBase`, `Instances.Goldilocks.Proofs.ACSteps`, `Instances.Goldilocks.Proofs.FGStore`, `Instances.Goldilocks.Proofs.ComposeAnyAC`, `Instances.Goldilocks.Proofs.Regimes`, `Instances.Goldilocks.Proofs.Obligations` and `Instances.Goldilocks.Proofs.Healing`, with `Instances.Goldilocks.Lemmas.Healing`) |
 | `Test` (`ConsensusLeanTest`) | everything above; library roots, import-only aggregates, `import all` |
 
 The checker fails on: a missing, unparsable or mistyped config (missing or unknown keys included); a
@@ -184,7 +184,7 @@ earlier flat names to these).
 - `Tactic/LinarithFrontEnd`: regressions for the `linarith` front end.
 - `Goldilocks/`: one folder per component (`FG`, `FGStore`, `Frame`, `AC`, `Compose`, `Run`, `Regimes`, `Persist`,
   `Healing`, `Refinement`), with the concrete executions they share in `Runs/` and `Mirror/` (a computable mirror of
-  the node), and the five-validator runs that show a premise is needed in `HalfCommittee/` and `InitialCarry/`.
+  the node).
 
 ### Gap dispositions
 

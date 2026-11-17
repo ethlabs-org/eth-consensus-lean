@@ -1,5 +1,4 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Joined
@@ -27,16 +26,6 @@ theorem run_statements : RunStatements where
   goldilocksACProjection := goldilocks_ac_projection
   joinedProjection := joined_projection
   syncProjection := sync_projection
-
-/-- C1.1 and its recent-source corollary, with honesty and fault counts at their own cuts. -/
-structure PersistStatements : Prop where
-  honestFastConfirmationsPersist : HonestFastConfirmationsPersist
-  recentSourceNextVote : RecentSourceNextVote
-
-/-- All A3 persistence statements. -/
-theorem persist_statements : PersistStatements where
-  honestFastConfirmationsPersist := honest_fast_confirmations_persist
-  recentSourceNextVote := recent_source_next_vote
 
 end Consensus.Goldilocks.Compose.Growing
 

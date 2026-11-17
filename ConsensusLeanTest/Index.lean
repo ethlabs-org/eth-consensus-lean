@@ -633,12 +633,6 @@ example := ``Consensus.Goldilocks.Compose.excludedEntries
 example := ``Consensus.Goldilocks.Compose.Clean
 example := ``Consensus.Goldilocks.Compose.StoredFastLockAt
 example := ``Consensus.Goldilocks.Compose.PersistPremises
-example := ``Consensus.Goldilocks.Compose.CutScopeAt
-example := ``Consensus.Goldilocks.Compose.PersistAt
-example := ``Consensus.Goldilocks.Compose.HonestFastConfirmationsPersist
-example := ``Consensus.Goldilocks.Compose.RecentSourceNextVote
-example := ``Consensus.Goldilocks.Compose.PersistStatements
-example := ``Consensus.Goldilocks.Compose.Growing.PersistPremises
 
 /-! ## Goldilocks Service (a milestone PR appends here only) -/
 

@@ -456,7 +456,7 @@ detail in `TRUST.md`.
 
   `fastSelect` stays the raw test, so A1.4 (b) (`OptimisticNextUpdate`) keeps its meaning. `LocksMoveBack` states
   the shape of the new locks, and `MovesBack` also keeps the expiry (a strengthening). Through
-  `FastUpdateAt`/`FastLockAt` the scope of A1.2, A1.5, A1.9, C1.1 and `RecentSourceNextVote` covers the fast locks
+  `FastUpdateAt`/`FastLockAt` the scope of A1.2, A1.5, A1.9 and C1.1 covers the fast locks
   of vetoed updates (their arguments read the counted votes and `Carry`, not the record). No coefficient depends on
   the rule. The LaTeX is `specs/goldilocks/tex/goldilocks-spec.tex` §"Locks" and §"Confirmation" (claims OC1).
   Witnesses at `k = 6`, `c = 2`: `ConsensusLeanTest/Goldilocks/AC/GradedLocks.lean`.
@@ -548,7 +548,7 @@ detail in `TRUST.md`.
   `CommonPathAcquisition`, `PatternRecovery`, `FinalizingCoverage`, `CacheAcceptanceAfterReset`, and
   `Regimes.Growing.SleepySafe`, `IncludeSleepy`, `GrowSleepy`); the open `SA.Growing.ACHealingStandalone`,
   `SA.Growing.ACHealingStandaloneCorollary` and `SA.Growing.ACInclusion` over `SA.Growing.ACRun`; and the five
-  `SA.*All` healing statements. The premise bundles `PersistPremises` (constant and growing faults) and the premise
+  `SA.*All` healing statements. The premise bundle `PersistPremises` and the premise
   bundles of the healing statements (`HealthyBaseU` in `Milestones/Statements/Healing/ACU` and `HSShared` in
   `Milestones/Statements/Healing/Run`), and the proof-side bundles built on them, carry it as a field;
   `GoldilocksRunData`, the run conjunct of `GoldilocksHealingData`, does not: its `Run` equation is the

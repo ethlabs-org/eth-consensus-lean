@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Locks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Later
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Same
@@ -15,28 +15,6 @@ namespace Consensus.Goldilocks.SA.Growing
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
   {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
-
-/-- The fault bound is read at the later call, not at the historical lock writer. -/
-theorem fastLock_compatible_of_votes
-    {ini} (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n)
-    (hP : ∀ t, CommitteeP K (tr.upTo t) (H t))
-    {x : Fin sp.n} {j i s : Nat} (hx : x ∈ H (tr.time j)) (hji : j < i)
-    {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr x j s D CV)
-    (hf : 2 * (K.committee s ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
-    (hvotes : ∀ z k, k < i → z ∈ H (tr.time k) → ∀ e,
-      VoteAt tr z k e → e.msg.slot = s → VoteExtends U e.msg B) :
-    Compatible U D B := by
-  have hr := hrun.localRun
-  have hjt := hr.time_mono hji.le
-  have hf' : 2 * (K.committee s ∩ (H (tr.time j))ᶜ).ncard < sp.committeeSize := by
-    have hsub : K.committee s ∩ (H (tr.time j))ᶜ ⊆ K.committee s ∩ (H (tr.time i))ᶜ :=
-      Set.inter_subset_inter_right _ (Set.compl_subset_compl.mpr (hr.antitone hjt))
-    exact lt_of_le_of_lt (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard hsub)) hf
-  refine SA.fastLock_compatible_of_votes (hrun.upTo (hr.time_nonneg j)) K (hP (tr.time j)) hx
-    hji ((upTo_fastLockAt hr.time_mono).mpr ⟨le_rfl, hfl⟩) hf' ?_
-  intro z hz k hki e hv hs
-  obtain ⟨hkt, hv⟩ := upTo_voteAt.mp hv
-  exact hvotes z k hki (hr.antitone hkt hz) e hv hs
 
 private theorem update_side
     {ini} (hrun : ACRun proposer tr H U ini) {Y : Fin sp.n} {c s : Nat}

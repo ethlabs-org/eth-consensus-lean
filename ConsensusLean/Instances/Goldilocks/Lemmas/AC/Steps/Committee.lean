@@ -217,11 +217,6 @@ theorem CommitteePAt.full {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)}
     CommitteePAt (CommitteeDict.full sp.n) tr H :=
   ⟨fun _ _ _ _ _ s _ _ => mem_full s _, fun _ _ _ _ _ _ s _ _ => mem_full s _⟩
 
-/-- T under growing faults holds at `K = full`. -/
-theorem CommitteeTAt.full {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)} :
-    CommitteeTAt (CommitteeDict.full sp.n) tr H :=
-  fun _ _ _ _ _ _ _ v _ => mem_full v.slot _
-
 /-- **CS at `K = full`** is `FaultBound`. -/
 theorem faultBoundK_full_iff {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} (s : Nat) (t : Time) :
     FaultBoundK (CommitteeDict.full sp.n) s tr H t ↔ FaultBound tr H t :=

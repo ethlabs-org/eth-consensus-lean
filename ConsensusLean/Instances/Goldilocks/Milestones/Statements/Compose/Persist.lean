@@ -23,6 +23,9 @@ cut) on its FG projection; the run premises (`Sync`, `f < h_t`) are the run's (`
 bridges them to the AC projection's). "The state of `y` at `t`" is `y`'s state before the first
 cut of the run at a time `≥ t` (`FirstCutFrom`).
 
+C1.1 itself is retired as a milestone statement; its premises (`PersistPremises`) and its
+conclusion vocabulary (`CutScopeAt`, `PersistAt`) stay, as vocabulary that downstream code reads.
+
 Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Compose
@@ -115,18 +118,6 @@ structure PersistPremises (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (ΔF
   /-- The committee is population-sized (`committeeSize = n`). -/
   stock : sp.committeeSize = sp.n
 
-/-- **The conclusion of G1.10 at the scope of C1.1** (claims G1.10, "The scope of C1.1"), for
-the honest node `y`, the block `B`, the slot `s` and `T`, on the blocks `𝒳` that `y` accepts in
-`[t_s, T + Δ)` (and its own proposal at `T + Δ`, as in the core): for every such `X`, with `S`
-the store after the acceptance, (a) no entry that conflicts with `B` is justified on the chain
-of `X`; (b) if `X` conflicts with `B`, `σ[X].h ≤ σ[P].h + 1` for `P` the deepest common ancestor
-of `X` and `B`; (c) `y`'s `Σ.F` and `Σ.J` stay compatible with `B` on `[t_s, T + Δ)` (at every
-cut in it and at its end) and after the cut that accepts its own proposal at `T + Δ`.
-
-This spells G1.10's conclusion out at C1.1's scope because FGStore states only G1.10's
-core (`QuorumFreeEntries`). When FGStore states G1.10 at C1.1's scope (with its excluded-entry
-set), this structure should become an instance of that statement over `tr.projFG`, not a
-restatement. -/
 structure CutScopeAt (y : Fin sp.n) (B : SA.Blk sp.n (List (FG.Att sp.n))) (s : Nat) (T : Time) :
     Prop where
   /-- (a), (b) at every block `y` accepts in `[t_s, T + Δ)`, or its own proposal at `T + Δ`. -/
@@ -168,35 +159,6 @@ structure PersistAt (B : SA.Blk sp.n (List (FG.Att sp.n))) (s s' : Nat) : Prop w
   /-- (ii) every honest vote of slot `s'` extends `B`. -/
   extends_ : ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s' →
     SA.VoteExtends (tr.HonestBlocks H) e.msg B
-
-/-- **C1.1, honest fast confirmations persist (the induction).** In a Goldilocks run, under the
-premises `PersistPremises` for a fast lock of slot `s` on `B` and `m > s`, for every slot
-`s' ∈ (s, m]`: (iii) the G1.10 cut at `T = t_{s'} + Δ`, (i) viability of `B` at every honest
-vote of slot `s'`, (ii) every honest vote of slot `s'` extends `B`. Proof shape: by the first
-violating event (F.5 (run), `WellFounded.induction` on the cut index); the steps are A1.2–A1.4
-and A1.9 at a vote or an attestation, G1.10 at every event, each with hypotheses about strictly
-earlier cuts. -/
-def HonestFastConfirmationsPersist : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (ΔF : Time) (x : Fin sp.n) (i₀ s m : Nat)
-    (B : SA.Blk sp.n (List (FG.Att sp.n))) (CV : Set (Vote sp.n)) (proposer : Nat → Fin sp.n),
-    GoldilocksRun proposer dg H tr → PersistPremises tr H dg ΔF x i₀ s m B CV →
-    ∀ s', s < s' → s' ≤ m → PersistAt tr H B s s'
-
-/-- **C1.1's corollary, recent source, next vote.** When `ac_to_fg` returns `B` at an honest
-node in slot `m` from a fast lock of slot `j` (`j ≤ m ≤ j + 2`), under the premises of C1.1 for
-that lock up to slot `m + 1`, every honest vote of slot `m + 1` extends `B`. -/
-def RecentSourceNextVote : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (ΔF : Time) (x : Fin sp.n) (i₀ i j m : Nat)
-    (ℓ : ACLabel (goldilocksNode sp ro)) (B : SA.Blk sp.n (List (FG.Att sp.n)))
-    (CV : Set (Vote sp.n)) (proposer : Nat → Fin sp.n),
-    GoldilocksRun proposer dg H tr → PersistPremises tr H dg ΔF x i₀ j (m + 1) B CV →
-    SA.ToFGAt tr.projAC x i ℓ B → sp.slot (tr.time i) = m → j ≤ m → m ≤ j + 2 →
-    ∀ y ∈ H, ∀ k e, SA.VoteAt tr.projAC y k e → e.msg.slot = m + 1 →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg B
 
 end Consensus.Goldilocks.Compose
 

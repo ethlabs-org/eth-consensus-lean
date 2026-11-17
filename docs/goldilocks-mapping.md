@@ -33,7 +33,6 @@ are unchanged. The latter also owns the frame-sequence vocabulary, not needed by
 | `Consensus.Goldilocks.Compose.ComposeInterfaceStatements` | `Milestones/Statements/Compose/Interface` | C0.1 at the AC; A0.6, A0.9 consequences; C0.5 (c) | Compose/AnyAC | proved (lemma) |
 | `Consensus.Goldilocks.Compose.ComposeNodeStatements` | `Milestones/Statements/Compose/Node` | C0.1–C0.5 at the node | Compose/AnyAC | proved (lemma) |
 | `Consensus.Goldilocks.Compose.EventOrder`, `Consensus.Goldilocks.Compose.ReadyImpliesJoined` and the six other run statements (the projections) | `Milestones/Statements/Compose/Run` | F.5 (run), F.4, C0.5 | Persist | proved (lemma) |
-| `Consensus.Goldilocks.Compose.HonestFastConfirmationsPersist`, `Consensus.Goldilocks.Compose.RecentSourceNextVote` | `Milestones/Statements/Compose/Persist` | C1.1 and its corollary | Persist | proved (lemma) |
 | the six rows of `Milestones/Statements/Regimes/Always` | `Milestones/Statements/Regimes/Always` | R.7, R.8 | Regimes | proved (lemma) |
 | `Consensus.Goldilocks.Regimes.SleepySafe`, `Consensus.Goldilocks.Regimes.IncludeSleepy`, `Consensus.Goldilocks.Regimes.GrowSleepy` | `Milestones/Statements/Regimes/Sleepy` | R.1, R.2 | Regimes | proved (lemma) |
 | `Consensus.Goldilocks.MeetsObligations` (Ebb-and-Flow obligations) | `Statements/Obligations` | CLAIMS §"The obligations endpoint" | Obligations | proved in Solution |
@@ -308,8 +307,8 @@ Modelling choices:
   selects it. The stored lock can be moved back, as the claims note.
 - **Scope of the fast-lock statements** (graded fast locks, `docs/decisions.md` §"Goldilocks model choices"): since a veto stops only
   the record, `FastUpdateAt` and `FastLockAt` also cover the fast locks that vetoed updates write. A1.2
-  (`FirstTransfer`), A1.5 (`SourceAge`), A1.9 (`source_compatible_stored`) and C1.1 (`HonestFastConfirmationsPersist`,
-  with `RecentSourceNextVote`) keep their text and now also cover those locks; their arguments read the counted votes
+  (`FirstTransfer`), A1.5 (`SourceAge`), A1.9 (`source_compatible_stored`) and C1.1's premises (`PersistPremises`)
+  keep their text and now also cover those locks; their arguments read the counted votes
   and `Carry`, not the record. A1.4 (b) (`OptimisticNextUpdate`) still names the raw `fastSelect` (the test).
 - **The A1.5 conclusion** "is the block of a fast lock written after `τ`" reads: at or below the block of a fast
   lock of a slot `s'` with `slot(t) ≤ s' + 2` that the node wrote at a cut after `τ` (a lock moves only back).
@@ -400,7 +399,7 @@ kind (a) `rootAC_requirements`, `init_reachable`, `tick_at_zero`, `proposer_tick
 
 SPEC: `shared/composition.tex` (§"Model"). Milestone `Persist` covers the spec's own run model
 (`Spec/Run`), the run-level composition facts every later milestone reads (F.4, F.5 (run), C0.5's projections), and
-C1.1 with its corollary. The run is `Trace (Fin n) (NodeState A) (Cut A)`: labelled cuts are the component calls of
+C1.1's premises (C1.1 itself and its corollary are retired as milestone statements). The run is `Trace (Fin n) (NodeState A) (Cut A)`: labelled cuts are the component calls of
 the honest nodes, grouped by top-level event; faulty nodes have no cuts.
 
 | Node | Reference | Definition | Milestone | Lean name |
@@ -416,8 +415,7 @@ the honest nodes, grouped by top-level event; faulty nodes have no cuts.
 | F.4 | CLAIMS F.4 (D4) | awake on `[max(0, t − c − 1), t]` with `c + 1 ≥ 8Δ` gives awake and joined at `t`, for `t ≥ 0` (the interval is empty for `t < 0`) | Persist | `Consensus.Goldilocks.Compose.ReadyImpliesJoined` |
 | C0.5 | CLAIMS C0.5 (last sentence) | the AC projection is an `ACLocalRun` (with `U` the honest blocks; for an AC with requirements 1–5, since the own block's `ac_on_block` needs `ac_valid_payload`); the FG projection is an `FGLocalRun` at `A.genesisPayload` (with the requirements and the genesis root, the premises of C0.3: the own block is accepted in its tick, so `own_first` holds); the Goldilocks run's AC projection is an `SA.ACRun`; the states at the start of every event are `Node.Reachable`; `Sync` projects to `SyncAC`; joining and `h_t` project | Persist | `Consensus.Goldilocks.Compose.ACProjection`, `Consensus.Goldilocks.Compose.FGProjection`, `Consensus.Goldilocks.Compose.GoldilocksACProjection`, `Consensus.Goldilocks.Compose.GroupStatesReachable`, `Consensus.Goldilocks.Compose.SyncProjection`, `Consensus.Goldilocks.Compose.JoinedProjection` |
 | C1.1 | CLAIMS C1.1 (premises), G1.10 ("The scope of C1.1") | the honest votes of a slot; the excluded entries 𝓔 (conflict with `B`, strictly extend an honest `Σ.F` at `t_s`); `Clean(s, m, B)` with (K0) caches, (K1) attestation cut `K1_𝓔` by `Store.namers` on the FG projection at `t_{s+1} + Δ`, (K2) height lead; the premises (writer honest and joined, a fast lock whose **stored** block (after the move back) is `B`, `Sync[t_s, t_m + Δ]`, `Carry`, half-committee, later `Carry`, `f < h_t` at honest vote times, `NoColl`, `Clean`) | Persist | `Consensus.Goldilocks.Compose.honestVotes`, `Consensus.Goldilocks.Compose.excludedEntries`, `Consensus.Goldilocks.Compose.Clean`, `Consensus.Goldilocks.Compose.StoredFastLockAt`, `Consensus.Goldilocks.Compose.PersistPremises` |
-| C1.1 | CLAIMS C1.1 (conclusion), G1.10 (a)–(c) at C1.1's scope | G1.10's conclusion at the scope of C1.1, spelled out at a node for `(B, s, T)`: (a) justified roots on accepted chains compatible with `B`, (b) the height bound at the deepest common ancestor, (c) caches compatible at every cut in `[t_s, T + Δ)` and after the own proposal at `T + Δ`; the conclusion for a slot `s'`: (iii) the cut at `T = t_{s'} + Δ`, (i) viability at every honest vote, (ii) every honest vote extends `B` | Persist | `Consensus.Goldilocks.Compose.CutScopeAt`, `Consensus.Goldilocks.Compose.PersistAt` |
-| C1.1 | CLAIMS C1.1 | **honest fast confirmations persist**; the corollary "recent source, next vote" | Persist | `Consensus.Goldilocks.Compose.HonestFastConfirmationsPersist`, `Consensus.Goldilocks.Compose.RecentSourceNextVote` |
+| C1.1 | CLAIMS C1.1 | **retired** as a milestone statement (honest fast confirmations persist, its corollary "recent source, next vote", and the conclusion vocabulary of G1.10 at C1.1's scope); the premises stay, since the obligations endpoint's persistence kernel reads them (`Lemmas/Compose/PersistKernelGoldilocks`) | Persist | — |
 
 Modelling choices:
 
@@ -457,17 +455,9 @@ Modelling choices:
 - **Integer time.** The run keeps `Time = Int` (the claims take continuous time): "processed at a time in
   `[τ, deadline)`" is over integer times, and F.4's bridge reads "awake at `u`" as awake throughout `(u − 1, u]`.
 - **"The state of `y` at `t`"** is `y`'s state before the first cut of the run at a time `≥ t` (`FirstCutFrom`),
-  which is also its state at the end of time `t − 1` when `y` has no cut at `t`. G1.10 (c)'s "on `[t_s, T + Δ)`"
-  (`CutScopeAt.caches`) covers the cuts in the interval and its end, the state before the first cut at `T + Δ`.
+  which is also its state at the end of time `t − 1` when `y` has no cut at `t`.
 - **`JoinedProjection`** relates the run's `JoinedAt` to the SA's `joined` on the state before a cut at `t`, except
   at a restart cut: a restart sets `restart_time` only in its post-state.
-- **The corollary's `ac_to_fg` node is the lock writer `x`**: "`ac_to_fg` returns `B` … from a fast lock of slot
-  `j`" is read at the node that holds that lock, the one whose lock C1.1's premises are about (the claims do not yet
-  confirm this reading; it is transcribed as read).
-- **C1.1's (iii)** is spelled out (`CutScopeAt`) rather than cited from FGStore: FGStore's `QuorumFreeEntries` is G1.10's
-  core, not the C1.1 scope with its excluded-entry set. When FGStore states G1.10 at that scope, `CutScopeAt` should
-  become its instance; the own-proposal clause (`caches_own`) is kept for fidelity to G1.10 (a)–(c) even where it is
-  vacuous at `T = t_{s'} + Δ`.
 - **AC-side notions over the AC projection**: votes, `Carry`, fast locks, `ac_to_fg`, viability at a vote are
   `SA.*` over `tr.projAC`; the run premises stay the run's, with `JoinedProjection`/`SyncProjection` bridging them
   to the AC projection's. The FG attestation cut is `Store.namers` over `tr.projFG`.

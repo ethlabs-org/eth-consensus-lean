@@ -40,22 +40,11 @@ horizon. Do not infer repository-wide absence from a limitation of one witness.
 | AC base, steps, inclusion and composition | `Goldilocks/AC/{Base,Optimistic,FastUpdate,Transfer}.lean`; `Goldilocks/Compose/Statements.lean`; `Goldilocks/Run/Statements.lean` | `AC/{JoinedRestart,GradedVeto,LockRule}.lean`; `Compose/{ThresholdRejections,ProjectionRejection,Restart}.lean`; `Run/{Faulty,Conflict,AttestationPremise}.lean` | Handler and premise tests include restarts and faults; this does not make the healthy outcome witness cover those branches. |
 | Regime adapters | `Goldilocks/Regimes/Sleepy.lean` | `Goldilocks/Regimes/BudgetTightness.lean` | Distinguish sleepy sleep/wake cases from healthy post-GST rejoining and from C1.2. |
 
-## Persistence: three distinct rejection/control pairs
+## Persistence
 
-All three families exercise `RecentSourceNextVote`, a corollary of C1.1, with five validators.
-The local premise-bundle equivalences tie each omitted-field bundle to production `PersistPremises`.
-They test necessity of individual assumptions, not failure of the proved statement.
-
-| Omitted premise | Rejection | Restoring control | Non-vacuity and limits |
-|---|---|---|---|
-| `halfCommittee` | `Goldilocks/HalfCommittee/Premises.lean`: `halfCommittee_necessary`; honest `c` votes on `V`, not extending `B` | `HalfCommittee/Control.lean`: `d` wakes/restarts at `24`; voters `{a,b,d}` restore the bound; `control_persistPremises`, `control_next_votes_extend`, `control_c_votes_B` | Faults, restart and retained locks are exercised. No slot-9 vote, so not all later-carry positions have an actual voter. |
-| Initial `carry` | `Goldilocks/InitialCarry/Reject.lean`, with the other fields in `InitialCarry/Premises.lean` | `InitialCarry/Control.lean`: deliver `Da, Db` to `c` at `23`, before the initial deadline `27`; full premises and `control_next_votes_extend` | Horizon `35`; the `s' = 8` later-Carry instance has no vote. This is not a substitute for the next pair. |
-| `carryLater` | `Goldilocks/CarryLater/Reject.lean`, with the other fields in `CarryLater/Premises.lean` | `CarryLater/Control.lean`: deliver `Y` to the late-waking `c` at `25`; full premises, `control_next_votes_extend`, `control_c_votes_Y` | Horizon `39`; later-Carry at both `s' = 7, 8` is checked at actual slot-8 and slot-9 votes. |
-
-Positive one-validator coverage is separate: `Goldilocks/Persist/Premises.lean` supplies
-`persistPremises_tickRun`; `Persist/RecentSource.lean` applies `recent_source_tickRun` and proves
-an actual next-slot vote in `recentSource_conclusion_nonempty`. Zero faults and permanent wakefulness
-make this a useful baseline, not a replacement for the three rejection/control pairs.
+C1.1 and its corollary are no longer milestone statements. `Goldilocks/Persist/Premises.lean` keeps
+`persistPremises_tickRun`: `PersistPremises`, which the obligations endpoint's persistence kernel reads,
+is satisfiable on the one-validator tick run (zero faults, permanent wakefulness).
 
 ## Healing: statements, applications and remaining branches
 

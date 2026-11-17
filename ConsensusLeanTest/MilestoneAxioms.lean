@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
-public import ConsensusLean.Instances.Goldilocks.Proofs.Persist.Main
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Induction
 public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports
@@ -102,16 +102,6 @@ theorem Consensus.Goldilocks.Compose.syncProjection : Consensus.Goldilocks.Compo
 theorem Consensus.Goldilocks.Compose.joinedProjection :
     Consensus.Goldilocks.Compose.JoinedProjection :=
   Consensus.Goldilocks.Compose.joined_projection
-
-/-- Goldilocks Persist: `HonestFastConfirmationsPersist`. -/
-theorem Consensus.Goldilocks.Compose.honestFastConfirmationsPersist :
-    Consensus.Goldilocks.Compose.HonestFastConfirmationsPersist :=
-  Consensus.Goldilocks.Compose.honest_fast_confirmations_persist
-
-/-- Goldilocks Persist: `RecentSourceNextVote`. -/
-theorem Consensus.Goldilocks.Compose.recentSourceNextVote :
-    Consensus.Goldilocks.Compose.RecentSourceNextVote :=
-  Consensus.Goldilocks.Compose.recent_source_next_vote
 
 /-! Goldilocks Regimes: the rows that hold in every run (R.7, R.8; `Statements/Regimes/Always`). -/
 
@@ -311,12 +301,6 @@ theorem Consensus.Goldilocks.Healing.finalizingCoverage :
 
 /-- info: 'Consensus.Goldilocks.Compose.joinedProjection' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Compose.joinedProjection
-
-/-- info: 'Consensus.Goldilocks.Compose.honestFastConfirmationsPersist' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.honestFastConfirmationsPersist
-
-/-- info: 'Consensus.Goldilocks.Compose.recentSourceNextVote' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.recentSourceNextVote
 
 /-- info: 'Consensus.Goldilocks.Regimes.outputsNested' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Regimes.outputsNested

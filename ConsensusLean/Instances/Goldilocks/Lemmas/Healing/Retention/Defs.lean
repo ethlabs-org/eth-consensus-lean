@@ -4,7 +4,9 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.P
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Cut
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Attest
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Source
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset

@@ -5,8 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.TraceDefs
 
 /-! # A computable mirror of the Goldilocks node: the cut law on data, checks along lists
 
-Additions to the mirror (`Goldilocks/Mirror/Node`) for the concrete runs of
-`Goldilocks/HalfCommittee/Run`:
+Additions to the mirror (`Goldilocks/Mirror/Node`) for the concrete runs on data
+(`Goldilocks/Runs/Data/Run`):
 
 * `frag_init`: the initial node data is in the fragment (the base of `Frag` along a schedule);
 * `postsD`: the node data after each cut of `execD`, and `chainOK_postsD`: the cut law's

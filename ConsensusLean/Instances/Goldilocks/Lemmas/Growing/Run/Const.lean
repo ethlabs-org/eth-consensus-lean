@@ -255,11 +255,6 @@ theorem earlierVotesExtendAt_const (i σ : Nat) (B : Blk sp.n FGP) :
   ⟨fun h x hx j hj e he hs => h x j hj hx e he hs,
     fun h x j hj hx e he hs => h x hx j hj e he hs⟩
 
-/-- With a constant honest set, `Growing.Carry` is `Carry`. -/
-theorem carry_const (s : Nat) (CV : Set (Vote sp.n)) :
-    Growing.Carry tr (fun _ => H) U s CV ↔ Carry tr H U s CV :=
-  ⟨fun h y hy i e he hs => h y i e hy he hs, fun h y i e hy he hs => h y hy i e he hs⟩
-
 /-- With a constant honest set, the growing-fault honest objects are `HonestObjects`. -/
 theorem honestObjects_const :
     Growing.HonestObjects selectedProposer tr (fun _ => H) ↔

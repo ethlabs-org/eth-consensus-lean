@@ -107,19 +107,6 @@ theorem result_transfer_anc {ini} (hrun : ACRun proposer tr H U ini)
   · exact he ▸ hDt
   · exact (Anc.mem hcore he).2
 
-/-- **CS2 at the full committee from the growing fault bound**: `f < h ≤ n − f` gives
-`2f < n`, which is CS2 at `K = full` with `committeeSize = n` (the stock callers' `hf1`). -/
-theorem cs2_full_of_faultBoundAt (hc : sp.committeeSize = sp.n) {t d : Time}
-    (hfault : FaultBoundAt tr H t d) {s : Nat} :
-    2 * ((CommitteeDict.full sp.n).committee s ∩ (H d)ᶜ).ncard < sp.committeeSize :=
-  cs2_full hc (by
-    have hn : (H d).ncard + (H d)ᶜ.ncard = sp.n := by
-      rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-    have : {y | y ∈ H d ∧ tr.awake y t ∧ JoinedAt tr y t}.ncard ≤ (H d).ncard :=
-      Set.ncard_le_ncard fun x hx => hx.1
-    unfold FaultBoundAt at hfault
-    omega)
-
 /-- Transfer also holds for an ancestor of the block stored by the fast lock. -/
 theorem first_transfer_stored
     {ini} (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n)

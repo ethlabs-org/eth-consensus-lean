@@ -11,10 +11,9 @@ Kind (a), joint satisfiability (CONTRIBUTING "Statements"), on the one-validator
 `Goldilocks/Runs/OneValidator/Premises` (`n = 1`, `Δ = 1`, `t_s = 4s`, a tick at every time, no
 restart):
 
-* `persistPremises_tickRun`: Compose `PersistPremises` (the premises of C1.1,
-  `HonestFastConfirmationsPersist`, and of `RecentSourceNextVote`) for the optimistic fast lock
-  of slot `1` on `blk 1` that the validator writes when it admits its own vote at `t_1` (cut
-  `35`, `ac_on_block` of its own block), with counted votes `{cv 1}` and `m = 2`. Every field
+* `persistPremises_tickRun`: Compose `PersistPremises` (the premises of C1.1) for the optimistic
+  fast lock of slot `1` on `blk 1` that the validator writes when it admits its own vote at `t_1`
+  (cut `35`, `ac_on_block` of its own block), with counted votes `{cv 1}` and `m = 2`. Every field
   holds outright: `Sync[t_1, t_2 + Δ]`, `Clean(1, 2, blk 1)` (honest caches and heights on the
   chain; no excluded entry, since every honest block is a chain block), half the committee
   votes, `f < h_t`, `NoColl`.
@@ -172,10 +171,9 @@ theorem tickRun_faultBound {t : Time} (ht : 0 ≤ t) :
 
 /-! ## The premises of C1.1 -/
 
-/-- **`PersistPremises` holds on the tick run** (the premises of C1.1 and of
-`RecentSourceNextVote`): the optimistic fast lock of slot `1` on `blk 1` written at cut `35`
-(the admission of the own vote of slot `1` in `ac_on_block` at `t_1 = 4`), counting `{cv 1}`,
-with `m = 2` and `Δ_F = 1`. -/
+/-- **`PersistPremises` holds on the tick run** (the premises of C1.1): the optimistic fast lock
+of slot `1` on `blk 1` written at cut `35` (the admission of the own vote of slot `1` in
+`ac_on_block` at `t_1 = 4`), counting `{cv 1}`, with `m = 2` and `Δ_F = 1`. -/
 theorem persistPremises_tickRun :
     Compose.PersistPremises (tickRun N1 dg1) Set.univ dg1 1 v0 35 1 2 (blk 1) {cv 1} := by
   have hrun := tickRun_goldilocksRun
