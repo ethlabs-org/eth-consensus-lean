@@ -377,8 +377,9 @@ theorem deliverSeq_single {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.A
 theorem twin_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) :
     ∃ j e, SA.VoteAt (tr S).projAC y j e ∧ e.msg.slot = 1 ∧ (tr S).time j ≤ 13 := by
   obtain ⟨i, hi⟩ := twin_event hy
-  have hd := (simTrace_simulates S (rhoc S) one_le_card rhoc_const rhoc_valid).deliver _
-    ((mem_honestKeys_iff { S with vote := stock } (rhoc S) y).mp hy) i _ _ hi
+  have hd := (simTraceAt_simulates { S with vote := stock } (rhoc S) one_le_card rhoc_valid).deliver
+    _ i _ _ hi
+  rw [simTraceAt_eq] at hd
   rw [ownKey_key { S with vote := stock } (rhoc S),
     show delivered (({ S with vote := AsChainShape.stock } : Setup).params
       (pubOf env) one_le_card) (twin S) =

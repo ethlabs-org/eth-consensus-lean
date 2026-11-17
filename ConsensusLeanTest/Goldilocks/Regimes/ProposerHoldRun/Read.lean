@@ -1,13 +1,15 @@
 module
 public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Cast
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Read
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Reads
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 import all ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # The proposer-hold counterexample: key `2`'s confirmed read at `41`
@@ -15,12 +17,12 @@ import all ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 On the retained run, every block on the chain of key `2`'s confirmed read at the horizon `41` is
 genesis or the twin's block, so every header of the read is the forged header (`read_hdr`).
 
-The read is the block named by the record or `Σ.F` (`ready_read_record_before`), each genesis or
-below an origin within `41` (`record_origin_upTo`, `caches_on_chain_upTo`). An origin of a label
+The read is the block named by the record or `Σ.F` (`ready_read_record_at`), each genesis or
+below an origin within `41` (`record_origin_at`, `caches_on_chain_at`). An origin of a label
 `s ≥ 2` within `41` is impossible: an update of slot `s` is at `t_s + 6Δ ≥ 42`, and an optimistic
 confirmation needs four of the five validators among the slot-`s` voters of an honest pool, while
 the faulty keys `0` and `1` have none (`pool_vote_slot`). An origin of a label `≤ 1` has an honest
-supporter of its slot (`honest_supporter_before`), whose head is genesis or the twin's block
+supporter of its slot (`honest_supporter_at`), whose head is genesis or the twin's block
 (`vote_head`). -/
 
 namespace Consensus.Goldilocks.Test.ProposerHold
@@ -114,15 +116,28 @@ theorem origin_label
     simp only [Fintype.card_fin] at h34
     omega
 
+/-- An origin of the time-indexed reading is an origin of the kept keys. -/
+theorem originWithin_of_at
+    {C : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)}
+    {s : Nat} {b : Time} (hC : Compose.Growing.OriginWithin (tr S) (Hg S) C s b) :
+    Compose.OriginWithin (tr S) (H S) C s b := by
+  obtain ⟨x, i, CV, hx, hi, h⟩ := Compose.Growing.originWithin_iff.mp hC
+  exact Compose.originWithin_iff.mpr ⟨x, mem_Hg.mp hx, i, CV, hi, h⟩
+
 /-- **Every origin within `41` is genesis or the twin's block.** -/
 theorem origin_small
     {C : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)}
     {s : Nat}
-    (hC : Compose.OriginWithin (tr S) (H S) C s 41) : Small S C := by
-  have hs := origin_label hC
-  obtain ⟨x, hx, j, e, hv, -, hes, D, hD, hDr, hCD⟩ :=
-    Compose.honest_supporter_before rhoc_run rhoc_noColl (by norm_num) rhoc_service
-      rhoc_faultBound hC rfl
+    (hC : Compose.Growing.OriginWithin (tr S) (Hg S) C s 41) : Small S C := by
+  have hs := origin_label (originWithin_of_at hC)
+  obtain ⟨x, j, e, hxv, -, hes, D, hD, hDr, hCD⟩ :=
+    Compose.Growing.honest_supporter_at rhoc_runAt rhoc_noColl rhoc_factsAt
+      (rhoc_serviceAt.toFrom rhoc_runAt) rhoc_cboundsAt (Nat.zero_le s)
+      (Compose.Growing.ts_natCast_nonneg s) hC
+  obtain ⟨hx, hv⟩ := Compose.Growing.hVoteAt_iff.mp hxv
+  have hx := mem_Hg.mp hx
+  have hD := honestBlocksAt_sub hD
+  have hCD := Anc.mono honestBlocksAt_sub hCD
   obtain ⟨D', hD', hD'r, hsm⟩ := vote_head hx hv (hes ▸ hs)
   have hD'U : D' ∈ (tr S).HonestBlocks (H S) := ⟨x, hx, j, hD'⟩
   have hDD : D = D' := honest_coherent'.1 hD hD'U (hDr.trans hD'r.symm)
@@ -142,8 +157,15 @@ theorem read_hdr {h : Header Info}
     classical
     exact (Finset.mem_filter.mp this).2
   have hth : (41 : Time) ≤ (rhoc S).horizon := by rw [rhoc_horizon]
-  have hcut := Obligations.sleepy_read_cut S (rhoc S) one_le_card rhoc_const rhoc_valid
-    (by norm_num) hth hready
+  have hc0 : 0 ≤ Regimes.catchUp
+      (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card) := by
+    unfold Regimes.catchUp
+    have := (({ S with vote := AsChainShape.stock } : Setup).params
+      (pubOf env) one_le_card).toParams.hΔ
+    linarith
+  have hcut := Obligations.Growing.ready_read_cut_at { S with vote := stock } (rhoc S) one_le_card
+    rhoc_valid hc0 (by norm_num) hth hready
+  rw [simTraceAt_eq] at hcut
   have hi : (chainTrace (rhoc S)).endCut 41 ≤ (rhoc S).events.length := Nat.findGreatest_le _
   have hhon : (2 : Fin 5) ∉ (rhoc S).faultyAt 0 := by rw [rhoc_faultyAt]; decide
   have hy : (rhoc S).ownKey 2 ∈ H S :=
@@ -157,14 +179,18 @@ theorem read_hdr {h : Header Info}
   set C := Regimes.readAfter (tr S) y j 41 with hCdef
   change h ∈ chainTo ((tr S).state y j).fg.blocks (C.slot + 1) C at hh
   have hprev := hcut.1.1
+  have hyg : y ∈ Hg S 41 := mem_Hg.mpr hy
   have hreach := Compose.fg_reachable rhoc_run.toLocalRun hy j
-  have hrd := Obligations.ready_transport S (rhoc S) one_le_card rhoc_valid (by norm_num) hth hready
+  have hrd := Obligations.Growing.ready_transport_at { S with vote := stock } (rhoc S) one_le_card
+    rhoc_valid (by norm_num) hth hready
+  rw [simTraceAt_eq] at hrd
   have hC : Small S C ∧ C ∈ ((tr S).state y j).fg.tree := by
-    rcases Compose.ready_read_record_before rhoc_run rhoc_noColl rhoc_invariant rhoc_service.ac
-        (fun s hs => rhoc_faultBound s _ (by simp) hs) ⟨hprev, hcut.1.2.le⟩ hcut.2.1 hrd le_rfl
+    rcases Compose.Growing.ready_read_record_at rhoc_runAt rhoc_noColl rhoc_invariantAt
+        rhoc_serviceAt rhoc_factsAt rhoc_cboundsAt ⟨hprev, hcut.1.2.le⟩ (by norm_num) hrd le_rfl
       with ⟨R, hR, hRr, hread⟩ | ⟨-, hread⟩
     · rw [hCdef, hread]
-      obtain ⟨C', hC', hC'r, hor⟩ := Compose.record_origin_upTo rhoc_run rhoc_noColl hy hprev
+      obtain ⟨C', hC', hC'r, hor⟩ :=
+        Compose.Growing.record_origin_at rhoc_runAt rhoc_noColl (by norm_num) hprev le_rfl hyg
       have hRC : R = C' := honest_coherent'.1 ⟨y, hy, j, hR.1⟩ ⟨y, hy, j, hC'⟩ (hRr.trans hC'r.symm)
       subst hRC
       refine ⟨?_, hC'⟩
@@ -173,11 +199,25 @@ theorem read_hdr {h : Header Info}
       · exact origin_small hs
     · rw [hCdef, hread]
       refine ⟨?_, (Store.cache_invariants _ _ _ _ hreach).1⟩
-      rcases Compose.onOriginChainWithin_iff.mp (Compose.caches_on_chain_upTo rhoc_run rhoc_noColl
-          (rhoc_faultBound 0 0 (by simp) (by change 4 * 3 * ((0 : Nat) : Int) + 0 ≤ 41; norm_num))
-          hy hprev).1 with hg | ⟨D, s, hD, hFD⟩
+      have hf : 2 * (Hg S 41)ᶜ.ncard < (({ S with vote := AsChainShape.stock } : Setup).params
+          (pubOf env) one_le_card).n := by
+        have hsub : (Hg S 41)ᶜ ⊆ ((({key 0, key 1} : Finset (Fin (Fintype.card (Fin 5))))) :
+            Set (Fin (Fintype.card (Fin 5)))) := by
+          intro z hz
+          have hz' : ¬ (z.val ≠ 0 ∧ z.val ≠ 1) := fun h => hz (mem_Hg.mpr ((mem_H z).mpr h))
+          simp only [Finset.coe_insert, Finset.coe_singleton, Set.mem_insert_iff,
+            Set.mem_singleton_iff]
+          rcases z with ⟨v, hv⟩
+          simp only [Fin.mk.injEq] at hz' ⊢
+          omega
+        have h2 : (Hg S 41)ᶜ.ncard ≤ 2 := (Set.ncard_le_ncard hsub (Finset.finite_toSet _)).trans
+          (by rw [Set.ncard_coe_finset]; exact Finset.card_le_two)
+        change 2 * _ < 5
+        omega
+      rcases Compose.Growing.onOriginChainWithin_iff.mp (Compose.Growing.caches_on_chain_at
+          rhoc_runAt rhoc_noColl (by norm_num) hprev le_rfl hyg hf).1 with hg | ⟨D, s, hD, hFD⟩
       · exact Or.inl hg
-      · exact small_anc hFD (origin_small hD)
+      · exact small_anc (Anc.mono honestBlocksAt_sub hFD) (origin_small hD)
   obtain ⟨X, -, hXC, hXg, rfl⟩ := mem_chainTo hreach hC.2 hh
   rcases small_anc (Anc.mono (fun Z hZ => ⟨y, hy, j, hZ⟩) hXC) hC.1 with hg | htw
   · exact absurd hg hXg

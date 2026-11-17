@@ -164,8 +164,10 @@ theorem block_source {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
   have hpos : (tr S).pos (j + 2) ≠ 0 := by
     rw [(hg.2.1 2 (List.getElem?_eq_some_iff.mp hk).1).2.2.2.1]; omega
   have hown : (tr S).OwnBlockAt y (j + 2) B := ⟨⟨acc, hcall⟩, hpos⟩
-  obtain ⟨i, hs, ho⟩ :=
-    (simTrace_simulates S (rhoc S) one_le_card rhoc_const rhoc_valid).block_released y hy _ B hown
+  have hrel := (simTraceAt_simulates { S with vote := stock } (rhoc S) one_le_card
+    rhoc_valid).block_released
+  rw [simTraceAt_eq] at hrel
+  obtain ⟨i, hs, ho⟩ := hrel y _ B (mem_Hg.mpr hy) hown
   exact Or.inr ⟨i, hs, ho⟩
 
 /-! ### Honest trees up to `13` -/

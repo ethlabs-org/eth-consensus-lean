@@ -26,7 +26,7 @@ recurrence (key `1` is honest at `t_1 = 12`).
 
 **The failure.** Each honest node votes in slot `1` at `13` on the twin, the only slot-`1` block
 it holds then (`twin_vote`). On the run with the faults of the horizon kept from the start
-(`Model.Run.retain`), the constant-fault Sleepy machinery applies; there every origin within `41`
+(`Model.Run.retain`), the growing-fault Sleepy machinery applies; there every origin within `41`
 is genesis or the twin's block (`origin_small`), so key `2`'s confirmed read at `41` holds only the
 forged header (`read_hdr`), and the retention does not change it (`read_rho`). No honest proposal
 has that header, so `ProposalLiveReady` fails at the query time `11` (deadline `11 + 10·ΔAC = 41`).
