@@ -135,26 +135,6 @@ variable (hp : ResetPremises tr H proposer dg g ΔF a)
   (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' →
     e'.msg.slot = u → e'.msg.head = P.root)
 
-set_option linter.unusedVariables false in
-set_option linter.unusedSectionVars false in
-include hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE in
-/-- The proposal anchor is supported when the receiving vote extends its actual raw
-lock sources. Unlocking only moves the anchor back; the source writer remains the proposer.
-The unused `hE` binder is retained to match `proposal_start_supported` exactly. The
-source-vote premise is no longer needed: this is a corollary of the bounded form. -/
-theorem proposal_start_supported_of_source_votes
-    (hsources : ∀ r l B, r < i →
-      ((∃ CV, SA.FastLockAt tr.projAC p r l B CV) ∨ SA.SlowLockAt tr.projAC p r l B) →
-      cleanLabel sp a + sp.k + 2 ≤ l → l < u →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg B) :
-    Anc (tr.HonestBlocks H) d.start
-      (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-        (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame u))
-        (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) :=
-  (hp.toUpTo tr H (le_max_left a (max (tr.time i) (tr.time j)))).proposal_start_supported hc hP.1
-    hR hci hcall hd hti ((le_max_left _ _).trans (le_max_right _ _)) hy hcy hes
-    ((le_max_right _ _).trans (le_max_right _ _))
-
 set_option linter.unusedSectionVars false in
 include hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE in
 /-- The proposal start is supported through clean raw-source vote induction. -/
@@ -262,20 +242,6 @@ theorem ResetPremisesUpTo.reset_vote_root_below_bound {b : Time}
   · obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
     exact Compose.honest_genesis_root_anc hp.run hr.coherent (hPhiU hPhi.fcRoot_mem) hg hP
   · exact hroot.trans (hbound x r l B ho ht hrb)
-
-theorem reset_vote_fcRoot (hp : ResetPremises tr H proposer dg g ΔF a)
-    (_hc : CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (_hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y j ell e)
-    (hs : e.msg.slot = u)
-    (_hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = u →
-      e'.msg.head = P.root) :
-    ell.frame.fcRoot.root = sp.genesisRoot ∨
-      (∃ O, OldSrc tr H g u O ∧ Anc (tr.HonestBlocks H) ell.frame.fcRoot O) ∨
-      Anc (tr.HonestBlocks H) ell.frame.fcRoot P :=
-  (reset_vote_root_source hp hR hy hc hs).imp_right Or.inl
 
 
 end Consensus.Goldilocks.Healing

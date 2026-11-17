@@ -50,38 +50,6 @@ private theorem two_faults_lt (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) : 2 * Hᶜ.ncar
 
 /-! ### Sources of the proposer's attestations -/
 
-/-- A high attestation signed before a proposal has a strictly earlier source cut and label.
-The entry remains explicit so a crossing proof can identify it by root coherence. -/
-theorem proposal_high_row_source_before (hp : ResetPremises tr H proposer dg g ΔF a)
-    {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
-    (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hti : tr.time i = sp.ts u) {v : Fin sp.n} (hv : v ∈ H) {k : Nat}
-    {att : FG.Att sp.n} (hki : k < i) (hs : tr.SignAt v k att)
-    (hh : HZ tr H g + 1 ≤ att.h) :
-    ∃ r l O E, r < k ∧ l < u ∧ HighOrigin tr H g v r l O ∧
-      tr.time r < sp.ts u ∧ E ∈ (tr.state v r).fg.tree ∧ E.root = att.T ∧
-      Compose.IsHonestSource tr H E att.T ∧ Anc (tr.HonestBlocks H) E O := by
-  obtain ⟨r, hrk, l, O, ho, E, hE, hEO, hEr, -, hET⟩ := high_row_source hp hv hs hh
-  obtain ⟨-, D, CV, -, hfl, -⟩ := highOrigin_mem hp ho
-  have hrt : tr.time r ≤ sp.ts u := hti ▸ hp.run.time_mono (by clear * - hki hrk; omega)
-  have hlu : l < u := by
-    have hle : l ≤ u := by
-      have := (SA.ts_le_iff sp).1 ((ts_le_of_fastLock hp hfl).trans hrt)
-      exact_mod_cast this
-    by_contra hn
-    have hlu : l = u := by clear * - hle hn; omega
-    rw [hlu] at hfl
-    rcases hfl with ⟨ℓ, C, ⟨-, -, ht, -⟩, -⟩ | hop
-    · have ht' : tr.time r = sp.ts u + 6 * sp.Δ := ht
-      have := sp.toParams.hΔ
-      linarith only [ht', hrt, this]
-    · exact proposal_no_optimistic hp hpH hci hcall hti v hv r (by clear * - hki hrk; omega) D CV
-        hop
-  exact ⟨r, l, O, E, hrk, hlu, ho,
-    fastLock_time_lt hp hfl hlu (hrt.trans (le_add_of_nonneg_right sp.toParams.hΔ.le)), hE, hEr,
-    Compose.isHonestSource_iff.2 ⟨v, hv, r, hE, hET.trans hEr⟩,
-    hEO.mono (fun X hX => ⟨v, hv, r, hX⟩)⟩
-
 /-- Finite high-origin labels preceding an actual proposal are strictly older. -/
 theorem ResetPremisesUpTo.origin_label_lt_at_proposal {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
@@ -733,19 +701,6 @@ theorem clean_optimistic_proposal_parent
     (le_max_right _ _).trans (le_max_right _ _)
   exact (hp.toUpTo tr H (le_max_left _ _)).clean_optimistic_proposal_parent hc hx hpH hop hs hbr
     hR hci hcall hd hti hbi
-
-/-- The packed old-source interface of the proposal attestation ordering lemma. -/
-theorem proposal_high_row (hp : ResetPremises tr H proposer dg g ΔF a)
-    {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
-    (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hti : tr.time i = sp.ts u) {v : Fin sp.n} (hv : v ∈ H) {k : Nat}
-    {att : FG.Att sp.n} (hki : k < i) (hs : tr.SignAt v k att)
-    (hh : HZ tr H g + 1 ≤ att.h) :
-    ∃ E O, Compose.IsHonestSource tr H E att.T ∧ OldSrc tr H g u O ∧
-      Anc (tr.HonestBlocks H) E O := by
-  obtain ⟨r, l, O, E, _, _, ho, ht, _, _, hE, hEO⟩ :=
-    proposal_high_row_source_before hp hpH hci hcall hti hv hki hs hh
-  exact ⟨E, O, hE, oldSrc_iff.2 ⟨v, r, l, ho, ht⟩, hEO⟩
 
 /-- Earlier bounded origins rule out a high contest at a completed-prefix observation. -/
 theorem ResetPremisesUpTo.no_high_contest {b : Time}

@@ -248,27 +248,6 @@ theorem proposal_holds_old (hp : ResetPremises tr H proposer dg g ΔF a)
   obtain ⟨x, r, l, ho, hrt⟩ := hO
   exact (hp.toUpTo tr H hai).proposal_holds_old hpH hci hcall hd hti le_rfl ho hrt
 
-/-- Conditional seed receipt at a proposal, including the finalized-equality case. -/
-theorem proposal_holds_high_of_finalized
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat} (hai : a ≤ tr.time i)
-    {ell : ACLabel (goldilocksNode sp ro)}
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts u) {x : Fin sp.n} {r l : Nat}
-    {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x r l O)
-    (hrt : tr.time r < sp.ts u) (hFO : Anc (tr.HonestBlocks H) ell.frame.F O) :
-    O ∈ ell.frame.tree := by
-  rcases proposal_holds_old hp hpH hai hci hcall hd hti (oldSrc_iff.2 ⟨x, r, l, ho, hrt⟩)
-    with hO | hOF
-  · exact hO
-  · have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-    obtain ⟨hPhi, -⟩ := SA.frameIn_of_callAt hr hpH hci
-    have he := Anc.antisymm hr.coherent hOF hFO
-    rw [he]
-    exact hPhi.rooted.1
-
 /-- Bounded root comparison uses only an actual proposal and earlier source comparisons. -/
 theorem ResetPremisesUpTo.held_target_proposal_root_before {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)

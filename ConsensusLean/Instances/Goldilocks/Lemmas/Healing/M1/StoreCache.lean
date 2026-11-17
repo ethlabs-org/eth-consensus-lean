@@ -3,7 +3,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 
 public section
 
@@ -19,9 +18,7 @@ growing faults, share them.
   (G1.1 on the blocks that cache them; roots are injective on a coherent `U`).
 * `Store.F_anc_of_hj_lt_of_safe` (store-level G1.2): `Σ.F` of one store is a store ancestor of
   every block of the other of state height above its `h_j`; `Σ.F` is genesis, below a genesis
-  `Σ.J`, or the finalized entry of height `h_F ≤ h(Σ.J) ≤ h_j`.
-* `held_atts_safe_run`: the safety premise at two honest stores of a Goldilocks run, from its FG
-  projection (`held_atts_safe`). -/
+  `Σ.J`, or the finalized entry of height `h_F ≤ h(Σ.J) ≤ h_j`. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -89,21 +86,6 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-
-/-- **Honest held attestations of a Goldilocks run are not slashable**: `held_atts_safe` on the
-FG projection, whose honest stores are the FG states of the run. -/
-theorem held_atts_safe_run (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) (i m : Nat) (a b : FG.Att sp.n)
-    (ha : ∃ Y ∈ (tr.state y i).fg.tree, a ∈ Y.fgPayload)
-    (hb : ∃ Y ∈ (tr.state z m).fg.tree, b ∈ Y.fgPayload) (hav : a.val ∈ H) :
-    ¬ FG.slashable a b := by
-  have hfg := Compose.fg_projection _ _ dg H _ tr proposer (Compose.requirements sp ro)
-    hrun.genesis_root_ok hrun.toLocalRun hnc
-  have hst : ∀ {w : Fin sp.n}, w ∈ H → ∀ i, tr.projFG.store w i = (tr.state w i).fg :=
-    fun hw i => by simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hw i]
-  rw [← hst hy] at ha
-  rw [← hst hz] at hb
-  exact held_atts_safe hfg hy hz i m a b ha hb hav
 
 end Consensus.Goldilocks.Healing
 

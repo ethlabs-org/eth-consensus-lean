@@ -10,71 +10,13 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 
 public section
 
-/-! # Goldilocks milestone Regimes: R.6's base for the Sleepy invariant from `s₀`
+/-! # Goldilocks Healing: the old-entry inventory from a start label `s₀`
 
-This module lives in Healing because the base uses the reset and acceptance projection lemmas;
-the Compose layer is below Healing in the import matrix.
-
-R.6's safety goes through the Sleepy record invariant started at a label `s₀` after the reset
-(`Compose.sleepy_invariant_from`, over `SleepyFrom` and `SleepyBase`). This file works from
-the healing premises of R.3 cut at the heal point `T` (the retired node-level R.6 premises) for a
-start label `s₀` with `a + T_b ≤ t_{s₀}` (the reset `a`, `T_b` of H.3 (c)'s bridge).
-
-`BaseFacts` names `SleepyBase`'s facts (2), (3a), (5) and (5′) at the cuts whose time satisfies a
-guard. The open remainder of `SleepyBase` ((1) old live locks, and `BaseFacts` up to `T` and at
-every cut) and its R.6 assembly are not stated here. -/
-
-namespace Consensus.Goldilocks.Regimes
-
-open SA (SAParams ReplayOrder Payload gbar)
-open Compose
-
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-
-/-- **`SleepyBase`'s facts (2), (3a), (5), (5′) at the cuts whose time satisfies `P`** (the
-fields of `SleepyBase` with the guard `P (tr.time i)`): at every time (`P := fun _ => True`) they
-are `SleepyBase`'s fields; up to `T` (`P := (· ≤ T)`) they are what the healed configuration
-and `Healthy` up to `T` can give. -/
-structure BaseFacts (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (s₀ : Nat)
-    (P : Time → Prop) : Prop where
-  /-- (2) Records (RecRet). -/
-  records : ∀ y ∈ H, ∀ i, P (tr.time i) → sp.ts s₀ + 6 * sp.Δ ≤ tr.time i →
-    ∀ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y i).ac.latestConfirmed →
-      (∃ s < s₀, Origin tr H C s) →
-        OnOriginChainFrom tr H C s₀ ∨ Anc (tr.HonestBlocks H) C (tr.state y i).fg.F
-  /-- (3a) Caches. -/
-  caches : ∀ y ∈ H, ∀ i, P (tr.time i) → sp.ts (s₀ + 2 : Nat) ≤ tr.time i →
-    OnOriginChainFrom tr H (tr.state y i).fg.F s₀ ∧ OnOriginChainFrom tr H (tr.state y i).fg.J s₀
-  /-- (5) Attestations at votes of slots `> s₀`. -/
-  vote_rows : ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → P (tr.time i) →
-    ∀ s, e.msg.slot = s + 1 → s₀ ≤ s → ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload,
-      a.val ∈ H → (tr.state y i).fg.hj ≤ ((tr.state y i).fg.σ a.T).h →
-      (∃ D C l, (∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧
-        ((tr.state x k).fg.σ D.root).Th = a.T) ∧ Origin tr H C l ∧ l < s₀ ∧
-          Anc (tr.HonestBlocks H) D C) →
-      ∃ D C l, (∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧
-        ((tr.state x k).fg.σ D.root).Th = a.T) ∧ OriginFrom tr H C l s₀ ∧ l ≤ s ∧
-          Anc (tr.HonestBlocks H) D C
-  /-- (5′) Attestations at the cuts from `t_{s₀}`. -/
-  event_rows : ∀ y ∈ H, ∀ i, P (tr.time i) → sp.ts s₀ ≤ tr.time i →
-    ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H →
-      (tr.state y i).fg.hj ≤ ((tr.state y i).fg.σ a.T).h →
-      (∃ D C l, (∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧
-        ((tr.state x k).fg.σ D.root).Th = a.T) ∧ Origin tr H C l ∧ l < s₀ ∧
-          Anc (tr.HonestBlocks H) D C) →
-      ∃ D C l, (∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧
-        ((tr.state x k).fg.σ D.root).Th = a.T) ∧ OriginFrom tr H C l s₀ ∧
-          Anc (tr.HonestBlocks H) D C
-
-section Base
-
-variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF Gp a Tb T : Time} {s₀ : Nat}
-  {proposer : Nat → Fin sp.n}
-
-end Base
-
-end Consensus.Goldilocks.Regimes
+`OldHonest` names an old honest entry at a start label `s₀` (an actual honest signature, its
+self-entry realization at a fixed replay height, and an old-source antecedent), and
+`OldEntryCovered` its coverage by a recent origin from `s₀`. An honest node's cached `h_j` is
+monotone along a run (`run_hj_mono`), so an inventory that holds at a base cut holds at every
+later cut (`oldHonest_inventory_preserved`). -/
 
 namespace Consensus.Goldilocks.Healing
 

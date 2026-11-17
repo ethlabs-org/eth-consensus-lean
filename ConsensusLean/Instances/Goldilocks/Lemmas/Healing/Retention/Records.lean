@@ -159,13 +159,6 @@ theorem sent_origin {ini : Fin sp.n → (goldilocksNode sp ro).State}
       ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b :=
   sent_origin_from hrun.toLocalRun hy
 
-/-- Honest signatures are well formed using the store at their own signing cut. -/
-theorem signAt_wellFormed {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n}
-    (hs : tr.SignAt y k att) : att.WellFormed :=
-  signAt_wellFormed_from hrun.toLocalRun hy hs
-
 /-- **The finality pair of an honest attestation names an entry of its source's chain** (G0.2
 (h)): the finality pair `(h, r)` that `fg_attest` signs (the justification of the entry state at an
 entry whose previous height is justified, or one of its pending pairs) names the entry at height `h`

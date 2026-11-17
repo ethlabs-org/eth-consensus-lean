@@ -41,7 +41,7 @@ relayed to the proposer, `proposer_relay_before`), and the children towards it w
 (`proposal_best_toward_old_before`, the counts: the honest slot-`(s−1)` batch, or the `3n/4`
 votes of an optimistic origin of label `s − 1`, relayed into the proposer's pool and resolved).
 Its anchor is below one (`proposal_anchor_old_of`): no honest optimistic check of slot `s` precedes
-the proposal (`proposal_no_optimistic`, so the proposer's stored locks are of slots below `s`),
+the proposal (`proposal_no_optimistic_of`, so the proposer's stored locks are of slots below `s`),
 and `fc_root` is below an old origin at the proposal and at a vote (`proposal_fcRoot_old_of`,
 `vote_fcRoot_old_of`: the source labels of the honest attestations held before `t_s`). The path
 from `D` to `Q` is through viable heads of the proposal's frame (`proposal_suffix_viable_of`:

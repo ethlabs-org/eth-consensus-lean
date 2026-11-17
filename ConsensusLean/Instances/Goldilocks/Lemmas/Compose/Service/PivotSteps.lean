@@ -387,7 +387,7 @@ set_option linter.unusedVariables false in
 honest attestation the proposer holds was signed before cut `i`, with a source below an origin
 before the signing (`attestation_source`); a regular one of label `l` is written at
 `t_l + 6Δ ≤ t_s`, so `l ≤ s − 2`; an optimistic one has label at most `s`, and not `s`
-(`proposal_no_optimistic`). -/
+(`proposal_no_optimistic_of`). -/
 theorem proposal_rows_old_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}

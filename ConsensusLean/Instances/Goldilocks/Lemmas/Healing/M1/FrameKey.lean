@@ -3,7 +3,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finali
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 
@@ -137,32 +136,6 @@ theorem hj_mono {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
           | none => rw [h.2]
           | some att => rw [h.2.1]
     · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩]
-
-/-- PhaseCount (a) at store level: two honest stores with equal `h_j` have equal `Σ.J`. -/
-theorem J_eq_of_hj_eq_run (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H)
-    {i m : Nat} (he : (tr.state y i).fg.hj = (tr.state z m).fg.hj) :
-    (tr.state y i).fg.J = (tr.state z m).fg.J :=
-  Store.J_eq_of_cache_hj_eq_of_safe (Compose.fg_reachable hrun.toLocalRun hy i)
-    (Compose.fg_reachable hrun.toLocalRun hz m) (Compose.honest_blocks_coherent hrun.toLocalRun hnc)
-    (fun _ h => ⟨y, hy, i, h⟩) (fun _ h => ⟨z, hz, m, h⟩) hf (held_atts_safe_run hrun hnc hy hz i m)
-    he
-
-/-- Equal merged keys at two honest cuts in kind J give equal `Σ.J`. -/
-theorem frameKey'_eq_J (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H)
-    {i m : Nat} (h : frameKey' (tr.state y i).fg = frameKey' (tr.state z m).fg)
-    (hk : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧ ¬(tr.state y i).fg.Contest) :
-    (tr.state y i).fg.J = (tr.state z m).fg.J := by
-  classical
-  have h1 := hj_lt_hmax hrun hy i
-  have h2 := hj_lt_hmax hrun hz m
-  obtain ⟨hfl, hkd⟩ := frameKey'_eq_floor_kind (by omega) (by omega) h
-  have hk' := hkd.1 hk
-  apply J_eq_of_hj_eq_run hrun hnc hf hy hz
-  unfold Store.headHeightFloor at hfl
-  simp [hk.2, hk'.2] at hfl
-  omega
 
 end Consensus.Goldilocks.Healing
 

@@ -354,7 +354,7 @@ set_option linter.unusedVariables false in
 /-- **The proposer has no stored lock of slot `s` or later**: a stored lock sits below an origin
 of its slot before the proposal (`lock_origin`); a regular one of label at least `s` is written
 after `t_s`, an optimistic one has the slot of its time, at most `s`, and not `s`
-(`proposal_no_optimistic`). -/
+(`proposal_no_optimistic_of`). -/
 theorem proposal_locks_slot_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}

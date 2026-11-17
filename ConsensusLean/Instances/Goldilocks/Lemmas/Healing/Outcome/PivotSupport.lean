@@ -185,23 +185,6 @@ theorem reset_proposal_passes (hp : ResetPremises tr H proposer dg g ΔF a)
   fun O hO => (hp.toUpTo tr H (le_max_left a (tr.time i))).reset_proposal_passes hc hP.1 hR
     hci hcall hd hti (le_max_right _ _) O (oldSrc_iff.1 hO)
 
-/-- A crossing below an origin written before a serving proposal is below its duty parent.
-The explicit timestamp preserves the provenance needed by bounded report consumers. -/
-theorem crossing_below_proposal_parent
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)}
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
-    {x : Fin sp.n} {r l : Nat} {X O : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x r l O) (hrt : tr.time r < sp.ts u)
-    (hXO : Anc (tr.HonestBlocks H) X O) : Anc (tr.HonestBlocks H) X d.head :=
-  hXO.trans (reset_proposal_passes hp hc hP hR hci hcall hd hti hPQ O
-    (oldSrc_iff.2 ⟨x, r, l, ho, hrt⟩))
-
 /-- A high left entry of the proposer's store lies below a bounded pre-slot high origin: its
 crossing attestation's origin label is below the proposal slot. -/
 private theorem ResetPremisesUpTo.proposal_entry_below_old {b : Time}
@@ -282,22 +265,6 @@ theorem ResetPremisesUpTo.reset_proposal_root_source {b : Time}
   have hheld := hp.proposal_holds_old hpH hci hcall hd hti hib ho hrt
   rw [hfr] at hheld
   exact ⟨O, ⟨v, r, l, ho, hrt, hrb⟩, hp.low_finalized_below_origin hpH i hlow ho, hheld⟩
-
-/-- The proposal root is genesis or below an old source. High `J` has a crossing attestation signed
-before the proposal. Low `J` is below the held reset seed by the root's no-contest condition. -/
-theorem reset_proposal_fcRoot (hp : ResetPremises tr H proposer dg g ΔF a)
-    (_hc : CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts u) (_hPQ : P.parent = some d.head.root) :
-    ℓp.frame.fcRoot.root = sp.genesisRoot ∨
-      ∃ O, OldSrc tr H g u O ∧ Anc (tr.HonestBlocks H) ℓp.frame.fcRoot O :=
-  ((hp.toUpTo tr H (le_max_left a (tr.time i))).reset_proposal_root_source hP.1 hR hci hcall hd
-    hti (le_max_right _ _)).imp_right
-    fun ⟨v, r, l, O, ho, hrt, _, hO⟩ => ⟨O, oldSrc_iff.2 ⟨v, r, l, ho, hrt⟩, hO⟩
 
 
 end Consensus.Goldilocks.Healing

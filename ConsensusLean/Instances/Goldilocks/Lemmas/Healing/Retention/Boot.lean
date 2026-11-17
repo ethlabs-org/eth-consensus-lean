@@ -572,29 +572,6 @@ theorem high_floor_signed_source_of_row_bound
       ∃ d att, r < d ∧ d < k ∧ tr.SignAt v d att ∧ att.T = E.root :=
   (hp.toUpTo tr H (le_refl a)).high_floor_signed_source_of_row_bound ho hy hrow hpair hcomp hfloor
 
-/-- The floor crossing supplies an earlier high origin and a held floor entry. -/
-theorem high_floor_source_of_row_bound
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
-    {u : Nat}
-    (hrow : ∀ W ∈ (tr.state y k).fg.tree, ∀ att ∈ W.fgPayload,
-      ∀ v ∈ H, ∀ d, tr.SignAt v d att → d < k → ∀ r l O,
-        r < d → HighOrigin tr H g v r l O → l < u)
-    (hpair : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
-      ∀ v' r' l' O', r' < k → HighOrigin tr H g v' r' l' O' →
-      Compatible (tr.HonestBlocks H) O O')
-    (hcomp : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
-      Compatible (tr.HonestBlocks H) B O)
-    (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor) :
-    ∃ v r l O E, r < k ∧ HighOrigin tr H g v r l O ∧ l < u ∧
-      E ∈ (tr.state y k).fg.tree ∧ Anc (tr.HonestBlocks H) E O ∧
-      Anc (tr.HonestBlocks H) B O ∧
-      (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h := by
-  obtain ⟨v, r, l, O, E, hr, ho, hl, hE, hEO, hBO, hfloor, -⟩ :=
-    high_floor_signed_source_of_row_bound hp ho hy hrow hpair hcomp hfloor
-  exact ⟨v, r, l, O, E, hr, ho, hl, hE, hEO, hBO, hfloor⟩
-
 /-- Vote specialization of the duty-independent floor crossing. -/
 theorem ResetPremisesUpTo.high_floor_source_core {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)

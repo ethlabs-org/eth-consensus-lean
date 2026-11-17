@@ -6,8 +6,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
@@ -43,41 +41,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
 /-! ### The proposal walk and fork-choice roots -/
-
-/-- An optimistic prefix compares with an old high origin. Strictly earlier origin
-labels use historical vote extension; equal labels use fast/optimistic compatibility. -/
-theorem optimistic_prefix_compatible_old
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {p : Fin sp.n} (hpH : p ∈ H) {r u : Nat}
-    {D L O : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    (hop : SA.OptimisticLockAt tr.projAC p r (u - 1) D CV)
-    (_hLu : L ∈ tr.HonestBlocks H) (hLD : Anc (tr.HonestBlocks H) L D)
-    {x : Fin sp.n} {i j : Nat} (ho : HighOrigin tr H g x i j O)
-    (_hOld : tr.time i < sp.ts u) (hj : j ≤ u - 1) :
-    Compatible (tr.HonestBlocks H) L O := by
-  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
-  have hDO : Compatible (tr.HonestBlocks H) D O := by
-    rcases hj.lt_or_eq with hj | rfl
-    · apply SA.optimisticLock_compatible hrun _ SA.CommitteeP.full hpH hop
-        (SA.cs2_full hp.stock (faulty_lt_half hp p))
-      intro z hz q e hv hs
-      obtain ⟨ell, hc, he⟩ := hv
-      have hvotes := (historical_activation_before hp (tr.time q) q le_rfl).2
-      exact ((rawVoteAt_iff _ _ _).mp hvotes O j
-        ((historicalTargets_iff O j).mpr ⟨x, i, ho⟩) z hz ell e ⟨hc, he⟩
-        (by clear * - hj hs; omega) le_rfl).1
-    · obtain ⟨CV', hst⟩ := ho.2.2.1
-      obtain ⟨_, C, hfl, hOC⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
-      have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H
-        (fun v => v.val) tr proposer ΔF (sp.ts (u - 1 : Nat)) (sp.ts (u - 1 + 1 : Nat) + sp.Δ)
-        hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 (le_ts_of_highOrigin hp ho))
-      rcases SA.fastLock_same_slot hrun _ SA.CommitteeP.full (SA.size_binding_full hp.stock) hpH
-        (Or.inr hop) ho.1 hfl hsync (SA.cs2_full hp.stock (faulty_lt_half hp p)) with hDC | hCD
-      · exact SA.anc_total hrun.localRun.coherent hDC hOC
-      · exact Or.inr (hOC.trans hCD)
-  rcases hDO with hDO | hOD
-  · exact Or.inl (hLD.trans hDO)
-  · exact SA.anc_total hrun.localRun.coherent hLD hOD
 
 /-- Stored proposal high locks compare with every high origin in the finite horizon. -/
 theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old {b : Time}

@@ -57,28 +57,6 @@ structure ResetPremises (proposer : Nat → Fin sp.n)
   /-- The committee is population-sized (`committeeSize = n`). -/
   stock : sp.committeeSize = sp.n
 
-/-- GST service at actual receiver calls through `b`. Effective send times and strict
-delivery deadlines agree with `GSTRun`; no service after the observation horizon is required. -/
-structure GSTRunUpTo (g ΔF b : Time) : Prop where
-  deltaF : 0 < ΔF
-  message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmitAt x i m →
-    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.time j ≤ b →
-      tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
-      tr.MsgDeliveredBy y j (tr.time i) (max (tr.time i) g) m
-  block : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B ∨ tr.OwnBlockAt x i B →
-    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.time j ≤ b →
-      tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
-      tr.BlockDeliveredBy y j (tr.time i) (max (tr.time i) g) B
-  relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → g ≤ tr.time i →
-    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.time j ≤ b →
-      tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
-      Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
-      tr.BlockAcceptedBy y j (max (tr.time i) g) B
-  attestation : ∀ x ∈ H, ∀ i att, tr.SendOrAdmitAttAt x i att →
-    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.time j ≤ b →
-      tr.deadline y j (max (tr.time i) g) ΔF ≤ tr.time j →
-      tr.AttDeliveredBy y j (max (tr.time i) g) ΔF att
-
 /-- Reset service keeps the AC message/block/relay contracts, but requests only
 signed-attestation delivery by the deadline, without an attestation processing lower bound. -/
 structure ResetService (g ΔF b : Time) : Prop where

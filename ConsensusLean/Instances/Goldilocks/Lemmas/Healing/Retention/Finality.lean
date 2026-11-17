@@ -422,15 +422,6 @@ theorem viable_head_of_floor (hrun : GoldilocksRun proposer dg H tr ini)
     · simpa [Goldilocks.Store.fcRoot, hk] using hFX
   exact ⟨hFX, ⟨hX, hFX⟩, hroot, hh, ⟨hX, hFX, hroot, hh⟩⟩
 
-/-- Whole-run specialization of the actual held-block finality comparison. -/
-theorem low_finalized_below_high_block (hp : ResetPremises tr H proposer dg g ΔF a)
-    {y x : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H) {m i : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBt : B ∈ (tr.state x i).fg.tree)
-    (hhigh : HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h)
-    (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) :
-    Anc (tr.HonestBlocks H) (tr.state y m).fg.F B :=
-  low_finalized_below_high_block_of_run hp.run hp.noColl hp.healthy.2.2 hy hx hBt hhigh hlow
-
 /-- The origin-specialized form of strict-height finalized ancestry. -/
 theorem ResetPremisesUpTo.low_finalized_below_origin {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {y : Fin sp.n}
