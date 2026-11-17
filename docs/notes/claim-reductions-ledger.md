@@ -26,7 +26,8 @@ antecedents on the run's trace.
 Fresh delivery implies `served`; Goldilocks interprets it as fresh processing or
 stamped retained evidence (`SA.MessageServedBefore`). Only message service and node
 acceptance relay are required. Growing AC relay follows the `acBlock_prev`/`accept_next`
-derivation in `Growing/Compose/Sync`. Instance interpretations remain pending.
+derivation in `Growing/Compose/Sync`. Goldilocks fixes its interpretation in
+`GoldilocksLocalData.served`; another instance supplies its own.
 The unused `ServiceTransport` is deleted; generic `Service` is unchanged.
 
 ## Guarded-window forward adaptation
@@ -47,8 +48,9 @@ Its nonfinal branch reads inclusion at L7 (`HealthyReadPoint.proposal`), so it a
 PreparationPremisesSupply and ResetHealBudgetSupply, the capstone's existing `preparation` and
 `resetBudget` rows, for L7's Premises, selected reset and post-drain bound.
 No arbitrary-window height law, timeoutDelay-to-spacing inference, gap enlargement or
-latency enlargement is claimed. Joint guarded production remains OPEN; this fixes a
-missing source prerequisite, not a valid-run counterexample, and supplies no proof.
+latency enlargement is claimed. Joint guarded production is PROVED for Goldilocks
+(`Simulation.goldilocks_finalWindowSupply`) and remains OPEN for an arbitrary map; this
+correction fixes a missing source prerequisite, not a valid-run counterexample.
 
 ## Verdict and ownership
 
@@ -61,8 +63,10 @@ final-monotonicity edges are reused, not duplicated. The remaining statement int
 admission-free Prop definitions, not proofs. Their compilation establishes well-formedness only,
 not truth, sufficient premises, realizability, or nonvacuity.
 
-Supplier interfaces below remain **UNPROVED**. Named source routes do not constitute
-generic adapter proofs. Joint proposal and final-window production now take the
+Supplier interfaces below remain hypotheses of the generic reductions. Goldilocks proves
+every one at its canonical run map (`goldilocks_localClaimSuppliers`); they remain
+obligations for an arbitrary map, and named source routes do not constitute generic adapter
+proofs. Joint proposal and final-window production now take the
 collision-free branch of the consuming `Holds` reductions. No guarded supplier is
 an input of `OutputValidAlways` or the unconditional chain-representation edges.
 The selected final window carries anchor-0 advertised readiness/non-genesis and
@@ -85,7 +89,9 @@ nesting and final-monotonicity edges with their system-level assemblies (`nested
 safety and liveness reductions are proved too (`sleepy_safety_reduction`,
 `sleepy_liveness_reduction`), and so is the capstone (`meetsObligations_of_local_proof`, in
 `ClaimReductionEdges`), which forwards the fields of one `LocalClaimSuppliers` record per mapped
-valid run to the reductions. The local supplier records themselves remain instance obligations.
+valid run to the reductions. Goldilocks supplies these records by
+`goldilocks_localClaimSuppliers` in `Lemmas/Growing/Simulation/GoldilocksClaimSuppliers.lean`; they remain
+obligations for an arbitrary map.
 Healed safety takes its cross-reader
 agreement from `HealthyReadPoint.healed` at the opening that `ResetHealBudgetSupply` selects
 with its reset. The persistence proof transports the
@@ -151,8 +157,8 @@ in the engine representation remain independent and unchanged.
 
 ### Sleepy event and coverage suppliers
 
-The reductions and `LocalClaimSuppliers` consume the following rows. Proven rows
-are recorded below; the remaining obligations are OPEN, not final endpoint claims. The un-windowed sleepy fields of
+The reductions and `LocalClaimSuppliers` consume the following rows. Each row is
+PROVED for Goldilocks as recorded below and remains an obligation for an arbitrary map. The un-windowed sleepy fields of
 `ACCorrectLocal`, `FiniteLocal` and `SleepyReadPoint` are removed: proposal and
 inclusion now take the same run, binding, service, independent count windows and
 anchored-frame premises as `Extension`.
@@ -226,12 +232,13 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 
 ## Field-by-field premise discharge map
 
-“Supplied” below means a named OPEN hypothesis of the intended edge, not proved evidence.
+The interfaces below remain hypotheses of the generic edges. Named Goldilocks suppliers are
+proved evidence at the canonical run map, not assumptions of the Goldilocks endpoint.
 
 | Consumer premise | Named interface / derivation | Status |
 | --- | --- | --- |
-| growing local run, no collision | GrowingRunTransport.run/no_collision | Existing OPEN supplier; collision excuse is split only in Holds rows |
-| engine/local Δ identity | M.delta_eq | Map data, realization OPEN |
+| growing local run, no collision | GrowingRunTransport.run/no_collision | PROVED for Goldilocks by `goldilocksRunMap_transport`; OPEN for an arbitrary map. Collision excuse is split only in Holds rows |
+| engine/local Δ identity | M.delta_eq | Goldilocks map data by `rfl` in Growing/Simulation/RunMap; OPEN realization for an arbitrary map |
 | bounded own-read honesty, read boundary | EngineReadPoint.honest/boundary, RegimeTransport.ready + EngineReadPoint.ready | EngineReadPoint supplied for Goldilocks (`goldilocksRunMap_engineReadPoint`); OPEN for an arbitrary map; RegimeTransport.ready PROVED for Goldilocks (`goldilocks_regimeTransport`); actual engine cutTime retained |
 | end-time readiness and output state/time | StoredReadTransport.end_read + `end_read_output_eq` | Under readiness at t: stored clock t at endCut t, strict read point at M.cut (endCut t); output is the chain of the confirmed read at t. PROVED for Goldilocks; OPEN for an arbitrary map |
 | local versus engine catch-up, latency/heal | ClaimDeadlineFit.catchUp/latency_le_margin/healthy_start | Goldilocks: PROVED by `goldilocks_claimDeadlineFit`; open for an arbitrary map. catchUp states C.catchUp + 1 ≤ cDur, supplying the stored-clock bridge's numerical slack without the bridge itself |
@@ -247,22 +254,23 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | preparation horizon Premises | PreparationPremisesSupply | supplied for Goldilocks (`goldilocks_preparation_premises_supply`, two coefficient fits); OPEN for an arbitrary map; consumed before healing, not proved by healing |
 | reset / canonicality / drain-slot time | HighCanonicalSupply and ResetHealBudgetSupply | Goldilocks canonicality: PROVED by `Simulation.goldilocks_highCanonicalSupply`, directly from the healing leaves. Goldilocks reset budget: PROVED by `Simulation.goldilocks_resetHealBudgetSupply`, from the query's healthy preparation and its repair opening. The budget supplier selects the reset, and heal_after_reset only consumes it. |
 | healed temporal ancestry | HealedReadAncestry + StoredReadTransport | Goldilocks: PROVED by `Simulation.goldilocks_healedReadAncestry` at arbitrary vote binding and the actual stored-read context. Uses the temporal record-extension proof, not compatibility⇒ancestry. |
-| outage participation | OutageTransport.participation and OutagePolicy.binding/horizon | Existing OPEN suppliers; at the run's own point and selection the population and look-back committee η-sleepy clauses (outage catch-up `max cDur (η·ΔAC − 1)`) follow from `Outage` (`OutageTransport.participation_of_outage`). The destination coupling (sample coverage) is removed: unsatisfiable under growing faults Goldilocks: `goldilocks_outageTransport` at `goldilocksOutagePolicy` (the run's own indexed point), and `OutageTransport.participation_local` at the local catch-up. |
-| fixed outage recovery floor / endpoint fit | ACCorrectLocal policy data and OutageRecoveryBinding's seven equalities plus C.catchUp + 1 ≤ cDur at SAME M/K/C | OPEN policy matching and monotone readiness/count transport; protection lives only in OutageReadPoint, with no actual-cut twin Goldilocks: matching PROVED at the local data equations and the endpoint contract (`goldilocks_outageRecoveryBinding`). |
+| outage participation | OutageTransport.participation and OutagePolicy.binding/horizon | PROVED for Goldilocks by `goldilocks_outageTransport` at `goldilocksOutagePolicy` (the run's own indexed point), and `OutageTransport.participation_local` at the local catch-up; OPEN for an arbitrary map. At the run's own point and selection the population and look-back committee η-sleepy clauses (outage catch-up `max cDur (η·ΔAC − 1)`) follow from `Outage` (`OutageTransport.participation_of_outage`). The destination coupling (sample coverage) is removed: it is unsatisfiable under growing faults. |
+| fixed outage recovery floor / endpoint fit | ACCorrectLocal policy data and OutageRecoveryBinding's seven equalities plus C.catchUp + 1 ≤ cDur at SAME M/K/C | Goldilocks: matching PROVED at the local data equations and the endpoint contract (`goldilocks_outageRecoveryBinding`); policy matching and monotone readiness/count transport OPEN for an arbitrary map. Protection lives only in OutageReadPoint, with no actual-cut twin. |
 | outage pre/post service | OutageServiceSupply | Goldilocks: PROVED by `goldilocks_outageServiceSupply`; AC-owned service and node acceptance relay, open for an arbitrary map |
 | resilience target tip | ResilienceTipTransport | Representation only; PROVED for the Goldilocks run map |
 | RootOk at actual reads | HonestReadTransport.roots; genesis from the run (`ACRun.run_root`) | supplied for Goldilocks (`goldilocksRunMap_honestReadTransport`); OPEN for an arbitrary map; never inferred from unrelated dc names |
-| honest union coherence | explicit clean-run → Coherent hypothesis | OPEN instance supplier, never added to HoldsAlways |
+| honest union coherence | explicit clean-run → Coherent hypothesis | PROVED for Goldilocks by `goldilocksRunMap_coherent`; OPEN for an arbitrary map, never added to HoldsAlways |
 | held-store inclusion in honest union | HonestBlocksAt witnesses y=validator.symm v, cut=M.cut i, t=cutTime i, using before_time/honest_eq and nonnegative actual cutTime | DERIVED, not a new supplier |
 | chain prefix from local ancestry | ReadRepresentation.ancestor_prefix, with actual held membership/root/coherence premises; same M.chain/header | supplied for Goldilocks (`goldilocksRunMap_readRepresentation`); OPEN for an arbitrary map; no final claim assumed |
-| actual tip held / payload ancestry | OutputValidityEdge; LocalReadPoint, SleepyLayer1 coverage and HealthyReadPoint; final cache invariants | OPEN: OutputValidityEdge needs the honest reader's output tip at M.clock of its stored state to belong to the mapped FG tree. Neither ReadRepresentation nor HonestReadTransport supplies this membership. For Goldilocks, finalized membership follows from FG reachability and confirmed membership from AC ReqOutputs. |
+| actual tip held / payload ancestry | OutputValidityEdge; LocalReadPoint, SleepyLayer1 coverage and HealthyReadPoint; final cache invariants | PROVED for Goldilocks by `goldilocksRunMap_outputValidity` via `engine_outputValid_at`; OPEN for an arbitrary map. OutputValidityEdge needs the honest reader's output tip at M.clock of its stored state to belong to the mapped FG tree. Neither ReadRepresentation nor HonestReadTransport alone supplies this membership. For Goldilocks, finalized membership follows from FG reachability and confirmed membership from AC ReqOutputs. |
 | engine view and conviction binding | HonestReadTransport.chain_att_view, M.att_signer/att_conflict; key/validator equivalences | supplied for Goldilocks (`goldilocksRunMap_honestReadTransport`); OPEN for an arbitrary map; source population count unchanged |
 
 ### Premises production: no silently discharged field
 
 For both DeadlinePremisesSupply and PreparationPremisesSupply the exact returned
-record is Generic.Premises, not an arbitrary predicate. Its fields are individually
-OPEN obligations of the instance realization:
+record is Generic.Premises, not an arbitrary predicate. Goldilocks supplies it through
+`goldilocks_deadlinePremisesSupply` and `goldilocks_preparation_premises_supply`; its fields remain
+individual obligations for an arbitrary map:
 
 | Premises field | Required source accounting |
 | --- | --- |
@@ -308,10 +316,9 @@ Lemmas/Generic/HealingEdges.lean), so the obligation is only its supply.
 The first healthy-reduction consumer must supply this inequality; the old
 `Premises.timeoutDelay` and `Premises.slotLen` do not together imply it.
 The leaves also require `slotLen`; the assemblies obtain it from `Premises`.
-Goldilocks can supply the delay from its four-Δ grid and numerical timeout
-bound: on that grid, `spacing_grid_equation` (Lemmas/Generic/HealingEdges.lean)
-turns the bound into the delay. The generic instance
-obligation for an arbitrary schedule is not discharged here.
+On the four-Δ grid, substituting slotTime(s) = 4sΔ reduces the delay condition to
+6Δ + ΔF ≤ 4Δ·δt. The generic instance obligation for an arbitrary schedule is not
+discharged here.
 `round_of_warm_at` additionally requires `(H b).Nonempty`, explicit in its
 generic contract (Milestones/Statements/Generic/Healing.lean). Earlier proposer
 honesty does not supply honesty at the later horizon. The rise contract already

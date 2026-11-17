@@ -812,8 +812,9 @@ are the intended ones.
   with a recurrence requirement.
 - Committees are public selections. A protocol may declare a participation
   role, a `.fixed` or `.sized` selection per slot, and the outage regime's
-  look-back committee clause is relative to it (§"Committees"); the sleepy and healthy
-  regimes are population-wide. Gasper's partitioned selection is deferred.
+  look-back committee clause is relative to it (§"Committees"). The sleepy and healthy
+  regimes keep their population-wide bounds and also constrain the selected committees
+  (`CommitteeSleepyOn`, `CommitteeHealthyOn`). Gasper's partitioned selection is deferred.
 - Phases are multiples of `ΔAC`. For `pollSel := .fixed univ`, poll provenance
   accepts any validator's header.
 - `notReadyAtMost m` (Tendermint's contract, a placeholder) is a pointwise

@@ -78,22 +78,6 @@ theorem slotLen_of_grid {P : Params} (hgrid : ∀ s : Nat, P.slotTime s = (s : T
   push_cast at h
   linarith
 
-/-- On the four-delay grid, the report-delivery spacing at every slot is the same numerical bound
-`6Δ + ΔF ≤ 4Δ · δt`. -/
-theorem spacing_grid_equation {P : Params} (ΔF : Time)
-    (hgrid : ∀ s : Nat, P.slotTime s = (s : Time) * (4 * P.Δ)) :
-    (∀ s, P.slotTime (s + 1) + 2 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) ↔
-      6 * P.Δ + ΔF ≤ 4 * P.Δ * (P.δt : Time) := by
-  constructor
-  · intro h
-    have h1 := grid_span hgrid 0 1
-    push_cast at h1
-    linarith [h 0, grid_span hgrid 0 P.δt]
-  · intro h s
-    have h1 := grid_span hgrid s 1
-    push_cast at h1
-    linarith [grid_span hgrid s P.δt]
-
 section Edges
 
 variable {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n} {runs : ACRun A sg}

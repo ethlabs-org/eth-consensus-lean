@@ -81,10 +81,9 @@ structure GoldilocksLocalData (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att
   payload : C.payload = (fun B => {tx | tx ∈ Blocks.decodeTxs B.input})
   served : C.served = (fun tr y j τ m => SA.FamilyFacts.MessageServedBefore tr.projAC y j τ m)
 
-/-- Intended Goldilocks local supplier with its exact data equations (`GoldilocksLocalData`).
-The existential is an unproved contract, never a definition of a supplier instance; the data
-equations supply no field evidence. The ready-majority counterpattern is not discharged by
-this skeleton. -/
+/-- Goldilocks local supplier with its exact data equations (`GoldilocksLocalData`), proved by
+`goldilocksACCorrectLocal_of_healing` from `goldilocks_ac_healing`. The data equations alone supply
+no field evidence; the healing witness and the local read-point proofs supply that evidence. -/
 def goldilocksACCorrectLocal (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (_hδ : 3 ≤ sp.toParams.δt) : Prop :=
   ∃ C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val), GoldilocksLocalData sp ro C
