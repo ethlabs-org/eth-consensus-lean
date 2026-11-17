@@ -216,6 +216,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ClaimReductionEd
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.CorrectnessEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.EngineEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksClaimSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksHealing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksReadPoint
