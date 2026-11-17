@@ -19,7 +19,7 @@ H.1, its corollary and H.2 (`Statements/Healing/AC`) for a time-indexed honest s
 * the votes and confirmed tips claimed are those of nodes honest at their cuts.
 
 The healing vocabulary that binds no honest set (`gbar`, `Θ`, `HonestProposal`, `SlowLockAt`)
-is the static one. At `H := fun _ => H₀` each statement implies its static counterpart.
+is the static one.
 
 Statements only: no proofs here. -/
 

@@ -557,12 +557,13 @@ detail in `TRUST.md`.
   argument `hstock`; at the population binding it holds by `rfl`. No certified statement reaches any of them;
   each is the population-binding case of a statement whose committee form is not stated. Reason: the run records
   hold at every binding, so the premise marks exactly the statements that need population-sized committees.
-- **The `*_of_growing` bridges from the growing healing and compose statements to their static counterparts are
-  not kept, since none has a caller:** `Compose.{readyImpliesJoined, outcomeService}_of_growing` and
-  `Healing.{cutAndReset, resetExistence, nonInterference, availableHealing, viableWitnessRetention, cleanLockDrain,
-  frozenTreeAgreement, commonPathAcquisition, patternRecovery, finalizingCoverage,
-  cacheAcceptanceAfterReset}_of_growing`. For the same reason, `Healing.Growing.ResetExistence.exists_reset` is not
-  kept either.
+- **No bridge from a growing-fault milestone statement to its static counterpart is kept** (the `*_of_growing`
+  theorems at `H := fun _ => H₀`, for AC, Compose, FGStore, Healing and Regimes, with the `*_const` vocabulary
+  lemmas only they used), since none has a caller: a retained result is stated and proved in its growing or committee
+  form, and agreement with the static form is not a check. The constant-set lemmas kept are
+  `Growing.LocalRun.const_iff` and `Growing.GoldilocksRun.const_iff` (`Lemmas/Growing/Run/Const`), which the
+  constant-fault simulation reduction (`Lemmas/Growing/Simulation/Const`) uses. For the same reason,
+  `Healing.Growing.ResetExistence.exists_reset` is not kept either.
 
 ### Layout of the instance proofs
 

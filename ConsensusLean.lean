@@ -646,12 +646,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.L
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.PivotOld
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.PivotWalk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Suffix
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.AC
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.Compose
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.FGStore
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.Healing
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.HealingAC
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Trace.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Compat
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed

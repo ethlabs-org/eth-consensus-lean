@@ -16,8 +16,6 @@ C1.2 (`Statements/Healing/Outcome`) for a time-indexed honest set `H` (antitone)
 * "every honest node accepts the carrier within a further `Δ`" is every node honest at
   `T₁ + Δ`, and the early justification is accepted by a node honest at its acceptance.
 
-At `H := fun _ => H₀` the statement implies its static counterpart.
-
 Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Compose.Growing

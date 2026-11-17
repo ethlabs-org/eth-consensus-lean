@@ -34,8 +34,7 @@ time-indexed honest set `H` (antitone), over `Growing.GoldilocksRun` (and, for H
 
 The vocabulary that binds no honest set (`FirstCutAfter`, `cutZ`, the constants, the phase case,
 `HoldsEvidence`, `T_heal`) is the static one; the phase predicates `FrontierAt`, `JustifiedAt`,
-`ContestAt`, `PhaseAt` and `PhaseChanged` are the static ones applied to `H t`. At
-`H := fun _ => H₀` each statement implies its static counterpart.
+`ContestAt`, `PhaseAt` and `PhaseChanged` are the static ones applied to `H t`.
 
 Statements only: no proofs here. -/
 

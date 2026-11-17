@@ -22,7 +22,7 @@ honest set `H` (antitone), over `Growing.ACLocalRun` / `SA.Growing.ACRun`:
 * the network premise is `SyncACAt`.
 
 The statements without an honest set (the pure SA facts of ACBase) are unchanged and are not
-restated. At `H := fun _ => H₀` each statement here implies its static counterpart.
+restated.
 
 Statements only: no proofs here. -/
 

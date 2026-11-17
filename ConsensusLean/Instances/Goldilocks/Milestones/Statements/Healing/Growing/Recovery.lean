@@ -21,8 +21,7 @@ over `Growing.GoldilocksRun`:
   `T_rec` and `R_*` embed HR.3 (c)'s reset bound `ḡ + 24Δ + 12C_HS`, which under growing faults
   holds at lag `L` with `LΔ` added (`resetWindow`, `LagWithin`); so both are shifted by `LΔ`.
 
-The constants are the static ones; at a constant honest set `L = 0`. At `H := fun _ => H₀` each
-statement implies its static counterpart.
+The constants are the static ones; at a constant honest set `L = 0`.
 
 Statements only: no proofs here. -/
 

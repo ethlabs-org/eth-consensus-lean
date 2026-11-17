@@ -16,8 +16,6 @@ land in the growing-fault component contracts (`Growing.ACLocalRun`, `Growing.FG
 `SA.Growing.ACRun`, `SyncACAt`) inside the blocks held while honest. Joining projects, and the
 count `f_d < h_t` of the run is the AC projection's at every `t` and `d`.
 
-At `H := fun _ => H₀` each statement implies its static counterpart.
-
 Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Compose.Growing

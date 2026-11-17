@@ -24,7 +24,7 @@ time-indexed honest set `H` (antitone), over `Growing.FGLocalRun`:
   honest at its cut.
 
 The statements without an honest set (FGSafety, FGStore part 1, `CacheAcceptance`) are unchanged
-and are not restated. At `H := fun _ => H₀` each statement here implies its static counterpart.
+and are not restated.
 
 Statements only: no proofs here. -/
 

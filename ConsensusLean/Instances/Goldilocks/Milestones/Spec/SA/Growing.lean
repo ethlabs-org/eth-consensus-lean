@@ -16,9 +16,7 @@ honest set `H`:
   frame blocks carry their slot's proposer; and a proposer honest at both reading cuts has one
   block per slot in the frames read (a proposer compromised later can sign a second block of an
   earlier slot, and that block is excluded only while the proposer is honest);
-* `Growing.ACRun`: `Growing.ACLocalRun` with `Growing.HonestObjects`.
-
-At `H := fun _ => H₀` each is its static counterpart (`Lemmas/Growing/Run/Const`). -/
+* `Growing.ACRun`: `Growing.ACLocalRun` with `Growing.HonestObjects`. -/
 
 namespace Consensus.Goldilocks.SA
 

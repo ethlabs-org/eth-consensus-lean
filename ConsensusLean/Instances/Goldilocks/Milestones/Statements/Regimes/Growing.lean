@@ -25,8 +25,7 @@ The rows of `Statements/Regimes/{Sleepy,Always}` for a time-indexed honest set `
   a validator honest at the later of its two signings; **final accountability** has no fault
   bound, with each reader honest at its own cut.
 
-The margins (`τ + 6Δ`, `D = (4k + 6)Δ`) are those of the static rows. At `H := fun _ => H₀` each
-statement implies its static counterpart (`Lemmas/Growing/Statements/Regimes`).
+The margins (`τ + 6Δ`, `D = (4k + 6)Δ`) are those of the static rows.
 
 Statements only: no proofs here. -/
 
