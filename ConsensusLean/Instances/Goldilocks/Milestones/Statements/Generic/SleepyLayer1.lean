@@ -25,6 +25,8 @@ This is not a retained-output change or a healing origin. -/
 structure Data (A : NodeAC P) where
   ConfirmedEvent : RunTrace A → Fin P.n → Nat → Nat → A.Blk → Prop
 
+/-- `B` is the block of a confirmation event by a node honest at the event, at a time at or
+before both `t` and the horizon `b`. -/
 def EventWithin (D : Data A) (tr : RunTrace A) (H : Time → Set (Fin P.n))
     (b t : Time) (B : A.Blk) : Prop :=
   ∃ x i s, x ∈ H (tr.time i) ∧ tr.time i ≤ t ∧ tr.time i ≤ b ∧
@@ -46,6 +48,9 @@ def ViableAt (D : Data A) (tr : RunTrace A) (H : Time → Set (Fin P.n))
     (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
       B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree
 
+/-- At every honest read point within `b`, each finalized, justified and frame-root block is
+genesis or an ancestor of a confirmation by that read time; the conditional full-tree viability
+property `ViableAt` also holds. -/
 def AnchoredFrames (D : Data A) (tr : RunTrace A) (H : Time → Set (Fin P.n))
     (b : Time) : Prop :=
   ∀ y i t, HonestReadPoint tr H b y i t →
@@ -54,6 +59,9 @@ def AnchoredFrames (D : Data A) (tr : RunTrace A) (H : Time → Set (Fin P.n))
     Anchored D tr H b t (Node.frame (tr.state y i)).fcRoot ∧
     ViableAt D tr H b y i t
 
+/-- Committee counts at every time, using the committee look-ahead: in each nonempty committee
+`cm t`, the ready members exceed fraction `θ` of the ready and faulty members, counted on the
+view retained through each `d` from `t` to the committee look-ahead, clamped to `b`. -/
 def CommitteeWindow (C : ACCorrectLocal A sg) (p : EnvPoint (Fin P.n))
     (cm : Time → Finset (Fin P.n)) (b : Time) : Prop :=
   ∀ t d, 0 ≤ t → t ≤ d → d ≤ min b (p.lookAhead C.committeeLook t) →

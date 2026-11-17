@@ -17,11 +17,11 @@ namespace Consensus.Goldilocks.Generic
 open Shape Blocks
 
 /-- UNPROVED representation laws for the same chain and header maps used by the engine.
-The concrete sources are `Lemmas/Simulation/Chains.lean:62` (`chainTo_prefix`) and
-`:85` (`chainTo_mono`). The latter needs reachability only of the old store and membership
-of the old tip; neither law needs root hashing correctness or coherent-union ancestry.
-The intended consumers are unconditional nesting and final monotonicity, not cross-reader
-agreement. Instantiating this contract for an arbitrary AC remains a supplier obligation. -/
+The concrete sources are `chainTo_prefix` and `chainTo_mono` (Lemmas/Simulation/Chains). The latter
+needs reachability only of the old store and membership of the old tip; neither law needs root
+hashing correctness or coherent-union ancestry. The intended consumers are unconditional nesting
+and final monotonicity, not cross-reader agreement. Instantiating this contract for an arbitrary AC
+remains a supplier obligation. -/
 structure ChainRepresentation {P : Params} (A : NodeAC P) {Info : Type}
     (chain : NodeState A → A.Blk → List A.Blk) (header : A.Blk → Header Info) : Prop where
   /-- Ancestry in one reachable store gives a prefix, including reflexive ancestry. -/

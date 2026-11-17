@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "audit_commit": "0ef742e37e5e60d5ce3ac1b1acc5fd809666aa42",
+  "audit_commit": "3f493ae1e02b2c2503fc30f2f3439bf240585be4",
   "baseline_commit": "eed6d0b55614dde64a82b1ef17099e3533e0515f",
   "notes": [
     "blocked-by contains transitive compiled sorry owners, not speculative paper joins.",
@@ -36,13 +36,23 @@
     "Consensus.Goldilocks.Healing.clean_source_votes_before",
     "Consensus.Goldilocks.Healing.fresh_fast_lock_update_toFG",
     "Consensus.Goldilocks.Healing.higher_report_window_origin",
+    "Consensus.Goldilocks.Healing.optimistic_target_vote_domain",
+    "Consensus.Goldilocks.Healing.proposal_start_supported_of_source_votes",
+    "Consensus.Goldilocks.Healing.protected_call_viable",
+    "Consensus.Goldilocks.Healing.protected_vote_domain",
     "Consensus.Goldilocks.Healing.protected_vote_extends",
+    "Consensus.Goldilocks.Healing.ready_call_locks_compatible",
+    "Consensus.Goldilocks.Healing.ready_old_lock_below",
     "Consensus.Goldilocks.Healing.ready_update",
     "Consensus.Goldilocks.Healing.regular_fast_next_votes_of_early_witness",
     "Consensus.Goldilocks.Healing.regular_slow_next_votes_of_early_witness",
     "Consensus.Goldilocks.Healing.report_cover",
+    "Consensus.Goldilocks.Healing.reset_inv",
     "Consensus.Goldilocks.Healing.reset_vote_anchor",
+    "Consensus.Goldilocks.Healing.result_prefix_vote_domain_before",
+    "Consensus.Goldilocks.Healing.same_slot_source_below_ready",
     "Consensus.Goldilocks.Healing.slow_target_vote_domain_before",
+    "Consensus.Goldilocks.Healing.unanimous_target_fast_update",
     "Consensus.Goldilocks.Healing.update_window_kept",
     "Consensus.Goldilocks.Healing.voter_unlock_keeps_lock",
     "Consensus.Goldilocks.Refinement.UpTo.young_optimistic_lock_persists",
@@ -133,10 +143,15 @@
     "Consensus.Goldilocks.SA.LocksWF.step",
     "Consensus.Goldilocks.SA.LocksWF.tryVote",
     "Consensus.Goldilocks.SA.LocksWF.updateConfirmation",
+    "Consensus.Goldilocks.SA.anchor_cases",
     "Consensus.Goldilocks.SA.call_fromP",
     "Consensus.Goldilocks.SA.fastLock_mem_updateConfirmation",
     "Consensus.Goldilocks.SA.first_transfer_stored_of_pool",
+    "Consensus.Goldilocks.SA.liveLock_compatible",
     "Consensus.Goldilocks.SA.locksWF_post",
+    "Consensus.Goldilocks.SA.origin_compatible_proposal",
+    "Consensus.Goldilocks.SA.proposal_anchor_cases",
+    "Consensus.Goldilocks.SA.slow_origin_transfer_votes",
     "Consensus.Goldilocks.SA.slow_stored_locks_before",
     "Consensus.Goldilocks.SA.trivial_slow_first_proposal",
     "Consensus.Goldilocks.SA.trivial_update_first_proposal",
@@ -215,7 +230,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Compose.Growing.seed_held_past_at",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/Invariant.lean:269",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/Invariant.lean:279",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -225,7 +240,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Compose.Growing.seeded_caches_at",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/Invariant.lean:229",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/Invariant.lean:237",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -235,7 +250,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Compose.Growing.seeded_record_at",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/Invariant.lean:198",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/Invariant.lean:203",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -245,7 +260,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Compose.Growing.seeded_viable_at",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/Invariant.lean:250",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/Invariant.lean:259",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -255,7 +270,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Compose.Growing.seeded_vote_frame_at",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/VoteFrame.lean:38",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/VoteFrame.lean:40",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -335,7 +350,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Compose.record_label_or_lock",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Compose/Sleepy/ServedSteps.lean:642",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Compose/Sleepy/ServedSteps.lean:687",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -345,7 +360,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Compose.record_step_origin",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Compose/Sleepy/Provenance.lean:353",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Compose/Sleepy/Provenance.lean:351",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -355,7 +370,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Compose.record_writer",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Compose/Sleepy/ServedSteps.lean:576",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Compose/Sleepy/ServedSteps.lean:619",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -395,7 +410,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.FrameWindow.live_old_lock_witness",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/PreAdvance.lean:254",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/PreAdvance.lean:255",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -405,7 +420,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.ResetPremisesUpTo.clean_source_proposal_domain_before",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotRowSources.lean:402",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotRowSources.lean:371",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -425,7 +440,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.ResetPremisesUpTo.optimistic_vote_domain_before",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/FiniteSources.lean:171",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/FiniteSources.lean:166",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -445,7 +460,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.ResetPremisesUpTo.protected_source_compatible_high_origin",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotRowSources.lean:338",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotRowSources.lean:307",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -465,7 +480,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.ResetPremisesUpTo.result_prefix_vote_domain_before",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Foundation.lean:642",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Foundation.lean:234",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -485,7 +500,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.ResetPremisesUpTo.slow_source_votes_before",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/FiniteSources.lean:255",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/FiniteSources.lean:252",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -495,7 +510,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.clean_slow_carry",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/DrainCommon.lean:630",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/DrainCommon.lean:633",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -505,7 +520,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.clean_slow_first_extends",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Drain.lean:111",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Drain.lean:112",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -515,7 +530,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.clean_slow_proposal",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/DrainProposal.lean:521",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/DrainProposal.lean:530",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -525,7 +540,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.clean_slow_viable",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/DrainCommon.lean:556",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/DrainCommon.lean:558",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -535,7 +550,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.clean_source_proposal_domain_before",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotRowSources.lean:468",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotRowSources.lean:437",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -545,7 +560,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.drain_live_locks",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Foundation.lean:66",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Foundation.lean:65",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -565,7 +580,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.fastLock_counted_nonempty",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Retention/Relay.lean:389",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Retention/Relay.lean:379",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -575,7 +590,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.fastLock_mem",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Retention/High.lean:156",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Retention/High.lean:146",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -595,7 +610,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.live_lock_clean",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Drain.lean:371",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Drain.lean:373",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -605,7 +620,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.live_lock_selection_origin",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AnchorPrefix.lean:215",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AnchorPrefix.lean:217",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -614,18 +629,8 @@
       "evidence": "Proved; no direct owner in compiled audit at 065683b3."
     },
     {
-      "name": "Consensus.Goldilocks.Healing.optimistic_target_vote_domain",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/ResetInv.lean:238",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at d4f7ce50."
-    },
-    {
       "name": "Consensus.Goldilocks.Healing.proposal_start_supported",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotSourceVotes.lean:158",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotSourceVotes.lean:142",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -634,18 +639,8 @@
       "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
     },
     {
-      "name": "Consensus.Goldilocks.Healing.proposal_start_supported_of_source_votes",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotSourceVotes.lean:142",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
       "name": "Consensus.Goldilocks.Healing.proposal_stored_locks_compatible_old",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotWalk.lean:129",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotWalk.lean:93",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -655,67 +650,27 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.proposer_lock_extends",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AgreeLater.lean:325",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AgreeLater.lean:326",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
       "direct_sorry": false,
       "lean-status": "proved",
       "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
-      "name": "Consensus.Goldilocks.Healing.protected_call_viable",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/ResetInv.lean:445",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at d4f7ce50."
     },
     {
       "name": "Consensus.Goldilocks.Healing.protected_sources",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AcquireSources.lean:481",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AcquireSources.lean:487",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
       "direct_sorry": false,
       "lean-status": "proved",
       "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
-      "name": "Consensus.Goldilocks.Healing.protected_vote_domain",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/ResetInv.lean:313",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at d4f7ce50."
     },
     {
       "name": "Consensus.Goldilocks.Healing.readPoint_lockBlocks_below",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AgreeLater.lean:397",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
-      "name": "Consensus.Goldilocks.Healing.ready_call_locks_compatible",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Supplier.lean:392",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
-      "name": "Consensus.Goldilocks.Healing.ready_old_lock_below",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Supplier.lean:360",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AgreeLater.lean:398",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -734,48 +689,8 @@
       "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
     },
     {
-      "name": "Consensus.Goldilocks.Healing.reset_inv",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/ResetInv.lean:577",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at d4f7ce50."
-    },
-    {
-      "name": "Consensus.Goldilocks.Healing.result_prefix_vote_domain_before",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Foundation.lean:581",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
-      "name": "Consensus.Goldilocks.Healing.same_slot_source_below_ready",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Supplier.lean:327",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
-      "name": "Consensus.Goldilocks.Healing.unanimous_target_fast_update",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/ResetInv.lean:159",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at d4f7ce50."
-    },
-    {
       "name": "Consensus.Goldilocks.Healing.update_locks_compatible",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AcquireSources.lean:322",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AcquireSources.lean:324",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -785,7 +700,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.vote_old_live_lock_below_parent",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotWalk.lean:295",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotWalk.lean:261",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -815,7 +730,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Obligations.UpTo.candidate_after_fast_update",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/OperationalReports.lean:671",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/OperationalReports.lean:546",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -855,7 +770,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Obligations.healthy_query_slot",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/NonfinalSuppliers.lean:212",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/NonfinalSuppliers.lean:237",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -885,7 +800,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Obligations.publication_held_before_deadline",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/NetworkTransport.lean:168",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/NetworkTransport.lean:144",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -895,7 +810,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Obligations.publication_held_syncUntil",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/NetworkTransport.lean:119",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/NetworkTransport.lean:91",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -915,7 +830,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Obligations.sleepy_include_finite",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/Sleepy.lean:292",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/Sleepy.lean:320",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -955,7 +870,7 @@
     },
     {
       "name": "Consensus.Goldilocks.SA.LocksWF.addLocks",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:84",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:80",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -965,7 +880,7 @@
     },
     {
       "name": "Consensus.Goldilocks.SA.LocksWF.liveLocks",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:47",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:43",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -975,7 +890,7 @@
     },
     {
       "name": "Consensus.Goldilocks.SA.LocksWF.optimisticConfirmation",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:93",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:89",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -985,7 +900,7 @@
     },
     {
       "name": "Consensus.Goldilocks.SA.LocksWF.slot_le_of_live",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:53",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:49",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -995,7 +910,7 @@
     },
     {
       "name": "Consensus.Goldilocks.SA.LocksWF.unlock",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:68",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:64",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1005,7 +920,7 @@
     },
     {
       "name": "Consensus.Goldilocks.SA.castAt_readPoint_locksWF",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:287",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:243",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1025,7 +940,7 @@
     },
     {
       "name": "Consensus.Goldilocks.SA.fastLock_counted",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/Compatible/Unlocked.lean:39",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/Compatible/Unlocked.lean:28",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1035,7 +950,7 @@
     },
     {
       "name": "Consensus.Goldilocks.SA.fastLock_honest_vote",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/Trivial.lean:942",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/Trivial.lean:906",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1104,18 +1019,8 @@
       "evidence": "Proved; no direct owner in compiled audit at 065683b3."
     },
     {
-      "name": "Consensus.Goldilocks.SA.liveLock_compatible",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/ConfirmedBase.lean:805",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
       "name": "Consensus.Goldilocks.SA.live_locks_of_stored_before",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/SlowLocks.lean:205",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/SlowLocks.lean:203",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1125,7 +1030,7 @@
     },
     {
       "name": "Consensus.Goldilocks.SA.lock_below_origin",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/SlowLocks.lean:101",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/SlowLocks.lean:96",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1135,7 +1040,7 @@
     },
     {
       "name": "Consensus.Goldilocks.SA.lock_origin_readPoint",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/Origin.lean:569",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/Origin.lean:520",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1145,7 +1050,7 @@
     },
     {
       "name": "Consensus.Goldilocks.SA.locksWF_state",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:268",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/ExpiryFloor.lean:222",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1184,28 +1089,8 @@
       "evidence": "Proved; no direct owner in compiled audit at 065683b3."
     },
     {
-      "name": "Consensus.Goldilocks.SA.origin_compatible_proposal",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/ConfirmedBase.lean:611",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
-      "name": "Consensus.Goldilocks.SA.proposal_anchor_cases",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/Unanimity/Anchor.lean:304",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
       "name": "Consensus.Goldilocks.SA.raw_first_proposals",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/H2Transfer.lean:408",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/H2Transfer.lean:412",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -1215,7 +1100,7 @@
     },
     {
       "name": "Consensus.Goldilocks.SA.raw_slow_first_votes",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/H2Transfer.lean:128",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/H2Transfer.lean:129",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -1225,17 +1110,7 @@
     },
     {
       "name": "Consensus.Goldilocks.SA.slow_live_locks",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/SlowLocks.lean:192",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
-      "name": "Consensus.Goldilocks.SA.slow_origin_transfer_votes",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/Transfer.lean:92",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/SlowLocks.lean:190",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -1245,7 +1120,7 @@
     },
     {
       "name": "Consensus.Goldilocks.SA.slow_window_results",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/SlowLocks.lean:61",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/SlowLocks.lean:62",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1265,7 +1140,7 @@
     },
     {
       "name": "Consensus.Goldilocks.SA.unlocked_compatible",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/ProposalCore.lean:134",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/ProposalCore.lean:135",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1295,7 +1170,7 @@
     },
     {
       "name": "Consensus.Goldilocks.SA.update_first_proposal",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/ProposalCore.lean:894",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/ProposalCore.lean:826",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -1365,7 +1240,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Simulation.simTrace_vote_forwarded",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Simulation/Core.lean:472",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Simulation/Core.lean:481",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -1435,7 +1310,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin.0.Consensus.Goldilocks.SA.good_optimistic",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/Origin.lean:497",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/Origin.lean:448",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1465,7 +1340,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance.0.Consensus.Goldilocks.SA.FromP.of_updateConfirmation",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/Provenance.lean:147",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/Provenance.lean:151",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1475,7 +1350,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance.0.Consensus.Goldilocks.SA.call_candidate_fromP",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/Provenance.lean:378",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/Provenance.lean:382",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1485,7 +1360,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance.0.Consensus.Goldilocks.Compose.good_acCall",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Compose/Sleepy/Provenance.lean:247",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Compose/Sleepy/Provenance.lean:245",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1495,7 +1370,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance.0.Consensus.Goldilocks.Compose.good_optimistic",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Compose/Sleepy/Provenance.lean:97",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Compose/Sleepy/Provenance.lean:98",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1505,7 +1380,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance.0.Consensus.Goldilocks.Compose.good_updateConfirmation",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Compose/Sleepy/Provenance.lean:140",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Compose/Sleepy/Provenance.lean:138",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,
@@ -1535,17 +1410,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Confirmed.0.Consensus.Goldilocks.SA.liveLock_compat",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/H2Confirmed.lean:183",
-      "status": "lean-proved",
-      "blocked-by": [],
-      "in_obligations_closure": false,
-      "direct_sorry": false,
-      "lean-status": "proved",
-      "evidence": "Proved; no direct owner in compiled audit at 065683b3."
-    },
-    {
-      "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Anchor.0.Consensus.Goldilocks.SA.anchor_cases",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/Unanimity/Anchor.lean:56",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AC/H2Confirmed.lean:186",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -1565,7 +1430,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources.0.Consensus.Goldilocks.Healing.update_locks",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AcquireSources.lean:187",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/AcquireSources.lean:189",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -1645,7 +1510,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Provenance.0.Consensus.Goldilocks.Healing.call_storedFrom",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Retention/Provenance.lean:209",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Retention/Provenance.lean:210",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": true,

@@ -30,13 +30,15 @@ noncomputable abbrev mappedReadState (M : RunMap (A := A) rho payload)
 
 /-- UNPROVED actual-read suppliers. Read-time honesty is charged at `rho.cutTime i`,
 never at the possibly later micro-cut time. Concrete source:
-`Growing/Simulation/Endpoint/Outputs.lean:69,148,167`: freeze at the actual reader's
+`prefix_reader_at`, `engine_outputValid_at` and `engine_nested_at`
+(Growing/Simulation/Endpoint/Outputs): freeze at the actual reader's
 time (at the later read for growth), preserve both mapped states, then use local-store
 reachability, cache membership, tree growth and finalized ancestry. The arbitrary-AC
 suppliers are OPEN; a value of `RunMap` alone does not establish these invariants. -/
 structure HonestChainReads (M : RunMap (A := A) rho payload) : Prop where
   /-- Output read transport: E1 `output_eq` and `state_eq`; concrete
-  `Simulation/Chains.lean:31` and growing endpoint `Outputs.lean:160,182`.
+  `read_eq_out` (Simulation/Chains) and the growing endpoint's `engine_nested_at` and
+  `upTo_state_cutMap`.
   The output clock is the protocol's stored clock, not the observation or trace time. -/
   output_read : ∀ v i, i ≤ rho.events.length →
     rho.point.HonestAt v (rho.cutTime i) → ∀ g,
@@ -49,7 +51,7 @@ structure HonestChainReads (M : RunMap (A := A) rho payload) : Prop where
     rho.point.HonestAt v (rho.cutTime i) →
     (mappedReadState M v i).fg.Reachable A.genesisPayload
   /-- Rank-ordered provided tips have ancestry in this one store, at its actual clock.
-  Goldilocks source: growing endpoint `Outputs.lean:156–162` (frame rootedness and
+  Goldilocks source: the growing endpoint's `engine_nested_at` (frame rootedness and
   AC tips at the stored clock). Equal confirmed aliases require only reflexivity.
   This is local ancestry, not an assumption of the target chain-prefix claim. -/
   nested_tips : rho.ExecutionValid → ∀ v i, i ≤ rho.events.length →
@@ -63,23 +65,24 @@ structure HonestChainReads (M : RunMap (A := A) rho payload) : Prop where
     rho.point.HonestAt v (rho.cutTime i) →
     (mappedReadState M v i).fg.F ∈ (mappedReadState M v i).fg.tree
   /-- The E1 final-tip identity, separately from cross-reader representation laws.
-  Source: `AsChainShape.lean:559` and `Simulation/Outputs.lean:28`. -/
+  Source: `AsChainShape.outOf` and `Simulation.read_finalized`. -/
   finalized_tip : ∀ g, O.output .final = some g → ∀ st t, M.tip g st t = st.fg.F
   /-- A reader still honest at the later actual engine cut has not lost held blocks.
-  Source: growing endpoint `Outputs.lean:174–188`, on the later reader's prefix. -/
+  Source: the growing endpoint's `upTo_state_cutMap` and `engine_finalMonotone_at`, on the
+  later reader's prefix. -/
   tree_growth : rho.ExecutionValid → ∀ v i j, i ≤ j → j ≤ rho.events.length →
     rho.point.HonestAt v (rho.cutTime j) →
     (mappedReadState M v i).fg.tree ⊆ (mappedReadState M v j).fg.tree
   /-- Finalized cache ancestry is inside the later store; no union coherence is needed.
-  Source: growing endpoint `Outputs.lean:189`; its actual-read/prefix adapter remains an
-  explicit supplier obligation. -/
+  Source: the growing endpoint's `engine_finalMonotone_at`; its actual-read/prefix adapter
+  remains an explicit supplier obligation. -/
   finalized_ancestry : rho.ExecutionValid → ∀ v i j, i ≤ j → j ≤ rho.events.length →
     rho.point.HonestAt v (rho.cutTime j) →
     (mappedReadState M v j).fg.Anc
       (mappedReadState M v i).fg.F (mappedReadState M v j).fg.F
 
 /-- Nesting edge, at every bounded honest read, without a regime or excuse.
-Consumer: `ShapeClaimsAt.nested` (`Spec/Shape/Claims.lean:50`). Proved by `nestedChainEdge`. -/
+Consumer: `ShapeClaimsAt.nested`. Proved by `nestedChainEdge`. -/
 def NestedChainEdge (M : RunMap (A := A) rho payload) : Prop :=
   ChainRepresentation A M.chain M.header → HonestChainReads M → rho.ExecutionValid →
     ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank → O.output c₁ = some g₁ → O.output c₂ = some g₂ →
@@ -87,7 +90,7 @@ def NestedChainEdge (M : RunMap (A := A) rho payload) : Prop :=
 
 /-- Monotonicity edge. The E1 final-tip identity identifies the cache;
 growth preserves the old cache chain, then same-store ancestry gives the prefix.
-Consumer: `ShapeClaimsAt.finalMonotone` (`Spec/Shape/Claims.lean:53`).
+Consumer: `ShapeClaimsAt.finalMonotone`.
 Proved by `finalMonotoneChainEdge`. -/
 def FinalMonotoneChainEdge (M : RunMap (A := A) rho payload) : Prop :=
   ChainRepresentation A M.chain M.header → HonestChainReads M →

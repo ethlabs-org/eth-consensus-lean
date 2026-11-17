@@ -39,7 +39,7 @@ Labelled by kind (CONTRIBUTING "Statements"):
   (`Shape.regimes_realizable` from `ShapeObligations`'s admissibility, progress-fit and tolerance
   fields).
 * (a) The endpoint's outage and sleepy rows cover every vote binding:
-  `goldilocksWith_committeeOne` (a committee binding with a proper-subset
+  `goldilocks_committeeOne` (a committee binding with a proper-subset
   committee, `Regression.committeeOne`), and its outage and sleepy regimes are not vacuous:
   `committeeOne_realizable` (its regimes on five validators), `committeeOne_selected_ne_univ`,
   `committeeOne_outage_witness` (a clean outage witness whose committee is never the population)
@@ -356,7 +356,7 @@ theorem goldilocksCorrectWithExcuses_nonvacuous :
 /-! ## The outage and sleepy rows at every vote binding
 
 The endpoint's `persists` claim holds for `goldilocks S` at every bound setup. At a committee
-binding it reads a genuine proper subset (`goldilocksWith_committeeOne`), and its outage regime
+binding it reads a genuine proper subset (`goldilocks_committeeOne`), and its outage regime
 has a clean witness whose committee is a proper subset at every time (`committeeOne_realizable`,
 `committeeOne_selected_ne_univ`, `committeeOne_outage_witness`). The endpoint includes both sleepy
 claims at every bound setup; at the committee binding its sleepy regime has, at every output
@@ -366,7 +366,7 @@ capability and index, a clean witness whose committee is a proper subset at ever
 /-- (a) The committee instance is not the population case: at `committeeOne` the
 family signs votes in the committee role selected `.sized 1`, and the SA committee size (the vote
 threshold denominator) is `1`, a proper subset of every population of at least two validators. -/
-theorem goldilocksWith_committeeOne (S : Setup) (pub : Model.Public) (hn : 2 ≤ pub.n) :
+theorem goldilocks_committeeOne (S : Setup) (pub : Model.Public) (hn : 2 ≤ pub.n) :
     (goldilocks { S with vote := Regression.committeeOne } pub).skel.participationKind =
         some VoteKind.vote ∧
       (goldilocks { S with vote := Regression.committeeOne } pub).skel.kindSel

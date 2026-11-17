@@ -503,8 +503,8 @@ detail in `TRUST.md`.
   The test `ConsensusLeanTest/Goldilocks/VoteBinding.lean` exercises a proper-subset binding of one key per
   slot. Which certified statement holds at which binding is in §"Trusted surface and Challenge scope".
   Stock-only consumers specialize binding-generic queries explicitly at `goldilocks {S with vote := stock}`. The growing queries `FinalQueryAt`, `HealthyPreparationQueryAt` and `ConfirmedQueryAt`, and the final-window extraction, take every `S : Setup`; this does not by itself generalize every supplier or the endpoint. Their stock users pass `{S with vote := stock}`. The static queries (`OutageQuery`, `ConfirmedQuery`, `HealthyPreparationQuery`) and `SleepySafetyQueryAt` are stated at `goldilocks {S with vote := stock}`.
-  The stock trusted statements and
-  `meetsObligations_growing` explicitly use `goldilocks {S with vote := stock}`. Source contract assumptions
+  The trusted statements and `meetsObligations_growing` hold at every vote binding
+  (`goldilocks S`, for every `S : Setup`). Source contract assumptions
   and coefficients retain their original setup index; stock query consumers reconstruct the same assumption
   fields locally when the query requires the updated setup index.
 - **Votes leave through the poll outbox and are signed in their historical role (`candidateRole`).** No binding
@@ -645,7 +645,7 @@ detail in `TRUST.md`.
   liveness retains whole-run proposer progress. At the stock binding the outage committee clause
   follows from the population clause (look-ahead `5 ≤ 5`). The proper-subset binding
   `AsChainShape.Regression.committeeOne` and its clean outage and sleepy witnesses remain
-  (`Obligations.Test.Contract.goldilocksWith_committeeOne`, `committeeOne_outage_witness`,
+  (`Obligations.Test.Contract.goldilocks_committeeOne`, `committeeOne_outage_witness`,
   `committeeOne_sleepy_witness`): no wrapper deletion weakens their nonvacuity coverage.
 - **The simulation interface and canonical trace are proof-side.** The Refinement simulation interface and the
   canonical trace construction are in the non-exposed `Lemmas/Simulation/{Interface,TraceDefs}`, with
