@@ -2541,8 +2541,8 @@ C0.3 & \texttt{Compose.HonestBlockAccepted} & proved
   $\mathsf{NoColl}$ (on the tree with the own block) only for its new-root
   and acceptance clause\\
 C0.4 & \texttt{Compose.TickOrder}, \texttt{Compose.SignedOnlyInTicks};
-  engine: \texttt{Simulation.EngineSimulatesNode} & proved
-  (\texttt{compose\_node\_statements}, \texttt{engineSimulatesNode})\\
+  engine: \texttt{Simulation.SimulatesAt} & proved
+  (\texttt{compose\_node\_statements}, \texttt{simTraceAt\_simulates})\\
 C0.5 & \texttt{Compose.ACSeesAcceptedBlocks}, \texttt{Compose.ExecIsCutChain},
   \texttt{Compose.ACStatesReachable}, \texttt{Compose.FGStatesReachable},
   \texttt{Compose.RecordIsClientRun}, \texttt{Compose.SourcesHeld}; the
@@ -2580,9 +2580,9 @@ G1.2 & \texttt{FG.FGParams.finalization\_meets\_crossing} & proved core
   lemma, note~1\\
 G1.3 & \texttt{FG.AccountableSafety} & proved (\texttt{fg\_safety})\\
 G1.4 & \texttt{Store.FinalizedSafety} & proved (\texttt{fg\_store\_trace})\\
-G1.5 & \texttt{Simulation.ConflictsIff}, \texttt{Simulation.EvidenceInView},
-  \texttt{Simulation.FinalizedAccountable}; \texttt{Regimes.FinalAccountable}
-  & proved (\texttt{simulation\_statements}, \texttt{final\_accountable});
+G1.5 & \texttt{Simulation.ConflictsIff}, \texttt{Simulation.held\_att\_in\_view\_at},
+  \texttt{Simulation.final\_accountable\_at}; \texttt{Regimes.FinalAccountable}
+  & proved (\texttt{conflicts\_iff}, \texttt{final\_accountable});
   evidence universes differ, note~2\\
 G1.6 & \texttt{Store.PreviousHeightJustifiedEntry} & proved
   (\texttt{fg\_store\_service})\\
@@ -2699,7 +2699,7 @@ carries the quorum witnesses internally.  Likewise G1.2's lemma proves a
 quorum of slashable pairs with one attestation on each chain, but its
 conclusion does not expose the pair fields or the entry $E^{(2)}_j$.
 (2) G1.5 binds the evidence differently at two layers.  The engine statement
-\texttt{Simulation.FinalizedAccountable} finds the evidence in the union of
+\texttt{Simulation.final\_accountable\_at} finds the evidence in the union of
 the readers' whole views, which is weaker than the two finalized output
 chains.  The node statement \texttt{Regimes.FinalAccountable} finds it on two
 held carrier chains, which need not be the finalized output prefixes (a

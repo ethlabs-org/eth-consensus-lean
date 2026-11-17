@@ -15,12 +15,12 @@ kept)** and **G1.5, evidence binding**, over the Goldilocks shape of `AsChainSha
 (`goldilocks S`) run by the generic engine (`Spec/Model/Run`) and the spec's own run model
 (`Spec/Run`, `GoldilocksRun`).
 
-* **Simulation** (`Simulates`, `EngineSimulatesNode`). Every valid engine run (`ExecutionValid`)
-  of the family is simulated by a run of the spec's node. The skeleton selects one proposer
-  per slot; `runProposer` supplies that run-selected schedule to the node's execution laws,
-  independently of its runtime state types: a `GoldilocksRun` at the engine's digest (`digestOf`)
-  for the honest keys, with a monotone cut map `ι` from engine cuts to node cuts. The node state
-  inside the shape's state agrees with the trace at every engine cut; each engine event is one
+* **Simulation** (`Simulates`). A run of the spec's node simulates an engine run of the
+  family. The skeleton selects one proposer per slot; `runProposer` supplies that run-selected
+  schedule to the node's execution laws, independently of its runtime state types: a
+  `GoldilocksRun` at the engine's digest (`digestOf`) for the honest keys, with a monotone cut map
+  `ι` from engine cuts to node cuts. The node state inside the shape's state agrees with the trace
+  at every engine cut; each engine event is one
   group of the node (C0.4 kept: a tick at a public time is the node's tick with the engine's
   input, a delivery is the groups of the canonical objects it carries, a restart is a restart
   group) or no cut (a tick at a non-public time, a dropped object); every labelled node cut
@@ -32,15 +32,12 @@ kept)** and **G1.5, evidence binding**, over the Goldilocks shape of `AsChainSha
   include the horizon and do not depend on a future awake time.
 * **Reads** (`ReadIsOut`): the chain trace reads the shape's outputs of the node state at the
   shape's clock, which is the time of the node's last tick or restart (`lastClock`).
-* **`NoColl` transport** (`NoCollTransport`): no observed hash collision gives the spec's
-  `NoColl` over the canonical engine trace; tagged roots already exclude genesis.
-* **G1.5, evidence binding** (`ConflictsIff`, `EvidenceInView`, `FinalizedAccountable`): the
-  instance's `conflicts` holds exactly of two canonical attestation objects whose attestations
-  are `slashable` (E1/E2 of fg.tex); every attestation included on an honest finalized read is in
-  that reader's view as its canonical object; and two honest finalized reads are compatible or
-  at least `2q − n` validators are slashable on the two readers' views together (the run-level
-  G1.3 through the simulation; target `finalized_accountable`). `nonFraming` is the generic
-  `System.NonFraming` of the compiled family (`sysOf_nonFraming`, Lemmas), nothing to state here.
+* **Genesis freshness** (`GenesisFresh`): tagged roots exclude genesis from every observed item,
+  so `NoColl` over the canonical engine trace needs no genesis premise.
+* **G1.5 (a), `conflicts` is E1/E2** (`ConflictsIff`): the instance's `conflicts` holds exactly
+  of two canonical attestation objects whose attestations are `slashable` (E1/E2 of fg.tex).
+  `nonFraming` is the generic `System.NonFraming` of the compiled family (`sysOf_nonFraming`,
+  Lemmas), nothing to state here.
 
 Not stated: the transport of the engine's network premises (`CommLog.PSync`, `SyncUntil`) to the
 spec's `Sync`/`GST` (`Spec/Run/Premises`). The engine's `Delivers` holds a receipt by
@@ -52,11 +49,10 @@ give it directly, at every vote binding. `docs/goldilocks-mapping.md` §"AsChain
 and Obligations" maps each statement.
 
 Not in `Challenge`: this module is outside the challenge's import closure, the comparator and
-`milestone_statements_modules`. Its statements are proved in `Lemmas/Simulation`
-(`engineSimulatesNode`, `readIsOut`, `noCollTransport`, `evidenceInView`,
-`finalizedAccountable`, …) and used only by those proofs, toward `meets_obligations`, and by
-tests; the bundle `SimulationStatements` is assembled outside `Solution`
-(`simulation_statements`, `Lemmas/Simulation/StatementsBundle`).
+`milestone_statements_modules`. Its statements are proved in `Lemmas/Simulation` (`readIsOut`,
+`conflicts_iff`) and used by the proofs toward `meets_obligations`; the growing-fault forms of the
+simulation, the `NoColl` transport and G1.5 (b) and (c) are proved in `Lemmas/Growing/Simulation`
+(`simTraceAt_simulates`, `noCollRun_simTraceAt`, `held_att_in_view_at`, `final_accountable_at`).
 
 These proof-side claims and their characterisers are outside the trusted surface; the
 certified endpoint statement remains in `Statements/Obligations`. -/
@@ -205,13 +201,6 @@ structure Simulates (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _)) (ι 
     RelayedFrom S rho (rho.key y) (attObj a) (tr.time k)
 
 variable (V) in
-/-- **The engine simulates the node.** Every valid engine run of the family in any environment
-is simulated by a run of the spec's node. -/
-def EngineSimulatesNode : Prop :=
-  ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
-    rho.point.ConstantFaults → rho.ExecutionValid → ∃ tr ι, Simulates S rho hn tr ι
-
-variable (V) in
 /-- **Reads are the shape's outputs.** The chain trace of a run reads, at every cut, the output
 chains of the node state at the shape's clock. -/
 def ReadIsOut : Prop :=
@@ -224,65 +213,11 @@ hash remains arbitrary, including hashes equal to the numeric genesis root. -/
 def GenesisFresh : Prop :=
   ∀ x, rho.ObservedItem x → taggedRoot S.genesisRoot (rho.hash x) ≠ S.genesisRoot
 
-variable (V) in
-/-- **`NoColl` transport.** Without an observed hash collision, the canonical engine trace
-satisfies `NoCollRun` on every occurring block and genesis. Arbitrary simulation witnesses
-are not covered: their simulation laws do not identify every occurrence with an engine object.
-Tagged roots exclude genesis without an additional premise. -/
-def NoCollTransport : Prop :=
-  ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
-    rho.point.ConstantFaults → rho.ExecutionValid → ¬ rho.HashCollision →
-      Compose.NoCollRun (digestOf S rho) (simTrace S rho hn)
-
 /-- **G1.5 (a), `conflicts` is E1/E2.** The instance's slashing rule holds of two objects exactly
 when they are the canonical objects of two `slashable` attestations, at every vote binding. -/
 def ConflictsIff : Prop :=
   ∀ (B : VoteBinding) (n : Nat) (o o' : Wire n B),
     conflicts o o' = true ↔ ∃ a b : FG.Att n, o = attObj a ∧ o' = attObj b ∧ FG.slashable a b
-
-variable (V) in
-/-- **G1.5 (b), evidence in view.** Every attestation included on an honest node's finalized read
-at a cut is in that node's view at the cut, as its canonical object (every header of the read is
-of a block the node processed, whose object carries its payload's objects). -/
-def EvidenceInView : Prop :=
-  ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E),
-    rho.point.ConstantFaults → rho.ExecutionValid →
-    ∀ v, v ∉ rho.faultyAt 0 → ∀ i ≤ rho.events.length,
-      ∀ h ∈ (chainTrace rho).read .finalized v i, ∀ atts (p : Payload (Fintype.card V)),
-        decodeInfo (Fintype.card V) h.info = some (atts, p) →
-          ∀ a ∈ atts, attObj a ∈ rho.ViewIdx v i
-
-variable (V) in
-/-- **G1.5 (c), finalized accountability** (the run-level G1.3; target `finalized_accountable`).
-In a valid run without an observed hash collision, two honest finalized reads are
-compatible (one a prefix of the other), or at least
-`2q − n` validators are slashable on the two readers' views together.
-
-Limitation (a reading of the statement, not a defect of its proof): the evidence is the union of
-the two **views** (`ViewIdx u i ∪ ViewIdx v j`), as the generic L0 accountability convicts from
-views. CLAIMS G1.5 and G1.3 restrict the slashable pairs to the attestations included on the two
-finalized chains. The views contain those attestations (`EvidenceInView`), so this conclusion is
-weaker than G1.5's: the slashable pairs may come from viewed attestations on neither chain. A
-chain-restricted statement would be a separate proposal. -/
-def FinalizedAccountable : Prop :=
-  ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
-    rho.point.ConstantFaults → rho.ExecutionValid → ¬ rho.HashCollision →
-    ∀ u, u ∉ rho.faultyAt 0 → ∀ v, v ∉ rho.faultyAt 0 →
-      ∀ i ≤ rho.events.length, ∀ j ≤ rho.events.length,
-      Consensus.Compatible ((chainTrace rho).read .finalized u i)
-          ((chainTrace rho).read .finalized v j) ∨
-        2 * (S.params (pubOf E) hn).toParams.q - Fintype.card V ≤
-          (convicted rho.Slashable (rho.ViewIdx u i ∪ rho.ViewIdx v j)).card
-
-variable (V) in
-/-- The simulation statements for the setup `S` at the validators `V`. -/
-structure SimulationStatements : Prop where
-  engineSimulatesNode : EngineSimulatesNode V S
-  readIsOut : ReadIsOut V S
-  noCollTransport : NoCollTransport V S
-  conflictsIff : ConflictsIff
-  evidenceInView : EvidenceInView V S
-  finalizedAccountable : FinalizedAccountable V S
 
 /-- The initial shape clock. -/
 theorem lastClock_zero (v : V) : lastClock S rho v 0 = 0 := by rfl
@@ -304,12 +239,6 @@ theorem relayedFrom_iff (v : V) (o : (Model.protoOf (compiled (goldilocks S)) E)
       ∃ cs, o ∈ cs ∧ rho.releases v (.mk .none (.data .relay) cs) τ := by rfl
 
 variable (V) in
-/-- Every valid engine run has a simulating node run. -/
-theorem engineSimulatesNode_iff : EngineSimulatesNode V S ↔
-    ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
-      rho.point.ConstantFaults → rho.ExecutionValid → ∃ tr ι, Simulates S rho hn tr ι := by rfl
-
-variable (V) in
 /-- Engine reads are exactly the embedded node's outputs. -/
 theorem readIsOut_iff : ReadIsOut V S ↔
     ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
@@ -317,41 +246,12 @@ theorem readIsOut_iff : ReadIsOut V S ↔
         (chainTrace rho).read g v i =
           outOf (stateAt S rho hn v i).node (stateAt S rho hn v i).now g := by rfl
 
-variable (V) in
-/-- Collision transport targets the canonical trace, not an arbitrary simulation. -/
-theorem noCollTransport_iff : NoCollTransport V S ↔
-    ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
-      rho.point.ConstantFaults → rho.ExecutionValid → ¬ rho.HashCollision →
-        Compose.NoCollRun (digestOf S rho) (simTrace S rho hn) := by rfl
-
 /-- Conflicts are exactly canonical slashable attestation pairs. -/
 theorem conflictsIff_iff : ConflictsIff ↔
     ∀ (B : VoteBinding) (n : Nat) (o o' : Wire n B),
       conflicts o o' = true ↔
         ∃ a b : FG.Att n, o = attObj a ∧ o' = attObj b ∧ FG.slashable a b := by
   rfl
-
-variable (V) in
-/-- Finalized attestations are in the reader's engine view. -/
-theorem evidenceInView_iff : EvidenceInView V S ↔
-    ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E),
-      rho.point.ConstantFaults → rho.ExecutionValid →
-      ∀ v, v ∉ rho.faultyAt 0 → ∀ i ≤ rho.events.length,
-        ∀ h ∈ (chainTrace rho).read .finalized v i, ∀ atts (p : Payload (Fintype.card V)),
-          decodeInfo (Fintype.card V) h.info = some (atts, p) →
-            ∀ a ∈ atts, attObj a ∈ rho.ViewIdx v i := by rfl
-
-variable (V) in
-/-- Incompatible finalized reads convict the threshold from the union of the views. -/
-theorem finalizedAccountable_iff : FinalizedAccountable V S ↔
-    ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
-      rho.point.ConstantFaults → rho.ExecutionValid → ¬ rho.HashCollision →
-      ∀ u, u ∉ rho.faultyAt 0 → ∀ v, v ∉ rho.faultyAt 0 →
-        ∀ i ≤ rho.events.length, ∀ j ≤ rho.events.length,
-        Consensus.Compatible ((chainTrace rho).read .finalized u i)
-            ((chainTrace rho).read .finalized v j) ∨
-          2 * (S.params (pubOf E) hn).toParams.q - Fintype.card V ≤
-            (convicted rho.Slashable (rho.ViewIdx u i ∪ rho.ViewIdx v j)).card := by rfl
 
 end Consensus.Goldilocks.Simulation
 

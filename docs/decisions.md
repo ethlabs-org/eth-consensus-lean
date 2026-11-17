@@ -563,12 +563,12 @@ detail in `TRUST.md`.
 ### Layout of the instance proofs
 
 - **Simulation and obligations are separate closures.** The proofs split by import closure into
-  `Lemmas/Simulation` (the simulation statements, namespace `Goldilocks.Simulation`, `SimulationStatements`), which
+  `Lemmas/Simulation` (the simulation interface and its proofs, namespace `Goldilocks.Simulation`), which
   never imports the obligations, and `Lemmas/Obligations` (namespace
   `Goldilocks.Obligations`). The field theorems of the obligations proof
   (`Lemmas/Growing/Obligations/Concrete`) follow `MeetsObligations`: `meetsObligations_*_growing`, with the
   endpoint `Growing.meetsObligations_growing`; there is no separate constant-fault assembly.
-  Block-acceptance names (`accepted_tree`, `accepted_in_view`, `accepted_child_decodes`, …) are a different concept.
+  Block-acceptance names (`accepted_tree`, `accepted_in_view_at`, `accepted_child_decodes`, …) are a different concept.
 - **The Baseline sheet and its tests were removed.** The earlier pinned properties sheet was never approved and
   was off every live path: nothing in the closure of `Challenge`, `Solution` or the obligations endpoint imported
   it. The positive controls keep their own copy of its schema and skeleton (`Tests.Controls.ctrlSchema`,

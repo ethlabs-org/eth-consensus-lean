@@ -23,16 +23,6 @@ theorem honest_ownKey {v : V} (hv : v ∉ rho.faultyAt 0) :
     rho.ownKey v ∈ honestKeys S rho := by
   simpa only [mem_honestKeys_iff, Model.Run.ownKey, Equiv.apply_symm_apply] using hv
 
-/-- Read the finalized chain directly from the simulating node cut. -/
-theorem read_finalized (hs : Simulates S rho hn tr ι) {v : V} (hv : v ∉ rho.faultyAt 0)
-    {i : Nat} (hi : i ≤ rho.events.length) :
-    (chainTrace rho).read .finalized v i =
-      chainTo (tr.state (rho.ownKey v) (ι i)).fg.blocks
-        ((tr.finalizedAt (rho.ownKey v) (ι i)).slot + 1)
-        (tr.finalizedAt (rho.ownKey v) (ι i)) := by
-  rw [read_eq_out S rho hn, outOf, hs.state v hv i hi]
-  rfl
-
 end Consensus.Goldilocks.Simulation
 
 end

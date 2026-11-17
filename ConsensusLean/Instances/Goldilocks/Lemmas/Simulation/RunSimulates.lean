@@ -10,8 +10,8 @@ public section
 /-! # Goldilocks Simulation: the engine agrees with the simulating trace
 
 The engine's events are the trace's groups, its node states agree with the trace's states,
-and it releases and relays what the trace signs, emits and admits. `Simulation` assembles
-these correspondence facts into `EngineSimulatesNode`. -/
+and it releases and relays what the trace signs, emits and admits. `simTrace_simulates`
+(`Simulation/Core`) assembles these correspondence facts into `Simulates`. -/
 
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape

@@ -882,7 +882,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunBlocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSchedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSimulates
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.StatementsBundle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.TraceDefs

@@ -65,7 +65,7 @@ structure HonestChainReads (M : RunMap (A := A) rho payload) : Prop where
     rho.point.HonestAt v (rho.cutTime i) →
     (mappedReadState M v i).fg.F ∈ (mappedReadState M v i).fg.tree
   /-- The E1 final-tip identity, separately from cross-reader representation laws.
-  Source: `AsChainShape.outOf` and `Simulation.read_finalized`. -/
+  Source: `AsChainShape.outOf` and `Simulation.read_finalized_at`. -/
   finalized_tip : ∀ g, O.output .final = some g → ∀ st t, M.tip g st t = st.fg.F
   /-- A reader still honest at the later actual engine cut has not lost held blocks.
   Source: the growing endpoint's `upTo_state_cutMap` and `engine_finalMonotone_at`, on the

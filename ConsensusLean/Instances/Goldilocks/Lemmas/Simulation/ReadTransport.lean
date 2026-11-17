@@ -6,13 +6,12 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 
 public section
 
-/-! # Shared steps of the R.7/R.8 engine read transport
+/-! # Steps of the R.7/R.8 engine read transport
 
-The steps of R.8 output validity and of R.7 compatible reads shared by the constant-fault
-`compatible_reads` (`Simulation/Transport`) and the growing-fault
+The steps of R.8 output validity and of R.7 compatible reads used by the growing-fault
 `engine_outputValid_at` (`Growing/Simulation/Endpoint/Outputs`) and `compatible_reads_at`
-(`Growing/Simulation/Endpoint/Accountable`). Each fault model supplies its own reachable stores,
-root facts, view and coherent block set.
+(`Growing/Simulation/Endpoint/Accountable`). The caller supplies the reachable stores, root
+facts, view and coherent block set.
 
 * `chainTo_compatible`: two reachable stores inside one coherent block set have prefix-related
   header chains at two of their blocks that are compatible in that set (`chainTo_prefix_of_anc`);

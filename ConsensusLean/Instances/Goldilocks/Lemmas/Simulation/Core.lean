@@ -13,7 +13,7 @@ public section
 
 /-! # Goldilocks Simulation: the engine simulates the node
 
-`EngineSimulatesNode` (`Statements/Obligations`) assembled from its steps: the trace `simTrace`
+`Simulates` (`Simulation/Interface`) assembled from its steps: the trace `simTrace`
 with the cut map `cutMap` (`Trace`), a Goldilocks run by `simTrace_goldilocksRun` and agreeing
 with the engine by the `Simulates` steps (`Run`). Signed fresh-admission publication follows
 from event-local pool insertion and global first-release provenance. -/
@@ -573,15 +573,6 @@ theorem simTrace_simulates {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S
   block_relayed := simTrace_block_relayed { S with vote := stock } rho hn hv
   vote_forwarded := simTrace_vote_forwarded S rho hn hf hv
   att_relayed := simTrace_att_relayed { S with vote := stock } rho hn hv
-
-/-- **The engine simulates the node** (`EngineSimulatesNode`): every valid engine run of the
-family is simulated by `simTrace` with `cutMap`. -/
-theorem engineSimulatesNode (V : Type) [Fintype V] [DecidableEq V] (S : Setup)
-    : EngineSimulatesNode V { S with vote := stock } :=
-  (engineSimulatesNode_iff V { S with vote := stock }).mpr
-    fun _ rho hn hf hv =>
-        ⟨simTrace { S with vote := stock } rho hn, cutMap { S with vote := stock } rho hn,
-          simTrace_simulates S rho hn hf hv⟩
 
 end Consensus.Goldilocks.Simulation
 
