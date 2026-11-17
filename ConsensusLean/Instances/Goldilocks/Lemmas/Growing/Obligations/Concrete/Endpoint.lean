@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ClaimReductionEdges
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksClaimSuppliers
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksLocal
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksClaimSuppliers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Supply.Fields
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.EngineBinding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs

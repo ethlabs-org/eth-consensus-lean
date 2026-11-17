@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GoldilocksBridge
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC
 import ConsensusLean.Lemmas.Tactic.Linarith
 

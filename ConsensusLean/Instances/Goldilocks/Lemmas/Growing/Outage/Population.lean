@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Layer1Proofs
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GoldilocksBridge
 import ConsensusLean.Lemmas.Problem.Facts.Regimes
 import ConsensusLean.Lemmas.Tactic.Linarith
 

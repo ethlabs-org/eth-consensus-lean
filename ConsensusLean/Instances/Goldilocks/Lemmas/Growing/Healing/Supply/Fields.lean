@@ -1,6 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge
-import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksHealing
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksBridge
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksHealing
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.CommitteeFaults

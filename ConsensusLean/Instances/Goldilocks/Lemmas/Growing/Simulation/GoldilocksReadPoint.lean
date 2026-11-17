@@ -1,6 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge
-import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksHealing
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksBridge
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksHealing
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.RecordRead
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CurrentSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Confirmed

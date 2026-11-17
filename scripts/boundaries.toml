@@ -86,7 +86,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements",
          "Instances.Goldilocks.Milestones.Statements.AC",
          "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Milestones.Statements.Compose"]
-about = "generic growing contracts and concrete statement bridges; no proof imports"
+about = "generic growing contracts over any AC sharing the FG; no proof imports"
 
 [[layer]]
 name = "Instances.Goldilocks.Lemmas.Generic"
@@ -113,7 +113,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements",
          # the FG-only lemma layers (no AC, SA, Compose or Healing layer), for the generic H2 proofs
          "Lemmas", "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.FGChain",
          "Instances.Goldilocks.Lemmas.FGStore"]
-about = "unproved generic surface edges; endpoint and acceptance closures remain isolated"
+about = """AC-parametric proofs of the generic contracts (healing leaves, sleepy and claim reductions); the
+concrete Goldilocks adapters live in Lemmas.Growing.Simulation"""
 
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyFG"]
@@ -199,67 +200,13 @@ constants. ClaimReductionEdges, the generic claim reductions, imports HealingLea
 parent closure of honest stores (healthy liveness), and the same cut guard checks its constants. Leaf paths only"""
 
 [[exception]]
-from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksHealing",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksLocal",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksReadPoint",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksClaimSuppliers"]
-to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.Row",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowService",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC",
-      "ConsensusLean.Instances.Goldilocks.Statements.Obligations"]
-reason = "isolated concrete bridge proof closure for old-premise equations, committee starts and their run requirements; leaf paths only"
-
-[[exception]]
-from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksHealing",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksReadPoint",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksClaimSuppliers"]
-to = ["ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HonestProposal",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetRounds",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalPersistence"]
-reason = "concrete Goldilocks healing supplier fields over the shared run interface, from the committee-generic reset kernel and proposal persistence; GoldilocksReadPoint reaches them through the finite reset record of GoldilocksHealing; leaf paths only"
-
-[[exception]]
-from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksLocal",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksClaimSuppliers"]
-to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read"]
-reason = "concrete Goldilocks local supplier fields over the shared run interface: AC-projection service and frame tips of reachable stores; leaf paths only"
-
-[[exception]]
-from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksClaimSuppliers"]
-to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.ReadPoint",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.FinalReads",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.FinalWindowSupply",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealedReadAncestry",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealingRows",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.LocalRows",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PreparationPremises",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.ResetHealBudget",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RegimeTransport",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMapReadPoint",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMapRepresentation",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.SleepyWindows",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Layer1",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Layer1Proofs"]
-reason = "concrete Goldilocks local claim suppliers at the canonical run map: every proved row of LocalClaimSuppliers (regime, representation, read points, sleepy windows and Layer 1, outage, local rows, preparation, deadline premises, final window and reads, healing rows, reset-heal budget, healed ancestry); leaf paths only"
-
-[[exception]]
-from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksReadPoint",
-        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksClaimSuppliers"]
-to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.RecordRead",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CurrentSources",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Confirmed",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ConfirmedSupply"]
-reason = "concrete Goldilocks read-point supplier fields over the shared run interface, from the trace-level healthy repair kernel (read context, effective-record read, record covers, the operational proposal's fresh lock and read) and the reset's update calls; leaf paths only"
+from = ["ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GoldilocksBridge"]
+to = ["ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations",
+      "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.CorrectLocal"]
+reason = """the concrete Goldilocks supplier contracts state the Goldilocks run, healing and local data
+equations over the generic assembly contracts (`ACRun`, `ACHealing`, `ACCorrectLocal`). The contract is
+instance-owned and lives in the milestone Compose tier; the generic contracts already import Compose, so the
+Compose layer cannot allow the generic contract layer without a layer cycle. Leaf paths only"""
 
 [[layer]]
 name = "Init"
@@ -588,6 +535,7 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Ru
             "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Persist",
             "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.PersistKernel",
             "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Service",
+            "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GoldilocksBridge",
             "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing",
             "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing",
             "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes"]

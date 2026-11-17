@@ -284,7 +284,7 @@ truncated after `b`: `premises_truncH` (Lemmas/Generic/HealingEdges.lean) builds
 `ACRun.run_truncH` gives the run there. `H_z` and a reset by `b` are unchanged by the
 truncation (`HZ_truncH`, `isReset_truncH_iff` in Lemmas/Generic/HealingLeaves.lean).
 `ACRun.run_truncH` is an instance obligation; Goldilocks supplies it in
-`goldilocksRunInterface` (Lemmas/Generic/GoldilocksBridge.lean), from
+`goldilocksRunInterface` (Lemmas/Growing/Simulation/GoldilocksBridge.lean), from
 `KernelProof.goldilocksRun_truncH` and `CommitteeFacts.truncH`.
 At the Goldilocks map with `b = rho.horizon` it does: every call cut is at or before the
 horizon (`isCall_time_le_horizon`), so `NoRestartUpTo … horizon` is `NoRestartAfter`

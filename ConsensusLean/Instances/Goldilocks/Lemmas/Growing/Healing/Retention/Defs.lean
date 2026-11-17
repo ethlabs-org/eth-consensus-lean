@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GoldilocksBridge
 
 public section
 

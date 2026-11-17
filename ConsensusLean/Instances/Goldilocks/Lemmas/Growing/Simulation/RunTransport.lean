@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunCommittee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMap
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksBridge
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Members
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
 

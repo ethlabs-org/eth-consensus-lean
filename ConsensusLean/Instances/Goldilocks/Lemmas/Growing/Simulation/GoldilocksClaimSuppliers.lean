@@ -3,8 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.CorrectnessEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMapReadPoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.SleepyWindows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Layer1
-import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksLocal
-import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksReadPoint
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksLocal
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.FinalReads
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.FinalWindowSupply

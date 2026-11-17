@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowServi
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.CorrectnessEdges
 public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GoldilocksBridge
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 
 public section

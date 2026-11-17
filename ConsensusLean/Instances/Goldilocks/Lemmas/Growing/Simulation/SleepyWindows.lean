@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Layer1Proofs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ClaimTransports
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GoldilocksBridge
 public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run

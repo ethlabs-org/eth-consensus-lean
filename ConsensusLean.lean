@@ -204,11 +204,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ChainRepresentat
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ClaimReductionEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.CorrectnessEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.EngineEdges
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksClaimSuppliers
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksHealing
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksLocal
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksReadPoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
@@ -562,6 +557,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forwa
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Held
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Receipt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Tick
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksBridge
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksClaimSuppliers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksHealing
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksLocal
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksReadPoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Groups
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealedReadAncestry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealingRows
@@ -942,6 +942,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GenericRun
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GoldilocksBridge
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Persist
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Interface
@@ -963,7 +964,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.C
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineRepresentation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineTransport
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.FG
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Healing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ProgressBudget
