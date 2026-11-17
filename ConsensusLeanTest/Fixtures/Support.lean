@@ -140,16 +140,6 @@ theorem duties_spec (d : ShapeDuty sk.Kind) (t : Time) :
   · rintro ⟨hx, h⟩
     exact ⟨_, hx, rfl, h⟩
 
-/-- With the default `order`, `duties` is the former fixed list: the proposal,
-the kinds in `kinds` order, then the two poll duties (at `t ≥ 0`). -/
-theorem duties_of_default_order {t : Time}
-    (h : sk.order = [.propose] ++ sk.kinds.map .kind ++ [.pollPropose, .poll]) :
-    sk.duties t = sk.proposeAt t ++ sk.kinds.flatMap (sk.kindAt t) ++
-      (if 0 ≤ t then [.pollPropose t.toNat, .poll t.toNat] else []) := by
-  simp only [duties, h, List.flatMap_append, List.flatMap_cons, List.flatMap_nil,
-    List.append_nil, List.flatMap_map, stepAt]
-  split <;> simp
-
 /-- With an order that lists each step once, `duties` lists each duty once. -/
 theorem duties_nodup (t : Time) (h : sk.order.Nodup) :
     (sk.duties t).Nodup := by
