@@ -760,6 +760,7 @@ example := ``Consensus.Goldilocks.Regimes.GrowSleepy
 example := ``Consensus.Goldilocks.Regimes.Growing.CommitteeSleepy
 example := ``Consensus.Goldilocks.Regimes.Growing.IncludeSleepy
 example := ``Consensus.Goldilocks.Regimes.Growing.GrowSleepy
+example := ``Consensus.Goldilocks.Obligations.Growing.SleepyGrowFinite
 example := ``Consensus.Goldilocks.RunTrace.SyncBefore
 example := ``Consensus.Goldilocks.Test.ProposerHold.sleepyLive_hold_zero_false
 example := ``Consensus.Goldilocks.Test.ProposerHold.claims_hold_zero_false

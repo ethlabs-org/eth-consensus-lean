@@ -14,10 +14,10 @@ public section
   `IncludeSleepy` and `GrowSleepy` (`Results/Statements/SleepyGrowth`) from the finite rows
   `include_sleepy_at` and `grow_sleepy_at` through `b = t` and `b = t + D`, with their finite
   inputs derived from the rows' premises (`Lemmas/Growing/Sleepy/Service/Growth`).
-* `Obligations.Growing.sleepy_grow_finite_at`: the finite growth row on the canonical growing
-  trace at every vote binding, at the run's committees `voteK`, through a bound `b` with
-  `t + (4k + 6)Δ ≤ b ≤ horizon`. Its inputs are derived from engine premises through `b`: the
-  finite service from synchrony (`sleepyServiceBefore_of_syncUntil_at`), the population count
+* `Obligations.Growing.sleepy_grow_finite_at : SleepyGrowFinite`: the finite growth row on the
+  canonical growing trace at every vote binding, at the run's committees `voteK`, through a bound
+  `b` with `t + (4k + 6)Δ ≤ b ≤ horizon`. Its inputs are derived from engine premises through `b`:
+  the finite service from synchrony (`sleepyServiceBefore_of_syncUntil_at`), the population count
   shapes from the sleepy budget (`sleepy_bounds_at`), the committee facts (`voteK_facts`) and the
   committee count shapes from committee sleepy participation of the run's selection
   (`committee_bounds_at`). Nothing is asserted beyond the horizon: no whole-run `SleepyRunAt` or
@@ -56,61 +56,11 @@ open AsChainShape Simulation
 open Shape
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-
-/-- **Finite growth of the engine under growing faults.** For `t ≥ 0`, `k ≥ 1` and
-`t + (4k + 6)Δ ≤ b ≤ horizon`, a valid engine run with no observed hash collision, synchrony
-through `b`, the sleepy budget (threshold `1/2`, catch-up `catchUp`, look-ahead `5Δ`) on `[0, b]`,
-committee sleepy participation of the run's selection on `[0, b]` (threshold `θ ≥ 1/2`, a
-catch-up `c` that covers joining, look-ahead `W ≥ 5Δ`), and one proposer ready at its slot start
-and honest through its hold in every window of `k` slots up to `t + (4k + 6)Δ`: some proposal
-released at `τ > t` by a proposer ready at `τ` and honest through its hold is in every ready read at
-`t + (4k + 6)Δ`, in no ready read at `t`, and each ready read at `t` is an ancestor of each ready
-read at `t + (4k + 6)Δ`. -/
-theorem sleepy_grow_finite_at (hv : rho.ExecutionValid) (hc : ¬ rho.HashCollision)
-    {t b : Time} {k : Nat} (ht : 0 ≤ t) (hk : 1 ≤ k)
-    (htb : t + (4 * k + 6) * (S.params (pubOf E) hn).Δ ≤ b) (hbh : b ≤ rho.horizon)
-    (hnet : rho.log.SyncUntil rho.point b)
-    (hhalf : rho.point.SleepyOn (1 / 2) (Regimes.catchUp (S.params (pubOf E) hn))
-      (5 * (S.params (pubOf E) hn).Δ) 0 b)
-    {θ : ℚ} {η c W : Time} (hθ : 1 / 2 ≤ θ) (hcu : 8 * (S.params (pubOf E) hn).Δ ≤ c + 1)
-    (hW : 5 * (S.params (pubOf E) hn).Δ ≤ W)
-    (hcs : rho.point.CommitteeSleepyOn
-      ((shapeProgress (goldilocks S) V).toExternal.selected rho.point.env
-        ((shapeProgress (goldilocks S) V).toExternal.ext ⟨E, rho⟩))
-      θ η c W 0 b)
-    (hrec : Regimes.Growing.ProposerRecurrence (simTraceAt S rho hn) (honestKeysAt S rho)
-      (runProposer S rho hn) (Regimes.catchUp (S.params (pubOf E) hn)) k
-      (Regimes.Growing.hold (S.params (pubOf E) hn)) 0
-      (t + (4 * k + 6) * (S.params (pubOf E) hn).Δ)) :
-    ∃ τ P, t < τ ∧
-      Regimes.Growing.ReadyProposalAt (simTraceAt S rho hn) (honestKeysAt S rho)
-        (Regimes.catchUp (S.params (pubOf E) hn)) τ
-        (Regimes.Growing.hold (S.params (pubOf E) hn)) P ∧
-      (∀ y j, Regimes.Growing.ReadyAt (simTraceAt S rho hn) (honestKeysAt S rho)
-          (Regimes.catchUp (S.params (pubOf E) hn)) y
-          (t + (4 * k + 6) * (S.params (pubOf E) hn).Δ) →
-        Regimes.CutAfter (simTraceAt S rho hn) j (t + (4 * k + 6) * (S.params (pubOf E) hn).Δ) →
-        Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho)) P
-          (Regimes.readAfter (simTraceAt S rho hn) y j
-            (t + (4 * k + 6) * (S.params (pubOf E) hn).Δ))) ∧
-      (∀ x jx, Regimes.Growing.ReadyAt (simTraceAt S rho hn) (honestKeysAt S rho)
-          (Regimes.catchUp (S.params (pubOf E) hn)) x t →
-        Regimes.CutAfter (simTraceAt S rho hn) jx t →
-        ¬ Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho)) P
-          (Regimes.readAfter (simTraceAt S rho hn) x jx t)) ∧
-      ∀ x jx y j, Regimes.Growing.ReadyAt (simTraceAt S rho hn) (honestKeysAt S rho)
-          (Regimes.catchUp (S.params (pubOf E) hn)) x t →
-        Regimes.CutAfter (simTraceAt S rho hn) jx t →
-        Regimes.Growing.ReadyAt (simTraceAt S rho hn) (honestKeysAt S rho)
-          (Regimes.catchUp (S.params (pubOf E) hn)) y
-          (t + (4 * k + 6) * (S.params (pubOf E) hn).Δ) →
-        Regimes.CutAfter (simTraceAt S rho hn) j (t + (4 * k + 6) * (S.params (pubOf E) hn).Δ) →
-        Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho))
-          (Regimes.readAfter (simTraceAt S rho hn) x jx t)
-          (Regimes.readAfter (simTraceAt S rho hn) y j
-            (t + (4 * k + 6) * (S.params (pubOf E) hn).Δ)) := by
+/-- **R.2, growth, of the engine through a finite horizon** (`SleepyGrowFinite`): the finite growth
+row `grow_sleepy_at` on the canonical growing trace at the run's committees `voteK`, with its
+inputs from the engine premises through `b`. -/
+theorem sleepy_grow_finite_at : SleepyGrowFinite := by
+  intro S V _ _ E rho hn hv hc t b k ht hk htb hbh hnet hhalf θ η c W hθ hcu hW hcs hrec
   have hΔ := (S.params (pubOf E) hn).toParams.hΔ
   have hrun := simTraceAt_goldilocksRun S rho hn hv
   have hnc := noCollRun_simTraceAt S rho hn hv hc

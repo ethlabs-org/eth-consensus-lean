@@ -117,11 +117,12 @@ about = """AC-parametric proofs of the generic contracts (healing leaves, sleepy
 concrete Goldilocks adapters live in Lemmas.Growing.Simulation"""
 
 [[exception]]
-from = ["ConsensusLean.Instances.Goldilocks.Results.Spec.CanonicalTrace"]
+from = ["ConsensusLean.Instances.Goldilocks.Results.Spec.CanonicalTrace",
+        "ConsensusLean.Instances.Goldilocks.Results.Statements.SleepyGrowth"]
 to = ["ConsensusLean.Instances.Goldilocks.AsChainShape"]
-reason = """The canonical trace of an engine run of the compiled family `goldilocks S` reads the
-family and its setup from AsChainShape. Only this module of the results home reads it. Exact
-source edges only"""
+reason = """The canonical trace of an engine run of the compiled family `goldilocks S`, and the
+finite engine growth row stated over it, read the family and its setup from AsChainShape. Only
+these two modules of the results home read it. Exact source edges only"""
 
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyFG"]
