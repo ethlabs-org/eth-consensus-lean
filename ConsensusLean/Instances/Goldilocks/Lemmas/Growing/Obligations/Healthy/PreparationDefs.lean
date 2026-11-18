@@ -15,8 +15,6 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 /-- The base slot's explicit service and expiry margins, at the original heal deadline. -/
 structure HealthyBaseTimingAt (Q : HealthyPreparationQueryAt S A V) where
   slot : Nat
-  ready_le : Q.ready ≤ Q.params.ts slot
-  records : Q.params.ts slot + 6 * Q.params.Δ ≤ Q.heal
   caches : Q.params.ts (slot + 2 : Nat) ≤ Q.heal
   expiry : Q.params.ts (slot + Q.params.k : Nat) ≤ Q.heal
   service : Q.params.ts (slot + 2 : Nat) + 6 * Q.params.Δ ≤ Q.heal

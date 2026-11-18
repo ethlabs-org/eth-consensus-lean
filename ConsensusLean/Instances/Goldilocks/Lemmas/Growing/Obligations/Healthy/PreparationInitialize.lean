@@ -52,7 +52,7 @@ theorem healthy_preparation_initialize_late_at
   obtain ⟨w, hw, hq⟩ := healthy_preparation_timing S A V Q.run Q.hn Q.cap Q.index Q.gst
     (by linarith only [hB', hD0])
   simp only [hheal, hready] at hB' hq
-  refine ⟨⟨w, hw.1, hw.2.1, hw.2.2.1, hw.2.2.2.1, hw.2.2.2.2⟩,
+  refine ⟨⟨w, hw.2.2.1, hw.2.2.2.1, hw.2.2.2.2⟩,
     ⟨a, ΔF, hreset, v, r, l, O, hO, hra, hla, _, le_rfl,
       by linarith only [hq a l ha0 ha hla, hB', hD0]⟩, ?_⟩
   dsimp only
