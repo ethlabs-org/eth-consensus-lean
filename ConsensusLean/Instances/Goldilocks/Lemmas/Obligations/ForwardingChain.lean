@@ -16,8 +16,8 @@ read only the engine run; the facts that depend on the fault model enter as prem
 * queueing: an accepting scheduled proposal queues its exact wrapper;
 * the per-event publications, for the final assembly.
 
-Constant faults (`Obligations/ForwardingDecode`) supply them for nodes honest from the start,
-growing faults (`Growing/Obligations/Network/Forwarding`) for every node with an actual event. -/
+Growing faults (`Growing/Obligations/Network/Forwarding`) supply them for every node with an
+actual event. -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation

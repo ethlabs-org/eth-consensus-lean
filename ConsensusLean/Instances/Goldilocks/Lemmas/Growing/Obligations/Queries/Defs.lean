@@ -12,7 +12,6 @@ Each is its constant-fault counterpart of `Lemmas/Obligations` without the const
 
 * `ConfirmedQueryAt`: a nonfinal (available or stable) liveness query, in the sleepy or the
   healthy regime, or handing over from the healthy to the sleepy regime;
-* `SleepySafetyQueryAt`: a sleepy run, for sleepy safety;
 * `FinalQueryAt`: a final liveness query in the healthy regime;
 * `HealthyPreparationQueryAt`: a run healthy up to a bound with a nonfinal capability, for healed
   safety;
@@ -80,25 +79,6 @@ noncomputable abbrev duration (Q : ConfirmedQueryAt S A V) :=
 noncomputable abbrev deadline (Q : ConfirmedQueryAt S A V) : Time :=
   Q.query + ((K S A).params.latency Q.cap Q.index : Time) * Q.run.1.ΔAC
 end ConfirmedQueryAt
-
-/-- A sleepy safety query: a valid, collision-free sleepy run. No progress, query or reader. -/
-structure SleepySafetyQueryAt where
-  run : (Sys (goldilocks {S with vote := stock}) V).Run
-  hn : 1 ≤ Fintype.card V
-  valid : (Sys (goldilocks {S with vote := stock}) V).Valid run
-  noCollision : ¬ run.2.HashCollision
-  sleepy : (Sys (goldilocks {S with vote := stock}) V).Sleepy
-      (shapeProgress (goldilocks {S with vote := stock}) V).toExternal (K S A) run
-
-namespace SleepySafetyQueryAt
-variable {S A V}
-abbrev params (Q : SleepySafetyQueryAt S A V) :=
-  ({S with vote := stock} : Setup).params (Model.pubOf Q.run.1) Q.hn
-noncomputable abbrev trace (Q : SleepySafetyQueryAt S A V) :=
-  simTraceAt {S with vote := stock} Q.run.2 Q.hn
-noncomputable abbrev keys (Q : SleepySafetyQueryAt S A V) :=
-  honestKeysAt {S with vote := stock} Q.run.2
-end SleepySafetyQueryAt
 
 /-- A final liveness query: a valid, collision-free healthy run with final progress from
 readiness, a query time at least the final heal point, and a ready reader at the deadline

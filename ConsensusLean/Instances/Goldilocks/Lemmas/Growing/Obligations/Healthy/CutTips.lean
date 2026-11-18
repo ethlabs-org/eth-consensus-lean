@@ -9,67 +9,21 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
 
 public section
 
-/-! # The healthy cut adapters under growing faults
+/-! # The healthy cut adapter under growing faults
 
-The two read-tip facts that healed safety reduces to: comparability across readers and temporal
-ancestry for one reader. An engine
-reader ready at a cut from the heal point is read at the trace cut after its last own event, at
-its stored clock (`engine_read_point`), with ancestry inside the blocks held while honest.
+Temporal ancestry of one reader's read tips from the heal point. An engine reader ready at a cut
+from the heal point is read at the trace cut after its last own event, at its stored clock
+(`engine_read_point`), with ancestry inside the blocks held while honest.
 
-Each read tip is the reader's effective record (`healthy_current_record_read_at`). Two readers'
-covered records are compatible (`healthy_current_sources_compatible_at`), and one reader's
-effective record only extends between its read points (`healthy_current_record_interval_at`,
-`effective_record_of_interval_at`). -/
+Each read tip is the reader's effective record (`healthy_current_record_read_at`), and one
+reader's effective record only extends between its read points
+(`healthy_current_record_interval_at`, `effective_record_of_interval_at`). -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
 open AsChainShape Simulation Blocks Shape
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
-
-/-- **Comparability of the read tips** of two readers ready from the heal point, each read at
-the trace cut after its last own event at its stored clock, within the query's bound. -/
-theorem healthy_cut_tips_comparable_at
-    (Q : HealthyPreparationQueryAt
-    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V)
-    (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocks { S with vote := stock }) V).prog
-      (shapeProgress (goldilocks { S with vote := stock }) V)
-      (K S A) Q.cap Q.index
-      Q.ready Q.heal Q.run)
-    (u v : V) (i j : Nat)
-    (hi : (chainTrace Q.run.2).InCuts Q.heal i)
-    (hj : (chainTrace Q.run.2).InCuts Q.heal j)
-    (hu : Q.run.2.point.Ready ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run) u
-      ((chainTrace Q.run.2).cutTime i))
-    (hv : Q.run.2.point.Ready ((Sys (goldilocks { S with vote := stock }) V).cDur (K S A) Q.run) v
-      ((chainTrace Q.run.2).cutTime j))
-    (hub : (stateAt { S with vote := stock } Q.run.2 Q.hn u i).now ≤ Q.bound)
-    (hvb : (stateAt { S with vote := stock } Q.run.2 Q.hn v j).now ≤ Q.bound) :
-    let C := fun v i => Regimes.readAfter Q.trace (Q.run.2.ownKey v)
-      (cutMap { S with vote := stock } Q.run.2 Q.hn (lastOwn { S with vote := stock } Q.run.2 v i))
-          (stateAt { S with vote := stock } Q.run.2 Q.hn v i).now
-    Anc (Q.trace.HonestBlocksAt Q.keys) (C u i) (C v j) ∨
-      Anc (Q.trace.HonestBlocksAt Q.keys) (C v j) (C u i) := by
-  obtain ⟨D⟩ := healthy_repair_schedule_at { S with vote := stock }
-    ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q h0 hb hp
-  obtain ⟨O⟩ := healthy_bounded_repairing_opening_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hb hp D
-  obtain ⟨Cu⟩ := healthy_current_read_context_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hi hu hub
-  obtain ⟨Cv⟩ := healthy_current_read_context_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hj hv hvb
-  dsimp only
-  rw [healthy_current_record_read_at { S with vote := stock }
-      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hi hu hub,
-    healthy_current_record_read_at { S with vote := stock }
-      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q D O hj hv hvb]
-  exact healthy_current_sources_compatible_at D.toRepairSchedule Cu.time_nonneg Cu.readPoint
-    Cu.time_bound Cu.honest Cv.time_nonneg Cv.readPoint Cv.time_bound Cv.honest
-    (record_sources_before_now_at D.toRepairSchedule O.toRepairOpening Cu.readPoint
-      Cu.honest Cu.repaired Cu.repairedCut)
-    (record_sources_before_now_at D.toRepairSchedule O.toRepairOpening Cv.readPoint
-      Cv.honest Cv.repaired Cv.repairedCut)
 
 /-- **Temporal ancestry of the read tips** of one reader ready at two cuts from the heal point,
 the later read within the query's bound. -/

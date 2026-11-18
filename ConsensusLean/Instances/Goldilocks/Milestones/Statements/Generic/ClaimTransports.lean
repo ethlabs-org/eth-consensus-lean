@@ -68,8 +68,8 @@ def AdmissibleProposal (M : RunMap rho payload) (K : Contract ProgressReq)
     rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩)
       (M.validator B.proposer) (M.trace.time k)
 
-/-- Same-query production from `sleepy_query_producer_at` and
-`healthy_confirmed_supply_at`. Advertised readiness is retained jointly with the
+/-- Same-query production from `sleepy_query_producer_at`, in the sleepy and in the healthy
+regime. Advertised readiness is retained jointly with the
 selected proposal; arbitrary locally ready proposals need not be admissible.
 Collision freedom is used only in the collision-excused liveness reductions. -/
 structure ProposalWitnessRefinement (M : RunMap rho payload) (K : Contract ProgressReq)

@@ -8,9 +8,9 @@ public section
 /-! # Forwarding decoder correspondence: state invariants
 
 The held-block correspondence of decoded durable wrappers (`WrappersHeld`) and its preservation,
-together with `WrappersDecoded`, by every engine state transition. The run-level consequences
-(every reachable honest state satisfies both, and every acceptance publishes a decoded wrapper)
-are in `Obligations/ForwardingDecode`.
+together with `WrappersDecoded`, by every engine state transition. Their consequences along a run
+(every engine state of a node satisfies both, and every acceptance has a decoded forwarding
+publication) are in `Obligations/ForwardingChain`, with the fault-model facts as premises.
 -/
 
 namespace Consensus.Goldilocks.Obligations

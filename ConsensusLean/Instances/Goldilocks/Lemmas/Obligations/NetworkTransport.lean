@@ -54,8 +54,7 @@ def protoFGDelay (pub : Model.Public) : Time := pub.ΔFG
 
 theorem protoFGDelay_eq (pub : Model.Public) : protoFGDelay pub = pub.ΔFG := by rfl
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-  (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := stock })) E)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 /-- The engine log's message class is the Goldilocks attestation class (`isFGAtt`). -/
 theorem log_fgAtt_iff {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
@@ -82,7 +81,6 @@ theorem not_isFGAtt_of_decodeForward {binding : VoteBinding} {sp : SA.SAParams}
   rw [forwardObj_of_decodeForward hs o origin t parent B h]
   exact not_isFGAtt_forwardObj origin t parent B
 
-omit rho in
 /-- Every well-formed attestation contained in an actual receipt gets a real processing
 call at receipt time, including duplicate attestations already present in the pool. -/
 theorem received_att_processAt
