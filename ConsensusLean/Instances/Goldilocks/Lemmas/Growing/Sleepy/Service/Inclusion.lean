@@ -7,7 +7,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks under `Sleepy` with growing faults: finite inclusion
+/-! # Goldilocks under `Sleepy` with growing faults: finite inclusion and growth
 
 The growing-fault form of `Healing/Regimes/Inclusion` (R.2), finite through `b`, from the finite
 service, the count shapes through `b`, and the committee premises of a slot dictionary `K`
@@ -19,8 +19,8 @@ service, the count shapes through `b`, and the committee premises of a slot dict
 * `read_extends_of_record_at`: the read after all events at `t` extends `P` when the record or
   `Σ.F` does;
 * `ready_proposer_proposes_at`: a proposer ready at its slot start proposes then;
-* `include_sleepy_at`: the finite row, the proposer honest through its hold `Δ` and every reader
-  honest at its read time. -/
+* `include_sleepy_at`, `grow_sleepy_at`: the finite rows, the proposer honest through its hold
+  `Δ` and every reader honest at its read time. -/
 
 namespace Consensus.Goldilocks.Regimes.Growing
 
@@ -200,6 +200,101 @@ theorem include_sleepy_at {ini}
   have ht0 : 0 ≤ t := by linarith [sp.toParams.hΔ]
   exact read_extends_of_record_at hrun hnc hinv hsync hKB hBK ht0 hj hy htb
     (ready_record_extends_at hrun hnc hb0 hsync hB hinv hP hmargin hy hj htb hKB hBK)
+
+/-- **Finite growth under growing faults.** For `t ≥ 0`, `k ≥ 1` and `t + (4k + 6)Δ ≤ b`, with one
+proposer ready at its slot start and honest through its hold in every window of `k` slots up to
+`t + (4k + 6)Δ`: some proposal released after `t` by a proposer ready then and honest through its
+hold is in every ready read at `t + (4k + 6)Δ`, in no ready read at `t`, and each ready read at `t`
+is an ancestor of each ready read at `t + (4k + 6)Δ`. -/
+theorem grow_sleepy_at {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b)
+    (hsync : Compose.Growing.SleepyServiceBefore tr H ΔF b)
+    (hB : Compose.Growing.SleepyBoundsFrom tr H 0 b) {k : Nat} (hk : 1 ≤ k) {t : Time} (ht : 0 ≤ t)
+    (htb : t + (4 * k + 6) * sp.Δ ≤ b)
+    (hrec : ProposerRecurrence tr H proposer (Regimes.catchUp sp) k (hold sp) 0
+      (t + (4 * k + 6) * sp.Δ)) {K : SA.CommitteeDict sp.n}
+    (hKB : CommitteeFacts tr H K) (hBK : CommitteeBoundsFrom tr H K 0 b) :
+    ∃ τ P, t < τ ∧ ReadyProposalAt tr H (Regimes.catchUp sp) τ (hold sp) P ∧
+      (∀ y j, ReadyAt tr H (Regimes.catchUp sp) y (t + (4 * k + 6) * sp.Δ) →
+        Regimes.CutAfter tr j (t + (4 * k + 6) * sp.Δ) →
+        Anc (tr.HonestBlocksAt H) P (Regimes.readAfter tr y j (t + (4 * k + 6) * sp.Δ))) ∧
+      (∀ x jx, ReadyAt tr H (Regimes.catchUp sp) x t → Regimes.CutAfter tr jx t →
+        ¬ Anc (tr.HonestBlocksAt H) P (Regimes.readAfter tr x jx t)) ∧
+      ∀ x jx y j, ReadyAt tr H (Regimes.catchUp sp) x t → Regimes.CutAfter tr jx t →
+        ReadyAt tr H (Regimes.catchUp sp) y (t + (4 * k + 6) * sp.Δ) →
+        Regimes.CutAfter tr j (t + (4 * k + 6) * sp.Δ) →
+        Anc (tr.HonestBlocksAt H) (Regimes.readAfter tr x jx t)
+          (Regimes.readAfter tr y j (t + (4 * k + 6) * sp.Δ)) := by
+  have hΔ := sp.toParams.hΔ
+  have hcoh := honestBlocksAt_coherent hrun hnc
+  set D := (4 * (k : Time) + 6) * sp.Δ with hD
+  have hD0 : 0 ≤ t + D := by rw [hD]; positivity
+  -- the window `(t, t + 4kΔ]` has a ready proposer, honest through its hold
+  set s₀ := sp.slot t + 1
+  have hts₀ : t < sp.ts s₀ := by
+    by_contra h
+    have := (SA.ts_le_iff_le_slot sp ht (s₀ : Int)).1 (not_lt.1 h)
+    omega
+  have hts₀' : sp.ts s₀ ≤ t + 4 * sp.Δ := by
+    have := (SA.ts_le_iff_le_slot sp ht (sp.slot t : Int)).2 le_rfl
+    simp only [SAParams.ts] at this ⊢
+    push_cast [s₀]
+    linarith
+  obtain ⟨s, hs₀s, hss, hready, hhold⟩ := hrec s₀ (lt_of_le_of_lt ht hts₀) (by
+    simp only [SAParams.ts, hD] at hts₀' ⊢
+    have h1k : (1 : Time) ≤ k := by exact_mod_cast hk
+    rw [show ((s₀ + k - 1 : Nat) : Time) = (s₀ : Time) + k - 1 by
+      rw [Nat.cast_sub (by omega)]; push_cast; ring]
+    linarith)
+  have hts : t < sp.ts s := lt_of_lt_of_le hts₀ ((SA.ts_le_iff sp).2 (by exact_mod_cast hs₀s))
+  have htsD : sp.ts s + 6 * sp.Δ ≤ t + D := by
+    have : sp.ts s ≤ sp.ts (s₀ + (k - 1) : Nat) := (SA.ts_le_iff sp).2 (by push_cast; omega)
+    simp only [SAParams.ts, hD] at this hts₀' ⊢
+    push_cast at this hts₀' ⊢
+    rw [show ((k - 1 : Nat) : Time) = k - 1 by rw [Nat.cast_sub hk]; simp] at this
+    linarith
+  obtain ⟨kP, P, hP, hkP⟩ := ready_proposer_proposes_at hrun hnc (by omega) hready
+  have hPslot : P.slot = s := by
+    have h := hP.2.2
+    rw [hkP, sp.slotTime_eq] at h
+    simp only [SAParams.ts] at h
+    have := SA.four_delta_pos sp
+    exact_mod_cast (mul_left_cancel₀ this.ne' h).symm
+  have hRP : ReadyProposalAt tr H (catchUp sp) (sp.ts s) (hold sp) P :=
+    ⟨_, kP, hready, hhold, hP, hkP⟩
+  have hinc : ∀ y j, ReadyAt tr H (catchUp sp) y (t + D) → CutAfter tr j (t + D) →
+      Anc (tr.HonestBlocksAt H) P (readAfter tr y j (t + D)) := fun y j hy hj =>
+    include_sleepy_at hrun hnc hb0 hsync hB hRP htsD htb hy hj hKB hBK
+  -- `P` is newer than every block of a read at `t`
+  have hnot : ∀ x jx, ReadyAt tr H (catchUp sp) x t → CutAfter tr jx t →
+      ¬ Anc (tr.HonestBlocksAt H) P (readAfter tr x jx t) := by
+    intro x jx hx hjx hPx
+    have hst := Trace.upTo_state tr x hjx.1
+    have hr := (hrun.upTo ht).toLocalRun
+    have hΦ : FrameOK (Node.frame (tr.state x jx)) := by
+      rw [← hst]; exact Compose.frameOK_state hr hx.1 jx
+    have hmem := (Regimes.sa_tips (A := (tr.state x jx).ac) hΦ t).1
+    have hXs : (readAfter tr x jx t).slot ≤ sp.slot t := by
+      change (SA.acConfirmed sp (tr.state x jx).ac (Node.frame (tr.state x jx)) t).slot ≤ _
+      have hm1 := hmem.1
+      rw [← hst] at hm1 ⊢
+      rcases Compose.tree_cases hr hx.1 hm1 with hg | ⟨q, hq, hacc⟩
+      · rw [hg]; exact Nat.zero_le _
+      · exact ((hr.cutLaw x hx.1 q _ hacc).1).trans
+          (SA.slot_mono sp (hrun.time_nonneg q) (hjx.1 q hq))
+    have := (Anc.slot_le hcoh hPx).1
+    have hslt : sp.slot t < s := by
+      by_contra h
+      have := (SA.ts_le_iff_le_slot sp ht (s : Int)).2 (by omega)
+      linarith
+    omega
+  refine ⟨sp.ts s, P, hts, hRP, hinc, hnot, fun x jx y j hx hjx hy hj => ?_⟩
+  have hinv := sleepy_invariant_at hrun hnc hKB hb0 hsync hB hBK
+  rcases hinv.read_compatible_at hrun hnc ht hjx.1 (by linarith) hx.1 hD0 hj.1 htb hy.1
+      t (t + D) with h | h
+  · exact h
+  · exact absurd ((hinc y j hy hj).trans h) (hnot x jx hx hjx)
 
 end Consensus.Goldilocks.Regimes.Growing
 
