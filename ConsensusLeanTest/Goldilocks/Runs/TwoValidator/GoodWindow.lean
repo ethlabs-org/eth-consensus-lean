@@ -216,7 +216,9 @@ theorem twoRun_goodWindow :
   · exact Compose.projFG_callAt.2 hown
   · rw [blk_slot]; exact htime.symm
   · rw [hstore]; exact (mem_tree_iff hg.blocks).2 ⟨31, le_rfl, rfl⟩
-  · intro r hr hv _
+  · intro r hr hh hT _
+    have hv : ((run.projFG.store w0 (1024 * (4 * 32) + 2)).σ (blk 31).root).validAtt r :=
+      Or.inl ⟨hh, hT⟩
     rw [hstore, hatts, mem_poolOf] at hr
     obtain ⟨i, hi, rfl⟩ := hr
     rw [hσ 31 le_rfl] at hv

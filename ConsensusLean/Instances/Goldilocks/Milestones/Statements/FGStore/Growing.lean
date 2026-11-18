@@ -67,8 +67,8 @@ def HonestProposal (H : Time → Set (Fin P.n)) (tr : FGTrace P ACP) (p : Fin P.
     (B Pr : NodeBlock P ACP) : Prop :=
   p ∈ H (tr.time i) ∧ tr.AcceptAt p i B ∧ B.proposer = p ∧ P.slotTime B.slot = tr.time i ∧
     Pr ∈ (tr.store p i).tree ∧ B.parent = some Pr.root ∧
-    ∀ r ∈ (tr.store p i).atts, ((tr.store p i).σ Pr.root).validAtt r →
-      ¬ (tr.store p i).OnChain Pr r → r ∈ B.fgPayload
+    ∀ r ∈ (tr.store p i).atts, r.h = ((tr.store p i).σ Pr.root).h →
+      r.T = ((tr.store p i).σ Pr.root).Th → ¬ (tr.store p i).OnChain Pr r → r ∈ B.fgPayload
 
 /-- **The good window under growing faults.** As `Store.GoodWindow`, with the honest proposal of
 a proposer honest at its proposal cut, and `emitted` reading the signer's honesty at the window's

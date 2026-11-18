@@ -671,14 +671,14 @@ theorem trT_goodWindow : GoodWindow P₁ Unit {w₀} trT 1 Bc 0 0 w₀ 14 Bx Bc 
   refine ⟨⟨rfl, ⟨rfl, rfl⟩, rfl, rfl, ?_, rfl, ?_⟩, ?_, ?_, ⟨le_rfl, le_rfl⟩, by decide, ?_, ?_,
     ?_, ⟨by decide, by decide⟩⟩ <;> rw [trT_store.1]
   · exact (rfl : stCa.blocks 4 = some Bc)
-  · intro r hr hv _
+  · intro r hr hh hT _
     change r ∈ [a₀, a₁, aK, aF, aC] at hr
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
     rcases hr with rfl | rfl | rfl | rfl | rfl
-    · exact absurd hv (by decide)
-    · exact absurd hv (by decide)
-    · exact absurd hv (by decide)
-    · exact absurd hv (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
     · exact List.mem_singleton_self _
   · exact ⟨rfl, rfl⟩
   · exact Relation.ReflTransGen.refl

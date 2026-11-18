@@ -591,6 +591,15 @@ detail in `TRUST.md`.
   `X = span + 2` as an existential witness only, and every leaf stays valid for all positive `X`. The row delay
   enters only through the rise timeout `6Δ + ΔF ≤ 4Δ·δ_t`, paid by `3c ≤ δ_t`; the transport runs at the actual
   protocol FG delay `protoFGDelay` (`FinalQueryAt.hsSharedUpTo_at`).
+- **The good window requires inclusion only of current-entry attestations.** P5 of `Store.GoodWindow` (`Store.HonestProposal`
+  and its growing copy) asks the honest proposal to include the pooled attestations for its parent's current entry
+  (its height and entry, target or timeout), not every pooled attestation valid against the parent's state (CLAIMS
+  P5, `proposal_attestations`). No FG liveness lemma uses the older votes that `valid_attestation` also accepts (a
+  lower height with a pending finality pair): every pending pair a lemma finalizes is finalized through the finality
+  pair of the current entry's target attestations, and finalizing the newest pending pair covers the older ones,
+  also with two pairs pending (`K_W = 2`). So G1.6–G1.8 are stronger, and the statement shows that liveness does
+  not need old votes. C1.2's conclusion, a literal good window, is weaker in that field alone; the composition still
+  proves it from `proposal_attestations`, and every consumer builds against the narrower field.
 - **Other routes.** The first-crossing/bounded-crossing assembly (`[0, δ_t − 1, δ_t + 1, δ_t + 3]`, `δ_t ≥ 4`) is
   retired. The two-proposer route (route B) is parked: it has no proved supplier.
 

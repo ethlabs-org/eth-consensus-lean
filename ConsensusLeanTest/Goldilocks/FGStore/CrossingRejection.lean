@@ -272,7 +272,7 @@ with `a₀`, the only pooled row, included. -/
 theorem trS₀_proposal_Bs : HonestProposal P₀ Unit {w₀} trS₀ w₀ 2 Bs g₀ := by
   refine ⟨rfl, ⟨rfl, rfl⟩, rfl, rfl, ?_, rfl, ?_⟩ <;> rw [trS₀_store_two]
   · exact g₀_mem_stA
-  · exact fun r hr _ _ => hr
+  · exact fun r hr _ _ _ => hr
 
 /-- (a) At the proposal cut of `Bs`, `w₀`'s pool holds a progress quorum (`q = 1`) of
 current-entry rows for genesis at cut `3`: `a₀`, of height `1` and root `0`. -/

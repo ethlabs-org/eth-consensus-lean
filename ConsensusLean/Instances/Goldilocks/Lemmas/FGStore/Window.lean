@@ -419,7 +419,7 @@ theorem window_justifies (hr : FGLocalRun acp₀ H U tr) {cF : Nat} {T : NodeBlo
       obtain ⟨a1, a2⟩ := (hrc X (hXPr.mono hsub) r hrX).2 rh' rT'
       exact ⟨bt (a1 rto), fun hb hm => bf _ (a2 _ (rfin hb) hm)⟩
     · have hin : r ∈ Bs.fgPayload :=
-        hincl r ((hpool r hrR).resolve_left hon) (Or.inl ⟨rh', rT'⟩) hon
+        hincl r ((hpool r hrR).resolve_left hon) rh' rT' hon
       obtain ⟨a1, a2⟩ := brow r hin rh' rT'
       exact ⟨a1 rto, fun hb hm => a2 _ (rfin hb) hm⟩
   have hcard : ∀ s : Finset (Fin P.n), (∀ r ∈ R, r.val ∈ s) → P.fg.q ≤ s.card := by

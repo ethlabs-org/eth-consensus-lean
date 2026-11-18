@@ -402,14 +402,14 @@ theorem trV_goodWindow_Bc : GoodWindow P₁ Unit {w₀} trV 1 Bc 0 0 w₀ 14 Bx 
   refine ⟨⟨rfl, ⟨rfl, rfl⟩, rfl, rfl, ?_, rfl, ?_⟩, ?_, ?_, ⟨le_rfl, le_rfl⟩, by decide, ?_, ?_,
     ?_, ⟨by decide, by decide⟩⟩ <;> rw [trV_store.1]
   · exact (rfl : stCa.blocks 4 = some Bc)
-  · intro r hr hv _
+  · intro r hr hh hT _
     change r ∈ [a₀, a₁, aK, aF, aC] at hr
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
     rcases hr with rfl | rfl | rfl | rfl | rfl
-    · exact absurd hv (by decide)
-    · exact absurd hv (by decide)
-    · exact absurd hv (by decide)
-    · exact absurd hv (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
     · exact List.mem_singleton_self _
   · exact ⟨rfl, rfl⟩
   · exact Relation.ReflTransGen.refl
@@ -431,15 +431,15 @@ theorem trV_goodWindow_Bx : GoodWindow P₁ Unit {w₀} trV 1 Bx 0 0 w₀ 17 By 
   refine ⟨⟨rfl, ⟨rfl, rfl⟩, rfl, rfl, ?_, rfl, ?_⟩, ?_, ?_, ⟨le_rfl, le_rfl⟩, by decide, ?_, ?_,
     ?_, ⟨by decide, by decide⟩⟩ <;> rw [trV_store.2.2.1]
   · exact (rfl : stXa.blocks 5 = some Bx)
-  · intro r hr hv _
+  · intro r hr hh hT _
     change r ∈ [a₀, a₁, aK, aF, aC, aX] at hr
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
     rcases hr with rfl | rfl | rfl | rfl | rfl | rfl
-    · exact absurd hv (by decide)
-    · exact absurd hv (by decide)
-    · exact absurd hv (by decide)
-    · exact absurd hv (by decide)
-    · exact absurd hv (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
     · exact List.mem_singleton_self _
   · exact ⟨rfl, rfl⟩
   · exact Relation.ReflTransGen.refl

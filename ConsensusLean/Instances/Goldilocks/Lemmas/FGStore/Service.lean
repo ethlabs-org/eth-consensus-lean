@@ -287,10 +287,10 @@ theorem crossing : Crossing P ACP := by
           hxT.trans (hT.2.symm.trans hX'T.symm)⟩))
       · omega
     · right
-      have hv : ((tr.store p j).σ Pr.root).validAtt x := by
+      have hv : x.h = ((tr.store p j).σ Pr.root).h ∧ x.T = ((tr.store p j).σ Pr.root).Th := by
         rw [σ_eq_of_held hr hpH hy hPrp hPrt]
-        exact Or.inl ⟨by omega, hxT.trans hPrTh.symm⟩
-      exact ⟨x, hP5 x hx hv hon, rfl, by omega, hxT.trans hPrTh.symm⟩
+        exact ⟨by omega, hxT.trans hPrTh.symm⟩
+      exact ⟨x, hP5 x hx hv.1 hv.2 hon, rfl, by omega, hxT.trans hPrTh.symm⟩
   rcases step_entry (step_σ hr hy hYt hYpar) with ⟨-, -, -, hp, hto⟩ | ⟨hh, -, -⟩
   · refine absurd ⟨le_trans hq' (Finset.card_le_card fun v hv => ?_), ?_⟩ hto
     · simp only [List.mem_toFinset, List.mem_map, List.mem_filter, decide_eq_true_eq] at hv

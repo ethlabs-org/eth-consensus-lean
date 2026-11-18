@@ -58,14 +58,17 @@ theorem ready_proposal_accepted_everywhere (hp : ResetPremises tr H proposer dg 
   rw [hes] at ht
   exact ht
 
-/-- The composition's actual honest proposal has the uncapped pool-inclusion property
-required by the FG good window. -/
+/-- The composition's actual honest proposal includes every pooled attestation for its parent's
+current entry that is not on the parent's chain (the good window's P5): `proposal_attestations`
+keeps every pooled attestation valid against the parent's state, and those for the current entry
+are valid. -/
 private theorem proposal_includes_pool (hp : ResetPremises tr H proposer dg g ΔF a)
     {w : Fin sp.n} (hw : w ∈ H) {k : Nat} {W Pr : SA.Blk sp.n (List (FG.Att sp.n))}
     (hW : tr.ProposesAt w k W) (hPr : Pr ∈ (tr.state w k).fg.tree)
     (hpar : W.parent = some Pr.root) :
-    ∀ att ∈ (tr.state w k).fg.atts, ((tr.state w k).fg.σ Pr.root).validAtt att →
-      ¬ (tr.state w k).fg.OnChain Pr att → att ∈ W.fgPayload := by
+    ∀ att ∈ (tr.state w k).fg.atts, att.h = ((tr.state w k).fg.σ Pr.root).h →
+      att.T = ((tr.state w k).fg.σ Pr.root).Th → ¬ (tr.state w k).fg.OnChain Pr att →
+        att ∈ W.fgPayload := by
   obtain ⟨hacc, _, _⟩ := accept_of_proposesAt hp.run hp.noColl hw hW
   rcases Compose.blockCall_cases hp.run.toLocalRun hw hacc with hg |
     ⟨j, x, _, _, _, d, pay, _, hB, _, _, _, hfg⟩
@@ -75,10 +78,10 @@ private theorem proposal_includes_pool (hp : ResetPremises tr H proposer dg g Δ
   have hroot : d.head.root = Pr.root := by
     have : W.parent = some d.head.root := by rw [hB]; rfl
     exact Option.some.inj (this.symm.trans hpar)
-  intro att ha hv hn
+  intro att ha hh hT hn
   rw [hpay]
   simp only [Store.proposalAttestations, List.mem_filter, decide_eq_true_eq]
-  refine ⟨ha, by rw [hroot]; exact hv, fun ⟨X, hX, hXd, haX⟩ => hn ⟨X, hX, ?_, haX⟩⟩
+  refine ⟨ha, by rw [hroot]; exact Or.inl ⟨hh, hT⟩, fun ⟨X, hX, hXd, haX⟩ => hn ⟨X, hX, ?_, haX⟩⟩
   have hd := mem_of_anc_right hXd hX
   have he : d.head = Pr := (honest_coherent hp).1 ⟨w, hw, k, hd⟩ ⟨w, hw, k, hPr⟩ hroot
   rwa [he] at hXd

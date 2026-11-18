@@ -384,9 +384,9 @@ theorem trJ_goodWindow : GoodWindow P₁ Unit {w₀} trJ 1 Bs 0 0 w₀ 5 Bf Bs {
   refine ⟨⟨rfl, ⟨rfl, rfl⟩, rfl, rfl, ?_, rfl, ?_⟩, ?_, ?_, ⟨le_rfl, le_rfl⟩, by decide, ?_, ?_,
     ?_, ⟨by decide, by decide⟩⟩ <;> rw [trJ_store.2.2.2.1]
   · exact (rfl : stBa.blocks 1 = some Bs)
-  · intro r hr hv _
+  · intro r hr hh hT _
     rcases List.mem_cons.mp hr with rfl | hr
-    · exact absurd hv (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
     · rw [List.mem_singleton.mp hr]
       exact List.mem_singleton_self _
   · exact ⟨rfl, rfl⟩
@@ -449,7 +449,7 @@ theorem trJ_genesis_goodWindow : GoodWindow P₁ Unit {w₀} trJ 1 g₁ 0 0 w₀
   refine ⟨⟨rfl, ⟨rfl, rfl⟩, rfl, rfl, ?_, rfl, ?_⟩, ?_, ?_, ⟨le_rfl, le_rfl⟩, by decide, ?_, ?_,
     ?_, ⟨by decide, by decide⟩⟩ <;> rw [trJ_store.1]
   · exact g₁_mem_stA
-  · exact fun r hr _ _ => hr
+  · exact fun r hr _ _ _ => hr
   · exact ⟨g₁_mem_stA, rfl⟩
   · exact Relation.ReflTransGen.refl
   · intro r hr

@@ -273,7 +273,7 @@ theorem trS_goodWindow : GoodWindow P₁ Unit {w₀} trS 1 g₁ 0 0 w₀ 2 Bs g�
   refine ⟨⟨rfl, ⟨rfl, rfl⟩, rfl, rfl, ?_, rfl, ?_⟩, ?_, ?_, ⟨le_rfl, le_rfl⟩, by decide, ?_, ?_,
     ?_, ⟨by decide, by decide⟩⟩ <;> rw [hst]
   · exact g₁_mem_stA
-  · exact fun r hr _ _ => hr
+  · exact fun r hr _ _ _ => hr
   · exact ⟨g₁_mem_stA, rfl⟩
   · exact Relation.ReflTransGen.refl
   · intro r hr
@@ -390,7 +390,7 @@ theorem trE_not_goodWindow (cF : Nat) (T : NodeBlock P₁ Unit) (a kF : Nat)
   have h2 : trE.store w₀ 2 = stA := by rw [FGTrace.store, (trOf_state Be stBe w₀).2.2.1]
   have hP5 := hw.proposal.2.2.2.2.2.2
   rw [h2] at hP5
-  refine absurd (hP5 a₀ (List.mem_singleton_self _) (Or.inl ⟨rfl, rfl⟩) ?_) List.not_mem_nil
+  refine absurd (hP5 a₀ (List.mem_singleton_self _) rfl rfl ?_) List.not_mem_nil
   rintro ⟨X, hX, -, ha⟩
   change (Store.init (P := P₁) ()).blocks X.root = some X at hX
   simp only [Store.init] at hX

@@ -40,13 +40,13 @@ payload. -/
 theorem trT_proposal_Bc : HonestProposal P₁ Unit {w₀} trT w₀ 11 Bc Bf := by
   refine ⟨rfl, ⟨rfl, rfl⟩, rfl, rfl, ?_, rfl, ?_⟩ <;> rw [trT_store_crossing.1]
   · exact (rfl : stKb.blocks 2 = some Bf)
-  · intro r hr hv _
+  · intro r hr hh hT _
     change r ∈ [a₀, a₁, aK, aF] at hr
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
     rcases hr with rfl | rfl | rfl | rfl
-    · exact absurd hv (by decide)
-    · exact absurd hv (by decide)
-    · exact absurd hv (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
+    · exact absurd (And.intro hh hT) (by decide)
     · exact List.mem_singleton_self _
 
 /-- (a) Before cut `11`, the pool of `w₀` holds a progress quorum (`q = 1`) of current-entry rows

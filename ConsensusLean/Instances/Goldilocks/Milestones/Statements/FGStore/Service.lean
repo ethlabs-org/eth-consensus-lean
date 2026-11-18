@@ -5,8 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.T
 
 /-! # Goldilocks milestone FGStore, part 3: the FG service lemmas (statements)
 
-Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`, §"L1:
-components / Finality gadget": the good window `GW(E, a, k_F)`, G1.6 (entry whose previous height is
+Adapted from `specs/goldilocks/tex/goldilocks-claims.tex`, §"L1: components / Finality gadget",
+with a weakened P5: the good window `GW(E, a, k_F)`, G1.6 (entry whose previous height is
 justified, theorem A), G1.7 (entry whose previous height is not justified, two windows, theorem B),
 G1.8 (crossing and coverage, corollary C) and G1.9 (a) (cache acceptance, per call).
 G1.9 (b) is not fixed in the claims yet, and G1.10 at C1.1's scope is a composition statement.
@@ -14,10 +14,10 @@ G1.9 (b) is not fixed in the claims yet, and G1.10 at C1.1's scope is a composit
 **Shape: over FG traces.** The conclusions are about one chain and the FG transition, but the
 good window is a premise on attestations as they reach an honest proposer: when they are signed (P2,
 the emission deadline), that they are in the proposer's pool before its proposal (P3–P4), and that
-the proposal includes every pooled attestation valid against its parent's state (P5). Pools, signing
+the proposal includes every pooled attestation for its parent's current entry (P5). Pools, signing
 times and honest proposals exist only in an FG trace, so the statements are over FG traces
-(`FGLocalRun`), with the literal `GW` premises that the composition node C1.2 discharges; P7
-(durable, serialized honest clients) is part of `FGLocalRun`.
+(`FGLocalRun`), with the adapted `GW` premises (P5 weakened, below) that the composition node C1.2
+discharges; P7 (durable, serialized honest clients) is part of `FGLocalRun`.
 
 **Reading.**
 * An entry `E = (h, T_h, u)` is given by its entry block `T`: a held block whose state's entry is
@@ -31,9 +31,15 @@ times and honest proposals exist only in an FG trace, so the statements are over
   parent or, through P3–P4, in the proposer's pool. "Already on the chain of `B*`" reads as on the
   chain of `B*`'s parent (every attestation of `B*` itself is on `B*`'s chain, which would empty the
   deadline).
-* P5 includes every pooled attestation valid against the parent's state, as `proposal_attestations`
-  does; a malformed pooled attestation that `valid_attestation` accepts would make `B*` refused, so
-  in a trace whose pools hold one no window is good (a node's wire checks exclude it).
+* P5 requires only the pooled attestations for the parent's current entry `(σ[Pr].h, σ[Pr].T_h)`
+  (target or timeout), which `valid_attestation` always accepts. The claims' P5 is
+  `proposal_attestations`' rule, every pooled attestation valid against the parent's state; the
+  older votes that rule adds (a lower height, with a pending finality pair) are used by no lemma
+  here: each pending pair is finalized through the finality pair of the current entry's target
+  attestations, and finalizing the newest pending pair covers the older ones. So P5 is weaker than
+  the claims' and the lemmas stronger (docs/decisions.md, "Final liveness"). A malformed pooled
+  attestation for the current entry would make `B*` refused, so in a trace whose pools hold one no
+  window is good (a node's wire checks exclude it).
 * "Finalized `P_E = (h−1, J_E)` at or before the block `X` that justifies `E`" reads as
   `σ[X].F = J_E` with `σ[X].h_F = h − 1` (the gate opens only when `h_F = h_j`, and no later pair
   is pending at `X`); "justified at `X`" as `σ[X].J = T_h`, `σ[X].h_j = h`; "`h` does not cross
@@ -52,14 +58,15 @@ def IsEntry (st : Store P ACP) (T : NodeBlock P ACP) : Prop :=
 
 /-- `B` is an honest proposal at cut `i` with parent `Pr`: the own proposal of the honest `p`,
 accepted at its slot's start, whose parent `Pr` is held, and which includes every attestation of
-`p`'s pool that is valid against `Pr`'s state and not on `Pr`'s chain (the composition's inclusion
-rule, uncapped). -/
+`p`'s pool for `Pr`'s current entry (its height and entry, target or timeout) that is not on `Pr`'s
+chain. The composition's inclusion rule, uncapped, includes these and also the older votes that
+`valid_attestation` accepts. -/
 def HonestProposal (H : Set (Fin P.n)) (tr : FGTrace P ACP) (p : Fin P.n) (i : Nat)
     (B Pr : NodeBlock P ACP) : Prop :=
   p ∈ H ∧ tr.AcceptAt p i B ∧ B.proposer = p ∧ P.slotTime B.slot = tr.time i ∧
     Pr ∈ (tr.store p i).tree ∧ B.parent = some Pr.root ∧
-    ∀ r ∈ (tr.store p i).atts, ((tr.store p i).σ Pr.root).validAtt r →
-      ¬ (tr.store p i).OnChain Pr r → r ∈ B.fgPayload
+    ∀ r ∈ (tr.store p i).atts, r.h = ((tr.store p i).σ Pr.root).h →
+      r.T = ((tr.store p i).σ Pr.root).Th → ¬ (tr.store p i).OnChain Pr r → r ∈ B.fgPayload
 
 /-- **The good window `GW(E, a, k_F)`** for the entry with entry block `T`, with slack `c_F`,
 served by the block `Bs` that `p` proposes at cut `i` on the parent `Pr`, with the attestations `R`:
