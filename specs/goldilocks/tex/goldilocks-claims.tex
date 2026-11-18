@@ -80,9 +80,12 @@ extra.  D4: the protocol's sleep and restart model is the authority; the
 bridge to the Lean \texttt{Ready} is node~F.4.  D5: the claims
 live here.  For D2 the good-window theorem changes the corollary: proposer recurrence
 alone does not give good windows, so the target's
-final rows need a recurrence of consecutive honest ready proposers and an AC
-service premise; recovery from any post-GST state is
-open (L2 node R.4).
+final rows need a recurrence of honest ready proposers and an AC
+service premise.  The certified endpoint takes that recurrence in the
+four-anchor form of \S\ref{sec:obligations} and certifies finality
+liveness after GST from any state at GST under it
+(\S\ref{sec:certified-rows}); recovery under weaker proposer premises
+(O.1's target) is open.
 
 \paragraph{Status.}  Sections \ref{sec:model}--\ref{sec:l1}
 are complete: the model and its premises, the objects, and
@@ -111,10 +114,11 @@ use the premises $\mathsf{Catch}$ and
 $\mathsf{Prop}$.  The recovery predicate $\mathsf{Rec}$, the
 pattern regime $\mathsf{UPat}$, node O.1 (recovery under that regime, not O.1's
 target), C1.3's statement, and HR.5 (G1.9 (b) after the reset) are fixed;
-post-GST recovery is the open target O.1.  The regime theorems
-(Section~\ref{sec:l2}) are listed with their target rows and their uses; their
-premises and numbers wait for the instance statements and
-the derivation of the bounds (D1).
+post-GST recovery under weaker proposer premises is the open target O.1.
+The regime rows of the certified endpoint, with their premises and
+numbers, are in \S\ref{sec:obligations} and \S\ref{sec:certified-rows};
+the node statements R.1--R.8 (Section~\ref{sec:l2}) are listed with their
+uses.
 
 \begin{sloppypar}
 \paragraph{Lean status and the obligations target.}  The
@@ -122,14 +126,30 @@ obligations target is the concrete endpoint
 \texttt{MeetsObligations} (consensus-lean
 \texttt{Statements/Obligations}), proved by
 \texttt{meets\_obligations}; its contract and coefficients are in
-\S\ref{sec:obligations}.  It is not proved through the regime rows R.3--R.6 and
-does not depend on O.1.  The pre-foundation baseline (\texttt{GoldilocksTarget},
-\texttt{GoldilocksExtraAt}) and the node statements of R.3--R.6 were retired
-unproved (consensus-lean \texttt{archive/consensus-lean-baseline},
-\texttt{archive/consensus-lean-regimes}).  So the references below to
-\texttt{GoldilocksTarget} and its rows (Decisions D1, D2, layer L3,
-\S\ref{sec:l2}) and the dependency of \texttt{MeetsObligations} on O.1 are
-historical.  The Lean status of every node outside the lock nodes, with the
+\S\ref{sec:obligations}.  The headline \texttt{GoldilocksCorrect}
+composes it with the generic review statement
+\texttt{ObligationsSufficient}: the Goldilocks family is an L0
+\texttt{CorrectProtocol} at that contract, whose fractions are
+$\theta=\tfrac12$, $\beta=\tfrac13$, $\beta_K=\tfrac12$
+(\texttt{OptimalFaultTolerance}).  The rows it certifies, among
+them healed safety, finality liveness after GST and outage persistence,
+are stated in \S\ref{sec:certified-rows}.  The endpoint is not proved
+through the node statements R.3--R.6 and does not depend on O.1 or OC: the
+pre-foundation baseline (\texttt{GoldilocksTarget},
+\texttt{GoldilocksExtraAt}) and the node statements of R.3--R.6, with their
+own premises and constants, were archived unproved (consensus-lean
+\texttt{archive/consensus-lean-baseline},
+\texttt{archive/consensus-lean-regimes}).  Of their target rows,
+\texttt{healedSafe} and \texttt{healthyLive} (R.3, both outputs, with
+its corollary \texttt{confirmed\_txLive\_healed}), \texttt{healthyLive}
+(final; R.4, with \texttt{finalized\_txLive}) and \texttt{persists} (R.5)
+are certified, as rows 5, 6 and 9 of \S\ref{sec:certified-rows}, with the
+endpoint's premises and numbers; \texttt{includeHealed},
+\texttt{growHealed}, \texttt{finalFirst}, \texttt{finalRecur},
+\texttt{liveDC}, \texttt{outageWindow} and \texttt{outage\_final\_compatible}
+are not, and R.6 has no certified row.  So the references below to
+\texttt{GoldilocksTarget} (Decisions D1, D2, layer L3, \S\ref{sec:l2}) name
+the row shapes, not a live statement.  The Lean status of every node outside the lock nodes, with the
 formal premises and read points where they differ from the statements here,
 is in \S\ref{sec:lean-status}.
 \end{sloppypar}
@@ -234,20 +254,37 @@ proving).
 \subsection{Parameters}
 
 $n=|V|\geq1$, weights~$1$, $q=\lceil 2n/3\rceil$.  $\Delta>0$, $\Delta_F\geq\Delta$.
-Committees: every claim of this file assumes the population committee,
+Committees: every node claim of this file assumes the population committee,
 $\mathcal K_s=V$ for every slot~$s$, so $|\mathcal K_s|=n$ and every honest validator that is awake and joined
 at $t_s+\Delta$, the latest time of the slot-$s$ vote, votes in slot~$s$.  The protocol
 (goldilocks-spec \S Schedule) allows any public committees of one common
 size; for those, the claims that count against the committee or rely on
 every honest voter voting (for example A0.4 (e) through $e<n/2$, and the
 casts dichotomy of A1.9) are not claimed here, and committee-native forms
-are separate statements.
+are separate statements.  The certified endpoint (\S\ref{sec:obligations},
+\S\ref{sec:certified-rows}) is not restricted to $\mathcal K_s=V$: it holds
+at every vote binding of the Lean family (\texttt{Setup.vote}), the
+population binding $\mathcal K_s=V$, every committee binding of a public
+size~$m$ (each slot's committee chosen by the run, adversarially, with
+$|\mathcal K_s|=\min(m,n)$), and every fixed public committee~$\mathcal K$
+($|\mathcal K_s|=|\mathcal K|$) alike; $m$ and $\mathcal K$ may depend on
+the public parameters.  The fast, optimistic and unlock thresholds count
+$|\mathcal K_s|$, and the endpoint's regimes add committee clauses
+(\S\ref{sec:certified-rows}).
+The node statements of this file are not restated at committee bindings.
 Slot~$s$ starts at $t_s=4\Delta s$.  $\cF=\lceil(6\Delta+\Delta_F)/(4\Delta)\rceil$
 and $R\geq\cF$ slots per round.  Lock window $k\geq2$ slots (the AC).  FG
 window $K_W=2$; FG slack $k_F\geq0$ (distinct from~$k$); source delay
 $x\geq0$; timeout delay $\delta_{\mathrm t}\geq x+\cF+k_F$, default $x=0$
 (goldilocks-spec \S Schedule fixes only $\delta_{\mathrm t}\geq0$; $R$ and these
-bounds are this file's).  Write $f$ for the number of faulty validators.
+bounds are this file's).  The certified endpoint takes its own timeout
+bound: $\delta_{\mathrm t}\geq3c$ for its FG delay in slots $c\geq2$, so
+$\delta_{\mathrm t}\geq6$ (\S\ref{sec:obligations}); it says nothing about
+a setup with $\delta_{\mathrm t}<6$, and its healthy rows say nothing when
+$\cF\leq\delta_{\mathrm t}<3\cF$, which the bound above allows.  The endpoint
+also allows every $\Delta_F>0$, not only $\Delta_F\geq\Delta$.
+Write $f$ for the number of faulty validators (for growing faults, below,
+$f_t$ for the number compromised by~$t$).
 
 \subsection{Runs}
 
@@ -268,6 +305,23 @@ about honest senders).  A run has finitely many events in every bounded
 interval of time.  Write $h_t$ for the number of honest validators that are
 awake and joined at~$t$.
 
+\emph{Growing faults.}  The node statements of this file are written for a
+faulty set fixed for the whole run.  The certified endpoint is stronger: its
+adversary compromises validators during the run.  A run fixes, for every
+time~$t$, the set of validators compromised by~$t$; the set only grows, a
+compromise is immediate and permanent, with the validator's ordinary keys
+(no forward security), and no validator recovers.  A validator compromised
+by~$t$ is faulty for every event at~$t$ and later; one not compromised
+by~$t$ is honest at every time up to~$t$.  A compromised key signs anything,
+including objects that claim an earlier slot or role; an object an honest
+node released before the compromise keeps its provenance.  A transaction
+submitted to a node honest and awake at its submission stays owed after
+that node is compromised.  The constant set is the special case.  The
+endpoint's premises charge faults ahead of the time they speak about
+(look-aheads, \S\ref{sec:certified-rows}), so that a vote counted at~$t$
+is not counted again when its signer is compromised shortly after and signs
+a conflicting one.
+
 The Lean model has integer time (consensus-lean \texttt{Spec/Problem/Basic})
 and half-open deadlines: delivery before $a+\Delta$ is delivery by
 $a+\Delta-1$ (\texttt{Spec/Problem/Network}: $\max(a,g)+\Delta-1$ for
@@ -280,10 +334,16 @@ acceptance relay across a wake or every transport obligation of the engine.
 
 \subsection{Premises}
 
+\begin{sloppypar}
 Each claim takes some of these premises.  The right column names the
 consensus-lean notion that the instance must match, and the bridge obligation
-when they are not equal (numbers of the migration list in
-\texttt{Instances/Goldilocks/Statements.lean}).
+when they are not equal (``obligation''~$N$ is item~$N$ of the migration
+list of the archived baseline, \texttt{Statements/Baseline.lean} under
+\texttt{archive/consensus-lean-baseline} at consensus-lean \texttt{79cdddc8}).
+The certified endpoint's own forms of $\mathsf{Sleepy}$, $\mathsf{Healthy}$
+and $\mathsf{Outage}$, with growing faults, look-aheads and committee
+clauses, are in \S\ref{sec:certified-rows}.
+\end{sloppypar}
 
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{2.2cm}>{\raggedright\arraybackslash}p{6.4cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
 \hline
@@ -321,19 +381,22 @@ $\mathsf{Healthy}(g)$ & $\mathsf{GST}(g)$, every honest validator awake on
 $\mathsf{Outage}(T,b_0,b_1)$ & synchrony before~$b_0$, GST $b_1$, the
   participation of the target's outage regime, and the budget~(V) of the lean
   notes with this protocol's lock lifetime $(4k-2)\Delta$ (D1) &
-  \texttt{Outage}; obligation~4 (the retired R.5 form; the endpoint's
-  outage numbers: \S\ref{sec:obligations})\\
+  \texttt{System.Outage}; obligation~4 (the archived R.5 form; the
+  endpoint's form and numbers: \S\ref{sec:obligations},
+  \S\ref{sec:certified-rows})\\
 $\mathsf{Weak}$ & healthy up to the heal point, sleepy after it &
-  \texttt{WeakPremise}; obligation~10 (retired with R.6)\\
+  no live Lean notion (the archived \texttt{WeakPremise}, obligation~10,
+  went with R.6; the endpoint has no weak row)\\
 $\mathsf{NoColl}$ & no two distinct objects with one digest occur in the run &
-  the hash-collision excuse \texttt{HC}; obligation~8 (F-7)\\
+  the hash-collision excuse \texttt{Model.Run.HashCollision} (the
+  system's \texttt{Excuse}); obligation~8 (F-7)\\
 $\mathsf{Catch}(\kappa)$ & accepted-old-block catch-up
   (\S\ref{sec:healing-top}): every block accepted by an honest node before
   $\bar g$ is accepted before $\bar g+\kappa$ by every honest node whose
   $\Sigma.F$ at $\bar g+\kappa$ it extends, with its needed ancestry & none
   for an abstract node run:
   \texttt{PSync} gives delivery, not acceptance (bridge B1); on the engine's
-  canonical simulation \texttt{catchRun\_of\_psync} gives
+  canonical simulation \texttt{catchRun\_of\_psync\_at} gives
   $\mathsf{Catch}(2\Delta)$ from a valid execution, $\mathsf{NoColl}$,
   \texttt{PSync} and every honest node awake from $\max(g,0)$\\
 $\mathsf{GenRoot}$ & the genesis block's root is the digest of its contents
@@ -346,8 +409,13 @@ $\mathsf{GenRoot}$ & the genesis block's root is the digest of its contents
   \texttt{genesis.RootOk}\\
 $\mathsf{Prop}(G_{\mathrm p})$, $\mathsf{Prop}^{+}(G_{\mathrm p})$ & an honest
   proposer (resp.\ ready proposal) in every window $[t,t+G_{\mathrm p}]$ from
-  $\bar g$ (\S\ref{sec:healing-top}) & \texttt{gProg} only on
-  $[\mathtt{gReady},\mathtt{gHeal}]$ and without readiness (bridges B2, B3)\\
+  $\bar g$ (\S\ref{sec:healing-top}) & the contract's progress premise
+  (\texttt{System.prog}: in every window of $X$ slots, the slots of a
+  pattern with proposers ready at their slot and honest $\Delta$ later), read
+  on $[\mathit{ready},\mathit{heal}]$ for healed safety, on
+  $[\mathit{ready},\mathit{horizon}]$ for healthy liveness and on
+  $[0,\mathit{horizon}]$ for sleepy liveness; $\mathsf{Prop}$ and $\mathsf{Prop}^{+}$ are node premises of
+  this file, not the contract's\\
 \hline
 \end{longtable}
 
@@ -2067,18 +2135,29 @@ separate recovery obligation; the settled-phase restriction is unchanged.
 
 \section{L2: regime theorems (skeleton)}\label{sec:l2}
 
+\begin{sloppypar}
 The obligations target is the endpoint of \S\ref{sec:obligations}, proved in
-Lean.  The table below lists one node per row of the retired
+Lean.  The rows it certifies are stated in \S\ref{sec:certified-rows}.
+The table below lists one node per row of the archived
 \texttt{GoldilocksTarget}.  R.1, R.2, R.7 and R.8 are live node statements,
-proved in Lean (\S\ref{sec:lean-status}).  R.3--R.6 (marked~$\dagger$) are \emph{retired}:
-their node statements were archived unproved (consensus-lean
-\texttt{archive/consensus-lean-regimes}), and the paragraphs about them
-below, with the paper obligation OC, are history, not open obligations of
-the endpoint.  The endpoint supplies generic rows with related names
-(\texttt{CorrectProtocol.healedSafe}, \texttt{CorrectProtocol.healthyLive},
-\texttt{CorrectProtocol.persists}, through \texttt{ShapeObligations.correct}) under its own
-contract; they are not proofs of the archived node statements, with their
-premises and constants, and R.6 has no generic row.
+proved in Lean (\S\ref{sec:lean-status}).  The node statements of
+R.3--R.6 (marked~$\dagger$) were archived unproved (consensus-lean
+\texttt{archive/consensus-lean-regimes}), with their own premises and
+constants.  Of their target rows, \texttt{healedSafe} and \texttt{healthyLive} (R.3, both outputs, with
+its corollary \texttt{confirmed\_txLive\_healed}), \texttt{healthyLive}
+(final; R.4, with \texttt{finalized\_txLive}) and \texttt{persists} (R.5)
+are certified, as rows 5, 6 and 9 of \S\ref{sec:certified-rows}, with the
+endpoint's premises and numbers; \texttt{includeHealed},
+\texttt{growHealed}, \texttt{finalFirst}, \texttt{finalRecur},
+\texttt{liveDC}, \texttt{outageWindow} and \texttt{outage\_final\_compatible}
+are not, and R.6 has no certified row (the fields
+\texttt{healedSafe}, \texttt{healthyLive} and \texttt{persists} of
+\texttt{Behaviour}, through \texttt{ShapeObligations.correct}).  The
+certified rows are not proved through
+the archived node statements, the paper obligation OC or O.1, so the
+paragraphs below about R.3--R.6 and OC record the archived route, not open
+obligations of the endpoint and not gaps in the certified rows.
+\end{sloppypar}
 
 \subsection{The obligations endpoint}\label{sec:obligations}
 
@@ -2090,7 +2169,11 @@ Goldilocks family meets \texttt{ShapeObligations} at the contract
 \texttt{goldilocksContract A (contract\_coefficients S A)}.  Every number is a
 coefficient of~$\Delta$, the node and engine delay alike ($\Delta_p=\Delta_e$);
 all are fixed before the run, but heal and latency depend on the contract's
-outer gap~$X$, the index of its progress requirement.
+outer gap~$X$, the index of its progress requirement.  The assumption set
+requires $c\geq2$ and $3c\leq\delta_{\mathrm t}$, so the endpoint and the
+headline cover only setups with $\delta_{\mathrm t}\geq6$, and their
+healthy rows apply to an FG delay of $\cF$ slots only when
+$\delta_{\mathrm t}\geq3\max(2,\cF)$; they hold at every vote binding (\S\ref{sec:model}).
 \end{sloppypar}
 \begin{center}\footnotesize
 \begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.6cm}>{\raggedright\arraybackslash}p{8.4cm}@{}}
@@ -2131,6 +2214,149 @@ $(4k-5)+2(4k+6)=12k+7$. Readiness uses the closed interval beginning at
 $\max(0,t-c_{\mathrm{out}}-1)$, so the separate catch-up covers that whole
 look-back without requiring every honest participant to remain awake.
 
+\subsection{The certified rows}\label{sec:certified-rows}
+
+\begin{sloppypar}
+The headline \texttt{GoldilocksCorrect} (consensus-lean
+\texttt{Statements/Obligations}) states, for every setup~$S$ (genesis root,
+$\delta_{\mathrm t}$, lock window $k\geq2$, fast increment $c_{\mathrm{fast}}\geq2$,
+restart replay order and vote binding), every assumption set (FG delay in
+slots $c\geq2$ with $3c\leq\delta_{\mathrm t}$) and every finite validator
+set, that the Goldilocks family run by the general execution model is an L0
+\texttt{CorrectProtocol} (consensus-lean
+\texttt{Spec/Problem/CorrectProtocol}) at the contract of
+\S\ref{sec:obligations}, whose fractions are $\tfrac12$, $\tfrac13$,
+$\tfrac12$ (\texttt{OptimalFaultTolerance}).  This subsection states its rows in the terms of
+this file.  Each row is for every outer gap $X\geq1$ (the contract's index)
+and every valid run (an execution with unforgeable signatures,
+credentials and an admissible selection), and holds unless a hash collision is observed in the run
+(two distinct items with one digest, both occurring in objects that honest
+nodes saw), except the rows marked \emph{always}, which have no exception.
+Runs have growing faults (\S``Runs''); $F_d$ is the set compromised by~$d$.
+\end{sloppypar}
+
+\emph{Readers and reads.}  $\Delta$ is the delivery bound of blocks and AC
+messages, the protocol's~$\Delta$.  The reader catch-up is $C=19\Delta$: a
+validator is \emph{ready} at~$t$ when it is honest at~$t$ and awake
+throughout $[\max(0,t-C-1),t]$.  The confirmed output serves the available
+and the stable capability, the finalized output the final one.  Safety rows
+read every intermediate state of a node (after every event); liveness and
+persistence read a node's state at the end of an integer time, after all
+its events of that time.  A read is the ledger of the output chain (its
+transactions in chain order, first occurrence kept).
+
+\emph{Committees.}  ``The committee selected at~$t$'' is $V$ at the
+population binding and $\mathcal K_{\slot(t)}$ at a committee binding.
+
+\emph{Regimes.}  In $\mathsf{Sleepy}$ and $\mathsf{Outage}$,
+$d=\min(t+5\Delta,\mathit{horizon})$ is the time to
+which a premise at~$t$ charges faults, and ``ready at~$t$'' in a premise also
+requires being honest at~$d$.
+\begin{description}[itemsep=1pt]
+\item[$\mathsf{Sleepy}$:] synchrony from time~$0$ (messages before
+  $\max(a,0)+\Delta$, attestations before $\max(a,0)+\Delta_F$, re-served
+  after a wake), and at every time $t\in[0,\mathit{horizon}]$ the validators
+  ready at~$t$ outnumber $F_d$; the same holds inside every nonempty committee
+  selected at~$t$.
+\item[$\mathsf{Healthy}(g)$:] partial synchrony with GST~$g$; fewer than
+  $n/3$ validators compromised by the horizon; every validator honest at a
+  time $t\in[\max(g,0),\mathit{horizon}]$ is awake at~$t$ (full
+  participation); $\Delta_F\leq(4c-6)\Delta$; and every nonempty committee
+  selected at a time in $[\max(g,0),\mathit{horizon}]$ has fewer than half
+  of its members compromised by the horizon.  Nothing is assumed before~$g$
+  beyond the fault bound, the FG delay bound and the delivery, before
+  $g+\Delta$ (or $g+\Delta_F$), of what honest nodes sent earlier.
+\item[$\mathsf{Outage}(T,b_0,b_1)$:] $0\leq T$,
+  $T+(4k+6)\Delta\leq b_0\leq b_1\leq b_0+(4k-5)\Delta$; synchrony for
+  deadlines up to~$b_0$ and partial synchrony with GST~$b_1$ (no delivery
+  bound inside $[b_0,b_1)$); and, with the look-back duration
+  $\eta\Delta=(12k+7)\Delta$ and participation catch-up
+  $\max(C,\eta\Delta-1)$, at every $t\in[0,\mathit{horizon}]$ the validators
+  ready at~$t$ with that catch-up are a strict majority of the union of
+  themselves, the validators honest at~$d$ and awake at some time of
+  $[\max(0,t-\eta\Delta),t]$, and $F_d$; the same inside every nonempty
+  committee selected at $\max(0,t-\delta)$, for every
+  $\delta\in[0,\eta\Delta]$.
+\end{description}
+
+\emph{Progress.}  $\mathsf{prog}_X[a,b]$: every window
+$(\tau,\tau+4\Delta X]$ with $\tau\geq\max(a,0)$ and
+$\tau+4\Delta(X+\mathit{span})\leq\min(b,\mathit{horizon})$, where
+$\mathit{span}$ is the largest offset of the pattern ($0$ or $3c$), contains
+a slot~$s$ with $\tau<t_s\leq\tau+4\Delta X$ such that, for every offset~$j$
+of the pattern, the proposer of slot $s+j$ is ready at $t_{s+j}$ and honest
+at $\min(t_{s+j}+\Delta,\mathit{horizon})$.  The pattern is $\{0\}$ for the
+confirmed output and the four anchors $\{0,c,2c,3c\}$ for the finalized
+output.  With $\mathit{ready}(g)=\max(g,0)+C+1$,
+$\mathit{heal}(g)=\max(g,0)+(48k+28\delta_{\mathrm t}+48X+75)\Delta$, and
+latency $\ell=(4X+6)\Delta$ for the confirmed and
+$\ell=(4(X+3c)+1)\Delta$ for the finalized output, \emph{transaction
+liveness from~$a$} says: a transaction submitted by time~$\tau$ to a node
+honest and awake at its submission (compromised later or not) is in the
+read of every node ready at every
+$t'\in[\max(\tau,a)+\Delta+\ell,\mathit{horizon}]$.
+
+\emph{Rows.}
+\begin{enumerate}[itemsep=1pt]
+\item \emph{Non-framing} (always): for every time~$u$, a validator honest
+  at~$u$ is never convicted (E1/E2, fg.tex) by the objects that nodes saw
+  while honest up to~$u$.
+\item \emph{Nesting} (always): at every node honest at a state, its
+  finalized read is a prefix of its confirmed read.
+\item \emph{Finalized monotonicity} (always): a node's finalized read only
+  grows while it is honest.
+\item \emph{Accountable finality}, in every network and participation: two
+  finalized reads, each by a node honest at that state, are compatible, or
+  the union of the two nodes' views at those states convicts at least $n/3$
+  validators.  With non-framing, fewer than $n/3$ validators compromised by the later
+  of the two states gives finalized safety.
+\item \emph{Healthy liveness}, both outputs: $\mathsf{Healthy}(g)$ and
+  $\mathsf{prog}_X[\mathit{ready}(g),\mathit{horizon}]$ give transaction
+  liveness from $\mathit{heal}(g)$.  For the finalized output this is
+  finality liveness after GST from any state at~$g$ (R.4's \texttt{healthyLive} (final) row; O.1 is not used).
+\item \emph{Healed safety}, confirmed output: $\mathsf{Healthy}(g)$ and
+  $\mathsf{prog}_X[\mathit{ready}(g),\mathit{heal}(g)]$ give: from
+  $\mathit{heal}(g)$ on, the confirmed reads of nodes ready at their states
+  are pairwise compatible, and the confirmed read of a node only grows
+  between two states at which it is ready (formerly R.3's safety rows).
+\item \emph{Sleepy safety}, confirmed output: $\mathsf{Sleepy}$ gives the
+  same from time~$0$ (R.1's row).
+\item \emph{Sleepy liveness}, confirmed output: $\mathsf{Sleepy}$ and
+  $\mathsf{prog}_X[0,\mathit{horizon}]$ give transaction liveness from~$0$
+  (R.2's row).
+\item \emph{Outage persistence}, confirmed output:
+  $\mathsf{Outage}(T,b_0,b_1)$ gives: for every node~$v$ ready at~$T$ and
+  every node~$w$ ready at a time $t\in[b_1+9\Delta,\mathit{horizon}]$, the
+  read of~$v$ at~$T$ is a prefix of the read of~$w$ at~$t$ (formerly R.5's
+  \texttt{persists}; OC is not used).
+\end{enumerate}
+\begin{sloppypar}
+The definition also requires adequacy (every environment has a valid run
+with no collision, and prefixes of valid runs are valid runs) and, with at
+least five validators, realizability: every regime has such a run, at
+every $\Delta,\Delta_F>1$ (the healthy one at $\Delta_F\leq(4c-6)\Delta$), on which its liveness or persistence row is
+exercised (the healthy one also with two ready readers after the heal
+point, for healed safety), and growth witnesses with faults growing inside
+the active part; no sleepy witness is required to exercise sleepy
+safety.  Realizability also includes a sleepy stress witness: for each of
+the available and the stable capability and every integer $b\geq2$ (at
+$\theta=\tfrac12$ the bound $\theta(b+1)<b$ holds for every such~$b$),
+there is an index, chosen before $\Delta$ and $\Delta_F$, such that every
+$\Delta,\Delta_F>1$ has a sleepy run (valid, with no collision, constant faults, and a faulty and an honest validator) on which sleepy liveness is
+exercised at that index and at most $b$ honest validators are awake at any
+time.  R.6 (the weak
+rows) has no counterpart.  The certified form \texttt{GoldilocksCorrectWithExcuses}
+states the same rows on every run that is valid apart from signatures,
+credentials and selection, or else one of those fails.
+
+\emph{Evidence.}  For rows 5, 6 and 9 the evidence is the Lean
+proof (\texttt{Obligations.Growing.meetsObligations\_growing} with
+\texttt{ShapeObligations.correct}); there is no paper proof in this
+repository, and the archived R.3--R.5 node statements and OC are not its
+route.  Rows 1--4, 7 and 8 map to R.7, R.8, R.1 and R.2
+(\S\ref{sec:lean-status}).
+\end{sloppypar}
+
 \subsection{Regime rows}
 
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.1cm}>{\raggedright\arraybackslash}p{5.4cm}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{3.3cm}@{}}
@@ -2149,10 +2375,10 @@ R.3$^\dagger$ & \texttt{healedSafe}, \texttt{healthyLive} (available),
   blueprint 21\\
 R.4$^\dagger$ & \texttt{finalFirst}, \texttt{finalRecur}, \texttt{liveDC},
   \texttt{healthyLive} (final), \texttt{finalized\_txLive} & C1.3, G1.9,
-  R.3, and the open target O.1 (below) & paper arguments (not in this repository)\\
+  R.3, and O.1's target (below; the archived route) & paper arguments (not in this repository)\\
 R.5$^\dagger$ & \texttt{persists}, \texttt{outageWindow},
   \texttt{outage\_final\_compatible} & A1.2, A1.3, C1.1; (V) with
-  $(4k-2)\Delta$; the outage continuation OC (below, open) & old
+  $(4k-2)\Delta$; the outage continuation OC (below; the archived route) & old
   \texttt{OutageContinuationClaim} (round model, not this node)\\
 R.6$^\dagger$ & \texttt{weakSafe}, \texttt{weakInclude},
   \texttt{weakGrow} & R.1--R.3 & old \texttt{WeakContinuation*}\\
@@ -2162,12 +2388,26 @@ R.8 & \texttt{nested}, \texttt{finalMonotone}, \texttt{outputValid} & C0.1,
   C0.2, F.2, F.3 & ---\\
 \hline
 \end{longtable}
+\begin{sloppypar}
+\noindent$^\dagger$ Archived node statement.  Of the target rows of R.3--R.6,
+\texttt{healedSafe} and \texttt{healthyLive} (R.3, both outputs, with
+its corollary \texttt{confirmed\_txLive\_healed}), \texttt{healthyLive}
+(final; R.4, with \texttt{finalized\_txLive}) and \texttt{persists} (R.5)
+are certified, as rows 5, 6 and 9 of \S\ref{sec:certified-rows}, with the
+endpoint's premises and numbers; \texttt{includeHealed},
+\texttt{growHealed}, \texttt{finalFirst}, \texttt{finalRecur},
+\texttt{liveDC}, \texttt{outageWindow} and \texttt{outage\_final\_compatible}
+are not, and R.6 has no certified row; the certified ones are not proved through the uses listed
+here.
+\end{sloppypar}
 
-History, for the retired R.3: it was also open at the post-cut transfer of the available record: an unmoved
+History, for the archived R.3: it was also open at the post-cut transfer of the available record: an unmoved
 or deeper $\AC.\latestConfirmed$ against the fast origins after the cut needs its
 own argument, because A1.6 is stated under $\mathsf{Sleepy}$ from time~$0$ and
 does not apply directly to a dirty suffix.
-Open item for R.3: the record transfer (\texttt{RecRet}) after the cut.
+Open for the archived R.3 node statement only: the record transfer
+(\texttt{RecRet}) after the cut; the certified healed-safety row does not
+use it.
 
 \texttt{crossNest}
 (R.3) and \texttt{weakCrossNest} (R.6) are dropped from both the target and
@@ -2191,7 +2431,7 @@ This bounded evidence is not a proof of lagged ancestry and does not retain
 it as a target obligation.  R.4's cross-time growth and R.8's local nesting
 are unchanged.
 
-History, for the retired R.5: it was open in its own right, as it does not follow from A1.2, A1.3 and C1.1.
+History, for the archived R.5: it was open in its own right, as it does not follow from A1.2, A1.3 and C1.1.
 Through $[b_0,b_1)$ there is no delivery premise, so A1.2--A1.4's
 $\mathsf{Sync}$ and $\mathsf{Carry}$ are unavailable; what keeps a ready read
 is the outage-continuation argument itself (protection by a lock through its
@@ -2233,12 +2473,16 @@ and so a recovery from the attestations signed during the outage, or only the ol
 proof's own induction around~$B$; O.1 as stated (from $\mathsf{Healthy}$) does
 not apply, since $\mathsf{Outage}$ is not $\mathsf{Healthy}$, and the prefix up
 to~$b_0$ is clean by R.1's induction from time~$0$.  No step of OC is claimed
-proved here.
+proved here.  Outage persistence itself is certified by the endpoint, under
+its own outage regime and numbers (\S\ref{sec:certified-rows}, row~9),
+without OC.
 
 \subsection*{O.1: recovery after GST}
 
-O.1 was the premise that the retired R.4 needed; it is not a premise of
-the proved endpoint (\S\ref{sec:obligations}).  Its target (below) has no fixed
+O.1 was the premise that the archived R.4 node statement needed; it is not
+a premise of the proved endpoint (\S\ref{sec:obligations}), which certifies
+finality liveness after GST under the contract's four-anchor pattern without
+it (\S\ref{sec:certified-rows}, row~5).  Its target (below) has no fixed
 statement for the contract's regime.  What is fixed is the
 recovery predicate $\mathsf{Rec}(t_0)$ and node O.1, which proves
 $\mathsf{Rec}$ from a parameter-only time under a \emph{bounded uniform
@@ -2388,7 +2632,7 @@ uniform recovery bound.  \texttt{MeetsObligations} does not depend on O.1: the L
 contract's final healthy liveness, with a heal point fixed before the run,
 is proved for the endpoint by another route, its four-anchor final pattern
 with the timeout $3c\leq\delta_{\mathrm t}$ (\S\ref{sec:obligations}).  The
-earlier dependency (the retired R.4, and with it \texttt{MeetsObligations}, on O.1) is history.  O.1 stays a separate research target.
+earlier dependency (the archived R.4 node statement, and with it \texttt{MeetsObligations}, on O.1) is history.  O.1 stays a separate research target.
 The FG safety milestone (G0, G1.1--G1.5) does not
 depend on O.1.  A paper argument (not in this repository)
 gives a conditional, paper-only assembly, under an explicit uniform proposer
@@ -2450,7 +2694,10 @@ theorem and JointRet/RN, not a consequence of $\mathsf{UPat}$ alone.  The target
 open: under $\mathsf{Healthy}$ with a weaker proposer premise (bounded
 single-proposer gaps, or an eventual pattern without a uniform wait), O.1 is
 neither proved nor refuted, and recovery from such a regime would be a separate
-result.  Node O.1 does not mark that target proved.
+result.  Node O.1 does not mark that target proved.  The open target is
+the recovery predicate under those weaker proposer premises; the certified
+finality-liveness row assumes the contract's four-anchor recurrence and is
+not this target.
 
 \section{Lean status}\label{sec:lean-status}
 
@@ -2658,7 +2905,8 @@ H.4 & \texttt{Healing.AvailableHealing}, \texttt{Healing.T\_heal} &
 O.1 (node) & \texttt{Healing.PatternRecovery} & proved
   (\texttt{recovery\_statements}); the record quantifier of (b) differs
   (\S``O.1'')\\
-O.1 (target) & none & open research; not a premise of \texttt{MeetsObligations}\\
+O.1 (target) & none & open research; not a premise of \texttt{MeetsObligations};
+  the certified finality-liveness row does not need it\\
 R.1 & \texttt{Regimes.SleepySafe} & proved (\texttt{sleepy\_safe}), at
   the node catch-up $18\Delta$; stronger than R.1: agreement holds for any
   two honest reads, ready or not, and monotonicity needs no time-$0$ window; the prefix row is the generic
@@ -2675,8 +2923,14 @@ R.2 & \texttt{Regimes.Growing.IncludeSleepy}, \texttt{Regimes.Growing.GrowSleepy
   liveness is generic, from
   \texttt{ShapeObligations}\\
 R.3--R.6 & archived \texttt{Regimes.Healed*}, \texttt{Final*},
-  \texttt{Outage*}, \texttt{Weak*} & retired, never proved;
-  \S\ref{sec:l2}\\
+  \texttt{Outage*}, \texttt{Weak*} & node statements retired, never
+  proved; \texttt{healedSafe}, \texttt{healthyLive} and \texttt{persists}
+  of their target rows (with their corollaries \texttt{confirmed\_txLive\_healed}
+  and \texttt{finalized\_txLive}) are certified by \texttt{GoldilocksCorrect}
+  (\S\ref{sec:certified-rows}); \texttt{includeHealed}, \texttt{growHealed},
+  \texttt{finalFirst}, \texttt{finalRecur}, \texttt{liveDC},
+  \texttt{outageWindow}, \texttt{outage\_final\_compatible} and R.6's rows
+  are not\\
 R.7 & \texttt{Regimes.FinalAccountable}, \texttt{Regimes.NonFraming},
   \texttt{Regimes.FinalizedSafe} & proved (\texttt{final\_accountable},
   \texttt{non\_framing}, \texttt{finalized\_safe}); evidence scope, note~2\\
@@ -2688,6 +2942,8 @@ Baseline & archived \texttt{Consensus.Shape.GoldilocksTarget},
   \texttt{Consensus.Shape.GoldilocksExtraAt} & retired, never the endpoint\\
 Obligations & \texttt{MeetsObligations} & proved
   (\texttt{meets\_obligations}); \S\ref{sec:obligations}\\
+Headline & \texttt{GoldilocksCorrect}, \texttt{GoldilocksCorrectWithExcuses}
+  & proved (comparator roots); \S\ref{sec:certified-rows}\\
 \hline
 \end{longtable}}
 
