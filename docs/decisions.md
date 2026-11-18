@@ -538,10 +538,12 @@ detail in `TRUST.md`.
   `Regimes.IncludeSleepy`, `Regimes.GrowSleepy`, `Healing.HeightScopedRetention` and `Healing.RunInclusion`;
   the open growing-fault statements
   over `Growing.GoldilocksRun` (`Compose.Growing.ReadyImpliesJoined`, `Compose.Growing.OutcomeService`,
-  `Healing.Growing.PatternRecovery`, `FinalizingCoverage`, `CacheAcceptanceAfterReset`, and
-  `Regimes.Growing.IncludeSleepy`, `GrowSleepy`); the open `SA.Growing.ACHealingStandalone`,
-  `SA.Growing.ACHealingStandaloneCorollary` and `SA.Growing.ACInclusion` over `SA.Growing.ACRun`; and the five
-  `SA.*All` healing statements. The premise bundle `PersistPremises` and the premise
+  `Healing.Growing.PatternRecovery`, `FinalizingCoverage` and `CacheAcceptanceAfterReset`); the open
+  `SA.Growing.ACHealingStandalone`, `SA.Growing.ACHealingStandaloneCorollary` and `SA.Growing.ACInclusion` over
+  `SA.Growing.ACRun`; and the five `SA.*All` healing statements. The growing-fault R.2 rows
+  `Regimes.Growing.IncludeSleepy` and `GrowSleepy` (`Results/Statements/SleepyGrowth`) are stated at a slot
+  dictionary `K` instead: from its committee start, with its committee facts and its committee support
+  `CommitteeSleepy`, and no size equation. The premise bundle `PersistPremises` and the premise
   bundles of the healing statements (`HealthyBaseU` in `Milestones/Statements/Healing/ACU` and `HSShared` in
   `Milestones/Statements/Healing/Run`), and the proof-side bundles built on them, carry it as a field;
   `GoldilocksRunData`, the run conjunct of `GoldilocksHealingData`, does not: its `Run` equation is the

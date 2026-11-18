@@ -25,7 +25,9 @@ The rows of `Statements/Regimes/{Sleepy,Always}` for a time-indexed honest set `
   a validator honest at the later of its two signings; **final accountability** has no fault
   bound, with each reader honest at its own cut.
 
-The margins (`τ + 6Δ`, `D = (4k + 6)Δ`) are those of the static rows.
+The R.2 rows over a committee (`IncludeSleepy`, `GrowSleepy`) are in
+`Results/Statements/SleepyGrowth`; this module keeps their reader, proposer and look-ahead
+vocabulary.
 
 Statements only: no proofs here. -/
 
@@ -62,44 +64,6 @@ def ProposerRecurrence (proposer : Nat → Fin sp.n) (c : Time) (k : Nat) (h a b
       proposer s ∈ H (sp.ts s + h)
 
 end Defs
-
-/-- **R.2, inclusion, under growing faults.** Under `Sleepy` with look-ahead `ahead`, every honest
-proposal released at `τ` by a proposer ready at `τ` and still honest at `τ + hold` is in the
-confirmed read of every node ready at `t`, for every `t ≥ τ + 6Δ`. -/
-def IncludeSleepy : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time),
-    sp.committeeSize = sp.n →
-    Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
-    tr.SleepyRunAt H ΔF (ahead sp) →
-    ∀ τ P, ReadyProposalAt tr H (catchUp sp) τ (hold sp) P →
-      ∀ y t j, τ + 6 * sp.Δ ≤ t → ReadyAt tr H (catchUp sp) y t → CutAfter tr j t →
-        Anc (tr.HonestBlocksAt H) P (readAfter tr y j t)
-
-/-- **R.2, growth, under growing faults.** Under `Sleepy` with look-ahead `ahead`, for every
-`t ≥ 0` with one proposer ready and honest through its hold in every window of `k ≥ 1` slots up
-to `t + D`, `D = (4k + 6)Δ`, some honest proposal `P` released at `τ > t` by a proposer ready at
-`τ` and honest through its hold is a new common entry at `t + D`: in the read at `t + D` of every
-node ready then, in none of the reads at `t` of the nodes ready then, and each of those reads is
-an ancestor of each ready read at `t + D`. -/
-def GrowSleepy : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time) (k : Nat),
-    sp.committeeSize = sp.n →
-    Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
-    tr.SleepyRunAt H ΔF (ahead sp) → 1 ≤ k →
-    let D := (4 * k + 6) * sp.Δ
-    ∀ t, 0 ≤ t → ProposerRecurrence tr H proposer (catchUp sp) k (hold sp) 0 (t + D) →
-      ∃ τ P, t < τ ∧ ReadyProposalAt tr H (catchUp sp) τ (hold sp) P ∧
-        (∀ y j, ReadyAt tr H (catchUp sp) y (t + D) → CutAfter tr j (t + D) →
-          Anc (tr.HonestBlocksAt H) P (readAfter tr y j (t + D))) ∧
-        (∀ x jx, ReadyAt tr H (catchUp sp) x t → CutAfter tr jx t →
-          ¬ Anc (tr.HonestBlocksAt H) P (readAfter tr x jx t)) ∧
-        ∀ x jx y j, ReadyAt tr H (catchUp sp) x t → CutAfter tr jx t →
-          ReadyAt tr H (catchUp sp) y (t + D) → CutAfter tr j (t + D) →
-          Anc (tr.HonestBlocksAt H) (readAfter tr x jx t) (readAfter tr y j (t + D))
 
 /-- **R.8, `nested`, under growing faults**, at every cut of a node honest at its time. -/
 def OutputsNested : Prop :=
