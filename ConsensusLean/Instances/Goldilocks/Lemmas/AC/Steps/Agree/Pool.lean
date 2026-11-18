@@ -339,11 +339,6 @@ theorem serviceWindowBefore_of_sync {a b : Time} (h : SyncACWindowBefore H U a b
   exact (messageServedBefore_iff _ _ _ _).mpr
     (Or.inl (h.message x hx i v hi hai y hy j ℓ hj hdb hdj))
 
-/-- Legacy finite synchrony embeds without changing its trusted meaning. -/
-theorem serviceBefore_of_sync {b : Time} (h : SyncACBefore H U b tr) :
-    ServiceBefore H U b tr :=
-  serviceWindowBefore_of_sync ((syncACWindowBefore_zero_iff _ _ _ _).mpr h)
-
 /-- `heldBefore_mono` with the unlock given. -/
 theorem heldBefore_monoU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
