@@ -1735,9 +1735,8 @@ blocks that the composed node refuses; the proof assumes it.  The
 drain arithmetic gives the threshold
 $\bar g+(8k+4)\Delta$: a lock live at a slot~$\sigma$ with
 $t_\sigma\geq\bar g+8k\Delta$ sits below a good origin, so the locks are
-settled from the slot start $t_{p-1}$.  That stronger form, with the same
-premises and conclusions, is proved separately (Lean
-\texttt{ACHealingStandaloneTight}); its corollary is proposal-block
+settled from the slot start $t_{p-1}$.  That stronger form has the same
+premises and conclusions; its corollary is proposal-block
 inclusion (not transaction inclusion) from $\bar g+(8k+10)\Delta+G_p$.
 The node keeps $2\Theta+8\Delta$, which follows from it.}
 
@@ -1779,8 +1778,7 @@ sandwich) and HS.2 (duty witness, ancestor-target transfer).}
 score comparison, (2) ancestor-target transfer, (3) proposal-boundary
 transfer, (4) sufficiency of $\mathsf{Geo}(P)$, that is (i), (5) Carry at
 or below $\fcroot$ with the frame's move back during the drain, and (ii).
-These paper proofs are not a Lean proof; the Lean
-statement \texttt{SA.ACInclusion} is proved separately
+These paper proofs are not a Lean proof, and H.2 is not stated in Lean
 (\S\ref{sec:lean-status}).}
 
 \dagnode{H.2 (run)}{AC inclusion in runs}{A run node.  Assume H.2's premises
@@ -2623,15 +2621,9 @@ HS.5 & $\mathsf{Producer}(A)$ inside \texttt{Healing.ResetExistence} &
   partial: the producer is proved as part of HR.3; the named
   phase-service, continuation and attestation-delivery assembly is not one
   statement\\
-H.1, corollary & \texttt{SA.ACHealingStandalone},
-  \texttt{SA.ACHealingStandaloneCorollary} & proved
-  (\texttt{healing\_ac\_statements};
-  the corollary \texttt{ac\_healing\_standalone\_corollary}); read points, note~5\\
-H.2 & \texttt{SA.ACInclusion} & proved (\texttt{healing\_ac\_statements}),
-  conditional on $\mathsf{Inv}$ (and $\mathsf{Geo}$ for (i)) as stated; read
-  points, note~5\\
-H.2 (run) & \texttt{Healing.RunInclusion} & proved (\texttt{run\_inclusion}),
-  with the premises H.2 (run) now lists\\
+H.1, corollary & --- & not stated in Lean\\
+H.2 & --- & not stated in Lean\\
+H.2 (run) & --- & not stated in Lean\\
 HR.1 & \texttt{Healing.CutAndReset} & proved (\texttt{cut\_and\_reset})\\
 HR.2 & \texttt{Healing.PhaseCount} & proved (\texttt{phase\_count})\\
 HR.3 & \texttt{Healing.ResetExistence} & proved (\texttt{reset\_existence}),
@@ -2722,8 +2714,7 @@ $t_{\slot(g+\kappa)+3}$, and the $\bar g'$ shift of
 and the original cut, and the HS service statements assume
 $\mathsf{Catch}(2\Delta)$.  A smaller~$\kappa$ reduces to it by
 monotonicity; a larger one is a paper generalization.
-(5) H.1, H.2 and H.4 conclude at the post-states of AC calls
-(\texttt{IncludedFrom} and the AC statements quantify those; at the boundary
+(5) H.4 concludes at the post-states of AC calls (at the boundary
 time itself, after the node's tick), not at every
 real time or at FG-only cuts.  The every-time reading of this file needs a
 separate read or stuttering argument, not packaged with these statements.

@@ -145,34 +145,6 @@ theorem Consensus.Goldilocks.Obligations.Growing.sleepyGrowFinite :
     Consensus.Goldilocks.Obligations.Growing.SleepyGrowFinite :=
   Consensus.Goldilocks.Obligations.Growing.sleepy_grow_finite_at
 
-/-! Goldilocks Healing: the AC healing statements (H.1, its corollary, H.2; `Healing/AC`), each a
-field of its proved bundle in `Proofs/Healing/Main`. -/
-
-/-- Goldilocks Healing: `ACHealingStandaloneAll` (H.1). -/
-theorem Consensus.Goldilocks.SA.aCHealingStandaloneAll :
-    Consensus.Goldilocks.SA.ACHealingStandaloneAll :=
-  fun sp h => Consensus.Goldilocks.Healing.healing_ac_statements.standalone sp h
-
-/-- Goldilocks Healing: `ACHealingStandaloneCorollaryAll` (H.1, corollary). -/
-theorem Consensus.Goldilocks.SA.aCHealingStandaloneCorollaryAll :
-    Consensus.Goldilocks.SA.ACHealingStandaloneCorollaryAll :=
-  fun sp h => Consensus.Goldilocks.SA.ac_healing_standalone_corollary sp h
-
-/-- Goldilocks Healing: `ACHealingStandaloneTightAll` (H.1 at `ḡ + (8k + 4)Δ`). -/
-theorem Consensus.Goldilocks.SA.aCHealingStandaloneTightAll :
-    Consensus.Goldilocks.SA.ACHealingStandaloneTightAll :=
-  fun sp h => Consensus.Goldilocks.SA.ac_healing_standalone_tight sp h
-
-/-- Goldilocks Healing: `ACHealingStandaloneTightCorollaryAll` (H.1 at `ḡ + (8k + 4)Δ`,
-corollary: proposal-block inclusion). -/
-theorem Consensus.Goldilocks.SA.aCHealingStandaloneTightCorollaryAll :
-    Consensus.Goldilocks.SA.ACHealingStandaloneTightCorollaryAll :=
-  fun sp h => Consensus.Goldilocks.SA.ac_healing_standalone_tight_corollary sp h
-
-/-- Goldilocks Healing: `ACInclusionAll` (H.2). -/
-theorem Consensus.Goldilocks.SA.aCInclusionAll : Consensus.Goldilocks.SA.ACInclusionAll :=
-  fun sp h => Consensus.Goldilocks.Healing.healing_ac_statements.inclusion sp h
-
 /-! Goldilocks Healing: C1.2, the AC outcome service (`Healing/Outcome`), and recovery (HR.5,
 node O.1, C1.3; `Healing/Recovery`). -/
 
@@ -275,25 +247,6 @@ info: 'Consensus.Goldilocks.Regimes.Growing.growSleepy' depends on axioms: [prop
 info: 'Consensus.Goldilocks.Obligations.Growing.sleepyGrowFinite' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Obligations.Growing.sleepyGrowFinite
-
-/-- info: 'Consensus.Goldilocks.SA.aCHealingStandaloneAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCHealingStandaloneAll
-
-/-- info: 'Consensus.Goldilocks.SA.aCHealingStandaloneCorollaryAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCHealingStandaloneCorollaryAll
-
-/-- info: 'Consensus.Goldilocks.SA.aCHealingStandaloneTightAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCHealingStandaloneTightAll
-
-/--
-info: 'Consensus.Goldilocks.SA.aCHealingStandaloneTightCorollaryAll' depends on axioms: [propext,
- Classical.choice,
- Quot.sound]
--/
-#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCHealingStandaloneTightCorollaryAll
-
-/-- info: 'Consensus.Goldilocks.SA.aCInclusionAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCInclusionAll
 
 /-- info: 'Consensus.Goldilocks.Compose.outcomeService' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Compose.outcomeService

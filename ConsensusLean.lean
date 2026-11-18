@@ -653,7 +653,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Views
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Votes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Walk
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Outage.Delivery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Outage.Gate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Outage.LockChain

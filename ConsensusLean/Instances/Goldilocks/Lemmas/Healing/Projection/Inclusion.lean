@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
@@ -10,16 +9,15 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirement
 
 public section
 
-/-! # Goldilocks Healing: H.2 (run), AC inclusion in runs
+/-! # Goldilocks Healing: the AC projection of a run
 
 The AC projection of a Goldilocks run is a driven AC trace (clause (a) from the FG's acceptance
 tests, C0.5 (b), read on the projection's frames, `Compose.GoldilocksACProjection`; clause (b)
 from C0.4 and C0.3: the tick's cuts, and the own block accepted at once), and `Healthy(g)` and
 `Catch(2Δ)` read on it (from `GST(g)` over the run, read directly: its message clause and
 acceptance relay, each FG acceptance followed by its `ac_on_block` at the next cut; and the run's
-`Catch`, with `Σ.F` monotone); then H.2 applies to the projection (`SA.ac_inclusion`), inside the
-honest blocks of the run (`Compose.GoldilocksACProjection`). The claims mark H.2 (run) S:
-definitional in the node. The run facts are in `Healing/Projection/Run`. -/
+`Catch`, with `Σ.F` monotone), inside the honest blocks of the run
+(`Compose.GoldilocksACProjection`). The run facts are in `Healing/Projection/Run`. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -329,18 +327,6 @@ theorem projection_catch (hrun : GoldilocksRun proposer dg H tr) (_hnc : Compose
     (_hh : tr.HealthyRun H ΔF g) (hc : CatchRun tr H g (2 * sp.Δ)) :
     SA.CatchAC tr.projAC H (tr.HonestBlocks H) g (2 * sp.Δ) :=
   projection_catch_of_run hrun hc
-
-/-- **H.2 (run), AC inclusion in runs.** -/
-theorem run_inclusion : RunInclusion := by
-  intro sp ro proposer dg H tr g ΔF hstock hrun hnc hroot hh hc
-  have hd := projection_driven hrun hnc hroot hh
-  have hhe := projection_healthy hrun hnc hh
-  have hca := projection_catch hrun hnc hh hc
-  refine ⟨⟨hd, hhe, hca⟩, fun t₀ ht₀ hinv p P hP htp => ?_⟩
-  have := SA.ac_inclusion sp hstock _ ro H _ tr.projAC proposer g t₀
-    (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc)
-    hd hhe hca ht₀ hinv p P hP.1 hP.2 htp
-  exact ⟨this.1, fun hu y hy j ℓ hj ht hk => this.2 hu y hy j ℓ hj ht hk⟩
 
 end Consensus.Goldilocks.Healing
 

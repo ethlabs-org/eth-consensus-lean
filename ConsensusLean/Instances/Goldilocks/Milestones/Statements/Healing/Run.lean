@@ -8,7 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.A
 /-! # Goldilocks milestone Healing: the run-level healing statements (statements)
 
 Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"Healing: top-level
-statements" (HR.1–HR.4, H.2 (run), H.3's bridge and `T_heal`) and §"Healing: phase service" (the
+statements" (HR.1–HR.4, H.3's bridge and `T_heal`) and §"Healing: phase service" (the
 HS shared premises, the settled predicate and the constants `D`, `C`, `A`), over the Goldilocks run
 (`Spec/Run`, `GoldilocksRun`) and, for HR.2, over FG traces (`FGLocalRun`). The run bundle, H.3's
 FG non-interference and H.4 are retired as milestone statements; the statements here are the types
@@ -408,14 +408,6 @@ def HonestProposalRun (proposer : Nat → Fin sp.n)
     (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   proposer p ∈ H ∧ SA.HonestProposal tr.projAC (proposer p) p P
 
-/-- `P` is in the AC confirmed tip of every honest node at every time `t ≥ t₁` (at every call at
-a time `≥ t₁`, after it; at `t₁` itself from the node's tick there on). -/
-def IncludedFrom (t₁ : Time) (P : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
-  ∀ y ∈ H, ∀ j ℓ, tr.projAC.CallAt y j ℓ → t₁ ≤ tr.time j →
-    (tr.time j = t₁ → ∃ k ≤ j, ∃ ℓ', tr.projAC.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧
-      tr.time k = tr.time j) →
-    Anc (tr.HonestBlocks H) P (SA.acConfirmed sp (tr.post j).ac ℓ.frame (tr.time j))
-
 /-- The proposal of slot `p` and the honest slot-`p` votes lie in one effective phase in which
 every honest node is settled (HS definitions, with `κ = 2Δ`): the run is settled at some
 `w ≤ t_p`, and the effective phase is the same at every cut from `w` through `t_p` and through
@@ -438,32 +430,6 @@ def BridgeAt (proposer : Nat → Fin sp.n) (g a Tb : Time) : Prop :=
       InSettledPhase tr H g p → SA.Geo proposer tr.projAC H p P
 
 end Top
-
-/-- **H.2 (run), AC inclusion in runs.** For population-sized committees, in a Goldilocks run
-(unforgeable signatures) under `NoColl`, a genesis whose root is its digest (so that the honest
-proposal of driven-trace clause (b) is accepted, as C0.3), `Healthy(g)` and `Catch(2Δ)`, the AC
-projection is a driven AC trace (clause (a) from the FG's acceptance tests, C0.5 (b)
-`Compose.ACSeesAcceptedBlocks`;
-clause (b) from C0.4) with `Healthy(g)` and `Catch(2Δ)` read on it, inside the honest blocks of the
-run; and H.2 holds for the run: for `t₀ ≥ ḡ` with `Inv(t₀)` on the projection and an honest proposal
-`P` of slot `p` with `t_p ≥ t₀ + 2Θ + 8Δ`, (i) `Geo(P)` gives a unanimous slot `p`, and (ii) a
-unanimous slot `p` puts `P` in every honest node's AC confirmed tip from `t_p + 6Δ` on. -/
-def RunInclusion : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF : Time),
-    sp.committeeSize = sp.n →
-    GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
-    (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg →
-    tr.HealthyRun H ΔF g → CatchRun tr H g (2 * sp.Δ) →
-    (SA.Driven proposer tr.projAC H ∧ SA.HealthyAC tr.projAC H (tr.HonestBlocks H) g ∧
-      SA.CatchAC tr.projAC H (tr.HonestBlocks H) g (2 * sp.Δ)) ∧
-    ∀ t₀, gbar g ≤ t₀ → SA.Inv proposer tr.projAC H (tr.HonestBlocks H) t₀ →
-      ∀ (p : Nat) P, HonestProposalRun tr H proposer p P →
-        t₀ + 2 * SA.Θ sp + 8 * sp.Δ ≤ sp.ts p →
-        (SA.Geo proposer tr.projAC H p P → Unanimous tr H p P) ∧
-        (Unanimous tr H p P → IncludedFrom tr H (sp.ts p + 6 * sp.Δ) P)
 
 /-- `T_heal = ḡ + 24Δ + 12C_HS + T_b + 2Θ + 8Δ` (claims H.4), that is
 `ḡ + (104k + 628 + 48δ_t)Δ + 12Δ_F + 36G_p + T_b`. -/

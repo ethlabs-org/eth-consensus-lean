@@ -25,7 +25,7 @@ its content (`genesis_root_ok`). composition.tex §"Blocks" makes every block's 
 content's digest; the Lean `genesisRoot` is a parameter of `Params`, so this is a premise
 relating it to `dg`, taken as C0.3 takes it. The generic statements over any AC (C0.3,
 `FGProjection`) keep it as their own premise. Every statement over `GoldilocksRun` has it from
-the run; some restate it (`Healing.RunInclusion`, `HSShared.genesisRoot`). -/
+the run; some restate it (`HSShared.genesisRoot`). -/
 
 namespace Consensus.Goldilocks
 

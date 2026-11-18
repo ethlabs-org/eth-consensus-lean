@@ -484,9 +484,11 @@ stated in `Milestones/Statements/Healing/Outcome` (milestone Healing, its premis
 
 The run-level healing nodes HR.1–HR.4
 are over the Goldilocks run (`Spec/Run`, `GoldilocksRun`), HR.2 over FG traces (`FGLocalRun`), in
-`Milestones/Statements/Healing/Run`, with H.2 (run) and H.3's vocabulary (the run bundle, H.3's FG non-interference and
-H.4 are retired as milestone statements, and so are the phase-service bundle and HS.3's statement); H.1, its corollary and H.2, over driven AC traces of the SA, are
-in `Milestones/Statements/Healing/AC`. HS.1–HS.5 are not transcribed as separate statements yet: HS.0 (`Settle(Δ)`) and
+`Milestones/Statements/Healing/Run`, with H.3's vocabulary (the run bundle, H.3's FG non-interference and
+H.4 are retired as milestone statements, and so are the phase-service bundle and HS.3's statement). The AC healing
+vocabulary over driven AC traces of the SA is in `Milestones/Statements/Healing/AC`. Standalone H.1/H.2 and
+H.2 (run) are not retained Lean Results; their vocabulary and support needed by retained results or
+downstream consumers remain. HS.1–HS.5 are not transcribed as separate statements yet: HS.0 (`Settle(Δ)`) and
 HS.5's `Producer(A)` enter as conclusions (a), (b) of HR.3.
 
 | Node | Reference | Definition | Milestone | Lean name |
@@ -500,10 +502,8 @@ HS.5's `Producer(A)` enter as conclusions (a), (b) of HR.3.
 | HR.3 | CLAIMS HR.3 (with HS.0, HS.5) | **reset existence**: (a) `c_z > ḡ + 8Δ` and `Settle(Δ)` from every `u ≥ c_z`; (b) `Producer(A)` from every settled `w`; (c) `a_z` exists, `a_z ≤ c_z + 6(Δ + A_HS) ≤ ḡ + 24Δ + 12C_HS`, with the closed forms | Healing | `Consensus.Goldilocks.Healing.ResetExistence` |
 | HR.4 | CLAIMS HR.4 | **height-scoped retention**: (R1)–(R4) for every reset `a`; stated for population-sized committees (premise `sp.committeeSize = sp.n`) | Healing | `Consensus.Goldilocks.Healing.HeightScopedRetention` |
 | — | CLAIMS §"Healing: top-level statements" (notation, driven AC traces, the two premises) | `ḡ`, `Θ = 4(k + 1)Δ`; `Healthy(g)` and `Catch(κ)` over an AC trace; trivial frames; an honest proposal of slot `p` (the block made from `ac_proposal`: parent the returned duty head); a **driven** AC trace (assigned proposer, slot order, held parent, no future slot, honest slot = honest proposal; tick and proposal order of C0.4, including Driven (b)'s "before any object received at `t_s`": `proposal_first`, every AC message or block call of the proposer at its `ac_proposal`'s time comes after it); `Prop(G_p)` | Healing | `Consensus.Goldilocks.SA.gbar`, `Consensus.Goldilocks.SA.Θ`, `Consensus.Goldilocks.SA.HealthyAC`, `Consensus.Goldilocks.SA.CatchAC`, `Consensus.Goldilocks.SA.TrivialFrames`, `Consensus.Goldilocks.SA.HonestProposal`, `Consensus.Goldilocks.SA.Driven`, `Consensus.Goldilocks.SA.PropAC` |
-| H.1 | CLAIMS H.1 and corollary | **AC healing, standalone**: over driven traces with trivial frames, (i) an honest proposal with `t_p ≥ ḡ + 2Θ + 8Δ` gets every honest vote of its slot, (ii) it is in every honest confirmed tip from `t_p + 6Δ`; corollary under `Prop(G_p)` | Healing | `Consensus.Goldilocks.SA.ACHealingStandalone`, `Consensus.Goldilocks.SA.ACHealingStandaloneCorollary` |
-| H.1 at `ḡ + (8k + 4)Δ` | CLAIMS H.1 and corollary (M-status remark, the drain arithmetic) | **AC healing, standalone, at the tight threshold**: H.1 with `t_p ≥ ḡ + (8k + 4)Δ` in place of `ḡ + 2Θ + 8Δ = ḡ + (8k + 16)Δ`, the premises and conclusions unchanged (a lock live at a slot `σ` with `t_σ ≥ ḡ + 8kΔ` sits below a good origin, and the locks are settled from the slot start `t_{p−1}`); its corollary under `Prop(G_p)` is **proposal-block inclusion**: an honest proposal block in every honest confirmed tip from `ḡ + (8k + 10)Δ + G_p` on (from its tick at the boundary instant), not transaction inclusion and not a composed heal time. Each implies the H.1 statement of the row above | Healing | `Consensus.Goldilocks.SA.ACHealingStandaloneTight`, `Consensus.Goldilocks.SA.ACHealingStandaloneTightCorollary`, `Consensus.Goldilocks.SA.standalone_of_tight`, `Consensus.Goldilocks.SA.corollary_of_tight_corollary` |
-| H.2 | CLAIMS §"Healing: top-level statements" (protected blocks, `Inv`, `Geo`), H.2 | a slow lock write (the deepest block of the update's result path that conflicts with no live lock and that the `k − 1` previous saved results extend, vetoed or not; written independently of the fast lock); the protected pairs `𝒫(t₀)` (P1)–(P3); `Inv(t₀)`; `Geo(P)`; **AC inclusion**: under `Inv(t₀)`, (i) `Geo(P)` gives unanimity, (ii) unanimity gives inclusion from `t_p + 6Δ` | Healing | `Consensus.Goldilocks.SA.SlowLockAt`, `Consensus.Goldilocks.SA.Protected`, `Consensus.Goldilocks.SA.Inv`, `Consensus.Goldilocks.SA.Geo`, `Consensus.Goldilocks.SA.ACInclusion` |
-| H.2 (run) | CLAIMS H.2 (run) (uses C0.4, C0.5 (b)) | unanimity, honest proposal and inclusion over the AC projection; **AC inclusion in runs**: the projection is driven with `Healthy(g)`, `Catch(2Δ)`, and H.2's conclusions hold for the run; stated for population-sized committees (premise `sp.committeeSize = sp.n`) | Healing | `Consensus.Goldilocks.Healing.Unanimous`, `Consensus.Goldilocks.Healing.HonestProposalRun`, `Consensus.Goldilocks.Healing.IncludedFrom`, `Consensus.Goldilocks.Healing.RunInclusion` |
+| — | CLAIMS §"Healing: top-level statements" (protected blocks, `Inv`, `Geo`), H.2 | a slow lock write (the deepest block of the update's result path that conflicts with no live lock and that the `k − 1` previous saved results extend, vetoed or not; written independently of the fast lock); the protected pairs `𝒫(t₀)` (P1)–(P3); `Inv(t₀)`; `Geo(P)` (read by H.3's bridge) | Healing | `Consensus.Goldilocks.SA.SlowLockAt`, `Consensus.Goldilocks.SA.Protected`, `Consensus.Goldilocks.SA.Inv`, `Consensus.Goldilocks.SA.Geo` |
+| — | CLAIMS H.2 (run) | unanimity and honest proposal over the AC projection | Healing | `Consensus.Goldilocks.Healing.Unanimous`, `Consensus.Goldilocks.Healing.HonestProposalRun` |
 | H.3 | CLAIMS H.3 | one settled effective phase for a proposal and its votes; the bridge `Inv(a_z + T_b)` + `Geo` in settled phases. **FG non-interference** is retired as a milestone statement (with its proof); the vocabulary stays | Healing | `Consensus.Goldilocks.Healing.InSettledPhase`, `Consensus.Goldilocks.Healing.BridgeAt` |
 | H.4 | CLAIMS H.4 | `T_heal`. **Available healing** is retired as a milestone statement (with its proof) | Healing | `Consensus.Goldilocks.Healing.T_heal` |
 | HS | CLAIMS §"Healing: phase service" (shared definitions) | the phase floor `ℓ` (`m` in a contest, `m − 1` otherwise); a block allowed in the effective phase geometry; the phase constant over a range of cuts (before the phase end `e`); the entry of a source's chain at a height; `a` and `r` from `w`; settled at `w` in a phase; a vote that extends `B` with `B` viable at it; a stored slow lock | Healing | `Consensus.Goldilocks.Healing.phaseFloor`, `Consensus.Goldilocks.Healing.EffAllowed`, `Consensus.Goldilocks.Healing.PhaseOn`, `Consensus.Goldilocks.Healing.EntryOf`, `Consensus.Goldilocks.Healing.slotA`, `Consensus.Goldilocks.Healing.rTime`, `Consensus.Goldilocks.Healing.SettledIn`, `Consensus.Goldilocks.Healing.VoteKeeps`, `Consensus.Goldilocks.Healing.StoredSlowLockAt` |
@@ -563,15 +563,10 @@ Modelling choices:
   honest `Σ.F` passes `B`, `B` leaves the frame tree and the frame reading fails. `tr.HonestBlocks H` holds every
   block of an honest node's accepted tree, faulty proposals included, so it contains the voter's `fc_root` (in its
   own `Σ.tree`) and `B`'s chain.
-- **Genesis root**: `HSShared` and H.2 (run) take `genesis.RootOk dg`, as C0.3 does (A1.7 does not). Without
-  it an honest proposal whose digest is the genesis root is refused by every FG, so driven-trace clause (b) (H.2 (run)),
+- **Genesis root**: `HSShared` takes `genesis.RootOk dg`, as C0.3 does (A1.7 does not). Without
+  it an honest proposal whose digest is the genesis root is refused by every FG, so driven-trace clause (b) over a run,
   the reset's existence (HR.3, H.3 (a)) and C1.2's window proposal can fail. HR.1, HR.2 and HR.4 conclude nothing about
   the acceptance of honest proposals and do not take it.
-- **Confirmed tip**: "in every honest confirmed tip at every `t ≥ t₁`" (H.2 (run)) is `IncludedFrom`:
-  `ac_confirmed` after every AC call of an honest node at a time `≥ t₁`, with that call's frame. FG-only cuts
-  (attestations) are not read separately.
-- **H.2 (run)** states both the bridge to H.2's premises (driven, `Healthy`, `Catch` on the projection) and the
-  run conclusion, so that its proof is the bridge plus H.2 with `GoldilocksACProjection`.
 - **HS.1–HS.4** (`Milestones/Statements/Healing/Service`): "before the phase end `e`" is `PhaseOn` from the cut that fixes the
   phase (for HS.2–HS.4 the first cut at `w`); "label `j ≥ a`" is `t_j ≥ w + 4Δ`. Stored blocks (after the move back)
   for the fast and slow locks of HS.2, as in C1.1 and HR.4. "Follows every effective live earlier-label lock" (HS.2
@@ -618,13 +613,12 @@ Modelling choices:
   faults): `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Premises` (`tickRun_goldilocksRun`, `tickRun_healthy`, `tickRun_catch`,
   `tickRun_hsShared`, `tickRun_propPlus`) and `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Run` (`tickRun_isReset`,
   `tickRun_bridgeAt`, with `Geo` vacuous). Not provided (a follow-up): a run witness (kind (b)) that applies them to
-  HR.1, HR.3, HR.4 and H.2 (run), and premise witnesses over driven SA traces for H.1/H.2 (H.1 needs an
-  infinite live run of the Goldilocks SA with trivial frames; the tick run's frames are not trivial).
+  HR.1, HR.3 and HR.4.
 - **Whole-run statements and MeetsObligations**: `Healthy(g)` (`HealthyRun`, `Spec/Run/Premises`) keeps every honest
   validator awake on `[max(g, 0), ∞)`, and a run's awake function lies in its horizon (`Node.LocalRun.awake_in_horizon`),
   so a run satisfying `Healthy(g)` with an honest validator is infinite. The trace of a model run is clamped to
-  `[0, horizon]` (`awakeAt`, `Lemmas/Simulation/TraceDefs`). So the whole-run Healing statements (HR.1, HR.3, HR.4,
-  H.2 (run) and HS.1–HS.4) never apply to the obligations proof's runs, and none of them is in its closure:
+  `[0, horizon]` (`awakeAt`, `Lemmas/Simulation/TraceDefs`). So the whole-run Healing statements (HR.1, HR.3, HR.4
+  and HS.1–HS.4) never apply to the obligations proof's runs, and none of them is in its closure:
   the obligations proof uses the finite-horizon forms over per-cut honesty (`Healing.Growing.ResetPremisesUpTo`,
   `Healing.Growing.HSSharedUpTo`, `Lemmas/Growing/Healing/Retention/Defs`) and the frame-window route
   (`Lemmas/Healing/M1`, `Lemmas/Growing/Healing/M1`), not the phase service.

@@ -1,6 +1,5 @@
 module
 public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Run
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
@@ -11,32 +10,25 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 On the one-validator tick run of `Goldilocks/Runs/OneValidator/Premises` (`n = 1`, `f = 0`, `Δ = 1`,
 `k = δ_t = 2`, `t_s = 4s`, a tick at every time `t ≥ 0`, cut `i` at time `⌊i/8⌋`, no restart), with
 `g = 0`, `Δ_F = 1`, `κ = 2Δ`, `G_p = 4` and `T_b = 0`, the proved run-level healing statements HR.1
-(`CutAndReset`), HR.3 (`ResetExistence`), HR.4 (`HeightScopedRetention`) and H.2 (run) part (ii)
-(`RunInclusion`) are applied to the run, their premises met outright.
+(`CutAndReset`), HR.3 (`ResetExistence`) and HR.4 (`HeightScopedRetention`) are applied to the run,
+their premises met outright.
 
 * **The parameters** (computed from the definitions): `ḡ = 0` (`gbar_zero`), `c_z = 12`
   (`cutZ_zero`), `H_z = 3` (`hz_zero`), `a_z = 16` (`aZ_zero`), `Θ = 12` (`theta_sp1`),
   `C_HS = 86` (`C_HS_sp1`), `A_HS = 173` (`A_HS_sp1`).
 * (a) `healing_premises`: `GoldilocksRun`, `HSShared` (with `Healthy(0)` and `NoColl`),
   `Catch(2Δ)` and `Prop⁺(4)`. `reset_bundle`: `16` is the reset `a_z` (`IsReset`) and H.3 (c)'s
-  bridge `BridgeAt` holds at `a_z + T_b = 16`. `projection_bundle`: the AC projection is a driven
-  AC trace with `Healthy(0)` and `Catch(2Δ)` read on it (H.2's first part) and `Inv(t₀)` for
-  every `t₀`. `blk272_honestProposal`, `unanimous_blk`: the own block `blk 272` is the honest
-  proposal of slot `272` (`HonestProposalRun`), and every honest vote of a slot `p` is `blk p`
-  (`Unanimous`, `n = 1`: the validator's only vote of slot `p` is `cv p`).
-* (b) `tickRun_cutAndReset` (HR.1), `tickRun_resetExistence` (HR.3, `a_z ≤ 1056`),
-  `tickRun_retention` (HR.4 at `a_z = 16`), `tickRun_runInclusion` (H.2 (ii) from `t₀ = 16`):
-  the conclusions read at these parameters; through unanimity, `blk 272` is in every honest AC
-  confirmed tip from `t_272 + 6Δ = 1094` on.
+  bridge `BridgeAt` holds at `a_z + T_b = 16`.
+* (b) `tickRun_cutAndReset` (HR.1), `tickRun_resetExistence` (HR.3, `a_z ≤ 1056`) and
+  `tickRun_retention` (HR.4 at `a_z = 16`): the conclusions read at these parameters.
 
 **Limitation: `Geo` is vacuous here.** The `Geo` part of H.3 (c)'s bridge `BridgeAt`, in
 `reset_bundle` (`Geo(P)` for an honest proposal whose proposal and votes lie in one settled
 effective phase), holds vacuously on the tick run (`tickRun_bridgeAt`, `not_inSettledPhase`): the
 own block, accepted at `t_p` between `ac_proposal` and the vote, raises the frontier `h_max`, so
 no proposal of a slot `p ≥ 2` and its votes lie in one settled effective phase. So this witness
-does not exercise `Geo`, nor H.2 (i) (`Geo` gives a unanimous slot): the unanimity of slot `272`
-is read off the run directly (`unanimous_blk`). With `n = 1` and `f = 0` this shows the premises
-consistent, not met with faults. -/
+does not exercise `Geo`. With `n = 1` and `f = 0` this shows the premises consistent, not met
+with faults. -/
 
 namespace Consensus.Goldilocks.Witness.One
 
@@ -95,34 +87,6 @@ theorem reset_bundle :
       Healing.BridgeAt (tickRun N1 dg1) Set.univ (fun _ => v0) 0 16 0 := by
   rw [← aZ_zero]
   exact ⟨tickRun_isReset 0, tickRun_bridgeAt 0 _ 0 (by rw [add_zero]; exact aZ_nonneg 0)⟩
-
-/-- (a) **The AC projection** (H.2 (run), first part, at `g = 0`): a driven AC trace with
-`Healthy(0)` and `Catch(2Δ)` read on it, inside the honest blocks; and `Inv(t₀)` for every `t₀`. -/
-theorem projection_bundle :
-    SA.Driven (fun _ => v0) (tickRun N1 dg1).projAC Set.univ ∧
-      SA.HealthyAC (tickRun N1 dg1).projAC Set.univ ((tickRun N1 dg1).HonestBlocks Set.univ) 0 ∧
-      SA.CatchAC (tickRun N1 dg1).projAC Set.univ ((tickRun N1 dg1).HonestBlocks Set.univ) 0
-        (2 * sp1.Δ) ∧
-      ∀ t₀, SA.Inv (fun _ => v0) (tickRun N1 dg1).projAC Set.univ
-        ((tickRun N1 dg1).HonestBlocks Set.univ) t₀ := by
-  obtain ⟨⟨hd, hh, hc⟩, -⟩ := Healing.run_inclusion sp1 ro1 (fun _ => v0) dg1 Set.univ
-    (tickRun N1 dg1) 0 1 rfl tickRun_goldilocksRun (dg1_noColl _) dg1_genesis (tickRun_healthy 0)
-    (tickRun_catch 0 _ (by decide))
-  exact ⟨hd, hh, hc, tickRun_inv⟩
-
-/-- (a) **The honest proposal of slot `272`** is the own block `blk 272`. -/
-theorem blk272_honestProposal :
-    Healing.HonestProposalRun (tickRun N1 dg1) Set.univ (fun _ => v0) 272 (blk 272) := by
-  obtain ⟨k, hk⟩ := readyProposal_blk 272 (by decide)
-  exact Healing.honestProposalRun_of_ready tickRun_goldilocksRun (dg1_noColl _) hk
-
-/-- (a) **Every slot is unanimous**: the honest votes of slot `p` (the validator's `cv p`) are
-`blk p`. -/
-theorem unanimous_blk (p : Nat) : Healing.Unanimous (tickRun N1 dg1) Set.univ p (blk p) := by
-  rintro x - j e ⟨ℓ, hc, he⟩ hsl
-  obtain ⟨rfl, -, hl⟩ := projAC_call hc
-  rcases emit_cases hl he with ⟨-, hm, -⟩ | ⟨k, -, -, -, -, -, hm, -⟩ <;>
-    rw [hm] at hsl ⊢ <;> subst hsl <;> rfl
 
 /-! ## The statements on the run -/
 
@@ -196,17 +160,6 @@ at the heights `≥ H_z + 1 = 4`. -/
 theorem tickRun_retention : Healing.RetentionAt (tickRun N1 dg1) Set.univ 0 16 :=
   Healing.height_scoped_retention sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) 0 1
     rfl tickRun_goldilocksRun (tickRun_healthy 0) (dg1_noColl _) 16 reset_bundle.1
-
-/-- (b) **H.2 (run) (ii) on the tick run** at `g = 0`, from `t₀ = a_z + T_b = 16`
-(`16 + 2Θ + 8Δ = 48 ≤ t_272`): the unanimous honest proposal `blk 272` of slot `272` is in every
-honest AC confirmed tip from `t_272 + 6Δ = 1094` on. -/
-theorem tickRun_runInclusion :
-    Healing.IncludedFrom (tickRun N1 dg1) Set.univ 1094 (blk 272) := by
-  have h := ((Healing.run_inclusion sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) 0 1
-    rfl tickRun_goldilocksRun (dg1_noColl _) dg1_genesis (tickRun_healthy 0)
-    (tickRun_catch 0 _ (by decide))).2 16 (by decide) (tickRun_inv 16) 272 (blk 272)
-    blk272_honestProposal (by decide)).2 (unanimous_blk 272)
-  rwa [show sp1.ts ((272 : Nat) : Int) + 6 * sp1.Δ = 1094 by decide] at h
 
 end Consensus.Goldilocks.Witness.One
 

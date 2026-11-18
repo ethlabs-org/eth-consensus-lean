@@ -3,22 +3,19 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
 
 @[expose] public section
 
-/-! # Goldilocks milestone Healing: the AC healing statements (statements)
+/-! # Goldilocks milestone Healing: the AC healing vocabulary (statements)
 
-Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"Healing: top-level statements",
-the AC-level healing node H.1 (standalone AC healing) and its corollary, also at the threshold
-`ḡ + (8k + 4)Δ` of the node's drain-arithmetic remark (whose corollary is proposal-block
-inclusion from `ḡ + (8k + 10)Δ + G_p`), over **driven** AC traces
-of the Goldilocks SA with **trivial frames**, and the healing vocabulary they read on an AC trace:
-`ḡ = max(g, 0)`, the lock lifetime bound `Θ = 4(k + 1)Δ`, `Healthy(g)` (`GST(g)`, every honest
-validator awake from `ḡ`, `3f ≤ n − 1`), `Catch(κ)` (accepted-old-block catch-up) and the proposer
-premise `Prop(G_p)`.
-
-A trivial frame is not a frame of a reachable Goldilocks run: H.1 analyses the AC rules alone (the
-frame of every call of an honest `y` is the tree of the blocks `y` has accepted, rooted at genesis,
-with `F = fc_root = genesis` and every block a viable head). H.2 (with `SlowLockAt`,
-`Protected`, `Inv`, `Geo`) is here too; H.2 (run), H.3, H.4 and the other run-level healing nodes
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"Healing: top-level statements":
+the healing vocabulary read on an AC trace of the Goldilocks SA. `ḡ = max(g, 0)`, the lock
+lifetime bound `Θ = 4(k + 1)Δ`, `Healthy(g)` (`GST(g)`, every honest validator awake from `ḡ`,
+`3f ≤ n − 1`), `Catch(κ)` (accepted-old-block catch-up), **trivial frames**, **driven** AC traces,
+the proposer premise `Prop(G_p)`, slow locks (`SlowLockAt`), the protected blocks (`Protected`),
+the retention premise `Inv` and the proposal geometry `Geo`. The run-level healing nodes
 are in `Statements/Healing/Run`.
+
+A trivial frame is not a frame of a reachable Goldilocks run: the frame of every call of an
+honest `y` is the tree of the blocks `y` has accepted, rooted at genesis, with
+`F = fc_root = genesis` and every block a viable head.
 
 Statements only: no proofs here. -/
 
@@ -119,90 +116,11 @@ structure Driven (proposer : Nat → Fin sp.n)
     ℓ'.call = .proposal → tr.time i = tr.time j →
     ((∃ m, ℓ.call = .message m) ∨ ∃ B, ℓ.call = .block B) → j < i
 
-/-- **H.1, AC healing, standalone (trivial frame).** Over a driven AC trace of the SA with
-trivial frames, under `Healthy(g)`, `Catch(2Δ)`, `NoColl` (the coherence of `U`, part of
-`ACRun`) and unforgeable signatures (`ACRun`'s honest objects): for an honest proposal `P` of
-slot `p` with `t_p ≥ ḡ + 2Θ + 8Δ`, (i) every honest vote of slot `p` is `P`, and (ii) at every
-call of an honest node at a time `t ≥ t_p + 6Δ` (at `t_p + 6Δ` itself, from its tick there on),
-`P ⪯ ac_confirmed` after the call. (Not claimed: that the confirmed tip grows, or that it equals
-`P` at `t_p + 6Δ`.) -/
-def ACHealingStandalone : Prop :=
-  ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n) (g : Time),
-    ACRun proposer tr H U → Driven proposer tr H → TrivialFrames tr H → HealthyAC tr H U g →
-    CatchAC tr H U g (2 * sp.Δ) →
-    ∀ (p : Nat) (P : Blk sp.n FGP), proposer p ∈ H →
-      HonestProposal tr (proposer p) p P →
-      gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p →
-      (∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root) ∧
-      (∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → sp.ts p + 6 * sp.Δ ≤ tr.time j →
-        (tr.time j = sp.ts p + 6 * sp.Δ →
-          ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
-        Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j)))
-
 /-- **`Prop(G_p)` over an AC trace**: for every `t ≥ ḡ` there is a slot `p ≥ 1` with
 `t ≤ t_p ≤ t + G_p` whose proposer is honest. -/
 def PropAC (proposer : Nat → Fin sp.n) (H : Set (Fin sp.n)) (g Gp : Time) : Prop :=
   ∀ t, gbar g ≤ t → ∃ p : Nat, 1 ≤ p ∧ t ≤ sp.ts p ∧ sp.ts p ≤ t + Gp ∧
     proposer p ∈ H
-
-/-- **H.1, corollary.** Under H.1's premises and `Prop(G_p)`: for every
-`t ≥ ḡ + 2Θ + 8Δ` there is an honest proposal `P` released in `[t, t + G_p]` (when its proposer
-is joined there) that is in every honest node's confirmed tip from `t + G_p + 6Δ` on (at
-`t + G_p + 6Δ` itself, from its tick there on). -/
-def ACHealingStandaloneCorollary : Prop :=
-  ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n) (g Gp : Time),
-    ACRun proposer tr H U → Driven proposer tr H → TrivialFrames tr H → HealthyAC tr H U g →
-    CatchAC tr H U g (2 * sp.Δ) → PropAC proposer H g Gp →
-    ∀ t, gbar g + 2 * Θ sp + 8 * sp.Δ ≤ t →
-      ∃ (p : Nat) (P : Blk sp.n FGP), t ≤ sp.ts p ∧ sp.ts p ≤ t + Gp ∧
-        HonestProposal tr (proposer p) p P ∧
-        ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → t + Gp + 6 * sp.Δ ≤ tr.time j →
-          (tr.time j = t + Gp + 6 * sp.Δ →
-            ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
-          Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j))
-
-/-- **H.1 at `ḡ + (8k + 4)Δ`.** `ACHealingStandalone` with the threshold `t_p ≥ ḡ + (8k + 4)Δ`
-in place of `ḡ + 2Θ + 8Δ = ḡ + (8k + 16)Δ`, and otherwise the same premises and conclusions:
-over a driven AC trace of the SA with trivial frames, under `Healthy(g)`, `Catch(2Δ)`, `NoColl`
-and unforgeable signatures, for an honest proposal `P` of slot `p` with
-`t_p ≥ ḡ + (8k + 4)Δ`, (i) every honest vote of slot `p` is `P`, and (ii) at every call of an
-honest node at a time `t ≥ t_p + 6Δ` (at `t_p + 6Δ` itself, from its tick there on),
-`P ⪯ ac_confirmed` after the call. Its threshold is `12Δ` lower, so it implies
-`ACHealingStandalone`. -/
-def ACHealingStandaloneTight : Prop :=
-  ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n) (g : Time),
-    ACRun proposer tr H U → Driven proposer tr H → TrivialFrames tr H → HealthyAC tr H U g →
-    CatchAC tr H U g (2 * sp.Δ) →
-    ∀ (p : Nat) (P : Blk sp.n FGP), proposer p ∈ H →
-      HonestProposal tr (proposer p) p P →
-      gbar g + (8 * (sp.k : Time) + 4) * sp.Δ ≤ sp.ts p →
-      (∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root) ∧
-      (∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → sp.ts p + 6 * sp.Δ ≤ tr.time j →
-        (tr.time j = sp.ts p + 6 * sp.Δ →
-          ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
-        Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j)))
-
-/-- **H.1 at `ḡ + (8k + 4)Δ`, corollary: proposal-block inclusion.** Under H.1's premises and
-`Prop(G_p)`: for every `t ≥ ḡ + (8k + 4)Δ` there is an honest proposal block `P` released in
-`[t, t + G_p]` (when its proposer is joined there) that is in every honest node's confirmed tip
-from `t + G_p + 6Δ` on (at `t + G_p + 6Δ` itself, from its tick there on); so from
-`ḡ + (8k + 10)Δ + G_p` on. This is the inclusion of a proposal block, not of a transaction.
-`ACHealingStandaloneCorollary` with the lower threshold. -/
-def ACHealingStandaloneTightCorollary : Prop :=
-  ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n) (g Gp : Time),
-    ACRun proposer tr H U → Driven proposer tr H → TrivialFrames tr H → HealthyAC tr H U g →
-    CatchAC tr H U g (2 * sp.Δ) → PropAC proposer H g Gp →
-    ∀ t, gbar g + (8 * (sp.k : Time) + 4) * sp.Δ ≤ t →
-      ∃ (p : Nat) (P : Blk sp.n FGP), t ≤ sp.ts p ∧ sp.ts p ≤ t + Gp ∧
-        HonestProposal tr (proposer p) p P ∧
-        ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → t + Gp + 6 * sp.Δ ≤ tr.time j →
-          (tr.time j = t + Gp + 6 * sp.Δ →
-            ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
-          Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j))
 
 /-- **A slow lock** of slot `s` on `B`, written at cut `i` of `x`: the update of slot `s` (at
 `t_s + 6Δ`, joined) returns `C` (vetoed or not), and `B` is the deepest block of `C`'s path that
@@ -260,54 +178,6 @@ def Geo (proposer : Nat → Fin sp.n)
       P ∈ ℓ.frame.viableHeads ∧
       ∀ X ∈ voterBlockTree sp e.readPoint ℓ.frame p, X ≠ P →
         (X ∈ ℓ.frame.viableHeads ↔ X ∈ ℓP.frame.viableHeads)
-
-/-- **H.2, AC inclusion from the retention premise.** Over a driven AC trace of the SA with its
-frames (`ACRun`: well-formed frames evolving by `⊑_B` steps, as A1.2–A1.4), under `Healthy(g)`,
-`Catch(2Δ)`, `NoColl` (the coherence of `U`), unforgeable signatures and `Inv(t₀)` for some
-`t₀ ≥ ḡ`: for an honest proposal `P` of slot `p` with `t_p ≥ t₀ + 2Θ + 8Δ`, (i) if `Geo(P)`,
-every honest vote of slot `p` is `P`; (ii) if every honest vote of slot `p` is `P`, then at every
-call of an honest node at a time `t ≥ t_p + 6Δ` (at `t_p + 6Δ` itself, from its tick there on),
-`P ⪯ ac_confirmed` after the call. H.1 is the case of trivial frames and `t₀ = ḡ`. -/
-def ACInclusion : Prop :=
-  ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n) (g t₀ : Time),
-    ACRun proposer tr H U → Driven proposer tr H → HealthyAC tr H U g →
-    CatchAC tr H U g (2 * sp.Δ) →
-    gbar g ≤ t₀ → Inv proposer tr H U t₀ →
-    ∀ (p : Nat) (P : Blk sp.n FGP), proposer p ∈ H →
-      HonestProposal tr (proposer p) p P →
-      t₀ + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p →
-      (Geo proposer tr H p P →
-        ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root) ∧
-      ((∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root) →
-        ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → sp.ts p + 6 * sp.Δ ≤ tr.time j →
-          (tr.time j = sp.ts p + 6 * sp.Δ →
-            ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
-          Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j)))
-
-/-! The closed forms of H.1, its corollary, H.1 at `ḡ + (8k + 4)Δ` and its corollary, and H.2,
-for population-sized committees (the comparator's statements of this module);
-each corollary follows from its H.1. -/
-
-/-- **H.1** (`ACHealingStandalone`) for population-sized committees. -/
-def ACHealingStandaloneAll : Prop :=
-  ∀ sp : SAParams, sp.committeeSize = sp.n → ACHealingStandalone (sp := sp)
-
-/-- **H.1, corollary** (`ACHealingStandaloneCorollary`) for population-sized committees. -/
-def ACHealingStandaloneCorollaryAll : Prop :=
-  ∀ sp : SAParams, sp.committeeSize = sp.n → ACHealingStandaloneCorollary (sp := sp)
-
-/-- **H.1 at `ḡ + (8k + 4)Δ`** (`ACHealingStandaloneTight`) for population-sized committees. -/
-def ACHealingStandaloneTightAll : Prop :=
-  ∀ sp : SAParams, sp.committeeSize = sp.n → ACHealingStandaloneTight (sp := sp)
-
-/-- **H.1 at `ḡ + (8k + 4)Δ`, corollary** (`ACHealingStandaloneTightCorollary`) for
-population-sized committees. -/
-def ACHealingStandaloneTightCorollaryAll : Prop :=
-  ∀ sp : SAParams, sp.committeeSize = sp.n → ACHealingStandaloneTightCorollary (sp := sp)
-
-/-- **H.2** (`ACInclusion`) for population-sized committees. -/
-def ACInclusionAll : Prop := ∀ sp : SAParams, sp.committeeSize = sp.n → ACInclusion (sp := sp)
 
 end Consensus.Goldilocks.SA
 

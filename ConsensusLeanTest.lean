@@ -51,7 +51,6 @@ public import ConsensusLeanTest.Goldilocks.Growing.Compose
 public import ConsensusLeanTest.Goldilocks.Growing.FG
 public import ConsensusLeanTest.Goldilocks.Healing.PhaseCount
 public import ConsensusLeanTest.Goldilocks.Healing.Recovery
-public import ConsensusLeanTest.Goldilocks.Healing.SA
 public import ConsensusLeanTest.Goldilocks.Healing.Settled
 public import ConsensusLeanTest.Goldilocks.Healing.Statements
 public import ConsensusLeanTest.Goldilocks.Healing.SupportCounting
@@ -82,8 +81,6 @@ public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Premises
 public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Run
 public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.TickRun
 public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Ticks
-public import ConsensusLeanTest.Goldilocks.Runs.SAHealing
-public import ConsensusLeanTest.Goldilocks.Runs.SyncStart
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.AC
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Chain
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Facts
