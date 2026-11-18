@@ -20,7 +20,8 @@ service, the count shapes through `b`, and the committee premises of a slot dict
   `Σ.F` does;
 * `ready_proposer_proposes_at`: a proposer ready at its slot start proposes then;
 * `include_sleepy_at`, `grow_sleepy_at`: the finite rows, the proposer honest through its hold
-  `Δ` and every reader honest at its read time. -/
+  `Δ` and every reader honest at its read time. They give the committee rows `IncludeSleepy` and
+  `GrowSleepy` in `Growing/Sleepy/Service/Growth`. -/
 
 namespace Consensus.Goldilocks.Regimes.Growing
 

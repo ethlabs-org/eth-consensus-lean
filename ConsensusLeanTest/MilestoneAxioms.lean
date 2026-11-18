@@ -9,6 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.SleepyGrowth.Main
 
 @[expose] public section
 
@@ -131,11 +132,13 @@ theorem Consensus.Goldilocks.Regimes.nonFraming : Consensus.Goldilocks.Regimes.N
 theorem Consensus.Goldilocks.Regimes.finalizedSafe : Consensus.Goldilocks.Regimes.FinalizedSafe :=
   Consensus.Goldilocks.Regimes.finalized_safe
 
-/-! Goldilocks Regimes: sleepy strict growth (R.2; `Statements/Regimes/Sleepy`). -/
+/-! Goldilocks Regimes: sleepy strict growth (R.2) at a committee, under growing faults
+(`Results/Statements/SleepyGrowth`). -/
 
-/-- Goldilocks Regimes: `GrowSleepy`. -/
-theorem Consensus.Goldilocks.Regimes.growSleepy : Consensus.Goldilocks.Regimes.GrowSleepy :=
-  Consensus.Goldilocks.Regimes.grow_sleepy
+/-- Goldilocks Regimes: `Growing.GrowSleepy`. -/
+theorem Consensus.Goldilocks.Regimes.Growing.growSleepy :
+    Consensus.Goldilocks.Regimes.Growing.GrowSleepy :=
+  Consensus.Goldilocks.Regimes.Growing.grow_sleepy
 
 /-! Goldilocks Healing: the AC healing statements (H.1, its corollary, H.2; `Healing/AC`), each a
 field of its proved bundle in `Proofs/Healing/Main`. -/
@@ -258,8 +261,10 @@ theorem Consensus.Goldilocks.Healing.finalizingCoverage :
 /-- info: 'Consensus.Goldilocks.Regimes.finalizedSafe' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Regimes.finalizedSafe
 
-/-- info: 'Consensus.Goldilocks.Regimes.growSleepy' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.growSleepy
+/--
+info: 'Consensus.Goldilocks.Regimes.Growing.growSleepy' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.Growing.growSleepy
 
 /-- info: 'Consensus.Goldilocks.SA.aCHealingStandaloneAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.SA.aCHealingStandaloneAll

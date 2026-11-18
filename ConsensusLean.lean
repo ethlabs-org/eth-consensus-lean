@@ -631,6 +631,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Adopt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Batch
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Growth
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Held
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Later
@@ -994,6 +995,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Rea
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Safe
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Obligations.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.SleepyGrowth.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
 public import ConsensusLean.Instances.Goldilocks.Results.Spec.SleepyGrowth

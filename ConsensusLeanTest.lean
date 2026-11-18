@@ -71,6 +71,7 @@ public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Read
 public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Run
 public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Static
 public import ConsensusLeanTest.Goldilocks.Regimes.Sleepy
+public import ConsensusLeanTest.Goldilocks.Regimes.SleepyCommittee
 public import ConsensusLeanTest.Goldilocks.Run.AttestationPremise
 public import ConsensusLeanTest.Goldilocks.Run.Conflict
 public import ConsensusLeanTest.Goldilocks.Run.Faulty

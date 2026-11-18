@@ -33,7 +33,7 @@ are unchanged. The latter also owns the frame-sequence vocabulary, not needed by
 | `Consensus.Goldilocks.Compose.ComposeNodeStatements` | `Milestones/Statements/Compose/Node` | C0.1–C0.5 at the node | Compose/AnyAC | proved (lemma) |
 | `Consensus.Goldilocks.Compose.EventOrder`, `Consensus.Goldilocks.Compose.ReadyImpliesJoined` and the six other run statements (the projections) | `Milestones/Statements/Compose/Run` | F.5 (run), F.4, C0.5 | Persist | proved (lemma) |
 | the six rows of `Milestones/Statements/Regimes/Always` | `Milestones/Statements/Regimes/Always` | R.7, R.8 | Regimes | proved (lemma) |
-| `Consensus.Goldilocks.Regimes.GrowSleepy` | `Milestones/Statements/Regimes/Sleepy` | R.2, strict growth (R.2's inclusion `IncludeSleepy` is a lemma it reads; R.1 is retired) | Regimes | proved (lemma) |
+| `Consensus.Goldilocks.Regimes.Growing.GrowSleepy` | `Results/Statements/SleepyGrowth` | R.2, strict growth under growing faults at a committee (R.2's inclusion `Regimes.Growing.IncludeSleepy` is a lemma it reads; R.1 is retired) | Regimes | proved (lemma) |
 | `Consensus.Goldilocks.MeetsObligations` (Ebb-and-Flow obligations) | `Statements/Obligations` | CLAIMS §"The obligations endpoint" | Obligations | proved in Solution |
 | `Consensus.Goldilocks.GoldilocksCorrect` (`CorrectProtocol`) | `Statements/Obligations` | CLAIMS §"The obligations endpoint" with `ObligationsSufficient` | Obligations | proved in Solution |
 | `Consensus.Goldilocks.GoldilocksCorrectWithExcuses` (the same per-run table, or an explicit binding failure) | `Statements/Obligations` | CLAIMS §"The obligations endpoint", restated on structural runs | Obligations | proved in Solution |
