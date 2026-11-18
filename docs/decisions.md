@@ -535,7 +535,7 @@ detail in `TRUST.md`.
   `GoldilocksRun`, `Growing.GoldilocksRun`, `SA.ACRun`, `SA.ACRunU`, `SA.ACRunUS` and `SA.Growing.ACRun` state the
   run and trace laws only, for every vote binding, and carry no committee size. A milestone statement proved or
   stated for population-sized committees takes `sp.committeeSize = sp.n` as a premise: the proved
-  `Regimes.IncludeSleepy`, `Regimes.GrowSleepy`, `Healing.HeightScopedRetention` and `Healing.RunInclusion`;
+  `Healing.HeightScopedRetention` and `Healing.RunInclusion`;
   the open growing-fault statements
   over `Growing.GoldilocksRun` (`Compose.Growing.ReadyImpliesJoined`, `Compose.Growing.OutcomeService`,
   `Healing.Growing.PatternRecovery`, `FinalizingCoverage` and `CacheAcceptanceAfterReset`); the open

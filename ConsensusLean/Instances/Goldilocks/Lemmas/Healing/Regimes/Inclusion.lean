@@ -10,9 +10,9 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks milestone Regimes: R.2 (inclusion and growth under `Sleepy`)
+/-! # Goldilocks milestone Regimes: R.2 inclusion facts under `Sleepy`
 
-`IncludeSleepy` and `GrowSleepy` (`Statements/Regimes/Sleepy`) over the run, from
+Record and read facts for ready nodes over the run, from
 
 * `later_update_adopts_before` (`Service/Later`): after an
   honest update of any slot `≥ s`, the record or `Σ.F` extends an honest proposal `P` of slot `s` by
@@ -27,10 +27,7 @@ tick at that public time, joined by F.4), so its record after all events at `t` 
 (`ready_record_extends`, with `record_step`); a proposer ready at its slot start proposes
 (`ready_proposer_proposes`: its tick's `ac_proposal` returns a proposal since it is joined, and
 C0.3 accepts the own block); the point after all events at `t` is between two events of every
-node (`cutAfter_boundary`). Then `include_sleepy` (the read is the record or `Σ.F`, and both
-extend `P`) and `grow_sleepy` (a ready proposer of the window `(t, t + 4kΔ]`
-proposes `P`, which every ready read at `t + (4k + 6)Δ` includes; `P` is newer than every block of
-a read at `t`, and the agreement half of R.1 orders the reads).
+node (`cutAfter_boundary`).
 
 The file is in the Healing layer for the tick facts of `Healing/Projection/Run`. -/
 
@@ -296,22 +293,6 @@ theorem read_extends_of_record_before (hrun : GoldilocksRun proposer dg H tr)
 
 /-! ## R.2 -/
 
-/-- **R.2, `includeSleepy`.** -/
-theorem include_sleepy : IncludeSleepy := by
-  intro sp ro dg H tr proposer ΔF hstock hrun hnc hsl τ P hP y t j ht hy hj
-  have hs : tr.SyncBefore H ΔF (max t 0) :=
-    ⟨hsl.1.deltaF, hsl.1.delta_le, fun x hx i m hm h0 y hy j hc _ hd =>
-      hsl.1.message x hx i m hm h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
-      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact read_extends_of_record_before hrun hnc
-    (sleepy_invariant_upTo hrun hnc (hsl.prefix (le_max_right t 0)) hstock)
-    (SA.serviceBefore_of_sync (syncBefore_projection hrun.toLocalRun hs))
-    (fun s _ => by simpa only [sp.slotTime_eq, SA.SAParams.ts] using (hsl.2 s).2.1)
-    hy.1 hj hy (le_max_left t 0)
-    (ready_record_extends hrun hnc hsl hP ht hy hj hstock)
-
 /-- A block of an honest node's tree before a cut whose earlier cuts are at times `≤ t` has a
 slot at most `slot(t)`. -/
 private theorem tree_slot_le (hrun : GoldilocksRun proposer dg H tr) {x : Fin sp.n} (hx : x ∈ H)
@@ -322,66 +303,6 @@ private theorem tree_slot_le (hrun : GoldilocksRun proposer dg H tr) {x : Fin sp
   · exact Nat.zero_le _
   · exact ((hrun.cutLaw x hx k _ hacc).1).trans
       (SA.slot_mono sp (hrun.time_nonneg k) (hj k hk))
-
-/-- **R.2, `growSleepy`.** -/
-theorem grow_sleepy : GrowSleepy := by
-  intro sp ro dg H tr proposer ΔF k hstock hrun hnc hsl hk D t ht hrec
-  have hΔ := sp.toParams.hΔ
-  have hcoh := honest_blocks_coherent hrun.toLocalRun hnc
-  -- the window `(t, t + 4kΔ]` has a ready proposer
-  set s₀ := sp.slot t + 1
-  have hts₀ : t < sp.ts s₀ := by
-    by_contra h
-    have := (SA.ts_le_iff_le_slot sp ht (s₀ : Int)).1 (not_lt.1 h)
-    omega
-  have hts₀' : sp.ts s₀ ≤ t + 4 * sp.Δ := by
-    have := (SA.ts_le_iff_le_slot sp ht (sp.slot t : Int)).2 le_rfl
-    simp only [SAParams.ts] at this ⊢
-    push_cast [s₀]
-    linarith
-  obtain ⟨s, hs₀s, hss, hready⟩ := hrec s₀ (lt_of_le_of_lt ht hts₀) (by
-    simp only [SAParams.ts] at hts₀' ⊢
-    have h1k : (1 : Time) ≤ k := by exact_mod_cast hk
-    rw [show ((s₀ + k - 1 : Nat) : Time) = (s₀ : Time) + k - 1 by
-      rw [Nat.cast_sub (by omega)]; push_cast; ring]
-    linarith)
-  have hts : t < sp.ts s := lt_of_lt_of_le hts₀ ((SA.ts_le_iff sp).2 (by exact_mod_cast hs₀s))
-  have htsD : sp.ts s + 6 * sp.Δ ≤ t + D := by
-    have : sp.ts s ≤ sp.ts (s₀ + (k - 1) : Nat) := (SA.ts_le_iff sp).2 (by push_cast; omega)
-    simp only [SAParams.ts, D] at this hts₀' ⊢
-    push_cast at this hts₀' ⊢
-    rw [show ((k - 1 : Nat) : Time) = k - 1 by rw [Nat.cast_sub hk]; simp] at this
-    linarith
-  obtain ⟨kP, P, hP, hkP⟩ := ready_proposer_proposes hrun hnc (by omega) hready
-  have hPslot : P.slot = s := by
-    have h := hP.2.2
-    rw [hkP, sp.slotTime_eq] at h
-    simp only [SAParams.ts] at h
-    have := SA.four_delta_pos sp
-    exact_mod_cast (mul_left_cancel₀ this.ne' h).symm
-  have hRP : ReadyProposalAt tr H (catchUp sp) (sp.ts s) P := ⟨_, kP, hready, hP, hkP⟩
-  have hinc : ∀ y j, ReadyAt tr H (catchUp sp) y (t + D) → CutAfter tr j (t + D) →
-      Anc (tr.HonestBlocks H) P (readAfter tr y j (t + D)) := fun y j hy hj =>
-    include_sleepy sp ro dg H tr proposer ΔF hstock hrun hnc hsl _ P hRP y _ j htsD hy hj
-  -- `P` is newer than every block of a read at `t`
-  have hnot : ∀ x jx, ReadyAt tr H (catchUp sp) x t → CutAfter tr jx t →
-      ¬ Anc (tr.HonestBlocks H) P (readAfter tr x jx t) := by
-    intro x jx hx hjx hPx
-    have hΦ := frameOK_state hrun.toLocalRun hx.1 jx
-    have hmem := (sa_tips (A := (tr.state x jx).ac) hΦ t).1
-    have hXs := tree_slot_le hrun hx.1 hjx.1 hmem.1
-    have := (Anc.slot_le hcoh hPx).1
-    have hslt : sp.slot t < s := by
-      by_contra h
-      have := (SA.ts_le_iff_le_slot sp ht (s : Int)).2 (by omega)
-      linarith
-    change P.slot ≤ (SA.acConfirmed sp (tr.state x jx).ac (Node.frame (tr.state x jx)) t).slot
-      at this
-    omega
-  refine ⟨sp.ts s, P, hts, hRP, hinc, hnot, fun x jx y j hx hjx hy hj => ?_⟩
-  rcases sleepy_reads_compatible hrun hnc hsl hstock x hx.1 y hy.1 jx j t (t + D) with h | h
-  · exact h
-  · exact absurd ((hinc y j hy hj).trans h) (hnot x jx hx hjx)
 
 end Consensus.Goldilocks.Regimes
 
