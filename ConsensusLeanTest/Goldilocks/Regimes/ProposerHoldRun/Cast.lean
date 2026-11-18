@@ -380,11 +380,10 @@ theorem twin_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) :
   have hd := (simTraceAt_simulates { S with vote := stock } (rhoc S) one_le_card rhoc_valid).deliver
     _ i _ _ hi
   rw [simTraceAt_eq] at hd
-  rw [ownKey_key { S with vote := stock } (rhoc S),
-    show delivered (({ S with vote := AsChainShape.stock } : Setup).params
-      (pubOf env) one_le_card) (twin S) =
-      [twin S] from
-    twin_parts] at hd
+  have htwin : delivered (Model.digests (rhoc S).hash (twin S))
+      (stateAt { S with vote := stock } (rhoc S) one_le_card ((rhoc S).key y) i) (twin S) =
+      [twin S] := delivered_of_carried_eq_nil _ _ rfl
+  rw [htwin, ownKey_key { S with vote := stock } (rhoc S)] at hd
   rcases deliverSeq_single hd with ⟨e, hce, hg⟩ | hce | ⟨e, hce, hz⟩
   · rw [canon_twin] at hce
     cases hce

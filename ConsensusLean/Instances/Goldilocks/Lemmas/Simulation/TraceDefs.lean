@@ -98,7 +98,8 @@ theorem eventCuts_deliver (i : Nat) (v : V)
     eventCuts S rho hn i =
       deliverRecs (runProposer S rho hn) (digestOf S rho)
         (Model.digests rho.hash o) (rho.ownKey v) t i
-        (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i).node 0 := by
+        (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+          (stateAt S rho hn v i).node 0 := by
   simp only [eventCuts_eq, he]
 
 /-- The cuts of an engine restart. -/

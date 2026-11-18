@@ -140,7 +140,8 @@ theorem deliver_seq_of_state {v : V} {i : Nat} {o} {t : Time}
       (simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) :
     DeliverSeq (runProposer S rho hn) (simTrace S rho hn) (digestOf S rho)
       (Model.digests rho.hash o) (rho.ownKey v) t
-      (delivered (S.params (pubOf E) hn) o) (cutMap S rho hn i) (cutMap S rho hn (i + 1)) := by
+      (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+        (cutMap S rho hn i) (cutMap S rho hn (i + 1)) := by
   have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
   rw [cutMap_succ, eventCuts_deliver S rho hn i v o t he]
   refine deliverSeq_of_recs S rho hn (runProposer S rho hn) (digestOf S rho)

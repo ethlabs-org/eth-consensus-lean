@@ -67,7 +67,7 @@ private theorem processOne_queuedInPool hs (st : State sp ro binding) o (h : Que
 private theorem process_queuedInPool (st : State sp ro binding) o hs (h : QueuedInPool st) :
     QueuedInPool (process st o hs) := by
   unfold process
-  generalize delivered sp o = os
+  generalize delivered hs st o = os
   induction os generalizing st with
   | nil => exact h
   | cons o os ih => exact ih _ (processOne_queuedInPool hs st o h)

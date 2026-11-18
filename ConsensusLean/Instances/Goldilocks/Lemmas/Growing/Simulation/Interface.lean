@@ -48,7 +48,7 @@ structure SimulatesAt (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _))
   deliver : ∀ v i o t, rho.events[i]? = some (.deliver v o t) →
     DeliverSeq (runProposer S rho hn) tr (digestOf S rho)
       (Model.digests rho.hash o) (rho.ownKey v) t
-      (delivered (S.params (pubOf E) hn) o) (ι i) (ι (i + 1))
+      (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o) (ι i) (ι (i + 1))
   restart : ∀ v i t, rho.events[i]? = some (.restart v t) →
     tr.GroupAt (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (ι i) t .restart ∧
       ι (i + 1) = ι i + (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)

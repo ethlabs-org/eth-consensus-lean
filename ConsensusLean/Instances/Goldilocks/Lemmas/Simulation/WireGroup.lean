@@ -31,7 +31,9 @@ omit [DecidableEq V] in
 decodes with the engine's digests of the delivery, which map its header to the engine's hash of
 it, the root `digestOf` names. -/
 theorem wireOK_of_delivered (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
-    {o' : Wire (S.params (pubOf E) hn).n S.vote} (ho : o' ∈ delivered (S.params (pubOf E) hn) o)
+    {o' : Wire (S.params (pubOf E) hn).n S.vote}
+    {st : State (S.params (pubOf E) hn) (S.ro _) S.vote}
+    (ho : o' ∈ delivered (Model.digests rho.hash o) st o)
     {e : Event (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
     (he : canonEvent (S.params (pubOf E) hn) (S.ro _) (Model.digests rho.hash o) o' = some e) :
     WireOK (digestOf S rho) e := by
@@ -40,7 +42,7 @@ theorem wireOK_of_delivered (o : (Model.protoOf (compiled (goldilocks S)) E).Obj
     have hh : rootOf (Model.digests rho.hash o) (headerOf _ B) =
         some (rho.hash (headerOf _ B)) := by
       apply rootOf_digests_of_mem
-      exact List.mem_filterMap.2 ⟨blockObj _ B, mem_delivered ho, rfl⟩
+      exact List.mem_filterMap.2 ⟨blockObj _ B, mem_delivered _ ho, rfl⟩
     rw [hh, Option.map_some, Option.some.injEq] at hroot
     have hrt := hroot.symm
     obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.1 hpar

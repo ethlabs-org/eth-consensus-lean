@@ -190,7 +190,7 @@ theorem held_att_processed_before_at {V : Type} [Fintype V] [DecidableEq V] {E :
       (simTraceAt S rho hn).time k = u := by
     rcases hs with hs | ⟨i, hi⟩
     · exact released_att_processAt_at S rho hn hv hs
-    · obtain ⟨k, _, hk, ht⟩ := received_att_processAt S rho hn hi hwf (.refl _)
+    · obtain ⟨k, _, hk, ht⟩ := received_att_processAt S rho hn hi hwf (mem_delivered_self _ _ _)
       rw [simTraceAt_eq S rho hn]
       exact ⟨k, hk, ht⟩
   obtain ⟨k, hk, ht⟩ := hp

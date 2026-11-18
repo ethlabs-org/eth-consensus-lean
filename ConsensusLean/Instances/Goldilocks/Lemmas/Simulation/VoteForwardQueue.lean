@@ -174,7 +174,7 @@ private theorem voteStamped_process {sp : SA.SAParams}
     (h : VoteQueueStamped t st) : VoteQueueStamped t (process st o hs) := by
   refine ⟨(process_now st o hs).trans h.1, ?_⟩
   intro q hq
-  rcases foldl_processOne_voteForward_stamp hs (delivered sp o) st q.1 q.2 hq with hq | ht
+  rcases foldl_processOne_voteForward_stamp hs (delivered hs st o) st q.1 q.2 hq with hq | ht
   · exact h.2 q hq
   · exact ht.trans h.1
 

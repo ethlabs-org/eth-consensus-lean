@@ -1066,7 +1066,8 @@ theorem outbox_inv (hv : rho.ExecutionValid) (v : V) :
             · rwa [hnow] at h
           rw [stateAt_deliver S rho hn w he]
           have h2 := process_oneVote (digestOf S rho) (Model.digests rho.hash o) ht
-            (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn w i) hnow h1
+            (delivered (Model.digests rho.hash o) (stateAt S rho hn w i) o)
+              (stateAt S rho hn w i) hnow h1
           have hnow' : (process (stateAt S rho hn w i) o (Model.digests rho.hash o)).now = t :=
             (process_now _ _ _).trans hnow
           have hd := deliver_pres S rho hn
@@ -1135,7 +1136,7 @@ theorem deliver_not_att (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     · exact absurd h (not_lastRestart_deliver S rho hv he)
     · rwa [hnow] at h
   have hproc := process_oneVote (digestOf S rho) (Model.digests rho.hash o) ht
-    (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i) hnow hpre
+    (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o) (stateAt S rho hn v i) hnow hpre
   intro h
   simp only [Model.Run.releasesAt, he] at h
   unfold Model.Run.deliver at h
@@ -1198,7 +1199,7 @@ private theorem outbox_after_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
     · exact absurd h (not_lastRestart_deliver S rho hv he)
     · rwa [hnow] at h
   have hproc := process_oneVote (digestOf S rho) (Model.digests rho.hash o) ht
-    (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i) hnow hpre
+    (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o) (stateAt S rho hn v i) hnow hpre
   have hf : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).fgDue = false :=
     (process_fgDue _ _ _).trans (fgDue_eq_false S rho hn v i)
   rw [stateAt_deliver S rho hn v he]

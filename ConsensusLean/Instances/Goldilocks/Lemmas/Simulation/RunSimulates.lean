@@ -81,7 +81,8 @@ theorem relays_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : 
   obtain ⟨hnow, hself⟩ := deliver_state S rho hn hv he
   obtain ⟨h1, -, h3⟩ := (process_relay (runProposer S rho hn)
     (digestOf S rho) (Model.digests rho.hash o) t i
-    (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn _ i) 0 hnow).2.2.2 r
+    (delivered (Model.digests rho.hash o) (stateAt S rho hn _ i) o)
+      (stateAt S rho hn _ i) 0 hnow).2.2.2 r
     (by rw [hself]; exact hmem)
   have hq : x ∈
       (process (stateAt S rho hn (rho.key y) i) o (Model.digests rho.hash o)).relayBuf := by

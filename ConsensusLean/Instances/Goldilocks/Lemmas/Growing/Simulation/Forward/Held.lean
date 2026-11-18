@@ -197,9 +197,10 @@ theorem forward_receipt_held_at
     (hd : 0 ≤ d) (hbj : ∀ k < j, tr.time k ≤ d) (hy : y ∈ H d)
     {hs : List (Header Info × Nat)} {u : Time} {B : Blk sp}
     (hFB : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B) :
-    ∀ (A : Blk sp) (o : Wire sp.n binding) (t : Time) (p : Option (Wire sp.n binding)) (r e : Nat),
+    ∀ (A : Blk sp) (o : Wire sp.n binding) (σ : State sp ro binding) (t : Time)
+      (p : Option (Wire sp.n binding)) (r e : Nat),
       decodeForward sp hs o = some (x, t, p, A) →
-      DeliverSeq proposer tr dg hs y u o.parts r e → e ≤ j → t ≤ u →
+      DeliverSeq proposer tr dg hs y u (visit hs σ o).1 r e → e ≤ j → t ≤ u →
       Anc (tr.HonestBlocksAt H) A B →
       (∀ q tq pq C, Model.Obj.Contains o q →
         decodeForward sp hs q = some (x, tq, pq, C) →
@@ -208,12 +209,14 @@ theorem forward_receipt_held_at
   intro A
   induction hslot : A.slot using Nat.strong_induction_on generalizing A with
   | h n ih =>
-    intro o t p r e hd' hseq hej htu hAB hsource
+    intro o σ t p r e hd' hseq hej htu hAB hsource
     obtain ⟨k, ha, hxk⟩ := hsource o t p A (Model.Obj.Contains.refl _) hd'
     have hre := (deliverSeq_cover hseq).1
     have child (m : Nat) (P : Blk sp) (hPe : P ∈ (tr.state y m).fg.tree)
         (hp : A.parent = some P.root)
-        (hchild : DeliverSeq proposer tr dg hs y u (blockObj sp A (binding := binding)).parts m e) :
+        (σ' : State sp ro binding)
+        (hchild : DeliverSeq proposer tr dg hs y u
+          (visit hs σ' (blockObj sp A (binding := binding))).1 m e) :
         A ∈ (tr.state y e).fg.tree := by
       have hme := (deliverSeq_cover hchild).1
       rcases receipt_held_or_transfer_at hrun hnc hd hbj hy (hme.trans hej) hxk ha hAB hFB hp
@@ -224,7 +227,8 @@ theorem forward_receipt_held_at
           apply Nat.le_findGreatest _ htime
           have hcast := (le_slotTime sp.toParams A.slot).trans htime
           exact (Int.le_toNat (le_trans (Int.natCast_nonneg _) hcast)).2 hcast
-        rw [Model.Obj.parts_eq] at hchild
+        obtain ⟨rest, hrest⟩ := visit_head hs σ' (blockObj sp A (binding := binding))
+        rw [hrest] at hchild
         obtain ⟨hacc, hlt⟩ := deliverSeq_block_accepts (decodeForward_child hd').1 hchild
           (not_lt.mpr hslot') hon
         have hym : y ∈ H (tr.time m) := hrun.antitone (hbj m (by omega)) hy
@@ -235,11 +239,12 @@ theorem forward_receipt_held_at
     · subst p
       have ho := forwardObj_of_decodeForward hs o x t none A hd'
       rw [ho] at hseq
+      obtain ⟨σ', hchild⟩ := deliverSeq_forward_genesis hseq
       apply child r (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload)
       · exact (Store.accepted_tree sp.toParams _ _ _
           (reachable_upTo hrun hd (fun k hk => hbj k (by omega)) hy)).2.2.1
       · exact hgen
-      · exact deliverSeq_forward_genesis hseq
+      · exact hchild
     · subst p
       have ho := forwardObj_of_decodeForward hs o x t (some parent) A hd'
       have hc : Model.Obj.Contains o parent := by
@@ -252,12 +257,12 @@ theorem forward_receipt_held_at
       have hPB : Anc (tr.HonestBlocksAt H) P B :=
         (Relation.ReflTransGen.single ⟨hPu, hAu, hpar⟩).trans hAB
       rw [ho] at hseq
-      obtain ⟨m, hparent, hchild⟩ := deliverSeq_forward_parent hseq
+      obtain ⟨m, σ₁, σ₂, hparent, hchild⟩ := deliverSeq_forward_parent hseq
       have hme := (deliverSeq_cover hchild).1
-      have hheld := ih P.slot (by omega) P rfl parent pt pp r m hdec hparent
+      have hheld := ih P.slot (by omega) P rfl parent σ₁ pt pp r m hdec hparent
         (hme.trans hej) (hpt.trans htu) hPB
         (fun q tq pq C hq hqdec => hsource q tq pq C (hc.trans hq) hqdec)
-      exact child m P hheld hpar hchild
+      exact child m P hheld hpar σ₂ hchild
 
 end Consensus.Goldilocks.Simulation
 

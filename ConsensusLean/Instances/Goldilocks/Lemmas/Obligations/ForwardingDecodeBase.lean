@@ -370,7 +370,7 @@ theorem decoded_held_process {V : Type} [Fintype V] {E : Env V}
       exact ih (fun q hq => ho q (List.mem_cons_of_mem _ hq)) _ h.1 h.2
         (wrappersCover_processOne _ _ _ hc) (processOne_reachable _ _ _ hr)
         ((processOne_now (digests rho.hash receipt) st o).symm ▸ ht)
-  exact fold _ (fun _ ho => ho) st hd hh hc hr ht
+  exact fold _ (fun _ ho => mem_delivered _ ho) st hd hh hc hr ht
 
 /-- FG attestation work changes neither decoded wrapper inventory nor held blocks. -/
 theorem decoded_held_fgUpdate {sp : SA.SAParams}

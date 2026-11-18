@@ -25,7 +25,10 @@ simulated by a `GoldilocksRun` (claims C0.4 kept) and bind the evidence (G1.5). 
   canonical objects of its payload (`payloadObjs`), so a node can later carry them on in its own
   blocks (the engine releases only carried objects it has seen). A received object is processed
   only in a canonical form (`blockObj`, `voteObj`, `attObj`; read back by `decodeBlock`,
-  `decodeVoteObj`, `decodeAttObj`, together `canonEvent`), anything else is dropped.
+  `decodeVoteObj`, `decodeAttObj`, together `canonEvent`), anything else is dropped. A delivery
+  processes the received object and, recursively, what it carries (`delivered`), except what a
+  block carries when the node drops it as of a future slot or the FG refuses it (`Refuses`;
+  composition.tex §"Blocks").
 * **Digest.** The engine hashes the header; the node's digest is `dgOf hash g`
   (`dgOf`, `Lemmas/Simulation/TraceDefs`): `none ↦ g` (the genesis root is a parameter) and
   `some r ↦ taggedRoot g (hash header)`. The injective tag
@@ -578,21 +581,54 @@ noncomputable def processOne (hs : List (Header Info × Nat))
   | some (.attestation a) => relayIf (apply st (Node.onAttestation st.node a)) True o
   | _ => st
 
-variable (sp) in
-/-- The objects a delivery processes, in preorder: the received object, then recursively every
-carried object. Noncanonical wrappers make no node call. A canonical block is processed before
-its payload votes and attestations, which receive their own message/attestation calls even if
-the block is refused. Thus admitting a payload vote is followed by actual message processing
-at the same delivery time, rather than merely adding it to the AC pool. -/
-def delivered (o : Wire sp.n (binding := binding)) :
-    List (Wire sp.n (binding := binding)) := o.parts
+/-- Processing `o` at `st` refuses a block: `o` is a canonical block that `on_block` drops as of a
+future slot, or that the FG refuses (composition.tex §"Blocks"). -/
+def Refuses (hs : List (Header Info × Nat))
+    (st : State sp ro (binding := binding)) (o : Wire sp.n (binding := binding)) : Prop :=
+  ∃ B, canonEvent sp ro (binding := binding) hs o = some (.block B) ∧
+    (sp.toParams.slotOf st.now < B.slot ∨ st.node.fg.onBlock B = none)
+
+open Classical in
+mutual
+/-- The objects a delivery of `o` at `st` processes, in preorder, with the state after them: `o`,
+then, unless processing `o` refuses a block (`Refuses`), recursively every object it carries, each
+from the state its predecessors leave. No handler runs for the payload votes and attestations of
+a refused block (composition.tex §"Blocks"); a later delivery can carry them again. Noncanonical
+wrappers make no node call, and their carried objects are processed. A canonical block is
+processed before its payload votes and attestations, which receive their own message/attestation
+calls when the block is accepted. Thus admitting a payload vote is followed by actual message
+processing at the same delivery time, rather than merely adding it to the AC pool. -/
+noncomputable def visit (hs : List (Header Info × Nat)) :
+    State sp ro (binding := binding) → Wire sp.n (binding := binding) →
+      List (Wire sp.n (binding := binding)) × State sp ro (binding := binding)
+  | st, .mk a m cs =>
+      if Refuses hs st (.mk a m cs) then ([.mk a m cs], processOne hs st (.mk a m cs))
+      else
+        let r := visitList hs (processOne hs st (.mk a m cs)) cs
+        (.mk a m cs :: r.1, r.2)
+
+/-- `visit` of a list of carried objects, one after the other. -/
+noncomputable def visitList (hs : List (Header Info × Nat)) :
+    State sp ro (binding := binding) → List (Wire sp.n (binding := binding)) →
+      List (Wire sp.n (binding := binding)) × State sp ro (binding := binding)
+  | st, [] => ([], st)
+  | st, c :: cs =>
+      let r := visit hs st c
+      let r' := visitList hs r.2 cs
+      (r.1 ++ r'.1, r'.2)
+end
+
+/-- The objects a delivery of `o` at `st` processes (`visit`). -/
+noncomputable def delivered (hs : List (Header Info × Nat))
+    (st : State sp ro (binding := binding)) (o : Wire sp.n (binding := binding)) :
+    List (Wire sp.n (binding := binding)) := (visit hs st o).1
 
 /-- Processing a delivered object: its `delivered` objects one by one through `processOne`. -/
 noncomputable def process
     (st : State sp ro (binding := binding))
     (o : Wire sp.n (binding := binding)) (hs : List (Header Info × Nat)) :
     State sp ro (binding := binding) :=
-  (delivered sp (binding := binding) o).foldl (processOne hs) st
+  (delivered hs st o).foldl (processOne hs) st
 
 /-- Releasing a forwarding shape requires its exact parent wrapper to be held before
 the envelope. Raw blocks have no release dependency. This policy does not restrict arrivals:

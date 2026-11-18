@@ -774,7 +774,9 @@ Modelling choices (`docs/decisions.md` §"Goldilocks model choices", the entries
   holds of every processed block by construction).
 - **Blocks carry their payload's objects.** The engine releases an object only if it has seen everything it
   carries, and a reader's view is the closure of what it saw; carrying the canonical attestation and vote objects
-  makes G1.5 (b) hold (the evidence is in the view) and lets a node carry on votes and attestations it saw.
+  makes G1.5 (b) hold (the evidence is in the view) and lets a node carry on votes and attestations it saw. A
+  delivery processes what a block carries only when the node accepts the block (`delivered`, `Refuses`): no handler
+  runs for the payload of a block of a future slot or of one the FG refuses (SPEC `shared/composition.tex` §Blocks).
 - **The node's tick is a duty, not the clock.** The engine's `clock` runs while asleep and only keeps the time; the
   spec's tick runs only awake (`tick_of_awake`), so it is the poll proposal step at the public times. The release
   of queued bodies is the shape's own, through poll steps; the two leading polls make a proposal carry only

@@ -403,7 +403,7 @@ theorem pendingReady_process {sp : SA.SAParams}
       exact ih _ (wrappersAccounted_processOne _ st hs c ha)
         (pendingReady_processOne seen st hs c ha hr (hh c List.mem_cons_self))
         (fun d hd => hh d (List.mem_cons_of_mem c hd))
-  exact hf o.parts st ha hr ho
+  exact hf _ st ha hr fun c hc => ho c (mem_delivered hs hc)
 
 /-- Own recording preserves readiness provided the actual decoded own block is held.
 The caller must identify the generated canonical block; arbitrary signed headers do not

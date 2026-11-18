@@ -130,7 +130,8 @@ theorem node_of_deliver (hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.faul
     (stateAt S rho hn v (i + 1)).node =
       deliverState (runProposer S rho hn) (digestOf S rho)
         (Model.digests rho.hash o) (rho.ownKey v) t
-        (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i).node := by
+        (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+          (stateAt S rho hn v i).node := by
   have hpre := (fgDue_eq_false S rho hn v i)
   rw [stateAt_deliver S rho hn v he]
   refine (deliver_pres S rho hn

@@ -138,8 +138,8 @@ theorem wire_block {y : Fin (Fintype.card (Fin 5))} {j : Nat} {t : Time}
     have hB := delivery_block_authorized _ _ _ _ _ _
       (fun B => blockObj (({ S with vote := AsChainShape.stock } : Setup).params
           (pubOf env) one_le_card) B ∈
-        delivered (({ S with vote := AsChainShape.stock } : Setup).params
-          (pubOf env) one_le_card) o) _ _ _
+        delivered (Model.digests (rhoc S).hash o)
+          (stateAt { S with vote := stock } (rhoc S) one_le_card v i) o) _ _ _
       (fun x hx B' hxB => hxB ▸ hx) r hrmem hpos B acc (hl.trans hc)
     change t' = t at het
     subst het

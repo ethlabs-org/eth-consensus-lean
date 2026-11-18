@@ -116,26 +116,58 @@ theorem releasedFrom_of_pending_stock (hv : rho.ExecutionValid) {i : Nat}
   releasedFrom_of_pending { S with vote := stock } rho hn hv he hb
 
 omit [DecidableEq V] in
-/-- A canonical block carrying one vote runs the block handler first and then the actual
-message handler on its resulting state. This holds whether the block handler accepts, refuses,
-or silently drops the block: none of those outcomes skips the payload message. -/
-theorem payload_message_after_block {sp : SA.SAParams}
+/-- A canonical block carrying one vote, which `on_block` accepts, runs the block handler first
+and then the actual message handler on its resulting state. -/
+theorem payload_message_after_accepted_block {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
-    (hs : List (Blocks.Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
-    (st : NodeState (goldilocksNode sp ro)) (B : Blk sp) (v : SA.Vote sp.n)
+    (hs : List (Blocks.Header Info × Nat)) (i : Nat)
+    (σ : State sp ro stock) (B : Blk sp) (v : SA.Vote sp.n)
     (ha : B.fgPayload = []) (hp : B.acPayload = ([v], []))
-    (hc : canonEvent sp ro hs (blockObj sp (binding := stock) B) = some (.block B)) :
-    deliverRecs (binding := stock) proposer dg hs self t i (delivered sp (blockObj sp B)) st 0 =
-      groupRecs proposer dg self st t (Nat.pair i 0) (.block B) ++
-      groupRecs proposer dg self (Node.onBlock self st t B).1 t (Nat.pair i 1) (.message v) := by
-  have hd : delivered sp (blockObj sp (binding := stock) B) =
-      [blockObj sp B, voteObj v] := by
-    simp [delivered, blockObj, payloadObjs, ha, hp, voteObj, Model.Obj.parts,
-      Model.Obj.parts.partsList]
+    (hc : canonEvent sp ro hs (blockObj sp (binding := stock) B) = some (.block B))
+    (hslot : ¬ sp.toParams.slotOf σ.now < B.slot) (hfg : σ.node.fg.onBlock B ≠ none) :
+    deliverRecs (binding := stock) proposer dg hs σ.self σ.now i
+        (delivered hs σ (blockObj sp B)) σ.node 0 =
+      groupRecs proposer dg σ.self σ.node σ.now (Nat.pair i 0) (.block B) ++
+      groupRecs proposer dg σ.self (Node.onBlock σ.self σ.node σ.now B).1 σ.now (Nat.pair i 1)
+        (.message v) := by
+  have hr : ¬ Refuses hs σ (blockObj sp (binding := stock) B) := by
+    rintro ⟨B', hB', h⟩
+    rw [hc, Option.some.injEq, Node.Event.block.injEq] at hB'
+    subst hB'
+    exact h.elim hslot hfg
+  have hd : delivered hs σ (blockObj sp (binding := stock) B) = [blockObj sp B, voteObj v] := by
+    have hcar : (blockObj sp (binding := stock) B).carried = [voteObj v] := by
+      simp [blockObj, Model.Obj.carried, payloadObjs, ha, hp]
+    unfold delivered
+    rw [visit_of_not_refuses hs hr, hcar, visitList_cons,
+      visit_of_carried_eq_nil hs _ (o := voteObj (binding := stock) v) rfl, visitList]
+    rfl
   rw [hd]
   simp [deliverRecs_cons, deliverRecs_nil, hc, canonEvent_voteObj, Node.exec]
+
+omit [DecidableEq V] in
+/-- A canonical block that `on_block` drops as of a future slot, or that the FG refuses, is
+delivered alone: no handler runs for the vote it carries (composition.tex §"Blocks"). -/
+theorem payload_skipped_after_refused_block {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
+    (hs : List (Blocks.Header Info × Nat)) (i : Nat)
+    (σ : State sp ro stock) (B : Blk sp)
+    (hc : canonEvent sp ro hs (blockObj sp (binding := stock) B) = some (.block B))
+    (hrefused : sp.toParams.slotOf σ.now < B.slot ∨ σ.node.fg.onBlock B = none) :
+    deliverRecs (binding := stock) proposer dg hs σ.self σ.now i
+        (delivered hs σ (blockObj sp B)) σ.node 0 =
+      groupRecs proposer dg σ.self σ.node σ.now (Nat.pair i 0) (.block B) := by
+  have hd : delivered hs σ (blockObj sp (binding := stock) B) = [blockObj sp B] := by
+    unfold delivered
+    rcases visit_cases hs σ (blockObj sp (binding := stock) B) with ⟨-, hv⟩ | ⟨hr, -⟩
+    · rw [hv]
+    · exact absurd ⟨B, hc, hrefused⟩ hr
+  rw [hd]
+  simp [deliverRecs_cons, deliverRecs_nil, hc]
 
 omit [DecidableEq V] in
 /-- Two nested relay wrappers still execute the carried vote's message handler, with its
@@ -145,15 +177,27 @@ theorem nested_payload_message {sp : SA.SAParams}
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
     (hs : List (Blocks.Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
-    (st : NodeState (goldilocksNode sp ro)) (v : SA.Vote sp.n) :
+    (σ : State sp ro stock) (v : SA.Vote sp.n) :
     deliverRecs (binding := stock) proposer dg hs self t i
-      (delivered sp (.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v]])) st 0 =
-      groupRecs proposer dg self st t (Nat.pair i 2) (.message v) := by
-  simp only [delivered, voteObj, Model.Obj.parts, Model.Obj.parts.partsList,
+      (delivered hs σ (.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v]])) σ.node 0 =
+      groupRecs proposer dg self σ.node t (Nat.pair i 2) (.message v) := by
+  have hd : delivered hs σ (.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v]]) =
+      [.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v]],
+        .mk .none (.data .relay) [voteObj v], voteObj (binding := stock) v] := by
+    unfold delivered
+    rw [visit_of_not_refuses hs (not_refuses_of_canonEvent hs (canonEvent_data_ne_block rfl)),
+      Model.Obj.carried, visitList_cons,
+      visit_of_not_refuses hs (not_refuses_of_canonEvent hs (canonEvent_data_ne_block rfl)),
+      Model.Obj.carried, visitList_cons,
+      visit_of_carried_eq_nil hs _ (o := voteObj (binding := stock) v) rfl]
+    simp [visitList]
+  have hz : ∀ cs, canonEvent sp ro hs (.mk .none (.data .relay) cs : Wire sp.n stock) = none := by
+    intro cs
+    simp [canonEvent, decodeBlock, decodeVoteObj, decodeAttObj, stock]
+  rw [hd, deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ (hz _),
+    deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ (hz _),
+    deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ (canonEvent_voteObj hs v), deliverRecs_nil,
     List.append_nil]
-  simp only [deliverRecs_cons, deliverRecs_nil]
-  simp [canonEvent, decodeBlock, decodeVoteObj, decodeAttObj,
-    stock, VoteBinding.voteRole, decodeVote_encodeVote, Option.filter]
 
 /-- Unsigned timestamps cannot certify forwarding freshness. -/
 theorem unsigned_forward_rejected (sp : SA.SAParams) (hs : List (Blocks.Header Info × Nat))

@@ -88,7 +88,8 @@ theorem received_voteForward_processAt_at (hv : rho.ExecutionValid)
     · exact h.le
     · exact h.le
   obtain ⟨k, hlo, hhi, hp, ht⟩ := received_vote_processAt S rho hn he
-    (hc.trans (Model.Obj.Contains.step (List.mem_singleton_self _) (.refl _)))
+    (mem_delivered_of_parent _ hc (List.mem_singleton_self _)
+      (fun B' => canonEvent_data_ne_block rfl B'))
   exact ⟨k, hlo, hhi, hp, ht, htime⟩
 
 /-- Holdings of a first-release vote envelope whose signer is honest at its stamp either belong

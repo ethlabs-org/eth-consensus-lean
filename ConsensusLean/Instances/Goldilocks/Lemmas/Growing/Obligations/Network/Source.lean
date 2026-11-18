@@ -54,7 +54,7 @@ theorem sendOrAdmit_process_same_time_at (hn : 1 ≤ Fintype.card V) (hv : rho.E
   rcases hc with ⟨ℓ, hc, hm⟩ | ⟨ℓ, B, hc, hb, hm⟩
   · have hc' := ((Trace.upTo_callAt _).mp hc).2
     exact ⟨i, ⟨ℓ, Compose.projAC_callAt.mpr hc', Or.inl hm⟩, rfl⟩
-  rcases acBlock_cut_cases S rho hn ((Trace.upTo_callAt _).mp hc).2 hb hm with h |
+  rcases acBlock_cut_cases S rho hn hv ((Trace.upTo_callAt _).mp hc).2 hb hm with h |
       ⟨n, v, t, he, hpublic, hkey, hlo, hhi, ht⟩
   · exact h
   obtain ⟨hengine, hlen⟩ := hsim.tick_public v n t he hpublic
