@@ -5,7 +5,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
-import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety

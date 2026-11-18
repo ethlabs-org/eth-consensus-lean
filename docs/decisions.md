@@ -529,7 +529,7 @@ detail in `TRUST.md`.
   faulty than honest, awake and joined members). `CommitteeDict.BindsSel` is the one link from a dictionary to the
   run's actual selection of `voteRole s`.
 - **Statements at population-sized committees take the size equation as a premise.** The run records
-  `GoldilocksRun`, `Growing.GoldilocksRun`, `SA.ACRun`, `SA.ACRunU`, `SA.ACRunUS` and `SA.Growing.ACRun` state the
+  `GoldilocksRun`, `Growing.GoldilocksRun`, `SA.ACRun`, `SA.ACRunU` and `SA.Growing.ACRun` state the
   run and trace laws only, for every vote binding, and carry no committee size. A milestone statement proved or
   stated for population-sized committees takes `sp.committeeSize = sp.n` as a premise: the proved
   `Healing.HeightScopedRetention`, and the open growing-fault statements

@@ -16,12 +16,11 @@ optimistic confirmations select nothing at any mode).
 The laws:
 
 * **the parent's mode**: at `WriteMode.parent sp` each handler is the parent's
-  (`optimisticConfirmationM_parent`, `stepWithM_parent`, `callInputM_parent`, `callViewM_parent`);
+  (`stepWithM_parent`, `callInputM_parent`, `callViewM_parent`);
   more generally `optimisticConfirmationM_on` at every mode with the optimistic write;
 * **the update at any mode** changes only the parent's fields and its locks
   (`updateConfirmationM_eq`), with `updateConfirmationM_locks_of_none`/`_of_some`, and its new
-  locks are exactly its two arms (`mem_newLocksM`), with no fast lock without the fast arm
-  (`newLocksM_no_fast`);
+  locks are exactly its two arms (`mem_newLocksM`);
 * **the optimistic confirmation off** is the identity (`optimisticConfirmationM_off`), so a
   property of the parent's optimistic result and of its input holds at every mode
   (`optimisticConfirmationM_of`), and a field the parent's keeps is kept
@@ -39,10 +38,6 @@ theorem optimisticConfirmationM_on {m : WriteMode} (h : m.optimistic = true) :
   unfold optimisticConfirmationM optimisticConfirmation
   rw [h]
   rfl
-
-theorem optimisticConfirmationM_parent :
-    optimisticConfirmationM (FGP := FGP) sp (WriteMode.parent sp) = optimisticConfirmation sp :=
-  optimisticConfirmationM_on rfl
 
 /-- **The optimistic write off** writes nothing. -/
 theorem optimisticConfirmationM_off {m : WriteMode} (h : m.optimistic = false) (A : SAState sp.n)
@@ -132,15 +127,6 @@ theorem mem_newLocksM {m : WriteMode} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t 
           some B ∧ p = (B.root, false, s + sp.k)) := by
   unfold newLocksM
   cases m.fastArm <;> simp
-
-/-- **No fast lock without the fast arm.** -/
-theorem newLocksM_no_fast {m : WriteMode} (h : m.fastArm = false) {A : SAState sp.n}
-    {Φ : Frm sp.n FGP} {t : Time} {s : Nat} {C : Blk sp.n FGP} {sv : Int → Option Nat}
-    {L : Set Lock} : ∀ p ∈ newLocksM sp m A Φ t s C sv L, p.2.1 = false := by
-  intro p hp
-  rcases mem_newLocksM.1 hp with ⟨hf, -⟩ | ⟨B, -, rfl⟩
-  · rw [h] at hf; exact absurd hf Bool.false_ne_true
-  · rfl
 
 end Consensus.Goldilocks.SA
 

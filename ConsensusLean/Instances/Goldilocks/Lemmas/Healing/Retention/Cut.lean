@@ -100,7 +100,7 @@ is below a high origin written before the signing, comparable with `B` by the vo
 the counted attestations naming an entry of `𝓔_B` are faulty, fewer than `q`, and no entry of `𝓔_B`
 is justified on the store (`Store.J_compatible_of_rows`): a high `Σ.J` is compatible with `B`, and
 so is `Σ.F ⪯ Σ.J`; when `Σ.J` is low, `Σ.F` is below `B` by G1.2
-(`ResetPremisesUpTo.low_finalized_below_origin`). No (K0) is used: `Store.cut_scope` (C1.1's scope)
+(`ResetPremisesUpTo.low_finalized_below_origin`). No (K0) is used: C1.1's scope
 does not apply, since it assumes (K0) for `Σ.J` and (K1) for every conflicting entry above an honest
 `Σ.F` at `Ts`, low ones included, which fail at `a_z`. -/
 theorem ResetPremisesUpTo.retention_cut_step {b : Time}

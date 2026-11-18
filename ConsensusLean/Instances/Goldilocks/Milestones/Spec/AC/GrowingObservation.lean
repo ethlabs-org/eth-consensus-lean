@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Growing
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Observation
 
 @[expose] public section
 

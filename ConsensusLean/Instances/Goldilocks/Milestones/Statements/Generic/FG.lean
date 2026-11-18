@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Model
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GenericRun
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.PersistKernel
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.BlockFinality
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations
 

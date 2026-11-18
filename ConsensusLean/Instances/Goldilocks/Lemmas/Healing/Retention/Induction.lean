@@ -57,7 +57,7 @@ theorem le_ts_of_highOrigin (hp : ResetPremises tr H proposer dg g ΔF a) {x : F
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   linarith
 
-/-- **The caches at a vote** (as C1.1's `state_caches`): at a cut at or after `t_{j+1}`, the
+/-- **The caches at a vote** (as in C1.1): at a cut at or after `t_{j+1}`, the
 caches of an honest node's state are those after its last call, by `CacheInv` (the origin is
 active there) when that call is at or after `a`, by HBoot (`boot_caches`) when it is before `a`,
 and by activation (`activation_caches`) when there is no call since `t_{j+1}`. -/

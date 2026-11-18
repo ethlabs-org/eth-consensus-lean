@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
-import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 
 public section

@@ -112,7 +112,7 @@ variable {FGP : Type} {ro' : ReplayOrder sp FGP} {U : Set (Blk sp.n FGP)}
   {T : SATrace sp FGP ro'}
 
 /-- **A1.4 (a) at the proposal duty, for an ancestor `B ⪯ D` of the optimistic selection**
-(ProposalCore's `optimistic_first_proposalU` with its hypotheses and conclusion about `B`, as
+(A1.4 (a) at the proposal with its hypotheses and conclusion about `B`, as
 `result_transfer_anc` is for A1.8): for an honest optimistic lock of slot `σ` on `D` and
 `B ⪯ D`, under (V) and (L-high) for `B`, (P) for the counted votes and `f < n/2`, the head of an
 honest proposal of slot `σ + 1` extends `B`: the `3n/4` optimistic voters of `D` reach the

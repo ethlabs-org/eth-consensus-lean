@@ -6,7 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Attest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
-public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 import ConsensusLean.Lemmas.Tactic.Linarith

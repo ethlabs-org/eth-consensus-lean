@@ -1,7 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Observation
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes.Writes
 
 @[expose] public section
@@ -82,28 +80,6 @@ def proj (tr : ACTrace A.toAC) : SATrace sp FGP ro :=
 end SAFamily
 
 variable {A : SAOperations sp FGP S M}
-
-/-- Honest state commutation and honest erased-call stuttering, not handler equality.
-Kept for a downstream consumer. -/
-structure ObservationAgreement (F : SAFamily A ro)
-    (H : Set (Fin sp.n)) (tr : ACTrace A.toAC) : Prop where
-  state : ∀ y ∈ H, ∀ i, (F.proj tr).state y i = F.stateView (tr.state y i)
-  erased_state : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
-    F.projCall ℓ.call = none →
-    F.stateView (tr.post i) = F.stateView (tr.state y i)
-  erased_emissions : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
-    F.projCall ℓ.call = none → ℓ.emits.filterMap F.projEm = []
-
-/-- Structural correspondence to actual candidate outputs, not semantic correctness.
-Kept for a downstream consumer. -/
-structure OutputAgreement (F : SAFamily A ro) (H : Set (Fin sp.n))
-    (tr : ACTrace A.toAC) : Prop where
-  toFG : ∀ x ∈ H, ∀ i ℓ C, ACToFGAt tr x i ℓ C →
-    ∃ q : S, F.stateView q = (F.proj tr).state x i ∧
-      q = tr.state x i ∧ (A.toFG q ℓ.frame (tr.time i)).2 = some C
-  proposal : ∀ x ∈ H, ∀ i ℓ d p, ACProposalAt tr x i ℓ d p →
-    ∃ q : S, F.stateView q = (F.proj tr).state x i ∧
-      q = tr.state x i ∧ (A.proposal q ℓ.frame (tr.time i)).2 = some (d, p)
 
 namespace Growing
 

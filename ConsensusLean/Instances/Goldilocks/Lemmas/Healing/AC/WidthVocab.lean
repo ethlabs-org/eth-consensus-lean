@@ -9,9 +9,7 @@ H.1's slow-lock vocabulary at a formation width `w` (a write mode's `width`, for
 slow lock of slot `s` reads the saved results of the previous `w − 1` slots):
 
 * `SlowLockAtW w`: `SlowLockAt` with the `w − 1` previous saved results (`SlowLockAt` at `w = k`,
-  `slowLockAtW_k`);
-* `GoodOriginW w`: `GoodOrigin` with the slow window `[j − w + 1, j]` (`GoodOrigin` at `w = k`,
-  `goodOriginW_k`).
+  `slowLockAtW_k`).
 
 This is vocabulary only: H.1 at a width below `k` is not stated here (its transfer step needs the
 old slow locks of the formation window to be compatible, which is not proved). -/
@@ -45,25 +43,6 @@ theorem slowLockAtW_iff {w : Nat} {tr : SATrace sp FGP ro} {x : Fin sp.n} {i s :
             ∃ S ∈ ℓ.frame.tree, (tr.state x i).saved j = some S.root ∧ ℓ.frame.Anc X S} =
           some B :=
   Iff.rfl
-
-/-- **A good origin of width `w`** of label `j` on `B`: an honest fast lock write of slot `j ≥ r`,
-or an honest slow lock write of width `w` of slot `j` whose window `[j − w + 1, j]` is `≥ r`. -/
-def GoodOriginW (w : Nat) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (g : Time)
-    (B : Blk sp.n FGP) (j : Nat) : Prop :=
-  (∃ x ∈ H, ∃ i CV, FastLockAt tr x i j B CV ∧ gbar g + 4 * sp.Δ ≤ sp.ts j) ∨
-  (∃ x ∈ H, ∃ i, SlowLockAtW w tr x i j B ∧ gbar g + 4 * sp.Δ ≤ sp.ts ((j : Int) - w + 1))
-
-theorem goodOriginW_iff {w : Nat} {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} {g : Time}
-    {B : Blk sp.n FGP} {j : Nat} : GoodOriginW w tr H g B j ↔
-      ((∃ x ∈ H, ∃ i CV, FastLockAt tr x i j B CV ∧ gbar g + 4 * sp.Δ ≤ sp.ts j) ∨
-        (∃ x ∈ H, ∃ i, SlowLockAtW w tr x i j B ∧
-          gbar g + 4 * sp.Δ ≤ sp.ts ((j : Int) - w + 1))) :=
-  Iff.rfl
-
-theorem goodOriginW_k {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} {g : Time}
-    {B : Blk sp.n FGP} {j : Nat} : GoodOriginW sp.k tr H g B j ↔ GoodOrigin tr H g B j := by
-  rw [goodOriginW_iff, goodOrigin_iff]
-  rfl
 
 end Consensus.Goldilocks.SA
 

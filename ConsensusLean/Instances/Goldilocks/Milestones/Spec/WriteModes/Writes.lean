@@ -42,10 +42,6 @@ structure WriteMode where
 /-- The parent's writes: both fast writes, and slow locks of width `k`. -/
 def WriteMode.parent (sp : SAParams) : WriteMode := ⟨true, true, sp.k⟩
 
-/-- Slow-only writes at width `w`: no fast lock at the update; the optimistic confirmation on when
-`opt`. -/
-def WriteMode.slowOnly (w : Nat) (opt : Bool) : WriteMode := ⟨false, opt, w⟩
-
 variable {FGP : Type} (sp : SAParams)
 
 open Classical in

@@ -4,29 +4,14 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
 
 public section
 
-/-! # Goldilocks FG store: the excluded entries of C1.1's scope, and held ancestry
+/-! # Goldilocks FG store: held ancestry
 
-The vocabulary of `FGStore/Cut` that its steps (`FGStore/CutSteps`) and their growing-fault
-sibling read: the excluded entries of C1.1's scope (`excludedEntries`), and, at an honest node,
-the state height of a held block (`one_le_h`), its held parent (`parent_held`) and ancestry
-inside the run's blocks below a held block (`anc_of_U`). -/
+At an honest node: the state height of a held block (`one_le_h`), its held parent
+(`parent_held`) and ancestry inside the run's blocks below a held block (`anc_of_U`). -/
 
 namespace Consensus.Goldilocks.Store
 
 variable {P : Params} {ACP : Type}
-
-/-- The excluded entries of C1.1's scope: conflicting with `B`, strictly above an honest `Σ.F`
-at `Ts` (the state before the first cut of the run at a time `≥ Ts`). -/
-def excludedEntries (H : Set (Fin P.n)) (U : Set (NodeBlock P ACP)) (tr : FGTrace P ACP)
-    (Ts : Time) (B : NodeBlock P ACP) : Set (NodeBlock P ACP) :=
-  {E | ¬ Compatible U E B ∧ ∃ z ∈ H, ∃ j, Ts ≤ tr.time j ∧ (∀ k < j, tr.time k < Ts) ∧
-    Goldilocks.Anc U (tr.store z j).F E ∧ E ≠ (tr.store z j).F}
-
-/-- Membership in `excludedEntries`. -/
-theorem mem_excludedEntries {H : Set (Fin P.n)} {U : Set (NodeBlock P ACP)} {tr : FGTrace P ACP}
-    {Ts : Time} {B E : NodeBlock P ACP} : E ∈ excludedEntries H U tr Ts B ↔
-      ¬ Compatible U E B ∧ ∃ z ∈ H, ∃ j, Ts ≤ tr.time j ∧ (∀ k < j, tr.time k < Ts) ∧
-        Goldilocks.Anc U (tr.store z j).F E ∧ E ≠ (tr.store z j).F := Iff.rfl
 
 /-! ## One block of the state transition -/
 

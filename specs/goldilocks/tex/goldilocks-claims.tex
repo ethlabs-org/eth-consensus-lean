@@ -2601,10 +2601,8 @@ G1.9 (a) & \texttt{Store.CacheAcceptance} & proved
   (\texttt{fg\_store\_service})\\
 G1.9 (b) & see HR.5 & proved through HR.5 at every honest acceptance
   (the reset and the high heights are not needed)\\
-G1.10 & \texttt{Store.QuorumFreeEntries}; its composed scope
-  \texttt{Compose.CutScopeAt} & proved (\texttt{fg\_store\_trace}) under its
-  premises; the scope is C1.1's conclusion~(iii) (\texttt{PersistAt.cut}),
-  proved with C1.1 (\texttt{persist\_statements})\\
+G1.10 & \texttt{Store.QuorumFreeEntries} & proved (\texttt{fg\_store\_trace}) under its
+  premises; its composed scope at C1.1 (conclusion~(iii)) is not stated in Lean\\
 C1.2 & \texttt{Compose.OutcomeService} & proved
   (\texttt{Healing.Recovery.outcome\_service}), note~3; without
   $\mathsf{Prop}^+(G_p)$ and with $c_F$ only bounded below by the ceiling\\

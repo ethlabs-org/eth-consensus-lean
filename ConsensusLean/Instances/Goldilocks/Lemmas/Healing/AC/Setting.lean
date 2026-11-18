@@ -20,16 +20,13 @@ validator is awake from `g` on, so there is no later restart):
 
 * no honest node restarts after `ḡ` (`restart_le`): a restart is a wake, and an honest node is
   awake from `ḡ` on;
-* hence an honest node is joined at every time `t` with `ḡ ≤ t_{slot(t)−1}`, both on the trace
-  (`joinedAt`) and in its state before every call at such a time (`joined_state`; the state's
+* hence an honest node is joined at every time `t` with `ḡ ≤ t_{slot(t)−1}`, in its state
+  before every call at such a time (`joined_state`; the state's
   `restart_time` is the time of the node's latest restart, `restartTime_state`);
 * `Sync[a, b]` for every `a ≥ ḡ` (`syncAC`) and `f < h_t` there (`faultBound`), `f < n/2`.
 
-The settings at a write mode and an unlock oracle (`HealthyACCore`, `HealthyBaseU`, and
-`StandaloneRunU` with trivial frames) are defined in `Milestones/Statements/Healing/ACU`; this
-module proves their facts. It also holds the vocabulary of H.1's steps (`GoodOrigin`,
-`VotesExtendAfter`, `ProposalsExtendAfterU`, `LocksSettledU`), shared by `Transfer.lean` and
-`Steps.lean`. -/
+The settings at a write mode and an unlock oracle (`HealthyACCore`, `HealthyBaseU`) are defined in
+`Milestones/Statements/Healing/ACU`; this module proves their facts. -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -94,11 +91,6 @@ theorem HealthyBase.toU (h : HealthyBase tr H U proposer g) :
 theorem le_gbar (g : Time) : g ≤ gbar g := le_max_left g 0
 
 theorem gbar_nonneg (g : Time) : 0 ≤ gbar g := le_max_right g 0
-
-theorem Θ_nonneg (sp : SAParams) : 0 ≤ Θ sp := by
-  have := sp.toParams.hΔ
-  unfold Θ
-  positivity
 
 theorem ts_sub_one (sp : SAParams) (a : Int) : sp.ts (a - 1) = sp.ts a - 4 * sp.Δ := by
   simp only [SAParams.ts]; ring
@@ -299,11 +291,6 @@ theorem restart_le {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (hk : tr.RestartAt y 
   have := hbefore k' hk'k ℓ' hc'
   linarith
 
-/-- An honest node is joined at every `t` with `ḡ ≤ t_{slot(t)−1}`. -/
-theorem joinedAt {y : Fin sp.n} (hy : y ∈ H) {t : Time}
-    (ht : gbar g ≤ sp.ts ((sp.slot t : Int) - 1)) : JoinedAt tr y t :=
-  fun _ hk _ => (hS.restart_le hy hk).trans ht
-
 /-- The state of an honest node before a cut at a time `t` with `ḡ ≤ t_{slot(t)−1}` is
 joined at `t`. -/
 theorem joined_state {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
@@ -325,21 +312,6 @@ theorem syncAC {a : Time} (ha : gbar g ≤ a) (b : Time) :
   have hmax : max (tr.time i) g = tr.time i := max_eq_left (hg _ hai)
   have := hS.healthy.message x hx i m hm y hy j ℓ hc (by rwa [hmax])
   simpa only [hmax] using this
-
-/-- `f < h_t` at every `t` with `ḡ ≤ t_{slot(t)−1}`: every honest node is awake and joined
-there. -/
-theorem faultBound {t : Time} (ht0 : 0 ≤ t) (ht : gbar g ≤ sp.ts ((sp.slot t : Int) - 1)) :
-    FaultBound tr H t := by
-  have hts : sp.ts ((sp.slot t : Int) - 1) ≤ t :=
-    (ts_le_iff_le_slot sp ht0 _).mpr (by omega)
-  have hsub : {y | y ∈ H ∧ tr.awake y t ∧ JoinedAt tr y t} = H :=
-    Set.ext fun y => ⟨fun h => h.1, fun hy => ⟨hy, hS.awake hy (ht.trans hts), hS.joinedAt hy ht⟩⟩
-  unfold FaultBound honestAwakeJoined
-  rw [hsub]
-  have hn : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have := hS.two_faulty_lt
-  omega
 
 end HealthyBaseU
 
@@ -372,56 +344,6 @@ theorem syncAC {a : Time} (ha : gbar g ≤ a) (b : Time) :
 end HealthyBase
 
 /-! ### Vocabulary of the steps -/
-
-/-- **A good origin** of label `j` on `B`: an honest fast lock write of slot `j ≥ r`, or
-an honest slow lock write of slot `j` whose window `[j − k + 1, j]` is `≥ r`. -/
-def GoodOrigin (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (g : Time) (B : Blk sp.n FGP)
-    (j : Nat) : Prop :=
-  (∃ x ∈ H, ∃ i CV, FastLockAt tr x i j B CV ∧ gbar g + 4 * sp.Δ ≤ sp.ts j) ∨
-  (∃ x ∈ H, ∃ i, SlowLockAt tr x i j B ∧ gbar g + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1))
-
-/-- Every honest vote of a slot after `j` extends `B`. -/
-def VotesExtendAfter (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (j : Nat) (B : Blk sp.n FGP) : Prop :=
-  ∀ x ∈ H, ∀ i e, VoteAt tr x i e → j < e.msg.slot → VoteExtends U e.msg B
-
-theorem goodOrigin_iff {B : Blk sp.n FGP} {j : Nat} : GoodOrigin tr H g B j ↔
-    ((∃ x ∈ H, ∃ i CV, FastLockAt tr x i j B CV ∧ gbar g + 4 * sp.Δ ≤ sp.ts j) ∨
-      (∃ x ∈ H, ∃ i, SlowLockAt tr x i j B ∧
-        gbar g + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1))) := Iff.rfl
-
-theorem votesExtendAfter_iff {j : Nat} {B : Blk sp.n FGP} : VotesExtendAfter tr H U j B ↔
-    ∀ x ∈ H, ∀ i e, VoteAt tr x i e → j < e.msg.slot → VoteExtends U e.msg B := Iff.rfl
-
-/-- The head of every honest `ac_proposal` at the start of a slot after `j` extends `B`, with the
-unlock given: the heads of the proposals at the locks of the oracle. -/
-abbrev ProposalsExtendAfterU (u : Nat → Set Lock) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
-    (U : Set (Blk sp.n FGP)) (j : Nat) (B : Blk sp.n FGP) : Prop :=
-  ∀ x ∈ H, ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)) (m : Nat) d pay, tr.CallAt x i ℓ →
-    ℓ.call = .proposal → tr.time i = sp.ts m → j < m →
-    (acProposalWith sp (u i) (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay) →
-    Anc U B d.head
-
-/-- **Settled locks from `T`**: at every cut of an honest node at a time `≥ T`, every stored lock
-live there (`slot(t) ≤ j + k`) is on a block that every honest vote and proposal head of a slot
-after its label `j` extends. With the unlock given. -/
-abbrev LocksSettledU (u : Nat → Set Lock) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
-    (U : Set (Blk sp.n FGP)) (T : Time) : Prop :=
-  ∀ y ∈ H, ∀ i, T ≤ tr.time i → ∀ l ∈ (tr.state y i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k →
-    ∀ L ∈ U, L.root = l.block →
-      VotesExtendAfter tr H U l.slot L ∧ ProposalsExtendAfterU u tr H U l.slot L
-
-theorem proposalsExtendAfterU_iff {u : Nat → Set Lock} {j : Nat} {B : Blk sp.n FGP} :
-    ProposalsExtendAfterU u tr H U j B ↔
-      ∀ x ∈ H, ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)) (m : Nat) d pay, tr.CallAt x i ℓ →
-        ℓ.call = .proposal → tr.time i = sp.ts m → j < m →
-        (acProposalWith sp (u i) (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay) →
-        Anc U B d.head := Iff.rfl
-
-theorem locksSettledU_iff {u : Nat → Set Lock} {T : Time} : LocksSettledU u tr H U T ↔
-    ∀ y ∈ H, ∀ i, T ≤ tr.time i → ∀ l ∈ (tr.state y i).locks,
-      sp.slot (tr.time i) ≤ l.slot + sp.k → ∀ L ∈ U, L.root = l.block →
-        VotesExtendAfter tr H U l.slot L ∧ ProposalsExtendAfterU u tr H U l.slot L := Iff.rfl
 
 end Consensus.Goldilocks.SA
 

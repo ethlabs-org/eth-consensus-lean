@@ -6,7 +6,8 @@ public section
 
 /-! # Goldilocks Healing: results of one slot `≥ r` are compatible (claims H.1, proof shape)
 
-Over a `StandaloneRunU` (H.1's premises), for a slot `s` with `t_s ≥ ḡ + 4Δ` (`s ≥ r_AC(ḡ)`):
+Over the healthy base at a write mode (`HealthyBaseU`), for a slot `s` with `t_s ≥ ḡ + 4Δ`
+(`s ≥ r_AC(ḡ)`):
 
 * two fast origins (fast test or optimistic, any combination) are compatible
   (`fastLock_fastLock_compatible`: A1.9's `fastLock_same_slot`);

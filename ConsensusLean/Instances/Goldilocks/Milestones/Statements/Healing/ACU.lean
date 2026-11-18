@@ -9,9 +9,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.RelTrace
 H.1's premises over an AC trace of a lock rule (`Milestones/Spec/SA/RelTrace`), beside the
 parent's (`Healing/AC`): the honest proposal and the driven duties at the unlock oracle `u`
 (`HonestProposalU`, `DrivenU`), the service and awake part of `Healthy(g)` (`HealthyACCore`),
-and the healthy base and the standalone run at a write mode `m` (`HealthyBaseU`,
-`StandaloneRunU`). The lemmas about them are in `Lemmas/Healing/AC/RelSetting` and
-`Lemmas/Healing/AC/Setting`. -/
+and the healthy base at a write mode `m` (`HealthyBaseU`). The lemmas about them are in
+`Lemmas/Healing/AC/RelSetting` and `Lemmas/Healing/AC/Setting`. -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -81,13 +80,6 @@ structure HealthyBaseU (m : WriteMode) (u : Nat → Set Lock) (tr : SATrace sp F
   catchUp : CatchAC tr H U g (2 * sp.Δ)
   /-- The committee is population-sized (`committeeSize = n`). -/
   stock : sp.committeeSize = sp.n
-
-/-- **H.1's premises** over an AC trace of the SA, with the writes of the mode `m` and the unlock
-given by the oracle `u`: the healthy premises (`HealthyBaseU`) and trivial frames. -/
-structure StandaloneRunU (m : WriteMode) (u : Nat → Set Lock) (tr : SATrace sp FGP ro)
-    (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (proposer : Nat → Fin sp.n) (g : Time) : Prop
-    extends HealthyBaseU m u tr H U proposer g where
-  trivial : TrivialFrames tr H
 
 end Consensus.Goldilocks.SA
 

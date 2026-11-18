@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Prefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationDecode
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
-import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReceiptTraversal
 
 public section

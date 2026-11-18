@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SettledFrom
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
@@ -13,10 +12,10 @@ public section
 
 /-! # Goldilocks Healing: the confirmed tip after an honest proposal, the first update
 
-The first part of the helpers of `proposal_confirmed_core_fromU` (`Confirmed`): the late honest
-votes held at a call, `proposal_mem_treeU`, the comparison of honest votes and locks with `P`
-(`lock_compatible_core_fromU`, `liveLock_compatible_core_fromU`) and the first update at
-`t_p + 6Δ` (`first_update_post`, `first_update_recordU`). -/
+The late honest votes held at a call, the results extended by their honest supporters
+(`result_extendedU`) and the first update at `t_p + 6Δ` after an honest proposal `P` of slot `p`
+(`first_update_post`: result `P`, not vetoed, with `P` passing the fast test, so its own fast
+selection, `fastSelect_eq_result`). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -432,34 +431,6 @@ theorem resolutionTime_lt_of {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : Frame
   · omega
   · exact max_lt h1 h2
 
-/-- **The proposal is relayed**: an honest proposal `P` of slot `p` (with `ḡ ≤ t_p`) is in the
-frame of every honest call from `t_p + Δ` on, accepted before `t_p + Δ`, with the unlock given. -/
-theorem proposal_mem_treeU
-    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
-    (hpH : proposer p ∈ H) (hP : HonestProposalU u tr (proposer p) p P)
-    (hpg : gbar g ≤ sp.ts p) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ℓ)
-    (ht : sp.ts p + sp.Δ ≤ tr.time j) :
-    P ∈ ℓ.frame.tree ∧ ∃ ka ≤ j, tr.AcceptAt y ka P ∧ tr.time ka < sp.ts p + sp.Δ := by
-  have hr := hS.run.localRun
-  obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, j₀, -, ⟨ℓ₀, hc₀, hcall₀⟩, htj₀⟩ := hP
-  obtain ⟨hΦ₀, hΦ₀U⟩ := frameIn_of_callAtU hr hpH hc₀
-  have hP₀ := (accept_newU sp hr hpH ⟨ℓ₀, hc₀, hcall₀⟩).1 ℓ₀ hc₀
-  have hF : Anc U ℓ.frame.F P := by
-    rw [trivial_F_eqU hS hy hpH hc hc₀]; exact (hΦ₀.rooted.2 P hP₀).mono hΦ₀U
-  have hmax : max (sp.ts p) (gbar g) = sp.ts p := max_eq_left hpg
-  obtain ⟨ka, hkaj, hacc, hlt⟩ := hS.healthy.relay _ hpH j₀ P ⟨ℓ₀, hc₀, hcall₀⟩
-    (by rw [htj₀]; exact (le_gbar g).trans hpg) y hy j ℓ hc
-    (by
-        rw [htj₀]; have := hS.deadline_le hy j
-            (sp.ts p); rw [hmax] at this; linarith only [ht, this]) hF
-  have hdl := hS.deadline_le hy ka (tr.time j₀)
-  rw [htj₀, hmax] at hdl
-  rw [htj₀] at hlt
-  refine ⟨?_, ka, hkaj, hacc, by linarith only [hlt, hdl]⟩
-  rw [(hS.trivial y hy j ℓ hc).2.2.2]
-  exact Set.mem_insert_of_mem _ ⟨ka, hkaj, hacc⟩
-
 /-! ## Honest votes and comparison with `P` -/
 
 /-- An honest validator is not an equivocator in an honest node's pool of a slot, with the unlock
@@ -490,17 +461,6 @@ private theorem exists_mem_of_majority {n : Nat} {H T W : Set (Fin n)} (hHW : H 
   rw [Set.ncard_union_eq hdisj] at h1
   have h2 : T.ncard ≤ Hᶜ.ncard := Set.ncard_le_ncard fun u hu huH => hno ⟨u, huH, hu⟩
   omega
-
-/-- A block extended by an honest vote of a slot `≥ p` compares with `P` (whose extension by every
-such vote is `hvotes`). -/
-theorem compatible_of_vote {p : Nat} {P : Blk sp.n FGP} (hU : Coherent U)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    {z : Fin sp.n} (hz : z ∈ H) {j : Nat} {e : Em sp FGP} (hv : VoteAt tr z j e)
-    (hps : p ≤ e.msg.slot) {B : Blk sp.n FGP} (hB : VoteExtends U e.msg B) : Compatible U B P := by
-  obtain ⟨Hd, hHd, hHdr, hBHd⟩ := hB
-  obtain ⟨Hd', hHd', hHd'r, hPHd'⟩ := hvotes z hz j e hv hps
-  obtain rfl : Hd = Hd' := hU.1 hHd hHd' (hHdr.trans hHd'r.symm)
-  exact anc_total hU hBHd hPHd'
 
 set_option linter.unusedVariables false in
 -- `HealthyBaseU` bounds the faults by `f < n/2` only; the bound `3f ≤ n − 1` is given.
@@ -548,140 +508,6 @@ theorem result_extended (hS : HealthyBase tr H U proposer g) {s : Nat}
     ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = s ∧ VoteExtends U e.msg C :=
   result_extendedU (hS := hS.toU) (s := s) (hs := hs) (x := x) (hx := hx) (c := c) (ℓ := ℓ)
       (hc := hc) (ht := ht) (C := C) (hC := hC)
-
-/-- **A lock origin of a slot `≥ p` compares with `P`** (`l ≥ p`): an honest fast lock
-through an honest counted vote; an honest slow lock through an honest supporter of its update's
-result (not its fast test), with the unlock given. -/
-theorem origin_compatible_proposalU
-    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
-    {p : Nat} {P : Blk sp.n FGP}
-    (hp : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    {x : Fin sp.n} (hx : x ∈ H) {j s : Nat} {B : Blk sp.n FGP} (hps : p ≤ s)
-    (horig : (∃ CV, FastLockAt tr x j s B CV) ∨ SlowLockAt tr x j s B) : Compatible U B P := by
-  have hr := hS.run.localRun
-  have hU := hr.coherent
-  have hs : gbar g + 4 * sp.Δ ≤ sp.ts s := hp.trans ((ts_le_iff sp).2 (by omega))
-  rcases horig with ⟨CV, hfl⟩ | ⟨ℓ', C, hupd, hC, hB⟩
-  · obtain ⟨z, hz, j', e, hv, hes, hext⟩ :=
-      fastLock_honest_voteU hS.run _ SA.CommitteeP.full hx hfl
-        (SA.cs2_full hS.stock hS.two_faulty_lt)
-    exact compatible_of_vote hU hvotes hz hv (hes ▸ hps) hext
-  · obtain ⟨-, hΦU⟩ := frameIn_of_callAtU hr hx hupd.1
-    have hBC : ℓ'.frame.Anc B C := (deepest_mem hB).1.1.2.2
-    obtain ⟨z, hz, j', e, hv, hes, Hd, hHd, hHdr, hCHd⟩ :=
-      result_extendedU hS.toHealthyBaseU hs hx hupd.1
-        (by rw [hupd.2.2.1]; linarith only [sp.toParams.hΔ]) hC
-    exact compatible_of_vote hU hvotes hz hv (hes ▸ hps)
-      ⟨Hd, hHd, hHdr, (Anc.mono hΦU hBC).trans hCHd⟩
-
-private theorem compatible_down {B L P : Blk sp.n FGP} (hU : Coherent U) (hLB : Anc U L B)
-    (h : Compatible U B P) : Compatible U L P := by
-  rcases h with h | h
-  · exact Or.inl (hLB.trans h)
-  · exact anc_total hU hLB h
-
-/-- **Every stored lock compares with `P`**, at the state before an honest call at a
-time `t ≥ t_{p−1}` (`hset`, above the floor `p`) and, for a call at `t ≥ t_p + 6Δ`, also after
-it, for the locks live at `t`: of a label `< p` by `hset` and the exact slot-`p` votes (a lock
-written by the call has a label `≥ p`); of a label `≥ p` by its origin (at a mode of width
-`k`). -/
-theorem lock_compatible_core_fromU
-    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) (hw : wm.width = sp.k)
-    {p : Nat} {P : Blk sp.n FGP}
-    (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettledFromU u tr H U p (sp.ts p - 4 * sp.Δ))
-    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    (hPU : P ∈ U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat} (htj : sp.ts p + 6 * sp.Δ ≤ tr.time j)
-    {c : Nat} (hcj : c = j ∨ c = j + 1) {l : Lock} (hl : l ∈ (tr.state y c).locks)
-    (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k) {L : Blk sp.n FGP} (hL : L ∈ U)
-    (hLr : L.root = l.block) : Compatible U L P := by
-  have hr := hS.run.localRun
-  have hU := hr.coherent
-  have hΔ := sp.toParams.hΔ
-  have hΘ := Θ_nonneg sp
-  -- labels `≥ p`: by the origin, at any cut
-  have hge : ∀ c' (l' : Lock), l' ∈ (tr.state y c').locks → p ≤ l'.slot → ∀ L' ∈ U,
-      L'.root = l'.block → Compatible U L' P := by
-    intro c' l' hl' hpl L' hL' hL'r
-    cases hf : l'.fast
-    · obtain ⟨j', -, B, hsl, L₁, hL₁, hL₁r, hL₁B⟩ := slow_lock_provenanceU hr
-        (fun _ => SA.voteStart_initial _) hw hy c' l' hl' hf
-      obtain rfl : L₁ = L' := hU.1 hL₁ hL' (hL₁r.trans hL'r.symm)
-      exact compatible_down hU hL₁B
-        (origin_compatible_proposalU hS hp4 hvotes hy hpl (Or.inr hsl))
-    · obtain ⟨j', -, B, CV, hfl, L₁, hL₁, hL₁r, hL₁B⟩ := fast_lock_provenanceU hr
-        (fun _ => voteStart_initial _) hy c' l' hl' hf
-      obtain rfl : L₁ = L' := hU.1 hL₁ hL' (hL₁r.trans hL'r.symm)
-      exact compatible_down hU hL₁B
-        (origin_compatible_proposalU hS hp4 hvotes hy hpl (Or.inl ⟨CV, hfl⟩))
-  -- labels `< p` before the call: `hset` and an honest slot-`p` vote, which is `P`
-  have hlt : ∀ l' ∈ (tr.state y j).locks, l'.slot < p → sp.slot (tr.time j) ≤ l'.slot + sp.k →
-      ∀ L' ∈ U, L'.root = l'.block → Compatible U L' P := by
-    intro l' hl' hpl hlive' L' hL' hL'r
-    obtain ⟨hve, -⟩ := locksSettledFromU_iff.1 hset y hy j (by
-        linarith only [htj, hΔ]) l' hl' hlive' L' hL' hL'r
-    obtain ⟨x, hx⟩ : H.Nonempty :=
-      Set.nonempty_of_ncard_ne_zero (by
-        have := hS.two_faulty_lt
-        have hn : H.ncard + Hᶜ.ncard = sp.n := by
-          rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-        omega)
-    obtain ⟨i, e, hv, hes⟩ := honest_votes_in_slotU hS.toHealthyBaseU hp4 x hx
-    obtain ⟨Hd, hHd, hHdr, hLHd⟩ := votesExtendFrom_iff.1 hve x hx i e hv (by omega) hes.ge
-    obtain rfl : Hd = P := hU.1 hHd hPU (hHdr.trans (hexact x hx i e hv hes))
-    exact Or.inl hLHd
-  by_cases hpl : p ≤ l.slot
-  · exact hge c l hl hpl L hL hLr
-  rw [not_le] at hpl
-  rcases hcj with rfl | rfl
-  · exact hlt l hl hpl hlive L hL hLr
-  -- after the call: a lock of a label `< p` sits below one held before (no write of it)
-  have hsl : p + 1 ≤ sp.slot (tr.time j) := by
-    have := (ts_le_iff_le_slot sp (hr.time_nonneg j) (p + 1 : Nat)).1
-      (by simp only [SAParams.ts] at htj ⊢; push_cast; linarith only [htj, hΔ])
-    exact_mod_cast this
-  rcases lock_provenance_fromU hr hy (Nat.le_succ j) l hl with
-    ⟨l', hl', hs', hb⟩ | ⟨j', hj1, hj2, B, hw, -⟩
-  · rcases hb with rfl | ⟨L₁, hL₁, hL₁r, L', hL', hL'r, hL₁L'⟩
-    · exact hlt l' hl' hpl hlive L hL hLr
-    · obtain rfl : L₁ = L := hU.1 hL₁ hL (hL₁r.trans hLr.symm)
-      exact compatible_down hU hL₁L' (hlt l' hl' (hs' ▸ hpl) (hs' ▸ hlive) L' hL' hL'r)
-  · obtain rfl : j' = j := by omega
-    exfalso
-    rcases hw with ⟨CV, ℓ', A, -, hsl', -⟩ | ⟨ℓ', -, -, hu, -⟩
-    · omega
-    · have h1 : sp.ts l.slot + 6 * sp.Δ < sp.ts p + 6 * sp.Δ := by
-        have := (ts_lt_iff sp).2 (show (l.slot : Int) < p by exact_mod_cast hpl)
-        linarith only [this]
-      linarith only [htj, hu, h1]
-
-/-- **Every live lock block compares with `P`** at the state before (for a call at
-`t ≥ t_{p−1}`) or after (for a call at `t ≥ t_p + 6Δ`) an honest call, read at that call's frame
-and time, with the locks settled above the floor `p` (at a mode of width `k`). -/
-theorem liveLock_compatible_core_fromU
-    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) (hw : wm.width = sp.k)
-    {p : Nat} {P : Blk sp.n FGP}
-    (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettledFromU u tr H U p (sp.ts p - 4 * sp.Δ))
-    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    (hPU : P ∈ U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt y j ℓ) (htj : sp.ts p + 6 * sp.Δ ≤ tr.time j) {c : Nat}
-    (hcj : c = j ∨ c = j + 1) :
-    ∀ L ∈ liveLockBlocks sp (tr.state y c).locks ℓ.frame (tr.time j), Compatible U L P := by
-  have hr := hS.run.localRun
-  have hU := hr.coherent
-  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAtU hr hy hc
-  rintro L ⟨hLt, l', ⟨l, hl, B, hB, hBr, hlive, rfl⟩, hLr⟩
-  have hva : ℓ.frame.Anc (ℓ.frame.viableAncestor B) B := anc_viableAncestor ℓ.frame B
-  obtain rfl : L = ℓ.frame.viableAncestor B :=
-    hΦ.coherent.1 hLt (mem_of_anc hva hB) hLr.symm
-  exact compatible_down hU (hva.mono hΦU)
-    (lock_compatible_core_fromU hS hw hp4 hset hexact hvotes hPU hy htj hcj hl
-      (le_trans hlive ((locksWF_stateU hr (fun _ => voteStart_initial _) hy c).cap hl)) (L := B)
-      (hΦU hB) hBr)
 
 /-! ## The first update at `t_p + 6Δ` -/
 
@@ -838,33 +664,6 @@ theorem fastSelect_eq_result {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : Frame
   have hPD := anc_deepest hΦ hS (fun B hB C hC => anc_total hΦ.coherent hB.1.2.2 hC.1.2.2) hD P hPS
   unfold fastSelect
   rw [hD, Anc.antisymm hΦ.coherent hDP hPD]
-
-/-- **The first update repairs the record**: at an honest node's tick at `t_p + 6Δ`, with every
-honest slot-`p` vote exactly `P` and every live lock comparing with `P`, the slot-`p` result is `P`
-and is not vetoed (`first_update_post`), so the record after the tick extends `P`. With the unlock
-given. -/
-theorem first_update_recordU
-    {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
-    (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt y k ℓ) (hcall : ℓ.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ)
-    (hPt : P ∈ ℓ.frame.tree)
-    (hlocks : ∀ L ∈ liveLockBlocks sp (tr.state y k).locks ℓ.frame (tr.time k),
-      Compatible U L P) :
-    ∃ R ∈ ℓ.frame.tree, R.root = (tr.post k).latestConfirmed ∧ ℓ.frame.Anc P R := by
-  obtain ⟨hconf, hnv, -, hpost⟩ :=
-    first_update_postU hS hp4 hexact hy hc hcall htk hPt hlocks
-  rw [hpost, updateConfirmationM_field SAState.latestConfirmed (fun _ _ => rfl)]
-  unfold updateConfirmation
-  dsimp only
-  rw [hconf]
-  dsimp only
-  simp only [hnv, ↓reduceIte]
-  unfold updateLatestConfirmed
-  split_ifs with hanc
-  · exact hanc
-  · exact ⟨P, hPt, rfl, Relation.ReflTransGen.refl⟩
 
 end Consensus.Goldilocks.SA
 

@@ -127,17 +127,6 @@ theorem acProposal_eq_acProposalWith (A : SAState sp.n) (Φ : Frm sp.n FGP) (t :
         (View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤))) A Φ t := by
   rfl
 
-/-- The payload of `ac_proposal` does not depend on the locks after its unlock. -/
-theorem acProposal_payload_of_with {L : Set Lock} {A : SAState sp.n} {Φ : Frm sp.n FGP}
-    {t : Time} {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
-    (h : (acProposalWith sp L A Φ t).2 = some (d, pay)) :
-    ∃ d', (acProposal sp A Φ t).2 = some (d', pay) := by
-  rw [acProposal_eq_acProposalWith]
-  unfold acProposalWith at h ⊢
-  split_ifs at h ⊢ with hj
-  simp only [Option.some.injEq, Prod.mk.injEq] at h
-  exact ⟨_, by rw [← h.2]⟩
-
 /-! ### The handlers at the parent's mode -/
 
 theorem tryVoteWithM_parent :

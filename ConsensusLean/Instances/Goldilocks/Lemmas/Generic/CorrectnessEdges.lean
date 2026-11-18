@@ -5,7 +5,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ChainRepresentat
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.EngineEdges
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.CorrectLocal
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.FG
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.SyncUntil
 
 public section
 

@@ -23,8 +23,8 @@ cut) on its FG projection; the run premises (`Sync`, `f < h_t`) are the run's (`
 bridges them to the AC projection's). "The state of `y` at `t`" is `y`'s state before the first
 cut of the run at a time `≥ t` (`FirstCutFrom`).
 
-C1.1 itself is retired as a milestone statement; its premises (`PersistPremises`) and its
-conclusion vocabulary (`CutScopeAt`, `PersistAt`) stay, as vocabulary that downstream code reads.
+C1.1 itself is retired as a milestone statement; its premises (`PersistPremises`) stay, as
+vocabulary that downstream code reads.
 
 Statements only: no proofs here. -/
 
@@ -117,48 +117,6 @@ structure PersistPremises (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (ΔF
   clean : Clean tr H s m B
   /-- The committee is population-sized (`committeeSize = n`). -/
   stock : sp.committeeSize = sp.n
-
-structure CutScopeAt (y : Fin sp.n) (B : SA.Blk sp.n (List (FG.Att sp.n))) (s : Nat) (T : Time) :
-    Prop where
-  /-- (a), (b) at every block `y` accepts in `[t_s, T + Δ)`, or its own proposal at `T + Δ`. -/
-  chains : ∀ i X, tr.AcceptAt y i X → sp.ts s ≤ tr.time i →
-    (tr.time i < T + sp.Δ ∨ (tr.time i = T + sp.Δ ∧ tr.ProposesAt y i X)) →
-    let S := (tr.post i).fg
-    (∀ A' ∈ S.tree, S.Anc A' X → ∀ Jb, S.blocks (S.σ A'.root).J = some Jb →
-      Compatible (tr.HonestBlocks H) Jb B) ∧
-    (¬ Compatible (tr.HonestBlocks H) X B →
-      ∀ Pc, Anc (tr.HonestBlocks H) Pc X → Anc (tr.HonestBlocks H) Pc B →
-        (∀ Q, Anc (tr.HonestBlocks H) Q X → Anc (tr.HonestBlocks H) Q B →
-          Anc (tr.HonestBlocks H) Q Pc) →
-        (S.σ X.root).h ≤ (S.σ Pc.root).h + 1)
-  /-- (c) on `[t_s, T + Δ)`: at every cut of `y` in the interval, and at the end of the interval
-  (`y`'s state before the first cut of the run at a time `≥ T + Δ`, which the votes at `T + Δ`
-  read). -/
-  caches : ∀ k, (tr.IsCall y k ∧ sp.ts s ≤ tr.time k ∧ tr.time k < T + sp.Δ) ∨
-      tr.FirstCutFrom k (T + sp.Δ) →
-    Compatible (tr.HonestBlocks H) (tr.state y k).fg.F B ∧
-      Compatible (tr.HonestBlocks H) (tr.state y k).fg.J B
-  /-- (c) after the cut at `T + Δ` that accepts `y`'s own proposal. -/
-  caches_own : ∀ k X, tr.ProposesAt y k X → tr.time k = T + sp.Δ → tr.AcceptAt y k X →
-    Compatible (tr.HonestBlocks H) (tr.post k).fg.F B ∧
-      Compatible (tr.HonestBlocks H) (tr.post k).fg.J B
-
-/-- **The conclusion of C1.1** for the slot `s' ∈ (s, m]`: (iii) the cut at `T = t_{s'} + Δ`
-for the blocks accepted in `[t_s, t_{s'} + 2Δ)` at every honest node, and for every honest vote
-of slot `s'`: (i) at that vote `B` is in the voter's viable voter block tree or at or below its
-`fc_root`, (ii) the vote extends `B`. Kept for a downstream consumer. -/
-structure PersistAt (B : SA.Blk sp.n (List (FG.Att sp.n))) (s s' : Nat) : Prop where
-  /-- (iii) G1.10 at the scope of C1.1 with `T = t_{s'} + Δ`, at every honest node. -/
-  cut : ∀ y ∈ H, CutScopeAt tr H y B s (sp.ts s' + sp.Δ)
-  /-- (i) viability at every honest vote of slot `s'`: `B` is in the viable voter block tree, or
-  `B ⪯ fc_root` in the block order of the honest blocks (not inside the frame tree, which `B`
-  leaves once `Σ.F` passes it; claims C1.1 (i)). -/
-  viable : ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → e.msg.slot = s' →
-    B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s') ∨
-      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot
-  /-- (ii) every honest vote of slot `s'` extends `B`. -/
-  extends_ : ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s' →
-    SA.VoteExtends (tr.HonestBlocks H) e.msg B
 
 end Consensus.Goldilocks.Compose
 

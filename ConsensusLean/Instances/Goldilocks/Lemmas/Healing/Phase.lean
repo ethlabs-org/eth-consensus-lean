@@ -5,7 +5,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
-import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PhaseMono

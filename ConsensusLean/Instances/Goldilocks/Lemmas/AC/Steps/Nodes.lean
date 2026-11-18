@@ -170,26 +170,6 @@ theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (
               (hhalf := hhalf) (hcarry := hcarry) (hfault := hfault) (hf1 := hf1)
                   (hviab := hviab) (hearlier := hearlier)
 
-/-- **A1.3**, over a run with the unlock given. -/
-theorem next_transferU (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
-    (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n)
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) (K : CommitteeDict sp.n)
-    (hP : CommitteeP K tr H) (hT : CommitteeT K tr H)
-    (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) (m : Nat) (y : Fin sp.n) (i : Nat)
-    (B : Blk sp.n FGP) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (e : Em sp FGP)
-    (hy : y ∈ H) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = m + 1)
-    (hall : ∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = m → VoteExtends U e'.msg B)
-    (hhalf : sp.committeeSize ≤
-      2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard)
-    (hcarry : CarryAt tr U y i e m
-      {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m})
-    (hfault : FaultBoundK K m tr H (tr.time i))
-    (hf1 : 2 * (K.committee (m + 1) ∩ Hᶜ).ncard < sp.committeeSize)
-    (hviab : ViableAtVote ℓ e (m + 1) B)
-    (hearlier : EarlierVotesExtend tr H U i (m + 1) B) : VoteExtends U e.msg B :=
-  next_transfer_of_carryU sp hrun K hP hT hsize hy hc hs hall hhalf hcarry hfault hf1 hviab
-    hearlier
-
 /-- **A1.3.** -/
 theorem next_transfer : NextTransfer sp :=
   fun _ _ _ _ _ _ hrun K hP hT hsize _ _ _ _ _ _ hy hc hs hall hhalf hcarry hfault hf1 hviab
@@ -480,23 +460,6 @@ theorem first_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (F
                   (hcarry := hcarry) (hfault := hfault) (hf1 := hf1) (hviab := hviab)
                       (hearlier := hearlier)
 
-/-- **A1.2**, over a run with the unlock given. -/
-theorem first_transferU (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
-    (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n)
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) (K : CommitteeDict sp.n)
-    (hP : CommitteeP K tr H) (hT : CommitteeT K tr H)
-    (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) (s : Nat) (x y : Fin sp.n)
-    (i₀ i : Nat) (B : Blk sp.n FGP) (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro))
-    (e : Em sp FGP) (hx : x ∈ H) (hfl : FastLockAt tr x i₀ s B CV) (hy : y ∈ H)
-    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr)
-    (hcarry : CarryAt tr U y i e s CV) (hfault : FaultBoundK K s tr H (tr.time i))
-    (hf1 : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize)
-    (hviab : ViableAtVote ℓ e (s + 1) B) (hearlier : EarlierVotesExtend tr H U i (s + 1) B) :
-    VoteExtends U e.msg B :=
-  first_transfer_storedU sp hrun K hP hT hsize hx hfl .refl hy hc hs hsync hcarry hfault hf1
-    hviab hearlier
-
 /-- **A1.2.** -/
 theorem first_transfer : FirstTransfer sp :=
   fun _ _ _ _ _ _ hrun K hP hT hsize _ _ _ _ _ _ _ _ _ hx hfl hy hc hs hsync hcarry hfault hf1
@@ -591,7 +554,6 @@ theorem result_transfer : ResultTransfer sp := by
       (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
   · exact he ▸ hCt
   · exact (Anc.mem hcore he).2
-
 
 end Consensus.Goldilocks.SA
 

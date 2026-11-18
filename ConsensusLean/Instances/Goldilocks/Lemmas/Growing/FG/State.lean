@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
-import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutBase
 
 public section
 

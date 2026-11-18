@@ -9,7 +9,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
-import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
 
 public section
 

@@ -57,15 +57,6 @@ def CatchAC (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP
     ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → gbar g + κ ≤ tr.time j → Anc U ℓ.frame.F B →
       ∃ k ≤ j, tr.AcceptAt y k B ∧ tr.time k < gbar g + κ
 
-/-- **Trivial frames**: the frame of every call of an honest `y` is the tree of genesis and the
-blocks `y` has passed to `ac_on_block` (at this cut or earlier), rooted at genesis, with
-`F = fc_root = genesis` and every block a viable head. -/
-def TrivialFrames (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) : Prop :=
-  ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
-    ℓ.frame.F.root = sp.genesisRoot ∧ ℓ.frame.fcRoot = ℓ.frame.F ∧
-    ℓ.frame.viableHeads = ℓ.frame.tree ∧
-    ℓ.frame.tree = insert ℓ.frame.F {B | ∃ k ≤ i, tr.AcceptAt y k B}
-
 /-- `p`'s proposal of slot `s` is the block `P` it makes at `t_s` from `ac_proposal` (claims
 §"Healing: top-level statements", "honest proposal"): its `ac_proposal` at cut `k` at `t_s`
 returns the duty head `d` and the payload `pay`, and `P` has parent `d.head`, slot `s`, proposer
@@ -115,12 +106,6 @@ structure Driven (proposer : Nat → Fin sp.n)
   proposal_first : ∀ y ∈ H, ∀ i j ℓ ℓ', tr.CallAt y i ℓ → tr.CallAt y j ℓ' →
     ℓ'.call = .proposal → tr.time i = tr.time j →
     ((∃ m, ℓ.call = .message m) ∨ ∃ B, ℓ.call = .block B) → j < i
-
-/-- **`Prop(G_p)` over an AC trace**: for every `t ≥ ḡ` there is a slot `p ≥ 1` with
-`t ≤ t_p ≤ t + G_p` whose proposer is honest. -/
-def PropAC (proposer : Nat → Fin sp.n) (H : Set (Fin sp.n)) (g Gp : Time) : Prop :=
-  ∀ t, gbar g ≤ t → ∃ p : Nat, 1 ≤ p ∧ t ≤ sp.ts p ∧ sp.ts p ≤ t + Gp ∧
-    proposer p ∈ H
 
 /-- **A slow lock** of slot `s` on `B`, written at cut `i` of `x`: the update of slot `s` (at
 `t_s + 6Δ`, joined) returns `C` (vetoed or not), and `B` is the deepest block of `C`'s path that

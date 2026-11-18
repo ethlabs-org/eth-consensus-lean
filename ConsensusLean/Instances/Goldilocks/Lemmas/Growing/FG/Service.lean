@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Entries
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.State
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
-import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutBase
 
 public section
 
