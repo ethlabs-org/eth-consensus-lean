@@ -9,8 +9,7 @@ In a reachable store, `Σ.F` other than genesis is finalized by the state of a s
 in the tree (`F_lt_finalizer`): the finality votes for the pair `(h_F, F)` are counted only in
 blocks of a greater height, which strictly extend `F`. (`Σ.F = Σ.J` itself is
 possible away from genesis: a chain state can finalize its latest justified pair, and
-`update_finality` then moves `Σ.F` onto `Σ.J`.) Used by `Compose/Service/Held`
-(`updater_F_anc_proposal_before`).
+`update_finality` then moves `Σ.F` onto `Σ.J`.) Used by `Growing/Sleepy/Service/Held`.
 
 The proof: a state's finalization is its parent's or one of its parent's pending pairs, all
 roots of the chain below the block; that chain's blocks are at lower slots, so a block other

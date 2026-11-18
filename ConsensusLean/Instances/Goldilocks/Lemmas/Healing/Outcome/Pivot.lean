@@ -7,8 +7,13 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.RootFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.CastEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.SuffixBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
@@ -18,11 +23,11 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProposal
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
@@ -37,11 +42,11 @@ public section
 
 /-! # Goldilocks Healing: the pivot of an honest ready proposal after the drain (interface)
 
-Post-reset `Compose.pivot_before` (A1.7) for `ready_unanimous`: an honest ready
-proposal `P` at `t_u ≥ R` has duty head `Q = P.parent`. Under reset premises, `Catch(2Δ)`
-and three OPEN compatibility/support suppliers, its walk contains `D` with a viable
-path to `Q`. Each honest slot-`u` voter whose earlier honest slot-`u` votes are `P` walks
-through `P` or that path. Voters need not reach the proposer's own unlocked anchor.
+The post-reset pivot (A1.7) for `ready_unanimous`: an honest ready proposal `P` at `t_u ≥ R` has
+duty head `Q = P.parent`. Under reset premises, `Catch(2Δ)` and three OPEN compatibility/support
+suppliers, its walk contains `D` with a viable path to `Q`. Each honest slot-`u` voter whose earlier
+honest slot-`u` votes are `P` walks through `P` or that path. Voters need not reach the proposer's
+own unlocked anchor.
 
 The proof replaces Sleepy old origins with `OldSrc u`, HR.4 high origins before `t_u`:
 * HR.4 (R3) puts every old source below every honest slot-`u` vote;

@@ -4,8 +4,13 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundati
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.SuffixBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
@@ -13,11 +18,11 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProposal
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin

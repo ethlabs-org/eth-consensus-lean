@@ -2,7 +2,19 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.SuffixBase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.QuerySlot

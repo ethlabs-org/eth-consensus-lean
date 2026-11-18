@@ -20,12 +20,12 @@ public section
 
 /-! # Goldilocks under `Sleepy`: the old origins of a slot and the proposal's anchor facts
 
-The run facts the pivot of an honest proposal (`Compose/Service/Pivot`) builds on: walks and
-anchors of a frame, the old origins of slot `s` (`OldOrigin`), the honest genesis root, the
-restarts of a proposer (`proposal_call_restarts`), no honest optimistic check of slot `s` before
-the proposal (`proposal_no_optimistic_of`), the slots of the proposer's stored locks
-(`proposal_locks_slot_of`), and `fc_root` below an old origin from the row sources
-(`fcRoot_of_rows_of`, `vote_fcRoot_old_of`). -/
+The run facts the growing-fault pivot of an honest proposal builds on: walks and anchors of a frame,
+the old origins of slot `s` (`OldOrigin`), the honest genesis root, the restarts of a proposer
+(`proposal_call_restarts`), no honest optimistic check of slot `s` before the proposal
+(`proposal_no_optimistic_of`), the slots of the proposer's stored locks (`proposal_locks_slot_of`),
+and `fc_root` below an old origin from the row sources (`fcRoot_of_rows_of`, `vote_fcRoot_old_of`).
+-/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -147,29 +147,6 @@ theorem oldOrigin_iff {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {s : Nat
     {O : SA.Blk sp.n (List (FG.Att sp.n))} : OldOrigin tr H s O ↔
       ∃ x ∈ H, ∃ k m CV, (SA.ResultAt tr.projAC x k m O CV ∧ m + 2 ≤ s) ∨
         (SA.OptimisticLockAt tr.projAC x k m O CV ∧ m + 1 ≤ s) := Iff.rfl
-
-/-- Old origins are within every horizon containing the slot's proposal time. -/
-theorem OldOrigin.within (hrun : GoldilocksRun proposer dg H tr)
-    {s : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))} {b : Time}
-    (h : OldOrigin tr H s O) (hb : sp.ts s ≤ b) :
-    ∃ m < s, OriginWithin tr H O m b := by
-  obtain ⟨x, hx, k, m, CV, ⟨hR, hm⟩ | ⟨hO, hm⟩⟩ := oldOrigin_iff.1 h
-  · refine ⟨m, by omega, originWithin_iff.2 ⟨x, hx, k, CV, ?_, Or.inl hR⟩⟩
-    obtain ⟨ℓ, hu, -⟩ := hR
-    have ht : tr.time k = sp.ts m + 6 * sp.Δ := hu.2.2.1
-    have hs : (m : Int) + 2 ≤ s := by exact_mod_cast hm
-    have hΔ := sp.toParams.hΔ
-    simp only [SAParams.ts] at hb ht
-    linarith only [hb, ht, sp.toParams.hΔ, mul_le_mul_of_nonneg_left hs sp.toParams.hΔ.le]
-  · refine ⟨m, by omega, originWithin_iff.2 ⟨x, hx, k, CV, ?_, Or.inr hO⟩⟩
-    obtain ⟨ℓ, A, _, hs, _⟩ := hO
-    change sp.slot (tr.time k) = m at hs
-    have ht : tr.time k < sp.ts s := by
-      by_contra ht
-      have hle := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg k) (s : Int)).1 (le_of_not_gt ht)
-      rw [hs] at hle
-      omega
-    exact ht.le.trans hb
 
 /-- An honest block with the genesis root is below every honest block. -/
 theorem honest_genesis_root_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)

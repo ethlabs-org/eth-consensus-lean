@@ -103,8 +103,7 @@ theorem honest_batch_at_update_from {ini} (hrun : Growing.GoldilocksRun proposer
 `a ≤ t_s` and `a + κ ≤ t_s + 2Δ`): at the update of slot `s` of a node honest then, through `b`,
 a slot-`s` vote of a node honest at its vote and still honest at the update, whose head `Q` (a
 block held while honest) is above the update's `Σ.F`, is in the pool, resolved before
-`t_s + 2Δ`, with `Q` in the frame (the static `honest_vote_at_update_before` on the prefix through
-the update). -/
+`t_s + 2Δ`, with `Q` in the frame (read on the prefix through the update). -/
 theorem honest_vote_at_update_from {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {y : Fin sp.n}

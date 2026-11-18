@@ -22,7 +22,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-! ### Old sources -/
 
 /-- **The old sources of slot `u`**: the HR.4 high origins written before `t_u` (the post-reset
-counterpart of `Compose.pivot_before`'s old origins; their labels are below `u`). -/
+counterpart of the old origins of the A1.7 pivot; their labels are below `u`). -/
 def OldSrc (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time) (u : Nat)
     (O : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∃ (x : Fin sp.n) (i j : Nat), HighOrigin tr H g x i j O ∧ tr.time i < sp.ts u

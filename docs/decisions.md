@@ -147,10 +147,9 @@ detail in `TRUST.md`.
   `Unforgeable`'s earlier send may be a delivery.
   - Reason: the protocol texts read an admission or a vote cast at a receipt as an instantaneous send ("the network
     relays each accepted object"; relay uses the acceptance time, also for an asleep receiver), the claims' proofs
-    A1.2/C1.1 (`writer_pool`), A1.3 (`fastLock_same_slot`), A1.7 (`honest_vote_at_update_before`) and the Sleepy
-    invariant rely on it, and model runs showed that release at the next awake tick, or even one unit late, breaks
-    R.1/S1 under a sleeping admitter, while delivery-time release had no violation. Persistence across sleep alone is
-    not enough.
+    A1.2/C1.1 (`writer_pool`), A1.3 (`fastLock_same_slot`), A1.7 and the Sleepy invariant rely on it, and model
+    runs showed that release at the next awake tick, or even one unit late, breaks R.1/S1 under a sleeping
+    admitter, while delivery-time release had no violation. Persistence across sleep alone is not enough.
   - Rejected: weakening `SyncOn`/`SyncAC` to the sender's first awake time (the proofs cannot absorb it), a
     gossip-only release at deliveries (a vote cast at a receipt would still wait), and votes carrying their head
     block (a spec change for an engine defect).

@@ -1,6 +1,11 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.SuffixBase
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
@@ -17,7 +22,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Reach
@@ -28,7 +33,7 @@ public section
 
 /-! # Goldilocks under `Sleepy`: the suffix of the proposal walk under windowed service
 
-The core of `Compose/Service/Suffix`, generic in the service start. The leaves read the service as
+The suffix steps, generic in the service start. The leaves read the service as
 `SuffixService` (the AC service window from a start `a₀` with the catch-up of older acceptances
 before `a₀ + κ ≤ t_{s−1}`), and the voter's facts at `Q` (its `fc_root` below `Q`, its head height
 floor at most the height of every block of its tree above `Q`) as premises:
@@ -40,8 +45,7 @@ floor at most the height of every block of its tree above `Q`) as premises:
 * `head_slot_lt`, `vote_floor_le_of`: the duty head is below slot `s`, and the head height floor at
   an honest vote is at most the height of every block above the old origins.
 
-`Compose/Service/Suffix` derives its whole-history forms from these at `a₀ = κ = 0`, and the
-growing-fault forms apply them on a prefix. -/
+The growing-fault forms apply them on a prefix. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -369,8 +373,8 @@ omit hsl hpj hcall hd hti hsD hDQ hviab in
 ancestor of `Q` (so of `P`) is in the voter's viable voter block tree. The voter holds `P`
 (`voter_holds_proposal_before`), and `C ⪯ P` extends `fc_root` (below the voter's anchor, below
 `X`), so `C` is in the voter block tree as an ancestor of the slot-`s` block `P`; and `P` is a
-viable head of the voter: every old origin is below `Q` (`proposal_walk_passes_old_before`), so the
-floor at the vote is at most the height of `P` (`vote_floor_le_of`). -/
+viable head of the voter: every old origin is below `Q`, so the floor at the vote is at most the
+height of `P` (`vote_floor_le_of`). -/
 private theorem winner_voter_tree_before {a₀ κ b : Time}
     (hsync : SuffixService H tr a₀ κ b s) (hjb : tr.time j ≤ b)
     (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocks H) d.head B →
@@ -787,8 +791,7 @@ theorem old_child_ineligible_of {a₀ κ b : Time}
 end Leaves
 
 /-- **The suffix** under the suffix service from `a₀` with its catch-up (`SuffixService`), given
-the voter's head height floor at most the height of every block of its tree above `Q`
-(`suffix_agree_before` is the form from `0`). -/
+the voter's head height floor at most the height of every block of its tree above `Q`. -/
 theorem suffix_agree_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini}
     (hrun : GoldilocksRun proposer dg H tr ini)
@@ -849,8 +852,7 @@ theorem suffix_agree_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 
 /-- **`P` is in the voter's viable voter block tree** under the suffix service from `a₀` with its
 catch-up (`SuffixService`), given the voter's `fc_root` below `Q` and its head height floor at most
-the height of every block of its tree above `Q` (`proposal_at_voter_before` is the form from
-`0`). -/
+the height of every block of its tree above `Q`. -/
 theorem proposal_at_voter_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini}
     (hrun : GoldilocksRun proposer dg H tr ini)

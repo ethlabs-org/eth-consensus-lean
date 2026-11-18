@@ -1,7 +1,19 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.RootBound
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalPasses
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.SuffixBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 
 public section
 

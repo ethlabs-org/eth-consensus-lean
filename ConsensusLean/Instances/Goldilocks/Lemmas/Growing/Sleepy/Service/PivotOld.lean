@@ -1,6 +1,12 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
