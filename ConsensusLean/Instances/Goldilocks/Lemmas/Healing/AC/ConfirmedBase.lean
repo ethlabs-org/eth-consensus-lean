@@ -16,7 +16,7 @@ public section
 The first part of the helpers of `proposal_confirmed_core_fromU` (`Confirmed`): the late honest
 votes held at a call, `proposal_mem_treeU`, the comparison of honest votes and locks with `P`
 (`lock_compatible_core_fromU`, `liveLock_compatible_core_fromU`) and the first update at
-`t_p + 6Δ` (`first_update_post`, `first_update_record`). -/
+`t_p + 6Δ` (`first_update_post`, `first_update_recordU`). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -396,7 +396,7 @@ theorem late_vote_held_of_frameU
   · exact hbs
   · rw [hpost]; exact hbs
 
-/-- **A late honest batch** (also for H.2 (ii)): for a slot `s ≥ r` and an honest call at a time
+/-- **A late honest batch**: for a slot `s ≥ r` and an honest call at a time
 `≥ t_s + 2Δ` whose `Φ.F` the vote's head extends, every honest slot-`s` vote is held, with its
 head in the call's frame (of slot at most `s`), and both its stamp and its head's are before
 `t_s + 2Δ`, before and after the call. -/
@@ -839,7 +839,10 @@ theorem fastSelect_eq_result {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : Frame
   unfold fastSelect
   rw [hD, Anc.antisymm hΦ.coherent hDP hPD]
 
-/-- `first_update_record` with the unlock given. -/
+/-- **The first update repairs the record**: at an honest node's tick at `t_p + 6Δ`, with every
+honest slot-`p` vote exactly `P` and every live lock comparing with `P`, the slot-`p` result is `P`
+and is not vetoed (`first_update_post`), so the record after the tick extends `P`. With the unlock
+given. -/
 theorem first_update_recordU
     {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
@@ -862,24 +865,6 @@ theorem first_update_recordU
   split_ifs with hanc
   · exact hanc
   · exact ⟨P, hPt, rfl, Relation.ReflTransGen.refl⟩
-
-/-- **The first update repairs the record**: at an honest node's tick at `t_p + 6Δ`, with
-every honest slot-`p` vote exactly `P` and every live lock comparing with `P`, the slot-`p`
-result is `P` and is not vetoed (`first_update_post`), so the record after the tick extends
-`P`. -/
-theorem first_update_record
-    (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
-    (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt y k ℓ) (hcall : ℓ.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ)
-    (hPt : P ∈ ℓ.frame.tree)
-    (hlocks : ∀ L ∈ liveLockBlocks sp (tr.state y k).locks ℓ.frame (tr.time k),
-      Compatible U L P) :
-    ∃ R ∈ ℓ.frame.tree, R.root = (tr.post k).latestConfirmed ∧ ℓ.frame.Anc P R :=
-  first_update_recordU (hS := hS.toU) (p := p) (P := P) (hp4 := hp4) (hexact := hexact) (y := y)
-      (hy := hy) (k := k) (ℓ := ℓ) (hc := hc) (hcall := hcall) (htk := htk) (hPt := hPt)
-          (hlocks := hlocks)
 
 end Consensus.Goldilocks.SA
 

@@ -43,7 +43,8 @@ private theorem lastWake_cases (y : Fin sp.n) : ∀ c, tr.lastWake y c = ⊥ ∨
       · exact Or.inl h'
       · exact Or.inr ⟨k, hk.trans (Nat.le_succ c), hrk, h'⟩
 
-/-- `HealthyBase.deadline_le` with the unlock given. -/
+/-- Under `Healthy(g)`, the delivery deadline of an object of time `τ` at an honest node is at most
+`max(τ, ḡ) + Δ` (no restart after `ḡ`). With the unlock given. -/
 theorem HealthyBaseU.deadline_le
     {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
     (c : Nat) (τ : Time) : tr.deadline y c τ ≤ max τ (gbar g) + sp.Δ := by
@@ -55,12 +56,6 @@ theorem HealthyBaseU.deadline_le
   · rw [h]
     change max τ (tr.time k) + sp.Δ ≤ _
     linarith [max_le_max_left τ (hS.restart_le hy hrk)]
-
-/-- Under `Healthy(g)`, the delivery deadline of an object of time `τ` at an honest node is at
-most `max(τ, ḡ) + Δ` (no restart after `ḡ`). -/
-theorem HealthyBase.deadline_le (hS : HealthyBase tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
-    (c : Nat) (τ : Time) : tr.deadline y c τ ≤ max τ (gbar g) + sp.Δ :=
-  HealthyBaseU.deadline_le (hS := hS.toU) (y := y) (hy := hy) (c := c) (τ := τ)
 
 /-- Under trivial frames, `Φ.F` is the same block at every honest call, with the unlock given. -/
 theorem trivial_F_eqU

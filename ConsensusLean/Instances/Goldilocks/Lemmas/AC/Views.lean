@@ -176,14 +176,6 @@ theorem voteDomain_anc_closed {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
   · rw [voteDomain_eq_tree_of_not_viable hv] at hB ⊢
     exact mem_of_anc hX hB
 
-/-- A slot-`s` proposal of the tree that is a viable head is in the viable voter block tree of
-slot `s` (the voter block tree holds the ancestors of a slot-`s` proposal). -/
-theorem proposal_mem_viableTree_voterBlockTree {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
-    (hΦ : FrameOK Φ) {P : Blk sp.n FGP} (hPt : P ∈ Φ.tree) (hPs : P.slot = s)
-    (hPv : P ∈ Φ.viableHeads) : P ∈ Φ.viableTree (voterBlockTree sp A Φ s) :=
-  ⟨⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩, hΦ.fcRoot_anc_viableHeads P hPv, P,
-    ⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩, hPv, .refl⟩
-
 end VoteDomain
 
 end Consensus.Goldilocks.SA

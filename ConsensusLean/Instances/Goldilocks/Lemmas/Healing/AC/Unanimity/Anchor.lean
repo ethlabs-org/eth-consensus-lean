@@ -52,7 +52,9 @@ private theorem anchor_casesU
     · rw [Set.mem_singleton_iff.1 h]
       exact ⟨hΦ.fcRoot_mem, Or.inl hfc⟩
 
-/-- `stored_lock_slot_le` with the unlock given. -/
+/-- A stored lock of an honest node has a slot at most the current one: it was written by
+an optimistic confirmation of its slot or by the update of its slot, at an earlier cut. With the
+unlock given. -/
 theorem stored_lock_slot_leU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) {l : Lock} (hl : l ∈ (tr.state y i).locks) :
@@ -64,13 +66,6 @@ theorem stored_lock_slot_leU
   · have : (l.slot : Int) ≤ sp.slot (tr.time j) :=
       (ts_le_iff_le_slot sp (hr.time_nonneg j) _).1 (by rw [htj]; linarith [sp.toParams.hΔ])
     omega
-
-/-- A stored lock of an honest node has a slot at most the current one: it was written by an
-optimistic confirmation of its slot or by the update of its slot, at an earlier cut. -/
-theorem stored_lock_slot_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
-    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) {l : Lock} (hl : l ∈ (tr.state y i).locks) :
-    l.slot ≤ sp.slot (tr.time i) :=
-  stored_lock_slot_leU (hr := hr.toU) (y := y) (hy := hy) (i := i) (l := l) (hl := hl)
 
 /-- The proposal head and every honest vote extend `Φ.F` (genesis) of an honest call, with the
 unlock given. -/

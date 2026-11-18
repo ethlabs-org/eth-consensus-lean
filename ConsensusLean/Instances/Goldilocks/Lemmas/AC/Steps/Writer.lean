@@ -12,7 +12,7 @@ Under `Sync[t_s, τ]`, every slot-`s` vote that an honest voter `y` of slot `s +
 vote at `τ ≤ t_s + 5Δ` was admitted (and so forwarded) at a time in `[t_s, τ]`, and an honest
 writer `X` whose update of slot `s` runs at `t_s + 6Δ` (joined) processed it before: it is in
 `X`'s pool, or `X`'s two-vote cap refused it and the pool holds two distinct votes of its
-validator (`writer_pool`). A slot-`s` vote of `y`'s merged view is in `y`'s pool, or carried by a
+validator (`writer_poolU`). A slot-`s` vote of `y`'s merged view is in `y`'s pool, or carried by a
 slot-`(s+1)` block that `y` accepted before its vote, whose receipt admitted the vote or refused
 it for two other held votes of its validator (`writer_merged`, A1.8's condition (d)). -/
 
@@ -256,7 +256,7 @@ private theorem writer_merged_of_sync {ini} (hrun : ACRun proposer tr H U ini) {
       (hupd := hupd) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc) (hs := hs)
           (hsync := hsync)
 
-/-- `writer_pool` with the unlock given. -/
+/-- **The writer's pool, for the voter's pool**, with the unlock given. -/
 theorem writer_poolU
     {u : Nat → Set Lock} {ini} (hrun : ACRunU wm u proposer tr H U ini) {X : Fin sp.n} (hX : X ∈ H)
     {i₀ s : Nat}
@@ -268,20 +268,6 @@ theorem writer_poolU
     ∀ v ∈ (tr.state y (k + 1)).pool s, v ∈ (tr.state X i₀).pool s ∨
       v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} :=
   writer_pool_of_syncU hrun hX hupd hy hc hs (Or.inl hsync) hk
-
-/-- **The writer's pool, for the voter's pool.** -/
-theorem writer_pool {ini} (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} (hX : X ∈ H)
-    {i₀ s : Nat}
-    {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr) {k : Nat}
-    (hk : k ≤ i) :
-    ∀ v ∈ (tr.state y (k + 1)).pool s, v ∈ (tr.state X i₀).pool s ∨
-      v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} :=
-  writer_poolU (hrun := hrun.toU) (X := X) (hX := hX) (i₀ := i₀) (s := s) (ℓX := ℓX)
-      (hupd := hupd) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc) (hs := hs)
-          (hsync := hsync) (k := k) (hk := hk)
 
 /-- `writer_merged` with the unlock given. -/
 theorem writer_mergedU

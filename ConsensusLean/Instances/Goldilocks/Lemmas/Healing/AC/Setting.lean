@@ -358,10 +358,6 @@ namespace HealthyBase
 variable (hS : HealthyBase tr H U proposer g)
 include hS
 
-/-- An honest node is awake from `ḡ` on. -/
-theorem awake {y : Fin sp.n} (hy : y ∈ H) {t : Time} (ht : gbar g ≤ t) : tr.awake y t :=
-  hS.toU.awake hy ht
-
 /-- `f < n/2` (from `3f ≤ n − 1`). -/
 theorem two_faulty_lt : 2 * Hᶜ.ncard < sp.n :=
   hS.toU.two_faulty_lt
@@ -370,11 +366,6 @@ theorem two_faulty_lt : 2 * Hᶜ.ncard < sp.n :=
 theorem restart_le {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (hk : tr.RestartAt y k) :
     tr.time k ≤ gbar g :=
   hS.toU.restart_le hy hk
-
-/-- An honest node is joined at every `t` with `ḡ ≤ t_{slot(t)−1}`. -/
-theorem joinedAt {y : Fin sp.n} (hy : y ∈ H) {t : Time}
-    (ht : gbar g ≤ sp.ts ((sp.slot t : Int) - 1)) : JoinedAt tr y t :=
-  hS.toU.joinedAt hy ht
 
 /-- The state of an honest node before a cut at a time `t` with `ḡ ≤ t_{slot(t)−1}` is
 joined at `t`. -/
@@ -387,12 +378,6 @@ theorem joined_state {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
 theorem syncAC {a : Time} (ha : gbar g ≤ a) (b : Time) :
     SyncAC (goldilocksSA sp FGP ro) H U a b tr :=
   hS.toU.syncAC ha b
-
-/-- `f < h_t` at every `t` with `ḡ ≤ t_{slot(t)−1}`: every honest node is awake and joined
-there. -/
-theorem faultBound {t : Time} (ht0 : 0 ≤ t) (ht : gbar g ≤ sp.ts ((sp.slot t : Int) - 1)) :
-    FaultBound tr H t :=
-  hS.toU.faultBound ht0 ht
 
 end HealthyBase
 
@@ -433,18 +418,6 @@ theorem goodOrigin_iff {B : Blk sp.n FGP} {j : Nat} : GoodOrigin tr H g B j ↔
 
 theorem votesExtendAfter_iff {j : Nat} {B : Blk sp.n FGP} : VotesExtendAfter tr H U j B ↔
     ∀ x ∈ H, ∀ i e, VoteAt tr x i e → j < e.msg.slot → VoteExtends U e.msg B := Iff.rfl
-
-theorem proposalsExtendAfter_iff {j : Nat} {B : Blk sp.n FGP} :
-    ProposalsExtendAfter tr H U j B ↔
-      ∀ x ∈ H, ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)) (m : Nat) d pay, tr.CallAt x i ℓ →
-        ℓ.call = .proposal → tr.time i = sp.ts m → j < m →
-        (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay) →
-        Anc U B d.head := Iff.rfl
-
-theorem locksSettled_iff {T : Time} : LocksSettled tr H U T ↔
-    ∀ y ∈ H, ∀ i, T ≤ tr.time i → ∀ l ∈ (tr.state y i).locks,
-      sp.slot (tr.time i) ≤ l.slot + sp.k → ∀ L ∈ U, L.root = l.block →
-        VotesExtendAfter tr H U l.slot L ∧ ProposalsExtendAfter tr H U l.slot L := Iff.rfl
 
 /-- At a proposal call, the parent's oracle gives the parent's `ac_proposal`. -/
 theorem acProposalWith_parentOracle {x : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -511,10 +484,6 @@ theorem ProposalsExtendAfter.toU {j : Nat} {B : Blk sp.n FGP}
 
 theorem LocksSettledU.mono {u : Nat → Set Lock} {T T' : Time} (h : LocksSettledU u tr H U T)
     (hT : T ≤ T') : LocksSettledU u tr H U T' :=
-  fun y hy i hi => h y hy i (hT.trans hi)
-
-theorem LocksSettled.mono {T T' : Time} (h : LocksSettled tr H U T) (hT : T ≤ T') :
-    LocksSettled tr H U T' :=
   fun y hy i hi => h y hy i (hT.trans hi)
 
 end Consensus.Goldilocks.SA

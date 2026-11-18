@@ -1,10 +1,10 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Setting
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
 
 public section
 
-/-! # Goldilocks Healing: H.2, `Carry` from the writer, with catch-up -/
+/-! # Goldilocks Healing: `Carry` from the writer, with catch-up -/
 
 namespace Consensus.Goldilocks.SA
 

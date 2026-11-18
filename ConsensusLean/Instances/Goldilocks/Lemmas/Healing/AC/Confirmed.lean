@@ -20,14 +20,14 @@ The helpers of `proposal_confirmed_core_fromU` (up to the first update in `Confi
   call from `t_p + 6Δ` on, before or after it, compares with `P` (labels `< p` by
   `LocksSettled` and the exact slot-`p` votes, labels `≥ p` by their origin's honest supporter,
   `origin_compatible_proposalU`);
-* `first_update_post`, `first_update_record`: the slot-`p` update at `t_p + 6Δ` has result
+* `first_update_post`, `first_update_recordU`: the slot-`p` update at `t_p + 6Δ` has result
   `P`, not vetoed, with `P` passing the fast test, so its own fast selection
   (`fastSelect_eq_result`);
-* `record_step`, `record_extends`: from that update on the record extends `P` (a candidate
+* `record_stepU`, `record_extends`: from that update on the record extends `P` (a candidate
   compares with `P`, and an ancestor candidate is refused);
 * `head_extendsU`: the head extends `P` (the latest view is of a slot `≥ p + 1` whose honest
   batch is held and resolved);
-* `anc_acConfirmed_of_frame` (frame-only, shared with H.2): then the confirmed tip extends
+* `anc_acConfirmed_of_frame` (frame-only): then the confirmed tip extends
   `P`. -/
 
 namespace Consensus.Goldilocks.SA
@@ -192,7 +192,9 @@ theorem optimisticSelect_compatibleU
   · exact Or.inl (anc_tree_of_anc_U hU hΦ hΦU hBt h hPt)
   · exact Or.inr (anc_tree_of_anc_U hU hΦ hΦU hPt h hBt)
 
-/-- `record_step` with the unlock given. -/
+/-- **The record step**: an honest call at `t ≥ t_p + 6Δ` keeps the record extending `P`: every
+candidate it writes (an optimistic selection, or the result of an update of a slot `≥ p`) compares
+with `P`, and a restart keeps the record. With the unlock given. -/
 theorem record_stepU
     {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp : gbar g + 4 * sp.Δ ≤ sp.ts p)
@@ -299,19 +301,6 @@ theorem record_stepU
     rw [hpost]
     exact RecP.of_eq ((restart_state sp) FGP ro y A ℓ.frame t hΦ
       (ht ▸ hr.time_nonneg c)).2.2.1 hR
-
-/-- **The record step**: an honest call at `t ≥ t_p + 6Δ` keeps the record extending `P`:
-every candidate it writes (an optimistic selection, or the result of an update of a slot `≥ p`)
-compares with `P`, and a restart keeps the record. -/
-theorem record_step (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
-    (hp : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    {y : Fin sp.n} (hy : y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt y c ℓ) (htc : sp.ts p + 6 * sp.Δ ≤ tr.time c) (hPt : P ∈ ℓ.frame.tree)
-    (hR : ∃ R ∈ ℓ.frame.tree, R.root = (tr.state y c).latestConfirmed ∧ ℓ.frame.Anc P R) :
-    ∃ R ∈ ℓ.frame.tree, R.root = (tr.post c).latestConfirmed ∧ ℓ.frame.Anc P R :=
-  record_stepU (hS := hS.toU) (p := p) (P := P) (hp := hp) (hvotes := hvotes) (y := y) (hy := hy)
-      (c := c) (ℓ := ℓ) (hc := hc) (htc := htc) (hPt := hPt) (hR := hR)
 
 /-- Under trivial frames the tree of an honest node only grows, with the unlock given. -/
 theorem trivial_tree_monoU
@@ -421,7 +410,10 @@ theorem record_extends (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk
 
 /-! ## The head and the confirmed tip -/
 
-/-- `head_extends_of_frame` with the unlock given. -/
+/-- **The head extends `P`**: at an honest call at `t ≥ t_p + 6Δ` whose
+frame has `P` in its viable tree, the head after the call extends `P`: the latest view is of a
+slot `m ≥ p + 1` whose honest votes are all held and resolved and extend `P` (`n − f > n/2`
+supporters along `P`), and every live lock compares with `P`. With the unlock given. -/
 theorem head_extends_of_frameU
     {uL : Nat → Set Lock} (hS : HealthyBaseU wm uL tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp : gbar g + 4 * sp.Δ ≤ sp.ts p)
@@ -516,23 +508,7 @@ theorem head_extends_of_frameU
     fun X Cx hCx hpx hCxP => isBest_of_majority hΦ hsupp (fun B hB => hB.1) h1
       (Set.subset_univ _) h3 hCx hpx hCxP
 
-/-- **The head extends `P`** (also for H.2 (ii)): at an honest call at `t ≥ t_p + 6Δ` whose frame
-has `P` in its viable tree, the head after the call extends `P`: the latest view is of a slot
-`m ≥ p + 1` whose honest votes are all held and resolved and extend `P` (`n − f > n/2` supporters
-along `P`), and every live lock compares with `P`. -/
-theorem head_extends_of_frame (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
-    (hp : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt y j ℓ) (htj : sp.ts p + 6 * sp.Δ ≤ tr.time j)
-    (hPv : P ∈ ℓ.frame.viableTree ℓ.frame.tree)
-    (hlocks : ∀ L ∈ liveLockBlocks sp (tr.post j).locks ℓ.frame (tr.time j),
-      Compatible U L P) :
-    ℓ.frame.Anc P (acHead sp (tr.post j) ℓ.frame (tr.time j)) :=
-  head_extends_of_frameU (hS := hS.toU) (p := p) (P := P) (hp := hp) (hvotes := hvotes) (y := y)
-      (hy := hy) (j := j) (ℓ := ℓ) (hc := hc) (htj := htj) (hPv := hPv) (hlocks := hlocks)
-
-/-- `head_extends_of_frame` under trivial frames, where every tree block is viable, with the unlock
+/-- `head_extends_of_frameU` under trivial frames, where every tree block is viable, with the unlock
 given. -/
 theorem head_extendsU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
@@ -549,7 +525,7 @@ theorem head_extendsU
     ⟨hPt, by rw [hfc]; exact hΦ.rooted.2 P hPt, P, hPt, by rw [hvh]; exact hPt,
       Relation.ReflTransGen.refl⟩ hlocks
 
-/-- **The confirmed tip from the frame** (also for H.2 (ii)): in a well-formed frame inside a
+/-- **The confirmed tip from the frame**: in a well-formed frame inside a
 coherent `U`, a block `P` below both the effective record (`latest_confirmed` if in the tree, else
 `Φ.F`) and the head is below the confirmed tip, the deepest common ancestor of the two (when `P` is
 not in the tree it is below `Φ.F`, which every block of the tree extends). -/

@@ -11,8 +11,8 @@ public section
 /-! # Goldilocks Healing: the transfer to the proposal duty over any frames
 
 The argument at the votes applies at a proposal; here over an AC run (`ACRun`) with the frame facts
-as premises, so that H.1 (trivial frames, `StandaloneRun`) and H.2 (general frames, `InclusionRun`)
-instantiate the same arguments. An honest `ac_proposal` of slot `σ + 1` (at cut `i` of `x`, label
+as premises, so that the settings with trivial frames and with general frames instantiate the
+same arguments. An honest `ac_proposal` of slot `σ + 1` (at cut `i` of `x`, label
 `ℓ`, frame `Φ = ℓ.frame`) walks the full viable tree with the slot-`σ` votes it holds
 (`vote_view(𝒜, Φ, σ, ⊤)`), from the anchor of its locks after unlocking against that view
 (`acProposal_head`). Its head extends `B` when (`proposal_walk`)
@@ -29,11 +29,11 @@ The premises each setting supplies:
 * **(L)** `HighLocksCompatible` (stored live locks of slot `≥ σ`), and for a result whose supporters
   may be under half, `LowLocksCompatible` (those of slot `< σ`);
 * **(W)** the writer's pool covers the proposer's: every slot-`σ` vote the proposer holds is held
-  by the update's writer, or its validator equivocates there (`writer_pool_proposal` gives it
+  by the update's writer, or its validator equivocates there (`writer_pool_proposalU` gives it
   from `Sync[t_σ, t_σ + 4Δ]`).
 
-Conclusions: `batch_proposal` (A1.3), `update_first_proposal` (A1.2), `optimistic_first_proposal`
-(A1.4 (a)), `result_first_proposal` (A1.8 for an ancestor of a result). -/
+Conclusions: `batch_proposal` (A1.3), `update_first_proposalU` (A1.2), `optimistic_first_proposalU`
+(A1.4 (a)), `result_first_proposalU` (A1.8 for an ancestor of a result). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -569,7 +569,10 @@ theorem pool_sentU
       linarith
     omega
 
-/-- `writer_pool_proposal` with the unlock given. -/
+/-- **The writer's pool covers the proposer's** (W): under `Sync[t_σ, t_σ + 4Δ]`, with the writer's
+restarts up to its update at or before `t_σ` and the proposer's before its proposal before `t_σ`, a
+slot-`σ` vote that an honest proposer of slot `σ + 1` holds is held by an honest node at its update
+of slot `σ`, or that node holds two votes of its validator. With the unlock given. -/
 theorem writer_pool_proposalU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {X : Fin sp.n}
@@ -600,25 +603,6 @@ theorem writer_pool_proposalU
         rw [hts₂] at this; linarith
       rw [hvs]; omega
   rwa [hvs] at this
-
-/-- **The writer's pool covers the proposer's** (W): under `Sync[t_σ, t_σ + 4Δ]`, with the
-writer's restarts up to its update at or before `t_σ` and the proposer's before its proposal
-before `t_σ`, a slot-`σ` vote that an honest proposer of slot `σ + 1` holds is held by an honest
-node at its update of slot `σ`, or that node holds two votes of its validator. -/
-theorem writer_pool_proposal (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
-    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {X : Fin sp.n}
-    (hX : X ∈ H) {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)}
-    (hupd : UpdateAt tr X i₀ σ ℓX) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
-    (ht : tr.time i = sp.ts (σ + 1 : Nat))
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts σ) (sp.ts σ + 4 * sp.Δ) tr)
-    (hrsX : ∀ k ≤ i₀, tr.RestartAt X k → tr.time k ≤ sp.ts σ)
-    (hrsx : ∀ k < i, tr.RestartAt x k → tr.time k < sp.ts σ) :
-    ∀ v ∈ (tr.state x i).pool σ, v ∈ (tr.state X i₀).pool σ ∨
-      v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool σ} :=
-  writer_pool_proposalU (hr := hr.toU) (hini := hini)
-    (X := X) (hX := hX) (i₀ := i₀) (σ := σ) (ℓX := ℓX)
-      (hupd := hupd) (x := x) (hx := hx) (i := i) (ht := ht) (hsync := hsync) (hrsX := hrsX)
-          (hrsx := hrsx)
 
 /-- A counted vote of an honest update of slot `σ` that reaches the proposer (P), under (W), is
 held there without its validator equivocating in the proposal's view, and its head is a block
@@ -723,7 +707,10 @@ theorem result_best_at_proposalU
 
 /-! ## The first proposal after an origin -/
 
-/-- `result_first_proposal` with the unlock given. -/
+/-- **A result transfers to the next proposal** (A1.8 for an ancestor `D ⪯ C` of an honest
+result `C` of slot `σ`, at the proposal duty): under (V) for `D`, (P) for the counted votes,
+(W), (L-high) and (L-low), the head of an honest proposal of slot `σ + 1` extends `D`. With the
+unlock given. -/
 theorem result_first_proposalU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat}
@@ -748,35 +735,11 @@ theorem result_first_proposalU
     (proposal_locksU hrun.localRun hrun.vstart hx hc hV.1 hL (Or.inr hlow) hhigh)
     (result_best_at_proposalU hrun.localRun hrun.vstart hX hres hx hc hV.1 hDC hP hW)
 
-/-- **A result transfers to the next proposal** (A1.8 for an ancestor `D ⪯ C` of an honest result
-`C` of slot `σ`, at the proposal duty): under (V) for `D`, (P) for the counted votes, (W),
-(L-high) and (L-low), the head of an honest proposal of slot `σ + 1` extends `D`. -/
-theorem result_first_proposal (hrun : ACRun proposer tr H U ini)
-    {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat}
-    {C D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hres : ResultAt tr X i₀ σ C CV)
-    (hDC : Anc U D C) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
-    (hslot : sp.slot (tr.time i) = σ + 1) {d : DutyHead sp.n FGP (Payload sp.n)}
-    {pay : Payload sp.n}
-    (hprop : (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay))
-    (hV : D ∈ ℓ.frame.tree ∧
-      (D ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc D ℓ.frame.fcRoot))
-    (hP : ∀ v ∈ CV, HeldAtProposal (tr.state x i) ℓ.frame σ v)
-    (hW : ∀ v ∈ (tr.state x i).pool σ, v ∈ (tr.state X i₀).pool σ ∨
-      v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool σ})
-    (hlow : LowLocksCompatible U (tr.state x i) (tr.time i) σ D)
-    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ D) :
-    Anc U D d.head :=
-  result_first_proposalU (hrun := hrun.toU) (X := X) (hX := hX) (i₀ := i₀) (σ := σ) (C := C)
-      (D := D) (CV := CV) (hres := hres) (hDC := hDC) (x := x) (hx := hx) (i := i) (ℓ := ℓ)
-          (hc := hc)
-      (hL := unlockRel_unlock (frameIn_of_callAt hrun.localRun hx hc).1 _ _ _ _) (hslot := hslot)
-          (d := d) (pay := pay)
-              (hprop := by rwa [acProposal_eq_acProposalWith_slot hslot] at hprop) (hV := hV)
-                  (hP := hP)
-              (hW := hW) (hlow := hlow) (hhigh := hhigh)
-
-/-- `update_first_proposal` with the unlock given. -/
+/-- **A fast update transfers to the next proposal** (A1.2 at the proposal duty): for an honest fast
+lock of slot `σ` on `D` written by the fast test of an update, under (V) for `D`, (P) for the votes
+counted for `D`, (W) and (L-high), the head of an honest proposal of slot `σ + 1` extends `D`: the
+counted validators of `D` are half of the committee and support `D` (they release the older locks),
+and the result's majority leads the walk to `D`. With the unlock given. -/
 theorem update_first_proposalU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat}
@@ -817,32 +780,6 @@ theorem update_first_proposalU
       hhalf⟩) hhigh)
     (result_best_at_proposalU hr hrun.vstart hX ⟨ℓX, hupd, hconf, rfl⟩ hx hc hV.1 hDC'
       (fun v hv => hP v (hCD hv)) hW)
-
-/-- **A fast update transfers to the next proposal** (A1.2 at the proposal duty): for an honest
-fast lock of slot `σ` on `D` written by the fast test of an update, under (V) for `D`, (P) for
-the votes counted for `D`, (W) and (L-high), the head of an honest proposal of slot `σ + 1`
-extends `D`: the counted validators of `D` are half of the committee and support `D` (they
-release the older locks), and the result's majority leads the walk to `D`. -/
-theorem update_first_proposal (hrun : ACRun proposer tr H U ini)
-    {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat}
-    {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfu : FastUpdateAt tr X i₀ σ D CV)
-    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt x i ℓ) (hslot : sp.slot (tr.time i) = σ + 1)
-    {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
-    (hprop : (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay))
-    (hV : D ∈ ℓ.frame.tree ∧
-      (D ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc D ℓ.frame.fcRoot))
-    (hP : ∀ v ∈ CV, HeldAtProposal (tr.state x i) ℓ.frame σ v)
-    (hW : ∀ v ∈ (tr.state x i).pool σ, v ∈ (tr.state X i₀).pool σ ∨
-      v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool σ})
-    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ D) :
-    Anc U D d.head :=
-  update_first_proposalU (hrun := hrun.toU) (X := X) (hX := hX) (i₀ := i₀) (σ := σ) (D := D)
-      (CV := CV) (hfu := hfu) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc)
-      (hL := unlockRel_unlock (frameIn_of_callAt hrun.localRun hx hc).1 _ _ _ _) (hslot := hslot)
-          (d := d) (pay := pay)
-              (hprop := by rwa [acProposal_eq_acProposalWith_slot hslot] at hprop) (hV := hV)
-                  (hP := hP) (hW := hW) (hhigh := hhigh)
 
 /-- The first proposal after an optimistic write is stored, with the unlock given. -/
 theorem optimistic_first_proposal_storedU
@@ -908,7 +845,8 @@ theorem optimistic_first_proposal_storedU
     fun X' Cx hCx hp hCxD => isBest_of_cover hΦ (ofLists_support_subset _ _ _ _)
       (fun _ h => h.1) hcover (cover_sdiff_lt h3) hCx hp hCxD
 
-/-- `optimistic_first_proposal` with the unlock given. -/
+/-- **An optimistic confirmation transfers to the next proposal** (A1.4 (a) at the proposal duty):
+its counted votes supply the whole-pool walk's cover. With the unlock given. -/
 theorem optimistic_first_proposalU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat} {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
@@ -926,28 +864,6 @@ theorem optimistic_first_proposalU
     (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ D)
     (hstock : sp.committeeSize = sp.n) : Anc U D d.head :=
   optimistic_first_proposal_storedU hrun hf hX hopt .refl hx hc hslot hprop hL hV hP hhigh hstock
-
-/-- **An optimistic confirmation transfers to the next proposal** (A1.4 (a) at the proposal
-duty): its counted votes supply the whole-pool walk's cover. -/
-theorem optimistic_first_proposal (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
-    {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat} {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    (hopt : OptimisticLockAt tr X i₀ σ D CV) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
-    (hslot : sp.slot (tr.time i) = σ + 1) {d : DutyHead sp.n FGP (Payload sp.n)}
-    {pay : Payload sp.n}
-    (hprop : (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay))
-    (hV : D ∈ ℓ.frame.tree ∧
-      (D ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc D ℓ.frame.fcRoot))
-    (hP : ∀ v ∈ CV, HeldAtProposal (tr.state x i) ℓ.frame σ v)
-    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ D)
-    (hstock : sp.committeeSize = sp.n) : Anc U D d.head :=
-  optimistic_first_proposalU (hrun := hrun.toU) (hf := hf) (X := X) (hX := hX) (i₀ := i₀) (σ := σ)
-      (D := D) (CV := CV) (hopt := hopt) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc)
-      (hL := unlockRel_unlock (frameIn_of_callAt hrun.localRun hx hc).1 _ _ _ _)
-          (hslot := hslot) (d := d) (pay := pay)
-              (hprop := by rwa [acProposal_eq_acProposalWith_slot hslot] at hprop) (hV := hV)
-                  (hP := hP)
-              (hhigh := hhigh) (hstock := hstock)
 
 end Consensus.Goldilocks.SA
 

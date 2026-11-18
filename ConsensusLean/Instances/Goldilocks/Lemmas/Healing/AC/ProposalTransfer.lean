@@ -16,7 +16,7 @@ supplies their premises under trivial frames:
   (`proposal_acceptU`), so it is in its tree, which is all viable (`TrivialFrames`);
 * (P) the honest slot-`σ` votes (`honest_vote_at_proposalU`) and the counted votes of an update
   (`counted_at_proposalU`) are held by the proposer, with heads in its tree accepted before it;
-* (W) from `Sync` after `ḡ` (`writer_pool_proposal`);
+* (W) from `Sync` after `ḡ` (`writer_pool_proposalU`);
 * (L) the stored locks of slot `≥ σ` are optimistic (`proposal_high_lock`), compatible by the
   votes after the origin and same-slot compatibility for slot `σ`; for a slow origin, the older
   live locks by same-slot compatibility against the writer's saved results.

@@ -11,8 +11,9 @@ public section
 /-! # Goldilocks Healing: the live locks at a vote after a slow origin
 
 For an honest slow lock of slot `s` on `D` (window `≥ r`): at every honest slot-`(s+1)` vote, every
-live lock block after the unlocking is compatible with `D` (`slow_live_locks`), provided the earlier
-honest slot-`(s+1)` votes extend `D`. A live lock of label `j ≤ s` has `j ≥ s − k + 1 ≥ r` and sits
+live lock block after the unlocking is compatible with `D` (`slow_live_locksU`), provided the
+earlier honest slot-`(s+1)` votes extend `D`. A live lock of label `j ≤ s` has
+`j ≥ s − k + 1 ≥ r` and sits
 below an origin of slot `j` (a result or an optimistic confirmation, `fast_lock_provenance`,
 `slow_lock_provenance`), compatible with the writer's own result of slot `j` (same-slot
 compatibility), which extends `D` (`slow_window_results`: the saved results of the slow test, and
@@ -138,7 +139,7 @@ theorem slow_stored_locks
   slow_stored_locksU (hS := hS.toU) (x := x) (hx := hx) (i₀ := i₀) (s := s) (D := D) (hsl := hsl)
       (hs := hs) (y := y) (hy := hy) (i := i) (hi := hi)
 
-/-- `slow_live_locks` with the unlock given. -/
+/-- **The live locks at a vote after a slow origin**, with the unlock given. -/
 theorem slow_live_locksU
     {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
@@ -185,17 +186,6 @@ theorem slow_live_locksU
     have : sp.slot (tr.time j) ≤ sp.slot (tr.time i) :=
       slot_mono sp (hr.time_nonneg j) (hr.time_mono hj.le)
     exact hE _ hvH j hj e' hvote (by omega)
-
-/-- **The live locks at a vote after a slow origin.** -/
-theorem slow_live_locks
-    (hS : HealthyBase tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
-    {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
-    (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
-    (hes : e.msg.slot = s + 1) (hE : EarlierVotesExtend tr H U i (s + 1) D) :
-    ∀ L ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i), Compatible U L D :=
-  slow_live_locksU (hS := hS.toU) (x := x) (hx := hx) (i₀ := i₀) (s := s) (D := D) (hsl := hsl)
-      (hs := hs) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc) (hes := hes) (hE := hE)
 
 /-- Read-point lock comparison needs only stored-lock comparisons at this cut,
 the fault bound, and earlier votes. In particular it does not require whole-run

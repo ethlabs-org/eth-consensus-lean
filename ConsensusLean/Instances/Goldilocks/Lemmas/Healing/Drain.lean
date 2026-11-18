@@ -45,7 +45,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **The live locks at a slot-`(s+1)` vote after an honest slow lock on `D`**, compared with a
 block `B ⪯ D` whose earlier slot-`(s+1)` honest votes extend it (AC/SlowLocks'
-`slow_live_locks`, which compares the exempt label-`(s+1)` optimistic locks with `D` from votes
+`slow_live_locksU`, which compares the exempt label-`(s+1)` optimistic locks with `D` from votes
 extending `D`; here they extend only `B`): a lock of a label `≤ s` sits below a stored lock,
 compatible with the writer's saved result, which extends `D ⪰ B` (`slow_stored_locks`); a lock of
 label `s + 1` is optimistic over three quarters of the committee, whose honest votes extend
