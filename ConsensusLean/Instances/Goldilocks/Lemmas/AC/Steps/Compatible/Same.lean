@@ -38,7 +38,8 @@ selects `D`: the node's restarts were at or before `t_s`; its supporters `S` of 
 half of the committee and more than half of its voters; each has a vote in its pool, extending
 `D`, and does not equivocate there, and that vote was admitted in `[t_s, t_s + 2Δ)`. -/
 private theorem update_sideU
-    {uL : Nat → Set Lock} (hrun : ACRunU wm uL proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H)
+    {uL : Nat → Set Lock} {ini} (hrun : ACRunU wm uL proposer tr H U ini) {Y : Fin sp.n}
+    (hY : Y ∈ H)
     {c s : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastUpdateAt tr Y c s D CV) :
     ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
@@ -80,10 +81,10 @@ private theorem update_sideU
     exact lt_of_lt_of_le hmaj (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard
       ((supporters_antitone sp) FGP ℓ.frame _ s D C (deepest_mem hD).1.1.2.2)))
   · rintro u ⟨-, v, ⟨hvp, hres⟩, rfl, -, R, hR, hRr, hDR⟩
-    have hvs := state_pool_slotU sp hr (fun _ => voteStart_initial _) hY c s v hvp
+    have hvs := state_pool_slotU sp hr hrun.vstart hY c s v hvp
     rw [fwd_iff]
     refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩,
-      admitted_of_heldU hr (fun _ => voteStart_initial _) hY hvs hvp le_rfl
+      admitted_of_heldU hr hrun.vstart hY hvs hvp le_rfl
         fun k _ hst => ?_⟩
     have hst' : (tr.state Y c).voteStamp v < ETime.of (sp.ts s + 2 * sp.Δ) := by
       unfold resolutionTime at hres
@@ -99,7 +100,8 @@ private theorem update_sideU
 
 /-- `fastLock_same_slot` with the unlock given. -/
 theorem fastLock_same_slotU
-    {uL : Nat → Set Lock} (hrun : ACRunU wm uL proposer tr H U) (K : CommitteeDict sp.n)
+    {uL : Nat → Set Lock} {ini} (hrun : ACRunU wm uL proposer tr H U ini)
+    (K : CommitteeDict sp.n)
     (hP : CommitteeP K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {w x : Fin sp.n} {i₀ j : Nat}
     {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hw : w ∈ H) (hfl : FastLockAt tr w i₀ s B CV)

@@ -32,7 +32,8 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-- `result_side` with the unlock given. -/
 private theorem result_sideU
-    {uL : Nat → Set Lock} (hrun : ACRunU wm uL proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H)
+    {uL : Nat → Set Lock} {ini} (hrun : ACRunU wm uL proposer tr H U ini) {Y : Fin sp.n}
+    (hY : Y ∈ H)
         {c s : Nat}
     {C : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hR : ResultAt tr Y c s C CV) :
     ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
@@ -51,10 +52,10 @@ private theorem result_sideU
     unfold confirmationScore at hmaj
     exact hmaj
   · rintro u ⟨-, v, ⟨hvp, hres⟩, rfl, -, R, hR, hRr, hDR⟩
-    have hvs := state_pool_slotU sp hr (fun _ => voteStart_initial _) hY c s v hvp
+    have hvs := state_pool_slotU sp hr hrun.vstart hY c s v hvp
     rw [fwd_iff]
     refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩,
-      admitted_of_heldU hr (fun _ => voteStart_initial _) hY hvs hvp le_rfl
+      admitted_of_heldU hr hrun.vstart hY hvs hvp le_rfl
         fun k _ hst => ?_⟩
     have hst' : (tr.state Y c).voteStamp v < ETime.of (sp.ts s + 2 * sp.Δ) := by
       unfold resolutionTime at hres

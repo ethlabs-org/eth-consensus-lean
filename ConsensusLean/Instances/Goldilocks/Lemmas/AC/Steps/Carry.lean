@@ -461,7 +461,8 @@ theorem carried_cover (hrun : ACRun proposer tr H U ini)
 
 /-- `counted_supporters` with the unlock given. -/
 theorem counted_supportersU
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {X y : Fin sp.n} (hX : X ∈ H)
+    {u : Nat → Set Lock} {ini} (hrun : ACRunU wm u proposer tr H U ini) {X y : Fin sp.n}
+    (hX : X ∈ H)
         (hy : y ∈ H)
     {i₀ i s : Nat} {C D : Blk sp.n FGP} {ℓX ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hcX : tr.CallAt X i₀ ℓX) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) (hCD : Anc U C D)
@@ -490,15 +491,15 @@ theorem counted_supportersU
       v₁.val = w → v₂.val = w → v₁ = v₂ := by
     intro w hw v₁ v₂ h₁ h₂ hv₁ hv₂
     by_contra hne
-    rcases hd v₁ h₁ (merged_vote_slotU hr (fun _ => voteStart_initial _) hy hc v₁ h₁) with
+    rcases hd v₁ h₁ (merged_vote_slotU hr hrun.vstart hy hc v₁ h₁) with
       h₁' | h₁'
-    · rcases hd v₂ h₂ (merged_vote_slotU hr (fun _ => voteStart_initial _) hy hc v₂ h₂) with
+    · rcases hd v₂ h₂ (merged_vote_slotU hr hrun.vstart hy hc v₂ h₂) with
         h₂' | h₂'
       · exact hw ⟨v₁, h₁', v₂, h₂', hne, hv₁, hv₂⟩
       · exact hw (hv₂ ▸ h₂')
     · exact hw (hv₁ ▸ h₁')
   rintro w ⟨v, ⟨hvp, hvw, hvres, hvanc⟩, rfl⟩
-  have hvs : v.slot = s := state_pool_slotU sp hr (fun _ => voteStart_initial _) hX i₀ s v hvp
+  have hvs : v.slot = s := state_pool_slotU sp hr hrun.vstart hX i₀ s v hvp
   -- the head is the block of `X`'s tree that the vote resolves on, of slot at most `s`
   obtain ⟨Hd, hHd, hHdr, hHds⟩ : ∃ Hd ∈ ℓX.frame.tree, Hd.root = v.head ∧ Hd.slot ≤ v.slot := by
     unfold resolutionTime at hvres

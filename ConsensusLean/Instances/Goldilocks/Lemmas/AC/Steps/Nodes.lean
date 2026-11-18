@@ -181,7 +181,7 @@ theorem next_transfer : NextTransfer sp :=
 theorem optimistic_transfer_storedU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-    (hrun : ACRunU wm u proposer tr H U) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
+    {ini} (hrun : ACRunU wm u proposer tr H U ini) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
@@ -203,7 +203,7 @@ theorem optimistic_transfer_storedU
       exact h.1.2
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_ancU hr (fun _ => voteStart_initial _) hy hc
+  have hdomA := voteDomain_ancU hr hrun.vstart hy hc
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -228,12 +228,12 @@ theorem optimistic_transfer_storedU
     rintro w ⟨v, hv, rfl, R, hR, hRr, hDR⟩
     exact carried_coverU hrun hy hc hs hBt hcarry
       ⟨hv, R, hR, hRr, hDR⟩
-      (optimisticPoint_pool_slotU hr (fun _ => voteStart_initial _) hx hpt hv) ⟨R, hΦxU hR, hRr,
+      (optimisticPoint_pool_slotU hr hrun.vstart hx hpt hv) ⟨R, hΦxU hR, hRr,
         (frame_slot_leU sp hr hx hpt.1 R hR).trans hslx.le, hBD.trans (Anc.mono hΦxU hDR)⟩
   have hW : voters V.votes ⊆ K.committee s := by
     rintro u ⟨v, hv, rfl⟩
     have hK := hT y hy i ℓ e hc s v hv
-    rwa [merged_vote_slotU hr (fun _ => voteStart_initial _) hy hc v hv] at hK
+    rwa [merged_vote_slotU hr hrun.vstart hy hc v hv] at hK
   have hE : equivocators V.votes ⊆ K.committee s ∩ Hᶜ := by
     intro w hw
     refine ⟨?_, fun hwH => honest_not_equivocatorU hrun hy hc hwH
@@ -258,7 +258,7 @@ theorem optimistic_transfer_storedU
     obtain ⟨hs₂, j₂, -, e₂, hvote₂, rfl⟩ := hpool v₂ hv₂ (hv₂w ▸ hwH)
     obtain ⟨-, rfl⟩ := (one_vote_per_slotU sp) FGP ro H U tr hr _ hwH j₁ j₂ e₁ e₂ hvote₁
       (hv₂w ▸ hvote₂)
-      (by rw [optimisticPoint_pool_slotU hr (fun _ => voteStart_initial _) hx hpt hv₁, hs₂])
+      (by rw [optimisticPoint_pool_slotU hr hrun.vstart hx hpt hv₁, hs₂])
     obtain rfl : R₂ = R₁ := hU.1 (hΦ'U hR₂) (hΦxU hR₁) (hR₂r.trans hR₁r.symm)
     exact anc_total hU (Anc.mono hΦ'U hDR₂) (hBD.trans (Anc.mono hΦxU hBR₁))
   have h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard :=
@@ -314,7 +314,7 @@ theorem optimistic_transfer : OptimisticTransfer sp :=
 theorem first_transfer_stored_of_poolU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-    (hrun : ACRunU wm u proposer tr H U) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
+    {ini} (hrun : ACRunU wm u proposer tr H U ini) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
@@ -353,7 +353,7 @@ theorem first_transfer_stored_of_poolU
       exact h.1.2
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_ancU hr (fun _ => voteStart_initial _) hy hc
+  have hdomA := voteDomain_ancU hr hrun.vstart hy hc
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -410,7 +410,7 @@ theorem first_transfer_stored_of_poolU
     fun X' Cx hCx hp hCxC =>
       isBest_of_majority hΦ (merged_support_subsetU hr hy hc (s + 1)) (fun B hB =>
           voteDomain_subset_tree hB.1)
-        hsupp (merged_voters_subsetU hr (fun _ => voteStart_initial _) hy hc hd) hmaj hCx hp hCxC
+        hsupp (merged_voters_subsetU hr hrun.vstart hy hc hd) hmaj hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : B = getHead sp e.readPoint ℓ.frame (tr.time i)
       (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
@@ -422,7 +422,7 @@ theorem first_transfer_stored_of_poolU
 theorem first_transfer_storedU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-    (hrun : ACRunU wm u proposer tr H U) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
+    {ini} (hrun : ACRunU wm u proposer tr H U ini) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)

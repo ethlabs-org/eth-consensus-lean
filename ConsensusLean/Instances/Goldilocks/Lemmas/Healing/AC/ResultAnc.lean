@@ -19,7 +19,7 @@ variable (sp : SAParams)
 theorem result_transfer_ancU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {proposer : Nat → Fin sp.n} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (hrun : ACRunU wm u proposer tr H U) {s : Nat}
+    {ini} (hrun : ACRunU wm u proposer tr H U ini) {s : Nat}
     {X y : Fin sp.n} {i₀ i : Nat} {C D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hX : X ∈ H)
     (hres : ResultAt tr X i₀ s C CV) (hDC : Anc U D C) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
@@ -36,7 +36,7 @@ theorem result_transfer_ancU
       exact h.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_ancU hrun.localRun (fun _ => voteStart_initial _) hy hc
+  have hdomA := voteDomain_ancU hrun.localRun hrun.vstart hy hc
   rw [hs] at hdomA
   have hDt : D ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -51,7 +51,7 @@ theorem result_transfer_ancU
     (fun L hL => hlocks L hL) fun X' Cx hCx hp hCxD =>
       isBest_of_majority hΦ (merged_support_subsetU hrun.localRun hy hc (s + 1))
         (fun B hB => (voteDomain_subset_tree hB.1)) hsupp
-          (merged_voters_subsetU hrun.localRun (fun _ => voteStart_initial _) hy hc hd)
+          (merged_voters_subsetU hrun.localRun hrun.vstart hy hc hd)
           hmaj hCx hp hCxD
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : D = getHead sp e.readPoint ℓ.frame (tr.time i)

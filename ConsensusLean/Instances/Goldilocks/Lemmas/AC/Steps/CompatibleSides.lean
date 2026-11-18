@@ -119,7 +119,7 @@ theorem optimistic_side (hrun : ACRun proposer tr H U ini)
 `t_s`) under `Sync`: the node holds it, or two other votes of its validator, with the unlock
 given. -/
 theorem fwd_heldU
-    {uL : Nat → Set Lock} (hr : ACLocalRunU wm uL H U tr) {s : Nat}
+    {uL : Nat → Set Lock} {ini} (hr : ACLocalRunU wm uL H U tr ini) {s : Nat}
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
     {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
@@ -141,7 +141,7 @@ theorem fwd_heldU
 validators `T` with forwardable votes for a block `D` that conflicts with `DY` are voters there
 and none is a supporter `S` of `DY`. -/
 theorem against_updateU
-    {uL : Nat → Set Lock} (hr : ACLocalRunU wm uL H U tr) {s : Nat}
+    {uL : Nat → Set Lock} {ini} (hr : ACLocalRunU wm uL H U tr ini) {s : Nat}
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
     {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
