@@ -11,7 +11,7 @@ public section
 
 The anchor of an honest vote of slot `p`, and the anchor of the honest proposal of slot `p`
 (`d.start`), are `fc_root` (genesis) or a live lock block. A lock of a slot below `p` is settled
-(`LocksSettled` from `t_{p−1}`): every honest vote of slot `p` and the proposal head `d.head`
+(`LocksSettledU` from `t_{p−1}`): every honest vote of slot `p` and the proposal head `d.head`
 extend its stored block, which extends the lock block. A lock of slot `p` is written by an
 optimistic confirmation on three quarters of the committee, so it is extended by an honest
 slot-`p` vote; at a vote, one cast at an earlier cut (`lock_origin_readPoint`). No lock has a

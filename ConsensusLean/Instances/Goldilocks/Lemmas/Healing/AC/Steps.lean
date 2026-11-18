@@ -9,9 +9,9 @@ public section
 
 /-! # Goldilocks Healing: the steps of H.1
 
-H.1 decomposed into the steps of its paper proof (claims H.1, proof shape) over a
-`StandaloneRun` (H.1's premises), with `r = r_AC(ḡ)`: a slot `j` is `≥ r` exactly when
-`ḡ + 4Δ ≤ t_j`. The steps live in sibling modules:
+H.1's conclusions decomposed into the steps of its paper proof (claims H.1, proof shape) over a
+`StandaloneRunU` (H.1's premises with the unlock given), with `r = r_AC(ḡ)`: a slot `j` is `≥ r`
+exactly when `ḡ + 4Δ ≤ t_j`. The steps live in sibling modules:
 
 * `Setting.lean`: the premises and the steps' vocabulary;
 * `SlowLock.lean`: slow lock provenance (the fast case is `fast_lock_provenance`);
@@ -20,12 +20,12 @@ H.1 decomposed into the steps of its paper proof (claims H.1, proof shape) over 
   origin's transfer to the votes (`votes_continueU`, `fast_origin_transfer_votesU`);
 * `Transfer.lean`: the transfer at proposals, the transfer of slow origins, and unanimity.
 
-This module has the rest: `good_origin_transferU`; the drain (`drain_tight`: a lock live at a
+This module has the rest: `good_origin_transferU`; the drain (`drain_tightU`: a lock live at a
 slot `σ` with `t_σ ≥ ḡ + 8kΔ` sits below a good origin) and settled locks from a slot start
-(`locks_settled_slotU`), with `drain` at `ḡ + 2Θ` as a corollary; `proposal_confirmed_core_fromU`
-(the confirmed tip); and the assembly: H.1's conclusions for one honest proposal from settled
-locks and `t_p ≥ ḡ + 8Δ` (`ac_healing_standalone_of_settledU`) and at `t_p ≥ ḡ + (8k + 4)Δ`
-(`ac_healing_standalone_of_parent_tight`, settled from `t_{p−1} ≥ ḡ + 8kΔ`). The unanimity and
+(`locks_settled_slotU`); `proposal_confirmed_core_fromU` (the confirmed tip); and the assembly:
+H.1's conclusions for one honest proposal from settled locks and `t_p ≥ ḡ + 8Δ`
+(`ac_healing_standalone_of_settledU`) and at `t_p ≥ ḡ + (8k + 4)Δ`
+(`ac_healing_standalone_of_parent_tightU`, settled from `t_{p−1} ≥ ḡ + 8kΔ`). The unanimity and
 confirmation steps need of the slot only `t_p ≥ ḡ + 8Δ`. -/
 
 namespace Consensus.Goldilocks.SA
@@ -50,7 +50,10 @@ theorem good_origin_transferU
 
 /-! ## Drain -/
 
-/-- `drain_tight` with the unlock given, at a mode of width `k`. -/
+/-- **Drain, from `ḡ + 8kΔ`.** A lock that an honest node stores, live at a slot `σ` with
+`t_σ ≥ ḡ + 8kΔ` (`σ ≤ j + k` for its label `j`), sits below a good origin of its label: its
+label is at least `σ − k`, so a fast one has `t_j ≥ ḡ + 4kΔ` and a slow one has
+`t_{j−k+1} ≥ ḡ + 4Δ`. With the unlock given, at a mode of width `k`. -/
 theorem drain_tightU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) (hw : wm.width = sp.k)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {l : Lock}
@@ -75,32 +78,9 @@ theorem drain_tightU
     simp only [SAParams.ts]
     linarith
 
-/-- **Drain, from `ḡ + 8kΔ`.** A lock that an honest node stores, live at a slot `σ` with
-`t_σ ≥ ḡ + 8kΔ` (`σ ≤ j + k` for its label `j`), sits below a good origin of its label: its
-label is at least `σ − k`, so a fast one has `t_j ≥ ḡ + 4kΔ` and a slow one has
-`t_{j−k+1} ≥ ḡ + 4Δ`. -/
-theorem drain_tight (hS : StandaloneRun tr H U proposer g)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {l : Lock}
-    (hl : l ∈ (tr.state y i).locks) {σ : Nat} (hσ : σ ≤ l.slot + sp.k)
-    (hT : gbar g + 8 * (sp.k : Time) * sp.Δ ≤ sp.ts σ) :
-    ∃ B, (∃ L ∈ U, L.root = l.block ∧ Anc U L B) ∧ GoodOrigin tr H g B l.slot :=
-  drain_tightU (hS := hS.toU) (hw := rfl) (y := y) (hy := hy) (i := i) (l := l) (hl := hl)
-      (σ := σ) (hσ := hσ)
-      (hT := hT)
-
-/-- **Drain.** A lock that an honest node stores, live at a slot `σ` with
-`t_σ ≥ ḡ + 2Θ` (`σ ≤ j + k` for its label `j`), sits below a good origin of its label
-(`drain_tight`: `2Θ ≥ 8kΔ`). -/
-theorem drain (hS : StandaloneRun tr H U proposer g)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {l : Lock}
-    (hl : l ∈ (tr.state y i).locks) {σ : Nat} (hσ : σ ≤ l.slot + sp.k)
-    (hT : gbar g + 2 * Θ sp ≤ sp.ts σ) :
-    ∃ B, (∃ L ∈ U, L.root = l.block ∧ Anc U L B) ∧ GoodOrigin tr H g B l.slot :=
-  drain_tight hS hy hl hσ (by have := sp.toParams.hΔ; unfold Θ at hT; linarith)
-
 /-- **Settled locks from a slot start**: from `t_{σ₀} ≥ ḡ + 8kΔ` on, every lock live at an
 honest node is carried by every later honest duty (a call at `t ≥ t_{σ₀}` is of a slot
-`≥ σ₀`, so `drain_tight` applies at its slot), with the unlock given, at a mode of width `k`. -/
+`≥ σ₀`, so `drain_tightU` applies at its slot), with the unlock given, at a mode of width `k`. -/
 theorem locks_settled_slotU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) (hw : wm.width = sp.k)
     {σ₀ : Nat}
@@ -203,10 +183,10 @@ theorem ac_healing_standalone_of_settled_fromU
     · exact votesExtendAfter_iff.1 hcont x hx j e hv h
   exact ⟨hi, proposal_confirmed_core_fromU hS hw hpH hP hp hset hvotes⟩
 
-/-- **H.1 from settled locks** (claims H.1, proof shape): H.1's conclusions (i) and (ii) for an
+/-- **H.1's conclusions from settled locks** (claims H.1, proof shape): (i) and (ii) for an
 honest proposal `P` of slot `p` with `t_p ≥ ḡ + 8Δ` once the locks are settled from `t_{p−1}`.
-The threshold of H.1 is where the drain settles the locks
-(`ac_healing_standalone_of_parent_tight`), with the unlock given, at a mode of width `k`. -/
+The threshold `ḡ + (8k + 4)Δ` is where the drain settles the locks
+(`ac_healing_standalone_of_parent_tightU`), with the unlock given, at a mode of width `k`. -/
 theorem ac_healing_standalone_of_settledU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) (hw : wm.width = sp.k)
     {p : Nat} {P : Blk sp.n FGP} (hpH : proposer p ∈ H)
@@ -220,7 +200,9 @@ theorem ac_healing_standalone_of_settledU
       Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j))) :=
   ac_healing_standalone_of_settled_fromU hS hw hpH hP hp (hset.toFrom p)
 
-/-- `ac_healing_standalone_of_parent_tight` with the unlock given, at a mode of width `k`. -/
+/-- **H.1's conclusions for an honest proposal with its parent, at `t_p ≥ ḡ + (8k + 4)Δ`**: the
+locks are settled from the slot start `t_{p−1} = t_p − 4Δ ≥ ḡ + 8kΔ` (`locks_settled_slotU`).
+With the unlock given, at a mode of width `k`. -/
 theorem ac_healing_standalone_of_parent_tightU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) (hw : wm.width = sp.k)
     {p : Nat} {P : Blk sp.n FGP} (hpH : proposer p ∈ H)
@@ -244,20 +226,6 @@ theorem ac_healing_standalone_of_parent_tightU
   have hset := locks_settled_slotU hS hw (σ₀ := p - 1) (by rw [hts]; linarith)
   rw [hts] at hset
   exact ac_healing_standalone_of_settledU hS hw hpH hP (by linarith) hset
-
-/-- **H.1 for an honest proposal with its parent, at `t_p ≥ ḡ + (8k + 4)Δ`**: the locks are
-settled from the slot start `t_{p−1} = t_p − 4Δ ≥ ḡ + 8kΔ` (`locks_settled_slotU`). -/
-theorem ac_healing_standalone_of_parent_tight (hS : StandaloneRun tr H U proposer g) {p : Nat}
-    {P : Blk sp.n FGP} (hpH : proposer p ∈ H)
-    (hP : HonestProposal tr (proposer p) p P)
-    (hp : gbar g + (8 * (sp.k : Time) + 4) * sp.Δ ≤ sp.ts p) :
-    (∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root) ∧
-    (∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → sp.ts p + 6 * sp.Δ ≤ tr.time j →
-      (tr.time j = sp.ts p + 6 * sp.Δ →
-        ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
-      Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j))) :=
-  ac_healing_standalone_of_parent_tightU (hS := hS.toU) (hw := rfl) (p := p) (P := P) (hpH := hpH)
-      (hP := hP.toU) (hp := hp)
 
 end Consensus.Goldilocks.SA
 

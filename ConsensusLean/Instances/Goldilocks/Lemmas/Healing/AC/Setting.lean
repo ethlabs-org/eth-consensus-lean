@@ -12,12 +12,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Unlo
 
 public section
 
-/-! # Goldilocks Healing: the setting of H.1 (healthy driven AC traces with trivial frames)
+/-! # Goldilocks Healing: the healthy setting (healthy driven AC traces)
 
-H.1's premises over an AC trace of the SA (`StandaloneRun`: `ACRun`, `Driven`, `TrivialFrames`,
-`Healthy(g)` and `Catch(2Δ)`; all but the trivial frames are `HealthyBase`, shared with H.2),
-and what they give at once (every honest validator is awake from `g` on, so there is no later
-restart):
+The healthy premises over an AC trace of the SA (`HealthyBase`: `ACRun`, `Driven`, `Healthy(g)` and
+`Catch(2Δ)`, with no assumption on the frames), and what they give at once (every honest
+validator is awake from `g` on, so there is no later restart):
 
 * no honest node restarts after `ḡ` (`restart_le`): a restart is a wake, and an honest node is
   awake from `ḡ` on;
@@ -26,10 +25,11 @@ restart):
   `restart_time` is the time of the node's latest restart, `restartTime_state`);
 * `Sync[a, b]` for every `a ≥ ḡ` (`syncAC`) and `f < h_t` there (`faultBound`), `f < n/2`.
 
-The settings at a write mode and an unlock oracle (`HealthyACCore`, `HealthyBaseU`,
-`StandaloneRunU`) are defined in `Milestones/Statements/Healing/ACU`; this module proves their
-facts. It also holds the vocabulary of H.1's steps (`GoodOrigin`, `VotesExtendAfter`,
-`ProposalsExtendAfter`, `LocksSettled`), shared by `Transfer.lean` and `Steps.lean`. -/
+The settings at a write mode and an unlock oracle (`HealthyACCore`, `HealthyBaseU`, and
+`StandaloneRunU` with trivial frames) are defined in `Milestones/Statements/Healing/ACU`; this
+module proves their facts. It also holds the vocabulary of H.1's steps (`GoodOrigin`,
+`VotesExtendAfter`, `ProposalsExtendAfterU`, `LocksSettledU`), shared by `Transfer.lean` and
+`Steps.lean`. -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -38,7 +38,7 @@ variable {wm : SA.WriteMode}
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
-/-- **The healthy premises shared by H.1 and H.2** over an AC trace of the SA: the trace
+/-- **The healthy premises** over an AC trace of the SA: the trace
 contract with the honest-object facts, a driven trace, `Healthy(g)` and `Catch(2Δ)` (no
 assumption on the frames). -/
 structure HealthyBase (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
@@ -76,12 +76,6 @@ theorem HealthyBaseUpTo.stockRun {b : Time}
   have h := hS.run
   rwa [committeeStart_full] at h
 
-/-- **H.1's premises** over an AC trace of the SA: the healthy premises (`HealthyBase`) and
-trivial frames. -/
-structure StandaloneRun (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (proposer : Nat → Fin sp.n) (g : Time) : Prop extends HealthyBase tr H U proposer g where
-  trivial : TrivialFrames tr H
-
 /-- `Healthy(g)` gives its service and awake part. -/
 theorem HealthyAC.core (h : HealthyAC tr H U g) : HealthyACCore tr H U g :=
   ⟨h.1, h.2.1, h.2.2.1⟩
@@ -96,10 +90,6 @@ theorem HealthyAC.two_faulty_lt (h : HealthyAC tr H U g) : 2 * Hᶜ.ncard < sp.n
 theorem HealthyBase.toU (h : HealthyBase tr H U proposer g) :
     HealthyBaseU (WriteMode.parent sp) (parentOracle sp tr) tr H U proposer g :=
   ⟨h.run.toU, h.driven.toU, h.healthy.core, h.healthy.two_faulty_lt, h.catchUp, h.stock⟩
-
-theorem StandaloneRun.toU (h : StandaloneRun tr H U proposer g) :
-    StandaloneRunU (WriteMode.parent sp) (parentOracle sp tr) tr H U proposer g :=
-  ⟨h.toHealthyBase.toU, h.trivial⟩
 
 theorem le_gbar (g : Time) : g ≤ gbar g := le_max_left g 0
 
@@ -395,22 +385,6 @@ def VotesExtendAfter (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk
     (j : Nat) (B : Blk sp.n FGP) : Prop :=
   ∀ x ∈ H, ∀ i e, VoteAt tr x i e → j < e.msg.slot → VoteExtends U e.msg B
 
-/-- The head of every honest `ac_proposal` at the start of a slot after `j` extends `B`. -/
-def ProposalsExtendAfter (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (j : Nat) (B : Blk sp.n FGP) : Prop :=
-  ∀ x ∈ H, ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)) (m : Nat) d pay, tr.CallAt x i ℓ →
-    ℓ.call = .proposal → tr.time i = sp.ts m → j < m →
-    (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay) → Anc U B d.head
-
-/-- **Settled locks from `T`**: at every cut of an honest node at a time `≥ T`,
-every stored lock live there (`slot(t) ≤ j + k`) is on a block that every honest vote and
-proposal head of a slot after its label `j` extends. -/
-def LocksSettled (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (T : Time) : Prop :=
-  ∀ y ∈ H, ∀ i, T ≤ tr.time i → ∀ l ∈ (tr.state y i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k →
-    ∀ L ∈ U, L.root = l.block →
-      VotesExtendAfter tr H U l.slot L ∧ ProposalsExtendAfter tr H U l.slot L
-
 theorem goodOrigin_iff {B : Blk sp.n FGP} {j : Nat} : GoodOrigin tr H g B j ↔
     ((∃ x ∈ H, ∃ i CV, FastLockAt tr x i j B CV ∧ gbar g + 4 * sp.Δ ≤ sp.ts j) ∨
       (∃ x ∈ H, ∃ i, SlowLockAt tr x i j B ∧
@@ -419,16 +393,8 @@ theorem goodOrigin_iff {B : Blk sp.n FGP} {j : Nat} : GoodOrigin tr H g B j ↔
 theorem votesExtendAfter_iff {j : Nat} {B : Blk sp.n FGP} : VotesExtendAfter tr H U j B ↔
     ∀ x ∈ H, ∀ i e, VoteAt tr x i e → j < e.msg.slot → VoteExtends U e.msg B := Iff.rfl
 
-/-- At a proposal call, the parent's oracle gives the parent's `ac_proposal`. -/
-theorem acProposalWith_parentOracle {x : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt x i ℓ) (hcall : ℓ.call = .proposal) :
-    acProposalWith sp (parentOracle sp tr i) (tr.state x i) ℓ.frame (tr.time i) =
-      acProposal sp (tr.state x i) ℓ.frame (tr.time i) := by
-  simp only [parentOracle, hc.2, hc.1, hcall]
-  rfl
-
-/-- `ProposalsExtendAfter` with the unlock given: the heads of the proposals at the locks of the
-oracle. -/
+/-- The head of every honest `ac_proposal` at the start of a slot after `j` extends `B`, with the
+unlock given: the heads of the proposals at the locks of the oracle. -/
 abbrev ProposalsExtendAfterU (u : Nat → Set Lock) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
     (U : Set (Blk sp.n FGP)) (j : Nat) (B : Blk sp.n FGP) : Prop :=
   ∀ x ∈ H, ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)) (m : Nat) d pay, tr.CallAt x i ℓ →
@@ -436,7 +402,9 @@ abbrev ProposalsExtendAfterU (u : Nat → Set Lock) (tr : SATrace sp FGP ro) (H 
     (acProposalWith sp (u i) (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay) →
     Anc U B d.head
 
-/-- `LocksSettled` with the unlock given. -/
+/-- **Settled locks from `T`**: at every cut of an honest node at a time `≥ T`, every stored lock
+live there (`slot(t) ≤ j + k`) is on a block that every honest vote and proposal head of a slot
+after its label `j` extends. With the unlock given. -/
 abbrev LocksSettledU (u : Nat → Set Lock) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
     (U : Set (Blk sp.n FGP)) (T : Time) : Prop :=
   ∀ y ∈ H, ∀ i, T ≤ tr.time i → ∀ l ∈ (tr.state y i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k →
@@ -454,37 +422,6 @@ theorem locksSettledU_iff {u : Nat → Set Lock} {T : Time} : LocksSettledU u tr
     ∀ y ∈ H, ∀ i, T ≤ tr.time i → ∀ l ∈ (tr.state y i).locks,
       sp.slot (tr.time i) ≤ l.slot + sp.k → ∀ L ∈ U, L.root = l.block →
         VotesExtendAfter tr H U l.slot L ∧ ProposalsExtendAfterU u tr H U l.slot L := Iff.rfl
-
-/-- At the parent's oracle, `ProposalsExtendAfterU` is `ProposalsExtendAfter`. -/
-theorem proposalsExtendAfterU_parent_iff {j : Nat} {B : Blk sp.n FGP} :
-    ProposalsExtendAfterU (parentOracle sp tr) tr H U j B ↔ ProposalsExtendAfter tr H U j B := by
-  constructor
-  · intro h x hx i ℓ m d pay hc hcall ht hj hp
-    exact h x hx i ℓ m d pay hc hcall ht hj ((acProposalWith_parentOracle hc hcall).symm ▸ hp)
-  · intro h x hx i ℓ m d pay hc hcall ht hj hp
-    exact h x hx i ℓ m d pay hc hcall ht hj ((acProposalWith_parentOracle hc hcall) ▸ hp)
-
-/-- At the parent's oracle, `LocksSettledU` is `LocksSettled`. -/
-theorem locksSettledU_parent_iff {T : Time} :
-    LocksSettledU (parentOracle sp tr) tr H U T ↔ LocksSettled tr H U T := by
-  constructor
-  · intro h y hy i hi l hl hk L hL hLr
-    exact (h y hy i hi l hl hk L hL hLr).imp_right proposalsExtendAfterU_parent_iff.1
-  · intro h y hy i hi l hl hk L hL hLr
-    exact (h y hy i hi l hl hk L hL hLr).imp_right proposalsExtendAfterU_parent_iff.2
-
-theorem LocksSettled.toU {T : Time} (h : LocksSettled tr H U T) :
-    LocksSettledU (parentOracle sp tr) tr H U T :=
-  locksSettledU_parent_iff.2 h
-
-theorem ProposalsExtendAfter.toU {j : Nat} {B : Blk sp.n FGP}
-    (h : ProposalsExtendAfter tr H U j B) :
-    ProposalsExtendAfterU (parentOracle sp tr) tr H U j B :=
-  proposalsExtendAfterU_parent_iff.2 h
-
-theorem LocksSettledU.mono {u : Nat → Set Lock} {T T' : Time} (h : LocksSettledU u tr H U T)
-    (hT : T ≤ T') : LocksSettledU u tr H U T' :=
-  fun y hy i hi => h y hy i (hT.trans hi)
 
 end Consensus.Goldilocks.SA
 

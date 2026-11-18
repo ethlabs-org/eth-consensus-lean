@@ -7,7 +7,7 @@ public section
 
 /-! # Goldilocks Healing: H.1's vocabulary with the unlock given
 
-H.1's statements read the proposal of an honest proposer through the parent's `ac_proposal`
+The healing vocabulary reads the proposal of an honest proposer through the parent's `ac_proposal`
 (`HonestProposal`, `Driven`), whose head depends on the locks after its unlock. Over a trace with
 the unlock given by an oracle `u` (`ACLocalRunU`), the proposal is `acProposalWith` at the locks
 `u k` of its call (`HonestProposalU`, `DrivenU`, defined in

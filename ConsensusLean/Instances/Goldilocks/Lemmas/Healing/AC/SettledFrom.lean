@@ -72,17 +72,6 @@ theorem LocksSettledFromU.mono {u : Nat → Set Lock} {σ₀ : Nat} {T T' : Time
     (h : LocksSettledFromU u tr H U σ₀ T) (hT : T ≤ T') : LocksSettledFromU u tr H U σ₀ T' :=
   locksSettledFromU_iff.2 fun y hy i hi => locksSettledFromU_iff.1 h y hy i (hT.trans hi)
 
-/-- A higher floor is weaker. -/
-theorem LocksSettledFromU.floor_mono {u : Nat → Set Lock} {σ₀ σ₁ : Nat} {T : Time}
-    (h : LocksSettledFromU u tr H U σ₀ T) (hσ : σ₀ ≤ σ₁) : LocksSettledFromU u tr H U σ₁ T := by
-  rw [locksSettledFromU_iff]
-  intro y hy i hi l hl hlive L hL hLr
-  obtain ⟨hv, hp⟩ := locksSettledFromU_iff.1 h y hy i hi l hl hlive L hL hLr
-  exact ⟨votesExtendFrom_iff.2 fun x hx j e he hs hσs =>
-      votesExtendFrom_iff.1 hv x hx j e he hs (hσ.trans hσs),
-    proposalsExtendFromU_iff.2 fun x hx j ℓ m d pay hc hcall ht hm hσm hd =>
-      proposalsExtendFromU_iff.1 hp x hx j ℓ m d pay hc hcall ht hm (hσ.trans hσm) hd⟩
-
 end Consensus.Goldilocks.SA
 
 end

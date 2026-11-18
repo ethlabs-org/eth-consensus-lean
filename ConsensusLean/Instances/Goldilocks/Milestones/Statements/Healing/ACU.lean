@@ -82,7 +82,8 @@ structure HealthyBaseU (m : WriteMode) (u : Nat → Set Lock) (tr : SATrace sp F
   /-- The committee is population-sized (`committeeSize = n`). -/
   stock : sp.committeeSize = sp.n
 
-/-- `StandaloneRun` with the writes of the mode `m` and the unlock given by the oracle `u`. -/
+/-- **H.1's premises** over an AC trace of the SA, with the writes of the mode `m` and the unlock
+given by the oracle `u`: the healthy premises (`HealthyBaseU`) and trivial frames. -/
 structure StandaloneRunU (m : WriteMode) (u : Nat → Set Lock) (tr : SATrace sp FGP ro)
     (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (proposer : Nat → Fin sp.n) (g : Time) : Prop
     extends HealthyBaseU m u tr H U proposer g where

@@ -19,7 +19,11 @@ namespace Consensus.Goldilocks.SA
 
 variable {wm : SA.WriteMode}
 
-/-- `corollary_at` with the unlock given. -/
+/-- **The corollary from inclusion at a threshold `ḡ + c`** (`c ≥ 4Δ`): `Prop(G_p)` gives
+a slot `p` with an honest proposer and `t ≤ t_p ≤ t + G_p`; the proposer is awake and joined
+at `t_p` (no restart after `ḡ`), so `ac_proposal` returns a payload and `Driven (b)` gives
+the honest proposal `P`; the inclusion at `P` holds from `t_p + 6Δ ≤ t + G_p + 6Δ`. With the unlock
+given. -/
 theorem corollary_atU
     {u : Nat → Set Lock} {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
     {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
@@ -58,31 +62,6 @@ theorem corollary_atU
   obtain ⟨P, hP⟩ := himp ⟨pay, hc, hcall, d, hdp⟩
   refine ⟨p, P, htp, htpG, hP, fun y hy j ℓ' hc' htj htick =>
     h p P hpH hP hgp y hy j ℓ' hc' (by linarith) fun heq => htick (by linarith)⟩
-
-/-- **The corollary from H.1's inclusion at a threshold `ḡ + c`** (`c ≥ 4Δ`): `Prop(G_p)` gives a
-slot `p` with an honest proposer and `t ≤ t_p ≤ t + G_p`; the proposer is awake and joined at
-`t_p` (no restart after `ḡ`), so `ac_proposal` returns a payload and `Driven (b)` gives the
-honest proposal `P`; the inclusion at `P` holds from `t_p + 6Δ ≤ t + G_p + 6Δ`. -/
-private theorem corollary_at {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    {proposer : Nat → Fin sp.n} {g Gp c : Time} (hc : 4 * sp.Δ ≤ c)
-    (hS : StandaloneRun tr H U proposer g) (hprop : PropAC proposer H g Gp)
-    (h : ∀ (p : Nat) (P : Blk sp.n FGP), proposer p ∈ H → HonestProposal tr (proposer p) p P →
-      gbar g + c ≤ sp.ts p →
-      ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → sp.ts p + 6 * sp.Δ ≤ tr.time j →
-        (tr.time j = sp.ts p + 6 * sp.Δ →
-          ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
-        Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j)))
-    (t : Time) (ht : gbar g + c ≤ t) :
-    ∃ (p : Nat) (P : Blk sp.n FGP), t ≤ sp.ts p ∧ sp.ts p ≤ t + Gp ∧
-      HonestProposal tr (proposer p) p P ∧
-      ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → t + Gp + 6 * sp.Δ ≤ tr.time j →
-        (tr.time j = t + Gp + 6 * sp.Δ →
-          ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
-        Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j)) := by
-  obtain ⟨p, P, h1, h2, hP, h3⟩ := corollary_atU hc hS.toU hprop
-    (fun p P hpH hP hp => h p P hpH ((honestProposalU_parent_iff _ _ _ _).1 hP) hp) t ht
-  exact ⟨p, P, h1, h2, (honestProposalU_parent_iff _ _ _ _).1 hP, h3⟩
 
 /-- **Proposal-block inclusion at `ḡ + (8k + 4)Δ` with the unlock given** (for every lock rule
 related to the parent's unlock, at every write mode of width `k`): the conclusions of

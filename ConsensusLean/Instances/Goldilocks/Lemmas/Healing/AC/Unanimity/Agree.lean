@@ -62,7 +62,7 @@ private theorem late_prevU
     simp only [SAParams.ts]; push_cast; ring
   constructor <;> linarith
 
-/-- `payload_eq` with the unlock given. -/
+/-- The payload is the proposer's view of its slot-`s` pool. With the unlock given. -/
 private theorem payload_eqU
     {u : Nat → Set Lock} {s : Nat}
     (hs : UnanimitySettingCoreU wm u tr H U schedule g (s + 1) P k ℓp d pay) :
@@ -76,12 +76,6 @@ private theorem payload_eqU
   rw [← h.2, hsl]
   push_cast
   ring_nf
-
-/-- The payload is the proposer's view of its slot-`s` pool. -/
-private theorem payload_eq {s : Nat}
-    (hs : UnanimitySettingCore tr H U schedule g (s + 1) P k ℓp d pay) :
-    pay = voteViewList (tr.state (schedule (s + 1)) k) ℓp.frame s ⊤ :=
-  payload_eqU (s := s) (hs := hs.toU)
 
 /-- The only block of slot `p` of an honest frame is `P`, with the unlock given. -/
 private theorem frame_slot_eqU
@@ -136,7 +130,7 @@ private theorem anc_F_of_memU
   rw [trivial_F_eqU hS hy hz hc hc']
   exact (hΦ.rooted.2 X hX).mono hΦU
 
-/-- `F_parent` with the unlock given. -/
+/-- Under trivial frames, `Φ.F` (genesis) has no parent. With the unlock given. -/
 private theorem F_parentU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U schedule g)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -145,12 +139,6 @@ private theorem F_parentU
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAtU hr hy hc
   obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_callU sp hr hy i ℓ hc
   rw [hr.coherent.1 (hΦU hΦ.rooted.1) hGU ((hS.trivial y hy i ℓ hc).1.trans hGr.symm), hGp]
-
-/-- Under trivial frames, `Φ.F` (genesis) has no parent. -/
-private theorem F_parent (hS : StandaloneRun tr H U schedule g)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) : ℓ.frame.F.parent = none :=
-  F_parentU (hS := hS.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (hc := hc)
 
 /-- Under trivial frames, a block of the tree with a parent has its parent among the viable
 heads, with the unlock given. -/
@@ -182,7 +170,8 @@ private theorem eligible_iffU
     · exact h'
   · exact Or.inr
 
-/-- `mem_viableTree` with the unlock given. -/
+/-- Under trivial frames, every block of a subset of the tree is in its viable tree. With the unlock
+given. -/
 private theorem mem_viableTreeU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U schedule g) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ)
@@ -192,14 +181,6 @@ private theorem mem_viableTreeU
   obtain ⟨-, hfc, hvh, -⟩ := hS.trivial y hy i ℓ hc
   exact ⟨hB, by rw [hfc]; exact hΦ.rooted.2 B (hsub hB), B, hB, by rw [hvh]; exact hsub hB,
     Relation.ReflTransGen.refl⟩
-
-/-- Under trivial frames, every block of a subset of the tree is in its viable tree. -/
-private theorem mem_viableTree (hS : StandaloneRun tr H U schedule g) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ)
-    {S : Set (Blk sp.n FGP)} (hsub : S ⊆ ℓ.frame.tree) {B : Blk sp.n FGP} (hB : B ∈ S) :
-    B ∈ ℓ.frame.viableTree S :=
-  mem_viableTreeU (hS := hS.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (hc := hc) (S := S)
-      (hsub := hsub) (B := B) (hB := hB)
 
 /-- The voter holds `P`, and the heads of `P`'s support entries that the proposer holds, with the
 unlock given. -/

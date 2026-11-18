@@ -8,7 +8,7 @@ public section
 
 /-! # Goldilocks Healing: a good origin transfers to the proposal duty
 
-The same argument applies at a proposal, over a `StandaloneRun`: the arguments are those of
+The same argument applies at a proposal, over a `StandaloneRunU`: the arguments are those of
 `ProposalCore` (A1.2, A1.3, A1.4 (a), A1.8 at the proposal duty, over any frames), and this file
 supplies their premises under trivial frames:
 
@@ -133,7 +133,7 @@ private theorem restart_beforeU
     tr.time k < sp.ts σ :=
   lt_of_le_of_lt (hS.restart_le hz hrk) (by have := sp.toParams.hΔ; linarith)
 
-/-- (W) under `StandaloneRun`: `Sync` from `ḡ` and restarts at or before `ḡ`, with the unlock
+/-- (W) under `StandaloneRunU`: `Sync` from `ḡ` and restarts at or before `ḡ`, with the unlock
 given. -/
 private theorem trivial_writer_poolU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
@@ -340,7 +340,7 @@ private theorem trivial_counted_heldU
   obtain ⟨hRt, hRacc⟩ := hacc R Relation.ReflTransGen.refl
   exact heldAtProposal_iff.2 ⟨Or.inl hheld, R, hRt, hRr, trivial_stampU hS hx hc hcall hRt hRacc⟩
 
-/-- (L-high) under `StandaloneRun`: a stored lock of slot `> σ` is optimistic over votes that
+/-- (L-high) under `StandaloneRunU`: a stored lock of slot `> σ` is optimistic over votes that
 extend `B`, and one of slot `σ` is compatible with `B` by `hsame`, with the unlock given. -/
 private theorem trivial_high_locksU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)

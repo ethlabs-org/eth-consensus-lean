@@ -16,7 +16,7 @@ walk passes `a₀` when its anchor is below `a₀`; otherwise its anchor is betw
 (extended by the vote of `a₀`, or by an earlier vote, of head `E₀`), so its walk is the rest
 of the walk from `a₀`. The same argument places the proposal's anchor `d.start` on the walk
 from `a₀` or below `a₀` (`proposal_anchor_cases_coreU`), and the canonical walk from `d.start` ends
-at `P` (`proposal_walkEnd`): so `E₀ = P`. -/
+at `P` (`proposal_walkEnd_coreU`): so `E₀ = P`. -/
 
 namespace Consensus.Goldilocks.SA
 

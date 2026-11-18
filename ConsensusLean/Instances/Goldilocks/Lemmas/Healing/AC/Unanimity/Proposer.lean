@@ -34,7 +34,8 @@ private theorem getAnchor_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (A : SAStat
     · exact h.1
     · exact (Set.mem_singleton_iff.1 h) ▸ hΦ.fcRoot_mem
 
-/-- `proposal_walkEnd_core` with the unlock given. -/
+/-- **The canonical walk from the proposal's anchor ends at `P`**, through `d.head`. With the unlock
+given. -/
 theorem proposal_walkEnd_coreU
     {u : Nat → Set Lock} (hs : UnanimitySettingCoreU wm u tr H U schedule g p P k ℓp d pay) :
     WalkEnd (insert P (ℓp.frame.viableTree ℓp.frame.tree))
@@ -105,23 +106,7 @@ theorem proposal_walkEnd_coreU
   rintro rfl
   exact hX (Option.some.inj (h.2.1.symm.trans hs.parent))
 
-/-- **The canonical walk from the proposal's anchor ends at `P`**, through `d.head`. -/
-theorem proposal_walkEnd_core (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) :
-    WalkEnd (insert P (ℓp.frame.viableTree ℓp.frame.tree))
-        (goldfishScore sp ℓp.frame (View.ofLists pay) ((p : Int) - 1))
-        (goldfishEligible sp ℓp.frame (sp.ts p) (View.ofLists pay) ((p : Int) - 1)) d.start P ∧
-      P ∈ U ∧ ℓp.frame.tree ⊆ U ∧ Anc U d.start d.head ∧ Anc U d.head P :=
-  proposal_walkEnd_coreU (hs := hs.toU)
-
 /-! ## In the setting of unanimity -/
-
-/-- `proposal_walkEnd_core` in the setting of unanimity. -/
-theorem proposal_walkEnd (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) :
-    WalkEnd (insert P (ℓp.frame.viableTree ℓp.frame.tree))
-        (goldfishScore sp ℓp.frame (View.ofLists pay) ((p : Int) - 1))
-        (goldfishEligible sp ℓp.frame (sp.ts p) (View.ofLists pay) ((p : Int) - 1)) d.start P ∧
-      P ∈ U ∧ ℓp.frame.tree ⊆ U ∧ Anc U d.start d.head ∧ Anc U d.head P :=
-  proposal_walkEnd_core hs.toCore
 
 end Consensus.Goldilocks.SA
 

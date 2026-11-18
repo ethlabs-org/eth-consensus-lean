@@ -10,7 +10,7 @@ public section
 /-! # Goldilocks Healing: the confirmed tip after an honest proposal (H.1 (ii))
 
 The helpers of `proposal_confirmed_core_fromU` (up to the first update in `ConfirmedBase`), over a
-`StandaloneRun` (H.1's premises) and an honest proposal `P` of slot `p`:
+`StandaloneRunU` (H.1's premises with the unlock given) and an honest proposal `P` of slot `p`:
 
 * `late_vote_held`: at an honest call from `t_s + 2Δ` on (`s ≥ r`), every honest slot-`s`
   vote is held, with its head in the call's frame, both resolved before `t_s + 2Δ`, before and
@@ -18,13 +18,13 @@ The helpers of `proposal_confirmed_core_fromU` (up to the first update in `Confi
 * `proposal_mem_treeU`: `P` is in every honest frame from `t_p + Δ` on;
 * `lock_compatible_core_fromU`, `liveLock_compatible_core_fromU`: every lock live at an honest
   call from `t_p + 6Δ` on, before or after it, compares with `P` (labels `< p` by
-  `LocksSettled` and the exact slot-`p` votes, labels `≥ p` by their origin's honest supporter,
+  `LocksSettledU` and the exact slot-`p` votes, labels `≥ p` by their origin's honest supporter,
   `origin_compatible_proposalU`);
 * `first_update_post`, `first_update_recordU`: the slot-`p` update at `t_p + 6Δ` has result
   `P`, not vetoed, with `P` passing the fast test, so its own fast selection
   (`fastSelect_eq_result`);
-* `record_stepU`, `record_extends`: from that update on the record extends `P` (a candidate
-  compares with `P`, and an ancestor candidate is refused);
+* `record_stepU`, `record_extends_core_fromU`: from that update on the record extends `P` (a
+  candidate compares with `P`, and an ancestor candidate is refused);
 * `head_extendsU`: the head extends `P` (the latest view is of a slot `≥ p + 1` whose honest
   batch is held and resolved);
 * `anc_acConfirmed_of_frame` (frame-only): then the confirmed tip extends
@@ -315,8 +315,10 @@ theorem trivial_tree_monoU
     exact Set.mem_insert _ _
   · exact Set.mem_insert_of_mem _ ⟨k, hk.trans hcc, hacc⟩
 
-/-- `record_extends_coreU` with the locks settled above the floor `p` only (at a mode of width
-`k`). -/
+/-- **The record after the first update**: from an honest node's tick at `t_p + 6Δ` on, at
+every later call of the node, the record after the call names a block of the call's frame that
+extends `P`; with the locks settled above the floor `p` only, the unlock given, at a mode of width
+`k`. -/
 theorem record_extends_core_fromU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) (hw : wm.width = sp.k)
     {p : Nat} {P : Blk sp.n FGP}
@@ -359,54 +361,6 @@ theorem record_extends_core_fromU
     rw [← tr.state_of_lastCall hc' hc'c hnb] at hR
     exact record_stepU hS.toHealthyBaseU (by linarith only [hp4, hΔ, hΘ]) hvotes hy hc htc hPt
       (RecP.mono (trivial_tree_monoU hS hy hc' hc hc'c.le) hR)
-
-/-- `record_extends_core` with the unlock given, at a mode of width `k`. -/
-theorem record_extends_coreU
-    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) (hw : wm.width = sp.k)
-    {p : Nat} {P : Blk sp.n FGP}
-    (hpH : proposer p ∈ H) (hP : HonestProposalU u tr (proposer p) p P)
-    (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettledU u tr H U (sp.ts p - 4 * sp.Δ))
-    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓk : ACLabel (goldilocksSA sp FGP ro)}
-    (hck : tr.CallAt y k ℓk) (hcallk : ℓk.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ) :
-    ∀ c (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y c ℓ → k ≤ c →
-      ∃ R ∈ ℓ.frame.tree, R.root = (tr.post c).latestConfirmed ∧ ℓ.frame.Anc P R :=
-  record_extends_core_fromU hS hw hpH hP hp4 (hset.toFrom p) hexact hvotes hy hck hcallk htk
-
-/-- **The record after the first update**: from an honest node's tick at `t_p + 6Δ` on,
-at every later call of the node, the record after the call names a block of the call's frame
-that extends `P`. -/
-theorem record_extends_core (hS : StandaloneRun tr H U proposer g) {p : Nat}
-    {P : Blk sp.n FGP}
-    (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
-    (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
-    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓk : ACLabel (goldilocksSA sp FGP ro)}
-    (hck : tr.CallAt y k ℓk) (hcallk : ℓk.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ) :
-    ∀ c (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y c ℓ → k ≤ c →
-      ∃ R ∈ ℓ.frame.tree, R.root = (tr.post c).latestConfirmed ∧ ℓ.frame.Anc P R :=
-  record_extends_coreU (hS := hS.toU) (hw := rfl) (p := p) (P := P) (hpH := hpH) (hP := hP.toU)
-      (hp4 := hp4)
-      (hset := hset.toU) (hexact := hexact) (hvotes := hvotes) (y := y) (hy := hy) (k := k)
-          (ℓk := ℓk) (hck := hck) (hcallk := hcallk) (htk := htk)
-
-/-- `record_extends_core` from `t_p ≥ ḡ + 2Θ + 8Δ`. -/
-theorem record_extends (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
-    (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
-    (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
-    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓk : ACLabel (goldilocksSA sp FGP ro)}
-    (hck : tr.CallAt y k ℓk) (hcallk : ℓk.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ) :
-    ∀ c (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y c ℓ → k ≤ c →
-      ∃ R ∈ ℓ.frame.tree, R.root = (tr.post c).latestConfirmed ∧ ℓ.frame.Anc P R :=
-  record_extends_core hS hpH hP (by linarith only [hp, sp.toParams.hΔ, Θ_nonneg sp])
-    hset hexact hvotes hy hck hcallk htk
 
 /-! ## The head and the confirmed tip -/
 

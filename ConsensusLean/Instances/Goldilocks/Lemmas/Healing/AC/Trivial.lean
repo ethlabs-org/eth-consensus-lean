@@ -7,7 +7,7 @@ public section
 
 /-! # Goldilocks Healing: trivial frames, the honest batch, and fast-origin transfer
 
-Over a `StandaloneRun` (H.1's premises), with `r = r_AC(ḡ)` (a slot `j` is `≥ r` exactly when
+Over a `StandaloneRunU` (H.1's premises), with `r = r_AC(ḡ)` (a slot `j` is `≥ r` exactly when
 `ḡ + 4Δ ≤ t_j`):
 
 * **trivial frames** (claims H.1 proof shape, "Viability and Carry come from relay and
@@ -75,7 +75,8 @@ theorem trivial_F_eqU
 theorem ts_succ (s : Nat) : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
   simp only [SAParams.ts]; push_cast; ring
 
-/-- `trivial_anc_mem` with the unlock given. -/
+/-- Under trivial frames, an ancestor (inside `U`) of a block of an honest node's frame is `Φ.F`
+(genesis) or a block the node accepted by then. With the unlock given. -/
 theorem trivial_anc_memU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
         {k : Nat}
@@ -98,15 +99,6 @@ theorem trivial_anc_memU
   · have hXt := frame_mem_of_between sp hU hΦ hΦU hHv hX h
     rw [htree] at hXt
     exact Set.mem_insert_iff.1 hXt
-
-/-- Under trivial frames, an ancestor (inside `U`) of a block of an honest node's frame is
-`Φ.F` (genesis) or a block the node accepted by then. -/
-theorem trivial_anc_mem (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H) {k : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x k ℓ) {Hv X : Blk sp.n FGP}
-    (hHv : Hv ∈ ℓ.frame.tree) (hX : Anc U X Hv) :
-    X = ℓ.frame.F ∨ ∃ k' ≤ k, tr.AcceptAt x k' X :=
-  trivial_anc_memU (hS := hS.toU) (x := x) (hx := hx) (k := k) (ℓ := ℓ) (hc := hc) (Hv := Hv)
-      (X := X) (hHv := hHv) (hX := hX)
 
 /-- **Acceptance relay before a deadline** (`Healthy(g)` from `g` on, `Catch(2Δ)` before): a
 block an honest `z` accepted before `T ≥ ḡ + Δ`, extending `Φ.F`, is accepted by every honest
@@ -423,7 +415,10 @@ theorem carry_of_sentU
         exact Or.inr ⟨a, b, hab, fun h => hv0 (h ▸ ha), fun h => hv0 (h ▸ hb), hav, hbv, has,
           hbs, hT a has ha, hT b hbs hb⟩
 
-/-- `viable_of_accepted` with the unlock given. -/
+/-- **Viability at a vote from acceptance before the freeze** (under trivial frames): a block of `U`
+that is genesis, or that an honest voter of slot `σ + 1` (`σ ≥ r`) accepted before the vote freeze
+`t_σ + 3Δ`, is in the viable tree of its voter block tree (or is `fc_root`). With the unlock given.
+-/
 theorem viable_of_acceptedU
     {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat}
@@ -497,18 +492,6 @@ theorem viable_of_acceptedU
   refine ⟨hvbt, ?_, B, hvbt, by rw [hvhy]; exact hBy, Relation.ReflTransGen.refl⟩
   rw [hfcy]
   exact hΦ.rooted.2 B hBy
-
-/-- **Viability at a vote from acceptance before the freeze** (under trivial frames): a block of
-`U` that is genesis, or that an honest voter of slot `σ + 1` (`σ ≥ r`) accepted before the vote
-freeze `t_σ + 3Δ`, is in the viable tree of its voter block tree (or is `fc_root`). -/
-theorem viable_of_accepted (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
-    (hes : e.msg.slot = σ + 1) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {B : Blk sp.n FGP}
-    (hBU : B ∈ U) (hB : AcceptedBefore tr y B (sp.ts σ + 3 * sp.Δ)) :
-    ViableAtVote ℓ e (σ + 1) B :=
-  viable_of_acceptedU (hS := hS.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc)
-      (σ := σ) (hes := hes) (hσ := hσ) (B := B) (hBU := hBU) (hB := hB)
 
 /-- **Viability under trivial frames.** A block `B` extended by an honest vote of a slot
 `σ ≥ r` is in the viable voter block tree of every honest slot-`(σ+1)` vote, or is genesis

@@ -147,17 +147,6 @@ theorem ac_healing_of_sync_startU {m : WriteMode} (hw : m.width = sp.k)
   · rw [hg0]; simp only [SAParams.ts]; linarith
   · simp only [SAParams.ts]; linarith
 
-/-- **Inclusion from a synchronous start** (H.1's conclusions), for the parent's unlock. -/
-theorem ac_healing_of_sync_start (hS : StandaloneRun tr H U proposer g) (hg : g ≤ 0) {p : Nat}
-    (hp : 2 ≤ p) {P : Blk sp.n FGP} (hpH : proposer p ∈ H)
-    (hP : HonestProposal tr (proposer p) p P) :
-    (∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root) ∧
-    (∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → sp.ts p + 6 * sp.Δ ≤ tr.time j →
-      (tr.time j = sp.ts p + 6 * sp.Δ →
-        ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
-      Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j))) :=
-  ac_healing_of_sync_startU rfl hS.toU hg hp hpH hP.toU
-
 end Consensus.Goldilocks.SA
 
 end
