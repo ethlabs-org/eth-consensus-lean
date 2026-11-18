@@ -33,8 +33,7 @@ The tools that apply a static fact to the prefix `tr.upTo d` with the honest set
   processing, sends, wakes and deadlines, the SA events (votes, results, optimistic selections) and
   the retained and fresh message service;
 * the transport of the finite service (`SleepyServiceBefore.upTo`);
-* the origin chain (`OnOriginChainWithin.compatible`, `OnOriginChainWithin.of_anc`), the σ-copies
-  of `Compose/Sleepy/Chain`;
+* the origin chain (`OnOriginChainWithin.of_anc`), the σ-copies of `Compose/Sleepy/Chain`;
 * node-local AC facts at a cut, lifted at the cut's time; the stored locks below the holder's own
   lock writes (`lock_write_at`), and each lock write below an origin of its label
   (`lock_below_origin_at`).

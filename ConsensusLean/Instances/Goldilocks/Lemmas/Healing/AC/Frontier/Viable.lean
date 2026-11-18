@@ -8,8 +8,8 @@ public section
 /-! # The pre-`b` frontier over AC traces: viability at votes under trivial frames
 
 The composite frontier proves that a block an honest slot-`s` vote extends is viable at an
-honest slot-`(s+1)` vote by the FG geometry of the voter's store (`Compose.vote_frame_before`:
-`Σ.J`, the floor crossing, the frozen witness). Under trivial frames that geometry is trivial
+honest slot-`(s+1)` vote by the FG geometry of the voter's store (`Σ.J`, the floor
+crossing, the frozen witness). Under trivial frames that geometry is trivial
 (`Φ.F = fc_root` is genesis, every block of the tree is a viable head), and viability is the
 acceptance of the block before the vote freeze `t_s + 3Δ`:
 

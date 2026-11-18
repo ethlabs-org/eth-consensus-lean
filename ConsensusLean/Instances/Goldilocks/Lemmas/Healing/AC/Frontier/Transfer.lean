@@ -170,8 +170,8 @@ theorem vote_extends_of_counted_batchAC (hrun : ACRunU wm u proposer tr H U)
   · exact he ▸ hBt
   · exact (Anc.mem hcore he).2
 
-/-- The full honest batch is a counted batch when it outnumbers the faulty seats (the composite
-`vote_extends_of_batch`, with the unlock given). -/
+/-- The full honest batch is a counted batch when it outnumbers the faulty seats (with the unlock
+given). -/
 theorem vote_extends_of_batchAC (hrun : ACRunU wm u proposer tr H U)
     {s : Nat} {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}

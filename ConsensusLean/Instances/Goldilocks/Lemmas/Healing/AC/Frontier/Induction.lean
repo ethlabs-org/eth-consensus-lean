@@ -7,7 +7,7 @@ public section
 /-! # The pre-`b` frontier over AC traces of a lock rule
 
 **The frontier** (`frontier_beforeAC`) is the AC content of the composite Sleepy record invariant up
-to `b` (`Compose.SleepyInvariantUpTo`) under trivial frames: over an AC trace of the SA whose honest
+to `b` under trivial frames: over an AC trace of the SA whose honest
 calls execute the handlers at a write mode `m` with the locks after the unlock given by an oracle
 `u` (`ACRunU m u`), lawful in the trace law's sense (`ACLocalRunU.lawful`, the unlock relation),
 with trivial frames, the tick duty, the deadline-cut service before `b` and `f < h_t` at `t_0` and

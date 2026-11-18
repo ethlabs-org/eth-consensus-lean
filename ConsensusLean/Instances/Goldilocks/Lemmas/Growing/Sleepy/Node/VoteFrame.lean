@@ -123,8 +123,7 @@ private theorem honest_head_accepted_at {ini} (hrun : Growing.GoldilocksRun prop
 
 /-- **A head of a slot at most `s`, of a vote of a node honest at it, is in the voter block tree**
 of a slot-`(s+1)` vote of a node honest at its cut `i ≤ b`, when it extends the voter's `Σ.F`
-(`honest_head_frozen` with each node honest at its own events: the head's voter at its acceptance,
-the voter at `i`). -/
+(each node honest at its own events: the head's voter at its acceptance, the voter at `i`). -/
 theorem honest_head_frozen_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) {s : Nat}
     {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}

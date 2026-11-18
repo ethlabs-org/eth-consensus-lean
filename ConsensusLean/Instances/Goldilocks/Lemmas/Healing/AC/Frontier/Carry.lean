@@ -21,7 +21,7 @@ condition, at a write mode, under the deadline-cut service `SyncUntilAC`:
 * what a result's or an optimistic selection's writer did with its counted votes
   (`result_writerU`, `optimistic_writer_votesU`, after `Compose.result_writer` and
   `Compose.optimistic_writer_votes`);
-* **`Carry_y` from a writer** (`carryAt_of_writerAC`, after `Compose.carryAt_of_writer_before`):
+* **`Carry_y` from a writer** (`carryAt_of_writerAC`):
   the counted votes, sent or admitted by an honest writer before `t_s + 2Δ`, and their heads,
   accepted by it before `t_s + 2Δ`, reach an honest slot-`(s+1)` voter at a time `≤ b` before the
   freeze `t_s + 3Δ`. The receiver's deadline is at most `t_s + 3Δ`, below its vote time, so within
@@ -193,12 +193,11 @@ theorem optimistic_writer_votesU (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n} (
 
 /-! ### `Carry_y` from a writer -/
 
-/-- **`Carry_y` from a writer under the deadline-cut service** (`Compose.carryAt_of_writer_before`
-with the unlock given): for an honest `y` casting its slot-`(s+1)` vote at a time `≤ b`, if each
-counted vote is of slot `s`, was sent or admitted by an honest writer `w` at a time in
-`[t_s, t_s + 2Δ)`, and has a head above `y`'s `Φ.F` that is genesis or was accepted by `w` before
-`t_s + 2Δ`, then `Carry_y(s, ·, ·)` holds for the counted votes. Every delivery read has the
-voter's deadline at most `t_s + 3Δ ≤ τ ≤ b`. -/
+/-- **`Carry_y` from a writer under the deadline-cut service** (with the unlock given): for an
+honest `y` casting its slot-`(s+1)` vote at a time `≤ b`, if each counted vote is of slot `s`, was
+sent or admitted by an honest writer `w` at a time in `[t_s, t_s + 2Δ)`, and has a head above `y`'s
+`Φ.F` that is genesis or was accepted by `w` before `t_s + 2Δ`, then `Carry_y(s, ·, ·)` holds for
+the counted votes. Every delivery read has the voter's deadline at most `t_s + 3Δ ≤ τ ≤ b`. -/
 theorem carryAt_of_writerAC (hr : ACLocalRunU wm u H U tr)
     (hsy : SyncUntilAC (goldilocksSA sp FGP ro) H U b tr)
     {s : Nat} {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}

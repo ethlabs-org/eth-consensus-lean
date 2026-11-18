@@ -114,9 +114,8 @@ detail in `TRUST.md`.
   - The generic L0 two-bound network stays unordered. The full network transports (`PSync ⇒ GSTRun`,
     `SyncUntil ⇒ SyncBefore`, `PSync 0 ⇒ SyncRun`) are not stated; each would take `Δ ≤ Δ_F` as a hypothesis, and
     with the lower bound gone it would owe no signer provenance for attestations.
-  - `MeetsObligations` needs no `Δ ≤ Δ_F`: its closure mentions `SyncOn`/`SyncRun` only through the uninstantiated
-    `SleepyWindow` disjunct of `vote_frame_of`'s service hypothesis (`Compose/Sleepy/FrameLabels`, discharged with
-    the `SleepyServiceBefore` disjunct), and never constructs or reads them.
+  - `MeetsObligations` needs no `Δ ≤ Δ_F`: `SyncOn` and `SyncRun` are outside the elaborated closure of
+    `MeetsObligations` and of Solution.
   - Rejected: restricting the clause to signings (it drops the forwarding of admitted attestations) and a local
     `max Δ Δ_F` deadline for admissions (two attestation fields).
 - **A delivery is a raw arrival.** There is no delivery-readiness condition in `ExecutionValid`: a delivery is a

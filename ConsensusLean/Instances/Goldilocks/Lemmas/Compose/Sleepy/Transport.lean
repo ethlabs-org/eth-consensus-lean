@@ -178,26 +178,6 @@ theorem carryAt_of_writer_window_before (hr : ACLocalRun (SA.goldilocksSA sp FGP
     (by rw [hts] at hstart; linarith only [hstart, hcatchTime, sp.toParams.hΔ]) hi hanc
   exact Or.inr ⟨j, hj, hjt.trans_le hcatchTime⟩
 
-/-- Writer transport needs recipient service only up to the receiving vote's time. -/
-theorem carryAt_of_writer_before (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
-    {b : Time} (hsync : SA.ServiceBefore H U b T) {s : Nat}
-    {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
-    (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) (hi : T.time i ≤ b)
-    {CV : Set (Vote sp.n)}
-    (hW : ∀ v ∈ CV, v.slot = s ∧
-      (∃ k, T.SendOrAdmit w k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
-      ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
-        (Hv.root = sp.genesisRoot ∨ ∃ k, T.AcceptAt w k Hv ∧ T.time k < sp.ts s + 2 * sp.Δ)) :
-    SA.CarryAt T U y i e s CV := by
-  have hs0 : 0 ≤ sp.ts s := by
-    have := sp.toParams.hΔ
-    simp only [SAParams.ts]
-    positivity
-  exact carryAt_of_writer_window_before hr hsync hs0
-    (κ := 0) ⟨fun _ _ k _ _ hk => absurd hk (not_lt.2 (hr.time_nonneg k))⟩
-    (by linarith only [hs0, sp.toParams.hΔ]) hw hy hc hs hi hW
-
 /-- **What a result's writer did with its counted votes**: each was admitted (or sent) by the
 writer at a time in `[t_s, t_s + 2Δ)` (its stamp, below the resolution time), and its head extends
 the result and is genesis or was accepted by the writer before `t_s + 2Δ` (the head's stamp). -/

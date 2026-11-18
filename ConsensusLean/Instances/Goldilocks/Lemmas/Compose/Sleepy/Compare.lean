@@ -16,18 +16,15 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks under `Sleepy`: honest votes and supporters of an origin
+/-! # Goldilocks under `Sleepy`: honest votes and participants
 
 * **Honest votes** (`vote_of_awake_joined`): an honest validator awake and joined at `t_s + Δ`
   votes in slot `s`, at or before `t_s + Δ`; `mayVote_of_start` and `mayVote_stock` give the vote
   permission.
 * **Honest participants** (`awake_participant_window_before`, `awake_participant_early`,
-  `awake_participant_before`, `honest_participants_window_before`): awake joined validators
-  participate in a result observed before a finite deadline, and with every honest committee member
-  awake, joined and permitted, the faulty participants of the update pool are fewer than half.
-* **An honest supporter** (`honest_supporter_before`): an origin within a finite horizon has an
-  honest slot-`s` vote whose head extends it, from deadline-bounded service and the fault bounds at
-  the slot points inside the horizon. -/
+  `honest_participants_window_before`): awake joined validators participate in a result observed
+  before a finite deadline, and with every honest committee member awake, joined and permitted, the
+  faulty participants of the update pool are fewer than half. -/
 
 /-! ## Over SA traces: `voted_slot`, and the relay of one slot's votes to a writer -/
 
@@ -311,8 +308,8 @@ theorem awake_participant_window_before {ini} (hrun : GoldilocksRun proposer dg 
   · exact ⟨e.msg, h, hval⟩
   · exact ⟨a, ha, hav.trans hval⟩
 
-/-- `awake_participant_before` when the update itself is after `b`: the votes are due by
-`t_s + 2Δ ≤ b`, so only the early cutoff needs to be within the service horizon. -/
+/-- Awake joined validators participate in a result whose update may be after `b`: the votes are
+due by `t_s + 2Δ ≤ b`, so only the early cutoff needs to be within the service horizon. -/
 theorem awake_participant_early {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {s : Nat} {b : Time}
     (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC) (hb : sp.ts s + 2 * sp.Δ ≤ b)
@@ -353,19 +350,6 @@ theorem awake_participant_early {ini} (hrun : GoldilocksRun proposer dg H tr ini
   · exact ⟨e.msg, h, hval⟩
   · exact ⟨a, ha, hav.trans hval⟩
 
-/-- The zero-source finite participant theorem retains its original interface. -/
-theorem awake_participant_before (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {s : Nat} {b : Time}
-    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
-    {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
-    {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX)
-    (hib : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H)
-    (hmv : ∀ i, (tr.state y i).ac.mayVote s = true)
-    (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
-    y ∈ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} :=
-  awake_participant_window_before hrun hnc ⟨hsync.message, hsync.relay⟩
-    (ts_nonneg s) hX hu hib hy hmv hw hj
-
 /-- If every honest member of the slot-`s` committee is awake, joined and permitted to vote,
 windowed forwarding makes the faulty participants of the actual update pool fewer than half of
 its participants, given that every pool vote is signed by a member and fewer than half of the
@@ -398,71 +382,6 @@ theorem honest_participants_window_before {ini} (hrun : GoldilocksRun proposer d
   rw [Set.sdiff_eq_compl_inter] at hsplitK hsplitV
   rw [Set.inter_comm Hᶜ] at hsplitK
   omega
-
-/-- An origin within the finite horizon has an honest supporter using only deadline-bounded
-service and the fault bounds at slot points inside the horizon. -/
-theorem honest_supporter_before
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
-      tr.FaultBound H (sp.ts s + d))
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hC : OriginWithin tr H C s b)
-    (hstock : sp.committeeSize = sp.n) :
-    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ tr.time j ≤ b ∧ e.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocks H) e.msg C := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
-  have hr := hrun'.localRun
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨X, hX, i₀, CV, hi₀, hR | hO⟩ := originWithin_iff.1 hC
-  · have hmaj := SA.result_majority hR
-    obtain ⟨ℓX, hu, -, hCV⟩ := hR
-    have ht₀ : tr.time i₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
-    have hJ := hfb s sp.Δ (by simp) (by linarith)
-    change Hᶜ.ncard <
-      {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)}.ncard at hJ
-    have hJV : {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)} ⊆
-        SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := fun y hy =>
-      awake_participant_before hrun hnc hsync.ac
-        hX hu hi₀ hy.1 (mayVote_stock hrun hnc hy.1 s) hy.2.1 hy.2.2
-    have hSV : {w | ∃ v ∈ CV, v.val = w} ⊆ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
-      rintro w ⟨v, hv, rfl⟩
-      rw [hCV] at hv
-      exact ⟨v, hv.1, rfl⟩
-    obtain ⟨w, ⟨v, hv, rfl⟩, hwH⟩ : ∃ w ∈ {w | ∃ v ∈ CV, v.val = w}, w ∈ H := by
-      by_contra hno'
-      have hno : ∀ w ∈ {w | ∃ v ∈ CV, v.val = w}, w ∉ H := fun w hw hwH => hno' ⟨w, hw, hwH⟩
-      have hdisj : Disjoint
-          {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)}
-          {w | ∃ v ∈ CV, v.val = w} :=
-        Set.disjoint_left.2 fun y hyJ hyS => hno y hyS hyJ.1
-      have h1 := Set.ncard_union_eq hdisj
-      have h2 := Set.ncard_le_ncard (Set.union_subset hJV hSV)
-      have h3 : {w | ∃ v ∈ CV, v.val = w}.ncard ≤ Hᶜ.ncard :=
-        Set.ncard_le_ncard fun y hy => hno y hy
-      omega
-    rw [hCV] at hv
-    obtain ⟨hvp, -, -, R, hR, hRr, hCR⟩ := hv
-    obtain ⟨j, hj, e, hve, rfl⟩ := hrun'.honest.pool_vote X hX i₀ s _ hvp hwH
-    obtain ⟨-, hΦU⟩ := SA.frameIn_of_callAt hr hX hu.1
-    exact ⟨_, hwH, j, e, hve, (hrun.time_mono hj.le).trans hi₀,
-      SA.state_pool_slot sp hr (fun _ => SA.voteStart_initial _) hX i₀ s _ hvp,
-      R, hΦU hR, hRr, Anc.mono hΦU hCR⟩
-  · obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO hstock
-    have hf : 2 * Hᶜ.ncard < sp.n := by
-      have h := hfb 0 0 (by simp) (by simpa [SAParams.ts] using hb)
-      change Hᶜ.ncard < tr.honestAwakeJoined H (sp.ts 0 + 0) at h
-      have hle : tr.honestAwakeJoined H (sp.ts 0 + 0) ≤ H.ncard :=
-        Set.ncard_le_ncard fun x hx => hx.1
-      have hn : H.ncard + Hᶜ.ncard = sp.n := by
-        rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-      omega
-    obtain ⟨u, ⟨v, hv, rfl, R, hR, hRr, hCR⟩, huH⟩ :=
-      Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
-        (t := SA.optimisticVoters sp A ℓ.frame s C) (by omega)
-    have huH : v.val ∈ H := not_not.1 huH
-    obtain ⟨hvs, j, hj, e, hve, rfl⟩ := SA.optimisticPoint_pool_vote hrun' hX hpt hv huH
-    exact ⟨_, huH, j, e, hve, (hrun.time_mono hj).trans hi₀, hvs, R, hΦU hR, hRr,
-      Anc.mono hΦU hCR⟩
 
 end Consensus.Goldilocks.Compose
 

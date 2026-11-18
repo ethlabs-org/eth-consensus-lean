@@ -9,8 +9,7 @@ public section
 
 /-! # The pre-`b` frontier over AC traces (vocabulary and first facts)
 
-The frontier of the Sleepy record invariant up to a horizon `b`
-(`Compose.SleepyInvariantUpTo`) has an AC content: the
+The frontier of the Sleepy record invariant up to a horizon `b` has an AC content: the
 origins within `b` compare, the honest votes at times `≤ b` extend the origins of earlier labels,
 and the records and stored locks at the cuts within `b` name genesis or blocks below those
 origins. This module states that content over an AC trace of the SA with the unlock given at a
@@ -58,10 +57,10 @@ def VotesBelowAC (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.
   ∀ C j, OriginWithinAC tr H C j b → ∀ y ∈ H, ∀ i e, VoteAt tr y i e → tr.time i ≤ b →
     j < e.msg.slot → e.msg.slot ≤ s → VoteExtends U e.msg C
 
-/-- **The pre-`b` frontier over an AC trace**: the AC fields of `Compose.SleepyInvariantUpTo`
-(S1 for the origins, S2 for the votes, and the record and lock parts of S1), stated over the AC
-trace of the SA with ancestry inside `U`. The FG fields (`caches`, `sources`, `viable`) are
-dropped: under trivial frames `Φ.F = fc_root` is genesis and every block of the tree is viable. -/
+/-- **The pre-`b` frontier over an AC trace**: the AC fields of the Sleepy record invariant up to
+`b` (S1 for the origins, S2 for the votes, and the record and lock parts of S1), stated over the AC
+trace of the SA with ancestry inside `U`. The FG fields (`caches`, `sources`, `viable`) are dropped:
+under trivial frames `Φ.F = fc_root` is genesis and every block of the tree is viable. -/
 structure FrontierAC (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (b : Time) : Prop where
   /-- S1: any two origins within `b` are compatible. -/

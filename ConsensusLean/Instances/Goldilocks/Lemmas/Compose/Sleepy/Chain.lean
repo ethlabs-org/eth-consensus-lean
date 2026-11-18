@@ -9,10 +9,9 @@ public section
 
 /-! # Goldilocks under `Sleepy`: the origin chain
 
-Blocks on the ancestor closure of the origin chain within a horizon `b` (`OnOriginChainWithin`)
-are pairwise compatible once the origins within `b` are (S1): an ancestor of an origin is
-compatible with every ancestor of a compatible origin, and genesis is below every honest block
-(`OnOriginChainWithin.compatible`, `OnOriginChainWithin.of_anc`). -/
+Genesis is below every honest block (`honest_genesis_anc`), and the ancestor closure of the origin
+chain within a horizon `b` (`OnOriginChainWithin`) is closed under ancestors inside the honest
+blocks (`OnOriginChainWithin.of_anc`). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -56,27 +55,6 @@ private theorem anc_genesis {S : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
   · exact heq.symm
   · exact absurd hY.2.2 (by simp [Params.genesisBlock])
 
-/-- Blocks below tips that are pairwise compatible (`Q`, an origin predicate) or genesis are
-compatible. -/
-private theorem chain_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {Q : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
-    (hcomp : ∀ C s C' s', Q C s → Q C' s' → Compatible (tr.HonestBlocks H) C C')
-    {B B' : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocks H)
-    (hB' : B' ∈ tr.HonestBlocks H)
-    (h : B.root = sp.genesisRoot ∨ ∃ C s, Q C s ∧ Anc (tr.HonestBlocks H) B C)
-    (h' : B'.root = sp.genesisRoot ∨ ∃ C s, Q C s ∧ Anc (tr.HonestBlocks H) B' C) :
-    Compatible (tr.HonestBlocks H) B B' := by
-  have hU := honest_coherent hrun hnc
-  rcases h with hg | ⟨C, s, hC, hBC⟩
-  · rw [honest_eq_genesis hrun hU hB hg]
-    exact Or.inl (honest_genesis_anc hrun hB').2
-  rcases h' with hg' | ⟨C', s', hC', hBC'⟩
-  · rw [honest_eq_genesis hrun hU hB' hg']
-    exact Or.inr (honest_genesis_anc hrun hB).2
-  rcases hcomp C s C' s' hC hC' with hCC | hCC
-  · exact Anc.total hU (hBC.trans hCC) hBC'
-  · exact Anc.total hU hBC (hBC'.trans hCC)
-
 /-- An ancestor of a block that is genesis or below a tip `Q` is genesis or below it. -/
 private theorem chain_of_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {Q : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
@@ -92,18 +70,6 @@ private theorem chain_of_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     rw [honest_eq_genesis hrun (honest_coherent hrun hnc) hBU hg] at hAB
     exact Or.inl (by rw [anc_genesis hAB]; rfl)
   · exact Or.inr ⟨C, s, hC, hAB.trans hBC⟩
-
-/-- **Blocks on the chain of the origins within `b` are compatible** when those origins are
-pairwise compatible. -/
-theorem OnOriginChainWithin.compatible (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr)
-    {b : Time} (hcomp : ∀ C s C' s', OriginWithin tr H C s b → OriginWithin tr H C' s' b →
-      Compatible (tr.HonestBlocks H) C C')
-    {B B' : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocks H)
-    (hB' : B' ∈ tr.HonestBlocks H) (h : OnOriginChainWithin tr H B b)
-    (h' : OnOriginChainWithin tr H B' b) : Compatible (tr.HonestBlocks H) B B' :=
-  chain_compatible hrun hnc (Q := fun C s => OriginWithin tr H C s b) hcomp hB hB'
-    (onOriginChainWithin_iff.1 h) (onOriginChainWithin_iff.1 h')
 
 /-- **An ancestor of a block on the chain of the origins within `b` is on it.** -/
 theorem OnOriginChainWithin.of_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)

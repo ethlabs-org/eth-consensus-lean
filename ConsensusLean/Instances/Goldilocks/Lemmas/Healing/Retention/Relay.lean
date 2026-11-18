@@ -7,10 +7,9 @@ public section
 
 /-! # Goldilocks Healing, HR.4: relay after the GST and the writers of fast locks
 
-The relay of a counted vote and its head to a next
-voter under `Sync` on a window `[a₀, b]` instead of `Sync[0, b]` (`carryAt_of_writer_window`,
-the Sleepy `carryAt_of_writer_before` with the extra premise that the head was accepted at or after
-`a₀`), and what a writer of a fast lock did with its counted votes before `t_s + 2Δ`
+The relay of a counted vote and its head to a next voter under `Sync` on a window `[a₀, b]` instead
+of `Sync[0, b]` (`carryAt_of_writer_window`, with the extra premise that the head was accepted at or
+after `a₀`), and what a writer of a fast lock did with its counted votes before `t_s + 2Δ`
 (`fastLock_writer`, main's Sleepy `result_writer` / `optimistic_writer` for both origins of a fast
 lock, the fast test's selected block instead of the result), with the counted votes nonempty
 (`fastLock_counted_nonempty`). The timing and writer-carry steps are the shared ones of
@@ -101,12 +100,11 @@ theorem readPoint_pool_of_ne {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) 
   · exact ⟨Function.update_of_ne (Ne.symm hσ) _ _,
       fun u hu => Function.update_of_ne (by rintro rfl; exact hσ hu) _ _⟩
 
-/-- **`Carry_y` from a writer, after the GST** (the Sleepy
-`carryAt_of_writer_before` with `Sync[a₀, b]` instead of `Sync[0, b]`). For an honest `y` casting
-its slot-`(s+1)` vote, with `a₀ ≤ t_s` and `t_s + 2Δ ≤ b`: if each counted vote is of slot `s`, was
-sent or admitted by an honest writer `w` at a time in `[t_s, t_s + 2Δ)`, and has a head above `y`'s
-`Σ.F` that is genesis or that `w` accepted in `[a₀, t_s + 2Δ)`, then `Carry_y(s, ·, ·)` holds for
-the counted votes. -/
+/-- **`Carry_y` from a writer, after the GST** (under `Sync[a₀, b]` instead of `Sync[0, b]`). For an
+honest `y` casting its slot-`(s+1)` vote, with `a₀ ≤ t_s` and `t_s + 2Δ ≤ b`: if each counted vote
+is of slot `s`, was sent or admitted by an honest writer `w` at a time in `[t_s, t_s + 2Δ)`, and has
+a head above `y`'s `Σ.F` that is genesis or that `w` accepted in `[a₀, t_s + 2Δ)`, then
+`Carry_y(s, ·, ·)` holds for the counted votes. -/
 theorem carryAt_of_writer_window (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
     {a₀ b : Time} (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U a₀ b T) {s : Nat}
     (ha₀ : a₀ ≤ sp.ts s) (hb : sp.ts s + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n}

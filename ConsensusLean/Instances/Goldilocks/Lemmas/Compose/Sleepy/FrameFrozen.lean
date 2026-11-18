@@ -23,9 +23,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-! ### The frozen witness: an honest head relayed before the freeze -/
 
-private theorem add_mul_delta_le {x a b : Time} (h : a ≤ b) : x + a * sp.Δ ≤ x + b * sp.Δ :=
-  add_le_add le_rfl (mul_le_mul_of_nonneg_right h sp.toParams.hΔ.le)
-
 private theorem add_mul_delta_lt {x a b : Time} (h : a < b) : x + a * sp.Δ < x + b * sp.Δ :=
   add_lt_add_of_le_of_lt le_rfl (mul_lt_mul_of_pos_right h sp.toParams.hΔ)
 
@@ -58,76 +55,6 @@ theorem honest_vote_restarts {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     have e4 : sp.ts ((s : Int) + 1) = sp.ts s + 4 * sp.Δ := by simp only [SAParams.ts]; ring
     rw [e4] at h
     exact h
-
-/-- **An honest head of a slot at most `s` is accepted before the freeze** by an honest
-slot-`(s+1)` voter whose `Σ.F` it extends: its voter accepted it (or it is genesis) by
-`t_m + Δ ≤ t_s + Δ`, and `Sync` relays the acceptance (from `t_{s₀}` on; an earlier one by
-`hold`) to the voter, awake since its last restart at or before `t_s`, by `t_s + 2Δ`. -/
-private theorem honest_head_accepted (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {s₀ : Nat} {b : Time} (hservice : SleepyWindow tr H ΔF s₀ b ∨ SleepyServiceBefore tr H ΔF b)
-    {s : Nat} {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
-    (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
-    (hold : ∀ x ∈ H, ∀ m B, tr.AcceptAt x m B → tr.time m < sp.ts s₀ →
-      Anc (tr.HonestBlocks H) ℓ.frame.F B → SA.AcceptedBefore tr.projAC y B (sp.ts s + 3 * sp.Δ))
-    {x : Fin sp.n} (hx : x ∈ H)
-    {k : Nat} {e' : SA.Em sp (List (FG.Att sp.n))} (hv : SA.VoteAt tr.projAC x k e')
-    (hs' : e'.msg.slot ≤ s) {Hd : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hHd : Hd ∈ tr.HonestBlocks H) (hHdr : Hd.root = e'.msg.head)
-    (hFHd : Anc (tr.HonestBlocks H) ℓ.frame.F Hd) :
-    SA.AcceptedBefore tr.projAC y Hd (sp.ts s + 3 * sp.Δ) := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨ℓ', hcx, hex⟩ := hv
-  -- the head is in its voter's tree, and the vote is cast by `t_m + Δ ≤ t_s + Δ`
-  obtain ⟨⟨Hd', hHd't, hHd'r, -⟩, hkt⟩ := cast_head_fcRoot hr
-      (fun _ => SA.voteStart_initial _) hx ⟨hcx, hex⟩
-  rw [frame_of_projAC hrun hx hcx] at hHd't
-  obtain rfl : Hd = Hd' :=
-    ((projFG_localRun hrun hnc).coherent.1 ⟨x, hx, k, hHd't.1⟩ hHd (hHd'r.trans hHdr.symm)).symm
-  have hkt' : tr.time k ≤ sp.ts s + sp.Δ := by
-    have h1 : tr.time k ≤ sp.ts (e'.msg.slot : Int) + sp.Δ := hkt
-    have h2 : sp.ts (e'.msg.slot : Int) ≤ sp.ts (s : Int) := by
-      unfold SAParams.ts
-      exact mul_le_mul_of_nonneg_left (by exact_mod_cast hs') (mul_nonneg (by norm_num) hΔ.le)
-    exact h1.trans (add_le_add h2 le_rfl)
-  obtain ⟨hrs, hti⟩ := honest_vote_restarts hrun hnc hy hc hs
-  have hrs' : ∀ c ≤ i, tr.RestartAt y c → tr.time c ≤ sp.ts s := fun c hc' ⟨ℓr, hcr, hrr⟩ =>
-    hrs c hc' ⟨ℓr, projAC_callAt.2 hcr, hrr⟩
-  -- its voter accepted it (or it is genesis)
-  have hHdx := hHd't.1
-  rw [← store_eq hrun hx k] at hHdx
-  rcases Store.tree_accepted (projFG_localRun hrun hnc) hx hHdx with hg | ⟨m, hm, hA⟩
-  · exact Or.inl (by rw [hg]; rfl)
-  have hmt : tr.time m ≤ sp.ts s + sp.Δ := (hrun.time_mono hm.le).trans hkt'
-  have hFy : Anc (tr.HonestBlocks H) (tr.state y i).fg.F Hd := by
-    rw [frame_of_projAC hrun hy hc.1] at hFHd; exact hFHd
-  have hdl : ∀ c ≤ i, tr.deadline y c (tr.time m) sp.Δ ≤ sp.ts s + 2 * sp.Δ := fun c hc' => by
-    have := deadline_le_of_restarts (fun k hk hr' => hrs' k (hk.trans hc') hr') (tr.time m) sp.Δ
-    refine this.trans ?_
-    rw [two_mul, ← add_assoc]
-    exact add_le_add (max_le hmt (le_add_of_nonneg_right hΔ.le)) le_rfl
-  -- `Sync` relays the acceptance to `y` before `t_s + 2Δ`
-  by_cases hm₀ : sp.ts s₀ ≤ tr.time m
-  swap
-  · exact hold x hx m Hd (projFG_callAt.1 hA) (not_le.1 hm₀) hFHd
-  have hdi : tr.deadline y i (tr.time m) sp.Δ ≤ tr.time i :=
-    (hdl i le_rfl).trans ((add_mul_delta_le (by norm_num)).trans hti)
-  have delivered := hservice.elim
-    (fun hwin => (sleepyWindow_iff.1 hwin).2.1.relay x hx m Hd
-      (projFG_callAt.1 hA) ⟨hm₀, le_sub_iff_add_le.2 ((add_le_add hmt le_rfl).trans (by
-        rw [add_assoc, ← two_mul]; exact (add_mul_delta_le (by norm_num)).trans (hti.trans hib)))⟩
-      y hy i ⟨_, projAC_callAt.1 hc.1⟩ hdi hFy)
-    (fun hsync => hsync.relay x hx m Hd (projFG_callAt.1 hA) (hrun.time_nonneg m)
-      y hy i ⟨_, projAC_callAt.1 hc.1⟩ (hdi.trans hib) hdi hFy)
-  obtain ⟨k', hk'i, hAy, hk't⟩ := delivered
-  obtain ⟨ℓy, hcy, hby, hty⟩ := accept_next hrun.toLocalRun hy hAy
-  have hk't' : tr.time k' < tr.deadline y k' (tr.time m) sp.Δ := hk't
-  have := hdl k' hk'i
-  exact Or.inr ⟨k' + 1, ⟨ℓy, projAC_callAt.2 hcy, hby⟩, by
-    change tr.time (k' + 1) < _; rw [hty]
-    exact hk't'.trans_le (this.trans (add_mul_delta_le (by norm_num)))⟩
 
 /-- The emissions of `ac_on_tick` are made at `t_σ + Δ` only. -/
 private theorem acOnTick_emits {self : Fin sp.n} {A : SA.SAState sp.n}
@@ -224,29 +151,6 @@ theorem accepted_voter_tree {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     · rw [hoth (fun B h => hb ⟨B, h⟩) hnr]
   have hfz : SA.freeze sp (s + 1) = sp.ts s + 3 * sp.Δ := by simp [SA.freeze]
   exact ⟨hXt, Or.inl (by rw [hrp, hfz]; exact hbs)⟩
-
-/-- **An honest head of a slot at most `s` is in the voter block tree** of an honest slot-`(s+1)`
-vote (the frozen witness): it was accepted by its voter by `t_m + Δ ≤ t_s + Δ`
-and relayed to `y` (joined, so awake since `t_s`, with `Σ.F` below it) before the freeze
-`t_s + 3Δ`. -/
-theorem honest_head_frozen (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {s₀ : Nat} {b : Time} (hservice : SleepyWindow tr H ΔF s₀ b ∨ SleepyServiceBefore tr H ΔF b)
-    {s : Nat} {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
-    (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
-    (hold : ∀ x ∈ H, ∀ m B, tr.AcceptAt x m B → tr.time m < sp.ts s₀ →
-      Anc (tr.HonestBlocks H) ℓ.frame.F B → SA.AcceptedBefore tr.projAC y B (sp.ts s + 3 * sp.Δ))
-    {x : Fin sp.n} (hx : x ∈ H)
-    {k : Nat} {e' : SA.Em sp (List (FG.Att sp.n))} (hv : SA.VoteAt tr.projAC x k e')
-    (hs' : e'.msg.slot ≤ s) {Z : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hZ : SA.VoteExtends (tr.HonestBlocks H) e'.msg Z)
-    (hFZ : Anc (tr.HonestBlocks H) ℓ.frame.F Z) :
-    ∃ W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1), Anc (tr.HonestBlocks H) Z W := by
-  obtain ⟨Hd, hHd, hHdr, hZHd⟩ := hZ
-  have hFHd := hFZ.trans hZHd
-  exact ⟨Hd, accepted_voter_tree hrun hnc hy hc hs hHd
-    (honest_head_accepted hrun hnc hservice hy hc hs hib hold hx hv hs' hHd hHdr hFHd) hFHd, hZHd⟩
 
 end Consensus.Goldilocks.Compose
 
