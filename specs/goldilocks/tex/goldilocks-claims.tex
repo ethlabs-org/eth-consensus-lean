@@ -219,7 +219,9 @@ Rules.  (1) Node statements are fixed before any proof of a node that uses
 them; a proof task starts only when the statements of its uses are fixed.
 (2) A change of a node names the nodes that use it.
 (3) Each node names its \emph{evidence}: a paper argument (often a ``Why''
-note of the protocol text), an old proof for the round model
+note of the protocol text; the notes marked (29eb7209) are those of
+goldilocks-spec.tex and shared/fg.tex at commit 29eb7209 of this folder,
+which the current protocol text no longer carries), an old proof for the round model
 (the earlier round-model protocol text, its blueprint and the old Lean
 \texttt{FGSAClaims}, none of them in this repository), or
 none.  Old proofs are for a different protocol: they give the argument's shape,
@@ -232,26 +234,33 @@ proving).
 \subsection{Parameters}
 
 $n=|V|\geq1$, weights~$1$, $q=\lceil 2n/3\rceil$.  $\Delta>0$, $\Delta_F\geq\Delta$.
+Committees: every claim of this file assumes the population committee,
+$\mathcal K_s=V$ for every slot~$s$, so $|\mathcal K_s|=n$ and every honest validator that is awake and joined
+at $t_s+\Delta$, the latest time of the slot-$s$ vote, votes in slot~$s$.  The protocol
+(goldilocks-spec \S Schedule) allows any public committees of one common
+size; for those, the claims that count against the committee or rely on
+every honest voter voting (for example A0.4 (e) through $e<n/2$, and the
+casts dichotomy of A1.9) are not claimed here, and committee-native forms
+are separate statements.
 Slot~$s$ starts at $t_s=4\Delta s$.  $\cF=\lceil(6\Delta+\Delta_F)/(4\Delta)\rceil$
 and $R\geq\cF$ slots per round.  Lock window $k\geq2$ slots (the AC).  FG
 window $K_W=2$; FG slack $k_F\geq0$ (distinct from~$k$); source delay
 $x\geq0$; timeout delay $\delta_{\mathrm t}\geq x+\cF+k_F$, default $x=0$
-(goldilocks-spec \S Schedule).  Write $f$ for the number of faulty validators.
+(goldilocks-spec \S Schedule fixes only $\delta_{\mathrm t}\geq0$; $R$ and these
+bounds are this file's).  Write $f$ for the number of faulty validators.
 
 \subsection{Runs}
 
 A run fixes the faulty set, an awake function for every honest validator, the
 delivery times chosen by the adversary, and the inputs.  Honest nodes run the
 handlers and duties of the protocol.  The protocol's model
-(composition \S``Model'') is taken with one deliberate change: continuous time, public times the
+(composition \S``Model'') is taken as it is: continuous time, public times the
 multiples of~$\Delta$, a tick at each public time before the objects of that
 time, relay by honest nodes, an asleep node receives nothing, and a wake is
 a restart that keeps $\Lambda$, $\Sigma$, the clock, the locks and
 $\AC.\latestConfirmed$; a node awake at time~$0$ has not restarted
 ($\mathsf{restart\_time}=-\infty$).  A run does \emph{not} assume the delivery
-bounds (the protocol text says ``the delivery bounds hold for every awake
-honest node'' and calls a node faulty while the adversary controls its
-delivery): the premise $\mathsf{Sync}$ below imposes them on a window, so that
+bounds globally: the premise $\mathsf{Sync}$ below imposes them on a window, so that
 $\mathsf{GST}$ and $\mathsf{Outage}$ have content.  Signatures are
 unforgeable: an object signed with an honest validator's identity, its slot
 key or its slot-$s$ seat key was made by that validator's node (the premise of every node that reasons
@@ -302,7 +311,7 @@ $\mathsf{GST}(g)$ & $\mathsf{Sync}[g,\infty)$, and an object sent before~$g$
   or $+\Delta_F$ for an attestation: it is still processed at or after its
   real send time) & \texttt{PSync g} (check)\\
 $\mathsf{Sleepy}$ & $\mathsf{Sync}[0,\infty)$ and $f<h_t$ at every
-  $t\in\{t_s,\ t_s+\Delta,\ t_s+2\Delta : s\geq0\}$ (the protocol's ``Fault bound'', with $h$ read
+  $t\in\{t_s,\ t_s+\Delta,\ t_s+2\Delta : s\geq0\}$ (the protocol's ``Fault bound''~(29eb7209), with $h$ read
   as awake and joined) &
   \texttt{Sleepy} with $\theta=\tfrac12$: ready honest exceed faulty; Ready
   $\Rightarrow$ joined (F.4)\\
@@ -502,8 +511,8 @@ by a timeout (or $h=1$);
 (i) the entry state of a height whose previous height is justified has not
 finalized its predecessor, and
 $P$ is its newest pending pair.}
-{G0.1 (chain)}{FG state transition and the notes ``Why a height whose previous height is justified waits'' and
-``Why the client reads the entry state'' (fg.tex).}{M.  (a)--(e), (f)--(g) and (h)--(i) can be three tasks.}
+{G0.1 (chain)}{FG state transition and the notes ``Why a height whose previous height is justified waits''~(29eb7209) and
+``Why the client reads the entry state''~(29eb7209) (fg.tex).}{M.  (a)--(e), (f)--(g) and (h)--(i) can be three tasks.}
 
 \dagnode{G0.7}{Gated consumption (I7 restated)}{For every accepted~$B$,
 with $\sigma=\sigma[B.\parent]$ and $\sigma'=\sigma[B]$: (c0)
@@ -539,7 +548,7 @@ height whose previous height is not, timeout at a height whose previous
 height is justified, append at a height whose previous height is not, drops
 it ($[P]\to[P,Q]\to[Q,R]$) without covering it.  (c) is a test witness of the
 Lean development, not a theorem.}
-{G0.2, G0.7}{fg.tex ``Why a height whose previous height is justified waits''.}{S.}
+{G0.2, G0.7}{fg.tex ``Why a height whose previous height is justified waits''~(29eb7209).}{S.}
 
 \dagnode{G0.3}{Cache invariants}{At an honest node at every time, through
 restarts: $\Sigma.F\in\T$; every block of $\Fr.\mathsf{tree}$ extends
@@ -629,7 +638,7 @@ same when a later state or the head has finalized~$P$ (the client reads only
 $\sigma_e$).  Its users get ``at every honest validator'' from G0.1 (store),
 since each node's $\Sigma.\sigma$ at the entry block is $\sigma_e$, and from
 G0.5, since each honest record is the record of a client run.}
-{G0.1 (chain), G0.2 (h), (i), F.3}{fg.tex ``Why the client reads the entry state''
+{G0.1 (chain), G0.2 (h), (i), F.3}{fg.tex ``Why the client reads the entry state''~(29eb7209)
 (no record-induced cascade).}{S.}
 
 \subsection{Available chain}
@@ -641,7 +650,7 @@ with $\slot(t)=B.\slot$, a vote of $B.\mathsf{votes}$ that is not in the pool
 after $\fname{ac\_on\_block}$ makes its validator an equivocator in that pool;
 the stamp of an accepted block is at least the stamp of its parent (so a voter
 block tree is closed under ancestors).}
-{none}{AC \S Votes ``Admission''; \S Locks ``The opponents of the merged view''.}{S.}
+{none}{AC \S Votes ``Admission''; \S Locks ``The opponents of the merged view''~(29eb7209).}{S.}
 
 \dagnode{A0.2}{Resolution}{If a vote is resolved before $c$ at frame $\Fr$ and
 its head is in $\Fr'.\mathsf{tree}$ for a later frame $\Fr'$ of the same node
@@ -649,7 +658,7 @@ with no restart in between, it is resolved before~$c$ at $\Fr'$, with the same
 resolution time.  The support votes of every view have heads in
 $\Fr.\mathsf{tree}$, so the opponents of $\Fr.F$ are exactly the
 equivocators.}
-{G0.3 (frame), A0.1}{AC \S Votes ``Resolution''; \S Locks ``Why unlocking is well defined''.}{S.}
+{G0.3 (frame), A0.1}{AC \S Votes ``Resolution''; \S Locks ``Why unlocking is well defined''~(29eb7209).}{S.}
 
 \dagnode{A0.3}{Counting}{In any view: the supporters of an ancestor include
 those of a descendant; the opponents of an ancestor are included in those of
@@ -675,7 +684,7 @@ fewer than half of the committee as opponents, so $\fname{unlock}$ never
 uses its fallback; (f) the candidates of $\fname{ac\_to\_fg}$
 lie on one chain and the anchor extends each of them.}
 {A0.2, A0.3, G0.4 (frame), G0.3 (frame)}{AC \S Locks ``Adding locks'', ``Why unlocking is well
-defined''; \S Node actions ``The block for the FG''.}{M.  (a) is the crux,
+defined''~(29eb7209); \S Node actions ``The block for the FG''.}{M.  (a) is the crux,
 and is not inductive as stated: prove that the \emph{stored} locks lie on one
 chain (each write stores images taken at one frame, and images of blocks on one
 chain stay on one chain), over lock writes, unlockings, frame changes and
@@ -711,7 +720,7 @@ node joined at $t$ has erased no vote of slot $\slot(t)-1$ or later.}
 validator casts at most one Goldfish vote per slot, also across restarts
 ($\mathsf{voted\_slot}$, and a node that restarts in slot~$s$ is not joined in
 slot~$s$).}
-{F.1, A0.7}{AC \S Node actions ``Why a marker for the one vote''.}{S.}
+{F.1, A0.7}{AC \S Node actions ``Why a marker for the one vote''~(29eb7209).}{S.}
 
 \dagnode{A0.9}{Proposal payload is valid (requirement 5)}{If
 $\fname{ac\_proposal}(\AC,\Fr,t_s)=(H,p)$ at a reachable AC state, then a block of
@@ -1000,7 +1009,7 @@ the proposer's frame at $t_{s+1}$ and the voter's frame hold the same blocks of
 slot at most~$s$, then the proposal's view and the voter's merged view give the
 same opponents for every block of slot at most~$s$.}
 {A0.1, A0.3, A0.8}{AC \S Node actions ``Why the proposer and the voters agree on
-the unlocking''.}{M.}
+the unlocking''~(29eb7209).}{M.}
 
 \dagnode{A1.2}{First transfer (step)}{Let an honest joined node write a
 \emph{fast} lock of slot~$s$ on~$B$, by the fast test of
@@ -1038,7 +1047,7 @@ vote that precedes $y$'s vote extends~$B$, then $y$'s vote extends~$B$.
 (Every slot-$m$ vote precedes every slot-$(m+1)$ vote.)}
 {A0.3, A0.4, A0.8, A1.1, G0.4 (frame), G0.3 (frame)}{blueprint \texttt{21-healing}
 (\texttt{healing\_next\_transfer\_core}); AC \S Node actions ``Why the FG can
-take every confirmation''.}{M.}
+take every confirmation''~(29eb7209).}{M.}
 
 \dagnode{A1.4}{Optimistic is fast (step)}{Let an honest joined node confirm $B$
 optimistically in slot~$s$ with counted set $S$, $4|S|\geq3n$, and assume
@@ -1054,12 +1063,12 @@ resolved before $t_{s+1}+2\Delta$, has a slot-$(s+1)$ result that extends~$B$,
 and, if $B\neq\genesis$, its fast test selects some $D\succeq B$ (the write can
 still be vetoed or moved back).  The protocol's note has the same gap in~(b).}
 {A0.3, A0.4, A0.8, A1.1, G0.4 (frame), G0.3 (frame)}{AC \S Node actions, note ``Why an optimistic confirmation
-is a fast confirmation'' (paper sketch); new in Lean.}{M.}
+is a fast confirmation''~(29eb7209) (paper sketch); new in Lean.}{M.}
 
 \dagnode{A1.5}{Source age}{From slot $\slot(\tau)+3$ on, every block that
 $\fname{ac\_to\_fg}$ returns at an honest node is the block of a fast lock
 written after~$\tau$.}
-{A0.4, A0.7}{AC \S Node actions ``Why the FG can take every confirmation''.}{S.}
+{A0.4, A0.7}{AC \S Node actions ``Why the FG can take every confirmation''~(29eb7209).}{S.}
 
 \dagnode{A1.8}{Result transfer (step)}{Let an honest node~$X$, joined at
 $t_s+6\Delta$, get a result $C\neq\bot$ from $\fname{get\_confirmation}$ for
@@ -1115,7 +1124,7 @@ but the honest votes extend~$B$ and $f<n/2$.  In case~(ii) $x$ is joined at~$t$
 only if $\slot(t)\geq s+2$, so its sources have slot at least~$s$ and its old
 fast locks of slots $s-2$ and $s-1$ are not sources.)}
 {A0.3, A0.4, A0.7, A0.8, A1.5, G0.4 (frame), G0.3 (frame)}{AC \S Node actions ``The block for the FG'', ``Why
-an optimistic confirmation is a fast confirmation''.}{M.}
+an optimistic confirmation is a fast confirmation''~(29eb7209).}{M.}
 
 \subsection{Composition}
 
@@ -1238,7 +1247,7 @@ entry whose previous height is justified, permits~$P_E$ (BA), so the honest atte
 $t_{u+\cF}$, and the window's honest ready proposal with the retained-inclusion
 parent gives P1, P3--P5 (C0.3), unless a retained chain justifies~$E$ first,
 which is branch~(ii).  In the second case branch~(ii) holds.)  Faulty or old entries are not
-served by this node (goldilocks-spec \S Schedule: ``an AC obligation''; H4).  The disjunction is
+served by this node (an open AC obligation; H4).  The disjunction is
 needed: an early justification can use $q-f$ honest and $f$ faulty targets
 ($n=7$: three plus two), after which higher-source suppression can skip that
 height for every later honest source, so the existing duty interface does not

@@ -5,8 +5,8 @@
 A fixed set~$V$ of $n\geq1$ validators is given.  Every validator has
 weight~$1$: for $S\subseteq V$, $w(S)=|S|$, and the quorum threshold is
 $q=\lceil 2n/3\rceil$.  $\Delta$ is the delivery parameter of blocks and
-AC messages, and $\Delta_F>0$ is the delivery parameter of attestation
-rows; neither bound bounds the other.  A bound is strict: the receiver processes the object at
+AC messages, and $\Delta_F>0$ is the delivery parameter of
+attestations.  A bound is strict: the receiver processes the object at
 a time strictly less than the deadline of the bound.  When the deadline is
 a public time, the receiver thus processes the object before the tick at
 that time.  Time is continuous, and the clock~$t$ of a node is the
@@ -24,23 +24,17 @@ time of receipt.  A node that wakes restarts (Section~\ref{sec:store})
 before it runs a tick or processes an object at that time; a crash is a
 sleep.
 
-The delivery bounds hold for every awake honest node.  An honest node
-forwards an object when it accepts it: a block when the FG accepts it, an
+An honest node forwards an object when it accepts it: a block when the FG accepts it, an
 AC message when the AC admits it, and an attestation when it passes the
 checks.  This includes the objects that a block carries: a vote that the AC
 admits from the payload of an accepted block, and an attestation of an
 accepted block that enters the pool, are forwarded as wire objects of their
-own, whether or not another node accepts the block.  So a delivery bound also counts from the time at which an honest
-node first accepts the object; a receipt that is refused is not forwarded.  A node that runs
-while its delivery is under the control of the adversary is faulty.
+own, whether or not another node accepts the block.  A receipt that is
+refused is not forwarded.
 
 Slot~$s$ starts at the public time~$t_s$, with $t_0=0$ and
 $t_s<t_{s+1}$, and has an assigned proposer.  The slot of a time~$t$, written $\slot(t)$, is
-the greatest~$s$ with $t_s\leq t$.  Round~$r$ has the slots
-$rR,\ldots,rR+R-1$, and $\round(s)=\lfloor s/R\rfloor$.  Its opening time
-is $T_r=t_{rR}$.  Rounds are the heartbeat of the network for the
-aggregation of attestations; no rule of the shared node reads them, and an
-AC can use them.  The AC fixes the slot times and a lower bound on~$R$.
+the greatest~$s$ with $t_s\leq t$.  The AC fixes the slot times.
 
 The local validator index is~$\valindex$.
 
@@ -74,7 +68,7 @@ $B\preceq C$ when $B=C$ or $B$ is an ancestor of~$C$, and write $B\prec C$
 for strict ancestry.  Two blocks are compatible when one is an ancestor of
 the other, and they conflict otherwise.  The depth of a block is the
 number of parent edges from genesis.  ``Deepest'' means maximum depth;
-ties use a fixed root order.
+ties go to the smaller root.
 
 \subsection{State}\label{sec:store}
 
@@ -185,9 +179,7 @@ requirements.
 
 The protocol exposes three tips: the finalized tip~$\Sigma.F$, the
 confirmed tip $\Call{ac\_confirmed}{\AC,\Fr,t}$ and the head
-$\Call{ac\_head}{\AC,\Fr,t}$, with $\Fr=\Call{fg\_to\_ac}{\Sigma}$.  They
-lie on one chain: the finalized tip is an ancestor of the confirmed tip,
-and the confirmed tip is an ancestor of the head.
+$\Call{ac\_head}{\AC,\Fr,t}$, with $\Fr=\Call{fg\_to\_ac}{\Sigma}$.
 
 \subsection{Node}\label{sec:node}
 
