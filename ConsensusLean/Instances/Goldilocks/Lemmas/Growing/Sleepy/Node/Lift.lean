@@ -330,33 +330,24 @@ theorem SleepyServiceBefore.upTo {ini} (hrun : Growing.GoldilocksRun proposer dg
   have hm := hrun.time_mono
   have anti : ∀ {t}, t ≤ d → H d ⊆ H t := fun ht => hrun.antitone ht
   have hsub := upTo_subset hrun hd
-  refine ⟨h.deltaF, ?_, fun x hx i B hB h0 y hy j hc hdb hdj ha => ?_⟩
-  · rw [RunTrace.upTo_projAC]
-    refine ⟨fun x hx i v hv h0 y hy j ℓ hc hdb hdj => ?_,
-      fun x hx i B hB h0 y hy j ℓ hc hdb hdj ha => ?_⟩
-    · obtain ⟨hid, hv⟩ := (ac_sendOrAdmit_upTo hm).mp hv
-      obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
-      rw [ac_deadline_upTo hm hjd] at hdb hdj
-      exact sa_messageServedBefore_upTo hm hjd
-        (h.message x i v (anti hid hx) hv h0 y j ℓ (anti hjd hy) hc (hdb.trans (min_le_left _ _))
-          hdj)
-    · obtain ⟨hid, hB⟩ := (ac_acceptAt_upTo _).mp hB
-      obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
-      rw [ac_deadline_upTo hm hjd] at hdb hdj
-      obtain ⟨k, hkj, hk, hkt⟩ := h.acRelay x i B (anti hid hx) hB h0 y j ℓ (anti hjd hy) hc
-        (hdb.trans (min_le_left _ _)) hdj (ha.mono hsub)
-      have hkd : tr.time k ≤ d := (hm hkj).trans hjd
-      exact ⟨k, hkj, (ac_acceptAt_upTo _).mpr ⟨hkd, hk⟩,
-        by rw [ac_deadline_upTo hm hkd]; exact hkt⟩
-  · obtain ⟨hid, hB⟩ := (RunTrace.upTo_acceptAt _).mp hB
-    obtain ⟨hjd, hc⟩ := (RunTrace.upTo_isCall _).mp hc
-    rw [RunTrace.upTo_deadline hm hjd] at hdb hdj
-    rw [RunTrace.upTo_state_of_le hm hjd] at ha
-    obtain ⟨k, hkj, hk, hkt⟩ := h.relay x i B (anti hid hx) hB h0 y j (anti hjd hy) hc
+  refine ⟨h.deltaF, ?_⟩
+  rw [RunTrace.upTo_projAC]
+  refine ⟨fun x hx i v hv h0 y hy j ℓ hc hdb hdj => ?_,
+    fun x hx i B hB h0 y hy j ℓ hc hdb hdj ha => ?_⟩
+  · obtain ⟨hid, hv⟩ := (ac_sendOrAdmit_upTo hm).mp hv
+    obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
+    rw [ac_deadline_upTo hm hjd] at hdb hdj
+    exact sa_messageServedBefore_upTo hm hjd
+      (h.message x i v (anti hid hx) hv h0 y j ℓ (anti hjd hy) hc (hdb.trans (min_le_left _ _))
+        hdj)
+  · obtain ⟨hid, hB⟩ := (ac_acceptAt_upTo _).mp hB
+    obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
+    rw [ac_deadline_upTo hm hjd] at hdb hdj
+    obtain ⟨k, hkj, hk, hkt⟩ := h.acRelay x i B (anti hid hx) hB h0 y j ℓ (anti hjd hy) hc
       (hdb.trans (min_le_left _ _)) hdj (ha.mono hsub)
     have hkd : tr.time k ≤ d := (hm hkj).trans hjd
-    exact ⟨k, hkj, (RunTrace.upTo_acceptAt _).mpr ⟨hkd, hk⟩,
-      by rw [RunTrace.upTo_deadline hm hkd]; exact hkt⟩
+    exact ⟨k, hkj, (ac_acceptAt_upTo _).mpr ⟨hkd, hk⟩,
+      by rw [ac_deadline_upTo hm hkd]; exact hkt⟩
 
 /-- **Transport of the AC service from `a`** to the prefix through `d ≥ 0`: the static AC service
 window from `a` of the validators honest at `d`, with the deadline bound `min b d`. -/

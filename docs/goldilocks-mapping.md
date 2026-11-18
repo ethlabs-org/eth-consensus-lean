@@ -696,10 +696,9 @@ Modelling choices:
   `block_service_psync_at`, `signed_row_service_psync_at`, `catchRun_of_psync_at`, `resetService_of_psync_at`); the full
   transports `PSync ⇒ GSTRun`, `SyncUntil ⇒ SyncBefore` and `PSync 0 ⇒ SyncRun` (each under `Δ ≤ Δ_F`) are not
   stated; they are goals for the concrete adapter, not premises of `MeetsObligations`.
-  **Attestations** (`docs/decisions.md` §"Network and delivery"): `SyncOn.attestation` and
-  `SyncBefore.attestation` keep "signs or admits" and the deadline at `Δ_F`, but have no lower bound
-  (`AttDeliveredBy`: a processing before the signing or admission counts), and both premises carry
-  `delta_le : Δ ≤ Δ_F` (claims §"Parameters"). Not in CLAIMS: its `Sync` row has attestations "in the
+  **Attestations** (`docs/decisions.md` §"Network and delivery"): `SyncOn.attestation` keeps "signs or
+  admits" and the deadline at `Δ_F`, but has no lower bound (`AttDeliveredBy`: a processing before the signing
+  or admission counts), and `SyncOn` carries `delta_le : Δ ≤ Δ_F` (claims §"Parameters"). Not in CLAIMS: its `Sync` row has attestations "in the
   same form", processed not before the send. An honest node forwards an admitted attestation as the same
   object, which L0 counts as held from an earlier receipt, and one admitted from a block in the block's relay
   wrapper, which is not an FG attestation object and is served within `Δ`; an attestation's processing is never refused and the

@@ -18,17 +18,12 @@ namespace Consensus.Goldilocks.Compose
 
 open SA (SAParams ReplayOrder Vote Payload)
 
-/-- The finite Sleepy consumers need SA evidence and actual block acceptance relay,
-not fresh processing of every repeated vote or attestation admission. -/
+/-- The finite Sleepy consumers need SA evidence, not fresh processing of every repeated vote or
+attestation admission. -/
 structure SleepyServiceBefore {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (ΔF b : Time) : Prop where
   deltaF : 0 < ΔF
   ac : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC
-  relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → 0 ≤ tr.time i →
-    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) sp.Δ ≤ b →
-      tr.deadline y j (tr.time i) sp.Δ ≤ tr.time j →
-      Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
-      tr.BlockAcceptedBy y j (tr.time i) B
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))

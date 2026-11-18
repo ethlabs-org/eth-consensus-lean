@@ -600,11 +600,7 @@ theorem periodicRun_sleepy : periodicRun.SleepyRun Set.univ 1 := by
 /-- The deadline-cut premise is satisfiable on the existing periodic local-run witness. -/
 theorem periodicRun_syncBefore (b : Time) : periodicRun.SyncBefore Set.univ 1 b := by
   have h := periodicRun_syncOn (fun _ => True) (fun _ => True) id
-  exact ⟨h.deltaF, h.delta_le,
-    fun x hx i m hm _ y hy j hj _ hd => h.message x hx i m hm trivial y hy j hj hd,
-    fun x hx i B hB _ y hy j hj _ hd => h.block x hx i B hB trivial y hy j hj hd,
-    fun x hx i B hB _ y hy j hj _ hd ha => h.relay x hx i B hB trivial y hy j hj hd ha,
-    fun x hx i a ha _ y hy j hj _ hd => h.attestation x hx i a ha trivial y hy j hj hd⟩
+  exact ⟨fun x hx i B hB _ y hy j hj _ hd => h.block x hx i B hB trivial y hy j hj hd⟩
 
 /-- A block deadline exactly at the outage boundary remains covered, even at a later call. -/
 theorem syncBefore_block_boundary {P : Params} {A : NodeAC P} (tr : RunTrace A)

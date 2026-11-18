@@ -106,9 +106,9 @@ detail in `TRUST.md`.
   node can hold it from before the admission and receive nothing after it; an attestation's processing is never
   refused and the pool keeps it, so an earlier processing is as good. Blocks and messages keep the lower bound: they
   are forwarded in fresh wrappers, and an earlier receipt of a block can be refused.
-  - `SyncOn` and `SyncBefore` carry `delta_le : Δ ≤ Δ_F` (claims §"Parameters" assumes `Δ_F ≥ Δ`): an attestation
+  - `SyncOn` carries `delta_le : Δ ≤ Δ_F` (claims §"Parameters" assumes `Δ_F ≥ Δ`): an attestation
     admitted from a block leaves in the block's relay wrapper, which is not a row and is served within
-    `Δ`. So the node statements built on them (`SyncRun`, `GSTRun`, `SleepyRun`, `HealthyRun`, `HSShared`, the
+    `Δ`. So the node statements built on it (`SyncRun`, `GSTRun`, `SleepyRun`, `HealthyRun`, `HSShared`, the
     Persist, Run, Service and healing rows) cover only `Δ ≤ Δ_F`, the paper's range. No proof reads `delta_le`; the
     consumers of the clause read signings only.
   - The generic L0 two-bound network stays unordered. The full network transports (`PSync ⇒ GSTRun`,
@@ -173,12 +173,11 @@ detail in `TRUST.md`.
   handler call, signing or duty is added; canonical labelled cuts stay bounded by the engine horizon,
   `SimulatesAt.covered` still covers actions only, and both component projections preserve observation metadata.
   Unlabelled padding alone is not a readiness repair.
-- **Pre-outage synchrony cuts off recipient deadlines, not send times.** `SyncBefore` requires service only when
-  the recipient's protocol deadline, including its latest wake, is at most `b₀`. Pre-outage synchrony uses it
-  instead of `SyncRun 0 (b₀ − Δ)`, which imposed obligations after arbitrary later wakes inside the outage. The
-  cutoff is conservatively the protocol deadline itself: deadline `b₀` is covered, `b₀ + 1` is not. Attestation
-  deadlines use `Δ_F`; strict processing bounds and send-time lower bounds are kept. Acceptance relay remains an
-  explicit obligation: receipt alone cannot invent acceptance of a discarded missing-parent block.
+- **Pre-outage synchrony cuts off recipient deadlines, not send times.** `SyncBefore` requires block delivery
+  only when the recipient's protocol deadline, including its latest wake, is at most `b₀`. Pre-outage synchrony
+  uses it instead of `SyncRun 0 (b₀ − Δ)`, which imposed obligations after arbitrary later wakes inside the
+  outage. The cutoff is conservatively the protocol deadline itself: deadline `b₀` is covered, `b₀ + 1` is not.
+  The strict processing bound and the send-time lower bound are kept. `SyncBefore` states block delivery only.
 
 ## Adversary growth
 
