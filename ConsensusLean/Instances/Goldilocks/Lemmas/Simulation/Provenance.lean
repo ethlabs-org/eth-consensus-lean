@@ -160,7 +160,7 @@ private theorem process_record {sp : SA.SAParams}
     (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat)) :
     (process st o hs).node.record = st.node.record := by
   unfold process
-  generalize delivered sp o = os
+  generalize delivered hs st o = os
   induction os generalizing st with
   | nil => rfl
   | cons x xs ih =>
@@ -172,7 +172,7 @@ private theorem process_reachable {sp : SA.SAParams}
     (h : st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload) :
     (process st o hs).node.fg.Reachable (goldilocksNode sp ro).genesisPayload := by
   unfold process
-  generalize delivered sp o = os
+  generalize delivered hs st o = os
   induction os generalizing st with
   | nil => exact h
   | cons x xs ih => exact ih _ (processOne_reachable _ _ _ h)
@@ -714,7 +714,7 @@ private theorem process_att {sp : SA.SAParams}
         (a : WireAtt) :
     Body.att a ∈ (process st o hs).outbox ↔ Body.att a ∈ st.outbox := by
   unfold process
-  generalize delivered sp o = os
+  generalize delivered hs st o = os
   induction os generalizing st with
   | nil => rfl
   | cons x xs ih => rw [List.foldl_cons, ih, processOne_att]

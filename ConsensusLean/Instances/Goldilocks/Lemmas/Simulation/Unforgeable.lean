@@ -214,7 +214,7 @@ theorem blockCall_ownBlock_of_released (hv : rho.ExecutionValid) {y : Fin (Finty
     have hh : rootOf (Model.digests rho.hash o) (headerOf _ B) =
         some (rho.hash (headerOf _ B)) := by
       apply rootOf_digests_of_mem
-      exact List.mem_filterMap.mpr ⟨blockObj _ B, mem_delivered ho, rfl⟩
+      exact List.mem_filterMap.mpr ⟨blockObj _ B, mem_delivered _ ho, rfl⟩
     rw [hh, Option.map_some, Option.some.injEq] at hroot
     have hroot' : B.RootOk (digestOf S rho) := by
       obtain ⟨p, hp⟩ := Option.ne_none_iff_exists'.mp hpar

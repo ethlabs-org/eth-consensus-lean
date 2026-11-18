@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Cuts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Visit
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
@@ -201,10 +202,6 @@ theorem deliverSeq_cover {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp 
     obtain ⟨j0, e', o', ho, he', hg', h3, h4⟩ := ih.2 k h1 h2
     exact ⟨j0, e', o', List.mem_cons_of_mem _ ho, he', hg', h3, h4⟩
 
-/-- A delivered object belongs to the received object's recursive closure. -/
-theorem mem_delivered {o x : Wire sp.n binding} (h : x ∈ delivered sp o) :
-    x ∈ o.parts := h
-
 /-- A decoded block passes the checks `decodeBlock` makes: the digests map its header to its root,
 it has a parent, its attestations are well-formed and its AC payload is valid. -/
 theorem decodeBlock_wire {hs : List (Header Info × Nat)} {o : Wire sp.n binding} {B : Blk sp}
@@ -225,16 +222,6 @@ theorem decodeBlock_wire {hs : List (Header Info × Nat)} {o : Wire sp.n binding
     · rw [← hB]; exact hwf
     · rw [← hB]; exact hval
   · simp at h
-
-/-- A received object standing for a block event decodes to that block. -/
-theorem decodeBlock_of_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.n binding}
-    {B : Blk sp}
-    (h : canonEvent sp ro hs o = some (.block B)) : decodeBlock sp hs o = some B := by
-  cases hb : decodeBlock sp hs o with
-  | some B' => simp only [canonEvent, hb, Option.some.injEq, Event.block.injEq] at h; rw [h]
-  | none =>
-    cases hv : decodeVoteObj sp o <;> cases ha : decodeAttObj sp o <;>
-      simp [canonEvent, hb, hv, ha] at h
 
 /-- A received object standing for an attestation event decodes to a well-formed attestation. -/
 theorem wellFormed_of_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.n binding}
@@ -554,8 +541,9 @@ section
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A delivered object is the delivery's object or carried by it. -/
-theorem contains_of_mem_delivered {o x : Wire sp.n binding} (h : x ∈ delivered sp o) :
-    Model.Obj.Contains o x := h
+theorem contains_of_mem_delivered {hs : List (Header Info × Nat)} {st : State sp ro binding}
+    {o x : Wire sp.n binding} (h : x ∈ delivered hs st o) : Model.Obj.Contains o x :=
+  mem_delivered hs h
 
 /-- The slot proposal keeps the relay queue and the own index. -/
 theorem propose_keeps (st : State sp ro binding) (s : Slot) :
@@ -709,7 +697,7 @@ theorem process_relay_seen {i : Nat} {v : V}
       x ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) := by
   obtain ⟨⟨L, hL, hLos⟩, -⟩ := process_relay (runProposer S rho hn)
     (digestOf S rho) (Model.digests rho.hash o)
-    _ i (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i) 0 rfl
+    _ i (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o) (stateAt S rho hn v i) 0 rfl
   intro x hx
   unfold process at hx
   rw [hL] at hx
@@ -1152,6 +1140,38 @@ theorem mem_deliverRecs_exec (proposer : Nat → Fin sp.n)
           by rwa [length_groupRecs] at hk, hlab, hpos⟩
       · obtain ⟨o', e', st', ho, h⟩ := mem_deliverRecs_exec proposer dg hs self t i os _ _ hr
         exact ⟨o', e', st', List.mem_cons_of_mem _ ho, h⟩
+
+/-- A record of a delivery's cuts, over objects processed from a shape state at the clock `t` with
+own index `self`, is a cut of the handler of one of the objects, run on the node state that the
+objects before it leave. -/
+theorem mem_deliverRecs_split (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) :
+    ∀ (os : List (Wire sp.n binding)) (σ : State sp ro binding) (sub : Nat),
+      σ.self = self → σ.now = t → ∀ r ∈ deliverRecs proposer dg hs self t i os σ.node sub,
+      ∃ pre x post e, os = pre ++ x :: post ∧ canonEvent sp ro hs x = some e ∧
+        r.label ∈ (exec proposer dg self (pre.foldl (processOne hs) σ).node t e).2
+  | [], _, _, _, _, _, hr => by simp [deliverRecs_nil] at hr
+  | o :: os, σ, sub, hself, hnow, r, hr => by
+    obtain ⟨-, -, -, hn1, hs1, hnode⟩ := processOne_eq proposer dg hs σ o
+    cases he : canonEvent sp ro hs o with
+    | none =>
+      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he] at hr
+      rw [he] at hnode
+      obtain ⟨pre, x, post, e, h1, h2, h3⟩ := mem_deliverRecs_split proposer dg hs self t i os
+        (processOne hs σ o) (sub + 1) (hs1.trans hself) (hn1.trans hnow) r (by rw [hnode]; exact hr)
+      exact ⟨o :: pre, x, post, e, by rw [h1]; rfl, h2, h3⟩
+    | some e =>
+      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ he] at hr
+      rcases List.mem_append.mp hr with hr | hr
+      · obtain ⟨k, hk, hlab, -⟩ := mem_groupRecs_label hr
+        exact ⟨[], o, os, e, rfl, he, hlab ▸ List.getElem_mem hk⟩
+      · rw [he] at hnode
+        simp only [Option.elim_some, hself, hnow] at hnode
+        obtain ⟨pre, x, post, e', h1, h2, h3⟩ := mem_deliverRecs_split proposer dg hs self t i os
+          (processOne hs σ o) (sub + 1) (hs1.trans hself) (hn1.trans hnow) r
+          (by rw [hnode]; exact hr)
+        exact ⟨o :: pre, x, post, e', by rw [h1]; rfl, h2, h3⟩
 
 /-- A canonical event is not a tick. -/
 theorem canonEvent_ne_tick {hs : List (Header Info × Nat)} {o : Wire sp.n binding}

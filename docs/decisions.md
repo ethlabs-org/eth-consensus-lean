@@ -158,13 +158,15 @@ detail in `TRUST.md`.
   - `CommLog.EagerFrom.recv` is strict (`max t g < a`): the canonical schedule fixes the deliveries at `a` before
     the delivery-time releases at `a` exist, so those are served from `a + 1`. Every regime premise the witness runs
     serve (`PSync`, `SyncUntil`, `OutageNet`) is still implied (`EagerFrom.psync`).
-- **Received payload objects are processed in preorder.** A delivery traverses the entire object closure,
-  processing a canonical block before its carried votes and attestations. Wrappers have no canonical node event,
-  and nested wrappers do not hide their contents. Payload votes get actual message calls, also when the containing
-  block is refused or silently dropped: this is independent service of authenticated carried objects, not
-  acceptance of the containing block. Block-before-payload preserves the block handler's priority (including any
-  vote it emits); the later message handlers use the resulting state. The one-vote invariant applies to arbitrary
-  same-time object lists, so one delivery poll still drains the emitted vote.
+- **Received payload objects are processed in preorder, except those of a refused block.** A delivery traverses
+  the object closure, processing a canonical block before its carried votes and attestations. Wrappers have no
+  canonical node event, and nested wrappers do not hide their contents. A block that the node drops as of a future
+  slot, or that the FG refuses, gets no handler for what it carries (composition.tex §"Blocks"); a later delivery
+  can carry those objects again. Processing them anyway would only let the adversary reach a node through blocks it
+  does not accept. The payload votes and attestations of an accepted block get actual message and attestation
+  calls. Block-before-payload preserves the block handler's priority (including any vote it emits); the later
+  message handlers use the resulting state. The one-vote invariant applies to arbitrary same-time object lists, so
+  one delivery poll still drains the emitted vote.
 - **Finite observation coverage is separate from labelled action coverage.** `Trace.observationHorizon` defaults to
   `none` (the action-only horizon); `InHorizon` also admits a cut reaching a time covered by explicit finite
   metadata. Canonical traces set the engine horizon, clamp wakefulness to `[0, horizon]`, and stutter unlabelled at

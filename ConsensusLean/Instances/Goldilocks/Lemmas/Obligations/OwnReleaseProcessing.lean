@@ -72,7 +72,7 @@ theorem tick_attest_processAt {i : Nat} {v : V} {t : Time}
 with `m ∈ blockVotes B` is in a delivery, which processes `m` at `y` at the cut's time, or in a
 public tick event `n` of the node `v` of `y`, with `i ∈ [cutMap n, cutMap (n + 1))` at the tick's
 time. A restart has no such cut. -/
-theorem acBlock_cut_cases {y : Fin (Fintype.card V)} {i : Nat}
+theorem acBlock_cut_cases (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {i : Nat}
     {ℓ : ACLabel (goldilocksNode (S.params (Model.pubOf E) hn) (S.ro _))}
     {B : Blk (S.params (Model.pubOf E) hn)} {m : SA.Vote (Fintype.card V)}
     (hc : (simTrace S rho hn).CallAt y i (.ac ℓ)) (hb : ℓ.call = .block B)
@@ -89,7 +89,7 @@ theorem acBlock_cut_cases {y : Fin (Fintype.card V)} {i : Nat}
   have hkey : rho.ownKey ev.node = y := hnode.symm.trans hc.1
   cases ev with
   | deliver v o t =>
-    obtain ⟨k, _, _, hp, hkt⟩ := delivery_block_payload_processAt S rho hn he
+    obtain ⟨k, _, _, hp, hkt⟩ := delivery_block_payload_processAt S rho hn hv he
       (List.mem_of_getElem? hidx) hrlabel hb hm
     exact Or.inl ⟨k, hkey ▸ hp, hkt.trans ht.symm⟩
   | restart v t =>

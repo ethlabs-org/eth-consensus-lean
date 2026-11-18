@@ -142,9 +142,11 @@ theorem received_forward_accepted_before_of_released_at (hv : rho.ExecutionValid
     exact (hmono.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono hD)).trans hFB
   -- Split the delivery at the received envelope.
   have hseq := simTraceAt_deliver S rho hn hv he
-  obtain ⟨pre, post, hparts⟩ := contained_parts_infix hc
-  change DeliverSeq (sp := S.params (Model.pubOf E) hn) (ro := S.ro _)
-    _ _ _ _ _ _ receipt.parts _ _ at hseq
+  have hco : o.carried ≠ [] := by
+    rw [forwardObj_of_decodeForward _ _ _ _ _ _ hd]
+    simp [forwardObj, Model.Obj.carried]
+  obtain ⟨pre, post, σ, hparts⟩ := delivered_infix_of_carried (sp := S.params (Model.pubOf E) hn)
+    (ro := S.ro _) (Model.digests rho.hash receipt) (st := stateAt S rho hn v i) hc hco
   rw [hparts, List.append_assoc] at hseq
   obtain ⟨r, _, htail⟩ := deliverSeq_append_split _ _ hseq
   obtain ⟨e, hsub, hpost⟩ := deliverSeq_append_split _ _ htail
@@ -162,7 +164,7 @@ theorem received_forward_accepted_before_of_released_at (hv : rho.ExecutionValid
     rw [mem_honestKeysAt_iff, hk]
     exact fun h => hx (rho.faultyAt_mono ((min_le_left _ _).trans htq) h)
   have hheld := forward_receipt_held_at hrun hnc hD hbe hyD hFB' B
-    o t p r e hd' hsub hej htu .refl hsource
+    o σ t p r e hd' hsub hej htu .refl hsource
   rw [← Trace.upTo_state _ _ fun k hk => hbe k (by omega)] at hheld
   obtain ⟨k, hk, ha⟩ : ∃ k < cutMap S rho hn (i + 1),
       (simTraceAt S rho hn).AcceptAt (rho.ownKey v) k B := by

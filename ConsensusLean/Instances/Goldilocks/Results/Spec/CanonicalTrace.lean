@@ -228,7 +228,8 @@ noncomputable def eventCuts (i : Nat) : List (CutRec (S.params (pubOf E) hn) (S.
   | some (.deliver v o t) =>
       deliverRecs (runProposer S rho hn) (digestOf S rho)
         (Model.digests rho.hash o) (rho.ownKey v) t i
-        (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i).node 0
+        (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+          (stateAt S rho hn v i).node 0
   | some (.restart v t) =>
       groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
         (stateAt S rho hn v i).node t (Nat.pair i 0)
@@ -248,7 +249,8 @@ theorem eventCuts_eq (i : Nat) : eventCuts S rho hn i =
     | some (.deliver v o t) =>
         deliverRecs (runProposer S rho hn) (digestOf S rho)
           (Model.digests rho.hash o) (rho.ownKey v) t i
-          (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i).node 0
+          (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+            (stateAt S rho hn v i).node 0
     | some (.restart v t) =>
         groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
           (stateAt S rho hn v i).node t (Nat.pair i 0) .restart

@@ -312,7 +312,8 @@ theorem delivery_acceptance_decoded_publication_of_held {V : Type} [Fintype V] [
   rw [eventCuts_deliver S rho hn i v o t he] at hr
   have hr' : r ∈ deliverRecs (runProposer S rho hn) (digestOf S rho)
       (digests rho.hash o) (stateAt S rho hn v i).self (stateAt S rho hn v i).now i
-      (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i).node 0 := by
+      (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+        (stateAt S rho hn v i).node 0 := by
     simpa only [self_eq_ownKey, ht] using hr
   obtain ⟨p, hp⟩ := deliverRecs_acceptance_pending (runProposer S rho hn) (digestOf S rho)
     (digests rho.hash o) i _ _ 0 (stateAt_wrappersCover S rho hn v i) r B hr' hb

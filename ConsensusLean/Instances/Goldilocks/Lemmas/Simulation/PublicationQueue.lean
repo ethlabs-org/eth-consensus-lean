@@ -591,7 +591,12 @@ theorem received_forward_blockCall {i : Nat} {v : V}
     ∃ k < cutMap S rho hn (i + 1),
       (simTrace S rho hn).BlockCallAt (rho.ownKey v) k B ∧
       (simTrace S rho hn).time k = u := by
-  obtain ⟨hmem, hdecode⟩ := decoded_forward_child_in_receipt S rho hn hc hd
+  obtain ⟨-, hdecode⟩ := decoded_forward_child_in_receipt S rho hn hc hd
+  have hdel : blockObj _ B ∈ delivered (Model.digests rho.hash receipt) (stateAt S rho hn v i)
+      receipt := by
+    rw [forwardObj_of_decodeForward _ _ _ _ _ _ hd] at hc
+    exact mem_delivered_of_parent _ hc (List.mem_append_right _ (List.mem_singleton_self _))
+      (fun B' => canonEvent_data_ne_block rfl B')
   have hs : (S.params (Model.pubOf E) hn).toParams.slotTime B.slot ≤ u :=
     (decodeForward_child hd).2.trans htu
   have hslot : B.slot ≤ (S.params (Model.pubOf E) hn).toParams.slotOf u := by
@@ -600,8 +605,9 @@ theorem received_forward_blockCall {i : Nat} {v : V}
     exact (Int.le_toNat (le_trans (Int.natCast_nonneg _) hcast)).2 hcast
   obtain ⟨r, hr, accepted, hb⟩ := deliverRecs_block_call (runProposer S rho hn)
     (digestOf S rho) (Model.digests rho.hash receipt) (rho.ownKey v) u i B hslot
-    (delivered _ receipt) (stateAt S rho hn v i).node 0
-    ⟨blockObj _ B, hmem, by simp only [canonEvent, hdecode]⟩
+    (delivered (Model.digests rho.hash receipt) (stateAt S rho hn v i) receipt)
+    (stateAt S rho hn v i).node 0
+    ⟨blockObj _ B, hdel, by simp only [canonEvent, hdecode]⟩
   obtain ⟨hn', ht', _⟩ := mem_deliverRecs (sp := S.params (Model.pubOf E) hn)
     (ro := S.ro _) (runProposer S rho hn) (digestOf S rho)
     (rho.ownKey v) (Model.digests rho.hash receipt) u i hr

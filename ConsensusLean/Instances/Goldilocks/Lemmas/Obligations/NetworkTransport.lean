@@ -81,13 +81,15 @@ theorem not_isFGAtt_of_decodeForward {binding : VoteBinding} {sp : SA.SAParams}
   rw [forwardObj_of_decodeForward hs o origin t parent B h]
   exact not_isFGAtt_forwardObj origin t parent B
 
-/-- Every well-formed attestation contained in an actual receipt gets a real processing
-call at receipt time, including duplicate attestations already present in the pool. -/
+/-- Every well-formed attestation an actual receipt delivers (`delivered`: not the payload of a
+refused block) gets a real processing call at receipt time, including duplicate attestations
+already present in the pool. -/
 theorem received_att_processAt
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     {i : Nat} {v : V} {receipt : Wire (Fintype.card V) S.vote} {t : Time}
     (he : rho.events[i]? = some (.deliver v receipt t)) {a : FG.Att (Fintype.card V)}
-    (hwf : a.WellFormed) (hc : Model.Obj.Contains receipt (attObj a)) :
+    (hwf : a.WellFormed)
+    (hc : attObj a ∈ delivered (Model.digests rho.hash receipt) (stateAt S rho hn v i) receipt) :
     ∃ k < cutMap S rho hn (i + 1),
       (simTrace S rho hn).ProcessAttAt (rho.ownKey v) k a ∧
       (simTrace S rho hn).time k = t := by
@@ -128,11 +130,7 @@ theorem received_att_processAt
           obtain ⟨r, hr, hl⟩ := ih (Node.exec proposer dg (rho.ownKey v) st t e).1
             (sub + 1) hm
           exact ⟨r, List.mem_append_right _ hr, hl⟩
-  have hmem : attObj a ∈ delivered
-      (S.params (Model.pubOf E) hn) receipt := hc
-  obtain ⟨r, hr, hl⟩ := find (delivered
-    (S.params (Model.pubOf E) hn) receipt)
-    (stateAt S rho hn v i).node 0 hmem
+  obtain ⟨r, hr, hl⟩ := find _ (stateAt S rho hn v i).node 0 hc
   obtain ⟨hn', ht, _⟩ := mem_deliverRecs
     (sp := S.params (Model.pubOf E) hn)
     (ro := S.ro _) proposer dg (rho.ownKey v) hs t i hr

@@ -541,7 +541,7 @@ private theorem process_inventory (seen : List (Wire sp.n binding)) (st : State 
         (fun y hy => hl y (List.mem_cons_of_mem x hy))
   apply key _ st h
   intro x hx y hy
-  exact ho y (Model.Obj.Contains.trans hx hy)
+  exact ho y (Model.Obj.Contains.trans (mem_delivered hs hx) hy)
 
 private theorem record_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
     (hs : List (Header Info × Nat)) (o : Wire sp.n binding)
@@ -995,7 +995,7 @@ theorem delivery_pool_held_or_head_of_protected (hprot : PollAttProtected S rho 
     · rwa [hnow] at h
   have hproc := process_oneVote (digestOf S rho) (Model.digests rho.hash o)
     (hv.in_horizon _ (List.mem_of_getElem? he)).1
-    (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i) hnow hpre
+    (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o) (stateAt S rho hn v i) hnow hpre
   have hlen := ((atMostOneVote_iff _).mp hproc.atMost).2
   change Body.vote (encodeVote m) ∈
     (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox at hq

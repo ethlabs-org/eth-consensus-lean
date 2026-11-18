@@ -114,7 +114,7 @@ private theorem processOne_voteMember hs (st : State sp ro binding) o (h : VoteM
 theorem process_voteMember (st : State sp ro binding) o hs (h : VoteMember p st) :
     VoteMember p (process st o hs) := by
   unfold process
-  generalize delivered sp o = os
+  generalize delivered hs st o = os
   induction os generalizing st with
   | nil => exact h
   | cons o os ih => exact ih _ (processOne_voteMember hs st o h)

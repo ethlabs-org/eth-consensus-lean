@@ -60,7 +60,8 @@ theorem emit_released_of (hv : rho.ExecutionValid)
       · exact absurd h (not_lastRestart_deliver S rho hv he)
       · rwa [hnow] at h
     have hproc := process_oneVote (digestOf S rho) (Model.digests rho.hash o) ht0
-      (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i) hnow hpre
+      (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+        (stateAt S rho hn v i) hnow hpre
     have hone : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox =
         [Body.vote (encodeVote em.msg)] := by
       have hlen := ((atMostOneVote_iff _).mp hproc.atMost).2

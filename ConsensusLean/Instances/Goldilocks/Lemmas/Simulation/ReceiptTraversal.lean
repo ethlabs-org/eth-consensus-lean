@@ -79,19 +79,26 @@ theorem deliverSeq_block_accepts {proposer : Nat → Fin sp.n}
 theorem deliverSeq_forward_genesis {proposer : Nat → Fin sp.n}
     {tr : GoldilocksTrace sp ro} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
     {hs : List (Header Info × Nat)} {y x : Fin sp.n} {u t : Time} {B : Blk sp} {j j' : Nat}
-    (h : DeliverSeq proposer tr dg hs y u (forwardObj sp (binding
-        := binding) x t none B).parts j j') :
-    DeliverSeq proposer tr dg hs y u (blockObj sp (binding := binding) B).parts j j' := by
-  rw [Model.Obj.parts_eq] at h
+    {σ : State sp ro binding}
+    (h : DeliverSeq proposer tr dg hs y u (visit hs σ (forwardObj sp (binding
+        := binding) x t none B)).1 j j') :
+    ∃ σ' : State sp ro binding,
+      DeliverSeq proposer tr dg hs y u
+        (visit hs σ' (blockObj sp (binding := binding) B)).1 j j' := by
   have hz : canonEvent sp ro (binding := binding) hs (forwardObj sp x t none B) = none := by
     cases hp : binding.participationKind <;>
       simp [canonEvent, forwardObj, decodeBlock, decodeVoteObj, decodeAttObj, hp]
+  rcases visit_cases hs σ (forwardObj sp x t none B) with ⟨⟨B', hB', -⟩, -⟩ | ⟨-, hv⟩
+  · rw [hz] at hB'; cases hB'
+  rw [hv] at h
   cases h with
   | event e he _ _ => rw [hz] at he; cases he
   | noCut e he _ _ => rw [hz] at he; cases he
   | drop _ htail =>
-    simpa only [forwardObj, Model.Obj.carried, Option.toList_none, List.nil_append,
-      List.flatMap_cons, List.flatMap_nil, List.append_nil] using htail
+    simp only [forwardObj, Model.Obj.carried, Option.toList_none, List.nil_append,
+      visitList_cons] at htail
+    rw [visitList, List.append_nil] at htail
+    exact ⟨_, htail⟩
 
 end Consensus.Goldilocks.Simulation
 

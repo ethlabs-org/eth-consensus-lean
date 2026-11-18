@@ -69,26 +69,31 @@ private theorem canonEvent_forward_none (hs : List (Header Info × Nat))
   cases hp : binding.participationKind <;>
     simp [canonEvent, forwardObj, decodeBlock, decodeVoteObj, decodeAttObj, hp]
 
-/-- A forwarding chain processes the exact parent's entire subtree before the
-child's canonical block and payload; the split retains the actual cut boundary. -/
+/-- A forwarding chain processes the parent's visit before the visit of the child's canonical
+block (with its payload when it is accepted); the split retains the actual cut boundary. -/
 theorem deliverSeq_forward_parent {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp ro}
     {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {hs : List (Header Info × Nat)}
     {y x : Fin sp.n} {u t : Time} {parent : Wire sp.n binding} {B : Blk sp} {j j' : Nat}
+    {σ : State sp ro binding}
     (h : DeliverSeq proposer tr dg hs y u
-      (forwardObj sp x t (some parent) B).parts j j') :
-    ∃ m, DeliverSeq proposer tr dg hs y u parent.parts j m ∧
-      DeliverSeq proposer tr dg hs y u (blockObj sp (binding := binding) B).parts m j' := by
-  rw [Model.Obj.parts_eq] at h
+      (visit hs σ (forwardObj sp x t (some parent) B)).1 j j') :
+    ∃ (m : Nat) (σ₁ σ₂ : State sp ro binding),
+      DeliverSeq proposer tr dg hs y u (visit hs σ₁ parent).1 j m ∧
+      DeliverSeq proposer tr dg hs y u
+        (visit hs σ₂ (blockObj sp (binding := binding) B)).1 m j' := by
   have hz := canonEvent_forward_none (ro := ro) hs x t (some parent) B
+  rcases visit_cases hs σ (forwardObj sp x t (some parent) B) with ⟨⟨B', hB', -⟩, -⟩ | ⟨-, hv⟩
+  · rw [hz] at hB'; cases hB'
+  rw [hv] at h
   cases h with
   | event e he _ _ => rw [hz] at he; cases he
   | noCut e he _ _ => rw [hz] at he; cases he
   | drop _ htail =>
-    have ht : DeliverSeq proposer tr dg hs y u
-        (parent.parts ++ (blockObj sp B).parts) j j' := by
-      simpa only [forwardObj, Model.Obj.carried, Option.toList_some, List.cons_append,
-        List.nil_append, List.flatMap_cons, List.flatMap_nil, List.append_nil] using htail
-    exact deliverSeq_append_split _ _ ht
+    simp only [forwardObj, Model.Obj.carried, Option.toList_some, List.cons_append,
+      List.nil_append, visitList_cons] at htail
+    rw [visitList, List.append_nil] at htail
+    obtain ⟨m, h1, h2⟩ := deliverSeq_append_split _ _ htail
+    exact ⟨m, _, _, h1, h2⟩
 
 /-- Parsing a forwarding envelope authenticates its outer signer, independently of
 whether its contained block was accepted by any receiver. -/

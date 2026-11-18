@@ -120,19 +120,21 @@ theorem simTrace_call_sending_event {y : Fin (Fintype.card V)} {k : Nat}
     have hcall := congrArg (fun c => match c with | .ac l => l.call | _ => .restart) heq
     exact False.elim (hnr hcall.symm)
 
-/-- A vote carried by an actual receipt is processed at a cut of that same event.
-No fresh insertion, honest signer, or pool-cap premise is required. -/
+/-- A vote an actual receipt delivers (`delivered`: not the payload of a refused block) is
+processed at a cut of that same event. No fresh insertion, honest signer, or pool-cap premise is
+required. -/
 theorem received_vote_processAt {i : Nat} {v : V}
     {receipt : Wire (Fintype.card V) S.vote} {u : Time} {m : SA.Vote (Fintype.card V)}
     (he : rho.events[i]? = some (.deliver v receipt u))
-    (hc : Model.Obj.Contains receipt (voteObj m)) :
+    (hc : voteObj m ∈ delivered (Model.digests rho.hash receipt) (stateAt S rho hn v i) receipt) :
     ∃ k, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
       (simTrace S rho hn).projAC.ProcessAt (rho.ownKey v) k m ∧
       (simTrace S rho hn).time k = u := by
   obtain ⟨r, hr, ℓ, hl, hm⟩ := deliverRecs_message_call (runProposer S rho hn)
     (digestOf S rho) (Model.digests rho.hash receipt) (rho.ownKey v) u i m
-    (delivered _ receipt) (stateAt S rho hn v i).node 0
-    ⟨voteObj m, by simpa only [delivered, Model.Obj.Contains] using hc,
+    (delivered (Model.digests rho.hash receipt) (stateAt S rho hn v i) receipt)
+    (stateAt S rho hn v i).node 0
+    ⟨voteObj m, hc,
       canonEvent_voteObj (sp := S.params (pubOf E) hn) (ro := S.ro _)
         (Model.digests rho.hash receipt) m⟩
   obtain ⟨hn', ht', _⟩ := mem_deliverRecs (sp := S.params (pubOf E) hn)
@@ -153,9 +155,10 @@ theorem received_vote_processAt {i : Nat} {v : V}
     · simp [simTrace_label, hk, hl]
   · simpa only [simTrace_time, hk, Option.elim_some] using ht'
 
-/-- An AC block cut in an actual delivery comes from that receipt's canonical block.
-Consequently its payload votes also receive explicit message processing in that event. -/
-theorem delivery_block_payload_processAt {i : Nat} {v : V}
+/-- An AC block cut in an actual delivery comes from that receipt's canonical block, which the
+delivery accepts. Consequently its payload votes also receive explicit message processing in that
+event. -/
+theorem delivery_block_payload_processAt (hv : rho.ExecutionValid) {i : Nat} {v : V}
     {receipt : Wire (Fintype.card V) S.vote} {u : Time}
     {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
     {ℓ : ACLabel (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
@@ -167,10 +170,13 @@ theorem delivery_block_payload_processAt {i : Nat} {v : V}
       (simTrace S rho hn).projAC.ProcessAt (rho.ownKey v) k m ∧
       (simTrace S rho hn).time k = u := by
   rw [eventCuts_deliver S rho hn i v receipt u he] at hr
-  obtain ⟨o, e, st, ho, hce, q, hq, hlabel, _⟩ :=
-    mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hr
-  have hcut := List.getElem_mem hq
-  rw [← hlabel, hl] at hcut
+  have ht : (stateAt S rho hn v i).now = u :=
+    (now_eq_lastClock S rho hn hv v i).trans (lastClock_deliver S rho hv he)
+  obtain ⟨pre, o, post, e, hsplit, hce, hcut⟩ := mem_deliverRecs_split (runProposer S rho hn)
+    (digestOf S rho) (Model.digests rho.hash receipt) (rho.ownKey v) u i _
+    (stateAt S rho hn v i) 0 (self_eq_ownKey S rho hn v i) ht r hr
+  set σ := pre.foldl (processOne (Model.digests rho.hash receipt)) (stateAt S rho hn v i)
+  rw [hl] at hcut
   have heq : e = .block B := by
     cases e with
     | tick x => exact False.elim (canonEvent_ne_tick hce x rfl)
@@ -194,11 +200,24 @@ theorem delivery_block_payload_processAt {i : Nat} {v : V}
       subst ℓ
       cases hb
   subst e
+  -- the AC cut exists only if `on_block` accepts `B` at the state the earlier objects leave
+  have hacc : ¬ Refuses (Model.digests rho.hash receipt) σ o := by
+    rintro ⟨B', hB', hr'⟩
+    rw [hce, Option.some.injEq, Node.Event.block.injEq] at hB'
+    subst hB'
+    have hσt : σ.now = u := (foldl_processOne_now _ _ _).trans ht
+    simp only [Node.exec, Node.onBlock] at hcut
+    rw [hσt] at hr'
+    rcases hr' with hr' | hr'
+    · simp [hr'] at hcut
+    · split_ifs at hcut
+      · simp at hcut
+      · simp [hr'] at hcut
   obtain rfl := eq_blockObj_of_decodeBlock (decodeBlock_of_canonEvent hce)
   have hp : voteObj (binding := S.vote) m ∈ payloadObjs B.fgPayload B.acPayload :=
     List.mem_append_right _ (List.mem_map.mpr ⟨m, List.mem_append_left _ hm, rfl⟩)
   exact received_vote_processAt S rho hn he
-    ((contains_of_mem_delivered ho).trans (Model.Obj.Contains.step hp (.refl _)))
+    (carried_subset_delivered _ hsplit hacc hp)
 
 end Consensus.Goldilocks.Simulation
 
