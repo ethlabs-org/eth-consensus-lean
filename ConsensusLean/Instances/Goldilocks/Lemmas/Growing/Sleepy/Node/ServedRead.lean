@@ -27,8 +27,8 @@ public section
 
 /-! # Goldilocks under `Sleepy` with growing faults: the head at a read and the record step
 
-The dynamic forms of `read_head_support_before` (G1, G2 at a read) and `record_step_upTo` (G3)
-of `Compose/Sleepy/Served`, from the dynamic invariant `Growing.SleepyInvariantUpTo`.
+The head at a read (G1, G2) and the record step (G3) under growing faults, from the dynamic
+invariant `Growing.SleepyInvariantUpTo`.
 
 The chain-generic steps of `Compose/Sleepy/Served` (`Compose/Sleepy/ServedSteps`, shared with
 it: `ReadInvWith`, `head_support_at`, `record_step_of` and the read and tick machinery under them)
@@ -175,7 +175,7 @@ private theorem readInvWith_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
             hac.relay x hx k B hB h0 z hz j ℓ hc
               (hdl.trans (le_min htb le_rfl)) hj ha } }
 
-/-- **G1, G2 at a read under growing faults** (the dynamic `read_head_support_before`): the state
+/-- **G1, G2 at a read under growing faults**: the state
 of a node before cut `i`, read at a time `t ∈ [0, b]` at which it is honest, at or after every
 cut before `i` and at or before cut `i`, the node awake and joined at `t`: the anchor at `t` is
 compatible with the record's block `R`, and `R` is at or below it, or viable with a strict majority

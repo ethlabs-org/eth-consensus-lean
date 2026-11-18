@@ -95,7 +95,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageDe
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutagePostStop
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageReader
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
@@ -144,9 +143,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabe
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.HeldRow
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Read
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.RecordWrites
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.ServedBase

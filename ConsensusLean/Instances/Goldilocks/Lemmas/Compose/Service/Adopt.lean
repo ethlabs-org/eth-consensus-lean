@@ -1,5 +1,8 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
@@ -8,7 +11,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Held
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Confirmation
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -18,7 +21,8 @@ public section
 Over the Sleepy invariant: every honest slot-`s` vote is the honest proposal `P` of
 slot `s`; at an honest node's joined update of slot `s`, the result is exactly `P` and not vetoed
 (`adopt_result_before`: the S1P–S3P bootstrap with the Sleepy step lemmas for a protected block,
-`vote_frame`, `later_transfer_step_before`, `vote_locks_compatible_upTo`, `held_origin_viable`). The
+`vote_frame_before`, `later_transfer_step_before`, `vote_locks_compatible_of`,
+`held_origin_viable_before`). The
 update then moves the record to `P`, or keeps an already deeper one. -/
 
 namespace Consensus.Goldilocks.Compose

@@ -3,7 +3,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Serv
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Read
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
+import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 
@@ -11,8 +13,8 @@ public section
 
 /-! # Goldilocks under `Sleepy` with growing faults: confirmed reads and the effective record
 
-The read facts of `Compose/Sleepy/Chain` and `Compose/Sleepy/Read` for a reader honest at the read
-time `t`: the state of `y` before cut `i`, every earlier cut at a time `≤ t ≤ b`, `y ∈ H t`.
+The read facts for a reader honest at the read time `t`: the state of `y` before cut `i`, every
+earlier cut at a time `≤ t ≤ b`, `y ∈ H t`.
 
 * `confirmed_read_on_chain_at`: a confirmed read is held while honest and is on the chain of the
   origins within `b` (an ancestor of the effective record, which is the record's block or `Σ.F`);

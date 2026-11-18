@@ -16,20 +16,18 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks under `Sleepy`: comparing origins (extending `P_s` to `P_{s+1}`)
+/-! # Goldilocks under `Sleepy`: honest votes and supporters of an origin
 
-* **An honest supporter** (`honest_supporterU`): an origin of label `s` has an honest slot-`s`
-  vote whose head extends it. For a result: the honest validators awake and joined at `t_s + Δ`
-  (more than `f`, by `Sleepy`) vote in slot `s` and reach the joined writer before `t_s + 2Δ`, so
-  they are among its participants; if every counted supporter were faulty, the participants would
-  hold those seats and more than `f` disjoint honest ones, against the strict majority. For an
-  optimistic selection: `3n/4 > f` voters.
-* **Same-label origins compare** (`same_label_compatible`): two results by the disjointness
-  of conflicting supporter sets and the relay of counted votes to both writers (RR); a result and
-  an optimistic selection by the relay of the `≥ 3n/4` optimistic seats (RO); two selections share
-  `n/2 > f` seats (OO).
-* `origins_below_succ`: an origin of label `s` and one of label `j < s` are both below the head of
-  the honest supporter's vote, which extends the older one by `V_s`. -/
+* **Honest votes** (`vote_of_awake_joined`): an honest validator awake and joined at `t_s + Δ`
+  votes in slot `s`, at or before `t_s + Δ`; `mayVote_of_start` and `mayVote_stock` give the vote
+  permission.
+* **Honest participants** (`awake_participant_window_before`, `awake_participant_early`,
+  `awake_participant_before`, `honest_participants_window_before`): awake joined validators
+  participate in a result observed before a finite deadline, and with every honest committee member
+  awake, joined and permitted, the faulty participants of the update pool are fewer than half.
+* **An honest supporter** (`honest_supporter_before`): an origin within a finite horizon has an
+  honest slot-`s` vote whose head extends it, from deadline-bounded service and the fault bounds at
+  the slot points inside the horizon. -/
 
 /-! ## Over SA traces: `voted_slot`, and the relay of one slot's votes to a writer -/
 
@@ -64,10 +62,6 @@ private theorem add_mul_delta_lt {x a b : Time} (h : a < b) : x + a * sp.Δ < x 
 
 private theorem add_delta_add_delta (x : Time) : x + sp.Δ + sp.Δ = x + 2 * sp.Δ := by
   rw [add_assoc, ← two_mul]
-
-private theorem add_mul_delta_add_delta (x a : Time) :
-    x + a * sp.Δ + sp.Δ = x + (a + 1) * sp.Δ := by
-  rw [add_assoc, add_one_mul]
 
 /-- The restarts of an honest node up to its update of slot `s` (joined) are at or before
 `t_s`. -/
@@ -167,80 +161,6 @@ private theorem optimistic_seats
     (optimisticPoint_pool_post hr hX hpt s hv) le_rfl
     fun k' hk' _ => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hk')) htk
 
-/-- A `Relayed` vote reaches an honest node's update of slot `s` (its restarts at or before `t_s`)
-under `Sync`: the node holds it, or two other votes of its validator. -/
-private theorem relayed_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {s : Nat}
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
-    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
-    (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) {D : Blk sp.n FGP} {u : Fin sp.n}
-    (hu : Relayed tr U X s D u) :
-    ∃ v : Vote sp.n, v.val = u ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
-      (v ∈ (tr.state Y c).pool s ∨ u ∈ equivocators {w | w ∈ (tr.state Y c).pool s}) := by
-  have hΔ := sp.toParams.hΔ
-  obtain ⟨v, rfl, hvs, hR, k, hsend, h1, h2⟩ := hu
-  refine ⟨v, rfl, hR, ?_⟩
-  have := sync_forward hr hsync hX hsend h1 (by
-    rw [ts_add]
-    exact h2.le.trans ((add_mul_delta_le (by norm_num)).trans (le_add_of_nonneg_right hΔ.le))) hY hc
-    (fun k' hk' hr' => (hrs k' hk' hr').trans h1) (by
-      rw [ht]
-      exact (add_le_add h2.le le_rfl).trans
-        (by rw [add_mul_delta_add_delta]; exact add_mul_delta_le (by norm_num)))
-    fun t ht₁ ht₂ => by
-      rw [CompatibleSides.slot_of_lt (s := s) (h1.trans ht₁)
-        (ht₂.trans ((add_lt_add_of_lt_of_le h2 le_rfl).trans_le
-        (by rw [add_mul_delta_add_delta]; exact add_mul_delta_le (by norm_num)))), hvs]
-      omega
-  rwa [hvs] at this
-
-/-- **Against an update.** At an honest update of slot `s` whose validators `S` support `DY`
-without equivocating, the validators `T` with relayed votes for a block `D` that conflicts with
-`DY` are voters there, and none is in `S`. -/
-private theorem relayed_against_of_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {s : Nat}
-    {X Y : Fin sp.n} {c : Nat} {D DY : Blk sp.n FGP}
-    (held : ∀ {u}, Relayed tr U X s D u →
-      ∃ v : Vote sp.n, v.val = u ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
-        (v ∈ (tr.state Y c).pool s ∨ u ∈ equivocators {w | w ∈ (tr.state Y c).pool s}))
-    {S T : Set (Fin sp.n)}
-    (hS : ∀ u ∈ S, u ∉ equivocators {v | v ∈ (tr.state Y c).pool s} ∧
-      ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U DY R)
-    (hT : T ⊆ Relayed tr U X s D) (hnc : ¬ Compatible U D DY) :
-    T.ncard + S.ncard ≤ (voters {v | v ∈ (tr.state Y c).pool s}).ncard := by
-  have hU := hr.coherent
-  have hdisj : Disjoint T S := by
-    rw [Set.disjoint_left]
-    intro u hu hu'
-    obtain ⟨hne, v', hv', hv'u, R', hR', hR'r, hDR'⟩ := hS u hu'
-    obtain ⟨v, hvu, ⟨R, hR, hRr, hDR⟩, hv | heq⟩ := held (hT hu)
-    · obtain rfl : v = v' := by
-        by_contra h
-        exact hne ⟨v, hv, v', hv', h, hvu, hv'u⟩
-      obtain rfl : R = R' := hU.1 hR hR' (hRr.trans hR'r.symm)
-      exact hnc (anc_total hU hDR hDR')
-    · exact hne heq
-  rw [← Set.ncard_union_eq hdisj]
-  refine Set.ncard_le_ncard ?_
-  rintro u (hu | hu)
-  · obtain ⟨v, rfl, -, hv | ⟨a, ha, -, -, -, hav, -⟩⟩ :=
-      held (hT hu)
-    · exact ⟨v, hv, rfl⟩
-    · exact ⟨a, ha, hav⟩
-  · obtain ⟨-, v, hv, rfl, -⟩ := hS u hu
-    exact ⟨v, hv, rfl⟩
-
-private theorem relayed_against (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {s : Nat}
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
-    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
-    (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) {D DY : Blk sp.n FGP}
-    {S T : Set (Fin sp.n)}
-    (hS : ∀ u ∈ S, u ∉ equivocators {v | v ∈ (tr.state Y c).pool s} ∧
-      ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U DY R)
-    (hT : T ⊆ Relayed tr U X s D) (hnc : ¬ Compatible U D DY) :
-    T.ncard + S.ncard ≤ (voters {v | v ∈ (tr.state Y c).pool s}).ncard :=
-  relayed_against_of_held hr (relayed_held hr hsync hX hY hc ht hrs) hS hT hnc
-
 end Consensus.Goldilocks.SA
 
 /-! ## Over a Goldilocks run -/
@@ -262,56 +182,7 @@ private theorem ts_nonneg (s : Nat) : (0 : Time) ≤ sp.ts s := by
 theorem ts_le_ts {s s' : Nat} (h : s ≤ s') : sp.ts s ≤ sp.ts s' :=
   (SA.ts_le_iff sp).2 (by exact_mod_cast h)
 
-/-- Under `Sleepy`, `f < n/2`. -/
-theorem two_faults_lt_of_sleepy (hsl : tr.SleepyRun H ΔF) : 2 * Hᶜ.ncard < sp.n := by
-  have h := (hsl.2 0).1
-  have hle : tr.honestAwakeJoined H (sp.toParams.slotTime 0) ≤ H.ncard :=
-    Set.ncard_le_ncard fun x hx => hx.1
-  have hn : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  unfold RunTrace.FaultBound at h
-  omega
-
 variable {b : Time} {s₀ : Nat}
-
-/-- On the window from slot `s₀` to `b`, `f < n/2` (`f < h_{t_{s₀}}`). -/
-theorem two_faults_lt_of_window (hwin : SleepyWindow tr H ΔF s₀ b) : 2 * Hᶜ.ncard < sp.n := by
-  obtain ⟨hb, -, hfb⟩ := sleepyWindow_iff.1 hwin
-  have h := hfb s₀ le_rfl 0 (by simp) (by simpa using hb)
-  have hle : tr.honestAwakeJoined H (sp.ts s₀ + 0) ≤ H.ncard :=
-    Set.ncard_le_ncard fun x hx => hx.1
-  have hn : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  unfold RunTrace.FaultBound at h
-  omega
-
-/-- On the window from slot `s₀` to `b`, more than `f` honest validators are awake and joined at
-`t_s + Δ ≤ b` for `s ≥ s₀`. -/
-theorem faults_lt_awake_joined_win (hwin : SleepyWindow tr H ΔF s₀ b) {s : Nat} (hs₀ : s₀ ≤ s)
-    (hs : sp.ts s + sp.Δ ≤ b) :
-    Hᶜ.ncard <
-      {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)}.ncard := by
-  have h := (sleepyWindow_iff.1 hwin).2.2 s hs₀ sp.Δ (by simp) hs
-  unfold RunTrace.FaultBound RunTrace.honestAwakeJoined at h
-  exact h
-
-/-- On the window from slot `s₀` to `b`, `Sync[a, b']` holds of the AC projection for
-`t_{s₀} ≤ a` and `b' ≤ b − Δ`. -/
-theorem syncAC_of_window (hrun : GoldilocksRun proposer dg H tr) (hwin : SleepyWindow tr H ΔF s₀ b)
-    {a b' : Time} (ha : sp.ts s₀ ≤ a) (hb : b' ≤ b - sp.Δ) :
-    SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) a b' tr.projAC :=
-  have hs := (sleepyWindow_iff.1 hwin).2.1
-  sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr proposer ΔF a b'
-    hrun.toLocalRun (show tr.SyncOn H ΔF (fun τ => a ≤ τ ∧ τ ≤ b') (fun τ => a ≤ τ ∧ τ ≤ b') id
-      from ⟨hs.deltaF, hs.delta_le,
-        fun x hx i m hm hw => hs.message x hx i m hm ⟨ha.trans hw.1, hw.2.trans hb⟩,
-        fun x hx i B hB hw => hs.block x hx i B hB ⟨ha.trans hw.1, hw.2.trans hb⟩,
-        fun x hx i B hB hw => hs.relay x hx i B hB ⟨ha.trans hw.1, hw.2.trans hb⟩,
-        fun x hx i a' h hw => hs.attestation x hx i a' h ⟨ha.trans hw.1, hw.2.trans hb⟩⟩)
-
-/-- Under the prefix premises up to `b ≥ 0`, `f < n/2` (`f < h_0`). -/
-theorem two_faults_lt_of_prefix (hpre : SleepyPrefix tr H ΔF b) : 2 * Hᶜ.ncard < sp.n :=
-  two_faults_lt_of_window hpre.window
 
 /-- The cuts of a tick: the AC's tick, the proposal step, the FG update. -/
 private theorem tick_cuts (y : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time)
@@ -394,42 +265,6 @@ theorem mayVote_of_start {ini} (hrun : GoldilocksRun proposer dg H tr ini)
 theorem mayVote_stock (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) (s : Nat) : ∀ i, (tr.state y i).ac.mayVote s = true :=
   mayVote_of_start hrun hnc hy rfl
-
-/-- **The honest validators awake and joined at `t_s + Δ` are participants** of an honest update
-of slot `s`: their slot-`s` votes reach the writer, whose restarts are at or before `t_s`. -/
-private theorem awake_participant (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {s : Nat}
-    (hsync : SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) (sp.ts s) (sp.ts s + sp.Δ)
-      tr.projAC) {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
-    {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX) {y : Fin sp.n}
-    (hy : y ∈ H) (hmv : ∀ i, (tr.state y i).ac.mayVote s = true)
-    (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
-    y ∈ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨k, e, ⟨ℓ, hc, he⟩, hes, hk⟩ := vote_of_awake_joined hrun hnc hy hmv hw hj
-  obtain ⟨hval, hsl', -, -⟩ := SA.castAt_spec hr hy ⟨hc, he⟩
-  have hsk : sp.ts s ≤ tr.projAC.time k :=
-    (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by omega)
-  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
-  have := SA.sync_forward hr hsync hy
-    ⟨ℓ, hc, Or.inl ⟨e, he, rfl⟩⟩
-    hsk hk hX hu.1 (fun k' hk' hr' => (SA.update_restarts hr hX hu k' hk' hr').trans hsk)
-    (by
-      rw [hu.2.2.1]
-      exact (add_le_add hk le_rfl).trans
-        (by rw [SA.add_delta_add_delta]; exact SA.add_mul_delta_le (by norm_num)))
-    fun t h₁ h₂ => by
-      have : sp.slot t = s := SA.slot_of_mem sp s (hsk.trans h₁) (by
-        rw [hts]
-        exact h₂.trans_le ((add_le_add hk le_rfl).trans
-          (by rw [SA.add_delta_add_delta]; exact SA.add_mul_delta_le (by norm_num))))
-      omega
-  rw [hes] at this
-  rcases this with h | ⟨a, ha, -, -, -, hav, -⟩
-  · exact ⟨e.msg, h, hval⟩
-  · exact ⟨a, ha, hav.trans hval⟩
 
 /-- Awake joined validators participate in a result observed before the finite deadline
 cutoff. Only their vote deadlines are used; later receiver wakes are irrelevant. -/
@@ -564,101 +399,6 @@ theorem honest_participants_window_before {ini} (hrun : GoldilocksRun proposer d
   rw [Set.inter_comm Hᶜ] at hsplitK
   omega
 
-/-- **A result and an optimistic selection of one slot are compatible** (RO): the `≥ 3n/4`
-optimistic seats reach the writer, where none supports the result. -/
-private theorem result_optimistic_compatible
-    (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {s : Nat}
-    (hsync : SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) (sp.ts s)
-      (sp.ts (s + 1 : Nat) + sp.Δ) tr.projAC) {X x : Fin sp.n} (hX : X ∈ H) (hx : x ∈ H)
-    {i i' : Nat} {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {CV CV' : Set (Vote sp.n)}
-    (hR : SA.ResultAt tr.projAC X i s C CV) (hO : SA.OptimisticLockAt tr.projAC x i' s C' CV')
-    (hstock : sp.committeeSize = sp.n) :
-    Compatible (tr.HonestBlocks H) C C' := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
-  have hle : ∀ T : Set (Fin sp.n), T.ncard ≤ sp.n := fun T =>
-    (Set.ncard_le_ncard (Set.subset_univ T)).trans (by rw [Set.ncard_univ, Nat.card_fin])
-  by_contra hnc'
-  obtain ⟨ℓ, S, hc, ht, hrs, hmaj, -, hS⟩ := SA.result_side hrun' hX hR
-  obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := SA.optimistic_seats hrun' hx hO hstock
-  have := SA.relayed_against hrun'.localRun hsync hx hX hc ht hrs hS hT fun h => hnc' (Or.symm h)
-  have := hle (SA.voters {v | v ∈ (tr.projAC.state X i).pool s})
-  omega
-
-/-- `honest_vote_exists_upTo` on the window from slot `s₀ ≤ s` to `b`. -/
-private theorem honest_vote_exists_win (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr)
-    (hwin : SleepyWindow tr H ΔF s₀ b) {s : Nat} (hs₀ : s₀ ≤ s) (hs : sp.ts s + sp.Δ ≤ b) :
-    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = s := by
-  obtain ⟨y, hy, hw, hj⟩ := Set.nonempty_of_ncard_ne_zero
-    (Nat.zero_lt_of_lt (faults_lt_awake_joined_win hwin hs₀ hs)).ne'
-  obtain ⟨k, e, hv, hs, -⟩ := vote_of_awake_joined hrun hnc hy (mayVote_stock hrun hnc hy s) hw hj
-  exact ⟨y, hy, k, e, hv, hs⟩
-
-/-- **Every slot up to `b` has an honest vote**: an honest validator awake and joined at
-`t_s + Δ ≤ b` (there are more than `f ≥ 0` of them) votes in slot `s`. -/
-theorem honest_vote_exists_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hpre : SleepyPrefix tr H ΔF b) (s : Nat) (hs : sp.ts s + sp.Δ ≤ b) :
-    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = s :=
-  honest_vote_exists_win hrun hnc hpre.window (Nat.zero_le s) hs
-
-/-- `honest_supporter_upTo` on the window from slot `s₀ ≤ s` to `b`. -/
-private theorem honest_supporter_win
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hwin : SleepyWindow tr H ΔF s₀ b) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hs₀ : s₀ ≤ s) (hC : OriginWithin tr H C s b) (hstock : sp.committeeSize = sp.n) :
-    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ tr.time j ≤ b ∧ e.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocks H) e.msg C := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
-  have hr := hrun'.localRun
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨X, hX, i₀, CV, hi₀, hR | hO⟩ := originWithin_iff.1 hC
-  · -- a result: a counted validator is honest, by the strict majority over the participants
-    have hmaj := SA.result_majority hR
-    obtain ⟨ℓX, hu, -, hCV⟩ := hR
-    have ht₀ : tr.time i₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
-    have hJ := faults_lt_awake_joined_win hwin hs₀ ((add_le_add le_rfl
-      (le_mul_of_one_le_left hΔ.le (by norm_num))).trans (ht₀.symm.trans_le hi₀))
-    have hsync := syncAC_of_window hrun hwin (a := sp.ts s) (b' := sp.ts s + sp.Δ) (ts_le_ts hs₀)
-      (le_sub_iff_add_le.2 ((SA.add_delta_add_delta _).trans_le
-        ((SA.add_mul_delta_le (by norm_num)).trans (ht₀.symm.trans_le hi₀))))
-    have hJV : {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)} ⊆
-        SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := fun y hy =>
-      awake_participant hrun hnc hsync hX hu hy.1 (mayVote_stock hrun hnc hy.1 s) hy.2.1 hy.2.2
-    have hSV : {w | ∃ v ∈ CV, v.val = w} ⊆ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
-      rintro w ⟨v, hv, rfl⟩
-      rw [hCV] at hv
-      exact ⟨v, hv.1, rfl⟩
-    obtain ⟨w, ⟨v, hv, rfl⟩, hwH⟩ : ∃ w ∈ {w | ∃ v ∈ CV, v.val = w}, w ∈ H := by
-      by_contra hno'
-      have hno : ∀ w ∈ {w | ∃ v ∈ CV, v.val = w}, w ∉ H := fun w hw hwH => hno' ⟨w, hw, hwH⟩
-      have hdisj : Disjoint
-          {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)}
-          {w | ∃ v ∈ CV, v.val = w} :=
-        Set.disjoint_left.2 fun y hyJ hyS => hno y hyS hyJ.1
-      have h1 := Set.ncard_union_eq hdisj
-      have h2 := Set.ncard_le_ncard (Set.union_subset hJV hSV)
-      have h3 : {w | ∃ v ∈ CV, v.val = w}.ncard ≤ Hᶜ.ncard :=
-        Set.ncard_le_ncard fun y hy => hno y hy
-      omega
-    rw [hCV] at hv
-    obtain ⟨hvp, -, -, R, hR, hRr, hCR⟩ := hv
-    obtain ⟨j, hj, e, hve, rfl⟩ := hrun'.honest.pool_vote X hX i₀ s _ hvp hwH
-    obtain ⟨-, hΦU⟩ := SA.frameIn_of_callAt hr hX hu.1
-    exact ⟨_, hwH, j, e, hve, (hrun.time_mono hj.le).trans hi₀,
-      SA.state_pool_slot sp hr (fun _ => SA.voteStart_initial _) hX i₀ s _ hvp,
-      R, hΦU hR, hRr, Anc.mono hΦU hCR⟩
-  · -- an optimistic selection: `3n/4 > f` voters
-    obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO hstock
-    have hf := two_faults_lt_of_window hwin
-    obtain ⟨u, ⟨v, hv, rfl, R, hR, hRr, hCR⟩, huH⟩ :=
-      Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
-        (t := SA.optimisticVoters sp A ℓ.frame s C) (by omega)
-    have huH : v.val ∈ H := not_not.1 huH
-    obtain ⟨hvs, j, hj, e, hve, rfl⟩ := SA.optimisticPoint_pool_vote hrun' hX hpt hv huH
-    exact ⟨_, huH, j, e, hve, (hrun.time_mono hj).trans hi₀, hvs, R, hΦU hR, hRr,
-      Anc.mono hΦU hCR⟩
-
 /-- An origin within the finite horizon has an honest supporter using only deadline-bounded
 service and the fault bounds at slot points inside the horizon. -/
 theorem honest_supporter_before
@@ -723,131 +463,6 @@ theorem honest_supporter_before
     obtain ⟨hvs, j, hj, e, hve, rfl⟩ := SA.optimisticPoint_pool_vote hrun' hX hpt hv huH
     exact ⟨_, huH, j, e, hve, (hrun.time_mono hj).trans hi₀, hvs, R, hΦU hR, hRr,
       Anc.mono hΦU hCR⟩
-
-/-- **Up to `b`, an origin within `b` has an honest supporter**: an honest slot-`s` vote at a
-time `≤ b` whose head extends it. -/
-theorem honest_supporter_upTo
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hpre : SleepyPrefix tr H ΔF b) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hC : OriginWithin tr H C s b) (hstock : sp.committeeSize = sp.n) :
-    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ tr.time j ≤ b ∧ e.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocks H) e.msg C :=
-  honest_supporter_win hrun hnc hpre.window (Nat.zero_le s) hC hstock
-
-/-- `same_label_compatible_upTo` on the window from slot `s₀ ≤ s` to `b`. -/
-private theorem same_label_compatible_win
-    (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hwin : SleepyWindow tr H ΔF s₀ b)
-    {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hs₀ : s₀ ≤ s)
-    (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b)
-    (hstock : sp.committeeSize = sp.n) :
-    Compatible (tr.HonestBlocks H) C C' := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
-  -- `Sync` up to `t_{s+1} + Δ` from a result within `b`, at `t_s + 6Δ`
-  have hsync : ∀ {Y i CV D}, tr.time i ≤ b → SA.ResultAt tr.projAC Y i s D CV →
-      SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ)
-        tr.projAC := fun hi ⟨_, hu, _⟩ => by
-    have ht : tr.time _ = sp.ts s + 6 * sp.Δ := hu.2.2.1
-    exact syncAC_of_window hrun hwin (ts_le_ts hs₀) (by
-      rw [hts]
-      refine le_sub_iff_add_le.2 ?_
-      rw [SA.add_mul_delta_add_delta, SA.add_mul_delta_add_delta]
-      exact (SA.add_mul_delta_le (by norm_num)).trans (ht.symm.trans_le hi))
-  obtain ⟨X, hX, i, CV, hi, hR | hO⟩ := originWithin_iff.1 hC <;>
-    obtain ⟨X', hX', i', CV', hi', hR' | hO'⟩ := originWithin_iff.1 hC'
-  · -- RR: each side's counted validators reach the other writer, where none supports it
-    by_contra hnc'
-    obtain ⟨ℓ, S, hc, ht, hrs, hmaj, hSF, hS⟩ := SA.result_side hrun' hX hR
-    obtain ⟨ℓ', S', hc', ht', hrs', hmaj', hSF', hS'⟩ := SA.result_side hrun' hX' hR'
-    have h1 := SA.relayed_against hrun'.localRun (hsync hi hR) hX' hX hc ht hrs hS hSF'
-      fun h => hnc' (Or.symm h)
-    have h2 := SA.relayed_against hrun'.localRun (hsync hi hR) hX hX' hc' ht' hrs' hS' hSF hnc'
-    omega
-  · exact result_optimistic_compatible hrun hnc (hsync hi hR) hX hX' hR hO' hstock
-  · exact Or.symm (result_optimistic_compatible hrun hnc (hsync hi' hR') hX' hX hR' hO hstock)
-  · -- OO: an honest validator in common, with one slot-`s` vote
-    have hr := hrun'.localRun
-    have hU := hr.coherent
-    have hf := two_faults_lt_of_window hwin
-    have hle : ∀ T : Set (Fin sp.n), T.ncard ≤ sp.n := fun T =>
-      (Set.ncard_le_ncard (Set.subset_univ T)).trans (by rw [Set.ncard_univ, Nat.card_fin])
-    by_contra hnc'
-    obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO hstock
-    obtain ⟨ℓ', A', hpt', hΦU', h34', -⟩ := SA.optimistic_seats hrun' hX' hO' hstock
-    have hI := Set.ncard_inter_add_ncard_union (SA.optimisticVoters sp A ℓ.frame s C)
-      (SA.optimisticVoters sp A' ℓ'.frame s C')
-    have := hle (SA.optimisticVoters sp A ℓ.frame s C ∪ SA.optimisticVoters sp A' ℓ'.frame s C')
-    obtain ⟨u, ⟨⟨v, hv, rfl, R, hR, hRr, hBR⟩, ⟨v', hv', hv'u, R', hR', hR'r, hBR'⟩⟩, huH⟩ :=
-      Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
-        (t := SA.optimisticVoters sp A ℓ.frame s C ∩ SA.optimisticVoters sp A' ℓ'.frame s C')
-        (by omega)
-    have huH := not_not.1 huH
-    obtain ⟨hvs, j₁, -, e₁, he₁, rfl⟩ := SA.optimisticPoint_pool_vote hrun' hX hpt hv huH
-    obtain ⟨hv's, j₂, -, e₂, he₂, rfl⟩ :=
-      SA.optimisticPoint_pool_vote hrun' hX' hpt' hv' (hv'u ▸ huH)
-    rw [hv'u] at he₂
-    obtain ⟨-, rfl⟩ := (SA.one_vote_per_slot sp) _ ro H _ tr.projAC hr _ huH j₁ j₂ e₁ e₂ he₁ he₂
-      (hvs.trans hv's.symm)
-    obtain rfl : R = R' := hU.1 (hΦU hR) (hΦU' hR') (hRr.trans hR'r.symm)
-    exact hnc' (SA.anc_total hU (Anc.mono hΦU hBR) (Anc.mono hΦU' hBR'))
-
-/-- **Up to `b`, origins within `b` of one label are compatible** (RR, RO, OO). -/
-theorem same_label_compatible_upTo
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hpre : SleepyPrefix tr H ΔF b) {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b)
-    (hstock : sp.committeeSize = sp.n) :
-    Compatible (tr.HonestBlocks H) C C' :=
-  same_label_compatible_win hrun hnc hpre.window (Nat.zero_le s) hC hC' hstock
-
-/-- Two blocks below the head of one vote are compatible. -/
-private theorem compatible_of_voteExtends (hU : Coherent (tr.HonestBlocks H)) {v : Vote sp.n}
-    {C C' : SA.Blk sp.n (List (FG.Att sp.n))} (h : SA.VoteExtends (tr.HonestBlocks H) v C)
-    (h' : SA.VoteExtends (tr.HonestBlocks H) v C') : Compatible (tr.HonestBlocks H) C C' := by
-  obtain ⟨Hd, hHd, hHdr, hC⟩ := h
-  obtain ⟨Hd', hHd', hHd'r, hC'⟩ := h'
-  obtain rfl : Hd = Hd' := hU.1 hHd hHd' (hHdr.trans hHd'r.symm)
-  exact Anc.total hU hC hC'
-
-/-- **Extending the origin frontier up to `b`**: `P_s` and `V_s` up to `b` give `P_{s+1}` up to
-`b`. -/
-theorem origins_below_succ_upTo
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hpre : SleepyPrefix tr H ΔF b) {s : Nat} (hP : OriginsBelowUpTo tr H s b)
-    (hV : VotesBelowUpTo tr H s b) (hstock : sp.committeeSize = sp.n) :
-    OriginsBelowUpTo tr H (s + 1) b := by
-  have hU := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
-  rw [originsBelowUpTo_iff] at hP ⊢
-  -- an origin of label `s` and one of label `j < s` are below the honest supporter's head
-  have hnew : ∀ C C' j, j < s → OriginWithin tr H C s b → OriginWithin tr H C' j b →
-      Compatible (tr.HonestBlocks H) C C' := by
-    intro C C' j hj hC hC'
-    obtain ⟨x, hx, i, e, hv, hib, hs, hext⟩ := honest_supporter_upTo hrun hnc hpre hC hstock
-    exact compatible_of_voteExtends hU hext
-      (votesBelowUpTo_iff.1 hV C' j hC' x hx i e hv hib (by omega) (by omega))
-  intro C j C' j' hj hj' hC hC'
-  rcases Nat.lt_succ_iff_lt_or_eq.1 hj with hj | rfl <;>
-    rcases Nat.lt_succ_iff_lt_or_eq.1 hj' with hj' | rfl
-  · exact hP C j C' j' hj hj' hC hC'
-  · exact Or.symm (hnew C' C j hj hC' hC)
-  · exact hnew C C' j' hj' hC hC'
-  · exact same_label_compatible_upTo hrun hnc hpre hC hC' hstock
-
-/-- **Extending the origin frontier**: `P_s` and `V_s` give `P_{s+1}`. -/
-theorem origins_below_succ
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {s : Nat} (hP : OriginsBelow tr H s) (hV : VotesBelow tr H s)
-    (hstock : sp.committeeSize = sp.n) : OriginsBelow tr H (s + 1) := by
-  refine originsBelow_iff.2 fun C j C' j' hj hj' hC hC' => ?_
-  obtain ⟨b, hb⟩ := hC.exists_within
-  obtain ⟨b', hb'⟩ := hC'.exists_within
-  exact originsBelowUpTo_iff.1 (origins_below_succ_upTo hrun hnc
-    (hsl.prefix (le_max_right (max b b') 0)) (hP.upTo _) (hV.upTo _) hstock) C j C' j' hj hj'
-    (hb.mono ((le_max_left b b').trans (le_max_left _ 0)))
-    (hb'.mono ((le_max_right b b').trans (le_max_left _ 0)))
 
 end Consensus.Goldilocks.Compose
 

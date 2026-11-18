@@ -40,7 +40,8 @@ private theorem honest_of_quorum_two (hf : 2 * Hᶜ.ncard < sp.n) {Q : Finset (F
   have hq : sp.toParams.fg.q = (2 * sp.n + 2) / 3 := rfl
   omega
 
-/-- `caches_on_chain_upTo` with the count `2 f < n` in place of a slot count. -/
+/-- **The honest `Σ.F` and `Σ.J` at a cut within `b` are on the chain of the origins within `b`**,
+with the count `2 f < n` in place of a slot count. -/
 theorem caches_on_chain_of_two {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {b : Time}

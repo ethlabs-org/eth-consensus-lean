@@ -27,7 +27,7 @@ honest source of a crossing quorum and of `Σ.J` under `RowsAbove` (`frame_cross
 
 `FrameFrozen` proves the frozen witness and `FrameLabels` assembles the following consequences:
 
-* **Full reads** (`held_origin_viable`): a held block compatible with every origin, above
+* **Full reads** (`held_origin_viable_before`): a held block compatible with every origin, above
   `fc_root`, is in the full viable tree: it is viable itself, or a maximal-height carrier extends
   the named entry of an honest crossing source above it.
 * **Votes** (`vote_frame`): at an honest slot-`(s+1)` vote, a block compatible with the origins of

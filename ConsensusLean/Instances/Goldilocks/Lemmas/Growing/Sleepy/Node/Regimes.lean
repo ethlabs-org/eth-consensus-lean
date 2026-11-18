@@ -4,7 +4,14 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Tran
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
@@ -13,7 +20,7 @@ public section
 
 /-! # Goldilocks under `Sleepy` with growing faults: ready-reader safety (R.1, finite)
 
-The growing-fault form of `Compose/Regimes/Sleepy`. A reader is read at a read point `(i, t)`
+R.1's finite form under growing faults. A reader is read at a read point `(i, t)`
 between its events, ready at `t` (honest at `t`, every cut before `i` at a time `≤ t`):
 
 * `ReadySafeOn tr H c t₀ t₁`: agreement of the reads of two ready nodes and monotonicity of a

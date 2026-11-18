@@ -17,7 +17,7 @@ public section
 
 The source labels at a vote (`SourceLabels`) bound the origins used by the frame argument.
 `Frame` supplies the honest-store geometry and `FrameFrozen` supplies the frozen witness; together
-they establish full-read and vote-frame viability (S3 of `SleepyInvariant`). -/
+they establish full-read and vote-frame viability (S3 of `SleepyInvariantUpTo`). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -43,8 +43,8 @@ private theorem held_viable_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   exact FrameGeometry.held_viable_of hrun.toLocalRun (projFG_localRun hrun hnc)
     hf hy hsrc.toFrameGeometry hGG hGB hBt
 
-/-- `held_origin_viable` with `f < n/2` and the origins whose event precedes the cut pairwise
-compatible. -/
+/-- Full-read viability of a held origin, with `f < n/2` and the origins whose event precedes the
+cut pairwise compatible. -/
 private theorem held_origin_viable_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
     (hP : ∀ C s C' s', OriginBefore tr H C s i → OriginBefore tr H C' s' i →
@@ -66,36 +66,6 @@ private theorem held_origin_viable_of {ini} (hrun : GoldilocksRun proposer dg H 
   obtain ⟨hGG, hGB⟩ := below_tips_compatible hU (Q := fun C => ∃ l, OriginBefore tr H C l i)
     (fun C C' ⟨l, hC⟩ ⟨l', hC'⟩ => hP C l C' l' hC hC') (fun C ⟨l, hC⟩ => hBc C l hC)
   exact held_viable_of hrun hnc hf hy i (hsrc.above _) hGG hGB hBt
-
-/-- **S3 at full reads**: once all origins compare, a block `B` that an honest node holds before
-cut `i` and that is compatible with every origin whose event precedes the cut (an origin itself;
-a protected proposal before its update, S3P) is at or below its `fc_root` or in
-its full viable tree. -/
-theorem held_origin_viable (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) (hP : ∀ s, OriginsBelow tr H s) {y : Fin sp.n} (hy : y ∈ H)
-    (i : Nat) {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hBc : ∀ C s, OriginBefore tr H C s i → Compatible (tr.HonestBlocks H) B C)
-    (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
-    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
-      B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree :=
-  held_origin_viable_of hrun hnc (two_faults_lt_of_sleepy hsl) hy i
-    (fun C l C' l' hC hC' => originsBelow_iff.1 (hP (l + l' + 1)) C l C' l' (by omega)
-      (by omega) hC.origin hC'.origin) hBc hBt
-
-/-- **S3 at full reads up to `b`**: at a cut within `b`, once the origins within `b` compare, a
-block `B` that an honest node holds before the cut and that is compatible with every origin whose
-event precedes the cut is at or below its `fc_root` or in its full viable tree. -/
-theorem held_origin_viable_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr)
-    (hpre : SleepyPrefix tr H ΔF b) (hP : ∀ s, OriginsBelowUpTo tr H s b) {y : Fin sp.n}
-    (hy : y ∈ H) (i : Nat) (hi : ∀ k < i, tr.time k ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hBc : ∀ C s, OriginBefore tr H C s i → Compatible (tr.HonestBlocks H) B C)
-    (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
-    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
-      B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree :=
-  held_origin_viable_of hrun hnc (two_faults_lt_of_prefix hpre) hy i
-    (fun C l C' l' hC hC' => originsBelowUpTo_iff.1 (hP (l + l' + 1)) C l C' l' (by omega)
-      (by omega) (hC.within hi) (hC'.within hi)) hBc hBt
 
 /-- Full-read viability uses the finite frontier and fault bound, with no service premise. -/
 theorem held_origin_viable_before {b : Time} {ini} (hrun : GoldilocksRun proposer dg H tr ini)
@@ -143,49 +113,8 @@ private theorem vote_frame_of {s₀ : Nat} {b : Time} (hrun : GoldilocksRun prop
     obtain ⟨x, hx, k, e', hve, hs', hext⟩ := hw
     exact honest_head_frozen hrun hnc hservice hy hc hs hib hold hx hve hs'.le hext hFB
 
-/-- **S3 at votes up to `b` (the frozen witness)**: at an honest slot-`(s+1)` vote at a time
-`≤ b`, a block `B` of the honest blocks that is compatible with every origin within `b` of label
-at most `s` and that some honest slot-`s` vote extends is in the viable tree of the voter block
-tree, or at or below `fc_root` (inside the honest blocks). The row sources are read for
-population-sized committees (`hstock`). -/
-theorem vote_frame_upTo
-    {b : Time} (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hpre : SleepyPrefix tr H ΔF b) {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
-    (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hB : B ∈ tr.HonestBlocks H)
-    (hBc : ∀ C j, OriginWithin tr H C j b → j ≤ s → Compatible (tr.HonestBlocks H) B C)
-    (hw : ∃ x ∈ H, ∃ k e', SA.VoteAt tr.projAC x k e' ∧ e'.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocks H) e'.msg B) (hstock : sp.committeeSize = sp.n) :
-    B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
-      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
-  have hU := (projFG_localRun hrun hnc).coherent
-  have hf := two_faults_lt_of_prefix hpre
-  have hib' : ∀ k < i, tr.time k ≤ b := fun k hk => (hrun.time_mono hk.le).trans hib
-  have hsrc : HonestRowsSourced tr H (fun D => ∃ C, (∃ j, OriginWithin tr H C j b ∧ j ≤ s) ∧
-      Anc (tr.HonestBlocks H) D C) y i := by
-    rw [honestRowsSourced_iff]
-    intro X hX a ha hav
-    obtain ⟨D, -, hDs, C, j, hC, hj, hDC⟩ := vote_row_source hrun hnc _ SA.CommitteeP.full
-      (SA.size_binding_full hstock) (SA.cs2_full hstock hf) hy (SA.mem_full _ _) hc hs
-      hX ha hav
-    exact ⟨D, ⟨C, ⟨j, hC.within hib', hj⟩, hDC⟩, hDs⟩
-  obtain ⟨hGG, hGB⟩ := below_tips_compatible hU
-    (Q := fun C => ∃ j, OriginWithin tr H C j b ∧ j ≤ s)
-    (fun C C' ⟨j, hC, hj⟩ ⟨j', hC', hj'⟩ =>
-      originsBelowUpTo_iff.1 hP C j C' j' (by omega) (by omega) hC hC')
-    (fun C ⟨j, hC, hj⟩ => hBc C j hC hj)
-  refine vote_frame_of hrun hnc (Or.inl hpre.window) hf hy hc hs hib
-    (fun _ _ m _ _ hm _ => absurd hm (by rw [ts_natCast_zero]; exact not_lt.2 (hrun.time_nonneg m)))
-    (hsrc.above _) hGG (fun D ⟨C, ⟨j, hC, hj⟩, hDC⟩ => ?_) hB hGB
-    (let ⟨x, hx, k, e', hv, hs', hext⟩ := hw; ⟨x, hx, k, e', hv, hs', hext⟩)
-  obtain ⟨x', hx', k', e'', hve', -, hs'', Hd, hHd, hHdr, hCHd⟩ :=
-    honest_supporter_upTo hrun hnc hpre hC hstock
-  exact ⟨x', hx', k', e'', hve', hs''.trans_le hj, Hd, hHd, hHdr, hDC.trans hCHd⟩
-
 /-- The frozen witness at a vote needs only recipient service within its finite horizon
-(for population-sized committees, `hstock`, as for `vote_frame_upTo`). -/
+(for population-sized committees, `hstock`). -/
 theorem vote_frame_before
     {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)

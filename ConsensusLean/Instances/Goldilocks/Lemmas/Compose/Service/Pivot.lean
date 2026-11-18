@@ -1,5 +1,8 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotSteps
@@ -12,7 +15,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -103,7 +106,7 @@ theorem proposal_holds_old_before (hrun : GoldilocksRun proposer dg H tr) (hnc :
 
 /-- **The proposal walk passes every old origin**: the origin is held by the
 proposer (or below its `Σ.F`, below the walk's start), so viable or at or below `fc_root`
-(`held_origin_viable`); the proposer's live locks sit below origins, compatible with it (S1);
+(`held_origin_viable_before`); the proposer's live locks sit below origins, compatible with it (S1);
 and the children towards it win (`SA.anc_getHead`). -/
 theorem proposal_walk_passes_old_before (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)

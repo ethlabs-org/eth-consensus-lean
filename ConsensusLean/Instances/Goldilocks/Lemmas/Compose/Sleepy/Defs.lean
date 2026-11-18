@@ -14,16 +14,7 @@ read on its AC projection, with ancestry inside the honest blocks of the run:
   (fast, slow, vetoed or not: `SA.ResultAt`), or the raw block an honest optimistic check of
   slot `s` selects (`SA.OptimisticLockAt`). Origins are actual events of the run, whatever their
   time relative to the votes that read them;
-* `OnOriginChain B`: `B` is genesis or an ancestor of an origin (the ancestor closure of the
-  origin chain);
-* `SleepyInvariant` (S1–S3, at every cut): origins are pairwise compatible; every
-  honest vote of a later slot extends an origin (label-strict transfer); every honest record is
-  genesis or an origin; every honest `Σ.F`, `Σ.J`, stored lock and FG source is on the origin
-  chain; and an origin that an honest node holds is at or below its `fc_root` or in its full
-  viable tree;
-* the bounded frontier of the induction: `OriginsBelow s` (`P_s`: origins of labels
-  below `s` compare pairwise) and `VotesBelow s` (`V_s`: every honest vote of a slot `m` with
-  `j < m ≤ s` extends every origin of label `j < s`). -/
+* the invariant up to a horizon `b`, `SleepyInvariantUpTo`, below. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -41,14 +32,6 @@ structure SleepyServiceBefore {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att
       Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
       tr.BlockAcceptedBy y j (tr.time i) B
 
-/-- Existing node synchrony is sufficient for the specialized Sleepy service. -/
-theorem sleepyServiceBefore_of_sync {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {ΔF b : Time}
-    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    (hr : Node.LocalRun proposer dg H SA.Vote.val tr) (hs : tr.SyncBefore H ΔF b) :
-    SleepyServiceBefore tr H ΔF b :=
-  ⟨hs.deltaF, SA.serviceBefore_of_sync (syncBefore_projection hr hs), hs.relay⟩
-
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
 
@@ -63,28 +46,7 @@ def OriginBefore (C : SA.Blk sp.n (List (FG.Att sp.n))) (s i : Nat) : Prop :=
   ∃ x ∈ H, ∃ k < i, ∃ CV,
     SA.ResultAt tr.projAC x k s C CV ∨ SA.OptimisticLockAt tr.projAC x k s C CV
 
-/-- `B` is on the ancestor closure of the origin chain: genesis, or an ancestor (inside the
-honest blocks) of an origin. -/
-def OnOriginChain (B : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
-  B.root = sp.genesisRoot ∨ ∃ C s, Origin tr H C s ∧ Anc (tr.HonestBlocks H) B C
-
-/-- **`P_s`**: origins of labels below `s` are pairwise compatible. -/
-def OriginsBelow (s : Nat) : Prop :=
-  ∀ C j C' j', j < s → j' < s → Origin tr H C j → Origin tr H C' j' →
-    Compatible (tr.HonestBlocks H) C C'
-
-/-- **`V_s`**: every honest vote of a slot `m` with `j < m ≤ s` extends every origin of label
-`j`. -/
-def VotesBelow (s : Nat) : Prop :=
-  ∀ C j, Origin tr H C j → ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → j < e.msg.slot →
-    e.msg.slot ≤ s → SA.VoteExtends (tr.HonestBlocks H) e.msg C
-
 variable {tr H}
-
-theorem origin_iff {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} :
-    Origin tr H C s ↔ ∃ x ∈ H, ∃ i CV,
-      SA.ResultAt tr.projAC x i s C CV ∨ SA.OptimisticLockAt tr.projAC x i s C CV :=
-  Iff.rfl
 
 theorem originBefore_iff {C : SA.Blk sp.n (List (FG.Att sp.n))} {s i : Nat} :
     OriginBefore tr H C s i ↔ ∃ x ∈ H, ∃ k < i, ∃ CV,
@@ -108,62 +70,14 @@ theorem Origin.of_optimistic {x : Fin sp.n} (hx : x ∈ H) {i s : Nat}
     (h : SA.OptimisticLockAt tr.projAC x i s C CV) : Origin tr H C s :=
   ⟨x, hx, i, CV, Or.inr h⟩
 
-theorem onOriginChain_iff {B : SA.Blk sp.n (List (FG.Att sp.n))} :
-    OnOriginChain tr H B ↔
-      B.root = sp.genesisRoot ∨ ∃ C s, Origin tr H C s ∧ Anc (tr.HonestBlocks H) B C :=
-  Iff.rfl
-
-theorem originsBelow_iff {s : Nat} :
-    OriginsBelow tr H s ↔ ∀ C j C' j', j < s → j' < s → Origin tr H C j → Origin tr H C' j' →
-      Compatible (tr.HonestBlocks H) C C' :=
-  Iff.rfl
-
-theorem votesBelow_iff {s : Nat} :
-    VotesBelow tr H s ↔ ∀ C j, Origin tr H C j → ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e →
-      j < e.msg.slot → e.msg.slot ≤ s → SA.VoteExtends (tr.HonestBlocks H) e.msg C :=
-  Iff.rfl
-
 variable (tr H)
-
-/-- **The Sleepy record invariant** (S1–S3). -/
-structure SleepyInvariant : Prop where
-  /-- S1: any two origins are compatible. -/
-  origins_compatible : ∀ C s C' s', Origin tr H C s → Origin tr H C' s' →
-    Compatible (tr.HonestBlocks H) C C'
-  /-- S2: every honest vote of a slot after an origin's label extends it. -/
-  vote_extends : ∀ C s, Origin tr H C s → ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e →
-    s < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg C
-  /-- S1: every honest record names a block of the node's tree that is genesis or an origin. -/
-  record : ∀ y ∈ H, ∀ i, ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y i).ac.latestConfirmed ∧
-    (C.root = sp.genesisRoot ∨ ∃ s, Origin tr H C s)
-  /-- S1: every honest `Σ.F` and `Σ.J` is on the origin chain. -/
-  caches : ∀ y ∈ H, ∀ i, OnOriginChain tr H (tr.state y i).fg.F ∧
-    OnOriginChain tr H (tr.state y i).fg.J
-  /-- S1: every honest stored lock names a block of the node's tree on the origin chain. -/
-  locks : ∀ y ∈ H, ∀ i, ∀ l ∈ (tr.state y i).ac.locks,
-    ∃ L ∈ (tr.state y i).fg.tree, L.root = l.block ∧ OnOriginChain tr H L
-  /-- S1: every honest FG source (a block `ac_to_fg` returns) is on the origin chain. -/
-  sources : ∀ y ∈ H, ∀ i ℓ C, SA.ToFGAt tr.projAC y i ℓ C → OnOriginChain tr H C
-  /-- S3 (full reads): an origin that an honest node holds is at or below its `fc_root`, or in
-  its full viable tree. -/
-  viable : ∀ y ∈ H, ∀ i C s, Origin tr H C s → C ∈ (Node.frame (tr.state y i)).tree →
-    (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).fcRoot ∨
-      C ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree
 
 /-! ### The invariant up to a horizon `b`
 
-The send-window prefix premises up to `b` (`SleepyPrefix`: `Sync[0, b − Δ]`
-and `f < h_t` at the slot points `≤ b`), the origins whose event is at a time `≤ b`
-(`OriginWithin`), and the invariant restricted to them and to the cuts **within `b`** (every
-earlier cut at a time `≤ b`, so that the state before the cut is the state at a time `≤ b`):
-`SleepyInvariantUpTo`. -/
-
-/-- **The send-window prefix premises up to `b`**: `Sync[0, b − Δ]` and `f < h_t` at
-every `t ∈ {t_s, t_s + Δ, t_s + 2Δ}` with `t ≤ b`. -/
-def SleepyPrefix (ΔF b : Time) : Prop :=
-  0 ≤ b ∧ tr.SyncRun H ΔF 0 (b - sp.Δ) ∧
-    ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
-      tr.FaultBound H (sp.ts s + d)
+The origins whose event is at a time `≤ b` (`OriginWithin`), the ancestor closure of their chain
+(`OnOriginChainWithin`: `B` is genesis or an ancestor of such an origin), and the invariant
+restricted to them and to the cuts **within `b`** (every earlier cut at a time `≤ b`, so that the
+state before the cut is the state at a time `≤ b`): `SleepyInvariantUpTo`. -/
 
 /-- An origin of label `s` whose event cut is at a time `≤ b`. -/
 def OriginWithin (C : SA.Blk sp.n (List (FG.Att sp.n))) (s : Nat) (b : Time) : Prop :=
@@ -180,19 +94,7 @@ def OriginsBelowUpTo (s : Nat) (b : Time) : Prop :=
   ∀ C j C' j', j < s → j' < s → OriginWithin tr H C j b → OriginWithin tr H C' j' b →
     Compatible (tr.HonestBlocks H) C C'
 
-/-- **`V_s` up to `b`**: every honest vote at a time `≤ b` of a slot `m` with `j < m ≤ s`
-extends every origin within `b` of label `j`. -/
-def VotesBelowUpTo (s : Nat) (b : Time) : Prop :=
-  ∀ C j, OriginWithin tr H C j b → ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → tr.time i ≤ b →
-    j < e.msg.slot → e.msg.slot ≤ s → SA.VoteExtends (tr.HonestBlocks H) e.msg C
-
 variable {tr H}
-
-theorem sleepyPrefix_iff {ΔF b : Time} :
-    SleepyPrefix tr H ΔF b ↔ 0 ≤ b ∧ tr.SyncRun H ΔF 0 (b - sp.Δ) ∧
-      ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
-        tr.FaultBound H (sp.ts s + d) :=
-  Iff.rfl
 
 theorem originWithin_iff {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time} :
     OriginWithin tr H C s b ↔ ∃ x ∈ H, ∃ i CV, tr.time i ≤ b ∧
@@ -209,72 +111,11 @@ theorem originsBelowUpTo_iff {s : Nat} {b : Time} :
       OriginWithin tr H C' j' b → Compatible (tr.HonestBlocks H) C C' :=
   Iff.rfl
 
-theorem votesBelowUpTo_iff {s : Nat} {b : Time} :
-    VotesBelowUpTo tr H s b ↔ ∀ C j, OriginWithin tr H C j b → ∀ y ∈ H, ∀ i e,
-      SA.VoteAt tr.projAC y i e → tr.time i ≤ b → j < e.msg.slot → e.msg.slot ≤ s →
-        SA.VoteExtends (tr.HonestBlocks H) e.msg C :=
-  Iff.rfl
-
-theorem OriginWithin.origin {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time}
-    (h : OriginWithin tr H C s b) : Origin tr H C s :=
-  let ⟨x, hx, i, CV, _, h⟩ := h
-  ⟨x, hx, i, CV, h⟩
-
-theorem OriginWithin.mono {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b b' : Time}
-    (h : OriginWithin tr H C s b) (hb : b ≤ b') : OriginWithin tr H C s b' :=
-  let ⟨x, hx, i, CV, hi, h⟩ := h
-  ⟨x, hx, i, CV, hi.trans hb, h⟩
-
-/-- Every origin is within some horizon (the time of its event). -/
-theorem Origin.exists_within {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (h : Origin tr H C s) : ∃ b, OriginWithin tr H C s b :=
-  let ⟨x, hx, i, CV, h⟩ := h
-  ⟨tr.time i, x, hx, i, CV, le_rfl, h⟩
-
 /-- An origin whose event precedes a cut within `b` is within `b`. -/
 theorem OriginBefore.within {C : SA.Blk sp.n (List (FG.Att sp.n))} {s i : Nat} {b : Time}
     (h : OriginBefore tr H C s i) (hi : ∀ k < i, tr.time k ≤ b) : OriginWithin tr H C s b :=
   let ⟨x, hx, k, hk, CV, h⟩ := h
   ⟨x, hx, k, CV, hi k hk, h⟩
-
-theorem OnOriginChainWithin.onOriginChain {B : SA.Blk sp.n (List (FG.Att sp.n))} {b : Time}
-    (h : OnOriginChainWithin tr H B b) : OnOriginChain tr H B :=
-  h.imp_right fun ⟨C, s, hC, hBC⟩ => ⟨C, s, hC.origin, hBC⟩
-
-/-- `P_s` gives `P_s` up to every `b`. -/
-theorem OriginsBelow.upTo {s : Nat} (h : OriginsBelow tr H s) (b : Time) :
-    OriginsBelowUpTo tr H s b :=
-  fun C j C' j' hj hj' hC hC' => originsBelow_iff.1 h C j C' j' hj hj' hC.origin hC'.origin
-
-/-- `V_s` gives `V_s` up to every `b`. -/
-theorem VotesBelow.upTo {s : Nat} (h : VotesBelow tr H s) (b : Time) :
-    VotesBelowUpTo tr H s b :=
-  fun C j hC y hy i e hv _ hj hs => votesBelow_iff.1 h C j hC.origin y hy i e hv hj hs
-
-/-- Every cut is within a horizon `b ≥ 0`. -/
-theorem exists_horizon {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {proposer : Nat → Fin sp.n} (hrun : GoldilocksRun proposer dg H tr) (i : Nat) :
-    ∃ b, 0 ≤ b ∧ ∀ k < i, tr.time k ≤ b :=
-  ⟨max 0 (tr.time (i - 1)), le_max_left _ _,
-    fun _ hk => (hrun.time_mono (by omega)).trans (le_max_right _ _)⟩
-
-/-- **`Sleepy` gives the prefix premises up to every `b ≥ 0`.** -/
-theorem _root_.Consensus.Goldilocks.RunTrace.SleepyRun.prefix {ΔF : Time}
-    (hsl : tr.SleepyRun H ΔF) {b : Time} (hb : 0 ≤ b) : SleepyPrefix tr H ΔF b := by
-  refine ⟨hb, show tr.SyncOn H ΔF _ _ id from
-    ⟨hsl.1.deltaF, hsl.1.delta_le, fun x hx i m hm hw => hsl.1.message x hx i m hm hw.1,
-      fun x hx i B hB hw => hsl.1.block x hx i B hB hw.1,
-      fun x hx i B hB hw => hsl.1.relay x hx i B hB hw.1,
-      fun x hx i a h hw => hsl.1.attestation x hx i a h hw.1⟩, fun s d hd _ => ?_⟩
-  obtain ⟨h0, h1, h2⟩ := hsl.2 s
-  have hT : sp.toParams.slotTime s = sp.ts s := by
-    rw [sp.slotTime_eq]; simp only [SAParams.ts]
-  rw [hT] at h0 h1 h2
-  simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hd
-  rcases hd with rfl | rfl | rfl
-  · simpa using h0
-  · exact h1
-  · exact h2
 
 variable (tr H)
 
@@ -316,7 +157,8 @@ structure SleepyInvariantUpTo (b : Time) : Prop where
 /-! ### The invariant from a start label `s₀`
 
 The step lemmas for an induction started at a label `s₀` (after a heal, R.6) run on a window
-`[t_{s₀}, b]` (`SleepyWindow`), which the prefix premises give at `s₀ = 0`. The premises from
+`[t_{s₀}, b]` (`SleepyWindow`), which `Sync[0, b − Δ]` and `f < h_t` at the slot points `≤ b`
+give at `s₀ = 0`. The premises from
 `t_{s₀}` on, the base facts that replace the pre-`s₀` history, and the invariant from `s₀` are not
 stated. -/
 
@@ -338,13 +180,6 @@ theorem sleepyWindow_iff {ΔF b : Time} {s₀ : Nat} :
 /-- `t_0 = 0`. -/
 theorem ts_natCast_zero : sp.ts ((0 : Nat) : Int) = 0 := by
   simp [SAParams.ts]
-
-/-- **The prefix premises up to `b` are the window premises from slot `0` to `b`.** -/
-theorem SleepyPrefix.window {ΔF b : Time} (hpre : SleepyPrefix tr H ΔF b) :
-    SleepyWindow tr H ΔF 0 b := by
-  obtain ⟨hb, hs, hfb⟩ := sleepyPrefix_iff.1 hpre
-  rw [sleepyWindow_iff, ts_natCast_zero]
-  exact ⟨hb, hs, fun s _ d hd h => hfb s d hd h⟩
 
 variable (tr H)
 

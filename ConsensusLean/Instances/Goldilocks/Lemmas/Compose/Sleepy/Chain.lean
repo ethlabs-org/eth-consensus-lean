@@ -9,12 +9,10 @@ public section
 
 /-! # Goldilocks under `Sleepy`: the origin chain
 
-Blocks on the ancestor closure of the origin chain (`OnOriginChain`) are pairwise compatible once
-the origins are (S1): an ancestor of an origin is compatible with every ancestor of a compatible
-origin, and genesis is below every honest block. Hence R.1's safety part:
-every honest `ac_confirmed` is an ancestor of the effective record (the record,
-or `Σ.F` when the record is not in the frame), which is on the chain, so the honest confirmed
-outputs are pairwise compatible, served or not. -/
+Blocks on the ancestor closure of the origin chain within a horizon `b` (`OnOriginChainWithin`)
+are pairwise compatible once the origins within `b` are (S1): an ancestor of an origin is
+compatible with every ancestor of a compatible origin, and genesis is below every honest block
+(`OnOriginChainWithin.compatible`, `OnOriginChainWithin.of_anc`). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -95,15 +93,6 @@ private theorem chain_of_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     exact Or.inl (by rw [anc_genesis hAB]; rfl)
   · exact Or.inr ⟨C, s, hC, hAB.trans hBC⟩
 
-/-- **Blocks on the origin chain are compatible** when the origins are pairwise compatible. -/
-theorem OnOriginChain.compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hcomp : ∀ C s C' s', Origin tr H C s → Origin tr H C' s' →
-      Compatible (tr.HonestBlocks H) C C')
-    {B B' : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocks H)
-    (hB' : B' ∈ tr.HonestBlocks H) (h : OnOriginChain tr H B) (h' : OnOriginChain tr H B') :
-    Compatible (tr.HonestBlocks H) B B' :=
-  chain_compatible hrun hnc hcomp hB hB' (onOriginChain_iff.1 h) (onOriginChain_iff.1 h')
-
 /-- **Blocks on the chain of the origins within `b` are compatible** when those origins are
 pairwise compatible. -/
 theorem OnOriginChainWithin.compatible (hrun : GoldilocksRun proposer dg H tr)
@@ -116,12 +105,6 @@ theorem OnOriginChainWithin.compatible (hrun : GoldilocksRun proposer dg H tr)
   chain_compatible hrun hnc (Q := fun C s => OriginWithin tr H C s b) hcomp hB hB'
     (onOriginChainWithin_iff.1 h) (onOriginChainWithin_iff.1 h')
 
-/-- **An ancestor of a block on the origin chain is on it.** -/
-theorem OnOriginChain.of_anc (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {A B : SA.Blk sp.n (List (FG.Att sp.n))} (hA : A ∈ tr.HonestBlocks H)
-    (hAB : Anc (tr.HonestBlocks H) A B) (h : OnOriginChain tr H B) : OnOriginChain tr H A :=
-  onOriginChain_iff.2 (chain_of_anc hrun hnc hA hAB (onOriginChain_iff.1 h))
-
 /-- **An ancestor of a block on the chain of the origins within `b` is on it.** -/
 theorem OnOriginChainWithin.of_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
@@ -131,68 +114,6 @@ theorem OnOriginChainWithin.of_anc {ini} (hrun : GoldilocksRun proposer dg H tr 
   onOriginChainWithin_iff.2
     (chain_of_anc hrun hnc (Q := fun C s => OriginWithin tr H C s b) hA hAB
       (onOriginChainWithin_iff.1 h))
-
-/-- An honest confirmed read is an honest block on a chain `Ch` closed under ancestors that
-holds the record's block and `Σ.F`: it is an ancestor of the effective record (the record's
-block, or `Σ.F` when the record is not in the frame), whatever the head. -/
-private theorem confirmed_read_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    (hanc : ∀ {A B}, A ∈ tr.HonestBlocks H → Anc (tr.HonestBlocks H) A B → Ch B → Ch A)
-    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) (t : Time)
-    (hrec : ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y i).ac.latestConfirmed ∧ Ch C)
-    (hF : Ch (tr.state y i).fg.F) :
-    (goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) t ∈
-        tr.HonestBlocks H ∧
-      Ch ((goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) t) := by
-  have hU := honest_coherent hrun hnc
-  have hΦ : FrameOK (Node.frame (tr.state y i)) :=
-    (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
-  have hsub : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocks H :=
-    fun X hX => ⟨y, hy, i, hX.1⟩
-  -- the effective record is on the chain
-  have hCr : (SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
-        (Node.frame (tr.state y i)).F ∈ (Node.frame (tr.state y i)).tree ∧
-      Ch ((SA.lookup (Node.frame (tr.state y i))
-        (tr.state y i).ac.latestConfirmed).getD (Node.frame (tr.state y i)).F) := by
-    rcases hl : SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed with
-      _ | R
-    · exact ⟨hΦ.rooted.1, hF⟩
-    · obtain ⟨hR, hRr⟩ := SA.lookup_eq_some hl
-      obtain ⟨C, hC, hCr, hCc⟩ := hrec
-      obtain rfl : R = C := hU.1 (hsub hR) ⟨y, hy, i, hC⟩ (hRr.trans hCr.symm)
-      exact ⟨hR, hCc⟩
-  -- the confirmed output is an ancestor of it in the frame
-  have hX : ∀ X, X = (SA.deepest (Node.frame (tr.state y i))
-      {X | X ∈ (Node.frame (tr.state y i)).tree ∧
-        (Node.frame (tr.state y i)).Anc X ((SA.lookup (Node.frame (tr.state y i))
-          (tr.state y i).ac.latestConfirmed).getD (Node.frame (tr.state y i)).F) ∧
-        (Node.frame (tr.state y i)).Anc X (SA.acHead sp (tr.state y i).ac
-          (Node.frame (tr.state y i)) t)}).getD (Node.frame (tr.state y i)).F →
-      X ∈ (Node.frame (tr.state y i)).tree ∧ (Node.frame (tr.state y i)).Anc X
-        ((SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
-          (Node.frame (tr.state y i)).F) := by
-    rintro X rfl
-    rcases hd : SA.deepest (Node.frame (tr.state y i)) _ with _ | D
-    · exact ⟨hΦ.rooted.1, hΦ.rooted.2 _ hCr.1⟩
-    · obtain ⟨⟨hDt, hDC, -⟩, -⟩ := SA.deepest_mem hd
-      exact ⟨hDt, hDC⟩
-  replace hX := hX _ rfl
-  exact ⟨hsub hX.1, hanc (hsub hX.1) (hX.2.mono hsub) hCr.2⟩
-
-/-- An honest confirmed read, at the state before any cut and at any time, is an honest block on
-the origin chain: it is an ancestor of the effective record (the record's block, or `Σ.F` when
-the record is not in the frame), whatever the head. -/
-theorem confirmed_read_on_chain (hinv : SleepyInvariant tr H)
-    (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) (t : Time) :
-    (goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) t ∈
-        tr.HonestBlocks H ∧
-      OnOriginChain tr H
-        ((goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) t) :=
-  have ⟨C, hC, hCr, hgo⟩ := hinv.record y hy i
-  confirmed_read_of hrun hnc (fun hA hAB h => OnOriginChain.of_anc hrun hnc hA hAB h) hy i t
-    ⟨C, hC, hCr, onOriginChain_iff.2 (hgo.imp_right fun ⟨s, hs⟩ => ⟨C, s, hs, .refl⟩)⟩
-    (hinv.caches y hy i).1
 
 end Consensus.Goldilocks.Compose
 

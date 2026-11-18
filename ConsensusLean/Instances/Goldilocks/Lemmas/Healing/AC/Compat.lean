@@ -14,7 +14,7 @@ Over a `StandaloneRun` (H.1's premises), for a slot `s` with `t_s ≥ ḡ + 4Δ`
   (`result_result_compatibleU`): their supporter sets are disjoint, since a common supporter's two
   votes both reach both readers before their updates (`Sync`), and each reader counts both sets
   as participants, against the two strict majorities;
-* a result and an optimistic confirmation are compatible (`result_optimistic_compatible`): the
+* a result and an optimistic confirmation are compatible (`result_optimistic_compatibleU`): the
   `≥ 3n/4` optimistic voters reach the reader and none supports a conflicting result without
   equivocating there, so the result's strict majority would need more than the remaining
   `n/4` seats.
@@ -123,7 +123,7 @@ theorem result_result_compatibleU
   have h2 := against_updateU hr hsync hx hx' hc' ht' (fun k _ => hrs x' hx' k) hSs' hSF hnc
   omega
 
-/-- `result_optimistic_compatible` with the unlock given. -/
+/-- A result and an optimistic confirmation are compatible, with the unlock given. -/
 theorem result_optimistic_compatibleU
     {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g)
     {s : Nat} {x x' : Fin sp.n}

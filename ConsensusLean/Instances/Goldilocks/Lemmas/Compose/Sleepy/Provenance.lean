@@ -27,10 +27,10 @@ comparability: it holds of every Goldilocks run, by the handlers alone.
   and the lock functions only move locks back (`SA.locks_move_back`). `SA.lock_provenance` does
   not tie an update's locks to its result, so both facts come from one induction over the cuts
   of the node (`good_state`), which follows each SA handler (`Good`, `Down`).
-* Every FG source is a live fast lock block, so on the chain (`source_on_chain`); every honest
-  attestation names the entry of its source's state, an ancestor of the source
-  (`row_on_chain`); every `Σ.F` and `Σ.J` is genesis or an entry with a target quorum, which has
-  an honest attestation since `q > f` (`caches_on_chain`). -/
+* Every FG source at a cut within `b` is a live fast lock block, so on the chain of the origins
+  within `b` (`source_on_chain_upTo`); every honest attestation signed at a cut within `b` names
+  the entry of its source's state, an ancestor of the source (`row_on_chain_upTo`); every `Σ.F`
+  and `Σ.J` is genesis or an entry with a target quorum (`cache_quorum`). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -589,36 +589,12 @@ theorem cache_quorum {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
   · exact key BJ hBJ _ (Or.inl hJ)
   · exact key BF hBF _ (Or.inr hF)
 
-/-- With `f < h_t` at some `t`, a quorum has an honest member (`f < n/2 < q`). -/
-private theorem honest_of_quorum {t : Time} (hfb : tr.FaultBound H t) {Q : Finset (Fin sp.n)}
-    (hQ : sp.toParams.fg.q ≤ Q.card) : ∃ v ∈ Q, v ∈ H := by
-  by_contra hno
-  simp only [not_exists, not_and] at hno
-  have hHc : (Q : Set (Fin sp.n)).ncard ≤ Hᶜ.ncard :=
-    Set.ncard_le_ncard (fun v hv => hno v hv) (Set.toFinite _)
-  rw [Set.ncard_coe_finset] at hHc
-  have hH : tr.honestAwakeJoined H t ≤ H.ncard :=
-    Set.ncard_le_ncard (fun v hv => hv.1) (Set.toFinite _)
-  have hsum : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have hq : sp.toParams.fg.q = (2 * sp.n + 2) / 3 := rfl
-  unfold RunTrace.FaultBound at hfb
-  omega
-
 /-- The record names a held genesis or an actual origin strictly before this cut. -/
 theorem record_origin_before {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y i).ac.latestConfirmed ∧
       (C.root = sp.genesisRoot ∨ ∃ s, OriginBefore tr H C s i) :=
   (good_state hrun hnc hy i).1
-
-/-- The time-bounded form of causal record provenance. -/
-theorem record_origin_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {b : Time} (hi : ∀ k < i, tr.time k ≤ b) :
-    ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y i).ac.latestConfirmed ∧
-      (C.root = sp.genesisRoot ∨ ∃ s, OriginWithin tr H C s b) :=
-  have ⟨C, hC, hCr, h⟩ := (good_state hrun hnc hy i).1
-  ⟨C, hC, hCr, h.imp_right fun ⟨s, hs⟩ => ⟨s, hs.within hi⟩⟩
 
 /-- **The record names genesis or an origin**, a block of the node's tree. -/
 theorem record_origin {ini} (hrun : GoldilocksRun proposer dg H tr ini)
@@ -655,15 +631,6 @@ theorem source_on_chain_upTo {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   obtain rfl : B = L := (honest_coherent hrun hnc).1 (hΦU hB) ⟨y, hy, i, hL⟩ (hBr.trans hLr.symm)
   exact onOriginChainWithin_iff.2 (Or.inr ⟨C', _, hC'.within hi, (hva.mono hΦU).trans hLC'⟩)
 
-/-- **Every FG source is on the origin chain**: it is the block of a live fast lock. -/
-theorem source_on_chain (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} (h : SA.ToFGAt tr.projAC y i ℓ C) :
-    OnOriginChain tr H C :=
-  have ⟨_, _, hi⟩ := exists_horizon hrun i
-  (source_on_chain_upTo hrun hnc hy hi h).onOriginChain
-
 /-- **Every honest attestation signed at a cut within `b` names a block on the chain of the origins
 within `b`**: an honest attestation's height pair names the entry of its source's state, an
 ancestor of the source. -/
@@ -689,57 +656,6 @@ theorem row_on_chain_upTo {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have hsub : (tr.state x (j + 1)).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨x, hx, j + 1, hX⟩
   exact ⟨E, hsub hE, haT.symm,
     OnOriginChainWithin.of_anc hrun hnc (hsub hE) (hEsrc.mono hsub) hch⟩
-
-/-- **Every honest `Σ.F` and `Σ.J` at a cut within `b` is on the chain of the origins within
-`b`**, with `f < h_t` at some `t` (`f < n/2 < q`: a target quorum has an honest attestation). -/
-theorem caches_on_chain_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {t : Time} (hfb : tr.FaultBound H t) {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {b : Time}
-    (hi : ∀ k < i, tr.time k ≤ b) :
-    OnOriginChainWithin tr H (tr.state y i).fg.F b ∧
-      OnOriginChainWithin tr H (tr.state y i).fg.J b := by
-  have hreq := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  have hfg := fg_projection _ _ dg H _ tr proposer
-    ⟨hreq.1, hreq.2.1, hreq.2.2.1, hreq.2.2.2, SA.proposal_payload_valid sp _ ro⟩
-    hrun.genesis_root_ok hrun.toLocalRun hnc
-  have hst : tr.projFG.store y i = (tr.state y i).fg := by
-    simp only [FGTrace.store, projFG_state hrun.toLocalRun hy i]
-  have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX⟩
-  have hX : ∀ X ∈ ({(tr.state y i).fg.J, (tr.state y i).fg.F} :
-      Set (SA.Blk sp.n (List (FG.Att sp.n)))), X ∈ (tr.state y i).fg.tree →
-      OnOriginChainWithin tr H X b := by
-    intro X hXJF hXt
-    rcases cache_quorum (fg_reachable hrun.toLocalRun hy i) X hXJF with hg | ⟨Q, hQ, hQv⟩
-    · exact onOriginChainWithin_iff.2 (Or.inl hg)
-    obtain ⟨v, hvQ, hvH⟩ := honest_of_quorum hfb hQ
-    obtain ⟨Z, hZ, a, ha, rfl, haT⟩ := hQv v hvQ
-    -- the block carrying the attestation was accepted by `y` at an earlier cut
-    rcases Store.tree_accepted hfg hy (hst ▸ hZ) with rfl | ⟨k, hki, hk⟩
-    · simp [Params.genesisBlock] at ha
-    obtain ⟨hkn, hkl⟩ := hk
-    rw [RunTrace.projFG, Option.bind_eq_some_iff] at hkl
-    obtain ⟨c, hc, hcl⟩ := hkl
-    cases c with
-    | ac ℓ => simp [RunTrace.fgLabel] at hcl
-    | fg ℓ =>
-      simp only [RunTrace.fgLabel, Option.some.injEq] at hcl
-      subst hcl
-      obtain ⟨j, hjk, hsign⟩ := hrun.att_unforgeable y hy k a
-        (Or.inr ⟨Z, ⟨true, hkn, hc⟩, ha⟩) hvH
-      obtain ⟨E, hE, hEr, hEc⟩ :=
-        row_on_chain_upTo hrun hnc hvH hsign fun k' hk' => hi k' (by omega)
-      obtain rfl : X = E := (honest_coherent hrun hnc).1 (hsub hXt) hE (haT.symm.trans hEr.symm)
-      exact hEc
-  obtain ⟨hFt, hJt, -⟩ := Store.cache_invariants _ _ _ _ (fg_reachable hrun.toLocalRun hy i)
-  exact ⟨hX _ (Or.inr rfl) hFt, hX _ (Or.inl rfl) hJt⟩
-
-/-- **Every honest `Σ.F` and `Σ.J` is on the origin chain**, under `Sleepy` (`f < n/2 < q`: a
-target quorum has an honest attestation). -/
-theorem caches_on_chain (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) {ΔF : Time}
-    (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
-    OnOriginChain tr H (tr.state y i).fg.F ∧ OnOriginChain tr H (tr.state y i).fg.J :=
-  have ⟨_, _, hi⟩ := exists_horizon hrun i
-  have h := caches_on_chain_upTo hrun hnc (hsl.2 0).1 hy hi
-  ⟨h.1.onOriginChain, h.2.onOriginChain⟩
 
 end Consensus.Goldilocks.Compose
 

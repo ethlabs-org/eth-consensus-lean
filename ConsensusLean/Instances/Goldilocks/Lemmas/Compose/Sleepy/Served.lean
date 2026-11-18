@@ -1,5 +1,9 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.ServedBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.ServedSteps
 import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
@@ -23,38 +27,13 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.S
 
 public section
 
-/-! # Goldilocks under `Sleepy`: the served head (S4) and the record step (G3)
+/-! # Goldilocks under `Sleepy`: the anchor at the served head (S4)
 
-From the Sleepy invariant (whole-run or up to `b`):
-
-* **The record step** (`record_step_upTo`, G3, at every honest cut): a record write takes an origin
-  `C` of the frame, compatible with the old record (genesis or an origin, in the node's tree);
-  it keeps the record when `C` is below it in the frame, and otherwise the old record is below
-  `C` (below `Σ.F ⪯ C` when it left the frame). Restarts keep the record.
-* **The served head** (G1, G2, at a cut after the update of slot
-  `slot(t) − 2` or `slot(t) − 1` with no restart since, awake and joined): the anchor (the
-  deepest of the live lock blocks and `fc_root`, all on the origin chain) is compatible with the
-  record `R`. If `R` was
-  written by an optimistic check of the current slot, or of the previous one before its
-  `t_s + 2Δ`, its fast lock is still live at `R` (full viability keeps it there), so `R ⪯` the
-  anchor. Otherwise `R`'s label is below the latest view's slot: every honest vote of that slot
-  extends `R` (S2), the more than `f` cast by the validators awake and joined at its `t + Δ`
-  reach the served node by its tick at `t_l + 2Δ` and are resolved (their heads are relayed,
-  extending `Σ.F ⪯ R`), and the node keeps them (joined at `t`, it has not restarted since
-  `t_{σ−1}`; the update clause is not needed), and only faulty seats remain, so the supporters
-  are a strict majority of the voters; `R` is fully viable (S3). Which case holds is read off
-  how the record was last written (`record_writer`: genesis, a result, or an optimistic
-  selection whose fast lock every later call keeps while `R` stays viable and the slot at most
-  one later).
-* **The head at a read** (for R.1): the same, for the state before a cut `i`
-  read at a time `t` with every earlier cut at or before `t` and cut `i` at or after it, the node
-  awake and joined at `t`. The votes and heads the latest view at `t` needs arrive before
-  `t_l + 2Δ ≤ t`, so at cuts before `i`; when the node's tick at `t` is at a cut `≥ i`, the node
-  makes no call before it at `t`, and the read is the one before the tick's cut.
-
-The record step and the head at a read hold up to a horizon `b` (`record_step_upTo`,
-`read_head_support_before`), from `SleepyInvariantUpTo` under the prefix premises up to `b`: a read
-at `t ≤ b` needs `Sync` for the sends up to `t − Δ` and `f < h_t` at `t_l + Δ ≤ t`.
+`anchor_compatible_of_live_candidates`: after GST, the anchor of the actual record's head (the
+deepest of the live lock blocks and `fc_root`) is compatible with the record, from the current
+view's votes and participation only; the record's recency and the anchor's compatibility with the
+older history are supplied separately, and the live-lock arm needs no majority or service before
+GST.
 
 The chain-generic steps are in `Compose/Sleepy/ServedSteps`, imported privately, which the
 growing-fault forms share; the facts on the latest view's votes are in `Compose/Sleepy/ServedBase`,
@@ -67,49 +46,6 @@ open SA (SAParams ReplayOrder Vote Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
-
-/-- **G3 up to `b`, the record step**: at every cut of an honest node at a time `≤ b` (with the
-earlier ones), the record moves to a descendant (inside the honest blocks). -/
-theorem record_step_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    (hi : ∀ k ≤ i, tr.time k ≤ b) :
-    ∀ E ∈ tr.HonestBlocks H, E.root = (tr.state y i).ac.latestConfirmed →
-      ∃ E' ∈ tr.HonestBlocks H, E'.root = (tr.state y (i + 1)).ac.latestConfirmed ∧
-        Anc (tr.HonestBlocks H) E E' :=
-  have hi' : ∀ k < i, tr.time k ≤ b := fun k hk => hi k hk.le
-  have ⟨C, hC, hCr, hgo⟩ := hinv.record y hy i hi'
-  record_step_of hrun hnc hy i
-    (fun _ _ hX hY hXc hYc =>
-      OnOriginChainWithin.compatible hrun hnc hinv.origins_compatible hX hY hXc hYc)
-    ⟨C, hC, hCr, onOriginChainWithin_iff.2 (hgo.imp_right fun ⟨s, hs⟩ => ⟨C, s, hs, .refl⟩)⟩
-    (hinv.caches y hy i hi').1 fun C s CV hO => onOriginChainWithin_iff.2 (Or.inr
-      ⟨C, s, originWithin_iff.2 ⟨y, hy, i, CV, hi i le_rfl, hO⟩, .refl⟩)
-
-private theorem ReadInvWith.of_before {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} (hi : ∀ k < i, tr.time k ≤ b) {t : Time}
-    (ht : t ≤ b) :
-    ReadInvWith tr H (fun B => OnOriginChainWithin tr H B b)
-      (fun C s => OriginWithin tr H C s b) y i t (ReadSyncOrService tr H t) :=
-  have ⟨C, hC, hCr, hgo⟩ := hinv.record y hy i hi
-  { compat := fun _ _ hX hY hXc hYc =>
-      OnOriginChainWithin.compatible hrun hnc hinv.origins_compatible hX hY hXc hYc
-    anc := fun _ _ hA hAB h => OnOriginChainWithin.of_anc hrun hnc hA hAB h
-    record := ⟨C, hC, hCr,
-      onOriginChainWithin_iff.2 (hgo.imp_right fun ⟨s, hs⟩ => ⟨C, s, hs, .refl⟩)⟩
-    locks := hinv.locks y hy i hi
-    caches := hinv.caches y hy i hi
-    origin := fun _ _ h => h.within hi
-    viable := fun m hm C s hO hC => hinv.viable y hy m (fun k hk => hi k (by omega)) C s hO hC
-    vote_extends := fun C s hO x hx k hk e hv hs =>
-      hinv.vote_extends C s hO x hx k e hv (hi k hk) hs
-    sync := Or.inr {
-      message := fun x hx k m hm h0 z hz j ℓ hc hd hj =>
-        hsync.message x hx k m hm h0 z hz j ℓ hc (hd.trans ht) hj
-      relay := fun x hx k B hB h0 z hz j ℓ hc hd hj ha =>
-        hsync.relay x hx k B hB h0 z hz j ℓ hc (hd.trans ht) hj ha } }
 
 /-- Post-GST head support for the actual record. Only the current view's votes and
 participation are needed; historical record recency and anchor compatibility are supplied
@@ -127,34 +63,6 @@ theorem anchor_compatible_of_live_candidates
   have ha : SA.getAnchor sp A Φ t = D := by simp only [SA.getAnchor, hD, Option.getD_some]
   rw [ha]
   exact hcomp D (SA.deepest_mem hD).1
-
-/-- G1, G2 with recipient service bounded by the read time, not the next cut's time.
-Only the fault bounds at `t_s + Δ ≤ t` are needed for the latest-view majority. -/
-theorem read_head_support_before {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time} (htb : t ≤ b)
-    (hfb : ∀ s : Nat, sp.ts s + sp.Δ ≤ t → tr.FaultBound H (sp.ts s + sp.Δ))
-    (hle : ∀ k < i, tr.time k ≤ t) (hti : t ≤ tr.time i)
-    (hwj : 0 ≤ t → tr.awake y t ∧ tr.JoinedAt y t) {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hR : RecordAt tr y i R) :
-    Compatible (Node.frame (tr.state y i)).tree
-        (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R ∧
-      ((Node.frame (tr.state y i)).Anc R
-          (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
-        (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
-          (SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
-              t).1.votes).ncard <
-            2 * (SA.supporters (Node.frame (tr.state y i))
-              (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
-              (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
-              R).ncard)) :=
-  read_head_support_of hrun hnc hy
-    (fun _ hm _ => ReadInvWith.of_before hinv hrun hnc hsync hy
-      (fun k hk => (hm k hk).trans htb) htb) hle hti hwj hR
-    fun _ hm _ hrd hRm _ hO hjl => latest_majority hrun hnc hy
-      (ReadInvWith.of_before hinv hrun hnc hsync hy (fun k hk => (hm k hk).trans htb) htb)
-      (fun s h _ => hfb s h) hrd hRm.1 hO hjl
 
 end Consensus.Goldilocks.Compose
 

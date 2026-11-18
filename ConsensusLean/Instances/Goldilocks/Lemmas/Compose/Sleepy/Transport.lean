@@ -11,7 +11,7 @@ public section
 
 /-! # Goldilocks under `Sleepy`: what an origin carries to the next voters
 
-Transport and the non-root case of S3 (`SleepyInvariant`): for an origin `C` of label `s` and an
+Transport and the non-root case of S3 (`SleepyInvariantUpTo`): for an origin `C` of label `s` and an
 honest slot-`(s+1)` vote whose `Σ.F` is at or below `C`, the counted votes and heads reach the voter
 in time (`SA.CarryAt`), and, for a result, every slot-`s` vote of the voter's merged view reaches
 the writer (A1.8 (d)). Under `Sync[0, ∞)`: each counted vote was admitted by the writer (so
@@ -147,21 +147,6 @@ private theorem carryAt_of_writer_service
   by_cases hakw : a ≤ T.time kw
   · exact Or.inl ⟨kw, hkw, hakw, hkwt⟩
   · exact Or.inr (hold kw Hv hkw (not_le.1 hakw) hFHv)
-
-/-- Writer transport with a sender window, including pre-window accepted heads. -/
-theorem carryAt_of_writer_win (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b : Time}
-    (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U a b T) {s : Nat} (ha : a ≤ sp.ts s)
-    (hb : sp.ts s + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
-    (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
-    (hW : ∀ v ∈ CV, v.slot = s ∧
-      (∃ k, T.SendOrAdmit w k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
-      ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
-        (Hv.root = sp.genesisRoot ∨ ∃ k, T.AcceptAt w k Hv ∧ T.time k < sp.ts s + 2 * sp.Δ))
-    (hold : ∀ k Hv, T.AcceptAt w k Hv → T.time k < a → Anc U ℓ.frame.F Hv →
-      SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ)) :
-    SA.CarryAt T U y i e s CV :=
-  carryAt_of_writer_service hr ha hb hw hy hc hs (Or.inl hsync) hW hold
 
 /-- Windowed writer transport combines new-source service with old-head catch-up. -/
 theorem carryAt_of_writer_window_before (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
@@ -322,123 +307,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
-/-- The window premises' `Sync[t_{s₀}, b − Δ]` on the AC projection, on any `[a, b']` inside. -/
-private theorem window_sync {b : Time} {s₀ : Nat} (hrun : GoldilocksRun proposer dg H tr)
-    (hwin : SleepyWindow tr H ΔF s₀ b) {a b' : Time} (ha : sp.ts s₀ ≤ a) (hb : b' ≤ b - sp.Δ) :
-    SyncAC (SA.goldilocksSA sp (List (FG.Att sp.n)) ro) H (tr.HonestBlocks H) a b' tr.projAC :=
-  have hs := (sleepyWindow_iff.1 hwin).2.1
-  sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr proposer ΔF a b'
-    hrun.toLocalRun
-    { deltaF := hs.deltaF
-      delta_le := hs.delta_le
-      message := fun x hx i m h hw => hs.message x hx i m h ⟨ha.trans hw.1, hw.2.trans hb⟩
-      block := fun x hx i B h hw => hs.block x hx i B h ⟨ha.trans hw.1, hw.2.trans hb⟩
-      relay := fun x hx i B h hw => hs.relay x hx i B h ⟨ha.trans hw.1, hw.2.trans hb⟩
-      attestation := fun x hx i a h hw => hs.attestation x hx i a h ⟨ha.trans hw.1, hw.2.trans hb⟩ }
-
-/-- **A block that an honest writer accepted before `t_{s₀}` reaches `y` before `T`**, at the AC
-level, from its run-level form (`hold`: every head an honest node accepted before `t_{s₀}` reaches
-`y` before `T`). -/
-theorem acceptedBefore_of_old (hrun : GoldilocksRun proposer dg H tr) {s₀ : Nat} {y : Fin sp.n}
-    {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {T : Time}
-    (hold : ∀ x ∈ H, ∀ m B, tr.AcceptAt x m B → tr.time m < sp.ts s₀ →
-      Anc (tr.HonestBlocks H) Φ.F B → SA.AcceptedBefore tr.projAC y B T)
-    {w : Fin sp.n} (hw : w ∈ H) :
-    ∀ k B, tr.projAC.AcceptAt w k B → tr.projAC.time k < sp.ts s₀ →
-      Anc (tr.HonestBlocks H) Φ.F B → SA.AcceptedBefore tr.projAC y B T := by
-  rintro k B ⟨ℓk, hck, hb⟩ hk hF
-  obtain ⟨k', rfl, hc', ht⟩ := acBlock_prev hrun.toLocalRun hw (projAC_callAt.1 hck) hb
-  exact hold w hw k' B hc' (lt_of_eq_of_lt ht hk) hF
-
-/-- An honest slot-`(s+1)` vote is cast from `t_{s+1} = t_s + 4Δ` on. -/
-private theorem vote_time_ge (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
-    (hs : e.msg.slot = s + 1) : sp.ts s + 4 * sp.Δ ≤ tr.time i := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
-  obtain ⟨-, hys, -, -⟩ := SA.castAt_spec hr hy hc
-  have hsi : sp.slot (tr.projAC.time i) = s + 1 := by omega
-  have := (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) ((s + 1 : Nat) : Int)).2 (by rw [hsi])
-  rw [hts] at this
-  exact this
-
 variable {s₀ : Nat}
-
-/-- **A result's counted votes reach the next voters, on a window** (`Carry_y`): under the
-window premises from slot `s₀ ≤ s` to `b`, at a vote at a time `≤ b`, with the heads accepted
-before `t_{s₀}` caught up (`hold`), when the voter's `Σ.F` is at or below
-the result. -/
-theorem result_carry_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hwin : SleepyWindow tr H ΔF s₀ b) {X : Fin sp.n} (hX : X ∈ H)
-    {i₀ s : Nat} (hs₀ : s₀ ≤ s) {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hR : SA.ResultAt tr.projAC X i₀ s C CV) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
-    (hold : ∀ x ∈ H, ∀ m B, tr.AcceptAt x m B → tr.time m < sp.ts s₀ →
-      Anc (tr.HonestBlocks H) ℓ.frame.F B → SA.AcceptedBefore tr.projAC y B (sp.ts s + 3 * sp.Δ))
-    (hF : Anc (tr.HonestBlocks H) ℓ.frame.F C) :
-    SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  have hW := result_writer hr (fun _ => SA.voteStart_initial _) hX hR
-  have := vote_time_ge hrun hnc hy hc hs
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  exact carryAt_of_writer_win hr
-    (window_sync hrun hwin (b' := sp.ts s + 2 * sp.Δ) le_rfl (by linarith only [this, hib, hΔ]))
-    (ts_le_ts hs₀) le_rfl
-    hX hy hc hs (fun v hv => by
-      obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := hW v hv
-      exact ⟨h₁, h₂, Hv, hHv, hHvr, hF.trans hCHv, h₃⟩)
-    (acceptedBefore_of_old hrun hold hX)
-
-/-- **An optimistic selection's counted votes reach the next voters, on a window** (`Carry_y`), as
-`result_carry_win`. -/
-theorem optimistic_carry_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hwin : SleepyWindow tr H ΔF s₀ b) {x : Fin sp.n} (hx : x ∈ H)
-    {i₀ s : Nat} (hs₀ : s₀ ≤ s) {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hO : SA.OptimisticLockAt tr.projAC x i₀ s C CV) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
-    (hold : ∀ x ∈ H, ∀ m B, tr.AcceptAt x m B → tr.time m < sp.ts s₀ →
-      Anc (tr.HonestBlocks H) ℓ.frame.F B → SA.AcceptedBefore tr.projAC y B (sp.ts s + 3 * sp.Δ))
-    (hF : Anc (tr.HonestBlocks H) ℓ.frame.F C) :
-    SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  have hW := optimistic_writer_votes hr (fun _ => SA.voteStart_initial _) hx hO
-  have := vote_time_ge hrun hnc hy hc hs
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  exact carryAt_of_writer_win hr
-    (window_sync hrun hwin (b' := sp.ts s + 2 * sp.Δ) le_rfl (by linarith only [this, hib, hΔ]))
-    (ts_le_ts hs₀) le_rfl
-    hx hy hc hs (fun v hv => by
-      obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := hW v hv
-      exact ⟨h₁, h₂, Hv, hHv, hHvr, hF.trans hCHv, h₃⟩)
-    (acceptedBefore_of_old hrun hold hx)
-
-/-- **A1.8 (d) on the window from slot `s₀ ≤ s` to `b`**, for a result within `b`. -/
-theorem result_writer_pool_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hwin : SleepyWindow tr H ΔF s₀ b) {X : Fin sp.n} (hX : X ∈ H)
-    {i₀ s : Nat} (hs₀ : s₀ ≤ s) {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hR : SA.ResultAt tr.projAC X i₀ s C CV) (hi₀ : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) :
-    ∀ v ∈ (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
-      v ∈ (tr.projAC.state X i₀).pool s ∨
-        v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state X i₀).pool s} := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
-  obtain ⟨ℓX, hupd, -, -⟩ := hR
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have ht₀ : tr.time i₀ = sp.ts s + 6 * sp.Δ := hupd.2.2.1
-  have hti : tr.time i ≤ sp.ts s + 5 * sp.Δ := by
-    have h : tr.time i ≤ sp.ts (e.msg.slot : Int) + sp.Δ :=
-      (cast_head_fcRoot hrun'.localRun hrun'.vstart hy hc).2
-    rw [hs] at h
-    simp only [SAParams.ts] at h ⊢
-    push_cast at h
-    linarith only [h]
-  exact SA.writer_merged hrun' hX hupd hy hc hs
-    (window_sync hrun hwin (b' := tr.time i) (ts_le_ts hs₀) (by linarith only [hti, ht₀, hi₀]))
 
 end Consensus.Goldilocks.Compose
 
