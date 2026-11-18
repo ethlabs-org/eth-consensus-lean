@@ -76,8 +76,7 @@ private theorem frame_flat (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin 
 
 /-- The call law for an AC call of `y` at `i` after the frame of `a`, without AC calls of `y`
 in `[a, i)` and without an accepting cut of `y` just before `a`. -/
-private theorem callOK_from (hq : A.Requirements)
-    (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
+private theorem callOK_from (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
     (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {a i : Nat} {ℓ : ACLabel A} (hc : tr.CallAt y i (.ac ℓ)) (hai : a ≤ i)
     (hno : ∀ k, a ≤ k → k < i → ∀ ℓ' : ACLabel A, ¬ tr.CallAt y k (.ac ℓ'))
@@ -113,7 +112,7 @@ private theorem callOK_from (hq : A.Requirements)
     rcases blockCall_cases h hy hacc with hg | ⟨j, x, -, hg, hp, d, p, hdp, rfl, -⟩
     · exact (h.wire y hy i' _ _ hg).2.2
     obtain ⟨cfg, hreach, hst, hstep⟩ := group_step h hy hg
-    obtain ⟨hcoh, t₀, ht₀, hR⟩ := ac_states_reachable proposer dg y hq (hpay y hy) cfg hreach
+    obtain ⟨hcoh, t₀, ht₀, hR⟩ := ac_states_reachable proposer dg y (hpay y hy) cfg hreach
     have hfg : cfg.st.fg.Reachable A.genesisPayload := by
       rw [hst]
       exact fg_reachable h hy j
@@ -131,7 +130,7 @@ private theorem callOK_from (hq : A.Requirements)
 
 /-- **C0.5, the AC projection**, from the run's AC starts `ini`. -/
 theorem ac_projection : ACProjection := by
-  intro P A dg H sg tr proposer ini hq hpay h hnc
+  intro P A dg H sg tr proposer ini hpay h hnc
   classical
   refine
     { coherent := honest_blocks_coherent h hnc
@@ -171,7 +170,7 @@ theorem ac_projection : ACProjection := by
       refine Or.inr ⟨j, ℓ', hji, projAC_callAt.2 hj, fun k hk hki ℓ'' hk' =>
         hno k hk hki ℓ'' (projAC_callAt.1 hk'), ?_⟩
       rw [← hfr]
-      exact callOK_from hq hpay h hy hc hji hno fun k B hk hk' => by
+      exact callOK_from hpay h hy hc hji hno fun k B hk hk' => by
         cases callAt_unique hj (show k = j by omega ▸ hk')
     · push Not at hex
       have hno : ∀ k, 0 ≤ k → k < i → ∀ ℓ'' : ACLabel A, ¬ tr.CallAt y k (.ac ℓ'') :=
@@ -179,7 +178,7 @@ theorem ac_projection : ACProjection := by
       have h₀ : tr.state y 0 = Node.initWith A (ini y) := h.init y hy
       refine Or.inl ⟨fun k _ hki ℓ'' hk' => hex k hki ℓ'' (projAC_callAt.1 hk'), _,
         h₀ ▸ init_initialFrame, frameIn_state h hy 0,
-        callOK_from hq hpay h hy hc (Nat.zero_le i) hno fun k B hk => by omega⟩
+        callOK_from hpay h hy hc (Nat.zero_le i) hno fun k B hk => by omega⟩
   · -- the earlier calls of `y` were all before `u`, else a restart after the sleep precedes
     have hc := projAC_callAt.1 hc
     have hall : ∀ j < i, tr.IsCall y j → tr.time j < u := by

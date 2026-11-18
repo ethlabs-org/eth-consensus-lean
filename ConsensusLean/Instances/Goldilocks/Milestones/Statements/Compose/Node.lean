@@ -155,7 +155,6 @@ frame of the last call the current `fg_to_ac(Σ)` and its time at most the clock
 from `s₀` (`ACInterface.ReqPayloadFrom s₀ self`) supplies the own block's payload check; at
 `s₀ = A.initial` it is requirement 5 at `self`. -/
 def ACStatesReachable (s₀ : A.State := A.initial) : Prop :=
-  A.Requirements →
   A.ReqPayloadFrom s₀ self →
   ∀ cfg : Config A, Reachable proposer dg self cfg s₀ →
     Coherent cfg.st.fg.tree ∧

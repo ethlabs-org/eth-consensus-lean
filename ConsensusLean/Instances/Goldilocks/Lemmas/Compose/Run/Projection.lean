@@ -70,7 +70,7 @@ processing is the run's; an `ac_on_block(B)` follows the FG acceptance of `B` at
 relay is an acceptance of `B`, followed at once by the AC call of `B` (not a restart, so with the
 same deadline). -/
 theorem sync_projection : SyncProjection := by
-  intro P A dg H sg tr proposer ΔF a b h hs
+  intro P A dg H sg tr proposer ΔF a b ini h hs
   refine ⟨fun x hx i m hsa hai hib y hy j ℓ hc hdl => ?_,
     fun x hx i B hacc hai hib y hy j ℓ hc hdl hanc => ?_⟩
   · obtain ⟨ℓ₀, hc₀, hm⟩ := hsa

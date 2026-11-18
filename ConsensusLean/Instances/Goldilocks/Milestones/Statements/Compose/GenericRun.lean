@@ -61,8 +61,9 @@ def EventOrder : Prop :=
     Node.LocalRun proposer dg H sg tr → RunOrder proposer dg H sg tr
 
 /-- **C0.5, the AC projection of a run is an AC trace with the contract**, for the honest
-validators, inside the honest blocks of the run, for an AC with requirements 1–5 (as C0.5 (a)),
-under `NoColl`, from the AC starts `ini` of the run. Requirement 5 is needed: the own block's
+validators, inside the honest blocks of the run, for an AC with requirement 5 from each honest
+start, under `NoColl`, from the AC starts `ini` of the run; requirements 1–4 are not needed.
+Requirement 5 is needed: the own block's
 `ac_on_block` call must satisfy `CallOK`, whose `validPayload` the FG does not check (the FG
 accepts without reading the AC payload), so it holds only because the AC's own proposal passes
 `ac_valid_payload`; it is taken from each honest start `ini y` (`ACInterface.ReqPayloadFrom`),
@@ -71,7 +72,6 @@ def ACProjection : Prop :=
   ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n))
     (sg : A.Msg → Fin P.n) (tr : RunTrace A) (proposer : Nat → Fin P.n)
     {ini : Fin P.n → A.State},
-    A.Requirements →
     (∀ y ∈ H, A.ReqPayloadFrom (ini y) y) →
     Node.LocalRun proposer dg H sg tr ini → NoCollRun dg tr →
       ACLocalRun A H (tr.HonestBlocks H) tr.projAC ini
@@ -110,13 +110,14 @@ def GroupStatesReachable : Prop :=
         cfg'.st = tr.post (j + (Node.exec proposer dg y (tr.state y j) t e).2.length - 1) ∧
         cfg'.time = t
 
-/-- **`Sync` projects**: `Sync[a, b]` over a run gives `SyncAC` over its AC projection, on the
-same window, inside the honest blocks of the run (the message clause and the acceptance relay;
-the run's block and attestation clauses have no AC counterpart). -/
+/-- **`Sync` projects**: `Sync[a, b]` over a run from any start gives `SyncAC` over its AC
+projection, on the same window, inside the honest blocks of the run (the message clause and the
+acceptance relay; the run's block and attestation clauses have no AC counterpart). -/
 def SyncProjection : Prop :=
   ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n))
-    (sg : A.Msg → Fin P.n) (tr : RunTrace A) (proposer : Nat → Fin P.n) (ΔF a b : Time),
-    Node.LocalRun proposer dg H sg tr → tr.SyncRun H ΔF a b →
+    (sg : A.Msg → Fin P.n) (tr : RunTrace A) (proposer : Nat → Fin P.n) (ΔF a b : Time)
+    {ini : Fin P.n → A.State},
+    Node.LocalRun proposer dg H sg tr ini → tr.SyncRun H ΔF a b →
       SyncAC A H (tr.HonestBlocks H) a b tr.projAC
 
 end Consensus.Goldilocks.Compose

@@ -450,7 +450,7 @@ private theorem nInv_of_reachable {cfg : Config A} (h : Reachable proposer dg se
 
 /-- **C0.5 (a), (b).** -/
 theorem ac_states_reachable : ACStatesReachable proposer dg self s₀ := by
-  intro _ hp cfg h
+  intro hp cfg h
   have hI := nInv_of_reachable proposer dg self h
   exact ⟨(Store.accepted_tree P _ _ _ hI.fg).2.1, hI.ac hp⟩
 

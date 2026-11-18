@@ -230,7 +230,7 @@ private theorem good_mono {T T' : Set (SA.Blk sp.n (List (FG.Att sp.n)))} {i i' 
 private theorem ac_run {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) :
     ACLocalRun (goldilocksNode sp ro) H (tr.HonestBlocks H) tr.projAC ini :=
-  ac_projection _ _ dg H _ tr proposer (requirements sp ro)
+  ac_projection _ _ dg H _ tr proposer
     (fun y _ => payloadFrom_initial (requirements_from sp ro (hrun.vstart y)) y) hrun.toLocalRun hnc
 
 private theorem down_lockOK {T : Set (SA.Blk sp.n (List (FG.Att sp.n)))}

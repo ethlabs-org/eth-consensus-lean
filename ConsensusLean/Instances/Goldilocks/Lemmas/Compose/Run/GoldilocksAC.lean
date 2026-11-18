@@ -501,7 +501,7 @@ those starts by `SA.proposal_payload_valid_from`, their pools being empty). -/
 theorem goldilocks_ac_projection_from (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) :
     SA.ACRun proposer tr.projAC H (tr.HonestBlocks H) ini := by
-  have hloc := ac_projection _ _ dg H _ tr proposer (requirements sp ro)
+  have hloc := ac_projection _ _ dg H _ tr proposer
     (fun y _ U _ s Φ t₀ h => SA.proposal_payload_valid_from _ (hrun.vstart y).pool y U s Φ t₀ h)
     hrun.toLocalRun hnc
   refine ⟨hloc, ⟨fun y hy => pool_vote_emitted hrun hy,

@@ -70,7 +70,7 @@ private theorem pool_evidence_at_update_at (hr : Growing.GoldilocksRun proposer 
     v ∈ (tr.state w c).ac.pool m ∨
       v.val ∈ SA.equivocators {a | a ∈ (tr.state w c).ac.pool m} := by
   have hprefix := hr.upTo (hr.time_nonneg c)
-  have hac := Compose.ac_projection _ _ _ _ _ _ _ (Compose.requirements _ _)
+  have hac := Compose.ac_projection _ _ _ _ _ _ _
     (fun y _ U _ s Φ t₀ h =>
       SA.proposal_payload_valid_from _ (hr.vstart y).pool y U s Φ t₀ h)
     hprefix.toLocalRun (hnc.upTo (tr.time c))
@@ -111,7 +111,7 @@ theorem outage_pool_delivery_at (hrun : Growing.GoldilocksRun proposer dg H tr i
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have htc : tr.time c = sp.ts m + 6 * sp.Δ := hu.2.2.1
   have hprefix := hrun.upTo (hrun.time_nonneg c)
-  have hr := Compose.ac_projection _ _ _ _ _ _ _ (Compose.requirements _ _)
+  have hr := Compose.ac_projection _ _ _ _ _ _ _
     (fun y _ U _ s Φ t₀ h =>
       SA.proposal_payload_valid_from _ (hrun.vstart y).pool y U s Φ t₀ h)
     hprefix.toLocalRun (hnc.upTo (tr.time c))
@@ -130,7 +130,7 @@ theorem outage_pool_delivery_at (hrun : Growing.GoldilocksRun proposer dg H tr i
       (Compose.projAC_restartAt.mpr ((RunTrace.upTo_restartAt tr).mpr
         ⟨hrun.time_mono hrc, hrs⟩))
   have hprefixX := hrun.upTo (hrun.time_nonneg i)
-  have hrx := Compose.ac_projection _ _ _ _ _ _ _ (Compose.requirements _ _)
+  have hrx := Compose.ac_projection _ _ _ _ _ _ _
     (fun y _ U _ s Φ t₀ h =>
       SA.proposal_payload_valid_from _ (hrun.vstart y).pool y U s Φ t₀ h)
     hprefixX.toLocalRun (hnc.upTo (tr.time i))

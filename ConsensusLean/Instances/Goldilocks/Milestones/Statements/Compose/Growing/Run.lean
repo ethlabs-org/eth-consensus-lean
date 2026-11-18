@@ -42,7 +42,6 @@ def ACProjection : Prop :=
   ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload)
     (H : Time → Set (Fin P.n)) (sg : A.Msg → Fin P.n) (tr : RunTrace A)
     (proposer : Nat → Fin P.n) {ini : Fin P.n → A.State},
-    A.Requirements →
     (∀ y ∈ H 0, A.ReqPayloadFrom (ini y) y) →
     Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini →
       NoCollRun dg tr →
