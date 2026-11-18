@@ -384,6 +384,32 @@ theorem Consensus.Model.Run.executionValid_iff_structuralValid : ∀ {V : Type} 
   #2728902880/-
 def Consensus.Model.Run.log : {V : Type} → [inst : Fintype.{0} V] → [DecidableEq.{1} V] → {O : Consensus.OutputSchema} → {F : Consensus.Model.ProtocolFamily O} → {E : Consensus.Env V} → Consensus.Model.Run F E → Consensus.CommLog V (Consensus.Model.protoOf F E).Object := fun {V} [Fintype.{0} V] [DecidableEq.{1} V] {O} {F} {E} rho => { sent := rho.releases, recv := rho.receives, inbox := rho.inbox, fgAtt := (Consensus.Model.protoOf F E).isFGAtt }
   #1513402420/1325562141
+## ConsensusLean.Spec.Model.Guard
+def Consensus.Model.Run.GuardIdle : {V : Type} → [inst : Fintype.{0} V] → [DecidableEq.{1} V] → {O : Consensus.OutputSchema} → {F : Consensus.Model.ProtocolFamily O} → {E : Consensus.Env V} → Consensus.Model.Run F E → Prop := fun {V} [Fintype.{0} V] [DecidableEq.{1} V] {O} {F} {E} rho => ∀ (i : Nat), Eq.{1} (rho.guardRefusalsAt i) List.nil.{0}
+  #2503716989/1018707503
+def Consensus.Model.Run.deliverRefusals : {V : Type} → [inst : Fintype.{0} V] → {O : Consensus.OutputSchema} → {F : Consensus.Model.ProtocolFamily O} → {E : Consensus.Env V} → Consensus.Model.Run F E → Consensus.Model.Node (Consensus.Model.protoOf F E) → V → (Consensus.Model.protoOf F E).Object → Consensus.Time → List.{0} (Consensus.Model.protoOf F E).Object := fun {V} [Fintype.{0} V] {O} {F} {E} rho nd v o t => have nd₁ := { st := (Consensus.Model.protoOf F E).process nd.st o (Consensus.Model.digests rho.hash o), seen := HAppend.hAppend.{0, 0, 0} nd.seen (List.cons.{0} o List.nil.{0}) }; have r := rho.runDuties v nd₁ ((Consensus.Model.protoOf F E).deliverDuties t); HAppend.hAppend.{0, 0, 0} (rho.runDutiesRefusals v nd₁ ((Consensus.Model.protoOf F E).deliverDuties t)) (Consensus.Model.guardRefusals (Consensus.Model.protoOf F E) rho.hash (rho.ownKey v) (Prod.fst.{0, 0} r) (Consensus.Model.gossipCandidates (Consensus.Model.protoOf F E) (Prod.fst.{0, 0} r).st t))
+  #2552163438/3931861883
+def Consensus.Model.Run.dutyRefusals : {V : Type} → [inst : Fintype.{0} V] → {O : Consensus.OutputSchema} → {F : Consensus.Model.ProtocolFamily O} → {E : Consensus.Env V} → Consensus.Model.Run F E → V → Consensus.Model.Node (Consensus.Model.protoOf F E) → (Consensus.Model.protoOf F E).Duty → List.{0} (Consensus.Model.protoOf F E).Object := fun {V} [Fintype.{0} V] {O} {F} {E} rho v nd d => ite.{1} (Membership.mem.{0, 0} (rho.sel ((Consensus.Model.protoOf F E).role d)) (rho.ownKey v)) (have a := (Consensus.Model.protoOf F E).act nd.st d; Consensus.Model.guardRefusals (Consensus.Model.protoOf F E) rho.hash (rho.ownKey v) { st := Prod.fst.{0, 0} a, seen := nd.seen } (rho.signedCandidate v d (Prod.snd.{0, 0} a))) List.nil.{0}
+  #1863567836/2448969395
+def Consensus.Model.Run.guardRefusalsAt : {V : Type} → [inst : Fintype.{0} V] → [DecidableEq.{1} V] → {O : Consensus.OutputSchema} → {F : Consensus.Model.ProtocolFamily O} → {E : Consensus.Env V} → Consensus.Model.Run F E → Nat → List.{0} (Consensus.Model.protoOf F E).Object := fun {V} [Fintype.{0} V] [DecidableEq.{1} V] {O} {F} {E} rho i => Consensus.Model.Run.guardRefusalsAt.match_1.{1} (fun x => List.{0} (Consensus.Model.protoOf F E).Object) (GetElem?.getElem?.{0, 0, 0} rho.events i) (fun v t => rho.tickRefusals (rho.stateBefore i v) v t) (fun v o t => rho.deliverRefusals (rho.stateBefore i v) v o t) fun x => List.nil.{0}
+  #2453350928/2835368275
+def Consensus.Model.Run.guardRefusalsAt._sparseCasesOn_1 #2334663261/1385501301
+def Consensus.Model.Run.guardRefusalsAt._sparseCasesOn_2 #561968522/354058273
+def Consensus.Model.Run.guardRefusalsAt.match_1 #836687799/552977167
+def Consensus.Model.Run.runDutiesRefusals : {V : Type} → [inst : Fintype.{0} V] → {O : Consensus.OutputSchema} → {F : Consensus.Model.ProtocolFamily O} → {E : Consensus.Env V} → Consensus.Model.Run F E → V → Consensus.Model.Node (Consensus.Model.protoOf F E) → List.{0} (Consensus.Model.protoOf F E).Duty → List.{0} (Consensus.Model.protoOf F E).Object := fun {V} [Fintype.{0} V] {O} {F} {E} rho v x x_1 => List.brecOn.{1, 0} (motive := fun x => Consensus.Model.Node (Consensus.Model.protoOf F E) → List.{0} (Consensus.Model.protoOf F E).Object) x_1 (Consensus.Model.Run.runDutiesRefusals._f rho v) x
+  #765840176/2051806585
+def Consensus.Model.Run.runDutiesRefusals._f #3107856801/1902554257
+def Consensus.Model.Run.runDutiesRefusals._sunfold #765840176/775995862
+def Consensus.Model.Run.runDutiesRefusals._unsafe_rec #765840176/2555072944
+def Consensus.Model.Run.runDutiesRefusals.match_1 #2973388976/4158440750
+def Consensus.Model.Run.tickRefusals : {V : Type} → [inst : Fintype.{0} V] → {O : Consensus.OutputSchema} → {F : Consensus.Model.ProtocolFamily O} → {E : Consensus.Env V} → Consensus.Model.Run F E → Consensus.Model.Node (Consensus.Model.protoOf F E) → V → Consensus.Time → List.{0} (Consensus.Model.protoOf F E).Object := fun {V} [Fintype.{0} V] {O} {F} {E} rho nd v t => have nd₁ := { st := (Consensus.Model.protoOf F E).clock nd.st t (Consensus.Model.mempool rho.inbox v t), seen := nd.seen }; ite.{1} (Eq.{1} (E.awake v t) Bool.true) (have r := rho.runDuties v nd₁ ((Consensus.Model.protoOf F E).duties t); HAppend.hAppend.{0, 0, 0} (rho.runDutiesRefusals v nd₁ ((Consensus.Model.protoOf F E).duties t)) (Consensus.Model.guardRefusals (Consensus.Model.protoOf F E) rho.hash (rho.ownKey v) (Prod.fst.{0, 0} r) (Consensus.Model.gossipCandidates (Consensus.Model.protoOf F E) (Prod.fst.{0, 0} r).st t))) List.nil.{0}
+  #2466298721/250132054
+def Consensus.Model.guardRefusals : {pub : Consensus.Model.Public} → {Out : Type} → (P : Consensus.Model.Protocol pub Out) → (P.Item → Nat) → Consensus.Model.Key pub → Consensus.Model.Node P → List.{0} P.Object → List.{0} P.Object := fun {pub} {Out} P hash k x x_1 => List.brecOn.{1, 0} (motive := fun x => Consensus.Model.Node P → List.{0} P.Object) x_1 (Consensus.Model.guardRefusals._f P hash k) x
+  #1577235591/1117924335
+def Consensus.Model.guardRefusals._f #3550214315/4262168813
+def Consensus.Model.guardRefusals._sunfold #1577235591/802519648
+def Consensus.Model.guardRefusals._unsafe_rec #1577235591/1882628709
+def Consensus.Model.guardRefusals.match_1 #20616052/4028911469
 ## ConsensusLean.Spec.Model.Objects
 induct Consensus.Model.Auth : Nat → Type → Type
   #1217220144/-

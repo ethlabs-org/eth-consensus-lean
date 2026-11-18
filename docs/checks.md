@@ -107,7 +107,8 @@ root or prefix with descendants.
 `milestone_statements_modules` in `scripts/boundaries.toml`, the Goldilocks obligations endpoint `MeetsObligations`
 at every vote binding, by its milestone proof. Its shape claims include outage resilience and sleepy safety and liveness. The
 headline `GoldilocksCorrect` is proved by composing the review statement and the endpoint: `ShapeObligations.correct`
-applied to `meets_obligations`, and its explicit-excuse form `GoldilocksCorrectWithExcuses` by
+applied to `meets_obligations`, with the optimality of the contract and the idle slashing guard
+(`Simulation.guardIdle`), and its explicit-excuse form `GoldilocksCorrectWithExcuses` by
 `correctProtocol_with_excuses` applied to the headline. Challenge certifies these eight statements and nothing
 else: the trusted surface is the generic definition of a correct protocol plus the one instance module. The other Goldilocks milestones are ordinary proved lemmas:
 their statements are in the untrusted `Instances/Goldilocks/Milestones/` layers,

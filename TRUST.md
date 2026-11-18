@@ -53,7 +53,8 @@ compiles alpha-equality, binder-kind and axiom pins. Primary statement: `Consens
 its form on a class of runs `ObligationsSufficientOn` (at constant faults, the static adversary at full strength);
 secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`. Challenge adds the Goldilocks endpoint and headline,
 `MeetsObligations` and `Consensus.Goldilocks.GoldilocksCorrect` (Goldilocks is a `CorrectProtocol` under the growing
-adversary and its contract satisfies `Params.OptimalFaultTolerance`), the headline's explicit-excuse form
+adversary, its contract satisfies `Params.OptimalFaultTolerance`, and its slashing guard never fires,
+`Model.Run.GuardIdle`), the headline's explicit-excuse form
 `GoldilocksCorrectWithExcuses`, from `Instances/Goldilocks/Statements/Obligations.lean`.
 All three Goldilocks statements cover every vote binding. The endpoint includes outage
 resilience and sleepy safety and liveness as shape-claim fields, not separate comparator roots.
