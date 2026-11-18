@@ -628,7 +628,8 @@ detail in `TRUST.md`.
   `Review.ObligationsSufficientOn` stays a root; it states correctness on a class of runs, which the
   constant-fault rejection tests use.
 - **`AsChainShape` keeps its `stock` defaults.** The trusted `AsChainShape` API defaults its vote binding to
-  `stock` (`Wire`, `skeleton`, `State` and `goldilocksShape`). The Challenge and Solution roots state their binding
+  `stock` at its optional vote-binding parameters (the section variable at `AsChainShape.lean:290` and the
+  named defaults). The Challenge and Solution roots state their binding
   explicitly (`goldilocks S`, for every `S : Setup`), so the reviewed roots carry the arbitrary-binding result; the
   explicit binding protects those roots, not an arbitrary caller that omits the binding. No change to the defaults
   is planned: removing them is a separate trusted API migration that needs maintainer approval.
