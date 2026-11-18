@@ -998,6 +998,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Obligations.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.SleepyGrowth.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
+public import ConsensusLean.Instances.Goldilocks.Results.Spec.CanonicalTrace
 public import ConsensusLean.Instances.Goldilocks.Results.Spec.SleepyGrowth
 public import ConsensusLean.Instances.Goldilocks.Results.Statements.SleepyGrowth
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Interface
