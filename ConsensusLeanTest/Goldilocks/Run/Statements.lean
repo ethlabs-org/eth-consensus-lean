@@ -23,9 +23,10 @@ of the validator at every time `t ≥ 0`, the initial node state throughout):
 
 * (a) `periodicRun_localRun`: it is a `Node.LocalRun`, so an infinite run satisfies the awake
   clamp `awake_in_horizon` and the tick laws together;
-* (a) `periodicRun_healthy`, `periodicRun_sleepy`: `Healthy(0)` and `Sleepy` hold on it, so the
-  regime premises of `Spec/Run/Premises` are satisfiable by a `Node.LocalRun` (they force an
-  infinite run; see the module docstring there). The witness is over an AC that never proposes,
+* (a) `periodicRun_healthy`: `Healthy(0)` holds on it, so that regime premise of
+  `Spec/Run/Premises` is satisfiable by a `Node.LocalRun` (it forces an infinite run; see the
+  module docstring there; `Sleepy` is met on the one-validator tick run,
+  `Goldilocks/Persist/Premises`' `tickRun_sleepy`). The witness is over an AC that never proposes,
   not over `GoldilocksRun`: a `Sleepy` or `Healthy` run of the SA itself would carry its
   proposals and votes, a larger witness left to the Healing/Regimes milestone. -/
 
@@ -278,7 +279,6 @@ theorem idleTickCuts_pos {t : Time} (ht : 1 ≤ t) :
     hp, Node.acCall, Node.acProposal, Node.acToFG, idleAC, rootAC, ACInterface.step, List.foldl,
     ite_true]
   rfl
-
 
 /-- The tick of every `t ≥ 0` has cuts. -/
 theorem idleTickCuts_ne_nil {t : Time} (ht : 0 ≤ t) : idleTickCuts t ≠ [] := by
@@ -571,31 +571,11 @@ theorem periodicRun_syncOn (W Wr : Time → Prop) (eff : Time → Time) :
   attestation x _ i a h := by
     rcases h with ⟨_, h⟩ | ⟨_, h, -⟩ <;> exact absurd h (periodicRun_no_fg x i _)
 
-/-- `f < h_t` at every `t ≥ 0` on the periodic run: the validator is honest, awake and joined. -/
-theorem periodicRun_faultBound {t : Time} (ht : 0 ≤ t) : periodicRun.FaultBound Set.univ t := by
-  unfold RunTrace.FaultBound RunTrace.honestAwakeJoined
-  have huniv : {y : Fin P₁.n | y ∈ Set.univ ∧ periodicRun.awake y t ∧ periodicRun.JoinedAt y t} =
-      Set.univ := by
-    ext y
-    simp only [Set.mem_ofPred_eq, Set.mem_univ, true_and, iff_true]
-    exact ⟨ht, fun k hk => absurd hk (periodicRun_no_restart y k)⟩
-  rw [huniv, Set.compl_univ, Set.ncard_empty, Set.ncard_univ, Nat.card_eq_fintype_card,
-    Fintype.card_fin]
-  exact Nat.one_pos
-
 /-- (a) `Healthy(0)` holds on the periodic run (with `Δ_F = 1`): the regime premise of the
 `Healing`/`Regimes` statements is satisfiable by a `Node.LocalRun`, infinite as
 `awake_in_horizon` requires. -/
 theorem periodicRun_healthy : periodicRun.HealthyRun Set.univ 1 0 :=
   ⟨periodicRun_syncOn _ _ _, fun _ _ t ht => show (0 : Int) ≤ t by simpa using ht, by simp⟩
-
-/-- (a) `Sleepy` holds on the periodic run (with `Δ_F = 1`): the premise of `Service` and of
-C1.1's `PersistPremises` is satisfiable by a `Node.LocalRun`. -/
-theorem periodicRun_sleepy : periodicRun.SleepyRun Set.univ 1 := by
-  refine ⟨periodicRun_syncOn _ _ _, fun s => ⟨?_, ?_, ?_⟩⟩
-  · exact periodicRun_faultBound (Int.natCast_nonneg s)
-  · exact periodicRun_faultBound (by change (0 : Int) ≤ (s : Int) + 1; omega)
-  · exact periodicRun_faultBound (by change (0 : Int) ≤ (s : Int) + 2 * 1; omega)
 
 /-- The deadline-cut premise is satisfiable on the existing periodic local-run witness. -/
 theorem periodicRun_syncBefore (b : Time) : periodicRun.SyncBefore Set.univ 1 b := by

@@ -631,7 +631,6 @@ example := ``Consensus.Goldilocks.Compose.honestVotes
 example := ``Consensus.Goldilocks.Compose.excludedEntries
 example := ``Consensus.Goldilocks.Compose.Clean
 example := ``Consensus.Goldilocks.Compose.StoredFastLockAt
-example := ``Consensus.Goldilocks.Compose.PersistPremises
 
 /-! ## Goldilocks Service (a milestone PR appends here only) -/
 

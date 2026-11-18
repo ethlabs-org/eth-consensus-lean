@@ -1,32 +1,23 @@
 module
 public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Run
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Service
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 @[expose] public section
 
-/-! # The one-validator tick run meets the premises of C1.1 and `Sleepy`
+/-! # The one-validator tick run: `Carry` at every slot, and `Sleepy`
 
 Kind (a), joint satisfiability (CONTRIBUTING "Statements"), on the one-validator tick run of
 `Goldilocks/Runs/OneValidator/Premises` (`n = 1`, `Δ = 1`, `t_s = 4s`, a tick at every time, no
 restart):
 
-* `persistPremises_tickRun`: Compose `PersistPremises` (the premises of C1.1) for the optimistic
-  fast lock of slot `1` on `blk 1` that the validator writes when it admits its own vote at `t_1`
-  (cut `35`, `ac_on_block` of its own block), with counted votes `{cv 1}` and `m = 2`. Every field
-  holds outright: `Sync[t_1, t_2 + Δ]`, `Clean(1, 2, blk 1)` (honest caches and heights on the
-  chain; no excluded entry, since every honest block is a chain block), half the committee
-  votes, `f < h_t`, `NoColl`.
-  - **`Carry`** (`carry_cv`, every slot): the vote of slot `s + 1` is cast in `ac_on_block` of
-    the own block at `t_{s+1}`, when the validator has accepted `blk s` and its ancestors (at
-    their slot starts) and holds `cv s` with a stamp before `t_s + 3Δ`. The stamp is traced
-    through `SA.readPoint_pool` and `SA.pool_origin`: it is the time of the cut that sent or
-    admitted `cv s`, and that cut is before the tick of `t_s + 2Δ`, whose pool already holds
-    `cv s` (`readPoint_stamp`).
+* **`Carry`** (`carry_cv`, every slot): the vote of slot `s + 1` is cast in `ac_on_block` of
+  the own block at `t_{s+1}`, when the validator has accepted `blk s` and its ancestors (at
+  their slot starts) and holds `cv s` with a stamp before `t_s + 3Δ`. The stamp is traced
+  through `SA.readPoint_pool` and `SA.pool_origin`: it is the time of the cut that sent or
+  admitted `cv s`, and that cut is before the tick of `t_s + 2Δ`, whose pool already holds
+  `cv s` (`readPoint_stamp`).
 * `tickRun_sleepy`: `SleepyRun` (`Sync[0, ∞)` and `f < h_t` at every `t_s, t_s + Δ,
   t_s + 2Δ`).
 
-With `n = 1` and `f = 0` this shows the premises consistent, not met with faults. -/
+With `n = 1` and `f = 0` this shows the premise consistent, not met with faults. -/
 
 namespace Consensus.Goldilocks.Witness.One
 
@@ -40,13 +31,6 @@ theorem honest_onChain : OnChain ((tickRun N1 dg1).HonestBlocks Set.univ) := by
   obtain rfl := eq_v0 rfl y
   obtain ⟨m, -, rfl⟩ := (mem_tree_iff (state_fgGood i).blocks).1 hB
   exact ⟨m, rfl⟩
-
-/-- A descendant of a chain block inside the honest blocks is a chain block. -/
-theorem anc_eq_blk {a : Nat} {X : N1.Blk}
-    (h : Anc ((tickRun N1 dg1).HonestBlocks Set.univ) (blk a) X) : ∃ b, X = blk b := by
-  rcases Relation.ReflTransGen.cases_tail h with rfl | ⟨Y, -, hY⟩
-  · exact ⟨a, rfl⟩
-  · exact honest_onChain X hY.2.1
 
 /-- Two chain blocks are compatible inside the honest blocks. -/
 theorem compatible_blk (a b : Nat) :
@@ -149,14 +133,6 @@ theorem carry_cv (s : Nat) {CV : Set (Vote sp1.n)} (hCV : ∀ v ∈ CV, v = cv s
     obtain rfl := hCV v hv
     exact Or.inl ⟨hx, readPoint_stamp hcast hx⟩
 
-/-- The honest votes of slot `σ` are `cv σ`. -/
-theorem honestVotes_cv (σ : Nat) :
-    ∀ v ∈ Compose.honestVotes (tickRun N1 dg1) Set.univ σ, v = cv σ := by
-  rintro v ⟨x, -, j, e', ⟨ℓ, hc, he⟩, rfl, hsl⟩
-  obtain ⟨rfl, -, hl⟩ := projAC_call hc
-  rcases emit_cases hl he with ⟨-, hm, -⟩ | ⟨k, -, -, -, -, -, hm, -⟩ <;>
-    rw [hm] at hsl ⊢ <;> subst hsl <;> rfl
-
 /-- `f < h_t` at every time `t ≥ 0` (no faulty validator, the validator awake and joined). -/
 theorem tickRun_faultBound {t : Time} (ht : 0 ≤ t) :
     (tickRun N1 dg1).FaultBound Set.univ t := by
@@ -168,112 +144,6 @@ theorem tickRun_faultBound {t : Time} (ht : 0 ≤ t) :
     exact ⟨ht, fun k hk => absurd hk (tickRun_no_restart _ k)⟩
   rw [this, Set.compl_univ, Set.ncard_empty, Set.ncard_univ]
   simp
-
-/-! ## The premises of C1.1 -/
-
-/-- **`PersistPremises` holds on the tick run** (the premises of C1.1): the optimistic fast lock
-of slot `1` on `blk 1` written at cut `35` (the admission of the own vote of slot `1` in
-`ac_on_block` at `t_1 = 4`), counting `{cv 1}`, with `m = 2` and `Δ_F = 1`. -/
-theorem persistPremises_tickRun :
-    Compose.PersistPremises (tickRun N1 dg1) Set.univ dg1 1 v0 35 1 2 (blk 1) {cv 1} := by
-  have hrun := tickRun_goldilocksRun
-  refine ⟨Set.mem_univ _, ?_, ?_, by decide, tickRun_syncOn _ _ id (fun _ => le_rfl),
-    carry_cv 1 (fun v hv => hv), ?_, fun s' _ _ => carry_cv s' (honestVotes_cv s'), ?_,
-    dg1_noColl _, ?_, rfl⟩
-  · -- the optimistic fast lock at the admission of the own vote of slot `1`
-    obtain ⟨fg', e, hl, hfg', hm, hp⟩ := vote_label 0
-    obtain ⟨f, hf⟩ := fgGood_frame hfg'
-    have hf0 : f = 0 := by have := hf.fj; simp [jexp] at this; omega
-    subst hf0
-    have hc : (tickRun N1 dg1).projAC.CallAt v0 35 ⟨.block (blk 1), fg'.toFrame, [e]⟩ :=
-      Compose.projAC_callAt.2 ⟨rfl, hl⟩
-    have hj : SA.joined sp1 e.readPoint (((4 : Nat) : Int)) :=
-      (SA.castAt_spec acRun.localRun (Set.mem_univ v0) (ℓ := ⟨.block (blk 1), fg'.toFrame, [e]⟩)
-        ⟨hc, List.mem_singleton_self _⟩).2.2.1
-    have hpool0 : e.readPoint.pool 1 = [] := by
-      rw [hp, (good_tick (4 * (0 + 1))).ac.pool 1, tip_A, ite_neg (by omega)]
-    have hst : sp1.slot (((4 : Nat) : Int)) = 1 := by rw [slot_nat]
-    have hadm := admitVote_cv (t := ((4 : Nat) : Int)) hst hpool0
-    have hsel : optimisticSelect sp1 (admitVote sp1 e.readPoint ((4 : Nat) : Int) (cv 1))
-        fg'.toFrame ((4 : Nat) : Int) = some (blk 1) := by
-      rw [hadm]
-      exact optimisticSelect_vote hf le_rfl hst (by rw [ts_nat, delta1]; norm_num) hj
-        (by simp)
-    refine ⟨⟨.block (blk 1), fg'.toFrame, [e]⟩, blk 1, hc, Or.inr ⟨_, _,
-      ⟨hc, Or.inr (Or.inr ⟨e, List.mem_singleton_self _, rfl⟩)⟩, hst, ?_, ?_⟩,
-      (hf.viableAncestor_eq (by omega) le_rfl).symm⟩
-    · change optimisticSelect sp1 (admitVote sp1 e.readPoint ((4 : Nat) : Int) e.msg)
-        fg'.toFrame ((4 : Nat) : Int) = some (blk 1)
-      rw [hm]
-      exact hsel
-    · change {cv 1} = {v | v ∈ (admitVote sp1 e.readPoint ((4 : Nat) : Int) e.msg).pool 1 ∧
-        AncR fg'.toFrame (blk 1) v.head}
-      rw [hm]
-      change {cv 1} = {v | v ∈ (admitVote sp1 e.readPoint ((4 : Nat) : Int) (cv 1)).pool 1 ∧
-        AncR fg'.toFrame (blk 1) v.head}
-      rw [hadm]
-      ext v
-      simp only [Set.mem_singleton_iff, Set.mem_ofPred_eq, Function.update_self,
-        List.mem_singleton]
-      constructor
-      · rintro rfl
-        exact ⟨rfl, blk 1, hf.mem (by omega) le_rfl, rfl, Relation.ReflTransGen.refl⟩
-      · exact fun h => h.1
-  · -- the writer is joined
-    exact joined_of_bot (tickRun_restartTime 35) _
-  · -- half of the committee votes in slot `2`
-    intro s' h1 h2
-    obtain rfl : s' = 2 := by omega
-    obtain ⟨fg', e, hl, -, hm, -⟩ := vote_label 1
-    have hmem : v0 ∈ {x' | x' ∈ (Set.univ : Set (Fin sp1.n)) ∧ ∃ j e',
-        SA.VoteAt (tickRun N1 dg1).projAC x' j e' ∧ e'.msg.slot = 2} :=
-      ⟨Set.mem_univ _, _, e, ⟨_, Compose.projAC_callAt.2 ⟨rfl, hl⟩, List.mem_singleton_self _⟩,
-        by rw [hm]; rfl⟩
-    have := (Set.ncard_pos (Set.toFinite _)).2 ⟨v0, hmem⟩
-    change 1 ≤ 2 * _
-    omega
-  · -- `f < h_t` at the honest votes
-    intro y _ i e _ _ _
-    exact tickRun_faultBound (by change (0 : Int) ≤ ((i / 8 : Nat) : Int); positivity)
-  · -- `Clean(1, 2, blk 1)`
-    refine ⟨fun y _ j _ => ?_, fun E' hE' => ?_, fun y _ i ℓ e hcast hs hsm => ?_⟩
-    · obtain rfl := eq_v0 rfl y
-      have hg := state_fgGood j
-      obtain ⟨f, -, hF⟩ := hg.F
-      rw [hF, hg.J]
-      exact ⟨compatible_blk _ _, compatible_blk _ _⟩
-    · exfalso
-      obtain ⟨hnc, y, -, j, -, hanc, -⟩ := hE'
-      obtain rfl := eq_v0 rfl y
-      obtain ⟨f, -, hF⟩ := (state_fgGood j).F
-      rw [hF] at hanc
-      obtain ⟨b, rfl⟩ := anc_eq_blk hanc
-      exact hnc (compatible_blk b 1)
-    · obtain ⟨hc, he⟩ := hcast
-      obtain ⟨rfl, hfr, hl⟩ := projAC_call hc
-      rcases emit_cases hl he with ⟨-, hm, -⟩ | ⟨k, fg', -, hfr', hfg', -, hm, -⟩
-      · rw [hm] at hs; exact absurd hs (by decide)
-      rw [hm] at hs hsm ⊢
-      change 1 < k + 1 at hs
-      change k + 1 ≤ 2 at hsm
-      obtain rfl : k = 1 := by omega
-      obtain ⟨f, hf⟩ := fgGood_frame hfg'
-      have hf2 : f ≤ 2 := le_trans hf.fj (jexp_le _)
-      left
-      refine ⟨blk 2, ?_, anc_honest (by omega), ?_⟩
-      · rw [hfr']
-        exact mem_voterBlockTree hf e.readPoint hf2 le_rfl
-      · have hh := hf.head_mem (m := 2) (jexp_le _) le_rfl
-        rw [← hfr', hfr] at hh
-        obtain ⟨-, -, -, hv⟩ := hh
-        exact hv
-
-/-- **The premises of C1.1 are jointly satisfiable**: the tick run is a Goldilocks run and meets
-`PersistPremises` for the fast lock of slot `1` on `blk 1`. -/
-theorem tickRun_persist_premises :
-    GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
-      Compose.PersistPremises (tickRun N1 dg1) Set.univ dg1 1 v0 35 1 2 (blk 1) {cv 1} :=
-  ⟨tickRun_goldilocksRun, persistPremises_tickRun⟩
 
 /-! ## `Sleepy` on the tick run -/
 

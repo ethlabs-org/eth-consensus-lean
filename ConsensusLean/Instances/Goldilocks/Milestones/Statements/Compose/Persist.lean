@@ -23,8 +23,9 @@ cut) on its FG projection; the run premises (`Sync`, `f < h_t`) are the run's (`
 bridges them to the AC projection's). "The state of `y` at `t`" is `y`'s state before the first
 cut of the run at a time `≥ t` (`FirstCutFrom`).
 
-C1.1 itself is retired as a milestone statement; its premises (`PersistPremises`) stay, as
-vocabulary that downstream code reads.
+C1.1 itself is retired as a milestone statement, and its premise bundle is not stated; the
+vocabulary of its premises (`honestVotes`, `excludedEntries`, `Clean`, `StoredFastLockAt`) stays,
+as other statements read it.
 
 Statements only: no proofs here. -/
 
@@ -79,44 +80,6 @@ def StoredFastLockAt (x : Fin sp.n) (i s : Nat) (B : SA.Blk sp.n (List (FG.Att s
     (CV : Set (Vote sp.n)) : Prop :=
   ∃ ℓ D, tr.projAC.CallAt x i ℓ ∧ SA.FastLockAt tr.projAC x i s D CV ∧
     B = ℓ.frame.viableAncestor D
-
-/-- **The premises of C1.1** for a fast lock of slot `s` on `B` with counted votes `CV`, written
-at cut `i₀` by the honest joined node `x`, and a later slot `m`: `Sync[t_s, t_m + Δ]`,
-`Carry(s, S, B)`, for every slot `s' ∈ (s, m]` honest votes of at least half of the committee
-and `Carry(s', S_{s'}, B)` with `S_{s'}` the honest voters of slot `s'`, `f < h_t` at every
-honest vote time in `(t_s, t_m + Δ]`, `NoColl`, and `Clean(s, m, B)` (unforgeability is
-`GoldilocksRun`'s). -/
-structure PersistPremises (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (ΔF : Time)
-    (x : Fin sp.n) (i₀ s m : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) (CV : Set (Vote sp.n)) :
-    Prop where
-  /-- The writer is honest. -/
-  writer_honest : x ∈ H
-  /-- The writer writes a fast lock of slot `s` at cut `i₀`, counting `CV`, whose stored block
-  (after the move back) is `B` (claims C1.1). -/
-  fastLock : StoredFastLockAt tr x i₀ s B CV
-  /-- The writer is joined at the write. -/
-  writer_joined : SA.joined sp (tr.state x i₀).ac (tr.time i₀)
-  /-- `s < m`. -/
-  lt : s < m
-  /-- `Sync[t_s, t_m + Δ]`. -/
-  sync : tr.SyncRun H ΔF (sp.ts s) (sp.ts m + sp.Δ)
-  /-- `Carry(s, S, B)`. -/
-  carry : SA.Carry tr.projAC H (tr.HonestBlocks H) s CV
-  /-- For every slot `s' ∈ (s, m]`, at least half of the committee votes honestly. -/
-  halfCommittee : ∀ s', s < s' → s' ≤ m →
-    sp.n ≤ 2 * {x' | x' ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x' j e' ∧ e'.msg.slot = s'}.ncard
-  /-- For every slot `s' ∈ (s, m]`, `Carry(s', S_{s'}, B)` for the honest votes of slot `s'`. -/
-  carryLater : ∀ s', s < s' → s' ≤ m →
-    SA.Carry tr.projAC H (tr.HonestBlocks H) s' (honestVotes tr H s')
-  /-- `f < h_t` at every honest vote time `t ∈ (t_s, t_m + Δ]`. -/
-  faultBound : ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → sp.ts s < tr.time i →
-    tr.time i ≤ sp.ts m + sp.Δ → tr.FaultBound H (tr.time i)
-  /-- `NoColl` on the blocks of the run. -/
-  noColl : NoCollRun dg tr
-  /-- `Clean(s, m, B)`. -/
-  clean : Clean tr H s m B
-  /-- The committee is population-sized (`committeeSize = n`). -/
-  stock : sp.committeeSize = sp.n
 
 end Consensus.Goldilocks.Compose
 

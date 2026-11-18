@@ -138,8 +138,8 @@ theorem vote_viable_of_root (hrun : GoldilocksRun proposer dg H tr) (hnc : Compo
   · exact Or.inr h
 
 /-- **C1.1 (ii) at a vote, height-scoped** (C1.1's `vote_extends` for a high origin, every slot
-`> j` instead of the window `(j, m]`, and the premises one by one instead of `PersistPremises`,
-whose `Clean` need not hold): when (i) holds at an honest vote of a slot `σ > j` and every honest
+`> j` instead of the window `(j, m]`, and the premises one by one, without C1.1's `Clean`, which
+need not hold): when (i) holds at an honest vote of a slot `σ > j` and every honest
 vote of a slot `> j` at an earlier cut extends `B`, the vote extends `B`: below `fc_root` by
 requirement 1, otherwise by A1.2 for `σ = j + 1` (its stored-block form) and by A1.3 after. -/
 theorem high_vote_extends_of_syncAC

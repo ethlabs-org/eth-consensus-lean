@@ -39,7 +39,7 @@ Limitations: `n = 1` and `f = 0`, so this shows the update clause consistent, no
 faults. No lock ever vetoes on a single chain, so the veto filter of the path is the identity
 here (the vetoed case is exercised at the definition level by `Goldilocks/AC/GradedLocks`). Lock
 sets do not record their origin, and the optimistic confirmation of slot `s` at `t_s` writes the
-same tuple `⟨(blk s).root, s, true, s + 2⟩` (at `s = 1`, cut `35`: `persistPremises_tickRun`); the
+same tuple `⟨(blk s).root, s, true, s + 2⟩` (at `s = 1`, cut `35`); the
 update origin is witnessed by `FastUpdateAt` and by the entry of the update's own write, not by
 the post-state membership alone. -/
 

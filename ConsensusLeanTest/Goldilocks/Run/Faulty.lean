@@ -26,11 +26,10 @@ the growing-fault simulation at its constant honest keys (`Test.goldilocksRun_of
   signs and emits nothing there).
 
 Limitations. Whole-run `SleepyRun` is not met: the engine horizon is finite and `simTrace`
-clamps awake status to `[0, horizon]`, while `SleepyRun` quantifies over every slot. The full
-`PersistPremises` bundle is not attempted (its lock, carry and committee fields are
-lock-sensitive). Silence is stated for the faulty key's own events and calls only; that no
-delivered object carries the faulty key's signature (causality of the canonical run) is not
-stated, since `Shape.coverage` does not export `rho.Causal`. The run and digest are
+clamps awake status to `[0, horizon]`, while `SleepyRun` quantifies over every slot. Silence is
+stated for the faulty key's own events and calls only; that no delivered object carries the
+faulty key's signature (causality of the canonical run) is not stated, since `Shape.coverage`
+does not export `rho.Causal`. The run and digest are
 noncomputable: a proof-level existential witness, not an evaluated trace. -/
 
 namespace Consensus.Goldilocks.Obligations.Test.FaultyRunWitness

@@ -537,9 +537,9 @@ detail in `TRUST.md`.
   `Healing.Growing.PatternRecovery`, `FinalizingCoverage` and `CacheAcceptanceAfterReset`). The growing-fault R.2 rows
   `Regimes.Growing.IncludeSleepy` and `GrowSleepy` (`Results/Statements/SleepyGrowth`) are stated at a slot
   dictionary `K` instead: from its committee start, with its committee facts and its committee support
-  `CommitteeSleepy`, and no size equation. The premise bundle `PersistPremises` and the premise
-  healing premise bundles (`HealthyBaseU` in `Milestones/Statements/Healing/ACU` and `HSShared` in
-  `Milestones/Statements/Healing/Run`), and the proof-side bundles built on them, carry it as a field;
+  `CommitteeSleepy`, and no size equation. The healing premise bundles (`HealthyBaseU` in
+  `Milestones/Statements/Healing/ACU` and `HSShared` in `Milestones/Statements/Healing/Run`), and the
+  proof-side bundles built on them, carry it as a field;
   `GoldilocksRunData`, the run conjunct of `GoldilocksHealingData`, does not: its `Run` equation is the
   committee-start run with `0 < committeeSize`, every slot committee of size `committeeSize`, and
   `NoCollRun → CommitteeFacts`, and its `start` equation is the committee start.

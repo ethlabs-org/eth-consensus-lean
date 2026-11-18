@@ -305,7 +305,7 @@ Modelling choices:
   selects it. The stored lock can be moved back, as the claims note.
 - **Scope of the fast-lock statements** (graded fast locks, `docs/decisions.md` §"Goldilocks model choices"): since a veto stops only
   the record, `FastUpdateAt` and `FastLockAt` also cover the fast locks that vetoed updates write. A1.2
-  (`FirstTransfer`), A1.5 (`SourceAge`), A1.9 and C1.1's premises (`PersistPremises`)
+  (`FirstTransfer`), A1.5 (`SourceAge`) and A1.9
   keep their text and now also cover those locks; their arguments read the counted votes
   and `Carry`, not the record. A1.4 (b) (`OptimisticNextUpdate`) still names the raw `fastSelect` (the test).
 - **The A1.5 conclusion** "is the block of a fast lock written after `τ`" reads: at or below the block of a fast
@@ -412,8 +412,8 @@ the honest nodes, grouped by top-level event; faulty nodes have no cuts.
 | F.5 (run) | CLAIMS F.5 (run) | the order facts (by time; restart < tick < delivery at one time; positions inside a tick; a send before its receipts); every run has them | Persist | `Consensus.Goldilocks.Compose.RunOrder`, `Consensus.Goldilocks.Compose.EventOrder` |
 | F.4 | CLAIMS F.4 (D4) | awake on `[max(0, t − c − 1), t]` with `c + 1 ≥ 8Δ` gives awake and joined at `t`, for `t ≥ 0` (the interval is empty for `t < 0`) | Persist | `Consensus.Goldilocks.Compose.ReadyImpliesJoined` |
 | C0.5 | CLAIMS C0.5 (last sentence) | the AC projection is an `ACLocalRun` (with `U` the honest blocks; for an AC with requirements 1–5, since the own block's `ac_on_block` needs `ac_valid_payload`); the FG projection is an `FGLocalRun` at `A.genesisPayload` (with the requirements and the genesis root, the premises of C0.3: the own block is accepted in its tick, so `own_first` holds); the Goldilocks run's AC projection is an `SA.ACRun`; the states at the start of every event are `Node.Reachable`; `Sync` projects to `SyncAC`; joining and `h_t` project | Persist | `Consensus.Goldilocks.Compose.ACProjection`, `Consensus.Goldilocks.Compose.FGProjection`, `Consensus.Goldilocks.Compose.GoldilocksACProjection`, `Consensus.Goldilocks.Compose.GroupStatesReachable`, `Consensus.Goldilocks.Compose.SyncProjection`, `Consensus.Goldilocks.Compose.JoinedProjection` |
-| C1.1 | CLAIMS C1.1 (premises), G1.10 ("The scope of C1.1") | the honest votes of a slot; the excluded entries 𝓔 (conflict with `B`, strictly extend an honest `Σ.F` at `t_s`); `Clean(s, m, B)` with (K0) caches, (K1) attestation cut `K1_𝓔` by `Store.namers` on the FG projection at `t_{s+1} + Δ`, (K2) height lead; the premises (writer honest and joined, a fast lock whose **stored** block (after the move back) is `B`, `Sync[t_s, t_m + Δ]`, `Carry`, half-committee, later `Carry`, `f < h_t` at honest vote times, `NoColl`, `Clean`) | Persist | `Consensus.Goldilocks.Compose.honestVotes`, `Consensus.Goldilocks.Compose.excludedEntries`, `Consensus.Goldilocks.Compose.Clean`, `Consensus.Goldilocks.Compose.StoredFastLockAt`, `Consensus.Goldilocks.Compose.PersistPremises` |
-| C1.1 | CLAIMS C1.1 | **retired** as a milestone statement (honest fast confirmations persist, its corollary "recent source, next vote", and the conclusion vocabulary of G1.10 at C1.1's scope); the premises stay, since the obligations endpoint's persistence kernel reads them (`Lemmas/Compose/PersistKernelGoldilocks`) | Persist | — |
+| C1.1 | CLAIMS C1.1 (premises), G1.10 ("The scope of C1.1") | the honest votes of a slot; the excluded entries 𝓔 (conflict with `B`, strictly extend an honest `Σ.F` at `t_s`); `Clean(s, m, B)` with (K0) caches, (K1) attestation cut `K1_𝓔` by `Store.namers` on the FG projection at `t_{s+1} + Δ`, (K2) height lead; a fast lock whose **stored** block (after the move back) is `B`; the premise bundle itself (writer honest and joined, the stored fast lock, `Sync[t_s, t_m + Δ]`, `Carry`, half-committee, later `Carry`, `f < h_t` at honest vote times, `NoColl`, `Clean`) is paper-only, not stated in Lean | Persist | `Consensus.Goldilocks.Compose.honestVotes`, `Consensus.Goldilocks.Compose.excludedEntries`, `Consensus.Goldilocks.Compose.Clean`, `Consensus.Goldilocks.Compose.StoredFastLockAt` |
+| C1.1 | CLAIMS C1.1 | **retired** as a milestone statement (honest fast confirmations persist, its corollary "recent source, next vote", the conclusion vocabulary of G1.10 at C1.1's scope, and its premise bundle); the vocabulary of its premises stays | Persist | — |
 
 Modelling choices:
 
@@ -429,8 +429,9 @@ Modelling choices:
   (awake on `[max(g, 0), ∞)`) forces an infinite run, and so does `Sleepy` (`f < h_t` at every slot's times needs
   `h_t > 0` forever); finite prefixes satisfy `Sync[a, b]` and `GST(g)` but neither regime. This is the intended
   reading (runs are `Nat`-indexed traces of the protocol running for ever, a tick at every public time); the kind
-  (a) witness `periodicRun_localRun` with `periodicRun_healthy`/`periodicRun_sleepy` (`ConsensusLeanTest/Goldilocks/Run/Statements.lean`)
-  is an infinite periodic `Node.LocalRun` on which both regimes hold, so neither is vacuous against the clamp.
+  (a) witnesses `periodicRun_localRun` with `periodicRun_healthy` (`ConsensusLeanTest/Goldilocks/Run/Statements.lean`, an infinite
+  periodic `Node.LocalRun` on which `Healthy(0)` holds) and `tickRun_sleepy` (`ConsensusLeanTest/Goldilocks/Persist/Premises.lean`,
+  the one-validator Goldilocks tick run, on which `Sleepy` holds) show that neither regime is vacuous against the clamp.
 - **`GST(g)`'s "as if sent at `g`"** is read for the deadline only: an object sent at `τ < g` has deadline
   `max(g, w_y) + Δ'`, and its delivery lower bound stays `τ` (it may be delivered before `g`).
 - **Admissibility** (claims §"Runs"): unforgeability is a run law, not a node fact. The AC interface has no signer,
@@ -462,9 +463,9 @@ Modelling choices:
 
 Witnesses in `ConsensusLeanTest/Goldilocks/Run/Statements.lean`: on `rootAC`, kind (a) `oneTickRun_localRun` (the hypothesis
 `Node.LocalRun` is satisfiable: one tick at time `0`, the two AC cuts `tickCuts_eq`); on `idleAC` (`rootAC` with
-`ac_proposal = ⊥`), kind (a) `periodicRun_localRun`, `periodicRun_healthy`, `periodicRun_sleepy` (an infinite
-periodic `Node.LocalRun`, a tick at every time, on which `Healthy(0)` and `Sleepy` hold: the regime premises are
-satisfiable together with the awake clamp). The regime witness is over an AC that never proposes, not over
+`ac_proposal = ⊥`), kind (a) `periodicRun_localRun`, `periodicRun_healthy` (an infinite
+periodic `Node.LocalRun`, a tick at every time, on which `Healthy(0)` holds: the regime premise is
+satisfiable together with the awake clamp; `Sleepy` is witnessed by `tickRun_sleepy` on the one-validator tick run). The regime witness is over an AC that never proposes, not over
 `GoldilocksRun`; a `Sleepy`/`Healthy` run of the SA itself is left to the Healing/Regimes milestone.
 
 ## Service
@@ -501,7 +502,7 @@ HS.5's `Producer(A)` enter as conclusions (a), (b) of HR.3.
 | HR.2 | CLAIMS HR.2 | **phase count**: over an `FGLocalRun` with `f < 2q − n`, (a) one justified entry per height, (b) the phase moves only forward with one `J` while `m` is fixed, at most two changes per `m` | Healing | `Consensus.Goldilocks.Healing.PhaseCount` |
 | HR.3 | CLAIMS HR.3 (with HS.0, HS.5) | **reset existence**: (a) `c_z > ḡ + 8Δ` and `Settle(Δ)` from every `u ≥ c_z`; (b) `Producer(A)` from every settled `w`; (c) `a_z` exists, `a_z ≤ c_z + 6(Δ + A_HS) ≤ ḡ + 24Δ + 12C_HS`, with the closed forms | Healing | `Consensus.Goldilocks.Healing.ResetExistence` |
 | HR.4 | CLAIMS HR.4 | **height-scoped retention**: (R1)–(R4) for every reset `a`; stated for population-sized committees (premise `sp.committeeSize = sp.n`) | Healing | `Consensus.Goldilocks.Healing.HeightScopedRetention` |
-| — | CLAIMS §"Healing: top-level statements" (notation, driven AC traces, the two premises) | `ḡ`, `Θ = 4(k + 1)Δ`; `Healthy(g)` and `Catch(κ)` over an AC trace; trivial frames; an honest proposal of slot `p` (the block made from `ac_proposal`: parent the returned duty head); a **driven** AC trace (assigned proposer, slot order, held parent, no future slot, honest slot = honest proposal; tick and proposal order of C0.4, including Driven (b)'s "before any object received at `t_s`": `proposal_first`, every AC message or block call of the proposer at its `ac_proposal`'s time comes after it); `Prop(G_p)` | Healing | `Consensus.Goldilocks.SA.gbar`, `Consensus.Goldilocks.SA.Θ`, `Consensus.Goldilocks.SA.HealthyAC`, `Consensus.Goldilocks.SA.CatchAC`, `Consensus.Goldilocks.SA.HonestProposal`, `Consensus.Goldilocks.SA.Driven` |
+| — | CLAIMS §"Healing: top-level statements" (notation, driven AC traces, the two premises) | `ḡ`, `Θ = 4(k + 1)Δ`; `Healthy(g)` and `Catch(κ)` over an AC trace; an honest proposal of slot `p` (the block made from `ac_proposal`: parent the returned duty head); a **driven** AC trace (assigned proposer, slot order, held parent, no future slot, honest slot = honest proposal; tick and proposal order of C0.4, including Driven (b)'s "before any object received at `t_s`": `proposal_first`, every AC message or block call of the proposer at its `ac_proposal`'s time comes after it) | Healing | `Consensus.Goldilocks.SA.gbar`, `Consensus.Goldilocks.SA.Θ`, `Consensus.Goldilocks.SA.HealthyAC`, `Consensus.Goldilocks.SA.CatchAC`, `Consensus.Goldilocks.SA.HonestProposal`, `Consensus.Goldilocks.SA.Driven` |
 | — | CLAIMS §"Healing: top-level statements" (protected blocks, `Inv`, `Geo`), H.2 | a slow lock write (the deepest block of the update's result path that conflicts with no live lock and that the `k − 1` previous saved results extend, vetoed or not; written independently of the fast lock); the protected pairs `𝒫(t₀)` (P1)–(P3); `Inv(t₀)`; `Geo(P)` (read by H.3's bridge) | Healing | `Consensus.Goldilocks.SA.SlowLockAt`, `Consensus.Goldilocks.SA.Protected`, `Consensus.Goldilocks.SA.Inv`, `Consensus.Goldilocks.SA.Geo` |
 | — | CLAIMS H.2 (run) | unanimity and honest proposal over the AC projection | Healing | `Consensus.Goldilocks.Healing.Unanimous`, `Consensus.Goldilocks.Healing.HonestProposalRun` |
 | H.3 | CLAIMS H.3 | one settled effective phase for a proposal and its votes; the bridge `Inv(a_z + T_b)` + `Geo` in settled phases. **FG non-interference** is retired as a milestone statement (with its proof); the vocabulary stays | Healing | `Consensus.Goldilocks.Healing.InSettledPhase`, `Consensus.Goldilocks.Healing.BridgeAt` |

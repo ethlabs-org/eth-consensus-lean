@@ -54,9 +54,10 @@ observation horizon, and a tick of every awake honest node at every public time
 (`tick_of_awake`). This is the intended reading:
 runs are `Nat`-indexed traces of the protocol running forever, and a finite trace is a prefix
 that says nothing after its last cut, so it satisfies neither regime premise. That the two
-premises are satisfiable by such a run (together with `Node.LocalRun`) is the kind (a) witness
-`periodicRun_localRun` with `periodicRun_healthy` and `periodicRun_sleepy` in
-`ConsensusLeanTest/Goldilocks/Run/Statements.lean`.
+premises are satisfiable by such a run is the kind (a) witness `periodicRun_localRun` with
+`periodicRun_healthy` in `ConsensusLeanTest/Goldilocks/Run/Statements.lean` (together with
+`Node.LocalRun`) and `tickRun_sleepy` in `ConsensusLeanTest/Goldilocks/Persist/Premises.lean` (on
+the one-validator Goldilocks tick run).
 
 `NoColl` is `Compose.NoCollRun` (`Statements/Compose/Run`: `Compose.NoCollOn` on the blocks
 that occur in the run and genesis), stated where it is used. `Outage` and `Weak` have no run

@@ -69,8 +69,8 @@ outage and sleepy shape claims at every vote binding.
 
 **Committee scope.** The Goldilocks family is stated at every vote binding (`docs/decisions.md` §"Committee
 modelling"); the certified endpoint and headline forms cover every binding. The premise bundles
-`Consensus.Goldilocks.Compose.PersistPremises`, `Consensus.Goldilocks.SA.HealthyBaseU` and
-`Consensus.Goldilocks.Healing.HSShared` carry `committeeSize = n` as a field: they are stated at population-sized
+`Consensus.Goldilocks.SA.HealthyBaseU` and `Consensus.Goldilocks.Healing.HSShared` carry
+`committeeSize = n` as a field: they are stated at population-sized
 committees only, and no certified statement reaches them.
 
 ## Shape examples

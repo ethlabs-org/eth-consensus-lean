@@ -42,9 +42,7 @@ horizon. Do not infer repository-wide absence from a limitation of one witness.
 
 ## Persistence
 
-C1.1 and its corollary are no longer milestone statements. `Goldilocks/Persist/Premises.lean` keeps
-`persistPremises_tickRun`: `PersistPremises`, which the obligations endpoint's persistence kernel reads,
-is satisfiable on the one-validator tick run (zero faults, permanent wakefulness).
+C1.1 and its corollary are no longer milestone statements, and their premise bundle is not stated.
 
 ## Healing: statements, applications and remaining branches
 
