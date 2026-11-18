@@ -552,6 +552,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Goldi
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksReadPoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Groups
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GuardIdle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealedReadAncestry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealingRows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Interface
@@ -1022,6 +1023,7 @@ public import ConsensusLean.Spec.Blocks.Payload
 public import ConsensusLean.Spec.Blocks.Progress
 public import ConsensusLean.Spec.Blocks.TimeGrid
 public import ConsensusLean.Spec.Model.Conditions
+public import ConsensusLean.Spec.Model.Guard
 public import ConsensusLean.Spec.Model.Objects
 public import ConsensusLean.Spec.Model.Protocol
 public import ConsensusLean.Spec.Model.Run
