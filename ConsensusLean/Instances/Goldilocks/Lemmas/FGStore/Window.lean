@@ -332,7 +332,7 @@ theorem window_justifies (hr : FGLocalRun acp₀ H U tr) {cF : Nat} {T : NodeBlo
         ((tr.store p (i + 1)).σ X.root).F = ((tr.store p i).σ T.root).J ∧
         ((tr.store p (i + 1)).σ X.root).hF = ((tr.store p i).σ T.root).hj) := by
   obtain ⟨⟨hp, hacc, -, -, hPr, hpar, hincl⟩, ⟨hT, hTe⟩, hTPr, ⟨-, hwin⟩, hq, hrows, -, hpool,
-    ⟨hD, -⟩⟩ := hw
+    hD⟩ := hw
   obtain ⟨-, -, -, -, -, -, hbl, -, -⟩ := onBlock_fields (accept_onBlock hr hp hacc)
   have hreach := store_reachable hr hp (i + 1)
   obtain ⟨-, hcoh, -, -⟩ := accepted_tree P ACP acp₀ _ hreach

@@ -77,7 +77,7 @@ served by the block `Bs` that `p` proposes at cut `i` on the parent `Pr`, with t
   justified, and is on `Pr`'s chain already or, when its signer is honest, signed by `t_{u+a} + 6Δ`;
 * P3–P4: each attestation is on `Pr`'s chain or in `p`'s pool at its proposal cut (processed at an
   earlier cut, before every object received at `t_{v*}`: the trace's tick order);
-* P6: `δ_t ≥ D = a + c_F + k_F` and `K_W ≥ 1`. -/
+* P6: `δ_t ≥ D = a + c_F + k_F` (the paper's `K_W ≥ 1` holds: `K_W = 2`). -/
 structure GoodWindow (H : Set (Fin P.n)) (tr : FGTrace P ACP) (cF : Nat) (T : NodeBlock P ACP)
     (a kF : Nat) (p : Fin P.n) (i : Nat) (Bs Pr : NodeBlock P ACP) (R : Finset (FG.Att P.n)) :
     Prop where
@@ -102,7 +102,7 @@ structure GoodWindow (H : Set (Fin P.n)) (tr : FGTrace P ACP) (cF : Nat) (T : No
   /-- P3–P4: on the chain already, or in the proposer's pool before its proposal. -/
   pooled : ∀ r ∈ R, (tr.store p i).OnChain Pr r ∨ r ∈ (tr.store p i).atts
   /-- P6. -/
-  params : a + cF + kF ≤ P.δt ∧ 1 ≤ FG.FGParams.KW
+  params : a + cF + kF ≤ P.δt
 
 /-- `X` justifies the entry `T` at height `h` in `st`, and every block from `T` to `X`, `X`
 excluded, keeps height `h` and entry `T` (so `h` is not left before `X`, by timeout or
@@ -179,13 +179,13 @@ def Crossing : Prop :=
       ((tr.store y k).σ T.root).h < ((tr.store y k).σ X.root).h ∧
       X.slot ≤ T.slot + max P.δt r + g - 1
 
-/-- **G1.8 (b), coverage after failed entries (corollary C).** Let the entries from `T₁` to the
-entry whose previous height is not justified `T` (`T₁ ≺ T` on the chain of `B*₀`, `m ≥ 1`
-consecutive entries that cross by timeout: every entry block after `T₁` up to `T` does not have its
-previous height justified), and let `T` and its actual successor entry, entered by justifying it,
-satisfy G1.7's two windows, with serving block `B*₁`. Then `T₁` is covered on the chain of `B*₁`
-within `Σ τ_i + D₀ + D₁ = (T.slot − T₁.slot) + D₀ + D₁` slots of `T₁.slot`: some `Z ⪯ B*₁` has a
-finalized block that extends `T₁`. -/
+/-- **G1.8 (b), coverage after failed entries (corollary C).** Let `T₁ ≺ T` be entries on the
+chain of `B*₀`, where `T`'s previous height is not justified, and let `T` and its actual successor
+entry, entered by justifying it, satisfy G1.7's two windows, with serving block `B*₁`. Then `T₁`
+is covered on the chain of `B*₁` within `Σ τ_i + D₀ + D₁ = (T.slot − T₁.slot) + D₀ + D₁` slots of
+`T₁.slot`, that is by slot `T.slot + D₀ + D₁`: some `Z ⪯ B*₁` has a finalized block that extends
+`T₁`. The paper's premise that the entries after `T₁` up to `T` cross by timeout is not needed:
+the conclusion follows from G1.7 at `T` and `T₁ ⪯ T`. -/
 def Coverage : Prop :=
   ∀ (acp₀ : ACP) (H : Set (Fin P.n)) (U : Set (NodeBlock P ACP)) (tr : FGTrace P ACP),
     FGLocalRun acp₀ H U tr → ∀ (cF : Nat) (T₁ T : NodeBlock P ACP) (a₀ kF : Nat) (p : Fin P.n)
@@ -193,14 +193,12 @@ def Coverage : Prop :=
     GoodWindow P ACP H tr cF T a₀ kF p i Bs Pr R →
     ¬ ((tr.store p i).σ T.root).previousHeightJustified →
     IsEntry P ACP (tr.store p i) T₁ → (tr.store p i).Anc T₁ T → T₁ ≠ T →
-    (∀ Y, IsEntry P ACP (tr.store p i) Y → (tr.store p i).Anc T₁ Y → (tr.store p i).Anc Y T →
-      Y ≠ T₁ → ¬ ((tr.store p i).σ Y.root).previousHeightJustified) →
     ∀ X, JustifiesEntry P ACP (tr.store p (i + 1)) T ((tr.store p i).σ T.root).h X →
       (tr.store p (i + 1)).Anc X Bs →
     ∀ (a₁ : Nat) (p₁ : Fin P.n) (i₁ : Nat) (Bs₁ Pr₁ : NodeBlock P ACP)
       (R₁ : Finset (FG.Att P.n)), GoodWindow P ACP H tr cF X a₁ kF p₁ i₁ Bs₁ Pr₁ R₁ →
       ∃ Z ∈ (tr.store p₁ (i₁ + 1)).tree, (tr.store p₁ (i₁ + 1)).Anc Z Bs₁ ∧
-        Z.slot ≤ T₁.slot + (T.slot - T₁.slot) + (a₀ + cF + kF) + (a₁ + cF + kF) ∧
+        Z.slot ≤ T.slot + (a₀ + cF + kF) + (a₁ + cF + kF) ∧
         ∃ F ∈ (tr.store p₁ (i₁ + 1)).tree, F.root = ((tr.store p₁ (i₁ + 1)).σ Z.root).F ∧
           (tr.store p₁ (i₁ + 1)).Anc T₁ F
 

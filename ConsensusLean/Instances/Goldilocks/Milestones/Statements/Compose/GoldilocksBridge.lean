@@ -48,10 +48,9 @@ def GoldilocksHealingData (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.
 interface by `goldilocks_ac_healing` in `Lemmas/Growing/Healing/Supply/Fields.lean`.
 Its witness has `warmup = 2 * sp.k`, `follow = 3`, `drain = 2 * sp.k + 5` and the
 joined stored-fast-lock origin. This supplies healing only, not `ACCorrectLocal` or
-the endpoint. The explicit timeout bound is needed for `follow = 3`; the service-delay
-inequality alone does not imply it. -/
-def goldilocksACHealing (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (_hδ : 3 ≤ sp.toParams.δt) : Prop :=
+the endpoint. The theorem takes the timeout bound `3 ≤ δ_t`, which `follow = 3` needs; the
+service-delay inequality alone does not imply it. -/
+def goldilocksACHealing (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) : Prop :=
   ∃ R : ACRun (goldilocksNode sp ro) (fun v => v.val),
     ∃ O : ACHealing (goldilocksNode sp ro) (fun v => v.val) R,
     GoldilocksHealingData sp ro O
@@ -84,8 +83,7 @@ structure GoldilocksLocalData (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att
 /-- Goldilocks local supplier with its exact data equations (`GoldilocksLocalData`), proved by
 `goldilocksACCorrectLocal_of_healing` from `goldilocks_ac_healing`. The data equations alone supply
 no field evidence; the healing witness and the local read-point proofs supply that evidence. -/
-def goldilocksACCorrectLocal (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (_hδ : 3 ≤ sp.toParams.δt) : Prop :=
+def goldilocksACCorrectLocal (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) : Prop :=
   ∃ C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val), GoldilocksLocalData sp ro C
 
 end Consensus.Goldilocks.Generic

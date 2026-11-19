@@ -906,7 +906,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.C
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.CorrectLocal
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineRepresentation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineTransport
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.FG
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Healing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ProgressBudget
@@ -917,7 +916,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.A
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.ACU
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.AC
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Outcome
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Recovery
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Outcome
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Recovery

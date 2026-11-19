@@ -669,7 +669,7 @@ window with `a = 0`, `c_F = 1`, `k_F = 0`, served by `w₀`'s proposal `Bx` of s
 `14` on `Bc`, with the rows `{aC}` (signed at cut `12`, time `5`, pooled at cut `13`). -/
 theorem trT_goodWindow : GoodWindow P₁ Unit {w₀} trT 1 Bc 0 0 w₀ 14 Bx Bc {aC} := by
   refine ⟨⟨rfl, ⟨rfl, rfl⟩, rfl, rfl, ?_, rfl, ?_⟩, ?_, ?_, ⟨le_rfl, le_rfl⟩, by decide, ?_, ?_,
-    ?_, ⟨by decide, by decide⟩⟩ <;> rw [trT_store.1]
+    ?_, by decide⟩ <;> rw [trT_store.1]
   · exact (rfl : stCa.blocks 4 = some Bc)
   · intro r hr hh hT _
     change r ∈ [a₀, a₁, aK, aF, aC] at hr

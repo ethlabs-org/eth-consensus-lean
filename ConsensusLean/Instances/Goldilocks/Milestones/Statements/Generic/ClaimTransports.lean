@@ -148,7 +148,7 @@ structure FinalReadTransport (M : RunMap rho payload) (C : ACCorrectLocal A M.si
     Anc (M.trace.HonestBlocksAt M.honest) (W.block 0) (M.trace.finalizedAt y j)
 
 /-- Actual-read population evidence from `finalAccountable_readPoint`
-(not the cut-time-only `Generic.FinalAccountable`).
+(not a cut-time-only form).
 The population cardinality and ChainAtts are unchanged; E1's chain_att_view,
 att_signer and att_conflict separately bind these witnesses to engine evidence.
 The shared FG proof supplies the route; its generic adapter remains to be proved. -/

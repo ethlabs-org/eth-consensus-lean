@@ -14,7 +14,8 @@ over `Growing.LocalRun` / `Growing.GoldilocksRun`: each node is honest at the ti
 group it is named at, unforgeability reads the signer at the processing cut, and the projections
 land in the growing-fault component contracts (`Growing.ACLocalRun`, `Growing.FGLocalRun`,
 `SA.Growing.ACRun`, `SyncACAt`) inside the blocks held while honest. Joining projects, and the
-count `f_d < h_t` of the run is the AC projection's at every `t` and `d`.
+count `f_d < h_t` of the run is the AC projection's at every `t` and `d`. F.4 (ready implies
+joined) is proved only at a fixed honest set (`Compose.ReadyImpliesJoined`).
 
 Statements only: no proofs here. -/
 
@@ -23,17 +24,6 @@ namespace Consensus.Goldilocks.Compose.Growing
 open SA (SAParams ReplayOrder goldilocksSA Vote Payload)
 
 variable {P : Params} {A : NodeAC P}
-
-/-- **F.4 under growing faults, ready implies joined**, for a validator honest at `t`. -/
-def ReadyImpliesJoined : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
-    sp.committeeSize = sp.n →
-    Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr →
-    ∀ y (t c : Time), y ∈ H t → 0 ≤ t → 8 * sp.Δ ≤ c + 1 →
-      (∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) →
-      tr.awake y t ∧ tr.JoinedAt y t
 
 /-- **C0.5 under growing faults, the AC projection**, from the AC starts `ini` of the run, with
 requirement 5 from each start `ini y` of a node honest at time `0` (`ACInterface.ReqPayloadFrom`;

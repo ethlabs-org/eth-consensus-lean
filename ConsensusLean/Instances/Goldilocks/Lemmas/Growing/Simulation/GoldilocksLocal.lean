@@ -79,8 +79,8 @@ healing data equations gives the local supplier at the local data equations, wit
 interface. `served` is retained-evidence service (`goldilocks_served_of_delivered`), `tipsValid`
 is `goldilocks_tips_at` at the reader's own cut time, and the durations are the data
 equations'. -/
-theorem goldilocksACCorrectLocal_of_healing {hδ : 3 ≤ sp.toParams.δt}
-    (h : goldilocksACHealing sp ro hδ) : goldilocksACCorrectLocal sp ro hδ := by
+theorem goldilocksACCorrectLocal_of_healing
+    (h : goldilocksACHealing sp ro) : goldilocksACCorrectLocal sp ro := by
   obtain ⟨R, O, hO⟩ := h
   have hΔ := sp.toParams.hΔ
   refine ⟨{

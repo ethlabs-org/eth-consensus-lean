@@ -212,7 +212,7 @@ theorem twoRun_goodWindow :
     · exact (onChain_row1 hg 3).2 ⟨by decide, by decide⟩
   refine ⟨by rw [ts_nat]; exact htime.trans_lt (by decide), ⟨⟨trivial, ?_, blk_proposer 32, ?_,
     ?_, blk_parent_succ 31, ?_⟩, ⟨?_, ?_⟩, ?_, ?_, ?_, ?_, fun r hr => ?_, fun r hr => ?_,
-    by decide, by decide⟩, fun z _ => ?_⟩
+    by decide⟩, fun z _ => ?_⟩
   · exact Compose.projFG_callAt.2 hown
   · rw [blk_slot]; exact htime.symm
   · rw [hstore]; exact (mem_tree_iff hg.blocks).2 ⟨31, le_rfl, rfl⟩
