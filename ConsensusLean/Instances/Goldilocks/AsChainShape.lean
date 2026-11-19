@@ -50,7 +50,7 @@ simulated by a `GoldilocksRun` (claims C0.4 kept) and bind the evidence (G1.5). 
   through `recordOwn`, which brings the digest). The first trailing poll runs the FG update
   (`ac_to_fg`, then `attest`, written out as `Node.tickStep … .fgUpdate` does) and queues the
   attestation; the two trailing polls drain the tick's at most one vote and one attestation.
-* **Relay.** An admitted block or attestation is relayed at the gossip of its event as
+* **Relay.** A newly accepted block or an attestation is relayed at the gossip of its event as
   a carried object of an unsigned `.relay` wrapper; a delivery's emission and relay leave at the
   delivery's own time (`Model.Run.deliver`), as the spec's relay rule sends them.
   Fresh vote insertions instead queue `.voteForward` envelopes, signed by the admitting node
@@ -59,8 +59,9 @@ simulated by a `GoldilocksRun` (claims C0.4 kept) and bind the evidence (G1.5). 
   Separately, successful block acceptance cuts queue fresh signed `.forward` wrappers, including
   own proposals. The durable node-root map supplies exact same-origin parent wrappers. A selected
   `pollBatch` emits its ordinary body, block wrappers in acceptance order, then vote envelopes;
-  `releaseAll` checks each against actual prefix holdings. Duplicate/refused calls do not mint
-  wrappers. Unsigned compatibility relay is retained, but certifies no acceptance timestamp.
+  `releaseAll` checks each against actual prefix holdings. Duplicate/refused calls neither mint
+  wrappers nor relay the block. Unsigned compatibility relay is retained, but certifies no
+  acceptance timestamp.
 * **Restart.** `durable` keeps the whole state and `restore` applies `ac_restart`: as in the
   spec (composition.tex §"State"), `Σ` and `Λ` are kept and `𝒜` is replaced by
   `ac_restart(𝒜, Φ, t)`, which keeps only the locks and the latest confirmation. The queued
@@ -565,16 +566,18 @@ noncomputable def canonEvent
   | none, none, none => none
 
 open Classical in
-/-- Processing one received object through its canonical node handler. Blocks held after
-the call and attestations use unsigned relay; fresh vote insertions use the signed queue in
-`apply`. Noncanonical wrappers make no call; their carried objects are processed separately. -/
+/-- Processing one received object through its canonical node handler. A block the call newly
+accepts (not held before the call, held after it) and attestations use unsigned relay; a refused
+receipt, including a block already held, is not relayed (composition.tex §"Model"); fresh vote
+insertions use the signed queue in `apply`. Noncanonical wrappers make no call; their carried
+objects are processed separately. -/
 noncomputable def processOne (hs : List (Header Info × Nat))
     (st : State sp ro (binding := binding)) (o : Wire sp.n (binding := binding)) :
     State sp ro (binding := binding) :=
   match canonEvent sp ro (binding := binding) hs o with
   | some (.block B) =>
       let r := Node.onBlock st.self st.node st.now B
-      relayIf (apply st r) (r.1.fg.blocks B.root = some B) o
+      relayIf (apply st r) (st.node.fg.blocks B.root ≠ some B ∧ r.1.fg.blocks B.root = some B) o
   | some (.message v) =>
       let r := Node.onMessage st.self st.node st.now v
       apply st r

@@ -356,15 +356,24 @@ theorem processOne_eq (proposer : Nat → Fin sp.n)
       split_ifs at hx <;> simp_all
 
 
+/-- The FG accepts only a block whose root it does not hold. -/
+private theorem not_held_of_onBlock {st st' : Store sp.toParams (Payload sp.n)} {B : Blk sp}
+    (h : st.onBlock B = some st') : st.blocks B.root ≠ some B := by
+  intro hs
+  unfold Store.onBlock at h
+  cases hp : B.parent <;> simp only [hp, hs, Option.isSome_some, true_or, ↓reduceIte] at h <;>
+    cases h
+
 private theorem processOne_block {hs : List (Header Info × Nat)} {σ : State sp ro binding}
     {o : Wire sp.n binding} {B : Blk sp} (he : canonEvent sp ro hs o = some (.block B))
+    (h0 : σ.node.fg.blocks B.root ≠ some B)
     (h : (Node.onBlock σ.self σ.node σ.now B).1.fg.blocks B.root = some B) :
     o ∈ (processOne hs σ o).relayBuf := by
   unfold processOne
   rw [he]
   dsimp only
   rw [relayIf_eq]
-  simp [h]
+  simp [h0, h]
 
 private theorem processOne_attestation {hs : List (Header Info × Nat)} {σ : State sp ro binding}
     {o : Wire sp.n binding} {a : FG.Att sp.n} (he : canonEvent sp ro hs o = some (.attestation a)) :
@@ -404,7 +413,7 @@ private theorem group_relay (proposer : Nat → Fin sp.n)
         simp only [hfg, List.mem_cons, List.not_mem_nil, or_false] at hmem
         refine ⟨fun B' h => ?_, fun ℓ m h hc => ?_, fun a h => ?_⟩
         · rcases hmem with hmem | hmem <;> rw [hmem] at h <;> cases h
-          refine ⟨rfl, processOne_block he ?_⟩
+          refine ⟨rfl, processOne_block he (not_held_of_onBlock hfg) ?_⟩
           simp only [onBlock, acCall, hf, ↓reduceIte, hfg]
           exact blocks_of_onBlock hfg
         · rcases hmem with hmem | hmem <;> rw [hmem] at h <;> cases h

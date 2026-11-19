@@ -163,11 +163,12 @@ detail in `TRUST.md`.
   canonical node event, and nested wrappers do not hide their contents. A block that the node drops as of a future
   slot, or that the FG refuses, gets no handler for what it carries, and neither does a block-shaped object (a
   header item) that fails the wire checks (composition.tex §"Blocks": the check drops it with no effect); a later
-  delivery can carry those objects again. Processing them anyway would only let the adversary reach a node through blocks it
-  does not accept. The payload votes and attestations of an accepted block get actual message and attestation
-  calls. Block-before-payload preserves the block handler's priority (including any vote it emits); the later
-  message handlers use the resulting state. The one-vote invariant applies to arbitrary same-time object lists, so
-  one delivery poll still drains the emitted vote.
+  delivery can carry those objects again. Processing them anyway would only let the adversary reach a node through
+  blocks it does not accept. Only a newly accepted block is relayed: a receipt of a block the node already holds is
+  refused by the FG and is not forwarded (composition.tex §"Model"). The payload votes and attestations of an
+  accepted block get actual message and attestation calls. Block-before-payload preserves the block handler's
+  priority (including any vote it emits); the later message handlers use the resulting state. The one-vote
+  invariant applies to arbitrary same-time object lists, so one delivery poll still drains the emitted vote.
 - **Finite observation coverage is separate from labelled action coverage.** `Trace.observationHorizon` defaults to
   `none` (the action-only horizon); `InHorizon` also admits a cut reaching a time covered by explicit finite
   metadata. Canonical traces set the engine horizon, clamp wakefulness to `[0, horizon]`, and stutter unlabelled at

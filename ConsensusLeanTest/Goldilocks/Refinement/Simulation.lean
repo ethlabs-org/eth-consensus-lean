@@ -396,6 +396,21 @@ theorem duplicate_no_publication {sp : SA.SAParams}
     rw [hr]
     rfl
 
+/-- A duplicate block is not relayed: a receipt of a block the node already holds leaves the
+relay queue unchanged (composition.tex §"Model": a refused receipt is not forwarded). -/
+theorem duplicate_not_relayed {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (hs : List (Blocks.Header Info × Nat))
+    (st : State sp ro) (o : Wire sp.n) (B : Blk sp)
+    (hc : canonEvent sp ro hs o = some (.block B)) (hheld : st.node.fg.blocks B.root = some B) :
+    (processOne hs st o).relayBuf = st.relayBuf := by
+  unfold processOne
+  rw [hc]
+  dsimp only
+  unfold relayIf
+  split_ifs with h
+  · exact absurd hheld h.1
+  · rfl
+
 /-- Wire equality alone cannot identify an accepted block's root: headers omit that field.
 Publication provenance must use decoding with the engine digest, not only `forwardObj` equality. -/
 theorem forwarding_root_alias (sp : SA.SAParams) (x : Fin sp.n) (t : Time)
