@@ -165,7 +165,10 @@ detail in `TRUST.md`.
   header item) that fails the wire checks (composition.tex §"Blocks": the check drops it with no effect); a later
   delivery can carry those objects again. Processing them anyway would only let the adversary reach a node through
   blocks it does not accept. Only a newly accepted block is relayed: a receipt of a block the node already holds is
-  refused by the FG and is not forwarded (composition.tex §"Model"). The payload votes and attestations of an
+  refused by the FG and is not forwarded (composition.tex §"Model"). A vote is forwarded, in a signed envelope
+  stamped with its admission time, exactly when a call other than a restart newly inserts it into the pool; the
+  restart's replay forwards nothing (`SendOrAdmit`). A vote the restart drops and the replay does not restore is
+  forwarded again when it is re-admitted, as a fresh admission. The payload votes and attestations of an
   accepted block get actual message and attestation calls. Block-before-payload preserves the block handler's
   priority (including any vote it emits); the later message handlers use the resulting state. The one-vote
   invariant applies to arbitrary same-time object lists, so one delivery poll still drains the emitted vote.

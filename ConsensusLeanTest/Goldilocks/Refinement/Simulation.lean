@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 import all ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSimulates
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.VoteForwardQueue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
@@ -411,6 +412,31 @@ theorem duplicate_not_relayed {sp : SA.SAParams}
   split_ifs with h
   · exact absurd hheld h.1
   · rfl
+
+/-- Restart replay forwards nothing: a restart at `t ≥ 0` (`ac_restart`, which rebuilds the pool
+by replaying the frame's blocks) queues no vote envelope, no block wrapper, no relay and no body
+(composition.tex §"Model": the replay re-processes blocks already accepted and sends nothing). -/
+theorem restart_replay_forwards_nothing {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (k : Fin sp.n) (d : State sp ro) (t : Time)
+    (ht : 0 ≤ t) :
+    (restore k d t).voteForwards = d.voteForwards ∧ (restore k d t).forwards = d.forwards ∧
+      (restore k d t).relayBuf = d.relayBuf ∧ (restore k d t).outbox = d.outbox := by
+  have hnil := restart_emits_nil ro k d.node.ac (Node.frame d.node) t ht
+  rw [restore_eq]
+  simp only [apply, Node.restart, Node.acCall, hnil, emitted, List.map_nil,
+    List.flatMap_cons, List.flatMap_nil, List.append_nil, List.dedup_nil, List.filter_nil,
+    List.foldl_cons, List.foldl_nil, and_self]
+
+/-- A vote the restart dropped and the replay did not restore is forwarded again when it is
+re-admitted: processing an object that inserts it into the restored pool queues its envelope,
+stamped with the new admission time `t` (a fresh admission by a call other than the restart). -/
+theorem readmitted_after_restart_forwarded {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (hs : List (Blocks.Header Info × Nat))
+    (k : Fin sp.n) (d : State sp ro) (t : Time) (o : Wire sp.n) (m : SA.Vote sp.n)
+    (hdrop : m ∉ (restore k d t).node.ac.pool m.slot)
+    (hnew : m ∈ (processOne hs (restore k d t) o).node.ac.pool m.slot) :
+    (t, m) ∈ (processOne hs (restore k d t) o).voteForwards :=
+  processOne_pool_insertion_queued hs (restore k d t) o m hdrop hnew
 
 /-- Wire equality alone cannot identify an accepted block's root: headers omit that field.
 Publication provenance must use decoding with the engine digest, not only `forwardObj` equality. -/
