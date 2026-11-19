@@ -69,7 +69,7 @@ theorem ResetPremisesUpTo.origin_label_lt_at_proposal {b : Time}
     (hri : r < i) (ho : HighOrigin tr H g v r l O) : l < u := by
   obtain ⟨_, D, CV, _, hfl, _⟩ := hp.highOrigin_mem ho
   have hrt : tr.time r ≤ sp.ts u := hti ▸ hp.run.time_mono hri.le
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hΔ := sp.toParams.hΔ
   rcases hfl with ⟨ell', C, ⟨_, _, ht, _⟩, _⟩ | hop
   · have ht' : tr.time r = sp.ts l + 6 * sp.Δ := ht
@@ -164,7 +164,7 @@ theorem ResetPremisesUpTo.held_target_proposal_domain_before {b : Time}
     hheld hseed hcompare
   by_cases hcovered : Anc (tr.HonestBlocks H) B ell.frame.fcRoot
   · exact Or.inl hcovered
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   have hrootB := hroot.resolve_right hcovered
   have hFB := (hPhi.F_anc_fcRoot.mono hPhiU).trans hrootB
@@ -277,7 +277,7 @@ theorem ResetPremisesUpTo.raw_writer_held_at_slot_start {b : Time}
     linarith only [ht]
   obtain ⟨v, _, D, hD, hDr, hBD, hg | ⟨q, hq, hqt⟩⟩ :=
     raw_writer_relay_source (by rw [hp.stock]; exact sp.toParams.hn) hr
-      (fun _ => SA.voteStart_initial _) hx hwriter hBC
+      hp.run.vstart hx hwriter hBC
   all_goals obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   · obtain ⟨G, hG, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hpH _ _ hci
     have hDG : D = G := hr.coherent.1 hD hG (hg.trans hGr.symm)
@@ -321,7 +321,7 @@ theorem ResetPremisesUpTo.protected_source_compatible_high_origin {b : Time}
     {y : Fin sp.n} {q t : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g y q t D) (hqb : tr.time q ≤ b) :
     Compatible (tr.HonestBlocks H) B D := by
-  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hrun := Compose.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hrun.localRun
   have hts := hp.clean_window_timing hs s (by have := sp.two_le_k; omega)
   have evidence : ∃ C CV,
@@ -389,7 +389,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_domain_before {b : Time}
     (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) :
     Anc (tr.HonestBlocks H) B ell.frame.fcRoot ∨ B ∈ ell.frame.viableTree ell.frame.tree := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have evidence : ∃ C CV, (SA.ResultAt tr.projAC x r s C CV ∨ SA.FastLockAt tr.projAC x r s C CV) ∧
       Anc (tr.HonestBlocks H) B C ∧ B ∈ (tr.state x r).fg.tree := by
     rcases hsource with ⟨CV, hf⟩ | hsl
@@ -536,7 +536,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
       (tr.time i) σ B := by
     refine SA.highLocksCompatible_iff.2 fun l hl _ hlσ X hX hXr => ?_
     obtain ⟨L, hL, hLr, O, hLO, q, hqi, CV, hO⟩ := SA.lock_below_origin hr
-        (fun _ => SA.voteStart_initial _) hpH i l hl
+        hp.run.vstart hpH i l hl
     obtain rfl : X = L := hU.1 hX hL (hXr.trans hLr.symm)
     have hcomp : Compatible (tr.HonestBlocks H) O B := by
       rcases hO with ⟨ell', ⟨_, _, ht, _⟩, _⟩ | ⟨ellO, A, hpt, hsl, hsel, hCV⟩
@@ -680,7 +680,7 @@ theorem ResetPremisesUpTo.clean_optimistic_proposal_parent {b : Time}
     (SA.proposal_slot hti) hd ⟨hV.1, Or.inl hV⟩ ?_ hhigh hp.stock
   intro v hv
   obtain ⟨hvs, hsend, D, hD, hDr, hBD, hacc⟩ :=
-    fastLock_writer hr (fun _ => SA.voteStart_initial _) hx (Or.inr hop) v hv
+    fastLock_writer hr hp.run.vstart hx (Or.inr hop) v hv
   have hFD := hFB.trans hBD
   refine SA.heldAtProposal_of_writer hr (hp.sync.syncAC hp.run (le_gbar g))
     (by linarith only [hsg, hΔ]) le_rfl hx hpH hci hti hrs hvs hsend ⟨D, hD, hDr, hFD, ?_⟩
@@ -775,7 +775,7 @@ theorem ResetPremisesUpTo.held_high_origin_viable {b : Time}
       hp.high_origin_votes_before q hqb _ _ _ _ ho₀ hi₀ z hz ell e hv hs)
     hcb ho hib hpH ht
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt
-    (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun hpH hc
+    (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun hpH hc
   have hroot : Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
     rw [hfr]
     change Compatible _ (tr.state p c).fg.fcRoot B

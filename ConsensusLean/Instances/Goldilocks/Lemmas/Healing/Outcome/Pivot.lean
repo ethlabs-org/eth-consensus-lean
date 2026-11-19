@@ -66,7 +66,7 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF a : Time}
 
 /-! ### The anchors -/
 
@@ -91,7 +91,7 @@ theorem ResetPremisesUpTo.reset_vote_anchor {b : Time}
     Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time j)) D ∨
       (Anc (tr.HonestBlocks H) D (SA.getAnchor sp e.readPoint ell.frame (tr.time j)) ∧
         Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time j)) P) := by
-  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hrun := Compose.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hrun.localRun
   have hU := hr.coherent
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
@@ -127,14 +127,14 @@ theorem ResetPremisesUpTo.reset_vote_anchor {b : Time}
     · exact Or.inl h
     · exact Or.inr ⟨h, haP⟩
   · have haQ := hlocks l hl hls
-      (hlive.trans ((SA.castAt_readPoint_locksWF hr (fun _ => SA.voteStart_initial _) hy hcy).cap
+      (hlive.trans ((SA.castAt_readPoint_locksWF hr hp.run.vstart hy hcy).cap
         hl)) B hB hBr
     rcases Anc.total hU haQ hDQ with h | h
     · exact Or.inl h
     · exact Or.inr ⟨h, haQ.trans (.single ⟨hQU, hPU, hPQ⟩)⟩
 
 /-- An honest node's proposal is an honest block: the proposer accepts it at the next cut. -/
-private theorem proposal_mem_honestBlocks (hrun : GoldilocksRun proposer dg H tr)
+private theorem proposal_mem_honestBlocks (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} (hpH : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hactual : tr.ProposesAt p k P) :
     P ∈ tr.HonestBlocks H := by
@@ -191,7 +191,7 @@ theorem ResetPremisesUpTo.reset_vote_root_below_proposal {b : Time}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j elly e)
     (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) :
     Anc (tr.HonestBlocks H) elly.frame.fcRoot P := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
   have hQU := hPhiU (Compose.mem_of_anc_left hsQ hst)
@@ -238,7 +238,7 @@ theorem reset_pivot (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun
           ℓy.frame.Anc X (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
             (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame u))
             (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
     hp.stock hp.run hp.healthy hp.noColl a hp.reset
   have hPU := proposal_mem_honestBlocks hp.run hp.noColl hP.1 hP.2.2.2.1
@@ -285,7 +285,7 @@ theorem ResetPremisesUpTo.reset_pivot {b : Time}
           elly.frame.Anc X (SA.getHead sp e.readPoint elly.frame (tr.time j)
             (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
             (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hPU := proposal_mem_honestBlocks hp.run hp.noColl hpH hactual
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   refine (proposal_pivot_of_supports (tr := tr) (u := u) hr.coherent hPhi hPhiU hd hPQ

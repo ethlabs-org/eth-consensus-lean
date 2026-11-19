@@ -62,7 +62,7 @@ theorem drainTime_eq (a : Time) : drainTime sp a = sp.ts (sp.slot a + 2 * sp.k +
   rfl
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF a : Time}
 
 /-- **The drain** (HS.2 (3)): at a time `t ≥ R`, every live lock of an honest node has a
 label at least `b + k + 2`; every lock of a label before `b`, and every slow lock whose window
@@ -102,7 +102,7 @@ theorem drain_stored_lock_label {l : SA.Lock} {t : Time}
 theorem ResetPremisesUpTo.reset_seed {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) :
     ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ a ∧ l ≤ sp.slot a := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨⟨y, hy, k, att, hs, hh, hka⟩, -⟩ := hp.reset
   obtain ⟨r, hrk, l, O, ho, -⟩ := hp.high_row_source hy hs hh.ge
   obtain ⟨-, D, CV, -, hfl, -⟩ := hp.highOrigin_mem ho
@@ -123,7 +123,7 @@ theorem ResetPremisesUpTo.reset_seed {b : Time}
 theorem healthy_base_of_reset_catch (hp : ResetPremises tr H proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) :
     SA.HealthyBase tr.projAC H (tr.HonestBlocks H) proposer g :=
-  ⟨Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl,
+  ⟨Compose.goldilocks_ac_projection_from hp.run hp.noColl,
     projection_driven hp.run hp.noColl hp.run.genesis_root_ok hp.healthy,
     projection_healthy hp.run hp.noColl hp.healthy,
     projection_catch hp.run hp.noColl hp.healthy hc, hp.stock⟩
@@ -141,7 +141,7 @@ theorem healthy_base_of_service_catch_before {b : Time}
     have := sp.toParams.hn
     change 0 < sp.n at this
     omega
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.goldilocks_ac_projection_from hrun hnc
   refine ⟨by rw [SA.committeeStart_full]; exact hac,
     projection_driven_of_run hrun hnc hrun.genesis_root_ok, ?_,
     ⟨fun x hx i B ha hi y hy j ell hj ht _ hF =>
@@ -353,7 +353,7 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
     obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcast.1
     rcases hdomain y hy i ell e hcast hib hsi hprior with hBF | hv
     · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := Compose.cast_head_fcRoot hr
-        (fun _ => SA.voteStart_initial _) hy hcast
+        hp.run.vstart hy hcast
       exact ⟨Hd, hΦU hHd, hHdr, hBF.trans (hfHd.mono hΦU)⟩
     have hFB := (hΦ.rooted.2 B hv.1.1).mono hΦU
     by_cases hfirst : e.msg.slot = s + 1
@@ -362,7 +362,7 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
           hgs hS.catchUp (by linarith only [hΔ, hgs]) hx hy hcast hfirst hib
         intro v hv
         obtain ⟨hvs, hw, D, hD, hDr, hCD, ha⟩ := Compose.result_writer hr
-          (fun _ => SA.voteStart_initial _) hx hres v hv
+          hp.run.vstart hx hres v hv
         exact ⟨hvs, hw, D, hD, hDr, hFB.trans (hBC.trans hCD), ha⟩
       refine SA.result_prefix_vote_extends_of_stored hS.stockRun hf hx hy hres hBC hcast
         hfirst carry ?_ (hstored y hy i ell e hcast hib hfirst)
@@ -386,7 +386,7 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
         obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hprior z hz q hqi e' ⟨ell', hc'⟩ (by
             clear * - hsm hslot; omega)
         obtain ⟨⟨Hd, hHd, hHdr, -⟩, hqt⟩ := Compose.cast_head_fcRoot hr
-            (fun _ => SA.voteStart_initial _) hz hc'
+            hp.run.vstart hz hc'
         obtain rfl : Hd = Hv := hr.coherent.1 ((SA.frameIn_of_callAt hr hz hc'.1).2 hHd)
           hHv (hHdr.trans hHvr.symm)
         have hgm := hgs.trans ((SA.ts_le_iff sp).mpr (show (s : Int) ≤ m by clear * - hsm; omega))
@@ -417,7 +417,7 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
         congr 1
         ext z
         exact and_congr_right fun hz => and_congr_right fun _ =>
-          (Compose.joined_projection sp ro dg H tr proposer hp.run z hz (tr.time i)).1.symm
+          (Compose.joined_projection_from hp.run hz (tr.time i)).1.symm
       refine SA.next_vote_extends_before hS.stockRun hy hcast hm
         (fun z hz q hq e' he hslot => hprior z hz q hq e' he (by
             rcases hslot with h | h <;> (clear * - hsm h; omega)))
@@ -451,7 +451,7 @@ theorem raw_writer_held_at_slot_start
     linarith
   obtain ⟨v, _, D, hD, hDr, hBD, hg | ⟨q, hq, hqt⟩⟩ :=
     raw_writer_relay_source (by rw [hp.stock]; exact sp.toParams.hn) hr
-      (fun _ => SA.voteStart_initial _) hx hwriter hBC
+      hp.run.vstart hx hwriter hBC
   all_goals obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   · obtain ⟨G, hG, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hpH _ _ hci
     have hDG : D = G := hr.coherent.1 hD hG (hg.trans hGr.symm)

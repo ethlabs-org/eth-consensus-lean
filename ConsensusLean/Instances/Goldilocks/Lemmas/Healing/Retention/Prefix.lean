@@ -98,7 +98,7 @@ theorem ResetPremisesUpTo.origins_compatible_before {b : Time}
     {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho' : HighOrigin tr H g x' r l O) (hrk : r < k)
     (hib : tr.time i ≤ b) (hrb : tr.time r ≤ b) :
     Compatible (tr.HonestBlocks H) B O := by
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hrun' := Compose.goldilocks_ac_projection_from hp.run hp.noColl
   have hrl := hrun'.localRun
   have hU := hrl.coherent
   have hf : 2 * Hᶜ.ncard < sp.n := by
@@ -219,7 +219,7 @@ theorem ResetPremisesUpTo.row_origin_not_current {b : Time}
     {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)} :
     ¬ SA.OptimisticLockAt tr.projAC v r e.msg.slot D CV := by
   intro hopt
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   -- the attestation was signed at `d`, before `y` accepted `W`, before the vote
   rcases tree_accepted hp.run.toLocalRun hy hW with rfl | ⟨i, hik, hA⟩
@@ -232,7 +232,7 @@ theorem ResetPremisesUpTo.row_origin_not_current {b : Time}
   obtain rfl := sign_unique hp.run hv hs₀ hs
   -- `t_m ≤ time r ≤ time d ≤ time i ≤ time k ≤ t_m + Δ`, and the signing is at a public time
   have hkt : tr.time k ≤ sp.ts e.msg.slot + sp.Δ :=
-    (Compose.cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hy hc).2
+    (Compose.cast_head_fcRoot hr hp.run.vstart hy hc).2
   have hrt : sp.ts e.msg.slot ≤ tr.time r := by
     obtain ⟨-, -, -, hsl, -⟩ := hopt
     exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) _).2 (by rw [hsl])
@@ -280,7 +280,7 @@ theorem ResetPremisesUpTo.row_origin_label_lt {b : Time}
     {v : Fin sp.n} (hv : v ∈ H) {d : Nat} (hs : tr.SignAt v d att) (hdk : d < k) {r l : Nat}
     (hrd : r < d) {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g v r l O) :
     l < e.msg.slot := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   obtain ⟨ℓw, D, CV, -, hfl, -⟩ := hp.highOrigin_mem ho
   have hk := (SA.castAt_spec hr hy hc).2.1

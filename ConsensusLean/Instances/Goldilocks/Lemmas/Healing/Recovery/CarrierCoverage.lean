@@ -76,9 +76,8 @@ theorem coverage_of_finalizing_carrier (hp : ResetPremises tr H proposer dg g Δ
     (∀ y ∈ H, ∀ k, tr.IsCall y k → D + sp.Δ ≤ tr.time k →
       Anc (tr.HonestBlocks H) P (tr.state y k).fg.F) ∧
     HighFinalityFrom tr H g (D + sp.Δ) := by
-  have hreq := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  have hfg := Compose.fg_projection _ _ dg H _ tr proposer
-    ⟨hreq.1, hreq.2.1, hreq.2.2.1, hreq.2.2.2, SA.proposal_payload_valid sp _ ro⟩
+  have hfg := Compose.fg_projection_from (fun y _ => Compose.requirements_from sp ro
+      (hp.run.vstart y))
     hp.run.genesis_root_ok hp.run.toLocalRun hp.noColl
   have hst : ∀ {z}, z ∈ H → ∀ i, tr.projFG.store z i = (tr.state z i).fg :=
     fun hz i => by simp only [FGTrace.store, Compose.projFG_state hp.run.toLocalRun hz i]

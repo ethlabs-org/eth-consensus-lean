@@ -31,7 +31,8 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
+  {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-- **Attestations at `m` for a fixed upper proposal** (the

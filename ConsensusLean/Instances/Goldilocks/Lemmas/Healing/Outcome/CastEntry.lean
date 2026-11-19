@@ -32,14 +32,14 @@ theorem ResetPremisesUpTo.cast_entry_below_old {b : Time}
     (hlt : ((tr.state y j).fg.σ E.root).h < ((tr.state y j).fg.σ C.root).h) :
     ∃ O, (∃ v r l, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b) ∧
       Anc (tr.HonestBlocks H) E O := by
-  have hrun := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hrun := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨W, hW, att, ha, v, hv, d, hdj, hs, _, r, hrd, l, O, ho, hEO⟩ :=
     hp.left_entry_origin hy hE hET hEh hEC hlt
   have hlu : l < u := hes ▸ hp.row_origin_label_lt hy hc hW ha hv hs hdj hrd ho
   obtain ⟨_, D, CV, _, hfl, _⟩ := hp.highOrigin_mem ho
   have hrt := hp.fastLock_time_lt hfl hlu
     ((hp.run.time_mono (by clear * - hdj hrd; omega : r ≤ j)).trans
-      (hes ▸ (Compose.cast_head_fcRoot hrun (fun _ => SA.voteStart_initial _) hy hc).2))
+      (hes ▸ (Compose.cast_head_fcRoot hrun hp.run.vstart hy hc).2))
   exact ⟨O, ⟨v, r, l, ho, hrt, (hp.run.time_mono (by clear * - hdj hrd; omega)).trans hjb⟩, hEO⟩
 
 end Consensus.Goldilocks.Healing

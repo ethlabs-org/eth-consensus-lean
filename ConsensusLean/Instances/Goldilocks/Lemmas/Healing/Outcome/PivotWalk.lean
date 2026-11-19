@@ -61,7 +61,7 @@ theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old {b : Time}
     (ho : HighOrigin tr H g x q j O) (hqb : tr.time q ≤ b) :
     SA.HighLocksCompatible (tr.HonestBlocks H) (tr.projAC.state p i)
       (tr.time i) (u - 1) O := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos p; omega
   rw [SA.highLocksCompatible_iff]
   intro l hl _ hlabel L hL hLr
@@ -132,7 +132,7 @@ theorem ResetPremisesUpTo.vote_old_lock_source_before {b : Time}
       ((∃ CV, SA.FastLockAt tr.projAC y r l.slot D CV) ∨
         SA.SlowLockAt tr.projAC y r l.slot D) ∧
       Anc (tr.HonestBlocks H) (ell.frame.viableAncestor L) D := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
   have hslot : sp.slot (tr.time j) = u := ((SA.castAt_spec hr hy hc).2.1).symm.trans hes
   have hclean : cleanLabel sp a + sp.k + 2 ≤ l.slot := by
@@ -158,11 +158,11 @@ theorem ResetPremisesUpTo.vote_old_lock_source_before {b : Time}
     cases hf : l₀.fast with
     | false =>
       obtain ⟨r, hrj, D, hslow, hX⟩ := SA.slow_lock_provenance hr
-          (fun _ => SA.voteStart_initial _) hy j l₀ hl₀ hf
+          hp.run.vstart hy j l₀ hl₀ hf
       exact ⟨r, hrj, D, Or.inr hslow, hX⟩
     | true =>
       obtain ⟨r, hrj, D, CV, hfast, hX⟩ := SA.fast_lock_provenance hr
-        (fun _ => SA.voteStart_initial _) hy j l₀ hl₀ hf
+        hp.run.vstart hy j l₀ hl₀ hf
       exact ⟨r, hrj, D, Or.inl ⟨CV, hfast⟩, hX⟩
   obtain rfl : X = B := hr.coherent.1 hX (hPhiU hB) (hXr.trans hBr.symm)
   have hle : l₀.slot ≤ u := by
@@ -225,8 +225,8 @@ theorem ResetPremisesUpTo.vote_old_live_lock_below_parent {b : Time}
   · exact hp.clean_source_proposal_parent_before hc hy hpH hsource hclean hgap hrb hR
       hci hcall hd hti hib
   have he : u = l.slot + 1 := by clear * - hlu hgap; omega
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  have htj := (Compose.cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hy hcy).2
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
+  have htj := (Compose.cast_head_fcRoot hr hp.run.vstart hy hcy).2
   rw [hes, he] at htj
   have hrt := hp.run.time_mono hrj.le
   have hts : sp.ts (l.slot + 1 : Nat) = sp.ts l.slot + 4 * sp.Δ := by

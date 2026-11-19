@@ -127,7 +127,8 @@ theorem carryAt_of_writer_window (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
 above the voter's `Σ.F` that an honest writer accepted in `[a₀, t_s + 2Δ)`, under `Sync[a₀, b]`
 with `t_s + 2Δ ≤ b`, is in the voter block tree of every honest vote of a slot `> s` (relayed to
 the voter, joined at its vote, before `t_{s} + 3Δ`, at or before its vote freeze). -/
-theorem relay_mem_voterBlockTree (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+theorem relay_mem_voterBlockTree {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
     {a₀ b : Time} (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U a₀ b T) {w : Fin sp.n}
     (hw : w ∈ H) {kw : Nat} {W : SA.Blk sp.n FGP} (hkw : T.AcceptAt w kw W)
     (ha₀ : a₀ ≤ T.time kw) {s : Nat} (hkwt : T.time kw < sp.ts s + 2 * sp.Δ)
@@ -147,7 +148,7 @@ theorem relay_mem_voterBlockTree (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
     have hj' : SA.joined sp (T.post i) (T.time i) := by
       unfold SA.joined; rw [SA.restartTime_of_castAt hr hy hc]; exact hyj
     intro k hk hrk
-    have := ((SA.joined_awake sp) FGP ro H U T hr y hy i ℓ hc.1 hj').2 k hk hrk
+    have := (SA.joined_awakeU sp FGP ro H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
     rwa [← hys] at this
   have hdl : ∀ k ≤ i, T.deadline y k (T.time kw) < sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ := by
     intro k hk
@@ -168,7 +169,7 @@ theorem relay_mem_voterBlockTree (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
     linarith only [hkyt, this]
   have hfz : SA.freeze sp e.msg.slot ≤ T.time i := by unfold SA.freeze; linarith only [hΔ, hm, hti]
   have hWt := SA.mem_tree_of_acceptAt sp hr hy hacc hky hc.1 hF
-  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr (fun _ => SA.voteStart_initial _)
+  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hini
     hy hc.1 hWt (Or.inr ⟨ky, hacc, hkyt'⟩)
     (fun k hk hrk => lt_of_le_of_lt (hrsy k hk hrk) (by unfold SA.freeze; linarith only [hΔ]))
     (Or.inl hfz)
@@ -207,7 +208,7 @@ private theorem relay_mem_voterBlockTree_window_aux
     have hj' : SA.joined sp (T.post i) (T.time i) := by
       unfold SA.joined; rw [SA.restartTime_of_castAt hr hy hc]; exact hyj
     intro k hk hrk
-    have := ((SA.joined_awake sp) FGP ro H U T hr y hy i ℓ hc.1 hj').2 k hk hrk
+    have := (SA.joined_awakeU sp FGP ro H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
     rwa [← hys] at this
   have hdl : ∀ k ≤ i, T.deadline y k (T.time kw) < sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ := by
     intro k hk
@@ -455,7 +456,7 @@ theorem voterBlockTree_of_relay_source
       have hj' : SA.joined sp (T.post i) (T.time i) := by
         unfold SA.joined; rw [SA.restartTime_of_castAt hr hy hc]; exact hyj
       intro k hk hrk
-      have ht := ((SA.joined_awake sp) FGP ro H U T hr y hy i ℓ hc.1 hj').2 k hk hrk
+      have ht := (SA.joined_awakeU sp FGP ro H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
       rw [← hys] at ht
       unfold SA.freeze
       linarith only [hΔ, ht]

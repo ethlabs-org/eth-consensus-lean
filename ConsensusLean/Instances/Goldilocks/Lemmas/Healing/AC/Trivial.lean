@@ -104,7 +104,7 @@ theorem stamp_lt_of_heldU
     (hta : ∀ k < a, tr.time k < T) (hwT : sp.ts w.slot + sp.Δ < T) (hgT : gbar g < T)
     (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) :
     w ∈ (tr.state y b).pool w.slot ∧ (tr.state y b).voteStamp w < ETime.of T :=
-  stamp_lt_of_held_of_runU hS.run.localRun (fun _ => voteStart_initial _) hy hab hw hta hwT
+  stamp_lt_of_held_of_runU hS.run.localRun hS.run.vstart hy hab hw hta hwT
     (fun _ _ hk => (hS.restart_le hy hk).trans_lt hgT) hnr
 
 private theorem admitVote_pool_ne {A : SAState sp.n} {t : Time} {v : Vote sp.n} {σ : Nat}

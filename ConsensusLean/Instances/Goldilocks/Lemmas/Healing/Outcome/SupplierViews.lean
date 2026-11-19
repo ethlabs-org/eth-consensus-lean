@@ -140,7 +140,7 @@ theorem ResetPremisesUpTo.reset_winner_voter_tree {b : Time}
     (hCP : Anc (tr.HonestBlocks H) C P)
     (haC : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time j)) C) :
     C ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
   have hfC := ((SA.fcRoot_anc_getAnchor hPhi e.readPoint (tr.time j)).mono hPhiU).trans haC
   have hFC := (hPhi.F_anc_fcRoot.mono hPhiU).trans hfC
@@ -150,7 +150,7 @@ theorem ResetPremisesUpTo.reset_winner_voter_tree {b : Time}
   obtain ⟨W, hW, hWv, hPW⟩ := hP.2.2
   have hCs : C ∈ SA.voterBlockTree sp e.readPoint ell.frame u := by
     rw [← hes] at hP ⊢
-    exact SA.voterBlockTree_anc hr (fun _ => SA.voteStart_initial _) hy hc P hP.1 C hCP'
+    exact SA.voterBlockTree_anc hr hp.run.vstart hy hc P hP.1 C hCP'
   exact ⟨hCs, hfC', W, hW, hWv, hCP'.trans hPW⟩
 
 /-- Any ancestor of a viable current proposal above the voter's anchor is in its viable tree.
@@ -391,7 +391,7 @@ theorem ResetPremisesUpTo.reset_parent_viable_of_children {b : Time}
     (hBv : B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u))
     (hQold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
       Anc (tr.HonestBlocks H) O Q) : Q ∈ ell.frame.viableHeads := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
   obtain ⟨hQt, hfQ'⟩ := parent_mem_frame_of_children hr.coherent hPhi hPhiU hQU hPQ hBQ hBP
     hPv.1.1 hPv.2.1 hBv.1.1 hBv.2.1
@@ -450,7 +450,7 @@ theorem ResetPremisesUpTo.reset_stop_at_parent {b : Time}
       {B | B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)) ∧
         B.parent = some P.root ∧ SA.goldfishEligible sp elly.frame (tr.time j)
           (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B} C := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hac.localRun
   have hPhiU := (SA.frameIn_of_callAt hr hpH hci).2
   have hPsiU := (SA.frameIn_of_callAt hr hy hcy.1).2
@@ -509,7 +509,7 @@ theorem reset_stop_at_parent
       {B | B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)) ∧
         B.parent = some P.root ∧ SA.goldfishEligible sp elly.frame (tr.time j)
           (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B} C := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hca := cutZ_lt_reset hp.run hp.healthy hp.reset
   have hcut := lt_cutZ (sp := sp) g
   have hga0 := SA.gbar_nonneg g

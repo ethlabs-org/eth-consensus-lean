@@ -20,7 +20,7 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF a : Time}
 
 /-- A bounded clean source is below the head of an actual later-label honest cast.
 The cast's agreement with the operational proposal is supplied explicitly. -/
@@ -53,7 +53,7 @@ theorem ResetPremisesUpTo.same_slot_source_below_unanimous {b : Time}
     (hPU : P ∈ tr.HonestBlocks H)
     (hun : ∀ z ∈ H, ∀ q e, SA.VoteAt tr.projAC z q e → tr.time q ≤ b →
       e.msg.slot = u → e.msg.head = P.root) : Anc (tr.HonestBlocks H) B P := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have below : ∀ z ∈ H, ∀ q ≤ r, ∀ e, SA.VoteAt tr.projAC z q e → e.msg.slot = u →
       SA.VoteExtends (tr.HonestBlocks H) e.msg B → Anc (tr.HonestBlocks H) B P := by
     rintro z hz q hqr e hv hes ⟨D, hD, hDr, hBD⟩
@@ -89,7 +89,7 @@ theorem ResetPremisesUpTo.call_locks_compatible_of_unanimous {b : Time}
       Compatible (tr.HonestBlocks H) B P) :
     ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y j).locks ell.frame (tr.time j),
       Compatible (tr.HonestBlocks H) L P := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcall
   have hDelta := sp.toParams.hΔ
   rintro L ⟨hLt, l', ⟨l, hl, B, hB, hBr, hlive, rfl⟩, hLr⟩
@@ -101,11 +101,11 @@ theorem ResetPremisesUpTo.call_locks_compatible_of_unanimous {b : Time}
     cases hf : l.fast with
     | false =>
       obtain ⟨r, hrj, D, hs, hX⟩ := SA.slow_lock_provenance hr
-          (fun _ => SA.voteStart_initial _) hy j l hl hf
+          hp.run.vstart hy j l hl hf
       exact ⟨r, hrj, D, Or.inr hs, hX⟩
     | true =>
       obtain ⟨r, hrj, D, CV, hf, hX⟩ := SA.fast_lock_provenance hr
-        (fun _ => SA.voteStart_initial _) hy j l hl hf
+        hp.run.vstart hy j l hl hf
       exact ⟨r, hrj, D, Or.inl ⟨CV, hf⟩, hX⟩
   have hXB : X = B := hr.coherent.1 hX (hPhiU hB) (hXr.trans hBr.symm)
   rw [hXB] at hXD
@@ -115,7 +115,7 @@ theorem ResetPremisesUpTo.call_locks_compatible_of_unanimous {b : Time}
   have hDP : Compatible (tr.HonestBlocks H) D P := by
     by_cases hlu : l.slot < u
     · have hs := drain_live_locks
-        (SA.locksWF_state hr (fun _ => SA.voteStart_initial _) hy j) hafter _
+        (SA.locksWF_state hr hp.run.vstart hy j) hafter _
         ⟨l, hl, B, hB, hBr, hlive, rfl⟩
       obtain ⟨z, hz, q, ellq, e, hcast, hqb, hes⟩ := hvote
       exact Or.inl (hp.clean_source_below_cast hc hy hz horig hs hrb hcast hqb
@@ -214,7 +214,7 @@ theorem ResetPremisesUpTo.ready_update_selection_of_pool {b : Time}
       tr.projAC.post j = SA.updateConfirmation sp (tr.projAC.state y j) ell.frame (tr.time j) u ∧
       (tr.projAC.post j).latestConfirmed =
         (SA.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hu.1
   let A := tr.projAC.state y j
   have hHvot : H ⊆ SA.voters {v | v ∈ A.pool u} := fun v hv => by
@@ -236,7 +236,7 @@ theorem ResetPremisesUpTo.ready_update_selection_of_pool {b : Time}
     refine ⟨?_, vote, ⟨hm, hres⟩, he, ?_, P, hPt, hh.symm, .refl⟩
     · rintro ⟨x, hx, z, hz, hne, hxv, hzv⟩
       exact hne ((huniq x hx hxv).trans (huniq z hz hzv).symm)
-    · exact_mod_cast SA.state_pool_slot sp hr (fun _ => SA.voteStart_initial _) hy j u vote hm
+    · exact_mod_cast SA.state_pool_slot sp hr hp.run.vstart hy j u vote hm
   have hconf : SA.getConfirmation sp A ell.frame u = some P := by
     unfold SA.getConfirmation
     have hPS : P ∈ {B | B ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.F B ∧
@@ -481,7 +481,7 @@ theorem reset_support_frame
       simp only [SA.voteViewList, SA.SAState.poolAt, Int.toNat_natCast, List.filter_filter,
         List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
         Bool.and_eq_true, decide_eq_true_eq] at hv
-      rw [SA.state_pool_slot sp hr (fun _ => SA.voteStart_initial _) hP.1 i s v hv.1]
+      rw [SA.state_pool_slot sp hr hp.run.vstart hP.1 i s v hv.1]
     obtain ⟨B', hB', hBr', -⟩ := hsup v (by rw [SA.blockSupport, hpay]; exact hv) hvs
     rwa [hr.coherent.1 ((SA.frameIn_of_callAt hr hP.1 hci).2 hB)
       ((SA.frameIn_of_callAt hr hy hcy.1).2 hB') (hBr.trans hBr'.symm)]
@@ -540,7 +540,7 @@ theorem reset_views_agree
       ∀ X ∈ ellp.frame.tree, X ∈ elly.frame.tree →
         SA.supporters ellp.frame (SA.View.ofLists pay) s X =
           SA.supporters elly.frame (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s X := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.goldilocks_ac_projection_from hp.run hp.noColl
   have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
     tr proposer ΔF (sp.ts s) (sp.ts (s + 1 : Nat)) hp.run.toLocalRun
     (syncRun_of_gst hp.healthy.1 ((SA.le_gbar g).trans hg))
@@ -590,7 +590,7 @@ theorem ResetPremisesUpTo.reset_support_frame {b : Time}
       simp only [SA.voteViewList, SA.SAState.poolAt, Int.toNat_natCast, List.filter_filter,
         List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
         Bool.and_eq_true, decide_eq_true_eq] at hv
-      rw [SA.state_pool_slot sp hr (fun _ => SA.voteStart_initial _) hpH i s v hv.1]
+      rw [SA.state_pool_slot sp hr hp.run.vstart hpH i s v hv.1]
     obtain ⟨B', hB', hBr', _⟩ := hsup v (by rw [SA.blockSupport, hpay]; exact hv) hvs
     rwa [hr.coherent.1 ((SA.frameIn_of_callAt hr hpH hci).2 hB)
       ((SA.frameIn_of_callAt hr hy hcy.1).2 hB') (hBr.trans hBr'.symm)]
@@ -653,7 +653,7 @@ theorem ResetPremisesUpTo.reset_views_agree {b : Time}
       ∀ X ∈ ellp.frame.tree, X ∈ elly.frame.tree →
         SA.supporters ellp.frame (SA.View.ofLists pay) s X =
           SA.supporters elly.frame (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s X := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.goldilocks_ac_projection_from hp.run hp.noColl
   have hsync := hp.sync.syncAC (hi := sp.ts (s + 1 : Nat)) hp.run ((SA.le_gbar g).trans hg)
   apply SA.view_agree hac hpH hy hdesignated ⟨hci, hcall, d, hd⟩ hti hcy
     ⟨P, hPy, hPs, hpay⟩ hsync

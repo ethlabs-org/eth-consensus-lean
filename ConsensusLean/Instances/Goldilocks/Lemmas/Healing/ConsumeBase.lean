@@ -51,11 +51,12 @@ theorem FirstCutAfter.le_of_le {N S L : Type} {tr : Trace N S L} {j₁ j₂ : Na
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {proposer : Nat → Fin sp.n}
 
 /-- Under `Healthy(g)` (an honest node awake from `ḡ` on, so a cut after every time), the first
 cut after any time `T` exists. -/
-theorem exists_firstCutAfter_of_healthy (hrun : GoldilocksRun proposer dg H tr)
+theorem exists_firstCutAfter_of_healthy (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H dg g ΔF) {y : Fin sp.n} (hy : y ∈ H) (T : Time) :
     ∃ j, FirstCutAfter tr j T := by
   classical
@@ -124,7 +125,7 @@ theorem slot_le_of_anc {S : Set (SA.Blk sp.n (List (FG.Att sp.n)))} (hS : Cohere
 
 /-- **Heights at a cut of the phase are at most its frontier** (a held block at a cut `k ≤ j`,
 with the phase at `j`). -/
-theorem h_le_of_phaseAt (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem h_le_of_phaseAt (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
     {k j : Nat} (hkj : k ≤ j) (hph : PhaseAt tr.projFG H j m c)
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y k).fg.tree) :
@@ -140,7 +141,7 @@ theorem h_le_of_phaseAt (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.N
 /-- **A block of state height `m` is allowed** in the geometry of the phase `(m, c)` at a cut of
 the phase: its height is at least the floor, and in the top-`J` case it extends `J` (otherwise it
 would be a contest against `J`). -/
-theorem effAllowed_of_height (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+theorem effAllowed_of_height (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H)
     {m k : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
     (hph : PhaseAt tr.projFG H k m c) {X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state y k).fg.tree) (hXh : ((tr.state y k).fg.σ X.root).h = m) :
@@ -155,7 +156,7 @@ theorem effAllowed_of_height (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp
 
 /-- **A block above the floor is allowed** at a cut of the phase `(m, c)`: its height is at most
 the frontier `m`, so in the top-`J` case (floor `m − 1`) it is `m` (`effAllowed_of_height`). -/
-theorem effAllowed_of_floor_lt (hrun : GoldilocksRun proposer dg H tr)
+theorem effAllowed_of_floor_lt (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {m k : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
     (hph : PhaseAt tr.projFG H k m c) {X : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -201,11 +202,12 @@ theorem toFG_mem_tree {ini} (hrun : GoldilocksRun proposer dg H tr ini)
 
 /-- **An honest vote of slot `z` is cast by `t_z + Δ`** (the vote guard;
 `Compose.cast_head_fcRoot`). -/
-theorem cast_time_le_slot (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem cast_time_le_slot (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC y k ℓ e) :
     tr.time k ≤ sp.ts e.msg.slot + sp.Δ :=
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.goldilocks_ac_projection_from hrun hnc
   (Compose.cast_head_fcRoot hac.localRun hac.vstart hy hv).2
 
 end Consensus.Goldilocks.Healing

@@ -297,7 +297,7 @@ theorem joined_state {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
     (ht : gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)) :
     joined sp (tr.state y i) (tr.time i) := by
   unfold joined
-  rcases restartTime_stateU hS.run.localRun (fun _ => voteStart_initial _) hy i with
+  rcases restartTime_stateU hS.run.localRun hS.run.vstart hy i with
     h | ⟨k, -, hrk, h⟩
   · rw [h]; exact bot_le
   · rw [h]; exact WithBot.coe_le_coe.mpr ((hS.restart_le hy hrk).trans ht)

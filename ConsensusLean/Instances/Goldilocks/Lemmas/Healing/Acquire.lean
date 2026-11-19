@@ -37,7 +37,8 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
+  {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-! ## Time -/
@@ -69,7 +70,8 @@ private theorem rTime_eq (w : Time) :
 sandwich; HR.2): if the phase at `j` is the phase at `i₀`, it is `(m, c)` at every cut of
 `[i₀, j]` (vacuous when `j < i₀`): the frontier is squeezed to `m` (`Σ.h_max` only grows), and
 then the case rank is squeezed and the top `J` kept (`phaseAt_mono`). -/
-theorem phaseOn_of_not_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem phaseOn_of_not_changed (hrun : GoldilocksRun proposer dg H tr ini)
+    (hs : HSShared tr H dg g ΔF)
     (hset : SettledIn tr H g w i₀ m c) {j : Nat} (hnc : ¬ PhaseChanged tr.projFG H i₀ j) :
     PhaseOn tr.projFG H i₀ j m c := by
   obtain ⟨hfg, hq⟩ := fg_run_of_hs hrun hs
@@ -83,7 +85,7 @@ theorem phaseOn_of_not_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSS
 /-! ## Store facts -/
 
 /-- Ancestry inside the honest blocks does not lower the state height, across honest stores. -/
-private theorem h_le_of_anc_run (hrun : GoldilocksRun proposer dg H tr)
+private theorem h_le_of_anc_run (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {k j : Nat}
     {X C : SA.Blk sp.n (List (FG.Att sp.n))} (hXC : Anc (tr.HonestBlocks H) X C)
@@ -152,7 +154,7 @@ theorem ready_protected (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
       linarith only [hr, hΔ, ha, hrr, hkΔ, hts1, ht, this]
     have := hrun.time_mono hij
     linarith only [hΔ, ht, this]
-  have hacr := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hs.noColl
+  have hacr := Compose.goldilocks_ac_projection_from hrun hs.noColl
   have hvotes : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       PhaseOn tr.projFG H i₀ k m c := fun y hy k ℓ e hv he => by
     refine hon k (not_le.1 fun hle => ?_)
@@ -170,7 +172,7 @@ theorem ready_protected (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
 
 /-- **A ready proposal of the settled phase is allowed**
 (`AcquireSources.proposal_allowed` for the ready proposal). -/
-theorem ready_allowed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem ready_allowed (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hset : SettledIn tr H g w i₀ m c) {p : Fin sp.n}
     {kP s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H proposer p kP s P)
     (hws : w ≤ sp.ts s) (hon : PhaseOn tr.projFG H i₀ kP m c) :
@@ -255,7 +257,7 @@ theorem descendant_source_parent (hrun : GoldilocksRun proposer dg H tr)
   obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hΦ hB₀
   obtain rfl : C = ℓ.frame.viableAncestor B₀ := hΦ.coherent.1 hCv.1 hvat hlC.symm
   have hclean :=
-    (live_lock_clean (hr.trans hk) (SA.locksWF_state hr' (fun _ => SA.voteStart_initial _) hy k)
+    (live_lock_clean (hr.trans hk) (SA.locksWF_state hr' hrun.vstart hy k)
     ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive, rfl⟩).1 hlf
   dsimp only at hclean
   obtain ⟨r, hrk, CV, ℓw, D, hcw, hfl, L₁, hL₁, hL₁r, hL₁O⟩ :=
@@ -349,7 +351,7 @@ theorem descendant_source_parent (hrun : GoldilocksRun proposer dg H tr)
 protected ready proposal `W` of slot `s`, allowed, with `ht(W) ∈ {ℓ, m}`, whose height every
 honest node receives as a current source `C ⪰ W` in `[t_s, t_s + 6Δ]`: `C`'s entry at `ht(W)` is
 `W`'s (entry constancy), and `C` is allowed (it extends the allowed `W`). -/
-private theorem acquired_of_sources (hrun : GoldilocksRun proposer dg H tr)
+private theorem acquired_of_sources (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H dg g ΔF)
     {s kW : Nat} {W : SA.Blk sp.n (List (FG.Att sp.n))}
     (hW : ReadyProposal tr H proposer (proposer s) kW s W)

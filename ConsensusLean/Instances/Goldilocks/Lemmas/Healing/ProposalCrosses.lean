@@ -164,7 +164,8 @@ section Run
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {proposer : Nat → Fin sp.n}
 
 /-- **The crossing at an honest proposal**: an honest proposal `X` at the cut `kX` on the parent
 `Pr` of the proposer's tree, `σ = σ[Pr]`, at a slot `≥ σ.ThSlot + δ_t`, and a set `S ⊆ H` of weight
@@ -172,7 +173,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 `(σ.h, σ.T_h)` that the proposer processed before `kX`: `X` enters the next height as its own entry;
 it has its previous height justified exactly when `X` justified `(σ.h, σ.T_h)`, and then, at a
 height whose previous height is justified, `h_F = σ.h_j`. -/
-theorem cross_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem cross_of_rows (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
     (hPr : Pr ∈ (tr.state p kX).fg.tree)

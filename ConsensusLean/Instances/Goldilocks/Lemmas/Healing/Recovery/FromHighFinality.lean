@@ -201,7 +201,7 @@ theorem late_write_high (hp : ResetPremises tr H proposer dg g ΔF a) (hgT : gba
     (hjoin : SA.joined sp (tr.state x i).ac (tr.time i)) :
     T < sp.ts s ∧ HighOrigin tr H g x i s B := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨ℓ, D, hc, hfl, rfl⟩ := hwrite
   have hcall : tr.IsCall x i := ⟨_, Compose.projAC_callAt.1 hc⟩
   have h0 : 0 ≤ tr.time i := hp.run.time_nonneg i
@@ -223,7 +223,7 @@ theorem late_write_high (hp : ResetPremises tr H proposer dg g ΔF a) (hgT : gba
     have hnrx : ¬ tr.RestartAt x i := fun h => by
       have := hnr x hx i h
       linarith [SA.gbar_nonneg g]
-    exact ((Compose.joined_projection sp ro dg H tr proposer hp.run x hx (tr.time i)).2.1 i
+    exact ((Compose.joined_projection_from hp.run hx (tr.time i)).2.1 i
       hcall hnrx rfl).2 hjoin
   · -- the stored block is above the high `Σ.F` of the writer
     obtain ⟨ℓ', hc', hD⟩ := fastLock_mem hfl

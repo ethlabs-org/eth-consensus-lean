@@ -43,11 +43,11 @@ theorem ResetPremisesUpTo.cutZ_le_ts_of_highOrigin {b : Time}
     {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
     cutZ sp.toParams g ≤ sp.ts j := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨ℓ, D, CV, hc, hfl, -, -, -, hBD, -⟩ := hp.highOrigin_mem ho
   obtain ⟨v, hv⟩ := fastLock_counted_nonempty (by rw [hp.stock]; exact sp.toParams.hn) hfl
   obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHv⟩, -, hDHv, hacc⟩ := fastLock_writer hr
-    (fun _ => SA.voteStart_initial _) ho.1 hfl v hv
+    hp.run.vstart ho.1 hfl v hv
   have hBHv : Anc (tr.HonestBlocks H) B Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr ho.1 hc).2 hBD).trans hDHv
   rcases hacc with hg | ⟨k, hk, hkt⟩
@@ -274,7 +274,7 @@ private theorem vote_F_anc (hp : ResetPremises tr H proposer dg g ΔF a) (k : Na
     (hc : SA.CastAt tr.projAC y k ℓ e) (hj : j < e.msg.slot)
     (hroot : ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
     Anc (tr.HonestBlocks H) ℓ.frame.F B := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
   have hts' : sp.ts e.msg.slot ≤ tr.time k :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr (by rw [(SA.castAt_spec hr hy hc).2.1])
@@ -302,11 +302,11 @@ theorem ResetPremisesUpTo.high_origin_held_at_vote {b : Time}
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ell e) (hj : j < e.msg.slot)
     (hF : Anc (tr.HonestBlocks H) ell.frame.F B) : B ∈ (tr.state y k).fg.tree := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨ellw, D, CV, hcw, hflw, -, -, -, hBD, -⟩ := hp.highOrigin_mem ho
   obtain ⟨v, hv⟩ := fastLock_counted_nonempty (by rw [hp.stock]; exact sp.toParams.hn) hflw
   obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr
-    (fun _ => SA.voteStart_initial _) ho.1 hflw v hv
+    hp.run.vstart ho.1 hflw v hv
   have hBHv : Anc (tr.HonestBlocks H) B Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr ho.1 hcw).2 hBD).trans hDHv
   rcases hacc with hg | ⟨kw, hkw, hkwt⟩
@@ -318,7 +318,8 @@ theorem ResetPremisesUpTo.high_origin_held_at_vote {b : Time}
     have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
     change g ≤ tr.time kw
     linarith
-  have hHvT := relay_mem_voterBlockTree hr (hp.sync.syncAC hp.run le_rfl) ho.1 hkw hkwg
+  have hHvT := relay_mem_voterBlockTree hr hp.run.vstart
+      (hp.sync.syncAC hp.run le_rfl) ho.1 hkw hkwg
     hkwt le_rfl hy hc hj (hF.trans hBHv)
   exact hp.mem_tree_of_anc hy hBHv (hp.frame_tree_subset hy hc.1 hHvT.1)
 
@@ -454,7 +455,7 @@ theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat
     (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor) :
     ∃ D ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
       Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hU := honest_coherent hp
   have hreach := Compose.fg_reachable hp.run.toLocalRun hy k
   have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, k, hX⟩
@@ -546,7 +547,7 @@ theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat
   obtain ⟨ℓw, D, CV, hcw, hflw, -, -, -, hOD, -⟩ := highOrigin_mem hp hoO
   obtain ⟨u, hu⟩ := fastLock_counted_nonempty (by rw [hp.stock]; exact sp.toParams.hn) hflw
   obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr
-    (fun _ => SA.voteStart_initial _) hoO.1 hflw u hu
+    hp.run.vstart hoO.1 hflw u hu
   have hOHv : Anc (tr.HonestBlocks H) O Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr hoO.1 hcw).2 hOD).trans hDHv
   rcases hacc with hg | ⟨kw, hkw, hkwt⟩
@@ -559,7 +560,8 @@ theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat
     change g ≤ tr.time kw
     linarith
   have hlm := row_origin_label_lt hp hy hc hW ha hv hsd hd₁ hrd hoO
-  have hHvT := relay_mem_voterBlockTree hr (sync_after hp (sp.ts l + 2 * sp.Δ)) hoO.1 hkw hkwg
+  have hHvT := relay_mem_voterBlockTree hr hp.run.vstart (sync_after hp
+      (sp.ts l + 2 * sp.Δ)) hoO.1 hkw hkwg
     hkwt le_rfl hy hc (by clear * - hlm; omega) (hF.trans (hBO.trans hOHv))
   have hHvy : Hv ∈ (tr.state y k).fg.tree := frame_tree_subset hp hy hc.1 hHvT.1
   have hh := h_le_of_store_anc hreach (anc_tree_of_anc hp hy (hEO.trans hOHv) hHvy)
@@ -582,11 +584,11 @@ theorem ResetPremisesUpTo.raw_target_frozen_witness {b : Time}
     (hfloor : (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h) :
     ∃ D ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
       Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨ellw, D, CV, hcw, hflw, -, -, -, hOD, -⟩ := hp.highOrigin_mem ho
   obtain ⟨u, hu⟩ := fastLock_counted_nonempty (by rw [hp.stock]; exact sp.toParams.hn) hflw
   obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr
-    (fun _ => SA.voteStart_initial _) ho.1 hflw u hu
+    hp.run.vstart ho.1 hflw u hu
   have hOHv : Anc (tr.HonestBlocks H) O Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr ho.1 hcw).2 hOD).trans hDHv
   rcases hacc with hg | ⟨kw, hkw, hkwt⟩
@@ -598,7 +600,8 @@ theorem ResetPremisesUpTo.raw_target_frozen_witness {b : Time}
     have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
     change g ≤ tr.time kw
     linarith
-  have hHvT := relay_mem_voterBlockTree hr (hp.sync.syncAC hp.run le_rfl) ho.1 hkw hkwg
+  have hHvT := relay_mem_voterBlockTree hr hp.run.vstart
+      (hp.sync.syncAC hp.run le_rfl) ho.1 hkw hkwg
     hkwt le_rfl hy hc hl (hFB.trans (hBO.trans hOHv))
   have hHvy : Hv ∈ (tr.state y k).fg.tree := hp.frame_tree_subset hy hc.1 hHvT.1
   have hh := h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun hy k)
@@ -626,11 +629,11 @@ theorem vote_height_lead (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
   swap
   · exact height_lead_above hp k ih ho hy hc hj hF (not_le.mp hfl)
   -- the floor is at most the height of `B`: a counted head of the origin, relayed in time
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨ℓw, D, CV, hcw, hflw, -, -, -, hBD, hBx⟩ := highOrigin_mem hp ho
   obtain ⟨v, hv⟩ := fastLock_counted_nonempty (by rw [hp.stock]; exact sp.toParams.hn) hflw
   obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr
-    (fun _ => SA.voteStart_initial _) ho.1 hflw v hv
+    hp.run.vstart ho.1 hflw v hv
   have hBHv : Anc (tr.HonestBlocks H) B Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr ho.1 hcw).2 hBD).trans hDHv
   rcases hacc with hg | ⟨kw, hkw, hkwt⟩
@@ -642,7 +645,8 @@ theorem vote_height_lead (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
     have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
     change g ≤ tr.time kw
     linarith
-  have hHvT := relay_mem_voterBlockTree hr (sync_after hp (sp.ts j + 2 * sp.Δ)) ho.1 hkw hkwg
+  have hHvT := relay_mem_voterBlockTree hr hp.run.vstart (sync_after hp
+      (sp.ts j + 2 * sp.Δ)) ho.1 hkw hkwg
     hkwt le_rfl hy hc (by clear * - hj; omega) (hF.trans hBHv)
   have hHvy : Hv ∈ (tr.state y k).fg.tree := frame_tree_subset hp hy hc.1 hHvT.1
   have hBy := mem_tree_of_anc hp hy hBHv hHvy
@@ -826,13 +830,13 @@ theorem ResetPremisesUpTo.first_carry_of_finalized_anc {b : Time}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y k ℓ e)
     (hs : e.msg.slot = j + 1) (hF : Anc (tr.HonestBlocks H) ℓ.frame.F B) :
     SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨ℓw, D, hcw, hflD, rfl⟩ := hfl
   obtain ⟨ℓ', hc', hD⟩ := fastLock_mem hflD
   obtain rfl : ℓw = ℓ' := Option.some.inj (hcw.2.symm.trans hc'.2)
   have hBD : Anc (tr.HonestBlocks H) (ℓw.frame.viableAncestor D) D :=
     Anc.mono (SA.frameIn_of_callAt hr ho.1 hcw).2 (SA.anc_viableAncestor _ D)
-  have hW := fastLock_writer hr (fun _ => SA.voteStart_initial _) ho.1 hflD
+  have hW := fastLock_writer hr hp.run.vstart ho.1 hflD
   have hgj : g ≤ sp.ts j := by
     have := hp.cutZ_le_ts_of_highOrigin ho
     have := lt_cutZ sp g
@@ -891,7 +895,7 @@ theorem ResetPremisesUpTo.later_carry_of_finalized_anc {b : Time}
     (hprior : ∀ z ∈ H, ∀ q < k, ∀ e', SA.VoteAt tr.projAC z q e' →
       e'.msg.slot = m' → SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
     SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e m' (Compose.honestVotes tr H m') := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hU := hr.coherent
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hone : ∀ v ∈ Compose.honestVotes tr H m',
@@ -906,7 +910,7 @@ theorem ResetPremisesUpTo.later_carry_of_finalized_anc {b : Time}
       clear * - hm' hk' h₁ h₂ hvs; omega
     obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hprior z hz k' hk'k e' ⟨ℓk, hck, he'⟩ hvs
     obtain ⟨⟨Hd, hHd, hHdr, -⟩, hkt⟩ := Compose.cast_head_fcRoot hr
-        (fun _ => SA.voteStart_initial _) hz ⟨hck, he'⟩
+        hp.run.vstart hz ⟨hck, he'⟩
     obtain rfl : Hd = Hv :=
       hU.1 ((SA.frameIn_of_callAt hr hz hck).2 hHd) hHv (hHdr.trans hHvr.symm)
     have hkt' : tr.projAC.time k' < sp.ts m' + 2 * sp.Δ := by

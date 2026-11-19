@@ -141,7 +141,7 @@ theorem ResetPremisesUpTo.proposal_relay_high {b : Time}
     (hct : tr.time c < sp.ts ((u : Int) - 1) + 2 * sp.Δ)
     (hFB : Anc (tr.HonestBlocks H) ell.frame.F B) :
     B ∈ ell.frame.tree ∧ SA.AcceptedBefore tr.projAC p B (sp.ts ((u : Int) - 1) + 3 * sp.Δ) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hΔ := sp.toParams.hΔ
   have hgc : g ≤ tr.time c := by
     have := (hp.cutZ_lt_of_anc ho hz (hp.acceptAt_mem hz hacc) hOB).1
@@ -190,7 +190,7 @@ theorem ResetPremisesUpTo.proposal_holds_old {b : Time}
     {x : Fin sp.n} {r l : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) (hrt : tr.time r < sp.ts u) :
     O ∈ ell.frame.tree ∨ Anc (tr.HonestBlocks H) O ell.frame.F := by
-  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hrun := Compose.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hrun.localRun
   have hΔ := sp.toParams.hΔ
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hpH hci
@@ -209,7 +209,7 @@ theorem ResetPremisesUpTo.proposal_holds_old {b : Time}
     have hOB := (hOD.mono (SA.frameIn_of_callAt hr ho.1 hcx).2).trans hDB
     obtain ⟨ellZ, hcz, he⟩ := hv
     obtain ⟨⟨B', hB't, hB'r, _⟩, hjt⟩ := Compose.cast_head_fcRoot hr
-        (fun _ => SA.voteStart_initial _) hz ⟨hcz, he⟩
+        hp.run.vstart hz ⟨hcz, he⟩
     have hEq : B' = B := hr.coherent.1 ((SA.frameIn_of_callAt hr hz hcz).2 hB't) hB
       (hB'r.trans hBr.symm)
     rw [hEq] at hB't
@@ -264,7 +264,7 @@ theorem ResetPremisesUpTo.held_target_proposal_root_before {b : Time}
         have he := Anc.antisymm hp.honest_coherent h hFS
         rw [he, ← hFF]
         exact (SA.frameIn_of_callAt
-          (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+          (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
           hpH hci).1.rooted.1
     exact hp.low_root_of_held_seed_at_call hx hBx hpH hS hci
       (mem_tree_of_frame hp.run hpH hci hSt) hlow hBS hheld

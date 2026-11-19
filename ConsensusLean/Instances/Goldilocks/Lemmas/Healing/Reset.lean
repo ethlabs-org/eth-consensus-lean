@@ -60,17 +60,15 @@ the effective phase after all events at `u` has changed or the run is settled at
 theorem settle {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {g ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
+    {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+        (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (u : Time)
     (hu : gbar g + 8 * sp.Δ ≤ u) (j j' : Nat) (hj : FirstCutAfter tr j u)
     (hj' : tr.FirstCutFrom j' (u + sp.Δ)) :
     PhaseChanged tr.projFG H j j' ∨ SettledAt tr H g (2 * sp.Δ) (u + sp.Δ) := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hreq : (goldilocksNode sp ro).Requirements :=
-    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
-      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
-      SA.proposal_payload_valid sp _ ro⟩
-  have hfg := Compose.fg_projection _ _ dg H _ tr proposer hreq hs.genesisRoot
+  have hfg := Compose.fg_projection_from (fun y _ => Compose.requirements_from sp ro
+      (hrun.vstart y)) hs.genesisRoot
     hrun.toLocalRun hs.noColl
   have hq : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
     change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n
@@ -250,18 +248,16 @@ and `G_p ≥ 0` from `Prop⁺(G_p)` at `ḡ`). -/
 private theorem hs_setup {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun proposer dg H tr)
+    {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp : Time}
+        (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H dg g ΔF) (hp : PropPlus tr H proposer g Gp) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
       Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n ∧ H.Nonempty ∧
       0 ≤ D_HS sp Gp ∧ D_HS sp Gp ≤ A_HS sp ΔF Gp := by
   obtain ⟨hgst, -, hf⟩ := hs.healthy
-  have hreq : (goldilocksNode sp ro).Requirements :=
-    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
-      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
-      SA.proposal_payload_valid sp _ ro⟩
   have hn := sp.toParams.hn
-  refine ⟨Compose.fg_projection _ _ dg H _ tr proposer hreq hs.genesisRoot
+  refine ⟨Compose.fg_projection_from (fun y _ => Compose.requirements_from sp ro
+      (hrun.vstart y)) hs.genesisRoot
     hrun.toLocalRun hs.noColl,
     by change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n; omega, ?_, ?_⟩
   · by_contra h

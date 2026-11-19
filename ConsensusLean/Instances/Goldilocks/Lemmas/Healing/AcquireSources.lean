@@ -220,7 +220,8 @@ end Update
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
+  {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-! ## Run facts -/
@@ -251,7 +252,7 @@ parent's full walk ends at an allowed head (`proposal_head_viable`); `P` is allo
 its `ac_proposal` cut (`Geo.viableHeads_iff`; it holds the phase's evidence from `w` on, and the
 phase's frontier block is a viable head, HS.1), its walk starts in the viable tree and ends at a
 viable head, so an allowed parent, and `P` extends it. -/
-theorem proposal_allowed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem proposal_allowed (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hset : SettledIn tr H g w i₀ m c) {p : Fin sp.n}
     (hpH : p ∈ H) {kP s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hprop : tr.ProposesAt p kP P) (hPs : P.slot = s) (hws : w ≤ sp.ts s)
@@ -259,7 +260,7 @@ theorem proposal_allowed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
     EffAllowed (tr.post kP).fg m c P := by
   have hl := hrun.toLocalRun
   have hnc := hs.noColl
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hU := Compose.honest_blocks_coherent hl hnc
   obtain ⟨iP, ℓp, d, pay, hcP, hcall, hd, ht, hpar, -⟩ := Compose.proposal_data hrun hpH hprop hPs
   -- the `ac_proposal` cut is the cut before the tick's own block call
@@ -343,7 +344,7 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
     ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y k).locks ℓ.frame (tr.time k),
       Compatible (tr.HonestBlocks H) L Y := by
   have hnc := hs.noColl
-  have hr' := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr' := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hU := hr'.coherent
   have hS := healthyBase_of_hs hrun hs hc
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
@@ -378,7 +379,7 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
     intro B hB
     by_cases hBf : Anc (tr.HonestBlocks H) B ℓv.frame.fcRoot
     · obtain ⟨⟨Hd, hHd, hHdr, hfH⟩, -⟩ := Compose.cast_head_fcRoot hr'
-        (fun _ => SA.voteStart_initial _) hy hcastv
+        hrun.vstart hy hcastv
       obtain rfl : Hd = Y := hU.1 (hΦvU hHd) hYU (hHdr.trans hhead)
       exact hBf.trans (Anc.mono hΦvU hfH)
     · obtain ⟨Hd, hHd, hHdr, hBH⟩ := hB hBf
@@ -390,7 +391,7 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
   obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hΦ hB₀
   obtain rfl : L = ℓ.frame.viableAncestor B₀ := hU.1 (hΦU hLt) (hΦU hvat) hLr.symm
   have hclean' := live_lock_clean (hr.trans (by
-      rw [htk]; linarith only [hΔ])) (SA.locksWF_state hr' (fun _ => SA.voteStart_initial _) hy k)
+      rw [htk]; linarith only [hΔ])) (SA.locksWF_state hr' hrun.vstart hy k)
     ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive, rfl⟩
   dsimp only at hclean'
   -- the image is below the stored block `O` of an origin that compares with `Y`
@@ -414,7 +415,7 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
         (hevs ▸ hjs) hvph).1
       exact down _ hLO (Or.inl (below _ fun _ => h.1))
     · obtain ⟨r, hrk, CV, ℓw, D, hcw, hfl, hLO⟩ :=
-        stored_fast_lock_provenance hr' (fun _ => SA.voteStart_initial _) hy k l₀ hl₀ hf
+        stored_fast_lock_provenance hr' hrun.vstart hy k l₀ hl₀ hf
       have hO : Compose.StoredFastLockAt tr y r l₀.slot (ℓw.frame.viableAncestor D) CV :=
         ⟨ℓw, D, hcw, hfl, rfl⟩
       have h := (hfast y hy r l₀.slot _ CV hO (hclean'.1 hf) y hy iv ℓv ev
@@ -444,7 +445,7 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
       hCHd))
   · -- a fast origin of a label `≥ s`: an honest counted vote of its label, `s` or `s + 1`
     obtain ⟨r, hrk, CV, ℓw, D, hcw, hfl, hLO⟩ :=
-      stored_fast_lock_provenance hr' (fun _ => SA.voteStart_initial _) hy k l₀ hl₀ hf
+      stored_fast_lock_provenance hr' hrun.vstart hy k l₀ hl₀ hf
     have hΦwU := (SA.frameIn_of_callAt hr' hy hcw).2
     have hwt : sp.ts l₀.slot ≤ tr.time r := by
       rcases hfl with ⟨ℓ₁, C, ⟨-, -, ht₁, -⟩, -⟩ | ⟨ℓ₁, A, -, hsl₁, -⟩
@@ -506,7 +507,7 @@ theorem protected_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   intro y hy
   have hl := hrun.toLocalRun
   have hnc := hs.noColl
-  have hacr := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hacr := Compose.goldilocks_ac_projection_from hrun hnc
   have hr' := hacr.localRun
   have hU := Compose.honest_blocks_coherent hl hnc
   have hS := healthyBase_of_hs hrun hs hc
@@ -673,7 +674,7 @@ theorem protected_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   by_cases hrep : SA.AncR ℓ.frame C (tr.projAC.state y (j + 1)).fgReported
   · obtain ⟨R, hRt, hRr, hCR⟩ := hrep
     have hYR : Anc (tr.HonestBlocks H) Y R := hYCU.trans (hCR.mono hΦU)
-    rcases fgReported_origin hr' (fun _ => SA.voteStart_initial _) hy (j + 1) with hgen | ⟨k',
+    rcases fgReported_origin hr' hrun.vstart hy (j + 1) with hgen | ⟨k',
       hk', ℓ'', R', hto, hR'r⟩
     · have hG := Store.genesis_mem (Compose.fg_reachable hl hy j)
       have hRG := hU.1 (hΦU hRt) ⟨y, hy, j, hG⟩ (hRr.trans hgen)

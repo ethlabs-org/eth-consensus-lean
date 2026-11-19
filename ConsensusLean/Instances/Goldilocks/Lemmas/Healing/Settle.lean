@@ -179,7 +179,8 @@ theorem state_eq_of_noCall {y : Fin P.n} {j j₂ : Nat} (hle : j ≤ j₂)
       ih fun k hk hk' => h k hk (by omega)]
 
 /-- An honest node holds a block after the cut at which it accepts it. -/
-private theorem accept_mem (hrun : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
+private theorem accept_mem {ini} (hrun : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
+    (hy : y ∈ H)
     {k : Nat} {B : A.Blk} (h : tr.AcceptAt y k B) : B ∈ (tr.state y (k + 1)).fg.tree := by
   rw [tr.state_succ_of_call h,
     (Store.tree_grows P _ _ _ (Compose.fg_reachable hrun hy k)).1 B _ (hrun.cutLaw y hy k _ h).2.1]
@@ -196,7 +197,7 @@ theorem exists_firstCutFrom_le {t : Time} {j : Nat} (hj : t ≤ tr.time j) :
 /-- **`Catch(κ)` read at a later time** `w ≥ ḡ + κ`: `Σ.F` only grows, so a block that extends
 `Σ.F` at `w` extends it at `ḡ + κ`, and was accepted before then. -/
 theorem catchRun_at {g κ : Time} (hc : CatchRun tr H g κ)
-    (hrun : Node.LocalRun proposer dg H sg tr)
+    {ini} (hrun : Node.LocalRun proposer dg H sg tr ini)
     {w : Time} (hw : gbar g + κ ≤ w) :
     ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → tr.time i < gbar g →
       ∀ y ∈ H, ∀ j, tr.FirstCutFrom j w → Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
@@ -212,7 +213,7 @@ held at the state at `w` of every honest `y` whose `Σ.F` there it extends. An a
 `ḡ` is caught up by `ḡ + κ` (`catchRun_at`); a later one is relayed before `τ + Δ` (the deadline
 `max(τ, w_y) + Δ` with `w_y ≤ ḡ ≤ τ`), read at the first call of `y` from `w` on, before which
 `y`'s state, and so its `Σ.F`, is the one at `w`. -/
-theorem relay_held {ΔF g κ : Time} (hrun : Node.LocalRun proposer dg H sg tr)
+theorem relay_held {ΔF g κ : Time} {ini} (hrun : Node.LocalRun proposer dg H sg tr ini)
     (hh : tr.HealthyRun H ΔF g) (hnr : NoRestartAfter tr H (gbar g)) (hc : CatchRun tr H g κ)
     {x y : Fin P.n} (hx : x ∈ H) (hy : y ∈ H) {k₀ : Nat} {B : A.Blk} (hacc : tr.AcceptAt x k₀ B)
     {w : Time} (hκ : gbar g + κ ≤ w) (hk₀ : tr.time k₀ + P.Δ ≤ w) {j : Nat}

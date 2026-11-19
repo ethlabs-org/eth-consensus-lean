@@ -38,7 +38,8 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF w : Time} {i₀ i m : Nat}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF w : Time}
+  {i₀ i m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} {p : Fin sp.n} {kP s : Nat}
   {P : SA.Blk sp.n (List (FG.Att sp.n))} {iP : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
   {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
@@ -68,8 +69,7 @@ d.head` there, and `d.head` is in `U`. -/
 private theorem proposal_walk
     (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) :
     d.start ∈ ℓp.frame.tree ∧ d.head ∈ ℓp.frame.tree ∧ ℓp.frame.Anc d.start d.head := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr
-    proposer hS.run hS.shared.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hS.run hS.shared.noColl).localRun
   have hΦ := (SA.frameIn_of_callAt hr hS.ready.1 hS.call).1
   obtain ⟨⟨A₁, hst⟩, hhd⟩ := acProposal_spec hS.payload
   have hst' : d.start ∈ ℓp.frame.tree := hst ▸ Compose.anchor_tree hΦ A₁ _
@@ -102,8 +102,7 @@ theorem voter_anchor_below
     (hIH : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = s →
       e'.msg.head = P.root) :
     Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) P := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr
-    proposer hS.run hS.shared.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hS.run hS.shared.noColl).localRun
   obtain ⟨-, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hfP : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P :=
     (proposal_frozen_viable hS hy hcy hes).2.1.mono hΦU
@@ -124,8 +123,7 @@ private theorem start_anc_proposal
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) : Anc (tr.HonestBlocks H) d.start P := by
-  have hr' := (Compose.goldilocks_ac_projection sp ro dg H tr
-    proposer hS.run hS.shared.noColl).localRun
+  have hr' := (Compose.goldilocks_ac_projection_from hS.run hS.shared.noColl).localRun
   obtain ⟨-, hdt, hsd⟩ := proposal_walk hS
   obtain ⟨-, hΦpU⟩ := SA.frameIn_of_callAt hr' hS.ready.1 hS.call
   obtain ⟨-, hΦU⟩ := SA.frameIn_of_callAt hr' hy hcy.1
@@ -148,7 +146,7 @@ private theorem walk_passes_start
         (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)) := by
   have hrun := hS.run
   have hnc := hS.shared.noColl
-  have hr' := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr' := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr' hy hcy.1
   have hsP := start_anc_proposal hS hy hcy hes
@@ -220,8 +218,7 @@ theorem proposal_stop
       {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
         B.parent = some P.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
           (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr
-    proposer hS.run hS.shared.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hS.run hS.shared.noColl).localRun
   have hU := Compose.honest_blocks_coherent hS.run.toLocalRun hS.shared.noColl
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hPs : P.slot = s := hS.ready.2.2.2.2.1
@@ -272,7 +269,7 @@ theorem viableHead_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer d
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓ e)
     (hPs : P.slot = s) (hP : P ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s)) :
     P ∈ ℓ.frame.viableHeads := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   obtain ⟨-, -, W, hW, hWv, hPW⟩ := hP
@@ -302,7 +299,7 @@ theorem frozen_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer dg H 
     ∀ X, Anc (tr.HonestBlocks H) X P →
       X ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s) ∨
       Anc (tr.HonestBlocks H) X ℓ.frame.fcRoot := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   refine ⟨Or.inl ⟨viableHead_of_viableTree hrun hnc hy hcy hPs hP, hP⟩, fun X hXP => ?_⟩
@@ -314,7 +311,7 @@ theorem frozen_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer dg H 
       hPv.1
     have hes' := hes
     rw [← hes'] at hPv ⊢
-    exact ⟨SA.voterBlockTree_anc hr (fun _ => SA.voteStart_initial _) hy hcy P hPv X hXP',
+    exact ⟨SA.voterBlockTree_anc hr hrun.vstart hy hcy P hPv X hXP',
       SA.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem h hXt, W, by rw [hes']; exact hW, hWv,
       hXP'.trans hPW⟩
 
@@ -337,8 +334,7 @@ theorem voters_pass
       ℓy.frame.Anc X (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
         (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
         (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr
-    proposer hS.run hS.shared.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hS.run hS.shared.noColl).localRun
   have hU := Compose.honest_blocks_coherent hS.run.toLocalRun hS.shared.noColl
   obtain ⟨hΦp, hΦpU⟩ := SA.frameIn_of_callAt hr hS.ready.1 hS.call
   obtain ⟨hΦy, -⟩ := SA.frameIn_of_callAt hr hy hcy.1
@@ -372,8 +368,7 @@ theorem votes_eq_of_pass
           (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
           (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1))) :
     ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s → e.msg.head = P.root := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr
-    proposer hS.run hS.shared.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hS.run hS.shared.noColl).localRun
   have hU := Compose.honest_blocks_coherent hS.run.toLocalRun hS.shared.noColl
   have hc := hS.call
   have hd := hS.payload

@@ -90,7 +90,7 @@ theorem ResetPremisesUpTo.optimistic_sources_compatible
     (hC : SA.OptimisticLockAt tr.projAC x r s C CV)
     (hD : SA.OptimisticLockAt tr.projAC y q s D DV) :
     Compatible (tr.HonestBlocks H) C D := by
-  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hrun := Compose.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hrun.localRun
   obtain ⟨ell, A, hpt, hsl, hsel, _⟩ := hC
   obtain ⟨ell', A', hpt', hsl', hsel', _⟩ := hD
@@ -151,7 +151,7 @@ theorem ResetPremisesUpTo.optimistic_supporter
     B ∈ (tr.state x r).fg.tree ∧ ∃ z ∈ H, ∃ q ≤ r, ∃ e,
       SA.VoteAt tr.projAC z q e ∧ e.msg.slot = s ∧
       SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hrun := Compose.goldilocks_ac_projection_from hp.run hp.noColl
   obtain ⟨ell, A, hpt, hsl, hsel, _⟩ := hop
   have hU := (SA.frameIn_of_callAt hrun.localRun hx hpt.1).2
   unfold SA.optimisticSelect at hsel
@@ -233,13 +233,13 @@ theorem ResetPremisesUpTo.slow_stored_locks
     (hi : s + 1 ≤ sp.slot (tr.time i)) :
     ∀ l ∈ (tr.projAC.state y i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
       ∀ Y ∈ tr.HonestBlocks H, Y.root = l.block → Compatible (tr.HonestBlocks H) Y D := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   intro l hl hlive hle Y hY hYr
   obtain ⟨L, hL, hLr, O, hLO, k, hki, CV, hO⟩ := SA.lock_below_origin hr
-      (fun _ => SA.voteStart_initial _) hy i l hl
+      hp.run.vstart hy i l hl
   obtain rfl : Y = L := hr.coherent.1 hY hL (hYr.trans hLr.symm)
   obtain ⟨q, R, RV, hR, hDR⟩ := SA.slow_window_results hr
-    (fun _ => SA.voteStart_initial _) hx hsl l.slot (by omega) hle
+    hp.run.vstart hx hsl l.slot (by omega) hle
   have hqb : tr.time q ≤ b := by
     obtain ⟨_, hu, _, _⟩ := hR
     have ht : tr.time q = sp.ts l.slot + 6 * sp.Δ := hu.2.2.1
@@ -262,7 +262,7 @@ theorem ResetPremisesUpTo.slow_source_votes_before
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b) :
     ∀ i, tr.time i ≤ b → ∀ y ∈ H, ∀ ell e, SA.CastAt tr.projAC y i ell e →
       s < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨ellX, C, hupd, hconf, hdeep⟩ := id hslow
   have hBC := ((SA.deepest_mem hdeep).1.1.2.2).mono
     (SA.frameIn_of_callAt hr hx hupd.1).2
@@ -307,7 +307,7 @@ theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
     obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcast.1
     rcases hdomain y hy i ell e hcast hib hsi hprior with hBF | hv
     · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, _⟩ := Compose.cast_head_fcRoot hr
-        (fun _ => SA.voteStart_initial _) hy hcast
+        hp.run.vstart hy hcast
       exact ⟨Hd, hΦU hHd, hHdr, hBF.trans (hfHd.mono hΦU)⟩
     have hFB := (hΦ.rooted.2 B hv.1.1).mono hΦU
     have hslot := (SA.castAt_spec hr hy hcast).2.1
@@ -323,14 +323,14 @@ theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
       congr 1
       ext z
       exact and_congr_right fun hz => and_congr_right fun _ =>
-        (Compose.joined_projection sp ro dg H tr proposer hp.run z hz (tr.time i)).1.symm
+        (Compose.joined_projection_from hp.run hz (tr.time i)).1.symm
     by_cases hfirst : e.msg.slot = s + 1
     · have carry : SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
         apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hS.sync)
           hgs hS.catchUp (catch_time_le hgs) hx hy hcast hfirst hib
         intro v hv
         obtain ⟨hvs, hw, D, hD, hDr, hBD, ha⟩ :=
-          fastLock_writer hr (fun _ => SA.voteStart_initial _) hx hfast v hv
+          fastLock_writer hr hp.run.vstart hx hfast v hv
         exact ⟨hvs, hw, D, hD, hDr, hFB.trans hBD, ha⟩
       apply SA.first_transfer_stored sp hS.stockRun _ SA.CommitteeP.full SA.CommitteeT.full
         (SA.size_binding_full hp.stock) hx hfast .refl hy hcast hfirst
@@ -349,7 +349,7 @@ theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
           omega
         obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hprior z hz q hqi e' ⟨ell', hc'⟩ (by omega)
         obtain ⟨⟨Hd, hHd, hHdr, _⟩, hqt⟩ := Compose.cast_head_fcRoot hr
-            (fun _ => SA.voteStart_initial _) hz hc'
+            hp.run.vstart hz hc'
         obtain rfl : Hd = Hv := hr.coherent.1 ((SA.frameIn_of_callAt hr hz hc'.1).2 hHd)
           hHv (hHdr.trans hHvr.symm)
         have hgm := hgs.trans ((SA.ts_le_iff sp).mpr (show (s : Int) ≤ m by omega))
@@ -393,7 +393,7 @@ theorem ResetPremisesUpTo.fast_source_votes_before
     (hp.clean_timing hs)
   intro y hy i ell e hcast hib hsi hprior
   rcases hfast with ⟨ellX, C, hupd, hconf, hdeep, _⟩ | hop
-  · have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  · have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
     have hBC := ((SA.deepest_mem hdeep).1.1.2.2).mono
       (SA.frameIn_of_callAt hr hx hupd.1).2
     exact hp.result_prefix_vote_domain_before hc hx hy ⟨ellX, hupd, hconf, rfl⟩ hBC

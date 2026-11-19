@@ -315,12 +315,12 @@ end AnyAC
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
 
 /-- **No conflicting finality lock at an allowed source's height**:
 at an honest `fg_attest(C)` in the phase `(m, c)`, with `C` allowed, of state height
 `h ≥ ℓ` and entry `E`, the record's lock at `h` is free or `E`. -/
-theorem lock_free_or_entry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem lock_free_or_entry (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF)
     {i₀ m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} (hk : i₀ ≤ k) (hon : PhaseOn tr.projFG H i₀ k m c)
     {C E : SA.Blk sp.n (List (FG.Att sp.n))} {h : Nat} (hE : EntryOf (tr.state y k).fg C E h)
@@ -379,7 +379,7 @@ theorem lock_free_or_entry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
 /-- **HS.4 (b), the client subclaim** (P1/P2): at
 an honest `fg_attest(C)` in the phase, with `C` allowed, of state height `h ≥ ℓ` and entry `E`,
 the client signs a matching attestation for `E` at `h`, or signed one at an earlier cut. -/
-theorem client_progress (hrun : GoldilocksRun proposer dg H tr)
+theorem client_progress (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H dg g ΔF) {i₀ m : Nat}
     {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} :
     ∀ y ∈ H, ∀ k (C : SA.Blk sp.n (List (FG.Att sp.n))) (signed : Option (FG.Att sp.n)),

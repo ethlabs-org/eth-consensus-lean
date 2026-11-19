@@ -25,7 +25,7 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF a : Time}
 
 /-- **The joined duty, unanimity** (the join with RN/RU): under the reset
 premises and `Catch(2Δ)`, every honest vote of the slot `u` of an honest ready proposal `P` with
@@ -34,7 +34,7 @@ theorem ready_unanimous (hp : ResetPremises tr H proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H proposer p k u P)
     (hR : drainTime sp a ≤ sp.ts u) : Unanimous tr H u P := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨s, rfl, hu, hg, hgu, -⟩ := post_drain_slot (cutZ_lt_reset hp.run hp.healthy hp.reset) hR
   obtain ⟨-, i, ellp, d, pay, hci, hcall, hd, hti, hPQ, -, -, hpay, -⟩ :=
     honestProposalRun_of_ready hp.run hp.noColl hP
@@ -88,7 +88,7 @@ theorem ResetPremisesUpTo.operational_unanimous {b : Time}
     (hPs : P.slot = u) (hR : drainTime sp a ≤ sp.ts u) (hub : sp.ts u ≤ b) :
     ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → e.msg.slot = u → tr.time j ≤ b →
       e.msg.head = P.root := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨s, rfl, hu, hg, hgu, hjoin⟩ := post_drain_slot (cutZ_lt_reset_of_snapshot hp.run
     (by obtain ⟨k, hk, _⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset) hR
   obtain ⟨_, i, ellp, d, pay, hci, hcall, hd, hti, hPQ, _, _, hpay, _⟩ :=
@@ -213,7 +213,7 @@ theorem ResetPremisesUpTo.update_toFG_calls {b : Time}
   apply update_toFG_calls_of_awake hp.run hy
     (hp.awake y hy _ (by linarith [sp.toParams.hΔ]) hub)
   intro i hi
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   unfold SA.joined
   rcases SA.restartTime_state hr hp.run.vstart hy i with h | ⟨r, hri, hrs, h⟩
   · rw [h]; exact bot_le

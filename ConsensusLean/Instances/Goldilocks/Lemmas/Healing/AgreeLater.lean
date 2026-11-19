@@ -100,7 +100,8 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF w : Time} {i₀ m : Nat}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF w : Time}
+  {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-- **The later votes extend `P`** (HS.3 (b)): under `Γ` (without
@@ -131,7 +132,7 @@ theorem later_votes_extend (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
 /-- **The `ac_proposal` cut precedes the proposal's own block cut** (one tick per node and time:
 the own block call follows the tick's `ac_proposal`; as `DrainProposal`'s private
 `proposal_before_holder`). -/
-private theorem proposal_call_lt_own (hrun : GoldilocksRun proposer dg H tr) {p : Fin sp.n}
+private theorem proposal_call_lt_own (hrun : GoldilocksRun proposer dg H tr ini) {p : Fin sp.n}
     (hpH : p ∈ H) {kP s : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
     (hcP : tr.projAC.CallAt p kP ℓp) (hcall : ℓp.call = .proposal)
     (htP : tr.time kP = sp.ts s) {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPs : P.slot = s)
@@ -164,7 +165,7 @@ theorem later_parents_extend (hrun : GoldilocksRun proposer dg H tr) (hs : HSSha
       PhaseOn tr.projFG H i₀ k' m c →
       ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr := by
   intro s' P' k' hss' hP's hprop' hpH hk'
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hs.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hs.noColl).localRun
   have hS := healthyBase_of_hs hrun hs hc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hw8 := gbar_add_le_of_settled hw
@@ -265,7 +266,7 @@ theorem proposer_stored_lock_lt
   have hl' := hrun.toLocalRun
   have hs := hS.shared
   have hnc := hs.noColl
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hrun' := Compose.goldilocks_ac_projection_from hrun hnc
   have hr' := hrun'.localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hpH : p ∈ H := hS.ready.1
@@ -336,7 +337,7 @@ theorem proposer_lock_extends
   have hl := hrun.toLocalRun
   have hs := hS.shared
   have hnc := hs.noColl
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hrun' := Compose.goldilocks_ac_projection_from hrun hnc
   have hr' := hrun'.localRun
   have hU := hr'.coherent
   have hpH : p ∈ H := hS.ready.1
@@ -411,7 +412,7 @@ theorem readPoint_lockBlocks_below
   have hrun := hS.run
   have hl := hrun.toLocalRun
   have hnc := hS.shared.noColl
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.goldilocks_ac_projection_from hrun hnc
   have hr := hac.localRun
   have hU := Compose.honest_blocks_coherent hl hnc
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
@@ -501,7 +502,7 @@ private theorem root_below_voterHeads
   have hs := hS.shared
   have hl := hrun.toLocalRun
   have hnc := hs.noColl
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hU := Compose.honest_blocks_coherent hl hnc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hpH : p ∈ H := hS.ready.1
@@ -590,7 +591,7 @@ theorem voter_passes_proposer_root
     SA.VoteExtends (tr.HonestBlocks H) e.msg ℓp.frame.fcRoot := by
   have hrun := hS.run
   have hnc := hS.shared.noColl
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hPv := proposal_frozen_viable hS hy hcy hes

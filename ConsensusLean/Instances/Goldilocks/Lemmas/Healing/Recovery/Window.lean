@@ -31,7 +31,7 @@ theorem ready_proposal_accepted_everywhere (hp : ResetPremises tr H proposer dg 
     (hW : ReadyProposal tr H proposer p k u W) (hR : drainTime sp a ≤ sp.ts u)
     (hu : 0 < u) (hg : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) :
     ∀ y ∈ H, ∃ j, tr.AcceptAt y j W ∧ tr.time j ≤ sp.ts u + sp.Δ := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hac := Compose.goldilocks_ac_projection_from hp.run hp.noColl
   have hb : SA.HealthyBase tr.projAC H (tr.HonestBlocks H) proposer g :=
     ⟨hac, projection_driven hp.run hp.noColl hs.genesisRoot hp.healthy,
       projection_healthy hp.run hp.noColl hp.healthy, projection_catch_of_run hp.run hcatch,

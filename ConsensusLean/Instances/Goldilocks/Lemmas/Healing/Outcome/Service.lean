@@ -57,12 +57,13 @@ end FGTraces
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n}
-  {tr : GoldilocksTrace sp ro} {g ΔF Gp a : Time} {cF kF : Nat}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp a : Time}
+  {cF kF : Nat}
 
 /-! ## The actual reports -/
 
 /-- The block of an actual report is in the reporter's FG tree. -/
-private theorem report_mem (hrun : GoldilocksRun proposer dg H tr)
+private theorem report_mem (hrun : GoldilocksRun proposer dg H tr ini)
     {z : Fin sp.n} (hz : z ∈ H) {r : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : SA.ToFGAt tr.projAC z r ℓ C) : C ∈ (tr.state z r).fg.tree :=
@@ -77,13 +78,13 @@ theorem high_report_origin (hp : ResetPremises tr H proposer dg g ΔF a)
     (hrep : SA.ToFGAt tr.projAC z r ℓ C)
     (hhC : HZ tr H g + 1 ≤ ((tr.state z r).fg.σ C.root).h) :
     ∃ io < r, ∃ jo B, HighOrigin tr H g z io jo B ∧ Anc (tr.HonestBlocks H) C B := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hU := hr.coherent
   obtain ⟨hpc, -, hC'⟩ := hrep
   obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := SA.toFG_candidate hC'
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
   obtain ⟨io, hio, CV, ℓw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
-    stored_fast_lock_provenance hr (fun _ => SA.voteStart_initial _) hz r l₀ hl₀ hlf
+    stored_fast_lock_provenance hr hp.run.vstart hz r l₀ hl₀ hlf
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hz hpc
   obtain ⟨hΦw, -⟩ := SA.frameIn_of_callAt hr hz hcw
   have hCt : C ∈ ℓ.frame.tree := hCv.1
@@ -115,12 +116,12 @@ theorem ResetPremisesUpTo.high_report_origin {b : Time}
     ∃ io < r, ∃ jo O D CV, HighOrigin tr H g z io jo O ∧ tr.time io ≤ b ∧
       SA.FastLockAt tr.projAC z io jo D CV ∧ Anc (tr.HonestBlocks H) C O ∧
       Anc (tr.HonestBlocks H) O D := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hpc, _, hC'⟩ := hrep
   obtain ⟨hCv, l, hl, hlb, hlf, _⟩ := SA.toFG_candidate hC'
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, _, rfl⟩ := hl
   obtain ⟨io, hio, CV, ellw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
-    stored_fast_lock_provenance hr (fun _ => SA.voteStart_initial _) hz r l₀ hl₀ hlf
+    stored_fast_lock_provenance hr hp.run.vstart hz r l₀ hl₀ hlf
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hz hpc
   obtain ⟨hPhiw, hPhiwU⟩ := SA.frameIn_of_callAt hr hz hcw
   obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hPhi hB₀
@@ -440,12 +441,9 @@ theorem ResetPremisesUpTo.row_signers_of_reports {b : Time}
 
 /-- The FG projection of a Goldilocks run under the HS shared premises is an FG trace with its
 contract (C0.5 (c)). -/
-private theorem fg_run (hrun : GoldilocksRun proposer dg H tr) (hsh : HSShared tr H dg g ΔF) :
+private theorem fg_run (hrun : GoldilocksRun proposer dg H tr ini) (hsh : HSShared tr H dg g ΔF) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG :=
-  Compose.fg_projection _ _ dg H _ tr proposer
-    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
-      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
-      SA.proposal_payload_valid sp _ ro⟩
+  Compose.fg_projection_from (fun y _ => Compose.requirements_from sp ro (hrun.vstart y))
     hsh.genesisRoot hrun.toLocalRun hsh.noColl
 
 end Consensus.Goldilocks.Healing

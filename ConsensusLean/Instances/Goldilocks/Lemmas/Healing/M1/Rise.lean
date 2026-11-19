@@ -25,7 +25,7 @@ open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- **ROW-deliver** from the finite service: an attestation signed by an honest validator by `v ≥ ḡ`
 is processed by the honest proposer before its proposal cut when `v + Δ_F ≤ t_{kX} ≤ b`. -/
@@ -57,7 +57,7 @@ theorem rows_delivered_service {g ΔF b v : Time}
 `≥ P.slot + δ_t`, with `v ≥ ḡ` and `v + Δ_F ≤ t_X ≤ b`. Every honest `y` either signed an
 attestation for `P`'s height and entry by `v`, or some block `R ⪯ D` is above `P`'s height. Then `X`
 is at least one height above `P`. -/
-theorem round_cross (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem round_cross (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {g ΔF b v : Time} (hsvc : ResetService tr H g ΔF b) (hnr : NoRestartAfter tr H (gbar g))
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
     {P D X : SA.Blk sp.n (List (FG.Att sp.n))} (hPH : P ∈ tr.HonestBlocks H)

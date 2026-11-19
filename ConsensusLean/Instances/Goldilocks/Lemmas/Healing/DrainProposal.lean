@@ -35,7 +35,8 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF w : Time} {i₀ m : Nat}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF w : Time}
+  {i₀ m : Nat}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
@@ -241,7 +242,7 @@ proposal boundary): under `Γ` (without `Prop⁺`), let an honest vote of a clea
 that vote (`proposal_cut_lt`); if its head extends `B` whenever (V) holds for `B` there and
 `Σ.F ⪯ B` (`hcore`), then `P` extends `B`: when `B ⪯ Σ.F` the head extends `Σ.F`; otherwise `B`
 is viable in the proposer's full tree (`clean_vote_frame`, at `t_s ≥ t_j + 4Δ`). -/
-private theorem proposal_follows (hrun : GoldilocksRun proposer dg H tr)
+private theorem proposal_follows (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {z : Fin sp.n}
     (hz : z ∈ H) {kz : Nat} {e' : SA.Em sp (List (FG.Att sp.n))}
@@ -262,7 +263,7 @@ private theorem proposal_follows (hrun : GoldilocksRun proposer dg H tr)
         (B ∈ ℓp.frame.viableTree ℓp.frame.tree ∨ ℓp.frame.Anc B ℓp.frame.fcRoot) →
       Anc (tr.HonestBlocks H) ℓp.frame.F B → Anc (tr.HonestBlocks H) B d.head) :
     Anc (tr.HonestBlocks H) B P := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hs.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hs.noColl).localRun
   have hU := hr.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨hpH, kP, ℓp, d, pay, hcP, hcall, hprop, htP, hpar, -, -, -, jA, -, hacc, -⟩ := hP
@@ -350,7 +351,7 @@ theorem proposal_head_of_batch (hrun : GoldilocksRun proposer dg H tr) (hs : HSS
     intro x hx j' e'' hv'' hs''
     refine hprior x hx j' ?_ e'' hv'' hs''.ge
     obtain ⟨ℓ'', hc'', he''⟩ := hv''
-    have h1 := (Compose.cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hx ⟨hc'', he''⟩).2
+    have h1 := (Compose.cast_head_fcRoot hr hrun.vstart hx ⟨hc'', he''⟩).2
     rw [hs''] at h1
     change tr.time j' ≤ _ at h1
     by_contra hn
@@ -376,7 +377,7 @@ theorem proposal_head_of_batch (hrun : GoldilocksRun proposer dg H tr) (hs : HSS
       σ B := by
     refine SA.highLocksCompatible_iff.2 fun l hl _ hlσ X hX hXr => ?_
     obtain ⟨L, hL, hLr, O, hLO, k', hk', CV, hO⟩ := SA.lock_below_origin hr
-        (fun _ => SA.voteStart_initial _) hpH kP l hl
+        hrun.vstart hpH kP l hl
     obtain rfl : X = L := hU.1 hX hL (hXr.trans hLr.symm)
     have hO' : Compatible (tr.HonestBlocks H) O B := by
       rcases hO with ⟨ℓ', ⟨-, -, htk', -⟩, -⟩ | ⟨ℓo, A, hpt, hsl, hsel, -⟩
@@ -476,7 +477,7 @@ theorem proposal_extends_of_optimistic (hrun : GoldilocksRun proposer dg H tr)
       ℓp.frame j v := by
     intro v hv'
     obtain ⟨h₁, h₂, Hv, hHv, hHvr, hDHv, h₃⟩ :=
-      fastLock_writer hr (fun _ => SA.voteStart_initial _) hx (Or.inr hopt) v hv'
+      fastLock_writer hr hrun.vstart hx (Or.inr hopt) v hv'
     have hFHv := hFB.trans (hBD.trans hDHv)
     refine SA.heldAtProposal_of_writer hr (hS.syncAC le_rfl (sp.ts j + 2 * sp.Δ)) hgj le_rfl hx
       hpH hcP htP' (fun k' _ hrk => lt_of_le_of_lt (hS.restart_le hpH hrk) (by
@@ -501,16 +502,16 @@ theorem proposal_extends_of_optimistic (hrun : GoldilocksRun proposer dg H tr)
 
 /-- A regular write of label `j` (at `t_j + 6Δ`) before an honest vote of slot `s` (cast by
 `t_s + Δ`) has `s ≥ j + 2`. -/
-private theorem two_le_of_update (hrun : GoldilocksRun proposer dg H tr)
+private theorem two_le_of_update (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {x : Fin sp.n} {i j : Nat} {ℓx : ACLabel (goldilocksNode sp ro)}
     (hupd : SA.UpdateAt tr.projAC x i j ℓx) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hv : SA.CastAt tr.projAC y k ℓ e) (hik : i < k) : j + 2 ≤ e.msg.slot := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have h1 := hr.time_mono hik.le
-  have h2 := (Compose.cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hy hv).2
+  have h2 := (Compose.cast_head_fcRoot hr hrun.vstart hy hv).2
   have h3 : tr.time i = sp.ts j + 6 * sp.Δ := hupd.2.2.1
   change tr.time i ≤ tr.time k at h1
   change tr.time k ≤ _ at h2

@@ -195,7 +195,7 @@ theorem higher_report_early_outcome (hp : ResetPremises tr H proposer dg g ΔF a
   classical
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hΔF : (0 : Int) < ΔF := hp.healthy.1.1
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hCr : C ∈ ell.frame.tree := by
     have hh := hrep.2.2
     unfold SA.acToFG at hh
@@ -219,10 +219,8 @@ theorem higher_report_early_outcome (hp : ResetPremises tr H proposer dg g ΔF a
     exact_mod_cast (SA.ts_lt_iff sp).1 hlt
   have hfg : FGLocalRun (goldilocksNode sp ro).genesisPayload H
       (tr.HonestBlocks H) tr.projFG :=
-    Compose.fg_projection _ _ dg H _ tr proposer
-      ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
-        (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
-        SA.proposal_payload_valid sp _ ro⟩ hs.genesisRoot hp.run.toLocalRun hp.noColl
+    Compose.fg_projection_from (fun y _ => Compose.requirements_from sp ro
+        (hp.run.vstart y)) hs.genesisRoot hp.run.toLocalRun hp.noColl
   have hstore : ∀ j, tr.projFG.store z j = (tr.state z j).fg := fun j =>
     congrArg Prod.fst (Compose.projFG_state hp.run.toLocalRun hz j)
   obtain ⟨k, hkr, X, hk, hj, hXC, hgate⟩ := accepted_justification_before_timeout hfg hz
@@ -401,10 +399,8 @@ theorem outcome_service_of_reports
     exact ⟨j, hj, by linarith⟩
   · have hfg : FGLocalRun (goldilocksNode sp ro).genesisPayload H
         (tr.HonestBlocks H) tr.projFG :=
-      Compose.fg_projection _ _ dg H _ tr proposer
-        ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
-          (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
-          SA.proposal_payload_valid sp _ ro⟩ hs.genesisRoot hrun.toLocalRun hs.noColl
+      Compose.fg_projection_from (fun y _ => Compose.requirements_from sp ro
+          (hrun.vstart y)) hs.genesisRoot hrun.toLocalRun hs.noColl
     obtain ⟨X, hj, _, _, _, _, _⟩ := Store.window_justifies hfg hwin
     have hng : X ≠ sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload := by
       intro heq

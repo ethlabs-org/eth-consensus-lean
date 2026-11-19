@@ -71,7 +71,7 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
       (SA.getHead sp e.readPoint elly.frame (tr.time j)
         (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
         (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   obtain ⟨hPsi, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hhead := SA.getHead_mem hPsi
@@ -89,7 +89,7 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
     obtain rfl := hr.coherent.1 hW (hPsiU hhead) (hWr.trans hheadr)
     exact hBW
   rcases proposal_start_root_or_clean_lock hPhi
-    (SA.locksWF_state hr (fun _ => SA.voteStart_initial _) hpH i) hR hti hd with
+    (SA.locksWF_state hr hp.run.vstart hpH i) hR hti hd with
     hroot | ⟨l₁, hl₁, hlo, B₁, hB₁, hB₁r, hsB₁⟩
   · rw [hroot]
     rcases hp.reset_proposal_root_source hpH hR hci hcall hd hti hib with
@@ -110,11 +110,11 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
     cases hf : l₁.fast with
     | false =>
       obtain ⟨r, hri, D, hsl, hL⟩ := SA.slow_lock_provenance hr
-          (fun _ => SA.voteStart_initial _) hpH i l₁ hl₁ hf
+          hp.run.vstart hpH i l₁ hl₁ hf
       exact ⟨r, hri, D, Or.inr hsl, hL⟩
     | true =>
       obtain ⟨r, hri, D, CV, hfl, hL⟩ := SA.fast_lock_provenance hr
-        (fun _ => SA.voteStart_initial _) hpH i l₁ hl₁ hf
+        hp.run.vstart hpH i l₁ hl₁ hf
       exact ⟨r, hri, D, Or.inl ⟨CV, hfl⟩, hL⟩
   obtain rfl : L = B₁ := hr.coherent.1 hLU (hPhiU hB₁) (hLr.trans hB₁r.symm)
   have hlt : l₁.slot < u := Compose.proposal_locks_slot_of hp.run hp.noColl
@@ -173,7 +173,7 @@ theorem ResetPremisesUpTo.reset_suffix_viable {b : Time}
     (hDold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
       Anc (tr.HonestBlocks H) O D) :
     ∀ X, ell.frame.Anc D X → ell.frame.Anc X d.head → X ∈ ell.frame.viableHeads := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   exact proposal_suffix_viable_of_floor hPhi hPhiU (Compose.frame_of_projAC hp.run hpH hci) hd
     hDt hsD fun _ hX hDX => hp.proposal_floor_above_old hpH hR hci hcall hti hib hX
@@ -233,7 +233,7 @@ theorem ResetPremisesUpTo.reset_vote_root_below_bound {b : Time}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y j ell e)
     (hs : e.msg.slot = u) (hjb : tr.time j ≤ b) :
     Anc (tr.HonestBlocks H) ell.frame.fcRoot P := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   rcases hp.reset_vote_root_source hR hy hc hs hjb with hg | ⟨x, r, l, B, ho, ht, hrb, hroot⟩
   · obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
     exact Compose.honest_genesis_root_anc hp.run hr.coherent (hPhiU hPhi.fcRoot_mem) hg hP

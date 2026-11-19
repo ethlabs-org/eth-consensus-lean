@@ -72,8 +72,7 @@ private theorem proposal_walkEnd
         (SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1))
         (SA.goldfishEligible sp ℓp.frame (tr.time iP) (SA.View.ofLists pay) ((s : Int) - 1))
         d.start d.head := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr
-    proposer hS.run hS.shared.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hS.run hS.shared.noColl).localRun
   have hΦ := (SA.frameIn_of_callAt hr hS.ready.1 hS.call).1
   have hslot : sp.slot (tr.time iP) = s := by
     rw [hS.time]; exact SA.slot_of_mem sp s le_rfl ((SA.ts_lt_iff sp).2 (by push_cast; omega))
@@ -133,7 +132,7 @@ private theorem suffix_reflect {X B : SA.Blk sp.n (List (FG.Att sp.n))}
   have hl := hrun.toLocalRun
   have hs := hS.shared
   have hnc := hs.noColl
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.goldilocks_ac_projection_from hrun hnc
   have hr := hac.localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   have hpH : p ∈ H := hS.ready.1
@@ -226,8 +225,7 @@ theorem proposal_suffix
             B.parent = some X.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
               (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C := by
   intro X hDX hXQ hne hanc C hC
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr
-    proposer hS.run hS.shared.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hS.run hS.shared.noColl).localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   obtain ⟨hΦp, hΦpU⟩ := SA.frameIn_of_callAt hr hS.ready.1 hS.call
   obtain ⟨hΦy, hΦyU⟩ := SA.frameIn_of_callAt hr hy hcy.1
@@ -310,7 +308,7 @@ theorem proposal_only_child
     ∀ B ∈ {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
         B.parent = some d.head.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
           (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B}, B = P := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hS.run hS.shared.noColl
+  have hac := Compose.goldilocks_ac_projection_from hS.run hS.shared.noColl
   have hr := hac.localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   obtain ⟨hΦp, hΦpU⟩ := SA.frameIn_of_callAt hr hS.ready.1 hS.call

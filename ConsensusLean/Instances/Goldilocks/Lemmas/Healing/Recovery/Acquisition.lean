@@ -45,7 +45,7 @@ theorem ready_proposal_high (hp : ResetPremises tr H proposer dg g ΔF a)
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hready : ReadyProposal tr H proposer p k u P)
     (hR : drainTime sp a ≤ sp.ts u) :
     ∃ iP, tr.AcceptAt p iP P ∧ HZ tr H g + 1 ≤ ((tr.post iP).fg.σ P.root).h := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hpH : p ∈ H := hready.1
   -- the proposal's `ac_proposal` call and duty head
   obtain ⟨-, i, ell, d, pay, hci, hcall, hd, hti, hPQ, -⟩ :=

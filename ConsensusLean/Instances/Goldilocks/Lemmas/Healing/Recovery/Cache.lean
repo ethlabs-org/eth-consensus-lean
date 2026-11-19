@@ -45,9 +45,8 @@ theorem accepted_finality_cached {P : Params} {ACP : Type} {acp₀ : ACP}
 /-- **HR.5:** every honest acceptance caches its replay-finalized target. -/
 theorem cache_acceptance_after_reset : CacheAcceptanceAfterReset := by
   intro sp ro proposer dg H tr g ΔF hrun hh hnc y hy k B hB Fs hFs hroot
-  have hreq := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  have hfg := Compose.fg_projection _ _ dg H _ tr proposer
-    ⟨hreq.1, hreq.2.1, hreq.2.2.1, hreq.2.2.2, SA.proposal_payload_valid sp _ ro⟩
+  have hfg := Compose.fg_projection_from (fun y _ => Compose.requirements_from sp ro
+      (hrun.vstart y))
     hrun.genesis_root_ok hrun.toLocalRun hnc
   have hst : ∀ i, tr.projFG.store y i = (tr.state y i).fg :=
     fun i => by simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]

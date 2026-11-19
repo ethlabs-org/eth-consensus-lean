@@ -38,7 +38,8 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF w : Time} {i₀ m : Nat}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF w : Time}
+  {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-! ### The slow first transfer and stored slow-lock provenance -/
@@ -156,7 +157,7 @@ theorem stored_slow_lock_provenance (hrun : GoldilocksRun proposer dg H tr)
     ∀ l ∈ (tr.state y k).ac.locks, l.fast = false →
       ∃ r < k, ∃ B, StoredSlowLockAt tr y r l.slot B ∧
         ∃ L ∈ tr.HonestBlocks H, L.root = l.block ∧ Anc (tr.HonestBlocks H) L B := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   intro l hl hf
   rw [← Compose.projAC_state hrun.toLocalRun hy] at hl
   obtain ⟨r, hrk, ℓ, D, hc, hsl, hL⟩ := SA.slow_lock_provenance_stored hr hy k l hl hf
@@ -165,11 +166,11 @@ theorem stored_slow_lock_provenance (hrun : GoldilocksRun proposer dg H tr)
 /-! ### Extension by induction on the cut of the vote -/
 
 /-- `f < h_t` at an honest vote of a slot after a clean label, on the AC projection. -/
-theorem faultBound_proj (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem faultBound_proj (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (hk : cutZ sp.toParams g ≤ tr.time k) :
     SA.FaultBound tr.projAC H (tr.time k) := by
   unfold SA.FaultBound
-  rw [← (Compose.joined_projection sp ro dg H tr proposer hrun y hy (tr.time k)).2.2]
+  rw [← (Compose.joined_projection_from hrun hy (tr.time k)).2.2]
   exact faultBound_of_healthy hrun hs hk
 
 /-- **Extension of an origin's block** (the event induction): given the first transfer (at the
@@ -190,7 +191,7 @@ theorem origin_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr
         Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
     ∀ k, ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e → j < e.msg.slot →
       PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hs.noColl
+  have hrun' := Compose.goldilocks_ac_projection_from hrun hs.noColl
   have hr := hrun'.localRun
   intro k
   induction k using Nat.strong_induction_on with
@@ -201,7 +202,7 @@ theorem origin_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr
     fun z hz k' hk' e' ⟨ℓ', hc', he'⟩ hs' =>
       ih k' hk' z hz ℓ' e' ⟨hc', he'⟩ hs' (hk.mono_right hk'.le)
   obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, hle⟩ := Compose.cast_head_fcRoot hr
-      (fun _ => SA.voteStart_initial _) hy hv
+      hrun.vstart hy hv
   have hΦU := (SA.frameIn_of_callAt hr hy hv.1).2
   by_cases hBf : Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot
   · exact ⟨Hd, hΦU hHd, hHdr, hBf.trans (Anc.mono hΦU hfHd)⟩
@@ -253,12 +254,12 @@ theorem clean_fast_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
     (ho : Compose.StoredFastLockAt tr x i j B CV) (hj : w + 4 * sp.Δ ≤ sp.ts j) :
     ∀ k, ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e → j < e.msg.slot →
       PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hs.noColl
+  have hrun' := Compose.goldilocks_ac_projection_from hrun hs.noColl
   have hr := hrun'.localRun
   refine origin_extends hrun hs hc hw hj (fun y hy k ℓ e hv h1 hk hBf hprior => ?_)
     (fun _ hy _ _ _ hv hjs hk => clean_fast_viable hrun hs hc hw hx ho hj hy hv (by omega) hk)
   have hviab := (clean_fast_viable hrun hs hc hw hx ho hj hy hv (by omega) hk).resolve_right hBf
-  obtain ⟨-, hle⟩ := Compose.cast_head_fcRoot hr (fun _ => SA.voteStart_initial _) hy hv
+  obtain ⟨-, hle⟩ := Compose.cast_head_fcRoot hr hrun.vstart hy hv
   have h0 := hr.time_nonneg k
   have htk : sp.ts e.msg.slot ≤ tr.time k :=
     (SA.ts_le_iff_le_slot sp h0 _).2 (by rw [(SA.castAt_spec hr hy hv).2.1])
@@ -400,7 +401,7 @@ theorem live_lock_below_proposal (hrun : GoldilocksRun proposer dg H tr)
     (hls : l.slot < s) {L : SA.Blk sp.n (List (FG.Att sp.n))} (hL : L ∈ ℓ.frame.tree)
     (hLr : L.root = l.block) :
     Anc (tr.HonestBlocks H) L P ∨ Anc (tr.HonestBlocks H) L ℓ.frame.fcRoot := by
-  have hr' := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hs.noColl).localRun
+  have hr' := (Compose.goldilocks_ac_projection_from hrun hs.noColl).localRun
   have hU := hr'.coherent
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr' hy hv.1
   have htk : sp.ts s ≤ tr.time k :=
@@ -431,7 +432,7 @@ theorem live_lock_below_proposal (hrun : GoldilocksRun proposer dg H tr)
         hext k' z hz ℓ' e' ⟨hc', he'⟩ hs' (hk.mono_right hk'.le)))
   · rw [← Compose.projAC_state hrun.toLocalRun hy] at hl₀
     obtain ⟨r, hrk, CV, ℓ', D, hcw, hfl, hLO⟩ :=
-      stored_fast_lock_provenance hr' (fun _ => SA.voteStart_initial _) hy k l₀ hl₀ hf
+      stored_fast_lock_provenance hr' hrun.vstart hy k l₀ hl₀ hf
     have hO : Compose.StoredFastLockAt tr y r l₀.slot (ℓ'.frame.viableAncestor D) CV :=
       ⟨ℓ', D, hcw, hfl, rfl⟩
     have hj := hclean.1 hf

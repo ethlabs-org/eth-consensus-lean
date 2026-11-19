@@ -20,7 +20,7 @@ namespace Consensus.Goldilocks.Healing
 open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
   {proposer : Nat → Fin sp.n}
 
@@ -66,14 +66,15 @@ theorem mem_tree_of_frame {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   exact hB.1
 
 /-- The stored block of a fast-lock write is in the writer's FG tree, below its selection. -/
-theorem storedFastLock_mem (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem storedFastLock_mem (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr)
     {x : Fin sp.n} (hx : x ∈ H) {i s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (SA.Vote sp.n)} (h : Compose.StoredFastLockAt tr x i s B CV) :
     B ∈ (tr.state x i).fg.tree ∧ ∃ D, SA.FastLockAt tr.projAC x i s D CV ∧
       Anc (tr.HonestBlocks H) B D := by
   unfold Compose.StoredFastLockAt at h
   obtain ⟨ℓ, D, hc, hfl, rfl⟩ := h
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hx hc
   obtain ⟨hvt, hva⟩ := SA.viableAncestor_anc hΦ (fastLockAt_frame_mem hfl hc)
   exact ⟨mem_tree_of_frame hrun hx hc hvt, D, hfl, hva.mono hΦU⟩
@@ -107,7 +108,7 @@ theorem ResetPremisesUpTo.high_row_source {b : Time}
     ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧ ∃ E ∈ (tr.state v r).fg.tree,
       (tr.state v r).fg.Anc E O ∧ E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
       ((tr.state v r).fg.σ E.root).Th = E.root := by
-  have hacr := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hacr := Compose.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hacr.localRun
   have hU := hr.coherent
   obtain ⟨C, hcall⟩ := hs

@@ -145,7 +145,7 @@ theorem unanimous_carry_votes {b : Time}
     have := (SA.castAt_spec hr hy hcast).2.1
     omega
   obtain ⟨⟨Hd, hHd, hHdr, _⟩, hqt⟩ := Compose.cast_head_fcRoot hr
-      (fun _ => SA.voteStart_initial _) hz hc'
+      hp.run.vstart hz hc'
   have hHdP : Hd = P := hr.coherent.1 ((SA.frameIn_of_callAt hr hz hc'.1).2 hHd) hP
     (hHdr.trans (hun z hz q e' ⟨ell', hc'⟩ ((hp.run.time_mono hqi.le).trans hib) hsl))
   subst Hd
@@ -300,7 +300,7 @@ theorem unanimous_next_votes_extend {b : Time}
         congr 1
         ext z
         exact and_congr_right fun hz => and_congr_right fun _ =>
-          (Compose.joined_projection sp ro dg H tr proposer hp.run z hz (tr.time j)).1.symm
+          (Compose.joined_projection_from hp.run hz (tr.time j)).1.symm
       apply SA.next_vote_extends_before hS.stockRun hy hcast hs ?_ hhalf
         (unanimous_carry_votes hp hc hP hun hgu hy hcast hs hjb hFP) hfault
         (hp.sync.syncAC hp.run (by have := SA.le_gbar g; linarith [sp.toParams.hΔ]))
@@ -477,7 +477,7 @@ theorem held_target_viable_or_higher_report {b : Time}
       ∃ x ∈ H, ∃ r ell' C, r < i ∧ SA.ToFGAt tr.projAC x r ell' C ∧
         Anc (tr.HonestBlocks H) P C ∧
         ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcall
   have hPy := hp.frame_tree_subset hy hcall hPt
   have hfr := Compose.frame_of_projAC hp.run hy hcall
@@ -612,7 +612,7 @@ theorem report_of_viable_unanimous_pool {b : Time}
       Anc (tr.HonestBlocks H) P R := by
   obtain ⟨hconf, hnv, hfast, hpost, _⟩ :=
     hp.ready_update_selection_of_pool hy hu hPv.1 hPg hpool hlocks
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hPc := candidate_at_adjacent_call hu.1 (SA.frameIn_of_callAt hr hy hu.1).1
     hframe htime hPv hconf hnv hfast hpost hlive hage
   exact Healing.report_of_compatible_candidate_of_run hp.run hp.noColl hy hc hto hjoin hPg hPc hnext
@@ -636,7 +636,7 @@ theorem unanimous_head_held_at_call {b : Time}
   have hub : sp.ts u + sp.Δ ≤ b := ht.le.trans hjb
   obtain ⟨q, e, ⟨ellv, hv⟩, hs, hq⟩ := honest_votes_in_slot hp hc hgu hR hub y hy
   obtain ⟨⟨Hd, hHd, he, _⟩, _⟩ := Compose.cast_head_fcRoot hr
-      (fun _ => SA.voteStart_initial _) hy hv
+      hp.run.vstart hy hv
   obtain rfl : Hd = P := hr.coherent.1 ((SA.frameIn_of_callAt hr hy hv.1).2 hHd) hP
     (he.trans (hun y hy q e ⟨ellv, hv⟩ (hq.trans hub) hs))
   have hqj : q ≤ j := by

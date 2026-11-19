@@ -89,7 +89,8 @@ theorem recovery_slot_budget {ΔF Gp : Time} {cF kF M v s u : Nat}
 
 /-! ## The pattern premises -/
 
-variable {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+variable {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro} {ini : Fin sp.n →
+    (goldilocksNode sp ro).State}
   {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF Gp : Time} {W M cF kF : Nat}
 
@@ -123,7 +124,7 @@ private theorem drainTime_le {a : Time} (ha : 0 ≤ a) :
   linarith
 
 /-- A reset is at a cut, so at a time `≥ 0`. -/
-private theorem reset_nonneg (hrun : GoldilocksRun proposer dg H tr) {a : Time}
+private theorem reset_nonneg (hrun : GoldilocksRun proposer dg H tr ini) {a : Time}
     (ha : IsReset tr H g a) : 0 ≤ a := by
   obtain ⟨y, -, k, -, -, -, hk⟩ := ha.1
   exact hk ▸ hrun.time_nonneg k
@@ -149,7 +150,7 @@ theorem pattern_reset
 `UPat` stretch at `t` starts at `v` with `t ≤ t_v ≤ t + 4Δ(W + 1)`, after the drain of the reset,
 and its clause is `UPat`'s, unchanged. -/
 theorem pattern_stretch_after_reset
-    (hrun : GoldilocksRun proposer dg H tr)
+    (hrun : GoldilocksRun proposer dg H tr ini)
     (hp : PatternPremises tr H proposer dg g ΔF Gp W M cF kF)
     {a t : Time} (ha : IsReset tr H g a)
     (hab : a ≤ gbar g + Zreset sp ΔF Gp)

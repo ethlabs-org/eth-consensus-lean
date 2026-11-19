@@ -186,7 +186,8 @@ theorem acquiredPath_iff_exists (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n}
-  {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
+  {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-- **HS.4 with the named branches**: settled at `w` in `(m, c)`, the phase has changed by
@@ -215,7 +216,7 @@ in `[t_s, v]`, `v = t_s + 6Δ`, received a source `C ⪰ W` of state height `h` 
 in the phase (HS.4's current-source arm), has signed a matching attestation for `E` at `h` by
 `v`: the `ac_to_fg` return is followed at once by the `fg_attest` of the same tick, at which
 `ClientProgress` applies (the phase holds through `v`; `toFG_attest` for the transport). -/
-theorem historical_source_rows (hrun : GoldilocksRun proposer dg H tr)
+theorem historical_source_rows (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H dg g ΔF)
     (_hc : CatchRun tr H g (2 * sp.Δ)) (_hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) (hcl : ClientProgress tr H i₀ m c) {s h : Nat}

@@ -19,13 +19,15 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF w : Time} {i₀ i m : Nat}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF w : Time}
+  {i₀ i m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} {p : Fin sp.n} {kP s : Nat}
   {P : SA.Blk sp.n (List (FG.Att sp.n))} {iP : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
   {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
 
 /-- A block held at an honest call's cut that extends the call's `Σ.F` is in its frame. -/
-theorem mem_frame_of_held (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem mem_frame_of_held (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y k ℓ) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ (tr.state y k).fg.tree) (hF : Anc (tr.HonestBlocks H) ℓ.frame.F B) :
@@ -76,7 +78,7 @@ theorem proposal_views_agree
   have hrun := hS.run
   have hl := hrun.toLocalRun
   have hnc := hS.shared.noColl
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.goldilocks_ac_projection_from hrun hnc
   have hr := hac.localRun
   have hU := Compose.honest_blocks_coherent hl hnc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ

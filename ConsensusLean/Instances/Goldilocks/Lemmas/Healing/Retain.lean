@@ -35,24 +35,22 @@ open Compose (store_eq)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {proposer : Nat → Fin sp.n}
 
 /-- The FG projection under the HS shared premises, with `f < 2q − n`. -/
-private theorem fg_run (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF) :
+private theorem fg_run (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
       Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
   obtain ⟨-, -, hf⟩ := hs.healthy
-  have hreq : (goldilocksNode sp ro).Requirements :=
-    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
-      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
-      SA.proposal_payload_valid sp _ ro⟩
   have hn := sp.toParams.hn
-  exact ⟨Compose.fg_projection _ _ dg H _ tr proposer hreq hs.genesisRoot hrun.toLocalRun hs.noColl,
+  exact ⟨Compose.fg_projection_from (fun y _ => Compose.requirements_from sp ro
+      (hrun.vstart y)) hs.genesisRoot hrun.toLocalRun hs.noColl,
     by change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n; omega⟩
 
 /-- At a cut of the phase, a node whose `Σ.h_j` is `m − 1` has the phase's justification as
 `Σ.J` (HR.2 (a)). -/
-private theorem J_eq_phase (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+private theorem J_eq_phase (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF)
     {z : Fin sp.n} (hz : z ∈ H) {k m : Nat} {J₀ : SA.Blk sp.n (List (FG.Att sp.n))}
     (hJ₀ : JustifiedAt tr.projFG H k (m - 1) J₀) (hj : (tr.state z k).fg.hj = m - 1) :
     (tr.state z k).fg.J = J₀ := by
@@ -67,7 +65,8 @@ private theorem J_eq_phase (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
     ⟨y₀, hy₀, k, by rw [← store_eq hrun hy₀]; exact hJ₀t⟩ he
 
 /-- A node's own justification makes `JustifiedAt` at its `Σ.h_j`. -/
-private theorem justifiedAt_own (hrun : GoldilocksRun proposer dg H tr) {z : Fin sp.n} (hz : z ∈ H)
+private theorem justifiedAt_own (hrun : GoldilocksRun proposer dg H tr ini) {z : Fin sp.n}
+    (hz : z ∈ H)
     (k : Nat) : JustifiedAt tr.projFG H k (tr.state z k).fg.hj (tr.state z k).fg.J := by
   obtain ⟨-, hJm, -, ⟨Bj, hBj, hBjJ, hBjhj⟩, -⟩ :=
     Goldilocks.Store.cache_invariants _ _ _ _ (Compose.fg_reachable hrun.toLocalRun hz k)
@@ -78,7 +77,7 @@ private theorem floor_ge {β : Type} (m : Nat) (c : PhaseCase β) : m - 1 ≤ ph
   cases c <;> simp only [phaseFloor] <;> omega
 
 /-- **HS.1 (a), lower finality is benign.** -/
-theorem finalized_anc_of_allowed (hrun : GoldilocksRun proposer dg H tr)
+theorem finalized_anc_of_allowed (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H dg g ΔF)
     {i k m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
     (hon : PhaseOn tr.projFG H i k m c) {y : Fin sp.n} (hy : y ∈ H)
@@ -144,7 +143,8 @@ theorem finalized_anc_of_allowed (hrun : GoldilocksRun proposer dg H tr)
 
 /-- **HS.1 (b), the witness stays a viable head** of every honest node of the phase that holds
 it. -/
-theorem viableHead_of_allowed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem viableHead_of_allowed (hrun : GoldilocksRun proposer dg H tr ini)
+    (hs : HSShared tr H dg g ΔF)
     {i k m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
     (hon : PhaseOn tr.projFG H i k m c) {y : Fin sp.n} (hy : y ∈ H)
     {W : SA.Blk sp.n (List (FG.Att sp.n))} (hW : EffAllowed (tr.state y i).fg m c W)
@@ -201,7 +201,7 @@ theorem viableHead_of_allowed (hrun : GoldilocksRun proposer dg H tr) (hs : HSSh
     · (clear * - hmax hWf hfl; omega)
 
 /-- **HS.1, effective-phase viable-witness retention** (claims HS.1). -/
-theorem viable_witness_retention_of (hrun : GoldilocksRun proposer dg H tr)
+theorem viable_witness_retention_of (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H dg g ΔF)
     {i k m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
     (hon : PhaseOn tr.projFG H i k m c) {y : Fin sp.n} (hy : y ∈ H)
@@ -257,8 +257,8 @@ theorem viable_witness_retention_of (hrun : GoldilocksRun proposer dg H tr)
     rcases hanc hWz X hX with h | ⟨hfX, hXW⟩
     · exact Or.inr (hfr ▸ h)
     · have hXv := SA.voterBlockTree_anc
-        (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-        (fun _ => SA.voteStart_initial _) hz hce W hWv X (hfr ▸ hXW)
+        (Compose.goldilocks_ac_projection_from hrun hnc).localRun
+        hrun.vstart hz hce W hWv X (hfr ▸ hXW)
       rw [hfr] at hXv hWv ⊢
       exact Or.inl ⟨hXv, hfX, W, hWv, hv, hXW⟩
 

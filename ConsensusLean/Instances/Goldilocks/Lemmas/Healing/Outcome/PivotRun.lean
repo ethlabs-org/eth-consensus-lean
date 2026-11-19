@@ -25,7 +25,7 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF a : Time}
 
 /-- An update of label `m` at `t_m + 6Δ` precedes the start of every slot `u ≥ m + 2`. -/
 private theorem ts_add_six_lt {m u : Int} (h : m + 2 ≤ u) : sp.ts m + 6 * sp.Δ < sp.ts u := by
@@ -40,7 +40,7 @@ private theorem ts_add_six_lt {m u : Int} (h : m + 2 ≤ u) : sp.ts m + 6 * sp.�
 theorem ts_le_of_fastLock (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n}
     {i s : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : SA.FastLockAt tr.projAC x i s D CV) : sp.ts s ≤ tr.time i := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hΔ := sp.toParams.hΔ
   rcases hfl with ⟨ℓ, C, ⟨-, -, ht, -⟩, -⟩ | ⟨ℓ, A, -, hsl, -⟩
   · have ht' : tr.time i = sp.ts s + 6 * sp.Δ := ht
@@ -90,7 +90,7 @@ theorem ResetPremisesUpTo.reset_seed_before_slot {b : Time}
 `reset_seed`, keeping the write time). -/
 theorem reset_seed (hp : ResetPremises tr H proposer dg g ΔF a) :
     ∃ v r l O, HighOrigin tr H g v r l O ∧ l ≤ sp.slot a ∧ tr.time r ≤ a := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨⟨y, hy, k, att, hs, hh, rfl⟩, -⟩ := hp.reset
   obtain ⟨r, hrk, l, O, ho, -⟩ := high_row_source hp hy hs hh.ge
   obtain ⟨-, D, CV, -, hfl, -⟩ := highOrigin_mem hp ho
@@ -101,7 +101,7 @@ theorem reset_seed (hp : ResetPremises tr H proposer dg g ΔF a) :
 
 /-- No honest optimistic check selects a block of the proposal's slot before its actual call. -/
 theorem proposal_no_optimistic_of_run
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {p : Fin sp.n}
     (hpH : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p i ℓp)

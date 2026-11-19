@@ -62,7 +62,7 @@ private theorem frame_root_or_accepted {sp : SAParams} {FGP : Type} {ro : Replay
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
 
 /-- The deadline does not change at a cut that is not a restart. -/
 private theorem deadline_succ {y : Fin sp.n} {k : Nat} (hn : ¬ tr.RestartAt y (k + 1))
@@ -70,7 +70,7 @@ private theorem deadline_succ {y : Fin sp.n} {k : Nat} (hn : ¬ tr.RestartAt y (
   simp only [RunTrace.deadline, lastWake_succ hn]
 
 /-- The finalized tip of the frame of an honest AC cut is the node's `Σ.F`. -/
-private theorem frame_F (hrun : GoldilocksRun proposer dg H tr)
+private theorem frame_F (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ℓ) :
     ℓ.frame.F = (tr.state y j).fg.F := by
@@ -261,13 +261,15 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
 
 /-- Compatibility wrapper; driven duties require actual awake witnesses, not
 an unbounded health premise. -/
-theorem projection_driven (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem projection_driven (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr)
     (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg)
     (_hh : tr.HealthyRun H ΔF g) : SA.Driven proposer tr.projAC H :=
   projection_driven_of_run hrun hnc hroot
 
 /-- `Healthy(g)` over a run gives `Healthy(g)` on its AC projection. -/
-theorem projection_healthy (hrun : GoldilocksRun proposer dg H tr) (_hnc : Compose.NoCollRun dg tr)
+theorem projection_healthy (hrun : GoldilocksRun proposer dg H tr ini)
+    (_hnc : Compose.NoCollRun dg tr)
     (hh : tr.HealthyRun H ΔF g) : SA.HealthyAC tr.projAC H (tr.HonestBlocks H) g := by
   have h := hrun.toLocalRun
   obtain ⟨hgst, hawake, hf⟩ := hh
@@ -302,7 +304,7 @@ theorem projection_healthy (hrun : GoldilocksRun proposer dg H tr) (_hnc : Compo
     exact hkt
 
 /-- `Catch(κ)` over a run gives `Catch(κ)` on its AC projection (`Φ.F` is `Σ.F`). -/
-theorem projection_catch_of_run (hrun : GoldilocksRun proposer dg H tr)
+theorem projection_catch_of_run (hrun : GoldilocksRun proposer dg H tr ini)
     (hc : CatchRun tr H g (2 * sp.Δ)) :
     SA.CatchAC tr.projAC H (tr.HonestBlocks H) g (2 * sp.Δ) := by
   classical
@@ -323,7 +325,8 @@ theorem projection_catch_of_run (hrun : GoldilocksRun proposer dg H tr)
   exact hj₀.2 k hk
 
 /-- Compatibility wrapper; Catch projection uses actual calls only. -/
-theorem projection_catch (hrun : GoldilocksRun proposer dg H tr) (_hnc : Compose.NoCollRun dg tr)
+theorem projection_catch (hrun : GoldilocksRun proposer dg H tr ini)
+    (_hnc : Compose.NoCollRun dg tr)
     (_hh : tr.HealthyRun H ΔF g) (hc : CatchRun tr H g (2 * sp.Δ)) :
     SA.CatchAC tr.projAC H (tr.HonestBlocks H) g (2 * sp.Δ) :=
   projection_catch_of_run hrun hc

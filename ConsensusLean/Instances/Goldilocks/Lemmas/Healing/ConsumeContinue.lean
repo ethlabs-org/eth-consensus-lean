@@ -35,11 +35,12 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
+  {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-- The slot of an entry is at most the slot of the block it is the entry of. -/
-private theorem entry_slot_le (hrun : GoldilocksRun proposer dg H tr)
+private theorem entry_slot_le (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {W E : SA.Blk sp.n (List (FG.Att sp.n))} {h : Nat}
     (hpost : tr.post k = tr.state p (k + 1)) (hE : EntryOf (tr.post k).fg W E h) :

@@ -73,7 +73,7 @@ theorem frame_slot_eq_proposal
   have hrun := hS.run
   have hl := hrun.toLocalRun
   have hnc := hS.shared.noColl
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.goldilocks_ac_projection_from hrun hnc
   have hr := hac.localRun
   have hU := Compose.honest_blocks_coherent hl hnc
   have hpH : p ∈ H := hS.ready.1
@@ -113,7 +113,7 @@ private theorem frozen_core
   have hs := hS.shared
   have hl := hrun.toLocalRun
   have hnc := hs.noColl
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hac := Compose.goldilocks_ac_projection_from hrun hnc
   have hr := hac.localRun
   have hU := Compose.honest_blocks_coherent hl hnc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ

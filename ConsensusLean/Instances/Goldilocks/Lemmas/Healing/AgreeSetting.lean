@@ -76,7 +76,8 @@ end Stamps
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF w : Time} {i₀ i m : Nat}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF w : Time}
+  {i₀ i m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-! ### The phase-interval sandwich -/
@@ -103,7 +104,7 @@ private theorem case_eq {β : Type} {c c' : PhaseCase β} (h₁ : c.rank ≤ c'.
 
 /-- **The phase-interval sandwich**: the phase `(m, c)` at two
 cuts `a ≤ b` is the phase at every cut between them. -/
-theorem phaseOn_squeeze (hrun : GoldilocksRun proposer dg H tr)
+theorem phaseOn_squeeze (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H dg g ΔF) {a b : Nat}
     (ha : PhaseAt tr.projFG H a m c) (hb : PhaseAt tr.projFG H b m c) :
     PhaseOn tr.projFG H a b m c := by
@@ -138,7 +139,7 @@ theorem le_of_settledIn (hw : SettledIn tr H g w i₀ m c) {k : Nat} (hk : w ≤
 
 /-- **The phase from the settled cut**: with `i ≤ k` and the
 phase `(m, c)` on `[i, k]`, the phase is `(m, c)` on `[i₀, k]` (the sandwich on `[i₀, i]`). -/
-theorem phaseOn_voter (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem phaseOn_voter (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF)
     (hw : SettledIn tr H g w i₀ m c) {k : Nat} (hik : i ≤ k)
     (hph : PhaseOn tr.projFG H i k m c) : PhaseOn tr.projFG H i₀ k m c := by
   intro k' h₁ h₂
@@ -148,12 +149,12 @@ theorem phaseOn_voter (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr 
 
 /-- **Every slot-`s` vote is after the start cut** `i` when `time i ≤ t_{s−1} + 3Δ`: the vote is
 cast at a time of slot `s`, at or after `t_s = t_{s−1} + 4Δ`. -/
-theorem start_le_voter (hrun : GoldilocksRun proposer dg H tr)
+theorem start_le_voter (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {s : Nat}
     (hti : tr.time i ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hv : SA.CastAt tr.projAC y k ℓ e) (hes : e.msg.slot = s) : i ≤ k := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨-, hys, -, -⟩ := SA.castAt_spec hr hy hv
   have hvt : sp.ts s ≤ tr.time k :=
@@ -201,7 +202,7 @@ theorem honestProposalRun_of_proposesAt {ini} (hrun : GoldilocksRun proposer dg 
 
 /-- **A ready proposal is an honest proposal** of the AC projection. The support and joined
 conjuncts are unnecessary for this operational extraction. -/
-theorem honestProposalRun_of_ready (hrun : GoldilocksRun proposer dg H tr)
+theorem honestProposalRun_of_ready (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} {kP s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p kP s P) : HonestProposalRun tr H proposer s P :=

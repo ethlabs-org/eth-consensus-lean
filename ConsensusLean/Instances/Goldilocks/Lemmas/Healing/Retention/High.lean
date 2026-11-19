@@ -169,7 +169,7 @@ theorem frame_tree_subset {y : Fin sp.n} (hy : y ∈ H)
 theorem acceptAt_mem {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {W : SA.Blk sp.n (List (FG.Att sp.n))} (hk : tr.projAC.AcceptAt y k W) :
     W ∈ (tr.state y k).fg.tree := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨ℓ, hc, hcall⟩ := hk
   exact hp.frame_tree_subset hy hc ((SA.accept_new sp hr hy ⟨ℓ, hc, hcall⟩).1 ℓ hc)
 
@@ -179,7 +179,7 @@ theorem highOrigin_mem {x : Fin sp.n} {i j : Nat}
     ∃ ℓ D CV, tr.projAC.CallAt x i ℓ ∧ SA.FastLockAt tr.projAC x i j D CV ∧
       B = ℓ.frame.viableAncestor D ∧ D ∈ ℓ.frame.tree ∧ B ∈ ℓ.frame.tree ∧
       ℓ.frame.Anc B D ∧ B ∈ (tr.state x i).fg.tree := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨CV, ℓ, D, hc, hfl, rfl⟩ := ho.2.2.1
   obtain ⟨ℓ', hc', hD⟩ := fastLock_mem hfl
   obtain rfl : ℓ = ℓ' := Option.some.inj (hc.2.symm.trans hc'.2)

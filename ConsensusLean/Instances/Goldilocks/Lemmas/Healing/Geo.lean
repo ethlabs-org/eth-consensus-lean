@@ -258,24 +258,23 @@ section Runs
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {proposer : Nat → Fin sp.n}
 
 /-- The FG projection of a run under the HS shared premises is an FG trace, with `f < 2q − n`. -/
-theorem fg_run_of_hs (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF) :
+theorem fg_run_of_hs (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
       Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
   obtain ⟨-, -, hf⟩ := hs.healthy
-  have hreq : (goldilocksNode sp ro).Requirements :=
-    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
-      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
-      SA.proposal_payload_valid sp _ ro⟩
   have hn := sp.toParams.hn
-  exact ⟨Compose.fg_projection _ _ dg H _ tr proposer hreq hs.genesisRoot hrun.toLocalRun hs.noColl,
+  exact ⟨Compose.fg_projection_from (fun y _ => Compose.requirements_from sp ro
+      (hrun.vstart y)) hs.genesisRoot hrun.toLocalRun hs.noColl,
     by change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n; omega⟩
 
 /-- The evidence of a phase, once held, stays held (stores keep their blocks and states, and
 ancestry of a held block does not change). -/
-theorem holdsEvidence_mono (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem holdsEvidence_mono (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr)
     {z : Fin sp.n} (hz : z ∈ H) {a b m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
     (hab : a ≤ b) (h : HoldsEvidence (tr.state z a).fg m c) :
     HoldsEvidence (tr.state z b).fg m c := by
@@ -309,7 +308,7 @@ floor is the phase floor and `fc_root` is `Σ.F`, or the phase's `J` in the top-
 node's `Σ.h_max` is `m`; its `Σ.h_j` is `m − 1` exactly when the phase has a justification there
 (`JMax`, with `Σ.F ⪯ J` from HS.1), its `Σ.J` is then the phase's `J` (HR.2 (a)), and its local
 contest test agrees with the phase case (the contest witness extends `Σ.F` by HS.1). -/
-theorem viableHeads_iff (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem viableHeads_iff (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF)
     (_hc : CatchRun tr H g (2 * sp.Δ)) {z : Fin sp.n} (hz : z ∈ H) {k m : Nat}
     {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} (hph : PhaseAt tr.projFG H k m c)
     (hev : HoldsEvidence (tr.state z k).fg m c) {X : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -608,10 +607,12 @@ section Main
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {proposer : Nat → Fin sp.n}
 
 /-- Allowedness in the effective geometry moves between honest stores that hold the block. -/
-theorem effAllowed_transfer (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem effAllowed_transfer (hrun : GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr)
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i j m : Nat}
     {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} {X : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : EffAllowed (tr.state y i).fg m c X) (hX : X ∈ (tr.state z j).fg.tree) :
