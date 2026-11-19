@@ -579,24 +579,26 @@ theorem blockCallAt_of_allCuts {k : Nat}
   · exact ⟨accepted, by simp [simTrace_node, hr], by simp [simTrace_label, hr, hb]⟩
   · simp [simTrace_time, hr]
 
-/-- Once its authenticated stamp is no later than receipt, a forwarding envelope's
-child has a real processing call in that receipt, whether accepted or refused. -/
+/-- Once its authenticated stamp is no later than receipt, a received forwarding envelope's child
+has a real processing call in that receipt, whether accepted or refused. -/
 theorem received_forward_blockCall {i : Nat} {v : V}
     {receipt o : Wire (Fintype.card V) S.vote} {x : Fin (Fintype.card V)} {t u : Time}
     {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u))
-    (hc : Model.Obj.Contains receipt o)
+    (hro : receipt = o)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B)) (htu : t ≤ u) :
     ∃ k < cutMap S rho hn (i + 1),
       (simTrace S rho hn).BlockCallAt (rho.ownKey v) k B ∧
       (simTrace S rho hn).time k = u := by
-  obtain ⟨-, hdecode⟩ := decoded_forward_child_in_receipt S rho hn hc hd
+  subst hro
+  obtain ⟨-, hdecode⟩ := decoded_forward_child_in_receipt S rho hn (.refl _) hd
   have hdel : blockObj _ B ∈ delivered (Model.digests rho.hash receipt) (stateAt S rho hn v i)
       receipt := by
-    rw [forwardObj_of_decodeForward _ _ _ _ _ _ hd] at hc
-    exact mem_delivered_of_parent _ hc (List.mem_append_right _ (List.mem_singleton_self _))
-      (fun B' => canonEvent_data_ne_block rfl B')
+    have ho := forwardObj_of_decodeForward _ _ _ _ _ _ hd
+    apply carried_subset_delivered_self _ (not_refuses_of_data _ ho)
+    rw [ho]
+    exact List.mem_append_right _ (List.mem_singleton_self _)
   have hs : (S.params (Model.pubOf E) hn).toParams.slotTime B.slot ≤ u :=
     (decodeForward_child hd).2.trans htu
   have hslot : B.slot ≤ (S.params (Model.pubOf E) hn).toParams.slotOf u := by

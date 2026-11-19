@@ -92,7 +92,7 @@ theorem received_forward_accepted_before_of_released_at (hv : rho.ExecutionValid
     {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u)) {t₀ : Time}
     (hj₀ : ∀ k < j, (simTraceAt S rho hn).time k ≤ t₀) (hy : v ∉ rho.faultyAt t₀)
-    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt t)
+    (hro : receipt = o) (hx : rho.key x ∉ rho.faultyAt t)
     (hrel : rho.releases (rho.key x) o t)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B))
@@ -102,6 +102,7 @@ theorem received_forward_accepted_before_of_released_at (hv : rho.ExecutionValid
     (hu : u < deadline) :
     ∃ k < cutMap S rho hn (i + 1), (simTraceAt S rho hn).AcceptAt (rho.ownKey v) k B ∧
       (simTraceAt S rho hn).time k ≤ u ∧ (simTraceAt S rho hn).time k < deadline := by
+  have hc : Model.Obj.Contains receipt o := hro ▸ .refl _
   obtain ⟨j₀, hs₀, ho₀⟩ := hrel
   have hrun := simTraceAt_goldilocksRun S rho hn hv
   have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
@@ -142,11 +143,11 @@ theorem received_forward_accepted_before_of_released_at (hv : rho.ExecutionValid
     exact (hmono.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono hD)).trans hFB
   -- Split the delivery at the received envelope.
   have hseq := simTraceAt_deliver S rho hn hv he
-  have hco : o.carried ≠ [] := by
-    rw [forwardObj_of_decodeForward _ _ _ _ _ _ hd]
-    simp [forwardObj, Model.Obj.carried]
-  obtain ⟨pre, post, σ, hparts⟩ := delivered_infix_of_carried (sp := S.params (Model.pubOf E) hn)
-    (ro := S.ro _) (Model.digests rho.hash receipt) (st := stateAt S rho hn v i) hc hco
+  set σ := stateAt S rho hn v i
+  have hparts : delivered (Model.digests rho.hash receipt) σ receipt =
+      [] ++ (visit (Model.digests rho.hash receipt) σ o).1 ++ [] := by
+    subst hro
+    simp [delivered]
   rw [hparts, List.append_assoc] at hseq
   obtain ⟨r, _, htail⟩ := deliverSeq_append_split _ _ hseq
   obtain ⟨e, hsub, hpost⟩ := deliverSeq_append_split _ _ htail

@@ -197,7 +197,7 @@ theorem held_forward_blockCall_before_at {V : Type} [Fintype V] [DecidableEq V] 
     have htu := received_forward_stamp_le_of_stamp_at
       S rho hn hv hi (.refl o) hx hdecode
     obtain ⟨k, _, hc, ht⟩ := received_forward_blockCall
-      S rho hn hi (.refl o) hdecode htu
+      S rho hn hi rfl hdecode htu
     have hk : (simTrace S rho hn).time k < D := ht ▸ huD
     exact ⟨k, before hk, ht ▸ htu, hkey ▸ hc, hk⟩
 

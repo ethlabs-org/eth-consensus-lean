@@ -109,7 +109,7 @@ theorem held_forward_blockCall_lt_at (hn : 1 ≤ Fintype.card V) (hv : rho.Execu
     have htu := received_forward_stamp_le_of_stamp_at S rho hn hv hi
       (.refl o) hx hdecode
     obtain ⟨k, _, hc, ht⟩ := received_forward_blockCall S rho hn hi
-      (.refl o) hdecode htu
+      rfl hdecode htu
     exact ⟨k, hkey ▸ hc, ht ▸ huD⟩
 
 end Engine

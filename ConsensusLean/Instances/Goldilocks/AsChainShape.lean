@@ -27,8 +27,8 @@ simulated by a `GoldilocksRun` (claims C0.4 kept) and bind the evidence (G1.5). 
   only in a canonical form (`blockObj`, `voteObj`, `attObj`; read back by `decodeBlock`,
   `decodeVoteObj`, `decodeAttObj`, together `canonEvent`), anything else is dropped. A delivery
   processes the received object and, recursively, what it carries (`delivered`), except what a
-  block carries when the node drops it as of a future slot or the FG refuses it (`Refuses`;
-  composition.tex §"Blocks").
+  block-shaped object carries when it fails the wire checks, when the node drops it as of a future
+  slot, or when the FG refuses it (`Refuses`; composition.tex §"Blocks").
 * **Digest.** The engine hashes the header; the node's digest is `dgOf hash g`
   (`dgOf`, `Lemmas/Simulation/TraceDefs`): `none ↦ g` (the genesis root is a parameter) and
   `some r ↦ taggedRoot g (hash header)`. The injective tag
@@ -581,20 +581,29 @@ noncomputable def processOne (hs : List (Header Info × Nat))
   | some (.attestation a) => relayIf (apply st (Node.onAttestation st.node a)) True o
   | _ => st
 
-/-- Processing `o` at `st` refuses a block: `o` is a canonical block that `on_block` drops as of a
-future slot, or that the FG refuses (composition.tex §"Blocks"). -/
+/-- A block-shaped object: one that says a header item, as a block's canonical object does
+(`blockObj`). Every other object is a vote, an attestation or a wrapper body. -/
+def BlockShaped : Wire sp.n (binding := binding) → Prop
+  | .mk _ (.item _) _ => True
+  | _ => False
+
+/-- Processing `o` at `st` refuses a block: `o` is block-shaped and either fails the wire checks
+(it is no canonical block: `decodeBlock` rejects its signature role, slot, indices, carried
+objects, attestations or AC payload), or is a canonical block that `on_block` drops as of a
+future slot or that the FG refuses (composition.tex §"Blocks"). -/
 def Refuses (hs : List (Header Info × Nat))
     (st : State sp ro (binding := binding)) (o : Wire sp.n (binding := binding)) : Prop :=
-  ∃ B, canonEvent sp ro (binding := binding) hs o = some (.block B) ∧
-    (sp.toParams.slotOf st.now < B.slot ∨ st.node.fg.onBlock B = none)
+  BlockShaped o ∧ ∀ B, canonEvent sp ro (binding := binding) hs o = some (.block B) →
+    sp.toParams.slotOf st.now < B.slot ∨ st.node.fg.onBlock B = none
 
 open Classical in
 mutual
 /-- The objects a delivery of `o` at `st` processes, in preorder, with the state after them: `o`,
 then, unless processing `o` refuses a block (`Refuses`), recursively every object it carries, each
-from the state its predecessors leave. No handler runs for the payload votes and attestations of
-a refused block (composition.tex §"Blocks"); a later delivery can carry them again. Noncanonical
-wrappers make no node call, and their carried objects are processed. A canonical block is
+from the state its predecessors leave. No handler runs for what a refused block carries, nor for
+what a block-shaped object that fails the wire checks carries (composition.tex §"Blocks": the
+check drops it with no effect); a later delivery can carry those objects again. Wrappers make no
+node call, and their carried objects are processed. A canonical block is
 processed before its payload votes and attestations, which receive their own message/attestation
 calls when the block is accepted. Thus admitting a payload vote is followed by actual message
 processing at the same delivery time, rather than merely adding it to the AC pool. -/

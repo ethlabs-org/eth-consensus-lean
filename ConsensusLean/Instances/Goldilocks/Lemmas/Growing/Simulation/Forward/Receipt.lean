@@ -65,12 +65,15 @@ theorem received_voteForward_processAt_at (hv : rho.ExecutionValid)
       Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉
         rho.releasesAt j)
     (he : rho.events[i]? = some (.deliver v receipt u))
-    (hc : Model.Obj.Contains receipt
-      (.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m])) :
+    (hro : receipt =
+      .mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m]) :
     ∃ k, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
       (simTraceAt S rho hn).projAC.ProcessAt (rho.ownKey v) k m ∧
       (simTraceAt S rho hn).time k = u ∧ τ ≤ u := by
   rw [simTraceAt_eq]
+  have hc : Model.Obj.Contains receipt
+      (.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m]) :=
+    hro ▸ .refl _
   have htime : τ ≤ u := by
     by_contra hlt
     have hxu : rho.key x ∉ rho.faultyAt u :=
@@ -88,8 +91,8 @@ theorem received_voteForward_processAt_at (hv : rho.ExecutionValid)
     · exact h.le
     · exact h.le
   obtain ⟨k, hlo, hhi, hp, ht⟩ := received_vote_processAt S rho hn he
-    (mem_delivered_of_parent _ hc (List.mem_singleton_self _)
-      (fun B' => canonEvent_data_ne_block rfl B'))
+    (carried_subset_delivered_self _ (not_refuses_of_data _ hro)
+      (by rw [hro]; exact List.mem_singleton_self _))
   exact ⟨k, hlo, hhi, hp, ht, htime⟩
 
 /-- Holdings of a first-release vote envelope whose signer is honest at its stamp either belong
@@ -121,7 +124,7 @@ theorem held_voteForward_source_or_process_at (hv : rho.ExecutionValid)
     exact Or.inl (hxy.trans (rho.key.symm_apply_apply y)).symm
   · obtain ⟨i, hi⟩ := hrecv
     obtain ⟨k, _, _, hp, ht, hτ⟩ := received_voteForward_processAt_at S rho hn hv hx hs
-      hfirst hi (.refl _)
+      hfirst hi rfl
     have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
     rw [hkey] at hp
     exact Or.inr ⟨k, hp, ht ▸ hτ, ht ▸ hud⟩
