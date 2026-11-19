@@ -32,9 +32,10 @@ open SA (SAParams ReplayOrder Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : SA.CommitteeDict sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
   {T : Time} {r σ : Nat} {t₁ b : Time} {s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
 
 /-- **Every member of a label `≤ s` is below `P`** when every honest slot-`s` vote is `P`, through
@@ -42,7 +43,7 @@ variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 joined at `t_s + Δ` (S2); a member of label `s` is below its origin of label `s`, whose honest
 supporter votes `P`. -/
 theorem seeded_member_anc_proposal
-    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hrs : r ≤ s) (hPU : P ∈ tr.HonestBlocksAt H) (hsb : sp.ts s + sp.Δ ≤ b)
     (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {l : Nat}
@@ -51,17 +52,20 @@ theorem seeded_member_anc_proposal
   have hΔ := sp.toParams.hΔ
   have hU := honestBlocksAt_coherent hS.run hS.noColl
   rcases hl.lt_or_eq with hlt | rfl
-  · have hcount := hS.bounds.slot s (sp.ts s + sp.Δ) hrs le_rfl hsb (by linarith)
-    obtain ⟨x, hx, hw, hjx⟩ := Set.nonempty_of_ncard_ne_zero (Nat.zero_lt_of_lt hcount).ne'
-    obtain ⟨k, e, hv, hes, hkt⟩ := vote_of_awake_joined_at hS.run hS.noColl hx
-      (mayVote_stock_at hS.run hS.noColl (ts_add_delta_nonneg _) hx) hw hjx
+  · have hcount := faults_lt_voters hS.run hS.noColl hS.facts hS.committee (s := s)
+      (d := sp.ts s + sp.Δ) hrs le_rfl hsb (by linarith)
+    obtain ⟨x, hx⟩ := Set.nonempty_of_ncard_ne_zero (Nat.zero_lt_of_lt hcount).ne'
+    obtain ⟨-, k, e, hv, hes⟩ := votersAt_iff.1 hx
+    have hkt : tr.time k ≤ sp.ts s + sp.Δ := by
+      obtain ⟨hx', ℓ', hc', he'⟩ := hVoteAt_iff.1 hv
+      have h := (cast_head_fcRoot_at hS.run hS.noColl hx' ⟨hc', he'⟩).2
+      rwa [hes] at h
     obtain ⟨Hd, hHd, hHdr, hCH⟩ :=
       hS.inv.vote_extends C l hC x k e hv (hkt.trans hsb) (by omega)
     rwa [hU.1 hHd hPU (hHdr.trans (hall x k e hv hes))] at hCH
   · obtain ⟨O, hO, hCO⟩ := hC.below_origin hS.run hS.noColl
     obtain ⟨x, k, e, hv, hkb, hes, Hd, hHd, hHdr, hOHd⟩ := honest_supporter_at hS.run
-        hS.noColl (CommitteeFacts.of_full hS.run hS.noColl hS.stock)
-      hS.sync (CommitteeBoundsFrom.of_full hS.run hS.bounds) hrs (by linarith [hS.gbar_le hrs]) hO
+        hS.noColl hS.facts hS.sync hS.committee hrs (by linarith [hS.gbar_le hrs]) hO
     rw [hU.1 hHd hPU (hHdr.trans (hall x k e hv hes))] at hOHd
     exact hCO.trans hOHd
 
@@ -71,7 +75,7 @@ the block `P`, compatible with every member of a label `≤ s` (`seeded_member_a
 the live locks of the vote of labels `≥ r` (`handover_live_lock_label_at`) and the frozen witness
 `seeded_vote_frame_of`. -/
 theorem seeded_votes_succ_extend
-    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hs : σ + 1 ≤ s) (hPU : P ∈ tr.HonestBlocksAt H) (hsb : sp.ts s + sp.Δ ≤ b)
     (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root) :
     ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s + 1 → tr.time j ≤ b →
@@ -93,12 +97,12 @@ theorem seeded_votes_succ_extend
     intro e hv hes hjb
     obtain ⟨hx, ℓ, hc, he⟩ := hVoteAt_iff.1 hv
     exact later_transfer_step_at hS.run hS.noColl
-        (CommitteeFacts.of_full hS.run hS.noColl hS.stock) hS.sync
-        (CommitteeBoundsFrom.of_full hS.run hS.bounds) (g := g) (rL := r)
+        hS.facts hS.sync hS.committee (g := g) (rL := r)
       (rO := r + sp.k - 1) hrs' hsa hx ⟨hc, he⟩ hes hjb
       (fun l hl _ => handover_live_lock_label_at hS.seed hx ⟨hc, he⟩ (by omega) l hl) hBc
       (fun hw => seeded_vote_frame_of hS.run hS.noColl hS.seed hS.horizon hS.service hS.bounds
-        hS.conv hs hPb hx ⟨hc, he⟩ hes hjb (fun C l hC hl => hBc C l hC hl) hw hS.stock)
+        hS.conv hs hPb hx ⟨hc, he⟩ hes hjb (fun C l hC hl => hBc C l hC hl)
+        hw hS.facts hS.committee)
       (fun x k e' hv hs => ⟨P, hPU, (hall x k e' hv hs).symm, .refl⟩)
       (fun z j' hj' hz e' hv' hs' => ih j' hj' z e' (hVoteAt_iff.2 ⟨hz, hv'⟩) hs'
         ((hS.run.time_mono hj'.le).trans hjb))
@@ -109,7 +113,8 @@ compatible with `P` (`updater_F_anc_of_compatible`). A low updater's `Σ.F` is b
 seed, a member of a label `< r`, below `P`. A high updater's `Σ.J` is below the source of a high
 row, below a member written before the update, of a label `≤ s + 1`: below `P` for a label `≤ s`,
 and below an optimistic origin of label `s + 1` whose honest supporter extends `P`. -/
-theorem seeded_updater_F_anc (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+theorem seeded_updater_F_anc
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hs : σ + 1 ≤ s) (hPU : P ∈ tr.HonestBlocksAt H) (hPs : P.slot = s)
     (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root)
     {y : Fin sp.n} {k₀ : Nat} (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
@@ -179,8 +184,7 @@ theorem seeded_updater_F_anc (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ 
       obtain rfl : l = s + 1 := le_antisymm hl hls
       obtain ⟨O', hO', hCO'⟩ := hC.below_origin hrun hnc
       obtain ⟨z, j, e, hv, hjb, hes, Hd, hHd, hHdr, hOH⟩ := honest_supporter_at hrun hnc
-          (CommitteeFacts.of_full hrun hnc hS.stock)
-        hS.sync (CommitteeBoundsFrom.of_full hrun hS.bounds) (by omega)
+          hS.facts hS.sync hS.committee (by omega)
         (by linarith [hS.gbar_le (show r ≤ s + 1 by omega)])
         (hO'.mono (hck₀.trans hb))
       obtain ⟨Hd', hHd', hHd'r, hPH⟩ := hsucc z j e hv hes (hjb.trans le_rfl)
@@ -203,7 +207,7 @@ theorem seeded_updater_F_anc (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ 
 vetoed**: every live lock block of the updater is on the healed chain (`seeded_locks_at`), so
 compatible with the member. -/
 theorem seeded_result_not_vetoed
-    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     {y : Fin sp.n} {k₀ m : Nat} (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hu : SA.UpdateAt tr.projAC y k₀ m ℓ) (ht₁ : t₁ ≤ tr.time k₀) (hb : tr.time k₀ ≤ b)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {l : Nat}
@@ -229,7 +233,8 @@ honest slot-`s` vote is `P` (`seeded_votes_eq_proposal`), the updater's `Σ.F` i
 (`seeded_updater_F_anc`), so `P` is held above it with a strict majority
 (`proposal_held_at_update_from`, `proposal_majority_at_update_from`, `adopt_result_of`); the
 result is an origin of label `s ≥ r + k − 1`, a member, so not vetoed. -/
-theorem seeded_adopt_result (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+theorem seeded_adopt_result
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hs : σ + 1 ≤ s) {p : Fin sp.n} {k : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) (ht₁ : t₁ ≤ sp.ts s)
     {y : Fin sp.n} {k₀ : Nat} (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
@@ -250,7 +255,7 @@ theorem seeded_adopt_result (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b
   obtain ⟨hPt, hFP⟩ := proposal_held_at_update_from hrun hnc hS.sync hp hP hPs (by linarith) hy
     hu hb hF
   have hmaj := proposal_majority_at_update_from hrun hnc hS.sync
-    (CommitteeFacts.of_full hrun hnc hS.stock) (CommitteeBoundsFrom.of_full hrun hS.bounds)
+    hS.facts hS.committee
     hrs' (by linarith) (by linarith) hy hu hb hPt hall
   have hC := adopt_result_of hrun hnc hPs hy hu hPt hFP hmaj
   refine ⟨hC, seeded_result_not_vetoed hS hy hu (by linarith) hb (l := s)

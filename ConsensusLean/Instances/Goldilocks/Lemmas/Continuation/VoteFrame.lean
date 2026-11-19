@@ -30,14 +30,15 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
 
 /-- **S3 at a vote after the hand-over (the seeded frozen witness).** At an honest vote of a
 slot `s + 1` with `s ≥ σ + 1`, cast at a time `≤ b`, a member `B` of the healed family within `b`
 of label at most `s`, extended by an honest slot-`s` vote, is in the vote's viable voter block
 tree or at or below its `fc_root`, given `P_{s+1}` up to `b`, the reset service through `b`, the
 seed's catch-up, the slot counts from `r` and conviction below a third (`seeded_vote_frame_of`). -/
-theorem seeded_vote_frame_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem seeded_vote_frame_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
       (hTb : T ≤ b)
@@ -49,11 +50,13 @@ theorem seeded_vote_frame_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hib : tr.time i ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
     (hBm : HealedOrigin tr H g r (r + sp.k - 1) B j b) (hj : j ≤ s)
     (hw : ∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) (hstock : sp.committeeSize = sp.n) :
+      SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
+    {K : SA.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
+    (hKB : CommitteeBoundsFrom tr H K r b) :
     B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
       Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot :=
   seeded_vote_frame_of hrun hnc hseed hTb hsvc hB hcv hs hP hy hc hes hib
-    (fun C l hC hl => healedOriginsBelow_iff.1 hP B j C l (by omega) (by omega) hBm hC) hw hstock
+    (fun C l hC hl => healedOriginsBelow_iff.1 hP B j C l (by omega) (by omega) hBm hC) hw hK hKB
 
 end Consensus.Goldilocks.Compose.Growing
 

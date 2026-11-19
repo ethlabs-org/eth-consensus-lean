@@ -30,7 +30,8 @@ theorem sign_public {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Signing follows the same node's source call at the preceding cut and the same time.
 Both states are retained at the signing cut, even if the node is compromised later. -/
-theorem attest_source (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem attest_source {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
     (hc : tr.CallAt y j (.fg (.attest C (some a)))) :

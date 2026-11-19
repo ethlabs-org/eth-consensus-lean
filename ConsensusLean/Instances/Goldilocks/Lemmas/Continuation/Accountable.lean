@@ -44,6 +44,7 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- **Conviction below a third on held chains.** For two nodes `y` (state before cut `i`) and `z`
 (before cut `j`), each honest at a time `≥ 0` at or after every cut before its state, and blocks
@@ -66,7 +67,7 @@ readers, each honest at a time `≥ 0` at or after every cut before its state, a
 the blocks held while honest. `finalAccountable_readPoint` gives a crossing set of `2q − n ≥ n/3`
 validators otherwise. Consumed by the `F`/`F` comparison of the continued reads (the replacement
 of the healthy `finalized_safe_read`). -/
-theorem finalized_compatible_of_convictedBelow (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem finalized_compatible_of_convictedBelow (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hcv : ChainConvictedBelow tr H) {y z : Fin sp.n} {i j : Nat}
     {t t' : Time} (ht : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
     (ht' : 0 ≤ t') (hj : ∀ k < j, tr.time k ≤ t') (hz : z ∈ H t') :
@@ -84,7 +85,7 @@ before its state, equal justified heights give equal justified roots: two distin
 roots at one height give a crossing set of `2q − n ≥ n/3` validators with conflicting
 attestations on the two chains. Consumed by the low-`Σ.J` case of the seeded cache facts (the
 active case `h_max = h_j + 1` puts `Σ.J` below the reset seed). -/
-theorem J_eq_of_hj_eq_conv (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem J_eq_of_hj_eq_conv (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hcv : ChainConvictedBelow tr H) {y z : Fin sp.n} {i j : Nat} {t t' : Time} (ht : 0 ≤ t)
     (hi : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) (ht' : 0 ≤ t') (hj : ∀ k < j, tr.time k ≤ t')
     (hz : z ∈ H t') {B B' : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -110,6 +111,7 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- **G1.2 at strict height under conviction below a third.** A block `F` finalized by the state
 of a held `X` in the store of a reader honest at `t` is an ancestor, inside the blocks held while
@@ -119,7 +121,7 @@ crossing set of `finalization_meets_crossing` has `2q − n ≥ n/3` members wit
 the chains of `X` and `W`. Consumed by the low-`Σ.F` case of the seeded cache facts (the
 replacement of `low_finalized_below_origin_at`) and by the `F`/origin comparison of the continued
 reads. -/
-theorem finalized_anc_of_lt_conv (hrun : GoldilocksRun proposer dg H tr)
+theorem finalized_anc_of_lt_conv (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hcv : Compose.Growing.ChainConvictedBelow tr H)
     {y z : Fin sp.n} {k m : Nat} {t u : Time} (ht : 0 ≤ t) (hk : ∀ q < k, tr.time q ≤ t)
     (hy : y ∈ H t) (hu : 0 ≤ u) (hm : ∀ q < m, tr.time q ≤ u) (hz : z ∈ H u)

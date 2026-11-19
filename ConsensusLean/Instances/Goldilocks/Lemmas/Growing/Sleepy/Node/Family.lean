@@ -90,7 +90,8 @@ theorem compatible_of_anc_both {U : Set (SA.Blk sp.n (List (FG.Att sp.n)))} (hU 
 
 /-- **A block on the healed chain is compatible with every member** when the members are
 pairwise compatible: it is below one member `C₀`, and every member is compatible with `C₀`. -/
-theorem OnHealedChain.compatible (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem OnHealedChain.compatible {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {g : Time} {rL rO : Nat} {b : Time}
     (hP : ∀ C s C' s', HealedOrigin tr H g rL rO C s b → HealedOrigin tr H g rL rO C' s' b →
       Compatible (tr.HonestBlocksAt H) C C')

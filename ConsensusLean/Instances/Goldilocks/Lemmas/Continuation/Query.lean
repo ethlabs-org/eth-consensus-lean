@@ -153,7 +153,11 @@ theorem handover_invariant_at
     le_max_right _ _, ?_, fun b hTb hsvc hB hcv =>
       Compose.Growing.seeded_invariant_of_cover_at
         (simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid) hpr.noColl hseed
-        hTb hsvc hB hcv hcov rfl⟩
+        hTb hsvc hB hcv hcov
+        (Compose.Growing.CommitteeFacts.of_full
+          (simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid) hpr.noColl rfl)
+        (Compose.Growing.CommitteeBoundsFrom.of_full
+          (simTraceAt_goldilocksRun { S with vote := stock } Q.run.2 Q.hn Q.valid) hB)⟩
   rw [max_eq_left hdt₀]
   exact hlate
 

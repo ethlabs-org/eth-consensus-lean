@@ -5,6 +5,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -35,9 +37,10 @@ open SA (SAParams ReplayOrder Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : SA.CommitteeDict sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
   {T : Time} {r σ : Nat} {t₁ b : Time}
 
 /-- A result of label `l` written at a time `≤ t_s + Δ` has `l ≤ s − 2`. -/
@@ -54,7 +57,7 @@ private theorem result_label_le {x : Fin sp.n} {c l s : Nat}
   omega
 
 /-- An optimistic origin of label `l` written at a time `≤ t` has `l ≤ slot t`. -/
-private theorem optimistic_label_le (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem optimistic_label_le (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n} {c l : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))} {OV : Set (Vote sp.n)}
     (hO : SA.OptimisticLockAt tr.projAC x c l O OV) {t : Time} (hc : tr.time c ≤ t) :
     l ≤ sp.slot t := by
@@ -68,9 +71,10 @@ variable {p : Fin sp.n} {s i : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
 
 /-- **The high rows of the proposer of slot `s` are sourced below members of labels below `s`**
 (the row classification of `seeded_reader_old` at the proposal cut). -/
-theorem proposer_row_labels (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+theorem proposer_row_labels
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hp : p ∈ H (tr.time i)) (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b) :
+    (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b) (hrs : r ≤ s) :
     ∀ m < i, ∀ X, tr.AcceptAt p m X → ∀ a ∈ X.fgPayload, a.val ∈ H (tr.time i) →
       ∀ k < m, tr.SignAt a.val k a → ∀ c < k, ∀ C l O OV,
         HealedOrigin tr H g r (r + sp.k - 1) C l (tr.time c) →
@@ -90,8 +94,15 @@ theorem proposer_row_labels (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b
   · omega
   exfalso
   have hd := hS.run.time_nonneg i
-  refine Compose.proposal_no_optimistic_of (hS.run.upTo hd) (hS.noColl.upTo _)
-    SA.CommitteeP.full (SA.cs2_full hS.stock (hS.bounds.two _ hd hb)) hp
+  have hts1 : sp.ts (l + 1 : Nat) = sp.ts l + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  have hfK : 2 * (K.committee l ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize := by
+    rw [← hS.facts.hsize l]
+    exact hS.committee.two_in_slot hrs hti.ge (by linarith) hb
+  have hPK : SA.CommitteeP K (tr.upTo (tr.time i)).projAC (H (tr.time i)) := by
+    rw [RunTrace.upTo_projAC]
+    exact SA.CommitteePAt.upTo hS.run.time_mono hS.run.antitone hS.facts.hP _
+  refine Compose.proposal_no_optimistic_of (hS.run.upTo hd) (hS.noColl.upTo _) hPK hfK hp
     (by rw [RunTrace.upTo_projAC]; exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hc) hcall hti
     a.val hav c (by omega) O OV ?_
   rw [RunTrace.upTo_projAC]
@@ -99,11 +110,12 @@ theorem proposer_row_labels (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b
 
 /-- **The high rows of a voter of slot `s` are sourced below members of labels below `s`** (the
 row classification of `seeded_reader_old` at the vote cut). -/
-theorem voter_row_labels (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+theorem voter_row_labels
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     {y : Fin sp.n}
     {j : Nat} (hy : y ∈ H (tr.time j)) {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
-    (hes : e.msg.slot = s) (hs0 : 0 < s) (hjb : tr.time j ≤ b) :
+    (hes : e.msg.slot = s) (hs0 : 0 < s) (hjb : tr.time j ≤ b) (hrs : r ≤ s) :
     ∀ m < j, ∀ X, tr.AcceptAt y m X → ∀ a ∈ X.fgPayload, a.val ∈ H (tr.time j) →
       ∀ k < m, tr.SignAt a.val k a → ∀ c < k, ∀ C l O OV,
         HealedOrigin tr H g r (r + sp.k - 1) C l (tr.time c) →
@@ -126,17 +138,20 @@ theorem voter_row_labels (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (c
   have hd := hS.run.time_nonneg j
   have hm := hS.run.time_mono
   obtain ⟨s', rfl⟩ : ∃ s', l = s' + 1 := ⟨l - 1, by omega⟩
-  exact Compose.no_optimistic_before_held_row_of (hS.run.upTo hd) (hS.noColl.upTo _) _
-    SA.CommitteeP.full (SA.size_binding_full hS.stock)
-    (SA.cs2_full hS.stock (hS.bounds.two _ hd hjb))
-    hy (SA.mem_full _ _)
-    (by rw [RunTrace.upTo_projAC]; exact sa_castAt_upTo.mpr ⟨le_rfl, hcy⟩) hes
-    ((RunTrace.upTo_acceptAt tr).mpr ⟨hm hmj.le, hX⟩) hmj hav hkm
-    ((RunTrace.upTo_signAt tr).mpr ⟨hm (by omega : k ≤ j), hsg⟩) hav hck
-    (by rw [RunTrace.upTo_projAC]; exact (sa_optimisticLockAt_upTo hm).mpr ⟨hcj, hOp⟩)
+  have hc0 := hS.run.time_nonneg c
+  have hcs : sp.slot (tr.time c) = s' + 1 := by obtain ⟨-, -, -, h, -⟩ := id hOp; exact h
+  refine no_optimistic_before_held_row_at hS.run hS.noColl hS.facts hy hcy hes hX hmj
+    (hS.run.antitone (hm hmj.le) hav) hkm hsg (hS.run.antitone hcj hav) hck hOp ?_
+  rw [← hS.facts.hsize (s' + 1)]
+  refine hS.committee.two_in_slot hrs
+    ((SA.ts_le_iff_le_slot sp hc0 _).2 (by rw [hcs])) (lt_of_not_ge fun h => ?_)
+    (hcj.trans hjb)
+  have := (SA.ts_le_iff_le_slot sp hc0 _).1 h
+  push_cast at this
+  omega
 
 /-- The label of a lock write by a time `≤ t_s + Δ` is at most `s`. -/
-private theorem lockWithin_label_le (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem lockWithin_label_le (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {D : SA.Blk sp.n (List (FG.Att sp.n))} {l : Nat} {τ : Time}
     (hD : LockWithin tr H D l τ) (hτ : τ ≤ sp.ts s + sp.Δ) : l ≤ s := by
   obtain ⟨O, hO, -⟩ := hD.below_origin hrun hnc
@@ -153,7 +168,8 @@ private theorem lockWithin_label_le (hrun : Growing.GoldilocksRun proposer dg H 
 at a proposal at `t_s ∈ [t₁, b]`: `fc_root` by `seeded_reader_old`; a live lock block is below the
 proposer's lock write of the lock's slot, of a label in `[r, s)` (`SeededRun.live_label`,
 `proposal_locks_slot_of`), so below a member of the old family (`old_cover`). -/
-theorem seeded_start_old (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+theorem seeded_start_old
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hs : σ + 1 ≤ s)
     (hp : p ∈ H (tr.time i)) (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
@@ -166,7 +182,7 @@ theorem seeded_start_old (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (c
   have hi : ∀ k < i, tr.time k ≤ tr.time i := fun _ h => hrun.time_mono h.le
   have hdt : sp.ts (r + sp.k : Nat) ≤ tr.time i := hS.drain.trans ht₁
   have hold := seeded_reader_old hS hs hdt hi (by linarith) hb hp (hS.called hp hdt le_rfl)
-    (proposer_row_labels hS hp hc hcall hti hb)
+    (proposer_row_labels hS hp hc hcall hti hb (by have := hS.seed.timing.2.1; omega))
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hp hc
   obtain ⟨A₁, hA₁, hst, -⟩ := acProposal_walk hd
   rw [hst]
@@ -178,7 +194,14 @@ theorem seeded_start_old (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (c
       hp
       (by rw [RunTrace.upTo_projAC]; exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hc) hcall
       (by rw [RunTrace.upTo_projAC, projAC_upTo_state hrun le_rfl]; exact hd) hti
-      SA.CommitteeP.full (SA.cs2_full hS.stock (hS.bounds.two _ h0 hb)) l
+      (by rw [RunTrace.upTo_projAC]
+          exact SA.CommitteePAt.upTo hrun.time_mono hrun.antitone hS.facts.hP _)
+      (by
+        rw [← hS.facts.hsize s]
+        have hts1 : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+          simp only [SAParams.ts]; push_cast; ring
+        exact hS.committee.two_in_slot (by have := hS.seed.timing.2.1; omega) hti.ge
+          (by linarith) hb) l
       (by rw [Trace.upTo_state tr p hi]; exact hl)
     obtain ⟨O, hO, hD'O⟩ := old_cover (s := s) (l := l.slot) (τ := tr.time i) hrun hnc
       (.of_lock hlr hD')
@@ -193,7 +216,8 @@ them are `P`: `fc_root` is below a member of the old family (`seeded_reader_old`
 another slot is below the voter's lock write of a label in `[r, s)`, below a member of the old
 family; a lock of slot `s` is below an optimistic selection, supported by an honest earlier voter
 of slot `s`, whose vote is `P`. -/
-theorem seeded_vote_anchor (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+theorem seeded_vote_anchor
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hs : σ + 1 ≤ s)
     {P D : SA.Blk sp.n (List (FG.Att sp.n))} (hPU : P ∈ tr.HonestBlocksAt H)
     (hDP : Anc (tr.HonestBlocksAt H) D P)
@@ -217,7 +241,7 @@ theorem seeded_vote_anchor (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b 
   have hs0 : 0 < s := by have := hS.seed.timing.2.1; omega
   have hU := honestBlocksAt_coherent hrun hnc
   have hold := seeded_reader_old hS hs hdt hi hjt hjb hy (hS.called hy hdt le_rfl)
-    (voter_row_labels hS hy hcy hes hs0 hjb)
+    (voter_row_labels hS hy hcy hes hs0 hjb (by have := hS.seed.timing.2.1; omega))
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hy hcy.1
   have hfr := frame_of_projAC_at hrun hy hcy.1
   have hat := anchor_tree hΦ e.readPoint (tr.time j)
@@ -241,15 +265,29 @@ theorem seeded_vote_anchor (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b 
     mem_upTo_of_frame hrun hy le_rfl hcy.1 hB
   by_cases hls : l.slot = s
   · -- a lock of slot `s`: below an optimistic selection with an honest earlier supporter
-    obtain ⟨Φ', A', D', -, hΦ'U, -, h34, hpool, -, L, hLU, hLr, hLD'⟩ :=
+    obtain ⟨Φ', A', D', -, hΦ'U, -, h34, hpool, hsubA, L, hLU, hLr, hLD'⟩ :=
       SA.lock_origin_readPoint hrun' hy hcy' l hl (by rw [hes, hls]; omega)
-    rw [hS.stock] at h34
     obtain rfl : L = B := hr'.coherent.1 hLU hBP (hLr.trans hBr.symm)
-    have hf := hS.bounds.two _ hd hjb
+    obtain ⟨k₀, hk₀, hsubk⟩ := hsubA
+    have hOK : SA.optimisticVoters sp A' Φ' l.slot D' ⊆ K.committee l.slot := by
+      rintro x ⟨v, hv, rfl, -⟩
+      have hv' := hsubk hv
+      rw [Trace.upTo_state tr.projAC y (fun _ hk' => hm (by omega))] at hv'
+      exact hS.facts.hP.1 _ y hy (k₀ + 1) (fun _ hk' => hm (by omega)) l.slot v hv'
+    have hsj : sp.slot (tr.time j) = s := ((castAt_spec_at hrun hnc hy hcy).2.1).symm.trans hes
+    have hf := hS.facts.hsize l.slot ▸ hS.committee.two_in_slot
+      (m := l.slot) (d := tr.time j) (by have := hS.seed.timing.2.1; omega)
+      ((SA.ts_le_iff_le_slot sp hd _).2 (by rw [hsj, hls]))
+      (lt_of_not_ge fun h => by
+        have := (SA.ts_le_iff_le_slot sp hd _).1 h
+        push_cast at this
+        omega) hjb
     obtain ⟨x, ⟨v, hv, rfl, R, hR, hRr, hDR⟩, hxH⟩ :=
-      Set.exists_mem_notMem_of_ncard_lt_ncard (s := (H (tr.time j))ᶜ)
+      Set.exists_mem_notMem_of_ncard_lt_ncard (s := K.committee l.slot ∩ (H (tr.time j))ᶜ)
         (t := SA.optimisticVoters sp A' Φ' l.slot D') (by omega)
-    have hvH : v.val ∈ H (tr.time j) := not_not.1 hxH
+    have hvH : v.val ∈ H (tr.time j) := by
+      by_contra hn
+      exact hxH ⟨hOK ⟨v, hv, rfl, R, hR, hRr, hDR⟩, hn⟩
     obtain ⟨hvs, j', hj', e', hv', rfl⟩ := hpool v hv hvH
     obtain ⟨hj'd, hv'⟩ := sa_voteAt_upTo.mp hv'
     have hhead := hE _ j' e' hj' (hVoteAt_iff.2 ⟨hrun.antitone hj'd hvH, hv'⟩) (hvs.trans hls)
@@ -285,7 +323,7 @@ theorem seeded_vote_anchor (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b 
 when every member of the old family is below `Q`: `fc_root` is below `Q`, and the head height floor
 is at most the height of every block of the voter's tree above `Q` (`seeded_reader_old`). -/
 private theorem seeded_voter_facts
-    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hs : σ + 1 ≤ s) {Q : SA.Blk sp.n (List (FG.Att sp.n))}
     (hpass : ∀ O, SeededOld tr H g r b s O → Anc (tr.HonestBlocksAt H) O Q)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ℓy : ACLabel (goldilocksNode sp ro)}
@@ -298,7 +336,8 @@ private theorem seeded_voter_facts
   have hjt : tr.time j ≤ sp.ts s + sp.Δ := hes ▸ (cast_head_fcRoot_at hS.run hS.noColl hy hcy).2
   have hs0 : 0 < s := by have := hS.seed.timing.2.1; omega
   have hR := seeded_reader_old hS hs hdt (fun _ h => hS.run.time_mono h.le) hjt hjb hy
-    (hS.called hy hdt le_rfl) (voter_row_labels hS hy hcy hes hs0 hjb)
+    (hS.called hy hdt le_rfl)
+    (voter_row_labels hS hy hcy hes hs0 hjb (by have := hS.seed.timing.2.1; omega))
   refine ⟨?_, fun B hB hQB => hR.2 B hB fun O hO => (hpass O hO).trans hQB⟩
   rw [frame_of_projAC_at hS.run hy hcy.1]
   obtain ⟨O, hO, hfO⟩ := hR.1
@@ -310,7 +349,7 @@ of a node honest at its vote is `P` (`honest_votes_eq_proposal_of`), with the pi
 family (`pivot_of`: `seeded_walk_passes`, `seeded_start_old`, `seeded_vote_anchor`, the floor of
 `seeded_reader_old`) and the suffix lemmas under the service from `ḡ`. -/
 theorem seeded_votes_eq_proposal
-    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hs : σ + 1 ≤ s) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hp : p ∈ H (sp.ts s + sp.Δ)) (hP : tr.ProposesAt p k P) (hPs : P.slot = s)
     (ht₁ : t₁ ≤ sp.ts s) (hsb : sp.ts s + sp.Δ ≤ b) :
@@ -345,7 +384,7 @@ theorem seeded_votes_eq_proposal
     exact ht₁.trans ((SA.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).2 (by rw [← h]))
   have hrd := seeded_reader_old hS hs (hS.drain.trans hti₁) (fun _ h => hrun.time_mono h.le)
     (by linarith) hib hpi (hS.called hpi (hS.drain.trans hti₁) le_rfl)
-    (proposer_row_labels hS hpi hc hcall hti hib)
+    (proposer_row_labels hS hpi hc hcall hti hib (by have := hS.seed.timing.2.1; omega))
   obtain ⟨A₁, -, hst, -⟩ := acProposal_walk hd
   obtain ⟨D, hsD, hDQ, hviab, hvot⟩ := pivot_of hrun hnc hp hc hd hti hPQ
     (Old := SeededOld tr H g r b s) hpass

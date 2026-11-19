@@ -30,15 +30,16 @@ open SA (SAParams ReplayOrder Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : SA.CommitteeDict sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
   {T : Time} {r σ : Nat} {t₁ b : Time}
 
 /-- **A member of a label below `s` written before `t_s + 2Δ` is below a member of the old
 family**: itself for a label `≤ s − 2`; for the label `s − 1`, the origin of its label at its cut
 (`HealedOrigin.below_origin`) is not a result (written at `t_s + 2Δ`), so an optimistic origin. -/
-theorem old_cover (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem old_cover (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {l : Nat} {τ : Time}
     (hC : HealedOrigin tr H g r (r + sp.k - 1) C l τ) (hl : l + 1 ≤ s)
     (hτ : τ < sp.ts s + 2 * sp.Δ) (hτb : τ ≤ b) :
@@ -60,7 +61,8 @@ at `t ∈ [t_{r+k}, t_s + Δ]` (earlier cuts at times `≤ t`) that has called f
 whose high rows have sources below members of labels below `s` (`hlab`): `fc_root` is below a
 member of `SeededOld s`, and the head height floor is at most the height of every block of the
 tree above every member of `SeededOld s`. -/
-theorem seeded_reader_old (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK))
+theorem seeded_reader_old
+    (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     {s : Nat}
     (hs : σ + 1 ≤ s) {y : Fin sp.n} {i : Nat} {t : Time} (hdt : sp.ts (r + sp.k : Nat) ≤ t)
     (hi : ∀ k < i, tr.time k ≤ t) (hts : t ≤ sp.ts s + sp.Δ) (htb : t ≤ b) (hy : y ∈ H t)

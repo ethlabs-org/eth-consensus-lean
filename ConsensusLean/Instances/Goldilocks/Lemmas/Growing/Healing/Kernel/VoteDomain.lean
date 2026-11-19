@@ -97,7 +97,7 @@ theorem held_target_vote_domain_of_row_bound_before_at
           omega
       exact raw_target_frozen_witness_at hp ho
         ((hp.run.time_mono hd.le).trans hib) hy hcast hn hFB hBO hE hEO hEf
-  exact (vote_viable_of_root_at hp hy hcast hroot (Or.inl hkeep)).symm
+  exact (vote_viable_of_root_at hp.run hp.noColl hy hcast hroot (Or.inl hkeep)).symm
 
 /-- Finite domain reduction with exactly the frozen earlier-comparison inputs. -/
 theorem held_target_vote_domain_before_at

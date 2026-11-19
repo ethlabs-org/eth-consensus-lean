@@ -37,7 +37,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
 
 /-- **The record cover from `t₁` through `b`**. From the cover up to `T`, the record of a reader
 honest at a read point `t ∈ [t₁, b]` is its `Σ.F` or below an origin of label `≥ r + k − 1`
@@ -45,7 +46,7 @@ written before the read. Past `T` the cover runs over the reader's cuts from the
 `T` (the seed's own cover): a kept root keeps the block or follows `Σ.F`, and a new root is the
 reader's own result or selection, of label `≥ σ` after `T`. The service, the counts, conviction
 and the drain are not read: the argument is the reader's own record steps. -/
-theorem seeded_record_cover_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem seeded_record_cover_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {T : Time} {r σ : Nat} (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK))
       {t₁ b : Time}

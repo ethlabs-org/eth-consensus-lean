@@ -37,15 +37,16 @@ open SA (SAParams ReplayOrder Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : SA.CommitteeDict sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
 
 /-- **The effective record after an update extends `P`** when the updater's `Σ.F` extends `P`, or
 the record names a block of the update's frame extending `P`: the AC update leaves the FG store,
 so the frame, unchanged, and the effective record is the frame block of the record, above `Σ.F`,
 or `Σ.F`. -/
-private theorem eff_record_of_update (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem eff_record_of_update (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {k₀ m : Nat} (hy : y ∈ H (tr.time k₀))
     {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k₀ m ℓ)
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -96,7 +97,7 @@ events at `t`. Every honest update of slot `p` returns `P`, not vetoed: in the h
 `update_adopts_extended_from` with S1 and S2 for the member `P`), the effective record only
 extends to the read (`seeded_effective_record_mono_at`), and the read is the effective record
 (`seeded_ready_read_record_at`). -/
-theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hcv : ChainConvictedBelow tr H) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {t₁ b : Time}
       (hTb : T ≤ b)
@@ -108,10 +109,11 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (ht₁ : t₁ + 8 * sp.Δ ≤ τ) (hrτ : sp.ts (r + sp.k + 1 : Nat) ≤ τ) {y : Fin sp.n} {t : Time}
     {j : Nat} (hmargin : τ + 6 * sp.Δ ≤ t) (htb : t ≤ b)
     (hy : Regimes.Growing.ReadyAt tr H (Regimes.catchUp sp) y t) (hj : Regimes.CutAfter tr j t)
-    (hstock : sp.committeeSize = sp.n) :
+    {K : SA.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
+    (hKB : CommitteeBoundsFrom tr H K r b) :
     Anc (tr.HonestBlocksAt H) P (Regimes.readAfter tr y j t) := by
-  have hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b (cm := cm) (βK := βK) :=
-    ⟨hrun, hnc, hseed, hsvc, hB, hinv, hcv, hTb, hdt₁, hstock⟩
+  have hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini) :=
+    ⟨hrun, hnc, hseed, hsvc, hB, hinv, hcv, hTb, hdt₁, hK, hKB⟩
   have hΔ := sp.toParams.hΔ
   have hk := sp.two_le_k
   obtain ⟨pp, kP, -, hph, hPa, hkP⟩ := hP
@@ -179,8 +181,8 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   have hyu : y ∈ H u := hrun.antitone hut hy.1
   have hcu : Regimes.catchUp sp = 18 * sp.Δ := rfl
   obtain ⟨hJw, hJj⟩ : tr.awake y u ∧ tr.JoinedAt y u := by
-    obtain ⟨hw, hj'⟩ := Compose.ready_implies_joined _ _ _ _ _ _ (hrun.upTo hu0) y hyu u
-      (14 * sp.Δ - 1) hu0 (by linarith) fun v h₁ h₂ =>
+    obtain ⟨hw, hj'⟩ := Compose.ready_implies_joined_of (hrun.upTo hu0) (y := y) hyu (t := u)
+      (c := 14 * sp.Δ - 1) hu0 (by linarith) fun v h₁ h₂ =>
         ⟨hy.2 v (le_trans (max_le_max le_rfl (by rw [hcu]; linarith)) h₁) (by linarith), h₂⟩
     exact ⟨hw.1, fun k hk hkt => hj' k ((RunTrace.upTo_restartAt tr).2 ⟨hkt, hk⟩) hkt⟩
   obtain ⟨k₁, ℓ₁, hupd⟩ := update_of_awake_joined_at hrun hyu hJw hJj
@@ -195,7 +197,7 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     · have hFc := (hinv.caches y k₁ (tr.time k₁) ht₁u (fun _ h => hrun.time_mono h.le) hk₁b
         hyk₁ hcall₁).1
       refine update_adopts_extended_from hrun hnc hS.sync
-        (CommitteeFacts.of_full hrun hnc hS.stock) (CommitteeBoundsFrom.of_full hrun hB)
+        hK hKB
         hyk₁ hupd hk₁b (by omega)
         (by linarith [hS.gbar_le (show r ≤ m by omega)])
         (by linarith [hS.gbar_le (show r ≤ m by omega)])
@@ -225,7 +227,7 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr)
       rw [show r + sp.k - 1 + 1 = r + sp.k by omega]; exact hdt₁.trans ht₁u)
     hrp₁ hrp hj₁j (by rw [hk₁]; exact hut) le_rfl htb hyk₁ hy.1
     (let ⟨c, hc, h⟩ := hcall₁; ⟨c, by omega, h⟩)
-  rw [seeded_ready_read_record_at hrun hnc hseed hsvc hB hS.stock hinv hrp hdt₁ (by linarith) htb
+  rw [seeded_ready_read_record_at hrun hnc hseed hsvc hK hKB hinv hrp hdt₁ (by linarith) htb
     hy]
   exact hPeff.trans hmono
 
@@ -325,7 +327,9 @@ theorem continued_proposal_live_at
       rfl⟩
     (ht₁.trans P.fresh.le) hslot hm le_rfl
     (confirmed_ready_mono_at { S with vote := stock }
-      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hd hy) hj rfl
+      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hd hy) hj
+    (Compose.Growing.CommitteeFacts.of_full hrun hnc rfl)
+    (Compose.Growing.CommitteeBoundsFrom.of_full hrun hB)
 
 end Consensus.Goldilocks.Obligations.Growing
 

@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Premises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeRun
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
@@ -276,6 +277,19 @@ theorem CommitteeBoundsFrom.two_of_slotK {K : SA.CommitteeDict sp.n} {σ₀ : Na
   have hsplit := Set.ncard_inter_add_ncard_sdiff_eq_ncard (K.committee s) (H d)
   rw [Set.sdiff_eq] at hsplit
   omega
+
+/-- **CS2 across a slot**: at every `d ≤ b` in `[t_m, t_{m+1})` for a slot `m ≥ σ₀`, fewer than half
+of the slot-`m` committee is compromised by `d` (`twoK` up to `t_m + 2Δ`, then `two_of_slotK`). -/
+theorem CommitteeBoundsFrom.two_in_slot {K : SA.CommitteeDict sp.n} {σ₀ : Nat} {b : Time}
+    (h : CommitteeBoundsFrom tr H K σ₀ b) {m : Nat} {d : Time} (hm : σ₀ ≤ m)
+    (h0 : sp.ts m ≤ d) (h1 : d < sp.ts (m + 1 : Nat)) (hdb : d ≤ b) :
+    2 * (K.committee m ∩ (H d)ᶜ).ncard < (K.committee m).ncard := by
+  have hΔ := sp.toParams.hΔ
+  have hts : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  rcases le_or_gt d (sp.ts m + 2 * sp.Δ) with h2 | h2
+  · exact h.twoK m d hm h0 hdb h2
+  · exact h.two_of_slotK hm (by linarith) hdb (by linarith)
 
 /-- **Awake and joined at the AC projection** is awake and joined at the run. -/
 theorem mem_awakeJoined_projAC {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}

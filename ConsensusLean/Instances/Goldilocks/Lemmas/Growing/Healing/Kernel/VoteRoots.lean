@@ -58,10 +58,9 @@ theorem low_root_of_seed_before_at
     (fun hFB => (hheld hFB).1)
 
 /-- A viable frozen descendant yields the target's viable vote-domain membership. -/
-theorem vote_viable_of_root_at
-    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
+theorem vote_viable_of_root_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ell e) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hcomp : Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B)
@@ -70,12 +69,12 @@ theorem vote_viable_of_root_at
       Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot) :
     B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) ∨
       Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot := by
-  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
-  have hr := (hac.upTo (hp.run.time_nonneg k)).localRun
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
+  have hr := (hac.upTo (hrun.time_nonneg k)).localRun
   have hc' := SA.upTo_castAt.mpr (And.intro le_rfl hc)
-  obtain ⟨hPhi, hPhiTree⟩ := frame_tree_subset_at hp.run hp.noColl hy hc.1
-  have hPhiU := Outcome.frame_tree_subset hp.run hy hc.1
-  have hfr := Outcome.frame_of_call hp.run hy hc.1
+  obtain ⟨hPhi, hPhiTree⟩ := frame_tree_subset_at hrun hnc hy hc.1
+  have hPhiU := Outcome.frame_tree_subset hrun hy hc.1
+  have hfr := Outcome.frame_of_call hrun hy hc.1
   rcases hK2 with ⟨D, hD, hBD, hvD⟩ | h
   · rcases hcomp with hfB | hBf
     · have hDt : D ∈ ell.frame.tree := hD.1
@@ -83,7 +82,7 @@ theorem vote_viable_of_root_at
       have hBt := SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hDt hBD hFB
       have hPhiBD := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hBt hBD hDt
       have hPhifB := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hfB hBt
-      refine Or.inl ⟨SA.voterBlockTree_anc hr hp.run.vstart hy hc' D hD B hPhiBD,
+      refine Or.inl ⟨SA.voterBlockTree_anc hr hrun.vstart hy hc' D hD B hPhiBD,
         hPhifB, D, hD, ?_, hPhiBD⟩
       have hfD := hPhifB.trans hPhiBD
       rw [hfr] at hDt hfD ⊢

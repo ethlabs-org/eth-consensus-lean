@@ -8,6 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.VoteFrame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowService
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteRoots
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SeedCall
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
@@ -20,7 +21,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
@@ -68,7 +68,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
 
 /-! ### The service after GST -/
 
@@ -82,7 +83,7 @@ private theorem exists_firstCutFrom {τ : Time} {j : Nat} (hj : τ ≤ tr.time j
 
 /-- **The catch-up at the node**: a block accepted before `ḡ` by a node honest then is accepted,
 before `ḡ + κ`, by a node honest at a call from `ḡ + κ` on whose `Σ.F` it extends. -/
-private theorem catch_old_at (hrun : Growing.GoldilocksRun proposer dg H tr) {κ : Time}
+private theorem catch_old_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) {κ : Time}
     (hc : Healing.Growing.CatchRun tr H g κ) {x : Fin sp.n} {i : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hx : x ∈ H (tr.time i)) (hB : tr.AcceptAt x i B)
     (hi : tr.time i < SA.gbar g) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
@@ -98,7 +99,7 @@ private theorem catch_old_at (hrun : Growing.GoldilocksRun proposer dg H tr) {κ
 from `ḡ ≥ g` are served with the deadline from their own time (`ResetService.ac_service_at`,
 `ResetService.relay`); a block accepted before `ḡ` is caught up before `ḡ + κ` (`CatchRun`), at
 the node and, through the AC block call that follows each acceptance, at its AC projection. -/
-theorem sleepyServiceFrom_of_reset (hrun : Growing.GoldilocksRun proposer dg H tr) {κ b : Time}
+theorem sleepyServiceFrom_of_reset (hrun : Growing.GoldilocksRun proposer dg H tr ini) {κ b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hc : Healing.Growing.CatchRun tr H g κ)
     (hκ : 0 ≤ κ) : SleepyServiceFrom tr H ΔF (SA.gbar g) κ b := by
   have hac := hsvc.ac_service_at hrun (lo := SA.gbar g) (hi := b) (SA.le_gbar g)
@@ -133,7 +134,7 @@ private theorem ts_add (s j : Nat) : sp.ts (s + j : Nat) = sp.ts s + 4 * sp.Δ *
   simp only [SAParams.ts]; push_cast; ring
 
 /-- A fast lock of label `l` is written at a time in `[t_l, t_l + 6Δ]`. -/
-private theorem fastLockAt_time (hrun : Growing.GoldilocksRun proposer dg H tr) {x : Fin sp.n}
+private theorem fastLockAt_time (hrun : Growing.GoldilocksRun proposer dg H tr ini) {x : Fin sp.n}
     {i l : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (h : SA.FastLockAt tr.projAC x i l C CV) :
     sp.ts l ≤ tr.time i ∧ tr.time i ≤ sp.ts l + 6 * sp.Δ := by
@@ -152,7 +153,7 @@ private theorem fastLockAt_time (hrun : Growing.GoldilocksRun proposer dg H tr) 
     exact ⟨h1, by linarith⟩
 
 /-- An honest vote of slot `m` is cast in `[t_m, t_{m+1})`. -/
-private theorem vote_time (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem vote_time (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} {e : SA.Em sp (List (FG.Att sp.n))}
     (hv : HVoteAt tr H y i e) :
     sp.ts e.msg.slot ≤ tr.time i ∧ tr.time i < sp.ts (e.msg.slot + 1 : Nat) := by
@@ -204,7 +205,7 @@ private theorem HandoverSeed.reset_timing {T : Time} {r σ : Nat}
 
 /-- **A node honest at `t_{r−k−3}` has an AC call at exactly that time**: it is awake there
 (the healthy prefix through `T`), so it ticks, and a tick's first cut is `ac_on_tick`. -/
-private theorem seed_time_call (hrun : Growing.GoldilocksRun proposer dg H tr) {T : Time}
+private theorem seed_time_call (hrun : Growing.GoldilocksRun proposer dg H tr ini) {T : Time}
     {r σ : Nat} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {y : Fin sp.n}
     (hy : y ∈ H (sp.ts (r - sp.k - 3 : Nat))) :
@@ -238,7 +239,7 @@ AC call before `i` from `t_{r−k−3}` on.** The healthy prefix keeps the reade
 so at every earlier time, awake on `[ḡ, T]`; its tick at `t_{r−k−3} < t_{r+k} ≤ t` is a call, at a
 cut before `i`. This covers a read point at `t ≥ t₁` and a vote cut of a slot after the split
 slot. -/
-theorem seeded_reader_called_at (hrun : Growing.GoldilocksRun proposer dg H tr) {T : Time}
+theorem seeded_reader_called_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) {T : Time}
     {r σ : Nat} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {y : Fin sp.n}
       {i : Nat}
@@ -255,7 +256,7 @@ theorem seeded_reader_called_at (hrun : Growing.GoldilocksRun proposer dg H tr) 
 /-! ### The low reader and the reset seed -/
 
 /-- The block of a high origin is in its writer's tree at the write. -/
-theorem HighOrigin.mem_tree (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem HighOrigin.mem_tree (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {x : Fin sp.n} {q l : Nat} {S : SA.Blk sp.n (List (FG.Att sp.n))}
     (hS : Healing.Growing.HighOrigin tr H g x q l S) : S ∈ (tr.state x q).fg.tree := by
   have hx := hrun.antitone (le_max_right _ _) hS.1
@@ -271,7 +272,7 @@ theorem HighOrigin.mem_tree (hrun : Growing.GoldilocksRun proposer dg H tr)
 /-- **A low `Σ.F` is below every high origin** (G1.2 at strict height under
 `ChainConvictedBelow`): `Σ.F` is finalized at a height `≤ h_j ≤ H_z`, below the high origin's
 height. -/
-private theorem low_finalized_below (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem low_finalized_below (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hcv : ChainConvictedBelow tr H) {y : Fin sp.n} {i : Nat} {t : Time}
     (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
     (hlow : (tr.state y i).fg.hj ≤ Healing.Growing.HZ tr H g) {x : Fin sp.n} {q l : Nat}
@@ -316,7 +317,7 @@ private theorem low_finalized_below (hrun : Growing.GoldilocksRun proposer dg H 
 label `< r` written by `T`, with `Σ.F ⪯ S`: at the call at `t_{r−k−3}` before the read, `Σ.F` is
 below `S` (finality only grows, and the current `Σ.F` is below `S`), so the seed's holding at
 calls puts `S` in the frame there; the tree only grows. -/
-theorem low_seed_held (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem low_seed_held (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hcv : ChainConvictedBelow tr H) {T : Time} {r σ : Nat}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {y : Fin sp.n}
@@ -367,7 +368,7 @@ theorem low_seed_held (hrun : Growing.GoldilocksRun proposer dg H tr)
 /-- **A low reader's `fc_root` is below a held high block `S` above its `Σ.F`**: if `fc_root` is
 `Σ.J`, then `h_max = h_j + 1 ≤ H_z + 1 ≤ h(S) ≤ h_max`, so `S` has the top height and, with no
 contest, extends `Σ.J`. -/
-theorem low_fcRoot_below (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem low_fcRoot_below (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t)
     (hi : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
     (hlow : (tr.state y i).fg.hj ≤ Healing.Growing.HZ tr H g) {x : Fin sp.n} {q l : Nat}
@@ -397,7 +398,7 @@ theorem low_fcRoot_below (hrun : Growing.GoldilocksRun proposer dg H tr)
 `≥ r`.** The source is the viable ancestor of the block of a live fast lock (`ac_to_fg`); the
 stored lock sits below the signer's fast lock write of its slot at an earlier cut
 (`SA.fast_lock_provenance`), and after `t_{r+k}` a live lock has slot `≥ r` (`drain_live_locks`). -/
-private theorem signed_source_lock (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem signed_source_lock (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {v : Fin sp.n}
@@ -435,7 +436,7 @@ private theorem signed_source_lock (hrun : Growing.GoldilocksRun proposer dg H t
   have hsA : (tr.projAC.upTo (tr.time j)).state v j = (tr.state v j).ac := by
     rw [← RunTrace.upTo_projAC, projAC_state (hrun.upTo hd).toLocalRun hvj j, hst]
   obtain ⟨c, hcj', B', CV, hfl, L', hL', hL'r, hL'B'⟩ :=
-    SA.fast_lock_provenance hrA (fun _ => SA.voteStart_initial _) hvj j l₀
+    SA.fast_lock_provenance hrA hrun.vstart hvj j l₀
       (by rw [hsA]; exact hl₀) hlf
   have hBU : B ∈ (tr.upTo (tr.time j)).HonestBlocks (H (tr.time j)) :=
     ⟨v, hvj, j, by rw [hst]; exact hB.1⟩
@@ -461,7 +462,7 @@ written by the signer at a cut `c < k` and below the signer's origin `O` of labe
 cut. Up to `T` this is the reset cluster's high row (`high_row_source_at`: the entry is on the
 chain of the signer's high origin); after `T` it is the signer's lock write
 (`signed_source_lock`). -/
-private theorem high_row_member (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem high_row_member (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {d : Time} (hd : 0 ≤ d)
@@ -518,7 +519,7 @@ private theorem high_row_member (hrun : Growing.GoldilocksRun proposer dg H tr)
 `RowsAbove` premise of the store geometry at height `H_z + 1`, for every property `Q` of the
 members that the classification of each high row supplies. The signers, honest at `d`, are then
 honest at `c_z`, which `H_z` bounds. -/
-theorem rowsAbove_of (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem rowsAbove_of (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {d : Time} (hd : 0 ≤ d)
@@ -564,7 +565,8 @@ private theorem rowsAbove_mono {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} {
 /-- A block held below a source's entry height is below the entry (on a static run): the entry is
 below the source, which is compatible with the block. -/
 theorem held_below_entry {Hs : Set (Fin sp.n)} {tr₀ : GoldilocksTrace sp ro}
-    (hrun : GoldilocksRun proposer dg Hs tr₀) (hnc : NoCollRun dg tr₀) {y : Fin sp.n}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State} (hrun : GoldilocksRun proposer dg Hs tr₀ ini)
+    (hnc : NoCollRun dg tr₀) {y : Fin sp.n}
     (hy : y ∈ Hs) {i : Nat} {B D E : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ (tr₀.state y i).fg.tree) (hE : E ∈ (tr₀.state y i).fg.tree)
     (hD : Compose.IsHonestSource tr₀ Hs D E.root) (hDB : Compatible (tr₀.HonestBlocks Hs) D B)
@@ -583,7 +585,7 @@ theorem held_below_entry {Hs : Set (Fin sp.n)} {tr₀ : GoldilocksTrace sp ro}
     · exact absurd h' no
 
 /-- Two blocks on the healed chain are compatible once the members are. -/
-private theorem onHealedChain_compatible (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem onHealedChain_compatible (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {rL rO : Nat} {b : Time}
     (hP : ∀ C s C' s', HealedOrigin tr H g rL rO C s b → HealedOrigin tr H g rL rO C' s' b →
       Compatible (tr.HonestBlocksAt H) C C')
@@ -597,7 +599,7 @@ private theorem onHealedChain_compatible (hrun : Growing.GoldilocksRun proposer 
 reader honest at `t`): on the prefix through `t`, every row of its tree naming a held entry of
 height `≥ H_z + 1`, by a signer honest at `t`, has an honest source below a member of the healed
 family within `t` held in the prefix (`RowsAbove` at height `H_z + 1`). -/
-theorem seeded_rows_above_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem seeded_rows_above_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {y : Fin sp.n}
@@ -614,7 +616,7 @@ theorem seeded_rows_above_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 /-- **`Σ.F` and `fc_root` of a seeded reader are on the healed chain.** Low (`h_j ≤ H_z`): both are
 below the held reset seed. High: `Σ.J` is the entry of an honest member of its target quorum
 (`f_t < n/2 < q`), whose source is below a member (the high rows); `Σ.F ⪯ Σ.J`. -/
-theorem seeded_reader_on_chain_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem seeded_reader_on_chain_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hcv : ChainConvictedBelow tr H) {T : Time} {r σ : Nat}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
@@ -666,7 +668,7 @@ theorem seeded_reader_on_chain_at (hrun : Growing.GoldilocksRun proposer dg H tr
 /-- **The seeded cache facts**, for a reader honest at `t ≥ 0` with a call from `t_{r−k−3}` before
 its read: `Σ.F` is on the healed chain, and `fc_root` is compatible with every member held in the
 frame (both are below members, which are pairwise compatible). -/
-theorem seeded_caches_of (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem seeded_caches_of (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     (hcv : ChainConvictedBelow tr H) {T : Time} {r σ : Nat}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
@@ -693,7 +695,7 @@ the tree. High reader: the floor crossing of the store geometry (`floor_or_cross
 high rows. Low reader: below the held seed `S` when the floor is at most `h(S)`; otherwise there is
 no contest (a contest puts the floor at `h_max = h_j + 1 ≤ H_z + 1`), and the crossing of the
 floor `h_max − 1 ≥ H_z + 1` is a high row whose entry is above the block. -/
-theorem seeded_viable_of (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem seeded_viable_of (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     (hcv : ChainConvictedBelow tr H) {T : Time} {r σ : Nat}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
@@ -804,7 +806,7 @@ private theorem add_mul_delta_le {x a c : Time} (h : a ≤ c) : x + a * sp.Δ �
 
 /-- A block held by a node at a call `c`, honest then, was accepted by it (or is genesis) at an
 AC block call no later than `time c`. -/
-private theorem acceptedBefore_of_tree (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem acceptedBefore_of_tree (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {c i : Nat} (hyc : y ∈ H (tr.time c))
     (hy : y ∈ H (tr.time i)) (hci : tr.time c ≤ tr.time i) {Z : SA.Blk sp.n (List (FG.Att sp.n))}
     (hZ : Z ∈ (tr.state y c).fg.tree) {τ : Time} (hτ : tr.time c < τ) :
@@ -827,7 +829,7 @@ private theorem acceptedBefore_of_tree (hrun : Growing.GoldilocksRun proposer dg
 /-- **A block accepted before the freeze is in the voter block tree** of a slot-`(s+1)` vote of a
 node honest at its cut, when it extends the voter's `Σ.F` (`accepted_voter_tree` on the prefix
 through the vote). -/
-private theorem frozen_of_accepted (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem frozen_of_accepted (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {s : Nat} {y : Fin sp.n} {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
@@ -864,7 +866,7 @@ private theorem frozen_of_accepted (hrun : Growing.GoldilocksRun proposer dg H t
 slot-`(s+1)` voter honest at its cut whose `Σ.F` it extends, under the sleepy service from `ḡ`
 (`ḡ + 2Δ ≤ t_s`): its voter accepted it (or it is genesis) while honest, by `t_s + Δ`; an acceptance
 from `ḡ` on is relayed to the voter by `t_s + 2Δ`, an earlier one is caught up before `ḡ + 2Δ`. -/
-private theorem head_accepted_from (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem head_accepted_from (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time}
     (hsync : SleepyServiceFrom tr H ΔF (SA.gbar g) (2 * sp.Δ) b) {s : Nat}
     (hgs : SA.gbar g + 2 * sp.Δ ≤ sp.ts s) {y : Fin sp.n} {i : Nat}
@@ -933,7 +935,7 @@ private theorem head_accepted_from (hrun : Growing.GoldilocksRun proposer dg H t
 /-- **A head of a slot `≤ s`, of a vote of a node honest at it, is in the voter block tree** of a
 slot-`(s+1)` vote of a node honest at its cut, under the sleepy service from `ḡ`, once it extends
 the voter's `Σ.F`. -/
-private theorem head_frozen_from (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem head_frozen_from (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time}
     (hsync : SleepyServiceFrom tr H ΔF (SA.gbar g) (2 * sp.Δ) b) {s : Nat}
     (hgs : SA.gbar g + 2 * sp.Δ ≤ sp.ts s) {y : Fin sp.n} {i : Nat}
@@ -954,14 +956,16 @@ the lock floor on, the honest supporter of the member's origin (`honest_supporte
 count of label `l ≥ r` and the service from `ḡ ≤ t_l`); below it the member is a high origin
 written by `t_l + 6Δ ≤ T`, extended by every honest vote up to `T` of a slot in `(l, σ + 1]`
 (the seed's `V` row), and there is such a vote of slot `σ + 1` (its slot count). -/
-private theorem member_supported (hrun : Growing.GoldilocksRun proposer dg H tr)
+private theorem member_supported (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
       (hTb : T ≤ b)
-    (hsync : SleepyServiceFrom tr H ΔF (SA.gbar g) (2 * sp.Δ) b) (hB : SleepyBoundsFrom tr H r b)
+    (hsync : SleepyServiceFrom tr H ΔF (SA.gbar g) (2 * sp.Δ) b)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {l : Nat}
-    (hC : HealedOrigin tr H g r (r + sp.k - 1) C l b) (hstock : sp.committeeSize = sp.n) :
+    (hC : HealedOrigin tr H g r (r + sp.k - 1) C l b)
+    {K : SA.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
+    (hKB : CommitteeBoundsFrom tr H K r b) :
     ∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot ≤ max l (σ + 1) ∧
       SA.VoteExtends (tr.HonestBlocksAt H) e'.msg C := by
   have hΔ := sp.toParams.hΔ
@@ -982,8 +986,7 @@ private theorem member_supported (hrun : Growing.GoldilocksRun proposer dg H tr)
       have := (fastLockAt_time hrun hfl).2
       have := ts_le_ts (sp := sp) (show l ≤ σ by omega)
       linarith
-    have hcount := faults_lt_voters hrun hnc (CommitteeFacts.of_full hrun hnc hstock)
-        (CommitteeBoundsFrom.of_full hrun hB) (s := σ + 1) (d := sp.ts (σ + 1 : Nat) + sp.Δ)
+    have hcount := faults_lt_voters hrun hnc hK hKB (s := σ + 1) (d := sp.ts (σ + 1 : Nat) + sp.Δ)
       (by omega) le_rfl (by linarith) (by linarith)
     obtain ⟨x', hx'⟩ : (VotersAt tr H (σ + 1) (sp.ts (σ + 1 : Nat) + sp.Δ)).Nonempty := by
       rw [Set.nonempty_iff_ne_empty]
@@ -999,7 +1002,7 @@ private theorem member_supported (hrun : Growing.GoldilocksRun proposer dg H tr)
       (.of_high hqT ho) x' k e' hv hkT (by omega) (by omega)⟩
   · obtain ⟨O, hO, hCO⟩ := hC.below_origin hrun hnc
     obtain ⟨x, k, e', hv, -, hes, hext⟩ := honest_supporter_at hrun hnc
-        (CommitteeFacts.of_full hrun hnc hstock) hsync (CommitteeBoundsFrom.of_full hrun hB) hlr
+        hK hsync hKB hlr
       (by have := ts_le_ts (sp := sp) hlr; linarith) hO
     exact ⟨x, k, e', hv, by omega, voteExtends_of_anc hext hCO⟩
 
@@ -1007,16 +1010,18 @@ private theorem member_supported (hrun : Growing.GoldilocksRun proposer dg H tr)
 the signer before the signing and so before the slot-`(s+1)` vote at `≤ t_{s+1} + Δ`, is a result
 at `t_l + 6Δ` (so `l < s`), or an optimistic selection in slot `l` (so `l ≤ s + 1`, and label
 `s + 1` is `no_optimistic_before_held_row_at`). -/
-private theorem member_label_le (hrun : Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hf : ∀ d, 0 ≤ d → d ≤ b → 2 * (H d)ᶜ.ncard < sp.n)
+private theorem member_label_le (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e)
-    (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b) {m : Nat} (hmi : m < i)
+    (hs : e.msg.slot = s + 1) {m : Nat} (hmi : m < i)
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hA : tr.AcceptAt y m X) {a : FG.Att sp.n}
     (hav : a.val ∈ H (tr.time m)) {k : Nat} (hkm : k < m) (hS : tr.SignAt a.val k a) {c : Nat}
     (hck : c < k) {l : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))} {OV : Set (Vote sp.n)}
     (hO : SA.ResultAt tr.projAC a.val c l O OV ∨ SA.OptimisticLockAt tr.projAC a.val c l O OV)
-    (hstock : sp.committeeSize = sp.n) :
+    {K : SA.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
+    (hfK : sp.ts (s + 1 : Nat) ≤ tr.time c → tr.time c < sp.ts (s + 2 : Nat) →
+      2 * (K.committee (s + 1) ∩ (H (tr.time c))ᶜ).ncard < sp.committeeSize) :
     l ≤ s := by
   have hΔ := sp.toParams.hΔ
   have hti : tr.time i ≤ sp.ts s + 5 * sp.Δ := by
@@ -1037,9 +1042,11 @@ private theorem member_label_le (hrun : Growing.GoldilocksRun proposer dg H tr)
     by_contra hl
     rcases (show l = s + 1 ∨ s + 2 ≤ l by omega) with rfl | hl2
     · have hcm := hrun.time_mono (show c ≤ m by omega)
-      exact no_optimistic_before_held_row_at hrun hnc (CommitteeFacts.of_full hrun hnc hstock)
-        hy hc hs hA hmi hav hkm hS (hrun.antitone hcm hav) hck hO
-        (SA.cs2_full hstock (hf _ (hrun.time_nonneg c) (hci.trans hib)))
+      exact no_optimistic_before_held_row_at hrun hnc hK
+        hy hc hs hA hmi hav hkm hS (hrun.antitone hcm hav) hck hO (hfK h1 (by
+          have h2 := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg c) ((s + 2 : Nat) : Int)).not.2
+            (by omega)
+          exact lt_of_not_ge h2))
     · have h2 := (SA.ts_le_iff sp).2 (show ((s + 2 : Nat) : Int) ≤ (l : Int) by exact_mod_cast hl2)
       have h3 := ts_add (sp := sp) s 2
       push_cast at h2 h3
@@ -1055,7 +1062,7 @@ Above `fc_root`, `B` is in the frame (between `Σ.F` and its frozen supporter) a
 frozen descendant: its supporter's head when the floor is at most its height; otherwise the
 frozen head above the crossing of the floor, which is a high row (the floor is at least
 `H_z + 1`, or the low reader's held seed is viable). -/
-theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
@@ -1069,7 +1076,9 @@ theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hBc : ∀ C l, HealedOrigin tr H g r (r + sp.k - 1) C l b → l ≤ s →
       Compatible (tr.HonestBlocksAt H) B C)
     (hw : ∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) (hstock : sp.committeeSize = sp.n) :
+      SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
+    {K : SA.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
+    (hKB : CommitteeBoundsFrom tr H K r b) :
     B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
       Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot := by
   have hΔ := sp.toParams.hΔ
@@ -1120,11 +1129,14 @@ theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr)
     linarith [hp₀.cutZ_lt_reset_at, sp.toParams.hΔ]
   have hsrc := rowsAbove_of hrun hnc hseed hd hzd hi hy (Q := Q)
     fun m hmi X hA a ha hav k hkm hS c hck C l O OV hC hO => by
-      have hl := member_label_le hrun hnc (fun d h0 hdb => hB.two d h0 hdb) hy hc hes hib hmi hA
-        (hrun.antitone (hrun.time_mono hmi.le) hav) hkm hS hck hO hstock
+      have hl := member_label_le hrun hnc hy hc hes hmi hA
+        (hrun.antitone (hrun.time_mono hmi.le) hav) hkm hS hck hO hK (fun h1 h2 => by
+          rw [← hK.hsize (s + 1)]
+          exact hKB.two_in_slot (by omega) h1 h2
+            ((hrun.time_mono (show c ≤ i by omega)).trans hib))
       have hCb : HealedOrigin tr H g r (r + sp.k - 1) C l b :=
         hC.mono ((hrun.time_mono (by omega : c ≤ i)).trans hib)
-      obtain ⟨x, k', e', hv, hvs, hext⟩ := member_supported hrun hnc hseed hTb hsync hB hCb hstock
+      obtain ⟨x, k', e', hv, hvs, hext⟩ := member_supported hrun hnc hseed hTb hsync hCb hK hKB
       exact ⟨hCb, hl, x, k', e', hv, by omega, hext⟩
   have hGB : ∀ D, (∃ C l, Q C l ∧ C ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) ∧
       Anc ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) D C) →
@@ -1272,15 +1284,10 @@ theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr)
     · exact hviab hBt.1 hFB hfl
   obtain ⟨D, hD, hBD, hDv⟩ := hK
   have hDP := frame_upTo_at hrun hnc hy hc.1 hD.1
-  have hc' : SA.CastAt (tr.upTo (tr.time i)).projAC y i ℓ e := by
-    rw [RunTrace.upTo_projAC]; exact sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
-  have hrootP : Compatible ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) ℓ.frame.fcRoot B :=
-    compatible_upTo hrun hnc hd (frame_upTo_at hrun hnc hy hc.1 hΦ.fcRoot_mem) hBP (Or.inl hfB)
-  have h := Healing.vote_viable_of_root hrun' hnc' hy hc' hrootP
-    (Or.inl ⟨D, by rw [hes]; exact hD, RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hDP hBD,
-      by rw [hst]; exact hDv⟩)
+  have h := Healing.Growing.KernelProof.vote_viable_of_root_at hrun hnc hy hc (Or.inl hfB)
+    (Or.inl ⟨D, by rw [hes]; exact hD, hBD, hDv⟩)
   rw [hes] at h
-  exact h.imp_right (·.mono hsub)
+  exact h
 
 end Consensus.Goldilocks.Compose.Growing
 
