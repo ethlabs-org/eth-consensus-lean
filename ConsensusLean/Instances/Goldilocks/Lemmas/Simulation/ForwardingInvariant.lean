@@ -60,7 +60,7 @@ theorem forwardQueueCanonical_pending {sp : SA.SAParams}
 private theorem canonical_recordOwn {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) o hs
     (h : ForwardQueueCanonical st) : ForwardQueueCanonical (recordOwn st o hs) := by
-  unfold recordOwn
+  rw [AsChainShape.recordOwn_eq]
   split
   · exact h
   · split
@@ -71,7 +71,7 @@ private theorem canonical_recordOwn {sp : SA.SAParams}
 private theorem canonical_processOne {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) o hs
     (h : ForwardQueueCanonical st) : ForwardQueueCanonical (processOne hs st o) := by
-  unfold processOne
+  rw [AsChainShape.processOne_eq]
   split
   · unfold relayIf
     dsimp only
@@ -108,9 +108,9 @@ theorem stateAt_forwardQueueCanonical {V : Type} [Fintype V] [DecidableEq V] {E 
           subst w
           rw [stateAt_tick S rho hn v he]
           apply tick_pres S rho hn ForwardQueueCanonical canonical_recordOwn
-            (fun st s h => by unfold propose; dsimp only; split <;> exact h)
+            (fun st s h => by rw [propose_eq]; dsimp only; split <;> exact h)
             (fun st h => by
-              unfold nodeTick
+              rw [nodeTick_eq]
               split
               · exact forwardQueueCanonical_apply st _ h
               · exact h)
@@ -174,9 +174,9 @@ theorem dutyStep_forwardQueueCanonical {V : Type} [Fintype V] {E : Env V} (S : S
     (hc : ForwardQueueCanonical (shapeOf S hn nd)) :
     ForwardQueueCanonical (shapeOf S hn (rho.dutyStep v nd d).1) := by
   apply dutyStep_pres S rho hn ForwardQueueCanonical canonical_recordOwn
-    (fun st s h => by unfold propose; dsimp only; split <;> exact h)
+    (fun st s h => by rw [propose_eq]; dsimp only; split <;> exact h)
     (fun st h => by
-      unfold nodeTick
+      rw [nodeTick_eq]
       split
       · exact forwardQueueCanonical_apply st _ h
       · exact h)
@@ -213,7 +213,7 @@ theorem dutyStep_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
     have hempty : ((protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).2 = []
         := by
       change (Option.map _ ((goldilocks S (pubOf E)).pollPropose nd.st.1 t).2).toList = []
-      simp only [goldilocks, dite_eq_left hn]
+      rw [goldilocks_pollPropose_eq S _ nd.st.1 t, dite_eq_left hn]
       rfl
     unfold Model.Run.dutyStep
     split
@@ -222,11 +222,17 @@ theorem dutyStep_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
         (.pollPropose t)).1.1 hn) ∧ PendingReady _ (pendingWrappers
           (((protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).1.1 hn))
       rw [shapeOf_act_pollPropose S hn]
-      unfold nodeTick
-      split
-      · simpa only [wrappersAccounted_iff, pendingWrappers_eq, Node.acCall, apply,
+      change WrappersAccounted _ (nodeTick (shapeOf S hn nd)) ∧
+        PendingReady _ (pendingWrappers (nodeTick (shapeOf S hn nd)))
+      rw [nodeTick_eq]
+      by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic (shapeOf S hn nd).now
+      · rw [ite_eq_left hp]
+        rw [wrappersAccounted_iff, pendingWrappers_eq] at ha
+        rw [pendingWrappers_eq] at hr
+        simpa only [wrappersAccounted_iff, pendingWrappers_eq, Node.acCall, apply,
           List.foldl_cons, List.foldl_nil] using And.intro ha hr
-      · exact ⟨ha, hr⟩
+      · rw [ite_eq_right hp]
+        exact ⟨ha, hr⟩
     · exact ⟨ha, hr⟩
 
 /-- Fold actual duties while threading their intermediate holdings and queue state. -/
@@ -291,9 +297,11 @@ theorem tick_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
     ⟨(protoOf (compiled (goldilocks S)) E).clock nd.st t (mempool rho.inbox v t), nd.seen⟩
   have ha' : WrappersAccounted (sp := S.params (pubOf E) hn)
       (fun c => c ∈ start.seen.flatMap Obj.parts) (shapeOf S hn start) := by
+    rw [wrappersAccounted_iff, pendingWrappers_eq] at ha
     simpa only [wrappersAccounted_iff, pendingWrappers_eq, start, shapeOf,
       shapeOf_clock S hn] using ha
   have hr' : PendingReady start.seen (pendingWrappers (shapeOf S hn start)) := by
+    rw [pendingWrappers_eq] at hr
     simpa only [pendingWrappers_eq, start, shapeOf, shapeOf_clock S hn] using hr
   split
   · apply gossip_forwardInventory S rho hn
@@ -414,7 +422,7 @@ theorem stateBefore_forwardInventory {V : Type} [Fintype V] [DecidableEq V] {E :
             exact stateAt_restart S rho hn v he
           rw [hs]
           simpa only [Model.Run.step, Function.update_self, wrappersAccounted_iff,
-            pendingWrappers_eq, restore, apply, Node.restart, Node.acCall,
+            pendingWrappers_eq, restore_eq, apply, Node.restart, Node.acCall,
             List.foldl_cons, List.foldl_nil, self_eq_ownKey S rho hn v i] using ih
       · cases ev <;> simp only [Model.Event.node] at hn' <;>
           simpa only [Model.Run.step, Function.update_of_ne (Ne.symm hn'), stateAt_eq] using ih
@@ -652,7 +660,7 @@ theorem apply_forwards_mono {sp : SA.SAParams}
 theorem processOne_forwards_mono {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) hs o :
     st.forwards ⊆ (processOne hs st o).forwards := by
-  unfold processOne
+  rw [AsChainShape.processOne_eq]
   split
   · unfold relayIf
     dsimp only
@@ -687,7 +695,7 @@ theorem processOne_acceptance_pending {sp : SA.SAParams}
       (apply st (Node.onBlock st.self st.node st.now B)).forwards := by
     rw [hp]
     exact List.mem_append_right _ (List.mem_singleton_self _)
-  simp only [processOne, he]
+  simp only [AsChainShape.processOne_eq, he]
   unfold relayIf
   split <;> exact hm
 
@@ -708,7 +716,7 @@ theorem deliverRecs_acceptance_pending {sp : SA.SAParams}
     cases he : canonEvent sp ro hs o with
     | none =>
       rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he] at hr
-      simpa only [List.foldl_cons, processOne, he] using ih st (sub + 1) hcover hr
+      simpa only [List.foldl_cons, AsChainShape.processOne_eq, he] using ih st (sub + 1) hcover hr
     | some e =>
       rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ he] at hr
       rcases List.mem_append.mp hr with hr | hr
@@ -761,9 +769,11 @@ theorem tick_duty_prefix_inventory {V : Type} [Fintype V] [DecidableEq V] {E : E
   · have h := self_eq_ownKey S rho hn v i
     rw [stateAt_eq] at h
     exact h
-  · simpa only [wrappersAccounted_iff, pendingWrappers_eq, shapeOf,
+  · rw [wrappersAccounted_iff, pendingWrappers_eq] at ha
+    simpa only [wrappersAccounted_iff, pendingWrappers_eq, shapeOf,
       shapeOf_clock S hn, stateAt_eq] using ha
-  · simpa only [pendingWrappers_eq, shapeOf, shapeOf_clock S hn, stateAt_eq] using hr
+  · rw [pendingWrappers_eq] at hr
+    simpa only [pendingWrappers_eq, shapeOf, shapeOf_clock S hn, stateAt_eq] using hr
   · have h := stateAt_forwardQueueCanonical S rho hn v i
     rw [stateAt_eq] at h
     exact h
@@ -793,9 +803,9 @@ theorem tick_duty_prefix_poll_released {V : Type} [Fintype V] [DecidableEq V] {E
     exact h
   have hc : ForwardQueueCanonical (shapeOf S hn (rho.runDuties v start ds).1) := by
     apply runDuties_pres S rho hn ForwardQueueCanonical canonical_recordOwn
-      (fun st s h => by unfold propose; dsimp only; split <;> exact h)
+      (fun st s h => by rw [propose_eq]; dsimp only; split <;> exact h)
       (fun st h => by
-        unfold nodeTick
+        rw [nodeTick_eq]
         split
         · exact forwardQueueCanonical_apply st _ h
         · exact h)
@@ -871,8 +881,8 @@ theorem tick_duty_prefix_wrappersCover {V : Type} [Fintype V] [DecidableEq V] {E
       ⟨(protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
         (mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ ds).1) := by
   apply runDuties_wrappersCover S rho hn
-  simpa only [wrappersCover_iff, shapeOf, shapeOf_clock S hn, stateAt_eq] using
-    stateAt_wrappersCover S rho hn v i
+  have h := (wrappersCover_iff _).mp (stateAt_wrappersCover S rho hn v i)
+  simpa only [wrappersCover_iff, shapeOf, shapeOf_clock S hn, stateAt_eq] using h
 
 /-- A successful proposal-step block cut releases its canonical block in that duty.
 The carried-object premise is the existing proposal release contract. -/
@@ -956,7 +966,7 @@ theorem proposal_acceptance_recording_handler {V : Type} [Fintype V] {E : Env V}
         · split at ha <;> simp_all [Node.acCall, Node.acProposal]
       simp only [Node.acProposal] at heq
       simp only [Node.acProposal] at hr
-      simpa only [propose, hr, hself, Node.acProposal, heq] using ha
+      simpa only [propose_eq, hr, hself, Node.acProposal, heq] using ha
   · exact False.elim (List.not_mem_nil ha)
 
 /-- Own recording reconstructs a non-genesis canonical block with the engine digest.
@@ -976,8 +986,10 @@ theorem recordOwn_canonical_block {V : Type} [Fintype V] {E : Env V}
     simp only [digestOf_eq] at hroot
     erw [dgOf_eq] at hroot
     cases B
-    simp_all only [blockOf, headerOf, parentRoot_parentRef]
-  simp only [blockObj, recordOwn, headerOf, decodeInfo_encodeInfo]
+    simp_all only [blockOf_eq, headerOf_eq, parentRoot_parentRef]
+  rw [blockObj_eq]
+  refine (AsChainShape.recordOwn_eq _ _ _).trans ?_
+  simp only [headerOf_eq, decodeInfo_encodeInfo]
   erw [rootOf_digests_item]
   exact congrArg (fun b => apply st (Node.onBlock st.self st.node st.now b)) hb
 
@@ -1011,7 +1023,9 @@ theorem dutyStep_propose_accepted_pending {V : Type} [Fintype V] {E : Env V}
   refine ⟨p, ?_⟩
   rw [pendingWrappers_eq, hp]
   refine List.mem_map.mpr ⟨_, List.mem_append_right _ (List.mem_singleton_self _), ?_⟩
-  simp only [apply_self, propose_self, propose_now, forwardObj]
+  change (Obj.mk (.signed (propose (shapeOf S hn nd) s).1.self .poll) _ _ :
+    Wire (Fintype.card V) S.vote) = _
+  simp only [propose_self, propose_now, forwardObj]
 
 /-- Proposal cuts carry the digest and parent of the block just constructed by the node. -/
 theorem proposal_acceptance_block_fields {sp : SA.SAParams}
@@ -1095,7 +1109,7 @@ theorem canonical_block_decodes {V : Type} [Fintype V] {E : Env V}
     change B.root = digestOf S rho B.parent B.slot B.input B.fgPayload B.acPayload at hroot
     simp only [digestOf_eq] at hroot
     erw [dgOf_eq] at hroot
-    simpa only [hr, headerOf] using hroot
+    simpa only [hr, headerOf_eq] using hroot
   apply decodeBlock_blockObj _ B hpar (hhash ▸ taggedRoot_ne _ _) _ hwf hval
   rw [rootOf_digests_blockObj, hhash, rawRoot_taggedRoot]
 
@@ -1205,8 +1219,8 @@ theorem WrappersDecoded.engine_enqueue {V : Type} [Fintype V] {E : Env V}
   have hb' := decodeBlock_transport hb (show
       rootOf (digests rho.hash (forwardObj (S.params (pubOf E) hn) st.self st.now p B))
         (headerOf _ B) = rootOf (digests rho.hash (blockObj _ B)) (headerOf _ B) by
-    rw [rootOf_digests_of_mem S rho _ _ (List.mem_filterMap.mpr ⟨_, hc, rfl⟩),
-      rootOf_digests_blockObj])
+    exact (rootOf_digests_of_mem S rho _ _ (List.mem_filterMap.mpr ⟨_, hc, rfl⟩)).trans
+      (rootOf_digests_blockObj S rho hn B).symm)
   by_cases hg : root = (S.params (pubOf E) hn).genesisRoot
   · simp only [hg, ↓reduceIte, Option.some.injEq] at hp
     subst p

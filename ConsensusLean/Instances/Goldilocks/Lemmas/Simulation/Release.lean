@@ -150,8 +150,7 @@ theorem fgUpdate_outbox_eq (proposer : Nat → Fin sp.n)
         (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 = [] ∧
       ∀ C a, Cut.fg (.attest C (some a)) ∈ (Node.tickStep proposer dg st.self st.node st.now x
         .fgUpdate).2 → a.val = st.self := by
-  unfold fgUpdate Node.tickStep
-  simp only
+  simp only [fgUpdate_eq, Node.tickStep]
   rcases h : (Node.acToFG st.node st.now).2.2 with _ | C
   · simp only [attBodies_cons, attBodies_nil, acToFG, List.flatMap_cons, List.flatMap_nil,
       List.append_nil, emitted, List.map_nil, blockObjs_cons, blockObjs_nil,
@@ -240,7 +239,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled
     have hrel := hrel hmem
     simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
       .proposer s from rfl, hmem, ↓reduceIte]
-    simp only [propose] at hact1 hact2 hrel
+    simp only [propose_eq] at hact1 hact2 hrel
     simp only [Node.tickStep, hP.2 hp, ite_true]
     rcases hr : (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).2.2 with _ | ⟨d, p⟩
     · simp only [hr] at hact1 hact2
@@ -294,7 +293,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled
                 (shapeOf S hn nd).now).1.fg.proposalAttestations d.head) p⟩)
             (payloadObjs ((acProposal (shapeOf S hn nd).node
                 (shapeOf S hn nd).now).1.fg.proposalAttestations d.head) p) := by
-        simp only [blockObj, mkBlock, headerOf, hslot]
+        simp only [blockObj_eq, mkBlock, headerOf_eq, hslot]
       have hb : blockObjs (binding := S.vote)
           ((acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).2.1 ::
           (Node.proposeBlock (digestOf S rho) (rho.ownKey v)
@@ -316,7 +315,8 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled
         · rw [hb]; rfl
         · change (recordOwn (a.1.1 hn) _ _).outbox = _
           rw [hact1]
-          simp only [recordOwn, decodeInfo_encodeInfo]
+          refine (congrArg State.outbox (AsChainShape.recordOwn_eq _ _ _)).trans ?_
+          simp only [decodeInfo_encodeInfo]
           erw [rootOf_digests_item]
           simp only [apply]
           erw [hB]

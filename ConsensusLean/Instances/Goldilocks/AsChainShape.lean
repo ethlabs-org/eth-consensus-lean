@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.NodeAsChainShape
 public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
-public import ConsensusLean.Instances.Goldilocks.Spec.Node.Handlers
 public import Mathlib.Tactic.Linarith
 public import Mathlib.Tactic.Ring
 
@@ -351,25 +350,21 @@ def conflicts {n : Nat} :
   | _, _ => false
 
 /-- Embed a raw digest among node roots, reserving `g` exclusively for genesis. -/
-def taggedRoot (g h : Nat) : Nat := if h < g then h else h + 1
+def taggedRoot (g h : Nat) : Nat := NodeAsChainShape.taggedRoot g h
 
 /-- Inverse of `taggedRoot` on non-genesis roots. -/
-def rawRoot (g r : Nat) : Nat := if r < g then r else r - 1
+def rawRoot (g r : Nat) : Nat := NodeAsChainShape.rawRoot g r
 
 /-- The header's parent reference: genesis is `.root`, other node roots decode
 to raw engine digests. -/
-def parentRef (g : Nat) : Option Nat → ParentRef
-  | none => .root
-  | some r => if r = g then .root else .digest (rawRoot g r)
+def parentRef (g : Nat) : Option Nat → ParentRef := NodeAsChainShape.parentRef g
 
 /-- The block parent (by root) a header's parent reference names, with genesis root `g`. -/
-def parentRoot (g : Nat) : ParentRef → Option Nat
-  | .root => some g
-  | .digest r => some (taggedRoot g r)
+def parentRoot (g : Nat) : ParentRef → Option Nat := NodeAsChainShape.parentRoot g
 
 /-- The digest of header `h` among the digests `hs` the engine passed. -/
 def rootOf (hs : List (Header Info × Nat)) (h : Header Info) : Option Nat :=
-  (hs.find? fun q => q.1 == h).map (·.2)
+  NodeAsChainShape.rootOf hs h
 
 /-! ## The shape -/
 
@@ -385,12 +380,12 @@ abbrev Blk := NodeBlock sp.toParams (Payload sp.n)
 
 /-- The header of a non-genesis block (its root is the digest of this header). -/
 def headerOf (B : Blk sp) : Header Info :=
-  ⟨parentRef sp.genesisRoot B.parent, B.slot, B.input, encodeInfo B.fgPayload B.acPayload⟩
+  NodeAsChainShape.headerOf (P := sp.toParams) encodeInfo B
 
 /-- The block of a header `h` with digest `d`, signed by `k`, with the decoded payloads. -/
 def blockOf (d : Nat) (h : Header Info) (k : Fin sp.n) (atts : List (FG.Att sp.n))
     (p : Payload sp.n) : Blk sp :=
-  ⟨taggedRoot sp.genesisRoot d, parentRoot sp.genesisRoot h.parent, h.pos, k, h.input, atts, p⟩
+  NodeAsChainShape.blockOf (P := sp.toParams) d h k atts p
 
 /-- The skeleton uses protocol delay `Δ_p = pub.ΔAC`, selecting one proposer per `4Δ_p`, with
 everyone in the poll role and no scheduled committee duties (`kinds` is empty; the binding supplies
@@ -453,8 +448,7 @@ variable (sp) in
 /-- The canonical object of a non-genesis block: its header as an item signed by its proposer in
 its slot's proposer role, carrying its payload's objects. -/
 def blockObj (B : Blk sp) : Wire sp.n (binding := binding) :=
-  .mk (.signed B.proposer (.proposer B.slot)) (.item (headerOf sp B))
-    (payloadObjs (binding := binding) B.fgPayload B.acPayload)
+  NodeAsChainShape.blockObj (P := sp.toParams) encodeInfo (payloadObjs (binding := binding)) B
 
 variable (sp) in
 open Classical in
@@ -464,16 +458,9 @@ carrying its payload's objects, with well-formed attestations and a
 valid AC payload. Such an object is `blockObj` of the block it decodes to. -/
 noncomputable def decodeBlock
     (hs : List (Header Info × Nat)) :
-    Wire sp.n (binding := binding) → Option (Blk sp)
-  | .mk (.signed k (.proposer s)) (.item h) cs =>
-      match decodeInfo sp.n h.info, rootOf hs h with
-      | some (atts, p), some d =>
-          let B := blockOf sp d h k atts p
-          if h.pos = s ∧ cs = payloadObjs (binding := binding) atts p ∧
-              (∀ a ∈ atts, a.WellFormed) ∧ SA.validPayload B then some B
-          else none
-      | _, _ => none
-  | _ => none
+    Wire sp.n (binding := binding) → Option (Blk sp) :=
+  NodeAsChainShape.decodeBlock (P := sp.toParams) (decodeInfo sp.n)
+    (payloadObjs (binding := binding)) SA.validPayload hs
 
 variable (sp) in
 /-- A signed forwarding wrapper. The optional exact parent wrapper precedes the canonical
@@ -552,18 +539,36 @@ def decodeAttObj :
       (decodeAtt sp.n w).filter fun a => k = a.val ∧ a.WellFormed
   | _ => none
 
+/-- The Goldilocks header payload and carried objects, with vote and attestation decoding. -/
+def wireCodec (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) (binding : VoteBinding) :
+    NodeAsChainShape.WireCodec (goldilocksNode sp ro) binding.Kind Info Body where
+  encode := encodeInfo
+  decode := decodeInfo sp.n
+  carried := payloadObjs (binding := binding)
+  message := decodeVoteObj sp (binding := binding)
+  attestation := decodeAttObj sp (binding := binding)
+
+/-- Connect node handlers to the Goldilocks clock, duty flag and publication queues. -/
+def nodeAdapter (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) (binding : VoteBinding) :
+    NodeAsChainShape.Adapter (goldilocksNode sp ro) binding.Kind Info Body
+      (State sp ro binding) where
+  self := State.self
+  node := State.node
+  now := State.now
+  setNode st node := { st with node }
+  setDue st fgDue := { st with fgDue }
+  wake st self now := { st with self, now }
+  applyCuts := apply
+  relayIf := relayIf
+  attest st node a := { st with node, outbox := st.outbox ++ [.att (encodeAtt a)] }
+
 variable (sp ro) in
 /-- The node's top-level event a received object stands for, given the digests `hs`: the block,
 vote or attestation it is the canonical object of; none for anything else (dropped). -/
 noncomputable def canonEvent
     (hs : List (Header Info × Nat)) (o : Wire sp.n (binding := binding)) :
     Option (Node.Event (goldilocksNode sp ro)) :=
-  match decodeBlock sp (binding := binding) hs o, decodeVoteObj sp (binding := binding) o,
-      decodeAttObj sp (binding := binding) o with
-  | some B, _, _ => some (.block B)
-  | none, some v, _ => some (.message v)
-  | none, none, some a => some (.attestation a)
-  | none, none, none => none
+  NodeAsChainShape.canonEvent (wireCodec sp ro binding) hs o
 
 open Classical in
 /-- Processing one received object through its canonical node handler. A block the call newly
@@ -574,21 +579,11 @@ objects are processed separately. -/
 noncomputable def processOne (hs : List (Header Info × Nat))
     (st : State sp ro (binding := binding)) (o : Wire sp.n (binding := binding)) :
     State sp ro (binding := binding) :=
-  match canonEvent sp ro (binding := binding) hs o with
-  | some (.block B) =>
-      let r := Node.onBlock st.self st.node st.now B
-      relayIf (apply st r) (st.node.fg.blocks B.root ≠ some B ∧ r.1.fg.blocks B.root = some B) o
-  | some (.message v) =>
-      let r := Node.onMessage st.self st.node st.now v
-      apply st r
-  | some (.attestation a) => relayIf (apply st (Node.onAttestation st.node a)) True o
-  | _ => st
+  NodeAsChainShape.processOne (wireCodec sp ro binding) (nodeAdapter sp ro binding) hs st o
 
 /-- A block-shaped object: one that says a header item, as a block's canonical object does
 (`blockObj`). Every other object is a vote, an attestation or a wrapper body. -/
-def BlockShaped : Wire sp.n (binding := binding) → Prop
-  | .mk _ (.item _) _ => True
-  | _ => False
+def BlockShaped : Wire sp.n (binding := binding) → Prop := NodeAsChainShape.BlockShaped
 
 /-- Processing `o` at `st` refuses a block: `o` is block-shaped and either fails the wire checks
 (it is no canonical block: `decodeBlock` rejects its signature role, slot, indices, carried
@@ -596,11 +591,8 @@ objects, attestations or AC payload), or is a canonical block that `on_block` dr
 future slot or that the FG refuses (composition.tex §"Blocks"). -/
 def Refuses (hs : List (Header Info × Nat))
     (st : State sp ro (binding := binding)) (o : Wire sp.n (binding := binding)) : Prop :=
-  BlockShaped o ∧ ∀ B, canonEvent sp ro (binding := binding) hs o = some (.block B) →
-    sp.toParams.slotOf st.now < B.slot ∨ st.node.fg.onBlock B = none
+  NodeAsChainShape.Refuses (wireCodec sp ro binding) (nodeAdapter sp ro binding) hs st o
 
-open Classical in
-mutual
 /-- The objects a delivery of `o` at `st` processes, in preorder, with the state after them: `o`,
 then, unless processing `o` refuses a block (`Refuses`), recursively every object it carries, each
 from the state its predecessors leave. No handler runs for what a refused block carries, nor for
@@ -612,35 +604,27 @@ calls when the block is accepted. Thus admitting a payload vote is followed by a
 processing at the same delivery time, rather than merely adding it to the AC pool. -/
 noncomputable def visit (hs : List (Header Info × Nat)) :
     State sp ro (binding := binding) → Wire sp.n (binding := binding) →
-      List (Wire sp.n (binding := binding)) × State sp ro (binding := binding)
-  | st, .mk a m cs =>
-      if Refuses hs st (.mk a m cs) then ([.mk a m cs], processOne hs st (.mk a m cs))
-      else
-        let r := visitList hs (processOne hs st (.mk a m cs)) cs
-        (.mk a m cs :: r.1, r.2)
+      List (Wire sp.n (binding := binding)) × State sp ro (binding := binding) :=
+  NodeAsChainShape.visit (wireCodec sp ro binding) (nodeAdapter sp ro binding) hs
 
 /-- `visit` of a list of carried objects, one after the other. -/
 noncomputable def visitList (hs : List (Header Info × Nat)) :
     State sp ro (binding := binding) → List (Wire sp.n (binding := binding)) →
-      List (Wire sp.n (binding := binding)) × State sp ro (binding := binding)
-  | st, [] => ([], st)
-  | st, c :: cs =>
-      let r := visit hs st c
-      let r' := visitList hs r.2 cs
-      (r.1 ++ r'.1, r'.2)
-end
+      List (Wire sp.n (binding := binding)) × State sp ro (binding := binding) :=
+  NodeAsChainShape.visitList (wireCodec sp ro binding) (nodeAdapter sp ro binding) hs
 
 /-- The objects a delivery of `o` at `st` processes (`visit`). -/
 noncomputable def delivered (hs : List (Header Info × Nat))
     (st : State sp ro (binding := binding)) (o : Wire sp.n (binding := binding)) :
-    List (Wire sp.n (binding := binding)) := (visit hs st o).1
+    List (Wire sp.n (binding := binding)) :=
+  NodeAsChainShape.delivered (wireCodec sp ro binding) (nodeAdapter sp ro binding) hs st o
 
 /-- Processing a delivered object: its `delivered` objects one by one through `processOne`. -/
 noncomputable def process
     (st : State sp ro (binding := binding))
     (o : Wire sp.n (binding := binding)) (hs : List (Header Info × Nat)) :
     State sp ro (binding := binding) :=
-  (delivered hs st o).foldl (processOne hs) st
+  NodeAsChainShape.process (wireCodec sp ro binding) (nodeAdapter sp ro binding) st o hs
 
 /-- Releasing a forwarding shape requires its exact parent wrapper to be held before
 the envelope. Raw blocks have no release dependency. This policy does not restrict arrivals:
@@ -673,21 +657,14 @@ noncomputable def recordOwn
   match o with
   | .mk .none (.data .relay) _ => { st with relayBuf := [] }
   | .mk (.signed k (.proposer _)) (.item h) _ =>
-      match decodeInfo sp.n h.info, rootOf hs h with
-      | some (atts, p), some d =>
-          apply st (Node.onBlock st.self st.node st.now (blockOf sp d h k atts p))
-      | _, _ => st
+      NodeAsChainShape.recordBlock (wireCodec sp ro binding) (nodeAdapter sp ro binding) st k h hs
   | _ => st
 
-open Classical in
 /-- The node's tick at a public time: `ac_on_tick`, its votes queued, the FG update made due. -/
 noncomputable def nodeTick
     (st : State sp ro (binding := binding)) :
     State sp ro (binding := binding) :=
-  if sp.toParams.IsPublic st.now then
-    let r := Node.acCall st.self st.node st.now .tick
-    { apply st (r.1, [r.2]) with fgDue := true }
-  else st
+  NodeAsChainShape.nodeTick (nodeAdapter sp ro binding) st
 
 /-- The slot proposal of the slot's proposer: `ac_proposal`; the header names the head and
 carries the proposal's attestations (`proposal_attestations`) and the AC payload. The engine
@@ -696,14 +673,7 @@ noncomputable def propose
     (st : State sp ro (binding := binding))
     (_s : Slot) : State sp ro (binding := binding) ×
       Option (ParentRef × Info × List (Wire sp.n (binding := binding))) :=
-  let r := Node.acProposal st.node st.now
-  let st' := { st with node := r.1 }
-  match r.2.2 with
-  | none => (st', none)
-  | some (d, p) =>
-      let atts := r.1.fg.proposalAttestations d.head
-      (st', some (parentRef sp.genesisRoot (some d.head.root), encodeInfo atts p,
-        payloadObjs (binding := binding) atts p))
+  NodeAsChainShape.propose (wireCodec sp ro binding) (nodeAdapter sp ro binding) st _s
 
 /-- The FG update: `ac_to_fg`, then `attest(C)` at the source `C` it returns (`fg_attest`; when
 it signs, the new record, the own `on_attestation` and the attestation queued), as
@@ -711,16 +681,7 @@ it signs, the new record, the own `on_attestation` and the attestation queued), 
 noncomputable def fgUpdate
     (st : State sp ro (binding := binding)) :
     State sp ro (binding := binding) :=
-  let r := Node.acToFG st.node st.now
-  let st₁ := { st with node := r.1, fgDue := false }
-  match r.2.2 with
-  | none => st₁
-  | some C =>
-      match r.1.fg.attest r.1.record st.self C with
-      | none => st₁
-      | some (a, Λ') =>
-          { st₁ with node := (Node.onAttestation { r.1 with record := Λ' } a).1,
-                     outbox := st₁.outbox ++ [.att (encodeAtt a)] }
+  NodeAsChainShape.fgUpdate (nodeAdapter sp ro binding) st
 
 /-- A poll step: the FG update when due, then the oldest queued ordinary body.
 Clear the forwarding queue; `pollBatch` captures its contents before this step. -/
@@ -747,14 +708,8 @@ noncomputable def pollBatch
 
 /-- The chain of headers from genesis (excluded) to `B`, oldest first, by parent walk in the
 held blocks `blocks`, with `fuel` steps at most. -/
-noncomputable def chainTo (blocks : Nat → Option (Blk sp)) : Nat → Blk sp → Chain Info
-  | 0, _ => []
-  | fuel + 1, B =>
-      if B.root = sp.genesisRoot then []
-      else
-        (match B.parent.bind blocks with
-          | some Bp => chainTo blocks fuel Bp
-          | none => []) ++ [headerOf sp B]
+noncomputable def chainTo (blocks : Nat → Option (Blk sp)) : Nat → Blk sp → Chain Info :=
+  NodeAsChainShape.chainTo (P := sp.toParams) (headerOf sp) blocks
 
 /-- The output chains of a node state at time `t`: `finalized` is `Σ.F`, `confirmed` is
 `ac_confirmed(𝒜, fg_to_ac(Σ), t)`; each as the chain of headers up to it (fuel: the slot, which
@@ -770,27 +725,17 @@ confirmation persist; its emissions are queued), the time is set, no FG update i
 the queued bodies, the relay queue and the forwarding state are kept. -/
 noncomputable def restore (k : Fin sp.n)
     (d : State sp ro (binding := binding)) (t : Time) : State sp ro (binding := binding) :=
-  let r := Node.restart k d.node t
-  { apply { d with self := k, now := t } r with fgDue := false }
+  NodeAsChainShape.restore (nodeAdapter sp ro binding) k d t
 
 variable (sp ro) in
-/-- The Goldilocks node as a chain shape over already chosen protocol parameters.
-Its grid uses `sp.Δ` directly: only `Setup.params` converts the engine delay to protocol delay. -/
-noncomputable def goldilocksShape (binding : VoteBinding := stock) :
-    ChainShape sp.pub Out Info where
-  skel := { skeleton sp.pub (binding := binding) with
-    grid := ⟨4 * sp.Δ, mul_pos (by decide) sp.toParams.hΔ⟩ }
-  State := State sp ro (binding := binding)
-  Body := Body
-  Durable := State sp ro (binding := binding)
-  decBody := inferInstance
-  candidateRole := binding.candidateRole sp.n
+/-- The Goldilocks engine operations at fixed protocol parameters and voting roles. -/
+noncomputable def nodeOps (binding : VoteBinding) :
+    NodeAsChainShape.Ops sp.n binding.Kind Info Body Out (State sp ro binding) where
   init k p := ⟨k, Node.initWith (goldilocksNode sp ro)
     (binding.installVote p (goldilocksNode sp ro).initial),
     0, [], [], false, fun _ => none, [], []⟩
   clock st t := { st with now := t }
   propose := propose
-  act := fun st _ _ => (st, none)
   pollPropose st _ := (nodeTick st, none)
   poll := poll
   pollBatch := pollBatch
@@ -799,13 +744,19 @@ noncomputable def goldilocksShape (binding : VoteBinding := stock) :
     | [] => []
     | cs => [(.data .relay, cs)]
   process := process
-  dependencies := dependencies sp.n (binding := binding)
   recordOwn := recordOwn
-  durable := id
   restore := restore
   out g st := outOf st.node st.now g
-  conflicts := conflicts (binding := binding)
-  isFGAtt := isFGAtt (binding := binding)
+
+variable (sp ro) in
+/-- The Goldilocks node as a chain shape over already chosen protocol parameters.
+Its grid uses `sp.Δ` directly: only `Setup.params` converts the engine delay to protocol delay. -/
+noncomputable def goldilocksShape (binding : VoteBinding := stock) :
+    ChainShape sp.pub Out Info :=
+  NodeAsChainShape.shape { skeleton sp.pub (binding := binding) with
+    grid := ⟨4 * sp.Δ, mul_pos (by decide) sp.toParams.hΔ⟩ }
+    (nodeOps sp ro binding) (binding.candidateRole sp.n) (dependencies sp.n (binding := binding))
+    (conflicts (binding := binding)) (isFGAtt (binding := binding))
 
 /-! ## The family -/
 
@@ -866,48 +817,16 @@ output chains) output it at some proof of `1 ≤ n` and nothing without one. -/
 noncomputable def goldilocks (S : Setup) :
     ChainShapeFamily schema Info := fun pub =>
   let binding := S.vote
-  let G := fun hn : 1 ≤ pub.n =>
-    goldilocksShape (S.params pub hn) (S.ro _) (binding := binding)
-  { skel := skeleton pub (binding := binding)
-    State := PubState S pub
-    Body := Body
-    Durable := PubState S pub
-    decBody := inferInstance
-    candidateRole := binding.candidateRole pub.n
-    init := fun k p hn => (G hn).init k p
-    clock := fun st t hn => (G hn).clock (st hn) t
-    propose := fun st s =>
-      if hn : 1 ≤ pub.n then (fun _ => ((G hn).propose (st hn) s).1, ((G hn).propose (st hn) s).2)
-      else (st, none)
-    act := fun st _ _ => (st, none)
-    pollPropose := fun st t =>
-      if hn : 1 ≤ pub.n then
-        (fun _ => ((G hn).pollPropose (st hn) t).1, ((G hn).pollPropose (st hn) t).2)
-      else (st, none)
-    poll := fun st t =>
-      if hn : 1 ≤ pub.n then (fun _ => ((G hn).poll (st hn) t).1, ((G hn).poll (st hn) t).2)
-      else (st, none)
-    pollBatch := fun st t =>
-      if hn : 1 ≤ pub.n then
-        (fun _ => ((G hn).pollBatch (st hn) t).1, ((G hn).pollBatch (st hn) t).2)
-      else (st, [])
-    gossip := fun st t => if hn : 1 ≤ pub.n then (G hn).gossip (st hn) t else []
-    process := fun st o hs hn => (G hn).process (st hn) o hs
-    dependencies := dependencies pub.n (binding := binding)
-    recordOwn := fun st o hs hn => (G hn).recordOwn (st hn) o hs
-    durable := id
-    restore := fun k d t hn => (G hn).restore k (d hn) t
-    out := fun g st => if hn : 1 ≤ pub.n then (G hn).out g (st hn) else []
-    conflicts := conflicts (binding := binding)
-    isFGAtt := isFGAtt (binding := binding) }
+  NodeAsChainShape.shape (skeleton pub (binding := binding))
+    (NodeAsChainShape.familyOps fun hn => nodeOps (S.params pub hn) (S.ro _) binding)
+    (binding.candidateRole pub.n) (dependencies pub.n (binding := binding))
+    (conflicts (binding := binding)) (isFGAtt (binding := binding))
 
 /-! ## Equations for the Goldilocks wire and state -/
-
 
 /-- The family uses the Goldilocks duty grid and the setup's voting roles. -/
 theorem goldilocks_skel_eq (S : Setup) (pub : Public) :
     (goldilocks S pub).skel = skeleton pub S.vote := by rfl
-
 
 /-- Run the node proposal when there is a key; otherwise emit no proposal. -/
 theorem goldilocks_propose_eq (S : Setup) (pub : Public) (st : PubState S pub) (s : Slot) :
@@ -915,12 +834,10 @@ theorem goldilocks_propose_eq (S : Setup) (pub : Public) (st : PubState S pub) (
       if hn : 1 ≤ pub.n then (fun _ => (propose (st hn) s).1, (propose (st hn) s).2)
       else (st, none) := by rfl
 
-
 /-- The proposal poll runs the node tick but emits no proposal directly. -/
 theorem goldilocks_pollPropose_eq (S : Setup) (pub : Public) (st : PubState S pub) (t : Time) :
     (goldilocks S pub).pollPropose st t =
       if hn : 1 ≤ pub.n then (fun _ => nodeTick (st hn), none) else (st, none) := by rfl
-
 
 /-- The batch poll runs the Goldilocks poll, or emits nothing with no keys. -/
 theorem goldilocks_pollBatch_eq (S : Setup) (pub : Public) (st : PubState S pub) (t : Time) :
@@ -928,20 +845,32 @@ theorem goldilocks_pollBatch_eq (S : Setup) (pub : Public) (st : PubState S pub)
       if hn : 1 ≤ pub.n then (fun _ => (pollBatch (st hn) t).1, (pollBatch (st hn) t).2)
       else (st, []) := by rfl
 
-
 /-- Read the node's chain at its current time, or the empty chain with no keys. -/
 theorem goldilocks_out_eq (S : Setup) (pub : Public) (st : PubState S pub) (g : Out) :
     (goldilocks S pub).out g st =
       if hn : 1 ≤ pub.n then outOf (st hn).node (st hn).now g else [] := by rfl
 
+/-- Gossip wraps a nonempty relay queue once and otherwise emits nothing. -/
+theorem goldilocks_gossip_eq (S : Setup) (pub : Public) (st : PubState S pub) (t : Time) :
+    (goldilocks S pub).gossip st t =
+      if hn : 1 ≤ pub.n then
+        match (st hn).relayBuf with
+        | [] => []
+        | cs => [(.data .relay, cs)]
+      else [] := by
+  by_cases hn : 1 ≤ pub.n
+  · unfold goldilocks NodeAsChainShape.shape NodeAsChainShape.familyOps
+    simp only [dite_eq_left hn]
+    unfold nodeOps
+    cases h : (st hn).relayBuf <;> simp only [h] <;> rfl
+  · unfold goldilocks NodeAsChainShape.shape NodeAsChainShape.familyOps
+    simp only [dite_eq_right hn]
 
 /-- Embedding a digest skips the reserved genesis root. -/
 theorem taggedRoot_eq (g h : Nat) : taggedRoot g h = (if h < g then h else h + 1) := by rfl
 
-
 /-- Recover a raw digest by undoing the gap at the genesis root. -/
 theorem rawRoot_eq (g r : Nat) : rawRoot g r = (if r < g then r else r - 1) := by rfl
-
 
 /-- A missing or genesis parent is `.root`; any other parent is a raw digest. -/
 theorem parentRef_eq (g : Nat) (r : Option Nat) : parentRef g r = (match r with
@@ -957,25 +886,22 @@ theorem parentRoot_eq (g : Nat) (p : ParentRef) : parentRoot g p = (match p with
 theorem rootOf_eq (hs : List (Header Info × Nat)) (h : Header Info) :
     rootOf hs h = (hs.find? fun q => q.1 == h).map (·.2) := by rfl
 
-
 /-- A block header contains its parent reference, slot, input and encoded payloads. -/
 theorem headerOf_eq (B : Blk sp) : headerOf sp B =
     ⟨parentRef sp.genesisRoot B.parent, B.slot, B.input, encodeInfo B.fgPayload B.acPayload⟩ := by
   rfl
 
-
 /-- Reconstruct a block from its header, digest, signer and decoded payloads. -/
 theorem blockOf_eq (d : Nat) (h : Header Info) (k : Fin sp.n) (atts : List (FG.Att sp.n))
     (p : Payload sp.n) : blockOf sp d h k atts p =
     ⟨taggedRoot sp.genesisRoot d, parentRoot sp.genesisRoot h.parent,
-      h.pos, k, h.input, atts, p⟩ := by rfl
-
+      h.pos, k, h.input, atts, p⟩ := by
+  rfl
 
 /-- A block object is a proposer-signed header carrying both payloads' objects. -/
 theorem blockObj_eq (B : Blk sp) : blockObj sp (binding := binding) B =
     .mk (.signed B.proposer (.proposer B.slot)) (.item (headerOf sp B))
       (payloadObjs (binding := binding) B.fgPayload B.acPayload) := by rfl
-
 
 open Classical in
 /-- Decode a block only if its signature role, carried objects and payload checks agree. -/
@@ -989,8 +915,24 @@ theorem decodeBlock_eq (hs : List (Header Info × Nat)) (o : Wire sp.n binding) 
             (∀ a ∈ atts, a.WellFormed) ∧ SA.validPayload B then some B else none
       | _, _ => none
     | _ => none) := by
-  rfl
-
+  obtain ⟨a, m, cs⟩ := o
+  cases a with
+  | none => cases m <;> rfl
+  | signed k r =>
+    cases r <;> cases m <;> try rfl
+    rename_i h
+    have hr : NodeAsChainShape.rootOf hs h = rootOf hs h := rfl
+    simp only [decodeBlock, NodeAsChainShape.decodeBlock, hr]
+    cases decodeInfo sp.n h.info with
+    | none => rfl
+    | some ap =>
+      rcases ap with ⟨atts, p⟩
+      cases rootOf hs h with
+      | none => rfl
+      | some d =>
+        have hb : NodeAsChainShape.blockOf (P := sp.toParams) d h k atts p =
+            blockOf sp d h k atts p := rfl
+        simp only [hb]
 
 /-- Classify a receipt by trying the block, vote and attestation decoders in order. -/
 theorem canonEvent_eq (hs : List (Header Info × Nat)) (o : Wire sp.n binding) :
@@ -998,8 +940,15 @@ theorem canonEvent_eq (hs : List (Header Info × Nat)) (o : Wire sp.n binding) :
     | some B, _, _ => some (.block B)
     | none, some v, _ => some (.message v)
     | none, none, some a => some (.attestation a)
-    | none, none, none => none) := by rfl
-
+    | none, none, none => none) := by
+  unfold canonEvent NodeAsChainShape.canonEvent
+  have hb : NodeAsChainShape.decodeBlock (wireCodec sp ro binding).decode
+      (wireCodec sp ro binding).carried
+      (goldilocksNode sp ro).validPayload hs o = decodeBlock sp hs o := rfl
+  have hv : (wireCodec sp ro binding).message o = decodeVoteObj sp o := rfl
+  have ha : (wireCodec sp ro binding).attestation o = decodeAttObj sp o := rfl
+  rw [hb, hv, ha]
+  cases decodeBlock sp hs o <;> cases decodeVoteObj sp o <;> cases decodeAttObj sp o <;> rfl
 
 open Classical in
 /-- Dispatch a decoded receipt, relaying newly accepted blocks and attestations. -/
@@ -1011,15 +960,19 @@ theorem processOne_eq (hs : List (Header Info × Nat)) (st : State sp ro binding
       relayIf (apply st r) (st.node.fg.blocks B.root ≠ some B ∧ r.1.fg.blocks B.root = some B) o
     | some (.message v) => apply st (Node.onMessage st.self st.node st.now v)
     | some (.attestation a) => relayIf (apply st (Node.onAttestation st.node a)) True o
-    | _ => st) := by rfl
-
+    | _ => st) := by
+  unfold processOne NodeAsChainShape.processOne
+  have h : NodeAsChainShape.canonEvent (wireCodec sp ro binding) hs o = canonEvent sp ro hs o := rfl
+  rw [h]
+  cases canonEvent sp ro hs o with
+  | none => rfl
+  | some e => cases e <;> rfl
 
 /-- Refuse block-shaped receipts unless they decode to a timely, FG-accepted block. -/
 theorem refuses_iff (hs : List (Header Info × Nat)) (st : State sp ro binding)
     (o : Wire sp.n binding) :
     Refuses hs st o ↔ BlockShaped o ∧ ∀ B, canonEvent sp ro hs o = some (.block B) →
       sp.toParams.slotOf st.now < B.slot ∨ st.node.fg.onBlock B = none := by rfl
-
 
 open Classical in
 /-- Visit the receipt first; descend into its carried objects only if it is not refused. -/
@@ -1029,34 +982,30 @@ theorem visit_eq (hs : List (Header Info × Nat)) (st : State sp ro binding)
     visit hs st (.mk a m cs) =
       if Refuses hs st (.mk a m cs) then ([.mk a m cs], processOne hs st (.mk a m cs))
       else let r := visitList hs (processOne hs st (.mk a m cs)) cs; (.mk a m cs :: r.1, r.2) := by
-  rw [visit]
-
+  rw [visit, NodeAsChainShape.visit]
+  rfl
 
 /-- An empty carried list leaves the state unchanged. -/
 theorem visitList_nil_eq (hs : List (Header Info × Nat)) (st : State sp ro binding) :
-    visitList hs st [] = ([], st) := by
-  rw [visitList]
-
+    visitList hs st [] = ([], st) := by rw [visitList, NodeAsChainShape.visitList]
 
 /-- Visit the first carried object before the rest, threading the state and receipt order. -/
 theorem visitList_cons_eq (hs : List (Header Info × Nat)) (st : State sp ro binding)
     (o : Wire sp.n binding) (os : List (Wire sp.n binding)) :
     visitList hs st (o :: os) =
       (let r := visit hs st o; let r' := visitList hs r.2 os; (r.1 ++ r'.1, r'.2)) := by
-  rw [visitList]
-
+  rw [visitList, NodeAsChainShape.visitList]
+  rfl
 
 /-- Delivery records the ordered objects returned by the receipt walk. -/
 theorem delivered_eq (hs : List (Header Info × Nat)) (st : State sp ro binding)
     (o : Wire sp.n binding) :
     delivered hs st o = (visit hs st o).1 := by rfl
 
-
 /-- Process the delivered objects in order, starting from the original state. -/
 theorem process_eq (st : State sp ro binding) (o : Wire sp.n binding)
     (hs : List (Header Info × Nat)) :
     process st o hs = (delivered hs st o).foldl (processOne hs) st := by rfl
-
 
 /-- On own release, clear the relay queue or insert the block with its released digest. -/
 theorem recordOwn_eq (st : State sp ro binding) (o : Wire sp.n binding)
@@ -1068,8 +1017,20 @@ theorem recordOwn_eq (st : State sp ro binding) (o : Wire sp.n binding)
       | some (atts, p), some d =>
         apply st (Node.onBlock st.self st.node st.now (blockOf sp d h k atts p))
       | _, _ => st
-    | _ => st) := by rfl
-
+    | _ => st) := by
+  obtain ⟨a, m, cs⟩ := o
+  cases a with
+  | none => cases m with
+    | item => rfl
+    | data m => cases m <;> rfl
+  | signed k r =>
+    cases r <;> cases m <;> try rfl
+    rename_i h
+    have hr : NodeAsChainShape.rootOf hs h = rootOf hs h := rfl
+    simp only [recordOwn, NodeAsChainShape.recordBlock, wireCodec, hr]
+    cases decodeInfo sp.n h.info with
+    | none => rfl
+    | some ap => rcases ap with ⟨a, p⟩; cases rootOf hs h <;> rfl
 
 open Classical in
 /-- At a public time, queue AC tick emissions and mark the FG duty due. -/
@@ -1078,7 +1039,6 @@ theorem nodeTick_eq (st : State sp ro binding) : nodeTick st =
       let r := Node.acCall st.self st.node st.now .tick
       { apply st (r.1, [r.2]) with fgDue := true }
     else st := by rfl
-
 
 /-- A proposal updates node state and, if present, encodes the head and payloads. -/
 theorem propose_eq (st : State sp ro binding) (s : Slot) : propose st s =
@@ -1089,8 +1049,11 @@ theorem propose_eq (st : State sp ro binding) (s : Slot) : propose st s =
      | some (d, p) =>
        let atts := r.1.fg.proposalAttestations d.head
        (st', some (parentRef sp.genesisRoot (some d.head.root), encodeInfo atts p,
-         payloadObjs atts p))) := by rfl
-
+         payloadObjs atts p))) := by
+  unfold propose NodeAsChainShape.propose
+  cases h : (Node.acProposal st.node st.now).2.2 with
+  | none => simp only [nodeAdapter, h]
+  | some dp => rcases dp with ⟨d, p⟩; simp only [nodeAdapter, wireCodec, h]; rfl
 
 /-- Clear the FG duty flag and queue an attestation if AC supplies an attestable source. -/
 theorem fgUpdate_eq (st : State sp ro binding) : fgUpdate st =
@@ -1103,21 +1066,30 @@ theorem fgUpdate_eq (st : State sp ro binding) : fgUpdate st =
        | some (a, Λ') =>
          { st₁ with
            node := (Node.onAttestation { r.1 with record := Λ' } a).1
-           outbox := st₁.outbox ++ [.att (encodeAtt a)] }) := by rfl
-
+           outbox := st₁.outbox ++ [.att (encodeAtt a)] }) := by
+  unfold fgUpdate NodeAsChainShape.fgUpdate
+  cases h : (Node.acToFG st.node st.now).2.2 with
+  | none => simp only [nodeAdapter, h]
+  | some B =>
+    simp only [nodeAdapter, h]
+    cases (Node.acToFG st.node st.now).1.fg.attest
+      (Node.acToFG st.node st.now).1.record st.self B with
+    | none => rfl
+    | some ar => rcases ar with ⟨a, r⟩; rfl
 
 /-- With no remaining fuel the parent walk returns no headers. -/
 theorem chainTo_zero_eq (blocks : Nat → Option (Blk sp)) (B : Blk sp) :
     chainTo blocks 0 B = [] := by rfl
-
 
 /-- Walk a non-genesis parent's chain before appending the current header. -/
 theorem chainTo_succ_eq (blocks : Nat → Option (Blk sp)) (fuel : Nat) (B : Blk sp) :
     chainTo blocks (fuel + 1) B = (if B.root = sp.genesisRoot then [] else
       (match B.parent.bind blocks with | some Bp => chainTo blocks fuel Bp | none => []) ++
         [headerOf sp B]) := by
-  rw [chainTo]
-
+  rw [chainTo, NodeAsChainShape.chainTo]
+  split_ifs
+  · rfl
+  · cases B.parent.bind blocks <;> rfl
 
 /-- Restart through the node handler, installing the key and time and clearing the FG duty flag. -/
 theorem restore_eq (k : Fin sp.n) (d : State sp ro binding) (t : Time) : restore k d t =

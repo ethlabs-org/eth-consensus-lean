@@ -67,7 +67,7 @@ private theorem canonEvent_forward_none (hs : List (Header Info × Nat))
     (x : Fin sp.n) (t : Time) (p : Option (Wire sp.n binding)) (B : Blk sp) :
     canonEvent sp ro hs (forwardObj sp x t p B) = none := by
   cases hp : binding.participationKind <;>
-    simp [canonEvent, forwardObj, decodeBlock, decodeVoteObj, decodeAttObj, hp]
+    simp [canonEvent_eq, forwardObj, decodeBlock_eq, decodeVoteObj, decodeAttObj, hp]
 
 /-- A forwarding chain processes the parent's visit before the visit of the child's canonical
 block (with its payload when it is accepted); the split retains the actual cut boundary. -/
@@ -91,7 +91,7 @@ theorem deliverSeq_forward_parent {proposer : Nat → Fin sp.n} {tr : Goldilocks
   | drop _ htail =>
     simp only [forwardObj, Model.Obj.carried, Option.toList_some, List.cons_append,
       List.nil_append, visitList_cons] at htail
-    rw [visitList, List.append_nil] at htail
+    rw [visitList_nil_eq, List.append_nil] at htail
     obtain ⟨m, h1, h2⟩ := deliverSeq_append_split _ _ htail
     exact ⟨m, _, _, h1, h2⟩
 
@@ -110,8 +110,8 @@ theorem decodeBlock_transport {hs hs' : List (Header Info × Nat)} {o : Wire sp.
     (hr : rootOf hs' (headerOf sp B) = rootOf hs (headerOf sp B)) :
     decodeBlock sp hs' o = some B := by
   obtain rfl := eq_blockObj_of_decodeBlock hd
-  unfold decodeBlock at hd ⊢
-  simp only [blockObj] at hd ⊢
+  rw [decodeBlock_eq] at hd ⊢
+  simp only [blockObj_eq] at hd ⊢
   rw [hr]
   exact hd
 
@@ -167,9 +167,9 @@ theorem processOne_forward_origin (proposer : Nat → Fin sp.n)
     unfold relayIf
     split <;> rfl
   rcases canonEvent_cases (ro := ro) hs o with he | ⟨B, he⟩ | ⟨v, he⟩ | ⟨a, he⟩
-  · exact Or.inl (by simpa only [processOne, he] using hq)
+  · exact Or.inl (by simpa only [AsChainShape.processOne_eq, he] using hq)
   all_goals
-    simp only [processOne, he, hrelay] at hq
+    simp only [AsChainShape.processOne_eq, he, hrelay] at hq
     rcases apply_forward_origin _ _ q hq with h | ⟨C, p, hm, hq⟩
     · exact Or.inl h
     · exact Or.inr ⟨_, C, p, he, hm, hq⟩

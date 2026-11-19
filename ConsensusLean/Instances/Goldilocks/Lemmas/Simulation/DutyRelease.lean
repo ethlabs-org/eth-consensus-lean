@@ -77,13 +77,13 @@ theorem dutyStep_att_poll {v : V} (nd : Model.Node (Model.protoOf (compiled (gol
       cases hh
     | pollPropose t =>
       change _ ∈ (Option.map _ ((goldilocks S (pubOf E)).pollPropose nd.st.1 t).2).toList at hm
-      simp only [goldilocks, dite_eq_left hn] at hm
+      rw [goldilocks_pollPropose_eq S _ nd.st.1 t, dite_eq_left hn] at hm
       cases hm
     | poll t =>
       have hp : (poll (nd.st.1 hn) t).2 = some (.att (encodeAtt a), []) := by
         change _ ∈ (((goldilocks S (pubOf E)).pollBatch nd.st.1 t).2.map
           (fun (b, cs) => (Model.Msg.data b, cs))) at hm
-        simp only [goldilocks, dite_eq_left hn] at hm
+        rw [goldilocks_pollBatch_eq S _ nd.st.1 t, dite_eq_left hn] at hm
         change _ ∈ ((pollBatch (nd.st.1 hn) t).2.map
           (fun (b, cs) => (Model.Msg.data b, cs))) at hm
         obtain ⟨⟨b, cs⟩, hb, heq⟩ := List.mem_map.mp hm

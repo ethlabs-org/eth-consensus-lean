@@ -87,7 +87,7 @@ private theorem encodeInfo_of_decodeInfo {n : Nat} {i : Info} {atts : List (FG.A
 /-- A received object that decodes to a block is that block's canonical object. -/
 theorem eq_blockObj_of_decodeBlock {hs : List (Header Info × Nat)} {o : Wire sp.n binding}
     {B : Blk sp} (h : decodeBlock sp hs o = some B) : o = blockObj sp B := by
-  unfold decodeBlock at h
+  rw [decodeBlock_eq] at h
   split at h
   · rename_i k s hd cs
     split at h
@@ -98,12 +98,12 @@ theorem eq_blockObj_of_decodeBlock {hs : List (Header Info × Nat)} {o : Wire sp
       simp only at hpos hdec
       subst hpos
       have hinfo := encodeInfo_of_decodeInfo hdec
-      simp only [blockObj, headerOf, blockOf, hinfo]
+      simp only [blockObj_eq, headerOf_eq, blockOf_eq, hinfo]
       congr
       cases par with
-      | root => simp [parentRoot, parentRef]
+      | root => simp [parentRoot_eq, parentRef_eq]
       | digest r =>
-        simp [parentRoot, parentRef, taggedRoot_ne, rawRoot_taggedRoot]
+        simp [parentRoot_eq, parentRef_eq, taggedRoot_ne, rawRoot_taggedRoot]
     · cases h
   · cases h
 
@@ -158,7 +158,7 @@ theorem canonEvent_eq_some {hs : List (Header Info × Nat)} {o : Wire sp.n bindi
     {e : Event (goldilocksNode sp ro)} (h : canonEvent sp ro hs o = some e) :
     (∃ B, e = .block B ∧ o = blockObj sp B) ∨ (∃ v, e = .message v ∧ o = voteObj v) ∨
       ∃ a, e = .attestation a ∧ o = attObj a := by
-  unfold canonEvent at h
+  rw [canonEvent_eq] at h
   cases hB : decodeBlock sp hs o with
   | some B =>
     simp only [hB, Option.some.injEq] at h
@@ -209,7 +209,7 @@ theorem decodeBlock_wire {hs : List (Header Info × Nat)} {o : Wire sp.n binding
     (rootOf hs (headerOf sp B)).map (taggedRoot sp.genesisRoot) = some B.root ∧ B.parent ≠ none ∧
       (∀ a ∈ B.fgPayload, a.WellFormed) ∧ SA.validPayload B := by
   obtain rfl := eq_blockObj_of_decodeBlock h
-  simp only [decodeBlock, blockObj] at h
+  simp only [decodeBlock_eq, blockObj_eq] at h
   split at h
   · rename_i atts p d hdec hroot
     simp only [Option.ite_none_right_eq_some, Option.some.injEq] at h
@@ -217,8 +217,8 @@ theorem decodeBlock_wire {hs : List (Header Info × Nat)} {o : Wire sp.n binding
     have hr : B.root = taggedRoot sp.genesisRoot d := by rw [← hB]; rfl
     refine ⟨by rw [hroot, Option.map_some, hr], ?_, ?_, ?_⟩
     · rw [← hB]
-      simp only [blockOf]
-      cases (headerOf sp B).parent <;> simp [parentRoot]
+      simp only [blockOf_eq]
+      cases (headerOf sp B).parent <;> simp [parentRoot_eq]
     · rw [← hB]; exact hwf
     · rw [← hB]; exact hval
   · simp at h
@@ -228,16 +228,16 @@ theorem wellFormed_of_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.n
     {a : FG.Att sp.n} (h : canonEvent sp ro hs o = some (.attestation a)) : a.WellFormed := by
   have hd : decodeAttObj sp o = some a := by
     cases hb : decodeBlock sp hs o with
-    | some B' => simp [canonEvent, hb] at h
+    | some B' => simp [canonEvent_eq, hb] at h
     | none =>
       cases hv : decodeVoteObj sp o with
-      | some v => simp [canonEvent, hb, hv] at h
+      | some v => simp [canonEvent_eq, hb, hv] at h
       | none =>
         cases ha : decodeAttObj sp o with
         | some a' =>
-          simp only [canonEvent, hb, hv, ha, Option.some.injEq, Event.attestation.injEq] at h
+          simp only [canonEvent_eq, hb, hv, ha, Option.some.injEq, Event.attestation.injEq] at h
           rw [h]
-        | none => simp [canonEvent, hb, hv, ha] at h
+        | none => simp [canonEvent_eq, hb, hv, ha] at h
   unfold decodeAttObj at hd
   split at hd
   · rename_i k w
@@ -341,7 +341,7 @@ theorem processOne_eq (proposer : Nat → Fin sp.n)
       (processOne hs σ o).node =
         ((canonEvent sp ro hs o).elim σ.node fun e =>
           (exec proposer dg σ.self σ.node σ.now e).1) := by
-  unfold processOne
+  rw [AsChainShape.processOne_eq]
   cases he : canonEvent sp ro hs o with
   | none => exact ⟨[], by simp, by simp, rfl, rfl, rfl⟩
   | some e =>
@@ -369,7 +369,7 @@ private theorem processOne_block {hs : List (Header Info × Nat)} {σ : State sp
     (h0 : σ.node.fg.blocks B.root ≠ some B)
     (h : (Node.onBlock σ.self σ.node σ.now B).1.fg.blocks B.root = some B) :
     o ∈ (processOne hs σ o).relayBuf := by
-  unfold processOne
+  rw [AsChainShape.processOne_eq]
   rw [he]
   dsimp only
   rw [relayIf_eq]
@@ -378,7 +378,7 @@ private theorem processOne_block {hs : List (Header Info × Nat)} {σ : State sp
 private theorem processOne_attestation {hs : List (Header Info × Nat)} {σ : State sp ro binding}
     {o : Wire sp.n binding} {a : FG.Att sp.n} (he : canonEvent sp ro hs o = some (.attestation a)) :
     o ∈ (processOne hs σ o).relayBuf := by
-  unfold processOne
+  rw [AsChainShape.processOne_eq]
   rw [he]
   dsimp only
   rw [relayIf_eq]
@@ -557,20 +557,20 @@ theorem contains_of_mem_delivered {hs : List (Header Info × Nat)} {st : State s
 /-- The slot proposal keeps the relay queue and the own index. -/
 theorem propose_keeps (st : State sp ro binding) (s : Slot) :
     (propose st s).1.relayBuf = st.relayBuf ∧ (propose st s).1.self = st.self := by
-  unfold propose
+  rw [propose_eq]
   dsimp only
   split <;> exact ⟨rfl, rfl⟩
 
 /-- The node's tick keeps the relay queue and the own index. -/
 theorem nodeTick_keeps (st : State sp ro binding) :
     (nodeTick st).relayBuf = st.relayBuf ∧ (nodeTick st).self = st.self := by
-  unfold nodeTick
+  rw [nodeTick_eq]
   split_ifs <;> exact ⟨rfl, rfl⟩
 
 /-- The FG update keeps the relay queue and the own index. -/
 theorem fgUpdate_keeps (st : State sp ro binding) :
     (fgUpdate st).relayBuf = st.relayBuf ∧ (fgUpdate st).self = st.self := by
-  unfold fgUpdate
+  rw [fgUpdate_eq]
   dsimp only
   split
   · exact ⟨rfl, rfl⟩
@@ -596,7 +596,7 @@ theorem recordOwn_keeps (st : State sp ro binding) (o : Wire sp.n binding) (hs :
     (Header Info × Nat)) :
     ((recordOwn st o hs).relayBuf = st.relayBuf ∨ (recordOwn st o hs).relayBuf = []) ∧
       (recordOwn st o hs).self = st.self := by
-  unfold recordOwn
+  rw [recordOwn_eq]
   split
   · exact ⟨Or.inr rfl, rfl⟩
   · split
@@ -610,7 +610,7 @@ theorem recordOwn_relayBuf_signed (st : State sp ro binding) {k : Fin sp.n}
     {m : Model.Msg (Header Info) Body} {cs : List (Wire sp.n binding)} (hs : List
         (Header Info × Nat)) :
     (recordOwn st (.mk (.signed k r) m cs) hs).relayBuf = st.relayBuf := by
-  unfold recordOwn
+  rw [recordOwn_eq]
   split
   · rename_i h; cases h
   · split <;> rfl
@@ -636,17 +636,17 @@ theorem act_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Pro
     Q (((Model.protoOf (compiled (goldilocks S)) E).act st d).1.1 hn) := by
   cases d with
   | propose s h' =>
-    simp only [Model.protoOf, compiled, compile, withMempool, goldilocks,
-      hn, ↓reduceDIte]
+    change Q (((goldilocks S (pubOf E)).propose st.1 s).1 hn)
+    rw [goldilocks_propose_eq S _ st.1 s, dite_eq_left hn]
     exact hprop _ (s : Nat) h
   | act s k => exact h
   | pollPropose t =>
-    simp only [Model.protoOf, compiled, compile, withMempool, goldilocks,
-      hn, ↓reduceDIte]
+    change Q (((goldilocks S (pubOf E)).pollPropose st.1 t).1 hn)
+    rw [goldilocks_pollPropose_eq S _ st.1 t, dite_eq_left hn]
     exact hnt _ h
   | poll t =>
-    simp only [Model.protoOf, compiled, compile, withMempool, goldilocks,
-      hn, ↓reduceDIte]
+    change Q (((goldilocks S (pubOf E)).pollBatch st.1 t).1 hn)
+    rw [goldilocks_pollBatch_eq S _ st.1 t, dite_eq_left hn]
     exact hpoll _ (t : Time) h
 
 omit [DecidableEq V] in
@@ -708,7 +708,7 @@ theorem process_relay_seen {i : Nat} {v : V}
     (digestOf S rho) (Model.digests rho.hash o)
     _ i (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o) (stateAt S rho hn v i) 0 rfl
   intro x hx
-  unfold process at hx
+  rw [process_eq (stateAt S rho hn v i) o (Model.digests rho.hash o)] at hx
   rw [hL] at hx
   rw [Model.closure_append]
   rcases List.mem_append.mp hx with hx | hx
@@ -937,9 +937,10 @@ theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled
   have hgo : Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) R.1.st t =
       [Model.Obj.mk .none (.data .relay) cs] := by
     obtain ⟨c, cs₀, rfl⟩ := List.exists_cons_of_ne_nil (List.ne_nil_of_mem hkeep)
-    have hcs' : ∀ h', (R.1.st.1 h').relayBuf = c :: cs₀ := fun _ => hcs
-    simp only [Model.gossipCandidates, Model.protoOf, compiled, compile,
-      goldilocks, hn, ↓reduceDIte, goldilocksShape, hcs']
+    change List.map (fun mc => Model.Obj.mk .none mc.1 mc.2)
+      ((goldilocks S (pubOf E)).gossip R.1.st.1 t) = _
+    rw [goldilocks_gossip_eq S _ R.1.st.1 t, dite_eq_left hn]
+    rw [hcs]
     rfl
   refine ⟨cs, hkeep, List.mem_append_right _ ?_⟩
   have hc : Model.releasable R.1.seen (Model.Obj.mk .none (.data .relay) cs) = true := by
@@ -1192,7 +1193,7 @@ theorem processOne_outbox_eq (proposer : Nat → Fin sp.n)
     (processOne hs σ o).outbox = σ.outbox ++
       (canonEvent sp ro hs o).elim [] fun e =>
         emitted (exec proposer dg σ.self σ.node σ.now e).2 := by
-  unfold processOne
+  rw [AsChainShape.processOne_eq]
   cases he : canonEvent sp ro hs o with
   | none => simp
   | some e =>

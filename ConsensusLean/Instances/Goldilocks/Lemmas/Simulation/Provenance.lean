@@ -56,7 +56,7 @@ private theorem onBlock_reachable {P : Params} {A : NodeAC P} (self : Fin P.n)
 private theorem processOne_record {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
     (hs : List (Header Info × Nat)) (st : State sp ro binding) (o : Wire sp.n binding) :
     (processOne hs st o).node.record = st.node.record := by
-  unfold processOne
+  rw [processOne_eq]
   split
   · simp only [relayIf, apply]
     split <;> exact onBlock_record _ _ _ _
@@ -67,7 +67,7 @@ private theorem processOne_record {sp : SA.SAParams} {ro : SA.ReplayOrder sp (Li
 private theorem recordOwn_record {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
     (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat)) :
     (recordOwn st o hs).node.record = st.node.record := by
-  unfold recordOwn
+  rw [recordOwn_eq]
   split
   · rfl
   · split
@@ -81,7 +81,7 @@ theorem processOne_reachable {sp : SA.SAParams}
     (hs : List (Header Info × Nat)) (st : State sp ro binding) (o : Wire sp.n binding)
     (h : st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload) :
     (processOne hs st o).node.fg.Reachable (goldilocksNode sp ro).genesisPayload := by
-  unfold processOne
+  rw [processOne_eq]
   split
   · simp only [relayIf, apply]
     split <;> exact onBlock_reachable _ _ _ _ h
@@ -94,7 +94,7 @@ private theorem recordOwn_reachable {sp : SA.SAParams}
     (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat))
     (h : st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload) :
     (recordOwn st o hs).node.fg.Reachable (goldilocksNode sp ro).genesisPayload := by
-  unfold recordOwn
+  rw [recordOwn_eq]
   split
   · exact h
   · split
@@ -131,7 +131,7 @@ private theorem fgUpdate_history {sp : SA.SAParams}
       (FG.Record.run st.self FG.Record.empty inputs).2 ⊆
         (FG.Record.run st.self FG.Record.empty inputs').2 ∧
       (fgUpdate st).node.fg.Reachable (goldilocksNode sp ro).genesisPayload := by
-  simp only [fgUpdate]
+  simp only [fgUpdate_eq]
   split
   · exact ⟨inputs, hi, hr, fun _ h => h, hreach⟩
   · rename_i C hC
@@ -159,7 +159,7 @@ private theorem process_record {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
     (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat)) :
     (process st o hs).node.record = st.node.record := by
-  unfold process
+  rw [process_eq]
   generalize delivered hs st o = os
   induction os generalizing st with
   | nil => rfl
@@ -171,7 +171,7 @@ private theorem process_reachable {sp : SA.SAParams}
     (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat))
     (h : st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload) :
     (process st o hs).node.fg.Reachable (goldilocksNode sp ro).genesisPayload := by
-  unfold process
+  rw [process_eq]
   generalize delivered hs st o = os
   induction os generalizing st with
   | nil => exact h
@@ -230,14 +230,14 @@ private theorem history_poll_sign {sp : SA.SAParams}
     rw [client_run_append, ← he, ← hk, hsign]
   have hup : HasHistory key (fgUpdate st) (fun b => signed b ∨ b = a) := by
     refine ⟨(fgUpdate_self st).trans hk, ?_, ins ++ [σ], ?_, ?_, ?_⟩
-    · simp only [fgUpdate, hC, ha]
+    · simp only [fgUpdate_eq, hC, ha]
       exact hr.tail (Or.inr ⟨a, rfl⟩)
     · intro x hx
       rcases List.mem_append.mp hx with hx | hx
       · exact hi x hx
       · obtain rfl := List.mem_singleton.mp hx
         exact Store.entry_input hr _
-    · simp only [fgUpdate, hC, ha, hrun]
+    · simp only [fgUpdate_eq, hC, ha, hrun]
       rfl
     · intro b hb
       rw [hrun]
@@ -274,21 +274,23 @@ private theorem history_duty {v : V} {signed : FG.Att (Fintype.card V) → Prop}
     | act s k => exact h
     | propose s hs =>
       change HasHistory _ (((goldilocks S (pubOf E)).propose nd.st.1 s).1 hn) signed
-      simp only [goldilocks, dite_eq_left hn]
+      rw [goldilocks_propose_eq S _ nd.st.1 s, dite_eq_left hn]
       change HasHistory _ (propose (nd.st.1 hn) s).1 signed
       obtain ⟨hk, hr, ins, hi, he, hout⟩ := h
       refine ⟨(propose_self _ _).trans hk, ?_, ins, hi, ?_, hout⟩
-      · unfold propose; dsimp only; split <;> exact hr
-      · unfold propose; dsimp only; split <;> exact he
+      · rw [propose_eq]; dsimp only; split <;> exact hr
+      · rw [propose_eq]; dsimp only; split <;> exact he
     | pollPropose t =>
       change HasHistory _ (((goldilocks S (pubOf E)).pollPropose nd.st.1 t).1 hn) signed
-      simp only [goldilocks, dite_eq_left hn]
+      rw [goldilocks_pollPropose_eq S _ nd.st.1 t, dite_eq_left hn]
       change HasHistory _ (nodeTick (nd.st.1 hn)) signed
-      unfold nodeTick
-      split <;> exact h
+      rw [nodeTick_eq]
+      by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic (nd.st.1 hn).now
+      · rw [ite_eq_left hp]; exact h
+      · rw [ite_eq_right hp]; exact h
     | poll t =>
       change HasHistory _ (((goldilocks S (pubOf E)).pollBatch nd.st.1 t).1 hn) signed
-      simp only [goldilocks, dite_eq_left hn]
+      rw [goldilocks_pollBatch_eq S _ nd.st.1 t, dite_eq_left hn]
       change HasHistory _ (poll (nd.st.1 hn) t).1 signed
       exact history_poll h _
   · exact h
@@ -406,7 +408,7 @@ private theorem history_duty_sign {v : V} {signed : FG.Att (Fintype.card V) → 
         hsel, ↓reduceIte]
       apply history_release
       change HasHistory _ (((goldilocks S (pubOf E)).pollBatch nd.st.1 k).1 hn) _
-      simp only [goldilocks, dite_eq_left hn]
+      rw [goldilocks_pollBatch_eq S _ nd.st.1 k, dite_eq_left hn]
       exact hsign
     apply history_mono hall
     intro b hb
@@ -689,7 +691,7 @@ private theorem processOne_att {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (hs) (st : State sp ro binding) (o)
         (a : WireAtt) :
     Body.att a ∈ (processOne hs st o).outbox ↔ Body.att a ∈ st.outbox := by
-  unfold processOne
+  rw [processOne_eq]
   split
   · simp only [relayIf]
     split <;> exact apply_att _ _ _
@@ -701,7 +703,7 @@ private theorem recordOwn_att {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (o) (hs)
         (a : WireAtt) :
     Body.att a ∈ (recordOwn st o hs).outbox ↔ Body.att a ∈ st.outbox := by
-  unfold recordOwn
+  rw [recordOwn_eq]
   split
   · rfl
   · split
@@ -713,7 +715,7 @@ private theorem process_att {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (o) (hs)
         (a : WireAtt) :
     Body.att a ∈ (process st o hs).outbox ↔ Body.att a ∈ st.outbox := by
-  unfold process
+  rw [process_eq]
   generalize delivered hs st o = os
   induction os generalizing st with
   | nil => rfl
@@ -722,14 +724,14 @@ private theorem process_att {sp : SA.SAParams}
 private theorem propose_att {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (s) (a : WireAtt) :
     Body.att a ∈ (propose st s).1.outbox ↔ Body.att a ∈ st.outbox := by
-  unfold propose
+  rw [propose_eq]
   dsimp only
   split <;> rfl
 
 private theorem nodeTick_att {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (a : WireAtt) :
     Body.att a ∈ (nodeTick st).outbox ↔ Body.att a ∈ st.outbox := by
-  unfold nodeTick
+  rw [nodeTick_eq]
   split
   · exact apply_att _ _ _
   · rfl
@@ -769,7 +771,7 @@ private theorem poll_queued {sp : SA.SAParams}
   have hpre : Queued (if st.fgDue then fgUpdate st else st) p := by
     split
     · rename_i hd
-      simp only [fgUpdate]
+      simp only [fgUpdate_eq]
       split
       · intro w hw
         obtain ⟨a, hw, hv, hs⟩ := h w hw
@@ -846,19 +848,19 @@ private theorem queued_duty {v : V} {signed : FG.Att (Fintype.card V) → Prop}
       exact ⟨a, he, hv, Or.inl ha⟩
     | propose s hs =>
       change Queued (((goldilocks S (pubOf E)).propose nd.st.1 s).1 hn) _
-      simp only [goldilocks, dite_eq_left hn]
+      rw [goldilocks_propose_eq S _ nd.st.1 s, dite_eq_left hn]
       intro w hw
       obtain ⟨a, he, hv, ha⟩ := h w ((propose_att _ s _).mp hw)
       exact ⟨a, he, hv.trans (propose_self _ s).symm, Or.inl ha⟩
     | pollPropose t =>
       change Queued (((goldilocks S (pubOf E)).pollPropose nd.st.1 t).1 hn) _
-      simp only [goldilocks, dite_eq_left hn]
+      rw [goldilocks_pollPropose_eq S _ nd.st.1 t, dite_eq_left hn]
       intro w hw
       obtain ⟨a, he, hv, ha⟩ := h w ((nodeTick_att _ _).mp hw)
       exact ⟨a, he, hv.trans (nodeTick_self _).symm, Or.inl ha⟩
     | poll t =>
       change Queued (((goldilocks S (pubOf E)).pollBatch nd.st.1 t).1 hn) _
-      simp only [goldilocks, dite_eq_left hn]
+      rw [goldilocks_pollBatch_eq S _ nd.st.1 t, dite_eq_left hn]
       apply queued_mono (poll_queued (nd.st.1 hn) t h).1
       intro a ha
       rcases ha with ha | ⟨hd, C, Λ', hC, ha⟩

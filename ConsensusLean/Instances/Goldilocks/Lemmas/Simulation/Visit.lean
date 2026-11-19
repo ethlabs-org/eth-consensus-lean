@@ -36,10 +36,10 @@ theorem decodeBlock_of_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.
     {B : Blk sp}
     (h : canonEvent sp ro hs o = some (.block B)) : decodeBlock sp hs o = some B := by
   cases hb : decodeBlock sp hs o with
-  | some B' => simp only [canonEvent, hb, Option.some.injEq, Event.block.injEq] at h; rw [h]
+  | some B' => simp only [canonEvent_eq, hb, Option.some.injEq, Event.block.injEq] at h; rw [h]
   | none =>
     cases hv : decodeVoteObj sp o <;> cases ha : decodeAttObj sp o <;>
-      simp [canonEvent, hb, hv, ha] at h
+      simp [canonEvent_eq, hb, hv, ha] at h
 
 section Visit
 
@@ -53,7 +53,7 @@ theorem visit_cases (st : State sp ro binding) (o : Wire sp.n binding) :
         (o :: (visitList hs (processOne hs st o) o.carried).1,
           (visitList hs (processOne hs st o) o.carried).2)) := by
   obtain ⟨a, m, cs⟩ := o
-  rw [visit]
+  rw [visit_eq]
   split_ifs with h
   · exact Or.inl ⟨h, rfl⟩
   · exact Or.inr ⟨h, rfl⟩
@@ -64,7 +64,7 @@ theorem visitList_cons (st : State sp ro binding) (c : Wire sp.n binding)
     visitList hs st (c :: cs) =
       ((visit hs st c).1 ++ (visitList hs (visit hs st c).2 cs).1,
         (visitList hs (visit hs st c).2 cs).2) := by
-  rw [visitList]
+  rw [visitList_cons_eq]
 
 mutual
 /-- Processing the visited objects in order reaches the visit's state, and every visited
@@ -83,7 +83,7 @@ private theorem visit_spec : ∀ (st : State sp ro binding) (o : Wire sp.n bindi
 private theorem visitList_spec : ∀ (st : State sp ro binding) (cs : List (Wire sp.n binding)),
     (visitList hs st cs).1.foldl (processOne hs) st = (visitList hs st cs).2 ∧
       (visitList hs st cs).1 ⊆ Model.Obj.parts.partsList cs
-  | st, [] => by simp [visitList, Model.Obj.parts.partsList]
+  | st, [] => by simp [visitList_nil_eq, Model.Obj.parts.partsList]
   | st, c :: cs => by
     rw [visitList_cons]
     obtain ⟨h1, h2⟩ := visit_spec st c
@@ -108,7 +108,7 @@ theorem mem_delivered {st : State sp ro binding} {o x : Wire sp.n binding}
 /-- The received object itself is delivered. -/
 theorem mem_delivered_self (st : State sp ro binding) (o : Wire sp.n binding) :
     o ∈ delivered hs st o := by
-  unfold delivered
+  rw [delivered_eq]
   rcases visit_cases hs st o with ⟨-, h⟩ | ⟨-, h⟩ <;> rw [h] <;> exact List.mem_cons_self
 
 /-- `visit` of an object whose processing refuses no block: the object, then `visitList` of what
@@ -135,7 +135,7 @@ theorem refuses_iff_of_canonEvent {st : State sp ro binding} {o : Wire sp.n bind
     Refuses hs st o ↔ sp.toParams.slotOf st.now < B.slot ∨ st.node.fg.onBlock B = none := by
   have hshape : BlockShaped o := by
     have hd := decodeBlock_of_canonEvent h
-    unfold decodeBlock at hd
+    rw [decodeBlock_eq] at hd
     split at hd
     · trivial
     · cases hd
@@ -143,6 +143,7 @@ theorem refuses_iff_of_canonEvent {st : State sp ro binding} {o : Wire sp.n bind
   · exact fun hr => hr.2 B h
   · intro hB
     refine ⟨hshape, fun B' h' => ?_⟩
+    change canonEvent sp ro hs o = some (.block B') at h'
     rw [h, Option.some.injEq, Node.Event.block.injEq] at h'
     exact h' ▸ hB
 
@@ -150,7 +151,7 @@ theorem refuses_iff_of_canonEvent {st : State sp ro binding} {o : Wire sp.n bind
 theorem visit_of_carried_eq_nil (st : State sp ro binding) {o : Wire sp.n binding}
     (h : o.carried = []) : (visit hs st o).1 = [o] := by
   rcases visit_cases hs st o with ⟨-, hv⟩ | ⟨-, hv⟩ <;> rw [hv]
-  rw [h, visitList]
+  rw [h, visitList_nil_eq]
 
 /-- A delivery of an object that carries nothing processes that object alone. -/
 theorem delivered_of_carried_eq_nil (st : State sp ro binding) {o : Wire sp.n binding}
@@ -211,7 +212,7 @@ private theorem visit_closed : ∀ (st : State sp ro binding) (o : Wire sp.n bin
         exact List.Subset.trans (hcl pre x post he hx) (List.subset_cons_self _ _)
 private theorem visitList_closed : ∀ (st : State sp ro binding) (cs : List (Wire sp.n binding)),
     Closed hs st (visitList hs st cs).1 ∧ cs ⊆ (visitList hs st cs).1
-  | st, [] => ⟨fun pre x post he => by simp [visitList] at he, by simp⟩
+  | st, [] => ⟨fun pre x post he => by simp [visitList_nil_eq] at he, by simp⟩
   | st, c :: cs => by
     rw [visitList_cons]
     obtain ⟨hcl, hsub⟩ := visitList_closed (visit hs st c).2 cs

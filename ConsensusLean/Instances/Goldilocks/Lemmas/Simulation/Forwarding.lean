@@ -305,7 +305,7 @@ theorem poll_wrappers {sp : SA.SAParams}
     (poll st t).1.wrappers = st.wrappers ∧ (poll st t).1.forwards = [] := by
   unfold poll
   have hf : (fgUpdate st).wrappers = st.wrappers := by
-    unfold fgUpdate
+    rw [fgUpdate_eq]
     dsimp only
     split
     · rfl

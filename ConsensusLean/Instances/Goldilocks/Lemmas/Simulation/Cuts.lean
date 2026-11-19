@@ -200,7 +200,7 @@ theorem mem_deliverRecs (hs : List (Header Info × Nat)) (t : Time) (i : Nat)
 
 private theorem phase_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.n binding}
     {e : Event (goldilocksNode sp ro)} (he : canonEvent sp ro hs o = some e) : e.phase = 2 := by
-  simp only [canonEvent] at he
+  simp only [canonEvent_eq] at he
   split at he <;> first | (cases he; rfl) | simp at he
 
 private theorem cutPhase_of_mem_deliverRecs (hs : List (Header Info × Nat)) (t : Time) (i : Nat)

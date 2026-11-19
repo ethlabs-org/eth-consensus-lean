@@ -48,25 +48,26 @@ theorem twin_digests : Model.digests (rhoc S).hash (twin S) = [(hdr, 0)] := by
 theorem twinBlk_header :
     headerOf (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
       (twinBlk S) = hdr := by
-  simp [twinBlk, blockOf, headerOf, hdr, parentRef, parentRoot, encodeInfo]
+  simp [twinBlk, blockOf_eq, headerOf_eq, hdr, parentRef_eq, parentRoot_eq, encodeInfo]
 
 theorem twinBlk_obj :
     blockObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
       (twinBlk S) = twin S := by
-  rw [blockObj, twinBlk_header]; rfl
+  rw [blockObj_eq, twinBlk_header]; rfl
 
 theorem canon_twin :
     canonEvent (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
       (S.ro _)
       (Model.digests (rhoc S).hash (twin S)) (twin S) = some (.block (twinBlk S)) := by
   have h := decodeBlock_blockObj (binding := stock) [(hdr, 0)] (twinBlk S)
-    (by simp [twinBlk, blockOf, hdr, parentRoot])
+    (by simp [twinBlk, blockOf_eq, hdr, parentRoot_eq])
     (taggedRoot_ne _ _)
-    (by rw [twinBlk_header]; simp [rootOf, twinBlk, blockOf, rawRoot_taggedRoot])
-    (by simp [twinBlk, blockOf])
-    ⟨by simp [twinBlk, blockOf, SA.blockVotes], by simp [twinBlk, blockOf, SA.blockSupport]⟩
+    (by rw [twinBlk_header]; simp [rootOf_eq, twinBlk, blockOf_eq, rawRoot_taggedRoot])
+    (by simp [twinBlk, blockOf_eq])
+    ⟨by simp [twinBlk, blockOf_eq, SA.blockVotes], by simp [twinBlk, blockOf_eq, SA.blockSupport]⟩
   rw [twinBlk_obj] at h
-  simp only [canonEvent, twin_digests, h]
+  refine (canonEvent_eq _ _).trans ?_
+  rw [twin_digests, h]
 
 theorem twinBlk_parent :
     (twinBlk S).parent = some
@@ -89,7 +90,7 @@ theorem of_twin
     X.slot = 1 ∧ SA.blockSupport X = [] ∧ X.proposer = key 1 := by
   have ha := congrArg Model.Obj.auth h
   have hc := congrArg Model.Obj.carried h
-  simp only [blockObj, twin, Model.Obj.auth, Model.Obj.carried, payloadObjs] at ha hc
+  simp only [blockObj_eq, twin, Model.Obj.auth, Model.Obj.carried, payloadObjs] at ha hc
   have hc' := List.append_eq_nil_iff.mp hc
   injection ha with h1 h2
   injection h2 with h3

@@ -247,7 +247,7 @@ theorem nodeTick_public (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
     (nodeTick st).node = (Node.acCall st.self st.node st.now .tick).1 ∧
       (nodeTick st).outbox = emitted [(Node.acCall st.self st.node st.now .tick).2] ∧
       (nodeTick st).fgDue = true ∧ (nodeTick st).self = st.self ∧ (nodeTick st).now = st.now := by
-  unfold nodeTick
+  rw [nodeTick_eq]
   rw [ite_eq_left hp]
   simp [apply, h0]
 
@@ -697,7 +697,7 @@ theorem tick_other_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Tim
   rw [← h1] at hR2 hR3 hS3 hout2 hnow2 hfg2
   have hS3' : shapeOf S hn (rho.dutyStep v (rho.dutyStep v N1 (.poll t.toNat)).1
       (.pollPropose t.toNat)).1 = shapeOf S hn (rho.dutyStep v N1 (.poll t.toNat)).1 := by
-    rw [hS3]; unfold nodeTick; rw [ite_eq_right (by rw [hnow2]; exact hnp)]
+    rw [hS3]; rw [nodeTick_eq]; rw [ite_eq_right (by rw [hnow2]; exact hnp)]
   have hpre3 : pollPre (shapeOf S hn (rho.dutyStep v (rho.dutyStep v N1 (.poll t.toNat)).1
       (.pollPropose t.toNat)).1) = shapeOf S hn (rho.dutyStep v N1 (.poll t.toNat)).1 := by
     rw [pollPre_eq]; rw [hS3', hfg2]; rfl

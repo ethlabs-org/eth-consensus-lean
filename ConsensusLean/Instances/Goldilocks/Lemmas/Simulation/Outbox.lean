@@ -338,7 +338,7 @@ theorem recordOwn_none_outbox (st : State sp ro binding) (m : Model.Msg (Header 
 /-- The FG update queues at most the attestation it signs. -/
 theorem fgUpdate_outbox (st : State sp ro binding) :
     (fgUpdate st).outbox = st.outbox ∨ ∃ a, (fgUpdate st).outbox = st.outbox ++ [.att a] := by
-  unfold fgUpdate
+  rw [fgUpdate_eq]
   dsimp only
   split
   · exact Or.inl rfl
@@ -490,7 +490,7 @@ theorem act_poll_snd (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E
         (shapeOf S hn nd).voteForwards.map
           (fun p => (.data (.voteForward p.1 (encodeVote p.2)), [voteObj p.2])) := by
   change (((goldilocks S (pubOf E)).pollBatch nd.st.1 t).2.map _) = _
-  simp only [goldilocks, dite_eq_left hn]
+  rw [goldilocks_pollBatch_eq S _ nd.st.1 t, dite_eq_left hn]
   change List.map _ ((poll (nd.st.1 hn) t).2.toList ++
     (nd.st.1 hn).forwards.map _ ++ (nd.st.1 hn).voteForwards.map _) = _
   erw [List.map_append, List.map_append, List.map_map, List.map_map, Option.toList_map]
@@ -717,7 +717,8 @@ theorem dutyStep_pollPropose_snd (v : V)
   have h2 : ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).2 = []
       := by
     change (Option.map _ ((goldilocks S (pubOf E)).pollPropose nd.st.1 t).2).toList = []
-    simp only [goldilocks, dite_eq_left hn]; rfl
+    rw [goldilocks_pollPropose_eq S _ nd.st.1 t, dite_eq_left hn]
+    rfl
   dsimp only
   rw [h2]
   simp [Model.Run.signedCandidate, Model.releaseAll]
@@ -807,7 +808,7 @@ theorem recordOwn_outbox (st : State sp ro binding) (o : Wire sp.n binding) (hs 
     (recordOwn st o hs).outbox = st.outbox ∨ ∃ B,
       (recordOwn st o hs).outbox =
         st.outbox ++ emitted (Node.onBlock st.self st.node st.now B).2 := by
-  unfold recordOwn
+  rw [AsChainShape.recordOwn_eq]
   split
   · exact Or.inl rfl
   · split
@@ -820,7 +821,7 @@ theorem propose_keeps' (st : State sp ro binding) (s : Slot) :
     (propose st s).1.outbox = st.outbox ∧ (propose st s).1.self = st.self ∧
       (propose st s).1.now = st.now := by
   refine ⟨?_, propose_self _ _, propose_now _ _⟩
-  unfold propose
+  rw [propose_eq]
   dsimp only
   split <;> rfl
 
@@ -898,7 +899,7 @@ theorem outbox_after_pre (v : V) (σ : State (S.params (pubOf E) hn) (S.ro _) S.
         t = (S.params (pubOf E) hn).ts ((S.params (pubOf E) hn).slot t) +
           (S.params (pubOf E) hn).Δ) := by
     rw [hN3]
-    unfold nodeTick
+    rw [nodeTick_eq]
     split_ifs
     · simp only [apply, h2, List.nil_append, emitted, acCall, List.flatMap_cons,
         List.flatMap_nil, List.append_nil, List.length_map]
@@ -1092,7 +1093,7 @@ theorem outbox_inv (hv : rho.ExecutionValid) (v : V) :
             have h0 : ((goldilocksNode (S.params (pubOf E) hn) (S.ro _)).step (rho.ownKey w)
                 (stateAt S rho hn w i).node.ac (frame (stateAt S rho hn w i).node) t .restart).2 =
                 [] := restart_emits_nil _ _ _ _ t ht
-            rw [h0]
+            simp only [nodeAdapter, h0]
             simp [emitted]
           refine ⟨by unfold AtMostOneVote; rw [hout]; exact ih₁, Or.inl ?_⟩
           exact ⟨i, by omega, t, he, fun l h1 h2 => absurd h2 (by omega)⟩
@@ -1234,7 +1235,7 @@ theorem outbox_empty (hv : rho.ExecutionValid) (v : V) :
             (stateAt S rho hn v i).node.ac (frame (stateAt S rho hn v i).node) t
             (hv.in_horizon _ (List.mem_of_getElem? he)).1
           change (stateAt S rho hn v i).outbox ++ emitted [Cut.ac ⟨.restart, _, _⟩] = []
-          rw [hnil, ih]
+          simp only [nodeAdapter, hnil, ih]
           simp [emitted]
       · rw [state_of_other S rho hn v i ev he hnode]; exact ih
 
@@ -1257,7 +1258,7 @@ theorem atProposal_outbox_nil (hv : rho.ExecutionValid) (i : Nat) {v : V} {t : T
   have hnow2 : (poll (poll σ t.toNat).1 t.toNat).1.now = t := by
     rw [poll_now, poll_now]
   change (nodeTick (poll (poll σ t.toNat).1 t.toNat).1).outbox = []
-  unfold nodeTick
+  rw [nodeTick_eq]
   split_ifs
   · simp only [apply, hout2, List.nil_append, emitted, acCall, List.flatMap_cons,
       List.flatMap_nil, List.append_nil, List.map_eq_nil_iff]
@@ -1426,7 +1427,8 @@ theorem voteForwards_empty (hv : rho.ExecutionValid) (v : V) :
           rw [stateAt_restart S rho hn v he]
           have hnil := restart_emits_nil (S.ro _) (rho.ownKey v)
             (stateAt S rho hn v i).node.ac (frame (stateAt S rho hn v i).node) t ht
-          simp only [restore, apply, Node.restart, acCall, hnil, List.map_nil,
+          rw [restore_eq]
+          simp only [apply, Node.restart, acCall, hnil, List.map_nil,
             List.flatMap_cons, List.flatMap_nil, List.append_nil,
             List.dedup_nil, List.filter_nil, ih]
       · rw [state_of_other S rho hn v i ev he hnode]; exact ih

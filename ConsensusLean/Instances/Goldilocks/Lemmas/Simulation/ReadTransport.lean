@@ -57,8 +57,8 @@ theorem parentRef_root_of_rootOk {X : Blk (S.params (pubOf E) hn)}
   have he : X.root = taggedRoot S.genesisRoot
       (rho.hash (headerOf (S.params (pubOf E) hn) X)) := by
     simp only [Block.RootOk, digestOf_eq] at hroot
-    simpa [headerOf, hpar] using hroot.trans (dgOf_eq _ _ _ _ _ _ _)
-  simp only [parentRef, he, rawRoot_taggedRoot, taggedRoot_ne, ite_false]
+    simpa [headerOf_eq, hpar] using hroot.trans (dgOf_eq _ _ _ _ _ _ _)
+  simp only [parentRef_eq, he, rawRoot_taggedRoot, taggedRoot_ne, ite_false]
 
 /-- **The header chains of a reader's held blocks are valid outputs.** For a reachable store of the
 reader at cut `k` of a trace `T` whose held non-genesis blocks have their digests as roots and a

@@ -147,7 +147,8 @@ theorem received_forward_accepted_before_of_released_at (hv : rho.ExecutionValid
   have hparts : delivered (Model.digests rho.hash receipt) σ receipt =
       [] ++ (visit (Model.digests rho.hash receipt) σ o).1 ++ [] := by
     subst hro
-    simp [delivered]
+    simpa only [List.nil_append, List.append_nil] using
+      (delivered_eq (Model.digests rho.hash receipt) σ receipt)
   rw [hparts, List.append_assoc] at hseq
   obtain ⟨r, _, htail⟩ := deliverSeq_append_split _ _ hseq
   obtain ⟨e, hsub, hpost⟩ := deliverSeq_append_split _ _ htail

@@ -120,7 +120,7 @@ private theorem dutyRefusals_eq_nil (hv : rho.ExecutionValid) {v : V} {i p : Nat
                 (Body.voteForward p.1 (encodeVote p.2), [voteObj (binding := S.vote) p.2]))).map
               fun bc => (Model.Msg.data bc.1, bc.2)) := by
         change (((goldilocks S (pubOf E)).pollBatch nd.st.1 (k : Time)).2.map _) = _
-        simp only [goldilocks, dite_eq_left hn]
+        rw [goldilocks_pollBatch_eq S _ nd.st.1 (k : Time), dite_eq_left hn]
         change ((pollBatch (nd.st.1 hn) (k : Time)).2.map _) = _
         exact (congrArg (List.map _) (List.append_assoc _ _ _)).trans (List.map_append ..)
       dsimp only
@@ -175,7 +175,7 @@ private theorem dutyRefusals_eq_nil (hv : rho.ExecutionValid) {v : V} {i p : Nat
       intro c hc' seen
       obtain ⟨m, cs, hm, -, -, rfl⟩ := rho.mem_signedCandidate.mp hc'
       change _ ∈ (Option.map _ ((goldilocks S (pubOf E)).pollPropose nd.st.1 t).2).toList at hm
-      simp only [goldilocks, dite_eq_left hn] at hm
+      rw [goldilocks_pollPropose_eq S _ nd.st.1 (t : Time), dite_eq_left hn] at hm
       cases hm
   · rfl
 

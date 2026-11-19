@@ -59,7 +59,7 @@ private def QueueStamped (t : Time) (st : State sp ro binding) : Prop :=
 
 private theorem nodeTick_forwards (st : State sp ro binding) :
     (nodeTick st).forwards = st.forwards := by
-  unfold nodeTick
+  rw [nodeTick_eq]
   split
   · simp only [apply, acCall, List.foldl_cons, List.foldl_nil, List.flatMap_cons, List.nil_append,
       List.flatMap_nil, List.append_nil]
@@ -75,7 +75,7 @@ private theorem stamped_apply (t : Time) (st : State sp ro binding) r
 
 private theorem stamped_recordOwn (t : Time) (st : State sp ro binding) o hs
     (h : QueueStamped t st) : QueueStamped t (recordOwn st o hs) := by
-  unfold recordOwn
+  rw [AsChainShape.recordOwn_eq]
   split
   · exact h
   · split
@@ -85,13 +85,13 @@ private theorem stamped_recordOwn (t : Time) (st : State sp ro binding) o hs
 
 private theorem stamped_propose (t : Time) (st : State sp ro binding) s
     (h : QueueStamped t st) : QueueStamped t (propose st s).1 := by
-  unfold propose
+  rw [propose_eq]
   dsimp only
   split <;> exact h
 
 private theorem stamped_nodeTick (t : Time) (st : State sp ro binding)
     (h : QueueStamped t st) : QueueStamped t (nodeTick st) := by
-  unfold nodeTick
+  rw [nodeTick_eq]
   split
   · exact stamped_apply t st _ h
   · exact h
@@ -154,7 +154,8 @@ theorem proposal_duty_forward_origin (v : V)
     generalize (Model.protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs) = a
       at hact1 hact2 hq
     dsimp only at hq
-    simp only [propose] at hact1 hact2
+    change a.1.1 hn = (propose (shapeOf S hn nd) s).1 at hact1
+    simp only [propose_eq] at hact1 hact2
     simp only [Node.tickStep, hp, ite_true]
     rcases hr : (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).2.2 with _ | ⟨d, p⟩
     · simp only [hr] at hact1 hact2
@@ -179,7 +180,10 @@ theorem proposal_duty_forward_origin (v : V)
       split at hq
       · change q ∈ (recordOwn (a.1.1 hn) _ _).forwards at hq
         rw [hact1] at hq
-        simp only [recordOwn, decodeInfo_encodeInfo] at hq
+        replace hq := Eq.mp (congrArg (fun st => q ∈ st.forwards)
+          (AsChainShape.recordOwn_eq (sp := S.params (Model.pubOf E) hn) (ro := S.ro _)
+            (binding := S.vote) _ _ _)) hq
+        simp only [decodeInfo_encodeInfo] at hq
         erw [rootOf_digests_item] at hq
         dsimp only at hq
         have hb := blockOf_eq_mkBlock S rho hn (rho.ownKey v)
@@ -192,7 +196,9 @@ theorem proposal_duty_forward_origin (v : V)
         · refine Or.inr ⟨B, parent, ?_, hq⟩
           simp only [Node.proposeBlock]
           exact List.mem_cons_of_mem _ (by simpa only [hself] using hB)
-      · exact Or.inl (by change q ∈ (a.1.1 hn).forwards at hq; simpa [hact1] using hq)
+      · change q ∈ (a.1.1 hn).forwards at hq
+        rw [hact1] at hq
+        exact Or.inl hq
   · exact Or.inl hq
 
 omit [DecidableEq V] in
@@ -214,10 +220,10 @@ theorem decoded_forward_child_in_receipt
     · exact Model.Obj.Contains.refl _
   have hreceipt := hc.trans hchild
   refine ⟨hreceipt, decodeBlock_transport (decodeForward_child hd).1 ?_⟩
-  rw [rootOf_digests_of_mem S rho receipt _
-    (List.mem_filterMap.mpr ⟨blockObj _ B, hreceipt, rfl⟩)]
-  rw [rootOf_digests_of_mem S rho o _
-    (List.mem_filterMap.mpr ⟨blockObj _ B, hchild, rfl⟩)]
+  exact (rootOf_digests_of_mem S rho receipt _
+    (List.mem_filterMap.mpr ⟨blockObj _ B, hreceipt, rfl⟩)).trans
+    (rootOf_digests_of_mem S rho o _
+      (List.mem_filterMap.mpr ⟨blockObj _ B, hchild, rfl⟩)).symm
 
 omit [DecidableEq V] in
 /-- A decodable forwarding candidate of a poll comes from its pre-duty forwarding
@@ -308,8 +314,8 @@ private theorem duty_forward_stamp (v : V)
   | pollPropose n =>
     have hempty : ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose n)).2 =
         [] := by
-      simp only [Model.protoOf, compiled, compile, goldilocks,
-        dite_eq_left hn, goldilocksShape]
+      change (Option.map _ ((goldilocks S (Model.pubOf E)).pollPropose nd.st.1 n).2).toList = []
+      rw [goldilocks_pollPropose_eq S _ nd.st.1 n, dite_eq_left hn]
       rfl
     obtain ⟨m, cs, hm, _, _⟩ := rho.mem_signedCandidate.mp ho
     rw [hempty] at hm
@@ -609,7 +615,7 @@ theorem received_forward_blockCall {i : Nat} {v : V}
     (digestOf S rho) (Model.digests rho.hash receipt) (rho.ownKey v) u i B hslot
     (delivered (Model.digests rho.hash receipt) (stateAt S rho hn v i) receipt)
     (stateAt S rho hn v i).node 0
-    ⟨blockObj _ B, hdel, by simp only [canonEvent, hdecode]⟩
+    ⟨blockObj _ B, hdel, (canonEvent_eq _ _).trans (by rw [hdecode])⟩
   obtain ⟨hn', ht', _⟩ := mem_deliverRecs (sp := S.params (Model.pubOf E) hn)
     (ro := S.ro _) (runProposer S rho hn) (digestOf S rho)
     (rho.ownKey v) (Model.digests rho.hash receipt) u i hr

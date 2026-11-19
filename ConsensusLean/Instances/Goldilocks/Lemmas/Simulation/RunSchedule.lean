@@ -344,16 +344,16 @@ theorem blockObj_fields {B C : Blk (S.params (pubOf E) hn)}
       blockObj (S.params (pubOf E) hn) C) : B = C := by
   have hh := congrArg Model.Obj.msg he
   have ha := congrArg Model.Obj.auth he
-  simp only [blockObj, Model.Obj.msg, Model.Msg.item.injEq] at hh
-  simp only [blockObj, Model.Obj.auth, Model.Auth.signed.injEq] at ha
+  simp only [blockObj_eq, Model.Obj.msg, Model.Msg.item.injEq] at hh
+  simp only [blockObj_eq, Model.Obj.auth, Model.Auth.signed.injEq] at ha
   have hp := congrArg (fun h => parentRoot S.genesisRoot h.parent) hh
   have hs := congrArg Header.pos hh
   have hx := congrArg Header.input hh
   have hi := congrArg (fun h => decodeInfo (Fintype.card V) h.info) hh
   obtain ⟨b, hb⟩ := Option.ne_none_iff_exists'.mp hB
   obtain ⟨c, hc⟩ := Option.ne_none_iff_exists'.mp hC
-  simp only [headerOf, hb, hc, parentRoot_parentRef] at hp
-  simp only [headerOf, decodeInfo_encodeInfo, Option.some.injEq, Prod.mk.injEq] at hi
+  simp only [headerOf_eq, hb, hc, parentRoot_parentRef] at hp
+  simp only [headerOf_eq, decodeInfo_encodeInfo, Option.some.injEq, Prod.mk.injEq] at hi
   have hparent : B.parent = C.parent := by simpa [hb, hc] using hp
   change B.slot = C.slot at hs
   change B.input = C.input at hx

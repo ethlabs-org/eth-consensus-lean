@@ -27,7 +27,8 @@ variable (V : Type) [Fintype V] [DecidableEq V] (S : Setup) in
 theorem readIsOut : ReadIsOut V S := by
   rw [readIsOut_iff]
   intro E rho hn g v i
-  simp only [chainTrace, goldilocks, goldilocksShape, dite_eq_left hn, stateAt_eq]
+  simp only [chainTrace, stateAt_eq]
+  rw [goldilocks_out_eq S _ (rho.stateBefore i v).st.1 g, dite_eq_left hn]
 
 /-- Read the embedded node's output in a particular engine run. -/
 theorem read_eq_out {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
@@ -47,7 +48,7 @@ theorem chainTo_fuel (hr : st.Reachable acp₀) {B : Blk sp} (hB : B ∈ st.tree
     cases k with
     | zero => omega
     | succ k =>
-      simp only [chainTo]
+      simp only [chainTo_succ_eq]
       split_ifs with hg
       · rfl
       · cases hp : B.parent.bind st.blocks with
@@ -78,7 +79,7 @@ theorem chainTo_prefix (hr : st.Reachable acp₀) {B C : Blk sp} (h : st.Anc B C
     have hp : C.parent.bind st.blocks = some P := by
       rw [e.2.2, Option.bind_some]
       exact e.1
-    conv_rhs => rw [chainTo, ite_eq_right hCg, hp]
+    conv_rhs => rw [chainTo_succ_eq, ite_eq_right hCg, hp]
     dsimp only
     rw [chainTo_fuel hr e.1 hlt (Nat.lt_succ_self _)]
     exact ih.trans (List.prefix_append _ _)
@@ -90,7 +91,7 @@ theorem chainTo_mono {st' : Store sp.toParams (Payload sp.n)} (hr : st.Reachable
   induction fuel generalizing B with
   | zero => rfl
   | succ fuel ih =>
-    simp only [chainTo]
+    simp only [chainTo_succ_eq]
     split_ifs with hg
     · rfl
     · have hAnc := (Store.accepted_tree _ _ _ _ hr).2.2.2 B hB
@@ -112,7 +113,7 @@ theorem chainTo_agree {st' : Store sp.toParams (Payload sp.n)}
   induction fuel generalizing B with
   | zero => rfl
   | succ fuel ih =>
-    simp only [chainTo]
+    simp only [chainTo_succ_eq]
     split_ifs with hg
     · rfl
     · obtain he | ⟨P, _, e⟩ :=
@@ -177,7 +178,7 @@ theorem chainTo_append_pos (hr : st.Reachable acp₀) {B : Blk sp} (hB : B ∈ s
     · have hgen := (Store.accepted_tree _ _ _ _ hr).2.2.1
       have he := (Store.accepted_tree _ _ _ _ hr).2.1.1 hB hgen hg
       have hslot : B.slot = 0 := congrArg Block.slot he
-      simpa [chainTo, hg, Blocks.Chain.PosIncreasing, hslot] using hp
+      simpa [chainTo_zero_eq, chainTo_succ_eq, hg, Blocks.Chain.PosIncreasing, hslot] using hp
     · obtain he | ⟨P, _, e⟩ :=
         (Relation.ReflTransGen.cases_tail_iff _ _ _).1
           ((Store.accepted_tree _ _ _ _ hr).2.2.2 B hB)
@@ -186,8 +187,8 @@ theorem chainTo_append_pos (hr : st.Reachable acp₀) {B : Blk sp} (hB : B ∈ s
       have hpar : B.parent.bind st.blocks = some P := by
         rw [e.2.2, Option.bind_some]; exact e.1
       have hp' : Blocks.Chain.PosFrom P.slot (headerOf sp B :: tail) := ⟨hlt, hp⟩
-      simpa only [chainTo, ite_eq_right hg, hpar, List.append_assoc, List.singleton_append] using
-        ih e.1 (by omega) (headerOf sp B :: tail) hp'
+      simpa only [chainTo_succ_eq, ite_eq_right hg, hpar, List.append_assoc, List.singleton_append]
+        using ih e.1 (by omega) (headerOf sp B :: tail) hp'
 
 /-- A sufficiently fueled parent walk links to genesis and preserves increasing positions
 (`chainTo_append_pos`). The hash/encoding identity is isolated in `hhash`, so root tagging can
@@ -207,7 +208,7 @@ theorem chainTo_append_valid (hr : st.Reachable acp₀) (hash : Blocks.Header In
   | zero => omega
   | succ fuel ih =>
     by_cases hg : B.root = sp.genesisRoot
-    · simpa [chainTo, hg, parentRef, Blocks.Chain.Linked] using hl
+    · simpa [chainTo_zero_eq, chainTo_succ_eq, hg, parentRef_eq, Blocks.Chain.Linked] using hl
     · obtain he | ⟨P, _, e⟩ :=
         (Relation.ReflTransGen.cases_tail_iff _ _ _).1
           ((Store.accepted_tree _ _ _ _ hr).2.2.2 B hB)
@@ -221,8 +222,8 @@ theorem chainTo_append_valid (hr : st.Reachable acp₀) (hash : Blocks.Header In
         · change parentRef sp.genesisRoot B.parent = _
           rw [e.2.2]
         · rwa [hhash B hB hg] at hl
-      simpa only [chainTo, ite_eq_right hg, hpar, List.append_assoc, List.singleton_append] using
-        ih e.1 (by omega) (headerOf sp B :: tail) hl'
+      simpa only [chainTo_succ_eq, ite_eq_right hg, hpar, List.append_assoc, List.singleton_append]
+        using ih e.1 (by omega) (headerOf sp B :: tail) hl'
 
 /-- The blocks from genesis (excluded) to `B`, oldest first: `chainTo` before taking headers. -/
 noncomputable def blocksTo (blocks : Nat → Option (Blk sp)) : Nat → Blk sp → List (Blk sp)
@@ -250,9 +251,9 @@ theorem blocksTo_succ (blocks : Nat → Option (Blk sp)) (fuel : Nat) (B : Blk s
 /-- The headers of `blocksTo` are `chainTo`. -/
 theorem blocksTo_map (blocks : Nat → Option (Blk sp)) :
     ∀ fuel B, (blocksTo blocks fuel B).map (headerOf sp) = chainTo blocks fuel B
-  | 0, B => by rw [blocksTo_zero, chainTo, List.map_nil]
+  | 0, B => by rw [blocksTo_zero, chainTo_zero_eq, List.map_nil]
   | fuel + 1, B => by
-    rw [blocksTo_succ, chainTo]
+    rw [blocksTo_succ, chainTo_succ_eq]
     split_ifs
     · rfl
     · rw [List.map_append, List.map_singleton]

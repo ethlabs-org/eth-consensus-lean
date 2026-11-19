@@ -221,7 +221,7 @@ theorem blockCall_ownBlock_of_released (hv : rho.ExecutionValid) {y : Fin (Finty
       rw [digestOf_eq]
       change B.root = dgOf rho.hash S.genesisRoot B.parent B.slot B.input B.fgPayload B.acPayload
       erw [dgOf_eq, ← hroot]
-      simp only [headerOf, hp]
+      simp only [headerOf_eq, hp]
     have hsign : rho.signerOf (blockObj (S.params (pubOf E) hn) B) =
         some (rho.key B.proposer) := rfl
     have hhon' : rho.key B.proposer ∉ rho.faultyAt t := by

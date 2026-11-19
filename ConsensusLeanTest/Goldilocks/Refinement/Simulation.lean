@@ -136,8 +136,8 @@ theorem payload_message_after_accepted_block {sp : SA.SAParams}
     ((refuses_iff_of_canonEvent hs hc).mp h).elim hslot hfg
   have hd : delivered hs σ (blockObj sp (binding := stock) B) = [blockObj sp B, voteObj v] := by
     have hcar : (blockObj sp (binding := stock) B).carried = [voteObj v] := by
-      simp [blockObj, Model.Obj.carried, payloadObjs, ha, hp]
-    unfold delivered
+      simp [blockObj_eq, Model.Obj.carried, payloadObjs, ha, hp]
+    rw [delivered_eq]
     rw [visit_of_not_refuses hs hr, hcar, visitList_cons,
       visit_of_carried_eq_nil hs _ (o := voteObj (binding := stock) v) rfl, visitList]
     rfl
@@ -159,7 +159,7 @@ theorem payload_skipped_after_refused_block {sp : SA.SAParams}
         (delivered hs σ (blockObj sp B)) σ.node 0 =
       groupRecs proposer dg σ.self σ.node σ.now (Nat.pair i 0) (.block B) := by
   have hd : delivered hs σ (blockObj sp (binding := stock) B) = [blockObj sp B] := by
-    unfold delivered
+    rw [delivered_eq]
     rcases visit_cases hs σ (blockObj sp (binding := stock) B) with ⟨-, hv⟩ | ⟨hr, -⟩
     · rw [hv]
     · exact absurd ((refuses_iff_of_canonEvent hs hc).mpr hrefused) hr
@@ -182,10 +182,10 @@ theorem undecoded_block_dropped {sp : SA.SAParams}
     deliverRecs (binding := stock) proposer dg hs self t i
       (delivered hs σ (.mk (.signed k (.proposer s)) (.item h) [voteObj v])) σ.node 0 = [] := by
   have hr : Refuses hs σ (.mk (.signed k (.proposer s)) (.item h) [voteObj (binding := stock) v]) :=
-    ⟨trivial, fun B hB => by rw [hc] at hB; cases hB⟩
+    (refuses_iff _ _ _).2 ⟨trivial, fun B hB => by rw [hc] at hB; cases hB⟩
   have hd : delivered hs σ (.mk (.signed k (.proposer s)) (.item h) [voteObj (binding := stock) v])
       = [.mk (.signed k (.proposer s)) (.item h) [voteObj v]] := by
-    unfold delivered
+    rw [delivered_eq]
     rcases visit_cases hs σ (.mk (.signed k (.proposer s)) (.item h) [voteObj (binding := stock) v])
       with ⟨-, hv⟩ | ⟨hn, -⟩
     · rw [hv]
@@ -207,16 +207,16 @@ theorem nested_payload_message {sp : SA.SAParams}
   have hd : delivered hs σ (.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v]]) =
       [.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v]],
         .mk .none (.data .relay) [voteObj v], voteObj (binding := stock) v] := by
-    unfold delivered
+    rw [delivered_eq]
     rw [visit_of_not_refuses hs (not_refuses_of_data hs rfl),
       Model.Obj.carried, visitList_cons,
       visit_of_not_refuses hs (not_refuses_of_data hs rfl),
       Model.Obj.carried, visitList_cons,
       visit_of_carried_eq_nil hs _ (o := voteObj (binding := stock) v) rfl]
-    simp [visitList]
+    simp [visitList_nil_eq]
   have hz : ∀ cs, canonEvent sp ro hs (.mk .none (.data .relay) cs : Wire sp.n stock) = none := by
     intro cs
-    simp [canonEvent, decodeBlock, decodeVoteObj, decodeAttObj, stock]
+    simp [canonEvent_eq, decodeBlock_eq, decodeVoteObj, decodeAttObj, stock]
   rw [hd, deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ (hz _),
     deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ (hz _),
     deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ (canonEvent_voteObj hs v), deliverRecs_nil,
@@ -379,7 +379,8 @@ theorem publisher_poll_drain {sp : SA.SAParams}
       ({ st with forwards := [], voteForwards := [] },
         st.forwards.map (fun p => (.forward p.1, p.2)) ++
         st.voteForwards.map (fun p => (.voteForward p.1 (encodeVote p.2), [voteObj p.2]))) := by
-  simp [goldilocksShape, pollBatch, poll, hf, ho]
+  change pollBatch st t = _
+  simp [pollBatch, poll, hf, ho]
   rfl
 
 /-- A duplicate block is refused by the actual node handler and creates no fresh candidate. -/
@@ -403,7 +404,7 @@ theorem duplicate_not_relayed {sp : SA.SAParams}
     (st : State sp ro) (o : Wire sp.n) (B : Blk sp)
     (hc : canonEvent sp ro hs o = some (.block B)) (hheld : st.node.fg.blocks B.root = some B) :
     (processOne hs st o).relayBuf = st.relayBuf := by
-  unfold processOne
+  rw [AsChainShape.processOne_eq]
   rw [hc]
   dsimp only
   unfold relayIf
