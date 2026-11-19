@@ -40,13 +40,13 @@ theorem simTrace_covered :
 
 /-- The node state inside the shape's state is the trace's state at the mapped cut
 (`simTrace_state_of`, with `node_of_tick_public` at the public ticks). -/
-theorem simTrace_state (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
+theorem simTrace_state (_hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     ∀ v, v ∉ rho.faultyAt 0 → ∀ i ≤ rho.events.length,
       (stateAt S rho hn v i).node =
         (simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i) := by
   intro v hv'
   exact simTrace_state_of S rho hn hv (fun _ _ => hv')
-    (fun he hp => node_of_tick_public S rho hn hf hv v hv' _ _ he hp)
+    (fun he hp => node_of_tick_public S rho hn hv v _ _ he hp)
 
 /-- The engine's Goldilocks state at a delivery: at the delivery's time, with the own key. -/
 private theorem deliver_state (hv : rho.ExecutionValid) {i : Nat} {v : V}

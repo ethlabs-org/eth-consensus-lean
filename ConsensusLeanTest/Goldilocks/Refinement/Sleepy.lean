@@ -87,7 +87,7 @@ theorem sleepy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : T
       (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Sleepy
           (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).toExternal
           (goldilocksContract A C) r := by
-  obtain ⟨rho, hp, hk, hs, hv, hc, -, he⟩ := Shape.coverage
+  obtain ⟨rho, hp, hk, hs, hv, hc, he⟩ := Shape.coverage
     (goldilocks { S with vote := AsChainShape.stock }) (point H) hH
     (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0
   let r : (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Run :=
@@ -191,7 +191,7 @@ theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
           .mk (.signed y .poll) (.data (.voteForward
             ((simTrace { S with vote := stock } rho one_le_card).time k)
             (encodeVote m))) [voteObj m] ∈ rho.releasesAt i := by
-  obtain ⟨rho, hp, -, -, hv, hc, -, -⟩ := Shape.coverage
+  obtain ⟨rho, hp, -, -, hv, hc, -⟩ := Shape.coverage
     (goldilocks { S with vote := AsChainShape.stock }) (point H)
     (le_trans (by decide) hH)
     (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0

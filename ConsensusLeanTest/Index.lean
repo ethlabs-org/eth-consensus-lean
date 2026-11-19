@@ -145,7 +145,6 @@ example := ``Consensus.Model.holds_of_injective
 example := ``Consensus.Model.mem_honestEvidence_iff
 example := ``Consensus.Model.protects
 example := ``Consensus.Model.protects_iff
-example := ``Consensus.Model.releaseAll_eq_carried
 example := ``Consensus.Model.releaseAll_noConflict
 example := ``Consensus.Model.sysOf_delivers_iff
 example := ``Consensus.Model.sysOf_eagerFrom
@@ -812,6 +811,7 @@ example := ``Consensus.Goldilocks.Growing.meets_obligations
 example := ``Consensus.Goldilocks.Growing.goldilocks_correct
 example := ``Consensus.Goldilocks.Simulation.guardIdle
 example := ``Consensus.Model.Run.GuardIdle
+example := ``Consensus.Shape.GuardIdleAlways
 example := ``Consensus.Goldilocks.Obligations.Test.Contract.meetsObligations_realizable_small
 example := ``Consensus.Goldilocks.Obligations.schema_matches_ebbAndFlow
 example := ``Consensus.Goldilocks.Obligations.Test.Contract.not_obligationsAs_bft
@@ -904,7 +904,7 @@ example := ``Consensus.Shape.Tests.CorrectProtocol.startPoint_readyAt
 
 /-! ## Tests: Leaks -/
 
-example := ``Consensus.Shape.Tests.Leaks.conflictsTrue_silent
+example := ``Consensus.Shape.Tests.Leaks.conflictsTrue_rejected
 example := ``Consensus.Shape.Tests.Leaks.env_ready
 example := ``Consensus.Shape.Tests.Leaks.fabricated
 example := ``Consensus.Shape.Tests.Leaks.familyC_mono
@@ -925,6 +925,7 @@ example := ``Consensus.Shape.Tests.Leaks.testSel_admits
 /-! ## Tests: Model -/
 
 example := ``Consensus.Shape.Tests.Model.conflictsTrue_releases_unsigned_only
+example := ``Consensus.Shape.Tests.Model.conflictsTrue_guard_fires
 example := ``Consensus.Shape.Tests.Model.forged_role_invalid
 example := ``Consensus.Shape.Tests.Model.held_at_deadline
 example := ``Consensus.Shape.Tests.Model.not_held_before_relay

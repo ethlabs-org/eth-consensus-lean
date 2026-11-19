@@ -2,20 +2,21 @@ module
 public import ConsensusLean.Spec.Model.Guard
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Signing
 import ConsensusLean.Lemmas.Model.Candidates
+import ConsensusLean.Lemmas.Model.Protection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 
 public section
 
-/-! # The slashing guard never fires for Goldilocks
+/-! # Slashing protection never fires for Goldilocks
 
-On every valid execution of the compiled Goldilocks family, no event puts a candidate to the
-engine's slashing protection that it refuses (`guardIdle`). Only an attestation body signed in the
-poll role and carrying nothing can conflict (`protects_of_not_att`). Such a candidate comes only
-from the ordinary emission of a scheduled poll, the first candidate of its batch, so the guard
-checks it against the `seen` log of the poll's duty prefix, where the node's own FG record admits
-it (`engine_poll_att_protected_at`: no two engine signings of an honest node are slashable,
-`FG.client_safety`). Every other candidate (proposals, forwarding and vote-forward envelopes,
-unsigned gossip) passes against any `seen` log. -/
+On every valid execution of the compiled Goldilocks family, no event has a candidate that
+slashing protection would refuse (`guardIdle`): Goldilocks' non-framing. Only an attestation
+body signed in the poll role and carrying nothing can conflict (`protects_of_not_att`). Such a
+candidate comes only from the ordinary emission of a scheduled poll, the first candidate of its
+batch, so it is checked against the `seen` log of the poll's duty prefix, where the node's own FG
+record admits it (`engine_poll_att_protected_at`: no two engine signings of an honest node are
+slashable, `FG.client_safety`). Every other candidate (proposals, forwarding and vote-forward
+envelopes, unsigned gossip) passes against any `seen` log. -/
 
 namespace Consensus.Goldilocks.Simulation
 
@@ -36,20 +37,6 @@ private theorem guardRefusals_eq_nil (hash : P.Item → Nat) (k : Model.Key pub)
     intro nd
     simp only [Model.guardRefusals, h c List.mem_cons_self, ↓reduceIte, List.nil_append]
     exact ih (fun x hx => h x (List.mem_cons_of_mem _ hx)) _
-
-/-- Releasing `cs ++ cs'` checks `cs`, then `cs'` from the node `cs` leaves. -/
-private theorem guardRefusals_append (hash : P.Item → Nat) (k : Model.Key pub)
-    (cs cs' : List P.Object) : ∀ nd, Model.guardRefusals P hash k nd (cs ++ cs') =
-      Model.guardRefusals P hash k nd cs ++
-        Model.guardRefusals P hash k (Model.releaseAll P hash k nd cs).1 cs' := by
-  induction cs with
-  | nil => intro _; rfl
-  | cons c cs ih =>
-    intro nd
-    have hr : (Model.releaseAll P hash k nd (c :: cs)).1 =
-        (Model.releaseAll P hash k (Model.releaseAll P hash k nd [c]).1 cs).1 := by
-      rw [show c :: cs = [c] ++ cs from rfl, Model.releaseAll_append]
-    simp only [List.cons_append, Model.guardRefusals, ih, hr, List.append_assoc]
 
 /-- At most one candidate, which the guard passes against the starting `seen`, is never refused. -/
 private theorem guardRefusals_short (hash : P.Item → Nat) (k : Model.Key pub) {nd : Model.Node P}
@@ -140,7 +127,7 @@ private theorem dutyRefusals_eq_nil (hv : rho.ExecutionValid) {v : V} {i p : Nat
       refine (congrArg (Model.guardRefusals _ rho.hash (rho.ownKey v) _)
         ((congrArg (rho.signedCandidate v (.poll k)) hact).trans
           (signedCandidate_append S rho v _ _ _))).trans ?_
-      refine (guardRefusals_append _ _ _ _ _).trans ?_
+      refine (Model.guardRefusals_append _ _ _ _ _).trans ?_
       refine List.append_eq_nil_iff.mpr ⟨guardRefusals_short _ _ ?_ fun c hc' => ?_,
         guardRefusals_eq_nil _ _ (fun c hc' seen => ?_) _⟩
       · refine ((signedCandidate_length_le S rho v _ _).trans_eq (List.length_map ..)).trans ?_

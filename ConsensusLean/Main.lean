@@ -22,7 +22,7 @@ type. -/
 theorem ShapeObligations.behaviour {F : ChainShapeFamily O Info} {K : Contract ProgressReq}
     (h : ShapeObligations F K) (V : Type) [Fintype V] [DecidableEq V] :
     Behaviour (sysOf O (compiled F) V) (shapeProgress F V) K :=
-  refinement F K V h.claims h.admissible h.serves
+  refinement F K V h.claims h.admissible h.serves h.guardIdle
 
 /-- An instance that meets its obligations is a correct protocol (L0 `CorrectProtocol`) for every
 finite validator type. -/
@@ -39,7 +39,7 @@ theorem ShapeObligationsOn.correct {F : ChainShapeFamily O Info} {K : Contract P
     (Q : ∀ V : Type, EnvPoint V → Prop) (h : ShapeObligationsOn F K Q)
     (V : Type) [Fintype V] [DecidableEq V] :
     CorrectProtocolOn (sysOf O (compiled F) V) (shapeProgress F V) K (Q V) :=
-  ⟨refinementOn F K V (Q V) (h.claims V) h.admissible h.serves,
+  ⟨refinementOn F K V (Q V) (h.claims V) h.admissible h.serves h.guardIdle,
     Model.sysOf_adequate _ rfl,
     fun hn =>
       (regimes_realizable F K h.admissible h.progressFits h.progressTolerant V hn).toRealizable⟩

@@ -36,7 +36,7 @@ private theorem tick_prefix_forward_poll (hv : rho.ExecutionValid)
   intro nd hlen
   apply dutyStep_poll_voteForward_of_available S rho hn hv hv' (.tick he hw hp) t.toNat hlen
   intro q hq
-  apply GrowingInventory.tick_prefix_pool_available S rho hn hv hv' he hw hp q.2.slot q.2
+  apply GrowingInventory.tick_prefix_pool_available S rho hn hv he hw hp q.2.slot q.2
   apply runDuties_voteForward_in_pool S rho hn v _ _ ?_ q hq
   intro r hr
   change r ∈ ((rho.stateBefore i v).st.1 hn).voteForwards at hr

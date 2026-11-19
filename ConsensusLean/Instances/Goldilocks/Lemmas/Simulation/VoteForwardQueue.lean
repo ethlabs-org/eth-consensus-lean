@@ -440,8 +440,7 @@ theorem releaseAll_voteForward_suffix (hash : Blocks.Header Info → Nat)
     hash x _ _ ?_).1
   intro i o hi
   obtain ⟨tv, htv, rfl⟩ := List.mem_map.mp (List.mem_of_getElem? hi)
-  refine ⟨releasable_voteForward S x _ tv.1 tv.2 ?_,
-    protects_voteForward S x x _ tv.1 tv.2, dependencies_voteForward _ x tv.1 tv.2⟩
+  refine ⟨releasable_voteForward S x _ tv.1 tv.2 ?_, dependencies_voteForward _ x tv.1 tv.2⟩
   exact Model.closure_mono (fun _ h => List.mem_append_left _ h) (hheld tv htv)
 
 omit [DecidableEq V] in
@@ -523,9 +522,8 @@ theorem dutyStep_poll_voteForward_of_own_vote (v : V)
       exfalso
       apply h
       apply Bool.and_eq_true_iff.mpr
-      refine ⟨Bool.and_eq_true_iff.mpr ⟨?_, ?_⟩, ?_⟩
+      refine ⟨?_, ?_⟩
       · rfl
-      · exact protects_pollObj_vote S rho v _ _ _
       · exact pollObj_ready S rho v _ _
   · erw [Model.releaseAll_seen]
     exact Model.closure_mono (fun _ h => List.mem_append_left _ h) he

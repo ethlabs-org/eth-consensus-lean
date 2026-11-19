@@ -31,7 +31,7 @@ theorem releaseAll_preserves {pub : Public} {Out : Type} {P : Protocol pub Out}
         rcases hd.cases with rfl | ⟨_, hm, hc⟩
         · exact hr d List.mem_cons_self
         · have hm' := List.all_eq_true.mp
-            (Bool.and_eq_true_iff.mp (Bool.and_eq_true_iff.mp hf).1).1 _ hm
+            (Bool.and_eq_true_iff.mp hf).1 _ hm
           have hmem : _ ∈ closure nd.seen := of_decide_eq_true hm'
           obtain ⟨o, ho, hoc⟩ := (mem_closure_iff _ _).mp hmem
           exact hs o ho d (hoc.trans hc)

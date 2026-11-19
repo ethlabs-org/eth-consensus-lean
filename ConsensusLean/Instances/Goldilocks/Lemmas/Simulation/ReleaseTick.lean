@@ -29,26 +29,20 @@ section Unroll
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- What a poll step releases for the head `ob` of the outbox it pops from, against `seen`: the
-poll object of the head, when its poll role selects the node and the own-object guard passes. -/
-noncomputable def relHead (v : V) (seen : List (Model.protoOf (compiled
-    (goldilocks S)) E).Object)
-    (ob : Option Body) : List (Model.protoOf (compiled (goldilocks S)) E).Object :=
+/-- What a poll step releases for the head `ob` of the outbox it pops from: the poll object of
+the head, when its poll role selects the node. -/
+noncomputable def relHead (v : V) (ob : Option Body) :
+    List (Model.protoOf (compiled (goldilocks S)) E).Object :=
   ob.elim [] fun b =>
-    if rho.ownKey v ∈ rho.sel (pollRole S.vote (pubOf E).n b) ∧
-      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) seen
-          (pollObj S rho v b) = true then
+    if rho.ownKey v ∈ rho.sel (pollRole S.vote (pubOf E).n b) then
       [pollObj S rho v b] else []
 
 omit [DecidableEq V] in
 /-- `relHead` releases nothing for an empty outbox, and for a head `b` its poll object exactly
-when its poll role selects the node and the own-object guard passes. -/
-theorem relHead_eq (v : V) (seen : List (Model.protoOf (compiled (goldilocks S)) E).Object)
-    (ob : Option Body) :
-    relHead S rho v seen ob = ob.elim [] fun b =>
-      if rho.ownKey v ∈ rho.sel (pollRole S.vote (pubOf E).n b) ∧
-        Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) seen
-            (pollObj S rho v b) = true then
+when its poll role selects the node. -/
+theorem relHead_eq (v : V) (ob : Option Body) :
+    relHead S rho v ob = ob.elim [] fun b =>
+      if rho.ownKey v ∈ rho.sel (pollRole S.vote (pubOf E).n b) then
         [pollObj S rho v b] else [] := by
   rfl
 
@@ -57,7 +51,7 @@ omit [DecidableEq V] in
 theorem release_head (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (ob : Option Body) :
     (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash (rho.ownKey v) nd
-      (pollOrdinary S rho v (ob.map fun b => (b, [])))).2 = relHead S rho v nd.seen ob := by
+      (pollOrdinary S rho v (ob.map fun b => (b, [])))).2 = relHead S rho v ob := by
   cases ob with
   | none =>
     rw [pollOrdinary_eq]
@@ -69,9 +63,8 @@ theorem release_head (v : V) (nd : Model.Node (Model.protoOf (compiled (goldiloc
       have hr : Model.releasable nd.seen (pollObj S rho v b) = true := by
         simp [Model.releasable, Model.Obj.carried]
       have hd := pollObj_ready S rho v (Model.closure nd.seen) b
-      simp only [Model.releaseAll, hr, hd, Bool.true_and, Bool.and_true, relHead,
-        Option.elim_some, hk, true_and]
-      split <;> rfl
+      simp only [Model.releaseAll, hr, hd, Bool.true_and, relHead, Option.elim_some, hk]
+      rfl
     · rw [pollOrdinary_some_neg S rho hk]
       simp [Model.releaseAll, relHead, hk]
 
@@ -83,7 +76,7 @@ theorem dutyStep_poll_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (gold
     (hempty : (shapeOf S hn nd).forwards = [])
     (hvote : (shapeOf S hn nd).voteForwards = []) :
     (rho.dutyStep v nd (.poll k)).2 =
-      relHead S rho v nd.seen (pollPre (shapeOf S hn nd)).outbox.head? := by
+      relHead S rho v (pollPre (shapeOf S hn nd)).outbox.head? := by
   unfold Model.Run.dutyStep
   simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.poll k) = .poll from rfl,
       hsel, ↓reduceIte]
@@ -197,11 +190,11 @@ theorem leading_polls (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilo
     let N1 := (rho.dutyStep v N0 (.poll t.toNat)).1
     let N2 := (rho.dutyStep v N1 (.poll t.toNat)).1
     (rho.dutyStep v N0 (.poll t.toNat)).2 =
-        relHead S rho v nd.seen (shapeOf S hn nd).outbox.head? ∧
+        relHead S rho v (shapeOf S hn nd).outbox.head? ∧
       (rho.dutyStep v N1 (.poll t.toNat)).2 = [] ∧
       (rho.dutyStep v N2 (.pollPropose t.toNat)).2 = [] ∧
       (rho.dutyStep v N2 (.pollPropose t.toNat)).1.seen =
-        nd.seen ++ relHead S rho v nd.seen (shapeOf S hn nd).outbox.head? ∧
+        nd.seen ++ relHead S rho v (shapeOf S hn nd).outbox.head? ∧
       shapeOf S hn (rho.dutyStep v N2 (.pollPropose t.toNat)).1 = nodeTick (shapeOf S hn N2) ∧
       (shapeOf S hn N2).outbox = [] ∧ (shapeOf S hn N2).node = (shapeOf S hn nd).node ∧
       (shapeOf S hn N2).self = (shapeOf S hn nd).self ∧ (shapeOf S hn N2).now = t ∧
@@ -266,11 +259,11 @@ theorem trailing_polls (v : V) (N4 : Model.Node (Model.protoOf (compiled (goldil
     let N5 := (rho.dutyStep v N4 (.poll k)).1
     ∃ F : List (Model.protoOf (compiled (goldilocks S)) E).Object,
     (rho.dutyStep v N4 (.poll k)).2 =
-        relHead S rho v N4.seen (fgUpdate (shapeOf S hn N4)).outbox.head? ++ F ∧
+        relHead S rho v (fgUpdate (shapeOf S hn N4)).outbox.head? ++ F ∧
       N5.seen = N4.seen ++
-        (relHead S rho v N4.seen (fgUpdate (shapeOf S hn N4)).outbox.head? ++ F) ∧
+        (relHead S rho v (fgUpdate (shapeOf S hn N4)).outbox.head? ++ F) ∧
       (rho.dutyStep v N5 (.poll k)).2 =
-        relHead S rho v N5.seen (fgUpdate (shapeOf S hn N4)).outbox.tail.head? ∧
+        relHead S rho v (fgUpdate (shapeOf S hn N4)).outbox.tail.head? ∧
       (shapeOf S hn (rho.dutyStep v N5 (.poll k)).1).outbox =
         (fgUpdate (shapeOf S hn N4)).outbox.tail.tail ∧
       (∀ o ∈ F, (∃ τ cs, o = .mk (.signed (rho.ownKey v) .poll) (.data (.forward τ)) cs) ∨
@@ -299,7 +292,7 @@ theorem trailing_polls (v : V) (N4 : Model.Node (Model.protoOf (compiled (goldil
       .mk (.signed (rho.ownKey v) .poll)
         (.data (.voteForward p.1 (encodeVote p.2))) [voteObj p.2]))).2
   change (rho.dutyStep v N4 (.poll k)).2 =
-    relHead S rho v N4.seen (fgUpdate (shapeOf S hn N4)).outbox.head? ++ F at hR5
+    relHead S rho v (fgUpdate (shapeOf S hn N4)).outbox.head? ++ F at hR5
   have hR6 := dutyStep_poll_eq S rho hn v N5 k hsel
     (by rw [hS5]; exact poll_forwards _ _) (by rw [hS5]; exact poll_voteForwards _ _)
   rw [hpre5, hout5] at hR6
@@ -347,11 +340,11 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
     ∃ (N4 N5 : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (Q : List Body)
       (R4 F G : List (Model.protoOf (compiled (goldilocks S)) E).Object),
       rho.releasesAt i =
-        relHead S rho v (rho.stateBefore i v).seen (stateAt S rho hn v i).outbox.head? ++ R4 ++
-          (relHead S rho v N4.seen Q.head? ++ F) ++ relHead S rho v N5.seen Q.tail.head? ++ G ∧
+        relHead S rho v (stateAt S rho hn v i).outbox.head? ++ R4 ++
+          (relHead S rho v Q.head? ++ F) ++ relHead S rho v Q.tail.head? ++ G ∧
       N4.seen = (rho.stateBefore i v).seen ++
-        relHead S rho v (rho.stateBefore i v).seen (stateAt S rho hn v i).outbox.head? ++ R4 ∧
-      N5.seen = N4.seen ++ (relHead S rho v N4.seen Q.head? ++ F) ∧
+        relHead S rho v (stateAt S rho hn v i).outbox.head? ++ R4 ∧
+      N5.seen = N4.seen ++ (relHead S rho v Q.head? ++ F) ∧
       (∀ o ∈ F, (∃ τ cs, o = .mk (.signed (rho.ownKey v) .poll) (.data (.forward τ)) cs) ∨
         ∃ τ m, o = .mk (.signed (rho.ownKey v) .poll)
           (.data (.voteForward τ (encodeVote m))) [voteObj m]) ∧
@@ -366,7 +359,7 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
           (stateAt S rho hn v i).node t
           (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 ∧
       (∀ c ∈ R4, ∀ x ∈ c.carried, x ∈ Model.closure ((rho.stateBefore i v).seen ++
-        relHead S rho v (rho.stateBefore i v).seen (stateAt S rho hn v i).outbox.head?)) ∧
+        relHead S rho v (stateAt S rho hn v i).outbox.head?)) ∧
       N5 = (rho.dutyStep v N4 (.poll t.toNat)).1 := by
   have hm := List.mem_of_getElem? he
   have ht : 0 ≤ t := (hv.in_horizon _ hm).1
@@ -425,11 +418,11 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
         .tick).2] ++ emitted c2 →
       c2 = (Node.tickStep (runProposer S rho hn) dg (rho.ownKey v) n1 t X .proposal).2 →
       R4 = blockObjs c2 →
-      N4.seen = nd.seen ++ relHead S rho v nd.seen (shapeOf S hn nd).outbox.head? ++ R4 →
+      N4.seen = nd.seen ++ relHead S rho v (shapeOf S hn nd).outbox.head? ++ R4 →
       (shapeOf S hn N4).outbox.length ≤ 1 →
       (∀ c ∈ R4, ∀ x ∈ c.carried, x ∈ Model.closure (nd.seen ++
-        relHead S rho v nd.seen (shapeOf S hn nd).outbox.head?)) →
-      (rho.tick nd v t).2 = relHead S rho v nd.seen (shapeOf S hn nd).outbox.head? ++ R4 ++
+        relHead S rho v (shapeOf S hn nd).outbox.head?)) →
+      (rho.tick nd v t).2 = relHead S rho v (shapeOf S hn nd).outbox.head? ++ R4 ++
         (rho.dutyStep v N4 (.poll t.toNat)).2 ++
         (rho.dutyStep v (rho.dutyStep v N4 (.poll t.toNat)).1 (.poll t.toNat)).2 ++
         (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash (rho.ownKey v)
@@ -439,10 +432,10 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
       ∃ (N4 N5 : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (Q : List Body)
         (R4 F G : List (Model.protoOf (compiled (goldilocks S)) E).Object),
         (rho.tick nd v t).2 =
-          relHead S rho v nd.seen (shapeOf S hn nd).outbox.head? ++ R4 ++
-            (relHead S rho v N4.seen Q.head? ++ F) ++ relHead S rho v N5.seen Q.tail.head? ++ G ∧
-        N4.seen = nd.seen ++ relHead S rho v nd.seen (shapeOf S hn nd).outbox.head? ++ R4 ∧
-        N5.seen = N4.seen ++ (relHead S rho v N4.seen Q.head? ++ F) ∧
+          relHead S rho v (shapeOf S hn nd).outbox.head? ++ R4 ++
+            (relHead S rho v Q.head? ++ F) ++ relHead S rho v Q.tail.head? ++ G ∧
+        N4.seen = nd.seen ++ relHead S rho v (shapeOf S hn nd).outbox.head? ++ R4 ∧
+        N5.seen = N4.seen ++ (relHead S rho v Q.head? ++ F) ∧
         (∀ o ∈ F, (∃ τ cs, o = .mk (.signed (rho.ownKey v) .poll) (.data (.forward τ)) cs) ∨
           ∃ τ m, o = .mk (.signed (rho.ownKey v) .poll)
             (.data (.voteForward τ (encodeVote m))) [voteObj m]) ∧
@@ -454,7 +447,7 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
         R4 = blockObjs (exec (runProposer S rho hn) dg (rho.ownKey v)
             (shapeOf S hn nd).node t (.tick X)).2 ∧
         (∀ c ∈ R4, ∀ x ∈ c.carried, x ∈ Model.closure (nd.seen ++
-          relHead S rho v nd.seen (shapeOf S hn nd).outbox.head?)) ∧
+          relHead S rho v (shapeOf S hn nd).outbox.head?)) ∧
         N5 = (rho.dutyStep v N4 (.poll t.toNat)).1 := by
     intro N4 R4 c2 hf4 hs4 hw4 hn4 ho4 hc2 hR4 hseen4 hb4 hcar htick
     obtain ⟨F, hR5, hseen5, hR6, -, hF⟩ := trailing_polls S rho hn v N4 t.toNat hsel hf4
@@ -554,7 +547,7 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
     have hseen4 := dutyStep_seen S rho v N3 (.propose s hs)
     rw [hseen3] at hseen4
     have hcar : ∀ c ∈ (rho.dutyStep v N3 (.propose s hs)).2, ∀ x ∈ c.carried,
-        x ∈ Model.closure (nd.seen ++ relHead S rho v nd.seen (shapeOf S hn nd).outbox.head?) := by
+        x ∈ Model.closure (nd.seen ++ relHead S rho v (shapeOf S hn nd).outbox.head?) := by
       intro c hc x hx
       have := dutyStep_carried S rho v N3 (.propose s hs) (fun _ h => by cases h) c hc x hx
       rwa [hseen3] at this
@@ -591,8 +584,8 @@ theorem encodeAtt_inj {n : Nat} {a b : FG.Att n} (h : encodeAtt a = encodeAtt b)
 
 omit [DecidableEq V] in
 /-- A member of `relHead` is the poll object of the head. -/
-theorem mem_relHead {v : V} {seen} {ob : Option Body} {o}
-    (h : o ∈ relHead S rho v seen ob) : ∃ b, ob = some b ∧ o = pollObj S rho v b := by
+theorem mem_relHead {v : V} {ob : Option Body} {o}
+    (h : o ∈ relHead S rho v ob) : ∃ b, ob = some b ∧ o = pollObj S rho v b := by
   cases ob with
   | none => simp [relHead] at h
   | some b =>
@@ -659,9 +652,9 @@ theorem preNode_eq_atProposal (v : V) (nd : Model.Node (Model.protoOf (compiled
 
 /-- The proposal of an honest node's tick carries only objects the node has seen
 (`proposal_releasable`, Steps). -/
-theorem preNode_releasable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+theorem preNode_releasable (_hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {i : Nat} {v : V} {t : Time}
-    (hv' : v ∉ rho.faultyAt 0) (he : rho.events[i]? = some (.tick v t)) :
+    (_hv' : v ∉ rho.faultyAt 0) (he : rho.events[i]? = some (.tick v t)) :
     ∀ s (hs : 0 < s), (skeleton (pubOf E) S.vote).proposeAt t = [.propose s hs] →
       rho.ownKey v ∈ rho.sel (.proposer s) → ∀ par info cs,
       (propose (shapeOf S hn (preNode S rho v (rho.stateBefore i v) t)) s).2 =
@@ -669,14 +662,14 @@ theorem preNode_releasable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionVa
       ∀ o ∈ cs, o ∈ Model.closure (preNode S rho v (rho.stateBefore i v) t).seen := by
   rw [preNode_eq_atProposal]
   exact fun s hs hone hsel par info cs h =>
-    proposal_releasable S rho hn hf hv v hv' i t he s par info cs hs hone hsel h
+    proposal_releasable S rho hn hv v i t he s par info cs hs hone hsel h
 
 /-- At a tick at a non-public time an honest node releases only its queued body and unsigned
 gossip. -/
 theorem tick_other_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     (_hv' : v ∉ rho.faultyAt 0) (he : rho.events[i]? = some (.tick v t))
     (hnp : ¬ (S.params (pubOf E) hn).toParams.IsPublic t) :
-    ∀ o ∈ rho.releasesAt i, o ∈ relHead S rho v (rho.stateBefore i v).seen
+    ∀ o ∈ rho.releasesAt i, o ∈ relHead S rho v
       (stateAt S rho hn v i).outbox.head? ∨ o.auth = .none := by
   have hm := List.mem_of_getElem? he
   have ht : 0 ≤ t := (hv.in_horizon _ hm).1
@@ -769,23 +762,6 @@ theorem attest_val_of_mem_exec {sp : SAParams} {ro : ReplayOrder sp (List (FG.At
   exact key (Compose.exec_is_cut_chain (P := sp.toParams) (A := goldilocksNode sp ro)
     proposer dg self st t e) h
 
-omit [DecidableEq V] in
-/-- An object carrying nothing contains only itself. -/
-theorem contains_atomic {a : Model.Auth (Fintype.card V) (ShapeRole S.vote.Kind)}
-    {m : Model.Msg (Header Info) Body} {y : (Model.protoOf (compiled (goldilocks S)) E).Object}
-    (h : Model.Obj.Contains (Model.Obj.mk a m []) y) : y = Model.Obj.mk a m [] := by
-  rcases h.cases with h | ⟨c, hc, -⟩
-  · exact h
-  · exact absurd hc List.not_mem_nil
-
-omit [DecidableEq V] in
-/-- The closure is closed under containment. -/
-theorem mem_closure_of_contains {l : List (Model.protoOf (compiled (goldilocks S)) E).Object}
-    {x y : (Model.protoOf (compiled (goldilocks S)) E).Object} (hx : x ∈ Model.closure l)
-    (h : Model.Obj.Contains x y) : y ∈ Model.closure l := by
-  obtain ⟨r, hr, hc⟩ := (Model.mem_closure_iff _ _).mp hx
-  exact (Model.mem_closure_iff _ _).mpr ⟨r, hr, hc.trans h⟩
-
 /-- A signing cut of an honest node's tick at a public time is a signing of the simulating
 trace before the end of that engine event. -/
 theorem signAt_before_tick_end {j : Nat} {v : V} {t : Time}
@@ -823,14 +799,6 @@ theorem signAt_before_tick_end {j : Nat} {v : V} {t : Time}
       (digestOf S rho) (rho.ownKey v)
       (stateAt S rho hn v j).node t (Nat.pair j 0)
       (.tick (encodeTxs (Model.mempool rho.inbox v t))))[m] from by simp only [hEC], hlab, hcm]
-
-/-- The canonical attestation object is injective. -/
-theorem attObj_inj {n : Nat} {a b : FG.Att n} (h : (attObj a : Wire n binding) = attObj b) : a = b
-    := by
-  injection h with h1 h2 h3
-  injection h2 with h4
-  injection h4 with h5
-  exact encodeAtt_inj h5
 
 /-- A vote emitted by a cut of `v`'s handler run from its engine state is of a slot whose vote
 role selects `v` (the emission gate at the state's installed permission). -/

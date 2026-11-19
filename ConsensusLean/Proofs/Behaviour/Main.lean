@@ -25,7 +25,8 @@ The bridges are visible:
   proposal liveness for those deadlines.
 * Accountability: the conviction sets of the chain trace and of the ledger
   system coincide.
-* Laws and non-framing are L1 theorems (`sysOf_laws`, `sysOf_nonFraming`). -/
+* Laws are an L1 theorem (`sysOf_laws`); non-framing follows from the idle slashing guard
+  (`GuardIdleAlways`, `sysOf_nonFraming`). -/
 
 namespace Consensus.Shape
 
@@ -173,15 +174,16 @@ theorem gst_le_heal (K : Contract ProgressReq) (rho : Model.Run (compiled F) E)
   have := le_max_left gst 0
   linarith
 
-/-- The headline: shape claims, admissible numbers and a served ledger give
-the L0 behaviour of the compiled system, with progress read by
+/-- The headline: shape claims, admissible numbers, a served ledger and an idle slashing guard
+give the L0 behaviour of the compiled system, with progress read by
 `shapeProgress`. -/
 theorem refinement (F : ChainShapeFamily O Info) (K : Contract ProgressReq) (V : Type)
     [Fintype V] [DecidableEq V] (hc : ShapeClaims F K) (ha : K.params.Admissible)
-    (hs : O.Serves) : Behaviour (sysOf O (compiled F) V) (shapeProgress F V) K := by
+    (hs : O.Serves) (hg : GuardIdleAlways F) :
+    Behaviour (sysOf O (compiled F) V) (shapeProgress F V) K := by
   have hc := hc V
-  refine ⟨Model.sysOf_laws _ _ _, ha, hs, Model.sysOf_nonFraming _ _ _, ?_, ?_, ?_, ?_, ?_, ?_,
-    ?_, ?_⟩
+  refine ⟨Model.sysOf_laws _ _ _, ha, hs, Model.sysOf_nonFraming _ _ _ (hg V), ?_, ?_, ?_, ?_,
+    ?_, ?_, ?_, ?_⟩
   · rintro c₁ c₂ g₁ g₂ hlt h₁ h₂ ⟨E, rho⟩ hv
     rw [ledgerTrace]
     exact (hc.nested c₁ c₂ g₁ g₂ hlt h₁ h₂ ⟨E, rho⟩ hv).map ledgerOf_prefix
@@ -216,7 +218,8 @@ theorem refinement (F : ChainShapeFamily O Info) (K : Contract ProgressReq) (V :
 model's independent coverage and realizability obligations. -/
 theorem refinementOn (F : ChainShapeFamily O Info) (K : Contract ProgressReq) (V : Type)
     [Fintype V] [DecidableEq V] (Q : EnvPoint V → Prop)
-    (hc : ShapeClaimsOnAt F K V Q) (ha : K.params.Admissible) (hs : O.Serves) :
+    (hc : ShapeClaimsOnAt F K V Q) (ha : K.params.Admissible) (hs : O.Serves)
+    (hg : GuardIdleAlways F) :
     Behaviour ((Sys F V).restrict fun r => Q ((Sys F V).pt r))
       ((shapeProgress F V).restrict fun r => Q ((Sys F V).pt r)) K := by
   dsimp only [System.restrict, Progress.restrict]
@@ -224,7 +227,7 @@ theorem refinementOn (F : ChainShapeFamily O Info) (K : Contract ProgressReq) (V
   · have hl := Model.sysOf_laws O (compiled F) V
     exact ⟨fun r hv => hl.trace r hv.1, hl.convicts_mono, hl.view_mono⟩
   · intro r hv
-    exact Model.sysOf_nonFraming O (compiled F) V r hv.1
+    exact Model.sysOf_nonFraming O (compiled F) V (hg V) r hv.1
   · rintro c₁ c₂ g₁ g₂ hlt h₁ h₂ ⟨E, rho⟩ ⟨hv, hq⟩
     rw [ledgerTrace]
     exact (hc.nested c₁ c₂ g₁ g₂ hlt h₁ h₂ ⟨E, rho⟩ hv hq).map ledgerOf_prefix

@@ -53,8 +53,7 @@ compiles alpha-equality, binder-kind and axiom pins. Primary statement: `Consens
 its form on a class of runs `ObligationsSufficientOn` (at constant faults, the static adversary at full strength);
 secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`. Challenge adds the Goldilocks endpoint and headline,
 `MeetsObligations` and `Consensus.Goldilocks.GoldilocksCorrect` (Goldilocks is a `CorrectProtocol` under the growing
-adversary, its contract satisfies `Params.OptimalFaultTolerance`, and its slashing guard never fires,
-`Model.Run.GuardIdle`), the headline's explicit-excuse form
+adversary and its contract satisfies `Params.OptimalFaultTolerance`), the headline's explicit-excuse form
 `GoldilocksCorrectWithExcuses`, from `Instances/Goldilocks/Statements/Obligations.lean`.
 All three Goldilocks statements cover every vote binding. The endpoint includes outage
 resilience and sleepy safety and liveness as shape-claim fields, not separate comparator roots.
@@ -114,7 +113,7 @@ allowlist: a privacy check, not a trust check.
 ## 5. Assumed, not proved
 
 Model adequacy assumes one-key-per-validator PKI, sound membership credentials, unforgeable
-key/role-binding signatures, persistent client slashing protection, the stated delivery service
+key/role-binding signatures, the stated delivery service
 (including forwarded adversarial objects and persistent transaction inboxes), known Δ and unit ticks,
 restart/tick/delivery event order and restarts at wakes, and hash collision resistance.
 All-knowing adversary whose set of compromised validators grows (`EnvPoint.faultyAt`, monotone): a compromise is

@@ -93,7 +93,8 @@ FinalChainsAlways and the six regime/accountability reductions in ClaimReduction
 then holds_of_forall_public and holdsAlways_of_forall_public. Those reductions are the
 proof route, not premises. Requirements and genesis roots come from the binding's
 run_transport and the AC run laws. No ShapeClaims or compiled-run premise is admitted.
-The four non-claim obligations, HealthyBetaFit and CommitteeHalfFit remain independent inputs.
+The five non-claim obligations (with the idle slashing guard, `GuardIdleAlways`), HealthyBetaFit
+and CommitteeHalfFit remain independent inputs.
 Local AC parameters require a positive population. Empty validator types need no binding:
 their reader/proposer claims are vacuous; the conclusion still covers every finite type. -/
 def meetsObligations_of_local {O : OutputSchema} {Info : Type}
@@ -114,7 +115,7 @@ def meetsObligations_of_local {O : OutputSchema} {Info : Type}
         ((B V pub).signer_eq E hE rho hv ▸ C pub) K
         (D V pub E hE rho hv) (R V pub E hE rho hv) (events pub)) →
     K.params.Admissible → O.Serves → ProgressFits K F → ProgressTolerant O K →
-    HealthyBetaFit K → CommitteeHalfFit K → ShapeObligations F K
+    GuardIdleAlways F → HealthyBetaFit K → CommitteeHalfFit K → ShapeObligations F K
 
 
 /-- The capstone contract, read through its suppliers and fits. -/
@@ -137,7 +138,7 @@ theorem meetsObligations_of_local_iff {O : OutputSchema} {Info : Type}
           ((B V pub).signer_eq E hE rho hv ▸ C pub) K
           (D V pub E hE rho hv) (R V pub E hE rho hv) (events pub)) →
       K.params.Admissible → O.Serves → ProgressFits K F → ProgressTolerant O K →
-      HealthyBetaFit K → CommitteeHalfFit K → ShapeObligations F K :=
+      GuardIdleAlways F → HealthyBetaFit K → CommitteeHalfFit K → ShapeObligations F K :=
   by exact Iff.rfl
 
 /-- A property of local suppliers over every signer survives transporting a supplier along a

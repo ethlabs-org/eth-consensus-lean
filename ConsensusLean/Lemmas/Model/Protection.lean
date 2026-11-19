@@ -2,23 +2,20 @@ module
 public import ConsensusLean.Lemmas.Model.Canonical.Unforgeable
 public import ConsensusLean.Lemmas.Model.View
 public import ConsensusLean.Lemmas.Model.Laws
+public import ConsensusLean.Spec.Model.Guard
 
 public section
 
-/-! # Slashing protection (L1)
+/-! # Non-framing from an idle slashing guard (L1)
 
-The engine refuses an own-signed candidate that conflicts, under the
-protocol's `conflicts`, with itself or with an own-signed object in the
-closure of `seen` (`protects`). Because `seen` is append-only and survives
-restarts, and every object an honest node saw that is signed by an honest
-validator was released by that validator (`Run.signed_seen_released`, from
-`Unforgeable`), no honest validator is ever slashable on what the honest
-nodes saw (`Run.honestNeverSlashed`), for every protocol. Hence L0
-non-framing holds for every model system (`sysOf_nonFraming`).
-
-`releaseAll_eq_carried`: when own-signed objects never conflict, the guard is
-a no-op, and `releaseAll` is the carried-only release `releaseAllCarried`
-(for liveness proofs). -/
+The engine has no slashing protection. On a run whose slashing protection never fires
+(`Run.GuardIdle`), every own-signed candidate passes `protects` at its turn: it conflicts, under
+the protocol's `conflicts`, neither with itself nor with an own-signed object in the closure of
+`seen`. Because `seen` is append-only and survives restarts, and every object an honest node saw
+that is signed by an honest validator was released by that validator
+(`Run.signed_seen_released`, from `Unforgeable`), no honest validator is then slashable on what
+the honest nodes saw (`Run.honestNeverSlashed`). Hence L0 non-framing holds for every model
+system whose valid runs have an idle guard (`sysOf_nonFraming`). -/
 
 namespace Consensus.Model
 
@@ -63,122 +60,110 @@ theorem protects_iff {k : Key pub} {seen : List P.Object} {c : P.Object} :
         · exact Or.inl hos⟩
   next hs => simp [hs]
 
-/-- A released `k`-signed object never conflicts, in either order, with a
+/-- The refusals of `c :: cs`: `c` if `protects` refuses it, then those of `cs` from the node
+the release of `c` leaves. -/
+theorem guardRefusals_cons (hash : P.Item → Nat) (k : Key pub) (nd : Node P) (c : P.Object)
+    (cs : List P.Object) :
+    guardRefusals P hash k nd (c :: cs) =
+      (if protects P k nd.seen c then [] else [c]) ++
+        guardRefusals P hash k (releaseAll P hash k nd [c]).1 cs := rfl
+
+/-- The refusals depend only on `seen`, not on the state. -/
+theorem guardRefusals_seen_only (hash : P.Item → Nat) (k : Key pub) {nd nd' : Node P}
+    (h : nd.seen = nd'.seen) (cs : List P.Object) :
+    guardRefusals P hash k nd cs = guardRefusals P hash k nd' cs := by
+  induction cs generalizing nd nd' with
+  | nil => rfl
+  | cons c cs ih =>
+    rw [guardRefusals_cons, guardRefusals_cons, h,
+      ih (releaseAll_seen_only hash k h [c]).2]
+
+/-- Checking `cs ++ cs'` checks `cs`, then `cs'` from the node the release of `cs` leaves. -/
+theorem guardRefusals_append (hash : P.Item → Nat) (k : Key pub) (cs cs' : List P.Object) :
+    ∀ nd, guardRefusals P hash k nd (cs ++ cs') =
+      guardRefusals P hash k nd cs ++
+        guardRefusals P hash k (releaseAll P hash k nd cs).1 cs' := by
+  induction cs with
+  | nil => intro _; rfl
+  | cons c cs ih =>
+    intro nd
+    have hr : (releaseAll P hash k nd (c :: cs)).1 =
+        (releaseAll P hash k (releaseAll P hash k nd [c]).1 cs).1 := by
+      rw [show c :: cs = [c] ++ cs from rfl, releaseAll_append]
+    simp only [List.cons_append, guardRefusals_cons, ih, hr, List.append_assoc]
+
+/-- With no refusal, the head candidate passes `protects`, and the rest have no refusal from the
+node its release leaves. -/
+private theorem guardRefusals_cons_nil {hash : P.Item → Nat} {k : Key pub} {nd : Node P}
+    {c : P.Object} {cs : List P.Object} (h : guardRefusals P hash k nd (c :: cs) = []) :
+    protects P k nd.seen c = true ∧
+      guardRefusals P hash k (releaseAll P hash k nd [c]).1 cs = [] := by
+  rw [guardRefusals_cons, List.append_eq_nil_iff] at h
+  refine ⟨?_, h.2⟩
+  have h1 := h.1
+  split at h1
+  · assumption
+  · exact absurd h1 (List.cons_ne_nil _ _)
+
+/-- The node the release of one candidate leaves. -/
+private theorem releaseAll_single (hash : P.Item → Nat) (k : Key pub) (nd : Node P)
+    (c : P.Object) :
+    (releaseAll P hash k nd [c]).1 =
+      if releasable nd.seen c && P.dependencies.ready (closure nd.seen) c then
+        ⟨P.recordOwn nd.st c (digests hash c), nd.seen ++ [c]⟩ else nd := by
+  unfold releaseAll
+  split <;> rfl
+
+/-- With no refusal, a released `k`-signed object never conflicts, in either order, with a
 `k`-signed object in the closure of `nd.seen`. -/
 theorem releaseAll_noConflict_seen {hash : P.Item → Nat} {k : Key pub} {nd : Node P}
-    {cs : List P.Object} {c o : P.Object} (h : c ∈ (releaseAll P hash k nd cs).2)
+    {cs : List P.Object} {c o : P.Object} (hg : guardRefusals P hash k nd cs = [])
+    (h : c ∈ (releaseAll P hash k nd cs).2)
     (ho : o ∈ closure nd.seen) (hs : c.signer? = some k) (hs' : o.signer? = some k) :
     P.conflicts c o = false ∧ P.conflicts o c = false := by
   induction cs generalizing nd with
   | nil => simp [releaseAll] at h
   | cons d cs ih =>
+    obtain ⟨hp, hg⟩ := guardRefusals_cons_nil hg
+    rw [releaseAll_single] at hg
     unfold releaseAll at h
     split at h
     next hf =>
+      rw [ite_eq_left hf] at hg
       dsimp only at h
       rcases List.mem_cons.mp h with rfl | h
-      · exact (protects_iff.mp (Bool.and_eq_true_iff.mp
-          (Bool.and_eq_true_iff.mp hf).1).2 hs).2 o ho hs'
-      · exact ih h (closure_mono (fun x hx => List.mem_append_left _ hx) ho)
-    next => exact ih h ho
+      · exact (protects_iff.mp hp hs).2 o ho hs'
+      · exact ih hg h (closure_mono (fun x hx => List.mem_append_left _ hx) ho)
+    next hf =>
+      rw [ite_eq_right hf] at hg
+      exact ih hg h ho
 
-/-- Same-call protection: two `k`-signed objects released by one `releaseAll`
-call never conflict (in either order, or with themselves). -/
+/-- With no refusal, two `k`-signed objects released by one `releaseAll` call never conflict (in
+either order, or with themselves). -/
 theorem releaseAll_noConflict {hash : P.Item → Nat} {k : Key pub} {nd : Node P}
-    {cs : List P.Object} {c c' : P.Object} (h : c ∈ (releaseAll P hash k nd cs).2)
+    {cs : List P.Object} {c c' : P.Object} (hg : guardRefusals P hash k nd cs = [])
+    (h : c ∈ (releaseAll P hash k nd cs).2)
     (h' : c' ∈ (releaseAll P hash k nd cs).2) (hs : c.signer? = some k)
     (hs' : c'.signer? = some k) : P.conflicts c c' = false := by
   induction cs generalizing nd with
   | nil => simp [releaseAll] at h
   | cons d cs ih =>
+    obtain ⟨hp, hg⟩ := guardRefusals_cons_nil hg
+    rw [releaseAll_single] at hg
     unfold releaseAll at h h'
-    by_cases hf : ((releasable nd.seen d && protects P k nd.seen d) &&
-        P.dependencies.ready (closure nd.seen) d) = true
-    · simp only [hf, ↓reduceIte] at h h'
-      have hp := protects_iff.mp (Bool.and_eq_true_iff.mp (Bool.and_eq_true_iff.mp hf).1).2
+    by_cases hf : (releasable nd.seen d && P.dependencies.ready (closure nd.seen) d) = true
+    · rw [ite_eq_left hf] at hg
+      simp only [hf, ↓reduceIte] at h h'
       have hd : d ∈ closure (nd.seen ++ [d]) :=
         mem_closure_of_mem (List.mem_append_right _ (List.mem_singleton_self d))
       rcases List.mem_cons.mp h with rfl | h <;> rcases List.mem_cons.mp h' with rfl | h'
-      · exact (hp hs).1
-      · exact (releaseAll_noConflict_seen h' hd hs' hs).2
-      · exact (releaseAll_noConflict_seen h hd hs hs').1
-      · exact ih h h'
-    · simp only [hf, Bool.false_eq_true, ↓reduceIte] at h h'
-      exact ih h h'
-
-/-- The carried/dependency release: the engine's release without slashing
-protection, retaining the dependency guard. -/
-def releaseAllCarried (P : Protocol pub Out) (hash : P.Item → Nat) :
-    Node P → List P.Object → Node P × List P.Object
-  | nd, [] => (nd, [])
-  | nd, c :: cs =>
-    if releasable nd.seen c && P.dependencies.ready (closure nd.seen) c then
-      let nd' : Node P := ⟨P.recordOwn nd.st c (digests hash c), nd.seen ++ [c]⟩
-      let r := releaseAllCarried P hash nd' cs
-      (r.1, c :: r.2)
-    else releaseAllCarried P hash nd cs
-
-theorem releaseAllCarried_cons (hash : P.Item → Nat) (nd : Node P) (c : P.Object)
-    (cs : List P.Object) :
-    releaseAllCarried P hash nd (c :: cs) =
-      if releasable nd.seen c && P.dependencies.ready (closure nd.seen) c then
-        let nd' : Node P := ⟨P.recordOwn nd.st c (digests hash c), nd.seen ++ [c]⟩
-        let r := releaseAllCarried P hash nd' cs
-        (r.1, c :: r.2)
-      else releaseAllCarried P hash nd cs := by rfl
-
-/-- The guard is a no-op when own-signed objects never conflict (for liveness
-proofs): with no conflicting pair among `k`-signed objects of
-`closure nd.seen ++ closure cs`, `releaseAll` is the carried-only release. -/
-theorem releaseAll_eq_carried (hash : P.Item → Nat) (k : Key pub) (nd : Node P)
-    (cs : List P.Object)
-    (h : ∀ o ∈ closure nd.seen ++ closure cs, ∀ o' ∈ closure nd.seen ++ closure cs,
-      o.signer? = some k → o'.signer? = some k → P.conflicts o o' = false) :
-    releaseAll P hash k nd cs = releaseAllCarried P hash nd cs := by
-  induction cs generalizing nd with
-  | nil => rfl
-  | cons c cs ih =>
-    have hc : c ∈ closure nd.seen ++ closure (c :: cs) :=
-      List.mem_append_right _ (mem_closure_of_mem List.mem_cons_self)
-    have hseen : ∀ o ∈ closure nd.seen, o ∈ closure nd.seen ++ closure (c :: cs) :=
-      fun o ho => List.mem_append_left _ ho
-    have hp : protects P k nd.seen c = true :=
-      protects_iff.mpr fun hs =>
-        ⟨h c hc c hc hs hs, fun o ho hos =>
-          ⟨h c hc o (hseen o ho) hs hos, h o (hseen o ho) c hc hos hs⟩⟩
-    have htail : ∀ o ∈ closure cs, o ∈ closure nd.seen ++ closure (c :: cs) := by
-      intro o ho
-      refine List.mem_append_right _ ?_
-      simp only [closure, List.flatMap_cons, List.mem_append] at ho ⊢
-      exact Or.inr ho
-    unfold releaseAll
-    rw [releaseAllCarried_cons]
-    rw [hp, Bool.and_true]
-    split
-    · dsimp only
-      rw [ih]
-      intro o ho o' ho' hs hs'
-      have hsub : ∀ x ∈ closure (nd.seen ++ [c]) ++ closure cs,
-          x ∈ closure nd.seen ++ closure (c :: cs) := by
-        intro x hx
-        rw [closure_append, List.mem_append, List.mem_append] at hx
-        rcases hx with (hx | hx) | hx
-        · exact hseen x hx
-        · refine List.mem_append_right _ ?_
-          simp only [closure, List.flatMap_cons, List.flatMap_nil, List.append_nil,
-            List.mem_append] at hx ⊢
-          exact Or.inl hx
-        · exact htail x hx
-      exact h o (hsub o ho) o' (hsub o' ho') hs hs'
-    · rw [ih]
-      intro o ho o' ho' hs hs'
-      have hsub : ∀ x ∈ closure nd.seen ++ closure cs,
-          x ∈ closure nd.seen ++ closure (c :: cs) := by
-        intro x hx
-        rcases List.mem_append.mp hx with hx | hx
-        · exact hseen x hx
-        · exact htail x hx
-      exact h o (hsub o ho) o' (hsub o' ho') hs hs'
+      · exact (protects_iff.mp hp hs).1
+      · exact (releaseAll_noConflict_seen hg h' hd hs' hs).2
+      · exact (releaseAll_noConflict_seen hg h hd hs hs').1
+      · exact ih hg h h'
+    · rw [ite_eq_right hf] at hg
+      simp only [hf, Bool.false_eq_true, ↓reduceIte] at h h'
+      exact ih hg h h'
 
 end Engine
 
@@ -280,59 +265,169 @@ theorem released_of_observed (hv : rho.ExecutionValid) {o : (protoOf F E).Object
     rho.signed_seen_released hv hi (rho.viewIdx_closure hov) hui hs
   exact ⟨j, t, he, hjo⟩
 
-/-- Two own-signed objects released by one tick never conflict. -/
+omit [DecidableEq V] in
+/-- The duties `ds` release what one `releaseAll` call from `nd` releases on their candidates, leave
+the same `seen`, and have the refusals of one `guardRefusals` call on the same candidates. -/
+theorem runDuties_flat_guard (v : V) (ds : List (protoOf F E).Duty) :
+    ∀ nd : Node (protoOf F E), ∃ cs : List (protoOf F E).Object,
+      (rho.runDuties v nd ds).2 = (releaseAll (protoOf F E) rho.hash (rho.ownKey v) nd cs).2 ∧
+      (rho.runDuties v nd ds).1.seen =
+        (releaseAll (protoOf F E) rho.hash (rho.ownKey v) nd cs).1.seen ∧
+      rho.runDutiesRefusals v nd ds =
+        guardRefusals (protoOf F E) rho.hash (rho.ownKey v) nd cs := by
+  induction ds with
+  | nil => intro _; exact ⟨[], rfl, rfl, rfl⟩
+  | cons d ds ih =>
+    intro nd
+    obtain ⟨cs, h2, h1, h3⟩ := ih (rho.dutyStep v nd d).1
+    by_cases hk : rho.ownKey v ∈ rho.sel ((protoOf F E).role d)
+    · have hstep : rho.dutyStep v nd d = releaseAll (protoOf F E) rho.hash (rho.ownKey v)
+          ⟨((protoOf F E).act nd.st d).1, nd.seen⟩
+          (rho.signedCandidate v d ((protoOf F E).act nd.st d).2) := by
+        rw [rho.dutyStep_eq, ite_eq_left hk]
+      have hrefs : rho.dutyRefusals v nd d = guardRefusals (protoOf F E) rho.hash (rho.ownKey v)
+          ⟨((protoOf F E).act nd.st d).1, nd.seen⟩
+          (rho.signedCandidate v d ((protoOf F E).act nd.st d).2) := by
+        unfold dutyRefusals
+        rw [ite_eq_left hk]
+      rw [hstep] at h1 h2 h3
+      have hso := releaseAll_seen_only rho.hash (rho.ownKey v)
+        (nd := ⟨((protoOf F E).act nd.st d).1, nd.seen⟩) (nd' := nd) rfl
+        (rho.signedCandidate v d ((protoOf F E).act nd.st d).2)
+      have hso' := releaseAll_seen_only rho.hash (rho.ownKey v) hso.2 cs
+      refine ⟨rho.signedCandidate v d ((protoOf F E).act nd.st d).2 ++ cs, ?_, ?_, ?_⟩
+      · rw [rho.runDuties_cons, hstep, h2, releaseAll_append, hso.1, hso'.1]
+      · rw [rho.runDuties_cons, hstep, h1, releaseAll_append, hso'.2]
+      · rw [runDutiesRefusals, hrefs, hstep, h3, guardRefusals_append,
+          guardRefusals_seen_only rho.hash (rho.ownKey v)
+            (nd := ⟨((protoOf F E).act nd.st d).1, nd.seen⟩) (nd' := nd) rfl,
+          guardRefusals_seen_only rho.hash (rho.ownKey v) hso.2]
+    · have hstep : rho.dutyStep v nd d = (nd, []) := by rw [rho.dutyStep_eq, ite_eq_right hk]
+      have hrefs : rho.dutyRefusals v nd d = [] := by
+        unfold dutyRefusals
+        rw [ite_eq_right hk]
+      rw [hstep] at h1 h2 h3
+      refine ⟨cs, ?_, ?_, ?_⟩
+      · rw [rho.runDuties_cons, hstep, List.nil_append]
+        exact h2
+      · rw [rho.runDuties_cons, hstep]
+        exact h1
+      · rw [runDutiesRefusals, hrefs, hstep, List.nil_append]
+        exact h3
+
+omit [DecidableEq V] in
+/-- A tick releases what one `releaseAll` call from its starting node releases on some candidates,
+and its refusals are those of one `guardRefusals` call on the same candidates. -/
+theorem tick_flat_guard (nd : Node (protoOf F E)) (v : V) (t : Time) :
+    ∃ cs : List (protoOf F E).Object,
+      (rho.tick nd v t).2 = (releaseAll (protoOf F E) rho.hash (rho.ownKey v) nd cs).2 ∧
+      rho.tickRefusals nd v t = guardRefusals (protoOf F E) rho.hash (rho.ownKey v) nd cs := by
+  by_cases hw : E.awake v t = true
+  · obtain ⟨cs, h2, h1, h3⟩ := rho.runDuties_flat_guard v ((protoOf F E).duties t)
+      ⟨(protoOf F E).clock nd.st t (mempool rho.inbox v t), nd.seen⟩
+    have hso := releaseAll_seen_only rho.hash (rho.ownKey v)
+      (nd := ⟨(protoOf F E).clock nd.st t (mempool rho.inbox v t), nd.seen⟩) (nd' := nd) rfl cs
+    refine ⟨cs ++ gossipCandidates (protoOf F E) (rho.runDuties v
+      ⟨(protoOf F E).clock nd.st t (mempool rho.inbox v t), nd.seen⟩
+        ((protoOf F E).duties t)).1.st t, ?_, ?_⟩
+    · rw [rho.tick_of_awake nd v t hw, releaseAll_append, h2, hso.1,
+        (releaseAll_seen_only rho.hash (rho.ownKey v) (h1.trans hso.2) _).1]
+    · unfold tickRefusals
+      rw [ite_eq_left hw]
+      dsimp only
+      rw [h3, guardRefusals_append, guardRefusals_seen_only rho.hash (rho.ownKey v)
+          (nd := ⟨(protoOf F E).clock nd.st t (mempool rho.inbox v t), nd.seen⟩) (nd' := nd) rfl,
+        guardRefusals_seen_only rho.hash (rho.ownKey v) (h1.trans hso.2)]
+  · refine ⟨[], ?_, ?_⟩
+    · rw [rho.tick_of_asleep nd v t (by simpa using hw)]
+      rfl
+    · unfold tickRefusals
+      rw [ite_eq_right hw]
+      rfl
+
+omit [DecidableEq V] in
+/-- A delivery releases what one `releaseAll` call from the processed node releases on some
+candidates, and its refusals are those of one `guardRefusals` call on the same candidates. -/
+theorem deliver_flat_guard (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object)
+    (t : Time) :
+    ∃ cs : List (protoOf F E).Object,
+      (rho.deliver nd v o t).2 = (releaseAll (protoOf F E) rho.hash (rho.ownKey v)
+        ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩ cs).2 ∧
+      rho.deliverRefusals nd v o t = guardRefusals (protoOf F E) rho.hash (rho.ownKey v)
+        ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩ cs := by
+  obtain ⟨cs, h2, h1, h3⟩ := rho.runDuties_flat_guard v ((protoOf F E).deliverDuties t)
+    ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩
+  refine ⟨cs ++ gossipCandidates (protoOf F E) (rho.runDuties v
+    ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩
+      ((protoOf F E).deliverDuties t)).1.st t, ?_, ?_⟩
+  · change _ ++ _ = _
+    rw [releaseAll_append, h2, (releaseAll_seen_only rho.hash (rho.ownKey v) h1 _).1]
+  · unfold deliverRefusals
+    dsimp only
+    rw [h3, guardRefusals_append, guardRefusals_seen_only rho.hash (rho.ownKey v) h1]
+
+/-- With no refusal at the tick, two own-signed objects released by it never conflict. -/
 theorem tick_noConflict {i : Nat} {v : V} {t : Time} (he : rho.events[i]? = some (.tick v t))
+    (hg : rho.guardRefusalsAt i = [])
     {c c' : (protoOf F E).Object} (hc : c ∈ rho.releasesAt i) (hc' : c' ∈ rho.releasesAt i)
     (hs : c.signer? = some (rho.ownKey v)) (hs' : c'.signer? = some (rho.ownKey v)) :
     (protoOf F E).conflicts c c' = false := by
   simp only [releasesAt, he] at hc hc'
-  obtain ⟨cs, -, h2, -⟩ := rho.tick_flat (rho.stateBefore i v) v t
+  simp only [guardRefusalsAt, he] at hg
+  obtain ⟨cs, h2, h3⟩ := rho.tick_flat_guard (rho.stateBefore i v) v t
   rw [h2] at hc hc'
-  exact releaseAll_noConflict hc hc' hs hs'
+  rw [h3] at hg
+  exact releaseAll_noConflict hg hc hc' hs hs'
 
-/-- An own-signed object released by a tick never conflicts, in either order,
-with an own-signed object in the closure of the node's `seen` before it. -/
+/-- With no refusal at the tick, an own-signed object it releases never conflicts, in either
+order, with an own-signed object in the closure of the node's `seen` before it. -/
 theorem tick_noConflict_seen {i : Nat} {v : V} {t : Time}
-    (he : rho.events[i]? = some (.tick v t)) {c o : (protoOf F E).Object}
+    (he : rho.events[i]? = some (.tick v t)) (hg : rho.guardRefusalsAt i = [])
+    {c o : (protoOf F E).Object}
     (hc : c ∈ rho.releasesAt i) (ho : o ∈ closure (rho.stateBefore i v).seen)
     (hs : c.signer? = some (rho.ownKey v)) (hs' : o.signer? = some (rho.ownKey v)) :
     (protoOf F E).conflicts c o = false ∧ (protoOf F E).conflicts o c = false := by
   simp only [releasesAt, he] at hc
-  obtain ⟨cs, -, h2, -⟩ := rho.tick_flat (rho.stateBefore i v) v t
+  simp only [guardRefusalsAt, he] at hg
+  obtain ⟨cs, h2, h3⟩ := rho.tick_flat_guard (rho.stateBefore i v) v t
   rw [h2] at hc
-  exact releaseAll_noConflict_seen hc ho hs hs'
+  rw [h3] at hg
+  exact releaseAll_noConflict_seen hg hc ho hs hs'
 
-/-- Two own-signed objects released by one delivery never conflict. -/
+/-- With no refusal at the delivery, two own-signed objects released by it never conflict. -/
 theorem deliver_noConflict {i : Nat} {v : V} {p : (protoOf F E).Object} {t : Time}
-    (he : rho.events[i]? = some (.deliver v p t))
+    (he : rho.events[i]? = some (.deliver v p t)) (hg : rho.guardRefusalsAt i = [])
     {c c' : (protoOf F E).Object} (hc : c ∈ rho.releasesAt i) (hc' : c' ∈ rho.releasesAt i)
     (hs : c.signer? = some (rho.ownKey v)) (hs' : c'.signer? = some (rho.ownKey v)) :
     (protoOf F E).conflicts c c' = false := by
   simp only [releasesAt, he] at hc hc'
-  obtain ⟨cs, -, h2, -⟩ := rho.deliver_flat (rho.stateBefore i v) v p t
+  simp only [guardRefusalsAt, he] at hg
+  obtain ⟨cs, h2, h3⟩ := rho.deliver_flat_guard (rho.stateBefore i v) v p t
   rw [h2] at hc hc'
-  exact releaseAll_noConflict hc hc' hs hs'
+  rw [h3] at hg
+  exact releaseAll_noConflict hg hc hc' hs hs'
 
-/-- An own-signed object released by a delivery never conflicts, in either
-order, with an own-signed object in the closure of the node's `seen` before
-it. -/
+/-- With no refusal at the delivery, an own-signed object it releases never conflicts, in either
+order, with an own-signed object in the closure of the node's `seen` before it. -/
 theorem deliver_noConflict_seen {i : Nat} {v : V} {p : (protoOf F E).Object} {t : Time}
-    (he : rho.events[i]? = some (.deliver v p t)) {c o : (protoOf F E).Object}
+    (he : rho.events[i]? = some (.deliver v p t)) (hg : rho.guardRefusalsAt i = [])
+    {c o : (protoOf F E).Object}
     (hc : c ∈ rho.releasesAt i) (ho : o ∈ closure (rho.stateBefore i v).seen)
     (hs : c.signer? = some (rho.ownKey v)) (hs' : o.signer? = some (rho.ownKey v)) :
     (protoOf F E).conflicts c o = false ∧ (protoOf F E).conflicts o c = false := by
   simp only [releasesAt, he] at hc
-  obtain ⟨cs, -, h2, -⟩ := rho.deliver_flat (rho.stateBefore i v) v p t
+  simp only [guardRefusalsAt, he] at hg
+  obtain ⟨cs, h2, h3⟩ := rho.deliver_flat_guard (rho.stateBefore i v) v p t
   rw [h2] at hc
-  exact releaseAll_noConflict_seen hc (closure_mono (fun x hx => List.mem_append_left _ hx) ho)
+  rw [h3] at hg
+  exact releaseAll_noConflict_seen hg hc (closure_mono (fun x hx => List.mem_append_left _ hx) ho)
     hs hs'
 
-/-- No honest validator is slashable on what the honest nodes saw, for every
-protocol: both conflicting objects were released by the validator itself, and
-the later one (by event, or by position within one tick or delivery) was
-checked against the earlier one. -/
+/-- On a run with an idle slashing guard, a validator whose signed objects in `A` it released
+itself is not slashable on `A`: the later of two conflicting objects (by event, or by position
+within one tick or delivery) would have been refused against the earlier one. -/
 theorem not_slashable_of_released {A : Set (protoOf F E).Object} {x : V}
-    (hr : ∀ o ∈ A, rho.signerOf o = some x →
+    (hg : rho.GuardIdle) (hr : ∀ o ∈ A, rho.signerOf o = some x →
       ∃ j t, rho.SendsAt x j t ∧ o ∈ rho.releasesAt j) : ¬ rho.Slashable A x := by
   rintro ⟨o, ho, o', ho', hs, hs', hc⟩
   obtain ⟨j, t, hj, hjo⟩ := hr o ho hs
@@ -343,15 +438,15 @@ theorem not_slashable_of_released {A : Set (protoOf F E).Object} {x : V}
       (hc' : c' ∈ rho.releasesAt i) (hs : c.signer? = some (rho.ownKey x))
       (hs' : c'.signer? = some (rho.ownKey x)) : (protoOf F E).conflicts c c' = false := by
     rcases hi with he | ⟨p, he⟩
-    · exact rho.tick_noConflict he hc hc' hs hs'
-    · exact rho.deliver_noConflict he hc hc' hs hs'
+    · exact rho.tick_noConflict he (hg i) hc hc' hs hs'
+    · exact rho.deliver_noConflict he (hg i) hc hc' hs hs'
   have ncs {i t c o} (hi : rho.SendsAt x i t) (hc : c ∈ rho.releasesAt i)
       (ho : o ∈ closure (rho.stateBefore i x).seen) (hs : c.signer? = some (rho.ownKey x))
       (hs' : o.signer? = some (rho.ownKey x)) :
       (protoOf F E).conflicts c o = false ∧ (protoOf F E).conflicts o c = false := by
     rcases hi with he | ⟨p, he⟩
-    · exact rho.tick_noConflict_seen he hc ho hs hs'
-    · exact rho.deliver_noConflict_seen he hc ho hs hs'
+    · exact rho.tick_noConflict_seen he (hg i) hc ho hs hs'
+    · exact rho.deliver_noConflict_seen he (hg i) hc ho hs hs'
   rcases lt_trichotomy j j' with hlt | rfl | hgt
   · have hm : o ∈ closure (rho.stateBefore j' x).seen :=
       mem_closure_of_mem (rho.seen_mono hlt x (rho.releasesAt_seen hj hjo))
@@ -367,12 +462,14 @@ theorem not_slashable_of_released {A : Set (protoOf F E).Object} {x : V}
     rw [hc] at this
     cases this
 
-theorem honestNeverSlashed (hv : rho.ExecutionValid) :
+/-- On a valid run with an idle slashing guard, no validator honest at `d` is slashable on what
+the nodes saw by `d`. -/
+theorem honestNeverSlashed (hv : rho.ExecutionValid) (hg : rho.GuardIdle) :
     ∀ v d, v ∉ rho.faultyAt d →
       ¬ rho.Slashable {o | ∃ w i, i ≤ rho.events.length ∧
         rho.cutTime i ≤ d ∧ o ∈ rho.ViewIdx w i} v := by
   intro v d hvh
-  exact rho.not_slashable_of_released fun _ ho hs => rho.released_of_observed hv ho hvh hs
+  exact rho.not_slashable_of_released hg fun _ ho hs => rho.released_of_observed hv ho hvh hs
 
 end Run
 
@@ -391,11 +488,12 @@ theorem mem_honestEvidence_iff (rho : Run F E) (hv : rho.ExecutionValid)
     exact ⟨w, i, hi, ((sysOf_laws O F V).trace ⟨E, rho⟩ hv).cutTime_le_horizon i hi,
       hw, p, hp, rfl⟩
 
-/-- L0 non-framing holds for every model system. -/
+/-- L0 non-framing holds for every model system whose valid runs have an idle slashing guard. -/
 theorem sysOf_nonFraming (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [Fintype V]
-    [DecidableEq V] : (sysOf O F V).HoldsAlways (sysOf O F V).NonFraming := by
+    [DecidableEq V] (hg : (sysOf O F V).HoldsAlways fun r => r.2.GuardIdle) :
+    (sysOf O F V).HoldsAlways (sysOf O F V).NonFraming := by
   rintro ⟨E, rho⟩ hv v d hvh hconv
-  apply rho.honestNeverSlashed hv v d hvh
+  apply rho.honestNeverSlashed hv (hg ⟨E, rho⟩ hv) v d hvh
   obtain ⟨o, ho, o', ho', h1, h2, h3⟩ := hconv
   have obs {p : (protoOf F E).Object}
       (hp : (⟨E, p⟩ : (sysOf O F V).Obs) ∈

@@ -3,6 +3,7 @@ public import ConsensusLean.Proofs.RegimesRealizable.Main
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Continuation
 public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 import ConsensusLean.Lemmas.Model.Causal
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GuardIdle
 import ConsensusLean.Lemmas.Model.Laws
 import ConsensusLean.Lemmas.Model.Adequate
 import ConsensusLean.Lemmas.Problem.Facts.Network
@@ -13,8 +14,8 @@ public section
 /-! # Non-vacuity of continuation after healing (`Continues.realizable`)
 
 `handover_realizable`: for every chain-shape family whose progress requirements are recurrences
-fitting its skeleton, at admissible numbers with explicit `θ ≤ ½` and `β ≤ ⅓` premises,
-and at least five validators, every
+fitting its skeleton and whose slashing protection never fires (`GuardIdleAlways`), at
+admissible numbers with explicit `θ ≤ ½` and `β ≤ ⅓` premises, and at least five validators, every
 `ΔAC > 1`, `ΔFG > 1` within the FG delay bound and every GST `g` have a valid excuse-free run that
 hands over to the sleepy regime at the heal point `T = max g 0 + heal·ΔAC`, with
 `⌈n/3⌉ ≥ β·n` validators compromised from `κ = T + 1` on and both continuation claims active
@@ -26,7 +27,8 @@ compromised at `κ`, nobody before; transaction `42` submitted to key `1` at `0`
 causal run from GST `g` under the extremal selection (key `1`, never compromised, proposes every
 slot). Up to `T` there are no faults (healthy, full participation); from `T` on the retained view
 of every look-ahead has at most `⌈n/3⌉ < n/2` faults (`n ≥ 5`) and every other validator ready,
-so the sleepy bound holds at `θ ≤ ½`. The causal run convicts nobody on honest evidence, so no two
+so the sleepy bound holds at `θ ≤ ½`. The causal run, whose slashing protection never fires,
+convicts nobody on honest evidence, so no two
 honest views convict anyone (`ConvictedBelow`). Keys `1` and `2` stay honest and awake: the
 liveness reader and the two safety readers after `κ`. -/
 
@@ -201,7 +203,8 @@ private theorem handoverPoint_safeActive (c t₀ : Time) (hH : t₀ + 2 ≤ H) :
 
 end Point
 
-/-- **Hand-over witness**: for a family whose progress requirements are fitting recurrences, at
+/-- **Hand-over witness**: for a family whose progress requirements are fitting recurrences and
+whose slashing protection never fires, at
 admissible numbers with explicit `θ ≤ ½` and `β ≤ ⅓` premises and at least five validators,
 every `ΔAC > 1`, `ΔFG > 1` within
 the FG delay bound and every GST `g` have a valid excuse-free run that hands over at the heal
@@ -209,7 +212,7 @@ point `T`, with at least fraction `β` compromised by `κ = T + 1`, progress fro
 horizon, and liveness and safety active after `κ`. -/
 theorem handover_realizable (F : ChainShapeFamily O Info) (K : Contract ProgressReq)
     (ha : K.params.Admissible) (hθ : K.params.θ ≤ 1 / 2)
-    (hβ : K.params.β ≤ 1 / 3) (hf : ProgressFits K F)
+    (hβ : K.params.β ≤ 1 / 3) (hf : ProgressFits K F) (hg : GuardIdleAlways F)
     (hrec : ∀ cap i, ∃ ρ, K.progress cap i = .recur ρ) (hn : 5 ≤ Fintype.card V)
     (cap : Capability) (i : K.Idx) (Δ ΔF g : Time) (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF)
     (hr : ΔF ≤ (K.params.fgDelay : Time) * Δ) :
@@ -242,7 +245,7 @@ theorem handover_realizable (F : ChainShapeFamily O Info) (K : Contract Progress
   have hnc : ¬ rho.HashCollision :=
     Model.Run.not_hashCollision_of_injective (Model.Run.injectiveHash_iff.mpr hinj)
   have hconv := Model.convicted_honestEvidence_eq_empty (O := O) rho hv
-    (rho.not_slashable_of_causal hc)
+    (rho.not_slashable_of_causal hc (hg V r hv))
   have hse := Model.sysOf_eagerFrom (O := O) rho he
   have hL := Model.sysOf_laws O (compiled F) V
   refine ⟨r, T, κ, hv, hnc, rfl, rfl,
@@ -284,7 +287,8 @@ open Blocks Shape
 
 /-- **Continuation is not vacuous** for Goldilocks: the `realizable` field of `Continues` for the
 compiled family at the headline contract, from `handover_realizable` (every Goldilocks progress
-requirement is a recurrence with one proposer per slot, and `β = ⅓`). -/
+requirement is a recurrence with one proposer per slot, `β = ⅓`, and the slashing guard never
+fires, `Simulation.guardIdle`). -/
 theorem continues_realizable (S : Setup) (A : ContractAssumptions S)
     (V : Type) [Fintype V] [DecidableEq V] :
     let Sy := Model.sysOf schema (compiled (goldilocks { S with vote := AsChainShape.stock })) V
@@ -307,8 +311,9 @@ theorem continues_realizable (S : Setup) (A : ContractAssumptions S)
       budget_pos := by have := S.two_le_k; dsimp [K, Params.standard]; omega }
   exact handover_realizable (goldilocks { S with vote := AsChainShape.stock }) K ha
     (by norm_num [K, Params.standard])
-    (by norm_num [K, Params.standard])
-    (fun _ _ _ _ => rfl) (fun _ _ => ⟨_, rfl⟩) hn cap i ΔAC ΔFG g hΔ hΔF hr
+    (by norm_num [K, Params.standard]) (fun _ _ _ _ => rfl)
+    (fun _ _ _ r hv => Simulation.guardIdle _ r.2 hv)
+    (fun _ _ => ⟨_, rfl⟩) hn cap i ΔAC ΔFG g hΔ hΔF hr
 
 end Consensus.Goldilocks
 

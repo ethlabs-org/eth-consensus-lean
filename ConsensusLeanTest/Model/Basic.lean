@@ -24,9 +24,10 @@ A tiny protocol with two roles: `false` (every key, one duty per integer time)
 and `true` (one key). Tests: relayed ingress and the cumulative mempool,
 validity rules out a negative horizon, credentials bind the role (a key
 selected for one role cannot sign in another), ticks happen at every
-integer time, and slashing protection: with `conflicts` always true the engine
-releases no signed object, so non-framing holds by construction, and
-protection ignores candidates signed by other keys. Same-tick semantics
+integer time, and slashing protection: the engine releases a candidate that
+`protects` refuses, so a protocol whose `conflicts` is always true has no idle
+guard; with an idle guard it would release no signed object; protection
+ignores candidates signed by other keys. Same-tick semantics
 (`seqProto`): a later duty of a tick sees the `recordOwn` of an earlier
 release, and `act`'s state is applied when the node is not selected. -/
 
@@ -117,7 +118,7 @@ theorem signed_batch_dependency_order :
     (rho.dutyStep 0 ⟨(), []⟩ (1 : Time)).2 = [parent] ∧
     ({ rho with sel := fun _ => ∅ }.dutyStep 0 ⟨(), []⟩ (0 : Time)).2 = [] := by
   simp [Run.dutyStep, Run.signedCandidate, Run.ownKey, batchProto, proto, protoOf,
-    releaseAll, releasable, protects, Obj.carried, Model.closure, Obj.parts, Obj.item?,
+    releaseAll, releasable, Obj.carried, Model.closure, Obj.parts, Obj.item?,
     Obj.msg, pkiFin]
   exact ⟨rfl, rfl⟩
 
@@ -219,9 +220,10 @@ def protoC (pub : Public) : Protocol pub Unit := { proto pub with conflicts := f
 def familyC : ProtocolFamily schema := protoC
 
 /-- With `conflicts` always true, slashing protection refuses every own-signed
-candidate: every release of every run (valid or not) is unsigned. -/
+candidate: on a run with an idle guard every release is unsigned. -/
 theorem conflictsTrue_releases_unsigned_only {V : Type} [Fintype V] [DecidableEq V]
-    (E : Env V) (rho : Run familyC E) (i : Nat) {o : (protoOf familyC E).Object}
+    (E : Env V) (rho : Run familyC E) (hg : rho.GuardIdle) (i : Nat)
+    {o : (protoOf familyC E).Object}
     (ho : o ∈ rho.releasesAt i) : o.signer? = none := by
   have ho' := ho
   cases he : rho.events[i]? with
@@ -233,22 +235,31 @@ theorem conflictsTrue_releases_unsigned_only {V : Type} [Fintype V] [DecidableEq
       rcases rho.tick_signer _ v t ho with h | h
       · exact h
       · have hf : (protoOf familyC E).conflicts o o = false :=
-          rho.tick_noConflict he ho' ho' h h
+          rho.tick_noConflict he (hg i) ho' ho' h h
         cases hf
     | deliver v p t =>
       simp only [Run.releasesAt, he] at ho
       rcases rho.deliver_signer _ v p t ho with h | h
       · exact h
       · have hf : (protoOf familyC E).conflicts o o = false :=
-          rho.deliver_noConflict he ho' ho' h h
+          rho.deliver_noConflict he (hg i) ho' ho' h h
         cases hf
     | restart v t => simp [Run.releasesAt, he] at ho
 
-/-- Hence non-framing, which a protocol convicting everything would violate
-without protection, holds for it (an instance of `sysOf_nonFraming`). -/
-theorem conflictsTrue_nonFraming :
-    (sysOf schema familyC (Fin 2)).HoldsAlways (sysOf schema familyC (Fin 2)).NonFraming :=
-  sysOf_nonFraming _ _ _
+/-- The engine has no slashing protection: it releases `familyC`'s own signed candidate, which
+conflicts with itself, and that candidate is the duty's refusal, so a run executing this duty
+has no idle guard. -/
+theorem conflictsTrue_guard_fires :
+    let rho : Run (O := schema) familyC (Env.mk 1 (by decide) 1 (by decide) (fun _ _ => true)) :=
+      Run.mk (fun _ => ∅) monotone_const 1 [] (pkiFin 1) (fun _ => Finset.univ)
+        (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
+    let c := Obj.mk (.signed (0 : Fin 1) false) (.data ()) []
+    (rho.dutyStep 0 ⟨(), []⟩ (0 : Time)).2 = [c] ∧
+      rho.dutyRefusals 0 ⟨(), []⟩ (0 : Time) = [c] := by
+  simp [Run.dutyStep, Run.dutyRefusals, Run.signedCandidate, Run.ownKey, familyC, protoC, proto,
+    protoOf, releaseAll, guardRefusals, releasable, protects, Obj.carried, Model.closure,
+    Obj.signer?, Obj.auth, pkiFin, DependencyPolicy.trivial]
+  rfl
 
 /-- Protection fires on own candidates only: a candidate signed by key `1`
 passes `protects` for key `0`, even next to a key-`0` object it would conflict
@@ -301,7 +312,7 @@ theorem later_duty_sees_recordOwn (rho : Run seqFamily env) (v : Fin 2)
         .mk (.signed (rho.ownKey v) true) (.data (11 : Nat)) []] := by
   erw [Run.runDuties_cons, Run.runDuties_cons, Run.runDuties_nil]
   unfold Run.dutyStep Run.signedCandidate
-  simp [hsel, releaseAll, releasable, protects, Obj.carried, protoOf, seqFamily, seqProto]
+  simp [hsel, releaseAll, releasable, Obj.carried, protoOf, seqFamily, seqProto]
   rfl
 
 /-- An unselected duty leaves state unchanged: duty `false` is skipped,
@@ -312,7 +323,7 @@ theorem state_unchanged_unselected (rho : Run seqFamily env) (v : Fin 2)
       [.mk (.signed (rho.ownKey v) true) (.data (0 : Nat)) []] := by
   erw [Run.runDuties_cons, Run.runDuties_cons, Run.runDuties_nil]
   unfold Run.dutyStep Run.signedCandidate
-  simp [hsel, releaseAll, releasable, protects, Obj.carried, protoOf, seqFamily, seqProto]
+  simp [hsel, releaseAll, releasable, Obj.carried, protoOf, seqFamily, seqProto]
   rfl
 
 end Consensus.Shape.Tests.Model

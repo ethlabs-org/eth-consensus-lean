@@ -37,28 +37,24 @@ for every setup `S`, every assumption set
 validator type `V`, the Goldilocks family, compiled and run by the general execution model
 (`sysOf schema (compiled (goldilocks S)) V`, with progress read by `shapeProgress`), is an L0
 `CorrectProtocol` at the contract `goldilocksContract A (contract_coefficients S A)`,
-whose fractions satisfy `Params.OptimalFaultTolerance`, and on every valid execution
-in every environment the engine's slashing protection never fires (`Model.Run.GuardIdle`).
-Correctness composes `MeetsObligations` with the review statement `ObligationsSufficient`;
-optimality pins the contract's fractions. The non-framing row of `CorrectProtocol` holds for
-every protocol because the engine refuses own-signed conflicts; the third conjunct says the
-guard never rejects a candidate of an honest Goldilocks node, so what the engine releases, and
-hence non-framing, does not depend on the guard. No conjunct adds a hypothesis. -/
+whose fractions satisfy `Params.OptimalFaultTolerance`. Correctness composes
+`MeetsObligations` with the review statement `ObligationsSufficient`; optimality
+pins the contract's fractions. Neither conjunct adds a hypothesis. The engine has no slashing
+protection, so the non-framing row of `CorrectProtocol` is Goldilocks' own: it comes from the
+endpoint's obligation that slashing protection never fires (`Shape.GuardIdleAlways`). -/
 def GoldilocksCorrect : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V],
     CorrectProtocol (Model.sysOf schema (compiled (goldilocks S)) V)
       (shapeProgress (goldilocks S) V) (goldilocksContract A (contract_coefficients S A)) ∧
-      (goldilocksContract A (contract_coefficients S A)).params.OptimalFaultTolerance ∧
-      ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E),
-        rho.ExecutionValid → rho.GuardIdle
+      (goldilocksContract A (contract_coefficients S A)).params.OptimalFaultTolerance
 ```
 
 The correctness conjunct follows from `ShapeObligations.correct (Obligations.meets_obligations S A).2 V`: the
 generic statement `ObligationsSufficient` below, applied to the Goldilocks endpoint `MeetsObligations` without its
-profile label (`.2`; the profile is below). Optimality follows from the contract's standard fractions. The guard
-conjunct is `Simulation.guardIdle`: only a poll's own attestation can conflict, it is the first candidate of its
-batch, and the node's FG record admits it (`FG.client_safety`). The other four certified statements are the
-generic ones that follow.
+profile label (`.2`; the profile is below). Optimality follows from the contract's standard fractions. The
+endpoint's slashing-protection obligation `GuardIdleAlways` is `Simulation.guardIdle`: only a poll's own
+attestation can conflict, it is the first candidate of its batch, and the node's FG record admits it
+(`FG.client_safety`). The other four certified statements are the generic ones that follow.
 
 ## The statements
 
@@ -135,10 +131,15 @@ structure ShapeObligations (F : ChainShapeFamily O Info) (K : Contract ProgressR
   /-- Every provided output tolerates arbitrary numbers of validators not
   ready and a bad proposer slot in every window. -/
   progressTolerant : ProgressTolerant O K
+  /-- Slashing protection never fires on a valid run (non-framing). -/
+  guardIdle : GuardIdleAlways F
 ```
 
 `ShapeObligations` carries the admissibility, progress-fit and progress-tolerance premises of
-`RegimesRealizable`, as well as the protocol's claims and its served-output condition.
+`RegimesRealizable`, as well as the protocol's claims, its served-output condition and its own
+slashing protection (`GuardIdleAlways F`: for every finite validator type, every valid run of
+the compiled family satisfies `Model.Run.GuardIdle`). The engine has no slashing protection, so
+this obligation is what gives `CorrectProtocol` its non-framing row.
 
 **Profiles.** An endpoint states which standard capability set the protocol provides, as a checked
 label (`ConsensusLean/Spec/Problem/Profile.lean`, `ConsensusLean/Spec/Shape/Obligations.lean`):
@@ -656,7 +657,8 @@ for every protocol:
 
 L1 also proves `Adequate` once (`sysOf_adequate`, from `canonical_run_from`
 for every GST, including silent runs, and from `Run.truncate` for prefixes),
-and non-framing (`sysOf_nonFraming`, from slashing protection in the engine).
+and non-framing from an idle slashing guard (`sysOf_nonFraming`: on a system whose valid runs
+satisfy `Run.GuardIdle`, which `ShapeObligations` requires as `GuardIdleAlways`).
 
 ## Reading order: the trusted files
 
@@ -674,9 +676,9 @@ The generated library root only collects imports.
 7. `ConsensusLean/Spec/Problem/Profile.lean`: Profiles (`ebbAndFlow`, `bft`, `available`) and `Profile.Matches`, the exact capability set of a schema.
 8. `ConsensusLean/Spec/Model/Objects.lean`: Authenticated wire objects, carried-object closure, signers, items and decidable equality.
 9. `ConsensusLean/Spec/Model/Protocol.lean`: Public parameters, closed selections, protocol interfaces (including the per-candidate signing role `candidateRole` and the observed participation role `participationRole`), selection admissibility and families.
-10. `ConsensusLean/Spec/Model/Run.lean`: Events and their order, runs, engine state (initialized with the own role membership), signing (checks duty-role and candidate-role membership, then signs in the candidate role), releases, inboxes, views, slashing protection and local reads.
+10. `ConsensusLean/Spec/Model/Run.lean`: Events and their order, runs, engine state (initialized with the own role membership), signing (checks duty-role and candidate-role membership, then signs in the candidate role), releases (without slashing protection), inboxes, views, the slashing-protection predicate `protects` and local reads.
 11. `ConsensusLean/Spec/Model/Conditions.lean`: Signature unforgeability, valid selections, credentials, `ExecutionValid` and the engine communication log.
-12. `ConsensusLean/Spec/Model/Guard.lean`: The candidates slashing protection refuses at an event (`Run.guardRefusalsAt`), in the engine's release order, and `Run.GuardIdle`, that it refuses none.
+12. `ConsensusLean/Spec/Model/Guard.lean`: The candidates slashing protection would refuse at an event (`Run.guardRefusalsAt`), in the engine's release order, and `Run.GuardIdle`, that there are none.
 13. `ConsensusLean/Spec/Model/System.lean`: Evidence-based conviction, observed hash collisions, `sysOf`, and external PKI/selection data with the observed participating population (`sysExternal`).
 14. `ConsensusLean/Spec/Model/Served.lean`: Engine holding at a deadline (`Run.Served`), used by the `HeldIffServed` review statement.
 15. `ConsensusLean/Spec/Blocks/TimeGrid.lean`: Slots, their lengths and times, with phases measured in multiples of ΔAC.
@@ -706,13 +708,13 @@ The generated library root only collects imports.
 - **Credentials.** Every signed object inside a delivered object is signed by
   a key selected for its role, faulty signers included
   (`Run.selected_of_observed`). Signatures bind their role.
-- **Slashing protection in the engine.** The engine refuses an own-signed
-  candidate that conflicts with an own-signed object it has seen; `seen`
-  survives restarts. Hence `honestNeverSlashed` and non-framing hold for
-  every protocol. A protocol whose `conflicts` is always true silences
-  itself (`conflictsTrue_silent`). Whether a protocol's own rules avoid
-  conflicts is stated separately: `Run.GuardIdle` (the guard refuses no
-  candidate), which `GoldilocksCorrect` claims for Goldilocks.
+- **No slashing protection in the engine.** The engine releases whatever
+  honest code signs, subject to carried-object and dependency readiness. Non-framing is the protocol's obligation
+  (`GuardIdleAlways` in `ShapeObligations`): on every valid run no candidate
+  conflicts with itself or with an own-signed object its node has seen
+  (`Run.GuardIdle`). With it, `honestNeverSlashed` and non-framing follow,
+  because `seen` survives restarts. A protocol whose `conflicts` is always
+  true cannot meet both the obligation and the claims (`conflictsTrue_rejected`).
 - **Engine-written payload.** Every proposal's `input := encodeTxs mempool`.
   Reads are `ledgerOf` of the output chains.
 - **Closed `ProposalRole` and poll mode.** Provenance accepts a header only
@@ -763,8 +765,6 @@ faults.
 - **Credentials:** the deployed membership mechanism is sound for the
   selection.
 - **Signatures:** unforgeable, binding key and role.
-- **Slashing protection:** the deployed client implements `protects` and
-  persists its seen log across restarts (as an EIP-3076 database does).
 - **Delivery:** the network rule above, for honest releases, including
   honest re-releases of adversarial objects, and for transactions (inboxes
   survive restarts).

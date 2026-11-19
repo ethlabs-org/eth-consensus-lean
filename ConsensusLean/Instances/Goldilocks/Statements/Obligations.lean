@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Spec.Shape.Obligations
 public import ConsensusLean.Instances.Goldilocks.AsChainShape
-public import ConsensusLean.Spec.Model.Guard
 
 @[expose] public section
 
@@ -177,21 +176,17 @@ validator type `V`, including the empty type, the family at `S`'s vote binding, 
 by the general execution model (`sysOf schema (compiled (goldilocks S)) V`, with progress read by
 `shapeProgress`), is an L0
 `CorrectProtocol` at the contract `goldilocksContract A (contract_coefficients S A)`,
-whose fractions satisfy `Params.OptimalFaultTolerance`, and on every valid execution
-in every environment the engine's slashing protection never fires (`Model.Run.GuardIdle`).
-Correctness composes `MeetsObligations` with the review statement `ObligationsSufficient`;
-optimality pins the contract's fractions. The non-framing row of `CorrectProtocol` holds for
-every protocol because the engine refuses own-signed conflicts; the third conjunct says the
-guard never rejects a candidate of an honest Goldilocks node, so what the engine releases, and
-hence non-framing, does not depend on the guard. No conjunct adds a hypothesis. -/
+whose fractions satisfy `Params.OptimalFaultTolerance`. Correctness composes
+`MeetsObligations` with the review statement `ObligationsSufficient`; optimality
+pins the contract's fractions. Neither conjunct adds a hypothesis. The engine has no slashing
+protection, so the non-framing row of `CorrectProtocol` is Goldilocks' own: it comes from the
+endpoint's obligation that slashing protection never fires (`Shape.GuardIdleAlways`). -/
 def GoldilocksCorrect : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V],
     CorrectProtocol (Model.sysOf schema (compiled (goldilocks S)) V)
       (shapeProgress (goldilocks S) V)
       (goldilocksContract A (contract_coefficients S A)) ∧
-      (goldilocksContract A (contract_coefficients S A)).params.OptimalFaultTolerance ∧
-      ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E),
-        rho.ExecutionValid → rho.GuardIdle
+      (goldilocksContract A (contract_coefficients S A)).params.OptimalFaultTolerance
 
 /-- **Goldilocks is correct or a binding fails.** For every setup, timing
 assumption set and finite validator type, including the empty type, on every structurally valid

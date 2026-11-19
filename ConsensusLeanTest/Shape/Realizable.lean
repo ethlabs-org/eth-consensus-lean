@@ -92,7 +92,7 @@ theorem coverage_keeps_selection (g : Time) :
     ∃ rho : Model.Run (compiled trivialFamily) point3.env, rho.point = point3 ∧
       rho.key = (pkiFin 3) ∧ rho.sel = sel3 ∧ rho.sel (ShapeRole.proposer 7) = {⟨2, by simp⟩} ∧
       rho.ExecutionValid ∧ ¬ rho.HashCollision ∧ CommLog.EagerFrom rho.point rho.log g := by
-  obtain ⟨rho, hp, hk, hs, hv, hn, -, he⟩ :=
+  obtain ⟨rho, hp, hk, hs, hv, hn, he⟩ :=
     coverage trivialFamily point3 (show (0 : Time) ≤ 10 by norm_num) (pkiFin 3) sel3 sel3_admits g
   exact ⟨rho, hp, hk, hs, by rw [hs]; rfl, hv, hn, he⟩
 

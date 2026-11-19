@@ -871,14 +871,14 @@ section Capstone
 reduces, at the run's public parameters, to the reduction proved above at the binding's map of
 each valid run, whose suppliers are fields of `LocalClaimSuppliers`
 (`holds_of_forall_public`, `holdsAlways_of_forall_public`). Without validators every claim is
-vacuous (`shapeClaimsAt_of_isEmpty`). The four non-claim obligations are the inputs themselves. -/
+vacuous (`shapeClaimsAt_of_isEmpty`). The five non-claim obligations are the inputs themselves. -/
 theorem meetsObligations_of_local_proof {O : OutputSchema} {Info : Type} [DecidableEq Info]
     [Countable Info]
     (F : ChainShapeFamily O Info) (K : Contract ProgressReq) :
     meetsObligations_of_local F K := by
   rw [meetsObligations_of_local_iff]
-  intro P A sg C events B D R hL hadm hserv hfit htol hβ hcf
-  refine ⟨fun V _ _ => ?_, hadm, hserv, hfit, htol⟩
+  intro P A sg C events B D R hL hadm hserv hfit htol hguard hβ hcf
+  refine ⟨fun V _ _ => ?_, hadm, hserv, hfit, htol, hguard⟩
   have hE := shapeClaimsAt_of_isEmpty F K V
   refine
     { outputValid := holdsAlways_of_forall_public (fun pub hn =>

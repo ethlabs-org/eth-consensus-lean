@@ -37,7 +37,7 @@ theorem healthy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : 
       (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).Healthy
           (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).toExternal
           (goldilocksContract A C) 0 r := by
-  obtain ⟨rho, hp, hk, hs, hv, hc, -, he⟩ := Shape.coverage
+  obtain ⟨rho, hp, hk, hs, hv, hc, he⟩ := Shape.coverage
     (goldilocks { S with vote := AsChainShape.stock }) (point H) hH
     (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0
   refine ⟨⟨(point H).env, rho⟩, rfl, hp, hs, hk, hv, hc, ?_, ⟨?_, ?_⟩, ?_, ?_⟩

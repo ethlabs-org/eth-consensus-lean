@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Goldi
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Supply.Fields
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.EngineBinding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GuardIdle
 
 public section
 
@@ -14,8 +15,8 @@ public section
 `S`, from the capstone (`meetsObligations_of_local_proof`) at the Goldilocks engine binding, the
 local supplier built from the healing witness (`goldilocksACCorrectLocal_of_healing`,
 `goldilocks_ac_healing`) and the local claim suppliers of the canonical run map
-(`goldilocks_localClaimSuppliers`). The binding's payload and run interface are the supplier's by
-its data equations. -/
+(`goldilocks_localClaimSuppliers`), and the idle slashing guard (`Simulation.guardIdle`). The
+binding's payload and run interface are the supplier's by its data equations. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Obligations Generic Simulation
@@ -88,6 +89,7 @@ theorem meetsObligations_growing : ShapeObligations (goldilocks S) (K S A) := by
     (fun V _ _ pub => R V _ _ pub) (fun V _ _ pub => hL V _ _ pub)
     (meetsObligations_admissible S A) (by simp [OutputSchema.Serves, schema])
     (meetsObligations_progressFits S A) (meetsObligations_progressTolerant S A)
+    (fun _ _ _ r hv => Simulation.guardIdle S r.2 hv)
     (by norm_num [HealthyBetaFit, Params.standard])
     (by norm_num [CommitteeHalfFit, Params.standard])
 

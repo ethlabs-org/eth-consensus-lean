@@ -7,8 +7,8 @@ public section
 /-! # Causal runs convict nobody
 
 Every signed object in a causal run has genuine release provenance, even
-after its signer is compromised. The engine's persistent slashing guard
-therefore excludes conflicting evidence for every validator. -/
+after its signer is compromised. With an idle slashing guard (`Run.GuardIdle`)
+there is therefore no conflicting evidence for any validator. -/
 
 namespace Consensus.Model
 
@@ -30,9 +30,9 @@ theorem released_of_causal (hc : rho.Causal) {o : (protoOf F E).Object}
     signedBefore_iff.mp (safeBefore_iff.mp hsafe o hpo) u hs
   exact ⟨j, t, hj, hr⟩
 
-theorem not_slashable_of_causal (hc : rho.Causal) (x : V) :
+theorem not_slashable_of_causal (hc : rho.Causal) (hg : rho.GuardIdle) (x : V) :
     ¬ rho.Slashable rho.Observed x :=
-  rho.not_slashable_of_released fun _ ho hs => rho.released_of_causal hc ho hs
+  rho.not_slashable_of_released hg fun _ ho hs => rho.released_of_causal hc ho hs
 
 end Run
 

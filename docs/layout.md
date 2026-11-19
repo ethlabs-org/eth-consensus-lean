@@ -154,7 +154,7 @@ refinement, coverage/witnesses, `ShapeObligations.correct` and `ShapeObligations
 `sysOf_adequate`, `sysOf_log_faithful`,
 `Run.held_iff_served`, `sysOf_nonFraming` and `sysOf_laws`, with support for canonical runs
 (`canonical_run_from`), truncation (`Run.truncate_*`), views (`Run.mem_viewIdx_iff`)
-and slashing protection (`honestNeverSlashed`). A node's `Run.ViewIdx` is the closure
+and non-framing from an idle slashing guard (`honestNeverSlashed`). A node's `Run.ViewIdx` is the closure
 of its engine `seen` log; the view lemma gives the event-index form.
 Injective-hash lifting is checked in `ConsensusLeanTest/Model/Lift.lean`.
 

@@ -295,7 +295,7 @@ theorem terminal_observation (S : Setup) :
     | proposer s => change (Finset.univ : Finset (Fin 1)).card = min 1 1; decide
     | poll => rfl
     | duty s k => exact k.elim
-  obtain ⟨rho, hp, _, _, hv, _, _, _⟩ := Shape.coverage
+  obtain ⟨rho, hp, _, _, hv, _, _⟩ := Shape.coverage
     (goldilocks { S with vote := AsChainShape.stock }) terminalPoint
     (by decide) (by exact Equiv.refl _) sel hsel 0
   have hh : rho.horizon = 1 := congrArg EnvPoint.horizon hp

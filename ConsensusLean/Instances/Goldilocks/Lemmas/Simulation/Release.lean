@@ -269,23 +269,14 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled
         rw [hsel]
         exact Finset.mem_singleton.2 (hp.trans hself).symm
       rw [ite_eq_left hmem]
-      have hc : (Model.releasable nd.seen (Model.Obj.mk (.signed (rho.ownKey v) (.proposer s))
+      have hc : Model.releasable nd.seen (Model.Obj.mk (.signed (rho.ownKey v) (.proposer s))
           (.item ⟨parentRef (S.params (pubOf E) hn).genesisRoot (some d.head.root), s,
             encodeTxs nd.st.2, encodeInfo ((acProposal (shapeOf S hn nd).node
               (shapeOf S hn nd).now).1.fg.proposalAttestations d.head) p⟩)
           (payloadObjs ((acProposal (shapeOf S hn nd).node
-              (shapeOf S hn nd).now).1.fg.proposalAttestations d.head) p)) &&
-          Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
-            (Model.Obj.mk (.signed (rho.ownKey v) (.proposer s))
-              (.item ⟨parentRef (S.params (pubOf E) hn).genesisRoot (some d.head.root), s,
-                encodeTxs nd.st.2, encodeInfo ((acProposal (shapeOf S hn nd).node
-                  (shapeOf S hn nd).now).1.fg.proposalAttestations d.head) p⟩)
-              (payloadObjs ((acProposal (shapeOf S hn nd).node
-                  (shapeOf S hn nd).now).1.fg.proposalAttestations d.head) p))) = true := by
-        refine Bool.and_eq_true_iff.2 ⟨?_, ?_⟩
-        · unfold Model.releasable
-          exact List.all_eq_true.2 fun o ho => decide_eq_true (hrel _ _ _ rfl o ho)
-        · exact protects_of_not_att S _ _ _ (fun k w h => by cases h)
+              (shapeOf S hn nd).now).1.fg.proposalAttestations d.head) p)) = true := by
+        unfold Model.releasable
+        exact List.all_eq_true.2 fun o ho => decide_eq_true (hrel _ _ _ rfl o ho)
       have hB := blockOf_eq_mkBlock S rho hn (rho.ownKey v)
         (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).1.fg (shapeOf S hn nd).now
         (encodeTxs nd.st.2) d.head p s hslot

@@ -13,9 +13,8 @@ public import ConsensusLean.Lemmas.Model.Excuses
 Each statement of `ConsensusLean/Statements/Review.lean` is proved by the existing theorem whose
 type it is, so the kernel checks the statement against that theorem's type; the Goldilocks
 obligations endpoint is proved by its milestone proof, and the headline `GoldilocksCorrect` by
-that proof, `ShapeObligations.correct` and the idle slashing guard (`Simulation.guardIdle`).
-Outage resilience and sleepy safety and liveness are fields of the endpoint's shape claims, not
-separate comparator roots.
+that proof and `ShapeObligations.correct`. Outage resilience and sleepy safety and liveness
+are fields of the endpoint's shape claims, not separate comparator roots.
 This module is the comparator's solution
 module (`comparator.json`). The other Goldilocks milestones are proved lemmas, pinned by
 `ConsensusLeanTest/MilestoneAxioms.lean` (`docs/decisions.md`
@@ -43,12 +42,11 @@ end Consensus.Review
 theorem Consensus.Goldilocks.meetsObligations : Consensus.Goldilocks.MeetsObligations :=
   Consensus.Goldilocks.Growing.meets_obligations
 
-/-- Goldilocks is correct, and its slashing guard never fires. -/
+/-- Goldilocks is correct. -/
 theorem Consensus.Goldilocks.goldilocksCorrect : Consensus.Goldilocks.GoldilocksCorrect :=
   fun S A V => ⟨Consensus.Shape.ShapeObligations.correct
     (Consensus.Goldilocks.Growing.meets_obligations S A).2 V,
-    Consensus.Goldilocks.Obligations.meetsObligations_optimalFaultTolerance S A,
-    fun _ rho hv => Consensus.Goldilocks.Simulation.guardIdle S rho hv⟩
+    Consensus.Goldilocks.Obligations.meetsObligations_optimalFaultTolerance S A⟩
 
 /-- Goldilocks' full per-run behaviour, or a forgery, credential failure or
 inadmissible selection. Collisions excuse only `Holds`, never `HoldsAlways` rows;

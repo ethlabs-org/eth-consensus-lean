@@ -124,7 +124,6 @@ theorem committeeOne_member_releases_vote {V : Type} [Fintype V] [DecidableEq V]
   have h := Simulation.dutyStep_poll_rel { S with vote := committeeOne } rho hn v nd t
     (Simulation.poll_selected { S with vote := committeeOne } rho hv v) hb
     (by rw [Simulation.pollRole_vote]; exact hs)
-    (Simulation.protects_pollObj_vote { S with vote := committeeOne } rho v _ _ _)
   rwa [Simulation.pollObj, Simulation.pollRole_vote, committeeOne_voteRole] at h
 
 end Consensus.Goldilocks.AsChainShape.Regression
