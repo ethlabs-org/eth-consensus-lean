@@ -1311,6 +1311,62 @@ private theorem client_progress_of_lock_at_from
   · exact Or.inl hnow
   · exact Or.inr ⟨j, hj, a, ((RunTrace.upTo_signAt tr).mp ha).2, hh, hT⟩
 
+/-- **Row or high, at an `fg_attest` call**: an attest call at cut `k` on a held source `C`
+above `B`, by a caller honest at it and at `c_z` before any height advance, with `B`'s kind at
+`k`, has signed a row for `B`'s height and entry by `k`, or `C` is higher than `B`. The call need
+not follow a report in the same tick, so a delayed vote uses this directly. -/
+theorem row_or_high_of_attest_at_from
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g T : Time}
+    (hf : ∀ t, 0 ≤ t → t < T → 3 * (H t)ᶜ.ncard ≤ P.n - 1) (hna : NoAdvance tr H g T)
+    {y : Fin P.n} {k : Nat} {C B : A.Blk} {s : Option (FG.Att P.n)}
+    (hyz : y ∈ H (max (cutZ P g) (tr.time k)))
+    (hc : tr.CallAt y k (.fg (.attest C s))) (hkT : tr.time k < T)
+    (hCm : C ∈ (tr.state y k).fg.tree) (hBC : Anc (tr.HonestBlocksAt H) B C)
+    (hkind : ((tr.state y k).fg.σ C.root).h = ((tr.state y k).fg.σ B.root).h →
+      ((tr.state y k).fg.σ B.root).h = HZ tr H g ∨
+      (tr.state y k).fg.hj < ((tr.state y k).fg.σ B.root).h ∨
+      ((tr.state y k).fg.hj = ((tr.state y k).fg.σ B.root).h ∧
+        (tr.state y k).fg.Anc (tr.state y k).fg.J C)) :
+    B ∈ (tr.state y k).fg.tree ∧ C ∈ (tr.state y k).fg.tree ∧
+      ((∃ j att, y ∈ H (tr.time j) ∧ tr.SignAt y j att ∧ tr.time j ≤ tr.time k ∧
+        att.h = ((tr.state y k).fg.σ B.root).h ∧
+        att.T = ((tr.state y k).fg.σ B.root).Th) ∨
+        ((tr.state y k).fg.σ B.root).h < ((tr.state y k).fg.σ C.root).h) := by
+  have hy := hrun.antitone (le_max_right _ _) hyz
+  have ht0 := hrun.time_nonneg k
+  have hle : ∀ q < k, tr.time q ≤ tr.time k := fun q hq => hrun.time_mono hq.le
+  have hBm := mem_of_honest_anc_at_from hrun hnc ht0 hle hy hBC hCm
+  have hreach := fg_reachable_at_from hrun ht0 hle hy
+  have hBCs := store_anc_of_honest_anc_at_from hrun hnc ht0 hle hy hBC hCm
+  have hheight := Healing.h_le_of_store_anc hreach hBCs
+  refine ⟨hBm, hCm, ?_⟩
+  rcases hheight.lt_or_eq with hlt | heq
+  · exact Or.inr hlt
+  left
+  have hf' : (H (tr.time k))ᶜ.ncard < 2 * P.fg.q - P.n := by
+    have hbound := hf (tr.time k) ht0 hkT
+    have hn := P.hn
+    change (H (tr.time k))ᶜ.ncard < 2 * ((2 * P.n + 2) / 3) - P.n
+    omega
+  obtain ⟨⟨E, hE, hEr, hEC, hEh, hETh⟩, -⟩ :=
+    Store.entry_state_of_source _ _ _ _ hreach C hCm
+  have hEnt : EntryOf (tr.state y k).fg C E ((tr.state y k).fg.σ B.root).h :=
+    ⟨⟨hE, hETh.trans hEr.symm⟩, hEh.trans heq.symm, hEC⟩
+  have hTh : E.root = ((tr.state y k).fg.σ B.root).Th :=
+    hEr.trans (Healing.Th_eq_of_anc hreach hBCs heq.symm)
+  have hlock : (tr.state y k).record.lock ((tr.state y k).fg.σ B.root).h = none ∨
+      (tr.state y k).record.lock ((tr.state y k).fg.σ B.root).h = some E.root := by
+    rcases hkind heq.symm with hHZ | hk
+    · rw [hHZ]
+      exact Or.inl (lock_none_of_noAdvance_at_from hrun hna ht0 hle hyz hkT)
+    · exact lock_free_or_entry_of_frame_at_from hrun hnc ht0 hle hy hf' hEnt heq.symm hk
+  rcases client_progress_of_lock_at_from hrun ht0 hle le_rfl hy hc hEnt heq.symm hlock with
+    ⟨att, rfl, hah, haT⟩ | ⟨j, hj, att, hsign, hah, haT⟩
+  · exact ⟨k, att, hy, ⟨C, hc⟩, le_rfl, hah, haT.trans hTh⟩
+  · have hjt := hle j hj
+    exact ⟨j, att, hrun.antitone hjt hy, hsign, hjt, hah, haT.trans hTh⟩
+
 /-- Leaf 4: a held report by a reporter honest at it and at `c_z`, before any height advance and
 under the fault bound, either supplies a row of the lower block signed while honest, or is strictly
 higher than it. -/
@@ -1341,19 +1397,6 @@ theorem row_or_high_of_report_at_from
     (Trace.upTo_callAt tr).mpr ⟨le_rfl, hc⟩
   have hres' : (A.toFG ((tr.upTo (tr.time i)).state y i).ac ell.frame (tr.time i)).2 =
       some R := by rwa [hs]
-  have hBm := mem_of_honest_anc_at_from hrun hnc ht0 hle hy hBR hRm
-  have hreach := fg_reachable_at_from hrun ht0 hle hy
-  have hBRs := store_anc_of_honest_anc_at_from hrun hnc ht0 hle hy hBR hRm
-  have hheight := Healing.h_le_of_store_anc hreach hBRs
-  refine ⟨hBm, hRm, ?_⟩
-  rcases hheight.lt_or_eq with hlt | heq
-  · exact Or.inr hlt
-  left
-  have hf' : (H (tr.time i))ᶜ.ncard < 2 * P.fg.q - P.n := by
-    have hbound := hf (tr.time i) ht0 hiT
-    have hn := P.hn
-    change (H (tr.time i))ᶜ.ncard < 2 * ((2 * P.n + 2) / 3) - P.n
-    omega
   obtain ⟨sg', hatt', ht, hfg'⟩ := Healing.toFG_attest hr hy hc' hto hres'
   have hatt := ((Trace.upTo_callAt tr).mp hatt').2
   have ht' : tr.time (i + 1) = tr.time i := ht
@@ -1362,28 +1405,10 @@ theorem row_or_high_of_report_at_from
   have hs' := Trace.upTo_state tr y hle'
   have hfg : (tr.state y (i + 1)).fg = (tr.state y i).fg := by
     simpa only [hs, hs'] using hfg'
-  obtain ⟨⟨E, hE, hEr, hER, hEh, hETh⟩, -⟩ :=
-    Store.entry_state_of_source _ _ _ _ hreach R hRm
-  have hEnt : EntryOf (tr.state y (i + 1)).fg R E ((tr.state y i).fg.σ B.root).h := by
-    rw [hfg]
-    exact ⟨⟨hE, hETh.trans hEr.symm⟩, hEh.trans heq.symm, hER⟩
-  have hCh : ((tr.state y (i + 1)).fg.σ R.root).h = ((tr.state y i).fg.σ B.root).h := by
-    rw [hfg]
-    exact heq.symm
-  have hTh : E.root = ((tr.state y i).fg.σ B.root).Th :=
-    hEr.trans (Healing.Th_eq_of_anc hreach hBRs heq.symm)
-  have hlock : (tr.state y (i + 1)).record.lock ((tr.state y i).fg.σ B.root).h = none ∨
-      (tr.state y (i + 1)).record.lock ((tr.state y i).fg.σ B.root).h = some E.root := by
-    rcases hkind heq.symm with hHZ | hk
-    · rw [hHZ]
-      exact Or.inl (lock_none_of_noAdvance_at_from hrun hna ht0 hle' hyz hiT)
-    · apply lock_free_or_entry_of_frame_at_from hrun hnc ht0 hle' hy hf' hEnt hCh
-      rwa [hfg]
-  have hrow := client_progress_of_lock_at_from hrun ht0 hle' ht'.le hy hatt hEnt hCh hlock
-  rcases hrow with ⟨att, rfl, hah, haT⟩ | ⟨k, hk, att, hsign, hah, haT⟩
-  · exact ⟨i + 1, att, ht'.symm ▸ hy, ⟨R, hatt⟩, ht'.le, hah, haT.trans hTh⟩
-  · have hkt := hle' k hk
-    exact ⟨k, att, hrun.antitone hkt hy, hsign, hkt, hah, haT.trans hTh⟩
+  have := row_or_high_of_attest_at_from hrun hnc hf hna (by rwa [ht']) hatt (by rwa [ht'])
+    (by rwa [hfg]) hBR (by rw [hfg]; exact hkind)
+  rw [hfg, ht'] at this
+  exact this
 
 end RowOrHigh
 
