@@ -13,11 +13,19 @@ import json
 from pathlib import Path
 import subprocess
 import tempfile
+import time
 
 
 DEFERRED = (
     "style.whitespace", "unreachableTactic", "style.multiGoal", "style.cdot",
     "unusedTactic", "unnecessarySeqFocus",
+)
+
+# Modules whose lint elaboration peaks near 10 GiB. They run one at a time before the parallel
+# pool, so no two of them overlap on a 16 GiB machine. A full run fails if one is renamed away.
+ALONE = (
+    "ConsensusLeanTest.Goldilocks.Generic.HealingLeavesCut",
+    "ConsensusLeanTest.Goldilocks.Generic.SleepyCut",
 )
 
 
@@ -38,6 +46,9 @@ def main():
         for prefix in ("ConsensusLean", "ConsensusLeanTest")
         for path in [Path(prefix + ".lean"), *Path(prefix).rglob("*.lean")]
     ) + ["Solution", "Challenge"]
+    missing = [m for m in ALONE if m not in modules]
+    if missing and not args.modules and not args.changed:
+        parser.error("lint-syntax: ALONE names no module: " + ", ".join(missing))
     if args.modules:
         modules = args.modules
     if args.changed:
@@ -81,6 +92,7 @@ def main():
             lint_setup = scratch / "module.setup.json"
             lint_setup.write_text(json.dumps(setup))
             print(f"lint-syntax: {module}", flush=True)
+            start = time.monotonic()
             result = subprocess.run([
                 "lean", str(source), "--setup", str(lint_setup), "--json",
                 "-o", str(scratch / "module.olean"),
@@ -92,14 +104,16 @@ def main():
                 warnings |= message.get("severity") == "warning"
             if result.stderr:
                 print(result.stderr, end="", flush=True)
+            print(f"lint-syntax: done {module} ({time.monotonic() - start:.0f}s)", flush=True)
             if result.returncode:
                 return result.returncode
             if warnings:
                 return 1
             return 0
 
+    results = [lint(m) for m in modules if m in ALONE]
     with ThreadPoolExecutor(args.jobs) as pool:
-        results = list(pool.map(lint, modules))
+        results += pool.map(lint, [m for m in modules if m not in ALONE])
     if any(results):
         return 1
     print(f"lint-syntax: PASS ({len(modules)} modules; {len(DEFERRED)} deferred linters)")
