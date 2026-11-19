@@ -109,13 +109,14 @@ def UPat (proposer : Nat → Fin sp.n) (g : Time) (W M cF kF : Nat) : Prop :=
             s + cF ≤ W'.slot ∧ W'.slot ≤ s + cF + kF ∧
             ∃ Pr, W'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) B Pr
 
-/-- The premises of C1.2 (the HS shared premises, `Catch(2Δ)`, `Prop⁺(G_p)`, the window
-parameters `c_F = ⌈(6Δ + Δ_F)/(4Δ)⌉` and `c_F + k_F ≤ δ_t`) and `UPat(W, M)` with `M ≥ M*`. -/
-structure PatternPremises (proposer : Nat → Fin sp.n)
+/-- The premises of C1.2 (the HS shared premises with the committee facts of the slot dictionary
+`K`, `Catch(2Δ)`, `Prop⁺(G_p)`, the window parameters `c_F = ⌈(6Δ + Δ_F)/(4Δ)⌉` and
+`c_F + k_F ≤ δ_t`) and `UPat(W, M)` with `M ≥ M*`. -/
+structure PatternPremises (K : SA.CommitteeDict sp.n) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF Gp : Time)
     (W M cF kF : Nat) : Prop where
-  /-- The HS shared premises, with `Healthy(g)`. -/
-  shared : HSShared tr H dg g ΔF
+  /-- The HS shared premises, with `Healthy(g)` and the committee facts of `K`. -/
+  shared : HSShared tr H K dg g ΔF
   /-- `Catch(2Δ)`. -/
   catchPremise : CatchRun tr H g (2 * sp.Δ)
   /-- `Prop⁺(G_p)`. -/
@@ -135,33 +136,37 @@ structure PatternPremises (proposer : Nat → Fin sp.n)
 
 end Defs
 
-/-- **Node O.1, recovery under a bounded uniform pattern.** Under C1.2's premises and
-`UPat(W, M)` with `M ≥ M*`: `Rec(ḡ + T_rec)` holds, and at every call of an honest node at a time
+/-- **Node O.1, recovery under a bounded uniform pattern.** From the committee start of a slot
+dictionary `K`, under C1.2's premises (with the committee facts of `K`) and `UPat(W, M)` with
+`M ≥ M*`: `Rec(ḡ + T_rec)` holds, and at every call of an honest node at a time
 `≥ T_F = ḡ + T_rec − 12Δ`, `Σ.F` has state height `≥ H_z + 1`. (Not O.1's target: see the module
 docstring.) -/
 def PatternRecovery : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time) (W M cF kF : Nat),
-    GoldilocksRun proposer dg H tr → PatternPremises tr H proposer dg g ΔF Gp W M cF kF →
+    (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF Gp : Time) (W M cF kF : Nat),
+    GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+    PatternPremises tr H K proposer dg g ΔF Gp W M cF kF →
     Rec tr H (gbar g + T_rec sp ΔF Gp W M) ∧
     ∀ y ∈ H, ∀ k, tr.IsCall y k → gbar g + T_rec sp ΔF Gp W M - 12 * sp.Δ ≤ tr.time k →
       HZ tr H g + 1 ≤ ((tr.state y k).fg.σ (tr.state y k).fg.F.root).h
 
-/-- **C1.3, recurring finalizing coverage.** Under C1.2's premises and `UPat(W, M)` with
-`M ≥ M*`: for every `t ≥ R_* = ḡ + Z + (8k + 20)Δ` there is an honest proposal `P` of a slot `p`
-with `t ≤ t_p ≤ t + 4Δ(W + 1 + M)` and an honestly accepted block whose state finalizes a block
-extending `P`, such that at every call of an honest node at a time
-`≥ t + 4Δ(W + 1 + M) + Δ`, `P ⪯ Σ.F` (so `P` is in that node's finalized output). (The
+/-- **C1.3, recurring finalizing coverage.** From the committee start of a slot dictionary `K`,
+under C1.2's premises (with the committee facts of `K`) and `UPat(W, M)` with `M ≥ M*`: for every
+`t ≥ R_* = ḡ + Z + (8k + 20)Δ` there is an honest proposal `P` of a slot `p` with
+`t ≤ t_p ≤ t + 4Δ(W + 1 + M)` and an honestly accepted block whose state finalizes a block
+extending `P`, such that at every call of an honest node at a time `≥ t + 4Δ(W + 1 + M) + Δ`,
+`P ⪯ Σ.F` (so `P` is in that node's finalized output). (The
 coverage goes through the current entry of `P`, crossed on `P`'s retained chain, the new honest
 entry `U ⪰ P` and its actual successor `V`.) -/
 def FinalizingCoverage : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time) (W M cF kF : Nat),
-    GoldilocksRun proposer dg H tr → PatternPremises tr H proposer dg g ΔF Gp W M cF kF →
+    (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF Gp : Time) (W M cF kF : Nat),
+    GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+    PatternPremises tr H K proposer dg g ΔF Gp W M cF kF →
     ∀ t, Rstar sp g ΔF Gp ≤ t →
       ∃ (q : Fin sp.n) (kP : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))),
         q ∈ H ∧ tr.ProposesAt q kP P ∧ t ≤ sp.ts P.slot ∧
@@ -172,7 +177,8 @@ def FinalizingCoverage : Prop :=
           t + 4 * sp.Δ * ((W : Time) + 1 + M) + sp.Δ ≤ tr.time k →
           Anc (tr.HonestBlocks H) P (tr.state y k).fg.F
 
-/-- **HR.5, cache acceptance** (G1.9 (b)). In a Goldilocks run under `Healthy(g)` and `NoColl`:
+/-- **HR.5, cache acceptance** (G1.9 (b)). In a Goldilocks run from the committee start of any
+slot dictionary `K` (no committee fact is used) under `Healthy(g)` and `NoColl`:
 at every honest node's acceptance of a block `B`, `F* = σ[B].F` satisfies `F* ⪯ Σ.F` after that
 `fg_on_block` call. (The claims state it after the reset `a_z` and at state heights `≥ H_z + 1`;
 neither is needed: of `Healthy(g)` only its fault bound `3|Hᶜ| ≤ n − 1` is used, at every height
@@ -181,8 +187,9 @@ def CacheAcceptanceAfterReset : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF : Time),
-    GoldilocksRun proposer dg H tr → tr.HealthyRun H ΔF g → Compose.NoCollRun dg tr →
+    (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF : Time),
+    GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+    tr.HealthyRun H ΔF g → Compose.NoCollRun dg tr →
       ∀ y ∈ H, ∀ k B, tr.AcceptAt y k B →
         ∀ Fs ∈ (tr.post k).fg.tree, Fs.root = ((tr.post k).fg.σ B.root).F →
           (tr.post k).fg.Anc Fs (tr.post k).fg.F

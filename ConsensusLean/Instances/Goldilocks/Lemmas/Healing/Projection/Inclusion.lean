@@ -64,11 +64,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
 
-/-- The deadline does not change at a cut that is not a restart. -/
-private theorem deadline_succ {y : Fin sp.n} {k : Nat} (hn : ¬ tr.RestartAt y (k + 1))
-    (τ Δ' : Time) : tr.deadline y (k + 1) τ Δ' = tr.deadline y k τ Δ' := by
-  simp only [RunTrace.deadline, lastWake_succ hn]
-
 /-- The finalized tip of the frame of an honest AC cut is the node's `Σ.F`. -/
 private theorem frame_F (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
@@ -259,50 +254,6 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
       · cases hm
       · cases hB
 
-/-- Compatibility wrapper; driven duties require actual awake witnesses, not
-an unbounded health premise. -/
-theorem projection_driven (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr)
-    (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg)
-    (_hh : tr.HealthyRun H ΔF g) : SA.Driven proposer tr.projAC H :=
-  projection_driven_of_run hrun hnc hroot
-
-/-- `Healthy(g)` over a run gives `Healthy(g)` on its AC projection. -/
-theorem projection_healthy (hrun : GoldilocksRun proposer dg H tr ini)
-    (_hnc : Compose.NoCollRun dg tr)
-    (hh : tr.HealthyRun H ΔF g) : SA.HealthyAC tr.projAC H (tr.HonestBlocks H) g := by
-  have h := hrun.toLocalRun
-  obtain ⟨hgst, hawake, hf⟩ := hh
-  refine ⟨?_, ?_, fun y hy t ht => hawake y hy t ht, hf⟩
-  · intro x hx i m hsa y hy j ℓ hc hdl
-    have hsa' : tr.SendOrAdmitAt x i m := by
-      obtain ⟨ℓ, hc, hm⟩ := hsa
-      refine ⟨ℓ, Compose.projAC_callAt.1 hc, ?_⟩
-      rwa [Compose.projAC_state h hx] at hm
-    rw [Compose.projAC_deadline] at hdl
-    obtain ⟨k, hk, h1, h2, h3⟩ :=
-      hgst.message x hx i m hsa' trivial y hy j ⟨_, Compose.projAC_callAt.1 hc⟩ hdl
-    refine ⟨k, hk, h1, ?_, by rw [Compose.projAC_deadline]; exact h3⟩
-    rcases h2 with ⟨ℓ', hc', hm'⟩ | ⟨ℓ', hc', e, he, hem⟩
-    · exact ⟨ℓ', Compose.projAC_callAt.2 hc', Or.inl hm'⟩
-    · exact ⟨ℓ', Compose.projAC_callAt.2 hc', Or.inr ⟨e, he, hem⟩⟩
-  · intro x hx i B ha hgi y hy j ℓ hc hdl hanc
-    obtain ⟨i', rfl, ha', hti⟩ := fg_accept_before h hx ha
-    have hmax : max (tr.time i') g = tr.projAC.time (i' + 1) := by
-      rw [show tr.projAC.time (i' + 1) = tr.time (i' + 1) from rfl, hti]; exact max_eq_left hgi
-    rw [Compose.projAC_deadline] at hdl
-    obtain ⟨k, hk, hak, hkt⟩ := hgst.relay x hx i' B ha' (by rw [hti]; exact hgi) y hy j
-      ⟨_, Compose.projAC_callAt.1 hc⟩ (by rw [hmax]; exact hdl) (frame_F hrun hy hc ▸ hanc)
-    obtain ⟨hak', htk, hnr⟩ := ac_block_after h hy hak
-    have hkj : k < j := by
-      rcases hk.lt_or_eq with hk | rfl
-      · exact hk
-      · exact absurd (hak.2.symm.trans (Compose.projAC_callAt.1 hc).2) (by simp)
-    refine ⟨k + 1, hkj, hak', ?_⟩
-    have htk' : tr.projAC.time (k + 1) = tr.time k := htk
-    rw [Compose.projAC_deadline, deadline_succ hnr, htk', ← hmax]
-    exact hkt
-
 /-- `Catch(κ)` over a run gives `Catch(κ)` on its AC projection (`Φ.F` is `Σ.F`). -/
 theorem projection_catch_of_run (hrun : GoldilocksRun proposer dg H tr ini)
     (hc : CatchRun tr H g (2 * sp.Δ)) :
@@ -323,13 +274,6 @@ theorem projection_catch_of_run (hrun : GoldilocksRun proposer dg H tr ini)
   refine ⟨k + 1, by omega, hak', ?_⟩
   rw [htk']
   exact hj₀.2 k hk
-
-/-- Compatibility wrapper; Catch projection uses actual calls only. -/
-theorem projection_catch (hrun : GoldilocksRun proposer dg H tr ini)
-    (_hnc : Compose.NoCollRun dg tr)
-    (_hh : tr.HealthyRun H ΔF g) (hc : CatchRun tr H g (2 * sp.Δ)) :
-    SA.CatchAC tr.projAC H (tr.HonestBlocks H) g (2 * sp.Δ) :=
-  projection_catch_of_run hrun hc
 
 end Consensus.Goldilocks.Healing
 

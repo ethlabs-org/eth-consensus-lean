@@ -31,14 +31,16 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
   {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-- **Attestations at `m` for a fixed upper proposal** (the
 fixed-upper-proposal step of `Service`'s `consume_continue`, with `ProtectedBranch`,
 `ClientProgress` and `RowsBy` spelled out, and HS.2 as the hypothesis `hclean`). -/
-theorem fixed_upper_rows_of (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem fixed_upper_rows_of (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ))
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain)
     (hcl : ∀ y ∈ H, ∀ k (C : SA.Blk sp.n (List (FG.Att sp.n))) (signed : Option (FG.Att sp.n)),

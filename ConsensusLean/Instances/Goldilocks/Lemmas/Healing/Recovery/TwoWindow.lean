@@ -51,7 +51,7 @@ open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-- The first crossing above `A` on a held `A ⪯ B` (as `Store.first_crossing_of_anc` in
 `Obligations/WindowAnchors`, structural part, local to avoid a Healing-to-Obligations edge). -/
@@ -101,8 +101,8 @@ private theorem justifier_entry {P : Params} {ACP : Type} {acp₀ : ACP} {st : S
 theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {kU iU : Nat}
     {U : SA.Blk sp.n (List (FG.Att sp.n))}
     (houtcome : Compose.OutcomeService)
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hpat : PatternPremises tr H proposer dg g ΔF Gp W M cF kF)
+    (hp : ResetPremises tr H K proposer dg g ΔF a)
+    (hpat : PatternPremises tr H K proposer dg g ΔF Gp W M cF kF)
     (hwindow : ∀ u, v ≤ u → u < v + M →
       ∃ (k : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))),
         ReadyProposal tr H proposer (proposer u) k u B ∧
@@ -165,7 +165,7 @@ theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {
   have hdrainU : sp.ts (sp.slot a + 2 * sp.k + 5 : Nat) ≤ sp.ts U.slot := by
     rw [← drainTime_eq]; exact hR
   -- **first outcome, at `U`**: an honest store holds the block `V` justifying `U`
-  have o1 := (houtcome sp ro proposer dg H tr g ΔF a cF kF hrun hpat.shared
+  have o1 := (houtcome sp ro proposer dg H tr K g ΔF a cF kF hrun hpat.shared
     hpat.catchPremise hpat.cF_upper hpat.timeout hp.reset q kU iU U
     U.slot hU hentry hdrainU (by rw [hpostU]; omega) (fun _ h1 => by rw [hpostU] at h1 ⊢; omega)
     (hBret q iU hentry)).1
@@ -210,7 +210,7 @@ theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {
     rw [hpostV, hVσ]; exact hpjy
   have hJr : ((tr.post kV).fg.σ V.root).J = U.root := by rw [hpostV, hVσ]; exact hVJ
   -- **second outcome, at `V`**: a block finalizing `U`, accepted before `t_{v+M}`
-  have o2 := (houtcome sp ro proposer dg H tr g ΔF a cF kF hrun hpat.shared
+  have o2 := (houtcome sp ro proposer dg H tr K g ΔF a cF kF hrun hpat.shared
     hpat.catchPremise hpat.cF_upper hpat.timeout hp.reset
     (proposer V.slot) kV kV V V.slot hB'r hVent (hdrainU.trans (hts hUVs.le))
     (by rw [hpostV, hVσ, hVh]; omega) (fun _ _ => by rw [hpostV, hVσ, hVhj]; omega)

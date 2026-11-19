@@ -40,7 +40,7 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF w : Time} {i₀ i m : Nat}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF w : Time} {i₀ i m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} {p : Fin sp.n} {kP s : Nat}
   {P : SA.Blk sp.n (List (FG.Att sp.n))} {iP : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
   {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
@@ -66,7 +66,7 @@ theorem acProposal_spec {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP
 /-- **The proposal walk stops at `Q`**: the walk of the proposer's viable tree from `d.start`
 ends at `d.head`, and `d.start` is in the frame tree. -/
 private theorem proposal_walkEnd
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) :
+    (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) :
     d.start ∈ ℓp.frame.tree ∧
       SA.WalkEnd (sp := sp) (ℓp.frame.viableTree ℓp.frame.tree)
         (SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1))
@@ -93,7 +93,7 @@ private theorem proposal_walkEnd
 
 section Leaves
 
-variable (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+variable (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
   {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
   {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
 
@@ -208,7 +208,7 @@ carries the proposer's pool; the voter's pre-freeze votes and support heads rela
 too (aligned readers, HS.1). Only the winner is compared (a voter-eligible competitor need not be
 proposer-eligible in reachable runs). -/
 theorem proposal_suffix
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {D : SA.Blk sp.n (List (FG.Att sp.n))} (hsD : ℓp.frame.Anc d.start D)
     (_hDQ : ℓp.frame.Anc D d.head) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -301,7 +301,7 @@ proposer's viable tree (`suffix_reflect`); its voter eligibility (no current-slo
 viable head of both frames, the same majorities) would make it eligible at the proposer, whose
 walk stopped at `Q`. -/
 theorem proposal_only_child
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) :

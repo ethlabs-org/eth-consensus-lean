@@ -60,9 +60,10 @@ the effective phase after all events at `u` has changed or the run is settled at
 theorem settle {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+    {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
         (hrun : GoldilocksRun proposer dg H tr ini)
-    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (u : Time)
+    (hs : HSShared tr H K dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (u : Time)
     (hu : gbar g + 8 * sp.Δ ≤ u) (j j' : Nat) (hj : FirstCutAfter tr j u)
     (hj' : tr.FirstCutFrom j' (u + sp.Δ)) :
     PhaseChanged tr.projFG H j j' ∨ SettledAt tr H g (2 * sp.Δ) (u + sp.Δ) := by
@@ -128,8 +129,8 @@ private theorem after_le_after {j j' : Nat} {t t' : Time} (h : FirstCutAfter tr 
 /-- In a run where an honest node is awake from `t₀` on, every time has a first cut after it
 and a first cut from it (`awake_in_horizon`). -/
 private theorem exists_cuts {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
-    {proposer : Nat → Fin P.n} {sg : A.Msg → Fin P.n}
-    (hrun : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
+    {proposer : Nat → Fin P.n} {sg : A.Msg → Fin P.n} {ini : Fin P.n → A.State}
+    (hrun : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
     {t₀ : Time} (hawake : ∀ t, t₀ ≤ t → tr.awake y t) (t : Time) :
     (∃ j, FirstCutAfter tr j t) ∧ ∃ j, tr.FirstCutFrom j t := by
   classical
@@ -141,8 +142,8 @@ private theorem exists_cuts {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set
     Nat.find hle, Nat.find_spec hle, fun k hk => not_le.1 (Nat.find_min hle hk)⟩
 
 private theorem projFG_store {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
-    {proposer : Nat → Fin P.n} {sg : A.Msg → Fin P.n}
-    (hrun : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
+    {proposer : Nat → Fin P.n} {sg : A.Msg → Fin P.n} {ini : Fin P.n → A.State}
+    (hrun : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
     (i : Nat) : tr.projFG.store y i = (tr.state y i).fg := by
   simp only [FGTrace.store, Compose.projFG_state hrun hy i]
 
@@ -248,9 +249,10 @@ and `G_p ≥ 0` from `Prop⁺(G_p)` at `ḡ`). -/
 private theorem hs_setup {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp : Time}
+    {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp : Time}
         (hrun : GoldilocksRun proposer dg H tr ini)
-    (hs : HSShared tr H dg g ΔF) (hp : PropPlus tr H proposer g Gp) :
+    (hs : HSShared tr H K dg g ΔF) (hp : PropPlus tr H proposer g Gp) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
       Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n ∧ H.Nonempty ∧
       0 ≤ D_HS sp Gp ∧ D_HS sp Gp ≤ A_HS sp ΔF Gp := by
@@ -284,8 +286,9 @@ with HS.1–HS.3) turns into a phase change by `w + A_HS`. -/
 theorem producer {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
+    {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF Gp : Time}
+    (hrun : GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K))
+    (hs : HSShared tr H K dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
     (hp : PropPlus tr H proposer g Gp)
     (w : Time) (hw : SettledAt tr H g (2 * sp.Δ) w) (j j' : Nat) (hj : tr.FirstCutFrom j w)
     (hj' : FirstCutAfter tr j' (w + A_HS sp ΔF Gp)) : PhaseChanged tr.projFG H j j' := by
@@ -304,8 +307,9 @@ theorem producer {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem reset_count {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
+    {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF Gp : Time}
+    (hrun : GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K))
+    (hs : HSShared tr H K dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
     (hp : PropPlus tr H proposer g Gp) :
     ∃ a, IsReset tr H g a ∧ a ≤ cutZ sp.toParams g + 6 * (sp.Δ + A_HS sp ΔF Gp) := by
   classical
@@ -372,9 +376,7 @@ theorem reset_count {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   obtain ⟨-, -, -, -, -, ⟨X, hX, hXh⟩, -⟩ := Store.cache_invariants _ _ _ _
     (Store.store_reachable hfg hy (fa (u 6)))
   rw [projFG_store hrun.toLocalRun hy] at hX hXh hym
-  obtain ⟨-, -, -, hrow, -⟩ :=
-    cut_and_reset sp ro proposer dg H tr g ΔF hrun hs.healthy hs.noColl
-  obtain ⟨Y, hYX, att, hatt, hval, hh⟩ := hrow y hy _ X hX (by omega)
+  obtain ⟨Y, hYX, att, hatt, hval, hh⟩ := honest_row_of_height hrun hs.healthy hy _ hX (by omega)
   -- HR.1 (b)'s attestation was signed before that cut, by unforgeability
   have hY : Y ∈ (tr.projFG.store y (fa (u 6))).tree := by
     rw [projFG_store hrun.toLocalRun hy]
@@ -408,7 +410,7 @@ theorem IsReset.eq {P : Params} {A : NodeAC P} {tr : RunTrace A} {H : Set (Fin P
 
 /-- **HR.3, reset existence.** -/
 theorem reset_existence : ResetExistence := by
-  intro sp ro proposer dg H tr g ΔF Gp hrun hs hc hp
+  intro sp ro proposer dg H tr K g ΔF Gp hrun hs hc hp
   obtain ⟨a, ha, hle⟩ := reset_count hrun hs hc hp
   refine ⟨⟨lt_cutZ sp g, fun u hu j j' hj hj' =>
       settle hrun hs hc u (by linarith [lt_cutZ sp g]) j j' hj hj'⟩,

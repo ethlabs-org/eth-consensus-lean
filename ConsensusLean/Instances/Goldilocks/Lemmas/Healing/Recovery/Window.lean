@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Interface
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OperationalReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifiesSigned
@@ -20,49 +21,75 @@ namespace Consensus.Goldilocks.Healing.Recovery
 open SA (SAParams ReplayOrder Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {H : Set (Fin sp.n)}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
-/-- Driven unanimous votes force actual acceptance of the ready proposal everywhere,
-by `t_u + Δ`. The later window deadline leaves a strict margin. -/
-theorem ready_proposal_accepted_everywhere (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hs : HSShared tr H dg g ΔF) (hcatch : CatchRun tr H g (2 * sp.Δ))
+/-- Every honest validator has accepted the ready proposal by `t_u + 2Δ`: at its tick there, its
+finality is compatible with the proposal (`finalized_compatible_before_update`). Below the
+proposal, the relay of an honest slot-`u` voter's frame (which holds the unanimous head by
+`t_u + Δ`) reaches it; above, it holds the proposal with its finality. The later window deadline
+leaves a strict margin. -/
+theorem ready_proposal_accepted_everywhere (hp : ResetPremises tr H K proposer dg g ΔF a)
+    (hcatch : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} {k u : Nat} {W : SA.Blk sp.n (List (FG.Att sp.n))}
     (hW : ReadyProposal tr H proposer p k u W) (hR : drainTime sp a ≤ sp.ts u)
     (hu : 0 < u) (hg : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) :
-    ∀ y ∈ H, ∃ j, tr.AcceptAt y j W ∧ tr.time j ≤ sp.ts u + sp.Δ := by
+    ∀ y ∈ H, ∃ j, tr.AcceptAt y j W ∧ tr.time j ≤ sp.ts u + 2 * sp.Δ := by
+  have hΔ := sp.toParams.hΔ
   have hac := Compose.goldilocks_ac_projection_from hp.run hp.noColl
-  have hb : SA.HealthyBase tr.projAC H (tr.HonestBlocks H) proposer g :=
-    ⟨hac, projection_driven hp.run hp.noColl hs.genesisRoot hp.healthy,
-      projection_healthy hp.run hp.noColl hp.healthy, projection_catch_of_run hp.run hcatch,
-      hp.stock⟩
+  have hr := hac.localRun
+  have hca := cutZ_lt_reset hp.run hp.healthy hp.reset
+  have ha0 : 0 ≤ a := by linarith [lt_cutZ (sp := sp) g, SA.gbar_nonneg g]
+  have hau : a ≤ sp.ts u := (lt_drainTime ha0).le.trans hR
+  have hpU := hp.toUpTo tr H (show a ≤ sp.ts u + 6 * sp.Δ by linarith)
+  have hR' : drainTime sp a ≤ sp.ts (u + 1 : Nat) :=
+    hR.trans ((SA.ts_le_iff sp).2 (by push_cast; omega))
   obtain ⟨_, hWt, _⟩ := accept_of_proposesAt hp.run hp.noColl hW.1 hW.2.2.2.1
   have hWU : W ∈ tr.HonestBlocks H := ⟨p, hW.1, k + 1, hWt⟩
-  intro y hy
-  obtain ⟨j, e, hv, hes⟩ := SA.honest_votes_in_slot hb hg y hy
-  have hhead := ready_unanimous hp hcatch hW hR y hy j e hv hes
-  obtain ⟨ell, hcall, hem⟩ := hv
-  obtain ⟨⟨D, hD, hDr, _⟩, ht⟩ := Compose.cast_head_fcRoot hac.localRun hac.vstart hy ⟨hcall, hem⟩
-  have hDW : D = W := hac.localRun.coherent.1
-    ((SA.frameIn_of_callAt hac.localRun hy hcall).2 hD) hWU (hDr.trans hhead)
+  have hun := ready_unanimous hp hcatch hW hR
+  -- an honest slot-`u` voter holds `W` in its frame by `t_u + Δ`
+  obtain ⟨z, hz, q, v, ⟨ellv, hv⟩, hvs, hq⟩ :=
+    Obligations.UpTo.exists_honest_vote_in_slot hpU hcatch hR' (by linarith)
+  obtain ⟨⟨D, hD, hDr, _⟩, _⟩ := Compose.cast_head_fcRoot hr hac.vstart hz hv
+  have hDW : D = W := hr.coherent.1 ((SA.frameIn_of_callAt hr hz hv.1).2 hD) hWU
+    (hDr.trans (hun z hz q v ⟨ellv, hv⟩ hvs))
   rw [hDW] at hD
-  have hWy := mem_tree_of_frame hp.run hy hcall hD
+  have hq' : tr.time q ≤ sp.ts u + sp.Δ := hq
+  intro y hy
+  -- the tick of `y` at `t_u + 2Δ`
+  have hS := healthy_base_of_reset_catch_before hpU hcatch
+  have hg' := slotAfter_le (sp := sp) g
+  obtain ⟨c, ell, hc, -, htc⟩ := hS.driven.tick y hy (sp.ts u + 2 * sp.Δ)
+    (by linarith [SA.gbar_nonneg g]) ⟨4 * u + 2, by simp only [SAParams.ts]; ring⟩
+    (hS.awake y hy _ (by rw [gbar_slotAfter]; linarith) (by linarith))
+  have htc' : tr.time c = sp.ts u + 2 * sp.Δ := htc
+  have hWy : W ∈ (tr.state y c).fg.tree := by
+    rcases Obligations.UpTo.finalized_compatible_before_update hpU hcatch hWU hW.2.2.2.2.1 hu
+        (fun x hx j e hv _ hs => hun x hx j e hv hs) hg hR' (by linarith) hy (k := c)
+        (by linarith) (by linarith) with hFW | hWF
+    · have hF : Anc (tr.HonestBlocks H) ell.frame.F W := by
+        rw [Compose.frame_of_projAC hp.run hy hc]
+        exact hFW
+      exact mem_tree_of_frame hp.run hy hc (hpU.reset_frame_relay hcatch hz hy hv.1 hc hD
+        (by linarith) (by linarith) (by linarith) (by linarith) hF)
+    · have hFm := (Store.cache_invariants _ _ _ _
+        (Compose.fg_reachable hp.run.toLocalRun hy c)).1
+      exact mem_of_honest_anc hp.run hp.noColl hy hWF hFm
   have hng : W ≠ sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload := by
     intro he
     have hslot := hW.2.2.2.2.1
     rw [he] at hslot
     change 0 = u at hslot
     omega
-  obtain ⟨i, hij, hi⟩ := (Compose.tree_cases hp.run.toLocalRun hy hWy).resolve_left hng
-  refine ⟨i, hi, (hp.run.time_mono hij.le).trans ?_⟩
-  rw [hes] at ht
-  exact ht
+  obtain ⟨i, hic, hi⟩ := (Compose.tree_cases hp.run.toLocalRun hy hWy).resolve_left hng
+  exact ⟨i, hi, (hp.run.time_mono hic.le).trans htc'.le⟩
 
 /-- The composition's actual honest proposal includes every pooled attestation for its parent's
 current entry that is not on the parent's chain (the good window's P5): `proposal_attestations`
 keeps every pooled attestation valid against the parent's state, and those for the current entry
 are valid. -/
-private theorem proposal_includes_pool (hp : ResetPremises tr H proposer dg g ΔF a)
+private theorem proposal_includes_pool (hp : ResetPremises tr H K proposer dg g ΔF a)
     {w : Fin sp.n} (hw : w ∈ H) {k : Nat} {W Pr : SA.Blk sp.n (List (FG.Att sp.n))}
     (hW : tr.ProposesAt w k W) (hPr : Pr ∈ (tr.state w k).fg.tree)
     (hpar : W.parent = some Pr.root) :
@@ -88,8 +115,8 @@ private theorem proposal_includes_pool (hp : ResetPremises tr H proposer dg g Δ
 
 /-- Exact signed entry attestations, delivered before the retained ready proposal, form the literal
 `GoodWindow`. Neither report times nor signing times need a freshness lower bound. -/
-theorem good_window_of_rows (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hs : HSShared tr H dg g ΔF) {y w : Fin sp.n} (hy : y ∈ H) (hw : w ∈ H)
+theorem good_window_of_rows (hp : ResetPremises tr H K proposer dg g ΔF a)
+    (hs : HSShared tr H K dg g ΔF) {y w : Fin sp.n} (hy : y ∈ H) (hw : w ∈ H)
     {m k cF kF : Nat} {T W Pr : SA.Blk sp.n (List (FG.Att sp.n))}
     (hT : T ∈ (tr.state y m).fg.tree) (he : ((tr.state y m).fg.σ T.root).Th = T.root)
     (hW : tr.ProposesAt w k W) (hpar : W.parent = some Pr.root)

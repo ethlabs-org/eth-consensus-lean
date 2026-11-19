@@ -21,14 +21,14 @@ open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-- **Final C1.3 glue**: an actual high stretch proposal and an actual finalizing carrier
 before `t_{v+M}` give `HighCoverageAt` at the public duration `4Δ(W + 1 + M)`. -/
 theorem high_coverage_of_stretch_carrier {t : Time} {W M v : Nat} {q : Fin sp.n} {kP iP : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {x : Fin sp.n} {kX : Nat}
     {X Fx : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hp : ResetPremises tr H proposer dg g ΔF a)
+    (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hvtime : t ≤ sp.ts v ∧ sp.ts v ≤ t + 4 * sp.Δ * ((W : Time) + 1))
     (hP : ReadyProposal tr H proposer q kP P.slot P)
     (haccept : tr.AcceptAt q iP P)

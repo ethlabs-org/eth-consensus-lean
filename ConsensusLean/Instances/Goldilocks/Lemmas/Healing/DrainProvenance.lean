@@ -250,12 +250,15 @@ theorem slow_lock_provenance_storedU
 /-- **Stored slow-lock provenance**: every lock that is not fast and that an honest node holds
 before cut `i` sits below (inside `U`) the stored block `ℓ.frame.viableAncestor D` of a slow lock
 of its slot (selection `D`) that the node wrote at an earlier cut `j` (call label `ℓ`). -/
-theorem slow_lock_provenance_stored (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+theorem slow_lock_provenance_stored {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} (hx : x ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state x i).locks, l.fast = false →
       ∃ j < i, ∃ ℓ D, tr.CallAt x j ℓ ∧ SlowLockAt tr x j l.slot D ∧
-        ∃ L ∈ U, L.root = l.block ∧ Anc U L (ℓ.frame.viableAncestor D) :=
-  slow_lock_provenance_storedU (hr := hr.toU) rfl (x := x) (hx := hx) (i := i)
+        ∃ L ∈ U, L.root = l.block ∧ Anc U L (ℓ.frame.viableAncestor D) := by
+  intro l hl hf
+  have h := slow_lock_provenance_storedM hr.toU hini hx i l hl hf
+  simpa only [show (WriteMode.parent sp).width = sp.k from rfl, slowLockAtW_k] using h
 
 end Consensus.Goldilocks.SA
 

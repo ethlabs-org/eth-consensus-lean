@@ -96,7 +96,8 @@ or admitted by an honest writer `w` at a time in `[t_s, t_s + 2Δ)`, and has a h
 `t_s + 3Δ` by other means (genesis included), then `Carry_y(s, ·, ·)` holds for the counted
 votes. -/
 theorem carryAt_of_writer_heads
-    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b : Time}
+    {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {a b : Time}
     {s : Nat} (ha : a ≤ sp.ts s)
     (hb : sp.ts s + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
@@ -110,7 +111,7 @@ theorem carryAt_of_writer_heads
           SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ))) :
     SA.CarryAt T U y i e s CV := by
   refine carryAt_of_served hr
-    (fun _ => SA.voteStart_initial _) (frame_anc_accepted hr hy) hy hc hs fun v hv => ?_
+    hini (frame_anc_accepted hr hy) hy hc hs fun v hv => ?_
   obtain ⟨hvs, ⟨k, hsend, hk1, hk2⟩, Hv, -, hHvr, hFHv, hacc⟩ := hW v hv
   -- the vote: forwarded by `w` from `t_k ∈ [t_s, t_s + 2Δ)`
   refine ⟨hvs, ⟨T.time k, hk1, hk2, fun hdi => hsync.elim
@@ -125,7 +126,8 @@ theorem carryAt_of_writer_heads
 /-- **`Carry_y` from a writer, on a window**: `carryAt_of_writer_heads`, with every head that
 `w` accepted before `a` (outside the relay window) reaching `y` before the freeze (`hold`). -/
 private theorem carryAt_of_writer_service
-    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b : Time}
+    {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {a b : Time}
     {s : Nat} (ha : a ≤ sp.ts s)
     (hb : sp.ts s + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
@@ -139,7 +141,7 @@ private theorem carryAt_of_writer_service
     (hold : ∀ k Hv, T.AcceptAt w k Hv → T.time k < a → Anc U ℓ.frame.F Hv →
       SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ)) :
     SA.CarryAt T U y i e s CV := by
-  refine carryAt_of_writer_heads hr ha hb hw hy hc hs hsync fun v hv => ?_
+  refine carryAt_of_writer_heads hr hini ha hb hw hy hc hs hsync fun v hv => ?_
   obtain ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, hacc⟩ := hW v hv
   refine ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, ?_⟩
   rcases hacc with hg | ⟨kw, hkw, hkwt⟩
@@ -149,7 +151,9 @@ private theorem carryAt_of_writer_service
   · exact Or.inr (hold kw Hv hkw (not_le.1 hakw) hFHv)
 
 /-- Windowed writer transport combines new-source service with old-head catch-up. -/
-theorem carryAt_of_writer_window_before (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+theorem carryAt_of_writer_window_before {ini}
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
     {a κ b : Time} (hsync : SA.ServiceWindowBefore H U a b T) {s : Nat} (ha : a ≤ sp.ts s)
     (hcatch : CatchACWindowBefore T H U a κ b) (hcatchTime : a + κ ≤ sp.ts s + 3 * sp.Δ)
     {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
@@ -166,7 +170,7 @@ theorem carryAt_of_writer_window_before (hr : ACLocalRun (SA.goldilocksSA sp FGP
       hsync.message x hx k m hm h0 z hz j ℓ hc (hd.trans hi) ht
     relay := fun x hx k B hB h0 z hz j ℓ hc hd ht hanc =>
       hsync.relay x hx k B hB h0 z hz j ℓ hc (hd.trans hi) ht hanc }
-  refine carryAt_of_writer_service hr (b := sp.ts s + 2 * sp.Δ) ha le_rfl
+  refine carryAt_of_writer_service hr hini (b := sp.ts s + 2 * sp.Δ) ha le_rfl
     hw hy hc hs (Or.inr restricted) hW ?_
   intro k B hk hka hanc
   have hslot := (SA.castAt_spec hr hy hc).2.1

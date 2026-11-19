@@ -35,11 +35,12 @@ open Compose (store_eq)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
   {proposer : Nat → Fin sp.n}
 
 /-- The FG projection under the HS shared premises, with `f < 2q − n`. -/
-private theorem fg_run (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF) :
+private theorem fg_run (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H K dg g ΔF) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
       Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
   obtain ⟨-, -, hf⟩ := hs.healthy
@@ -50,7 +51,8 @@ private theorem fg_run (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShare
 
 /-- At a cut of the phase, a node whose `Σ.h_j` is `m − 1` has the phase's justification as
 `Σ.J` (HR.2 (a)). -/
-private theorem J_eq_phase (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF)
+private theorem J_eq_phase (hrun : GoldilocksRun proposer dg H tr ini)
+    (hs : HSShared tr H K dg g ΔF)
     {z : Fin sp.n} (hz : z ∈ H) {k m : Nat} {J₀ : SA.Blk sp.n (List (FG.Att sp.n))}
     (hJ₀ : JustifiedAt tr.projFG H k (m - 1) J₀) (hj : (tr.state z k).fg.hj = m - 1) :
     (tr.state z k).fg.J = J₀ := by
@@ -78,7 +80,7 @@ private theorem floor_ge {β : Type} (m : Nat) (c : PhaseCase β) : m - 1 ≤ ph
 
 /-- **HS.1 (a), lower finality is benign.** -/
 theorem finalized_anc_of_allowed (hrun : GoldilocksRun proposer dg H tr ini)
-    (hs : HSShared tr H dg g ΔF)
+    (hs : HSShared tr H K dg g ΔF)
     {i k m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
     (hon : PhaseOn tr.projFG H i k m c) {y : Fin sp.n} (hy : y ∈ H)
     {W : SA.Blk sp.n (List (FG.Att sp.n))} (hW : EffAllowed (tr.state y i).fg m c W)
@@ -144,7 +146,7 @@ theorem finalized_anc_of_allowed (hrun : GoldilocksRun proposer dg H tr ini)
 /-- **HS.1 (b), the witness stays a viable head** of every honest node of the phase that holds
 it. -/
 theorem viableHead_of_allowed (hrun : GoldilocksRun proposer dg H tr ini)
-    (hs : HSShared tr H dg g ΔF)
+    (hs : HSShared tr H K dg g ΔF)
     {i k m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
     (hon : PhaseOn tr.projFG H i k m c) {y : Fin sp.n} (hy : y ∈ H)
     {W : SA.Blk sp.n (List (FG.Att sp.n))} (hW : EffAllowed (tr.state y i).fg m c W)
@@ -202,7 +204,7 @@ theorem viableHead_of_allowed (hrun : GoldilocksRun proposer dg H tr ini)
 
 /-- **HS.1, effective-phase viable-witness retention** (claims HS.1). -/
 theorem viable_witness_retention_of (hrun : GoldilocksRun proposer dg H tr ini)
-    (hs : HSShared tr H dg g ΔF)
+    (hs : HSShared tr H K dg g ΔF)
     {i k m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
     (hon : PhaseOn tr.projFG H i k m c) {y : Fin sp.n} (hy : y ∈ H)
     {W : SA.Blk sp.n (List (FG.Att sp.n))} (hW : EffAllowed (tr.state y i).fg m c W)

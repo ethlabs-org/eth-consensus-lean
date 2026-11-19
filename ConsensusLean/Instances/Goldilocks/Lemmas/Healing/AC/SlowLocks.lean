@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Saved
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
@@ -128,6 +129,44 @@ theorem slow_stored_locks_of_compatible
     · exact hRR l.slot (by omega) hle k hki kx O R CV CVx hO hR
     · exact (hRO l.slot (by omega) hle k hki kx O R CV CVx hO hR).symm
   exact compat_of_below hU hLO hDR hcomp
+
+/-- **The stored locks after a slow origin**, for the slot committees `K` of a finite healthy
+base whose honest restarts within the horizon are by `ḡ`: as `slow_stored_locks`, at a cut by `b`
+of an honest node, for a slow lock whose window starts at or after `ḡ` and whose write
+(`t_s + 6Δ`) is by `b`, through `slow_stored_locks_of_compatible` with the windowed same-slot
+comparisons (the result's voters are members of the slot committee, P). -/
+theorem slow_stored_locks_before {K : CommitteeDict sp.n} {b : Time}
+    (hS : HealthyBaseUpTo K tr H U proposer g b)
+    (hrs : ∀ y ∈ H, ∀ k, tr.RestartAt y k → tr.time k ≤ b → tr.time k ≤ gbar g)
+    {x : Fin sp.n} (hx : x ∈ H) {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
+    (hs : gbar g ≤ sp.ts ((s : Int) - sp.k + 1)) (hsb : sp.ts s + 6 * sp.Δ ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} (hi : s + 1 ≤ sp.slot (tr.time i))
+    (hib : tr.time i ≤ b) :
+    ∀ l ∈ (tr.state y i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
+      ∀ Y ∈ U, Y.root = l.block → Compatible U Y D := by
+  have hr := hS.run.localRun
+  have hgj : ∀ j : Nat, (s : Int) - sp.k < j → gbar g ≤ sp.ts j := fun j hj =>
+    hs.trans ((ts_le_iff sp).2 (by omega))
+  have hkb : ∀ j : Nat, j ≤ s → ∀ kx R CVx, ResultAt tr x kx j R CVx → tr.time kx ≤ b := by
+    rintro j hj kx R CVx ⟨ℓ, hu, -⟩
+    have ht : tr.time kx = sp.ts j + 6 * sp.Δ := hu.2.2.1
+    have := (ts_le_iff sp).2 (show (j : Int) ≤ s by exact_mod_cast hj)
+    linarith
+  refine slow_stored_locks_of_compatible hS.run.toU.localRun hS.run.vstart hx hsl hy hi
+    (fun j hj hjs k hk kx O R CV CVx hO hR => ?_)
+    (fun j hj hjs k hk kx O R CV CVx hO hR => ?_)
+  · have hkt := (hr.time_mono hk.le).trans hib
+    have hkxt := hkb j hjs kx R CVx hR
+    refine result_result_compatible_window_before hS.run hS.sync (hgj j hj) hy hx hO hR hkt hkxt
+      fun z hz q hq hrq => (hrs z hz q hrq ((hr.time_mono hq).trans ?_)).trans (hgj j hj)
+    rcases le_total k kx with h | h
+    · rwa [max_eq_right h]
+    · rwa [max_eq_left h]
+  · have hkxt := hkb j hjs kx R CVx hR
+    exact result_optimistic_compatible_window_before_of_voters hS.run hS.sync (hgj j hj) hx hy hR
+      hO hkxt (fun q hq hrq => (hrs x hx q hrq ((hr.time_mono hq).trans hkxt)).trans (hgj j hj))
+      ((Set.ncard_le_ncard (t := K.committee j) (by
+        rintro _ ⟨v, hv, rfl⟩; exact hS.hP.1 x hx kx j v hv)).trans (hS.hsize j).le)
 
 /-- `slow_stored_locks` with the unlock given. -/
 theorem slow_stored_locksU

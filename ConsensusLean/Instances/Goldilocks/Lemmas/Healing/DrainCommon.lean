@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Compat
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -18,9 +19,9 @@ The context `Γ` (`GoldilocksRun`, `HSShared`, `Catch(2Δ)`,
 * The settled time facts (proved): `w + 4Δ ≤ t_a` (`slotA_spec`), a clean label `j`
   (`t_j ≥ w + 4Δ`) is after `ḡ` and after the cut `c_z` (`gbar_le_of_clean`,
   `cutZ_le_of_clean`), and from `Healthy(g)` alone, after `c_z`, `f < h_t`
-  (`faultBound_of_healthy`) and the honest votes are half of the committee
-  (`half_committee_of_healthy`); HR.4's `fault_bound_late` and `half_committee` restated over
-  `HSShared` instead of `ResetPremises`.
+  (`faultBound_of_healthy`) and the honest members' votes of a slot after the slot of `ḡ` are
+  half of the committee size (`half_committee_of_healthy`); HR.4's `fault_bound_late` and
+  `half_committee` restated over `HSShared` instead of `ResetPremises`.
 * Aligned witnesses (`viable_of_clean_vote`): an honest vote of a clean slot `j` that
   extends `B` makes `B` frozen-viable (or at or below `fc_root`) at every in-phase honest vote of
   a later slot. Its head lies in its voter's full viable tree (`fc_root` is there, by the phase's
@@ -28,12 +29,13 @@ The context `Γ` (`GoldilocksRun`, `HSShared`, `Catch(2Δ)`,
   (`viableHeads_iff`), head `W`; `W` relays (post-`ḡ`) or was caught up (`Catch(2Δ)`) into the
   later voter block tree, and HS.1 retains its ancestors. Hence `clean_fast_viable` (an honest
   counted vote, `fastLock_honest_vote`) and `clean_slow_viable` (an honest supporter of the
-  result, `result_extended`); no induction hypothesis is needed.
+  result, `result_extended_before`); no induction hypothesis is needed.
 * Exact `Carry`: the root split `Σ.F ⪯ B` at a vote whose `fc_root` is not above a
   frozen-viable `B`; then the counted votes of a clean fast origin (`clean_fast_carry`), of a
   clean slow origin's result (`clean_slow_carry`) and of the preceding honest batch
   (`honest_batch_carry`) are carried by H.2's `carryAt_of_writer_catch`.
-* RR/RO: H.1's `HealthyBase` comparisons over the AC projection (`healthyBase_of_hs`).
+* The AC base over the projection (`healthyBase_of_hs`): `HealthyBaseUpTo` for the slot
+  committees `K`, from the first slot start `g' = t_{slot(ḡ)+1}` after `ḡ`, through any horizon.
 
 Everything here is proved.
 
@@ -47,7 +49,8 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
   {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
@@ -99,7 +102,7 @@ theorem PhaseOn.mono_right {k k' : Nat} (h : PhaseOn tr.projFG H i₀ k m c) (hk
 
 /-- An honest restart is at or before `t_{slot(ḡ)+1}` (`Healthy(g)`; HR.4's `restart_le`). -/
 theorem restart_le_of_healthy (hrun : GoldilocksRun proposer dg H tr ini)
-    (hs : HSShared tr H dg g ΔF)
+    (hs : HSShared tr H K dg g ΔF)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (hk : tr.RestartAt y k) :
     tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
   by_contra hlt
@@ -124,7 +127,7 @@ theorem restart_le_of_healthy (hrun : GoldilocksRun proposer dg H tr ini)
 
 /-- **`f < h_t` after the cut** (`Healthy(g)`; HR.4's `fault_bound_late`). -/
 theorem faultBound_of_healthy (hrun : GoldilocksRun proposer dg H tr ini)
-    (hs : HSShared tr H dg g ΔF)
+    (hs : HSShared tr H K dg g ΔF)
     {t : Time} (ht : cutZ sp.toParams g ≤ t) : tr.FaultBound H t := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hgt : gbar g ≤ t := by have := lt_cutZ sp g; linarith
@@ -150,12 +153,26 @@ theorem faultBound_of_healthy (hrun : GoldilocksRun proposer dg H tr ini)
   unfold RunTrace.FaultBound
   omega
 
-/-- **Half of the committee votes** in a slot `s'` with `t_{s'} ≥ c_z` (`Healthy(g)`; HR.4's
-`half_committee`). -/
-theorem half_committee_of_healthy (hrun : GoldilocksRun proposer dg H tr)
-    (hs : HSShared tr H dg g ΔF)
+/-- **CS after the cut** under the HS premises (`faultBoundK_of_awake`): at a time `t ≥ c_z`, for a
+slot after the slot of `ḡ`, the faulty committee members are fewer than its honest, awake and
+joined members. -/
+theorem faultBoundK_of_healthy (hrun : GoldilocksRun proposer dg H tr ini)
+    (hs : HSShared tr H K dg g ΔF) {s : Nat} (hsl : sp.slot (gbar g) + 1 ≤ s) {t : Time}
+    (ht : cutZ sp.toParams g ≤ t) : SA.FaultBoundK K s tr.projAC H t := by
+  have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
+  have hgt : gbar g ≤ t := by have := lt_cutZ sp g; linarith
+  exact faultBoundK_of_awake hs.committee hrun hs.twoK hsl ht
+    (fun y hy => hs.healthy.2.1 y hy t hgt) fun _ hy _ hk _ => restart_le_of_healthy hrun hs hy hk
+
+/-- **The honest voters are half of the committee size** in a slot `s'` with `t_{s'} ≥ c_z`:
+every honest member of the slot-`s'` committee votes (`Healthy(g)`, the gate), and fewer than half
+of the committee is faulty (CS2; HR.4's `half_committee`). -/
+theorem half_committee_of_healthy (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
+    (hs : HSShared tr H K dg g ΔF)
     {s' : Nat} (hs' : cutZ sp.toParams g ≤ sp.ts s') :
-    sp.n ≤ 2 * {x' | x' ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x' j e' ∧ e'.msg.slot = s'}.ncard := by
+    sp.committeeSize ≤
+      2 * {x' | x' ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x' j e' ∧ e'.msg.slot = s'}.ncard := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hgt : gbar g ≤ sp.ts s' + sp.Δ := by have := lt_cutZ sp g; linarith
   have hsl : sp.slot (sp.ts s' + sp.Δ) = s' :=
@@ -163,8 +180,9 @@ theorem half_committee_of_healthy (hrun : GoldilocksRun proposer dg H tr)
   have hs3 : sp.slot (gbar g) + 3 ≤ s' := by
     have h := (SA.ts_le_iff sp).mp ((cutZ_eq sp g) ▸ hs')
     exact_mod_cast h
-  have hsub : H ⊆ {x' | x' ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x' j e' ∧ e'.msg.slot = s'} := by
-    intro y hy
+  have hsub : K.committee s' ∩ H ⊆
+      {x' | x' ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x' j e' ∧ e'.msg.slot = s'} := by
+    rintro y ⟨hyK, hy⟩
     have hj : tr.JoinedAt y (sp.ts s' + sp.Δ) := fun k hk _ => by
       change 0 < sp.slot (sp.ts s' + sp.Δ) ∧
         tr.time k ≤ sp.toParams.slotTime (sp.slot (sp.ts s' + sp.Δ) - 1)
@@ -174,22 +192,35 @@ theorem half_committee_of_healthy (hrun : GoldilocksRun proposer dg H tr)
       rw [he]
       exact (SA.ts_le_iff sp).mpr (by omega)
     obtain ⟨k, e, hv, hes, -⟩ :=
-      Compose.vote_of_awake_joined hrun hs.noColl hy (Compose.mayVote_stock hrun hs.noColl hy _)
+      Compose.vote_of_awake_joined hrun hs.noColl hy (fun i => (hs.mayVote_iff hrun hy i s').2 hyK)
         (hs.healthy.2.1 y hy _ hgt) hj
     exact ⟨hy, k, e, hv, hes⟩
   have hle := Set.ncard_le_ncard hsub (Set.toFinite _)
-  have hn : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have h3 := hs.healthy.2.2
-  have hn' : sp.n = sp.toParams.n := rfl
+  have hsplit : (K.committee s' ∩ H).ncard + (K.committee s' ∩ Hᶜ).ncard = sp.committeeSize := by
+    rw [← hs.hsize s']
+    exact Set.ncard_inter_add_ncard_sdiff_eq_ncard _ _ (Set.toFinite _)
+  have hf := hs.cs2 (s := s') (by omega)
   omega
+
+/-- Under the HS premises, a slot `s` with `t_s ≥ c_z` has an honest vote: the honest voters of
+the slot are half of the committee size (`half_committee_of_healthy`), which is positive. -/
+theorem exists_honest_vote_of_healthy (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF) {s : Nat}
+    (hs' : cutZ sp.toParams g ≤ sp.ts s) :
+    ∃ z ∈ H, ∃ k e, SA.VoteAt tr.projAC z k e ∧ e.msg.slot = s := by
+  obtain ⟨z, hz, k, e, hv, hes⟩ := Set.nonempty_of_ncard_ne_zero (s := {x' | x' ∈ H ∧
+    ∃ j e', SA.VoteAt tr.projAC x' j e' ∧ e'.msg.slot = s}) (by
+      have := half_committee_of_healthy hrun hs hs'
+      have := hs.committee_pos
+      omega)
+  exact ⟨z, hz, k, e, hv, hes⟩
 
 /-! ### `Carry` from a writer: the root split and the pre-`ḡ` catch-up -/
 
 /-- **The receiver-root split**: at an honest vote whose
 `fc_root` is not above `B`, frozen viability of `B` puts `B` in the frame tree, so `Σ.F ⪯ B`. -/
 private theorem frame_F_anc_of_viable (hrun : GoldilocksRun proposer dg H tr ini)
-    (hs : HSShared tr H dg g ΔF)
+    (hs : HSShared tr H K dg g ΔF)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC y k ℓ e)
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -226,14 +257,40 @@ private theorem accept_of_catch (hrun : GoldilocksRun proposer dg H tr ini)
 
 /-! ### Aligned witnesses -/
 
-/-- The AC projection under the HS premises is a healthy driven AC trace (H.1's `HealthyBase`). -/
-theorem healthyBase_of_hs (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) :
-    SA.HealthyBase tr.projAC H (tr.HonestBlocks H) proposer g :=
-  ⟨Compose.goldilocks_ac_projection_from hrun hs.noColl,
-    projection_driven hrun hs.noColl hs.genesisRoot hs.healthy,
-    projection_healthy hrun hs.noColl hs.healthy,
-    projection_catch hrun hs.noColl hs.healthy hc, hs.stock⟩
+/-- **The AC base under the HS premises**: the AC projection is a finite healthy base for the
+slot committees `K`, from the first slot start `g' = t_{slot(ḡ)+1}` after `ḡ` through any horizon
+`b` (`healthy_base_of_service_catch_before`: GST gives the reset service, `Healthy(g)` the awake
+honest validators and the fault bound, and the honest restarts are by `g'`). -/
+theorem healthyBase_of_hs (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (b : Time) :
+    SA.HealthyBaseUpTo K tr.projAC H (tr.HonestBlocks H) proposer
+      (sp.ts (sp.slot (gbar g) + 1 : Nat)) b :=
+  healthy_base_of_service_catch_before hrun hs.noColl (ResetService.of_gst tr H hs.healthy.1)
+    (fun y hy t ht _ => hs.healthy.2.1 y hy t ht) hs.healthy.2.2 hc hs.committee hs.twoK
+    fun _ hy _ hk _ => restart_le_of_healthy hrun hs hy hk
+
+/-- The honest restarts are at or before the start `g'` of the AC base `healthyBase_of_hs`. -/
+theorem restart_le_base_of_hs (hrun : GoldilocksRun proposer dg H tr ini)
+    (hs : HSShared tr H K dg g ΔF) {b : Time} :
+    ∀ y ∈ H, ∀ k, tr.projAC.RestartAt y k → tr.time k ≤ b →
+      tr.time k ≤ gbar (sp.ts (sp.slot (gbar g) + 1 : Nat)) := by
+  intro y hy k hk _
+  rw [gbar_slotAfter]
+  exact restart_le_of_healthy hrun hs hy (Compose.projAC_restartAt.mp hk)
+
+/-- Under the HS premises, an honest node's AC deadlines are at most `max(τ, t_s) + Δ` at every
+slot `s` with `ḡ ≤ t_s` (no honest restart after `ḡ`). -/
+theorem deadline_le_of_hs (hs : HSShared tr H K dg g ΔF) {y : Fin sp.n} (hy : y ∈ H) {s : Nat}
+    (hgs : gbar g ≤ sp.ts s) (k : Nat) (τ : Time) :
+    tr.projAC.deadline y k τ ≤ max τ (sp.ts s) + sp.Δ :=
+  Compose.ac_deadline_le_of_restarts (fun k' _ hk' =>
+    (hs.noRestart y hy k' (Compose.projAC_restartAt.mp hk')).trans hgs) τ
+
+/-- Under the HS premises, an honest node's restarts are before every time after `ḡ`. -/
+theorem restart_lt_of_hs (hs : HSShared tr H K dg g ΔF) {y : Fin sp.n} (hy : y ∈ H) {t : Time}
+    (hgt : gbar g < t) (k : Nat) (hk : tr.projAC.RestartAt y k) : tr.time k < t :=
+  (hs.noRestart y hy k (Compose.projAC_restartAt.mp hk)).trans_lt hgt
 
 /-- A walk that starts in `S` and steps inside `T ⊆ S` stays in `S`. -/
 private theorem ghost_mem {FGP : Type} {S T : Set (SA.Blk sp.n FGP)} (hTS : T ⊆ S)
@@ -268,7 +325,7 @@ private theorem head_viable {FGP : Type} {ro' : ReplayOrder sp FGP} {U : Set (SA
 frontier block of the phase's evidence is allowed, so a viable head (`viableHeads_iff`, HS.1
 (a)). -/
 private theorem fcRoot_viable (hrun : GoldilocksRun proposer dg H tr ini)
-    (hs : HSShared tr H dg g ΔF)
+    (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) {z : Fin sp.n} (hz : z ∈ H) {kz : Nat}
     {ℓz : ACLabel (goldilocksNode sp ro)} (hcz : tr.projAC.CallAt z kz ℓz)
     (hph : PhaseAt tr.projFG H kz m c) (hev : HoldsEvidence (tr.state z kz).fg m c) :
@@ -372,7 +429,8 @@ is cast by `t_j + Δ`, and `B` is below a block `W` effectively allowed at the v
 its voter's full viable tree: `fc_root` is there, by the phase's frontier block,
 `getAnchor_viable`, and the walk steps in the viable vote domain; so it is below a viable head,
 allowed by `viableHeads_iff`) that is genesis or that the voter accepted before `t_j + 2Δ`. -/
-theorem clean_vote_witness (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF)
+theorem clean_vote_witness (hrun : GoldilocksRun proposer dg H tr ini)
+    (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {z : Fin sp.n}
     (hz : z ∈ H) {kz : Nat} {e' : SA.Em sp (List (FG.Att sp.n))}
     (hvz : SA.VoteAt tr.projAC z kz e') {j : Nat} (hj : w + 4 * sp.Δ ≤ sp.ts j)
@@ -431,7 +489,7 @@ voter before its freeze, above its `Σ.F` (HS.1 (a)), so it is in the later vote
 HS.1 (d) retains every ancestor of `W`. A genesis witness makes `B` the genesis, at or below
 `fc_root`. -/
 theorem viable_of_clean_vote (hrun : GoldilocksRun proposer dg H tr ini)
-    (hs : HSShared tr H dg g ΔF)
+    (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {z : Fin sp.n}
     (hz : z ∈ H) {kz : Nat} {e' : SA.Em sp (List (FG.Att sp.n))}
     (hvz : SA.VoteAt tr.projAC z kz e') {j : Nat} (hj : w + 4 * sp.Δ ≤ sp.ts j)
@@ -496,7 +554,7 @@ boundary): under `Γ` (without `Prop⁺`), let an honest vote of a clean slot `j
 or below its `fc_root` or in the viable tree of its frame: the witness `W` of
 `clean_vote_witness` is held there (genesis, or relayed by `t_j + 3Δ` above its `Σ.F` (HS.1 (a)),
 or caught up, `relay_held`), and HS.1 (c) retains its ancestors. -/
-theorem clean_vote_frame (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF)
+theorem clean_vote_frame (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {z : Fin sp.n}
     (hz : z ∈ H) {kz : Nat} {e' : SA.Em sp (List (FG.Att sp.n))}
     (hvz : SA.VoteAt tr.projAC z kz e') {j : Nat} (hj : w + 4 * sp.Δ ≤ sp.ts j)
@@ -539,7 +597,8 @@ witnesses): under `Γ` (without `Prop⁺`), let `x` write a fast lock of a clean
 label `j` (`t_j ≥ w + 4Δ`) with stored block `B`. At every in-phase honest vote of a slot `> j`,
 `B` is in the viable voter block tree or at or below `fc_root`: an honest counted vote extends the
 selection `D ⪰ B` (`fastLock_honest_vote`; `viable_of_clean_vote`). -/
-theorem clean_fast_viable (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem clean_fast_viable (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n}
     (hx : x ∈ H) {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
     (ho : Compose.StoredFastLockAt tr x i j B CV) (hj : w + 4 * sp.Δ ≤ sp.ts j) {y : Fin sp.n}
@@ -548,13 +607,13 @@ theorem clean_fast_viable (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
     (hjs : j < e.msg.slot) (hk : PhaseOn tr.projFG H i₀ k m c) :
     B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
-  have hS := healthyBase_of_hs hrun hs hc
+  have hac := Compose.goldilocks_ac_projection_from hrun hs.noColl
   obtain ⟨ℓw, D, hcw, hfl, rfl⟩ := ho
   have hBD : Anc (tr.HonestBlocks H) (ℓw.frame.viableAncestor D) D :=
-    Anc.mono (SA.frameIn_of_callAt hS.run.localRun hx hcw).2 (SA.anc_viableAncestor _ D)
+    Anc.mono (SA.frameIn_of_callAt hac.localRun hx hcw).2 (SA.anc_viableAncestor _ D)
   obtain ⟨z, hz, kz, e', hvz, hes, Hd, hHd, hHdr, hDHd⟩ :=
-    SA.fastLock_honest_vote hS.run _ SA.CommitteeP.full hx hfl
-      (SA.cs2_full hs.stock hS.two_faulty_lt)
+    SA.fastLock_honest_vote hac K (hs.hP hrun) hx hfl
+      (hs.cs2 (slot_gbar_lt_of_cutZ_le (cutZ_le_of_clean hw hj)))
   exact viable_of_clean_vote hrun hs hc hw hz hvz hj hes ⟨Hd, hHd, hHdr, hBD.trans hDHd⟩ hy hv
     hjs hk
 
@@ -562,7 +621,8 @@ theorem clean_fast_viable (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
 helper): as `clean_fast_viable`, for a slow lock of label `j` with `t_{j−k+1} ≥ w + 4Δ` and
 stored block `B`: an honest slot-`j` vote extends the update's result `C ⪰ D ⪰ B`
 (`result_extended`; `viable_of_clean_vote`). -/
-theorem clean_slow_viable (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem clean_slow_viable (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n}
     (hx : x ∈ H) {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : StoredSlowLockAt tr x i j B) (hj : w + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1))
@@ -571,8 +631,7 @@ theorem clean_slow_viable (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
     (hjs : j < e.msg.slot) (hk : PhaseOn tr.projFG H i₀ k m c) :
     B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
-  have hS := healthyBase_of_hs hrun hs hc
-  have hr := hS.run.localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hs.noColl).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hj' : w + 4 * sp.Δ ≤ sp.ts j :=
     hj.trans ((SA.ts_le_iff sp).2 (by have := sp.two_le_k; omega))
@@ -583,8 +642,9 @@ theorem clean_slow_viable (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   have hBC : Anc (tr.HonestBlocks H) (ℓX.frame.viableAncestor D) C :=
     Anc.mono hΦU ((SA.anc_viableAncestor _ D).trans (SA.deepest_mem hdeep).1.1.2.2)
   obtain ⟨z, hz, kz, e', hvz, hes, Hd, hHd, hHdr, hCHd⟩ :=
-    SA.result_extended hS (by linarith only [hΔ, hj', hw8]) hx hupd.1 (by
-        rw [hupd.2.2.1]; linarith only [hΔ]) hconf
+    SA.result_extended_before (healthyBase_of_hs hrun hs hc (tr.time i))
+      (restart_le_base_of_hs hrun hs) (gbar_slotAfter_add_le (by linarith only [hΔ, hj', hw8]))
+      hx hupd.1 (by rw [hupd.2.2.1]; linarith only [hΔ]) le_rfl hconf
   exact viable_of_clean_vote hrun hs hc hw hz hvz hj' hes ⟨Hd, hHd, hHdr, hBC.trans hCHd⟩ hy hv
     hjs hk
 
@@ -596,7 +656,8 @@ theorem clean_slow_viable (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
 `F ⪯ B` (else `B ⪯ F ⪯ fc_root`), and every counted head, Byzantine ones included, extends `B`;
 the counted heads are resolved at the writer before `t_j + 2Δ` and relay (post-`ḡ`) or were caught
 up at `w` before `t_j + 3Δ`; raw votes and the two-vote cap give the held votes. -/
-theorem clean_fast_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem clean_fast_carry (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n}
     (hx : x ∈ H) {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
     (ho : Compose.StoredFastLockAt tr x i j B CV) (hj : w + 4 * sp.Δ ≤ sp.ts j) {y : Fin sp.n}
@@ -620,7 +681,7 @@ theorem clean_fast_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
   have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
     tr proposer ΔF (gbar g) (sp.ts j + 2 * sp.Δ) hrun.toLocalRun
     (syncRun_of_gst hs.healthy.1 (le_gbar g))
-  refine SA.carryAt_of_writer_catch hr hsync hgj le_rfl hx hy hv he fun v hvv => ?_
+  refine SA.carryAt_of_writer_catch hr hrun.vstart hsync hgj le_rfl hx hy hv he fun v hvv => ?_
   obtain ⟨h₁, h₂, Hv, hHv, hHvr, hDHv, h₃⟩ :=
     fastLock_writer hr hrun.vstart hx hflD v hvv
   have hFHv := hFB.trans (hBD.trans hDHv)
@@ -637,7 +698,8 @@ theorem clean_fast_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
 /-- **`Carry` of a clean slow origin's result votes** (the slow
 helper): as `clean_fast_carry`, for the counted votes `CV` of every regular result `C` of the
 writer's update (every counted head extends `C ⪰ S ⪰ B`, `S` the raw slow selection). -/
-theorem clean_slow_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem clean_slow_carry (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n}
     (hx : x ∈ H) {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : StoredSlowLockAt tr x i j B) (hj : w + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1))
@@ -670,7 +732,7 @@ theorem clean_slow_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
   have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
     tr proposer ΔF (gbar g) (sp.ts j + 2 * sp.Δ) hrun.toLocalRun
     (syncRun_of_gst hs.healthy.1 (le_gbar g))
-  refine SA.carryAt_of_writer_catch hr hsync hgj le_rfl hx hy hv he fun v hvv => ?_
+  refine SA.carryAt_of_writer_catch hr hrun.vstart hsync hgj le_rfl hx hy hv he fun v hvv => ?_
   obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := Compose.result_writer hr
     hrun.vstart hx hC v hvv
   have hFHv := hFB.trans (hBC.trans hCHv)
@@ -690,7 +752,8 @@ extends `B`, then at an in-phase honest slot-`(m'+1)` vote at which `B` is froze
 at or below `fc_root`, `Carry_y(m', S_{m'})` holds for the honest slot-`m'` votes: `Σ.F ⪯ B` (the
 root split), so every honest head is above `Σ.F`; each was accepted by its voter before its vote,
 and relays (post-`ḡ`) or was caught up by `ḡ + 2Δ` (`Catch(2Δ)`). -/
-theorem honest_batch_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem honest_batch_carry (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {m' : Nat} (hm' : w + 4 * sp.Δ ≤ sp.ts m')
     (hall : ∀ z ∈ H, ∀ k' e', SA.VoteAt tr.projAC z k' e' → e'.msg.slot = m' →
@@ -727,7 +790,7 @@ theorem honest_batch_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
     rw [hvs] at hkt
     change tr.time k' ≤ _ at hkt
     have hFHd := hF.trans hBHv
-    refine SA.carryAt_of_writer_catch hr hsync hgm le_rfl hz hy hv he ?_
+    refine SA.carryAt_of_writer_catch hr hrun.vstart hsync hgm le_rfl hz hy hv he ?_
     rintro v rfl
     refine ⟨hvs, ⟨k', ⟨ℓk, hck, Or.inl ⟨e', he', rfl⟩⟩,
       (SA.ts_le_iff_le_slot sp (hr.time_nonneg k') m').2 (by omega), by

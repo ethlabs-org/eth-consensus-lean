@@ -20,7 +20,8 @@ namespace Consensus.Goldilocks.Healing
 open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {H : Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
   {proposer : Nat → Fin sp.n}
 
@@ -103,7 +104,7 @@ attestation of height `≥ H_z + 1` signed at cut `d` names the entry `E` (at it
 of a high origin `(O, l)` written by the signer at a cut `r < d`: `E ⪯ Q ⪯ O` for the attestation's
 source `Q`. -/
 theorem ResetPremisesUpTo.high_row_source {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {v : Fin sp.n} (hv : v ∈ H)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {v : Fin sp.n} (hv : v ∈ H)
     {d : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hh : HZ tr H g + 1 ≤ att.h) :
     ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧ ∃ E ∈ (tr.state v r).fg.tree,
       (tr.state v r).fg.Anc E O ∧ E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
@@ -170,7 +171,7 @@ theorem ResetPremisesUpTo.high_row_source {b : Time}
     hEr', by rw [hσE, hEh'], by rw [hσE, hETh']⟩
 
 /-- Whole-run specialization of actual signed-attestation provenance. -/
-theorem high_row_source (hp : ResetPremises tr H proposer dg g ΔF a) {v : Fin sp.n} (hv : v ∈ H)
+theorem high_row_source (hp : ResetPremises tr H K proposer dg g ΔF a) {v : Fin sp.n} (hv : v ∈ H)
     {d : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hh : HZ tr H g + 1 ≤ att.h) :
     ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧ ∃ E ∈ (tr.state v r).fg.tree,
       (tr.state v r).fg.Anc E O ∧ E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧

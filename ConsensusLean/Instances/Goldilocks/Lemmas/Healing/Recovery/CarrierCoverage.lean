@@ -29,12 +29,12 @@ open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-- **No honest restart after `ḡ`** (`Healthy(g)`): a restart follows a time `u` at which the
 node was asleep, so `u < ḡ`; the wake after `u` is a restart at or before `ḡ`, and it is a call
 after `u`, so it is the restart itself. -/
-theorem restart_le_gbar (hp : ResetPremises tr H proposer dg g ΔF a) :
+theorem restart_le_gbar (hp : ResetPremises tr H K proposer dg g ΔF a) :
     NoRestartAfter tr H (gbar g) := by
   intro y hy w hw
   obtain ⟨u, hu0, -, hus, hprev⟩ := hp.run.sleep_of_restart y hy w hw
@@ -53,7 +53,7 @@ theorem restart_le_gbar (hp : ResetPremises tr H proposer dg g ΔF a) :
   linarith
 
 /-- The deadline at an honest node of an object of time `τ ≥ ḡ` is `τ + Δ'`. -/
-theorem deadline_le_of_gbar (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n}
+theorem deadline_le_of_gbar (hp : ResetPremises tr H K proposer dg g ΔF a) {y : Fin sp.n}
     (hy : y ∈ H) (k : Nat) {τ : Time} (hτ : gbar g ≤ τ) (Δ' : Time) :
     tr.deadline y k τ Δ' ≤ τ + Δ' := by
   have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := k)
@@ -63,7 +63,7 @@ theorem deadline_le_of_gbar (hp : ResetPremises tr H proposer dg g ΔF a) {y : F
   linarith
 
 /-- **C5: a finalizing carrier covers every later honest cache.** -/
-theorem coverage_of_finalizing_carrier (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem coverage_of_finalizing_carrier (hp : ResetPremises tr H K proposer dg g ΔF a)
     {q : Fin sp.n} {iP : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hq : q ∈ H) (hP : tr.AcceptAt q iP P)
     (hPh : HZ tr H g + 1 ≤ ((tr.post iP).fg.σ P.root).h)

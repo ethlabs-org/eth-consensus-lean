@@ -4,6 +4,8 @@ public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Sync
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.LocalRun
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 @[expose] public section
 
 /-! # The healthy two-validator run through C1.2: a literal good window
@@ -139,10 +141,16 @@ theorem cF_bounds :
 /-! ## The regime premises -/
 
 /-- **The HS shared premises** at `g = 0`, `Δ_F = 36`. -/
-theorem run_hsShared : Healing.HSShared run Set.univ dg 0 36 :=
+theorem run_hsShared : Healing.HSShared run Set.univ (SA.CommitteeDict.full sp.n) dg 0 36 :=
   ⟨dg_noColl run, dg_genesis, run_healthy run_facts,
     fun y _ k hk => absurd hk (run_facts.noRestart y k),
-    by decide, rfl⟩
+    by decide,
+    ⟨SA.size_binding_full rfl, SA.CommitteePAt.full, fun _ _ _ _ _ v _ => SA.mem_full v.slot _,
+      fun _ _ x hx i _ s => ⟨fun _ => SA.mem_full s x,
+        fun _ => Compose.mayVote_stock run_goldilocksRun (dg_noColl run) hx s i⟩⟩,
+    fun s _ => by
+      rw [SA.ncard_inter_full, SA.ncard_full, Set.compl_univ, Set.ncard_empty]
+      simp⟩
 
 /-- `Catch(2Δ)` at `g = 0`, vacuously: no block is accepted before `ḡ = 0`. -/
 theorem run_catch : Healing.CatchRun run Set.univ 0 (2 * sp.Δ) := by
@@ -263,8 +271,10 @@ theorem twoRun_outcome :
           run.time k' < sp.ts ((21 + 11 + 0 + 1 : Nat) : Int) + sp.Δ) ∨
       Compose.EarlyOutcome run Set.univ (blk 21) 3 true (blk 11).root
         (sp.ts ((21 + 11 + 0 + 1 : Nat) : Int)) := by
-  have h := (Healing.Recovery.outcome_service sp ro prop dg Set.univ run 0 36 45 11 0
-    run_goldilocksRun (run_hsShared) run_catch cF_bounds.2.1 cF_bounds.2.2 (run_isReset) w0 _ _
+  have h := (Healing.Recovery.outcome_service sp ro prop dg Set.univ run
+    (SA.CommitteeDict.full sp.n) 0 36 45 11 0
+    (by rw [SA.committeeStart_full]; exact run_goldilocksRun) (run_hsShared) run_catch
+    cF_bounds.2.1 cF_bounds.2.2 (run_isReset) w0 _ _
     (blk 21) 21 (run_ready (by decide))
     (run_runEntry) resetSlot_le (entry_height) (fun _ _ => (entry_previous).2)
     (ready_inclusion)).1

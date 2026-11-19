@@ -141,13 +141,14 @@ theorem accepted_justification_before_timeout (hr : FGLocalRun acp₀ H U tr)
 end FG
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {H : Set (Fin sp.n)}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
 /-- A carrier below a high origin is accepted everywhere before the deadline. If the
 receiver's finalized block has already passed the carrier, ancestor closure supplies its
 earlier acceptance; otherwise the ordinary acceptance relay applies. -/
-theorem carrier_below_origin_before (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem carrier_below_origin_before (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hnr : NoRestartAfter tr H (SA.gbar g)) (hc : CatchRun tr H g (2 * sp.Δ))
     {x z : Fin sp.n} {io jo k : Nat} {O X : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x io jo O) (hz : z ∈ H) (hacc : tr.AcceptAt z k X)
@@ -177,8 +178,8 @@ theorem carrier_below_origin_before (hp : ResetPremises tr H proposer dg g ΔF a
 
 /-- A higher actual report by the inclusive `6Δ` deadline gives the exact early-outcome
 alternative, including strict carrier acceptance everywhere. No lower report time is needed. -/
-theorem higher_report_early_outcome (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
+theorem higher_report_early_outcome (hp : ResetPremises tr H K proposer dg g ΔF a)
+    (hs : HSShared tr H K dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {m r cF kF : Nat}
     {T C : SA.Blk sp.n (List (FG.Att sp.n))} {ell : ACLabel (goldilocksNode sp ro)}
     (hT : T ∈ (tr.state y m).fg.tree) (he : ((tr.state y m).fg.σ T.root).Th = T.root)
@@ -267,7 +268,7 @@ theorem higher_report_early_outcome (hp : ResetPremises tr H proposer dg g ΔF a
     · linarith
 
 /-- The post-drain entry starts after the reset and the GST service margin. -/
-theorem drain_margins (hp : ResetPremises tr H proposer dg g ΔF a) {u : Nat}
+theorem drain_margins (hp : ResetPremises tr H K proposer dg g ΔF a) {u : Nat}
     (hR : drainTime sp a ≤ sp.ts u) :
     0 < u ∧ a ≤ sp.ts u ∧ SA.gbar g + 4 * sp.Δ ≤ sp.ts u := by
   have hΔ := sp.toParams.hΔ
@@ -284,8 +285,9 @@ theorem drain_margins (hp : ResetPremises tr H proposer dg g ΔF a) {u : Nat}
 
 /-- The supplier's actual reports yield either an identity quorum of exact entry attestations
 signed by `t_u + 6Δ`, or the full early outcome with its strict carrier deadline. -/
-theorem rows_or_early_outcome (supply : ReadyProposalReportSupply tr H proposer dg g ΔF a)
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hs : HSShared tr H dg g ΔF)
+theorem rows_or_early_outcome
+    (supply : ReadyProposalReportSupply tr H K proposer dg g ΔF a)
+    (hp : ResetPremises tr H K proposer dg g ΔF a) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) {p y : Fin sp.n} {k u m cF kF : Nat}
     {T : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k u T) (hR : drainTime sp a ≤ sp.ts u)
@@ -350,13 +352,16 @@ theorem rows_or_early_outcome (supply : ReadyProposalReportSupply tr H proposer 
 unchanged; this module does not import the operational implementation of the supplier. -/
 theorem outcome_service_of_reports
     (supply : ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-      (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (proposer : Nat → Fin sp.n)
-      (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF a : Time),
-      ReadyProposalReportSupply tr H proposer dg g ΔF a) : Compose.OutcomeService := by
-  intro sp ro proposer dg H tr g ΔF a cF kF hrun hs hc hcf hto hreset
+      (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (K : SA.CommitteeDict sp.n)
+      (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+      (g ΔF a : Time),
+      ReadyProposalReportSupply tr H K proposer dg g ΔF a) :
+    Compose.OutcomeService := by
+  intro sp ro proposer dg H tr K g ΔF a cF kF hrun hs hc hcf hto hreset
     p k i T u hP hentry hR hhigh hhj hretained
   classical
-  have hp : ResetPremises tr H proposer dg g ΔF a := ⟨hrun, hs.healthy, hs.noColl, hreset, hs.stock⟩
+  have hp : ResetPremises tr H K proposer dg g ΔF a :=
+    ⟨hrun, hs.healthy, hs.noColl, hreset, hs.committee, hs.twoK⟩
   have hslot := hP.2.2.2.2.1
   subst u
   rw [← drainTime_eq] at hR
@@ -375,7 +380,7 @@ theorem outcome_service_of_reports
     exact fun h => hhj h.1 h.2
   obtain ⟨hu, _, hgu⟩ := drain_margins hp hR
   have hΔ := sp.toParams.hΔ
-  rcases rows_or_early_outcome (supply sp ro tr H proposer dg g ΔF a) hp hs hc hP hR
+  rcases rows_or_early_outcome (supply sp ro tr H K proposer dg g ΔF a) hp hs hc hP hR
       hentry.1 hT he hhT hhJ hcf (kF := kF) with ⟨ids, hq, hrows⟩ | hearly
   swap
   · rw [hpost] at hearly
@@ -391,8 +396,14 @@ theorem outcome_service_of_reports
     (SA.ts_lt_iff sp).2 (by exact_mod_cast (show W.slot < T.slot + cF + kF + 1 by omega))
   have hTW : sp.ts T.slot ≤ sp.ts W.slot := (SA.ts_le_iff sp).2 (by exact_mod_cast
     (show T.slot ≤ W.slot by omega))
-  have hcarrier := ready_proposal_accepted_everywhere hp hs hc hW (hR.trans hTW)
+  have hcarrier := ready_proposal_accepted_everywhere hp hc hW (hR.trans hTW)
     (by omega) (hgu.trans hTW)
+  have hbefore' : sp.ts W.slot + 4 * sp.Δ ≤ sp.ts (T.slot + cF + kF + 1 : Nat) := by
+    have h := (SA.ts_le_iff sp).2 (show ((W.slot + 1 : Nat) : Int) ≤
+      ((T.slot + cF + kF + 1 : Nat) : Int) by push_cast; omega)
+    simp only [SAParams.ts] at h ⊢
+    push_cast at h ⊢
+    linarith
   refine ⟨Or.inl ⟨w, kw, W, Pr, R, hWtime.trans_lt hbefore, hwin, ?_⟩, fun _ => ?_⟩
   · intro z hz
     obtain ⟨j, hj, ht⟩ := hcarrier z hz

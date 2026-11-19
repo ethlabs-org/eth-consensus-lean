@@ -57,7 +57,8 @@ end FGTraces
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp a : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp a : Time}
   {cF kF : Nat}
 
 /-! ## The actual reports -/
@@ -72,7 +73,7 @@ private theorem report_mem (hrun : GoldilocksRun proposer dg H tr ini)
 /-- **An actual high report has a stored high origin written before it** (the
 prefix of `high_row_source`): `C` is the viable image of a live fast lock, below the stored block
 `B` of an earlier fast-lock write (`stored_fast_lock_provenance`); `B` is high as `C ⪯ B` is. -/
-theorem high_report_origin (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem high_report_origin (hp : ResetPremises tr H K proposer dg g ΔF a)
     {z : Fin sp.n} (hz : z ∈ H)
     {r : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hrep : SA.ToFGAt tr.projAC z r ℓ C)
@@ -108,7 +109,7 @@ theorem high_report_origin (hp : ResetPremises tr H proposer dg g ΔF a)
 /-- Bounded report provenance retains the raw fast-lock source, as well as
 its stored viable image. Both cover the actual report. -/
 theorem ResetPremisesUpTo.high_report_origin {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {z : Fin sp.n} (hz : z ∈ H)
     {r : Nat} {ell : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hrep : SA.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
@@ -146,7 +147,7 @@ theorem ResetPremisesUpTo.high_report_origin {b : Time}
 
 /-- Historical self-entries under bounded high origins agree at equal height. -/
 theorem ResetPremisesUpTo.high_entry_eq {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {x x' : Fin sp.n}
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {x x' : Fin sp.n}
     {i j i' j' : Nat} {B B' Z₁ Z₂ : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
     (ho' : HighOrigin tr H g x' i' j' B') (hi'b : tr.time i' ≤ b)
@@ -173,7 +174,7 @@ theorem ResetPremisesUpTo.high_entry_eq {b : Time}
 /-- **A high record entry is the high-chain entry of its height**: an honest record's target,
 timeout or lock entry at `h ≥ H_z + 1` is the root of every entry at `h` below a high origin. -/
 theorem ResetPremisesUpTo.record_entry_eq {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {i h r : Nat} (hib : tr.time i ≤ b)
     (hh : HZ tr H g + 1 ≤ h)
     (hr : (tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h ∨
@@ -219,7 +220,7 @@ theorem ResetPremisesUpTo.record_entry_eq {b : Time}
 /-- The target and timeout fields of a high entry's attestation do not require its
 predecessor to be high. -/
 private theorem sign_target_before {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n}
     (hs : tr.SignAt y k att) (hkb : tr.time k ≤ b) (hh : HZ tr H g + 1 ≤ att.h)
     (he : (tr.state y k).record.timeout att.h = ∅) : att.timeout = false := by
@@ -239,7 +240,7 @@ private theorem sign_target_before {b : Time}
       hy hE hEh hET).trans hEr)
 
 private theorem timeout_empty_before {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) :
     ∀ i, tr.time i ≤ b → ∀ h, HZ tr H g + 1 ≤ h → (tr.state y i).record.timeout h = ∅
   | 0, _, h, _ => by rw [Trace.state, hp.run.init y hy]; rfl
@@ -259,7 +260,7 @@ private theorem timeout_empty_before {b : Time}
 
 /-- Finite normalization of a high signature's target and timeout fields. -/
 theorem ResetPremisesUpTo.row_target_of_sign {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {z : Fin sp.n} (hz : z ∈ H)
     {j : Nat} {att : FG.Att sp.n} (hs : tr.SignAt z j att) (hjb : tr.time j ≤ b)
     {T : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -286,7 +287,7 @@ theorem ResetPremisesUpTo.row_target_of_sign {b : Time}
 /-- Historical signatures carry the exact predecessor (of a height whose previous height is
 justified) when that predecessor is high; permission is proved at the original signing cut. -/
 theorem ResetPremisesUpTo.row_of_sign {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {z : Fin sp.n} (hz : z ∈ H)
     {j : Nat} {att : FG.Att sp.n} (hs : tr.SignAt z j att) (hjb : tr.time j ≤ b)
     {T : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -332,7 +333,7 @@ theorem ResetPremisesUpTo.row_of_sign {b : Time}
 /-- A bounded same-height report supplies an actual signature by its timestamp,
 including the case where a previously signed content suppresses the new call. -/
 theorem ResetPremisesUpTo.sign_of_report {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {z : Fin sp.n} (hz : z ∈ H)
     {r : Nat} {ell : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hrep : SA.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
@@ -381,7 +382,7 @@ theorem ResetPremisesUpTo.sign_of_report {b : Time}
 /-- A bounded same-height report supplies the exact entry attestation, with historical
 finality permission checked at the actual signing cut. -/
 theorem ResetPremisesUpTo.row_of_report {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {z : Fin sp.n} (hz : z ∈ H)
     {r : Nat} {ell : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hrep : SA.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
@@ -405,7 +406,7 @@ theorem ResetPremisesUpTo.row_of_report {b : Time}
 /-- Same-height reports from every honest node yield an identity quorum of exact
 entry signatures. Historical reports count without any freshness assumption. -/
 theorem ResetPremisesUpTo.row_signers_of_reports {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {T : SA.Blk sp.n (List (FG.Att sp.n))}
     {y : Fin sp.n} (hy : y ∈ H) {m : Nat} (hT : T ∈ (tr.state y m).fg.tree)
     {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
@@ -441,7 +442,7 @@ theorem ResetPremisesUpTo.row_signers_of_reports {b : Time}
 
 /-- The FG projection of a Goldilocks run under the HS shared premises is an FG trace with its
 contract (C0.5 (c)). -/
-private theorem fg_run (hrun : GoldilocksRun proposer dg H tr ini) (hsh : HSShared tr H dg g ΔF) :
+private theorem fg_run (hrun : GoldilocksRun proposer dg H tr ini) (hsh : HSShared tr H K dg g ΔF) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG :=
   Compose.fg_projection_from (fun y _ => Compose.requirements_from sp ro (hrun.vstart y))
     hsh.genesisRoot hrun.toLocalRun hsh.noColl

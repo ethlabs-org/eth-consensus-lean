@@ -35,12 +35,13 @@ namespace Consensus.Goldilocks.Healing.Recovery
 open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {H : Set (Fin sp.n)}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF Gp a : Time}
 
 /-- **Every post-drain honest ready proposal is high**: its own acceptance (at its proposal cut)
 leaves it at state height at least `H_z + 1`. -/
-theorem ready_proposal_high (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem ready_proposal_high (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hready : ReadyProposal tr H proposer p k u P)
     (hR : drainTime sp a ≤ sp.ts u) :
@@ -89,8 +90,8 @@ theorem ready_proposal_high (hp : ResetPremises tr H proposer dg g ΔF a)
 honest ready proposal, which is high once `v` is after the drain. The budget `acqSlots` is
 not needed (`s = v`). -/
 theorem fresh_high_proposal {W M cF kF v : Nat}
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hpat : PatternPremises tr H proposer dg g ΔF Gp W M cF kF)
+    (hp : ResetPremises tr H K proposer dg g ΔF a)
+    (hpat : PatternPremises tr H K proposer dg g ΔF Gp W M cF kF)
     (hwindow : ∀ u, v ≤ u → u < v + M →
       ∃ (k : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))),
         ReadyProposal tr H proposer (proposer u) k u B)

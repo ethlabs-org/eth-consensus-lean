@@ -89,22 +89,22 @@ theorem recovery_slot_budget {ΔF Gp : Time} {cF kF M v s u : Nat}
 
 /-! ## The pattern premises -/
 
-variable {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro} {ini : Fin sp.n →
-    (goldilocksNode sp ro).State}
+variable {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+  {K : SA.CommitteeDict sp.n} {ini : Fin sp.n → (goldilocksNode sp ro).State}
   {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF Gp : Time} {W M cF kF : Nat}
 
 /-- `Prop⁺(G_p)` forces `G_p ≥ 0`. -/
-theorem pattern_Gp_nonneg (hp : PatternPremises tr H proposer dg g ΔF Gp W M cF kF) :
+theorem pattern_Gp_nonneg (hp : PatternPremises tr H K proposer dg g ΔF Gp W M cF kF) :
     0 ≤ Gp := by
   obtain ⟨s, k, B, -, h₁, h₂, -⟩ := hp.prop (gbar g) le_rfl
   linarith
 
-private theorem pattern_ΔF_pos (hp : PatternPremises tr H proposer dg g ΔF Gp W M cF kF) :
+private theorem pattern_ΔF_pos (hp : PatternPremises tr H K proposer dg g ΔF Gp W M cF kF) :
     0 < ΔF :=
   hp.shared.healthy.1.deltaF
 
-private theorem Zreset_nonneg (hp : PatternPremises tr H proposer dg g ΔF Gp W M cF kF) :
+private theorem Zreset_nonneg (hp : PatternPremises tr H K proposer dg g ΔF Gp W M cF kF) :
     0 ≤ Zreset sp ΔF Gp := by
   have hΔ := sp.toParams.hΔ
   have hk : (0 : Time) ≤ sp.k := Nat.cast_nonneg _
@@ -132,17 +132,19 @@ private theorem reset_nonneg (hrun : GoldilocksRun proposer dg H tr ini) {a : Ti
 /-- **The bounded reset of the pattern premises** (HR.3): a reset `a` with its whole-run
 premises, `a ≤ ḡ + Z`, and its drain by `R*`. -/
 theorem pattern_reset
-    (hrun : GoldilocksRun proposer dg H tr)
-    (hp : PatternPremises tr H proposer dg g ΔF Gp W M cF kF) :
-    ∃ a, ResetPremises tr H proposer dg g ΔF a ∧
+    (hrun : GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K))
+    (hp : PatternPremises tr H K proposer dg g ΔF Gp W M cF kF) :
+    ∃ a, ResetPremises tr H K proposer dg g ΔF a ∧
       a ≤ gbar g + Zreset sp ΔF Gp ∧ drainTime sp a ≤ Rstar sp g ΔF Gp := by
-  have hr := reset_existence sp ro proposer dg H tr g ΔF Gp hrun hp.shared hp.catchPremise hp.prop
+  have hr := reset_existence sp ro proposer dg H tr K g ΔF Gp hrun hp.shared hp.catchPremise
+    hp.prop
   obtain ⟨a, ha⟩ := hr.2.2.1
   have hab : a ≤ gbar g + Zreset sp ΔF Gp := by
     have h1 := hr.2.2.2.1 a ha
     have h2 := hr.2.2.2.2.1
     simp only [Zreset]; linarith
-  refine ⟨a, ⟨hrun, hp.shared.healthy, hp.shared.noColl, ha, hp.shared.stock⟩, hab, ?_⟩
+  refine ⟨a, ⟨hrun, hp.shared.healthy, hp.shared.noColl, ha, hp.shared.committee,
+    hp.shared.twoK⟩, hab, ?_⟩
   have := drainTime_le (sp := sp) (reset_nonneg hrun ha)
   simp only [Rstar]; linarith
 
@@ -151,7 +153,7 @@ theorem pattern_reset
 and its clause is `UPat`'s, unchanged. -/
 theorem pattern_stretch_after_reset
     (hrun : GoldilocksRun proposer dg H tr ini)
-    (hp : PatternPremises tr H proposer dg g ΔF Gp W M cF kF)
+    (hp : PatternPremises tr H K proposer dg g ΔF Gp W M cF kF)
     {a t : Time} (ha : IsReset tr H g a)
     (hab : a ≤ gbar g + Zreset sp ΔF Gp)
     (ht : Rstar sp g ΔF Gp ≤ t) :

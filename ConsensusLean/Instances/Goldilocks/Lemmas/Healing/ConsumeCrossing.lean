@@ -192,11 +192,12 @@ section Run
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
   {proposer : Nat → Fin sp.n}
 
 /-- The FG projection under the HS shared premises. -/
-private theorem fg_run (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF) :
+private theorem fg_run (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H K dg g ΔF) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG := by
   exact Compose.fg_projection_from (fun y _ => Compose.requirements_from sp ro
       (hrun.vstart y)) hs.genesisRoot hrun.toLocalRun hs.noColl
@@ -205,7 +206,7 @@ private theorem fg_run (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShare
 proposal `X` on the parent `Pr`, with `E ⪯ Pr` an entry of height `h` (held by an honest node),
 `Pr` of state height `h`, `E.slot + δ_t ≤ X.slot`, and a matching attestation of every honest
 validator processed by the proposer before its proposal cut: `X` has state height `≥ h + 1`. -/
-theorem crossing_of_rows (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF)
+theorem crossing_of_rows (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H K dg g ΔF)
     {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr E : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
     (hEPr : Anc (tr.HonestBlocks H) E Pr) {q₀ : Fin sp.n} (hq₀ : q₀ ∈ H) {k₀ h : Nat}

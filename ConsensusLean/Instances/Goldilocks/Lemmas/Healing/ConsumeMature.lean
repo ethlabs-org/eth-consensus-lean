@@ -29,7 +29,8 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
   {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
@@ -39,7 +40,7 @@ processed by the honest proposer of slot `x`, `t_x ≥ v + Δ_F`, at a cut befor
 an attestation or carried by an accepted block). Post-`g` attestations have the deadline
 `time + Δ_F ≤ v + Δ_F`, pre-`g` attestations the effective deadline `g + Δ_F` (no honest restart
 after `ḡ ≤ v`). -/
-theorem rows_delivered (hs : HSShared tr H dg g ΔF) {v : Time}
+theorem rows_delivered (hs : HSShared tr H K dg g ΔF) {v : Time}
     (hv : gbar g ≤ v) {p : Fin sp.n} (hp : p ∈ H) {kX : Nat}
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : tr.ProposesAt p kX X)
     (hvx : v + ΔF ≤ tr.time kX) {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n}
@@ -60,7 +61,8 @@ theorem rows_delivered (hs : HSShared tr H dg g ΔF) {v : Time}
 /-- **Mature progress consumption in the phase** (the mature-progress
 step of `Service`'s `consume_continue`, with the phase `(m, c)` through `j_b`, `RowsBy` spelled out
 and HS.1 as the hypothesis `hret`). -/
-theorem mature_progress_of (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem mature_progress_of (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) (hret : ViableWitnessRetention) {s h kW : Nat}
     {E W : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -153,7 +155,7 @@ theorem mature_progress_of (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
     have := hrun.time_mono (show j ≤ kX by omega)
     linarith
   have hjjb : j < jb := hjb.lt_of_time_le hrun.time_mono (by rw [ht]; linarith)
-  have hF := (hret sp ro proposer dg H tr g ΔF hrun hs hc (kX + 1) jb m c
+  have hF := (hret sp ro proposer dg H tr K g ΔF hrun hs hc (kX + 1) jb m c
     (fun k' h₁ h₂ => hon k' (by omega) h₂) _ hpX X hall y hy j hkj hjjb.le).1
   have hτg : max (tr.time kX) g = sp.ts x := by
     rw [hkX]; exact max_eq_left ((le_gbar g).trans hgx)

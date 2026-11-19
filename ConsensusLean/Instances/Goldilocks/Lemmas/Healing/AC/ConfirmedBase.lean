@@ -696,6 +696,91 @@ theorem first_update_post
       (hy := hy) (k := k) (ℓ := ℓ) (hc := hc) (hcall := hcall) (htk := htk) (hPt := hPt)
           (hlocks := hlocks)
 
+/-! ## The slot committees over a finite healthy base -/
+
+/-- **A late result has an honest supporter**, for the slot committees `K` of a finite healthy
+base whose honest restarts within the horizon are by `ḡ`: the honest members of the slot-`s`
+committee vote by `t_s + Δ` and are held at the reader by `t_s + 2Δ`, the reader's voters are
+members (P), and fewer than half of the committee is faulty (CS2), so `result_extended_of_members`
+applies at `M = K.committee s`. -/
+theorem result_extended_before {K : CommitteeDict sp.n} {b : Time}
+    (hS : HealthyBaseUpTo K tr H U proposer g b)
+    (hrs : ∀ y ∈ H, ∀ k, tr.RestartAt y k → tr.time k ≤ b → tr.time k ≤ gbar g)
+    {s : Nat} (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) {x : Fin sp.n} (hx : x ∈ H) {c : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x c ℓ)
+    (ht : sp.ts s + 2 * sp.Δ ≤ tr.time c) (hcb : tr.time c ≤ b) {C : Blk sp.n FGP}
+    (hC : getConfirmation sp (tr.state x c) ℓ.frame s = some C) :
+    ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = s ∧ VoteExtends U e.msg C := by
+  have hr := hS.run.localRun
+  have hΔ := sp.toParams.hΔ
+  have hs1 := ts_sub_one sp (s : Int)
+  have hsplit : (K.committee s ∩ H).ncard + (K.committee s ∩ Hᶜ).ncard = sp.committeeSize := by
+    rw [← hS.hsize s]
+    exact Set.ncard_inter_add_ncard_sdiff_eq_ncard _ _ (Set.toFinite _)
+  have hf := hS.cs2 s (by linarith) (by linarith)
+  have hrsx : ∀ q ≤ c, tr.RestartAt x q → tr.time q ≤ gbar g := fun q hq hrq =>
+    hrs x hx q hrq ((hr.time_mono hq).trans hcb)
+  refine result_extended_of_members hS.run.toU (M := K.committee s) hx hc (fun u hu => ?_)
+    (by rintro _ ⟨v, hv, rfl⟩; exact hS.hP.1 x hx c s v hv) (by omega) hC
+  obtain ⟨j, e, hv, hes, -⟩ := honest_votes_in_slot_before hS hs (by linarith)
+    (fun z hz r hrt hrz => (hrs z hz r hrz (by linarith)).trans (by linarith)) u hu.2 hu.1
+  obtain ⟨hval, -⟩ := castAt_spec hr hu.2 ⟨hv.choose_spec.1, hv.choose_spec.2⟩
+  refine ⟨e.msg, (late_vote_pool_before hS hx hc hs ht hcb
+    (fun q hq t _ => Compose.ac_deadline_le_of_restarts
+      (fun q' hq' hrq' => (hrsx q' (hq'.trans hq) hrq').trans (by linarith)) t)
+    (fun q hq hrq => (hrsx q hq hrq).trans_lt (by linarith)) hu.2 hv hes c (Or.inl rfl)).1, hval⟩
+
+/-- **The first update**, for the slot committees `K` of a finite healthy base whose honest
+restarts within the horizon are by `ḡ`: as `first_update_post`, at an honest tick at
+`t_p + 6Δ ≤ b`, through `first_update_post_of_members` at `M = K.committee p` (the honest members'
+votes held and resolved before `t_p + 2Δ`, the voters members, CS2). -/
+theorem first_update_post_before {K : CommitteeDict sp.n} {b : Time}
+    (hS : HealthyBaseUpTo K tr H U proposer g b)
+    (hrs : ∀ y ∈ H, ∀ k, tr.RestartAt y k → tr.time k ≤ b → tr.time k ≤ gbar g)
+    {p : Nat} {P : Blk sp.n FGP} (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
+    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    (hc : tr.CallAt y k ℓ) (hcall : ℓ.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ)
+    (hkb : tr.time k ≤ b) (hPt : P ∈ ℓ.frame.tree)
+    (hlocks : ∀ L ∈ liveLockBlocks sp (tr.state y k).locks ℓ.frame (tr.time k),
+      Compatible U L P) :
+    getConfirmation sp (tr.state y k) ℓ.frame p = some P ∧
+      ¬ conflictsWithLock sp (tr.state y k).locks ℓ.frame (tr.time k) P ∧
+      FastTest sp (tr.state y k) ℓ.frame p P ∧
+      tr.post k = updateConfirmation sp (tr.state y k) ℓ.frame (tr.time k) p := by
+  have hr := hS.run.localRun
+  have hU := hr.coherent
+  have hΔ := sp.toParams.hΔ
+  have hp1 := ts_sub_one sp (p : Int)
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hy hc
+  have hts1 := SA.ts_succ (sp := sp) p
+  have hslot : sp.slot (tr.time k) = p + 1 :=
+    slot_of_mem sp (p + 1) (by rw [htk, hts1]; linarith only [hΔ]) (by
+        rw [htk, SA.ts_succ, hts1]; linarith only [hΔ])
+  have hrsy : ∀ q ≤ k, tr.RestartAt y q → tr.time q ≤ gbar g := fun q hq hrq =>
+    hrs y hy q hrq ((hr.time_mono hq).trans hkb)
+  have hj := joined_state_of_restarts hS.run.toU.localRun hS.run.vstart hy k fun q hq hrq =>
+    (hrsy q hq.le hrq).trans (by
+      rw [hslot, show (((p + 1 : Nat) : Int) - 1) = p by push_cast; ring]; linarith only [hp4, hΔ])
+  have hsplit : (K.committee p ∩ H).ncard + (K.committee p ∩ Hᶜ).ncard = sp.committeeSize := by
+    rw [← hS.hsize p]
+    exact Set.ncard_inter_add_ncard_sdiff_eq_ncard _ _ (Set.toFinite _)
+  have hf := hS.cs2 p (by linarith) (by linarith)
+  refine first_update_post_of_members hS.run.toU hexact hy hc hcall htk hj hPt hlocks
+    (M := K.committee p) (fun u hu => ?_)
+    (by rintro _ ⟨v, hv, rfl⟩; exact hS.hP.1 y hy k p v hv) (by omega) (by omega)
+  obtain ⟨i, e, hv, hes, -⟩ := honest_votes_in_slot_before hS hp4 (by linarith)
+    (fun z hz r hrt hrz => (hrs z hz r hrz (by linarith)).trans (by linarith)) u hu.2 hu.1
+  obtain ⟨Hd, hHdt, hHdr, hHds, hmem, hvst, hbst⟩ := late_vote_held_of_frame_before hS hy hc hp4
+    (by rw [htk]; linarith only [hΔ]) hkb
+    (fun q hq t _ => Compose.ac_deadline_le_of_restarts
+      (fun q' hq' hrq' => (hrsy q' (hq'.trans hq) hrq').trans (by linarith)) t)
+    (fun q hq hrq => (hrsy q hq hrq).trans_lt (by linarith)) hu.2 hv hes fun Hd hHd hHdr => by
+      rw [hU.1 hHd (hΦU hPt) (hHdr.trans (hexact u hu.2 i e hv hes))]
+      exact (hΦ.rooted.2 P hPt).mono hΦU
+  obtain ⟨hval, -⟩ := castAt_spec hr hu.2 ⟨hv.choose_spec.1, hv.choose_spec.2⟩
+  exact ⟨e.msg, hmem, hval, resolutionTime_lt_of hΦ hHdt hHdr (hes ▸ hHds) hvst hbst⟩
+
 /-- **A result passing the fast test is its own fast selection**: the path of `P` holds only
 non-genesis ancestors of `P` (no strict descendant), `P` is in the selection set (not genesis,
 passing the fast test), and every other member is a strict ancestor, so shallower. -/

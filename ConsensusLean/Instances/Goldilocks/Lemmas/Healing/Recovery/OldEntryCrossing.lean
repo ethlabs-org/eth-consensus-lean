@@ -35,14 +35,15 @@ namespace Consensus.Goldilocks.Healing.Recovery
 
 open SA (SAParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-- **The attestation at a high report** (with the lock clause from high-record uniqueness). An
 honest report `R ⪰ P` at cut `i`, `P` high: `y` signed the attestation `(σ[P].h, σ[P].T_h)` by
 `t_i`, or `σ[R].h > σ[P].h`. -/
-private theorem row_of_high_report (hp : ResetPremises tr H proposer dg g ΔF a)
+private theorem row_of_high_report (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     {R P : SA.Blk sp.n (List (FG.Att sp.n))} (hR : SA.ToFGAt tr.projAC y i ell R)
     (hPR : Anc (tr.HonestBlocks H) P R)
@@ -96,9 +97,9 @@ private theorem row_of_high_report (hp : ResetPremises tr H proposer dg g ΔF a)
 /-- **C2: bounded old-entry crossing.** -/
 theorem old_entry_crossing {Gp : Time} {W M cF kF v s : Nat} {p : Fin sp.n} {kP iP : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hpat : PatternPremises tr H proposer dg g ΔF Gp W M cF kF)
-    (hreports : ReadyProposalReportSupply tr H proposer dg g ΔF a)
+    (hp : ResetPremises tr H K proposer dg g ΔF a)
+    (hpat : PatternPremises tr H K proposer dg g ΔF Gp W M cF kF)
+    (hreports : ReadyProposalReportSupply tr H K proposer dg g ΔF a)
     (hwindow : ∀ u, v ≤ u → u < v + M →
       ∃ (k : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))),
         ReadyProposal tr H proposer (proposer u) k u B ∧

@@ -38,7 +38,8 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF w : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF w : Time}
   {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
@@ -48,17 +49,21 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 block `B ⪯ D` whose earlier slot-`(s+1)` honest votes extend it (as AC/SlowLocks compares the
 exempt label-`(s+1)` optimistic locks with `D` from votes extending `D`; here they extend only
 `B`): a lock of a label `≤ s` sits below a stored lock,
-compatible with the writer's saved result, which extends `D ⪰ B` (`slow_stored_locks`); a lock of
-label `s + 1` is optimistic over three quarters of the committee, whose honest votes extend
-`B`. -/
+compatible with the writer's saved result, which extends `D ⪰ B` (`slow_stored_locks_before`,
+over a finite healthy base for the slot committees `K` whose honest restarts are by its start); a
+lock of label `s + 1` is optimistic over three quarters of the slot-`(s+1)` committee (CS2
+there), whose honest votes extend `B`. -/
 private theorem slow_live_locks_anc {FGP : Type} {ro' : ReplayOrder sp FGP}
-    {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro'}
-    (hS : SA.HealthyBase T H U proposer g)
+    {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro'} {b : Time}
+    (hS : SA.HealthyBaseUpTo K T H U proposer g b)
+    (hrs : ∀ y ∈ H, ∀ k, T.RestartAt y k → T.time k ≤ b → T.time k ≤ gbar g)
     {x : Fin sp.n} (hx : x ∈ H) {i₀ s : Nat} {D B : SA.Blk sp.n FGP}
     (hsl : SA.SlowLockAt T x i₀ s D) (hBD : Anc U B D)
-    (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) {y : Fin sp.n} (hy : y ∈ H)
+    (hs : gbar g ≤ sp.ts ((s : Int) - sp.k + 1)) (hsb : sp.ts s + 6 * sp.Δ ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro')} {e : SA.Em sp FGP}
-    (hc : SA.CastAt T y i ℓ e) (hes : e.msg.slot = s + 1)
+    (hc : SA.CastAt T y i ℓ e) (hes : e.msg.slot = s + 1) (hib : T.time i ≤ b)
+    (hcs2 : ∀ l : Nat, s < l → 2 * (K.committee l ∩ Hᶜ).ncard < sp.committeeSize)
     (hE : SA.EarlierVotesExtend T H U i (s + 1) B) :
     ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (T.time i), Compatible U L B := by
   have hrun := hS.run
@@ -73,7 +78,7 @@ private theorem slow_live_locks_anc {FGP : Type} {ro' : ReplayOrder sp FGP}
   rintro L ⟨hL, l, ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive₀, rfl⟩, hlL⟩
   have hlive : sp.slot (T.time i) ≤ l₀.slot + sp.k :=
     le_trans hlive₀
-      ((SA.castAt_readPoint_locksWF hr (fun _ => SA.voteStart_initial _) hy hc).cap hl₀)
+      ((SA.castAt_readPoint_locksWF hr hrun.vstart hy hc).cap hl₀)
   have hLe : L = ℓ.frame.viableAncestor B₀ :=
     hU.1 (hΦU hL) (hΦU (SA.viableAncestor_anc hΦ hB₀).1) hlL.symm
   subst hLe
@@ -84,16 +89,16 @@ private theorem slow_live_locks_anc {FGP : Type} {ro' : ReplayOrder sp FGP}
         (show l₀.slot ≠ sp.slot (T.time i) by omega)
     obtain rfl : B₀' = B₀ := hΦ.coherent.1 hB₀' hB₀ (hB₀'r.trans hB₀r.symm)
     refine down (Anc.mono hΦU hA) ?_
-    rcases SA.slow_stored_locks hS hx hsl hs hy (by omega) l₁ hl₁ (by omega) (by omega) B₁
-        (hΦU hB₁) hB₁r with h | h
+    rcases SA.slow_stored_locks_before hS hrs hx hsl hs hsb hy (by omega) hib l₁ hl₁ (by omega)
+        (by omega) B₁ (hΦU hB₁) hB₁r with h | h
     · exact SA.anc_total hU h hBD
     · exact Or.inr (hBD.trans h)
-  · obtain ⟨Φ', A, D', -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
+  · obtain ⟨Φ', A, D', -, hΦ'U, -, h34, hpool, ⟨kk, -, hAk⟩, L₀, hL₀, hL₀r, hL₀D⟩ :=
       SA.lock_origin_readPoint hrun hy hc l₀ hl₀ (by rw [hes]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
-    refine down hL₀D (SA.origin_compatible hU hΦ'U (SA.CommitteeDict.full sp.n) h34
-      (fun _ _ => SA.mem_full _ _)
-      (by simpa only [SA.ncard_inter_full, hS.stock] using hS.two_faulty_lt) fun v hv hvH => ?_)
+    refine down hL₀D (SA.origin_compatible hU hΦ'U K h34
+      (by rintro _ ⟨v, hv, rfl, -⟩; exact hS.hP.1 y hy (kk + 1) _ v (hAk hv))
+      (hcs2 _ hlt) fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
     have hsj : e'.msg.slot = sp.slot (T.time j) := (SA.castAt_spec hr hvH hcj).2.1
@@ -110,8 +115,9 @@ of `C` support every child towards `B`): the live locks compare with `B`
 (`slow_live_locks_anc`: the window's saved results by RR/RO, the exempt label-`(j+1)` optimistic
 locks over earlier honest votes), and the writer's pool covers the vote's merged view
 (`writer_merged`, `Sync` from `ḡ`). -/
-theorem clean_slow_first_extends (hrun : GoldilocksRun proposer dg H tr)
-    (hs : HSShared tr H dg g ΔF)
+theorem clean_slow_first_extends (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
+    (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n}
     (hx : x ∈ H) {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : StoredSlowLockAt tr x i j B) (hj : w + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1))
@@ -124,7 +130,7 @@ theorem clean_slow_first_extends (hrun : GoldilocksRun proposer dg H tr)
       SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV)
     (hviab : B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot)) :
     SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  have hS := healthyBase_of_hs hrun hs hc
+  have hS := healthyBase_of_hs hrun hs hc (max (tr.time k) (sp.ts j + 6 * sp.Δ))
   have hr := hS.run.localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hw8 := gbar_add_le_of_settled hw
@@ -140,18 +146,23 @@ theorem clean_slow_first_extends (hrun : GoldilocksRun proposer dg H tr)
   have hjt : w + 4 * sp.Δ ≤ sp.ts j :=
     hj.trans ((SA.ts_le_iff sp).2 (by have := sp.two_le_k; omega))
   rw [he] at hviab
-  exact SA.result_transfer_anc sp hS.run hx hres (hBD.trans hDC) hy hv he (hcarry _ _ hres)
-    (Or.inl hviab)
-    (slow_live_locks_anc hS hx hsl hBD (by linarith) hy hv he
+  have hj1 : sp.slot (gbar g) + 1 ≤ j := slot_gbar_lt_of_cutZ_le (cutZ_le_of_clean hw hjt)
+  exact SA.result_transfer_ancU sp hS.run.toU hx hres (hBD.trans hDC) hy hv he
+    (hcarry _ _ hres) (Or.inl hviab)
+    (slow_live_locks_anc hS (restart_le_base_of_hs hrun hs) hx hsl hBD
+      ((gbar_slotAfter_add_le (by linarith)).trans' (by linarith only [hΔ]))
+      (le_max_right _ _) hy hv he (le_max_left _ _) (fun l hl => hs.cs2 (by omega))
       fun z hz k' hk' e' hv' hs' => hprior z hz k' hk' e' hv' (by omega))
-    (SA.writer_merged hS.run hx hupd hy hv he (hS.syncAC (by linarith) _))
+    (SA.writer_merged hS.run hx hupd hy hv he
+      ((ResetService.of_gst tr H hs.healthy.1 (b := 0)).syncAC hrun
+        ((le_gbar g).trans (gbar_le_of_clean hw hjt))))
 
 /-- **Stored slow-lock provenance** (every lock image retains its
 original label; the slow case of HR.4's `stored_fast_lock_provenance`): every slow lock an honest
 node holds before cut `k` sits below the stored block `Φ.viableAncestor D` of a slow-lock write of
 its slot at an earlier cut of the node (`add_locks` stores that block; the lock functions only
 move locks back; `SA.slow_lock_provenance_stored` over the AC projection). -/
-theorem stored_slow_lock_provenance (hrun : GoldilocksRun proposer dg H tr)
+theorem stored_slow_lock_provenance (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) (k : Nat) :
     ∀ l ∈ (tr.state y k).ac.locks, l.fast = false →
@@ -160,23 +171,16 @@ theorem stored_slow_lock_provenance (hrun : GoldilocksRun proposer dg H tr)
   have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   intro l hl hf
   rw [← Compose.projAC_state hrun.toLocalRun hy] at hl
-  obtain ⟨r, hrk, ℓ, D, hc, hsl, hL⟩ := SA.slow_lock_provenance_stored hr hy k l hl hf
+  obtain ⟨r, hrk, ℓ, D, hc, hsl, hL⟩ := SA.slow_lock_provenance_stored hr hrun.vstart hy k l hl hf
   exact ⟨r, hrk, _, ⟨ℓ, D, hc, hsl, rfl⟩, hL⟩
 
 /-! ### Extension by induction on the cut of the vote -/
 
-/-- `f < h_t` at an honest vote of a slot after a clean label, on the AC projection. -/
-theorem faultBound_proj (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (hk : cutZ sp.toParams g ≤ tr.time k) :
-    SA.FaultBound tr.projAC H (tr.time k) := by
-  unfold SA.FaultBound
-  rw [← (Compose.joined_projection_from hrun hy (tr.time k)).2.2]
-  exact faultBound_of_healthy hrun hs hk
-
 /-- **Extension of an origin's block** (the event induction): given the first transfer (at the
 slot-`(j+1)` votes, from the earlier votes) and the frozen viability at every in-phase honest vote
 of a slot `> j + 1`, every in-phase honest vote of a slot `> j` extends `B`. -/
-theorem origin_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem origin_extends (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
     {j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hj : w + 4 * sp.Δ ≤ sp.ts j)
@@ -230,16 +234,14 @@ theorem origin_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr
       have h₂ := SA.slot_mono sp h0 (hr.time_mono (not_lt.mp hkk))
       omega
     exact hprior z hz k' hk' e' hv' (by omega)
-  have hfb := faultBound_proj hrun hs hy ((cutZ_le_of_clean hw hj).trans (hjm.trans hmk))
-  refine SA.next_transfer sp _ ro H _ tr.projAC proposer hrun' (SA.CommitteeDict.full sp.n)
-    SA.CommitteeP.full SA.CommitteeT.full (SA.size_binding_full hs.stock) m' y k B ℓ e hy hv
-    hm' hall
-    (by
-      rw [hs.stock]
-      exact half_committee_of_healthy hrun hs (cutZ_le_of_clean hw (hj.trans hjm)))
+  have hjm1 : sp.slot (gbar g) + 1 ≤ m' :=
+    slot_gbar_lt_of_cutZ_le (cutZ_le_of_clean hw (hj.trans hjm))
+  refine SA.next_transfer_of_carry sp hrun' K (hs.hP hrun) (hs.hT hrun) hs.hsize hy hv hm' hall
+    (half_committee_of_healthy hrun hs (cutZ_le_of_clean hw (hj.trans hjm)))
     (honest_batch_carry hrun hs hc hw (hj.trans hjm) hall hy hv hm'
       (hviab y hy k ℓ e hv (by omega) hk) hBf)
-    ((SA.faultBoundK_full_iff _ _).2 hfb) (SA.cs2_full_of_faultBound sp hs.stock hfb) ?_ ?_
+    (faultBoundK_of_healthy hrun hs hjm1 ((cutZ_le_of_clean hw hj).trans (hjm.trans hmk)))
+    (hs.cs2 (by omega)) ?_ ?_
   · rw [← hm']
     exact Or.inl ((hviab y hy k ℓ e hv (by omega) hk).resolve_right hBf)
   · rw [← hm']
@@ -247,7 +249,8 @@ theorem origin_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr
 
 /-- **Extension of a clean fast origin**: every in-phase honest vote of a slot `> j`
 extends the stored block `B`. -/
-theorem clean_fast_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem clean_fast_extends (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
     {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
@@ -271,12 +274,12 @@ theorem clean_fast_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
   have hcarry := clean_fast_carry hrun hs hc hw hx ho hj hy hv h1 hk hBf
   obtain ⟨ℓw, D, hcw, hflD, hBD⟩ := ho
   have hΦwU := (SA.frameIn_of_callAt hr hx hcw).2
-  have hfb := faultBound_proj hrun hs hy ((cutZ_le_of_clean hw hj).trans hjk)
-  refine SA.first_transfer_stored sp hrun' (SA.CommitteeDict.full sp.n) SA.CommitteeP.full
-    SA.CommitteeT.full (SA.size_binding_full hs.stock) hx hflD
+  have hj1 : sp.slot (gbar g) + 1 ≤ j := slot_gbar_lt_of_cutZ_le (cutZ_le_of_clean hw hj)
+  refine SA.first_transfer_storedU sp hrun'.toU K (hs.hP hrun) (hs.hT hrun) hs.hsize hx hflD
     (hBD ▸ Anc.mono hΦwU (SA.anc_viableAncestor ℓw.frame D)) hy hv h1
     (Compose.syncAC_mono hsync0 le_rfl hle) hcarry
-    ((SA.faultBoundK_full_iff _ _).2 hfb) (SA.cs2_full_of_faultBound sp hs.stock hfb) ?_ ?_
+    (faultBoundK_of_healthy hrun hs hj1 ((cutZ_le_of_clean hw hj).trans hjk))
+    (hs.cs2 (by omega)) ?_ ?_
   · rw [← h1]
     exact Or.inl hviab
   · rw [← h1]
@@ -289,7 +292,8 @@ private theorem clean_of_slow {j : Nat} (hj : w + 4 * sp.Δ ≤ sp.ts ((j : Int)
 
 /-- **Extension of a clean slow origin**: every in-phase honest vote of a slot `> j`
 extends the stored block `B`. -/
-theorem clean_slow_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem clean_slow_extends (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
     {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : StoredSlowLockAt tr x i j B)
@@ -306,7 +310,8 @@ theorem clean_slow_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
 /-! ### HS.2 (1), (2) -/
 
 /-- **HS.2 (1) at the next slot**. -/
-theorem clean_fast_next (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem clean_fast_next (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
     {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
@@ -324,7 +329,8 @@ theorem clean_fast_next (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
     clean_fast_carry hrun hs hc hw hx ho hj hy hv he hk⟩
 
 /-- **HS.2 (1) at a later slot** (the propagation helper). -/
-theorem clean_fast_later (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem clean_fast_later (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
     {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
@@ -337,7 +343,8 @@ theorem clean_fast_later (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
   exact ⟨hext k y hy ℓ e hv hjs hk, clean_fast_viable hrun hs hc hw hx ho hj hy hv hjs hk⟩
 
 /-- **HS.2 (2) at the next slot** (the slow helper). -/
-theorem clean_slow_next (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem clean_slow_next (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
     {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : StoredSlowLockAt tr x i j B)
@@ -355,7 +362,8 @@ theorem clean_slow_next (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
     fun _ _ hC hroot => clean_slow_carry hrun hs hc hw hx ho hj hy hv he hk hC hroot⟩
 
 /-- **HS.2 (2) at a later slot** (the propagation helper). -/
-theorem clean_slow_later (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem clean_slow_later (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
     {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : StoredSlowLockAt tr x i j B)
@@ -390,8 +398,9 @@ theorem live_lock_clean {t : Time} (ht : rTime sp w ≤ t) {L : Set SA.Lock}
 /-- **HS.2 (3), the proposal boundary**: at an
 in-phase honest slot-`s` vote, `t_s ≥ r`, every live lock of a label `< s` has its block below the
 honest slot-`s` proposal `P` or at or below the voter's `fc_root`. -/
-theorem live_lock_below_proposal (hrun : GoldilocksRun proposer dg H tr)
-    (hs : HSShared tr H dg g ΔF)
+theorem live_lock_below_proposal (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
+    (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {s : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : HonestProposalRun tr H proposer s P)
     (hr : rTime sp w ≤ sp.ts s) {y : Fin sp.n} (hy : y ∈ H)

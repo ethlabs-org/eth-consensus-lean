@@ -117,8 +117,9 @@ def ViableWitnessRetention : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF : Time),
-    GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
+    (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF : Time),
+    GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+    HSShared tr H K dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
     ∀ (i k m : Nat) (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))),
       PhaseOn tr.projFG H i k m c →
       ∀ y ∈ H, ∀ W, EffAllowed (tr.state y i).fg m c W →
@@ -160,9 +161,10 @@ def CleanLockDrain : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF w : Time) (i₀ m : Nat)
+    (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF w : Time) (i₀ m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))),
-    GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
+    GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+    HSShared tr H K dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
     SettledIn tr H g w i₀ m c →
     (∀ x ∈ H, ∀ i j B CV, Compose.StoredFastLockAt tr x i j B CV → w + 4 * sp.Δ ≤ sp.ts j →
       ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → j < e.msg.slot →
@@ -211,9 +213,10 @@ def CommonPathAcquisition : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF Gp w : Time) (i₀ m : Nat)
+    (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF Gp w : Time) (i₀ m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))),
-    GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
+    GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+    HSShared tr H K dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
     PropPlus tr H proposer g Gp → SettledIn tr H g w i₀ m c →
     ((∀ j', FirstCutAfter tr j' (w + D_HS sp Gp) → PhaseChanged tr.projFG H i₀ j') ∨
       ∃ (s h : Nat) (E W : SA.Blk sp.n (List (FG.Att sp.n))) (kW : Nat),

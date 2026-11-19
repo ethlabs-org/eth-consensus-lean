@@ -32,11 +32,13 @@ namespace Consensus.Goldilocks.Healing.Recovery
 open SA (SAParams ReplayOrder Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {K : SA.CommitteeDict sp.n}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
 /-- Actual report coverage, with no extra entry, height, timeout or report-freshness premise. -/
-theorem ready_proposal_report_supply : ReadyProposalReportSupply tr H proposer dg g ΔF a where
+theorem ready_proposal_report_supply :
+    ReadyProposalReportSupply tr H K proposer dg g ΔF a where
   report_cover := by
     intro hp hc p k u P hP hR
     obtain ⟨hpH, hdesignated, _, hactual, hslot, _⟩ := hP
@@ -61,7 +63,7 @@ theorem ready_proposal_report_supply : ReadyProposalReportSupply tr H proposer d
 
 /-- **C1.2:** exact outcome service, with the actual-report supplier discharged. -/
 theorem outcome_service : Compose.OutcomeService :=
-  outcome_service_of_reports fun _ _ _ _ _ _ _ _ _ => ready_proposal_report_supply
+  outcome_service_of_reports fun _ _ _ _ _ _ _ _ _ _ => ready_proposal_report_supply
 
 end Consensus.Goldilocks.Healing.Recovery
 

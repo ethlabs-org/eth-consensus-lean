@@ -28,7 +28,7 @@ open SA (SAParams ReplayOrder Payload gbar)
 coverage, with the actual-report and outcome suppliers discharged. -/
 theorem recovery_statements : RecoveryStatements := by
   apply Recovery.recovery_statements_of_coverage
-  intro sp ro proposer dg H tr g ΔF Gp W M cF kF
+  intro sp ro proposer dg H tr K g ΔF Gp W M cF kF
   exact Recovery.pattern_coverage_supply Recovery.outcome_service
     (fun _ => Recovery.ready_proposal_report_supply)
 

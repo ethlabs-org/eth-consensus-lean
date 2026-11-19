@@ -50,11 +50,11 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-- Every pre-slot high origin lies below the bounded operational proposal's parent. -/
 theorem ResetPremisesUpTo.reset_proposal_passes {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
@@ -65,10 +65,9 @@ theorem ResetPremisesUpTo.reset_proposal_passes {b : Time}
       Anc (tr.HonestBlocks H) O d.head := by
   rintro O ⟨x, r, l, ho, hrt⟩
   have hS := healthy_base_of_reset_catch_before hp hc
-  have hr := hS.stockRun.localRun
+  have hr := hS.run.localRun
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
-  have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos p; omega
   have hri : r < i := by
     by_contra hn
     have ht := hp.run.time_mono (Nat.le_of_not_gt hn)
@@ -105,6 +104,10 @@ theorem ResetPremisesUpTo.reset_proposal_passes {b : Time}
   have hsg : SA.gbar g + 4 * sp.Δ ≤ sp.ts s := by
     have := lt_cutZ sp g
     linarith only [hΔ, hcut, this]
+  have hs1 : sp.slot (SA.gbar g) + 1 ≤ s := slot_gbar_lt_of_cutZ_le hcut
+  have hsg' : SA.gbar (sp.ts (sp.slot (SA.gbar g) + 1 : Nat)) + 4 * sp.Δ ≤ sp.ts s := by
+    rw [gbar_slotAfter]
+    linarith only [hΔ, hcut, cutZ_eq_slotAfter (sp := sp) g]
   have hsb : sp.ts s + sp.Δ ≤ b := by rw [hti, hsucc] at hib; linarith only [hΔ, hib]
   have hrestart : ∀ z ∈ H, ∀ q, tr.time q ≤ b → tr.projAC.RestartAt z q →
       tr.time q ≤ sp.ts ((s : Int) - 1) := by
@@ -128,24 +131,22 @@ theorem ResetPremisesUpTo.reset_proposal_passes {b : Time}
         exact ht.trans hsb
       exact hp.high_origin_votes_before q hqb x r l O ho hrb z hz ell' e hcast (by
           clear * - hls hes; omega)
-    have hhalf := SA.honest_voters_half_before hS hsg hsb
+    have hhalf := SA.honest_voters_half_before hS hsg' hsb
       (fun z hz q hqt hrest => hrestart z hz q (hqt.trans hsb) hrest)
-    have hhalf' : sp.n ≤ 2 *
+    have hhalf' : sp.committeeSize ≤ 2 *
         {z | z ∈ H ∧ ∃ q e, SA.VoteAt tr.projAC z q e ∧ e.msg.slot = s}.ncard := by
       change sp.committeeSize ≤ 2 * {z | z ∈ H ∧ ∃ q e, SA.VoteAt tr.projAC z q e ∧
         e.msg.slot = s ∧ tr.time q ≤ sp.ts s + sp.Δ}.ncard at hhalf
-      rw [hp.stock] at hhalf
       have hle := Set.ncard_le_ncard (s := {z | z ∈ H ∧ ∃ q e,
         SA.VoteAt tr.projAC z q e ∧ e.msg.slot = s ∧ tr.time q ≤ sp.ts s + sp.Δ})
         (t := {z | z ∈ H ∧ ∃ q e, SA.VoteAt tr.projAC z q e ∧ e.msg.slot = s})
         (by rintro z ⟨hz, q, e, hv, hs, _⟩; exact ⟨hz, q, e, hv, hs⟩)
       omega
-    refine SA.batch_proposal hS.stockRun (K := SA.CommitteeDict.full sp.n)
-      (SA.cs2_full hp.stock hf) (by rw [hp.stock]; exact hhalf') votes hpH hci
-      (fun _ _ => SA.mem_full _ _) (SA.proposal_slot hti) hd ⟨hOt, Or.inl hV⟩ ?_ hhigh'
+    refine SA.batch_proposal hS.run (K := K) (hp.cs2 hs1) hhalf' votes hpH hci
+      (fun v hv => hp.hP.1 p hpH i s v hv) (SA.proposal_slot hti) hd ⟨hOt, Or.inl hV⟩ ?_ hhigh'
     intro z hz q e hv hes
     obtain ⟨H', hH', hHr', hOH⟩ := votes z hz q e hv hes
-    obtain ⟨Hd, hHd, hHdr, _, hmem, _, hbs⟩ := SA.late_vote_held_of_frame_before hS hpH hci hsg
+    obtain ⟨Hd, hHd, hHdr, _, hmem, _, hbs⟩ := SA.late_vote_held_of_frame_before hS hpH hci hsg'
       (by change _ ≤ tr.time i; rw [hti, hsucc]; linarith only [hΔ]) hib
       (fun k hki t _ => Compose.ac_deadline_le_of_restarts
         (fun k' hk' hr' => (hrs k' (hk'.trans hki) hr').le) t) hrs hz hv hes
@@ -162,19 +163,20 @@ theorem ResetPremisesUpTo.reset_proposal_passes {b : Time}
       rw [hsucc] at hrt
       linarith only [hΔ, hrt, ht']
     have hODU := hOD.mono (SA.frameIn_of_callAt hr ho.1 hcx).2
-    refine optimistic_first_proposal_anc hS.stockRun hf ho.1 hop hODU hpH hci
-      (SA.proposal_slot hti) hd ⟨hOt, Or.inl hV⟩ ?_ hhigh' hp.stock
+    refine optimistic_first_proposal_anc hS.run K hp.hP hp.hsize ho.1 hop hODU hpH hci
+      (SA.proposal_slot hti) hd ⟨hOt, Or.inl hV⟩ ?_ hhigh' (hp.cs2 hs1)
     intro v hv
     obtain ⟨hvs, hsend, B, hB, hBr, hDB, hacc⟩ :=
       fastLock_writer hr hp.run.vstart ho.1 (Or.inr hop) v hv
     have hFB := hFO.trans (hODU.trans hDB)
-    refine SA.heldAtProposal_of_writer hr (hp.sync.syncAC hp.run (le_gbar g))
+    refine SA.heldAtProposal_of_writer hr hp.run.vstart (hp.sync.syncAC hp.run (le_gbar g))
       (by linarith only [hΔ, hsg]) le_rfl ho.1 hpH hci hti hrs hvs hsend ⟨B, hB, hBr, hFB, ?_⟩
     rcases hacc with hg | ⟨q, hq, hqt⟩
     · exact Or.inl hg
     by_cases hg : SA.gbar g ≤ tr.time q
     · exact Or.inr (Or.inl ⟨q, hq, hg, hqt⟩)
-    · obtain ⟨k, hki, hak, hkt⟩ := hS.catchUp.relay x ho.1 q B hq (not_le.mp hg) p hpH i ell hci
+    · obtain ⟨k, hki, hak, hkt⟩ := (catch_window_of_run hp.run hc).relay x ho.1 q B hq
+        (not_le.mp hg) p hpH i ell hci
         (by change _ ≤ tr.time i; rw [hti, hsucc]; linarith only [hΔ, hsg]) hib hFB
       exact Or.inr (Or.inr ⟨k, hki, hak, by
           change tr.time k < _ at hkt ⊢; linarith only [hΔ, hsg, hkt]⟩)
@@ -182,7 +184,7 @@ theorem ResetPremisesUpTo.reset_proposal_passes {b : Time}
 /-- Every old source is below the proposal's duty head. Relay and high-origin viability put
 the source on the walk; earlier-label votes or the same-label optimistic quorum favor its
 chain. -/
-theorem reset_proposal_passes (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem reset_proposal_passes (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
@@ -197,7 +199,7 @@ theorem reset_proposal_passes (hp : ResetPremises tr H proposer dg g ΔF a)
 /-- A high left entry of the proposer's store lies below a bounded pre-slot high origin: its
 crossing attestation's origin label is below the proposal slot. -/
 private theorem ResetPremisesUpTo.proposal_entry_below_old {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts u)
     (hib : tr.time i ≤ b) {E C : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -220,7 +222,7 @@ private theorem ResetPremisesUpTo.proposal_entry_below_old {b : Time}
 
 /-- Bounded pre-slot origins suffice to bound an actual proposal's height floor. -/
 theorem ResetPremisesUpTo.proposal_floor_above_old {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp ro)} (hci : tr.projAC.CallAt p i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
@@ -239,7 +241,7 @@ theorem ResetPremisesUpTo.proposal_floor_above_old {b : Time}
 
 /-- A block above every old source reaches the proposal's floor. Only high crossing
 quorums matter: the reset seed already makes the block high. -/
-theorem proposal_floor_above_old (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem proposal_floor_above_old (hp : ResetPremises tr H K proposer dg g ΔF a)
     {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {ℓp : ACLabel (goldilocksNode sp ro)} (hci : tr.projAC.CallAt p i ℓp)
     (hcall : ℓp.call = .proposal) (hti : tr.time i = sp.ts u)
@@ -251,7 +253,7 @@ theorem proposal_floor_above_old (hp : ResetPremises tr H proposer dg g ΔF a)
 
 /-- The finite proposal root is genesis or below a bounded pre-slot high origin. -/
 theorem ResetPremisesUpTo.reset_proposal_root_source {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}

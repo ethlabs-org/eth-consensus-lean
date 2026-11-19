@@ -661,6 +661,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeViews
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AnchorPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Committee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeContinue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeCrossing

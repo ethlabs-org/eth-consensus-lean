@@ -18,12 +18,12 @@ open SA (SAParams ReplayOrder Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-- A high left entry of a post-drain voter's store lies below a bounded pre-slot high origin: its
 crossing attestation's origin label is below the vote's slot. -/
 theorem ResetPremisesUpTo.cast_entry_below_old {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {u : Nat} {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y j ell e)
     (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) {E C : SA.Blk sp.n (List (FG.Att sp.n))}

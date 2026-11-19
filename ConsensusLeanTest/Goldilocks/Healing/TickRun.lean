@@ -74,7 +74,7 @@ run with the HS shared premises (`Healthy(0)`, `NoColl`, genesis root, no restar
 bound), `Catch(2Δ)` and `Prop⁺(4)`. -/
 theorem healing_premises :
     GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
-      Healing.HSShared (tickRun N1 dg1) Set.univ dg1 0 1 ∧
+      Healing.HSShared (tickRun N1 dg1) Set.univ (SA.CommitteeDict.full sp1.n) dg1 0 1 ∧
       Healing.CatchRun (tickRun N1 dg1) Set.univ 0 (2 * sp1.Δ) ∧
       Healing.PropPlus (tickRun N1 dg1) Set.univ (fun _ => v0) 0 4 :=
   ⟨tickRun_goldilocksRun, tickRun_hsShared 0, tickRun_catch 0 _ (by decide),
@@ -145,7 +145,8 @@ theorem tickRun_resetExistence :
     (1056 : Time) ≤ 0 + 24 * sp1.Δ + 12 * 86 ∧
     Healing.C_HS sp1 1 4 = 86 := by
   obtain ⟨⟨h1, h2⟩, h3, h4, h5, h6, -, h8⟩ := Healing.reset_existence sp1 ro1 (fun _ => v0) dg1
-    Set.univ (tickRun N1 dg1) 0 1 4 tickRun_goldilocksRun (tickRun_hsShared 0)
+    Set.univ (tickRun N1 dg1) (SA.CommitteeDict.full sp1.n) 0 1 4
+    (by rw [SA.committeeStart_full]; exact tickRun_goldilocksRun) (tickRun_hsShared 0)
     (tickRun_catch 0 _ (by decide)) (tickRun_propPlus 0 4 le_rfl)
   rw [cutZ_zero] at h1 h2 h5 h6
   simp only [gbar_zero, A_HS_sp1, C_HS_sp1] at h1 h3 h5 h6
@@ -155,8 +156,10 @@ theorem tickRun_resetExistence :
 /-- (b) **HR.4 on the tick run** at `g = 0`, `Δ_F = 1`: (R1)–(R4) hold for the reset `a_z = 16`,
 at the heights `≥ H_z + 1 = 4`. -/
 theorem tickRun_retention : Healing.RetentionAt (tickRun N1 dg1) Set.univ 0 16 :=
-  Healing.height_scoped_retention sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) 0 1
-    rfl tickRun_goldilocksRun (tickRun_healthy 0) (dg1_noColl _) 16 reset_bundle.1
+  Healing.height_scoped_retention sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1)
+    (SA.CommitteeDict.full sp1.n) 0 1 (by rw [SA.committeeStart_full]; exact tickRun_goldilocksRun)
+    (tickRun_healthy 0) (dg1_noColl _) (tickRun_hsShared 0).committee (tickRun_hsShared 0).twoK
+    16 reset_bundle.1
 
 end Consensus.Goldilocks.Witness.One
 

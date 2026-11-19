@@ -113,7 +113,7 @@ theorem chain_pairs_entry {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P
       · exact ⟨E, hE, hEY.tail hYW, hEr, hEh, hET'⟩
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
   {proposer : Nat → Fin sp.n}
 
@@ -135,7 +135,7 @@ theorem client_record_origin_of_run {ini : Fin sp.n → (goldilocksNode sp ro).S
   client_record_origin_from hrun.toLocalRun hy h r
 
 /-- Whole-run reset specialization of actual record provenance. -/
-theorem client_record_origin (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem client_record_origin (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) (h r i : Nat) :
     ((tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h →
       ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.h = h ∧ att.T = r) ∧
@@ -195,7 +195,7 @@ theorem signed_fin_pair_entry_of_run {ini} (hrun : GoldilocksRun proposer dg H t
       exact ⟨Z, hZ, E, hE, hET.symm.trans hT.symm, hZE, hZr, hZh, hZT⟩
 
 /-- Reset-premise specialization of the run-only signed finality-pair provenance. -/
-theorem signed_fin_pair_entry (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem signed_fin_pair_entry (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att) {h r : Nat}
     (hfin : att.fin = some (h, r)) :
@@ -207,7 +207,7 @@ theorem signed_fin_pair_entry (hp : ResetPremises tr H proposer dg g ΔF a)
 /-- Finalizing a strict descendant is witnessed by an actual earlier honest report.
 The height comparison is in the reporter's store at the report cut. -/
 theorem ResetPremisesUpTo.finalized_descendant_report {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {W X P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) (hX : X ∈ (tr.state y k).fg.tree)
@@ -279,7 +279,7 @@ theorem ResetPremisesUpTo.finalized_descendant_report {b : Time}
 /-- The remaining finality-loss obligation is compatibility: a comparable finality
 cache either stays below `P` or already witnesses a strictly higher actual report. -/
 theorem ResetPremisesUpTo.finality_below_or_higher_report {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hcompat : Compatible (tr.HonestBlocks H) (tr.state y k).fg.F P) :
     Anc (tr.HonestBlocks H) (tr.state y k).fg.F P ∨
@@ -299,7 +299,7 @@ theorem ResetPremisesUpTo.finality_below_or_higher_report {b : Time}
 higher report. The signing witness is retained explicitly; a covering origin alone
 does not supply this fact. Heights are compared at the resulting reporter's cut. -/
 theorem ResetPremisesUpTo.higher_report_of_signed_entry {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i d : Nat}
     {P E : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ (tr.state y i).fg.tree) (hE : E ∈ (tr.state y i).fg.tree)
@@ -320,7 +320,7 @@ theorem ResetPremisesUpTo.higher_report_of_signed_entry {b : Time}
   exact hlt
 
 /-- Whole-run specialization of the finite finality/report alternative. -/
-theorem finality_below_or_higher_report (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem finality_below_or_higher_report (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hcompat : Compatible (tr.HonestBlocks H) (tr.state y k).fg.F P) :
     Anc (tr.HonestBlocks H) (tr.state y k).fg.F P ∨
@@ -332,7 +332,7 @@ theorem finality_below_or_higher_report (hp : ResetPremises tr H proposer dg g �
 /-- **A high record entry names an entry of a high origin's chain**: the target, timeout
 or lock entry `r` at `h ≥ H_z + 1` of an honest record is the root of a block `Z` below the
 block of a high origin, the entry at height `h` of its chain. -/
-theorem high_record_entry (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem high_record_entry (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hrows : ∀ y ∈ H, ∀ k att, tr.SignAt y k att → a ≤ tr.time k → HZ tr H g + 1 ≤ att.h →
       ∃ x i j B, HighOrigin tr H g x i j B ∧ ∃ E ∈ (tr.state x i).fg.tree,
         (tr.state x i).fg.Anc E B ∧ E.root = att.T ∧ ((tr.state x i).fg.σ E.root).h = att.h ∧
@@ -371,7 +371,7 @@ theorem high_record_entry (hp : ResetPremises tr H proposer dg g ΔF a)
 
 /-- **Two entries at one height below one held block are one block** (entry constancy). -/
 theorem ResetPremisesUpTo.entry_root_eq {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {z : Fin sp.n} (hz : z ∈ H) {m : Nat}
     {C Z₁ Z₂ : SA.Blk sp.n (List (FG.Att sp.n))} (hC : C ∈ (tr.state z m).fg.tree)
     (h₁ : Anc (tr.HonestBlocks H) Z₁ C) (h₂ : Anc (tr.HonestBlocks H) Z₂ C)
@@ -386,7 +386,7 @@ theorem ResetPremisesUpTo.entry_root_eq {b : Time}
     rw [← hT₁, ← hT₂, this]
 
 /-- Whole-run specialization of entry constancy. -/
-theorem entry_root_eq (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem entry_root_eq (hp : ResetPremises tr H K proposer dg g ΔF a)
     {z : Fin sp.n} (hz : z ∈ H) {m : Nat}
     {C Z₁ Z₂ : SA.Blk sp.n (List (FG.Att sp.n))} (hC : C ∈ (tr.state z m).fg.tree)
     (h₁ : Anc (tr.HonestBlocks H) Z₁ C) (h₂ : Anc (tr.HonestBlocks H) Z₂ C)

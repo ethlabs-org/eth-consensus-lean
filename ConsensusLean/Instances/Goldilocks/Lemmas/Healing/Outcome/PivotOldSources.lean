@@ -17,7 +17,7 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-! ### Old sources -/
 
@@ -34,7 +34,7 @@ theorem oldSrc_iff {u : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))} :
 
 /-- The causal cache comparison also permits an origin written after the receiver cut. -/
 theorem ResetPremisesUpTo.finalized_compatible_high_origin {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (hcb : ∀ q < c, tr.time q ≤ b)
     {x : Fin sp.n} {i j : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j O) (hib : tr.time i ≤ b) :
@@ -63,7 +63,7 @@ theorem ResetPremisesUpTo.finalized_compatible_high_origin {b : Time}
 /-- Compare the actual cache and origin within a fixed horizon using only held
 chains and prior signed-attestation origins. No later tick is required. -/
 theorem finalized_compatible_high_origin_before
-    (hp : ResetPremises tr H proposer dg g ΔF a) (Q : Time)
+    (hp : ResetPremises tr H K proposer dg g ΔF a) (Q : Time)
     {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (_hcQ : tr.time c ≤ Q)
     {x : Fin sp.n} {i j : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j O) (_hiQ : tr.time i ≤ Q) :
@@ -74,7 +74,7 @@ theorem finalized_compatible_high_origin_before
 
 /-- Whole-run cache comparison permits an origin written after the receiver cut. -/
 theorem finalized_compatible_high_origin_at_any_cut
-    (hp : ResetPremises tr H proposer dg g ΔF a)
+    (hp : ResetPremises tr H K proposer dg g ΔF a)
     {z : Fin sp.n} (hz : z ∈ H) {c : Nat}
     {x : Fin sp.n} {i j : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j O) :
@@ -83,7 +83,7 @@ theorem finalized_compatible_high_origin_at_any_cut
     (le_max_left _ _) ho (le_max_right _ _)
 
 /-- Post-reset specialization retained for callers with an explicit reset cut bound. -/
-theorem finalized_compatible_high_origin (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem finalized_compatible_high_origin (hp : ResetPremises tr H K proposer dg g ΔF a)
     {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (_hac : a ≤ tr.time c)
     {x : Fin sp.n} {i j : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j O) :
@@ -92,7 +92,7 @@ theorem finalized_compatible_high_origin (hp : ResetPremises tr H proposer dg g 
 
 /-- A post-reset finalized cache lies below an actual bounded high origin. -/
 theorem ResetPremisesUpTo.finalized_below_high_origin {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (ha : a ≤ tr.time k)
     (hkb : ∀ q < k, tr.time q ≤ b) :
     ∃ x r l B, HighOrigin tr H g x r l B ∧ tr.time r ≤ tr.time k ∧ tr.time r ≤ b ∧
@@ -129,7 +129,7 @@ theorem ResetPremisesUpTo.finalized_below_high_origin {b : Time}
 
 /-- Actual-call relay of a high supporting head to the proposal frame. -/
 theorem ResetPremisesUpTo.proposal_relay_high {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
@@ -169,7 +169,7 @@ theorem ResetPremisesUpTo.proposal_relay_high {b : Time}
     Or.inr ⟨k, hak, lt_of_lt_of_le hkt (hdl k hki)⟩⟩
 
 /-- The label of an old source is below `u`. -/
-theorem label_lt_of_old (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem label_lt_of_old (hp : ResetPremises tr H K proposer dg g ΔF a)
     {u : Nat} {x : Fin sp.n}
     {i j : Nat}
     {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j O)
@@ -181,7 +181,7 @@ theorem label_lt_of_old (hp : ResetPremises tr H proposer dg g ΔF a)
 
 /-- An earlier high source is held at a bounded actual proposal, or finalized there. -/
 theorem ResetPremisesUpTo.proposal_holds_old {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
@@ -203,9 +203,8 @@ theorem ResetPremisesUpTo.proposal_holds_old {b : Time}
   rcases hcmp with hFO | hOF
   · left
     obtain ⟨ellX, D, CV, hcx, hfl, _, _, _, hOD, _⟩ := hp.highOrigin_mem ho
-    have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos p; omega
-    obtain ⟨z, hz, j, e, hv, hes, B, hB, hBr, hDB⟩ :=
-      SA.fastLock_honest_vote hrun _ SA.CommitteeP.full ho.1 hfl (SA.cs2_full hp.stock hf)
+    obtain ⟨z, hz, j, e, hv, hes, B, hB, hBr, hDB⟩ := SA.fastLock_honest_vote hrun K hp.hP ho.1
+      hfl (hp.cs2 (slot_gbar_lt_of_cutZ_le (hp.cutZ_le_ts_of_highOrigin ho)))
     have hOB := (hOD.mono (SA.frameIn_of_callAt hr ho.1 hcx).2).trans hDB
     obtain ⟨ellZ, hcz, he⟩ := hv
     obtain ⟨⟨B', hB't, hB'r, _⟩, hjt⟩ := Compose.cast_head_fcRoot hr
@@ -238,7 +237,7 @@ theorem ResetPremisesUpTo.proposal_holds_old {b : Time}
 
 /-- Bounded root comparison uses only an actual proposal and earlier source comparisons. -/
 theorem ResetPremisesUpTo.held_target_proposal_root_before {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {x p : Fin sp.n} (hx : x ∈ H) (hpH : p ∈ H) {r i u : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
     {ell : ACLabel (goldilocksNode sp ro)}
@@ -272,7 +271,7 @@ theorem ResetPremisesUpTo.held_target_proposal_root_before {b : Time}
 
 /-- Root comparison for an actual proposal duty and an arbitrary held target. -/
 theorem held_target_proposal_root_before
-    (hp : ResetPremises tr H proposer dg g ΔF a)
+    (hp : ResetPremises tr H K proposer dg g ΔF a)
     {x p : Fin sp.n} (hx : x ∈ H) (hpH : p ∈ H) {r i u : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
     (hai : a ≤ tr.time i) {ell : ACLabel (goldilocksNode sp ro)}

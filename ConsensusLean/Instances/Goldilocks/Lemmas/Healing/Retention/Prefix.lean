@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.PrefixSteps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -77,7 +78,7 @@ theorem honest_att_of_left {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store 
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
-  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
 /-- **Prefix comparison of two high origins before a cut**.
@@ -85,15 +86,17 @@ With `VoteInv` at every cut `< k`, a high origin `(B, j)` written
 before `k` or whose slot-`j` votes all precede `k`, and a high origin `(O, l)` written before `k`,
 are comparable: for `l < j` the honest slot-`j` votes counted by `B`'s write extend `O`; for
 `j < l` those counted by `O`'s write extend `B`; for `l = j` the raw selections are compatible by
-TSQ (`Sync` from `GST(g)`, `t_j ≥ g`). -/
+TSQ (`Sync` from `GST(g)`, `t_j ≥ c_z > g`). The counts are at the slot-`j` and slot-`l` committees,
+after the slot of `ḡ` (`t_j ≥ c_z`). -/
 theorem ResetPremisesUpTo.origins_compatible_before {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {k : Nat}
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {k : Nat}
     (hvote : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : SA.Blk sp.n (List (FG.Att sp.n))},
       HighOrigin tr H g x₀ i₀ j₀ B₀ → tr.time i₀ ≤ b →
       ∀ z ∈ H, ∀ c < k, tr.time c ≤ b → ∀ e, SA.VoteAt tr.projAC z c e →
         j₀ < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B₀)
     {x : Fin sp.n} {i j : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) (hg : g ≤ sp.ts j)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
+    (hz : cutZ sp.toParams g ≤ sp.ts j)
     (hact : i < k ∨ ∀ c, tr.time c < sp.ts (j + 1 : Nat) → c < k) {x' : Fin sp.n} {r l : Nat}
     {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho' : HighOrigin tr H g x' r l O) (hrk : r < k)
     (hib : tr.time i ≤ b) (hrb : tr.time r ≤ b) :
@@ -101,11 +104,9 @@ theorem ResetPremisesUpTo.origins_compatible_before {b : Time}
   have hrun' := Compose.goldilocks_ac_projection_from hp.run hp.noColl
   have hrl := hrun'.localRun
   have hU := hrl.coherent
-  have hf : 2 * Hᶜ.ncard < sp.n := by
-    have := hp.faults
-    have := Fin.pos x
-    have hn : sp.n = sp.toParams.n := rfl
-    omega
+  have hjs := slot_gbar_lt_of_cutZ_le hz
+  have hg : g ≤ sp.ts j := by
+    have := lt_cutZ sp g; have := le_gbar g; have := sp.toParams.hΔ; linarith
   obtain ⟨CV, hst⟩ := ho.2.2.1
   obtain ⟨CV', hst'⟩ := ho'.2.2.1
   obtain ⟨-, D, hfl, hBD⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
@@ -121,20 +122,19 @@ theorem ResetPremisesUpTo.origins_compatible_before {b : Time}
       have h₃ := (SA.ts_le_iff_le_slot sp (hrl.time_nonneg c) ((j + 1 : Nat) : Int)).mp hge
       clear * - hsl h₁ h₃; omega
     have hDO : Compatible (tr.HonestBlocks H) D O :=
-      SA.fastLock_compatible_of_votes hrun' _ SA.CommitteeP.full ho.1 (Nat.lt_succ_self i) hfl
-        (SA.cs2_full hp.stock hf)
+      SA.fastLock_compatible_of_votes hrun' _ hp.hP ho.1 (Nat.lt_succ_self i) hfl (hp.cs2 hjs)
         fun z hz c hc e hve hsl => hvote ho' hrb z hz c (hcut z hz c hc e hve hsl)
           ((hp.run.time_mono (by clear * - hc; omega)).trans hib) e hve (by omega)
     by_contra hn
     exact SA.not_compatible_of_anc hU hBD (fun h => hn h.symm) hDO.symm
   · have hsync := hp.sync.syncAC hp.run (hi := sp.ts (l + 1 : Nat) + sp.Δ) hg
-    rcases SA.fastLock_same_slot hrun' _ SA.CommitteeP.full (SA.size_binding_full hp.stock) ho.1
-      hfl ho'.1 hfl' hsync (SA.cs2_full hp.stock hf) with h | h
+    rcases SA.fastLock_same_slotU hrun'.toU _ hp.hP hp.hsize ho.1 hfl ho'.1 hfl' hsync
+      (hp.cs2 hjs) with h | h
     · exact SA.anc_total hU (hBD.trans h) hOD'
     · exact SA.anc_total hU hBD (hOD'.trans h)
   · have hD'B : Compatible (tr.HonestBlocks H) D' B :=
-      SA.fastLock_compatible_of_votes hrun' _ SA.CommitteeP.full ho'.1 (Nat.lt_succ_self r) hfl'
-        (SA.cs2_full hp.stock hf)
+      SA.fastLock_compatible_of_votes hrun' _ hp.hP ho'.1 (Nat.lt_succ_self r) hfl'
+        (hp.cs2 (by omega))
         fun z hz c hc e hve hsl => hvote ho hib z hz c (by clear * - hrk hc; omega)
           ((hp.run.time_mono (by clear * - hc; omega)).trans hrb) e hve (by
               clear * - hgt hsl; omega)
@@ -142,16 +142,17 @@ theorem ResetPremisesUpTo.origins_compatible_before {b : Time}
     exact SA.not_compatible_of_anc hU hOD' hn hD'B.symm
 
 /-- Whole-run specialization of prefix origin comparison. -/
-theorem origins_compatible_before (hp : ResetPremises tr H proposer dg g ΔF a) {k : Nat}
+theorem origins_compatible_before (hp : ResetPremises tr H K proposer dg g ΔF a) {k : Nat}
     (hvk : ∀ k' < k, VoteInv tr H g k') {x : Fin sp.n} {i j : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) (hg : g ≤ sp.ts j)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
+    (hz : cutZ sp.toParams g ≤ sp.ts j)
     (hact : i < k ∨ ∀ c, tr.time c < sp.ts (j + 1 : Nat) → c < k) {x' : Fin sp.n} {r l : Nat}
     {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho' : HighOrigin tr H g x' r l O) (hrk : r < k) :
     Compatible (tr.HonestBlocks H) B O := by
   apply (hp.toUpTo tr H (le_max_left a (max (tr.time i) (tr.time r)))).origins_compatible_before
     (fun ho₀ _ z hz c hc _ e ⟨ℓ, hcl, he⟩ hsl =>
       ((voteInv_iff.1 (hvk c hc)) _ _ _ _ ho₀ z hz ℓ e ⟨hcl, he⟩ hsl).1)
-    ho hg hact ho' hrk
+    ho hz hact ho' hrk
   · exact (le_max_left _ _).trans (le_max_right _ _)
   · exact (le_max_right _ _).trans (le_max_right _ _)
 
@@ -160,7 +161,7 @@ store before cut `k` that a held chain has left is named by an honest attestatio
 that store, signed before `k`, whose entry `E` lies below a high origin written by its signer
 before the signing (`high_row_source`). -/
 theorem ResetPremisesUpTo.left_entry_origin {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {y : Fin sp.n} (hy : y ∈ H)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {E C : SA.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ (tr.state y k).fg.tree)
     (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
     (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h) (hEC : (tr.state y k).fg.Anc E C)
@@ -189,7 +190,7 @@ theorem ResetPremisesUpTo.left_entry_origin {b : Time}
     hE₀O.mono fun X hX => ⟨_, haH, r, hX⟩⟩
 
 /-- Whole-run specialization of left-entry provenance. -/
-theorem left_entry_origin (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
+theorem left_entry_origin (hp : ResetPremises tr H K proposer dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {E C : SA.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ (tr.state y k).fg.tree)
     (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
     (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h) (hEC : (tr.state y k).fg.Anc E C)
@@ -210,7 +211,7 @@ tick, which casts its slot-`m` vote, precedes that acceptance (`vote_before_late
 vote, so `n = 1` and the signer is the voter, whose one slot-`m` vote would precede the attestation
 (`slot_start_optimistic`). -/
 theorem ResetPremisesUpTo.row_origin_not_current {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ℓ e) {W : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -254,10 +255,12 @@ theorem ResetPremisesUpTo.row_origin_not_current {b : Time}
   · -- signed at `t_m`: then `n = 1`, and the signer is the voter, with its vote before `d`
     obtain ⟨hn1, j', hj', e', hve', hes⟩ :=
       slot_start_optimistic hp.run hp.noColl hv hs (by rw [hcτ', hcc, hts]) hrd hopt
-        (by rw [hp.stock]; exact sp.toParams.hn)
-    obtain rfl : v = y := Fin.ext (by
-      have hv2 := v.2; have hy2 := y.2; have hst := hp.stock; (clear * - hn1 hst hv2 hy2; omega))
-    have := ((SA.one_vote_per_slot sp) _ ro H _ tr.projAC hr v hy j' k e' e hve'
+        (committeeSize_pos_of_mem hp.committee
+          (mem_committee_of_castAt hp.committee hp.run hp.noColl hy hc))
+    obtain rfl : v = y := eq_of_mem_committee hp.committee hn1
+      (hes ▸ mem_committee_of_voteAt hp.committee hp.run hp.noColl hv hve')
+      (mem_committee_of_castAt hp.committee hp.run hp.noColl hy hc)
+    have := (SA.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU v hy j' k e' e hve'
       ⟨ℓ, hc.1, hc.2⟩ hes).1
     clear * - hik hd₀ hrd hj' this; omega
   · -- signed at `t_m + Δ`: the voter accepted `W` at `t_m + Δ`, before its vote
@@ -273,7 +276,7 @@ that an honest voter holds before its vote, is below the vote's slot: a fast tes
 at `t_l + 6Δ ≥ t_{l+1}`, an optimistic write of slot `l` is in slot `l ≤ m`, and not of slot `m`
 (`row_origin_not_current`). -/
 theorem ResetPremisesUpTo.row_origin_label_lt {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {y : Fin sp.n} (hy : y ∈ H)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ℓ e) {W : SA.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)
@@ -303,7 +306,8 @@ theorem ResetPremisesUpTo.row_origin_label_lt {b : Time}
     · exact absurd hopt (hp.row_origin_not_current hy hc hW ha hv hs hrd)
 
 /-- Whole-run specialization of the strict source-label bound. -/
-theorem row_origin_label_lt (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
+theorem row_origin_label_lt (hp : ResetPremises tr H K proposer dg g ΔF a) {y : Fin sp.n}
+    (hy : y ∈ H)
     {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ℓ e) {W : SA.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)

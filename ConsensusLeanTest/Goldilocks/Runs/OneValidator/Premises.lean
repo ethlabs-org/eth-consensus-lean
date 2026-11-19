@@ -4,6 +4,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.R
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
@@ -577,13 +579,20 @@ theorem tickRun_catch (g κ : Time) (hκ : 0 ≤ κ) :
   rw [eq_v0 rfl x] at hB; rw [eq_v0 rfl y]; exact hB
 
 /-- (a) The HS shared premises hold on the tick run, for every `g` (with `Δ_F = 1`). -/
-theorem tickRun_hsShared (g : Time) : Healing.HSShared (tickRun N1 dg1) Set.univ dg1 g 1 where
+theorem tickRun_hsShared (g : Time) :
+    Healing.HSShared (tickRun N1 dg1) Set.univ (SA.CommitteeDict.full sp1.n) dg1 g 1 where
   noColl := dg1_noColl _
   genesisRoot := dg1_genesis
   healthy := tickRun_healthy g
   noRestart _ _ k h := absurd h (tickRun_no_restart _ k)
   timeoutDelay := by decide
-  stock := rfl
+  committee := ⟨SA.size_binding_full rfl, SA.CommitteePAt.full,
+    fun _ _ _ _ _ v _ => SA.mem_full v.slot _,
+    fun _ _ x hx i _ s => ⟨fun _ => SA.mem_full s x,
+      fun _ => Compose.mayVote_stock tickRun_goldilocksRun (dg1_noColl _) hx s i⟩⟩
+  twoK s _ := by
+    rw [SA.ncard_inter_full, SA.ncard_full, Set.compl_univ, Set.ncard_empty]
+    simp
 
 /-- **Non-vacuity of node O.1's and C1.3's pattern premises, reduced to one fact of one run.**
 On the one-validator tick run, with `c_F = 2`, `k_F = 0` (so `c_F + k_F ≤ δ_t = 2`), `W = 1`,
@@ -594,7 +603,8 @@ and `f = 0` this shows the premises consistent, not met with faults. -/
 theorem tickRun_patternPremises (g Gp : Time) (M : Nat) (hGp : 4 ≤ Gp)
     (hpat : Healing.UPat (tickRun N1 dg1) Set.univ (fun _ => v0) g 1 M 2 0)
     (hM : Healing.Mstar sp1 1 Gp 2 0 ≤ M) :
-    Healing.PatternPremises (tickRun N1 dg1) Set.univ (fun _ => v0) dg1 g 1 Gp 1 M 2 0 where
+    Healing.PatternPremises (tickRun N1 dg1) Set.univ (SA.CommitteeDict.full sp1.n) (fun _ => v0)
+      dg1 g 1 Gp 1 M 2 0 where
   shared := tickRun_hsShared g
   catchPremise := tickRun_catch g _ (by decide)
   prop := tickRun_propPlus g Gp hGp

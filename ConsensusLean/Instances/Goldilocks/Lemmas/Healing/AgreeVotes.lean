@@ -38,7 +38,8 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF w : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF w : Time}
   {i₀ i m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} {p : Fin sp.n} {kP s : Nat}
   {P : SA.Blk sp.n (List (FG.Att sp.n))} {iP : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
@@ -67,7 +68,7 @@ private theorem mem_of_between {FGP : Type} {U : Set (SA.Blk sp.n FGP)} (hU : Co
 /-- The proposal walk: `d.start` and `d.head` are in the proposer's frame tree, `d.start ⪯
 d.head` there, and `d.head` is in `U`. -/
 private theorem proposal_walk
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) :
+    (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) :
     d.start ∈ ℓp.frame.tree ∧ d.head ∈ ℓp.frame.tree ∧ ℓp.frame.Anc d.start d.head := by
   have hr := (Compose.goldilocks_ac_projection_from hS.run hS.shared.noColl).localRun
   have hΦ := (SA.frameIn_of_callAt hr hS.ready.1 hS.call).1
@@ -91,7 +92,7 @@ pool of earlier votes (`lock_origin_readPoint`), which has an honest supporter (
 slot `s` (no earlier vote is of a later slot), so `P`; and `fc_root ⪯ P`
 (`proposal_frozen_viable`). -/
 theorem voter_anchor_below
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hlock : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       ∀ l ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k), l.slot < s →
         ∀ L ∈ ℓ.frame.tree, L.root = l.block →
@@ -119,7 +120,7 @@ theorem voter_anchor_below
 
 /-- The proposal walk's start is below `P` (`d.start ⪯ d.head`, the parent of `P`). -/
 private theorem start_anc_proposal
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) : Anc (tr.HonestBlocks H) d.start P := by
@@ -134,7 +135,7 @@ private theorem start_anc_proposal
 start, passes the start: the anchor is strictly below it (both are below `P`), and the start is
 between the frame's `Σ.F` and the head. -/
 private theorem walk_passes_start
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) (hext : SA.VoteExtends (tr.HonestBlocks H) e.msg d.start)
@@ -173,7 +174,7 @@ proposer's `fc_root` `R` (`voter_passes_proposer_root`) or a live lock block of 
 clean (HS.2 (3)), whose origin every later in-phase honest vote extends
 (`proposer_lock_extends`). -/
 theorem voter_reaches_start_clean
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hr : rTime sp w ≤ sp.ts s) (_hdrain : CleanLockDrain)
     (hlock : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       ∀ l ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k), l.slot < s →
@@ -202,7 +203,7 @@ eligible child is `P` (`proposal_frozen_viable`, eligible as of the current slot
 `proposal_only_child`), and its walk has no best child at `P`: a child of `P` would be of a slot
 above `s`, and the voter block tree of slot `s` has none (`voterBlockTree_slot_le`). -/
 theorem proposal_stop
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) :
@@ -242,7 +243,7 @@ honest in-phase proposal of a later slot has a parent extending `P` (the honest 
 2f`, beats every conflicting child and releases every older conflicting lock, by induction on the
 slot and the cut; each later event bounded by its own `PhaseOn i₀`). -/
 theorem later_extend
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hr : rTime sp w ≤ sp.ts s) (_hdrain : CleanLockDrain)
     (hvotes : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       e.msg.head = P.root ∧
@@ -264,7 +265,7 @@ theorem later_extend
 (it cannot have an earlier-slot descendant): its viable head
 witness `W ⪰ P` in the voter block tree has no slot above `s` (`voterBlockTree_slot_le`), so it
 is `P`. -/
-theorem viableHead_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer dg H tr)
+theorem viableHead_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓ e)
     (hPs : P.slot = s) (hP : P ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s)) :
@@ -289,7 +290,7 @@ theorem viableHead_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer d
 head there (`viableHead_of_viableTree`), and every ancestor of `P` is in the viable voter block
 tree (the same viable head witnesses it; the voter block tree is closed under ancestors) or at or
 below `fc_root`. -/
-theorem frozen_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer dg H tr)
+theorem frozen_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s)
     (hPs : P.slot = s) (hP : P ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s)) :
@@ -319,7 +320,7 @@ theorem frozen_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer dg H 
 `P`; if `d.start ⪯ a`, then `a` itself is on the path (`a = P` or `a ⪯ Q`); otherwise it passes
 `d.start`. -/
 theorem voters_pass
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hbelow : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) P)
@@ -358,7 +359,7 @@ follows the proposal walk to `Q` (`proposal_suffix`) and steps to `P`, where it 
 (`proposal_stop`, `ghost_follow`); with its full fuel it has stopped (`ghost_stopped`), so it ends
 at `P`. -/
 theorem votes_eq_of_pass
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hpass : ∀ y ∈ H, ∀ j ℓy e, SA.CastAt tr.projAC y j ℓy e → e.msg.slot = s →
       (∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = s →
         e'.msg.head = P.root) →
@@ -406,7 +407,7 @@ theorem votes_eq_of_pass
 /-- **The per-vote conclusion of HS.3 (a)** from the votes: every honest slot-`s` vote is `P`,
 `P` is a viable head in the viable voter block tree, and its ancestors are retained. -/
 theorem vote_conclusion
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hvotes : ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s →
       e.msg.head = P.root)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
@@ -426,7 +427,7 @@ clause is (a)'s lock premise (the voters' cuts are in the phase from `i₀`, `ph
 votes are `P` as in (a), with `voter_reaches_start_clean`; the later votes and parents are
 `later_extend`. -/
 theorem frozen_votes_clean
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hr : rTime sp w ≤ sp.ts s) (hdrain : CleanLockDrain) :
     (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       e.msg.head = P.root ∧
@@ -448,7 +449,7 @@ theorem frozen_votes_clean
         ∀ L ∈ ℓ.frame.tree, L.root = l.block →
           Anc (tr.HonestBlocks H) L P ∨ Anc (tr.HonestBlocks H) L ℓ.frame.fcRoot :=
     fun y hy k ℓ e hv hes =>
-      (hdrain sp ro proposer dg H tr g ΔF w i₀ m c
+      (hdrain sp ro proposer dg H tr K g ΔF w i₀ m c
         hS.run hS.shared hS.catchUp hS.settled).2.2.2 s P
         hPr hr y hy k ℓ e hv hes (phaseOn_voter hS.run hS.shared hS.settled
           (start_le_voter hS.run hS.shared.noColl hS.start_time hy hv hes)
@@ -467,9 +468,10 @@ theorem frozen_tree_agreement_clean (hdrain : CleanLockDrain) :
     ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
       (proposer : Nat → Fin sp.n)
       (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-      (tr : GoldilocksTrace sp ro) (g ΔF w : Time) (i₀ i m : Nat)
+      (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF w : Time) (i₀ i m : Nat)
       (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))),
-      GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
+      GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+      HSShared tr H K dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
       SettledIn tr H g w i₀ m c → i₀ ≤ i →
       ∀ (p : Fin sp.n) (kP s : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))),
         ReadyProposal tr H proposer p kP s P → i ≤ kP →
@@ -492,7 +494,7 @@ theorem frozen_tree_agreement_clean (hdrain : CleanLockDrain) :
           P'.slot = s' → tr.ProposesAt (proposer s') k' P' → proposer s' ∈ H →
           PhaseOn tr.projFG H i₀ k' m c →
           ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr := by
-  intro sp ro proposer dg H tr g ΔF w i₀ i m c hrun hs hc hw hi₀ p kP s P hP hikP hti hg hph
+  intro sp ro proposer dg H tr K g ΔF w i₀ i m c hrun hs hc hw hi₀ p kP s P hP hikP hti hg hph
     hr
   obtain ⟨iP, ℓp, d, pay, hS⟩ := agreeSetting_of hrun hs hc hw hi₀ hP hikP hti hg hph
   exact frozen_votes_clean hS hr hdrain

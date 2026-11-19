@@ -37,12 +37,13 @@ theorem recovery_statements_of_coverage
     (hcoverage : ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
       (proposer : Nat → Fin sp.n)
       (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-      (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time) (W M cF kF : Nat),
-      PatternCoverageSupply tr H proposer dg g ΔF Gp W M cF kF) :
+      (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF Gp : Time)
+      (W M cF kF : Nat),
+      PatternCoverageSupply tr H K proposer dg g ΔF Gp W M cF kF) :
     RecoveryStatements := by
   refine ⟨cache_acceptance_after_reset, ?_, ?_⟩
-  · intro sp ro proposer dg H tr g ΔF Gp W M cF kF hrun hp
-    have hc := (hcoverage sp ro proposer dg H tr g ΔF Gp W M cF kF).coverage
+  · intro sp ro proposer dg H tr K g ΔF Gp W M cF kF hrun hp
+    have hc := (hcoverage sp ro proposer dg H tr K g ΔF Gp W M cF kF).coverage
       hrun hp (Rstar sp g ΔF Gp) le_rfl
     obtain ⟨a, hr, -, -⟩ := pattern_reset hrun hp
     let T := Rstar sp g ΔF Gp + 4 * sp.Δ * ((W : Time) + 1 + M) + sp.Δ
@@ -67,8 +68,8 @@ theorem recovery_statements_of_coverage
     · apply hc.high_finality.at_call y hy k hcall
       change T ≤ tr.time k
       linarith
-  · intro sp ro proposer dg H tr g ΔF Gp W M cF kF hrun hp t ht
-    have hc := (hcoverage sp ro proposer dg H tr g ΔF Gp W M cF kF).coverage hrun hp t ht
+  · intro sp ro proposer dg H tr K g ΔF Gp W M cF kF hrun hp t ht
+    have hc := (hcoverage sp ro proposer dg H tr K g ΔF Gp W M cF kF).coverage hrun hp t ht
     obtain ⟨q, kP, P, hq, hprop, hlo, hhi, -, hcarrier, hcache⟩ := hc.witness
     exact ⟨q, kP, P, hq, hprop, hlo, hhi, hcarrier, hcache⟩
 

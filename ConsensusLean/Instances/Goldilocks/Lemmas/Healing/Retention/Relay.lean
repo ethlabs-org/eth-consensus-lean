@@ -105,7 +105,8 @@ honest `y` casting its slot-`(s+1)` vote, with `a₀ ≤ t_s` and `t_s + 2Δ ≤
 is of slot `s`, was sent or admitted by an honest writer `w` at a time in `[t_s, t_s + 2Δ)`, and has
 a head above `y`'s `Σ.F` that is genesis or that `w` accepted in `[a₀, t_s + 2Δ)`, then
 `Carry_y(s, ·, ·)` holds for the counted votes. -/
-theorem carryAt_of_writer_window (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+theorem carryAt_of_writer_window {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
     {a₀ b : Time} (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U a₀ b T) {s : Nat}
     (ha₀ : a₀ ≤ sp.ts s) (hb : sp.ts s + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
@@ -116,7 +117,7 @@ theorem carryAt_of_writer_window (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
         (Hv.root = sp.genesisRoot ∨
           ∃ k, T.AcceptAt w k Hv ∧ a₀ ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ)) :
     SA.CarryAt T U y i e s CV := by
-  refine carryAt_of_writer_heads hr ha₀ hb hw hy hc hs (Or.inl hsync) fun v hv => ?_
+  refine carryAt_of_writer_heads hr hini ha₀ hb hw hy hc hs (Or.inl hsync) fun v hv => ?_
   obtain ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, hacc⟩ := hW v hv
   refine ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, ?_⟩
   rcases hacc with hg | hw'
@@ -187,7 +188,8 @@ theorem relay_mem_voterBlockTree {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP 
 /-- A counted head reaches the actual voter freeze through either window service or
 catch-up of an old acceptance. Only recipient observations through `b` are used. -/
 private theorem relay_mem_voterBlockTree_window_aux
-    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b : Time}
+    {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {a b : Time}
     (hsync : SyncACWindowBefore H U a b T)
     {w y : Fin sp.n} (hw : w ∈ H) (hy : y ∈ H) {kw i s : Nat} {W : SA.Blk sp.n FGP}
     (hkw : T.AcceptAt w kw W) (ht : T.time kw < sp.ts s + 2 * sp.Δ)
@@ -234,7 +236,7 @@ private theorem relay_mem_voterBlockTree_window_aux
   obtain ⟨ky, hky, hacc, hkyt⟩ := haccepted
   have hfz : SA.freeze sp e.msg.slot ≤ T.time i := by unfold SA.freeze; linarith only [hΔ, hm, hti]
   have hWt := SA.mem_tree_of_acceptAt sp hr hy hacc hky hc.1 hF
-  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr (fun _ => SA.voteStart_initial _)
+  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hini
     hy hc.1 hWt (Or.inr ⟨ky, hacc, hkyt⟩)
     (fun k hk hrk => lt_of_le_of_lt (hrsy k hk hrk) (by unfold SA.freeze; linarith only [hΔ]))
     (Or.inl hfz)
@@ -253,7 +255,8 @@ private theorem relay_mem_voterBlockTree_window_aux
 The strict stamp is at the actual emission read point, suitable for iterating the unanimity
 propagation. -/
 theorem relay_readPoint_stamp_window_before
-    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b κ : Time}
+    {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {a b κ : Time}
     (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
     {w y : Fin sp.n} (hw : w ∈ H) (hy : y ∈ H) {kw i s : Nat} {W : SA.Blk sp.n FGP}
     (hkw : T.AcceptAt w kw W) (ht : T.time kw < sp.ts s + 2 * sp.Δ)
@@ -262,7 +265,7 @@ theorem relay_readPoint_stamp_window_before
     (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
     (hF : Anc U ℓ.frame.F W) :
     W ∈ ℓ.frame.tree ∧ e.readPoint.blockStamp W.root < SA.ETime.of (SA.freeze sp e.msg.slot) := by
-  apply relay_mem_voterBlockTree_window_aux hr hsync hw hy hkw ht hc hs hi ?_ hF
+  apply relay_mem_voterBlockTree_window_aux hr hini hsync hw hy hkw ht hc hs hi ?_ hF
   intro ha
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hti : sp.ts e.msg.slot ≤ T.time i :=
@@ -277,7 +280,8 @@ theorem relay_readPoint_stamp_window_before
 
 /-- Relay and catch-up place an accepted block in the later frozen voter domain. -/
 theorem relay_mem_voterBlockTree_window_before
-    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b κ : Time}
+    {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {a b κ : Time}
     (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
     {w y : Fin sp.n} (hw : w ∈ H) (hy : y ∈ H) {kw i s : Nat} {W : SA.Blk sp.n FGP}
     (hkw : T.AcceptAt w kw W) (ht : T.time kw < sp.ts s + 2 * sp.Δ)
@@ -285,7 +289,7 @@ theorem relay_mem_voterBlockTree_window_before
     (hc : SA.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
     (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
     (hF : Anc U ℓ.frame.F W) : W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
-  obtain ⟨hW, hstamp⟩ := relay_readPoint_stamp_window_before hr hsync hcatch hw hy
+  obtain ⟨hW, hstamp⟩ := relay_readPoint_stamp_window_before hr hini hsync hcatch hw hy
     hkw ht hc hs hi hcatchTime hF
   exact ⟨hW, Or.inl hstamp⟩
 
@@ -425,7 +429,8 @@ theorem raw_writer_relay_source
 /-- An ancestor of an early source is available in a later voter's frozen block tree.
 The source may be genesis or an actual acceptance; old acceptances use Catch. -/
 theorem voterBlockTree_of_relay_source
-    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b κ : Time}
+    {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {a b κ : Time}
     (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
     {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {i s : Nat}
     {B D : SA.Blk sp.n FGP} (hDU : D ∈ U) (hBD : Anc U B D)
@@ -460,7 +465,7 @@ theorem voterBlockTree_of_relay_source
       rw [← hys] at ht
       unfold SA.freeze
       linarith only [hΔ, ht]
-    have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr (fun _ => SA.voteStart_initial _)
+    have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hini
       hy hc.1 hDt (Or.inl hGr)
       hrs (Or.inl hfz.le)
     have hne : ∀ X, ℓ.call = .block X → G.root ≠ X.root := by
@@ -468,18 +473,19 @@ theorem voterBlockTree_of_relay_source
       exact SA.accept_ne_genesis sp hr hy ⟨ℓ, hc.1, hcall⟩ (heq.symm.trans hGr)
     rw [← SA.readPoint_blockStamp hr hy hc hne] at hbs
     have hBt := SA.frame_mem_of_between sp hr.coherent hΦ hΦU hDt hBD hF
-    exact SA.voterBlockTree_anc hr (fun _ => SA.voteStart_initial _) hy hc G ⟨hDt, Or.inl hbs⟩ B
+    exact SA.voterBlockTree_anc hr hini hy hc G ⟨hDt, Or.inl hbs⟩ B
       (SA.anc_tree_of_anc_U hr.coherent hΦ hΦU hBt hBD hDt)
-  · have hDt := relay_mem_voterBlockTree_window_before hr hsync hcatch hx hy hq hqt
+  · have hDt := relay_mem_voterBlockTree_window_before hr hini hsync hcatch hx hy hq hqt
       hc hs hi hcatchTime (hF.trans hBD)
     have hBt := SA.frame_mem_of_between sp hr.coherent hΦ hΦU hDt.1 hBD hF
-    exact SA.voterBlockTree_anc hr (fun _ => SA.voteStart_initial _) hy hc D hDt B
+    exact SA.voterBlockTree_anc hr hini hy hc D hDt B
       (SA.anc_tree_of_anc_U hr.coherent hΦ hΦU hBt hBD hDt.1)
 
 /-- A raw writer's ancestor is available in a later voter's frozen block tree. -/
 theorem raw_writer_voterBlockTree_window_before
-    (hcommittee : 0 < sp.committeeSize)
-    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b κ : Time}
+    (hcommittee : 0 < sp.committeeSize) {ini}
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {a b κ : Time}
     (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
     {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {j i s : Nat}
     {B C : SA.Blk sp.n FGP} {CV : Set (Vote sp.n)}
@@ -489,8 +495,8 @@ theorem raw_writer_voterBlockTree_window_before
     (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
     (hF : Anc U ℓ.frame.F B) : B ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
   obtain ⟨v, _, D, hDU, _, hBD, hsource⟩ :=
-    raw_writer_relay_source hcommittee hr (fun _ => SA.voteStart_initial _) hx hwriter hBC
-  exact voterBlockTree_of_relay_source hr hsync hcatch hx hy hDU hBD hsource
+    raw_writer_relay_source hcommittee hr hini hx hwriter hBC
+  exact voterBlockTree_of_relay_source hr hini hsync hcatch hx hy hDU hBD hsource
     hc hs hi hcatchTime hF
 
 end Node

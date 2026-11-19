@@ -44,13 +44,13 @@ open SA (SAParams ReplayOrder Payload gbar)
 /-- **HS.1, effective-phase viable-witness retention** (why lower finality
 is benign; proved in `Retain`, `viable_witness_retention_of`). -/
 theorem viable_witness_retention : ViableWitnessRetention :=
-  fun _ _ _ _ _ _ _ _ hrun hs _ _ _ _ _ hon _ hy _ hW _ hz _ h1 h2 =>
+  fun _ _ _ _ _ _ _ _ _ hrun hs _ _ _ _ _ hon _ hy _ hW _ hz _ h1 h2 =>
     viable_witness_retention_of hrun hs hon hy hW hz h1 h2
 
 /-- **HS.2, clean-lock transfer and two-window drain** (clean evidence and
 the two-window drain; assembled in `Drain`). -/
 theorem clean_lock_drain : CleanLockDrain := by
-  intro sp ro proposer dg H tr g ΔF w i₀ m c hrun hs hc hw
+  intro sp ro proposer dg H tr K g ΔF w i₀ m c hrun hs hc hw
   refine ⟨fun _ hx _ _ _ _ ho hj _ hy _ _ _ hv hjs hk =>
       ⟨clean_fast_later hrun hs hc hw hx ho hj hy hv hjs hk, fun he =>
         (clean_fast_next hrun hs hc hw hx ho hj hy hv he hk).2⟩,
@@ -64,7 +64,7 @@ theorem clean_lock_drain : CleanLockDrain := by
 /-- **HS.4, bounded common path and actual-report acquisition** (first
 proposal, actual reports, and the one extra wait). -/
 theorem common_path_acquisition : CommonPathAcquisition :=
-  fun _ _ _ _ _ _ _ _ _ _ _ _ _ hrun hs hc hp hset =>
+  fun _ _ _ _ _ _ _ _ _ _ _ _ _ _ hrun hs hc hp hset =>
     ⟨acquired_or_changed hrun hs hc hp hset clean_lock_drain,
       client_progress hrun hs⟩
 
@@ -186,19 +186,21 @@ theorem acquiredPath_iff_exists (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
   {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-- **HS.4 with the named branches**: settled at `w` in `(m, c)`, the phase has changed by
 `w + D_HS` or the common path is acquired (`AcquiredPath`), and the client subclaim holds. -/
-theorem common_path_acquisition' (hrun : GoldilocksRun proposer dg H tr)
-    (hs : HSShared tr H dg g ΔF)
+theorem common_path_acquisition' (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
+    (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) :
     ((∀ j', FirstCutAfter tr j' (w + D_HS sp Gp) → PhaseChanged tr.projFG H i₀ j') ∨
       AcquiredPath tr H proposer Gp w i₀ m c) ∧ ClientProgress tr H i₀ m c :=
-  common_path_acquisition sp ro proposer dg H tr g ΔF Gp w i₀ m c hrun hs hc hp hset
+  common_path_acquisition sp ro proposer dg H tr K g ΔF Gp w i₀ m c hrun hs hc hp hset
 
 /-! ### HS.5's consumption, one level down (proposed contract)
 
@@ -217,7 +219,7 @@ in the phase (HS.4's current-source arm), has signed a matching attestation for 
 `v`: the `ac_to_fg` return is followed at once by the `fg_attest` of the same tick, at which
 `ClientProgress` applies (the phase holds through `v`; `toFG_attest` for the transport). -/
 theorem historical_source_rows (hrun : GoldilocksRun proposer dg H tr ini)
-    (hs : HSShared tr H dg g ΔF)
+    (hs : HSShared tr H K dg g ΔF)
     (_hc : CatchRun tr H g (2 * sp.Δ)) (_hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) (hcl : ClientProgress tr H i₀ m c) {s h : Nat}
     {E W : SA.Blk sp.n (List (FG.Att sp.n))} {kW : Nat}
@@ -276,7 +278,8 @@ after `t_X + 8Δ` (with HS.2's lock premise), `fixed_upper_rows_of` for `Y` and
 proposal of height `m + 1` accepted in the phase is a frontier rise; `ht(Y) = m`; `E.slot ≤ s`;
 HS.3's timing premises for `X` and `Y`; the time arithmetic, with index inclusion of first cuts)
 is proved in `ConsumeContinue` (`consume_continue_of`). -/
-theorem consume_continue (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem consume_continue (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hret : ViableWitnessRetention) (hclean : CleanLockDrain)
     (hset : SettledIn tr H g w i₀ m c) (hwit : AcquiredPath tr H proposer Gp w i₀ m c)

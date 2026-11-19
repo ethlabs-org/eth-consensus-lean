@@ -21,13 +21,14 @@ namespace Consensus.Goldilocks.Healing.Recovery
 open SA (SAParams ReplayOrder Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {K : SA.CommitteeDict sp.n}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF Gp : Time} {W M cF kF : Nat}
 
 /-- C0–C5 supply bounded high coverage under precisely the public pattern premises. -/
 theorem pattern_coverage_supply (houtcome : Compose.OutcomeService)
-    (hreports : ∀ a, ReadyProposalReportSupply tr H proposer dg g ΔF a) :
-    PatternCoverageSupply tr H proposer dg g ΔF Gp W M cF kF := by
+    (hreports : ∀ a, ReadyProposalReportSupply tr H K proposer dg g ΔF a) :
+    PatternCoverageSupply tr H K proposer dg g ΔF Gp W M cF kF := by
   refine ⟨fun hrun hpat t ht => ?_⟩
   obtain ⟨a, hp, hab, -⟩ := pattern_reset hrun hpat
   obtain ⟨v, htv, hvt, hv, hwindow⟩ :=

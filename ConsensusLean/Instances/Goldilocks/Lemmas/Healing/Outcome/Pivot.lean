@@ -66,13 +66,14 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF a : Time}
 
 /-! ### The anchors -/
 
 /-- Finite voter anchors lie below the old-source bound or on the proposal chain. -/
 theorem ResetPremisesUpTo.reset_vote_anchor {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {u : Nat} {P Q D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hPU : P ∈ tr.HonestBlocks H) (hR : drainTime sp a ≤ sp.ts u)
     (hPQ : P.parent = some Q.root) (hQU : Q ∈ tr.HonestBlocks H)
@@ -109,15 +110,20 @@ theorem ResetPremisesUpTo.reset_vote_anchor {b : Time}
   have haB : Anc (tr.HonestBlocks H) (ell.frame.viableAncestor B) B :=
     Anc.mono hPhiU (SA.anc_viableAncestor _ B)
   by_cases hls : l.slot = u
-  · obtain ⟨Phi', A', D', _, hPhi'U, _, h34, hpool, _, L, hLU, hLr, hLD'⟩ :=
+  · obtain ⟨Phi', A', D', _, hPhi'U, _, h34, hpool, ⟨kk, -, hAk⟩, L, hLU, hLr, hLD'⟩ :=
       SA.lock_origin_readPoint hrun hy hcy l hl (by rw [hes, hls]; (clear * -; omega))
-    rw [hp.stock] at h34
     obtain rfl : L = B := hU.1 hLU (hPhiU hB) (hLr.trans hBr.symm)
-    have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos y; omega
+    have hf := hp.cs2 (s := l.slot)
+      (hls ▸ slot_gbar_lt_of_drainTime_le (cutZ_lt_reset_of_snapshot hp.run
+        (hp.snapshot.imp fun _ h => h.1) hp.reset) hR)
     obtain ⟨x, ⟨v, hv, rfl, R, hRt, hRr, hDR⟩, hxH⟩ :=
-      Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
-        (t := SA.optimisticVoters sp A' Phi' l.slot D') (by omega)
-    have hvH : v.val ∈ H := not_not.1 hxH
+      Set.exists_mem_notMem_of_ncard_lt_ncard (s := K.committee l.slot ∩ Hᶜ)
+        (t := SA.optimisticVoters sp A' Phi' l.slot D') (by
+          change 3 * sp.committeeSize ≤ 4 * _ at h34
+          omega)
+    have hvH : v.val ∈ H := by
+      by_contra hn
+      exact hxH ⟨hp.hP.1 y hy (kk + 1) _ v (hAk hv), hn⟩
     obtain ⟨hvs, j', hj', e', hv', rfl⟩ := hpool v hv hvH
     have hRP : R = P := hU.1 (hPhi'U hRt) hPU
       (hRr.trans (hE _ hvH j' hj' e' hv' (hvs.trans hls)))
@@ -147,7 +153,7 @@ private theorem proposal_mem_honestBlocks (hrun : GoldilocksRun proposer dg H tr
 
 /-- A bounded old-origin upper bound reaches the actual voter's height floor. -/
 theorem ResetPremisesUpTo.reset_vote_floor_above_old {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
@@ -166,7 +172,7 @@ theorem ResetPremisesUpTo.reset_vote_floor_above_old {b : Time}
 
 /-- A held block extending every pre-slot origin reaches the voter's height floor. -/
 theorem reset_vote_floor_above_old
-    (hp : ResetPremises tr H proposer dg g ΔF a)
+    (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
@@ -179,7 +185,7 @@ theorem reset_vote_floor_above_old
 
 /-- Actual bounded proposal and cast evidence bound the voter root by the proposal. -/
 theorem ResetPremisesUpTo.reset_vote_root_below_proposal {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} (hpH : p ∈ H) {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hactual : tr.ProposesAt p k P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
     {ellp : ACLabel (goldilocksNode sp ro)}
@@ -203,7 +209,7 @@ theorem ResetPremisesUpTo.reset_vote_root_below_proposal {b : Time}
 set_option linter.unusedVariables false in
 /-- Before the first disagreeing vote, the voter root is below the actual proposal. -/
 theorem reset_vote_root_below_proposal
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremises tr H K proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
     {ellp : ACLabel (goldilocksNode sp ro)}
@@ -221,7 +227,7 @@ theorem reset_vote_root_below_proposal
     hes ((le_max_right _ _).trans (le_max_right _ _))
 
 /-- **The pivot after the drain** (open: through the four residual steps above). -/
-theorem reset_pivot (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+theorem reset_pivot (hp : ResetPremises tr H K proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
@@ -239,8 +245,8 @@ theorem reset_pivot (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun
             (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame u))
             (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
-    hp.stock hp.run hp.healthy hp.noColl a hp.reset
+  have hret := height_scoped_retention sp ro proposer dg H tr K g ΔF
+    hp.run hp.healthy hp.noColl hp.committee hp.twoK a hp.reset
   have hPU := proposal_mem_honestBlocks hp.run hp.noColl hP.1 hP.2.2.2.1
   obtain ⟨hΦp, hΦpU⟩ := SA.frameIn_of_callAt hr hP.1 hci
   refine (proposal_pivot_of_supports (tr := tr) (u := u) hr.coherent hΦp hΦpU hd hPQ
@@ -267,7 +273,7 @@ theorem reset_pivot (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun
 
 /-- The finite operational pivot after the drain, before the first disagreeing cast. -/
 theorem ResetPremisesUpTo.reset_pivot {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} (hpH : p ∈ H) {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hactual : tr.ProposesAt p k P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
     {ellp : ACLabel (goldilocksNode sp ro)}

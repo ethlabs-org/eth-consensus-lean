@@ -29,7 +29,8 @@ proposal duty): a slot-`σ` vote sent or admitted by an honest writer in `[t_σ,
 head extends the proposer's `Φ.F` and is genesis, or was accepted by the writer from `a₀` on before
 `t_σ + 2Δ`, or by the proposer before `t_σ + 3Δ`, reaches the honest proposer of slot `σ + 1`
 (Sync relays the vote and the head before `t_σ + 3Δ`; rooted retention keeps the head). -/
-theorem heldAtProposal_of_writer (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+theorem heldAtProposal_of_writer {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {a₀ b : Time} (hsync : SyncAC (goldilocksSA sp FGP ro) H U a₀ b tr) {σ : Nat}
     (ha₀ : a₀ ≤ sp.ts σ) (hb : sp.ts σ + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H)
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -89,16 +90,18 @@ theorem heldAtProposal_of_writer (hr : ACLocalRun (goldilocksSA sp FGP ro) H U t
           Or.inr ⟨ky, hacc, hkyt.trans (hdl ky hky _ hkwt)⟩⟩
       · exact ⟨mem_tree_of_acceptAt sp hr hx hacc hky hc hFHv, Or.inr ⟨ky, hacc, hkyt⟩⟩
     refine ⟨Hv, hHt, hHvr, ?_⟩
-    exact (blockStamp_lt_of_acceptedBefore sp hr (fun _ => voteStart_initial _) hx hc hHt hAB
+    exact (blockStamp_lt_of_acceptedBefore sp hr hini hx hc hHt hAB
       (fun k hk hrk => (hrs k hk hrk).trans (by linarith only [hΔ]))
       (Or.inl (by
           rw [ht, hts]; linarith only [hΔ]))).trans (WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _))
 
-/-- Current-cut result-prefix transfer. Service and viability are current inputs;
-stored older locks and earlier same-label votes account for the live read-point locks. -/
-theorem result_prefix_vote_extends_of_stored (hrun : ACRun proposer tr H U)
-    (hf : 2 * Hᶜ.ncard < sp.n) {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H)
-    {r s i : Nat} {B C : Blk sp.n FGP} {CV : Set (Vote sp.n)}
+/-- Current-cut result-prefix transfer, for the slot committees `K` (P, and CS2 at the label
+`s + 1`). Service and viability are current inputs; stored older locks and earlier same-label
+votes account for the live read-point locks. -/
+theorem result_prefix_vote_extends_of_stored {ini} (hrun : ACRun proposer tr H U ini)
+    (K : CommitteeDict sp.n) (hP : CommitteeP K tr H) {x y : Fin sp.n} (hx : x ∈ H)
+    (hy : y ∈ H) {r s i : Nat} {B C : Blk sp.n FGP} {CV : Set (Vote sp.n)}
+    (hf : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize)
     (hres : ResultAt tr x r s C CV) (hBC : Anc U B C)
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
@@ -108,36 +111,34 @@ theorem result_prefix_vote_extends_of_stored (hrun : ACRun proposer tr H U)
       ∀ Y ∈ U, Y.root = l.block → Compatible U Y B)
     (hE : EarlierVotesExtend tr H U i (s + 1) B)
     (hmerged : ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
-      v ∈ (tr.state x r).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state x r).pool s})
-    (hstock : sp.committeeSize = sp.n) :
+      v ∈ (tr.state x r).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state x r).pool s}) :
     VoteExtends U e.msg B :=
-  result_transfer_anc sp hrun hx hres hBC hy hc hs hcarry hviab
-    (live_locks_of_stored_before hrun _ CommitteeP.full (cs2_full hstock hf) hy hc hs hstored hE)
-    hmerged
+  result_transfer_ancU sp hrun.toU hx hres hBC hy hc hs hcarry hviab
+    (live_locks_of_stored_before hrun K hP hf hy hc hs hstored hE) hmerged
 
 /-- Later transfer needs extension only at earlier cuts, for the predecessor and
-current labels. Slot monotonicity places every predecessor vote before this cast. The `Sync`
-argument is no longer needed (A1.3 dropped it); it stays for the callers' interface. The transfer
-counts the batch over the whole population, so it holds for population-sized committees
-(`hstock`). -/
-theorem next_vote_extends_before (hrun : ACRun proposer tr H U)
+current labels, for the slot committees `K` (P, T, their size, CS at the label `m` and CS2 at
+`m + 1`). Slot monotonicity places every predecessor vote before this cast. The `Sync`
+argument is no longer needed (A1.3 dropped it); it stays for the callers' interface. -/
+theorem next_vote_extends_before {ini} (hrun : ACRun proposer tr H U ini)
+    (K : CommitteeDict sp.n) (hP : CommitteeP K tr H) (hT : CommitteeT K tr H)
+    (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
     {m i : Nat} {y : Fin sp.n} {B : Blk sp.n FGP}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hy : y ∈ H) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = m + 1)
     (hprior : ∀ z ∈ H, ∀ q < i, ∀ e', VoteAt tr z q e' →
       (e'.msg.slot = m ∨ e'.msg.slot = m + 1) → VoteExtends U e'.msg B)
-    (hhalf : sp.n ≤ 2 * {z | z ∈ H ∧ ∃ q e', VoteAt tr z q e' ∧ e'.msg.slot = m}.ncard)
+    (hhalf : sp.committeeSize ≤
+      2 * {z | z ∈ H ∧ ∃ q e', VoteAt tr z q e' ∧ e'.msg.slot = m}.ncard)
     (hcarry : CarryAt tr U y i e m
       {v | ∃ z ∈ H, ∃ q e', VoteAt tr z q e' ∧ e'.msg = v ∧ v.slot = m})
-    (hfault : FaultBound tr H (tr.time i))
+    (hfault : FaultBoundK K m tr H (tr.time i))
+    (hf1 : 2 * (K.committee (m + 1) ∩ Hᶜ).ncard < sp.committeeSize)
     (_hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts m) (tr.time i) tr)
-    (hviab : ViableAtVote ℓ e (m + 1) B) (hstock : sp.committeeSize = sp.n) :
+    (hviab : ViableAtVote ℓ e (m + 1) B) :
     VoteExtends U e.msg B := by
-  refine next_transfer sp FGP ro H U tr proposer hrun (CommitteeDict.full sp.n) CommitteeP.full
-    CommitteeT.full (size_binding_full hstock) m y i B ℓ e hy hc hs ?_
-    (by rw [hstock]; exact hhalf) hcarry ((faultBoundK_full_iff _ _).2 hfault)
-    (cs2_full_of_faultBound sp hstock hfault) hviab (fun z hz q hq e' hv he =>
-      hprior z hz q hq e' hv (Or.inr he))
+  refine next_transfer_of_carry sp hrun K hP hT hsize hy hc hs ?_ hhalf hcarry hfault hf1 hviab
+    (fun z hz q hq e' hv he => hprior z hz q hq e' hv (Or.inr he))
   intro z hz q e' hv he
   have hqi : q < i := by
     by_contra hn

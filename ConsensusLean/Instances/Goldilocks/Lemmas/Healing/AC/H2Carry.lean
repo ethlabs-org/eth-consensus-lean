@@ -17,7 +17,8 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 (`Healing.carryAt_of_writer_window` with a third case for a counted head: `y` itself accepted it
 at or before its vote and before `t_s + 3Δ`, as `Catch(2Δ)` gives for a head the writer accepted
 before `ḡ`): `Compose.carryAt_of_writer_heads`. -/
-theorem carryAt_of_writer_catch (hr : ACLocalRun (goldilocksSA sp FGP ro) H U T)
+theorem carryAt_of_writer_catch {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U T ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
     {a₀ b : Time} (hsync : SyncAC (goldilocksSA sp FGP ro) H U a₀ b T) {s : Nat}
     (ha₀ : a₀ ≤ sp.ts s) (hb : sp.ts s + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -29,7 +30,7 @@ theorem carryAt_of_writer_catch (hr : ACLocalRun (goldilocksSA sp FGP ro) H U T)
           (∃ k, T.AcceptAt w k Hv ∧ a₀ ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∨
           ∃ k ≤ i, T.AcceptAt y k Hv ∧ T.time k < sp.ts s + 3 * sp.Δ)) :
     SA.CarryAt T U y i e s CV := by
-  refine carryAt_of_writer_heads hr ha₀ hb hw hy hc hs (Or.inl hsync) fun v hv => ?_
+  refine carryAt_of_writer_heads hr hini ha₀ hb hw hy hc hs (Or.inl hsync) fun v hv => ?_
   obtain ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, hacc⟩ := hW v hv
   refine ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, ?_⟩
   rcases hacc with hg | hw' | ⟨ky, -, hky, hkyt⟩

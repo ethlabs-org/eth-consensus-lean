@@ -48,8 +48,9 @@ def EarlyOutcome (T : SA.Blk sp.n (List (FG.Att sp.n))) (h : Nat) (bound : Bool)
       ((tr.post k).fg.σ X.root).F = Jr) ∧
     ∀ z ∈ H, ∃ k', tr.AcceptAt z k' X ∧ tr.time k' < T₁ + sp.Δ
 
-/-- **C1.2, AC outcome service for honest entries** (claims C1.2). Under
-`Healthy(g)` (in `HSShared`), `Catch(2Δ)` and the HS shared premises, with the reset
+/-- **C1.2, AC outcome service for honest entries** (claims C1.2). From the committee start of a
+slot dictionary `K`, under `Healthy(g)` and the committee facts of `K` (in `HSShared`), `Catch(2Δ)`
+and the HS shared premises, with the reset
 `a_z` (HR.1): let `T` be an entry of height `h ≥ H_z + 1` whose entry block is an actual honest
 ready proposal of slot `u` (made by the honest joined proposer at `t_u`) with `t_u ≥ R_z =
 t_{slot(a_z)+2k+5}`; when the entry has its previous height justified (`h_j = h − 1 > 0` in its
@@ -68,8 +69,9 @@ def OutcomeService : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF a : Time) (cF kF : Nat),
-    GoldilocksRun proposer dg H tr → Healing.HSShared tr H dg g ΔF →
+    (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF a : Time) (cF kF : Nat),
+    GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+    Healing.HSShared tr H K dg g ΔF →
     Healing.CatchRun tr H g (2 * sp.Δ) → 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (cF : Time) →
     cF + kF ≤ sp.toParams.δt →
     Healing.IsReset tr H g a →

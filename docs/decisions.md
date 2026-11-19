@@ -535,14 +535,20 @@ detail in `TRUST.md`.
 - **Statements at population-sized committees take the size equation as a premise.** The run records
   `GoldilocksRun`, `Growing.GoldilocksRun`, `SA.ACRun`, `SA.ACRunU` and `SA.Growing.ACRun` state the
   run and trace laws only, for every vote binding, and carry no committee size. A milestone statement proved or
-  stated for population-sized committees takes `sp.committeeSize = sp.n` as a premise: the proved
-  `Healing.HeightScopedRetention`, and the growing-fault statement over `Growing.GoldilocksRun`
-  `Compose.Growing.OutcomeService`. The growing-fault R.2 rows
+  stated for population-sized committees takes `sp.committeeSize = sp.n` as a premise: the growing-fault
+  statement over `Growing.GoldilocksRun` `Compose.Growing.OutcomeService`. The growing-fault R.2 rows
   `Regimes.Growing.IncludeSleepy` and `GrowSleepy` (`Results/Statements/SleepyGrowth`) are stated at a slot
   dictionary `K` instead: from its committee start, with its committee facts and its committee support
-  `CommitteeSleepy`, and no size equation. The healing premise bundles (`HealthyBaseU` in
-  `Milestones/Statements/Healing/ACU` and `HSShared` in `Milestones/Statements/Healing/Run`), and the
-  proof-side bundles built on them, carry it as a field;
+  `CommitteeSleepy`, and no size equation. So are the static healing statements: the HS shared premises
+  `Healing.HSShared` take a slot dictionary `K` and carry its committee facts
+  (`Compose.Growing.CommitteeFacts` at the constant honest set) and CS2 for every slot after the slot of
+  `ḡ` (`twoK`; no count at a slot that starts at or before `ḡ`), and the statements that take them
+  (node O.1 `PatternRecovery`, C1.3 `FinalizingCoverage`, C1.2 `Compose.OutcomeService`, HR.3, HS.1, HS.2,
+  HS.4) run from `K`'s committee start; HR.4 `HeightScopedRetention` takes the same two facts and HR.5
+  `CacheAcceptanceAfterReset` only the committee start. CS (`FaultBoundK`) is not a premise: the proofs
+  derive it where they count, at slots whose previous slot starts after `ḡ`. The AC healing bundle
+  `HealthyBaseU` (`Milestones/Statements/Healing/ACU`) and the proof-side `SA.HealthyBase` built on it
+  carry the size equation as a field;
   `GoldilocksRunData`, the run conjunct of `GoldilocksHealingData`, does not: its `Run` equation is the
   committee-start run with `0 < committeeSize`, every slot committee of size `committeeSize`, and
   `NoCollRun → CommitteeFacts`, and its `start` equation is the committee start.

@@ -35,7 +35,8 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
   {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
@@ -60,8 +61,9 @@ private theorem ts_entry_le {e s : Nat} (h : e ≤ s) :
 /-- **HS.5's consumption and continuation in the phase**
 (`Service`'s `consume_continue` with the acquired path destructured, its attestations from
 `historical_source_rows`, and the phase `(m, c)` through `j_A`): a contradiction. -/
-theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr)
-    (hs : HSShared tr H dg g ΔF)
+theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
+    (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hret : ViableWitnessRetention) (hclean : CleanLockDrain)
     (hset : SettledIn tr H g w i₀ m c)
@@ -157,7 +159,7 @@ theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr)
     have hkZ := htime hpropZ hZs
     have h₁ := hsucc hsz
     have h₂ := hpred z
-    obtain ⟨hv, hl, hpa⟩ := frozen_tree_agreement_clean hclean sp ro proposer dg H tr g ΔF w i₀
+    obtain ⟨hv, hl, hpa⟩ := frozen_tree_agreement_clean hclean sp ro proposer dg H tr K g ΔF w i₀
       i₀ m c hrun hs hc hset le_rfl _ kZ z Z
       hZ (hi₀ kZ (by linarith only [hws, hkZ, hΔ, h₁])) (by linarith only [hΔ, hi₀W, h₁, h₂]) (by
           linarith only [gbar_nonneg g, hws, hΔ, hg8, h₁, h₂])

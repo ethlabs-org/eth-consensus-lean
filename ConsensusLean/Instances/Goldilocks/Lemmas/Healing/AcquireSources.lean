@@ -220,7 +220,8 @@ end Update
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
   {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
@@ -252,7 +253,7 @@ parent's full walk ends at an allowed head (`proposal_head_viable`); `P` is allo
 its `ac_proposal` cut (`Geo.viableHeads_iff`; it holds the phase's evidence from `w` on, and the
 phase's frontier block is a viable head, HS.1), its walk starts in the viable tree and ends at a
 viable head, so an allowed parent, and `P` extends it. -/
-theorem proposal_allowed (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF)
+theorem proposal_allowed (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hset : SettledIn tr H g w i₀ m c) {p : Fin sp.n}
     (hpH : p ∈ H) {kP s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hprop : tr.ProposesAt p kP P) (hPs : P.slot = s) (hws : w ≤ sp.ts s)
@@ -318,12 +319,14 @@ be an honest proposal of slot `s` with `t_s ≥ r` on a protected branch, in the
 `v = t_s + 6Δ`. At an honest node's tick at `v` (the slot-`s` update), every live lock compares
 with `Y`: each current image `L` sits below the stored block `B` of its clean origin (labels
 survive normalization and unlocking; every live lock is clean, `t_s ≥ r`); for a label `< s`,
-HS.2's origin transfer at an honest slot-`s` vote (which is `Y`) gives `B ⪯ Y`, also through a
+HS.2's origin transfer at an honest slot-`s` vote (which is `Y`; one exists, the honest members
+of the slot-`s` committee being half of it) gives `B ⪯ Y`, also through a
 root `B ⪯ fc_root ⪯ Y`; label `s` compares through the unanimous batch (raw regular and
 optimistic comparison); an origin of label `s + 1` has an honest supporting head extending `Y`
 (the later vote extension); no slow lock of label `s + 1` exists yet. -/
-theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
-    (hs : HSShared tr H dg g ΔF)
+theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
+    (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ))
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain) {s kY : Nat}
     {Y : SA.Blk sp.n (List (FG.Att sp.n))} (hY : tr.ProposesAt (proposer s) kY Y)
@@ -346,7 +349,6 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
   have hnc := hs.noColl
   have hr' := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hU := hr'.coherent
-  have hS := healthyBase_of_hs hrun hs hc
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hg8 : gbar g + 8 * sp.Δ ≤ w := (le_max_right _ _).trans hset.1.late
   have hw4 := add_le_rTime sp w
@@ -366,26 +368,26 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
     have h2 : sp.ts e.msg.slot ≤ sp.ts ((s + 1 : Nat) : Int) := (SA.ts_le_iff sp).2 (by omega)
     exact fun k'' h₁ h₂ => hphv k'' h₁
       (h₂.trans (hjv.lt_of_time_le hrun.time_mono (by linarith only [hts2, h1, h2])).le)
-  -- the reader's own slot-`s` vote, which is `Y`
-  obtain ⟨iv, ev, ⟨ℓv, hcv, hev⟩, hevs⟩ :=
-    SA.honest_votes_in_slot hS (m := s) (by linarith only [hΔ, hts]) y hy
-  have hcastv : SA.CastAt tr.projAC y iv ℓv ev := ⟨hcv, hev⟩
-  have hhead := (hvotes y hy iv ℓv ev hcastv hevs).1
-  have hvph := hvphase y hy iv ℓv ev hcastv (by omega)
-  have hΦvU := (SA.frameIn_of_callAt hr' hy hcv).2
+  -- an honest slot-`s` vote, which is `Y`
+  have hcuts : cutZ sp.toParams g ≤ sp.ts s := by have := cutZ_le sp g; linarith only [this, hts]
+  obtain ⟨zv, hzv, iv, ev, ⟨ℓv, hcv, hev⟩, hevs⟩ := exists_honest_vote_of_healthy hrun hs hcuts
+  have hcastv : SA.CastAt tr.projAC zv iv ℓv ev := ⟨hcv, hev⟩
+  have hhead := (hvotes zv hzv iv ℓv ev hcastv hevs).1
+  have hvph := hvphase zv hzv iv ℓv ev hcastv (by omega)
+  have hΦvU := (SA.frameIn_of_callAt hr' hzv hcv).2
   -- an origin that HS.2 transfers to that vote is below `Y` (also through its `fc_root`)
   have below : ∀ B, (¬ Anc (tr.HonestBlocks H) B ℓv.frame.fcRoot →
       SA.VoteExtends (tr.HonestBlocks H) ev.msg B) → Anc (tr.HonestBlocks H) B Y := by
     intro B hB
     by_cases hBf : Anc (tr.HonestBlocks H) B ℓv.frame.fcRoot
     · obtain ⟨⟨Hd, hHd, hHdr, hfH⟩, -⟩ := Compose.cast_head_fcRoot hr'
-        hrun.vstart hy hcastv
+        hrun.vstart hzv hcastv
       obtain rfl : Hd = Y := hU.1 (hΦvU hHd) hYU (hHdr.trans hhead)
       exact hBf.trans (Anc.mono hΦvU hfH)
     · obtain ⟨Hd, hHd, hHdr, hBH⟩ := hB hBf
       obtain rfl : Hd = Y := hU.1 hHd hYU (hHdr.trans hhead)
       exact hBH
-  obtain ⟨hfast, hslow, -, -⟩ := hclean sp ro proposer dg H tr g ΔF w i₀ m c hrun hs hc hset
+  obtain ⟨hfast, hslow, -, -⟩ := hclean sp ro proposer dg H tr K g ΔF w i₀ m c hrun hs hc hset
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr' hy hck
   rintro L ⟨hLt, l', ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive, rfl⟩, hLr⟩
   obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hΦ hB₀
@@ -408,17 +410,18 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
   by_cases hjs : l₀.slot < s
   · -- an older clean origin: HS.2's transfer to the slot-`s` vote
     cases hf : l₀.fast
-    · obtain ⟨r, hrk, ℓw, D, hcw, hsl, hLO⟩ := SA.slow_lock_provenance_stored hr' hy k l₀ hl₀ hf
+    · obtain ⟨r, hrk, ℓw, D, hcw, hsl, hLO⟩ :=
+        SA.slow_lock_provenance_stored hr' hrun.vstart hy k l₀ hl₀ hf
       have hO : StoredSlowLockAt tr y r l₀.slot (ℓw.frame.viableAncestor D) :=
         ⟨ℓw, D, hcw, hsl, rfl⟩
-      have h := (hslow y hy r l₀.slot _ hO (hclean'.2 hf) y hy iv ℓv ev hcastv
+      have h := (hslow y hy r l₀.slot _ hO (hclean'.2 hf) zv hzv iv ℓv ev hcastv
         (hevs ▸ hjs) hvph).1
       exact down _ hLO (Or.inl (below _ fun _ => h.1))
     · obtain ⟨r, hrk, CV, ℓw, D, hcw, hfl, hLO⟩ :=
         stored_fast_lock_provenance hr' hrun.vstart hy k l₀ hl₀ hf
       have hO : Compose.StoredFastLockAt tr y r l₀.slot (ℓw.frame.viableAncestor D) CV :=
         ⟨ℓw, D, hcw, hfl, rfl⟩
-      have h := (hfast y hy r l₀.slot _ CV hO (hclean'.1 hf) y hy iv ℓv ev
+      have h := (hfast y hy r l₀.slot _ CV hO (hclean'.1 hf) zv hzv iv ℓv ev
         hcastv (hevs ▸ hjs) hvph).1
       exact down _ hLO (Or.inl (below _ fun _ => h.1))
   push Not at hjs
@@ -426,7 +429,7 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
   · -- a slow origin of a label `≥ s` is the slot-`s` update (no later update yet), whose result
     -- an honest slot-`s` vote, so `Y`, extends
     obtain ⟨r, hrk, ℓw, D, hcw, ⟨ℓu, C, hupd, hC, hD⟩, hLO⟩ :=
-      SA.slow_lock_provenance_stored hr' hy k l₀ hl₀ hf
+      SA.slow_lock_provenance_stored hr' hrun.vstart hy k l₀ hl₀ hf
     obtain rfl : ℓw = ℓu := Option.some.inj (hcw.2.symm.trans hupd.1.2)
     have htr := hrt r hrk
     have ht₁ : tr.time r = sp.ts l₀.slot + 6 * sp.Δ := hupd.2.2.1
@@ -436,8 +439,10 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
       omega
     have hΦwU := (SA.frameIn_of_callAt hr' hy hcw).2
     obtain ⟨z, hz, j', e, ⟨ℓe, hce, hee⟩, hes, Hd, hHd, hHdr, hCHd⟩ :=
-      SA.result_extended hS (by rw [hjs']; linarith only [hΔ, hts]) hy hupd.1
-        (by rw [hupd.2.2.1]; linarith only [hΔ]) hC
+      SA.result_extended_before (healthyBase_of_hs hrun hs hc (tr.time r))
+        (restart_le_base_of_hs hrun hs)
+        (gbar_slotAfter_add_le (by rw [hjs']; linarith only [hΔ, hts])) hy hupd.1
+        (by rw [hupd.2.2.1]; linarith only [hΔ]) le_rfl hC
     obtain rfl : Hd = Y :=
       hU.1 hHd hYU (hHdr.trans (hvotes z hz j' ℓe e ⟨hce, hee⟩ (hes.trans hjs')).1)
     have hDC : ℓw.frame.Anc D C := (SA.deepest_mem hD).1.1.2.2
@@ -460,8 +465,8 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
       have := (SA.ts_lt_iff sp).1 h'
       omega
     obtain ⟨z, hz, j', e, ⟨ℓe, hce, hee⟩, hes, Hd, hHd, hHdr, hDHd⟩ :=
-      SA.fastLock_honest_vote hS.run _ SA.CommitteeP.full hy hfl
-        (SA.cs2_full hs.stock hS.two_faulty_lt)
+      SA.fastLock_honest_vote (Compose.goldilocks_ac_projection_from hrun hnc) K (hs.hP hrun) hy
+        hfl (hs.cs2 ((slot_gbar_lt_of_cutZ_le hcuts).trans hjs))
     have hcz : SA.CastAt tr.projAC z j' ℓe e := ⟨hce, hee⟩
     have hDY : Compatible (tr.HonestBlocks H) D Y := by
       rcases Nat.lt_or_ge l₀.slot (s + 1) with h | h
@@ -485,7 +490,8 @@ in the phase through `v = t_s + 6Δ`, every honest `y` has an `ac_to_fg` return 
 (`first_update_post`, `update_locks_compatible`), so `Y` is a candidate of the following
 `ac_to_fg`, whose deepest candidate `C` extends `Y`; `C` is returned, or the report record names a
 block `R ⪰ C` that an earlier `ac_to_fg` returned (`fgReported_origin`), at a time `≥ t_s`. -/
-theorem protected_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem protected_sources (hrun : GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ))
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain) {s kY : Nat}
     {Y : SA.Blk sp.n (List (FG.Att sp.n))} (hY : tr.ProposesAt (proposer s) kY Y)
@@ -510,7 +516,6 @@ theorem protected_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   have hacr := Compose.goldilocks_ac_projection_from hrun hnc
   have hr' := hacr.localRun
   have hU := Compose.honest_blocks_coherent hl hnc
-  have hS := healthyBase_of_hs hrun hs hc
   -- time
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hg8 : gbar g + 8 * sp.Δ ≤ w := (le_max_right _ _).trans hset.1.late
@@ -595,9 +600,10 @@ theorem protected_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   have hexact : ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s →
       e.msg.head = Y.root := fun x hx j e ⟨ℓ, hc, he⟩ hes => (hvotes x hx j ℓ e ⟨hc, he⟩ hes).1
   have htjAC : tr.projAC.time j = sp.ts s + 6 * sp.Δ := htj
-  obtain ⟨hconf, hnv, hfast, hpostj⟩ := SA.first_update_post hS (by
-      linarith only [hΔ, hts]) hexact hy hcjAC
-    hcall htjAC hYt (update_locks_compatible hrun hs hc hset hclean hY hYs hpH hr hvotes
+  obtain ⟨hconf, hnv, hfast, hpostj⟩ := SA.first_update_post_before
+    (healthyBase_of_hs hrun hs hc (tr.time j)) (restart_le_base_of_hs hrun hs)
+    (gbar_slotAfter_add_le (by linarith only [hΔ, hts])) hexact hy hcjAC
+    hcall htjAC le_rfl hYt (update_locks_compatible hrun hs hc hset hclean hY hYs hpH hr hvotes
       hlater hparents hon hy hcjAC htj)
   set A := tr.projAC.state y j with hA
   set t := sp.ts s + 6 * sp.Δ with ht
@@ -616,9 +622,10 @@ theorem protected_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   have hpostl : (tr.projAC.state y (j + 1)).locks = SA.addLocks sp A.locks ℓ.frame t s N := by
     rw [hst1, hpostj, hN, htjAC]
   have hjoin : SA.joined sp (tr.projAC.state y (j + 1)) t := by
-    have := hS.joined_state hy (j + 1) (by
-      rw [htj1AC, hslot]; push_cast; simp only [add_sub_cancel_right]
-      linarith only [hts, hΔ])
+    have := SA.joined_state_of_restarts hr'.toU hacr.vstart hy (j + 1) fun q _ hq =>
+      (hs.noRestart y hy q (Compose.projAC_restartAt.mp hq)).trans (by
+        rw [htj1AC, hslot]; push_cast; simp only [add_sub_cancel_right]
+        linarith only [hts, hΔ])
     rwa [htj1AC] at this
   -- every live lock at the `ac_to_fg` compares with `Y`, and `Y` is a fast candidate
   have hlv2 : sp.slot t ≤ s + 2 := by rw [hslot]; omega

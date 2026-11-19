@@ -25,7 +25,8 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF a : Time}
 
 /-- An update of label `m` at `t_m + 6Δ` precedes the start of every slot `u ≥ m + 2`. -/
 private theorem ts_add_six_lt {m u : Int} (h : m + 2 ≤ u) : sp.ts m + 6 * sp.Δ < sp.ts u := by
@@ -37,7 +38,7 @@ private theorem ts_add_six_lt {m u : Int} (h : m + 2 ≤ u) : sp.ts m + 6 * sp.�
 /-! ### Run facts -/
 
 /-- A fast lock of label `s` is written at or after `t_s`. -/
-theorem ts_le_of_fastLock (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n}
+theorem ts_le_of_fastLock (hp : ResetPremises tr H K proposer dg g ΔF a) {x : Fin sp.n}
     {i s : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : SA.FastLockAt tr.projAC x i s D CV) : sp.ts s ≤ tr.time i := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
@@ -51,7 +52,7 @@ theorem ts_le_of_fastLock (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin
 
 /-- Bounded reset premises retain the operational timing of an older fast lock. -/
 theorem ResetPremisesUpTo.fastLock_time_lt {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {x : Fin sp.n}
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {x : Fin sp.n}
     {r m u : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : SA.FastLockAt tr.projAC x r m D CV) (hmu : m < u)
     (htr : tr.time r ≤ sp.ts u + sp.Δ) : tr.time r < sp.ts u := by
@@ -66,7 +67,7 @@ theorem ResetPremisesUpTo.fastLock_time_lt {b : Time}
 
 /-- The reset seed precedes every post-drain slot and is bounded by the horizon. -/
 theorem ResetPremisesUpTo.reset_seed_before_slot {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {u : Nat}
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {u : Nat}
     (hR : drainTime sp a ≤ sp.ts u) :
     ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ b ∧
       l < u ∧ tr.time r < sp.ts u := by
@@ -88,7 +89,7 @@ theorem ResetPremisesUpTo.reset_seed_before_slot {b : Time}
 
 /-- **The reset seed**: a high origin of a label `≤ slot(a)` written by `a` (as `Supplier`'s
 `reset_seed`, keeping the write time). -/
-theorem reset_seed (hp : ResetPremises tr H proposer dg g ΔF a) :
+theorem reset_seed (hp : ResetPremises tr H K proposer dg g ΔF a) :
     ∃ v r l O, HighOrigin tr H g v r l O ∧ l ≤ sp.slot a ∧ tr.time r ≤ a := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨⟨y, hy, k, att, hs, hh, rfl⟩, -⟩ := hp.reset
@@ -98,18 +99,5 @@ theorem reset_seed (hp : ResetPremises tr H proposer dg g ΔF a) :
   have h₁ : sp.ts l ≤ tr.time k := (ts_le_of_fastLock hp hfl).trans h₀
   exact ⟨y, r, l, O, ho,
     by exact_mod_cast (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) l).1 h₁, h₀⟩
-
-/-- No honest optimistic check selects a block of the proposal's slot before its actual call. -/
-theorem proposal_no_optimistic_of_run
-    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
-    (hf : 2 * Hᶜ.ncard < sp.n) {p : Fin sp.n}
-    (hpH : p ∈ H) {s i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p i ℓp)
-    (hcall : ℓp.call = .proposal)
-    (hti : tr.time i = sp.ts s) (hstock : sp.committeeSize = sp.n) :
-    ∀ x ∈ H, ∀ k' < i, ∀ C CV, ¬ SA.OptimisticLockAt tr.projAC x k' s C CV :=
-  Compose.proposal_no_optimistic_of hrun hnc SA.CommitteeP.full (SA.cs2_full hstock hf)
-    hpH hc hcall hti
-
 
 end Consensus.Goldilocks.Healing

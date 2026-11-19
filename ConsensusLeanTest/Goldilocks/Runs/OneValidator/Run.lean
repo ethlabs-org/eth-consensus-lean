@@ -654,7 +654,8 @@ theorem tickRun_upat (g : Time) (M : Nat) :
 `W = 1`, `G_p ≥ 4Δ` and any `M ≥ M*`. -/
 theorem patternPremises_tickRun (g Gp : Time) (M : Nat) (hGp : 4 ≤ Gp)
     (hM : Healing.Mstar sp1 1 Gp 2 0 ≤ M) :
-    Healing.PatternPremises (tickRun N1 dg1) Set.univ (fun _ => v0) dg1 g 1 Gp 1 M 2 0 :=
+    Healing.PatternPremises (tickRun N1 dg1) Set.univ (SA.CommitteeDict.full sp1.n) (fun _ => v0)
+      dg1 g 1 Gp 1 M 2 0 :=
   tickRun_patternPremises g Gp M hGp (tickRun_upat g M) hM
 
 end Consensus.Goldilocks.Witness.One

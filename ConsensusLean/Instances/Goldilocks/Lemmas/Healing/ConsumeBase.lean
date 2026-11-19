@@ -51,13 +51,14 @@ theorem FirstCutAfter.le_of_le {N S L : Type} {tr : Trace N S L} {j₁ j₂ : Na
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
   {proposer : Nat → Fin sp.n}
 
 /-- Under `Healthy(g)` (an honest node awake from `ḡ` on, so a cut after every time), the first
 cut after any time `T` exists. -/
 theorem exists_firstCutAfter_of_healthy (hrun : GoldilocksRun proposer dg H tr ini)
-    (hs : HSShared tr H dg g ΔF) {y : Fin sp.n} (hy : y ∈ H) (T : Time) :
+    (hs : HSShared tr H K dg g ΔF) {y : Fin sp.n} (hy : y ∈ H) (T : Time) :
     ∃ j, FirstCutAfter tr j T := by
   classical
   obtain ⟨i, -, hi⟩ := hrun.awake_in_horizon y hy (max T (gbar g) + 1)
@@ -172,7 +173,7 @@ theorem effAllowed_of_floor_lt (hrun : GoldilocksRun proposer dg H tr ini)
 
 /-- **Deadlines after `ḡ`** (no honest restart after `ḡ`): the deadline of an object of time `τ`
 at an honest node is at most `max(τ, ḡ) + Δ'`, for every delivery parameter `Δ'`. -/
-theorem deadline_le_of_healthy (hs : HSShared tr H dg g ΔF) {y : Fin sp.n} (hy : y ∈ H)
+theorem deadline_le_of_healthy (hs : HSShared tr H K dg g ΔF) {y : Fin sp.n} (hy : y ∈ H)
     (k : Nat) (τ Δ' : Time) : tr.deadline y k τ Δ' ≤ max τ (gbar g) + Δ' := by
   have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := k)
     (fun k' _ hk' => hs.noRestart y hy k' (Compose.projAC_restartAt.1 hk')) τ

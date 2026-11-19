@@ -111,7 +111,7 @@ theorem settledIn_tickRun :
 /-- (a) **The premises of `CommonPathAcquisition` hold together**, with a settled phase. -/
 theorem acquisition_premises :
     GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
-      HSShared (tickRun N1 dg1) Set.univ dg1 0 1 ∧
+      HSShared (tickRun N1 dg1) Set.univ (SA.CommitteeDict.full sp1.n) dg1 0 1 ∧
       CatchRun (tickRun N1 dg1) Set.univ 0 (2 * sp1.Δ) ∧
       PropPlus (tickRun N1 dg1) Set.univ (fun _ => v0) 0 4 ∧
       SettledIn (tickRun N1 dg1) Set.univ 0 20 160 4 (.top (blk 3)) :=
@@ -180,8 +180,9 @@ theorem acquisition_applies :
           PhaseOn (tickRun N1 dg1).projFG Set.univ 160 k' 4 (.top (blk 3)) →
           ∃ Pr, P'.parent = some Pr.root ∧ Anc ((tickRun N1 dg1).HonestBlocks Set.univ) W Pr := by
   obtain ⟨h₁, h₂, h₃, h₄, h₅⟩ := acquisition_premises
-  exact (common_path_acquisition sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) 0 1 4 20 160 4
-    (.top (blk 3)) h₁ h₂ h₃ h₄ h₅).1
+  exact (common_path_acquisition sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1)
+    (SA.CommitteeDict.full sp1.n) 0 1 4 20 160 4 (.top (blk 3))
+    (by rw [SA.committeeStart_full]; exact h₁) h₂ h₃ h₄ h₅).1
 
 end Consensus.Goldilocks.Witness.One.Settled
 

@@ -78,8 +78,8 @@ theorem vote_tryVote_inputU
 
 /-- The input of the `try_vote` that emits an honest vote: the state before the call, or the
 optimistic check after the receipt of a message or a block, which keeps the locks. -/
-theorem vote_tryVote_input (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+theorem vote_tryVote_input (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     ∃ P, e ∈ (tryVote sp y P ℓ.frame (tr.time i)).2 ∧ (P = tr.state y i ∨
       ∃ A : SAState sp.n, P = optimisticConfirmation sp A ℓ.frame (tr.time i) ∧

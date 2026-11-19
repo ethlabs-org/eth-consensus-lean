@@ -53,11 +53,11 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-- Actual bounded casts extend the start of a drained operational proposal. -/
 theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {ellp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
@@ -117,9 +117,14 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
         hp.run.vstart hpH i l₁ hl₁ hf
       exact ⟨r, hri, D, Or.inl ⟨CV, hfl⟩, hL⟩
   obtain rfl : L = B₁ := hr.coherent.1 hLU (hPhiU hB₁) (hLr.trans hB₁r.symm)
+  have hu1 : sp.slot (SA.gbar g) + 1 ≤ u := slot_gbar_lt_of_cutZ_le
+    (hp.clean_window_timing (s := u) (by
+      rw [drainTime_eq] at hR
+      have := (SA.ts_le_iff sp).mp hR
+      rw [cleanLabel_eq]
+      omega) u (by have := sp.two_le_k; omega))
   have hlt : l₁.slot < u := Compose.proposal_locks_slot_of hp.run hp.noColl
-    hpH hci hcall hd hti SA.CommitteeP.full
-    (SA.cs2_full hp.stock (by have := hp.faults; have := Fin.pos p; omega)) l₁
+    hpH hci hcall hd hti hp.hP (hp.cs2 hu1) l₁
     (Compose.projAC_state hp.run.toLocalRun hpH i ▸ hl₁)
   apply (Anc.mono hPhiU hsB₁).trans (hLD.trans (extend D ?_))
   rcases horig with ⟨CV, hf⟩ | hslow
@@ -130,7 +135,7 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
 
 section SourceVotes
 
-variable (hp : ResetPremises tr H proposer dg g ΔF a)
+variable (hp : ResetPremises tr H K proposer dg g ΔF a)
   (hc : CatchRun tr H g (2 * sp.Δ))
   {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
   (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
@@ -161,7 +166,7 @@ end SourceVotes
 
 /-- The finite proposal suffix above all old origins consists of viable heads. -/
 theorem ResetPremisesUpTo.reset_suffix_viable {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
@@ -182,7 +187,7 @@ theorem ResetPremisesUpTo.reset_suffix_viable {b : Time}
 /-- Above every old source, the proposal walk consists of viable heads. The reset seed makes
 the suffix high; a higher floor would produce a high crossing below an old source, contradicting
 its height. Together with `fc_root ⪯ start ⪯ D`, this proves viability. -/
-theorem reset_suffix_viable (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem reset_suffix_viable (hp : ResetPremises tr H K proposer dg g ΔF a)
     (_hc : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
@@ -199,7 +204,7 @@ theorem reset_suffix_viable (hp : ResetPremises tr H proposer dg g ΔF a)
 
 /-- A finite post-drain voter root is genesis or below an earlier bounded high origin. -/
 theorem ResetPremisesUpTo.reset_vote_root_source {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y j ell e)
@@ -224,7 +229,7 @@ theorem ResetPremisesUpTo.reset_vote_root_source {b : Time}
 
 /-- A bound on bounded pre-slot origins bounds the actual post-drain voter root. -/
 theorem ResetPremisesUpTo.reset_vote_root_below_bound {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocks H)
     (hbound : ∀ x r l B, HighOrigin tr H g x r l B → tr.time r < sp.ts u → tr.time r ≤ b →

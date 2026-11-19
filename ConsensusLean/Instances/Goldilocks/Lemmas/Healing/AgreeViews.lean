@@ -19,7 +19,8 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF w : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF w : Time}
   {i₀ i m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} {p : Fin sp.n} {kP s : Nat}
   {P : SA.Blk sp.n (List (FG.Att sp.n))} {iP : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
@@ -39,7 +40,7 @@ theorem mem_frame_of_held (hrun : GoldilocksRun proposer dg H tr ini)
 `τ` with `τ + Δ ≤ u` and `ḡ + 2Δ ≤ u` is in the frame of every honest call at a time `≥ u`
 whose `Σ.F` it extends. -/
 theorem mem_frame_of_relay
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {x z : Fin sp.n} (hx : x ∈ H) (hz : z ∈ H) {k₀ : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state x k₀).fg.tree) {u : Time}
     (hu : gbar g + 2 * sp.Δ ≤ u) (hk₀ : tr.time k₀ + sp.Δ ≤ u) {jz : Nat}
@@ -63,7 +64,7 @@ accepted by then, so it reaches the proposer by `t_s` (`relay_held`); a support 
 the voter's ready frame at an early vote, and relayed from the proposer by `t_s + Δ` otherwise;
 `Sync` on `[t_{s−1}, t_s]` from `GST(g)`, `g ≤ ḡ ≤ t_{s−1}`). -/
 theorem proposal_views_agree
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) :
@@ -144,7 +145,7 @@ theorem proposal_views_agree
         simp only [SA.voteViewList, SA.SAState.poolAt, Int.toNat_natCast, List.filter_filter,
           List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
           Bool.and_eq_true, decide_eq_true_eq] at hx
-        rw [SA.state_pool_slot sp hr (fun _ => SA.voteStart_initial _) hpH iP s' x hx.1]
+        rw [SA.state_pool_slot sp hr hrun.vstart hpH iP s' x hx.1]
       obtain ⟨H', hH't, hH'r, -⟩ := hsup x (by rw [SA.blockSupport, hpay]; exact hx) hxs
       rwa [hU.1 (hΦpU hHd) (hΦyU hH't) (hHdr.trans hH'r.symm)]
     · exact mem_frame_of_relay hS hpH hy (mem_tree_of_frame hrun hpH hS.call hHd)

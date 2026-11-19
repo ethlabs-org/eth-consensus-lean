@@ -47,13 +47,13 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-! ### The proposal walk and fork-choice roots -/
 
 /-- Stored proposal high locks compare with every high origin in the finite horizon. -/
 theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp ro)} (hci : tr.projAC.CallAt p i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
@@ -62,10 +62,10 @@ theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old {b : Time}
     SA.HighLocksCompatible (tr.HonestBlocks H) (tr.projAC.state p i)
       (tr.time i) (u - 1) O := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos p; omega
   rw [SA.highLocksCompatible_iff]
   intro l hl _ hlabel L hL hLr
-  obtain ⟨r, hri, D, hwrite, L', hL', hL'r, hLD⟩ := SA.lock_provenance hr hpH i l hl
+  obtain ⟨r, hri, D, hwrite, L', hL', hL'r, hLD⟩ :=
+    SA.lock_provenanceU hr.toU hp.run.vstart hpH i l hl
   obtain rfl : L' = L := hr.coherent.1 hL' hL (hL'r.trans hLr.symm)
   have hrt : tr.time r ≤ sp.ts u := hti ▸ hp.run.time_mono hri.le
   rcases hwrite with ⟨CV, hop⟩ | ⟨ell', hupd⟩
@@ -74,9 +74,6 @@ theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old {b : Time}
       have ht : sp.ts l.slot ≤ tr.time r :=
         (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) l.slot).mpr (by omega)
       exact_mod_cast (SA.ts_le_iff sp).mp (ht.trans hrt)
-    have hne : l.slot ≠ u := fun he =>
-      proposal_no_optimistic_of_run hp.run hp.noColl hf hpH hci hcall hti hp.stock
-        p hpH r hri D CV (he ▸ hop)
     have hclean : cleanLabel sp a + sp.k + 2 ≤ l.slot := by
       change u - 1 ≤ l.slot at hlabel
       rw [drainTime_eq] at hR
@@ -84,6 +81,11 @@ theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old {b : Time}
       have := sp.two_le_k
       rw [cleanLabel_eq]
       omega
+    have hl1 := slot_gbar_lt_of_cutZ_le
+      (hp.clean_window_timing hclean l.slot (by have := sp.two_le_k; omega))
+    have hne : l.slot ≠ u := fun he =>
+      Compose.proposal_no_optimistic_of hp.run hp.noColl hp.hP (hp.cs2 (he ▸ hl1)) hpH hci hcall
+        hti p hpH r hri D CV (he ▸ hop)
     rcases hp.protected_source_compatible_high_origin hc hpH (Or.inl ⟨CV, Or.inr hop⟩)
         hclean ((hp.run.time_mono hri.le).trans hib) ho hqb with h | h
     · exact Or.inl (hLD.trans h)
@@ -100,7 +102,7 @@ theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old {b : Time}
 /-- At proposal time, stored high locks can only come from an optimistic write of the
 previous label. Regular updates are too late and current-label optimism is excluded. -/
 theorem proposal_stored_locks_compatible_old
-    (hp : ResetPremises tr H proposer dg g ΔF a)
+    (hp : ResetPremises tr H K proposer dg g ΔF a)
     (_hc : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k u P) (_hR : drainTime sp a ≤ sp.ts u)
@@ -119,7 +121,7 @@ theorem proposal_stored_locks_compatible_old
 /-- A non-current read-point lock sits below a raw source of the receiver. Its source
 precedes the receiving cast, not necessarily the proposal. -/
 theorem ResetPremisesUpTo.vote_old_lock_source_before {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {j u : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
@@ -186,7 +188,7 @@ theorem ResetPremisesUpTo.vote_old_lock_source_before {b : Time}
   exact (Anc.mono hPhiU ((SA.anc_viableAncestor ell.frame L').trans hLB)).trans hXD
 
 /-- Whole-run specialization of actual read-point lock provenance. -/
-theorem vote_old_lock_source_before (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem vote_old_lock_source_before (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {j u : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
@@ -203,7 +205,7 @@ theorem vote_old_lock_source_before (hp : ResetPremises tr H proposer dg g ΔF a
 
 /-- A finite noncurrent voter lock lies below the actual proposal parent. -/
 theorem ResetPremisesUpTo.vote_old_live_lock_below_parent {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {ellp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
@@ -249,7 +251,7 @@ theorem ResetPremisesUpTo.vote_old_live_lock_below_parent {b : Time}
 
 section Support
 
-variable (hp : ResetPremises tr H proposer dg g ΔF a)
+variable (hp : ResetPremises tr H K proposer dg g ΔF a)
   (hc : CatchRun tr H g (2 * sp.Δ))
   {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
   (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)

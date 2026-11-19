@@ -258,11 +258,12 @@ section Runs
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
   {proposer : Nat → Fin sp.n}
 
 /-- The FG projection of a run under the HS shared premises is an FG trace, with `f < 2q − n`. -/
-theorem fg_run_of_hs (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF) :
+theorem fg_run_of_hs (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H K dg g ΔF) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
       Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
   obtain ⟨-, -, hf⟩ := hs.healthy
@@ -308,7 +309,7 @@ floor is the phase floor and `fc_root` is `Σ.F`, or the phase's `J` in the top-
 node's `Σ.h_max` is `m`; its `Σ.h_j` is `m − 1` exactly when the phase has a justification there
 (`JMax`, with `Σ.F ⪯ J` from HS.1), its `Σ.J` is then the phase's `J` (HR.2 (a)), and its local
 contest test agrees with the phase case (the contest witness extends `Σ.F` by HS.1). -/
-theorem viableHeads_iff (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H dg g ΔF)
+theorem viableHeads_iff (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H K dg g ΔF)
     (_hc : CatchRun tr H g (2 * sp.Δ)) {z : Fin sp.n} (hz : z ∈ H) {k m : Nat}
     {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} (hph : PhaseAt tr.projFG H k m c)
     (hev : HoldsEvidence (tr.state z k).fg m c) {X : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -590,7 +591,8 @@ theorem proposal_call_tick {ini} (h : Node.LocalRun proposer dg H sg tr ini)
     cases hp
 
 /-- **One `ac_proposal` cut per node and time.** -/
-theorem proposal_call_unique (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
+theorem proposal_call_unique {ini} (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
+    (hy : y ∈ H)
     {i i' : Nat} {ℓ ℓ' : ACLabel A} (hc : tr.CallAt y i (.ac ℓ)) (hc' : tr.CallAt y i' (.ac ℓ'))
     (hp : ℓ.call = .proposal) (hp' : ℓ'.call = .proposal) (ht : tr.time i = tr.time i') :
     i = i' := by
@@ -607,7 +609,8 @@ section Main
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
   {proposer : Nat → Fin sp.n}
 
 /-- Allowedness in the effective geometry moves between honest stores that hold the block. -/

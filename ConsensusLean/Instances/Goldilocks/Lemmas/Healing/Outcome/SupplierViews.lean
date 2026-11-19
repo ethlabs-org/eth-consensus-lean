@@ -22,11 +22,11 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-- A held actual proposal is viable at a bounded post-drain cast. -/
 theorem ResetPremisesUpTo.reset_proposal_viable {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
     {p y : Fin sp.n} (hpH : p ∈ H) {k i j u : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : drainTime sp a ≤ sp.ts u)
@@ -39,7 +39,7 @@ theorem ResetPremisesUpTo.reset_proposal_viable {b : Time}
     (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
     (hPy : P ∈ elly.frame.tree) :
     P ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame u) := by
-  have hr := (healthy_base_of_reset_catch_before hp hc).stockRun.localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   obtain ⟨hPsi, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hroot := hp.reset_vote_root_below_proposal hc hpH hactual hR hci hcall hd hti hib hPQ
@@ -66,7 +66,7 @@ theorem ResetPremisesUpTo.reset_proposal_viable {b : Time}
 set_option linter.unusedVariables false in
 /-- At a first-disagreement cut, a frame-held proposal is a viable voter-tree candidate. -/
 theorem reset_proposal_viable
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremises tr H K proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     {p y : Fin sp.n} {k i j u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
     {ellp elly : ACLabel (goldilocksNode sp ro)}
@@ -89,7 +89,7 @@ theorem reset_proposal_viable
 proposer's viable tree. Frozen candidates use guarded relay; current-slot candidates use the
 actual proposal's uniqueness. -/
 theorem reset_competitor_reflect
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremises tr H K proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k (s + 1) P)
     {ellp elly : ACLabel (goldilocksNode sp ro)}
@@ -97,6 +97,7 @@ theorem reset_competitor_reflect
     (hy : y ∈ H) {e : SA.Em sp (List (FG.Att sp.n))}
     (hcy : SA.CastAt tr.projAC y j elly e)
     (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time i)
+    (hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time i)
     {Q X B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hQt : Q ∈ ellp.frame.tree) (hPQ : P.parent = some Q.root)
     (hXQ : ellp.frame.Anc X Q) (hBP : B ≠ P)
@@ -104,7 +105,7 @@ theorem reset_competitor_reflect
     (hBX : B.parent = some X.root)
     (hB : B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1))) :
     B ∈ ellp.frame.viableTree ellp.frame.tree := by
-  have hr := (healthy_base_of_reset_catch hp hc).run.localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hP.1 hci
   obtain ⟨-, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hXt : X ∈ ellp.frame.tree := SA.mem_of_anc hXQ hQt
@@ -112,7 +113,7 @@ theorem reset_competitor_reflect
   have hFB := ((hPhi.rooted.2 X hXt).mono hPhiU).trans hXB
   have hBt : B ∈ ellp.frame.tree := by
     rcases hB.1.2 with hfz | ⟨P', hP't, hP's, hBP'⟩
-    · exact reset_frozen_frame hp hc hP.1 hy hci hti hcy hg hB.1.1 hfz hFB
+    · exact reset_frozen_frame hp hc hP.1 hy hci hti hcy hg hjoin hB.1.1 hfz hFB
     · obtain rfl := reset_proposal_frame_unique hp hP (by omega) hy hcy.1 hP't hP's
       have hBQ : Anc (tr.HonestBlocks H) B Q := by
         rcases Relation.ReflTransGen.cases_tail (hBP'.mono hPsiU) with heq | ⟨Y, hBY, hY⟩
@@ -131,7 +132,7 @@ theorem reset_competitor_reflect
 
 /-- Finite winner transport along the viable proposal chain. -/
 theorem ResetPremisesUpTo.reset_winner_voter_tree {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y j ell e)
     (hes : e.msg.slot = u)
@@ -156,7 +157,7 @@ theorem ResetPremisesUpTo.reset_winner_voter_tree {b : Time}
 /-- Any ancestor of a viable current proposal above the voter's anchor is in its viable tree.
 This is the winner-domain transport used by suffix comparison. -/
 theorem reset_winner_voter_tree
-    (hp : ResetPremises tr H proposer dg g ΔF a)
+    (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y j ell e)
     (hes : e.msg.slot = u)
@@ -169,7 +170,7 @@ theorem reset_winner_voter_tree
 
 /-- Finite competitor reflection uses only guarded frozen transport and actual uniqueness. -/
 theorem ResetPremisesUpTo.reset_competitor_reflect {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
     {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H) (hdesignated : p = proposer (s + 1)) (hactual : tr.ProposesAt p k P)
     (hPs : P.slot = s + 1)
@@ -185,7 +186,7 @@ theorem ResetPremisesUpTo.reset_competitor_reflect {b : Time}
     (hXv : X ∈ ellp.frame.viableHeads) (hBX : B.parent = some X.root)
     (hB : B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1))) :
     B ∈ ellp.frame.viableTree ellp.frame.tree := by
-  have hr := (healthy_base_of_reset_catch_before hp hc).stockRun.localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   obtain ⟨_, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hXt : X ∈ ellp.frame.tree := SA.mem_of_anc hXQ hQt
@@ -214,7 +215,7 @@ theorem ResetPremisesUpTo.reset_competitor_reflect {b : Time}
 /-- A best child on the proposal-parent path stays best at the voter. The winner is
 transported through the viable proposal, while competitors reflect through guarded relay. -/
 theorem reset_suffix_best
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremises tr H K proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k (s + 1) P)
     {ellp elly : ACLabel (goldilocksNode sp ro)}
@@ -229,6 +230,8 @@ theorem reset_suffix_best
     (hg : SA.gbar g ≤ sp.ts s)
     (hgi : SA.gbar g + 2 * sp.Δ ≤ tr.time i)
     (hgj : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hjoi : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time i)
+    (hjoj : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
     {X C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hQt : d.head ∈ ellp.frame.tree) (hXQ : ellp.frame.Anc X d.head)
     (hne : X ≠ d.head) (hXv : X ∈ ellp.frame.viableHeads)
@@ -242,19 +245,19 @@ theorem reset_suffix_best
       {B | B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)) ∧
         B.parent = some X.root ∧ SA.goldfishEligible sp elly.frame (tr.time j)
           (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B} C := by
-  have hr := (healthy_base_of_reset_catch hp hc).run.localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hP.1 hci
   obtain ⟨-, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   exact suffix_best_of_views hr.coherent hPhi hPhiU hPsiU (fun _ hB => hB.1.1) hti
-    (reset_views_agree hp hc hP hci hcall hd hti hpay hy hcy hes hPv.1.1 hg hgi hgj)
+    (reset_views_agree hp hc hP hci hcall hd hti hpay hy hcy hes hPv.1.1 hg hgi hgj hjoi hjoj)
     hQt hPQ hP.2.2.2.2.1 hPv.1.1 hXQ hne hXv hCQ
     (fun hCP hXC => reset_winner_voter_tree hp hy hcy hes hPv hCP (haX.trans hXC))
-    (fun B hB hBP hBX => reset_competitor_reflect hp hc hP hci hti hy hcy hgi hQt hPQ hXQ hBP
-      hXv hBX hB) hC
+    (fun B hB hBP hBX => reset_competitor_reflect hp hc hP hci hti hy hcy hgi hjoi hQt hPQ hXQ
+      hBP hXv hBX hB) hC
 
 /-- Finite best-child transfer along the proposal-parent suffix. -/
 theorem ResetPremisesUpTo.reset_suffix_best {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
     {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H) (hdesignated : p = proposer (s + 1)) (hactual : tr.ProposesAt p k P)
     (hPs : P.slot = s + 1)
@@ -286,7 +289,7 @@ theorem ResetPremisesUpTo.reset_suffix_best {b : Time}
       {B | B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)) ∧
         B.parent = some X.root ∧ SA.goldfishEligible sp elly.frame (tr.time j)
           (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B} C := by
-  have hr := (healthy_base_of_reset_catch_before hp hc).stockRun.localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   obtain ⟨_, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   exact suffix_best_of_views hr.coherent hPhi hPhiU hPsiU (fun _ hB => hB.1.1) hti
@@ -300,7 +303,7 @@ theorem ResetPremisesUpTo.reset_suffix_best {b : Time}
 /-- Once the proposal parent is viable in both frames, an old child cannot become eligible
 at the voter: guarded view agreement preserves its lack of a strict majority. -/
 theorem reset_old_child_ineligible
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremises tr H K proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k (s + 1) P)
     {ellp elly : ACLabel (goldilocksNode sp ro)}
@@ -314,6 +317,8 @@ theorem reset_old_child_ineligible
     (hPy : P ∈ elly.frame.tree) (hg : SA.gbar g ≤ sp.ts s)
     (hgi : SA.gbar g + 2 * sp.Δ ≤ tr.time i)
     (hgj : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hjoi : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time i)
+    (hjoj : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
     (hQt : d.head ∈ ellp.frame.tree) (hQv : d.head ∈ ellp.frame.viableHeads)
     (hQvy : d.head ∈ elly.frame.viableHeads)
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -321,26 +326,26 @@ theorem reset_old_child_ineligible
     (hBQ : B.parent = some d.head.root) (hBs : B.slot < s + 1) :
     ¬ SA.goldfishEligible sp elly.frame (tr.time j)
       (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B := by
-  have hr := (healthy_base_of_reset_catch hp hc).run.localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hPhi := (SA.frameIn_of_callAt hr hP.1 hci).1
   have hBP : B ≠ P := by
     have hPs := hP.2.2.2.2.1
     rintro rfl
     omega
-  have hBv := reset_competitor_reflect hp hc hP hci hti hy hcy hgi hQt hPQ
+  have hBv := reset_competitor_reflect hp hc hP hci hti hy hcy hgi hjoi hQt hPQ
     .refl hBP hQv hBQ hB
   have hslot : sp.slot (tr.time i) = s + 1 := by
     rw [hti]
     simpa using (SA.slot_arithmetic sp (s + 1)).1 0 (by omega)
   obtain ⟨heq, hvot, hsup⟩ := reset_views_agree hp hc hP hci hcall hd hti hpay hy hcy hes
-    hPy hg hgi hgj
+    hPy hg hgi hgj hjoi hjoj
   have hsj : sp.slot (tr.time j) = s + 1 :=
     ((SA.castAt_spec hr hy hcy).2.1).symm.trans hes
   exact old_child_ineligible_of_views hPhi hd hslot heq hvot hsup hsj hQvy hBv hB.1.1 hBQ hBs
 
 /-- Finite old-child exclusion preserves the proposal call's strict-majority test. -/
 theorem ResetPremisesUpTo.reset_old_child_ineligible {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
     {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H) (hdesignated : p = proposer (s + 1)) (hactual : tr.ProposesAt p k P)
     (hPs : P.slot = s + 1)
@@ -365,7 +370,7 @@ theorem ResetPremisesUpTo.reset_old_child_ineligible {b : Time}
     (hBQ : B.parent = some d.head.root) (hBs : B.slot < s + 1) :
     ¬ SA.goldfishEligible sp elly.frame (tr.time j)
       (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B := by
-  have hr := (healthy_base_of_reset_catch_before hp hc).stockRun.localRun
+  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hPhi := (SA.frameIn_of_callAt hr hpH hci).1
   have hBP : B ≠ P := by rintro rfl; omega
   have hBv := hp.reset_competitor_reflect hc hpH hdesignated hactual hPs hci hti hy hcy
@@ -381,7 +386,7 @@ theorem ResetPremisesUpTo.reset_old_child_ineligible {b : Time}
 
 /-- Finite sibling viability places their parent above the voter's root and height floor. -/
 theorem ResetPremisesUpTo.reset_parent_viable_of_children {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
@@ -402,7 +407,7 @@ theorem ResetPremisesUpTo.reset_parent_viable_of_children {b : Time}
 /-- Two distinct viable children force the voter's root below their parent. If that parent
 extends every pre-slot high origin, it also reaches the voter's height floor. -/
 theorem reset_parent_viable_of_children
-    (hp : ResetPremises tr H proposer dg g ΔF a)
+    (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
@@ -418,7 +423,7 @@ theorem reset_parent_viable_of_children
 
 /-- Finite stopping at the actual proposal after excluding every old sibling. -/
 theorem ResetPremisesUpTo.reset_stop_at_parent {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
     {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H) (hdesignated : p = proposer (s + 1)) (hactual : tr.ProposesAt p k P)
     (hPs : P.slot = s + 1) (hR : drainTime sp a ≤ sp.ts (s + 1 : Nat))
@@ -480,7 +485,7 @@ theorem ResetPremisesUpTo.reset_stop_at_parent {b : Time}
 /-- At the proposal parent, the actual proposal is the only eligible child and its own
 children are ineligible. Parent viability is derived separately for each old competitor. -/
 theorem reset_stop_at_parent
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremises tr H K proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k (s + 1) P)
     (hR : drainTime sp a ≤ sp.ts (s + 1 : Nat))

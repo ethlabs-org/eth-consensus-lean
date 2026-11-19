@@ -2,6 +2,7 @@ module
 public import Mathlib.Order.Lattice.Nat
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Persist
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Goldilocks
 
 @[expose] public section
 
@@ -225,10 +226,17 @@ digest (the model's reading of `NoColl` for genesis, as C0.3), `Healthy(g)` (wit
 strict delivery, acceptance relay and attestation convention), no honest restart after `ḡ`, and the
 protocol's parameter bound `δ_t ≥ 𝓕 = ⌈(6Δ + Δ_F)/(4Δ)⌉` (from `δ_t ≥ x + 𝓕 + k_F`,
 `x, k_F ≥ 0`; `k ≥ 2` and `0 < Δ_F` are carried by `SAParams` and `SyncOn`; no order between
-`Δ` and `Δ_F` is assumed). Unforgeable
+`Δ` and `Δ_F` is assumed), and the committee premises of the slot dictionary `K`: its committee
+facts (`Compose.Growing.CommitteeFacts` at the constant honest set: committees of `committeeSize`
+members, honest pools and optimistic-check states hold only committee signatures, the frames of
+honest nodes carry only members' votes, and an honest node may vote in exactly its committees'
+slots) and CS2 for every slot after the slot of `ḡ` (no bound on a committee whose slot starts at
+or before `ḡ`). The statements that take it run from `K`'s committee start (`SA.committeeStart`).
+Unforgeable
 signatures, persistent honest client records and finite event prefixes are laws of the run
 (`GoldilocksRun`). -/
-structure HSShared (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF : Time) : Prop where
+structure HSShared (K : SA.CommitteeDict sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (g ΔF : Time) : Prop where
   /-- `NoColl` on the blocks of the run. -/
   noColl : Compose.NoCollRun dg tr
   /-- Genesis's root is its digest (as C0.3 and A1.7 take it): otherwise an honest proposal
@@ -241,8 +249,12 @@ structure HSShared (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF : Ti
   noRestart : NoRestartAfter tr H (gbar g)
   /-- `δ_t ≥ ⌈(6Δ + Δ_F)/(4Δ)⌉`. -/
   timeoutDelay : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.δt : Time)
-  /-- The committee is population-sized (`committeeSize = n`). -/
-  stock : sp.committeeSize = sp.n
+  /-- The committee facts of `K` (committees of `committeeSize` members, P, the frames of honest
+  nodes carry members' votes, and the vote gate), at the constant honest set. -/
+  committee : Compose.Growing.CommitteeFacts tr (fun _ => H) K
+  /-- CS2 for the slots after `ḡ`: fewer than half of each such slot committee is faulty. -/
+  twoK : ∀ s : Nat, sp.slot (gbar g) + 1 ≤ s →
+    2 * (K.committee s ∩ Hᶜ).ncard < (K.committee s).ncard
 
 /-- **A high origin** `(B, j)` (claims HR.4), written at cut `i` of `x`: a write of a fast lock
 (fast test or optimistic confirmation) of label `j` at the honest node `x`, joined at the write,
@@ -362,9 +374,9 @@ def ResetExistence : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time),
-    GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
-    PropPlus tr H proposer g Gp →
+    (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF Gp : Time),
+    GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+    HSShared tr H K dg g ΔF → CatchRun tr H g (2 * sp.Δ) → PropPlus tr H proposer g Gp →
     (gbar g + 8 * sp.Δ < cutZ sp.toParams g ∧
       ∀ u, cutZ sp.toParams g ≤ u → ∀ j j', FirstCutAfter tr j u →
         tr.FirstCutFrom j' (u + sp.Δ) →
@@ -380,16 +392,21 @@ def ResetExistence : Prop :=
         36 * Gp ∧
     C_HS sp ΔF Gp = (8 * (sp.k : Time) + 49 + 4 * (sp.toParams.δt : Time)) * sp.Δ + ΔF + 3 * Gp
 
-/-- **HR.4, height-scoped retention.** For population-sized committees, in a Goldilocks run
-(unforgeable signatures, durable and serialized honest clients) under `Healthy(g)` and `NoColl`, if
-the reset `a_z` exists, (R1)–(R4) hold for it (`RetentionAt`). -/
+/-- **HR.4, height-scoped retention.** In a Goldilocks run (unforgeable signatures, durable and
+serialized honest clients) from the committee start of a slot dictionary `K`, under `Healthy(g)`
+and `NoColl`, with the committee facts of `K` (`Compose.Growing.CommitteeFacts` at the constant
+honest set) and CS2 for every slot after the slot of `ḡ`, if the reset `a_z` exists, (R1)–(R4)
+hold for it (`RetentionAt`). -/
 def HeightScopedRetention : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF : Time),
-    sp.committeeSize = sp.n →
-    GoldilocksRun proposer dg H tr → tr.HealthyRun H ΔF g → Compose.NoCollRun dg tr →
+    (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF : Time),
+    GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+    tr.HealthyRun H ΔF g → Compose.NoCollRun dg tr →
+    Compose.Growing.CommitteeFacts tr (fun _ => H) K →
+    (∀ s : Nat, sp.slot (gbar g) + 1 ≤ s →
+      2 * (K.committee s ∩ Hᶜ).ncard < (K.committee s).ncard) →
     ∀ a, IsReset tr H g a → RetentionAt tr H g a
 
 section Top

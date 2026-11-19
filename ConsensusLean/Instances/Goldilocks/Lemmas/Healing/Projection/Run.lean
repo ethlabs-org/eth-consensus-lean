@@ -40,11 +40,6 @@ private theorem group_get? {y : Fin P.n} {j : Nat} {t : Time} {e : Event A}
   obtain ⟨hn, ht, -, hp, hl⟩ := hg.2.1 k hk'
   exact ⟨⟨hn, hl.trans (congrArg some hc)⟩, ht, hp⟩
 
-/-- The latest wake does not change at a cut that is not a restart. -/
-theorem lastWake_succ {y : Fin P.n} {k : Nat} (hn : ¬ tr.RestartAt y (k + 1)) :
-    tr.lastWake y (k + 1) = tr.lastWake y k := by
-  simp [RunTrace.lastWake, hn]
-
 /-- `Σ.F` of an honest node moves only to descendants, inside the honest blocks. -/
 theorem run_F_mono (h : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) {i i' : Nat}

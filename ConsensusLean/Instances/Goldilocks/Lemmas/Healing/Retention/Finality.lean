@@ -264,7 +264,7 @@ theorem accepted_replay_finalized_cached {P : Params} {ACP : Type} {acp₀ : ACP
   exact hc.mono sub
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
   {proposer : Nat → Fin sp.n} {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
@@ -424,7 +424,7 @@ theorem viable_head_of_floor (hrun : GoldilocksRun proposer dg H tr ini)
 
 /-- The origin-specialized form of strict-height finalized ancestry. -/
 theorem ResetPremisesUpTo.low_finalized_below_origin {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {y : Fin sp.n}
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {y : Fin sp.n}
     (hy : y ∈ H) (m : Nat) (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) {x : Fin sp.n}
     {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
     Anc (tr.HonestBlocks H) (tr.state y m).fg.F B := by

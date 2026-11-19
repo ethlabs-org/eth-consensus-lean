@@ -185,6 +185,18 @@ theorem restartTime_state {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
       ∃ k < i, tr.RestartAt y k ∧ (tr.state y i).restartTime = (tr.time k : WithBot Time) :=
   restartTime_stateU (hr := hr.toU) hini (y := y) (hy := hy) (i := i)
 
+/-- **Joined from the restart bound**: the state of an honest node before cut `i` is joined at the
+time of `i` when each of its restarts before `i` is at or before `t_{slot(t)−1}`, `t` that time. -/
+theorem joined_state_of_restarts
+    {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
+    (hrs : ∀ k < i, tr.RestartAt y k → tr.time k ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)) :
+    joined sp (tr.state y i) (tr.time i) := by
+  unfold joined
+  rcases restartTime_stateU hr hini hy i with h | ⟨k, hki, hrk, h⟩
+  · rw [h]; exact bot_le
+  · rw [h]; exact WithBot.coe_le_coe.mpr (hrs k hki hrk)
+
 end RestartTime
 
 /-! ### Voted slot of a state -/
@@ -295,12 +307,9 @@ theorem restart_le {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (hk : tr.RestartAt y 
 joined at `t`. -/
 theorem joined_state {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
     (ht : gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)) :
-    joined sp (tr.state y i) (tr.time i) := by
-  unfold joined
-  rcases restartTime_stateU hS.run.localRun hS.run.vstart hy i with
-    h | ⟨k, -, hrk, h⟩
-  · rw [h]; exact bot_le
-  · rw [h]; exact WithBot.coe_le_coe.mpr ((hS.restart_le hy hrk).trans ht)
+    joined sp (tr.state y i) (tr.time i) :=
+  joined_state_of_restarts hS.run.localRun hS.run.vstart hy i fun _ _ hrk =>
+    (hS.restart_le hy hrk).trans ht
 
 /-- `Sync[a, b]` for every `a ≥ ḡ`. -/
 theorem syncAC {a : Time} (ha : gbar g ≤ a) (b : Time) :

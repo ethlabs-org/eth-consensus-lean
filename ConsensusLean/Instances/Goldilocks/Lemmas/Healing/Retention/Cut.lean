@@ -32,7 +32,7 @@ open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
-  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
 /-! ### Run facts -/
@@ -42,7 +42,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- Finite prefix comparison bounds both writes and the votes used by the
 induction hypothesis. Activation may precede the target's eventual write. -/
 theorem ResetPremisesUpTo.origins_compatible_prefix {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {k : Nat}
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {k : Nat}
     (hvote : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : SA.Blk sp.n (List (FG.Att sp.n))},
       HighOrigin tr H g x₀ i₀ j₀ B₀ → tr.time i₀ ≤ b →
       ∀ z ∈ H, ∀ c ≤ k, tr.time c ≤ b → ∀ e, SA.VoteAt tr.projAC z c e →
@@ -52,14 +52,9 @@ theorem ResetPremisesUpTo.origins_compatible_prefix {b : Time}
     (hact : i ≤ k ∨ sp.ts (j + 1 : Nat) ≤ tr.time k) {x' : Fin sp.n} {r l : Nat}
     {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho' : HighOrigin tr H g x' r l O)
     (hrk : r ≤ k) (hrb : tr.time r ≤ b) : Compatible (tr.HonestBlocks H) B O := by
-  have hg : g ≤ sp.ts j := by
-    have h₁ := hp.cutZ_le_ts_of_highOrigin ho
-    have h₂ := lt_cutZ sp g
-    have h₃ := le_gbar g
-    have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-    linarith
   apply hp.origins_compatible_before (k := k + 1)
-    (fun ho₀ hi₀ z hz c hc => hvote ho₀ hi₀ z hz c (by omega)) ho hg ?_ ho'
+    (fun ho₀ hi₀ z hz c hc => hvote ho₀ hi₀ z hz c (by omega)) ho
+    (hp.cutZ_le_ts_of_highOrigin ho) ?_ ho'
     (by omega) hib hrb
   rcases hact with h | h
   · exact Or.inl (by omega)
@@ -72,7 +67,7 @@ theorem ResetPremisesUpTo.origins_compatible_prefix {b : Time}
 /-- A signed high attestation before a bounded cut names an entry comparable with an
 active bounded origin, using only vote extension through that cut. -/
 theorem ResetPremisesUpTo.row_compatible {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {k : Nat}
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {k : Nat}
     (hvote : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : SA.Blk sp.n (List (FG.Att sp.n))},
       HighOrigin tr H g x₀ i₀ j₀ B₀ → tr.time i₀ ≤ b →
       ∀ z ∈ H, ∀ c ≤ k, tr.time c ≤ b → ∀ e, SA.VoteAt tr.projAC z c e →
@@ -104,7 +99,7 @@ so is `Σ.F ⪯ Σ.J`; when `Σ.J` is low, `Σ.F` is below `B` by G1.2
 does not apply, since it assumes (K0) for `Σ.J` and (K1) for every conflicting entry above an honest
 `Σ.F` at `Ts`, low ones included, which fail at `a_z`. -/
 theorem ResetPremisesUpTo.retention_cut_step {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {k : Nat}
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {k : Nat}
     (hvote : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : SA.Blk sp.n (List (FG.Att sp.n))},
       HighOrigin tr H g x₀ i₀ j₀ B₀ → tr.time i₀ ≤ b →
       ∀ z ∈ H, ∀ c ≤ k, tr.time c ≤ b → ∀ e, SA.VoteAt tr.projAC z c e →
@@ -158,7 +153,7 @@ theorem ResetPremisesUpTo.retention_cut_step {b : Time}
   · exact Goldilocks.Store.compatible_of_anc hU (hFJ.mono hsub) (hJ (by omega))
 
 /-- Whole-run specialization of the finite cut step. -/
-theorem retention_cut_step (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
+theorem retention_cut_step (hp : ResetPremises tr H K proposer dg g ΔF a) (k : Nat)
     (ih : ∀ k' < k, VoteInv tr H g k' ∧ CacheInv tr H g a k') (hv : VoteInv tr H g k) :
     CacheInv tr H g a k := by
   refine cacheInv_iff.2 fun y hy hc _ x i j B ho hact => ?_
@@ -178,7 +173,7 @@ block, which is at or below the stored block `B` of a fast-lock write of the sig
 signing (`stored_fast_lock_provenance`); the attestation's height pair is `C`'s height and entry, so
 `B` has state height `≥ σ[C].h ≥ H_z + 1` (a high origin), and the named entry is the entry at that
 height on `B`'s chain in the writer's tree (`high_row_source`). -/
-theorem high_rows (hp : ResetPremises tr H proposer dg g ΔF a) :
+theorem high_rows (hp : ResetPremises tr H K proposer dg g ΔF a) :
     ∀ y ∈ H, ∀ k att, tr.SignAt y k att → a ≤ tr.time k → HZ tr H g + 1 ≤ att.h →
       ∃ x i j B, HighOrigin tr H g x i j B ∧ ∃ E ∈ (tr.state x i).fg.tree,
         (tr.state x i).fg.Anc E B ∧ E.root = att.T ∧ ((tr.state x i).fg.σ E.root).h = att.h ∧

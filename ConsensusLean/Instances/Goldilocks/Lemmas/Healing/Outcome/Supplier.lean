@@ -25,17 +25,19 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF a : Time}
 
 /-- **The joined duty, unanimity** (the join with RN/RU): under the reset
 premises and `Catch(2Δ)`, every honest vote of the slot `u` of an honest ready proposal `P` with
 `t_u ≥ R` is `P`. -/
-theorem ready_unanimous (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem ready_unanimous (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H proposer p k u P)
     (hR : drainTime sp a ≤ sp.ts u) : Unanimous tr H u P := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  obtain ⟨s, rfl, hu, hg, hgu, -⟩ := post_drain_slot (cutZ_lt_reset hp.run hp.healthy hp.reset) hR
+  obtain ⟨s, rfl, hu, hg, hgu, hjoin⟩ :=
+    post_drain_slot (cutZ_lt_reset hp.run hp.healthy hp.reset) hR
   obtain ⟨-, i, ellp, d, pay, hci, hcall, hd, hti, hPQ, -, -, hpay, -⟩ :=
     honestProposalRun_of_ready hp.run hp.noColl hP
   rw [← hP.2.1] at hci hd
@@ -66,8 +68,10 @@ theorem ready_unanimous (hp : ResetPremises tr H proposer dg g ΔF a)
       rw [hes] at this
       exact_mod_cast this.le
     have hgj := hgu.trans hjt
+    have hjoj := hjoin.trans hjt
+    have hjoi : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time i := hti ▸ hjoin
     have hroot := reset_vote_root_below_proposal hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE
-    have hPy := reset_proposal_frame hp hc hP (by omega) hy hcy hes hgj
+    have hPy := reset_proposal_frame hp hc hP (by omega) hy hcy hes hgj hjoj
       ((hPsi.F_anc_fcRoot.mono hPsiU).trans hroot)
     have hPv := reset_proposal_viable hp hc hP hR hci hcall hd hti hPQ hy hcy hes hPy hE
     obtain ⟨hstep, hP₀⟩ := reset_stop_at_parent hp hc hP hR hci hcall hd hti hpay hPQ hy
@@ -77,12 +81,13 @@ theorem ready_unanimous (hp : ResetPremises tr H proposer dg g ΔF a)
     rw [hes] at hspec
     exact hspec.trans (congrArg (·.root) (voter_head_eq_proposal hPhi hPsi hd hslot hsD hXc haX
       hXend hPv hstep hP₀ fun B C hXB hDB hBQ hne hCQ hC => reset_suffix_best hp hc hP hci hcall
-        hd hti hpay hPQ hy hcy hes hPv hg (hti ▸ hgu) hgj hQt hBQ hne (hviab _ hDB hBQ) hCQ
+        hd hti hpay hPQ hy hcy hes hPv hg (hti ▸ hgu) hgj hjoi hjoj hQt hBQ hne
+        (hviab _ hDB hBQ) hCQ
         ((haX.mono hPsiU).trans (hXB.mono hPhiU)) hC))
 
 /-- Every bounded honest cast agrees with an actual honest proposal after the reset drain. -/
 theorem ResetPremisesUpTo.operational_unanimous {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
     (hPs : P.slot = u) (hR : drainTime sp a ≤ sp.ts u) (hub : sp.ts u ≤ b) :
@@ -197,7 +202,7 @@ theorem update_toFG_calls_of_awake {ini}
 update and report call. The slot bound follows from the ready-slot initial margin;
 no Catch or service premise is needed to produce these calls. -/
 theorem ResetPremisesUpTo.update_toFG_calls {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {u : Nat}
     (hu : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts u)
     (hub : sp.ts u + 6 * sp.Δ ≤ b) :
@@ -296,7 +301,7 @@ theorem report_of_compatible_candidate_of_run
 compatible finality for each reader, and a below-finality actual-report producer.
 Neither duty assumes wakefulness after `b`; historical reports have no lower time bound. -/
 theorem ResetPremisesUpTo.report_cover_of_compatible_floors {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hcuts : ∀ z ∈ H, ∃ j, tr.time j ≤ sp.ts u + 6 * sp.Δ ∧
       Compatible (tr.HonestBlocks H) (tr.state z j).fg.F P ∧
@@ -325,7 +330,7 @@ Compatibility discharges the strict-descendant branch using an earlier actual re
 the below-floor branch still needs an actual-report producer (selection alone is not one).
 The cuts may be updates or first-loss post-states; no lower bound on report time is imposed. -/
 theorem report_cover_of_compatible_floors
-    (hp : ResetPremises tr H proposer dg g ΔF a)
+    (hp : ResetPremises tr H K proposer dg g ΔF a)
     {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hcuts : ∀ z ∈ H, ∃ j, tr.time j ≤ sp.ts u + 6 * sp.Δ ∧
       Compatible (tr.HonestBlocks H) (tr.state z j).fg.F P ∧

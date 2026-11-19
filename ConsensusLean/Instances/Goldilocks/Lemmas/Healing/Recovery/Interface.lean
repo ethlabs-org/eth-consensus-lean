@@ -42,9 +42,9 @@ structure HighFinalityFrom (g T : Time) : Prop where
 /-- Actual report coverage of a post-drain ready proposal, with the same disjunction as
 `report_cover_of_compatible_floors` but without its unproved `hcuts` input. Historical reports
 are allowed: the deadline is inclusive and there is deliberately no lower time bound. -/
-structure ReadyProposalReportSupply (proposer : Nat → Fin sp.n)
+structure ReadyProposalReportSupply (K : SA.CommitteeDict sp.n) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF a : Time) : Prop where
-  report_cover : ResetPremises tr H proposer dg g ΔF a → CatchRun tr H g (2 * sp.Δ) →
+  report_cover : ResetPremises tr H K proposer dg g ΔF a → CatchRun tr H g (2 * sp.Δ) →
     ∀ (p : Fin sp.n) (k u : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))),
       ReadyProposal tr H proposer p k u P → drainTime sp a ≤ sp.ts u →
       (∀ z ∈ H, ∃ r ℓ C, SA.ToFGAt tr.projAC z r ℓ C ∧
@@ -69,11 +69,11 @@ structure HighCoverageAt (g t duration : Time) : Prop where
 
 /-- Lane A's bounded coverage obligation under exactly the public pattern premises. The
 four-anchor stronger timeout regime is not substituted for `cF + kF ≤ δt`. -/
-structure PatternCoverageSupply (proposer : Nat → Fin sp.n)
+structure PatternCoverageSupply (K : SA.CommitteeDict sp.n) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF Gp : Time)
     (W M cF kF : Nat) : Prop where
-  coverage : GoldilocksRun proposer dg H tr →
-    PatternPremises tr H proposer dg g ΔF Gp W M cF kF →
+  coverage : GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+    PatternPremises tr H K proposer dg g ΔF Gp W M cF kF →
     ∀ t, Rstar sp g ΔF Gp ≤ t →
       HighCoverageAt tr H g t (4 * sp.Δ * ((W : Time) + 1 + M))
 
