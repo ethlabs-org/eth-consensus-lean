@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retentio
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowEndpoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.Row
-import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -119,8 +119,31 @@ theorem report_kind_of_floor_at
   have h := Healing.report_kind_of_floor hr hy (by rwa [hs]) (by rwa [hs])
   rwa [hs] at h
 
+/-- The client call of a high report under vote latency `D`, by a reporter honest `D` after it
+and at `c_z`, supplies the reset no later than `D` after the report, including suppression. -/
+theorem reset_of_high_report_within_at
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g D : Time}
+    (hlat : Generic.VoteLatencyAt tr H D) (hD : 0 ≤ D)
+    {y : Fin sp.n} {i : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i + D)))
+    (hq : (H (max (cutZ sp.toParams g) (tr.time i + D)))ᶜ.ncard < sp.toParams.fg.q)
+    {ell : ACLabel (goldilocksNode sp ro)} {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hR : SA.ToFGAt tr.projAC y i ell R)
+    (hh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
+    ∃ a, IsReset tr H g a ∧ a ≤ tr.time i + D := by
+  have hy := hrun.antitone ((le_add_of_nonneg_right hD).trans (le_max_right _ _)) hyz
+  have hr := hrun.upTo (hrun.time_nonneg i)
+  have hst := Trace.upTo_state tr y (i := i) (fun q hq => hrun.time_mono hq.le)
+  obtain ⟨hc, hto, hres⟩ := hR
+  apply Generic.reset_of_high_report_within_from hrun.toLocalRun hlat hyz hq ?_ hh
+  refine ⟨ell, Compose.projAC_callAt.mp hc, hto, ?_⟩
+  have hstate := Compose.projAC_state hr.toLocalRun hy i
+  rw [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC y
+    (fun q hq => hrun.time_mono hq.le), hst] at hstate
+  rwa [hstate] at hres
+
 /-- The adjacent client call of a high report, by a reporter honest at it and at `c_z`, supplies
-the reset, including suppression. -/
+the reset, including suppression (`reset_of_high_report_within_at` at latency `0`). -/
 theorem reset_of_high_report_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g : Time}
@@ -130,16 +153,9 @@ theorem reset_of_high_report_at
     (hR : SA.ToFGAt tr.projAC y i ell R)
     (hh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
     ∃ a, IsReset tr H g a ∧ a ≤ tr.time i := by
-  have hy := hrun.antitone (le_max_right _ _) hyz
-  have hr := hrun.upTo (hrun.time_nonneg i)
-  have hst := Trace.upTo_state tr y (i := i) (fun q hq => hrun.time_mono hq.le)
-  obtain ⟨hc, hto, hres⟩ := hR
-  apply Generic.reset_of_high_report_at_from hrun.toLocalRun hyz hq ?_ hh
-  refine ⟨ell, Compose.projAC_callAt.mp hc, hto, ?_⟩
-  have hstate := Compose.projAC_state hr.toLocalRun hy i
-  rw [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC y
-    (fun q hq => hrun.time_mono hq.le), hst] at hstate
-  rwa [hstate] at hres
+  simpa using reset_of_high_report_within_at hrun
+    (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl (by simpa using hyz)
+    (by simpa using hq) hR hh
 
 /-- A proposal's immediate acceptance is held while its proposer is honest
 (`Generic.proposal_mem_at_from` at the Goldilocks requirements from the run's starts). -/
@@ -313,9 +329,12 @@ theorem round_of_warm_at
   · exact Or.inl ⟨y, i, hyi, hPy, k, att, hyk, hs, hk.trans hti, hah, haT⟩
   · exact Or.inr ⟨R, hRyD, y, i, hyi, hPy, hRy, hh⟩
 
-/-- A high warm proposal yields a reset via a reader honest at the report deadline. -/
-theorem reset_of_high_proposal_at
-    {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop}
+/-- **The zero-rise reset under vote latency `D`**: with the premises of
+`reset_of_high_proposal_at`, the latency `D` and a service horizon covering `t_{u+1} + 2Δ + D`,
+a high warm proposal yields a reset by `t_{u+1} + 2Δ + D`. The frame window and the report are
+those of the same-tick case; only the signing moves. -/
+theorem reset_of_high_proposal_within_at
+    {g ΔF b D : Time} {s₀ u N floor : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
     {K : SA.CommitteeDict sp.n}
@@ -327,11 +346,13 @@ theorem reset_of_high_proposal_at
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (hN : u + 1 ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b) (hH : (H b).Nonempty)
+    (hlat : Generic.VoteLatencyAt tr H D) (hD : 0 ≤ D)
+    (hDb : sp.ts (u + 1 : Nat) + 2 * sp.Δ + D ≤ b)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hh : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h)
     (hK : CommitteeHalfUpTo tr H K g b) :
-    ∃ a, IsReset tr H g a ∧ a ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
+    ∃ a, IsReset tr H g a ∧ a ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ + D := by
   have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
   have hts : sp.ts (u + 1 : Nat) ≤ sp.ts N := (SA.ts_le_iff sp).2 (by exact_mod_cast hN)
   obtain ⟨y, hy⟩ := hH
@@ -356,14 +377,45 @@ theorem reset_of_high_proposal_at
   rw [hσ] at hh
   have hhR := hh.trans (h_le_of_store_anc (fg_reachable_at hrun (hrun.time_nonneg i) hle hyi)
     (store_anc_of_honest_anc_at hrun hnc (hrun.time_nonneg i) hle hyi hPR hRm))
-  have hq : (H (tr.time i))ᶜ.ncard < sp.toParams.fg.q := by
-    have hf' := hf _ (hrun.time_nonneg i) (by linarith)
+  -- The signing may come `D` after the report: read honesty and faults there, inside `b`.
+  have hiD : tr.time i + D ≤ b := by linarith
+  have hcD : max (cutZ sp.toParams g) (tr.time i + D) = tr.time i + D :=
+    max_eq_right (by linarith)
+  have hyD : y ∈ H (max (cutZ sp.toParams g) (tr.time i + D)) := by
+    rw [hcD]; exact hrun.antitone hiD hy
+  have hq : (H (max (cutZ sp.toParams g) (tr.time i + D)))ᶜ.ncard < sp.toParams.fg.q := by
+    have hf' := hf _ (by linarith [hrun.time_nonneg i]) hiD
     have hn := sp.toParams.hn
-    change (H (tr.time i))ᶜ.ncard < (2 * sp.n + 2) / 3
+    rw [hcD]
+    change (H (tr.time i + D))ᶜ.ncard < (2 * sp.n + 2) / 3
     omega
-  rw [← max_eq_right hcz] at hyi hq
-  obtain ⟨a, ha, hat⟩ := reset_of_high_report_at hrun hyi hq hR hhR
-  exact ⟨a, ha, hat.trans hti⟩
+  obtain ⟨a, ha, hat⟩ := reset_of_high_report_within_at hrun hlat hD hyD hq hR hhR
+  exact ⟨a, ha, by linarith⟩
+
+/-- A high warm proposal yields a reset via a reader honest at the report deadline
+(`reset_of_high_proposal_within_at` at latency `0`). -/
+theorem reset_of_high_proposal_at
+    {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop}
+    {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
+    (hN : u + 1 ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b) (hH : (H b).Nonempty)
+    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
+    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
+    (hh : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h)
+    (hK : CommitteeHalfUpTo tr H K g b) :
+    ∃ a, IsReset tr H g a ∧ a ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
+  have hts : sp.ts (u + 1 : Nat) ≤ sp.ts N := (SA.ts_le_iff sp).2 (by exact_mod_cast hN)
+  simpa using reset_of_high_proposal_within_at hframe hrun hnc hsvc hawake hf hcatch hnr hm
+    hwarm hN hmb hH (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl (by linarith) hz hdes
+    hP hPs hh hK
 
 /-- Each round consumes one unit of height deficit; honesty is re-read at the next proposal. -/
 theorem rise_reset_rounds_at

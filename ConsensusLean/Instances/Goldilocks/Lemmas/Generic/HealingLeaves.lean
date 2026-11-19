@@ -71,7 +71,9 @@ sent content at that height, so the call signs and leaf 1 applies.
 
 Leaf 6 (`reset_of_high_report_at_from`): a report of height at least `HZ + 1`, by a reporter
 honest at it and at `c_z`, is followed in the same tick by its `fg_attest` call with the same
-store, so leaf 6c gives a reset no later.
+store (`voteLatency_zero_from`), so leaf 6c gives a reset no later. Under a vote latency `D`
+(`VoteLatencyAt`: the `fg_attest` call on a source at least as high follows within `D`), the reset
+comes at most `D` after the report (`reset_of_high_report_within_from`).
 
 Leaf 7 (`sign_from_report_at_from`): an honest signing comes from the report of the `ac_to_fg`
 cut just before it, at the same time and with the same store; under the requirements of the
@@ -342,18 +344,25 @@ theorem reset_of_high_source_at_from {P : Params} {A : NodeAC P}
 
 /-! ## Leaf 6 -/
 
-/-- A high report gives a high FG source in the same tick, hence a reset no later. -/
-theorem reset_of_high_report_at_from {P : Params} {A : NodeAC P}
-    {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
-    {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
-    {ini : Fin P.n → A.State} {g : Time} {y : Fin P.n} {i : Nat} {R : A.Blk}
-    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
-    (hyz : y ∈ H (max (Healing.cutZ P g) (tr.time i)))
-    (hq : (H (max (Healing.cutZ P g) (tr.time i)))ᶜ.ncard < P.fg.q)
-    (hR : ReportAt tr y i R)
-    (hh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
-    ∃ a, Healing.Growing.IsReset tr H g a ∧ a ≤ tr.time i := by
-  have hy := hrun.antitone (le_max_right _ _) hyz
+/-- **Vote latency `D`**: a report of a source `R` at cut `i`, by a node honest at `time i + D`, is
+followed by an `fg_attest` call at a cut `k ≥ i`, by `time i + D`, whose source is at least as high
+in the caller's store at `k` as `R` was at `i`. The bound reads only the signing cut; the release
+is the delivery premises' business. -/
+structure VoteLatencyAt {P : Params} {A : NodeAC P} (tr : RunTrace A) (H : Time → Set (Fin P.n))
+    (D : Time) : Prop where
+  attests : ∀ y i R, ReportAt tr y i R → y ∈ H (tr.time i + D) →
+    ∃ k, i ≤ k ∧ tr.time k ≤ tr.time i + D ∧ ∃ C s, tr.CallAt y k (.fg (.attest C s)) ∧
+      ((tr.state y i).fg.σ R.root).h ≤ ((tr.state y k).fg.σ C.root).h
+
+/-- Every node run meets latency `0`: the report's `fg_attest` call follows in the same tick, on
+the same store. -/
+theorem voteLatency_zero_from {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+    {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
+    {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini) :
+    VoteLatencyAt tr H 0 := by
+  refine ⟨fun y i R hR hy => ?_⟩
+  rw [add_zero] at hy
   have hr := hrun.upTo (hrun.time_nonneg i)
   have hst := Trace.upTo_state tr y (i := i) (fun q hq => hrun.time_mono hq.le)
   obtain ⟨ell, hc, hto, hres⟩ := hR
@@ -365,13 +374,49 @@ theorem reset_of_high_report_at_from {P : Params} {A : NodeAC P}
   have ht' : tr.time (i + 1) = tr.time i := ht
   have hs1 := Trace.upTo_state tr (d := tr.time i) y (i := i + 1)
     (fun q hq => hrun.time_mono (by omega))
-  have hatt' := ((Trace.upTo_callAt tr).mp hatt).2
   rw [hs1, hst] at hfg
-  have hh' : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y (i + 1)).fg.σ R.root).h := by
-    rwa [hfg]
-  obtain ⟨a, ha, hat⟩ := reset_of_high_source_at_from hrun
-    (ht' ▸ hyz) (ht' ▸ hq) hatt' hh'
-  exact ⟨a, ha, by rwa [ht'] at hat⟩
+  exact ⟨i + 1, by omega, by rw [ht', add_zero], R, s, ((Trace.upTo_callAt tr).mp hatt).2,
+    by rw [hfg]⟩
+
+/-- **Leaf 6 under vote latency `D`**: a report of height at least `HZ + 1`, by a reporter honest
+at `D` after it and at `c_z`, with fewer than `q` faulty at that time, gives a reset no later than
+`D` after the report. -/
+theorem reset_of_high_report_within_from {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+    {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
+    {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State} {g D : Time}
+    {y : Fin P.n} {i : Nat} {R : A.Blk}
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hlat : VoteLatencyAt tr H D)
+    (hyz : y ∈ H (max (Healing.cutZ P g) (tr.time i + D)))
+    (hq : (H (max (Healing.cutZ P g) (tr.time i + D)))ᶜ.ncard < P.fg.q)
+    (hR : ReportAt tr y i R)
+    (hh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
+    ∃ a, Healing.Growing.IsReset tr H g a ∧ a ≤ tr.time i + D := by
+  obtain ⟨k, -, hk, C, s, hc, hCh⟩ :=
+    hlat.attests y i R hR (hrun.antitone (le_max_right _ _) hyz)
+  have hmono : max (Healing.cutZ P g) (tr.time k) ≤ max (Healing.cutZ P g) (tr.time i + D) :=
+    max_le_max le_rfl hk
+  have hqk : (H (max (Healing.cutZ P g) (tr.time k)))ᶜ.ncard < P.fg.q :=
+    lt_of_le_of_lt (Set.ncard_le_ncard
+      (Set.compl_subset_compl.2 fun x hx => hrun.antitone hmono hx) (Set.toFinite _)) hq
+  obtain ⟨a, ha, hat⟩ :=
+    reset_of_high_source_at_from hrun (hrun.antitone hmono hyz) hqk hc (hh.trans hCh)
+  exact ⟨a, ha, hat.trans hk⟩
+
+/-- A high report gives a high FG source in the same tick, hence a reset no later
+(`reset_of_high_report_within_from` at latency `0`). -/
+theorem reset_of_high_report_at_from {P : Params} {A : NodeAC P}
+    {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
+    {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+    {ini : Fin P.n → A.State} {g : Time} {y : Fin P.n} {i : Nat} {R : A.Blk}
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
+    (hyz : y ∈ H (max (Healing.cutZ P g) (tr.time i)))
+    (hq : (H (max (Healing.cutZ P g) (tr.time i)))ᶜ.ncard < P.fg.q)
+    (hR : ReportAt tr y i R)
+    (hh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
+    ∃ a, Healing.Growing.IsReset tr H g a ∧ a ≤ tr.time i := by
+  simpa using reset_of_high_report_within_from hrun (voteLatency_zero_from hrun)
+    (by simpa using hyz) (by simpa using hq) hR hh
 
 /-! ## Leaf 7 -/
 

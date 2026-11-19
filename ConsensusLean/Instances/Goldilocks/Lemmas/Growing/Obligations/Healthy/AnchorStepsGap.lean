@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.WindowFieldsUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.AnchorStepsGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.WindowCrossing
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalUnanimous
@@ -59,15 +60,19 @@ private theorem anchor_facts_at {g ΔR a b : Time}
   have hz : A.slot = 0 := by rw [heq]; rfl
   omega
 
-/-- **One route-A anchor step (gap `c`)** under growing faults. Honest proposals `A` at slot `s`
-and `X` at slot `s + c`, `2 ≤ c`, after the drain and by the horizon, with `H_z + 2 ≤ σ[A].h` at
-a holder honest at its cut: `AnchorStepAt tr H A X`. -/
-theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
+/-- **One route-A anchor step (gap `c`) under a signing delay `D`.** Honest proposals `A` at
+slot `s` and `X` at slot `s + c`, `2 ≤ c`, after the drain and by the horizon, with
+`H_z + 2 ≤ σ[A].h` at a holder honest at its cut, rows supplied within `D` of the reports
+(`RowSupplyWithin`), rows signed by `t_s + 6Δ + D` delivered to `X`'s proposer (`hdel`) and a
+higher report by then seen by it (`hcr`): `AnchorStepAt tr H A X`. -/
+theorem anchorStep_gap_within_at {g ΔR a b gS ΔF D : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
     (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
     {s c s' : Nat} (hc2 : 2 ≤ c) (hs' : s' = s + c)
-    (hdel : sp.ts s + 6 * sp.Δ + ΔF ≤ sp.ts s')
+    (hsup : Healing.Growing.RowSupplyWithin tr H g b D) (hD : 0 ≤ D)
+    (hdel : sp.ts s + 6 * sp.Δ + D + ΔF ≤ sp.ts s')
+    (hcr : sp.ts s + 6 * sp.Δ + D + sp.Δ ≤ sp.ts s')
     {A X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hA : Healing.Growing.HonestProposalRun tr H proposer s A)
     (hX : Healing.Growing.HonestProposalRun tr H proposer s' X)
@@ -80,10 +85,6 @@ theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
   have hrun := hp.run
   have hnc := hp.noColl
   have hΔ := sp.toParams.hΔ
-  have h8 : sp.ts s + 8 * sp.Δ ≤ sp.ts (s + c : Nat) := by
-    rw [ts_add_gap (sp := sp)]
-    have : (2 : Time) ≤ c := by exact_mod_cast hc2
-    linarith [mul_le_mul_of_nonneg_left this (mul_nonneg zero_le_four hΔ.le)]
   obtain ⟨⟨kA, hpropA⟩, hAHB, hAs, hu, hAg, hgu⟩ := anchor_facts_at hp hA hR
   obtain ⟨kX, hpropX, hpX, -, -⟩ := proposal_held_at hrun hnc hX
   obtain ⟨Pr, hpar, hPr⟩ := proposal_parent_held_at hrun hnc hpX hpropX
@@ -110,8 +111,9 @@ theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
       (fun _ hq => hrun.time_mono hq.le) hy hAp hAy]
     exact hy2
   have hTb : sp.ts s + 6 * sp.Δ ≤ b := by linarith
-  refine anchorStep_of_or_crossed_at hrun hs (v := sp.ts s + 6 * sp.Δ) hgS hpX hpropX
-    (by rw [htX]; linarith) (by rw [htX]; exact hb) hpar hPr hAPr ?_
+  have hTDb : sp.ts s + 6 * sp.Δ + D ≤ b := by linarith
+  refine anchorStep_of_or_crossed_at hrun hs (v := sp.ts s + 6 * sp.Δ + D) (by linarith) hpX
+    hpropX (by rw [htX]; linarith) (by rw [htX]; exact hb) hpar hPr hAPr ?_
   intro heq
   -- A higher report above `A` by `t_s + 6Δ`, of a node honest at it, contradicts `heq`.
   have hcross : ∀ x r e C, x ∈ H (tr.time r) → SA.ToFGAt tr.projAC x r e C →
@@ -172,8 +174,16 @@ theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
     rcases hle.lt_or_eq with hlt | heq'
     · exact (hcross z r e R hzr hto ht hAR hlt).elim
     · rw [← heq', Healing.Growing.σ_eq_honest_at hrun hnc hr0 hleR hzr h0 hle0 hpX hAz hAp, hEh]
-  obtain ⟨ids, hcard, hids⟩ :=
-    hp.row_signers_of_reports_at h0 hle0 hpX hE rfl hTe hhT hhj hd0 hTb hreports
+  rcases hsup.supply h0 hle0 hpX hE rfl hTe hhT hhj hd0 hTDb hreports with
+    ⟨ids, hcard, hids⟩ | ⟨x, r, e, C, hx, hto, hdr, hrD, hlt⟩
+  swap
+  · -- A delayed vote used a higher source: its report lifts `X`'s parent above the entry.
+    obtain ⟨Pr', hPr'H, hpar', -, habove⟩ :=
+      crossed_parents_above_upTo_at hp hx hto (hR.trans (by linarith)) hlt hX (by linarith) hb
+    obtain rfl : Pr' = Pr := hU.1 hPr'H hPrH (Option.some.inj (hpar'.symm.trans hpar))
+    have := habove _ kX (tr.time kX) h0 hle0 hpX hPr
+    rw [hEh, heq] at this
+    omega
   have hPrTh := Healing.Th_eq_of_anc hr hAPr heq
   obtain ⟨hPrJ, hPrhj⟩ := Healing.J_hj_eq_of_anc hr hAPr heq
   refine ⟨ids, hcard, fun z hz => ?_⟩
@@ -186,6 +196,32 @@ theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
       obtain ⟨h1, h2⟩ := hbd
       exact ⟨by omega, by omega⟩
     rw [hfin hbE, hEJ, hEhj, hPrJ, hPrhj]
+
+/-- **One route-A anchor step (gap `c`)** under growing faults. Honest proposals `A` at slot `s`
+and `X` at slot `s + c`, `2 ≤ c`, after the drain and by the horizon, with `H_z + 2 ≤ σ[A].h` at
+a holder honest at its cut: `AnchorStepAt tr H A X`. The same-tick FG update supplies the rows
+(`anchorStep_gap_within_at` at `D = 0`). -/
+theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
+    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
+    {s c s' : Nat} (hc2 : 2 ≤ c) (hs' : s' = s + c)
+    (hdel : sp.ts s + 6 * sp.Δ + ΔF ≤ sp.ts s')
+    {A X : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hA : Healing.Growing.HonestProposalRun tr H proposer s A)
+    (hX : Healing.Growing.HonestProposalRun tr H proposer s' X)
+    (hR : Healing.drainTime sp a ≤ sp.ts s) (hb : sp.ts s' ≤ b)
+    (hgS : gbar gS ≤ sp.ts s + 6 * sp.Δ)
+    (hh : ∃ y k, y ∈ H (tr.time k) ∧ A ∈ (tr.state y k).fg.tree ∧
+      Healing.Growing.HZ tr H g + 2 ≤ ((tr.state y k).fg.σ A.root).h) :
+    AnchorStepAt tr H A X := by
+  have hΔ := sp.toParams.hΔ
+  have h8 : sp.ts s + 8 * sp.Δ ≤ sp.ts s' := by
+    rw [hs', ts_add_gap (sp := sp)]
+    have : (2 : Time) ≤ c := by exact_mod_cast hc2
+    linarith [mul_le_mul_of_nonneg_left this (mul_nonneg zero_le_four hΔ.le)]
+  exact anchorStep_gap_within_at hp hs hc2 hs' hp.rowSupplyWithin_zero le_rfl (by simpa using hdel)
+    (by linarith) hA hX hR hb hgS hh
 
 /-- A height bound at a holder honest at its cut carries to a later honest proposal above it,
 read at its proposer just after the proposal cut. -/
