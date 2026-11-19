@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Endpoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Query
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Members
 import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Read
 import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Accountable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Handover
@@ -32,8 +33,11 @@ and the stable output are safe from the heal point, or the run has a hash collis
   The invariant's premises through the horizon come from the run: the reset service from partial
   synchrony (`resetService_of_psync_at`), the slot counts from `r` from the sleepy budget, which
   full participation on `[ḡ, T]` extends back to `ready` (`Handover.sleepyOn_from_ready`,
-  `sleepy_bounds_at`, with `ready ≤ t_r + Δ` by the seed's timing), and conviction below a third
-  on held chains from `ConvictedBelow` (`chainConvictedBelow_at`). The trace is then ready-safe
+  `sleepy_bounds_at`, with `ready ≤ t_r + Δ` by the seed's timing), the committee counts of the
+  run's committees `voteK` from `r`, from the committee budget, which the cross-boundary bound
+  extends back to `ready` (`Handover.committeeSleepyOn_from_ready`, `committee_bounds_at`), with
+  their committee facts (`voteK_facts`), and conviction below a third on held chains from
+  `ConvictedBelow` (`chainConvictedBelow_at`). The trace is then ready-safe
   from `heal − 1` with catch-up `cDur − 1 ≥ 18Δ` (`continued_safe_on_at`), the engine's confirmed
   output from `heal` with catch-up `cDur` (`continued_safe_engine_at`), and the ledger trace as its
   image under `ledgerOf`. -/
@@ -48,12 +52,13 @@ open Blocks Shape
 run has a hash collision. -/
 theorem continued_safe_growing (hc : GoldilocksCorrect) (S : Setup) (A : ContractAssumptions S)
     (V : Type) [Fintype V] [DecidableEq V] :
-    let Sy := Model.sysOf schema (compiled (goldilocks { S with vote := AsChainShape.stock })) V
+    let Sy := Model.sysOf schema (compiled (goldilocks S)) V
     let K := goldilocksContract A (contract_coefficients S A)
     ∀ cap g, (cap = .available ∨ cap = .stable) → Sy.schema.output cap = some g →
       ∀ i gst T, Sy.Holds
-        (fun r => Sy.Handover K gst T r ∧ Sy.heal K cap i gst r ≤ T ∧
-          Sy.prog (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) V)
+        (fun r => Sy.Handover
+          (shapeProgress (goldilocks S) V).toExternal K gst T r ∧ Sy.heal K cap i gst r ≤ T ∧
+          Sy.prog (shapeProgress (goldilocks S) V)
             K cap i (Sy.ready K gst r)
             (Sy.heal K cap i gst r) r)
         (fun r => (Sy.trace r).ReadySafe (Sy.cDur K r) g (Sy.heal K cap i gst r)) := by
@@ -86,15 +91,15 @@ theorem continued_safe_growing (hc : GoldilocksCorrect) (S : Setup) (A : Contrac
   obtain ⟨r', σ, hseed, t₁, -, hdt, hlate, hinv⟩ :=
     Obligations.Growing.handover_invariant_at
       (Obligations.Growing.handoverQuery S A V hn hv hx hcap i hh hT) h0 hb hp'
-  have hnc := noCollRun_simTraceAt { S with vote := stock } rho hn hv hx
-  have hrun := simTraceAt_goldilocksRun { S with vote := stock } rho hn hv
+  have hnc := noCollRun_simTraceAt S rho hn hv hx
+  have hrun := simTraceAt_goldilocksRun S rho hn hv
   -- the reset service through the horizon, from partial synchrony
-  have hsvc := Obligations.Growing.resetService_of_psync_at { S with vote := stock } rho hn hv hnc
+  have hsvc := Obligations.Growing.resetService_of_psync_at S rho hn hv hnc
     ((Model.sysOf_delivers_iff _ _ _ _).mp hh.1)
-    (Obligations.Growing.signed_row_service_psync_at { S with vote := stock } rho hn hv)
+    (Obligations.Growing.signed_row_service_psync_at S rho hn hv)
     (Obligations.protoFGDelay_pos _)
   -- the slot counts from `r'` through the horizon, from the sleepy budget from `ready`
-  let sp := ({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn
+  let sp := (S : Setup).params (Model.pubOf E) hn
   obtain ⟨hσT, hrσ, hgr⟩ : sp.ts σ + 8 * sp.Δ ≤ T ∧ r' + sp.k ≤ σ + 1 ∧
       max gst 0 + 20 * sp.Δ ≤ sp.ts r' := hseed.timing
   have hready : Sy.ready K gst ⟨E, rho⟩ = max gst 0 + 19 * E.ΔAC + 1 := by
@@ -117,19 +122,33 @@ theorem continued_safe_growing (hc : GoldilocksCorrect) (S : Setup) (A : Contrac
     rw [hcD]
     linarith
   have hB :=
-    Obligations.Growing.sleepy_bounds_at { S with vote := stock } rho hn hv le_rfl hhalf hσr
+    Obligations.Growing.sleepy_bounds_at S rho hn hv le_rfl hhalf hσr
+      (le_max_of_le_left ((hσr.trans hrT).trans hT))
+  -- the committee counts from `r'` through the horizon, from the committee budget from `ready`
+  have hKB : Compose.Growing.CommitteeBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho)
+      (Obligations.Growing.voteK S rho) r' rho.horizon := by
+    have hθ : (K.params.θ : ℚ) = 1 / 2 := rfl
+    have hW : Sy.committeeAheadDur K ⟨E, rho⟩ = 5 * E.ΔAC := by
+      change ((5 : Nat) : Time) * E.ΔAC = _
+      norm_num
+    refine Obligations.Growing.committee_bounds_at S rho hn hv
+      (simTraceAt_goldilocksRun S rho hn hv)
+      (fun _ ht _ => Obligations.Growing.mem_voteK_iff_selected S rho hn hv ht)
+      (Obligations.Growing.voteK_nonempty S rho hn hv) hθ.ge
+      (by change 8 * E.ΔAC ≤ _; rw [hcD]; linarith)
+      hW.ge le_rfl (hh.committeeSleepyOn_from_ready hθ.le (by
+        rw [hW]; change 5 * E.ΔAC ≤ 6 * E.ΔAC; linarith)) hσr
       (le_max_of_le_left ((hσr.trans hrT).trans hT))
   -- conviction below a third on held chains
-  have hcv := Obligations.Growing.chainConvictedBelow_at S A rho hn hv hh.2.2.2.2
-  have hinv' := hinv rho.horizon hT hsvc hB hcv
+  have hcv := Obligations.Growing.chainConvictedBelow_at S A rho hn hv hh.2.2.2.2.1
+  have hinv' := hinv rho.horizon hT hsvc hB hKB hcv
   -- the trace, then the engine
   have hc1 : Regimes.catchUp sp ≤ Sy.cDur K ⟨E, rho⟩ - 1 := by
     change 18 * E.ΔAC ≤ _
     rw [hcD]
     linarith
   have hsafe := Compose.Growing.continued_safe_on_at hrun hnc hseed hsvc
-    (Compose.Growing.CommitteeFacts.of_full hrun hnc rfl)
-    (Compose.Growing.CommitteeBoundsFrom.of_full hrun hB) hinv' hdt
+    (Obligations.Growing.voteK_facts S rho hn hv hnc hrun) hKB hinv' hdt
     (t₀ := Sy.heal K cap i gst ⟨E, rho⟩ - 1) (by linarith) hc1
   have heng := Obligations.Growing.continued_safe_engine_at S rho hn hv hnc
     (by rw [hcD]; linarith) hsafe

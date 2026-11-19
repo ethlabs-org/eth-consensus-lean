@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Continuation
 public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Live
 import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Query
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Members
 import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Accountable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Handover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.PSync
@@ -30,7 +31,9 @@ Each query `q ≥ heal` with deadline `> T` is a confirmed query in the hand-ove
 the read start `t₁` of the seeded invariant of the hand-over query bounded at `T`
 (`handover_invariant_at`: `t_{r+k} ≤ t₁`, `t₁ + 8Δ + 1 ≤ heal ≤ q`), the reset service from
 partial synchrony (`resetService_of_psync_at`), the slot counts from `r` from the sleepy budget
-from `ready` (`sleepy_bounds_at`), conviction below a third on held chains
+from `ready` (`sleepy_bounds_at`), the committee counts of the run's committees `voteK` from `r`
+from the committee budget from `ready` (`Handover.committeeSleepyOn_from_ready`,
+`committee_bounds_at`), conviction below a third on held chains
 (`chainConvictedBelow_at`), all restricted to the deadline, and `ready ≤ t_r ≤ t₁ ≤ q` from the
 seed's timing. The payload bridge for the deadlines after `T` (`proposalLive_txLive_above`) gives
 the transaction reads. -/
@@ -46,11 +49,12 @@ ready reader of the available and the stable output at every deadline
 `t' ∈ [max t heal + ΔAC + lat, horizon]` with `T < t'`, or the run has a hash collision. -/
 theorem continued_live_after_handover (S : Setup) (A : ContractAssumptions S) (V : Type)
     [Fintype V] [DecidableEq V] :
-    let Sy := Model.sysOf schema (compiled (goldilocks { S with vote := AsChainShape.stock })) V
+    let Sy := Model.sysOf schema (compiled (goldilocks S)) V
     let K := goldilocksContract A (contract_coefficients S A)
     ∀ cap g, (cap = .available ∨ cap = .stable) → Sy.schema.output cap = some g →
-      ∀ i gst T r, Sy.Valid r → Sy.Handover K gst T r → Sy.heal K cap i gst r ≤ T →
-        Sy.prog (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) V)
+      ∀ i gst T r, Sy.Valid r → Sy.Handover (shapeProgress (goldilocks S) V).toExternal K gst T r →
+        Sy.heal K cap i gst r ≤ T →
+        Sy.prog (shapeProgress (goldilocks S) V)
           K cap i (Sy.ready K gst r) (Sy.pt r).horizon r →
         (∀ x t t', (Sy.pt r).SubmittedToSome x t →
           max t (Sy.heal K cap i gst r) + (Sy.pt r).env.ΔAC + Sy.lat K cap i r ≤ t' → T < t' →
@@ -76,19 +80,19 @@ theorem continued_live_after_handover (S : Setup) (A : ContractAssumptions S) (V
     norm_num
   -- the seed, its read start `t₁` and the seeded invariant of the query bounded at `T`
   obtain ⟨h0, hb, hp'⟩ := Obligations.Growing.handover_query_at hn hv hx hcap hh hTh hhT
-    ((shapeProgress (goldilocks { S with vote := AsChainShape.stock }) V).mono
+    ((shapeProgress (goldilocks S) V).mono
       le_rfl (hhT.trans hTh) hp)
   obtain ⟨r', σ, hseed, t₁, -, hdt₁, hlate, hinv⟩ :=
     Obligations.Growing.handover_invariant_at
       (Obligations.Growing.handoverQuery S A V hn hv hx hcap i hh hTh) h0 hb hp'
-  have hnc := noCollRun_simTraceAt { S with vote := stock } rho hn hv hx
+  have hnc := noCollRun_simTraceAt S rho hn hv hx
   -- the reset service through the horizon, from partial synchrony
-  have hsvc := Obligations.Growing.resetService_of_psync_at { S with vote := stock } rho hn hv hnc
+  have hsvc := Obligations.Growing.resetService_of_psync_at S rho hn hv hnc
     ((Model.sysOf_delivers_iff _ _ _ _).mp hh.1)
-    (Obligations.Growing.signed_row_service_psync_at { S with vote := stock } rho hn hv)
+    (Obligations.Growing.signed_row_service_psync_at S rho hn hv)
     (Obligations.protoFGDelay_pos _)
   -- the slot counts from `r'` through the horizon, from the sleepy budget from `ready`
-  let sp := ({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf E) hn
+  let sp := (S : Setup).params (Model.pubOf E) hn
   obtain ⟨hσT, hrσ, hgr⟩ : sp.ts σ + 8 * sp.Δ ≤ T ∧ r' + sp.k ≤ σ + 1 ∧
       max gst 0 + 20 * sp.Δ ≤ sp.ts r' := hseed.timing
   have hready : Sy.ready K gst ⟨E, rho⟩ = max gst 0 + 19 * E.ΔAC + 1 := by
@@ -112,18 +116,32 @@ theorem continued_live_after_handover (S : Setup) (A : ContractAssumptions S) (V
     rw [hcD]
     linarith
   have hB :=
-    Obligations.Growing.sleepy_bounds_at { S with vote := stock } rho hn hv le_rfl hhalf hσr
+    Obligations.Growing.sleepy_bounds_at S rho hn hv le_rfl hhalf hσr
+      (le_max_of_le_left ((hσr.trans hrT).trans hTh))
+  -- the committee counts from `r'` through the horizon, from the committee budget from `ready`
+  have hKB : Compose.Growing.CommitteeBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho)
+      (Obligations.Growing.voteK S rho) r' rho.horizon := by
+    have hθ : (K.params.θ : ℚ) = 1 / 2 := rfl
+    have hW : Sy.committeeAheadDur K ⟨E, rho⟩ = 5 * E.ΔAC := by
+      change ((5 : Nat) : Time) * E.ΔAC = _
+      norm_num
+    refine Obligations.Growing.committee_bounds_at S rho hn hv
+      (simTraceAt_goldilocksRun S rho hn hv)
+      (fun _ ht _ => Obligations.Growing.mem_voteK_iff_selected S rho hn hv ht)
+      (Obligations.Growing.voteK_nonempty S rho hn hv) hθ.ge
+      (by change 8 * E.ΔAC ≤ _; rw [hcD]; linarith)
+      hW.ge le_rfl (hh.committeeSleepyOn_from_ready hθ.le (by
+        rw [hW]; change 5 * E.ΔAC ≤ 6 * E.ΔAC; linarith)) hσr
       (le_max_of_le_left ((hσr.trans hrT).trans hTh))
   -- conviction below a third on held chains
-  have hcv := Obligations.Growing.chainConvictedBelow_at S A rho hn hv hh.2.2.2.2
+  have hcv := Obligations.Growing.chainConvictedBelow_at S A rho hn hv hh.2.2.2.2.1
   -- the payload bridge for the deadlines after `T`
   rw [show Sy.trace ⟨E, rho⟩ = _ from ledgerTrace rho, Trace.map_eq]
   refine proposalLive_txLive_above (b := T + 1) hv (c₀ := contract_catchUp S A)
     (by rw [Obligations.contract_catchUp_val]; norm_num) (psync_of_sys hh.1)
     (gst_le_heal K rho cap i gst) ?_ x t t' hsub hdt hTt hth v hv'
   intro q hq hTq hqh hrq
-  let Q : Obligations.Growing.ConfirmedQueryAt { S with vote := stock }
-      ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V :=
+  let Q : Obligations.Growing.ConfirmedQueryAt S A V :=
     ⟨⟨E, rho⟩, hn, cap, hcap, i, gst, q, hv,
       hx, Or.inr (Or.inr (Obligations.Growing.handover_query_regime S A V hh hhT hp hq)), hqh, hrq⟩
   have hqb : Q.deadline ≤ rho.horizon := hqh
@@ -135,7 +153,7 @@ theorem continued_live_after_handover (S : Setup) (A : ContractAssumptions S) (V
     change T ≤ q + (K.params.latency cap i : Time) * E.ΔAC
     exact (le_add_of_nonneg_right (by norm_num : (0 : Time) ≤ 1)).trans hTq
   exact Obligations.Growing.continued_proposal_live_at S A V Q hcv hseed hTQ hsvc' (hB.mono hqb)
-    (hinv Q.deadline hTQ hsvc' (hB.mono hqb) hcv) hp
+    (hKB.mono hqb) (hinv Q.deadline hTQ hsvc' (hB.mono hqb) (hKB.mono hqb) hcv) hp
     (by change Sy.ready K gst ⟨E, rho⟩ ≤ q; rw [hready]; linarith) hdt₁
     (by change t₁ + 8 * sp.Δ ≤ q; linarith)
 

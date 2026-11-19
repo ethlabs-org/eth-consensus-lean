@@ -26,12 +26,13 @@ correctness: the healthy regime past the horizon, and before it the healthy pref
 and the seeded proposal liveness after `T`. -/
 theorem continued_live_growing (hc : GoldilocksCorrect) (S : Setup) (A : ContractAssumptions S)
     (V : Type) [Fintype V] [DecidableEq V] :
-    let Sy := Model.sysOf schema (compiled (goldilocks { S with vote := AsChainShape.stock })) V
+    let Sy := Model.sysOf schema (compiled (goldilocks S)) V
     let K := goldilocksContract A (contract_coefficients S A)
     ∀ cap g, (cap = .available ∨ cap = .stable) → Sy.schema.output cap = some g →
       ∀ i gst T, Sy.Holds
-        (fun r => Sy.Handover K gst T r ∧ Sy.heal K cap i gst r ≤ T ∧
-          Sy.prog (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) V)
+        (fun r => Sy.Handover
+          (shapeProgress (goldilocks S) V).toExternal K gst T r ∧ Sy.heal K cap i gst r ≤ T ∧
+          Sy.prog (shapeProgress (goldilocks S) V)
             K cap i (Sy.ready K gst r) (Sy.pt r).horizon r)
         (fun r => (Sy.trace r).TxLive (Sy.cDur K r) g (Sy.heal K cap i gst r)
           (Sy.lat K cap i r)) := by

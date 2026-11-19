@@ -860,6 +860,7 @@ example := ``Consensus.Goldilocks.goldilocks_continues
 example := ``Consensus.Shape.Tests.Continuation.empty_valid_not_continues
 example := ``Consensus.Shape.Tests.Continuation.excuse_true_not_continues
 example := ``Consensus.Shape.Tests.Continuation.false_progress_not_continues
+example := ``Consensus.Shape.Tests.Continuation.handover_of_full_selection
 example := ``Consensus.Shape.Tests.Continuation.handoverPoint_readyAbove
 example := ``Consensus.Shape.Tests.Continuation.handoverPoint_readyAt
 example := ``Consensus.Shape.Tests.Continuation.handover_witness

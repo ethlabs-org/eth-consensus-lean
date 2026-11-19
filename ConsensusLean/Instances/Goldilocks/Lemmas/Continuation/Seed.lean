@@ -43,10 +43,10 @@ the later member's origin; two of one label through their underlying origins.
 * `Compose.Growing.handover_live_lock_label_at`: every live lock at an honest vote of a slot after
   `σ` has label at least `r` (the drain: the vote is at or after `drainTime a = t_{r+k}`, and a
   live lock expires at most `k` slots after its label).
-* `Obligations.Growing.handover_seed_at`: a healed-safety query healthy up to its bound, with
-  `heal ≤ bound` and progress on `[ready, heal]`, gives a seed at `T = bound` with the FG service
-  delay `protoFGDelay`; `Obligations.Growing.handover_seed_cover_at` also gives its record cover
-  from a start `t₀ ∈ [t_{r+k}, T]` with `t₀ + 8Δ + 1 ≤ heal`. -/
+* `Obligations.Growing.handover_seed_cover_at`: a healed-safety query healthy up to its bound,
+  with `heal ≤ bound` and progress on `[ready, heal]`, gives a seed at `T = bound` with the FG
+  service delay `protoFGDelay`, and its record cover from a start `t₀ ∈ [t_{r+k}, T]` with
+  `t₀ + 8Δ + 1 ≤ heal`. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -333,17 +333,17 @@ query is at most `ready + (R + 8k + 20)Δ`, and the heal margin leaves `8Δ + 1`
 start: `t₀ + 8Δ + 1 ≤ heal`. -/
 theorem handover_seed_cover_at
     (Q : HealthyPreparationQueryAt
-    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V) (h0 : 0 ≤ Q.heal)
+    S A V) (h0 : 0 ≤ Q.heal)
     (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocks { S with vote := stock }) V).prog
-      (shapeProgress (goldilocks { S with vote := stock }) V)
+    (hp : (Sys (goldilocks S) V).prog
+      (shapeProgress (goldilocks S) V)
       (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
     ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys
-        (runProposer { S with vote := stock } Q.run.2 Q.hn)
-        (digestOf { S with vote := stock } Q.run.2) Q.gst
+        (runProposer S Q.run.2 Q.hn)
+        (digestOf S Q.run.2) Q.gst
         (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ
-        (cm := runCommittee { S with vote := stock } Q.run.2 Q.hn)
+        (cm := runCommittee S Q.run.2 Q.hn)
         (βK := (K S A).params.βK) ∧
       ∃ t₀, t₀ ≤ Q.bound ∧ Q.params.ts (r + Q.params.k : Nat) ≤ t₀ ∧
         t₀ + 8 * Q.params.Δ + 1 ≤ Q.heal ∧
@@ -352,23 +352,22 @@ theorem handover_seed_cover_at
             ((SA.lookup (Node.frame (Q.trace.state y n))
               (Q.trace.state y n).ac.latestConfirmed).getD (Q.trace.state y n).fg.F) := by
   obtain ⟨W, Dprep, hlate⟩ := healthy_preparation_initialize_late_at
-    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q h0 hb hp
+    S A V Q h0 hb hp
   obtain ⟨D, -, -, hDq⟩ := healthy_repair_schedule_of_preparation_at
-    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q W Dprep
+    S A V Q W Dprep
   obtain ⟨O⟩ := healthy_bounded_repairing_opening_at
-      { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q hb hp D
+      S A V Q hb hp D
   have hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
-      (runProposer { S with vote := stock } Q.run.2 Q.hn)
-      (digestOf { S with vote := stock } Q.run.2) Q.gst
+      (runProposer S Q.run.2 Q.hn)
+      (digestOf S Q.run.2) Q.gst
         (protoFGDelay (Model.pubOf Q.run.1)) D.resetTime
           Q.bound
-        (runCommittee { S with vote := stock } Q.run.2 Q.hn) (K S A).params.βK :=
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK :=
     { D.reset with
       sync := healthy_preparation_service_at Q.run Q.hn Q.valid Q.noCollision Q.bound_le
         Q.healthy.1
       timeoutDelay := fun s => by
-        have h := protoFGDelay_timeout_of_fgDelay { S with vote := stock }
-          ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V Q.run Q.hn Q.healthy.2.2
+        have h := protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2
         have hδ : (Q.params.toParams.δt : Time) = S.δt := rfl
         rw [Q.params.slotTime_eq, Q.params.slotTime_eq]
         push_cast
@@ -379,8 +378,6 @@ theorem handover_seed_cover_at
   have hdrain : Healing.drainTime Q.params D.resetTime ≤ D.query :=
     (le_max_left _ _).trans ((le_max_right _ _).trans D.lower)
   have hres := D.reserve
-  have hkk : Q.params.k =
-      (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf Q.run.1) Q.hn).k := rfl
   have hT0 : 0 ≤ Q.bound := h0.trans hb
   -- the drain slot `r + k` ends two slots before the slot of `T`
   have hslot : Healing.cleanLabel Q.params D.resetTime + 2 * Q.params.k + 4 ≤
@@ -416,8 +413,7 @@ theorem handover_seed_cover_at
     rw [Healing.drainTime_eq, Healing.cleanLabel_eq]
     congr 2
     omega
-  have hkk : (({ S with vote := stock } : Setup).params (Model.pubOf Q.run.fst) Q.hn).k =
-      (({ S with vote := AsChainShape.stock } : Setup).params (Model.pubOf Q.run.fst) Q.hn).k := rfl
+  have hkk : Q.params.k = (S.params (Model.pubOf Q.run.fst) Q.hn).k := rfl
   refine ⟨Healing.cleanLabel Q.params D.resetTime + Q.params.k + 2, Q.params.slot Q.bound - 2,
     Compose.Growing.HandoverSeed.of_reset hreset rfl ?_
       (by omega) ⟨_, by linarith, hcov⟩,
@@ -428,25 +424,6 @@ theorem handover_seed_cover_at
     simp only [SA.SAParams.ts]; push_cast [show 2 ≤ Q.params.slot Q.bound by omega]; ring
   rw [h]
   exact (SA.ts_le_iff_le_slot Q.params hT0 _).mpr le_rfl
-
-/-- **The hand-over seed of a healed-safety query** healthy up to its bound `T`, with
-`0 ≤ heal ≤ T` and progress on `[ready, heal]` (`handover_seed_cover_at`). -/
-theorem handover_seed_at
-    (Q : HealthyPreparationQueryAt
-    { S with vote := stock } ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩ V) (h0 : 0 ≤ Q.heal)
-    (hb : Q.heal ≤ Q.bound)
-    (hp : (Sys (goldilocks { S with vote := stock }) V).prog
-      (shapeProgress (goldilocks { S with vote := stock }) V)
-      (K S A) Q.cap Q.index
-      Q.ready Q.heal Q.run) :
-    ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys
-      (runProposer { S with vote := stock } Q.run.2 Q.hn)
-      (digestOf { S with vote := stock } Q.run.2) Q.gst
-      (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ
-        (cm := runCommittee { S with vote := stock } Q.run.2 Q.hn)
-        (βK := (K S A).params.βK) :=
-  let ⟨r, σ, h, _⟩ := handover_seed_cover_at S A V Q h0 hb hp
-  ⟨r, σ, h⟩
 
 end Consensus.Goldilocks.Obligations.Growing
 

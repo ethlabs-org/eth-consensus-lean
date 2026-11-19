@@ -410,8 +410,8 @@ and look-ahead `committeeAhead·ΔAC`. Healthy adds a committee fault bound:
 for every nonempty committee selected at `t ∈ [max g 0, horizon]`,
 `|faulty_horizon ∩ K t| < βK · |K t|`.
 Population conditions below remain unchanged. At full selection the population
-bound implies the committee bound under the explicit premise β ≤ βK of
-`healthy_iff_of_full_selection`; the standard values ⅓ and ½ satisfy it.
+bound implies the committee bound when β ≤ βK; the standard values ⅓ and ½
+satisfy it.
 
 | Regime | Definition |
 |---|---|

@@ -230,15 +230,6 @@ theorem opponents_inter_lt_of_retain {η c t d e : Time} (K : Finset V) (hde : d
     _ ≤ ((p.retain d).readyAt c t ∩ K).card :=
         Finset.card_le_card (Finset.inter_subset_inter hR (Finset.Subset.refl _))
 
-/-- A population fault bound below `β ≤ βK` bounds every full committee below `βK`, charged
-at `b`. -/
-theorem HealthyOn.committee_univ {β βK : ℚ} {g b : Time} (h : p.HealthyOn β g b)
-    (hβ : β ≤ βK) : p.CommitteeHealthyOn (fun _ => Finset.univ) βK (max g 0) b := by
-  intro _ _ _ _
-  have h := h.1.trans_le (mul_le_mul_of_nonneg_right hβ
-    (by positivity : (0 : ℚ) ≤ Fintype.card V))
-  simpa [faultCount] using h
-
 end EnvPoint
 
 namespace System.Outage
@@ -270,26 +261,6 @@ theorem committeeSleepy (h : S.Outage X K T b₀ b₁ r) {δ : Time} (h0 : 0 ≤
       (S.committeeAheadDur K r) 0 (S.pt r).horizon := h.2.2.2 δ h0 hδ
 
 end System.Outage
-
-namespace System
-
-/-- At full selection the population bound implies the post-GST committee bound. -/
-theorem healthy_iff_of_full_selection {V : Type} [Fintype V] [DecidableEq V]
-    {S : System V} {Prog : Type} (X : External S) (K : Contract Prog) (r : S.Run)
-    (hfull : ∀ t, X.selected (S.pt r).env (X.ext r) t = Finset.univ)
-    (hβ : K.params.β ≤ K.params.βK) (g : Time) :
-    S.Healthy X K g r ↔ (S.log r).PSync (S.pt r) g ∧
-      (S.pt r).HealthyOn K.params.β g (S.pt r).horizon ∧
-      (S.pt r).env.ΔFG ≤ K.params.fgDelay.val * (S.pt r).env.ΔAC := by
-  constructor
-  · intro h
-    exact ⟨h.1, h.2.1, h.2.2.1⟩
-  · rintro ⟨hn, hp, hd⟩
-    refine ⟨hn, hp, hd, ?_⟩
-    rw [show X.selected (S.pt r).env (X.ext r) = fun _ => Finset.univ from funext hfull]
-    exact hp.committee_univ hβ
-
-end System
 
 end Consensus
 
