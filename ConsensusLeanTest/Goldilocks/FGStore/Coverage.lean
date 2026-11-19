@@ -476,12 +476,12 @@ theorem stCa_failed_entries (Y : NodeBlock P₁ Unit) (hY : IsEntry P₁ Unit st
       all_goals exact absurd hcK.2.2 (by decide)
   · decide
 
-/-- (a) Every premise of `Coverage` holds together on `trV` at `c_F = 1`, `T₁ = Bf`, `T = Bc`,
-`a₀ = 0`, `k_F = 0`, `p = w₀`, `i = 14`, `B*₀ = Bx`, `Pr = Bc`, `R = {aC}`, `X = Bx`, `a₁ = 0`,
-`p₁ = w₀`, `i₁ = 17`, `B*₁ = By`, `Pr₁ = Bx`, `R₁ = {aX}`: a local run; `T`'s good window;
-`T`'s previous height not justified; `T₁` an entry strictly below `T`; every entry after `T₁` up
-to `T` failed (previous height not justified); `X` justifies `T` after cut `14` on `B*₀`'s
-chain; and the good window of the actual successor entry `X`. -/
+/-- (a) Every premise of `Coverage`, and those of the paper's corollary C, hold together on `trV`
+at `c_F = 1`, `T₁ = Bf`, `T = Bc`, `a₀ = 0`, `k_F = 0`, `p = w₀`, `i = 14`, `B*₀ = Bx`, `Pr = Bc`,
+`R = {aC}`, `X = Bx`, `a₁ = 0`, `p₁ = w₀`, `i₁ = 17`, `B*₁ = By`, `Pr₁ = Bx`, `R₁ = {aX}`: a
+local run; `T`'s good window; `T`'s previous height not justified; `T₁` an entry strictly below
+`T`; every entry after `T₁` up to `T` failed (previous height not justified); `X` justifies `T`
+after cut `14` on `B*₀`'s chain; and the good window of the actual successor entry `X`. -/
 theorem trV_coverage_premises :
     FGLocalRun () {w₀} {g₁, Bs, Bf, Bk, Bc, Bx, By} trV ∧
       GoodWindow P₁ Unit {w₀} trV 1 Bc 0 0 w₀ 14 Bx Bc {aC} ∧
@@ -510,8 +510,8 @@ theorem trV_coverage :
       Z.slot ≤ Bc.slot + (0 + 1 + 0) + (0 + 1 + 0) ∧
       ∃ F ∈ (trV.store w₀ (17 + 1)).tree, F.root = ((trV.store w₀ (17 + 1)).σ Z.root).F ∧
         (trV.store w₀ (17 + 1)).Anc Bf F := by
-  obtain ⟨hr, hw, hnb, hT₁, hT₁T, hne, -, hJ, hXB, hw₁⟩ := trV_coverage_premises
-  exact coverage P₁ Unit () {w₀} _ trV hr 1 Bf Bc 0 0 w₀ 14 Bx Bc {aC} hw hnb hT₁ hT₁T hne
+  obtain ⟨hr, hw, hnb, -, hT₁T, -, -, hJ, hXB, hw₁⟩ := trV_coverage_premises
+  exact coverage P₁ Unit () {w₀} _ trV hr 1 Bf Bc 0 0 w₀ 14 Bx Bc {aC} hw hnb hT₁T
     Bx hJ hXB 0 w₀ 17 By Bx {aX} hw₁
 
 /-- (a) The conclusion of `trV_coverage`, concretely and tight: after cut `17`, `By` (slot

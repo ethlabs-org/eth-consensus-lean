@@ -96,7 +96,7 @@ theorem previousHeightNotJustified_entry (P : Params) (ACP : Type) :
 
 /-- G1.8(b), transferring the finalized entry between independently honest windows. -/
 theorem coverage (P : Params) (ACP : Type) : Coverage P ACP := by
-  intro acp₀ H U tr hr cF T₁ T a₀ kF p i Bs Pr R hw hnb _ hT₁T _ X hJX hXB
+  intro acp₀ H U tr hr cF T₁ T a₀ kF p i Bs Pr R hw hnb hT₁T X hJX hXB
     a₁ p₁ i₁ Bs₁ Pr₁ R₁ hw₁
   obtain ⟨X', hJ', hX'B, -, hh', -, -, hZ⟩ :=
     previousHeightNotJustified_entry P ACP acp₀ H U tr hr cF T a₀ kF p i Bs Pr R hw hnb
