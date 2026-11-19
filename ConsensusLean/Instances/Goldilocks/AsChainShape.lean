@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Spec.Shape.Compile
+public import ConsensusLean.Instances.Goldilocks.NodeAsChainShape
 public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Spec.Node.Handlers
 public import Mathlib.Tactic.Linarith
@@ -900,6 +900,229 @@ noncomputable def goldilocks (S : Setup) :
     out := fun g st => if hn : 1 ≤ pub.n then (G hn).out g (st hn) else []
     conflicts := conflicts (binding := binding)
     isFGAtt := isFGAtt (binding := binding) }
+
+/-! ## Equations for the Goldilocks wire and state -/
+
+
+/-- The family uses the Goldilocks duty grid and the setup's voting roles. -/
+theorem goldilocks_skel_eq (S : Setup) (pub : Public) :
+    (goldilocks S pub).skel = skeleton pub S.vote := by rfl
+
+
+/-- Run the node proposal when there is a key; otherwise emit no proposal. -/
+theorem goldilocks_propose_eq (S : Setup) (pub : Public) (st : PubState S pub) (s : Slot) :
+    (goldilocks S pub).propose st s =
+      if hn : 1 ≤ pub.n then (fun _ => (propose (st hn) s).1, (propose (st hn) s).2)
+      else (st, none) := by rfl
+
+
+/-- The proposal poll runs the node tick but emits no proposal directly. -/
+theorem goldilocks_pollPropose_eq (S : Setup) (pub : Public) (st : PubState S pub) (t : Time) :
+    (goldilocks S pub).pollPropose st t =
+      if hn : 1 ≤ pub.n then (fun _ => nodeTick (st hn), none) else (st, none) := by rfl
+
+
+/-- The batch poll runs the Goldilocks poll, or emits nothing with no keys. -/
+theorem goldilocks_pollBatch_eq (S : Setup) (pub : Public) (st : PubState S pub) (t : Time) :
+    (goldilocks S pub).pollBatch st t =
+      if hn : 1 ≤ pub.n then (fun _ => (pollBatch (st hn) t).1, (pollBatch (st hn) t).2)
+      else (st, []) := by rfl
+
+
+/-- Read the node's chain at its current time, or the empty chain with no keys. -/
+theorem goldilocks_out_eq (S : Setup) (pub : Public) (st : PubState S pub) (g : Out) :
+    (goldilocks S pub).out g st =
+      if hn : 1 ≤ pub.n then outOf (st hn).node (st hn).now g else [] := by rfl
+
+
+/-- Embedding a digest skips the reserved genesis root. -/
+theorem taggedRoot_eq (g h : Nat) : taggedRoot g h = (if h < g then h else h + 1) := by rfl
+
+
+/-- Recover a raw digest by undoing the gap at the genesis root. -/
+theorem rawRoot_eq (g r : Nat) : rawRoot g r = (if r < g then r else r - 1) := by rfl
+
+
+/-- A missing or genesis parent is `.root`; any other parent is a raw digest. -/
+theorem parentRef_eq (g : Nat) (r : Option Nat) : parentRef g r = (match r with
+  | none => .root
+  | some r => if r = g then .root else .digest (rawRoot g r)) := by cases r <;> rfl
+
+/-- Decode a parent reference as genesis or a tagged digest. -/
+theorem parentRoot_eq (g : Nat) (p : ParentRef) : parentRoot g p = (match p with
+  | .root => some g
+  | .digest r => some (taggedRoot g r)) := by cases p <;> rfl
+
+/-- Read the digest paired with the first matching header. -/
+theorem rootOf_eq (hs : List (Header Info × Nat)) (h : Header Info) :
+    rootOf hs h = (hs.find? fun q => q.1 == h).map (·.2) := by rfl
+
+
+/-- A block header contains its parent reference, slot, input and encoded payloads. -/
+theorem headerOf_eq (B : Blk sp) : headerOf sp B =
+    ⟨parentRef sp.genesisRoot B.parent, B.slot, B.input, encodeInfo B.fgPayload B.acPayload⟩ := by
+  rfl
+
+
+/-- Reconstruct a block from its header, digest, signer and decoded payloads. -/
+theorem blockOf_eq (d : Nat) (h : Header Info) (k : Fin sp.n) (atts : List (FG.Att sp.n))
+    (p : Payload sp.n) : blockOf sp d h k atts p =
+    ⟨taggedRoot sp.genesisRoot d, parentRoot sp.genesisRoot h.parent,
+      h.pos, k, h.input, atts, p⟩ := by rfl
+
+
+/-- A block object is a proposer-signed header carrying both payloads' objects. -/
+theorem blockObj_eq (B : Blk sp) : blockObj sp (binding := binding) B =
+    .mk (.signed B.proposer (.proposer B.slot)) (.item (headerOf sp B))
+      (payloadObjs (binding := binding) B.fgPayload B.acPayload) := by rfl
+
+
+open Classical in
+/-- Decode a block only if its signature role, carried objects and payload checks agree. -/
+theorem decodeBlock_eq (hs : List (Header Info × Nat)) (o : Wire sp.n binding) :
+    decodeBlock sp hs o = (match o with
+    | .mk (.signed k (.proposer s)) (.item h) cs =>
+      match decodeInfo sp.n h.info, rootOf hs h with
+      | some (atts, p), some d =>
+        let B := blockOf sp d h k atts p
+        if h.pos = s ∧ cs = payloadObjs (binding := binding) atts p ∧
+            (∀ a ∈ atts, a.WellFormed) ∧ SA.validPayload B then some B else none
+      | _, _ => none
+    | _ => none) := by
+  rfl
+
+
+/-- Classify a receipt by trying the block, vote and attestation decoders in order. -/
+theorem canonEvent_eq (hs : List (Header Info × Nat)) (o : Wire sp.n binding) :
+    canonEvent sp ro hs o = (match decodeBlock sp hs o, decodeVoteObj sp o, decodeAttObj sp o with
+    | some B, _, _ => some (.block B)
+    | none, some v, _ => some (.message v)
+    | none, none, some a => some (.attestation a)
+    | none, none, none => none) := by rfl
+
+
+open Classical in
+/-- Dispatch a decoded receipt, relaying newly accepted blocks and attestations. -/
+theorem processOne_eq (hs : List (Header Info × Nat)) (st : State sp ro binding)
+    (o : Wire sp.n binding) :
+    processOne hs st o = (match canonEvent sp ro hs o with
+    | some (.block B) =>
+      let r := Node.onBlock st.self st.node st.now B
+      relayIf (apply st r) (st.node.fg.blocks B.root ≠ some B ∧ r.1.fg.blocks B.root = some B) o
+    | some (.message v) => apply st (Node.onMessage st.self st.node st.now v)
+    | some (.attestation a) => relayIf (apply st (Node.onAttestation st.node a)) True o
+    | _ => st) := by rfl
+
+
+/-- Refuse block-shaped receipts unless they decode to a timely, FG-accepted block. -/
+theorem refuses_iff (hs : List (Header Info × Nat)) (st : State sp ro binding)
+    (o : Wire sp.n binding) :
+    Refuses hs st o ↔ BlockShaped o ∧ ∀ B, canonEvent sp ro hs o = some (.block B) →
+      sp.toParams.slotOf st.now < B.slot ∨ st.node.fg.onBlock B = none := by rfl
+
+
+open Classical in
+/-- Visit the receipt first; descend into its carried objects only if it is not refused. -/
+theorem visit_eq (hs : List (Header Info × Nat)) (st : State sp ro binding)
+    (a : Model.Auth sp.n (ShapeRole binding.Kind)) (m : Msg (Header Info) Body)
+    (cs : List (Wire sp.n binding)) :
+    visit hs st (.mk a m cs) =
+      if Refuses hs st (.mk a m cs) then ([.mk a m cs], processOne hs st (.mk a m cs))
+      else let r := visitList hs (processOne hs st (.mk a m cs)) cs; (.mk a m cs :: r.1, r.2) := by
+  rw [visit]
+
+
+/-- An empty carried list leaves the state unchanged. -/
+theorem visitList_nil_eq (hs : List (Header Info × Nat)) (st : State sp ro binding) :
+    visitList hs st [] = ([], st) := by
+  rw [visitList]
+
+
+/-- Visit the first carried object before the rest, threading the state and receipt order. -/
+theorem visitList_cons_eq (hs : List (Header Info × Nat)) (st : State sp ro binding)
+    (o : Wire sp.n binding) (os : List (Wire sp.n binding)) :
+    visitList hs st (o :: os) =
+      (let r := visit hs st o; let r' := visitList hs r.2 os; (r.1 ++ r'.1, r'.2)) := by
+  rw [visitList]
+
+
+/-- Delivery records the ordered objects returned by the receipt walk. -/
+theorem delivered_eq (hs : List (Header Info × Nat)) (st : State sp ro binding)
+    (o : Wire sp.n binding) :
+    delivered hs st o = (visit hs st o).1 := by rfl
+
+
+/-- Process the delivered objects in order, starting from the original state. -/
+theorem process_eq (st : State sp ro binding) (o : Wire sp.n binding)
+    (hs : List (Header Info × Nat)) :
+    process st o hs = (delivered hs st o).foldl (processOne hs) st := by rfl
+
+
+/-- On own release, clear the relay queue or insert the block with its released digest. -/
+theorem recordOwn_eq (st : State sp ro binding) (o : Wire sp.n binding)
+    (hs : List (Header Info × Nat)) :
+    recordOwn st o hs = (match o with
+    | .mk .none (.data .relay) _ => { st with relayBuf := [] }
+    | .mk (.signed k (.proposer _)) (.item h) _ =>
+      match decodeInfo sp.n h.info, rootOf hs h with
+      | some (atts, p), some d =>
+        apply st (Node.onBlock st.self st.node st.now (blockOf sp d h k atts p))
+      | _, _ => st
+    | _ => st) := by rfl
+
+
+open Classical in
+/-- At a public time, queue AC tick emissions and mark the FG duty due. -/
+theorem nodeTick_eq (st : State sp ro binding) : nodeTick st =
+    if sp.toParams.IsPublic st.now then
+      let r := Node.acCall st.self st.node st.now .tick
+      { apply st (r.1, [r.2]) with fgDue := true }
+    else st := by rfl
+
+
+/-- A proposal updates node state and, if present, encodes the head and payloads. -/
+theorem propose_eq (st : State sp ro binding) (s : Slot) : propose st s =
+    (let r := Node.acProposal st.node st.now
+     let st' := { st with node := r.1 }
+     match r.2.2 with
+     | none => (st', none)
+     | some (d, p) =>
+       let atts := r.1.fg.proposalAttestations d.head
+       (st', some (parentRef sp.genesisRoot (some d.head.root), encodeInfo atts p,
+         payloadObjs atts p))) := by rfl
+
+
+/-- Clear the FG duty flag and queue an attestation if AC supplies an attestable source. -/
+theorem fgUpdate_eq (st : State sp ro binding) : fgUpdate st =
+    (let r := Node.acToFG st.node st.now
+     let st₁ := { st with node := r.1, fgDue := false }
+     match r.2.2 with
+     | none => st₁
+     | some C => match r.1.fg.attest r.1.record st.self C with
+       | none => st₁
+       | some (a, Λ') =>
+         { st₁ with
+           node := (Node.onAttestation { r.1 with record := Λ' } a).1
+           outbox := st₁.outbox ++ [.att (encodeAtt a)] }) := by rfl
+
+
+/-- With no remaining fuel the parent walk returns no headers. -/
+theorem chainTo_zero_eq (blocks : Nat → Option (Blk sp)) (B : Blk sp) :
+    chainTo blocks 0 B = [] := by rfl
+
+
+/-- Walk a non-genesis parent's chain before appending the current header. -/
+theorem chainTo_succ_eq (blocks : Nat → Option (Blk sp)) (fuel : Nat) (B : Blk sp) :
+    chainTo blocks (fuel + 1) B = (if B.root = sp.genesisRoot then [] else
+      (match B.parent.bind blocks with | some Bp => chainTo blocks fuel Bp | none => []) ++
+        [headerOf sp B]) := by
+  rw [chainTo]
+
+
+/-- Restart through the node handler, installing the key and time and clearing the FG duty flag. -/
+theorem restore_eq (k : Fin sp.n) (d : State sp ro binding) (t : Time) : restore k d t =
+    (let r := Node.restart k d.node t
+     { apply { d with self := k, now := t } r with fgDue := false }) := by rfl
 
 end Consensus.Goldilocks.AsChainShape
 

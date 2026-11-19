@@ -928,6 +928,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.A
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.BlockFinality
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.NodeAsChainShape
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main

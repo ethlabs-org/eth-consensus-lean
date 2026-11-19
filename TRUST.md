@@ -38,7 +38,7 @@ unchanged.
 | Part | Paths | Rule |
 |---|---|---|
 | Trusted layers | `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}`, each as `X.lean` and `X/**` | They import only trusted layers, so their closure holds only trusted modules and the pinned base set; it cannot reach proofs, instances, the solution, tests or fixtures. The files, in reading order: [`docs/definition.md`](docs/definition.md#reading-order-the-trusted-files). |
-| Protected layers | `ConsensusLean/Instances/<P>/{Spec,Statements}` (as `X.lean` and `X/**`) and `Instances/<P>/AsChainShape.lean`, for every protocol instance `P` (today Goldilocks) | Not trusted layers, but on the surface: they import only trusted and protected layers, so the closure of the instance endpoint stays inside the surface. |
+| Protected layers | `ConsensusLean/Instances/<P>/{Spec,Statements}` (as `X.lean` and `X/**`), `ConsensusLean/Instances/<P>/AsChainShape.lean`, and `ConsensusLean/Instances/Goldilocks/NodeAsChainShape.lean` | Not trusted layers, but on the surface: they import only trusted and protected layers, so the closure of the instance endpoint stays inside the surface. |
 | Files | `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`, `ConsensusLeanTest/ReviewAxioms.lean`, `ConsensusLeanTest/ReviewGuard.lean` | The certified statements, how they are compared, the toolchain and dependency pins, and the statement and axiom pins. |
 
 The list lives in `scripts/boundaries.toml` (`[checks] trusted_paths`); `check-boundaries.py` requires it to cover
