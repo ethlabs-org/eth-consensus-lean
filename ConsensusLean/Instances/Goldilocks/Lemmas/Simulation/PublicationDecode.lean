@@ -82,8 +82,8 @@ theorem deliverSeq_forward_parent {proposer : Nat → Fin sp.n} {tr : Goldilocks
       DeliverSeq proposer tr dg hs y u
         (visit hs σ₂ (blockObj sp (binding := binding) B)).1 m j' := by
   have hz := canonEvent_forward_none (ro := ro) hs x t (some parent) B
-  rcases visit_cases hs σ (forwardObj sp x t (some parent) B) with ⟨⟨B', hB', -⟩, -⟩ | ⟨-, hv⟩
-  · rw [hz] at hB'; cases hB'
+  rcases visit_cases hs σ (forwardObj sp x t (some parent) B) with ⟨hr, -⟩ | ⟨-, hv⟩
+  · exact absurd hr (not_refuses_of_data _ rfl)
   rw [hv] at h
   cases h with
   | event e he _ _ => rw [hz] at he; cases he

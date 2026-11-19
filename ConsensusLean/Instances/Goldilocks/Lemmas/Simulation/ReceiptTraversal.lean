@@ -88,8 +88,8 @@ theorem deliverSeq_forward_genesis {proposer : Nat → Fin sp.n}
   have hz : canonEvent sp ro (binding := binding) hs (forwardObj sp x t none B) = none := by
     cases hp : binding.participationKind <;>
       simp [canonEvent, forwardObj, decodeBlock, decodeVoteObj, decodeAttObj, hp]
-  rcases visit_cases hs σ (forwardObj sp x t none B) with ⟨⟨B', hB', -⟩, -⟩ | ⟨-, hv⟩
-  · rw [hz] at hB'; cases hB'
+  rcases visit_cases hs σ (forwardObj sp x t none B) with ⟨hr, -⟩ | ⟨-, hv⟩
+  · exact absurd hr (not_refuses_of_data _ rfl)
   rw [hv] at h
   cases h with
   | event e he _ _ => rw [hz] at he; cases he

@@ -202,9 +202,8 @@ theorem delivery_block_payload_processAt (hv : rho.ExecutionValid) {i : Nat} {v 
   subst e
   -- the AC cut exists only if `on_block` accepts `B` at the state the earlier objects leave
   have hacc : ¬ Refuses (Model.digests rho.hash receipt) σ o := by
-    rintro ⟨B', hB', hr'⟩
-    rw [hce, Option.some.injEq, Node.Event.block.injEq] at hB'
-    subst hB'
+    intro hr
+    have hr' := ((refuses_iff_of_canonEvent _ hce).mp hr)
     have hσt : σ.now = u := (foldl_processOne_now _ _ _).trans ht
     simp only [Node.exec, Node.onBlock] at hcut
     rw [hσt] at hr'

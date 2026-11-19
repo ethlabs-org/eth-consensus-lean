@@ -30,6 +30,9 @@ option lean_lib Challenge weak.linter.style.longLine = false
 ## ConsensusLean.Instances.Goldilocks.AsChainShape
 def Consensus.Goldilocks.AsChainShape.Blk : Consensus.Goldilocks.SA.SAParams → Type := fun sp => Consensus.Goldilocks.NodeBlock sp.toParams (Consensus.Goldilocks.SA.Payload sp.n)
   #3042411892/1333364470
+def Consensus.Goldilocks.AsChainShape.BlockShaped : {sp : Consensus.Goldilocks.SA.SAParams} → {binding : optParam.{2} Consensus.Goldilocks.AsChainShape.VoteBinding Consensus.Goldilocks.AsChainShape.stock} → Consensus.Goldilocks.AsChainShape.Wire sp.n binding → Prop := fun {sp} {binding} x => Consensus.Goldilocks.AsChainShape.BlockShaped.match_1.{1} (fun x => Prop) x (fun auth x carried => True) fun x => False
+  #2491142639/4111931528
+def Consensus.Goldilocks.AsChainShape.BlockShaped.match_1 #1590944819/797746538
 induct Consensus.Goldilocks.AsChainShape.Body : Type
   #3931117990/-
 def Consensus.Goldilocks.AsChainShape.Body._sizeOf_1 #443445530/572558448
@@ -125,8 +128,8 @@ def Consensus.Goldilocks.AsChainShape.Out.recOn : {motive : Consensus.Goldilocks
   #2654607931/714019840
 def Consensus.Goldilocks.AsChainShape.PubState : Consensus.Goldilocks.AsChainShape.Setup → Consensus.Model.Public → Type := fun S pub => (hn : LE.le.{0} 1 pub.n) → Consensus.Goldilocks.AsChainShape.State (S.params pub hn) (S.ro (S.params pub hn).n) S.vote
   #2085339393/2801939777
-def Consensus.Goldilocks.AsChainShape.Refuses : {sp : Consensus.Goldilocks.SA.SAParams} → {ro : Consensus.Goldilocks.SA.ReplayOrder sp (List.{0} (Consensus.Goldilocks.FG.Att sp.n))} → {binding : optParam.{2} Consensus.Goldilocks.AsChainShape.VoteBinding Consensus.Goldilocks.AsChainShape.stock} → List.{0} (Prod.{0, 0} (Consensus.Blocks.Header Consensus.Goldilocks.AsChainShape.Info) Nat) → Consensus.Goldilocks.AsChainShape.State sp ro binding → Consensus.Goldilocks.AsChainShape.Wire sp.n binding → Prop := fun {sp} {ro} {binding} hs st o => Exists.{1} fun B => And (Eq.{1} (Consensus.Goldilocks.AsChainShape.canonEvent sp ro hs o) (Option.some.{0} (Consensus.Goldilocks.Node.Event.block B))) (Or (LT.lt.{0} (sp.toParams.slotOf st.now) B.slot) (Eq.{1} (st.node.fg.onBlock B) Option.none.{0}))
-  #154301953/4286201293
+def Consensus.Goldilocks.AsChainShape.Refuses : {sp : Consensus.Goldilocks.SA.SAParams} → {ro : Consensus.Goldilocks.SA.ReplayOrder sp (List.{0} (Consensus.Goldilocks.FG.Att sp.n))} → {binding : optParam.{2} Consensus.Goldilocks.AsChainShape.VoteBinding Consensus.Goldilocks.AsChainShape.stock} → List.{0} (Prod.{0, 0} (Consensus.Blocks.Header Consensus.Goldilocks.AsChainShape.Info) Nat) → Consensus.Goldilocks.AsChainShape.State sp ro binding → Consensus.Goldilocks.AsChainShape.Wire sp.n binding → Prop := fun {sp} {ro} {binding} hs st o => And (Consensus.Goldilocks.AsChainShape.BlockShaped o) (∀ (B : Consensus.Goldilocks.ACInterface.Blk (Consensus.Goldilocks.goldilocksNode sp ro)), Eq.{1} (Consensus.Goldilocks.AsChainShape.canonEvent sp ro hs o) (Option.some.{0} (Consensus.Goldilocks.Node.Event.block B)) → Or (LT.lt.{0} (sp.toParams.slotOf st.now) B.slot) (Eq.{1} (st.node.fg.onBlock B) Option.none.{0}))
+  #154301953/686578737
 induct Consensus.Goldilocks.AsChainShape.Setup : Type 1
   #1772266319/-
 def Consensus.Goldilocks.AsChainShape.Setup._sizeOf_1 #2700494946/2300719651

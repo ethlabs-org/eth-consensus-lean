@@ -93,7 +93,7 @@ theorem held_forward_accepted_before_at (hn : 1 ≤ Fintype.card V) (hv : rho.Ex
     exact ⟨k, (hk.trans_le hcut).le, ha, ht ▸ hstamp ▸ huD⟩
   · obtain ⟨i, hi⟩ := hr
     obtain ⟨k, hk, ha, _, ht⟩ := received_forward_accepted_before_of_released_at S rho hn hv hnc
-      hi hj₀ hy (.refl o) hx hrel hdecode (event_before hi rfl)
+      hi hj₀ hy rfl hx hrel hdecode (event_before hi rfl)
       (by simpa only [hkey] using hF) huD
     exact ⟨k, (hk.trans_le (event_before hi rfl)).le, hkey ▸ ha, ht⟩
 

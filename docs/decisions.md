@@ -161,8 +161,9 @@ detail in `TRUST.md`.
 - **Received payload objects are processed in preorder, except those of a refused block.** A delivery traverses
   the object closure, processing a canonical block before its carried votes and attestations. Wrappers have no
   canonical node event, and nested wrappers do not hide their contents. A block that the node drops as of a future
-  slot, or that the FG refuses, gets no handler for what it carries (composition.tex §"Blocks"); a later delivery
-  can carry those objects again. Processing them anyway would only let the adversary reach a node through blocks it
+  slot, or that the FG refuses, gets no handler for what it carries, and neither does a block-shaped object (a
+  header item) that fails the wire checks (composition.tex §"Blocks": the check drops it with no effect); a later
+  delivery can carry those objects again. Processing them anyway would only let the adversary reach a node through blocks it
   does not accept. The payload votes and attestations of an accepted block get actual message and attestation
   calls. Block-before-payload preserves the block handler's priority (including any vote it emits); the later
   message handlers use the resulting state. The one-vote invariant applies to arbitrary same-time object lists, so

@@ -132,11 +132,8 @@ theorem payload_message_after_accepted_block {sp : SA.SAParams}
       groupRecs proposer dg σ.self σ.node σ.now (Nat.pair i 0) (.block B) ++
       groupRecs proposer dg σ.self (Node.onBlock σ.self σ.node σ.now B).1 σ.now (Nat.pair i 1)
         (.message v) := by
-  have hr : ¬ Refuses hs σ (blockObj sp (binding := stock) B) := by
-    rintro ⟨B', hB', h⟩
-    rw [hc, Option.some.injEq, Node.Event.block.injEq] at hB'
-    subst hB'
-    exact h.elim hslot hfg
+  have hr : ¬ Refuses hs σ (blockObj sp (binding := stock) B) := fun h =>
+    ((refuses_iff_of_canonEvent hs hc).mp h).elim hslot hfg
   have hd : delivered hs σ (blockObj sp (binding := stock) B) = [blockObj sp B, voteObj v] := by
     have hcar : (blockObj sp (binding := stock) B).carried = [voteObj v] := by
       simp [blockObj, Model.Obj.carried, payloadObjs, ha, hp]
@@ -165,9 +162,35 @@ theorem payload_skipped_after_refused_block {sp : SA.SAParams}
     unfold delivered
     rcases visit_cases hs σ (blockObj sp (binding := stock) B) with ⟨-, hv⟩ | ⟨hr, -⟩
     · rw [hv]
-    · exact absurd ⟨B, hc, hrefused⟩ hr
+    · exact absurd ((refuses_iff_of_canonEvent hs hc).mpr hrefused) hr
   rw [hd]
   simp [deliverRecs_cons, deliverRecs_nil, hc]
+
+omit [DecidableEq V] in
+/-- A proposer-signed header that fails the wire checks (no canonical block) is dropped with no
+effect, also for what it carries: a delivery of it makes no handler call, so the vote it carries
+is not processed (composition.tex §"Blocks"). -/
+theorem undecoded_block_dropped {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
+    (hs : List (Blocks.Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
+    (σ : State sp ro stock) (k : Fin sp.n) (s : Nat) (h : Blocks.Header Info)
+    (v : SA.Vote sp.n)
+    (hc : canonEvent sp ro hs
+      (.mk (.signed k (.proposer s)) (.item h) [voteObj (binding := stock) v]) = none) :
+    deliverRecs (binding := stock) proposer dg hs self t i
+      (delivered hs σ (.mk (.signed k (.proposer s)) (.item h) [voteObj v])) σ.node 0 = [] := by
+  have hr : Refuses hs σ (.mk (.signed k (.proposer s)) (.item h) [voteObj (binding := stock) v]) :=
+    ⟨trivial, fun B hB => by rw [hc] at hB; cases hB⟩
+  have hd : delivered hs σ (.mk (.signed k (.proposer s)) (.item h) [voteObj (binding := stock) v])
+      = [.mk (.signed k (.proposer s)) (.item h) [voteObj v]] := by
+    unfold delivered
+    rcases visit_cases hs σ (.mk (.signed k (.proposer s)) (.item h) [voteObj (binding := stock) v])
+      with ⟨-, hv⟩ | ⟨hn, -⟩
+    · rw [hv]
+    · exact absurd hr hn
+  rw [hd, deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ hc, deliverRecs_nil]
 
 omit [DecidableEq V] in
 /-- Two nested relay wrappers still execute the carried vote's message handler, with its
@@ -185,9 +208,9 @@ theorem nested_payload_message {sp : SA.SAParams}
       [.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v]],
         .mk .none (.data .relay) [voteObj v], voteObj (binding := stock) v] := by
     unfold delivered
-    rw [visit_of_not_refuses hs (not_refuses_of_canonEvent hs (canonEvent_data_ne_block rfl)),
+    rw [visit_of_not_refuses hs (not_refuses_of_data hs rfl),
       Model.Obj.carried, visitList_cons,
-      visit_of_not_refuses hs (not_refuses_of_canonEvent hs (canonEvent_data_ne_block rfl)),
+      visit_of_not_refuses hs (not_refuses_of_data hs rfl),
       Model.Obj.carried, visitList_cons,
       visit_of_carried_eq_nil hs _ (o := voteObj (binding := stock) v) rfl]
     simp [visitList]
