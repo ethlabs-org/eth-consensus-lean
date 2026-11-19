@@ -190,12 +190,20 @@ theorem growth_run_slashable : growthRun.Slashable growthRun.Observed 1 := by
         change forgedBit ∈ closure (growthRun.stateBefore 4 0).seen
         decide⟩
 
+/-- Slashing protection never fires on the run: every honest signing repeats the same bit. -/
+theorem growth_run_guardIdle : growthRun.GuardIdle := by
+  intro i
+  rcases Nat.lt_or_ge i 4 with h | h
+  · interval_cases i <;> decide
+  · have hn : growthRun.events[i]? = none := List.getElem?_eq_none (by simpa [growthRun] using h)
+    simp [Run.guardRefusalsAt, hn]
+
 /-- The same key cannot be convicted by the honest evidence collected before exposure. -/
 theorem growth_run_nonframing_before :
     ¬ growthRun.Slashable
       {o | ∃ v i, i ≤ growthRun.events.length ∧ growthRun.cutTime i ≤ 0 ∧
         o ∈ growthRun.ViewIdx v i} 1 :=
-  growthRun.honestNeverSlashed growth_run_valid 1 0
+  growthRun.honestNeverSlashed growth_run_valid growth_run_guardIdle 1 0
     (by simp [growthRun, faults])
 
 /-- Compromise is not a restart: the exposed node's honest history remains in `seen`. -/

@@ -27,9 +27,10 @@ liveness applies:
 * `silent`: no proposals, empty outputs: liveness fails;
 * `proposeButGenesis`: proposals, but outputs stay empty: liveness fails;
 * `fabricated`: an output header nobody signed: output validity fails;
-* `conflictsTrue_silent`: a protocol that outputs its own proposals, but whose
-  `conflicts` is always true, so engine slashing protection releases no
-  signed object; its outputs stay empty and liveness fails.
+* `conflictsTrue_rejected`: a protocol that outputs its own proposals, but whose
+  `conflicts` is always true, cannot meet both the slashing-protection
+  obligation and the claims: with no candidate refused it signs nothing, so
+  its outputs stay empty and liveness fails.
 
 Positive control (`recorder_live`, `recorder_live_testK`): the same protocol
 with `conflicts` false records its released proposals into its output and
@@ -267,7 +268,7 @@ theorem fabricated :
   obtain ⟨j, _, hj, _⟩ := r.mem_viewIdx_iff.mp hmem
   exact Nat.not_lt_zero _ hj
 
-/-! ## Silenced by its own slashing rule -/
+/-! ## Rejected by its own slashing rule -/
 
 /-- A protocol that proposes and votes at every slot and outputs the headers
 of its own released signed items, with `conflicts` constantly `conf`. -/
@@ -300,11 +301,11 @@ theorem familyC_act (conf : Bool) (st : (protoOf (compiled (familyC conf)) E).St
   cases d <;> rfl
 
 omit [DecidableEq V] in
-/-- With `conflicts` always true, a tick records only unsigned objects, which
-leave the state unchanged. -/
+/-- With `conflicts` always true and no candidate refused, a tick records only unsigned objects,
+which leave the state unchanged. -/
 theorem familyC_tick_state (rho : Model.Run (compiled (familyC true)) E)
     (nd : Model.Node (protoOf (compiled (familyC true)) E)) (v : V) (t : Time)
-    (h : nd.st.1 = []) : (rho.tick nd v t).1.st.1 = [] := by
+    (hg : rho.tickRefusals nd v t = []) (h : nd.st.1 = []) : (rho.tick nd v t).1.st.1 = [] := by
   refine rho.tick_invariant (fun s => s.1 = []) nd v t
     (fun s d _ hs => by rw [familyC_act]; exact hs) ?_ h
   intro s o hs ho hst
@@ -313,66 +314,74 @@ theorem familyC_tick_state (rho : Model.Run (compiled (familyC true)) E)
     cases a with
     | signed k' r => simp [Model.Obj.signer?, Model.Obj.auth] at hn
     | none => exact hst
-  · obtain ⟨cs, -, h2, -⟩ := rho.tick_flat nd v t
+  · obtain ⟨cs, h2, h3⟩ := rho.tick_flat_guard nd v t
     rw [h2] at ho
-    have := Model.releaseAll_noConflict ho ho hk hk
+    rw [h3] at hg
+    have := Model.releaseAll_noConflict hg ho ho hk hk
     cases this
 
-/-- Every node's state (its output) stays empty along every run of `familyC`. -/
-theorem familyC_state (rho : Model.Run (compiled (familyC true)) E) (i : Nat) (v : V) :
-    (rho.stateBefore i v).st.1 = [] := by
-  unfold Model.Run.stateBefore
-  generalize rho.events.take i = es
-  suffices h : ∀ (w : V → Model.Node (protoOf (compiled (familyC true)) E)),
-      (∀ v, (w v).st.1 = []) → ∀ v, (es.foldl rho.step w v).st.1 = [] from
-    h _ (fun _ => rfl) v
-  induction es with
-  | nil => exact fun w hw => hw
-  | cons e es ih =>
-    intro w hw
-    apply ih
+/-- With no candidate refused, every node's state (its output) stays empty along a run of
+`familyC`. -/
+theorem familyC_state (rho : Model.Run (compiled (familyC true)) E) (hg : rho.GuardIdle)
+    (i : Nat) : ∀ v, (rho.stateBefore i v).st.1 = [] := by
+  induction i with
+  | zero => intro _; rfl
+  | succ i ih =>
     intro u
-    cases e with
-    | tick x t =>
-      simp only [Model.Run.step]
-      by_cases hux : u = x
-      · subst hux
-        rw [Function.update_self]
-        exact familyC_tick_state rho _ u t (hw u)
-      · rw [Function.update_of_ne hux]
-        exact hw u
-    | deliver x o t =>
-      simp only [Model.Run.step]
-      by_cases hux : u = x
-      · subst hux
-        rw [Function.update_self]
-        exact hw u
-      · rw [Function.update_of_ne hux]
-        exact hw u
-    | restart x t =>
-      simp only [Model.Run.step]
-      by_cases hux : u = x
-      · subst hux
-        rw [Function.update_self]
-        exact hw u
-      · rw [Function.update_of_ne hux]
-        exact hw u
+    cases he : rho.events[i]? with
+    | none =>
+      have hs : rho.stateBefore (i + 1) = rho.stateBefore i := by
+        simp only [Model.Run.stateBefore, List.take_add_one, he, Option.toList_none,
+          List.append_nil]
+      rw [hs]
+      exact ih u
+    | some e =>
+      rw [rho.stateBefore_succ he]
+      have hgi := hg i
+      cases e with
+      | tick x t =>
+        simp only [Model.Run.step]
+        by_cases hux : u = x
+        · subst hux
+          rw [Function.update_self]
+          simp only [Model.Run.guardRefusalsAt, he] at hgi
+          exact familyC_tick_state rho _ u t hgi (ih u)
+        · rw [Function.update_of_ne hux]
+          exact ih u
+      | deliver x o t =>
+        simp only [Model.Run.step]
+        by_cases hux : u = x
+        · subst hux
+          rw [Function.update_self]
+          exact ih u
+        · rw [Function.update_of_ne hux]
+          exact ih u
+      | restart x t =>
+        simp only [Model.Run.step]
+        by_cases hux : u = x
+        · subst hux
+          rw [Function.update_self]
+          exact ih u
+        · rw [Function.update_of_ne hux]
+          exact ih u
 
 end C
 
-/-- Slashing protection silences a protocol whose `conflicts` is always true:
-it releases no signed object, so it never records a proposal and its output
-stays empty; liveness refutes it. -/
-theorem conflictsTrue_silent :
-    ¬ ShapeClaimsOnAt (familyC true) testK (Fin 1) (fun p => p.ConstantFaults) :=
-  refuted_of_empty _ testSel (by
+/-- A protocol whose `conflicts` is always true cannot meet both the slashing-protection
+obligation and the claims: with no candidate refused it releases no signed object, so it never
+records a proposal and its output stays empty; liveness refutes it. -/
+theorem conflictsTrue_rejected :
+    ¬ (GuardIdleAlways (familyC true) ∧
+      ShapeClaimsOnAt (familyC true) testK (Fin 1) (fun p => p.ConstantFaults)) := fun ⟨hg, hc⟩ =>
+  refuted_of_empty (familyC true) testSel (by
       intro r
       cases r with
       | proposer s =>
         exact (by decide : (Finset.univ : Finset (Fin (Fintype.card (Fin 1)))).card = 1)
       | duty s k => rfl
       | poll => rfl)
-    (fun _ => Finset.univ_nonempty) (fun rho _ v i => familyC_state rho i v)
+    (fun _ => Finset.univ_nonempty)
+    (fun rho hv v i => familyC_state rho (hg (Fin 1) ⟨env, rho⟩ hv) i v) hc
 
 
 /-! ## Positive control: recording own proposals is live -/
@@ -405,8 +414,8 @@ theorem releaseAll_mono (conf : Bool) (hash : (protoOf (compiled (familyC conf))
     · exact ih nd hh
 
 omit [DecidableEq V] in
-/-- With `conflicts` false, a release round releases every candidate that
-carries nothing, and records each such signed item in the output. -/
+/-- A release round releases every candidate that carries nothing, and records each such
+signed item in the output. -/
 theorem releaseAll_record (hash : (protoOf (compiled (familyC false)) E).Item → Nat)
     (k : Key (pubOf E)) (cs : List (protoOf (compiled (familyC false)) E).Object)
     (nd : Model.Node (protoOf (compiled (familyC false)) E)) {k' r}
@@ -426,13 +435,7 @@ theorem releaseAll_record (hash : (protoOf (compiled (familyC false)) E).Item �
       · rename_i hn
         have hrl : Model.releasable nd.seen
             (Obj.mk (.signed k' r) (.item h) []) = true := rfl
-        have hpr : Model.protects (protoOf (compiled (familyC false)) E) k nd.seen
-            (Obj.mk (.signed k' r) (.item h) []) = true := by
-          unfold Model.protects
-          split
-          · exact List.all_eq_true.mpr fun _ _ => Bool.or_true _
-          · rfl
-        exact absurd (Bool.and_eq_true_iff.mpr ⟨Bool.and_eq_true_iff.mpr ⟨hrl, hpr⟩, rfl⟩) hn
+        exact absurd (Bool.and_eq_true_iff.mpr ⟨hrl, rfl⟩) hn
     · split
       · exact ⟨List.mem_cons_of_mem _ (ih _ hc').1, (ih _ hc').2⟩
       · exact ih nd hc'

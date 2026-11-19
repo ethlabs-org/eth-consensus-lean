@@ -581,7 +581,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMa
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunTransport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Schedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Signing
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.SigningPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Simulates
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.SleepyWindows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State

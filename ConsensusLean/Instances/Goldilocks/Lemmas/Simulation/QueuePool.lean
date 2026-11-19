@@ -14,8 +14,7 @@ public section
 Every pending admission envelope keeps its vote in the stored pool: through the shape handlers,
 every duty prefix (`runDuties_voteForward_in_pool`) and delivery processing
 (`delivery_voteForward_in_pool`); the stored pool only grows along a duty prefix
-(`runDuties_pool_subset`). Also the poll-attestation protection premise `PollAttProtected` of the
-engine inventory (`Queue`), with its characterisation `pollAttProtected_iff`. -/
+(`runDuties_pool_subset`). -/
 
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape
@@ -220,29 +219,6 @@ theorem runDuties_pool_subset (v : V)
     (fun st s h => by rw [propose_pool_eq]; exact h)
     (fun st h => nodeTick_pool_subset st σ h)
     (fun st t h => by rw [poll_pool_eq]; exact h) v nd ds hm
-
-/-- **Poll-attestation protection**: at every actual duty cut of a key not faulty at `0`, the
-ordinary attestation of a scheduled poll passes the own-signature guard. Under constant faults it
-is `engine_poll_att_protected`; under growing faults, `engine_poll_att_protected_at`. -/
-def PollAttProtected : Prop :=
-  ∀ (v : V), v ∉ rho.faultyAt 0 → ∀ {i p : Nat} {nd} {k : Nat}, EngineDutyCut S rho v i p nd →
-    ((∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
-        ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
-      ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
-        ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some (.poll k)) →
-    rho.ownKey v ∈ rho.sel .poll → ∀ {w cs}, (poll (nd.st.1 hn) k).2 = some (.att w, cs) →
-    Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
-      (.mk (.signed (rho.ownKey v) .poll) (.data (.att w)) []) = true
-
-theorem pollAttProtected_iff : PollAttProtected S rho hn ↔
-    ∀ (v : V), v ∉ rho.faultyAt 0 → ∀ {i p : Nat} {nd} {k : Nat}, EngineDutyCut S rho v i p nd →
-      ((∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
-          ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
-        ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
-          ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some (.poll k)) →
-      rho.ownKey v ∈ rho.sel .poll → ∀ {w cs}, (poll (nd.st.1 hn) k).2 = some (.att w, cs) →
-      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
-        (.mk (.signed (rho.ownKey v) .poll) (.data (.att w)) []) = true := Iff.rfl
 
 /-- Delivery processing keeps every queued admission's vote in the final pool. The actual
 event-boundary queue is empty, and none of the delivery handlers restarts the AC. -/

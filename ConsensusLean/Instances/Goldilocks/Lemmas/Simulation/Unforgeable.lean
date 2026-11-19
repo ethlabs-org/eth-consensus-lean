@@ -112,9 +112,9 @@ theorem released_block_cut_of (hv : rho.ExecutionValid)
         blockObj (S.params (pubOf E) hn) C → B = C)
     (hb : blockObj (S.params (pubOf E) hn) B ∈ rho.releasesAt i) :
     ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).OwnBlockAt B.proposer k B := by
-  have hhead : ∀ seen ob,
-      blockObj (S.params (pubOf E) hn) B ∉ relHead S rho v seen ob := by
-    intro seen ob h
+  have hhead : ∀ ob,
+      blockObj (S.params (pubOf E) hn) B ∉ relHead S rho v ob := by
+    intro ob h
     obtain ⟨q, _, heq⟩ := mem_relHead S rho h
     have hh := congrArg Model.Obj.msg heq
     cases hh
@@ -128,13 +128,13 @@ theorem released_block_cut_of (hv : rho.ExecutionValid)
         · rcases List.mem_append.mp hb with hb | hb
           · rcases List.mem_append.mp hb with hb | hb
             · rcases List.mem_append.mp hb with hb | hb
-              · exact False.elim (hhead _ _ hb)
+              · exact False.elim (hhead _ hb)
               · exact hb
             · rcases List.mem_append.mp hb with hb | hb
-              · exact False.elim (hhead _ _ hb)
+              · exact False.elim (hhead _ hb)
               · rcases hF _ hb with ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
                 all_goals have hh := congrArg Model.Obj.msg heq; cases hh
-          · exact False.elim (hhead _ _ hb)
+          · exact False.elim (hhead _ hb)
         · have hh := hG _ hb
           cases hh
       rw [hR4] at hb4
@@ -145,7 +145,7 @@ theorem released_block_cut_of (hv : rho.ExecutionValid)
       subst C
       exact ownBlock_of_tick_cut S rho hn he hp hc
     · rcases tick_other_releases S rho hn hv (hv' he) he hp _ hb with h | h
-      · exact False.elim (hhead _ _ h)
+      · exact False.elim (hhead _ h)
       · cases h
   · have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
     simp only [Model.Run.releasesAt, he, Model.Run.deliver] at hb
@@ -296,10 +296,10 @@ theorem released_vote_cut_of (hv : rho.ExecutionValid)
     by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
     · obtain ⟨N4, N5, Q, R4, F, G, hr, _, _, hF, hG, _, hQ, hR4, _⟩ :=
         tick_public_analysis S rho hn hv (hv' he) he hp (hpre he)
-      have hq : ∀ seen ob, (∀ b, ob = some b → b ∈ Q) →
-          voteObj m ∈ relHead S rho v seen ob →
+      have hq : ∀ ob, (∀ b, ob = some b → b ∈ Q) →
+          voteObj m ∈ relHead S rho v ob →
           ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).EmitAt (rho.ownKey v) k m := by
-        intro seen ob hmem hb
+        intro ob hmem hb
         obtain ⟨b, hob, heq⟩ := mem_relHead S rho hb
         have hbq := hmem b hob
         rw [hbody b heq, hQ] at hbq
@@ -318,10 +318,10 @@ theorem released_vote_cut_of (hv : rho.ExecutionValid)
               have hh := congrArg Model.Obj.msg heq
               cases hh
           · rcases List.mem_append.mp hb with hb | hb
-            · exact hq _ _ (fun _ h => List.mem_of_mem_head? h) hb
+            · exact hq _ (fun _ h => List.mem_of_mem_head? h) hb
             · rcases hF _ hb with ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
               all_goals have hh := congrArg Model.Obj.msg heq; cases hh
-        · exact hq _ _ (fun _ h => List.mem_of_mem_tail (List.mem_of_mem_head? h)) hb
+        · exact hq _ (fun _ h => List.mem_of_mem_tail (List.mem_of_mem_head? h)) hb
       · have hh := hG _ hb; cases hh
     · rcases tick_other_releases S rho hn hv (hv' he) he hp _ hb with hb | hb
       · obtain ⟨b, hb, _⟩ := mem_relHead S rho hb

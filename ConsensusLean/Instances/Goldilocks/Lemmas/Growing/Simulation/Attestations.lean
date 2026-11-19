@@ -27,9 +27,9 @@ theorem att_released_inv_at (hv : rho.ExecutionValid)
   have hv' : v ∉ rho.faultyAt 0 := event_honest_zero S rho hv he
   obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v j
   obtain ⟨hvote, -⟩ := (atMostOneVote_iff _).1 hamo
-  have hnotpend : ∀ seen, (attObj b : (Model.protoOf (compiled (goldilocks S)) E).Object) ∉
-      relHead S rho v seen (stateAt S rho hn v j).outbox.head? := by
-    intro seen h
+  have hnotpend : (attObj b : (Model.protoOf (compiled (goldilocks S)) E).Object) ∉
+      relHead S rho v (stateAt S rho hn v j).outbox.head? := by
+    intro h
     obtain ⟨q, hq, hqo⟩ := mem_relHead S rho h
     obtain ⟨w, rfl⟩ := hvote q (List.mem_of_mem_head? hq)
     exact absurd (attObj_eq_pollObj S rho hqo).1 (by simp)
@@ -38,13 +38,13 @@ theorem att_released_inv_at (hv : rho.ExecutionValid)
     obtain ⟨N4, N5, Q, R4, F, G, heq, -, -, hF, hG, -, hQ, hR4, -⟩ :=
       tick_public_analysis S rho hn hv hv' he hp (preNode_releasable_at S rho hn hv he)
     rw [heq] at hb
-    have hQmem : ∀ seen ob, ob ∈ [Q.head?, Q.tail.head?] →
+    have hQmem : ∀ ob, ob ∈ [Q.head?, Q.tail.head?] →
         (attObj b : (Model.protoOf (compiled
-            (goldilocks S)) E).Object) ∈ relHead S rho v seen ob →
+            (goldilocks S)) E).Object) ∈ relHead S rho v ob →
         ∃ C, Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn)
           (digestOf S rho) (rho.ownKey v)
           (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 := by
-      intro seen ob hob h
+      intro ob hob h
       obtain ⟨q, rfl, hqo⟩ := mem_relHead S rho h
       obtain ⟨hq, -⟩ := attObj_eq_pollObj S rho hqo
       have hqQ : q ∈ Q := by
@@ -61,19 +61,19 @@ theorem att_released_inv_at (hv : rho.ExecutionValid)
     · exact absurd (hG _ h) (by simp [attObj, Model.Obj.auth])
     rcases List.mem_append.mp hb with hb | h
     swap
-    · exact hQmem _ _ (by simp) h
+    · exact hQmem _ (by simp) h
     rcases List.mem_append.mp hb with hb | h
     swap
     · rcases List.mem_append.mp h with h | h
-      · exact hQmem _ _ (by simp) h
+      · exact hQmem _ (by simp) h
       · rcases hF _ h with ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
         all_goals have hm := congrArg Model.Obj.msg heq; cases hm
     rcases List.mem_append.mp hb with h | h
-    · exact absurd h (hnotpend _)
+    · exact absurd h hnotpend
     · rw [hR4] at h; exact absurd h (attObj_not_mem_blockObjs S hn b _)
   · exfalso
     rcases tick_other_releases S rho hn hv hv' he hp _ hb with h | h
-    · exact hnotpend _ h
+    · exact hnotpend h
     · exact absurd h (by simp [attObj, Model.Obj.auth])
 
 /-- A genuine attestation release has an earlier signing cut in the same engine prefix. -/

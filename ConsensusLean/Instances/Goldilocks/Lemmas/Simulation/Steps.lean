@@ -10,10 +10,7 @@ inside honest engine ticks, deliveries and restarts. Public-time ticks execute t
 non-public ticks leave the node unchanged. These event-local facts support the simulating
 trace's run laws and cut-map assembly.
 
-The `*_of_protected` forms take the poll-attestation protection (`PollAttProtected`) as a premise;
-the constant-fault forms here, of these and of `Queue`'s inventories, supply it from
-`engine_poll_att_protected`, and `Growing/Simulation/Steps` from
-`engine_poll_att_protected_at`. -/
+-/
 
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape
@@ -28,9 +25,8 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The release guarantee applies to the selected proposal at its scheduled slot start. -/
-theorem proposal_releasable_of_protected (hprot : PollAttProtected S rho hn)
-    (hv : rho.ExecutionValid)
-    (v : V) (hv' : v ∉ rho.faultyAt 0) (i : Nat)
+theorem proposal_releasable (hv : rho.ExecutionValid)
+    (v : V) (i : Nat)
     (t : Time) (he : rho.events[i]? = some (.tick v t)) (s : Slot) (par : ParentRef)
     (info : Info) (cs : List (Wire (Fintype.card V) S.vote))
     (hs : 0 < s) (hone : (skeleton (pubOf E) S.vote).proposeAt t = [.propose s hs])
@@ -38,7 +34,7 @@ theorem proposal_releasable_of_protected (hprot : PollAttProtected S rho hn)
     (hprop : (propose (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)) s).2 =
       some (par, info, cs)) :
     ∀ o ∈ cs, o ∈ Model.closure (atProposal S rho v (rho.stateBefore i v) t).seen := by
-  apply scheduled_proposal_releasable_of_protected S rho hn hprot hv hv' (i := i) (p := 3) (t := t)
+  apply scheduled_proposal_releasable S rho hn hv (i := i) (p := 3) (t := t)
     (s := s)
     (hprop := hprop)
   rw [engineProposalAt_iff]
@@ -52,9 +48,8 @@ theorem proposal_releasable_of_protected (hprot : PollAttProtected S rho hn)
 
 /-- **`SimulatesAt.tick_public`'s node step.** An engine tick of an honest node at a public
 time runs the node's tick with the encoded mempool on the node state before it. -/
-theorem node_of_tick_public_of_protected (hprot : PollAttProtected S rho hn)
-    (hv : rho.ExecutionValid)
-    (v : V) (hv' : v ∉ rho.faultyAt 0) (i : Nat)
+theorem node_of_tick_public (hv : rho.ExecutionValid)
+    (v : V) (i : Nat)
     (t : Time) (he : rho.events[i]? = some (.tick v t))
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
     (stateAt S rho hn v (i + 1)).node =
@@ -125,41 +120,10 @@ theorem node_of_tick_public_of_protected (hprot : PollAttProtected S rho hn)
       dutyStep_propose_node S rho hn v _ s hs (selValid_proposer S rho hn hv.selValid s) hPself
         (by rw [hPnow, hts']; exact slotOf_slotTime _ s) (hPnow.trans hts')
         (fun hselected par info cs hprop =>
-          proposal_releasable_of_protected S rho hn hprot hv v hv' i t he s par info cs hs hone
+          proposal_releasable S rho hn hv v i t he s par info cs hs hone
             hselected hprop)]
     erw [hPnode, hPnow, hPmem]
 
-
-/-- Constant faults give the poll-attestation protection (`engine_poll_att_protected`). -/
-private theorem pollAttProtected_of_constant (hf : rho.point.ConstantFaults)
-    (hv : rho.ExecutionValid) : PollAttProtected S rho hn :=
-  (pollAttProtected_iff S rho hn).2 fun _ hv' _ _ _ _ hc hd hsel _ _ hm =>
-    engine_poll_att_protected S rho hn hf hv hv' hc hd hsel hm
-
-/-- The release guarantee applies to the selected proposal at its scheduled slot start. -/
-theorem proposal_releasable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (v : V) (hv' : v ∉ rho.faultyAt 0) (i : Nat)
-    (t : Time) (he : rho.events[i]? = some (.tick v t)) (s : Slot) (par : ParentRef)
-    (info : Info) (cs : List (Wire (Fintype.card V) S.vote))
-    (hs : 0 < s) (hone : (skeleton (pubOf E) S.vote).proposeAt t = [.propose s hs])
-    (hselected : rho.ownKey v ∈ rho.sel (.proposer s))
-    (hprop : (propose (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)) s).2 =
-      some (par, info, cs)) :
-    ∀ o ∈ cs, o ∈ Model.closure (atProposal S rho v (rho.stateBefore i v) t).seen :=
-  proposal_releasable_of_protected S rho hn (pollAttProtected_of_constant S rho hn hf hv) hv v hv' i
-    t he s par info cs hs hone hselected hprop
-
-/-- **`SimulatesAt.tick_public`'s node step.** An engine tick of an honest node at a public
-time runs the node's tick with the encoded mempool on the node state before it. -/
-theorem node_of_tick_public (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    (v : V) (hv' : v ∉ rho.faultyAt 0) (i : Nat)
-    (t : Time) (he : rho.events[i]? = some (.tick v t))
-    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
-    (stateAt S rho hn v (i + 1)).node =
-      (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
-        (.tick (encodeTxs (Model.mempool rho.inbox v t)))).1 :=
-  node_of_tick_public_of_protected S rho hn (pollAttProtected_of_constant S rho hn hf hv) hv v hv' i
-    t he hp
 
 end Engine
 

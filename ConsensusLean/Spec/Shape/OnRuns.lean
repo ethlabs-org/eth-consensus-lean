@@ -7,6 +7,8 @@ public import ConsensusLean.Spec.Shape.Obligations
 
 `ShapeClaimsOnAt F K V Q` is `ShapeClaimsAt F K V` with each field restricted to
 the runs whose environment point satisfies `Q`; nothing else differs.
+The slashing-protection obligation `GuardIdleAlways` stays unrestricted, as admissibility does:
+it is a property of honest code, not of the run's environment point.
 `ShapeObligationsOn F K Q` is `ShapeObligations F K` with those claims. At
 `Q = ConstantFaults` (the static adversary) this is the shape obligations of the
 static model, which `Review.ObligationsSufficientOn` turns into
@@ -65,7 +67,7 @@ structure ShapeClaimsOnAt (F : ChainShapeFamily O Info) (K : Contract ProgressRe
         ((Sys F V).recoveryAt K b₁ r)
 
 /-- `ShapeObligations` with the claims restricted to the runs whose point satisfies
-`Q`; admissibility, service, progress fit and tolerance unchanged. -/
+`Q`; admissibility, service, progress fit, tolerance and slashing protection unchanged. -/
 structure ShapeObligationsOn (F : ChainShapeFamily O Info) (K : Contract ProgressReq)
     (Q : ∀ V : Type, EnvPoint V → Prop) : Prop where
   claims : ∀ (V : Type) [Fintype V] [DecidableEq V], ShapeClaimsOnAt F K V (Q V)
@@ -73,6 +75,7 @@ structure ShapeObligationsOn (F : ChainShapeFamily O Info) (K : Contract Progres
   serves : O.Serves
   progressFits : ProgressFits K F
   progressTolerant : ProgressTolerant O K
+  guardIdle : GuardIdleAlways F
 
 /-- `ShapeObligationsOn` under the profile label `p`. -/
 def ShapeObligationsOnAs (p : Profile) (F : ChainShapeFamily O Info)

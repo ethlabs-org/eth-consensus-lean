@@ -61,7 +61,7 @@ theorem block_payload_source_of (hv : rho.ExecutionValid)
       rw [hR4]; exact mem_blockObjs.mpr ⟨B, acc, hcut, rfl⟩
     have ho' := hcar _ hB o ho
     have hnil := outbox_empty S rho hn hv v i
-    have hrel : relHead S rho v (rho.stateBefore i v).seen
+    have hrel : relHead S rho v
         (stateAt S rho hn v i).outbox.head? = [] := by
       apply List.eq_nil_iff_forall_not_mem.mpr
       intro x hx

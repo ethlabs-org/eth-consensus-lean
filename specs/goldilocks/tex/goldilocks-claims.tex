@@ -2300,7 +2300,11 @@ $t'\in[\max(\tau,a)+\Delta+\ell,\mathit{horizon}]$.
 \begin{enumerate}[itemsep=1pt]
 \item \emph{Non-framing} (always): for every time~$u$, a validator honest
   at~$u$ is never convicted (E1/E2, fg.tex) by the objects that nodes saw
-  while honest up to~$u$.
+  while honest up to~$u$.  The execution model has no slashing protection,
+  so this is Goldilocks' own: on every valid run no honest node has a
+  candidate that conflicts with itself or with an own-signed object it has
+  seen (\texttt{Run.GuardIdle}), because its FG record~$\Lambda$ never
+  signs a slashable pair (G0.5).
 \item \emph{Nesting} (always): at every node honest at a state, its
   finalized read is a prefix of its confirmed read.
 \item \emph{Finalized monotonicity} (always): a node's finalized read only
@@ -2353,7 +2357,9 @@ credentials and selection, or else one of those fails.
 proof (\texttt{Obligations.Growing.meetsObligations\_growing} with
 \texttt{ShapeObligations.correct}); there is no paper proof in this
 repository, and the archived R.3--R.5 node statements and OC are not its
-route.  Rows 1--4, 7 and 8 map to R.7, R.8, R.1 and R.2
+route.  Row~1 is certified through the endpoint's slashing-protection
+obligation (\texttt{GuardIdleAlways}, proved by \texttt{Simulation.guardIdle}
+from G0.5) and also maps to R.7.  Rows 2--4, 7 and 8 map to R.7, R.8, R.1 and R.2
 (\S\ref{sec:lean-status}).
 \end{sloppypar}
 

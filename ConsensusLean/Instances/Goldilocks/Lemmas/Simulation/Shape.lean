@@ -8,8 +8,8 @@ public section
 
 The obligations on the Goldilocks shape (`AsChainShape`) that involve no run: the canonical
 objects decode back to what they encode, so a delivered canonical object is the node's event
-(`canonEvent`); the slashing rule is E1/E2 (`ConflictsIff`); the engine's own-object guard
-`protects` passes every block and vote (only two attestation objects ever `conflict`).
+(`canonEvent`); the slashing rule is E1/E2 (`ConflictsIff`); slashing protection `protects`
+passes every block and vote (only two attestation objects ever `conflict`).
 
 Each theorem is a named step. -/
 
@@ -223,15 +223,6 @@ theorem protects_of_not_att {V : Type} [Fintype V] {E : Env V} (S : Setup)
     simp [hc o, hc']
   · rfl
 
-/-- Vote-forward envelopes never conflict with attestations, irrespective of the vote author. -/
-theorem protects_voteForward {V : Type} [Fintype V] {E : Env V} (S : Setup)
-    (k x : Fin (Fintype.card V))
-    (seen : List (Model.protoOf (compiled (goldilocks S)) E).Object)
-    (t : Time) (v : Vote (Fintype.card V)) :
-    Model.protects (Model.protoOf (compiled (goldilocks S)) E) k seen
-      (.mk (.signed x .poll) (.data (.voteForward t (encodeVote v))) [voteObj v]) = true :=
-  protects_of_not_att S k seen _ (fun _ _ h => by cases h)
-
 /-- A vote-forward envelope has no parent dependency, including in its carried canonical vote. -/
 theorem dependencies_voteForward {n : Nat} (held : List (Wire n binding))
     (x : Fin n) (t : Time) (v : Vote n) :
@@ -328,7 +319,7 @@ theorem dependencies_forwardObj (seen : List (Wire sp.n binding)) (origin : Fin 
     | some p => exact decide_eq_true (h p (by simp))
   · exact htail
 
-/-- Exact held parent and child suffice for all three forwarding release guards.
+/-- Exact held parent and child suffice for both forwarding release guards.
 The remaining completeness obligation is to establish these holdings at each actual prefix. -/
 theorem forwardObj_release_guards {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (hn : 1 ≤ Fintype.card V) (seen : List (Wire (Fintype.card V) S.vote))
@@ -337,12 +328,10 @@ theorem forwardObj_release_guards {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (h : ∀ c ∈ p.toList ++ [blockObj _ B], c ∈ seen.flatMap Model.Obj.parts) :
     Model.releasable (P := Model.protoOf (compiled (goldilocks S)) E) seen
         (forwardObj _ x t p B) = true ∧
-      Model.protects (Model.protoOf (compiled (goldilocks S)) E) x seen
-        (forwardObj _ x t p B) = true ∧
       (Model.protoOf (compiled (goldilocks S)) E).dependencies.ready (Model.closure seen)
         (forwardObj _ x t p B) = true := by
   classical
-  refine ⟨?_, protects_of_not_att S x seen _ (fun _ _ he => by cases he), ?_⟩
+  refine ⟨?_, ?_⟩
   · change (p.toList ++ [blockObj _ B]).all _ = true
     apply List.all_eq_true.mpr
     intro c hc

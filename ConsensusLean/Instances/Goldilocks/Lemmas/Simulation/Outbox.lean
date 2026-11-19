@@ -482,16 +482,6 @@ theorem pollObj_ready (v : V) (held : List (Model.protoOf (compiled (goldilocks 
   cases r <;> cases b <;> rfl
 
 omit [DecidableEq V] in
-/-- A vote poll object passes the own-object guard. -/
-theorem protects_pollObj_vote (v : V) (k : Fin (Fintype.card V)) (seen : List (Model.protoOf
-    (compiled (goldilocks S)) E).Object)
-    (w : WireVote) : Model.protects (Model.protoOf (compiled (goldilocks S)) E) k seen
-        (pollObj S rho v (.vote w)) = true :=
-  protects_of_not_att S k seen _ fun _ _ h => by
-    have h' := congrArg Model.Obj.msg h
-    cases h'
-
-omit [DecidableEq V] in
 /-- The poll candidates are its ordinary body followed by fresh wrappers in queue order. -/
 theorem act_poll_snd (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Nat) :
     ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.poll t)).2 =
@@ -656,7 +646,7 @@ theorem dutyStep_carried (v : V) (nd : Model.Node (Model.protoOf (compiled (gold
     · rename_i h
       simp only [Model.releaseAll, List.mem_singleton] at hc
       subst hc
-      have h1 := (Bool.and_eq_true_iff.1 (Bool.and_eq_true_iff.1 h).1).1
+      have h1 := (Bool.and_eq_true_iff.1 h).1
       unfold Model.releasable at h1
       exact of_decide_eq_true (List.all_eq_true.1 h1 x hx)
     · simp [Model.releaseAll] at hc
@@ -696,14 +686,12 @@ theorem dutyStep_poll_sub (v : V) (nd : Model.Node (Model.protoOf (compiled (gol
   · simp at ho
 
 omit [DecidableEq V] in
-/-- A poll step releases the head `b` of `pollPre`'s outbox when the poll duty selects the node,
-the effective role of `b` also selects it, and the own-object guard passes. -/
+/-- A poll step releases the head `b` of `pollPre`'s outbox when the poll duty selects the node
+and the effective role of `b` also selects it. -/
 theorem dutyStep_poll_rel (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (t : Nat) (hsel : rho.ownKey v ∈ rho.sel .poll) {b : Body}
     (hb : (pollPre (shapeOf S hn nd)).outbox.head? = some b)
-    (hrole : rho.ownKey v ∈ rho.sel (pollRole S.vote (pubOf E).n b))
-    (hp : Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
-      (pollObj S rho v b) = true) :
+    (hrole : rho.ownKey v ∈ rho.sel (pollRole S.vote (pubOf E).n b)) :
     pollObj S rho v b ∈ (rho.dutyStep v nd (.poll t)).2 := by
   unfold Model.Run.dutyStep
   simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.poll t) = .poll from rfl,
@@ -711,10 +699,8 @@ theorem dutyStep_poll_rel (v : V) (nd : Model.Node (Model.protoOf (compiled (gol
   rw [signedCandidate_poll S rho hn v nd t hsel, (poll_outbox _ _).2, hb, Option.map_some]
   erw [pollOrdinary_some_pos S rho hrole]
   rw [List.append_assoc, List.singleton_append]
-  have hc : (Model.releasable nd.seen (pollObj S rho v b) &&
-      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
-        (pollObj S rho v b)) = true :=
-    Bool.and_eq_true_iff.2 ⟨by simp [Model.releasable, Model.Obj.carried], hp⟩
+  have hc : Model.releasable nd.seen (pollObj S rho v b) = true := by
+    simp [Model.releasable, Model.Obj.carried]
   unfold Model.releaseAll
   split
   · exact List.mem_cons_self

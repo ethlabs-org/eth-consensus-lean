@@ -47,19 +47,15 @@ theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
       · exact Or.inr rfl
     | _ :: _ :: _ :: _, h, _ => simp at h
   have hrelQ : ∀ q ∈ Q, rho.ownKey v ∈ rho.sel (pollRole S.vote (pubOf E).n q) →
-      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) N4.seen
-        (pollObj S rho v q) = true →
-      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) N5.seen
-        (pollObj S rho v q) = true →
       pollObj S rho v q ∈ rho.releasesAt i := by
-    intro q hq hk h4 h5
+    intro q hq hk
     rw [heq]
     rcases hpos q hq with h | h
     · refine List.mem_append_left _ (List.mem_append_left _ (List.mem_append_right _ ?_))
       apply List.mem_append_left
-      rw [h]; simp [relHead_eq, hk, h4]
+      rw [h]; simp [relHead_eq, hk]
     · refine List.mem_append_left _ (List.mem_append_right _ ?_)
-      rw [h]; simp [relHead_eq, hk, h5]
+      rw [h]; simp [relHead_eq, hk]
   refine ⟨fun B acc hB _ => ?_, fun ℓ hℓ m hm => ?_⟩
   · rw [heq]
     refine List.mem_append_left _ (List.mem_append_left _ (List.mem_append_left _
@@ -74,7 +70,6 @@ theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
     have hobj := voteObj_eq_pollObj S rho (show m.msg.val = rho.ownKey v from hval)
     have hk := exec_emit_selected S rho hn hv (hℓ ▸ hlab) m hm
     exact (congrArg (· ∈ rho.releasesAt i) hobj).mpr (hrelQ _ hq
-      (by rw [pollRole_vote]; exact hk)
-      (protects_pollObj_vote S rho v _ _ _) (protects_pollObj_vote S rho v _ _ _))
+      (by rw [pollRole_vote]; exact hk))
 
 end Consensus.Goldilocks.Simulation

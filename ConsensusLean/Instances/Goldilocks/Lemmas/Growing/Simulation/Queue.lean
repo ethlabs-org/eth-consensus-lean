@@ -6,10 +6,7 @@ public section
 
 /-! # Growing-fault vote-pool and release-queue inventories
 
-The inventories of `Simulation/Queue` under growing faults. Its `*_of_protected` forms take one run
-fact beyond validity, the own-signature guard of a scheduled poll's ordinary attestation
-(`PollAttProtected`); under growing faults it is `engine_poll_att_protected_at`
-(`pollAttProtected`). The facts that need no fault premise are those of `Simulation/Queue`.
+The inventories of `Simulation/Queue` under growing faults.
 `scheduled_proposal_releasable` is the proposal-facing endpoint: the selected proposal's payload
 objects are already in the engine's seen closure. `Steps` uses this inventory to relate engine
 events to node steps. -/
@@ -54,10 +51,6 @@ section EngineInventory
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- **The poll-attestation protection under growing faults** (`engine_poll_att_protected_at`). -/
-theorem pollAttProtected (hv : rho.ExecutionValid) : PollAttProtected S rho hn :=
-  (pollAttProtected_iff S rho hn).2 fun _ _ _ _ _ _ hc hd hsel _ _ hm =>
-    engine_poll_att_protected_at S rho hn hv hc hd hsel hm
 
 omit [DecidableEq V] in
 /-- Every duty prefix preserves the fact that queued vote envelopes name stored
@@ -111,7 +104,7 @@ theorem duty_cut_vote_member (hv : rho.ExecutionValid) {v : V} (hv' : v ∉ rho.
 /-- At a tick duty prefix, every pooled vote is already held or pending in the
 ordinary outbox. This retains the actual prefix state needed by release guards. -/
 theorem tick_prefix_pool_available (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {t : Time}
+    {i p : Nat} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
     (hp : p ≤ ((Model.protoOf (compiled (goldilocks S)) E).duties t).length)
     (σ : Nat) (m : Vote (Fintype.card V)) :
@@ -122,8 +115,7 @@ theorem tick_prefix_pool_available (hv : rho.ExecutionValid) {v : V}
     m ∈ (shapeOf S hn nd).node.ac.pool σ →
       voteObj m ∈ Model.closure nd.seen ∨
         Body.vote (encodeVote m) ∈ (shapeOf S hn nd).outbox :=
-  Simulation.tick_prefix_pool_available_of_protected S rho hn (pollAttProtected S rho hn hv) hv hv'
-    he hw hp σ m
+  Simulation.tick_prefix_pool_available S rho hn hv he hw hp σ m
 
 /-- Delivery processing keeps every queued admission's vote in the final pool. The actual
 event-boundary queue is empty, and none of the delivery handlers restarts the AC. -/
@@ -138,15 +130,13 @@ theorem delivery_voteForward_in_pool (hv : rho.ExecutionValid) (v : V) (i : Nat)
 /-- After processing a delivery, every stored vote is either actually held (including in
 the delivered object's closure) or queued as a canonical own vote in the ordinary outbox. -/
 theorem delivery_pool_available (hv : rho.ExecutionValid)
-    {v : V} (hv' : v ∉ rho.faultyAt 0)
-    (i : Nat) (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
+    {v : V} (i : Nat) (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
     (σ : Nat) (m : Vote (Fintype.card V))
     (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
     voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
       Body.vote (encodeVote m) ∈
         (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox :=
-  Simulation.delivery_pool_available_of_protected S rho hn (pollAttProtected S rho hn hv) hv hv' i
-    o σ m hm
+  Simulation.delivery_pool_available S rho hn hv i o σ m hm
 
 /-- At an actual delivery, the only not-yet-held stored vote is the ordinary outbox head:
 the reachable one-vote invariant rules out a later queued vote. -/
@@ -157,7 +147,7 @@ theorem delivery_pool_held_or_head (hv : rho.ExecutionValid) {v : V}
     voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.head? =
         some (.vote (encodeVote m)) :=
-  Simulation.delivery_pool_held_or_head_of_protected S rho hn (pollAttProtected S rho hn hv) hv he
+  Simulation.delivery_pool_held_or_head S rho hn hv he
     σ m hm
 
 /-- Any ordinary vote left by delivery processing is an own vote of a slot whose vote role
@@ -179,20 +169,19 @@ theorem delivery_voteForward_held_or_head (hv : rho.ExecutionValid) {v : V}
     voteObj tv.2 ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.head? =
         some (.vote (encodeVote tv.2)) :=
-  Simulation.delivery_voteForward_held_or_head_of_protected S rho hn (pollAttProtected S rho hn hv)
+  Simulation.delivery_voteForward_held_or_head S rho hn
     hv he tv htv
 
 /-- Proposal payloads of actual scheduled honest duties were already released or received.
 The proof uses engine-event inventory and the empty queue at the slot-start proposal. -/
 theorem scheduled_proposal_releasable (hv : rho.ExecutionValid)
-    {v : V} (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {t : Time} {s : Slot}
+    {v : V} {i p : Nat} {t : Time} {s : Slot}
     {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
     (hscheduled : EngineProposalAt S rho v i p t s nd)
     {par : ParentRef} {info : Info} {cs : List (Wire (Fintype.card V) S.vote)}
     (hprop : (propose (shapeOf S hn nd) s).2 = some (par, info, cs)) :
     ∀ o ∈ cs, o ∈ Model.closure nd.seen :=
-  Simulation.scheduled_proposal_releasable_of_protected S rho hn (pollAttProtected S rho hn hv) hv
-    hv' hscheduled hprop
+  Simulation.scheduled_proposal_releasable S rho hn hv hscheduled hprop
 
 end EngineInventory
 

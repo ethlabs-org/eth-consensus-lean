@@ -25,12 +25,9 @@ At a tick of awake node `v` at `t`, the engine
    duty's role does (`signedCandidate`); the candidates go through release (3),
    in order, before the next duty runs;
 3. releases a candidate only if every object it carries is already in the
-   closure of `seen` (so honest code passes on no object it has not seen),
-   slashing protection allows it (`protects`: a candidate signed by the own
-   key must not conflict, under the protocol's `conflicts`, with itself or
-   with an own-signed object in the closure of `seen`), and its dependencies
-   are held (`P.dependencies.ready` on the closure of `seen`); it then adds it
-   to `seen` and records it with `recordOwn`;
+   closure of `seen` (so honest code passes on no object it has not seen) and
+   its dependencies are held (`P.dependencies.ready` on the closure of `seen`);
+   it then adds it to `seen` and records it with `recordOwn`;
 4. last, builds unsigned gossip from the final state and releases it as in 3.
 
 Same-tick semantics: a duty reads the state after the earlier duties of the
@@ -49,10 +46,11 @@ incoming dependency readiness nor buffers arrivals; admission and retries are
 the protocol's responsibility. The durable `seen` log is evidence, not a retry queue.
 At a restart it runs
 `restore` (with the own key) of
-`durable`, keeping `seen`. The `seen` log survives restarts, so slashing
-protection persists across them, as a validator's slashing-protection
-database does (EIP-3076); that the deployed engine keeps it is part of model
-adequacy. A node starts in `init` of its own key. Only the
+`durable`, keeping `seen`. The engine has no slashing protection: whether a
+node signs conflicting objects is up to the protocol. `protects` states what
+slashing protection would refuse, and `Run.GuardIdle` (`Spec/Model/Guard`)
+that a run never has such a candidate, which is how a protocol establishes
+non-framing. A node starts in `init` of its own key. Only the
 engine evaluates the hash: with every object processed or recorded it passes
 the digests of the items in the object's closure. -/
 
@@ -150,9 +148,10 @@ def releasable {pub : Public} {Out : Type} {P : Protocol pub Out} (seen : List P
   c.carried.all (fun x => decide (x ∈ closure seen))
 
 /-- Slashing protection, generic over the protocol's `conflicts`: a candidate
-signed by the own key `k` is refused if it conflicts with itself or, in either
+signed by the own key `k` fails it if it conflicts with itself or, in either
 order, with an object signed by `k` in the closure of `seen`. Other candidates
-pass (engine candidates are own-signed or unsigned). -/
+pass (engine candidates are own-signed or unsigned). The engine does not apply
+it; `Run.GuardIdle` (`Spec/Model/Guard`) states that every candidate passes. -/
 def protects {pub : Public} {Out : Type} (P : Protocol pub Out) (k : Key pub)
     (seen : List P.Object) (c : P.Object) : Bool :=
   if c.signer? = some k then
@@ -161,16 +160,16 @@ def protects {pub : Public} {Out : Type} (P : Protocol pub Out) (k : Key pub)
   else true
 
 /-- Release candidates in order, for the node with own key `k`: a candidate is
-released if it is `releasable`, `protects` allows it and its dependencies are
-held (`P.dependencies.ready` on the closure of `seen`); released objects join
+released if it is `releasable` and its dependencies are held
+(`P.dependencies.ready` on the closure of `seen`); released objects join
 `seen` at once, so later candidates of the same tick are checked against
-them. -/
+them. The key does not decide a release; it names the node whose candidates
+`Run.GuardIdle` checks with `protects`. -/
 def releaseAll {pub : Public} {Out : Type} (P : Protocol pub Out) (hash : P.Item → Nat)
     (k : Key pub) : Node P → List P.Object → Node P × List P.Object
   | nd, [] => (nd, [])
   | nd, c :: cs =>
-    if releasable nd.seen c && protects P k nd.seen c &&
-        P.dependencies.ready (closure nd.seen) c then
+    if releasable nd.seen c && P.dependencies.ready (closure nd.seen) c then
       let nd' : Node P := ⟨P.recordOwn nd.st c (digests hash c), nd.seen ++ [c]⟩
       let r := releaseAll P hash k nd' cs
       (r.1, c :: r.2)

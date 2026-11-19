@@ -11,9 +11,8 @@ What a valid engine run (`ExecutionValid`) does to the shape's state at each eve
 node's handler applied to the node state before it (a tick at a public time with the encoded
 mempool, a delivery one `canonEvent` after the other, a restart), the shape's clock is the time of
 the node's last tick or restart, and the interface's obligations: at most two bodies
-pending at a tick, a proposal carries only released objects (so `releasable` admits it), the
-own-object guard `protects` never blocks an honest node, and the digests the engine passes with a
-block object map its header to its root.
+pending at a tick, a proposal carries only released objects (so `releasable` admits it), and the
+digests the engine passes with a block object map its header to its root.
 `EngineState` has the shape preservation, `stateAt` across an event, the invariants of every
 engine cut, the duties of a tick and the clock at a delivery; this module the node state.
 
@@ -392,7 +391,7 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled
         exact Finset.mem_singleton.2 (hp.trans hself).symm
       simp only [hmem, ↓reduceIte]
       unfold Model.releaseAll
-      rw [ite_eq_left (Bool.and_eq_true_iff.2 ⟨Bool.and_eq_true_iff.2 ⟨?_, ?_⟩, ?_⟩)]
+      rw [ite_eq_left (Bool.and_eq_true_iff.2 ⟨?_, ?_⟩)]
       · change (recordOwn (a.1.1 hn) _ _).node = _
         rw [hact1]
         simp only [recordOwn, decodeInfo_encodeInfo]
@@ -406,8 +405,6 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled
         rfl
       · unfold Model.releasable
         exact List.all_eq_true.2 fun o ho => decide_eq_true (hrel _ _ _ rfl o ho)
-      · exact protects_of_not_att S _ _ _ (fun k w h => by
-          cases h)
       · exact dependencies_item _ _ _ _ _
   · simp only [tickStep, hP.not.2 hp, ite_false]
     have hmem : rho.ownKey v ∉ rho.sel (.proposer s) := by

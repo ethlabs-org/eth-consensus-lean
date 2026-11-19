@@ -11,13 +11,11 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttGuard
 
 public section
 
-/-! # Engine signings: client safety and the own-object guard
+/-! # Engine signings: client safety
 
 Consequences of the engine signing history (`Provenance`): the actual engine input of a selected
-proposal duty (`EngineProposalAt`), pairwise non-slashable engine signings by the paper's G0.5
-(`engine_signings_nonFraming`), and the own-object guard admitting a freshly generated attestation
-(`engine_att_protected`, `engine_poll_att_protected`). The guard has NO PAPER PROOF: it is G0.5
-plus implementation provenance. -/
+proposal duty (`EngineProposalAt`) and pairwise non-slashable engine signings by the paper's G0.5
+(`engine_signings_nonFraming`). -/
 
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape
@@ -67,37 +65,6 @@ theorem engine_signings_nonFraming (hv : rho.ExecutionValid) {v : V}
   obtain ⟨inputs, hi, _, hs⟩ := engine_event_signing_history S rho hn hv hv' (max i j + 1)
   exact FG.client_safety _ _ inputs hi a (hs i p a (by omega) ha)
     b (hs j q b (by omega) hb)
-
-/-- **G0.5 plus implementation provenance; NO independent PAPER PROOF of the engine guard.**
-A freshly generated attestation passes the candidate/seen protection boundary: self-conflict
-is impossible by client safety; any conflicting own-signed object in `seen` is another actual
-signing by `engine_seen_att_signed`. Include both conflict orientations. Earlier releases in
-the same event are included in this actual duty-prefix `seen`. -/
-theorem engine_att_protected (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
-    {v : V} (hv' : v ∉ rho.faultyAt 0)
-    {i p : Nat} {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
-    (hc : EngineDutyCut S rho v i p nd) {j q : Nat} {a : FG.Att (Fintype.card V)}
-    (ha : EngineSignsAt S rho hn v j q a) :
-    Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
-      (attObj a) = true :=
-  att_protected_of_signings S rho hn (engine_signings_nonFraming S rho hn hv hv')
-    (fun hval ho => by
-      obtain ⟨j', q', _, hs⟩ := engine_seen_att_signed S rho hn hf hv hv' hv' hc hval ho
-      exact ⟨j', q', hs⟩) ha
-
-/-- The own-object guard admits the ordinary attestation produced by an actual poll. -/
-theorem engine_poll_att_protected (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {nd} {k : Nat}
-    (hc : EngineDutyCut S rho v i p nd)
-    (hd : (∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
-        ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
-      ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
-        ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some (.poll k))
-    (hsel : rho.ownKey v ∈ rho.sel .poll) {w cs}
-    (hm : (poll (nd.st.1 hn) k).2 = some (.att w, cs)) :
-    Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
-      (.mk (.signed (rho.ownKey v) .poll) (.data (.att w)) []) = true :=
-  poll_att_protected_of S rho hn hc (engine_att_protected S rho hn hf hv hv' hc) hd hsel hm
 
 end Consensus.Goldilocks.Simulation
 

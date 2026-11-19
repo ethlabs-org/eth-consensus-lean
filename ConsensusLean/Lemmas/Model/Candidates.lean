@@ -78,7 +78,7 @@ theorem releaseAll_seen_only (hash : P.Item → Nat) (k : Key pub) {nd nd' : Nod
   | nil => simp [releaseAll, h]
   | cons c cs ih =>
     simp only [releaseAll, h]
-    by_cases hf : (releasable nd'.seen c && protects P k nd'.seen c &&
+    by_cases hf : (releasable nd'.seen c &&
       P.dependencies.ready (closure nd'.seen) c) = true
     · simp only [hf, ↓reduceIte]
       have h' := ih (nd := ⟨P.recordOwn nd.st c (digests hash c), nd'.seen ++ [c]⟩)
@@ -98,7 +98,7 @@ theorem releaseAll_append (hash : P.Item → Nat) (k : Key pub) (nd : Node P)
   | nil => simp [releaseAll]
   | cons c cs ih =>
     simp only [List.cons_append, releaseAll]
-    by_cases hf : (releasable nd.seen c && protects P k nd.seen c &&
+    by_cases hf : (releasable nd.seen c &&
       P.dependencies.ready (closure nd.seen) c) = true
     · simp only [hf, ↓reduceIte, ih, List.cons_append]
     · simp only [hf, Bool.false_eq_true, ↓reduceIte, ih]
@@ -147,7 +147,7 @@ theorem releaseAll_invariant (Q : P.State → Prop) (hash : P.Item → Nat) (k :
   | nil => exact h
   | cons c cs ih =>
     simp only [releaseAll] at hrec ⊢
-    by_cases hf : (releasable nd.seen c && protects P k nd.seen c &&
+    by_cases hf : (releasable nd.seen c &&
       P.dependencies.ready (closure nd.seen) c) = true
     · simp only [hf, ↓reduceIte] at hrec ⊢
       exact ih _ (fun s o hs ho => hrec s o hs (List.mem_cons_of_mem _ ho))

@@ -933,13 +933,9 @@ theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled
       goldilocks, hn, ↓reduceDIte, goldilocksShape, hcs']
     rfl
   refine ⟨cs, hkeep, List.mem_append_right _ ?_⟩
-  have hc : (Model.releasable R.1.seen (Model.Obj.mk .none (.data .relay) cs) &&
-      Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) R.1.seen
-        (Model.Obj.mk .none (.data .relay) cs)) = true := by
-    simp only [Model.releasable, Model.protects, Bool.and_eq_true, List.all_eq_true,
-      decide_eq_true_eq]
-    refine ⟨fun y hy => hseen y hy, ?_⟩
-    simp [Model.Obj.signer?, Model.Obj.auth]
+  have hc : Model.releasable R.1.seen (Model.Obj.mk .none (.data .relay) cs) = true := by
+    simp only [Model.releasable, List.all_eq_true, decide_eq_true_eq]
+    exact fun y hy => hseen y hy
   rw [hgo]
   simp only [Model.releaseAll]
   split

@@ -236,7 +236,7 @@ theorem faulty_run :
           (pubOf point.env) one_le_card).toParams.q -
         (({ S with vote := AsChainShape.stock } : Setup).params
           (pubOf point.env) one_le_card).n := by
-  obtain ⟨rho, hp, hk, hs, hv, hc, -, -⟩ := Shape.coverage
+  obtain ⟨rho, hp, hk, hs, hv, hc, -⟩ := Shape.coverage
     (goldilocks { S with vote := AsChainShape.stock }) point (by decide)
     (by exact Equiv.refl _) (sel S) (sel_admits S) 0
   refine ⟨rho, hp, hk, hs, hv, Test.goldilocksRun_of_at S rho one_le_card (point_constant hp) hv,

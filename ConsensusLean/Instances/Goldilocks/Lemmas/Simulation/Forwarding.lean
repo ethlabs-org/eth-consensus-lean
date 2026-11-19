@@ -50,7 +50,6 @@ structure PublisherExecution {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     let nd := (Model.releaseAll (protoOf (compiled (goldilocks S)) E) rho.hash r.origin
       r.before (r.candidates.take r.index)).1
     Model.releasable nd.seen r.object = true ∧
-      Model.protects (protoOf (compiled (goldilocks S)) E) r.origin nd.seen r.object = true ∧
       (protoOf (compiled (goldilocks S)) E).dependencies.ready (Model.closure nd.seen) r.object
           =
           true
@@ -160,7 +159,6 @@ theorem releaseAll_candidate_success {pub : Public} {O : Type} (P : Protocol pub
     (hi : cs[i]? = some o)
     (hs : let pre := (Model.releaseAll P hash origin nd (cs.take i)).1
       Model.releasable pre.seen o = true ∧
-        Model.protects P origin pre.seen o = true ∧
         P.dependencies.ready (Model.closure pre.seen) o = true) :
     o ∈ (Model.releaseAll P hash origin nd cs).2 := by
   induction cs generalizing nd i with
@@ -171,7 +169,7 @@ theorem releaseAll_candidate_success {pub : Public} {O : Type} (P : Protocol pub
       simp only [List.getElem?_cons_zero, Option.some.injEq] at hi
       subst c
       simp only [List.take_zero, Model.releaseAll] at hs
-      simp only [Model.releaseAll, hs.1, hs.2.1, hs.2.2, Bool.and_self, ↓reduceIte]
+      simp only [Model.releaseAll, hs.1, hs.2, Bool.and_self, ↓reduceIte]
       exact List.mem_cons_self
     | succ i =>
       simp only [List.getElem?_cons_succ] at hi
@@ -190,7 +188,6 @@ theorem releaseAll_of_prefix_guards {pub : Public} {O : Type} (P : Protocol pub 
     (hash : P.Item → Nat) (x : Key pub) (nd : Model.Node P) (cs : List P.Object)
     (hready : ∀ i o, cs[i]? = some o →
       Model.releasable (P := P) (nd.seen ++ cs.take i) o = true ∧
-      Model.protects P x (nd.seen ++ cs.take i) o = true ∧
       P.dependencies.ready (Model.closure (nd.seen ++ cs.take i)) o = true) :
     (Model.releaseAll P hash x nd cs).2 = cs ∧
       (Model.releaseAll P hash x nd cs).1.seen = nd.seen ++ cs := by
@@ -199,7 +196,7 @@ theorem releaseAll_of_prefix_guards {pub : Public} {O : Type} (P : Protocol pub 
   | cons o cs ih =>
     have hg := hready 0 o (by simp)
     simp only [List.take_zero, List.append_nil] at hg
-    simp only [Model.releaseAll, hg.1, hg.2.1, hg.2.2, Bool.and_self, ↓reduceIte]
+    simp only [Model.releaseAll, hg.1, hg.2, Bool.and_self, ↓reduceIte]
     have ht := ih
       (nd := ⟨P.recordOwn nd.st o (Model.digests hash o), nd.seen ++ [o]⟩)
       (by
@@ -217,7 +214,6 @@ theorem forward_batch_guards {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (hshape : ∀ o ∈ cs, ∃ t p B, o = forwardObj (S.params (pubOf E) hn) x t p B) :
     ∀ i o, cs[i]? = some o →
       Model.releasable (P := protoOf (compiled (goldilocks S)) E) (seen ++ cs.take i) o = true ∧
-      Model.protects (protoOf (compiled (goldilocks S)) E) x (seen ++ cs.take i) o = true ∧
       (protoOf (compiled (goldilocks S)) E).dependencies.ready
         (Model.closure (seen ++ cs.take i)) o = true := by
   intro i o hi
@@ -413,7 +409,6 @@ noncomputable def publisherExecution : PublisherExecution S rho where
     let nd := (Model.releaseAll (protoOf (compiled (goldilocks S)) E) rho.hash r.origin
       r.before (r.candidates.take r.index)).1
     Model.releasable nd.seen r.object = true ∧
-      Model.protects (protoOf (compiled (goldilocks S)) E) r.origin nd.seen r.object = true ∧
       (protoOf (compiled (goldilocks S)) E).dependencies.ready (Model.closure nd.seen) r.object
           =
           true
@@ -442,7 +437,6 @@ theorem publisherExecution_actual_iff (r : Publication (protoOf (compiled (goldi
       let nd := (Model.releaseAll (protoOf (compiled (goldilocks S)) E) rho.hash r.origin
         r.before (r.candidates.take r.index)).1
       Model.releasable nd.seen r.object = true ∧
-        Model.protects (protoOf (compiled (goldilocks S)) E) r.origin nd.seen r.object = true ∧
         (protoOf (compiled (goldilocks S)) E).dependencies.ready
           (Model.closure nd.seen) r.object = true := by
   rfl

@@ -642,17 +642,23 @@ detail in `TRUST.md`.
 - **The headline statement `GoldilocksCorrect`** is certified next to `MeetsObligations`: for every setup,
   assumption set and finite validator type, the Goldilocks family in the general execution model is an L0
   `CorrectProtocol` at `goldilocksContract A (contract_coefficients S A)`, conjoined with that contract's
-  `Params.OptimalFaultTolerance` and with `Model.Run.GuardIdle` on every valid execution (the engine's slashing
-  protection never refuses a candidate). The correctness conjunct is the composition of
+  `Params.OptimalFaultTolerance`. The correctness conjunct is the composition of
   `MeetsObligations` with `Review.ObligationsSufficient` (proved in `Solution` by `ShapeObligations.correct` of
   `meets_obligations`), with their parameters and no further hypothesis. The optimality conjunct adds
   `Params.OptimalFaultTolerance` to the trusted reach without adding a Challenge root. It states correctness
   and optimality in one
-  place, so a reader need not compose the two statements. The guard conjunct (`Simulation.guardIdle`) is there
-  because the `nonFraming` row of `CorrectProtocol` holds for every protocol through the engine's guard
-  (`sysOf_nonFraming`); `GuardIdle` says the guard never rejects a Goldilocks candidate, so it never changes what
-  the engine releases and Goldilocks' own rules (in the proof, the FG record `Λ`) avoid the slashable pair. It speaks of candidates before the guard (`Spec/Model/Guard`),
-  since a statement about released objects holds by the guard alone.
+  place, so a reader need not compose the two statements.
+- **Non-framing is the protocol's obligation; the engine has no slashing protection.** `releaseAll` checks only
+  carried objects and dependencies. `ShapeObligations` (and `ShapeObligationsOn`) require `GuardIdleAlways F`:
+  on every valid run of the compiled family no candidate fails `protects` (`Run.GuardIdle`, `Spec/Model/Guard`),
+  so honest code never signs an object that conflicts with itself or with an own-signed object its node has seen;
+  `sysOf_nonFraming` derives the `nonFraming` row from it. The statement speaks of candidates before release, since
+  a statement about released objects would hold by an engine filter alone. The obligation is unrestricted in
+  `ShapeObligationsOn`, like admissibility: it is a property of honest code, not of the environment point.
+  `RegimesRealizable` needs no such premise: realizability asks for no conviction-free
+  run (`coverage` no longer states one). Goldilocks discharges the obligation with `Simulation.guardIdle` (the FG
+  record `Λ`, G0.5), so `GoldilocksCorrect` needs no separate guard conjunct. This removes the earlier model
+  adequacy assumption that the deployed client implements persistent slashing protection.
 - **The full endpoint subsumes the interim outage and sleepy roots.** `MeetsObligations` and both
   headline forms cover `goldilocks S` at every `Setup`, at the same obligations contract, with no
   added hypotheses. Its `ShapeClaimsAt` fields `persists`, `sleepySafe` and `sleepyLive` retain the

@@ -83,7 +83,7 @@ theorem restart_at_one :
         ∃ k, (simTrace { S with vote := stock } rho one_le_card).RestartAt y k ∧
           (simTrace { S with vote := stock } rho one_le_card).time k = 1 ∧
           ∀ j < k, ¬ (simTrace { S with vote := stock } rho one_le_card).IsCall y j := by
-  obtain ⟨rho, hp, hk, -, hv, -, -, -⟩ := Shape.coverage
+  obtain ⟨rho, hp, hk, -, hv, -, -⟩ := Shape.coverage
     (goldilocks { S with vote := AsChainShape.stock }) point (by decide)
     (by exact Equiv.refl _) (sel S) (sel_admits S) 0
   have hn := one_le_card

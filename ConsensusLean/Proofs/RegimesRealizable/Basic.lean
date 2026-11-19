@@ -11,7 +11,7 @@ public section
 
 * `coverage` (fixed selection): any environment point with `0 ≤ horizon`, with any
   PKI, any admissible selection and any GST `g`, is exactly the point, PKI and
-  selection of a valid, collision-free, conviction-free compiled run whose log
+  selection of a valid, collision-free compiled run whose log
   is eager from `g`. Progress requirements read only the point, the PKI and
   the selection, so whatever progress holds there holds on that run.
 * The extremal selection (`extremalSel`) gives every `.sized m` role (`m`
@@ -72,26 +72,22 @@ end Activity
 
 /-- Fixed-selection coverage. Inputs are fixed, outputs preserve them: the
 point `p`, the PKI `key`, an admissible selection `sel`, and a GST `g`. Some
-valid, collision-free, conviction-free compiled run has exactly that point,
+valid, collision-free compiled run has exactly that point,
 PKI and selection, and its log is eager from `g`. -/
 theorem coverage (F : ChainShapeFamily O Info) {V : Type} [Fintype V] [DecidableEq V]
     (p : EnvPoint V) (hp : 0 ≤ p.horizon) (key : Fin (Fintype.card V) ≃ V)
     (sel : (protoOf (compiled F) p.env).Role → Finset (Fin (Fintype.card V)))
     (hsel : (protoOf (compiled F) p.env).SelAdmits sel) (g : Time) :
     ∃ rho : Model.Run (compiled F) p.env, rho.point = p ∧ rho.key = key ∧ rho.sel = sel ∧
-      rho.ExecutionValid ∧ ¬ rho.HashCollision ∧
-      Consensus.convicted ((Sys F V).convicts ⟨p.env, rho⟩)
-        ((Sys F V).honestEvidenceBy ⟨p.env, rho⟩ p.horizon) = ∅ ∧
-      CommLog.EagerFrom rho.point rho.log g := by
+      rho.ExecutionValid ∧ ¬ rho.HashCollision ∧ CommLog.EagerFrom rho.point rho.log g := by
   obtain ⟨hash, hinj⟩ := Countable.exists_injective_nat (protoOf (compiled F) p.env).Item
-  obtain ⟨relay, events, hv, he, hc⟩ :=
+  obtain ⟨relay, events, hv, he, -⟩ :=
     Model.canonical_run_from_causal O (compiled F) V p.env p.faultyAt p.faultyAt_mono
       p.horizon hp key sel hsel p.submit hash g
   let rho := Model.Run.mk (F := compiled F) (E := p.env) p.faultyAt p.faultyAt_mono
       p.horizon events key sel p.submit relay hash
-  refine ⟨rho, rfl, rfl, rfl, hv, ?_, ?_, he⟩
-  · exact Model.Run.not_hashCollision_of_injective (Model.Run.injectiveHash_iff.mpr hinj)
-  · exact Model.convicted_honestEvidence_eq_empty rho hv (rho.not_slashable_of_causal hc)
+  exact ⟨rho, rfl, rfl, rfl, hv,
+    Model.Run.not_hashCollision_of_injective (Model.Run.injectiveHash_iff.mpr hinj), he⟩
 
 /-! ## The extremal selection -/
 

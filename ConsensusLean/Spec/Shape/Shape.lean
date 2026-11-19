@@ -189,7 +189,8 @@ structure ChainShape (pub : Public) (Out : Type) (Info : Type) [DecidableEq Info
   The `.poll` role carries no tick or round, so a poll shape must tell its
   proposals apart by their contents (e.g. height and round in `pos`/`info`):
   a rule keyed only on the role would make an honest re-proposal in a later
-  round conflict, and the engine's slashing protection would suppress it. -/
+  round conflict, and the shape would fail its slashing-protection obligation
+  (`GuardIdleAlways`). -/
   conflicts : ShapeObj pub.n skel.Kind Info Body → ShapeObj pub.n skel.Kind Info Body → Bool
   /-- The FG attestation objects (`Model.Protocol.isFGAtt`): delivered strictly before `ΔFG`.
   Default: none. -/

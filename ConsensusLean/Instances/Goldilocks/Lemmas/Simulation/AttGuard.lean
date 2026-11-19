@@ -6,14 +6,12 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 
 public section
 
-/-! # The own-object guard at an engine duty prefix, given the signing facts
+/-! # Slashing protection at an engine duty prefix, given the signing facts
 
-The guard argument shared by the constant-fault `engine_att_protected` and
-`engine_poll_att_protected` (`Simulation/ProvenanceGuard`) and their growing-fault forms
-(`Growing/Simulation/Signing`). An actual engine signing passes the candidate/seen protection
-boundary of a duty prefix when no two engine signings of the node are slashable (`hns`) and every
-own-signed attestation the prefix has seen is an engine signing (`hseen`); each fault model
-supplies both from its own honesty premise. -/
+The argument behind `engine_att_protected_at` and `engine_poll_att_protected_at`
+(`Growing/Simulation/Signing`), which `guardIdle` uses. An actual engine signing passes slashing
+protection at a duty prefix when no two engine signings of the node are slashable (`hns`) and
+every own-signed attestation the prefix has seen is an engine signing (`hseen`). -/
 
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape

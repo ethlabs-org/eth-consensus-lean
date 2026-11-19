@@ -487,7 +487,7 @@ theorem releaseAll_successful_index {pub : Public} {O : Type} (P : Protocol pub 
     (o : P.Object) (ho : o ∈ (Model.releaseAll P hash x nd cs).2) :
     ∃ i, cs[i]? = some o ∧
       let pre := (Model.releaseAll P hash x nd (cs.take i)).1
-      Model.releasable pre.seen o = true ∧ Model.protects P x pre.seen o = true ∧
+      Model.releasable pre.seen o = true ∧
         P.dependencies.ready (Model.closure pre.seen) o = true := by
   induction cs generalizing nd with
   | nil => simp [Model.releaseAll] at ho
