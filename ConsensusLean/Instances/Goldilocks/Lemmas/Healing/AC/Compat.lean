@@ -30,7 +30,9 @@ variable {wm : SA.WriteMode}
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
-/-- `result_side` with the unlock given. -/
+/-- **The result side**, with the unlock given. At an honest update of slot `s` with result `C`:
+its supporters `S` of `C` are more than half of its voters; each has a vote in its pool, extending
+`C`, and does not equivocate there, and that vote was admitted in `[t_s, t_s + 2Δ)`. -/
 private theorem result_sideU
     {uL : Nat → Set Lock} {ini} (hrun : ACRunU wm uL proposer tr H U ini) {Y : Fin sp.n}
     (hY : Y ∈ H)
@@ -68,20 +70,6 @@ private theorem result_sideU
     exact WithTop.coe_lt_coe.1 (WithBot.coe_lt_coe.1 hst')
   · rintro u ⟨hneq, v, ⟨hvp, -⟩, rfl, -, R, hR, hRr, hDR⟩
     exact ⟨hneq, v, hvp, rfl, R, hΦU hR, hRr, Anc.mono hΦU hDR⟩
-
-/-- **The result side.** At an honest update of slot `s` with result `C`: its supporters `S`
-of `C` are more than half of its voters; each has a vote in its pool, extending `C`, and does
-not equivocate there, and that vote was admitted in `[t_s, t_s + 2Δ)`. -/
-private theorem result_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H) {c s : Nat}
-    {C : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hR : ResultAt tr Y c s C CV) :
-    ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
-      tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
-      (voters {v | v ∈ (tr.state Y c).pool s}).ncard < 2 * S.ncard ∧
-      S ⊆ Fwd tr U Y s C ∧
-      ∀ u ∈ S, u ∉ equivocators {v | v ∈ (tr.state Y c).pool s} ∧
-        ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U C R :=
-  result_sideU (hrun := hrun.toU) (Y := Y) (hY := hY) (c := c) (s := s) (C := C) (CV := CV)
-      (hR := hR)
 
 /-- `fastLock_fastLock_compatible` with the unlock given. -/
 theorem fastLock_fastLock_compatibleU
@@ -145,8 +133,8 @@ theorem result_optimistic_compatibleU
   rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hle
   omega
 
-private theorem fwd_reaches_update_window_before
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {a b : Time} {s : Nat}
+private theorem fwd_reaches_update_window_before {ini}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {a b : Time} {s : Nat}
     (hsync : SyncACWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
     {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt Y c ℓ)
@@ -166,8 +154,8 @@ private theorem fwd_reaches_update_window_before
       omega
   rwa [hvs] at h
 
-private theorem against_update_window_before
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {a b : Time} {s : Nat}
+private theorem against_update_window_before {ini}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {a b : Time} {s : Nat}
     (hsync : SyncACWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
     {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt Y c ℓ)
@@ -202,7 +190,7 @@ private theorem against_update_window_before
     exact ⟨v, hv, rfl⟩
 
 /-- Same-slot results are compatible using only service through their observation cutoff. -/
-theorem result_result_compatible_window_before (hrun : ACRun proposer tr H U)
+theorem result_result_compatible_window_before {ini} (hrun : ACRun proposer tr H U ini)
     {a b : Time} {s : Nat} (hsync : SyncACWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
     {x x' : Fin sp.n} (hx : x ∈ H) (hx' : x' ∈ H)
     {i i' : Nat} {C C' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)}
@@ -211,8 +199,8 @@ theorem result_result_compatible_window_before (hrun : ACRun proposer tr H U)
     (hreset : ∀ y ∈ H, ∀ q ≤ max i i', tr.RestartAt y q → tr.time q ≤ sp.ts s) :
     Compatible U C C' := by
   by_contra hnc
-  obtain ⟨ℓ, S, hc, ht, hmaj, hSF, hSs⟩ := result_side hrun hx hR
-  obtain ⟨ℓ', S', hc', ht', hmaj', hSF', hSs'⟩ := result_side hrun hx' hR'
+  obtain ⟨ℓ, S, hc, ht, hmaj, hSF, hSs⟩ := result_sideU hrun.toU hx hR
+  obtain ⟨ℓ', S', hc', ht', hmaj', hSF', hSs'⟩ := result_sideU hrun.toU hx' hR'
   have h1 := against_update_window_before hrun.localRun hsync ha hx' hx hc ht hi
     (fun q hq => hreset x hx q (hq.trans (le_max_left _ _))) hSs hSF'
     fun h => hnc (Or.symm h)
@@ -220,9 +208,29 @@ theorem result_result_compatible_window_before (hrun : ACRun proposer tr H U)
     (fun q hq => hreset x' hx' q (hq.trans (le_max_right _ _))) hSs' hSF hnc
   omega
 
+/-- A result and optimistic lock of one slot agree with windowed message service, from any start,
+when the result's reader counts at most `committeeSize` voters in its slot-`s` pool (all of them
+members of a committee of that size, or the whole population for the stock committee). -/
+theorem result_optimistic_compatible_window_before_of_voters {ini}
+    (hrun : ACRun proposer tr H U ini)
+    {a b : Time} {s : Nat} (hsync : SyncACWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
+    {x x' : Fin sp.n} (hx : x ∈ H) (hx' : x' ∈ H)
+    {i i' : Nat} {C O : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)}
+    (hR : ResultAt tr x i s C CV) (hO : OptimisticLockAt tr x' i' s O CV')
+    (hi : tr.time i ≤ b)
+    (hreset : ∀ q ≤ i, tr.RestartAt x q → tr.time q ≤ sp.ts s)
+    (hvc : (voters {v | v ∈ (tr.state x i).pool s}).ncard ≤ sp.committeeSize) :
+    Compatible U C O := by
+  by_contra hnc
+  obtain ⟨ℓ, S, hc, ht, hmaj, -, hSs⟩ := result_sideU hrun.toU hx hR
+  obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := optimistic_sideU hrun.toU hx' hO
+  have h1 := against_update_window_before hrun.localRun hsync ha hx' hx hc ht hi hreset
+    hSs hT fun h => hnc (Or.symm h)
+  omega
+
 /-- A result and optimistic lock of one slot agree with windowed message service. -/
-theorem result_optimistic_compatible_window_before
-    (hrun : ACRun proposer tr H U)
+theorem result_optimistic_compatible_window_before {ini}
+    (hrun : ACRun proposer tr H U ini)
     {a b : Time} {s : Nat} (hsync : SyncACWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
     {x x' : Fin sp.n} (hx : x ∈ H) (hx' : x' ∈ H)
     {i i' : Nat} {C O : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)}
@@ -230,15 +238,11 @@ theorem result_optimistic_compatible_window_before
     (hi : tr.time i ≤ b) (_hi' : tr.time i' ≤ b)
     (hreset : ∀ q ≤ i, tr.RestartAt x q → tr.time q ≤ sp.ts s)
     (hstock : sp.committeeSize = sp.n) : Compatible U C O := by
-  by_contra hnc
-  obtain ⟨ℓ, S, hc, ht, hmaj, -, hSs⟩ := result_side hrun hx hR
-  obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := optimistic_side hrun hx' hO
-  rw [hstock] at h34
-  have h1 := against_update_window_before hrun.localRun hsync ha hx' hx hc ht hi hreset
-    hSs hT fun h => hnc (Or.symm h)
+  refine result_optimistic_compatible_window_before_of_voters hrun hsync ha hx hx' hR hO hi
+    hreset ?_
   have hle := Set.ncard_le_ncard (Set.subset_univ (voters {v | v ∈ (tr.state x i).pool s}))
   rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hle
-  omega
+  exact hle.trans hstock.ge
 
 end Consensus.Goldilocks.SA
 

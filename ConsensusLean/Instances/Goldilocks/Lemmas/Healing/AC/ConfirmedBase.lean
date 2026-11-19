@@ -433,34 +433,63 @@ theorem resolutionTime_lt_of {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : Frame
 
 /-! ## Honest votes and comparison with `P` -/
 
-/-- An honest validator is not an equivocator in an honest node's pool of a slot, with the unlock
-given. -/
-theorem honest_not_equivocator_poolU
-    {uL : Nat → Set Lock} (hS : HealthyBaseU wm uL tr H U proposer g)
+/-- An honest validator is not an equivocator in an honest node's pool of a slot, from any run
+and vote start (its votes in the pool are actual votes of the slot, one per slot). -/
+theorem honest_not_equivocator_pool_of_run
+    {uL : Nat → Set Lock} {ini} (hrun : ACRunU wm uL proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H)
     (c s : Nat) {u : Fin sp.n} (hu : u ∈ H) :
     u ∉ equivocators {v | v ∈ (tr.state y c).pool s} := by
-  have hr := hS.run.localRun
+  have hr := hrun.localRun
   rintro ⟨a, ha, b, hb, hab, rfl, hbv⟩
-  obtain ⟨ja, -, ea, hva, rfl⟩ := hS.run.honest.pool_vote y hy c s _ ha hu
-  obtain ⟨jb, -, eb, hvb, rfl⟩ := hS.run.honest.pool_vote y hy c s _ hb (hbv ▸ hu)
+  obtain ⟨ja, -, ea, hva, rfl⟩ := hrun.honest.pool_vote y hy c s _ ha hu
+  obtain ⟨jb, -, eb, hvb, rfl⟩ := hrun.honest.pool_vote y hy c s _ hb (hbv ▸ hu)
   rw [hbv] at hvb
   obtain ⟨-, rfl⟩ := (one_vote_per_slotU sp) FGP ro H U tr hr _ hu ja jb ea eb hva hvb
-    ((state_pool_slotU sp hr (fun _ => voteStart_initial _) hy c s _ ha).trans
-      (state_pool_slotU sp hr (fun _ => voteStart_initial _) hy c s _ hb).symm)
+    ((state_pool_slotU sp hr hrun.vstart hy c s _ ha).trans
+      (state_pool_slotU sp hr hrun.vstart hy c s _ hb).symm)
   exact hab rfl
 
-/-- **A majority over a superset of `H` meets `H`**: a set `T` inside a vote set `W` that contains
-every validator of `H`, with `|W| < 2|T|`, has a member of `H` once at most `|H|` validators are
-outside `H` (the faulty members of `T` are counted inside `W`, next to `H`). -/
-private theorem exists_mem_of_majority {n : Nat} {H T W : Set (Fin n)} (hHW : H ⊆ W)
-    (hTW : T ⊆ W) (hmaj : W.ncard < 2 * T.ncard) (hf : Hᶜ.ncard ≤ H.ncard) : ∃ u ∈ H, u ∈ T := by
+/-- **A majority of the votes of a set `M` meets `H`**: a set `T` inside a vote set `W ⊆ M` that
+contains every member of `M ∩ H`, with `|W| < 2|T|`, has a member of `H` once at most `|M ∩ H|`
+members of `M` are outside `H` (the faulty members of `T` are counted inside `W`, next to
+`M ∩ H`). -/
+private theorem exists_mem_of_majority {n : Nat} {M H T W : Set (Fin n)} (hHW : M ∩ H ⊆ W)
+    (hTW : T ⊆ W) (hWM : W ⊆ M) (hmaj : W.ncard < 2 * T.ncard)
+    (hf : (M ∩ Hᶜ).ncard ≤ (M ∩ H).ncard) : ∃ u ∈ H, u ∈ T := by
   by_contra hno
-  have hdisj : Disjoint H T := Set.disjoint_left.2 fun u hu huT => hno ⟨u, hu, huT⟩
+  have hdisj : Disjoint (M ∩ H) T := Set.disjoint_left.2 fun u hu huT => hno ⟨u, hu.2, huT⟩
   have h1 := Set.ncard_le_ncard (Set.union_subset hHW hTW)
   rw [Set.ncard_union_eq hdisj] at h1
-  have h2 : T.ncard ≤ Hᶜ.ncard := Set.ncard_le_ncard fun u hu huH => hno ⟨u, huH, hu⟩
+  have h2 : T.ncard ≤ (M ∩ Hᶜ).ncard :=
+    Set.ncard_le_ncard fun u hu => ⟨hWM (hTW hu), fun huH => hno ⟨u, huH, hu⟩⟩
   omega
+
+/-- **A late result has an honest supporter, over a member set**: from any run and vote start, the
+result `C` of an honest update of slot `s` is extended by an honest vote of slot `s`, given a set
+`M` (the slot-`s` committee) that holds every voter of the reader's slot-`s` pool, every honest
+member of which is such a voter, and at most half of which is faulty. -/
+theorem result_extended_of_members
+    {uL : Nat → Set Lock} {ini} (hrun : ACRunU wm uL proposer tr H U ini) {s : Nat}
+    {M : Set (Fin sp.n)} {x : Fin sp.n} (hx : x ∈ H) {c : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x c ℓ)
+    (hMv : M ∩ H ⊆ voters {v | v ∈ (tr.state x c).pool s})
+    (hvM : voters {v | v ∈ (tr.state x c).pool s} ⊆ M)
+    (hf : (M ∩ Hᶜ).ncard ≤ (M ∩ H).ncard) {C : Blk sp.n FGP}
+    (hC : getConfirmation sp (tr.state x c) ℓ.frame s = some C) :
+    ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = s ∧ VoteExtends U e.msg C := by
+  have hr := hrun.localRun
+  obtain ⟨-, hΦU⟩ := frameIn_of_callAtU hr hx hc
+  have hmaj := (deepest_mem hC).1.2.2
+  unfold confirmationScore at hmaj
+  dsimp only at hmaj
+  obtain ⟨u, huH, ⟨-, v, ⟨hvp, -⟩, rfl, -, R, hR, hRr, hCR⟩⟩ := exists_mem_of_majority hMv
+    (T := supporters ℓ.frame ⟨{v | v ∈ (tr.state x c).pool s}, {v | v ∈ (tr.state x c).pool s ∧
+      resolutionTime (tr.state x c) ℓ.frame v < ETime.of (sp.ts s + 2 * sp.Δ)}⟩ s C)
+    (fun u ⟨_, x, hx, hxu, _⟩ => ⟨x, hx.1, hxu⟩) hvM hmaj hf
+  obtain ⟨j', -, e', hve, rfl⟩ := hrun.honest.pool_vote x hx c s _ hvp huH
+  exact ⟨_, huH, j', e', hve, state_pool_slotU sp hr hrun.vstart hx c s _ hvp, R, hΦU hR, hRr,
+    Anc.mono hΦU hCR⟩
 
 set_option linter.unusedVariables false in
 -- `HealthyBaseU` bounds the faults by `f < n/2` only; the bound `3f ≤ n − 1` is given.
@@ -474,28 +503,16 @@ theorem result_extendedU
     (hC : getConfirmation sp (tr.state x c) ℓ.frame s = some C) :
     ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = s ∧ VoteExtends U e.msg C := by
   have hr := hS.run.localRun
-  obtain ⟨-, hΦU⟩ := frameIn_of_callAtU hr hx hc
-  have hmaj := (deepest_mem hC).1.2.2
-  unfold confirmationScore at hmaj
-  dsimp only at hmaj
-  have hHv : H ⊆ voters {v | v ∈ (tr.state x c).pool s} := by
-    intro u hu
-    obtain ⟨j, e, hv, hes⟩ := honest_votes_in_slotU hS hs u hu
-    obtain ⟨hval, -⟩ := castAt_specU hr hu ⟨hv.choose_spec.1, hv.choose_spec.2⟩
-    exact ⟨e.msg, (late_vote_poolU hS hx hc hs ht hu hv hes c (Or.inl rfl)).1, hval⟩
-  have hf : Hᶜ.ncard ≤ H.ncard := by
+  refine result_extended_of_members hS.run (M := Set.univ) hx hc (fun u hu => ?_)
+    (Set.subset_univ _) ?_ hC
+  · obtain ⟨j, e, hv, hes⟩ := honest_votes_in_slotU hS hs u hu.2
+    obtain ⟨hval, -⟩ := castAt_specU hr hu.2 ⟨hv.choose_spec.1, hv.choose_spec.2⟩
+    exact ⟨e.msg, (late_vote_poolU hS hx hc hs ht hu.2 hv hes c (Or.inl rfl)).1, hval⟩
+  · rw [Set.univ_inter, Set.univ_inter]
     have := hS.two_faulty_lt
     have hn : H.ncard + Hᶜ.ncard = sp.n := by
       rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
     omega
-  obtain ⟨u, huH, ⟨-, v, ⟨hvp, -⟩, rfl, -, R, hR, hRr, hCR⟩⟩ := exists_mem_of_majority hHv
-    (T := supporters ℓ.frame ⟨{v | v ∈ (tr.state x c).pool s}, {v | v ∈ (tr.state x c).pool s ∧
-      resolutionTime (tr.state x c) ℓ.frame v < ETime.of (sp.ts s + 2 * sp.Δ)}⟩ s C)
-    (fun u ⟨_, x, hx, hxu, _⟩ => ⟨x, hx.1, hxu⟩) hmaj hf
-  obtain ⟨j', -, e', hve, rfl⟩ := hS.run.honest.pool_vote x hx c s _ hvp huH
-  exact ⟨_, huH, j', e', hve, state_pool_slotU sp hr (fun _ => voteStart_initial _) hx c s _ hvp,
-    R, hΦU hR, hRr,
-    Anc.mono hΦU hCR⟩
 
 /-- **A late result has an honest supporter**: the result `C` of an honest update of a slot
 `s ≥ r` (read at a time `≥ t_s + 2Δ`) is extended by an honest vote of slot `s`: its supporters
@@ -510,6 +527,109 @@ theorem result_extended (hS : HealthyBase tr H U proposer g) {s : Nat}
       (hc := hc) (ht := ht) (C := C) (hC := hC)
 
 /-! ## The first update at `t_p + 6Δ` -/
+
+/-- **The first update, over a member set**: from any run and vote start, at an honest node's tick
+at `t_p + 6Δ` from a joined state, with every honest slot-`p` vote exactly `P` and every live lock
+comparing with `P`, the tick is the slot-`p` update, whose result is `P`, not vetoed, and `P` passes
+the fast test, given a set `M` (the slot-`p` committee) that holds every voter of the node's
+slot-`p` pool, each honest member of which has a vote there resolved before `t_p + 2Δ`, with fewer
+faulty than honest members, and with its honest members at least half of the committee size. -/
+theorem first_update_post_of_members
+    {uL : Nat → Set Lock} {ini} (hrun : ACRunU wm uL proposer tr H U ini) {p : Nat}
+    {P : Blk sp.n FGP}
+    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    (hc : tr.CallAt y k ℓ) (hcall : ℓ.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ)
+    (hj : joined sp (tr.state y k) (tr.time k)) (hPt : P ∈ ℓ.frame.tree)
+    (hlocks : ∀ L ∈ liveLockBlocks sp (tr.state y k).locks ℓ.frame (tr.time k),
+      Compatible U L P)
+    {M : Set (Fin sp.n)}
+    (hheld : ∀ u ∈ M ∩ H, ∃ v ∈ (tr.state y k).pool p, v.val = u ∧
+      resolutionTime (tr.state y k) ℓ.frame v < ETime.of (sp.ts p + 2 * sp.Δ))
+    (hvM : voters {v | v ∈ (tr.state y k).pool p} ⊆ M)
+    (hf : (M ∩ Hᶜ).ncard < (M ∩ H).ncard)
+    (hfast : sp.committeeSize ≤ 2 * (M ∩ H).ncard) :
+    getConfirmation sp (tr.state y k) ℓ.frame p = some P ∧
+      ¬ conflictsWithLock sp (tr.state y k).locks ℓ.frame (tr.time k) P ∧
+      FastTest sp (tr.state y k) ℓ.frame p P ∧
+      tr.post k = updateConfirmationM sp wm (tr.state y k) ℓ.frame (tr.time k) p := by
+  have hr := hrun.localRun
+  have hU := hr.coherent
+  have hΔ := sp.toParams.hΔ
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAtU hr hy hc
+  have hts1 := SA.ts_succ (sp := sp) p
+  have hslot : sp.slot (tr.time k) = p + 1 :=
+    slot_of_mem sp (p + 1) (by rw [htk, hts1]; linarith only [hΔ]) (by
+        rw [htk, SA.ts_succ, hts1]; linarith only [hΔ])
+  have hT2 : tr.time k = sp.ts ((p + 1 : Nat) : Int) + 2 * sp.Δ := by rw [htk, hts1]; ring
+  -- the tick is the slot-`p` update
+  have he := hr.exec k ℓ hc.2 (hc.1 ▸ hy)
+  rw [hc.1, hcall] at he
+  have hpost : tr.post k = updateConfirmationM sp wm (tr.state y k) ℓ.frame (tr.time k) p := by
+    have h1 : tr.post k = (acOnTickWithM sp wm y (uL k) (tr.state y k) ℓ.frame (tr.time k)).1 :=
+      (congrArg Prod.fst he).symm
+    rw [h1]
+    unfold acOnTickWithM
+    dsimp only
+    rw [hslot]
+    have hc1 : ¬ tr.time k = sp.ts ((p + 1 : Nat) : Int) + sp.Δ := by
+      intro h; linarith only [htk, hΔ, hts1, h]
+    have hc2 : (tr.time k = sp.ts ((p + 1 : Nat) : Int) + 2 * sp.Δ ∧ 0 < p + 1) = True :=
+      eq_true ⟨hT2, Nat.succ_pos p⟩
+    simp only [hj, not_true_eq_false, hc1, hc2, ↓reduceIte, Nat.add_sub_cancel]
+  set A := tr.state y k with hA
+  -- the honest slot-`p` votes in the pool are on `P`
+  have hhead : ∀ v ∈ A.pool p, v.val ∈ H → v.head = P.root := fun v hv hvH => by
+    obtain ⟨j', -, e', hve, rfl⟩ := hrun.honest.pool_vote y hy k p v hv hvH
+    exact hexact _ hvH j' e' hve (state_pool_slotU sp hr hrun.vstart hy k p _ hv)
+  have hMvot : M ∩ H ⊆ voters {v | v ∈ A.pool p} := fun u hu => by
+    obtain ⟨v, hv, hvu, -⟩ := hheld u hu
+    exact ⟨v, hv, hvu⟩
+  have hvle := Set.ncard_le_ncard hvM
+  have hMn : (M ∩ H).ncard + (M ∩ Hᶜ).ncard = M.ncard :=
+    Set.ncard_inter_add_ncard_sdiff_eq_ncard _ _ (Set.toFinite _)
+  -- the honest members support `P`
+  have hscore : (M ∩ H).ncard ≤ confirmationScore sp A ℓ.frame p P := by
+    unfold confirmationScore
+    dsimp only
+    have hsub : M ∩ H ⊆ supporters ℓ.frame ⟨{v | v ∈ A.pool p}, {v | v ∈ A.pool p ∧
+        resolutionTime A ℓ.frame v < ETime.of (sp.ts p + 2 * sp.Δ)}⟩ p P := by
+      intro u hu
+      obtain ⟨v, hv, hvu, hres⟩ := hheld u hu
+      refine ⟨honest_not_equivocator_pool_of_run hrun hy k p hu.2, v, ⟨hv, hres⟩, hvu, ?_,
+        P, hPt, (hhead v hv (hvu ▸ hu.2)).symm, Relation.ReflTransGen.refl⟩
+      exact_mod_cast state_pool_slotU sp hr hrun.vstart hy k p v hv
+    exact Set.ncard_le_ncard hsub
+  -- the slot-`p` result is `P`
+  have hconf : getConfirmation sp A ℓ.frame p = some P := by
+    unfold getConfirmation
+    have hPS : P ∈ {B | B ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F B ∧
+        (voters {v | v ∈ A.pool p}).ncard < 2 * confirmationScore sp A ℓ.frame p B} :=
+      ⟨hPt, hΦ.rooted.2 P hPt, by omega⟩
+    have hall : ∀ B ∈ {B | B ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F B ∧
+        (voters {v | v ∈ A.pool p}).ncard < 2 * confirmationScore sp A ℓ.frame p B},
+        ℓ.frame.Anc B P := by
+      rintro B ⟨hBt, -, hmaj⟩
+      by_contra hBP
+      unfold confirmationScore at hmaj
+      dsimp only at hmaj
+      obtain ⟨u, hu, ⟨-, x, ⟨hx, -⟩, rfl, -, R, hR, hRr, hBR⟩⟩ := exists_mem_of_majority hMvot
+        (by rintro u ⟨-, x, hx, hxu, -⟩; exact ⟨x, hx.1, hxu⟩) hvM hmaj hf.le
+      obtain rfl : R = P := hΦ.coherent.1 hR hPt (hRr.trans (hhead x hx hu))
+      exact hBP hBR
+    obtain ⟨D, hD⟩ := exists_deepest hΦ (fun B hB => hB.1) ⟨P, hPS⟩
+    have hDP := hall D (deepest_mem hD).1
+    have hPD := anc_deepest hΦ (fun B hB => hB.1)
+      (fun B hB C hC => anc_total hΦ.coherent (hall B hB) (hall C hC)) hD P hPS
+    rw [hD, Anc.antisymm hΦ.coherent hDP hPD]
+  -- it is not vetoed
+  have hnv : ¬ conflictsWithLock sp A.locks ℓ.frame (tr.time k) P := by
+    rintro ⟨L, hL, hnc⟩
+    apply hnc
+    rcases hlocks L hL with h | h
+    · exact Or.inr (anc_tree_of_anc_U hU hΦ hΦU hL.1 h hPt)
+    · exact Or.inl (anc_tree_of_anc_U hU hΦ hΦU hPt h hL.1)
+  exact ⟨hconf, hnv, by unfold FastTest; omega, hpost⟩
 
 /-- `first_update_post` with the unlock given. -/
 theorem first_update_postU
@@ -528,7 +648,6 @@ theorem first_update_postU
   have hr := hS.run.localRun
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
-  have hg0 := gbar_nonneg g
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAtU hr hy hc
   have hts1 := SA.ts_succ (sp := sp) p
   have hslot : sp.slot (tr.time k) = p + 1 :=
@@ -536,96 +655,24 @@ theorem first_update_postU
         rw [htk, SA.ts_succ, hts1]; linarith only [hΔ])
   have hj := hS.joined_state hy k (by
     rw [hslot, show (((p + 1 : Nat) : Int) - 1) = p by push_cast; ring]; linarith only [hp4, hΔ])
-  have hT2 : tr.time k = sp.ts ((p + 1 : Nat) : Int) + 2 * sp.Δ := by rw [htk, hts1]; ring
-  -- the tick is the slot-`p` update
-  have he := hr.exec k ℓ hc.2 (hc.1 ▸ hy)
-  rw [hc.1, hcall] at he
-  have hpost : tr.post k = updateConfirmationM sp wm (tr.state y k) ℓ.frame (tr.time k) p := by
-    have h1 : tr.post k = (acOnTickWithM sp wm y (uL k) (tr.state y k) ℓ.frame (tr.time k)).1 :=
-      (congrArg Prod.fst he).symm
-    rw [h1]
-    unfold acOnTickWithM
-    dsimp only
-    rw [hslot]
-    have hc1 : ¬ tr.time k = sp.ts ((p + 1 : Nat) : Int) + sp.Δ := by
-      intro h; linarith only [htk, hΔ, hts1, h]
-    have hc2 : (tr.time k = sp.ts ((p + 1 : Nat) : Int) + 2 * sp.Δ ∧ 0 < p + 1) = True :=
-      eq_true ⟨hT2, Nat.succ_pos p⟩
-    simp only [hj, not_true_eq_false, hc1, hc2, ↓reduceIte, Nat.add_sub_cancel]
-  set A := tr.state y k with hA
-  -- the honest slot-`p` votes: held, resolved before `t_p + 2Δ`, on `P`, one per validator
-  have hhon : ∀ u ∈ H, ∃ v ∈ A.pool p, v.val = u ∧ v.head = P.root ∧
-      resolutionTime A ℓ.frame v < ETime.of (sp.ts p + 2 * sp.Δ) ∧
-      ∀ v' ∈ A.pool p, v'.val = u → v' = v := by
-    intro u hu
-    obtain ⟨i, e, hv, hes⟩ := honest_votes_in_slotU hS hp4 u hu
-    obtain ⟨Hd, hHdt, hHdr, hHds, hh⟩ := late_vote_held_of_frameU hS hy hc hp4
-      (by rw [htk]; linarith only [hΔ]) hu hv hes fun Hd hHd hHdr => by
-        rw [hU.1 hHd (hΦU hPt) (hHdr.trans (hexact u hu i e hv hes))]
-        exact (hΦ.rooted.2 P hPt).mono hΦU
-    obtain ⟨hmem, hvst, hbst⟩ := hh k (Or.inl rfl)
-    obtain ⟨hval, -⟩ := castAt_specU hr hu ⟨hv.choose_spec.1, hv.choose_spec.2⟩
-    refine ⟨e.msg, hmem, hval, hexact u hu i e hv hes,
-      resolutionTime_lt_of hΦ hHdt hHdr (hes ▸ hHds) hvst hbst, fun v' hv' hv'u => ?_⟩
-    obtain ⟨j', -, e', hve', rfl⟩ := hS.run.honest.pool_vote y hy k p v' hv' (hv'u ▸ hu)
-    rw [hv'u] at hve'
-    obtain ⟨-, rfl⟩ := (one_vote_per_slotU sp) FGP ro H U tr hr _ hu j' i e' e hve' hv
-      ((state_pool_slotU sp hr (fun _ => voteStart_initial _) hy k p _ hv').trans hes.symm)
-    rfl
-  have hHvot : H ⊆ voters {v | v ∈ A.pool p} := fun u hu => by
-    obtain ⟨v, hv, hvu, -⟩ := hhon u hu
-    exact ⟨v, hv, hvu⟩
-  have hvle : (voters {v | v ∈ A.pool p}).ncard ≤ sp.n := by
-    have := Set.ncard_le_ncard (Set.subset_univ (voters {v | v ∈ A.pool p}))
-    rwa [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at this
   have hHn : H.ncard + Hᶜ.ncard = sp.n := by
     rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
   have h2f := hS.two_faulty_lt
-  have hHle := Set.ncard_le_ncard hHvot
-  -- the honest validators support `P`
-  have hscore : H.ncard ≤ confirmationScore sp A ℓ.frame p P := by
-    unfold confirmationScore
-    dsimp only
-    have hsub : H ⊆ supporters ℓ.frame ⟨{v | v ∈ A.pool p}, {v | v ∈ A.pool p ∧
-        resolutionTime A ℓ.frame v < ETime.of (sp.ts p + 2 * sp.Δ)}⟩ p P := by
-      intro u hu
-      obtain ⟨v, hv, hvu, hvh, hres, -⟩ := hhon u hu
-      refine ⟨honest_not_equivocator_poolU hS hy k p hu, v, ⟨hv, hres⟩, hvu, ?_,
-        P, hPt, hvh.symm, Relation.ReflTransGen.refl⟩
-      exact_mod_cast state_pool_slotU sp hr (fun _ => voteStart_initial _) hy k p v hv
-    exact Set.ncard_le_ncard hsub
-  -- the slot-`p` result is `P`
-  have hconf : getConfirmation sp A ℓ.frame p = some P := by
-    unfold getConfirmation
-    have hPS : P ∈ {B | B ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F B ∧
-        (voters {v | v ∈ A.pool p}).ncard < 2 * confirmationScore sp A ℓ.frame p B} :=
-      ⟨hPt, hΦ.rooted.2 P hPt, by omega⟩
-    have hall : ∀ B ∈ {B | B ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F B ∧
-        (voters {v | v ∈ A.pool p}).ncard < 2 * confirmationScore sp A ℓ.frame p B},
-        ℓ.frame.Anc B P := by
-      rintro B ⟨hBt, -, hmaj⟩
-      by_contra hBP
-      unfold confirmationScore at hmaj
-      dsimp only at hmaj
-      obtain ⟨u, hu, ⟨-, x, ⟨hx, -⟩, rfl, -, R, hR, hRr, hBR⟩⟩ := exists_mem_of_majority hHvot
-        (by rintro u ⟨-, x, hx, hxu, -⟩; exact ⟨x, hx.1, hxu⟩) hmaj (by omega)
-      obtain ⟨v, -, -, hvh, -, huniq⟩ := hhon _ hu
-      obtain rfl := huniq x hx rfl
-      obtain rfl : R = P := hΦ.coherent.1 hR hPt (hRr.trans hvh)
-      exact hBP hBR
-    obtain ⟨D, hD⟩ := exists_deepest hΦ (fun B hB => hB.1) ⟨P, hPS⟩
-    have hDP := hall D (deepest_mem hD).1
-    have hPD := anc_deepest hΦ (fun B hB => hB.1)
-      (fun B hB C hC => anc_total hΦ.coherent (hall B hB) (hall C hC)) hD P hPS
-    rw [hD, Anc.antisymm hΦ.coherent hDP hPD]
-  -- it is not vetoed
-  have hnv : ¬ conflictsWithLock sp A.locks ℓ.frame (tr.time k) P := by
-    rintro ⟨L, hL, hnc⟩
-    apply hnc
-    rcases hlocks L hL with h | h
-    · exact Or.inr (anc_tree_of_anc_U hU hΦ hΦU hL.1 h hPt)
-    · exact Or.inl (anc_tree_of_anc_U hU hΦ hΦU hPt h hL.1)
-  exact ⟨hconf, hnv, by unfold FastTest; rw [hS.stock]; omega, hpost⟩
+  refine first_update_post_of_members hS.run hexact hy hc hcall htk hj hPt hlocks
+    (M := Set.univ) (fun u hu => ?_) (Set.subset_univ _) ?_ ?_
+  · -- the honest slot-`p` votes: held, resolved before `t_p + 2Δ`
+    obtain ⟨i, e, hv, hes⟩ := honest_votes_in_slotU hS hp4 u hu.2
+    obtain ⟨Hd, hHdt, hHdr, hHds, hh⟩ := late_vote_held_of_frameU hS hy hc hp4
+      (by rw [htk]; linarith only [hΔ]) hu.2 hv hes fun Hd hHd hHdr => by
+        rw [hU.1 hHd (hΦU hPt) (hHdr.trans (hexact u hu.2 i e hv hes))]
+        exact (hΦ.rooted.2 P hPt).mono hΦU
+    obtain ⟨hmem, hvst, hbst⟩ := hh k (Or.inl rfl)
+    obtain ⟨hval, -⟩ := castAt_specU hr hu.2 ⟨hv.choose_spec.1, hv.choose_spec.2⟩
+    exact ⟨e.msg, hmem, hval, resolutionTime_lt_of hΦ hHdt hHdr (hes ▸ hHds) hvst hbst⟩
+  · rw [Set.univ_inter, Set.univ_inter]
+    omega
+  · rw [Set.univ_inter, hS.stock]
+    omega
 
 /-- **The first update**: at an honest node's tick at `t_p + 6Δ`, with every honest
 slot-`p` vote exactly `P` and every live lock comparing with `P`, the tick is the slot-`p` update,

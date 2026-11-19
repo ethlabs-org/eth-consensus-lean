@@ -101,6 +101,34 @@ theorem lock_below_origin {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
       ∃ k < i, ∃ CV, ResultAt tr y k l.slot O CV ∨ OptimisticLockAt tr y k l.slot O CV :=
   lock_below_originU (hr := hr.toU) (hini := hini) (y := y) (hy := hy) (i := i)
 
+/-- **The stored locks after a slow origin, from same-slot compatibility**: for an honest slow
+lock of slot `s` on `D`, at any cut `i` of an honest node `y` in a slot after `s`, every stored lock
+of slot at most `s` live there is compatible with `D`, from any run and vote start, given, for each
+slot `j` of the window `s − k < j ≤ s`, that every result of `y` at a cut before `i` and every
+optimistic confirmation of `y` there is compatible with every result of the writer `x` of slot
+`j`. -/
+theorem slow_stored_locks_of_compatible
+    {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
+    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n} (hx : x ∈ H)
+    {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} (hi : s + 1 ≤ sp.slot (tr.time i))
+    (hRR : ∀ j : Nat, (s : Int) - sp.k < j → j ≤ s → ∀ k < i, ∀ kx O R CV CVx,
+      ResultAt tr y k j O CV → ResultAt tr x kx j R CVx → Compatible U O R)
+    (hRO : ∀ j : Nat, (s : Int) - sp.k < j → j ≤ s → ∀ k < i, ∀ kx O R CV CVx,
+      OptimisticLockAt tr y k j O CV → ResultAt tr x kx j R CVx → Compatible U R O) :
+    ∀ l ∈ (tr.state y i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
+      ∀ Y ∈ U, Y.root = l.block → Compatible U Y D := by
+  have hU := hr.coherent
+  intro l hl hlive hle Y hY hYr
+  obtain ⟨L, hL, hLr, O, hLO, k, hki, CV, hO⟩ := lock_below_originU hr hini hy i l hl
+  obtain rfl : Y = L := hU.1 hY hL (hYr.trans hLr.symm)
+  obtain ⟨kx, R, CVx, hR, hDR⟩ := slow_window_resultsU hr hini hx hsl l.slot (by omega) hle
+  have hcomp : Compatible U O R := by
+    rcases hO with hO | hO
+    · exact hRR l.slot (by omega) hle k hki kx O R CV CVx hO hR
+    · exact (hRO l.slot (by omega) hle k hki kx O R CV CVx hO hR).symm
+  exact compat_of_below hU hLO hDR hcomp
+
 /-- `slow_stored_locks` with the unlock given. -/
 theorem slow_stored_locksU
     {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
@@ -109,20 +137,11 @@ theorem slow_stored_locksU
     {i : Nat} (hi : s + 1 ≤ sp.slot (tr.time i)) :
     ∀ l ∈ (tr.state y i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
       ∀ Y ∈ U, Y.root = l.block → Compatible U Y D := by
-  have hr := hS.run.localRun
-  have hU := hr.coherent
-  intro l hl hlive hle Y hY hYr
-  obtain ⟨L, hL, hLr, O, hLO, k, -, CV, hO⟩ := lock_below_originU hr
-    (fun _ => SA.voteStart_initial _) hy i l hl
-  obtain rfl : Y = L := hU.1 hY hL (hYr.trans hLr.symm)
-  obtain ⟨kx, R, CVx, hR, hDR⟩ := slow_window_resultsU hr (fun _ => voteStart_initial _) hx hsl
-    (U := U) l.slot (by omega) hle
-  have hjr : gbar g + 4 * sp.Δ ≤ sp.ts l.slot := hs.trans ((ts_le_iff sp).2 (by omega))
-  have hcomp : Compatible U O R := by
-    rcases hO with hO | hO
-    · exact result_result_compatibleU hS hy hO hx hR hjr
-    · exact (result_optimistic_compatibleU hS hx hR hy hO hjr).symm
-  exact compat_of_below hU hLO hDR hcomp
+  have hjr : ∀ j : Nat, (s : Int) - sp.k < j → gbar g + 4 * sp.Δ ≤ sp.ts j := fun j hj =>
+    hs.trans ((ts_le_iff sp).2 (by omega))
+  exact slow_stored_locks_of_compatible hS.run.localRun hS.run.vstart hx hsl hy hi
+    (fun j hj _ _ _ _ _ _ _ _ hO hR => result_result_compatibleU hS hy hO hx hR (hjr j hj))
+    (fun j hj _ _ _ _ _ _ _ _ hO hR => result_optimistic_compatibleU hS hx hR hy hO (hjr j hj))
 
 /-- **The stored locks after a slow origin**: for an honest slow lock of slot `s` on `D`
 whose window is `≥ r`, at any cut of an honest node in a slot after `s`, every stored lock of slot
