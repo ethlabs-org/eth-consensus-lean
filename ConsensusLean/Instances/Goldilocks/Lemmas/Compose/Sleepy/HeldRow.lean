@@ -12,7 +12,8 @@ The three steps of "no optimistic check of slot `s + 1` before a row held at a s
 (R4). Each reads one run with one honest set, so a fault model applies each at the cut it needs:
 
 * `held_row_sign_time`: an honest signing from a time of slot `s + 1` on and by `t_{s+1} + Δ` is
-  at `t_{s+1}` or at `t_{s+1} + Δ`, the public times there;
+  at `t_{s+1}` or at `t_{s+1} + Δ`, the public times there (`held_row_sign_time_node`: in a run
+  of any node AC);
 * `held_row_late_absurd`: an honest slot-`(s+1)` voter accepted, before its vote, no block with a
   row signed at `t_{s+1} + Δ` before the acceptance;
 * `held_row_early_count`: an honest optimistic check of slot `s + 1` before an honest signing at
@@ -26,15 +27,17 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-- An honest signing is at a public time (a cut of a tick). (As `Persist/Attest`'s
-`sign_public`.) -/
-private theorem sign_at_public {ini} (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {j : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
+/-- An honest signing is at a public time (a cut of a tick), for any node AC. (As
+`Persist/Attest`'s `sign_public`.) -/
+private theorem sign_at_public {A : NodeAC sp.toParams}
+    {dg : Digest (List (FG.Att sp.n)) A.Payload} {sg : A.Msg → Fin sp.n} {tr : RunTrace A}
+    {ini : Fin sp.n → A.State} (hl : Node.LocalRun proposer dg H sg tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {C : A.Blk} {a : FG.Att sp.n}
     (hc : tr.CallAt y j (.fg (.attest C (some a)))) : sp.toParams.IsPublic (tr.time j) := by
-  obtain ⟨j₀, e, k, hg, -, hk⟩ := call_in_group hrun.toLocalRun hy hc
-  obtain ⟨xt, rfl⟩ := @signed_only_in_ticks sp.toParams (goldilocksNode sp ro) proposer dg y
+  obtain ⟨j₀, e, k, hg, -, hk⟩ := call_in_group hl hy hc
+  obtain ⟨xt, rfl⟩ := @signed_only_in_ticks sp.toParams A proposer dg y
     (tr.state y j₀) (tr.time j) e C a (List.mem_of_getElem? hk)
-  exact hrun.tick_public y hy j₀ (tr.time j) ⟨xt, hg⟩
+  exact hl.tick_public y hy j₀ (tr.time j) ⟨xt, hg⟩
 
 /-- At `t = t_{slot(t)} + Δ`, `ac_on_tick` of a joined node that has not voted in the slot casts
 a vote. (As `Persist/Attest`'s `acOnTick_votes`.) -/
@@ -59,14 +62,15 @@ private theorem tick_votes (self : Fin sp.n) (A : SA.SAState sp.n)
   · exact absurd ht (ne_of_lt h₂.1)
   all_goals simp
 
-/-- The AC calls of a tick: `ac_on_tick`, `ac_proposal`, `ac_to_fg`, and the own block's
-`ac_on_block` when the node proposes. -/
-private theorem tick_ac_call {y : Fin sp.n} {st : NodeState (goldilocksNode sp ro)} {t : Time}
-    {x : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+/-- The AC calls of a tick, for any node AC: `ac_on_tick`, `ac_proposal`, `ac_to_fg`, and the own
+block's `ac_on_block` when the node proposes. -/
+private theorem tick_ac_call {A : NodeAC sp.toParams}
+    {dg : Digest (List (FG.Att sp.n)) A.Payload} {y : Fin sp.n} {st : NodeState A} {t : Time}
+    {x : Nat} {ℓ : ACLabel A}
     (h : Cut.ac ℓ ∈ (Node.exec proposer dg y st t (.tick x)).2) :
     ℓ.call = .tick ∨ ℓ.call = .proposal ∨ ℓ.call = .toFG ∨ Node.Proposes proposer y t := by
   obtain ⟨ℓt, pc, uc, hlt, hcs, hpc, ℓu, hlu, huc⟩ :=
-    @tick_order sp.toParams (goldilocksNode sp ro) proposer dg y st t x
+    @tick_order sp.toParams A proposer dg y st t x
   have h' : Cut.ac ℓ ∈ (Node.onTick proposer dg y st t x).2 := h
   rw [hcs] at h'
   rcases List.mem_cons.1 h' with h' | h'
@@ -98,17 +102,20 @@ private theorem le_ts_add_five {t : Time} {s : Nat}
   push_cast at h
   linarith only [h]
 
-/-- **The time of an honest signing in slot `s + 1` by `t_{s+1} + Δ`.** An honest signing at
-cut `k`, from a time `t` of slot `s + 1` on and by `t_{s+1} + Δ`, is at `t_{s+1}` (then `t` is
-`t_{s+1}` too) or at `t_{s+1} + Δ`: it is a cut of a tick, at a public time. -/
-theorem held_row_sign_time {ini} (hrun : GoldilocksRun proposer dg H tr ini) {a : FG.Att sp.n}
+/-- **The time of an honest signing in slot `s + 1` by `t_{s+1} + Δ`**, for any node AC. An
+honest signing at cut `k`, from a time `t` of slot `s + 1` on and by `t_{s+1} + Δ`, is at
+`t_{s+1}` (then `t` is `t_{s+1}` too) or at `t_{s+1} + Δ`: it is a cut of a tick, at a public
+time. -/
+theorem held_row_sign_time_node {A : NodeAC sp.toParams}
+    {dg : Digest (List (FG.Att sp.n)) A.Payload} {sg : A.Msg → Fin sp.n} {tr : RunTrace A}
+    {ini : Fin sp.n → A.State} (hl : Node.LocalRun proposer dg H sg tr ini) {a : FG.Att sp.n}
     (hav : a.val ∈ H) {k : Nat} (hsg : tr.SignAt a.val k a) {s : Nat} {t : Time} (ht : 0 ≤ t)
     (hsl : sp.slot t = s + 1) (htk : t ≤ tr.time k)
     (hk : tr.time k ≤ sp.ts ((s + 1 : Nat) : Int) + sp.Δ) :
     (tr.time k = sp.ts s + 4 * sp.Δ ∧ t = tr.time k) ∨ tr.time k = sp.ts s + 5 * sp.Δ := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   obtain ⟨src, hsgc⟩ := hsg
-  obtain ⟨q, hq⟩ := sign_at_public hrun hav hsgc
+  obtain ⟨q, hq⟩ := sign_at_public hl hav hsgc
   have hq' : tr.time k = sp.Δ * q := hq
   have ht4 := slot_start_le ht hsl
   have h4 := ht4.trans htk
@@ -126,6 +133,15 @@ theorem held_row_sign_time {ini} (hrun : GoldilocksRun proposer dg H tr ini) {a 
   · have h4' : tr.time k = 4 * sp.Δ * s + 4 * sp.Δ := by rw [hq', h]; ring
     exact Or.inl ⟨h4', le_antisymm htk (h4'.trans_le ht4)⟩
   · right; rw [hq', h]; ring
+
+/-- **The time of an honest signing in slot `s + 1` by `t_{s+1} + Δ`** on a Goldilocks run
+(`held_row_sign_time_node`). -/
+theorem held_row_sign_time {ini} (hrun : GoldilocksRun proposer dg H tr ini) {a : FG.Att sp.n}
+    (hav : a.val ∈ H) {k : Nat} (hsg : tr.SignAt a.val k a) {s : Nat} {t : Time} (ht : 0 ≤ t)
+    (hsl : sp.slot t = s + 1) (htk : t ≤ tr.time k)
+    (hk : tr.time k ≤ sp.ts ((s + 1 : Nat) : Int) + sp.Δ) :
+    (tr.time k = sp.ts s + 4 * sp.Δ ∧ t = tr.time k) ∨ tr.time k = sp.ts s + 5 * sp.Δ :=
+  held_row_sign_time_node hrun.toLocalRun hav hsg ht hsl htk hk
 
 /-- **No held row signed at `t_{s+1} + Δ`.** An honest slot-`(s+1)` voter accepted, before its
 vote, no block with a row signed at `t_{s+1} + Δ` before the acceptance: the voter's own tick at
