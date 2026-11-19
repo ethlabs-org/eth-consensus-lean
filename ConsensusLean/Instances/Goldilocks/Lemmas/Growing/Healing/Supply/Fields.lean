@@ -151,7 +151,7 @@ theorem goldilocks_report_follow {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {
 /-- The Goldilocks healing witness, with the committee-start run interface and the exact
 warmup, follow, drain and joined stored-fast-lock origin equations. -/
 theorem goldilocks_ac_healing (hδ : 3 ≤ sp.toParams.δt) :
-    goldilocksACHealing sp ro hδ := by
+    goldilocksACHealing sp ro := by
   let O : ACHealing (goldilocksNode sp ro) (fun v => v.val)
       (goldilocksRunInterface sp ro) :=
     { warmup := 2 * sp.k

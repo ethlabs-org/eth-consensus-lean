@@ -535,9 +535,8 @@ detail in `TRUST.md`.
   `GoldilocksRun`, `Growing.GoldilocksRun`, `SA.ACRun`, `SA.ACRunU` and `SA.Growing.ACRun` state the
   run and trace laws only, for every vote binding, and carry no committee size. A milestone statement proved or
   stated for population-sized committees takes `sp.committeeSize = sp.n` as a premise: the proved
-  `Healing.HeightScopedRetention`, and the open growing-fault statements
-  over `Growing.GoldilocksRun` (`Compose.Growing.ReadyImpliesJoined`, `Compose.Growing.OutcomeService`,
-  `Healing.Growing.PatternRecovery`, `FinalizingCoverage` and `CacheAcceptanceAfterReset`). The growing-fault R.2 rows
+  `Healing.HeightScopedRetention`, and the growing-fault statement over `Growing.GoldilocksRun`
+  `Compose.Growing.OutcomeService`. The growing-fault R.2 rows
   `Regimes.Growing.IncludeSleepy` and `GrowSleepy` (`Results/Statements/SleepyGrowth`) are stated at a slot
   dictionary `K` instead: from its committee start, with its committee facts and its committee support
   `CommitteeSleepy`, and no size equation. The healing premise bundles (`HealthyBaseU` in

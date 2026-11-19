@@ -99,7 +99,7 @@ structure GoodWindow (H : Time → Set (Fin P.n)) (tr : FGTrace P ACP) (cF : Nat
   /-- P3–P4: on the chain already, or in the proposer's pool before its proposal. -/
   pooled : ∀ r ∈ R, (tr.store p i).OnChain Pr r ∨ r ∈ (tr.store p i).atts
   /-- P6. -/
-  params : a + cF + kF ≤ P.δt ∧ 1 ≤ FG.FGParams.KW
+  params : a + cF + kF ≤ P.δt
 
 /-- **G1.6 under growing faults (theorem A).** -/
 def PreviousHeightJustifiedEntry : Prop :=
@@ -160,14 +160,12 @@ def Coverage : Prop :=
     GoodWindow P ACP H tr cF T a₀ kF p i Bs Pr R →
     ¬ ((tr.store p i).σ T.root).previousHeightJustified →
     IsEntry P ACP (tr.store p i) T₁ → (tr.store p i).Anc T₁ T → T₁ ≠ T →
-    (∀ Y, IsEntry P ACP (tr.store p i) Y → (tr.store p i).Anc T₁ Y → (tr.store p i).Anc Y T →
-      Y ≠ T₁ → ¬ ((tr.store p i).σ Y.root).previousHeightJustified) →
     ∀ X, JustifiesEntry P ACP (tr.store p (i + 1)) T ((tr.store p i).σ T.root).h X →
       (tr.store p (i + 1)).Anc X Bs →
     ∀ (a₁ : Nat) (p₁ : Fin P.n) (i₁ : Nat) (Bs₁ Pr₁ : NodeBlock P ACP)
       (R₁ : Finset (FG.Att P.n)), GoodWindow P ACP H tr cF X a₁ kF p₁ i₁ Bs₁ Pr₁ R₁ →
       ∃ Z ∈ (tr.store p₁ (i₁ + 1)).tree, (tr.store p₁ (i₁ + 1)).Anc Z Bs₁ ∧
-        Z.slot ≤ T₁.slot + (T.slot - T₁.slot) + (a₀ + cF + kF) + (a₁ + cF + kF) ∧
+        Z.slot ≤ T.slot + (a₀ + cF + kF) + (a₁ + cF + kF) ∧
         ∃ F ∈ (tr.store p₁ (i₁ + 1)).tree, F.root = ((tr.store p₁ (i₁ + 1)).σ Z.root).F ∧
           (tr.store p₁ (i₁ + 1)).Anc T₁ F
 

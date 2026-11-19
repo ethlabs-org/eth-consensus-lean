@@ -414,9 +414,7 @@ theorem cut_and_reset : CutAndReset := by
     fun y hy k att hs hatt => reset_le_of_high hrun hh hR hy hs hatt,
     fun y hy k src signed hc hk => hmax_le_at_reset hrun hh hR hy hc hk,
     fun y hy k att hs hk => signed_le_at_reset hrun hh hR hy hs hk,
-    fun 𝓔 h𝓔 E hE => namers_lt_q hrun hh hnc hR (h𝓔 hE), fun T hT y hy k att hs hk => ?_⟩
-  have := sp.toParams.hΔ
-  constructor <;> linarith
+    fun E hE => namers_lt_q hrun hh hnc hR hE⟩
 
 end Consensus.Goldilocks.Healing
 

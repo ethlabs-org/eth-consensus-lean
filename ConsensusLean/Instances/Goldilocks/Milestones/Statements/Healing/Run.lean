@@ -299,9 +299,9 @@ with `τ = ḡ`; the lock's block is the written block moved back to an ancestor
 attestation whose height pair has height `H_z + 1`;
 (c) if `a` is the reset `a_z`: `a > c_z` and no honest height pair of height `≥ H_z + 1` is
 signed before `a`; at the FG update (`fg_attest`) of each honest tick at `a` the accepted
-frontier is `≤ H_z + 1`, so every honest attestation signed at `a` has height `≤ H_z + 1`; for every
-set `𝓔` of entries of heights `≥ H_z + 1` the first clause of (K1_𝓔) of G1.10 holds with
-`T₀ = a − Δ`; and for every `T ≥ a` every honest attestation signed at `a` lies in `(T₀, T]`. -/
+frontier is `≤ H_z + 1`, so every honest attestation signed at `a` has height `≤ H_z + 1`; and
+for every entry of height `≥ H_z + 1` the first clause of (K1) of G1.10 holds with
+`T₀ = a − Δ`. -/
 def CutAndReset : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
@@ -324,11 +324,9 @@ def CutAndReset : Prop :=
       (∀ y ∈ H, ∀ k src signed, tr.CallAt y k (.fg (.attest src signed)) → tr.time k = a →
         (tr.state y k).fg.hmax ≤ HZ tr H g + 1) ∧
       (∀ y ∈ H, ∀ k att, tr.SignAt y k att → tr.time k = a → att.h ≤ HZ tr H g + 1) ∧
-      (∀ 𝓔 ⊆ HighEntries tr H (HZ tr H g), ∀ E ∈ 𝓔,
+      ∀ E ∈ HighEntries tr H (HZ tr H g),
         (Store.namers sp.toParams (Payload sp.n) H tr.projFG (a - sp.Δ) E).ncard <
-          sp.toParams.fg.q) ∧
-      ∀ T, a ≤ T → ∀ y ∈ H, ∀ k att, tr.SignAt y k att → tr.time k = a →
-        a - sp.Δ < tr.time k ∧ tr.time k ≤ T
+          sp.toParams.fg.q
 
 /-- **HR.2, phase count** (an FG store node over FG traces). In an FG trace (unforgeable honest
 signatures, durable and serialized honest clients, `NoColl` as the coherence of `U`:

@@ -27,7 +27,7 @@ effect):
 
 Then it stutters. The second window is `a₁ = 0`, `c_F = 1`, `k_F = 0`: `Bx.slot + 1 = 7 =
 By.slot`, and `aX` is signed at time `6 ≤ t_6 + 6Δ`. `Coverage`'s slot bound is then
-`T₁.slot + (T.slot − T₁.slot) + D₀ + D₁ = 2 + 3 + 1 + 1 = 7`, attained: the only witness is
+`T.slot + D₀ + D₁ = 5 + 1 + 1 = 7`, attained: the only witness is
 `By`, of slot `7` (`trV_coverage_witness`). -/
 
 namespace Consensus.Goldilocks.Store.Test
@@ -400,7 +400,7 @@ theorem trV_localRun : FGLocalRun () {w₀} {g₁, Bs, Bf, Bk, Bc, Bx, By} trV w
 `c_F = 1`, `k_F = 0`, served by `Bx` at cut `14` with the rows `{aC}`. -/
 theorem trV_goodWindow_Bc : GoodWindow P₁ Unit {w₀} trV 1 Bc 0 0 w₀ 14 Bx Bc {aC} := by
   refine ⟨⟨rfl, ⟨rfl, rfl⟩, rfl, rfl, ?_, rfl, ?_⟩, ?_, ?_, ⟨le_rfl, le_rfl⟩, by decide, ?_, ?_,
-    ?_, ⟨by decide, by decide⟩⟩ <;> rw [trV_store.1]
+    ?_, by decide⟩ <;> rw [trV_store.1]
   · exact (rfl : stCa.blocks 4 = some Bc)
   · intro r hr hh hT _
     change r ∈ [a₀, a₁, aK, aF, aC] at hr
@@ -429,7 +429,7 @@ proposal `By` of slot `7` at cut `17` on `Bx`, with the rows `{aX}` (signed at c
 `6`, carrying `(4, Bc)`, pooled at cut `16`). -/
 theorem trV_goodWindow_Bx : GoodWindow P₁ Unit {w₀} trV 1 Bx 0 0 w₀ 17 By Bx {aX} := by
   refine ⟨⟨rfl, ⟨rfl, rfl⟩, rfl, rfl, ?_, rfl, ?_⟩, ?_, ?_, ⟨le_rfl, le_rfl⟩, by decide, ?_, ?_,
-    ?_, ⟨by decide, by decide⟩⟩ <;> rw [trV_store.2.2.1]
+    ?_, by decide⟩ <;> rw [trV_store.2.2.1]
   · exact (rfl : stXa.blocks 5 = some Bx)
   · intro r hr hh hT _
     change r ∈ [a₀, a₁, aK, aF, aC, aX] at hr
@@ -504,26 +504,26 @@ theorem trV_coverage_premises :
 
 /-- (a) G1.8 (b) applied on `trV` (`coverage` at the premises of `trV_coverage_premises`): on
 the chain of `By`, after cut `17`, some `Z ⪯ By` of slot at most
-`Bf.slot + (Bc.slot − Bf.slot) + D₀ + D₁ = 7` has a finalized block extending `Bf`. -/
+`Bc.slot + D₀ + D₁ = 7` has a finalized block extending `Bf`. -/
 theorem trV_coverage :
     ∃ Z ∈ (trV.store w₀ (17 + 1)).tree, (trV.store w₀ (17 + 1)).Anc Z By ∧
-      Z.slot ≤ Bf.slot + (Bc.slot - Bf.slot) + (0 + 1 + 0) + (0 + 1 + 0) ∧
+      Z.slot ≤ Bc.slot + (0 + 1 + 0) + (0 + 1 + 0) ∧
       ∃ F ∈ (trV.store w₀ (17 + 1)).tree, F.root = ((trV.store w₀ (17 + 1)).σ Z.root).F ∧
         (trV.store w₀ (17 + 1)).Anc Bf F := by
-  obtain ⟨hr, hw, hnb, hT₁, hT₁T, hne, hfail, hJ, hXB, hw₁⟩ := trV_coverage_premises
-  exact coverage P₁ Unit () {w₀} _ trV hr 1 Bf Bc 0 0 w₀ 14 Bx Bc {aC} hw hnb hT₁ hT₁T hne hfail
+  obtain ⟨hr, hw, hnb, hT₁, hT₁T, hne, -, hJ, hXB, hw₁⟩ := trV_coverage_premises
+  exact coverage P₁ Unit () {w₀} _ trV hr 1 Bf Bc 0 0 w₀ 14 Bx Bc {aC} hw hnb hT₁ hT₁T hne
     Bx hJ hXB 0 w₀ 17 By Bx {aX} hw₁
 
 /-- (a) The conclusion of `trV_coverage`, concretely and tight: after cut `17`, `By` (slot
 `7`) finalizes `Bc` (`σ[By].F = Bc.root`, `h_F = 4`), which extends `Bf`; the slot bound
-`2 + 3 + 1 + 1 = 7` equals `By.slot`; and `By` is the only witness: every other block of the chain
+`5 + 1 + 1 = 7` equals `By.slot`; and `By` is the only witness: every other block of the chain
 of `By` has `F` at genesis, which does not extend `Bf`. -/
 theorem trV_coverage_witness :
     By ∈ (trV.store w₀ (17 + 1)).tree ∧ (trV.store w₀ (17 + 1)).Anc By By ∧
       ((trV.store w₀ (17 + 1)).σ By.root).F = Bc.root ∧
       ((trV.store w₀ (17 + 1)).σ By.root).hF = 4 ∧
       Bc ∈ (trV.store w₀ (17 + 1)).tree ∧ (trV.store w₀ (17 + 1)).Anc Bf Bc ∧
-      By.slot = 7 ∧ Bf.slot + (Bc.slot - Bf.slot) + (0 + 1 + 0) + (0 + 1 + 0) = By.slot ∧
+      By.slot = 7 ∧ Bc.slot + (0 + 1 + 0) + (0 + 1 + 0) = By.slot ∧
       ∀ Z ∈ (trV.store w₀ (17 + 1)).tree, (trV.store w₀ (17 + 1)).Anc Z By →
         (∃ F ∈ (trV.store w₀ (17 + 1)).tree, F.root = ((trV.store w₀ (17 + 1)).σ Z.root).F ∧
           (trV.store w₀ (17 + 1)).Anc Bf F) → Z = By := by

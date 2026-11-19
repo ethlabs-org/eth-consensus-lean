@@ -4,7 +4,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.C
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ChainRepresentationEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.EngineEdges
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.CorrectLocal
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.FG
 
 public section
 

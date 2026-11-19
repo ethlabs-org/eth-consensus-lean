@@ -169,7 +169,7 @@ theorem good_window_of_rows (hp : ResetPremises tr H proposer dg g ΔF a)
       (hrows z z.property).1 (hsig z) (ht z)
     rw [hstore]
     exact processed_att_retained hp.run.toLocalRun hw hi hik
-  · simpa only [Nat.zero_add] using And.intro hto (show 1 ≤ FG.FGParams.KW by decide)
+  · simpa only [Nat.zero_add] using hto
 
 end Consensus.Goldilocks.Healing.Recovery
 

@@ -271,7 +271,7 @@ cut `1`). -/
 theorem trS_goodWindow : GoodWindow P₁ Unit {w₀} trS 1 g₁ 0 0 w₀ 2 Bs g₁ {a₀} := by
   have hst : trS.store w₀ 2 = stA := by rw [FGTrace.store, (trOf_state Bs stBs w₀).2.2.1]
   refine ⟨⟨rfl, ⟨rfl, rfl⟩, rfl, rfl, ?_, rfl, ?_⟩, ?_, ?_, ⟨le_rfl, le_rfl⟩, by decide, ?_, ?_,
-    ?_, ⟨by decide, by decide⟩⟩ <;> rw [hst]
+    ?_, by decide⟩ <;> rw [hst]
   · exact g₁_mem_stA
   · exact fun r hr _ _ _ => hr
   · exact ⟨g₁_mem_stA, rfl⟩

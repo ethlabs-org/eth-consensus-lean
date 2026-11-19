@@ -119,12 +119,9 @@ theorem tickRun_cutAndReset :
         ((tickRun N1 dg1).state y k).fg.hmax ≤ 3 + 1) ∧
       (∀ y ∈ (Set.univ : Set (Fin sp1.n)), ∀ k att, (tickRun N1 dg1).SignAt y k att →
         (tickRun N1 dg1).time k = 16 → att.h ≤ 3 + 1) ∧
-      (∀ 𝓔 ⊆ Healing.HighEntries (tickRun N1 dg1) Set.univ 3, ∀ E ∈ 𝓔,
+      ∀ E ∈ Healing.HighEntries (tickRun N1 dg1) Set.univ 3,
         (Store.namers sp1.toParams (Payload sp1.n) Set.univ (tickRun N1 dg1).projFG (16 - sp1.Δ)
-          E).ncard < sp1.toParams.fg.q) ∧
-      ∀ T, 16 ≤ T → ∀ y ∈ (Set.univ : Set (Fin sp1.n)), ∀ k att,
-        (tickRun N1 dg1).SignAt y k att → (tickRun N1 dg1).time k = 16 →
-          16 - sp1.Δ < (tickRun N1 dg1).time k ∧ (tickRun N1 dg1).time k ≤ T) := by
+          E).ncard < sp1.toParams.fg.q) := by
   have h := Healing.cut_and_reset sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) 0 1
     tickRun_goldilocksRun (tickRun_healthy 0) (dg1_noColl _)
   rw [cutZ_zero, hz_zero, gbar_zero] at h

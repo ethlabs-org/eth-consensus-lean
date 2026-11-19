@@ -24,9 +24,6 @@ stated under growing faults. The definitions read the honest set as follows:
   validators honest at a horizon `d`, at cuts up to `d`; a phase change is read at both cuts over
   the cohort `H d` of one fixed `d`, so the steps of the count do not cross a change of cohort (a
   compromise, which removes a node's blocks from the honest reads, is not a phase change);
-* **the reset bound** of HR.3 (c) is indexed by the lag `L` of the
-  counting cohort `H D` behind `H_z` at `c_z` (`LagWithin`): the window is
-  `c_z + 6(Δ + A_HS) + LΔ`; at a constant honest set `L = 0`;
 * **the proposer** of a healed or ready slot `s` is honest through `t_s + hold`
   (`Regimes.Growing.hold`).
 
@@ -91,12 +88,6 @@ def ReadyProposal (proposer : Nat → Fin sp.n)
       tr.FirstCutFrom j (sp.ts s + sp.Δ) →
       ∃ R ∈ (tr.state y j).fg.tree, R.root = x.head ∧ R.slot + 1 ≤ s
 
-/-- **`Prop⁺(G_p)`** under growing faults. -/
-def PropPlus (proposer : Nat → Fin sp.n) (g Gp : Time) : Prop :=
-  ∀ τ, gbar g ≤ τ → ∃ (s : Nat) (k : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))),
-    1 ≤ s ∧ τ ≤ sp.ts s ∧ sp.ts s ≤ τ + Gp ∧
-    ReadyProposal tr H proposer (proposer s) k s B
-
 /-- **The HS shared premises** under growing faults, with `Healthy(g)` as `HealthyRunAt`. -/
 structure HSShared (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF : Time) : Prop where
   /-- `NoColl` on the blocks of the run. -/
@@ -136,16 +127,6 @@ def PhaseCount (P : Params) (ACP : Type) : Prop :=
         PhaseAt tr (H d) j m c' → c.rank ≤ c'.rank ∧ ∀ J, c.topJ = some J → c'.topJ = some J) ∧
       ∀ m, {i | tr.time (i + 1) ≤ d ∧ ∃ c c', PhaseAt tr (H d) i m c ∧
         PhaseAt tr (H d) (i + 1) m c' ∧ c ≠ c'}.encard ≤ 2
-
-/-- The reset window of HR.3 at lag `L`: `c_z + 6(Δ + A_HS) + LΔ`. -/
-def resetWindow (sp : SAParams) (g ΔF Gp : Time) (L : Nat) : Time :=
-  cutZ sp.toParams g + 6 * (sp.Δ + A_HS sp ΔF Gp) + (L : Time) * sp.Δ
-
-/-- The lag of the cohort of horizon `D` at `c_z` is at most `L`: `H_z` is at most `L` above the
-greatest `Σ.h_max` at `c_z` of the validators honest at `D`. -/
-def LagWithin {P : Params} {A : NodeAC P} (tr : RunTrace A) (H : Time → Set (Fin P.n))
-    (g D : Time) (L : Nat) : Prop :=
-  HZ tr H g ≤ HZ tr (fun _ => H D) g + L
 
 section Top
 

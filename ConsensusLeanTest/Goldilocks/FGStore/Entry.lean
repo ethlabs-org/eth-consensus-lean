@@ -382,7 +382,7 @@ slot `2` at cut `5` on `Bs`, with the rows `{a₁}` (signed at cut `3`, time `1`
 `4`; `a₁` carries `P_E = (1, genesis)`). -/
 theorem trJ_goodWindow : GoodWindow P₁ Unit {w₀} trJ 1 Bs 0 0 w₀ 5 Bf Bs {a₁} := by
   refine ⟨⟨rfl, ⟨rfl, rfl⟩, rfl, rfl, ?_, rfl, ?_⟩, ?_, ?_, ⟨le_rfl, le_rfl⟩, by decide, ?_, ?_,
-    ?_, ⟨by decide, by decide⟩⟩ <;> rw [trJ_store.2.2.2.1]
+    ?_, by decide⟩ <;> rw [trJ_store.2.2.2.1]
   · exact (rfl : stBa.blocks 1 = some Bs)
   · intro r hr hh hT _
     rcases List.mem_cons.mp hr with rfl | hr
@@ -447,7 +447,7 @@ theorem trJ_justifier :
 cut `2` on genesis, with the rows `{a₀}`. -/
 theorem trJ_genesis_goodWindow : GoodWindow P₁ Unit {w₀} trJ 1 g₁ 0 0 w₀ 2 Bs g₁ {a₀} := by
   refine ⟨⟨rfl, ⟨rfl, rfl⟩, rfl, rfl, ?_, rfl, ?_⟩, ?_, ?_, ⟨le_rfl, le_rfl⟩, by decide, ?_, ?_,
-    ?_, ⟨by decide, by decide⟩⟩ <;> rw [trJ_store.1]
+    ?_, by decide⟩ <;> rw [trJ_store.1]
   · exact g₁_mem_stA
   · exact fun r hr _ _ _ => hr
   · exact ⟨g₁_mem_stA, rfl⟩
