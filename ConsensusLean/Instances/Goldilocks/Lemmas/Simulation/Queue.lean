@@ -331,7 +331,7 @@ private theorem proposal_inventory {P : Wire sp.n binding → Prop} (st : State 
     (h : Inventory P st.node) (s : Slot) {par : ParentRef} {info : Info}
     {cs : List (Wire sp.n binding)} (hp : (propose st s).2 = some (par, info, cs)) :
     ∀ o ∈ cs, P o := by
-  unfold propose Node.acProposal at hp
+  simp only [propose_eq, Node.acProposal] at hp
   dsimp only [goldilocksNode, SA.goldilocksSA] at hp
   unfold SA.acProposal at hp
   dsimp only at hp
@@ -409,7 +409,7 @@ private theorem apply_inventory (seen : List (Wire sp.n binding)) (st : State sp
 private theorem tick_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
     (h : Inventory (Available seen st) st.node) :
     Inventory (Available seen (nodeTick st)) (nodeTick st).node := by
-  unfold nodeTick
+  rw [nodeTick_eq]
   split
   · apply apply_inventory seen st
       ((Node.acCall st.self st.node st.now .tick).1,
@@ -437,7 +437,7 @@ private theorem restore_inventory (seen : List (Wire sp.n binding)) (st : State 
 private theorem fg_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
     (h : Inventory (Available seen st) st.node) :
     Inventory (Available seen (fgUpdate st)) (fgUpdate st).node := by
-  unfold fgUpdate
+  rw [fgUpdate_eq]
   dsimp only
   split
   · exact inventory_toFG h st.now
@@ -459,7 +459,7 @@ private theorem processOne_inventory (seen : List (Wire sp.n binding)) (st : Sta
     (h : Inventory (Available seen st) st.node)
     (ho : ∀ x ∈ o.parts, x ∈ seen.flatMap Model.Obj.parts) :
     Inventory (Available seen (processOne hs st o)) (processOne hs st o).node := by
-  unfold processOne
+  rw [AsChainShape.processOne_eq]
   split
   · rename_i B hB
     have hcanon : o = blockObj sp B := by
@@ -485,7 +485,6 @@ private theorem processOne_inventory (seen : List (Wire sp.n binding)) (st : Sta
       · cases he
       · cases he; exact ho
       · cases he
-    dsimp only
     apply apply_inventory seen st (Node.onMessage st.self st.node st.now v) ?_ h
     all_goals
       intro P h hseen he
@@ -521,7 +520,7 @@ private theorem process_inventory (seen : List (Wire sp.n binding)) (st : State 
     (h : Inventory (Available seen st) st.node)
     (ho : ∀ x ∈ o.parts, x ∈ seen.flatMap Model.Obj.parts) :
     Inventory (Available seen (process st o hs)) (process st o hs).node := by
-  unfold process
+  rw [process_eq]
   have key : ∀ (l : List (Wire sp.n binding)) (st : State sp ro binding),
       Inventory (Available seen st) st.node →
       (∀ x ∈ l, ∀ y ∈ x.parts, y ∈ seen.flatMap Model.Obj.parts) →
@@ -545,7 +544,7 @@ private theorem record_inventory (seen : List (Wire sp.n binding)) (st : State s
       ∀ atts p, decodeInfo sp.n hd.info = some (atts, p) →
       ∀ x ∈ payloadObjs atts p, x ∈ seen.flatMap Model.Obj.parts) :
     Inventory (Available seen (recordOwn st o hs)) (recordOwn st o hs).node := by
-  unfold recordOwn
+  rw [AsChainShape.recordOwn_eq]
   split
   · exact h
   · rename_i k s hd cs
@@ -725,7 +724,7 @@ private theorem proposal_carried (v : V)
   injection he with _ hmsg hcs
   injection hmsg with hhd
   subst hhd hcs
-  unfold propose at hp
+  rw [propose_eq] at hp
   dsimp only at hp
   split at hp
   · cases hp
@@ -750,7 +749,7 @@ private theorem proposal_duty_inventory (v : V)
         (((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).1.1 hn).node
       rw [hact]
       have hi := inventory_proposal h (shapeOf S hn nd).now
-      unfold propose
+      rw [propose_eq]
       dsimp only
       split <;> exact hi
     · exact proposal_carried S rho hn v nd s hs

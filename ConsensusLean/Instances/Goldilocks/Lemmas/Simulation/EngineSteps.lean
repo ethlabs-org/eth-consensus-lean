@@ -93,7 +93,7 @@ theorem canonEvent_cases hs (o : Wire sp.n binding) :
     canonEvent sp ro hs o = none ∨ (∃ B, canonEvent sp ro hs o = some (.block B)) ∨
       (∃ v, canonEvent sp ro hs o = some (.message v)) ∨
       (∃ a, canonEvent sp ro hs o = some (.attestation a)) := by
-  unfold canonEvent
+  rw [canonEvent_eq]
   split <;> simp
 
 /-- Processing one delivered object runs the handler of its canonical event, nothing if it has none.
@@ -106,7 +106,7 @@ theorem processOne_node (proposer : Nat → Fin sp.n)
       | some e => (exec proposer dg st.self st.node st.now e).1
       | none => st.node := by
   rcases canonEvent_cases (ro := ro) hs o with h | ⟨B, h⟩ | ⟨v, h⟩ | ⟨a, h⟩ <;>
-    simp [processOne, h, relayIf_node, apply_node, exec]
+    simp [processOne_eq, h, relayIf_node, apply_node, exec]
 
 /-- Processing a list of delivered objects runs `deliverState` on the node state. -/
 theorem foldl_processOne_node (proposer : Nat → Fin sp.n)
@@ -141,7 +141,7 @@ theorem node_of_deliver (hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.faul
       ⟨(recordOwn_none_node st _ _ hs).trans h.1, (recordOwn_fgDue st _ hs).trans h.2⟩)
     v _ o t ⟨by rw [stateAt_eq],
       (process_fgDue _ _ _).trans (by simpa only [stateAt_eq] using hpre)⟩).1.trans ?_
-  unfold process
+  rw [process_eq (stateAt S rho hn v i) o (Model.digests rho.hash o)]
   refine (foldl_processOne_node (runProposer S rho hn) (digestOf S rho) _ _ _).trans ?_
   rw [self_eq_ownKey, now_eq_lastClock S rho hn hv, lastClock_of_deliver S rho hv v he]
 
@@ -310,7 +310,8 @@ theorem act_propose_snd (nd : Model.Node (Model.protoOf (compiled (goldilocks S)
       ((propose (shapeOf S hn nd) s).2.map
         (fun r => (.item ⟨r.1, s, encodeTxs nd.st.2, r.2.1⟩, r.2.2))).toList := by
   change (Option.map _ ((goldilocks S (pubOf E)).propose nd.st.1 s).2).toList = _
-  simp only [goldilocks, dite_eq_left hn]; rfl
+  rw [goldilocks_propose_eq S _ nd.st.1 s, dite_eq_left hn]
+  rfl
 
 omit [DecidableEq V] in
 /-- The block the engine decodes from the proposal item is the node's `mkBlock` with the engine's
@@ -328,7 +329,7 @@ theorem blockOf_eq_mkBlock (k : Fin (Fintype.card V))
       mkBlock (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (digestOf S rho) k fg t x
         H p := by
   subst hslot
-  simp only [blockOf, mkBlock, digestOf_eq]
+  simp only [blockOf_eq, mkBlock, digestOf_eq]
   erw [dgOf_eq]
   rw [parentRoot_parentRef]
 
@@ -366,7 +367,7 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled
     have hrel := hrel hmem
     simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
       .proposer s from rfl, hmem, ↓reduceIte]
-    simp only [propose] at hact1 hact2 hrel
+    simp only [propose_eq] at hact1 hact2 hrel
     simp only [tickStep, hP.2 hp, ite_true]
     rcases hr : (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).2.2 with _ | ⟨d, p⟩
     · simp only [hr] at hact1 hact2
@@ -394,7 +395,8 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled
       rw [ite_eq_left (Bool.and_eq_true_iff.2 ⟨?_, ?_⟩)]
       · change (recordOwn (a.1.1 hn) _ _).node = _
         rw [hact1]
-        simp only [recordOwn, decodeInfo_encodeInfo]
+        refine (congrArg State.node (recordOwn_eq _ _ _)).trans ?_
+        simp only [decodeInfo_encodeInfo]
         erw [rootOf_digests_item]
         simp only [apply_node]
         have hb := blockOf_eq_mkBlock S rho hn (rho.ownKey v)
@@ -427,14 +429,14 @@ theorem poll_node_of_fgDue_true (st : State sp ro binding) (t : Time) (h : st.fg
 /-- The node's tick at a public time runs the AC's tick on the node state. -/
 theorem nodeTick_node_public (st : State sp ro binding) (h : sp.toParams.IsPublic st.now) :
     (nodeTick st).node = (Node.acCall st.self st.node st.now .tick).1 := by
-  unfold nodeTick
+  rw [nodeTick_eq]
   rw [ite_eq_left h]
   rfl
 
 /-- The node's tick at a non-public time keeps the node state. -/
 theorem nodeTick_node_other (st : State sp ro binding) (h : ¬ sp.toParams.IsPublic st.now) :
     (nodeTick st).node = st.node := by
-  unfold nodeTick
+  rw [nodeTick_eq]
   rw [ite_eq_right h]
 
 /-- The shape's FG update is the node's `tickStep .fgUpdate`, for any digests and mempool: neither
@@ -443,8 +445,7 @@ theorem fgUpdate_node (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (x : Nat)
     (st : State sp ro binding) :
     (fgUpdate st).node = (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).1 := by
-  unfold fgUpdate Node.tickStep
-  simp only
+  simp only [fgUpdate_eq, Node.tickStep]
   rcases h : (Node.acToFG st.node st.now).2.2 with _ | C
   · rfl
   · unfold Node.attest
@@ -594,7 +595,7 @@ theorem atProposal_fgDue (v : V) (nd : Model.Node (Model.protoOf (compiled (gold
     (hsel : rho.ownKey v ∈ rho.sel .poll) :
     (shapeOf S hn (atProposal S rho v nd t)).fgDue = true := by
   rw [atProposal_shape _ _ _ _ _ _ hsel]
-  unfold nodeTick
+  rw [nodeTick_eq]
   rw [ite_eq_left (by rw [poll_now, poll_now]; exact hp)]
 
 omit [DecidableEq V] in
@@ -622,11 +623,15 @@ theorem atProposal_node (v : V) (nd : Model.Node (Model.protoOf (compiled (goldi
       (nd.st.1 hn).self := by rw [poll_self, poll_self]
   have h3 : (poll (poll { nd.st.1 hn with now := t } t.toNat).1 t.toNat).1.now = t := by
     rw [poll_now, poll_now]
-  unfold nodeTick
+  rw [nodeTick_eq]
   rw [h3]
   by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
   · simp only [hp, ite_true, apply_node, h1, h2]
+    rw [nodeTick_eq]
+    simp [hp, apply_node]
   · simp only [hp, ite_false, h1]
+    rw [nodeTick_eq]
+    simp [hp]
 
 omit [DecidableEq V] in
 /-- The node after the whole tick, in terms of the node at the proposal duty: the proposal if
@@ -674,7 +679,7 @@ theorem node_of_tick_other (hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.f
     erw [runDuties_fst_nil]
     have hf : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).fgDue = false := by
       rw [atProposal_shape _ _ _ _ _ _ hsel]
-      unfold nodeTick
+      rw [nodeTick_eq]
       rw [ite_eq_right (by rw [poll_now, poll_now]; exact hp)]
       exact poll_fgDue _ _
     rw [poll_node_of_fgDue _ _ (poll_fgDue _ _), poll_node_of_fgDue _ _ hf,

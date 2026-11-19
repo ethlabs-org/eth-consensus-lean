@@ -72,14 +72,14 @@ theorem processOne_pool_insertion_queued {sp : SA.SAParams}
     (hnew : m ∈ (processOne hs st o).node.ac.pool m.slot) :
     (st.now, m) ∈ (processOne hs st o).voteForwards := by
   rcases canonEvent_cases (ro := ro) hs o with h | ⟨B, h⟩ | ⟨v, h⟩ | ⟨a, h⟩
-  · simp only [processOne, h] at hnew
+  · simp only [AsChainShape.processOne_eq, h] at hnew
     exact False.elim (hold hnew)
-  · simp only [processOne, h] at hnew ⊢
+  · simp only [AsChainShape.processOne_eq, h] at hnew ⊢
     unfold relayIf at hnew ⊢
     split_ifs at hnew ⊢ <;> exact onBlock_pool_insertion_queued st B m hold hnew
-  · simp only [processOne, h] at hnew ⊢
+  · simp only [AsChainShape.processOne_eq, h] at hnew ⊢
     exact onMessage_pool_insertion_queued st v m hold hnew
-  · simp only [processOne, h, relayIf, ↓reduceIte] at hnew
+  · simp only [AsChainShape.processOne_eq, h, relayIf, ↓reduceIte] at hnew
     exact False.elim (hold hnew)
 
 /-- Recursive delivery processing cannot insert a vote without queueing its envelope. -/
@@ -103,7 +103,7 @@ theorem recordOwn_pool_insertion_queued {sp : SA.SAParams}
     (m : SA.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
     (hnew : m ∈ (recordOwn st o hs).node.ac.pool m.slot) :
     (st.now, m) ∈ (recordOwn st o hs).voteForwards := by
-  unfold recordOwn at hnew ⊢
+  rw [AsChainShape.recordOwn_eq] at hnew ⊢
   split at hnew
   · exact False.elim (hold hnew)
   · split at hnew
@@ -117,7 +117,7 @@ theorem nodeTick_pool_insertion_queued {sp : SA.SAParams}
     (m : SA.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
     (hnew : m ∈ (nodeTick st).node.ac.pool m.slot) :
     (st.now, m) ∈ (nodeTick st).voteForwards := by
-  unfold nodeTick at hnew ⊢
+  rw [nodeTick_eq] at hnew ⊢
   split_ifs at hnew ⊢
   · refine apply_voteForward_of_admission st _ m ⟨.tick, Node.frame st.node,
       ((goldilocksNode sp ro).step st.self st.node.ac (Node.frame st.node) st.now .tick).2⟩
@@ -138,7 +138,7 @@ private theorem voteStamped_apply {sp : SA.SAParams}
 private theorem voteStamped_recordOwn {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (t : Time) (st : State sp ro binding) o hs
     (h : VoteQueueStamped t st) : VoteQueueStamped t (recordOwn st o hs) := by
-  unfold recordOwn
+  rw [AsChainShape.recordOwn_eq]
   split
   · exact h
   · split
@@ -149,14 +149,14 @@ private theorem voteStamped_recordOwn {sp : SA.SAParams}
 private theorem voteStamped_propose {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (t : Time) (st : State sp ro binding) s
     (h : VoteQueueStamped t st) : VoteQueueStamped t (propose st s).1 := by
-  unfold propose
+  rw [propose_eq]
   dsimp only
   split <;> exact h
 
 private theorem voteStamped_nodeTick {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (t : Time) (st : State sp ro binding)
     (h : VoteQueueStamped t st) : VoteQueueStamped t (nodeTick st) := by
-  unfold nodeTick
+  rw [nodeTick_eq]
   split
   · exact voteStamped_apply t st _ h
   · exact h
@@ -238,8 +238,8 @@ private theorem duty_vote_stamp (v : V)
   | pollPropose n =>
     have hempty : ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose n)).2 =
         [] := by
-      simp only [Model.protoOf, compiled, compile, goldilocks,
-        dite_eq_left hn, goldilocksShape]
+      change (Option.map _ ((goldilocks S (pubOf E)).pollPropose nd.st.1 n).2).toList = []
+      rw [goldilocks_pollPropose_eq S _ nd.st.1 n, dite_eq_left hn]
       rfl
     obtain ⟨body, cs, hm, _, _⟩ := rho.mem_signedCandidate.mp ho
     rw [hempty] at hm
@@ -274,8 +274,8 @@ private theorem duty_vote_pool (v : V)
   | pollPropose n =>
     have hempty : ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose n)).2 =
         [] := by
-      simp only [Model.protoOf, compiled, compile, goldilocks,
-        dite_eq_left hn, goldilocksShape]
+      change (Option.map _ ((goldilocks S (pubOf E)).pollPropose nd.st.1 n).2).toList = []
+      rw [goldilocks_pollPropose_eq S _ nd.st.1 n, dite_eq_left hn]
       rfl
     obtain ⟨body, cs, hm, _, _⟩ := rho.mem_signedCandidate.mp ho
     rw [hempty] at hm
@@ -603,7 +603,7 @@ theorem proposal_pool_insertion_queued (v : V)
         change (SA.acProposal _ st.node.ac (Node.frame st.node) st.now).1.pool = _
         unfold SA.acProposal
         split_ifs <;> rfl
-      unfold propose
+      rw [propose_eq]
       dsimp only
       split <;> exact hp
     refine ⟨(propose_now st s).trans h.1, ?_⟩

@@ -68,8 +68,7 @@ theorem shapeOf_act_propose (st : (Model.protoOf (compiled (goldilocks S)) E).St
     ((Model.protoOf (compiled (goldilocks S)) E).act st (.propose s h)).1.1 hn =
       (propose (st.1 hn) s).1 := by
   change ((goldilocks S (pubOf E)).propose st.1 s).1 hn = _
-  simp only [goldilocks, dite_eq_left hn]
-  rfl
+  rw [goldilocks_propose_eq S _ st.1 s, dite_eq_left hn]
 
 omit [DecidableEq V] in
 /-- The engine's `pollPropose` duty is the shape's `nodeTick`. -/
@@ -78,8 +77,7 @@ theorem shapeOf_act_pollPropose (st : (Model.protoOf (compiled (goldilocks S)) E
     ((Model.protoOf (compiled (goldilocks S)) E).act st (.pollPropose t)).1.1 hn =
       nodeTick (st.1 hn) := by
   change ((goldilocks S (pubOf E)).pollPropose st.1 t).1 hn = _
-  simp only [goldilocks, dite_eq_left hn]
-  rfl
+  rw [goldilocks_pollPropose_eq S _ st.1 t, dite_eq_left hn]
 
 omit [DecidableEq V] in
 /-- The engine's `poll` duty is the shape's `poll`. -/
@@ -87,7 +85,7 @@ theorem shapeOf_act_poll (st : (Model.protoOf (compiled (goldilocks S)) E).State
     ((Model.protoOf (compiled (goldilocks S)) E).act st (.poll t)).1.1 hn =
       (poll (st.1 hn) t).1 := by
   change ((goldilocks S (pubOf E)).pollBatch st.1 t).1 hn = _
-  simp only [goldilocks, dite_eq_left hn]
+  rw [goldilocks_pollBatch_eq S _ st.1 t, dite_eq_left hn]
   rfl
 
 omit [DecidableEq V] in
@@ -243,14 +241,15 @@ theorem dutyStep_pollPropose (v : V) (nd : Model.Node (Model.protoOf (compiled
   have h2 : ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).2 = []
       := by
     change (Option.map _ ((goldilocks S (pubOf E)).pollPropose nd.st.1 t).2).toList = []
-    simp only [goldilocks, dite_eq_left hn]; rfl
+    rw [goldilocks_pollPropose_eq S _ nd.st.1 t, dite_eq_left hn]
+    rfl
   change shapeOf S hn (Model.releaseAll _ _ _
     ⟨((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).1, nd.seen⟩
     (rho.signedCandidate v (.pollPropose t)
       ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).2)).1 = _
   rw [h2]
-  simpa [Model.Run.signedCandidate, hsel, Model.releaseAll] using
-    shapeOf_act_pollPropose S hn nd.st t
+  simp only [Model.Run.signedCandidate, List.filterMap_nil, ite_self, Model.releaseAll]
+  exact shapeOf_act_pollPropose S hn nd.st t
 
 omit [DecidableEq V] in
 /-- Running a duty then a list of duties. -/
@@ -383,7 +382,7 @@ theorem state_of_other (v : V) (i : Nat)
 theorem stateAt_tick (v : V) {i : Nat} {t : Time} (he : rho.events[i]? = some (.tick v t)) :
     stateAt S rho hn v (i + 1) = shapeOf S hn (rho.tick (rho.stateBefore i v) v t).1 := by
   rw [stateAt_succ S rho hn v he]
-  simp only [Model.Run.step, Function.update_self]
+  simp only [Model.Run.step, Function.update_self, shapeOf]
 
 /-- The shape's state after a delivery to `v` is the shape of the engine's `deliver`: the shape's
 `process` of the delivered object with the engine's digests, then the delivery's poll step and
@@ -393,7 +392,7 @@ theorem stateAt_deliver (v : V) {i : Nat} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) :
     stateAt S rho hn v (i + 1) = shapeOf S hn (rho.deliver (rho.stateBefore i v) v o t).1 := by
   rw [stateAt_succ S rho hn v he]
-  simp only [Model.Run.step, Function.update_self]
+  simp only [Model.Run.step, Function.update_self, shapeOf]
 
 /-- The shape's state after a restart of `v` is the shape's `restore` at the own key. -/
 theorem stateAt_restart (v : V) {i : Nat} {t : Time}

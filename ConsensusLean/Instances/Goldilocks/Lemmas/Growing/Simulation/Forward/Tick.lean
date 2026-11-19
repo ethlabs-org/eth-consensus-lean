@@ -45,7 +45,11 @@ theorem tick_proposal_acceptance_queued_at (hv : rho.ExecutionValid)
     have hc : WrappersCover (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)) := by
       rw [atProposal_eq]
       exact tick_duty_prefix_wrappersCover S rho hn v i t _
-    unfold propose
+    let st := shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)
+    change WrappersCover st at hc
+    change WrappersCover (propose st s).1
+    rw [propose_eq]
+    rw [wrappersCover_iff] at hc
     dsimp only
     split <;> simpa only [wrappersCover_iff, Node.acProposal] using hc
   obtain ⟨p, hp⟩ := dutyStep_propose_acceptance_queued S rho hn v _ s hs

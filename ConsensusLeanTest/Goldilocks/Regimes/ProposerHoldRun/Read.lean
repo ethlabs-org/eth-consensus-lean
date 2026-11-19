@@ -60,7 +60,7 @@ theorem small_anc
   rcases hs with hs | hs
   · exact absurd hDC.2.2 (by rw [hgen hDC.2.1 hs]; simp)
   have hp := congrArg Header.parent (headerOf_of_twin hs)
-  simp only [headerOf, hdr, hDC.2.2, parentRef] at hp
+  simp only [headerOf_eq, hdr, hDC.2.2, parentRef_eq] at hp
   have hDg : D.root = (({ S with vote := AsChainShape.stock } : Setup).params
       (pubOf env) one_le_card).genesisRoot := by
     by_contra hne

@@ -50,7 +50,7 @@ theorem wireOK_of_delivered (o : (Model.protoOf (compiled (goldilocks S)) E).Obj
     rw [digestOf_eq]
     change B.root = dgOf rho.hash S.genesisRoot B.parent B.slot B.input B.fgPayload B.acPayload
     erw [dgOf_eq, hrt]
-    simp only [headerOf, hr]
+    simp only [headerOf_eq, hr]
   · trivial
   · exact wellFormed_of_canonEvent he
 

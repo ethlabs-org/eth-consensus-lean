@@ -187,7 +187,7 @@ theorem confirmed_inBy_at (hv : rho.ExecutionValid)
   have hprefix := chainTo_prefix hreach hanc
   have hmem : headerOf (S.params (pubOf E) hn) P ∈
       chainTo ((simTraceAt S rho hn).state (rho.ownKey v) j).fg.blocks (P.slot + 1) P := by
-    simp only [chainTo, ite_eq_right hroot]
+    simp only [chainTo_succ_eq, ite_eq_right hroot]
     split <;> simp
   have hout := hprefix.subset hmem
   have hh : v ∉ rho.faultyAt (rho.cutTime i) := fun h =>

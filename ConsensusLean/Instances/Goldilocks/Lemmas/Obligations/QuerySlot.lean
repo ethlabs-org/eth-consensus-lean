@@ -71,9 +71,9 @@ theorem nonfinal_query_slot (S : Setup) (A : ContractAssumptions S) (V : Type)
     change query + _ ≤ _ at hb
     linarith
   obtain ⟨s, hlo, hhi, hr⟩ := hrec query (by simpa using hquery)
-    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks,
-      goldilocks, skeleton] using hwin)
-    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, goldilocks, skeleton,
+    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks_skel_eq, skeleton]
+        using hwin)
+    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks_skel_eq, skeleton,
       Model.Run.point] using hwin)
   have htime : (goldilocks S (Model.pubOf run.1)).skel.grid.slotTime s =
       (S.params (Model.pubOf run.1) hn).ts s := by

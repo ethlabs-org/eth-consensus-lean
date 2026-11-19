@@ -55,7 +55,7 @@ theorem deliverSeq_block_accepts {proposer : Nat → Fin sp.n}
     (hon : ∃ dst', (tr.state y r).fg.onBlock B = some dst') :
     tr.AcceptAt y r B ∧ r < e := by
   have hc : canonEvent sp ro (binding := binding) hs (blockObj sp B) = some (.block B) := by
-    simp only [canonEvent, hd]
+    simp only [canonEvent_eq, hd]
   obtain ⟨dst', hon⟩ := hon
   cases hseq with
   | drop h _ => rw [hc] at h; cases h
@@ -87,7 +87,7 @@ theorem deliverSeq_forward_genesis {proposer : Nat → Fin sp.n}
         (visit hs σ' (blockObj sp (binding := binding) B)).1 j j' := by
   have hz : canonEvent sp ro (binding := binding) hs (forwardObj sp x t none B) = none := by
     cases hp : binding.participationKind <;>
-      simp [canonEvent, forwardObj, decodeBlock, decodeVoteObj, decodeAttObj, hp]
+      simp [canonEvent_eq, forwardObj, decodeBlock_eq, decodeVoteObj, decodeAttObj, hp]
   rcases visit_cases hs σ (forwardObj sp x t none B) with ⟨hr, -⟩ | ⟨-, hv⟩
   · exact absurd hr (not_refuses_of_data _ rfl)
   rw [hv] at h
@@ -97,7 +97,7 @@ theorem deliverSeq_forward_genesis {proposer : Nat → Fin sp.n}
   | drop _ htail =>
     simp only [forwardObj, Model.Obj.carried, Option.toList_none, List.nil_append,
       visitList_cons] at htail
-    rw [visitList, List.append_nil] at htail
+    rw [visitList_nil_eq, List.append_nil] at htail
     exact ⟨_, htail⟩
 
 end Consensus.Goldilocks.Simulation

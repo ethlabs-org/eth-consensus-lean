@@ -52,7 +52,7 @@ private theorem block_queuedInPool (st : State sp ro binding) (B : Blk sp) (h : 
 
 private theorem processOne_queuedInPool hs (st : State sp ro binding) o (h : QueuedInPool st) :
     QueuedInPool (processOne hs st o) := by
-  unfold processOne
+  rw [AsChainShape.processOne_eq]
   split
   · dsimp only
     unfold relayIf
@@ -65,7 +65,7 @@ private theorem processOne_queuedInPool hs (st : State sp ro binding) o (h : Que
 
 private theorem process_queuedInPool (st : State sp ro binding) o hs (h : QueuedInPool st) :
     QueuedInPool (process st o hs) := by
-  unfold process
+  rw [process_eq]
   generalize delivered hs st o = os
   induction os generalizing st with
   | nil => exact h
@@ -73,7 +73,7 @@ private theorem process_queuedInPool (st : State sp ro binding) o hs (h : Queued
 
 private theorem record_queuedInPool (st : State sp ro binding) o hs (h : QueuedInPool st) :
     QueuedInPool (recordOwn st o hs) := by
-  unfold recordOwn
+  rw [AsChainShape.recordOwn_eq]
   split
   · exact h
   · split
@@ -87,13 +87,13 @@ private theorem propose_queuedInPool (st : State sp ro binding) s (h : QueuedInP
     change (SA.acProposal sp st.node.ac (frame st.node) st.now).1.pool = _
     unfold SA.acProposal
     split_ifs <;> rfl
-  unfold propose
+  rw [propose_eq]
   dsimp only
   split <;> intro tv htv <;> rw [hp] <;> exact h tv htv
 
 private theorem nodeTick_queuedInPool (st : State sp ro binding) (h : QueuedInPool st) :
     QueuedInPool (nodeTick st) := by
-  unfold nodeTick
+  rw [nodeTick_eq]
   split
   · apply apply_queuedInPool st _ h
     exact SA.step_pool_subset st.self st.node.ac _ st.now .tick (by simp)
@@ -116,7 +116,7 @@ private theorem block_pool_subset (st : State sp ro binding) (B : Blk sp) (σ : 
 
 private theorem record_pool_subset (st : State sp ro binding) o hs (σ : Nat) :
     st.node.ac.pool σ ⊆ (recordOwn st o hs).node.ac.pool σ := by
-  unfold recordOwn
+  rw [AsChainShape.recordOwn_eq]
   split
   · exact List.Subset.refl _
   · split
@@ -130,13 +130,13 @@ private theorem propose_pool_eq (st : State sp ro binding) s :
     change (SA.acProposal sp st.node.ac (frame st.node) st.now).1.pool = _
     unfold SA.acProposal
     split_ifs <;> rfl
-  unfold propose
+  rw [propose_eq]
   dsimp only
   split <;> exact hp
 
 private theorem nodeTick_pool_subset (st : State sp ro binding) (σ : Nat) :
     st.node.ac.pool σ ⊆ (nodeTick st).node.ac.pool σ := by
-  unfold nodeTick
+  rw [nodeTick_eq]
   split
   · exact SA.step_pool_subset st.self st.node.ac _ st.now .tick (by simp) σ
   · exact List.Subset.refl _
@@ -153,7 +153,7 @@ theorem poll_pool_eq (st : State sp ro binding) t :
       · split_ifs <;> rfl
     · rfl
   have hg : (fgUpdate st).node.ac.pool = st.node.ac.pool := by
-    unfold fgUpdate
+    rw [fgUpdate_eq]
     dsimp only
     split
     · exact hp

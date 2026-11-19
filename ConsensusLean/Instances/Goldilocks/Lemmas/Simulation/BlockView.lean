@@ -212,7 +212,7 @@ theorem noCollRun_of_observed (hnc : ¬ rho.HashCollision)
     have hh : rho.hash (headerOf (S.params (pubOf E) hn) B) =
         rho.hash (headerOf (S.params (pubOf E) hn) C) := by
       have h := congrArg (rawRoot S.genesisRoot) heq
-      simpa [hpb, hpc, headerOf, rawRoot_taggedRoot] using h
+      simpa [hpb, hpc, headerOf_eq, rawRoot_taggedRoot] using h
     have he : headerOf (S.params (pubOf E) hn) B = headerOf (S.params (pubOf E) hn) C := by
       by_contra h
       exact hnc ⟨_, _, h, hoB, hoC, hh⟩
@@ -220,8 +220,8 @@ theorem noCollRun_of_observed (hnc : ¬ rho.HashCollision)
     have hslot := congrArg Header.pos he
     have hin := congrArg Header.input he
     have hinfo := congrArg (fun h => decodeInfo (Fintype.card V) h.info) he
-    simp only [headerOf, hpb, hpc, parentRoot_parentRef] at hpar
-    simp only [headerOf, decodeInfo_encodeInfo, Option.some.injEq, Prod.mk.injEq] at hinfo
+    simp only [headerOf_eq, hpb, hpc, parentRoot_parentRef] at hpar
+    simp only [headerOf_eq, decodeInfo_encodeInfo, Option.some.injEq, Prod.mk.injEq] at hinfo
     exact ⟨by simpa [hpb, hpc] using hpar, hslot, hin, hinfo.1, hinfo.2⟩
 
 end Consensus.Goldilocks.Simulation

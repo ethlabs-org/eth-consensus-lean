@@ -88,20 +88,20 @@ theorem decodeAtt_eq_some {n : Nat} {w : WireAtt} {a : FG.Att n} (h : decodeAtt 
   · exact absurd h (by simp)
 
 theorem taggedRoot_ne (g h : Nat) : taggedRoot g h ≠ g := by
-  simp only [taggedRoot]; split <;> omega
+  simp only [taggedRoot_eq]; split <;> omega
 
 theorem rawRoot_taggedRoot (g h : Nat) : rawRoot g (taggedRoot g h) = h := by
-  simp only [rawRoot, taggedRoot]; split <;> (try split) <;> omega
+  simp only [rawRoot_eq, taggedRoot_eq]; split <;> (try split) <;> omega
 
 theorem taggedRoot_rawRoot (g r : Nat) (h : r ≠ g) : taggedRoot g (rawRoot g r) = r := by
-  simp only [rawRoot, taggedRoot]; split <;> (try split) <;> omega
+  simp only [rawRoot_eq, taggedRoot_eq]; split <;> (try split) <;> omega
 
 /-- The parent root of the parent reference of a named root is that root. -/
 theorem parentRoot_parentRef (g : Nat) (r : Nat) :
     parentRoot g (parentRef g (some r)) = some r := by
   by_cases h : r = g
-  · subst h; simp [parentRef, parentRoot]
-  · simp [parentRef, parentRoot, h, taggedRoot_rawRoot g r h]
+  · subst h; simp [parentRef_eq, parentRoot_eq]
+  · simp [parentRef_eq, parentRoot_eq, h, taggedRoot_rawRoot g r h]
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
@@ -118,12 +118,12 @@ theorem decodeBlock_blockObj (hs : List (Header Info × Nat)) (B : Blk sp)
   obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.1 hpar
   have hB : blockOf sp (rawRoot sp.genesisRoot B.root) (headerOf sp B)
       B.proposer B.fgPayload B.acPayload = B := by
-    simp only [blockOf, headerOf, hr, parentRoot_parentRef, taggedRoot_rawRoot _ _ hne]
+    simp only [blockOf_eq, headerOf_eq, hr, parentRoot_parentRef, taggedRoot_rawRoot _ _ hne]
     cases B; simp_all only [ne_eq]
   have hinfo : decodeInfo sp.n (headerOf sp B).info = some (B.fgPayload, B.acPayload) := by
-    simp [headerOf, decodeInfo_encodeInfo]
+    simp [headerOf_eq, decodeInfo_encodeInfo]
   classical
-  simp only [decodeBlock, blockObj, hinfo, hroot]
+  simp only [decodeBlock_eq, blockObj_eq, hinfo, hroot]
   rw [hB]
   rw [ite_eq_left ⟨by trivial, by trivial, hwf, hval⟩]
 
@@ -143,8 +143,8 @@ theorem canonEvent_voteObj (hs : List (Header Info × Nat)) (v : Vote sp.n) :
     canonEvent sp ro (binding := binding) hs (voteObj (binding := binding) v) =
       some (.message v) := by
   have h1 : decodeBlock sp (binding := binding) hs (voteObj (binding := binding) v) = none := by
-    simp [decodeBlock, voteObj]
-  simp only [canonEvent, h1, decodeVoteObj_voteObj]
+    simp [decodeBlock_eq, voteObj]
+  simp only [canonEvent_eq, h1, decodeVoteObj_voteObj]
 
 /-- The canonical object of a well-formed attestation stands for the node's `attestation`
 event. -/
@@ -153,10 +153,10 @@ theorem canonEvent_attObj (hs : List (Header Info × Nat)) (a : FG.Att sp.n)
     canonEvent sp ro (binding := binding) hs (attObj (binding := binding) a) =
       some (.attestation a) := by
   have h1 : decodeBlock sp (binding := binding) hs (attObj (binding := binding) a) = none := by
-    simp [decodeBlock, attObj]
+    simp [decodeBlock_eq, attObj]
   have h2 : decodeVoteObj sp (binding := binding) (attObj (binding := binding) a) = none := by
     cases hp : binding.participationKind <;> simp [decodeVoteObj, attObj, hp]
-  simp only [canonEvent, h1, h2, decodeAttObj_attObj a hwf]
+  simp only [canonEvent_eq, h1, h2, decodeAttObj_attObj a hwf]
 
 /-! ## The slashing rule and the own-object guard -/
 
@@ -576,19 +576,19 @@ theorem relayIf_node (st : State sp ro binding) (c : Prop) [Decidable c] o :
 
 /-- Processing one delivered object keeps the key. -/
 theorem processOne_self hs (st : State sp ro binding) o : (processOne hs st o).self = st.self := by
-  unfold processOne; split <;> simp [relayIf_self, apply_self]
+  rw [processOne_eq]; split <;> simp [relayIf_self, apply_self]
 /-- Processing one delivered object keeps the clock. -/
 theorem processOne_now hs (st : State sp ro binding) o : (processOne hs st o).now = st.now := by
-  unfold processOne; split <;> simp [relayIf_now, apply_now]
+  rw [processOne_eq]; split <;> simp [relayIf_now, apply_now]
 /-- Processing one delivered object keeps the FG-due flag. -/
 theorem processOne_fgDue hs (st : State sp ro binding) o : (processOne hs st o).fgDue = st.fgDue
     := by
-  unfold processOne; split <;> simp [relayIf_fgDue, apply_fgDue]
+  rw [processOne_eq]; split <;> simp [relayIf_fgDue, apply_fgDue]
 
 /-- Processing one object preserves all previously queued admission envelopes. -/
 theorem processOne_voteForwards_subset hs (st : State sp ro binding) o :
     st.voteForwards ⊆ (processOne hs st o).voteForwards := by
-  unfold processOne
+  rw [processOne_eq]
   split
   · dsimp only
     unfold relayIf
@@ -606,7 +606,7 @@ theorem processOne_voteForward_stamp hs (st : State sp ro binding) o (t : Time) 
   by_cases hold : (t, m) ∈ st.voteForwards
   · exact Or.inl hold
   right
-  unfold processOne at h
+  rw [processOne_eq] at h
   split at h
   · dsimp only at h
     unfold relayIf at h
@@ -671,18 +671,18 @@ theorem process_fgDue (st : State sp ro binding) o hs : (process st o hs).fgDue 
 
 /-- Recording an own object keeps the key. -/
 theorem recordOwn_self (st : State sp ro binding) o hs : (recordOwn st o hs).self = st.self := by
-  unfold recordOwn; split <;> (try split) <;> rfl
+  rw [recordOwn_eq]; split <;> (try split) <;> rfl
 /-- Recording an own object keeps the clock. -/
 theorem recordOwn_now (st : State sp ro binding) o hs : (recordOwn st o hs).now = st.now := by
-  unfold recordOwn; split <;> (try split) <;> rfl
+  rw [recordOwn_eq]; split <;> (try split) <;> rfl
 /-- Recording an own object keeps the FG-due flag. -/
 theorem recordOwn_fgDue (st : State sp ro binding) o hs : (recordOwn st o hs).fgDue = st.fgDue := by
-  unfold recordOwn; split <;> (try split) <;> rfl
+  rw [recordOwn_eq]; split <;> (try split) <;> rfl
 
 /-- Own-object callbacks do not drain queued vote envelopes. -/
 theorem recordOwn_voteForwards_subset (st : State sp ro binding) o hs :
     st.voteForwards ⊆ (recordOwn st o hs).voteForwards := by
-  unfold recordOwn
+  rw [recordOwn_eq]
   split
   · exact List.Subset.refl _
   · split
@@ -692,39 +692,39 @@ theorem recordOwn_voteForwards_subset (st : State sp ro binding) o hs :
 
 /-- The node's tick keeps the key. -/
 theorem nodeTick_self (st : State sp ro binding) : (nodeTick st).self = st.self := by
-  unfold nodeTick; split <;> rfl
+  rw [nodeTick_eq]; split <;> rfl
 /-- The node's tick keeps the clock. -/
 theorem nodeTick_now (st : State sp ro binding) : (nodeTick st).now = st.now := by
-  unfold nodeTick; split <;> rfl
+  rw [nodeTick_eq]; split <;> rfl
 
 /-- The slot proposal keeps the key. -/
 theorem propose_self (st : State sp ro binding) s : (propose st s).1.self = st.self := by
-  unfold propose; dsimp only; split <;> rfl
+  rw [propose_eq]; dsimp only; split <;> rfl
 /-- The slot proposal keeps the clock. -/
 theorem propose_now (st : State sp ro binding) s : (propose st s).1.now = st.now := by
-  unfold propose; dsimp only; split <;> rfl
+  rw [propose_eq]; dsimp only; split <;> rfl
 /-- The slot proposal keeps the FG-due flag. -/
 theorem propose_fgDue (st : State sp ro binding) s : (propose st s).1.fgDue = st.fgDue := by
-  unfold propose; dsimp only; split <;> rfl
+  rw [propose_eq]; dsimp only; split <;> rfl
 
 /-- Proposing does not drain the queue made by the preceding node tick. -/
 theorem propose_voteForwards (st : State sp ro binding) s :
     (propose st s).1.voteForwards = st.voteForwards := by
-  unfold propose; dsimp only; split <;> rfl
+  rw [propose_eq]; dsimp only; split <;> rfl
 
 /-- The FG update keeps the key. -/
 theorem fgUpdate_self (st : State sp ro binding) : (fgUpdate st).self = st.self := by
-  unfold fgUpdate; simp only; split
+  rw [fgUpdate_eq]; simp only; split
   · rfl
   · split <;> rfl
 /-- The FG update keeps the clock. -/
 theorem fgUpdate_now (st : State sp ro binding) : (fgUpdate st).now = st.now := by
-  unfold fgUpdate; simp only; split
+  rw [fgUpdate_eq]; simp only; split
   · rfl
   · split <;> rfl
 /-- The FG update clears the FG-due flag. -/
 theorem fgUpdate_fgDue (st : State sp ro binding) : (fgUpdate st).fgDue = false := by
-  unfold fgUpdate; simp only; split
+  rw [fgUpdate_eq]; simp only; split
   · rfl
   · split <;> rfl
 

@@ -212,8 +212,8 @@ theorem received_child_decodes {V : Type} [Fintype V] {E : Env V}
       (blockObj _ B) = some B := by
   obtain rfl := eq_blockObj_of_decodeBlock hd
   apply decodeBlock_transport hd
-  rw [rootOf_digests_blockObj,
-    rootOf_digests_of_mem S rho _ _ (List.mem_filterMap.mpr ⟨_, hc, rfl⟩)]
+  exact (rootOf_digests_blockObj S rho hn B).trans
+    (rootOf_digests_of_mem S rho _ _ (List.mem_filterMap.mpr ⟨_, hc, rfl⟩)).symm
 
 /-- Own proposals obtain wire validity from reachable node execution, rather than from
 a receipt guard (which own-block recording does not run). From an AC start `s₀` up to the vote
@@ -274,8 +274,8 @@ theorem decoded_held_accept {V : Type} [Fintype V] {E : Env V}
   have hb' := decodeBlock_transport hb (show
       rootOf (digests rho.hash (forwardObj (S.params (pubOf E) hn) st.self st.now p B))
         (headerOf _ B) = rootOf (digests rho.hash (blockObj _ B)) (headerOf _ B) by
-    rw [rootOf_digests_of_mem S rho _ _ (List.mem_filterMap.mpr ⟨_, contains, rfl⟩),
-      rootOf_digests_blockObj])
+    exact (rootOf_digests_of_mem S rho _ _ (List.mem_filterMap.mpr ⟨_, contains, rfl⟩)).trans
+      (rootOf_digests_blockObj S rho hn B).symm)
   obtain ⟨rfl, rfl, rfl⟩ := Prod.mk.inj (decoded_forward_fields _ _ _ _ _ hb' hdec)
   exact hh.accept B root p hpar hp ha hdec
 
@@ -317,7 +317,7 @@ theorem decoded_held_processOne {V : Type} [Fintype V] {E : Env V}
     let st' := processOne (digests rho.hash receipt) st o
     WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' ∧
     WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' := by
-  unfold processOne
+  rw [AsChainShape.processOne_eq (digests rho.hash receipt) st o]
   split
   · rename_i B he
     have h := decoded_held_onBlock S rho hn st hd hh hc hr B
@@ -378,7 +378,7 @@ theorem decoded_held_fgUpdate {sp : SA.SAParams}
     {tables : Wire sp.n binding → List (Header Info × Nat)} (st : State sp ro binding)
     (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st) :
     WrappersDecoded tables (fgUpdate st) ∧ WrappersHeld tables (fgUpdate st) := by
-  unfold fgUpdate
+  rw [fgUpdate_eq]
   dsimp only
   split
   · exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
@@ -412,7 +412,7 @@ theorem decoded_held_nodeTick {sp : SA.SAParams}
     {tables : Wire sp.n binding → List (Header Info × Nat)} (st : State sp ro binding)
     (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st) :
     WrappersDecoded tables (nodeTick st) ∧ WrappersHeld tables (nodeTick st) := by
-  unfold nodeTick
+  rw [nodeTick_eq]
   split
   · exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
   · exact ⟨hd, hh⟩
@@ -423,7 +423,7 @@ theorem decoded_held_propose {sp : SA.SAParams}
     {tables : Wire sp.n binding → List (Header Info × Nat)} (st : State sp ro binding) (s : Slot)
     (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st) :
     WrappersDecoded tables (propose st s).1 ∧ WrappersHeld tables (propose st s).1 := by
-  unfold propose
+  rw [propose_eq]
   dsimp only
   split <;> exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
 
@@ -453,7 +453,7 @@ theorem decoded_held_deliver {V : Type} [Fintype V] {E : Env V}
     (fun st => WrappersDecoded (digests rho.hash) st ∧ WrappersHeld (digests rho.hash) st)
   · exact fun st t h => decoded_held_poll st t h.1 h.2
   · intro st m cs hs h
-    unfold recordOwn
+    rw [recordOwn_eq]
     split
     · exact ⟨h.1.mono rfl rfl rfl le_rfl, h.2.preserve rfl rfl rfl⟩
     · rename_i k s header carried heq
@@ -556,13 +556,13 @@ theorem proposal_candidate_block {V : Type} [Fintype V] {E : Env V}
   dsimp only
   intro d p hp
   rw [act_propose_snd S hn nd s hs]
-  simp only [propose, hp, Option.map_some, Option.toList_some]
+  simp only [propose_eq, hp, Option.map_some, Option.toList_some]
   erw [signedCandidate_of_default_mem S rho v (.propose s hs) _ (fun mc hmc => by
     rw [List.mem_singleton.mp hmc]
     exact propose_candidateRole_item S s hs _)]
   simp only [show (protoOf (compiled (goldilocks S)) E).role (.propose s hs) = .proposer s
     from rfl, hsel, ↓reduceIte]
-  simp only [blockObj, Node.mkBlock, headerOf, hslot]
+  simp only [blockObj_eq, Node.mkBlock, headerOf_eq, hslot]
   rfl
 
 /-- The engine clock is nonnegative and never exceeds the next event's time. -/
@@ -624,8 +624,8 @@ theorem pending_forward_decodes {V : Type} [Fintype V] {E : Env V}
   have hb' := decodeBlock_transport hb (show
       rootOf (digests rho.hash (forwardObj (S.params (pubOf E) hn) st.self t p B))
         (headerOf _ B) = rootOf (digests rho.hash (blockObj _ B)) (headerOf _ B) by
-    rw [rootOf_digests_of_mem S rho _ _ (List.mem_filterMap.mpr ⟨_, hcontains, rfl⟩),
-      rootOf_digests_blockObj])
+    exact (rootOf_digests_of_mem S rho _ _ (List.mem_filterMap.mpr ⟨_, hcontains, rfl⟩)).trans
+      (rootOf_digests_blockObj S rho hn B).symm)
   have he := decoded_forward_fields _ st.self t p B hb' hc
   cases he
   exact hc

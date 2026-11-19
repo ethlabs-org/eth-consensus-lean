@@ -112,7 +112,7 @@ theorem decoded_held_scheduled_proposal_of_own {V : Type} [Fintype V] [Decidable
       ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] :
         List (protoOf (compiled (goldilocks S)) E).Duty)
     rw [← atProposal_eq S rho v (rho.stateBefore i v) t] at h
-    unfold propose
+    rw [propose_eq]
     dsimp only
     split <;> simpa only [wrappersCover_iff, Node.acProposal] using h
   have hr : (propose (shapeOf S hn nd) s).1.node.fg.Reachable
@@ -127,7 +127,7 @@ theorem decoded_held_scheduled_proposal_of_own {V : Type} [Fintype V] [Decidable
       rfl
     have hr := stateAt_fg_reachable S rho hn v i
     rw [← hfg] at hr
-    unfold propose; dsimp only; split <;> exact hr
+    rw [propose_eq]; dsimp only; split <;> exact hr
   by_cases hsel : rho.ownKey v ∈ rho.sel (.proposer s)
   · have hp : Node.Proposes (P := (S.params (pubOf E) hn).toParams)
         (runProposer S rho hn) (rho.ownKey v) t := by
@@ -139,7 +139,7 @@ theorem decoded_held_scheduled_proposal_of_own {V : Type} [Fintype V] [Decidable
       have hempty :
           ((protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).2 = [] := by
         rw [act_propose_snd S hn nd s hs]
-        simp only [propose, hdp, Option.map_none, Option.toList_none]
+        simp only [propose_eq, hdp, Option.map_none, Option.toList_none]
         rfl
       have hpre := decoded_held_propose (shapeOf S hn nd) s hd hh
       change WrappersDecoded (digests rho.hash)
@@ -212,12 +212,12 @@ theorem decoded_held_tick_of_own {V : Type} [Fintype V] [DecidableEq V] {E : Env
         WrappersDecoded (digests rho.hash) (recordOwn st (.mk .none m cs) hs) ∧
         WrappersHeld (digests rho.hash) (recordOwn st (.mk .none m cs) hs) := by
       refine ⟨?_, ?_⟩
-      · unfold recordOwn
+      · rw [recordOwn_eq]
         split
         · exact h.1.mono rfl rfl rfl le_rfl
         · rename_i k s header carried heq; cases heq
         · exact h.1
-      · unfold recordOwn
+      · rw [recordOwn_eq]
         split
         · exact h.2.preserve rfl rfl rfl
         · rename_i k s header carried heq; cases heq

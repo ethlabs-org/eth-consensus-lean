@@ -190,14 +190,17 @@ private theorem decoded_block_root {o : Wire (Fintype.card V) S.vote}
       (blockObj (S.params (Model.pubOf E) hn) B) = some B) :
     B.RootOk (digestOf S rho) ∧ B.parent ≠ none := by
   obtain ⟨hroot, hpar, _, _⟩ := decodeBlock_wire hd
-  have hh := rootOf_digests_of_mem S rho o _ (List.mem_filterMap.mpr ⟨_, hc, rfl⟩)
-  rw [hh, Option.map_some, Option.some.injEq] at hroot
+  have hh : rootOf (Model.digests rho.hash o) (headerOf (S.params (Model.pubOf E) hn) B) =
+      some (rho.hash (headerOf (S.params (Model.pubOf E) hn) B)) :=
+    rootOf_digests_of_mem S rho o _ (List.mem_filterMap.mpr ⟨_, hc, rfl⟩)
+  rw [hh] at hroot
+  simp only [Option.map_some, Option.some.injEq] at hroot
   refine ⟨?_, hpar⟩
   obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.mp hpar
   rw [digestOf_eq]
   change B.root = dgOf rho.hash S.genesisRoot B.parent B.slot B.input B.fgPayload B.acPayload
   erw [dgOf_eq, ← hroot]
-  simp only [headerOf, hr]
+  simp only [headerOf_eq, hr]
 
 /-- A forwarding release during a tick identifies an actual successful proposal cut,
 including the digest-backed root rather than just the serialized block fields. -/
@@ -255,8 +258,9 @@ theorem decodeForward_receipt_iff {receipt o : Wire (Fintype.card V) S.vote}
       (hC : Model.Obj.Contains o (blockObj _ C)) :
       rootOf (Model.digests rho.hash o) (headerOf _ C) =
         rootOf (Model.digests rho.hash receipt) (headerOf _ C) := by
-    rw [rootOf_digests_of_mem S rho o _ (List.mem_filterMap.mpr ⟨_, hC, rfl⟩),
-      rootOf_digests_of_mem S rho receipt _ (List.mem_filterMap.mpr ⟨_, hc.trans hC, rfl⟩)]
+    exact (rootOf_digests_of_mem S rho o _ (List.mem_filterMap.mpr ⟨_, hC, rfl⟩)).trans
+      (rootOf_digests_of_mem S rho receipt _
+        (List.mem_filterMap.mpr ⟨_, hc.trans hC, rfl⟩)).symm
   exact ⟨fun hd => decodeForward_transport B o x t p hd roots,
     fun hd => decodeForward_transport B o x t p hd (fun C hC => (roots C hC).symm)⟩
 

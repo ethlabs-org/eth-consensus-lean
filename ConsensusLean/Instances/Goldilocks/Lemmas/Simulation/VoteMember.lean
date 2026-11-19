@@ -72,7 +72,7 @@ private theorem acCall_voteMember (st : State sp ro binding) (c : (goldilocksNod
 
 private theorem tick_voteMember (st : State sp ro binding) (h : VoteMember p st) :
     VoteMember p (nodeTick st) := by
-  unfold nodeTick
+  rw [nodeTick_eq]
   split
   · exact acCall_voteMember st .tick h
   · exact h
@@ -99,13 +99,12 @@ private theorem block_voteMember (st : State sp ro binding) (B : Blk sp) (h : Vo
 private theorem processOne_voteMember hs (st : State sp ro binding) o (h : VoteMember p st) :
     VoteMember p (processOne hs st o) := by
   classical
-  unfold processOne
+  rw [AsChainShape.processOne_eq]
   split
   · dsimp only
     unfold relayIf
     split <;> exact block_voteMember st _ h
-  · dsimp only
-    exact acCall_voteMember st _ h
+  · exact acCall_voteMember st _ h
   · unfold relayIf
     split <;> simpa only [VoteMember, apply, Node.onAttestation, emitted,
       List.flatMap_cons, List.flatMap_nil, List.nil_append, List.append_nil] using h
@@ -113,7 +112,7 @@ private theorem processOne_voteMember hs (st : State sp ro binding) o (h : VoteM
 
 theorem process_voteMember (st : State sp ro binding) o hs (h : VoteMember p st) :
     VoteMember p (process st o hs) := by
-  unfold process
+  rw [process_eq]
   generalize delivered hs st o = os
   induction os generalizing st with
   | nil => exact h
@@ -121,7 +120,7 @@ theorem process_voteMember (st : State sp ro binding) o hs (h : VoteMember p st)
 
 private theorem record_voteMember (st : State sp ro binding) o hs (h : VoteMember p st) :
     VoteMember p (recordOwn st o hs) := by
-  unfold recordOwn
+  rw [AsChainShape.recordOwn_eq]
   split
   · exact h
   · split
@@ -133,7 +132,7 @@ theorem fgUpdate_voteMember (st : State sp ro binding) (h : VoteMember p st) :
     VoteMember p (fgUpdate st) := by
   have hac : (Node.acToFG st.node st.now).1.ac.mayVote = p :=
     (SA.step_mayVote ro st.self st.node.ac (frame st.node) st.now .toFG).trans h.1
-  unfold fgUpdate
+  rw [fgUpdate_eq]
   dsimp only
   split
   · exact ⟨hac, h.2⟩
@@ -162,7 +161,7 @@ private theorem propose_voteMember (st : State sp ro binding) (s : Slot) (h : Vo
     VoteMember p (propose st s).1 := by
   obtain ⟨ho, hs, -⟩ := propose_keeps' st s
   refine ⟨?_, fun m hm => ?_⟩
-  · unfold propose
+  · rw [propose_eq]
     dsimp only
     split <;>
       exact (SA.step_mayVote ro st.self st.node.ac (frame st.node) st.now .proposal).trans h.1

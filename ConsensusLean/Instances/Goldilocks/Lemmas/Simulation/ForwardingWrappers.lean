@@ -337,7 +337,7 @@ theorem pendingReady_processOne {sp : SA.SAParams}
     (ha : WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) st)
     (hr : PendingReady seen (pendingWrappers st)) (ho : o ∈ seen.flatMap Obj.parts) :
     PendingReady seen (pendingWrappers (processOne hs st o)) := by
-  unfold processOne
+  rw [AsChainShape.processOne_eq]
   split
   · rename_i B hB
     have he : o = blockObj sp B := by
@@ -362,7 +362,7 @@ theorem wrappersAccounted_processOne {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n binding → Prop)
     (st : State sp ro binding) (hs : List (Header Info × Nat)) (o : Wire sp.n binding)
     (ha : WrappersAccounted prior st) : WrappersAccounted prior (processOne hs st o) := by
-  unfold processOne
+  rw [AsChainShape.processOne_eq]
   split
   · rename_i B hB
     have h := wrappersAccounted_apply prior st (Node.onBlock st.self st.node st.now B) ha
@@ -417,7 +417,7 @@ theorem pendingReady_recordOwn {sp : SA.SAParams}
       ∀ atts p d, decodeInfo sp.n hd.info = some (atts, p) → rootOf hs hd = some d →
         blockObj sp (blockOf sp d hd k atts p) ∈ seen.flatMap Obj.parts) :
     PendingReady seen (pendingWrappers (recordOwn st o hs)) := by
-  unfold recordOwn
+  rw [AsChainShape.recordOwn_eq]
   split
   · exact hr
   · rename_i original k s hd cs
@@ -437,14 +437,14 @@ theorem proposal_blockObj {sp : SA.SAParams}
     (hd : decodeInfo sp.n info = some (atts, p)) :
     blockObj sp (blockOf sp d ⟨par, s, x, info⟩ k atts p) =
       .mk (.signed k (.proposer s)) (.item ⟨par, s, x, info⟩) cs := by
-  unfold propose at hp
+  rw [propose_eq] at hp
   dsimp only at hp
   split at hp
   · cases hp
   · cases hp
     rw [decodeInfo_encodeInfo] at hd
     cases hd
-    simp only [blockObj, blockOf, headerOf, parentRoot_parentRef]
+    simp only [blockObj_eq, blockOf_eq, headerOf_eq, parentRoot_parentRef]
 
 /-- The engine's proposal candidate supplies the canonical-child premise used by own
 recording. It is identified from the actual duty, not inferred from an arbitrary header. -/
@@ -476,7 +476,7 @@ theorem wrappersAccounted_recordOwn {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n binding → Prop)
     (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat))
     (ha : WrappersAccounted prior st) : WrappersAccounted prior (recordOwn st o hs) := by
-  unfold recordOwn
+  rw [AsChainShape.recordOwn_eq]
   split
   · exact ha
   · split
@@ -562,13 +562,13 @@ theorem dutyStep_propose_pendingReady {V : Type} [Fintype V] {E : Env V} (S : Se
   · change WrappersAccounted _ (((protoOf (compiled (goldilocks S)) E).act nd.st
       (.propose s hs)).1.1 hn)
     rw [shapeOf_act_propose S hn]
-    unfold propose
+    rw [propose_eq]
     dsimp only
     split <;> exact ha
   · change PendingReady _ (pendingWrappers (((protoOf (compiled (goldilocks S)) E).act nd.st
       (.propose s hs)).1.1 hn))
     rw [shapeOf_act_propose S hn]
-    unfold propose
+    rw [propose_eq]
     dsimp only
     split <;> exact hr
   · exact fun o ho => signedCandidate_propose_canonical S rho hn v nd s hs o ho
@@ -743,7 +743,7 @@ theorem wrappersCover_onBlock {sp : SA.SAParams}
 private theorem wrappersCover_recordOwn {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) o hs
     (h : WrappersCover st) : WrappersCover (recordOwn st o hs) := by
-  unfold recordOwn
+  rw [AsChainShape.recordOwn_eq]
   split
   · exact h
   · split
@@ -755,7 +755,7 @@ private theorem wrappersCover_recordOwn {sp : SA.SAParams}
 theorem wrappersCover_processOne {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) o hs
     (h : WrappersCover st) : WrappersCover (processOne hs st o) := by
-  unfold processOne
+  rw [AsChainShape.processOne_eq]
   split
   · unfold relayIf
     dsimp only
@@ -771,7 +771,7 @@ theorem wrappersCover_processOne {sp : SA.SAParams}
 private theorem wrappersCover_fgUpdate {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
     (h : WrappersCover st) : WrappersCover (fgUpdate st) := by
-  unfold fgUpdate
+  rw [fgUpdate_eq]
   dsimp only
   split
   · exact h
@@ -791,14 +791,14 @@ private theorem wrappersCover_poll {sp : SA.SAParams}
 private theorem wrappersCover_propose {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) s
     (h : WrappersCover st) : WrappersCover (propose st s).1 := by
-  unfold propose
+  rw [propose_eq]
   dsimp only
   split <;> exact h
 
 private theorem wrappersCover_nodeTick {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
     (h : WrappersCover st) : WrappersCover (nodeTick st) := by
-  unfold nodeTick
+  rw [nodeTick_eq]
   split <;> exact h
 
 /-- Every actual duty prefix preserves coverage, including an own block's recording. -/

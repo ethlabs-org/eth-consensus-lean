@@ -146,12 +146,12 @@ theorem delivery_pool_insertion_queued (hv : rho.ExecutionValid) {v : V}
   have hnode : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node =
       (stateAt S rho hn v (i + 1)).node := by
     rw [node_of_deliver S rho hn hv v hv' i o t he]
-    unfold process
+    rw [process_eq (stateAt S rho hn v i) o (Model.digests rho.hash o)]
     erw [foldl_processOne_node (sp := S.params (pubOf E) hn) (ro := S.ro _)
       (runProposer S rho hn) (digestOf S rho)]
     rw [self_eq_ownKey, hnow]
   rw [← hnow]
-  unfold process
+  rw [process_eq (stateAt S rho hn v i) o (Model.digests rho.hash o)]
   exact foldl_processOne_pool_insertion_queued (sp := S.params (pubOf E) hn)
     (ro := S.ro _) (Model.digests rho.hash o) _ (stateAt S rho hn v i) m hold
     (show m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool m.slot
