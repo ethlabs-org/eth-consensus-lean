@@ -163,12 +163,16 @@ theorem sleepyServiceBefore_of_prefix {proposer : Nat → Fin sp.n}
   have service := sleepyServiceBefore_of_acService hrun hserved hs
   exact ⟨hb, hs.deltaF, service.message, service.acRelay, service.relay⟩
 
-theorem retained_count {proposer : Nat → Fin sp.n}
-    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
-    {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {ini}
-    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+/-- **The retained count over any node's run**: a strict half of the ready validators against the
+faults charged at `d` gives fewer faults at `d` than validators honest at `d` and awake and
+joined at `t ≤ d`, from antitone honesty and a joining law at `t` (a validator honest at `t` and
+awake through the catch-up window before `t` is awake and joined at `t`). -/
+theorem retained_count_of_join {A : NodeAC sp.toParams} {tr : RunTrace A}
+    {H : Time → Set (Fin sp.n)} (hanti : Antitone H)
     {p : EnvPoint (Fin sp.n)} (hbind : RunPointBinding tr H p)
-    {c t d : Time} (hc : Regimes.catchUp sp ≤ c) (ht : 0 ≤ t) (htd : t ≤ d)
+    {c t d : Time} (htd : t ≤ d)
+    (hjoin : ∀ y, y ∈ H t → (∀ u, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) →
+      tr.awake y t ∧ tr.JoinedAt y t)
     (S : Finset (Fin sp.n))
     (h : (1 / 2 : ℚ) * ((((p.retain d).readyAt c t ∩ S).card +
       (p.faultyAt d ∩ S).card : Nat) : ℚ) < ((p.retain d).readyAt c t ∩ S).card) :
@@ -193,14 +197,29 @@ theorem retained_count {proposer : Nat → Fin sp.n}
   obtain ⟨hyr, hyS⟩ := Finset.mem_inter.mp hy
   have hyr := (Finset.mem_filter.mp hyr).2
   have hyd : y ∈ H d := (hbind.2.1 y d).mpr hyr.1
-  have hyt := hrun.antitone htd hyd
-  have hwindow : ∀ u, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u :=
+  obtain ⟨hw, hj⟩ := hjoin y (hanti htd hyd)
     fun u hu hut => (hbind.2.2.1 y u).mpr (hyr.2 u hu hut)
-  have hcatch : 8 * sp.Δ ≤ c + 1 := by
-    dsimp only [Regimes.catchUp] at hc
-    linarith [sp.toParams.hΔ]
-  obtain ⟨hw, hj⟩ := Obligations.Growing.ready_implies_joined_at hrun hyt ht hcatch hwindow
   exact ⟨hyS, hyd, hw, hj⟩
+
+/-- The sleepy catch-up covers joining: `catchUp ≤ c` gives `8Δ ≤ c + 1`. -/
+theorem join_le_of_catchUp {c : Time} (hc : Regimes.catchUp sp ≤ c) : 8 * sp.Δ ≤ c + 1 := by
+  dsimp only [Regimes.catchUp] at hc
+  linarith [sp.toParams.hΔ]
+
+theorem retained_count {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {ini}
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {p : EnvPoint (Fin sp.n)} (hbind : RunPointBinding tr H p)
+    {c t d : Time} (hc : Regimes.catchUp sp ≤ c) (ht : 0 ≤ t) (htd : t ≤ d)
+    (S : Finset (Fin sp.n))
+    (h : (1 / 2 : ℚ) * ((((p.retain d).readyAt c t ∩ S).card +
+      (p.faultyAt d ∩ S).card : Nat) : ℚ) < ((p.retain d).readyAt c t ∩ S).card) :
+    ((S : Set (Fin sp.n)) ∩ (H d)ᶜ).ncard <
+      ((S : Set (Fin sp.n)) ∩ {y | y ∈ H d ∧ tr.awake y t ∧ tr.JoinedAt y t}).ncard := by
+  exact retained_count_of_join hrun.antitone hbind htd
+    (fun _ hy hw => Obligations.Growing.ready_implies_joined_at hrun hy ht
+      (join_le_of_catchUp hc) hw) S h
 
 /-- The finite service and independent population/committee bounds used by the sleepy
 discharges. Positivity and slot sizes are explicit. -/

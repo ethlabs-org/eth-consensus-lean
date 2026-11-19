@@ -135,11 +135,12 @@ theorem outage_two_mul_opponents_lt (hb : RunPointBinding tr H p)
     Set.ncard_le_ncard (Set.union_subset Set.inter_subset_left Set.inter_subset_left)
   omega
 
-private theorem outage_retained_count {proposer : Nat → Fin sp.n}
-    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {ini}
-    (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hb : RunPointBinding tr H p)
-    {η c t d e : Time} (hc : Regimes.catchUp sp ≤ c) (ht : 0 ≤ t)
-    (htd : t ≤ d) (hde : d ≤ e) (S : Finset (Fin sp.n))
+private theorem outage_retained_count {A : NodeAC sp.toParams} {tr : RunTrace A}
+    (hanti : Antitone H) (hb : RunPointBinding tr H p)
+    {η c t d e : Time} (htd : t ≤ d)
+    (hjoin : ∀ y, y ∈ H t → (∀ u, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) →
+      tr.awake y t ∧ tr.JoinedAt y t)
+    (hde : d ≤ e) (S : Finset (Fin sp.n))
     (h : (1 / 2 : ℚ) * ((((p.retain e).readyAt c t ∪
       (p.retain e).awakeIn (max 0 (t - η)) t ∪ (p.retain e).faultyAt t) ∩ S).card : ℚ) <
       (((p.retain e).readyAt c t ∩ S).card : ℚ)) :
@@ -152,11 +153,42 @@ private theorem outage_retained_count {proposer : Nat → Fin sp.n}
         (p.retain d).faultyAt t) ∩ S :=
     Finset.inter_subset_inter (Finset.subset_union_right) (Finset.Subset.refl _)
   have hf := (Finset.card_le_card hsub).trans_lt hlt
-  apply SleepyLayer1.retained_count hrun hb hc ht htd S
+  apply SleepyLayer1.retained_count_of_join hanti hb htd hjoin S
   have hfq : ((p.faultyAt d ∩ S).card : ℚ) < ((p.retain d).readyAt c t ∩ S).card := by
     exact_mod_cast hf
   push_cast
   linarith
+
+/-- **The slot-committee count of the shifted outage family over any node's run**: the
+selection at `t_s` has fewer members faulty at `d` than members honest at `d` and awake and
+joined at `t_s + δ`, for every shift `δ ∈ [0, η]` and every `d ∈ [t_s + δ, t_s + δ + 5Δ]`
+within `b`, from antitone honesty and a joining law. -/
+theorem outage_committee_count {A : NodeAC sp.toParams} {tr : RunTrace A}
+    {H : Time → Set (Fin sp.n)} (hanti : Antitone H)
+    {p : EnvPoint (Fin sp.n)} (hb : RunPointBinding tr H p)
+    {cm : Time → Finset (Fin sp.n)} {η c : Time} (hη0 : 0 < η)
+    (hjoin : ∀ y t, y ∈ H t → 0 ≤ t →
+      (∀ u, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) →
+      tr.awake y t ∧ tr.JoinedAt y t)
+    (hK : ∀ δ, 0 ≤ δ → δ ≤ η →
+      p.CommitteeSleepyOn (fun t => cm (max 0 (t - δ))) (1 / 2) η c
+        (5 * sp.Δ) 0 p.horizon)
+    {b : Time} (hbh : b ≤ p.horizon) {s : Nat} (hne : (cm (sp.ts s)).Nonempty)
+    {δ d : Time} (hδ0 : 0 ≤ δ) (hδη : δ ≤ η) (htd : sp.ts s + δ ≤ d) (hdb : d ≤ b)
+    (hdl : d ≤ sp.ts s + δ + 5 * sp.Δ) :
+    ((cm (sp.ts s) : Set (Fin sp.n)) ∩ (H d)ᶜ).ncard <
+      ((cm (sp.ts s) : Set (Fin sp.n)) ∩
+        {y | y ∈ H d ∧ tr.awake y (sp.ts s + δ) ∧ tr.JoinedAt y (sp.ts s + δ)}).ncard := by
+  have hs0 := ts_natCast_nonneg (sp := sp) s
+  have ht0 : 0 ≤ sp.ts s + δ := add_nonneg hs0 hδ0
+  have hsel : max 0 (sp.ts s + δ - δ) = sp.ts s := by
+    simp only [add_sub_cancel_right, max_eq_right hs0]
+  have h := hK δ hδ0 hδη (sp.ts s + δ) ht0 (htd.trans (hdb.trans hbh))
+    (by simpa only [hsel] using hne)
+  dsimp only at h
+  rw [ite_eq_right (not_le.mpr hη0), hsel] at h
+  exact outage_retained_count hanti hb htd (fun y hy hw => hjoin y _ hy ht0 hw)
+    (le_min hdl (hdb.trans hbh)) (cm (sp.ts s)) h
 
 /-- The shifted outage family supplies the ordinary population and slot-committee bounds.
 No constancy of the time-indexed committee inside a slot is assumed. -/
@@ -194,25 +226,15 @@ theorem outage_bounds {proposer : Nat → Fin sp.n}
     have hs : (cm (sp.ts s) : Set (Fin sp.n)).ncard = sp.committeeSize := by
       simpa only [dictOfTime, sp.slotTime_eq, SA.SAParams.ts] using hsize s
     exact Finset.card_pos.mp (by simpa using (hpos.trans_eq hs.symm))
-  have hcount : ∀ (s : Nat) (δ d : Time), 0 ≤ δ → δ ≤ η →
-      sp.ts s + δ ≤ d → d ≤ b → d ≤ sp.ts s + δ + 5 * sp.Δ →
-      ((cm (sp.ts s) : Set (Fin sp.n)) ∩ (H d)ᶜ).ncard <
-        ((cm (sp.ts s) : Set (Fin sp.n)) ∩
-          {y | y ∈ H d ∧ tr.awake y (sp.ts s + δ) ∧ tr.JoinedAt y (sp.ts s + δ)}).ncard := by
-    intro s δ d hδ0 hδη htd hdb hdl
-    have hs0 := ts_natCast_nonneg (sp := sp) s
-    have ht0 : 0 ≤ sp.ts s + δ := add_nonneg hs0 hδ0
-    have hsel : max 0 (sp.ts s + δ - δ) = sp.ts s := by
-      simp only [add_sub_cancel_right, max_eq_right hs0]
-    have h := hK δ hδ0 hδη (sp.ts s + δ) ht0 (htd.trans (hdb.trans hbh))
-      (by simpa only [hsel] using hne s)
-    dsimp only at h
-    rw [ite_eq_right (by linarith : ¬ η ≤ 0), hsel] at h
-    exact outage_retained_count hrun hb hc ht0 htd
-      (le_min hdl (hdb.trans hbh)) (cm (sp.ts s)) h
+  have hjoin : ∀ y t, y ∈ H t → 0 ≤ t →
+      (∀ u, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) →
+      tr.awake y t ∧ tr.JoinedAt y t := fun _ _ hy ht hw =>
+    Obligations.Growing.ready_implies_joined_at hrun hy ht (SleepyLayer1.join_le_of_catchUp hc) hw
+  have hη0 : 0 < η := by linarith
   refine ⟨hB, ?_, ?_⟩
   · intro s d _ htd hdb h6
-    have h := hcount s sp.Δ d hΔ.le hη htd hdb (by linarith)
+    have h := outage_committee_count hrun.antitone hb hη0 hjoin hK hbh (hne s) hΔ.le hη htd hdb
+      (by linarith)
     simp only [SA.FaultBoundK, dictOfTime, sp.slotTime_eq]
     simp only [SA.SAParams.ts] at h
     apply h.trans_le
@@ -220,7 +242,8 @@ theorem outage_bounds {proposer : Nat → Fin sp.n}
     intro y hy
     exact ⟨hy.1, hy.2.1, (mem_awakeJoined_projAC hrun).mpr hy.2.2⟩
   · intro s d _ htd hdb h2
-    have h := hcount s 0 d le_rfl (by linarith) (by simpa using htd) hdb (by linarith)
+    have h := outage_committee_count hrun.antitone hb hη0 hjoin hK hbh (hne s) le_rfl hη0.le
+      (by simpa using htd) hdb (by linarith)
     simp only [add_zero] at h
     have hle : ((cm (sp.ts s) : Set (Fin sp.n)) ∩
         {y | y ∈ H d ∧ tr.awake y (sp.ts s) ∧ tr.JoinedAt y (sp.ts s)}).ncard ≤
