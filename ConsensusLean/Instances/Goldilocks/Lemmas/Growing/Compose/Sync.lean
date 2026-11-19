@@ -9,7 +9,7 @@ namespace Consensus.Goldilocks.Compose.Growing
 
 /-- Service projects with sender and reader honest at their own cuts. -/
 theorem sync_projection : SyncProjection := by
-  intro P A dg H sg tr proposer ΔF a b h hs
+  intro P A dg H sg tr proposer ΔF a b ini h hs
   have state {y i} (hy : y ∈ H (tr.time i)) : tr.projAC.state y i = (tr.state y i).ac := by
     have hp := Compose.projAC_state (h.upTo (h.time_nonneg i)) hy i
     simpa only [RunTrace.upTo_projAC,

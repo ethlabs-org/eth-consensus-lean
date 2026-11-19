@@ -47,13 +47,16 @@ def ACProjection : Prop :=
       NoCollRun dg tr →
       Consensus.Goldilocks.Growing.ACLocalRun A H (tr.HonestBlocksAt H) tr.projAC ini
 
-/-- **C0.5 (c) under growing faults, the FG projection.** -/
+/-- **C0.5 (c) under growing faults, the FG projection**, over a run from any AC starts `ini`,
+with the interface requirements at each start (those of `{ A with initial := ini y }`; at the
+default start `ini y = A.initial`, `A.Requirements`). -/
 def FGProjection : Prop :=
   ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload)
     (H : Time → Set (Fin P.n)) (sg : A.Msg → Fin P.n) (tr : RunTrace A)
-    (proposer : Nat → Fin P.n),
-    A.Requirements → (P.genesisBlock A.genesisPayload).RootOk dg →
-      Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr → NoCollRun dg tr →
+    (proposer : Nat → Fin P.n) {ini : Fin P.n → A.State},
+    (∀ y, ({ A with initial := ini y } : NodeAC P).Requirements) →
+      (P.genesisBlock A.genesisPayload).RootOk dg →
+      Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini → NoCollRun dg tr →
         Consensus.Goldilocks.Growing.FGLocalRun A.genesisPayload H (tr.HonestBlocksAt H)
           tr.projFG
 
@@ -65,12 +68,12 @@ def GoldilocksACProjection : Prop :=
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → NoCollRun dg tr →
       SA.Growing.ACRun proposer tr.projAC H (tr.HonestBlocksAt H)
 
-/-- **`Sync` projects under growing faults.** -/
+/-- **`Sync` projects under growing faults**, over a run from any start. -/
 def SyncProjection : Prop :=
   ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload)
     (H : Time → Set (Fin P.n)) (sg : A.Msg → Fin P.n) (tr : RunTrace A)
-    (proposer : Nat → Fin P.n) (ΔF a b : Time),
-    Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr → tr.SyncRunAt H ΔF a b →
+    (proposer : Nat → Fin P.n) (ΔF a b : Time) {ini : Fin P.n → A.State},
+    Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini → tr.SyncRunAt H ΔF a b →
       SyncACAt A H (tr.HonestBlocksAt H) a b tr.projAC
 
 /-- **Joining and participation project under growing faults.** Joining at `t` of a node honest

@@ -22,7 +22,7 @@ structure RunStatements : Prop where
 /-- All A3 run projections. -/
 theorem run_statements : RunStatements where
   acProjection := ac_projection
-  fgProjection := fun _ _ _ _ _ _ _ hq => fg_projection _ _ _ _ _ _ _ (fun _ => hq)
+  fgProjection := fg_projection
   goldilocksACProjection := goldilocks_ac_projection
   joinedProjection := joined_projection
   syncProjection := sync_projection
