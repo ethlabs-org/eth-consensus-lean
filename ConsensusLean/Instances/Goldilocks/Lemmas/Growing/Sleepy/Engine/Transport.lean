@@ -237,13 +237,7 @@ theorem committee_bounds_at (hv : rho.ExecutionValid) {ini}
     have hle : (K.committee s ∩ (honestKeysAt S rho d)ᶜ).ncard ≤
         (K.committee s ∩ (honestKeysAt S rho (min (t + 5 * sp.Δ) b))ᶜ).ncard :=
       Set.ncard_le_ncard (Set.inter_subset_inter_right _ (Set.compl_subset_compl.2 (hanti hdd)))
-    have hJ := Set.ncard_le_ncard (s := K.committee s ∩ {y | y ∈ honestKeysAt S rho
-      (min (t + 5 * sp.Δ) b) ∧ (simTraceAt S rho hn).awake y t ∧
-        (simTraceAt S rho hn).JoinedAt y t})
-      (t := K.committee s ∩ honestKeysAt S rho (min (t + 5 * sp.Δ) b)) fun _ hy => ⟨hy.1, hy.2.1⟩
-    have hsplit := Set.ncard_inter_add_ncard_sdiff_eq_ncard (K.committee s)
-      (honestKeysAt S rho (min (t + 5 * sp.Δ) b))
-    rw [Set.sdiff_eq] at hsplit
+    have h2 := Compose.Growing.two_mul_inter_compl_lt (fun _ hy => hy.1) h
     omega
 
 end Consensus.Goldilocks.Obligations.Growing

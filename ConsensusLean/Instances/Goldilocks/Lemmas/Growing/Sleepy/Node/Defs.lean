@@ -262,6 +262,16 @@ theorem CommitteeBoundsFrom.mono {K : SA.CommitteeDict sp.n} {σ₀ : Nat} {b b'
   ⟨fun s d hs h1 hd h6 => h.slotK s d hs h1 (hd.trans hb) h6,
     fun s d hs h0 hd h2 => h.twoK s d hs h0 (hd.trans hb) h2⟩
 
+/-- **CS2 from a count**: if fewer members of `S` are outside `H` than members of `S` in some
+`J ⊆ H`, then twice the members of `S` outside `H` are fewer than `S`. -/
+theorem two_mul_inter_compl_lt {α : Type*} [Finite α] {S H J : Set α} (hJ : J ⊆ H)
+    (h : (S ∩ Hᶜ).ncard < (S ∩ J).ncard) : 2 * (S ∩ Hᶜ).ncard < S.ncard := by
+  have hle : (S ∩ J).ncard ≤ (S ∩ H).ncard :=
+    Set.ncard_le_ncard (Set.inter_subset_inter_right _ hJ)
+  have hn := Set.ncard_inter_add_ncard_sdiff_eq_ncard S H
+  rw [Set.sdiff_eq] at hn
+  omega
+
 /-- **CS2 from CS**: at `d ∈ [t_s + Δ, min b (t_s + 6Δ)]` for a slot `s ≥ σ₀`, fewer than half of
 the slot-`s` committee is compromised by `d`. -/
 theorem CommitteeBoundsFrom.two_of_slotK {K : SA.CommitteeDict sp.n} {σ₀ : Nat} {b : Time}
@@ -271,12 +281,7 @@ theorem CommitteeBoundsFrom.two_of_slotK {K : SA.CommitteeDict sp.n} {σ₀ : Na
   have hk : (K.committee s ∩ (H d)ᶜ).ncard < (K.committee s ∩ {y | y ∈ H d ∧
       tr.projAC.awake y (sp.ts s + sp.Δ) ∧ SA.JoinedAt tr.projAC y (sp.ts s + sp.Δ)}).ncard :=
     h.slotK s d hs h1 hdb h6
-  have hle := Set.ncard_le_ncard (s := K.committee s ∩ {y | y ∈ H d ∧
-      tr.projAC.awake y (sp.ts s + sp.Δ) ∧ SA.JoinedAt tr.projAC y (sp.ts s + sp.Δ)})
-    (t := K.committee s ∩ H d) fun _ hy => ⟨hy.1, hy.2.1⟩
-  have hsplit := Set.ncard_inter_add_ncard_sdiff_eq_ncard (K.committee s) (H d)
-  rw [Set.sdiff_eq] at hsplit
-  omega
+  exact two_mul_inter_compl_lt (fun _ hy => hy.1) hk
 
 /-- **CS2 across a slot**: at every `d ≤ b` in `[t_m, t_{m+1})` for a slot `m ≥ σ₀`, fewer than half
 of the slot-`m` committee is compromised by `d` (`twoK` up to `t_m + 2Δ`, then `two_of_slotK`). -/

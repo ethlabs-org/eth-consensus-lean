@@ -281,16 +281,8 @@ private theorem sleepy_service_and_bounds {proposer : Nat → Fin sp.n}
     · intro s d _ htd hdb h2
       have ht := ts_natCast_nonneg (sp := sp) s
       have h := hcommitteeCount (sp.ts s) d (hslotNonempty s) ht htd hdb (by linarith)
-      have hle : ((cm (sp.ts s) : Set (Fin sp.n)) ∩
-          {y | y ∈ H d ∧ tr.awake y (sp.ts s) ∧ tr.JoinedAt y (sp.ts s)}).ncard ≤
-          ((cm (sp.ts s) : Set (Fin sp.n)) ∩ H d).ncard :=
-        Set.ncard_le_ncard fun _ hy => ⟨hy.1, hy.2.1⟩
-      have hn := Set.ncard_inter_add_ncard_sdiff_eq_ncard
-        (cm (sp.ts s) : Set (Fin sp.n)) (H d)
-      rw [Set.sdiff_eq] at hn
       simp only [dictOfTime, sp.slotTime_eq]
-      simp only [SA.SAParams.ts, SA.SAParams.Δ] at h hle hn ⊢
-      omega
+      exact two_mul_inter_compl_lt (fun _ hy => hy.1) h
   exact ⟨hb, hsync, hB, hBK⟩
 
 /-- The existing sleepy induction, with committee positivity explicit rather than

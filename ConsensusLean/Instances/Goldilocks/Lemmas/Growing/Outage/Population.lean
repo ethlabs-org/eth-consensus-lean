@@ -245,16 +245,8 @@ theorem outage_bounds {proposer : Nat → Fin sp.n}
     have h := outage_committee_count hrun.antitone hb hη0 hjoin hK hbh (hne s) le_rfl hη0.le
       (by simpa using htd) hdb (by linarith)
     simp only [add_zero] at h
-    have hle : ((cm (sp.ts s) : Set (Fin sp.n)) ∩
-        {y | y ∈ H d ∧ tr.awake y (sp.ts s) ∧ tr.JoinedAt y (sp.ts s)}).ncard ≤
-        ((cm (sp.ts s) : Set (Fin sp.n)) ∩ H d).ncard :=
-      Set.ncard_le_ncard fun _ hy => ⟨hy.1, hy.2.1⟩
-    have hn := Set.ncard_inter_add_ncard_sdiff_eq_ncard
-      (cm (sp.ts s) : Set (Fin sp.n)) (H d)
-    rw [Set.sdiff_eq] at hn
     simp only [dictOfTime, sp.slotTime_eq]
-    simp only [SA.SAParams.ts, SA.SAParams.Δ] at h hle hn
-    omega
+    exact two_mul_inter_compl_lt (fun _ hy => hy.1) h
 
 /-- Population bounds from precisely the local supplier's L9 participation premises. -/
 theorem outage_bounds_of_local

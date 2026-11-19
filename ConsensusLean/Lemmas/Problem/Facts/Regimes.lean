@@ -90,30 +90,50 @@ theorem EtaReadyAbove.readyAbove {θ : ℚ} {η c t : Time} (h : p.EtaReadyAbove
   exact lt_of_le_of_lt (mul_le_mul_of_nonneg_left hc h0) h
 
 omit [DecidableEq V] in
+/-- Retaining through an earlier time `d ≤ e` keeps every validator ready at `t`, also at a shorter
+catch-up `c' ≤ c`: it charges fewer faults and asks for a shorter awake window. -/
+theorem readyAt_retain_subset {c c' t d e : Time} (hde : d ≤ e) (hc : c' ≤ c) :
+    (p.retain e).readyAt c t ⊆ (p.retain d).readyAt c' t := by
+  intro v hv
+  simp only [readyAt, Finset.mem_filter, Finset.mem_univ, true_and] at hv ⊢
+  refine ⟨fun hf => hv.1 (p.faultyAt_mono hde hf), fun u hu hut => hv.2 u ?_ hut⟩
+  exact le_trans (max_le_max_left 0 (by linarith)) hu
+
+/-- **The retained ready count inside a set `K`**: a fraction-`θ` count of the ready validators
+in `K` against the faults in `K`, on the view retained through `e` at catch-up `c`, holds on the
+view retained through any `d ≤ e` at any catch-up `c' ≤ c`: retaining through an earlier time
+keeps every ready validator and charges fewer faults. At `θ = 1/2` the hypothesis is the `η ≤ 0`
+committee count (`CommitteeSleepyOn`) at `q = p.retain e`. -/
+theorem ready_inter_lt_of_retain {θ : ℚ} {c c' t d e : Time} (K : Finset V) (hde : d ≤ e)
+    (hc : c' ≤ c) (hθ : θ ≤ 1) (h0 : 0 ≤ θ)
+    (h : θ * ((((p.retain e).readyAt c t ∩ K).card + ((p.retain e).faultyAt t ∩ K).card : Nat) :
+      ℚ) < (((p.retain e).readyAt c t ∩ K).card : ℚ)) :
+    θ * ((((p.retain d).readyAt c' t ∩ K).card + (p.faultyAt d ∩ K).card : Nat) : ℚ) <
+      (((p.retain d).readyAt c' t ∩ K).card : ℚ) := by
+  have hrq : (((p.retain e).readyAt c t ∩ K).card : ℚ) ≤ ((p.retain d).readyAt c' t ∩ K).card := by
+    exact_mod_cast Finset.card_le_card
+      (Finset.inter_subset_inter (readyAt_retain_subset hde hc) le_rfl)
+  have hfq : ((p.faultyAt d ∩ K).card : ℚ) ≤ ((p.retain e).faultyAt t ∩ K).card := by
+    exact_mod_cast Finset.card_le_card
+      (Finset.inter_subset_inter (show p.faultyAt d ⊆ p.faultyAt e from p.faultyAt_mono hde) le_rfl)
+  have hmul := mul_le_mul_of_nonneg_left hfq h0
+  have hdiff := mul_nonneg (sub_nonneg.mpr hθ) (sub_nonneg.mpr hrq)
+  push_cast at h ⊢
+  linarith
+
+omit [DecidableEq V] in
 /-- Retaining through an earlier time weakens the sleepy budget: fewer faults
 are charged and more ready validators survive. -/
 theorem ReadyAbove.retain_mono {θ : ℚ} {c t d e : Time}
     (h : (p.retain e).ReadyAbove θ c t) (hde : d ≤ e) (hθ : θ ≤ 1) (h0 : 0 ≤ θ) :
     (p.retain d).ReadyAbove θ c t := by
   classical
-  have hr : (p.retain e).readyAt c t ⊆ (p.retain d).readyAt c t := by
-    intro v hv
-    simp only [readyAt, Finset.mem_filter, Finset.mem_univ, true_and] at hv ⊢
-    exact ⟨fun hf => hv.1 (p.faultyAt_mono hde hf), hv.2⟩
-  have hrc : ((p.retain e).readyAt c t).card ≤ ((p.retain d).readyAt c t).card :=
-    Finset.card_le_card hr
-  have hfc : (p.faultyAt d).card ≤ (p.faultyAt e).card :=
-    Finset.card_le_card (p.faultyAt_mono hde)
-  have hrq : (((p.retain e).readyAt c t).card : ℚ) ≤
-      ((p.retain d).readyAt c t).card := by exact_mod_cast hrc
-  have hfq : ((p.faultyAt d).card : ℚ) ≤ (p.faultyAt e).card := by exact_mod_cast hfc
-  have hmul := mul_le_mul_of_nonneg_left hfq h0
-  have hdiff := mul_nonneg (sub_nonneg.mpr hθ) (sub_nonneg.mpr hrq)
-  change θ * (((p.retain e).readyAt c t).card + (p.faultyAt e).card : ℚ) <
+  change θ * (((p.retain e).readyAt c t).card + ((p.retain e).faultyAt t).card : ℚ) <
     ((p.retain e).readyAt c t).card at h
   change θ * (((p.retain d).readyAt c t).card + (p.faultyAt d).card : ℚ) <
     ((p.retain d).readyAt c t).card
-  linarith
+  simpa only [Finset.inter_univ, Nat.cast_add] using ready_inter_lt_of_retain (p := p)
+    Finset.univ hde le_rfl hθ h0 (by simpa only [Finset.inter_univ, Nat.cast_add] using h)
 
 omit [DecidableEq V] in
 /-- A full-run sleepy premise remains valid when its look-ahead is clamped
@@ -133,10 +153,8 @@ theorem EtaReadyAbove.retain_mono {θ : ℚ} {η c t d e : Time}
   unfold EtaReadyAbove at h ⊢
   split_ifs at h ⊢ with hη
   · exact h.retain_mono hde hθ h0
-  have hr : (p.retain e).readyAt c t ⊆ (p.retain d).readyAt c t := by
-    intro v hv
-    simp only [readyAt, Finset.mem_filter, Finset.mem_univ, true_and] at hv ⊢
-    exact ⟨fun hf => hv.1 (p.faultyAt_mono hde hf), hv.2⟩
+  have hr : (p.retain e).readyAt c t ⊆ (p.retain d).readyAt c t :=
+    readyAt_retain_subset hde le_rfl
   have hs : (p.retain d).readyAt c t ∪ (p.retain d).awakeIn (max 0 (t - η)) t ∪
       p.faultyAt d ⊆ (p.retain e).readyAt c t ∪ (p.retain e).awakeIn (max 0 (t - η)) t ∪
       p.faultyAt e := by
@@ -187,10 +205,8 @@ theorem opponents_inter_lt_of_retain {η c t d e : Time} (K : Finset V) (hde : d
   classical
   have hRF : ∀ v ∈ (p.retain e).readyAt c t, v ∉ (p.retain e).faultyAt t :=
     fun v hv => (Finset.mem_filter.mp hv).2.1
-  have hR : (p.retain e).readyAt c t ⊆ (p.retain d).readyAt c t := by
-    intro v hv
-    simp only [readyAt, Finset.mem_filter, Finset.mem_univ, true_and] at hv ⊢
-    exact ⟨fun hf => hv.1 (p.faultyAt_mono hde hf), hv.2⟩
+  have hR : (p.retain e).readyAt c t ⊆ (p.retain d).readyAt c t :=
+    readyAt_retain_subset hde le_rfl
   have hopp : ((p.retain d).awakeIn (max 0 (t - η)) t \ (p.retain d).readyAt c t) ∪
       (p.retain d).faultyAt t ⊆ ((p.retain e).awakeIn (max 0 (t - η)) t \
         (p.retain e).readyAt c t) ∪ (p.retain e).faultyAt t := by
