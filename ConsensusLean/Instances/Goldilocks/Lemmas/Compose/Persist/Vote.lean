@@ -10,9 +10,9 @@ public section
 
 At an honest vote of a slot `σ ∈ (s, m]` (a cut of the run's AC projection), with the caches of
 the voter compatible with `B`: (i) `B` is in the viable voter block tree or at or below `fc_root`
-(`vote_viable`: the voter's `fc_root` is its `Σ.J` or `Σ.F`, then (K2)), and (ii) the vote
-extends `B` (below `fc_root` by requirement 1, otherwise by A1.2 for `σ = s + 1` and A1.3
-after). -/
+(`FrameGeometry.viable_of_frozen_witnesses`: the voter's `fc_root` is its `Σ.J` or `Σ.F`, then
+(K2)), and (ii) the vote extends `B` (below `fc_root` by requirement 1, otherwise by A1.2 for
+`σ = s + 1` and A1.3 after). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -131,47 +131,6 @@ theorem syncAC_mono {P : Params} {FGP : Type} {A : ACInterface P FGP} {H : Set (
     fun x hx i B hB h₁ h₂ => h.2 x hx i B hB (ha.trans h₁) (h₂.trans hb)⟩
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-
-/-- **C1.1 (i) at a vote**: when the voter's caches are compatible with `B` and (K2) holds at the
-vote, `B` is in the viable voter block tree or at or below `fc_root` (in the honest blocks). -/
-theorem vote_viable {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr)
-    {y : Fin sp.n}
-    (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ℓ e) {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hcache : Compatible (tr.HonestBlocks H) (tr.state y k).fg.F B ∧
-      Compatible (tr.HonestBlocks H) (tr.state y k).fg.J B)
-    (hK2 : (∃ D ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
-        Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D) ∨
-      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
-    B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
-      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
-  have hr := (goldilocks_ac_projection_from hrun hnc).localRun
-  have hU := hr.coherent
-  obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocks H := by
-    rcases hr.frameLaw y hy k ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
-  have hfr := frame_of_projAC hrun hy hc.1
-  have hcomp : Compatible (tr.HonestBlocks H) ℓ.frame.fcRoot B := by
-    rw [hfr]
-    change Compatible _ (tr.state y k).fg.fcRoot B
-    unfold Store.fcRoot
-    split_ifs
-    · exact hcache.2
-    · exact hcache.1
-  rcases hK2 with ⟨D, hD, hBD, hvD⟩ | h
-  · rcases hcomp with hfB | hBf
-    · have hDt : D ∈ ℓ.frame.tree := hD.1
-      have hFB := (Anc.mono hΦU hΦ.F_anc_fcRoot).trans hfB
-      have hBt := SA.frame_mem_of_between sp hU hΦ hΦU hDt hBD hFB
-      have hΦBD := SA.anc_tree_of_anc_U hU hΦ hΦU hBt hBD hDt
-      have hΦfB := SA.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
-      refine Or.inl ⟨SA.voterBlockTree_anc hr hrun.vstart hy hc D hD B hΦBD,
-        hΦfB, D, hD, ?_, hΦBD⟩
-      have hfD := hΦfB.trans hΦBD
-      rw [hfr] at hDt hfD ⊢
-      exact ⟨hDt.1, hDt.2, Anc.mono (fun X hX => hX.1) hfD, hvD⟩
-    · exact Or.inr hBf
-  · exact Or.inr h
 
 end Consensus.Goldilocks.Compose
 

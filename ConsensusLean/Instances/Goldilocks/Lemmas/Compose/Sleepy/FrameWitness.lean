@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameBase
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 
 public section
@@ -10,8 +10,9 @@ public section
 The store geometry of S3 at a vote, with the relay of the honest heads left as premises: a block
 compatible with the sources of the voter's honest rows lies between `Σ.F` and a frozen witness,
 hence in the voter's frame, and the floor or a crossing source places it in the viable tree of the
-voter block tree (`vote_frame_of_witnesses`). The sources are the blocks below compatible tips
-(`below_tips_compatible`). -/
+voter block tree (`vote_frame_of_witnesses`, the voter block tree's instance of the store geometry
+over any AC, `FrameGeometry.viable_of_frozen_witnesses`). The sources are the blocks below
+compatible tips (`below_tips_compatible`). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -60,57 +61,19 @@ theorem vote_frame_of_witnesses {ini} (hrun : GoldilocksRun proposer dg H tr ini
       ∃ W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1), Anc (tr.HonestBlocks H) B W) :
     B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
-  have hU := (projFG_localRun hrun hnc).coherent
   have hfr := frame_of_projAC hrun hy hc.1
-  have hΦ : FrameOK ℓ.frame := by
-    rw [hfr]; exact (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
-  have hΦU : ℓ.frame.tree ⊆ tr.HonestBlocks H := by
-    rw [hfr]; exact fun X hX => ⟨y, hy, i, hX.1⟩
-  have hsU := fg_tree_subset_honest (tr := tr) hy i
-  -- `Σ.J`, `Σ.F` and `fc_root` are compatible with `B`
-  have hJ := J_compatible hrun hnc hf hy hsrc hGB hB
-  have hF : Compatible (tr.HonestBlocks H) (tr.state y i).fg.F B := by
-    have hFJ := ((Store.cache_invariants _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).2.2.1).mono
-      hsU
-    rcases hJ with h | h
-    · exact Or.inl (hFJ.trans h)
-    · exact Anc.total hU hFJ h
-  have hfc : Compatible (tr.HonestBlocks H) ℓ.frame.fcRoot B := by
-    rw [hfr]
-    change Compatible _ (tr.state y i).fg.fcRoot B
-    unfold Store.fcRoot
-    split_ifs
-    · exact hJ
-    · exact hF
-  have hv := vote_viable hrun hnc hy hc (B := B) ⟨hF, hJ⟩
-  rw [hs] at hv
-  apply hv
-  rcases hfc with hfB | hBf
-  swap
-  · exact Or.inr hBf
-  left
-  have hFB : Anc (tr.HonestBlocks H) ℓ.frame.F B := (Anc.mono hΦU hΦ.F_anc_fcRoot).trans hfB
-  -- the relayed honest slot-`s` head extending `B`
-  obtain ⟨W, hW, hBW⟩ := hw hFB
-  have hWt : W ∈ (tr.state y i).fg.tree := by
-    have := hW.1; rw [hfr] at this; exact this.1
-  have hBW' := honest_held_anc hrun hnc hy hBW hWt
-  have hBt := anc_mem hBW' hWt
-  rcases floor_or_crossing_of hrun hnc hf hy hsrc hGG hGB hBt with hle | ⟨D, E, X, hD, hDs, hE,
-    hBE, hEh, -⟩
-  · exact ⟨W, hW, hBW, hle.trans (honest_held_height hrun hnc hy hBW').1⟩
-  · -- the honest head of a vote extending the crossing source
-    obtain ⟨x₀, hx₀, k₀, -, -, hED, -, -⟩ := honest_source_entry hrun hnc hDs ⟨y, hy, i, hE⟩ rfl
-    have hEDU : Anc (tr.HonestBlocks H) E D := hED.mono (fg_tree_subset_honest hx₀ k₀)
-    have hFD : Anc (tr.HonestBlocks H) ℓ.frame.F D := hFB.trans ((hBE.mono hsU).trans hEDU)
-    obtain ⟨W', hW', hDW'⟩ := hGW D hD hFD
-    have hW't : W' ∈ (tr.state y i).fg.tree := by
-      have := hW'.1; rw [hfr] at this; exact this.1
-    have hEW' := honest_held_anc hrun hnc hy (hEDU.trans hDW') hW't
-    refine ⟨W', hW', (hBE.mono hsU).trans (hEDU.trans hDW'), ?_⟩
-    change (tr.state y i).fg.headHeightFloor ≤ _
-    rw [← hEh]
-    exact (honest_held_height hrun hnc hy hEW').1
+  have hTa := SA.voterBlockTree_anc (goldilocks_ac_projection_from hrun hnc).localRun hrun.vstart
+    hy hc
+  rw [hs] at hTa
+  have hsrc' : FrameGeometry.RowsAbove tr H G y i (tr.state y i).fg.hj :=
+    FrameGeometry.rowsAbove_iff.2 fun X hX a ha hav hE hh =>
+      (rowsAbove_iff.1 hsrc X hX a ha hav hE hh).imp fun _ ⟨hD, hDs⟩ =>
+        ⟨hD, FrameGeometry.isHonestSource_iff.2 (isHonestSource_iff.1 hDs)⟩
+  have h := FrameGeometry.viable_of_frozen_witnesses hrun.toLocalRun (projFG_localRun hrun hnc) hf
+    hy hsrc' hGG (T := SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1))
+    (by rw [← hfr]; exact fun X hX => hX.1) (by rw [← hfr]; exact hTa) (by rw [← hfr]; exact hGW)
+    hB hGB (by rw [← hfr]; exact hw)
+  rwa [← hfr] at h
 
 end Consensus.Goldilocks.Compose
 

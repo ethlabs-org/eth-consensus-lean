@@ -62,15 +62,6 @@ theorem justified_genesis (h0 : (tr.state y i).fg.hj = 0) (hy : y ∈ H) :
   FrameGeometry.justified_genesis hrun.toLocalRun h0 hy
 
 include hrun hnc hf hy in
-/-- **`Σ.J` is compatible with a block compatible with every source satisfying `G`.** -/
-theorem J_compatible (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B) (hB : B ∈ tr.HonestBlocks H) :
-    Compatible (tr.HonestBlocks H) (tr.state y i).fg.J B := by
-  exact FrameGeometry.J_compatible hrun.toLocalRun (projFG_localRun hrun hnc)
-    hf hy hsrc.toFrameGeometry hGB hB
-
-include hrun hnc hf hy in
 /-- **The floor, or a crossing source above the block**: with no contest the floor is
 `h_max − 1`; when it is above a held block `B`, a carrier of height `h_max` crossed it with an
 honest source `D`, whose entry `E` of height `h_max − 1` extends `B`. -/

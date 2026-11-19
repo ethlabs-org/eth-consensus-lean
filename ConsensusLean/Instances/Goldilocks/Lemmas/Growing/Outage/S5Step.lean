@@ -91,9 +91,9 @@ private theorem accepted_voter_tree_at
       linarith only [hkt, hti, hΔ]
   exact accepted_voter_tree (hrun.upTo hd) (hnc.upTo _) hy hc' hs hXU' hacc' hFX'
 
-/-- **C1.1 (i) at a vote** (`vote_viable`, the vote's node honest at its cut): a block compatible
-with both caches and below a frozen viable block (or `fc_root`) is in the vote's viable tree or
-below `fc_root`. -/
+/-- **C1.1 (i) at a vote** (as `FrameGeometry.viable_of_frozen_witnesses`, the vote's node honest
+at its cut): a block compatible with both caches and below a frozen viable block (or `fc_root`)
+is in the vote's viable tree or below `fc_root`. -/
 private theorem vote_viable_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}

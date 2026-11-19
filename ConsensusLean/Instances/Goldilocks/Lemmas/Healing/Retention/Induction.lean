@@ -105,9 +105,10 @@ theorem vote_root_compatible (hp : ResetPremises tr H proposer dg g ΔF a) (k : 
   · rw [Store.fcRoot, ite_eq_right hroot]
     exact hcache.1
 
-/-- **C1.1 (i) at a vote, from a compatible root** (C1.1's `vote_viable`, with the compatibility
-of `fc_root` with `B` as the premise instead of both caches): with (K2), `B` is in the viable voter
-block tree or at or below `fc_root`. -/
+/-- **C1.1 (i) at a vote, from a compatible root** (as
+`FrameGeometry.viable_of_frozen_witnesses`, with the compatibility of `fc_root` with `B` as the
+premise instead of both caches): with (K2), `B` is in the viable voter block tree or at or below
+`fc_root`. -/
 theorem vote_viable_of_root (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y k ℓ e)
