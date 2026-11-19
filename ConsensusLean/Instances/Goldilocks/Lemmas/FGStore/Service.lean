@@ -302,7 +302,7 @@ theorem crossing : Crossing P ACP := by
 
 /-- **G1.8 (b).** -/
 theorem coverage : Coverage P ACP := by
-  intro acp₀ H U tr hr cF T₁ T a₀ kF p i Bs Pr R hw hnb _ hT₁T _ X hJX hXB a₁ p₁ i₁ Bs₁ Pr₁ R₁
+  intro acp₀ H U tr hr cF T₁ T a₀ kF p i Bs Pr R hw hnb hT₁T X hJX hXB a₁ p₁ i₁ Bs₁ Pr₁ R₁
     hw₁
   obtain ⟨X', hJ', hX'B, -, hh', -, -, hZ⟩ :=
     previousHeightNotJustified_entry P ACP acp₀ H U tr hr cF T a₀ kF p i Bs Pr R hw hnb

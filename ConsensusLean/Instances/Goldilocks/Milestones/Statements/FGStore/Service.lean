@@ -179,20 +179,21 @@ def Crossing : Prop :=
       ((tr.store y k).σ T.root).h < ((tr.store y k).σ X.root).h ∧
       X.slot ≤ T.slot + max P.δt r + g - 1
 
-/-- **G1.8 (b), coverage after failed entries (corollary C).** Let `T₁ ≺ T` be entries on the
-chain of `B*₀`, where `T`'s previous height is not justified, and let `T` and its actual successor
-entry, entered by justifying it, satisfy G1.7's two windows, with serving block `B*₁`. Then `T₁`
-is covered on the chain of `B*₁` within `Σ τ_i + D₀ + D₁ = (T.slot − T₁.slot) + D₀ + D₁` slots of
-`T₁.slot`, that is by slot `T.slot + D₀ + D₁`: some `Z ⪯ B*₁` has a finalized block that extends
-`T₁`. The paper's premise that the entries after `T₁` up to `T` cross by timeout is not needed:
-the conclusion follows from G1.7 at `T` and `T₁ ⪯ T`. -/
+/-- **G1.8 (b), coverage after failed entries (corollary C).** Let `T₁ ⪯ T` on the chain of
+`B*₀`, where `T` is an entry whose previous height is not justified and `T₁` is any ancestor of
+`T`, and let `T` and its actual successor entry, entered by justifying it, satisfy G1.7's two
+windows, with serving block `B*₁`. Then `T₁` is covered on the chain of `B*₁` within
+`Σ τ_i + D₀ + D₁ = (T.slot − T₁.slot) + D₀ + D₁` slots of `T₁.slot`, that is by slot
+`T.slot + D₀ + D₁`: some `Z ⪯ B*₁` has a finalized block that extends `T₁`. The paper's premises
+that `T₁` is an entry strictly below `T` and that the entries after `T₁` up to `T` cross by
+timeout are not needed: the conclusion follows from G1.7 at `T` and `T₁ ⪯ T`. -/
 def Coverage : Prop :=
   ∀ (acp₀ : ACP) (H : Set (Fin P.n)) (U : Set (NodeBlock P ACP)) (tr : FGTrace P ACP),
     FGLocalRun acp₀ H U tr → ∀ (cF : Nat) (T₁ T : NodeBlock P ACP) (a₀ kF : Nat) (p : Fin P.n)
       (i : Nat) (Bs Pr : NodeBlock P ACP) (R : Finset (FG.Att P.n)),
     GoodWindow P ACP H tr cF T a₀ kF p i Bs Pr R →
     ¬ ((tr.store p i).σ T.root).previousHeightJustified →
-    IsEntry P ACP (tr.store p i) T₁ → (tr.store p i).Anc T₁ T → T₁ ≠ T →
+    (tr.store p i).Anc T₁ T →
     ∀ X, JustifiesEntry P ACP (tr.store p (i + 1)) T ((tr.store p i).σ T.root).h X →
       (tr.store p (i + 1)).Anc X Bs →
     ∀ (a₁ : Nat) (p₁ : Fin P.n) (i₁ : Nat) (Bs₁ Pr₁ : NodeBlock P ACP)

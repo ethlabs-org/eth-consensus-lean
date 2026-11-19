@@ -159,7 +159,7 @@ def Coverage : Prop :=
       (i : Nat) (Bs Pr : NodeBlock P ACP) (R : Finset (FG.Att P.n)),
     GoodWindow P ACP H tr cF T a₀ kF p i Bs Pr R →
     ¬ ((tr.store p i).σ T.root).previousHeightJustified →
-    IsEntry P ACP (tr.store p i) T₁ → (tr.store p i).Anc T₁ T → T₁ ≠ T →
+    (tr.store p i).Anc T₁ T →
     ∀ X, JustifiesEntry P ACP (tr.store p (i + 1)) T ((tr.store p i).σ T.root).h X →
       (tr.store p (i + 1)).Anc X Bs →
     ∀ (a₁ : Nat) (p₁ : Fin P.n) (i₁ : Nat) (Bs₁ Pr₁ : NodeBlock P ACP)
