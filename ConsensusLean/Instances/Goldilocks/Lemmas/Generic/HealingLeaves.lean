@@ -344,15 +344,15 @@ theorem reset_of_high_source_at_from {P : Params} {A : NodeAC P}
 
 /-! ## Leaf 6 -/
 
-/-- **Vote latency `D`**: a report of a source `R` at cut `i`, by a node honest at `time i + D`, is
-followed by an `fg_attest` call at a cut `k ≥ i`, by `time i + D`, whose source is at least as high
-in the caller's store at `k` as `R` was at `i`. The bound reads only the signing cut; the release
-is the delivery premises' business. -/
+/-- **Vote latency `D`**: by `time i + D`, a reporter honest at that deadline calls `fg_attest`
+on a source it reported at or after cut `i`. The signing source extends the report at `i` and is
+at least as high in the signing store. The deadline bounds signing, not delivery. -/
 structure VoteLatencyAt {P : Params} {A : NodeAC P} (tr : RunTrace A) (H : Time → Set (Fin P.n))
     (D : Time) : Prop where
   attests : ∀ y i R, ReportAt tr y i R → y ∈ H (tr.time i + D) →
     ∃ k, i ≤ k ∧ tr.time k ≤ tr.time i + D ∧ ∃ C s, tr.CallAt y k (.fg (.attest C s)) ∧
-      ((tr.state y i).fg.σ R.root).h ≤ ((tr.state y k).fg.σ C.root).h
+      ((tr.state y i).fg.σ R.root).h ≤ ((tr.state y k).fg.σ C.root).h ∧
+      Anc (tr.HonestBlocksAt H) R C ∧ ∃ j, i ≤ j ∧ j ≤ k ∧ ReportAt tr y j C
 
 /-- Every node run meets latency `0`: the report's `fg_attest` call follows in the same tick, on
 the same store. -/
@@ -376,7 +376,7 @@ theorem voteLatency_zero_from {P : Params} {A : NodeAC P} {proposer : Nat → Fi
     (fun q hq => hrun.time_mono (by omega))
   rw [hs1, hst] at hfg
   exact ⟨i + 1, by omega, by rw [ht', add_zero], R, s, ((Trace.upTo_callAt tr).mp hatt).2,
-    by rw [hfg]⟩
+    by rw [hfg], .refl, i, le_rfl, by omega, ell, hc, hto, hres⟩
 
 /-- **Leaf 6 under vote latency `D`**: a report of height at least `HZ + 1`, by a reporter honest
 at `D` after it and at `c_z`, with fewer than `q` faulty at that time, gives a reset no later than
@@ -392,7 +392,7 @@ theorem reset_of_high_report_within_from {P : Params} {A : NodeAC P} {proposer :
     (hR : ReportAt tr y i R)
     (hh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
     ∃ a, Healing.Growing.IsReset tr H g a ∧ a ≤ tr.time i + D := by
-  obtain ⟨k, -, hk, C, s, hc, hCh⟩ :=
+  obtain ⟨k, -, hk, C, s, hc, hCh, -, -⟩ :=
     hlat.attests y i R hR (hrun.antitone (le_max_right _ _) hyz)
   have hmono : max (Healing.cutZ P g) (tr.time k) ≤ max (Healing.cutZ P g) (tr.time i + D) :=
     max_le_max le_rfl hk
