@@ -56,21 +56,24 @@ theorem final_latency_gap_at (Q : FinalQueryAt S A V) :
 /-- **Final-window extraction at a gap `c` and a forwarding delay `ΔF`** (route A), under growing
 faults. A window of four honest anchors at `start + [0, c, 2c, 3c]` (`W.gap = c`) after the query,
 the slack `t(cut 3) + Δ ≤ deadline`, its anchor run and its three anchor steps. -/
-theorem final_window_extract_of_gap_at
+theorem final_window_extract_of_gap_within_at
     (Q : FinalQueryAt S A V)
     {c : Nat} (hc2 : 2 ≤ c)
     (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c])
-    {ΔR a ΔF : Time}
+    {ΔR a ΔF d : Time}
     (hs : Healing.Growing.HSSharedUpTo Q.trace Q.keys
       (digestOf S Q.run.2) Q.gst ΔF
       Q.run.2.horizon)
-    (hdel : 6 * Q.params.Δ + ΔF ≤ 4 * Q.params.Δ * (c : Nat))
+    (hd : 0 ≤ d)
+    (hdel : 6 * Q.params.Δ + d + ΔF ≤ 4 * Q.params.Δ * (c : Nat))
+    (hrelay : 7 * Q.params.Δ + d ≤ 4 * Q.params.Δ * (c : Nat))
     (hlat : Q.query + 4 * ((Q.index : Nat) + 3 * c) * Q.params.Δ + Q.params.Δ ≤ Q.deadline)
     (hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
       (runProposer S Q.run.2 Q.hn)
         (digestOf S Q.run.2) Q.gst ΔR a
           Q.run.2.horizon
         (runCommittee S Q.run.2 Q.hn) (K S A).params.βK)
+    (hsup : Healing.Growing.RowSupplyWithin Q.trace Q.keys Q.gst Q.run.2.horizon d)
     (hpropose : ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
       HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s
@@ -118,7 +121,7 @@ theorem final_window_extract_of_gap_at
   have hδ2 : 2 ≤ Q.params.toParams.fg.δt :=
     hc2.trans ((Nat.le_mul_of_pos_left c (by decide)).trans h3c)
   have hh₀ := seed_height_held_at hreset hs hδ2 hPs hu0 hRu hgu (hP 0) hus' hb₀ hgSu
-  have hsteps := anchorSteps_gap_at hreset hs hc2 hdel (s₀ := s₀) (P := P) hP
+  have hsteps := anchorSteps_gap_within_at hreset hs hc2 hsup hd hdel hrelay (s₀ := s₀) (P := P) hP
     hR hb3 hgS₀ hh₀
   -- the window fields
   have hready : ∀ i, Regimes.Growing.ReadyAt Q.trace H
@@ -160,6 +163,56 @@ theorem final_window_extract_of_gap_at
     rfl
   rw [ht3]
   exact h3D
+
+/-- The final window with same-tick signing. -/
+theorem final_window_extract_of_gap_at
+    (Q : FinalQueryAt S A V)
+    {c : Nat} (hc2 : 2 ≤ c)
+    (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c])
+    {ΔR a ΔF : Time}
+    (hs : Healing.Growing.HSSharedUpTo Q.trace Q.keys
+      (digestOf S Q.run.2) Q.gst ΔF
+      Q.run.2.horizon)
+    (hdel : 6 * Q.params.Δ + ΔF ≤ 4 * Q.params.Δ * (c : Nat))
+    (hlat : Q.query + 4 * ((Q.index : Nat) + 3 * c) * Q.params.Δ + Q.params.Δ ≤ Q.deadline)
+    (hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
+      (runProposer S Q.run.2 Q.hn)
+        (digestOf S Q.run.2) Q.gst ΔR a
+          Q.run.2.horizon
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK)
+    (hpropose : ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
+      HonestReadyIn Q.run.2.point Q.run.2.key
+      (fun s => Q.run.2.sel (.proposer s)) s
+          ((Sys (goldilocks S) V).cDur (K S A) Q.run)
+      ((finalGridAt S A V Q).slotTime
+        s) Q.run.2.point.env.ΔAC →
+      ∃ P, Healing.Growing.HonestProposalRun Q.trace Q.keys
+        (runProposer S Q.run.2 Q.hn) s P)
+    (hplace : max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
+        ((finalGridAt
+          S A V Q).slotTime
+          (finalSeedMinAt
+            S A V Q a) - 1) +
+        ((((Q.index : Nat) + S.δt : Nat) : Time)) *
+        (finalGridAt S A V Q).slotLen
+        ≤
+      Q.query + (finalGridAt
+          S A V Q).slotLen)
+    (hcarrier : ∀ s P, Healing.Growing.HonestProposalRun Q.trace Q.keys
+      (runProposer S Q.run.2 Q.hn) s P → Q.query < Q.params.ts s →
+      Q.params.ts s + Q.params.Δ ≤ Q.deadline →
+      ∀ y, Regimes.Growing.ReadyAt Q.trace Q.keys
+        ((Sys (goldilocks S) V).cDur (K S A) Q.run) y Q.deadline →
+      ∃ j, Q.trace.BlockCallAt y j P ∧ Q.trace.time j ≤ Q.deadline) :
+    ∃ W : FinalWindowDataAt
+        S A V Q, W.gap = c ∧
+      Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧ W.AnchorRun ∧ W.AnchorSteps := by
+  have hc : (2 : Time) ≤ c := by exact_mod_cast hc2
+  have hΔ := Q.params.toParams.hΔ
+  exact final_window_extract_of_gap_within_at S A V Q hc2 h3c hpat hs (d := 0) le_rfl
+    (by simpa only [add_zero] using hdel)
+    (by linarith [mul_le_mul_of_nonneg_left hc (show 0 ≤ 4 * Q.params.Δ by linarith)])
+    hlat hreset hreset.rowSupplyWithin_zero hpropose hplace hcarrier
 
 end Consensus.Goldilocks.Obligations.Growing
 
