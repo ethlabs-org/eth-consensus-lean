@@ -107,6 +107,13 @@ def engineObj (o : ShapeObj (paramsAtCount p (Fintype.card V) hN hn).n e.skel.Ki
     (Model.protoOf (compiled F) E).Object :=
   cast (congrArg (fun s : ChainShape (pubOf E) O.Id I => (compile s).Object) e.shape_eq.symm) o
 
+/-- The cast back to an engine object inverts the equality of assembled shapes. -/
+theorem engineObj_eq
+    (o : ShapeObj (paramsAtCount p (Fintype.card V) hN hn).n e.skel.Kind I e.Body) :
+    engineObj e o =
+      cast (congrArg (fun s : ChainShape (pubOf E) O.Id I => (compile s).Object)
+        e.shape_eq.symm) o := by rfl
+
 private theorem transportObj_symm {s s' : ChainShape (pubOf E) O.Id I} (h : s = s')
     (o : (compile s).Object) :
     cast (congrArg (fun q => (compile q).Object) h.symm)

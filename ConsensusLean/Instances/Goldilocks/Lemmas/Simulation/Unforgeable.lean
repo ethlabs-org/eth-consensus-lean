@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
 
 public section
 
@@ -366,44 +367,23 @@ theorem msgCall_delivered {y : Fin (Fintype.card V)} {k : Nat} {m : Vote (Fintyp
     (hc : (simTrace S rho hn).MsgCallAt y k m) :
     ∃ i v o t, rho.events[i]? = some (.deliver v o t) ∧ Model.Obj.Contains o (voteObj m) ∧
       cutMap S rho hn i ≤ k ∧ (simTrace S rho hn).time k = t := by
-  obtain ⟨ℓ, ⟨hnode, hlab⟩, hcall⟩ := hc
-  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, i, ev, _, he, hstart, _, hidx, _, htime, _, hlab'⟩ := simTrace_cut S rho hn hl
-  have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
-  have hmem := List.mem_of_getElem? hidx
-  obtain ⟨v, o, t, rfl⟩ := eq_deliver_of_cut S rho hn he hmem (Or.inr ⟨ℓ, m, hrl, hcall⟩)
-  rw [eventCuts_deliver S rho hn i v o t he] at hmem
-  obtain ⟨o', e, st', ho, hce, q, hq, hc, _⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
-  have hcut := List.getElem_mem hq
-  rw [← hc, hrl] at hcut
-  have heq : e = .message m := by
-    cases e with
-    | tick x => exact False.elim (canonEvent_ne_tick hce x rfl)
-    | message m' =>
-      simp only [exec, onMessage, acCall, List.mem_singleton, Cut.ac.injEq] at hcut
-      subst ℓ
-      cases hcall
-      rfl
-    | block B =>
-      simp only [exec, onBlock] at hcut
-      split_ifs at hcut
-      · simp at hcut
-      · split at hcut <;> simp [acCall] at hcut
-        subst ℓ
-        cases hcall
-    | attestation => simp [exec, onAttestation] at hcut
-    | restart =>
-      simp only [exec, Node.restart, acCall, List.mem_singleton, Cut.ac.injEq] at hcut
-      subst ℓ
-      cases hcall
-  subst e
-  have ho' : o' = voteObj m := by
-    rcases canonEvent_eq_some hce with ⟨_, h, _⟩ | ⟨m', h, ho⟩ | ⟨_, h, _⟩
-    · cases h
-    · cases h; exact ho
-    · cases h
-  subst o'
-  exact ⟨i, v, o, t, he, contains_of_mem_delivered ho, hstart, htime⟩
+  let enc := traceEncoding (E := E) S hn
+  rw [(simTrace_encoding S rho hn).1] at hc ⊢
+  rw [(simTrace_encoding S rho hn).2]
+  obtain ⟨i, v, o, t, w, he, hw, hm, hstart, htime⟩ :=
+    NodeAsChainShape.CanonicalTrace.simTraceAt_msgCall_delivered enc rho
+      (by rwa [NodeAsChainShape.CanonicalTrace.simTraceAt_eq])
+  have hobj : ∀ w, enc.codec.message w = some m →
+      NodeAsChainShape.CanonicalTrace.engineObj enc w = voteObj (binding := S.vote) m :=
+    traceEncoding_induction S hn (fun e _ => ∀ w, e.codec.message w = some m →
+      NodeAsChainShape.CanonicalTrace.engineObj e w = voteObj (binding := S.vote) m) fun _ w h => by
+        have hwire := eq_voteObj_of_decodeVoteObj h
+        subst w
+        rw (config := { transparency := .default })
+          [NodeAsChainShape.CanonicalTrace.engineObj_eq, cast_eq]
+  rw [hobj w hm] at hw
+  rw [NodeAsChainShape.CanonicalTrace.simTraceAt_eq] at htime
+  exact ⟨i, v, o, t, he, hw, hstart, htime⟩
 
 /-- An AC message that a node receives at cut `k`, while its signer is honest at the cut's
 time, was emitted by the signer at an earlier cut. Premise `hrel`: a release of the vote at an
