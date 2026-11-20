@@ -2,6 +2,8 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Supply.Fields
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.WindowCrossing
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinPair
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
@@ -397,6 +399,54 @@ theorem ResetPremisesUpTo.row_for_parent_or_crossed_of_reported_attempt_at
     change att.fin = some ((σ Pr.root).hj, (σ Pr.root).J)
     rw [hPhj, hPJ]
     exact hfin hprev
+
+/-- Feed the post-drain parent match from signing latency on an eligible anchor report. The
+latency witness chooses the exact attempted source and its report; that report inherits the
+anchor ancestry and remains at least one node delay before the consuming proposal. -/
+theorem ResetPremisesUpTo.row_for_parent_or_crossed_of_voteLatency_at
+    {g ΔF a b d D : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hlat : Generic.VoteLatencyAt tr H D) (hD : 0 ≤ D)
+    {z : Fin sp.n} {i : Nat} (hz : z ∈ H (max (cutZ sp.toParams g) (d + D)))
+    {ell : ACLabel (goldilocksNode sp ro)} {R T : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hreport : SA.ToFGAt tr.projAC z i ell R) (hTR : Anc (tr.HonestBlocksAt H) T R)
+    (hR : drainTime sp a ≤ tr.time i) (hid : tr.time i ≤ d)
+    {s c : Nat} {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hX : HonestProposalRun tr H proposer s X) (hcut : tr.ProposesAt (proposer s) c X)
+    (hgap : d + D + sp.Δ ≤ sp.ts s) (hsb : sp.ts s ≤ b)
+    (hpar : X.parent = some Pr.root) (hPr : Pr ∈ (tr.state (proposer s) c).fg.tree)
+    (hTPr : Anc (tr.HonestBlocksAt H) T Pr)
+    (hTe : ((tr.state (proposer s) c).fg.σ T.root).Th = T.root)
+    (hhT : HZ tr H g + 1 ≤ ((tr.state (proposer s) c).fg.σ T.root).h)
+    (hhj : ((tr.state (proposer s) c).fg.σ T.root).previousHeightJustified →
+      HZ tr H g + 1 ≤ ((tr.state (proposer s) c).fg.σ T.root).hj) :
+    ((tr.state (proposer s) c).fg.σ T.root).h < ((tr.state (proposer s) c).fg.σ Pr.root).h ∨
+      ∃ j att, tr.SignAt z j att ∧ tr.time j ≤ d + D ∧ att.val = z ∧
+        att.h = ((tr.state (proposer s) c).fg.σ Pr.root).h ∧
+        att.T = ((tr.state (proposer s) c).fg.σ Pr.root).Th ∧ att.timeout = false ∧
+        (((tr.state (proposer s) c).fg.σ Pr.root).previousHeightJustified →
+          att.fin = some (((tr.state (proposer s) c).fg.σ Pr.root).hj,
+            ((tr.state (proposer s) c).fg.σ Pr.root).J)) := by
+  have hrun := hp.run
+  have hidD : tr.time i + D ≤ d + D := Int.add_le_add_right hid D
+  have hzi := hrun.antitone ((hid.trans (le_add_of_nonneg_right hD)).trans (le_max_right _ _)) hz
+  have hRi := (Generic.reportAt_iff_toFGAt hrun hzi).mpr ⟨ell, hreport⟩
+  obtain ⟨k, -, hk, C, v, hattempt, -, hRC, r, hir, hrk, hrep⟩ :=
+    hlat.attests z i R hRi (hrun.antitone (hidD.trans (le_max_right _ _)) hz)
+  have hkd := hk.trans hidD
+  have hrd := (hrun.time_mono hrk).trans hkd
+  have hzr := hrun.antitone (hrd.trans (le_max_right _ _)) hz
+  obtain ⟨l, hto⟩ := (Generic.reportAt_iff_toFGAt hrun hzr).mp hrep
+  have hzs := hrun.antitone (max_le_max le_rfl hkd) hz
+  have hgap' := (Int.add_le_add_right hrd sp.Δ).trans hgap
+  have hks : tr.time k < sp.ts s :=
+    (lt_add_of_pos_right (tr.time k) (show 0 < sp.Δ from sp.toParams.hΔ)).trans_le
+      ((Int.add_le_add_right hkd sp.Δ).trans hgap)
+  rcases hp.row_for_parent_or_crossed_of_reported_attempt_at hrk hzs hto hattempt
+      (hR.trans (hrun.time_mono hir)) hX hcut hgap' hks hsb hpar hPr (hTR.trans hRC) hTPr
+      hTe hhT hhj with hcross | ⟨j, att, hj, hjk, hfields⟩
+  · exact Or.inl hcross
+  · exact Or.inr ⟨j, att, hj, hjk.trans hkd, hfields⟩
 
 /-- Exact-source service through the horizon gives the signed quorum branch of row supply.
 The service hypothesis is about observed attempts, not a bound on gaps between open gates. -/
