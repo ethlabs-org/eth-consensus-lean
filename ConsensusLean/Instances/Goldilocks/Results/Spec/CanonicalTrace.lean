@@ -326,6 +326,11 @@ permission installed by the binding (`goldilocksShape.init`). -/
 noncomputable def simTrace : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _) :=
   CanonicalTrace.simTrace (traceEncoding S hn) rho
 
+/-- Goldilocks replay specializes the canonical encoded-node trace and its cut map. -/
+theorem simTrace_encoding :
+    simTrace S rho hn = CanonicalTrace.simTrace (traceEncoding S hn) rho ∧
+    cutMap S rho hn = CanonicalTrace.cutMap (traceEncoding S hn) rho := ⟨by rfl, by rfl⟩
+
 /-- The cuts of the events in order. -/
 theorem allCuts_eq :
     allCuts S rho hn = (List.range rho.events.length).flatMap (eventCuts S rho hn) := by
