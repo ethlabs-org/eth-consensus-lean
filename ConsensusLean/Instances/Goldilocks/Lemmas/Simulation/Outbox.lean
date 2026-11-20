@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.CommitteeSelection
 public import Mathlib.Tactic.LinearCombination
 
 public section
@@ -1167,10 +1168,8 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 omit [DecidableEq V] in
 /-- In an admitted run the poll role selects every key. -/
-theorem selValid_poll (hsel : rho.SelValid) : rho.sel .poll = Finset.univ := by
-  have h := hsel .poll
-  change ((goldilocks S (pubOf E)).skel.pollSel).Admits _ at h
-  exact h
+theorem selValid_poll (hsel : rho.SelValid) : rho.sel .poll = Finset.univ :=
+  NodeAsChainShape.CanonicalTrace.selValid_poll rho hsel rfl
 
 /-- A delivery's poll drains its at-most-one queued vote. -/
 private theorem outbox_after_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
