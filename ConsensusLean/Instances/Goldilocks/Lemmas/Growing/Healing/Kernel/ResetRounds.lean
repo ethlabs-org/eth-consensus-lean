@@ -864,7 +864,7 @@ private theorem drainOutputs_truncH {g b : Time} {G Ld : Nat}
 `exists_reset_of_drain_rounds_noRestartAfter_at` run on the honest sets truncated after `b`, where
 the premises up to `b` are those for `H`, no restart is honest after `b`, and `H_z` and the reset
 are those for `H` (`c_z` and the reset bound are `≤ b`). -/
-theorem _root_.Consensus.Goldilocks.Healing.Growing.exists_reset_of_drain_rounds_awake_within_at
+theorem _root_.Consensus.Goldilocks.Healing.Growing.exists_reset_of_drain_rounds_truncH_at
     {K : SA.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (SA.committeeStart sp.genesisRoot K))
@@ -874,7 +874,7 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.exists_reset_of_drain_rounds
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartUpTo tr H (gbar g) b)
     (hH : (H b).Nonempty) (hδ : 3 ≤ sp.toParams.fg.δt)
-    (hlat : Generic.VoteLatencyAt tr H latency) (hlat0 : 0 ≤ latency)
+    (hlat : Generic.VoteLatencyAt tr (truncH H b) latency) (hlat0 : 0 ≤ latency)
     (hΔF : 6 * sp.Δ + latency + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
     (hr : 0 ≤ r) (hgr : gbar g ≤ r) (hG : 1 ≤ G)
     (hcz : cutZ sp.toParams g + sp.Δ + 1 ≤ r + 4 * sp.Δ)
@@ -897,6 +897,39 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.exists_reset_of_drain_rounds
       linarith
     linarith [mul_nonneg hc (show (0 : Time) ≤ sp.Δ by linarith)]
   have hczb : cutZ sp.toParams g ≤ b := by linarith
+  obtain ⟨a, ha, hab⟩ := exists_reset_of_drain_rounds_noRestartAfter_at
+    (goldilocksRun_truncH hrun b) hnc
+    (fun t ht htb => by rw [truncH_eq_of_le htb]; exact hf t ht htb)
+    (resetService_truncH hsvc b) (fun y t hy => hawake y t hy.1) (catchRun_truncH hcatch b)
+    (fun y k hy hk => noRestartUpTo_iff.mp hnr y k hy.1 hk hy.2)
+    (hH.mono fun _ hy => ⟨hy, le_rfl⟩) hδ hlat hlat0 hΔF hr hgr hG hcz hb
+    (fun s₀ N hs₀ hN => proposalGap_truncH (hgp s₀ N hs₀ hN) (by linarith))
+    (drainOutputs_truncH hdrain hczb) hK.truncH
+  exact ⟨a, (isReset_truncH_iff hczb (hab.trans hb)).mp ha, hab⟩
+
+/-- Finite-service reset from a signing-latency witness on the full honest set. -/
+theorem _root_.Consensus.Goldilocks.Healing.Growing.exists_reset_of_drain_rounds_awake_within_at
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b r latency : Time} {G Ld : Nat}
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartUpTo tr H (gbar g) b)
+    (hH : (H b).Nonempty) (hδ : 3 ≤ sp.toParams.fg.δt)
+    (hlat : Generic.VoteLatencyAt tr H latency) (hlat0 : 0 ≤ latency)
+    (hΔF : 6 * sp.Δ + latency + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
+    (hr : 0 ≤ r) (hgr : gbar g ≤ r) (hG : 1 ≤ G)
+    (hcz : cutZ sp.toParams g + sp.Δ + 1 ≤ r + 4 * sp.Δ)
+    (hb : Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld + 5 * latency ≤ b)
+    (hgp : ∀ s₀ N : Nat, r + 4 * sp.Δ ≤ sp.ts s₀ →
+      sp.ts N + 2 * sp.Δ <
+        Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld + 5 * latency →
+      ProposalGap tr H proposer G s₀ N)
+    (hdrain : DrainOutputs tr proposer H g G Ld b) (hK : CommitteeHalfUpTo tr H K g b) :
+    ∃ a, IsReset tr H g a ∧
+      a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld + 5 * latency := by
   have hlat' : Generic.VoteLatencyAt tr (truncH H b) latency := by
     refine ⟨fun y i R hR hy => ?_⟩
     obtain ⟨k, hik, hk, C, s, hc, hh, hRC, j, hij, hjk, ell, hcall, hto, hret⟩ :=
@@ -915,15 +948,8 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.exists_reset_of_drain_rounds
     exact ⟨k, hik, hk, C, s, hc, hh,
       honest_anc_of_store_anc_at (H := truncH H b) hj0 hle ⟨hyj, hjb⟩ hlocal,
       j, hij, hjk, ell, hcall, hto, hret⟩
-  obtain ⟨a, ha, hab⟩ := exists_reset_of_drain_rounds_noRestartAfter_at
-    (goldilocksRun_truncH hrun b) hnc
-    (fun t ht htb => by rw [truncH_eq_of_le htb]; exact hf t ht htb)
-    (resetService_truncH hsvc b) (fun y t hy => hawake y t hy.1) (catchRun_truncH hcatch b)
-    (fun y k hy hk => noRestartUpTo_iff.mp hnr y k hy.1 hk hy.2)
-    (hH.mono fun _ hy => ⟨hy, le_rfl⟩) hδ hlat' hlat0 hΔF hr hgr hG hcz hb
-    (fun s₀ N hs₀ hN => proposalGap_truncH (hgp s₀ N hs₀ hN) (by linarith))
-    (drainOutputs_truncH hdrain hczb) hK.truncH
-  exact ⟨a, (isReset_truncH_iff hczb (hab.trans hb)).mp ha, hab⟩
+  exact exists_reset_of_drain_rounds_truncH_at hrun hnc hf hsvc hawake hcatch hnr
+    hH hδ hlat' hlat0 hΔF hr hgr hG hcz hb hgp hdrain hK
 
 /-- Finite-service reset with same-tick signing. -/
 theorem _root_.Consensus.Goldilocks.Healing.Growing.exists_reset_of_drain_rounds_awake_at
@@ -947,8 +973,9 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.exists_reset_of_drain_rounds
     (hdrain : DrainOutputs tr proposer H g G Ld b) (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ a, IsReset tr H g a ∧
       a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld := by
-  simpa only [mul_zero, add_zero] using exists_reset_of_drain_rounds_awake_within_at hrun hnc
-    hf hsvc hawake hcatch hnr hH hδ (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl
+  simpa only [mul_zero, add_zero] using exists_reset_of_drain_rounds_truncH_at hrun hnc
+    hf hsvc hawake hcatch hnr hH hδ
+    (Generic.voteLatency_zero_from (goldilocksRun_truncH hrun b).toLocalRun) le_rfl
     (by simpa only [add_zero] using hΔF) hr hgr hG hcz
     (by simpa only [mul_zero, add_zero] using hb)
     (by simpa only [mul_zero, add_zero] using hgp) hdrain hK

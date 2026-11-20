@@ -296,6 +296,32 @@ def RestartFreeSigningAppointments (tr : GoldilocksTrace sp ro) (H : Time → Se
       (∀ q, i < q → q < j → ¬ tr.projAC.RestartAt y q) ∧
       tr.CallAt y k (.fg (.attest C v))
 
+/-- Finite appointment service supplies the signing-latency input with honesty truncated at `b`,
+as used by the pre-reset rounds. Rebase ancestry into the report's held tree before transporting
+it to the truncated honest-block universe. No appointment after `b` is needed. -/
+theorem RestartFreeSigningAppointments.voteLatency_truncH
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {b D : Time} (hD : 0 ≤ D)
+    (hsleepy : SleepyInvariantUpTo tr H b) (hsvc : RestartFreeSigningAppointments tr H b D) :
+    Generic.VoteLatencyAt tr (Generic.truncH H b) D := by
+  refine ⟨fun y i R hR hy => ?_⟩
+  have hyi := hrun.antitone (le_add_of_nonneg_right hD : tr.time i ≤ tr.time i + D) hy.1
+  obtain ⟨ell₀, htoR⟩ := (Generic.reportAt_iff_toFGAt hrun hyi).mp hR
+  obtain ⟨j, k, ell, C, v, hij, hjk, hkD, htoC, hnr, hatt⟩ := hsvc y i ell₀ R htoR hy.2 hy.1
+  obtain ⟨k', hik', hk'D, C', v', hatt', hh, hRC, j', hij', hj'k', hrep'⟩ :=
+    voteLatency_witness_of_reported_attempt_at hrun hnc hsleepy hij hjk hkD hy.2 hy.1 htoR htoC
+      hnr hatt
+  have hj'D := (hrun.time_mono hj'k').trans hk'D
+  have hyj' := hrun.antitone hj'D hy.1
+  obtain ⟨_, htoC'⟩ := (Generic.reportAt_iff_toFGAt hrun hyj').mp hrep'
+  have ht := hrun.time_nonneg j'
+  have hle : ∀ q < j', tr.time q ≤ tr.time j' := fun _ hq => hrun.time_mono hq.le
+  have hstore := store_anc_of_honest_anc_at hrun hnc ht hle hyj' hRC
+    (toFG_mem_tree_at hrun hyj' htoC')
+  exact ⟨k', hik', hk'D, C', v', hatt', hh,
+    honest_anc_of_store_anc_at (H := Generic.truncH H b) ht hle ⟨hyj', hj'D.trans hy.2⟩ hstore,
+    j', hij', hj'k', hrep'⟩
+
 /-- A frozen row already in the proposer's pool and not on its chosen parent chain is selected
 exactly when it names the current entry or carries a still-pending finality vote at an older height.
 Release does not refresh either payload field. -/
