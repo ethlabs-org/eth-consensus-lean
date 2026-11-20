@@ -69,8 +69,6 @@ variable {O : OutputSchema} {I : Type} [DecidableEq I] [Countable I]
 variable {F : ChainShapeFamily O I} {p : Params} {hN : p.n = Fintype.card V}
 variable {hn : 1 ≤ Fintype.card V}
 
-local notation "P" => (paramsAtCount p (Fintype.card V) hN hn)
-
 /-- The codec, adapter and assembly for the family's actual shape at this environment. -/
 structure Encoding (F : ChainShapeFamily O I) (E : Env V)
     (p : Params) (hN : p.n = Fintype.card V) (hn : 1 ≤ Fintype.card V)
@@ -95,11 +93,18 @@ variable (e : Encoding F E p hN hn A)
 variable (rho : Model.Run (compiled F) E)
 
 /-- Cast an engine object to the encoder's local wire type. -/
-def wireOf (o : (Model.protoOf (compiled F) E).Object) : ShapeObj (P).n e.skel.Kind I e.Body :=
+def wireOf (o : (Model.protoOf (compiled F) E).Object) :
+    ShapeObj (paramsAtCount p (Fintype.card V) hN hn).n e.skel.Kind I e.Body :=
   cast (congrArg (fun s : ChainShape (pubOf E) O.Id I => (compile s).Object) e.shape_eq) o
 
+/-- The wire cast is induced by the equality of the two assembled shapes. -/
+theorem wireOf_eq (o : (Model.protoOf (compiled F) E).Object) : wireOf e o =
+    cast (congrArg (fun s : ChainShape (pubOf E) O.Id I => (compile s).Object) e.shape_eq) o := by
+  rfl
+
 /-- Regard a local wire object as an object of the actual engine. -/
-def engineObj (o : ShapeObj (P).n e.skel.Kind I e.Body) : (Model.protoOf (compiled F) E).Object :=
+def engineObj (o : ShapeObj (paramsAtCount p (Fintype.card V) hN hn).n e.skel.Kind I e.Body) :
+    (Model.protoOf (compiled F) E).Object :=
   cast (congrArg (fun s : ChainShape (pubOf E) O.Id I => (compile s).Object) e.shape_eq.symm) o
 
 private theorem transportObj_symm {s s' : ChainShape (pubOf E) O.Id I} (h : s = s')
@@ -114,7 +119,8 @@ theorem engineObj_wireOf (o : (Model.protoOf (compiled F) E).Object) :
     engineObj e (wireOf e o) = o := transportObj_symm e.shape_eq o
 
 /-- Casting into the engine and back leaves a wire object unchanged. -/
-theorem wireOf_engineObj (o : ShapeObj (P).n e.skel.Kind I e.Body) :
+theorem wireOf_engineObj
+    (o : ShapeObj (paramsAtCount p (Fintype.card V) hN hn).n e.skel.Kind I e.Body) :
     wireOf e (engineObj e o) = o := transportObj_symm e.shape_eq.symm o
 
 private theorem transportObj_item {s s' : ChainShape (pubOf E) O.Id I} (h : s = s')
@@ -124,7 +130,8 @@ private theorem transportObj_item {s s' : ChainShape (pubOf E) O.Id I} (h : s = 
   rfl
 
 /-- Casting an object does not change the header read by the engine. -/
-theorem engineObj_item (o : ShapeObj (P).n e.skel.Kind I e.Body) :
+theorem engineObj_item
+    (o : ShapeObj (paramsAtCount p (Fintype.card V) hN hn).n e.skel.Kind I e.Body) :
     (engineObj e o).item? = o.item? := transportObj_item e.shape_eq.symm o
 
 private theorem transportObj_parts {s s' : ChainShape (pubOf E) O.Id I} (h : s = s')
@@ -135,12 +142,18 @@ private theorem transportObj_parts {s s' : ChainShape (pubOf E) O.Id I} (h : s =
   exact (List.map_id _).symm
 
 /-- Casting preserves the ordered traversal of carried objects. -/
-theorem engineObj_parts (o : ShapeObj (P).n e.skel.Kind I e.Body) :
+theorem engineObj_parts
+    (o : ShapeObj (paramsAtCount p (Fintype.card V) hN hn).n e.skel.Kind I e.Body) :
     (engineObj e o).parts = o.parts.map (engineObj e) := transportObj_parts e.shape_eq.symm o
 
 /-- Transport a role to the engine's selection type. -/
 def engineRole (r : ShapeRole e.skel.Kind) : (Model.protoOf (compiled F) E).Role :=
   cast (congrArg (fun s : ChainShape (pubOf E) O.Id I => (compile s).Role) e.shape_eq.symm) r
+
+/-- The role cast is induced by the equality of the two assembled shapes. -/
+theorem engineRole_eq (r : ShapeRole e.skel.Kind) : engineRole e r =
+    cast (congrArg (fun s : ChainShape (pubOf E) O.Id I => (compile s).Role) e.shape_eq.symm) r :=
+  by rfl
 
 variable [DecidableEq V]
 
@@ -152,6 +165,11 @@ noncomputable def stateAt (v : V) (i : Nat) : e.State hn :=
 /-- The own-role initialization of the compiled shape, projected into the node. -/
 noncomputable def initial (y : Fin (Fintype.card V)) : NodeState A :=
   e.adapter.node ((e.ops hn).init y (fun r => decide (y ∈ rho.sel (engineRole e r))))
+
+omit [DecidableEq V] in
+/-- The projected trace initialization reads the actual compiled role selections. -/
+theorem initial_eq (y : Fin (Fintype.card V)) : initial e rho y =
+    e.adapter.node ((e.ops hn).init y (fun r => decide (y ∈ rho.sel (engineRole e r)))) := by rfl
 
 /-- The keys of validators honest at time zero. -/
 def honestKeys : Set (Fin (Fintype.card V)) := {y | rho.key y ∉ rho.faultyAt 0}
@@ -165,11 +183,14 @@ noncomputable def runProposer (hn : 1 ≤ Fintype.card V) (s : Nat) : Fin (Finty
   if h : (rho.sel (.proposer s)).Nonempty then (rho.sel (.proposer s)).min' h else ⟨0, hn⟩
 
 /-- The engine's hash, with the genesis root reserved. -/
-noncomputable def digestOf : Digest (List (FG.Att (P).n)) A.Payload := fun par s x atts payload =>
-  match par with
-  | none => (P).genesisRoot
-  | some r => taggedRoot (P).genesisRoot
-      (rho.hash ⟨parentRef (P).genesisRoot (some r), s, x, e.codec.encode atts payload⟩)
+noncomputable def digestOf :
+    Digest (List (FG.Att (paramsAtCount p (Fintype.card V) hN hn).n)) A.Payload :=
+  fun par s x atts payload =>
+    match par with
+    | none => (paramsAtCount p (Fintype.card V) hN hn).genesisRoot
+    | some r => taggedRoot (paramsAtCount p (Fintype.card V) hN hn).genesisRoot
+        (rho.hash ⟨parentRef (paramsAtCount p (Fintype.card V) hN hn).genesisRoot (some r),
+          s, x, e.codec.encode atts payload⟩)
 
 section Replay
 
@@ -191,6 +212,14 @@ noncomputable def groupRecs (proposer : Nat → Fin Q.n)
   let cs := (exec proposer dg self st t ev).2
   (cs.zip (cutPosts self t cs st)).mapIdx fun k cp => ⟨self, t, id, k, cp.1, cp.2⟩
 
+/-- Each handler cut is paired with its successor and position in the group. -/
+theorem groupRecs_eq (pr : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)
+    (self : Fin Q.n) (st : NodeState N) (t : Time) (id : Nat) (ev : Node.Event N) :
+    groupRecs pr dg self st t id ev =
+      let cs := (exec pr dg self st t ev).2
+      (cs.zip (cutPosts self t cs st)).mapIdx fun k cp => ⟨self, t, id, k, cp.1, cp.2⟩ := by
+  rfl
+
 /-- Replay delivered objects in order, advancing the group index even for a dropped object. -/
 noncomputable def deliverRecs (C : WireCodec N K I B) (proposer : Nat → Fin Q.n)
     (dg : Digest (List (FG.Att Q.n)) N.Payload) (hs : List (Header I × Nat))
@@ -203,6 +232,25 @@ noncomputable def deliverRecs (C : WireCodec N K I B) (proposer : Nat → Fin Q.
         deliverRecs C proposer dg hs self t i os (exec proposer dg self st t ev).1 (sub + 1)
     | none => deliverRecs C proposer dg hs self t i os st (sub + 1)
 
+omit [Countable I] in
+/-- No delivered objects produce no replay cuts. -/
+theorem deliverRecs_nil (C : WireCodec N K I B) (pr : Nat → Fin Q.n)
+    (dg : Digest (List (FG.Att Q.n)) N.Payload) (hs : List (Header I × Nat))
+    (self : Fin Q.n) (t : Time) (i : Nat) (st : NodeState N) (sub : Nat) :
+    deliverRecs C pr dg hs self t i [] st sub = [] := by rfl
+
+omit [Countable I] in
+/-- A delivery contributes the first object's handler group, if any, then the rest. -/
+theorem deliverRecs_cons (C : WireCodec N K I B) (pr : Nat → Fin Q.n)
+    (dg : Digest (List (FG.Att Q.n)) N.Payload) (hs : List (Header I × Nat))
+    (self : Fin Q.n) (t : Time) (i : Nat) (o : ShapeObj Q.n K I B)
+    (os : List (ShapeObj Q.n K I B)) (st : NodeState N) (sub : Nat) :
+    deliverRecs C pr dg hs self t i (o :: os) st sub =
+      match canonEvent C hs o with
+      | some ev => groupRecs pr dg self st t (Nat.pair i sub) ev ++
+          deliverRecs C pr dg hs self t i os (exec pr dg self st t ev).1 (sub + 1)
+      | none => deliverRecs C pr dg hs self t i os st (sub + 1) := by rfl
+
 end Replay
 
 open Classical in
@@ -210,7 +258,7 @@ open Classical in
 noncomputable def eventCuts (i : Nat) : List (CutRec A) :=
   match rho.events[i]? with
   | some (.tick v t) =>
-    if (P).IsPublic t then
+    if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
       groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
         (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0)
         (.tick (encodeTxs (Model.mempool rho.inbox v t)))
@@ -224,6 +272,27 @@ noncomputable def eventCuts (i : Nat) : List (CutRec A) :=
     groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
       (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0) .restart
   | none => []
+
+open Classical in
+/-- A tick replays the node handler exactly at public times. -/
+theorem eventCuts_tick (i : Nat) (v : V) (t : Time)
+    (he : rho.events[i]? = some (.tick v t)) :
+    eventCuts e rho i =
+      if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
+        groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
+          (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0)
+          (.tick (encodeTxs (Model.mempool rho.inbox v t)))
+      else [] := by
+  unfold eventCuts
+  rw [he]
+
+/-- A restart replays the restart handler on the engine's current node state. -/
+theorem eventCuts_restart (i : Nat) (v : V) (t : Time)
+    (he : rho.events[i]? = some (.restart v t)) :
+    eventCuts e rho i = groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
+      (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0) .restart := by
+  unfold eventCuts
+  rw [he]
 
 open Classical in
 /-- A delivery replays exactly the objects the encoder visits, starting at the pre-event state. -/
@@ -299,12 +368,14 @@ theorem stateAt_eq (v : V) (i : Nat) : stateAt e rho v i =
 
 omit [DecidableEq V] in
 /-- Non-genesis blocks use their tagged engine header hash. -/
-theorem digestOf_eq (par : Option Nat) (s x : Nat) (atts : List (FG.Att (P).n))
+theorem digestOf_eq (par : Option Nat) (s x : Nat)
+    (atts : List (FG.Att (paramsAtCount p (Fintype.card V) hN hn).n))
     (payload : A.Payload) : digestOf e rho par s x atts payload =
     match par with
-    | none => (P).genesisRoot
-    | some r => taggedRoot (P).genesisRoot
-        (rho.hash ⟨parentRef (P).genesisRoot (some r), s, x, e.codec.encode atts payload⟩) := by rfl
+    | none => (paramsAtCount p (Fintype.card V) hN hn).genesisRoot
+    | some r => taggedRoot (paramsAtCount p (Fintype.card V) hN hn).genesisRoot
+        (rho.hash ⟨parentRef (paramsAtCount p (Fintype.card V) hN hn).genesisRoot (some r),
+          s, x, e.codec.encode atts payload⟩) := by rfl
 
 /-- The cuts of every engine event, in order. -/
 theorem allCuts_eq : allCuts e rho =
@@ -348,5 +419,12 @@ def StateAgreement : Prop :=
   ∀ (v : V) (i : Nat), i ≤ rho.events.length →
     rho.point.HonestAt v (rho.cutTime i) →
     e.adapter.node (stateAt e rho v i) = (simTrace e rho).state (rho.ownKey v) (cutMap e rho i)
+
+/-- State agreement is equality at the same bounded engine and replay prefix. -/
+theorem stateAgreement_iff : StateAgreement e rho ↔
+    ∀ (v : V) (i : Nat), i ≤ rho.events.length →
+      rho.point.HonestAt v (rho.cutTime i) →
+      e.adapter.node (stateAt e rho v i) = (simTrace e rho).state (rho.ownKey v) (cutMap e rho i) :=
+  by rfl
 
 end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
