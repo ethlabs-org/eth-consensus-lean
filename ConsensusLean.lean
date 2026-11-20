@@ -805,6 +805,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttGuard
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttUnforgeable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.BlockView
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.CommitteeSelection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Cuts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.DutyRelease
