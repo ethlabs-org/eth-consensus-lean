@@ -119,10 +119,15 @@ concrete Goldilocks adapters live in Lemmas.Growing.Simulation"""
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Results.Spec.CanonicalTrace",
         "ConsensusLean.Instances.Goldilocks.Results.Statements.SleepyGrowth"]
-to = ["ConsensusLean.Instances.Goldilocks.AsChainShape"]
-reason = """The canonical trace of an engine run of the compiled family `goldilocks S`, and the
-finite engine growth row stated over it, read the family and its setup from AsChainShape. Only
-these two modules of the results home read it. Exact source edges only"""
+to = ["ConsensusLean.Instances.Goldilocks.AsChainShape",
+      "ConsensusLean.Instances.Goldilocks.NodeAsChainShape"]
+reason = """The Goldilocks trace and growth row read the concrete family and its setup, and
+reach the generic encoder via NodeCanonicalTrace. Exact source modules only."""
+
+[[exception]]
+from = ["ConsensusLean.Instances.Goldilocks.Results.Spec.NodeCanonicalTrace"]
+to = ["ConsensusLean.Instances.Goldilocks.NodeAsChainShape"]
+reason = "The generic canonical trace reads the actual codec, adapter and encoder assembly."
 
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyFG"]

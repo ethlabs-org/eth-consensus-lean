@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Spec.Shape.Run
 public import ConsensusLean.Instances.Goldilocks.AsChainShape
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
+public import ConsensusLean.Instances.Goldilocks.Results.Spec.NodeCanonicalTrace
 
 public section
 
@@ -40,50 +41,6 @@ engine cut.
 namespace Consensus.Goldilocks
 
 open Blocks
-
-namespace Node
-
-variable {P : Params} {A : NodeAC P}
-
-/-- The post-state of a cut: the unique successor of the cut law (`Node.CutStep`). -/
-noncomputable def cutPost (self : Fin P.n) (t : Time) (st : NodeState A) : Cut A → NodeState A
-  | .ac ℓ => { st with ac := (A.step self st.ac ℓ.frame t ℓ.call).1 }
-  | .fg (.block B true) => { st with fg := (st.fg.onBlock B).getD st.fg }
-  | .fg (.block _ false) => st
-  | .fg (.attestation a) => { st with fg := st.fg.onAttestation a }
-  | .fg (.attest _ none) => st
-  | .fg (.attest C (some _)) =>
-      { st with record := ((st.fg.attest st.record self C).map Prod.snd).getD st.record }
-
-/-- The post-states of a list of cuts, each from the previous one's post-state. -/
-noncomputable def cutPosts (self : Fin P.n) (t : Time) :
-    List (Cut A) → NodeState A → List (NodeState A)
-  | [], _ => []
-  | c :: cs, st => cutPost self t st c :: cutPosts self t cs (cutPost self t st c)
-
-/-- The cut successor, by the kind of handler cut. -/
-theorem cutPost_eq (self : Fin P.n) (t : Time) (st : NodeState A) (c : Cut A) :
-    cutPost self t st c = match c with
-      | .ac ℓ => { st with ac := (A.step self st.ac ℓ.frame t ℓ.call).1 }
-      | .fg (.block B true) => { st with fg := (st.fg.onBlock B).getD st.fg }
-      | .fg (.block _ false) => st
-      | .fg (.attestation a) => { st with fg := st.fg.onAttestation a }
-      | .fg (.attest _ none) => st
-      | .fg (.attest C (some _)) =>
-          { st with record := ((st.fg.attest st.record self C).map Prod.snd).getD st.record } := by
-  rfl
-
-/-- `cutPosts` of no cut. -/
-theorem cutPosts_nil (self : Fin P.n) (t : Time) (st : NodeState A) :
-    cutPosts self t [] st = [] := by rfl
-
-/-- `cutPosts` of a cut and more: its post-state, then the rest from there. -/
-theorem cutPosts_cons (self : Fin P.n) (t : Time) (c : Cut A) (cs : List (Cut A))
-    (st : NodeState A) :
-    cutPosts self t (c :: cs) st =
-      cutPost self t st c :: cutPosts self t cs (cutPost self t st c) := by rfl
-
-end Node
 
 namespace Simulation
 open AsChainShape
