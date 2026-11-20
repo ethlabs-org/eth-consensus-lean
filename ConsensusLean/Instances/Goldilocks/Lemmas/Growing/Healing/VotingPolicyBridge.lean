@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowSuppl
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
@@ -73,6 +74,166 @@ theorem report_extends_recorded_report_at
     split_ifs at hret with hs
     have hEq := Option.some.inj hret
     exact hs (hEq ▸ hsupp)
+
+open Classical in
+private theorem report_record_step (A : SA.SAState sp.n)
+    (Φ : SA.Frm sp.n (List (FG.Att sp.n))) (y : Fin sp.n) (t : Time)
+    (c : (goldilocksNode sp ro).Call) (hnr : c ≠ .restart) :
+    (ACInterface.step (goldilocksNode sp ro) y A Φ t c).1.fgReported =
+      ((if c = ACInterface.Call.toFG then (SA.acToFG sp A Φ t).2 else none).map (·.root)).getD
+        A.fgReported := by
+  have admit (B : SA.SAState sp.n) (v : SA.Vote sp.n) :
+      (SA.admitVote sp B t v).fgReported = B.fgReported := by
+    unfold SA.admitVote
+    split_ifs <;> rfl
+  have latest (B : SA.SAState sp.n) (C : SA.Blk sp.n (List (FG.Att sp.n))) :
+      (SA.updateLatestConfirmed sp B Φ C).fgReported = B.fgReported := by
+    unfold SA.updateLatestConfirmed
+    split_ifs <;> rfl
+  have optimistic (B : SA.SAState sp.n) :
+      (SA.optimisticConfirmation sp B Φ t).fgReported = B.fgReported := by
+    unfold SA.optimisticConfirmation
+    split
+    · rfl
+    · exact latest _ _
+  have update (B : SA.SAState sp.n) (s : Nat) :
+      (SA.updateConfirmation sp B Φ t s).fgReported = B.fgReported := by
+    unfold SA.updateConfirmation
+    dsimp only
+    split
+    · rfl
+    · split_ifs
+      · rfl
+      all_goals exact latest _ _
+  have vote (B : SA.SAState sp.n) : (SA.tryVote sp y B Φ t).1.fgReported = B.fgReported := by
+    unfold SA.tryVote
+    dsimp only
+    split_ifs <;> first | rfl | exact (optimistic _).trans (admit _ _)
+  cases c with
+  | restart => exact (hnr rfl).elim
+  | proposal =>
+    rw [ite_eq_right (by intro h; cases h)]
+    change (SA.acProposal sp A Φ t).1.fgReported = _
+    unfold SA.acProposal
+    split_ifs <;> rfl
+  | tick =>
+    rw [ite_eq_right (by intro h; cases h)]
+    change (SA.acOnTick sp y A Φ t).1.fgReported = A.fgReported
+    unfold SA.acOnTick
+    dsimp only
+    split_ifs <;> first | rfl | exact (update _ _).trans (vote _) | exact update _ _ | exact vote _
+  | message v =>
+    rw [ite_eq_right (by intro h; cases h)]
+    exact ((vote _).trans (optimistic _)).trans (admit _ _)
+  | block B =>
+    rw [ite_eq_right (by intro h; cases h)]
+    have receipt : (SA.blockReceipt sp A t B).fgReported = A.fgReported := by
+      unfold SA.blockReceipt
+      generalize he : ({ A with
+        blockStamp := Function.update A.blockStamp B.root (SA.ETime.of t) } : SA.SAState sp.n) = A'
+      rw [← show A'.fgReported = A.fgReported by rw [← he]]
+      clear he
+      induction SA.blockVotes B generalizing A' with
+      | nil => rfl
+      | cons _ _ ih => rw [List.foldl_cons, ih, admit]
+    exact ((vote _).trans (optimistic _)).trans receipt
+  | toFG =>
+    rw [ite_eq_left rfl]
+    change (SA.acToFG sp A Φ t).1.fgReported = ((SA.acToFG sp A Φ t).2.map (·.root)).getD _
+    unfold SA.acToFG
+    split_ifs
+    · split
+      · rfl
+      · split_ifs <;> rfl
+    · rfl
+
+/-- Consecutive successful reports of an honest node order forward within a sleepy window,
+provided no restart intervenes. Non-report calls and unsuccessful report calls preserve the
+first report's recorded root. -/
+theorem report_extends_previous_without_restart_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {b : Time} (hsleepy : SleepyInvariantUpTo tr H b)
+    {y : Fin sp.n} {i j : Nat} (hij : i < j) (hy : y ∈ H (tr.time j)) (hjb : tr.time j ≤ b)
+    {old new : SA.Blk sp.n (List (FG.Att sp.n))}
+    {ell₀ ell : ACLabel (goldilocksNode sp ro)}
+    (hOld : SA.ToFGAt tr.projAC y i ell₀ old) (hNew : SA.ToFGAt tr.projAC y j ell new)
+    (hnr : ∀ k, i < k → k < j → ¬ tr.projAC.RestartAt y k)
+    (hprev : ∀ k, i < k → k < j → ∀ l C, ¬ SA.ToFGAt tr.projAC y k l C) :
+    Anc (tr.HonestBlocksAt H) old new := by
+  classical
+  have hac := (Compose.Growing.goldilocks_ac_projection_from hrun hnc).localRun
+  have hstep : ∀ {k l}, k ≤ j → tr.projAC.CallAt y k l → l.call ≠ .restart →
+      (tr.projAC.state y (k + 1)).fgReported =
+        ((if l.call = ACInterface.Call.toFG then
+          (SA.acToFG sp (tr.projAC.state y k) l.frame (tr.time k)).2 else none).map
+            (·.root)).getD (tr.projAC.state y k).fgReported := by
+    intro k l hkj hc hnr'
+    have he := hac.exec k l hc.2 (hc.1 ▸ hrun.antitone (hrun.time_mono hkj) hy)
+    rw [hc.1] at he
+    have hst : tr.projAC.state y (k + 1) = tr.projAC.post k := by
+      simp [Trace.state, hc.1, hc.2]
+    have hpost := congrArg Prod.fst he
+    dsimp only at hpost
+    rw [hst, ← hpost]
+    exact report_record_step _ _ y _ _ hnr'
+  have hfirst := hstep hij.le hOld.1 (by rw [hOld.2.1]; intro h; cases h)
+  have hret := hOld.2.2
+  change (SA.acToFG sp (tr.projAC.state y i) ell₀.frame (tr.time i)).2 = some old at hret
+  have hb₀ : (tr.projAC.state y (i + 1)).fgReported = old.root := by
+    simpa only [hOld.2.1, ite_true, hret, Option.map_some, Option.getD_some] using hfirst
+  have hrec : ∀ k, i < k → k ≤ j → (tr.projAC.state y k).fgReported = old.root := by
+    intro k
+    induction k with
+    | zero => omega
+    | succ k ih =>
+      intro hik hkj
+      by_cases he : k = i
+      · exact he ▸ hb₀
+      have hik' : i < k := by omega
+      have hkj' : k < j := by omega
+      have hold := ih hik' hkj'.le
+      by_cases hc : ∃ l, tr.projAC.CallAt y k l
+      · obtain ⟨l, hl⟩ := hc
+        rw [hstep hkj'.le hl (fun h => hnr k hik' hkj' ⟨l, hl, h⟩), hold]
+        by_cases hto : l.call = .toFG
+        · have hn : (SA.acToFG sp (tr.projAC.state y k) l.frame (tr.time k)).2 = none := by
+            cases h : (SA.acToFG sp (tr.projAC.state y k) l.frame (tr.time k)).2 with
+            | none => rfl
+            | some C => exact (hprev k hik' hkj' l C ⟨hl, hto, h⟩).elim
+          simp [hto, hn]
+        · simp [hto]
+      · have hst : tr.projAC.state y (k + 1) = tr.projAC.state y k := by
+          rw [Trace.state]
+          split_ifs with h
+          · exact absurd ⟨_, h.1, (Option.ne_none_iff_exists'.1 h.2).choose_spec⟩ hc
+          · rfl
+        rwa [hst]
+  exact report_extends_recorded_report_at hrun hnc hsleepy hij.le hy hjb hOld hNew
+    (hrec j hij le_rfl)
+
+/-- A frozen row already in the proposer's pool and not on its chosen parent chain is selected
+exactly when it names the current entry or carries a still-pending finality vote at an older height.
+Release does not refresh either payload field. -/
+theorem frozen_row_selected_iff {P : Params} {ACP : Type} (st : Store P ACP)
+    {head : NodeBlock P ACP} {att : FG.Att P.n}
+    (hpool : att ∈ st.atts) (hnew : ¬ st.OnChain head att) :
+    att ∈ st.proposalAttestations head ↔
+      (att.h = (st.σ head.root).h ∧ att.T = (st.σ head.root).Th) ∨
+        ∃ p ∈ att.fin.toList, p ∈ (st.σ head.root).pending ∧ p.1 < att.h ∧
+          att.h < (st.σ head.root).h := by
+  simp only [Store.proposalAttestations, List.mem_filter, decide_eq_true_eq, hpool, hnew,
+    not_false_eq_true, true_and, and_true, FG.ChainState.validAtt]
+
+/-- Even if a stale row is selected for finality, processing it cannot add a progress or target
+bit at the newer height. -/
+theorem frozen_row_old_height_bits {n : Nat} (σ : FG.ChainState n) (att : FG.Att n)
+    (hold : att.h < σ.h) :
+    (σ.processAtt att).prog = σ.prog ∧ (σ.processAtt att).target = σ.target := by
+  have hh : att.h ≠ σ.h := Nat.ne_of_lt hold
+  cases hf : att.fin with
+  | none => simp [FG.ChainState.processAtt, hf, hh]
+  | some p =>
+    by_cases hp : p ∈ σ.pending <;> simp [FG.ChainState.processAtt, hf, hp, hh]
 
 /-- A fixed shift of a public report time by whole node delays has an actual tick when the
 node is honest and awake at the due time. A restart at the due time precedes that tick. This
