@@ -2,6 +2,8 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.WindowCrossing
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinPair
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry
@@ -321,6 +323,80 @@ theorem ResetPremisesUpTo.row_of_delayed_original_report_at
     (hp.run.antitone (max_le_max le_rfl htj) hzk) hs (htj.trans hkb)
     ht hle hy hT hσ hTe hhT hhj ho hiob hTO hh
   exact ⟨j, att, hs, htj, hv, hh, hroot, htimeout, hfin⟩
+
+/-- For a timely reported source extending the anchor entry and an actual attempt on that source,
+the later proposal's parent is either past the anchor height, or the attempt supplies a signature
+matching the parent. Refusal may supply an earlier signature; nothing here asserts its release. -/
+theorem ResetPremisesUpTo.row_for_parent_or_crossed_of_reported_attempt_at
+    {g ΔF a b : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {z : Fin sp.n} {r k : Nat} (hrk : r ≤ k) (hzk : z ∈ H (max (cutZ sp.toParams g) (tr.time k)))
+    {ell : ACLabel (goldilocksNode sp ro)}
+    {C T : SA.Blk sp.n (List (FG.Att sp.n))} (hreport : SA.ToFGAt tr.projAC z r ell C)
+    {v : Option (FG.Att sp.n)} (hattempt : tr.CallAt z k (.fg (.attest C v)))
+    (hR : drainTime sp a ≤ tr.time r) {s c : Nat}
+    {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hX : HonestProposalRun tr H proposer s X) (hcut : tr.ProposesAt (proposer s) c X)
+    (htimes : tr.time r + sp.Δ ≤ sp.ts s) (hk : tr.time k < sp.ts s) (hsb : sp.ts s ≤ b)
+    (hpar : X.parent = some Pr.root) (hPr : Pr ∈ (tr.state (proposer s) c).fg.tree)
+    (hTC : Anc (tr.HonestBlocksAt H) T C) (hTPr : Anc (tr.HonestBlocksAt H) T Pr)
+    (hTe : ((tr.state (proposer s) c).fg.σ T.root).Th = T.root)
+    (hhT : HZ tr H g + 1 ≤ ((tr.state (proposer s) c).fg.σ T.root).h)
+    (hhj : ((tr.state (proposer s) c).fg.σ T.root).previousHeightJustified →
+      HZ tr H g + 1 ≤ ((tr.state (proposer s) c).fg.σ T.root).hj) :
+    ((tr.state (proposer s) c).fg.σ T.root).h < ((tr.state (proposer s) c).fg.σ Pr.root).h ∨
+      ∃ j att, tr.SignAt z j att ∧ tr.time j ≤ tr.time k ∧ att.val = z ∧
+        att.h = ((tr.state (proposer s) c).fg.σ Pr.root).h ∧
+        att.T = ((tr.state (proposer s) c).fg.σ Pr.root).Th ∧ att.timeout = false ∧
+        (((tr.state (proposer s) c).fg.σ Pr.root).previousHeightJustified →
+          att.fin = some (((tr.state (proposer s) c).fg.σ Pr.root).hj,
+            ((tr.state (proposer s) c).fg.σ Pr.root).J)) := by
+  let σ := (tr.state (proposer s) c).fg.σ
+  change (σ T.root).h < (σ Pr.root).h ∨ _
+  have hrun := hp.run
+  have hnc := hp.noColl
+  have hc := Obligations.Growing.proposer_mem_of_proposesAt_at hrun hX hcut
+  have hc₀ := hrun.time_nonneg c
+  have hleC : ∀ q < c, tr.time q ≤ tr.time c := fun _ hq => hrun.time_mono hq.le
+  have hTp := mem_of_honest_anc_at hrun hnc hc₀ hleC hc hTPr hPr
+  have hPrH : Pr ∈ tr.HonestBlocksAt H := ⟨_, c, _, hc₀, hleC, hc, hPr⟩
+  have hanc := store_anc_of_honest_anc_at hrun hnc hc₀ hleC hc hTPr hPr
+  have hre := fg_reachable_at hrun hc₀ hleC hc
+  by_cases hhigh : (σ T.root).h < (σ Pr.root).h
+  · exact Or.inl hhigh
+  have hpeq : (σ Pr.root).h = (σ T.root).h :=
+    le_antisymm (Nat.le_of_not_gt hhigh) (Healing.h_le_of_store_anc hre hanc)
+  have hz := hrun.antitone ((hrun.time_mono hrk).trans (le_max_right _ _)) hzk
+  have hr₀ := hrun.time_nonneg r
+  have hleR : ∀ q < r, tr.time q ≤ tr.time r := fun _ hq => hrun.time_mono hq.le
+  have hCr := toFG_mem_tree_at hrun hz hreport
+  have hTr := mem_of_honest_anc_at hrun hnc hr₀ hleR hz hTC hCr
+  have hTA := σ_eq_honest_at hrun hnc hr₀ hleR hz hc₀ hleC hc hTr hTp
+  have hle := Healing.h_le_of_store_anc (fg_reachable_at hrun hr₀ hleR hz)
+    (store_anc_of_honest_anc_at hrun hnc hr₀ hleR hz hTC hCr)
+  rw [hTA] at hle
+  have hCeq : ((tr.state z r).fg.σ C.root).h = (σ T.root).h := by
+    rcases hle.lt_or_eq with hlt | heq
+    · obtain ⟨Q, hQ, hQpar, _, hQh⟩ := Obligations.Growing.crossed_parents_above_upTo_at
+        hp hz hreport hR hlt hX htimes hsb
+      have hQP : Q = Pr := (honest_blocks_coherent hrun hnc).1 hQ hPrH
+        (Option.some.inj (hQpar.symm.trans hpar))
+      subst Q
+      exact (hhigh (hQh _ c _ hc₀ hleC hc hPr)).elim
+    · exact heq.symm
+  obtain ⟨j, att, hj, hjk, hv, hah, haT, htimeout, hfin⟩ :=
+    hp.row_of_delayed_original_report_at hrk hzk (hk.le.trans hsb) hreport hattempt hc₀ hleC
+      hc hTp rfl hTe hhT hhj hTC hCeq
+  have hPTh := Healing.Th_eq_of_anc hre hanc hpeq
+  obtain ⟨hPJ, hPhj⟩ := Healing.J_hj_eq_of_anc hre hanc hpeq
+  refine Or.inr ⟨j, att, hj, hjk, hv, hah.trans hpeq.symm, ?_, htimeout, ?_⟩
+  · exact haT.trans (hPTh.trans hTe).symm
+  · intro hprev
+    change (σ Pr.root).previousHeightJustified at hprev
+    rw [FG.ChainState.previousHeightJustified, hpeq, hPhj] at hprev
+    change att.fin = some ((σ Pr.root).hj, (σ Pr.root).J)
+    rw [hPhj, hPJ]
+    exact hfin hprev
 
 /-- Exact-source service through the horizon gives the signed quorum branch of row supply.
 The service hypothesis is about observed attempts, not a bound on gaps between open gates. -/
