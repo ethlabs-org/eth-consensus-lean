@@ -215,6 +215,87 @@ theorem report_extends_previous_without_restart_at
   exact report_extends_recorded_report_at hrun hnc hsleepy hij.le hy hjb hOld hNew
     (hrec j hij le_rfl)
 
+/-- Within a restart-free sleepy interval, intervening successful reports do not break
+ancestry from an eligible report to the report selected for signing. -/
+theorem report_extends_earlier_without_restart_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {b : Time} (hsleepy : SleepyInvariantUpTo tr H b)
+    {y : Fin sp.n} {i j : Nat} (hij : i < j) (hy : y ∈ H (tr.time j)) (hjb : tr.time j ≤ b)
+    {old new : SA.Blk sp.n (List (FG.Att sp.n))}
+    {ell₀ ell : ACLabel (goldilocksNode sp ro)}
+    (hOld : SA.ToFGAt tr.projAC y i ell₀ old) (hNew : SA.ToFGAt tr.projAC y j ell new)
+    (hnr : ∀ k, i < k → k < j → ¬ tr.projAC.RestartAt y k) :
+    Anc (tr.HonestBlocksAt H) old new := by
+  classical
+  generalize hd : j - i = d
+  induction d using Nat.strong_induction_on generalizing i j old new ell₀ ell with
+  | h d ih =>
+    by_cases hprev : ∃ k, i < k ∧ k < j ∧ ∃ l C, SA.ToFGAt tr.projAC y k l C
+    · obtain ⟨k, hik, hkj, l, C, hC⟩ := hprev
+      have ht := hrun.time_mono hkj.le
+      exact (ih (k - i) (by omega) hik (hrun.antitone ht hy) (ht.trans hjb) hOld hC
+        (fun q hiq hqk => hnr q hiq (hqk.trans hkj)) rfl).trans
+        (ih (j - k) (by omega) hkj hy hjb hC hNew
+          (fun q hkq hqj => hnr q (hik.trans hkq) hqj) rfl)
+    · exact report_extends_previous_without_restart_at hrun hnc hsleepy hij hy hjb hOld hNew hnr
+        (fun k hik hkj l C hC => hprev ⟨k, hik, hkj, l, C, hC⟩)
+
+/-- The trace evidence of one appointment gives the per-report clause of `VoteLatencyAt` in a
+restart-free sleepy window. The appointment must actually attempt the source from a report
+at or after the eligible report; neither a due tick alone nor wakefulness implies this. -/
+theorem voteLatency_witness_of_reported_attempt_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {b D : Time} (hsleepy : SleepyInvariantUpTo tr H b)
+    {y : Fin sp.n} {i j k : Nat} (hij : i ≤ j) (hjk : j ≤ k)
+    (hkD : tr.time k ≤ tr.time i + D) (hDb : tr.time i + D ≤ b)
+    (hy : y ∈ H (tr.time i + D)) {R C : SA.Blk sp.n (List (FG.Att sp.n))}
+    {ell₀ ell : ACLabel (goldilocksNode sp ro)}
+    (hR : SA.ToFGAt tr.projAC y i ell₀ R) (hC : SA.ToFGAt tr.projAC y j ell C)
+    (hnr : ∀ q, i < q → q < j → ¬ tr.projAC.RestartAt y q)
+    {v : Option (FG.Att sp.n)} (hattempt : tr.CallAt y k (.fg (.attest C v))) :
+    ∃ k', i ≤ k' ∧ tr.time k' ≤ tr.time i + D ∧ ∃ C' s, tr.CallAt y k' (.fg (.attest C' s)) ∧
+      ((tr.state y i).fg.σ R.root).h ≤ ((tr.state y k').fg.σ C'.root).h ∧
+      Anc (tr.HonestBlocksAt H) R C' ∧ ∃ j', i ≤ j' ∧ j' ≤ k' ∧ Generic.ReportAt tr y j' C' := by
+  have hyk := hrun.antitone hkD hy
+  have hyj := hrun.antitone (hrun.time_mono hjk) hyk
+  have hyi := hrun.antitone (hrun.time_mono hij) hyj
+  have hAnc : Anc (tr.HonestBlocksAt H) R C := by
+    rcases hij.lt_or_eq with hlt | rfl
+    · exact report_extends_earlier_without_restart_at hrun hnc hsleepy hlt hyj
+        ((hrun.time_mono hjk).trans (hkD.trans hDb)) hR hC hnr
+    · have he := Option.some.inj (hR.1.2.symm.trans hC.1.2)
+      subst ell
+      cases hR.2.2.symm.trans hC.2.2
+      exact .refl
+  have hi₀ := hrun.time_nonneg i
+  have hk₀ := hrun.time_nonneg k
+  have hleI : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hrun.time_mono hq.le
+  have hleK : ∀ q < k, tr.time q ≤ tr.time k := fun _ hq => hrun.time_mono hq.le
+  have hCk := tree_mono_at hrun hk₀ hyk hleK hjk (toFG_mem_tree_at hrun hyj hC)
+  have hRk := mem_of_honest_anc_at hrun hnc hk₀ hleK hyk hAnc hCk
+  have hσ := σ_eq_honest_at hrun hnc hi₀ hleI hyi hk₀ hleK hyk
+    (toFG_mem_tree_at hrun hyi hR) hRk
+  refine ⟨k, hij.trans hjk, hkD, C, v, hattempt, ?_, hAnc, j, hij, hjk,
+    (Generic.reportAt_iff_toFGAt hrun hyj).mpr ⟨ell, hC⟩⟩
+  rw [hσ]
+  exact Healing.h_le_of_store_anc (fg_reachable_at hrun hk₀ hleK hyk)
+    (store_anc_of_honest_anc_at hrun hnc hk₀ hleK hyk hAnc hCk)
+
+/-- For each eligible report at cut `i` by `y` honest at its deadline `time i + D ≤ b`, the
+same run has a report of `C` by `y` at `j` and an actual attempt on that exact `C` by `y` at
+`k`, with `i ≤ j ≤ k`, `time k ≤ time i + D`, and no restart strictly between `i` and `j`.
+Here eligibility is an actual report with deadline within `b`. Refusal counts as an attempt.
+This is an obligation for the signing handler to supply, not an endpoint premise; it does not
+require a particular selection order, a successful signature, or publication. -/
+def RestartFreeSigningAppointments (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+    (b D : Time) : Prop :=
+  ∀ y i ell₀ R, SA.ToFGAt tr.projAC y i ell₀ R →
+    tr.time i + D ≤ b → y ∈ H (tr.time i + D) →
+    ∃ j k ell C v, i ≤ j ∧ j ≤ k ∧ tr.time k ≤ tr.time i + D ∧
+      SA.ToFGAt tr.projAC y j ell C ∧
+      (∀ q, i < q → q < j → ¬ tr.projAC.RestartAt y q) ∧
+      tr.CallAt y k (.fg (.attest C v))
+
 /-- A frozen row already in the proposer's pool and not on its chosen parent chain is selected
 exactly when it names the current entry or carries a still-pending finality vote at an older height.
 Release does not refresh either payload field. -/
