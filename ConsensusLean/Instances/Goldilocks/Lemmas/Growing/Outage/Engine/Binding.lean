@@ -36,34 +36,38 @@ omit [DecidableEq V] in
 theorem voteK_bindsSel : (voteK S rho).BindsSel rho S.vote.voteRole :=
   NodeAsChainShape.CanonicalTrace.voteK_bindsSel rho S.vote.voteRole
 
-omit [DecidableEq V] in
-private theorem voteRole_size (hn : 1 ≤ Fintype.card V) (s : Nat) :
-    (match (goldilocks S (Model.pubOf E)).skel.selSpec (S.vote.voteRole s) with
+private theorem voteRole_size (pub : Model.Public) (B : VoteBinding) (s : Nat) :
+    (match (skeleton pub B).selSpec (B.voteRole s) with
     | .fixed T => T.card
-    | .sized m => min m (Fintype.card V)) = (S.params (Model.pubOf E) hn).committeeSize := by
-  change (match (skeleton (Model.pubOf E) S.vote).selSpec (S.vote.voteRole s) with
-    | .fixed T => T.card
-    | .sized m => min m (Fintype.card V)) = S.vote.committeeSize (Model.pubOf E)
+    | .sized m => min m pub.n) = B.committeeSize pub := by
   unfold VoteBinding.voteRole VoteBinding.committeeSize
-  cases S.vote.participationKind with
+  cases B.participationKind with
   | none => exact Finset.card_univ.trans (Fintype.card_fin _)
   | some k =>
     dsimp only [Skeleton.selSpec, skeleton]
-    cases S.vote.kindSel (Model.pubOf E) k <;> rfl
+    cases B.kindSel pub k <;> rfl
 
 /-- **The committee size**: the selection of a valid run for a vote role is admissible
 (`SelValid`), so it has `committeeSize` keys (all keys without a participation kind). -/
 theorem voteK_ncard (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (s : Nat) :
     ((voteK S rho).committee s).ncard = (S.params (Model.pubOf E) hn).committeeSize := by
-  exact (NodeAsChainShape.CanonicalTrace.voteK_ncard rho S.vote.voteRole hv.selValid s).trans
-    (voteRole_size (E := E) S hn s)
+  refine (NodeAsChainShape.CanonicalTrace.voteK_ncard rho S.vote.voteRole hv.selValid s).trans ?_
+  change (match (skeleton (Model.pubOf E) S.vote).selSpec (S.vote.voteRole s) with
+    | .fixed T => T.card
+    | .sized m => min m (Model.pubOf E).n) = S.vote.committeeSize (Model.pubOf E)
+  convert voteRole_size (Model.pubOf E) S.vote s using 1
+  cases (skeleton (Model.pubOf E) S.vote).selSpec (S.vote.voteRole s) <;> rfl
 
 /-- Every slot committee of a valid run is nonempty (`Setup.committeeSize_pos`). -/
 theorem voteK_nonempty (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (s : Nat) :
     ((voteK S rho).committee s).Nonempty :=
   NodeAsChainShape.CanonicalTrace.voteK_nonempty rho S.vote.voteRole hv.selValid s (by
-    exact Nat.lt_of_lt_of_eq (S.committeeSize_pos (Model.pubOf E) hn)
-      (voteRole_size (E := E) S hn s).symm)
+    change 0 < (match (skeleton (Model.pubOf E) S.vote).selSpec (S.vote.voteRole s) with
+      | .fixed T => T.card
+      | .sized m => min m (Model.pubOf E).n)
+    convert Nat.lt_of_lt_of_eq (S.committeeSize_pos (Model.pubOf E) hn)
+      (voteRole_size (Model.pubOf E) S.vote s).symm using 1
+    cases (skeleton (Model.pubOf E) S.vote).selSpec (S.vote.voteRole s) <;> rfl)
 
 /-- **The committee of the slot of `t ≥ 0` is the selection the participation premises read at
 `t`**: the participation role at `t` is the vote role of the slot of `t` (the shape grid's slot is

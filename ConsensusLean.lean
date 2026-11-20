@@ -553,6 +553,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Goldi
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksHealing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksReadPoint
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksStateAgreement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Groups
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GuardIdle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealedReadAncestry
@@ -817,6 +818,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingInvariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingWrappers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Interface
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeStateAgreement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PayloadSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PoolInsertionRelease
