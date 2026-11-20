@@ -61,13 +61,18 @@ theorem final_query_gap_at
 
 /-- **The reset premises and the placement of a final query, at a forwarding delay `ΔF` and a
 gap `c`**, under growing faults. -/
-theorem final_reset_premises_of_shared_at
+theorem final_reset_premises_of_shared_within_at
     (Q : FinalQueryAt S A V)
     {c : Nat} (hc2 : 2 ≤ c)
     (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {ΔF : Time}
     (hs : Healing.Growing.HSSharedUpTo Q.trace Q.keys
       (digestOf S Q.run.2) Q.gst ΔF
-      Q.run.2.horizon) :
+      Q.run.2.horizon)
+    {d : Time} {L : Nat} (hd0 : 0 ≤ d) (hdL : d ≤ (L : Time) * Q.run.1.ΔAC)
+    (hmature : (Sys (goldilocks S) V).heal (K S A) .final Q.index Q.gst Q.run +
+      5 * (L : Time) * Q.run.1.ΔAC ≤ Q.query)
+    (hlat : Generic.VoteLatencyAt Q.trace Q.keys d)
+    (htimeout : 6 * Q.params.Δ + d + ΔF ≤ 4 * Q.params.Δ * (S.δt : Time)) :
     ∃ ΔR a : Time,
       Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
         (runProposer S Q.run.2 Q.hn)
@@ -90,7 +95,8 @@ theorem final_reset_premises_of_shared_at
   have hδeq : Q.params.toParams.fg.δt = S.δt := rfl
   have hk : Q.params.k = S.k := rfl
   obtain ⟨hr0, hgr, hcz, h4B, hBh, hgapN, hplace⟩ :=
-    final_reset_bounds S A V Q.run Q.hn Q.index Q.gst Q.query Q.mature Q.bounded hc2 h3c
+    final_reset_bounds_within S A V Q.run Q.hn Q.index Q.gst Q.query hd0 hdL hmature
+      Q.bounded hc2 h3c
   have hb0 : (0 : Time) ≤ Q.run.2.horizon := by linarith only [hr0, h4B, hBh, hD]
   have hH : (H Q.run.2.horizon).Nonempty :=
     nonempty_of_fault_bound (hs.faults Q.run.2.horizon hb0 le_rfl) Q.params.toParams.hn
@@ -114,10 +120,11 @@ theorem final_reset_premises_of_shared_at
     Healing.Growing.drainOutputs_of_service_at hrun hs.noColl hs.sync hs.awake hs.faults hcatch
       (by rw [healthyDrainLen_val, hk]; exact Nat.le_succ _)
   -- the reset
-  obtain ⟨a, ha, hab⟩ := Healing.Growing.exists_reset_of_drain_rounds_awake_at hstart hs.noColl
-    hs.faults hs.sync hs.awake hcatch (Healing.Growing.noRestartUpTo_iff.mpr hs.noRestart) hH
+  obtain ⟨a, ha, hab⟩ := Healing.Growing.exists_reset_of_drain_rounds_awake_within_at
+    hstart hs.noColl hs.faults hs.sync hs.awake hcatch
+    (Healing.Growing.noRestartUpTo_iff.mpr hs.noRestart) hH
     (by rw [hδeq]; exact (Nat.le_mul_of_pos_right 3 ((by decide : 0 < 2).trans_le hc2)).trans h3c)
-    (by rw [hδeq]; exact hs.timeoutDelay)
+    hlat hd0 (by rw [hδeq]; exact htimeout)
     hr0 hgr Q.index.pos hcz hBh
     (fun s₀ N hs₀ hN => Healing.Growing.proposalGap_iff.mpr <| final_query_gap_at S A V Q hpat
       (by rw [max_eq_left hr0]; exact hs₀) (hgapN N hN))
@@ -135,6 +142,34 @@ theorem final_reset_premises_of_shared_at
     obtain ⟨⟨_, k, _, _, _, _, hka⟩, _⟩ := ha
     rw [← hka]; exact hrun.time_nonneg k
   exact hplace a ha0 hab
+
+/-- The reset premises and placement of a final query with same-tick signing. -/
+theorem final_reset_premises_of_shared_at
+    (Q : FinalQueryAt S A V)
+    {c : Nat} (hc2 : 2 ≤ c)
+    (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {ΔF : Time}
+    (hs : Healing.Growing.HSSharedUpTo Q.trace Q.keys
+      (digestOf S Q.run.2) Q.gst ΔF
+      Q.run.2.horizon) :
+    ∃ ΔR a : Time,
+      Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
+        (runProposer S Q.run.2 Q.hn)
+        (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK ∧
+      max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
+          ((finalGridAt
+            S A V Q).slotTime
+            (finalSeedMinAt
+            S A V Q a) - 1) +
+          ((((Q.index : Nat) + S.δt : Nat) : Time)) *
+          (finalGridAt S A V
+          Q).slotLen ≤
+        Q.query + (finalGridAt
+            S A V Q).slotLen :=
+  final_reset_premises_of_shared_within_at S A V Q hc2 h3c hpat hs (d := 0) (L := 0)
+    le_rfl (by simp) (by simpa using Q.mature)
+    (Generic.voteLatency_zero_from (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid).toLocalRun)
+    (by simpa only [add_zero] using hs.timeoutDelay)
 
 /-- **The reset premises and the placement of a final query**, under growing faults. -/
 theorem final_reset_premises_at

@@ -263,18 +263,20 @@ theorem final_window_slots (run : (Sys (goldilocks S) V).Run)
 horizon`; every gap window that the reset frame reads, `t_N + 2Δ < B`, ends within the horizon,
 `t_{N + 3c} ≤ horizon`; and every reset `0 ≤ a ≤ B` has the placement (H3) of the two queries at
 `u_min = slot a + 2k + 5`. -/
-theorem final_reset_bounds (run : (Sys (goldilocks S) V).Run)
+theorem final_reset_bounds_within (run : (Sys (goldilocks S) V).Run)
     (hn : 1 ≤ Fintype.card V)
-    (index : (K S A).Idx) (gst query : Time)
+    (index : (K S A).Idx) (gst query : Time) {d : Time} {L : Nat}
+    (hd0 : 0 ≤ d) (hdL : d ≤ (L : Time) * run.1.ΔAC)
     (hmature :
-      (Sys (goldilocks S) V).heal (K S A) .final index gst run ≤ query)
+      (Sys (goldilocks S) V).heal (K S A) .final index gst run +
+        5 * (L : Time) * run.1.ΔAC ≤ query)
     (hbounded : query + ((K S A).params.latency .final index : Time) * run.1.ΔAC ≤
       run.2.horizon)
     {c : Nat} (hc2 : 2 ≤ c) (h3c : 3 * c ≤ S.δt) :
     let sp := S.params (Model.pubOf run.1) hn
     let ready := (Sys (goldilocks S) V).ready (K S A) gst run
     let B := resetBoundRounds ready sp.Δ (2 * sp.Δ) sp.toParams.fg.δt (index : Nat)
-      (healthyDrainLen S index)
+      (healthyDrainLen S index) + 5 * d
     let G := (goldilocks S (Model.pubOf run.1)).skel.grid
     0 ≤ ready ∧ gbar gst ≤ ready ∧ Healing.cutZ sp.toParams gst + sp.Δ + 1 ≤ ready + 4 * sp.Δ ∧
       ready + 4 * sp.Δ ≤ B ∧ B ≤ run.2.horizon ∧
@@ -310,8 +312,8 @@ theorem final_reset_bounds (run : (Sys (goldilocks S) V).Run)
   change Healing.cutZ sp.toParams gst + D + 1 ≤ max ready 0 + 4 * D at hcz
   rw [max_eq_left hr0] at hcz
   -- heal and the coefficient budget, in node delays `D = Δe`
-  have hheal : max gst 0 + ((K S A).params.heal .final index : Time) * run.1.ΔAC ≤ query :=
-    hmature
+  have hheal : max gst 0 + ((K S A).params.heal .final index : Time) * run.1.ΔAC +
+      5 * (L : Time) * run.1.ΔAC ≤ query := hmature
   have hbud : ((contract_catchUp S A : Nat) : Time) +
       (20 * (Ld : Time) + 8 * S.k + 28 * S.δt + 28 * X + 56) ≤
       ((K S A).params.heal .final index : Time) := by
@@ -321,22 +323,24 @@ theorem final_reset_bounds (run : (Sys (goldilocks S) V).Run)
     rw [he]
     exact_mod_cast h
   set Mf : Time := 20 * (Ld : Time) + 8 * S.k + 28 * S.δt + 28 * X + 56 with hMf
-  have hq : ready + Mf * D - 1 ≤ query := by
+  have hq : ready + Mf * D + 5 * (L : Time) * D - 1 ≤ query := by
     have h1 := mul_le_mul_of_nonneg_right hbud (zero_le_one.trans hd)
     rw [hready, hDe]; linarith only [h1, hheal]
   have hqh : query ≤ run.2.horizon := by
     linarith only [hbounded, (mul_nonneg (Nat.cast_nonneg _) (zero_le_one.trans hd) :
       (0 : Time) ≤ ((K S A).params.latency .final index : Time) * run.1.ΔAC)]
   -- the reset bound `B`
-  have hBeq : B = ready + (20 * (Ld : Time) + 24 * S.δt + 24 * X + 40) * D := by
-    change resetBoundRounds ready D (2 * D) sp.toParams.fg.δt X Ld = _
+  have hBeq : B = ready + (20 * (Ld : Time) + 24 * S.δt + 24 * X + 40) * D + 5 * d := by
+    change resetBoundRounds ready D (2 * D) sp.toParams.fg.δt X Ld + 5 * d = _
     rw [resetBoundRounds_eq, hδeq]; ring
   have hX1 : (1 : Time) ≤ X := by exact_mod_cast index.pos
   have hLd0 : (0 : Time) ≤ Ld := Nat.cast_nonneg _
   have hBc : B + (12 * (c : Time) - 2) * D ≤ run.2.horizon := by
-    have := final_heal_horizon_fit (k := (S.k : Time)) (Ld := (Ld : Time)) hD (Nat.cast_nonneg _)
-      (Nat.cast_nonneg X) (show 3 * (c : Time) ≤ (S.δt : Time) by exact_mod_cast h3c)
-    rw [hBeq]; rw [hMf] at hq; linarith only [this, hq, hqh]
+    have hfit := final_heal_horizon_fit_within (k := (S.k : Time)) (Ld := (Ld : Time)) hD
+      (Nat.cast_nonneg _) (Nat.cast_nonneg X)
+      (show 3 * (c : Time) ≤ (S.δt : Time) by exact_mod_cast h3c) (hDe.symm ▸ hdL)
+    rw [hBeq]; rw [hMf] at hq
+    linear_combination hfit + hq + hqh
   have hc2' : (2 : Time) ≤ c := by exact_mod_cast hc2
   have hBh : B ≤ run.2.horizon := by
     linarith only [hBc, mul_nonneg (show (0 : Time) ≤ 12 * c - 2 by linarith only [hc2']) hD.le]
@@ -344,7 +348,7 @@ theorem final_reset_bounds (run : (Sys (goldilocks S) V).Run)
     have : (4 : Time) * D ≤ (20 * (Ld : Time) + 24 * S.δt + 24 * X + 40) * D :=
       mul_le_mul_of_nonneg_right (by linarith only [hLd0, hX1, Nat.cast_nonneg (α := Time) S.δt])
         hD.le
-    rw [hBeq]; linarith only [this]
+    rw [hBeq]; linarith only [this, hd0]
   -- the horizon of the gap windows that the reset frame reads
   have hgapN : ∀ N : Nat, sp.ts N + 2 * D < B → sp.ts (N + 3 * c : Nat) ≤ run.2.horizon := by
     intro N hN
@@ -370,11 +374,37 @@ theorem final_reset_bounds (run : (Sys (goldilocks S) V).Run)
       linarith only [hLd0, Nat.cast_nonneg (α := Time) S.k, Nat.cast_nonneg (α := Time) S.δt,
         Nat.cast_nonneg (α := Time) X]
     have h1D : (1 : Time) ≤ D := hD
-    linarith only [this, hq, h1D]
+    have hL : 0 ≤ 5 * (L : Time) * D := mul_nonneg (by positivity) hD.le
+    linarith only [this, hq, h1D, hL]
   · have : (20 * (Ld : Time) + 24 * S.δt + 24 * X + 40) * D + 4 * D * (2 * S.k + 5) +
         (X + S.δt) * (4 * D) - 4 * D = Mf * D := by rw [hMf]; ring
     rw [hBeq] at hab
-    linarith only [this, hab, hseed, hq]
+    have hdL' : d ≤ (L : Time) * D := hDe.symm ▸ hdL
+    linarith only [this, hab, hseed, hq, hdL']
+
+/-- Reset and placement bounds for same-tick signing. -/
+theorem final_reset_bounds (run : (Sys (goldilocks S) V).Run)
+    (hn : 1 ≤ Fintype.card V)
+    (index : (K S A).Idx) (gst query : Time)
+    (hmature :
+      (Sys (goldilocks S) V).heal (K S A) .final index gst run ≤ query)
+    (hbounded : query + ((K S A).params.latency .final index : Time) * run.1.ΔAC ≤
+      run.2.horizon)
+    {c : Nat} (hc2 : 2 ≤ c) (h3c : 3 * c ≤ S.δt) :
+    let sp := S.params (Model.pubOf run.1) hn
+    let ready := (Sys (goldilocks S) V).ready (K S A) gst run
+    let B := resetBoundRounds ready sp.Δ (2 * sp.Δ) sp.toParams.fg.δt (index : Nat)
+      (healthyDrainLen S index)
+    let G := (goldilocks S (Model.pubOf run.1)).skel.grid
+    0 ≤ ready ∧ gbar gst ≤ ready ∧ Healing.cutZ sp.toParams gst + sp.Δ + 1 ≤ ready + 4 * sp.Δ ∧
+      ready + 4 * sp.Δ ≤ B ∧ B ≤ run.2.horizon ∧
+      (∀ N : Nat, sp.ts N + 2 * sp.Δ < B → sp.ts (N + 3 * c : Nat) ≤ run.2.horizon) ∧
+      ∀ a, 0 ≤ a → a ≤ B →
+        max (max ready 0) (G.slotTime (sp.slot a + 2 * sp.k + 5) - 1) +
+          ((((index : Nat) + S.δt : Nat) : Time)) * G.slotLen ≤ query + G.slotLen := by
+  simpa only [mul_zero, add_zero] using
+    final_reset_bounds_within S A V run hn index gst query (d := 0) (L := 0) le_rfl (by simp)
+      (by simpa using hmature) hbounded hc2 h3c
 
 end Consensus.Goldilocks.Obligations
 

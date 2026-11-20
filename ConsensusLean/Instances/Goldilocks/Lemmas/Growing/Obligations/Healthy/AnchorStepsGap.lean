@@ -256,11 +256,13 @@ private theorem height_next_at {g ΔR a b : Time}
 `P i` at the slots `s₀ + [0, c, 2c, 3c]`, `2 ≤ c`, after the drain, `t_{s₀+3c} ≤ b`, the HS
 premises with `6Δ + ΔF ≤ 4Δ·c` and `ḡ_S ≤ t_{s₀} + 6Δ`, and `H_z + 2 ≤ σ[P₀].h` at a holder
 honest at its cut: `AnchorStepAt tr H (P i) (P (i+1))` for `i < 3`. -/
-theorem anchorSteps_gap_at {g ΔR a b gS ΔF : Time}
+theorem anchorSteps_gap_within_at {g ΔR a b gS ΔF d : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
     (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b) {c : Nat} (hc2 : 2 ≤ c)
-    (hdel : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * c) {s₀ : Nat}
+    (hsup : Healing.Growing.RowSupplyWithin tr H g b d) (hd : 0 ≤ d)
+    (hdel : 6 * sp.Δ + d + ΔF ≤ 4 * sp.Δ * c)
+    (hrelay : 7 * sp.Δ + d ≤ 4 * sp.Δ * c) {s₀ : Nat}
     {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer
       (s₀ + ![0, c, 2 * c, 3 * c] i) (P i))
@@ -281,23 +283,45 @@ theorem anchorSteps_gap_at {g ΔR a b gS ΔF : Time}
   have hΔ := sp.toParams.hΔ
   have h1 := height_next_at hp hP0 hP1 (by omega) hR ((hmono _ _ (by omega)).trans hb) hh₀
   have h2 := height_next_at hp hP0 hP2 (by omega) hR ((hmono _ _ (by omega)).trans hb) hh₀
-  have st0 := anchorStep_gap_at hp hs hc2 rfl (gap_delivery hdel s₀) hP0 hP1 hR
+  have hbudget {s t : Nat} (ht : t = s + c) :
+      sp.ts s + 6 * sp.Δ + d + ΔF ≤ sp.ts t ∧
+        sp.ts s + 6 * sp.Δ + d + sp.Δ ≤ sp.ts t := by
+    rw [ht, ts_add_gap (sp := sp)]
+    exact ⟨by linarith, by linarith⟩
+  have st0 := anchorStep_gap_within_at hp hs hc2 rfl hsup hd
+    (hbudget (s := s₀) rfl).1 (hbudget (s := s₀) rfl).2 hP0 hP1 hR
     ((hmono _ _ (by omega)).trans hb) hgS hh₀
-  have st1 := anchorStep_gap_at hp hs hc2 (by omega) (by
-      have := gap_delivery hdel (s₀ + c)
-      have e : s₀ + c + c = s₀ + 2 * c := by omega
-      rwa [e] at this) hP1 hP2
+  have e1 : s₀ + 2 * c = (s₀ + c) + c := by omega
+  have st1 := anchorStep_gap_within_at hp hs hc2 e1 hsup hd (hbudget e1).1 (hbudget e1).2 hP1 hP2
     (hR.trans (hmono _ _ (by omega))) ((hmono _ _ (by omega)).trans hb)
     (by linarith [hmono s₀ (s₀ + c) (by omega)]) h1
-  have st2 := anchorStep_gap_at hp hs hc2 (by omega) (by
-      have := gap_delivery hdel (s₀ + 2 * c)
-      have e : s₀ + 2 * c + c = s₀ + 3 * c := by omega
-      rwa [e] at this) hP2 hP3
+  have e2 : s₀ + 3 * c = (s₀ + 2 * c) + c := by omega
+  have st2 := anchorStep_gap_within_at hp hs hc2 e2 hsup hd (hbudget e2).1 (hbudget e2).2 hP2 hP3
     (hR.trans (hmono _ _ (by omega))) hb
     (by linarith [hmono s₀ (s₀ + 2 * c) (by omega)]) h2
   intro i
   fin_cases i
   exacts [st0, st1, st2]
+
+/-- The three same-tick route-A anchor steps. -/
+theorem anchorSteps_gap_at {g ΔR a b gS ΔF : Time}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
+    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b) {c : Nat} (hc2 : 2 ≤ c)
+    (hdel : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * c) {s₀ : Nat}
+    {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer
+      (s₀ + ![0, c, 2 * c, 3 * c] i) (P i))
+    (hR : Healing.drainTime sp a ≤ sp.ts s₀) (hb : sp.ts (s₀ + 3 * c : Nat) ≤ b)
+    (hgS : gbar gS ≤ sp.ts s₀ + 6 * sp.Δ)
+    (hh₀ : ∃ y k, y ∈ H (tr.time k) ∧ P 0 ∈ (tr.state y k).fg.tree ∧
+      Healing.Growing.HZ tr H g + 2 ≤ ((tr.state y k).fg.σ (P 0).root).h) :
+    ∀ i : Fin 3, AnchorStepAt tr H (P i.castSucc) (P i.succ) := by
+  have hc : (2 : Time) ≤ c := by exact_mod_cast hc2
+  have hΔ := sp.toParams.hΔ
+  exact anchorSteps_gap_within_at hp hs hc2 hp.rowSupplyWithin_zero le_rfl
+    (by simpa only [add_zero] using hdel)
+    (by linarith [mul_le_mul_of_nonneg_left hc (show 0 ≤ 4 * sp.Δ by linarith)]) hP hR hb hgS hh₀
 
 end Consensus.Goldilocks.Obligations.Growing
 
