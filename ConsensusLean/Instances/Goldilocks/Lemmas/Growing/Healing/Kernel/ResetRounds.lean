@@ -6,6 +6,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retentio
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowEndpoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.Row
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -103,22 +105,6 @@ theorem floor_le_warm_proposal_at {ini}
   exact hheight.trans (h_le_of_store_anc (fg_reachable_at hrun (hrun.time_nonneg kP) hle hzk)
     (.single ⟨hDpost, hPm, hpar⟩))
 
-/-- The report's viable floor and fork-choice root determine its client-lock kind. -/
-theorem report_kind_of_floor_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hh : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ R.root).h)
-    (hroot : (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot R) :
-    (tr.state y i).fg.hj < ((tr.state y i).fg.σ R.root).h ∨
-      ((tr.state y i).fg.hj = ((tr.state y i).fg.σ R.root).h ∧
-        (tr.state y i).fg.Anc (tr.state y i).fg.J R) := by
-  have hr := hrun.upTo (hrun.time_nonneg i)
-  have hs := Trace.upTo_state tr y (i := i) (fun q hq => hrun.time_mono hq.le)
-  have h := Healing.report_kind_of_floor hr hy (by rwa [hs]) (by rwa [hs])
-  rwa [hs] at h
-
 /-- The client call of a high report under vote latency `D`, by a reporter honest `D` after it
 and at `c_z`, supplies the reset no later than `D` after the report, including suppression. -/
 theorem reset_of_high_report_within_at
@@ -190,45 +176,10 @@ theorem report_root_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
   rw [hfr] at hroot
   exact ⟨hroot.1.1, hroot.2.mono (fun _ h => h.1)⟩
 
-/-- Equal-height reports above a warm proposal have the frame's client-lock kind. -/
-theorem report_kind_of_warm_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
-    {J P R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H lo hi floor kindJ J)
-    {z : Fin sp.n} {kP : Nat} (hz : z ∈ H (sp.ts u)) (hdes : z = proposer u)
-    (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hlo : lo ≤ sp.ts u) (hhi : sp.ts u ≤ hi)
-    (hf : (H (sp.ts u))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} (hR : SA.ToFGAt tr.projAC y i ell R)
-    (hPR : Anc (tr.HonestBlocksAt H) P R) (hil : lo ≤ tr.time i) (hih : tr.time i ≤ hi)
-    (heq : ((tr.state y i).fg.σ R.root).h = ((tr.state y i).fg.σ P.root).h) :
-    (tr.state y i).fg.hj < ((tr.state y i).fg.σ P.root).h ∨
-      ((tr.state y i).fg.hj = ((tr.state y i).fg.σ P.root).h ∧
-        (tr.state y i).fg.Anc (tr.state y i).fg.J R) := by
-  have htime : tr.time kP = sp.ts u := by
-    simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hP.2.2
-  have hzk : z ∈ H (tr.time kP) := htime ▸ hz
-  have hm := proposal_mem_at hrun hnc hzk hP
-  obtain ⟨hRm, hroot⟩ := report_root_at hrun hy hR
-  have hPy := mem_of_honest_anc_at hrun hnc (hrun.time_nonneg i)
-    (fun q hq => hrun.time_mono hq.le) hy hPR hRm
-  have hh := floor_le_warm_proposal_at hrun hnc hframe hz hdes hP hPs hlo hhi hf
-  have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg kP)
-    (fun q hq => hrun.time_mono (by omega)) hzk (hrun.time_nonneg i)
-    (fun q hq => hrun.time_mono hq.le) hy hm hPy
-  rw [hσ] at hh
-  have hfloor : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ R.root).h := by
-    rw [hframe.floor_eq y i hy hil hih, heq]
-    exact hh
-  have h := report_kind_of_floor_at hrun hy hfloor hroot
-  rwa [heq] at h
-
-/-- A warm proposal crosses one height at the next sufficiently old honest proposal. -/
-theorem round_of_warm_at
-    {g ΔF b T : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
+/-- A warm proposal crosses one height when delayed signing and delivery fit before the next
+sufficiently old honest proposal. -/
+theorem round_of_warm_within_at
+    {g ΔF b T D : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
     {J P X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
     {K : SA.CommitteeDict sp.n}
@@ -240,12 +191,13 @@ theorem round_of_warm_at
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (hδ : 3 ≤ sp.toParams.fg.δt)
-    (hΔF : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
+    (hlat : Generic.VoteLatencyAt tr H D) (hD : 0 ≤ D)
+    (hΔF : 6 * sp.Δ + D + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
     (hux : u + sp.toParams.fg.δt ≤ x) (hxN : x ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
     (hTb : T ≤ b)
     (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
       tr.time k < T → att.h ≤ HZ tr H g)
-    (hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ < T)
+    (hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ + D < T)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX)) (hdx : p = proposer x)
@@ -265,23 +217,21 @@ theorem round_of_warm_at
     have he : sp.ts (s₀ + 4 : Nat) = sp.ts s₀ + 16 * sp.Δ := by
       simp only [SAParams.ts]; push_cast; ring
     linarith [cutZ_le sp g]
-  have hv : gbar g ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
+  have hv : gbar g ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ + D := by
     have := hts (show s₀ ≤ u + 1 by omega)
     linarith
-  have hvx : sp.ts (u + 1 : Nat) + 2 * sp.Δ + ΔF ≤ tr.time kX := by
+  have hvx : sp.ts (u + 1 : Nat) + 2 * sp.Δ + D + ΔF ≤ tr.time kX := by
     have h1 := hts hux
     have h2 : sp.ts (u + sp.toParams.fg.δt : Nat) =
         sp.ts (u + 1 : Nat) + 4 * sp.Δ * (sp.toParams.fg.δt : Time) - 4 * sp.Δ := by
       simp only [SAParams.ts]; push_cast; ring
     rw [htX]
     linarith
-  have hvb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b := by linarith
-  have hus : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
-  have hvc : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ tr.time kX := by
+  have hvc : sp.ts (u + 1 : Nat) + 2 * sp.Δ + D < tr.time kX := by
     linarith [hsvc.deltaF]
   have hfi : (H (sp.ts u))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    have hf' := hf (sp.ts u) (by simp only [SAParams.ts]; positivity) (by linarith)
+    have hf' := hf (sp.ts u) (by simp only [SAParams.ts]; positivity)
+      (by linarith [hts (show u ≤ N by omega)])
     have hn := sp.toParams.hn
     change (H (sp.ts u))ᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
     omega
@@ -317,17 +267,111 @@ theorem round_of_warm_at
     (hf _ (hrun.time_nonneg kX) (by rw [htX]; linarith [hts hxN])) hv hvx
     (by rw [htX]; linarith [hts hxN]) (by omega) ?_
   intro y hy
-  obtain ⟨i, ell, R, hyi, hR, htil, hti, hPR, hRd⟩ := hfol y hy
-  have hRyD := hRd x (by omega) hxN p c ellp hpc hc' hcall hct d pay hd'
-  obtain ⟨hPy, hRy, hor⟩ := row_or_high_of_report_at hrun hnc
+  obtain ⟨i, ell, R, hyi, hR, htil, hti, hPR, _⟩ := hfol y hy
+  have hreport : Generic.ReportAt tr y i R :=
+    ⟨ell, Compose.projAC_callAt.mp hR.1, hR.2.1,
+      by change (SA.acToFG sp (tr.state y i).ac ell.frame (tr.time i)).2 = some R
+         rw [← Compose.Growing.projAC_state_at hrun hyi]
+         exact hR.2.2⟩
+  obtain ⟨k, hik, hk, C, s, hatt, _, hRC, j, hij, hjk, ellC, hcC, htoC, hretC⟩ :=
+    hlat.attests y i R hreport (hrun.antitone (by linarith) hy)
+  have hPC := hPR.trans hRC
+  have htk := hrun.time_mono hik
+  have htkx : tr.time k < sp.ts x := by rw [← htX]; linarith
+  have hyk := hrun.antitone (htX ▸ htkx.le) hy
+  have htjk := hrun.time_mono hjk
+  have hyj := hrun.antitone htjk hyk
+  have hC : SA.ToFGAt tr.projAC y j ellC C :=
+    ⟨Compose.projAC_callAt.mpr hcC, htoC,
+      by change (SA.acToFG sp (tr.projAC.state y j) ellC.frame (tr.time j)).2 = some C
+         rw [Compose.Growing.projAC_state_at hrun hyj]
+         exact hretC⟩
+  obtain ⟨hCj, hroot⟩ := report_root_at hrun hyj hC
+  have hkle : ∀ q < k, tr.time q ≤ tr.time k := fun q hq => hrun.time_mono hq.le
+  have hk0 := hrun.time_nonneg k
+  have hCk := Compose.Growing.tree_mono_at hrun hk0 hyk hkle hjk hCj
+  have hPk := mem_of_honest_anc_at hrun hnc hk0 hkle hyk hPC hCk
+  have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg kP)
+    (fun q hq => hrun.time_mono (by omega)) (htimeP ▸ hz0) hk0 hkle hyk hPm hPk
+  have hfloor := floor_le_warm_proposal_at hrun hnc hframe hz0 hdes hP hPs hu0
+    (by linarith [hts huN]) hfi
+  rw [hσ] at hfloor
+  have hjlo := hu0.trans (htil.trans (hrun.time_mono hij))
+  have hklo := hjlo.trans htjk
+  have hkhi : tr.time k ≤ sp.ts N + 2 * sp.Δ := by linarith [hts hxN]
+  have hkind := hframe.kind_iff y k hyk hklo hkhi
+  have hfh := hframe.floor_eq y k hyk hklo hkhi
+  obtain ⟨hPy, hCy, hor⟩ := Generic.row_or_high_of_attest_at_from hrun.toLocalRun hnc
     (fun t ht htT => hf t ht (htT.le.trans hTb)) hna
-    (by rwa [max_eq_right (hcu.trans htil)]) hR (by linarith) hPR
-    (fun heq => Or.inr (report_kind_of_warm_at hrun hnc hframe hz0 hdes hP hPs hu0
-      (by linarith [hts huN]) hfi hyi hR hPR (hu0.trans htil)
-      (by linarith [hts huN]) heq))
-  rcases hor with ⟨k, att, hyk, hs, hk, hah, haT⟩ | hh
-  · exact Or.inl ⟨y, i, hyi, hPy, k, att, hyk, hs, hk.trans hti, hah, haT⟩
-  · exact Or.inr ⟨R, hRyD, y, i, hyi, hPy, hRy, hh⟩
+    (by rwa [max_eq_right (hcu.trans (htil.trans htk))]) hatt (by linarith) hCk hPC (fun _ => by
+      right
+      have hjmax := Healing.Store.hj_lt_hmax_of_reachable (fg_reachable_at hrun hk0 hkle hyk)
+      by_cases hkj : kindJ
+      · have ⟨hmax, hncst⟩ := hkind.mpr hkj
+        have hjf : (tr.state y k).fg.hj = floor := by
+          rw [Store.headHeightFloor, ite_eq_right hncst, hmax] at hfh
+          omega
+        rcases hfloor.lt_or_eq with hlt | heq
+        · exact Or.inl (hjf ▸ hlt)
+        right
+        have hjkind := (hframe.kind_iff y j hyj hjlo (htjk.trans hkhi)).mpr hkj
+        rw [Store.fcRoot, ite_eq_left hjkind,
+          hframe.root_eq y j hyj hjlo (htjk.trans hkhi) hkj] at hroot
+        refine ⟨hjf.trans heq, ?_⟩
+        rw [hframe.root_eq y k hyk hklo hkhi hkj]
+        exact store_anc_of_honest_anc_at hrun hnc hk0 hkle hyk
+          (honest_anc_of_store_anc_at (hrun.time_nonneg j)
+            (fun q hq => hrun.time_mono hq.le) hyj hroot) hCk
+      · left
+        have hlt : (tr.state y k).fg.hj < floor := by
+          rw [Store.headHeightFloor] at hfh
+          split_ifs at hfh with hcontest
+          · omega
+          · have hne : (tr.state y k).fg.hmax ≠ (tr.state y k).fg.hj + 1 :=
+              fun he => hkj (hkind.mp ⟨he, hcontest⟩)
+            omega
+        exact hlt.trans_le hfloor)
+  rcases hor with ⟨l, att, hyl, hs, hlk, hah, haT⟩ | hh
+  · exact Or.inl ⟨y, k, hyk, hPy, l, att, hyl, hs, by linarith, hah, haT⟩
+  · have hshort : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J :=
+      ⟨fun w l hw hlo hhi => hframe.floor_eq w l hw hlo (by linarith),
+       fun w l hw hlo hhi => hframe.kind_iff w l hw hlo (by linarith),
+       fun w l hw hlo hhi => hframe.root_eq w l hw hlo (by linarith)⟩
+    have hChead := hshort.toFG_later_proposal_head_after_at hrun hnc hsvc hawake hf hcatch hnr
+      hm hwarm (by linarith) hyj hC hPs hPC (by linarith [hts hxN])
+      (htjk.trans_lt htkx) hxN hpc hc' hcall hct hd' hK
+    exact Or.inr ⟨C, hChead, y, k, hyk, hPy, hCy, hh⟩
+
+/-- The same-tick warm round is the delayed round with latency `0`. -/
+theorem round_of_warm_at
+    {g ΔF b T : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
+    {J P X : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
+    (hδ : 3 ≤ sp.toParams.fg.δt)
+    (hΔF : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
+    (hux : u + sp.toParams.fg.δt ≤ x) (hxN : x ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
+    (hTb : T ≤ b)
+    (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
+      tr.time k < T → att.h ≤ HZ tr H g)
+    (hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ < T)
+    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
+    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
+    {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX)) (hdx : p = proposer x)
+    (hX : tr.ProposesAt p kX X) (hXs : X.slot = x) (hK : CommitteeHalfUpTo tr H K g b) :
+    P ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
+      ((tr.state p (kX + 1)).fg.σ P.root).h + 1 ≤
+        ((tr.state p (kX + 1)).fg.σ X.root).h :=
+  round_of_warm_within_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm hδ
+    (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl (by simpa using hΔF)
+    hux hxN hmb hTb hna (by simpa using hT) hz hdes hP hPs hp hdx hX hXs hK
 
 /-- **The zero-rise reset under vote latency `D`**: with the premises of
 `reset_of_high_proposal_at`, the latency `D` and a service horizon covering `t_{u+1} + 2Δ + D`,
@@ -417,7 +461,87 @@ theorem reset_of_high_proposal_at
     hwarm hN hmb hH (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl (by linarith) hz hdes
     hP hPs hh hK
 
-/-- Each round consumes one unit of height deficit; honesty is re-read at the next proposal. -/
+/-- Each round consumes one unit of height deficit. The latency `D` is covered by the timeout
+between consecutive proposals and added once to the terminal deadline. -/
+theorem rise_reset_rounds_within_at
+    {g ΔF b T D : Time} {s₀ N G floor : Nat} {kindJ : Prop}
+    {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀)
+    (hδ : 3 ≤ sp.toParams.fg.δt) (hG : 1 ≤ G)
+    (hlat : Generic.VoteLatencyAt tr H D) (hD : 0 ≤ D)
+    (hΔF : 6 * sp.Δ + D + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
+    (hgp : ProposalGap tr H proposer G s₀ N)
+    (hmb : sp.ts N + 2 * sp.Δ ≤ b) (hH : (H b).Nonempty) (hTb : T ≤ b)
+    (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
+      tr.time k < T → att.h ≤ HZ tr H g)
+    (r : Nat) {u : Nat} (hwarm : s₀ + 2 * sp.k ≤ u)
+    (hN : u + r * (sp.toParams.fg.δt + G - 1) + 1 ≤ N)
+    (hT : sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ + D ≤ T)
+    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
+    {kP : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
+    (hrise : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + r)
+    (hK : CommitteeHalfUpTo tr H K g b) :
+    ∃ a, IsReset tr H g a ∧
+      a ≤ sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ + D := by
+  induction r generalizing u z kP P with
+  | zero =>
+    simpa only [Nat.zero_mul, Nat.add_zero] using
+      reset_of_high_proposal_within_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm
+        (by simpa using hN) hmb hH hlat hD (by simpa using hT.trans hTb)
+        hz hdes hP hPs (by simpa using hrise) hK
+  | succ r ih =>
+    let ρ := sp.toParams.fg.δt + G - 1
+    have hρ : 3 ≤ ρ := by dsimp [ρ]; omega
+    have hmul : (r + 1) * ρ = r * ρ + ρ := Nat.succ_mul r ρ
+    change u + (r + 1) * ρ + 1 ≤ N at hN
+    change sp.ts (u + (r + 1) * ρ + 1 : Nat) + 2 * sp.Δ + D ≤ T at hT
+    have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
+    have hts {a c : Nat} (h : a ≤ c) : sp.ts a ≤ sp.ts c :=
+      (SA.ts_le_iff sp).2 (by exact_mod_cast h)
+    by_cases hh : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h
+    · have hle := hts (show u + 1 ≤ u + (r + 1) * ρ + 1 by omega)
+      obtain ⟨a, ha, hat⟩ := reset_of_high_proposal_within_at hframe hrun hnc hsvc hawake hf
+        hcatch hnr hm hwarm (by omega) hmb hH hlat hD (by linarith) hz hdes hP hPs hh hK
+      exact ⟨a, ha, hat.trans (by linarith)⟩
+    obtain ⟨x, hxl, hxr, hpx, kX, X, hX, hXs⟩ := proposalGap_iff.mp hgp
+      (u + sp.toParams.fg.δt) (by omega) (by
+        have hδρ : sp.toParams.fg.δt + G ≤ ρ + 1 := by dsimp [ρ]; omega
+        omega)
+    have htime : tr.time kX = sp.ts x := by
+      simpa only [sp.slotTime_eq, hXs, SAParams.ts] using hX.2.2
+    have hpx0 : proposer x ∈ H (tr.time kX) := hrun.antitone (by rw [htime]; linarith) hpx
+    have hnext : x + r * ρ + 1 ≤ u + (r + 1) * ρ + 1 := by
+      have hδρ : sp.toParams.fg.δt + G ≤ ρ + 1 := by dsimp [ρ]; omega
+      omega
+    have hstrict : sp.ts (u + 1 : Nat) + 2 * sp.Δ + D < T := by
+      have hlt : sp.ts (u + 1 : Nat) < sp.ts (u + (r + 1) * ρ + 1 : Nat) :=
+        (SA.ts_lt_iff sp).2 (by exact_mod_cast (show u + 1 < u + (r + 1) * ρ + 1 by omega))
+      linarith
+    obtain ⟨hPX, _, hcross⟩ := round_of_warm_within_at hframe hrun hnc hsvc hawake hf hcatch hnr
+      hm hwarm hδ hlat hD hΔF hxl (by omega) hmb hTb hna hstrict hz hdes hP hPs hpx0 rfl hX hXs hK
+    have htP : tr.time kP = sp.ts u := by
+      simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hP.2.2
+    have hz0 : z ∈ H (tr.time kP) := hrun.antitone (by rw [htP]; linarith) hz
+    have hPm := proposal_mem_at hrun hnc hz0 hP
+    have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg kP)
+      (fun q hq => hrun.time_mono (by omega)) hz0 (hrun.time_nonneg kX)
+      (fun q hq => hrun.time_mono (by omega)) hpx0 hPm hPX
+    rw [← hσ] at hcross
+    have hxN : x + r * ρ + 1 ≤ N := hnext.trans hN
+    obtain ⟨a, ha, hat⟩ := ih (u := x) (by omega) hxN
+      (by linarith [hts hnext]) hpx rfl hX hXs (by omega)
+    exact ⟨a, ha, hat.trans (by linarith [hts hnext])⟩
+
+/-- The same-tick reset rounds are the delayed reset rounds with latency `0`. -/
 theorem rise_reset_rounds_at
     {g ΔF b T : Time} {s₀ N G floor : Nat} {kindJ : Prop}
     {J : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -446,52 +570,9 @@ theorem rise_reset_rounds_at
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ a, IsReset tr H g a ∧
       a ≤ sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ := by
-  induction r generalizing u z kP P with
-  | zero =>
-    simpa only [Nat.zero_mul, Nat.add_zero] using
-      reset_of_high_proposal_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm
-        (by simpa using hN) hmb hH hz hdes hP hPs (by simpa using hrise) hK
-  | succ r ih =>
-    let ρ := sp.toParams.fg.δt + G - 1
-    have hρ : 3 ≤ ρ := by dsimp [ρ]; omega
-    have hmul : (r + 1) * ρ = r * ρ + ρ := Nat.succ_mul r ρ
-    change u + (r + 1) * ρ + 1 ≤ N at hN
-    change sp.ts (u + (r + 1) * ρ + 1 : Nat) + 2 * sp.Δ ≤ T at hT
-    have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
-    have hts {a c : Nat} (h : a ≤ c) : sp.ts a ≤ sp.ts c :=
-      (SA.ts_le_iff sp).2 (by exact_mod_cast h)
-    by_cases hh : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h
-    · obtain ⟨a, ha, hat⟩ := reset_of_high_proposal_at hframe hrun hnc hsvc hawake hf
-        hcatch hnr hm hwarm (by omega) hmb hH hz hdes hP hPs hh hK
-      exact ⟨a, ha, hat.trans (by linarith [hts (show u + 1 ≤ u + (r + 1) * ρ + 1 by omega)])⟩
-    obtain ⟨x, hxl, hxr, hpx, kX, X, hX, hXs⟩ := proposalGap_iff.mp hgp
-      (u + sp.toParams.fg.δt) (by omega) (by
-        have hδρ : sp.toParams.fg.δt + G ≤ ρ + 1 := by dsimp [ρ]; omega
-        omega)
-    have htime : tr.time kX = sp.ts x := by
-      simpa only [sp.slotTime_eq, hXs, SAParams.ts] using hX.2.2
-    have hpx0 : proposer x ∈ H (tr.time kX) := hrun.antitone (by rw [htime]; linarith) hpx
-    have hnext : x + r * ρ + 1 ≤ u + (r + 1) * ρ + 1 := by
-      have hδρ : sp.toParams.fg.δt + G ≤ ρ + 1 := by dsimp [ρ]; omega
-      omega
-    have hstrict : sp.ts (u + 1 : Nat) + 2 * sp.Δ < T := by
-      have hlt : sp.ts (u + 1 : Nat) < sp.ts (u + (r + 1) * ρ + 1 : Nat) :=
-        (SA.ts_lt_iff sp).2 (by exact_mod_cast (show u + 1 < u + (r + 1) * ρ + 1 by omega))
-      linarith
-    obtain ⟨hPX, _, hcross⟩ := round_of_warm_at hframe hrun hnc hsvc hawake hf hcatch hnr
-      hm hwarm hδ hΔF hxl (by omega) hmb hTb hna hstrict hz hdes hP hPs hpx0 rfl hX hXs hK
-    have htP : tr.time kP = sp.ts u := by
-      simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hP.2.2
-    have hz0 : z ∈ H (tr.time kP) := hrun.antitone (by rw [htP]; linarith) hz
-    have hPm := proposal_mem_at hrun hnc hz0 hP
-    have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg kP)
-      (fun q hq => hrun.time_mono (by omega)) hz0 (hrun.time_nonneg kX)
-      (fun q hq => hrun.time_mono (by omega)) hpx0 hPm hPX
-    rw [← hσ] at hcross
-    have hxN : x + r * ρ + 1 ≤ N := hnext.trans hN
-    obtain ⟨a, ha, hat⟩ := ih (u := x) (by omega) hxN
-      (by linarith [hts hnext]) hpx rfl hX hXs (by omega)
-    exact ⟨a, ha, hat.trans (by linarith [hts hnext])⟩
+  simpa only [add_zero] using rise_reset_rounds_within_at hframe hrun hnc hsvc hawake hf hcatch
+    hnr hm hδ hG (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl (by simpa using hΔF)
+    hgp hmb hH hTb hna r hwarm hN (by simpa using hT) hz hdes hP hPs hrise hK
 
 /-- The merged key bounds the deficit at the proposal cut itself. -/
 theorem rounds_le_warm_proposal_at

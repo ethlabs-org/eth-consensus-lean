@@ -16,13 +16,14 @@ namespace Consensus.Goldilocks.Healing.Growing
 
 open SA (SAParams ReplayOrder Payload gbar)
 
-/-- A report's own fast origin supplies its later-head route, for a report up to `e` slots after
-`t_{u+1} + 2Δ` and proposals from slot `u + 3 + e` (a delayed vote's later source). -/
-theorem FrameWindow.toFG_later_proposal_head_within_at
+/-- A report above a warm proposal is carried by the head of any strictly later honest proposal
+in the frame window. A regular fast origin has paid six ticks before the report; an optimistic
+origin needs only the next slot. -/
+theorem FrameWindow.toFG_later_proposal_head_after_at
     {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-    {g ΔF b : Time} {s₀ u N floor e : Nat} {kindJ : Prop}
+    {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop}
     {J P R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
     {K : SA.CommitteeDict sp.n}
@@ -38,8 +39,7 @@ theorem FrameWindow.toFG_later_proposal_head_within_at
     {ell : ACLabel (goldilocksNode sp ro)} (hto : SA.ToFGAt tr.projAC y i ell R)
     (hPs : P.slot = u) (hPR : Anc (tr.HonestBlocksAt H) P R)
     (hihi : tr.time i ≤ sp.ts N + sp.Δ)
-    (ht : tr.time i ≤ sp.ts (u + 1 + e : Nat) + 2 * sp.Δ)
-    {r : Nat} (hrlo : u + 3 + e ≤ r) (hrN : r ≤ N)
+    {r : Nat} (ht : tr.time i < sp.ts r) (hrN : r ≤ N)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
     {ellp : ACLabel (goldilocksNode sp ro)} (hcp : tr.projAC.CallAt z c ellp)
     (hcall : ellp.call = .proposal) (hti : tr.time c = sp.ts r)
@@ -93,14 +93,19 @@ theorem FrameWindow.toFG_later_proposal_head_within_at
       (hjtime.trans (hatime.trans (hihi.trans hmb)))
       (tr.time a) (hrun.time_nonneg a) (hatime.trans (hihi.trans hmb)))
   have hjlo : u ≤ j := by omega
-  have hjhi : j ≤ u + 1 + e := by
+  have hjr : j < r := by
     by_contra hn
-    have hlo := hts (show u + 1 + e + 1 ≤ j by omega)
-    have hstep := SA.ts_succ (u + 1 + e) (sp := sp)
-    push_cast at hlo hstep ht ⊢
-    linarith only [hlo, hjtime, hatime, ht, hstep, sp.toParams.hΔ]
+    exact (not_lt_of_ge ((hts (by omega : r ≤ j)).trans (hjtime.trans hatime))) ht
   rcases hfast with hreg | hopt
-  · exact hRD.trans ((hframe.regular_later_heads_at hrun hnc hsvc hawake hf hcatch hnr
+  · have hjr₂ : j + 2 ≤ r := by
+      by_contra hn
+      have hlo := hts (show r ≤ j + 1 by omega)
+      have hstep := SA.ts_succ j (sp := sp)
+      obtain ⟨_, _, hu, _⟩ := hreg
+      have hwrite : tr.time a = sp.ts j + 6 * sp.Δ := hu.2.2.1
+      push_cast at hstep hlo
+      linarith only [hlo, hstep, hwrite, hatime, ht, sp.toParams.hΔ]
+    exact hRD.trans ((hframe.regular_later_heads_at hrun hnc hsvc hawake hf hcatch hnr
       (by omega) (by omega) (by omega) hm (by omega) hmb hya
       (Or.inl ⟨CV, hreg⟩) hK r (by omega) hrN).2 (by omega) z c ellp hz hcp hcall hti d pay
       hd)
@@ -128,6 +133,45 @@ theorem FrameWindow.toFG_later_proposal_head_within_at
         change Anc _ (tr.state y a).fg.fcRoot _ at hroot
         rwa [show (tr.state y a).fg.fcRoot = (tr.state y a).fg.J from ite_eq_left hkc,
           hframe.root_eq y a hya halo (hatime.trans hihi) hkind] at hroot
+
+/-- Reports up to `e` slots after `t_{u+1} + 2Δ` precede proposals from slot `u + 3 + e`. -/
+theorem FrameWindow.toFG_later_proposal_head_within_at
+    {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+    {g ΔF b : Time} {s₀ u N floor e : Nat} {kindJ : Prop}
+    {J P R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
+    {K : SA.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (SA.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
+    (hmb : sp.ts N + sp.Δ ≤ b)
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
+    {ell : ACLabel (goldilocksNode sp ro)} (hto : SA.ToFGAt tr.projAC y i ell R)
+    (hPs : P.slot = u) (hPR : Anc (tr.HonestBlocksAt H) P R)
+    (hihi : tr.time i ≤ sp.ts N + sp.Δ)
+    (ht : tr.time i ≤ sp.ts (u + 1 + e : Nat) + 2 * sp.Δ)
+    {r : Nat} (hrlo : u + 3 + e ≤ r) (hrN : r ≤ N)
+    {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
+    {ellp : ACLabel (goldilocksNode sp ro)} (hcp : tr.projAC.CallAt z c ellp)
+    (hcall : ellp.call = .proposal) (hti : tr.time c = sp.ts r)
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hd : (SA.acProposal sp (tr.projAC.state z c) ellp.frame (tr.time c)).2 =
+      some (d, pay)) (hK : CommitteeHalfUpTo tr H K g b) :
+    Anc (tr.HonestBlocksAt H) R d.head := by
+  have hlo : sp.ts (u + 1 + e + 1 : Nat) ≤ sp.ts r :=
+    (SA.ts_le_iff sp).2 (by push_cast; omega)
+  have hstep := SA.ts_succ (u + 1 + e) (sp := sp)
+  have hlt : tr.time i < sp.ts r := by
+    push_cast at hlo hstep ht
+    linarith only [ht, hlo, hstep, sp.toParams.hΔ]
+  exact hframe.toFG_later_proposal_head_after_at hrun hnc hsvc hawake hf hcatch hnr hm hwarm
+    hmb hy hto hPs hPR hihi hlt hrN hz hcp hcall hti hd hK
 
 /-- A report's own fast origin supplies its later-head route, including an earlier report
 (`toFG_later_proposal_head_within_at` at `e = 0`). -/
