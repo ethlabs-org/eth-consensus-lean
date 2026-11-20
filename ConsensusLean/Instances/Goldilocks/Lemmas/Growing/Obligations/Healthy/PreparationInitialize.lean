@@ -16,12 +16,17 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 
 /-- **The coefficient inequality with `8Δ` more**: the heal margin exceeds the reset reserve
 `R + 8k + 4X + 29` by `4δ_t − 13 ≥ 11` (at `δ_t ≥ 6`), so the reserve `+ 8` still fits. -/
-private theorem contract_heal_ge_reset_late (cap : Capability) (X : ℕ+) :
-    (contract_catchUp S A : Nat) + (healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 34) + 3 ≤
-      contract_heal S A cap X := by
+private theorem contract_heal_ge_reset_late_within (cap : Capability) (X : ℕ+) (L : Nat) :
+    (contract_catchUp S A : Nat) + (healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 34) + 3 +
+      5 * L ≤ contract_heal S A cap X + 5 * L := by
   rw [contract_heal_val, healMargin_val, healthyResetCoeff_val]
   have := A.six_le_δt
   omega
+
+private theorem contract_heal_ge_reset_late (cap : Capability) (X : ℕ+) :
+    (contract_catchUp S A : Nat) + (healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 34) + 3 ≤
+      contract_heal S A cap X := by
+  simpa only [mul_zero, add_zero] using contract_heal_ge_reset_late_within S A cap X 0
 
 set_option linter.unusedVariables false in
 /-- An actual reset seed, a base slot and a repairing opening before the heal deadline, with `8Δ`
