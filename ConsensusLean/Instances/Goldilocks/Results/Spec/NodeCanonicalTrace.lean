@@ -273,6 +273,11 @@ noncomputable def eventCuts (i : Nat) : List (CutRec A) :=
       (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0) .restart
   | none => []
 
+/-- An absent engine event contributes no replay cuts. -/
+theorem eventCuts_none (i : Nat) (he : rho.events[i]? = none) : eventCuts e rho i = [] := by
+  unfold eventCuts
+  rw [he]
+
 open Classical in
 /-- A tick replays the node handler exactly at public times. -/
 theorem eventCuts_tick (i : Nat) (v : V) (t : Time)

@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeStateAgreement
 public import ConsensusLean.Instances.Goldilocks.AsChainShape
+public import ConsensusLean.Instances.Goldilocks.Results.Spec.CanonicalTrace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Steps
 
 public section
@@ -10,36 +11,25 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Blocks Shape
 open Model (pubOf)
 
-variable {V : Type} [Fintype V] {E : Env V}
-
-/-- The concrete publication envelope and codec used by the compiled Goldilocks family. -/
-noncomputable def traceEncoding (S : Setup) (hn : 1 ≤ Fintype.card V) :
-    NodeAsChainShape.CanonicalTrace.Encoding (goldilocks S) E (S.params (pubOf E) hn).toParams
-      rfl hn (goldilocksNode (S.params (pubOf E) hn) (S.ro _)) where
-  skel := skeleton (pubOf E) S.vote
-  Body := Body
-  decBody := inferInstance
-  State h := State (S.params (pubOf E) h) (S.ro _) S.vote
-  codec := wireCodec _ _ S.vote
-  adapter := nodeAdapter _ _ S.vote
-  ops h := nodeOps (S.params (pubOf E) h) (S.ro _) S.vote
-  role := S.vote.candidateRole _
-  dep := dependencies _ (binding := S.vote)
-  conflict := conflicts (binding := S.vote)
-  isFGAtt := isFGAtt (binding := S.vote)
-  shape_eq := rfl
-
-variable [DecidableEq V]
+variable {V : Type} [Fintype V] {E : Env V} [DecidableEq V]
 
 open NodeAsChainShape.CanonicalTrace (afterClock_eq engineDuty engineDuty_eq envelope_eq)
 
+private theorem map_cast {α β : Type} (h : α = β) (ds : List α) :
+    ds.map (cast h) = cast (congrArg List h) ds := by
+  cases h
+  exact List.map_id' _
+
 omit [DecidableEq V] in
-private theorem duties_transport (S : Setup) (hn : 1 ≤ Fintype.card V)
-    (ds : List (ShapeDuty (traceEncoding (E := E) S hn).skel.Kind)) :
-    ds.map (engineDuty (traceEncoding (E := E) S hn)) = ds := by
-  have h : engineDuty (traceEncoding (E := E) S hn) = id :=
-    funext fun d => (engineDuty_eq _ d).trans (by rfl)
-  exact (congrArg (fun f => ds.map f) h).trans (List.map_id ds)
+private theorem engineDuty_map (S : Setup) (hn : 1 ≤ Fintype.card V)
+    (e : NodeAsChainShape.CanonicalTrace.Encoding (goldilocks S) E
+      (S.params (pubOf E) hn).toParams rfl hn (goldilocksNode (S.params (pubOf E) hn) (S.ro _)))
+    (ds : List (ShapeDuty e.skel.Kind)) :
+    ds.map (engineDuty e) = cast (congrArg List
+      (congrArg (fun s : ChainShape (pubOf E) schema.Id Info => (compile s).Duty)
+        e.shape_eq.symm)) ds := by
+  rw [show engineDuty e = _ from funext (engineDuty_eq e)]
+  exact map_cast _ _
 
 omit [DecidableEq V] in
 private theorem trace_proposer (S : Setup) (hn : 1 ≤ Fintype.card V)
@@ -47,23 +37,6 @@ private theorem trace_proposer (S : Setup) (hn : 1 ≤ Fintype.card V)
     NodeAsChainShape.CanonicalTrace.runProposer rho hn = runProposer S rho hn :=
   funext fun j => (NodeAsChainShape.CanonicalTrace.runProposer_eq (hn := hn) rho j).trans
     (runProposer_eq S rho hn j).symm
-
-omit [DecidableEq V] in
-private theorem trace_digest (S : Setup) (hn : 1 ≤ Fintype.card V)
-    (rho : Model.Run (compiled (goldilocks S)) E) :
-    NodeAsChainShape.CanonicalTrace.digestOf (traceEncoding (E := E) S hn) rho =
-      digestOf S rho := by
-  funext par s x atts pl
-  exact (NodeAsChainShape.CanonicalTrace.digestOf_eq _ _ par s x atts pl).trans
-    ((congrFun (congrFun (congrFun (congrFun (congrFun
-      (digestOf_eq S rho) par) s) x) atts) pl).trans (dgOf_eq _ _ _ _ _ _ _)).symm
-
-omit [DecidableEq V] in
-private theorem trace_envelope (S : Setup) (hn : 1 ≤ Fintype.card V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) :
-    NodeAsChainShape.CanonicalTrace.envelope (traceEncoding S hn) nd = shapeOf S hn nd := by
-  rw [envelope_eq]
-  rfl
 
 private theorem fold_delivery {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
     {binding : VoteBinding} (pr : Nat → Fin sp.n)
@@ -82,20 +55,14 @@ private theorem fold_delivery {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (
     | none => rw [deliverState_cons_none _ _ _ _ _ _ _ _ he]; rfl
     | some ev => rw [deliverState_cons_some _ _ _ _ _ _ _ _ ev he]; rfl
 
-/-- The proof-side observer reads the Goldilocks envelope's FG-due flag. -/
-noncomputable def traceDue (S : Setup) (hn : 1 ≤ Fintype.card V) :
-    (traceEncoding (E := E) S hn).State hn → Bool := by
-  unfold traceEncoding
-  exact State.fgDue
-
 /-- The Goldilocks run establishes the local replay laws; its due flag is proof-side only. -/
 theorem traceEncoding_lawful (S : Setup) (hn : 1 ≤ Fintype.card V) :
-    (traceEncoding (E := E) S hn).Lawful (traceDue S hn) where
+    (traceEncoding (E := E) S hn).Lawful (traceDue S hn) :=
+  traceEncoding_induction S hn (fun e due => e.Lawful due) fun hg => {
   init_due := fun _ _ => rfl
   set_due := fun _ _ => rfl
   clock_due := fun _ _ => rfl
   process_due := fun st o hs => by
-    unfold traceDue
     exact process_fgDue st o hs
   restore_due := fun _ _ _ => rfl
   cut_due rho v i := by
@@ -104,15 +71,16 @@ theorem traceEncoding_lawful (S : Setup) (hn : 1 ≤ Fintype.card V) :
     rw [stateAt_eq] at h
     exact h
   tick_schedule t ht := by
-    rw [duties_transport, duties_eq S t ht]
-    simp only [dutiesInit, traceEncoding]
+    rw [duties_eq S t ht]
+    simp only [dutiesInit]
+    rw (config := { transparency := .default }) [engineDuty_map S hn, cast_eq]
     exact List.append_assoc _ [ShapeDuty.poll t.toNat] [ShapeDuty.poll t.toNat]
   tick_prefix rho hv i v t he := by
     dsimp only
-    rw [duties_transport, afterClock_eq]
+    rw (config := { transparency := .default }) [engineDuty_map S hn, cast_eq, afterClock_eq]
     rw (config := { transparency := .default })
       [← atProposal_eq S rho v (rho.stateBefore i v) t]
-    rw [trace_envelope, NodeAsChainShape.CanonicalTrace.stateAt_eq]
+    rw [envelope_eq, NodeAsChainShape.CanonicalTrace.stateAt_eq]
     have hsel := poll_selected S rho hv v
     have hn' := atProposal_node S rho hn v (rho.stateBefore i v) t
       (by simpa only [stateAt_eq] using fgDue_eq_false S rho hn v i) hsel
@@ -132,10 +100,11 @@ theorem traceEncoding_lawful (S : Setup) (hn : 1 ≤ Fintype.card V) :
       exact poll_fgDue _ _
   tick_proposal rho hv i v t he := by
     dsimp only
-    rw [duties_transport, duties_transport, afterClock_eq]
+    rw (config := { transparency := .default })
+      [engineDuty_map S hn, cast_eq, engineDuty_map S hn, cast_eq, afterClock_eq]
     rw (config := { transparency := .default })
       [← atProposal_eq S rho v (rho.stateBefore i v) t]
-    simp only [trace_proposer, trace_digest, trace_envelope]
+    simp only [trace_proposer, hg, ← digestOf_eq, envelope_eq]
     let nd := atProposal S rho v (rho.stateBefore i v) t
     have hsel := poll_selected S rho hv v
     have hnow := atProposal_now S rho hn v (rho.stateBefore i v) t hsel
@@ -173,10 +142,12 @@ theorem traceEncoding_lawful (S : Setup) (hn : 1 ≤ Fintype.card V) :
           hnow hmem)
   tick_finish rho hv i v t _ := by
     dsimp only
-    rw [duties_transport, duties_transport, duties_transport, afterClock_eq]
+    rw (config := { transparency := .default })
+      [engineDuty_map S hn, cast_eq, engineDuty_map S hn, cast_eq, engineDuty_map S hn, cast_eq,
+        afterClock_eq]
     rw (config := { transparency := .default })
       [← atProposal_eq S rho v (rho.stateBefore i v) t]
-    simp only [trace_proposer, trace_digest, trace_envelope]
+    simp only [trace_proposer, hg, ← digestOf_eq, envelope_eq]
     let nd := atProposal S rho v (rho.stateBefore i v) t
     let post := (rho.runDuties v nd ((skeleton (pubOf E) S.vote).proposeAt t)).1
     have hsel := poll_selected S rho hv v
@@ -214,7 +185,7 @@ theorem traceEncoding_lawful (S : Setup) (hn : 1 ≤ Fintype.card V) :
     rw [NodeAsChainShape.CanonicalTrace.deliveryPost_eq]
     rw [NodeAsChainShape.CanonicalTrace.stateAt_eq, NodeAsChainShape.CanonicalTrace.wireOf_eq]
     dsimp only
-    rw [trace_proposer, trace_digest]
+    rw [trace_proposer, hg, ← digestOf_eq]
     change (process ((rho.stateBefore i v).st.1 hn) o (Model.digests rho.hash o)).node = _
     rw [← stateAt_eq S rho hn v i]
     rw [process_eq (stateAt S rho hn v i) o (Model.digests rho.hash o)]
@@ -241,6 +212,6 @@ theorem traceEncoding_lawful (S : Setup) (hn : 1 ≤ Fintype.card V) :
       (fun st _ _ hs h =>
         ⟨(recordOwn_none_node st _ _ hs).trans h.1, (recordOwn_fgDue st _ hs).trans h.2⟩)
       v _ o t ⟨by rw [stateAt_eq], hd⟩).1
-  restore_node := fun _ _ _ => rfl
+  restore_node := fun _ _ _ => rfl }
 
 end Consensus.Goldilocks.Simulation
