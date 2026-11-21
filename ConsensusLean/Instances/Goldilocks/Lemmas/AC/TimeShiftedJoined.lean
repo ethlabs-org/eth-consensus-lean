@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.TimeShiftedReceipt
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ReceiptCover
 
 public section
 
@@ -91,6 +92,62 @@ theorem receipt_covered_at_cast (hr : ACLocalRun (instanceAC sp FGP) H U tr ini)
   obtain ⟨lbl, call, eq⟩ := wake
   obtain ⟨u, _, huk, _, gap⟩ := hr.sleep_of_restart y hy k lbl call eq
   exact (not_lt_of_ge ((hk.trans window).trans (gap i hik l hc).le)) huk
+
+private theorem deadline_at_cut {j : Nat} {τ : Time}
+    (bounded : ∀ k ≤ j, tr.RestartAt y k → tr.time k ≤ τ) :
+    tr.deadline y j τ = τ + sp.Δ := by
+  have wake : tr.lastWake y j ≤ (τ : WithBot Time) := by
+    induction j with
+    | zero =>
+      unfold ACTrace.lastWake
+      split_ifs with h
+      · exact WithBot.coe_le_coe.mpr (bounded 0 le_rfl h)
+      · exact bot_le
+    | succ j ih =>
+      unfold ACTrace.lastWake
+      split_ifs with h
+      · exact WithBot.coe_le_coe.mpr (bounded _ le_rfl h)
+      · exact ih (fun k hk => bounded k (hk.trans (Nat.le_succ j)))
+  unfold ACTrace.deadline
+  cases h : tr.lastWake y j with
+  | bot => rfl
+  | coe w =>
+    rw [h] at wake
+    simp [Option.elim, max_eq_left (WithBot.coe_le_coe.mp wake)]
+
+/-- A forwarded vote from the previous slot's start through its `+5Δ` window is covered in
+the actual cast input once its delivery deadline has elapsed. No processing or uninterrupted
+participation premise: processing comes from `SyncAC` and the cast bounds the restart clock. -/
+theorem relay_at_cast (hr : ACLocalRun (instanceAC sp FGP) H U tr ini) {a b : Time}
+    (sync : SyncAC (instanceAC sp FGP) H U a b tr) {x : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H)
+    {i j : Nat} {v : Vote sp.n} {r : ACLabel (instanceAC sp FGP)} (sent : tr.SendOrAdmit x i v)
+    (lo : a ≤ tr.time i) (hi : tr.time i ≤ b) (rc : tr.CallAt y j r) (cast : r.emits ≠ [])
+    (slot : (v.slot : Int) = (sp.slot (tr.time j) : Int) - 1) (start : sp.ts v.slot ≤ tr.time i)
+    (last : tr.time i ≤ sp.ts v.slot + 5 * sp.Δ) (due : tr.time i + sp.Δ ≤ tr.time j) :
+    v ∈ (tr.state y j).pool v.slot ∨ v.val ∈ equivocators {w | w ∈ (tr.state y j).pool v.slot} := by
+  have bound (k : Nat) (hk : k ≤ j) (wake : tr.RestartAt y k) : tr.time k ≤ tr.time i := by
+    rcases hk.eq_or_lt with rfl | hk
+    · obtain ⟨l, hc, hw⟩ := wake
+      obtain rfl : l = r := Option.some.inj (hc.2.symm.trans rc.2)
+      exact (cast (reset_cut hr hy rc hw).2.2).elim
+    have h := WithBot.coe_le_coe.mp
+      ((restart_le_clock hr hy wake hk).trans (joined_of_cast hr hy rc cast))
+    exact h.trans (slot ▸ start)
+  have deadline (k : Nat) (hk : k ≤ j) :=
+    deadline_at_cut (fun m hm => bound m (hm.trans hk)) (τ := tr.time i)
+  obtain ⟨k, hkj, hik, ⟨l, hc, proc⟩, htime⟩ := sync.1 x hx i v sent lo hi y hy j r rc
+    ((deadline j le_rfl).trans_le due)
+  rw [deadline k hkj] at htime
+  have kj : k < j := hkj.lt_of_ne (by rintro rfl; exact (not_lt_of_ge due) htime)
+  obtain ⟨vlo, vhi⟩ := slot_window_of_forward (hr.time_nonneg i) start le_rfl last _ hik htime
+  refine cover_before_restart hr hy hc ?_ kj ?_
+  · rcases proc with recv | ⟨e, he, rfl⟩
+    · exact held_after_receipt hr hy hc recv vlo vhi
+    · exact held_after_emit hr hy hc he
+  · intro m hkm hmj wake
+    obtain ⟨l', hc', hw⟩ := wake
+    obtain ⟨u, _, hu, _, gap⟩ := hr.sleep_of_restart y hy m l' hc' hw
+    exact (not_lt_of_ge ((bound m hmj.le ⟨l', hc', hw⟩).trans hik)) ((gap k hkm l hc).trans hu)
 
 end Consensus.Goldilocks.SA.TimeShifted
 
