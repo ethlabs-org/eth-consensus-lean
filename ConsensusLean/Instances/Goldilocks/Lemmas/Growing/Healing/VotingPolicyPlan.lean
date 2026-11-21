@@ -273,9 +273,16 @@ def ReleasedBy (U : Publication tr) (H : Time → Set (Fin sp.n))
     (y : Fin sp.n) (a : FG.Att sp.n) (deadline : Time) : Prop :=
   ∃ t, t ≤ deadline ∧ y ∈ H t ∧ U.released y a t
 
-/-- Supply is phrased for the actual anchor entry. The disjunction never substitutes
-a signature above the entry for a matching row. -/
-structure PublishedRows (U : Publication tr) (g b D R : Time) : Prop where
+/-- A joined appointment at its actual snapshot cut. It need not emit a report. -/
+def AppointmentCohort (_tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+    (appointment : Fin sp.n → Nat → Time → Prop) (d deadline b : Time) : Prop :=
+  ∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
+    ∀ z ∈ ids, z ∈ H b ∧ ∃ k t, appointment z k t ∧ d ≤ t ∧ t ≤ deadline
+
+/-- Supply is phrased for the actual anchor entry. Request a cohort of joined
+polls through `d + D`, not reports by `d`. The row producer owes usefulness. -/
+structure PublishedRows (U : Publication tr) (appointment : Fin sp.n → Nat → Time → Prop)
+    (g b D R : Time) : Prop where
   supply : ∀ {T : Blk sp} {y : Fin sp.n} {m : Nat} {t : Time},
     0 ≤ t → (∀ q < m, tr.time q ≤ t) → y ∈ H t → T ∈ (tr.state y m).fg.tree →
     ∀ {σT : FG.ChainState sp.n}, (tr.state y m).fg.σ T.root = σT → σT.Th = T.root →
@@ -283,15 +290,13 @@ structure PublishedRows (U : Publication tr) (g b D R : Time) : Prop where
     ∀ {d : Time}, gbar g ≤ d → d + D + R ≤ b →
     (∀ x r ell C, x ∈ H (tr.time r) → SA.ToFGAt tr.projAC x r ell C →
       tr.time r < d → ((tr.state x r).fg.σ C.root).h ≤ σT.h) →
-    (∀ z, z ∈ H (max (cutZ sp.toParams g) d) → ∃ r ell C,
-      SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ d ∧
-        Anc (tr.HonestBlocksAt H) T C ∧ ((tr.state z r).fg.σ C.root).h = σT.h) →
+    AppointmentCohort tr H appointment d (d + D) b →
     (∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
       ∀ z ∈ ids, z ∈ H (max (cutZ sp.toParams g) (d + D + R)) ∧ ∃ a j,
         tr.SignAt z j a ∧ tr.time j ≤ d + D ∧ ReleasedBy U H z a (d + D + R) ∧
         a.val = z ∧ a.h = σT.h ∧ a.T = T.root ∧ a.timeout = false ∧
         (σT.previousHeightJustified → a.fin = some (σT.hj, σT.J))) ∨
-    ∃ x r ell C, x ∈ H (tr.time r) ∧ SA.ToFGAt tr.projAC x r ell C ∧ d ≤ tr.time r ∧
+    ∃ x r ell C, x ∈ H (tr.time r) ∧ SA.ToFGAt tr.projAC x r ell C ∧
       tr.time r ≤ d + D ∧ σT.h < ((tr.state x r).fg.σ C.root).h
 
 theorem durable_held_and_snapshot_cursor (st : PolicyState sp ro binding)
@@ -347,12 +352,25 @@ def MatchingRows (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (g b
         att.h = σT.h ∧ att.T = T.root ∧ att.timeout = false ∧
         (σT.previousHeightJustified → att.fin = some (σT.hj, σT.J))
 
-theorem published_rows_of_attempts (U : Publication tr) {g b a D R : Time}
+theorem published_rows_of_appointments (U : Publication tr) {g b a D R : Time}
+    {appointment : Fin sp.n → Nat → Time → Prop}
     (hreset : IsReset tr H g a) (hab : a ≤ b) (hcz : cutZ sp.toParams g ≤ b)
-    (hquorum : ∀ t, gbar g ≤ t → t ≤ b → sp.toParams.fg.q ≤ (H t).ncard)
     (hcut : CutObservations tr H) (hmatching : MatchingRows tr H g b)
-    (hattempt : Attempts tr H (gbar g) b D) (hrelease : ReleaseService U H (gbar g) b R)
-    (hD : 0 ≤ D) (hR : 0 ≤ R) : PublishedRows (H := H) U g b D R := by
+    (hsource : ∀ (T : Blk sp) y m t z k d u,
+      0 ≤ t → (∀ i < m, tr.time i ≤ t) → y ∈ H t → T ∈ (tr.state y m).fg.tree →
+      let σ := (tr.state y m).fg.σ T.root
+      σ.Th = T.root → HZ tr H g + 1 ≤ σ.h →
+      (σ.previousHeightJustified → HZ tr H g + 1 ≤ σ.hj) →
+      gbar g ≤ d → d + D + R ≤ b → z ∈ H b → appointment z k u →
+      d ≤ u → u ≤ d + D →
+      (∃ r j ell C s, r ≤ j ∧ tr.time j ≤ u ∧ SA.ToFGAt tr.projAC z r ell C ∧
+        (j < k ∨ j = k + 1 ∧ tr.time j = u) ∧
+        tr.CallAt z j (.fg (.attest C s)) ∧ Anc (tr.HonestBlocksAt H) T C ∧
+        ((tr.state z r).fg.σ C.root).h = σ.h) ∨
+      ∃ r ell C, r ≤ k ∧ tr.time r ≤ u ∧ SA.ToFGAt tr.projAC z r ell C ∧
+        σ.h < ((tr.state z r).fg.σ C.root).h)
+    (hrelease : ReleaseService U H (gbar g) b R)
+    (hD : 0 ≤ D) (hR : 0 ≤ R) : PublishedRows (H := H) U appointment g b D R := by
   sorry
 
 theorem exact_report_dominates_across_restart
@@ -892,6 +910,26 @@ def JoinedWindowQuorum (rho : Model.Run (compiled (delayedFamily S p)) E)
     (hn : 1 ≤ Fintype.card V) (lo deadline terminal : Time) : Prop :=
   ∃ ids : Finset V, (S.params (Model.pubOf E) hn).toParams.fg.q ≤ ids.card ∧
     ∀ v ∈ ids, rho.point.HonestAt v terminal ∧ ∃ u ≤ deadline, JoinedAwakeAppointment rho hn v lo u
+
+/-- A poll can have an empty cut slice. Its time is the engine tick time,
+not the time of the next materialized cut. -/
+def ProjectedAppointment
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
+    (M : EngineProjection rho tr H U) (B : EventBoundaries rho hn M)
+    (cuts : ProjectedTickDutyBoundaries rho hn M B)
+    (z : Fin (Fintype.card V)) (k : Nat) (t : Time) : Prop :=
+  ∃ e q, SnapshotDuty rho hn (M.key.symm z) e q t ∧ k = B.first e + cuts.offset e q ∧
+    SA.joined (S.params (Model.pubOf E) hn) (tr.state z k).ac t
+
+theorem appointment_cohort_of_joined_window
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
+    (M : EngineProjection rho tr H U) (B : EventBoundaries rho hn M)
+    (cuts : ProjectedTickDutyBoundaries rho hn M B) {d deadline b : Time}
+    (hq : JoinedWindowQuorum rho hn d deadline b) :
+    AppointmentCohort tr H (ProjectedAppointment rho hn M B cuts) d deadline b := by
+  sorry
 
 theorem joined_appointment_of_ready_and_restart_time
     (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
@@ -1489,7 +1527,7 @@ def WarmReportWindow (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
       (gbar g ≤ d ∧ d + D + R ≤ tr.time j ∧
         ∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
           ∀ v ∈ ids, v ∈ H b ∧
-            ∃ l k ell C' result, l ≤ k ∧ k < j ∧ tr.time k ≤ d + D ∧
+            ∃ l k ell C' result, l ≤ k ∧ k < j ∧ sp.ts s₀ ≤ tr.time l ∧ tr.time k ≤ d + D ∧
               SA.ToFGAt tr.projAC v l ell C' ∧ tr.CallAt v k (.fg (.attest C' result)) ∧
               Anc (tr.HonestBlocksAt H) P C' ∧ h ≤ ((tr.state v k).fg.σ C'.root).h)
 
@@ -1500,18 +1538,20 @@ theorem warm_report_window_of_drain {g b D R ΔF : Time} {G Ld : Nat}
     {proposer : Nat → Fin sp.n} (hcut : CutObservations tr H)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hbase : BaseService tr H g)
     (hdrain : DrainOutputs tr proposer H g G Ld b)
-    (appointment : Fin sp.n → Nat → Prop)
+    (appointment : Fin sp.n → Nat → Time → Prop)
     (hcohort : ∀ {s₀ N floor u x i j : Nat} {kindJ : Prop} {J P X C : Blk sp},
       WarmRowDemand tr H proposer g b D R s₀ N floor u x i j kindJ J P X C →
       gbar g ≤ sp.ts (u + 1) + 2 * sp.Δ → sp.ts (u + 1) + 2 * sp.Δ + D + R + ΔF ≤ tr.time j →
       ∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
-        ∀ v ∈ ids, v ∈ H b ∧ ∃ k < j, appointment v k ∧
-          sp.ts (u + 1) + 2 * sp.Δ ≤ tr.time k ∧ tr.time k ≤ sp.ts (u + 1) + 2 * sp.Δ + D)
-    (hsource : ∀ {s₀ N floor u x i j k : Nat} {kindJ : Prop} {v : Fin sp.n} {J P X C : Blk sp},
+        ∀ v ∈ ids, v ∈ H b ∧ ∃ k t, appointment v k t ∧ k < j ∧
+          sp.ts (u + 1) + 2 * sp.Δ ≤ t ∧ t ≤ sp.ts (u + 1) + 2 * sp.Δ + D)
+    (hsource : ∀ {s₀ N floor u x i j k : Nat} {t : Time} {kindJ : Prop}
+      {v : Fin sp.n} {J P X C : Blk sp},
       WarmRowDemand tr H proposer g b D R s₀ N floor u x i j kindJ J P X C →
-      appointment v k → v ∈ H b → k < j →
-      sp.ts (u + 1) + 2 * sp.Δ ≤ tr.time k → tr.time k ≤ sp.ts (u + 1) + 2 * sp.Δ + D →
-      ∃ l m ell C' result, l ≤ m ∧ m ≤ k ∧ SA.ToFGAt tr.projAC v l ell C' ∧
+      appointment v k t → v ∈ H b → k < j →
+      sp.ts (u + 1) + 2 * sp.Δ ≤ t → t ≤ sp.ts (u + 1) + 2 * sp.Δ + D →
+      ∃ l m ell C' result, l ≤ m ∧ m < j ∧ tr.time m ≤ t ∧ (m < k ∨ l = k ∧ m = k + 1) ∧
+        sp.ts s₀ ≤ tr.time l ∧ SA.ToFGAt tr.projAC v l ell C' ∧
         tr.CallAt v m (.fg (.attest C' result)) ∧ Anc (tr.HonestBlocksAt H) P C' ∧
         ((tr.state (proposer x) j).fg.σ P.root).h ≤ ((tr.state v m).fg.σ C'.root).h)
     (hD : 0 ≤ D) (hR : 0 ≤ R) (hΔF : 0 < ΔF)
@@ -1531,7 +1571,8 @@ theorem warm_timeout_rows_of_report_window {g b D R : Time}
       ∀ (v : Fin sp.n) (l k : Nat) (C' : Blk sp),
       let y := proposer x
       let d := sp.ts (u + 1) + 2 * sp.Δ
-      d + D + R ≤ tr.time j → tr.time j ≤ b → v ∈ H b → l ≤ k → k < j → tr.time k ≤ d + D →
+      d + D + R ≤ tr.time j → tr.time j ≤ b → v ∈ H b → l ≤ k → k < j →
+      sp.ts s₀ ≤ tr.time l → tr.time k ≤ d + D →
       (∃ ell, SA.ToFGAt tr.projAC v l ell C') →
       (∃ result, tr.CallAt v k (.fg (.attest C' result))) →
       Anc (tr.HonestBlocksAt H) P C' →
@@ -1547,6 +1588,16 @@ theorem warm_timeout_rows_of_report_window {g b D R : Time}
     WarmTimeoutRows tr H U proposer g b D R := by
   sorry
 
+/-- A historical report in the active window extends the common `J` in
+kind J: selection extends the report's fork-choice root, and the logged
+frame is the held store's frame. Batch membership is not used. -/
+theorem historical_report_extends_frame_J {lo hi : Time} {floor : Nat} {kindJ : Prop}
+    {v l ell J C'} (hframe : FrameWindow tr H lo hi floor kindJ J) (hkind : kindJ)
+    (hv : v ∈ H (tr.time l)) (hlo : lo ≤ tr.time l) (hhi : tr.time l ≤ hi)
+    (hreport : SA.ToFGAt tr.projAC v l ell C') (hfr : ell.frame = Node.frame (tr.state v l)) :
+    (tr.state v l).fg.Anc J C' := by
+  sorry
+
 /-- The refuser's frame kind must be read at the actual attempt cut. When
 the floor is the justified height, transport the report's common `J` to
 that cut and reconstruct ancestry there from the held source. -/
@@ -1559,11 +1610,22 @@ theorem warm_low_floor_kind {b g D R : Time} {s₀ N floor u x i j l k : Nat}
     (hreach : Store.Reachable acp₀ (tr.state v k).fg)
     (hheld : C' ∈ (tr.state v k).fg.tree)
     (hfloor : floor ≤ ((tr.state v k).fg.σ C'.root).h)
-    (hroot : kindJ → (tr.state v l).fg.Anc (tr.state v l).fg.J C')
+    (hroot : kindJ → (tr.state v l).fg.Anc J C')
     (hlift : (tr.state v l).fg.Anc J C' → (tr.state v k).fg.Anc J C') :
     let h := ((tr.state v k).fg.σ C'.root).h
     h = HZ tr H g ∨ (tr.state v k).fg.hj < h ∨
       ((tr.state v k).fg.hj = h ∧ (tr.state v k).fg.Anc (tr.state v k).fg.J C') := by
+  sorry
+
+/-- Move the witness block and its immutable entry state from the earlier
+signature to the refusal cut. The old cache itself is not transported. -/
+theorem warm_lock_origin_at_refusal (hcut : CutObservations tr H) (hsrc : SourceFacts tr H)
+    {v m k h root a B} (hm : m < k) (hv : v ∈ H (tr.time k))
+    (ha : tr.SignAt v m a) (hfin : a.fin = some (h, root))
+    (hB : B ∈ (tr.state v m).fg.tree)
+    (hJ : ((tr.state v m).fg.σ B.root).hj = h ∧ ((tr.state v m).fg.σ B.root).J = root) :
+    B ∈ (tr.state v k).fg.tree ∧ (tr.state v k).fg.σ B.root = (tr.state v m).fg.σ B.root ∧
+      ((tr.state v k).fg.σ B.root).hj = h ∧ ((tr.state v k).fg.σ B.root).J = root := by
   sorry
 
 /-- Cut-level port of the low-floor lock argument. The historical justification
@@ -1583,7 +1645,8 @@ theorem warm_lock_free_or_entry {g T : Time} {v : Fin sp.n} {k h : Nat} {C E : B
     (hlockOrigin : ∀ root, (tr.state v k).record.lock h = some root →
       ∃ m < k, ∃ a B, tr.SignAt v m a ∧ a.fin = some (h, root) ∧ h < a.h ∧
         B ∈ (tr.state v m).fg.tree ∧ ((tr.state v m).fg.σ B.root).hj = h ∧
-        ((tr.state v m).fg.σ B.root).J = root)
+        ((tr.state v m).fg.σ B.root).J = root ∧ B ∈ (tr.state v k).fg.tree ∧
+        (tr.state v k).fg.σ B.root = (tr.state v m).fg.σ B.root)
     (hsafe : ∀ a a' : FG.Att sp.n, a.val ∈ H (tr.time k) →
       (∃ i ≤ k, ∃ B, B ∈ (tr.state v i).fg.tree ∧ a ∈ B.fgPayload) →
       (∃ i ≤ k, ∃ B, B ∈ (tr.state v i).fg.tree ∧ a' ∈ B.fgPayload) → ¬ FG.slashable a a') :
@@ -1748,10 +1811,21 @@ This is the window consumer interface; reset/high-origin facts must be ported to
 the policy trace rather than assuming a legacy run. -/
 theorem published_anchor_steps {g a b ΔF D R : Time} {c : Nat}
     {proposer : Nat → Fin sp.n} (U : Publication tr)
+    {appointment : Fin sp.n → Nat → Time → Prop}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     (hcut : CutObservations tr H) (hnc : Compose.NoCollRun dg tr)
     (hreset : IsReset tr H g a) (hbase : BaseService tr H g)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hsupply : PublishedRows (H := H) U g b D R)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hsupply : PublishedRows (H := H) U appointment g b D R)
+    (hcohort : ∀ {s₀ j : Nat} {P : Fin 4 → Blk sp} {C : Blk sp} (i : Fin 3),
+      (∀ l, HonestProposalRun tr H proposer (s₀ + ![0, c, 2 * c, 3 * c] l) (P l)) →
+      Healing.drainTime sp a ≤ sp.ts s₀ → sp.ts (s₀ + 3 * c) ≤ b →
+      let y := proposer (P i.succ).slot
+      tr.ProposesAt y j (P i.succ) → (P i.succ).parent = some C.root →
+      C ∈ (tr.state y j).fg.tree →
+      ((tr.state y j).fg.σ C.root).h ≤ ((tr.state y j).fg.σ (P i.castSucc).root).h →
+      let d := sp.ts ((P i.castSucc).slot + 1) + 2 * sp.Δ
+      gbar g ≤ d → d + D + R + ΔF ≤ tr.time j →
+      AppointmentCohort tr H appointment d (d + D) b)
     (hdelivery : ReleasedDelivery U H g ΔF b)
     (hawake : ∀ y t, gbar g ≤ t → t ≤ b → y ∈ H t → tr.awake y t)
     (hc : 2 ≤ c) (hspan : 3 * c ≤ sp.toParams.fg.δt) (hD : 0 ≤ D) (hR : 0 ≤ R)
@@ -1860,6 +1934,56 @@ theorem policy_carrier_cache_at_read
   sorry
 
 end CarrierStatements
+
+section ScopedWindowStatements
+
+open SA (Payload gbar)
+open Healing.Growing
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} {S : Setup}
+  {p : (n : Nat) → Time → Rules n}
+
+/-- Scope (b): one actual post-drain consuming edge. The quorum provides
+joined opportunities only in this window; source and row matching still go
+through `published_rows_of_appointments`. This is not a Healthy-final query. -/
+theorem policy_anchor_step_of_joined_window
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
+    (M : EngineProjection rho tr H U) (B : EventBoundaries rho hn M)
+    (cuts : ProjectedTickDutyBoundaries rho hn M B)
+    {g a D R ΔF : Time} {x j : Nat} {P Q C : Blk (S.params (Model.pubOf E) hn)}
+    {y : Fin (Fintype.card V)}
+    {dg : Digest (List (FG.Att (Fintype.card V))) (Payload (Fintype.card V))}
+    (hcut : CutObservations tr H) (hnc : Compose.NoCollRun dg tr)
+    (hreset : IsReset tr H g a) (hbase : BaseService tr H g)
+    (hcatch : CatchRun tr H g (2 * (S.params (Model.pubOf E) hn).Δ))
+    (hrows : PublishedRows (H := H) U (ProjectedAppointment rho hn M B cuts) g rho.horizon D R)
+    (hdelivery : ReleasedDelivery U H g ΔF rho.horizon)
+    (hD : 0 ≤ D) (hR : 0 ≤ R) (hΔF : 0 < ΔF)
+    (hx : P.slot + 2 ≤ x) (hslot : Q.slot = x)
+    (hP : P ∈ tr.HonestBlocksAt H)
+    (hdrain : Healing.drainTime (S.params (Model.pubOf E) hn) a ≤
+      (S.params (Model.pubOf E) hn).ts P.slot)
+    (hy : y ∈ H (tr.time j)) (hj : tr.time j ≤ rho.horizon)
+    (hq : tr.ProposesAt y j Q) (hp : Q.parent = some C.root)
+    (hC : C ∈ (tr.state y j).fg.tree)
+    (hPC : Anc (tr.HonestBlocksAt H) P C)
+    (hhigh : ∃ z k, z ∈ H (tr.time k) ∧ P ∈ (tr.state z k).fg.tree ∧
+      HZ tr H g + 2 ≤ ((tr.state z k).fg.σ P.root).h)
+    (hd : let sp := S.params (Model.pubOf E) hn
+      gbar g ≤ sp.ts (P.slot + 1) + 2 * sp.Δ)
+    (hroom : let sp := S.params (Model.pubOf E) hn
+      sp.ts (P.slot + 1) + 2 * sp.Δ + D + R + ΔF ≤ tr.time j)
+    (hready : let sp := S.params (Model.pubOf E) hn
+      ∀ t, sp.ts (P.slot + 1) + 2 * sp.Δ ≤ t → t ≤ tr.time j → tr.awake y t)
+    (hquorum : ((tr.state y j).fg.σ C.root).h ≤ ((tr.state y j).fg.σ P.root).h →
+      let sp := S.params (Model.pubOf E) hn
+      let d := sp.ts (P.slot + 1) + 2 * sp.Δ
+      JoinedWindowQuorum rho hn d (d + D) rho.horizon) :
+    Obligations.Growing.AnchorStepAt tr H P Q := by
+  sorry
+
+end ScopedWindowStatements
 
 section EndpointStatements
 
@@ -2142,12 +2266,10 @@ theorem healthy_final_appointments
     FinalAppointmentSupply S A window p B Q := by
   sorry
 
-/-- End-to-end assembly consumes the same concrete window premise whether
-it is derived by the Healthy adapter or remains an explicit scope condition. -/
+/-- Scope (a): the Healthy-final adapter supplies the appointment premise
+internally, not as an extra condition on the protocol headline. -/
 theorem final_live_of_policy
-    (hsched : PolicySchedule p B) (htiming : TimingRoom A window B)
-    (happointments : ∀ (V : Type) [Fintype V] [DecidableEq V]
-      (Q : PolicyFinalQuery S A window p B V), FinalAppointmentSupply S A window p B Q) :
+    (hsched : PolicySchedule p B) (htiming : TimingRoom A window B) :
     HealthyLiveSupply S A window p B .final := by
   sorry
 
@@ -2188,12 +2310,10 @@ theorem headline_with_excuses
       (fun r => r.2.StructuralValid) (fun r => r.2.BindingFailure) := by
   sorry
 
-/-- Headline assembly once the final coverage supplier has been checked at the
-chosen scope. This is not an unconditional coverage theorem. -/
+/-- Healthy-final headline target (scope (a)). The scope (b) conditional
+window theorem is separate and supplies no universal coverage premise here. -/
 theorem policy_correct_protocol
     (hsched : PolicySchedule p B) (htiming : TimingRoom A window B)
-    (happointments : ∀ (V : Type) [Fintype V] [DecidableEq V]
-      (Q : PolicyFinalQuery S A window p B V), FinalAppointmentSupply S A window p B Q)
     (V : Type) [Fintype V] [DecidableEq V] :
     CorrectProtocol (Model.sysOf schema (compiled (family S p)) V)
       (shapeProgress (family S p) V) (windowContract S A window B) ∧
