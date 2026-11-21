@@ -49,7 +49,8 @@ private theorem grows_step (y : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
       exact (grows_attempt _ _ _ _).trans (Grows.of_pool_eq (updateConfirmation_pool_eq _ _ _ _))
 
 /-- At an actual honest message cut in the admission window, even an immediate cast leaves
-either the delivered message or a distinct signed pair for its seat in the post-state. -/
+either the delivered vote or two distinct votes naming its validator in that slot's pool.
+This is a pool-membership result; it does not establish signature authenticity. -/
 theorem held_after_receipt (hr : ACLocalRun (instanceAC sp FGP) H U tr ini) (hy : y ∈ H)
     (hc : tr.CallAt y i ℓ) {v : Vote sp.n} (hm : ℓ.call = .message v)
     (lo : (sp.slot (tr.time i) : Int) - 1 ≤ v.slot) (hi : v.slot ≤ sp.slot (tr.time i)) :
