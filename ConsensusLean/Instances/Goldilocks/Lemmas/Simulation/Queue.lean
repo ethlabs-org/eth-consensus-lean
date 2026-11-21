@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ProvenanceGua
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.VoteMember
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventory
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 import ConsensusLean.Lemmas.Problem.Constant
 public import Mathlib.Tactic.IntervalCases
@@ -232,16 +233,9 @@ private theorem payload_vote {P : Wire sp.n binding → Prop} {B : Blk sp}
 private theorem inventory_att {P : Wire sp.n binding → Prop} {st : NodeState (goldilocksNode sp ro)}
     (h : Inventory P st) (a : FG.Att sp.n) (ha : P (attObj a)) :
     Inventory P (Node.onAttestation st a).1 := by
-  obtain ⟨hb, _, hats⟩ := Store.onAttestation_fields st.fg a
-  refine ⟨h.reachable.tail (Or.inr ⟨a, rfl⟩), ?_, h.votes, ?_⟩
-  · intro B hB
-    exact h.blocks B (by
-      change (st.fg.onAttestation a).blocks B.root = some B at hB
-      rwa [hb] at hB)
-  · intro b hb
-    rcases hats b hb with hb | rfl
-    · exact h.atts b hb
-    · exact ha
+  have hfg := NodeAsChainShape.inventory_att (wireCodec sp ro binding) attObj
+    ⟨h.reachable, h.blocks, h.atts⟩ a ha
+  exact ⟨hfg.reachable, hfg.blocks, h.votes, hfg.atts⟩
 
 private theorem inventory_accept {P : Wire sp.n binding → Prop} {st : NodeState
     (goldilocksNode sp ro)}
@@ -249,17 +243,12 @@ private theorem inventory_accept {P : Wire sp.n binding → Prop} {st : NodeStat
     (hacc : st.fg.onBlock B = some fg')
     (hB : ∀ o ∈ payloadObjs B.fgPayload B.acPayload, P o) :
     Inventory P { st with fg := fg' } := by
-  obtain ⟨_, _, _, _, _, _, hblocks, _, hatts⟩ := Store.onBlock_fields hacc
-  refine ⟨h.reachable.tail (Or.inl ⟨B, hacc⟩), ?_, h.votes, ?_⟩
-  · intro C hC
-    rw [(Store.tree_grows sp.toParams (Payload sp.n) ([], []) st.fg h.reachable).1 B fg' hacc] at hC
-    rcases hC with rfl | hC
-    · exact hB
-    · exact h.blocks C hC
-  · intro a ha
-    rcases hatts a ha with ha | ha
-    · exact h.atts a ha
-    · exact hB _ (List.mem_append_left _ (List.mem_map.mpr ⟨a, ha, rfl⟩))
+  have hatt : ∀ a ∈ B.fgPayload,
+      attObj a ∈ payloadObjs (binding := binding) B.fgPayload B.acPayload :=
+    fun a ha => List.mem_append_left _ (List.mem_map.mpr ⟨a, ha, rfl⟩)
+  have hfg := NodeAsChainShape.inventory_accept (wireCodec sp ro binding) attObj
+    ⟨h.reachable, h.blocks, h.atts⟩ hacc hB hatt
+  exact ⟨hfg.reachable, hfg.blocks, h.votes, hfg.atts⟩
 
 private theorem inventory_call {P : Wire sp.n binding → Prop} {st : NodeState
     (goldilocksNode sp ro)}
@@ -690,23 +679,15 @@ private theorem release_inventory (k : Fin (Fintype.card V))
         rho.hash k nd cs).1))
       (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
         rho.hash k nd cs).1).node := by
-  induction cs generalizing nd with
-  | nil => exact h
-  | cons c cs ih =>
-    unfold Model.releaseAll
-    split
-    · apply ih
-      · apply record_inventory (nd.seen ++ [c]) (shapeOf S hn nd) _ c
-        · apply inventory_mono h
-          intro o ho
-          exact available_mono (parts_append _ _)
-            (fun _ h => h) ho
-        · intro key s hd os he atts p hi x hx
-          apply List.mem_flatMap.mpr
-          exact ⟨c, List.mem_append_right _ (List.mem_singleton_self _),
-            hp c List.mem_cons_self key s hd os he atts p hi x hx⟩
-      · exact fun o ho => hp o (List.mem_cons_of_mem _ ho)
-    · exact ih nd h (fun o ho => hp o (List.mem_cons_of_mem _ ho))
+  refine NodeAsChainShape.CanonicalTrace.release_inventory rho k nd cs
+    (Inv := fun n => Inventory (Available n.seen (shapeOf S hn n)) (shapeOf S hn n).node)
+    (Admissible := PayloadCarried) ?_ h hp
+  intro n c hi hc
+  apply record_inventory (n.seen ++ [c]) (shapeOf S hn n) _ c
+  · exact inventory_mono hi (fun _ => available_mono (parts_append _ _) (fun _ h => h))
+  · intro key s hd os he atts p hi x hx
+    exact List.mem_flatMap.mpr ⟨c, List.mem_append_right _ (List.mem_singleton_self _),
+      hc key s hd os he atts p hi x hx⟩
 
 omit [DecidableEq V] in
 include hn in
@@ -789,107 +770,58 @@ private theorem prefix_inventory (hv : rho.ExecutionValid)
     ∀ p, p ≤ ds.length →
       let out := (rho.runDuties v nd (ds.take p)).1
       Inventory (Available out.seen (shapeOf S hn out)) (shapeOf S hn out).node := by
-  intro p
-  induction p with
-  | zero => exact fun _ => h
-  | succ p ih =>
-    intro hp
-    have hlt : p < ds.length := by omega
-    have hi := ih (Nat.le_of_lt hlt)
-    have hd := List.getElem?_eq_getElem hlt
-    rw [List.take_add_one, hd]
-    simp only [Option.toList_some]
-    rw [runDuties_fst_append, runDuties_fst_cons, runDuties_fst_nil]
-    cases he : ds[p] with
-    | act s k =>
-      rw [dutyStep_act S rho v _ s k]
-      exact hi
-    | propose s hs => exact proposal_duty_inventory S rho hn v _ s hs hi
-    | pollPropose k => exact tick_duty_inventory S rho hn v _ k hi
-    | poll k =>
-      exact poll_duty_inventory S rho hn hv (hcut p (Nat.le_of_lt hlt))
-        (hsched p k (hd.trans (congrArg some he))) hi
+  refine NodeAsChainShape.CanonicalTrace.prefix_inventory rho nd ds (EngineDutyCut S rho v i)
+    (Inv := fun n => Inventory (Available n.seen (shapeOf S hn n)) (shapeOf S hn n).node)
+    hcut ?_ h
+  intro j n d hcut hd hi
+  cases d with
+  | act s k => rw [dutyStep_act S rho v _ s k]; exact hi
+  | propose s hs => exact proposal_duty_inventory S rho hn v _ s hs hi
+  | pollPropose k => exact tick_duty_inventory S rho hn v _ k hi
+  | poll k => exact poll_duty_inventory S rho hn hv hcut (hsched j k hd) hi
 
 private theorem event_inventory (hv : rho.ExecutionValid)
     (v : V) :
     ∀ i, Inventory (Available (rho.stateBefore i v).seen (stateAt S rho hn v i))
       (stateAt S rho hn v i).node := by
-  intro i
-  induction i with
-  | zero => rw [stateAt_zero]; exact inventory_init _ _ _
-  | succ i ih =>
-    rw [stateAt_eq] at ih ⊢
-    change Inventory (Available (rho.stateBefore i v).seen (shapeOf S hn (rho.stateBefore i v)))
-      (shapeOf S hn (rho.stateBefore i v)).node at ih
-    have hg : ∀ nd t, Inventory (Available nd.seen (shapeOf S hn nd))
-        (shapeOf S hn nd).node →
-        Inventory (Available (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
-          rho.hash (rho.ownKey v) nd (Model.gossipCandidates _ nd.st t)).1.seen
-          (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
-            rho.hash (rho.ownKey v) nd (Model.gossipCandidates _ nd.st t)).1))
-          (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
-            rho.hash (rho.ownKey v) nd (Model.gossipCandidates _ nd.st t)).1).node := by
-      intro nd t h
-      apply release_inventory S rho hn _ nd _ h
-      intro o ho
-      obtain ⟨mc, _, rfl⟩ := Model.mem_gossipCandidates.mp ho
-      intro key s hd cs he
-      cases he
-    cases he : rho.events[i]? with
-    | none =>
-      have heq : rho.stateBefore (i + 1) = rho.stateBefore i := by
-        simp only [Model.Run.stateBefore, List.take_add_one, he, Option.toList_none,
-          List.append_nil]
-      simpa only [stateAt_eq, heq] using ih
-    | some e =>
-      change Inventory (Available (rho.stateBefore (i + 1) v).seen
-        (shapeOf S hn (rho.stateBefore (i + 1) v)))
-        (shapeOf S hn (rho.stateBefore (i + 1) v)).node
-      rw [rho.stateBefore_succ he]
-      cases e with
-      | tick u t =>
-        by_cases hu : v = u
-        · subst u
-          simp only [Model.Run.step, Function.update_self, Model.Run.tick]
-          split
-          · rename_i hw
-            apply hg
-            have hi := prefix_inventory S rho hn hv i
-              ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
-                (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
-              (fun p hp => .tick he hw hp)
-              (fun p k hk => Or.inl ⟨t, he, hw, hk⟩) ih _ (Nat.le_refl _)
-            simpa only [List.take_length] using hi
-          · exact ih
-        · simpa only [Model.Run.step, Function.update_of_ne hu] using ih
-      | deliver u o t =>
-        by_cases hu : v = u
-        · subst u
-          simp only [Model.Run.step, Function.update_self, Model.Run.deliver]
-          apply hg
-          have hp : Inventory (Available ((rho.stateBefore i v).seen ++ [o])
-              (process (stateAt S rho hn v i) o (Model.digests rho.hash o)))
-              (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node := by
-            rw [stateAt_eq]
-            apply process_inventory
-            · exact inventory_mono ih (fun _ => available_mono (parts_append _ _) (fun _ h => h))
-            · intro x hx
-              exact List.mem_flatMap.mpr
-                ⟨o, List.mem_append_right _ (List.mem_singleton_self _), hx⟩
-          rw [stateAt_eq] at hp
-          have hi := prefix_inventory S rho hn hv i
-            ⟨(Model.protoOf (compiled (goldilocks S)) E).process (rho.stateBefore i v).st o
-              (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩ _
-            (fun p hp => .deliver he hp)
-            (fun p k hk => Or.inr ⟨t, o, he, hk⟩) hp _ (Nat.le_refl _)
-          simpa only [List.take_length] using hi
-        · simpa only [Model.Run.step, Function.update_of_ne hu] using ih
-      | restart u t =>
-        by_cases hu : v = u
-        · subst u
-          simp only [Model.Run.step, Function.update_self]
-          exact restore_inventory _ _ _ _ ih
-        · simpa only [Model.Run.step, Function.update_of_ne hu] using ih
+  simp only [stateAt_eq]
+  refine NodeAsChainShape.CanonicalTrace.event_inventory rho v hv
+    (Inv := fun n => Inventory (Available n.seen (shapeOf S hn n)) (shapeOf S hn n).node)
+    (Admissible := PayloadCarried) (inventory_init _ _ _) ?_ ?_ ?_ ?_ ?_ ?_
+  · intro nd t _ hi
+    rw [NodeAsChainShape.CanonicalTrace.afterClock_eq]
+    exact hi
+  · intro nd o hi
+    apply process_inventory
+    · exact inventory_mono hi (fun _ => available_mono (parts_append _ _) (fun _ h => h))
+    · intro x hx
+      exact List.mem_flatMap.mpr ⟨o, List.mem_append_right _ (List.mem_singleton_self _), hx⟩
+  · intro nd t _ hi
+    exact restore_inventory _ _ _ _ hi
+  · intro nd c hi hc
+    apply record_inventory (nd.seen ++ [c]) (shapeOf S hn nd) _ c
+    · exact inventory_mono hi (fun _ => available_mono (parts_append _ _) (fun _ h => h))
+    · intro key s hd os he atts p hi x hx
+      exact List.mem_flatMap.mpr ⟨c, List.mem_append_right _ (List.mem_singleton_self _),
+        hc key s hd os he atts p hi x hx⟩
+  · intro nd t o ho
+    obtain ⟨mc, _, rfl⟩ := Model.mem_gossipCandidates.mp ho
+    intro key s hd cs he
+    cases he
+  · intro i j nd ds d hp hd hi
+    cases d with
+    | act s k => rw [dutyStep_act S rho v _ s k]; exact hi
+    | propose s hs => exact proposal_duty_inventory S rho hn v _ s hs hi
+    | pollPropose k => exact tick_duty_inventory S rho hn v _ k hi
+    | poll k =>
+      cases hp with
+      | tick he hw =>
+        rw [NodeAsChainShape.CanonicalTrace.afterClock_eq] at hi ⊢
+        exact poll_duty_inventory S rho hn hv (.tick he hw (List.getElem?_eq_some_iff.mp hd).1.le)
+          (Or.inl ⟨_, he, hw, hd⟩) hi
+      | deliver he =>
+        exact poll_duty_inventory S rho hn hv (.deliver he (List.getElem?_eq_some_iff.mp hd).1.le)
+          (Or.inr ⟨_, _, he, hd⟩) hi
 
 /-- At a tick duty prefix, every pooled vote is already held or pending in the
 ordinary outbox. This retains the actual prefix state needed by release guards. -/

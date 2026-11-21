@@ -27,7 +27,8 @@ private theorem cast_clock {s q : ChainShape (pubOf E) O.Id I} (h : s = q)
   cases h
   rfl
 
-private theorem envelope_clock (rho : Model.Run (compiled F) E)
+/-- Clock the envelope with the engine's tick time. -/
+theorem envelope_clock (rho : Model.Run (compiled F) E)
     (nd : Model.Node (Model.protoOf (compiled F) E)) (v : V) (t : Time) :
     envelope e (afterClock rho nd v t) = (e.ops hn).clock (envelope e nd) t := by
   rw [afterClock_eq, envelope_eq, envelope_eq]
@@ -44,7 +45,8 @@ private theorem cast_recordOwn {s q : ChainShape (pubOf E) O.Id I} (h : s = q)
   cases h
   rfl
 
-private theorem envelope_recordOwn (nd : Model.Node (Model.protoOf (compiled F) E))
+/-- Reading the envelope after a release applies the instance's own-object handler. -/
+theorem envelope_recordOwn (nd : Model.Node (Model.protoOf (compiled F) E))
     (o : (Model.protoOf (compiled F) E).Object) (hs : List (Header I × Nat)) :
     envelope e ⟨(Model.protoOf (compiled F) E).recordOwn nd.st o hs, nd.seen ++ [o]⟩ =
       (e.ops hn).recordOwn (envelope e nd) (wireOf e o) hs := by
@@ -62,7 +64,8 @@ private theorem cast_act {s q : ChainShape (pubOf E) O.Id I} (h : s = q)
   cases h
   rfl
 
-private theorem envelope_act (nd : Model.Node (Model.protoOf (compiled F) E))
+/-- Transport the engine's post-act state to its local shape operation. -/
+theorem envelope_act (nd : Model.Node (Model.protoOf (compiled F) E))
     (d : ShapeDuty e.skel.Kind) :
     envelope e ⟨(Model.protoOf (compiled F) E).act nd.st (engineDuty e d) |>.1,
       nd.seen⟩ =
@@ -84,7 +87,8 @@ private theorem cast_role {s q : ChainShape (pubOf E) O.Id I} (h : s = q)
   cases h
   rfl
 
-private theorem role_engineDuty (d : ShapeDuty e.skel.Kind) :
+/-- The duty role is transported along with the duty. -/
+theorem role_engineDuty (d : ShapeDuty e.skel.Kind) :
     (Model.protoOf (compiled F) E).role (engineDuty e d) = engineRole e (e.skel.role d) := by
   rw [engineDuty_eq, engineRole_eq]
   exact cast_role e.shape_eq d
@@ -448,7 +452,8 @@ private theorem cast_process {s q : ChainShape (pubOf E) O.Id I} (h : s = q)
   cases h
   rfl
 
-private theorem envelope_process (nd : Model.Node (Model.protoOf (compiled F) E))
+/-- Transport the processed delivery to the instance envelope. -/
+theorem envelope_process (nd : Model.Node (Model.protoOf (compiled F) E))
     (o : (Model.protoOf (compiled F) E).Object) (hs : List (Header I × Nat)) :
     envelope e ⟨(Model.protoOf (compiled F) E).process nd.st o hs, nd.seen ++ [o]⟩ =
       (e.ops hn).process (envelope e nd) (wireOf e o) hs := by
@@ -544,7 +549,8 @@ private theorem duties_pres (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
       hd' (hd ha (fun t he => h t (he ▸ List.mem_cons_self)))
         (fun t hm => h t (List.mem_cons_of_mem d hm))⟩
 
-private theorem runDuties_append (rho : Model.Run (compiled F) E) (v : V)
+/-- The state after a concatenated duty list is the state after its two successive folds. -/
+theorem runDuties_append (rho : Model.Run (compiled F) E) (v : V)
     (nd : Model.Node (Model.protoOf (compiled F) E))
     (ds es : List (Model.protoOf (compiled F) E).Duty) :
     (rho.runDuties v nd (ds ++ es)).1 = (rho.runDuties v (rho.runDuties v nd ds).1 es).1 := by
@@ -639,22 +645,40 @@ private theorem cast_restore {s q : ChainShape (pubOf E) O.Id I} (h : s = q)
   cases h
   rfl
 
-private theorem cut_envelope [DecidableEq V] (rho : Model.Run (compiled F) E) (v : V) (i : Nat) :
+/-- The initial envelope uses the engine's actual role selections. -/
+theorem envelope_init (rho : Model.Run (compiled F) E) (v : V) :
+    envelope e (rho.initWorld v) =
+      (e.ops hn).init (rho.ownKey v)
+        (fun r => decide (rho.ownKey v ∈ rho.sel (engineRole e r))) := by
+  rw [envelope_eq]
+  change (cast (congrArg (fun x : ChainShape (pubOf E) O.Id I => x.State) e.shape_eq)
+    ((F (pubOf E)).init (rho.ownKey v) _)) hn = _
+  simp only [cast_init e.shape_eq, engineRole_eq]
+  rfl
+
+/-- Restoring an engine node restores its instance envelope. -/
+theorem envelope_restore (nd : Model.Node (Model.protoOf (compiled F) E))
+    (k : Fin (Fintype.card V)) (t : Time) :
+    envelope e ⟨(Model.protoOf (compiled F) E).restore k
+      ((Model.protoOf (compiled F) E).durable nd.st) t, nd.seen⟩ =
+      (e.ops hn).restore k (envelope e nd) t := by
+  rw [envelope_eq, envelope_eq]
+  exact congrArg (fun f : ∀ h, e.State h => f hn) (cast_restore e.shape_eq k nd.st.1 t)
+
+/-- The state at a cut reads its engine envelope. -/
+theorem cut_envelope [DecidableEq V] (rho : Model.Run (compiled F) E) (v : V) (i : Nat) :
     stateAt e rho v i = envelope e (rho.stateBefore i v) :=
   (stateAt_eq e rho v i).trans (envelope_eq e _).symm
 
-private theorem cut_obs [DecidableEq V] (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
+/-- Key and due-flag alignment at cuts, independent of proposal readiness. -/
+theorem cut_obs [DecidableEq V] (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
     (v : V) (i : Nat) :
     e.adapter.self (stateAt e rho v i) = rho.ownKey v ∧ due (stateAt e rho v i) = false := by
   rw [cut_envelope]
   induction i with
   | zero =>
-    rw [envelope_eq]
-    change e.adapter.self ((cast (congrArg (fun x : ChainShape (pubOf E) O.Id I => x.State)
-      e.shape_eq) ((F (pubOf E)).init (rho.ownKey v) _)) hn) = _ ∧
-        due ((cast (congrArg (fun x : ChainShape (pubOf E) O.Id I => x.State)
-          e.shape_eq) ((F (pubOf E)).init (rho.ownKey v) _)) hn) = false
-    rw [cast_init e.shape_eq]
+    change e.adapter.self (envelope e (rho.initWorld v)) = rho.ownKey v ∧ _
+    rw [show rho.stateBefore 0 v = rho.initWorld v from rfl, envelope_init]
     exact L.init_obs _ _
   | succ i ih =>
     cases he : rho.events[i]? with
@@ -685,13 +709,7 @@ private theorem cut_obs [DecidableEq V] (L : e.OpLaws due) (rho : Model.Run (com
       | restart u t =>
         by_cases h : u = v
         · subst u
-          simp only [Model.Run.step, Function.update_self, envelope_eq]
-          let r := (cast (congrArg (fun x : ChainShape (pubOf E) O.Id I => x.State)
-            e.shape_eq) ((F (pubOf E)).restore (rho.ownKey v)
-              ((F (pubOf E)).durable (rho.stateBefore i v).st.1) t)) hn
-          change e.adapter.self r = rho.ownKey v ∧ due r = false
-          dsimp only [r]
-          rw [cast_restore e.shape_eq]
+          simp only [Model.Run.step, Function.update_self, envelope_restore]
           exact ⟨(restore_obs L _ _ _).2.1, (restore_obs L _ _ _).2.2.2⟩
         · simpa only [Model.Run.step, Function.update_of_ne (Ne.symm h)] using ih
 
