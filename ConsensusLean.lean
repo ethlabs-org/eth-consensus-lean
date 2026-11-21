@@ -819,6 +819,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingInv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingWrappers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLaws
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeStateAgreement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PayloadSource
