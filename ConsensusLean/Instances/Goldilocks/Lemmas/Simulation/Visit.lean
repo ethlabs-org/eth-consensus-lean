@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.AsChainShape
 public import ConsensusLean.Lemmas.Model.Objects
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
 
 public section
 
@@ -67,43 +68,32 @@ theorem visitList_cons (st : State sp ro binding) (c : Wire sp.n binding)
   rw [visitList_cons_eq]
 
 mutual
-/-- Processing the visited objects in order reaches the visit's state, and every visited
-object belongs to the received object's recursive closure. -/
+/-- Processing the visited objects in order reaches the visit's state. -/
 private theorem visit_spec : ∀ (st : State sp ro binding) (o : Wire sp.n binding),
-    (visit hs st o).1.foldl (processOne hs) st = (visit hs st o).2 ∧ (visit hs st o).1 ⊆ o.parts
+    (visit hs st o).1.foldl (processOne hs) st = (visit hs st o).2
   | st, .mk a m cs => by
     rcases visit_cases hs st (.mk a m cs) with ⟨-, h⟩ | ⟨-, h⟩ <;> rw [h]
-    · exact ⟨rfl, fun y hy => by rw [List.mem_singleton.mp hy]; exact Model.Obj.Contains.refl _⟩
-    · obtain ⟨h1, h2⟩ := visitList_spec (processOne hs st (.mk a m cs)) cs
-      refine ⟨h1, List.cons_subset.mpr ⟨Model.Obj.Contains.refl _, fun x hx => ?_⟩⟩
-      rw [Model.Obj.parts_eq]
-      exact List.mem_cons_of_mem _
-        (by simpa [Model.Obj.partsList_eq, Model.Obj.carried] using h2 hx)
+    · rfl
+    · exact visitList_spec (processOne hs st (.mk a m cs)) cs
 /-- `visit_spec` of a list. -/
 private theorem visitList_spec : ∀ (st : State sp ro binding) (cs : List (Wire sp.n binding)),
-    (visitList hs st cs).1.foldl (processOne hs) st = (visitList hs st cs).2 ∧
-      (visitList hs st cs).1 ⊆ Model.Obj.parts.partsList cs
-  | st, [] => by simp [visitList_nil_eq, Model.Obj.parts.partsList]
+    (visitList hs st cs).1.foldl (processOne hs) st = (visitList hs st cs).2
+  | st, [] => by rw [visitList_nil_eq]; rfl
   | st, c :: cs => by
-    rw [visitList_cons]
-    obtain ⟨h1, h2⟩ := visit_spec st c
-    obtain ⟨h3, h4⟩ := visitList_spec (visit hs st c).2 cs
-    refine ⟨by rw [List.foldl_append, h1, h3], fun y hy => ?_⟩
-    simp only [Model.Obj.parts.partsList, List.mem_append]
-    rcases List.mem_append.mp hy with hy | hy
-    exacts [Or.inl (h2 hy), Or.inr (h4 hy)]
+    rw [visitList_cons, List.foldl_append, visit_spec, visitList_spec]
 end
 
 /-- A delivery processes its delivered objects in order (`process`): their fold reaches
 `visit`'s state. -/
 theorem process_eq_visit (st : State sp ro binding) (o : Wire sp.n binding) :
     process st o hs = (visit hs st o).2 :=
-  (visit_spec hs st o).1
+  visit_spec hs st o
 
 /-- A delivered object belongs to the received object's recursive closure. -/
 theorem mem_delivered {st : State sp ro binding} {o x : Wire sp.n binding}
     (h : x ∈ delivered hs st o) : x ∈ o.parts :=
-  (visit_spec hs st o).2 h
+  NodeAsChainShape.CanonicalTrace.contains_of_mem_delivered
+    (wireCodec sp ro binding) (nodeAdapter sp ro binding) hs h
 
 /-- The received object itself is delivered. -/
 theorem mem_delivered_self (st : State sp ro binding) (o : Wire sp.n binding) :
@@ -216,7 +206,7 @@ private theorem visitList_closed : ∀ (st : State sp ro binding) (cs : List (Wi
   | st, c :: cs => by
     rw [visitList_cons]
     obtain ⟨hcl, hsub⟩ := visitList_closed (visit hs st c).2 cs
-    refine ⟨closed_append hs (visit_closed st c) (by rw [(visit_spec hs st c).1]; exact hcl), ?_⟩
+    refine ⟨closed_append hs (visit_closed st c) (by rw [visit_spec hs st c]; exact hcl), ?_⟩
     exact List.cons_subset.mpr ⟨List.mem_append_left _ (mem_delivered_self hs st c),
       List.Subset.trans hsub (List.subset_append_right _ _)⟩
 end

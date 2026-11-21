@@ -3,6 +3,26 @@ public import ConsensusLean.Lemmas.Model.Candidates
 
 public section
 
+namespace Consensus.Model
+
+/-- Release preserves a node invariant if recording a candidate preserves it. -/
+theorem releaseAll_pres_node {pub : Public} {Out : Type} {P : Protocol pub Out}
+    (hash : P.Item → Nat) (k : Key pub) (Inv : Node P → Prop)
+    (nd : Node P) (cs : List P.Object)
+    (record : ∀ n c, c ∈ cs → Inv n →
+      Inv ⟨P.recordOwn n.st c (digests hash c), n.seen ++ [c]⟩)
+    (h : Inv nd) : Inv (releaseAll P hash k nd cs).1 := by
+  induction cs generalizing nd with
+  | nil => exact h
+  | cons c cs ih =>
+    rw [releaseAll]
+    have tail := fun n o ho => record n o (List.mem_cons_of_mem c ho)
+    split
+    · exact ih _ tail (record nd c List.mem_cons_self h)
+    · exact ih nd tail h
+
+end Consensus.Model
+
 namespace Consensus.Model.Run
 
 variable {V : Type} [Fintype V] {O : OutputSchema} {F : ProtocolFamily O} {E : Env V}

@@ -61,33 +61,6 @@ noncomputable def deliverState (proposer : Nat → Fin sp.n)
       | some e => deliverState proposer dg hs self t os (exec proposer dg self st t e).1
       | none => deliverState proposer dg hs self t os st
 
-/-- `deliverState` of no objects is the state. -/
-theorem deliverState_nil (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time)
-    (st : NodeState (goldilocksNode sp ro)) :
-    deliverState (binding := binding) proposer dg hs self t [] st = st := by
-  simp only [deliverState]
-
-/-- `deliverState` of a canonical object runs its handler first. -/
-theorem deliverState_cons_some (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (o : Wire sp.n binding)
-    (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro))
-    (e : Event (goldilocksNode sp ro)) (he : canonEvent sp ro hs o = some e) :
-    deliverState proposer dg hs self t (o :: os) st =
-      deliverState proposer dg hs self t os (exec proposer dg self st t e).1 := by
-  simp only [deliverState, he]
-
-/-- `deliverState` skips a dropped object. -/
-theorem deliverState_cons_none (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (o : Wire sp.n binding)
-    (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro))
-    (he : canonEvent sp ro hs o = none) :
-    deliverState proposer dg hs self t (o :: os) st = deliverState proposer dg hs self t os st := by
-  simp only [deliverState, he]
-
 /-- The canonical event of a wire object, if any, is a block, a message or an attestation. -/
 theorem canonEvent_cases hs (o : Wire sp.n binding) :
     canonEvent sp ro hs o = none ∨ (∃ B, canonEvent sp ro hs o = some (.block B)) ∨
@@ -144,16 +117,6 @@ theorem node_of_deliver (hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.faul
   rw [process_eq (stateAt S rho hn v i) o (Model.digests rho.hash o)]
   refine (foldl_processOne_node (runProposer S rho hn) (digestOf S rho) _ _ _).trans ?_
   rw [self_eq_ownKey, now_eq_lastClock S rho hn hv, lastClock_of_deliver S rho hv v he]
-
-/-- **`SimulatesAt.restart`'s node step.** An engine restart of an honest node runs the node's
-restart on the node state before it. -/
-theorem node_of_restart (_hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.faultyAt 0) (i : Nat)
-    (t : Time) (he : rho.events[i]? = some (.restart v t)) :
-    (stateAt S rho hn v (i + 1)).node =
-      (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-        (stateAt S rho hn v i).node t .restart).1 := by
-  rw [stateAt_restart S rho hn v he]
-  rfl
 
 /-! ## The digests of an own object -/
 
@@ -433,12 +396,6 @@ theorem nodeTick_node_public (st : State sp ro binding) (h : sp.toParams.IsPubli
   rw [ite_eq_left h]
   rfl
 
-/-- The node's tick at a non-public time keeps the node state. -/
-theorem nodeTick_node_other (st : State sp ro binding) (h : ¬ sp.toParams.IsPublic st.now) :
-    (nodeTick st).node = st.node := by
-  rw [nodeTick_eq]
-  rw [ite_eq_right h]
-
 /-- The shape's FG update is the node's `tickStep .fgUpdate`, for any digests and mempool: neither
 reads them. -/
 theorem fgUpdate_node (proposer : Nat → Fin sp.n)
@@ -661,35 +618,6 @@ theorem tick_node_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (goldiloc
   rw [tick_of_awake S rho v nd t hw, gossip_node_eq, duties_eq S t ht, runDuties_fst_append, hpoll,
     hinit, hpoll]
   rfl
-
-/-- **`SimulatesAt.tick_other`'s node step.** An engine tick at a non-public time
-leaves the node state unchanged: no slot starts, so no proposal, and the FG update is not due. -/
-theorem node_of_tick_other (hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.faultyAt 0)
-    (i : Nat)
-    (t : Time) (he : rho.events[i]? = some (.tick v t))
-    (hp : ¬ (S.params (pubOf E) hn).toParams.IsPublic t) :
-    (stateAt S rho hn v (i + 1)).node = (stateAt S rho hn v i).node := by
-  have hw := hv.tick_awake v t (List.mem_of_getElem? he)
-  have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
-  have hsel := poll_selected S rho hv v
-  rw [stateAt_tick S rho hn v he, tick_node_eq S rho hn v _ t ht hw hsel]
-  rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.vote) t with
-    ⟨hnil, _⟩ | ⟨s, hs, _, hts⟩
-  · rw [hnil]
-    erw [runDuties_fst_nil]
-    have hf : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).fgDue = false := by
-      rw [atProposal_shape _ _ _ _ _ _ hsel]
-      rw [nodeTick_eq]
-      rw [ite_eq_right (by rw [poll_now, poll_now]; exact hp)]
-      exact poll_fgDue _ _
-    rw [poll_node_of_fgDue _ _ (poll_fgDue _ _), poll_node_of_fgDue _ _ hf,
-      atProposal_node S rho hn v _ t
-        (by simpa only [stateAt_eq] using fgDue_eq_false S rho hn v i) hsel,
-      nodeTick_node_other _ hp, stateAt_eq]
-  · exfalso
-    apply hp
-    rw [hts, ← slotTime_eq S hn s]
-    exact (S.params (pubOf E) hn).toParams.slotTime_public s
 
 /-- The node's `onTick` is its three tick steps in order: the AC's tick, the proposal, the FG
 update. -/

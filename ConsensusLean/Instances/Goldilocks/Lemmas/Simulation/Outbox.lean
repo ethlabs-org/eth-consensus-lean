@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.CommitteeSelection
-import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventorySchedule
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventorySchedule
 public import Mathlib.Tactic.LinearCombination
 
 public section
@@ -972,6 +972,11 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 def LastRestart (v : V) (i : Nat) : Prop :=
   NodeAsChainShape.CanonicalTrace.LastRestart rho v i
 
+omit [DecidableEq V] in
+/-- The concrete restart predicate is the compiled schedule predicate. -/
+theorem lastRestart_eq (v : V) (i : Nat) :
+    LastRestart S rho v i = NodeAsChainShape.CanonicalTrace.LastRestart rho v i := by rfl
+
 /-- A delivery never directly follows a restart of its node: the node's tick at the restart's time
 comes in between. -/
 theorem not_lastRestart_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
@@ -993,7 +998,7 @@ theorem outbox_inv (hv : rho.ExecutionValid) (v : V) :
     obtain ⟨ih₁, ih₂⟩ := outbox_inv hv v i
     have hext : LastRestart S rho v i → (∀ e, rho.events[i]? = some e → e.node ≠ v) →
         LastRestart S rho v (i + 1) := by
-      simp only [LastRestart, NodeAsChainShape.CanonicalTrace.lastRestart_iff]
+      simp only [lastRestart_eq, NodeAsChainShape.CanonicalTrace.lastRestart_iff]
       rintro ⟨r, hri, t, hr, hno⟩ hi
       refine ⟨r, by omega, t, hr, fun l h1 h2 e he => ?_⟩
       rcases Nat.lt_succ_iff_lt_or_eq.mp h2 with h2 | rfl
@@ -1075,7 +1080,7 @@ theorem outbox_inv (hv : rho.ExecutionValid) (v : V) :
             simp only [nodeAdapter, h0]
             simp [emitted]
           refine ⟨by unfold AtMostOneVote; rw [hout]; exact ih₁, Or.inl ?_⟩
-          rw [LastRestart, NodeAsChainShape.CanonicalTrace.lastRestart_iff]
+          rw [lastRestart_eq, NodeAsChainShape.CanonicalTrace.lastRestart_iff]
           exact ⟨i, by omega, t, he, fun l h1 h2 => absurd h2 (by omega)⟩
       · rw [state_of_other S rho hn v i e he hne]
         exact ⟨ih₁, ih₂.imp_left fun h => hext h fun e' he' => by
