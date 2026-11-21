@@ -61,6 +61,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Update
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.StopCore
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.TimeShiftedFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.TimeShiftedJoined
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.TimeShiftedPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.TimeShiftedQuorum
