@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunBlocks
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.GoldilocksStateAgreement
 
 public section
 
@@ -7,10 +8,8 @@ public section
 
 The engine/trace correspondence steps shared by the constant-fault rows of
 `Simulation/RunSimulates` and the growing-fault rows of
-`Growing/Simulation/{State,Events,PublishedBlocks}`. Only the honesty of the node at its events
-(`hv0`), its public ticks (`htick`), the agreement of the engine node's state with the trace's
-state before an event (`hstate`) and the releases of a public tick (`hrel`) depend on the fault
-model; each supplies them.
+`Growing/Simulation/{State,Events,PublishedBlocks}`. State agreement uses the same encoded replay
+for both, and the group and release lemmas consume agreement or release facts at the actual event.
 
 * `simTrace_state_of`: the engine node's state is the trace's state at every mapped cut;
 * `tick_public_group_of_state`, `restart_group_of_state`, `deliver_seq_of_state`: a public tick
@@ -28,9 +27,9 @@ open Consensus.Model (pubOf)
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- **The engine node's state is the trace's state at every mapped cut** (by induction on the
-events), given that `v` is honest at `0` at each of its events (`hv0`) and that each public tick
-of `v` runs the node's tick with the engine's input (`htick`). -/
+set_option linter.unusedVariables false in
+/-- **The engine node's state is the trace's state at every mapped cut.** The concrete interface
+retains the event-local premises; the encoded-node replay now derives agreement from validity. -/
 theorem simTrace_state_of (hv : rho.ExecutionValid) {v : V}
     (hv0 : ∀ {i : Nat} {ev}, rho.events[i]? = some ev → ev.node = v → v ∉ rho.faultyAt 0)
     (htick : ∀ {i : Nat} {t : Time}, rho.events[i]? = some (.tick v t) →
@@ -40,57 +39,17 @@ theorem simTrace_state_of (hv : rho.ExecutionValid) {v : V}
           (.tick (encodeTxs (Model.mempool rho.inbox v t)))).1) :
     ∀ i ≤ rho.events.length, (stateAt S rho hn v i).node =
       (simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i) := by
-  intro i
-  induction i with
-  | zero =>
-    intro _
-    rw [cutMap_zero]
-    exact (congrArg (·.node) (stateAt_zero S rho hn v)).trans
-      (simTrace_init_eq S rho hn (rho.ownKey v)).symm
-  | succ i ih =>
-    intro hi
-    have hi' : i < rho.events.length := by omega
-    have ih := ih (by omega)
-    have he : rho.events[i]? = some rho.events[i] := List.getElem?_eq_getElem hi'
-    rw [cutMap_succ]
-    by_cases hne : rho.events[i].node ≠ v
-    · rw [state_of_other S rho hn v i _ he hne]
-      refine ih.trans (state_of_block_ne S rho hn _ (fun k hk r hr => ?_)).symm
-      rw [allCuts_getElem?_add S rho hn i k hi' hk] at hr
-      obtain ⟨hnode, -, -⟩ := mem_eventCuts S rho hn he (List.mem_of_getElem? hr)
-      rw [hnode]
-      exact fun h => hne (rho.key.symm.injective h)
-    rw [not_not] at hne
-    have hv' := hv0 he hne
-    have hcut : ∀ k < (eventCuts S rho hn i).length,
-        (allCuts S rho hn)[cutMap S rho hn i + k]? = (eventCuts S rho hn i)[k]? :=
-      fun k hk => allCuts_getElem?_add S rho hn i k hi' hk
-    cases hev : rho.events[i] with
-    | tick w t =>
-      rw [hev] at he hne
-      simp only [Model.Event.node] at hne
-      subst hne
-      by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
-      · rw [eventCuts_tick_public S rho hn i w t he hp] at hcut ⊢
-        rw [htick he hp]
-        exact (state_of_group S rho hn _ _ hcut ih.symm).symm
-      · rw [eventCuts_tick_other S rho hn i w t he hp, List.length_nil, Nat.add_zero,
-          node_of_tick_other S rho hn hv w hv' i t he hp]
-        exact ih
-    | deliver w o t =>
-      rw [hev] at he hne
-      simp only [Model.Event.node] at hne
-      subst hne
-      rw [eventCuts_deliver S rho hn i w o t he] at hcut ⊢
-      rw [node_of_deliver S rho hn hv w hv' i o t he]
-      exact (state_of_deliverRecs S rho hn _ _ _ _ _ _ _ hcut ih.symm).symm
-    | restart w t =>
-      rw [hev] at he hne
-      simp only [Model.Event.node] at hne
-      subst hne
-      rw [eventCuts_restart S rho hn i w t he] at hcut ⊢
-      rw [node_of_restart S rho hn hv w hv' i t he]
-      exact (state_of_group S rho hn _ _ hcut ih.symm).symm
+  intro i hi
+  obtain ⟨htrace, hcut⟩ := simTrace_encoding S rho hn
+  rw [htrace, hcut, stateAt_eq]
+  refine (traceEncoding_induction S hn (fun e due => e.Lawful due →
+    ((rho.stateBefore i v).st.1 hn).node =
+      (NodeAsChainShape.CanonicalTrace.simTrace e rho).state (rho.ownKey v)
+        (NodeAsChainShape.CanonicalTrace.cutMap e rho i)) ?_) (traceEncoding_lawful S hn)
+  intro _ _ laws
+  have h := NodeAsChainShape.CanonicalTrace.stateAgreement_all laws hv v i hi
+  rw [NodeAsChainShape.CanonicalTrace.stateAt_eq] at h
+  exact h
 
 /-- **A public engine tick is one trace group**: the node's tick with the engine's input, at the
 event's first cut, given that the engine node's state before the tick is the trace's state

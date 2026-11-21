@@ -553,7 +553,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Goldi
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksHealing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksReadPoint
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksStateAgreement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Groups
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GuardIdle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealedReadAncestry
@@ -817,6 +816,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EventGroups
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingInvariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingWrappers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.GoldilocksStateAgreement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeBlockView
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
@@ -999,6 +999,7 @@ public import ConsensusLean.Lemmas.Model.Canonical.Unforgeable
 public import ConsensusLean.Lemmas.Model.Causal
 public import ConsensusLean.Lemmas.Model.Constant
 public import ConsensusLean.Lemmas.Model.Credentials
+public import ConsensusLean.Lemmas.Model.DutyFold
 public import ConsensusLean.Lemmas.Model.Excuses
 public import ConsensusLean.Lemmas.Model.Laws
 public import ConsensusLean.Lemmas.Model.Mempool

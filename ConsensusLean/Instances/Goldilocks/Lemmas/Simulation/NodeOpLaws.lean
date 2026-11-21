@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeStateAgreement
 public import ConsensusLean.Instances.Goldilocks.Results.Spec.CanonicalTrace
-import ConsensusLean.Lemmas.Model.Candidates
+import ConsensusLean.Lemmas.Model.DutyFold
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 
 public section
@@ -553,10 +553,8 @@ private theorem duties_pres (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
 theorem runDuties_append (rho : Model.Run (compiled F) E) (v : V)
     (nd : Model.Node (Model.protoOf (compiled F) E))
     (ds es : List (Model.protoOf (compiled F) E).Duty) :
-    (rho.runDuties v nd (ds ++ es)).1 = (rho.runDuties v (rho.runDuties v nd ds).1 es).1 := by
-  induction ds generalizing nd with
-  | nil => rw [List.nil_append, rho.runDuties_nil]
-  | cons d ds ih => simp only [List.cons_append, rho.runDuties_cons, ih]
+    (rho.runDuties v nd (ds ++ es)).1 = (rho.runDuties v (rho.runDuties v nd ds).1 es).1 :=
+  rho.runDuties_append_fst v nd ds es
 
 private theorem tick_pres (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
     (v : V) (nd : Model.Node (Model.protoOf (compiled F) E)) (t : Time) :

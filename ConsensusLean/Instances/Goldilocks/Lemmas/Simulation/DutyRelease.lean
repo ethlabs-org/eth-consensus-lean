@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Interface
 import ConsensusLean.Lemmas.Model.Objects
-import ConsensusLean.Lemmas.Model.Candidates
+import ConsensusLean.Lemmas.Model.DutyFold
 import ConsensusLean.Lemmas.Model.Protection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 
@@ -32,17 +32,8 @@ theorem runDuties_append (v : V)
     rho.runDuties v nd (ds ++ ds') =
       let r := rho.runDuties v nd ds
       let r' := rho.runDuties v r.1 ds'
-      (r'.1, r.2 ++ r'.2) := by
-  unfold Model.Run.runDuties
-  rw [List.foldl_append]
-  generalize ds.foldl _ _ = acc
-  induction ds' generalizing acc with
-  | nil => simp
-  | cons d ds' ih =>
-    dsimp only
-    rw [List.foldl_cons, List.foldl_cons, ih]
-    conv_rhs => rw [ih]
-    simp only [List.append_assoc, List.nil_append]
+      (r'.1, r.2 ++ r'.2) :=
+  rho.runDuties_append v nd ds ds'
 
 omit [DecidableEq V] in
 /-- An attestation that a duty releases is the ordinary attestation candidate of a selected

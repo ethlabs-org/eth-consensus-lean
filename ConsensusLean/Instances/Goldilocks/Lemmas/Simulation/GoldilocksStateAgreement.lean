@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeStateAgre
 public import ConsensusLean.Instances.Goldilocks.AsChainShape
 public import ConsensusLean.Instances.Goldilocks.Results.Spec.CanonicalTrace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLaws
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Steps
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 
 public section
 
@@ -29,7 +29,7 @@ private theorem goldilocks_ready (S : Setup) (hn : 1 ≤ Fintype.card V) :
     rw [envelope_eq] at hp
     change (propose (shapeOf S hn nd) s).2 = some (par, info, cs) at hp
     change rho.ownKey v ∈ rho.sel (.proposer s) at hsel
-    have hc := proposal_releasable_at S rho hn hv v i t he s par info cs hs hone hsel hp
+    have hc := proposal_releasable S rho hn hv v i t he s par info cs hs hone hsel hp
     let h : Header Info := ⟨par, s, encodeTxs nd.st.2, info⟩
     let auth : Model.Auth (pubOf E).n (ShapeRole S.vote.Kind) :=
       .signed (rho.ownKey v) (.proposer s)
