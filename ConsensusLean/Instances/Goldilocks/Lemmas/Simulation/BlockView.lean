@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeBlockView
 
 public section
 
@@ -30,34 +31,26 @@ open Consensus.Model (pubOf)
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- A block an engine tick calls has a parent. -/
-private theorem tick_block_parent {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
-    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
-    (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
-    {B : Blk sp} {acc : Bool}
-    (hc : Cut.fg (.block B acc) ∈ (exec proposer dg self st t (.tick x)).2) :
-    B.parent ≠ none := by
-  rw [show (exec proposer dg self st t (.tick x)).2 = (onTick proposer dg self st t x).2
-    from rfl, onTick_cuts] at hc
-  rcases List.mem_append.mp hc with hc | hc
-  · rcases List.mem_append.mp hc with hc | hc
-    · simp [tickStep, acCall] at hc
-    · simp only [tickStep] at hc
-      split_ifs at hc
-      · split at hc
-        · simp [acProposal] at hc
-        · simp only [proposeBlock, onBlock] at hc
-          split_ifs at hc
-          · simp [acProposal] at hc
-          · split at hc <;> simp [acCall, acProposal] at hc <;>
-              obtain ⟨rfl, _⟩ := hc <;> simp [mkBlock]
-      · simp at hc
-  · simp only [tickStep] at hc
-    split at hc
-    · simp [acToFG] at hc
-    · simp only [attest, List.mem_cons, acToFG, reduceCtorEq, false_or] at hc
-      split at hc <;> simp [onAttestation] at hc
+omit [DecidableEq V] in
+open NodeAsChainShape.CanonicalTrace in
+private theorem blockView_encoding :
+    let e := traceEncoding (E := E) S hn
+    (∀ b : Blk (S.params (pubOf E) hn),
+      engineObj e (NodeAsChainShape.blockObj e.codec.encode e.codec.carried b) = blockObj _ b) ∧
+    (∀ {info atts payload}, e.codec.decode info = some (atts, payload) →
+      e.codec.encode atts payload = info) := by
+  dsimp only
+  apply traceEncoding_induction S hn (fun e _ =>
+    (∀ b : Blk (S.params (pubOf E) hn),
+      engineObj e (NodeAsChainShape.blockObj e.codec.encode e.codec.carried b) = blockObj _ b) ∧
+    (∀ {info atts payload}, e.codec.decode info = some (atts, payload) →
+      e.codec.encode atts payload = info))
+  intro e _
+  constructor
+  · intro b
+    rw (config := { transparency := .default }) [engineObj_eq, cast_eq]
+    rfl
+  · exact fun hd => encodeInfo_of_decodeInfo hd
 
 /-- **Every called block, accepted or refused, is in the view of its engine node** right after
 the engine event of the call, and has a parent. `hrel`: every block a public tick calls at a
@@ -69,59 +62,16 @@ theorem block_call_in_view_of_releases (hrel : ∀ {j : Nat} {v : V} {t : Time},
     {B : Blk (S.params (pubOf E) hn)} (hB : (simTrace S rho hn).Occurs B) :
     B.parent ≠ none ∧ ∃ i ev, rho.events[i]? = some ev ∧
       blockObj (S.params (pubOf E) hn) B ∈ rho.ViewIdx ev.node (i + 1) := by
-  obtain ⟨y, k, acc, hnode, hlab⟩ := hB
-  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, i, ev, -, he, -, -, hidx, -, -, -, hlab'⟩ := simTrace_cut S rho hn hl
-  have hrl : r.label = .fg (.block B acc) := Option.some.inj (hlab'.symm.trans hlab)
-  have hmem := List.mem_of_getElem? hidx
-  cases ev with
-  | tick v t =>
-    have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
-      by_contra hp
-      rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
-      simp at hmem
-    have hr0 : r.pos ≠ 0 := by
-      intro hr0
-      obtain ⟨w, o, u, h⟩ := eq_deliver_of_cut S rho hn he hmem (Or.inl ⟨hr0, _, hrl⟩)
-      cases h
-    refine ⟨?_, i, _, he, rho.mem_viewIdx_iff.mpr ⟨i, _, by omega,
-      Or.inl ⟨t, Or.inl he, hrel he hp r hmem B acc hrl hr0⟩, .refl _⟩⟩
-    rw [eventCuts_tick_public S rho hn i v t he hp] at hmem
-    obtain ⟨m, hm, rfl⟩ := List.getElem_of_mem hmem
-    obtain ⟨-, -, -, -, hl⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm
-    exact tick_block_parent _ _ _ _ _ _ (by rw [← hrl, hl]; exact List.getElem_mem _)
-  | deliver v o t =>
-    rw [eventCuts_deliver S rho hn i v o t he] at hmem
-    obtain ⟨o', e, st', ho, hce, kk, hk, hlk, -⟩ :=
-      mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
-    have hcut := hlk.symm.trans hrl
-    have hzero := pos_of_block_cut _ _ _ _ _ (canonEvent_ne_tick hce) hk hcut
-    subst kk
-    have heq : e = .block B := by
-      cases e with
-      | tick x => exact False.elim (canonEvent_ne_tick hce x rfl)
-      | block B' =>
-        have hm := List.getElem_mem hk
-        rw [hcut] at hm
-        simp only [exec, onBlock] at hm
-        split_ifs at hm
-        · simp at hm
-        · split at hm <;> simp [acCall] at hm <;> simp_all
-      | message m => simp [exec, onMessage, acCall] at hcut
-      | attestation a => simp [exec, onAttestation] at hcut
-      | restart => simp [exec, Node.restart, acCall] at hcut
-    subst e
-    have ho' := eq_blockObj_of_decodeBlock (decodeBlock_of_canonEvent hce)
-    rw [ho'] at ho
-    exact ⟨(decodeBlock_wire (decodeBlock_of_canonEvent hce)).2.1, i, _, he,
-      rho.mem_viewIdx_iff.mpr ⟨i, o, by omega, Or.inr ⟨t, he⟩, contains_of_mem_delivered ho⟩⟩
-  | restart v t =>
-    rw [eventCuts_restart S rho hn i v t he] at hmem
-    obtain ⟨kk, hk, rfl⟩ := List.getElem_of_mem hmem
-    obtain ⟨-, -, -, -, hlk⟩ := getElem_groupRecs _ _ _ _ _ _ _ kk hk
-    have hcut := List.getElem_mem (lt_of_lt_of_eq hk (length_groupRecs _ _ _ _ _ _ _))
-    rw [← hlk, hrl] at hcut
-    simp [exec, Node.restart, acCall] at hcut
+  obtain ⟨hobj, hcodec⟩ := blockView_encoding (E := E) S hn
+  rw [(simTrace_encoding S rho hn).1] at hB
+  have h := NodeAsChainShape.CanonicalTrace.block_call_in_view_of_releases
+    (traceEncoding S hn) rho hcodec (fun he hp r hr b acc hl hpos => by
+      obtain ⟨q, hq, hqp, hql⟩ := eventCuts_label_pos S rho hn _ r hr
+      rw [hobj]
+      exact hrel he hp q hq b acc (hql.trans hl) (hqp ▸ hpos)) hB
+  obtain ⟨hp, i, ev, he, hh⟩ := h
+  rw [hobj] at hh
+  exact ⟨hp, i, ev, he, hh⟩
 
 /-- **An accepted block is in its reader's engine view at every later mapped cut.** `hrel`:
 every block a public tick of the reader calls at a positive position is released at that
@@ -188,41 +138,16 @@ theorem noCollRun_of_observed (hnc : ¬ rho.HashCollision)
     (hocc : ∀ B : Blk (S.params (pubOf E) hn), (simTrace S rho hn).Occurs B →
       B.parent ≠ none ∧ rho.ObservedItem (headerOf (S.params (pubOf E) hn) B)) :
     Compose.NoCollRun (digestOf S rho) (simTrace S rho hn) := by
-  intro B hB C hC heq
-  simp only [digestOf_eq] at heq
-  simp only [dgOf_eq (n := Fintype.card V) rho.hash S.genesisRoot] at heq
-  rcases hB with rfl | hB <;> rcases hC with rfl | hC
-  · exact ⟨rfl, rfl, rfl, rfl, rfl⟩
-  · obtain ⟨hp, _⟩ := hocc C hC
-    cases hc : C.parent with
-    | none => exact False.elim (hp hc)
-    | some p =>
-      exact False.elim (taggedRoot_ne _ _
-        (by simpa [hc, Params.genesisBlock] using heq.symm))
-  · obtain ⟨hp, _⟩ := hocc B hB
-    cases hb : B.parent with
-    | none => exact False.elim (hp hb)
-    | some p =>
-      exact False.elim (taggedRoot_ne _ _
-        (by simpa [hb, Params.genesisBlock] using heq))
-  · obtain ⟨hpB, hoB⟩ := hocc B hB
-    obtain ⟨hpC, hoC⟩ := hocc C hC
-    obtain ⟨pb, hpb⟩ := Option.ne_none_iff_exists'.mp hpB
-    obtain ⟨pc, hpc⟩ := Option.ne_none_iff_exists'.mp hpC
-    have hh : rho.hash (headerOf (S.params (pubOf E) hn) B) =
-        rho.hash (headerOf (S.params (pubOf E) hn) C) := by
-      have h := congrArg (rawRoot S.genesisRoot) heq
-      simpa [hpb, hpc, headerOf_eq, rawRoot_taggedRoot] using h
-    have he : headerOf (S.params (pubOf E) hn) B = headerOf (S.params (pubOf E) hn) C := by
-      by_contra h
-      exact hnc ⟨_, _, h, hoB, hoC, hh⟩
-    have hpar := congrArg (fun h => parentRoot S.genesisRoot h.parent) he
-    have hslot := congrArg Header.pos he
-    have hin := congrArg Header.input he
-    have hinfo := congrArg (fun h => decodeInfo (Fintype.card V) h.info) he
-    simp only [headerOf_eq, hpb, hpc, parentRoot_parentRef] at hpar
-    simp only [headerOf_eq, decodeInfo_encodeInfo, Option.some.injEq, Prod.mk.injEq] at hinfo
-    exact ⟨by simpa [hpb, hpc] using hpar, hslot, hin, hinfo.1, hinfo.2⟩
+  rw [digestOf_eq]
+  refine traceEncoding_induction (E := E) S hn (fun _ _ =>
+    Compose.NoCollRun (dgOf rho.hash S.genesisRoot) (simTrace S rho hn)) ?_
+  intro e hd
+  rw [← hd rho]
+  refine NodeAsChainShape.CanonicalTrace.noCollRun_of_observed e rho _ hnc ?_ hocc
+  rintro ⟨a, p⟩ ⟨b, q⟩ he
+  change encodeInfo a p = encodeInfo b q at he
+  have h := congrArg (decodeInfo (Fintype.card V)) he
+  simpa only [decodeInfo_encodeInfo, Option.some.injEq] using h
 
 end Consensus.Goldilocks.Simulation
 

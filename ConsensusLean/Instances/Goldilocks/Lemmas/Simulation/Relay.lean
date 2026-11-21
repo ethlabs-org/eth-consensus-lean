@@ -74,7 +74,8 @@ private theorem map_of_mapM {α β : Type} {f : α → Option β} {g : β → α
     obtain ⟨b, hb, bs, hbs, rfl⟩ := h
     simp [hfg a b hb, map_of_mapM hfg hbs]
 
-private theorem encodeInfo_of_decodeInfo {n : Nat} {i : Info} {atts : List (FG.Att n)}
+/-- Encoding a successfully decoded header payload recovers its wire information. -/
+theorem encodeInfo_of_decodeInfo {n : Nat} {i : Info} {atts : List (FG.Att n)}
     {p : Payload n} (h : decodeInfo n i = some (atts, p)) : encodeInfo atts p = i := by
   obtain ⟨i1, i2, i3⟩ := i
   simp only [decodeInfo, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,

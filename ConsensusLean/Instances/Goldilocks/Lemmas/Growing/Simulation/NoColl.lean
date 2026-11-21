@@ -4,6 +4,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
 import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.BlockView
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeBlockView
 
 public section
 
@@ -30,11 +31,7 @@ theorem occurs_blockObj_observed_at (hv : rho.ExecutionValid)
   rw [simTraceAt_eq] at hB
   obtain ⟨hp, i, ev, he, hb⟩ := block_call_in_view_of_releases S rho hn
     (fun he hp r hr => (tick_block_vote_releases_at S rho hn hv he hp r hr).1) hB
-  have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
-  refine ⟨hp, ev.node, i + 1, by omega, ?_, hb⟩
-  change ev.node ∉ rho.faultyAt (rho.cutTime (i + 1))
-  simpa only [Model.Run.cutTime, he, Option.elim_some] using hv.honest_only ev
-    (List.mem_of_getElem? he)
+  exact ⟨hp, NodeAsChainShape.CanonicalTrace.observed_of_event_view rho hv he hb⟩
 
 /-- An occurring block is observed while its engine reader is still honest. -/
 theorem occurring_observed_at (hv : rho.ExecutionValid)

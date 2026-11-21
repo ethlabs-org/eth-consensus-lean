@@ -250,6 +250,13 @@ for a restart. -/
 noncomputable def eventCuts (i : Nat) : List (CutRec (S.params (pubOf E) hn) (S.ro _)) :=
   (CanonicalTrace.eventCuts (traceEncoding S hn) rho i).map goldilocksCut
 
+/-- The concrete record keeps the generic cut's position and label. -/
+theorem eventCuts_label_pos (i : Nat)
+    (r : CanonicalTrace.CutRec (goldilocksNode (S.params (pubOf E) hn) (S.ro _)))
+    (hr : r ∈ CanonicalTrace.eventCuts (traceEncoding S hn) rho i) :
+    ∃ q ∈ eventCuts S rho hn i, q.pos = r.pos ∧ q.label = r.label := by
+  exact ⟨goldilocksCut r, List.mem_map_of_mem hr, rfl, rfl⟩
+
 open Classical in
 /-- Each engine event contributes exactly its handler groups. -/
 theorem eventCuts_eq (i : Nat) : eventCuts S rho hn i =
