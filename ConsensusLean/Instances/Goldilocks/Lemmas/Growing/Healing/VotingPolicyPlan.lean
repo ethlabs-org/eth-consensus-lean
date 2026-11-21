@@ -11,7 +11,7 @@ This is a proposal for review, not the installed node or a certified milestone.
 -/
 
 -- Keep the statement review in one leaf until the approved work-package split.
-set_option linter.style.longFile 2200
+set_option linter.style.longFile 2400
 
 namespace Consensus.Goldilocks.VotingPolicyPlan
 
@@ -1449,6 +1449,28 @@ theorem warm_timeout_parent_rises {y : Fin sp.n} {j : Nat} {P X C : Blk sp}
 /-- Evidence a pre-reset report window owes the warm-round argument. This is
 not a schedule assumption: the drain proof must supply it for the actual
 proposals. The named report window also bounds signing and publication. -/
+structure WarmRowDemand (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+    (proposer : Nat → Fin sp.n) (g b D R : Time) (s₀ N floor u x i j : Nat)
+    (kindJ : Prop) (J P X C : Blk sp) : Prop where
+  frame : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J
+  start : gbar g + 4 * sp.Δ ≤ sp.ts s₀
+  horizon : sp.ts N + 2 * sp.Δ ≤ b
+  warm : s₀ + 2 * sp.k ≤ u
+  timeout : u + sp.toParams.fg.δt ≤ x
+  last : x ≤ N
+  honestWarm : proposer u ∈ H (sp.ts u + sp.Δ)
+  honestConsumer : proposer x ∈ H (tr.time j)
+  warmSlot : P.slot = u
+  consumerSlot : X.slot = x
+  warmProposal : tr.ProposesAt (proposer u) i P
+  consumerProposal : tr.ProposesAt (proposer x) j X
+  parent : X.parent = some C.root
+  held : C ∈ (tr.state (proposer x) j).fg.tree
+  bounded : tr.time j ≤ b
+  noHigh : NoHighSignBefore tr H g (sp.ts (u + 1) + 2 * sp.Δ + D + R + 1)
+  notHigher : ((tr.state (proposer x) j).fg.σ C.root).h ≤ ((tr.state (proposer x) j).fg.σ P.root).h
+
+/-- The height shortcut does not request appointments. -/
 def WarmReportWindow (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
     (proposer : Nat → Fin sp.n) (g b D R : Time) : Prop :=
   ∀ (s₀ N floor : Nat) (kindJ : Prop) (J : Blk sp),
@@ -1474,31 +1496,26 @@ def WarmReportWindow (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
 /-- Consume joined opportunities on the actual parent window. The old `d` is the
 cutoff for candidate availability, not for reports or signatures. The source
 producer must justify a new snapshot or a particular historical discharge. -/
-theorem warm_report_window_of_drain {g b D R : Time} {G Ld : Nat}
+theorem warm_report_window_of_drain {g b D R ΔF : Time} {G Ld : Nat}
     {proposer : Nat → Fin sp.n} (hcut : CutObservations tr H)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hbase : BaseService tr H g)
     (hdrain : DrainOutputs tr proposer H g G Ld b)
     (appointment : Fin sp.n → Nat → Prop)
-    (hcohort : ∀ {u i j : Nat} {P X C : Blk sp},
-      tr.ProposesAt (proposer u) i P → tr.ProposesAt (proposer X.slot) j X →
-      P.slot = u → X.parent = some C.root → C ∈ (tr.state (proposer X.slot) j).fg.tree →
-      gbar g ≤ sp.ts (u + 1) + 2 * sp.Δ → sp.ts (u + 1) + 2 * sp.Δ + D + R ≤ tr.time j →
-      tr.time j ≤ b → ∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
+    (hcohort : ∀ {s₀ N floor u x i j : Nat} {kindJ : Prop} {J P X C : Blk sp},
+      WarmRowDemand tr H proposer g b D R s₀ N floor u x i j kindJ J P X C →
+      gbar g ≤ sp.ts (u + 1) + 2 * sp.Δ → sp.ts (u + 1) + 2 * sp.Δ + D + R + ΔF ≤ tr.time j →
+      ∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
         ∀ v ∈ ids, v ∈ H b ∧ ∃ k < j, appointment v k ∧
           sp.ts (u + 1) + 2 * sp.Δ ≤ tr.time k ∧ tr.time k ≤ sp.ts (u + 1) + 2 * sp.Δ + D)
-    (hsource : ∀ {u i j k : Nat} {v : Fin sp.n} {P X C : Blk sp},
-      tr.ProposesAt (proposer u) i P → tr.ProposesAt (proposer X.slot) j X →
-      P.slot = u → X.parent = some C.root → C ∈ (tr.state (proposer X.slot) j).fg.tree →
-      appointment v k → v ∈ H b → k < j → tr.time j ≤ b →
-      sp.ts (u + 1) + 2 * sp.Δ ≤ tr.time k →
-      NoHighSignBefore tr H g (sp.ts (u + 1) + 2 * sp.Δ + D + R + 1) →
-      ((tr.state (proposer X.slot) j).fg.σ P.root).h <
-        ((tr.state (proposer X.slot) j).fg.σ C.root).h ∨
+    (hsource : ∀ {s₀ N floor u x i j k : Nat} {kindJ : Prop} {v : Fin sp.n} {J P X C : Blk sp},
+      WarmRowDemand tr H proposer g b D R s₀ N floor u x i j kindJ J P X C →
+      appointment v k → v ∈ H b → k < j →
+      sp.ts (u + 1) + 2 * sp.Δ ≤ tr.time k → tr.time k ≤ sp.ts (u + 1) + 2 * sp.Δ + D →
       ∃ l m ell C' result, l ≤ m ∧ m ≤ k ∧ SA.ToFGAt tr.projAC v l ell C' ∧
         tr.CallAt v m (.fg (.attest C' result)) ∧ Anc (tr.HonestBlocksAt H) P C' ∧
-        ((tr.state (proposer X.slot) j).fg.σ P.root).h ≤ ((tr.state v m).fg.σ C'.root).h)
-    (hD : 0 ≤ D) (hR : 0 ≤ R)
-    (hfit : 6 * sp.Δ + D + R ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time)) :
+        ((tr.state (proposer x) j).fg.σ P.root).h ≤ ((tr.state v m).fg.σ C'.root).h)
+    (hD : 0 ≤ D) (hR : 0 ≤ R) (hΔF : 0 < ΔF)
+    (hfit : 6 * sp.Δ + D + R + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time)) :
     WarmReportWindow tr H proposer g b D R := by
   sorry
 
@@ -1509,7 +1526,11 @@ the earlier report signed the timeout row. -/
 theorem warm_timeout_rows_of_report_window {g b D R : Time}
     {proposer : Nat → Fin sp.n} (U : Publication tr)
     (hwindow : WarmReportWindow tr H proposer g b D R)
-    (hlocal : ∀ (v y : Fin sp.n) (l k j : Nat) (C' P X C : Blk sp) (d : Time),
+    (hlocal : ∀ {s₀ N floor u x i j : Nat} {kindJ : Prop} {J P X C : Blk sp},
+      WarmRowDemand tr H proposer g b D R s₀ N floor u x i j kindJ J P X C →
+      ∀ (v : Fin sp.n) (l k : Nat) (C' : Blk sp),
+      let y := proposer x
+      let d := sp.ts (u + 1) + 2 * sp.Δ
       d + D + R ≤ tr.time j → tr.time j ≤ b → v ∈ H b → l ≤ k → k < j → tr.time k ≤ d + D →
       (∃ ell, SA.ToFGAt tr.projAC v l ell C') →
       (∃ result, tr.CallAt v k (.fg (.attest C' result))) →
@@ -1526,57 +1547,83 @@ theorem warm_timeout_rows_of_report_window {g b D R : Time}
     WarmTimeoutRows tr H U proposer g b D R := by
   sorry
 
-/-- Reuse the real earlier signed bits when the historical entry has been
-identified with the consumer entry. An incompatible historical entry instead
-requires its own bounded exclusion or a higher-head route. -/
-theorem warm_duplicate_row_of_compatible_entry
-    {v : Fin sp.n} {m k : Nat} {a : FG.Att sp.n} {O C : Blk sp}
-    (hm : m < k) (ha : tr.SignAt v m a) (hv : a.val = v)
-    (hbits : a.T = O.root ∧ a.h = ((tr.state v m).fg.σ O.root).h)
-    (hh : ((tr.state v m).fg.σ O.root).h = ((tr.state v k).fg.σ C.root).h)
-    (hentry : ((tr.state v k).fg.σ C.root).Th = C.root)
-    (hcompat : Compatible (tr.HonestBlocksAt H) O C)
-    (huniq : Compatible (tr.HonestBlocksAt H) O C → O = C) :
-    ∃ j < k, ∃ row, tr.SignAt v j row ∧ row.val = v ∧
-      row.h = ((tr.state v k).fg.σ C.root).h ∧ row.T = ((tr.state v k).fg.σ C.root).Th := by
+/-- The refuser's frame kind must be read at the actual attempt cut. When
+the floor is the justified height, transport the report's common `J` to
+that cut and reconstruct ancestry there from the held source. -/
+theorem warm_low_floor_kind {b g D R : Time} {s₀ N floor u x i j l k : Nat}
+    {proposer : Nat → Fin sp.n} {kindJ : Prop} {J P X C C' : Blk sp}
+    {v : Fin sp.n} {acp₀ : Payload sp.n}
+    (hdemand : WarmRowDemand tr H proposer g b D R s₀ N floor u x i j kindJ J P X C)
+    (hcut : CutObservations tr H) (hv : v ∈ H b) (hlk : l ≤ k) (hkj : k < j)
+    (hl : sp.ts s₀ ≤ tr.time l) (hk : tr.time k ≤ sp.ts N + 2 * sp.Δ)
+    (hreach : Store.Reachable acp₀ (tr.state v k).fg)
+    (hheld : C' ∈ (tr.state v k).fg.tree)
+    (hfloor : floor ≤ ((tr.state v k).fg.σ C'.root).h)
+    (hroot : kindJ → (tr.state v l).fg.Anc (tr.state v l).fg.J C')
+    (hlift : (tr.state v l).fg.Anc J C' → (tr.state v k).fg.Anc J C') :
+    let h := ((tr.state v k).fg.σ C'.root).h
+    h = HZ tr H g ∨ (tr.state v k).fg.hj < h ∨
+      ((tr.state v k).fg.hj = h ∧ (tr.state v k).fg.Anc (tr.state v k).fg.J C') := by
   sorry
 
-/-- Refusal by a lock and refusal by duplicate content have different origins.
-In particular a conflicting lock names a lower finality pair of an earlier,
-higher signature; it is not itself a same-height progress row. -/
-theorem warm_refusal_origin (horigin : RecordOrigins tr H)
-    (hlock : ∀ v i h root, v ∈ H (tr.time i) → (tr.state v i).record.lock h = some root →
-      ∃ m < i, ∃ a, tr.SignAt v m a ∧ a.fin = some (h, root) ∧ h < a.h)
-    {v k C} (hv : v ∈ H (tr.time k)) (ha : tr.CallAt v k (.fg (.attest C none)))
-    (hstep : Node.CutStep v (tr.time k) (tr.state v k) (.fg (.attest C none)) (tr.post k)) :
-    let st := tr.state v k
-    let entry := st.fg.σ (st.fg.σ C.root).Th
-    (∃ m < k, ∃ a, ∃ root, tr.SignAt v m a ∧ a.fin = some (entry.h, root) ∧
-      root ≠ entry.Th ∧ entry.h < a.h) ∨
-    (∃ m < k, ∃ a, tr.SignAt v m a ∧ a.h = entry.h ∧ a.T = entry.Th) ∨
-    (∃ m < k, ∃ a, tr.SignAt v m a ∧ a.h = entry.h ∧ a.T ≠ entry.Th) := by
+/-- Cut-level port of the low-floor lock argument. The historical justification
+is attributed to the earlier signature and compared with the actual cache,
+not assumed compatible with the attempted source. -/
+theorem warm_lock_free_or_entry {g T : Time} {v : Fin sp.n} {k h : Nat} {C E : Blk sp}
+    {acp₀ : Payload sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    (hcut : CutObservations tr H) (hnc : Compose.NoCollRun dg tr)
+    (hv : v ∈ H (max (cutZ sp.toParams g) (tr.time k))) (hk : tr.time k < T)
+    (hf : (H (tr.time k))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    (hna : NoHighSignBefore tr H g T)
+    (hreach : ∀ i ≤ k, Store.Reachable acp₀ (tr.state v i).fg)
+    (hE : Healing.EntryOf (tr.state v k).fg C E h)
+    (hCh : ((tr.state v k).fg.σ C.root).h = h)
+    (hkind : h = HZ tr H g ∨ (tr.state v k).fg.hj < h ∨
+      ((tr.state v k).fg.hj = h ∧ (tr.state v k).fg.Anc (tr.state v k).fg.J C))
+    (hlockOrigin : ∀ root, (tr.state v k).record.lock h = some root →
+      ∃ m < k, ∃ a B, tr.SignAt v m a ∧ a.fin = some (h, root) ∧ h < a.h ∧
+        B ∈ (tr.state v m).fg.tree ∧ ((tr.state v m).fg.σ B.root).hj = h ∧
+        ((tr.state v m).fg.σ B.root).J = root)
+    (hsafe : ∀ a a' : FG.Att sp.n, a.val ∈ H (tr.time k) →
+      (∃ i ≤ k, ∃ B, B ∈ (tr.state v i).fg.tree ∧ a ∈ B.fgPayload) →
+      (∃ i ≤ k, ∃ B, B ∈ (tr.state v i).fg.tree ∧ a' ∈ B.fgPayload) → ¬ FG.slashable a a') :
+    (tr.state v k).record.lock h = none ∨ (tr.state v k).record.lock h = some E.root := by
   sorry
 
-/-- Compatibility helps only after both record roots have been attributed to
-actual entry blocks. Equal heights on a compatible branch then identify the
-entry; neither a matching finality bit nor release follows from this step. -/
-theorem record_entry_eq_of_compatible {A B : Blk sp} {x y : Fin sp.n} {i j : Nat}
-    (hcut : CutObservations tr H) (hsrc : SourceFacts tr H)
-    (hx : x ∈ H (tr.time i)) (hy : y ∈ H (tr.time j))
-    (hA : A ∈ (tr.state x i).fg.tree) (hB : B ∈ (tr.state y j).fg.tree)
-    (hAe : ((tr.state x i).fg.σ A.root).Th = A.root)
-    (hBe : ((tr.state y j).fg.σ B.root).Th = B.root)
-    (hh : ((tr.state x i).fg.σ A.root).h = ((tr.state y j).fg.σ B.root).h)
-    (hAB : Compatible (tr.HonestBlocksAt H) A B)
-    (hstrict : ∀ y i (A B : Blk sp), y ∈ H (tr.time i) → B ∈ (tr.state y i).fg.tree →
-      Anc (tr.HonestBlocksAt H) A B → A ≠ B →
-      ((tr.state y i).fg.σ A.root).Th = A.root →
-      ((tr.state y i).fg.σ B.root).Th = B.root →
-      ((tr.state y i).fg.σ A.root).h < ((tr.state y i).fg.σ B.root).h)
-    (htransfer : ∀ x y i j (A B : Blk sp), x ∈ H (tr.time i) → y ∈ H (tr.time j) →
-      A ∈ (tr.state x i).fg.tree → B ∈ (tr.state y j).fg.tree →
-      Anc (tr.HonestBlocksAt H) A B → (tr.state x i).fg.σ A.root = (tr.state y j).fg.σ A.root) :
-    A = B := by
+/-- Port `client_progress_of_lock` to the actual attest cut. `SentOK` ties the
+refusal predicate to the durable target/timeout record. An earlier row keeps
+all original bits; here progress requires its exact height and entry, not a
+freshly computed finality pair. -/
+theorem warm_attest_matching_entry (horigin : RecordOrigins tr H)
+    {v : Fin sp.n} {k h : Nat} {C E : Blk sp} {result : Option (FG.Att sp.n)}
+    {acp₀ : Payload sp.n} (hv : v ∈ H (tr.time k))
+    (hreach : Store.Reachable acp₀ (tr.state v k).fg)
+    (ha : tr.CallAt v k (.fg (.attest C result)))
+    (hstep : Node.CutStep v (tr.time k) (tr.state v k) (.fg (.attest C result)) (tr.post k))
+    (hE : Healing.EntryOf (tr.state v k).fg C E h)
+    (hCh : ((tr.state v k).fg.σ C.root).h = h)
+    (hsent : Healing.Client.SentOK (tr.state v k).record)
+    (hsigner : ∀ i a, tr.SignAt v i a → a.val = v)
+    (hlock : (tr.state v k).record.lock h = none ∨ (tr.state v k).record.lock h = some E.root) :
+    ∃ m ≤ k, ∃ a, tr.SignAt v m a ∧ a.val = v ∧ a.h = h ∧ a.T = E.root := by
+  sorry
+
+/-- Both branches extend the held warm proposal. At the common height the
+entry cannot change on either extension. Keep the historical row intact and
+test it at the consuming parent, which need not be an entry block itself. -/
+theorem warm_row_matches_consumer {v y : Fin sp.n} {k j m h : Nat}
+    {P C C' E : Blk sp} {a : FG.Att sp.n} {acp₀ : Payload sp.n}
+    (hv : v ∈ H (tr.time k)) (hy : y ∈ H (tr.time j))
+    (hrv : Store.Reachable acp₀ (tr.state v k).fg)
+    (hry : Store.Reachable acp₀ (tr.state y j).fg)
+    (hE : Healing.EntryOf (tr.state v k).fg C' E h)
+    (hPC' : (tr.state v k).fg.Anc P C') (hPC : (tr.state y j).fg.Anc P C)
+    (hP : (tr.state v k).fg.σ P.root = (tr.state y j).fg.σ P.root)
+    (hheight : ((tr.state v k).fg.σ C'.root).h = h ∧
+      ((tr.state y j).fg.σ P.root).h = h ∧ ((tr.state y j).fg.σ C.root).h = h)
+    (hrow : tr.SignAt v m a ∧ a.val = v ∧ a.h = h ∧ a.T = E.root) :
+    a.h = ((tr.state y j).fg.σ C.root).h ∧ a.T = ((tr.state y j).fg.σ C.root).Th ∧
+      ((tr.state y j).fg.σ C.root).validAtt a := by
   sorry
 
 /-- Cut-level port of `KernelProof.origins_compatible_before_at`. Compare
@@ -1750,6 +1797,13 @@ noncomputable def engineCarrierObj (_rho : Model.Run (compiled (delayedFamily S 
     (Model.protoOf (compiled (delayedFamily S p)) E).Object :=
   blockObj (S.params (Model.pubOf E) hn) (binding := S.vote) C
 
+/-- Serialization alone does not identify the root. Decode with the real run hash. -/
+noncomputable def engineCarrierRaw (rho : Model.Run (compiled (delayedFamily S p)) E)
+    (hn : 1 ≤ Fintype.card V) (o : (Model.protoOf (compiled (delayedFamily S p)) E).Object)
+    (C : Blk (S.params (Model.pubOf E) hn)) : Prop :=
+  decodeBlock (S.params (Model.pubOf E) hn) (binding := S.vote)
+    (Model.digests rho.hash o) o = some C
+
 /-- Decode with the actual run's digests before crossing into trace blocks. -/
 noncomputable def engineCarrierForward (rho : Model.Run (compiled (delayedFamily S p)) E)
     (hn : 1 ≤ Fintype.card V) (o : (Model.protoOf (compiled (delayedFamily S p)) E).Object)
@@ -1764,8 +1818,11 @@ theorem policy_carrier_release
     {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
     (M : EngineProjection rho tr H U) (hv : rho.ExecutionValid) (hnc : ¬ rho.HashCollision)
     {z k C} (hz : z ∈ H (tr.time k)) (hC : tr.ProposesAt z k C) :
-    ∃ e, rho.SendsAt (M.key.symm z) e (tr.time k) ∧
-      engineCarrierObj rho hn C ∈ rho.releasesAt e := by
+    ∃ acc, ∃ hcall : tr.CallAt z k (.fg (.block C acc)),
+      let e := (M.occurrence k ⟨z, _, hcall⟩).1
+      rho.events[e]? = some (.tick (M.key.symm z) (tr.time k)) ∧
+        engineCarrierObj rho hn C ∈ rho.releasesAt e ∧
+        engineCarrierRaw rho hn (engineCarrierObj rho hn C) C := by
   sorry
 
 /-- Receipt of the exact raw carrier or its exact forwarding wrapper must
@@ -1778,7 +1835,7 @@ theorem policy_carrier_processed_before_read
     (hv : rho.ExecutionValid) (hnc : ¬ rho.HashCollision) {v : V} {C} {d t : Time}
     (hy : M.key v ∈ H t) (hd : d < t) (hb : t ≤ rho.horizon)
     (hheld : ∃ o, rho.log.Held rho.point v o d ∧
-      (o = engineCarrierObj rho hn C ∨
+      (engineCarrierRaw rho hn o C ∨
         ∃ z s, z ∈ H s ∧ engineCarrierForward rho hn o z s C)) :
     ∃ k < B.first ((chainTrace rho).endCut t), tr.BlockCallAt (M.key v) k C ∧ tr.time k ≤ d := by
   sorry
@@ -2030,14 +2087,67 @@ theorem obligations_of_policy_suppliers
     ShapeObligationsAs .ebbAndFlow (family S p) (windowContract S A window B) := by
   sorry
 
-/-- End-to-end assembly, pending the public scope decision. The witness proof
-must consume the actual cohort interface; `Coverage` is not a useful-row oracle. -/
+/-- The warm folds and each of the three post-drain height steps request
+service only in the window they actually consume. The scope adapter supplies
+the joined quorum for those windows; it cannot supply sources or rows. -/
+def FinalAppointmentSupply {V : Type} [Fintype V] [DecidableEq V]
+    (Q : PolicyFinalQuery S A window p B V) : Prop :=
+  p ≠ Rules.responsive →
+    ∀ (rho : Model.Run (compiled (delayedFamily S p)) Q.run.1), HEq rho Q.run.2 →
+    ∀ (tr : GoldilocksTrace (S.params (Model.pubOf Q.run.1) Q.positive) (S.ro _))
+      (H : Time → Set (Fin (Fintype.card V))) (U : Publication tr),
+    ∀ (M : EngineProjection rho tr H U) (_ : EventBoundaries rho Q.positive M),
+    let proposer : Nat → Fin (Fintype.card V) := fun s =>
+      if h : (rho.sel (.proposer s)).Nonempty then (rho.sel (.proposer s)).min' h
+      else ⟨0, Q.positive⟩
+    let sp := S.params (Model.pubOf Q.run.1) Q.positive
+    let D := (B.signSteps : Time) * sp.Δ
+    let R := (B.publishSteps : Time) * sp.Δ
+    let b := rho.horizon
+    (∀ {s₀ N floor u x i j : Nat} {kindJ : Prop} {J P X C : Blk sp},
+      WarmRowDemand tr H proposer Q.gst b D R s₀ N floor u x i j kindJ J P X C →
+      SA.gbar Q.gst ≤ sp.ts (u + 1) + 2 * sp.Δ →
+      sp.ts (u + 1) + 2 * sp.Δ + D + R + Q.run.1.ΔFG ≤ tr.time j →
+      JoinedWindowQuorum rho Q.positive
+        (sp.ts (u + 1) + 2 * sp.Δ) (sp.ts (u + 1) + 2 * sp.Δ + D) b) ∧
+    (∀ {s₀ j : Nat} {P : Fin 4 → Blk sp} {C : Blk sp} (i : Fin 3),
+      (∀ l, Healing.Growing.HonestProposalRun tr H proposer
+        (s₀ + ![0, window.fgSlots, 2 * window.fgSlots, 3 * window.fgSlots] l) (P l)) →
+      Q.query < sp.ts s₀ →
+      sp.ts (s₀ + 3 * window.fgSlots) + sp.Δ ≤
+        Q.query + ((windowContract S A window B).params.latency .final
+          (policyIndex S A window B Q.index) : Time) * Q.run.1.ΔAC →
+      let y := proposer (P i.succ).slot
+      tr.ProposesAt y j (P i.succ) → (P i.succ).parent = some C.root →
+      C ∈ (tr.state y j).fg.tree →
+      ((tr.state y j).fg.σ C.root).h ≤ ((tr.state y j).fg.σ (P i.castSucc).root).h →
+      let d := sp.ts ((P i.castSucc).slot + 1) + 2 * sp.Δ
+      SA.gbar Q.gst ≤ d → d + D + R + Q.run.1.ΔFG ≤ tr.time j →
+      JoinedWindowQuorum rho Q.positive d (d + D) b)
+
+/-- Concrete compiled witness, pending only which scope supplies the named
+appointment premise. A responsive query uses the legacy endpoint. -/
+theorem policy_final_query_witness
+    {V : Type} [Fintype V] [DecidableEq V] (Q : PolicyFinalQuery S A window p B V)
+    (hsched : PolicySchedule p B) (htiming : TimingRoom A window B)
+    (happointments : FinalAppointmentSupply S A window p B Q) :
+    PolicyFinalWitness S A window p B Q := by
+  sorry
+
+/-- Healthy-only scope candidate. This discharges opportunities, not the
+useful-source part of the final witness. It is not a claim about sleep or outage. -/
+theorem healthy_final_appointments
+    {V : Type} [Fintype V] [DecidableEq V] (Q : PolicyFinalQuery S A window p B V)
+    (hsched : PolicySchedule p B) (htiming : TimingRoom A window B) :
+    FinalAppointmentSupply S A window p B Q := by
+  sorry
+
+/-- End-to-end assembly consumes the same concrete window premise whether
+it is derived by the Healthy adapter or remains an explicit scope condition. -/
 theorem final_live_of_policy
-    (Coverage : ∀ (V : Type) [Fintype V] [DecidableEq V], PolicyFinalQuery S A window p B V → Prop)
-    (hcoverage : ∀ (V : Type) [Fintype V] [DecidableEq V]
-      (Q : PolicyFinalQuery S A window p B V), Coverage V Q)
-    (hwitness : ∀ (V : Type) [Fintype V] [DecidableEq V]
-      (Q : PolicyFinalQuery S A window p B V), Coverage V Q → PolicyFinalWitness S A window p B Q) :
+    (hsched : PolicySchedule p B) (htiming : TimingRoom A window B)
+    (happointments : ∀ (V : Type) [Fintype V] [DecidableEq V]
+      (Q : PolicyFinalQuery S A window p B V), FinalAppointmentSupply S A window p B Q) :
     HealthyLiveSupply S A window p B .final := by
   sorry
 
@@ -2082,7 +2192,8 @@ theorem headline_with_excuses
 chosen scope. This is not an unconditional coverage theorem. -/
 theorem policy_correct_protocol
     (hsched : PolicySchedule p B) (htiming : TimingRoom A window B)
-    (hfinal : HealthyLiveSupply S A window p B .final)
+    (happointments : ∀ (V : Type) [Fintype V] [DecidableEq V]
+      (Q : PolicyFinalQuery S A window p B V), FinalAppointmentSupply S A window p B Q)
     (V : Type) [Fintype V] [DecidableEq V] :
     CorrectProtocol (Model.sysOf schema (compiled (family S p)) V)
       (shapeProgress (family S p) V) (windowContract S A window B) ∧
