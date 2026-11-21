@@ -9,6 +9,9 @@ public section
 This is a proposal for review, not the installed node or a certified milestone.
 -/
 
+-- Keep the statement review in one leaf until the approved work-package split.
+set_option linter.style.longFile 1800
+
 namespace Consensus.Goldilocks.VotingPolicyPlan
 
 open SA (SAParams ReplayOrder)
@@ -16,34 +19,22 @@ open AsChainShape Shape Blocks
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {binding : VoteBinding}
 
-inductive SourceChoice where
-  | perReport
-  | roundSnapshot
-  deriving DecidableEq
-
-inductive MissedSigning where
-  | serveOverdue
-  | nextAppointment
-  deriving DecidableEq
-
-/-- Signing and release calendars are independent. The two choices affect attempts only;
-changing them neither edits an already signed row nor changes its release calendar. -/
+/-- Signing and release calendars are independent. Missed signing appointments
+neither edit an already signed row nor change its release calendar. -/
 structure Rules (n : Nat) where
   signAt : Fin n → Time → Time
-  releaseAt : Fin n → Time → Time → Time
-  /-- True: sign at the first leading poll, before the proposal and this tick's report. -/
+  releaseAt : Fin n → Time → Time
+  /-- True: snapshot at the leading poll, before the proposal. -/
   beforeProposal : Fin n → Bool := fun _ => false
-  sourceChoice : SourceChoice := .perReport
-  missedSigning : MissedSigning := .serveOverdue
 
 def Rules.responsive (n : Nat) (_Δ : Time) : Rules n :=
-  ⟨fun _ t => t, fun _ _ t => t, fun _ => false, .perReport, .serveOverdue⟩
+  ⟨fun _ t => t, fun _ t => t, fun _ => false⟩
 
 /-- Fixed signing and independently scheduled release. For a fixed signing time with
 immediate publication take `nextRelease y t = t`; to sign at release take `nextSign`
 to be the release calendar and again publish immediately. -/
 def Rules.scheduled {n : Nat} (nextSign nextRelease : Fin n → Time → Time) : Rules n :=
-  ⟨nextSign, fun y _ t => nextRelease y t, fun _ => true, .perReport, .serveOverdue⟩
+  ⟨nextSign, nextRelease, fun _ => true⟩
 
 /-- First grid appointment at or after `t`, for positive period. -/
 def nextAppointment (period offset t : Time) : Time :=
@@ -61,7 +52,6 @@ def Rules.signAtRelease (n : Nat) (Δ : Time) (offset : Fin n → Time) : Rules 
 
 structure Held (sp : SAParams) where
   source : Blk sp
-  reportedAt : Time
   signedAt : Time
   eligibleAt : Time
   row : FG.Att sp.n
@@ -69,63 +59,44 @@ structure Held (sp : SAParams) where
 structure PolicyState (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (binding : VoteBinding) where
   base : State sp ro binding
-  pending : List (Time × Time × Blk sp) := []
   held : List (Held sp) := []
+  lastSnapshot : Option Time := none
   leading : Bool := false
 
 def signingDue (p : Rules sp.n) (y : Fin sp.n) (t : Time) : Time :=
   let earliest := t + if p.beforeProposal y then 1 else 0
   max earliest (p.signAt y earliest)
 
-/-- Under skip, an off-calendar wake does not run a missed signing duty. Work
-stays pending until the next awake calendar appointment. -/
-def SigningOpen {n : Nat} (p : Rules n) (y : Fin n) (t : Time) : Prop :=
-  p.missedSigning = .serveOverdue ∨ p.signAt y t = t
-
-/-- The snapshot alternative chooses the latest eligible report at the actual
-appointment and consumes all eligible reports; it never rewrites future reports. -/
-noncomputable def signingWork (p : Rules sp.n) (st : PolicyState sp ro binding) :
-    List (Time × Time × Blk sp) × List (Time × Time × Blk sp) :=
-  open Classical in
-  if SigningOpen p st.base.self st.base.now then
-    let due := st.pending.filter (fun q => q.1 ≤ st.base.now)
-    let keep := st.pending.filter (fun q => st.base.now < q.1)
-    (match p.sourceChoice with
-      | .perReport => due
-      | .roundSnapshot => due.getLast?.toList, keep)
-  else ([], st.pending)
+/-- Missed signing appointments are skipped. The cursor only prevents a repeat
+snapshot at the same time, including across restart. -/
+def SigningOpen (p : Rules sp.n) (st : PolicyState sp ro binding) : Prop :=
+  p.signAt st.base.self st.base.now = st.base.now ∧ st.lastSnapshot ≠ some st.base.now
 
 abbrev CutLog (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :=
   List (NodeState (goldilocksNode sp ro) × Cut (goldilocksNode sp ro) ×
     NodeState (goldilocksNode sp ro))
 
-/-- Preserve each reported source at its own deadline, including across wake. This draft
-does not permit a newer report to borrow an earlier report's signing appointment. -/
-noncomputable def report (p : Rules sp.n) (st : PolicyState sp ro binding) :
-    PolicyState sp ro binding :=
-  let r := Node.acToFG st.base.node st.base.now
-  let pending := r.2.2.elim st.pending fun C =>
-    st.pending ++ [(signingDue p st.base.self st.base.now, st.base.now, C)]
-  { st with base := { st.base with node := r.1, fgDue := false }, pending }
-
-/-- Charge the anti-slashing record at the real attempt. The immutable row is not admitted
-to the proposal pool or outbox before its release gate. A refusal never overwrites a held row. -/
-noncomputable def attempt (p : Rules sp.n) (st : PolicyState sp ro binding) :
+/-- Read `ac_to_fg` exactly once from this poll's current view. Only its actual
+output can be attempted. A refusal leaves all earlier frozen rows untouched. -/
+noncomputable def snapshot (p : Rules sp.n) (st : PolicyState sp ro binding) :
     PolicyState sp ro binding × CutLog sp ro :=
-  let (ready, later) := signingWork p st
-  ready.foldl (fun (nd, logs) (_, r, C) =>
-    match nd.base.node.fg.attest nd.base.node.record nd.base.self C with
-      | none => (nd, logs ++ [(nd.base.node, .fg (.attest C none), nd.base.node)])
-      | some (a, record) =>
-        let u := max st.base.now (p.releaseAt st.base.self r st.base.now)
-        let post := { nd.base.node with record }
-        ({ nd with
-          base := { nd.base with node := post }
-          held := nd.held ++ [⟨C, r, st.base.now, u, a⟩] },
-          logs ++ [(nd.base.node, .fg (.attest C (some a)), post)]))
-    ({ st with pending := later }, [])
+  let t := st.base.now
+  let (nd, lbl, src) := Node.acToFG st.base.node t
+  let read := (st.base.node, lbl, nd)
+  let st' := { st with base := { st.base with node := nd }, lastSnapshot := some t }
+  match src with
+  | none => (st', [read])
+  | some C =>
+    match nd.fg.attest nd.record st.base.self C with
+    | none => (st', [read, (nd, .fg (.attest C none), nd)])
+    | some (a, record) =>
+      let u := max t (p.releaseAt st.base.self t)
+      let post := { nd with record }
+      ({ st' with base := { st'.base with node := post }, held := st.held ++ [⟨C, t, u, a⟩] },
+        [read, (nd, .fg (.attest C (some a)), post)])
 
 /-- Keep eligible items in append order and skip ineligible items without re-signing.
+Every executed poll can flush overdue rows, even when signing is off-calendar.
 Clock and restart never call this handler. -/
 noncomputable def flush (st : PolicyState sp ro binding) :
     PolicyState sp ro binding × List (Held sp) :=
@@ -144,11 +115,10 @@ and forwarding order, then append due rows as separate guarded candidates. Do no
 wake burst behind the one-body ordinary drain. -/
 noncomputable def pollAttempts (p : Rules sp.n) (st : PolicyState sp ro binding) :
     PolicyState sp ro binding × CutLog sp ro :=
-  if st.base.fgDue then
-    let st' := report p st
-    let r := if p.beforeProposal st.base.self then (st', []) else attempt p st'
-    (r.1, (st.base.node, (Node.acToFG st.base.node st.base.now).2.1, st'.base.node) :: r.2)
-  else if st.leading && p.beforeProposal st.base.self then attempt p st else (st, [])
+  open Classical in
+  let phase := if p.beforeProposal st.base.self then st.leading else st.base.fgDue
+  let r := if phase = true ∧ SigningOpen p st then snapshot p st else (st, [])
+  ({ r.1 with base := { r.1.base with fgDue := false } }, r.2)
 
 noncomputable def preparePoll (p : Rules sp.n) (st : PolicyState sp ro binding) :
     PolicyState sp ro binding × List (Held sp) :=
@@ -163,7 +133,7 @@ noncomputable def pollCutLog (p : Rules sp.n) (st : PolicyState sp ro binding) :
 
 noncomputable def policyOps (p : Rules sp.n) :
     NodeAsChainShape.Ops sp.n binding.Kind Info Body Out (PolicyState sp ro binding) where
-  init k q := ⟨(nodeOps sp ro binding).init k q, [], [], false⟩
+  init k q := ⟨(nodeOps sp ro binding).init k q, [], none, false⟩
   clock st t := { st with base := { st.base with now := t }, leading := true }
   propose st s := let r := AsChainShape.propose st.base s; ({ st with base := r.1 }, r.2)
   pollPropose st _ := ({ st with base := nodeTick st.base }, none)
@@ -238,12 +208,12 @@ structure ScheduleBounds (p : (n : Nat) → Time → Rules n) (Δ : Time) (B : B
   sign : ∀ n y t, 0 ≤ t →
     let earliest := t + if (p n Δ).beforeProposal y then 1 else 0
     max earliest ((p n Δ).signAt y earliest) + Δ ≤ t + B.signSteps * Δ
-  skip : ∀ n y g t, 0 ≤ t → (p n Δ).missedSigning = .nextAppointment →
+  appointment : ∀ n y g t, 0 ≤ t →
     let earliest := t + if (p n Δ).beforeProposal y then 1 else 0
     let due := max earliest ((p n Δ).signAt y earliest)
     ∃ u, max g due ≤ u ∧ u ≤ max g t + B.signSteps * Δ ∧ Δ ∣ u ∧ (p n Δ).signAt y u = u
-  release : ∀ n y r t, 0 ≤ r → r ≤ t →
-    max t ((p n Δ).releaseAt y r t) + Δ ≤ t + B.publishSteps * Δ
+  release : ∀ n y t, 0 ≤ t →
+    max t ((p n Δ).releaseAt y t) + Δ ≤ t + B.publishSteps * Δ
 
 section RunStatements
 
@@ -265,9 +235,8 @@ structure CutObservations (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp
     (tr.state y (i + 1)).fg = (tr.state y i).fg ∧
       (tr.state y (i + 1)).record = (tr.state y i).record
 
-/-- Cross-restart gate: the selected signing source still has to dominate the eligible
-original report. A proof must rule out replacing a pending source with an incomparable or
-lower source (or change the handler and prove a suitable supersession rule). -/
+/-- Compare the historical source with the source of the current attempt. An
+appointment by itself does not imply this relation. -/
 def Dominates (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
     (y : Fin sp.n) (i k : Nat) (R C : Blk sp) : Prop :=
   Anc (tr.HonestBlocksAt H) R C ∧
@@ -281,7 +250,7 @@ structure SignDutyCoverage (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin s
   duty : ∀ y i ell R, SA.ToFGAt tr.projAC y i ell R →
     max g (tr.time i) + D ≤ b → y ∈ H (max g (tr.time i) + D) →
     ∃ t, max g (signingDue p y (tr.time i)) ≤ t ∧
-      t ≤ max g (tr.time i) + D ∧ sp.toParams.IsPublic t ∧ tr.awake y t ∧ SigningOpen p y t
+      t ≤ max g (tr.time i) + D ∧ sp.toParams.IsPublic t ∧ tr.awake y t ∧ p.signAt y t = t
 
 def Attempts (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
     (g b D : Time) : Prop :=
@@ -321,8 +290,10 @@ structure PublishedRows (U : Publication tr) (g b D R : Time) : Prop where
     ∃ x r ell C, x ∈ H (tr.time r) ∧ SA.ToFGAt tr.projAC x r ell C ∧ d ≤ tr.time r ∧
       tr.time r ≤ d + D ∧ σT.h < ((tr.state x r).fg.σ C.root).h
 
-theorem durable_held_and_pending (st : PolicyState sp ro binding) (t : Time) (y : Fin sp.n) :
-    (restore y st t).held = st.held ∧ (restore y st t).pending = st.pending := by
+theorem durable_held_and_snapshot_cursor (st : PolicyState sp ro binding)
+    (t : Time) (y : Fin sp.n) :
+    (restore y st t).held = st.held ∧
+      (restore y st t).lastSnapshot = st.lastSnapshot := by
   sorry
 
 theorem frozen_flush_rank (st : PolicyState sp ro binding) (i : Nat) (h : Held sp)
@@ -427,7 +398,7 @@ def HighReportOrigins (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
   ∀ y k ell C, SA.ToFGAt tr.projAC y k ell C →
     y ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.time k ≤ b →
     HZ tr H g + 1 ≤ ((tr.state y k).fg.σ C.root).h →
-    ∃ x i j B, HighOrigin tr H g x i j B ∧ tr.time i ≤ b ∧
+    ∃ i < k, ∃ j B, HighOrigin tr H g y i j B ∧ tr.time i ≤ b ∧
       Anc (tr.HonestBlocksAt H) C B
 
 theorem matching_rows_of_high_records {g b : Time}
@@ -481,13 +452,26 @@ noncomputable def tickPrefix (rho : Model.Run (compiled (delayedFamily S p)) E)
   let clocked : Model.Node P := ⟨P.clock nd.st t (Model.mempool rho.inbox v t), nd.seen⟩
   rho.runDuties v clocked ((P.duties t).take q)
 
-/-- Both queues survive a real restart event. No attest or release is inserted at wake. -/
+/-- The guarded output of one actual awake tick poll, not the union of outputs
+of the tick's duties or the unguarded candidates of the poll. -/
+def TickDutyRelease (rho : Model.Run (compiled (delayedFamily S p)) E)
+    (v : V) (i q : Nat) (t : Time) (a : FG.Att (Fintype.card V)) : Prop :=
+  rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
+    ((Model.protoOf (compiled (delayedFamily S p)) E).duties t)[q]? = some (.poll t.toNat) ∧
+    engineAttObj rho a ∈ (rho.dutyStep v (tickPrefix rho v i t q).1 (.poll t.toNat)).2
+
+theorem tick_duty_release_in_event (rho : Model.Run (compiled (delayedFamily S p)) E)
+    {v : V} {i q : Nat} {t : Time} {a : FG.Att (Fintype.card V)}
+    (hr : TickDutyRelease rho v i q t a) : EngineReleaseAt rho i a := by
+  sorry
+
+/-- Held rows and the last snapshot time survive restart. Restart does not attest or release. -/
 theorem restart_retains_work (rho : Model.Run (compiled (delayedFamily S p)) E)
     (hn : 1 ≤ Fintype.card V) {v : V} {i : Nat} {t : Time}
     (he : rho.events[i]? = some (.restart v t)) :
     ∃ before after, EngineBoundary rho hn i v before ∧
     EngineBoundary rho hn (i + 1) v after ∧
-    after.pending = before.pending ∧ after.held = before.held ∧
+    after.lastSnapshot = before.lastSnapshot ∧ after.held = before.held ∧
       after.base.node.fg = before.base.node.fg ∧ after.base.node.record = before.base.node.record ∧
       rho.releasesAt i = [] := by
   sorry
@@ -506,6 +490,7 @@ structure EngineProjection {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp
     (H : Time → Set (Fin sp.n)) (U : Publication tr) where
   key : V ≃ Fin sp.n
   reindex : FG.Att sp.n → FG.Att (Fintype.card V)
+  key_eq : ∀ v, (key v).val = (rho.ownKey v).val
   cutLaws : CutObservations tr H
   recordOrigins : RecordOrigins tr H
   sources : SourceFacts tr H
@@ -560,37 +545,40 @@ theorem tick_has_signing_phase (rho : Model.Run (compiled (delayedFamily S p)) E
       else (q = 3 ∨ q = 4) ∧ before.leading = false ∧ before.base.fgDue = true := by
   sorry
 
-/-- A popped row must be a real canonical candidate and an actual release in this
-event. In particular the claim does not follow from the scheduler alone. -/
-theorem popped_row_releases_at_tick (rho : Model.Run (compiled (delayedFamily S p)) E)
+/-- A popped row must pass the guard in the very poll that removes it. This
+does not require an open signing appointment. -/
+theorem popped_row_releases_at_poll (rho : Model.Run (compiled (delayedFamily S p)) E)
     (hn : 1 ≤ Fintype.card V) {v : V} {i q : Nat} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) (hawake : E.awake v t = true)
     (hsel : rho.SelValid)
+    (hpublic : (S.params (Model.pubOf E) hn).toParams.IsPublic t)
     (hpoll : ((Model.protoOf (compiled (delayedFamily S p)) E).duties t)[q]? =
       some (.poll t.toNat))
     {h : Held (S.params (Model.pubOf E) hn)}
     (hown : h.row.val = rho.ownKey v)
     (hpop : h ∈ (preparePoll (p _ (Model.pubOf E).ΔAC)
       (policyStateAt rho hn (tickPrefix rho v i t q).1)).2) :
-    EngineReleaseAt rho i h.row := by
+    TickDutyRelease rho v i q t h.row := by
   sorry
 
-theorem poll_log_has_exact_attempt (p : Rules sp.n) (st : PolicyState sp ro binding)
-    (due time : Time) (C : Blk sp)
-    (hp : (due, time, C) ∈ (signingWork p st).1) :
-    ∃ pre post result, (pre, .fg (.attest C result), post) ∈ (attempt p st).2 := by
+theorem snapshot_log_follows_current_view (p : Rules sp.n) (st : PolicyState sp ro binding) :
+    let (pre, label, result) := Node.acToFG st.base.node st.base.now
+    match result with
+    | none => (snapshot p st).2 = [(st.base.node, label, pre)]
+    | some C => ∃ post row, (snapshot p st).2 =
+        [(st.base.node, label, pre), (pre, .fg (.attest C row), post)] := by
   sorry
 
-theorem snapshot_selects_last_eligible (p : Rules sp.n) (st : PolicyState sp ro binding)
-    (hm : p.sourceChoice = .roundSnapshot) (ho : SigningOpen p st.base.self st.base.now) :
-    (signingWork p st).1 =
-      (st.pending.filter (fun q => q.1 ≤ st.base.now)).getLast?.toList := by
-  sorry
-
-theorem missed_signing_preserves_pending (p : Rules sp.n) (st : PolicyState sp ro binding)
-    (hm : p.missedSigning = .nextAppointment)
+theorem missed_signing_has_no_attempt (p : Rules sp.n) (st : PolicyState sp ro binding)
     (ht : p.signAt st.base.self st.base.now ≠ st.base.now) :
-    (signingWork p st).1 = [] ∧ (signingWork p st).2 = st.pending := by
+    (pollAttempts p st).2 = [] ∧ (pollAttempts p st).1.lastSnapshot = st.lastSnapshot := by
+  sorry
+
+/-- A skipped signing appointment cannot defer a frozen row that is already due. -/
+theorem overdue_flush_at_skipped_signing (p : Rules sp.n) (st : PolicyState sp ro binding)
+    (hclosed : ¬ SigningOpen p st) {h : Held sp}
+    (hheld : h ∈ st.held) (hdue : h.eligibleAt ≤ st.base.now) :
+    h ∈ (preparePoll p st).2 := by
   sorry
 
 theorem poll_log_charges_record (p : Rules sp.n) (st : PolicyState sp ro binding)
@@ -602,29 +590,14 @@ theorem poll_log_charges_record (p : Rules sp.n) (st : PolicyState sp ro binding
 /-- Every successful attempt appends its exact row, with immutable provenance. -/
 theorem attempt_creates_held_row (p : Rules sp.n) (st : PolicyState sp ro binding)
     {pre post : NodeState (goldilocksNode sp ro)} {C : Blk sp} {a : FG.Att sp.n}
-    (h : (pre, .fg (.attest C (some a)), post) ∈ (attempt p st).2) :
-    ∃ item ∈ (attempt p st).1.held, item.source = C ∧ item.row = a ∧
+    (h : (pre, .fg (.attest C (some a)), post) ∈ (snapshot p st).2) :
+    ∃ item ∈ (snapshot p st).1.held, item.source = C ∧ item.row = a ∧
       item.signedAt = st.base.now ∧
-      item.eligibleAt = max item.signedAt
-        (p.releaseAt st.base.self item.reportedAt item.signedAt) := by
+      item.eligibleAt = max item.signedAt (p.releaseAt st.base.self item.signedAt) := by
   sorry
 
-/-- A tick's poll log is a contiguous part of the actual event's cut sequence.
-The state used to run the handler comes from the actual duty prefix. -/
-def ProjectedTickPollLogs
-    (rho : Model.Run (compiled (delayedFamily S p)) E)
-    (hn : 1 ≤ Fintype.card V)
-    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
-    (M : EngineProjection rho tr H U) : Prop :=
-  ∀ (v : V) (i q : Nat) (t : Time),
-    rho.events[i]? = some (.tick v t) → E.awake v t = true →
-    ((Model.protoOf (compiled (delayedFamily S p)) E).duties t)[q]? = some (.poll t.toNat) →
-    let st := policyStateAt rho hn (tickPrefix rho v i t q).1
-    let calls := pollCutLog (p _ (Model.pubOf E).ΔAC) st
-    ∃ offset, ((M.cutLog i).drop offset).take calls.length = calls
-
-/-- Every successful attempt either releases its exact row in that poll, or leaves
-the same frozen item in the actual state at the end of the poll. -/
+/-- A successful attempt releases its exact row in the signing poll if due.
+Otherwise that item stays frozen in the actual state at the end of the poll. -/
 theorem poll_attempt_release_or_retain
     (rho : Model.Run (compiled (delayedFamily S p)) E)
     (hn : 1 ≤ Fintype.card V) {v : V} {i q : Nat} {t : Time}
@@ -637,9 +610,9 @@ theorem poll_attempt_release_or_retain
     let rule := p _ (Model.pubOf E).ΔAC
     ∀ pre C a post, (pre, .fg (.attest C (some a)), post) ∈ (pollAttempts rule st).2 →
       ∃ h : Held (S.params (Model.pubOf E) hn), h.source = C ∧ h.row = a ∧ h.signedAt = t ∧
-        h.eligibleAt = max t (rule.releaseAt st.base.self h.reportedAt t) ∧
-        (EngineReleaseAt rho i a ∨
-          h ∈ (policyStateAt rho hn (tickPrefix rho v i t (q + 1)).1).held) := by
+        h.eligibleAt = max t (rule.releaseAt st.base.self t) ∧
+        (if h.eligibleAt ≤ t then TickDutyRelease rho v i q t a
+        else h ∈ (policyStateAt rho hn (tickPrefix rho v i t (q + 1)).1).held) := by
   sorry
 
 /-- Across any finite suffix (including arbitrary real restarts), a held item
@@ -652,8 +625,7 @@ theorem held_retained_or_released
     (hh : h ∈ (policyStateAt rho hn (rho.stateBefore i v)).held)
     (hown : h.row.val = rho.ownKey v) :
     h ∈ (policyStateAt rho hn (rho.stateBefore j v)).held ∨
-      ∃ l t, i ≤ l ∧ l < j ∧ h.eligibleAt ≤ t ∧
-        rho.SendsAt v l t ∧ EngineReleaseAt rho l h.row := by
+      ∃ l q t, i ≤ l ∧ l < j ∧ h.eligibleAt ≤ t ∧ TickDutyRelease rho v l q t h.row := by
   sorry
 
 /-- Each engine event occupies a half-open interval of cuts (possibly empty).
@@ -669,6 +641,54 @@ structure EventBoundaries
     tr.state (M.key v) (first i) = (policyStateAt rho hn (rho.stateBefore i v)).base.node
   index_eq : ∀ i h, i = first (M.occurrence i h).1 + (M.occurrence i h).2
 
+/-- Reconcile proposal and non-poll duty cuts as well as the polls. Clock and
+gossip do not change the projected node state; the tick boundaries identify
+their projected states with the first and last duty prefixes. -/
+structure ProjectedTickDutyBoundaries
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
+    (M : EngineProjection rho tr H U) (B : EventBoundaries rho hn M) where
+  offset : Nat → Nat → Nat
+  spec : ∀ v i t, rho.events[i]? = some (.tick v t) → E.awake v t = true →
+    let P := Model.protoOf (compiled (delayedFamily S p)) E
+    let len := (P.duties t).length
+    offset i 0 = 0 ∧ offset i len = (M.cutLog i).length ∧
+      Monotone (offset i) ∧
+      (∀ q ≤ len, tr.state (M.key v) (B.first i + offset i q) =
+        (policyStateAt rho hn (tickPrefix rho v i t q).1).base.node) ∧
+      ∀ q, (P.duties t)[q]? = some (.poll t.toNat) →
+        let calls := pollCutLog (p _ (Model.pubOf E).ΔAC)
+          (policyStateAt rho hn (tickPrefix rho v i t q).1)
+        offset i (q + 1) = offset i q + calls.length ∧
+          ((M.cutLog i).drop (offset i q)).take calls.length = calls
+
+/-- Replay the actual delivery traversal, not the object's raw closure. In
+particular, a refused block does not contribute cuts for its carried rows. -/
+noncomputable def deliveryCutLog (rho : Model.Run (compiled (delayedFamily S p)) E)
+    (hn : 1 ≤ Fintype.card V) (v : V) (i : Nat) (t : Time)
+    (o : (Model.protoOf (compiled (delayedFamily S p)) E).Object) :
+    CutLog (S.params (Model.pubOf E) hn) (S.ro _) :=
+  let st := (policyStateAt rho hn (rho.stateBefore i v)).base
+  let hs := Model.digests rho.hash o
+  let proposer := fun s => if h : (rho.sel (.proposer s)).Nonempty then
+    (rho.sel (.proposer s)).min' h else ⟨0, hn⟩
+  (delivered hs st o).foldl (fun (before, logs) obj =>
+    match canonEvent _ _ hs obj with
+    | none => (before, logs)
+    | some e =>
+      let dg := Simulation.dgOf rho.hash S.genesisRoot
+      let (after, labels) := Node.exec proposer dg (rho.ownKey v) before t e
+      let posts := Node.cutPosts (rho.ownKey v) t labels before
+      (after, logs ++ ((before :: posts).zip (labels.zip posts)).map
+        (fun (pre, lbl, post) => (pre, lbl, post)))) (st.node, []) |>.2
+
+def ProjectedDeliveries
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
+    (M : EngineProjection rho tr H U) : Prop :=
+  ∀ v i t o, rho.events[i]? = some (.deliver v o t) →
+    M.cutLog i = deliveryCutLog rho hn v i t o
+
 def ProjectedRestarts
     (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
     {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
@@ -677,6 +697,23 @@ def ProjectedRestarts
     B.first (i + 1) = B.first i + 1 ∧ tr.RestartAt (M.key v) (B.first i) ∧
       tr.time (B.first i) = t
 
+/-- The actual sign and local receipt of a same-poll release appear in order
+inside that poll's slice. Merely finding both somewhere in the tick is not enough. -/
+theorem same_poll_release_cuts
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
+    (M : EngineProjection rho tr H U) (B : EventBoundaries rho hn M)
+    (hcuts : ProjectedTickDutyBoundaries rho hn M B) (hv : rho.ExecutionValid)
+    {v : V} {i q : Nat} {t : Time} {a : FG.Att (Fintype.card V)}
+    (hreleased : TickDutyRelease rho v i q t a)
+    (hattempt : let st := policyStateAt rho hn (tickPrefix rho v i t q).1
+      ∃ pre C post, (pre, .fg (.attest C (some a)), post) ∈
+        (pollAttempts (p _ (Model.pubOf E).ΔAC) st).2) :
+    ∃ k j : Nat,
+      B.first i + hcuts.offset i q ≤ k ∧ k < j ∧ j < B.first i + hcuts.offset i (q + 1) ∧
+      tr.SignAt (M.key v) k a ∧ tr.ProcessAttAt (M.key v) j a := by
+  sorry
+
 /-- Open replay target: construct the projected cuts from the actual run. In particular
 the new `.attest` cut must be separate from own receipt at `flush`. -/
 theorem engine_projection (rho : Model.Run (compiled (delayedFamily S p)) E)
@@ -684,47 +721,103 @@ theorem engine_projection (rho : Model.Run (compiled (delayedFamily S p)) E)
     ∃ (tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _))
       (H : Time → Set (Fin (Fintype.card V))) (U : Publication tr),
       ∃ (M : EngineProjection rho tr H U) (B : EventBoundaries rho hn M),
-        ProjectedTickPollLogs rho hn M ∧ ProjectedRestarts rho hn M B := by
+        Nonempty (ProjectedTickDutyBoundaries rho hn M B) ∧
+          ProjectedDeliveries rho hn M ∧ ProjectedRestarts rho hn M B := by
   sorry
 
-theorem due_report_is_attempted
-    (rho : Model.Run (compiled (delayedFamily S p)) E) (tr : GoldilocksTrace sp ro)
-    (H : Time → Set (Fin sp.n)) (U : Publication tr) (M : EngineProjection rho tr H U)
-    (hvalid : rho.ExecutionValid)
-    (hmode : (p sp.n (Model.pubOf E).ΔAC).sourceChoice = .perReport)
-    (hpublic : ∀ y i ell R, SA.ToFGAt tr.projAC y i ell R → sp.toParams.IsPublic (tr.time i))
-    {y i ell R t} (hreport : SA.ToFGAt tr.projAC y i ell R) (hit : tr.time i ≤ t)
-    (hy : y ∈ H t) (hawake : tr.awake y t) (ht : sp.toParams.IsPublic t)
-    (horizon : t ≤ rho.horizon)
-    (hopen : SigningOpen (p sp.n (Model.pubOf E).ΔAC) y t)
-    (hdue : signingDue (p sp.n (Model.pubOf E).ΔAC) y (tr.time i) ≤ t) :
-    ∃ k s, i ≤ k ∧ tr.time k ≤ t ∧ tr.CallAt y k (.fg (.attest R s)) := by
+/-- The actual open signing phase of an awake tick. -/
+def SnapshotDuty (rho : Model.Run (compiled (delayedFamily S p)) E)
+    (hn : 1 ≤ Fintype.card V) (v : V) (i q : Nat) (t : Time) : Prop :=
+  rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
+    ((Model.protoOf (compiled (delayedFamily S p)) E).duties t)[q]? = some (.poll t.toNat) ∧
+    let st := policyStateAt rho hn (tickPrefix rho v i t q).1
+    let rule := p _ (Model.pubOf E).ΔAC
+    st.base.now = t ∧ SigningOpen rule st ∧
+      (if rule.beforeProposal st.base.self then st.leading = true else st.base.fgDue = true)
+
+theorem appointment_has_snapshot_duty
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {v : V} {e : Nat} {t : Time}
+    (he : rho.events[e]? = some (.tick v t)) (ha : E.awake v t = true)
+    (hh : v ∉ rho.faultyAt t) (hp : (S.params (Model.pubOf E) hn).toParams.IsPublic t)
+    (hc : (p _ (Model.pubOf E).ΔAC).signAt (rho.ownKey v) t = t) :
+    ∃ q, SnapshotDuty rho hn v e q t := by
   sorry
 
-theorem exact_service_of_awake_duties
-    (rho : Model.Run (compiled (delayedFamily S p)) E) (tr : GoldilocksTrace sp ro)
-    (H : Time → Set (Fin sp.n)) (U : Publication tr) (M : EngineProjection rho tr H U)
-    {g b D : Time} (coverage : SignDutyCoverage tr H (p sp.n (Model.pubOf E).ΔAC) g b D)
-    (htrace : ∀ y i ell R t, SA.ToFGAt tr.projAC y i ell R → tr.time i ≤ t →
-      y ∈ H t → tr.awake y t → sp.toParams.IsPublic t →
-      SigningOpen (p sp.n (Model.pubOf E).ΔAC) y t →
-      signingDue (p sp.n (Model.pubOf E).ΔAC) y (tr.time i) ≤ t →
-      ∃ k s, i ≤ k ∧ tr.time k ≤ t ∧ tr.CallAt y k (.fg (.attest R s))) :
-    ExactService tr H g b D := by
+/-- Actual nonempty reports already owe their own adjacent attempt. Candidate
+availability before a report is a distinct service question. -/
+theorem report_has_adjacent_attempt
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
+    (M : EngineProjection rho tr H U) (B : EventBoundaries rho hn M)
+    (cuts : ProjectedTickDutyBoundaries rho hn M B) (hv : rho.ExecutionValid)
+    {y i ell C} (hy : y ∈ H (tr.time i)) (hr : SA.ToFGAt tr.projAC y i ell C) :
+    ∃ result, tr.CallAt y (i + 1) (.fg (.attest C result)) ∧ tr.time (i + 1) = tr.time i := by
   sorry
 
-/-- Snapshot-only seam. A discarded report needs a real dominating replacement;
-latest-by-time order alone does not imply this across a restart. -/
-theorem snapshot_attempts_of_duties
-    (rho : Model.Run (compiled (delayedFamily S p)) E) (tr : GoldilocksTrace sp ro)
-    (H : Time → Set (Fin sp.n)) (U : Publication tr) (M : EngineProjection rho tr H U)
-    (hv : rho.ExecutionValid) {g b D : Time} (hb : b ≤ rho.horizon)
-    (hm : (p sp.n (Model.pubOf E).ΔAC).sourceChoice = .roundSnapshot)
-    (hduty : SignDutyCoverage tr H (p sp.n (Model.pubOf E).ΔAC) g b D)
-    (hdominance : ∀ y i j k ell ell' C C' result, i ≤ j → j ≤ k → y ∈ H (tr.time k) →
-      SA.ToFGAt tr.projAC y i ell C → SA.ToFGAt tr.projAC y j ell' C' →
-      tr.CallAt y k (.fg (.attest C' result)) → Dominates tr H y i k C C') :
-    Attempts tr H g b D := by
+/-- Compare only to historical sources in the candidate batch actually read at
+the snapshot. An aged-out source or a snapshot returning none needs a separate
+discharge argument. There is no restriction on intervening restarts. -/
+theorem snapshot_dominance_across_restart
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
+    (M : EngineProjection rho tr H U) (B : EventBoundaries rho hn M)
+    (cuts : ProjectedTickDutyBoundaries rho hn M B) (hv : rho.ExecutionValid)
+    {v : V} {e q i : Nat} {t : Time} {ell C}
+    (hd : SnapshotDuty rho hn v e q t) (hh : M.key v ∈ H t)
+    (hi : i ≤ B.first e + cuts.offset e q) (hr : SA.ToFGAt tr.projAC (M.key v) i ell C)
+    (hm : let st := (policyStateAt rho hn (tickPrefix rho v e t q).1).base.node
+      C ∈ SA.toFGCandidates (S.params (Model.pubOf E) hn) st.ac (Node.frame st) t)
+    (hresult : let st := (policyStateAt rho hn (tickPrefix rho v e t q).1).base.node
+      (Node.acToFG st t).2.2.isSome = true) :
+    ∃ j k lbl C' result,
+      j = B.first e + cuts.offset e q ∧ k = j + 1 ∧ tr.time k = t ∧
+      SA.ToFGAt tr.projAC (M.key v) j lbl C' ∧
+      tr.CallAt (M.key v) k (.fg (.attest C' result)) ∧ Dominates tr H (M.key v) i k C C' := by
+  sorry
+
+/-- Local availability at the actual poll. If the report cursor suppresses
+the selected candidate, the proof owes historical discharge, not a new cut. -/
+theorem snapshot_source_or_suppressed
+    (st : NodeState (goldilocksNode sp ro)) (t : Time)
+    (hj : SA.joined sp st.ac t)
+    (hc : ∃ C, SA.IsDeepest (Node.frame st) (SA.toFGCandidates sp st.ac (Node.frame st) t) C) :
+    ∃ C ∈ SA.toFGCandidates sp st.ac (Node.frame st) t,
+      (Node.acToFG st t).2.2 = some C ∨
+        ((Node.acToFG st t).2.2 = none ∧ SA.AncR (Node.frame st) C st.ac.fgReported) := by
+  sorry
+
+/-- A suppression by a non-genesis cursor must have a same-run origin. This
+does not by itself say that the earlier row fits the later consuming parent. -/
+theorem snapshot_cursor_report_origin
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
+    (M : EngineProjection rho tr H U) (B : EventBoundaries rho hn M)
+    (cuts : ProjectedTickDutyBoundaries rho hn M B) (hv : rho.ExecutionValid)
+    {v : V} {e q : Nat} {t : Time} (hd : SnapshotDuty rho hn v e q t)
+    (hh : M.key v ∈ H t)
+    (hcursor : (tr.state (M.key v) (B.first e + cuts.offset e q)).ac.fgReported ≠ S.genesisRoot) :
+    ∃ j k ell C result, j < B.first e + cuts.offset e q ∧ k = j + 1 ∧
+      SA.ToFGAt tr.projAC (M.key v) j ell C ∧ tr.CallAt (M.key v) k (.fg (.attest C result)) ∧
+      C.root = (tr.state (M.key v) (B.first e + cuts.offset e q)).ac.fgReported := by
+  sorry
+
+/-- A selected appointment can be a real snapshot but not a joined signing
+opportunity. A same-tick restart in particular does not earn signing credit. -/
+def JoinedAwakeAppointment (rho : Model.Run (compiled (delayedFamily S p)) E)
+    (hn : 1 ≤ Fintype.card V) (v : V) (lo t : Time) : Prop :=
+  lo ≤ t ∧ ∃ i q, SnapshotDuty rho hn v i q t ∧
+    let st := policyStateAt rho hn (tickPrefix rho v i t q).1
+    SA.joined (S.params (Model.pubOf E) hn) st.base.node.ac t
+
+theorem joined_appointment_of_ready_and_restart_time
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {v : V} {i q : Nat} {lo t : Time}
+    (hd : SnapshotDuty rho hn v i q t) (hlo : lo ≤ t)
+    (hr : let sp := S.params (Model.pubOf E) hn
+      let st := policyStateAt rho hn (tickPrefix rho v i t q).1
+      st.base.node.ac.restartTime ≤ ((sp.ts ((sp.slot t : Int) - 1) : Time) : WithBot Time)) :
+    JoinedAwakeAppointment rho hn v lo t := by
   sorry
 
 /-- Preliminary opportunity only. An awake tick does not bound the queue rank. -/
@@ -744,8 +837,8 @@ theorem release_of_poll_output
     (hvalid : rho.ExecutionValid)
     (service : ∀ v k a, tr.SignAt (M.key v) k a → max g (tr.time k) + R ≤ b →
       M.key v ∈ H (max g (tr.time k) + R) →
-      ∃ t i, t ≤ max g (tr.time k) + R ∧ rho.SendsAt v i t ∧
-        EngineReleaseAt rho i (M.reindex a)) :
+      ∃ t i q, tr.time k ≤ t ∧ t ≤ max g (tr.time k) + R ∧
+        TickDutyRelease rho v i q t (M.reindex a)) :
     ReleaseService U H g b R := by
   sorry
 
@@ -760,25 +853,19 @@ theorem bounded_publication_of_policy
     (H : Time → Set (Fin sp.n)) (U : Publication tr) (M : EngineProjection rho tr H U)
     (hvalid : rho.ExecutionValid) {g b R slack : Time}
     (horizon : b ≤ rho.horizon) (hslack : 0 ≤ slack) (hR : slack ≤ R)
-    (hcal : ∀ y r t, 0 ≤ r → r ≤ t →
-      (p sp.n (Model.pubOf E).ΔAC).releaseAt y r t ≤ t + (R - slack))
+    (hcal : ∀ y t, 0 ≤ t →
+      (p sp.n (Model.pubOf E).ΔAC).releaseAt y t ≤ t + (R - slack))
     (hwin : PublicServiceWindow tr H g b slack) : ReleaseService U H g b R := by
   sorry
 
-theorem sign_duty_coverage_of_calendar
-    (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (p : Rules sp.n)
-    {g b D slack : Time} (hs : 0 ≤ slack) (hD : slack ≤ D)
-    (hmode : p.missedSigning = .serveOverdue)
-    (hcal : ∀ y t, signingDue p y t ≤ t + (D - slack))
-    (hwin : PublicServiceWindow tr H g b slack) : SignDutyCoverage tr H p g b D := by
-  sorry
-
-/-- Skip needs an actual awake calendar point; an arbitrary awake public poll
-cannot discharge the signing deadline. No such premise is needed for release. -/
+/-- A per-report time bound is valid only if awake calendar intersections are
+bounded from the clamped due time; an ordinary awake public poll does not suffice. -/
 theorem sign_duty_coverage_of_awake_appointments
     (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (p : Rules sp.n)
     {g b D slack : Time} (hs : 0 ≤ slack) (hD : slack ≤ D)
-    (hcal : ∀ y t, signingDue p y t ≤ t + (D - slack))
+    (hm : Antitone H)
+    (hcal : ∀ y t, 0 ≤ t → signingDue p y t ≤ t + (D - slack))
+    (ht : ∀ i, 0 ≤ tr.time i)
     (happointments : ∀ y t, g ≤ t → t + slack ≤ b → y ∈ H (t + slack) →
       ∃ u, t ≤ u ∧ u ≤ t + slack ∧ sp.toParams.IsPublic u ∧
         tr.awake y u ∧ p.signAt y u = u) :
@@ -797,6 +884,51 @@ theorem healthy_appointment_exists (tr : GoldilocksTrace sp ro) (H : Time → Se
         tr.awake y u ∧ p.signAt y u = u := by
   sorry
 
+/-- First awake signing appointment after the clamped lower bound. The minimum
+is over public calendar points, not all ticks. -/
+def FirstAwakeAppointment (tr : GoldilocksTrace sp ro) (rule : Rules sp.n)
+    (y : Fin sp.n) (lo u : Time) : Prop :=
+  let eligible := fun t => sp.toParams.IsPublic t ∧ rule.signAt y t = t ∧ tr.awake y t
+  lo ≤ u ∧ eligible u ∧ ∀ t, lo ≤ t → eligible t → u ≤ t
+
+/-- A bound for a fixed validator outside a full ready interval needs this
+intersection property. A regime's population or committee count alone is not it. -/
+def AwakeCalendarBound (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+    (rule : Rules sp.n) (g b slack : Time) : Prop :=
+  ∀ y lo, max g 0 ≤ lo → lo + slack ≤ b → y ∈ H (lo + slack) →
+    ∃ u, lo ≤ u ∧ u ≤ lo + slack ∧ sp.toParams.IsPublic u ∧
+      rule.signAt y u = u ∧ tr.awake y u
+
+theorem first_awake_appointment_of_bound
+    (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (rule : Rules sp.n)
+    {y : Fin sp.n} {g b due slack : Time} (hbound : AwakeCalendarBound tr H rule g b slack)
+    (hhi : max (max g 0) due + slack ≤ b) (hh : y ∈ H (max (max g 0) due + slack)) :
+    ∃ u ≤ max (max g 0) due + slack,
+      FirstAwakeAppointment tr rule y (max (max g 0) due) u := by
+  sorry
+
+theorem first_awake_appointment_in_ready_window
+    (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (rule : Rules sp.n)
+    {y : Fin sp.n} {g due c deadline slack : Time}
+    (hready : Regimes.Growing.ReadyAt tr H c y deadline)
+    (hcal : ∀ t, 0 ≤ t → ∃ u, t ≤ u ∧ u ≤ t + slack ∧
+      sp.toParams.IsPublic u ∧ rule.signAt y u = u)
+    (hroom : max (max g due) (max 0 (deadline - c - 1)) + slack ≤ deadline) :
+    ∃ u ≤ deadline, FirstAwakeAppointment tr rule y
+      (max (max g due) (max 0 (deadline - c - 1))) u := by
+  sorry
+
+theorem first_awake_appointment_healthy
+    (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (rule : Rules sp.n)
+    {y : Fin sp.n} {g due b slack : Time} (hh : y ∈ H b) (hm : Antitone H)
+    (hawake : ∀ t, max g 0 ≤ t → t ≤ b → y ∈ H t → tr.awake y t)
+    (hcal : ∀ t, 0 ≤ t → ∃ u, t ≤ u ∧ u ≤ t + slack ∧
+      sp.toParams.IsPublic u ∧ rule.signAt y u = u)
+    (hroom : max (max g 0) due + slack ≤ b) :
+    ∃ u ≤ max (max g 0) due + slack,
+      FirstAwakeAppointment tr rule y (max (max g 0) due) u := by
+  sorry
+
 theorem healthy_service_window (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
     {g b : Time} (hg : 0 ≤ g)
     (hgrid : ∀ t, 0 ≤ t → ∃ u, t ≤ u ∧ u ≤ t + sp.Δ ∧ sp.toParams.IsPublic u)
@@ -812,6 +944,43 @@ theorem selected_tick_at_public_opportunity
     (ht : 0 ≤ t) (hb : t ≤ rho.horizon) (hy : M.key v ∈ H t)
     (hp : sp.toParams.IsPublic t) (ha : tr.awake (M.key v) t) :
     ∃ i : Nat, rho.events[i]? = some (Model.Event.tick v t) := by
+  sorry
+
+theorem first_awake_appointment_executes_snapshot
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
+    (M : EngineProjection rho tr H U) (hv : rho.ExecutionValid)
+    {v : V} {lo u : Time} (hlo : 0 ≤ lo) (hb : u ≤ rho.horizon)
+    (hhonest : M.key v ∈ H u)
+    (hkey : M.key v = rho.ownKey v)
+    (hfirst : FirstAwakeAppointment tr (p _ (Model.pubOf E).ΔAC) (M.key v) lo u) :
+    ∃ e q, SnapshotDuty rho hn v e q u := by
+  sorry
+
+/-- Charge one grid step for the initial wake and two slots for joining before
+rounding to a signing appointment. Earlier restarts remain unrestricted. -/
+theorem joined_appointment_in_ready_window
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
+    (M : EngineProjection rho tr H U) (hv : rho.ExecutionValid)
+    {v : V} {g c due deadline slack : Time}
+    (hr : Regimes.Growing.ReadyAt tr H c (M.key v) deadline)
+    (hb : deadline ≤ rho.horizon)
+    (hcal : ∀ t, 0 ≤ t → ∃ u, t ≤ u ∧ u ≤ t + slack ∧
+      (S.params (Model.pubOf E) hn).toParams.IsPublic u ∧
+      (p _ (Model.pubOf E).ΔAC).signAt (M.key v) u = u)
+    (hroom : max (max g due) (max 0 (deadline - c - 1) +
+      9 * (S.params (Model.pubOf E) hn).Δ) + slack ≤ deadline) :
+    ∃ u ≤ deadline, JoinedAwakeAppointment rho hn v (max g due) u := by
+  sorry
+
+/-- Transport the actual ready population, including the whole awake interval.
+This does not assert an appointment fits within that interval. -/
+theorem policy_ready_iff
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (tr : GoldilocksTrace sp ro)
+    (H : Time → Set (Fin sp.n)) (U : Publication tr) (M : EngineProjection rho tr H U)
+    {v : V} {c t : Time} (ht : 0 ≤ t) (hb : t ≤ rho.horizon) :
+    rho.point.Ready c v t ↔ Regimes.Growing.ReadyAt tr H c (M.key v) t := by
   sorry
 
 /-- Sleepy and outage use individual awake opportunities, not the healthy full-population
@@ -861,12 +1030,13 @@ theorem selected_calendar_tick_in_ready_interval
     (H : Time → Set (Fin sp.n)) (U : Publication tr) (M : EngineProjection rho tr H U)
     (hv : rho.ExecutionValid) {v : V} {g due deadline c : Time}
     (hready : Regimes.Growing.ReadyAt tr H c (M.key v) deadline)
-    (horizon : deadline ≤ rho.horizon)
-    (t : Time) (hlo : max (max g due) (max 0 (deadline - c - 1)) ≤ t)
-    (hhi : t ≤ deadline) (hpub : sp.toParams.IsPublic t)
-    (hcalendar : (p sp.n (Model.pubOf E).ΔAC).signAt (M.key v) t = t) :
-    SigningOpen (p sp.n (Model.pubOf E).ΔAC) (M.key v) t ∧
-      ∃ i : Nat, rho.events[i]? = some (Model.Event.tick v t) := by
+    (horizon : deadline ≤ rho.horizon) {slack : Time}
+    (hcalendar : ∀ t, 0 ≤ t → ∃ u, t ≤ u ∧ u ≤ t + slack ∧
+      sp.toParams.IsPublic u ∧ (p sp.n (Model.pubOf E).ΔAC).signAt (M.key v) u = u)
+    (hroom : max (max g due) (max 0 (deadline - c - 1)) + slack ≤ deadline) :
+    ∃ (t : Time) (i : Nat), max (max g due) (max 0 (deadline - c - 1)) ≤ t ∧
+      t ≤ deadline ∧ (p sp.n (Model.pubOf E).ΔAC).signAt (M.key v) t = t ∧
+      sp.toParams.IsPublic t ∧ rho.events[i]? = some (Model.Event.tick v t) := by
   sorry
 
 theorem release_at_awake_tick
@@ -877,8 +1047,7 @@ theorem release_at_awake_tick
     (hawake : tr.awake (M.key v) t) (hhonest : M.key v ∈ H t)
     (hpublic : sp.toParams.IsPublic t)
     (hhorizon : t ≤ rho.horizon)
-    (hdue : ∀ r, 0 ≤ r → r ≤ tr.time k →
-      (p sp.n (Model.pubOf E).ΔAC).releaseAt (M.key v) r (tr.time k) ≤ t) :
+    (hdue : (p sp.n (Model.pubOf E).ΔAC).releaseAt (M.key v) (tr.time k) ≤ t) :
     ReleasedBy U H (M.key v) a t := by
   sorry
 
@@ -1014,6 +1183,16 @@ theorem held_row_processed_before_cut
     ∃ k < j, tr.ProcessAttAt (M.key v) k a ∧ tr.time k ≤ d := by
   sorry
 
+/-- On the partial-synchrony leg, only the receiver's awake interval starting
+at guarded release (clamped to GST) is used. This is not a signing premise. -/
+theorem released_delivery_of_psync
+    (rho : Model.Run (compiled (delayedFamily S p)) E)
+    {tr : GoldilocksTrace sp ro} {H U} (M : EngineProjection rho tr H U)
+    (hv : rho.ExecutionValid) {g b : Time} (hb : b ≤ rho.horizon)
+    (hΔ : 0 < E.ΔFG) (hnet : rho.log.PSync rho.point g) :
+    ReleasedDelivery U H g E.ΔFG b := by
+  sorry
+
 end NetworkStatements
 
 section ResetStatements
@@ -1023,6 +1202,61 @@ open Healing (cutZ)
 open Healing.Growing
 
 variable {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+
+/-- Honest payload bits cannot originate at release or at replay. A held row
+must be attributed to its original earlier signature. -/
+def PayloadSignOrigins (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) : Prop :=
+  ∀ y k (P : Blk sp) a, y ∈ H (tr.time k) → P ∈ (tr.state y k).fg.tree →
+    a ∈ P.fgPayload → a.val ∈ H (tr.time k) → ∃ j < k, tr.SignAt a.val j a
+
+theorem payload_sign_origins_of_engine
+    {V : Type} [Fintype V] [DecidableEq V] {E : Env V} {S : Setup}
+    {p : (n : Nat) → Time → Rules n}
+    (rho : Model.Run (compiled (delayedFamily S p)) E)
+    {U : Publication tr} (M : EngineProjection rho tr H U)
+    (hv : rho.ExecutionValid) (hnc : ¬ rho.HashCollision) : PayloadSignOrigins tr H := by
+  sorry
+
+/-- Pull an entry-height signature out of an earlier carrier. Payload use must
+have a same-run signature origin; raw availability alone cannot prove it. -/
+theorem first_high_signature_of_entry {g : Time} {y : Fin sp.n} {k : Nat}
+    {a : FG.Att sp.n} {acp₀ : Payload sp.n}
+    (hcut : CutObservations tr H)
+    (hreachable : Store.Reachable acp₀ (tr.state y k).fg)
+    (hsource : ∃ C : Blk sp, C ∈ (tr.state y k).fg.tree ∧
+      ((tr.state y k).fg.σ C.root).h = a.h)
+    (hpayload : ∀ (Y : Blk sp) row, Y ∈ (tr.state y k).fg.tree → row ∈ Y.fgPayload →
+      row.val ∈ H (max (cutZ sp.toParams g) (tr.time k)) →
+      ∃ j < k, tr.SignAt row.val j row)
+    (hy : y ∈ H (max (cutZ sp.toParams g) (tr.time k)))
+    (hf : (H (max (cutZ sp.toParams g) (tr.time k)))ᶜ.ncard < sp.toParams.fg.q)
+    (hs : tr.SignAt y k a) (hh : HZ tr H g + 1 ≤ a.h) :
+    ∃ z j row, z ∈ H (max (cutZ sp.toParams g) (tr.time j)) ∧ j ≤ k ∧
+      tr.SignAt z j row ∧ row.h = HZ tr H g + 1 := by
+  sorry
+
+/-- Reset is indexed by signing, never by network release. A refusal at a
+high attempted source must be resolved using an earlier actual signature.
+The cut-level port of `Generic.reset_of_high_source_at_from` must derive this
+from the persistent record and not require the immediate-update group law. -/
+theorem reset_of_high_policy_attempt {g : Time} {y : Fin sp.n} {k : Nat}
+    {C : Blk sp} {result : Option (FG.Att sp.n)} {acp₀ : Payload sp.n}
+    (hcut : CutObservations tr H) (hsources : SourceFacts tr H)
+    (horigins : RecordOrigins tr H)
+    (hstep : ∀ i v ℓ, tr.CallAt v i ℓ → Node.CutStep v (tr.time i) (tr.state v i) ℓ (tr.post i))
+    (hreachable : ∀ v i, v ∈ H (tr.time i) → Store.Reachable acp₀ (tr.state v i).fg)
+    (hlock : ∀ v i h r, v ∈ H (tr.time i) → (tr.state v i).record.lock h = some r →
+      ∃ j < i, ∃ a, tr.SignAt v j a ∧ a.fin = some (h, r) ∧ h < a.h)
+    (hentry : ∀ v i a, v ∈ H (max (cutZ sp.toParams g) (tr.time i)) → tr.SignAt v i a →
+      HZ tr H g + 1 ≤ a.h → (H (max (cutZ sp.toParams g) (tr.time i)))ᶜ.ncard < sp.toParams.fg.q →
+      ∃ z j row, z ∈ H (max (cutZ sp.toParams g) (tr.time j)) ∧ j ≤ i ∧
+        tr.SignAt z j row ∧ row.h = HZ tr H g + 1)
+    (hy : y ∈ H (max (cutZ sp.toParams g) (tr.time k)))
+    (hf : ∀ i ≤ k, (H (max (cutZ sp.toParams g) (tr.time i)))ᶜ.ncard < sp.toParams.fg.q)
+    (ha : tr.CallAt y k (.fg (.attest C result)))
+    (high : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ C.root).h) :
+    ∃ a, IsReset tr H g a ∧ a ≤ tr.time k := by
+  sorry
 
 /-- The first high signature is an internal-record boundary, not an engine-release
 boundary. A separate invariant must bound the age and height of work held there. -/
@@ -1136,6 +1370,19 @@ def WarmReportWindow (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
             ∃ l ell C', SA.ToFGAt tr.projAC v l ell C' ∧ tr.time l ≤ d ∧
               Anc (tr.HonestBlocksAt H) P C' ∧ h ≤ ((tr.state v l).fg.σ C'.root).h)
 
+/-- Produce the warm window from the real drain and catch-up. The separate
+appointment slack pays for reaching a report, not publication of that report. -/
+theorem warm_report_window_of_drain {g b D R : Time} {G Ld : Nat}
+    {proposer : Nat → Fin sp.n} (hcut : CutObservations tr H)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hbase : BaseService tr H g)
+    (hdrain : DrainOutputs tr proposer H g G Ld b)
+    (hawake : ∀ y t, gbar g ≤ t → t ≤ b → y ∈ H t → tr.awake y t)
+    (hq : ∀ t, gbar g ≤ t → t ≤ b → sp.toParams.fg.q ≤ (H t).ncard)
+    (hD : 0 ≤ D) (hR : 0 ≤ R)
+    (hfit : 6 * sp.Δ + D + R ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time)) :
+    WarmReportWindow tr H proposer g b D R := by
+  sorry
+
 /-- Pre-reset assembly. The report window is upstream of signing, and the
 local bridge is downstream of signing and actual receipt. The bridge must
 discharge the low-floor refusal and parent-entry comparison, not assume that
@@ -1178,6 +1425,20 @@ theorem high_records_of_high_source_agreement {g b : Time}
       ∃ x i j B T, HighOrigin tr H g x i j B ∧ tr.time i ≤ b ∧
         T ∈ tr.HonestBlocksAt H ∧ Anc (tr.HonestBlocksAt H) T B ∧ T.root = root) :
     HighRecordAgreement tr H g b := by
+  sorry
+
+/-- The warm induction's parent and post-state glue is separate from the row
+producer. A scalar height observation does not identify the consuming parent. -/
+theorem warm_round_rise_of_timeout_rows {g b D R : Time} {G Ld : Nat}
+    {proposer : Nat → Fin sp.n} (U : Publication tr)
+    (hcut : CutObservations tr H) (hbase : BaseService tr H g)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hdrain : DrainOutputs tr proposer H g G Ld b)
+    (hrows : WarmTimeoutRows tr H U proposer g b D R)
+    (hstep : ∀ i y ℓ, tr.CallAt y i ℓ → Node.CutStep y (tr.time i) (tr.state y i) ℓ (tr.post i))
+    (hpost : ∀ i y ℓ, tr.CallAt y i ℓ → tr.state y (i + 1) = tr.post i)
+    {acp₀ : Payload sp.n}
+    (hreachable : ∀ y k, y ∈ H (tr.time k) → Store.Reachable acp₀ (tr.state y k).fg) :
+    WarmRoundRise tr H proposer g b D R := by
   sorry
 
 /-- Unlike the landed reset kernel, this target does not assume `NoRestartUpTo`.
@@ -1252,23 +1513,17 @@ theorem aligned_appointment {Δ offset t : Time} (hΔ : 0 < Δ) (hoff : Δ ∣ o
   sorry
 
 /-- The grid constructions pay the actual appointment after the GST clamp,
-including when the original due point preceded GST. The source choice has no
-effect on this calendar bound. -/
+including when the original due point preceded GST. -/
 theorem round_start_schedule_bounds {Δ : Time} (hΔ : 1 ≤ Δ)
     (offsets : (n : Nat) → Option (Fin n → Time))
-    (aligned : ∀ n (f : Fin n → Time), offsets n = some f → ∀ y, Δ ∣ f y)
-    (source : SourceChoice) (missed : MissedSigning) :
-    ScheduleBounds (fun n tick =>
-      { Rules.roundStart n tick (offsets n) with sourceChoice := source, missedSigning := missed })
+    (aligned : ∀ n (f : Fin n → Time), offsets n = some f → ∀ y, Δ ∣ f y) :
+    ScheduleBounds (fun n tick => Rules.roundStart n tick (offsets n))
       Δ ⟨5, 4, 0⟩ := by
   sorry
 
 theorem sign_at_release_schedule_bounds {Δ : Time} (hΔ : 1 ≤ Δ)
-    (offsets : (n : Nat) → Fin n → Time) (aligned : ∀ n y, Δ ∣ offsets n y)
-    (source : SourceChoice) (missed : MissedSigning) :
-    ScheduleBounds (fun n tick =>
-      { Rules.signAtRelease n tick (offsets n) with
-        sourceChoice := source, missedSigning := missed }) Δ ⟨5, 1, 0⟩ := by
+    (offsets : (n : Nat) → Fin n → Time) (aligned : ∀ n y, Δ ∣ offsets n y) :
+    ScheduleBounds (fun n tick => Rules.signAtRelease n tick (offsets n)) Δ ⟨5, 1, 0⟩ := by
   sorry
 
 theorem responsive_family : family S Rules.responsive = goldilocks S := by
@@ -1360,6 +1615,21 @@ theorem policy_final_query_slot_room
         (policyIndex S A window B Q.index) : Time) * Q.run.1.ΔAC := by
   sorry
 
+/-- Charge the proposed five-window reserve at the actual query. This is
+conditional on the delayed induction really paying at most this reset bound. -/
+theorem policy_final_reset_placement
+    {V : Type} [Fintype V] [DecidableEq V] (Q : PolicyFinalQuery S A window p B V)
+    (a : Time) (ha0 : 0 ≤ a)
+    (ha : let sp := S.params (Model.pubOf Q.run.1) Q.positive
+      let ready := (Sys (family S p) V).ready (windowContract S A window B) Q.gst Q.run
+      a ≤ Obligations.resetBoundRounds ready sp.Δ (2 * sp.Δ) S.δt Q.index
+        (healthyDrainLen S Q.index) + 5 * B.total * sp.Δ) :
+    let sp := S.params (Model.pubOf Q.run.1) Q.positive
+    let ready := (Sys (family S p) V).ready (windowContract S A window B) Q.gst Q.run
+    max (max ready 0) (sp.ts (sp.slot a + 2 * sp.k + 5) - 1) +
+      ((Q.index : Nat) + S.δt : Nat) * (4 * sp.Δ) ≤ Q.query + 4 * sp.Δ := by
+  sorry
+
 /-- Recurrence must be read from the delayed family's real progress premise,
 not from a run of the legacy family with the same parameters. -/
 theorem policy_final_window_slots
@@ -1383,6 +1653,26 @@ theorem policy_final_window_slots
         sp.ts s ≤ Q.run.2.horizon ∧
         HonestReadyIn Q.run.2.point Q.run.2.key (fun s => Q.run.2.sel (.proposer s)) s
           ((Sys (family S p) V).cDur (windowContract S A window B) Q.run) (sp.ts s) sp.Δ := by
+  sorry
+
+/-- Exact compiled reader target for the final-window package. `InBy` must be
+proved at every ready reader's actual kept read, not at an abstract trace tip. -/
+def PolicyFinalWitness {V : Type} [Fintype V] [DecidableEq V]
+    (Q : PolicyFinalQuery S A window p B V) : Prop :=
+  let deadline := Q.query + ((windowContract S A window B).params.latency .final
+    (policyIndex S A window B Q.index) : Time) * Q.run.1.ΔAC
+  ∀ g, schema.output .final = some g →
+    (∃ v, Q.run.2.point.Ready ((Sys (family S p) V).cDur (windowContract S A window B) Q.run)
+      v deadline) →
+    ∃ τ k h, Q.query < τ ∧
+      Q.run.2.point.Ready ((Sys (family S p) V).cDur (windowContract S A window B) Q.run)
+        (Q.run.2.key k) τ ∧ HonestProposal Q.run.2 τ k h ∧
+      InBy Q.run.2 ((Sys (family S p) V).cDur (windowContract S A window B) Q.run) g h deadline
+
+theorem policy_final_query_witness
+    {V : Type} [Fintype V] [DecidableEq V] (Q : PolicyFinalQuery S A window p B V)
+    (hsched : PolicySchedule p B) (htiming : TimingRoom A window B) :
+    PolicyFinalWitness S A window p B Q := by
   sorry
 
 theorem obligations_of_policy_suppliers
@@ -1439,6 +1729,16 @@ theorem headline_with_excuses
     CorrectProtocolWithExcuses (Model.sysOf schema (compiled (family S p)) V)
       (shapeProgress (family S p) V) (windowContract S A window B)
       (fun r => r.2.StructuralValid) (fun r => r.2.BindingFailure) := by
+  sorry
+
+/-- Proposed headline for the planning branch. No release, matching-row or
+per-run service oracle is a public premise. -/
+theorem policy_correct_protocol
+    (hsched : PolicySchedule p B) (htiming : TimingRoom A window B)
+    (V : Type) [Fintype V] [DecidableEq V] :
+    CorrectProtocol (Model.sysOf schema (compiled (family S p)) V)
+      (shapeProgress (family S p) V) (windowContract S A window B) ∧
+      (windowContract S A window B).params.OptimalFaultTolerance := by
   sorry
 
 end EndpointStatements
