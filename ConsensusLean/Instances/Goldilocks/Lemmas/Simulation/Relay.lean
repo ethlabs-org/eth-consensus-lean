@@ -57,7 +57,9 @@ section
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-private theorem encodeVote_of_decodeVote {n : Nat} {w : WireVote} {v : Vote n}
+/-- Encoding a successfully decoded vote recovers its wire representation.
+Kept for a downstream consumer. -/
+theorem encodeVote_of_decodeVote {n : Nat} {w : WireVote} {v : Vote n}
     (h : decodeVote n w = some v) : encodeVote v = w := by
   unfold decodeVote at h
   split at h

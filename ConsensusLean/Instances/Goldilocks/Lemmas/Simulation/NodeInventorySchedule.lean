@@ -32,6 +32,18 @@ theorem lastRestart_iff (v : V) (i : Nat) : LastRestart rho v i ↔
       ∀ l, r < l → l < i → ∀ e, rho.events[l]? = some e → e.node ≠ v := by
   rfl
 
+omit [DecidableEq V] in
+/-- With no event of this node at the cut, its last restart still qualifies at the next cut.
+Kept for a downstream consumer. -/
+theorem lastRestart_other {v : V} {i : Nat}
+    (hev : ∀ ev, rho.events[i]? = some ev → ev.node ≠ v) (h : LastRestart rho v i) :
+    LastRestart rho v (i + 1) := by
+  obtain ⟨r, hr, t, he, hno⟩ := (lastRestart_iff rho v i).1 h
+  refine (lastRestart_iff rho v (i + 1)).2 ⟨r, by omega, t, he, fun l h₁ h₂ ev hl => ?_⟩
+  rcases Nat.lt_succ_iff_lt_or_eq.1 h₂ with h₂ | rfl
+  · exact hno l h₁ h₂ ev hl
+  · exact hev ev hl
+
 /-- A delivery cannot directly follow a restart of its node: a tick comes in between. -/
 theorem not_lastRestart_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
     {o : (Model.protoOf (compiled F) E).Object} {t : Time}

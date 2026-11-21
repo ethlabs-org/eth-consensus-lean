@@ -998,12 +998,8 @@ theorem outbox_inv (hv : rho.ExecutionValid) (v : V) :
     obtain ⟨ih₁, ih₂⟩ := outbox_inv hv v i
     have hext : LastRestart S rho v i → (∀ e, rho.events[i]? = some e → e.node ≠ v) →
         LastRestart S rho v (i + 1) := by
-      simp only [lastRestart_eq, NodeAsChainShape.CanonicalTrace.lastRestart_iff]
-      rintro ⟨r, hri, t, hr, hno⟩ hi
-      refine ⟨r, by omega, t, hr, fun l h1 h2 e he => ?_⟩
-      rcases Nat.lt_succ_iff_lt_or_eq.mp h2 with h2 | rfl
-      · exact hno l h1 h2 e he
-      · exact hi e he
+      simp only [lastRestart_eq]
+      exact fun h hi => NodeAsChainShape.CanonicalTrace.lastRestart_other rho hi h
     match he : rho.events[i]? with
     | none =>
       rw [stateAt_succ_none S rho hn v he]

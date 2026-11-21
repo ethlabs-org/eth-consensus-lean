@@ -186,7 +186,8 @@ private theorem cast_restore {s s' : ChainShape (Model.pubOf E) O.Id I} (h : s =
   cases h
   rfl
 
-private theorem stateAt_restart {i : Nat} {v : V} {t : Time}
+/-- A restart restores the node's state. Kept for a downstream consumer. -/
+theorem stateAt_restart {i : Nat} {v : V} {t : Time}
     (he : rho.events[i]? = some (.restart v t)) :
     stateAt e rho v (i + 1) = (e.ops hn).restore (rho.ownKey v) (stateAt e rho v i) t := by
   rw [stateAt_eq, stateAt_eq, rho.stateBefore_succ he]
@@ -293,7 +294,8 @@ private theorem replay_prefix (v : V) (i : Nat) (hi : i ≤ rho.events.length) :
       replay_append, ih ((List.prefix_append ..).trans hp)]
     by_cases h : r.node = rho.ownKey v <;> simp [replay, h]
 
-private theorem stateAt_other (v : V) {j : Nat}
+/-- Another node's event leaves this node's state unchanged. Kept for a downstream consumer. -/
+theorem stateAt_other (v : V) {j : Nat}
     {ev : Model.Event V (Model.protoOf (compiled F) E).Object}
     (he : rho.events[j]? = some ev) (hne : ev.node ≠ v) :
     stateAt e rho v (j + 1) = stateAt e rho v j := by

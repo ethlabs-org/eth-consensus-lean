@@ -126,21 +126,27 @@ private theorem engine_duties (t : Time) :
   rw [show engineDuty e = _ from funext (engineDuty_eq e)]
   exact cast_duties e.shape_eq t
 
-private theorem cast_item {s q : ChainShape (pubOf E) O.Id I} (h : s = q)
+/-- Casting an object along a shape equality preserves its item.
+Kept for a downstream consumer. -/
+theorem cast_item {s q : ChainShape (pubOf E) O.Id I} (h : s = q)
     (o : (compile s).Object) :
     (cast (congrArg (fun x => (compile x).Object) h) o : (compile q).Object).item? =
       o.item? := by
   cases h
   rfl
 
-private theorem cast_unsigned {s q : ChainShape (pubOf E) O.Id I} (h : s = q)
+/-- Casting an object along a shape equality preserves whether it is unsigned.
+Kept for a downstream consumer. -/
+theorem cast_unsigned {s q : ChainShape (pubOf E) O.Id I} (h : s = q)
     (o : (compile s).Object) :
     (cast (congrArg (fun x => (compile x).Object) h) o : (compile q).Object).auth = .none ↔
       o.auth = .none := by
   cases h
   rfl
 
-private theorem cast_poll_items {s q : ChainShape (pubOf E) O.Id I} (h : s = q)
+/-- A poll duty cast along a shape equality still produces only data messages.
+Kept for a downstream consumer. -/
+theorem cast_poll_items {s q : ChainShape (pubOf E) O.Id I} (h : s = q)
     (st : (compile s).State) (t : Nat)
     {m : Model.Msg (Header I) s.Body} {cs : List (compile s).Object}
     (hm : (m, cs) ∈ ((compile s).act st
@@ -206,7 +212,8 @@ structure Encoding.OpLaws (e : Encoding F E p hN hn A) (due : e.State hn → Boo
 
 namespace Encoding.OpLaws
 
-private theorem tick_schedule (L : e.OpLaws due) (t : Time) (ht : 0 ≤ t) :
+/-- The tick duty order at a nonnegative time. Kept for a downstream consumer. -/
+theorem tick_schedule (L : e.OpLaws due) (t : Time) (ht : 0 ≤ t) :
     (Model.protoOf (compiled F) E).duties t =
       (([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] : List (ShapeDuty e.skel.Kind)) ++
         e.skel.proposeAt t ++ ([.poll t.toNat, .poll t.toNat] : List (ShapeDuty e.skel.Kind))).map
@@ -214,13 +221,15 @@ private theorem tick_schedule (L : e.OpLaws due) (t : Time) (ht : 0 ≤ t) :
   rw [(engine_duties (e := e) t).1]
   simp [Skeleton.duties, Skeleton.stepAt, L.tick_order, ht]
 
-private theorem deliver_schedule (L : e.OpLaws due) (t : Time) :
+/-- A delivery schedules a poll exactly at nonnegative times. Kept for a downstream consumer. -/
+theorem deliver_schedule (L : e.OpLaws due) (t : Time) :
     (Model.protoOf (compiled F) E).deliverDuties t =
       if 0 ≤ t then [engineDuty e (.poll t.toNat)] else [] := by
   rw [(engine_duties (e := e) t).2]
   by_cases ht : 0 ≤ t <;> simp [Skeleton.deliverDuties, Skeleton.stepAt, L.deliver_order, ht]
 
-private theorem poll_selected [DecidableEq V] (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
+/-- Every node is selected for polling in a valid run. Kept for a downstream consumer. -/
+theorem poll_selected [DecidableEq V] (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
     (hv : rho.ExecutionValid) (v : V) : rho.ownKey v ∈ rho.sel (engineRole e .poll) := by
   have h := hv.selValid (engineRole e .poll)
   rw [selSpec_engineRole] at h
@@ -250,7 +259,9 @@ private theorem recordOwn_pres (L : e.OpLaws due) (st : e.State hn)
     split <;> simp [recordBlock] <;>
     split <;> simp [L.applyCuts_obs]
 
-private theorem releaseAll_pres (rho : Model.Run (compiled F) E) (Q : e.State hn → Prop)
+/-- Release preserves an envelope invariant if recording each candidate preserves it.
+Kept for a downstream consumer. -/
+theorem releaseAll_pres (rho : Model.Run (compiled F) E) (Q : e.State hn → Prop)
     (k : Fin (Fintype.card V)) (nd : Model.Node (Model.protoOf (compiled F) E))
     (cs : List (Model.protoOf (compiled F) E).Object)
     (hrec : ∀ o ∈ cs, ∀ st hs, Q st → Q ((e.ops hn).recordOwn st (wireOf e o) hs))
@@ -334,7 +345,9 @@ private theorem duty_poll_obs (L : e.OpLaws due) (rho : Model.Run (compiled F) E
   obtain ⟨hn', hk, ht, hd⟩ := L.pollBatch_obs (envelope e nd) t
   exact ⟨h.1.trans hn', h.2.1.trans hk, h.2.2.1.trans ht, h.2.2.2.trans hd⟩
 
-private theorem duty_pollPropose (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
+/-- A selected proposal poll has the envelope effect of a node tick.
+Kept for a downstream consumer. -/
+theorem duty_pollPropose (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
     (v : V) (nd : Model.Node (Model.protoOf (compiled F) E)) (t : Nat)
     (hsel : rho.ownKey v ∈ rho.sel (engineRole e .poll)) :
     envelope e (rho.dutyStep v nd (engineDuty e (.pollPropose t))).1 =
@@ -911,7 +924,9 @@ private theorem cast_proposal_candidates {s q : ChainShape (pubOf E) O.Id I} (h 
     rw (config := { transparency := .default }) [hr, ite_eq_left hsel]
     rfl
 
-private theorem proposal_candidates (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
+/-- The signed candidate list for a selected proposal duty encodes its proposal result.
+Kept for a downstream consumer. -/
+theorem proposal_candidates (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
     (v : V) (nd : Model.Node (Model.protoOf (compiled F) E)) (s : Slot) (hs : 0 < s)
     (hsel : rho.ownKey v ∈ rho.sel (engineRole e (.proposer s))) :
     let d := engineDuty e (.propose s hs)
