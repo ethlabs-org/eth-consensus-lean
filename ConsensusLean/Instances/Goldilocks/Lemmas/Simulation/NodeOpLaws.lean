@@ -168,7 +168,7 @@ structure Encoding.OpLaws (e : Encoding F E p hN hn A) (due : e.State hn → Boo
   relayIf_obs : ∀ st c [Decidable c] o, let d := e.adapter; let r := d.relayIf st c o
     d.node r = d.node st ∧ d.self r = d.self st ∧ d.now r = d.now st ∧ due r = due st
   attest_obs : ∀ st n a, let d := e.adapter; let r := d.attest st n a
-    d.node r = n ∧ d.self r = d.self st ∧ d.now r = d.now st ∧ due r = due st
+    d.node r = n ∧ d.self r = d.self st ∧ d.now r = d.now st
   wake_obs : ∀ st k t, let d := e.adapter; let r := d.wake st k t
     d.self r = k ∧ d.now r = t
   init_obs : ∀ k select, let r := (e.ops hn).init k select
@@ -1192,7 +1192,7 @@ theorem traceEncoding_opLaws {V : Type} [Fintype V] {E : Env V} (S : Setup)
     applyCuts_obs := fun _ _ => ⟨rfl, rfl, rfl, rfl⟩
     relayIf_obs := fun st c _ o => by
       exact ⟨relayIf_node st c o, relayIf_self st c o, relayIf_now st c o, relayIf_fgDue st c o⟩
-    attest_obs := fun _ _ _ => ⟨rfl, rfl, rfl, rfl⟩
+    attest_obs := fun _ _ _ => ⟨rfl, rfl, rfl⟩
     wake_obs := fun _ _ _ => ⟨rfl, rfl⟩
     init_obs := fun _ _ => ⟨rfl, rfl⟩
     clock_obs := fun _ _ => ⟨rfl, rfl, rfl, rfl⟩
