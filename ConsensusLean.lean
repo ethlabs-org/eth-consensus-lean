@@ -435,6 +435,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Supply.F
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UnanimousPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.VotingPolicyBridge
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.VotingPolicyPlan
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.WitnessUnanimity
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Endpoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Final
