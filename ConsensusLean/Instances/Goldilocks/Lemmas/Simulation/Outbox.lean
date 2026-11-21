@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.CommitteeSelection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventorySchedule
 public import Mathlib.Tactic.LinearCombination
 
 public section
@@ -969,38 +970,14 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 /-- The last event of `v` before cut `i` is a restart. -/
 def LastRestart (v : V) (i : Nat) : Prop :=
-  ∃ r < i, ∃ t, rho.events[r]? = some (.restart v t) ∧
-    ∀ l, r < l → l < i → ∀ e, rho.events[l]? = some e → e.node ≠ v
+  NodeAsChainShape.CanonicalTrace.LastRestart rho v i
 
 /-- A delivery never directly follows a restart of its node: the node's tick at the restart's time
 comes in between. -/
 theorem not_lastRestart_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
     {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
-    (he : rho.events[i]? = some (.deliver v o t)) : ¬ LastRestart S rho v i := by
-  rintro ⟨r, hri, t', hr, hno⟩
-  have hmr := List.mem_of_getElem? hr
-  obtain ⟨ht', hw, -⟩ := hv.restart_at_wake v t' hmr
-  have hh := hv.in_horizon _ hmr
-  obtain ⟨q, hq⟩ := List.mem_iff_getElem?.mp
-    (hv.tick_total v t' hh.1 hh.2 (hv.honest_only _ hmr) hw)
-  have hrq : r < q := by
-    rcases lt_trichotomy q r with h | rfl | h
-    · rcases keyLe_of_lt S rho hv hq hr h with h' | h'
-      · exact absurd h' (lt_irrefl _)
-      · exact absurd h'.2 (by simp [Model.Event.phase])
-    · rw [hr] at hq; cases hq
-    · exact h
-  have hqi : q < i := by
-    rcases lt_trichotomy q i with h | rfl | h
-    · exact h
-    · rw [he] at hq; cases hq
-    · have h1 := keyLe_of_lt S rho hv hr he hri
-      rcases keyLe_of_lt S rho hv he hq h with h' | h'
-      · rcases h1 with h1 | h1
-        · have a : t' < t := h1; have b : t < t' := h'; exact absurd (a.trans b) (lt_irrefl _)
-        · have a : t' = t := h1.1; have b : t < t' := h'; rw [a] at b; exact absurd b (lt_irrefl _)
-      · exact absurd h'.2 (by simp [Model.Event.phase])
-  exact hno q hrq hqi _ hq rfl
+    (he : rho.events[i]? = some (.deliver v o t)) : ¬ LastRestart S rho v i :=
+  NodeAsChainShape.CanonicalTrace.not_lastRestart_deliver rho hv he
 
 /-- **At most one vote queued.** At every cut an honest node's outbox holds at most one body, a
 vote; unless its last event was a restart, a queued vote is one of the slot of its clock, cast by
@@ -1016,6 +993,7 @@ theorem outbox_inv (hv : rho.ExecutionValid) (v : V) :
     obtain ⟨ih₁, ih₂⟩ := outbox_inv hv v i
     have hext : LastRestart S rho v i → (∀ e, rho.events[i]? = some e → e.node ≠ v) →
         LastRestart S rho v (i + 1) := by
+      simp only [LastRestart, NodeAsChainShape.CanonicalTrace.lastRestart_iff]
       rintro ⟨r, hri, t, hr, hno⟩ hi
       refine ⟨r, by omega, t, hr, fun l h1 h2 e he => ?_⟩
       rcases Nat.lt_succ_iff_lt_or_eq.mp h2 with h2 | rfl
@@ -1097,6 +1075,7 @@ theorem outbox_inv (hv : rho.ExecutionValid) (v : V) :
             simp only [nodeAdapter, h0]
             simp [emitted]
           refine ⟨by unfold AtMostOneVote; rw [hout]; exact ih₁, Or.inl ?_⟩
+          rw [LastRestart, NodeAsChainShape.CanonicalTrace.lastRestart_iff]
           exact ⟨i, by omega, t, he, fun l h1 h2 => absurd h2 (by omega)⟩
       · rw [state_of_other S rho hn v i e he hne]
         exact ⟨ih₁, ih₂.imp_left fun h => hext h fun e' he' => by

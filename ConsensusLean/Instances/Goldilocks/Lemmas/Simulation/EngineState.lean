@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 public import ConsensusLean.Lemmas.Model.Candidates
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventorySchedule
 
 public section
 
@@ -627,10 +628,7 @@ one's. -/
 theorem keyLe_of_lt (hv : rho.ExecutionValid) {j k : Nat}
     {e f : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
     (hj : rho.events[j]? = some e) (hk : rho.events[k]? = some f) (hjk : j < k) :
-    e.keyLe f := by
-  obtain ⟨hj', rfl⟩ := List.getElem?_eq_some_iff.1 hj
-  obtain ⟨hk', rfl⟩ := List.getElem?_eq_some_iff.1 hk
-  exact List.pairwise_iff_getElem.1 hv.sorted j k hj' hk' hjk
+    e.keyLe f := NodeAsChainShape.CanonicalTrace.keyLe_of_lt rho hv hj hk hjk
 
 /-- `lastClock` at a cut after a tick or restart of `v` at `t` is `t` when every event between them
 is at time `t`. -/
