@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.VotingPolicyBridge
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalWindowAssembly
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ResetCoefficients
 
 public section
 
@@ -10,12 +11,13 @@ This is a proposal for review, not the installed node or a certified milestone.
 -/
 
 -- Keep the statement review in one leaf until the approved work-package split.
-set_option linter.style.longFile 1800
+set_option linter.style.longFile 2000
 
 namespace Consensus.Goldilocks.VotingPolicyPlan
 
 open SA (SAParams ReplayOrder)
 open AsChainShape Shape Blocks
+open Obligations (healthyResetCoeff)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {binding : VoteBinding}
 
@@ -117,7 +119,8 @@ noncomputable def pollAttempts (p : Rules sp.n) (st : PolicyState sp ro binding)
     PolicyState sp ro binding × CutLog sp ro :=
   open Classical in
   let phase := if p.beforeProposal st.base.self then st.leading else st.base.fgDue
-  let r := if phase = true ∧ SigningOpen p st then snapshot p st else (st, [])
+  let r := if phase = true ∧ sp.toParams.IsPublic st.base.now ∧ SigningOpen p st then
+    snapshot p st else (st, [])
   ({ r.1 with base := { r.1.base with fgDue := false } }, r.2)
 
 noncomputable def preparePoll (p : Rules sp.n) (st : PolicyState sp ro binding) :
@@ -212,7 +215,8 @@ structure ScheduleBounds (p : (n : Nat) → Time → Rules n) (Δ : Time) (B : B
     let earliest := t + if (p n Δ).beforeProposal y then 1 else 0
     let due := max earliest ((p n Δ).signAt y earliest)
     ∃ u, max g due ≤ u ∧ u ≤ max g t + B.signSteps * Δ ∧ Δ ∣ u ∧ (p n Δ).signAt y u = u
-  release : ∀ n y t, 0 ≤ t →
+  /-- A row is frozen at a public signing poll, never between grid points. -/
+  release : ∀ n y t, 0 ≤ t → Δ ∣ t →
     max t ((p n Δ).releaseAt y t) + Δ ≤ t + B.publishSteps * Δ
 
 section RunStatements
@@ -401,6 +405,19 @@ def HighReportOrigins (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
     ∃ i < k, ∃ j B, HighOrigin tr H g y i j B ∧ tr.time i ≤ b ∧
       Anc (tr.HonestBlocksAt H) C B
 
+/-- Replay must track the write of the actual lock used by a high report,
+including writes before the last restart and moves to viable ancestors. -/
+theorem high_report_origins_of_fast_lock_lookup {g b : Time}
+    (hcut : CutObservations tr H)
+    (hlookup : ∀ y k ell C, SA.ToFGAt tr.projAC y k ell C →
+      y ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.time k ≤ b →
+      HZ tr H g + 1 ≤ ((tr.state y k).fg.σ C.root).h →
+      ∃ i < k, ∃ j B CV, tr.JoinedAt y (tr.time i) ∧
+        Compose.StoredFastLockAt tr y i j B CV ∧
+        HZ tr H g + 1 ≤ ((tr.state y i).fg.σ B.root).h ∧
+        Anc (tr.HonestBlocksAt H) C B) : HighReportOrigins tr H g b := by
+  sorry
+
 theorem matching_rows_of_high_records {g b : Time}
     (hcut : CutObservations tr H) (hsrc : SourceFacts tr H) (horigin : RecordOrigins tr H)
     (hhigh : HighReportOrigins tr H g b) (hrecord : HighRecordAgreement tr H g b)
@@ -409,6 +426,18 @@ theorem matching_rows_of_high_records {g b : Time}
     {acp₀ : Payload sp.n}
     (hreachable : ∀ y k, y ∈ H (tr.time k) → Store.Reachable acp₀ (tr.state y k).fg) :
     MatchingRows tr H g b := by
+  sorry
+
+/-- At an aligned height pair, duplicate refusal is a lookup of the original
+signed bits, not permission to recompute finality using the current record. -/
+theorem refused_height_pair_origin (horigin : RecordOrigins tr H)
+    {y : Fin sp.n} {k : Nat} {C : Blk sp} {h T : Nat} {timeout : Bool}
+    (hy : y ∈ H (tr.time k)) (ha : tr.CallAt y k (.fg (.attest C none)))
+    (hstep : Node.CutStep y (tr.time k) (tr.state y k) (.fg (.attest C none)) (tr.post k))
+    (hpair : let st := tr.state y k
+      let entry := st.fg.σ (st.fg.σ C.root).Th
+      st.record.heightPair entry.h entry.Th = some (h, T, timeout)) :
+    ∃ j < k, ∃ a, tr.SignAt y j a ∧ a.h = h ∧ (timeout = true → a.T = T) := by
   sorry
 
 end RunStatements
@@ -459,6 +488,26 @@ def TickDutyRelease (rho : Model.Run (compiled (delayedFamily S p)) E)
   rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
     ((Model.protoOf (compiled (delayedFamily S p)) E).duties t)[q]? = some (.poll t.toNat) ∧
     engineAttObj rho a ∈ (rho.dutyStep v (tickPrefix rho v i t q).1 (.poll t.toNat)).2
+
+noncomputable def deliveryPrefix (rho : Model.Run (compiled (delayedFamily S p)) E)
+    (v : V) (i : Nat) (t : Time)
+    (o : (Model.protoOf (compiled (delayedFamily S p)) E).Object) (q : Nat) :=
+  let nd := rho.stateBefore i v
+  let P := Model.protoOf (compiled (delayedFamily S p)) E
+  let processed : Model.Node P := ⟨P.process nd.st o (Model.digests rho.hash o), nd.seen ++ [o]⟩
+  rho.runDuties v processed ((P.deliverDuties t).take q)
+
+def DeliveryDutyRelease (rho : Model.Run (compiled (delayedFamily S p)) E)
+    (v : V) (i q : Nat) (t : Time) (a : FG.Att (Fintype.card V)) : Prop :=
+  ∃ o, rho.events[i]? = some (.deliver v o t) ∧
+    ((Model.protoOf (compiled (delayedFamily S p)) E).deliverDuties t)[q]? =
+      some (.poll t.toNat) ∧
+    engineAttObj rho a ∈ (rho.dutyStep v (deliveryPrefix rho v i t o q).1 (.poll t.toNat)).2
+
+theorem delivery_duty_release_in_event (rho : Model.Run (compiled (delayedFamily S p)) E)
+    {v : V} {i q : Nat} {t : Time} {a : FG.Att (Fintype.card V)}
+    (hr : DeliveryDutyRelease rho v i q t a) : EngineReleaseAt rho i a := by
+  sorry
 
 theorem tick_duty_release_in_event (rho : Model.Run (compiled (delayedFamily S p)) E)
     {v : V} {i q : Nat} {t : Time} {a : FG.Att (Fintype.card V)}
@@ -625,7 +674,8 @@ theorem held_retained_or_released
     (hh : h ∈ (policyStateAt rho hn (rho.stateBefore i v)).held)
     (hown : h.row.val = rho.ownKey v) :
     h ∈ (policyStateAt rho hn (rho.stateBefore j v)).held ∨
-      ∃ l q t, i ≤ l ∧ l < j ∧ h.eligibleAt ≤ t ∧ TickDutyRelease rho v l q t h.row := by
+      ∃ l q t, i ≤ l ∧ l < j ∧ h.eligibleAt ≤ t ∧
+        (TickDutyRelease rho v l q t h.row ∨ DeliveryDutyRelease rho v l q t h.row) := by
   sorry
 
 /-- Each engine event occupies a half-open interval of cuts (possibly empty).
@@ -687,7 +737,17 @@ def ProjectedDeliveries
     {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
     (M : EngineProjection rho tr H U) : Prop :=
   ∀ v i t o, rho.events[i]? = some (.deliver v o t) →
-    M.cutLog i = deliveryCutLog rho hn v i t o
+    let P := Model.protoOf (compiled (delayedFamily S p)) E
+    let duties := P.deliverDuties t
+    ∃ offset : Nat → Nat,
+      offset 0 = (deliveryCutLog rho hn v i t o).length ∧
+      offset duties.length = (M.cutLog i).length ∧ Monotone offset ∧
+      (M.cutLog i).take (offset 0) = deliveryCutLog rho hn v i t o ∧
+      ∀ q, duties[q]? = some (.poll t.toNat) →
+        let calls := pollCutLog (p _ (Model.pubOf E).ΔAC)
+          (policyStateAt rho hn (deliveryPrefix rho v i t o q).1)
+        offset (q + 1) = offset q + calls.length ∧
+          ((M.cutLog i).drop (offset q)).take calls.length = calls
 
 def ProjectedRestarts
     (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
@@ -732,7 +792,7 @@ def SnapshotDuty (rho : Model.Run (compiled (delayedFamily S p)) E)
     ((Model.protoOf (compiled (delayedFamily S p)) E).duties t)[q]? = some (.poll t.toNat) ∧
     let st := policyStateAt rho hn (tickPrefix rho v i t q).1
     let rule := p _ (Model.pubOf E).ΔAC
-    st.base.now = t ∧ SigningOpen rule st ∧
+    st.base.now = t ∧ (S.params (Model.pubOf E) hn).toParams.IsPublic t ∧ SigningOpen rule st ∧
       (if rule.beforeProposal st.base.self then st.leading = true else st.base.fgDue = true)
 
 theorem appointment_has_snapshot_duty
@@ -755,9 +815,8 @@ theorem report_has_adjacent_attempt
     ∃ result, tr.CallAt y (i + 1) (.fg (.attest C result)) ∧ tr.time (i + 1) = tr.time i := by
   sorry
 
-/-- Compare only to historical sources in the candidate batch actually read at
-the snapshot. An aged-out source or a snapshot returning none needs a separate
-discharge argument. There is no restriction on intervening restarts. -/
+/-- Transport independently established ancestry at the actual read to the
+adjacent attempt. Candidate membership alone gives no ancestry. -/
 theorem snapshot_dominance_across_restart
     (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
     {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
@@ -768,9 +827,11 @@ theorem snapshot_dominance_across_restart
     (hi : i ≤ B.first e + cuts.offset e q) (hr : SA.ToFGAt tr.projAC (M.key v) i ell C)
     (hm : let st := (policyStateAt rho hn (tickPrefix rho v e t q).1).base.node
       C ∈ SA.toFGCandidates (S.params (Model.pubOf E) hn) st.ac (Node.frame st) t)
+    {C' : Blk (S.params (Model.pubOf E) hn)}
     (hresult : let st := (policyStateAt rho hn (tickPrefix rho v e t q).1).base.node
-      (Node.acToFG st t).2.2.isSome = true) :
-    ∃ j k lbl C' result,
+      (Node.acToFG st t).2.2 = some C')
+    (hbranch : Anc (tr.HonestBlocksAt H) C C') :
+    ∃ j k lbl result,
       j = B.first e + cuts.offset e q ∧ k = j + 1 ∧ tr.time k = t ∧
       SA.ToFGAt tr.projAC (M.key v) j lbl C' ∧
       tr.CallAt (M.key v) k (.fg (.attest C' result)) ∧ Dominates tr H (M.key v) i k C C' := by
@@ -800,6 +861,21 @@ theorem snapshot_cursor_report_origin
     ∃ j k ell C result, j < B.first e + cuts.offset e q ∧ k = j + 1 ∧
       SA.ToFGAt tr.projAC (M.key v) j ell C ∧ tr.CallAt (M.key v) k (.fg (.attest C result)) ∧
       C.root = (tr.state (M.key v) (B.first e + cuts.offset e q)).ac.fgReported := by
+  sorry
+
+/-- A historical report can discharge a snapshot demand only after the original
+attempt is found and its source compared to the demanded block. Released rows
+must separately pass the matching and consuming-parent tests. -/
+theorem historical_snapshot_attempt
+    {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+    (hcut : CutObservations tr H) {y i k ell} {P C : Blk sp} {deadline : Time}
+    (hr : SA.ToFGAt tr.projAC y i ell C)
+    (ha : ∃ result, tr.CallAt y k (.fg (.attest C result)))
+    (hik : i ≤ k) (ht : tr.time k ≤ deadline)
+    (hbranch : Anc (tr.HonestBlocksAt H) P C) :
+    ∃ l j ell' C' result, l ≤ j ∧ tr.time j ≤ deadline ∧
+      SA.ToFGAt tr.projAC y l ell' C' ∧ tr.CallAt y j (.fg (.attest C' result)) ∧
+      Anc (tr.HonestBlocksAt H) P C' := by
   sorry
 
 /-- A selected appointment can be a real snapshot but not a joined signing
@@ -838,7 +914,8 @@ theorem release_of_poll_output
     (service : ∀ v k a, tr.SignAt (M.key v) k a → max g (tr.time k) + R ≤ b →
       M.key v ∈ H (max g (tr.time k) + R) →
       ∃ t i q, tr.time k ≤ t ∧ t ≤ max g (tr.time k) + R ∧
-        TickDutyRelease rho v i q t (M.reindex a)) :
+        (TickDutyRelease rho v i q t (M.reindex a) ∨
+          DeliveryDutyRelease rho v i q t (M.reindex a))) :
     ReleaseService U H g b R := by
   sorry
 
@@ -853,7 +930,8 @@ theorem bounded_publication_of_policy
     (H : Time → Set (Fin sp.n)) (U : Publication tr) (M : EngineProjection rho tr H U)
     (hvalid : rho.ExecutionValid) {g b R slack : Time}
     (horizon : b ≤ rho.horizon) (hslack : 0 ≤ slack) (hR : slack ≤ R)
-    (hcal : ∀ y t, 0 ≤ t →
+    (hsignGrid : ∀ y k a, tr.SignAt y k a → sp.toParams.IsPublic (tr.time k))
+    (hcal : ∀ y t, 0 ≤ t → sp.toParams.IsPublic t →
       (p sp.n (Model.pubOf E).ΔAC).releaseAt y t ≤ t + (R - slack))
     (hwin : PublicServiceWindow tr H g b slack) : ReleaseService U H g b R := by
   sorry
@@ -972,6 +1050,23 @@ theorem joined_appointment_in_ready_window
     (hroom : max (max g due) (max 0 (deadline - c - 1) +
       9 * (S.params (Model.pubOf E) hn).Δ) + slack ≤ deadline) :
     ∃ u ≤ deadline, JoinedAwakeAppointment rho hn v (max g due) u := by
+  sorry
+
+/-- Healthy supplies the full terminal-honest population; it does not make
+their snapshots useful. The next producer must prove that at the parent. -/
+theorem healthy_joined_appointment_quorum
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
+    (M : EngineProjection rho tr H U) (hv : rho.ExecutionValid)
+    {g due deadline terminal slack : Time} (hterminal : deadline ≤ terminal)
+    (hb : terminal ≤ rho.horizon) (hhealthy : rho.point.HealthyOn (1 / 3) g terminal)
+    (hcal : ∀ v t, 0 ≤ t → ∃ u, t ≤ u ∧ u ≤ t + slack ∧
+      (S.params (Model.pubOf E) hn).toParams.IsPublic u ∧
+      (p _ (Model.pubOf E).ΔAC).signAt (M.key v) u = u)
+    (hroom : max due (max 0 g + 9 * (S.params (Model.pubOf E) hn).Δ) + slack ≤ deadline) :
+    ∃ ids : Finset V, (S.params (Model.pubOf E) hn).toParams.fg.q ≤ ids.card ∧
+      ∀ v ∈ ids, M.key v ∈ H terminal ∧ ∃ u ≤ deadline,
+        JoinedAwakeAppointment rho hn v (max g due) u := by
   sorry
 
 /-- Transport the actual ready population, including the whole awake interval.
@@ -1370,14 +1465,22 @@ def WarmReportWindow (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
             ∃ l ell C', SA.ToFGAt tr.projAC v l ell C' ∧ tr.time l ≤ d ∧
               Anc (tr.HonestBlocksAt H) P C' ∧ h ≤ ((tr.state v l).fg.σ C'.root).h)
 
-/-- Produce the warm window from the real drain and catch-up. The separate
-appointment slack pays for reaching a report, not publication of that report. -/
+/-- Assemble a warm window only when the actual quorum of reports is supplied.
+The drain alone does not supply those reports by the legacy cutoff under skip. -/
 theorem warm_report_window_of_drain {g b D R : Time} {G Ld : Nat}
     {proposer : Nat → Fin sp.n} (hcut : CutObservations tr H)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hbase : BaseService tr H g)
     (hdrain : DrainOutputs tr proposer H g G Ld b)
     (hawake : ∀ y t, gbar g ≤ t → t ≤ b → y ∈ H t → tr.awake y t)
     (hq : ∀ t, gbar g ≤ t → t ≤ b → sp.toParams.fg.q ≤ (H t).ncard)
+    (hsupply : ∀ (P : Blk sp) (u i : Nat),
+      tr.ProposesAt (proposer u) i P → P.slot = u → proposer u ∈ H (sp.ts u + sp.Δ) →
+      gbar g + 4 * sp.Δ ≤ sp.ts u →
+      let d := sp.ts (u + 1) + 2 * sp.Δ
+      d + D + R ≤ b → ∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
+        ∀ v ∈ ids, v ∈ H (max (cutZ sp.toParams g) (d + D + R)) ∧
+          ∃ l ell C, SA.ToFGAt tr.projAC v l ell C ∧ tr.time l ≤ d ∧
+            Anc (tr.HonestBlocksAt H) P C)
     (hD : 0 ≤ D) (hR : 0 ≤ R)
     (hfit : 6 * sp.Δ + D + R ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time)) :
     WarmReportWindow tr H proposer g b D R := by
@@ -1541,6 +1644,14 @@ theorem final_heal_reserve (X : ℕ+) :
       (coefficients S A B).heal .final X := by
   sorry
 
+/-- Arithmetic target for the provisional reserve; the reset induction must
+independently fit its actual debits in this budget. -/
+theorem policy_heal_pays_reset_placement (X : ℕ+) :
+    (contract_catchUp S window : Nat) +
+      (healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 34) + 3 + 5 * B.total ≤
+        (coefficients S window B).heal .final X := by
+  sorry
+
 /-- Healthy liveness for one capability, on the actual policy family. -/
 def HealthyLiveSupply (cap : Capability) : Prop :=
   let K := windowContract S A window B
@@ -1673,6 +1784,30 @@ theorem policy_final_query_witness
     {V : Type} [Fintype V] [DecidableEq V] (Q : PolicyFinalQuery S A window p B V)
     (hsched : PolicySchedule p B) (htiming : TimingRoom A window B) :
     PolicyFinalWitness S A window p B Q := by
+  sorry
+
+/-- Transport the finalized chain at the actual end-of-time cut, not at an
+arbitrary earlier cut witnessing the last carrier. -/
+theorem policy_final_read_at_end_cut
+    {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
+    (M : EngineProjection rho tr H U) (B : EventBoundaries rho hn M)
+    (hv : rho.ExecutionValid) {v : V} {t : Time} (ht : 0 ≤ t) (hb : t ≤ rho.horizon)
+    (hh : M.key v ∈ H t) {g} (hg : schema.output .final = some g) :
+    let trace := chainTrace rho
+    let st := tr.state (M.key v) (B.first (trace.endCut t))
+    trace.readAt g v t = AsChainShape.outOf st t .finalized := by
+  sorry
+
+theorem policy_model_adequate (V : Type) [Fintype V] [DecidableEq V] :
+    (Sys (family S p) V).Adequate (shapeProgress (family S p) V) := by
+  sorry
+
+theorem final_live_of_query_witnesses
+    (hwitness : ∀ (V : Type) [Fintype V] [DecidableEq V]
+      (Q : PolicyFinalQuery S A window p B V), PolicyFinalWitness S A window p B Q) :
+    HealthyLiveSupply S A window p B .final := by
   sorry
 
 theorem obligations_of_policy_suppliers
