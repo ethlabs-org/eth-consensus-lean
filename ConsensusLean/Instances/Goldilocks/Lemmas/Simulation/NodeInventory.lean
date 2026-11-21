@@ -155,13 +155,13 @@ theorem stateAt_succ_envelope (v : V) (i : Nat) :
   | some ev => rw [Encoding.OpLaws.cut_envelope, rho.stateBefore_succ he]
 
 omit [DecidableEq V] in
-/-- An available carried object is held once its instance rules out that it is still pending. -/
+/-- A pending carried object may still be queued if it is already in the sender's closure. -/
 theorem releasable_of_carried_available (nd : Model.Node (Engine F E)) (o : (Engine F E).Object)
     (Pending : e.State hn → (Engine F E).Object → Prop)
     (available : ∀ x ∈ o.carried, x ∈ Model.closure nd.seen ∨ Pending (envelope e nd) x)
-    (drained : ∀ x ∈ o.carried, ¬ Pending (envelope e nd) x) :
+    (drained : ∀ x ∈ o.carried, Pending (envelope e nd) x → x ∈ Model.closure nd.seen) :
     Model.releasable nd.seen o = true :=
-  List.all_eq_true.mpr fun x hx => decide_eq_true ((available x hx).resolve_right (drained x hx))
+  List.all_eq_true.mpr fun x hx => decide_eq_true ((available x hx).elim id (drained x hx))
 
 /-- A local invariant carried by the immediately preceding duty prefix of an actual event. -/
 inductive DutyPrefix (v : V) (i j : Nat) :
