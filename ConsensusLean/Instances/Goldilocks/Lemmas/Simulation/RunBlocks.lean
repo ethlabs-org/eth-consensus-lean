@@ -90,23 +90,6 @@ theorem exec_restart_ne_nil (st : NodeState (goldilocksNode sp ro)) (t : Time) :
 
 end
 
-/-- The trace's state is unchanged over a block of cuts of other nodes. -/
-theorem state_of_block_ne {y : Fin (S.params (pubOf E) hn).n} {j0 : Nat} (len : Nat)
-    (hne : ∀ k < len, ∀ r, (allCuts S rho hn)[j0 + k]? = some r → r.node ≠ y) :
-    (simTrace S rho hn).state y (j0 + len) = (simTrace S rho hn).state y j0 := by
-  induction len with
-  | zero => rfl
-  | succ k ih =>
-    change (simTrace S rho hn).state y (j0 + k).succ = _
-    rw [Trace.state.eq_2, ite_eq_right, ih (fun k' hk' => hne k' (by omega))]
-    rintro ⟨hnode, hlab⟩
-    rw [simTrace_node] at hnode
-    cases hr : (allCuts S rho hn)[j0 + k]? with
-    | none => rw [simTrace_label, hr] at hlab; exact hlab rfl
-    | some r =>
-      rw [hr] at hnode
-      exact hne k (by omega) r hr hnode
-
 /-- The trace's state across a group block at `j0`: the handler's state, by the cut law's
 successors. -/
 theorem state_of_group
@@ -139,41 +122,6 @@ theorem state_of_group
       rw [simTrace_node, hr, Option.elim_some, hnode, simTrace_label, hr]
       simp
   rw [length_groupRecs, key _ le_rfl, List.take_length, foldl_cutPost_exec]
-
-/-- The trace's state across a delivery block at `j0`: `deliverState`. -/
-theorem state_of_deliverRecs
-    (proposer : Nat → Fin (S.params (pubOf E) hn).n)
-    (dg : Digest (List (FG.Att (S.params (pubOf E) hn).n)) (Payload (S.params (pubOf E) hn).n))
-    {y : Fin (S.params (pubOf E) hn).n} {t : Time} {i : Nat}
-    (hs : List (Header Info × Nat)) (os : List (Wire (S.params (pubOf E) hn).n S.vote)) :
-    ∀ (j0 sub : Nat) (st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _))),
-    (∀ k < (deliverRecs proposer dg hs y t i os st sub).length,
-      (allCuts S rho hn)[j0 + k]? = (deliverRecs proposer dg hs y t i os st sub)[k]?) →
-    (simTrace S rho hn).state y j0 = st →
-    (simTrace S rho hn).state y (j0 + (deliverRecs proposer dg hs y t i os st sub).length) =
-      deliverState proposer dg hs y t os st := by
-  induction os with
-  | nil => intro j0 sub st _ h0; rw [deliverRecs_nil, List.length_nil, deliverState_nil]; exact h0
-  | cons o os ih =>
-    intro j0 sub st hcut h0
-    cases he : canonEvent (S.params (pubOf E) hn) (S.ro _) hs o with
-    | none =>
-      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he] at hcut ⊢
-      rw [deliverState_cons_none _ _ _ _ _ _ _ _ he]
-      exact ih j0 (sub + 1) st hcut h0
-    | some e =>
-      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ e he] at hcut ⊢
-      rw [deliverState_cons_some _ _ _ _ _ _ _ _ _ he, List.length_append]
-      have h1 : (simTrace S rho hn).state y
-          (j0 + (groupRecs proposer dg y st t (Nat.pair i sub) e).length) =
-            (exec proposer dg y st t e).1 :=
-        state_of_group S rho hn proposer dg (fun k hk => by
-          rw [hcut k (by rw [List.length_append]; omega), List.getElem?_append_left hk]) h0
-      rw [← Nat.add_assoc]
-      refine ih (j0 + (groupRecs proposer dg y st t (Nat.pair i sub) e).length) (sub + 1) _
-        (fun k hk => ?_) h1
-      rw [Nat.add_assoc, hcut _ (by rw [List.length_append]; omega),
-        List.getElem?_append_right (Nat.le_add_right _ _), Nat.add_sub_cancel_left]
 
 /-- The event id of an existing cut is its record's. -/
 private theorem event_of_getElem? {k : Nat} {r : CutRec (S.params (pubOf E) hn) (S.ro _)}

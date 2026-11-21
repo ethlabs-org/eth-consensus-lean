@@ -91,15 +91,8 @@ theorem release_inventory {Inv : Model.Node (Engine F E) → Prop}
     (record : ∀ nd c, Inv nd → Admissible c →
       Inv ⟨(Engine F E).recordOwn nd.st c (Model.digests rho.hash c), nd.seen ++ [c]⟩)
     (h : Inv nd) (hc : ∀ o ∈ cs, Admissible o) :
-    Inv (Model.releaseAll (Engine F E) rho.hash k nd cs).1 := by
-  induction cs generalizing nd with
-  | nil => exact h
-  | cons c cs ih =>
-    rw [Model.releaseAll]
-    split
-    · exact ih _ (record nd c h (hc c List.mem_cons_self))
-        (fun o ho => hc o (List.mem_cons_of_mem _ ho))
-    · exact ih nd h (fun o ho => hc o (List.mem_cons_of_mem _ ho))
+    Inv (Model.releaseAll (Engine F E) rho.hash k nd cs).1 :=
+  Model.releaseAll_pres_node rho.hash k Inv nd cs (fun n c hm hn' => record n c hn' (hc c hm)) h
 
 omit [DecidableEq V] in
 /-- Extend an inventory through the actual duty prefixes of a tick or delivery. -/

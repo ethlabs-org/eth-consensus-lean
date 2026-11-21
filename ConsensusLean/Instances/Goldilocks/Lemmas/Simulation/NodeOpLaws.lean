@@ -256,16 +256,10 @@ private theorem releaseAll_pres (rho : Model.Run (compiled F) E) (Q : e.State hn
     (hrec : ∀ o ∈ cs, ∀ st hs, Q st → Q ((e.ops hn).recordOwn st (wireOf e o) hs))
     (h : Q (envelope e nd)) :
     Q (envelope e (Model.releaseAll (Model.protoOf (compiled F) E) rho.hash k nd cs).1) := by
-  induction cs generalizing nd with
-  | nil => exact h
-  | cons c cs ih =>
-    rw [Model.releaseAll]
-    have htail := fun o ho => hrec o (List.mem_cons_of_mem c ho)
-    split
-    · refine ih _ htail ?_
-      exact (congrArg Q (envelope_recordOwn (e := e) nd c (Model.digests rho.hash c))).mpr
-        (hrec c List.mem_cons_self _ _ h)
-    · exact ih _ htail h
+  refine Model.releaseAll_pres_node rho.hash k (fun n => Q (envelope e n)) nd cs ?_ h
+  intro n c hc hn'
+  exact (congrArg Q (envelope_recordOwn (e := e) n c (Model.digests rho.hash c))).mpr
+    (hrec c hc _ _ hn')
 
 private theorem recordOwn_plain (L : e.OpLaws due) (st : e.State hn)
     (o : ShapeObj (Fintype.card V) e.skel.Kind I e.Body) (hs : List (Header I × Nat))
@@ -549,13 +543,6 @@ private theorem duties_pres (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
       hd' (hd ha (fun t he => h t (he ▸ List.mem_cons_self)))
         (fun t hm => h t (List.mem_cons_of_mem d hm))⟩
 
-/-- The state after a concatenated duty list is the state after its two successive folds. -/
-theorem runDuties_append (rho : Model.Run (compiled F) E) (v : V)
-    (nd : Model.Node (Model.protoOf (compiled F) E))
-    (ds es : List (Model.protoOf (compiled F) E).Duty) :
-    (rho.runDuties v nd (ds ++ es)).1 = (rho.runDuties v (rho.runDuties v nd ds).1 es).1 :=
-  rho.runDuties_append_fst v nd ds es
-
 private theorem tick_pres (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
     (v : V) (nd : Model.Node (Model.protoOf (compiled F) E)) (t : Time) :
     let a := envelope e nd
@@ -587,7 +574,7 @@ private theorem tick_pres (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
         (ds ++ ([.poll t.toNat, .poll t.toNat] : List (ShapeDuty e.skel.Kind)))
       refine ⟨hdk.trans hclk.1, hdt.trans hclk.2.1, fun h => ?_⟩
       by_cases hs : rho.ownKey v ∈ rho.sel (engineRole e .poll)
-      · rw [List.map_append, runDuties_append, List.map_cons, List.map_cons, List.map_nil,
+      · rw [List.map_append, rho.runDuties_append_fst, List.map_cons, List.map_cons, List.map_nil,
           rho.runDuties_cons, rho.runDuties_cons, rho.runDuties_nil]
         exact (duty_poll_obs L rho v _ t.toNat hs).2.2.2
       · exact hdd (hclk.2.2.trans h) (fun _ _ => hs)
@@ -1014,7 +1001,7 @@ private theorem proposal_finish [DecidableEq V] (L : e.OpLaws due)
     let post := (rho.runDuties v pre ((e.skel.proposeAt t).map (engineDuty e))).1
     e.adapter.self (envelope e post) = rho.ownKey v ∧ e.adapter.now (envelope e post) = t := by
   dsimp only
-  rw [← runDuties_append, ← List.map_append]
+  rw [← rho.runDuties_append_fst, ← List.map_append]
   exact proposal_clock L rho v i t _
 
 open Classical in

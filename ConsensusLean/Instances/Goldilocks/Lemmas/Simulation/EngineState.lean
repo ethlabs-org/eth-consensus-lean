@@ -56,12 +56,8 @@ theorem releaseAll_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → P
       Q (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled
           (goldilocks S)) E) rho.hash k nd
           cs).1)
-  | _, [], h => h
-  | nd, c :: cs, h => by
-    unfold Model.releaseAll
-    split
-    · exact releaseAll_pres Q hrec k _ cs (hrec _ _ _ h)
-    · exact releaseAll_pres Q hrec k nd cs h
+  := fun nd cs h => Model.releaseAll_pres_node rho.hash k (fun n => Q (shapeOf S hn n))
+    nd cs (fun _ _ _ ht => hrec _ _ _ ht) h
 
 omit [DecidableEq V] in
 /-- The engine's `propose` duty is the shape's `propose`. -/
@@ -301,13 +297,8 @@ theorem releaseAll_pres_mem (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote �
       Q (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled
           (goldilocks S)) E) rho.hash k nd
           cs).1)
-  | _, [], _, h => h
-  | nd, c :: cs, hrec, h => by
-    unfold Model.releaseAll
-    split
-    · exact releaseAll_pres_mem Q k _ cs (fun c hc => hrec c (List.mem_cons_of_mem _ hc))
-        (hrec c (List.mem_cons_self ..) _ _ h)
-    · exact releaseAll_pres_mem Q k nd cs (fun c hc => hrec c (List.mem_cons_of_mem _ hc)) h
+  := fun nd cs hrec h => Model.releaseAll_pres_node rho.hash k (fun n => Q (shapeOf S hn n))
+    nd cs (fun _ c hc ht => hrec c hc _ _ ht) h
 
 omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `poll` and by `recordOwn` of unsigned objects
