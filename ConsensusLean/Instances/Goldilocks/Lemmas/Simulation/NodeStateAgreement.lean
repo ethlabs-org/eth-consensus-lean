@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Results.Spec.NodeCanonicalTrace
 public import ConsensusLean.Lemmas.Model.Objects
-import ConsensusLean.Lemmas.Model.Candidates
+import ConsensusLean.Lemmas.Model.DutyFold
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Trace
 
 public section
@@ -301,15 +301,6 @@ private theorem stateAt_other (v : V) {j : Nat}
   cases ev <;> simp only [Model.Event.node] at hne <;>
     simp only [Model.Run.step, Function.update_of_ne (Ne.symm hne)]
 
-omit [DecidableEq V] in
-private theorem runDuties_append_state (rho : Model.Run (compiled F) E) (v : V)
-    (nd : Model.Node (Model.protoOf (compiled F) E))
-    (ds es : List (Model.protoOf (compiled F) E).Duty) :
-    (rho.runDuties v nd (ds ++ es)).1 = (rho.runDuties v (rho.runDuties v nd ds).1 es).1 := by
-  induction ds generalizing nd with
-  | nil => rw [List.nil_append, rho.runDuties_nil]
-  | cons d ds ih => simp only [List.cons_append, rho.runDuties_cons, ih]
-
 open Classical in
 private theorem tick_node {due : e.State hn → Bool} (laws : e.Lawful due)
     (hv : rho.ExecutionValid) {i v t} (he : rho.events[i]? = some (.tick v t)) :
@@ -325,7 +316,7 @@ private theorem tick_node {due : e.State hn → Bool} (laws : e.Lawful due)
   change e.adapter.node (envelope e (rho.tick (rho.stateBefore i v) v t).1) = _
   rw [rho.tick_of_awake _ _ _ (hv.tick_awake v t hm), laws.gossip_node,
     laws.tick_schedule t (hv.in_horizon _ hm).1]
-  simp only [List.map_append, runDuties_append_state, ← afterClock_eq]
+  simp only [List.map_append, rho.runDuties_append_fst, ← afterClock_eq]
   have hpre := laws.tick_prefix rho hv he
   have hprop := laws.tick_proposal rho hv he
   have hfinish := laws.tick_finish rho hv he
@@ -339,12 +330,12 @@ private theorem tick_node {due : e.State hn → Bool} (laws : e.Lawful due)
     simp only [ite_eq_right hpub, hpre.2, Bool.false_eq_true, ↓reduceIte, hprop.2.2 hpub, hpre.1]
 
 open Classical in
-/-- The valid engine prefix and its replay agree at the same bounded observation cut. -/
-theorem stateAgreement {due : e.State hn → Bool} (laws : e.Lawful due)
-    (hv : rho.ExecutionValid) : StateAgreement e rho := by
-  rw [stateAgreement_iff]
-  intro v i hi hh
-  clear hh
+/-- Every bounded engine prefix agrees with its replay, including at cuts after compromise:
+validity constrains the actual events, not the observing validator at the end of the prefix. -/
+theorem stateAgreement_all {due : e.State hn → Bool} (laws : e.Lawful due)
+    (hv : rho.ExecutionValid) (v : V) (i : Nat) (hi : i ≤ rho.events.length) :
+    e.adapter.node (stateAt e rho v i) =
+      (simTrace e rho).state (rho.ownKey v) (cutMap e rho i) := by
   rw [replay_prefix v i hi]
   induction i with
   | zero => exact stateAt_zero v
@@ -401,5 +392,11 @@ theorem stateAgreement {due : e.State hn → Bool} (laws : e.Lawful due)
         simpa only [ite_eq_right hk] using
           replay_deliver e.codec (runProposer rho hn) (digestOf e rho) (Model.digests rho.hash o)
             (rho.ownKey v) (rho.ownKey w) t j _ _ _ 0 (fun h => (hk h.symm).elim)
+
+/-- The valid engine prefix and its replay agree at the same bounded observation cut. -/
+theorem stateAgreement {due : e.State hn → Bool} (laws : e.Lawful due)
+    (hv : rho.ExecutionValid) : StateAgreement e rho := by
+  rw [stateAgreement_iff]
+  exact fun v i hi _ => stateAgreement_all laws hv v i hi
 
 end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace

@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 public import ConsensusLean.Lemmas.Model.Candidates
+import ConsensusLean.Lemmas.Model.DutyFold
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventorySchedule
 
 public section
@@ -170,15 +171,8 @@ omit [DecidableEq V] in
 theorem runDuties_fst_append (v : V) (nd : Model.Node (Model.protoOf (compiled
     (goldilocks S)) E))
     (ds ds' : List (Model.protoOf (compiled (goldilocks S)) E).Duty) :
-    (rho.runDuties v nd (ds ++ ds')).1 = (rho.runDuties v (rho.runDuties v nd ds).1 ds').1 := by
-  unfold Model.Run.runDuties
-  rw [List.foldl_append]
-  generalize ds.foldl _ _ = acc
-  induction ds' generalizing acc with
-  | nil => rfl
-  | cons d ds' ih =>
-    rw [List.foldl_cons, List.foldl_cons, ih]
-    conv_rhs => rw [ih]
+    (rho.runDuties v nd (ds ++ ds')).1 = (rho.runDuties v (rho.runDuties v nd ds).1 ds').1 :=
+  rho.runDuties_append_fst v nd ds ds'
 
 /-! ## Duty steps and the node state -/
 

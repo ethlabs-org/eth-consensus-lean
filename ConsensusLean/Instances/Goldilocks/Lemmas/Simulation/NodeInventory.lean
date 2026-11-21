@@ -1,10 +1,10 @@
 module
 public import ConsensusLean.Instances.Goldilocks.NodeAsChainShape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLaws
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeStateAgreement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventorySchedule
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
-import ConsensusLean.Lemmas.Model.Candidates
+import ConsensusLean.Lemmas.Model.DutyFold
 
 public section
 
@@ -64,104 +64,12 @@ open Shape Model
 
 variable {V : Type} [Fintype V] {E : Env V}
 variable {O : OutputSchema} {I : Type} [DecidableEq I] [Countable I]
-variable {F : ChainShapeFamily O I} {p : Params} {hN : p.n = Fintype.card V}
-variable {hn : 1 ≤ Fintype.card V}
-variable {A : NodeAC (paramsAtCount p (Fintype.card V) hN hn)}
-variable (e : Encoding F E p hN hn A) (rho : Model.Run (compiled F) E)
+variable {F : ChainShapeFamily O I} (rho : Model.Run (compiled F) E)
 
 /-- The engine protocol obtained by compiling a shape family for an environment. -/
 abbrev Engine (F : ChainShapeFamily O I) (E : Env V) := Model.protoOf (compiled F) E
 
-/-- A rejected release keeps the current state; an accepted release records and appends it. -/
-theorem release_envelope_cons (k : Fin (Fintype.card V)) (nd : Model.Node (Engine F E))
-    (o : (Engine F E).Object) (os : List (Engine F E).Object) :
-    let r := Model.releaseAll (Engine F E) rho.hash k nd (o :: os)
-    (envelope e r.1, r.1.seen, r.2) =
-      if Model.releasable nd.seen o &&
-          (Engine F E).dependencies.ready (Model.closure nd.seen) o then
-        let next : Model.Node (Engine F E) :=
-          ⟨(Engine F E).recordOwn nd.st o (Model.digests rho.hash o), nd.seen ++ [o]⟩
-        let tail := Model.releaseAll (Engine F E) rho.hash k next os
-        (envelope e tail.1, tail.1.seen, o :: tail.2)
-      else
-        let tail := Model.releaseAll (Engine F E) rho.hash k nd os
-        (envelope e tail.1, tail.1.seen, tail.2) := by
-  dsimp only
-  by_cases h : (Model.releasable nd.seen o &&
-      (Engine F E).dependencies.ready (Model.closure nd.seen) o) = true
-  · simp only [Model.releaseAll, h, ite_true]
-  · simp only [Model.releaseAll, h, Bool.false_eq_true, ite_false]
-
-/-- A raw tick always clocks, including when asleep; an awake tick runs duties and gossip. -/
-theorem tick_envelope (nd : Model.Node (Engine F E)) (v : V) (t : Time) :
-    let r := rho.tick nd v t
-    (envelope e r.1, r.2) =
-      if E.awake v t then
-        let ds := rho.runDuties v (afterClock rho nd v t) ((Engine F E).duties t)
-        let gs := Model.releaseAll (Engine F E) rho.hash (rho.ownKey v) ds.1
-          (Model.gossipCandidates (Engine F E) ds.1.st t)
-        (envelope e gs.1, ds.2 ++ gs.2)
-      else (envelope e (afterClock rho nd v t), []) := by
-  dsimp only
-  rw [afterClock_eq, Model.Run.tick]
-  split <;> rfl
-
-/-- A raw delivery starts its duty fold from the post-process state, then gossips. -/
-theorem deliver_envelope (nd : Model.Node (Engine F E)) (v : V)
-    (o : (Engine F E).Object) (t : Time) :
-    let post : Model.Node (Engine F E) :=
-      ⟨(Engine F E).process nd.st o (Model.digests rho.hash o), nd.seen ++ [o]⟩
-    let ds := rho.runDuties v post ((Engine F E).deliverDuties t)
-    let gs := Model.releaseAll (Engine F E) rho.hash (rho.ownKey v) ds.1
-      (Model.gossipCandidates (Engine F E) ds.1.st t)
-    (envelope e (rho.deliver nd v o t).1, (rho.deliver nd v o t).2) =
-      (envelope e gs.1, ds.2 ++ gs.2) := by
-  rfl
-
-/-- An unselected duty does nothing; a selected duty releases from the post-act state. -/
-theorem duty_envelope (v : V) (nd : Model.Node (Engine F E)) (d : (Engine F E).Duty) :
-    (envelope e (rho.dutyStep v nd d).1, (rho.dutyStep v nd d).2) =
-      if rho.ownKey v ∈ rho.sel ((Engine F E).role d) then
-        let act := (Engine F E).act nd.st d
-        let out := Model.releaseAll (Engine F E) rho.hash (rho.ownKey v) ⟨act.1, nd.seen⟩
-          (rho.signedCandidate v d act.2)
-        (envelope e out.1, out.2)
-      else (envelope e nd, []) := by
-  rw [rho.dutyStep_eq]
-  split <;> rfl
-
-/-- The duty fold exposes its first step and does not reorder what was released. -/
-theorem duties_envelope_cons (v : V) (nd : Model.Node (Engine F E))
-    (d : (Engine F E).Duty) (ds : List (Engine F E).Duty) :
-    let start := rho.dutyStep v nd d
-    let tail := rho.runDuties v start.1 ds
-    (envelope e (rho.runDuties v nd (d :: ds)).1, (rho.runDuties v nd (d :: ds)).2) =
-      (envelope e tail.1, start.2 ++ tail.2) := by
-  dsimp only
-  rw [rho.runDuties_cons]
-
 variable [DecidableEq V]
-
-/-- Read the next cut at its own event, or keep the envelope at an unrelated or absent event. -/
-theorem stateAt_succ_envelope (v : V) (i : Nat) :
-    stateAt e rho v (i + 1) =
-      match rho.events[i]? with
-      | none => stateAt e rho v i
-      | some ev => envelope e (rho.step (rho.stateBefore i) ev v) := by
-  cases he : rho.events[i]? with
-  | none =>
-    rw [Encoding.OpLaws.cut_envelope, Encoding.OpLaws.cut_envelope]
-    simp only [Model.Run.stateBefore, List.take_add_one, he, Option.toList_none, List.append_nil]
-  | some ev => rw [Encoding.OpLaws.cut_envelope, rho.stateBefore_succ he]
-
-omit [DecidableEq V] in
-/-- A pending carried object may still be queued if it is already in the sender's closure. -/
-theorem releasable_of_carried_available (nd : Model.Node (Engine F E)) (o : (Engine F E).Object)
-    (Pending : e.State hn → (Engine F E).Object → Prop)
-    (available : ∀ x ∈ o.carried, x ∈ Model.closure nd.seen ∨ Pending (envelope e nd) x)
-    (drained : ∀ x ∈ o.carried, Pending (envelope e nd) x → x ∈ Model.closure nd.seen) :
-    Model.releasable nd.seen o = true :=
-  List.all_eq_true.mpr fun x hx => decide_eq_true ((available x hx).elim id (drained x hx))
 
 /-- A local invariant carried by the immediately preceding duty prefix of an actual event. -/
 inductive DutyPrefix (v : V) (i j : Nat) :
@@ -208,7 +116,7 @@ theorem prefix_inventory {Inv : Model.Node (Engine F E) → Prop} {v : V}
   | succ j ih =>
     have hlt : j < ds.length := hj
     have hd := List.getElem?_eq_getElem hlt
-    rw [List.take_add_one, hd, Option.toList_some, Encoding.OpLaws.runDuties_append,
+    rw [List.take_add_one, hd, Option.toList_some, rho.runDuties_append_fst,
       rho.runDuties_cons, rho.runDuties_nil]
     exact duty j _ _ (hprefix j hlt.le) hd (ih hlt.le)
 
