@@ -818,6 +818,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingInvariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingWrappers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Interface
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeBlockView
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventory
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventorySchedule

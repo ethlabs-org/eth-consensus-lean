@@ -242,7 +242,8 @@ private theorem prefix_cuts (n : Nat) :
   | succ n ih => simp only [List.range_succ, List.flatMap_append, List.flatMap_cons,
       List.flatMap_nil, List.append_nil, List.length_append, ih, cutMap_succ]
 
-private theorem cut_event (n k : Nat) (r : CutRec A)
+/-- A cut in a prefix belongs to an engine event in that prefix. -/
+theorem cut_event (n k : Nat) (r : CutRec A)
     (hr : ((List.range n).flatMap (eventCuts e rho))[k]? = some r) :
     ∃ i < n, cutMap e rho i ≤ k ∧ r ∈ eventCuts e rho i := by
   induction n with
