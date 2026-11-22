@@ -23,15 +23,34 @@ open Consensus.Model (pubOf)
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
+open NodeAsChainShape.CanonicalTrace in
+/-- Goldilocks releases the canonical object at every own block cut of a public tick. -/
+theorem tick_block_release_encoding (hv : rho.ExecutionValid)
+    {i : Nat} {v : V} {t : Time} (he : rho.events[i]? = some (.tick v t))
+    (hp : (S.params (pubOf E) hn).toParams.IsPublic t)
+    {r} (hr : r ∈ NodeAsChainShape.CanonicalTrace.eventCuts (traceEncoding S hn) rho i)
+    {b acc} (hl : r.label = .fg (.block b acc)) (hpos : r.pos ≠ 0) :
+    let e := traceEncoding (E := E) S hn
+    engineObj e (NodeAsChainShape.blockObj e.codec.encode e.codec.carried b) ∈
+      rho.releasesAt i := by
+  dsimp only
+  obtain ⟨q, hq, hqp, hql⟩ := eventCuts_label_pos S rho hn i r hr
+  rw [(blockView_encoding (E := E) S hn).1 b]
+  exact (tick_block_vote_releases_at S rho hn hv he hp q hq).1 b acc
+    (hql.trans hl) (hqp ▸ hpos)
+
 /-- An occurring block's object is observed while its engine reader is still honest, even if
 the reader is compromised later. Refused deliveries count as observations too. -/
 theorem occurs_blockObj_observed_at (hv : rho.ExecutionValid)
     {B : Blk (S.params (pubOf E) hn)} (hB : (simTraceAt S rho hn).Occurs B) :
     B.parent ≠ none ∧ blockObj (binding := S.vote) _ B ∈ rho.Observed := by
-  rw [simTraceAt_eq] at hB
-  obtain ⟨hp, i, ev, he, hb⟩ := block_call_in_view_of_releases S rho hn
-    (fun he hp r hr => (tick_block_vote_releases_at S rho hn hv he hp r hr).1) hB
-  exact ⟨hp, NodeAsChainShape.CanonicalTrace.observed_of_event_view rho hv he hb⟩
+  obtain ⟨hobj, hcodec⟩ := blockView_encoding (E := E) S hn
+  rw [simTraceAt_eq, (simTrace_encoding S rho hn).1,
+    ← NodeAsChainShape.CanonicalTrace.simTraceAt_eq] at hB
+  obtain ⟨hp, hobs⟩ := NodeAsChainShape.CanonicalTrace.occurs_blockObj_observed_at
+    (traceEncoding S hn) rho hv hcodec
+    (fun he hp _ hr _ _ hl hpos => tick_block_release_encoding S rho hn hv he hp hr hl hpos) hB
+  exact ⟨hp, hobj B ▸ hobs⟩
 
 /-- An occurring block is observed while its engine reader is still honest. -/
 theorem occurring_observed_at (hv : rho.ExecutionValid)

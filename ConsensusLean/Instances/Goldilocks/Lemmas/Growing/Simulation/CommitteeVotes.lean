@@ -5,6 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RoleBinding
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Unforgeable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Queue
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.BlockView
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeBlockView
 import ConsensusLean.Lemmas.Model.Credentials
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
@@ -26,6 +28,46 @@ the canonical trace handles is of a member of its slot's committee:
   (`simTraceAt_tree_member`) and the pools (`simTraceAt_pool_member`).
 
 None of these needs an honest-set premise beyond the record's, nor the population binding. -/
+
+namespace Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
+
+open Shape Blocks Node
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+variable {O : OutputSchema} {I : Type} [DecidableEq I] [Countable I]
+variable {F : ChainShapeFamily O I} {p : Params} {hN : p.n = Fintype.card V}
+variable {hn : 1 ≤ Fintype.card V}
+variable {A : NodeAC (paramsAtCount p (Fintype.card V) hN hn)}
+variable (e : Encoding F E p hN hn A) (rho : Model.Run (compiled F) E)
+
+/-- A signed vote contained in an observed object is from a member of its slot's committee. -/
+theorem observed_vote_member (hv : rho.ExecutionValid)
+    {role : Nat → (Model.protoOf (compiled F) E).Role} {K : SA.CommitteeDict (Fintype.card V)}
+    (hK : K.BindsSel rho role) {o obj : (Model.protoOf (compiled F) E).Object}
+    (ho : o ∈ rho.Observed) {v : SA.Vote (Fintype.card V)} (hc : Model.Obj.Contains o obj)
+    (ha : obj.auth = .signed v.val (role v.slot)) : v.val ∈ K.committee v.slot :=
+  ((K.bindsSel_iff rho role).1 hK v.slot v.val).2 (rho.selected_of_observed hv ho hc ha)
+
+/-- Occurring blocks carry votes from members of the committee for their slots. -/
+theorem simTraceAt_occurs_member (hv : rho.ExecutionValid)
+    (hcodec : ∀ {info atts payload}, e.codec.decode info = some (atts, payload) →
+      e.codec.encode atts payload = info)
+    (hrel : ∀ {j : Nat} {v : V} {t : Time}, rho.events[j]? = some (.tick v t) →
+      (paramsAtCount p (Fintype.card V) hN hn).IsPublic t →
+      ∀ r ∈ eventCuts e rho j, ∀ b acc, r.label = .fg (.block b acc) → r.pos ≠ 0 →
+        engineObj e (blockObj e.codec.encode e.codec.carried b) ∈ rho.releasesAt j)
+    {role : Nat → (Model.protoOf (compiled F) E).Role} {K : SA.CommitteeDict (Fintype.card V)}
+    (hK : K.BindsSel rho role) (votes : A.Blk → List (SA.Vote (Fintype.card V)))
+    (hcontains : ∀ b, ∀ v ∈ votes b, ∃ obj,
+      Model.Obj.Contains (engineObj e (blockObj e.codec.encode e.codec.carried b)) obj ∧
+        obj.auth = .signed v.val (role v.slot))
+    {b : A.Blk} (hb : (simTraceAt e rho).Occurs b) :
+    ∀ v ∈ votes b, v.val ∈ K.committee v.slot := by
+  intro v hvb
+  obtain ⟨obj, hc, ha⟩ := hcontains b v hvb
+  exact observed_vote_member rho hv hK (occurs_blockObj_observed_at e rho hv hcodec hrel hb).2 hc ha
+
+end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
 
 namespace Consensus.Goldilocks.Simulation
 
@@ -91,16 +133,21 @@ theorem observed_vote_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.vo
     {o : Wire (Fintype.card V) (binding := S.vote)} (ho : o ∈ rho.Observed)
     {m : Vote (Fintype.card V)} (hc : Model.Obj.Contains o (voteObj (binding := S.vote) m)) :
     m.val ∈ K.committee m.slot :=
-  ((K.bindsSel_iff rho _).1 hK m.slot m.val).2 (rho.selected_of_observed hv ho hc rfl)
+  NodeAsChainShape.CanonicalTrace.observed_vote_member rho hv hK ho hc rfl
 
 /-- **The votes of an occurring block are of committee members** (its object is observed). -/
 theorem simTraceAt_occurs_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.vote.voteRole)
     {C : Blk (S.params (pubOf E) hn)} (hC : (simTraceAt S rho hn).Occurs C) :
-    ∀ v ∈ SA.blockVotes C, v.val ∈ K.committee v.slot := fun v hvC =>
-  observed_vote_member S rho hv hK (occurs_blockObj_observed_at S rho hn hv hC).2
-    (Model.Obj.Contains.step
-      (List.mem_append_right _ (List.mem_map.mpr ⟨v, List.mem_append_left _ hvC, rfl⟩))
-      (.refl _))
+    ∀ v ∈ SA.blockVotes C, v.val ∈ K.committee v.slot := by
+  obtain ⟨hobj, hcodec⟩ := blockView_encoding (E := E) S hn
+  exact NodeAsChainShape.CanonicalTrace.simTraceAt_occurs_member (traceEncoding S hn) rho hv
+    hcodec (fun he hp _ hr _ _ hl hpos => tick_block_release_encoding S rho hn hv he hp hr hl hpos)
+    hK SA.blockVotes (fun b v hvb => by
+      rw [hobj]
+      exact ⟨voteObj v, .step (List.mem_append_right _
+        (List.mem_map.mpr ⟨v, List.mem_append_left _ hvb, rfl⟩)) (.refl _), rfl⟩)
+    (by rwa [NodeAsChainShape.CanonicalTrace.simTraceAt_eq, ← (simTrace_encoding S rho hn).1,
+      ← simTraceAt_eq])
 
 /-- **A received vote is of a committee member** (the credentials of its delivery). -/
 theorem simTraceAt_msgCall_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.vote.voteRole)
