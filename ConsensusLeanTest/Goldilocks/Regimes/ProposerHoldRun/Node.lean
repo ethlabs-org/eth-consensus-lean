@@ -5,7 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.BlockView
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeRunSchedule
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
-import all ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import all ConsensusLean.Lemmas.Model.Retain
 @[expose] public section
 

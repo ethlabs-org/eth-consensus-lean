@@ -335,8 +335,8 @@ private theorem proposal_block (dg : Digest (List (FG.Att P.n)) A.Payload) (y : 
   · simp at hm
 
 /-- **The block cuts of a handler**: a delivery's first cut, or the own proposal's in a tick, at
-its third cut. -/
-private theorem exec_block (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
+its third cut. Kept for a downstream consumer. -/
+theorem exec_block (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
     (st : NodeState A) (t : Time) (e : Event A) {B : A.Blk} {acc : Bool} {k : Nat}
     (hk : (exec proposer dg y st t e).2[k]? = some (.fg (.block B acc))) :
     (e = .block B ∧ k = 0) ∨ (∃ x, e = .tick x ∧ k = 2 ∧ Proposes proposer y t ∧ ∃ d p,
