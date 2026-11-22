@@ -1959,19 +1959,6 @@ def HonestCastLaws (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) : 
     (∃ B ∈ ell.frame.tree, B.root = e.msg.head ∧ ell.frame.Anc ell.frame.fcRoot B) ∧
     tr.time i ≤ sp.ts e.msg.slot + sp.Δ
 
-/-- The predecessor votes consumed by the proposal are protected by the
-clean fast source. Their visibility in the collector is a different claim. -/
-theorem clean_predecessor_votes_on_delayed_trace {x r s m L CV}
-    (hcut : CutObservations tr H) {K : SA.CommitteeDict sp.n}
-    (hK : Compose.Growing.CommitteeFacts tr H K)
-    (hcast : HonestCastLaws tr H)
-    (hx : x ∈ H (tr.time r)) (hl : SA.FastLockAt tr.projAC x r s L CV)
-    (hclean : Compose.Growing.Clean tr H s m L) {u j e z}
-    (hs : s < u) (hm : u ≤ m) (hz : z ∈ H (tr.time j))
-    (hv : SA.VoteAt tr.projAC z j e) (hu : e.msg.slot = u) :
-    SA.VoteExtends (tr.HonestBlocksAt H) e.msg L := by
-  sorry
-
 /-- Delivery, acceptance and AC replay must resolve each actual predecessor
 vote at the proposal pre-state. Scheduling the vote alone does not do this. -/
 def PredecessorResolution (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
@@ -2002,23 +1989,75 @@ theorem clean_predecessor_collector_at_proposal {g b : Time}
           SA.resolutionTime (tr.state y j).ac ell.frame e.msg < SA.ETime.of (tr.time j) := by
   sorry
 
-/-- Port the two clean proposal routes from the same cut replay, not from
-the legacy run predicate. The two-label route must put its predecessor
-strictly after the Healthy restart cutoff; the adjacent route uses optimistic evidence. -/
-theorem protected_anchor_heads_of_clean_windows {g a b : Time}
-    {K : SA.CommitteeDict sp.n} (hcut : CutObservations tr H)
-    (hreset : IsReset tr H g a) (hcatch : CatchRun tr H g (2 * sp.Δ))
-    (hbase : BaseService tr H g) (hK : CommitteeHalfUpTo tr H K g b)
-    (hduty : VoteDutyReplay tr H b) (hcast : HonestCastLaws tr H)
-    (hresolve : PredecessorResolution tr H g b)
-    (hcutoff : ∀ {z k}, z ∈ H (tr.time k) → tr.RestartAt z k → tr.time k ≤ b → tr.time k ≤ gbar g)
-    (hclean : ∀ {x r s m L CV}, x ∈ H (tr.time r) → SA.FastLockAt tr.projAC x r s L CV →
-      Healing.cleanLabel sp a + sp.k + 2 ≤ s → s ≤ m → sp.ts m + 2 * sp.Δ ≤ b →
-      Compose.Growing.Clean tr H s m L)
-    (hstep : ∀ i y ℓ, tr.CallAt y i ℓ → Node.CutStep y (tr.time i) (tr.state y i) ℓ (tr.post i))
-    (hawake : ∀ y t, gbar g ≤ t → t ≤ b → y ∈ H t → tr.awake y t) :
-    ProtectedAnchorHeads tr H a b := by
+section HealthyACTransfer
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} {S : Setup}
+    {p : (n : Nat) → Time → Rules n}
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+
+variable {tp : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)}
+    {Hp : Time → Set (Fin (Fintype.card V))}
+    {Up : Publication tp}
+    (M : EngineProjection rho tp Hp Up) (B : EventBoundaries rho hn M)
+    (cuts : ProjectedTickDutyBoundaries rho hn M B) (hv : rho.ExecutionValid)
+    (hnc : ¬ rho.HashCollision)
+
+include cuts hv hnc in
+/-- Identify the AC result and own-block processing in the same proposal
+duty. An unrelated call at the same time cannot supply the parent or payload. -/
+theorem proposal_duty_replay {y m} {Q : Blk (S.params (Model.pubOf E) hn)}
+    (hy : y ∈ Hp (tp.time m)) (hQ : tp.ProposesAt y m Q) :
+    ∃ i q k s, ∃ hs : 0 < s, ∃ ell d pay acc,
+      rho.events[i]? = some (.tick (M.key.symm y) (tp.time m)) ∧
+      ((Model.protoOf (compiled (delayedFamily S p)) E).duties (tp.time m))[q]? =
+        some (.propose s hs) ∧
+      B.first i + cuts.offset i q = k ∧ k < m ∧ m < B.first i + cuts.offset i (q + 1) ∧
+      s = Q.slot ∧ tp.time k = tp.time m ∧ tp.time m = (S.params (Model.pubOf E) hn).ts Q.slot ∧
+      tp.CallAt y k (.ac ell) ∧ ell.call = .proposal ∧
+      ell.frame = Node.frame (tp.state y k) ∧
+      (Node.acProposal (tp.state y k) (tp.time k)).2.2 = some (d, pay) ∧
+      d.head ∈ (tp.state y m).fg.tree ∧ Q.parent = some d.head.root ∧ Q.acPayload = pay ∧
+      tp.CallAt y m (.fg (.block Q acc)) := by
   sorry
+
+include cuts hv hnc in
+/-- Port first-slot stored carry from the fast writer and next-slot carry
+from earlier honest votes using the same Healthy duty and receipt replay. A
+head above fcRoot alone does not protect the source. -/
+theorem clean_predecessor_votes_on_delayed_trace {g b : Time}
+    {K : SA.CommitteeDict (Fintype.card V)} (hb : b ≤ rho.horizon)
+    (hrestarts : ProjectedRestarts rho hn M B)
+    (hbase : BaseService tp Hp g) (hcatch : CatchRun tp Hp g (2 * (S.params (Model.pubOf E) hn).Δ))
+    (hK : CommitteeHalfUpTo tp Hp K g b)
+    (hduty : VoteDutyReplay tp Hp b) (hcast : HonestCastLaws tp Hp)
+    (hawake : ∀ y t, gbar g ≤ t → t ≤ b → y ∈ Hp t → tp.awake y t)
+    {x r s m L CV} (hx : x ∈ Hp (tp.time r)) (hl : SA.FastLockAt tp.projAC x r s L CV)
+    (hstart : let params := S.params (Model.pubOf E) hn; cutZ params.toParams g ≤ params.ts s)
+    (hclean : Compose.Growing.Clean tp Hp s m L) {u j e z}
+    (hs : s < u) (hm : u ≤ m) (hj : tp.time j ≤ b) (hz : z ∈ Hp (tp.time j))
+    (hvot : SA.VoteAt tp.projAC z j e) (hu : e.msg.slot = u) :
+    SA.VoteExtends (tp.HonestBlocksAt Hp) e.msg L := by
+  sorry
+
+include cuts hv hnc in
+/-- Use the collector at the replayed proposal duty that produced Q. The
+adjacent optimistic route uses that same duty and parent. -/
+theorem protected_anchor_heads_of_clean_windows {g a b : Time}
+    {K : SA.CommitteeDict (Fintype.card V)} (hb : b ≤ rho.horizon)
+    (hrestarts : ProjectedRestarts rho hn M B)
+    (hreset : IsReset tp Hp g a) (hcatch : CatchRun tp Hp g (2 * (S.params (Model.pubOf E) hn).Δ))
+    (hbase : BaseService tp Hp g) (hK : CommitteeHalfUpTo tp Hp K g b)
+    (hduty : VoteDutyReplay tp Hp b) (hcast : HonestCastLaws tp Hp)
+    (hresolve : PredecessorResolution tp Hp g b)
+    (hclean : ∀ {x r s m L CV}, x ∈ Hp (tp.time r) → SA.FastLockAt tp.projAC x r s L CV →
+      let params := S.params (Model.pubOf E) hn
+      Healing.cleanLabel params a + params.k + 2 ≤ s → s ≤ m → params.ts m + 2 * params.Δ ≤ b →
+      Compose.Growing.Clean tp Hp s m L)
+    (hawake : ∀ y t, gbar g ≤ t → t ≤ b → y ∈ Hp t → tp.awake y t) :
+    ProtectedAnchorHeads tp Hp a b := by
+  sorry
+
+end HealthyACTransfer
 
 /-- Produce usable polls from post-drain voting on the delayed trace. A slot
 update does not itself emit a report, and a missed snapshot cannot be replayed.
@@ -2067,28 +2106,37 @@ theorem anchor_sources_of_available_polls
 /-- Replay supplies the originating lock write and the AC protection proof.
 The collector deadline is charged from the actual report, irrespective of
 whether the report preceded d or came from a scheduled poll. -/
-theorem delayed_crossing_raises_parent {a b : Time} (hcut : CutObservations tr H)
-    (hprotected : ProtectedAnchorHeads tr H a b)
-    (hlock : ∀ {x k ell B}, x ∈ H (tr.time k) → SA.ToFGAt tr.projAC x k ell B →
-      Healing.drainTime sp a ≤ tr.time k →
-      ∃ r ≤ k, ∃ s L CV, s ≤ sp.slot (tr.time k) ∧
-        ((SA.FastUpdateAt tr.projAC x r s L CV ∧ tr.time r = sp.ts s + 6 * sp.Δ) ∨
-          (SA.OptimisticLockAt tr.projAC x r s L CV ∧ sp.slot (tr.time r) = s)) ∧
-        Healing.cleanLabel sp a + sp.k + 2 ≤ s ∧ Anc (tr.HonestBlocksAt H) B L)
-    (hheight : ∀ {x y k m B C}, x ∈ H (tr.time k) → y ∈ H (tr.time m) →
-      B ∈ (tr.state x k).fg.tree → C ∈ (tr.state y m).fg.tree →
-      Anc (tr.HonestBlocksAt H) B C →
-      ((tr.state x k).fg.σ B.root).h ≤ ((tr.state y m).fg.σ C.root).h)
-    (hsrc : SourceFacts tr H) {x y k m ell h} {A B Q C : Blk sp}
-    (hx : x ∈ H (tr.time k)) (hr : SA.ToFGAt tr.projAC x k ell B)
-    (hdrain : Healing.drainTime sp a ≤ sp.ts A.slot)
-    (hAB : Anc (tr.HonestBlocksAt H) A B)
-    (hslot : sp.ts A.slot ≤ tr.time k)
-    (hlt : h < ((tr.state x k).fg.σ B.root).h)
-    (hy : y ∈ H (tr.time m)) (hq : tr.ProposesAt y m Q) (hb : tr.time m ≤ b)
-    (hp : Q.parent = some C.root) (hm : C ∈ (tr.state y m).fg.tree)
-    (hroom : tr.time k + sp.Δ ≤ tr.time m) :
-    Anc (tr.HonestBlocksAt H) B C ∧ h < ((tr.state y m).fg.σ C.root).h := by
+theorem delayed_crossing_raises_parent
+    {V : Type} [Fintype V] [DecidableEq V] {E : Env V} {S : Setup}
+    {p : (n : Nat) → Time → Rules n}
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tp : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {Hp Up}
+    (M : EngineProjection rho tp Hp Up) (B : EventBoundaries rho hn M)
+    (cuts : ProjectedTickDutyBoundaries rho hn M B) (hv : rho.ExecutionValid)
+    (hnc : ¬ rho.HashCollision) {a b : Time}
+    (hprotected : ProtectedAnchorHeads tp Hp a b)
+    (hlock : ∀ {x k ell P}, x ∈ Hp (tp.time k) → SA.ToFGAt tp.projAC x k ell P →
+      let params := S.params (Model.pubOf E) hn
+      Healing.drainTime params a ≤ tp.time k →
+      ∃ r ≤ k, ∃ s L CV, s ≤ params.slot (tp.time k) ∧
+        ((SA.FastUpdateAt tp.projAC x r s L CV ∧ tp.time r = params.ts s + 6 * params.Δ) ∨
+          (SA.OptimisticLockAt tp.projAC x r s L CV ∧ params.slot (tp.time r) = s)) ∧
+        Healing.cleanLabel params a + params.k + 2 ≤ s ∧ Anc (tp.HonestBlocksAt Hp) P L)
+    (hheight : ∀ {x y k m P C}, x ∈ Hp (tp.time k) → y ∈ Hp (tp.time m) →
+      P ∈ (tp.state x k).fg.tree → C ∈ (tp.state y m).fg.tree →
+      Anc (tp.HonestBlocksAt Hp) P C →
+      ((tp.state x k).fg.σ P.root).h ≤ ((tp.state y m).fg.σ C.root).h)
+    {x y k m ell h} {A P Q C : Blk (S.params (Model.pubOf E) hn)}
+    (hx : x ∈ Hp (tp.time k)) (hr : SA.ToFGAt tp.projAC x k ell P)
+    (hdrain : let params := S.params (Model.pubOf E) hn
+      Healing.drainTime params a ≤ params.ts A.slot)
+    (hAP : Anc (tp.HonestBlocksAt Hp) A P)
+    (hslot : (S.params (Model.pubOf E) hn).ts A.slot ≤ tp.time k)
+    (hlt : h < ((tp.state x k).fg.σ P.root).h)
+    (hy : y ∈ Hp (tp.time m)) (hq : tp.ProposesAt y m Q) (hb : tp.time m ≤ b)
+    (hp : Q.parent = some C.root) (hm : C ∈ (tp.state y m).fg.tree)
+    (hroom : tp.time k + (S.params (Model.pubOf E) hn).Δ ≤ tp.time m) :
+    Anc (tp.HonestBlocksAt Hp) P C ∧ h < ((tp.state y m).fg.σ C.root).h := by
   sorry
 
 /-- Collector and FG forwarding are distinct obligations at the same anchor gap.
