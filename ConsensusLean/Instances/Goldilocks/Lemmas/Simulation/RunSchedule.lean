@@ -81,14 +81,8 @@ theorem awake_iff' (y : Fin (Fintype.card V)) (t : Time) :
 /-- Canonical labelled coverage cannot extend its explicit observation horizon. -/
 theorem simTrace_inHorizon_le (hv : rho.ExecutionValid) {t : Time}
     (ht : (simTrace S rho hn).InHorizon t) : t ≤ rho.horizon := by
-  obtain ⟨k, hk, htk⟩ := (simTrace_inHorizon_iff S rho hn t).mp ht
-  rcases hk with hk | hk
-  · have hl : (simTrace S rho hn).label k ≠ none := by
-      simpa only [simTrace_label, cutLabel_eq] using hk
-    have ht' : t ≤ (simTrace S rho hn).time k := by
-      simpa only [simTrace_time, cutTime_eq] using htk
-    exact ht'.trans (simTrace_labelled_time_le S rho hn hv hl)
-  · exact hk
+  rw [(simTrace_encoding S rho hn).1] at ht
+  exact (NodeAsChainShape.CanonicalTrace.inHorizon_iff (traceEncoding S hn) rho hv t).mp ht
 
 /-- Cuts are at times from `0` on. -/
 theorem simTrace_time_nonneg (hv : rho.ExecutionValid) :

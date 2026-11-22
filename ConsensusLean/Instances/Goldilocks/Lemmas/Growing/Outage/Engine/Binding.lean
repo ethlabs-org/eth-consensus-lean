@@ -81,19 +81,20 @@ theorem mem_voteK_iff_selected (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionVa
       (S.params (Model.pubOf E) hn).slot t := by
     have h := SA.slot_eq (S.params (Model.pubOf E) hn) ht
     omega
-  have hrole : (Model.protoOf (compiled (goldilocks S)) rho.point.env).participationRole t =
+  have hrole : (Model.protoOf (compiled (goldilocks S)) E).participationRole t =
       S.vote.participationKind.map
         (fun k => ShapeRole.duty ((S.params (Model.pubOf E) hn).slot t) k) := by
     rw [← hslot]; rfl
-  unfold shapeProgress
-  dsimp only [Model.sysExternal]
-  rw [hrole]
+  change _ ↔ rho.key x ∈
+    (Model.sysExternal _ (compiled (goldilocks S)) V).selected E (rho.key, rho.sel) t
+  rw [← NodeAsChainShape.CanonicalTrace.mem_runCommittee_iff_selected rho t x,
+    NodeAsChainShape.CanonicalTrace.runCommittee_eq, hrole]
   rw [(voteK S rho).bindsSel_iff rho S.vote.voteRole |>.1 (voteK_bindsSel S rho)]
   unfold VoteBinding.voteRole
   rcases S.vote.participationKind with _ | k
   · simp only [Option.map_none, Finset.mem_univ, iff_true]
     exact (Finset.ext_iff.1 (selValid_poll S rho hv.selValid) x).2 (Finset.mem_univ x)
-  · simp
+  · rfl
 
 end Run
 

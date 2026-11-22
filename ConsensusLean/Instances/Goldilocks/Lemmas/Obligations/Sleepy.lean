@@ -80,44 +80,8 @@ theorem readPoint_after_event {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     {e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
     (he : rho.events[i]? = some e) :
     Regimes.ReadPoint (simTrace S rho hn) (cutMap S rho hn (i + 1)) e.time := by
-  have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
-  constructor
-  · intro k hk
-    have hlen : k < (allCuts S rho hn).length := by
-      rw [length_allCuts]
-      exact hk.trans_le (cutMap_mono S rho hn (by omega))
-    have hl : (simTrace S rho hn).label k ≠ none := by
-      rw [simTrace_label, List.getElem?_eq_getElem hlen]
-      simp
-    obtain ⟨_, j, f, _, hf, hj, _, _, _, ht, _⟩ := simTrace_cut S rho hn hl
-    have hji : j ≤ i := by
-      by_contra h
-      have := cutMap_mono S rho hn (show i + 1 ≤ j by omega)
-      omega
-    rw [ht]
-    rcases hji.lt_or_eq with h | rfl
-    · rcases keyLe_of_lt S rho hv hf he h with h | ⟨h, _⟩
-      · exact h.le
-      · exact h.le
-    · rw [he] at hf
-      exact (Option.some.inj hf) ▸ le_rfl
-  · cases hr : (allCuts S rho hn)[cutMap S rho hn (i + 1)]? with
-    | none =>
-      rw [(simTrace_of_getElem?_none S rho hn hr).2]
-      have := (hv.in_horizon e (List.mem_of_getElem? he)).2
-      linarith
-    | some r =>
-      have hl : (simTrace S rho hn).label (cutMap S rho hn (i + 1)) ≠ none := by
-        rw [simTrace_label, hr]; simp
-      obtain ⟨_, j, f, _, hf, _, hj, _, _, ht, _⟩ := simTrace_cut S rho hn hl
-      have hij : i < j := by
-        by_contra h
-        have := cutMap_mono S rho hn (show j + 1 ≤ i + 1 by omega)
-        omega
-      rw [ht]
-      rcases keyLe_of_lt S rho hv he hf hij with h | ⟨h, _⟩
-      · exact h.le
-      · exact h.le
+  rw [(simTrace_encoding S rho hn).1, (simTrace_encoding S rho hn).2]
+  exact NodeAsChainShape.CanonicalTrace.readPoint_after_event (traceEncoding S hn) rho hv he
 
 section Clock
 

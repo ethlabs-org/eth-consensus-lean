@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Preparation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMapFields
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HSSharedRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Restart
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -15,17 +16,53 @@ open AsChainShape Simulation Blocks Shape
 
 variable {S : Setup} {V : Type} [Fintype V] [DecidableEq V]
 
+omit [DecidableEq V] in
+private theorem healthy_awake_of_bindings {P : Params} {A : NodeAC P} {tr : RunTrace A}
+    {H : Time → Set (Fin P.n)} {O : OutputSchema} {F : Model.ProtocolFamily O}
+    {E : Env V} {rho : Model.Run F E} (key : Fin P.n ≃ V)
+    (hH : ∀ y t, t ≤ rho.horizon → y ∈ H t → rho.point.HonestAt (key y) t)
+    (hw : ∀ y t, E.awake (key y) t = true → 0 ≤ t → t ≤ rho.horizon → tr.awake y t)
+    {β : ℚ} {g b : Time} (hb : b ≤ rho.horizon) (h : rho.point.HealthyOn β g b) :
+    ∀ y t, y ∈ H t → max g 0 ≤ t → t ≤ b → tr.awake y t := by
+  intro y t hy hg ht
+  exact hw y t (h.2 _ t hg ht (hH y t (ht.trans hb) hy)) ((le_max_right _ _).trans hg)
+    (ht.trans hb)
+
+/-- Healthy participation makes every currently honest validator awake in the mapped window. -/
+theorem _root_.Consensus.Goldilocks.Generic.RunMap.healthy_awake_at
+    {P : Params} {A : NodeAC P} {O : OutputSchema} {I : Type} [DecidableEq I] [Countable I]
+    {F : ChainShapeFamily O I} {E : Env V} {rho : Model.Run (compiled F) E}
+    {payload : A.Blk → Set Nat} (M : Generic.RunMap rho payload)
+    {β : ℚ} {g b : Time} (hb : b ≤ rho.horizon) (h : rho.point.HealthyOn β g b) :
+    ∀ y t, y ∈ M.honest t → max g 0 ≤ t → t ≤ b → M.trace.awake y t :=
+  healthy_awake_of_bindings M.validator (fun _ _ ht => (M.honest_iff_of_le ht).mp)
+    (fun y t hw h0 ht => (M.awake_eq y t).mpr ⟨hw, h0, ht⟩) hb h
+
 /-- Every validator honest at the current time is awake after GST, up to a healthy bound. -/
 theorem healthy_preparation_awake_at (run : (Sys (goldilocks S) V).Run)
     (hn : 1 ≤ Fintype.card V) {β : ℚ} {g b : Time} (hb : b ≤ run.2.horizon)
     (hH : ((Sys (goldilocks S) V).pt run).HealthyOn β g b) :
     ∀ y t, y ∈ honestKeysAt S run.2 t → SA.gbar g ≤ t → t ≤ b →
       (simTraceAt S run.2 hn).awake y t := by
-  intro y t hy hg htb
-  have hh := htb.trans hb
-  rw [simTraceAt_awake_iff S run.2 hn, awakeAt_iff S run.2 hn]
-  rw [mem_honestKeysAt_iff S run.2, min_eq_left hh] at hy
-  exact ⟨hH.2 _ t hg htb hy, (le_max_right _ _).trans hg, hh⟩
+  refine healthy_awake_of_bindings (tr := simTraceAt S run.2 hn)
+    (H := honestKeysAt S run.2) run.2.key ?_ ?_ hb hH
+  · intro y t ht hy
+    rw [mem_honestKeysAt_iff S run.2, min_eq_left ht] at hy
+    exact hy
+  · intro y t hw h0 ht
+    rw [simTraceAt_awake_iff S run.2 hn, awakeAt_iff S run.2 hn]
+    exact ⟨hw, h0, ht⟩
+
+/-- A healthy population bound at `b` also bounds the mapped faults at each earlier time. -/
+theorem _root_.Consensus.Goldilocks.Generic.RunMap.healthy_population_at
+    {P : Params} {A : NodeAC P} {O : OutputSchema} {I : Type} [DecidableEq I] [Countable I]
+    {F : ChainShapeFamily O I} {E : Env V} {rho : Model.Run (compiled F) E}
+    {payload : A.Blk → Set Nat} (M : Generic.RunMap rho payload)
+    {β : ℚ} {g b : Time} (hb : b ≤ rho.horizon) (h : rho.point.HealthyOn β g b)
+    {t : Time} (ht : t ≤ b) : ((M.honest t)ᶜ.ncard : ℚ) < β * P.n := by
+  rw [M.faulty_ncard (ht.trans hb), ← Fintype.card_fin P.n, Fintype.card_congr M.validator]
+  exact (show ((rho.faultyAt t).card : ℚ) ≤ (rho.faultyAt b).card by
+    exact_mod_cast Finset.card_le_card (rho.faultyAt_mono ht)).trans_lt h.1
 
 /-- A healthy fault bound at fraction `β ≤ 1/3`, charged at `b`, bounds every earlier cut. -/
 theorem healthy_preparation_faults_at (run : (Sys (goldilocks S) V).Run)

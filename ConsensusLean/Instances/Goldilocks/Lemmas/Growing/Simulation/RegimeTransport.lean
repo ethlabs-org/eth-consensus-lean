@@ -9,7 +9,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Outputs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMapReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Family.ServiceEquivalence
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationService
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.M1.FrameLag
@@ -107,36 +106,12 @@ theorem goldilocks_regimeTransport (S : Setup) (A : ContractAssumptions S) {E : 
     have hs := Obligations.Growing.healthy_preparation_service_at (S := S) ⟨E, rho⟩ hn hv' hc
       le_rfl hnet
     rw [protoFGDelay_eq] at hs
-    simp only [goldilocksRunMap_trace, goldilocksRunMap_honest, goldilocksRunMap_committee]
-    have hfaults : ∀ d, 0 ≤ d → d ≤ rho.horizon →
-        (honestKeysAt S rho d)ᶜ.ncard = (rho.faultyAt d).card := by
-      intro d _ hdb
-      have heq : (honestKeysAt S rho d)ᶜ = rho.key ⁻¹' (↑(rho.faultyAt d) : Set V) := by
-        ext k
-        simp [mem_honestKeysAt_iff, min_eq_left hdb]
-      rw [heq, Set.ncard_preimage_of_injective_subset_range rho.key.injective
-        (by simp [rho.key.surjective.range_eq]), Set.ncard_coe_finset]
-    refine ⟨Healing.Growing.ResetService.toService hs,
-      fun y t hgt htb hy =>
-        Obligations.Growing.healthy_preparation_awake_at (S := S) ⟨E, rho⟩ hn le_rfl hon y t hy
-          hgt htb, ?_, committeeFaultsUpTo_of_healthyOn S rho hn hv' hcom⟩
-    intro d hd0 hdb
-    rw [hfaults d hd0 hdb]
-    have hle : ((rho.faultyAt d).card : ℚ) ≤ (rho.faultyAt rho.horizon).card := by
-      exact_mod_cast Finset.card_le_card (rho.faultyAt_mono hdb)
-    have hf := hon.1
-    change ((rho.faultyAt rho.horizon).card : ℚ) < (K S A).params.β * Fintype.card V at hf
-    change _ < (K S A).params.β * (Fintype.card V : ℚ)
-    linarith
+    let M := goldilocksRunMap S rho hn hv
+    refine ⟨?_, fun y t hgt htb hy => M.healthy_awake_at le_rfl hon y t hy hgt htb,
+      fun _ _ hdb => M.healthy_population_at le_rfl hon hdb, M.committeeFaultsUpTo hcom⟩
+    simpa only [M, goldilocksRunMap_trace, goldilocksRunMap_honest] using hs.toService
   · -- ready
-    intro c v i hi hr
-    obtain ⟨h0, hh⟩ := cutTime_bounds S rho hv hi
-    have hrd := Growing.ready_transport_at S rho hn hv h0 hh hr
-    obtain ⟨hy, ⟨hb, ha⟩, h0', hh'⟩ :=
-      (goldilocksRunMap_engineReadPoint S rho hn hv).honest hv v i hi hr.1
-    refine ⟨hy, hb, ha, h0', hh', fun u hu hut => ?_⟩
-    rw [goldilocksRunMap_trace, goldilocksRunMap_validator]
-    exact hrd.2 u hu hut
+    exact fun _ _ _ hi hr => (goldilocksRunMap S rho hn hv).readyReadAtCut hv hi hr
 
 end Consensus.Goldilocks.Simulation
 

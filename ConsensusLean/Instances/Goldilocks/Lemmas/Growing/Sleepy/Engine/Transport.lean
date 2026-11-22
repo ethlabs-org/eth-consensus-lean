@@ -6,7 +6,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineRepresentation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMap
 import ConsensusLean.Lemmas.Problem.Facts.Regimes
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -35,8 +37,10 @@ The finite service comes from `sleepyServiceBefore_of_syncUntil_at`. -/
 namespace Consensus.Goldilocks.Obligations.Growing
 
 open AsChainShape Simulation
-open Shape
+open Shape Generic
 open Consensus.Model (pubOf)
+
+section GoldilocksReady
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
@@ -44,14 +48,21 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 set_option linter.unusedVariables false in
 /-- **Engine readiness under growing faults.** An engine node ready at `t ∈ [0, horizon]` is ready
 at `t` in the canonical trace: its key is honest at `t` and awake throughout the catch-up window.
-Validity is not used; the premise keeps the interface of the other transports. -/
+The validity premise supplies the canonical run map. -/
 theorem ready_transport_at (hv : rho.ExecutionValid) {c : Time} {v : V} {t : Time}
     (ht : 0 ≤ t) (hth : t ≤ rho.horizon) (hr : rho.point.Ready c v t) :
     Regimes.Growing.ReadyAt (simTraceAt S rho hn) (honestKeysAt S rho) c (rho.ownKey v) t := by
-  have hkey : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
-  refine ⟨honest_ownKey_at S rho hr.1 hth, fun τ hτ hτt => ?_⟩
-  rw [simTraceAt_awake_iff, awakeAt_iff, hkey]
-  exact ⟨hr.2 τ hτ hτt, (le_max_left _ _).trans hτ, hτt.trans hth⟩
+  simpa only [Regimes.Growing.ReadyAt, Model.Run.ownKey, goldilocksRunMap_validator,
+    goldilocksRunMap_trace, goldilocksRunMap_honest] using
+    (goldilocksRunMap S rho hn hv).readyAt hth hr
+
+end GoldilocksReady
+
+section Map
+
+variable {sp : SA.SAParams} {A : NodeAC sp.toParams} {O : OutputSchema} {I : Type}
+  [DecidableEq I] [Countable I] {F : ChainShapeFamily O I} {V : Type} [Fintype V] [DecidableEq V]
+  {E : Env V} {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat} (M : RunMap rho payload)
 
 /-- **The committee sleepy counts under growing faults (the one transport).** Under committee
 η-sleepy participation for the selection `Sel` on `[a, b]` (`b ≤ horizon`) with `θ ≥ 1/2`, a
@@ -61,21 +72,18 @@ are fewer than those honest then, awake and joined at `t`. The engine count is c
 `lookAhead W t ≥ min (t + 5Δ) b` (its η-look-back form only enlarges the denominator); compromise
 only grows, and a ready node is honest, awake and (by its catch-up) joined at `t`. The population
 count `sleepy_faultBoundAt` is its `Sel = univ`, `η = 0` instance. -/
-theorem committee_faultBoundAt (hv : rho.ExecutionValid) {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho)
-      (honestKeysAt S rho) (simTraceAt S rho hn) ini)
+theorem _root_.Consensus.Goldilocks.Generic.RunMap.committee_faultBoundAt {ini}
+    (hrun : Consensus.Goldilocks.Growing.LocalRun M.proposer M.digest M.honest M.signer M.trace ini)
     {Sel : Time → Finset V} {θ : ℚ} {η c W a b : Time} (hθ : 1 / 2 ≤ θ)
-    (hc : 8 * (S.params (pubOf E) hn).Δ ≤ c + 1) (hW : 5 * (S.params (pubOf E) hn).Δ ≤ W)
+    (hc : 8 * sp.Δ ≤ c + 1) (hW : 5 * sp.Δ ≤ W)
     (hb : b ≤ rho.horizon) (hsl : rho.point.CommitteeSleepyOn Sel θ η c W a b)
     {t : Time} (ht : 0 ≤ t) (hat : a ≤ t) (htb : t ≤ b) (hne : (Sel t).Nonempty) :
-    (rho.key ⁻¹' ↑(Sel t) ∩
-        (honestKeysAt S rho (min (t + 5 * (S.params (pubOf E) hn).Δ) b))ᶜ).ncard <
-      (rho.key ⁻¹' ↑(Sel t) ∩
-        {y | y ∈ honestKeysAt S rho (min (t + 5 * (S.params (pubOf E) hn).Δ) b) ∧
-          (simTraceAt S rho hn).awake y t ∧ (simTraceAt S rho hn).JoinedAt y t}).ncard := by
+    (M.validator ⁻¹' ↑(Sel t) ∩ (M.honest (min (t + 5 * sp.Δ) b))ᶜ).ncard <
+      (M.validator ⁻¹' ↑(Sel t) ∩
+        {y | y ∈ M.honest (min (t + 5 * sp.Δ) b) ∧
+          M.trace.awake y t ∧ M.trace.JoinedAt y t}).ncard := by
   classical
-  have hΔ := (S.params (pubOf E) hn).toParams.hΔ
-  set sp := S.params (pubOf E) hn
+  have hΔ := sp.toParams.hΔ
   set d' := min (t + 5 * sp.Δ) b
   set D := rho.point.lookAhead W t
   have hd'D : d' ≤ D := min_le_min (by linarith) hb
@@ -110,32 +118,74 @@ theorem committee_faultBoundAt (hv : rho.ExecutionValid) {ini}
     have : (F.card : ℚ) < R.card := by linarith
     exact_mod_cast this
   -- the trace's compromised selected keys at `d'` are the engine's selected faults at `d' ≤ D`
-  have hf : (rho.key ⁻¹' ↑(Sel t) ∩ (honestKeysAt S rho d')ᶜ).ncard ≤ F.card := by
-    have heq : rho.key ⁻¹' ↑(Sel t) ∩ (honestKeysAt S rho d')ᶜ =
-        rho.key ⁻¹' ↑(rho.faultyAt d' ∩ Sel t) := by
+  have hf : (M.validator ⁻¹' ↑(Sel t) ∩ (M.honest d')ᶜ).ncard ≤ F.card := by
+    have heq : M.validator ⁻¹' ↑(Sel t) ∩ (M.honest d')ᶜ =
+        M.validator ⁻¹' ↑(rho.faultyAt d' ∩ Sel t) := by
       ext k
-      simp [mem_honestKeysAt_iff, min_eq_left hd'h, and_comm]
-    rw [heq, Set.ncard_preimage_of_injective_subset_range rho.key.injective
-      (by simp [rho.key.surjective.range_eq]), Set.ncard_coe_finset]
+      simp [M.honest_iff_of_le hd'h, EnvPoint.HonestAt, Model.Run.point, and_comm]
+    rw [heq, Set.ncard_preimage_of_injective_subset_range M.validator.injective
+      (by simp [M.validator.surjective.range_eq]), Set.ncard_coe_finset]
     exact Finset.card_le_card (Finset.inter_subset_inter (rho.faultyAt_mono hd'D) le_rfl)
   -- each selected retained-ready validator is honest at `d'`, awake and joined at `t`
-  have hcount : R.card ≤ (rho.key ⁻¹' ↑(Sel t) ∩ {y | y ∈ honestKeysAt S rho d' ∧
-      (simTraceAt S rho hn).awake y t ∧ (simTraceAt S rho hn).JoinedAt y t}).ncard := by
+  have hcount : R.card ≤ (M.validator ⁻¹' ↑(Sel t) ∩ {y | y ∈ M.honest d' ∧
+      M.trace.awake y t ∧ M.trace.JoinedAt y t}).ncard := by
     rw [← Set.ncard_coe_finset]
-    apply Set.ncard_le_ncard_of_injOn rho.ownKey
+    apply Set.ncard_le_ncard_of_injOn M.validator.symm
     · intro v hv'
       obtain ⟨hvr, hvS⟩ := Finset.mem_inter.mp (Finset.mem_coe.mp hv')
       have hr : (rho.point.retain D).Ready c v t := (Finset.mem_filter.mp hvr).2
       have hvD : v ∉ rho.faultyAt D := hr.1
       have hrt : rho.point.Ready c v t :=
         ⟨fun h => hvD (rho.faultyAt_mono (htd'.trans hd'D) h), hr.2⟩
-      have hready := ready_transport_at S rho hn hv ht (htb.trans hb) hrt
-      have hkey : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
-      refine ⟨show rho.key (rho.ownKey v) ∈ (Sel t : Set V) by rw [hkey]; exact hvS,
-        honest_ownKey_at S rho (fun h => hvD (rho.faultyAt_mono hd'D h)) hd'h, ?_⟩
-      exact ready_implies_joined_at hrun.toLocalRun hready.1 ht hc hready.2
-    · exact rho.key.symm.injective.injOn
+      have hready := M.readyAt (htb.trans hb) hrt
+      refine ⟨by simpa using hvS, (M.honest_iff_of_le hd'h).mpr ?_,
+        ready_implies_joined_at hrun hready.1 ht hc hready.2⟩
+      simpa only [Equiv.apply_symm_apply, EnvPoint.HonestAt, Model.Run.point] using
+        (fun h => hvD (rho.faultyAt_mono hd'D h) : v ∉ rho.faultyAt d')
+    · exact M.validator.symm.injective.injOn
   exact hf.trans_lt (hlt.trans_le hcount)
+
+/-- The population sleepy count is the full-selection case of the committee count. -/
+theorem _root_.Consensus.Goldilocks.Generic.RunMap.sleepy_faultBoundAt {ini}
+    (hrun : Consensus.Goldilocks.Growing.LocalRun M.proposer M.digest M.honest M.signer M.trace ini)
+    {a b : Time} (hb : b ≤ rho.horizon)
+    (hhalf : rho.point.SleepyOn (1 / 2) (Regimes.catchUp sp) (5 * sp.Δ) a b)
+    {t : Time} (ht : 0 ≤ t) (hat : a ≤ t) (htb : t ≤ b) :
+    M.trace.FaultBoundAt M.honest t (min (t + 5 * sp.Δ) b) := by
+  have hΔ := sp.toParams.hΔ
+  have hsl : rho.point.EtaSleepyOn (1 / 2) 0 (Regimes.catchUp sp) (5 * sp.Δ) a b :=
+    fun u hau hub => EnvPoint.etaReadyAbove_zero_iff.2 (hhalf u hau hub)
+  have h := M.committee_faultBoundAt hrun (Sel := fun _ => Finset.univ) le_rfl
+    (by dsimp [Regimes.catchUp]; linarith) le_rfl hb
+    (hsl.committee_univ le_rfl (by norm_num) (by norm_num)) ht hat htb
+    ⟨M.validator ⟨0, sp.toParams.hn⟩, Finset.mem_univ _⟩
+  simpa only [RunTrace.FaultBoundAt, Finset.coe_univ, Set.preimage_univ, Set.univ_inter] using h
+
+end Map
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+
+/-- Specialize the selected sleepy count to the Goldilocks run's validator keys. -/
+theorem committee_faultBoundAt (hv : rho.ExecutionValid) {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho)
+      (honestKeysAt S rho) (simTraceAt S rho hn) ini)
+    {Sel : Time → Finset V} {θ : ℚ} {η c W a b : Time} (hθ : 1 / 2 ≤ θ)
+    (hc : 8 * (S.params (pubOf E) hn).Δ ≤ c + 1) (hW : 5 * (S.params (pubOf E) hn).Δ ≤ W)
+    (hb : b ≤ rho.horizon) (hsl : rho.point.CommitteeSleepyOn Sel θ η c W a b)
+    {t : Time} (ht : 0 ≤ t) (hat : a ≤ t) (htb : t ≤ b) (hne : (Sel t).Nonempty) :
+    (rho.key ⁻¹' ↑(Sel t) ∩
+        (honestKeysAt S rho (min (t + 5 * (S.params (pubOf E) hn).Δ) b))ᶜ).ncard <
+      (rho.key ⁻¹' ↑(Sel t) ∩
+        {y | y ∈ honestKeysAt S rho (min (t + 5 * (S.params (pubOf E) hn).Δ) b) ∧
+          (simTraceAt S rho hn).awake y t ∧ (simTraceAt S rho hn).JoinedAt y t}).ncard := by
+  let M := goldilocksRunMap S rho hn hv
+  have hlocal : Consensus.Goldilocks.Growing.LocalRun M.proposer M.digest M.honest
+      M.signer M.trace ini := by
+    simpa only [M, goldilocksRunMap_proposer, goldilocksRunMap_digest, goldilocksRunMap_honest,
+      goldilocksRunMap_signer, goldilocksRunMap_trace] using hrun.toLocalRun
+  simpa only [M, goldilocksRunMap_validator, goldilocksRunMap_honest, goldilocksRunMap_trace] using
+    M.committee_faultBoundAt hlocal hθ hc hW hb hsl ht hat htb hne
 
 /-- **The sleepy counts under growing faults.** Under the L0 sleepy budget with look-ahead `5Δ`
 on `[a, b]` (`b ≤ horizon`), at every `t ∈ [max a 0, b]` the keys compromised by
@@ -148,16 +198,14 @@ theorem sleepy_faultBoundAt (hv : rho.ExecutionValid)
     {t : Time} (ht : 0 ≤ t) (hat : a ≤ t) (htb : t ≤ b) :
     (simTraceAt S rho hn).FaultBoundAt (honestKeysAt S rho) t
       (min (t + 5 * (S.params (pubOf E) hn).Δ) b) := by
-  have hΔ := (S.params (pubOf E) hn).toParams.hΔ
-  have hsl : rho.point.EtaSleepyOn (1 / 2) 0 (Regimes.catchUp (S.params (pubOf E) hn))
-      (5 * (S.params (pubOf E) hn).Δ) a b := fun u hau hub =>
-    EnvPoint.etaReadyAbove_zero_iff.2 (hhalf u hau hub)
-  have h := committee_faultBoundAt S rho hn hv (simTraceAt_goldilocksRun S rho hn hv)
-    (Sel := fun _ => Finset.univ) le_rfl (by dsimp [Regimes.catchUp]; linarith) le_rfl hb
-    (hsl.committee_univ le_rfl (by norm_num) (by norm_num)) ht hat htb
-    ⟨rho.key ⟨0, hn⟩, Finset.mem_univ _⟩
-  simp only [Finset.coe_univ, Set.preimage_univ, Set.univ_inter] at h
-  exact h
+  let M := goldilocksRunMap S rho hn hv
+  have hlocal : Consensus.Goldilocks.Growing.LocalRun M.proposer M.digest M.honest
+      M.signer M.trace (simIni S rho hn) := by
+    simpa only [M, goldilocksRunMap_proposer, goldilocksRunMap_digest, goldilocksRunMap_honest,
+      goldilocksRunMap_signer, goldilocksRunMap_trace] using
+      (simTraceAt_goldilocksRun S rho hn hv).toLocalRun
+  simpa only [M, goldilocksRunMap_trace, goldilocksRunMap_honest] using
+    M.sleepy_faultBoundAt hlocal hb hhalf ht hat htb
 
 /-- **The sleepy count shapes under growing faults** through `b ≤ horizon`, from the L0 sleepy
 budget with look-ahead `5Δ` on `[a, b]`, for the slots `s ≥ σ₀` with `a ≤ t_{σ₀} + Δ` (and

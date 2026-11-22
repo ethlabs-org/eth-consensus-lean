@@ -128,9 +128,8 @@ theorem cutMap_mono : Monotone (cutMap S rho hn) := by
 /-- A cut at or after event `i`'s first cut and at or before event `i'`'s last cut has `i ≤ i'`. -/
 theorem cutMap_index_le {i i' k k' : Nat} (hk : cutMap S rho hn i ≤ k)
     (hk' : k' < cutMap S rho hn (i' + 1)) (h : k ≤ k') : i ≤ i' := by
-  by_contra hlt
-  have := cutMap_mono S rho hn (show i' + 1 ≤ i by omega)
-  omega
+  rw [(simTrace_encoding S rho hn).2] at hk hk'
+  exact NodeAsChainShape.CanonicalTrace.cutMap_index_le (traceEncoding S hn) rho hk hk' h
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 

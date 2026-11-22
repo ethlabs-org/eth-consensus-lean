@@ -57,4 +57,24 @@ theorem selValid_poll (hsel : rho.SelValid)
   rw [hpoll] at h
   exact h
 
+/-- Participation on the run's key indices, using the shape's actual role at each time.
+Without a participation role the whole population is selected. -/
+def runCommittee (t : Time) : Finset (Fin (Fintype.card V)) :=
+  match (protoOf (compiled F) E).participationRole t with
+  | none => Finset.univ
+  | some role => rho.sel role
+
+/-- Read the key committee from the protocol's participation role. -/
+theorem runCommittee_eq (t : Time) : runCommittee rho t =
+    match (protoOf (compiled F) E).participationRole t with
+    | none => Finset.univ
+    | some role => rho.sel role := by rfl
+
+/-- Participation on key indices is exactly the external selection after applying the PKI. -/
+theorem mem_runCommittee_iff_selected [DecidableEq V] (t : Time) (k : Fin (Fintype.card V)) :
+    k ∈ runCommittee rho t ↔
+      rho.key k ∈ (sysExternal O (compiled F) V).selected E (rho.key, rho.sel) t := by
+  simp only [runCommittee_eq, sysExternal]
+  cases (protoOf (compiled F) E).participationRole t <;> simp
+
 end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace

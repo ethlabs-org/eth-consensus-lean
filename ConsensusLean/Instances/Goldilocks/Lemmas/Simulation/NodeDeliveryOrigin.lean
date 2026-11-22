@@ -89,6 +89,46 @@ variable {hn : 1 ≤ Fintype.card V}
 variable {A : NodeAC (paramsAtCount p (Fintype.card V) hN hn)} (e : Encoding F E p hN hn A)
 variable (rho : Model.Run (compiled F) E)
 
+omit [DecidableEq V] in
+private theorem cast_selSpec {s q : ChainShape (Model.pubOf E) O.Id I} (h : s = q)
+    (r : (compile q).Role) :
+    (compile s).selSpec (cast (congrArg (fun x => (compile x).Role) h.symm) r) =
+      (compile q).selSpec r := by
+  cases h
+  rfl
+
+omit [DecidableEq V] in
+/-- Selection uses the skeleton's specification for the encoded role. -/
+theorem selSpec_engineRole (r : ShapeRole e.skel.Kind) :
+    (Model.protoOf (compiled F) E).selSpec (engineRole e r) = e.skel.selSpec r := by
+  rw [engineRole_eq]
+  exact cast_selSpec e.shape_eq r
+
+omit [DecidableEq V] in
+private theorem cast_proposer {s q : ChainShape (Model.pubOf E) O.Id I} (h : s = q) (j : Slot) :
+    (cast (congrArg (fun x => (compile x).Role) h.symm)
+      (.proposer j : (compile q).Role) : (compile s).Role) = .proposer j := by
+  cases h
+  rfl
+
+omit [DecidableEq V] in
+/-- The encoded proposer role is the compiled proposer's role at the same slot. -/
+theorem engineRole_proposer (s : Slot) :
+    engineRole e (.proposer s) = (.proposer s : (Model.protoOf (compiled F) E).Role) :=
+  (engineRole_eq e _).trans (cast_proposer e.shape_eq s)
+
+omit [DecidableEq V] in
+/-- A singleton proposer selection in an admitted run is exactly its run proposer. -/
+theorem selValid_proposer (hsel : rho.SelValid) (s : Slot)
+    (hs : e.skel.proposerSel s = .sized 1) :
+    rho.sel (engineRole e (.proposer s)) = {runProposer rho hn s} := by
+  have h := hsel (engineRole e (.proposer s))
+  rw [selSpec_engineRole] at h
+  simp only [Skeleton.selSpec, hs, Model.SelSpec.Admits, min_eq_left hn] at h
+  rw [engineRole_proposer] at h ⊢
+  obtain ⟨k, hk⟩ := Finset.card_eq_one.mp h
+  simp [runProposer_eq, hk]
+
 /-- Observation coverage includes every time up to the engine horizon, even without actions. -/
 theorem inHorizon_of_le {t : Time} (ht : t ≤ rho.horizon) : (simTrace e rho).InHorizon t := by
   refine ⟨(allCuts e rho).length, Or.inr ⟨rho.horizon, simTrace_observationHorizon e rho, ht⟩, ?_⟩
@@ -259,6 +299,13 @@ theorem blockObj_delivered {v : V} {i : Nat} {t : Time}
 /-- The replay cut map is monotone: each next event appends its cuts. -/
 theorem cutMap_mono : Monotone (cutMap e rho) :=
   monotone_nat_of_le_succ fun i => by rw [cutMap_succ]; exact Nat.le_add_right _ _
+
+/-- Ordered cuts bounded by two event intervals force the same order on the event indices. -/
+theorem cutMap_index_le {i i' k k' : Nat} (hk : cutMap e rho i ≤ k)
+    (hk' : k' < cutMap e rho (i' + 1)) (h : k ≤ k') : i ≤ i' := by
+  by_contra hlt
+  have := cutMap_mono e rho (show i' + 1 ≤ i by omega)
+  omega
 
 /-- The engine cut map counts all replay cuts in the event prefix. -/
 theorem prefix_cuts (n : Nat) :

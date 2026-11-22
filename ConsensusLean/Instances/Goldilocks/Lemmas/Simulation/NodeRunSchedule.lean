@@ -68,6 +68,46 @@ private theorem event_of_cut {k : Nat} {r : CutRec A}
   rw [simTrace_time, simTrace_node, allCuts_eq, hr]
   exact ⟨i, rho.events[i], List.getElem?_eq_getElem hi, hlo, hhi, ht, hy, hm⟩
 
+open Classical in
+/-- An engine event covering the given replay cut, or zero outside the expansion. -/
+noncomputable def eventOf (k : Nat) : Nat :=
+  if h : ∃ i < rho.events.length, cutMap e rho i ≤ k ∧ k < cutMap e rho (i + 1) then
+    h.choose
+  else 0
+
+open Classical in
+/-- The event chosen by `eventOf` is the witness of a covering interval, if one exists. -/
+theorem eventOf_eq (k : Nat) : eventOf e rho k =
+    if h : ∃ i < rho.events.length, cutMap e rho i ≤ k ∧ k < cutMap e rho (i + 1) then
+      h.choose
+    else 0 := by rfl
+
+/-- A labelled cut lies in the interval of its selected engine event. -/
+theorem eventOf_spec {k : Nat} (hk : (simTrace e rho).label k ≠ none) :
+    eventOf e rho k < rho.events.length ∧ cutMap e rho (eventOf e rho k) ≤ k ∧
+      k < cutMap e rho (eventOf e rho k + 1) := by
+  cases hr : (allCuts e rho)[k]? with
+  | none => simp [simTrace_label, hr] at hk
+  | some r =>
+    obtain ⟨i, ev, he, hlo, hhi, -⟩ := event_of_cut e rho hr
+    have h : ∃ j < rho.events.length, cutMap e rho j ≤ k ∧ k < cutMap e rho (j + 1) :=
+      ⟨i, (List.getElem?_eq_some_iff.mp he).1, hlo, hhi⟩
+    rw [eventOf_eq, dite_eq_left h]
+    exact h.choose_spec
+
+/-- A labelled cut has the time of its selected engine event. -/
+theorem eventOf_time {k : Nat} {ev} (hk : (simTrace e rho).label k ≠ none)
+    (he : rho.events[eventOf e rho k]? = some ev) : (simTrace e rho).time k = ev.time := by
+  obtain ⟨_, hlo, hhi⟩ := eventOf_spec e rho hk
+  cases hr : (allCuts e rho)[k]? with
+  | none => simp [simTrace_label, hr] at hk
+  | some r =>
+    obtain ⟨i, f, hf, h₁, h₂, ht, -⟩ := event_of_cut e rho hr
+    have hi : i = eventOf e rho k :=
+      le_antisymm (cutMap_index_le e rho h₁ hhi le_rfl) (cutMap_index_le e rho hlo h₂ le_rfl)
+    rw [hi, he] at hf
+    exact ht.trans (congrArg Model.Event.time (Option.some.inj hf)).symm
+
 private theorem call_origin {y : Fin (Fintype.card V)} {k : Nat} {c : Cut A}
     (hc : (simTrace e rho).CallAt y k c) :
     ∃ i ev, rho.events[i]? = some ev ∧ cutMap e rho i ≤ k ∧ k < cutMap e rho (i + 1) ∧
@@ -98,6 +138,66 @@ private theorem time_bounds (hv : rho.ExecutionValid) (k : Nat) :
 /-- Labelled and stuttering cuts both have nonnegative time. -/
 theorem time_nonneg (hv : rho.ExecutionValid) (k : Nat) : 0 ≤ (simTrace e rho).time k :=
   (time_bounds e rho hv k).1
+
+/-- A trace observation is in the engine's observation horizon. -/
+theorem inHorizon_iff (hv : rho.ExecutionValid) (t : Time) :
+    (simTrace e rho).InHorizon t ↔ t ≤ rho.horizon := by
+  refine ⟨?_, inHorizon_of_le e rho⟩
+  rintro ⟨k, hk | ⟨T, hT, h⟩, htk⟩
+  · cases hr : (allCuts e rho)[k]? with
+    | none => simp [simTrace_label, hr] at hk
+    | some r =>
+      obtain ⟨_, ev, he, _, _, ht, -⟩ := event_of_cut e rho hr
+      exact (ht ▸ htk).trans (hv.in_horizon ev (List.mem_of_getElem? he)).2
+  · rw [simTrace_observationHorizon, Option.some.injEq] at hT
+    exact hT ▸ h
+
+/-- The adjacent trace times at a mapped post-event cut bound the event time. -/
+theorem readPoint_after_event (hv : rho.ExecutionValid) {i : Nat} {ev}
+    (he : rho.events[i]? = some ev) :
+    (∀ k < cutMap e rho (i + 1), (simTrace e rho).time k ≤ ev.time) ∧
+      ev.time ≤ (simTrace e rho).time (cutMap e rho (i + 1)) := by
+  have hi := (List.getElem?_eq_some_iff.mp he).1
+  have hlen : (allCuts e rho).length = cutMap e rho rho.events.length := by
+    rw [allCuts_eq, prefix_cuts]
+  constructor
+  · intro k hk
+    have hkl := hk.trans_le (hlen ▸ cutMap_mono e rho (Nat.succ_le_of_lt hi))
+    obtain ⟨j, f, hf, hj, _, ht, -⟩ := event_of_cut e rho (List.getElem?_eq_getElem hkl)
+    have hji : j ≤ i := by
+      by_contra! h
+      exact (not_lt_of_ge ((cutMap_mono e rho h).trans hj)) hk
+    rw [ht]
+    rcases hji.lt_or_eq with h | rfl
+    · rcases keyLe_of_lt rho hv hf he h with h | ⟨h, _⟩ <;> exact h.le
+    · rw [he, Option.some.injEq] at hf
+      exact hf ▸ le_rfl
+  · cases hr : (allCuts e rho)[cutMap e rho (i + 1)]? with
+    | none =>
+      rw [simTrace_time, hr, Option.elim_none]
+      have h := (hv.in_horizon ev (List.mem_of_getElem? he)).2
+      linarith only [h]
+    | some r =>
+      obtain ⟨j, f, hf, _, hj, ht, -⟩ := event_of_cut e rho hr
+      have hij : i < j := by
+        by_contra! h
+        exact (not_lt_of_ge (cutMap_mono e rho (Nat.succ_le_succ h))) hj
+      rw [ht]
+      rcases keyLe_of_lt rho hv he hf hij with h | ⟨h, _⟩ <;> exact h.le
+
+/-- At a bounded engine cut, the adjacent trace times bound its time. -/
+theorem cutMap_time_bounds (hv : rho.ExecutionValid) {i : Nat} (hi : i ≤ rho.events.length) :
+    (∀ k < cutMap e rho i, (simTrace e rho).time k ≤ rho.cutTime i) ∧
+      rho.cutTime i ≤ (simTrace e rho).time (cutMap e rho i) := by
+  cases i with
+  | zero =>
+    refine ⟨fun k hk => ?_, time_nonneg e rho hv _⟩
+    rw [cutMap_zero] at hk
+    omega
+  | succ i =>
+    obtain ⟨ev, he⟩ : ∃ ev, rho.events[i]? = some ev :=
+      ⟨_, List.getElem?_eq_getElem (by omega)⟩
+    simpa only [Model.Run.cutTime, he, Option.elim_some] using readPoint_after_event e rho hv he
 
 /-- The replay preserves the time order of engine events. -/
 theorem time_mono (hv : rho.ExecutionValid) : Monotone (simTrace e rho).time := by

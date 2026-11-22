@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeStateAgre
 public import ConsensusLean.Instances.Goldilocks.Results.Spec.CanonicalTrace
 import ConsensusLean.Lemmas.Model.DutyFold
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
 
 public section
 
@@ -92,24 +93,6 @@ theorem role_engineDuty (d : ShapeDuty e.skel.Kind) :
     (Model.protoOf (compiled F) E).role (engineDuty e d) = engineRole e (e.skel.role d) := by
   rw [engineDuty_eq, engineRole_eq]
   exact cast_role e.shape_eq d
-
-private theorem cast_selSpec {s q : ChainShape (pubOf E) O.Id I} (h : s = q)
-    (r : (compile q).Role) :
-    (compile s).selSpec (cast (congrArg (fun x => (compile x).Role) h.symm) r) =
-      (compile q).selSpec r := by
-  cases h
-  rfl
-
-private theorem cast_proposer {s q : ChainShape (pubOf E) O.Id I} (h : s = q) (j : Slot) :
-    (cast (congrArg (fun x => (compile x).Role) h.symm)
-      (.proposer j : (compile q).Role) : (compile s).Role) = .proposer j := by
-  cases h
-  rfl
-
-private theorem selSpec_engineRole (r : ShapeRole e.skel.Kind) :
-    (Model.protoOf (compiled F) E).selSpec (engineRole e r) = e.skel.selSpec r := by
-  rw [engineRole_eq]
-  exact cast_selSpec e.shape_eq r
 
 private theorem cast_duties {s q : ChainShape (pubOf E) O.Id I} (h : s = q) (t : Time) :
     (compile s).duties t = ((compile q).duties t).map
@@ -236,18 +219,6 @@ theorem poll_selected [DecidableEq V] (L : e.OpLaws due) (rho : Model.Run (compi
   simp only [Skeleton.selSpec, L.poll_selection, Model.SelSpec.Admits] at h
   rw [h]
   exact Finset.mem_univ _
-
-private theorem proposer_selected [DecidableEq V] (L : e.OpLaws due)
-    (rho : Model.Run (compiled F) E) (hv : rho.ExecutionValid) (s : Slot) :
-    rho.sel (engineRole e (.proposer s)) = {runProposer rho hn s} := by
-  have h := hv.selValid (engineRole e (.proposer s))
-  rw [selSpec_engineRole] at h
-  simp only [Skeleton.selSpec, L.proposer_selection, Model.SelSpec.Admits, min_eq_left hn] at h
-  have hr : engineRole e (.proposer s) = (.proposer s : (Model.protoOf (compiled F) E).Role) :=
-    (engineRole_eq e _).trans (cast_proposer e.shape_eq s)
-  rw [hr] at h ⊢
-  obtain ⟨k, hk⟩ := Finset.card_eq_one.mp h
-  simp [runProposer_eq, hk]
 
 private theorem recordOwn_pres (L : e.OpLaws due) (st : e.State hn)
     (o : ShapeObj (Fintype.card V) e.skel.Kind I e.Body) (hs : List (Header I × Nat)) :
@@ -937,8 +908,7 @@ theorem proposal_candidates (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
   dsimp only
   rw [Model.Run.signedCandidate, role_engineDuty, Skeleton.role, ite_eq_left hsel]
   have hsel' : rho.ownKey v ∈ rho.sel (.proposer s) := by
-    have hr := (engineRole_eq e (.proposer s)).trans (cast_proposer e.shape_eq s)
-    exact hr ▸ hsel
+    exact engineRole_proposer e s ▸ hsel
   simp only [engineDuty_eq, engineObj_eq, envelope_eq]
   have h := cast_proposal_candidates e.shape_eq nd.st s hs (rho.ownKey v) rho.sel hsel'
     (L.proposer_role s hs)
@@ -1199,7 +1169,8 @@ theorem toLawful [DecidableEq V] (L : e.OpLaws due) (ready : e.ProposalReady) : 
             exact (propose_pres L (envelope e pre) s).2.2
         · rfl
       · have step := proposal_step L rho v pre s hs hk (hclock.trans ht)
-          (proposer_selected L rho hv s) (fun h => ready rho hv he s hs hone h)
+          (selValid_proposer e rho hv.selValid s (L.proposer_selection s))
+          (fun h => ready rho hv he s hs hone h)
         change e.adapter.now (envelope e pre) = t at hclock
         rw [hclock, hm] at step
         exact step.1
@@ -1291,7 +1262,8 @@ theorem tick_block_released [DecidableEq V] (e : Encoding F E p hN hn A)
     rw [duties_mempool, afterClock_eq]
     rfl
   have hrel := (proposal_step L rho v pre s hs hk' (hclock.trans (htime.trans (L.grid_time s)))
-    (proposer_selected L rho hv s) (fun h => ready rho hv he s hs hone h)).2
+    (selValid_proposer e rho hv.selValid s (L.proposer_selection s))
+    (fun h => ready rho hv he s hs hone h)).2
   change e.adapter.now (envelope e pre) = t at hclock
   rw [hclock, hm] at hrel
   exact tick_proposal_release L rho hv he hone _ (hrel b acc hprop)

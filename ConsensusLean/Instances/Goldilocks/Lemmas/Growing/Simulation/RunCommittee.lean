@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Binding
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GoldilocksBridge
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineRepresentation
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 
 public section
@@ -72,46 +73,61 @@ theorem runCommittee_card (hv : rho.ExecutionValid) (t : Time) :
 /-- **Healthy committee counts bound the run committees.** A committee bound over the run's
 selections on `[max g 0, b]`, charged at `b`, bounds the faulty members of each run
 committee in that window against honesty at any time `d ∈ [0, b]`. -/
-theorem committeeFaultsUpTo_of_healthyOn (hv : rho.ExecutionValid) {β : ℚ} {g b : Time}
-    (h : rho.point.CommitteeHealthyOn
-      ((Model.sysExternal _ (compiled (goldilocks S)) V).selected E (rho.key, rho.sel)) β
-      (max g 0) b) :
-    Generic.CommitteeFaultsUpTo (P := (S.params (Model.pubOf E) hn).toParams) β
-      (runCommittee S rho hn) (honestKeysAt S rho) g b := by
+private theorem committeeFaultsUpTo_of_selection {P : Params} {O : OutputSchema}
+    {F : Model.ProtocolFamily O} {rho : Model.Run F E} (key : Fin P.n ≃ V)
+    {cm : Time → Finset (Fin P.n)} {H : Time → Set (Fin P.n)} {Sel : Time → Finset V}
+    (hcm : ∀ y t, 0 ≤ t → (y ∈ cm t ↔ key y ∈ Sel t))
+    (hH : ∀ y d, y ∈ H d ↔ key y ∉ rho.faultyAt (min d rho.horizon))
+    {β : ℚ} {g b : Time} (h : rho.point.CommitteeHealthyOn Sel β (max g 0) b) :
+    Generic.CommitteeFaultsUpTo (P := P) β cm H g b := by
   classical
   intro t d ht htb _ hdb hne
   have ht0 : 0 ≤ t := (le_max_right g 0).trans ht
   have hlt := h t ht htb
-  obtain ⟨Ks, hKs⟩ : ∃ Ks, (Model.sysExternal _ (compiled (goldilocks S)) V).selected E
-      (rho.key, rho.sel) t = Ks := ⟨_, rfl⟩
-  rw [hKs] at hlt
-  have hmem : ∀ y, y ∈ runCommittee S rho hn t ↔ rho.key y ∈ Ks := fun y => by
-    rw [← hKs]
-    exact runCommittee_eq S rho hn hv y t ht0
-  have hmap : (runCommittee S rho hn t).map rho.key.toEmbedding = Ks := by
+  have hmem := fun y => hcm y t ht0
+  have hmap : (cm t).map key.toEmbedding = Sel t := by
     ext v
     simp only [Finset.mem_map, Equiv.toEmbedding_apply]
     constructor
     · rintro ⟨y, hy, rfl⟩
       exact (hmem y).1 hy
     · intro hvK
-      exact ⟨rho.key.symm v, (hmem _).2 (by simpa using hvK), by simp⟩
-  have hcard : (runCommittee S rho hn t).card = Ks.card := by
+      exact ⟨key.symm v, (hmem _).2 (by simpa using hvK), by simp⟩
+  have hcard : (cm t).card = (Sel t).card := by
     rw [← hmap, Finset.card_map]
   replace hlt := hlt (by rw [← hmap]; exact hne.map)
-  have hle : ((↑(runCommittee S rho hn t) : Set (Fin (Fintype.card V))) ∩
-      (honestKeysAt S rho d)ᶜ).ncard ≤ (rho.point.faultyAt b ∩ Ks).card := by
-    rw [← Set.ncard_coe_finset (rho.point.faultyAt b ∩ Ks)]
-    refine Set.ncard_le_ncard_of_injOn rho.key ?_ rho.key.injective.injOn (Finset.finite_toSet _)
+  have hle : ((↑(cm t) : Set (Fin P.n)) ∩ (H d)ᶜ).ncard ≤
+      (rho.point.faultyAt b ∩ Sel t).card := by
+    rw [← Set.ncard_coe_finset (rho.point.faultyAt b ∩ Sel t)]
+    refine Set.ncard_le_ncard_of_injOn key ?_ key.injective.injOn (Finset.finite_toSet _)
     rintro y ⟨hy, hyd⟩
-    rw [Set.mem_compl_iff, mem_honestKeysAt_iff, not_not] at hyd
+    rw [Set.mem_compl_iff, hH, not_not] at hyd
     rw [Finset.coe_inter, Set.mem_inter_iff, Finset.mem_coe, Finset.mem_coe]
     exact ⟨rho.faultyAt_mono ((min_le_left _ _).trans hdb) hyd, (hmem y).1 hy⟩
-  calc (((↑(runCommittee S rho hn t) : Set (Fin (Fintype.card V))) ∩
-        (honestKeysAt S rho d)ᶜ).ncard : ℚ)
-      ≤ ((rho.point.faultyAt b ∩ Ks).card : ℚ) := by exact_mod_cast hle
-    _ < β * Ks.card := hlt
-    _ = β * (runCommittee S rho hn t).card := by rw [hcard]
+  calc (((↑(cm t) : Set (Fin P.n)) ∩ (H d)ᶜ).ncard : ℚ)
+      ≤ ((rho.point.faultyAt b ∩ Sel t).card : ℚ) := by exact_mod_cast hle
+    _ < β * (Sel t).card := hlt
+    _ = β * (cm t).card := by rw [hcard]
+
+/-- Healthy committee counts bound the Goldilocks selection at each time. -/
+theorem committeeFaultsUpTo_of_healthyOn (hv : rho.ExecutionValid) {β : ℚ} {g b : Time}
+    (h : rho.point.CommitteeHealthyOn
+      ((Model.sysExternal _ (compiled (goldilocks S)) V).selected E (rho.key, rho.sel)) β
+      (max g 0) b) :
+    Generic.CommitteeFaultsUpTo (P := (S.params (Model.pubOf E) hn).toParams) β
+      (runCommittee S rho hn) (honestKeysAt S rho) g b :=
+  committeeFaultsUpTo_of_selection rho.key (runCommittee_eq S rho hn hv)
+    (fun y d => mem_honestKeysAt_iff S rho d y) h
+
+/-- Healthy committee counts transport through the map's committee and honesty equations. -/
+theorem _root_.Consensus.Goldilocks.Generic.RunMap.committeeFaultsUpTo
+    {P : Params} {A : NodeAC P} {O : OutputSchema} {I : Type} [DecidableEq I] [Countable I]
+    {F : ChainShapeFamily O I} {run : Model.Run (compiled F) E}
+    {payload : A.Blk → Set Nat} (M : Generic.RunMap run payload) {β : ℚ} {g b : Time}
+    (h : run.point.CommitteeHealthyOn
+      ((Model.sysExternal O (compiled F) V).selected E (run.key, run.sel)) β (max g 0) b) :
+    Generic.CommitteeFaultsUpTo (P := P) β M.committee M.honest g b :=
+  committeeFaultsUpTo_of_selection M.validator M.committee_eq (fun y d => M.honest_eq y d) h
 
 end Consensus.Goldilocks.Simulation
 

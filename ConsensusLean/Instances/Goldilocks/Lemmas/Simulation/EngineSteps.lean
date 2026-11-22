@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineState
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
 
 public section
 
@@ -250,17 +251,15 @@ omit [DecidableEq V] in
 /-- In an admitted run, the proposer role selects exactly `runProposer`. -/
 theorem selValid_proposer (hsel : rho.SelValid) (s : Nat) :
     rho.sel (.proposer s) = {runProposer S rho hn s} := by
-  have h := hsel (.proposer s)
-  change (rho.sel (.proposer s)).card = min 1 (Fintype.card V) at h
-  rw [min_eq_left hn] at h
-  obtain ⟨k, hk⟩ := Finset.card_eq_one.mp h
-  have hne : (rho.sel (.proposer s)).Nonempty := ⟨k, hk ▸ Finset.mem_singleton_self k⟩
-  rw [runProposer_eq, dite_eq_left hne]
-  exact Finset.eq_singleton_iff_unique_mem.mpr
-    ⟨Finset.min'_mem _ _, fun x hx => by
-      have hm := Finset.min'_mem (rho.sel (.proposer s)) hne
-      exact (Finset.mem_singleton.mp (hk ▸ hx)).trans
-        (Finset.mem_singleton.mp (Eq.mp (congrArg (fun a => _ ∈ a) hk) hm)).symm⟩
+  open NodeAsChainShape.CanonicalTrace in
+  rw [(runProposer_digestOf S rho hn).1,
+    ← engineRole_proposer (traceEncoding S hn) s]
+  exact traceEncoding_induction S hn
+    (fun e _ => rho.sel (NodeAsChainShape.CanonicalTrace.engineRole e (.proposer s)) =
+      {NodeAsChainShape.CanonicalTrace.runProposer rho hn s})
+    (by
+      intro e _
+      exact NodeAsChainShape.CanonicalTrace.selValid_proposer e rho hsel s rfl)
 
 /-! ## The proposal duty -/
 

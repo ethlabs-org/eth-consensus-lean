@@ -63,17 +63,17 @@ theorem goldilocks_slot_constancy : GoldilocksSlotConstancy (V := V) := by
 
 /-- The population clause at threshold at least one half supplies the shared FG
 quorum at each bounded time. Committee participation alone does not suffice. -/
-theorem goldilocks_population_quorum_supply :
-    ∀ (S : Setup) (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E)
-      (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (K : Contract ProgressReq),
-      (1 / 2 : ℚ) ≤ K.params.θ →
-      PopulationQuorumSupply (goldilocksRunMap S rho hn hv) K := by
-  intro S E rho hn hv K hθ _ hs t ht htb
+theorem _root_.Consensus.Goldilocks.Generic.RunMap.population_quorum_supply
+    {P : Params} {A : NodeAC P} {O : OutputSchema} {I : Type} [DecidableEq I] [Countable I]
+    {F : ChainShapeFamily O I} {E : Env V} {rho : Model.Run (compiled F) E}
+    {payload : A.Blk → Set Nat} (M : RunMap rho payload) (K : Contract ProgressReq)
+    (hθ : (1 / 2 : ℚ) ≤ K.params.θ) : PopulationQuorumSupply M K := by
+  intro _ hs t ht htb
   classical
   have h := hs.2.1 t ht htb
   change (rho.point.retain (rho.point.lookAhead _ t)).ReadyAbove K.params.θ _ t at h
-  let q := rho.point.retain (rho.point.lookAhead ((Sys (goldilocks S) V).aheadDur K ⟨E, rho⟩) t)
-  let c := (Sys (goldilocks S) V).cDur K ⟨E, rho⟩
+  let q := rho.point.retain (rho.point.lookAhead ((Sys F V).aheadDur K ⟨E, rho⟩) t)
+  let c := (Sys F V).cDur K ⟨E, rho⟩
   change K.params.θ * ((q.readyAt c t).card + q.faultCount t : ℚ) < (q.readyAt c t).card at h
   have hhalf := lt_of_le_of_lt (mul_le_mul_of_nonneg_right hθ
     (show (0 : ℚ) ≤ (q.readyAt c t).card + q.faultCount t by positivity)) h
@@ -86,66 +86,81 @@ theorem goldilocks_population_quorum_supply :
     exact (Finset.mem_filter.mp hv).2.1 hf
   have hcard := Finset.card_le_univ (s := q.readyAt c t ∪ q.faultyAt t)
   rw [Finset.card_union_of_disjoint hdis] at hcard
-  have htime : t ≤ rho.point.lookAhead ((Sys (goldilocks S) V).aheadDur K ⟨E, rho⟩) t := by
+  have htime : t ≤ rho.point.lookAhead ((Sys F V).aheadDur K ⟨E, rho⟩) t := by
     apply le_min _ htb
-    have : 0 ≤ (Sys (goldilocks S) V).aheadDur K ⟨E, rho⟩ := by
+    have : 0 ≤ (Sys F V).aheadDur K ⟨E, rho⟩ := by
       change 0 ≤ (K.params.ahead : Time) * E.ΔAC
       exact mul_nonneg (Int.natCast_nonneg _) E.ΔAC_pos.le
     linarith
   have hfc : (rho.faultyAt t).card ≤ (q.faultyAt t).card :=
     Finset.card_le_card (rho.faultyAt_mono htime)
-  have hf : (honestKeysAt S rho t)ᶜ.ncard = (rho.faultyAt t).card := by
-    have heq : (honestKeysAt S rho t)ᶜ = rho.key ⁻¹' (↑(rho.faultyAt t) : Set V) := by
-      ext k
-      simp [mem_honestKeysAt_iff, min_eq_left htb]
-    rw [heq, Set.ncard_preimage_of_injective_subset_range rho.key.injective
-      (by simp [rho.key.surjective.range_eq]), Set.ncard_coe_finset]
-  rw [goldilocksRunMap_honest, hf]
-  change 2 * (rho.faultyAt t).card < Fintype.card V
+  rw [M.faulty_ncard htb, ← Fintype.card_fin P.n, Fintype.card_congr M.validator]
   omega
+
+/-- Goldilocks' population quorum is the run-map population quorum. -/
+theorem goldilocks_population_quorum_supply :
+    ∀ (S : Setup) (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E)
+      (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (K : Contract ProgressReq),
+      (1 / 2 : ℚ) ≤ K.params.θ →
+      PopulationQuorumSupply (goldilocksRunMap S rho hn hv) K :=
+  fun S _ rho hn hv K hθ => (goldilocksRunMap S rho hn hv).population_quorum_supply K hθ
 
 /-- The run's environment point on the validator indices, with the honest sets, awake times
 and horizon of the canonical run map. -/
-noncomputable def goldilocksPoint {O : OutputSchema} {F₀ : Model.ProtocolFamily O} {E : Env V}
-    (rho : Model.Run F₀ E) :
-    EnvPoint (Fin (Fintype.card V)) where
+noncomputable def indexedRunPoint {W : Type} [Fintype W] [DecidableEq W]
+    {O : OutputSchema} {F₀ : Model.ProtocolFamily O} {E : Env V}
+    (rho : Model.Run F₀ E) (key : W ≃ V) : EnvPoint W where
   env := {
     ΔAC := E.ΔAC
     ΔAC_pos := E.ΔAC_pos
     ΔFG := E.ΔFG
     ΔFG_pos := E.ΔFG_pos
-    awake := fun y t => decide (E.awake (rho.key y) t = true ∧ 0 ≤ t ∧ t ≤ rho.horizon) }
-  faultyAt := fun t => (rho.faultyAt (min t rho.horizon)).preimage rho.key rho.key.injective.injOn
+    awake := fun y t => decide (E.awake (key y) t = true ∧ 0 ≤ t ∧ t ≤ rho.horizon) }
+  faultyAt := fun t => (rho.faultyAt (min t rho.horizon)).preimage key key.injective.injOn
   faultyAt_mono := fun t u htu y hy => by
     simp only [Finset.mem_preimage] at hy ⊢
     exact rho.faultyAt_mono (min_le_min_right _ htu) hy
   horizon := rho.horizon
-  submit := fun y t => rho.point.submit (rho.key y) t
+  submit := fun y t => rho.point.submit (key y) t
 
-section Point
-
-variable {S : Setup} {E : Env V} {rho : Model.Run (compiled (goldilocks S)) E}
+/-- The canonical point on the engine's validator keys. -/
+noncomputable def goldilocksPoint {O : OutputSchema} {F₀ : Model.ProtocolFamily O} {E : Env V}
+    (rho : Model.Run F₀ E) : EnvPoint (Fin (Fintype.card V)) := indexedRunPoint rho rho.key
 
 omit [DecidableEq V] in
-theorem goldilocksPoint_horizon : (goldilocksPoint rho).horizon = rho.horizon := by rfl
+/-- Indexed points have the engine horizon. -/
+theorem indexedRunPoint_horizon {W : Type} [Fintype W] [DecidableEq W]
+    {O : OutputSchema} {F₀ : Model.ProtocolFamily O} {E : Env V}
+    (rho : Model.Run F₀ E) (key : W ≃ V) : (indexedRunPoint rho key).horizon = rho.horizon := by rfl
 
-/-- The point is bound to the canonical run map. -/
-theorem goldilocksPoint_binding (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) :
-    RunPointBinding (goldilocksRunMap S rho hn hv).trace (goldilocksRunMap S rho hn hv).honest
-      (goldilocksPoint rho) := by
-  refine ⟨rfl, ?_, ?_, ?_⟩
+section MapPoint
+
+variable {P : Params} {A : NodeAC P} {O : OutputSchema} {I : Type} [DecidableEq I] [Countable I]
+  {F : ChainShapeFamily O I} {E : Env V} {rho : Model.Run (compiled F) E}
+  {payload : A.Blk → Set Nat} (M : RunMap rho payload)
+
+/-- The indexed engine point has the map's honesty, wakefulness and horizon. -/
+theorem _root_.Consensus.Goldilocks.Generic.RunMap.point_binding :
+    RunPointBinding M.trace M.honest (indexedRunPoint rho M.validator) := by
+  refine ⟨M.delta_eq.symm, ?_, ?_, ?_⟩
   · intro y t
-    simp only [goldilocksRunMap_honest, mem_honestKeysAt_iff, EnvPoint.HonestAt,
-      goldilocksPoint, Finset.mem_preimage]
+    simpa only [EnvPoint.HonestAt, indexedRunPoint, Model.Run.point, Finset.mem_preimage] using
+      M.honest_eq y t
   · intro y t
-    simpa only [goldilocksPoint, decide_eq_true_eq, goldilocksRunMap_validator] using
-      (goldilocksRunMap S rho hn hv).awake_eq y t
-  · exact (goldilocksRunMap S rho hn hv).horizon_eq
+    simpa only [indexedRunPoint, decide_eq_true_eq] using M.awake_eq y t
+  · exact M.horizon_eq
+
+end MapPoint
+
+section IndexedPoint
+
+variable {W : Type} [Fintype W] [DecidableEq W] {O : OutputSchema}
+  {F₀ : Model.ProtocolFamily O} {E : Env V} {rho : Model.Run F₀ E} (key : W ≃ V)
 
 omit [DecidableEq V] in
 /-- Ready validators map to the run's ready validators at bounded times. -/
-theorem goldilocksPoint_readyAt (c t d : Time) (htb : t ≤ rho.horizon) :
-    (((goldilocksPoint rho).retain d).readyAt c t).map rho.key.toEmbedding =
+theorem indexedRunPoint_readyAt (c t d : Time) (htb : t ≤ rho.horizon) :
+    (((indexedRunPoint rho key).retain d).readyAt c t).map key.toEmbedding =
       (rho.point.retain (min d rho.horizon)).readyAt c t := by
   classical
   ext v
@@ -155,17 +170,17 @@ theorem goldilocksPoint_readyAt (c t d : Time) (htb : t ≤ rho.horizon) :
     obtain ⟨hyh, hyw⟩ := (Finset.mem_filter.mp hy).2
     apply Finset.mem_filter.mpr
     refine ⟨Finset.mem_univ _, ?_, ?_⟩
-    · simpa only [EnvPoint.HonestAt, EnvPoint.retain, goldilocksPoint, Model.Run.point,
+    · simpa only [EnvPoint.HonestAt, EnvPoint.retain, indexedRunPoint, Model.Run.point,
         Finset.mem_preimage] using hyh
     · intro u hu hut
       have := hyw u hu hut
       exact (of_decide_eq_true this).1
   · intro hv
-    refine ⟨rho.key.symm v, ?_, rho.key.apply_symm_apply v⟩
+    refine ⟨key.symm v, ?_, key.apply_symm_apply v⟩
     obtain ⟨hvh, hvw⟩ := (Finset.mem_filter.mp hv).2
     apply Finset.mem_filter.mpr
     refine ⟨Finset.mem_univ _, ?_, ?_⟩
-    · simpa only [EnvPoint.HonestAt, EnvPoint.retain, goldilocksPoint, Model.Run.point,
+    · simpa only [EnvPoint.HonestAt, EnvPoint.retain, indexedRunPoint, Model.Run.point,
         Finset.mem_preimage, Equiv.apply_symm_apply] using hvh
     · intro u hu hut
       apply decide_eq_true_eq.mpr
@@ -174,19 +189,19 @@ theorem goldilocksPoint_readyAt (c t d : Time) (htb : t ≤ rho.horizon) :
 
 omit [DecidableEq V] in
 /-- Faulty validators map to the run's faulty validators at the clamped retention time. -/
-theorem goldilocksPoint_faultyAt (d t : Time) :
-    (((goldilocksPoint rho).retain d).faultyAt t).map rho.key.toEmbedding =
+theorem indexedRunPoint_faultyAt (d t : Time) :
+    (((indexedRunPoint rho key).retain d).faultyAt t).map key.toEmbedding =
       rho.faultyAt (min d rho.horizon) := by
   ext v
-  simp only [Finset.mem_map, Equiv.toEmbedding_apply, EnvPoint.retain, goldilocksPoint,
+  simp only [Finset.mem_map, Equiv.toEmbedding_apply, EnvPoint.retain, indexedRunPoint,
     Finset.mem_preimage]
   exact ⟨fun ⟨y, hy, he⟩ => he ▸ hy,
-    fun hv => ⟨rho.key.symm v, by simpa using hv, rho.key.apply_symm_apply v⟩⟩
+    fun hv => ⟨key.symm v, by simpa using hv, key.apply_symm_apply v⟩⟩
 
 omit [DecidableEq V] in
 /-- Validators honest and awake in a window map to the run's, inside `[0, horizon]`. -/
-theorem goldilocksPoint_awakeIn (d a b : Time) (ha : 0 ≤ a) (hb : b ≤ rho.horizon) :
-    (((goldilocksPoint rho).retain d).awakeIn a b).map rho.key.toEmbedding =
+theorem indexedRunPoint_awakeIn (d a b : Time) (ha : 0 ≤ a) (hb : b ≤ rho.horizon) :
+    (((indexedRunPoint rho key).retain d).awakeIn a b).map key.toEmbedding =
       (rho.point.retain (min d rho.horizon)).awakeIn a b := by
   classical
   ext v
@@ -194,46 +209,79 @@ theorem goldilocksPoint_awakeIn (d a b : Time) (ha : 0 ≤ a) (hb : b ≤ rho.ho
   constructor
   · rintro ⟨y, ⟨u, hau, hub, hh, hw⟩, rfl⟩
     refine ⟨u, hau, hub, ?_, (of_decide_eq_true hw).1⟩
-    simpa only [EnvPoint.HonestAt, EnvPoint.retain, goldilocksPoint, Model.Run.point,
+    simpa only [EnvPoint.HonestAt, EnvPoint.retain, indexedRunPoint, Model.Run.point,
       Finset.mem_preimage, Equiv.toEmbedding_apply] using hh
   · rintro ⟨u, hau, hub, hh, hw⟩
-    refine ⟨rho.key.symm v, ⟨u, hau, hub, ?_, decide_eq_true_eq.mpr
+    refine ⟨key.symm v, ⟨u, hau, hub, ?_, decide_eq_true_eq.mpr
       ⟨by rw [Equiv.apply_symm_apply]; exact hw, ha.trans hau, hub.trans hb⟩⟩,
-      rho.key.apply_symm_apply v⟩
-    simpa only [EnvPoint.HonestAt, EnvPoint.retain, goldilocksPoint, Model.Run.point,
+      key.apply_symm_apply v⟩
+    simpa only [EnvPoint.HonestAt, EnvPoint.retain, indexedRunPoint, Model.Run.point,
       Finset.mem_preimage, Equiv.apply_symm_apply] using hh
+
+end IndexedPoint
+
+section Point
+
+variable {S : Setup} {E : Env V} {rho : Model.Run (compiled (goldilocks S)) E}
+
+omit [DecidableEq V] in
+theorem goldilocksPoint_horizon : (goldilocksPoint rho).horizon = rho.horizon :=
+  indexedRunPoint_horizon rho rho.key
+
+/-- The point is bound to the canonical run map. -/
+theorem goldilocksPoint_binding (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) :
+    RunPointBinding (goldilocksRunMap S rho hn hv).trace (goldilocksRunMap S rho hn hv).honest
+      (goldilocksPoint rho) := by
+  simpa only [goldilocksRunMap_validator, goldilocksPoint] using
+    (goldilocksRunMap S rho hn hv).point_binding
+
+omit [DecidableEq V] in
+/-- Ready validators map to the run's ready validators at bounded times. -/
+theorem goldilocksPoint_readyAt (c t d : Time) (htb : t ≤ rho.horizon) :
+    (((goldilocksPoint rho).retain d).readyAt c t).map rho.key.toEmbedding =
+      (rho.point.retain (min d rho.horizon)).readyAt c t :=
+  indexedRunPoint_readyAt rho.key c t d htb
+
+omit [DecidableEq V] in
+/-- Faulty validators map to the run's faulty validators at the clamped retention time. -/
+theorem goldilocksPoint_faultyAt (d t : Time) :
+    (((goldilocksPoint rho).retain d).faultyAt t).map rho.key.toEmbedding =
+      rho.faultyAt (min d rho.horizon) := indexedRunPoint_faultyAt rho.key d t
+
+omit [DecidableEq V] in
+/-- Validators honest and awake in a bounded window map to the run's. -/
+theorem goldilocksPoint_awakeIn (d a b : Time) (ha : 0 ≤ a) (hb : b ≤ rho.horizon) :
+    (((goldilocksPoint rho).retain d).awakeIn a b).map rho.key.toEmbedding =
+      (rho.point.retain (min d rho.horizon)).awakeIn a b :=
+  indexedRunPoint_awakeIn rho.key d a b ha hb
 
 /-- The mapped committee is the run's selected committee at nonnegative times. -/
 theorem goldilocksPoint_committee (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (t : Time) (ht : 0 ≤ t) :
     ((goldilocksRunMap S rho hn hv).committee t).map rho.key.toEmbedding =
       (Model.sysExternal _ (compiled (goldilocks S)) V).selected E (rho.key, rho.sel) t := by
-  ext v
-  simp only [Finset.mem_map, Equiv.toEmbedding_apply]
-  have hc := (goldilocksRunMap S rho hn hv).committee_eq
-  simp only [goldilocksRunMap_validator] at hc
-  exact ⟨fun ⟨y, hy, he⟩ => he ▸ (hc y t ht).mp hy,
-    fun hmem => ⟨rho.key.symm v, (hc _ t ht).mpr (by simpa using hmem),
-      rho.key.apply_symm_apply v⟩⟩
+  simpa only [goldilocksRunMap_validator] using (goldilocksRunMap S rho hn hv).committee_map ht
 
 end Point
 
-/-- Transport both sleepy regime clauses through the canonical validator map.
+section MapWindows
+
+variable {P : Params} {A : NodeAC P} {O : OutputSchema} {I : Type} [DecidableEq I] [Countable I]
+  {F : ChainShapeFamily O I} {E : Env V} {rho : Model.Run (compiled F) E}
+  {payload : A.Blk → Set Nat} (M : RunMap rho payload)
+
+/-- Transport both sleepy regime clauses through the run map's validator equivalence.
 The same point witnesses both windows; their look-aheads remain independent.
 Catch-up domination belongs to `ClaimDeadlineFit`, not to this head. -/
-theorem goldilocks_sleepy_window_supply :
-    ∀ (S : Setup) (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E)
-      (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (K : Contract ProgressReq)
-      (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
-        (goldilocksRunMap S rho hn hv).signer),
-      C.θ = K.params.θ → 0 ≤ C.θ → C.θ ≤ 1 →
-      C.look = (Sys (goldilocks S) V).aheadDur K ⟨E, rho⟩ →
-      C.committeeLook = (Sys (goldilocks S) V).committeeAheadDur K ⟨E, rho⟩ →
-      SleepyWindowSupply (goldilocksRunMap S rho hn hv) K C := by
-  intro S E rho hn hv K C hθ h0 h1 hlook hcommitteeLook
+theorem _root_.Consensus.Goldilocks.Generic.RunMap.sleepy_window_supply
+    (K : Contract ProgressReq) (C : ACCorrectLocal A M.signer)
+    (hθ : C.θ = K.params.θ) (h0 : 0 ≤ C.θ) (h1 : C.θ ≤ 1)
+    (hlook : C.look = (Sys F V).aheadDur K ⟨E, rho⟩)
+    (hcommitteeLook : C.committeeLook = (Sys F V).committeeAheadDur K ⟨E, rho⟩) :
+    SleepyWindowSupply M K C := by
   classical
-  let p := goldilocksPoint rho
-  refine ⟨p, goldilocksPoint_binding hn hv, rfl, hθ, h0, h1, hlook, hcommitteeLook, ?_⟩
+  let p := indexedRunPoint rho M.validator
+  refine ⟨p, M.point_binding, rfl, hθ, h0, h1, hlook, hcommitteeLook, ?_⟩
   intro _ hs
   constructor
   · intro t ht htb
@@ -242,62 +290,76 @@ theorem goldilocks_sleepy_window_supply :
     change C.θ * (((p.retain (p.lookAhead C.look t)).readyAt _ t).card +
       ((p.retain (p.lookAhead C.look t)).faultyAt t).card : ℚ) <
       ((p.retain (p.lookAhead C.look t)).readyAt _ t).card
-    rw [← Finset.card_map rho.key.toEmbedding, goldilocksPoint_readyAt _ _ _ htb,
-      ← Finset.card_map (s := (p.retain _).faultyAt t) rho.key.toEmbedding,
-      goldilocksPoint_faultyAt]
-    simpa only [p, goldilocksPoint, EnvPoint.lookAhead, min_assoc, min_self, hθ, hlook,
+    rw [← Finset.card_map M.validator.toEmbedding, indexedRunPoint_readyAt _ _ _ _ htb,
+      ← Finset.card_map (s := (p.retain _).faultyAt t) M.validator.toEmbedding,
+      indexedRunPoint_faultyAt]
+    simpa only [p, indexedRunPoint, EnvPoint.lookAhead, min_assoc, min_self, hθ, hlook,
       EnvPoint.ReadyAbove, EnvPoint.faultCount, EnvPoint.retain, Model.Run.point] using h
   · intro t ht htb hne
-    have hne' := hne.map (f := rho.key.toEmbedding)
-    rw [goldilocksPoint_committee hn hv t ht] at hne'
+    have hne' := hne.map (f := M.validator.toEmbedding)
+    rw [M.committee_map ht] at hne'
     have h := hs.2.2 t ht htb hne'
     change K.params.θ * (((rho.point.retain (rho.point.lookAhead _ t)).readyAt _ t ∩
-      (Model.sysExternal _ (compiled (goldilocks S)) V).selected E (rho.key, rho.sel) t).card +
+      (Model.sysExternal _ (compiled F) V).selected E (rho.key, rho.sel) t).card +
       ((rho.point.retain (rho.point.lookAhead _ t)).faultyAt t ∩
-      (Model.sysExternal _ (compiled (goldilocks S)) V).selected
+      (Model.sysExternal _ (compiled F) V).selected
         E (rho.key, rho.sel) t).card : Nat) <
       (((rho.point.retain (rho.point.lookAhead _ t)).readyAt _ t ∩
-      (Model.sysExternal _ (compiled (goldilocks S)) V).selected
+      (Model.sysExternal _ (compiled F) V).selected
         E (rho.key, rho.sel) t).card : ℚ) at h
     simp only [show (0 : Time) ≤ 0 from le_refl _, ite_true]
-    rw [← Finset.card_map rho.key.toEmbedding, Finset.map_inter,
-      goldilocksPoint_readyAt _ _ _ htb, goldilocksPoint_committee hn hv t ht,
-      ← Finset.card_map (s := (p.retain _).faultyAt t ∩ _) rho.key.toEmbedding,
-      Finset.map_inter, goldilocksPoint_faultyAt, goldilocksPoint_committee hn hv t ht]
-    simpa only [p, goldilocksPoint, EnvPoint.lookAhead, min_assoc, min_self, hθ,
+    rw [← Finset.card_map M.validator.toEmbedding, Finset.map_inter,
+      indexedRunPoint_readyAt _ _ _ _ htb, M.committee_map ht,
+      ← Finset.card_map (s := (p.retain _).faultyAt t ∩ _) M.validator.toEmbedding,
+      Finset.map_inter, indexedRunPoint_faultyAt, M.committee_map ht]
+    simpa only [p, indexedRunPoint, EnvPoint.lookAhead, min_assoc, min_self, hθ,
       hcommitteeLook, EnvPoint.retain, Model.Run.point] using h
 
-/-- The outage policy of the canonical run map: the run's own indexed point. -/
-noncomputable def goldilocksOutagePolicy (S : Setup) {E : Env V}
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) : OutagePolicy (goldilocksRunMap S rho hn hv) :=
-  ⟨goldilocksPoint rho, goldilocksPoint_binding hn hv, goldilocksPoint_horizon⟩
+end MapWindows
 
-/-- The canonical outage policy retains the run's own indexed point. -/
-theorem goldilocksOutagePolicy_point (S : Setup) {E : Env V}
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) :
-    (goldilocksOutagePolicy S rho hn hv).point = goldilocksPoint rho := by rfl
+/-- Transport the sleepy windows through the Goldilocks run map. -/
+theorem goldilocks_sleepy_window_supply :
+    ∀ (S : Setup) (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E)
+      (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (K : Contract ProgressReq)
+      (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+        (goldilocksRunMap S rho hn hv).signer),
+      C.θ = K.params.θ → 0 ≤ C.θ → C.θ ≤ 1 →
+      C.look = (Sys (goldilocks S) V).aheadDur K ⟨E, rho⟩ →
+      C.committeeLook = (Sys (goldilocks S) V).committeeAheadDur K ⟨E, rho⟩ →
+      SleepyWindowSupply (goldilocksRunMap S rho hn hv) K C :=
+  fun S _ rho hn hv => (goldilocksRunMap S rho hn hv).sleepy_window_supply
 
-/-- Outage participation transports to the canonical run map's own point and committee. -/
-theorem goldilocks_outageTransport (S : Setup) {E : Env V}
-    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) (K : Contract ProgressReq) :
-    OutageTransport (goldilocksRunMap S rho hn hv) (goldilocksOutagePolicy S rho hn hv) K where
+section MapOutage
+
+variable {P : Params} {A : NodeAC P} {O : OutputSchema} {I : Type} [DecidableEq I] [Countable I]
+  {F : ChainShapeFamily O I} {E : Env V} {rho : Model.Run (compiled F) E}
+  {payload : A.Blk → Set Nat} (M : RunMap rho payload)
+
+/-- The run's indexed point is its outage policy. -/
+noncomputable def _root_.Consensus.Goldilocks.Generic.RunMap.outagePolicy : OutagePolicy M :=
+  ⟨indexedRunPoint rho M.validator, M.point_binding, rfl⟩
+
+/-- The map's outage policy retains its indexed point. -/
+theorem _root_.Consensus.Goldilocks.Generic.RunMap.outagePolicy_point :
+    M.outagePolicy.point = indexedRunPoint rho M.validator := by rfl
+
+/-- Outage participation transports to the run map's point and committee. -/
+theorem _root_.Consensus.Goldilocks.Generic.RunMap.outageTransport (K : Contract ProgressReq) :
+    OutageTransport M M.outagePolicy K where
   participation _ T b₀ b₁ h := by
     classical
     obtain ⟨-, -, hp, hc⟩ := h
     change rho.point.EtaSleepyOn K.params.θ ((K.params.η : Time) * E.ΔAC)
-      (max ((Sys (goldilocks S) V).cDur K ⟨E, rho⟩) ((K.params.η : Time) * E.ΔAC - 1))
-      ((Sys (goldilocks S) V).aheadDur K ⟨E, rho⟩) 0 rho.horizon at hp
+      (max ((Sys F V).cDur K ⟨E, rho⟩) ((K.params.η : Time) * E.ΔAC - 1))
+      ((Sys F V).aheadDur K ⟨E, rho⟩) 0 rho.horizon at hp
     change ∀ δ : Time, 0 ≤ δ → δ ≤ (K.params.η : Time) * E.ΔAC →
       rho.point.CommitteeSleepyOn
-        (fun t => (Model.sysExternal _ (compiled (goldilocks S)) V).selected E
+        (fun t => (Model.sysExternal _ (compiled F) V).selected E
           (rho.key, rho.sel) (max 0 (t - δ)))
         K.params.θ ((K.params.η : Time) * E.ΔAC)
-        (max ((Sys (goldilocks S) V).cDur K ⟨E, rho⟩) ((K.params.η : Time) * E.ΔAC - 1))
-        ((Sys (goldilocks S) V).committeeAheadDur K ⟨E, rho⟩) 0 rho.horizon at hc
-    let p := goldilocksPoint rho
+        (max ((Sys F V).cDur K ⟨E, rho⟩) ((K.params.η : Time) * E.ΔAC - 1))
+        ((Sys F V).committeeAheadDur K ⟨E, rho⟩) 0 rho.horizon at hc
+    let p := indexedRunPoint rho M.validator
     change p.EtaSleepyOn _ _ _ _ 0 rho.horizon ∧ ∀ δ, 0 ≤ δ → δ ≤ _ →
       p.CommitteeSleepyOn _ _ _ _ _ 0 rho.horizon
     constructor
@@ -307,40 +369,62 @@ theorem goldilocks_outageTransport (S : Setup) {E : Env V}
       unfold EnvPoint.EtaReadyAbove at h ⊢
       split_ifs at h ⊢
       · simp only [EnvPoint.ReadyAbove, EnvPoint.faultCount]
-        rw [← Finset.card_map rho.key.toEmbedding, goldilocksPoint_readyAt _ _ _ htb,
-          ← Finset.card_map (s := (p.retain _).faultyAt t) rho.key.toEmbedding,
-          goldilocksPoint_faultyAt]
-        simpa only [p, goldilocksPoint, EnvPoint.lookAhead, min_assoc, min_self,
+        rw [← Finset.card_map M.validator.toEmbedding, indexedRunPoint_readyAt _ _ _ _ htb,
+          ← Finset.card_map (s := (p.retain _).faultyAt t) M.validator.toEmbedding,
+          indexedRunPoint_faultyAt]
+        simpa only [p, indexedRunPoint, EnvPoint.lookAhead, min_assoc, min_self,
           EnvPoint.ReadyAbove, EnvPoint.faultCount, EnvPoint.retain, Model.Run.point] using h
-      · rw [← Finset.card_map rho.key.toEmbedding, Finset.map_union, Finset.map_union,
-          goldilocksPoint_readyAt _ _ _ htb,
-          goldilocksPoint_awakeIn _ _ _ (le_max_left _ _) htb, goldilocksPoint_faultyAt,
-          ← Finset.card_map (s := (p.retain _).readyAt _ t) rho.key.toEmbedding,
-          goldilocksPoint_readyAt _ _ _ htb]
-        simpa only [p, goldilocksPoint, EnvPoint.lookAhead, min_assoc, min_self,
+      · rw [← Finset.card_map M.validator.toEmbedding, Finset.map_union, Finset.map_union,
+          indexedRunPoint_readyAt _ _ _ _ htb,
+          indexedRunPoint_awakeIn _ _ _ _ (le_max_left _ _) htb, indexedRunPoint_faultyAt,
+          ← Finset.card_map (s := (p.retain _).readyAt _ t) M.validator.toEmbedding,
+          indexedRunPoint_readyAt _ _ _ _ htb]
+        simpa only [p, indexedRunPoint, EnvPoint.lookAhead, min_assoc, min_self,
           EnvPoint.retain, Model.Run.point] using h
     · intro δ hδ hδη t ht htb hne
       have hm : 0 ≤ max 0 (t - δ) := le_max_left _ _
-      have hne' := hne.map (f := rho.key.toEmbedding)
-      rw [goldilocksPoint_committee hn hv _ hm] at hne'
+      have hne' := hne.map (f := M.validator.toEmbedding)
+      rw [M.committee_map hm] at hne'
       have h := hc δ hδ hδη t ht htb hne'
       dsimp only at h ⊢
       split_ifs at h ⊢
-      · rw [← Finset.card_map rho.key.toEmbedding, Finset.map_inter,
-          goldilocksPoint_readyAt _ _ _ htb, goldilocksPoint_committee hn hv _ hm,
-          ← Finset.card_map (s := (p.retain _).faultyAt t ∩ _) rho.key.toEmbedding,
-          Finset.map_inter, goldilocksPoint_faultyAt, goldilocksPoint_committee hn hv _ hm]
-        simpa only [p, goldilocksPoint, EnvPoint.lookAhead, min_assoc, min_self,
+      · rw [← Finset.card_map M.validator.toEmbedding, Finset.map_inter,
+          indexedRunPoint_readyAt _ _ _ _ htb, M.committee_map hm,
+          ← Finset.card_map (s := (p.retain _).faultyAt t ∩ _) M.validator.toEmbedding,
+          Finset.map_inter, indexedRunPoint_faultyAt, M.committee_map hm]
+        simpa only [p, indexedRunPoint, EnvPoint.lookAhead, min_assoc, min_self,
           EnvPoint.retain, Model.Run.point] using h
-      · rw [← Finset.card_map rho.key.toEmbedding, Finset.map_inter, Finset.map_union,
-          Finset.map_union, goldilocksPoint_readyAt _ _ _ htb,
-          goldilocksPoint_awakeIn _ _ _ (le_max_left _ _) htb, goldilocksPoint_faultyAt,
-          goldilocksPoint_committee hn hv _ hm,
-          ← Finset.card_map (s := (p.retain _).readyAt _ t ∩ _) rho.key.toEmbedding,
-          Finset.map_inter, goldilocksPoint_readyAt _ _ _ htb,
-          goldilocksPoint_committee hn hv _ hm]
-        simpa only [p, goldilocksPoint, EnvPoint.lookAhead, min_assoc, min_self,
+      · rw [← Finset.card_map M.validator.toEmbedding, Finset.map_inter, Finset.map_union,
+          Finset.map_union, indexedRunPoint_readyAt _ _ _ _ htb,
+          indexedRunPoint_awakeIn _ _ _ _ (le_max_left _ _) htb, indexedRunPoint_faultyAt,
+          M.committee_map hm,
+          ← Finset.card_map (s := (p.retain _).readyAt _ t ∩ _) M.validator.toEmbedding,
+          Finset.map_inter, indexedRunPoint_readyAt _ _ _ _ htb, M.committee_map hm]
+        simpa only [p, indexedRunPoint, EnvPoint.lookAhead, min_assoc, min_self,
           EnvPoint.retain, Model.Run.point] using h
+
+end MapOutage
+
+/-- The outage policy of the canonical run map: the run's own indexed point. -/
+noncomputable def goldilocksOutagePolicy (S : Setup) {E : Env V}
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) : OutagePolicy (goldilocksRunMap S rho hn hv) :=
+  (goldilocksRunMap S rho hn hv).outagePolicy
+
+/-- The canonical outage policy retains the run's own indexed point. -/
+theorem goldilocksOutagePolicy_point (S : Setup) {E : Env V}
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) :
+    (goldilocksOutagePolicy S rho hn hv).point = goldilocksPoint rho := by
+  simp only [goldilocksOutagePolicy, Generic.RunMap.outagePolicy_point, goldilocksRunMap_validator,
+    goldilocksPoint]
+
+/-- Outage participation transports to the canonical run map's own point and committee. -/
+theorem goldilocks_outageTransport (S : Setup) {E : Env V}
+    (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) (K : Contract ProgressReq) :
+    OutageTransport (goldilocksRunMap S rho hn hv) (goldilocksOutagePolicy S rho hn hv) K :=
+  (goldilocksRunMap S rho hn hv).outageTransport K
 
 /-- At the local data equations, the fixed local outage policy matches the endpoint contract:
 catch-up `18Δ + 1 ≤ 19Δ`, and equal recovery, threshold, look-aheads, look-back, arming lag and

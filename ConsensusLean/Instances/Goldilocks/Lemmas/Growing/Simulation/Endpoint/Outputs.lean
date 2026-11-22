@@ -42,18 +42,8 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 time `rho.cutTime i`. -/
 theorem cutMap_time_le (hv : rho.ExecutionValid) {i : Nat} (hi : i ≤ rho.events.length) :
     ∀ k < cutMap S rho hn i, (simTraceAt S rho hn).time k ≤ rho.cutTime i := by
-  cases i with
-  | zero =>
-    intro k hk
-    rw [cutMap_zero] at hk
-    exact absurd hk (Nat.not_lt_zero k)
-  | succ i =>
-    obtain ⟨e, he⟩ : ∃ e, rho.events[i]? = some e :=
-      ⟨_, List.getElem?_eq_getElem (by omega)⟩
-    have hct : rho.cutTime (i + 1) = e.time := by simp [Model.Run.cutTime, he]
-    intro k hk
-    rw [hct, simTraceAt_eq]
-    exact (Obligations.readPoint_after_event S rho hn hv he).1 k hk
+  rw [simTraceAt_eq, (simTrace_encoding S rho hn).1, (simTrace_encoding S rho hn).2]
+  exact (NodeAsChainShape.CanonicalTrace.cutMap_time_bounds (traceEncoding S hn) rho hv hi).1
 
 /-- Engine cut times lie in `[0, horizon]`. -/
 theorem cutTime_bounds (hv : rho.ExecutionValid) {i : Nat} (hi : i ≤ rho.events.length) :
