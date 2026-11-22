@@ -11,7 +11,7 @@ This is a proposal for review, not the installed node or a certified milestone.
 -/
 
 -- Keep the statement review in one leaf until the approved work-package split.
-set_option linter.style.longFile 2600
+set_option linter.style.longFile 2800
 
 namespace Consensus.Goldilocks.VotingPolicyPlan
 
@@ -344,9 +344,28 @@ theorem update_candidate_at_anchor_poll {z j k s u} {P L : Blk sp} {CV}
       ∃ lock ∈ st.ac.locks, ∃ L' ∈ (Node.frame st).tree,
         lock.slot = s ∧ lock.fast = true ∧ lock.block = L'.root ∧ sp.slot u ≤ lock.expiry ∧
         st.fg.Anc L' L ∧ st.fg.Anc P ((Node.frame st).viableAncestor L'))
+    (hframe : FrameOK (Node.frame (tr.state z k)))
+    (hroot : let Φ := Node.frame (tr.state z k)
+      Φ.fcRoot ∈ Φ.viableTree Φ.tree)
+    (hfloor : let Φ := Node.frame (tr.state z k)
+      ∀ B ∈ Φ.tree, (tr.state z k).fg.Anc P (Φ.viableAncestor B) →
+        Φ.Anc Φ.fcRoot (Φ.viableAncestor B))
     (hage : sp.slot u ≤ s + 2) :
     ∃ B ∈ SA.toFGCandidates sp (tr.state z k).ac (Node.frame (tr.state z k)) u,
       (tr.state z k).fg.Anc P B := by
+  sorry
+
+/-- A moved lock above the fork-choice floor is in the viable tree. A move
+strictly below the floor is not credited as candidate availability. -/
+theorem moved_lock_viable_at_poll {z k} {L : Blk sp}
+    (hframe : FrameOK (Node.frame (tr.state z k)))
+    (hL : L ∈ (Node.frame (tr.state z k)).tree)
+    (hroot : let Φ := Node.frame (tr.state z k)
+      Φ.fcRoot ∈ Φ.viableTree Φ.tree)
+    (hfloor : let Φ := Node.frame (tr.state z k)
+      Φ.Anc Φ.fcRoot (Φ.viableAncestor L)) :
+    let Φ := Node.frame (tr.state z k)
+    Φ.viableAncestor L ∈ Φ.viableTree Φ.tree := by
   sorry
 
 /-- The valid-run producer must select a quorum with this evidence. In the
@@ -412,11 +431,25 @@ def MatchingRows (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (g b
         att.h = σT.h ∧ att.T = T.root ∧ att.timeout = false ∧
         (σT.previousHeightJustified → att.fin = some (σT.hj, σT.J))
 
-theorem published_rows_of_appointments (U : Publication tr) {g b a D R : Time}
-    {appointment : Fin sp.n → Nat → Time → Prop}
-    (hreset : IsReset tr H g a) (hab : a ≤ b) (hcz : cutZ sp.toParams g ≤ b)
-    (hcut : CutObservations tr H) (hmatching : MatchingRows tr H g b)
-    (hsource : ∀ {w y i m P Q C T}, AnchorRowDemand tr H g a b D R w y i m P Q C T →
+/-- The left branch witnesses usable polls; it does not identify the
+selected report or establish its height. -/
+def AnchorAvailability (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+    (appointment : Fin sp.n → Nat → Time → Prop) (g a b D R : Time) : Prop :=
+    ∀ {w y i m P Q C T}, AnchorRowDemand tr H g a b D R w y i m P Q C T →
+      let d := sp.ts (P.slot + 1) + 2 * sp.Δ
+      AppointmentCohort tr H appointment d (d + D) b →
+      (∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
+        ∀ z ∈ ids, z ∈ H b ∧ ∃ k u, appointment z k u ∧ d ≤ u ∧ u ≤ d + D ∧
+          AnchorPollAvailable tr H P z k u) ∨
+      ∃ x r ell B, x ∈ H (tr.time r) ∧ SA.ToFGAt tr.projAC x r ell B ∧
+        Anc (tr.HonestBlocksAt H) P B ∧ d ≤ tr.time r ∧ tr.time r ≤ d + D ∧
+        ((tr.state y m).fg.σ T.root).h < ((tr.state x r).fg.σ B.root).h
+
+/-- The selected quorum is tied to its actual polls and reports. A timed
+crossing is independent of the same-height source branch. -/
+def AnchorSources (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+    (appointment : Fin sp.n → Nat → Time → Prop) (g a b D R : Time) : Prop :=
+    ∀ {w y i m P Q C T}, AnchorRowDemand tr H g a b D R w y i m P Q C T →
       let d := sp.ts (P.slot + 1) + 2 * sp.Δ
       AppointmentCohort tr H appointment d (d + D) b →
       (∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
@@ -435,7 +468,13 @@ theorem published_rows_of_appointments (U : Publication tr) {g b a D R : Time}
         ((tr.state y m).fg.σ T.root).h = ((tr.state z r).fg.σ B.root).h) ∨
       ∃ x r ell B, x ∈ H (tr.time r) ∧ SA.ToFGAt tr.projAC x r ell B ∧
         Anc (tr.HonestBlocksAt H) P B ∧ d ≤ tr.time r ∧ tr.time r ≤ d + D ∧
-        ((tr.state y m).fg.σ T.root).h < ((tr.state x r).fg.σ B.root).h)
+        ((tr.state y m).fg.σ T.root).h < ((tr.state x r).fg.σ B.root).h
+
+theorem published_rows_of_appointments (U : Publication tr) {g b a D R : Time}
+    {appointment : Fin sp.n → Nat → Time → Prop}
+    (hreset : IsReset tr H g a) (hab : a ≤ b) (hcz : cutZ sp.toParams g ≤ b)
+    (hcut : CutObservations tr H) (hmatching : MatchingRows tr H g b)
+    (hsource : AnchorSources tr H appointment g a b D R)
     (hrelease : ReleaseService U H (gbar g) b R)
     (hD : 0 ≤ D) (hR : 0 ≤ R) : PublishedRows (H := H) U appointment g a b D R := by
   sorry
@@ -838,9 +877,11 @@ def ProjectedRestarts
     (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
     {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
     (M : EngineProjection rho tr H U) (B : EventBoundaries rho hn M) : Prop :=
-  ∀ v i t, rho.events[i]? = some (.restart v t) →
+  (∀ v i t, rho.events[i]? = some (.restart v t) →
     B.first (i + 1) = B.first i + 1 ∧ tr.RestartAt (M.key v) (B.first i) ∧
-      tr.time (B.first i) = t
+      tr.time (B.first i) = t) ∧
+  (∀ z k, tr.RestartAt z k → ∃ i, B.first i = k ∧
+    rho.events[i]? = some (.restart (M.key.symm z) (tr.time k)))
 
 /-- The actual sign and local receipt of a same-poll release appear in order
 inside that poll's slice. Merely finding both somewhere in the tick is not enough. -/
@@ -1878,14 +1919,73 @@ def ProtectedAnchorHeads (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.
     ∀ {C}, Q.parent = some C.root → C ∈ (tr.state y m).fg.tree →
       Anc (tr.HonestBlocksAt H) L C
 
+/-- Actual origin timing is a cut law, not a bound on the age of a report. -/
+theorem fast_lock_origin_time_split {x r s L CV}
+    (hlock : SA.FastLockAt tr.projAC x r s L CV) :
+    (SA.FastUpdateAt tr.projAC x r s L CV ∧ tr.time r = sp.ts s + 6 * sp.Δ) ∨
+      (SA.OptimisticLockAt tr.projAC x r s L CV ∧ sp.slot (tr.time r) = s) := by
+  sorry
+
+/-- Move the legacy Healthy restart bound to the projected run. Earlier
+restarts are unrestricted; continuous readiness is only used after GST. -/
+theorem healthy_projected_restart_cutoff
+    {V : Type} [Fintype V] [DecidableEq V] {E : Env V} {S : Setup}
+    {p : (n : Nat) → Time → Rules n}
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
+    (M : EngineProjection rho tr H U) (B : EventBoundaries rho hn M)
+    (hrestarts : ProjectedRestarts rho hn M B) (hv : rho.ExecutionValid)
+    {g b : Time} (hb : b ≤ rho.horizon)
+    (hawake : ∀ y t, gbar g ≤ t → t ≤ b → y ∈ H t → tr.awake y t) :
+    let sp := S.params (Model.pubOf E) hn
+    ∀ {z k}, z ∈ H (tr.time k) → tr.RestartAt z k → tr.time k ≤ b →
+      tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
+  sorry
+
+/-- The predecessor votes consumed by the proposal are protected by the
+clean fast source. Their visibility in the collector is a different claim. -/
+theorem clean_predecessor_votes_on_delayed_trace {x r s m L CV}
+    (hcut : CutObservations tr H) {K : SA.CommitteeDict sp.n}
+    (hK : Compose.Growing.CommitteeFacts tr H K)
+    (hx : x ∈ H (tr.time r)) (hl : SA.FastLockAt tr.projAC x r s L CV)
+    (hclean : Compose.Growing.Clean tr H s m L) {u j e z}
+    (hs : s < u) (hm : u ≤ m) (hz : z ∈ H (tr.time j))
+    (hv : SA.VoteAt tr.projAC z j e) (hu : e.msg.slot = u) :
+    SA.VoteExtends (tr.HonestBlocksAt H) e.msg L := by
+  sorry
+
+/-- The actual proposal cut sees timely predecessor votes for a half
+committee. Use the Healthy restart cutoff strictly before the predecessor
+slot, rather than assuming that a volatile collector survives restart. -/
+theorem clean_predecessor_collector_at_proposal {g b : Time}
+    {K : SA.CommitteeDict sp.n} (hcut : CutObservations tr H)
+    (hbase : BaseService tr H g) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hK : CommitteeHalfUpTo tr H K g b) (hfacts : Compose.Growing.CommitteeFacts tr H K)
+    (hstep : ∀ i y ℓ, tr.CallAt y i ℓ → Node.CutStep y (tr.time i) (tr.state y i) ℓ (tr.post i))
+    (hawake : ∀ y t, gbar g ≤ t → t ≤ b → y ∈ H t → tr.awake y t)
+    {y j u ell} (hy : y ∈ H (tr.time j)) (hcall : tr.projAC.CallAt y j ell)
+    (hproposal : ell.call = .proposal) (ht : tr.time j = sp.ts (u + 1 : Nat))
+    (hstart : gbar g + 4 * sp.Δ ≤ sp.ts u) (hb : tr.time j ≤ b)
+    (hafterRestart : sp.ts (sp.slot (gbar g) + 1 : Nat) < sp.ts u)
+    (hcutoff : ∀ {z k}, z ∈ H (tr.time k) → tr.RestartAt z k → tr.time k ≤ b →
+      tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat)) :
+    ∃ ids : Finset (Fin sp.n), sp.committeeSize ≤ 2 * ids.card ∧
+      ∀ z ∈ ids, z ∈ H (tr.time j) ∧ z ∈ K.committee u ∧
+        ∃ i < j, ∃ e, SA.VoteAt tr.projAC z i e ∧ e.msg.slot = u ∧
+          e.msg ∈ (tr.state y j).ac.pool u ∧
+          SA.resolutionTime (tr.state y j).ac ell.frame e.msg < SA.ETime.of (tr.time j) := by
+  sorry
+
 /-- Port the two clean proposal routes from the same cut replay, not from
-the legacy run predicate. The proof owes voter participation and collector
-visibility across restart, in addition to the clean-window invariant. -/
+the legacy run predicate. The two-label route must put its predecessor
+strictly after the Healthy restart cutoff; the adjacent route uses optimistic evidence. -/
 theorem protected_anchor_heads_of_clean_windows {g a b : Time}
     {K : SA.CommitteeDict sp.n} (hcut : CutObservations tr H)
     (hreset : IsReset tr H g a) (hcatch : CatchRun tr H g (2 * sp.Δ))
     (hbase : BaseService tr H g) (hK : CommitteeHalfUpTo tr H K g b)
     (hfacts : Compose.Growing.CommitteeFacts tr H K)
+    (hcutoff : ∀ {z k}, z ∈ H (tr.time k) → tr.RestartAt z k → tr.time k ≤ b →
+      tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat))
     (hclean : ∀ {x r s m L CV}, x ∈ H (tr.time r) → SA.FastLockAt tr.projAC x r s L CV →
       Healing.cleanLabel sp a + sp.k + 2 ≤ s → s ≤ m → sp.ts m + 2 * sp.Δ ≤ b →
       Compose.Growing.Clean tr H s m L)
@@ -1911,21 +2011,39 @@ theorem post_drain_anchor_poll_availability
     (hreset : IsReset tr H g a)
     (hcatch : CatchRun tr H g (2 * (S.params (Model.pubOf E) hn).Δ))
     (hK : CommitteeHalfUpTo tr H K g b) (hfacts : Compose.Growing.CommitteeFacts tr H K)
-    {w y i m P Q C T} (hdemand : AnchorRowDemand tr H g a b D R w y i m P Q C T)
-    (hunanimous : ∀ {z j e}, z ∈ H (tr.time j) → SA.VoteAt tr.projAC z j e →
-      tr.time j ≤ b → e.msg.slot = P.slot → e.msg.head = P.root)
+    (hunanimous : ∀ {w y i m P Q C T}, AnchorRowDemand tr H g a b D R w y i m P Q C T →
+      ∀ {z j e}, z ∈ H (tr.time j) → SA.VoteAt tr.projAC z j e →
+        tr.time j ≤ b → e.msg.slot = P.slot → e.msg.head = P.root)
     (hawake : ∀ z t, gbar g ≤ t → t ≤ b → z ∈ H t → tr.awake z t)
     (hD : 0 ≤ D) (hshort : D < 6 * (S.params (Model.pubOf E) hn).Δ) :
-    let sp := S.params (Model.pubOf E) hn
-    let appointment := ProjectedAppointment rho hn M B cuts
-    let d := sp.ts (P.slot + 1) + 2 * sp.Δ
-    AppointmentCohort tr H appointment d (d + D) b →
-    (∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
-      ∀ z ∈ ids, z ∈ H b ∧ ∃ k u, appointment z k u ∧ d ≤ u ∧ u ≤ d + D ∧
-        AnchorPollAvailable tr H P z k u) ∨
-    ∃ x r ell B, x ∈ H (tr.time r) ∧ SA.ToFGAt tr.projAC x r ell B ∧
-      Anc (tr.HonestBlocksAt H) P B ∧ d ≤ tr.time r ∧ tr.time r ≤ d + D ∧
-      ((tr.state y m).fg.σ T.root).h < ((tr.state x r).fg.σ B.root).h := by
+    AnchorAvailability tr H (ProjectedAppointment rho hn M B cuts) g a b D R := by
+  sorry
+
+/-- Consume actual available polls, not an arbitrary candidate as the
+signing source. Compatibility of all competing candidates is a separate AC
+obligation; immutable record matching happens after this step. -/
+theorem anchor_sources_of_available_polls
+    {V : Type} [Fintype V] [DecidableEq V] {E : Env V} {S : Setup}
+    {p : (n : Nat) → Time → Rules n}
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
+    (M : EngineProjection rho tr H U) (B : EventBoundaries rho hn M)
+    (cuts : ProjectedTickDutyBoundaries rho hn M B) (hv : rho.ExecutionValid)
+    {g a b D R : Time}
+    (havailable : AnchorAvailability tr H (ProjectedAppointment rho hn M B cuts) g a b D R)
+    (hcompat : ∀ {w y i m P Q C T}, AnchorRowDemand tr H g a b D R w y i m P Q C T →
+      ∀ {z k u}, z ∈ H b → ProjectedAppointment rho hn M B cuts z k u →
+        let sp := S.params (Model.pubOf E) hn
+        let st := tr.state z k
+        let d := sp.ts (P.slot + 1) + 2 * sp.Δ
+        d ≤ u → u ≤ d + D →
+        ∀ L ∈ SA.toFGCandidates sp st.ac (Node.frame st) u,
+          Compatible (tr.HonestBlocksAt H) L P)
+    (hge : ∀ {z y r m P C}, z ∈ H (tr.time r) → y ∈ H (tr.time m) →
+      P ∈ (tr.state y m).fg.tree → C ∈ (tr.state z r).fg.tree →
+      Anc (tr.HonestBlocksAt H) P C →
+      ((tr.state y m).fg.σ P.root).h ≤ ((tr.state z r).fg.σ C.root).h) :
+    AnchorSources tr H (ProjectedAppointment rho hn M B cuts) g a b D R := by
   sorry
 
 /-- Replay supplies the originating lock write and the AC protection proof.
@@ -1935,7 +2053,9 @@ theorem delayed_crossing_raises_parent {a b : Time} (hcut : CutObservations tr H
     (hprotected : ProtectedAnchorHeads tr H a b)
     (hlock : ∀ {x k ell B}, x ∈ H (tr.time k) → SA.ToFGAt tr.projAC x k ell B →
       Healing.drainTime sp a ≤ tr.time k →
-      ∃ r ≤ k, ∃ s L CV, SA.FastLockAt tr.projAC x r s L CV ∧ s ≤ sp.slot (tr.time k) ∧
+      ∃ r ≤ k, ∃ s L CV, s ≤ sp.slot (tr.time k) ∧
+        ((SA.FastUpdateAt tr.projAC x r s L CV ∧ tr.time r = sp.ts s + 6 * sp.Δ) ∨
+          (SA.OptimisticLockAt tr.projAC x r s L CV ∧ sp.slot (tr.time r) = s)) ∧
         Healing.cleanLabel sp a + sp.k + 2 ≤ s ∧ Anc (tr.HonestBlocksAt H) B L)
     (hheight : ∀ {x y k m B C}, x ∈ H (tr.time k) → y ∈ H (tr.time m) →
       B ∈ (tr.state x k).fg.tree → C ∈ (tr.state y m).fg.tree →
@@ -2240,11 +2360,11 @@ structure OtherClaims (F : ChainShapeFamily schema Info) (K : Contract ProgressR
       (chainTrace r.2).ProtectedReadyFrom ((Sys F V).cDur K r) g (resilienceTarget schema g) T
         ((Sys F V).recoveryAt K b₁ r)
 
-/-- The current anchor-availability route only covers signing budgets shorter
-than the age margin of the anchor-slot lock at the update. Longer calendars
-need a separate supplier; bounded waiting alone does not give that margin. -/
-def PolicySchedule : Prop :=
-  p = Rules.responsive ∨ B.signSteps < 6 ∧ ∀ Δ : Time, 1 ≤ Δ → ScheduleBounds p Δ B
+def PolicySchedule : Prop := p = Rules.responsive ∨ ∀ Δ : Time, 1 ≤ Δ → ScheduleBounds p Δ B
+
+/-- Optional short-calendar route. This bounds signing only and leaves the
+literal responsive branch, release budget and network delay unchanged. -/
+def ShortSigningCalendar : Prop := p ≠ Rules.responsive → B.signSteps ≤ 5
 
 noncomputable def policyIndex (X : ℕ+) : (windowContract S A window B).Idx := X
 
@@ -2411,6 +2531,7 @@ appointment premise. A responsive query uses the legacy endpoint. -/
 theorem policy_final_query_witness
     {V : Type} [Fintype V] [DecidableEq V] (Q : PolicyFinalQuery S A window p B V)
     (hsched : PolicySchedule p B) (htiming : TimingRoom A window B)
+    (hshort : ShortSigningCalendar p B)
     (happointments : FinalAppointmentSupply S A window p B Q) :
     PolicyFinalWitness S A window p B Q := by
   sorry
@@ -2426,7 +2547,8 @@ theorem healthy_final_appointments
 /-- Scope (a): the Healthy-final adapter supplies the appointment premise
 internally, not as an extra condition on the protocol headline. -/
 theorem final_live_of_policy
-    (hsched : PolicySchedule p B) (htiming : TimingRoom A window B) :
+    (hsched : PolicySchedule p B) (htiming : TimingRoom A window B)
+    (hshort : ShortSigningCalendar p B) :
     HealthyLiveSupply S A window p B .final := by
   sorry
 
@@ -2471,6 +2593,7 @@ theorem headline_with_excuses
 window theorem is separate and supplies no universal coverage premise here. -/
 theorem policy_correct_protocol
     (hsched : PolicySchedule p B) (htiming : TimingRoom A window B)
+    (hshort : ShortSigningCalendar p B)
     (V : Type) [Fintype V] [DecidableEq V] :
     CorrectProtocol (Model.sysOf schema (compiled (family S p)) V)
       (shapeProgress (family S p) V) (windowContract S A window B) ∧
