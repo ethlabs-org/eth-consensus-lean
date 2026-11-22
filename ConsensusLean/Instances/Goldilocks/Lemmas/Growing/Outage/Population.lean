@@ -13,9 +13,12 @@ namespace Consensus.Goldilocks.Compose.Growing
 open SA (SAParams ReplayOrder)
 open Consensus.Goldilocks.Generic
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
-  {p : EnvPoint (Fin sp.n)}
+variable {sp : SAParams}
+
+section
+
+variable {A : NodeAC sp.toParams} {tr : RunTrace A}
+  {H : Time → Set (Fin sp.n)} {p : EnvPoint (Fin sp.n)}
 
 /-- The ready validators retained through the outage window end. -/
 def outageHolders (p : EnvPoint (Fin sp.n)) (c z : Time) : Set (Fin sp.n) :=
@@ -135,7 +138,10 @@ theorem outage_two_mul_opponents_lt (hb : RunPointBinding tr H p)
     Set.ncard_le_ncard (Set.union_subset Set.inter_subset_left Set.inter_subset_left)
   omega
 
-private theorem outage_retained_count {A : NodeAC sp.toParams} {tr : RunTrace A}
+end
+
+private theorem outage_retained_count {H : Time → Set (Fin sp.n)} {p : EnvPoint (Fin sp.n)}
+    {A : NodeAC sp.toParams} {tr : RunTrace A}
     (hanti : Antitone H) (hb : RunPointBinding tr H p)
     {η c t d e : Time} (htd : t ≤ d)
     (hjoin : ∀ y, y ∈ H t → (∀ u, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) →
@@ -189,6 +195,9 @@ theorem outage_committee_count {A : NodeAC sp.toParams} {tr : RunTrace A}
   rw [ite_eq_right (not_le.mpr hη0), hsel] at h
   exact outage_retained_count hanti hb htd (fun y hy hw => hjoin y _ hy ht0 hw)
     (le_min hdl (hdb.trans hbh)) (cm (sp.ts s)) h
+
+variable {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {p : EnvPoint (Fin sp.n)}
 
 /-- The shifted outage family supplies the ordinary population and slot-committee bounds.
 No constancy of the time-indexed committee inside a slot is assumed. -/
