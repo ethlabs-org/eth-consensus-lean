@@ -90,9 +90,22 @@ theorem received_voteForward_processAt_at (hv : rho.ExecutionValid)
     · exact h.le
     · exact h.le
     · exact h.le
-  obtain ⟨k, hlo, hhi, hp, ht⟩ := received_vote_processAt S rho hn he
-    (carried_subset_delivered_self _ (not_refuses_of_data _ hro)
-      (by rw [hro]; exact List.mem_singleton_self _))
+  rw [(simTrace_encoding S rho hn).1, (simTrace_encoding S rho hn).2]
+  refine traceEncoding_induction S hn (fun e _ => ∃ k,
+    NodeAsChainShape.CanonicalTrace.cutMap e rho i ≤ k ∧
+    k < NodeAsChainShape.CanonicalTrace.cutMap e rho (i + 1) ∧
+    (NodeAsChainShape.CanonicalTrace.simTrace e rho).projAC.ProcessAt (rho.ownKey v) k m ∧
+    (NodeAsChainShape.CanonicalTrace.simTrace e rho).time k = u ∧ τ ≤ u) ?_
+  intro e _
+  have hw : NodeAsChainShape.CanonicalTrace.wireOf e receipt = receipt :=
+    NodeAsChainShape.CanonicalTrace.wireOf_eq e receipt
+  obtain ⟨k, hlo, hhi, hp, ht⟩ :=
+    NodeAsChainShape.CanonicalTrace.received_carried_message_processAt e rho he
+      (w := voteObj (binding := S.vote) m)
+      (hw.symm ▸ not_refuses_of_data _ hro)
+      (hw.symm ▸ (by rw [hro]; exact List.mem_singleton_self _))
+      (canonEvent_voteObj (sp := S.params (pubOf E) hn) (ro := S.ro _)
+        (Model.digests rho.hash receipt) m)
   exact ⟨k, hlo, hhi, hp, ht, htime⟩
 
 /-- Holdings of a first-release vote envelope whose signer is honest at its stamp either belong

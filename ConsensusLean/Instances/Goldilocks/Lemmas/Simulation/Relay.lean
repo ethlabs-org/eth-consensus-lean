@@ -8,6 +8,7 @@ public import ConsensusLean.Lemmas.Model.Objects
 public import ConsensusLean.Lemmas.Model.Candidates
 public import ConsensusLean.Lemmas.Model.View
 public import ConsensusLean.Lemmas.Model.Protection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -1101,55 +1102,18 @@ theorem mem_deliverRecs_exec (proposer : Nat → Fin sp.n)
       {r : CutRec sp ro}, r ∈ deliverRecs proposer dg hs self t i os st sub →
       ∃ o e st', o ∈ os ∧ canonEvent sp ro hs o = some e ∧
         ∃ k, ∃ hk : k < (exec proposer dg self st' t e).2.length,
-          r.label = (exec proposer dg self st' t e).2[k] ∧ r.pos = k
-  | [], _, _, _, hr => by simp [deliverRecs_nil] at hr
-  | o :: os, st, sub, r, hr => by
-    cases he : canonEvent sp ro hs o with
-    | none =>
-      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he] at hr
-      obtain ⟨o', e, st', ho, h⟩ := mem_deliverRecs_exec proposer dg hs self t i os st _ hr
-      exact ⟨o', e, st', List.mem_cons_of_mem _ ho, h⟩
-    | some e =>
-      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ e he] at hr
-      rcases List.mem_append.mp hr with hr | hr
-      · obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
-        obtain ⟨-, -, -, hpos, hlab⟩ := getElem_groupRecs proposer dg self st t _ e k hk
-        exact ⟨o, e, st, List.mem_cons_self, he, k,
-          by rwa [length_groupRecs] at hk, hlab, hpos⟩
-      · obtain ⟨o', e', st', ho, h⟩ := mem_deliverRecs_exec proposer dg hs self t i os _ _ hr
-        exact ⟨o', e', st', List.mem_cons_of_mem _ ho, h⟩
-
-/-- A record of a delivery's cuts, over objects processed from a shape state at the clock `t` with
-own index `self`, is a cut of the handler of one of the objects, run on the node state that the
-objects before it leave. -/
-theorem mem_deliverRecs_split (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) :
-    ∀ (os : List (Wire sp.n binding)) (σ : State sp ro binding) (sub : Nat),
-      σ.self = self → σ.now = t → ∀ r ∈ deliverRecs proposer dg hs self t i os σ.node sub,
-      ∃ pre x post e, os = pre ++ x :: post ∧ canonEvent sp ro hs x = some e ∧
-        r.label ∈ (exec proposer dg self (pre.foldl (processOne hs) σ).node t e).2
-  | [], _, _, _, _, _, hr => by simp [deliverRecs_nil] at hr
-  | o :: os, σ, sub, hself, hnow, r, hr => by
-    obtain ⟨-, -, -, hn1, hs1, hnode⟩ := processOne_eq proposer dg hs σ o
-    cases he : canonEvent sp ro hs o with
-    | none =>
-      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he] at hr
-      rw [he] at hnode
-      obtain ⟨pre, x, post, e, h1, h2, h3⟩ := mem_deliverRecs_split proposer dg hs self t i os
-        (processOne hs σ o) (sub + 1) (hs1.trans hself) (hn1.trans hnow) r (by rw [hnode]; exact hr)
-      exact ⟨o :: pre, x, post, e, by rw [h1]; rfl, h2, h3⟩
-    | some e =>
-      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ he] at hr
-      rcases List.mem_append.mp hr with hr | hr
-      · obtain ⟨k, hk, hlab, -⟩ := mem_groupRecs_label hr
-        exact ⟨[], o, os, e, rfl, he, hlab ▸ List.getElem_mem hk⟩
-      · rw [he] at hnode
-        simp only [Option.elim_some, hself, hnow] at hnode
-        obtain ⟨pre, x, post, e', h1, h2, h3⟩ := mem_deliverRecs_split proposer dg hs self t i os
-          (processOne hs σ o) (sub + 1) (hs1.trans hself) (hn1.trans hnow) r
-          (by rw [hnode]; exact hr)
-        exact ⟨o :: pre, x, post, e', by rw [h1]; rfl, h2, h3⟩
+          r.label = (exec proposer dg self st' t e).2[k] ∧ r.pos = k := by
+  intro os st sub r hr
+  obtain ⟨q, hq, hp, hl⟩ := deliverRecs_source proposer dg hs self t i os st sub hr
+  obtain ⟨pre, o, post, ev, j, rfl, he, _, hg⟩ :=
+    NodeAsChainShape.CanonicalTrace.mem_deliverRecs_prefix (wireCodec sp ro binding) hs
+      proposer dg self t i os st sub hq
+  rw [NodeAsChainShape.CanonicalTrace.groupRecs_eq] at hg
+  obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hg
+  simp only [List.length_mapIdx, List.length_zip] at hk
+  rw [List.getElem_mapIdx, List.getElem_zip] at hp hl
+  exact ⟨o, ev, _, List.mem_append_right _ List.mem_cons_self, he, k,
+    lt_of_lt_of_le hk (Nat.min_le_left ..), hl, hp⟩
 
 /-- A canonical event is not a tick. -/
 theorem canonEvent_ne_tick {hs : List (Header Info × Nat)} {o : Wire sp.n binding}

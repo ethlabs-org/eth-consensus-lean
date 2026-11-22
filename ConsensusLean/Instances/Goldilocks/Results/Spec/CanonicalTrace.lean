@@ -225,6 +225,28 @@ noncomputable def deliverRecs (proposer : Nat → Fin sp.n)
   (NodeAsChainShape.CanonicalTrace.deliverRecs (wireCodec sp ro binding) proposer dg hs self t i
     os st sub).map goldilocksCut
 
+/-- Delivery replay records preserve the generic cut's label. -/
+theorem deliverRecs_label (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
+    (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
+    {r : CanonicalTrace.CutRec (goldilocksNode sp ro)}
+    (hr : r ∈ CanonicalTrace.deliverRecs (wireCodec sp ro binding) proposer dg hs self t i
+      os st sub) :
+    ∃ q ∈ deliverRecs proposer dg hs self t i os st sub, q.label = r.label := by
+  exact ⟨goldilocksCut r, List.mem_map_of_mem hr, rfl⟩
+
+/-- Each concrete delivery cut has a generic source with the same position and label. -/
+theorem deliverRecs_source (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
+    (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
+    {q : CutRec sp ro} (hq : q ∈ deliverRecs proposer dg hs self t i os st sub) :
+    ∃ r ∈ CanonicalTrace.deliverRecs (wireCodec sp ro binding) proposer dg hs self t i os st sub,
+      q.pos = r.pos ∧ q.label = r.label := by
+  obtain ⟨r, hr, rfl⟩ := List.mem_map.mp hq
+  exact ⟨r, hr, rfl, rfl⟩
+
 /-- `deliverRecs` of no object. -/
 theorem deliverRecs_nil (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))

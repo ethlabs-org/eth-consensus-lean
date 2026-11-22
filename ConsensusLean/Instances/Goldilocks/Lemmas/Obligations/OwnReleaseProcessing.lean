@@ -82,37 +82,19 @@ theorem acBlock_cut_cases (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {
       ∃ n v t, rho.events[n]? = some (.tick v t) ∧
         (S.params (Model.pubOf E) hn).toParams.IsPublic t ∧ rho.ownKey v = y ∧
         cutMap S rho hn n ≤ i ∧ i < cutMap S rho hn (n + 1) ∧ (simTrace S rho hn).time i = t := by
-  have hl : (simTrace S rho hn).label i ≠ none := by rw [hc.2]; simp
-  obtain ⟨r, n, ev, _, he, hlo, hhi, hidx, hnode, ht, _, hlabel⟩ :=
-    simTrace_cut S rho hn hl
-  have hrlabel : r.label = .ac ℓ := Option.some.inj (hlabel.symm.trans hc.2)
-  have hkey : rho.ownKey ev.node = y := hnode.symm.trans hc.1
-  cases ev with
-  | deliver v o t =>
-    obtain ⟨k, _, _, hp, hkt⟩ := delivery_block_payload_processAt S rho hn hv he
-      (List.mem_of_getElem? hidx) hrlabel hb hm
-    exact Or.inl ⟨k, hkey ▸ hp, hkt.trans ht.symm⟩
-  | restart v t =>
-    have hm := List.mem_of_getElem? hidx
-    rw [eventCuts_restart S rho hn n v t he] at hm
-    obtain ⟨q, hq, rfl⟩ := List.getElem_of_mem hm
-    have hq' := hq
-    rw [length_groupRecs] at hq'
-    have hq0 : q = 0 := by
-      simpa only [Node.exec, Node.restart, List.length_singleton, Nat.lt_one_iff] using hq'
-    subst q
-    have hrlabel' := (getElem_groupRecs _ _ _ _ _ _ _ 0 hq).2.2.2.2
-    rw [hrlabel'] at hrlabel
-    have hcall := congrArg (fun c => match c with | .ac l => l.call | _ => .restart) hrlabel
-    simp only [Node.exec, Node.restart, Node.acCall] at hcall
-    rw [← hcall] at hb
-    cases hb
-  | tick v t =>
-    have hpublic : (S.params (Model.pubOf E) hn).toParams.IsPublic t := by
-      by_contra h
-      rw [eventCuts_tick_other S rho hn n v t he h] at hidx
-      simp at hidx
-    exact Or.inr ⟨n, v, t, he, hpublic, hkey, hlo, hhi, ht⟩
+  rw [(simTrace_encoding S rho hn).1] at hc ⊢
+  rw [(simTrace_encoding S rho hn).2]
+  apply NodeAsChainShape.CanonicalTrace.acBlock_cut_cases (traceEncoding S hn) rho
+    (traceEncoding_opLaws S hn) hv hc hb
+  apply traceEncoding_induction S hn (fun e _ =>
+    ∀ o : (Model.protoOf (compiled (goldilocks S)) E).Object,
+      ∃ w ∈ e.codec.carried B.fgPayload B.acPayload,
+        NodeAsChainShape.canonEvent e.codec (Model.digests rho.hash o) w = some (.message m))
+  intro _ _ o
+  exact ⟨voteObj (binding := S.vote) m,
+    List.mem_append_right _ (List.mem_map.mpr ⟨m, List.mem_append_left _ hm, rfl⟩),
+    canonEvent_voteObj (sp := S.params (Model.pubOf E) hn) (ro := S.ro _)
+      (Model.digests rho.hash o) m⟩
 
 end Events
 

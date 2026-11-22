@@ -143,24 +143,11 @@ theorem deliverRecs_message_call (proposer : Nat → Fin sp.n)
     (∃ o ∈ os, canonEvent sp ro hs o = some (.message m)) →
     ∃ r ∈ deliverRecs proposer dg hs self t i os st sub,
       ∃ ℓ, r.label = .ac ℓ ∧ ℓ.call = .message m := by
-  intro os
-  induction os with
-  | nil => intro st sub h; simp at h
-  | cons o os ih =>
-    intro st sub ⟨x, hx, he⟩
-    rcases List.mem_cons.mp hx with rfl | hx
-    · rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ he]
-      simp only [groupRecs_eq, exec, onMessage, acCall, cutPosts_cons, cutPosts_nil]
-      simp
-    · cases ho : canonEvent sp ro hs o with
-      | none =>
-        rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ ho]
-        exact ih st (sub + 1) ⟨x, hx, he⟩
-      | some e =>
-        rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ ho]
-        obtain ⟨r, hr, ℓ, hl, hm⟩ := ih (exec proposer dg self st t e).1
-          (sub + 1) ⟨x, hx, he⟩
-        exact ⟨r, List.mem_append_right _ hr, ℓ, hl, hm⟩
+  intro os st sub hm
+  obtain ⟨r, hr, l, hl, hm⟩ := NodeAsChainShape.CanonicalTrace.deliverRecs_message_call
+    (wireCodec sp ro binding) hs proposer dg self t i m os st sub hm
+  obtain ⟨q, hq, hlabel⟩ := deliverRecs_label proposer dg hs self t i os st sub hr
+  exact ⟨q, hq, l, hlabel.trans hl, hm⟩
 
 end Simulation
 end Consensus.Goldilocks

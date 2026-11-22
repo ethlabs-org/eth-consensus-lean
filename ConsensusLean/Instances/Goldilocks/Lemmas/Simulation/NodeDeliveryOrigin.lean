@@ -42,17 +42,39 @@ private theorem visitList_parts (st : S) (os : List (ShapeObj P.n K I B)) :
     · exact List.mem_append_right _ (visitList_parts _ _ hx)
 end
 
+/-- A decoded message in the visit list has its own replay cut. -/
+theorem deliverRecs_message_call (pr : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)
+    (y : Fin P.n) (t : Time) (i : Nat) (m : A.Msg)
+    (os : List (ShapeObj P.n K I B)) (st : NodeState A) (sub : Nat)
+    (hm : ∃ o ∈ os, canonEvent C hs o = some (.message m)) :
+    ∃ r ∈ deliverRecs C pr dg hs y t i os st sub, ∃ l, r.label = .ac l ∧ l.call = .message m := by
+  induction os generalizing st sub with
+  | nil => simp at hm
+  | cons o os ih =>
+    obtain ⟨w, hw, hc⟩ := hm
+    rw [deliverRecs_cons]
+    rcases List.mem_cons.mp hw with rfl | hw
+    · rw [hc]
+      simp [groupRecs_eq, exec, onMessage, acCall, cutPosts_cons, cutPosts_nil]
+    · cases he : canonEvent C hs o with
+      | none => exact ih st (sub + 1) ⟨w, hw, hc⟩
+      | some ev =>
+        obtain ⟨r, hr, l, hl, hm⟩ := ih _ (sub + 1) ⟨w, hw, hc⟩
+        exact ⟨r, List.mem_append_right _ hr, l, hl, hm⟩
+
 /-- Any object visited by a receipt is in the received object's recursive closure. -/
 theorem contains_of_mem_delivered {st : S} {o w : ShapeObj P.n K I B}
     (hw : w ∈ delivered C D hs st o) : Model.Obj.Contains o w :=
   visit_parts C D hs st o hw
 
-private theorem mem_deliverRecs_group (pr : Nat → Fin P.n)
+/-- A delivery cut comes from the handler after replaying the preceding visited objects. -/
+theorem mem_deliverRecs_prefix (pr : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload)
     (y : Fin P.n) (t : Time) (i : Nat) (os : List (ShapeObj P.n K I B)) (st : NodeState A)
     (sub : Nat) {r : CutRec A} (hr : r ∈ deliverRecs C pr dg hs y t i os st sub) :
-    ∃ w ev st' s, w ∈ os ∧ canonEvent C hs w = some ev ∧ sub ≤ s ∧
-      r ∈ groupRecs pr dg y st' t (Nat.pair i s) ev := by
+    ∃ pre w post ev s, os = pre ++ w :: post ∧ canonEvent C hs w = some ev ∧ sub ≤ s ∧
+      r ∈ groupRecs pr dg y (pre.foldl (fun σ o => ((canonEvent C hs o).map
+        (fun e => (exec pr dg y σ t e).1)).getD σ) st) t (Nat.pair i s) ev := by
   induction os generalizing st sub with
   | nil => rw [deliverRecs_nil] at hr; cases hr
   | cons o os ih =>
@@ -60,14 +82,26 @@ private theorem mem_deliverRecs_group (pr : Nat → Fin P.n)
     cases he : canonEvent C hs o with
     | none =>
       rw [he] at hr
-      obtain ⟨w, ev, st', s, hm, hcanon, hle, hl⟩ := ih st (sub + 1) hr
-      exact ⟨w, ev, st', s, List.mem_cons_of_mem _ hm, hcanon, by omega, hl⟩
+      obtain ⟨pre, w, post, ev, s, hm, hcanon, hle, hl⟩ := ih st (sub + 1) hr
+      exact ⟨o :: pre, w, post, ev, s, by rw [hm]; rfl, hcanon, by omega,
+        by simpa only [List.foldl_cons, he, Option.map_none, Option.getD_none] using hl⟩
     | some ev =>
       rw [he] at hr
       rcases List.mem_append.mp hr with hg | hr
-      · exact ⟨o, ev, st, sub, List.mem_cons_self, he, le_rfl, hg⟩
-      · obtain ⟨w, ev', st', s, hm, hcanon, hle, hl⟩ := ih _ (sub + 1) hr
-        exact ⟨w, ev', st', s, List.mem_cons_of_mem _ hm, hcanon, by omega, hl⟩
+      · exact ⟨[], o, os, ev, sub, rfl, he, le_rfl, hg⟩
+      · obtain ⟨pre, w, post, ev', s, hm, hcanon, hle, hl⟩ := ih _ (sub + 1) hr
+        exact ⟨o :: pre, w, post, ev', s, by rw [hm]; rfl, hcanon, by omega,
+          by simpa only [List.foldl_cons, he, Option.map_some, Option.getD_some] using hl⟩
+
+private theorem mem_deliverRecs_group (pr : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload)
+    (y : Fin P.n) (t : Time) (i : Nat) (os : List (ShapeObj P.n K I B)) (st : NodeState A)
+    (sub : Nat) {r : CutRec A} (hr : r ∈ deliverRecs C pr dg hs y t i os st sub) :
+    ∃ w ev st' s, w ∈ os ∧ canonEvent C hs w = some ev ∧ sub ≤ s ∧
+      r ∈ groupRecs pr dg y st' t (Nat.pair i s) ev := by
+  obtain ⟨pre, w, post, ev, s, rfl, hc, hle, hg⟩ :=
+    mem_deliverRecs_prefix C hs pr dg y t i os st sub hr
+  exact ⟨w, ev, _, s, List.mem_append_right _ List.mem_cons_self, hc, hle, hg⟩
 
 /-- A delivery cut comes from the handler invocation for one of the delivered objects. -/
 theorem mem_deliverRecs_exec (pr : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)

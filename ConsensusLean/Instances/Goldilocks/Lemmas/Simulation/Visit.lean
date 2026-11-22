@@ -67,28 +67,6 @@ theorem visitList_cons (st : State sp ro binding) (c : Wire sp.n binding)
         (visitList hs (visit hs st c).2 cs).2) := by
   rw [visitList_cons_eq]
 
-mutual
-/-- Processing the visited objects in order reaches the visit's state. -/
-private theorem visit_spec : ∀ (st : State sp ro binding) (o : Wire sp.n binding),
-    (visit hs st o).1.foldl (processOne hs) st = (visit hs st o).2
-  | st, .mk a m cs => by
-    rcases visit_cases hs st (.mk a m cs) with ⟨-, h⟩ | ⟨-, h⟩ <;> rw [h]
-    · rfl
-    · exact visitList_spec (processOne hs st (.mk a m cs)) cs
-/-- `visit_spec` of a list. -/
-private theorem visitList_spec : ∀ (st : State sp ro binding) (cs : List (Wire sp.n binding)),
-    (visitList hs st cs).1.foldl (processOne hs) st = (visitList hs st cs).2
-  | st, [] => by rw [visitList_nil_eq]; rfl
-  | st, c :: cs => by
-    rw [visitList_cons, List.foldl_append, visit_spec, visitList_spec]
-end
-
-/-- A delivery processes its delivered objects in order (`process`): their fold reaches
-`visit`'s state. -/
-theorem process_eq_visit (st : State sp ro binding) (o : Wire sp.n binding) :
-    process st o hs = (visit hs st o).2 :=
-  visit_spec hs st o
-
 /-- A delivered object belongs to the received object's recursive closure. -/
 theorem mem_delivered {st : State sp ro binding} {o x : Wire sp.n binding}
     (h : x ∈ delivered hs st o) : x ∈ o.parts :=
@@ -153,15 +131,24 @@ theorem visit_head (st : State sp ro binding) (o : Wire sp.n binding) :
     ∃ rest, (visit hs st o).1 = o :: rest := by
   rcases visit_cases hs st o with ⟨-, h⟩ | ⟨-, h⟩ <;> rw [h] <;> exact ⟨_, rfl⟩
 
-/-- In a list of processed objects, every object whose processing (from the state the objects
-before it leave) refuses no block is followed by the objects it carries. -/
-private def Closed (st : State sp ro binding) (l : List (Wire sp.n binding)) : Prop :=
-  ∀ pre x post, l = pre ++ x :: post → ¬ Refuses hs (pre.foldl (processOne hs) st) x →
+end Visit
+end
+end Consensus.Goldilocks.Simulation
+
+namespace Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
+open Shape Blocks
+
+variable {P : Params} {A : NodeAC P} {K I B S : Type} [DecidableEq I]
+  (C : WireCodec A K I B) (D : Adapter A K I B S) (hs : List (Header I × Nat))
+
+/-- Every non-refused visited object has its direct children in the visit list. -/
+private def Closed (st : S) (l : List (ShapeObj P.n K I B)) : Prop :=
+  ∀ pre x post, l = pre ++ x :: post → ¬ Refuses C D hs (pre.foldl (processOne C D hs) st) x →
     x.carried ⊆ l
 
-private theorem closed_append {st : State sp ro binding} {l₁ l₂ : List (Wire sp.n binding)}
-    (h₁ : Closed hs st l₁) (h₂ : Closed hs (l₁.foldl (processOne hs) st) l₂) :
-    Closed hs st (l₁ ++ l₂) := by
+private theorem closed_append {st : S} {l₁ l₂ : List (ShapeObj P.n K I B)}
+    (h₁ : Closed C D hs st l₁) (h₂ : Closed C D hs (l₁.foldl (processOne C D hs) st) l₂) :
+    Closed C D hs st (l₁ ++ l₂) := by
   intro pre x post he hr
   rcases List.append_eq_append_iff.mp he with ⟨a', rfl, h2⟩ | ⟨c', h1, h2⟩
   · rw [List.foldl_append] at hr
@@ -178,18 +165,24 @@ private theorem closed_append {st : State sp ro binding} {l₁ l₂ : List (Wire
       exact List.Subset.trans (h₁ pre x c'' h1 hr) (List.subset_append_left _ _)
 
 mutual
-private theorem visit_closed : ∀ (st : State sp ro binding) (o : Wire sp.n binding),
-    Closed hs st (visit hs st o).1
+private theorem visit_closed : ∀ (st : S) (o : ShapeObj P.n K I B),
+    Closed C D hs st (visit C D hs st o).1 ∧
+      (visit C D hs st o).1.foldl (processOne C D hs) st = (visit C D hs st o).2 ∧
+      o ∈ (visit C D hs st o).1
   | st, .mk a m cs => by
-    rcases visit_cases hs st (.mk a m cs) with ⟨hr, h⟩ | ⟨-, h⟩ <;> rw [h]
-    · intro pre x post he hx
+    rw [visit]
+    split
+    · rename_i hr
+      refine ⟨?_, rfl, List.mem_cons_self⟩
+      intro pre x post he hx
       cases pre with
       | nil =>
         simp only [List.nil_append, List.cons.injEq] at he
         obtain ⟨rfl, -⟩ := he
         exact absurd hr hx
       | cons p pre => simp at he
-    · obtain ⟨hcl, hsub⟩ := visitList_closed (processOne hs st (.mk a m cs)) cs
+    · obtain ⟨hcl, hsub, hfold⟩ := visitList_closed (processOne C D hs st (.mk a m cs)) cs
+      refine ⟨?_, hfold, List.mem_cons_self⟩
       intro pre x post he hx
       cases pre with
       | nil =>
@@ -200,16 +193,57 @@ private theorem visit_closed : ∀ (st : State sp ro binding) (o : Wire sp.n bin
         simp only [List.cons_append, List.cons.injEq] at he
         obtain ⟨rfl, he⟩ := he
         exact List.Subset.trans (hcl pre x post he hx) (List.subset_cons_self _ _)
-private theorem visitList_closed : ∀ (st : State sp ro binding) (cs : List (Wire sp.n binding)),
-    Closed hs st (visitList hs st cs).1 ∧ cs ⊆ (visitList hs st cs).1
-  | st, [] => ⟨fun pre x post he => by simp [visitList_nil_eq] at he, by simp⟩
+private theorem visitList_closed : ∀ (st : S) (cs : List (ShapeObj P.n K I B)),
+    Closed C D hs st (visitList C D hs st cs).1 ∧ cs ⊆ (visitList C D hs st cs).1 ∧
+      (visitList C D hs st cs).1.foldl (processOne C D hs) st = (visitList C D hs st cs).2
+  | st, [] => ⟨fun pre x post he => by simp [visitList] at he, by simp, rfl⟩
   | st, c :: cs => by
-    rw [visitList_cons]
-    obtain ⟨hcl, hsub⟩ := visitList_closed (visit hs st c).2 cs
-    refine ⟨closed_append hs (visit_closed st c) (by rw [visit_spec hs st c]; exact hcl), ?_⟩
-    exact List.cons_subset.mpr ⟨List.mem_append_left _ (mem_delivered_self hs st c),
-      List.Subset.trans hsub (List.subset_append_right _ _)⟩
+    rw [visitList]
+    obtain ⟨hcl, hsub, hfold⟩ := visitList_closed (visit C D hs st c).2 cs
+    obtain ⟨hc, hfc, hmem⟩ := visit_closed st c
+    refine ⟨closed_append C D hs hc (by rw [hfc]; exact hcl), ?_, ?_⟩
+    · exact List.cons_subset.mpr ⟨List.mem_append_left _ hmem,
+        List.Subset.trans hsub (List.subset_append_right _ _)⟩
+    · dsimp only
+      rw [List.foldl_append, hfc, hfold]
 end
+
+/-- Folding the visited objects reaches the visit's final state. -/
+theorem foldl_delivered {st : S} {o : ShapeObj P.n K I B} :
+    (delivered C D hs st o).foldl (processOne C D hs) st = (visit C D hs st o).2 :=
+  (visit_closed C D hs st o).2.1
+
+/-- A non-refused visited object has its direct children in the same delivery. -/
+theorem carried_subset_delivered {st : S} {o x : ShapeObj P.n K I B}
+    {pre post : List (ShapeObj P.n K I B)} (he : delivered C D hs st o = pre ++ x :: post)
+    (hr : ¬ Refuses C D hs (pre.foldl (processOne C D hs) st) x) :
+    x.carried ⊆ delivered C D hs st o :=
+  (visit_closed C D hs st o).1 pre x post he hr
+
+/-- A non-refused receipt visits its direct children. -/
+theorem carried_subset_delivered_self {st : S} {o : ShapeObj P.n K I B}
+    (hr : ¬ Refuses C D hs st o) : o.carried ⊆ delivered C D hs st o := by
+  obtain ⟨a, m, cs⟩ := o
+  apply carried_subset_delivered C D hs (pre := []) (post :=
+    (visitList C D hs (processOne C D hs st (.mk a m cs)) cs).1) _ hr
+  unfold delivered
+  rw [visit, ite_eq_right hr]
+  rfl
+
+end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
+
+namespace Consensus.Goldilocks.Simulation
+open AsChainShape Shape Blocks
+open SA (SAParams ReplayOrder)
+variable {binding : VoteBinding} {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  (hs : List (Header Info × Nat))
+
+/-- A delivery processes its delivered objects in order (`process`): their fold reaches
+`visit`'s state. -/
+theorem process_eq_visit (st : State sp ro binding) (o : Wire sp.n binding) :
+    process st o hs = (visit hs st o).2 :=
+  NodeAsChainShape.CanonicalTrace.foldl_delivered
+    (wireCodec sp ro binding) (nodeAdapter sp ro binding) hs
 
 /-- The objects carried by a delivered object are delivered too, unless processing it, from the
 state the objects delivered before it leave, refuses a block. -/
@@ -217,17 +251,14 @@ theorem carried_subset_delivered {st : State sp ro binding} {o x : Wire sp.n bin
     {pre post : List (Wire sp.n binding)} (he : delivered hs st o = pre ++ x :: post)
     (hr : ¬ Refuses hs (pre.foldl (processOne hs) st) x) :
     x.carried ⊆ delivered hs st o :=
-  visit_closed hs st o pre x post he hr
+  NodeAsChainShape.CanonicalTrace.carried_subset_delivered
+    (wireCodec sp ro binding) (nodeAdapter sp ro binding) hs he hr
 
 /-- The objects the received object carries are delivered unless processing it refuses a block. -/
 theorem carried_subset_delivered_self {st : State sp ro binding} {o : Wire sp.n binding}
-    (hr : ¬ Refuses hs st o) : o.carried ⊆ delivered hs st o := by
-  obtain ⟨rest, h⟩ := visit_head hs st o
-  exact carried_subset_delivered hs (pre := []) (post := rest) h hr
-
-end Visit
-
-end
+    (hr : ¬ Refuses hs st o) : o.carried ⊆ delivered hs st o :=
+  NodeAsChainShape.CanonicalTrace.carried_subset_delivered_self
+    (wireCodec sp ro binding) (nodeAdapter sp ro binding) hs hr
 
 end Consensus.Goldilocks.Simulation
 
