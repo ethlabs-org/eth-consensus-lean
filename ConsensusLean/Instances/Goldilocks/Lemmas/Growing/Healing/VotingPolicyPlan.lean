@@ -343,13 +343,11 @@ theorem update_candidate_at_anchor_poll {z j k s u} {P L : Blk sp} {CV}
     (hretained : let st := tr.state z k
       ∃ lock ∈ st.ac.locks, ∃ L' ∈ (Node.frame st).tree,
         lock.slot = s ∧ lock.fast = true ∧ lock.block = L'.root ∧ sp.slot u ≤ lock.expiry ∧
-        st.fg.Anc L' L ∧ st.fg.Anc P ((Node.frame st).viableAncestor L'))
+        st.fg.Anc L' L ∧ st.fg.Anc P ((Node.frame st).viableAncestor L') ∧
+        (Node.frame st).Anc (Node.frame st).fcRoot ((Node.frame st).viableAncestor L'))
     (hframe : FrameOK (Node.frame (tr.state z k)))
     (hroot : let Φ := Node.frame (tr.state z k)
       Φ.fcRoot ∈ Φ.viableTree Φ.tree)
-    (hfloor : let Φ := Node.frame (tr.state z k)
-      ∀ B ∈ Φ.tree, (tr.state z k).fg.Anc P (Φ.viableAncestor B) →
-        Φ.Anc Φ.fcRoot (Φ.viableAncestor B))
     (hage : sp.slot u ≤ s + 2) :
     ∃ B ∈ SA.toFGCandidates sp (tr.state z k).ac (Node.frame (tr.state z k)) u,
       (tr.state z k).fg.Anc P B := by
@@ -368,12 +366,15 @@ theorem moved_lock_viable_at_poll {z k} {L : Blk sp}
     Φ.viableAncestor L ∈ Φ.viableTree Φ.tree := by
   sorry
 
-/-- The valid-run producer must select a quorum with this evidence. In the
-empty case a historical attempt is required even if restart reset the cursor. -/
+/-- At the chosen poll, compare the actual deepest candidate only with the
+chosen available witness. The empty case instead needs a historical attempt,
+even if restart reset the cursor. -/
 def AnchorPollAvailable (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
     (P : Blk sp) (z : Fin sp.n) (k : Nat) (u : Time) : Prop :=
   let st := tr.state z k
-  (∃ L ∈ SA.toFGCandidates sp st.ac (Node.frame st) u, st.fg.Anc P L) ∨
+  (∃ L ∈ SA.toFGCandidates sp st.ac (Node.frame st) u, st.fg.Anc P L ∧
+    ∀ W, SA.IsDeepest (Node.frame st) (SA.toFGCandidates sp st.ac (Node.frame st) u) W →
+      Compatible (tr.HonestBlocksAt H) W L) ∨
   (SA.toFGCandidates sp st.ac (Node.frame st) u = ∅ ∧
     ∃ r ell B s, r + 1 < k ∧ tr.time (r + 1) ≤ u ∧ SA.ToFGAt tr.projAC z r ell B ∧
       tr.CallAt z (r + 1) (.fg (.attest B s)) ∧ Anc (tr.HonestBlocksAt H) P B)
@@ -1937,16 +1938,33 @@ theorem healthy_projected_restart_cutoff
     (hrestarts : ProjectedRestarts rho hn M B) (hv : rho.ExecutionValid)
     {g b : Time} (hb : b ≤ rho.horizon)
     (hawake : ∀ y t, gbar g ≤ t → t ≤ b → y ∈ H t → tr.awake y t) :
-    let sp := S.params (Model.pubOf E) hn
     ∀ {z k}, z ∈ H (tr.time k) → tr.RestartAt z k → tr.time k ≤ b →
-      tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
+      tr.time k ≤ gbar g := by
   sorry
+
+/-- The projected vote duty runs for an awake, joined and permitted validator.
+This is a same-run duty-replay input, not a consequence of committee size. -/
+def VoteDutyReplay (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (b : Time) : Prop :=
+  ∀ {z : Fin sp.n} {u : Nat}, let d := sp.ts u + sp.Δ
+    d ≤ b → z ∈ H d → tr.awake z d → tr.JoinedAt z d →
+    (∀ i, (∀ k < i, tr.time k ≤ d) → (tr.state z i).ac.mayVote u = true) →
+    ∃ i e, z ∈ H (tr.time i) ∧ SA.VoteAt tr.projAC z i e ∧
+      e.msg.slot = u ∧ tr.time i ≤ d
+
+/-- The actual honest cast carries a held head above its cut's fork-choice
+root and occurs by the vote deadline. This does not imply remote visibility. -/
+def HonestCastLaws (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) : Prop :=
+  ∀ {z i ell e}, z ∈ H (tr.time i) → SA.CastAt tr.projAC z i ell e →
+    ell.frame = Node.frame (tr.state z i) ∧
+    (∃ B ∈ ell.frame.tree, B.root = e.msg.head ∧ ell.frame.Anc ell.frame.fcRoot B) ∧
+    tr.time i ≤ sp.ts e.msg.slot + sp.Δ
 
 /-- The predecessor votes consumed by the proposal are protected by the
 clean fast source. Their visibility in the collector is a different claim. -/
 theorem clean_predecessor_votes_on_delayed_trace {x r s m L CV}
     (hcut : CutObservations tr H) {K : SA.CommitteeDict sp.n}
     (hK : Compose.Growing.CommitteeFacts tr H K)
+    (hcast : HonestCastLaws tr H)
     (hx : x ∈ H (tr.time r)) (hl : SA.FastLockAt tr.projAC x r s L CV)
     (hclean : Compose.Growing.Clean tr H s m L) {u j e z}
     (hs : s < u) (hm : u ≤ m) (hz : z ∈ H (tr.time j))
@@ -1954,21 +1972,29 @@ theorem clean_predecessor_votes_on_delayed_trace {x r s m L CV}
     SA.VoteExtends (tr.HonestBlocksAt H) e.msg L := by
   sorry
 
-/-- The actual proposal cut sees timely predecessor votes for a half
-committee. Use the Healthy restart cutoff strictly before the predecessor
-slot, rather than assuming that a volatile collector survives restart. -/
+/-- Delivery, acceptance and AC replay must resolve each actual predecessor
+vote at the proposal pre-state. Scheduling the vote alone does not do this. -/
+def PredecessorResolution (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+    (g b : Time) : Prop :=
+  ∀ {y z : Fin sp.n} {i j u : Nat} {ell e},
+    y ∈ H (tr.time j) → z ∈ H (tr.time j) → tr.projAC.CallAt y j ell →
+    ell.call = .proposal → tr.time j = sp.ts (u + 1 : Nat) → tr.time j ≤ b →
+    gbar g + 4 * sp.Δ ≤ sp.ts u → SA.VoteAt tr.projAC z i e → e.msg.slot = u →
+    tr.time i ≤ sp.ts u + sp.Δ →
+    e.msg ∈ (tr.state y j).ac.pool u ∧
+      SA.resolutionTime (tr.state y j).ac ell.frame e.msg < SA.ETime.of (tr.time j)
+
+/-- Replay the predecessor vote duty before checking delivery and collection.
+The Healthy cutoff is at clamped GST, before the predecessor slot by `hstart`. -/
 theorem clean_predecessor_collector_at_proposal {g b : Time}
     {K : SA.CommitteeDict sp.n} (hcut : CutObservations tr H)
-    (hbase : BaseService tr H g) (hcatch : CatchRun tr H g (2 * sp.Δ))
-    (hK : CommitteeHalfUpTo tr H K g b) (hfacts : Compose.Growing.CommitteeFacts tr H K)
-    (hstep : ∀ i y ℓ, tr.CallAt y i ℓ → Node.CutStep y (tr.time i) (tr.state y i) ℓ (tr.post i))
+    (hK : CommitteeHalfUpTo tr H K g b)
+    (hduty : VoteDutyReplay tr H b) (hresolve : PredecessorResolution tr H g b)
     (hawake : ∀ y t, gbar g ≤ t → t ≤ b → y ∈ H t → tr.awake y t)
     {y j u ell} (hy : y ∈ H (tr.time j)) (hcall : tr.projAC.CallAt y j ell)
     (hproposal : ell.call = .proposal) (ht : tr.time j = sp.ts (u + 1 : Nat))
     (hstart : gbar g + 4 * sp.Δ ≤ sp.ts u) (hb : tr.time j ≤ b)
-    (hafterRestart : sp.ts (sp.slot (gbar g) + 1 : Nat) < sp.ts u)
-    (hcutoff : ∀ {z k}, z ∈ H (tr.time k) → tr.RestartAt z k → tr.time k ≤ b →
-      tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat)) :
+    (hcutoff : ∀ {z k}, z ∈ H (tr.time k) → tr.RestartAt z k → tr.time k ≤ b → tr.time k ≤ gbar g) :
     ∃ ids : Finset (Fin sp.n), sp.committeeSize ≤ 2 * ids.card ∧
       ∀ z ∈ ids, z ∈ H (tr.time j) ∧ z ∈ K.committee u ∧
         ∃ i < j, ∃ e, SA.VoteAt tr.projAC z i e ∧ e.msg.slot = u ∧
@@ -1983,9 +2009,9 @@ theorem protected_anchor_heads_of_clean_windows {g a b : Time}
     {K : SA.CommitteeDict sp.n} (hcut : CutObservations tr H)
     (hreset : IsReset tr H g a) (hcatch : CatchRun tr H g (2 * sp.Δ))
     (hbase : BaseService tr H g) (hK : CommitteeHalfUpTo tr H K g b)
-    (hfacts : Compose.Growing.CommitteeFacts tr H K)
-    (hcutoff : ∀ {z k}, z ∈ H (tr.time k) → tr.RestartAt z k → tr.time k ≤ b →
-      tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat))
+    (hduty : VoteDutyReplay tr H b) (hcast : HonestCastLaws tr H)
+    (hresolve : PredecessorResolution tr H g b)
+    (hcutoff : ∀ {z k}, z ∈ H (tr.time k) → tr.RestartAt z k → tr.time k ≤ b → tr.time k ≤ gbar g)
     (hclean : ∀ {x r s m L CV}, x ∈ H (tr.time r) → SA.FastLockAt tr.projAC x r s L CV →
       Healing.cleanLabel sp a + sp.k + 2 ≤ s → s ≤ m → sp.ts m + 2 * sp.Δ ≤ b →
       Compose.Growing.Clean tr H s m L)
@@ -2010,7 +2036,7 @@ theorem post_drain_anchor_poll_availability
     (hcut : CutObservations tr H) (hbase : BaseService tr H g)
     (hreset : IsReset tr H g a)
     (hcatch : CatchRun tr H g (2 * (S.params (Model.pubOf E) hn).Δ))
-    (hK : CommitteeHalfUpTo tr H K g b) (hfacts : Compose.Growing.CommitteeFacts tr H K)
+    (hK : CommitteeHalfUpTo tr H K g b)
     (hunanimous : ∀ {w y i m P Q C T}, AnchorRowDemand tr H g a b D R w y i m P Q C T →
       ∀ {z j e}, z ∈ H (tr.time j) → SA.VoteAt tr.projAC z j e →
         tr.time j ≤ b → e.msg.slot = P.slot → e.msg.head = P.root)
@@ -2019,9 +2045,9 @@ theorem post_drain_anchor_poll_availability
     AnchorAvailability tr H (ProjectedAppointment rho hn M B cuts) g a b D R := by
   sorry
 
-/-- Consume actual available polls, not an arbitrary candidate as the
-signing source. Compatibility of all competing candidates is a separate AC
-obligation; immutable record matching happens after this step. -/
+/-- Consume the selected polls and their local deepest-candidate comparison.
+Nonnegative release delay puts the attempt strictly before the consumer.
+Immutable record matching happens after this step. -/
 theorem anchor_sources_of_available_polls
     {V : Type} [Fintype V] [DecidableEq V] {E : Env V} {S : Setup}
     {p : (n : Nat) → Time → Rules n}
@@ -2029,16 +2055,8 @@ theorem anchor_sources_of_available_polls
     {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
     (M : EngineProjection rho tr H U) (B : EventBoundaries rho hn M)
     (cuts : ProjectedTickDutyBoundaries rho hn M B) (hv : rho.ExecutionValid)
-    {g a b D R : Time}
+    {g a b D R : Time} (hR : 0 ≤ R)
     (havailable : AnchorAvailability tr H (ProjectedAppointment rho hn M B cuts) g a b D R)
-    (hcompat : ∀ {w y i m P Q C T}, AnchorRowDemand tr H g a b D R w y i m P Q C T →
-      ∀ {z k u}, z ∈ H b → ProjectedAppointment rho hn M B cuts z k u →
-        let sp := S.params (Model.pubOf E) hn
-        let st := tr.state z k
-        let d := sp.ts (P.slot + 1) + 2 * sp.Δ
-        d ≤ u → u ≤ d + D →
-        ∀ L ∈ SA.toFGCandidates sp st.ac (Node.frame st) u,
-          Compatible (tr.HonestBlocksAt H) L P)
     (hge : ∀ {z y r m P C}, z ∈ H (tr.time r) → y ∈ H (tr.time m) →
       P ∈ (tr.state y m).fg.tree → C ∈ (tr.state z r).fg.tree →
       Anc (tr.HonestBlocksAt H) P C →
