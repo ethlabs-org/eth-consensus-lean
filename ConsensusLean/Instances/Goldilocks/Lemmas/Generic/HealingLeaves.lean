@@ -1428,6 +1428,34 @@ theorem truncH_eq_of_le {b t : Time} (ht : t ≤ b) : truncH H b t = H t :=
 theorem truncH_antitone (hH : Antitone H) (b : Time) : Antitone (truncH H b) :=
   fun _ _ htt' _ hy => ⟨hH htt' hy.1, htt'.trans hy.2⟩
 
+/-- Truncating honesty preserves the run laws without changing the trace or starts. -/
+theorem _root_.Consensus.Goldilocks.Growing.LocalRun.truncH
+    {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
+    {sg : A.Msg → Fin P.n} {ini : Fin P.n → A.State}
+    (hrun : Growing.LocalRun proposer dg H sg tr ini) (b : Time) :
+    Growing.LocalRun proposer dg (truncH H b) sg tr ini where
+  antitone := truncH_antitone hrun.antitone b
+  init y hy := hrun.init y hy.1
+  grouped y i c hc hy := hrun.grouped y i c hc hy.1
+  cutLaw y i c hc hy := hrun.cutLaw y i c hc hy.1
+  wire y j t e hy := hrun.wire y j t e hy.1
+  proposerCredential y j t B hy := hrun.proposerCredential y j t B hy.1
+  time_nonneg := hrun.time_nonneg
+  time_mono := hrun.time_mono
+  finite := hrun.finite
+  phase_order y y' j j' t e e' hy hy' := hrun.phase_order y y' j j' t e e' hy.1 hy'.1
+  tick_public y j t hy := hrun.tick_public y j t hy.1
+  tick_unique y j j' t hy := hrun.tick_unique y j j' t hy.1
+  tick_of_awake y t hy := hrun.tick_of_awake y t hy.1
+  awake_in_horizon y t hy := hrun.awake_in_horizon y t hy.1
+  awake_of_call y i hy := hrun.awake_of_call y i hy.1
+  restart_of_sleep y i u hy := hrun.restart_of_sleep y i u hy.1
+  restart_at_wake y u v hy := hrun.restart_at_wake y u v hy.1
+  sleep_of_restart y i hy := hrun.sleep_of_restart y i hy.1
+  block_unforgeable y i B hy hB hp := hrun.block_unforgeable y i B hy.1 hB hp.1
+  att_unforgeable y i a hy ha hs := hrun.att_unforgeable y i a hy.1 ha hs.1
+  msg_unforgeable y i m hy hm hs := hrun.msg_unforgeable y i m hy.1 hm hs.1
+
 theorem honestBlocksAt_truncH_subset (b : Time) :
     tr.HonestBlocksAt (truncH H b) ⊆ tr.HonestBlocksAt H :=
   fun _ ⟨y, i, t, ht, hle, hy, hB⟩ => ⟨y, i, t, ht, hle, hy.1, hB⟩

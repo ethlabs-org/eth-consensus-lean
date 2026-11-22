@@ -33,7 +33,8 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 omit [DecidableEq V] in
 open NodeAsChainShape.CanonicalTrace in
-private theorem blockView_encoding :
+/-- The encoded block object agrees with Goldilocks, whose header codec round-trips on decode. -/
+theorem blockView_encoding :
     let e := traceEncoding (E := E) S hn
     (∀ b : Blk (S.params (pubOf E) hn),
       engineObj e (NodeAsChainShape.blockObj e.codec.encode e.codec.carried b) = blockObj _ b) ∧

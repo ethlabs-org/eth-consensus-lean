@@ -33,8 +33,13 @@ theorem simTrace_genesis_root_ok :
     ((S.params (pubOf E) hn).toParams.genesisBlock
       (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload).RootOk
         (digestOf S rho) := by
-  simp only [Block.RootOk, digestOf_eq, Params.genesisBlock]
-  erw [dgOf_eq]
+  have hd : NodeAsChainShape.CanonicalTrace.digestOf (traceEncoding S hn) rho = digestOf S rho := by
+    apply traceEncoding_induction S hn (fun e _ =>
+      NodeAsChainShape.CanonicalTrace.digestOf e rho = digestOf S rho)
+    intro _ h
+    exact (h rho).trans (digestOf_eq S rho).symm
+  rw [← hd]
+  exact NodeAsChainShape.CanonicalTrace.genesis_root_ok (traceEncoding S hn) rho
 
 /-! ## Blocks of cuts
 
@@ -44,39 +49,9 @@ ids is a `GroupAt` / `DeliverSeq` of the trace. -/
 
 section
 
-variable {P : Params} {A : NodeAC P}
-
-/-- The `k`-th post-state of a cut list is the fold of its first `k + 1` cuts. -/
-theorem cutPosts_getElem (self : Fin P.n) (t : Time) (cs : List (Cut A)) (st : NodeState A)
-    (k : Nat) (hk : k < (cutPosts self t cs st).length) :
-    (cutPosts self t cs st)[k] = (cs.take (k + 1)).foldl (cutPost self t) st := by
-  induction cs generalizing st k with
-  | nil => simp [cutPosts_nil] at hk
-  | cons c cs ih =>
-    rw [List.getElem_of_eq (cutPosts_cons self t c cs st) hk]
-    cases k with
-    | zero => simp
-    | succ k =>
-      rw [cutPosts_cons, List.length_cons] at hk
-      rw [List.getElem_cons_succ, ih _ _ (by omega), List.take_succ_cons, List.foldl_cons]
-
-end
-
-section
-
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (proposer : Nat → Fin sp.n)
   (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
-
-/-- The post-state of cut `k` of a group: the handler's `k`-th post-state. -/
-theorem getElem_groupRecs_post (st : NodeState (goldilocksNode sp ro)) (t : Time) (id : Nat)
-    (e : Event (goldilocksNode sp ro)) (k : Nat)
-    (hk : k < (groupRecs proposer dg self st t id e).length) :
-    (groupRecs proposer dg self st t id e)[k].post =
-      (cutPosts self t (exec proposer dg self st t e).2 st)[k]'(by
-        rw [length_cutPosts]; rwa [length_groupRecs] at hk) := by
-  rw [List.getElem_of_eq (groupRecs_eq proposer dg self st t id e) hk, List.getElem_mapIdx,
-    List.getElem_zip]
 
 /-- A tick makes a cut (the AC's tick). -/
 theorem exec_tick_ne_nil (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) :
@@ -103,25 +78,18 @@ theorem state_of_group
     (h0 : (simTrace S rho hn).state y j0 = st) :
     (simTrace S rho hn).state y (j0 + (groupRecs proposer dg y st t id e).length) =
       (exec proposer dg y st t e).1 := by
-  have key : ∀ k ≤ (exec proposer dg y st t e).2.length,
-      (simTrace S rho hn).state y (j0 + k) =
-        ((exec proposer dg y st t e).2.take k).foldl (cutPost y t) st := by
-    intro k
-    induction k with
-    | zero => intro _; simpa using h0
-    | succ k ih =>
-      intro hk
-      have hk' : k < (groupRecs proposer dg y st t id e).length := by
-        rw [length_groupRecs]; omega
-      have hr := hcut k hk'
-      rw [List.getElem?_eq_getElem hk'] at hr
-      obtain ⟨hnode, -, -, -, -⟩ := getElem_groupRecs proposer dg y st t id e k hk'
-      change (simTrace S rho hn).state y (j0 + k).succ = _
-      rw [Trace.state.eq_2, ite_eq_left, simTrace_post, hr, Option.elim_some,
-        getElem_groupRecs_post, cutPosts_getElem]
-      rw [simTrace_node, hr, Option.elim_some, hnode, simTrace_label, hr]
-      simp
-  rw [length_groupRecs, key _ le_rfl, List.take_length, foldl_cutPost_exec]
+  have heq : ∀ k < (NodeAsChainShape.CanonicalTrace.groupRecs proposer dg y st t id e).length,
+      (NodeAsChainShape.CanonicalTrace.allCuts (traceEncoding S hn) rho)[j0 + k]? =
+        (NodeAsChainShape.CanonicalTrace.groupRecs proposer dg y st t id e)[k]? := by
+    intro k hk
+    apply (allCuts_groupRecs_getElem?_iff S rho hn proposer dg y st t id e (j0 + k) k).mp
+    apply hcut k
+    rw [NodeAsChainShape.CanonicalTrace.groupRecs_eq, List.length_mapIdx,
+      List.length_zip, length_cutPosts, min_self] at hk
+    rwa [length_groupRecs]
+  rw [(simTrace_encoding S rho hn).1] at h0 ⊢
+  rw [length_groupRecs, NodeAsChainShape.CanonicalTrace.state_in_group _ _ _ _ heq h0 _ le_rfl,
+    List.take_length, foldl_cutPost_exec]
 
 /-- The event id of an existing cut is its record's. -/
 private theorem event_of_getElem? {k : Nat} {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
@@ -160,34 +128,22 @@ theorem groupAt_of_group
     (simTrace S rho hn).GroupAt proposer dg y j0 t e ∧
       (groupRecs proposer dg y st t id e).length =
         (exec proposer dg y ((simTrace S rho hn).state y j0) t e).2.length := by
-  subst h0
-  set st := (simTrace S rho hn).state y j0 with hst
-  have hlen := length_groupRecs proposer dg y st t id e
-  have hfact : ∀ k (hk : k < (exec proposer dg y st t e).2.length),
-      (simTrace S rho hn).node (j0 + k) = y ∧ (simTrace S rho hn).time (j0 + k) = t ∧
-        (simTrace S rho hn).event (j0 + k) = id ∧ (simTrace S rho hn).pos (j0 + k) = k ∧
-        (simTrace S rho hn).label (j0 + k) = some (exec proposer dg y st t e).2[k] := by
-    intro k hk
-    have hk' : k < (groupRecs proposer dg y st t id e).length := by omega
-    have hr := hcut k hk'
-    rw [List.getElem?_eq_getElem hk'] at hr
-    obtain ⟨h1, h2, h3, h4, h5⟩ := getElem_groupRecs proposer dg y st t id e k hk'
-    refine ⟨?_, ?_, ?_, ?_, ?_⟩
-    · rw [simTrace_node, hr, Option.elim_some, h1]
-    · rw [simTrace_time, hr, Option.elim_some, h2]
-    · rw [event_of_getElem? S rho hn hr, h3]
-    · rw [simTrace_pos, hr, Option.elim_some, h4]
-    · rw [simTrace_label, hr, Option.map_some, h5]
-  have h0' : (simTrace S rho hn).event j0 = id := by
-    have := (hfact 0 (List.length_pos_of_ne_nil hne)).2.2.1
-    rwa [Nat.add_zero] at this
-  refine ⟨⟨hne, ?_, ?_⟩, hlen⟩
+  have hlen : (NodeAsChainShape.CanonicalTrace.groupRecs proposer dg y st t id e).length =
+      (groupRecs proposer dg y st t id e).length := by
+    rw [NodeAsChainShape.CanonicalTrace.groupRecs_eq, List.length_mapIdx,
+      List.length_zip, length_cutPosts, min_self, length_groupRecs]
+  have htrace := (simTrace_encoding S rho hn).1
+  refine ⟨?_, by rw [h0, length_groupRecs]⟩
+  rw [htrace] at h0 huniq ⊢
+  apply NodeAsChainShape.CanonicalTrace.groupAt_of_recs (traceEncoding S hn) rho proposer dg
+    (id := id) h0 hne
   · intro k hk
-    obtain ⟨h1, h2, h3, h4, h5⟩ := hfact k hk
-    exact ⟨h1, h2, h3.trans h0'.symm, h4, h5⟩
+    rw [hlen] at hk
+    exact (allCuts_groupRecs_getElem?_iff S rho hn proposer dg y st t id e (j0 + k) k).mp
+      (hcut k hk)
   · intro k hk
-    rw [← hlen]
-    exact huniq k (hk.trans h0')
+    rw [hlen]
+    exact huniq k hk
 
 /-- A delivery block at `j0` whose sub-event ids from `sub` on are unique to the block is a
 `DeliverSeq` of the trace. -/

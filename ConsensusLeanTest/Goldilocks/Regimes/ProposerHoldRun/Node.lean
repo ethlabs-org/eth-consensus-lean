@@ -1,7 +1,10 @@
 module
 public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Static
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
-import all ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSchedule
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.BlockView
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeRunSchedule
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
 import all ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import all ConsensusLean.Lemmas.Model.Retain
 @[expose] public section
@@ -107,43 +110,33 @@ theorem wire_block {y : Fin (Fintype.card (Fin 5))} {j : Nat} {t : Time}
     ∃ (i : Nat) (w : Fin 5) (o : Obj S), (rhoc S).events[i]? = some (Model.Event.deliver w o t) ∧
       Model.Obj.Contains o (blockObj (({ S with vote := AsChainShape.stock } : Setup).params
         (pubOf env) one_le_card) B) := by
-  obtain ⟨r, i, ev, he, hstart, _, hidx, hpos, _, het, hphase⟩ :=
-    groupAt_start { S with vote := stock } (rhoc S) one_le_card hg
+  let S' := { S with vote := stock }
+  let e := traceEncoding (E := env) S' one_le_card
+  have htrace := (simTrace_encoding S' (rhoc S) one_le_card).1
+  obtain ⟨hpr, hdg⟩ := runProposer_digestOf S' (rhoc S) one_le_card
+  change (simTrace S' (rhoc S) one_le_card).GroupAt
+    (runProposer S' (rhoc S) one_le_card) (digestOf S' (rhoc S)) y j t (.block B) at hg
+  rw [htrace, hpr, hdg] at hg
+  obtain ⟨i, ev, he, hlo, _, _, ht, hphase, r, hr, _⟩ :=
+    NodeAsChainShape.CanonicalTrace.group_origin e (rhoc S) hg
   obtain ⟨hne, hcuts, _⟩ := hg
-  obtain ⟨_, _, _, _, hl⟩ := hcuts 0 (List.length_pos_of_ne_nil hne)
-  rw [Nat.add_zero] at hl
-  have hr : (allCuts { S with vote := stock } (rhoc S) one_le_card)[j]? = some r := by
-    have h := allCuts_getElem?_add { S with vote := stock } (rhoc S) one_le_card i
-        (j - cutMap { S with vote := stock } (rhoc S) one_le_card i)
-      (List.getElem?_eq_some_iff.mp he).1 (List.getElem?_eq_some_iff.mp hidx).1
-    rw [Nat.add_sub_cancel' hstart, hidx] at h
-    exact h
+  obtain ⟨c, cs, hcs⟩ := List.exists_cons_of_ne_nil hne
+  obtain ⟨acc, hc⟩ := exec_block_head _ _ _ _ _ _ hcs
+  have hl := (hcuts 0 (List.length_pos_of_ne_nil hne)).2.2.2.2
+  have hlookup := NodeAsChainShape.CanonicalTrace.allCuts_getElem?_add e (rhoc S) i _
+    (List.getElem?_eq_some_iff.mp he).1 (List.getElem?_eq_some_iff.mp hr).1
+  rw [Nat.add_sub_cancel' hlo, hr] at hlookup
+  rw [Nat.add_zero, NodeAsChainShape.CanonicalTrace.simTrace_label, hlookup, Option.map_some,
+    Option.some.injEq, List.getElem_of_eq hcs] at hl
   cases ev with
-  | tick v t' => simp [Event.phase, Model.Event.phase] at hphase
-  | restart v t' => simp [Event.phase, Model.Event.phase] at hphase
-  | deliver v o t' =>
-    have hrmem := List.mem_of_getElem? hidx
-    rw [eventCuts_deliver { S with vote := stock } (rhoc S) one_le_card i v o t' he] at hrmem
-    have hrlabel : (tr S).label j = some r.label := by
-      rw [simTrace_label { S with vote := stock } (rhoc S) one_le_card, hr]
-      rfl
-    obtain ⟨c, cs, hcs⟩ := List.exists_cons_of_ne_nil hne
-    rw [hrlabel, Option.some.injEq, List.getElem_of_eq hcs] at hl
-    obtain ⟨acc, hc⟩ : ∃ acc, c = .fg (.block B acc) := by
-      simp only [exec, onBlock] at hcs
-      split_ifs at hcs
-      cases hfg : ((tr S).state y j).fg.onBlock B <;> simp only [hfg, List.cons.injEq] at hcs
-      · exact ⟨false, hcs.1.symm⟩
-      · exact ⟨true, hcs.1.symm⟩
-    have hB := delivery_block_authorized _ _ _ _ _ _
-      (fun B => blockObj (({ S with vote := AsChainShape.stock } : Setup).params
-          (pubOf env) one_le_card) B ∈
-        delivered (Model.digests (rhoc S).hash o)
-          (stateAt { S with vote := stock } (rhoc S) one_le_card v i) o) _ _ _
-      (fun x hx B' hxB => hxB ▸ hx) r hrmem hpos B acc (hl.trans hc)
-    change t' = t at het
-    subst het
-    exact ⟨i, v, o, he, contains_of_mem_delivered hB⟩
+  | tick v u => simp [Event.phase, Model.Event.phase] at hphase
+  | restart v u => simp [Event.phase, Model.Event.phase] at hphase
+  | deliver v o u =>
+    obtain ⟨hobj, hcodec⟩ := blockView_encoding (E := env) S' one_le_card
+    have hB := NodeAsChainShape.CanonicalTrace.blockObj_delivered e (rhoc S) he
+      (List.mem_of_getElem? hr) (hl.trans hc) hcodec
+    rw [hobj] at hB
+    exact ⟨i, v, o, ht ▸ he, hB⟩
 
 /-- **Where a processed block comes from**: a delivered object carrying it, or the node's own
 release of it at the call's time. -/

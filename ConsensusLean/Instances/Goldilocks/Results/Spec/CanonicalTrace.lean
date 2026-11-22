@@ -139,6 +139,16 @@ noncomputable def digestOf :
 noncomputable def runProposer (s : Nat) : Fin (Fintype.card V) :=
   CanonicalTrace.runProposer rho hn s
 
+omit [DecidableEq V] in
+/-- The concrete proposer and digest are those used by the generic replay. -/
+theorem runProposer_digestOf :
+    runProposer S rho hn = CanonicalTrace.runProposer rho hn ∧
+      digestOf S rho = CanonicalTrace.digestOf (traceEncoding S hn) rho := by
+  refine ⟨rfl, ?_⟩
+  funext par s x atts pl
+  exact (dgOf_eq _ _ _ _ _ _ _).trans
+    (CanonicalTrace.digestOf_eq (traceEncoding S hn) rho par s x atts pl).symm
+
 /-- The node state held by the shape before an engine cut. -/
 noncomputable def stateAt (v : V) (i : Nat) :
     State (S.params (pubOf E) hn) (S.ro _) S.vote :=
@@ -257,6 +267,15 @@ theorem eventCuts_label_pos (i : Nat)
     ∃ q ∈ eventCuts S rho hn i, q.pos = r.pos ∧ q.label = r.label := by
   exact ⟨goldilocksCut r, List.mem_map_of_mem hr, rfl, rfl⟩
 
+/-- Every concrete event cut preserves the position and label of its generic source. -/
+theorem eventCuts_source (i : Nat)
+    {q : CutRec (S.params (pubOf E) hn) (S.ro _)} (hq : q ∈ eventCuts S rho hn i) :
+    ∃ r ∈ CanonicalTrace.eventCuts (traceEncoding S hn) rho i,
+      q.pos = r.pos ∧ q.label = r.label ∧ q.node = r.node ∧ q.time = r.time ∧
+        q.event = r.event := by
+  obtain ⟨r, hr, rfl⟩ := List.mem_map.mp hq
+  exact ⟨r, hr, rfl, rfl, rfl, rfl, rfl⟩
+
 open Classical in
 /-- Each engine event contributes exactly its handler groups. -/
 theorem eventCuts_eq (i : Nat) : eventCuts S rho hn i =
@@ -312,6 +331,30 @@ theorem cutMap_succ (i : Nat) :
 /-- Every trace cut, in engine event order. -/
 noncomputable def allCuts : List (CutRec (S.params (pubOf E) hn) (S.ro _)) :=
   (CanonicalTrace.allCuts (traceEncoding S hn) rho).map goldilocksCut
+
+/-- The same record conversion maps the full replay and each event's cuts. -/
+theorem cutRecords_map :
+    ∃ f, allCuts S rho hn = (CanonicalTrace.allCuts (traceEncoding S hn) rho).map f ∧
+      ∀ i, eventCuts S rho hn i = (CanonicalTrace.eventCuts (traceEncoding S hn) rho i).map f :=
+  ⟨goldilocksCut, by rfl, fun _ => by rfl⟩
+
+/-- The concrete cut records agree at two indices exactly when their encoded records agree. -/
+theorem allCuts_groupRecs_getElem?_iff (pr : Nat → Fin (S.params (pubOf E) hn).n)
+    (dg : Digest (List (FG.Att (S.params (pubOf E) hn).n)) (Payload (S.params (pubOf E) hn).n))
+    (y : Fin (S.params (pubOf E) hn).n)
+    (st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _)))
+    (t : Time) (id : Nat) (ev : Event (goldilocksNode (S.params (pubOf E) hn) (S.ro _)))
+    (j k : Nat) :
+    (allCuts S rho hn)[j]? = (groupRecs pr dg y st t id ev)[k]? ↔
+      (CanonicalTrace.allCuts (traceEncoding S hn) rho)[j]? =
+        (CanonicalTrace.groupRecs pr dg y st t id ev)[k]? := by
+  rw [allCuts, groupRecs, List.getElem?_map, List.getElem?_map]
+  apply (Option.map_injective ?_).eq_iff
+  intro a b h
+  cases a
+  cases b
+  simp only [goldilocksCut, CutRec.mk.injEq] at h
+  aesop
 
 /-- The time of trace cut `k`; after the last cut, `horizon + 1` (the stutter). -/
 noncomputable def cutTime (k : Nat) : Time :=

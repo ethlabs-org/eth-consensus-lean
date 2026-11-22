@@ -1034,7 +1034,12 @@ private theorem proposal_step (L : e.OpLaws due) (rho : Model.Run (compiled F) E
     e.adapter.node (envelope e (rho.dutyStep v nd (engineDuty e (.propose s hs))).1) =
       (tickStep (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
         (e.adapter.node (envelope e nd)) (e.adapter.now (envelope e nd))
-        (encodeTxs nd.st.2) .proposal).1 := by
+        (encodeTxs nd.st.2) .proposal).1 ∧
+    ∀ b acc, Cut.fg (.block b acc) ∈ (tickStep (runProposer rho hn) (digestOf e rho)
+        (rho.ownKey v) (e.adapter.node (envelope e nd)) (e.adapter.now (envelope e nd))
+        (encodeTxs nd.st.2) .proposal).2 →
+      engineObj e (blockObj e.codec.encode e.codec.carried b) ∈
+        (rho.dutyStep v nd (engineDuty e (.propose s hs))).2 := by
   let st := envelope e nd
   let t := e.adapter.now st
   let r := acProposal (e.adapter.node st) t
@@ -1051,7 +1056,6 @@ private theorem proposal_step (L : e.OpLaws due) (rho : Model.Run (compiled F) E
     unfold Proposes
     rw [hslot, hsel, Finset.mem_singleton]
     exact ⟨fun h => h.2.2.symm, fun h => ⟨hs, ht, h.symm⟩⟩
-  change e.adapter.node (envelope e (rho.dutyStep v nd d).1) = _
   by_cases hmem : rho.ownKey v ∈ rho.sel (engineRole e (.proposer s))
   · have hact : envelope e ⟨((Model.protoOf (compiled F) E).act nd.st d).1, nd.seen⟩ =
         ((e.ops hn).propose st s).1 := envelope_act nd (.propose s hs)
@@ -1061,6 +1065,7 @@ private theorem proposal_step (L : e.OpLaws due) (rho : Model.Run (compiled F) E
     have hyes : Proposes (P := paramsAtCount p (Fintype.card V) hN hn)
         (runProposer rho hn) (rho.ownKey v) (e.adapter.now (envelope e nd)) :=
       hiff.mpr hmem
+    change e.adapter.node (envelope e (rho.dutyStep v nd d).1) = _ ∧ _
     simp only [tickStep, ite_eq_left hyes]
     generalize hr : (acProposal (e.adapter.node (envelope e nd))
       (e.adapter.now (envelope e nd))).2.2 = q
@@ -1073,6 +1078,7 @@ private theorem proposal_step (L : e.OpLaws due) (rho : Model.Run (compiled F) E
         dsimp only
         rw (config := { transparency := .default }) [hr]
       rw [rho.dutyStep_eq, hrole, ite_eq_left hmem, hcand, hp]
+      refine ⟨?_, by simp [acProposal]⟩
       change e.adapter.node (envelope e ⟨((Model.protoOf (compiled F) E).act nd.st d).1,
         nd.seen⟩) = r.1
       rw [hact, hp]
@@ -1121,6 +1127,19 @@ private theorem proposal_step (L : e.OpLaws due) (rho : Model.Run (compiled F) E
         rw (config := { transparency := .default }) [hp]
       have hrec := (L.recordOwn_obs (e.adapter.setNode st r.1)
         (.mk (.signed (rho.ownKey v) (.proposer s)) (.item header) cs) (Model.digests rho.hash o)).1
+      refine ⟨?_, ?_⟩
+      swap
+      · intro b acc h
+        simp only [List.mem_cons] at h
+        rcases h with h | h
+        · simp [acProposal] at h
+        · simp only [proposeBlock, onBlock] at h
+          split at h
+          · simp at h
+          · split at h <;> simp [acCall] at h <;> rw [h.1] <;>
+              simp [o, blockObj, header, headerOf, mkBlock, atts, info, par, cs] <;>
+              exact congrArg (fun k => engineObj e (.mk (.signed (rho.ownKey v) (.proposer k))
+                (.item ⟨par, k, encodeTxs nd.st.2, info⟩) cs)) hslot
       refine hrec.trans ?_
       change e.adapter.node (recordBlock e.codec e.adapter (e.adapter.setNode st r.1)
         (rho.ownKey v) header (Model.digests rho.hash o)) = _
@@ -1132,7 +1151,7 @@ private theorem proposal_step (L : e.OpLaws due) (rho : Model.Run (compiled F) E
     have hno : ¬ Proposes (P := paramsAtCount p (Fintype.card V) hN hn)
         (runProposer rho hn) (rho.ownKey v) (e.adapter.now (envelope e nd)) :=
       hiff.not.mpr hmem
-    simp only [tickStep, ite_eq_right hno]
+    simp [tickStep, hno]
 
 open Classical in
 /-- Derive the frozen replay equations from local observations and the instance's two guards
@@ -1183,7 +1202,7 @@ theorem toLawful [DecidableEq V] (L : e.OpLaws due) (ready : e.ProposalReady) : 
           (proposer_selected L rho hv s) (fun h => ready rho hv he s hs hone h)
         change e.adapter.now (envelope e pre) = t at hclock
         rw [hclock, hm] at step
-        exact step
+        exact step.1
   tick_finish rho hv i v t _ := by
     have ⟨hk, ht⟩ := proposal_finish L rho v i t
     exact tick_finish_at L rho v _ t (poll_selected L rho hv v) hk ht
@@ -1193,6 +1212,89 @@ theorem toLawful [DecidableEq V] (L : e.OpLaws due) (ready : e.ProposalReady) : 
   restore_node k st t := (restore_obs L k st t).1
 
 end Encoding.OpLaws
+
+private theorem tick_proposal_release [DecidableEq V] (L : e.OpLaws due)
+    (rho : Model.Run (compiled F) E) (hv : rho.ExecutionValid) {j : Nat} {v : V} {t : Time}
+    (he : rho.events[j]? = some (.tick v t)) {s : Slot} {hs : 0 < s}
+    (hone : e.skel.proposeAt t = [.propose s hs])
+    (o : (Model.protoOf (compiled F) E).Object)
+    (hr : o ∈ (rho.dutyStep v (rho.runDuties v (afterClock rho (rho.stateBefore j v) v t)
+      ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat].map (engineDuty e))).1
+      (engineDuty e (.propose s hs))).2) : o ∈ rho.releasesAt j := by
+  have hw := hv.tick_awake v t (List.mem_of_getElem? he)
+  have ht := (hv.in_horizon (.tick v t) (List.mem_of_getElem? he)).1
+  unfold Model.Run.releasesAt
+  rw [he]
+  change o ∈ (rho.tick (rho.stateBefore j v) v t).2
+  rw [rho.tick_of_awake _ v t hw, L.tick_schedule t ht, hone, ← afterClock_eq]
+  simp only [List.append_assoc, List.map_append, List.singleton_append]
+  rw [rho.runDuties_append]
+  apply List.mem_append_left
+  apply List.mem_append_right
+  conv in List.map (engineDuty e) (.propose s hs :: _) => rw [List.map_cons]
+  rw [rho.runDuties_cons]
+  exact List.mem_append_left _ hr
+
+open Classical in
+/-- Each own block cut of a public tick comes from a block released by its propose duty.
+Kept for a downstream consumer. -/
+theorem tick_block_released [DecidableEq V] (e : Encoding F E p hN hn A)
+    (rho : Model.Run (compiled F) E) {due : e.State hn → Bool}
+    (L : e.OpLaws due) (ready : e.ProposalReady) (hv : rho.ExecutionValid)
+    {j : Nat} {v : V} {t : Time}
+    (he : rho.events[j]? = some (.tick v t))
+    (hp : (paramsAtCount p (Fintype.card V) hN hn).IsPublic t) :
+    ∀ r ∈ eventCuts e rho j, ∀ b acc, r.label = .fg (.block b acc) → r.pos ≠ 0 →
+      engineObj e (blockObj e.codec.encode e.codec.carried b) ∈ rho.releasesAt j := by
+  open Encoding.OpLaws in
+  intro r hr b acc hl _
+  rw [eventCuts_tick e rho j v t he, ite_eq_left hp, groupRecs_eq] at hr
+  obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
+  rw [List.getElem_mapIdx, List.getElem_zip] at hl
+  have hcut : Cut.fg (.block b acc) ∈
+      (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
+        (e.adapter.node (stateAt e rho v j)) t
+        (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 :=
+    hl ▸ List.getElem_mem _
+  let clk := afterClock rho (rho.stateBefore j v) v t
+  let ds : List (ShapeDuty e.skel.Kind) := [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat]
+  let pre := (rho.runDuties v clk (ds.map (engineDuty e))).1
+  let pr := runProposer rho hn
+  let dg := digestOf e rho
+  let y := rho.ownKey v
+  let x := encodeTxs (Model.mempool rho.inbox v t)
+  let st := e.adapter.node (stateAt e rho v j)
+  have hpref := tick_prefix L rho hv he
+  rw [ite_eq_left hp] at hpref
+  have hpre : e.adapter.node (envelope e pre) = (acCall y st t .tick).1 := hpref.1
+  change Cut.fg (.block b acc) ∈ (onTick pr dg y st t x).2 at hcut
+  have hprop : Cut.fg (.block b acc) ∈
+      (tickStep pr dg y (e.adapter.node (envelope e pre)) t x .proposal).2 := by
+    simp only [onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil,
+      List.nil_append] at hcut
+    rw [hpre]
+    rcases List.mem_append.mp hcut with h | h
+    · rcases List.mem_append.mp h with h | h
+      · simp [tickStep, acCall] at h
+      · exact h
+    · simp only [tickStep] at h
+      split at h
+      · simp [acToFG] at h
+      · unfold attest at h
+        split at h <;> simp [acToFG, onAttestation] at h
+  rcases Simulation.Skeleton.proposeAt_cases e.skel t with ⟨_, hno⟩ | ⟨s, hs, hone, htime⟩
+  · have hnop : ¬ Proposes pr y t := fun h => hno _ h.1 (h.2.1.trans (L.grid_time _).symm)
+    simp [tickStep, hnop] at hprop
+  have ⟨hk', hclock⟩ := proposal_clock L rho v j t ds
+  have hm : pre.st.2 = Model.mempool rho.inbox v t := by
+    dsimp only [pre, clk]
+    rw [duties_mempool, afterClock_eq]
+    rfl
+  have hrel := (proposal_step L rho v pre s hs hk' (hclock.trans (htime.trans (L.grid_time s)))
+    (proposer_selected L rho hv s) (fun h => ready rho hv he s hs hone h)).2
+  change e.adapter.now (envelope e pre) = t at hclock
+  rw [hclock, hm] at hrel
+  exact tick_proposal_release L rho hv he hone _ (hrel b acc hprop)
 
 end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
 

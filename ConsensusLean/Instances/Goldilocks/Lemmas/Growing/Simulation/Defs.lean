@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.TraceDefs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeRunSchedule
 
 public section
 
@@ -24,9 +25,13 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 omit [DecidableEq V] in
 /-- Permanent compromise makes the time-indexed honest keys antitone. -/
 theorem honestKeysAt_antitone : Antitone (honestKeysAt S rho) := by
-  intro s t hst y hy
-  rw [mem_honestKeysAt_iff] at hy ⊢
-  exact fun hf => hy (rho.faultyAt_mono (min_le_min_right _ hst) hf)
+  classical
+  have h : honestKeysAt S rho = NodeAsChainShape.CanonicalTrace.honestKeysAt rho := by
+    funext t
+    ext y
+    rw [mem_honestKeysAt_iff, NodeAsChainShape.CanonicalTrace.mem_honestKeysAt_iff]
+  rw [h]
+  exact NodeAsChainShape.CanonicalTrace.honestKeysAt_antitone rho
 
 omit [DecidableEq V] in
 /-- An engine node honest at an in-horizon time has an honest trace key then. -/

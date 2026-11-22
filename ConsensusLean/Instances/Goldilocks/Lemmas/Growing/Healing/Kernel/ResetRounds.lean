@@ -756,38 +756,16 @@ The honest sets truncated after `b` (`Generic.truncH`) keep every honesty read u
 every later one, so a restart honest on them is at a time `≤ b`, where `NoRestartUpTo` bounds it.
 The run-independent facts are the generic ones (`Lemmas/Generic/HealingLeaves`). -/
 
-open Generic (truncH truncH_eq_of_le truncH_antitone honestBlocksAt_truncH_subset catchRun_truncH
+open Generic (truncH truncH_eq_of_le honestBlocksAt_truncH_subset catchRun_truncH
   HZ_truncH isReset_truncH_iff)
 
-/-- **The run laws transfer to the truncation**, from any starts `ini`. Antitonicity is
-`Generic.truncH_antitone`. Every other law of `GoldilocksRun` reads honesty only in its hypotheses,
-and `truncH H b t ⊆ H t`, so each law for `H` is the law for `truncH H b` (with the honesty
-premises projected by `.1`). -/
+/-- The local run laws transfer by `LocalRun.truncH`; the Goldilocks-specific laws preserve the
+same starts and project any honesty premises from the truncation. -/
 theorem goldilocksRun_truncH {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (b : Time) :
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg (truncH H b) tr ini where
+  toLocalRun := hrun.toLocalRun.truncH b
   vstart := hrun.vstart
-  antitone := truncH_antitone hrun.antitone b
-  init y hy := hrun.init y hy.1
-  grouped y i c hc hy := hrun.grouped y i c hc hy.1
-  cutLaw y i c hc hy := hrun.cutLaw y i c hc hy.1
-  wire y j t e hy := hrun.wire y j t e hy.1
-  proposerCredential y j t B hy := hrun.proposerCredential y j t B hy.1
-  time_nonneg := hrun.time_nonneg
-  time_mono := hrun.time_mono
-  finite := hrun.finite
-  phase_order y y' j j' t e e' hy hy' := hrun.phase_order y y' j j' t e e' hy.1 hy'.1
-  tick_public y j t hy := hrun.tick_public y j t hy.1
-  tick_unique y j j' t hy := hrun.tick_unique y j j' t hy.1
-  tick_of_awake y t hy := hrun.tick_of_awake y t hy.1
-  awake_in_horizon y t hy := hrun.awake_in_horizon y t hy.1
-  awake_of_call y i hy := hrun.awake_of_call y i hy.1
-  restart_of_sleep y i u hy := hrun.restart_of_sleep y i u hy.1
-  restart_at_wake y u v hy := hrun.restart_at_wake y u v hy.1
-  sleep_of_restart y i hy := hrun.sleep_of_restart y i hy.1
-  block_unforgeable y i B hy hB hp := hrun.block_unforgeable y i B hy.1 hB hp.1
-  att_unforgeable y i a hy ha hs := hrun.att_unforgeable y i a hy.1 ha hs.1
-  msg_unforgeable y i m hy hm hs := hrun.msg_unforgeable y i m hy.1 hm hs.1
   genesis_root_ok := hrun.genesis_root_ok
   carried_vote_unforgeable y i B hy hB v hv hs :=
     hrun.carried_vote_unforgeable y i B hy.1 hB v hv hs.1

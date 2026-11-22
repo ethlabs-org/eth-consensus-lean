@@ -823,6 +823,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryO
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventory
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventorySchedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLaws
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeRunSchedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeStateAgreement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PayloadSource
@@ -852,7 +853,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Unforgeable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Visit
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.VoteForwardQueue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.VoteMember
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.WireGroup
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.GrowingObservation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Interface

@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Release
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.GoldilocksStateAgreement
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLaws
 
 public section
 
@@ -35,7 +37,7 @@ theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
     obtain ⟨-, -, -, -, hl⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm
     rw [hl]; exact List.getElem_mem _
   have hv' : v ∉ rho.faultyAt 0 := event_honest_zero S rho hv he
-  obtain ⟨N4, N5, Q, R4, F, G, heq, -, -, -, -, hQlen, hQ, hR4, -⟩ :=
+  obtain ⟨N4, N5, Q, R4, F, G, heq, -, -, -, -, hQlen, hQ, -, -⟩ :=
     tick_public_analysis S rho hn hv hv' he hp (preNode_releasable_at S rho hn hv he)
   have hpos : ∀ q ∈ Q, Q.head? = some q ∨ Q.tail.head? = some q := by
     intro q hq
@@ -56,12 +58,22 @@ theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
       rw [h]; simp [relHead_eq, hk]
     · refine List.mem_append_left _ (List.mem_append_right _ ?_)
       rw [h]; simp [relHead_eq, hk]
-  refine ⟨fun B acc hB _ => ?_, fun ℓ hℓ m hm => ?_⟩
-  · rw [heq]
-    refine List.mem_append_left _ (List.mem_append_left _ (List.mem_append_left _
-      (List.mem_append_right _ ?_)))
-    rw [hR4, mem_blockObjs]
-    exact ⟨B, acc, hB ▸ hlab, rfl⟩
+  refine ⟨fun B acc hB hpos => ?_, fun ℓ hℓ m hm => ?_⟩
+  · obtain ⟨q, hq, hqp, hql, _⟩ := eventCuts_source S rho hn i hr
+    have h := NodeAsChainShape.CanonicalTrace.tick_block_released (traceEncoding S hn) rho
+      (traceEncoding_opLaws S hn) (goldilocks_ready S hn) hv he hp q hq B acc
+      (hql.symm.trans hB) (hqp ▸ hpos)
+    have hobj : NodeAsChainShape.CanonicalTrace.engineObj (traceEncoding S hn)
+        (NodeAsChainShape.blockObj (traceEncoding S hn).codec.encode
+          (traceEncoding S hn).codec.carried B) = blockObj (S.params (pubOf E) hn) B := by
+      apply traceEncoding_induction S hn (fun e _ =>
+        NodeAsChainShape.CanonicalTrace.engineObj e
+          (NodeAsChainShape.blockObj e.codec.encode e.codec.carried B) = blockObj _ B)
+      intro _ _
+      rw (config := { transparency := .default }) [NodeAsChainShape.CanonicalTrace.engineObj_eq,
+        cast_eq]
+      rfl
+    rwa [hobj] at h
   · have hval := emits_val_of_mem_exec _ _ _ _ _ _ (hℓ ▸ hlab) m hm
     have hq : Body.vote (encodeVote m.msg) ∈ Q := by
       rw [hQ]

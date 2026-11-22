@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Schedule
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EventGroups
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.GoldilocksStateAgreement
 
 public section
 
@@ -41,13 +42,11 @@ theorem simTraceAt_tick_of_awake (hv : rho.ExecutionValid)
     (ht0 : 0 ≤ t) (hp : (S.params (pubOf E) hn).toParams.IsPublic t)
     (hw : (simTraceAt S rho hn).awake y t) :
     ∃ j, (simTraceAt S rho hn).TickAt (runProposer S rho hn) (digestOf S rho) y j t := by
-  obtain ⟨hwE, _, hth⟩ := (simTraceAt_awake_bounds S rho hn y t).mp hw
-  have hh : rho.key y ∉ rho.faultyAt t := by
-    rwa [mem_honestKeysAt_iff, min_eq_left hth] at hy
-  obtain ⟨i, he⟩ := List.mem_iff_getElem?.mp (hv.tick_total _ t ht0 hth hh hwE)
-  obtain ⟨hg, _⟩ := simTraceAt_tick_public_group S rho hn hv he hp
-  rw [ownKey_key] at hg
-  exact ⟨_, _, hg⟩
+  obtain ⟨hpr, hdg⟩ := runProposer_digestOf S rho hn
+  simp only [simTraceAt_eq, (simTrace_encoding S rho hn).1, hpr, hdg] at hw ⊢
+  rw [mem_honestKeysAt_iff, ← NodeAsChainShape.CanonicalTrace.mem_honestKeysAt_iff] at hy
+  exact NodeAsChainShape.CanonicalTrace.tick_of_awake (traceEncoding S hn) rho
+    (traceEncoding_lawful S hn) hv hy ht0 hp hw
 
 /-- A delivery expands to precisely the groups of its canonical objects. -/
 theorem simTraceAt_deliver (hv : rho.ExecutionValid)

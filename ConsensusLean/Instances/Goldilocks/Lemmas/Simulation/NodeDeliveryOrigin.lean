@@ -47,11 +47,12 @@ theorem contains_of_mem_delivered {st : S} {o w : ShapeObj P.n K I B}
     (hw : w ∈ delivered C D hs st o) : Model.Obj.Contains o w :=
   visit_parts C D hs st o hw
 
-/-- A delivery cut comes from the handler invocation for one of the delivered objects. -/
-theorem mem_deliverRecs_exec (pr : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)
+private theorem mem_deliverRecs_group (pr : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload)
     (y : Fin P.n) (t : Time) (i : Nat) (os : List (ShapeObj P.n K I B)) (st : NodeState A)
     (sub : Nat) {r : CutRec A} (hr : r ∈ deliverRecs C pr dg hs y t i os st sub) :
-    ∃ w ev st', w ∈ os ∧ canonEvent C hs w = some ev ∧ r.label ∈ (exec pr dg y st' t ev).2 := by
+    ∃ w ev st' s, w ∈ os ∧ canonEvent C hs w = some ev ∧ sub ≤ s ∧
+      r ∈ groupRecs pr dg y st' t (Nat.pair i s) ev := by
   induction os generalizing st sub with
   | nil => rw [deliverRecs_nil] at hr; cases hr
   | cons o os ih =>
@@ -59,17 +60,25 @@ theorem mem_deliverRecs_exec (pr : Nat → Fin P.n) (dg : Digest (List (FG.Att P
     cases he : canonEvent C hs o with
     | none =>
       rw [he] at hr
-      obtain ⟨w, ev, st', hm, hcanon, hl⟩ := ih st (sub + 1) hr
-      exact ⟨w, ev, st', List.mem_cons_of_mem _ hm, hcanon, hl⟩
+      obtain ⟨w, ev, st', s, hm, hcanon, hle, hl⟩ := ih st (sub + 1) hr
+      exact ⟨w, ev, st', s, List.mem_cons_of_mem _ hm, hcanon, by omega, hl⟩
     | some ev =>
       rw [he] at hr
       rcases List.mem_append.mp hr with hg | hr
-      · rw [groupRecs_eq] at hg
-        obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem hg
-        rw [List.getElem_mapIdx, List.getElem_zip]
-        exact ⟨o, ev, st, List.mem_cons_self, he, List.getElem_mem _⟩
-      · obtain ⟨w, ev', st', hm, hcanon, hl⟩ := ih _ (sub + 1) hr
-        exact ⟨w, ev', st', List.mem_cons_of_mem _ hm, hcanon, hl⟩
+      · exact ⟨o, ev, st, sub, List.mem_cons_self, he, le_rfl, hg⟩
+      · obtain ⟨w, ev', st', s, hm, hcanon, hle, hl⟩ := ih _ (sub + 1) hr
+        exact ⟨w, ev', st', s, List.mem_cons_of_mem _ hm, hcanon, by omega, hl⟩
+
+/-- A delivery cut comes from the handler invocation for one of the delivered objects. -/
+theorem mem_deliverRecs_exec (pr : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)
+    (y : Fin P.n) (t : Time) (i : Nat) (os : List (ShapeObj P.n K I B)) (st : NodeState A)
+    (sub : Nat) {r : CutRec A} (hr : r ∈ deliverRecs C pr dg hs y t i os st sub) :
+    ∃ w ev st', w ∈ os ∧ canonEvent C hs w = some ev ∧ r.label ∈ (exec pr dg y st' t ev).2 := by
+  obtain ⟨w, ev, st', _, hm, he, _, hg⟩ := mem_deliverRecs_group C hs pr dg y t i os st sub hr
+  rw [groupRecs_eq] at hg
+  obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem hg
+  rw [List.getElem_mapIdx, List.getElem_zip]
+  exact ⟨w, ev, st', hm, he, List.getElem_mem _⟩
 
 end Traversal
 
@@ -79,6 +88,18 @@ variable {F : ChainShapeFamily O I} {p : Params} {hN : p.n = Fintype.card V}
 variable {hn : 1 ≤ Fintype.card V}
 variable {A : NodeAC (paramsAtCount p (Fintype.card V) hN hn)} (e : Encoding F E p hN hn A)
 variable (rho : Model.Run (compiled F) E)
+
+/-- Observation coverage includes every time up to the engine horizon, even without actions. -/
+theorem inHorizon_of_le {t : Time} (ht : t ≤ rho.horizon) : (simTrace e rho).InHorizon t := by
+  refine ⟨(allCuts e rho).length, Or.inr ⟨rho.horizon, simTrace_observationHorizon e rho, ht⟩, ?_⟩
+  rw [simTrace_time, List.getElem?_length, Option.elim_none]
+  unfold Time at *
+  omega
+
+/-- Awake nodes are within the observation horizon. -/
+theorem awake_in_horizon {y : Fin (Fintype.card V)} {t : Time}
+    (hw : (simTrace e rho).awake y t) : (simTrace e rho).InHorizon t :=
+  inHorizon_of_le e rho ((simTrace_awake_iff e rho y t).mp hw).2.2
 
 /-- The handler origin of a delivery cut, expressed as a part of the actual engine object. -/
 theorem delivery_origin {v : V} {i : Nat} {t : Time}
@@ -235,17 +256,23 @@ theorem blockObj_delivered {v : V} {i : Nat} {t : Time}
     · cases hd
   · cases hd
 
-private theorem prefix_cuts (n : Nat) :
+/-- The replay cut map is monotone: each next event appends its cuts. -/
+theorem cutMap_mono : Monotone (cutMap e rho) :=
+  monotone_nat_of_le_succ fun i => by rw [cutMap_succ]; exact Nat.le_add_right _ _
+
+/-- The engine cut map counts all replay cuts in the event prefix. -/
+theorem prefix_cuts (n : Nat) :
     ((List.range n).flatMap (eventCuts e rho)).length = cutMap e rho n := by
   induction n with
   | zero => simp [cutMap_zero]
   | succ n ih => simp only [List.range_succ, List.flatMap_append, List.flatMap_cons,
       List.flatMap_nil, List.append_nil, List.length_append, ih, cutMap_succ]
 
-/-- A cut in a prefix belongs to an engine event in that prefix. -/
-theorem cut_event (n k : Nat) (r : CutRec A)
+/-- A cut in a prefix lies inside the cut-map interval of its engine event. -/
+theorem cut_event_range (n k : Nat) (r : CutRec A)
     (hr : ((List.range n).flatMap (eventCuts e rho))[k]? = some r) :
-    ∃ i < n, cutMap e rho i ≤ k ∧ r ∈ eventCuts e rho i := by
+    ∃ i < n, cutMap e rho i ≤ k ∧ k < cutMap e rho (i + 1) ∧
+      (eventCuts e rho i)[k - cutMap e rho i]? = some r := by
   induction n with
   | zero => simp at hr
   | succ n ih =>
@@ -253,39 +280,258 @@ theorem cut_event (n k : Nat) (r : CutRec A)
       List.append_nil] at hr
     by_cases hk : k < ((List.range n).flatMap (eventCuts e rho)).length
     · rw [List.getElem?_append_left hk] at hr
-      obtain ⟨i, hi, hstart, hm⟩ := ih hr
-      exact ⟨i, by omega, hstart, hm⟩
+      obtain ⟨i, hi, hstart, hend, hm⟩ := ih hr
+      exact ⟨i, by omega, hstart, hend, hm⟩
     · rw [List.getElem?_append_right (Nat.le_of_not_gt hk)] at hr
-      exact ⟨n, Nat.lt_succ_self _, (prefix_cuts e rho n).symm ▸ Nat.le_of_not_gt hk,
-        List.mem_of_getElem? hr⟩
+      rw [prefix_cuts e rho n] at hr hk
+      have hlen := (List.getElem?_eq_some_iff.mp hr).1
+      exact ⟨n, Nat.lt_succ_self _, by omega, by rw [cutMap_succ]; omega, hr⟩
+
+/-- The indexed cut of an engine event occurs at the prefix length plus its local index. -/
+theorem allCuts_getElem?_add (i j : Nat) (hi : i < rho.events.length)
+    (hj : j < (eventCuts e rho i).length) :
+    (allCuts e rho)[cutMap e rho i + j]? = (eventCuts e rho i)[j]? := by
+  rw [allCuts_eq]
+  generalize rho.events.length = n at hi ⊢
+  induction n with
+  | zero => omega
+  | succ n ih =>
+    simp only [List.range_succ, List.flatMap_append, List.flatMap_cons, List.flatMap_nil,
+      List.append_nil]
+    rcases Nat.lt_succ_iff_lt_or_eq.mp hi with hi | rfl
+    · have h := cutMap_mono e rho (Nat.succ_le_of_lt hi)
+      rw [cutMap_succ] at h
+      rw [List.getElem?_append_left (by rw [prefix_cuts]; omega), ih hi]
+    · rw [List.getElem?_append_right (by rw [prefix_cuts]; omega), prefix_cuts,
+        Nat.add_sub_cancel_left]
+
+/-- A cut in a prefix belongs to an engine event in that prefix. -/
+theorem cut_event (n k : Nat) (r : CutRec A)
+    (hr : ((List.range n).flatMap (eventCuts e rho))[k]? = some r) :
+    ∃ i < n, cutMap e rho i ≤ k ∧ r ∈ eventCuts e rho i := by
+  obtain ⟨i, hi, hk, _, hm⟩ := cut_event_range e rho n k r hr
+  exact ⟨i, hi, hk, List.mem_of_getElem? hm⟩
 
 private theorem group_label_time {Q : Params} {N : NodeAC Q}
     (pr : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)
     (y : Fin Q.n) (st : NodeState N) (t : Time) (i : Nat) (ev : Node.Event N)
     {r : CutRec N} (hr : r ∈ groupRecs pr dg y st t i ev) :
-    r.label ∈ (exec pr dg y st t ev).2 ∧ r.time = t := by
+    r.label ∈ (exec pr dg y st t ev).2 ∧ r.time = t ∧ r.node = y := by
   rw [groupRecs_eq] at hr
   obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem hr
   rw [List.getElem_mapIdx, List.getElem_zip]
-  exact ⟨List.getElem_mem _, rfl⟩
+  exact ⟨List.getElem_mem _, rfl, rfl⟩
 
 omit [Countable I] in
-private theorem delivery_time {Q : Params} {N : NodeAC Q} {K B : Type}
+private theorem delivery_node_time {Q : Params} {N : NodeAC Q} {K B : Type}
     (C : WireCodec N K I B) (pr : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)
     (hs : List (Header I × Nat)) (y : Fin Q.n) (t : Time) (i : Nat)
     (os : List (ShapeObj Q.n K I B)) (st : NodeState N) (sub : Nat)
-    {r : CutRec N} (hr : r ∈ deliverRecs C pr dg hs y t i os st sub) : r.time = t := by
-  induction os generalizing st sub with
-  | nil => rw [deliverRecs_nil] at hr; cases hr
-  | cons o os ih =>
-    rw [deliverRecs_cons] at hr
-    cases he : canonEvent C hs o with
-    | none => rw [he] at hr; exact ih _ _ hr
-    | some ev =>
-      rw [he] at hr
-      rcases List.mem_append.mp hr with hg | hr
-      · exact (group_label_time _ _ _ _ _ _ _ hg).2
-      · exact ih _ _ hr
+    {r : CutRec N} (hr : r ∈ deliverRecs C pr dg hs y t i os st sub) :
+    r.time = t ∧ r.node = y := by
+  obtain ⟨_, _, _, _, _, _, _, hg⟩ := mem_deliverRecs_group C hs pr dg y t i os st sub hr
+  exact (group_label_time _ _ _ _ _ _ _ hg).2
+
+/-- A replay cut has the time and node key of its enclosing engine event. -/
+theorem eventCut_node_time {i : Nat} {ev : Model.Event V (Model.protoOf (compiled F) E).Object}
+    (he : rho.events[i]? = some ev) {r : CutRec A} (hr : r ∈ eventCuts e rho i) :
+    r.time = ev.time ∧ r.node = rho.ownKey ev.node := by
+  cases ev with
+  | tick v t =>
+    rw [eventCuts_tick e rho i v t he] at hr
+    split at hr
+    · exact (group_label_time _ _ _ _ _ _ _ hr).2
+    · cases hr
+  | restart v t =>
+    rw [eventCuts_restart e rho i v t he] at hr
+    exact (group_label_time _ _ _ _ _ _ _ hr).2
+  | deliver v o t =>
+    rw [eventCuts_deliver e rho i v o t he] at hr
+    exact delivery_node_time _ _ _ _ _ _ _ _ _ _ hr
+
+private theorem group_id {Q : Params} {N : NodeAC Q}
+    (pr : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)
+    (y : Fin Q.n) (st : NodeState N) (t : Time) (id : Nat) (ev : Node.Event N)
+    {r : CutRec N} (hr : r ∈ groupRecs pr dg y st t id ev) : r.event = id := by
+  rw [groupRecs_eq] at hr
+  obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem hr
+  rw [List.getElem_mapIdx]
+
+omit [Countable I] in
+/-- The subindex of a cut in a delivery suffix is at least the suffix's starting subindex. -/
+theorem deliverRecs_id {Q : Params} {N : NodeAC Q} {K B : Type}
+    (C : WireCodec N K I B) (pr : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)
+    (hs : List (Header I × Nat)) (y : Fin Q.n) (t : Time) (i : Nat)
+    (os : List (ShapeObj Q.n K I B)) (st : NodeState N) (sub : Nat) {r : CutRec N}
+    (hr : r ∈ deliverRecs C pr dg hs y t i os st sub) :
+    ∃ s, sub ≤ s ∧ r.event = Nat.pair i s := by
+  obtain ⟨_, _, _, s, _, _, hle, hg⟩ := mem_deliverRecs_group _ _ _ _ _ _ _ _ _ _ hr
+  exact ⟨s, hle, group_id _ _ _ _ _ _ _ hg⟩
+
+/-- The first coordinate of a replay cut's group id is its enclosing engine index. -/
+theorem eventCut_id {i : Nat} {ev : Model.Event V (Model.protoOf (compiled F) E).Object}
+    (he : rho.events[i]? = some ev) {r : CutRec A} (hr : r ∈ eventCuts e rho i) :
+    ∃ s, r.event = Nat.pair i s := by
+  cases ev with
+  | tick v t =>
+    rw [eventCuts_tick e rho i v t he] at hr
+    split at hr
+    · exact ⟨0, group_id _ _ _ _ _ _ _ hr⟩
+    · cases hr
+  | restart v t =>
+    rw [eventCuts_restart e rho i v t he] at hr
+    exact ⟨0, group_id _ _ _ _ _ _ _ hr⟩
+  | deliver v o t =>
+    rw [eventCuts_deliver e rho i v o t he] at hr
+    obtain ⟨s, _, hid⟩ := deliverRecs_id _ _ _ _ _ _ _ _ _ _ hr
+    exact ⟨s, hid⟩
+
+private def cutPhase {Q : Params} {N : NodeAC Q} : Cut N → Nat
+  | .ac l => match l.call with
+    | .restart => 0
+    | .tick => 1
+    | _ => 2
+  | .fg _ => 2
+
+private theorem cutPhase_exec {Q : Params} {N : NodeAC Q}
+    (pr : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)
+    (y : Fin Q.n) (st : NodeState N) (t : Time) (ev : Node.Event N) {c : Cut N}
+    {cs : List (Cut N)} (hc : (exec pr dg y st t ev).2 = c :: cs) :
+    cutPhase c = ev.phase := by
+  cases ev with
+  | tick x =>
+    obtain ⟨l, _, _, hl, hs, _, _⟩ := Compose.tick_order pr dg y st t x
+    change (onTick pr dg y st t x).2 = _ at hc
+    rw [hs] at hc
+    obtain ⟨rfl, -⟩ := List.cons.inj hc
+    simp [cutPhase, hl, Node.Event.phase]
+  | block b =>
+    simp only [exec, onBlock, acCall] at hc
+    split_ifs at hc
+    all_goals first | cases hc | (split at hc <;> (obtain ⟨rfl, -⟩ := List.cons.inj hc; rfl))
+  | message m =>
+    simp only [exec, onMessage, acCall] at hc
+    obtain ⟨rfl, -⟩ := List.cons.inj hc
+    rfl
+  | attestation a =>
+    simp only [exec, onAttestation] at hc
+    obtain ⟨rfl, -⟩ := List.cons.inj hc
+    rfl
+  | restart =>
+    simp only [exec, Node.restart, acCall] at hc
+    obtain ⟨rfl, -⟩ := List.cons.inj hc
+    rfl
+
+private theorem first_group_phase {Q : Params} {N : NodeAC Q}
+    (pr : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)
+    (y : Fin Q.n) (st : NodeState N) (t : Time) (id : Nat) (ev : Node.Event N)
+    {r : CutRec N} (hr : r ∈ groupRecs pr dg y st t id ev) (h0 : r.pos = 0) :
+    cutPhase r.label = ev.phase := by
+  rw [groupRecs_eq] at hr
+  obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
+  rw [List.getElem_mapIdx] at h0 ⊢
+  change k = 0 at h0
+  subst k
+  rw [List.getElem_zip]
+  simp only [List.length_mapIdx, List.length_zip, lt_min_iff] at hk
+  have hpos : 0 < (exec pr dg y st t ev).2.length := hk.1
+  obtain ⟨c, cs, hs⟩ := List.exists_cons_of_length_pos hpos
+  change cutPhase (exec pr dg y st t ev).2[0] = ev.phase
+  rw [List.getElem_of_eq hs]
+  exact cutPhase_exec pr dg y st t ev hs
+
+/-- The handler identified by the first cut of a replay group has the enclosing event's phase. -/
+theorem phase_of_pos_zero {i : Nat}
+    {ev : Model.Event V (Model.protoOf (compiled F) E).Object}
+    (he : rho.events[i]? = some ev) {r : CutRec A} (hr : r ∈ eventCuts e rho i)
+    (h0 : r.pos = 0) {dg : Digest (List (FG.Att (Fintype.card V))) A.Payload}
+    {y : Fin (Fintype.card V)} {st : NodeState A} {t : Time} {ev' : Node.Event A}
+    {cs : List (Cut A)} {pr : Nat → Fin (Fintype.card V)}
+    (hc : (exec pr dg y st t ev').2 = r.label :: cs) : ev'.phase = ev.phase := by
+  have hphase : cutPhase r.label = ev'.phase :=
+    cutPhase_exec (N := A) pr dg y st t ev' hc
+  rw [← hphase]
+  cases ev with
+  | tick v t =>
+    rw [eventCuts_tick e rho i v t he] at hr
+    split at hr
+    · exact first_group_phase (N := A) _ _ _ _ _ _ _ hr h0
+    · cases hr
+  | restart v t =>
+    rw [eventCuts_restart e rho i v t he] at hr
+    exact first_group_phase (N := A) _ _ _ _ _ _ _ hr h0
+  | deliver v o t =>
+    rw [eventCuts_deliver e rho i v o t he] at hr
+    obtain ⟨w, ev, st', s, _, hw, _, hg⟩ := mem_deliverRecs_group _ _ _ _ _ _ _ _ _ _ hr
+    rw [first_group_phase (N := A) _ _ _ _ _ _ _ hg h0]
+    unfold canonEvent at hw
+    split at hw <;> cases hw <;> rfl
+
+private theorem restart_of_mem_exec {Q : Params} {N : NodeAC Q}
+    (pr : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)
+    (y : Fin Q.n) (st : NodeState N) (t : Time) (ev : Node.Event N) {l : ACLabel N}
+    (hc : Cut.ac l ∈ (exec pr dg y st t ev).2) (hl : l.call = .restart) : ev = .restart := by
+  cases ev with
+  | tick x =>
+    obtain ⟨l₀, pc, uc, hl₀, hcs, hp, ⟨l₁, hl₁, hu⟩⟩ := Compose.tick_order pr dg y st t x
+    change _ ∈ (onTick pr dg y st t x).2 at hc
+    rw [hcs] at hc
+    exfalso
+    rcases List.mem_cons.mp hc with h | h
+    · cases h; simp [hl] at hl₀
+    rcases List.mem_append.mp h with h | h
+    · rcases hp with ⟨-, rfl⟩ | ⟨-, l₂, hl₂, hp⟩
+      · simp at h
+      rcases hp with rfl | ⟨B, -, -, rfl | ⟨l₃, hl₃, rfl⟩⟩
+      · simp only [List.mem_singleton, Cut.ac.injEq] at h; subst h; simp [hl] at hl₂
+      · simp only [List.mem_cons, Cut.ac.injEq, reduceCtorEq, List.not_mem_nil, or_false] at h
+        subst h; simp [hl] at hl₂
+      · simp only [List.mem_cons, Cut.ac.injEq, reduceCtorEq, List.not_mem_nil, or_false,
+          false_or] at h
+        rcases h with rfl | rfl
+        · simp [hl] at hl₂
+        · simp [hl] at hl₃
+    · rcases hu with rfl | ⟨C, rfl⟩ | ⟨C, a, rfl⟩ <;>
+        simp only [List.mem_cons, Cut.ac.injEq, reduceCtorEq, List.not_mem_nil, or_false] at h <;>
+        (subst h; simp [hl] at hl₁)
+  | block B =>
+    simp only [exec, onBlock, acCall] at hc
+    exfalso
+    split_ifs at hc
+    · simp at hc
+    · split at hc
+      · simp at hc
+      · simp only [List.mem_cons, reduceCtorEq, Cut.ac.injEq, List.not_mem_nil, or_false,
+          false_or] at hc
+        subst hc; simp at hl
+  | message m =>
+    simp only [exec, onMessage, acCall, List.mem_singleton, Cut.ac.injEq] at hc
+    subst hc; simp at hl
+  | attestation a => simp [exec, onAttestation] at hc
+  | restart => rfl
+
+/-- Only the replay of an engine restart contains a restart cut. -/
+theorem restart_of_mem_eventCuts {i : Nat}
+    {ev : Model.Event V (Model.protoOf (compiled F) E).Object}
+    (he : rho.events[i]? = some ev) {r : CutRec A} (hr : r ∈ eventCuts e rho i)
+    {l : ACLabel A} (hlabel : r.label = .ac l) (hl : l.call = .restart) :
+    ∃ v t, ev = .restart v t := by
+  cases ev with
+  | restart v t => exact ⟨v, t, rfl⟩
+  | tick v t =>
+    rw [eventCuts_tick e rho i v t he] at hr
+    split at hr
+    · have hc := (group_label_time _ _ _ _ _ _ _ hr).1
+      rw [hlabel] at hc
+      cases restart_of_mem_exec _ _ _ _ _ _ hc hl
+    · cases hr
+  | deliver v o t =>
+    rw [eventCuts_deliver e rho i v o t he] at hr
+    obtain ⟨w, ev, st, _, he, hc⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ _ hr
+    rw [hlabel] at hc
+    rw [restart_of_mem_exec _ _ _ _ _ _ hc hl] at he
+    unfold canonEvent at he
+    split at he <;> cases he
 
 private theorem tick_no_message {Q : Params} {N : NodeAC Q}
     (pr : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)
@@ -351,8 +597,7 @@ theorem simTraceAt_msgCall_delivered {y : Fin (Fintype.card V)} {k : Nat} {m : A
       have ht : rho.events[i]? = some (.deliver v o t) :=
         (List.getElem?_eq_getElem hi).trans (congrArg some he)
       obtain ⟨w, hw, hd, _⟩ := msgCall_delivered e rho ht hmem hrl hm
-      rw [eventCuts_deliver e rho i v o t ht] at hmem
       rw [simTrace_time, hr]
-      exact ⟨i, v, o, t, w, ht, hw, hd, hstart, delivery_time _ _ _ _ _ _ _ _ _ _ hmem⟩
+      exact ⟨i, v, o, t, w, ht, hw, hd, hstart, (eventCut_node_time e rho ht hmem).1⟩
 
 end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace

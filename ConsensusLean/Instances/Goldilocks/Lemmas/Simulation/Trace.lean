@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -70,6 +71,20 @@ theorem foldl_cutPost_exec (proposer : Nat → Fin P.n)
     (exec proposer dg self st t e).2.foldl (cutPost self t) st = (exec proposer dg self st t e).1 :=
   foldl_cutPost_of_cutChain (Compose.exec_is_cut_chain proposer dg self st t e)
 
+/-- The `k`-th post-state of a cut list is the fold of its first `k + 1` cuts. -/
+theorem cutPosts_getElem (self : Fin P.n) (t : Time) (cs : List (Cut A)) (st : NodeState A)
+    (k : Nat) (hk : k < (cutPosts self t cs st).length) :
+    (cutPosts self t cs st)[k] = (cs.take (k + 1)).foldl (cutPost self t) st := by
+  induction cs generalizing st k with
+  | nil => simp [cutPosts_nil] at hk
+  | cons c cs ih =>
+    rw [List.getElem_of_eq (cutPosts_cons self t c cs st) hk]
+    cases k with
+    | zero => simp
+    | succ k =>
+      rw [cutPosts_cons, List.length_cons] at hk
+      rw [List.getElem_cons_succ, ih _ _ (by omega), List.take_succ_cons, List.foldl_cons]
+
 end Node
 
 namespace Simulation
@@ -94,24 +109,21 @@ theorem simTrace_inHorizon_iff (t : Time) :
 /-- Every time up to the run's horizon is in the trace's horizon. -/
 theorem simTrace_inHorizon_of_le {t : Time} (ht : t ≤ rho.horizon) :
     (simTrace S rho hn).InHorizon t := by
-  refine (simTrace_inHorizon_iff S rho hn t).mpr
-    ⟨(allCuts S rho hn).length, Or.inr ht, ?_⟩
-  simp only [cutTime_eq, List.getElem?_length, Option.elim_none]
-  linarith
+  rw [(simTrace_encoding S rho hn).1]
+  exact NodeAsChainShape.CanonicalTrace.inHorizon_of_le (traceEncoding S hn) rho ht
 
 /-- An honest node is awake only within the run's horizon. -/
 theorem simTrace_awake_in_horizon :
     ∀ y ∈ honestKeys S rho, ∀ t, (simTrace S rho hn).awake y t →
       (simTrace S rho hn).InHorizon t := by
   intro y _ t h
-  rw [simTrace_awake_iff, awakeAt_iff] at h
-  exact simTrace_inHorizon_of_le S rho hn h.2.2
+  rw [(simTrace_encoding S rho hn).1] at h ⊢
+  exact NodeAsChainShape.CanonicalTrace.awake_in_horizon (traceEncoding S hn) rho h
 
 /-- The cut map is monotone. -/
-theorem cutMap_mono : Monotone (cutMap S rho hn) :=
-  monotone_nat_of_le_succ fun i => by
-    rw [cutMap_succ]
-    exact Nat.le_add_right _ _
+theorem cutMap_mono : Monotone (cutMap S rho hn) := by
+  rw [(simTrace_encoding S rho hn).2]
+  exact NodeAsChainShape.CanonicalTrace.cutMap_mono (traceEncoding S hn) rho
 
 /-- A cut at or after event `i`'s first cut and at or before event `i'`'s last cut has `i ≤ i'`. -/
 theorem cutMap_index_le {i i' k k' : Nat} (hk : cutMap S rho hn i ≤ k)

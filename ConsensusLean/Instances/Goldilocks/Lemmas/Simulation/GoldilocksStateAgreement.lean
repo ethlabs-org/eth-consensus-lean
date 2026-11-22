@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeStateAgreement
 public import ConsensusLean.Instances.Goldilocks.AsChainShape
 public import ConsensusLean.Instances.Goldilocks.Results.Spec.CanonicalTrace
-import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLaws
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLaws
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 
 public section
@@ -16,7 +16,8 @@ open NodeAsChainShape.CanonicalTrace (afterClock_eq engineDuty_eq envelope_eq
 
 variable {V : Type} [Fintype V] {E : Env V} [DecidableEq V]
 
-private theorem goldilocks_ready (S : Setup) (hn : 1 ≤ Fintype.card V) :
+/-- The Goldilocks proposal guard holds at every selected propose duty of a valid tick. -/
+theorem goldilocks_ready (S : Setup) (hn : 1 ≤ Fintype.card V) :
     (traceEncoding (E := E) S hn).ProposalReady :=
   traceEncoding_induction S hn (fun e _ => e.ProposalReady) fun _ => by
     rw [Encoding.proposalReady_iff]
