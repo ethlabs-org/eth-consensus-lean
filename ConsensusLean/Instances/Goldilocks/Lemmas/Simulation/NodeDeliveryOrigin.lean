@@ -294,16 +294,17 @@ theorem carried_of_decodeBlock {Q : Params} {K B Payload : Type}
     · cases h
   · cases h
 
-/-- The canonical object of a replayed block occurs in the delivered object's closure.
-The codec's encode-after-decode law recovers the header of the visited object. -/
-theorem blockObj_delivered {v : V} {i : Nat} {t : Time}
-    {o : (Model.protoOf (compiled F) E).Object} (he : rho.events[i]? = some (.deliver v o t))
-    {r : CutRec A} (hr : r ∈ eventCuts e rho i) {b : A.Blk} {acc : Bool}
-    (hl : r.label = .fg (.block b acc))
-    (hcodec : ∀ {info atts payload}, e.codec.decode info = some (atts, payload) →
-      e.codec.encode atts payload = info) :
-    engineObj e (blockObj e.codec.encode e.codec.carried b) ∈ o.parts := by
-  obtain ⟨w, hw, hd⟩ := blockCall_delivered e rho he hr hl
+omit [Countable I] in
+/-- Encode-after-decode recovers the canonical object of the decoded block. -/
+theorem blockObj_of_decodeBlock {Q : Params} {K B Payload : Type}
+    {encode : List (FG.Att Q.n) → Payload → I}
+    {decode : I → Option (List (FG.Att Q.n) × Payload)}
+    {carried : List (FG.Att Q.n) → Payload → List (ShapeObj Q.n K I B)}
+    {valid : NodeBlock Q Payload → Prop} {hs : List (Header I × Nat)}
+    {w : ShapeObj Q.n K I B} {b : NodeBlock Q Payload}
+    (hd : decodeBlock decode carried valid hs w = some b)
+    (hcodec : ∀ {info atts payload}, decode info = some (atts, payload) →
+      encode atts payload = info) : blockObj encode carried b = w := by
   unfold decodeBlock at hd
   split at hd
   · rename_i k s header cs
@@ -314,12 +315,6 @@ theorem blockObj_delivered {v : V} {i : Nat} {t : Time}
       obtain ⟨par, pos, input, info⟩ := header
       simp only at hpos hdec
       subst s
-      suffices heq : blockObj e.codec.encode e.codec.carried
-          (blockOf root ⟨par, pos, input, info⟩ k atts payload) =
-          .mk (.signed k (.proposer pos)) (.item ⟨par, pos, input, info⟩)
-            (e.codec.carried atts payload) by
-        rw [heq]
-        exact hw
       simp only [blockObj, headerOf, blockOf, hcodec hdec]
       congr
       cases par with
@@ -329,6 +324,18 @@ theorem blockObj_delivered {v : V} {i : Nat} {t : Time}
         split_ifs <;> simp_all <;> omega
     · cases hd
   · cases hd
+
+/-- The canonical object of a replayed block occurs in the delivered object's closure.
+The codec's encode-after-decode law recovers the header of the visited object. -/
+theorem blockObj_delivered {v : V} {i : Nat} {t : Time}
+    {o : (Model.protoOf (compiled F) E).Object} (he : rho.events[i]? = some (.deliver v o t))
+    {r : CutRec A} (hr : r ∈ eventCuts e rho i) {b : A.Blk} {acc : Bool}
+    (hl : r.label = .fg (.block b acc))
+    (hcodec : ∀ {info atts payload}, e.codec.decode info = some (atts, payload) →
+      e.codec.encode atts payload = info) :
+    engineObj e (blockObj e.codec.encode e.codec.carried b) ∈ o.parts := by
+  obtain ⟨w, hw, hd⟩ := blockCall_delivered e rho he hr hl
+  rwa [blockObj_of_decodeBlock hd hcodec]
 
 /-- The replay cut map is monotone: each next event appends its cuts. -/
 theorem cutMap_mono : Monotone (cutMap e rho) :=
@@ -429,6 +436,26 @@ theorem eventCut_node_time {i : Nat} {ev : Model.Event V (Model.protoOf (compile
   | deliver v o t =>
     rw [eventCuts_deliver e rho i v o t he] at hr
     exact delivery_node_time _ _ _ _ _ _ _ _ _ _ hr
+
+/-- A labelled trace cut lies in an engine event with the same time and node. -/
+theorem labelled_cut_origin {k : Nat} {l : Cut A} (hl : (simTrace e rho).label k = some l) :
+    ∃ i ev r, rho.events[i]? = some ev ∧ cutMap e rho i ≤ k ∧
+      (eventCuts e rho i)[k - cutMap e rho i]? = some r ∧ r.label = l ∧
+      (simTrace e rho).time k = ev.time ∧ (simTrace e rho).node k = rho.ownKey ev.node ∧
+      (simTrace e rho).pos k = r.pos ∧ (allCuts e rho)[k]? = some r ∧
+      k < cutMap e rho (i + 1) := by
+  rw [simTrace_label] at hl
+  cases hk : (allCuts e rho)[k]? with
+  | none => simp [hk] at hl
+  | some r =>
+    rw [hk] at hl
+    have h := hk
+    rw [allCuts_eq] at h
+    obtain ⟨i, hi, hstart, hend, hr⟩ := cut_event_range e rho _ _ _ h
+    have he := List.getElem?_eq_getElem hi
+    obtain ⟨ht, hn⟩ := eventCut_node_time e rho he (List.mem_of_getElem? hr)
+    rw [simTrace_time, simTrace_node, simTrace_pos, hk]
+    exact ⟨i, _, r, he, hstart, hr, Option.some.inj hl, ht, hn, rfl, rfl, hend⟩
 
 private theorem group_id {Q : Params} {N : NodeAC Q}
     (pr : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)

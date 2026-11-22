@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
 
 public section
 
@@ -10,6 +11,94 @@ An attestation processed while its signer is honest was signed by the signer at 
 cut. The argument reads only the engine run and its simulating trace; the fault model enters
 through the signer's release analysis. Constant faults (`RunBlocks`) and growing faults
 (`Growing/Simulation/Attestations`) supply it. -/
+
+namespace Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
+
+open Blocks Shape Node
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+variable {O : OutputSchema} {I : Type} [DecidableEq I] [Countable I]
+variable {F : ChainShapeFamily O I} {p : Params} {hN : p.n = Fintype.card V}
+variable {hn : 1 ≤ Fintype.card V}
+variable {A : NodeAC (paramsAtCount p (Fintype.card V) hN hn)}
+variable (e : Encoding F E p hN hn A) (rho : Model.Run (compiled F) E)
+
+/-- A processed attestation was signed earlier: locally in the tick, or by the releaser of
+the decoded attestation received by the node. -/
+theorem attCall_sign_of_released (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)}
+    {k : Nat} {a : FG.Att (Fintype.card V)} (hc : (simTrace e rho).AttCallAt y k a)
+    (hhon : rho.key a.val ∉ rho.faultyAt ((simTrace e rho).time k))
+    {obj : (Model.protoOf (compiled F) E).Object}
+    (hcodec : ∀ w, e.codec.attestation w = some a → engineObj e w = obj)
+    (hsign : rho.signerOf obj = some (rho.key a.val))
+    (hrel : ∀ {j t}, rho.SendsAt (rho.key a.val) j t → obj ∈ rho.releasesAt j →
+      ∃ q < cutMap e rho (j + 1), (simTrace e rho).SignAt a.val q a) :
+    ∃ j < k, (simTrace e rho).SignAt a.val j a := by
+  obtain ⟨_, hl⟩ := hc
+  obtain ⟨i, ev, r, he, hstart, hr, hlabel, ht, _, _, _, _⟩ := labelled_cut_origin e rho hl
+  cases ev with
+  | tick v t =>
+    have hi := (List.getElem?_eq_some_iff.mp he).1
+    rw [eventCuts_tick e rho i v t he] at hr
+    split at hr
+    · rename_i hp
+      rw [groupRecs_eq, List.getElem?_eq_some_iff] at hr
+      obtain ⟨hm, rfl⟩ := hr
+      simp only [List.getElem_mapIdx, List.getElem_zip] at hlabel
+      obtain ⟨q, hq, C, hC⟩ := Compose.tick_attestation_prev _ _ _ _ _ _
+        ((List.getElem?_eq_getElem _).trans (congrArg some hlabel))
+      have hval : a.val = rho.ownKey v := Simulation.attest_val_of_mem_node_exec
+        (A := A) (C := C) (a := a)
+        (runProposer rho hn) (digestOf e rho) (rho.ownKey v) (e.adapter.node (stateAt e rho v i)) t
+        (.tick (encodeTxs (Model.mempool rho.inbox v t))) (List.mem_of_getElem? hC)
+      have hq' : q < (eventCuts e rho i).length := by
+        rw [eventCuts_tick e rho i v t he, ite_eq_left hp, groupRecs_eq]
+        simp only [List.length_mapIdx, List.length_zip, Nat.lt_min] at hm ⊢
+        exact ⟨hq.trans hm.1, hq.trans hm.2⟩
+      have hgroup := eventCuts_tick e rho i v t he
+      rw [ite_eq_left hp, groupRecs_eq] at hgroup
+      have hrec := allCuts_getElem?_add e rho i q hi hq'
+      have hq'' := hq'
+      rw [hgroup] at hq''
+      rw [hgroup] at hrec
+      rw [List.getElem?_eq_getElem hq''] at hrec
+      refine ⟨cutMap e rho i + q, by omega, C, ?_, ?_⟩
+      · rw [simTrace_node, hrec, hval]
+        simp only [Option.elim_some, List.getElem_mapIdx]
+      · rw [simTrace_label, hrec]
+        simp only [Option.map_some, List.getElem_mapIdx, List.getElem_zip, Option.some.injEq]
+        exact (List.getElem?_eq_some_iff.mp hC).2
+    · simp at hr
+  | deliver v o t =>
+    obtain ⟨w, ev, st, hw, hcanon, hcut⟩ := delivery_origin e rho he (List.mem_of_getElem? hr)
+    rw [hlabel] at hcut
+    have heq : ev = .attestation a := by
+      cases ev with
+      | tick => unfold canonEvent at hcanon; split at hcanon <;> cases hcanon
+      | restart => simp [exec, Node.restart, acCall] at hcut
+      | message => simp [exec, onMessage, acCall] at hcut
+      | block =>
+        simp only [exec, onBlock] at hcut
+        split at hcut
+        · cases hcut
+        · split at hcut <;> simp [acCall] at hcut
+      | attestation a' => simpa [exec, onAttestation, eq_comm] using hcut
+    subst ev
+    have ha : e.codec.attestation w = some a := by
+      unfold canonEvent at hcanon
+      split at hcanon <;> cases hcanon
+      assumption
+    rw [hcodec w ha] at hw
+    rw [ht] at hhon
+    obtain ⟨j, t', hj, hs, hb⟩ := hv.unforgeable i v o t he obj hw _ hsign hhon
+    obtain ⟨q, hq, hsig⟩ := hrel hs hb
+    exact ⟨q, hq.trans_le ((cutMap_mono e rho (Nat.succ_le_of_lt hj)).trans hstart), hsig⟩
+  | restart v t =>
+    rw [eventCuts_restart e rho i v t he, groupRecs_eq, List.getElem?_eq_some_iff] at hr
+    obtain ⟨_, rfl⟩ := hr
+    simp [exec, Node.restart, acCall] at hlabel
+
+end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
 
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape
@@ -30,87 +119,14 @@ theorem attCall_sign_of_released (hv : rho.ExecutionValid) {y : Fin (Fintype.car
     (hrel : ∀ {j t}, rho.SendsAt (rho.key a.val) j t → attObj a ∈ rho.releasesAt j →
       ∃ q < cutMap S rho hn (j + 1), (simTrace S rho hn).SignAt a.val q a) :
     ∃ j < k, (simTrace S rho hn).SignAt a.val j a := by
-  obtain ⟨hnode, hlab⟩ := hc
-  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, i, ev, hi, he, hstart, _, hidx, _, htime, _, hlab'⟩ := simTrace_cut S rho hn hl
-  have hrl : r.label = .fg (.attestation a) := Option.some.inj (hlab'.symm.trans hlab)
-  have hmem := List.mem_of_getElem? hidx
-  cases ev with
-  | tick v t =>
-    have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
-      by_contra hp
-      rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
-      simp at hmem
-    rw [eventCuts_tick_public S rho hn i v t he hp] at hidx
-    have hm := (List.getElem?_eq_some_iff.mp hidx).1
-    have hr := (List.getElem?_eq_some_iff.mp hidx).2
-    have hc := (getElem_groupRecs _ _ _ _ _ _ _ _ hm).2.2.2.2
-    rw [hr, hrl] at hc
-    have hcs : (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-        (stateAt S rho hn v i).node t
-        (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2[k - cutMap S rho hn i]? =
-          some (.fg (.attestation a)) := by
-      rw [List.getElem?_eq_getElem (lt_of_lt_of_eq hm (length_groupRecs _ _ _ _ _ _ _)), ← hc]
-    obtain ⟨q, hq, C, hC⟩ := Compose.tick_attestation_prev _ _ _ _ _ _ hcs
-    have hval := attest_val_of_mem_exec (sp := S.params (pubOf E) hn) (ro := S.ro _)
-      (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
-      (.tick (encodeTxs (Model.mempool rho.inbox v t))) (List.mem_of_getElem? hC)
-    have hq' : q < (eventCuts S rho hn i).length := by
-      rw [eventCuts_tick_public S rho hn i v t he hp, length_groupRecs]
-      exact (List.getElem?_eq_some_iff.mp hC).1
-    have hrec := allCuts_getElem?_add S rho hn i q (List.getElem?_eq_some_iff.mp he).1 hq'
-    rw [List.getElem?_eq_getElem hq'] at hrec
-    refine ⟨cutMap S rho hn i + q, by omega, C, ?_, ?_⟩
-    · rw [simTrace_node, hrec]
-      simp only [Option.elim_some]
-      simp only [eventCuts_tick_public S rho hn i v t he hp]
-      exact (getElem_groupRecs _ _ _ _ _ _ _ _ _).1.trans hval.symm
-    · rw [simTrace_label, hrec]
-      simp only [Option.map_some]
-      simp only [eventCuts_tick_public S rho hn i v t he hp]
-      exact congrArg some ((getElem_groupRecs _ _ _ _ _ _ _ _ _).2.2.2.2.trans
-        (List.getElem?_eq_some_iff.mp hC).2)
-  | deliver v o t =>
-    rw [eventCuts_deliver S rho hn i v o t he] at hmem
-    obtain ⟨o', e, st', ho, hce, q, hq, hc, _⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
-    have hcut := List.getElem_mem hq
-    rw [← hc, hrl] at hcut
-    have heq : e = .attestation a := by
-      cases e with
-      | tick x => exact False.elim (canonEvent_ne_tick hce x rfl)
-      | attestation a' =>
-        simp only [exec, onAttestation, List.mem_singleton, Cut.fg.injEq,
-          FGLabel.attestation.injEq] at hcut
-        exact congrArg Event.attestation hcut.symm
-      | block B =>
-        simp only [exec, onBlock] at hcut
-        split_ifs at hcut
-        · simp at hcut
-        · split at hcut <;> simp [acCall] at hcut
-      | message => simp [exec, onMessage, acCall] at hcut
-      | restart => simp [exec, Node.restart, acCall] at hcut
-    subst e
-    have ho' : o' = attObj a := by
-      rcases canonEvent_eq_some hce with ⟨_, h, _⟩ | ⟨_, h, _⟩ | ⟨a', h, ho⟩
-      · cases h
-      · cases h
-      · cases h; exact ho
-    subst o'
-    have hh' : rho.key a.val ∉ rho.faultyAt t := by
-      rw [htime] at hhon
-      exact hhon
-    obtain ⟨j, t', hj, hs, hb⟩ := hv.unforgeable i v o t he _ (contains_of_mem_delivered ho)
-      (rho.key a.val) rfl hh'
-    obtain ⟨q, hq, hs⟩ := hrel hs hb
-    have hle : cutMap S rho hn (j + 1) ≤ cutMap S rho hn i :=
-      cutMap_mono S rho hn (Nat.succ_le_of_lt hj)
-    exact ⟨q, by omega, hs⟩
-  | restart v t =>
-    rw [eventCuts_restart S rho hn i v t he] at hmem
-    obtain ⟨m, hm, rfl⟩ := List.getElem_of_mem hmem
-    obtain ⟨_, _, _, _, hc⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm
-    have hcut := List.getElem_mem (lt_of_lt_of_eq hm (length_groupRecs _ _ _ _ _ _ _))
-    rw [← hc, hrl] at hcut
-    simp [exec, Node.restart, acCall] at hcut
+  let enc := traceEncoding (E := E) S hn
+  rw [(simTrace_encoding S rho hn).1] at hc hhon hrel ⊢
+  rw [(simTrace_encoding S rho hn).2] at hrel
+  refine NodeAsChainShape.CanonicalTrace.attCall_sign_of_released enc rho hv hc hhon ?_ rfl hrel
+  exact traceEncoding_induction S hn (fun e _ => ∀ w, e.codec.attestation w = some a →
+    NodeAsChainShape.CanonicalTrace.engineObj e w = attObj (binding := S.vote) a) fun _ w hw => by
+    obtain rfl := eq_attObj_of_decodeAttObj hw
+    rw (config := { transparency := .default })
+      [NodeAsChainShape.CanonicalTrace.engineObj_eq, cast_eq]
 
 end Consensus.Goldilocks.Simulation

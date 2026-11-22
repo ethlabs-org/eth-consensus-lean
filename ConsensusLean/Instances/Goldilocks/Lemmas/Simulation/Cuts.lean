@@ -228,18 +228,20 @@ theorem simTrace_cut {k : Nat} (hk : (simTrace S rho hn).label k ≠ none) :
       (eventCuts S rho hn i)[k - cutMap S rho hn i]? = some r ∧
       (simTrace S rho hn).node k = rho.ownKey ev.node ∧ (simTrace S rho hn).time k = ev.time ∧
       (simTrace S rho hn).pos k = r.pos ∧ (simTrace S rho hn).label k = some r.label := by
-  rw [simTrace_label] at hk
-  cases hr : (allCuts S rho hn)[k]? with
-  | none => simp [hr] at hk
-  | some r =>
-  obtain ⟨i, ev, he, h1, h2, h3⟩ := exists_event_of_getElem? S rho hn hr
-  have hmem : r ∈ eventCuts S rho hn i := List.mem_of_getElem? h3
-  obtain ⟨hnode, htime, -⟩ := mem_eventCuts S rho hn he hmem
-  refine ⟨r, i, ev, rfl, he, h1, h2, h3, ?_, ?_, ?_, ?_⟩
-  · rw [simTrace_node, hr]; exact hnode
-  · rw [simTrace_time, hr]; exact htime
-  · rw [simTrace_pos, hr]; rfl
-  · rw [simTrace_label, hr]; rfl
+  obtain ⟨l, hl⟩ := Option.ne_none_iff_exists'.mp hk
+  obtain ⟨f, hall, hevent⟩ := cutRecords_map S rho hn
+  have hl' := hl
+  rw [(simTrace_encoding S rho hn).1] at hl'
+  obtain ⟨i, ev, r, he, hlo, hix, _, ht, hn', _, hglobal, hhi⟩ :=
+    NodeAsChainShape.CanonicalTrace.labelled_cut_origin (traceEncoding S hn) rho hl'
+  have hg : (allCuts S rho hn)[k]? = some (f r) := by rw [hall, List.getElem?_map, hglobal]; rfl
+  rw [← (simTrace_encoding S rho hn).2] at hlo hix hhi
+  refine ⟨f r, i, ev, hg, he, hlo, hhi, ?_, ?_, ?_, ?_, ?_⟩
+  · rw [hevent, List.getElem?_map, hix]; rfl
+  · rwa [(simTrace_encoding S rho hn).1]
+  · rwa [(simTrace_encoding S rho hn).1]
+  · rw [simTrace_pos, hg]; rfl
+  · rw [simTrace_label, hg]; rfl
 
 /-- Past the last node cut the trace is unlabelled, strictly after the observation horizon. -/
 theorem simTrace_of_getElem?_none {k : Nat} (hk : (allCuts S rho hn)[k]? = none) :

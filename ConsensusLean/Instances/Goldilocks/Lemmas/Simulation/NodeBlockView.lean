@@ -66,34 +66,6 @@ theorem noCollRun_of_observed (tr : RunTrace A) (hnc : ¬ rho.HashCollision)
     exact ⟨by simpa [hpb, hpc] using hpar, congrArg Header.pos he, congrArg Header.input he,
       congrArg Prod.fst hpay, congrArg Prod.snd hpay⟩
 
-private theorem tick_block_parent {Q : Params} {N : NodeAC Q}
-    (proposer : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)
-    (self : Fin Q.n) (st : NodeState N) (t : Time) (x : Nat)
-    {b : N.Blk} {acc : Bool}
-    (hc : Cut.fg (.block b acc) ∈ (exec proposer dg self st t (.tick x)).2) :
-    b.parent ≠ none := by
-  rw [show (exec proposer dg self st t (.tick x)).2 = (onTick proposer dg self st t x).2
-    from rfl] at hc
-  simp only [onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil, List.nil_append] at hc
-  rcases List.mem_append.mp hc with hc | hc
-  · rcases List.mem_append.mp hc with hc | hc
-    · simp [tickStep, acCall] at hc
-    · simp only [tickStep] at hc
-      split_ifs at hc
-      · split at hc
-        · simp [acProposal] at hc
-        · simp only [proposeBlock, onBlock] at hc
-          split_ifs at hc
-          · simp [acProposal] at hc
-          · split at hc <;> simp [acCall, acProposal] at hc <;>
-              obtain ⟨rfl, _⟩ := hc <;> simp [mkBlock]
-      · simp at hc
-  · simp only [tickStep] at hc
-    split at hc
-    · simp [acToFG] at hc
-    · simp only [attest, List.mem_cons, acToFG, reduceCtorEq, false_or] at hc
-      split at hc <;> simp [onAttestation] at hc
-
 /-- Every occurring block is in the engine view at its call; tick releases are a premise. -/
 theorem block_call_in_view_of_releases
     (hcodec : ∀ {info atts payload}, e.codec.decode info = some (atts, payload) →
@@ -124,22 +96,9 @@ theorem block_call_in_view_of_releases
         rw [groupRecs_eq] at hg
         obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem hg
         simp only [List.getElem_mapIdx, List.getElem_zip] at hrl hm ⊢
-        have hnz : j ≠ 0 := by
-          intro hj0
-          subst j
-          obtain ⟨l, pc, uc, _, hcuts, _, _⟩ := Compose.tick_order
-            (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
-            (e.adapter.node (stateAt e rho v i)) t (encodeTxs (Model.mempool rho.inbox v t))
-          have hh : (onTick (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
-              (e.adapter.node (stateAt e rho v i)) t
-              (encodeTxs (Model.mempool rho.inbox v t))).2[0]? = some (.fg (.block b acc)) :=
-            (List.getElem?_eq_getElem (by
-              simp only [List.length_mapIdx, List.length_zip, Nat.lt_min] at hj
-              exact hj.1)).trans
-              (congrArg some hrl)
-          rw [hcuts] at hh
-          simp at hh
-        refine ⟨tick_block_parent _ _ _ _ _ _ (hrl ▸ List.getElem_mem _), i, _, het, ?_⟩
+        obtain ⟨_, _, hparent, hnz⟩ := Compose.tick_block_cut_fields _ _ _ _ _ _
+          ((List.getElem?_eq_getElem _).trans (congrArg some hrl))
+        refine ⟨hparent, i, _, het, ?_⟩
         exact rho.mem_viewIdx_iff.2 ⟨i, _, by omega,
           Or.inl ⟨t, Or.inl het, hrel het hp _ hm _ _ hrl hnz⟩, .refl _⟩
       · cases hg

@@ -741,13 +741,13 @@ section TickReleases
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- A signing cut of a handler of `self` signs an attestation of `self`. -/
-theorem attest_val_of_mem_exec {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
-    (st : NodeState (goldilocksNode sp ro)) (t : Time) (e : Event (goldilocksNode sp ro))
-    {C : (goldilocksNode sp ro).Blk} {a : FG.Att sp.n}
+/-- A signing cut of a generic handler of `self` signs an attestation of `self`. -/
+theorem attest_val_of_mem_node_exec {P : Params} {A : NodeAC P}
+    (proposer : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+    (st : NodeState A) (t : Time) (e : Event A)
+    {C : A.Blk} {a : FG.Att P.n}
     (h : Cut.fg (.attest C (some a)) ∈ (exec proposer dg self st t e).2) : a.val = self := by
-  have key : ∀ {st st' : NodeState (goldilocksNode sp ro)} {cs},
+  have key : ∀ {st st' : NodeState A} {cs},
       CutChain self t st cs st' → Cut.fg (.attest C (some a)) ∈ cs → a.val = self := by
     intro st st' cs hc
     induction hc with
@@ -759,8 +759,16 @@ theorem attest_val_of_mem_exec {sp : SAParams} {ro : ReplayOrder sp (List (FG.At
         obtain ⟨he, -, -⟩ := hstep
         exact createAtt_val he
       · exact ih hm
-  exact key (Compose.exec_is_cut_chain (P := sp.toParams) (A := goldilocksNode sp ro)
-    proposer dg self st t e) h
+  exact key (Compose.exec_is_cut_chain proposer dg self st t e) h
+
+/-- A signing cut of a handler of `self` signs an attestation of `self`. -/
+theorem attest_val_of_mem_exec {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
+    (st : NodeState (goldilocksNode sp ro)) (t : Time) (e : Event (goldilocksNode sp ro))
+    {C : (goldilocksNode sp ro).Blk} {a : FG.Att sp.n}
+    (h : Cut.fg (.attest C (some a)) ∈ (exec proposer dg self st t e).2) : a.val = self :=
+  attest_val_of_mem_node_exec (P := sp.toParams) (A := goldilocksNode sp ro)
+    proposer dg self st t e h
 
 /-- A signing cut of an honest node's tick at a public time is a signing of the simulating
 trace before the end of that engine event. -/

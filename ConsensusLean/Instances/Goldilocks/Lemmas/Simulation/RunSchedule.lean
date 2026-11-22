@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Unforgeable
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLaws
 import ConsensusLean.Lemmas.Model.Constant
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -174,28 +175,10 @@ theorem blockObj_fields {B C : Blk (S.params (pubOf E) hn)}
     (hrB : B.RootOk (digestOf S rho)) (hrC : C.RootOk (digestOf S rho))
     (he : blockObj (S.params (pubOf E) hn) (binding := S.vote) B =
       blockObj (S.params (pubOf E) hn) C) : B = C := by
-  have hh := congrArg Model.Obj.msg he
-  have ha := congrArg Model.Obj.auth he
-  simp only [blockObj_eq, Model.Obj.msg, Model.Msg.item.injEq] at hh
-  simp only [blockObj_eq, Model.Obj.auth, Model.Auth.signed.injEq] at ha
-  have hp := congrArg (fun h => parentRoot S.genesisRoot h.parent) hh
-  have hs := congrArg Header.pos hh
-  have hx := congrArg Header.input hh
-  have hi := congrArg (fun h => decodeInfo (Fintype.card V) h.info) hh
-  obtain ⟨b, hb⟩ := Option.ne_none_iff_exists'.mp hB
-  obtain ⟨c, hc⟩ := Option.ne_none_iff_exists'.mp hC
-  simp only [headerOf_eq, hb, hc, parentRoot_parentRef] at hp
-  simp only [headerOf_eq, decodeInfo_encodeInfo, Option.some.injEq, Prod.mk.injEq] at hi
-  have hparent : B.parent = C.parent := by simpa [hb, hc] using hp
-  change B.slot = C.slot at hs
-  change B.input = C.input at hx
-  have hroot : B.root = C.root := by
-    change B.root = digestOf S rho B.parent B.slot B.input B.fgPayload B.acPayload at hrB
-    rw [hrB, hparent, hs, hx, hi.1, hi.2]
-    exact hrC.symm
-  have hv := ha.1
-  cases B; cases C
-  simp_all
+  have hobj := (blockView_encoding (E := E) S hn).1
+  rw [(runProposer_digestOf S rho hn).2] at hrB hrC
+  exact NodeAsChainShape.CanonicalTrace.rooted_block_eq_of_blockObj_eq
+    (traceEncoding_opLaws (E := E) S hn) rho hB hC hrB hrC (by rwa [hobj, hobj])
 
 /-- Engine `Credentials` assigns every delivered proposal, including a faulty signer's,
 to the selected proposer. Decode the group's source object and use `selValid_proposer` to

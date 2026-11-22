@@ -31,28 +31,6 @@ open Consensus.Model (pubOf)
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
-omit [DecidableEq V] in
-open NodeAsChainShape.CanonicalTrace in
-/-- The encoded block object agrees with Goldilocks, whose header codec round-trips on decode. -/
-theorem blockView_encoding :
-    let e := traceEncoding (E := E) S hn
-    (∀ b : Blk (S.params (pubOf E) hn),
-      engineObj e (NodeAsChainShape.blockObj e.codec.encode e.codec.carried b) = blockObj _ b) ∧
-    (∀ {info atts payload}, e.codec.decode info = some (atts, payload) →
-      e.codec.encode atts payload = info) := by
-  dsimp only
-  apply traceEncoding_induction S hn (fun e _ =>
-    (∀ b : Blk (S.params (pubOf E) hn),
-      engineObj e (NodeAsChainShape.blockObj e.codec.encode e.codec.carried b) = blockObj _ b) ∧
-    (∀ {info atts payload}, e.codec.decode info = some (atts, payload) →
-      e.codec.encode atts payload = info))
-  intro e _
-  constructor
-  · intro b
-    rw (config := { transparency := .default }) [engineObj_eq, cast_eq]
-    rfl
-  · exact fun hd => encodeInfo_of_decodeInfo hd
-
 /-- **Every called block, accepted or refused, is in the view of its engine node** right after
 the engine event of the call, and has a parent. `hrel`: every block a public tick calls at a
 positive position is released at that event. -/

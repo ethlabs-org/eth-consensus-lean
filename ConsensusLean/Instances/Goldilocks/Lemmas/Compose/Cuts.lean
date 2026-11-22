@@ -166,6 +166,37 @@ theorem exec_is_cut_chain : ExecIsCutChain proposer dg self := by
   | attestation a => exact chain_single self ⟨rfl, rfl, rfl⟩
   | restart => exact acCall_chain self st t _
 
+/-- A block cut of a tick is a rooted, non-genesis proposal by the ticking key, after the AC cut. -/
+theorem tick_block_cut_fields (st : NodeState A) (t : Time) (x : Nat)
+    {b : A.Blk} {acc : Bool} {k : Nat}
+    (hc : (exec proposer dg self st t (.tick x)).2[k]? = some (.fg (.block b acc))) :
+    b.proposer = self ∧ b.RootOk dg ∧ b.parent ≠ none ∧ k ≠ 0 := by
+  have hzero : k ≠ 0 := by
+    intro h
+    subst k
+    simp [exec, onTick, runSteps, tickSteps, tickStep, acCall] at hc
+  have hm := List.mem_of_getElem? hc
+  change Cut.fg (.block b acc) ∈ (onTick proposer dg self st t x).2 at hm
+  simp only [onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil, List.nil_append] at hm
+  rcases List.mem_append.mp hm with hm | hm
+  · rcases List.mem_append.mp hm with hm | hm
+    · simp [tickStep, acCall] at hm
+    · simp only [tickStep] at hm
+      split_ifs at hm
+      · split at hm
+        · simp [acProposal] at hm
+        · simp only [proposeBlock, onBlock] at hm
+          split_ifs at hm
+          · simp [acProposal] at hm
+          · split at hm <;> simp [acCall, acProposal] at hm <;>
+              obtain ⟨rfl, _⟩ := hm <;> exact ⟨rfl, rfl, by simp [mkBlock], hzero⟩
+      · simp at hm
+  · simp only [tickStep] at hm
+    split at hm
+    · simp [acToFG] at hm
+    · simp only [attest, List.mem_cons, acToFG, reduceCtorEq, false_or] at hm
+      split at hm <;> simp [onAttestation] at hm
+
 end Consensus.Goldilocks.Compose
 
 end

@@ -87,28 +87,36 @@ theorem encodeInfo_of_decodeInfo {n : Nat} {i : Info} {atts : List (FG.Att n)}
     map_of_mapM (fun _ _ => encodeVote_of_decodeVote) hb,
     map_of_mapM (fun _ _ => encodeVote_of_decodeVote) hc]
 
+/-- Goldilocks' canonical block objects and encode-after-decode bridge. -/
+theorem blockView_encoding {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (hn : 1 ≤ Fintype.card V) :
+    let e := traceEncoding (E := E) S hn
+    (∀ b : Blk (S.params (Model.pubOf E) hn),
+      NodeAsChainShape.CanonicalTrace.engineObj e
+        (NodeAsChainShape.blockObj e.codec.encode e.codec.carried b) = blockObj _ b) ∧
+    (∀ {info atts payload}, e.codec.decode info = some (atts, payload) →
+      e.codec.encode atts payload = info) := by
+  dsimp only
+  apply traceEncoding_induction S hn (fun e _ =>
+    (∀ b : Blk (S.params (Model.pubOf E) hn),
+      NodeAsChainShape.CanonicalTrace.engineObj e
+        (NodeAsChainShape.blockObj e.codec.encode e.codec.carried b) = blockObj _ b) ∧
+    (∀ {info atts payload}, e.codec.decode info = some (atts, payload) →
+      e.codec.encode atts payload = info))
+  intro e _
+  constructor
+  · intro b
+    rw (config := { transparency := .default })
+      [NodeAsChainShape.CanonicalTrace.engineObj_eq, cast_eq]
+    rfl
+  · exact fun hd => encodeInfo_of_decodeInfo hd
+
 /-- A received object that decodes to a block is that block's canonical object. -/
 theorem eq_blockObj_of_decodeBlock {hs : List (Header Info × Nat)} {o : Wire sp.n binding}
     {B : Blk sp} (h : decodeBlock sp hs o = some B) : o = blockObj sp B := by
-  rw [decodeBlock_eq] at h
-  split at h
-  · rename_i k s hd cs
-    split at h
-    · rename_i atts p d hdec hroot
-      simp only [Option.ite_none_right_eq_some, Option.some.injEq] at h
-      obtain ⟨⟨hpos, rfl, -, -⟩, rfl⟩ := h
-      obtain ⟨par, pos, input, info⟩ := hd
-      simp only at hpos hdec
-      subst hpos
-      have hinfo := encodeInfo_of_decodeInfo hdec
-      simp only [blockObj_eq, headerOf_eq, blockOf_eq, hinfo]
-      congr
-      cases par with
-      | root => simp [parentRoot_eq, parentRef_eq]
-      | digest r =>
-        simp [parentRoot_eq, parentRef_eq, taggedRoot_ne, rawRoot_taggedRoot]
-    · cases h
-  · cases h
+  unfold decodeBlock at h
+  unfold blockObj
+  exact (NodeAsChainShape.CanonicalTrace.blockObj_of_decodeBlock h encodeInfo_of_decodeInfo).symm
 
 /-- A received object that decodes to a vote is that vote's canonical object. -/
 theorem eq_voteObj_of_decodeVoteObj {o : Wire sp.n binding} {v : Vote sp.n}

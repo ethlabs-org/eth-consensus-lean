@@ -1329,6 +1329,43 @@ theorem tick_block_released [DecidableEq V] (e : Encoding F E p hN hn A)
   rw [hclock, hm] at hrel
   exact tick_proposal_release L rho hv he hone _ (hrel b acc hprop)
 
+/-- Identity step for the converse of proposal release: once the proposal cut and the
+released block have equal canonical objects, they are the same rooted block. Only the
+stored parent reference is used; the parent block itself need not be identified. -/
+theorem rooted_block_eq_of_blockObj_eq (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
+    {B C : A.Blk} (hpB : B.parent ≠ none) (hpC : C.parent ≠ none)
+    (hrB : B.RootOk (digestOf e rho)) (hrC : C.RootOk (digestOf e rho))
+    (he : engineObj e (blockObj e.codec.encode e.codec.carried B) =
+      engineObj e (blockObj e.codec.encode e.codec.carried C)) : B = C := by
+  have h := congrArg (wireOf e) he
+  simp only [wireOf_engineObj] at h
+  have hh := congrArg Model.Obj.msg h
+  have ha := congrArg Model.Obj.auth h
+  simp only [blockObj, Model.Obj.msg, Model.Msg.item.injEq] at hh
+  simp only [blockObj, Model.Obj.auth, Model.Auth.signed.injEq] at ha
+  have hs := congrArg Header.pos hh
+  have hx := congrArg Header.input hh
+  have hi := congrArg (fun hd => e.codec.decode hd.info) hh
+  change B.slot = C.slot at hs
+  change B.input = C.input at hx
+  simp only [headerOf, L.decode_encode, Option.some.injEq, Prod.mk.injEq] at hi
+  obtain ⟨b, hb⟩ := Option.ne_none_iff_exists'.mp hpB
+  obtain ⟨c, hc⟩ := Option.ne_none_iff_exists'.mp hpC
+  have hp := congrArg (fun hd => parentRoot p.genesisRoot hd.parent) hh
+  have hparent : B.parent = C.parent := by
+    simp only [headerOf, hb, hc] at hp ⊢
+    change AsChainShape.parentRoot _ (AsChainShape.parentRef _ (some b)) =
+      AsChainShape.parentRoot _ (AsChainShape.parentRef _ (some c)) at hp
+    simpa only [Simulation.parentRoot_parentRef] using hp
+  have hroot : B.root = C.root := by
+    change B.root = digestOf e rho B.parent B.slot B.input B.fgPayload B.acPayload at hrB
+    rw [hrB, hparent, hs, hx, hi.1, hi.2]
+    exact hrC.symm
+  have hv := ha.1
+  cases B
+  cases C
+  simp_all
+
 end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
 
 namespace Consensus.Goldilocks.Simulation

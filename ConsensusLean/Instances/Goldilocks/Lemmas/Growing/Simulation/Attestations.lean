@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Payload
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttUnforgeable
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PayloadSource
 
 public section
 
@@ -104,10 +105,14 @@ theorem simTraceAt_att_unforgeable (hv : rho.ExecutionValid) :
   swap
   · have hmem : attObj (binding := S.vote) a ∈ payloadObjs B.fgPayload B.acPayload :=
       List.mem_append_left _ (List.mem_map.mpr ⟨a, ha, rfl⟩)
-    obtain ⟨i, t, hik, hs, hr⟩ := block_payload_source_at S rho hn hv hc hmem hh'
+    have hsource := block_payload_source_at S rho hn hv hc hmem hh'
       (show rho.signerOf (attObj a) = some (rho.key a.val) from rfl)
-    obtain ⟨q, hq, he⟩ := released_att_cut_at S rho hn hv hs hr
-    exact ⟨q, hq.trans_le hik, by simpa only [ownKey_key] using he⟩
+    rw [(simTrace_encoding S rho hn).2] at hsource
+    rw [simTraceAt_eq, (simTrace_encoding S rho hn).1]
+    exact NodeAsChainShape.CanonicalTrace.carried_att_sign_of_released (traceEncoding S hn) rho
+      hsource fun hs hr => by
+        simpa only [ownKey_key, simTraceAt_eq, (simTrace_encoding S rho hn).1,
+          (simTrace_encoding S rho hn).2] using released_att_cut_at S rho hn hv hs hr
   rw [simTraceAt_eq] at hc hh' ⊢
   exact attCall_sign_of_released S rho hn hv hc hh' fun hs hb => by
     simpa only [simTraceAt_eq, ownKey_key] using released_att_cut_at S rho hn hv hs hb
