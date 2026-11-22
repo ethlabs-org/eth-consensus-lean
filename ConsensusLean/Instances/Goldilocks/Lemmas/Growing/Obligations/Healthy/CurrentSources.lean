@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HealedSafetyConditional
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Effective
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
@@ -206,10 +207,7 @@ theorem healthy_current_record_interval_at (D : RepairSchedule tr H proposer dg 
     rcases hcover with hF | ⟨x, r, s', E, DV, hx, -, hrt, hs', hE, hRE⟩
     · rw [hF]
       -- the reader's own finalized block only moves to descendants on the prefix through `t'`
-      have hmono := Healing.run_F_mono (hrun.upTo ht'0).toLocalRun hy (show n ≤ q + 1 by omega)
-      rw [Trace.upTo_state tr y (fun k hk => hrp'.1 k (by omega)),
-        Trace.upTo_state tr y hle1] at hmono
-      exact Or.inr (hmono.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono ht'0))
+      exact Or.inr (hrun.toLocalRun.finalized_mono_on_prefix ht'0 hy (by omega) hle1)
     · exact tips_comparable_of_origin_witnesses_at hU .refl hRE
         (D.reset.finalized_compatible_clean_source_at hx hE
           (by simpa only [D.cleanLabel_eq] using hs') (hrt.trans htb) ht'0 hle1 hy ht'b)

@@ -51,37 +51,11 @@ theorem receiverServiceAfterAt_of_postStop {ini}
     rcases hp with ⟨ℓ', hc', hm'⟩ | ⟨ℓ', hc', hm'⟩
     · exact ⟨ℓ', Compose.projAC_callAt.mpr hc', Or.inl hm'⟩
     · exact ⟨ℓ', Compose.projAC_callAt.mpr hc', Or.inr hm'⟩
-  · obtain ⟨ℓ₀, hc₀, hb⟩ := hacc
-    have hc := Compose.projAC_callAt.mp hc
-    have hp := h.upTo (h.time_nonneg i)
-    have hc₀' := (Trace.upTo_callAt tr).mpr ⟨le_rfl, Compose.projAC_callAt.mp hc₀⟩
-    obtain ⟨i', rfl, hi', hti⟩ := Compose.acBlock_prev hp.toLocalRun hx hc₀' hb
-    change tr.time i' = tr.time (i' + 1) at hti
-    have hi := ((RunTrace.upTo_acceptAt tr).mp hi').2
-    have hx' := h.antitone (h.time_mono (Nat.le_succ i')) hx
-    have hfr : ℓ.frame.F = (tr.state y j).fg.F := by
-      rw [(h.toLocalRun.cutLaw y j _ hc hy).1]
-      rfl
-    obtain ⟨k, hkj, hk, hlt⟩ := hs.relay x i' B hx' hi y j hy ⟨_, hc⟩
-      (by rw [hti, ← Compose.projAC_deadline]; exact hdl) (hfr ▸ hanc)
-    have hpj := h.upTo (h.time_nonneg j)
-    obtain ⟨ℓ', hc', hb', htk⟩ := Compose.accept_next hpj.toLocalRun hy
-      ((RunTrace.upTo_acceptAt tr).mpr ⟨h.time_mono hkj, hk⟩)
-    change tr.time (k + 1) = tr.time k at htk
-    have hc' := ((Trace.upTo_callAt tr).mp hc').2
-    have hkj' : k + 1 ≤ j := by
-      rcases Nat.lt_or_eq_of_le hkj with hlt' | rfl
-      · omega
-      · cases Option.some.inj (hk.2.symm.trans hc.2)
-    have hnr : ¬ tr.RestartAt y (k + 1) := fun ⟨ℓr, hcr, hr⟩ => by
-      cases Option.some.inj (hc'.2.symm.trans hcr.2)
-      rw [hb'] at hr
-      cases hr
-    refine ⟨k + 1, hkj', ⟨ℓ', Compose.projAC_callAt.mpr hc', hb'⟩, ?_⟩
-    change tr.time (k + 1) < tr.projAC.deadline y (k + 1) (max (tr.time (i' + 1)) g)
-    rw [Compose.projAC_deadline, htk, ← hti]
-    simp only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] at hlt ⊢
-    exact hlt
+  · apply h.toLocalRun.acRelayAt (σ := max (tr.time i) g) hx hacc hy hc hanc
+    intro k hki hx' hk hj hF
+    rw [← hki]
+    exact hs.relay x k B hx' hk y j hy hj
+      (by rw [hki, ← Compose.projAC_deadline]; exact hdl) hF
 
 end Run
 
@@ -94,13 +68,8 @@ each of which lies within the horizon. -/
 theorem goldilocks_postStopService (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {g : Time}
     (hnet : rho.log.PSync rho.point g) :
-    PostStopService (simTraceAt S rho hn) (honestKeysAt S rho) g where
-  message _ _ _ hx hi _ _ hy hj hd :=
-    Obligations.Growing.message_service_psync_at S rho hn hv hnet hx hi hy hj
-      (Obligations.Growing.isCall_time_le_horizon S rho hn hv hj) hd
-  relay _ _ _ hx hi _ _ hy hj hd hF :=
-    Obligations.Growing.acceptance_relay_psync_any_at S rho hn hv hnc hnet hx hi hy hj
-      (Obligations.Growing.isCall_time_le_horizon S rho hn hv hj) hd hF
+    PostStopService (simTraceAt S rho hn) (honestKeysAt S rho) g :=
+  Obligations.Growing.postStopService_of_psync_at S rho hn hv hnc hnet
 
 end Consensus.Goldilocks.Simulation
 

@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesRelay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
@@ -79,21 +80,9 @@ theorem frame_witness_readPoint_stamp_at
         rw [max_eq_left hnew, Compose.projAC_deadline] at hdead
         rw [max_eq_left ((SA.le_gbar g).trans hnew)] at hqd
         exact ⟨q, hqi', hq, by rw [hfz]; linarith only [hqd, hdead, hkt]⟩
-      · have hex : ∃ j, gbar g + 2 * sp.Δ ≤ tr.time j :=
-          ⟨i, by linarith only [hm, hti, hts, sp.toParams.hΔ]⟩
-        have hfirst : tr.FirstCutFrom (Nat.find hex) (gbar g + 2 * sp.Δ) :=
-          ⟨Nat.find_spec hex, fun q hq => not_le.1 (Nat.find_min hex hq)⟩
-        have hle : Nat.find hex ≤ i := Nat.find_min' hex
-          (by linarith only [hm, hti, hts, sp.toParams.hΔ])
-        have hmono := Healing.run_F_mono hp.toLocalRun hy hle
-        rw [RunTrace.upTo_state_of_le hrun.time_mono (hrun.time_mono hle),
-          RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at hmono
-        obtain ⟨q, hq, hacc⟩ := hcatch x k Q hxk hk (not_le.mp hnew) y _
-          (hrun.antitone (hfirst.1.trans (hrun.time_mono hle)) hy) hfirst
-          ((hmono.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono
-            (hrun.time_nonneg i))).trans (hfr ▸ hFQ))
-        exact ⟨q, hq.trans_le hle, hacc,
-          by rw [hfz]; linarith only [hfirst.2 q hq, hm, sp.toParams.hΔ]⟩
+      · obtain ⟨q, hq, hacc, hqt⟩ := hrun.toLocalRun.fgCatchAt hcatch hxk hk (not_le.mp hnew)
+          hy (by linarith only [hm, hti, hts, sp.toParams.hΔ]) (hfr ▸ hFQ)
+        exact ⟨q, hq, hacc, by rw [hfz]; linarith only [hqt, hm, sp.toParams.hΔ]⟩
     obtain ⟨q, hqi, hq, hqt⟩ := accepted
     have hq' := (RunTrace.upTo_acceptAt (tr := tr)).mpr ⟨hrun.time_mono hqi.le, hq⟩
     obtain ⟨hqa, htq, _⟩ := Healing.ac_block_after hp.toLocalRun hy hq'

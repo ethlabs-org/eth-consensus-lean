@@ -612,11 +612,10 @@ theorem held_of_relay_le_at_from
     obtain ⟨k', hk'j, ha', -⟩ := hsvc.relay x k B hxk ha hg z j
       (h.antitone (h.time_mono hjm.le) hz) hcj hdl' (hF j hjm.le)
     exact hlift k' (by omega) ha'
-  · obtain ⟨j₀, hfirst, hj₀⟩ := Healing.exists_firstCutFrom_le hcm
-    obtain ⟨k', hk', ha'⟩ := hcatch x k B hxk ha
-      (lt_of_lt_of_le (not_le.mp hg) (le_max_left _ _)) z j₀
-      (h.antitone hcm hz) hfirst (hF j₀ hj₀)
-    exact hlift k' (by omega) ha'
+  · obtain ⟨k', hk', ha', _⟩ := Healing.accept_before_snapshot hcm fun q hq hfirst =>
+      hcatch x k B hxk ha (lt_of_lt_of_le (not_le.mp hg) (le_max_left _ _)) z q
+        (h.antitone hcm hz) hfirst (hF q hq)
+    exact hlift k' hk' ha'
 
 /-- The snapshot height is attained by a member of its own honest cohort. -/
 theorem exists_HZ_holder_at_from {g : Time} (hH : (H (cutZ P g)).Nonempty) {j : Nat}

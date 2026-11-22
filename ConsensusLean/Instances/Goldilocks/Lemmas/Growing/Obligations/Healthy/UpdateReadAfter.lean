@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationInitialize
@@ -152,9 +153,7 @@ theorem operational_update_read_after_at
     rcases hframes J le_rfl with hFP | hPF
     · have hF : ∀ e ≤ J, Anc (tr.HonestBlocksAt H) (tr.state y e).fg.F P := by
         intro e he
-        have h := Healing.run_F_mono hrT.toLocalRun hy he
-        rw [hst e he, hst J le_rfl] at h
-        exact (h.mono hsub).trans hFP
+        exact (hrun.toLocalRun.finalized_mono_on_prefix hT0 hy he (hle J le_rfl)).trans hFP
       have hPj : P ∈ (Node.frame (tr.state y j)).tree :=
         (Compose.Growing.frame_of_projAC_at hrun hyj hup.1) ▸ hPt
       have hPU : P ∈ tr.HonestBlocksAt H := hΦjU hPt

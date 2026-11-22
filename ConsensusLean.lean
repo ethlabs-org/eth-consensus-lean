@@ -228,6 +228,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.FGProjec
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Joined
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Outputs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Sync
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees

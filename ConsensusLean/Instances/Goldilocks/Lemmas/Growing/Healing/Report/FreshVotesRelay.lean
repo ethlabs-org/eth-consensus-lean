@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
@@ -55,48 +56,20 @@ theorem accepted_relay_before_at
     (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     ∃ k ≤ j, tr.projAC.AcceptAt y k B ∧ tr.time k < tr.time i + sp.Δ := by
   have hr := hrun.toLocalRun
-  have hd := hr.time_nonneg j
-  have hp := hrun.upTo hd
-  obtain ⟨a, rfl, ha', hta⟩ := Healing.fg_accept_before
-    (hrun.upTo (hr.time_nonneg i)).toLocalRun hx
-    (by rw [RunTrace.upTo_projAC]; exact ACTrace.upTo_acceptAt.mpr ⟨le_rfl, ha⟩)
-  change tr.time a = tr.time (a + 1) at hta
-  have ha' := ((RunTrace.upTo_acceptAt _).mp ha').2
-  have hdl : tr.deadline y j (max (tr.time a) g) sp.Δ ≤ tr.time j := by
-    rw [hta, max_eq_left ((SA.le_gbar g).trans hgi), ← Compose.projAC_deadline]
-    have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := j)
-      (fun r hrj hrs => hnr y r (hr.antitone (hr.time_mono hrj) hy)
-        (Compose.projAC_restartAt.mp hrs)) (tr.time (a + 1))
-    change _ ≤ max (tr.time (a + 1)) (gbar g) + sp.Δ at h
-    rw [max_eq_left hgi] at h
-    exact h.trans hij
-  have hF : ell.frame.F = (tr.state y j).fg.F := by
-    rw [(hrun.cutLaw y j _ (Compose.projAC_callAt.mp hc) hy).1]
-    rfl
-  obtain ⟨k, hkj, hk, hkd⟩ := hsvc.relay x a B (hta ▸ hx) ha'
-    (by rw [hta]; exact (SA.le_gbar g).trans hgi) y j hy
-    ⟨_, Compose.projAC_callAt.mp hc⟩ hdl (hF ▸ hFB)
-  have hkj' : k < j := by
-    refine lt_of_le_of_ne hkj ?_
-    intro he
-    subst k
-    cases Option.some.inj (hk.2.symm.trans (Compose.projAC_callAt.mp hc).2)
-  have hk' : (tr.upTo (tr.time j)).AcceptAt y k B :=
-    (RunTrace.upTo_acceptAt _).mpr ⟨hr.time_mono hkj, hk⟩
-  obtain ⟨hacc, htk, _⟩ := Healing.ac_block_after hp.toLocalRun hy hk'
-  have hacc' : tr.projAC.AcceptAt y (k + 1) B := by
-    rw [RunTrace.upTo_projAC] at hacc
-    exact (ACTrace.upTo_acceptAt.mp hacc).2
-  have hdead := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := k)
-    (fun r hrk hrs => hnr y r (hr.antitone (hr.time_mono (hrk.trans hkj)) hy)
-      (Compose.projAC_restartAt.mp hrs)) (tr.time (a + 1))
-  change _ ≤ max (tr.time (a + 1)) (gbar g) + sp.Δ at hdead
-  rw [max_eq_left hgi, Compose.projAC_deadline] at hdead
-  change tr.time (k + 1) = tr.time k at htk
-  refine ⟨k + 1, by omega, hacc', ?_⟩
-  rw [htk]
-  rw [hta, max_eq_left ((SA.le_gbar g).trans hgi)] at hkd
-  exact hkd.trans_le hdead
+  have hbound : ∀ k ≤ j, tr.projAC.deadline y k (tr.time i) ≤ tr.time i + sp.Δ := by
+    intro k hkj
+    have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := k)
+      (fun r hrk hrs => hnr y r (hr.antitone (hr.time_mono (hrk.trans hkj)) hy)
+        (Compose.projAC_restartAt.mp hrs)) (tr.time i)
+    change _ ≤ max (tr.time i) (gbar g) + sp.Δ at h
+    rwa [max_eq_left hgi] at h
+  obtain ⟨k, hkj, hak, hkt⟩ := hr.acRelayAt (σ := tr.time i) hx ha hy hc hFB
+    fun q hqi hx' hq hj hF => by
+      have hgq : g ≤ tr.time q := hqi ▸ (SA.le_gbar g).trans hgi
+      have he : max (tr.time q) g = tr.time i := (max_eq_left hgq).trans hqi
+      simpa only [he] using hsvc.relay x q B hx' hq hgq y j hy hj
+        (by rw [he, ← Compose.projAC_deadline]; exact (hbound j le_rfl).trans hij) hF
+  exact ⟨k, hkj, hak, hkt.trans_le (hbound k hkj)⟩
 
 /-- **An honest acceptance reaches a later honest caller**, after GST by relay within `Δ` of
 the acceptance and before it by catch-up by `ḡ + 2Δ`, without requiring the sender to remain
@@ -112,8 +85,6 @@ private theorem relayed_accept_before_at {ini}
     (hF : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B) :
     ∃ a < j, tr.AcceptAt y a B ∧ tr.time a < max (tr.time k + sp.Δ) (gbar g + 2 * sp.Δ) := by
   have hr := hrun.toLocalRun
-  have hd := hr.time_nonneg j
-  have hp := hrun.upTo hd
   by_cases hnew : gbar g ≤ tr.time k
   · have hdl' : ∀ c ≤ j, tr.deadline y c (max (tr.time k) g) sp.Δ ≤ tr.time k + sp.Δ := by
       intro c hc
@@ -129,17 +100,8 @@ private theorem relayed_accept_before_at {ini}
     intro he
     subst a
     cases Option.some.inj (ha.2.symm.trans (Compose.projAC_callAt.mp hcy).2)
-  · have hex : ∃ k, gbar g + 2 * sp.Δ ≤ tr.time k := ⟨j, hg⟩
-    have hfirst : tr.FirstCutFrom (Nat.find hex) (gbar g + 2 * sp.Δ) :=
-      ⟨Nat.find_spec hex, fun a ha => not_le.1 (Nat.find_min hex ha)⟩
-    have hle : Nat.find hex ≤ j := Nat.find_min' hex hg
-    have hmono := Healing.run_F_mono hp.toLocalRun hy hle
-    rw [RunTrace.upTo_state_of_le hr.time_mono (hr.time_mono hle)] at hmono
-    rw [RunTrace.upTo_state_of_le hr.time_mono le_rfl] at hmono
-    obtain ⟨a, ha, hacc⟩ := hcatch x k B hxk ha (not_le.mp hnew) y _
-      (hr.antitone (hfirst.1.trans (hr.time_mono hle)) hy) hfirst
-      ((hmono.mono (RunTrace.honestBlocks_upTo_subset hr.time_mono hd)).trans hF)
-    exact ⟨a, ha.trans_le hle, hacc, lt_max_of_lt_right (hfirst.2 a ha)⟩
+  · obtain ⟨a, hlt, hacc, hat⟩ := hr.fgCatchAt hcatch hxk ha (not_le.mp hnew) hy hg hF
+    exact ⟨a, hlt, hacc, lt_max_of_lt_right hat⟩
 
 /-- Historical frame membership relays without requiring the sender to remain honest. -/
 theorem frame_relay_before_at {ini}

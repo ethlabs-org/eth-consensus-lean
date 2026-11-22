@@ -146,11 +146,11 @@ theorem goldilocks_finalReadTransport (S : Setup) {E : Env V}
         change SA.gbar gst + 2 * sp.Δ ≤ D
         have : (0 : Time) < sp.Δ := hΔ
         linarith
-      obtain ⟨j₀, hfirst, hj₀⟩ := Healing.exists_firstCutFrom_le (tr := tr)
-        (show SA.gbar gst + 2 * sp.toParams.Δ ≤ tr.time j by linarith)
-      obtain ⟨k, hk, hak⟩ := hP.catchUp x c (W.block 3) hx' (hacc 3) hlt y j₀
-        ⟨hrun.antitone (hu.trans hDt) hyt, hu⟩ hfirst (hFm j₀ hj₀)
-      exact ⟨k, by omega, hak⟩
+      obtain ⟨k, hk, hak, _⟩ := Healing.accept_before_snapshot (tr := tr)
+        (show SA.gbar gst + 2 * sp.toParams.Δ ≤ tr.time j by linarith) fun q hq hfirst =>
+          hP.catchUp x c (W.block 3) hx' (hacc 3) hlt y q
+            ⟨hrun.antitone (hu.trans hDt) hyt, hu⟩ hfirst (hFm q hq)
+      exact ⟨k, hk, hak⟩
 
 end Consensus.Goldilocks.Simulation
 

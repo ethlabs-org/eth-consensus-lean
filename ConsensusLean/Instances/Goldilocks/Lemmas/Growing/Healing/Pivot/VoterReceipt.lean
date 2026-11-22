@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Foundation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.RawWriterTree
@@ -48,30 +49,7 @@ theorem raw_writer_voterBlockTree_before_at
       Anc (tr.HonestBlocksAt H) ell.frame.F D →
       ∃ k ≤ j, tr.projAC.AcceptAt y k D ∧ tr.time k < SA.gbar g + 2 * sp.Δ := by
     intro x q D hxq hq hqt y j ell hyj hcall hlate _ hFD
-    have hpre := hp.run.upTo (hp.run.time_nonneg q)
-    have hq' : (tr.upTo (tr.time q)).projAC.AcceptAt x q D := by
-      rw [RunTrace.upTo_projAC]
-      exact ACTrace.upTo_acceptAt.mpr ⟨le_rfl, hq⟩
-    obtain ⟨q₀, _, hacc, htime⟩ := Healing.fg_accept_before hpre.toLocalRun hxq hq'
-    have hacc₀ := (RunTrace.upTo_acceptAt tr).mp hacc |>.2
-    have htime₀ : tr.time q₀ = tr.time q := htime
-    obtain ⟨j₀, hj₀, hj₀j⟩ := Healing.exists_firstCutFrom_le hlate
-    have hrj := hp.run.upTo (hp.run.time_nonneg j)
-    have hfr := Outcome.frame_of_call hp.run hyj hcall
-    have hFD' : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F D := by rwa [hfr] at hFD
-    have hprev := Healing.run_F_mono hrj.toLocalRun hyj hj₀j
-    rw [RunTrace.upTo_state_of_le hm (hm hj₀j), RunTrace.upTo_state_of_le hm le_rfl] at hprev
-    have hsub := RunTrace.honestBlocks_upTo_subset hm (H := H) (hp.run.time_nonneg j)
-    obtain ⟨k, hkj₀, hak⟩ := hp.catchUp x q₀ D (htime₀ ▸ hxq) hacc₀ (htime₀ ▸ hqt) y j₀
-      (hp.run.antitone hlate hyj) hj₀ ((hprev.mono hsub).trans hFD')
-    have hkj : k < j := lt_of_lt_of_le hkj₀ hj₀j
-    have hak' := (RunTrace.upTo_acceptAt tr).mpr ⟨hm hkj.le, hak⟩
-    obtain ⟨hAC, hACt, _⟩ := Healing.ac_block_after hrj.toLocalRun hyj hak'
-    rw [RunTrace.upTo_projAC] at hAC
-    refine ⟨k + 1, by omega, ACTrace.upTo_acceptAt.mp hAC |>.2, ?_⟩
-    change tr.time (k + 1) = tr.time k at hACt
-    rw [hACt]
-    exact hj₀.2 k hkj₀
+    exact hp.run.toLocalRun.acCatchAt hp.catchUp hxq hq hqt hyj hcall hlate hFD
   apply SA.Growing.raw_writer_voterBlockTree_window_before_at
     hp.committee_pos hac.localRun hac.vstart hsvc hcatchAC
     hx hy hwriter hBC hc (by omega) le_rfl ?_ hF

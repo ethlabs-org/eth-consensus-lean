@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorGlobal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
@@ -55,10 +56,8 @@ theorem tree_mono_at {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun pr
 
 theorem F_mono_at {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d) {k : Nat} (hki : k ≤ i) :
-    Anc (tr.HonestBlocksAt H) (tr.state y k).fg.F (tr.state y i).fg.F := by
-  have h := Healing.run_F_mono (hrun.upTo hd).toLocalRun hy hki
-  rw [Trace.upTo_state tr y hi, Trace.upTo_state tr y fun k' hk' => hi k' (by omega)] at h
-  exact h.mono (upTo_subset hrun hd)
+    Anc (tr.HonestBlocksAt H) (tr.state y k).fg.F (tr.state y i).fg.F :=
+  hrun.toLocalRun.finalized_mono_on_prefix hd hy hki hi
 
 theorem held_anc_at {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d)

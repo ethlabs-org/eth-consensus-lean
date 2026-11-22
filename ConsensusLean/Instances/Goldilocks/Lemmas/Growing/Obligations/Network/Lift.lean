@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 
@@ -19,6 +20,35 @@ that cut's time (`Growing.GoldilocksRun.upTo`), where the node is honest through
 * `acBlock_prev_at`, `accept_next_at`: an AC block call follows its FG acceptance at the same time;
 * `sleepyServiceBefore_of_message_relay_at`: the finite Sleepy service from SA message service and
   node acceptance relay. -/
+
+namespace Consensus.Goldilocks.Growing.LocalRun
+
+variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
+
+/-- Lift node acceptance service to the following AC block call, at the same deadline. -/
+theorem acRelayBefore (hrun : LocalRun proposer dg H sg tr ini) {b : Time}
+    (relay : ∀ x i B, x ∈ H (tr.time i) → tr.AcceptAt x i B → 0 ≤ tr.time i →
+      ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j → tr.deadline y j (tr.time i) P.Δ ≤ b →
+        tr.deadline y j (tr.time i) P.Δ ≤ tr.time j →
+        Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B →
+        tr.BlockAcceptedBy y j (tr.time i) B)
+    {x : Fin P.n} {i : Nat} {B : A.Blk} (hx : x ∈ H (tr.time i))
+    (hacc : tr.projAC.AcceptAt x i B) (hai : 0 ≤ tr.time i)
+    {y : Fin P.n} {j : Nat} {ℓ : ACLabel A} (hy : y ∈ H (tr.time j))
+    (hc : tr.projAC.CallAt y j ℓ) (hdb : tr.projAC.deadline y j (tr.time i) ≤ b)
+    (hdl : tr.projAC.deadline y j (tr.time i) ≤ tr.time j)
+    (hanc : Anc (tr.HonestBlocksAt H) ℓ.frame.F B) :
+    ∃ k ≤ j, tr.projAC.AcceptAt y k B ∧ tr.time k < tr.projAC.deadline y k (tr.time i) := by
+  apply hrun.acRelayAt hx hacc hy hc hanc
+  intro k hki hx' hk hj hF
+  rw [← hki]
+  exact relay x k B hx' hk (hki ▸ hai) y j hy hj
+    (by rw [hki, ← Compose.projAC_deadline]; exact hdb)
+    (by rw [hki, ← Compose.projAC_deadline]; exact hdl) hF
+
+end Consensus.Goldilocks.Growing.LocalRun
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
@@ -69,12 +99,8 @@ while honest. -/
 theorem run_F_mono_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i i' : Nat}
     (hy : y ∈ H (tr.time i')) (hii : i ≤ i') :
-    Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F (tr.state y i').fg.F := by
-  have hr := (hrun.upTo (hrun.time_nonneg i')).toLocalRun
-  have h := Healing.run_F_mono hr hy hii
-  rw [RunTrace.upTo_state_of_le hrun.time_mono (hrun.time_mono hii),
-    RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
-  exact h.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono (hrun.time_nonneg i'))
+    Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F (tr.state y i').fg.F :=
+  hrun.toLocalRun.finalized_mono hy hii
 
 /-- An AC block call of a node honest at it follows the FG acceptance of the block at the same
 time. -/
@@ -82,11 +108,8 @@ theorem acBlock_prev_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
     {B : (goldilocksNode sp ro).Blk} (hc : tr.CallAt y i (.ac ℓ)) (hb : ℓ.call = .block B) :
-    ∃ i', i = i' + 1 ∧ tr.CallAt y i' (.fg (.block B true)) ∧ tr.time i' = tr.time i := by
-  have hr := (hrun.upTo (hrun.time_nonneg i)).toLocalRun
-  obtain ⟨i', rfl, hc', ht⟩ := Compose.acBlock_prev hr hy
-    ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc) hb
-  exact ⟨i', rfl, ((Trace.upTo_callAt _).mp hc').2, ht⟩
+    ∃ i', i = i' + 1 ∧ tr.CallAt y i' (.fg (.block B true)) ∧ tr.time i' = tr.time i :=
+  hrun.toLocalRun.acBlock_prev hy hc hb
 
 /-- An FG acceptance of a node honest at it is followed at once by the AC block call. -/
 theorem accept_next_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
@@ -94,11 +117,8 @@ theorem accept_next_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hy : y ∈ H (tr.time i)) {B : (goldilocksNode sp ro).Blk}
     (hc : tr.CallAt y i (.fg (.block B true))) :
     ∃ ℓ : ACLabel (goldilocksNode sp ro), tr.CallAt y (i + 1) (.ac ℓ) ∧ ℓ.call = .block B ∧
-      tr.time (i + 1) = tr.time i := by
-  have hr := (hrun.upTo (hrun.time_nonneg i)).toLocalRun
-  obtain ⟨ℓ, hc', hb, ht⟩ := Compose.accept_next hr hy
-    ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
-  exact ⟨ℓ, ((Trace.upTo_callAt _).mp hc').2, hb, ht⟩
+      tr.time (i + 1) = tr.time i :=
+  hrun.toLocalRun.accept_next hy hc
 
 /-- **The finite Sleepy service under growing faults** from SA message service and node
 acceptance relay (senders honest at the send, recipients at the reading call); the AC acceptance
@@ -118,29 +138,7 @@ theorem sleepyServiceBefore_of_message_relay_at
     Compose.Growing.SleepyServiceBefore tr H sp.Δ b := by
   refine ⟨sp.toParams.hΔ, message, ?_, relay⟩
   intro x i B hx hacc hai y j ℓ hy hc hdb hdl hanc
-  obtain ⟨ℓ₀, hc₀, hb⟩ := hacc
-  have hc := Compose.projAC_callAt.mp hc
-  obtain ⟨i', rfl, hi', hti⟩ := acBlock_prev_at hrun hx (Compose.projAC_callAt.mp hc₀) hb
-  have hfr : ℓ.frame.F = (tr.state y j).fg.F := by
-    rw [(hrun.cutLaw y j _ hc hy).1]
-    rfl
-  obtain ⟨k, hkj, hk, hlt⟩ := relay x i' B (hti ▸ hx) hi' (hti ▸ hai) y j hy ⟨_, hc⟩
-    (by rw [hti, ← Compose.projAC_deadline]; exact hdb)
-    (by rw [hti, ← Compose.projAC_deadline]; exact hdl) (hfr ▸ hanc)
-  obtain ⟨ℓ', hc', hb', htk⟩ := accept_next_at hrun
-    (hrun.antitone (hrun.time_mono hkj) hy) hk
-  have hkj' : k + 1 ≤ j := by
-    rcases Nat.lt_or_eq_of_le hkj with hlt' | rfl
-    · omega
-    · cases Option.some.inj (hk.2.symm.trans hc.2)
-  have hnr : ¬ tr.RestartAt y (k + 1) := fun ⟨ℓr, hcr, hrestart⟩ => by
-    cases Option.some.inj (hc'.2.symm.trans hcr.2)
-    rw [hb'] at hrestart
-    cases hrestart
-  refine ⟨k + 1, hkj', ⟨ℓ', Compose.projAC_callAt.mpr hc', hb'⟩, ?_⟩
-  rw [Compose.projAC_deadline, htk, ← hti]
-  simp only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] at hlt ⊢
-  exact hlt
+  exact hrun.toLocalRun.acRelayBefore relay hx hacc hai hy hc hdb hdl hanc
 
 end Consensus.Goldilocks.Obligations.Growing
 

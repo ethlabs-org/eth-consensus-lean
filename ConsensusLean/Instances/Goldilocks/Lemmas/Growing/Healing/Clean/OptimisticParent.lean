@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
@@ -143,37 +144,9 @@ theorem clean_optimistic_proposal_parent_at {cm : Time → Finset (Fin sp.n)} {�
   by_cases hg : SA.gbar g ≤ tr.time q
   · exact Or.inr (Or.inl ⟨q, hqH, hq, hg, hqt⟩)
   -- an acceptance before the reset is relayed to the proposer by the catch-up
-  have hprex := hp.run.upTo (hp.run.time_nonneg q)
-  obtain ⟨ellq, hcq, hblock⟩ := hq
-  have hcq' := (Trace.upTo_callAt tr).mpr ⟨le_rfl, Compose.projAC_callAt.mp hcq⟩
-  obtain ⟨q', rfl, haq', htime⟩ := Compose.acBlock_prev hprex.toLocalRun hqH hcq' hblock
-  obtain ⟨hqq, haq⟩ := (Trace.upTo_callAt tr).mp haq'
-  change tr.time q' = tr.time (q' + 1) at htime
-  have hex : ∃ k, SA.gbar g + 2 * sp.Δ ≤ tr.time k := ⟨i, by rw [hti, hts]; linarith⟩
-  have hfirst : tr.FirstCutFrom (Nat.find hex) (SA.gbar g + 2 * sp.Δ) :=
-    ⟨Nat.find_spec hex, fun k hk => not_le.mp (Nat.find_min hex hk)⟩
-  have hki : Nat.find hex ≤ i := Nat.find_min' hex (by rw [hti, hts]; linarith)
-  have hpy := hp.run.upTo ht0
-  have hFD' : Anc (tr.HonestBlocksAt H) (tr.state p (Nat.find hex)).fg.F D := by
-    have hF := Healing.run_F_mono hpy.toLocalRun hpH hki
-    rw [RunTrace.upTo_state_of_le hm (hm hki), RunTrace.upTo_state_of_le hm le_rfl] at hF
-    have hframe := Compose.frame_of_projAC hpy hpH (by rw [RunTrace.upTo_projAC]; exact hcp)
-    rw [RunTrace.upTo_state_of_le hm le_rfl] at hframe
-    have hFeq : ell.frame.F = (tr.state p i).fg.F := congrArg Frame.F hframe
-    exact (hF.mono subU).trans (by rwa [← hFeq])
-  obtain ⟨k, hkk, hak⟩ := hp.catchUp x q' D (hp.run.antitone hqq hqH) haq
-    (by rw [htime]; exact not_le.mp hg) p _
-    (hp.run.antitone (hfirst.1.trans (hm hki)) hpH) hfirst hFD'
-  have hk := hkk.le.trans hki
-  have hak' := (RunTrace.upTo_acceptAt tr).mpr ⟨hm hk, hak⟩
-  obtain ⟨ellk, hck, hblock, ht⟩ := Compose.accept_next hpy.toLocalRun hpH hak'
-  have hck' := (Trace.upTo_callAt tr).mp hck |>.2
-  refine Or.inr (Or.inr ⟨k + 1, by omega, ⟨ellk, Compose.projAC_callAt.mpr hck', hblock⟩, ?_⟩)
-  change tr.time (k + 1) < _
-  change tr.time (k + 1) = tr.time k at ht
-  rw [ht]
-  have := hfirst.2 k hkk
-  linarith
+  obtain ⟨k, hki, hak, hkt⟩ := hp.run.toLocalRun.acCatchAt hp.catchUp hqH hq (not_le.mp hg)
+    hpH hci (by rw [hti, hts]; linarith) hFD
+  exact Or.inr (Or.inr ⟨k, hki, hak, by change tr.time k < _; linarith⟩)
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 

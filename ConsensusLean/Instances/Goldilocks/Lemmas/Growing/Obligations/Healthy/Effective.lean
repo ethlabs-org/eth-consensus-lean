@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
@@ -71,22 +72,16 @@ theorem effective_record_frame_of_run_at
       ((SA.lookup (Node.frame (tr.state y j)) r).getD (tr.state y j).fg.F) := by
   have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
   have hit : ∀ k < i, tr.time k ≤ t := fun k hk => hjt k (by omega)
-  have hsti := Trace.upTo_state tr y hit
-  have hstj := Trace.upTo_state tr y hjt
-  have hr := hrun.upTo ht0
   have hreach := Healing.Growing.fg_reachable_at hrun ht0 hjt hy
   have hΨ := (Store.frame_realization _ _ _ _ hreach).1
-  have hFF : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F (tr.state y j).fg.F := by
-    have h := Healing.run_F_mono hr.toLocalRun hy hij
-    rw [hsti, hstj] at h
-    exact h.mono (Compose.Growing.upTo_subset hrun ht0)
+  have hFF := hrun.toLocalRun.finalized_mono_on_prefix ht0 hy hij hjt
   apply effective_record_frame_of_compatible hU (Φ := Node.frame (tr.state y i)) hΨ
     (fun X hX => Compose.Growing.tree_subset_at ht0 hit hy hX.1)
     (fun X hX => Compose.Growing.tree_subset_at ht0 hjt hy hX.1) hFF hFO ?_ hO
   intro C hC hFC
   have hCj : C ∈ (tr.state y j).fg.tree := by
-    have h := Compose.tree_mono hr.toLocalRun hy hij
-    rw [hsti, hstj] at h
+    have h := Compose.tree_mono (hrun.upTo ht0).toLocalRun hy hij
+    rw [Trace.upTo_state tr y hit, Trace.upTo_state tr y hjt] at h
     exact h hC.1
   obtain ⟨hfin, htc, hgm, hgen⟩ := Store.accepted_tree _ _ _ _ hreach
   have hfull : FrameOK (⟨(tr.state y j).fg.tree, _, _, ∅⟩ :

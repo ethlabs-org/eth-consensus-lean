@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationProvenance
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Model
@@ -138,9 +139,7 @@ theorem received_forward_accepted_before_of_released_at (hv : rho.ExecutionValid
     fun k hk => hbj k (by omega)
   have hFB' : Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho))
       ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn (i + 1))).fg.F B := by
-    have hmono := Healing.run_F_mono (hrun.upTo hD).toLocalRun hyD hij
-    rw [Trace.upTo_state _ _ hbe, Trace.upTo_state _ _ hbj] at hmono
-    exact (hmono.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono hD)).trans hFB
+    exact (hrun.toLocalRun.finalized_mono_on_prefix hD hyD hij hbj).trans hFB
   -- Split the delivery at the received envelope.
   have hseq := simTraceAt_deliver S rho hn hv he
   set σ := stateAt S rho hn v i

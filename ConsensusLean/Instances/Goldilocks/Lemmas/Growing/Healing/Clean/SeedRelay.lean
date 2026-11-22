@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -56,40 +57,10 @@ theorem reset_accept_frame_at
       hy hcall hdl hF
     exact SA.mem_tree_of_acceptAt sp hR hy
       ((ACTrace.upTo_acceptAt).mpr ⟨hm hkj, hak⟩) hkj hcall' hF
-  · classical
-    obtain ⟨ellx, hcx, hb⟩ := ha
-    have hrq := hp.run.upTo (hp.run.time_nonneg q)
-    have hcx' : (tr.upTo (tr.time q)).CallAt x q (.ac ellx) :=
-      (Trace.upTo_callAt tr).mpr ⟨le_rfl, Compose.projAC_callAt.mp hcx⟩
-    obtain ⟨q', rfl, hacc, hqt⟩ := Compose.acBlock_prev hrq.toLocalRun hx hcx' hb
-    have hacc₀ := (Trace.upTo_callAt tr).mp hacc |>.2
-    have hqt' : tr.time q' = tr.time (q' + 1) := hqt
-    have hex : ∃ k, SA.gbar g + 2 * sp.Δ ≤ tr.time k := ⟨j, hg⟩
-    have hfirst : tr.FirstCutFrom (Nat.find hex) (SA.gbar g + 2 * sp.Δ) :=
-      ⟨Nat.find_spec hex, fun k hk => not_le.1 (Nat.find_min hex hk)⟩
-    have hfirstj : Nat.find hex ≤ j := Nat.find_min' hex hg
-    have hfr : ell.frame.F = (tr.state y j).fg.F := by
-      have h := Compose.frame_of_projAC hrj hy (show (tr.upTo (tr.time j)).projAC.CallAt y j ell
-        from by rw [RunTrace.upTo_projAC]; exact hcall')
-      rw [RunTrace.upTo_state_of_le hm le_rfl] at h
-      rw [h]
-      rfl
-    have hmono : Anc (tr.HonestBlocksAt H)
-        (tr.state y (Nat.find hex)).fg.F (tr.state y j).fg.F := by
-      have h := Healing.run_F_mono hrj.toLocalRun hy hfirstj
-      rw [RunTrace.upTo_state_of_le hm (hm hfirstj), RunTrace.upTo_state_of_le hm le_rfl] at h
-      exact h.mono (RunTrace.honestBlocks_upTo_subset hm hj0)
-    obtain ⟨k, hk, hak⟩ := hp.catchUp x q' B (hqt' ▸ hx) hacc₀
-      (by rw [hqt']; exact not_le.mp hnew) y _ (hp.run.antitone hg hy) hfirst
-      (hmono.trans (hfr ▸ hF))
-    have hkj : k < j := lt_of_lt_of_le hk hfirstj
-    have hktj := hm hkj.le
-    have hak' := (Trace.upTo_callAt tr).mpr (And.intro hktj hak)
-    obtain ⟨ellk, hck, hbk, ht⟩ := Compose.accept_next hrj.toLocalRun hy hak'
-    have hakAC : ACTrace.AcceptAt (tr.projAC.upTo (tr.time j)) y (k + 1) B := by
-      rw [← RunTrace.upTo_projAC]
-      exact ⟨ellk, Compose.projAC_callAt.mpr hck, hbk⟩
-    exact SA.mem_tree_of_acceptAt sp hR hy hakAC (by omega) hcall' hF
+  · obtain ⟨k, hkj, hak, _⟩ := hp.run.toLocalRun.acCatchAt hp.catchUp hx ha (not_le.mp hnew)
+      hy hcall hg hF
+    exact SA.mem_tree_of_acceptAt sp hR hy
+      ((ACTrace.upTo_acceptAt).mpr ⟨hm hkj, hak⟩) hkj hcall' hF
 
 /-- A historically held frame block reaches a bounded honest recipient above its guard. -/
 theorem reset_frame_relay_at

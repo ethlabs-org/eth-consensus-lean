@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReadContextDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.RecordWriters
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HealedSafetyConditional
@@ -204,10 +205,7 @@ theorem healthy_current_mature_or_anchor_at (D : RepairSchedule tr H proposer dg
           hsc hqb hu hjb hRnext with hRF | ⟨B, DV, hres, hRB⟩
       · left
         apply hfinal
-        have hFN := Healing.run_F_mono (hrun.upTo ht0).toLocalRun hy hjn.le
-        rw [Trace.upTo_state tr y (fun k hk => hnt k (by omega)),
-          Trace.upTo_state tr y hnt] at hFN
-        exact hRF.trans (hFN.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono ht0))
+        exact hRF.trans (hrun.toLocalRun.finalized_mono_on_prefix ht0 hy hjn.le hnt)
       · right
         exact hraw y j (s + 1) B DV (hkeys (hnt j hjn)) hres hRB (hjt ▸ hnext.le)
           (hs.trans (Nat.le_succ s))

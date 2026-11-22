@@ -11,6 +11,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forwa
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Tick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.AtAcceptance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTransport
+public import ConsensusLean.Instances.Goldilocks.Results.Spec.NodeCanonicalTrace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
@@ -35,6 +36,104 @@ Contents: `deadline_awake_interval_at`, `deadline_mono_cut_at`, `publication_hel
 `held_att_processed_before_at`, the attestation service contract `PSyncFGAttTransportAt` with its
 monotone lift, and its base supplier `signed_row_service_psync_at`. -/
 
+namespace Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
+
+open Shape
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+  {O : OutputSchema} {I : Type} [DecidableEq I] [Countable I]
+  {F : ChainShapeFamily O I} {p : Params} {hN : p.n = Fintype.card V}
+  {hn : 1 ≤ Fintype.card V} {A : NodeAC (paramsAtCount p (Fintype.card V) hN hn)}
+  {e : Encoding F E p hN hn A} {rho : Model.Run (compiled F) E}
+  {proposer : Nat → Fin (Fintype.card V)} {sg : A.Msg → Fin (Fintype.card V)}
+  {ini : Fin (Fintype.card V) → A.State}
+
+omit [DecidableEq V] in
+/-- Honesty at the observation implies engine honesty at earlier in-horizon times. -/
+theorem not_faulty_of_mem_honestKeysAt {y : Fin (Fintype.card V)} {t a : Time}
+    (hy : y ∈ honestKeysAt rho t) (hat : a ≤ t) (hah : a ≤ rho.horizon) :
+    rho.key y ∉ rho.faultyAt a := by
+  rw [mem_honestKeysAt_iff] at hy
+  exact fun h => hy (rho.faultyAt_mono (le_min hat hah) h)
+
+/-- The recipient is awake from its effective send/wake start through the reading call. -/
+theorem deadline_awake_interval
+    (hr : Growing.LocalRun proposer (digestOf e rho) (honestKeysAt rho) sg (simTrace e rho) ini)
+    {y : Fin (Fintype.card V)} {j : Nat}
+    (hy : y ∈ honestKeysAt rho ((simTrace e rho).time j)) (hj : (simTrace e rho).IsCall y j)
+    {τ : Time} (hτ : 0 ≤ τ) (Δ : Time) :
+    ∃ a, τ ≤ a ∧ (simTrace e rho).deadline y j τ Δ = a + Δ ∧
+      rho.point.AwakeOnClosed (rho.key y) a ((simTrace e rho).time j) := by
+  obtain ⟨a, hτa, heq, hw⟩ := (simTrace e rho).deadline_awake_of_call hr.time_mono hj
+    (hr.awake_of_call y j hy hj) (fun u => hr.restart_at_wake y u _ hy)
+    (fun k hk hkj => hr.sleep_of_restart y k (hr.antitone hkj hy) hk) hτ Δ
+  exact ⟨a, hτa, heq, fun u hau huj => (simTrace_awake_iff e rho y u).mp (hw u hau huj) |>.1⟩
+
+/-- A published non-FG object is held strictly before the reading cut's deadline.
+The service function is supplied by `SyncUntil` or `PSync`; in the latter case the
+effective send time is at least GST, so the start supplied to the log is also at least GST. -/
+theorem publication_held_before_deadline
+    (hr : Growing.LocalRun proposer (digestOf e rho) (honestKeysAt rho) sg (simTrace e rho) ini)
+    (hΔ : E.ΔAC ≤ p.Δ) {b : Time} (hbh : b ≤ rho.horizon)
+    {y : Fin (Fintype.card V)} {j : Nat} {σ : Time}
+    {o : (Model.protoOf (compiled F) E).Object}
+    (hnet : ∀ a, σ ≤ a → a + E.ΔAC - 1 ≤ b → a + E.ΔAC - 1 ≤ rho.horizon →
+      rho.key y ∉ rho.faultyAt (a + E.ΔAC - 1) →
+      rho.point.AwakeOnClosed (rho.key y) a (a + E.ΔAC - 1) →
+      rho.log.Held rho.point (rho.key y) o (a + E.ΔAC - 1))
+    (hy : y ∈ honestKeysAt rho ((simTrace e rho).time j)) (hj : (simTrace e rho).IsCall y j)
+    (hσ : 0 ≤ σ) (hb : (simTrace e rho).deadline y j σ p.Δ ≤ b)
+    (hd : (simTrace e rho).deadline y j σ p.Δ ≤ (simTrace e rho).time j) :
+    ∃ d, rho.log.Held rho.point (rho.key y) o d ∧ d < (simTrace e rho).deadline y j σ p.Δ := by
+  obtain ⟨a, ha, heq, hw⟩ := deadline_awake_interval hr hy hj hσ p.Δ
+  rw [heq] at hb hd ⊢
+  have hslack : a + E.ΔAC - 1 < a + p.Δ := by linarith
+  have hdb := hslack.le.trans hb
+  have hdh := hdb.trans hbh
+  have hdj := hslack.le.trans hd
+  exact ⟨_, hnet a ha hdb hdh (not_faulty_of_mem_honestKeysAt hy hdj hdh)
+    (fun u hau hud => hw u hau (hud.trans hdj)), hslack⟩
+
+/-- The holding step before the stop, keeping the original send time. -/
+theorem publication_held_before_syncUntil
+    (hr : Growing.LocalRun proposer (digestOf e rho) (honestKeysAt rho) sg (simTrace e rho) ini)
+    (hΔ : E.ΔAC ≤ p.Δ) {b : Time} (hbh : b ≤ rho.horizon)
+    (hnet : rho.log.SyncUntil rho.point b) {x y : Fin (Fintype.card V)} {j : Nat} {τ : Time}
+    {o : (Model.protoOf (compiled F) E).Object}
+    (hrel : rho.releases (rho.key x) o τ) (hx : rho.key x ∉ rho.faultyAt τ)
+    (hrow : ¬ rho.log.fgAtt o)
+    (hy : y ∈ honestKeysAt rho ((simTrace e rho).time j)) (hj : (simTrace e rho).IsCall y j)
+    (hτ : 0 ≤ τ) (hb : (simTrace e rho).deadline y j τ p.Δ ≤ b)
+    (hd : (simTrace e rho).deadline y j τ p.Δ ≤ (simTrace e rho).time j) :
+    ∃ d, rho.log.Held rho.point (rho.key y) o d ∧ d < (simTrace e rho).deadline y j τ p.Δ :=
+  publication_held_before_deadline hr hΔ hbh
+    (fun a ha hb hh hy hw => hnet.msgs _ _ _ hrel hx hrow _ a ha hb hh hy hw) hy hj hτ hb hd
+
+/-- The holding step after the stop, with the effective time `max τ g`. -/
+theorem publication_held_before_psync
+    (hr : Growing.LocalRun proposer (digestOf e rho) (honestKeysAt rho) sg (simTrace e rho) ini)
+    (hΔ : E.ΔAC ≤ p.Δ) {g : Time} (hnet : rho.log.PSync rho.point g)
+    {x y : Fin (Fintype.card V)} {j : Nat} {τ : Time}
+    {o : (Model.protoOf (compiled F) E).Object}
+    (hrel : rho.releases (rho.key x) o τ) (hx : rho.key x ∉ rho.faultyAt τ)
+    (hrow : ¬ rho.log.fgAtt o)
+    (hy : y ∈ honestKeysAt rho ((simTrace e rho).time j)) (hj : (simTrace e rho).IsCall y j)
+    (hτ : 0 ≤ τ) (hb : (simTrace e rho).deadline y j (max τ g) p.Δ ≤ rho.horizon)
+    (hd : (simTrace e rho).deadline y j (max τ g) p.Δ ≤ (simTrace e rho).time j) :
+    ∃ d, rho.log.Held rho.point (rho.key y) o d ∧
+      d < (simTrace e rho).deadline y j (max τ g) p.Δ := by
+  apply publication_held_before_deadline hr hΔ le_rfl _ hy hj (hτ.trans (le_max_left _ _)) hb hd
+  intro a ha hb hh hy hw
+  have hga : max a g = a := max_eq_left ((le_max_right τ g).trans ha)
+  have hh' : max a g + E.ΔAC - 1 ≤ rho.horizon := hga.symm ▸ hh
+  have hy' : rho.key y ∉ rho.faultyAt (max a g + E.ΔAC - 1) := hga.symm ▸ hy
+  have hw' : rho.point.AwakeOnClosed (rho.key y) a (max a g + E.ΔAC - 1) := hga.symm ▸ hw
+  have h := hnet.msgs _ _ _ hrel hx hrow (rho.key y) a ((le_max_left τ g).trans ha) hh' hh' hy' hw'
+  change rho.log.Held rho.point (rho.key y) o (max a g + E.ΔAC - 1) at h
+  rwa [hga] at h
+
+end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
+
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 open Shape Blocks
@@ -43,12 +142,35 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
 
 omit [DecidableEq V] in
+/-- The Goldilocks network instance reads the canonical honest-key set. -/
+theorem network_honestKeysAt_eq :
+    honestKeysAt S rho = NodeAsChainShape.CanonicalTrace.honestKeysAt rho := by
+  funext t; ext y
+  rw [mem_honestKeysAt_iff, NodeAsChainShape.CanonicalTrace.mem_honestKeysAt_iff]
+
+/-- The Goldilocks network instance uses the encoded replay. -/
+theorem network_trace_eq (hn : 1 ≤ Fintype.card V) :
+    simTraceAt S rho hn = NodeAsChainShape.CanonicalTrace.simTrace (traceEncoding S hn) rho :=
+  (simTraceAt_eq S rho hn).trans (simTrace_encoding S rho hn).1
+
+/-- The structural laws specialized to the network instance's canonical replay. -/
+theorem network_localRun (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) :
+    Growing.LocalRun (runProposer S rho hn)
+      (NodeAsChainShape.CanonicalTrace.digestOf (traceEncoding S hn) rho)
+      (NodeAsChainShape.CanonicalTrace.honestKeysAt rho) SA.Vote.val
+      (NodeAsChainShape.CanonicalTrace.simTrace (traceEncoding S hn) rho) (simIni S rho hn) := by
+  obtain ⟨_, hdg⟩ := runProposer_digestOf S rho hn
+  rw [← hdg, ← network_trace_eq, ← network_honestKeysAt_eq]
+  exact (simTraceAt_goldilocksRun S rho hn hv).toLocalRun
+
+omit [DecidableEq V] in
 /-- A key honest at `t` is the key of an engine node uncompromised at every in-horizon `a ≤ t`. -/
 theorem not_faulty_of_mem_honestKeysAt {y : Fin (Fintype.card V)} {t a : Time}
     (hy : y ∈ honestKeysAt S rho t) (hat : a ≤ t) (hah : a ≤ rho.horizon) :
     rho.key y ∉ rho.faultyAt a := by
   rw [mem_honestKeysAt_iff] at hy
-  exact fun h => hy (rho.faultyAt_mono (le_min hat hah) h)
+  rw [← NodeAsChainShape.CanonicalTrace.mem_honestKeysAt_iff] at hy
+  exact NodeAsChainShape.CanonicalTrace.not_faulty_of_mem_honestKeysAt hy hat hah
 
 /-- A recipient is awake from its effective send/wake start through its call. The recipient is
 honest at the call. -/
@@ -60,14 +182,11 @@ theorem deadline_awake_interval_at (hn : 1 ≤ Fintype.card V) (hv : rho.Executi
       (simTraceAt S rho hn).deadline y j τ (S.params (Model.pubOf E) hn).Δ =
         a + (S.params (Model.pubOf E) hn).Δ ∧
       rho.point.AwakeOnClosed (rho.key y) a ((simTraceAt S rho hn).time j) := by
-  have hr := simTraceAt_goldilocksRun S rho hn hv
-  obtain ⟨a, hτa, heq, hw⟩ := (simTraceAt S rho hn).deadline_awake_of_call hr.time_mono hj
-    (hr.awake_of_call y j hy hj) (fun u => hr.restart_at_wake y u _ hy)
-    (fun k hk hkj => hr.sleep_of_restart y k (hr.antitone hkj hy) hk) hτ _
-  refine ⟨a, hτa, heq, fun u hau huj => ?_⟩
-  have h := (simTraceAt_awake_iff S rho hn y u).mp (hw u hau huj)
-  rw [awakeAt_iff] at h
-  exact h.1
+  have htr := network_trace_eq S rho hn
+  rw [htr, network_honestKeysAt_eq] at hy
+  rw [htr] at hj ⊢
+  exact NodeAsChainShape.CanonicalTrace.deadline_awake_interval
+    (network_localRun S rho hn hv) hy hj hτ _
 
 /-- Later observation cuts can only increase a recipient's deadline. -/
 theorem deadline_mono_cut_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)

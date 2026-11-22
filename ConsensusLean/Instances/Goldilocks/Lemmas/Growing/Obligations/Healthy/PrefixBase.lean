@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
@@ -125,37 +126,17 @@ theorem catch_window_at_gbar_at
     CatchACWindowBefore (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) (gbar g)
       (2 * sp.Δ) d := by
   have hm := hrun.time_mono
-  have hpre := hrun.upTo hd0
   rw [← RunTrace.upTo_projAC]
   constructor
   intro x hx i B ha hi y hy j ell hj ht hjd hF
   change gbar g + 2 * sp.Δ ≤ tr.time j at ht
   change tr.time j ≤ d at hjd
-  have hF' : Anc ((tr.upTo d).HonestBlocks (H d)) ((tr.upTo d).state y j).fg.F B := by
-    rw [Compose.frame_of_projAC hpre hy hj] at hF
-    exact hF
-  obtain ⟨i', rfl, ha', hti⟩ := fg_accept_before hpre.toLocalRun hx ha
-  change tr.time (i' + 1) < gbar g at hi
-  change tr.time i' = tr.time (i' + 1) at hti
-  obtain ⟨hid, ha''⟩ := (RunTrace.upTo_acceptAt (tr := tr)).mp ha'
-  have hex : ∃ k, gbar g + 2 * sp.Δ ≤ tr.time k := ⟨j, ht⟩
-  have hj₀ : tr.FirstCutFrom (Nat.find hex) (gbar g + 2 * sp.Δ) :=
-    ⟨Nat.find_spec hex, fun k hk => not_le.1 (Nat.find_min hex hk)⟩
-  have hj₀j : Nat.find hex ≤ j := Nat.find_min' hex ht
-  have hj₀d : tr.time (Nat.find hex) ≤ d := (hm hj₀j).trans hjd
-  have hanc₀ := (run_F_mono hpre.toLocalRun hy hj₀j).trans hF'
-  rw [RunTrace.upTo_state_of_le hm hj₀d] at hanc₀
-  obtain ⟨k, hk, hak⟩ := hc x i' B (hrun.antitone hid hx) ha'' (by rw [hti]; exact hi) y _
-    (hrun.antitone (hj₀.1.trans hj₀d) hy) hj₀
-    (Anc.mono (RunTrace.honestBlocks_upTo_subset hm hd0) hanc₀)
-  have hkd : tr.time k ≤ d := (hm hk.le).trans hj₀d
-  obtain ⟨hak', htk, -⟩ :=
-    ac_block_after hpre.toLocalRun hy ((RunTrace.upTo_acceptAt (tr := tr)).mpr ⟨hkd, hak⟩)
-  refine ⟨k + 1, by omega, hak', ?_⟩
-  change tr.time (k + 1) < gbar g + 2 * sp.Δ
-  change tr.time (k + 1) = tr.time k at htk
-  rw [htk]
-  exact hj₀.2 k hk
+  rw [RunTrace.upTo_projAC] at ha hj ⊢
+  obtain ⟨hid, ha'⟩ := ACTrace.upTo_acceptAt.mp ha
+  obtain ⟨_, hj'⟩ := (Trace.upTo_callAt _).mp hj
+  obtain ⟨k, hkj, hak, hkt⟩ := hrun.toLocalRun.acCatchAt hc (hrun.antitone hid hx) ha' hi
+    (hrun.antitone hjd hy) hj' ht (hF.mono (RunTrace.honestBlocks_upTo_subset hm hd0))
+  exact ⟨k, hkj, ACTrace.upTo_acceptAt.mpr ⟨(hm hkj).trans hjd, hak⟩, hkt⟩
 
 /-- **The committee half bound through `b`** for the slot dictionary `K`: the run's committee
 facts at `K`, and fewer than half of each slot committee from `ḡ` by `b` faulty at every read time

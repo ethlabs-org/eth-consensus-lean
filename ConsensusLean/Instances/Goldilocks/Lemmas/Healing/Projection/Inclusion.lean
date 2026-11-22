@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 
 public section
 
@@ -258,22 +259,14 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
 theorem projection_catch_of_run (hrun : GoldilocksRun proposer dg H tr ini)
     (hc : CatchRun tr H g (2 * sp.Δ)) :
     SA.CatchAC tr.projAC H (tr.HonestBlocks H) g (2 * sp.Δ) := by
-  classical
   have h := hrun.toLocalRun
   intro x hx i B ha hi y hy j ℓ hcj hj hanc
   obtain ⟨i', rfl, ha', hti⟩ := fg_accept_before h hx ha
-  have hex : ∃ k, gbar g + 2 * sp.Δ ≤ tr.time k := ⟨j, hj⟩
-  have hj₀ : tr.FirstCutFrom (Nat.find hex) (gbar g + 2 * sp.Δ) :=
-    ⟨Nat.find_spec hex, fun k hk => not_le.1 (Nat.find_min hex hk)⟩
-  have hj₀j : Nat.find hex ≤ j := Nat.find_min' hex hj
-  have hanc₀ : Anc (tr.HonestBlocks H) (tr.state y (Nat.find hex)).fg.F B :=
-    (run_F_mono h hy hj₀j).trans (frame_F hrun hy hcj ▸ hanc)
-  obtain ⟨k, hk, hak⟩ := hc x hx i' B ha' (by rw [hti]; exact hi) y hy _ hj₀ hanc₀
+  obtain ⟨k, hk, hak, hkt⟩ := accept_before_snapshot hj fun q hq hfirst =>
+    hc x hx i' B ha' (hti ▸ hi) y hy q hfirst
+      ((run_F_mono h hy hq).trans (frame_F hrun hy hcj ▸ hanc))
   obtain ⟨hak', htk, -⟩ := ac_block_after h hy hak
-  have htk' : tr.projAC.time (k + 1) = tr.time k := htk
-  refine ⟨k + 1, by omega, hak', ?_⟩
-  rw [htk']
-  exact hj₀.2 k hk
+  exact ⟨k + 1, hk, hak', htk.symm ▸ hkt⟩
 
 end Consensus.Goldilocks.Healing
 

@@ -65,27 +65,12 @@ theorem catch_window_at_reset_at
   obtain ⟨i', rfl, ha', hti⟩ := fg_accept_before hpre.toLocalRun hx ha
   change tr.time (i' + 1) < a at hi
   change tr.time i' = tr.time (i' + 1) at hti
-  obtain ⟨hid, ha''⟩ := (RunTrace.upTo_acceptAt (tr := tr)).mp ha'
   by_cases hgi : tr.time (i' + 1) < gbar g
-  · have hex : ∃ k, gbar g + 2 * sp.Δ ≤ tr.time k := ⟨j, by linarith⟩
-    have hj₀ : tr.FirstCutFrom (Nat.find hex) (gbar g + 2 * sp.Δ) :=
-      ⟨Nat.find_spec hex, fun k hk => not_le.1 (Nat.find_min hex hk)⟩
-    have hj₀j : Nat.find hex ≤ j := Nat.find_min' hex (by linarith)
-    have hj₀t : tr.time (Nat.find hex) ≤ t := (hm hj₀j).trans hjt
-    have hanc₀ := (run_F_mono hpre.toLocalRun hy hj₀j).trans hF'
-    rw [RunTrace.upTo_state_of_le hm hj₀t] at hanc₀
-    obtain ⟨k, hk, hak⟩ := hc x i' B (hrun.antitone hid hx) ha''
-      (by rw [hti]; exact hgi) y _
-      (hrun.antitone (hj₀.1.trans hj₀t) hy) hj₀
-      (Anc.mono (RunTrace.honestBlocks_upTo_subset hm ht0) hanc₀)
-    have hkt : tr.time k ≤ t := (hm hk.le).trans hj₀t
-    obtain ⟨hak', htk, -⟩ :=
-      ac_block_after hpre.toLocalRun hy ((RunTrace.upTo_acceptAt (tr := tr)).mpr ⟨hkt, hak⟩)
-    refine ⟨k + 1, by omega, hak', ?_⟩
-    change tr.time (k + 1) < a + 2 * sp.Δ
-    change tr.time (k + 1) = tr.time k at htk
-    rw [htk]
-    linarith [hj₀.2 k hk]
+  · have hcatch := catch_window_at_gbar_at hrun hc ht0
+    rw [← RunTrace.upTo_projAC] at hcatch
+    obtain ⟨k, hkj, hak, hkt⟩ := hcatch.relay x hx (i' + 1) B ha hgi y hy j ell hj
+      (by change gbar g + 2 * sp.Δ ≤ tr.time j; linarith) hjt hF
+    exact ⟨k, hkj, hak, by change tr.time k < _; change tr.time k < _ at hkt; linarith⟩
   · have hia : tr.time i' < a := by simpa only [hti] using hi
     have hgg : g ≤ tr.time i' :=
       (SA.le_gbar g).trans (by simpa only [hti] using le_of_not_gt hgi)
@@ -97,21 +82,15 @@ theorem catch_window_at_reset_at
         have hrj : tr.time r ≤ t := (hm (hr.trans hkj)).trans hjt
         exact (hrestart y r (hrun.antitone hrj hy) hrest hrj).trans hra) _ _)
       rw [max_eq_right hia.le]
-    obtain ⟨k, hk, hak, hkt⟩ := hss.relay x hx i' B ha' hgg y hy j
+    have hrelay := hss.relay x hx i' B ha' hgg y hy j
       ⟨_, Compose.projAC_callAt.mp hj⟩ (by
         rw [hmax]
         exact (hdeadline j le_rfl).trans (by change a + sp.Δ ≤ tr.time j; linarith)) hF'
-    obtain ⟨hak', htk, -⟩ := ac_block_after hpre.toLocalRun hy hak
-    have hkj : k < j := by
-      rcases hk.lt_or_eq with hk | rfl
-      · exact hk
-      · exact absurd (hak.2.symm.trans (Compose.projAC_callAt.mp hj).2) (by simp)
-    refine ⟨k + 1, hkj, hak', ?_⟩
-    change tr.time (k + 1) < a + 2 * sp.Δ
-    change tr.time (k + 1) = tr.time k at htk
-    rw [htk]
-    rw [hmax] at hkt
-    exact lt_of_lt_of_le hkt ((hdeadline k hk).trans (by linarith))
+    rw [hmax] at hrelay
+    obtain ⟨k, hk, hak, hkt⟩ := Compose.acRelay_of_acceptNext hj hrelay
+      (fun _ _ => Compose.accept_next hpre.toLocalRun hy)
+    rw [Compose.projAC_deadline] at hkt
+    exact ⟨k, hk, hak, hkt.trans_le ((hdeadline k hk).trans (by linarith))⟩
 
 /-- The reset's service windows on the prefix through a read time `t ≤ b`, from the finite reset
 premises. -/

@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AnchorPrefix
@@ -43,14 +44,7 @@ theorem fcRoot_mono_at {lo hi : Time} {floor : Nat} {kindJ : Prop}
     have hki := (hframe.kind_iff y i hy (halo.trans htime) hihi).not.mpr hk
     change Anc _ (if _ then _ else _) (if _ then _ else _)
     rw [ite_eq_right hka, ite_eq_right hki]
-    have hd := hrun.time_nonneg i
-    have ha := Trace.upTo_state tr y (d := tr.time i) (i := a)
-      (fun k hk => (hrun.time_mono hk.le).trans htime)
-    have hi' := Trace.upTo_state tr y (d := tr.time i) (i := i)
-      (fun k hk => hrun.time_mono hk.le)
-    have hmono := Healing.run_F_mono (hrun.upTo hd).toLocalRun hy hai
-    rw [ha, hi'] at hmono
-    exact hmono.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono hd)
+    exact hrun.toLocalRun.finalized_mono hy hai
 
 /-- A live lock records a write made before this same reader's compromise. -/
 theorem live_lock_selection_origin_at

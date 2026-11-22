@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Prefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationDecode
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
@@ -152,10 +153,8 @@ private theorem receipt_held_or_ancestry_at
   have hbr : ∀ k < r, tr.time k ≤ d := fun k hk => hbj k (by omega)
   have hF := (Store.cache_invariants sp.toParams (SA.Payload sp.n) _ _
     (reachable_upTo hrun hd hbr hy)).1
-  have hmono := Healing.run_F_mono (hrun.upTo hd).toLocalRun hy hrj
-  rw [Trace.upTo_state tr y hbr, Trace.upTo_state tr y hbj] at hmono
   refine receipt_ancestry (Compose.Growing.honest_blocks_coherent hrun hnc) hF hAB
-    ((hmono.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono hd)).trans hFB) hparent hP
+    ((hrun.toLocalRun.finalized_mono_on_prefix hd hy hrj hbj).trans hFB) hparent hP
     (fun h hY => ?_)
   rw [← projFG_store_upTo hrun hd hy hbr] at hY ⊢
   exact Store.anc_of_U (fgRun_upTo hrun hnc hd) hy h hY

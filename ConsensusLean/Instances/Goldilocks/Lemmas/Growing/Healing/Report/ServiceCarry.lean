@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -21,28 +22,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
-
-private theorem acBlock_prev_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {B : (goldilocksNode sp ro).Blk}
-    (hc : tr.CallAt y i (.ac ell)) (hb : ell.call = .block B) :
-    ∃ j, i = j + 1 ∧ tr.CallAt y j (.fg (.block B true)) ∧ tr.time j = tr.time i := by
-  obtain ⟨j, rfl, hc', ht⟩ := Compose.acBlock_prev
-    (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy
-    ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc) hb
-  exact ⟨j, rfl, ((Trace.upTo_callAt _).mp hc').2, ht⟩
-
-private theorem accept_next_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {B : (goldilocksNode sp ro).Blk} (hc : tr.CallAt y i (.fg (.block B true))) :
-    ∃ ell : ACLabel (goldilocksNode sp ro), tr.CallAt y (i + 1) (.ac ell) ∧
-      ell.call = .block B ∧ tr.time (i + 1) = tr.time i := by
-  obtain ⟨ell, hc', hb, ht⟩ := Compose.accept_next
-    (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy
-    ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
-  exact ⟨ell, ((Trace.upTo_callAt _).mp hc').2, hb, ht⟩
 
 /-- The post-GST portion of finite service, projected to AC. -/
 theorem service_syncACAt
@@ -67,33 +46,12 @@ theorem service_syncACAt
       change tr.time k < tr.deadline y k (tr.time i) sp.Δ
       simpa only [he] using h3
   · intro x i B hx hacc hai _ y j ell hy hcj hdl hanc
-    obtain ⟨ell₀, hc₀, hb⟩ := hacc
-    have hc := Compose.projAC_callAt.mp hcj
-    obtain ⟨i', rfl, hi', hti⟩ := acBlock_prev_at hrun hx (Compose.projAC_callAt.mp hc₀) hb
-    have hfr : ell.frame.F = (tr.state y j).fg.F := by
-      rw [(hrun.cutLaw y j _ hc hy).1]
-      rfl
-    have hgi : g ≤ tr.time i' := hti ▸ hg.trans hai
-    have he : max (tr.time i') g = tr.time i' := max_eq_left hgi
-    obtain ⟨k, hkj, hk, hlt⟩ := hsvc.relay x i' B (hti ▸ hx) hi' hgi y j hy ⟨_, hc⟩
-      (by rw [he, hti, ← Compose.projAC_deadline]; exact hdl) (hfr ▸ hanc)
-    obtain ⟨ell', hc', hb', htk⟩ := accept_next_at hrun
-      (hrun.antitone (hrun.time_mono hkj) hy) hk
-    have hkj' : k + 1 ≤ j := by
-      rcases Nat.lt_or_eq_of_le hkj with hlt' | rfl
-      · omega
-      · cases Option.some.inj (hk.2.symm.trans hc.2)
-    have hnr : ¬ tr.RestartAt y (k + 1) := fun ⟨ellr, hcr, hrestart⟩ => by
-      cases Option.some.inj (hc'.2.symm.trans hcr.2)
-      rw [hb'] at hrestart
-      cases hrestart
-    refine ⟨k + 1, hkj', ⟨ell', Compose.projAC_callAt.mpr hc', hb'⟩, ?_⟩
-    rw [Compose.projAC_deadline]
-    change tr.time (k + 1) < tr.deadline y (k + 1) (tr.time (i' + 1)) sp.Δ
-    rw [htk, ← hti]
-    rw [he] at hlt
-    simp only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] at hlt ⊢
-    exact hlt
+    apply hrun.toLocalRun.acRelayAt (σ := tr.time i) hx hacc hy hcj hanc
+    intro k hki hx' hk hj hF
+    have hgi : g ≤ tr.time k := hki ▸ hg.trans hai
+    have he : max (tr.time k) g = tr.time i := (max_eq_left hgi).trans hki
+    simpa only [he] using hsvc.relay x k B hx' hk hgi y j hy hj
+      (by rw [he, ← Compose.projAC_deadline]; exact hdl) hF
 
 /-- Catch transfers a historically honest acceptance to an independently honest reader. -/
 theorem service_catch_at
@@ -105,27 +63,7 @@ theorem service_catch_at
     (hcy : tr.projAC.CallAt y i ell) (hi : gbar g + 2 * sp.Δ ≤ tr.time i)
     (hanc : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     ∃ k ≤ i, tr.projAC.AcceptAt y k B ∧ tr.time k < gbar g + 2 * sp.Δ := by
-  classical
-  obtain ⟨ell₀, hc₀, hb⟩ := ha
-  obtain ⟨kw', rfl, hkw', hti⟩ := acBlock_prev_at hrun hw (Compose.projAC_callAt.mp hc₀) hb
-  have hex : ∃ k, gbar g + 2 * sp.Δ ≤ tr.time k := ⟨i, hi⟩
-  have hj₀ : tr.FirstCutFrom (Nat.find hex) (gbar g + 2 * sp.Δ) :=
-    ⟨Nat.find_spec hex, fun k hk => not_le.1 (Nat.find_min hex hk)⟩
-  have hj₀i : Nat.find hex ≤ i := Nat.find_min' hex hi
-  have hc := Compose.projAC_callAt.mp hcy
-  have hfr : ell.frame.F = (tr.state y i).fg.F := by
-    rw [(hrun.cutLaw y i _ hc hy).1]
-    rfl
-  have hmono := Healing.run_F_mono (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy hj₀i
-  rw [RunTrace.upTo_state_of_le hrun.time_mono (hrun.time_mono hj₀i),
-    RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at hmono
-  have hmono' := hmono.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono (hrun.time_nonneg i))
-  obtain ⟨k, hk, hak⟩ := hcatch w kw' B (hti ▸ hw) hkw' (by rw [hti]; exact hkw) y
-    _ (hrun.antitone hi hy) hj₀ (hmono'.trans (hfr ▸ hanc))
-  obtain ⟨ell', hc', hb', htk⟩ := accept_next_at hrun
-    (hrun.antitone (hrun.time_mono (show k ≤ i by omega)) hy) hak
-  exact ⟨k + 1, by omega, ⟨ell', Compose.projAC_callAt.mpr hc', hb'⟩, by
-    rw [htk]; exact hj₀.2 k hk⟩
+  exact hrun.toLocalRun.acCatchAt hcatch hw ha hkw hy hcy hi hanc
 
 /-- Historical sends after `ḡ` and historical accepted heads reach the next-slot cast. -/
 theorem carry_of_service_senders

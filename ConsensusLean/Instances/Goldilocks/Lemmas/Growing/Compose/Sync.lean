@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 
 public section
@@ -27,39 +28,11 @@ theorem sync_projection : SyncProjection := by
     rcases hp with ⟨ℓ', hc', hm'⟩ | ⟨ℓ', hc', hm'⟩
     exacts [⟨ℓ', Compose.projAC_callAt.mpr hc', Or.inl hm'⟩,
       ⟨ℓ', Compose.projAC_callAt.mpr hc', Or.inr hm'⟩]
-  · obtain ⟨ℓ₀, hc₀, hb⟩ := hacc
-    have hc := Compose.projAC_callAt.mp hc
-    have hc₀' : (tr.upTo (tr.time i)).CallAt x i (.ac ℓ₀) :=
-      (Trace.upTo_callAt _).mpr ⟨le_rfl, Compose.projAC_callAt.mp hc₀⟩
-    obtain ⟨i', rfl, hi', hti⟩ :=
-      Compose.acBlock_prev (h.upTo (h.time_nonneg i)) hx hc₀' hb
-    change tr.time i' = tr.time (i' + 1) at hti
-    have hi' := ((Trace.upTo_callAt _).mp hi').2
-    have hfr : ℓ.frame.F = (tr.state y j).fg.F := by
-      rw [(h.cutLaw y j _ hc hy).1]
-      rfl
-    obtain ⟨k, hkj, hk, hlt⟩ := hs.relay x i' B (hti ▸ hx) hi'
-      ⟨hti ▸ hai, hti ▸ hib⟩ y j hy ⟨_, hc⟩
-      (by rw [hti, ← Compose.projAC_deadline]; exact hdl) (hfr ▸ hanc)
-    have hk' : (tr.upTo (tr.time j)).CallAt y k (.fg (.block B true)) :=
-      (Trace.upTo_callAt _).mpr ⟨h.time_mono hkj, hk⟩
-    obtain ⟨ℓ', hc', hb', htk⟩ :=
-      Compose.accept_next (h.upTo (h.time_nonneg j)) hy hk'
-    change tr.time (k + 1) = tr.time k at htk
-    have hc' := ((Trace.upTo_callAt _).mp hc').2
-    have hkj' : k + 1 ≤ j := by
-      rcases Nat.lt_or_eq_of_le hkj with hlt' | rfl
-      · omega
-      · cases Option.some.inj (hk.2.symm.trans hc.2)
-    have hnr : ¬ tr.RestartAt y (k + 1) := fun ⟨ℓr, hcr, hr⟩ => by
-      cases Option.some.inj (hc'.2.symm.trans hcr.2)
-      rw [hb'] at hr
-      cases hr
-    refine ⟨k + 1, hkj', ⟨ℓ', Compose.projAC_callAt.mpr hc', hb'⟩, ?_⟩
-    change tr.time (k + 1) < tr.projAC.deadline y (k + 1) (tr.time (i' + 1))
-    rw [Compose.projAC_deadline, htk, ← hti]
-    simp only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] at hlt ⊢
-    exact hlt
+  · apply h.acRelayAt (σ := tr.time i) hx hacc hy hc hanc
+    intro k hki hx' hk hj hF
+    rw [← hki]
+    exact hs.relay x k B hx' hk ⟨hki ▸ hai, hki ▸ hib⟩ y j hy hj
+      (by rw [hki, ← Compose.projAC_deadline]; exact hdl) hF
 
 end Consensus.Goldilocks.Compose.Growing
 

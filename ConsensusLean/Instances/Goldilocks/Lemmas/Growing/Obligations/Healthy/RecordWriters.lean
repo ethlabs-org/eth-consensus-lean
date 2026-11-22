@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SeedCall
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SourceOrigin
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.OptimisticResult
@@ -179,9 +180,8 @@ theorem clean_optimistic_writer_candidate_interval_at
   · intro hFS
     have hFq : Anc (tr.HonestBlocksAt H) ell.frame.F S := by
       rw [hframe]
-      have h := Healing.run_F_mono (hrun.upTo ht0).toLocalRun hy hqe
-      rw [hst q (by omega), hst e hen] at h
-      exact (h.mono (RunTrace.honestBlocks_upTo_subset hm ht0)).trans hFS
+      exact (hrun.toLocalRun.finalized_mono_on_prefix ht0 hy hqe
+        (fun k hk => hnt k (hk.trans_le hen))).trans hFS
     have hSq := hdeliver y q ell hyq hcallq haq hqb hFq
     have h := Compose.tree_mono (hrun.upTo ht0).toLocalRun hy hqe
     rw [hst q (by omega), hst e hen] at h

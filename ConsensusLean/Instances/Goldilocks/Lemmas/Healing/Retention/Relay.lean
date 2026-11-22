@@ -45,29 +45,15 @@ theorem ResetService.syncAC {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att s
       simpa only [he] using hlt
   · intro x hx i B hacc hai _ y hy j ℓ hc hdl hanc
     obtain ⟨ℓ₀, hc₀, hb⟩ := hacc
-    have hc := projAC_callAt.1 hc
     obtain ⟨i', rfl, hi', hti⟩ := acBlock_prev h hx (projAC_callAt.1 hc₀) hb
     have hfr : ℓ.frame.F = (tr.state y j).fg.F := by
-      rw [(h.cutLaw y hy j _ hc).1]
+      rw [(h.cutLaw y hy j _ (projAC_callAt.1 hc)).1]
       rfl
     have hgi : g ≤ tr.time i' := hti ▸ hg.trans hai
-    have he : max (tr.time i') g = tr.time i' := max_eq_left hgi
-    obtain ⟨k, hkj, hk, hlt⟩ := hs.relay x hx i' B hi' hgi y hy j ⟨_, hc⟩
-      (by rw [he, hti, ← projAC_deadline]; exact hdl) (hfr ▸ hanc)
-    obtain ⟨ℓ', hc', hb', htk⟩ := accept_next h hy hk
-    have hkj' : k + 1 ≤ j := by
-      rcases Nat.lt_or_eq_of_le hkj with hlt' | rfl
-      · omega
-      · cases Option.some.inj (hk.2.symm.trans hc.2)
-    have hnr : ¬ tr.RestartAt y (k + 1) := fun ⟨ℓr, hcr, hr⟩ => by
-      cases Option.some.inj (hc'.2.symm.trans hcr.2)
-      rw [hb'] at hr
-      cases hr
-    refine ⟨k + 1, hkj', ⟨ℓ', projAC_callAt.2 hc', hb'⟩, ?_⟩
-    change tr.time (k + 1) < tr.projAC.deadline y (k + 1) (tr.time (i' + 1))
-    rw [projAC_deadline, htk, ← hti]
-    rw [he] at hlt
-    simpa only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] using hlt
+    have he : max (tr.time i') g = tr.time (i' + 1) := (max_eq_left hgi).trans hti
+    apply acRelay_of_acceptNext (σ := tr.time (i' + 1)) hc ?_ (fun _ _ => accept_next h hy)
+    simpa only [he] using hs.relay x hx i' B hi' hgi y hy j ⟨_, projAC_callAt.1 hc⟩
+      (by rw [he, ← projAC_deadline]; exact hdl) (hfr ▸ hanc)
 
 /-! ### One honest node over an SA trace -/
 

@@ -242,18 +242,7 @@ private theorem accept_of_catch (hrun : GoldilocksRun proposer dg H tr ini)
     {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y k ℓ)
     (hk : gbar g + 2 * sp.Δ ≤ tr.time k) (hF : Anc (tr.HonestBlocks H) ℓ.frame.F Hv) :
     ∃ k' ≤ k, tr.projAC.AcceptAt y k' Hv ∧ tr.time k' < gbar g + 2 * sp.Δ := by
-  classical
-  obtain ⟨kw', rfl, hacc, ht⟩ := fg_accept_before hrun.toLocalRun hx hkw
-  have hex : ∃ j, gbar g + 2 * sp.Δ ≤ tr.time j := ⟨k, hk⟩
-  have hj₀ : tr.FirstCutFrom (Nat.find hex) (gbar g + 2 * sp.Δ) :=
-    ⟨Nat.find_spec hex, fun j hj => not_le.1 (Nat.find_min hex hj)⟩
-  have hle : Nat.find hex ≤ k := Nat.find_min' hex hk
-  have hFk : ℓ.frame.F = (tr.state y k).fg.F := by
-    rw [Compose.frame_of_projAC hrun hy hcall]; rfl
-  obtain ⟨k', hk', hacc'⟩ := hc x hx kw' Hv hacc (ht ▸ hlt) y hy _ hj₀
-    ((run_F_mono hrun.toLocalRun hy hle).trans (hFk ▸ hF))
-  obtain ⟨hacc'', ht', -⟩ := ac_block_after hrun.toLocalRun hy hacc'
-  exact ⟨k' + 1, by omega, hacc'', by rw [ht']; exact hj₀.2 k' hk'⟩
+  exact projection_catch_of_run hrun hc x hx kw Hv hkw hlt y hy k ℓ hcall hk hF
 
 /-! ### Aligned witnesses -/
 

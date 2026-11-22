@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Frames
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Restart
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
@@ -28,7 +29,6 @@ theorem accept_mem_frame {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hjoin : sp.ts (sp.slot (gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
     (hq : tr.time q + sp.Δ ≤ tr.time j)
     (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B) : B ∈ ell.frame.tree := by
-  have hc := hp.catchUp
   have ht := hp.run.time_nonneg j
   have htimes : ∀ k < j, tr.time k ≤ tr.time j := fun k hk => hp.run.time_mono hk.le
   have hr := (hp.run.upTo ht).toLocalRun
@@ -36,11 +36,6 @@ theorem accept_mem_frame {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     fun k hk => Trace.upTo_state tr y (fun l hl => hp.run.time_mono (by omega))
   have he := frame_of_call hp.run hy hcall
   have hF' : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B := by rwa [he] at hF
-  have hFpast : ∀ k ≤ j, Anc (tr.HonestBlocksAt H) (tr.state y k).fg.F B := by
-    intro k hk
-    have hmono := Healing.run_F_mono hr hy hk
-    rw [hs k hk, hs j le_rfl] at hmono
-    exact (hmono.mono (RunTrace.honestBlocks_upTo_subset hp.run.time_mono ht)).trans hF'
   have hlift : ∀ k < j, tr.AcceptAt y k B → B ∈ (tr.state y j).fg.tree := by
     intro k hkj hak
     have hak' : (tr.upTo (tr.time j)).AcceptAt y k B :=
@@ -64,11 +59,9 @@ theorem accept_mem_frame {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
         obtain rfl : k = j := by omega
         exact (not_lt_of_ge hdl') hkt
       exact hlift k hklt hak
-    · obtain ⟨j₀, hj₀, hj₀j⟩ := Healing.exists_firstCutFrom_le hg
-      obtain ⟨k, hkj₀, hak⟩ := hc x q B hx ha
-        (lt_of_lt_of_le (not_le.mp hnew) (le_max_left _ _)) y j₀
-        (hp.run.antitone hg hy) hj₀ (hFpast j₀ hj₀j)
-      exact hlift k (by omega) hak
+    · obtain ⟨k, hk, hak, _⟩ := hp.run.toLocalRun.fgCatchAt hp.catchUp hx ha
+        ((not_le.mp hnew).trans_le (le_max_left _ _)) hy hg hF'
+      exact hlift k hk hak
   rw [he]
   exact ⟨hmem, store_anc_of_honest_anc_at hp.run hp.noColl ht htimes hy hF' hmem⟩
 

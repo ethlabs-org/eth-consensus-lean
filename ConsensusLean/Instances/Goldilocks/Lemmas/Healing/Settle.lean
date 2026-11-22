@@ -194,6 +194,15 @@ theorem exists_firstCutFrom_le {t : Time} {j : Nat} (hj : t ≤ tr.time j) :
   exact ⟨Nat.find hex, ⟨Nat.find_spec hex, fun k hk => not_le.1 (Nat.find_min hex hk)⟩,
     Nat.find_min' hex hj⟩
 
+/-- Read a snapshot's catch-up witness from a later cut. -/
+theorem accept_before_snapshot {t : Time} {y : Fin P.n} {j : Nat} {B : A.Blk}
+    (hj : t ≤ tr.time j)
+    (catchUp : ∀ q ≤ j, tr.FirstCutFrom q t → ∃ k < q, tr.AcceptAt y k B) :
+    ∃ k < j, tr.AcceptAt y k B ∧ tr.time k < t := by
+  obtain ⟨q, hq, hqj⟩ := exists_firstCutFrom_le hj
+  obtain ⟨k, hk, hak⟩ := catchUp q hqj hq
+  exact ⟨k, hk.trans_le hqj, hak, hq.2 k hk⟩
+
 /-- **`Catch(κ)` read at a later time** `w ≥ ḡ + κ`: `Σ.F` only grows, so a block that extends
 `Σ.F` at `w` extends it at `ḡ + κ`, and was accepted before then. -/
 theorem catchRun_at {g κ : Time} (hc : CatchRun tr H g κ)
@@ -203,9 +212,9 @@ theorem catchRun_at {g κ : Time} (hc : CatchRun tr H g κ)
       ∀ y ∈ H, ∀ j, tr.FirstCutFrom j w → Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
         ∃ k < j, tr.AcceptAt y k B := by
   intro x hx i B hacc hi y hy j hj hF
-  obtain ⟨j₁, hj₁, hle⟩ := exists_firstCutFrom_le (hw.trans hj.1)
-  obtain ⟨k, hk, hacc'⟩ := hc x hx i B hacc hi y hy j₁ hj₁ ((run_F_mono hrun hy hle).trans hF)
-  exact ⟨k, by omega, hacc'⟩
+  obtain ⟨k, hk, hacc', _⟩ := accept_before_snapshot (hw.trans hj.1) fun q hq hfirst =>
+    hc x hx i B hacc hi y hy q hfirst ((run_F_mono hrun hy hq).trans hF)
+  exact ⟨k, hk, hacc'⟩
 
 /-- **Acceptance relay to the state at `w`** (`Healthy(g)`, no honest restart after `ḡ`,
 `Catch(κ)`): a block an honest `x` accepted at a time `τ` with `τ + Δ ≤ w` and `ḡ + κ ≤ w` is

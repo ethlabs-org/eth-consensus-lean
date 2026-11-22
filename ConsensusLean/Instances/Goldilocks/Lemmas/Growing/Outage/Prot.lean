@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepHonest
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
@@ -249,17 +250,15 @@ theorem prot_step_at {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.n}
   have hrun := D.hrun
   have hd := hrun.time_nonneg k
   have hm := hrun.time_mono
-  have hsub := upTo_subset hrun hd
   have hst : (tr.upTo (tr.time k)).state x k = tr.state x k :=
     RunTrace.upTo_state_of_le hm le_rfl
   have hst1 : (tr.upTo (tr.time k)).state x (k + 1) = tr.state x (k + 1) :=
     Trace.upTo_state tr x fun _ hk' => hm (Nat.lt_succ_iff.1 hk')
   have hr := hrun.upTo hd
-  have hFm := Healing.run_F_mono hr.toLocalRun hx (Nat.le_succ k)
-  rw [hst, hst1] at hFm
   rcases prot_iff.1 hp with hfl | hroot
   swap
-  · exact prot_iff.2 (Or.inr (hroot.trans (hFm.mono hsub)))
+  · exact prot_iff.2 (Or.inr (hroot.trans (hrun.toLocalRun.finalized_mono_on_prefix hd hx
+      (Nat.le_succ k) (fun _ hk' => hm (Nat.lt_succ_iff.1 hk')))))
   by_cases hroot' : Anc (tr.HonestBlocksAt H) D.P (tr.state x (k + 1)).fg.F
   · exact prot_iff.2 (Or.inr hroot')
   have hFP : Anc (tr.HonestBlocksAt H) (tr.state x (k + 1)).fg.F D.P := hF.resolve_right hroot'

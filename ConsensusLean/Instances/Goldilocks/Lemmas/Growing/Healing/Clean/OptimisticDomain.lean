@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SlowVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.WriterCompatible
@@ -46,39 +47,7 @@ private theorem catch_ac {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
         Anc (tr.HonestBlocksAt H) ell.frame.F B →
         ∃ k ≤ j, tr.projAC.AcceptAt y k B ∧ tr.time k < SA.gbar g + 2 * sp.Δ := by
   intro x q D hqH hq hg p i ell hpH hci hti _ hFD
-  have hm := hp.run.time_mono
-  have ht0 := hp.run.time_nonneg i
-  have subU := RunTrace.honestBlocks_upTo_subset hm (H := H) ht0
-  have hcp := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hci⟩
-  have hprex := hp.run.upTo (hp.run.time_nonneg q)
-  obtain ⟨ellq, hcq, hblock⟩ := hq
-  have hcq' := (Trace.upTo_callAt tr).mpr ⟨le_rfl, Compose.projAC_callAt.mp hcq⟩
-  obtain ⟨q', rfl, haq', htime⟩ := Compose.acBlock_prev hprex.toLocalRun hqH hcq' hblock
-  obtain ⟨hqq, haq⟩ := (Trace.upTo_callAt tr).mp haq'
-  change tr.time q' = tr.time (q' + 1) at htime
-  have hex : ∃ k, SA.gbar g + 2 * sp.Δ ≤ tr.time k := ⟨i, hti⟩
-  have hfirst : tr.FirstCutFrom (Nat.find hex) (SA.gbar g + 2 * sp.Δ) :=
-    ⟨Nat.find_spec hex, fun k hk => not_le.mp (Nat.find_min hex hk)⟩
-  have hki : Nat.find hex ≤ i := Nat.find_min' hex hti
-  have hpy := hp.run.upTo ht0
-  have hFD' : Anc (tr.HonestBlocksAt H) (tr.state p (Nat.find hex)).fg.F D := by
-    have hF := Healing.run_F_mono hpy.toLocalRun hpH hki
-    rw [RunTrace.upTo_state_of_le hm (hm hki), RunTrace.upTo_state_of_le hm le_rfl] at hF
-    have hframe := Compose.frame_of_projAC hpy hpH (by rw [RunTrace.upTo_projAC]; exact hcp)
-    rw [RunTrace.upTo_state_of_le hm le_rfl] at hframe
-    have hFeq : ell.frame.F = (tr.state p i).fg.F := congrArg Frame.F hframe
-    exact (hF.mono subU).trans (by rwa [← hFeq])
-  obtain ⟨k, hkk, hak⟩ := hp.catchUp x q' D (hp.run.antitone hqq hqH) haq
-    (by rw [htime]; exact hg) p _
-    (hp.run.antitone (hfirst.1.trans (hm hki)) hpH) hfirst hFD'
-  have hk := hkk.le.trans hki
-  have hak' := (RunTrace.upTo_acceptAt tr).mpr ⟨hm hk, hak⟩
-  obtain ⟨ellk, hck, hblock, ht⟩ := Compose.accept_next hpy.toLocalRun hpH hak'
-  have hck' := (Trace.upTo_callAt tr).mp hck |>.2
-  refine ⟨k + 1, by omega, ⟨ellk, Compose.projAC_callAt.mpr hck', hblock⟩, ?_⟩
-  change tr.time (k + 1) = tr.time k at ht
-  rw [ht]
-  exact hfirst.2 k hkk
+  exact hp.run.toLocalRun.acCatchAt hp.catchUp hqH hq hg hpH hci hti hFD
 
 /-- **A clean optimistic source has the vote domain** of every later vote of a node honest at it
 through the horizon, given the earlier votes of nodes honest at them. -/

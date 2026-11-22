@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Seed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Accountable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
@@ -73,14 +74,6 @@ variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-! ### The service after GST -/
 
-/-- The first cut at a time `≥ τ`, below a cut at a time `≥ τ`. -/
-private theorem exists_firstCutFrom {τ : Time} {j : Nat} (hj : τ ≤ tr.time j) :
-    ∃ j₀ ≤ j, tr.FirstCutFrom j₀ τ := by
-  classical
-  have hex : ∃ m, τ ≤ tr.time m := ⟨j, hj⟩
-  refine ⟨Nat.find hex, Nat.find_min' hex hj, Nat.find_spec hex, fun k hk => ?_⟩
-  exact lt_of_not_ge (Nat.find_min hex hk)
-
 /-- **The catch-up at the node**: a block accepted before `ḡ` by a node honest then is accepted,
 before `ḡ + κ`, by a node honest at a call from `ḡ + κ` on whose `Σ.F` it extends. -/
 private theorem catch_old_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) {κ : Time}
@@ -89,11 +82,7 @@ private theorem catch_old_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hi : tr.time i < SA.gbar g) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     (hj : SA.gbar g + κ ≤ tr.time j) (hF : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B) :
     ∃ k < j, tr.AcceptAt y k B ∧ tr.time k < SA.gbar g + κ := by
-  obtain ⟨j₀, hj₀j, hfirst⟩ := exists_firstCutFrom hj
-  have hy₀ : y ∈ H (SA.gbar g + κ) := hrun.antitone hj hy
-  have hF₀ := (Obligations.Growing.run_F_mono_at hrun hy hj₀j).trans hF
-  obtain ⟨k, hk, hacc⟩ := hc x i B hx hB hi y j₀ hy₀ hfirst hF₀
-  exact ⟨k, hk.trans_le hj₀j, hacc, hfirst.2 k hk⟩
+  exact hrun.toLocalRun.fgCatchAt hc hx hB hi hy hj hF
 
 /-- **The reset service with the catch-up is the sleepy service from `ḡ`**: sends and acceptances
 from `ḡ ≥ g` are served with the deadline from their own time (`ResetService.ac_service_at`,
@@ -112,20 +101,8 @@ theorem sleepyServiceFrom_of_reset (hrun : Growing.GoldilocksRun proposer dg H t
   · intro x i B hx hB hi y j hy _ hj hF
     exact catch_old_at hrun hc hx hB hi hy hj hF
   · intro x i B hx hB hi y j ℓ hy hcj hj hF
-    obtain ⟨ℓ₀, hc₀, hb⟩ := hB
-    obtain ⟨i', rfl, hi', hti⟩ :=
-      Obligations.Growing.acBlock_prev_at hrun hx (Compose.projAC_callAt.mp hc₀) hb
-    have hfr : ℓ.frame.F = (tr.state y j).fg.F := by
-      rw [(hrun.cutLaw y j _ (Compose.projAC_callAt.mp hcj) hy).1]
-      rfl
-    obtain ⟨k, hkj, hk, hkt⟩ := catch_old_at hrun hc (hti ▸ hx) hi' (hti ▸ hi) hy hj (hfr ▸ hF)
-    obtain ⟨ℓ', hc', hb', htk⟩ := Obligations.Growing.accept_next_at hrun
-      (hrun.antitone (hrun.time_mono hkj.le) hy) hk
-    refine ⟨k + 1, ?_, ⟨ℓ', Compose.projAC_callAt.mpr hc', hb'⟩, by rw [htk]; exact hkt⟩
-    by_contra hge
-    have := hrun.time_mono (Nat.le_of_not_lt hge)
-    rw [htk] at this
-    linarith
+    obtain ⟨k, _, hk, hkt⟩ := hrun.toLocalRun.acCatchAt hc hx hB hi hy hcj hj hF
+    exact ⟨k, lt_of_not_ge (fun h => (not_le_of_gt hkt) (hj.trans (hrun.time_mono h))), hk, hkt⟩
 
 /-! ### Timing -/
 

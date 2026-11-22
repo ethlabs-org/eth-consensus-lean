@@ -104,30 +104,12 @@ private theorem relayed_of_service
     (hci : tr.projAC.CallAt y i ell) (hdl : tr.projAC.deadline y i (tr.time k) ≤ tr.time i)
     (hanc : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     ∃ k' ≤ i, tr.projAC.AcceptAt y k' B ∧ tr.time k' < tr.projAC.deadline y k' (tr.time k) := by
-  obtain ⟨ℓ₀, hc₀, hb⟩ := hacc
-  have hc := Compose.projAC_callAt.mp hci
-  obtain ⟨k₀, rfl, hk₀, htk⟩ := Obligations.Growing.acBlock_prev_at hrun hz
-    (Compose.projAC_callAt.mp hc₀) hb
-  have hfr : ell.frame.F = (tr.state y i).fg.F := by
-    rw [(hrun.cutLaw y i _ hc hy).1]
-    rfl
-  have he : max (tr.time k₀) g = tr.time k₀ := max_eq_left (htk ▸ hgk)
-  obtain ⟨k', hk'i, hk', hlt⟩ := hsvc.relay z k₀ B (htk ▸ hz) hk₀ (htk ▸ hgk) y i hy ⟨_, hc⟩
-    (by rw [he, htk, ← Compose.projAC_deadline]; exact hdl) (hfr ▸ hanc)
-  obtain ⟨ℓ', hc', hb', htk'⟩ := Obligations.Growing.accept_next_at hrun
-    (hrun.antitone (hrun.time_mono hk'i) hy) hk'
-  have hk'i' : k' + 1 ≤ i := by
-    rcases Nat.lt_or_eq_of_le hk'i with hlt' | rfl
-    · omega
-    · cases Option.some.inj (hk'.2.symm.trans hc.2)
-  have hnr : ¬ tr.RestartAt y (k' + 1) := fun ⟨ℓr, hcr, hrestart⟩ => by
-    cases Option.some.inj (hc'.2.symm.trans hcr.2)
-    rw [hb'] at hrestart
-    cases hrestart
-  refine ⟨k' + 1, hk'i', ⟨ℓ', Compose.projAC_callAt.mpr hc', hb'⟩, ?_⟩
-  rw [Compose.projAC_deadline, htk', ← htk]
-  simp only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] at hlt ⊢
-  simpa only [he] using hlt
+  apply hrun.toLocalRun.acRelayAt (σ := tr.time k) hz hacc hy hci hanc
+  intro q hq hz' haq hj hF
+  have hgq : g ≤ tr.time q := hq ▸ hgk
+  have he : max (tr.time q) g = tr.time k := (max_eq_left hgq).trans hq
+  simpa only [he] using hsvc.relay z q B hz' haq hgq y i hy hj
+    (by rw [he, ← Compose.projAC_deadline]; exact hdl) hF
 
 /-- An AC acceptance before `ḡ` of a node honest at it is caught up before `ḡ + 2Δ` by every node
 honest at a call from `ḡ + 2Δ` on, once the block is above that node's `Σ.F`. -/
@@ -140,24 +122,7 @@ private theorem caught_of_catch {ini : Fin sp.n → (goldilocksNode sp ro).State
     (hci : tr.projAC.CallAt y i ell) (hti : SA.gbar g + 2 * sp.Δ ≤ tr.time i)
     (hanc : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     ∃ k' ≤ i, tr.projAC.AcceptAt y k' B ∧ tr.time k' < SA.gbar g + 2 * sp.Δ := by
-  classical
-  obtain ⟨ℓ₀, hc₀, hb⟩ := hacc
-  obtain ⟨k₀, rfl, hk₀, htk⟩ := Obligations.Growing.acBlock_prev_at hrun hz
-    (Compose.projAC_callAt.mp hc₀) hb
-  have hex : ∃ j, SA.gbar g + 2 * sp.Δ ≤ tr.time j := ⟨i, hti⟩
-  have hj₀ : tr.FirstCutFrom (Nat.find hex) (SA.gbar g + 2 * sp.Δ) :=
-    ⟨Nat.find_spec hex, fun k hk => not_le.1 (Nat.find_min hex hk)⟩
-  have hj₀i : Nat.find hex ≤ i := Nat.find_min' hex hti
-  have hfr : ell.frame.F = (tr.state y i).fg.F := by
-    rw [(hrun.cutLaw y i _ (Compose.projAC_callAt.mp hci) hy).1]
-    rfl
-  have hanc₀ := (Obligations.Growing.run_F_mono_at hrun hy hj₀i).trans (hfr ▸ hanc)
-  obtain ⟨k', hk', hak⟩ := hc z k₀ B (htk ▸ hz) hk₀ (htk ▸ hkg) y _
-    (hrun.antitone hti hy) hj₀ hanc₀
-  obtain ⟨ℓ', hc', hb', htk'⟩ := Obligations.Growing.accept_next_at hrun
-    (hrun.antitone (hrun.time_mono (by omega : k' ≤ i)) hy) hak
-  exact ⟨k' + 1, by omega, ⟨ℓ', Compose.projAC_callAt.mpr hc', hb'⟩,
-    by rw [htk']; exact hj₀.2 k' hk'⟩
+  exact hrun.toLocalRun.acCatchAt hc hz hacc hkg hy hci hti hanc
 
 /-! ### The carried slot-`u` votes -/
 

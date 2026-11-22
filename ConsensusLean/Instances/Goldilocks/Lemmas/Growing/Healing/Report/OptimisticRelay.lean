@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
@@ -38,36 +39,7 @@ private theorem catch_accept_at
     (hcy : tr.projAC.CallAt y i ell) (hi : gbar g + 2 * sp.Δ ≤ tr.time i)
     (hanc : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     ∃ k ≤ i, tr.projAC.AcceptAt y k B ∧ tr.time k < gbar g + 2 * sp.Δ := by
-  classical
-  have hr := hrun.toLocalRun
-  obtain ⟨kw', hkw', hacc₀, hti₀⟩ := Healing.fg_accept_before
-    (hrun.upTo (hr.time_nonneg kw)).toLocalRun hw
-    (by rw [RunTrace.upTo_projAC]; exact ACTrace.upTo_acceptAt.mpr ⟨le_rfl, ha⟩)
-  have hacc : tr.AcceptAt w kw' B := ((RunTrace.upTo_acceptAt _).mp hacc₀).2
-  have hti : tr.time kw' = tr.time kw := hti₀
-  subst hkw'
-  have hex : ∃ k, gbar g + 2 * sp.Δ ≤ tr.time k := ⟨i, hi⟩
-  have hj₀ : tr.FirstCutFrom (Nat.find hex) (gbar g + 2 * sp.Δ) :=
-    ⟨Nat.find_spec hex, fun k hk => not_le.1 (Nat.find_min hex hk)⟩
-  have hj₀i : Nat.find hex ≤ i := Nat.find_min' hex hi
-  have hc := Compose.projAC_callAt.mp hcy
-  have hfr : ell.frame.F = (tr.state y i).fg.F := by
-    rw [(hrun.cutLaw y i _ hc hy).1]
-    rfl
-  have hmono := Healing.run_F_mono (hrun.upTo (hr.time_nonneg i)).toLocalRun hy hj₀i
-  rw [RunTrace.upTo_state_of_le hr.time_mono (hr.time_mono hj₀i),
-    RunTrace.upTo_state_of_le hr.time_mono le_rfl] at hmono
-  have hmono' := hmono.mono (RunTrace.honestBlocks_upTo_subset hr.time_mono (hr.time_nonneg i))
-  obtain ⟨k, hk, hak⟩ := hcatch w kw' B (hti ▸ hw) hacc (by rw [hti]; exact hkw) y
-    _ (hr.antitone hi hy) hj₀ (hmono'.trans (hfr ▸ hanc))
-  have hki : k ≤ i := by omega
-  obtain ⟨hak', htk, -⟩ := Healing.ac_block_after (hrun.upTo (hr.time_nonneg i)).toLocalRun hy
-    ((RunTrace.upTo_acceptAt _).mpr ⟨hr.time_mono hki, hak⟩)
-  rw [RunTrace.upTo_projAC] at hak'
-  refine ⟨k + 1, by omega, (ACTrace.upTo_acceptAt.mp hak').2, ?_⟩
-  change tr.time (k + 1) = tr.time k at htk
-  rw [htk]
-  exact hj₀.2 k hk
+  exact hrun.toLocalRun.acCatchAt hcatch hw ha hkw hy hcy hi hanc
 
 /-- **An early-accepted block reaches a next-slot proposal**, held with a finite stamp. -/
 theorem relay_source_at_proposal_at

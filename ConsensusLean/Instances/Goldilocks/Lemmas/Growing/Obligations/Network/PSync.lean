@@ -1,6 +1,9 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.DeadlineWake
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -21,6 +24,225 @@ their event and recipients honest at their call:
 * `vote_message_service_psync_other_at`, `message_service_psync_at`: message service;
 * `resetService_of_psync_at`: the reset service of a healthy run;
 * `catchRun_of_psync_at`: old acceptances catch up by the first `2Δ` snapshot after GST. -/
+
+namespace Consensus.Goldilocks.Growing.LocalRun
+
+variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
+
+/-- An honest node's own block call accepts, given the requirements at its actual start. -/
+theorem ownBlockAt_accept (hrun : LocalRun proposer dg H sg tr ini)
+    (hreq : ∀ y, ({ A with initial := ini y } : NodeAC P).Requirements)
+    (hroot : (P.genesisBlock A.genesisPayload).RootOk dg)
+    (hnc : Compose.NoCollRun dg tr) {y : Fin P.n} {i : Nat} {B : A.Blk}
+    (hy : y ∈ H (tr.time i)) (hown : tr.OwnBlockAt y i B) : tr.AcceptAt y i B := by
+  let d := tr.time i
+  have run := hrun.upTo (hrun.time_nonneg i)
+  have hnc' := Compose.NoCollRun.upTo hnc (d := d)
+  obtain ⟨⟨acc, hc⟩, hpos⟩ := hown
+  have hc' := (Trace.upTo_callAt_of_le _ le_rfl).mpr hc
+  rcases Compose.blockCall_cases run hy hc' with hg |
+    ⟨j, x, rfl, hg, hp, dd, pay, hdp, hB, hacc, _, _, _⟩
+  · have h0 := (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1
+    simp only [Nat.add_zero] at h0
+    exact False.elim (hpos h0)
+  · obtain ⟨cfg, hr, hst, hs⟩ := Compose.group_step run hy hg
+    have h := Compose.honest_block_accepted_from proposer dg y (hreq y)
+      hroot cfg _ _ x hr hs hp dd pay (by rw [hst]; exact hdp)
+    simp only [hst] at h
+    have key : Compose.NoCollOn dg (insert B ((tr.upTo d).state y j).fg.tree) →
+        ∃ fg', ((tr.upTo d).state y j).fg.onBlock B = some fg' := by
+      rw [hB]
+      exact fun hnc => (h.2.2.2.2.2.2 hnc).2
+    have hon := key (hnc'.mono (Set.insert_subset_iff.2
+      ⟨Or.inr ⟨y, j + 2, acc, hc'⟩, Compose.tree_subset_run run hy j⟩))
+    have he := hacc.mpr hon
+    subst acc
+    exact hc
+
+end Consensus.Goldilocks.Growing.LocalRun
+
+namespace Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
+
+open Shape Blocks
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+  {O : OutputSchema} {I : Type} [DecidableEq I] [Countable I]
+  {F : ChainShapeFamily O I} {p : Params} {hN : p.n = Fintype.card V}
+  {hn : 1 ≤ Fintype.card V} {A : NodeAC (paramsAtCount p (Fintype.card V) hN hn)}
+  {e : Encoding F E p hN hn A} {rho : Model.Run (compiled F) E}
+  {proposer : Nat → Fin (Fintype.card V)} {sg : A.Msg → Fin (Fintype.card V)}
+  {ini : Fin (Fintype.card V) → A.State}
+
+/-- The held wrapper supplies a block call, not necessarily an acceptance. -/
+theorem publication_blockDeliveredBy_psync
+    (hr : Growing.LocalRun proposer (digestOf e rho) (honestKeysAt rho) sg (simTrace e rho) ini)
+    (hΔ : E.ΔAC ≤ p.Δ) {g : Time} (hnet : rho.log.PSync rho.point g)
+    {x y : Fin (Fintype.card V)} {τ : Time} {B : A.Blk}
+    {o : (Model.protoOf (compiled F) E).Object}
+    (hrel : rho.releases (rho.key x) o τ) (hx : rho.key x ∉ rho.faultyAt τ)
+    (hrow : ¬ rho.log.fgAtt o) (hτ : 0 ≤ τ)
+    (blockCall : ∀ {j d D}, rho.log.Held rho.point (rho.key y) o d → d < D →
+      D ≤ (simTrace e rho).time j → ∃ k ≤ j, τ ≤ (simTrace e rho).time k ∧
+        (simTrace e rho).BlockCallAt y k B ∧ (simTrace e rho).time k < D)
+    {j : Nat} (hy : y ∈ honestKeysAt rho ((simTrace e rho).time j))
+    (hj : (simTrace e rho).IsCall y j)
+    (hb : (simTrace e rho).deadline y j (max τ g) p.Δ ≤ rho.horizon)
+    (hd : (simTrace e rho).deadline y j (max τ g) p.Δ ≤ (simTrace e rho).time j) :
+    (simTrace e rho).BlockDeliveredBy y j τ (max τ g) B := by
+  let tr := simTrace e rho
+  obtain ⟨k, hkj, ⟨hlo, hc⟩, ht⟩ := RunTrace.service_at_processing_cut hr
+    (inScope := fun k => tr.deadline y k (max τ g) p.Δ ≤ rho.horizon)
+    (processed := fun k => τ ≤ tr.time k ∧ tr.BlockCallAt y k B)
+    (fun hkj _ h => (RunTrace.deadline_mono_cut_of_time_mono tr hr.time_mono y _ _ hkj).trans h)
+    (by
+      intro k hy hj hb hd
+      obtain ⟨d, hh, hlt⟩ := publication_held_before_psync hr hΔ hnet hrel hx hrow hy hj hτ hb hd
+      obtain ⟨l, hl, hlo, hc, ht⟩ := blockCall hh hlt hd
+      obtain ⟨acc, hcall⟩ := hc
+      exact ⟨l, hl, ⟨_, hcall⟩, ⟨hlo, acc, hcall⟩, ht⟩) hy hj hb hd
+  exact ⟨k, hkj, hlo, hc, ht⟩
+
+/-- Block service from an acceptance publication. An own block call first uses the
+node's actual start requirements to obtain its acceptance. -/
+theorem blockService_psync
+    (hr : Growing.LocalRun proposer (digestOf e rho) (honestKeysAt rho) sg (simTrace e rho) ini)
+    (hΔ : E.ΔAC ≤ p.Δ) {g : Time} (hnet : rho.log.PSync rho.point g)
+    (hreq : ∀ x, ({ A with initial := ini x } : NodeAC _).Requirements)
+    (hroot : ((paramsAtCount p (Fintype.card V) hN hn).genesisBlock A.genesisPayload).RootOk
+      (digestOf e rho)) (hnc : Compose.NoCollRun (digestOf e rho) (simTrace e rho))
+    {fwd : (Model.protoOf (compiled F) E).Object →
+      Option (Fin (Fintype.card V) × Time × Option (Model.protoOf (compiled F) E).Object × A.Blk)}
+    {x y : Fin (Fintype.card V)} {i j : Nat} {B : A.Blk}
+    (hx : x ∈ honestKeysAt rho ((simTrace e rho).time i))
+    (hi : (simTrace e rho).AcceptAt x i B ∨ (simTrace e rho).OwnBlockAt x i B)
+    (hih : (simTrace e rho).time i ≤ rho.horizon)
+    (pub : (simTrace e rho).AcceptAt x i B →
+      ∃ o parent ev, cutMap e rho ev ≤ i ∧ i < cutMap e rho (ev + 1) ∧
+        rho.SendsAt (rho.key x) ev ((simTrace e rho).time i) ∧ o ∈ rho.releasesAt ev ∧
+        fwd o = some (x, (simTrace e rho).time i, parent, B) ∧ ¬ rho.log.fgAtt o)
+    (blockCall : ∀ {o parent k d D}, fwd o = some (x, (simTrace e rho).time i, parent, B) →
+      rho.releases (rho.key x) o ((simTrace e rho).time i) →
+      rho.key x ∉ rho.faultyAt ((simTrace e rho).time i) →
+      rho.log.Held rho.point (rho.key y) o d → d < D → D ≤ (simTrace e rho).time k →
+      ∃ l ≤ k, (simTrace e rho).time i ≤ (simTrace e rho).time l ∧
+        (simTrace e rho).BlockCallAt y l B ∧ (simTrace e rho).time l < D)
+    (hy : y ∈ honestKeysAt rho ((simTrace e rho).time j)) (hj : (simTrace e rho).IsCall y j)
+    (hb : (simTrace e rho).time j ≤ rho.horizon)
+    (hd : (simTrace e rho).deadline y j (max ((simTrace e rho).time i) g) p.Δ ≤
+      (simTrace e rho).time j) :
+    (simTrace e rho).BlockDeliveredBy y j ((simTrace e rho).time i)
+      (max ((simTrace e rho).time i) g) B := by
+  obtain ⟨o, parent, ev, _, _, hs, ho, hdec, hrow⟩ :=
+    pub (hi.elim id (hr.ownBlockAt_accept hreq hroot hnc hx))
+  have hrel : rho.releases (rho.key x) o ((simTrace e rho).time i) := ⟨ev, hs, ho⟩
+  have hxt := not_faulty_of_mem_honestKeysAt hx le_rfl hih
+  exact publication_blockDeliveredBy_psync hr hΔ hnet hrel hxt hrow (hr.time_nonneg i)
+    (blockCall hdec hrel hxt) hy hj (hd.trans hb) hd
+
+/-- Assemble post-stop service from the two bounded readers. In particular the relay row
+also covers acceptances before GST. -/
+theorem postStopService_of_bounded {g : Time}
+    (inHorizon : ∀ {y j}, (simTrace e rho).IsCall y j → (simTrace e rho).time j ≤ rho.horizon)
+    (message : ∀ x i m, x ∈ honestKeysAt rho ((simTrace e rho).time i) →
+      (simTrace e rho).SendOrAdmitAt x i m →
+      ∀ y j, y ∈ honestKeysAt rho ((simTrace e rho).time j) → (simTrace e rho).IsCall y j →
+        (simTrace e rho).time j ≤ rho.horizon →
+        (simTrace e rho).deadline y j (max ((simTrace e rho).time i) g) p.Δ ≤
+          (simTrace e rho).time j →
+        (simTrace e rho).MsgDeliveredBy y j ((simTrace e rho).time i)
+          (max ((simTrace e rho).time i) g) m)
+    (relay : ∀ x i B, x ∈ honestKeysAt rho ((simTrace e rho).time i) →
+      (simTrace e rho).AcceptAt x i B →
+      ∀ y j, y ∈ honestKeysAt rho ((simTrace e rho).time j) → (simTrace e rho).IsCall y j →
+        (simTrace e rho).time j ≤ rho.horizon →
+        (simTrace e rho).deadline y j (max ((simTrace e rho).time i) g) p.Δ ≤
+          (simTrace e rho).time j →
+        Anc ((simTrace e rho).HonestBlocksAt (honestKeysAt rho))
+          ((simTrace e rho).state y j).fg.F B →
+        (simTrace e rho).BlockAcceptedBy y j (max ((simTrace e rho).time i) g) B) :
+    Generic.PostStopService (simTrace e rho) (honestKeysAt rho) g where
+  message x i m hx hi y j hy hj := message x i m hx hi y j hy hj (inHorizon hj)
+  relay x i B hx hi y j hy hj := relay x i B hx hi y j hy hj (inHorizon hj)
+
+/-- The healthy service uses the same message and relay rows as post-stop service. The
+additional block-call and signed-row suppliers are consumed only in their own rows. -/
+theorem service_of_postStop {g ΔF : Time}
+    (hs : Generic.PostStopService (simTrace e rho) (honestKeysAt rho) g)
+    (hΔF : 0 < ΔF)
+    (block : ∀ x i B, x ∈ honestKeysAt rho ((simTrace e rho).time i) →
+      (simTrace e rho).AcceptAt x i B ∨ (simTrace e rho).OwnBlockAt x i B →
+      ∀ y j, y ∈ honestKeysAt rho ((simTrace e rho).time j) → (simTrace e rho).IsCall y j →
+        (simTrace e rho).deadline y j (max ((simTrace e rho).time i) g) p.Δ ≤
+          (simTrace e rho).time j →
+        (simTrace e rho).BlockDeliveredBy y j ((simTrace e rho).time i)
+          (max ((simTrace e rho).time i) g) B)
+    (row : ∀ x i att, x ∈ honestKeysAt rho ((simTrace e rho).time i) →
+      (simTrace e rho).SignAt x i att →
+      ∀ y j, y ∈ honestKeysAt rho ((simTrace e rho).time j) → (simTrace e rho).IsCall y j →
+        (simTrace e rho).time j ≤ rho.horizon →
+        (simTrace e rho).deadline y j (max ((simTrace e rho).time i) g) ΔF ≤
+          (simTrace e rho).time j →
+        ∃ k ≤ j, (simTrace e rho).ProcessAttAt y k att ∧
+          (simTrace e rho).time k <
+            (simTrace e rho).deadline y k (max ((simTrace e rho).time i) g) ΔF) :
+    Generic.Service (simTrace e rho) (honestKeysAt rho) g ΔF rho.horizon :=
+  ⟨hΔF, hs.message, block, fun x i B hx hi _ => hs.relay x i B hx hi, row⟩
+
+/-- Catch up at the first snapshot after the publication window, even if the snapshot is a
+stutter beyond the horizon. The witness is an acceptance strictly before the snapshot cut. -/
+theorem catchUp_at_snapshot (hΔ : E.ΔAC ≤ p.Δ) {g : Time}
+    (hnet : rho.log.PSync rho.point g)
+    (hawake : ∀ v u, max g 0 ≤ u → u ≤ rho.horizon → u ≤ max g 0 + E.ΔAC - 1 →
+      v ∉ rho.faultyAt u → E.awake v u = true)
+    {x y : Fin (Fintype.card V)} {i j : Nat} {B : A.Blk}
+    {o : (Model.protoOf (compiled F) E).Object}
+    (hx : rho.key x ∉ rho.faultyAt ((simTrace e rho).time i))
+    (hrel : rho.releases (rho.key x) o ((simTrace e rho).time i)) (hrow : ¬ rho.log.fgAtt o)
+    (hbefore : (simTrace e rho).time i < max g 0)
+    (hy : y ∈ honestKeysAt rho (max g 0 + 2 * p.Δ))
+    (hfirst : (simTrace e rho).FirstCutFrom j (max g 0 + 2 * p.Δ))
+    (hbound : (simTrace e rho).time j ≤ rho.horizon + 1)
+    (hF : Anc ((simTrace e rho).HonestBlocksAt (honestKeysAt rho))
+      ((simTrace e rho).state y j).fg.F B)
+    (accept : ∀ {t₀ d D}, (∀ k < j, (simTrace e rho).time k ≤ t₀) →
+      rho.key y ∉ rho.faultyAt t₀ → rho.log.Held rho.point (rho.key y) o d →
+      d < D → D ≤ (simTrace e rho).time j →
+      Anc ((simTrace e rho).HonestBlocksAt (honestKeysAt rho))
+        ((simTrace e rho).state y j).fg.F B →
+      ∃ k ≤ j, (simTrace e rho).AcceptAt y k B ∧ (simTrace e rho).time k < D) :
+    ∃ k < j, (simTrace e rho).AcceptAt y k B := by
+  have hstart := hfirst.1
+  have hpos := p.hΔ
+  have hservice : max g 0 + E.ΔAC - 1 ≤ rho.horizon := by linarith
+  have hdl : max g 0 + E.ΔAC - 1 < max g 0 + p.Δ := by linarith
+  have hdeadline : max g 0 + p.Δ ≤ (simTrace e rho).time j := by linarith
+  have hyT := (mem_honestKeysAt_iff _ _ _).mp hy
+  have hdlT : max g 0 + E.ΔAC - 1 ≤ min (max g 0 + 2 * p.Δ) rho.horizon :=
+    le_min (by linarith) hservice
+  have hat : rho.key y ∉ rho.faultyAt (max g 0 + E.ΔAC - 1) :=
+    fun h => hyT (rho.faultyAt_mono hdlT h)
+  have haw : rho.point.AwakeOnClosed (rho.key y) (max g 0) (max g 0 + E.ΔAC - 1) :=
+    fun u hlo hhi => hawake (rho.key y) u hlo (hhi.trans hservice) hhi
+      (fun h => hyT (rho.faultyAt_mono (hhi.trans hdlT) h))
+  have hg : max (max g 0) g = max g 0 := max_eq_left (le_max_left _ _)
+  have hservice' : max (max g 0) g + E.ΔAC - 1 ≤ rho.horizon := hg.symm ▸ hservice
+  have hat' : rho.key y ∉ rho.faultyAt (max (max g 0) g + E.ΔAC - 1) := hg.symm ▸ hat
+  have haw' : rho.point.AwakeOnClosed (rho.key y) (max g 0)
+      (max (max g 0) g + E.ΔAC - 1) := hg.symm ▸ haw
+  have held := hnet.msgs _ _ _ hrel hx hrow (rho.key y) (max g 0) hbefore.le
+    hservice' hservice' hat' haw'
+  change rho.log.Held rho.point (rho.key y) o (max (max g 0) g + E.ΔAC - 1) at held
+  rw [hg] at held
+  have hj₀ : ∀ k < j, (simTrace e rho).time k ≤ min (max g 0 + 2 * p.Δ) rho.horizon := by
+    intro k hk
+    have hkT := hfirst.2 k hk
+    exact le_min hkT.le (Int.lt_add_one_iff.mp (hkT.trans_le (hstart.trans hbound)))
+  obtain ⟨k, hk, ha, ht⟩ := accept hj₀ hyT held hdl hdeadline hF
+  exact ⟨k, lt_of_le_of_ne hk (by rintro rfl; exact (not_lt_of_ge hdeadline) ht), ha⟩
+
+end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
 
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
@@ -62,22 +284,14 @@ theorem publication_held_before_gst_deadline_at (hn : 1 ≤ Fintype.card V)
       (S.params (Model.pubOf E) hn).Δ ≤ (simTraceAt S rho hn).time j) :
     ∃ d, rho.log.Held rho.point (rho.key y) r.object d ∧
       d < (simTraceAt S rho hn).deadline y j (max τ g) (S.params (Model.pubOf E) hn).Δ := by
-  obtain ⟨a, ha, heq, hw⟩ := deadline_awake_interval_at S rho hn hv hy hj
-    (hτ.trans (le_max_left τ g))
-  rw [heq] at hb hd ⊢
-  have hga : max a g = a := max_eq_left ((le_max_right τ g).trans ha)
-  have hslack : a + E.ΔAC - 1 < a + (S.params (Model.pubOf E) hn).Δ := by
-    change a + E.ΔAC - 1 < a + E.ΔAC
-    exact sub_one_lt _
-  have hbj : a + E.ΔAC - 1 ≤ (simTraceAt S rho hn).time j := hslack.le.trans hd
-  have hbh : a + E.ΔAC - 1 ≤ rho.horizon := hslack.le.trans hb
-  have hheld := (publication_held_psync_at S rho hn hnet r hr hx hrow
-    (by rw [hga]; exact not_faulty_of_mem_honestKeysAt S rho hy hbj hbh)
-    (ht ▸ (le_max_left τ g).trans ha)
-    (by rw [hga]; exact hbh)
-    (by rw [hga]; exact fun u hau hud => hw u hau (hud.trans hbj))).1
-  rw [hga] at hheld
-  exact ⟨a + E.ΔAC - 1, hheld, hslack⟩
+  have hrel : rho.releases (rho.key r.origin) r.object τ :=
+    ht ▸ ⟨r.event, (publisherExecution S rho).actual_event r hr,
+      (publisherExecution S rho).actual_release r hr⟩
+  have htr := network_trace_eq S rho hn
+  rw [htr, network_honestKeysAt_eq] at hy
+  rw [htr] at hj hb hd ⊢
+  exact NodeAsChainShape.CanonicalTrace.publication_held_before_psync (network_localRun S rho hn hv)
+    le_rfl hnet hrel (ht ▸ hx) hrow hy hj hτ hb hd
 
 /-- Acceptance service for an actual publication by an origin honest at its event, including a
 pre-GST one, at the effective `max(source, GST)` deadline at the acceptance cut. -/
@@ -101,30 +315,22 @@ theorem publication_acceptedBy_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rh
     (hF : Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho))
       ((simTraceAt S rho hn).state y j).fg.F B) :
     (simTraceAt S rho hn).BlockAcceptedBy y j (max τ g) B := by
-  have hrun := simTraceAt_goldilocksRun S rho hn hv
   have hrel : rho.releases (rho.key r.origin) r.object τ :=
     ht ▸ ⟨r.event, (publisherExecution S rho).actual_event r hr,
       (publisherExecution S rho).actual_release r hr⟩
-  induction j using Nat.strong_induction_on with
-  | h j ih =>
-    obtain ⟨d, hheld, hlt⟩ := publication_held_before_gst_deadline_at S rho hn hv hnet
-      r hr (ht ▸ hx) (not_isFGAtt_of_decodeForward hdecode) hy hj hτ ht hb hd
-    obtain ⟨k, hkj, hacc, htime⟩ := held_forward_accepted_before_at S rho hn hv hnc
-      (fun k hk => hrun.time_mono hk.le)
-      (not_faulty_of_mem_honestKeysAt S rho hy le_rfl (isCall_time_le_horizon S rho hn hv hj))
-      hx hrel hheld hdecode hlt hd hF
-    by_cases hk : (simTraceAt S rho hn).time k <
-        (simTraceAt S rho hn).deadline y k (max τ g) (S.params (Model.pubOf E) hn).Δ
-    · exact ⟨k, hkj, hacc, hk⟩
-    · have hkj' : k < j := lt_of_le_of_ne hkj (by
-        intro heq
-        subst k
-        exact hk htime)
-      have hmono := deadline_mono_cut_at S rho hn hv y (max τ g)
-        (S.params (Model.pubOf E) hn).Δ hkj
-      obtain ⟨l, hl, ha, ht'⟩ := ih k hkj' (hrun.antitone (hrun.time_mono hkj) hy) ⟨_, hacc⟩
-        (hmono.trans hb) (le_of_not_gt hk) ((run_F_mono_at hrun hy hkj).trans hF)
-      exact ⟨l, hl.trans hkj, ha, ht'⟩
+  have hh := isCall_time_le_horizon S rho hn hv hj
+  have htr := network_trace_eq S rho hn
+  have hH := network_honestKeysAt_eq S rho
+  rw [htr, hH] at hy hF
+  rw [htr] at hj hh hb hd ⊢
+  have hrun := network_localRun S rho hn hv
+  apply NodeAsChainShape.CanonicalTrace.publication_acceptedBy hrun hx hrel
+    (fun _ hy hj => NodeAsChainShape.CanonicalTrace.publication_held_before_psync
+      hrun le_rfl hnet hrel hx (not_isFGAtt_of_decodeForward hdecode) hy hj hτ) _ hy hj hh hb hd hF
+  intro j t₀ d D hj₀ hy hx hrel hheld hlt hd hF
+  rw [← htr] at hj₀ hd ⊢
+  rw [← htr, ← hH] at hF
+  exact held_forward_accepted_before_at S rho hn hv hnc hj₀ hy hx hrel hheld hdecode hlt hd hF
 
 /-- The acceptance-relay service for an acceptance by a node honest at its cut, including a
 pre-GST one, at a recipient honest at its call within the horizon. -/
@@ -142,15 +348,21 @@ theorem acceptance_relay_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rho.Exec
     (hF : Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho))
       ((simTraceAt S rho hn).state y j).fg.F B) :
     (simTraceAt S rho hn).BlockAcceptedBy y j (max ((simTraceAt S rho hn).time i) g) B := by
-  obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
-    (forwardAtAcceptanceAt_iff S rho hn _ _ _).mp
-      (forwardAtAcceptance_at S rho hn hv) x i B hx hi
   have hih : (simTraceAt S rho hn).time i ≤ rho.horizon :=
     isCall_time_le_horizon S rho hn hv ⟨_, hi⟩
-  exact publication_acceptedBy_psync_any_at S rho hn hv hnc hnet r hr
-    ((simTraceAt_goldilocksRun S rho hn hv).time_nonneg i) htime
-    (horg ▸ not_faulty_of_mem_honestKeysAt S rho hx le_rfl hih) (p := p)
-    (by rw [horg]; exact hdecode) hy hj (hd.trans hb) hd hF
+  have hpub := acceptancePublication S rho hn hv hx hi
+  have hxt := not_faulty_of_mem_honestKeysAt S rho hx le_rfl hih
+  have htr := network_trace_eq S rho hn
+  rw [htr, network_honestKeysAt_eq] at hy hF
+  rw [htr] at hpub hxt hj hb hd ⊢
+  have hrun := network_localRun S rho hn hv
+  apply NodeAsChainShape.CanonicalTrace.acceptanceRelay hrun hxt hpub
+    (fun _ hrel hrow _ hy hj => NodeAsChainShape.CanonicalTrace.publication_held_before_psync
+      hrun le_rfl hnet hrel hxt hrow hy hj (hrun.time_nonneg i)) _ hy hj hb (hd.trans hb) hd hF
+  intro o parent k t₀ d D hdecode hj₀ hy hx hrel held hlt hd hF
+  rw [← htr] at hj₀ hd ⊢
+  rw [← htr, ← network_honestKeysAt_eq S rho] at hF
+  exact held_forward_accepted_before_at S rho hn hv hnc hj₀ hy hx hrel held hdecode hlt hd hF
 
 /-- Holdings of a decoded wrapper of a signer honest at its stamp give a block call after the
 stamp. Local publication uses the actual acceptance; receipt uses recursive block processing. -/
@@ -227,28 +439,18 @@ theorem publication_blockDeliveredBy_psync_at {V : Type} [Fintype V] [DecidableE
       (S.params (Model.pubOf E) hn).Δ ≤
         (simTraceAt S rho hn).time j) :
     (simTraceAt S rho hn).BlockDeliveredBy y j τ (max τ g) B := by
-  have hrun := simTraceAt_goldilocksRun S rho hn hv
-  induction j using Nat.strong_induction_on with
-  | h j ih =>
-    obtain ⟨d, hheld, hlt⟩ := publication_held_before_gst_deadline_at
-      S rho hn hv hnet
-      r hr (ht ▸ hx) (not_isFGAtt_of_decodeForward hdecode) hy hj hτ ht hb hd
-    obtain ⟨k, hkj, hlo, hcall, htime⟩ := held_forward_blockCall_before_at S rho hn hv
-      hx hheld hdecode hlt hd
-    by_cases hk : (simTraceAt S rho hn).time k <
-        (simTraceAt S rho hn).deadline y k (max τ g)
-          (S.params (Model.pubOf E) hn).Δ
-    · exact ⟨k, hkj, hlo, hcall, hk⟩
-    · have hkj' : k < j := lt_of_le_of_ne hkj (by
-        intro heq
-        subst k
-        exact hk htime)
-      have hmono := deadline_mono_cut_at S rho hn hv y (max τ g)
-        (S.params (Model.pubOf E) hn).Δ hkj
-      obtain ⟨acc, hc⟩ := hcall
-      obtain ⟨l, hl, hlo', hc', ht'⟩ := ih k hkj' (hrun.antitone (hrun.time_mono hkj) hy)
-        ⟨_, hc⟩ (hmono.trans hb) (le_of_not_gt hk)
-      exact ⟨l, hl.trans hkj, hlo', hc', ht'⟩
+  have hrel : rho.releases (rho.key r.origin) r.object τ :=
+    ht ▸ ⟨r.event, (publisherExecution S rho).actual_event r hr,
+      (publisherExecution S rho).actual_release r hr⟩
+  have htr := network_trace_eq S rho hn
+  rw [htr, network_honestKeysAt_eq] at hy
+  rw [htr] at hj hb hd ⊢
+  apply NodeAsChainShape.CanonicalTrace.publication_blockDeliveredBy_psync
+    (network_localRun S rho hn hv) le_rfl hnet hrel hx (not_isFGAtt_of_decodeForward hdecode)
+    hτ _ hy hj hb hd
+  intro j d D hh hlt hd
+  rw [← htr] at hd ⊢
+  exact held_forward_blockCall_before_at S rho hn hv hx hh hdecode hlt hd
 
 /-- An own-block call of a node honest at it is an acceptance under collision freedom. -/
 theorem ownBlockAt_accept_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
@@ -263,35 +465,8 @@ theorem ownBlockAt_accept_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (hown : (simTraceAt S rho hn).OwnBlockAt y i B) :
     (simTraceAt S rho hn).AcceptAt y i B := by
   have hrun := simTraceAt_goldilocksRun S rho hn hv
-  set d := (simTraceAt S rho hn).time i
-  have run := hrun.upTo (hrun.time_nonneg i)
-  have hnc' := Compose.NoCollRun.upTo hnc (d := d)
-  obtain ⟨⟨acc, hc⟩, hpos⟩ := hown
-  have hc' := (Trace.upTo_callAt_of_le _ le_rfl).mpr hc
-  rcases Compose.blockCall_cases run.toLocalRun hy hc' with hg |
-    ⟨j, x, rfl, hg, hp, dd, p, hdp, hB, hacc, _, _, _⟩
-  · have h0 := (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1
-    simp only [Nat.add_zero] at h0
-    exact False.elim (hpos h0)
-  · obtain ⟨cfg, hr, hst, hs⟩ := Compose.group_step run.toLocalRun hy hg
-    have h := Compose.honest_block_accepted_from
-      (A := goldilocksNode
-        (S.params (Model.pubOf E) hn) (S.ro _))
-      (runProposer S rho hn) (digestOf S rho) y
-      (Compose.requirements_from _ _ (run.vstart y))
-      run.genesis_root_ok cfg _ _ x hr hs hp dd p (by rw [hst]; exact hdp)
-    simp only [hst] at h
-    have key : Compose.NoCollOn (digestOf S rho)
-        (insert B (((simTraceAt S rho hn).upTo d).state y j).fg.tree) →
-        ∃ fg', (((simTraceAt S rho hn).upTo d).state y j).fg.onBlock B =
-          some fg' := by
-      rw [hB]
-      exact fun hnc => (h.2.2.2.2.2.2 hnc).2
-    have hon := key (hnc'.mono (Set.insert_subset_iff.2
-      ⟨Or.inr ⟨y, j + 2, acc, hc'⟩, Compose.tree_subset_run run.toLocalRun hy j⟩))
-    have he := hacc.mpr hon
-    subst acc
-    exact hc
+  exact hrun.toLocalRun.ownBlockAt_accept (fun y => Compose.requirements_from _ _ (hrun.vstart y))
+    hrun.genesis_root_ok hnc hy hown
 
 /-- Finite GST block service for blocks accepted or proposed by a node honest at its cut, at a
 recipient honest at its call within the horizon, with the source-time lower bound and the
@@ -320,16 +495,25 @@ theorem block_service_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V
     (simTraceAt S rho hn).BlockDeliveredBy y j
       ((simTraceAt S rho hn).time i)
       (max ((simTraceAt S rho hn).time i) g) B := by
-  have ha := hi.elim id (ownBlockAt_accept_at S rho hn hv hnc hx)
-  obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
-    (forwardAtAcceptanceAt_iff S rho hn _ _ _).mp
-      (forwardAtAcceptance_at S rho hn hv) x i B hx ha
   have hih : (simTraceAt S rho hn).time i ≤ rho.horizon :=
-    isCall_time_le_horizon S rho hn hv ⟨_, ha⟩
-  exact publication_blockDeliveredBy_psync_at S rho hn hv hnet r hr
-    ((simTraceAt_goldilocksRun S rho hn hv).time_nonneg i) htime
-    (horg ▸ not_faulty_of_mem_honestKeysAt S rho hx le_rfl hih) (p := p)
-    (by rw [horg]; exact hdecode) hy hj (hd.trans hb) hd
+    isCall_time_le_horizon S rho hn hv
+      (hi.elim (fun ha => ⟨_, ha⟩) (fun ⟨⟨_, hc⟩, _⟩ => ⟨_, hc⟩))
+  have hrun := simTraceAt_goldilocksRun S rho hn hv
+  have htr := network_trace_eq S rho hn
+  have hH := network_honestKeysAt_eq S rho
+  have hpub := acceptancePublication S rho hn hv hx (i := i) (B := B)
+  obtain ⟨_, hdg⟩ := runProposer_digestOf S rho hn
+  have hroot := hrun.genesis_root_ok
+  rw [hdg] at hroot
+  rw [hdg, htr] at hnc
+  rw [htr, hH] at hx hy
+  rw [htr] at hi hih hpub hj hb hd ⊢
+  apply NodeAsChainShape.CanonicalTrace.blockService_psync (network_localRun S rho hn hv)
+    le_rfl hnet (fun x => Compose.requirements_from _ _ (hrun.vstart x))
+    hroot hnc hx hi hih hpub _ hy hj hb hd
+  intro o parent k d D hdecode _ hx held hd' hk
+  rw [← htr] at hdecode hx hk ⊢
+  exact held_forward_blockCall_before_at S rho hn hv hx held hdecode hd' hk
 
 /-- A first-release vote envelope of a sender honest at its release reaches a different recipient
 honest at its call under PSync. The release time is the lower bound; GST changes only the service
@@ -351,44 +535,23 @@ theorem vote_message_service_psync_other_at (hn : 1 ≤ Fintype.card V) (hv : rh
     ∃ k ≤ j, τ ≤ (simTraceAt S rho hn).time k ∧
       (simTraceAt S rho hn).projAC.ProcessAt y k m ∧
       (simTraceAt S rho hn).time k < (simTraceAt S rho hn).projAC.deadline y k (max τ g) := by
-  have hrun := simTraceAt_goldilocksRun S rho hn hv
-  induction j using Nat.strong_induction_on with
-  | h j ih =>
-    obtain ⟨a, ha, heq, hw⟩ := deadline_awake_interval_at S rho hn hv hy hj
-      (hτ.trans (le_max_left _ g))
-    have heq' : (simTraceAt S rho hn).projAC.deadline y j (max τ g) =
-        a + (S.params (Model.pubOf E) hn).Δ := by
-      rw [Compose.projAC_deadline]
-      exact heq
-    have hslack : a + E.ΔAC - 1 < a + (S.params (Model.pubOf E) hn).Δ := by
-      change a + E.ΔAC - 1 < a + E.ΔAC
-      linarith
-    have hbound := hslack.le.trans (heq' ▸ hd)
-    have hag : max a g = a := max_eq_left ((le_max_right _ _).trans ha)
-    have hheld := hnet.msgs (rho.key x)
-      _ τ ⟨source, hs, hrel⟩ hx
-      (by simp [log_fgAtt_iff, isFGAtt, IsAttObj]) (rho.key y)
-      a ((le_max_left _ _).trans ha) (by rw [hag]; exact hbound.trans hb)
-      (by rw [hag]; exact hbound.trans hb)
-      (by rw [hag]; exact not_faulty_of_mem_honestKeysAt S rho hy hbound (hbound.trans hb))
-      (by rw [hag]; exact fun u hau hud => hw u hau (hud.trans hbound))
-    rcases held_voteForward_source_or_process_at S rho hn hv hx hs hfirst hheld with
-      h | ⟨k, hp, hlo, hhi⟩
-    · exact False.elim (hne h)
-    rw [hag] at hhi
-    have htime : (simTraceAt S rho hn).time k < (simTraceAt S rho hn).projAC.deadline y j
-        (max τ g) := by rw [heq']; exact hhi.trans_lt hslack
-    have hkj : k < j := by
-      by_contra h
-      have := hrun.time_mono (Nat.le_of_not_gt h)
-      linarith only [this, htime, hd]
-    by_cases hk : (simTraceAt S rho hn).time k <
-        (simTraceAt S rho hn).projAC.deadline y k (max τ g)
-    · exact ⟨k, hkj.le, hlo, hp, hk⟩
-    · obtain ⟨l, hl, hlo', hp', hlt⟩ := ih k hkj (hrun.antitone (hrun.time_mono hkj.le) hy)
-        ⟨_, Compose.projAC_callAt.mp hp.choose_spec.1⟩
-        ((hrun.time_mono hkj.le).trans hb) (le_of_not_gt hk)
-      exact ⟨l, hl.trans hkj.le, hlo', hp', hlt⟩
+  have hrun := network_localRun S rho hn hv
+  have htr := network_trace_eq S rho hn
+  rw [Compose.projAC_deadline] at hd
+  rw [htr, network_honestKeysAt_eq] at hy
+  rw [htr] at hj hb hd
+  have hp := NodeAsChainShape.CanonicalTrace.publication_messageDeliveredBy hrun hx hne
+    (votePublication_intro S rho hs hrel hfirst)
+    (fun _ hy hj hb hd => NodeAsChainShape.CanonicalTrace.publication_held_before_psync
+      hrun le_rfl hnet ⟨source, hs, hrel⟩ hx
+      (by simp [log_fgAtt_iff, isFGAtt, IsAttObj]) hy hj hτ hb hd)
+    (fun _ hh hx hhld => htr ▸ votePublication_process S rho hn hv hh hx hhld)
+    hy hj (hd.trans hb) hd
+  rw [← htr] at hp
+  obtain ⟨k, hk, hlo, hm, ht⟩ := hp
+  refine ⟨k, hk, hlo, ?_, by rwa [Compose.projAC_deadline]⟩
+  exact hm.elim (fun ⟨ℓ, hc, h⟩ => ⟨ℓ, Compose.projAC_callAt.mpr hc, Or.inl h⟩)
+    (fun ⟨ℓ, hc, h⟩ => ⟨ℓ, Compose.projAC_callAt.mpr hc, Or.inr h⟩)
 
 /-- SA sends and fresh admissions by a node honest at its cut are processed within the PSync
 deadline by every recipient honest at its call within the horizon. The sender processes at the
@@ -407,44 +570,54 @@ theorem message_service_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.Execution
       (max ((simTraceAt S rho hn).time i) g) m := by
   have hr := simTraceAt_goldilocksRun S rho hn hv
   have hsim := simTraceAt_simulates S rho hn hv
-  by_cases heq : y = x
-  · subst y
+  have htr := network_trace_eq S rho hn
+  have hrun := network_localRun S rho hn hv
+  have hih := isCall_time_le_horizon S rho hn hv ⟨_, hi.choose_spec.1⟩
+  have hhon := not_faulty_of_mem_honestKeysAt S rho hx le_rfl hih
+  have h0 := hr.time_nonneg i
+  rw [htr] at hhon h0 hb hj hd ⊢
+  rw [htr, network_honestKeysAt_eq] at hy
+  refine NodeAsChainShape.CanonicalTrace.messageDeliveredBy hrun (MsgPub := VotePublication S rho)
+    (le_max_left _ _) ?_ ?_ hhon ?_ ?_ hy hj (hd.trans hb) hd
+  · rw [← htr]
     obtain ⟨k, hp, ht⟩ := sendOrAdmit_process_same_time_at S rho hn hv hx hi
-    have hlt (l : Nat) : (simTraceAt S rho hn).time i <
-        (simTraceAt S rho hn).deadline x l (max ((simTraceAt S rho hn).time i) g)
-          (S.params (Model.pubOf E) hn).Δ := by
-      unfold RunTrace.deadline
-      change _ < Option.elim _ _ _ + E.ΔAC
-      have := E.ΔAC_pos
-      cases (simTraceAt S rho hn).lastWake x l with
-      | bot => change _ < max _ g + E.ΔAC; simp only [Time] at *; omega
-      | coe w => change _ < max (max _ g) w + E.ΔAC; simp only [Time] at *; omega
-    refine ⟨k, ?_, ht.ge, ?_, ht ▸ hlt k⟩
-    · by_contra h
-      have := hr.time_mono (Nat.le_of_not_ge h)
-      have := hlt j
-      linarith
-    · obtain ⟨l, hc, hm⟩ := hp
-      exact hm.elim (fun h => Or.inl ⟨l, Compose.projAC_callAt.mp hc, h⟩)
-        (fun h => Or.inr ⟨l, Compose.projAC_callAt.mp hc, h⟩)
-  · have hproj : (simTraceAt S rho hn).projAC.SendOrAdmit x i m := by
+    obtain ⟨ℓ, hc, hm⟩ := hp
+    exact ⟨k, hm.elim (fun h => Or.inl ⟨ℓ, Compose.projAC_callAt.mp hc, h⟩)
+      (fun h => Or.inr ⟨ℓ, Compose.projAC_callAt.mp hc, h⟩), ht⟩
+  · rw [← htr]
+    have hproj : (simTraceAt S rho hn).projAC.SendOrAdmit x i m := by
       obtain ⟨l, hc, hs⟩ := hi
       refine ⟨l, Compose.projAC_callAt.mpr hc, ?_⟩
       rw [projAC_state_at hr hx]
       exact hs
     obtain ⟨source, _, _, hs, hrel, hfirst⟩ := hsim.vote_forwarded x i m hx
       (sendOrAdmit_forward_source_at hr hx hproj)
-    have hih : (simTraceAt S rho hn).time i ≤ rho.horizon :=
-      isCall_time_le_horizon S rho hn hv ⟨_, hi.choose_spec.1⟩
-    obtain ⟨k, hkj, hlo, hp, hlt⟩ := vote_message_service_psync_other_at S rho hn hv hnet
-      (not_faulty_of_mem_honestKeysAt S rho hx le_rfl hih) heq (hr.time_nonneg i)
-      hs hrel hfirst hy hj hb (by rw [Compose.projAC_deadline]; exact hd)
-    refine ⟨k, hkj, hlo, ?_, ?_⟩
-    · obtain ⟨l, hc, hm⟩ := hp
-      exact hm.elim (fun h => Or.inl ⟨l, Compose.projAC_callAt.mp hc, h⟩)
-        (fun h => Or.inr ⟨l, Compose.projAC_callAt.mp hc, h⟩)
-    · rw [Compose.projAC_deadline] at hlt
-      exact hlt
+    exact ⟨_, votePublication_intro S rho hs hrel hfirst, ⟨source, hs, hrel⟩,
+      by simp [log_fgAtt_iff, isFGAtt, IsAttObj]⟩
+  · intro o hrel hrow k hy hj
+    exact NodeAsChainShape.CanonicalTrace.publication_held_before_psync hrun
+      le_rfl hnet hrel hhon hrow hy hj h0
+  · intro o d
+    rw [← htr]
+    exact votePublication_process S rho hn hv
+
+theorem postStopService_of_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {g : Time}
+    (hnet : rho.log.PSync rho.point g) :
+    Generic.PostStopService (simTraceAt S rho hn) (honestKeysAt S rho) g := by
+  have htr := network_trace_eq S rho hn
+  have hH := network_honestKeysAt_eq S rho
+  rw [htr, hH]
+  apply NodeAsChainShape.CanonicalTrace.postStopService_of_bounded
+    (e := traceEncoding S hn) (rho := rho)
+  · intro y j hj
+    rw [← htr] at hj ⊢
+    exact isCall_time_le_horizon S rho hn hv hj
+  · rw [← htr, ← hH]
+    exact fun _ _ _ hx hi _ _ hy hj => message_service_psync_at S rho hn hv hnet hx hi hy hj
+  · rw [← htr, ← hH]
+    exact fun _ _ _ hx hi _ _ hy hj =>
+      acceptance_relay_psync_any_at S rho hn hv hnc hnet hx hi hy hj
 
 /-- The finite valid engine run supplies every reset-service field under growing faults, with
 attestation service at a parametric `Δ_F` as a premise (`hrow`). Senders are honest at their
@@ -462,17 +635,21 @@ theorem resetService_of_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env
     Healing.Growing.ResetService (simTraceAt S rho hn)
       (honestKeysAt S rho) g ΔF
       rho.horizon := by
-  refine ⟨hΔF, ?_, ?_, ?_, ?_⟩
-  · intro x i m hx hi y j hy hj hd
-    exact message_service_psync_at S rho hn hv hnet hx hi hy hj
-      (isCall_time_le_horizon S rho hn hv hj) hd
-  · intro x i B hx hi y j hy hj hd
-    exact block_service_psync_at S rho hn hv hnc hnet hx hi hy hj
-      (isCall_time_le_horizon S rho hn hv hj) hd
-  · intro x i B hx hi _ y j hy hj hd hF
-    exact acceptance_relay_psync_any_at S rho hn hv hnc hnet hx hi hy hj
-      (isCall_time_le_horizon S rho hn hv hj) hd hF
-  · exact (psyncFGAttTransportAt_iff S rho _ _ _).mp hrow g hnet
+  have htr := network_trace_eq S rho hn
+  have hH := network_honestKeysAt_eq S rho
+  have hs := postStopService_of_psync_at S rho hn hv hnc hnet
+  rw [htr, hH] at hs
+  have h := NodeAsChainShape.CanonicalTrace.service_of_postStop hs hΔF
+    (by
+      rw [← htr, ← hH]
+      intro x i B hx hi y j hy hj hd
+      exact block_service_psync_at S rho hn hv hnc hnet hx hi hy hj
+        (isCall_time_le_horizon S rho hn hv hj) hd)
+    (by
+      rw [← htr, ← hH]
+      exact (psyncFGAttTransportAt_iff S rho _ _ _).mp hrow g hnet)
+  rw [← htr, ← hH] at h
+  exact ⟨h.deltaF, h.message, h.block, h.relay, h.signedRow⟩
 
 /-- Old acceptances by nodes honest at their cut catch up before the first `2Δ` snapshot after GST
 at every node honest at that snapshot, when every node honest at a time of
@@ -490,9 +667,6 @@ theorem catchRun_of_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
       (honestKeysAt S rho) g
       (2 * (S.params (Model.pubOf E) hn).Δ) := by
   intro x i B hx hi hbefore y j hy hfirst hF
-  have hrun := simTraceAt_goldilocksRun S rho hn hv
-  have hstart := hfirst.1
-  change max g 0 + 2 * E.ΔAC ≤ (simTraceAt S rho hn).time j at hstart
   have hbound : (simTraceAt S rho hn).time j ≤ rho.horizon + 1 := by
     rw [simTraceAt_eq S rho hn]
     cases hj : (allCuts S rho hn)[j]? with
@@ -502,62 +676,23 @@ theorem catchRun_of_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
         rw [simTrace_label S rho hn, hj]; simp
       have hh := simTrace_labelled_time_le S rho hn hv hl
       linarith only [hh]
-  have hservice : max g 0 + E.ΔAC - 1 ≤ rho.horizon := by
-    linarith only [E.ΔAC_pos, hstart, hbound]
   have hih : (simTraceAt S rho hn).time i ≤ rho.horizon :=
     isCall_time_le_horizon S rho hn hv ⟨_, hi⟩
-  obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
-    (forwardAtAcceptanceAt_iff S rho hn _ _ _).mp
-      (forwardAtAcceptance_at S rho hn hv) x i B hx hi
-  have hxt : rho.key r.origin ∉ rho.faultyAt
-      ((publisherExecution S rho).eventTime r.event) := by
-    rw [horg, htime];
-      exact not_faulty_of_mem_honestKeysAt S rho hx le_rfl hih
-  -- the snapshot time, clamped to the horizon: `y` is honest there
-  set T := SA.gbar g +
-    2 * (S.params (Model.pubOf E) hn).Δ
-  have hyT : rho.key y ∉ rho.faultyAt (min T rho.horizon) := by
-    rw [mem_honestKeysAt_iff S rho] at hy
-    exact hy
-  have hdlT : max g 0 + E.ΔAC - 1 ≤ min T rho.horizon := by
-    refine le_min ?_ hservice
-    change max g 0 + E.ΔAC - 1 ≤ max g 0 + 2 * E.ΔAC
-    linarith only [E.ΔAC_pos]
-  have hmax : max (max g 0) g = max g 0 := max_eq_left (le_max_left _ _)
-  obtain ⟨hheld, hslack⟩ := publication_held_psync_at S rho hn hnet r hr hxt
-    (not_isFGAtt_of_decodeForward hdecode)
-    (a := max g 0) (by rw [hmax]; exact fun h => hyT (rho.faultyAt_mono hdlT h))
-    (by rw [htime]; exact hbefore.le)
-    (by rw [hmax]; exact hservice)
-    (by
-      rw [hmax]
-      exact fun u hlo hhi => hawake (rho.key y) u hlo (hhi.trans hservice) hhi
-        (fun h => hyT (rho.faultyAt_mono (hhi.trans hdlT) h)))
-  rw [hmax] at hheld hslack
-  have hdeadline : max g 0 +
-      (S.params (Model.pubOf E) hn).Δ ≤
-      (simTraceAt S rho hn).time j := by
-    change max g 0 + E.ΔAC ≤ _
-    linarith only [E.ΔAC_pos, hstart]
-  have hj₀ : ∀ k < j, (simTraceAt S rho hn).time k ≤ min T rho.horizon := by
-    intro k hk
-    have hkT : (simTraceAt S rho hn).time k < T := hfirst.2 k hk
-    have hT : T ≤ rho.horizon + 1 := hfirst.1.trans hbound
-    refine le_min hkT.le ?_
-    exact Int.lt_add_one_iff.mp (hkT.trans_le hT)
-  have hrel : rho.releases (rho.key x) r.object
-      ((simTraceAt S rho hn).time i) := by
-    rw [← horg, ← htime]
-    exact ⟨r.event, (publisherExecution S rho).actual_event r hr,
-      (publisherExecution S rho).actual_release r hr⟩
-  obtain ⟨k, hkj, hk, hkt⟩ := held_forward_accepted_before_at
-    S rho hn hv hnc hj₀ hyT
-    (not_faulty_of_mem_honestKeysAt S rho hx le_rfl hih) hrel hheld
-    hdecode hslack hdeadline hF
-  refine ⟨k, lt_of_le_of_ne hkj ?_, hk⟩
-  intro heq
-  subst k
-  exact (not_lt_of_ge hdeadline) hkt
+  obtain ⟨o, parent, ev, _, _, hs, ho, hdecode, hrow⟩ := acceptancePublication S rho hn hv hx hi
+  have hrel : rho.releases (rho.key x) o ((simTraceAt S rho hn).time i) := ⟨ev, hs, ho⟩
+  have hxt := not_faulty_of_mem_honestKeysAt S rho hx le_rfl hih
+  have htr := network_trace_eq S rho hn
+  have hH := network_honestKeysAt_eq S rho
+  rw [hH] at hy hF
+  rw [htr] at hF hrel hxt hbefore hfirst hbound ⊢
+  apply NodeAsChainShape.CanonicalTrace.catchUp_at_snapshot le_rfl hnet hawake hxt hrel
+    hrow hbefore hy hfirst hbound hF
+  intro t₀ d D hj₀ hy hheld hlt hdeadline hF
+  rw [← htr] at hj₀ hdeadline ⊢
+  rw [← htr, ← hH] at hF
+  rw [← htr] at hrel hxt
+  exact held_forward_accepted_before_at S rho hn hv hnc hj₀ hy hxt hrel hheld
+    hdecode hlt hdeadline hF
 
 end Consensus.Goldilocks.Obligations.Growing
 

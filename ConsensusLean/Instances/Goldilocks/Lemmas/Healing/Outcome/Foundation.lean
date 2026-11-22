@@ -162,23 +162,13 @@ theorem sync_window_of_service {b : Time} (hrun : GoldilocksRun proposer dg H tr
       simpa only [he] using h3
   · intro x hx i B ha hi y hy j ℓ hcj _ hdl hanc
     obtain ⟨i', rfl, ha', hti⟩ := fg_accept_before h hx ha
-    have hmax : max (tr.time i') g = tr.projAC.time (i' + 1) := by
-      rw [show tr.projAC.time (i' + 1) = tr.time (i' + 1) from rfl, hti]
-      exact max_eq_left ((SA.le_gbar g).trans hi)
-    rw [Compose.projAC_deadline] at hdl
-    obtain ⟨k, hk, hak, hkt⟩ := hsync.relay x hx i' B ha'
-      (by rw [hti]; exact (SA.le_gbar g).trans hi) y hy j
-      ⟨_, Compose.projAC_callAt.1 hcj⟩ (by rw [hmax]; exact hdl)
+    have hgi : g ≤ tr.time i' := hti ▸ (SA.le_gbar g).trans hi
+    have hmax : max (tr.time i') g = tr.time (i' + 1) := (max_eq_left hgi).trans hti
+    apply Compose.acRelay_of_acceptNext (σ := tr.time (i' + 1)) hcj ?_
+      (fun _ _ => Compose.accept_next h hy)
+    simpa only [hmax] using hsync.relay x hx i' B ha' hgi y hy j
+      ⟨_, Compose.projAC_callAt.1 hcj⟩ (by rw [hmax, ← Compose.projAC_deadline]; exact hdl)
       (by rwa [Compose.frame_of_projAC hrun hy hcj] at hanc)
-    obtain ⟨hak', htk, hnr⟩ := ac_block_after h hy hak
-    have hkj : k < j := by
-      rcases hk.lt_or_eq with hk | rfl
-      · exact hk
-      · exact absurd (hak.2.symm.trans (Compose.projAC_callAt.1 hcj).2) (by simp)
-    refine ⟨k + 1, hkj, hak', ?_⟩
-    have htk' : tr.projAC.time (k + 1) = tr.time k := htk
-    rw [Compose.projAC_deadline, htk', ← hmax]
-    simpa only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] using hkt
 
 /-- **Catch from `ḡ`** over the AC projection, from `Catch(2Δ)` of the run. -/
 theorem catch_window_of_run {b : Time} (hrun : GoldilocksRun proposer dg H tr ini)

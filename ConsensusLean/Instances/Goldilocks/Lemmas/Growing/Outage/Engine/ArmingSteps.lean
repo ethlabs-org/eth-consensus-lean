@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Adopt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageArmingSteps
@@ -601,12 +602,8 @@ theorem armed_first_update_at
   · intro q hq₁ hq₂ k hk ℓ' hu'
     have hqs := (SA.ts_lt_iff sp).2 (show (q : Int) < s by exact_mod_cast hq₂)
     have hwk : w ∈ H (tr.time k) := hrun.antitone (hm hk.le) hwc
-    have hd := hrun.time_nonneg (Nat.find hex₀)
-    have hFm := Healing.run_F_mono (hrun.upTo hd).toLocalRun hwc hk.le
-    rw [RunTrace.upTo_state_of_le hm (hm hk.le),
-      RunTrace.upTo_state_of_le hm le_rfl] at hFm
     have hFk : Anc (tr.HonestBlocksAt H) (tr.state w k).fg.F C :=
-      (hFm.mono (upTo_subset hrun hd)).trans hFC
+      (hrun.toLocalRun.finalized_mono hwc hk.le).trans hFC
     obtain ⟨-, R, hR, hCR, -⟩ := update_result_extends_origin_at hrun hnc hKB hinv hsync hC hwk
       (by omega) hu' (by linarith) (hfbu hu' (by linarith)) hFk
     exact ⟨R, hR, hCR.mono (frameIn_at hrun hnc hwk hu'.1).2⟩

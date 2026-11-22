@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Later
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.ServedRead
@@ -106,7 +107,6 @@ theorem ready_record_extends_at {ini}
     by_contra hh
     have := hrun.time_mono (show j ≤ k₁ by omega)
     linarith [hj.2]
-  have hr := (hrun.upTo (hu0.trans hut)).toLocalRun
   have hyt : y ∈ H t := hy.1
   have key : ∀ i, k₁ + 1 ≤ i → i ≤ j → ∃ E ∈ tr.HonestBlocksAt H,
       E.root = (tr.state y i).ac.latestConfirmed ∧
@@ -121,10 +121,8 @@ theorem ready_record_extends_at {ini}
       obtain ⟨E', hE', hE'r, hEE'⟩ := record_step_at hinv hrun hnc hiy
         (fun k hk => (hj.1 k (by omega)).trans htb) E₁ hE₁ hE₁r
       refine ⟨E', hE', hE'r, hPE₁.imp (·.trans hEE') fun h => h.trans ?_⟩
-      have hF := Healing.run_F_mono hr hyt (Nat.le_succ i)
-      rw [Trace.upTo_state tr y fun k hk => hj.1 k (by omega),
-        Trace.upTo_state tr y fun k hk => hj.1 k (by omega)] at hF
-      exact hF.mono (upTo_subset hrun (hu0.trans hut))
+      exact hrun.toLocalRun.finalized_mono_on_prefix (hu0.trans hut) hyt (Nat.le_succ i)
+        (fun k hk => hj.1 k (by omega))
   exact key j hj₁j le_rfl
 
 /-- **The read after all events at `t` extends `P` when the record or `Σ.F` does**, for a reader
