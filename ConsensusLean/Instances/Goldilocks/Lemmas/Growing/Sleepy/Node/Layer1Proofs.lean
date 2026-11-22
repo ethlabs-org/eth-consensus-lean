@@ -218,7 +218,7 @@ theorem retained_count {proposer : Nat → Fin sp.n}
     ((S : Set (Fin sp.n)) ∩ (H d)ᶜ).ncard <
       ((S : Set (Fin sp.n)) ∩ {y | y ∈ H d ∧ tr.awake y t ∧ tr.JoinedAt y t}).ncard := by
   exact retained_count_of_join hrun.antitone hbind htd
-    (fun _ hy hw => Obligations.Growing.ready_implies_joined_at hrun hy ht
+    (fun _ hy hw => Obligations.Growing.ready_implies_joined_at hrun.toLocalRun hy ht
       (join_le_of_catchUp hc) hw) S h
 
 /-- The finite service and independent population/committee bounds used by the sleepy

@@ -133,7 +133,7 @@ theorem committee_faultBoundAt (hv : rho.ExecutionValid) {ini}
       have hkey : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
       refine ⟨show rho.key (rho.ownKey v) ∈ (Sel t : Set V) by rw [hkey]; exact hvS,
         honest_ownKey_at S rho (fun h => hvD (rho.faultyAt_mono hd'D h)) hd'h, ?_⟩
-      exact ready_implies_joined_at hrun hready.1 ht hc hready.2
+      exact ready_implies_joined_at hrun.toLocalRun hready.1 ht hc hready.2
     · exact rho.key.symm.injective.injOn
   exact hf.trans_lt (hlt.trans_le hcount)
 

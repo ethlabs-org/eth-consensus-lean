@@ -238,7 +238,8 @@ theorem outage_bounds {proposer : Nat → Fin sp.n}
   have hjoin : ∀ y t, y ∈ H t → 0 ≤ t →
       (∀ u, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) →
       tr.awake y t ∧ tr.JoinedAt y t := fun _ _ hy ht hw =>
-    Obligations.Growing.ready_implies_joined_at hrun hy ht (SleepyLayer1.join_le_of_catchUp hc) hw
+    Obligations.Growing.ready_implies_joined_at hrun.toLocalRun hy ht
+      (SleepyLayer1.join_le_of_catchUp hc) hw
   have hη0 : 0 < η := by linarith
   refine ⟨hB, ?_, ?_⟩
   · intro s d _ htd hdb h6

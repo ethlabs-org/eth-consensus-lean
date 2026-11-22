@@ -131,7 +131,7 @@ theorem repair_read_context_at (D : RepairSchedule tr H proposer dg g b cm βK)
   have hdrain : Healing.drainTime sp D.resetTime ≤ t := by linarith only [O.drain, hrep, hΔ]
   obtain ⟨L, hL, haL, hLt⟩ := healthy_read_label_at D (tr.state y n).ac
     (Node.frame (tr.state y n)) ht0 hdrain
-  obtain ⟨hw, hj⟩ := ready_implies_joined_at D.reset.run hy ht0 hc hawake
+  obtain ⟨hw, hj⟩ := ready_implies_joined_at D.reset.run.toLocalRun hy ht0 hc hawake
   have hca := D.reset.cutZ_lt_reset_at
   obtain ⟨hsync, hcatch⟩ := D.reset.windows_at_reset_at ht0 htb
   have hgL : SA.gbar g ≤ sp.ts L := by

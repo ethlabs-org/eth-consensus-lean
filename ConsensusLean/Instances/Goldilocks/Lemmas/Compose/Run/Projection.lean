@@ -125,13 +125,21 @@ private theorem joined_iff {τ t : Time} (hτ : 0 ≤ τ) :
     push_cast [Nat.one_le_iff_ne_zero.2 hpos.ne']
     rfl
 
+/-- On the SA slot grid, joining is the previous-slot bound on nonnegative restart cuts. -/
+theorem joinedAt_iff_restartCuts {A : NodeAC sp.toParams} {tr : RunTrace A}
+    (y : Fin sp.n) (t : Time) (htime : ∀ k, tr.RestartAt y k → 0 ≤ tr.time k) :
+    tr.JoinedAt y t ↔
+      ∀ k, tr.RestartAt y k → tr.time k ≤ t → tr.time k ≤ sp.ts ((sp.slot t : Int) - 1) := by
+  unfold RunTrace.JoinedAt
+  exact forall_congr' fun k => imp_congr_right fun hk => imp_congr_right fun _ =>
+    joined_iff (htime k hk)
+
 /-- **The run's joined test is the AC projection's**, on a trace whose cuts are at times `≥ 0`. -/
 theorem projAC_joinedAt_iff {tr : GoldilocksTrace sp ro} (htime : ∀ k, 0 ≤ tr.time k)
     (y : Fin sp.n) (t : Time) : tr.JoinedAt y t ↔ SA.JoinedAt tr.projAC y t := by
-  unfold RunTrace.JoinedAt SA.JoinedAt
-  refine forall_congr' fun k => ?_
-  rw [projAC_restartAt]
-  exact imp_congr_right fun _ => imp_congr_right fun _ => joined_iff (htime k)
+  rw [joinedAt_iff_restartCuts y t (fun k _ => htime k)]
+  simp only [SA.JoinedAt, projAC_restartAt]
+  rfl
 
 /-- The latest restart time before cut `i`. -/
 private noncomputable def lastBefore (tr : GoldilocksTrace sp ro) (y : Fin sp.n) :
@@ -243,10 +251,11 @@ theorem joined_projection_from {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
         have : e.phase ≤ 0 := h.phase_order y hy y hy j k t e .restart hg hgk (by omega)
         omega
       · exact hnr hk
-    unfold RunTrace.JoinedAt SA.joined
-    rw [restartTime_eq h hy, lastBefore_le h]
-    exact ⟨fun hj k hki hk => (joined_iff (h.time_nonneg k)).1 (hj k hk ((hset k hk).2 hki)),
-      fun hj k hk hkt => (joined_iff (h.time_nonneg k)).2 (hj k ((hset k hk).1 hkt) hk)⟩
+    unfold SA.joined
+    rw [joinedAt_iff_restartCuts y t (fun k _ => h.time_nonneg k), restartTime_eq h hy,
+      lastBefore_le h]
+    exact ⟨fun hj k hki hk => hj k hk ((hset k hk).2 hki),
+      fun hj k hk hkt => hj k ((hset k hk).1 hkt) hk⟩
   · unfold RunTrace.honestAwakeJoined SA.honestAwakeJoined
     congr 1
     ext z

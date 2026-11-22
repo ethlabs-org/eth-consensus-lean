@@ -27,20 +27,22 @@ theorem event_order : EventOrder := by
     · exact Or.inl ha
     · exact Or.inr ⟨B, ⟨true, hB⟩, haB⟩
 
-/-- **F.4** from any AC starts `ini`: joining reads only the run's sleep, restart and tick laws. -/
-theorem ready_implies_joined_of {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H) {t c : Time}
+/-- Joining uses only time order and the sleep and public-tick laws through `t`. -/
+theorem ready_implies_joined_of_cuts {sp : SAParams} {A : NodeAC sp.toParams}
+    {tr : RunTrace A} {y : Fin sp.n} {t c : Time}
+    (hmono : Monotone tr.time)
+    (hsleep : ∀ k, tr.RestartAt y k → tr.time k ≤ t →
+      ∃ u : Time, 0 ≤ u ∧ u < tr.time k ∧ ¬ tr.awake y u ∧
+        ∀ j < k, tr.IsCall y j → tr.time j < u)
+    (htick : ∀ u, 0 ≤ u → u ≤ t → sp.toParams.IsPublic u → tr.awake y u →
+      ∃ j, tr.IsCall y j ∧ tr.time j = u)
     (ht : 0 ≤ t) (hc : 8 * sp.Δ ≤ c + 1)
     (hawake : ∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) :
     tr.awake y t ∧ tr.JoinedAt y t := by
-  have h := hrun.toLocalRun
   have hΔ := sp.toParams.hΔ
   have hm : max 0 (t - c - 1) ≤ t := max_le ht (by linarith only [hc, hΔ])
   refine ⟨hawake t hm le_rfl, fun k hk hkt => ?_⟩
-  obtain ⟨u, hu, huk, hs, hb⟩ := h.sleep_of_restart y hy k hk
+  obtain ⟨u, hu, huk, hs, hb⟩ := hsleep k hk hkt
   -- the sleep is before the window, so the window starts after `8Δ`
   have hum : u < max 0 (t - c - 1) := by
     by_contra hle
@@ -74,15 +76,30 @@ theorem ready_implies_joined_of {sp : SAParams} {ro : ReplayOrder sp (List (FG.A
     linarith only [hup, hc]
   by_contra hgt
   push Not at hgt
-  obtain ⟨j, x, hj⟩ := h.tick_of_awake y hy _ (hu.trans (hum.trans hSw).le)
+  obtain ⟨j, hjc, hjt⟩ := htick _ (hu.trans (hum.trans hSw).le) hSt
     (sp.toParams.slotTime_public _) (hawake _ (by rw [hmax]; exact hSw.le) hSt)
-  obtain ⟨hjc, hjt⟩ := group_call hj
   have hjk : j < k := by
     by_contra hkj
-    have := h.time_mono (not_lt.1 hkj)
+    have := hmono (not_lt.1 hkj)
     linarith only [this, hjt, hgt]
   have := hb j hjk hjc
   exact (not_le_of_gt this) (hjt ▸ (hum.trans hSw).le)
+
+/-- **F.4** from any AC starts `ini`: joining reads only the run's sleep, restart and tick laws. -/
+theorem ready_implies_joined_of {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+    {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H) {t c : Time}
+    (ht : 0 ≤ t) (hc : 8 * sp.Δ ≤ c + 1)
+    (hawake : ∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) :
+    tr.awake y t ∧ tr.JoinedAt y t := by
+  have h := hrun.toLocalRun
+  refine ready_implies_joined_of_cuts h.time_mono
+    (fun k hk _ => h.sleep_of_restart y hy k hk) ?_ ht hc hawake
+  intro u hu _ hpub hw
+  obtain ⟨j, x, hj⟩ := h.tick_of_awake y hy u hu hpub hw
+  exact ⟨j, group_call hj⟩
 
 /-- **F.4.** -/
 theorem ready_implies_joined : ReadyImpliesJoined :=

@@ -176,15 +176,19 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
 /-- A node honest at `t ≥ 0` and awake through the catch-up window before `t` is awake and joined
-at `t` (the static `ready_implies_joined` on the prefix through `t`). -/
-theorem ready_implies_joined_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
+at `t`. The node was honest at each intermediate tick and restart by antitonicity. -/
+theorem ready_implies_joined_at {A : NodeAC sp.toParams} {tr : RunTrace A}
+    {dg : Digest (List (FG.Att sp.n)) A.Payload} {sg : A.Msg → Fin sp.n}
+    {ini : Fin sp.n → A.State}
+    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini) {y : Fin sp.n}
     {t c : Time} (hy : y ∈ H t) (ht : 0 ≤ t) (hc : 8 * sp.Δ ≤ c + 1)
     (hawake : ∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) :
     tr.awake y t ∧ tr.JoinedAt y t := by
-  obtain ⟨hw, hj⟩ := Compose.ready_implies_joined_of (hrun.upTo ht) hy ht hc
-    fun u h1 h2 => ⟨hawake u h1 h2, h2⟩
-  exact ⟨hw.1, fun k hk hkt => hj k ((RunTrace.upTo_restartAt tr).2 ⟨hkt, hk⟩) hkt⟩
+  refine Compose.ready_implies_joined_of_cuts hrun.time_mono
+    (fun k hk hkt => hrun.sleep_of_restart y k (hrun.antitone hkt hy) hk) ?_ ht hc hawake
+  intro u hu hut hpub hw
+  obtain ⟨j, x, hj⟩ := hrun.tick_of_awake y u (hrun.antitone hut hy) hu hpub hw
+  exact ⟨j, Compose.group_call hj⟩
 
 /-- `2 f_d < n` from the count at `d`, with `h_t ≤ |H d|`. -/
 private theorem two_faults_lt_of_faultBoundAt {t d : Time} (h : tr.FaultBoundAt H t d) :
