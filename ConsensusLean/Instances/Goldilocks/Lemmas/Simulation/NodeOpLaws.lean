@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Results.Spec.CanonicalTrace
 import ConsensusLean.Lemmas.Model.DutyFold
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeRunSchedule
 
 public section
 
@@ -894,6 +895,62 @@ theorem replay_cut_in_applyCuts [DecidableEq V] (L : e.OpLaws due)
     | attestation a => exact Or.inr ⟨True, _, rfl⟩
     | tick x => unfold canonEvent at hc; split at hc <;> cases hc
     | restart => unfold canonEvent at hc; split at hc <;> cases hc
+
+private theorem receipt_cut_state [DecidableEq V] (L : e.OpLaws due)
+    (rho : Model.Run (compiled F) E) (hs : List (Header I × Nat))
+    (y : Fin (Fintype.card V)) (t : Time) (i : Nat)
+    (os : List (ShapeObj (Fintype.card V) e.skel.Kind I e.Body))
+    (st : e.State hn) (j sub m : Nat) {r : CutRec A}
+    (hy : e.adapter.self st = y) (ht : e.adapter.now st = t)
+    (hstate : (simTrace e rho).state y j = e.adapter.node st)
+    (hcuts : ∀ n < (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+      hs y t i os (e.adapter.node st) sub).length,
+      (allCuts e rho)[j + n]? = (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+        hs y t i os (e.adapter.node st) sub)[n]?)
+    (hr : (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+      hs y t i os (e.adapter.node st) sub)[m]? = some r) :
+    ∃ pre w post ev, os = pre ++ w :: post ∧ canonEvent e.codec hs w = some ev ∧
+      let σ := pre.foldl (processOne e.codec e.adapter hs) st
+      let result := exec (runProposer rho hn) (digestOf e rho) y (e.adapter.node σ) t ev
+      e.adapter.self σ = y ∧ e.adapter.now σ = t ∧ result.2[r.pos]? = some r.label ∧
+      (simTrace e rho).state y (j + m) =
+        (result.2.take r.pos).foldl (cutPost y t) (e.adapter.node σ) := by
+  obtain ⟨pre, w, post, ev, hsplit, hc, hstep⟩ :=
+    indexed_receipt_state e rho hs os (e.adapter.node st) hcuts hstate hr
+  obtain ⟨hnode, hself, hnow, _⟩ :=
+    process_fold_obs L (runProposer rho hn) (digestOf e rho) hs pre st
+  dsimp only at hnode hself hnow hstep
+  rw [hy, ht] at hnode
+  refine ⟨pre, w, post, ev, hsplit, hc, hself.trans hy, hnow.trans ht, ?_⟩
+  dsimp only
+  rw [hnode]
+  exact hstep
+
+/-- The trace state before an indexed receipt cut folds the earlier cuts of its handler,
+starting from the shape state left by the preceding visited objects.
+For a labelled global cut, take `i := eventOf e rho k`: `eventOf_spec` supplies the cut-map
+bounds, and `allCuts_getElem?_add` converts the global lookup to the event's local lookup. -/
+theorem simTrace_state_at_cut [DecidableEq V] (L : e.OpLaws due) (laws : e.Lawful due)
+    (rho : Model.Run (compiled F) E) (hv : rho.ExecutionValid)
+    {i v o t} (he : rho.events[i]? = some (.deliver v o t)) {k : Nat} {r : CutRec A}
+    (hlo : cutMap e rho i ≤ k) (hr : (eventCuts e rho i)[k - cutMap e rho i]? = some r) :
+    let hs := Model.digests rho.hash o
+    let st := stateAt e rho v i
+    ∃ pre w post ev, delivered e.codec e.adapter hs st (wireOf e o) = pre ++ w :: post ∧
+      canonEvent e.codec hs w = some ev ∧
+      let σ := pre.foldl (processOne e.codec e.adapter hs) st
+      let result := exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
+        (e.adapter.node σ) t ev
+      e.adapter.self σ = rho.ownKey v ∧ e.adapter.now σ = t ∧ result.2[r.pos]? = some r.label ∧
+      (simTrace e rho).state (rho.ownKey v) k =
+        (result.2.take r.pos).foldl (cutPost (rho.ownKey v) t) (e.adapter.node σ) := by
+  have hi := (List.getElem?_eq_some_iff.mp he).1
+  have hcuts := allCuts_getElem?_add e rho i
+  rw [eventCuts_deliver e rho i v o t he] at hr hcuts
+  have h := receipt_cut_state L rho _ _ _ i _ _ _ 0 _ (cut_obs L rho v i).1
+    (delivery_now L rho hv he) (stateAgreement_all laws hv v i hi.le).symm
+    (fun n hn' => hcuts n hi hn') hr
+  rwa [Nat.add_sub_cancel' hlo] at h
 
 private theorem delivery_process [DecidableEq V] (L : e.OpLaws due)
     (rho : Model.Run (compiled F) E) (hv : rho.ExecutionValid) {i v o t}

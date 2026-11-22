@@ -758,6 +758,149 @@ theorem state_in_group (pr : Nat → Fin (Fintype.card V))
     rw [simTrace_node, simTrace_label, hr]
     simp
 
+/-- Replaying a whole handler group reaches the handler's result state. -/
+private theorem state_after_group {y : Fin (Fintype.card V)} {j id : Nat} {t : Time}
+    {ev : Node.Event A} {st : NodeState A}
+    (hcut : ∀ k < (groupRecs (runProposer rho hn) (digestOf e rho) y st t id ev).length,
+      (allCuts e rho)[j + k]? = (groupRecs (runProposer rho hn) (digestOf e rho) y st t id ev)[k]?)
+    (hstate : (simTrace e rho).state y j = st) :
+    (simTrace e rho).state y
+      (j + (groupRecs (runProposer rho hn) (digestOf e rho) y st t id ev).length) =
+      (exec (runProposer rho hn) (digestOf e rho) y st t ev).1 := by
+  rw [length_group e rho, state_in_group e rho _ _ hcut hstate _ le_rfl,
+    List.take_length, foldl_cutPost_exec]
+
+private theorem indexed_delivery_group {y : Fin (Fintype.card V)} {t : Time} {i : Nat}
+    (hs : List (Header I × Nat))
+    (os : List (ShapeObj (Fintype.card V) e.skel.Kind I e.Body)) :
+    ∀ (j sub : Nat) (st : NodeState A),
+    (∀ k < (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+        hs y t i os st sub).length,
+      (allCuts e rho)[j + k]? = (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+        hs y t i os st sub)[k]?) →
+    (simTrace e rho).state y j = st →
+    ∀ k < (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+        hs y t i os st sub).length,
+      ∃ pre w post ev j' s, os = pre ++ w :: post ∧ canonEvent e.codec hs w = some ev ∧
+        let st' := pre.foldl (fun a o => ((canonEvent e.codec hs o).map
+          (fun ev => (exec (runProposer rho hn) (digestOf e rho) y a t ev).1)).getD a) st
+        let grp := groupRecs (runProposer rho hn) (digestOf e rho) y st' t (Nat.pair i s) ev
+        (∀ m < grp.length, (allCuts e rho)[j' + m]? = grp[m]?) ∧
+        (simTrace e rho).state y j' = st' ∧ j' ≤ j + k ∧ j + k < j' + grp.length ∧
+        ((∀ l s', (simTrace e rho).event l = Nat.pair i s' → sub ≤ s' → j ≤ l ∧
+          l < j + (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+            hs y t i os st sub).length) →
+          ∀ l, (simTrace e rho).event l = Nat.pair i s → j' ≤ l ∧ l < j' + grp.length) := by
+  induction os with
+  | nil =>
+    intro j sub st _ _ k hk
+    rw [deliverRecs_nil, List.length_nil] at hk
+    omega
+  | cons o os ih =>
+    intro j sub st hcut hstate k hk
+    rw [deliverRecs_cons] at hcut hk
+    cases he : canonEvent e.codec hs o with
+    | none =>
+      simp only [he] at hcut hk
+      obtain ⟨pre, w, post, ev, j', s, hsplit, hc, hrec, hst, hlo, hhi, hu⟩ :=
+        ih j (sub + 1) st hcut hstate k hk
+      refine ⟨o :: pre, w, post, ev, j', s, by rw [hsplit]; rfl, hc, ?_⟩
+      simp only [List.foldl_cons, he, Option.map_none, Option.getD_none]
+      refine ⟨hrec, hst, hlo, hhi, fun huniq => hu fun l s' hl hs' => ?_⟩
+      have h := huniq l s' hl (by omega)
+      rwa [deliverRecs_cons, he] at h
+    | some ev =>
+      simp only [he, List.length_append] at hcut hk
+      set grp := groupRecs (runProposer rho hn) (digestOf e rho) y st t (Nat.pair i sub) ev
+      set next := (exec (runProposer rho hn) (digestOf e rho) y st t ev).1
+      set rest :=
+        deliverRecs e.codec (runProposer rho hn) (digestOf e rho) hs y t i os next (sub + 1)
+      change k < grp.length + rest.length at hk
+      change ∀ m < grp.length + rest.length, (allCuts e rho)[j + m]? = (grp ++ rest)[m]? at hcut
+      have hg : ∀ m < grp.length, (allCuts e rho)[j + m]? = grp[m]? := fun m hm => by
+        rw [hcut m (Nat.lt_of_lt_of_le hm (Nat.le_add_right _ _)), List.getElem?_append_left hm]
+      have htail (m : Nat) (hm : m < rest.length) :
+          (allCuts e rho)[j + grp.length + m]? = rest[m]? := by
+        rw [Nat.add_assoc, hcut _ (Nat.add_lt_add_left hm grp.length),
+          List.getElem?_append_right (Nat.le_add_right _ _), Nat.add_sub_cancel_left]
+      by_cases hkg : k < grp.length
+      · refine ⟨[], o, os, ev, j, sub, rfl, he, hg, hstate, Nat.le_add_right j k,
+          Nat.add_lt_add_left hkg j, ?_⟩
+        intro huniq l hl
+        obtain ⟨hlo, hhi⟩ := huniq l sub hl le_rfl
+        rw [deliverRecs_cons, he, List.length_append] at hhi
+        change l < j + (grp.length + rest.length) at hhi
+        change j ≤ l ∧ l < j + grp.length
+        refine ⟨hlo, ?_⟩
+        by_contra! hge
+        have hm : l - (j + grp.length) < rest.length := by omega
+        have hr := htail _ hm
+        rw [Nat.add_sub_cancel' hge, List.getElem?_eq_getElem hm] at hr
+        obtain ⟨s, hs, hid⟩ := deliverRecs_id _ _ _ _ _ _ _ _ _ _ (List.getElem_mem hm)
+        rw [simTrace_event, hr, Option.elim_some] at hl
+        rw [hid, Nat.pair_eq_pair] at hl
+        omega
+      · have hnext : (simTrace e rho).state y (j + grp.length) = next := by
+          exact state_after_group e rho hg hstate
+        have hk' : k - grp.length < rest.length := by omega
+        obtain ⟨pre, w, post, ev', j', s, hsplit, hc, hrec, hst, h1, h2, hu⟩ :=
+          ih (j + grp.length) (sub + 1) next htail hnext (k - grp.length) hk'
+        refine ⟨o :: pre, w, post, ev', j', s, by rw [hsplit]; rfl, hc, ?_⟩
+        simp only [List.foldl_cons, he, Option.map_some, Option.getD_some]
+        have hindex : j + grp.length + (k - grp.length) = j + k := by omega
+        rw [hindex] at h1 h2
+        refine ⟨hrec, hst, h1, h2, fun huniq => hu ?_⟩
+        intro l s' hl hs'
+        have huniq' (l s : Nat) (hl : (simTrace e rho).event l = Nat.pair i s)
+            (hs : sub + 1 ≤ s) : j + grp.length ≤ l ∧ l < j + grp.length + rest.length := by
+          obtain ⟨hlo, hhi⟩ := huniq l s hl (by omega)
+          rw [deliverRecs_cons, he, List.length_append] at hhi
+          change l < j + (grp.length + rest.length) at hhi
+          refine ⟨?_, by omega⟩
+          by_contra! hlt
+          have hm : l - j < grp.length := by omega
+          have hr := hg _ hm
+          rw [Nat.add_sub_cancel' hlo, List.getElem?_eq_getElem hm] at hr
+          rw [simTrace_event, hr, Option.elim_some] at hl
+          have hid : grp[l - j].event = Nat.pair i sub := by
+            dsimp only [grp]
+            rw [List.getElem_of_eq (groupRecs_eq ..), List.getElem_mapIdx]
+          rw [hid, Nat.pair_eq_pair] at hl
+          omega
+        exact huniq' l s' hl hs'
+
+/-- At an indexed delivery cut, expose the node replay prefix and the selected handler's
+label and pre-state. This does not require global uniqueness of the group's event id. -/
+theorem indexed_receipt_state {y : Fin (Fintype.card V)} {t : Time} {i j sub k : Nat}
+    (hs : List (Header I × Nat))
+    (os : List (ShapeObj (Fintype.card V) e.skel.Kind I e.Body)) (st : NodeState A)
+    (hcut : ∀ m < (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+        hs y t i os st sub).length,
+      (allCuts e rho)[j + m]? = (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+        hs y t i os st sub)[m]?)
+    (hstate : (simTrace e rho).state y j = st) {r : CutRec A}
+    (hr : (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+      hs y t i os st sub)[k]? = some r) :
+    ∃ pre w post ev, os = pre ++ w :: post ∧ canonEvent e.codec hs w = some ev ∧
+      let st' := pre.foldl (fun a o => ((canonEvent e.codec hs o).map
+        (fun ev => (exec (runProposer rho hn) (digestOf e rho) y a t ev).1)).getD a) st
+      let cs := (exec (runProposer rho hn) (digestOf e rho) y st' t ev).2
+      cs[r.pos]? = some r.label ∧
+        (simTrace e rho).state y (j + k) = (cs.take r.pos).foldl (cutPost y t) st' := by
+  obtain ⟨pre, w, post, ev, j', s, hm, hc, hrec, hst, hlo, hhi, _⟩ :=
+    indexed_delivery_group e rho hs os j sub st hcut hstate k (List.getElem?_eq_some_iff.mp hr).1
+  have hidx : j' + (j + k - j') = j + k := Nat.add_sub_cancel' hlo
+  have hpos := hrec (j + k - j') (by omega)
+  rw [hidx, hcut _ (List.getElem?_eq_some_iff.mp hr).1, hr] at hpos
+  have hlen := (List.getElem?_eq_some_iff.mp hpos.symm).1
+  have hstep := state_in_group e rho _ _ hrec hst (j + k - j')
+    (by rw [length_group e rho] at hlen; exact hlen.le)
+  rw [hidx] at hstep
+  rw [List.getElem?_eq_getElem hlen, List.getElem_of_eq (groupRecs_eq ..),
+    List.getElem_mapIdx, List.getElem_zip] at hpos
+  cases hpos
+  exact ⟨pre, w, post, ev, hm, hc, List.getElem?_eq_getElem _, hstep⟩
+
 private theorem delivery_group {y : Fin (Fintype.card V)} {t : Time} {i : Nat}
     (hs : List (Header I × Nat))
     (os : List (ShapeObj (Fintype.card V) e.skel.Kind I e.Body)) :
@@ -780,71 +923,10 @@ private theorem delivery_group {y : Fin (Fintype.card V)} {t : Time} {i : Nat}
         j + k < j' + (groupRecs (runProposer rho hn) (digestOf e rho) y st' t id ev).length ∧
         (∀ l, (simTrace e rho).event l = id → j' ≤ l ∧
           l < j' + (groupRecs (runProposer rho hn) (digestOf e rho) y st' t id ev).length) := by
-  induction os with
-  | nil =>
-    intro j sub st _ _ _ k hk
-    rw [deliverRecs_nil, List.length_nil] at hk
-    omega
-  | cons o os ih =>
-    intro j sub st hcut hstate huniq k hk
-    rw [deliverRecs_cons] at hcut huniq hk
-    cases he : canonEvent e.codec hs o with
-    | none =>
-      simp only [he] at hcut huniq hk
-      exact ih j (sub + 1) st hcut hstate (fun l s hl hs => huniq l s hl (by omega)) k hk
-    | some ev =>
-      simp only [he, List.length_append] at hcut huniq hk
-      set grp := groupRecs (runProposer rho hn) (digestOf e rho) y st t (Nat.pair i sub) ev
-      set next := (exec (runProposer rho hn) (digestOf e rho) y st t ev).1
-      set rest :=
-        deliverRecs e.codec (runProposer rho hn) (digestOf e rho) hs y t i os next (sub + 1)
-      change k < grp.length + rest.length at hk
-      change ∀ m < grp.length + rest.length, (allCuts e rho)[j + m]? = (grp ++ rest)[m]? at hcut
-      change ∀ l s, (simTrace e rho).event l = Nat.pair i s → sub ≤ s →
-        j ≤ l ∧ l < j + (grp.length + rest.length) at huniq
-      have hg : ∀ m < grp.length, (allCuts e rho)[j + m]? = grp[m]? := fun m hm => by
-        rw [hcut m (Nat.lt_of_lt_of_le hm (Nat.le_add_right _ _)), List.getElem?_append_left hm]
-      have htail (m : Nat) (hm : m < rest.length) :
-          (allCuts e rho)[j + grp.length + m]? = rest[m]? := by
-        rw [Nat.add_assoc, hcut _ (Nat.add_lt_add_left hm grp.length),
-          List.getElem?_append_right (Nat.le_add_right _ _), Nat.add_sub_cancel_left]
-      by_cases hkg : k < grp.length
-      · refine ⟨j, st, Nat.pair i sub, ev, hg, hstate, Nat.le_add_right j k,
-          Nat.add_lt_add_left hkg j, ?_⟩
-        intro l hl
-        obtain ⟨hlo, hhi⟩ := huniq l sub hl le_rfl
-        change j ≤ l ∧ l < j + grp.length
-        refine ⟨hlo, ?_⟩
-        by_contra! hge
-        have hm : l - (j + grp.length) < rest.length := by omega
-        have hr := htail _ hm
-        rw [Nat.add_sub_cancel' hge, List.getElem?_eq_getElem hm] at hr
-        obtain ⟨s, hs, hid⟩ := deliverRecs_id _ _ _ _ _ _ _ _ _ _ (List.getElem_mem hm)
-        rw [simTrace_event, hr, Option.elim_some] at hl
-        rw [hid, Nat.pair_eq_pair] at hl
-        omega
-      · have hnext : (simTrace e rho).state y (j + grp.length) = next := by
-          rw [show grp.length = (exec (runProposer rho hn) (digestOf e rho) y st t ev).2.length
-            from length_group e rho, state_in_group e rho _ _ hg hstate _ le_rfl,
-            List.take_length, foldl_cutPost_exec]
-        have huniq' (l s : Nat) (hl : (simTrace e rho).event l = Nat.pair i s)
-            (hs : sub + 1 ≤ s) : j + grp.length ≤ l ∧ l < j + grp.length + rest.length := by
-          obtain ⟨hlo, hhi⟩ := huniq l s hl (by omega)
-          refine ⟨?_, by omega⟩
-          by_contra! hlt
-          have hm : l - j < grp.length := by omega
-          have hr := hg _ hm
-          rw [Nat.add_sub_cancel' hlo, List.getElem?_eq_getElem hm] at hr
-          rw [simTrace_event, hr, Option.elim_some] at hl
-          have hid : grp[l - j].event = Nat.pair i sub := by
-            dsimp only [grp]
-            rw [List.getElem_of_eq (groupRecs_eq ..), List.getElem_mapIdx]
-          rw [hid, Nat.pair_eq_pair] at hl
-          omega
-        have hk' : k - grp.length < rest.length := by omega
-        obtain ⟨j', st', id, ev', hrec, hst, h1, h2, hu⟩ :=
-          ih (j + grp.length) (sub + 1) next htail hnext huniq' (k - grp.length) hk'
-        exact ⟨j', st', id, ev', hrec, hst, by omega, by omega, hu⟩
+  intro j sub st hcut hstate huniq k hk
+  obtain ⟨_, _, _, ev, j', s, _, _, hrec, hst, hlo, hhi, hu⟩ :=
+    indexed_delivery_group e rho hs os j sub st hcut hstate k hk
+  exact ⟨j', _, Nat.pair i s, ev, hrec, hst, hlo, hhi, hu huniq⟩
 
 private theorem records_of_call {due : e.State hn → Bool} (laws : e.Lawful due)
     (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : Nat} {c : Cut A}
