@@ -11,7 +11,7 @@ This is a proposal for review, not the installed node or a certified milestone.
 -/
 
 -- Keep the statement review in one leaf until the approved work-package split.
-set_option linter.style.longFile 2400
+set_option linter.style.longFile 2600
 
 namespace Consensus.Goldilocks.VotingPolicyPlan
 
@@ -282,10 +282,10 @@ def AppointmentCohort (_tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)
 /-- The entry is selected from the earlier anchor as held at the actual
 consuming proposal, not from an arbitrary later tree. -/
 structure AnchorRowDemand (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-    (g b D R : Time) (z y : Fin sp.n) (i m : Nat) (P Q C T : Blk sp) : Prop where
+    (g a b D R : Time) (z y : Fin sp.n) (i m : Nat) (P Q C T : Blk sp) : Prop where
+  drained : Healing.drainTime sp a ≤ sp.ts P.slot
   origin : tr.ProposesAt z i P
-  originHonest : z ∈ H (tr.time i)
-  originBy : tr.time i ≤ sp.ts (P.slot + 1) + 2 * sp.Δ
+  originHonest : z ∈ H (sp.ts P.slot + sp.Δ)
   consuming : tr.ProposesAt y m Q
   consumingHonest : y ∈ H (tr.time m)
   bounded : tr.time m ≤ b
@@ -304,8 +304,8 @@ structure AnchorRowDemand (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp
 /-- Supply only the entry demanded by the consuming edge. Joined polls through
 `d + D` are opportunities; they do not themselves supply sources. -/
 structure PublishedRows (U : Publication tr) (appointment : Fin sp.n → Nat → Time → Prop)
-    (g b D R : Time) : Prop where
-  supply : ∀ {z y i m P Q C T}, AnchorRowDemand tr H g b D R z y i m P Q C T →
+    (g a b D R : Time) : Prop where
+  supply : ∀ {z y i m P Q C T}, AnchorRowDemand tr H g a b D R z y i m P Q C T →
     let σT := (tr.state y m).fg.σ T.root
     let d := sp.ts (P.slot + 1) + 2 * sp.Δ
     AppointmentCohort tr H appointment d (d + D) b →
@@ -317,6 +317,47 @@ structure PublishedRows (U : Publication tr) (appointment : Fin sp.n → Nat →
     ∃ x r ell B, x ∈ H (tr.time r) ∧ SA.ToFGAt tr.projAC x r ell B ∧
       Anc (tr.HonestBlocksAt H) P B ∧ d ≤ tr.time r ∧ tr.time r ≤ d + D ∧
       σT.h < ((tr.state x r).fg.σ B.root).h
+
+/-- An update's lock need not survive in the same form. Check viability,
+fastness, expiry and freshness in the state that actually runs the poll. -/
+theorem candidate_at_anchor_poll {z k u} {P L : Blk sp}
+    (hviable : L ∈ (Node.frame (tr.state z k)).viableTree (Node.frame (tr.state z k)).tree)
+    (hbranch : (tr.state z k).fg.Anc P L)
+    {lock : SA.Lock}
+    (hlive : lock ∈ SA.liveLocks sp (tr.state z k).ac.locks (Node.frame (tr.state z k)) u)
+    (hroot : lock.block = L.root) (hfast : lock.fast = true) (hage : sp.slot u ≤ lock.slot + 2) :
+    L ∈ SA.toFGCandidates sp (tr.state z k).ac (Node.frame (tr.state z k)) u ∧
+      (tr.state z k).fg.Anc P L := by
+  sorry
+
+/-- Calendar arithmetic only: the slot of the write supplying the candidate
+must still fit at the selected poll. This does not show the lock is retained. -/
+theorem anchor_poll_age_room {s : Nat} {u : Time}
+    (hu : 0 ≤ u) (hbefore : u < sp.ts (s + 3 : Nat)) : sp.slot u ≤ s + 2 := by
+  sorry
+
+/-- Replay the update's actual fast-lock write to the selected poll. The
+retention proof must track its viable move-back, not equality of lock sets. -/
+theorem update_candidate_at_anchor_poll {z j k s u} {P L : Blk sp} {CV}
+    (hwrite : Compose.StoredFastLockAt tr z j s L CV) (hjk : j < k)
+    (hretained : let st := tr.state z k
+      ∃ lock ∈ st.ac.locks, ∃ L' ∈ (Node.frame st).tree,
+        lock.slot = s ∧ lock.fast = true ∧ lock.block = L'.root ∧ sp.slot u ≤ lock.expiry ∧
+        st.fg.Anc L' L ∧ st.fg.Anc P ((Node.frame st).viableAncestor L'))
+    (hage : sp.slot u ≤ s + 2) :
+    ∃ B ∈ SA.toFGCandidates sp (tr.state z k).ac (Node.frame (tr.state z k)) u,
+      (tr.state z k).fg.Anc P B := by
+  sorry
+
+/-- The valid-run producer must select a quorum with this evidence. In the
+empty case a historical attempt is required even if restart reset the cursor. -/
+def AnchorPollAvailable (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+    (P : Blk sp) (z : Fin sp.n) (k : Nat) (u : Time) : Prop :=
+  let st := tr.state z k
+  (∃ L ∈ SA.toFGCandidates sp st.ac (Node.frame st) u, st.fg.Anc P L) ∨
+  (SA.toFGCandidates sp st.ac (Node.frame st) u = ∅ ∧
+    ∃ r ell B s, r + 1 < k ∧ tr.time (r + 1) ≤ u ∧ SA.ToFGAt tr.projAC z r ell B ∧
+      tr.CallAt z (r + 1) (.fg (.attest B s)) ∧ Anc (tr.HonestBlocksAt H) P B)
 
 theorem durable_held_and_snapshot_cursor (st : PolicyState sp ro binding)
     (t : Time) (y : Fin sp.n) :
@@ -375,26 +416,28 @@ theorem published_rows_of_appointments (U : Publication tr) {g b a D R : Time}
     {appointment : Fin sp.n → Nat → Time → Prop}
     (hreset : IsReset tr H g a) (hab : a ≤ b) (hcz : cutZ sp.toParams g ≤ b)
     (hcut : CutObservations tr H) (hmatching : MatchingRows tr H g b)
-    (hsource : ∀ {w y i m P Q C T}, AnchorRowDemand tr H g b D R w y i m P Q C T →
+    (hsource : ∀ {w y i m P Q C T}, AnchorRowDemand tr H g a b D R w y i m P Q C T →
       let d := sp.ts (P.slot + 1) + 2 * sp.Δ
       AppointmentCohort tr H appointment d (d + D) b →
       (∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
       ∀ z ∈ ids, z ∈ H b ∧ ∃ k u r ell B s,
         appointment z k u ∧ d ≤ u ∧ u ≤ d + D ∧ r + 1 < m ∧
+        AnchorPollAvailable tr H P z k u ∧
         let st := tr.state z k
         let picked := (Node.acToFG st u).2.2
         SA.ToFGAt tr.projAC z r ell B ∧ tr.CallAt z (r + 1) (.fg (.attest B s)) ∧
         tr.time (r + 1) ≤ u ∧ Anc (tr.HonestBlocksAt H) P B ∧
         ((r = k ∧ tr.time k = u ∧ picked = some B ∧ st.fg.Anc P B) ∨
-          (r + 1 < k ∧ picked = none ∧ B.root = st.ac.fgReported ∧
-            ∃ L, SA.IsDeepest (Node.frame st) (SA.toFGCandidates sp st.ac (Node.frame st) u) L ∧
-              st.fg.Anc P L ∧ SA.AncR (Node.frame st) L B.root)) ∧
+          (r + 1 < k ∧ picked = none ∧
+            ((∃ L, SA.IsDeepest (Node.frame st) (SA.toFGCandidates sp st.ac (Node.frame st) u) L ∧
+                st.fg.Anc P L ∧ B.root = st.ac.fgReported ∧ SA.AncR (Node.frame st) L B.root) ∨
+              SA.toFGCandidates sp st.ac (Node.frame st) u = ∅))) ∧
         ((tr.state y m).fg.σ T.root).h = ((tr.state z r).fg.σ B.root).h) ∨
       ∃ x r ell B, x ∈ H (tr.time r) ∧ SA.ToFGAt tr.projAC x r ell B ∧
         Anc (tr.HonestBlocksAt H) P B ∧ d ≤ tr.time r ∧ tr.time r ≤ d + D ∧
         ((tr.state y m).fg.σ T.root).h < ((tr.state x r).fg.σ B.root).h)
     (hrelease : ReleaseService U H (gbar g) b R)
-    (hD : 0 ≤ D) (hR : 0 ≤ R) : PublishedRows (H := H) U appointment g b D R := by
+    (hD : 0 ≤ D) (hR : 0 ≤ R) : PublishedRows (H := H) U appointment g a b D R := by
   sorry
 
 theorem exact_report_dominates_across_restart
@@ -1820,6 +1863,96 @@ theorem reset_of_policy_service {g ΔF b r D R : Time} {G Ld : Nat}
       a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld + 5 * (D + R) := by
   sorry
 
+/-- The clean AC protection must be produced on this delayed trace. For a
+two-label gap it protects the collector's predecessor votes; the adjacent
+case uses optimistic evidence, not an update that has not run yet. -/
+def ProtectedAnchorHeads (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+    (a b : Time) : Prop :=
+  ∀ {x y r m s} {L Q : Blk sp} {CV},
+    x ∈ H (tr.time r) → SA.FastLockAt tr.projAC x r s L CV →
+    Healing.cleanLabel sp a + sp.k + 2 ≤ s →
+    Healing.drainTime sp a ≤ sp.ts Q.slot →
+    y ∈ H (tr.time m) → tr.ProposesAt y m Q → tr.time m ≤ b →
+    tr.time r + sp.Δ ≤ tr.time m →
+    (s + 2 ≤ Q.slot ∨ s + 1 = Q.slot ∧ SA.OptimisticLockAt tr.projAC x r s L CV) →
+    ∀ {C}, Q.parent = some C.root → C ∈ (tr.state y m).fg.tree →
+      Anc (tr.HonestBlocksAt H) L C
+
+/-- Port the two clean proposal routes from the same cut replay, not from
+the legacy run predicate. The proof owes voter participation and collector
+visibility across restart, in addition to the clean-window invariant. -/
+theorem protected_anchor_heads_of_clean_windows {g a b : Time}
+    {K : SA.CommitteeDict sp.n} (hcut : CutObservations tr H)
+    (hreset : IsReset tr H g a) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hbase : BaseService tr H g) (hK : CommitteeHalfUpTo tr H K g b)
+    (hfacts : Compose.Growing.CommitteeFacts tr H K)
+    (hclean : ∀ {x r s m L CV}, x ∈ H (tr.time r) → SA.FastLockAt tr.projAC x r s L CV →
+      Healing.cleanLabel sp a + sp.k + 2 ≤ s → s ≤ m → sp.ts m + 2 * sp.Δ ≤ b →
+      Compose.Growing.Clean tr H s m L)
+    (hstep : ∀ i y ℓ, tr.CallAt y i ℓ → Node.CutStep y (tr.time i) (tr.state y i) ℓ (tr.post i))
+    (hawake : ∀ y t, gbar g ≤ t → t ≤ b → y ∈ H t → tr.awake y t) :
+    ProtectedAnchorHeads tr H a b := by
+  sorry
+
+/-- Produce usable polls from post-drain voting on the delayed trace. A slot
+update does not itself emit a report, and a missed snapshot cannot be replayed.
+If the slot lock aged out, the proof needs a fresh lock or a real earlier
+attempt for each counted signer, or an actual crossing. The short budget fits
+the age of the anchor-slot lock; it does not alone imply lock retention. -/
+theorem post_drain_anchor_poll_availability
+    {V : Type} [Fintype V] [DecidableEq V] {E : Env V} {S : Setup}
+    {p : (n : Nat) → Time → Rules n}
+    (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
+    {tr : GoldilocksTrace (S.params (Model.pubOf E) hn) (S.ro _)} {H U}
+    (M : EngineProjection rho tr H U) (B : EventBoundaries rho hn M)
+    (cuts : ProjectedTickDutyBoundaries rho hn M B) (hv : rho.ExecutionValid)
+    {g a b D R : Time} {K : SA.CommitteeDict (Fintype.card V)}
+    (hcut : CutObservations tr H) (hbase : BaseService tr H g)
+    (hreset : IsReset tr H g a)
+    (hcatch : CatchRun tr H g (2 * (S.params (Model.pubOf E) hn).Δ))
+    (hK : CommitteeHalfUpTo tr H K g b) (hfacts : Compose.Growing.CommitteeFacts tr H K)
+    {w y i m P Q C T} (hdemand : AnchorRowDemand tr H g a b D R w y i m P Q C T)
+    (hunanimous : ∀ {z j e}, z ∈ H (tr.time j) → SA.VoteAt tr.projAC z j e →
+      tr.time j ≤ b → e.msg.slot = P.slot → e.msg.head = P.root)
+    (hawake : ∀ z t, gbar g ≤ t → t ≤ b → z ∈ H t → tr.awake z t)
+    (hD : 0 ≤ D) (hshort : D < 6 * (S.params (Model.pubOf E) hn).Δ) :
+    let sp := S.params (Model.pubOf E) hn
+    let appointment := ProjectedAppointment rho hn M B cuts
+    let d := sp.ts (P.slot + 1) + 2 * sp.Δ
+    AppointmentCohort tr H appointment d (d + D) b →
+    (∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
+      ∀ z ∈ ids, z ∈ H b ∧ ∃ k u, appointment z k u ∧ d ≤ u ∧ u ≤ d + D ∧
+        AnchorPollAvailable tr H P z k u) ∨
+    ∃ x r ell B, x ∈ H (tr.time r) ∧ SA.ToFGAt tr.projAC x r ell B ∧
+      Anc (tr.HonestBlocksAt H) P B ∧ d ≤ tr.time r ∧ tr.time r ≤ d + D ∧
+      ((tr.state y m).fg.σ T.root).h < ((tr.state x r).fg.σ B.root).h := by
+  sorry
+
+/-- Replay supplies the originating lock write and the AC protection proof.
+The collector deadline is charged from the actual report, irrespective of
+whether the report preceded d or came from a scheduled poll. -/
+theorem delayed_crossing_raises_parent {a b : Time} (hcut : CutObservations tr H)
+    (hprotected : ProtectedAnchorHeads tr H a b)
+    (hlock : ∀ {x k ell B}, x ∈ H (tr.time k) → SA.ToFGAt tr.projAC x k ell B →
+      Healing.drainTime sp a ≤ tr.time k →
+      ∃ r ≤ k, ∃ s L CV, SA.FastLockAt tr.projAC x r s L CV ∧ s ≤ sp.slot (tr.time k) ∧
+        Healing.cleanLabel sp a + sp.k + 2 ≤ s ∧ Anc (tr.HonestBlocksAt H) B L)
+    (hheight : ∀ {x y k m B C}, x ∈ H (tr.time k) → y ∈ H (tr.time m) →
+      B ∈ (tr.state x k).fg.tree → C ∈ (tr.state y m).fg.tree →
+      Anc (tr.HonestBlocksAt H) B C →
+      ((tr.state x k).fg.σ B.root).h ≤ ((tr.state y m).fg.σ C.root).h)
+    (hsrc : SourceFacts tr H) {x y k m ell h} {A B Q C : Blk sp}
+    (hx : x ∈ H (tr.time k)) (hr : SA.ToFGAt tr.projAC x k ell B)
+    (hdrain : Healing.drainTime sp a ≤ sp.ts A.slot)
+    (hAB : Anc (tr.HonestBlocksAt H) A B)
+    (hslot : sp.ts A.slot ≤ tr.time k)
+    (hlt : h < ((tr.state x k).fg.σ B.root).h)
+    (hy : y ∈ H (tr.time m)) (hq : tr.ProposesAt y m Q) (hb : tr.time m ≤ b)
+    (hp : Q.parent = some C.root) (hm : C ∈ (tr.state y m).fg.tree)
+    (hroom : tr.time k + sp.Δ ≤ tr.time m) :
+    Anc (tr.HonestBlocksAt H) B C ∧ h < ((tr.state y m).fg.σ C.root).h := by
+  sorry
+
 /-- Collector and FG forwarding are distinct obligations at the same anchor gap.
 Only the three edges of the selected quartet can request appointments. -/
 theorem published_anchor_steps {g a b ΔF D R : Time} {c s₀ : Nat} {P : Fin 4 → Blk sp}
@@ -1828,13 +1961,21 @@ theorem published_anchor_steps {g a b ΔF D R : Time} {c s₀ : Nat} {P : Fin 4 
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     (hcut : CutObservations tr H) (hnc : Compose.NoCollRun dg tr)
     (hreset : IsReset tr H g a) (hbase : BaseService tr H g)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hsupply : PublishedRows (H := H) U appointment g b D R)
+    (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hsupply : PublishedRows (H := H) U appointment g a b D R)
+    (hcross : ∀ {x y k m ell h} {A B Q C : Blk sp},
+      Healing.drainTime sp a ≤ sp.ts A.slot →
+      x ∈ H (tr.time k) → SA.ToFGAt tr.projAC x k ell B → Anc (tr.HonestBlocksAt H) A B →
+      tr.time k ≤ sp.ts (A.slot + 1) + 2 * sp.Δ + D → tr.time k + sp.Δ ≤ tr.time m →
+      h < ((tr.state x k).fg.σ B.root).h →
+      y ∈ H (tr.time m) → tr.ProposesAt y m Q → tr.time m ≤ b →
+      Q.parent = some C.root → C ∈ (tr.state y m).fg.tree → h < ((tr.state y m).fg.σ C.root).h)
     (hprop : ∀ l, HonestProposalRun tr H proposer (s₀ + ![0, c, 2 * c, 3 * c] l) (P l))
     (hdrain : Healing.drainTime sp a ≤ sp.ts s₀) (hb : sp.ts (s₀ + 3 * c) ≤ b)
     (hhigh : ∃ y k, y ∈ H (tr.time k) ∧ P 0 ∈ (tr.state y k).fg.tree ∧
       HZ tr H g + 2 ≤ ((tr.state y k).fg.σ (P 0).root).h)
     (hcohort : ∀ (i : Fin 3) {z y k j C T},
-      AnchorRowDemand tr H g b D R z y k j (P i.castSucc) (P i.succ) C T →
+      AnchorRowDemand tr H g a b D R z y k j (P i.castSucc) (P i.succ) C T →
       let d := sp.ts ((P i.castSucc).slot + 1) + 2 * sp.Δ
       d + D + R + ΔF ≤ tr.time j → AppointmentCohort tr H appointment d (d + D) b)
     (hdelivery : ReleasedDelivery U H g ΔF b)
@@ -1965,7 +2106,7 @@ theorem policy_anchor_step_of_joined_window
     (hcut : CutObservations tr H) (hnc : Compose.NoCollRun dg tr)
     (hreset : IsReset tr H g a) (hbase : BaseService tr H g)
     (hcatch : CatchRun tr H g (2 * (S.params (Model.pubOf E) hn).Δ))
-    (hrows : PublishedRows (H := H) U (ProjectedAppointment rho hn M B cuts) g rho.horizon D R)
+    (hrows : PublishedRows (H := H) U (ProjectedAppointment rho hn M B cuts) g a rho.horizon D R)
     (hdelivery : ReleasedDelivery U H g ΔF rho.horizon)
     (hD : 0 ≤ D) (hR : 0 ≤ R) (hΔF : 0 < ΔF)
     (hx : P.slot + 2 ≤ x) (hslot : Q.slot = x)
@@ -2099,7 +2240,11 @@ structure OtherClaims (F : ChainShapeFamily schema Info) (K : Contract ProgressR
       (chainTrace r.2).ProtectedReadyFrom ((Sys F V).cDur K r) g (resilienceTarget schema g) T
         ((Sys F V).recoveryAt K b₁ r)
 
-def PolicySchedule : Prop := p = Rules.responsive ∨ ∀ Δ : Time, 1 ≤ Δ → ScheduleBounds p Δ B
+/-- The current anchor-availability route only covers signing budgets shorter
+than the age margin of the anchor-slot lock at the update. Longer calendars
+need a separate supplier; bounded waiting alone does not give that margin. -/
+def PolicySchedule : Prop :=
+  p = Rules.responsive ∨ B.signSteps < 6 ∧ ∀ Δ : Time, 1 ≤ Δ → ScheduleBounds p Δ B
 
 noncomputable def policyIndex (X : ℕ+) : (windowContract S A window B).Idx := X
 
@@ -2255,8 +2400,8 @@ def FinalAppointmentSupply {V : Type} [Fintype V] [DecidableEq V]
         let s := s₀ + ![0, window.fgSlots, 2 * window.fgSlots, 3 * window.fgSlots] l
         HonestReadyIn rho.point rho.key (fun s => rho.sel (.proposer s)) s
           readyFor (sp.ts s) sp.Δ) →
-      ∀ (i : Fin 3) {z y k j C T},
-      AnchorRowDemand tr H Q.gst b D R z y k j (P i.castSucc) (P i.succ) C T →
+      ∀ (i : Fin 3) {a z y k j C T},
+      AnchorRowDemand tr H Q.gst a b D R z y k j (P i.castSucc) (P i.succ) C T →
       let d := sp.ts ((P i.castSucc).slot + 1) + 2 * sp.Δ
       d + D + R + Q.run.1.ΔFG ≤ tr.time j →
       JoinedWindowQuorum rho Q.positive d (d + D) b)
