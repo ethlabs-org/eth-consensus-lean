@@ -12,8 +12,8 @@ The engine/trace correspondence steps shared by the constant-fault rows of
 for both, and the group and release lemmas consume agreement or release facts at the actual event.
 
 * `simTrace_state_of`: the engine node's state is the trace's state at every mapped cut;
-* `tick_public_group_of_state`, `restart_group_of_state`, `deliver_seq_of_state`: a public tick
-  and a restart of `v` are one group of the trace at the event's first cut, and a delivery is the
+* `restart_group_of_state`, `deliver_seq_of_state`: a restart of `v` is one group of the trace
+  at the event's first cut, and a delivery is the
   groups of the canonical objects it delivers;
 * `own_block_released_of`: an own block of the trace is released by its engine node at the
   cut's time. -/
@@ -50,46 +50,6 @@ theorem simTrace_state_of (hv : rho.ExecutionValid) {v : V}
   have h := NodeAsChainShape.CanonicalTrace.stateAgreement_all laws hv v i hi
   rw [NodeAsChainShape.CanonicalTrace.stateAt_eq] at h
   exact h
-
-/-- **A public engine tick is one trace group**: the node's tick with the engine's input, at the
-event's first cut, given that the engine node's state before the tick is the trace's state
-there (`hstate`). -/
-theorem tick_public_group_of_state {v : V} {i : Nat} {t : Time}
-    (he : rho.events[i]? = some (.tick v t))
-    (hp : (S.params (pubOf E) hn).toParams.IsPublic t)
-    (hstate : (stateAt S rho hn v i).node =
-      (simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) :
-    (simTrace S rho hn).GroupAt (runProposer S rho hn) (digestOf S rho)
-        (rho.ownKey v) (cutMap S rho hn i) t
-        (.tick (encodeTxs (Model.mempool rho.inbox v t))) ∧
-      cutMap S rho hn (i + 1) = cutMap S rho hn i +
-        (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-        ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) t
-        (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2.length := by
-  have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
-  rw [cutMap_succ, eventCuts_tick_public S rho hn i v t he hp]
-  have h0 := hstate.symm
-  have hne := exec_tick_ne_nil (runProposer S rho hn) (digestOf S rho)
-    (rho.ownKey v) (stateAt S rho hn v i).node t
-    (encodeTxs (Model.mempool rho.inbox v t))
-  have hcut : ∀ k < (groupRecs (runProposer S rho hn) (digestOf S rho)
-      (rho.ownKey v) (stateAt S rho hn v i).node t
-      (Nat.pair i 0) (.tick (encodeTxs (Model.mempool rho.inbox v t)))).length,
-      (allCuts S rho hn)[cutMap S rho hn i + k]? =
-        (groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-        (stateAt S rho hn v i).node t (Nat.pair i 0)
-        (.tick (encodeTxs (Model.mempool rho.inbox v t))))[k]? := fun k hk => by
-    rw [← eventCuts_tick_public S rho hn i v t he hp] at hk ⊢
-    exact allCuts_getElem?_add S rho hn i k hi hk
-  have huniq : ∀ k, (simTrace S rho hn).event k = Nat.pair i 0 → cutMap S rho hn i ≤ k ∧
-      k < cutMap S rho hn i + (groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-        (stateAt S rho hn v i).node t (Nat.pair i 0)
-        (.tick (encodeTxs (Model.mempool rho.inbox v t)))).length := fun k hk => by
-    have := range_of_event S rho hn hi hk
-    rwa [cutMap_succ, eventCuts_tick_public S rho hn i v t he hp] at this
-  obtain ⟨hG, hlen⟩ :=
-    groupAt_of_group S rho hn (runProposer S rho hn) (digestOf S rho) hcut h0 hne huniq
-  exact ⟨hG, congrArg (cutMap S rho hn i + ·) hlen⟩
 
 /-- **An engine delivery is the groups of the canonical objects it delivers**, given that the
 engine node's state before the delivery is the trace's state there (`hstate`). -/

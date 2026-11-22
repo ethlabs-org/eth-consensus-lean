@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Schedule
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EventGroups
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.GoldilocksStateAgreement
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeRunSchedule
 
 public section
 
@@ -31,10 +32,11 @@ theorem simTraceAt_tick_public_group (hv : rho.ExecutionValid)
         (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
         ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) t
         (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2.length := by
-  have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
-  have h0 := simTraceAt_state_all S rho hn hv v i hi.le
-  rw [simTraceAt_eq] at h0 ⊢
-  exact tick_public_group_of_state S rho hn he hp h0
+  obtain ⟨htrace, hcut⟩ := simTrace_encoding S rho hn
+  obtain ⟨hpr, hdg⟩ := runProposer_digestOf S rho hn
+  rw [simTraceAt_eq, htrace, hcut, hpr, hdg]
+  exact NodeAsChainShape.CanonicalTrace.tick_public_group (traceEncoding S hn) rho
+    (traceEncoding_lawful S hn) hv he hp
 
 /-- A node honest and awake at a public time ticks there. -/
 theorem simTraceAt_tick_of_awake (hv : rho.ExecutionValid)

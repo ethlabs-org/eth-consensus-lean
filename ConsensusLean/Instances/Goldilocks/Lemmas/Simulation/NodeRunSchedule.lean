@@ -931,8 +931,9 @@ theorem grouped {due : e.State hn → Bool} (laws : e.Lawful due) (hv : rho.Exec
   rw [ht]
   exact ⟨j, ev, hg, h1, h2⟩
 
-/-- A public engine tick gives one trace group at the prefix cut map. -/
-private theorem tick_public_group {due : e.State hn → Bool} (laws : e.Lawful due)
+/-- A public engine tick gives one trace group at the prefix cut map.
+Kept for a downstream consumer. -/
+theorem tick_public_group {due : e.State hn → Bool} (laws : e.Lawful due)
     (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     (he : rho.events[i]? = some (.tick v t))
     (hp : (paramsAtCount p (Fintype.card V) hN hn).IsPublic t) :
