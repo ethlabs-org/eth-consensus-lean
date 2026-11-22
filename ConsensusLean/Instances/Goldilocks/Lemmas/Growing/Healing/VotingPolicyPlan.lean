@@ -279,25 +279,44 @@ def AppointmentCohort (_tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)
   ∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
     ∀ z ∈ ids, z ∈ H b ∧ ∃ k t, appointment z k t ∧ d ≤ t ∧ t ≤ deadline
 
-/-- Supply is phrased for the actual anchor entry. Request a cohort of joined
-polls through `d + D`, not reports by `d`. The row producer owes usefulness. -/
+/-- The entry is selected from the earlier anchor as held at the actual
+consuming proposal, not from an arbitrary later tree. -/
+structure AnchorRowDemand (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+    (g b D R : Time) (z y : Fin sp.n) (i m : Nat) (P Q C T : Blk sp) : Prop where
+  origin : tr.ProposesAt z i P
+  originHonest : z ∈ H (tr.time i)
+  originBy : tr.time i ≤ sp.ts (P.slot + 1) + 2 * sp.Δ
+  consuming : tr.ProposesAt y m Q
+  consumingHonest : y ∈ H (tr.time m)
+  bounded : tr.time m ≤ b
+  parent : Q.parent = some C.root
+  held : C ∈ (tr.state y m).fg.tree ∧ P ∈ (tr.state y m).fg.tree ∧ T ∈ (tr.state y m).fg.tree
+  branch : (tr.state y m).fg.Anc P C
+  entry : Healing.EntryOf (tr.state y m).fg P T ((tr.state y m).fg.σ P.root).h
+  notHigher : ((tr.state y m).fg.σ C.root).h ≤ ((tr.state y m).fg.σ P.root).h
+  high : HZ tr H g + 2 ≤ ((tr.state y m).fg.σ P.root).h
+  afterGST : gbar g ≤ sp.ts (P.slot + 1) + 2 * sp.Δ
+  beforeConsumer : sp.ts (P.slot + 1) + 2 * sp.Δ + D + R < tr.time m
+  noEarlierHigher : ∀ x r ell B, x ∈ H (tr.time r) → SA.ToFGAt tr.projAC x r ell B →
+    Anc (tr.HonestBlocksAt H) P B → tr.time r < sp.ts (P.slot + 1) + 2 * sp.Δ →
+    ((tr.state x r).fg.σ B.root).h ≤ ((tr.state y m).fg.σ T.root).h
+
+/-- Supply only the entry demanded by the consuming edge. Joined polls through
+`d + D` are opportunities; they do not themselves supply sources. -/
 structure PublishedRows (U : Publication tr) (appointment : Fin sp.n → Nat → Time → Prop)
     (g b D R : Time) : Prop where
-  supply : ∀ {T : Blk sp} {y : Fin sp.n} {m : Nat} {t : Time},
-    0 ≤ t → (∀ q < m, tr.time q ≤ t) → y ∈ H t → T ∈ (tr.state y m).fg.tree →
-    ∀ {σT : FG.ChainState sp.n}, (tr.state y m).fg.σ T.root = σT → σT.Th = T.root →
-    HZ tr H g + 1 ≤ σT.h → (σT.previousHeightJustified → HZ tr H g + 1 ≤ σT.hj) →
-    ∀ {d : Time}, gbar g ≤ d → d + D + R ≤ b →
-    (∀ x r ell C, x ∈ H (tr.time r) → SA.ToFGAt tr.projAC x r ell C →
-      tr.time r < d → ((tr.state x r).fg.σ C.root).h ≤ σT.h) →
+  supply : ∀ {z y i m P Q C T}, AnchorRowDemand tr H g b D R z y i m P Q C T →
+    let σT := (tr.state y m).fg.σ T.root
+    let d := sp.ts (P.slot + 1) + 2 * sp.Δ
     AppointmentCohort tr H appointment d (d + D) b →
     (∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
       ∀ z ∈ ids, z ∈ H (max (cutZ sp.toParams g) (d + D + R)) ∧ ∃ a j,
         tr.SignAt z j a ∧ tr.time j ≤ d + D ∧ ReleasedBy U H z a (d + D + R) ∧
         a.val = z ∧ a.h = σT.h ∧ a.T = T.root ∧ a.timeout = false ∧
         (σT.previousHeightJustified → a.fin = some (σT.hj, σT.J))) ∨
-    ∃ x r ell C, x ∈ H (tr.time r) ∧ SA.ToFGAt tr.projAC x r ell C ∧
-      tr.time r ≤ d + D ∧ σT.h < ((tr.state x r).fg.σ C.root).h
+    ∃ x r ell B, x ∈ H (tr.time r) ∧ SA.ToFGAt tr.projAC x r ell B ∧
+      Anc (tr.HonestBlocksAt H) P B ∧ d ≤ tr.time r ∧ tr.time r ≤ d + D ∧
+      σT.h < ((tr.state x r).fg.σ B.root).h
 
 theorem durable_held_and_snapshot_cursor (st : PolicyState sp ro binding)
     (t : Time) (y : Fin sp.n) :
@@ -356,19 +375,24 @@ theorem published_rows_of_appointments (U : Publication tr) {g b a D R : Time}
     {appointment : Fin sp.n → Nat → Time → Prop}
     (hreset : IsReset tr H g a) (hab : a ≤ b) (hcz : cutZ sp.toParams g ≤ b)
     (hcut : CutObservations tr H) (hmatching : MatchingRows tr H g b)
-    (hsource : ∀ (T : Blk sp) y m t z k d u,
-      0 ≤ t → (∀ i < m, tr.time i ≤ t) → y ∈ H t → T ∈ (tr.state y m).fg.tree →
-      let σ := (tr.state y m).fg.σ T.root
-      σ.Th = T.root → HZ tr H g + 1 ≤ σ.h →
-      (σ.previousHeightJustified → HZ tr H g + 1 ≤ σ.hj) →
-      gbar g ≤ d → d + D + R ≤ b → z ∈ H b → appointment z k u →
-      d ≤ u → u ≤ d + D →
-      (∃ r j ell C s, r ≤ j ∧ tr.time j ≤ u ∧ SA.ToFGAt tr.projAC z r ell C ∧
-        (j < k ∨ j = k + 1 ∧ tr.time j = u) ∧
-        tr.CallAt z j (.fg (.attest C s)) ∧ Anc (tr.HonestBlocksAt H) T C ∧
-        ((tr.state z r).fg.σ C.root).h = σ.h) ∨
-      ∃ r ell C, r ≤ k ∧ tr.time r ≤ u ∧ SA.ToFGAt tr.projAC z r ell C ∧
-        σ.h < ((tr.state z r).fg.σ C.root).h)
+    (hsource : ∀ {w y i m P Q C T}, AnchorRowDemand tr H g b D R w y i m P Q C T →
+      let d := sp.ts (P.slot + 1) + 2 * sp.Δ
+      AppointmentCohort tr H appointment d (d + D) b →
+      (∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
+      ∀ z ∈ ids, z ∈ H b ∧ ∃ k u r ell B s,
+        appointment z k u ∧ d ≤ u ∧ u ≤ d + D ∧ r + 1 < m ∧
+        let st := tr.state z k
+        let picked := (Node.acToFG st u).2.2
+        SA.ToFGAt tr.projAC z r ell B ∧ tr.CallAt z (r + 1) (.fg (.attest B s)) ∧
+        tr.time (r + 1) ≤ u ∧ Anc (tr.HonestBlocksAt H) P B ∧
+        ((r = k ∧ tr.time k = u ∧ picked = some B ∧ st.fg.Anc P B) ∨
+          (r + 1 < k ∧ picked = none ∧ B.root = st.ac.fgReported ∧
+            ∃ L, SA.IsDeepest (Node.frame st) (SA.toFGCandidates sp st.ac (Node.frame st) u) L ∧
+              st.fg.Anc P L ∧ SA.AncR (Node.frame st) L B.root)) ∧
+        ((tr.state y m).fg.σ T.root).h = ((tr.state z r).fg.σ B.root).h) ∨
+      ∃ x r ell B, x ∈ H (tr.time r) ∧ SA.ToFGAt tr.projAC x r ell B ∧
+        Anc (tr.HonestBlocksAt H) P B ∧ d ≤ tr.time r ∧ tr.time r ≤ d + D ∧
+        ((tr.state y m).fg.σ T.root).h < ((tr.state x r).fg.σ B.root).h)
     (hrelease : ReleaseService U H (gbar g) b R)
     (hD : 0 ≤ D) (hR : 0 ≤ R) : PublishedRows (H := H) U appointment g b D R := by
   sorry
@@ -920,7 +944,8 @@ def ProjectedAppointment
     (cuts : ProjectedTickDutyBoundaries rho hn M B)
     (z : Fin (Fintype.card V)) (k : Nat) (t : Time) : Prop :=
   ∃ e q, SnapshotDuty rho hn (M.key.symm z) e q t ∧ k = B.first e + cuts.offset e q ∧
-    SA.joined (S.params (Model.pubOf E) hn) (tr.state z k).ac t
+    SA.joined (S.params (Model.pubOf E) hn) (tr.state z k).ac t ∧
+    ((Node.acToFG (tr.state z k) t).2.2.isSome → k + 1 < B.first e + cuts.offset e (q + 1))
 
 theorem appointment_cohort_of_joined_window
     (rho : Model.Run (compiled (delayedFamily S p)) E) (hn : 1 ≤ Fintype.card V)
@@ -1430,17 +1455,6 @@ def WarmRoundRise (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
     P ∈ (tr.state y (j + 1)).fg.tree ∧ X ∈ (tr.state y (j + 1)).fg.tree ∧
       ((tr.state y (j + 1)).fg.σ P.root).h + 1 ≤ ((tr.state y (j + 1)).fg.σ X.root).h
 
-/-- The post-drain consumer must work on the actual proposal cuts. Either receipt
-plus parent validity or the higher-report head route must supply the height step. -/
-def PublishedAnchorSteps (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-    (proposer : Nat → Fin sp.n) (g a b : Time) (c : Nat) : Prop :=
-  ∀ (s₀ : Nat) (P : Fin 4 → Blk sp),
-    (∀ i, HonestProposalRun tr H proposer (s₀ + ![0, c, 2 * c, 3 * c] i) (P i)) →
-    Healing.drainTime sp a ≤ sp.ts s₀ → sp.ts (s₀ + 3 * c) ≤ b →
-    (∃ y k, y ∈ H (tr.time k) ∧ P 0 ∈ (tr.state y k).fg.tree ∧
-      HZ tr H g + 2 ≤ ((tr.state y k).fg.σ (P 0).root).h) →
-    ∀ i : Fin 3, Obligations.Growing.AnchorStepAt tr H (P i.castSucc) (P i.succ)
-
 /-- A pre-reset round's timeout quorum is tied to its later proposal, not merely
 to published timeouts at the right height. This is the input to the store rise. -/
 def WarmTimeoutRows (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
@@ -1807,41 +1821,35 @@ theorem reset_of_policy_service {g ΔF b r D R : Time} {G Ld : Nat}
   sorry
 
 /-- Collector and FG forwarding are distinct obligations at the same anchor gap.
-This is the window consumer interface; reset/high-origin facts must be ported to
-the policy trace rather than assuming a legacy run. -/
-theorem published_anchor_steps {g a b ΔF D R : Time} {c : Nat}
+Only the three edges of the selected quartet can request appointments. -/
+theorem published_anchor_steps {g a b ΔF D R : Time} {c s₀ : Nat} {P : Fin 4 → Blk sp}
     {proposer : Nat → Fin sp.n} (U : Publication tr)
     {appointment : Fin sp.n → Nat → Time → Prop}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     (hcut : CutObservations tr H) (hnc : Compose.NoCollRun dg tr)
     (hreset : IsReset tr H g a) (hbase : BaseService tr H g)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hsupply : PublishedRows (H := H) U appointment g b D R)
-    (hcohort : ∀ {s₀ j : Nat} {P : Fin 4 → Blk sp} {C : Blk sp} (i : Fin 3),
-      (∀ l, HonestProposalRun tr H proposer (s₀ + ![0, c, 2 * c, 3 * c] l) (P l)) →
-      Healing.drainTime sp a ≤ sp.ts s₀ → sp.ts (s₀ + 3 * c) ≤ b →
-      let y := proposer (P i.succ).slot
-      tr.ProposesAt y j (P i.succ) → (P i.succ).parent = some C.root →
-      C ∈ (tr.state y j).fg.tree →
-      ((tr.state y j).fg.σ C.root).h ≤ ((tr.state y j).fg.σ (P i.castSucc).root).h →
+    (hprop : ∀ l, HonestProposalRun tr H proposer (s₀ + ![0, c, 2 * c, 3 * c] l) (P l))
+    (hdrain : Healing.drainTime sp a ≤ sp.ts s₀) (hb : sp.ts (s₀ + 3 * c) ≤ b)
+    (hhigh : ∃ y k, y ∈ H (tr.time k) ∧ P 0 ∈ (tr.state y k).fg.tree ∧
+      HZ tr H g + 2 ≤ ((tr.state y k).fg.σ (P 0).root).h)
+    (hcohort : ∀ (i : Fin 3) {z y k j C T},
+      AnchorRowDemand tr H g b D R z y k j (P i.castSucc) (P i.succ) C T →
       let d := sp.ts ((P i.castSucc).slot + 1) + 2 * sp.Δ
-      gbar g ≤ d → d + D + R + ΔF ≤ tr.time j →
-      AppointmentCohort tr H appointment d (d + D) b)
+      d + D + R + ΔF ≤ tr.time j → AppointmentCohort tr H appointment d (d + D) b)
     (hdelivery : ReleasedDelivery U H g ΔF b)
     (hawake : ∀ y t, gbar g ≤ t → t ≤ b → y ∈ H t → tr.awake y t)
-    (hc : 2 ≤ c) (hspan : 3 * c ≤ sp.toParams.fg.δt) (hD : 0 ≤ D) (hR : 0 ≤ R)
+    (hc : 2 ≤ c) (hspan : 3 * c ≤ sp.toParams.fg.δt) (hD : 0 ≤ D) (hR : 0 ≤ R) (hΔF : 0 < ΔF)
     (hforward : 6 * sp.Δ + D + R + ΔF ≤ 4 * sp.Δ * c)
     (hcollector : 7 * sp.Δ + D + R ≤ 4 * sp.Δ * c) :
-    PublishedAnchorSteps tr H proposer g a b c := by
+    ∀ i : Fin 3, Obligations.Growing.AnchorStepAt tr H (P i.castSucc) (P i.succ) := by
   sorry
 
 /-- An anchor is covered in the last proposer's carrier store, not necessarily
 in its current finalized cache. The store result is reused after transporting
 ancestry and entry heights at honest cuts of the policy trace. -/
-theorem policy_four_anchor_carrier {a b g : Time} {c s₀ : Nat}
-    {proposer : Nat → Fin sp.n} {P : Fin 4 → Blk sp} {acp₀ : Payload sp.n}
-    (hsteps : PublishedAnchorSteps tr H proposer g a b c)
-    (hprop : ∀ i, HonestProposalRun tr H proposer (s₀ + ![0, c, 2 * c, 3 * c] i) (P i))
-    (hdrain : Healing.drainTime sp a ≤ sp.ts s₀) (hb : sp.ts (s₀ + 3 * c) ≤ b)
+theorem policy_four_anchor_carrier {g : Time} {P : Fin 4 → Blk sp} {acp₀ : Payload sp.n}
+    (hsteps : ∀ i : Fin 3, Obligations.Growing.AnchorStepAt tr H (P i.castSucc) (P i.succ))
     (hhigh : ∃ y k, y ∈ H (tr.time k) ∧ P 0 ∈ (tr.state y k).fg.tree ∧
       HZ tr H g + 2 ≤ ((tr.state y k).fg.σ (P 0).root).h)
     {z : Fin sp.n} {k : Nat} (hz : z ∈ H (tr.time k)) (hown : tr.ProposesAt z k (P 3))
@@ -2228,25 +2236,29 @@ def FinalAppointmentSupply {V : Type} [Fintype V] [DecidableEq V]
     let D := (B.signSteps : Time) * sp.Δ
     let R := (B.publishSteps : Time) * sp.Δ
     let b := rho.horizon
+    let readyFor := (Sys (family S p) V).cDur (windowContract S A window B) Q.run
+    let deadline := Q.query + ((windowContract S A window B).params.latency .final
+      (policyIndex S A window B Q.index) : Time) * Q.run.1.ΔAC
+    (∃ v, rho.point.Ready readyFor v deadline) →
     (∀ {s₀ N floor u x i j : Nat} {kindJ : Prop} {J P X C : Blk sp},
       WarmRowDemand tr H proposer Q.gst b D R s₀ N floor u x i j kindJ J P X C →
       SA.gbar Q.gst ≤ sp.ts (u + 1) + 2 * sp.Δ →
       sp.ts (u + 1) + 2 * sp.Δ + D + R + Q.run.1.ΔFG ≤ tr.time j →
       JoinedWindowQuorum rho Q.positive
         (sp.ts (u + 1) + 2 * sp.Δ) (sp.ts (u + 1) + 2 * sp.Δ + D) b) ∧
-    (∀ {s₀ j : Nat} {P : Fin 4 → Blk sp} {C : Blk sp} (i : Fin 3),
+    (∀ {s₀ : Nat} {P : Fin 4 → Blk sp},
       (∀ l, Healing.Growing.HonestProposalRun tr H proposer
         (s₀ + ![0, window.fgSlots, 2 * window.fgSlots, 3 * window.fgSlots] l) (P l)) →
       Q.query < sp.ts s₀ →
-      sp.ts (s₀ + 3 * window.fgSlots) + sp.Δ ≤
-        Q.query + ((windowContract S A window B).params.latency .final
-          (policyIndex S A window B Q.index) : Time) * Q.run.1.ΔAC →
-      let y := proposer (P i.succ).slot
-      tr.ProposesAt y j (P i.succ) → (P i.succ).parent = some C.root →
-      C ∈ (tr.state y j).fg.tree →
-      ((tr.state y j).fg.σ C.root).h ≤ ((tr.state y j).fg.σ (P i.castSucc).root).h →
+      sp.ts (s₀ + 3 * window.fgSlots) + sp.Δ ≤ deadline →
+      (∀ l,
+        let s := s₀ + ![0, window.fgSlots, 2 * window.fgSlots, 3 * window.fgSlots] l
+        HonestReadyIn rho.point rho.key (fun s => rho.sel (.proposer s)) s
+          readyFor (sp.ts s) sp.Δ) →
+      ∀ (i : Fin 3) {z y k j C T},
+      AnchorRowDemand tr H Q.gst b D R z y k j (P i.castSucc) (P i.succ) C T →
       let d := sp.ts ((P i.castSucc).slot + 1) + 2 * sp.Δ
-      SA.gbar Q.gst ≤ d → d + D + R + Q.run.1.ΔFG ≤ tr.time j →
+      d + D + R + Q.run.1.ΔFG ≤ tr.time j →
       JoinedWindowQuorum rho Q.positive d (d + D) b)
 
 /-- Concrete compiled witness, pending only which scope supplies the named
