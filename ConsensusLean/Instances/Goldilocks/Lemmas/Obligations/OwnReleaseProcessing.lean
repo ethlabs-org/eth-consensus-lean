@@ -3,6 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnProposalPool
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeRunSchedule
 
 public section
 
@@ -19,6 +21,96 @@ run, and the release or source facts of its own.
   at the cut's time, or in a public tick of the cut's node;
 * `acBlock_vote_pooled_in_tick`: in any Goldilocks run, an AC block cut inside a tick group of
   its node has the block's votes already pooled (the block is the node's own proposal). -/
+
+namespace Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
+
+open Blocks Shape Node
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+variable {O : OutputSchema} {I : Type} [DecidableEq I] [Countable I]
+variable {F : ChainShapeFamily O I} {p : Params} {hN : p.n = Fintype.card V}
+variable {hn : 1 ≤ Fintype.card V}
+variable {A : NodeAC (paramsAtCount p (Fintype.card V) hN hn)}
+variable (e : Encoding F E p hN hn A) (rho : Model.Run (compiled F) E)
+
+private theorem tick_attest_next {i : Nat} {v : V} {t : Time}
+    (he : rho.events[i]? = some (.tick v t))
+    (hp : (paramsAtCount p (Fintype.card V) hN hn).IsPublic t)
+    (hlenEq : cutMap e rho (i + 1) = cutMap e rho i +
+      (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
+        (e.adapter.node (stateAt e rho v i)) t
+        (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2.length)
+    {m : Nat} {C : A.Blk} {a : FG.Att (Fintype.card V)}
+    (hc : (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
+      (e.adapter.node (stateAt e rho v i)) t
+      (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2[m]? = some (.fg (.attest C (some a)))) :
+    (simTrace e rho).AttCallAt (rho.ownKey v) (cutMap e rho i + (m + 1)) a ∧
+      (simTrace e rho).time (cutMap e rho i + (m + 1)) = t ∧
+      cutMap e rho i + (m + 1) < cutMap e rho (i + 1) := by
+  let st := e.adapter.node (stateAt e rho v i)
+  let ev : Node.Event A := .tick (encodeTxs (Model.mempool rho.inbox v t))
+  let cs := (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v) st t ev).2
+  have hnxt := Compose.exec_attest_next (A := A) (C := C) (a := a)
+    (runProposer rho hn) (digestOf e rho) (rho.ownKey v) st t ev hc
+  have hEC := eventCuts_tick e rho i v t he
+  rw [ite_eq_left hp, groupRecs_eq] at hEC
+  change eventCuts e rho i = (cs.zip (cutPosts (rho.ownKey v) t cs st)).mapIdx _ at hEC
+  have hlen : m + 1 < (eventCuts e rho i).length := by
+    have h := (List.getElem?_eq_some_iff.mp hnxt).1
+    change m + 1 < cs.length at h
+    change _ = cutMap e rho i + cs.length at hlenEq
+    rw [cutMap_succ] at hlenEq
+    omega
+  have hk := allCuts_getElem?_add e rho i (m + 1) (List.getElem?_eq_some_iff.mp he).1 hlen
+  rw [List.getElem?_eq_getElem hlen, List.getElem_of_eq hEC hlen,
+    List.getElem_mapIdx, List.getElem_zip] at hk
+  refine ⟨⟨?_, ?_⟩, ?_, ?_⟩
+  · rw [simTrace_node, hk]; rfl
+  · rw [simTrace_label, hk, Option.map_some, Option.some.injEq]
+    exact (List.getElem?_eq_some_iff.mp hnxt).2
+  · rw [simTrace_time, hk]; rfl
+  · rw [cutMap_succ]; omega
+
+/-- A signing cut is immediately followed by processing the same attestation, within the
+same public tick group. The handler's successful successor lookup rules out a final signing cut. -/
+theorem tick_attest_processAt {due : e.State hn → Bool} (laws : e.Lawful due)
+    (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : Nat} {a : FG.Att (Fintype.card V)}
+    (hc : (simTrace e rho).SignAt y k a) :
+    (simTrace e rho).AttCallAt y (k + 1) a ∧ (simTrace e rho).ProcessAttAt y (k + 1) a ∧
+      (simTrace e rho).time (k + 1) = (simTrace e rho).time k ∧
+      ∃ i v t, rho.events[i]? = some (.tick v t) ∧ cutMap e rho i ≤ k ∧
+        k + 1 < cutMap e rho (i + 1) := by
+  obtain ⟨C, hy, hl⟩ := hc
+  obtain ⟨i, ev, r, he, hlo, hr, hrl, ht, hnode, _, _, _⟩ := labelled_cut_origin e rho hl
+  cases ev with
+  | restart v t =>
+    rw [eventCuts_restart e rho i v t he, groupRecs_eq, List.getElem?_eq_some_iff] at hr
+    obtain ⟨_, rfl⟩ := hr
+    simp [exec, Node.restart, acCall] at hrl
+  | deliver v o t =>
+    obtain ⟨w, ev, st, _, hevent, hm⟩ := delivery_origin e rho he (List.mem_of_getElem? hr)
+    obtain ⟨x, rfl⟩ := Compose.signed_only_in_ticks (A := A) (runProposer rho hn)
+      (digestOf e rho) (rho.ownKey v) st t ev C a (hrl ▸ hm)
+    unfold canonEvent at hevent
+    split at hevent <;> cases hevent
+  | tick v t =>
+    rw [eventCuts_tick e rho i v t he] at hr
+    split at hr
+    · rename_i hp
+      rw [groupRecs_eq, List.getElem?_eq_some_iff] at hr
+      obtain ⟨hm, rfl⟩ := hr
+      simp only [List.getElem_mapIdx, List.getElem_zip] at hrl
+      have hsig := (List.getElem?_eq_getElem _).trans (congrArg some hrl)
+      have hlen := (tick_public_group e rho laws hv he hp).2
+      rw [← stateAgreement_all laws hv v i (List.getElem?_eq_some_iff.mp he).1.le] at hlen
+      obtain ⟨hcall, htime, hhi⟩ := tick_attest_next e rho he hp hlen hsig
+      have hindex : cutMap e rho i + (k - cutMap e rho i + 1) = k + 1 := by omega
+      rw [hindex] at hcall htime hhi
+      rw [hy.symm.trans hnode]
+      exact ⟨hcall, Or.inl hcall, htime.trans ht.symm, i, v, t, he, hlo, hhi⟩
+    · simp at hr
+
+end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
@@ -41,32 +133,27 @@ theorem tick_attest_processAt {i : Nat} {v : V} {t : Time}
       (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2) :
     ∃ k, (simTrace S rho hn).ProcessAttAt (rho.ownKey v) k a ∧
       (simTrace S rho hn).time k = t := by
-  obtain ⟨m, hm, hcm⟩ := List.getElem_of_mem hc
-  have hnxt := Compose.exec_attest_next
-    (A := goldilocksNode (S.params (Model.pubOf E) hn) (S.ro _))
-    (runProposer S rho hn) (digestOf S rho)
-    (rho.ownKey v) (stateAt S rho hn v i).node t
-    (.tick (encodeTxs (Model.mempool rho.inbox v t)))
-    (k := m) (C := C) (a := a) (List.getElem?_eq_some_iff.mpr ⟨hm, hcm⟩)
-  have hlen := (List.getElem?_eq_some_iff.mp hnxt).1
-  have hEC := eventCuts_tick_public S rho hn i v t he hp
-  have hm' : m + 1 < (eventCuts S rho hn i).length := by
-    rw [hEC, length_groupRecs]
-    exact hlen
-  have hk := allCuts_getElem?_add S rho hn i (m + 1)
-    (List.getElem?_eq_some_iff.mp he).1 hm'
-  rw [hEC] at hk
-  have hlen' : m + 1 < (groupRecs (runProposer S rho hn) (digestOf S rho)
-      (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
-      (.tick (encodeTxs (Model.mempool rho.inbox v t)))).length := by
-    rw [length_groupRecs]; exact hlen
-  rw [List.getElem?_eq_getElem hlen'] at hk
-  obtain ⟨hnode, htime, _, _, hlab⟩ := getElem_groupRecs _ _ _ _ _ _ _ (m + 1) hlen'
-  have hl := (List.getElem?_eq_some_iff.mp hnxt).2
-  refine ⟨cutMap S rho hn i + (m + 1), Or.inl ⟨?_, ?_⟩, ?_⟩
-  · simpa only [simTrace_node, hk, Option.elim_some] using hnode
-  · simp only [simTrace_label, hk, Option.map_some, hlab, hl]
-  · simpa only [simTrace_time, hk, Option.elim_some] using htime
+  have hlen := cutMap_succ S rho hn i
+  rw [eventCuts_tick_public S rho hn i v t he hp, length_groupRecs] at hlen
+  obtain ⟨m, hm⟩ := List.mem_iff_getElem?.mp hc
+  obtain ⟨hpr, hdg⟩ := runProposer_digestOf S rho hn
+  have htrace := simTrace_encoding S rho hn
+  have hstate : (stateAt S rho hn v i).node =
+      (traceEncoding S hn).adapter.node
+        (NodeAsChainShape.CanonicalTrace.stateAt (traceEncoding S hn) rho v i) := by
+    rw [stateAt_eq]
+    exact traceEncoding_induction S hn (fun e _ =>
+      ((rho.stateBefore i v).st.1 hn).node =
+        e.adapter.node (NodeAsChainShape.CanonicalTrace.stateAt e rho v i)) fun _ => by
+      rw (config := { transparency := .default })
+        [NodeAsChainShape.CanonicalTrace.stateAt_eq, cast_eq]
+      rfl
+  rw [hpr, hdg, hstate] at hm
+  rw [htrace.2, hpr, hdg, hstate] at hlen
+  obtain ⟨hcall, htime, _⟩ := NodeAsChainShape.CanonicalTrace.tick_attest_next
+    (traceEncoding S hn) rho he hp hlen (C := C) (a := a) hm
+  rw [htrace.1]
+  exact ⟨_, Or.inl hcall, htime⟩
 
 /-- **The event of an AC block cut carrying a vote.** An AC cut `i` of `y` calling the block `B`
 with `m ∈ blockVotes B` is in a delivery, which processes `m` at `y` at the cut's time, or in a
