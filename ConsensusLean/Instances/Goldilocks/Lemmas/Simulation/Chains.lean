@@ -225,15 +225,41 @@ theorem chainTo_append_valid (hr : st.Reachable acp₀) (hash : Blocks.Header In
       simpa only [chainTo_succ_eq, ite_eq_right hg, hpar, List.append_assoc, List.singleton_append]
         using ih e.1 (by omega) (headerOf sp B :: tail) hl'
 
-/-- The blocks from genesis (excluded) to `B`, oldest first: `chainTo` before taking headers. -/
-noncomputable def blocksTo (blocks : Nat → Option (Blk sp)) : Nat → Blk sp → List (Blk sp)
+/-- The blocks from genesis (excluded) to `B`, oldest first, in a bounded parent walk. -/
+noncomputable def _root_.Consensus.Goldilocks.NodeAsChainShape.blocksTo {P : Params} {Pay : Type}
+    (blocks : Nat → Option (NodeBlock P Pay)) : Nat → NodeBlock P Pay → List (NodeBlock P Pay)
   | 0, _ => []
   | fuel + 1, B =>
-      if B.root = sp.genesisRoot then []
+      if B.root = P.genesisRoot then []
       else
         (match B.parent.bind blocks with
-          | some Bp => blocksTo blocks fuel Bp
+          | some Bp => NodeAsChainShape.blocksTo blocks fuel Bp
           | none => []) ++ [B]
+
+/-- Mapping the parent walk to headers gives `chainTo` for the chosen header function. -/
+theorem _root_.Consensus.Goldilocks.NodeAsChainShape.blocksTo_map
+    {P : Params} {Pay I : Type} (header : NodeBlock P Pay → Blocks.Header I)
+    (blocks : Nat → Option (NodeBlock P Pay)) (fuel : Nat) (B : NodeBlock P Pay) :
+    (NodeAsChainShape.blocksTo blocks fuel B).map header =
+      NodeAsChainShape.chainTo header blocks fuel B := by
+  induction fuel generalizing B with
+  | zero => rfl
+  | succ fuel ih =>
+    rw [NodeAsChainShape.blocksTo, NodeAsChainShape.chainTo]
+    split_ifs
+    · rfl
+    · rw [List.map_append, List.map_singleton]
+      cases B.parent.bind blocks with
+      | none => rfl
+      | some Bp => exact congrArg (· ++ [header B]) (ih Bp)
+
+/-- The blocks from genesis (excluded) to `B`, oldest first: `chainTo` before taking headers. -/
+noncomputable def blocksTo (blocks : Nat → Option (Blk sp)) : Nat → Blk sp → List (Blk sp) :=
+  NodeAsChainShape.blocksTo blocks
+
+/-- The Goldilocks parent walk is the generic node-block walk. -/
+theorem blocksTo_node (blocks : Nat → Option (Blk sp)) (fuel : Nat) (B : Blk sp) :
+    blocksTo blocks fuel B = NodeAsChainShape.blocksTo blocks fuel B := by rfl
 
 /-- `blocksTo` without fuel is empty. -/
 theorem blocksTo_zero (blocks : Nat → Option (Blk sp)) (B : Blk sp) :
@@ -246,20 +272,17 @@ theorem blocksTo_succ (blocks : Nat → Option (Blk sp)) (fuel : Nat) (B : Blk s
       else
         (match B.parent.bind blocks with
           | some Bp => blocksTo blocks fuel Bp
-          | none => []) ++ [B] := by rfl
+          | none => []) ++ [B] := by
+  unfold blocksTo
+  rw [NodeAsChainShape.blocksTo]
+  split_ifs
+  · rfl
+  · cases B.parent.bind blocks <;> rfl
 
 /-- The headers of `blocksTo` are `chainTo`. -/
 theorem blocksTo_map (blocks : Nat → Option (Blk sp)) :
-    ∀ fuel B, (blocksTo blocks fuel B).map (headerOf sp) = chainTo blocks fuel B
-  | 0, B => by rw [blocksTo_zero, chainTo_zero_eq, List.map_nil]
-  | fuel + 1, B => by
-    rw [blocksTo_succ, chainTo_succ_eq]
-    split_ifs
-    · rfl
-    · rw [List.map_append, List.map_singleton]
-      cases B.parent.bind blocks with
-      | none => rfl
-      | some Bp => rw [blocksTo_map blocks fuel Bp]
+    ∀ fuel B, (blocksTo blocks fuel B).map (headerOf sp) = chainTo blocks fuel B :=
+  NodeAsChainShape.blocksTo_map (headerOf sp) blocks
 
 /-- No block of a parent walk is genesis, for any block map and tip. -/
 theorem blocksTo_nonroot (blocks : Nat → Option (Blk sp)) :

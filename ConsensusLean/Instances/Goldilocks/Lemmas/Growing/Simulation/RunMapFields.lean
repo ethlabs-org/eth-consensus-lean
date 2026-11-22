@@ -79,6 +79,49 @@ theorem committee_map {t : Time} (ht : 0 ≤ t) :
 
 end Consensus.Goldilocks.Generic.RunMap
 
+namespace Consensus.Goldilocks.NodeAsChainShape
+
+open Shape Blocks
+open AsChainShape (Out)
+
+variable {P : Params} {A : NodeAC P}
+
+/-- The two output tips of a node, read from the FG store and AC respectively. -/
+noncomputable def outTip : Out → NodeState A → Time → A.Blk
+  | .finalized, st, _ => st.fg.F
+  | .confirmed, st, t => A.confirmed st.ac (Node.frame st) t
+
+/-- The confirmed tip is the AC's confirmed block. -/
+theorem outTip_confirmed (st : NodeState A) (t : Time) :
+    outTip .confirmed st t = A.confirmed st.ac (Node.frame st) t := by rfl
+
+/-- The finalized tip is the FG store's finalized block. -/
+theorem outTip_finalized (st : NodeState A) (t : Time) :
+    outTip .finalized st t = st.fg.F := by rfl
+
+/-- The output reads the headers along the parent walk to the selected tip. -/
+noncomputable def outOf {I : Type} (header : A.Blk → Header I) (st : NodeState A)
+    (t : Time) (g : Out) : Chain I :=
+  let tip := outTip g st t
+  chainTo header st.fg.blocks (tip.slot + 1) tip
+
+/-- The output is the header list of the blocks on the walk to its tip. -/
+theorem outOf_eq_blocksTo {I : Type} (header : A.Blk → Header I) (st : NodeState A)
+    (t : Time) (g : Out) :
+    outOf header st t g = (blocksTo st.fg.blocks ((outTip g st t).slot + 1)
+      (outTip g st t)).map header :=
+  (blocksTo_map header _ _ _).symm
+
+/-- The transactions encoded in a node block's input, independent of its AC payload. -/
+def payloadOf {Pay : Type} (B : NodeBlock P Pay) : Set Nat :=
+  {tx | tx ∈ decodeTxs B.input}
+
+/-- The transactions are read from the same input carried by the canonical header. -/
+theorem payloadOf_eq {Pay I : Type} (encode : List (FG.Att P.n) → Pay → I)
+    (B : NodeBlock P Pay) : payloadOf B = {tx | tx ∈ decodeTxs (headerOf encode B).input} := by rfl
+
+end Consensus.Goldilocks.NodeAsChainShape
+
 namespace Consensus.Goldilocks.Simulation
 
 open AsChainShape Shape Blocks
@@ -93,38 +136,40 @@ variable (sp) (ro : ReplayOrder sp (List (FG.Att sp.n)))
 
 /-- The tip of each output of a node state at time `t`, as in `outOf`: `Σ.F` for `finalized`,
 `ac_confirmed(𝒜, fg_to_ac(Σ), t)` for `confirmed`. -/
-noncomputable def outTip : Out → NodeState (goldilocksNode sp ro) → Time → Blk sp
-  | .finalized, st, _ => st.fg.F
-  | .confirmed, st, t => (goldilocksNode sp ro).confirmed st.ac (Node.frame st) t
+noncomputable def outTip : Out → NodeState (goldilocksNode sp ro) → Time → Blk sp :=
+  NodeAsChainShape.outTip
 
 /-- The confirmed tip is the AC's confirmed block. -/
 theorem outTip_confirmed (st : NodeState (goldilocksNode sp ro)) (t : Time) :
     outTip sp ro .confirmed st t = (goldilocksNode sp ro).confirmed st.ac (Node.frame st) t := by
-  rfl
+  exact NodeAsChainShape.outTip_confirmed st t
 
 /-- The finalized tip is the FG store's finalized block. -/
 theorem outTip_finalized (st : NodeState (goldilocksNode sp ro)) (t : Time) :
     outTip sp ro .finalized st t = st.fg.F := by
-  rfl
+  exact NodeAsChainShape.outTip_finalized st t
 
 /-- Each node output is the header list of `blocksTo` up to its tip (fuel: the tip's slot). -/
 theorem outOf_eq_blocksTo (st : NodeState (goldilocksNode sp ro)) (t : Time) (g : Out) :
     outOf st t g = (blocksTo st.fg.blocks ((outTip sp ro g st t).slot + 1)
       (outTip sp ro g st t)).map (headerOf sp) := by
-  rw [blocksTo_map]
-  cases g <;> rfl
+  have hout : outOf st t g = NodeAsChainShape.outOf (headerOf sp) st t g := by
+    cases g <;> rfl
+  rw [blocksTo_node]
+  exact hout.trans (NodeAsChainShape.outOf_eq_blocksTo (headerOf sp) st t g)
 
 end Chain
 
 /-- The transactions of a block: those decoded from its header's input. -/
 def payloadOf (S : Setup) {pub : Model.Public} {hn : 1 ≤ pub.n}
     (B : Blk (S.params pub hn)) : Set Nat :=
-  {tx | tx ∈ decodeTxs (headerOf _ B).input}
+  NodeAsChainShape.payloadOf B
 
 /-- A block's payload is the transactions decoded from its header's input. -/
 theorem payloadOf_eq (S : Setup) {pub : Model.Public} {hn : 1 ≤ pub.n}
     (B : Blk (S.params pub hn)) :
-    payloadOf S B = {tx | tx ∈ decodeTxs (headerOf _ B).input} := by rfl
+    payloadOf S B = {tx | tx ∈ decodeTxs (headerOf _ B).input} := by
+  exact NodeAsChainShape.payloadOf_eq encodeInfo B
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)

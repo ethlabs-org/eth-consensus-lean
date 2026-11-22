@@ -114,40 +114,13 @@ theorem acBlock_vote_pooled_in_tick {ini} (hr : GoldilocksRun proposer dg H tr i
     {m : SA.Vote sp.n} (hc : tr.CallAt y i (.ac ℓ)) (hb : ℓ.call = .block B)
     (hm : m ∈ SA.blockVotes B) :
     m ∈ (tr.state y i).ac.pool m.slot := by
-  obtain ⟨i', hi, hacc, htime⟩ := Compose.acBlock_prev hr.toLocalRun hy hc hb
-  rcases Compose.blockCall_cases hr.toLocalRun hy hacc with hg' |
-      ⟨j, x', hij, hg', hproposes, d, p, hd, hB, _, -, -, -⟩
-  · exfalso
-    have hib : i' < c + (Node.exec proposer dg y (tr.state y c) t (.tick x)).2.length := by
-      omega
-    have hstart : i' = c := by
-      by_cases hle : c ≤ i'
-      · exact Compose.group_start hg hg' hle hib
-      · obtain ⟨l, heq, _⟩ := Compose.before_tick hr.toLocalRun hy ⟨_, hg⟩ hacc
-          (by omega) (htime.trans ht)
-        cases heq
-    subst i'
-    have hf := Compose.group_phase hg hg'
-    cases hf
-  · have hcp : ∃ ℓp, tr.CallAt y (j + 1) (.ac ℓp) ∧ ℓp.call = .proposal := by
-      have hd' := hd
-      simp only [Node.tickStep, Node.acCall] at hd'
-      have hlen :
-          1 < (Node.exec proposer dg y (tr.state y j) (tr.time i') (.tick x')).2.length := by
-        simp only [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, List.foldl_cons,
-          List.foldl_nil, Node.tickStep, Node.acCall, hproposes, ↓reduceIte, hd']
-        simp
-      obtain ⟨hnode, _, _, _, hl⟩ := hg'.2.1 1 hlen
-      simp only [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, List.foldl_cons,
-        List.foldl_nil, Node.tickStep, Node.acCall, hproposes, ↓reduceIte, hd'] at hl
-      simp only [List.nil_append,
-        List.cons_append, List.getElem_cons_succ, List.getElem_cons_zero] at hl
-      exact ⟨_, ⟨hnode, hl⟩, rfl⟩
-    have him : i = j + 3 := by omega
-    rw [him]
-    apply Growing.own_proposal_payload_pooled_run hr hy hg' hd hcp
-      ⟨B, by simpa only [hij] using hacc⟩
-    simpa only [hB, Node.mkBlock, SA.blockVotes] using hm
+  obtain ⟨σ, hmem⟩ := Compose.acBlock_vote_pooled_in_tick hr.toLocalRun
+    (pooled := fun a m => ∃ σ, m ∈ a.pool σ) (carries := fun p m => m ∈ p.1)
+    (fun _ _ _ _ _ hd hm => Growing.proposal_pool (ro := ro) hd hm)
+    (Growing.proposal_preserves_pool (ro := ro) y) hy hg hlo hhi ht hc hb hm
+  have hslot := (Compose.state_pool_cap hr hy i σ).1 m
+    (by simpa only [Compose.projAC_state hr.toLocalRun hy] using hmem)
+  rwa [hslot]
 
 end Consensus.Goldilocks.Obligations
 
