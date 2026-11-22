@@ -408,8 +408,9 @@ theorem proposal_slot {i σ : Nat} (ht : tr.time i = sp.ts (σ + 1 : Nat)) :
 
 /-- The unlocked locks of an honest proposal of slot `σ + 1` are compatible with `B ∈ Φ.tree`,
 from (L-high) and either half of the committee supporting `B` (or equivocating) in its view, or
-(L-low), for any unlock. -/
-private theorem proposal_locksU
+(L-low), for any unlock.
+Kept for a downstream consumer. -/
+theorem proposal_locksU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
     (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)

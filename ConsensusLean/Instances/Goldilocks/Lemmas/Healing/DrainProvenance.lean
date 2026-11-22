@@ -16,9 +16,9 @@ exactly that block (`liveLocks` moves the new lock to its viable ancestor), the 
 only move locks back and keep their slot and fast bit (A0.4 (c)), a restart keeps the locks
 (A0.7), an optimistic confirmation writes only fast locks, and an update writes a lock that is
 not fast only as its slow lock. This is the slow case of the induction of `fast_lock_provenance`
-(`AC/Steps/Provenance`, whose per-function helpers are private there and repeated here with the
-slow write tracked; the shared `FromP` toolkit is `Lemmas/AC/LockProvenance`), with the stored
-block of HR.4's `stored_fast_lock_provenance` (`Retention/Provenance`)
+(`AC/Steps/Provenance`), using `FromP.of_updateConfirmation` for the update and the shared `FromP`
+toolkit (`Lemmas/AC/LockProvenance`), with the stored block of HR.4's
+`stored_fast_lock_provenance` (`Retention/Provenance`)
 (every lock image retains its original label).
 `slow_lock_provenance` (`AC/SlowLock`) is its corollary for the raw selection `D`. Over a run at a
 write mode `wm` the slow lock has width `wm.width` (`slow_lock_provenance_storedM`, `SlowLockAtW`),
@@ -99,31 +99,6 @@ private def SlowW (w : Nat) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s
       ∀ j : Int, (s : Int) - w < j → j < s →
         ∃ S ∈ Φ.tree, A.saved j = some S.root ∧ Φ.Anc X S} = some B
 
-/-- An update writes a lock that is not fast only as its slow lock. -/
-private theorem FromP.of_updateConfirmation (hU : Coherent U) (hΦ : FrameOK Φ)
-    (hΦU : Φ.tree ⊆ U) (A : SAState sp.n) (t : Time) (s : Nat) :
-    FromP U A.locks (updateConfirmationM sp wm A Φ t s).locks
-      (fun s' f O => s' = s ∧
-        (f = false → ∃ D, SlowW wm.width A Φ t s D ∧ O = Φ.viableAncestor D)) := by
-  rcases hC : getConfirmation sp A Φ s with _ | C
-  · exact FromP.of_eq (updateConfirmationM_locks_of_none hC)
-  · rw [updateConfirmationM_locks_of_some hC]
-    refine FromP.of_addLocks hU hΦ hΦU rfl fun r f e hr => ?_
-    rcases mem_newLocksM.1 hr with ⟨-, D, hD, hr⟩ | ⟨D, hD, hr⟩
-    · simp only [Prod.mk.injEq] at hr
-      obtain ⟨rfl, rfl, -⟩ := hr
-      exact ⟨D, (deepest_mem hD).1.1.1.1, rfl, rfl, fun h => absurd h (by simp)⟩
-    · simp only [Prod.mk.injEq] at hr
-      obtain ⟨rfl, rfl, -⟩ := hr
-      refine ⟨D, (deepest_mem hD).1.1.1.1, rfl, rfl, fun _ => ⟨D, ⟨C, hC, ?_⟩, rfl⟩⟩
-      rw [← hD]
-      congr 1
-      ext X
-      simp only [Set.mem_ofPred_eq, and_assoc]
-      refine and_congr_right fun _ => and_congr_right fun _ => forall_congr' fun j =>
-        imp_congr_right fun _ => imp_congr_right fun hj => ?_
-      rw [Function.update_of_ne (ne_of_lt hj)]
-
 private theorem FromP.of_onTick
     {L : Set Lock} (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     (x : Fin sp.n) (A : SAState sp.n) (t : Time)
@@ -140,8 +115,8 @@ private theorem FromP.of_onTick
     have := sp.toParams.hΔ
     linarith [ht.1.symm.trans hu]
   · refine (FromP.of_updateConfirmation hU hΦ hΦU A t _).mono fun s f B h => ?_
-    obtain ⟨rfl, h2⟩ := h
-    exact Or.inr ⟨ht.1, ht.2, hj, rfl, h2⟩
+    obtain ⟨D, _, hB, rfl, _, _, hslow⟩ := h
+    exact Or.inr ⟨ht.1, ht.2, hj, rfl, fun hf => ⟨D, hslow hf, hB⟩⟩
   · exact (FromP.of_tryVote hU hΦ hΦU x A t hL).mono fun s f B h => Or.inl h
   · exact FromP.of_eq rfl
   · exact FromP.of_eq rfl

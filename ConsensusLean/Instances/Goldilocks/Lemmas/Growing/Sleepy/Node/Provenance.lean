@@ -29,8 +29,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-- With `2 f < n`, a quorum has an honest member (`f < n/2 < q`). -/
-private theorem honest_of_quorum_two (hf : 2 * Hᶜ.ncard < sp.n) {Q : Finset (Fin sp.n)}
+/-- With `2 f < n`, a quorum has an honest member (`f < n/2 < q`).
+Kept for a downstream consumer. -/
+theorem honest_of_quorum_two (hf : 2 * Hᶜ.ncard < sp.n) {Q : Finset (Fin sp.n)}
     (hQ : sp.toParams.fg.q ≤ Q.card) : ∃ v ∈ Q, v ∈ H := by
   by_contra hno
   simp only [not_exists, not_and] at hno

@@ -148,7 +148,9 @@ private theorem FromP.of_tryVote
     · rfl
     · exact fun s f B ⟨D, hD, heq, h⟩ => ⟨D, hD, heq, _, List.mem_singleton_self _, h⟩
 
-private theorem FromP.of_updateConfirmation (hU : Coherent U) (hΦ : FrameOK Φ)
+/-- Confirmation updates attribute new locks to witnesses from the frame.
+Kept for a downstream consumer. -/
+theorem FromP.of_updateConfirmation (hU : Coherent U) (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) (A : SAState sp.n) (t : Time) (s : Nat) :
     FromP U A.locks (updateConfirmationM sp wm A Φ t s).locks
       (fun s' f B => ∃ D ∈ Φ.tree, B = Φ.viableAncestor D ∧

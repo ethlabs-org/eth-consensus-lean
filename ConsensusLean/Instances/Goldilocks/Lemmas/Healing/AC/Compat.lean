@@ -32,8 +32,9 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-- **The result side**, with the unlock given. At an honest update of slot `s` with result `C`:
 its supporters `S` of `C` are more than half of its voters; each has a vote in its pool, extending
-`C`, and does not equivocate there, and that vote was admitted in `[t_s, t_s + 2Δ)`. -/
-private theorem result_sideU
+`C`, and does not equivocate there, and that vote was admitted in `[t_s, t_s + 2Δ)`.
+Kept for a downstream consumer. -/
+theorem result_sideU
     {uL : Nat → Set Lock} {ini} (hrun : ACRunU wm uL proposer tr H U ini) {Y : Fin sp.n}
     (hY : Y ∈ H)
         {c s : Nat}

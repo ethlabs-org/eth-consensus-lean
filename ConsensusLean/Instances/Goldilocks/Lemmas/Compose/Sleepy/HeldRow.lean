@@ -95,8 +95,9 @@ private theorem slot_start_le {t : Time} (ht : 0 ≤ t) {s : Nat} (hsl : sp.slot
   push_cast at h'
   linarith only [h']
 
-/-- `t_{s+1} + Δ = t_s + 5Δ`. -/
-private theorem le_ts_add_five {t : Time} {s : Nat}
+/-- Transport a time bound using `t_{s+1} + Δ = t_s + 5Δ`.
+Kept for a downstream consumer. -/
+theorem le_ts_add_five {t : Time} {s : Nat}
     (h : t ≤ sp.ts ((s + 1 : Nat) : Int) + sp.Δ) : t ≤ sp.ts s + 5 * sp.Δ := by
   simp only [SAParams.ts] at h ⊢
   push_cast at h
