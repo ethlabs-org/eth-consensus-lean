@@ -68,31 +68,15 @@ private theorem pool_tryVote {P : Vote sp.n → Prop} (self : Fin sp.n)
     · exact h
     · exact he _ (List.mem_singleton_self _)
 
-private theorem pool_receipt {P : Vote sp.n → Prop} (A : SAState sp.n) (t : Time)
-    (B : SA.Blk sp.n FGP) (h : PoolIn P A) (hB : ∀ v ∈ SA.blockVotes B, P v) :
-    PoolIn P (SA.blockReceipt sp A t B) := by
-  unfold SA.blockReceipt
-  generalize hl : SA.blockVotes B = l at *
-  have key : ∀ (l : List (Vote sp.n)) (A : SAState sp.n), PoolIn P A →
-      (∀ v ∈ l, P v) → PoolIn P (l.foldl (fun A v => SA.admitVote sp A t v) A) := by
-    intro l
-    induction l with
-    | nil => exact fun _ h _ => h
-    | cons v l ih =>
-      intro A h hl
-      exact ih _ (pool_admit h t v (hl v List.mem_cons_self))
-        (fun w hw => hl w (List.mem_cons_of_mem v hw))
-  exact key l _ h hB
-
 private theorem pool_block {P : Vote sp.n → Prop} (self : Fin sp.n)
     (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) (B : SA.Blk sp.n FGP)
-    (h : PoolIn P A) (hB : ∀ v ∈ SA.blockVotes B, P v)
+    (h : PoolIn P A)
     (he : ∀ e ∈ (SA.acOnBlock sp self A Φ t B).2, P e.msg) :
     PoolIn P (SA.acOnBlock sp self A Φ t B).1 := by
   apply pool_tryVote self _ Φ t _ he
   intro s v hv
   rw [SA.optimistic_pool_eq] at hv
-  exact pool_receipt A t B h hB s v hv
+  exact h s v hv
 
 private theorem pool_message {P : Vote sp.n → Prop} (self : Fin sp.n)
     (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) (m : Vote sp.n)
@@ -118,29 +102,24 @@ private theorem pool_tick {P : Vote sp.n → Prop} (self : Fin sp.n)
       rw [SA.updateConfirmation_pool_eq] at hv
       first | exact h s v hv | exact pool_tryVote self A Φ t h he s v hv
 
-/-- Restart replay only imports votes from its frame and its own emissions. The replay
-enumeration exists for every well-formed frame; no global collision assumption is needed. -/
+/-- Restart replay can only add actual emissions to its cleared pools. -/
 theorem restart_pool_inventory (P : Vote sp.n → Prop) (ro : ReplayOrder sp FGP)
     (self : Fin sp.n) (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time)
-    (hΦ : FrameOK Φ) (hB : ∀ B ∈ Φ.tree, ∀ v ∈ SA.blockVotes B, P v)
     (he : ∀ e ∈ (SA.acRestart sp ro self A Φ t).2, P e.msg) :
     ∀ s, ∀ v ∈ (SA.acRestart sp ro self A Φ t).1.pool s, P v := by
-  have hl := ro.parentOrder t Φ (SA.parentOrder_exists sp hΦ)
-  have hlist : ∀ B ∈ ro.order t Φ, ∀ v ∈ SA.blockVotes B, P v :=
-    fun B h => hB B ((hl.2.1 B).mp h).1
   unfold SA.acRestart at he ⊢
-  generalize ro.order t Φ = l at hlist he ⊢
+  generalize ro.order t Φ = l at he ⊢
   have key : ∀ (l : List (SA.Blk sp.n FGP)) (acc : SAState sp.n × List (SA.Em sp FGP)),
-      PoolIn P acc.1 → (∀ B ∈ l, ∀ v ∈ SA.blockVotes B, P v) →
+      PoolIn P acc.1 →
       (∀ e ∈ (l.foldl (fun acc B => let r := SA.acOnBlock sp self acc.1 Φ t B;
         (r.1, acc.2 ++ r.2)) acc).2, P e.msg) →
       PoolIn P (l.foldl (fun acc B => let r := SA.acOnBlock sp self acc.1 Φ t B;
         (r.1, acc.2 ++ r.2)) acc).1 := by
     intro l
     induction l with
-    | nil => exact fun _ h _ _ => h
+    | nil => exact fun _ h _ => h
     | cons B l ih =>
-      intro acc h hB he
+      intro acc h he
       have append_mem : ∀ (l : List (SA.Blk sp.n FGP)) acc,
           acc.2 ⊆ (l.foldl (fun acc B => let r := SA.acOnBlock sp self acc.1 Φ t B;
             (r.1, acc.2 ++ r.2)) acc).2 := by
@@ -150,29 +129,26 @@ theorem restart_pool_inventory (P : Vote sp.n → Prop) (ro : ReplayOrder sp FGP
         | cons B l ih => exact fun acc e he => ih _ (List.mem_append_left _ he)
       apply ih ((SA.acOnBlock sp self acc.1 Φ t B).1,
         acc.2 ++ (SA.acOnBlock sp self acc.1 Φ t B).2)
-        (pool_block self _ Φ t B h (hB B List.mem_cons_self) ?_)
-        (fun C hC => hB C (List.mem_cons_of_mem B hC)) he
+        (pool_block self _ Φ t B h ?_) he
       intro e he'
       exact he e (append_mem l _ (List.mem_append_right _ he'))
-  exact key l _ (fun s v hv => False.elim (List.not_mem_nil hv)) hlist he
+  exact key l _ (fun s v hv => False.elim (List.not_mem_nil hv)) he
 
-/-- **One SA call keeps a vote predicate on the pool**, given it of the call's input (a
-block's votes, a message, the frame's block votes at a restart) and of the call's emissions. -/
+/-- **One SA call keeps a vote predicate on the pool**, given it of its message input
+(if any) and of its emissions. -/
 theorem pool_step_inventory (P : Vote sp.n → Prop) (ro : ReplayOrder sp FGP) (self : Fin sp.n)
     (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) (c : (SA.goldilocksSA sp FGP ro).Call)
-    (h : ∀ s, ∀ v ∈ A.pool s, P v) (hΦ : FrameOK Φ)
+    (h : ∀ s, ∀ v ∈ A.pool s, P v)
     (hc : match c with
-      | .block B => ∀ v ∈ SA.blockVotes B, P v
       | .message v => P v
-      | .restart => ∀ B ∈ Φ.tree, ∀ v ∈ SA.blockVotes B, P v
       | _ => True)
     (he : ∀ e ∈ ((SA.goldilocksSA sp FGP ro).step self A Φ t c).2, P e.msg) :
     ∀ s, ∀ v ∈ ((SA.goldilocksSA sp FGP ro).step self A Φ t c).1.pool s, P v := by
   cases c with
-  | block B => exact pool_block self A Φ t B h hc he
+  | block B => exact pool_block self A Φ t B h he
   | message v => exact pool_message self A Φ t v h hc he
   | tick => exact pool_tick self A Φ t h he
-  | restart => exact restart_pool_inventory P ro self A Φ t hΦ hc he
+  | restart => exact restart_pool_inventory P ro self A Φ t he
   | proposal =>
     change PoolIn P (SA.acProposal sp A Φ t).1
     unfold SA.acProposal
@@ -223,13 +199,6 @@ private theorem inventory_init (P : Wire sp.n binding → Prop) (B : VoteBinding
   · intro a ha
     exact False.elim (List.not_mem_nil ha)
 
-private theorem payload_vote {P : Wire sp.n binding → Prop} {B : Blk sp}
-    (h : ∀ o ∈ payloadObjs B.fgPayload B.acPayload, P o) :
-    ∀ v ∈ SA.blockVotes B, P (voteObj v) := by
-  intro v hv
-  exact h _ (List.mem_append_right _
-    (List.mem_map.mpr ⟨v, List.mem_append_left _ hv, rfl⟩))
-
 private theorem inventory_att {P : Wire sp.n binding → Prop} {st : NodeState (goldilocksNode sp ro)}
     (h : Inventory P st) (a : FG.Att sp.n) (ha : P (attObj a)) :
     Inventory P (Node.onAttestation st a).1 := by
@@ -245,7 +214,7 @@ private theorem inventory_accept {P : Wire sp.n binding → Prop} {st : NodeStat
     Inventory P { st with fg := fg' } := by
   have hatt : ∀ a ∈ B.fgPayload,
       attObj a ∈ payloadObjs (binding := binding) B.fgPayload B.acPayload :=
-    fun a ha => List.mem_append_left _ (List.mem_map.mpr ⟨a, ha, rfl⟩)
+    fun a ha => List.mem_map.mpr ⟨a, ha, rfl⟩
   have hfg := NodeAsChainShape.inventory_accept (wireCodec sp ro binding) attObj
     ⟨h.reachable, h.blocks, h.atts⟩ hacc hB hatt
   exact ⟨hfg.reachable, hfg.blocks, h.votes, hfg.atts⟩
@@ -255,19 +224,13 @@ private theorem inventory_call {P : Wire sp.n binding → Prop} {st : NodeState
     (h : Inventory P st) (self : Fin sp.n) (t : Time)
     (c : (goldilocksNode sp ro).Call)
     (hc : match c with
-      | .block B => ∀ o ∈ payloadObjs B.fgPayload B.acPayload, P o
       | .message v => P (voteObj v)
       | _ => True)
     (he : ∀ e ∈ ((goldilocksNode sp ro).step self st.ac (frame st) t c).2,
       P (voteObj e.msg)) : Inventory P (Node.acCall self st t c).1 := by
   refine ⟨h.reachable, h.blocks, pool_step_inventory _ ro self st.ac (frame st) t c h.votes
-    (Store.frame_realization sp.toParams (Payload sp.n) ([], []) st.fg h.reachable).1 ?_ he,
-    h.atts⟩
-  cases c with
-  | block _ => exact payload_vote hc
-  | message _ => exact hc
-  | restart => exact fun B hB => payload_vote (h.blocks B hB.1)
-  | tick | proposal | toFG => trivial
+    ?_ he, h.atts⟩
+  cases c <;> exact hc
 
 private theorem inventory_mono {P Q : Wire sp.n binding → Prop}
     {st : NodeState (goldilocksNode sp ro)} (h : Inventory P st) (hPQ : ∀ o, P o → Q o) :
@@ -289,7 +252,7 @@ private theorem inventory_block {P : Wire sp.n binding → Prop} {st : NodeState
     · exact h
     · rename_i fg' hfg
       rw [hfg] at he
-      apply inventory_call (inventory_accept h hfg hB) self t (.block B) hB
+      apply inventory_call (inventory_accept h hfg hB) self t (.block B) trivial
       intro e he'
       apply he (.vote (encodeVote e.msg)) ?_ e.msg rfl
       simp only [emitted, acCall, List.flatMap_cons, List.flatMap_nil,
@@ -328,18 +291,8 @@ private theorem proposal_inventory {P : Wire sp.n binding → Prop} (st : State 
   · have hcs := (Option.some.inj hp)
     cases hcs
     intro o ho
-    rcases List.mem_append.mp ho with ho | ho
-    · obtain ⟨a, ha, rfl⟩ := List.mem_map.mp ho
-      exact h.atts a (List.mem_filter.mp ha).1
-    · obtain ⟨v, hv, rfl⟩ := List.mem_map.mp ho
-      have hv' : v ∈ st.node.ac.poolAt ((sp.slot st.now : Int) - 1) := by
-        rcases List.mem_append.mp hv with hv | hv
-        · exact (List.mem_filter.mp hv).1
-        · exact (List.mem_filter.mp (List.mem_filter.mp hv).1).1
-      unfold SAState.poolAt at hv'
-      split_ifs at hv'
-      · cases hv'
-      · exact h.votes _ v hv'
+    obtain ⟨a, ha, rfl⟩ := List.mem_map.mp ho
+    exact h.atts a (List.mem_filter.mp ha).1
 
 end Inventory
 

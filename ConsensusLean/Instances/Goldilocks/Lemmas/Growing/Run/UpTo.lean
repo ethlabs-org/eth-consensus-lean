@@ -314,8 +314,7 @@ theorem GoldilocksRun.upTo {ini : Fin sp.n → (goldilocksNode sp ro).State}
       att_unforgeable := fun y hy i a ha hv => ?_
       msg_unforgeable := fun y hy i m hc hs => ?_
       vstart := h.vstart
-      genesis_root_ok := h.genesis_root_ok
-      carried_vote_unforgeable := fun y hy i B hB v hv hvH => ?_ }
+      genesis_root_ok := h.genesis_root_ok }
   · obtain ⟨hid, hc⟩ := (Trace.upTo_callAt _).mp hc
     obtain ⟨j, e, hg⟩ := h.grouped y i c hc (anti hid hy)
     exact ⟨j, e, RunTrace.upTo_inGroup hm hid hg⟩
@@ -367,9 +366,6 @@ theorem GoldilocksRun.upTo {ini : Fin sp.n → (goldilocksNode sp ro).State}
     exact ⟨j, hji, (RunTrace.upTo_signAt _).mpr ⟨(hm hji.le).trans hid, hj⟩⟩
   · obtain ⟨hid, hc⟩ := (RunTrace.upTo_msgCallAt _).mp hc
     obtain ⟨j, hji, hj⟩ := h.msg_unforgeable y i m (anti hid hy) hc (anti hid hs)
-    exact ⟨j, hji, (RunTrace.upTo_emitAt _).mpr ⟨(hm hji.le).trans hid, hj⟩⟩
-  · obtain ⟨hid, hB⟩ := (RunTrace.upTo_blockCallAt _).mp hB
-    obtain ⟨j, hji, hj⟩ := h.carried_vote_unforgeable y i B (anti hid hy) hB v hv (anti hid hvH)
     exact ⟨j, hji, (RunTrace.upTo_emitAt _).mpr ⟨(hm hji.le).trans hid, hj⟩⟩
 
 /-- **Reachability at a held-state observation**, not necessarily the time of cut `i`: the FG state

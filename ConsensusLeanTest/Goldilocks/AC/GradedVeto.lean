@@ -410,8 +410,8 @@ theorem tryVote_36 (A : SAState sp.n) : tryVote sp v0 A Φ 36 = (A, []) := by
   unfold tryVote
   dsimp only
   rw [slot_36]
-  have hr : ¬ voteReady sp Φ 9 := by
-    rintro ⟨B, hB, hs, -⟩
+  have hr : ¬ voteReady sp A Φ 9 := by
+    rintro ⟨⟨B, hB, hs, -⟩, -⟩
     rcases hB with rfl | rfl | rfl | rfl <;> simp [g, B1, Bc, Bv] at hs
   split_ifs with h1 h2
   all_goals first | rfl | exact absurd ⟨by rw [ts_9]; decide, Or.inr hr⟩ h2
@@ -605,7 +605,7 @@ theorem tick_37 : (acOnTick sp v0 S3 Φ 37).1 = S4 := by
     · rw [S3_votedSlot] at h; exact absurd h (by decide)
     · exact absurd h (by decide)),
     ite_eq_right (show ¬ ((37 : Time) < sp.ts ((9 : Nat) : Int) + sp.Δ ∧
-      ((9 : Nat) = 0 ∨ ¬ voteReady sp Φ 9)) from fun h => absurd h.1 (by decide)),
+      ((9 : Nat) = 0 ∨ ¬ voteReady sp S3 Φ 9)) from fun h => absurd h.1 (by decide)),
     ite_eq_left (show 0 < (9 : Nat) by decide), hA1]
   unfold getHead
   rw [getAnchor_lockV S3_locks (by rw [slot_37]; decide),
@@ -864,18 +864,7 @@ theorem not_joined_56 {A : SAState sp.n} (h : A.restartTime = ((56 : Time) : Wit
 
 theorem blockReceipt_locks_rt (A : SAState sp.n) (t : Time) (B : Blk sp.n Unit) :
     (blockReceipt sp A t B).locks = A.locks ∧
-      (blockReceipt sp A t B).restartTime = A.restartTime := by
-  unfold blockReceipt
-  suffices ∀ (l : List (Vote sp.n)) (X : SAState sp.n),
-      (l.foldl (fun A v => admitVote sp A t v) X).locks = X.locks ∧
-        (l.foldl (fun A v => admitVote sp A t v) X).restartTime = X.restartTime from this _ _
-  intro l
-  induction l with
-  | nil => exact fun _ => ⟨rfl, rfl⟩
-  | cons v l ih =>
-    intro X
-    rw [List.foldl_cons, (ih _).1, (ih _).2, admitVote_locks, admitVote_restartTime]
-    exact ⟨rfl, rfl⟩
+      (blockReceipt sp A t B).restartTime = A.restartTime := ⟨rfl, rfl⟩
 
 /-- A block replayed by a restart at `56` changes no lock: the node is not joined. -/
 theorem acOnBlock_56 {A : SAState sp.n} (h : A.restartTime = ((56 : Time) : WithBot Time))
