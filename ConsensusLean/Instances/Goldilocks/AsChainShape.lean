@@ -21,8 +21,9 @@ simulated by a `GoldilocksRun` (claims C0.4 kept) and bind the evidence (G1.5). 
   `WireVote`: the validator index as a number; a header is read back through `decodeInfo`, and
   a block whose indices do not decode is dropped). A vote and an attestation are `.data` bodies
   signed in the `.poll` role by their validator (`voteObj`, `attObj`); a block **carries** the
-  canonical objects of its payload (`payloadObjs`), so a node can later carry them on in its own
-  blocks (the engine releases only carried objects it has seen). A received object is processed
+  canonical objects of its attestations (`payloadObjs`), so a node can later carry them on in its
+  own blocks (the engine releases only carried objects it has seen). Its declared head votes are
+  header data, not carried objects: a block carries no vote. A received object is processed
   only in a canonical form (`blockObj`, `voteObj`, `attObj`; read back by `decodeBlock`,
   `decodeVoteObj`, `decodeAttObj`, together `canonEvent`), anything else is dropped. A delivery
   processes the received object and, recursively, what it carries (`delivered`), except what a
@@ -312,11 +313,11 @@ def attObj {n : Nat} (a : FG.Att n) :
     Wire n (binding := binding) :=
   .mk (.signed a.val .poll) (.data (.att (encodeAtt a))) []
 
-/-- The objects a block carries: the canonical objects of its attestations, then of its votes
-and support votes. -/
+/-- The objects a block carries: the canonical objects of its attestations. Its AC payload, the
+declared head votes and their support list, carries no vote object. -/
 def payloadObjs {n : Nat}
-    (atts : List (FG.Att n)) (p : Payload n) : List (Wire n (binding := binding)) :=
-  atts.map (attObj (binding := binding)) ++ (p.1 ++ p.2).map (voteObj (binding := binding))
+    (atts : List (FG.Att n)) (_p : Payload n) : List (Wire n (binding := binding)) :=
+  atts.map (attObj (binding := binding))
 
 /-- A standalone attestation object: an attestation body signed in the `.poll` role, carrying
 nothing (the shape of `attObj`, whether or not its body decodes). -/
@@ -491,8 +492,9 @@ def queueAccepted (st : State sp ro (binding := binding))
               [(st.now, p.toList ++ [blockObj sp (binding := binding) B])] }
 
 /-- Record handler state and emissions, then queue successful acceptances and fresh vote
-insertions. Candidate votes come from message/block calls and own emissions, not restart
-replay. The pool difference preserves admission's duplicate and two-vote-cap checks. -/
+insertions. Candidate votes come from message calls and own emissions (a block call admits no
+vote, and neither does restart replay). The pool difference preserves admission's duplicate and
+two-vote-cap checks. -/
 def apply (st : State sp ro (binding := binding))
     (r : NodeState (goldilocksNode sp ro) × List (Cut (goldilocksNode sp ro))) :
     State sp ro (binding := binding) :=
@@ -504,7 +506,6 @@ def apply (st : State sp ro (binding := binding))
     | .ac ℓ =>
         (match ℓ.call with
           | .message v => [v]
-          | .block B => SA.blockVotes B
           | _ => []) ++ ℓ.emits.map (·.msg)
   let admitted := candidates.dedup.filter fun v =>
     v ∉ st.node.ac.pool v.slot ∧ v ∈ r.1.ac.pool v.slot

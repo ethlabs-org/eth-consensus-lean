@@ -8,10 +8,10 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Actions
 goldilocks-spec.tex §"Joining and restart" (Figure "Goldilocks: restart"): a restart keeps the locks
 and `latest_confirmed`, resets every other field, sets `restart_time` to the time of the
 restart, and calls `ac_on_block` at that time for every block of `Φ.tree` other than genesis,
-in parent order. The spec does not fix the order of siblings, which matters (with three or more
-votes of one validator on sibling blocks, the order decides which two pass the cap, and the
-pool order); so the restart takes the order as a parameter (`ReplayOrder`), and the SA and its
-statements are parametric in it. -/
+in parent order. The replay only stamps the blocks: a block's declared head votes are not
+admitted, and the node is not joined at its restart time, so no check or vote runs. The spec
+does not fix the order of siblings; the restart still takes the order as a parameter
+(`ReplayOrder`), and the SA and its statements are parametric in it. -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -27,9 +27,8 @@ def ParentOrderAt {n : Nat} (genesisRoot : Nat) (Φ : Frm n FGP)
 /-- A replay order for restarts: for each restart time and frame, a list of the blocks to replay,
 which is a parent-order enumeration of the tree without genesis whenever one exists (at a
 well-formed frame one does). The spec fixes only that parents come before their children; the
-order of siblings is free and matters (with three or more votes of one validator on sibling
-blocks it decides which two pass the two-vote cap, and the pool order), so the SA is
-parametric in the order and the statements quantify over every replay order. -/
+order of siblings is free (the replay only stamps blocks, so it does not change the state); the
+SA stays parametric in the order and the statements quantify over every replay order. -/
 structure ReplayOrderData (n genesisRoot : Nat) (FGP : Type) where
   /-- The blocks a restart at time `t` with frame `Φ` replays, in order. -/
   order : Time → Frm n FGP → List (Blk n FGP)
