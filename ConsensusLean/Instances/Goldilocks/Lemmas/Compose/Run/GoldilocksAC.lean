@@ -10,16 +10,15 @@ public section
 /-! # Goldilocks runs: the AC projection of a Goldilocks run is an SA AC run
 
 The AC projection of a Goldilocks run satisfies the AC trace contract (`ac_projection`, with the
-SA's requirements) and the honest-object facts: honest votes in a pool, received, or carried by a
-frame block were emitted earlier (message and carried-vote unforgeability; a pooled vote was
-admitted from one of these, emitted by the node itself, or put back by a restart from a frame
-block); a frame block other than genesis was accepted, so it has its slot's proposer; and an
+SA's requirements) and the honest-object facts: honest votes in a pool or received were emitted
+earlier (message unforgeability; a pooled vote was admitted from a message or emitted by the
+node itself: a block admits no vote and a restart empties the pools); a frame block other than genesis was accepted, so it has its slot's proposer; and an
 honest proposer's frame blocks of one slot are its own proposal at that slot's tick, of which
 there is one. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Payload Vote SAState Blk Frm blockVotes admitVote blockReceipt
+open SA (SAParams ReplayOrder Payload Vote SAState Blk Frm admitVote blockReceipt
   tryVote optimisticConfirmation updateConfirmation acOnTick acProposal acToFG goldilocksSA)
 
 /-! ### The votes an SA call adds to the pools -/
@@ -66,17 +65,10 @@ private theorem adds_admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
       · exact Or.inr (List.mem_singleton.1 h)
     · exact Or.inl hx
 
-private theorem adds_foldl (A : SAState sp.n) (t : Time) (S : Vote sp.n → Prop) :
-    ∀ (l : List (Vote sp.n)) (A' : SAState sp.n), Adds A A' S → (∀ v ∈ l, S v) →
-      Adds A (l.foldl (fun A v => admitVote sp A t v) A') S
-  | [], _, h, _ => h
-  | v :: l, A', h, hl =>
-    adds_foldl A t S l _ (h.trans (adds_admitVote A' t v) (fun _ h => h)
-      (fun _ h => h ▸ hl v List.mem_cons_self)) (fun w hw => hl w (List.mem_cons_of_mem _ hw))
-
+/-- A block receipt only stamps the block: it adds no vote. -/
 private theorem adds_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
-    Adds A (blockReceipt sp A t B) (· ∈ blockVotes B) :=
-  adds_foldl A t _ _ _ (Adds.of_eq rfl) (fun _ h => h)
+    Adds A (blockReceipt sp A t B) (fun _ => False) :=
+  Adds.of_eq rfl
 
 private theorem adds_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Adds A (tryVote sp x A Φ t).1 (fun v => ∃ e ∈ (tryVote sp x A Φ t).2, e.msg = v) := by
@@ -121,24 +113,23 @@ theorem tryVote_emission_mem_pool (x : Fin sp.n) (A : SAState sp.n)
     have hslot : ¬ ((sp.slot t : Int) < (sp.slot t : Int) - 1) := by omega
     simp [admitVote, hn, hfilter, hslot]
 
-/-- A call other than a restart adds to the pools only its message, the votes of its block, and
-its emissions. -/
+/-- A call other than a restart adds to the pools only its message and its emissions (a block
+call admits none of its declared head votes). -/
 private theorem adds_step {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SAState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call) (hc : c ≠ .restart) :
     Adds A ((goldilocksSA sp FGP ro).step self A Φ t c).1 (fun v => c = .message v ∨
-      (∃ B, c = .block B ∧ v ∈ blockVotes B) ∨
       ∃ e ∈ ((goldilocksSA sp FGP ro).step self A Φ t c).2, e.msg = v) := by
   cases c with
   | tick =>
     change Adds A (acOnTick sp self A Φ t).1
-      (fun v => _ ∨ _ ∨ ∃ e ∈ (acOnTick sp self A Φ t).2, e.msg = v)
+      (fun v => _ ∨ ∃ e ∈ (acOnTick sp self A Φ t).2, e.msg = v)
     unfold acOnTick
     dsimp only
     split_ifs
     · exact ((adds_tryVote _ _ _ _).trans_eq (SA.updateConfirmation_pool_eq _ _ _ _)).mono
-        fun _ h => Or.inr (Or.inr h)
+        fun _ h => Or.inr h
     · exact Adds.of_eq (SA.updateConfirmation_pool_eq _ _ _ _)
-    · exact (adds_tryVote _ _ _ _).mono fun _ h => Or.inr (Or.inr h)
+    · exact (adds_tryVote _ _ _ _).mono fun _ h => Or.inr h
     · exact Adds.of_eq rfl
     · exact Adds.of_eq rfl
   | proposal =>
@@ -156,22 +147,20 @@ private theorem adds_step {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SASta
     · exact Adds.of_eq rfl
   | message m =>
     exact ((adds_admitVote A t m).trans_eq (SA.optimistic_pool_eq _ _ _)).trans
-      (adds_tryVote _ _ _ _) (fun _ h => Or.inl (h ▸ rfl)) (fun _ h => Or.inr (Or.inr h))
+      (adds_tryVote _ _ _ _) (fun _ h => Or.inl (h ▸ rfl)) (fun _ h => Or.inr h)
   | block B =>
     exact ((adds_blockReceipt A t B).trans_eq (SA.optimistic_pool_eq _ _ _)).trans
-      (adds_tryVote _ _ _ _) (fun _ h => Or.inr (Or.inl ⟨B, rfl, h⟩))
-      (fun _ h => Or.inr (Or.inr h))
+      (adds_tryVote _ _ _ _) (fun _ h => h.elim) (fun _ h => Or.inr h)
   | restart => exact absurd rfl hc
 
-/-- A fresh non-restart pool insertion is a message, block-payload vote or own emission.
-This is the exact candidate set used by the forwarding queue. -/
+/-- A fresh non-restart pool insertion is a message or an own emission (a block call admits
+no vote). This is the exact candidate set used by the forwarding queue. -/
 theorem step_pool_insertion_source {ro : ReplayOrder sp FGP} (self : Fin sp.n)
     (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (c : (goldilocksSA sp FGP ro).Call) (hc : c ≠ .restart) (m : Vote sp.n)
     (hold : m ∉ A.pool m.slot)
     (hnew : m ∈ ((goldilocksSA sp FGP ro).step self A Φ t c).1.pool m.slot) :
-    c = .message m ∨ (∃ B, c = .block B ∧ m ∈ blockVotes B) ∨
-      ∃ e ∈ ((goldilocksSA sp FGP ro).step self A Φ t c).2, e.msg = m :=
+    c = .message m ∨ ∃ e ∈ ((goldilocksSA sp FGP ro).step self A Φ t c).2, e.msg = m :=
   (adds_step self A Φ t c hc m.slot m hnew).resolve_left hold
 
 end Adds
@@ -199,13 +188,12 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Every projected send/admission has precisely one of the forwarding supplier's
-sources: an emission, or a fresh message/payload insertion. Restart replay is excluded. -/
+sources: an emission, or a fresh message insertion. Restart replay is excluded. -/
 theorem sendOrAdmit_forward_source (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {m : Vote sp.n}
     (h : tr.projAC.SendOrAdmit y k m) :
     tr.EmitAt y k m ∨
-      ((tr.MsgCallAt y k m ∨ ∃ ℓ B, tr.CallAt y k (.ac ℓ) ∧ ℓ.call = .block B ∧
-          m ∈ blockVotes B) ∧
+      (tr.MsgCallAt y k m ∧
         m ∉ (tr.state y k).ac.pool m.slot ∧ m ∈ (tr.post k).ac.pool m.slot) := by
   obtain ⟨ℓ, hc, he | ⟨hnr, hold, hnew⟩⟩ := h
   · exact Or.inl ⟨ℓ, projAC_callAt.mp hc, he⟩
@@ -215,11 +203,9 @@ theorem sendOrAdmit_forward_source (hrun : GoldilocksRun proposer dg H tr ini)
     rw [hex] at ha
     have hold' : m ∉ (tr.projAC.state y k).pool m.slot := hold
     have hnew' : m ∈ (tr.post k).ac.pool m.slot := hnew
-    rcases ha m.slot m hnew' with hm | hm | ⟨B, hb, hm⟩ | ⟨e, he, hm⟩
+    rcases ha m.slot m hnew' with hm | hm | ⟨e, he, hm⟩
     · exact False.elim (hold' hm)
-    · exact Or.inr ⟨Or.inl ⟨ℓ, projAC_callAt.mp hc, hm⟩,
-        by rwa [projAC_state hrun.toLocalRun hy] at hold', hnew'⟩
-    · exact Or.inr ⟨Or.inr ⟨ℓ, B, projAC_callAt.mp hc, hb, hm⟩,
+    · exact Or.inr ⟨⟨ℓ, projAC_callAt.mp hc, hm⟩,
         by rwa [projAC_state hrun.toLocalRun hy] at hold', hnew'⟩
     · exact Or.inl ⟨ℓ, projAC_callAt.mp hc, e, he, hm⟩
 
@@ -254,17 +240,15 @@ theorem emitted_vote_slots_ne (hrun : GoldilocksRun proposer dg H tr ini)
     have hf := (hrun.cutLaw x hx k _ (projAC_callAt.mp hc)).1
     exact hf ▸ (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hx k)).1
 
-/-- Before an honest emission, neither a wire message nor a block payload processed by an
-honest node can contain a vote of that signer and slot. This includes the emitting cut. -/
+/-- Before an honest emission, no wire message processed by an honest node is a vote of that
+signer and slot. This includes the emitting cut. -/
 theorem emitted_slot_not_received (hrun : GoldilocksRun proposer dg H tr ini)
     {y x : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H) {i k : Nat} (hki : k ≤ i)
     {v m : Vote sp.n} (hv : tr.EmitAt y i v) (hm : m.val = y) (hs : m.slot = v.slot) :
-    ¬ (tr.MsgCallAt x k m ∨ ∃ B, tr.BlockCallAt x k B ∧ m ∈ blockVotes B) := by
+    ¬ tr.MsgCallAt x k m := by
   intro hc
   have he : ∃ j < k, tr.EmitAt y j m := by
-    rcases hc with hc | ⟨B, hc, hmem⟩
-    · simpa only [hm] using hrun.msg_unforgeable x hx k m hc (hm ▸ hy)
-    · simpa only [hm] using hrun.carried_vote_unforgeable x hx k B hc m hmem (hm ▸ hy)
+    simpa only [hm] using hrun.msg_unforgeable x hx k m hc (hm ▸ hy)
   obtain ⟨j, hj, he⟩ := he
   exact emitted_vote_slots_ne hrun hy (hj.trans_le hki) he hv hs
 
@@ -276,19 +260,8 @@ private theorem message_vote (hrun : GoldilocksRun proposer dg H tr ini) {y : Fi
   obtain ⟨j, hj, he⟩ := hrun.msg_unforgeable y hy i v ⟨ℓ, projAC_callAt.1 hc, hm⟩ hval
   exact ⟨j, hj, emit_voteAt he⟩
 
-private theorem carried_vote (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
-    (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ)
-    {B : Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) {v : Vote sp.n}
-    (hv : v ∈ blockVotes B) (hval : v.val ∈ H) :
-    ∃ j < i, ∃ e, SA.VoteAt tr.projAC v.val j e ∧ e.msg = v := by
-  rcases tree_cases hrun.toLocalRun hy (frame_tree hrun hy hc hB) with rfl | ⟨k, hk, hacc⟩
-  · exact absurd hv List.not_mem_nil
-  · obtain ⟨j, hj, he⟩ := hrun.carried_vote_unforgeable y hy k B ⟨true, hacc⟩ v hv hval
-    exact ⟨j, hj.trans hk, emit_voteAt he⟩
-
-/-- Honest votes in a stored pool have an earlier emission, including votes replayed at
-restart, from starts up to the vote permission (whose pools are empty). Only individual frame
+/-- Honest votes in a stored pool have an earlier emission, from starts up to the vote permission
+(whose pools are empty; a restart empties the pools and a block admits no vote). Only individual frame
 well-formedness is needed, not `NoCollRun`. -/
 theorem pool_vote_emitted (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) (i σ : Nat) (v : Vote sp.n)
@@ -311,20 +284,15 @@ theorem pool_vote_emitted (hrun : GoldilocksRun proposer dg H tr ini)
         have hp : (SA.acRestart sp ro y (tr.projAC.state y k) ℓ.frame (tr.time k)).1 =
             tr.projAC.post k := by
           simpa [hr, ACInterface.step, RunTrace.projAC] using congrArg Prod.fst hex
-        rw [← hp] at hv
-        obtain ⟨B, hB, hvB⟩ := (hs.2.2.2.2.2.2.2.2.1 σ v hv).2
-        obtain ⟨j, hj, he⟩ := carried_vote hrun hy hc hB hvB hval
-        exact ⟨j, hj.trans hk, he⟩
+        rw [← hp, hs.2.2.2.2.2.2.2.2.1 σ] at hv
+        exact absurd hv List.not_mem_nil
       · have ha := adds_step (ro := ro) y (tr.projAC.state y k) ℓ.frame (tr.time k) ℓ.call hr
         rw [hex] at ha
-        rcases ha σ v hv with hv | hm | ⟨B, hb, hvB⟩ | ⟨e, he, hev⟩
+        rcases ha σ v hv with hv | hm | ⟨e, he, hev⟩
         · obtain ⟨j, hj, he⟩ := ih k hk hv
           exact ⟨j, hj.trans hk, he⟩
         · obtain ⟨j, hj, he⟩ := message_vote hrun hy hc hm hval
           exact ⟨j, hj.trans hk, he⟩
-        · obtain ⟨k', rfl, hacc, -⟩ := acBlock_prev hrun.toLocalRun hy (projAC_callAt.mp hc) hb
-          obtain ⟨j, hj, he⟩ := hrun.carried_vote_unforgeable y hy k' B ⟨true, hacc⟩ v hvB hval
-          exact ⟨j, by omega, emit_voteAt he⟩
         · have he' : e ∈ ((goldilocksSA sp _ ro).step y (tr.projAC.state y k)
               ℓ.frame (tr.time k) ℓ.call).2 := by rw [hex]; exact he
           have hs := SA.step_emission_signer y _ _ _ _ hΦ (hrun.time_nonneg k) he'
@@ -374,8 +342,7 @@ theorem pool_mono (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     · rw [tr.projAC.state_succ_of_not (fun ℓ hc => hn ⟨hc.1, by simp [hc.2]⟩)]
       exact hp
 
-/-- Before an honest emission, no honest stored pool contains a vote of its signer and slot,
-even if a restart has replayed previously accepted blocks. -/
+/-- Before an honest emission, no honest stored pool contains a vote of its signer and slot. -/
 theorem emitted_slot_not_pooled (hrun : GoldilocksRun proposer dg H tr ini)
     {y x : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H) {i k : Nat} (hki : k ≤ i)
     {v m : Vote sp.n} (hv : tr.EmitAt y i v) (hm : m.val = y) (hs : m.slot = v.slot)
@@ -426,18 +393,15 @@ theorem emitted_vote_mem_post (hrun : GoldilocksRun proposer dg H tr ini)
       have hs := (SA.receipt_pool_slot (FGP := List (FG.Att sp.n)) _ (tr.time i) hcap).1 m _ w hw
       rcases adds_admitVote _ _ _ _ w hw with hw | rfl
       · exact hf w hw hwy
-      · exact hrecv _ hwy hs (Or.inl ⟨ℓ, hc, hcall⟩)
+      · exact hrecv _ hwy hs ⟨ℓ, hc, hcall⟩
     | block B =>
       rw [hcall] at hem
       apply tryVote_emission_mem_pool y _ _ _ e hem
       intro w hw hwy
       rw [SA.optimistic_pool_eq] at hw
-      have hs := (SA.receipt_pool_slot _ (tr.time i) hcap).2 B _ w hw
       rcases adds_blockReceipt _ _ _ _ w hw with hold | hblock
       · exact hf w hold hwy
-      · obtain ⟨k, rfl, hacc, -⟩ := acBlock_prev hrun.toLocalRun hy hc hcall
-        exact emitted_slot_not_received hrun hy hy (Nat.le_succ k) hv hwy hs
-          (Or.inr ⟨B, ⟨true, hacc⟩, hblock⟩)
+      · exact hblock.elim
     | proposal => simp [hcall, ACInterface.step] at hem
     | toFG => simp [hcall, ACInterface.step] at hem
     | restart =>
@@ -505,8 +469,7 @@ theorem goldilocks_ac_projection_from (hrun : GoldilocksRun proposer dg H tr ini
     (fun y _ U _ s Φ t₀ h => SA.proposal_payload_valid_from _ (hrun.vstart y).pool y U s Φ t₀ h)
     hrun.toLocalRun hnc
   refine ⟨hloc, ⟨fun y hy => pool_vote_emitted hrun hy,
-    fun y hy i ℓ v hc hm hval => message_vote hrun hy hc hm hval,
-    fun y hy i ℓ hc B hB v hv hval => carried_vote hrun hy hc hB hv hval, fun B hB hr => ?_,
+    fun y hy i ℓ v hc hm hval => message_vote hrun hy hc hm hval, fun B hB hr => ?_,
     fun B B' hB hB' hp hpr hs => one_block hrun hB hB' hp hpr hs⟩, hrun.vstart⟩
   rcases frame_block_cases hrun hB with rfl | ⟨y, hy, k, hk⟩
   · exact absurd rfl hr
