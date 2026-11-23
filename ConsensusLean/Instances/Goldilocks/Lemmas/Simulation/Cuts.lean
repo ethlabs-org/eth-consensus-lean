@@ -70,20 +70,21 @@ theorem mem_groupRecs {st : NodeState (goldilocksNode sp ro)} {t : Time} {id : N
 
 /-- A cut of a delivery's cuts is at the delivery's node and time, under the id of a sub-event
 from `sub` on. -/
-theorem mem_deliverRecs (hs : List (Header Info × Nat)) (t : Time) (i : Nat)
+theorem mem_deliverRecs (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
+    (t : Time) (i : Nat)
     {os : List (Wire sp.n binding)} {st : NodeState (goldilocksNode sp ro)} {sub : Nat}
-    {r : CutRec sp ro} (hr : r ∈ deliverRecs proposer dg hs self t i os st sub) :
+    {r : CutRec sp ro} (hr : r ∈ deliverRecs io proposer dg hs self t i os st sub) :
     r.node = self ∧ r.time = t ∧ ∃ s, sub ≤ s ∧ r.event = Nat.pair i s := by
   induction os generalizing st sub with
   | nil => simp [deliverRecs_nil] at hr
   | cons o os ih =>
-    cases he : canonEvent sp ro hs o with
+    cases he : canonEvent sp ro io hs o with
     | none =>
-      rw [deliverRecs_cons_none proposer dg hs self t i o os st sub he] at hr
+      rw [deliverRecs_cons_none io proposer dg hs self t i o os st sub he] at hr
       obtain ⟨h1, h2, s, hs', h3⟩ := ih hr
       exact ⟨h1, h2, s, by omega, h3⟩
     | some e =>
-      rw [deliverRecs_cons_some proposer dg hs self t i o os st sub e he] at hr
+      rw [deliverRecs_cons_some io proposer dg hs self t i o os st sub e he] at hr
       rcases List.mem_append.mp hr with hr | hr
       · obtain ⟨h1, h2, h3⟩ := mem_groupRecs proposer dg self hr
         exact ⟨h1, h2, sub, le_rfl, h3⟩
