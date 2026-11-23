@@ -207,7 +207,7 @@ head.}
 The available chain of Goldilocks is Goldfish with locks on confirmed
 blocks.  It reads the FG frame~$\Fr$, the clock and its
 own state~$\AC$.  Its wire messages are Goldfish votes, the AC payload of
-a block is a list of unsigned previous-slot head votes with a support bit
+a block is a list of declared previous-slot head votes with a support bit
 for each, and its head is the Goldfish head.
 
 \subsection{Schedule}\label{sec:sa-schedule}
@@ -387,31 +387,27 @@ signs it with the slot-$s$ seat of~$\valindex$, under a bijection for each
 slot between the seats and $\committee_s$.
 
 \emph{The payload.}  The payload of a block is
-$B.\acp=(B.\mathsf{unsigned\_head\_votes},B.\mathsf{support\_bits})$: a
-list of \emph{unsigned votes} $(v,H)$, each naming a validator~$v$ and a
-head~$H$ by root, and a list of bits of the same length.  An unsigned vote
+$B.\acp=(B.\mathsf{declared\_head\_votes},B.\mathsf{support\_bits})$: a
+list of \emph{declared head votes} $(v,H)$, each naming a validator~$v$ and a
+head~$H$ by root, and a list of bits of the same length.  A declared head vote
 $(v,H)$ of~$B$ \emph{declares} the slot-$(B.\slot-1)$ vote $(v,B.\slot-1,H)$; the slot is
 implicit.  The block carries no signature of~$v$: a declaration is the
 proposer's statement, not a vote.  The $i$-th bit marks the $i$-th
-unsigned vote as support.  The payload of~$\genesis$ is two empty lists.  With
+declared head vote as support.  The payload of~$\genesis$ is two empty lists.  With
 this payload the digest input of a block is
 \[
  (B.\parent.\rootf,\ B.\slot,\ B.\mathsf{attestations},\
- B.\mathsf{unsigned\_head\_votes},\ B.\mathsf{support\_bits}).
+ B.\mathsf{declared\_head\_votes},\ B.\mathsf{support\_bits}).
 \]
-[\emph{Decision point: format of an unsigned vote.}  Recommended: the validator
-index and the head root, as above, so that a voter reads the declared
-head without the vote.  Alternative: the digest of the signed vote, which
-a voter can match only against a vote it holds.]
 The support bits record the proposer's view; they are not a second set of
-unsigned votes to process.  A count reads distinct declared votes.
+declared head votes to process.  A count reads distinct declared votes.
 
 \emph{The payload check.}  $\Call{ac\_valid\_payload}{B}$ holds when
-$B.\slot\geq1$ or the lists are empty, the unsigned votes are distinct,
+$B.\slot\geq1$ or the lists are empty, the declared head votes are distinct,
 no validator has more than two, and $B.\mathsf{support\_bits}$ has the length
-of $B.\mathsf{unsigned\_head\_votes}$.  The check reads neither the clock
+of $B.\mathsf{declared\_head\_votes}$.  The check reads neither the clock
 nor the pool, and it checks neither committee membership nor a vote
-signature.  An unsigned vote that no node holds signed, that was never
+signature.  A declared head vote that no node holds signed, that was never
 signed, or whose validator is not in $\committee_{B.\slot-1}$, passes it;
 the voter decides whether to count it (\emph{held declarations} below).
 
@@ -437,7 +433,7 @@ held vote of the latest slot whose votes are due: slot~$s-1$ before
 $t_s+2\Delta$, and slot~$s$ from then on.  The head and the proposal read
 the latest view.  The vote reads the merged view.
 
-\emph{Declared votes.}  An unsigned vote $(v,H)$ of a slot-$s$ block
+\emph{Declared votes.}  A declared head vote $(v,H)$ of a slot-$s$ block
 declares the vote $(v,s-1,H)$ only when $v\in\committee_{s-1}$.  An entry
 for any other validator declares nothing: it is not counted, and no vote
 waits for it.
@@ -448,13 +444,7 @@ two distinct votes by~$v$.  If the exact vote is absent, two distinct
 signed votes prove that $v$ equivocated, and the voter takes the
 proposer's declaration for the head of~$v$.  A declaration that the
 voter does not hold is \emph{omitted}: it is neither counted nor waited
-for after the timeout.  [\emph{Decision point: declared-entry rule.}
-Recommended: the exact vote or any two distinct votes by~$v$ in the pool,
-read at the vote time.  Alternatives: the exact vote only (an equivocator
-with a missing vote is then omitted, and the views of the proposer and the
-voter can differ in category); or the declaration always (rejected: a
-proposer could then credit honest validators with votes they never
-signed).]
+for after the timeout.
 
 \emph{Declarations are not votes.}  A declaration is never given to the
 admission test, never enters $\AC.\gfPool$, never gets a stamp, and is
@@ -493,17 +483,17 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
 \Function{ac\_valid\_payload}{$B$}
   \Comment{stateless: reads neither the clock nor the pool}
   \State $s\gets B.\slot-1$
-  \State \Return $\mathsf{true}$ if $B.\mathsf{unsigned\_head\_votes}$ is empty or $s\geq0$, its entries are distinct, no $v$ has more than two,
-  \Statex \hspace{2em}and $|B.\mathsf{support\_bits}|=|B.\mathsf{unsigned\_head\_votes}|$; else $\mathsf{false}$
+  \State \Return $\mathsf{true}$ if $B.\mathsf{declared\_head\_votes}$ is empty or $s\geq0$, its entries are distinct, no $v$ has more than two,
+  \Statex \hspace{2em}and $|B.\mathsf{support\_bits}|=|B.\mathsf{declared\_head\_votes}|$; else $\mathsf{false}$
   \Comment{no committee or signature check}
 \EndFunction
 \vspace{1pt}
-\Function{get\_declared\_head\_votes}{$B$}
+\Function{get\_countable\_declared\_head\_votes}{$B$}
   \Comment{the declared votes of $B$ by committee members, and those marked as support}
   \State $s\gets B.\slot-1$
-  \State $D\gets\{(v,s,H):(v,H)\in B.\mathsf{unsigned\_head\_votes},\ v\in\committee_s\}$
+  \State $D\gets\{(v,s,H):(v,H)\in B.\mathsf{declared\_head\_votes},\ v\in\committee_s\}$
   \Comment{other entries declare nothing}
-  \State $D^{+}\gets\{(v,s,H)\in D:(v,H)\text{ is the $i$-th entry of }B.\mathsf{unsigned\_head\_votes}\text{ and }B.\mathsf{support\_bits}[i]=1\}$
+  \State $D^{+}\gets\{(v,s,H)\in D:(v,H)\text{ is the $i$-th entry of }B.\mathsf{declared\_head\_votes}\text{ and }B.\mathsf{support\_bits}[i]=1\}$
   \State \Return $(D,D^{+})$
 \EndFunction
 \vspace{1pt}
@@ -561,7 +551,7 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
     \Comment{received, and resolved, before the vote freeze}
   \ForAll{$B\in\Fr.\tree$ with $B.\slot=s$}
     \Comment{the slot-$s$ proposals: their held declarations pass the vote freeze}
-    \State $(D,D^{+})\gets\Call{get\_declared\_head\_votes}{B}$
+    \State $(D,D^{+})\gets\Call{get\_countable\_declared\_head\_votes}{B}$
     \State $\mathit{votes}\gets\mathit{votes}\cup
       \{x\in D:\Call{should\_count\_declared\_vote}{\AC,x}\}$
     \Comment{never admitted: $\AC.\gfPool$ is unchanged}
@@ -986,12 +976,6 @@ proposal only: a marked declaration of another proposal whose head is not
 yet in $\Fr.\tree$ counts as a vote but not as support.  If no such time
 comes before $t_s+\Delta$, the node votes at $t_s+\Delta$ with no test, as
 it does in slot~$0$, and omits the declarations that it does not hold.
-[\emph{Decision point: early-cast readiness.}  Recommended: every
-declaration of every slot-$s$ proposal held, as above.  Alternatives:
-only the declarations of the ready proposal (a second, faulty proposal
-then cannot delay the vote, but an early vote can omit its declarations);
-or no test on declarations (an early vote can then omit declarations of
-an honest proposal that are still in flight).]
 The vote check $\Call{try\_vote}{}$ runs after each receipt and
 in the tick at $t_s+\Delta$, and it tests that the node is joined at~$\tau$.
 The vote is one sequence: the unlocking against the slot-$(s-1)$ votes
@@ -1012,11 +996,7 @@ validator, so it holds every such declaration at that tick.  A
 declaration of a faulty proposal can name a vote that no honest node
 holds; the voter omits it at $t_s+\Delta$ only when it holds neither that
 vote nor a genuine pair of its validator.  With a genuine pair the
-declaration counts, even if that vote was never signed.  [\emph{Decision
-point: unheld declarations of a faulty proposal.}  Recommended: omit them
-at the timeout; the block stays valid, since no check can tell a vote not yet
-received from one never signed.  Alternative: none that a stateless
-payload check can enforce.]
+declaration counts, even if that vote was never signed.
 
 \emph{The vote.}  At its vote time~$\tau$ the voter walks a frozen view,
 and it reads the frame, the locks and the proposals at~$\tau$.  It walks
@@ -1039,9 +1019,9 @@ as the tick can.
 \Function{vote\_ready}{$\AC,\Fr,s$}
   \Comment{a ready proposal of slot $s$, and every declaration held}
   \State \Return $\exists P\in\Fr.\tree$ with $P.\slot=s$ such that every
-    $(v,s-1,H)$ in $\Call{get\_declared\_head\_votes}{P}.D^{+}$
+    $(v,s-1,H)$ in $\Call{get\_countable\_declared\_head\_votes}{P}.D^{+}$
   \Statex \hspace{2em}has $H\in\Fr.\tree$ and $H.\slot\leq s-1$, and
-    $\Call{should\_count\_declared\_vote}{\AC,x}$ for every $x$ in $\Call{get\_declared\_head\_votes}{B}.D$ of every $B\in\Fr.\tree$ with $B.\slot=s$
+    $\Call{should\_count\_declared\_vote}{\AC,x}$ for every $x$ in $\Call{get\_countable\_declared\_head\_votes}{B}.D$ of every $B\in\Fr.\tree$ with $B.\slot=s$
 \EndFunction
 \vspace{1pt}
 \Function{try\_vote}{$\AC,\Fr,t$}
@@ -1100,8 +1080,8 @@ the tick and call $\Call{ac\_proposal}{}$ and $\Call{ac\_to\_fg}{}$.
 Before it proposes, $\Call{ac\_proposal}{}$ unlocks against the
 slot-$(s-1)$ votes.
 
-\emph{The proposal.}  At~$t_s$, for $s>0$, the proposer puts an unsigned vote
-$(v,H)$ in $B.\mathsf{unsigned\_head\_votes}$ for every previous-slot vote
+\emph{The proposal.}  At~$t_s$, for $s>0$, the proposer puts a declared head
+vote $(v,H)$ in $B.\mathsf{declared\_head\_votes}$ for every previous-slot vote
 $(v,s-1,H)$ that it holds, in the order of its pool, and sets the support
 bit of exactly the entries whose votes are resolved at proposal time.  Its parent is the head of
 $\Call{ac\_head}{}$ after the unlocking against its whole slot-$(s-1)$
@@ -1157,10 +1137,10 @@ it in $\AC.\fgReported$.
   \State $H\gets\Call{get\_head}{\AC,\Fr,t,\filtered(\Fr,\Fr.\tree),
     \mathit{votes},\mathit{support\_votes},s-1}$
   \Comment{the head of $\Call{ac\_head}{}$}
-  \State $\mathit{unsigned}\gets[(v,H'):(v,s-1,H')\in\mathit{votes}]$;\quad
-    $\mathit{bits}\gets[\,[x\in\mathit{support\_votes}]:x\in\mathit{votes}\,]$
+  \State $\mathit{declared\_head\_votes}\gets[(v,H'):(v,s-1,H')\in\mathit{votes}]$;\quad
+    $\mathit{support\_bits}\gets[\,[x\in\mathit{support\_votes}]:x\in\mathit{votes}\,]$
   \Comment{in the order of the pool}
-  \State \Return $(H,(\mathit{unsigned},\mathit{bits}))$
+  \State \Return $(H,(\mathit{declared\_head\_votes},\mathit{support\_bits}))$
 \EndFunction
 \vspace{1pt}
 \Function{ac\_to\_fg}{$\AC,\Fr,t$}
