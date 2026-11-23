@@ -126,6 +126,7 @@ def family (proposal vote bad : Bool) : ChainShapeFamily schema Unit := fun pub 
   gossip := fun _ _ => []
   process := fun s _ _ => s, recordOwn := fun s _ _ => s
   durable := fun s => s, restore := fun _ d _ => d
+  tokensCover := ⟨⟨fun x => absurd x.2 (by simp), fun x => absurd x.2 (by simp)⟩⟩
   out := fun _ _ => if bad then [fab] else []
   conflicts := fun _ _ => vote }
 
@@ -291,6 +292,7 @@ def familyC (conf : Bool) : ChainShapeFamily schema Unit := fun pub => {
     | .mk (.signed _ _) (.item h) _ => s ++ [h]
     | _ => s
   durable := fun s => s, restore := fun _ d _ => d
+  tokensCover := ⟨⟨fun x => absurd x.2 (by simp), fun x => absurd x.2 (by simp)⟩⟩
   out := fun _ s => s
   conflicts := fun _ _ => conf }
 

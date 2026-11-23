@@ -118,6 +118,7 @@ def ctrlShape (pub : Public) : ChainShape pub CtrlOut Unit where
   recordOwn := fun s _ _ => s
   durable := fun s => s
   restore := fun _ d _ => d
+  tokensCover := ⟨⟨fun x => absurd x.2 (by simp), fun x => absurd x.2 (by simp)⟩⟩
   out := fun _ _ => []
   conflicts := fun _ _ => false
 

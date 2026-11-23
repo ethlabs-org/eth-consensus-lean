@@ -142,13 +142,12 @@ structure ChainShape (pub : Public) (Out : Type) (Info : Type) [DecidableEq Info
   /-- Vote-authentication evidence and the vote data it authenticates
   (`Model.Protocol.Token`, `VoteData`, `claim`, `voteBody`, `presented`); defaults: none. -/
   Token : Type := Nat
-  decToken : DecidableEq Token := by infer_instance
-  infToken : Infinite Token := by infer_instance
+  [decToken : DecidableEq Token]
+  [infToken : Infinite Token]
   VoteData : Type := Empty
   claim : VoteData → Option (Fin pub.n × ShapeRole skel.Kind) := fun _ => none
   /-- `Model.Protocol.tokensCover`: `Token` represents every canonical claim. -/
-  tokensCover : Nonempty ({d : VoteData // (claim d).isSome} ↪ Token) := by
-    exact ⟨⟨fun x => absurd x.2 (by simp), fun x => absurd x.2 (by simp)⟩⟩
+  tokensCover : Nonempty ({d : VoteData // (claim d).isSome} ↪ Token)
   voteBody : Body → Bool := fun _ => false
   presented : ShapeObj pub.n skel.Kind Info Body →
     Option ((Fin pub.n × ShapeRole skel.Kind × VoteData) × Token) := fun _ => none

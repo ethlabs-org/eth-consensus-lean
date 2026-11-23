@@ -100,10 +100,10 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   cntItem : Countable Item
   /-- Vote-authentication evidence (an abstract, copyable carrier; infinite, so distinct
   evidence exists for every canonical vote claim). Default: `Nat`, for protocols with no
-  delegated vote authentication. -/
+  delegated vote authentication; its decidable equality and infinitude are instance-implicit. -/
   Token : Type := Nat
-  decToken : DecidableEq Token := by infer_instance
-  infToken : Infinite Token := by infer_instance
+  [decToken : DecidableEq Token]
+  [infToken : Infinite Token]
   /-- The vote data authenticated by evidence (the signed vote without its evidence);
   `Empty` for a protocol that delegates no vote authentication. -/
   VoteData : Type := Empty
@@ -112,9 +112,8 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   /-- The evidence carrier can represent every canonical claim: some injection of the vote
   data that claim a signer and role into `Token`. A canonical claim `(k, r, d)` is determined
   by `d`, so this is what lets distinct canonical claims get distinct evidence
-  (`VoteVerification`). Default: none needed, since no data claims anything. -/
-  tokensCover : Nonempty ({d : VoteData // (claim d).isSome} ↪ Token) := by
-    exact ⟨⟨fun x => absurd x.2 (by simp), fun x => absurd x.2 (by simp)⟩⟩
+  (`VoteVerification`). No default: every protocol supplies it. -/
+  tokensCover : Nonempty ({d : VoteData // (claim d).isSome} ↪ Token)
   /-- The data bodies whose role membership is authenticated by evidence, not by the
   credential binding. -/
   voteBody : Body → Bool := fun _ => false

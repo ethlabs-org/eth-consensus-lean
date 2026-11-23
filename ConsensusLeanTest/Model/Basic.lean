@@ -59,6 +59,7 @@ def proto (pub : Public) : Protocol pub Unit where
   recordOwn := fun _ _ _ => ()
   durable := fun _ => ()
   restore := fun _ _ _ => ()
+  tokensCover := ⟨⟨fun x => absurd x.2 (by simp), fun x => absurd x.2 (by simp)⟩⟩
   out := fun _ _ => []
   conflicts := fun _ _ => false
 
@@ -297,6 +298,7 @@ def seqProto (pub : Public) : Protocol pub Unit where
   recordOwn := fun s _ _ => s + 10
   durable := fun _ => ()
   restore := fun _ _ _ => 0
+  tokensCover := ⟨⟨fun x => absurd x.2 (by simp), fun x => absurd x.2 (by simp)⟩⟩
   out := fun _ _ => []
   conflicts := fun _ _ => false
 
