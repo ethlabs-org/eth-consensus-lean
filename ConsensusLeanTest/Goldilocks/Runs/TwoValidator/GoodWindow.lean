@@ -145,7 +145,7 @@ theorem run_hsShared : Healing.HSShared run Set.univ (SA.CommitteeDict.full sp.n
   ⟨dg_noColl run, dg_genesis, run_healthy run_facts,
     fun y _ k hk => absurd hk (run_facts.noRestart y k),
     by decide,
-    ⟨SA.size_binding_full rfl, SA.CommitteePAt.full, fun _ _ _ _ _ v _ => SA.mem_full v.slot _,
+    ⟨SA.size_binding_full rfl, SA.CommitteePAt.full,
       fun _ _ x hx i _ s => ⟨fun _ => SA.mem_full s x,
         fun _ => Compose.mayVote_stock run_goldilocksRun (dg_noColl run) hx s i⟩⟩,
     fun s _ => by
